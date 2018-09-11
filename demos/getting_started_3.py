@@ -85,7 +85,7 @@ if __name__ == '__main__':
     plot = ift.Plot()
     plot.add(signal(MOCK_POSITION), title='Ground Truth')
     plot.add(R.adjoint_times(data), title='Data')
-    plot.add([A(MOCK_POSITION)], title='Power Spectrum')
+    plot.add([A(MOCK_POSITION.extract(A.domain))], title='Power Spectrum')
     plot.output(ny=1, nx=3, xsize=24, ysize=6, name="setup.png")
 
     # number of samples used to estimate the KL
@@ -97,18 +97,24 @@ if __name__ == '__main__':
 
         plot = ift.Plot()
         plot.add(signal(KL.position), title="reconstruction")
-        plot.add([A(KL.position), A(MOCK_POSITION)], title="power")
+        plot.add(
+            [
+                A(KL.position.extract(A.domain)),
+                A(MOCK_POSITION.extract(A.domain))
+            ],
+            title="power")
         plot.output(ny=1, ysize=6, xsize=16, name="loop.png")
 
     plot = ift.Plot()
     sc = ift.StatCalculator()
     for sample in KL.samples:
-        sc.add(signal(sample+KL.position))
+        sc.add(signal(sample + KL.position))
     plot.add(sc.mean, title="Posterior Mean")
     plot.add(ift.sqrt(sc.var), title="Posterior Standard Deviation")
 
-    powers = [A(s+KL.position) for s in KL.samples]
+    powers = [A((s + KL.position).extract(A.domain)) for s in KL.samples]
     plot.add(
-        [A(KL.position), A(MOCK_POSITION)]+powers,
+        [A(KL.position.extract(A.domain)),
+         A(MOCK_POSITION.extract(A.domain))] + powers,
         title="Sampled Posterior Power Spectrum")
     plot.output(ny=1, nx=3, xsize=24, ysize=6, name="results.png")

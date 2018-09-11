@@ -21,6 +21,7 @@ from __future__ import absolute_import, division, print_function
 from .. import utilities
 from ..compat import *
 from ..domain_tuple import DomainTuple
+from ..domains.domain import Domain
 from ..field import Field
 from ..linearization import Linearization
 from ..sugar import makeOp
@@ -84,10 +85,12 @@ class GaussianEnergy(EnergyOperator):
         self._icov = None if covariance is None else covariance.inverse
 
     def _checkEquivalence(self, newdom):
+        if isinstance(newdom, Domain):
+            newdom = DomainTuple.make(newdom)
         if self._domain is None:
-            self._domain = DomainTuple.make(newdom)
+            self._domain = newdom
         else:
-            if self._domain != DomainTuple.make(newdom):
+            if self._domain != newdom:
                 raise ValueError("domain mismatch")
 
     def apply(self, x):
