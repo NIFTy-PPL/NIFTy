@@ -42,4 +42,5 @@ class SymmetrizingOperator(EndomorphicOperator):
             lead = (slice(None),)*i
             v, loc = dobj.ensure_not_distributed(v, (i,))
             loc[lead+(slice(1, None),)] -= loc[lead+(slice(None, 0, -1),)]
+            loc /= 2
         return Field(self.target, dobj.ensure_default_distributed(v))
