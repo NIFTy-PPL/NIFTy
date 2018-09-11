@@ -65,7 +65,7 @@ if __name__ == '__main__':
 
     # Compute likelihood and Hamiltonian
     position = ift.from_random('normal', harmonic_space)
-    likelihood = ift.BernoulliEnergy(p, data)
+    likelihood = ift.BernoulliEnergy(data)(p)
     ic_newton = ift.DeltaEnergyController(name='Newton', iteration_limit=100,
                                           tol_rel_deltaE=1e-8)
     minimizer = ift.NewtonCG(ic_newton)
