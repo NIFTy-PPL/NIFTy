@@ -61,11 +61,7 @@ class Operator(NiftyMetaBase()):
 
     def _check_input(self, x):
         from ..linearization import Linearization
-        print('checkinput')
         d = x.target if isinstance(x, Linearization) else x.domain
-        print(d)
-        print(self._domain)
-        print()
         if self._domain != d:
             raise ValueError("The operator's and field's domains don't match.")
 

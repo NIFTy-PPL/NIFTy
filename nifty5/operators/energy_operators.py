@@ -101,13 +101,12 @@ class GaussianEnergy(EnergyOperator):
 
 
 class PoissonianEnergy(EnergyOperator):
-    def __init__(self, op, d):
-        self._op, self._d = op, d
-        self._domain = d.domain
+    def __init__(self, d):
+        self._d = d
+        self._domain = DomainTuple.make(d.domain)
 
     def apply(self, x):
         self._check_input(x)
-        x = self._op(x)
         res = x.sum() - x.log().vdot(self._d)
         if not isinstance(x, Linearization):
             return Field.scalar(res)
@@ -118,13 +117,12 @@ class PoissonianEnergy(EnergyOperator):
 
 
 class InverseGammaLikelihood(EnergyOperator):
-    def __init__(self, op, d):
-        self._op, self._d = op, d
-        self._domain = d.domain
+    def __init__(self, d):
+        self._d = d
+        self._domain = DomainTuple.make(d.domain)
 
     def apply(self, x):
         self._check_input(x)
-        x = self._op(x)
         res = 0.5*(x.log().sum() + (1./x).vdot(self._d))
         if not isinstance(x, Linearization):
             return Field.scalar(res)
@@ -135,14 +133,12 @@ class InverseGammaLikelihood(EnergyOperator):
 
 
 class BernoulliEnergy(EnergyOperator):
-    def __init__(self, p, d):
-        self._p = p
+    def __init__(self, d):
         self._d = d
-        self._domain = d.domain
+        self._domain = DomainTuple.make(d.domain)
 
     def apply(self, x):
         self._check_input(x)
-        x = self._p(x)
         v = x.log().vdot(-self._d) - (1.-x).log().vdot(1.-self._d)
         if not isinstance(x, Linearization):
             return Field.scalar(v)
