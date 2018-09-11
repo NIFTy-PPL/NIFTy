@@ -69,7 +69,6 @@ class Energy_Tests(unittest.TestCase):
         energy = ift.InverseGammaLikelihood(ift.exp, d)
         ift.extra.check_value_gradient_consistency(energy, model, tol=1e-7)
 
-
     @expand(product(
         [ift.GLSpace(15),
          ift.RGSpace(64, distances=.789),

@@ -559,7 +559,7 @@ def absmax(arr):
     if arr._data.size == 0:
         tmp = np.array(0, dtype=arr._data.dtype)
     else:
-        tmp = np.asarray(np.linalg.norm(arr._data, ord=np.inf))
+        tmp = np.asarray(np.linalg.norm(arr._data.reshape(-1), ord=np.inf))
     res = np.empty_like(tmp)
     _comm.Allreduce(tmp, res, MPI.MAX)
     return res[()]
@@ -568,7 +568,10 @@ def absmax(arr):
 def norm(arr, ord=2):
     if ord == np.inf:
         return absmax(arr)
-    tmp = np.asarray(np.linalg.norm(np.atleast_1d(arr._data), ord=ord) ** ord)
+    tmp = np.asarray(np.linalg.norm(arr._data.reshape(-1), ord=ord) ** ord)
     res = np.empty_like(tmp)
-    _comm.Allreduce(tmp, res, MPI.SUM)
+    if len(arr._data.shape) == 0:
+        res = tmp
+    else:
+        _comm.Allreduce(tmp, res, MPI.SUM)
     return res[()] ** (1./ord)

@@ -22,7 +22,6 @@ import numpy as np
 
 from ..compat import *
 from ..domains.power_space import PowerSpace
-from ..domains.unstructured_domain import UnstructuredDomain
 from ..field import Field
 from ..multi_domain import MultiDomain
 from ..operators.operator import Operator
