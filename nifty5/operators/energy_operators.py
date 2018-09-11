@@ -21,7 +21,6 @@ from __future__ import absolute_import, division, print_function
 from .. import utilities
 from ..compat import *
 from ..domain_tuple import DomainTuple
-from ..domains.domain import Domain
 from ..field import Field
 from ..linearization import Linearization
 from ..sugar import makeOp
@@ -29,6 +28,7 @@ from .operator import Operator
 from .sampling_enabler import SamplingEnabler
 from .sandwich_operator import SandwichOperator
 from .simple_linear_operators import VdotOperator
+from ..sugar import makeDomain
 
 
 class EnergyOperator(Operator):
@@ -85,8 +85,7 @@ class GaussianEnergy(EnergyOperator):
         self._icov = None if covariance is None else covariance.inverse
 
     def _checkEquivalence(self, newdom):
-        if isinstance(newdom, Domain):
-            newdom = DomainTuple.make(newdom)
+        newdom = makeDomain(newdom)
         if self._domain is None:
             self._domain = newdom
         else:
