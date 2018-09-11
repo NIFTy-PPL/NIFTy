@@ -160,6 +160,18 @@ class MultiField(object):
                 return False
         return True
 
+    def any(self):
+        result = False
+        for field in self._val.values():
+            result = result or field.any()
+        return result
+
+    def all(self):
+        result = True
+        for field in self._val.values():
+            result = result and field.all()
+        return result
+
 for op in ["__add__", "__radd__", "__iadd__",
            "__sub__", "__rsub__", "__isub__",
            "__mul__", "__rmul__", "__imul__",
