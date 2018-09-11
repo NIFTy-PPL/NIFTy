@@ -64,9 +64,10 @@ class Energy_Tests(unittest.TestCase):
         ], [4, 78, 23]))
     def testInverseGammaLikelihood(self, space, seed):
         model = self.make_model(space_key='s1', space=space, seed=seed)['s1']
+        model = model.exp()
         d = np.random.normal(10, size=space.shape)**2
         d = ift.Field.from_global_data(space, d)
-        energy = ift.InverseGammaLikelihood(d).exp()
+        energy = ift.InverseGammaLikelihood(d)
         ift.extra.check_value_gradient_consistency(energy, model, tol=1e-7)
 
     @expand(product(
@@ -78,9 +79,10 @@ class Energy_Tests(unittest.TestCase):
     def testPoissonian(self, space, seed):
         model = self.make_model(
             space_key='s1', space=space, seed=seed)['s1']
+        model = model.exp()
         d = np.random.poisson(120, size=space.shape)
         d = ift.Field.from_global_data(space, d)
-        energy = ift.PoissonianEnergy(d).exp()
+        energy = ift.PoissonianEnergy(d)
         ift.extra.check_value_gradient_consistency(energy, model, tol=1e-7)
 
     @expand(product(
@@ -113,5 +115,5 @@ class Energy_Tests(unittest.TestCase):
         model = model.positive_tanh()
         d = np.random.binomial(1, 0.1, size=space.shape)
         d = ift.Field.from_global_data(space, d)
-        energy = ift.BernoulliEnergy(d).positive_tanh()
-        ift.extra.check_value_gradient_consistency(energy, model, tol=2e-7)
+        energy = ift.BernoulliEnergy(d)
+        ift.extra.check_value_gradient_consistency(energy, model, tol=1e-6)
