@@ -59,6 +59,16 @@ class Operator(NiftyMetaBase()):
     def apply(self, x):
         raise NotImplementedError
 
+    def _check_input(self, x):
+        from ..linearization import Linearization
+        print('checkinput')
+        d = x.target if isinstance(x, Linearization) else x.domain
+        print(d)
+        print(self._domain)
+        print()
+        if self._domain != d:
+            raise ValueError("The operator's and field's domains don't match.")
+
     def __call__(self, x):
         if isinstance(x, Operator):
             return _OpChain.make((self, x))
@@ -84,6 +94,7 @@ class _FunctionApplier(Operator):
         self._funcname = funcname
 
     def apply(self, x):
+        self._check_input(x)
         return getattr(x, self._funcname)()
 
 
@@ -120,6 +131,7 @@ class _OpChain(_CombinedOperator):
                 raise ValueError("domain mismatch")
 
     def apply(self, x):
+        self._check_input(x)
         for op in reversed(self._ops):
             x = op(x)
         return x
@@ -138,6 +150,7 @@ class _OpProd(Operator):
     def apply(self, x):
         from ..linearization import Linearization
         from ..sugar import makeOp
+        self._check_input(x)
         lin = isinstance(x, Linearization)
         v = x._val if lin else x
         v1 = v.extract(self._op1.domain)
@@ -162,6 +175,7 @@ class _OpSum(Operator):
 
     def apply(self, x):
         from ..linearization import Linearization
+        self._check_input(x)
         lin = isinstance(x, Linearization)
         v = x._val if lin else x
         v1 = v.extract(self._op1.domain)

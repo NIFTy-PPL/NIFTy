@@ -39,6 +39,7 @@ class SquaredNormOperator(EnergyOperator):
         self._domain = domain
 
     def apply(self, x):
+        self._check_input(x)
         if isinstance(x, Linearization):
             val = Field.scalar(x.val.vdot(x.val))
             jac = VdotOperator(2*x.val)(x.jac)
@@ -55,6 +56,7 @@ class QuadraticFormOperator(EnergyOperator):
         self._domain = op.domain
 
     def apply(self, x):
+        self._check_input(x)
         if isinstance(x, Linearization):
             t1 = self._op(x.val)
             jac = VdotOperator(t1)(x.jac)
@@ -83,12 +85,13 @@ class GaussianEnergy(EnergyOperator):
 
     def _checkEquivalence(self, newdom):
         if self._domain is None:
-            self._domain = newdom
+            self._domain = DomainTuple.make(newdom)
         else:
-            if self._domain != newdom:
+            if self._domain != DomainTuple.make(newdom):
                 raise ValueError("domain mismatch")
 
     def apply(self, x):
+        self._check_input(x)
         residual = x if self._mean is None else x-self._mean
         res = self._op(residual).real
         if not isinstance(x, Linearization) or not x.want_metric:
@@ -103,6 +106,7 @@ class PoissonianEnergy(EnergyOperator):
         self._domain = d.domain
 
     def apply(self, x):
+        self._check_input(x)
         x = self._op(x)
         res = x.sum() - x.log().vdot(self._d)
         if not isinstance(x, Linearization):
@@ -119,6 +123,7 @@ class InverseGammaLikelihood(EnergyOperator):
         self._domain = d.domain
 
     def apply(self, x):
+        self._check_input(x)
         x = self._op(x)
         res = 0.5*(x.log().sum() + (1./x).vdot(self._d))
         if not isinstance(x, Linearization):
@@ -136,6 +141,7 @@ class BernoulliEnergy(EnergyOperator):
         self._domain = d.domain
 
     def apply(self, x):
+        self._check_input(x)
         x = self._p(x)
         v = x.log().vdot(-self._d) - (1.-x).log().vdot(1.-self._d)
         if not isinstance(x, Linearization):
@@ -155,6 +161,7 @@ class Hamiltonian(EnergyOperator):
         self._domain = lh.domain
 
     def apply(self, x):
+        self._check_input(x)
         if (self._ic_samp is None or not isinstance(x, Linearization) or
                 not x.want_metric):
             return self._lh(x)+self._prior(x)
@@ -177,5 +184,6 @@ class SampledKullbachLeiblerDivergence(EnergyOperator):
         self._res_samples = tuple(res_samples)
 
     def apply(self, x):
+        self._check_input(x)
         mymap = map(lambda v: self._h(x+v), self._res_samples)
         return utilities.my_sum(mymap) * (1./len(self._res_samples))
