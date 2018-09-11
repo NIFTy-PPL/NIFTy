@@ -23,12 +23,11 @@ from ..compat import *
 from ..domain_tuple import DomainTuple
 from ..field import Field
 from ..linearization import Linearization
-from ..sugar import makeOp
+from ..sugar import makeOp, makeDomain
 from .operator import Operator
 from .sampling_enabler import SamplingEnabler
 from .sandwich_operator import SandwichOperator
 from .simple_linear_operators import VdotOperator
-from ..sugar import makeDomain
 
 
 class EnergyOperator(Operator):
