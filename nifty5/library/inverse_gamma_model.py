@@ -22,6 +22,7 @@ import numpy as np
 from scipy.stats import invgamma, norm
 
 from ..compat import *
+from ..domain_tuple import DomainTuple
 from ..field import Field
 from ..linearization import Linearization
 from ..operators.operator import Operator
@@ -30,11 +31,12 @@ from ..sugar import makeOp
 
 class InverseGammaModel(Operator):
     def __init__(self, domain, alpha, q):
-        self._domain = self._target = domain
+        self._domain = self._target = DomainTuple.make(domain)
         self._alpha = alpha
         self._q = q
 
     def apply(self, x):
+        self._check_input(x)
         lin = isinstance(x, Linearization)
         val = x.val.local_data if lin else x.local_data
         # MR FIXME?!

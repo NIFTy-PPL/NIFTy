@@ -66,4 +66,4 @@ def make_adjust_variances(a, xi, position, samples=[], scaling=None,
     if scaling is not None:
         x = ScalingOperator(scaling, x.target)(x)
 
-    return Hamiltonian(InverseGammaLikelihood(x, d_eval), ic_samp=ic_samp)
+    return Hamiltonian(InverseGammaLikelihood(d_eval)(x), ic_samp=ic_samp)

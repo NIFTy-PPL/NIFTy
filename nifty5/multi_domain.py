@@ -73,6 +73,9 @@ class MultiDomain(object):
     def keys(self):
         return self._keys
 
+    def values(self):
+        return self._domains
+
     def domains(self):
         return self._domains
 
@@ -95,7 +98,7 @@ class MultiDomain(object):
     def __eq__(self, x):
         if self is x:
             return True
-        return self.items() == x.items()
+        return list(self.items()) == list(x.items())
 
     def __ne__(self, x):
         return not self.__eq__(x)
@@ -121,7 +124,14 @@ class MultiDomain(object):
                     res[key] = subdom
         return MultiDomain.make(res)
 
+    def __reduce__(self):
+        return (_unpickleMultiDomain, (dict(self),))
+
     def __repr__(self):
         subs = "\n".join("{}:\n  {}".format(key, dom.__repr__())
                          for key, dom in self.items())
         return "MultiDomain:\n"+indent(subs)
+
+
+def _unpickleMultiDomain(*args):
+    return MultiDomain.make(*args)
