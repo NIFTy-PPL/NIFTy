@@ -134,10 +134,7 @@ class Linearization(object):
                 OuterProduct(other._val, self._jac.domain)(self._jac)._myadd(
                     OuterProduct(self._val, other._jac.domain)(other._jac), False))
         if np.isscalar(other):
-            if other == 1:
-                return self
-            met = None if self._metric is None else self._metric.scale(other)
-            return self.new(self._val*other, self._jac.scale(other), met)
+            return self.__mul__(other)
         if isinstance(other, (Field, MultiField)):
             return self.new(OuterProduct(self._val, other._val.domain)(other._val),
                             OuterProduct(other._val, self._jac.domain)(self._jac))
