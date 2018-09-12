@@ -93,6 +93,17 @@ class Linearization(object):
     def __rsub__(self, other):
         return (-self).__add__(other)
 
+    def __truediv__(self, other):
+        if isinstance(other, Linearization):
+            return self.__mul__(other.inverse())
+        return self.__mul__(1./other)
+
+    def __rtruediv__(self, other):
+        return self.inverse().__mul__(other)
+
+    def inverse(self):
+        return self.new(1./self._val, makeOp(-1./(self._val**2))(self._jac))
+
     def __mul__(self, other):
         from .sugar import makeOp
         if isinstance(other, Linearization):
