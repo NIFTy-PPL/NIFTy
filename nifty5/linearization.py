@@ -93,17 +93,6 @@ class Linearization(object):
     def __rsub__(self, other):
         return (-self).__add__(other)
 
-    def __truediv__(self, other):
-        if isinstance(other, Linearization):
-            return self.__mul__(other.inverse())
-        return self.__mul__(1./other)
-
-    def __rtruediv__(self, other):
-        return self.inverse().__mul__(other)
-
-    def inverse(self):
-        return self.new(1./self._val, makeOp(-1./(self._val**2))(self._jac))
-
     def __mul__(self, other):
         from .sugar import makeOp
         if isinstance(other, Linearization):
@@ -126,6 +115,22 @@ class Linearization(object):
     def __rmul__(self, other):
         return self.__mul__(other)
 
+    def outer(self, other):
+        from .operators.outer_product_operator import OuterProduct
+        if isinstance(other, Linearization):
+            return self.new(
+                OuterProduct(self._val, other._val.domain)(other._val),
+                OuterProduct(other._val, self._jac.domain)(self._jac)._myadd(
+                    OuterProduct(self._val, other._jac.domain)(other._jac), False))
+        if np.isscalar(other):
+            if other == 1:
+                return self
+            met = None if self._metric is None else self._metric.scale(other)
+            return self.new(self._val*other, self._jac.scale(other), met)
+        if isinstance(other, (Field, MultiField)):
+            return self.new(OuterProduct(self._val, other._val.domain)(other._val),
+                            OuterProduct(other._val, self._jac.domain)(self._jac))
+
     def vdot(self, other):
         from .operators.simple_linear_operators import VdotOperator
         if isinstance(other, (Field, MultiField)):
@@ -137,11 +142,27 @@ class Linearization(object):
             VdotOperator(self._val)(other._jac) +
             VdotOperator(other._val)(self._jac))
 
-    def sum(self):
+    def sum(self, spaces=None):
         from .operators.simple_linear_operators import SumReductionOperator
-        return self.new(
-            Field.scalar(self._val.sum()),
-            SumReductionOperator(self._jac.target)(self._jac))
+        if spaces is None:
+            return self.new(
+                Field.scalar(self._val.sum()),
+                SumReductionOperator(self._jac.target, None)(self._jac))
+        else:
+            return self.new(
+                self._val.sum(spaces),
+                SumReductionOperator(self._jac.target, spaces)(self._jac))
+
+    def integrate(self, spaces=None):
+        from .operators.simple_linear_operators import IntegralReductionOperator
+        if spaces is None:
+            return self.new(
+                Field.scalar(self._val.integrate()),
+                IntegralReductionOperator(self._jac.target, None)(self._jac))
+        else:
+            return self.new(
+                self._val.integrate(spaces),
+                IntegralReductionOperator(self._jac.target, spaces)(self._jac))
 
     def exp(self):
         tmp = self._val.exp()

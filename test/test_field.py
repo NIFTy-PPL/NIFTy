@@ -136,6 +136,14 @@ class Test_Functionality(unittest.TestCase):
         res = m.vdot(m, spaces=1)
         assert_allclose(res.local_data, 37.5)
 
+    def test_outer(self):
+        x1 = ift.RGSpace((9,))
+        x2 = ift.RGSpace((3,))
+        m1 = ift.Field.full(x1, .5)
+        m2 = ift.Field.full(x2, 3.)
+        res = m1.outer(m2)
+        assert_allclose(res.local_data, np.full((9, 3,), 1.5))
+
     def test_dataconv(self):
         s1 = ift.RGSpace((10,))
         ld = np.arange(ift.dobj.local_shape(s1.shape)[0])
