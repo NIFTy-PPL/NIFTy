@@ -39,7 +39,7 @@ def _gaussian_error_function(x):
 def _comp_traverse(start, end, shp, dist, lo, mid, hi, erf):
     ndim = start.shape[0]
     nlos = start.shape[1]
-    inc = np.full(len(shp), 1)
+    inc = np.full(len(shp), 1, dtype=np.int64)
     for i in range(-2, -len(shp)-1, -1):
         inc[i] = inc[i+1]*shp[i+1]
 
@@ -63,7 +63,7 @@ def _comp_traverse(start, end, shp, dist, lo, mid, hi, erf):
         dmin += 1e-7
         dmax -= 1e-7
         if dmin >= dmax:  # no intersection
-            out[i] = (np.full(0, 0), np.full(0, 0.))
+            out[i] = (np.full(0, 0, dtype=np.int64), np.full(0, 0.))
             continue
         # determine coordinates of first cell crossing
         c_first = np.ceil(start[:, i]+dir*dmin)
@@ -79,12 +79,12 @@ def _comp_traverse(start, end, shp, dist, lo, mid, hi, erf):
                 tmp = np.arange(start=c_first[j], stop=dmax,
                                 step=abs(1./dir[j]))
                 cdist = np.append(cdist, tmp)
-                add = np.append(add, np.full(len(tmp), step))
+                add = np.append(add, np.full(len(tmp), step, dtype=np.int64))
         idx = np.argsort(cdist)
         cdist = cdist[idx]
         add = add[idx]
-        cdist = np.append(np.full(1, dmin), cdist)
-        cdist = np.append(cdist, np.full(1, dmax))
+        cdist = np.append(np.full(1, dmin, dtype=np.int64), cdist)
+        cdist = np.append(cdist, np.full(1, dmax, dtype=np.int64))
         corfac = np.linalg.norm(dir*dist)
         cdist *= corfac
         wgt = np.diff(cdist)
