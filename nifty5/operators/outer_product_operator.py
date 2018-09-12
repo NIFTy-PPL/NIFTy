@@ -58,7 +58,7 @@ class OuterProduct(LinearOperator):
     def apply(self, x, mode):
         self._check_input(x, mode)
         if mode == self.TIMES:
-            return Field(self._target, np.multiply.outer(self._field.to_global_data(), x.to_global_data()))
+            return Field.from_global_data(self._target, np.multiply.outer(self._field.to_global_data(), x.to_global_data()))
         axes = len(self._field.shape)
-        return Field(self._domain, val=np.tensordot(self._field.to_global_data(), x.to_global_data(),  axes))
+        return Field.from_global_data(self._domain, val=np.tensordot(self._field.to_global_data(), x.to_global_data(),  axes))
 

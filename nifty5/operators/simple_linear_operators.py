@@ -70,6 +70,7 @@ class SumReductionOperator(LinearOperator):
         else:
             for i in self._spaces:
                 ns = self._domain._dom[i]
+                # FIXME: nested use of "i"
                 ps = tuple(i - 1 for i in ns.shape)
                 dtfi = DomainTupleFieldInserter(domain=self._target, new_space=ns, index=i, position=ps)
                 x = dtfi(x)
@@ -78,13 +79,15 @@ class SumReductionOperator(LinearOperator):
 
 class IntegralReductionOperator(LinearOperator):
     def __init__(self, domain, spaces=None):
-        self._spaces = spaces
-        self._domain = domain
-        if spaces is None:
+        self._domain = DomainTuple.make(domain)
+        self._spaces = utilities.parse_spaces(spaces, len(self._domain))
+        if len(self._spaces) == len(self._domain):
+            self._spaces = None
+        if self._spaces is None:
             self._target = DomainTuple.scalar_domain()
         else:
-            self._target = makeDomain(tuple(dom for i, dom in enumerate(self._domain) if not(i == spaces)))
-            self._marg_space = makeDomain(tuple(dom for i, dom in enumerate(self._domain) if (i == spaces)))
+            self._target = makeDomain(tuple(dom for i, dom in enumerate(self._domain) if not(i in self._spaces)))
+            self._marg_space = makeDomain(tuple(dom for i, dom in enumerate(self._domain) if (i in self._spaces)))
         self._capability = self.TIMES | self.ADJOINT_TIMES
 
     def apply(self, x, mode):
@@ -111,6 +114,7 @@ class IntegralReductionOperator(LinearOperator):
                 sp = self._spaces
             for i in sp:
                 ns = self._domain._dom[i]
+                # FIXME: nested use of "i"
                 ps = tuple(i - 1 for i in ns.shape)
                 dtfi = DomainTupleFieldInserter(domain=self._target, new_space=ns, index=i, position=ps)
                 x = dtfi(x)

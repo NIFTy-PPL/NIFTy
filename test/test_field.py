@@ -142,7 +142,7 @@ class Test_Functionality(unittest.TestCase):
         m1 = ift.Field.full(x1, .5)
         m2 = ift.Field.full(x2, 3.)
         res = m1.outer(m2)
-        assert_allclose(res.local_data, np.full((9, 3,), 1.5))
+        assert_allclose(res.to_global_data(), np.full((9, 3,), 1.5))
 
     def test_dataconv(self):
         s1 = ift.RGSpace((10,))

@@ -477,7 +477,7 @@ class Field(object):
         swgt = self.scalar_weight(spaces)
         if swgt is not None:
             res = self.sum(spaces)
-            res = res * swgt
+            res = res*swgt
             return res
         tmp = self.weight(1, spaces=spaces)
         return tmp.sum(spaces)
