@@ -44,11 +44,6 @@ class OuterProduct(LinearOperator):
 
     def __init__(self, field, domain):
 
-        if not isinstance(field, Field):
-            raise TypeError('field needs to be a Nifty Field instance')
-        if not isinstance(domain, DomainTuple):
-            raise TypeError('field needs to be a Nifty Field instance')
-
         self._domain = domain
         self._field = field
         self._target = DomainTuple.make(tuple(sub_d for sub_d in field.domain._dom + domain._dom))
@@ -60,5 +55,5 @@ class OuterProduct(LinearOperator):
         if mode == self.TIMES:
             return Field.from_global_data(self._target, np.multiply.outer(self._field.to_global_data(), x.to_global_data()))
         axes = len(self._field.shape)
-        return Field.from_global_data(self._domain, val=np.tensordot(self._field.to_global_data(), x.to_global_data(),  axes))
+        return Field.from_global_data(self._domain, np.tensordot(self._field.to_global_data(), x.to_global_data(),  axes))
 
