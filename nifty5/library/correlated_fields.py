@@ -47,7 +47,7 @@ def CorrelatedField(s_space, amplitude_model):
 
 
 def MfCorrelatedField(s_space_spatial, s_space_energy, amplitude_model_spatial,
-                      amplitude_model_energy):
+                      amplitude_model_energy, name=None):
     '''
     Method for construction of correlated multi-frequency fields
     '''
@@ -57,6 +57,9 @@ def MfCorrelatedField(s_space_spatial, s_space_energy, amplitude_model_spatial,
     ht1 = HarmonicTransformOperator(h_space, space=0)
     ht2 = HarmonicTransformOperator(ht1.target, space=1)
     ht = ht2(ht1)
+
+    if name==None:
+        name="xi"
 
     p_space_spatial = amplitude_model_spatial.target[0]
     p_space_energy = amplitude_model_energy.target[0]
@@ -72,4 +75,4 @@ def MfCorrelatedField(s_space_spatial, s_space_energy, amplitude_model_spatial,
     a_energy = dom_distr_energy(amplitude_model_energy)
     a = a_spatial*a_energy
     A = pd(a)
-    return exp(ht(A*FieldAdapter(MultiDomain.make({"xi": h_space}), "xi")))
+    return ht(A*FieldAdapter(MultiDomain.make({name: h_space}), name))
