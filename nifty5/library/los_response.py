@@ -83,8 +83,8 @@ def _comp_traverse(start, end, shp, dist, lo, mid, hi, erf):
         idx = np.argsort(cdist)
         cdist = cdist[idx]
         add = add[idx]
-        cdist = np.append(np.full(1, dmin, dtype=np.int64), cdist)
-        cdist = np.append(cdist, np.full(1, dmax, dtype=np.int64))
+        cdist = np.append(np.full(1, dmin), cdist)
+        cdist = np.append(cdist, np.full(1, dmax))
         corfac = np.linalg.norm(dir*dist)
         cdist *= corfac
         wgt = np.diff(cdist)
