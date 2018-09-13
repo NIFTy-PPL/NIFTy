@@ -31,6 +31,27 @@ from ..sugar import makeOp
 
 class InverseGammaModel(Operator):
     def __init__(self, domain, alpha, q):
+        """Model which transforms a Gaussian into an inverse gamma distribution.
+
+        The pdf of the inverse gamma distribution is defined as follows:
+
+        .. math::
+            \frac {\beta ^{\alpha }}{\Gamma (\alpha )}}x^{-\alpha -1}\exp \left(-{\frac {\beta }{x}}\right)
+
+        That means that for large x the pdf falls off like x^(-alpha -1).
+        The mean of the pdf is at q / (alpha - 1) if alpha > 1.
+        The mode is q / (alpha + 1).
+
+        Parameters
+        ----------
+        domain : Domain, tuple of Domain or DomainTuple
+            The domain on which the field shall be defined. This is at the same
+            time the domain and the target of the operator.
+        alpha : float
+            The alpha-parameter of the inverse-gamma distribution.
+        q : float
+            The q-parameter of the inverse-gamma distribution.
+        """
         self._domain = self._target = DomainTuple.make(domain)
         self._alpha = alpha
         self._q = q
