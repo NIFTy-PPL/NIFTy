@@ -132,12 +132,14 @@ class Linearization(object):
             return self.new(
                 OuterProduct(self._val, other._val.domain)(other._val),
                 OuterProduct(other._val, self._jac.domain)(self._jac)._myadd(
-                    OuterProduct(self._val, other._jac.domain)(other._jac), False))
+                    OuterProduct(
+                        self._val, other._jac.domain)(other._jac), False))
         if np.isscalar(other):
             return self.__mul__(other)
         if isinstance(other, (Field, MultiField)):
-            return self.new(OuterProduct(self._val, other._val.domain)(other._val),
-                            OuterProduct(other._val, self._jac.domain)(self._jac))
+            return self.new(
+                OuterProduct(self._val, other._val.domain)(other._val),
+                OuterProduct(other._val, self._jac.domain)(self._jac))
 
     def vdot(self, other):
         from .operators.simple_linear_operators import VdotOperator
@@ -151,26 +153,26 @@ class Linearization(object):
             VdotOperator(other._val)(self._jac))
 
     def sum(self, spaces=None):
-        from .operators.simple_linear_operators import SumReductionOperator
+        from .operators.contraction_operator import ContractionOperator
         if spaces is None:
             return self.new(
                 Field.scalar(self._val.sum()),
-                SumReductionOperator(self._jac.target, None)(self._jac))
+                ContractionOperator(self._jac.target, None)(self._jac))
         else:
             return self.new(
                 self._val.sum(spaces),
-                SumReductionOperator(self._jac.target, spaces)(self._jac))
+                ContractionOperator(self._jac.target, spaces)(self._jac))
 
     def integrate(self, spaces=None):
-        from .operators.simple_linear_operators import IntegralReductionOperator
+        from .operators.contraction_operator import ContractionOperator
         if spaces is None:
             return self.new(
                 Field.scalar(self._val.integrate()),
-                IntegralReductionOperator(self._jac.target, None)(self._jac))
+                ContractionOperator(self._jac.target, None, 1)(self._jac))
         else:
             return self.new(
                 self._val.integrate(spaces),
-                IntegralReductionOperator(self._jac.target, spaces)(self._jac))
+                ContractionOperator(self._jac.target, spaces, 1)(self._jac))
 
     def exp(self):
         tmp = self._val.exp()

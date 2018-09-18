@@ -18,19 +18,15 @@
 
 from __future__ import absolute_import, division, print_function
 
-import numpy as np
-
 from ..compat import *
 from ..domain_tuple import DomainTuple
 from ..domains.unstructured_domain import UnstructuredDomain
 from ..field import Field
 from ..multi_domain import MultiDomain
 from ..multi_field import MultiField
-from ..sugar import full, makeDomain
+from ..sugar import full
 from .endomorphic_operator import EndomorphicOperator
 from .linear_operator import LinearOperator
-from .domain_tuple_field_inserter import DomainTupleFieldInserter
-from .. import utilities
 
 
 class VdotOperator(LinearOperator):
@@ -45,81 +41,6 @@ class VdotOperator(LinearOperator):
         if mode == self.TIMES:
             return Field.scalar(self._field.vdot(x))
         return self._field*x.local_data[()]
-
-
-class SumReductionOperator(LinearOperator):
-    def __init__(self, domain, spaces=None):
-        self._domain = DomainTuple.make(domain)
-        self._spaces = utilities.parse_spaces(spaces, len(self._domain))
-        if len(self._spaces) == len(self._domain):
-            self._spaces = None
-        if self._spaces is None:
-            self._target = DomainTuple.scalar_domain()
-        else:
-            self._target = makeDomain(tuple(dom for i, dom in enumerate(self._domain) if not(i in self._spaces)))
-        self._capability = self.TIMES | self.ADJOINT_TIMES
-
-    def apply(self, x, mode):
-        self._check_input(x, mode)
-        if mode == self.TIMES:
-            if self._spaces is None:
-                return Field.scalar(x.sum())
-            else:
-                return x.sum(self._spaces)
-        if self._spaces is None:
-            return full(self._domain, x.local_data[()])
-        else:
-            one = np.ones(self._domain.shape)
-            slice_list = [slice(None), ]*len(self._domain.shape)
-            p = 0
-            for i in range(len(self._domain)):
-                l = len(self._domain[i].shape)
-                if i in self._spaces:
-                    slice_list[slice(p, p + l)] = (np.newaxis,)*l
-                p = p + l
-            return Field.from_global_data(self._domain, x.to_global_data()[tuple(slice_list)]*one)
-
-
-class IntegralReductionOperator(LinearOperator):
-    def __init__(self, domain, spaces=None):
-        self._domain = DomainTuple.make(domain)
-        self._spaces = utilities.parse_spaces(spaces, len(self._domain))
-        if len(self._spaces) == len(self._domain):
-            self._spaces = None
-        if self._spaces is None:
-            self._target = DomainTuple.scalar_domain()
-        else:
-            self._target = makeDomain(tuple(dom for i, dom in enumerate(self._domain) if not(i in self._spaces)))
-            self._marg_space = makeDomain(tuple(dom for i, dom in enumerate(self._domain) if (i in self._spaces)))
-        self._capability = self.TIMES | self.ADJOINT_TIMES
-
-    def apply(self, x, mode):
-        self._check_input(x, mode)
-        vol = 1.
-
-        if mode == self.TIMES:
-            if self._spaces is None:
-                return Field.scalar(x.integrate())
-            else:
-                return x.integrate(self._spaces)
-        if self._spaces is None:
-            for d in self._domain._dom:
-                for dis in d.distances:
-                    vol *= dis
-            return full(self._domain, x.local_data[()]*vol)
-        else:
-            for d in self._marg_space._dom:
-                for dis in d.distances:
-                    vol *= dis
-            one = np.ones(self._domain.shape)
-            slice_list = [slice(None), ]*len(self._domain.shape)
-            p = 0
-            for i in range(len(self._domain)):
-                l = len(self._domain[i].shape)
-                if i in self._spaces:
-                    slice_list[slice(p, p + l)] = (np.newaxis,)*l
-                p = p + l
-            return Field.from_global_data(self._domain, x.to_global_data()[tuple(slice_list)]*one*vol)
 
 
 class ConjugationOperator(EndomorphicOperator):

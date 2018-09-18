@@ -64,8 +64,8 @@ def MfCorrelatedField(s_space_spatial, s_space_energy, amplitude_model_spatial,
     pd_energy = PowerDistributor(pd_spatial.domain, p_space_energy, 1)
     pd = pd_spatial(pd_energy)
 
-    dom_distr_spatial = ContractionOperator(pd.domain, 0).adjoint
-    dom_distr_energy = ContractionOperator(pd.domain, 1).adjoint
+    dom_distr_spatial = ContractionOperator(pd.domain, 1).adjoint
+    dom_distr_energy = ContractionOperator(pd.domain, 0).adjoint
 
     a_spatial = dom_distr_spatial(amplitude_model_spatial)
     a_energy = dom_distr_energy(amplitude_model_energy)

@@ -65,12 +65,6 @@ class Consistency_Tests(unittest.TestCase):
                                                     dtype=dtype))
         ift.extra.consistency_check(op, dtype, dtype)
 
-    @expand(product(_h_spaces + _p_spaces + _pow_spaces,
-                    [np.float64, np.complex128]))
-    def testSumReductionOperator(self, sp, dtype):
-        op = ift.SumReductionOperator(sp)
-        ift.extra.consistency_check(op, dtype, dtype)
-
     @expand(product([(ift.RGSpace(10, harmonic=True), 4, 0),
                      (ift.RGSpace((24, 31), distances=(0.4, 2.34),
                                   harmonic=True), 3, 0),
@@ -193,11 +187,11 @@ class Consistency_Tests(unittest.TestCase):
         ift.extra.consistency_check(op, dtype, dtype)
 
     @expand(product([0, 1, 2, 3, (0, 1), (0, 2), (0, 1, 2), (0, 2, 3), (1, 3)],
-                    [np.float64, np.complex128]))
-    def testContractionOperator(self, spaces, dtype):
-        dom = (ift.RGSpace(10), ift.UnstructuredDomain(13), ift.GLSpace(5),
+                    [0, 1, 2, -1], [np.float64, np.complex128]))
+    def testContractionOperator(self, spaces, wgt, dtype):
+        dom = (ift.RGSpace(10), ift.RGSpace(13), ift.GLSpace(5),
                ift.HPSpace(4))
-        op = ift.ContractionOperator(dom, spaces)
+        op = ift.ContractionOperator(dom, spaces, wgt)
         ift.extra.consistency_check(op, dtype, dtype)
 
     def testDomainTupleFieldInserter(self):

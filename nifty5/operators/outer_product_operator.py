@@ -46,14 +46,19 @@ class OuterProduct(LinearOperator):
 
         self._domain = domain
         self._field = field
-        self._target = DomainTuple.make(tuple(sub_d for sub_d in field.domain._dom + domain._dom))
+        self._target = DomainTuple.make(
+            tuple(sub_d for sub_d in field.domain._dom + domain._dom))
 
         self._capability = self.TIMES | self.ADJOINT_TIMES
 
     def apply(self, x, mode):
         self._check_input(x, mode)
         if mode == self.TIMES:
-            return Field.from_global_data(self._target, np.multiply.outer(self._field.to_global_data(), x.to_global_data()))
+            return Field.from_global_data(
+                self._target, np.multiply.outer(
+                    self._field.to_global_data(), x.to_global_data()))
         axes = len(self._field.shape)
-        return Field.from_global_data(self._domain, np.tensordot(self._field.to_global_data(), x.to_global_data(),  axes))
+        return Field.from_global_data(
+            self._domain, np.tensordot(
+                self._field.to_global_data(), x.to_global_data(),  axes))
 
