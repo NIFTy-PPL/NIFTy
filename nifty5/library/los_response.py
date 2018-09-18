@@ -206,7 +206,7 @@ class LOSResponse(LinearOperator):
                 tmp += (fullidx[j]//boxsz)*fct
                 fct *= self._local_shape[j]
             tmp += cnt/float(nlos)
-            tmp += iarr[ofs:ofs+nval]/float(nlos*npix)
+            tmp += iarr[ofs:ofs+nval]/(float(nlos)*float(npix))
             pri[ofs:ofs+nval] = tmp
             ofs += nval
             cnt += 1
