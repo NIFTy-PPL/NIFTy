@@ -25,7 +25,6 @@ from ..operators.contraction_operator import ContractionOperator
 from ..operators.distributors import PowerDistributor
 from ..operators.harmonic_operators import HarmonicTransformOperator
 from ..operators.simple_linear_operators import FieldAdapter
-from ..sugar import exp
 
 
 def CorrelatedField(s_space, amplitude_model):
