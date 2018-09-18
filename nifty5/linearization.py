@@ -182,8 +182,9 @@ class Linearization(object):
     def make_const_empty_input(field, want_metric=False):
         from .operators.simple_linear_operators import NullOperator
         from .multi_domain import MultiDomain
-        return Linearization(field, NullOperator(MultiDomain.make({}), field.domain),
-                             want_metric=want_metric)
+        return Linearization(
+            field, NullOperator(MultiDomain.make({}), field.domain),
+            want_metric=want_metric)
 
     @staticmethod
     def make_partial_var(field, constants, want_metric=False):
