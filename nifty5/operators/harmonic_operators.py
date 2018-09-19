@@ -289,6 +289,10 @@ class SHTOperator(LinearOperator):
         else:
             self.sjob.set_Healpix_geometry(target.nside)
 
+    def __reduce__(self):
+        return (_unpickleSHTOperator,
+                (list(self._domain), self._target[self._space], self._space))
+
     def apply(self, x, mode):
         self._check_input(x, mode)
         if utilities.iscomplextype(x.dtype):
@@ -335,6 +339,10 @@ class SHTOperator(LinearOperator):
             odat[slice] = func(idat[slice])
         odat = dobj.from_local_data(tdom.shape, odat, distaxis)
         return Field(tdom, dobj.ensure_default_distributed(odat))
+
+
+def _unpickleSHTOperator(*args):
+    return SHTOperator(*args)
 
 
 class HarmonicTransformOperator(LinearOperator):
