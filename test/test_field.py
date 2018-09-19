@@ -144,6 +144,26 @@ class Test_Functionality(unittest.TestCase):
         res = m1.outer(m2)
         assert_allclose(res.to_global_data(), np.full((9, 3,), 1.5))
 
+    def test_sum(self):
+        x1 = ift.RGSpace((9,), distances=2.)
+        x2 = ift.RGSpace((2, 12,), distances=(0.3,))
+        m1 = ift.Field(ift.makeDomain(x1), np.arange(9))
+        m2 = ift.Field.full(ift.makeDomain((x1, x2)), 0.45)
+        res1 = m1.sum()
+        res2 = m2.sum(spaces=1)
+        assert_allclose(res1, 36)
+        assert_allclose(res2.to_global_data(), np.full(9, 2*12*0.45))
+
+    def test_integrate(self):
+        x1 = ift.RGSpace((9,), distances=2.)
+        x2 = ift.RGSpace((2, 12,), distances=(0.3,))
+        m1 = ift.Field(ift.makeDomain(x1), np.arange(9))
+        m2 = ift.Field.full(ift.makeDomain((x1, x2)), 0.45)
+        res1 = m1.integrate()
+        res2 = m2.integrate(spaces=1)
+        assert_allclose(res1, 36*2)
+        assert_allclose(res2.to_global_data(), np.full(9, 2*12*0.45*0.3**2))
+
     def test_dataconv(self):
         s1 = ift.RGSpace((10,))
         ld = np.arange(ift.dobj.local_shape(s1.shape)[0])

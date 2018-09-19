@@ -79,6 +79,9 @@ class Model_Tests(unittest.TestCase):
             ift.FieldAdapter(dom, "s1")*ift.FieldAdapter(dom, "s2")))
         pos = ift.from_random("normal", dom)
         ift.extra.check_value_gradient_consistency(model, pos)
+        pos = ift.from_random("normal", dom)
+        model = ift.OuterProduct(pos['s1'], ift.makeDomain(space)) #(ift.FieldAdapter(dom, "s2"))
+        ift.extra.check_value_gradient_consistency(model, pos['s2'])
         if isinstance(space, ift.RGSpace):
             model = ift.FFTOperator(space)(
                 ift.FieldAdapter(dom, "s1")*ift.FieldAdapter(dom, "s2"))

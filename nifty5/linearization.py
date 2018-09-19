@@ -130,16 +130,14 @@ class Linearization(object):
         from .operators.outer_product_operator import OuterProduct
         if isinstance(other, Linearization):
             return self.new(
-                OuterProduct(self._val, other._val.domain)(other._val),
-                OuterProduct(other._val, self._jac.domain)(self._jac)._myadd(
-                    OuterProduct(
-                        self._val, other._jac.domain)(other._jac), False))
+                OuterProduct(self._val, other.target)(other._val),
+                OuterProduct(self._jac(self._val), other.target)._myadd(
+                    OuterProduct(self._val, other.target)(other._jac), False))
         if np.isscalar(other):
             return self.__mul__(other)
         if isinstance(other, (Field, MultiField)):
-            return self.new(
-                OuterProduct(self._val, other._val.domain)(other._val),
-                OuterProduct(other._val, self._jac.domain)(self._jac))
+            return self.new(OuterProduct(self._val, other.domain)(other),
+                            OuterProduct(self._jac(self._val), other.domain))
 
     def vdot(self, other):
         from .operators.simple_linear_operators import VdotOperator
