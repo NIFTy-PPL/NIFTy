@@ -269,7 +269,7 @@ def my_fftn_r2c(a, axes=None):
         lastaxis = axes[-1]
         ntmplast = tmp.shape[lastaxis]
         slice1 = [slice(None)]*lastaxis + [slice(0, ntmplast)]
-        res[slice1] = tmp
+        res[tuple(slice1)] = tmp
 
         def _fill_upper_half_complex(tmp, res, axes):
             lastaxis = axes[-1]
@@ -282,9 +282,9 @@ def my_fftn_r2c(a, axes=None):
                 slice1[i] = slice(1, None)
                 slice2[i] = slice(None, 0, -1)
             # np.conjugate(tmp[slice2], out=res[slice1])
-            res[slice1] = np.conjugate(tmp[slice2])
+            res[tuple(slice1)] = np.conjugate(tmp[tuple(slice2)])
             for i, ax in enumerate(axes[:-1]):
-                dim1 = [slice(None)]*ax + [slice(0, 1)]
+                dim1 = tuple([slice(None)]*ax + [slice(0, 1)])
                 axes2 = axes[:i] + axes[i+1:]
                 _fill_upper_half_complex(tmp[dim1], res[dim1], axes2)
 

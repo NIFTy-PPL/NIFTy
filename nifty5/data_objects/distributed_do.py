@@ -391,7 +391,7 @@ def from_global_data(arr, sum_up=False, distaxis=0):
     lo, hi = _shareRange(arr.shape[distaxis], ntask, rank)
     sl = [slice(None)]*len(arr.shape)
     sl[distaxis] = slice(lo, hi)
-    return data_object(arr.shape, arr[sl], distaxis)
+    return data_object(arr.shape, arr[tuple(sl)], distaxis)
 
 
 def to_global_data(arr):
@@ -467,7 +467,7 @@ def redistribute(arr, dist=None, nodist=None):
             lo, hi = _shareRange(arr.shape[dist], ntask, i)
             sslice[dist] = slice(lo, hi)
             ssz[i] = ssz0*(hi-lo)
-            sbuf[ofs:ofs+ssz[i]] = arr._data[sslice].flat
+            sbuf[ofs:ofs+ssz[i]] = arr._data[tuple(sslice)].flat
             ofs += ssz[i]
             rsz[i] = rsz0*_shareSize(arr.shape[arr._distaxis], ntask, i)
     ssz *= arr._data.itemsize
@@ -489,7 +489,7 @@ def redistribute(arr, dist=None, nodist=None):
             lo, hi = _shareRange(arr.shape[arr._distaxis], ntask, i)
             rslice[arr._distaxis] = slice(lo, hi)
             sz = rsz[i]//arr._data.itemsize
-            arrnew[rslice].flat = rbuf[ofs:ofs+sz]
+            arrnew[tuple(rslice)].flat = rbuf[ofs:ofs+sz]
             ofs += sz
         arrnew = from_local_data(arr.shape, arrnew, distaxis=dist)
     return arrnew
