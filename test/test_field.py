@@ -147,7 +147,7 @@ class Test_Functionality(unittest.TestCase):
     def test_sum(self):
         x1 = ift.RGSpace((9,), distances=2.)
         x2 = ift.RGSpace((2, 12,), distances=(0.3,))
-        m1 = ift.Field(ift.makeDomain(x1), np.arange(9))
+        m1 = ift.Field.from_global_data(ift.makeDomain(x1), np.arange(9))
         m2 = ift.Field.full(ift.makeDomain((x1, x2)), 0.45)
         res1 = m1.sum()
         res2 = m2.sum(spaces=1)
@@ -157,7 +157,7 @@ class Test_Functionality(unittest.TestCase):
     def test_integrate(self):
         x1 = ift.RGSpace((9,), distances=2.)
         x2 = ift.RGSpace((2, 12,), distances=(0.3,))
-        m1 = ift.Field(ift.makeDomain(x1), np.arange(9))
+        m1 = ift.Field.from_global_data(ift.makeDomain(x1), np.arange(9))
         m2 = ift.Field.full(ift.makeDomain((x1, x2)), 0.45)
         res1 = m1.integrate()
         res2 = m2.integrate(spaces=1)
