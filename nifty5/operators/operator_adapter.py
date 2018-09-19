@@ -69,6 +69,6 @@ class OperatorAdapter(LinearOperator):
 
     def __repr__(self):
         from ..utilities import indent
-        mode = ["adjoint", "inverse", "adjoint inverse"][self._trafo]
+        mode = ["invalid", "adjoint", "inverse", "adjoint inverse"][self._trafo]
         res = "OperatorAdapter: {}\n".format(mode)
         return res + indent(self._op.__repr__())
