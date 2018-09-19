@@ -27,7 +27,7 @@ from ..operators.harmonic_operators import HarmonicTransformOperator
 from ..operators.simple_linear_operators import FieldAdapter
 
 
-def CorrelatedField(s_space, amplitude_model):
+def CorrelatedField(s_space, amplitude_model, key='xi'):
     '''
     Function for construction of correlated fields
 
@@ -42,7 +42,7 @@ def CorrelatedField(s_space, amplitude_model):
     p_space = amplitude_model.target[0]
     power_distributor = PowerDistributor(h_space, p_space)
     A = power_distributor(amplitude_model)
-    return ht(A*FieldAdapter(MultiDomain.make({"xi": h_space}), "xi"))
+    return ht(A*FieldAdapter(MultiDomain.make({key: h_space}), key))
 
 
 def MfCorrelatedField(s_space_spatial, s_space_energy, amplitude_model_spatial,
