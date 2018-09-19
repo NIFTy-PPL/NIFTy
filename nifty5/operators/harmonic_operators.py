@@ -290,7 +290,6 @@ class SHTOperator(LinearOperator):
             self.sjob.set_Healpix_geometry(target.nside)
 
     def __reduce__(self):
-        print ("reduce")
         return (_unpickleSHTOperator,
                 (list(self._domain), self._target[self._space], self._space))
 
@@ -343,7 +342,6 @@ class SHTOperator(LinearOperator):
 
 
 def _unpickleSHTOperator(*args):
-    print ("unpickle")
     return SHTOperator(*args)
 
 
