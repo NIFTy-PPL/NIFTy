@@ -291,7 +291,7 @@ class SHTOperator(LinearOperator):
 
     def __reduce__(self):
         return (_unpickleSHTOperator,
-                (list(self._domain), self._target[self._space], self._space))
+                (self._domain, self._target[self._space], self._space))
 
     def apply(self, x, mode):
         self._check_input(x, mode)
