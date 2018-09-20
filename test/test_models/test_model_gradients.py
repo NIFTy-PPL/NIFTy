@@ -64,29 +64,29 @@ class Model_Tests(unittest.TestCase):
         dom = ift.MultiDomain.union((dom1, dom2))
         model = ift.FieldAdapter(dom, "s1")*ift.FieldAdapter(dom, "s2")
         pos = ift.from_random("normal", dom)
-        ift.extra.check_value_gradient_consistency(model, pos)
+        ift.extra.check_value_gradient_consistency(model, pos, ntries=20)
         model = ift.FieldAdapter(dom, "s1")+ift.FieldAdapter(dom, "s2")
         pos = ift.from_random("normal", dom)
-        ift.extra.check_value_gradient_consistency(model, pos)
+        ift.extra.check_value_gradient_consistency(model, pos, ntries=20)
         model = ift.FieldAdapter(dom, "s1").scale(3.)
         pos = ift.from_random("normal", dom1)
-        ift.extra.check_value_gradient_consistency(model, pos)
+        ift.extra.check_value_gradient_consistency(model, pos, ntries=20)
         model = ift.ScalingOperator(2.456, space)(
             ift.FieldAdapter(dom, "s1")*ift.FieldAdapter(dom, "s2"))
         pos = ift.from_random("normal", dom)
-        ift.extra.check_value_gradient_consistency(model, pos)
+        ift.extra.check_value_gradient_consistency(model, pos, ntries=20)
         model = ift.positive_tanh(ift.ScalingOperator(2.456, space)(
             ift.FieldAdapter(dom, "s1")*ift.FieldAdapter(dom, "s2")))
         pos = ift.from_random("normal", dom)
-        ift.extra.check_value_gradient_consistency(model, pos)
+        ift.extra.check_value_gradient_consistency(model, pos, ntries=20)
         pos = ift.from_random("normal", dom)
-        model = ift.OuterProduct(pos['s1'], ift.makeDomain(space)) #(ift.FieldAdapter(dom, "s2"))
-        ift.extra.check_value_gradient_consistency(model, pos['s2'])
+        model = ift.OuterProduct(pos['s1'], ift.makeDomain(space))
+        ift.extra.check_value_gradient_consistency(model, pos['s2'], ntries=20)
         if isinstance(space, ift.RGSpace):
             model = ift.FFTOperator(space)(
                 ift.FieldAdapter(dom, "s1")*ift.FieldAdapter(dom, "s2"))
             pos = ift.from_random("normal", dom)
-            ift.extra.check_value_gradient_consistency(model, pos)
+            ift.extra.check_value_gradient_consistency(model, pos, ntries=20)
 
     @expand(product(
         [ift.GLSpace(15),
@@ -109,12 +109,12 @@ class Model_Tests(unittest.TestCase):
                                    sv, im, iv)
         S = ift.ScalingOperator(1., model.domain)
         pos = S.draw_sample()
-        ift.extra.check_value_gradient_consistency(model, pos)
+        ift.extra.check_value_gradient_consistency(model, pos, ntries=20)
 
         model2 = ift.CorrelatedField(space, model)
         S = ift.ScalingOperator(1., model2.domain)
         pos = S.draw_sample()
-        ift.extra.check_value_gradient_consistency(model2, pos)
+        ift.extra.check_value_gradient_consistency(model2, pos, ntries=20)
 
     @expand(product(
         [ift.GLSpace(15),
@@ -128,7 +128,8 @@ class Model_Tests(unittest.TestCase):
         q = 0.73
         model = ift.InverseGammaModel(space, alpha, q)
         # FIXME All those cdfs and ppfs are not very accurate
-        ift.extra.check_value_gradient_consistency(model, pos, tol=1e-2)
+        ift.extra.check_value_gradient_consistency(model, pos, tol=1e-2,
+                                                   ntries=20)
 
 #     @expand(product(
 #         ['Variable', 'Constant'],

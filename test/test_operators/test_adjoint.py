@@ -259,11 +259,13 @@ class Consistency_Tests(unittest.TestCase):
         ift.extra.consistency_check(op)
 
     @expand(product([ift.DomainTuple.make((ift.RGSpace((3, 5, 4)),
-                                           ift.RGSpace((16,), distances=(7.,))),),
+                                           ift.RGSpace((16,),
+                                           distances=(7.,))),),
                      ift.DomainTuple.make(ift.HPSpace(12),)],
                     [ift.DomainTuple.make((ift.RGSpace((2,)),
                                            ift.GLSpace(10)),),
-                     ift.DomainTuple.make(ift.RGSpace((10, 12), distances=(0.1, 1.)),)]
+                     ift.DomainTuple.make(ift.RGSpace((10, 12),
+                                          distances=(0.1, 1.)),)]
                     ))
     def testOuter(self, fdomain, domain):
         f = ift.from_random('normal', fdomain)
