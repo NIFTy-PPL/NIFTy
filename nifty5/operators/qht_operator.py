@@ -20,9 +20,10 @@ from __future__ import absolute_import, division, print_function
 
 from .. import dobj
 from ..compat import *
+from .. import fft
 from ..domain_tuple import DomainTuple
 from ..field import Field
-from ..utilities import hartley, infer_space
+from ..utilities import infer_space
 from .linear_operator import LinearOperator
 
 
@@ -69,5 +70,5 @@ class QHTOperator(LinearOperator):
         for i in rng:
             sl = (slice(None),)*i + (slice(1, None),)
             v, tmp = dobj.ensure_not_distributed(v, (i,))
-            tmp[sl] = hartley(tmp[sl], axes=(i,))
+            tmp[sl] = fft.hartley(tmp[sl], axes=(i,))
         return Field(self._tgt(mode), dobj.ensure_default_distributed(v))
