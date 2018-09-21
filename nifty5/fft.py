@@ -13,8 +13,8 @@ if _use_fftw:
     pyfftw.interfaces.cache.enable()
     pyfftw.interfaces.cache.set_keepalive_time(1000.)
     # Optional extra arguments for the FFT calls
-    # _fft_extra_args = {}
-    # if exact reproducibility is needed, use this:
+    # if exact reproducibility is needed,
+    # set "planner_effort" to "FFTW_ESTIMATE"
     import os
     nthreads = int(os.getenv("OMP_NUM_THREADS", "1"))
     _fft_extra_args = dict(planner_effort='FFTW_ESTIMATE', threads=nthreads)
