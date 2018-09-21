@@ -20,7 +20,7 @@ from __future__ import absolute_import, division, print_function
 
 import numpy as np
 
-from .. import dobj, utilities
+from .. import dobj, utilities, fft
 from ..compat import *
 from ..domain_tuple import DomainTuple
 from ..domains.gl_space import GLSpace
@@ -73,8 +73,6 @@ class FFTOperator(LinearOperator):
         self._target = DomainTuple.make(self._target)
         adom.check_codomain(target)
         target.check_codomain(adom)
-
-        utilities.fft_prep()
 
     def apply(self, x, mode):
         from pyfftw.interfaces.numpy_fft import fftn, ifftn
@@ -174,8 +172,6 @@ class HartleyOperator(LinearOperator):
         adom.check_codomain(target)
         target.check_codomain(adom)
 
-        utilities.fft_prep()
-
     def apply(self, x, mode):
         self._check_input(x, mode)
         if utilities.iscomplextype(x.dtype):
@@ -190,14 +186,14 @@ class HartleyOperator(LinearOperator):
         oldax = dobj.distaxis(x.val)
         if oldax not in axes:  # straightforward, no redistribution needed
             ldat = x.local_data
-            ldat = utilities.hartley(ldat, axes=axes)
+            ldat = fft.hartley(ldat, axes=axes)
             tmp = dobj.from_local_data(x.val.shape, ldat, distaxis=oldax)
         elif len(axes) < len(x.shape) or len(axes) == 1:
             # we can use one Hartley pass in between the redistributions
             tmp = dobj.redistribute(x.val, nodist=axes)
             newax = dobj.distaxis(tmp)
             ldat = dobj.local_data(tmp)
-            ldat = utilities.hartley(ldat, axes=axes)
+            ldat = fft.hartley(ldat, axes=axes)
             tmp = dobj.from_local_data(tmp.shape, ldat, distaxis=newax)
             tmp = dobj.redistribute(tmp, dist=oldax)
         else:  # two separate, full FFTs needed
@@ -211,7 +207,7 @@ class HartleyOperator(LinearOperator):
             rem_axes = tuple(i for i in axes if i != oldax)
             tmp = x.val
             ldat = dobj.local_data(tmp)
-            ldat = utilities.my_fftn_r2c(ldat, axes=rem_axes)
+            ldat = fft.my_fftn_r2c(ldat, axes=rem_axes)
             if oldax != 0:
                 raise ValueError("bad distribution")
             ldat2 = ldat.reshape((ldat.shape[0],
@@ -220,7 +216,7 @@ class HartleyOperator(LinearOperator):
             tmp = dobj.from_local_data(shp2d, ldat2, distaxis=0)
             tmp = dobj.transpose(tmp)
             ldat2 = dobj.local_data(tmp)
-            ldat2 = utilities.my_fftn(ldat2, axes=(1,))
+            ldat2 = fft.my_fftn(ldat2, axes=(1,))
             ldat2 = ldat2.real+ldat2.imag
             tmp = dobj.from_local_data(tmp.shape, ldat2, distaxis=0)
             tmp = dobj.transpose(tmp)
