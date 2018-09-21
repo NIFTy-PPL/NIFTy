@@ -105,6 +105,7 @@ if __name__ == '__main__':
             title="power")
         plot.output(ny=1, ysize=6, xsize=16, name="loop.png")
 
+    KL = ift.KL_Energy(position, H, N_samples)
     plot = ift.Plot()
     sc = ift.StatCalculator()
     for sample in KL.samples:
