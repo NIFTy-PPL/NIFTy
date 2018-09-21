@@ -150,3 +150,54 @@ class AmplitudeModel(Operator):
     @property
     def norm_phi_mean(self):
         return self._norm_phi_mean
+
+
+class SmoothAmplitudeModel(Operator):
+    '''
+    Computes a smooth power spectrum.
+    Output lives in PowerSpace.
+
+    Parameters
+    ----------
+
+    Npixdof : #pix in dof_space
+
+    ceps_a, ceps_k0 : Smoothness parameters in ceps_kernel
+                        eg. ceps_kernel(k) = (a/(1+(k/k0)**2))**2
+                        a = ceps_a,  k0 = ceps_k0
+    '''
+    def __init__(self, s_space, Npixdof, ceps_a, ceps_k, name='tau'):
+        from ..operators.exp_transform import ExpTransform
+        from ..operators.qht_operator import QHTOperator
+
+        h_space = s_space.get_default_codomain()
+        self._exp_transform = ExpTransform(PowerSpace(h_space), Npixdof)
+        logk_space = self._exp_transform.domain[0]
+        qht = QHTOperator(target=logk_space)
+        dof_space = qht.domain[0]
+
+        self._domain = MultiDomain.make({name: dof_space})
+        self._target = self._exp_transform.target
+
+        kern = lambda k: _ceps_kernel(dof_space, k, ceps_a, ceps_k)
+        cepstrum = create_cepstrum_amplitude_field(dof_space, kern)
+
+        self._smooth_op = qht(makeOp(sqrt(cepstrum)))
+        self._key = name
+
+        self._qht = qht
+        self._ceps = makeOp(sqrt(cepstrum))
+
+    def apply(self, x):
+        self._check_input(x)
+        smooth_spec = self._smooth_op(x[self._key])
+        loglog_spec = smooth_spec
+        return self._exp_transform((0.5*loglog_spec).exp())
+
+    @property
+    def qht(self):
+        return self._qht
+
+    @property
+    def ceps(self):
+        return self._ceps
