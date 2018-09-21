@@ -187,11 +187,11 @@ class Consistency_Tests(unittest.TestCase):
         ift.extra.consistency_check(op, dtype, dtype)
 
     @expand(product([0, 1, 2, 3, (0, 1), (0, 2), (0, 1, 2), (0, 2, 3), (1, 3)],
-                    [np.float64, np.complex128]))
-    def testContractionOperator(self, spaces, dtype):
-        dom = (ift.RGSpace(10), ift.UnstructuredDomain(13), ift.GLSpace(5),
+                    [0, 1, 2, -1], [np.float64, np.complex128]))
+    def testContractionOperator(self, spaces, wgt, dtype):
+        dom = (ift.RGSpace(10), ift.RGSpace(13), ift.GLSpace(5),
                ift.HPSpace(4))
-        op = ift.ContractionOperator(dom, spaces)
+        op = ift.ContractionOperator(dom, spaces, wgt)
         ift.extra.consistency_check(op, dtype, dtype)
 
     def testDomainTupleFieldInserter(self):
@@ -256,4 +256,18 @@ class Consistency_Tests(unittest.TestCase):
               (12, 12), 1]])
     def testRegridding(self, domain, shape, space):
         op = ift.RegriddingOperator(domain, shape, space)
+        ift.extra.consistency_check(op)
+
+    @expand(product([ift.DomainTuple.make((ift.RGSpace((3, 5, 4)),
+                                           ift.RGSpace((16,),
+                                           distances=(7.,))),),
+                     ift.DomainTuple.make(ift.HPSpace(12),)],
+                    [ift.DomainTuple.make((ift.RGSpace((2,)),
+                                           ift.GLSpace(10)),),
+                     ift.DomainTuple.make(ift.RGSpace((10, 12),
+                                          distances=(0.1, 1.)),)]
+                    ))
+    def testOuter(self, fdomain, domain):
+        f = ift.from_random('normal', fdomain)
+        op = ift.OuterProduct(f, domain)
         ift.extra.consistency_check(op)

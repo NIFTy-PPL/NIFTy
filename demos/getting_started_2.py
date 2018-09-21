@@ -86,9 +86,9 @@ if __name__ == '__main__':
     data = ift.Field.from_global_data(d_space, data)
 
     # Compute likelihood and Hamiltonian
-    likelihood = ift.PoissonianEnergy(lamb, data)
     ic_newton = ift.DeltaEnergyController(name='Newton', iteration_limit=100,
                                           tol_rel_deltaE=1e-8)
+    likelihood = ift.PoissonianEnergy(data)(lamb)
     minimizer = ift.NewtonCG(ic_newton)
 
     # Minimize the Hamiltonian

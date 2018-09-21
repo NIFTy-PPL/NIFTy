@@ -56,19 +56,3 @@ class Test_Functionality(unittest.TestCase):
         f1 = op2(ift.full(dom, 1))
         for val in f1.values():
             assert_equal((val == 40).all(), True)
-
-    def test_update(self):
-        dom = ift.RGSpace(10)
-        f1 = ift.from_random('normal', domain=dom)
-        f2 = ift.from_random('normal', domain=dom)
-        f_new = ift.MultiField.from_dict({'dom1': f1, 'dom2': f2})
-        f3 = ift.from_random('normal', domain=dom)
-        f4 = ift.from_random('normal', domain=dom)
-        f5 = ift.from_random('normal', domain=dom)
-        f_old = ift.MultiField.from_dict({'dom1': f3, 'dom2': f4, 'dom3': f5})
-
-        updated = f_old.update(f_new).to_dict()
-        updated_true = f_old.to_dict()
-        updated_true.update(f_new.to_dict())
-        for key, val in updated.items():
-            assert_equal((val == updated_true[key]).all(), True)

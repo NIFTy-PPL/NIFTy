@@ -110,10 +110,12 @@ class Test_Functionality(unittest.TestCase):
         assert_allclose(sc1.mean.local_data, fp1.local_data, rtol=0.2)
         assert_allclose(sc2.mean.local_data, fp2.local_data, rtol=0.2)
 
-    def test_norm(self):
-        s = ift.RGSpace((10,))
-        f = ift.Field.from_random("normal", domain=s, dtype=np.complex128)
-        gd = f.to_global_data()
+    @expand(product([ift.RGSpace((8,), harmonic=True), (),
+                     ift.RGSpace((8, 8), harmonic=True, distances=0.123),
+                     ift.RGSpace((2, 3, 7))]))
+    def test_norm(self, space):
+        f = ift.Field.from_random("normal", domain=space, dtype=np.complex128)
+        gd = f.to_global_data().reshape(-1)
         assert_allclose(f.norm(), np.linalg.norm(gd))
         assert_allclose(f.norm(1), np.linalg.norm(gd, ord=1))
         assert_allclose(f.norm(2), np.linalg.norm(gd, ord=2))
@@ -133,6 +135,34 @@ class Test_Functionality(unittest.TestCase):
         m = ift.Field.full((x1, x2), .5)
         res = m.vdot(m, spaces=1)
         assert_allclose(res.local_data, 37.5)
+
+    def test_outer(self):
+        x1 = ift.RGSpace((9,))
+        x2 = ift.RGSpace((3,))
+        m1 = ift.Field.full(x1, .5)
+        m2 = ift.Field.full(x2, 3.)
+        res = m1.outer(m2)
+        assert_allclose(res.to_global_data(), np.full((9, 3,), 1.5))
+
+    def test_sum(self):
+        x1 = ift.RGSpace((9,), distances=2.)
+        x2 = ift.RGSpace((2, 12,), distances=(0.3,))
+        m1 = ift.Field.from_global_data(ift.makeDomain(x1), np.arange(9))
+        m2 = ift.Field.full(ift.makeDomain((x1, x2)), 0.45)
+        res1 = m1.sum()
+        res2 = m2.sum(spaces=1)
+        assert_allclose(res1, 36)
+        assert_allclose(res2.to_global_data(), np.full(9, 2*12*0.45))
+
+    def test_integrate(self):
+        x1 = ift.RGSpace((9,), distances=2.)
+        x2 = ift.RGSpace((2, 12,), distances=(0.3,))
+        m1 = ift.Field.from_global_data(ift.makeDomain(x1), np.arange(9))
+        m2 = ift.Field.full(ift.makeDomain((x1, x2)), 0.45)
+        res1 = m1.integrate()
+        res2 = m2.integrate(spaces=1)
+        assert_allclose(res1, 36*2)
+        assert_allclose(res2.to_global_data(), np.full(9, 2*12*0.45*0.3**2))
 
     def test_dataconv(self):
         s1 = ift.RGSpace((10,))

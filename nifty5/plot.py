@@ -75,7 +75,7 @@ def _makeplot(name):
         plt.close()
         return
     extension = os.path.splitext(name)[1]
-    if extension in (".pdf", ".png"):
+    if extension in (".pdf", ".png", ".svg"):
         plt.savefig(name)
         plt.close()
     else:

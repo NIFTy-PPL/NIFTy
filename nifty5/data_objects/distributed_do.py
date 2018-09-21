@@ -391,7 +391,7 @@ def from_global_data(arr, sum_up=False, distaxis=0):
     lo, hi = _shareRange(arr.shape[distaxis], ntask, rank)
     sl = [slice(None)]*len(arr.shape)
     sl[distaxis] = slice(lo, hi)
-    return data_object(arr.shape, arr[sl], distaxis)
+    return data_object(arr.shape, arr[tuple(sl)], distaxis)
 
 
 def to_global_data(arr):
@@ -467,7 +467,7 @@ def redistribute(arr, dist=None, nodist=None):
             lo, hi = _shareRange(arr.shape[dist], ntask, i)
             sslice[dist] = slice(lo, hi)
             ssz[i] = ssz0*(hi-lo)
-            sbuf[ofs:ofs+ssz[i]] = arr._data[sslice].flat
+            sbuf[ofs:ofs+ssz[i]] = arr._data[tuple(sslice)].flat
             ofs += ssz[i]
             rsz[i] = rsz0*_shareSize(arr.shape[arr._distaxis], ntask, i)
     ssz *= arr._data.itemsize
@@ -489,7 +489,7 @@ def redistribute(arr, dist=None, nodist=None):
             lo, hi = _shareRange(arr.shape[arr._distaxis], ntask, i)
             rslice[arr._distaxis] = slice(lo, hi)
             sz = rsz[i]//arr._data.itemsize
-            arrnew[rslice].flat = rbuf[ofs:ofs+sz]
+            arrnew[tuple(rslice)].flat = rbuf[ofs:ofs+sz]
             ofs += sz
         arrnew = from_local_data(arr.shape, arrnew, distaxis=dist)
     return arrnew
@@ -559,7 +559,7 @@ def absmax(arr):
     if arr._data.size == 0:
         tmp = np.array(0, dtype=arr._data.dtype)
     else:
-        tmp = np.asarray(np.linalg.norm(arr._data, ord=np.inf))
+        tmp = np.asarray(np.linalg.norm(arr._data.reshape(-1), ord=np.inf))
     res = np.empty_like(tmp)
     _comm.Allreduce(tmp, res, MPI.MAX)
     return res[()]
@@ -568,7 +568,10 @@ def absmax(arr):
 def norm(arr, ord=2):
     if ord == np.inf:
         return absmax(arr)
-    tmp = np.asarray(np.linalg.norm(np.atleast_1d(arr._data), ord=ord) ** ord)
+    tmp = np.asarray(np.linalg.norm(arr._data.reshape(-1), ord=ord) ** ord)
     res = np.empty_like(tmp)
-    _comm.Allreduce(tmp, res, MPI.SUM)
+    if len(arr._data.shape) == 0:
+        res = tmp
+    else:
+        _comm.Allreduce(tmp, res, MPI.SUM)
     return res[()] ** (1./ord)

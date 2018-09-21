@@ -66,11 +66,6 @@ class MultiField(object):
     def to_dict(self):
         return {key: val for key, val in zip(self._domain.keys(), self._val)}
 
-    def update(self, other):
-        foo = self.to_dict()
-        foo.update(other.to_dict())
-        return MultiField.from_dict(foo)
-
     def __getitem__(self, key):
         return self._val[self._domain.idx[key]]
 
@@ -221,6 +216,33 @@ class MultiField(object):
         for key, val in other.items():
             res[key] = res[key]+val if key in res else val
         return MultiField.from_dict(res)
+
+    @staticmethod
+    def union(fields, domain=None):
+        """Returns the union of its input fields
+        Parameters
+        ----------
+        fields: iterable of MultiFields
+            The set of input fields. Their domains need not be identical.
+        domain: MultiDomain or None
+            If supplied, this will be the domain of the resulting field.
+            Providing this domain will accelerate the function.
+
+        Returns
+        -------
+        MultiField
+            The union of the input fields
+
+        Notes
+        -----
+        If the same key occurs more than once in the input fields, the value
+        associated with the last occurrence will be put into the output.
+        No summation is performed!
+        """
+        res = {}
+        for field in fields:
+            res.update(field.to_dict())
+        return MultiField.from_dict(res, domain)
 
     def flexible_addsub(self, other, neg):
         if self._domain is other._domain:

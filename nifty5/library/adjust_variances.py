@@ -23,7 +23,8 @@ from ..operators.energy_operators import Hamiltonian, InverseGammaLikelihood
 from ..operators.scaling_operator import ScalingOperator
 
 
-def make_adjust_variances(a, xi, position, samples=[], scaling=None, ic_samp=None):
+def make_adjust_variances(a, xi, position, samples=[], scaling=None,
+                          ic_samp=None):
     """ Creates a Hamiltonian for constant likelihood optimizations.
 
     Constructs a Hamiltonian to solve constant likelihood optimizations of the
@@ -65,4 +66,4 @@ def make_adjust_variances(a, xi, position, samples=[], scaling=None, ic_samp=Non
     if scaling is not None:
         x = ScalingOperator(scaling, x.target)(x)
 
-    return Hamiltonian(InverseGammaLikelihood(x, d_eval), ic_samp=ic_samp)
+    return Hamiltonian(InverseGammaLikelihood(d_eval)(x), ic_samp=ic_samp)

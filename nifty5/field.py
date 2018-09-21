@@ -327,6 +327,23 @@ class Field(object):
 
         return Field.from_local_data(self._domain, aout)
 
+    def outer(self, x):
+        """ Computes the outer product of 'self' with x.
+
+        Parameters
+        ----------
+        x : Field
+
+        Returns
+        ----------
+        Field, lives on the product space of self.domain and x.domain
+        """
+        if not isinstance(x, Field):
+            raise TypeError("The multiplier must be an instance of " +
+                            "the NIFTy field class")
+        from .operators.outer_product_operator import OuterProduct
+        return OuterProduct(self, x.domain)(x)
+
     def vdot(self, x=None, spaces=None):
         """ Computes the dot product of 'self' with x.
 
@@ -460,7 +477,7 @@ class Field(object):
         swgt = self.scalar_weight(spaces)
         if swgt is not None:
             res = self.sum(spaces)
-            res *= swgt
+            res = res*swgt
             return res
         tmp = self.weight(1, spaces=spaces)
         return tmp.sum(spaces)

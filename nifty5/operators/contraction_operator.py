@@ -37,28 +37,37 @@ class ContractionOperator(LinearOperator):
     ----------
     domain : Domain, tuple of Domain or DomainTuple
     spaces : int or tuple of int
-        The elements of "domain" which are taken as target.
+        The elements of "domain" which are contracted.
+    weight : int, default=0
+        if nonzero, the fields living on self.domain are weighted with the
+        specified power.
     """
 
-    def __init__(self, domain, spaces):
+    def __init__(self, domain, spaces, weight=0):
         self._domain = DomainTuple.make(domain)
         self._spaces = utilities.parse_spaces(spaces, len(self._domain))
         self._target = [
-            dom for i, dom in enumerate(self._domain) if i in self._spaces
+            dom for i, dom in enumerate(self._domain) if i not in self._spaces
         ]
         self._target = DomainTuple.make(self._target)
+        self._weight = weight
         self._capability = self.TIMES | self.ADJOINT_TIMES
 
     def apply(self, x, mode):
         self._check_input(x, mode)
         if mode == self.ADJOINT_TIMES:
-            ldat = x.local_data if 0 in self._spaces else x.to_global_data()
+            ldat = x.to_global_data() if 0 in self._spaces else x.local_data
             shp = []
             for i, dom in enumerate(self._domain):
                 tmp = dom.shape if i > 0 else dom.local_shape
-                shp += tmp if i in self._spaces else (1,)*len(dom.shape)
+                shp += tmp if i not in self._spaces else (1,)*len(dom.shape)
             ldat = np.broadcast_to(ldat.reshape(shp), self._domain.local_shape)
-            return Field.from_local_data(self._domain, ldat)
+            res = Field.from_local_data(self._domain, ldat)
+            if self._weight != 0:
+                res = res.weight(self._weight, spaces=self._spaces)
+            return res
         else:
-            return x.sum(
-                [s for s in range(len(x.domain)) if s not in self._spaces])
+            if self._weight != 0:
+                x = x.weight(self._weight, spaces=self._spaces)
+            res = x.sum(self._spaces)
+            return res if isinstance(res, Field) else Field.scalar(res)

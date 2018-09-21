@@ -18,29 +18,47 @@
 
 from __future__ import absolute_import, division, print_function
 
+import itertools
+
+import numpy as np
+
 from .. import dobj, utilities
 from ..compat import *
 from ..domain_tuple import DomainTuple
-from ..domains.log_rg_space import LogRGSpace
+from ..domains.rg_space import RGSpace
+from ..multi_field import MultiField, MultiDomain
 from ..field import Field
-from .endomorphic_operator import EndomorphicOperator
+from .linear_operator import LinearOperator
+import operator
 
 
-class SymmetrizingOperator(EndomorphicOperator):
-    def __init__(self, domain, space=0):
-        self._domain = DomainTuple.make(domain)
+class OuterProduct(LinearOperator):
+    """Performs the pointwise outer product of two fields.
+
+    Parameters
+    ---------
+    field: Field,
+    domain: DomainTuple, the domain of the input field
+    ---------
+    """
+
+    def __init__(self, field, domain):
+
+        self._domain = domain
+        self._field = field
+        self._target = DomainTuple.make(
+            tuple(sub_d for sub_d in field.domain._dom + domain._dom))
+
         self._capability = self.TIMES | self.ADJOINT_TIMES
-        self._space = utilities.infer_space(self._domain, space)
-        dom = self._domain[self._space]
-        if not (isinstance(dom, LogRGSpace) and not dom.harmonic):
-            raise TypeError("nonharmonic LogRGSpace needed")
 
     def apply(self, x, mode):
         self._check_input(x, mode)
-        v = x.val.copy()
-        for i in self._domain.axes[self._space]:
-            lead = (slice(None),)*i
-            v, loc = dobj.ensure_not_distributed(v, (i,))
-            loc[lead+(slice(1, None),)] -= loc[lead+(slice(None, 0, -1),)]
-            loc /= 2
-        return Field(self.target, dobj.ensure_default_distributed(v))
+        if mode == self.TIMES:
+            return Field.from_global_data(
+                self._target, np.multiply.outer(
+                    self._field.to_global_data(), x.to_global_data()))
+        axes = len(self._field.shape)
+        return Field.from_global_data(
+            self._domain, np.tensordot(
+                self._field.to_global_data(), x.to_global_data(),  axes))
+
