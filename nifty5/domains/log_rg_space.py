@@ -28,7 +28,21 @@ from .structured_domain import StructuredDomain
 
 
 class LogRGSpace(StructuredDomain):
+    """NIFTy subclass for logarithmic Cartesian grids.
 
+    Parameters
+    ----------
+    shape : int or tuple of int
+        Number of grid points or numbers of gridpoints along each axis.
+    bindistances : float or tuple of float
+        Distance between two grid points along each axis. These are
+        measured on logarithmic scale and are constant therfore.
+    t_0 : float or tuple of float
+        FIXME
+    harmonic : bool, optional
+        Whether the space represents a grid in position or harmonic space.
+        (default: False).
+    """
     _needed_for_hash = ['_shape', '_bindistances', '_t_0', '_harmonic']
 
     def __init__(self, shape, bindistances, t_0, harmonic=False):
@@ -41,8 +55,8 @@ class LogRGSpace(StructuredDomain):
         self._bindistances = tuple(bindistances)
         self._t_0 = tuple(t_0)
 
-        self._dim = int(reduce(lambda x, y: x * y, self._shape))
-        self._dvol = float(reduce(lambda x, y: x * y, self._bindistances))
+        self._dim = int(reduce(lambda x, y: x*y, self._shape))
+        self._dvol = float(reduce(lambda x, y: x*y, self._bindistances))
 
     @property
     def harmonic(self):
@@ -69,24 +83,23 @@ class LogRGSpace(StructuredDomain):
         return np.array(self._t_0)
 
     def __repr__(self):
-        return ("LogRGSpace(shape={}, harmonic={})"
-                .format(self.shape, self.harmonic))
+        return ("LogRGSpace(shape={}, harmonic={})".format(
+            self.shape, self.harmonic))
 
     def get_default_codomain(self):
-        codomain_bindistances = 1. / (self.bindistances * self.shape)
-        return LogRGSpace(self.shape, codomain_bindistances,
-                          self._t_0, True)
+        codomain_bindistances = 1./(self.bindistances*self.shape)
+        return LogRGSpace(self.shape, codomain_bindistances, self._t_0, True)
 
     def get_k_length_array(self):
         ib = dobj.ibegin_from_shape(self._shape)
         res = np.arange(self.local_shape[0], dtype=np.float64) + ib[0]
-        res = np.minimum(res, self.shape[0]-res)*self.bindistances[0]
+        res = np.minimum(res, self.shape[0] - res)*self.bindistances[0]
         if len(self.shape) == 1:
             return Field.from_local_data(self, res)
         res *= res
         for i in range(1, len(self.shape)):
             tmp = np.arange(self.local_shape[i], dtype=np.float64) + ib[i]
-            tmp = np.minimum(tmp, self.shape[i]-tmp)*self.bindistances[i]
+            tmp = np.minimum(tmp, self.shape[i] - tmp)*self.bindistances[i]
             tmp *= tmp
             res = np.add.outer(res, tmp)
         return Field.from_local_data(self, np.sqrt(res))
