@@ -50,14 +50,10 @@ def create_cepstrum_amplitude_field(domain, cepstrum):
 
     # Prepare q_array
     q_array = np.zeros((dim,) + shape)
-    if dim == 1:
-        ks = domain.get_k_length_array().to_global_data()
-        q_array = np.array([ks])
-    else:
-        for i in range(dim):
-            ks = np.minimum(shape[i] - np.arange(shape[i]) +
-                            1, np.arange(shape[i])) * dist[i]
-            q_array[i] += ks.reshape((1,)*i + (shape[i],) + (1,)*(dim-i-1))
+    for i in range(dim):
+        ks = np.zeros(shape[i])
+        ks[1:] = np.minimum(shape[i] - 1 - np.arange(shape[i]-1), np.arange(shape[i]-1)) * dist[i]
+        q_array[i] += ks.reshape((1,)*i + (shape[i],) + (1,)*(dim-i-1))
 
     # Fill cepstrum field (all non-zero modes)
     no_zero_modes = (slice(1, None),) * dim
@@ -111,10 +107,12 @@ class AmplitudeModel(Operator):
         dof_space = qht.domain[0]
         sym = SymmetrizingOperator(logk_space)
 
-        phi_mean = np.array([sm, im])
+        phi_mean = np.array([sm, im+sm*logk_space.t_0[0]])
         phi_sig = np.array([sv, iv])
 
-        self._slope = SlopeOperator(logk_space, phi_sig)
+        self._slope = SlopeOperator(logk_space)
+        self._slope = self._slope(makeOp(Field.from_global_data(
+                                    self._slope.domain,phi_sig)))
         self._norm_phi_mean = Field.from_global_data(self._slope.domain,
                                                      phi_mean/phi_sig)
 

@@ -78,6 +78,7 @@ class LogRGSpace(StructuredDomain):
                           self._t_0, True)
 
     def get_k_length_array(self):
+        # FIXME This is simply wrong! Definitely not the final version.
         ib = dobj.ibegin_from_shape(self._shape)
         res = np.arange(self.local_shape[0], dtype=np.float64) + ib[0]
         res = np.minimum(res, self.shape[0]-res)*self.bindistances[0]
