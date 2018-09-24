@@ -28,15 +28,18 @@ from ..operators.simple_linear_operators import FieldAdapter
 from ..operators.scaling_operator import ScalingOperator
 
 
-def CorrelatedField(s_space, amplitude_model):
+def CorrelatedField(s_space, amplitude_model, name='xi'):
     '''
     Function for construction of correlated fields
 
     Parameters
     ----------
-    s_space : Field domain
-
-    amplitude_model : model for correlation structure
+    s_space : Domain
+        Field domain
+    amplitude_model: Operator
+        model for correlation structure
+    name : string
+        MultiField component name
     '''
     h_space = s_space.get_default_codomain()
     ht = HarmonicTransformOperator(h_space, s_space)
@@ -45,11 +48,11 @@ def CorrelatedField(s_space, amplitude_model):
     A = power_distributor(amplitude_model)
     vol = h_space.scalar_dvol
     vol = ScalingOperator(vol ** (-0.5),h_space)
-    return ht(vol(A)*FieldAdapter(MultiDomain.make({"xi": h_space}), "xi"))
+    return ht(vol(A)*FieldAdapter(MultiDomain.make({name: h_space}), name))
 
 
 def MfCorrelatedField(s_space_spatial, s_space_energy, amplitude_model_spatial,
-                      amplitude_model_energy):
+                      amplitude_model_energy, name="xi"):
     '''
     Method for construction of correlated multi-frequency fields
     '''
@@ -67,11 +70,11 @@ def MfCorrelatedField(s_space_spatial, s_space_energy, amplitude_model_spatial,
     pd_energy = PowerDistributor(pd_spatial.domain, p_space_energy, 1)
     pd = pd_spatial(pd_energy)
 
-    dom_distr_spatial = ContractionOperator(pd.domain, 0).adjoint
-    dom_distr_energy = ContractionOperator(pd.domain, 1).adjoint
+    dom_distr_spatial = ContractionOperator(pd.domain, 1).adjoint
+    dom_distr_energy = ContractionOperator(pd.domain, 0).adjoint
 
     a_spatial = dom_distr_spatial(amplitude_model_spatial)
     a_energy = dom_distr_energy(amplitude_model_energy)
     a = a_spatial*a_energy
     A = pd(a)
-    return ht(A*FieldAdapter(MultiDomain.make({"xi": h_space}), "xi"))
+    return ht(A*FieldAdapter(MultiDomain.make({name: h_space}), name))
