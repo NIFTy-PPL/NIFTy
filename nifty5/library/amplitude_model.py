@@ -137,7 +137,7 @@ class AmplitudeModel(Operator):
         phi = x[self._keys[1]] + self._norm_phi_mean
         linear_spec = self._slope(phi)
         loglog_spec = smooth_spec + linear_spec
-        return self._exp_transform((0.5*loglog_spec).exp())
+        return self._exp_transform((0.5*loglog_spec)).exp()
 
     @property
     def qht(self):
