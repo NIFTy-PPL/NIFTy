@@ -44,9 +44,8 @@ def CorrelatedField(s_space, amplitude_model):
     power_distributor = PowerDistributor(h_space, p_space)
     A = power_distributor(amplitude_model)
     vol = h_space.scalar_dvol
-    #vol = 1.
     vol = ScalingOperator(vol ** (-0.5),h_space)
-    return ht(vol(A*FieldAdapter(MultiDomain.make({"xi": h_space}), "xi")))
+    return ht(vol(A)*FieldAdapter(MultiDomain.make({"xi": h_space}), "xi"))
 
 
 def MfCorrelatedField(s_space_spatial, s_space_energy, amplitude_model_spatial,

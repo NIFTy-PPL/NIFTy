@@ -32,7 +32,7 @@ if __name__ == '__main__':
     position_space = ift.RGSpace([128, 128])
 
     # Setting up an amplitude model
-    A = ift.AmplitudeModel(position_space, 16, 1, 10, -4., 1, 0., 1.)
+    A = ift.AmplitudeModel(position_space, 64, 3, 0.4, -4., 1, 1., 1.)
     dummy = ift.from_random('normal', A.domain)
 
     # Building the model for a correlated signal
@@ -46,9 +46,11 @@ if __name__ == '__main__':
                                         'xi': harmonic_space
                                     })))
 
-    correlated_field = ht(power_distributor(A)*ift.FieldAdapter(domain, "xi"))
+    vol = harmonic_space.scalar_dvol
+    vol = ift.ScalingOperator(vol ** (-0.5),harmonic_space)
+    correlated_field = ht(vol(power_distributor(A))*ift.FieldAdapter(domain, "xi"))
     # alternatively to the block above one can do:
-    # correlated_field = ift.CorrelatedField(position_space, A)
+    #correlated_field = ift.CorrelatedField(position_space, A)
 
     # apply some nonlinearity
     signal = ift.positive_tanh(correlated_field)

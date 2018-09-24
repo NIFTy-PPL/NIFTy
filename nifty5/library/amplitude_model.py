@@ -29,7 +29,7 @@ from ..sugar import makeOp, sqrt
 
 
 def _ceps_kernel(dof_space, k, a, k0):
-    return a**2/(1+(k/(k0*dof_space.bindistances[0]))**2)**2
+    return a**2/(1+(k/k0)**2)**2
 
 
 def create_cepstrum_amplitude_field(domain, cepstrum):
