@@ -46,27 +46,23 @@ class SlopeOperator(LinearOperator):
     sigmas : np.array, shape=(2,)
         The slope variance and the y-intercept variance.
     """
-    def __init__(self, target, sigmas):
+    def __init__(self, target):
         if not isinstance(target, LogRGSpace):
             raise TypeError
         self._domain = DomainTuple.make(UnstructuredDomain((2,)))
         self._target = DomainTuple.make(target)
         self._capability = self.TIMES | self.ADJOINT_TIMES
 
-        self._sigmas = sigmas
         self.ndim = len(self.target[0].shape)
-        self.pos = np.zeros((self.ndim,) + self.target[0].shape)
+        
 
-        if self.ndim == 1:
-            self.pos[0] = self.target[0].get_k_length_array().to_global_data()
-        else:
-            shape = self.target[0].shape
-            for i in range(self.ndim):
-                rng = np.arange(target.shape[i])
-                tmp = np.minimum(
-                    rng, target.shape[i]+1-rng) * target.bindistances[i]
-                self.pos[i] += tmp.reshape(
-                    (1,)*i + (shape[i],) + (1,)*(self.ndim-i-1))
+        if self.ndim != 1:
+            raise ValueError("Slope Operator only works for ndim == 1")
+        
+        # Prepare pos
+        self.pos = self.target[0].get_k_array()-self.target[0].t_0[0]
+        
+        
 
     def apply(self, x, mode):
         self._check_input(x, mode)
@@ -74,15 +70,16 @@ class SlopeOperator(LinearOperator):
         # Times
         if mode == self.TIMES:
             inp = x.to_global_data()
-            res = self._sigmas[-1] * inp[-1]
+            res = inp[-1]
             for i in range(self.ndim):
-                res += self._sigmas[i] * inp[i] * self.pos[i]
+                res = res + inp[i] * self.pos[i]
+            res[0] = 0.
             return Field.from_global_data(self.target, res)
 
         # Adjoint times
         res = np.zeros(self.domain[0].shape, dtype=x.dtype)
         xglob = x.to_global_data()
-        res[-1] = np.sum(xglob) * self._sigmas[-1]
+        res[-1] = np.sum(xglob[1:])
         for i in range(self.ndim):
-            res[i] = np.sum(self.pos[i] * xglob) * self._sigmas[i]
+            res[i] = np.sum((self.pos[i] * xglob)[1:])
         return Field.from_global_data(self.domain, res)

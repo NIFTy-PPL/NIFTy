@@ -29,7 +29,7 @@ from ..sugar import makeOp, sqrt
 
 
 def _ceps_kernel(dof_space, k, a, k0):
-    return a**2/(1+(k/(k0*dof_space.bindistances[0]))**2)**2
+    return a**2/(1+(k/k0)**2)**2
 
 
 def create_cepstrum_amplitude_field(domain, cepstrum):
@@ -48,16 +48,7 @@ def create_cepstrum_amplitude_field(domain, cepstrum):
     dist = domain.bindistances
     shape = domain.shape
 
-    # Prepare q_array
-    q_array = np.zeros((dim,) + shape)
-    if dim == 1:
-        ks = domain.get_k_length_array().to_global_data()
-        q_array = np.array([ks])
-    else:
-        for i in range(dim):
-            ks = np.minimum(shape[i] - np.arange(shape[i]) +
-                            1, np.arange(shape[i])) * dist[i]
-            q_array[i] += ks.reshape((1,)*i + (shape[i],) + (1,)*(dim-i-1))
+    q_array = domain.get_k_array()
 
     # Fill cepstrum field (all non-zero modes)
     no_zero_modes = (slice(1, None),) * dim
@@ -111,10 +102,12 @@ class AmplitudeModel(Operator):
         dof_space = qht.domain[0]
         sym = SymmetrizingOperator(logk_space)
 
-        phi_mean = np.array([sm, im])
+        phi_mean = np.array([sm, im+sm*logk_space.t_0[0]])
         phi_sig = np.array([sv, iv])
 
-        self._slope = SlopeOperator(logk_space, phi_sig)
+        self._slope = SlopeOperator(logk_space)
+        self._slope = self._slope(makeOp(Field.from_global_data(
+                                    self._slope.domain,phi_sig)))
         self._norm_phi_mean = Field.from_global_data(self._slope.domain,
                                                      phi_mean/phi_sig)
 
@@ -137,7 +130,7 @@ class AmplitudeModel(Operator):
         phi = x[self._keys[1]] + self._norm_phi_mean
         linear_spec = self._slope(phi)
         loglog_spec = smooth_spec + linear_spec
-        return self._exp_transform((0.5*loglog_spec).exp())
+        return self._exp_transform((0.5*loglog_spec)).exp()
 
     @property
     def qht(self):
