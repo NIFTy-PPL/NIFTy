@@ -209,7 +209,7 @@ class Consistency_Tests(unittest.TestCase):
         op = ift.SymmetrizingOperator(dom, space)
         ift.extra.consistency_check(op, dtype, dtype)
 
-    @expand(product([0, 2], [2, 2.7], [np.float64, np.complex128],
+    @expand(product([0, 2], [1, 2, 2.7], [np.float64, np.complex128],
                     [False, True]))
     def testZeroPadder(self, space, factor, dtype, central):
         dom = (ift.RGSpace(10), ift.UnstructuredDomain(13), ift.RGSpace(7, 12),
