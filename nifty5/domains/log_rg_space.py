@@ -78,23 +78,23 @@ class LogRGSpace(StructuredDomain):
                           self._t_0, True)
 
     def get_k_length_array(self):
-        # FIXME This is simply wrong! Definitely not the final version.
-        ib = dobj.ibegin_from_shape(self._shape)
-        res = np.arange(self.local_shape[0], dtype=np.float64) + ib[0]
-        res = np.minimum(res, self.shape[0]-res)*self.bindistances[0]
-        if len(self.shape) == 1:
-            return Field.from_local_data(self, res)
-        res *= res
-        for i in range(1, len(self.shape)):
-            tmp = np.arange(self.local_shape[i], dtype=np.float64) + ib[i]
-            tmp = np.minimum(tmp, self.shape[i]-tmp)*self.bindistances[i]
-            tmp *= tmp
-            res = np.add.outer(res, tmp)
-        return Field.from_local_data(self, np.sqrt(res))
+        if not self.harmonic:
+            raise NotImplementedError
+        ks = self.get_k_array()
+        return Field.from_global_data(self, np.linalg.norm(ks, axis=0))
 
-    def get_expk_length_array(self):
-        # FIXME This is a hack! Only for plotting. Seems not to be the final version.
-        out = exp(self.get_k_length_array()).to_global_data_rw()
-        out[1:] = out[:-1]
-        out[0] = 0
-        return Field.from_global_data(self, out)
+    def get_k_array(self):
+        ndim = len(self.shape)
+        k_array = np.zeros((ndim,) + self.shape)
+        dist = self.bindistances
+        for i in range(ndim):
+            ks = np.zeros(self.shape[i])
+            ks[1:] = np.minimum(self.shape[i] - 1 - np.arange(self.shape[i]-1), np.arange(self.shape[i]-1)) * dist[i]
+            if self.harmonic:
+                ks[0] = np.nan
+            else:
+                ks[0] = -np.inf
+                ks[1:] += self.t_0[i]
+            k_array[i] += ks.reshape((1,)*i + (self.shape[i],) + (1,)*(ndim-i-1))
+        return k_array
+

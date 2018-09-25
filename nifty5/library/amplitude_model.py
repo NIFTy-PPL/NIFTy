@@ -48,12 +48,7 @@ def create_cepstrum_amplitude_field(domain, cepstrum):
     dist = domain.bindistances
     shape = domain.shape
 
-    # Prepare q_array
-    q_array = np.zeros((dim,) + shape)
-    for i in range(dim):
-        ks = np.zeros(shape[i])
-        ks[1:] = np.minimum(shape[i] - 1 - np.arange(shape[i]-1), np.arange(shape[i]-1)) * dist[i]
-        q_array[i] += ks.reshape((1,)*i + (shape[i],) + (1,)*(dim-i-1))
+    q_array = domain.get_k_array()
 
     # Fill cepstrum field (all non-zero modes)
     no_zero_modes = (slice(1, None),) * dim

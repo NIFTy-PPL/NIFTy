@@ -60,13 +60,7 @@ class SlopeOperator(LinearOperator):
             raise ValueError("Slope Operator only works for ndim == 1")
         
         # Prepare pos
-        self.pos = np.zeros((self.ndim,) + self.target[0].shape)
-        shape = self.target.shape
-        dist = self.target[0].bindistances
-        for i in range(self.ndim):
-            ks = np.zeros(shape[i])
-            ks[1:] = np.minimum(shape[i] - 1 - np.arange(shape[i]-1), np.arange(shape[i]-1)) * dist[i]
-            self.pos[i] += ks.reshape((1,)*i + (shape[i],) + (1,)*(self.ndim-i-1))
+        self.pos = self.target[0].get_k_array()-self.target[0].t_0[0]
         
         
 
