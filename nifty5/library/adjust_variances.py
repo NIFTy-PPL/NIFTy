@@ -78,11 +78,15 @@ def make_adjust_variances(a,
     return Hamiltonian(InverseGammaLikelihood(d_eval)(x), ic_samp=ic_samp)
 
 
-def do_adjust_variances(position, xi, amplitude_model, minimizer, samples=[]):
-    h_space = xi.target[0]
+def do_adjust_variances(position,
+                        amplitude_model,
+                        minimizer,
+                        xi_key='xi',
+                        samples=[]):
+    h_space = position[xi_key].domain[0]
     pd = PowerDistributor(h_space, amplitude_model.target[0])
     a = pd(amplitude_model)
-    xi = FieldAdapter(MultiDomain.make({"xi": h_space}), "xi")
+    xi = FieldAdapter(MultiDomain.make({xi_key: h_space}), xi_key)
 
     axi_domain = MultiDomain.union([a.domain, xi.domain])
     ham = make_adjust_variances(
