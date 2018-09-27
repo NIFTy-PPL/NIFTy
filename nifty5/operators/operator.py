@@ -1,5 +1,6 @@
 from __future__ import absolute_import, division, print_function
 
+import numpy as np
 from ..compat import *
 from ..utilities import NiftyMetaBase
 
@@ -56,6 +57,11 @@ class Operator(NiftyMetaBase()):
             return NotImplemented
         return _OpSum(self, x)
 
+    def __pow__(self, power):
+        if not np.isscalar(power):
+            return NotImplemented
+        return _OpChain.make((_PowerOp(self.target, power), self))
+
     def apply(self, x):
         raise NotImplementedError
 
@@ -95,6 +101,17 @@ class _FunctionApplier(Operator):
     def apply(self, x):
         self._check_input(x)
         return getattr(x, self._funcname)()
+
+
+class _PowerOp(Operator):
+    def __init__(self, domain, power):
+        from ..sugar import makeDomain
+        self._domain = self._target = makeDomain(domain)
+        self._power = power
+
+    def apply(self, x):
+        self._check_input(x)
+        return x**self._power
 
 
 class _CombinedOperator(Operator):
