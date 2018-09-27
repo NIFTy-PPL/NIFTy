@@ -59,6 +59,9 @@ class Operator(NiftyMetaBase()):
     def apply(self, x):
         raise NotImplementedError
 
+    def force(self, x):
+        return self.apply(x.extract(self.domain))
+
     def _check_input(self, x):
         from ..linearization import Linearization
         d = x.target if isinstance(x, Linearization) else x.domain
