@@ -101,6 +101,11 @@ class Linearization(object):
     def __rtruediv__(self, other):
         return self.inverse().__mul__(other)
 
+    def __pow__(self, power):
+        if not np.isscalar(power):
+            return NotImplemented
+        return self.new(self._val**power, (self._jac**(power-1)).scale(power))
+
     def inverse(self):
         return self.new(1./self._val, makeOp(-1./(self._val**2))(self._jac))
 
