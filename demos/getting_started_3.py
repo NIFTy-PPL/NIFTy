@@ -33,20 +33,14 @@ if __name__ == '__main__':
 
     # Setting up an amplitude model
     A = ift.AmplitudeModel(position_space, 16, 1, 10, -4., 1, 0., 1.)
-    dummy = ift.from_random('normal', A.domain)
 
     # Building the model for a correlated signal
     harmonic_space = position_space.get_default_codomain()
     ht = ift.HarmonicTransformOperator(harmonic_space, position_space)
     power_space = A.target[0]
     power_distributor = ift.PowerDistributor(harmonic_space, power_space)
-    dummy = ift.Field.from_random('normal', harmonic_space)
-    domain = ift.MultiDomain.union((A.domain,
-                                    ift.MultiDomain.make({
-                                        'xi': harmonic_space
-                                    })))
 
-    correlated_field = ht(power_distributor(A)*ift.FieldAdapter(domain, "xi"))
+    correlated_field = ht(power_distributor(A)*ift.FieldAdapter(harmonic_space, "xi"))
     # alternatively to the block above one can do:
     # correlated_field = ift.CorrelatedField(position_space, A)
 
@@ -64,7 +58,7 @@ if __name__ == '__main__':
     N = ift.ScalingOperator(noise, data_space)
 
     # generate mock data
-    MOCK_POSITION = ift.from_random('normal', domain)
+    MOCK_POSITION = ift.from_random('normal', signal_response.domain)
     data = signal_response(MOCK_POSITION) + N.draw_sample()
 
     # set up model likelihood
@@ -79,7 +73,7 @@ if __name__ == '__main__':
     # build model Hamiltonian
     H = ift.Hamiltonian(likelihood, ic_sampling)
 
-    INITIAL_POSITION = ift.from_random('normal', domain)
+    INITIAL_POSITION = ift.from_random('normal', H.domain)
     position = INITIAL_POSITION
 
     plot = ift.Plot()

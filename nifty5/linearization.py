@@ -52,7 +52,7 @@ class Linearization(object):
 
     def __getitem__(self, name):
         from .operators.simple_linear_operators import FieldAdapter
-        return self.new(self._val[name], FieldAdapter(self.domain, name))
+        return self.new(self._val[name], FieldAdapter(self.domain[name], name))
 
     def __neg__(self):
         return self.new(-self._val, -self._jac,

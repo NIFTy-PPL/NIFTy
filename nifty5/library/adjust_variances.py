@@ -86,7 +86,7 @@ def do_adjust_variances(position,
     h_space = position[xi_key].domain[0]
     pd = PowerDistributor(h_space, amplitude_model.target[0])
     a = pd(amplitude_model)
-    xi = FieldAdapter(MultiDomain.make({xi_key: h_space}), xi_key)
+    xi = FieldAdapter(h_space, xi_key)
 
     axi_domain = MultiDomain.union([a.domain, xi.domain])
     ham = make_adjust_variances(
