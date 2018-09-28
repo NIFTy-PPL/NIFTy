@@ -94,7 +94,6 @@ def do_adjust_variances(position,
     a_pos = position.extract(a.domain)
 
     # Minimize
-    # FIXME Try also KL here
     e = EnergyAdapter(a_pos, ham, constants=[], want_metric=True)
     e, _ = minimizer(e)
 
