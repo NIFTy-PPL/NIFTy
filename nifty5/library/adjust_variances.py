@@ -66,10 +66,10 @@ def make_adjust_variances(a,
     if n > 0:
         d_eval = 0.
         for i in range(n):
-            d_eval = d_eval + d(position + samples[i])
+            d_eval = d_eval + d.force(position + samples[i])
         d_eval = d_eval/n
     else:
-        d_eval = d(position)
+        d_eval = d.force(position)
 
     x = (a.conjugate()*a).real
     if scaling is not None:
@@ -83,14 +83,14 @@ def do_adjust_variances(position,
                         minimizer,
                         xi_key='xi',
                         samples=[]):
+
     h_space = position[xi_key].domain[0]
     pd = PowerDistributor(h_space, amplitude_model.target[0])
     a = pd(amplitude_model)
     xi = FieldAdapter(h_space, xi_key)
 
     axi_domain = MultiDomain.union([a.domain, xi.domain])
-    ham = make_adjust_variances(
-        a, xi, position.extract(axi_domain), samples=samples)
+    ham = make_adjust_variances(a, xi, position, samples=samples)
     a_pos = position.extract(a.domain)
 
     # Minimize
