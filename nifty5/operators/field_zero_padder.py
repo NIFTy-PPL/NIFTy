@@ -41,8 +41,8 @@ class FieldZeroPadder(LinearOperator):
 
         if len(new_shape) != len(dom.shape):
             raise ValueError("Shape mismatch")
-        if any([a <= b for a, b in zip(new_shape, dom.shape)]):
-            raise ValueError("New shape must be larger than old shape")
+        if any([a < b for a, b in zip(new_shape, dom.shape)]):
+            raise ValueError("New shape must not be smaller than old shape")
         self._target = list(self._domain)
         self._target[self._space] = RGSpace(new_shape, dom.distances)
         self._target = DomainTuple.make(self._target)
@@ -54,6 +54,9 @@ class FieldZeroPadder(LinearOperator):
         curshp = list(self._dom(mode).shape)
         tgtshp = self._tgt(mode).shape
         for d in self._target.axes[self._space]:
+            if v.shape[d] == tgtshp[d]:  # nothing to do
+                continue
+
             idx = (slice(None),) * d
 
             v, x = dobj.ensure_not_distributed(v, (d,))

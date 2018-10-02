@@ -34,22 +34,16 @@ if __name__ == '__main__':
 
     # Setting up an amplitude model
     A = ift.AmplitudeModel(position_space, 64, 3, 0.4, -4., 1, 1., 1.)
-    dummy = ift.from_random('normal', A.domain)
 
     # Building the model for a correlated signal
     harmonic_space = position_space.get_default_codomain()
     ht = ift.HarmonicTransformOperator(harmonic_space, position_space)
     power_space = A.target[0]
     power_distributor = ift.PowerDistributor(harmonic_space, power_space)
-    dummy = ift.Field.from_random('normal', harmonic_space)
-    domain = ift.MultiDomain.union((A.domain,
-                                    ift.MultiDomain.make({
-                                        'xi': harmonic_space
-                                    })))
 
     vol = harmonic_space.scalar_dvol
     vol = ift.ScalingOperator(vol ** (-0.5),harmonic_space)
-    correlated_field = ht(vol(power_distributor(A))*ift.FieldAdapter(domain, "xi"))
+    correlated_field = ht(vol(power_distributor(A))*ift.FieldAdapter(harmonic_space, "xi"))
     # alternatively to the block above one can do:
     #correlated_field = ift.CorrelatedField(position_space, A)
 
@@ -67,7 +61,7 @@ if __name__ == '__main__':
     N = ift.ScalingOperator(noise, data_space)
 
     # generate mock data
-    MOCK_POSITION = ift.from_random('normal', domain)
+    MOCK_POSITION = ift.from_random('normal', signal_response.domain)
     data = signal_response(MOCK_POSITION) + N.draw_sample()
 
     # set up model likelihood
@@ -82,13 +76,13 @@ if __name__ == '__main__':
     # build model Hamiltonian
     H = ift.Hamiltonian(likelihood, ic_sampling)
 
-    INITIAL_POSITION = ift.full(H.domain, 0.)
+    INITIAL_POSITION = ift.from_random('normal', H.domain)
     position = INITIAL_POSITION
 
     plot = ift.Plot()
     plot.add(signal(MOCK_POSITION), title='Ground Truth')
     plot.add(R.adjoint_times(data), title='Data')
-    plot.add([A(MOCK_POSITION.extract(A.domain))], title='Power Spectrum')
+    plot.add([A.force(MOCK_POSITION)], title='Power Spectrum')
     plot.output(ny=1, nx=3, xsize=24, ysize=6, name="setup.png")
 
     # number of samples used to estimate the KL
@@ -100,14 +94,10 @@ if __name__ == '__main__':
 
         plot = ift.Plot()
         plot.add(signal(KL.position), title="reconstruction")
-        plot.add(
-            [
-                A(KL.position.extract(A.domain)),
-                A(MOCK_POSITION.extract(A.domain))
-            ],
-            title="power")
+        plot.add([A.force(KL.position), A.force(MOCK_POSITION)], title="power")
         plot.output(ny=1, ysize=6, xsize=16, name="loop.png")
 
+    KL = ift.KL_Energy(position, H, N_samples)
     plot = ift.Plot()
     sc = ift.StatCalculator()
     for sample in KL.samples:
@@ -115,9 +105,8 @@ if __name__ == '__main__':
     plot.add(sc.mean, title="Posterior Mean")
     plot.add(ift.sqrt(sc.var), title="Posterior Standard Deviation")
 
-    powers = [A((s + KL.position).extract(A.domain)) for s in KL.samples]
+    powers = [A.force(s + KL.position) for s in KL.samples]
     plot.add(
-        [A(KL.position.extract(A.domain)),
-         A(MOCK_POSITION.extract(A.domain))] + powers,
+        [A.force(KL.position), A.force(MOCK_POSITION)] + powers,
         title="Sampled Posterior Power Spectrum")
     plot.output(ny=1, nx=3, xsize=24, ysize=6, name="results.png")

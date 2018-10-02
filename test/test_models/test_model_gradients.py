@@ -62,21 +62,21 @@ class Model_Tests(unittest.TestCase):
         lin2 = self.make_linearization(type2, dom2, seed)
 
         dom = ift.MultiDomain.union((dom1, dom2))
-        model = ift.FieldAdapter(dom, "s1")*ift.FieldAdapter(dom, "s2")
+        model = ift.FieldAdapter(space, "s1")*ift.FieldAdapter(space, "s2")
         pos = ift.from_random("normal", dom)
         ift.extra.check_value_gradient_consistency(model, pos, ntries=20)
-        model = ift.FieldAdapter(dom, "s1")+ift.FieldAdapter(dom, "s2")
+        model = ift.FieldAdapter(space, "s1")+ift.FieldAdapter(space, "s2")
         pos = ift.from_random("normal", dom)
         ift.extra.check_value_gradient_consistency(model, pos, ntries=20)
-        model = ift.FieldAdapter(dom, "s1").scale(3.)
+        model = ift.FieldAdapter(space, "s1").scale(3.)
         pos = ift.from_random("normal", dom1)
         ift.extra.check_value_gradient_consistency(model, pos, ntries=20)
         model = ift.ScalingOperator(2.456, space)(
-            ift.FieldAdapter(dom, "s1")*ift.FieldAdapter(dom, "s2"))
+            ift.FieldAdapter(space, "s1")*ift.FieldAdapter(space, "s2"))
         pos = ift.from_random("normal", dom)
         ift.extra.check_value_gradient_consistency(model, pos, ntries=20)
         model = ift.positive_tanh(ift.ScalingOperator(2.456, space)(
-            ift.FieldAdapter(dom, "s1")*ift.FieldAdapter(dom, "s2")))
+            ift.FieldAdapter(space, "s1")*ift.FieldAdapter(space, "s2")))
         pos = ift.from_random("normal", dom)
         ift.extra.check_value_gradient_consistency(model, pos, ntries=20)
         pos = ift.from_random("normal", dom)
@@ -84,7 +84,7 @@ class Model_Tests(unittest.TestCase):
         ift.extra.check_value_gradient_consistency(model, pos['s2'], ntries=20)
         if isinstance(space, ift.RGSpace):
             model = ift.FFTOperator(space)(
-                ift.FieldAdapter(dom, "s1")*ift.FieldAdapter(dom, "s2"))
+                ift.FieldAdapter(space, "s1")*ift.FieldAdapter(space, "s2"))
             pos = ift.from_random("normal", dom)
             ift.extra.check_value_gradient_consistency(model, pos, ntries=20)
 

@@ -20,7 +20,7 @@ if _use_fftw:
     _fft_extra_args = dict(planner_effort='FFTW_ESTIMATE', threads=nthreads)
 else:
     from numpy.fft import fftn, rfftn, ifftn
-    _fft_extra_args={}
+    _fft_extra_args = {}
 
 
 def hartley(a, axes=None):
