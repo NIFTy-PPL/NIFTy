@@ -45,7 +45,7 @@ def CorrelatedField(s_space, amplitude_model, name='xi'):
     p_space = amplitude_model.target[0]
     power_distributor = PowerDistributor(h_space, p_space)
     A = power_distributor(amplitude_model)
-    return ht(A*FieldAdapter(MultiDomain.make({name: h_space}), name))
+    return ht(A*FieldAdapter(h_space, name))
 
 
 def MfCorrelatedField(s_space_spatial, s_space_energy, amplitude_model_spatial,
@@ -74,4 +74,4 @@ def MfCorrelatedField(s_space_spatial, s_space_energy, amplitude_model_spatial,
     a_energy = dom_distr_energy(amplitude_model_energy)
     a = a_spatial*a_energy
     A = pd(a)
-    return ht(A*FieldAdapter(MultiDomain.make({name: h_space}), name))
+    return ht(A*FieldAdapter(h_space, name))

@@ -66,10 +66,10 @@ def make_adjust_variances(a,
     if n > 0:
         d_eval = 0.
         for i in range(n):
-            d_eval = d_eval + d(position + samples[i])
+            d_eval = d_eval + d.force(position + samples[i])
         d_eval = d_eval/n
     else:
-        d_eval = d(position)
+        d_eval = d.force(position)
 
     x = (a.conjugate()*a).real
     if scaling is not None:
@@ -78,31 +78,33 @@ def make_adjust_variances(a,
     return Hamiltonian(InverseGammaLikelihood(d_eval)(x), ic_samp=ic_samp)
 
 
-def do_adjust_variances(position, xi, amplitude_model, minimizer, samples=[]):
-    h_space = xi.target[0]
+def do_adjust_variances(position,
+                        amplitude_model,
+                        minimizer,
+                        xi_key='xi',
+                        samples=[]):
+
+    h_space = position[xi_key].domain[0]
     pd = PowerDistributor(h_space, amplitude_model.target[0])
     a = pd(amplitude_model)
-    xi = FieldAdapter(MultiDomain.make({"xi": h_space}), "xi")
+    xi = FieldAdapter(h_space, xi_key)
 
-    axi_domain = MultiDomain.union([a.domain, xi.domain])
-    ham = make_adjust_variances(
-        a, xi, position.extract(axi_domain), samples=samples)
-    a_pos = position.extract(a.domain)
+    ham = make_adjust_variances(a, xi, position, samples=samples)
 
     # Minimize
-    # FIXME Try also KL here
-    e = EnergyAdapter(a_pos, ham, constants=[], want_metric=True)
+    e = EnergyAdapter(
+        position.extract(a.domain), ham, constants=[], want_metric=True)
     e, _ = minimizer(e)
 
     # Update position
-    s_h_old = (a*xi)(position.extract(axi_domain))
+    s_h_old = (a*xi).force(position)
 
     position = position.to_dict()
     position['xi'] = s_h_old/a(e.position)
     position = MultiField.from_dict(position)
     position = MultiField.union([position, e.position])
 
-    s_h_new = (a*xi)(position.extract(axi_domain))
+    s_h_new = (a*xi).force(position)
 
     import numpy as np
     # TODO Move this into the tests
