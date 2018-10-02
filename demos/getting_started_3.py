@@ -29,6 +29,7 @@ def get_random_LOS(n_los):
 if __name__ == '__main__':
     # FIXME description of the tutorial
     np.random.seed(42)
+    np.seterr(all='raise')
     position_space = ift.RGSpace([128, 128])
 
     # Setting up an amplitude model
@@ -81,7 +82,7 @@ if __name__ == '__main__':
     # build model Hamiltonian
     H = ift.Hamiltonian(likelihood, ic_sampling)
 
-    INITIAL_POSITION = ift.from_random('normal', domain)
+    INITIAL_POSITION = ift.full(H.domain, 0.)
     position = INITIAL_POSITION
 
     plot = ift.Plot()

@@ -81,5 +81,5 @@ class SlopeOperator(LinearOperator):
         xglob = x.to_global_data()
         res[-1] = np.sum(xglob[1:])
         for i in range(self.ndim):
-            res[i] = np.sum((self.pos[i] * xglob)[1:])
+            res[i] = np.sum(self.pos[i][1:] * xglob[1:])
         return Field.from_global_data(self.domain, res)
