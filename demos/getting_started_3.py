@@ -40,7 +40,8 @@ if __name__ == '__main__':
     power_space = A.target[0]
     power_distributor = ift.PowerDistributor(harmonic_space, power_space)
 
-    correlated_field = ht(power_distributor(A)*ift.FieldAdapter(harmonic_space, "xi"))
+    correlated_field = ht(
+        power_distributor(A)*ift.FieldAdapter(harmonic_space, "xi"))
     # alternatively to the block above one can do:
     # correlated_field = ift.CorrelatedField(position_space, A)
 
@@ -79,7 +80,7 @@ if __name__ == '__main__':
     plot = ift.Plot()
     plot.add(signal(MOCK_POSITION), title='Ground Truth')
     plot.add(R.adjoint_times(data), title='Data')
-    plot.add([A(MOCK_POSITION.extract(A.domain))], title='Power Spectrum')
+    plot.add([A.force(MOCK_POSITION)], title='Power Spectrum')
     plot.output(ny=1, nx=3, xsize=24, ysize=6, name="setup.png")
 
     # number of samples used to estimate the KL
@@ -91,12 +92,7 @@ if __name__ == '__main__':
 
         plot = ift.Plot()
         plot.add(signal(KL.position), title="reconstruction")
-        plot.add(
-            [
-                A(KL.position.extract(A.domain)),
-                A(MOCK_POSITION.extract(A.domain))
-            ],
-            title="power")
+        plot.add([A.force(KL.position), A.force(MOCK_POSITION)], title="power")
         plot.output(ny=1, ysize=6, xsize=16, name="loop.png")
 
     KL = ift.KL_Energy(position, H, N_samples)
@@ -107,9 +103,8 @@ if __name__ == '__main__':
     plot.add(sc.mean, title="Posterior Mean")
     plot.add(ift.sqrt(sc.var), title="Posterior Standard Deviation")
 
-    powers = [A((s + KL.position).extract(A.domain)) for s in KL.samples]
+    powers = [A.force(s + KL.position) for s in KL.samples]
     plot.add(
-        [A(KL.position.extract(A.domain)),
-         A(MOCK_POSITION.extract(A.domain))] + powers,
+        [A.force(KL.position), A.force(MOCK_POSITION)] + powers,
         title="Sampled Posterior Power Spectrum")
     plot.output(ny=1, nx=3, xsize=24, ysize=6, name="results.png")

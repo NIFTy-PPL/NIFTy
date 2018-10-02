@@ -89,23 +89,22 @@ def do_adjust_variances(position,
     a = pd(amplitude_model)
     xi = FieldAdapter(h_space, xi_key)
 
-    axi_domain = MultiDomain.union([a.domain, xi.domain])
     ham = make_adjust_variances(a, xi, position, samples=samples)
-    a_pos = position.extract(a.domain)
 
     # Minimize
-    e = EnergyAdapter(a_pos, ham, constants=[], want_metric=True)
+    e = EnergyAdapter(
+        position.extract(a.domain), ham, constants=[], want_metric=True)
     e, _ = minimizer(e)
 
     # Update position
-    s_h_old = (a*xi)(position.extract(axi_domain))
+    s_h_old = (a*xi).force(position)
 
     position = position.to_dict()
     position['xi'] = s_h_old/a(e.position)
     position = MultiField.from_dict(position)
     position = MultiField.union([position, e.position])
 
-    s_h_new = (a*xi)(position.extract(axi_domain))
+    s_h_new = (a*xi).force(position)
 
     import numpy as np
     # TODO Move this into the tests
