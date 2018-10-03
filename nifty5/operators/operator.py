@@ -60,6 +60,7 @@ class Operator(NiftyMetaBase()):
         raise NotImplementedError
 
     def force(self, x):
+        """Extract correct subset of domain of x and apply operator."""
         return self.apply(x.extract(self.domain))
 
     def _check_input(self, x):
