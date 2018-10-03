@@ -47,12 +47,15 @@ def CorrelatedField(s_space, amplitude_model, name='xi'):
     power_distributor = PowerDistributor(h_space, p_space)
     A = power_distributor(amplitude_model)
     vol = h_space.scalar_dvol
-    vol = ScalingOperator(vol ** (-0.5),h_space)
+    vol = ScalingOperator(vol**(-0.5), h_space)
     return ht(vol(A)*FieldAdapter(h_space, name))
 
 
-def MfCorrelatedField(s_space_spatial, s_space_energy, amplitude_model_spatial,
-                      amplitude_model_energy, name="xi"):
+def MfCorrelatedField(s_space_spatial,
+                      s_space_energy,
+                      amplitude_model_spatial,
+                      amplitude_model_energy,
+                      name="xi"):
     '''
     Method for construction of correlated multi-frequency fields
     '''
