@@ -57,6 +57,11 @@ class Operator(NiftyMetaBase()):
             return NotImplemented
         return _OpSum(self, x)
 
+    def __sub__(self, x):
+        if not isinstance(x, Operator):
+            return NotImplemented
+        return _OpSum(self, -x)
+
     def __pow__(self, power):
         if not np.isscalar(power):
             return NotImplemented
