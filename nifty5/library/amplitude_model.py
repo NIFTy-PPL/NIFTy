@@ -23,7 +23,6 @@ import numpy as np
 from ..compat import *
 from ..domains.power_space import PowerSpace
 from ..field import Field
-from ..multi_domain import MultiDomain
 from ..operators.operator import Operator
 from ..sugar import makeOp, sqrt
 
@@ -45,7 +44,6 @@ def create_cepstrum_amplitude_field(domain, cepstrum):
     """
 
     dim = len(domain.shape)
-    dist = domain.bindistances
     shape = domain.shape
 
     q_array = domain.get_k_array()
