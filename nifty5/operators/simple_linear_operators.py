@@ -18,13 +18,14 @@
 
 from __future__ import absolute_import, division, print_function
 
+import numpy as np
+
 from ..compat import *
 from ..domain_tuple import DomainTuple
 from ..domains.unstructured_domain import UnstructuredDomain
 from ..field import Field
 from ..multi_domain import MultiDomain
 from ..multi_field import MultiField
-from ..sugar import full
 from .endomorphic_operator import EndomorphicOperator
 from .linear_operator import LinearOperator
 
@@ -141,3 +142,36 @@ class NullOperator(LinearOperator):
     def apply(self, x, mode):
         self._check_input(x, mode)
         return self._nullfield(self._tgt(mode))
+
+
+class ValueInserter(LinearOperator):
+    """Operator which inserts one value into a field.
+
+    Parameters
+    ----------
+    target : Domain, tuple of Domain or DomainTuple
+    index : tuple
+        The index of the target into which the value of the domain shall be
+        written.
+    """
+
+    def __init__(self, target, index):
+        from ..sugar import makeDomain
+        self._domain = makeDomain(UnstructuredDomain(1))
+        self._target = DomainTuple.make(target)
+        if not isinstance(index, tuple):
+            raise TypeError
+        self._index = index
+        self._capability = self.TIMES | self.ADJOINT_TIMES
+        # Check if index is in bounds
+        np.empty(self.target.shape)[self._index]
+
+    def apply(self, x, mode):
+        self._check_input(x, mode)
+        x = x.to_global_data()
+        if mode == self.TIMES:
+            res = np.zeros(self.target.shape, dtype=x.dtype)
+            res[self._index] = x
+        else:
+            res = x[self._index]
+        return Field.from_global_data(self._tgt(mode), res)
