@@ -97,6 +97,7 @@ class _FunctionApplier(Operator):
         return getattr(x, self._funcname)()
 
 
+# FIXME Is this class used except in _OpChain? Can it be merged?
 class _CombinedOperator(Operator):
     def __init__(self, ops, _callingfrommake=False):
         if not _callingfrommake:
