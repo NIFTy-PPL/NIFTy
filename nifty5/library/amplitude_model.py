@@ -67,7 +67,7 @@ def create_cepstrum_amplitude_field(domain, cepstrum):
     return Field.from_global_data(domain, cepstrum_field)
 
 
-class CepstrumModel(Operator):
+def CepstrumModel(logk_space, ceps_a, ceps_k):
     '''
     Parameters
     ----------
@@ -76,30 +76,14 @@ class CepstrumModel(Operator):
                         a = ceps_a,  k0 = ceps_k0
     '''
 
-    def __init__(self, logk_space, ceps_a, ceps_k):
-        from ..operators.qht_operator import QHTOperator
-        from ..operators.symmetrizing_operator import SymmetrizingOperator
-        qht = QHTOperator(target=logk_space)
-        dof_space = qht.domain[0]
-        sym = SymmetrizingOperator(logk_space)
-        kern = lambda k: _ceps_kernel(dof_space, k, ceps_a, ceps_k)
-        cepstrum = create_cepstrum_amplitude_field(dof_space, kern)
-        self._qht = qht
-        self._ceps = makeOp(sqrt(cepstrum))
-        self._op = sym(qht(makeOp(sqrt(cepstrum))))
-        self._domain, self._target = self._op.domain, self._op.target
-
-    def apply(self, x):
-        self._check_input(x)
-        return self._op(x)
-
-    @property
-    def qht(self):
-        return self._qht
-
-    @property
-    def ceps(self):
-        return self._ceps
+    from ..operators.qht_operator import QHTOperator
+    from ..operators.symmetrizing_operator import SymmetrizingOperator
+    qht = QHTOperator(target=logk_space)
+    dof_space = qht.domain[0]
+    sym = SymmetrizingOperator(logk_space)
+    kern = lambda k: _ceps_kernel(dof_space, k, ceps_a, ceps_k)
+    cepstrum = create_cepstrum_amplitude_field(dof_space, kern)
+    return sym(qht(makeOp(sqrt(cepstrum))))
 
 
 class SlopeModel(Operator):
@@ -181,14 +165,6 @@ class AmplitudeModel(Operator):
     def apply(self, x):
         self._check_input(x)
         return self._op(x)
-
-    @property
-    def qht(self):
-        return self._qht
-
-    @property
-    def ceps(self):
-        return self._ceps
 
     @property
     def norm_phi_mean(self):
