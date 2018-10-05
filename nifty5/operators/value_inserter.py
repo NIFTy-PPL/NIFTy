@@ -56,5 +56,5 @@ class ValueInserter(LinearOperator):
             res = np.zeros(self.target.shape, dtype=x.dtype)
             res[self._index] = x
         else:
-            res = x[self._index]
+            res = np.full((1,),x[self._index])
         return Field.from_global_data(self._tgt(mode), res)
