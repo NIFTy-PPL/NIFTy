@@ -86,7 +86,23 @@ def CepstrumModel(logk_space, ceps_a, ceps_k):
     return sym(qht(makeOp(sqrt(cepstrum))))
 
 
-class SlopeModel(Operator):
+class GaussShiftModel(Operator):
+    # FIXME Remove this operator as soon as operators support addition with
+    # constant fields
+    def __init__(self, mean, std):
+        dom = mean.domain
+        dom1 = std.domain
+        if not dom == dom1:
+            raise TypeError('mean and std need to have the same domain.')
+        self._domain = self._target = dom
+        self._mean, self._std = mean, std
+
+    def apply(self, x):
+        self._check_input(x)
+        return self._std*x + self._mean
+
+
+def SlopeModel(logk_space, sm, sv, im, iv):
     '''
     Parameters
     ----------
@@ -94,34 +110,20 @@ class SlopeModel(Operator):
     sm, sv : slope_mean = expected exponent of power law (e.g. -4),
                 slope_variance (default=1)
 
-    im, iv : y-intercept_mean, y-intercept_variance  of power_slope
+    im, iv : y-intercept_mean, y-intercept_std  of power_slope
     '''
 
-    def __init__(self, logk_space, sm, sv, im, iv):
-        from ..operators.slope_operator import SlopeOperator
-
-        phi_mean = np.array([sm, im + sm*logk_space.t_0[0]])
-        phi_sig = np.array([sv, iv])
-
-        self._slope = SlopeOperator(logk_space)
-        self._slope = self._slope(
-            makeOp(Field.from_global_data(self._slope.domain, phi_sig)))
-        self._norm_phi_mean = Field.from_global_data(self._slope.domain,
-                                                     phi_mean/phi_sig)
-
-        self._domain = self._slope.domain
-        self._target = self._slope.target
-
-    def apply(self, x):
-        self._check_input(x)
-        return self._slope(x + self._norm_phi_mean)
-
-    @property
-    def norm_phi_mean(self):
-        return self._norm_phi_mean
+    from ..operators.slope_operator import SlopeOperator
+    phi_mean = np.array([sm, im + sm*logk_space.t_0[0]])
+    phi_sig = np.array([sv, iv])
+    slope = SlopeOperator(logk_space)
+    phi_mean = Field.from_global_data(slope.domain, phi_mean)
+    phi_sig = Field.from_global_data(slope.domain, phi_sig)
+    gaussshift = GaussShiftModel(phi_mean, phi_sig)
+    return slope(gaussshift)
 
 
-class AmplitudeModel(Operator):
+def AmplitudeModel(s_space, Npixdof, ceps_a, ceps_k, sm, sv, im, iv, keys=['tau', 'phi']):
     '''
     Computes a smooth power spectrum.
     Output lives in PowerSpace.
@@ -140,32 +142,20 @@ class AmplitudeModel(Operator):
 
     im, iv : y-intercept_mean, y-intercept_variance  of power_slope
     '''
-    def __init__(self, s_space, Npixdof, ceps_a, ceps_k, sm, sv, im, iv, keys=['tau', 'phi']):
-        from ..operators.exp_transform import ExpTransform
-        from ..operators.simple_linear_operators import FieldAdapter
-        from ..operators.scaling_operator import ScalingOperator
 
-        h_space = s_space.get_default_codomain()
-        et = ExpTransform(PowerSpace(h_space), Npixdof)
-        logk_space = et.domain[0]
+    from ..operators.exp_transform import ExpTransform
+    from ..operators.simple_linear_operators import FieldAdapter
+    from ..operators.scaling_operator import ScalingOperator
 
-        smooth = CepstrumModel(logk_space, ceps_a, ceps_k)
-        linear = SlopeModel(logk_space, sm, sv, im, iv)
+    h_space = s_space.get_default_codomain()
+    et = ExpTransform(PowerSpace(h_space), Npixdof)
+    logk_space = et.domain[0]
 
-        self._qht, self._ceps = smooth.qht, smooth.ceps
-        self._norm_phi_mean = linear.norm_phi_mean
+    smooth = CepstrumModel(logk_space, ceps_a, ceps_k)
+    linear = SlopeModel(logk_space, sm, sv, im, iv)
 
-        fa_smooth = FieldAdapter(smooth.domain, keys[0])
-        fa_linear = FieldAdapter(linear.domain, keys[1])
+    fa_smooth = FieldAdapter(smooth.domain, keys[0])
+    fa_linear = FieldAdapter(linear.domain, keys[1])
 
-        fac = ScalingOperator(0.5, smooth.target)
-        self._op = et((fac(smooth(fa_smooth) + linear(fa_linear))).exp())
-        self._domain, self._target = self._op.domain, self._op.target
-
-    def apply(self, x):
-        self._check_input(x)
-        return self._op(x)
-
-    @property
-    def norm_phi_mean(self):
-        return self._norm_phi_mean
+    fac = ScalingOperator(0.5, smooth.target)
+    return et((fac(smooth(fa_smooth) + linear(fa_linear))).exp())

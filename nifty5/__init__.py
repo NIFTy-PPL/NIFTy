@@ -74,7 +74,7 @@ from .minimization.kl_energy import KL_Energy
 from .sugar import *
 from .plot import Plot
 
-from .library.amplitude_model import AmplitudeModel
+from .library.amplitude_model import AmplitudeModel, GaussShiftModel
 from .library.inverse_gamma_model import InverseGammaModel
 from .library.los_response import LOSResponse
 
