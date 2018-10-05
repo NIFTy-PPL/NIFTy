@@ -67,7 +67,13 @@ class Operator(NiftyMetaBase()):
         from ..linearization import Linearization
         d = x.target if isinstance(x, Linearization) else x.domain
         if self._domain != d:
-            raise ValueError("The operator's and field's domains don't match.")
+            s = "The operator's and field's domains don't match."
+            from ..domain_tuple import DomainTuple
+            from ..multi_domain import MultiDomain
+            if not (isinstance(self._domain, DomainTuple)
+                    or isinstance(d, MultiDomain)):
+                s += " One of the domains is neither a `DomainTuple` nor a `MultiDomain`."
+            raise ValueError(s)
 
     def __call__(self, x):
         if isinstance(x, Operator):
