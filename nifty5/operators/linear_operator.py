@@ -259,10 +259,4 @@ class LinearOperator(Operator):
 
     def _check_input(self, x, mode):
         self._check_mode(mode)
-        if self._dom(mode) != x.domain:
-            s = "The operator's and field's domains don't match."
-            from ..domain_tuple import DomainTuple
-            from ..multi_domain import MultiDomain
-            if not isinstance(self._dom(mode), [DomainTuple, MultiDomain]):
-                s += " Your operator's domain is neither a `DomainTuple` nor a `MultiDomain`."
-            raise ValueError(s)
+        self._check_domain_equality(self._dom(mode), x.domain)
