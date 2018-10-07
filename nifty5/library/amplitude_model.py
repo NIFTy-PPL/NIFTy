@@ -67,7 +67,7 @@ def create_cepstrum_amplitude_field(domain, cepstrum):
     return Field.from_global_data(domain, cepstrum_field)
 
 
-def CepstrumModel(logk_space, ceps_a, ceps_k):
+def CepstrumModel(logk_space, ceps_a, ceps_k, zero_mode=True):
     '''
     Parameters
     ----------
@@ -83,7 +83,14 @@ def CepstrumModel(logk_space, ceps_a, ceps_k):
     sym = SymmetrizingOperator(logk_space)
     kern = lambda k: _ceps_kernel(dof_space, k, ceps_a, ceps_k)
     cepstrum = create_cepstrum_amplitude_field(dof_space, kern)
-    return sym(qht(makeOp(sqrt(cepstrum))))
+    res = sym(qht(makeOp(sqrt(cepstrum))))
+    if not zero_mode:
+        shp = res.target.shape
+        mask = np.ones(shp)
+        mask[(0,)*len(shp)] = 0.
+        mask = makeOp(Field.from_global_data(res.target, mask))
+        res = mask(res)
+    return res
 
 
 class GaussShiftModel(Operator):
@@ -123,7 +130,16 @@ def SlopeModel(logk_space, sm, sv, im, iv):
     return slope(gaussshift)
 
 
-def AmplitudeModel(s_space, Npixdof, ceps_a, ceps_k, sm, sv, im, iv, keys=['tau', 'phi']):
+def AmplitudeModel(s_space,
+                   Npixdof,
+                   ceps_a,
+                   ceps_k,
+                   sm,
+                   sv,
+                   im,
+                   iv,
+                   keys=['tau', 'phi'],
+                   zero_mode=True):
     '''
     Computes a smooth power spectrum.
     Output lives in PowerSpace.
@@ -151,7 +167,7 @@ def AmplitudeModel(s_space, Npixdof, ceps_a, ceps_k, sm, sv, im, iv, keys=['tau'
     et = ExpTransform(PowerSpace(h_space), Npixdof)
     logk_space = et.domain[0]
 
-    smooth = CepstrumModel(logk_space, ceps_a, ceps_k)
+    smooth = CepstrumModel(logk_space, ceps_a, ceps_k, zero_mode)
     linear = SlopeModel(logk_space, sm, sv, im, iv)
 
     fa_smooth = FieldAdapter(smooth.domain, keys[0])
