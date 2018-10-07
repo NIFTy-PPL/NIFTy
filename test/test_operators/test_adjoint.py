@@ -44,14 +44,6 @@ class Consistency_Tests(unittest.TestCase):
         op = ift.LOSResponse(sp, starts, ends, sigma_low, sigma_ups)
         ift.extra.consistency_check(op, dtype, dtype)
 
-    def testValueInserter(self):
-        op = ift.ValueInserter(ift.RGSpace([23, 44]), (2, 43))
-        ift.extra.consistency_check(op)
-        self.assertRaises(IndexError,
-                          lambda: ift.ValueInserter(ift.RGSpace(3), (7,)))
-        self.assertRaises(TypeError,
-                          lambda: ift.ValueInserter(ift.RGSpace(3), 2))
-
     @expand(product(_h_spaces + _p_spaces + _pow_spaces,
                     [np.float64, np.complex128]))
     def testOperatorCombinations(self, sp, dtype):
