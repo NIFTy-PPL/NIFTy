@@ -19,16 +19,14 @@
 from __future__ import absolute_import, division, print_function
 
 from ..compat import *
-from ..multi_domain import MultiDomain
 from .operator import Operator
 
 
-class ConstantOperator(Operator):
+class OffsetOperator(Operator):
     def __init__(self, field):
         self._field = field
-        self._domain = MultiDomain.make({})
-        self._target = field.domain
+        self._domain = self._target = field.domain
 
     def apply(self, x):
         self._check_input(x)
-        return self._field
+        return x + self._field

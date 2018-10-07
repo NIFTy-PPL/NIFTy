@@ -19,7 +19,6 @@ from .field import Field
 from .multi_field import MultiField
 
 from .operators.operator import Operator
-from .operators.constant_operator import ConstantOperator
 from .operators.central_zero_padder import CentralZeroPadder
 from .operators.diagonal_operator import DiagonalOperator
 from .operators.distributors import DOFDistributor, PowerDistributor
@@ -35,6 +34,7 @@ from .operators.inversion_enabler import InversionEnabler
 from .operators.laplace_operator import LaplaceOperator
 from .operators.linear_operator import LinearOperator
 from .operators.mask_operator import MaskOperator
+from .operators.offset_operator import OffsetOperator
 from .operators.qht_operator import QHTOperator
 from .operators.regridding_operator import RegriddingOperator
 from .operators.sampling_enabler import SamplingEnabler

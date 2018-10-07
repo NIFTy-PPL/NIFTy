@@ -23,8 +23,7 @@ import numpy as np
 from ..compat import *
 from ..domains.power_space import PowerSpace
 from ..field import Field
-from ..operators.constant_operator import ConstantOperator
-from ..operators.operator import Operator
+from ..operators.offset_operator import OffsetOperator
 from ..sugar import makeOp, sqrt
 
 
@@ -111,7 +110,7 @@ def SlopeModel(logk_space, sm, sv, im, iv):
     slope = SlopeOperator(logk_space)
     phi_mean = Field.from_global_data(slope.domain, phi_mean)
     phi_sig = Field.from_global_data(slope.domain, phi_sig)
-    return slope*ConstantOperator(phi_sig) + ConstantOperator(phi_mean)
+    return slope(OffsetOperator(phi_mean)(makeOp(phi_sig)))
 
 
 def AmplitudeModel(s_space,
