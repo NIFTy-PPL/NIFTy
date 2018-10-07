@@ -67,7 +67,7 @@ def create_cepstrum_amplitude_field(domain, cepstrum):
     return Field.from_global_data(domain, cepstrum_field)
 
 
-def CepstrumModel(logk_space, ceps_a, ceps_k, zero_mode=True):
+def CepstrumOperator(logk_space, ceps_a, ceps_k, zero_mode=True):
     '''
     Parameters
     ----------
@@ -167,7 +167,7 @@ def AmplitudeModel(s_space,
     et = ExpTransform(PowerSpace(h_space), Npixdof)
     logk_space = et.domain[0]
 
-    smooth = CepstrumModel(logk_space, ceps_a, ceps_k, zero_mode)
+    smooth = CepstrumOperator(logk_space, ceps_a, ceps_k, zero_mode)
     linear = SlopeModel(logk_space, sm, sv, im, iv)
 
     fa_smooth = FieldAdapter(smooth.domain, keys[0])
