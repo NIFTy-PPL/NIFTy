@@ -19,6 +19,7 @@ from .field import Field
 from .multi_field import MultiField
 
 from .operators.operator import Operator
+from .operators.constant_operator import ConstantOperator
 from .operators.central_zero_padder import CentralZeroPadder
 from .operators.diagonal_operator import DiagonalOperator
 from .operators.distributors import DOFDistributor, PowerDistributor
@@ -73,7 +74,7 @@ from .minimization.kl_energy import KL_Energy
 from .sugar import *
 from .plot import Plot
 
-from .library.amplitude_model import AmplitudeModel, GaussShiftModel
+from .library.amplitude_model import AmplitudeModel
 from .library.inverse_gamma_model import InverseGammaModel
 from .library.los_response import LOSResponse
 

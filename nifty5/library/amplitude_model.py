@@ -23,6 +23,7 @@ import numpy as np
 from ..compat import *
 from ..domains.power_space import PowerSpace
 from ..field import Field
+from ..operators.constant_operator import ConstantOperator
 from ..operators.operator import Operator
 from ..sugar import makeOp, sqrt
 
@@ -93,22 +94,6 @@ def CepstrumOperator(logk_space, ceps_a, ceps_k, zero_mode=True):
     return res
 
 
-class GaussShiftModel(Operator):
-    # FIXME Remove this operator as soon as operators support addition with
-    # constant fields
-    def __init__(self, mean, std):
-        dom = mean.domain
-        dom1 = std.domain
-        if not dom == dom1:
-            raise TypeError('mean and std need to have the same domain.')
-        self._domain = self._target = dom
-        self._mean, self._std = mean, std
-
-    def apply(self, x):
-        self._check_input(x)
-        return self._std*x + self._mean
-
-
 def SlopeModel(logk_space, sm, sv, im, iv):
     '''
     Parameters
@@ -126,8 +111,7 @@ def SlopeModel(logk_space, sm, sv, im, iv):
     slope = SlopeOperator(logk_space)
     phi_mean = Field.from_global_data(slope.domain, phi_mean)
     phi_sig = Field.from_global_data(slope.domain, phi_sig)
-    gaussshift = GaussShiftModel(phi_mean, phi_sig)
-    return slope(gaussshift)
+    return slope*ConstantOperator(phi_sig) + ConstantOperator(phi_mean)
 
 
 def AmplitudeModel(s_space,
