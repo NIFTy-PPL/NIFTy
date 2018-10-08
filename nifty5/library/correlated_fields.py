@@ -51,11 +51,8 @@ def CorrelatedField(s_space, amplitude_model, name='xi'):
     return ht(vol(A)*FieldAdapter(h_space, name))
 
 
-def MfCorrelatedField(s_space_spatial,
-                      s_space_energy,
-                      amplitude_model_spatial,
-                      amplitude_model_energy,
-                      name="xi"):
+def MfCorrelatedField(s_space_spatial, s_space_energy, amplitude_model_spatial,
+                      amplitude_model_energy, name="xi"):
     '''
     Method for construction of correlated multi-frequency fields
     '''

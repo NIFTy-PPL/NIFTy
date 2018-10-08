@@ -23,7 +23,6 @@ import numpy as np
 from ..compat import *
 from ..domains.power_space import PowerSpace
 from ..field import Field
-from ..operators.offset_operator import OffsetOperator
 from ..sugar import makeOp, sqrt
 
 
@@ -105,6 +104,7 @@ def SlopeModel(logk_space, sm, sv, im, iv):
     '''
 
     from ..operators.slope_operator import SlopeOperator
+    from ..operators.offset_operator import OffsetOperator
     phi_mean = np.array([sm, im + sm*logk_space.t_0[0]])
     phi_sig = np.array([sv, iv])
     slope = SlopeOperator(logk_space)
@@ -113,16 +113,8 @@ def SlopeModel(logk_space, sm, sv, im, iv):
     return slope(OffsetOperator(phi_mean)(makeOp(phi_sig)))
 
 
-def AmplitudeModel(s_space,
-                   Npixdof,
-                   ceps_a,
-                   ceps_k,
-                   sm,
-                   sv,
-                   im,
-                   iv,
-                   keys=['tau', 'phi'],
-                   zero_mode=True):
+def AmplitudeModel(s_space, Npixdof, ceps_a, ceps_k, sm, sv, im, iv,
+                   keys=['tau', 'phi'], zero_mode=True):
     '''
     Computes a smooth power spectrum.
     Output lives in PowerSpace.
