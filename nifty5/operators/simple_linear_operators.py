@@ -24,7 +24,6 @@ from ..domains.unstructured_domain import UnstructuredDomain
 from ..field import Field
 from ..multi_domain import MultiDomain
 from ..multi_field import MultiField
-from ..sugar import full
 from .endomorphic_operator import EndomorphicOperator
 from .linear_operator import LinearOperator
 

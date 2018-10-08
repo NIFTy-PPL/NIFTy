@@ -29,10 +29,11 @@ def get_random_LOS(n_los):
 if __name__ == '__main__':
     # FIXME description of the tutorial
     np.random.seed(42)
+    np.seterr(all='raise')
     position_space = ift.RGSpace([128, 128])
 
     # Setting up an amplitude model
-    A = ift.AmplitudeModel(position_space, 16, 1, 10, -4., 1, 0., 1.)
+    A = ift.AmplitudeModel(position_space, 64, 3, 0.4, -4., 1, 1., 1.)
 
     # Building the model for a correlated signal
     harmonic_space = position_space.get_default_codomain()
@@ -40,10 +41,11 @@ if __name__ == '__main__':
     power_space = A.target[0]
     power_distributor = ift.PowerDistributor(harmonic_space, power_space)
 
-    correlated_field = ht(
-        power_distributor(A)*ift.FieldAdapter(harmonic_space, "xi"))
+    vol = harmonic_space.scalar_dvol
+    vol = ift.ScalingOperator(vol ** (-0.5),harmonic_space)
+    correlated_field = ht(vol(power_distributor(A))*ift.FieldAdapter(harmonic_space, "xi"))
     # alternatively to the block above one can do:
-    # correlated_field = ift.CorrelatedField(position_space, A)
+    #correlated_field = ift.CorrelatedField(position_space, A)
 
     # apply some nonlinearity
     signal = ift.positive_tanh(correlated_field)
