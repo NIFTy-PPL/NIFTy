@@ -58,12 +58,13 @@ class Consistency_Tests(unittest.TestCase):
         op = a+b
         ift.extra.consistency_check(op, dtype, dtype)
 
-    @expand(product(_h_spaces + _p_spaces + _pow_spaces,
-                    [np.float64, np.complex128]))
-    def testVdotOperator(self, sp, dtype):
-        op = ift.VdotOperator(ift.Field.from_random("normal", sp,
-                                                    dtype=dtype))
-        ift.extra.consistency_check(op, dtype, dtype)
+    def testLinearInterpolator(self):
+        sp = ift.RGSpace((10,8), distances=(0.1, 3.5))
+        pos = np.random.rand(2, 23)
+        pos[0,:] *= 0.9
+        pos[1,:] *= 7*3.5
+        op = ift.LinearInterpolator(sp, pos)
+        ift.extra.consistency_check(op)
 
     @expand(product([(ift.RGSpace(10, harmonic=True), 4, 0),
                      (ift.RGSpace((24, 31), distances=(0.4, 2.34),
