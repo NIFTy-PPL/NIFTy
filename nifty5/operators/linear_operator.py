@@ -143,6 +143,9 @@ class LinearOperator(Operator):
         """
         return self._capability
 
+    def force(self, x):
+        return self.apply(x.extract(self.domain), self.TIMES)
+
     def apply(self, x, mode):
         """ Applies the Operator to a given `x`, in a specified `mode`.
 
@@ -256,5 +259,4 @@ class LinearOperator(Operator):
 
     def _check_input(self, x, mode):
         self._check_mode(mode)
-        if self._dom(mode) != x.domain:
-            raise ValueError("The operator's and field's domains don't match.")
+        self._check_domain_equality(self._dom(mode), x.domain)

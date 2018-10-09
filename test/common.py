@@ -32,5 +32,4 @@ def _custom_name_func(testcase_func, param_num, param):
 
 
 def expand(*args, **kwargs):
-    return parameterized.expand(*args, testcase_func_name=_custom_name_func,
-                                **kwargs)
+    return parameterized.expand(*args, func=_custom_name_func, **kwargs)

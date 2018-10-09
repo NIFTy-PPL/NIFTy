@@ -24,6 +24,17 @@ class Operator(NiftyMetaBase()):
             The domain on which the Operator's output Field lives."""
         return self._target
 
+    @staticmethod
+    def _check_domain_equality(dom_op, dom_field):
+        if dom_op != dom_field:
+            s = "The operator's and field's domains don't match."
+            from ..domain_tuple import DomainTuple
+            from ..multi_domain import MultiDomain
+            if not isinstance(dom_op, [DomainTuple, MultiDomain]):
+                s += " Your operator's domain is neither a `DomainTuple`" \
+                     " nor a `MultiDomain`."
+            raise ValueError(s)
+
     def scale(self, factor):
         if factor == 1:
             return self
@@ -71,13 +82,13 @@ class Operator(NiftyMetaBase()):
         raise NotImplementedError
 
     def force(self, x):
+        """Extract correct subset of domain of x and apply operator."""
         return self.apply(x.extract(self.domain))
 
     def _check_input(self, x):
         from ..linearization import Linearization
         d = x.target if isinstance(x, Linearization) else x.domain
-        if self._domain != d:
-            raise ValueError("The operator's and field's domains don't match.")
+        self._check_domain_equality(self._domain, d)
 
     def __call__(self, x):
         if isinstance(x, Operator):
