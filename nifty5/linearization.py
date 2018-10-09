@@ -105,7 +105,8 @@ class Linearization(object):
     def __pow__(self, power):
         if not np.isscalar(power):
             return NotImplemented
-        return self.new(self._val**power, makeOp(self._val**(power-1)).scale(power)(self._jac))
+        return self.new(self._val**power,
+                        makeOp(self._val**(power-1)).scale(power)(self._jac))
 
     def inverse(self):
         return self.new(1./self._val, makeOp(-1./(self._val**2))(self._jac))
