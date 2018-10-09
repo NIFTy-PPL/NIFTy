@@ -73,8 +73,7 @@ class Consistency_Tests(unittest.TestCase):
     def testSlopeOperator(self, args, dtype):
         tmp = ift.ExpTransform(ift.PowerSpace(args[0]), args[1], args[2])
         tgt = tmp.domain[0]
-        sig = np.array([0.3, 0.13])
-        op = ift.SlopeOperator(tgt, sig)
+        op = ift.SlopeOperator(tgt)
         ift.extra.consistency_check(op, dtype, dtype)
 
     @expand(product(_h_spaces + _p_spaces + _pow_spaces,

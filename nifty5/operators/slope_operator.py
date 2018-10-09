@@ -46,43 +46,27 @@ class SlopeOperator(LinearOperator):
     sigmas : np.array, shape=(2,)
         The slope variance and the y-intercept variance.
     """
-    def __init__(self, target, sigmas):
+
+    def __init__(self, target):
         if not isinstance(target, LogRGSpace):
             raise TypeError
+        if len(target.shape) != 1:
+            raise ValueError("Slope Operator only works for ndim == 1")
         self._domain = DomainTuple.make(UnstructuredDomain((2,)))
         self._target = DomainTuple.make(target)
         self._capability = self.TIMES | self.ADJOINT_TIMES
-
-        self._sigmas = sigmas
-        self.ndim = len(self.target[0].shape)
-        self.pos = np.zeros((self.ndim,) + self.target[0].shape)
-
-        if self.ndim == 1:
-            self.pos[0] = self.target[0].get_k_length_array().to_global_data()
-        else:
-            shape = self.target[0].shape
-            for i in range(self.ndim):
-                rng = np.arange(target.shape[i])
-                tmp = np.minimum(
-                    rng, target.shape[i]+1-rng) * target.bindistances[i]
-                self.pos[i] += tmp.reshape(
-                    (1,)*i + (shape[i],) + (1,)*(self.ndim-i-1))
+        pos = self.target[0].get_k_array() - self.target[0].t_0[0]
+        self._pos = pos[0, 1:]
 
     def apply(self, x, mode):
         self._check_input(x, mode)
-
-        # Times
+        inp = x.to_global_data()
         if mode == self.TIMES:
-            inp = x.to_global_data()
-            res = self._sigmas[-1] * inp[-1]
-            for i in range(self.ndim):
-                res += self._sigmas[i] * inp[i] * self.pos[i]
-            return Field.from_global_data(self.target, res)
-
-        # Adjoint times
-        res = np.zeros(self.domain[0].shape, dtype=x.dtype)
-        xglob = x.to_global_data()
-        res[-1] = np.sum(xglob) * self._sigmas[-1]
-        for i in range(self.ndim):
-            res[i] = np.sum(self.pos[i] * xglob) * self._sigmas[i]
-        return Field.from_global_data(self.domain, res)
+            res = np.empty(self.target.shape, dtype=x.dtype)
+            res[0] = 0
+            res[1:] = inp[1] + inp[0]*self._pos
+        else:
+            res = np.array(
+                [np.sum(self._pos*inp[1:]),
+                 np.sum(inp[1:])], dtype=x.dtype)
+        return Field.from_global_data(self._tgt(mode), res)

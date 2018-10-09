@@ -34,6 +34,7 @@ from .operators.inversion_enabler import InversionEnabler
 from .operators.laplace_operator import LaplaceOperator
 from .operators.linear_operator import LinearOperator
 from .operators.mask_operator import MaskOperator
+from .operators.offset_operator import OffsetOperator
 from .operators.qht_operator import QHTOperator
 from .operators.regridding_operator import RegriddingOperator
 from .operators.sampling_enabler import SamplingEnabler
@@ -73,7 +74,7 @@ from .minimization.kl_energy import KL_Energy
 from .sugar import *
 from .plot import Plot
 
-from .library.amplitude_model import AmplitudeModel, SmoothAmplitudeModel
+from .library.amplitude_model import AmplitudeModel
 from .library.inverse_gamma_model import InverseGammaModel
 from .library.los_response import LOSResponse
 

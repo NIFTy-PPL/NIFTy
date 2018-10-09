@@ -25,6 +25,7 @@ from ..operators.contraction_operator import ContractionOperator
 from ..operators.distributors import PowerDistributor
 from ..operators.harmonic_operators import HarmonicTransformOperator
 from ..operators.simple_linear_operators import FieldAdapter
+from ..operators.scaling_operator import ScalingOperator
 
 
 def CorrelatedField(s_space, amplitude_model, name='xi'):
@@ -45,7 +46,9 @@ def CorrelatedField(s_space, amplitude_model, name='xi'):
     p_space = amplitude_model.target[0]
     power_distributor = PowerDistributor(h_space, p_space)
     A = power_distributor(amplitude_model)
-    return ht(A*FieldAdapter(h_space, name))
+    vol = h_space.scalar_dvol
+    vol = ScalingOperator(vol**(-0.5), h_space)
+    return ht(vol(A)*FieldAdapter(h_space, name))
 
 
 def MfCorrelatedField(s_space_spatial, s_space_energy, amplitude_model_spatial,
