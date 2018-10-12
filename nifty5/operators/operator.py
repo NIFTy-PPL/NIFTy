@@ -30,7 +30,7 @@ class Operator(NiftyMetaBase()):
             s = "The operator's and field's domains don't match."
             from ..domain_tuple import DomainTuple
             from ..multi_domain import MultiDomain
-            if not isinstance(dom_op, [DomainTuple, MultiDomain]):
+            if not isinstance(dom_op, (DomainTuple, MultiDomain,)):
                 s += " Your operator's domain is neither a `DomainTuple`" \
                      " nor a `MultiDomain`."
             raise ValueError(s)
