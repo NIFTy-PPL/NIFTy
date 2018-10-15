@@ -28,7 +28,21 @@ from .structured_domain import StructuredDomain
 
 
 class LogRGSpace(StructuredDomain):
+    """NIFTy subclass for logarithmic Cartesian grids.
 
+    Parameters
+    ----------
+    shape : int or tuple of int
+        Number of grid points or numbers of gridpoints along each axis.
+    bindistances : float or tuple of float
+        Distance between two grid points along each axis. These are
+        measured on logarithmic scale and are constant therfore.
+    t_0 : float or tuple of float
+        FIXME
+    harmonic : bool, optional
+        Whether the space represents a grid in position or harmonic space.
+        (default: False).
+    """
     _needed_for_hash = ['_shape', '_bindistances', '_t_0', '_harmonic']
 
     def __init__(self, shape, bindistances, t_0, harmonic=False):
@@ -41,8 +55,8 @@ class LogRGSpace(StructuredDomain):
         self._bindistances = tuple(bindistances)
         self._t_0 = tuple(t_0)
 
-        self._dim = int(reduce(lambda x, y: x * y, self._shape))
-        self._dvol = float(reduce(lambda x, y: x * y, self._bindistances))
+        self._dim = int(reduce(lambda x, y: x*y, self._shape))
+        self._dvol = float(reduce(lambda x, y: x*y, self._bindistances))
 
     @property
     def harmonic(self):
@@ -69,13 +83,12 @@ class LogRGSpace(StructuredDomain):
         return np.array(self._t_0)
 
     def __repr__(self):
-        return ("LogRGSpace(shape={}, harmonic={})"
-                .format(self.shape, self.harmonic))
+        return ("LogRGSpace(shape={}, harmonic={})".format(
+            self.shape, self.harmonic))
 
     def get_default_codomain(self):
-        codomain_bindistances = 1. / (self.bindistances * self.shape)
-        return LogRGSpace(self.shape, codomain_bindistances,
-                          self._t_0, True)
+        codomain_bindistances = 1./(self.bindistances*self.shape)
+        return LogRGSpace(self.shape, codomain_bindistances, self._t_0, True)
 
     def get_k_length_array(self):
         if not self.harmonic:
@@ -97,4 +110,3 @@ class LogRGSpace(StructuredDomain):
                 ks[1:] += self.t_0[i]
             k_array[i] += ks.reshape((1,)*i + (self.shape[i],) + (1,)*(ndim-i-1))
         return k_array
-

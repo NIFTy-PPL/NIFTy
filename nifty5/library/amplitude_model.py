@@ -23,13 +23,11 @@ import numpy as np
 from ..compat import *
 from ..domains.power_space import PowerSpace
 from ..field import Field
-from ..multi_domain import MultiDomain
-from ..operators.operator import Operator
 from ..sugar import makeOp, sqrt
 
 
 def _ceps_kernel(dof_space, k, a, k0):
-    return a**2/(1+(k/k0)**2)**2
+    return a**2/(1 + (k/k0)**2)**2
 
 
 def create_cepstrum_amplitude_field(domain, cepstrum):
@@ -45,13 +43,12 @@ def create_cepstrum_amplitude_field(domain, cepstrum):
     """
 
     dim = len(domain.shape)
-    dist = domain.bindistances
     shape = domain.shape
 
     q_array = domain.get_k_array()
 
     # Fill cepstrum field (all non-zero modes)
-    no_zero_modes = (slice(1, None),) * dim
+    no_zero_modes = (slice(1, None),)*dim
     ks = q_array[(slice(None),) + no_zero_modes]
     cepstrum_field = np.zeros(shape)
     cepstrum_field[no_zero_modes] = cepstrum(ks)
@@ -69,7 +66,55 @@ def create_cepstrum_amplitude_field(domain, cepstrum):
     return Field.from_global_data(domain, cepstrum_field)
 
 
-class AmplitudeModel(Operator):
+def CepstrumOperator(logk_space, ceps_a, ceps_k, zero_mode=True):
+    '''
+    Parameters
+    ----------
+    ceps_a, ceps_k0 : Smoothness parameters in ceps_kernel
+                        eg. ceps_kernel(k) = (a/(1+(k/k0)**2))**2
+                        a = ceps_a,  k0 = ceps_k0
+    '''
+
+    from ..operators.qht_operator import QHTOperator
+    from ..operators.symmetrizing_operator import SymmetrizingOperator
+    qht = QHTOperator(target=logk_space)
+    dof_space = qht.domain[0]
+    sym = SymmetrizingOperator(logk_space)
+    kern = lambda k: _ceps_kernel(dof_space, k, ceps_a, ceps_k)
+    cepstrum = create_cepstrum_amplitude_field(dof_space, kern)
+    res = sym(qht(makeOp(sqrt(cepstrum))))
+    if not zero_mode:
+        shp = res.target.shape
+        mask = np.ones(shp)
+        mask[(0,)*len(shp)] = 0.
+        mask = makeOp(Field.from_global_data(res.target, mask))
+        res = mask(res)
+    return res
+
+
+def SlopeModel(logk_space, sm, sv, im, iv):
+    '''
+    Parameters
+    ----------
+
+    sm, sv : slope_mean = expected exponent of power law (e.g. -4),
+                slope_variance (default=1)
+
+    im, iv : y-intercept_mean, y-intercept_std  of power_slope
+    '''
+
+    from ..operators.slope_operator import SlopeOperator
+    from ..operators.offset_operator import OffsetOperator
+    phi_mean = np.array([sm, im + sm*logk_space.t_0[0]])
+    phi_sig = np.array([sv, iv])
+    slope = SlopeOperator(logk_space)
+    phi_mean = Field.from_global_data(slope.domain, phi_mean)
+    phi_sig = Field.from_global_data(slope.domain, phi_sig)
+    return slope(OffsetOperator(phi_mean)(makeOp(phi_sig)))
+
+
+def AmplitudeModel(s_space, Npixdof, ceps_a, ceps_k, sm, sv, im, iv,
+                   keys=['tau', 'phi'], zero_mode=True):
     '''
     Computes a smooth power spectrum.
     Output lives in PowerSpace.
@@ -88,58 +133,20 @@ class AmplitudeModel(Operator):
 
     im, iv : y-intercept_mean, y-intercept_variance  of power_slope
     '''
-    def __init__(self, s_space, Npixdof, ceps_a, ceps_k, sm, sv, im, iv,
-                 keys=['tau', 'phi']):
-        from ..operators.exp_transform import ExpTransform
-        from ..operators.qht_operator import QHTOperator
-        from ..operators.slope_operator import SlopeOperator
-        from ..operators.symmetrizing_operator import SymmetrizingOperator
 
-        h_space = s_space.get_default_codomain()
-        self._exp_transform = ExpTransform(PowerSpace(h_space), Npixdof)
-        logk_space = self._exp_transform.domain[0]
-        qht = QHTOperator(target=logk_space)
-        dof_space = qht.domain[0]
-        sym = SymmetrizingOperator(logk_space)
+    from ..operators.exp_transform import ExpTransform
+    from ..operators.simple_linear_operators import FieldAdapter
+    from ..operators.scaling_operator import ScalingOperator
 
-        phi_mean = np.array([sm, im+sm*logk_space.t_0[0]])
-        phi_sig = np.array([sv, iv])
+    h_space = s_space.get_default_codomain()
+    et = ExpTransform(PowerSpace(h_space), Npixdof)
+    logk_space = et.domain[0]
 
-        self._slope = SlopeOperator(logk_space)
-        self._slope = self._slope(makeOp(Field.from_global_data(
-                                    self._slope.domain,phi_sig)))
-        self._norm_phi_mean = Field.from_global_data(self._slope.domain,
-                                                     phi_mean/phi_sig)
+    smooth = CepstrumOperator(logk_space, ceps_a, ceps_k, zero_mode)
+    linear = SlopeModel(logk_space, sm, sv, im, iv)
 
-        self._domain = MultiDomain.make({keys[0]: dof_space,
-                                         keys[1]: self._slope.domain})
-        self._target = self._exp_transform.target
+    fa_smooth = FieldAdapter(smooth.domain, keys[0])
+    fa_linear = FieldAdapter(linear.domain, keys[1])
 
-        kern = lambda k: _ceps_kernel(dof_space, k, ceps_a, ceps_k)
-        cepstrum = create_cepstrum_amplitude_field(dof_space, kern)
-
-        self._smooth_op = sym(qht(makeOp(sqrt(cepstrum))))
-        self._keys = tuple(keys)
-
-        self._qht = qht
-        self._ceps = makeOp(sqrt(cepstrum))
-
-    def apply(self, x):
-        self._check_input(x)
-        smooth_spec = self._smooth_op(x[self._keys[0]])
-        phi = x[self._keys[1]] + self._norm_phi_mean
-        linear_spec = self._slope(phi)
-        loglog_spec = smooth_spec + linear_spec
-        return self._exp_transform((0.5*loglog_spec)).exp()
-
-    @property
-    def qht(self):
-        return self._qht
-
-    @property
-    def ceps(self):
-        return self._ceps
-
-    @property
-    def norm_phi_mean(self):
-        return self._norm_phi_mean
+    fac = ScalingOperator(0.5, smooth.target)
+    return et((fac(smooth(fa_smooth) + linear(fa_linear))).exp())

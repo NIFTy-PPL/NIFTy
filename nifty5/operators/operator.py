@@ -1,5 +1,6 @@
 from __future__ import absolute_import, division, print_function
 
+import numpy as np
 from ..compat import *
 from ..utilities import NiftyMetaBase
 
@@ -22,6 +23,17 @@ class Operator(NiftyMetaBase()):
 
             The domain on which the Operator's output Field lives."""
         return self._target
+
+    @staticmethod
+    def _check_domain_equality(dom_op, dom_field):
+        if dom_op != dom_field:
+            s = "The operator's and field's domains don't match."
+            from ..domain_tuple import DomainTuple
+            from ..multi_domain import MultiDomain
+            if not isinstance(dom_op, (DomainTuple, MultiDomain,)):
+                s += " Your operator's domain is neither a `DomainTuple`" \
+                     " nor a `MultiDomain`."
+            raise ValueError(s)
 
     def scale(self, factor):
         if factor == 1:
@@ -56,14 +68,27 @@ class Operator(NiftyMetaBase()):
             return NotImplemented
         return _OpSum(self, x)
 
+    def __sub__(self, x):
+        if not isinstance(x, Operator):
+            return NotImplemented
+        return _OpSum(self, -x)
+
+    def __pow__(self, power):
+        if not np.isscalar(power):
+            return NotImplemented
+        return _OpChain.make((_PowerOp(self.target, power), self))
+
     def apply(self, x):
         raise NotImplementedError
+
+    def force(self, x):
+        """Extract correct subset of domain of x and apply operator."""
+        return self.apply(x.extract(self.domain))
 
     def _check_input(self, x):
         from ..linearization import Linearization
         d = x.target if isinstance(x, Linearization) else x.domain
-        if self._domain != d:
-            raise ValueError("The operator's and field's domains don't match.")
+        self._check_domain_equality(self._domain, d)
 
     def __call__(self, x):
         if isinstance(x, Operator):
@@ -92,6 +117,17 @@ class _FunctionApplier(Operator):
     def apply(self, x):
         self._check_input(x)
         return getattr(x, self._funcname)()
+
+
+class _PowerOp(Operator):
+    def __init__(self, domain, power):
+        from ..sugar import makeDomain
+        self._domain = self._target = makeDomain(domain)
+        self._power = power
+
+    def apply(self, x):
+        self._check_input(x)
+        return x**self._power
 
 
 class _CombinedOperator(Operator):

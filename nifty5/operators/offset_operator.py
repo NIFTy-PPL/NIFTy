@@ -16,20 +16,17 @@
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik
 # and financially supported by the Studienstiftung des deutschen Volkes.
 
-from builtins import str
+from __future__ import absolute_import, division, print_function
 
-import numpy as np
-from parameterized import parameterized
-
-np.seterr(all='raise', under='ignore')
+from ..compat import *
+from .operator import Operator
 
 
-def _custom_name_func(testcase_func, param_num, param):
-    return "{}_{}".format(
-        testcase_func.__name__,
-        parameterized.to_safe_name("_".join(str(x) for x in param.args)),
-    )
+class OffsetOperator(Operator):
+    def __init__(self, field):
+        self._field = field
+        self._domain = self._target = field.domain
 
-
-def expand(*args, **kwargs):
-    return parameterized.expand(*args, func=_custom_name_func, **kwargs)
+    def apply(self, x):
+        self._check_input(x)
+        return x + self._field
