@@ -675,3 +675,9 @@ for f in ["sqrt", "exp", "log", "tanh"]:
             return Field(self._domain, getattr(dobj, f)(self.val))
         return func2
     setattr(Field, f, func(f))
+
+
+def func2(self):
+    np.clip(self.val, -300, 300, out=self.val)
+    return Field(self._domain, getattr(dobj, 'exp')(self.val))
+setattr(Field, 'clipped_exp', func2)
