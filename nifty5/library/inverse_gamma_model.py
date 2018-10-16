@@ -30,7 +30,7 @@ from ..sugar import makeOp
 
 
 class InverseGammaModel(Operator):
-    def __init__(self, domain, alpha, q):
+    def __init__(self, domain, alpha, q, delta):
         """Model which transforms a Gaussian into an inverse gamma distribution.
 
         The pdf of the inverse gamma distribution is defined as follows:
@@ -42,6 +42,9 @@ class InverseGammaModel(Operator):
         The mean of the pdf is at q / (alpha - 1) if alpha > 1.
         The mode is q / (alpha + 1).
 
+        This transformation is implemented as a linear interpolation which
+        maps a Gaussian onto a inverse gamma distribution.
+
         Parameters
         ----------
         domain : Domain, tuple of Domain or DomainTuple
@@ -51,30 +54,38 @@ class InverseGammaModel(Operator):
             The alpha-parameter of the inverse-gamma distribution.
         q : float
             The q-parameter of the inverse-gamma distribution.
+        delta : float
+            distance between sampling points for linear interpolation.
         """
         self._domain = self._target = DomainTuple.make(domain)
-        self._alpha = alpha
-        self._q = q
+        self._alpha, self._q, self._delta = alpha, q, delta
 
     def apply(self, x):
         self._check_input(x)
         lin = isinstance(x, Linearization)
         val = x.val.local_data if lin else x.local_data
-        # MR FIXME?!
-        points = np.clip(val, None, 8.2)
-        points = invgamma.ppf(norm.cdf(points), self._alpha, scale=self._q)
-        points = Field.from_local_data(self._domain, points)
+
+        val = np.clip(val, None, 8.2)
+        # Precompute
+        x0 = val.min()
+        dx = self._delta
+        xs = np.arange(x0, val.max()+2*dx, dx)
+        table = np.log(invgamma.ppf(norm.cdf(xs), self._alpha, scale=self._q))
+
+        # Operator
+        fi = np.array(np.floor((val - x0)/dx), dtype=np.int)
+        w = (val - xs[fi])/dx
+        res = np.exp((1 - w)*table[fi] + w*table[fi + 1])
+
+        points = Field.from_local_data(self._domain, res)
         if not lin:
             return points
-        inner = norm.pdf(val)
-        outer_inv = invgamma.pdf(invgamma.ppf(norm.cdf(val),
-                                              self._alpha,
-                                              scale=self._q),
-                                 self._alpha, scale=self._q)
-        # FIXME
-        outer_inv = np.clip(outer_inv, 1e-20, None)
-        outer = 1/outer_inv
-        jac = makeOp(Field.from_local_data(self._domain, inner*outer))
+
+        # Derivative of linear interpolation
+        inner_der = (table[fi + 1] - table[fi])/dx
+        der = inner_der*res
+
+        jac = makeOp(Field.from_local_data(self._domain, der))
         jac = jac(x.jac)
         return x.new(points, jac)
 
