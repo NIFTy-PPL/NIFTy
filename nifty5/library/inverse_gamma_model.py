@@ -30,7 +30,7 @@ from ..sugar import makeOp
 
 
 class InverseGammaModel(Operator):
-    def __init__(self, domain, alpha, q, delta):
+    def __init__(self, domain, alpha, q, delta=0.001):
         """Model which transforms a Gaussian into an inverse gamma distribution.
 
         The pdf of the inverse gamma distribution is defined as follows:
@@ -59,6 +59,11 @@ class InverseGammaModel(Operator):
         """
         self._domain = self._target = DomainTuple.make(domain)
         self._alpha, self._q, self._delta = alpha, q, delta
+        # Precompute
+        xs = np.arange(0., 8.2+2*delta, delta)
+        self._table = np.log(invgamma.ppf(norm.cdf(delta), self._alpha,
+                                          scale=self._q))
+        self._deriv = (self._table[1:]-self._table[:-1]) / delta
 
     def apply(self, x):
         self._check_input(x)
@@ -66,24 +71,19 @@ class InverseGammaModel(Operator):
         val = x.val.local_data if lin else x.local_data
 
         val = np.clip(val, None, 8.2)
-        # Precompute
-        x0 = val.min()
-        dx = self._delta
-        xs = np.arange(x0, val.max()+2*dx, dx)
-        table = np.log(invgamma.ppf(norm.cdf(xs), self._alpha, scale=self._q))
 
         # Operator
-        fi = np.array(np.floor((val - x0)/dx), dtype=np.int)
-        w = (val - xs[fi])/dx
-        res = np.exp((1 - w)*table[fi] + w*table[fi + 1])
+        fr = val/self._delta
+        fi = np.floor(fr).astype(int)
+        w = fr - fi
+        res = np.exp((1 - w)*self._table[fi] + w*self._table[fi + 1])
 
         points = Field.from_local_data(self._domain, res)
         if not lin:
             return points
 
         # Derivative of linear interpolation
-        inner_der = (table[fi + 1] - table[fi])/dx
-        der = inner_der*res
+        der = self._deriv[fi]*res
 
         jac = makeOp(Field.from_local_data(self._domain, der))
         jac = jac(x.jac)
