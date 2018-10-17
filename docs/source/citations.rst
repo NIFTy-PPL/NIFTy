@@ -14,7 +14,7 @@ NIFTy-related publications
     @ARTICLE{2013A&A...554A..26S,
       author = {{Selig}, M. and {Bell}, M.~R. and {Junklewitz}, H. and {Oppermann}, N. and {Reinecke}, M. and {Greiner}, M. and {Pachajoa}, C. and {En{\ss}lin}, T.~A.},
       title = "{NIFTY - Numerical Information Field Theory. A versatile PYTHON library for signal inference}",
-      journal = {\aap},
+      journal = {Astronomy \& Astrophysics},
       archivePrefix = "arXiv",
       eprint = {1301.4499},
       primaryClass = "astro-ph.IM",
