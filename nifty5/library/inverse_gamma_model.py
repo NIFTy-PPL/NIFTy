@@ -58,10 +58,11 @@ class InverseGammaModel(Operator):
             distance between sampling points for linear interpolation.
         """
         self._domain = self._target = DomainTuple.make(domain)
-        self._alpha, self._q, self._delta = alpha, q, delta
+        self._alpha, self._q, self._delta = float(alpha), float(q), float(delta)
+        self._xmin, self._xmax = -8.2, 8.2
         # Precompute
-        xs = np.arange(0., 8.2+2*delta, delta)
-        self._table = np.log(invgamma.ppf(norm.cdf(delta), self._alpha,
+        xs = np.arange(self._xmin, self._xmax+2*delta, delta)
+        self._table = np.log(invgamma.ppf(norm.cdf(xs), self._alpha,
                                           scale=self._q))
         self._deriv = (self._table[1:]-self._table[:-1]) / delta
 
@@ -70,12 +71,11 @@ class InverseGammaModel(Operator):
         lin = isinstance(x, Linearization)
         val = x.val.local_data if lin else x.local_data
 
-        val = np.clip(val, None, 8.2)
+        val = (np.clip(val, self._xmin, self._xmax) - self._xmin) / self._delta
 
         # Operator
-        fr = val/self._delta
-        fi = np.floor(fr).astype(int)
-        w = fr - fi
+        fi = np.floor(val).astype(int)
+        w = val - fi
         res = np.exp((1 - w)*self._table[fi] + w*self._table[fi + 1])
 
         points = Field.from_local_data(self._domain, res)
