@@ -58,7 +58,7 @@ class InverseGammaModel(Operator):
             distance between sampling points for linear interpolation.
         """
         self._domain = self._target = DomainTuple.make(domain)
-        self._alpha, self._q, self._delta = alpha, q, delta
+        self._alpha, self._q, self._delta = float(alpha), float(q), float(delta)
 
     def apply(self, x):
         self._check_input(x)
