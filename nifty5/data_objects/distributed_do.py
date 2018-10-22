@@ -305,7 +305,7 @@ for f in ["sqrt", "exp", "log", "tanh", "conjugate"]:
 
 
 def clipped_exp(a):
-    return data_object(x.shape, np.exp(np.clip(x.data, -300, 300), x.distaxis)
+    return data_object(x.shape, np.exp(np.clip(x.data, -300, 300), x.distaxis))
 
 
 def from_object(object, dtype, copy, set_locked):
