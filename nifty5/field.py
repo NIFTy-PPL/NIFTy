@@ -634,6 +634,9 @@ class Field(object):
     def positive_tanh(self):
         return 0.5*(1.+self.tanh())
 
+    def clipped_exp(self):
+        return Field(self._domain, dobj.clipped_exp(self._val))
+
     def _binary_op(self, other, op):
         # if other is a field, make sure that the domains match
         f = getattr(self._val, op)
@@ -675,9 +678,3 @@ for f in ["sqrt", "exp", "log", "tanh"]:
             return Field(self._domain, getattr(dobj, f)(self.val))
         return func2
     setattr(Field, f, func(f))
-
-
-def func2(self):
-    np.clip(self.val, -300, 300, out=self.val)
-    return Field(self._domain, getattr(dobj, 'exp')(self.val))
-setattr(Field, 'clipped_exp', func2)
