@@ -219,7 +219,7 @@ class _OpSum(Operator):
         lin1 = self._op1(Linearization.make_var(v1, wm))
         lin2 = self._op2(Linearization.make_var(v2, wm))
         op = lin1._jac._myadd(lin2._jac, False)
-        res = lin1.new(lin1._val+lin2._val, op(x.jac))
+        res = lin1.new(lin1._val.unite(lin2._val), op(x.jac))
         if lin1._metric is not None and lin2._metric is not None:
             res = res.add_metric(lin1._metric + lin2._metric)
         return res
