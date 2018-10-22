@@ -1,5 +1,6 @@
 from __future__ import absolute_import, division, print_function
 
+import numpy as np
 from ..compat import *
 from ..utilities import NiftyMetaBase
 
@@ -29,7 +30,7 @@ class Operator(NiftyMetaBase()):
             s = "The operator's and field's domains don't match."
             from ..domain_tuple import DomainTuple
             from ..multi_domain import MultiDomain
-            if not isinstance(dom_op, [DomainTuple, MultiDomain]):
+            if not isinstance(dom_op, (DomainTuple, MultiDomain,)):
                 s += " Your operator's domain is neither a `DomainTuple`" \
                      " nor a `MultiDomain`."
             raise ValueError(s)
@@ -66,6 +67,16 @@ class Operator(NiftyMetaBase()):
         if not isinstance(x, Operator):
             return NotImplemented
         return _OpSum(self, x)
+
+    def __sub__(self, x):
+        if not isinstance(x, Operator):
+            return NotImplemented
+        return _OpSum(self, -x)
+
+    def __pow__(self, power):
+        if not np.isscalar(power):
+            return NotImplemented
+        return _OpChain.make((_PowerOp(self.target, power), self))
 
     def apply(self, x):
         raise NotImplementedError
@@ -108,7 +119,17 @@ class _FunctionApplier(Operator):
         return getattr(x, self._funcname)()
 
 
-# FIXME Is this class used except in _OpChain? Can it be merged?
+class _PowerOp(Operator):
+    def __init__(self, domain, power):
+        from ..sugar import makeDomain
+        self._domain = self._target = makeDomain(domain)
+        self._power = power
+
+    def apply(self, x):
+        self._check_input(x)
+        return x**self._power
+
+
 class _CombinedOperator(Operator):
     def __init__(self, ops, _callingfrommake=False):
         if not _callingfrommake:
@@ -198,7 +219,7 @@ class _OpSum(Operator):
         lin1 = self._op1(Linearization.make_var(v1, wm))
         lin2 = self._op2(Linearization.make_var(v2, wm))
         op = lin1._jac._myadd(lin2._jac, False)
-        res = lin1.new(lin1._val+lin2._val, op(x.jac))
+        res = lin1.new(lin1._val.unite(lin2._val), op(x.jac))
         if lin1._metric is not None and lin2._metric is not None:
             res = res.add_metric(lin1._metric + lin2._metric)
         return res
