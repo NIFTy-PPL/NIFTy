@@ -33,6 +33,9 @@ class ConjugateGradient(Minimizer):
     ----------
     controller : :py:class:`nifty5.IterationController`
         Object that decides when to terminate the minimization.
+    nreset : int
+        every `nreset` CG steps the residual will be recomputed accurately
+        by applying the operator instead of updating the old residual
 
     References
     ----------
@@ -40,8 +43,9 @@ class ConjugateGradient(Minimizer):
     2006, Springer-Verlag New York
     """
 
-    def __init__(self, controller):
+    def __init__(self, controller, nreset=20):
         self._controller = controller
+        self._nreset = nreset
 
     def __call__(self, energy, preconditioner=None):
         """ Runs the conjugate gradient minimization.
@@ -74,6 +78,7 @@ class ConjugateGradient(Minimizer):
         if previous_gamma == 0:
             return energy, controller.CONVERGED
 
+        iter = 0
         while True:
             q = energy.apply_metric(d)
             ddotq = d.vdot(q).real
@@ -86,9 +91,14 @@ class ConjugateGradient(Minimizer):
                 logger.error("Error: ConjugateGradient: alpha<0.")
                 return energy, controller.ERROR
 
-            r = r - q*alpha
-
-            energy = energy.at_with_grad(energy.position - alpha*d, r)
+            iter += 1
+            if iter < self._nreset:
+                r = r - q*alpha
+                energy = energy.at_with_grad(energy.position - alpha*d, r)
+            else:
+                energy = energy.at(energy.position - alpha*d)
+                r = energy.gradient
+                iter = 0
 
             s = r if preconditioner is None else preconditioner(r)
 
