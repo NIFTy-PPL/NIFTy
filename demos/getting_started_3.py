@@ -70,13 +70,13 @@ if __name__ == '__main__':
     # set up minimization and inversion schemes
     ic_sampling = ift.GradientNormController(iteration_limit=100)
     ic_newton = ift.GradInfNormController(
-        name='Newton', tol=1e-7, iteration_limit=1000)
+        name='Newton', tol=1e-7, iteration_limit=35)
     minimizer = ift.NewtonCG(ic_newton)
 
     # build model Hamiltonian
     H = ift.Hamiltonian(likelihood, ic_sampling)
 
-    INITIAL_POSITION = ift.from_random('normal', H.domain)
+    INITIAL_POSITION = ift.MultiField.full(H.domain, 0.)
     position = INITIAL_POSITION
 
     plot = ift.Plot()
@@ -87,7 +87,7 @@ if __name__ == '__main__':
 
     # number of samples used to estimate the KL
     N_samples = 20
-    for i in range(2):
+    for i in range(5):
         KL = ift.KL_Energy(position, H, N_samples)
         KL, convergence = minimizer(KL)
         position = KL.position
