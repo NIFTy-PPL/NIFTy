@@ -95,7 +95,7 @@ if __name__ == '__main__':
         plot = ift.Plot()
         plot.add(signal(KL.position), title="reconstruction")
         plot.add([A.force(KL.position), A.force(MOCK_POSITION)], title="power")
-        plot.output(ny=1, ysize=6, xsize=16, name="loop.png")
+        plot.output(ny=1, ysize=6, xsize=16, name="loop-{:02}.png".format(i))
 
     KL = ift.KL_Energy(position, H, N_samples)
     plot = ift.Plot()
@@ -107,6 +107,7 @@ if __name__ == '__main__':
 
     powers = [A.force(s + KL.position) for s in KL.samples]
     plot.add(
-        [A.force(KL.position), A.force(MOCK_POSITION)] + powers,
-        title="Sampled Posterior Power Spectrum")
+        powers + [A.force(KL.position), A.force(MOCK_POSITION)],
+        title="Sampled Posterior Power Spectrum",
+        linewidth=[1.]*len(powers) + [3., 3.])
     plot.output(ny=1, nx=3, xsize=24, ysize=6, name="results.png")
