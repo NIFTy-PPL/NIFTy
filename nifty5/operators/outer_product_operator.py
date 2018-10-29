@@ -61,4 +61,3 @@ class OuterProduct(LinearOperator):
         return Field.from_global_data(
             self._domain, np.tensordot(
                 self._field.to_global_data(), x.to_global_data(),  axes))
-

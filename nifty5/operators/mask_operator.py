@@ -32,6 +32,15 @@ from .linear_operator import LinearOperator
 # collect the unstructured Fields.
 class MaskOperator(LinearOperator):
     def __init__(self, mask):
+        """Implementation of a mask response
+
+        This operator takes a field, applies a mask and returns the values of
+        the field in a UnstructuredDomain. It can be used as response operator.
+
+        Parameters
+        ----------
+        mask : Field
+        """
         if not isinstance(mask, Field):
             raise TypeError
 

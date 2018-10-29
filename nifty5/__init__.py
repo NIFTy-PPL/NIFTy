@@ -24,6 +24,7 @@ from .operators.diagonal_operator import DiagonalOperator
 from .operators.distributors import DOFDistributor, PowerDistributor
 from .operators.domain_tuple_field_inserter import DomainTupleFieldInserter
 from .operators.contraction_operator import ContractionOperator
+from .operators.linear_interpolation import LinearInterpolator
 from .operators.endomorphic_operator import EndomorphicOperator
 from .operators.exp_transform import ExpTransform
 from .operators.harmonic_operators import (
@@ -34,6 +35,7 @@ from .operators.inversion_enabler import InversionEnabler
 from .operators.laplace_operator import LaplaceOperator
 from .operators.linear_operator import LinearOperator
 from .operators.mask_operator import MaskOperator
+from .operators.offset_operator import OffsetOperator
 from .operators.qht_operator import QHTOperator
 from .operators.regridding_operator import RegriddingOperator
 from .operators.sampling_enabler import SamplingEnabler
@@ -79,7 +81,8 @@ from .library.los_response import LOSResponse
 
 from .library.wiener_filter_curvature import WienerFilterCurvature
 from .library.correlated_fields import CorrelatedField, MfCorrelatedField
-from .library.adjust_variances import make_adjust_variances
+from .library.adjust_variances import (make_adjust_variances,
+                                       do_adjust_variances)
 
 from . import extra
 

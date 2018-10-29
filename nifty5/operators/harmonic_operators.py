@@ -75,14 +75,13 @@ class FFTOperator(LinearOperator):
         target.check_codomain(adom)
 
     def apply(self, x, mode):
-        from pyfftw.interfaces.numpy_fft import fftn, ifftn
         self._check_input(x, mode)
         ncells = x.domain[self._space].size
         if x.domain[self._space].harmonic:  # harmonic -> position
-            func = fftn
+            func = fft.fftn
             fct = 1.
         else:
-            func = ifftn
+            func = fft.ifftn
             fct = ncells
         axes = x.domain.axes[self._space]
         tdom = self._tgt(mode)

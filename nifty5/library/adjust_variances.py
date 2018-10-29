@@ -19,11 +19,20 @@
 from __future__ import absolute_import, division, print_function
 
 from ..compat import *
+from ..minimization.energy_adapter import EnergyAdapter
+from ..multi_domain import MultiDomain
+from ..multi_field import MultiField
+from ..operators.distributors import PowerDistributor
 from ..operators.energy_operators import Hamiltonian, InverseGammaLikelihood
 from ..operators.scaling_operator import ScalingOperator
+from ..operators.simple_linear_operators import FieldAdapter
 
 
-def make_adjust_variances(a, xi, position, samples=[], scaling=None,
+def make_adjust_variances(a,
+                          xi,
+                          position,
+                          samples=[],
+                          scaling=None,
                           ic_samp=None):
     """ Creates a Hamiltonian for constant likelihood optimizations.
 
@@ -57,13 +66,48 @@ def make_adjust_variances(a, xi, position, samples=[], scaling=None,
     if n > 0:
         d_eval = 0.
         for i in range(n):
-            d_eval = d_eval + d(position + samples[i])
+            d_eval = d_eval + d.force(position + samples[i])
         d_eval = d_eval/n
     else:
-        d_eval = d(position)
+        d_eval = d.force(position)
 
     x = (a.conjugate()*a).real
     if scaling is not None:
         x = ScalingOperator(scaling, x.target)(x)
 
     return Hamiltonian(InverseGammaLikelihood(d_eval)(x), ic_samp=ic_samp)
+
+
+def do_adjust_variances(position,
+                        amplitude_model,
+                        minimizer,
+                        xi_key='xi',
+                        samples=[]):
+
+    h_space = position[xi_key].domain[0]
+    pd = PowerDistributor(h_space, amplitude_model.target[0])
+    a = pd(amplitude_model)
+    xi = FieldAdapter(h_space, xi_key)
+
+    ham = make_adjust_variances(a, xi, position, samples=samples)
+
+    # Minimize
+    e = EnergyAdapter(
+        position.extract(a.domain), ham, constants=[], want_metric=True)
+    e, _ = minimizer(e)
+
+    # Update position
+    s_h_old = (a*xi).force(position)
+
+    position = position.to_dict()
+    position['xi'] = s_h_old/a(e.position)
+    position = MultiField.from_dict(position)
+    position = MultiField.union([position, e.position])
+
+    s_h_new = (a*xi).force(position)
+
+    import numpy as np
+    # TODO Move this into the tests
+    np.testing.assert_allclose(s_h_new.to_global_data(),
+                               s_h_old.to_global_data())
+    return position

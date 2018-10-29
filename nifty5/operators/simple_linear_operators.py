@@ -24,7 +24,6 @@ from ..domains.unstructured_domain import UnstructuredDomain
 from ..field import Field
 from ..multi_domain import MultiDomain
 from ..multi_field import MultiField
-from ..sugar import full
 from .endomorphic_operator import EndomorphicOperator
 from .linear_operator import LinearOperator
 
@@ -64,14 +63,24 @@ class Realizer(EndomorphicOperator):
 
 
 class FieldAdapter(LinearOperator):
-    def __init__(self, dom, name):
-        self._target = dom[name]
+    """Operator which extracts a field out of a MultiField.
+
+    Parameters
+    ----------
+    target : Domain, tuple of Domain or DomainTuple:
+        The domain which shall be extracted out of the MultiField.
+
+    name : String
+        The key of the MultiField which shall be extracted.
+    """
+
+    def __init__(self, target, name):
+        self._target = DomainTuple.make(target)
         self._domain = MultiDomain.make({name: self._target})
         self._capability = self.TIMES | self.ADJOINT_TIMES
 
     def apply(self, x, mode):
         self._check_input(x, mode)
-
         if mode == self.TIMES:
             return x.values()[0]
         return MultiField(self._domain, (x,))

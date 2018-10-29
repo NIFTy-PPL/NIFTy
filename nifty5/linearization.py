@@ -1,3 +1,4 @@
+
 from __future__ import absolute_import, division, print_function
 
 import numpy as np
@@ -52,7 +53,7 @@ class Linearization(object):
 
     def __getitem__(self, name):
         from .operators.simple_linear_operators import FieldAdapter
-        return self.new(self._val[name], FieldAdapter(self.domain, name))
+        return self.new(self._val[name], FieldAdapter(self.domain[name], name))
 
     def __neg__(self):
         return self.new(-self._val, -self._jac,
@@ -100,6 +101,12 @@ class Linearization(object):
 
     def __rtruediv__(self, other):
         return self.inverse().__mul__(other)
+
+    def __pow__(self, power):
+        if not np.isscalar(power):
+            return NotImplemented
+        return self.new(self._val**power,
+                        makeOp(self._val**(power-1)).scale(power)(self._jac))
 
     def inverse(self):
         return self.new(1./self._val, makeOp(-1./(self._val**2))(self._jac))
