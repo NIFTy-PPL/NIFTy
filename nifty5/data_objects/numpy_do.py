@@ -33,7 +33,8 @@ __all__ = ["ntask", "rank", "master", "local_shape", "data_object", "full",
            "distaxis", "from_local_data", "from_global_data", "to_global_data",
            "redistribute", "default_distaxis", "is_numpy", "absmax", "norm",
            "lock", "locked", "uniform_full", "to_global_data_rw",
-           "ensure_not_distributed", "ensure_default_distributed"]
+           "ensure_not_distributed", "ensure_default_distributed",
+           "clipped_exp"]
 
 ntask = 1
 rank = 0
@@ -149,3 +150,7 @@ def absmax(arr):
 
 def norm(arr, ord=2):
     return np.linalg.norm(arr.reshape(-1), ord=ord)
+
+
+def clipped_exp(arr):
+    return np.exp(np.clip(arr, -300, 300))
