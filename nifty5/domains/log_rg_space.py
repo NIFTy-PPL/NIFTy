@@ -102,11 +102,13 @@ class LogRGSpace(StructuredDomain):
         dist = self.bindistances
         for i in range(ndim):
             ks = np.zeros(self.shape[i])
-            ks[1:] = np.minimum(self.shape[i] - 1 - np.arange(self.shape[i]-1), np.arange(self.shape[i]-1)) * dist[i]
+            ks[1:] = np.minimum(self.shape[i] - 1 - np.arange(self.shape[i]-1),
+                                np.arange(self.shape[i]-1)) * dist[i]
             if self.harmonic:
                 ks[0] = np.nan
             else:
                 ks[0] = -np.inf
                 ks[1:] += self.t_0[i]
-            k_array[i] += ks.reshape((1,)*i + (self.shape[i],) + (1,)*(ndim-i-1))
+            k_array[i] += ks.reshape((1,)*i + (self.shape[i],)
+                                     + (1,)*(ndim-i-1))
         return k_array
