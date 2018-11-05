@@ -34,7 +34,8 @@ __all__ = ["ntask", "rank", "master", "local_shape", "data_object", "full",
            "distaxis", "from_local_data", "from_global_data", "to_global_data",
            "redistribute", "default_distaxis", "is_numpy", "absmax", "norm",
            "lock", "locked", "uniform_full", "transpose", "to_global_data_rw",
-           "ensure_not_distributed", "ensure_default_distributed"]
+           "ensure_not_distributed", "ensure_default_distributed",
+           "clipped_exp"]
 
 _comm = MPI.COMM_WORLD
 ntask = _comm.Get_size()
@@ -301,6 +302,10 @@ for f in ["sqrt", "exp", "log", "tanh", "conjugate"]:
             return _math_helper(x, f, out)
         return func2
     setattr(_current_module, f, func(f))
+
+
+def clipped_exp(a):
+    return data_object(x.shape, np.exp(np.clip(x.data, -300, 300), x.distaxis))
 
 
 def from_object(object, dtype, copy, set_locked):

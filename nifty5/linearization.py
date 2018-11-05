@@ -183,6 +183,10 @@ class Linearization(object):
         tmp = self._val.exp()
         return self.new(tmp, makeOp(tmp)(self._jac))
 
+    def clipped_exp(self):
+        tmp = self._val.clipped_exp()
+        return self.new(tmp, makeOp(tmp)(self._jac))
+
     def log(self):
         tmp = self._val.log()
         return self.new(tmp, makeOp(1./self._val)(self._jac))
