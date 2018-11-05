@@ -42,8 +42,9 @@ if __name__ == '__main__':
     power_distributor = ift.PowerDistributor(harmonic_space, power_space)
 
     vol = harmonic_space.scalar_dvol
-    vol = ift.ScalingOperator(vol ** (-0.5),harmonic_space)
-    correlated_field = ht(vol(power_distributor(A))*ift.FieldAdapter(harmonic_space, "xi"))
+    vol = ift.ScalingOperator(vol**(-0.5), harmonic_space)
+    correlated_field = ht(vol(power_distributor(A)) *
+                          ift.FieldAdapter(harmonic_space, "xi"))
     # alternatively to the block above one can do:
     #correlated_field = ift.CorrelatedField(position_space, A)
 
