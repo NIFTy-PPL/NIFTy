@@ -219,12 +219,13 @@ class MultiField(object):
 
     @staticmethod
     def union(fields, domain=None):
-        """Returns the union of its input fields
+        """ Returns the union of its input fields.
+
         Parameters
         ----------
-        fields: iterable of MultiFields
+        fields : iterable of MultiFields
             The set of input fields. Their domains need not be identical.
-        domain: MultiDomain or None
+        domain : MultiDomain or None
             If supplied, this will be the domain of the resulting field.
             Providing this domain will accelerate the function.
 
