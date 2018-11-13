@@ -69,6 +69,9 @@ class MultiField(object):
     def __getitem__(self, key):
         return self._val[self._domain.idx[key]]
 
+    def __contains__(self, key):
+        return key in self._domain.keys()
+
     def keys(self):
         return self._domain.keys()
 
