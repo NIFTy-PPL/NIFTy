@@ -70,7 +70,7 @@ class MultiField(object):
         return self._val[self._domain.idx[key]]
 
     def __contains__(self, key):
-        return key in self._domain.keys()
+        return key in self._domain.idx
 
     def keys(self):
         return self._domain.keys()
