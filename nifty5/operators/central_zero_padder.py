@@ -58,15 +58,13 @@ class CentralZeroPadder(LinearOperator):
         # verify domains
         if not isinstance(dom, RGSpace):
             raise TypeError("RGSpace required")
-        if dom.harmonic:
-            raise TypeError("RGSpace must not be harmonic")
         if len(new_shape) != len(dom.shape):
             raise ValueError("Shape mismatch")
         if any([a < b for a, b in zip(new_shape, dom.shape)]):
             raise ValueError("New shape must be larger than old shape")
 
         # make target space
-        tgt = RGSpace(new_shape, dom.distances)
+        tgt = RGSpace(new_shape, dom.distances, harmonic=dom.harmonic)
         self._target = list(self._domain)
         self._target[self._space] = tgt
         self._target = DomainTuple.make(self._target)

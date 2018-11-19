@@ -36,15 +36,13 @@ class FieldZeroPadder(LinearOperator):
         dom = self._domain[self._space]
         if not isinstance(dom, RGSpace):
             raise TypeError("RGSpace required")
-        if dom.harmonic:
-            raise TypeError("RGSpace must not be harmonic")
-
         if len(new_shape) != len(dom.shape):
             raise ValueError("Shape mismatch")
         if any([a < b for a, b in zip(new_shape, dom.shape)]):
             raise ValueError("New shape must not be smaller than old shape")
         self._target = list(self._domain)
-        self._target[self._space] = RGSpace(new_shape, dom.distances)
+        self._target[self._space] = RGSpace(new_shape, dom.distances,
+                                            dom.harmonic)
         self._target = DomainTuple.make(self._target)
         self._capability = self.TIMES | self.ADJOINT_TIMES
 
