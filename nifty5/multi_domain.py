@@ -105,10 +105,7 @@ class MultiDomain(object):
 
     @property
     def size(self):
-        size = 0
-        for dom in self._domains:
-            size += dom.size
-        return size
+        return sum(dom.size for dom in self._domains)
 
     def __str__(self):
         res = "MultiDomain:\n"
