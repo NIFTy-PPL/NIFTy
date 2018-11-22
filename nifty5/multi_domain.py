@@ -103,6 +103,13 @@ class MultiDomain(object):
     def __ne__(self, x):
         return not self.__eq__(x)
 
+    @property
+    def size(self):
+        size = 0
+        for dom in self._domains:
+            size += dom.size
+        return size
+
     def __str__(self):
         res = "MultiDomain:\n"
         for key, dom in zip(self._keys, self._domains):
