@@ -42,8 +42,9 @@ if __name__ == '__main__':
     power_distributor = ift.PowerDistributor(harmonic_space, power_space)
 
     vol = harmonic_space.scalar_dvol
-    vol = ift.ScalingOperator(vol ** (-0.5),harmonic_space)
-    correlated_field = ht(vol(power_distributor(A))*ift.FieldAdapter(harmonic_space, "xi"))
+    vol = ift.ScalingOperator(vol**(-0.5), harmonic_space)
+    correlated_field = ht(vol(power_distributor(A)) *
+                          ift.FieldAdapter(harmonic_space, "xi"))
     # alternatively to the block above one can do:
     #correlated_field = ift.CorrelatedField(position_space, A)
 
@@ -70,13 +71,13 @@ if __name__ == '__main__':
     # set up minimization and inversion schemes
     ic_sampling = ift.GradientNormController(iteration_limit=100)
     ic_newton = ift.GradInfNormController(
-        name='Newton', tol=1e-7, iteration_limit=1000)
+        name='Newton', tol=1e-7, iteration_limit=35)
     minimizer = ift.NewtonCG(ic_newton)
 
     # build model Hamiltonian
     H = ift.Hamiltonian(likelihood, ic_sampling)
 
-    INITIAL_POSITION = ift.from_random('normal', H.domain)
+    INITIAL_POSITION = ift.MultiField.full(H.domain, 0.)
     position = INITIAL_POSITION
 
     plot = ift.Plot()
@@ -96,7 +97,7 @@ if __name__ == '__main__':
         plot = ift.Plot()
         plot.add(signal(KL.position), title="reconstruction")
         plot.add([A.force(KL.position), A.force(MOCK_POSITION)], title="power")
-        plot.output(ny=1, ysize=6, xsize=16, name="loop.png")
+        plot.output(ny=1, ysize=6, xsize=16, name="loop-{:02}.png".format(i))
 
     KL = ift.KL_Energy(position, H, N_samples)
     plot = ift.Plot()
@@ -108,6 +109,7 @@ if __name__ == '__main__':
 
     powers = [A.force(s + KL.position) for s in KL.samples]
     plot.add(
-        [A.force(KL.position), A.force(MOCK_POSITION)] + powers,
-        title="Sampled Posterior Power Spectrum")
+        powers + [A.force(KL.position), A.force(MOCK_POSITION)],
+        title="Sampled Posterior Power Spectrum",
+        linewidth=[1.]*len(powers) + [3., 3.])
     plot.output(ny=1, nx=3, xsize=24, ysize=6, name="results.png")

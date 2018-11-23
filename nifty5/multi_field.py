@@ -69,6 +69,9 @@ class MultiField(object):
     def __getitem__(self, key):
         return self._val[self._domain.idx[key]]
 
+    def __contains__(self, key):
+        return key in self._domain.idx
+
     def keys(self):
         return self._domain.keys()
 
@@ -219,12 +222,13 @@ class MultiField(object):
 
     @staticmethod
     def union(fields, domain=None):
-        """Returns the union of its input fields
+        """ Returns the union of its input fields.
+
         Parameters
         ----------
-        fields: iterable of MultiFields
+        fields : iterable of MultiFields
             The set of input fields. Their domains need not be identical.
-        domain: MultiDomain or None
+        domain : MultiDomain or None
             If supplied, this will be the domain of the resulting field.
             Providing this domain will accelerate the function.
 
@@ -292,7 +296,7 @@ for op in ["__iadd__", "__isub__", "__imul__", "__idiv__",
     setattr(MultiField, op, func(op))
 
 
-for f in ["sqrt", "exp", "log", "tanh"]:
+for f in ["sqrt", "exp", "log", "tanh", "clipped_exp"]:
     def func(f):
         def func2(self):
             fu = getattr(Field, f)

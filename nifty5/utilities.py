@@ -122,7 +122,8 @@ def parse_spaces(spaces, nspc):
 def infer_space(domain, space):
     if space is None:
         if len(domain) != 1:
-            raise ValueError("need a Field with exactly one domain")
+            raise ValueError("'space' index must be given for objects based on"
+                             " DomainTuples containing more than one domain")
         space = 0
     space = int(space)
     if space < 0 or space >= len(domain):
