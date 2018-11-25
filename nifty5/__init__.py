@@ -48,7 +48,7 @@ from .operators.block_diagonal_operator import BlockDiagonalOperator
 from .operators.outer_product_operator import OuterProduct
 from .operators.simple_linear_operators import (
     VdotOperator, ConjugationOperator, Realizer,
-    FieldAdapter, GeometryRemover, NullOperator)
+    ducktape, GeometryRemover, NullOperator)
 from .operators.energy_operators import (
     EnergyOperator, GaussianEnergy, PoissonianEnergy, InverseGammaLikelihood,
     BernoulliEnergy, Hamiltonian, SampledKullbachLeiblerDivergence)
