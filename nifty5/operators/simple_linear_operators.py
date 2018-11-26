@@ -177,3 +177,25 @@ class NullOperator(LinearOperator):
     def apply(self, x, mode):
         self._check_input(x, mode)
         return self._nullfield(self._tgt(mode))
+
+
+class _PartialExtractor(LinearOperator):
+    def __init__(self, domain, target):
+        if not isinstance(domain, MultiDomain):
+            raise TypeError("MultiDomain expected")
+        if not isinstance(target, MultiDomain):
+            raise TypeError("MultiDomain expected")
+        self._domain = domain
+        self._target = target
+        self._capability = self.TIMES | self.ADJOINT_TIMES
+
+    def apply(self, x, mode):
+        self._check_input(x, mode)
+        if mode == self.TIMES:
+            res = x.extract(self._target)
+            assert res.domain is self.target
+            return res
+        fld = {key: x[key] if key in x.domain.keys() else Field.full(self._domain[key], 0.)
+               for key in self._domain.keys()}
+        assert MultiField.from_dict(fld).domain is self.domain
+        return MultiField.from_dict(fld)

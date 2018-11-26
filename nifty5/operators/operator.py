@@ -106,6 +106,12 @@ class Operator(NiftyMetaBase()):
     def __repr__(self):
         return self.__class__.__name__
 
+    def simplify_for_constant_input(self, c_inp):
+        if c_inp is None or c_inp.domain != self.domain:
+            return None, self
+        op = _ConstantOperator(self.domain, self(c_inp))
+        return op(c_inp), op
+
 
 for f in ["sqrt", "exp", "log", "tanh", "positive_tanh", 'clipped_exp']:
     def func(f):
@@ -116,6 +122,63 @@ for f in ["sqrt", "exp", "log", "tanh", "positive_tanh", 'clipped_exp']:
     setattr(Operator, f, func(f))
 
 
+class _ConstCollector(object):
+    def __init__(self):
+        self._const = None
+        self._nc = set()
+
+    def mult(self, const, fulldom):
+        if const is None:
+            self._nc |= set(fulldom)
+        else:
+            self._nc |= set(fulldom) - set(const)
+            if self._const is None:
+                from ..multi_field import MultiField
+                self._const = MultiField.from_dict(
+                    {key: const[key] for key in const if key not in self._nc})
+            else:
+                from ..multi_field import MultiField
+                self._const = MultiField.from_dict(
+                    {key: self._const[key]*const[key]
+                     for key in const if key not in self._nc})
+
+    def add(self, const, fulldom):
+        if const is None:
+            self._nc |= set(fulldom.keys())
+        else:
+            from ..multi_field import MultiField
+            self._nc |= set(fulldom.keys()) - set(const.keys())
+            if self._const is None:
+                self._const = MultiField.from_dict(
+                    {key: const[key] for key in const.keys() if key not in self._nc})
+            else:
+                self._const = self._const.unite(const)
+                self._const = MultiField.from_dict(
+                    {key: self._const[key]
+                     for key in self._const if key not in self._nc})
+
+    @property
+    def constfield(self):
+        return self._const
+
+
+class _ConstantOperator(Operator):
+    def __init__(self, dom, output):
+        from ..sugar import makeDomain
+        self._domain = makeDomain(dom)
+        self._target = output.domain
+        self._output = output
+
+    def apply(self, x):
+        from ..linearization import Linearization
+        from .simple_linear_operators import NullOperator
+        self._check_input(x)
+        if not isinstance(x, Linearization):
+            return self._output
+        return x.new(self._output, NullOperator(self._domain, self._target))
+
+    def __repr__(self):
+        return 'ConstantOperator <- {}'.format(self.domain.keys())
 class _FunctionApplier(Operator):
     def __init__(self, domain, funcname):
         from ..sugar import makeDomain
@@ -176,6 +239,22 @@ class _OpChain(_CombinedOperator):
             x = op(x)
         return x
 
+    def simplify_for_constant_input(self, c_inp):
+        if c_inp is None:
+            return None, self
+        if c_inp.domain == self.domain:
+            op = _ConstantOperator(self.domain, self(c_inp))
+            return op(c_inp), op
+
+        from ..multi_domain import MultiDomain
+        if not isinstance(self._domain, MultiDomain):
+            return None, self
+
+        newop = None
+        for op in reversed(self._ops):
+            c_inp, t_op = op.simplify_for_constant_input(c_inp)
+            newop = t_op if newop is None else op(newop)
+        return c_inp, newop
 
 class _OpProd(Operator):
     def __init__(self, op1, op2):
@@ -204,6 +283,26 @@ class _OpProd(Operator):
             makeOp(lin2._val)(lin1._jac), False)
         return lin1.new(lin1._val*lin2._val, op(x.jac))
 
+    def simplify_for_constant_input(self, c_inp):
+        if c_inp is None:
+            return None, self
+        if c_inp.domain == self.domain:
+            op = _ConstantOperator(self.domain, self(c_inp))
+            return op(c_inp), op
+
+        f1, o1 = self._op1.simplify_for_constant_input(
+            c_inp.extract_part(self._op1.domain))
+        f2, o2 = self._op2.simplify_for_constant_input(
+            c_inp.extract_part(self._op2.domain))
+
+        from ..multi_domain import MultiDomain
+        if not isinstance(self._target, MultiDomain):
+            return None, _OpProd(o1, o2)
+
+        cc = _ConstCollector()
+        cc.mult(f1, o1.target)
+        cc.mult(f2, o2.target)
+        return cc.constfield, _OpProd(o1, o2)
 
 class _OpSum(Operator):
     def __init__(self, op1, op2):
@@ -231,3 +330,24 @@ class _OpSum(Operator):
         if lin1._metric is not None and lin2._metric is not None:
             res = res.add_metric(lin1._metric + lin2._metric)
         return res
+
+    def simplify_for_constant_input(self, c_inp):
+        if c_inp is None:
+            return None, self
+        if c_inp.domain == self.domain:
+            op = _ConstantOperator(self.domain, self(c_inp))
+            return op(c_inp), op
+
+        f1, o1 = self._op1.simplify_for_constant_input(
+            c_inp.extract_part(self._op1.domain))
+        f2, o2 = self._op2.simplify_for_constant_input(
+            c_inp.extract_part(self._op2.domain))
+
+        from ..multi_domain import MultiDomain
+        if not isinstance(self._target, MultiDomain):
+            return None, _OpSum(o1, o2)
+
+        cc = _ConstCollector()
+        cc.add(f1, o1.target)
+        cc.add(f2, o2.target)
+        return cc.constfield, _OpSum(o1, o2)

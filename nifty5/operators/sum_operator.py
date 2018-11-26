@@ -199,3 +199,36 @@ class SumOperator(LinearOperator):
     def __repr__(self):
         subs = "\n".join(sub.__repr__() for sub in self._ops)
         return "SumOperator:\n"+indent(subs)
+
+    def simplify_for_constant_input(self, c_inp):
+        if c_inp is None:
+            return None, self
+        if c_inp.domain == self.domain:
+            from .operator import _ConstantOperator
+            op = _ConstantOperator(self.domain, self(c_inp))
+            return op(c_inp), op
+
+        f=[]
+        o=[]
+        for op in self._ops:
+            tf, to = op.simplify_for_constant_input(
+                c_inp.extract_part(op.domain))
+            f.append(tf)
+            o.append(to)
+
+        from ..multi_domain import MultiDomain
+        if not isinstance(self._target, MultiDomain):
+            fullop = None
+            for to, n in zip(o, self._neg):
+                op = to if not n else -to
+                fullop = op if fullop is None else fullop + op
+            return None, fullop
+
+        from .operator import _ConstCollector
+        cc = _ConstCollector()
+        fullop = None
+        for tf, to, n in zip(f, o, self._neg):
+            cc.add(tf, to.target)
+            op = to if not n else -to
+            fullop = op if fullop is None else fullop + op
+        return cc.constfield, fullop
