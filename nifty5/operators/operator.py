@@ -285,6 +285,11 @@ class _OpChain(_CombinedOperator):
             newop = t_op if newop is None else op(newop)
         return c_inp, newop
 
+    def __repr__(self):
+        subs = "\n".join(sub.__repr__() for sub in self._ops)
+        return "_OpChain:\n" + indent(subs)
+
+
 class _OpProd(Operator):
     def __init__(self, op1, op2):
         from ..sugar import domain_union
@@ -333,6 +338,11 @@ class _OpProd(Operator):
         cc.mult(f2, o2.target)
         return cc.constfield, _OpProd(o1, o2)
 
+    def __repr__(self):
+        subs = "\n".join(sub.__repr__() for sub in (self._op1, self._op2))
+        return "_OpProd:\n"+indent(subs)
+
+
 class _OpSum(Operator):
     def __init__(self, op1, op2):
         from ..sugar import domain_union
@@ -380,3 +390,7 @@ class _OpSum(Operator):
         cc.add(f1, o1.target)
         cc.add(f2, o2.target)
         return cc.constfield, _OpSum(o1, o2)
+
+    def __repr__(self):
+        subs = "\n".join(sub.__repr__() for sub in (self._op1, self._op2))
+        return "_OpSum:\n"+indent(subs)
