@@ -100,7 +100,7 @@ def do_adjust_variances(position,
     s_h_old = (a*xi).force(position)
 
     position = position.to_dict()
-    position['xi'] = s_h_old/a(e.position)
+    position[xi_key] = s_h_old/a(e.position)
     position = MultiField.from_dict(position)
     position = MultiField.union([position, e.position])
 
