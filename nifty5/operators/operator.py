@@ -95,6 +95,14 @@ class Operator(NiftyMetaBase()):
             return _OpChain.make((self, x))
         return self.apply(x)
 
+    def ducktape(self, name):
+        from .simple_linear_operators import ducktape
+        return self(ducktape(self, None, name))
+
+    def ducktape_left(self, name):
+        from .simple_linear_operators import ducktape
+        return ducktape(None, self, name)(self)
+
     def __repr__(self):
         return self.__class__.__name__
 

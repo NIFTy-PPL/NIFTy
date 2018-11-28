@@ -10,6 +10,8 @@ class KL_Energy(Energy):
     def __init__(self, position, h, nsamp, constants=[],
                  constants_samples=None, _samples=None):
         super(KL_Energy, self).__init__(position)
+        if h.domain is not position.domain:
+            raise TypeError
         self._h = h
         self._constants = constants
         if constants_samples is None:
