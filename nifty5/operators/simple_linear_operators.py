@@ -62,7 +62,7 @@ class Realizer(EndomorphicOperator):
         return x.real
 
 
-class _FieldAdapter(LinearOperator):
+class FieldAdapter(LinearOperator):
     """Operator for conversion between Fields and MultiFields.
 
     Parameters
@@ -120,7 +120,7 @@ def ducktape(left, right, name):
             left = left.domain
         else:
             left = makeDomain(left)
-    return _FieldAdapter(left, name)
+    return FieldAdapter(left, name)
 
 
 class GeometryRemover(LinearOperator):
