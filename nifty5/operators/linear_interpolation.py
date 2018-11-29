@@ -58,7 +58,7 @@ class LinearInterpolator(LinearOperator):
         pos = positions/dist
         excess = pos-pos.astype(int64)
         pos = pos.astype(int64)
-        max_index = array(self.domain[0].shape).reshape((-1,)+ndim*(1,))
+        max_index = array(self.domain[0].shape).reshape((-1,)+(1,))
         data = zeros((len(mg[0]), N_points))
         ii = zeros((len(mg[0]), N_points), dtype=int64)
         jj = zeros((len(mg[0]), N_points), dtype=int64)
