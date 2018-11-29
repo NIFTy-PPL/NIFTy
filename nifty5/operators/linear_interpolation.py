@@ -55,6 +55,10 @@ class LinearInterpolator(LinearOperator):
         pos = positions/dist
         excess = pos-pos.astype(int64)
         pos = pos.astype(int64)
+        mask = (excess == 0.) & (pos != 0)
+        pos[mask] -= 1
+        excess[mask] += 1
+        del mask
         data = zeros((len(mg[0]), N_points))
         ii = zeros((len(mg[0]), N_points), dtype=int64)
         jj = zeros((len(mg[0]), N_points), dtype=int64)
