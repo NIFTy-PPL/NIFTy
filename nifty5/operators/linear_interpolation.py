@@ -34,11 +34,15 @@ from .linear_operator import LinearOperator
 class LinearInterpolator(LinearOperator):
     def __init__(self, domain, positions):
         """
+        Multilinear interpolation for points in an RGSpace
 
         :param domain:
             RGSpace
         :param positions:
-            positions at which to interpolate, shape (dim, ndata)
+            positions at which to interpolate
+            Field with UnstructuredDomain, shape (dim, ndata)
+            positions that are not within the RGSpace get wrapped
+            according to periodic boundary conditions
         """
         self._domain = makeDomain(domain)
         N_points = positions.shape[1]
@@ -62,13 +66,14 @@ class LinearInterpolator(LinearOperator):
         pos = positions/dist
         excess = pos-pos.astype(int64)
         pos = pos.astype(int64)
+        max_index = array(self.domain[0].shape).reshape((-1,)+(1,))
         data = zeros((len(mg[0]), N_points))
         ii = zeros((len(mg[0]), N_points), dtype=int64)
         jj = zeros((len(mg[0]), N_points), dtype=int64)
         for i in range(len(mg[0])):
             factor = prod(abs(1-mg[:, i].reshape((-1, 1))-excess), axis=0)
             data[i, :] = factor
-            fromi = pos+mg[:, i].reshape((-1, 1))
+            fromi = (pos+mg[:, i].reshape((-1, 1))) % max_index
             ii[i, :] = arange(N_points)
             jj[i, :] = ravel_multi_index(fromi, self.domain.shape)
         self._mat = coo_matrix((data.reshape(-1),
