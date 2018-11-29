@@ -55,13 +55,11 @@ class LinearInterpolator(LinearOperator):
         mg = array(list(map(ravel, mg)))
         dist = []
         for dom in self.domain:
-            if isinstance(dom, UnstructuredDomain):
-                dist.append([1]*len(dom.shape))
-            elif isinstance(dom, RGSpace):
+            if isinstance(dom, RGSpace):
                 dist.append(list(dom.distances))
             else:
                 raise TypeError
-        dist = array(dist).flatten().reshape((-1, 1))
+        dist = array(dist).reshape((-1, 1))
         pos = positions/dist
         excess = pos-pos.astype(int64)
         pos = pos.astype(int64)
