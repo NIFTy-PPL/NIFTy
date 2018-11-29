@@ -18,15 +18,16 @@
 
 from __future__ import absolute_import, division, print_function
 
-from ..compat import *
-
-from .. import Field, UnstructuredDomain
-from ..sugar import makeDomain
-from .linear_operator import LinearOperator
-from numpy import (array, prod, mgrid, int64, arange, ravel_multi_index, zeros,
-                   abs, ravel)
+from numpy import (abs, arange, array, int64, mgrid, prod, ravel,
+                   ravel_multi_index, zeros)
 from scipy.sparse import coo_matrix
 from scipy.sparse.linalg import aslinearoperator
+
+from ..compat import *
+from ..domains.unstructured_domain import UnstructuredDomain
+from ..field import Field
+from ..sugar import makeDomain
+from .linear_operator import LinearOperator
 
 
 class LinearInterpolator(LinearOperator):
@@ -35,11 +36,8 @@ class LinearInterpolator(LinearOperator):
 
         :param domain:
             RGSpace
-        :param target:
-            UnstructuredDomain, shape (ndata,)
         :param positions:
-            positions at which to interpolate
-            Field with UnstructuredDomain, shape (dim, ndata)
+            positions at which to interpolate, shape (dim, ndata)
         """
         self._domain = makeDomain(domain)
         N_points = positions.shape[1]
