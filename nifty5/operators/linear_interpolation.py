@@ -58,7 +58,7 @@ class LinearInterpolator(LinearOperator):
             if not isinstance(dom, RGSpace):
                 raise TypeError
             dist.append(list(dom.distances))
-        dist = np.array(dist).reshape((-1, 1))
+        dist = np.array(dist).reshape(-1, 1)
         pos = positions/dist
         excess = pos-pos.astype(np.int64)
         pos = pos.astype(np.int64)
@@ -67,10 +67,10 @@ class LinearInterpolator(LinearOperator):
         ii = np.zeros((len(mg[0]), N_points), dtype=np.int64)
         jj = np.zeros((len(mg[0]), N_points), dtype=np.int64)
         for i in range(len(mg[0])):
-            factor = np.prod(np.abs(1-mg[:, i].reshape((-1, 1))-excess),
+            factor = np.prod(np.abs(1-mg[:, i].reshape(-1, 1)-excess),
                              axis=0)
             data[i, :] = factor
-            fromi = (pos+mg[:, i].reshape((-1, 1))) % max_index
+            fromi = (pos+mg[:, i].reshape(-1, 1)) % max_index
             ii[i, :] = np.arange(N_points)
             jj[i, :] = np.ravel_multi_index(fromi, self.domain.shape)
         self._mat = coo_matrix((data.reshape(-1),
@@ -82,7 +82,7 @@ class LinearInterpolator(LinearOperator):
         self._check_input(x, mode)
         x_val = x.to_global_data()
         if mode == self.TIMES:
-            res = self._mat.matvec(x_val.reshape((-1,)))
+            res = self._mat.matvec(x_val.reshape(-1))
             return Field.from_global_data(self.target, res)
         res = self._mat.rmatvec(x_val).reshape(self.domain.shape)
         return Field.from_global_data(self.domain, res)
