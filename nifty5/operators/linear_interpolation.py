@@ -24,6 +24,7 @@ from scipy.sparse import coo_matrix
 from scipy.sparse.linalg import aslinearoperator
 
 from ..compat import *
+from ..domains.rg_space import RGSpace
 from ..domains.unstructured_domain import UnstructuredDomain
 from ..field import Field
 from ..sugar import makeDomain
@@ -49,7 +50,15 @@ class LinearInterpolator(LinearOperator):
         ndim = positions.shape[0]
         mg = mgrid[(slice(0, 2),)*ndim]
         mg = array(list(map(ravel, mg)))
-        dist = array(self.domain[0].distances).reshape((-1, 1))
+        dist = []
+        for dom in self.domain:
+            if isinstance(dom, UnstructuredDomain):
+                dist.append([1]*len(dom.shape))
+            elif isinstance(dom, RGSpace):
+                dist.append(list(dom.distances))
+            else:
+                raise TypeError
+        dist = array(dist).flatten().reshape((-1, 1))
         pos = positions/dist
         excess = pos-pos.astype(int64)
         pos = pos.astype(int64)
