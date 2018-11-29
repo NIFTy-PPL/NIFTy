@@ -18,8 +18,7 @@
 
 from __future__ import absolute_import, division, print_function
 
-from numpy import (abs, arange, array, int64, mgrid, prod, ravel,
-                   ravel_multi_index, zeros)
+import numpy as np
 from scipy.sparse import coo_matrix
 from scipy.sparse.linalg import aslinearoperator
 
@@ -37,10 +36,11 @@ class LinearInterpolator(LinearOperator):
         Multilinear interpolation for points in an RGSpace
 
         :param domain:
+            RGSpace
         :param positions:
             positions at which to interpolate
             Field with UnstructuredDomain, shape (dim, ndata)
-            positions that are not within the RGSpace get wrapped
+            positions that are not within the RGSpace are wrapped
             according to periodic boundary conditions
         """
         self._domain = makeDomain(domain)
@@ -51,31 +51,31 @@ class LinearInterpolator(LinearOperator):
 
     def _build_mat(self, positions, N_points):
         ndim = positions.shape[0]
-        mg = mgrid[(slice(0, 2),)*ndim]
-        mg = array(list(map(ravel, mg)))
+        mg = np.mgrid[(slice(0, 2),)*ndim]
+        mg = np.array(list(map(np.ravel, mg)))
         dist = []
         for dom in self.domain:
-            if isinstance(dom, RGSpace):
-                dist.append(list(dom.distances))
-            else:
+            if not isinstance(dom, RGSpace):
                 raise TypeError
-        dist = array(dist).reshape((-1, 1))
+            dist.append(list(dom.distances))
+        dist = np.array(dist).reshape((-1, 1))
         pos = positions/dist
-        excess = pos-pos.astype(int64)
-        pos = pos.astype(int64)
-        max_index = array(self.domain.shape).reshape(-1, 1)
-        data = zeros((len(mg[0]), N_points))
-        ii = zeros((len(mg[0]), N_points), dtype=int64)
-        jj = zeros((len(mg[0]), N_points), dtype=int64)
+        excess = pos-pos.astype(np.int64)
+        pos = pos.astype(np.int64)
+        max_index = np.array(self.domain.shape).reshape(-1, 1)
+        data = np.zeros((len(mg[0]), N_points))
+        ii = np.zeros((len(mg[0]), N_points), dtype=np.int64)
+        jj = np.zeros((len(mg[0]), N_points), dtype=np.int64)
         for i in range(len(mg[0])):
-            factor = prod(abs(1-mg[:, i].reshape((-1, 1))-excess), axis=0)
+            factor = np.prod(np.abs(1-mg[:, i].reshape((-1, 1))-excess),
+                             axis=0)
             data[i, :] = factor
             fromi = (pos+mg[:, i].reshape((-1, 1))) % max_index
-            ii[i, :] = arange(N_points)
-            jj[i, :] = ravel_multi_index(fromi, self.domain.shape)
+            ii[i, :] = np.arange(N_points)
+            jj[i, :] = np.ravel_multi_index(fromi, self.domain.shape)
         self._mat = coo_matrix((data.reshape(-1),
                                (ii.reshape(-1), jj.reshape(-1))),
-                               (N_points, prod(self.domain.shape)))
+                               (N_points, np.prod(self.domain.shape)))
         self._mat = aslinearoperator(self._mat)
 
     def apply(self, x, mode):
