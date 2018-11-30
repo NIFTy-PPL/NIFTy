@@ -131,6 +131,9 @@ class GeometryRemover(LinearOperator):
     ----------
     domain: Domain, tuple of Domain, or DomainTuple:
         the full input domain of the operator.
+    space: int, optional
+        The index of the subdomain on which the operator should act
+        If None, it acts on all spaces
 
     Notes
     -----
@@ -139,10 +142,14 @@ class GeometryRemover(LinearOperator):
     is carried out.
     """
 
-    def __init__(self, domain):
+    def __init__(self, domain, space=None):
         self._domain = DomainTuple.make(domain)
-        target_list = [UnstructuredDomain(dom.shape) for dom in self._domain]
-        self._target = DomainTuple.make(target_list)
+        if space is not None:
+            tgt = [dom for dom in self._domain]
+            tgt[space] = UnstructuredDomain(self._domain[space].shape)
+        else:
+            tgt = [UnstructuredDomain(dom.shape) for dom in self._domain]
+        self._target = DomainTuple.make(tgt)
         self._capability = self.TIMES | self.ADJOINT_TIMES
 
     def apply(self, x, mode):
