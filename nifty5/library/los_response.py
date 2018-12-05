@@ -101,7 +101,7 @@ def apply_erf(wgt, dist, lo, mid, hi, erf):
     wgt[mask] = 0.
     mask = (dist > lo) & (dist <= hi)
     sig = (1/lo - 1/mid)/3
-    wgt[mask] *= erf((-1/dist[mask]+1/mid)/sig*2)
+    wgt[mask] *= erf((-1/dist[mask]+1/mid)/sig/2)
     #wgt[mask] *= erf((dist[mask]-mid)/(hi-mid))
     #mask = (dist <= mid) & (dist > lo)
     #wgt[mask] *= erf((dist[mask]-mid)/(mid-lo))
@@ -125,7 +125,11 @@ class LOSResponse(LinearOperator):
         has dimensions. The second dimensions must be identical for both arrays
         and indicated the total number of lines of sight.
     sigmas_low, sigmas_up : numpy.ndarray(float) (optional)
-        For expert use. If unsure, leave blank.
+        sigmas_low is 1/(parallax+3*parallax_error), where the parallax
+        error is assumed to be Gaussian distributed.
+        sigmas_up is the distance at which the weight is truncated.
+        Should be at least 1/(parllax-3*parallax_error), but could be higher.
+        If unsure, leave blank.
 
     Notes
     -----
