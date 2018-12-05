@@ -35,7 +35,6 @@ from ..operators.linear_operator import LinearOperator
 def _gaussian_error_function(x):
     return 0.5*erfc(x*np.sqrt(2.))
 
-
 def _comp_traverse(start, end, shp, dist, lo, mid, hi, erf):
     ndim = start.shape[0]
     nlos = start.shape[1]
@@ -100,10 +99,12 @@ def apply_erf(wgt, dist, lo, mid, hi, erf):
     wgt = wgt.copy()
     mask = dist > hi
     wgt[mask] = 0.
-    mask = (dist > mid) & (dist <= hi)
-    wgt[mask] *= erf((dist[mask]-mid)/(hi-mid))
-    mask = (dist <= mid) & (dist > lo)
-    wgt[mask] *= erf((dist[mask]-mid)/(mid-lo))
+    mask = (dist > lo) & (dist <= hi)
+    sig = (1/lo - 1/mid)/3
+    wgt[mask] *= erf((-1/dist[mask]+1/mid)/sig*2)
+    #wgt[mask] *= erf((dist[mask]-mid)/(hi-mid))
+    #mask = (dist <= mid) & (dist > lo)
+    #wgt[mask] *= erf((dist[mask]-mid)/(mid-lo))
     return wgt
 
 
