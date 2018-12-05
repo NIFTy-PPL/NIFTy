@@ -33,7 +33,7 @@ from ..operators.linear_operator import LinearOperator
 
 
 def _gaussian_error_function(x):
-    return 0.5*erfc(x*np.sqrt(2.))
+    return 0.5*erfc(x/np.sqrt(2.))
 
 def _comp_traverse(start, end, shp, dist, lo, mid, hi, erf):
     ndim = start.shape[0]
@@ -101,10 +101,7 @@ def apply_erf(wgt, dist, lo, mid, hi, erf):
     wgt[mask] = 0.
     mask = (dist > lo) & (dist <= hi)
     sig = (1/lo - 1/mid)/3
-    wgt[mask] *= erf((-1/dist[mask]+1/mid)/sig/2)
-    #wgt[mask] *= erf((dist[mask]-mid)/(hi-mid))
-    #mask = (dist <= mid) & (dist > lo)
-    #wgt[mask] *= erf((dist[mask]-mid)/(mid-lo))
+    wgt[mask] *= erf((-1/dist[mask]+1/mid)/sig)
     return wgt
 
 
@@ -125,10 +122,11 @@ class LOSResponse(LinearOperator):
         has dimensions. The second dimensions must be identical for both arrays
         and indicated the total number of lines of sight.
     sigmas_low, sigmas_up : numpy.ndarray(float) (optional)
-        sigmas_low is 1/(parallax+3*parallax_error), where the parallax
+        sigmas_low is 1/parallax-1/(parallax+3*parallax_error), where the parallax
         error is assumed to be Gaussian distributed.
         sigmas_up is the distance at which the weight is truncated.
-        Should be at least 1/(parllax-3*parallax_error), but could be higher.
+        Should be at least 1/(parallax-3*parallax_error)-1/parallax, 
+        but could be higher.
         If unsure, leave blank.
 
     Notes
