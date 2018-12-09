@@ -73,3 +73,7 @@ class KL_Energy(Energy):
     @property
     def samples(self):
         return self._samples
+
+    def __repr__(self):
+        return 'KL ({} samples):\n'.format(len(
+            self._samples)) + utilities.indent(self._ham.__repr__())
