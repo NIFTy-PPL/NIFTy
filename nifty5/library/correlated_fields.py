@@ -59,7 +59,7 @@ def MfCorrelatedField(s_space_spatial, s_space_energy, amplitude_model_spatial,
     h_space_spatial = s_space_spatial.get_default_codomain()
     h_space_energy = s_space_energy.get_default_codomain()
     h_space = DomainTuple.make((h_space_spatial, h_space_energy))
-    ht1 = HarmonicTransformOperator(h_space, space=0)
+    ht1 = HarmonicTransformOperator(h_space, target=s_space_spatial, space=0)
     ht2 = HarmonicTransformOperator(ht1.target, space=1)
     ht = ht2(ht1)
 
