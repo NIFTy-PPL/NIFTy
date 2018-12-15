@@ -49,7 +49,7 @@ if __name__ == '__main__':
     #correlated_field = ift.CorrelatedField(position_space, A)
 
     # apply some nonlinearity
-    signal = ift.positive_tanh(correlated_field)
+    signal = ift.sigmoid(correlated_field)
 
     # Building the Line of Sight response
     LOS_starts, LOS_ends = get_random_LOS(100)
