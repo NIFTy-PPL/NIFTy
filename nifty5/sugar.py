@@ -257,7 +257,9 @@ def domain_union(domains):
 
 _current_module = sys.modules[__name__]
 
-for f in ["sqrt", "exp", "log", "tanh", "positive_tanh", "conjugate"]:
+for f in ["sqrt", "exp", "log", "tanh", "sigmoid",
+          "conjugate", 'sin', 'cos', 'tan', 'sinh', 'cosh',
+          'absolute', 'one_over', 'hardplus', 'sinc']:
     def func(f):
         def func2(x):
             from .linearization import Linearization
