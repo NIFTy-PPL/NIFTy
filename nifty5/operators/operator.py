@@ -107,7 +107,9 @@ class Operator(NiftyMetaBase()):
         return self.__class__.__name__
 
 
-for f in ["sqrt", "exp", "log", "tanh", "positive_tanh", 'clipped_exp']:
+for f in ["sqrt", "exp", "log", "tanh", "sigmoid",
+          'clipped_exp', 'hardplus', 'sin', 'cos', 'tan',
+          'sinh', 'cosh', 'absolute', 'sinc', 'one_over']:
     def func(f):
         def func2(self):
             fa = _FunctionApplier(self.target, f)

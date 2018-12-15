@@ -22,7 +22,8 @@ import numpy as np
 from numpy import empty, empty_like, exp, full, log
 from numpy import ndarray as data_object
 from numpy import ones, sqrt, tanh, vdot, zeros
-
+from numpy import sin, cos, tan, sinh, cosh, sinc
+from numpy import absolute, sign
 from .random import Random
 
 __all__ = ["ntask", "rank", "master", "local_shape", "data_object", "full",
@@ -34,7 +35,8 @@ __all__ = ["ntask", "rank", "master", "local_shape", "data_object", "full",
            "redistribute", "default_distaxis", "is_numpy", "absmax", "norm",
            "lock", "locked", "uniform_full", "to_global_data_rw",
            "ensure_not_distributed", "ensure_default_distributed",
-           "clipped_exp"]
+           "clipped_exp", "hardplus", "sin", "cos", "tan", "sinh",
+           "cosh","absolute", "sign", "sinc"]
 
 ntask = 1
 rank = 0
@@ -154,3 +156,7 @@ def norm(arr, ord=2):
 
 def clipped_exp(arr):
     return np.exp(np.clip(arr, -300, 300))
+
+
+def hardplus(arr):
+    return np.clip(arr, 1e-20, None)
