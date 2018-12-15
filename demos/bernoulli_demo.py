@@ -50,7 +50,7 @@ if __name__ == '__main__':
     A = ift.create_power_operator(harmonic_space, sqrtpspec)
 
     # Set up a sky model
-    sky = ift.positive_tanh(HT(A))
+    sky = ift.sigmoid(HT(A))
 
     GR = ift.GeometryRemover(position_space)
     # Set up instrumental response

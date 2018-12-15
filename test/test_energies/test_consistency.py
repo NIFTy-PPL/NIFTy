@@ -112,7 +112,7 @@ class Energy_Tests(unittest.TestCase):
     def testBernoulli(self, space, seed):
         model = self.make_model(
             space_key='s1', space=space, seed=seed)['s1']
-        model = model.positive_tanh()
+        model = model.sigmoid()
         d = np.random.binomial(1, 0.1, size=space.shape)
         d = ift.Field.from_global_data(space, d)
         energy = ift.BernoulliEnergy(d)

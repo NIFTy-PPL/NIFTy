@@ -37,7 +37,9 @@ from .operators.distributors import PowerDistributor
 __all__ = ['PS_field', 'power_analyze', 'create_power_operator',
            'create_harmonic_smoothing_operator', 'from_random',
            'full', 'from_global_data', 'from_local_data',
-           'makeDomain', 'sqrt', 'exp', 'log', 'tanh', 'positive_tanh',
+           'makeDomain', 'sqrt', 'exp', 'log', 'tanh', 'sigmoid',
+           'sin', 'cos', 'tan', 'sinh', 'cosh',
+           'absolute', 'one_over', 'hardplus', 'sinc',
            'conjugate', 'get_signal_variance', 'makeOp', 'domain_union',
            'get_default_codomain']
 
