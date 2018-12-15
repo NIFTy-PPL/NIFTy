@@ -217,44 +217,44 @@ def _plot(f, ax, **kwargs):
     ax.set_ylabel(kwargs.pop("ylabel", ""))
     cmap = kwargs.pop("colormap", plt.rcParams['image.cmap'])
     if isinstance(dom, DomainTuple):
-        if isinstance(dom[1], RGSpace):
-            if isinstance(dom[0],RGSpace):
-                if len(dom[0].shape) == 2:
-                    nx, ny = dom[0].shape
-                    dx, dy = dom[0].distances
+        if len(dom) == 2:
+            if isinstance(dom[1], RGSpace):
+                if isinstance(dom[0],RGSpace):
+                    if len(dom[0].shape) == 2:
+                        nx, ny = dom[0].shape
+                        dx, dy = dom[0].distances
+                        rgb = _rgb_data(f[0].to_global_data())
+                        im = ax.imshow(
+                            rgb, extent=[0, nx * dx, 0, ny * dy], origin="lower", **norm)
+                        # from mpl_toolkits.axes_grid1 import make_axes_locatable
+                        # divider = make_axes_locatable(ax)
+                        # cax = divider.append_axes("right", size="5%", pad=0.05)
+                        # plt.colorbar(im,cax=cax)
+                        _limit_xy(**kwargs)
+                        return
+                if isinstance(dom[0],(HPSpace, GLSpace)):
+                    import pyHealpix
+                    xsize = 800
+                    res, mask, theta, phi = _mollweide_helper(xsize)
+                    res = np.full(shape=res.shape+(3,), fill_value=1., dtype=np.float64)
                     rgb = _rgb_data(f[0].to_global_data())
-                    im = ax.imshow(
-                        rgb, extent=[0, nx * dx, 0, ny * dy], origin="lower", **norm)
-                    # from mpl_toolkits.axes_grid1 import make_axes_locatable
-                    # divider = make_axes_locatable(ax)
-                    # cax = divider.append_axes("right", size="5%", pad=0.05)
-                    # plt.colorbar(im,cax=cax)
-                    _limit_xy(**kwargs)
+                    if isinstance(dom[0], HPSpace):
+                        ptg = np.empty((phi.size, 2), dtype=np.float64)
+                        ptg[:, 0] = theta
+                        ptg[:, 1] = phi
+                        base = pyHealpix.Healpix_Base(int(np.sqrt(dom[0].size // 12)), "RING")
+                        res[mask] = rgb[base.ang2pix(ptg)]
+                    else:
+                        ra = np.linspace(0, 2 * np.pi, dom[0].nlon + 1)
+                        dec = pyHealpix.GL_thetas(dom[0].nlat)
+                        ilat = _find_closest(dec, theta)
+                        ilon = _find_closest(ra, phi)
+                        ilon = np.where(ilon == dom[0].nlon, 0, ilon)
+                        res[mask] = rgb[ilat * dom[0].nlon + ilon]
+                    plt.axis('off')
+                    plt.imshow(res, origin="lower")
                     return
-            if isinstance(dom[0],(HPSpace, GLSpace)):
-                import pyHealpix
-                xsize = 800
-                res, mask, theta, phi = _mollweide_helper(xsize)
-                res = np.full(shape=res.shape+(3,), fill_value=1., dtype=np.float64)
-                rgb = _rgb_data(f[0].to_global_data())
-                if isinstance(dom[0], HPSpace):
-                    ptg = np.empty((phi.size, 2), dtype=np.float64)
-                    ptg[:, 0] = theta
-                    ptg[:, 1] = phi
-                    base = pyHealpix.Healpix_Base(int(np.sqrt(dom[0].size // 12)), "RING")
-                    res[mask] = rgb[base.ang2pix(ptg)]
-                else:
-                    ra = np.linspace(0, 2 * np.pi, dom[0].nlon + 1)
-                    dec = pyHealpix.GL_thetas(dom[0].nlat)
-                    ilat = _find_closest(dec, theta)
-                    ilon = _find_closest(ra, phi)
-                    ilon = np.where(ilon == dom[0].nlon, 0, ilon)
-                    res[mask] = rgb[ilat * dom[0].nlon + ilon]
-                plt.axis('off')
-                plt.imshow(res, origin="lower")
-                return
-    else:
-        dom = dom[0]
+    dom = dom[0]
     if isinstance(dom, RGSpace):
         if len(dom.shape) == 1:
             npoints = dom.shape[0]
