@@ -61,16 +61,17 @@ def _mollweide_helper(xsize):
 
 
 def _rgb_data(spectral_cube):
-    def _eye_sensitivity(energy_bins):
-        a = np.arange(0, 1, 1 / energy_bins)
-        rgb = np.empty((3, energy_bins))
-        rgb[0] = np.exp(-(a - 5 / 12) ** 2 / (2 * (2.5 / 12) ** 2))
-        rgb[1] = np.exp(-(a - 6.5 / 12) ** 2 / (2 * (2 / 12) ** 2))
-        rgb[2] = np.exp(-(a - 10 / 12) ** 2 / (2 * (1 / 12) ** 2))
-        rgb[0] /= rgb[0].max()
-        rgb[1] /= rgb[1].max()
-        rgb[2] /= rgb[2].max()
-        return rgb
+    def _eye_sensitivity(energy_bins, spacing=None):
+        from scipy.ndimage import zoom
+        rgb_high = np.load('frequency_sensitivity.npy')
+
+        # if spacing != None:
+        #     spacing = np.arange(0, 1, 1 / energy_bins)
+
+        rgb = zoom(rgb_high.T[1:],(1,energy_bins/len(rgb_high.T[0])))
+
+
+        return np.clip(rgb,1e-15, rgb.max())
     rgb = _eye_sensitivity(spectral_cube.shape[-1])
     rgb_data = np.tensordot(spectral_cube, rgb, axes=[-1, -1])
     rgb_data = np.log(rgb_data)
