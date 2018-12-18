@@ -59,9 +59,11 @@ class Operator(NiftyMetaBase()):
         return _OpChain.make((self, x))
 
     def __mul__(self, x):
-        if not isinstance(x, Operator):
-            return NotImplemented
-        return _OpProd(self, x)
+        if isinstance(x, Operator):
+            return _OpProd(self, x)
+        if np.isscalar(x):
+            return self.scale(x)
+        return NotImplemented
 
     def __add__(self, x):
         if not isinstance(x, Operator):
