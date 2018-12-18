@@ -158,5 +158,5 @@ def clipped_exp(arr):
     return np.exp(np.clip(arr, -300, 300))
 
 
-def hardplus(arr):
-    return np.clip(arr, 1e-20, None)
+def hardplus(arr, eps):
+    return np.clip(arr, eps, None)
