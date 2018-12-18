@@ -189,7 +189,7 @@ class Linearization(object):
 
     def hardplus(self):
         tmp = self._val.hardplus()
-        tmp2 = makeOp(1.-(tmp==1e-20))
+        tmp2 = makeOp(1.-(tmp == 1e-20))
         return self.new(tmp, tmp2(self._jac))
 
     def sin(self):

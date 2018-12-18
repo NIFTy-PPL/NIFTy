@@ -36,7 +36,7 @@ __all__ = ["ntask", "rank", "master", "local_shape", "data_object", "full",
            "lock", "locked", "uniform_full", "to_global_data_rw",
            "ensure_not_distributed", "ensure_default_distributed",
            "clipped_exp", "hardplus", "sin", "cos", "tan", "sinh",
-           "cosh","absolute", "sign", "sinc"]
+           "cosh", "absolute", "sign", "sinc"]
 
 ntask = 1
 rank = 0

@@ -178,7 +178,6 @@ class _OpChain(_CombinedOperator):
             x = op(x)
         return x
 
-
     def __repr__(self):
         subs = "\n".join(sub.__repr__() for sub in self._ops)
         return "_OpChain:\n" + indent(subs)
@@ -210,7 +209,6 @@ class _OpProd(Operator):
         op = (makeOp(lin1._val)(lin2._jac))._myadd(
             makeOp(lin2._val)(lin1._jac), False)
         return lin1.new(lin1._val*lin2._val, op(x.jac))
-
 
     def __repr__(self):
         subs = "\n".join(sub.__repr__() for sub in (self._op1, self._op2))
