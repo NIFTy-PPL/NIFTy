@@ -63,7 +63,10 @@ def _mollweide_helper(xsize):
 def _rgb_data(spectral_cube):
     def _eye_sensitivity(energy_bins, spacing=None):
         from scipy.ndimage import zoom
-        rgb_high = np.load('frequency_sensitivity.npy')
+        import pkg_resources
+        path = 'frequency_sensitivity.npy'
+        filepath = pkg_resources.resource_filename(__name__, path)
+        rgb_high = np.load(filepath)
 
         # if spacing != None:
         #     spacing = np.arange(0, 1, 1 / energy_bins)
