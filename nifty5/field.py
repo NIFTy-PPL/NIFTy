@@ -637,8 +637,8 @@ class Field(object):
     def clipped_exp(self):
         return Field(self._domain, dobj.clipped_exp(self._val))
 
-    def hardplus(self):
-        return Field(self._domain, dobj.hardplus(self._val))
+    def clip(self, min=None, max=None):
+        return Field(self._domain, dobj.clip(self._val, min, max))
 
     def one_over(self):
         return 1/self

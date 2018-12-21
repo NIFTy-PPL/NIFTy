@@ -187,9 +187,9 @@ class Linearization(object):
         tmp = self._val.clipped_exp()
         return self.new(tmp, makeOp(tmp)(self._jac))
 
-    def hardplus(self):
-        tmp = self._val.hardplus()
-        tmp2 = makeOp(1.-(tmp==1e-20))
+    def clip(self, min=None, max=None):
+        tmp = self._val.clip(min, max)
+        tmp2 = makeOp(1.-(tmp == eps))
         return self.new(tmp, tmp2(self._jac))
 
     def sin(self):
