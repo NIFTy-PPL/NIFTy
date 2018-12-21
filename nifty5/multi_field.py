@@ -194,6 +194,10 @@ class MultiField(object):
     def conjugate(self):
         return self._transform(lambda x: x.conjugate())
 
+    def clip(self, min=None, max=None):
+        return MultiField(self._domain,
+                          tuple(clip(v, min, max) for v in self._val))
+
     def all(self):
         for v in self._val:
             if not v.all():
@@ -296,7 +300,7 @@ for op in ["__iadd__", "__isub__", "__imul__", "__idiv__",
     setattr(MultiField, op, func(op))
 
 
-for f in ["sqrt", "exp", "log", "tanh", "clipped_exp"]:
+for f in ["sqrt", "exp", "log", "tanh"]:
     def func(f):
         def func2(self):
             fu = getattr(Field, f)

@@ -184,14 +184,10 @@ class Linearization(object):
         tmp = self._val.exp()
         return self.new(tmp, makeOp(tmp)(self._jac))
 
-    def clipped_exp(self):
-        tmp = self._val.clipped_exp()
-        return self.new(tmp, makeOp(tmp)(self._jac))
-
     def clip(self, min=None, max=None):
         tmp = self._val.clip(min, max)
         if (min is None) and (max is None):
-            tmp2 = ScalingOperator(1,self._val.domain)
+            return self
         elif max is None:
             tmp2 = makeOp(1. - (tmp == min))
         elif min is None:

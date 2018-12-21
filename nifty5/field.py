@@ -634,9 +634,6 @@ class Field(object):
     def sigmoid(self):
         return 0.5*(1.+self.tanh())
 
-    def clipped_exp(self):
-        return Field(self._domain, dobj.clipped_exp(self._val))
-
     def clip(self, min=None, max=None):
         return Field(self._domain, dobj.clip(self._val, min, max))
 
