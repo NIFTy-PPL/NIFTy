@@ -36,7 +36,7 @@ __all__ = ["ntask", "rank", "master", "local_shape", "data_object", "full",
            "lock", "locked", "uniform_full", "transpose", "to_global_data_rw",
            "ensure_not_distributed", "ensure_default_distributed",
            "clipped_exp", "tanh", "conjugate", "sin", "cos", "tan",
-           "sinh", "cosh", "sinc", "absolute", "sign", "hardplus"]
+           "sinh", "cosh", "sinc", "absolute", "sign", "clip"]
 
 _comm = MPI.COMM_WORLD
 ntask = _comm.Get_size()
@@ -216,6 +216,9 @@ class data_object(object):
         else:
             return data_object(self._shape, tval, self._distaxis)
 
+    def clip(self, min=None, max=None):
+        return data_object(self._shape, np.clip(self._data, min, max))
+
     def __neg__(self):
         return data_object(self._shape, -self._data, self._distaxis)
 
@@ -310,8 +313,8 @@ def clipped_exp(x):
     return data_object(x.shape, np.exp(np.clip(x.data, -300, 300), x.distaxis))
 
 
-def hardplus(x, eps):
-    return data_object(x.shape, np.clip(x.data, eps, None), x.distaxis)
+def clip(x, a_min=None, a_max=None):
+    return data_object(x.shape, np.clip(x.data, a_min, a_max), x.distaxis)
 
 
 def from_object(object, dtype, copy, set_locked):
