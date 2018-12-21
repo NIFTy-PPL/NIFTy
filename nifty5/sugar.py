@@ -39,7 +39,7 @@ __all__ = ['PS_field', 'power_analyze', 'create_power_operator',
            'full', 'from_global_data', 'from_local_data',
            'makeDomain', 'sqrt', 'exp', 'log', 'tanh', 'sigmoid',
            'sin', 'cos', 'tan', 'sinh', 'cosh',
-           'absolute', 'one_over', 'hardplus', 'sinc',
+           'absolute', 'one_over', 'clip', 'sinc',
            'conjugate', 'get_signal_variance', 'makeOp', 'domain_union',
            'get_default_codomain']
 
@@ -261,7 +261,7 @@ _current_module = sys.modules[__name__]
 
 for f in ["sqrt", "exp", "log", "tanh", "sigmoid",
           "conjugate", 'sin', 'cos', 'tan', 'sinh', 'cosh',
-          'absolute', 'one_over', 'hardplus', 'sinc']:
+          'absolute', 'one_over', 'sinc']:
     def func(f):
         def func2(x):
             from .linearization import Linearization
@@ -272,6 +272,11 @@ for f in ["sqrt", "exp", "log", "tanh", "sigmoid",
                 return getattr(np, f)(x)
         return func2
     setattr(_current_module, f, func(f))
+
+
+def clip(a, a_min=None, a_max=None):
+    return a.clip(a_min, a_max)
+
 
 def get_default_codomain(domainoid, space=None):
     """For `RGSpace`, returns the harmonic partner domain.
