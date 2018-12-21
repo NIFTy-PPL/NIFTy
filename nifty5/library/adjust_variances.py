@@ -25,7 +25,7 @@ from ..multi_field import MultiField
 from ..operators.distributors import PowerDistributor
 from ..operators.energy_operators import Hamiltonian, InverseGammaLikelihood
 from ..operators.scaling_operator import ScalingOperator
-from ..operators.simple_linear_operators import FieldAdapter
+from ..operators.simple_linear_operators import ducktape
 
 
 def make_adjust_variances(a,
@@ -87,7 +87,7 @@ def do_adjust_variances(position,
     h_space = position[xi_key].domain[0]
     pd = PowerDistributor(h_space, amplitude_model.target[0])
     a = pd(amplitude_model)
-    xi = FieldAdapter(h_space, xi_key)
+    xi = ducktape(None, position.domain, xi_key)
 
     ham = make_adjust_variances(a, xi, position, samples=samples)
 
@@ -100,7 +100,7 @@ def do_adjust_variances(position,
     s_h_old = (a*xi).force(position)
 
     position = position.to_dict()
-    position['xi'] = s_h_old/a(e.position)
+    position[xi_key] = s_h_old/a(e.position)
     position = MultiField.from_dict(position)
     position = MultiField.union([position, e.position])
 

@@ -52,8 +52,8 @@ class Linearization(object):
         return self._metric
 
     def __getitem__(self, name):
-        from .operators.simple_linear_operators import FieldAdapter
-        return self.new(self._val[name], FieldAdapter(self.domain[name], name))
+        from .operators.simple_linear_operators import ducktape
+        return self.new(self._val[name], ducktape(None, self.domain, name))
 
     def __neg__(self):
         return self.new(-self._val, -self._jac,

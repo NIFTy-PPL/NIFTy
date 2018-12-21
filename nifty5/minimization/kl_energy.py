@@ -105,8 +105,11 @@ class KL_Energy_MPI(Energy):
 
 class KL_Energy(Energy):
     def __init__(self, position, h, nsamp, constants=[],
-                 constants_samples=None, _samples=None):
+                 constants_samples=None, gen_mirrored_samples=False,
+                 _samples=None):
         super(KL_Energy, self).__init__(position)
+        if h.domain is not position.domain:
+            raise TypeError
         self._h = h
         self._constants = constants
         if constants_samples is None:
@@ -117,6 +120,8 @@ class KL_Energy(Energy):
                 position, constants_samples, True)).metric
             _samples = tuple(met.draw_sample(from_inverse=True)
                              for _ in range(nsamp))
+            if gen_mirrored_samples:
+                _samples += tuple(-s for s in _samples)
         self._samples = _samples
 
         self._lin = Linearization.make_partial_var(position, constants)
@@ -134,8 +139,9 @@ class KL_Energy(Energy):
         self._metric = None
 
     def at(self, position):
-        return KL_Energy(position, self._h, 0, self._constants,
-                         self._constants_samples, self._samples)
+        return KL_Energy(position, self._h, 0,
+                         self._constants, self._constants_samples,
+                         _samples = self._samples)
 
     @property
     def value(self):
@@ -164,3 +170,7 @@ class KL_Energy(Energy):
     @property
     def samples(self):
         return self._samples
+
+    def __repr__(self):
+        return 'KL ({} samples):\n'.format(len(
+            self._samples)) + utilities.indent(self._ham.__repr__())

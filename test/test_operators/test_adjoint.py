@@ -59,10 +59,10 @@ class Consistency_Tests(unittest.TestCase):
         ift.extra.consistency_check(op, dtype, dtype)
 
     def testLinearInterpolator(self):
-        sp = ift.RGSpace((10,8), distances=(0.1, 3.5))
+        sp = ift.RGSpace((10, 8), distances=(0.1, 3.5))
         pos = np.random.rand(2, 23)
-        pos[0,:] *= 0.9
-        pos[1,:] *= 7*3.5
+        pos[0, :] *= 0.9
+        pos[1, :] *= 7*3.5
         op = ift.LinearInterpolator(sp, pos)
         ift.extra.consistency_check(op)
 

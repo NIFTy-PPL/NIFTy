@@ -168,6 +168,11 @@ class Hamiltonian(EnergyOperator):
                                   self._ic_samp, prx.metric.inverse)
             return (lhx+prx).add_metric(mtr)
 
+    def __repr__(self):
+        subs = 'Likelihood:\n{}'.format(utilities.indent(self._lh.__repr__()))
+        subs += '\nPrior: Quadratic{}'.format(self._lh.domain.keys())
+        return 'Hamiltonian:\n' + utilities.indent(subs)
+
 
 class SampledKullbachLeiblerDivergence(EnergyOperator):
     def __init__(self, h, res_samples):

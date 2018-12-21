@@ -135,7 +135,6 @@ def AmplitudeModel(s_space, Npixdof, ceps_a, ceps_k, sm, sv, im, iv,
     '''
 
     from ..operators.exp_transform import ExpTransform
-    from ..operators.simple_linear_operators import FieldAdapter
     from ..operators.scaling_operator import ScalingOperator
 
     h_space = s_space.get_default_codomain()
@@ -143,10 +142,9 @@ def AmplitudeModel(s_space, Npixdof, ceps_a, ceps_k, sm, sv, im, iv,
     logk_space = et.domain[0]
 
     smooth = CepstrumOperator(logk_space, ceps_a, ceps_k, zero_mode)
+    smooth = smooth.ducktape(keys[0])
     linear = SlopeModel(logk_space, sm, sv, im, iv)
-
-    fa_smooth = FieldAdapter(smooth.domain, keys[0])
-    fa_linear = FieldAdapter(linear.domain, keys[1])
+    linear = linear.ducktape(keys[1])
 
     fac = ScalingOperator(0.5, smooth.target)
-    return et((fac(smooth(fa_smooth) + linear(fa_linear))).exp())
+    return et((fac(smooth + linear)).exp())

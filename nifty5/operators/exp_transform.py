@@ -59,10 +59,10 @@ class ExpTransform(LinearOperator):
             raise ValueError(
                 "Target must be a harmonic RGSpace or a power space.")
 
-        if np.isscalar(dof):
-            dof = np.full(len(tgt.shape), int(dof), dtype=np.int)
-        dof = np.array(dof)
         ndim = len(tgt.shape)
+        if np.isscalar(dof):
+            dof = np.full(ndim, int(dof), dtype=np.int)
+        dof = np.array(dof)
 
         t_mins = np.empty(ndim)
         bindistances = np.empty(ndim)

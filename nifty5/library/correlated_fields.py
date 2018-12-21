@@ -24,7 +24,7 @@ from ..multi_domain import MultiDomain
 from ..operators.contraction_operator import ContractionOperator
 from ..operators.distributors import PowerDistributor
 from ..operators.harmonic_operators import HarmonicTransformOperator
-from ..operators.simple_linear_operators import FieldAdapter
+from ..operators.simple_linear_operators import ducktape
 from ..operators.scaling_operator import ScalingOperator
 
 
@@ -48,7 +48,7 @@ def CorrelatedField(s_space, amplitude_model, name='xi'):
     A = power_distributor(amplitude_model)
     vol = h_space.scalar_dvol
     vol = ScalingOperator(vol**(-0.5), h_space)
-    return ht(vol(A)*FieldAdapter(h_space, name))
+    return ht(vol(A)*ducktape(h_space, None, name))
 
 
 def MfCorrelatedField(s_space_spatial, s_space_energy, amplitude_model_spatial,
@@ -59,7 +59,7 @@ def MfCorrelatedField(s_space_spatial, s_space_energy, amplitude_model_spatial,
     h_space_spatial = s_space_spatial.get_default_codomain()
     h_space_energy = s_space_energy.get_default_codomain()
     h_space = DomainTuple.make((h_space_spatial, h_space_energy))
-    ht1 = HarmonicTransformOperator(h_space, space=0)
+    ht1 = HarmonicTransformOperator(h_space, target=s_space_spatial, space=0)
     ht2 = HarmonicTransformOperator(ht1.target, space=1)
     ht = ht2(ht1)
 
@@ -77,4 +77,4 @@ def MfCorrelatedField(s_space_spatial, s_space_energy, amplitude_model_spatial,
     a_energy = dom_distr_energy(amplitude_model_energy)
     a = a_spatial*a_energy
     A = pd(a)
-    return ht(A*FieldAdapter(h_space, name))
+    return ht(A*ducktape(h_space, None, name))

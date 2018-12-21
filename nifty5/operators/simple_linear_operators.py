@@ -63,27 +63,64 @@ class Realizer(EndomorphicOperator):
 
 
 class FieldAdapter(LinearOperator):
-    """Operator which extracts a field out of a MultiField.
+    """Operator for conversion between Fields and MultiFields.
 
     Parameters
     ----------
-    target : Domain, tuple of Domain or DomainTuple:
-        The domain which shall be extracted out of the MultiField.
+    tgt : Domain, tuple of Domain, DomainTuple, dict or MultiDomain:
+        If this is a Domain, tuple of Domain or DomainTuple, this will be the
+        operator's target, and its domain will be a MultiDomain consisting of
+        its domain with the supplied `name`
+        If this is a dict or MultiDomain, everything except for `name` will
+        be stripped out of it, and the result will be the operator's target.
+        Its domain will then be the DomainTuple corresponding to the single
+        entry in the operator's domain.
 
     name : String
-        The key of the MultiField which shall be extracted.
+        The relevant key of the MultiDomain.
     """
 
-    def __init__(self, target, name):
-        self._target = DomainTuple.make(target)
-        self._domain = MultiDomain.make({name: self._target})
+    def __init__(self, tgt, name):
+        from ..sugar import makeDomain
+        tmp = makeDomain(tgt)
+        if isinstance(tmp, DomainTuple):
+            self._target = tmp
+            self._domain = MultiDomain.make({name: tmp})
+        else:
+            self._domain = tmp[name]
+            self._target = MultiDomain.make({name: tmp[name]})
         self._capability = self.TIMES | self.ADJOINT_TIMES
 
     def apply(self, x, mode):
         self._check_input(x, mode)
-        if mode == self.TIMES:
+        if isinstance(x, MultiField):
             return x.values()[0]
-        return MultiField(self._domain, (x,))
+        else:
+            return MultiField(self._tgt(mode), (x,))
+
+    def __repr__(self):
+        key = self.domain.keys()[0]
+        return 'FieldAdapter: {}'.format(key)
+
+
+def ducktape(left, right, name):
+    from ..sugar import makeDomain
+    from .operator import Operator
+    if left is None:  # need to infer left from right
+        if isinstance(right, Operator):
+            right = right.target
+        elif right is not None:
+            right = makeDomain(right)
+        if isinstance(right, MultiDomain):
+            left = right[name]
+        else:
+            left = MultiDomain.make({name: right})
+    else:
+        if isinstance(left, Operator):
+            left = left.domain
+        else:
+            left = makeDomain(left)
+    return FieldAdapter(left, name)
 
 
 class GeometryRemover(LinearOperator):
@@ -94,6 +131,9 @@ class GeometryRemover(LinearOperator):
     ----------
     domain: Domain, tuple of Domain, or DomainTuple:
         the full input domain of the operator.
+    space: int, optional
+        The index of the subdomain on which the operator should act
+        If None, it acts on all spaces
 
     Notes
     -----
@@ -102,10 +142,14 @@ class GeometryRemover(LinearOperator):
     is carried out.
     """
 
-    def __init__(self, domain):
+    def __init__(self, domain, space=None):
         self._domain = DomainTuple.make(domain)
-        target_list = [UnstructuredDomain(dom.shape) for dom in self._domain]
-        self._target = DomainTuple.make(target_list)
+        if space is not None:
+            tgt = [dom for dom in self._domain]
+            tgt[space] = UnstructuredDomain(self._domain[space].shape)
+        else:
+            tgt = [UnstructuredDomain(dom.shape) for dom in self._domain]
+        self._target = DomainTuple.make(tgt)
         self._capability = self.TIMES | self.ADJOINT_TIMES
 
     def apply(self, x, mode):

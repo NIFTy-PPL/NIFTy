@@ -2,7 +2,7 @@ from __future__ import absolute_import, division, print_function
 
 import numpy as np
 from ..compat import *
-from ..utilities import NiftyMetaBase
+from ..utilities import NiftyMetaBase, indent
 
 
 class Operator(NiftyMetaBase()):
@@ -59,9 +59,11 @@ class Operator(NiftyMetaBase()):
         return _OpChain.make((self, x))
 
     def __mul__(self, x):
-        if not isinstance(x, Operator):
-            return NotImplemented
-        return _OpProd(self, x)
+        if isinstance(x, Operator):
+            return _OpProd(self, x)
+        if np.isscalar(x):
+            return self.scale(x)
+        return NotImplemented
 
     def __add__(self, x):
         if not isinstance(x, Operator):
@@ -94,6 +96,14 @@ class Operator(NiftyMetaBase()):
         if isinstance(x, Operator):
             return _OpChain.make((self, x))
         return self.apply(x)
+
+    def ducktape(self, name):
+        from .simple_linear_operators import ducktape
+        return self(ducktape(self, None, name))
+
+    def ducktape_left(self, name):
+        from .simple_linear_operators import ducktape
+        return ducktape(None, self, name)(self)
 
     def __repr__(self):
         return self.__class__.__name__
@@ -169,6 +179,11 @@ class _OpChain(_CombinedOperator):
         return x
 
 
+    def __repr__(self):
+        subs = "\n".join(sub.__repr__() for sub in self._ops)
+        return "_OpChain:\n" + indent(subs)
+
+
 class _OpProd(Operator):
     def __init__(self, op1, op2):
         from ..sugar import domain_union
@@ -197,6 +212,11 @@ class _OpProd(Operator):
         return lin1.new(lin1._val*lin2._val, op(x.jac))
 
 
+    def __repr__(self):
+        subs = "\n".join(sub.__repr__() for sub in (self._op1, self._op2))
+        return "_OpProd:\n"+indent(subs)
+
+
 class _OpSum(Operator):
     def __init__(self, op1, op2):
         from ..sugar import domain_union
@@ -223,3 +243,7 @@ class _OpSum(Operator):
         if lin1._metric is not None and lin2._metric is not None:
             res = res.add_metric(lin1._metric + lin2._metric)
         return res
+
+    def __repr__(self):
+        subs = "\n".join(sub.__repr__() for sub in (self._op1, self._op2))
+        return "_OpSum:\n"+indent(subs)
