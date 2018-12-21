@@ -7,6 +7,7 @@ from .compat import *
 from .field import Field
 from .multi_field import MultiField
 from .sugar import makeOp
+from .operators.scaling_operator import ScalingOperator
 
 
 class Linearization(object):
@@ -189,7 +190,14 @@ class Linearization(object):
 
     def clip(self, min=None, max=None):
         tmp = self._val.clip(min, max)
-        tmp2 = makeOp(1.-(tmp == eps))
+        if (min is None) and (max is None):
+            tmp2 = ScalingOperator(1,self._val.domain)
+        elif max is None:
+            tmp2 = makeOp(1. - (tmp == min))
+        elif min is None:
+            tmp2 = makeOp(1. - (tmp == max))
+        else:
+            tmp2 = makeOp(1. - (tmp == min) - (tmp == max))
         return self.new(tmp, tmp2(self._jac))
 
     def sin(self):
