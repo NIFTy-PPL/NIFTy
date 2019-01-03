@@ -127,7 +127,7 @@ def make_dynamic_operator(FFT,harmonic_padding,sm_s0,sm_x0,
             sigc = list((sigc,)*(len(m.target.shape)-1))
         cdom = UnstructuredDomain(len(sigc))
         c = FieldAdapter(cdom, keys[1])
-        Sigc = makeOp(Field(c.target, np.array(sigc)))
+        Sigc = makeOp(Field.from_global_data(c.target, np.array(sigc)))
         c = Sigc(c)
         c = c.exp()
         ops['c'] = c

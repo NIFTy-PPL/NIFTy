@@ -27,7 +27,7 @@ def make_coords(domain, absolute=False):
 def field_from_function(domain, func, absolute=False):
     domain = DomainTuple.make(domain)
     k_array = make_coords(domain, absolute=absolute)
-    return Field(domain, val=func(k_array))
+    return Field.from_global_data(domain, func(k_array))
 
 class LightConeDerivative(LinearOperator):
     def __init__(self, domain, target, derivatives):
@@ -46,7 +46,7 @@ class LightConeDerivative(LinearOperator):
                 res += self._derivatives[i]*x[i]
             else:
                 res[i] = np.sum(self._derivatives[i]*x)
-        return Field(self._tgt(mode), val=res)
+        return Field.from_global_data(self._tgt(mode), res)
 
     
 def cone_arrays(c, domain, sigx,want_gradient):
@@ -86,11 +86,11 @@ class LightConeOperator(Operator):
         if not isinstance(x, Linearization):
             a , _ = cone_arrays(
                 x.to_global_data(), self.target, self._sigx,False)
-            return Field(self.target, a)
+            return Field.from_global_data(self.target, a)
 
         a, derivs = cone_arrays(
             x.val.to_global_data(), self.target, self._sigx,True)
 
         jac = LightConeDerivative(x.jac.target, self.target, derivs)(x.jac)
         return Linearization(
-            Field(self.target, a), jac, want_metric=x.want_metric)
+            Field.from_global_data(self.target, a), jac, want_metric=x.want_metric)
