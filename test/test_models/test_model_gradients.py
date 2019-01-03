@@ -131,6 +131,18 @@ class Model_Tests(unittest.TestCase):
         ift.extra.check_value_gradient_consistency(model, pos, tol=1e-2,
                                                    ntries=20)
 
+    @expand(product(
+        [ift.FFTOperator(ift.RGSpace(64, distances=.789)),
+         ift.FFTOperator(ift.RGSpace([32, 32], distances=.789)),
+         ift.FFTOperator(ift.RGSpace([32, 32, 32], distances=.789))],
+         [4, 78, 23]))
+    def testDynamicModel(self, FFT, seed):
+        model,_ = ift.make_dynamic_operator(FFT,None,1.,1.)
+        S = ift.ScalingOperator(1., model.domain)
+        pos = S.draw_sample()
+        # FIXME I dont know why smaller tol fails for 3D example
+        ift.extra.check_value_gradient_consistency(model, pos, tol=1e-6, ntries=20)
+
 #     @expand(product(
 #         ['Variable', 'Constant'],
 #         [ift.GLSpace(15),

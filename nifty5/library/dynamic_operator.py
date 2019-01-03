@@ -28,18 +28,52 @@ from ..sugar import makeOp
 from ..field import Field
 from ..domains.unstructured_domain import UnstructuredDomain
 
-
 from .light_cone_operator import LightConeOperator,field_from_function
 
-def make_dynamic_operator(FFT,harmonic_padding,
+def make_dynamic_operator(FFT,harmonic_padding,sm_s0,sm_x0,
                        keys=['f', 'c'],
                        causal=True,
                        cone=True,
                        minimum_phase=False,
-                       sm_s0=15.,
-                       sm_x0=[0.18, 0.18],
-                       sigc=[3.],
+                       sigc=3.,
                        quant=5.):
+    '''
+    Constructs an operator for a dynamic field prior
+
+    Parameters
+    ----------
+
+    FFT : FFTOperator
+    
+    harmonic_padding : None, list of float
+        Amount of central padding in harmonic space in pixels. If None the field is not padded at all.
+
+    sm_s0 : float
+        Cutoff for dynamic smoothness prior
+
+    sm_x0 : float, List of float
+        Scaling of dynamic smoothness along each axis
+
+    keys : List of String
+        keys of input fields of operator.
+
+    causal : boolean
+        Whether or not the reconstructed dynamics should be causal in time
+
+    cone : boolean
+        Whether or not the reconstructed dynamics should be within a light cone
+
+    minimum_phase: boolean
+        Whether or not the reconstructed dynamics should be minimum phase
+
+    sigc : float, List of float
+        variance of light cone parameters.
+        If cone is False this is ignored
+
+    quant : float
+        Quantization of the light cone in pixels.
+        If cone is False this is ignored
+    '''
     ops = {}
     if harmonic_padding is None:
         CentralPadd = ScalingOperator(1.,FFT.target)
@@ -51,24 +85,26 @@ def make_dynamic_operator(FFT,harmonic_padding,
     ops['CentralPadd'] = CentralPadd
     sdom = CentralPadd.target[0].get_default_codomain()
     FFTB = FFTOperator(sdom)(Realizer(sdom))
-    
+
     m = FieldAdapter(sdom, keys[0])
-    
+
     dists = m.target[0].distances
+    if isinstance(sm_x0,float):
+        sm_x0 = list((sm_x0,)*len(dists))
     def func(x):
         res = 1.
-        for i in range(len(sm_x0)):
+        for i in range(len(dists)):
             res = res + (x[i]/sm_x0[i]/dists[i])**2
         return sm_s0/res
-    
-    
+
+
     Sm = field_from_function(m.target, func)
     Sm = makeOp(Sm)
     m = Sm(m)
     m = FFTB(m)
     m = CentralPadd.adjoint(m)
     ops[keys[0]+'_k'] = m
-    
+
     m = -m.log()
     if not minimum_phase:
         m = m.exp()
@@ -85,10 +121,10 @@ def make_dynamic_operator(FFT,harmonic_padding,
         m = kernel(m)
     elif minimum_phase:
         raise(ValueError,"minimum phase and not causal not possible!")
-    
-    if cone:
-        if len(m.target.shape) < 2:
-            raise(ValueError,"Light cone requires dimensionality >= 2")
+
+    if cone and len(m.target.shape) > 1:
+        if isinstance(sigc,float):
+            sigc = list((sigc,)*(len(m.target.shape)-1))
         cdom = UnstructuredDomain(len(sigc))
         c = FieldAdapter(cdom, keys[1])
         Sigc = makeOp(Field(c.target, np.array(sigc)))
