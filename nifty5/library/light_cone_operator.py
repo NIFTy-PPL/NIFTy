@@ -39,7 +39,7 @@ class LightConeDerivative(LinearOperator):
 
     def apply(self, x, mode):
         self._check_input(x, mode)
-        x = x.val
+        x = x.to_global_data()
         res = np.zeros(self._tgt(mode).shape, dtype=self._derivatives.dtype)
         for i in range(self.domain.shape[0]):
             if mode == self.TIMES:
