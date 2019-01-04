@@ -14,8 +14,6 @@
 
 import sphinx_rtd_theme
 
-
-
 # If extensions (or modules to document with autodoc) are in another directory,
 # add these directories to sys.path here. If the directory is relative to the
 # documentation root, use os.path.abspath to make it absolute, like shown here.
@@ -28,14 +26,12 @@ napoleon_use_ivar = True
 napoleon_use_param = False
 napoleon_use_keyword = False
 
-
-autodoc_member_order='groupwise'
+autodoc_member_order = 'groupwise'
 
 #autosummary_generate = True
 
-numpydoc_show_inherited_class_members=False
-numpydoc_class_members_toctree=False
-
+numpydoc_show_inherited_class_members = False
+numpydoc_class_members_toctree = False
 
 # -- General configuration ------------------------------------------------
 
@@ -50,9 +46,9 @@ extensions = [
     'numpydoc',
     'sphinx.ext.autosummary',
     'sphinx.ext.napoleon',
- #   'sphinx.ext.coverage',
- #   'sphinx.ext.todo',
- #   'sphinx.ext.mathjax',
+    #   'sphinx.ext.coverage',
+    #   'sphinx.ext.todo',
+    #   'sphinx.ext.mathjax',
     'sphinx.ext.imgmath',
     'sphinx.ext.viewcode'
 ]
@@ -130,7 +126,6 @@ pygments_style = 'sphinx'
 # If true, `todo` and `todoList` produce output, else they produce nothing.
 todo_include_todos = True
 
-
 # -- Options for HTML output ----------------------------------------------
 
 # The theme to use for HTML and HTML Help pages.  See the documentation for
@@ -141,13 +136,12 @@ html_theme = "sphinx_rtd_theme"
 # further.  For a list of options available for each theme, see the
 # documentation.
 html_theme_options = {
-     'collapse_navigation': False,
-     'display_version': False,
-     #'navigation_depth': 3,
+    'collapse_navigation': False,
+    'display_version': False,
+    #'navigation_depth': 3,
 }
 
 html_theme_path = [sphinx_rtd_theme.get_html_theme_path()]
-
 
 # Add any paths that contain custom themes here, relative to this directory.
 #html_theme_path = []
@@ -280,7 +274,6 @@ htmlhelp_basename = 'NIFTydoc'
 # If false, no module index is generated.
 #latex_domain_indices = True
 
-
 # -- Options for manual page output ---------------------------------------
 
 # One entry per manual page. List of tuples
@@ -292,7 +285,6 @@ htmlhelp_basename = 'NIFTydoc'
 
 # If true, show URL addresses after external links.
 #man_show_urls = False
-
 
 # -- Options for Texinfo output -------------------------------------------
 
@@ -316,7 +308,6 @@ htmlhelp_basename = 'NIFTydoc'
 
 # If true, do not generate a @detailmenu in the "Top" node's menu.
 #texinfo_no_detailmenu = False
-
 
 # Example configuration for intersphinx: refer to the Python standard library.
 #intersphinx_mapping = {'https://docs.python.org/': None}
