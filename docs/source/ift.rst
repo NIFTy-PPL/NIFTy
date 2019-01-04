@@ -139,7 +139,7 @@ the information source. The operation in :math:`{d= D\,R^\dagger N^{-1} d}` is a
 
 NIFTy permits to define the involved operators :math:`{R}`, :math:`{R^\dagger}`, :math:`{S}`, and :math:`{N}` implicitely, as routines that can be applied to vectors, but which do not require the explicit storage of the matrix elements of the operators.
 
-These implicit operators can be combined into new operators, e.g. to :math:`{D^{-1} = \left( S^{-1} + R^\dagger N^{-1} R\right)^{-1}}`, as well as their inverses, e.g. :math:`{D^{-1} = \left( D^{-1} \right)^{-1}}`.
+These implicit operators can be combined into new operators, e.g. to :math:`{D^{-1} = \left( S^{-1} + R^\dagger N^{-1} R\right)^{-1}}`, as well as their inverses, e.g. :math:`{D = \left( D^{-1} \right)^{-1}}`.
 The invocation of an inverse operator applied to a vector might trigger the execution of a numerical linear algebra solver.
 
 Thus, when NIFTy calculates :math:`{m = D\, j}` it actually solves  :math:`{D^{-1} m = j}` for :math:`{m}` behind the scenes. 
@@ -160,23 +160,23 @@ The above free theory case looks as a generative model like the following:
 
     s = A\,\xi
 
-with :math:`{A}` the amplitude operator such that it generates signal field with the correct covariance :math:`{S=A\,A^\dagger}` out of a Gaussian white noise field :math:`{\xi}` with :math:`{\mathcal{P}(\xi)= \mathcal{G}(\xi, \mathbb{1})}`.
+with :math:`{A}` the amplitude operator such that it generates signal field with the correct covariance :math:`{S=A\,A^\dagger}` out of a Gaussian white noise field :math:`{\xi}` with :math:`{\mathcal{P}(\xi)= \mathcal{G}(\xi, 1)}`.
 
 The joint information Hamiltonian for the whitened signal field :math:`{\xi}`  reads
 
 .. math::
 
-    \mathcal{H}(d,\xi)= -\log \mathcal{P}(d,s)= \frac{1}{2} \xi^\dagger \mathbb{1} \xi + \frac{1}{2} (d-R\,A\,\xi)^\dagger N^{-1} (d-R\,A\,\xi) + \mathrm{const}.
+    \mathcal{H}(d,\xi)= -\log \mathcal{P}(d,s)= \frac{1}{2} \xi^\dagger \xi + \frac{1}{2} (d-R\,A\,\xi)^\dagger N^{-1} (d-R\,A\,\xi) + \mathrm{const}.
 
 NIFTy takes advantage of this formulation in several ways: 
 
 1) all prior degrees of freedom have now the same variance
 2) the amplitude operator can be regarded as part of the response, :math:`{R'=R\,A}`
-3) the response can be made non-linear, e.g. :math:`{R'(s)=R \exp(A\,\xi)}`, see demos/demos/getting_started_2.py
-4) the amplitude operator can be made dependent on unknowns as well, e.g. :math:`{A=A(\tau)=\mathrm{FourierTransform}\,\mathrm{DiagonalOperator}(\exp(\tau))}` represents an amplitude model with a flexible Fourier spectrum
+3) the response can be made non-linear, e.g. :math:`{R'(s)=R \exp(A\,\xi)}`, see demos/getting_started_2.py
+4) the amplitude operator can be made dependent on unknowns as well, e.g. :math:`{A=A(\tau)=\mathrm{HarmonicTransformOperator}\;\mathrm{DiagonalOperator}(\exp(\tau))}` represents an amplitude model with a flexible Fourier spectrum
 5) the gradient of the Hamiltonian and the Fischer information metric with respect to all unknown parameters, here :math:`{\xi}` and can be constructed by NIFTy and used for Metric Gaussian Variational Inference.
 
-A demonstration example for reconstructing a non-Gaussian signal with unknown covarinance from a complex (tomographic) response is given by demos/getting_started_3.py. Here, the uncertainty of the field and its power spectra are probed via posterior samples.
+The reconstructing a non-Gaussian signal with unknown covarinance from a complex (tomographic) response is performed by demos/getting_started_3.py. Here, the uncertainty of the field and its power spectra are probed via posterior samples.
 
 
 
