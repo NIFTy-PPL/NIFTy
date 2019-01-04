@@ -127,7 +127,7 @@ def make_dynamic_operator(FFT,harmonic_padding,sm_s0,sm_x0,
         c = makeOp(Field.from_global_data(c.target, np.array(sigc)))(c)
 
         lightspeed = ScalingOperator(-0.5,c.target)(c).exp()
-        scaling = m.target[0].distances[1:]/m.target[0].distances[0]
+        scaling = np.array(m.target[0].distances[1:])/m.target[0].distances[0]
         scaling = DiagonalOperator(Field.from_global_data(c.target,scaling))
         ops['lightspeed'] = scaling(lightspeed)
 
