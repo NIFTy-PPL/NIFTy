@@ -20,16 +20,17 @@ from __future__ import absolute_import, division, print_function
 
 import numpy as np
 
-from ..operators.scaling_operator import ScalingOperator
-from ..operators.harmonic_operators import FFTOperator
-from ..operators.field_zero_padder import FieldZeroPadder
-from ..operators.simple_linear_operators import Realizer,FieldAdapter
-from ..operators.diagonal_operator import DiagonalOperator
-from ..sugar import makeOp
-from ..field import Field
+from ..compat import *
 from ..domains.unstructured_domain import UnstructuredDomain
+from ..field import Field
+from ..operators.diagonal_operator import DiagonalOperator
+from ..operators.field_zero_padder import FieldZeroPadder
+from ..operators.harmonic_operators import FFTOperator
+from ..operators.scaling_operator import ScalingOperator
+from ..operators.simple_linear_operators import FieldAdapter, Realizer
+from ..sugar import makeOp
+from .light_cone_operator import LightConeOperator, field_from_function
 
-from .light_cone_operator import LightConeOperator,field_from_function
 
 def make_dynamic_operator(FFT,harmonic_padding,sm_s0,sm_x0,
                        keys=['f', 'c'],
