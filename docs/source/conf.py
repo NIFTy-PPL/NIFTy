@@ -81,6 +81,7 @@ author = u'Martin Reinecke'
 # built documents.
 #
 # The short X.Y version.
+# FIXME import version from version.py
 version = u'5.0'
 # The full version, including alpha/beta/rc tags.
 release = u'5.0.0'
