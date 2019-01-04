@@ -12,8 +12,6 @@
 # All configuration values have a default; values that are commented out
 # serve to show the default.
 
-import sys
-import os
 import sphinx_rtd_theme
 
 
@@ -76,7 +74,7 @@ master_doc = 'index'
 # General information about the project.
 project = u'NIFTy5'
 copyright = u'2013-2018, Max-Planck-Society'
-author = u'Theo Steininger / Martin Reinecke'
+author = u'Martin Reinecke'
 
 # The version info for the project you're documenting, acts as replacement for
 # |version| and |release|, also used in various other places throughout the
