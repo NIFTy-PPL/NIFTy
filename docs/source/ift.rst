@@ -5,7 +5,7 @@ Theoretical Background
 ----------------------
 
 
-`Information Field Theory <http://www.mpa-garching.mpg.de/ift/>`_ [1]_ (IFT) is information theory, the logic of reasoning under uncertainty, applied to fields. A field can be any quantity defined over some space, e.g. the air temperature over Europe, the magnetic field strength in the Milky Way, or the matter density in the Universe. IFT describes how data and knowledge can be used to infer field properties. Mathematically it is a statistical field theory and exploits many of the tools developed for such. Practically, it is a framework for signal processing and image reconstruction.
+`Information Field Theory <http://www.mpa-garching.mpg.de/ift/>`_ [1-5]_ (IFT) is information theory, the logic of reasoning under uncertainty, applied to fields. A field can be any quantity defined over some space, e.g. the air temperature over Europe, the magnetic field strength in the Milky Way, or the matter density in the Universe. IFT describes how data and knowledge can be used to infer field properties. Mathematically it is a statistical field theory and exploits many of the tools developed for such. Practically, it is a framework for signal processing and image reconstruction.
 
 IFT is fully Bayesian. How else could infinitely many field degrees of freedom be constrained by finite data?
 
