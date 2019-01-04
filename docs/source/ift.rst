@@ -5,23 +5,24 @@ Theoretical Background
 ----------------------
 
 
-`Information Field Theory <http://www.mpa-garching.mpg.de/ift/>`_ [1-5]_ (IFT) is information theory, the logic of reasoning under uncertainty, applied to fields. A field can be any quantity defined over some space, e.g. the air temperature over Europe, the magnetic field strength in the Milky Way, or the matter density in the Universe. IFT describes how data and knowledge can be used to infer field properties. Mathematically it is a statistical field theory and exploits many of the tools developed for such. Practically, it is a framework for signal processing and image reconstruction.
+`Information Field Theory <http://www.mpa-garching.mpg.de/ift/>`_ [1]_  (IFT) is information theory, the logic of reasoning under uncertainty, applied to fields. A field can be any quantity defined over some space, e.g. the air temperature over Europe, the magnetic field strength in the Milky Way, or the matter density in the Universe. IFT describes how data and knowledge can be used to infer field properties. Mathematically it is a statistical field theory and exploits many of the tools developed for such. Practically, it is a framework for signal processing and image reconstruction.
 
 IFT is fully Bayesian. How else could infinitely many field degrees of freedom be constrained by finite data?
 
 It can be used without the knowledge of Feynman diagrams. There is a full toolbox of methods. It reproduces many known well working algorithms. This should be reassuring. And, there were certainly previous works in a similar spirit. Anyhow, in many cases IFT provides novel rigorous ways to extract information from data.
 
-.. tip:: An *in-a-nutshell introduction to information field theory* can be found in [2]_.
+.. tip:: *In-a-nutshell introductions to information field theory* can be found in [2]_, [3]_, [4]_, and [5]_, with the latter probably being the most didactically.
 
-.. [1] T. Ensslin (2019), "Information theory for fields", accepted by Annalen der Physik; `arXiv:1804.03350 <http://arxiv.org/abs/1804.03350>`_
+.. [1] T. Ensslin et al. (2009), "Information field theory for cosmological perturbation reconstruction and nonlinear signal analysis", PhysRevD.80.105005, 09/2009; `arXiv:0806.3474 <http://www.arxiv.org/abs/0806.3474>`_
 
-.. [2] Wikipedia contributors (2018), "Information field theory", Wikipedia, The Free Encyclopedia. <https://en.wikipedia.org/w/index.php?title=Information_field_theory&oldid=876731720>`_
+
+.. [2] T. Ensslin (2013), "Information field theory", proceedings of MaxEnt 2012 -- the 32nd International Workshop on Bayesian Inference and Maximum Entropy Methods in Science and Engineering; AIP Conference Proceedings, Volume 1553, Issue 1, p.184; `arXiv:1301.2556 <http://arxiv.org/abs/1301.2556>`_
 
 .. [3] T. Ensslin (2014), "Astrophysical data analysis with information field theory", AIP Conference Proceedings, Volume 1636, Issue 1, p.49; `arXiv:1405.7701 <http://arxiv.org/abs/1405.7701>`_
 
-.. [4] T. Ensslin (2013), "Information field theory", proceedings of MaxEnt 2012 -- the 32nd International Workshop on Bayesian Inference and Maximum Entropy Methods in Science and Engineering; AIP Conference Proceedings, Volume 1553, Issue 1, p.184; `arXiv:1301.2556 <http://arxiv.org/abs/1301.2556>`_
+.. [4] Wikipedia contributors (2018), "Information field theory", Wikipedia, The Free Encyclopedia. `<https://en.wikipedia.org/w/index.php?title=Information_field_theory&oldid=876731720>`_
 
-.. [5] T. Ensslin et al. (2009), "Information field theory for cosmological perturbation reconstruction and nonlinear signal analysis", PhysRevD.80.105005, 09/2009; `arXiv:0806.3474 <http://www.arxiv.org/abs/0806.3474>`_
+.. [5] T. Ensslin (2019), "Information theory for fields", accepted by Annalen der Physik; `arXiv:1804.03350 <http://arxiv.org/abs/1804.03350>`_
 
 Discretized continuum
 ---------------------
@@ -173,7 +174,7 @@ NIFTy takes advantage of this formulation in several ways:
 2) the amplitude operator can be regarded as part of the response, :math:`{R'=R\,A}`
 3) the response can be made non-linear, e.g. :math:`{R'(s)=R \exp(A\,\xi)}`, see demos/demos/getting_started_2.py
 4) the amplitude operator can be made dependent on unknowns as well, e.g. :math:`{A=A(\tau)=\mathrm{FourierTransform}\,\mathrm{DiagonalOperator}(\exp(\tau))}` represents an amplitude model with a flexible Fourier spectrum
-5) the gradient of the Hamiltonian and the Fischer information metric with respect to all unknown parameters, here :math:`{\xi} and can be constructed by NIFTy and used for Metric Gaussian Variational Inference.
+5) the gradient of the Hamiltonian and the Fischer information metric with respect to all unknown parameters, here :math:`{\xi}` and can be constructed by NIFTy and used for Metric Gaussian Variational Inference.
 
 A demonstration example for reconstructing a non-Gaussian signal with unknown covarinance from a complex (tomographic) response is given by demos/demos/getting_started_2.py .
 
