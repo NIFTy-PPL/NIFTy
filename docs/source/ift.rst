@@ -154,16 +154,12 @@ For more complex measurement situations, involving non-linear measuremnts, unkno
 In a generative model, all known or unknown quantities are described as the results of generative processes, which start with simple probability distributions, like uniform, iid Gaussian, or delta distributions. 
 
 The above free theory case looks as a generative model like the following:
-
 .. math::
 
     s = A\,\xi
-
 with :math:`{A}` the amplitude operator such that it generates signal field with the correct covariance :math:`{S=A\,A^\dagger}` out of a Gaussian white noise field :math:`{\xi}` with :math:`{\mathcal{P}(\xi)= \mathcal{G}(\xi, \mathbb{1})}`.
 
 The joint information Hamiltonian for the whitened signal field :math:`{\xi}`  reads
-
-
 .. math::
 
     \mathcal{H}(d,\xi)= -\log \mathcal{P}(d,s)= \frac{1}{2} \xi^\dagger \mathbb{1} \xi + \frac{1}{2} (d-R\,A\,\xi)^\dagger N^{-1} (d-R\,A\,\xi) + \mathrm{const}.
@@ -176,7 +172,7 @@ NIFTy takes advantage of this formulation in several ways:
 4) the amplitude operator can be made dependent on unknowns as well, e.g. :math:`{A=A(\tau)=\mathrm{FourierTransform}\,\mathrm{DiagonalOperator}(\exp(\tau))}` represents an amplitude model with a flexible Fourier spectrum
 5) the gradient of the Hamiltonian and the Fischer information metric with respect to all unknown parameters, here :math:`{\xi}` and can be constructed by NIFTy and used for Metric Gaussian Variational Inference.
 
-A demonstration example for reconstructing a non-Gaussian signal with unknown covarinance from a complex (tomographic) response is given by demos/demos/getting_started_2.py .
+A demonstration example for reconstructing a non-Gaussian signal with unknown covarinance from a complex (tomographic) response is given by demos/getting_started_2.py .
 
 
 
