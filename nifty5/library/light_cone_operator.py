@@ -28,7 +28,7 @@ from ..operators.linear_operator import LinearOperator
 from ..operators.operator import Operator
 
 
-def make_coords(domain, absolute=False):
+def _make_coords(domain, absolute=False):
     domain = DomainTuple.make(domain)
     dim = len(domain.shape)
     dist = domain[0].distances
@@ -44,10 +44,6 @@ def make_coords(domain, absolute=False):
         k_array[i] += ks.reshape(fst_dims + (shape[i],) + lst_dims)
     return k_array
 
-def field_from_function(domain, func, absolute=False):
-    domain = DomainTuple.make(domain)
-    k_array = make_coords(domain, absolute=absolute)
-    return Field.from_global_data(domain, func(k_array))
 
 class LightConeDerivative(LinearOperator):
     def __init__(self, domain, target, derivatives):
@@ -68,9 +64,9 @@ class LightConeDerivative(LinearOperator):
                 res[i] = np.sum(self._derivatives[i]*x)
         return Field.from_global_data(self._tgt(mode), res)
 
-    
-def cone_arrays(c, domain, sigx,want_gradient):
-    x = make_coords(domain)
+
+def cone_arrays(c, domain, sigx, want_gradient):
+    x = _make_coords(domain)
     a = np.zeros(domain.shape, dtype=np.complex)
     if want_gradient:
         derivs = np.zeros((c.size,) + domain.shape, dtype=np.complex)
@@ -95,6 +91,7 @@ def cone_arrays(c, domain, sigx,want_gradient):
     if want_gradient:
         derivs = a*derivs.real
     return a, derivs
+
 
 class LightConeOperator(Operator):
     def __init__(self, domain, target, sigx):
