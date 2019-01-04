@@ -29,13 +29,7 @@ from ..operators.harmonic_operators import FFTOperator
 from ..operators.scaling_operator import ScalingOperator
 from ..operators.simple_linear_operators import FieldAdapter, Realizer
 from ..sugar import makeOp
-from .light_cone_operator import LightConeOperator
-
-
-def _field_from_function(domain, func, absolute=False):
-    domain = DomainTuple.make(domain)
-    k_array = _make_coords(domain, absolute=absolute)
-    return Field.from_global_data(domain, func(k_array))
+from .light_cone_operator import LightConeOperator, _field_from_function
 
 
 def make_dynamic_operator(FFT, harmonic_padding, sm_s0, sm_x0, keys=['f', 'c'],

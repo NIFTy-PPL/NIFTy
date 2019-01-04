@@ -28,6 +28,12 @@ from ..operators.linear_operator import LinearOperator
 from ..operators.operator import Operator
 
 
+def _field_from_function(domain, func, absolute=False):
+    domain = DomainTuple.make(domain)
+    k_array = _make_coords(domain, absolute=absolute)
+    return Field.from_global_data(domain, func(k_array))
+
+
 def _make_coords(domain, absolute=False):
     domain = DomainTuple.make(domain)
     dim = len(domain.shape)
