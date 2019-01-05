@@ -137,12 +137,14 @@ the posterior covariance operator, and
 
 the information source. The operation in :math:`{d= D\,R^\dagger N^{-1} d}` is also called the generalized Wiener filter.
 
-NIFTy permits to define the involved operators :math:`{R}`, :math:`{R^\dagger}`, :math:`{S}`, and :math:`{N}` implicitely, as routines that can be applied to vectors, but which do not require the explicit storage of the matrix elements of the operators.
+NIFTy permits to define the involved operators :math:`{R}`, :math:`{R^\dagger}`, :math:`{S}`, and :math:`{N}` implicitely, as routines that can be applied to vectors, but which do not require the explicit storage of the matrix elements of the operators. 
 
-These implicit operators can be combined into new operators, e.g. to :math:`{D^{-1} = \left( S^{-1} + R^\dagger N^{-1} R\right)^{-1}}`, as well as their inverses, e.g. :math:`{D = \left( D^{-1} \right)^{-1}}`.
+Some of these operators are diagonal in harmonic (Fourier) basis, and therefore only require the specification of a (power) spectrum, :math:`{S= F\,\widehat{P_s} F^\dagger}`, where :math:`{F^\dagger= \mathrm{HarmonicTransformOperator}}` and :math:`{\widehat{P_s} = \mathrm{DiagonalOperator}(P_s)}`, and :math:`{P_s(k)}` is teh power spekrum of :math:`{s}` as a function of the (absolute value of the) harmonic (Fourier) space koordinate :math:`{k}`. For those, NIFTy can easily also provide inverse operators, as :math:`{S^{-1}= F\,\widehat{P_s^{-1}} F^\dagger}`.
+
+These implicit operators can be combined into new operators, e.g. to :math:`{D^{-1} = S^{-1} + R^\dagger N^{-1} R}`, as well as their inverses, e.g. :math:`{D = \left( D^{-1} \right)^{-1}}`.
 The invocation of an inverse operator applied to a vector might trigger the execution of a numerical linear algebra solver.
 
-Thus, when NIFTy calculates :math:`{m = D\, j}` it actually solves  :math:`{D^{-1} m = j}` for :math:`{m}` behind the scenes. 
+Thus, when NIFTy calculates :math:`{m = D\, j}` it actually solves  :math:`{D^{-1} m = j}` for :math:`{m}` behind the scenes. The advantage of implicit operators to explicit matrices is the reduced memory requirements. The reconstruction of only a Megapixel image would otherwithe require the storage and prcessing of matrices with sizes of several Terrabytes. Larger images could not be dealt with due to the quadratic memory requirements of explicit operator representations.
 
 The demo codes demos/getting_started_1.py and demos/Wiener_Filter.ipynb illustrate this.
 
@@ -170,10 +172,10 @@ The joint information Hamiltonian for the whitened signal field :math:`{\xi}`  r
 
 NIFTy takes advantage of this formulation in several ways: 
 
-1) all prior degrees of freedom have now the same variance
+1) all prior degrees of freedom have now the same variance helping to improve the condition number for the equations to be solved
 2) the amplitude operator can be regarded as part of the response, :math:`{R'=R\,A}`
 3) the response can be made non-linear, e.g. :math:`{R'(s)=R \exp(A\,\xi)}`, see demos/getting_started_2.py
-4) the amplitude operator can be made dependent on unknowns as well, e.g. :math:`{A=A(\tau)=\mathrm{HarmonicTransformOperator}\;\mathrm{DiagonalOperator}(\exp(\tau))}` represents an amplitude model with a flexible Fourier spectrum
+4) the amplitude operator can be made dependent on unknowns as well, e.g. :math:`{A=A(\tau)= F\,\\widehat{\exp(\tau)}}` represents an amplitude model with a positive definite, flexible Fourier spectrum. The field :math:`{\tau}` gets its own amplitufde model, with a "spectrum" defined in the so-called quefrency space.
 5) the gradient of the Hamiltonian and the Fischer information metric with respect to all unknown parameters, here :math:`{\xi}` and can be constructed by NIFTy and used for Metric Gaussian Variational Inference.
 
 The reconstructing a non-Gaussian signal with unknown covarinance from a complex (tomographic) response is performed by demos/getting_started_3.py. Here, the uncertainty of the field and its power spectra are probed via posterior samples.
