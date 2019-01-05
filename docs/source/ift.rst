@@ -9,20 +9,19 @@ Theoretical Background
 
 IFT is fully Bayesian. How else could infinitely many field degrees of freedom be constrained by finite data?
 
-It can be used without the knowledge of Feynman diagrams. There is a full toolbox of methods. It reproduces many known well working algorithms. This should be reassuring. And, there were certainly previous works in a similar spirit. Anyhow, in many cases IFT provides novel rigorous ways to extract information from data.
+There is a full toolbox of methods that can be used, like the classical approximation (= Maximum a posteriori = MAP), effective action (= Variational Bayes = VI), Feynman diagrams, renormalitation, and more. IFT reproduces many known well working algorithms. This should be reassuring. And, there were certainly previous works in a similar spirit. Anyhow, in many cases IFT provides novel rigorous ways to extract information from data. NIFTy comes with reimplemented MAP and VI estimators. It also provides a Hamiltonian Monte Carlo sampler for Fields (HMCF).
 
 .. tip:: *In-a-nutshell introductions to information field theory* can be found in [2]_, [3]_, [4]_, and [5]_, with the latter probably being the most didactically.
 
-.. [1] T. Ensslin et al. (2009), "Information field theory for cosmological perturbation reconstruction and nonlinear signal analysis", PhysRevD.80.105005, 09/2009; `arXiv:0806.3474 <http://www.arxiv.org/abs/0806.3474>`_
+.. [1] T.A. Enßlin et al. (2009), "Information field theory for cosmological perturbation reconstruction and nonlinear signal analysis", PhysRevD.80.105005, 09/2009; `arXiv:0806.3474 <http://www.arxiv.org/abs/0806.3474>`_
 
+.. [2] T.A. Enßlin (2013), "Information field theory", proceedings of MaxEnt 2012 -- the 32nd International Workshop on Bayesian Inference and Maximum Entropy Methods in Science and Engineering; AIP Conference Proceedings, Volume 1553, Issue 1, p.184; `arXiv:1301.2556 <http://arxiv.org/abs/1301.2556>`_
 
-.. [2] T. Ensslin (2013), "Information field theory", proceedings of MaxEnt 2012 -- the 32nd International Workshop on Bayesian Inference and Maximum Entropy Methods in Science and Engineering; AIP Conference Proceedings, Volume 1553, Issue 1, p.184; `arXiv:1301.2556 <http://arxiv.org/abs/1301.2556>`_
+.. [3] T.A. Enßlin (2014), "Astrophysical data analysis with information field theory", AIP Conference Proceedings, Volume 1636, Issue 1, p.49; `arXiv:1405.7701 <http://arxiv.org/abs/1405.7701>`_
 
-.. [3] T. Ensslin (2014), "Astrophysical data analysis with information field theory", AIP Conference Proceedings, Volume 1636, Issue 1, p.49; `arXiv:1405.7701 <http://arxiv.org/abs/1405.7701>`_
+.. [4] Wikipedia contributors (2018), `"Information field theory" <https://en.wikipedia.org/w/index.php?title=Information_field_theory&oldid=876731720>`_, Wikipedia, The Free Encyclopedia. 
 
-.. [4] Wikipedia contributors (2018), "Information field theory", Wikipedia, The Free Encyclopedia. `<https://en.wikipedia.org/w/index.php?title=Information_field_theory&oldid=876731720>`_
-
-.. [5] T. Ensslin (2019), "Information theory for fields", accepted by Annalen der Physik; `arXiv:1804.03350 <http://arxiv.org/abs/1804.03350>`_
+.. [5] T.A. Enßlin (2019), "Information theory for fields", accepted by Annalen der Physik; `arXiv:1804.03350 <http://arxiv.org/abs/1804.03350>`_
 
 Discretized continuum
 ---------------------
@@ -89,13 +88,13 @@ The proper discretization of spaces, fields, and operators, as well as the norma
 Free Theory & Implicit Operators 
 --------------------------------
 
-A free IFT appears when the signal field :math:`{s}` and the noise :math:`{n}` in the data :math:`{d}` are independent, zero-centered Gaussian processes of kown covariances :math:`{S}` and :math:`{N}`, respectively,
+A free IFT appears when the signal field :math:`{s}` and the noise :math:`{n}` of the data :math:`{d}` are independent, zero-centered Gaussian processes of kown covariances :math:`{S}` and :math:`{N}`, respectively,
 
 .. math::
 
     \mathcal{P}(s,n) = \mathcal{G}(s,S)\,\mathcal{G}(n,N),
 
-and the measurement equation is linear in both,
+and the measurement equation is linear in both, signal and noise,
 
 .. math::
 
@@ -139,12 +138,12 @@ the information source. The operation in :math:`{d= D\,R^\dagger N^{-1} d}` is a
 
 NIFTy permits to define the involved operators :math:`{R}`, :math:`{R^\dagger}`, :math:`{S}`, and :math:`{N}` implicitely, as routines that can be applied to vectors, but which do not require the explicit storage of the matrix elements of the operators. 
 
-Some of these operators are diagonal in harmonic (Fourier) basis, and therefore only require the specification of a (power) spectrum, :math:`{S= F\,\widehat{P_s} F^\dagger}`, where :math:`{F^\dagger= \mathrm{HarmonicTransformOperator}}` and :math:`{\widehat{P_s} = \mathrm{DiagonalOperator}(P_s)}`, and :math:`{P_s(k)}` is teh power spekrum of :math:`{s}` as a function of the (absolute value of the) harmonic (Fourier) space koordinate :math:`{k}`. For those, NIFTy can easily also provide inverse operators, as :math:`{S^{-1}= F\,\widehat{P_s^{-1}} F^\dagger}`.
+Some of these operators are diagonal in harmonic (Fourier) basis, and therefore only require the specification of a (power) spectrum, :math:`{S= F\,\widehat{P_s} F^\dagger}`, where :math:`{F^\dagger= \mathrm{HarmonicTransformOperator}}` and :math:`{\widehat{P_s} = \mathrm{DiagonalOperator}(P_s)}`, and :math:`{P_s(k)}` is the power spectrum of :math:`{s}` as a function of the (absolute value of the) harmonic (Fourier) space koordinate :math:`{k}`. For those, NIFTy can easily also provide inverse operators, as :math:`{S^{-1}= F\,\widehat{\frac{1}{P_s}} F^\dagger}` in case :math:`{F}` is unitary, :math:`{F^\dagger=F^{-1}}`.
 
 These implicit operators can be combined into new operators, e.g. to :math:`{D^{-1} = S^{-1} + R^\dagger N^{-1} R}`, as well as their inverses, e.g. :math:`{D = \left( D^{-1} \right)^{-1}}`.
 The invocation of an inverse operator applied to a vector might trigger the execution of a numerical linear algebra solver.
 
-Thus, when NIFTy calculates :math:`{m = D\, j}` it actually solves  :math:`{D^{-1} m = j}` for :math:`{m}` behind the scenes. The advantage of implicit operators to explicit matrices is the reduced memory requirements. The reconstruction of only a Megapixel image would otherwithe require the storage and prcessing of matrices with sizes of several Terrabytes. Larger images could not be dealt with due to the quadratic memory requirements of explicit operator representations.
+Thus, when NIFTy calculates :math:`{m = D\, j}` it actually solves  :math:`{D^{-1} m = j}` for :math:`{m}` behind the scenes. The advantage of implicit operators to explicit matrices is the reduced memory requirements. The reconstruction of only a Megapixel image would otherwithe require the storage and processing of matrices with sizes of several Terrabytes. Larger images could not be dealt with due to the quadratic memory requirements of explicit operator representations.
 
 The demo codes demos/getting_started_1.py and demos/Wiener_Filter.ipynb illustrate this.
 
@@ -154,7 +153,7 @@ Generative Models
 
 For more complex measurement situations, involving non-linear measuremnts, unknown covariances, calibration constants and the like, it is recommended to formulate those as generative models as NIFTy provides powerful inference algorithms for such.
 
-In a generative model, all known or unknown quantities are described as the results of generative processes, which start with simple probability distributions, like uniform, iid Gaussian, or delta distributions. 
+In a generative model, all known or unknown quantities are described as the results of generative processes, which start with simple probability distributions, like the uniform, the iid Gaussian, or the delta distribution.
 
 The above free theory case looks as a generative model like the following:
 
@@ -162,7 +161,7 @@ The above free theory case looks as a generative model like the following:
 
     s = A\,\xi
 
-with :math:`{A}` the amplitude operator such that it generates signal field with the correct covariance :math:`{S=A\,A^\dagger}` out of a Gaussian white noise field :math:`{\xi}` with :math:`{\mathcal{P}(\xi)= \mathcal{G}(\xi, 1)}`.
+with :math:`{A}` the amplitude operator such that it generates signal field realizations with the correct covariance :math:`{S=A\,A^\dagger}` out of a Gaussian white noise field :math:`{\xi}` with :math:`{\mathcal{P}(\xi)= \mathcal{G}(\xi, 1)}`.
 
 The joint information Hamiltonian for the whitened signal field :math:`{\xi}`  reads
 
@@ -172,13 +171,13 @@ The joint information Hamiltonian for the whitened signal field :math:`{\xi}`  r
 
 NIFTy takes advantage of this formulation in several ways: 
 
-1) all prior degrees of freedom have now the same variance helping to improve the condition number for the equations to be solved
-2) the amplitude operator can be regarded as part of the response, :math:`{R'=R\,A}`
-3) the response can be made non-linear, e.g. :math:`{R'(s)=R \exp(A\,\xi)}`, see demos/getting_started_2.py
-4) the amplitude operator can be made dependent on unknowns as well, e.g. :math:`{A=A(\tau)= F\,\\widehat{\exp(\tau)}}` represents an amplitude model with a positive definite, flexible Fourier spectrum. The field :math:`{\tau}` gets its own amplitufde model, with a "spectrum" defined in the so-called quefrency space.
-5) the gradient of the Hamiltonian and the Fischer information metric with respect to all unknown parameters, here :math:`{\xi}` and can be constructed by NIFTy and used for Metric Gaussian Variational Inference.
+1) All prior degrees of freedom have now the same unit variance helping to improve the condition number for the equations to be solved.
+2) The amplitude operator can be regarded as part of the response, :math:`{R'=R\,A}`. In general, mre complex responses can be constructed out of the cocatenation of simpler operators.
+3) The response can be made non-linear, e.g. :math:`{R'(s)=R \exp(A\,\xi)}`, see demos/getting_started_2.py.
+4) The amplitude operator can be made dependent on unknowns as well, e.g. :math:`A=A(\tau)= F\, \widehat{e^\tau}` represents an amplitude model with a positive definite, flexible Fourier spectrum. The amplitude field :math:`{\tau}` gets its own amplitude model, with a cepstrum ( = spectrum of a log spectrum) defined in the quefrency space ( = harmonic space of an harmonic space) to tame its degrees of freedom by imposing some (user defined level of) spectral smoothness.
+5) NIFTy can calculate the gradient of the information Hamiltonian and the Fischer information metric with respect to all unknown parameters, here :math:`{\xi}` and :math:`{\tau}`, by automatic differentiation. The gradients are used for MAP and HMCF estimates, and the Fischer matrix is required in addition to the gradient by Metric Gaussian Variational Inference (MGVI), which is also available in NIFTY. MGVI is an implicit operator extension of Automatic Differentiation Variational Inference (ADVI).
 
-The reconstructing a non-Gaussian signal with unknown covarinance from a complex (tomographic) response is performed by demos/getting_started_3.py. Here, the uncertainty of the field and its power spectra are probed via posterior samples.
+The reconstructing a non-Gaussian signal with unknown covarinance from a complex (tomographic) response is performed by demos/getting_started_3.py. Here, the uncertainty of the field and its power spectra are probed via posterior samples provided by the MGVI algorithm.
 
 
 
