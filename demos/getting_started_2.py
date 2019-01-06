@@ -13,14 +13,20 @@
 #
 # Copyright(C) 2013-2018 Max-Planck-Society
 #
-# NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik
-# and financially supported by the Studienstiftung des deutschen Volkes.
+# NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
+
+############################################################
+# Lognormal field reconstruction from Poisson data  
+# from inhomogenous exposure (in case for 2D mode)
+# 1D (set mode=0), 2D (mode=1), or on the sphere (mode=2)
+#############################################################
 
 import nifty5 as ift
 import numpy as np
 
 
 def get_2D_exposure():
+    # set up a structured exposure for 2D mode
     x_shape, y_shape = position_space.shape
 
     exposure = np.ones(position_space.shape)
@@ -39,25 +45,33 @@ if __name__ == '__main__':
     # FIXME description of the tutorial
     np.random.seed(41)
 
-    # Set up the position space of the signal
-    #
-    # # One dimensional regular grid with uniform exposure
-    # position_space = ift.RGSpace(1024)
-    # exposure = ift.Field.full(position_space, 1.)
 
-    # Two-dimensional regular grid with inhomogeneous exposure
-    position_space = ift.RGSpace([512, 512])
-    exposure = get_2D_exposure()
+    # Choose problem geometry and masking
+    mode = 2
+    # 1D (mode=0), 2D (mode=1), or on the sphere (mode=2)
 
-    #  Sphere with uniform exposure
-    # position_space = ift.HPSpace(128)
-    # exposure = ift.Field.full(position_space, 1.)
-
-    # Defining harmonic space and transform
+    # Set up the position space of the signal depending on mode
+    if mode == 0:
+        # One dimensional regular grid with uniform exposure
+        position_space = ift.RGSpace(1024)
+        exposure = ift.Field.full(position_space, 1.)
+    elif mode == 1:
+        # Two-dimensional regular grid with inhomogeneous exposure
+        position_space = ift.RGSpace([512, 512])
+        exposure = get_2D_exposure()
+    else:
+        #  Sphere with uniform exposure
+        position_space = ift.HPSpace(128)
+        exposure = ift.Field.full(position_space, 1.)
+        
+    # Defining harmonic space and harmonic transform
     harmonic_space = position_space.get_default_codomain()
     HT = ift.HarmonicTransformOperator(harmonic_space, position_space)
 
+    # domain over which the field's degrees of freedom live
     domain = ift.DomainTuple.make(harmonic_space)
+    
+    # true value of the of those
     position = ift.from_random('normal', domain)
 
     # Define power spectrum and amplitudes
@@ -104,4 +118,4 @@ if __name__ == '__main__':
     plot.add(GR.adjoint(data), title='Data')
     plot.add(reconst, title='Reconstruction')
     plot.add(reconst - signal, title='Residuals')
-    plot.output(name='getting_started_2.png', xsize=16, ysize=16)
+    plot.output(name='getting_started_2.pdf', xsize=16, ysize=16)

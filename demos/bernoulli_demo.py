@@ -13,9 +13,15 @@
 #
 # Copyright(C) 2013-2018 Max-Planck-Society
 #
-# NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik
-# and financially supported by the Studienstiftung des deutschen Volkes.
+# NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
 
+
+#####################################################################
+# Bernoulli reconstruction
+# reconstruct an event probability field with values between 0 and 1
+# from the observed events
+# 1D (set mode=0), 2D (mode=1), or on the sphere (mode=2)
+#####################################################################
 import nifty5 as ift
 import numpy as np
 
@@ -25,17 +31,16 @@ if __name__ == '__main__':
     np.random.seed(41)
 
     # Set up the position space of the signal
-    #
-    # # One dimensional regular grid with uniform exposure
-    # position_space = ift.RGSpace(1024)
-    # exposure = np.ones(position_space.shape)
-
-    # Two-dimensional regular grid with inhomogeneous exposure
-    position_space = ift.RGSpace([512, 512])
-
-    #  Sphere with uniform exposure
-    # position_space = ift.HPSpace(128)
-    # exposure = ift.Field.full(position_space, 1.)
+    mode = 2
+    if mode == 0:
+        # One dimensional regular grid
+        position_space = ift.RGSpace(1024)
+    elif mode == 1:
+        # Two dimensional regular grid
+        position_space = ift.RGSpace([512, 512])
+    else:
+        # Sphere
+        position_space = ift.HPSpace(128)
 
     # Defining harmonic space and transform
     harmonic_space = position_space.get_default_codomain()
@@ -83,5 +88,5 @@ if __name__ == '__main__':
     plot.add(reconstruction, title='reconstruction')
     plot.add(GR.adjoint_times(data), title='data')
     plot.add(sky(mock_position), title='truth')
-    plot.output(nx=3, xsize=16, ysize=5, title="results",
+    plot.output(nx=3, xsize=16, ysize=9, title="results",
                 name="bernoulli.png")
