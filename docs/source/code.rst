@@ -121,7 +121,7 @@ A :class:`DomainTuple` supports iteration and indexing, and also provides the
 properties :attr:`~DomainTuple.shape`, :attr:`~DomainTuple.size` in analogy to
 the elementary :class:`Domain`.
 
-An aggregation of several :class:`DomainTuple`s, each member identified by a
+An aggregation of several :class:`DomainTuple` s, each member identified by a
 name, is described by the :class:`MultiDomain` class.
 
 Fields
@@ -161,7 +161,7 @@ Fields living on a MultiDomain
 ------------------------------
 
 The :class:`MultiField` class can be seen as a dictionary of individual
-:class:`Field`s, each identified by a name, which lives on an associated
+:class:`Field` s, each identified by a name, which lives on an associated
 :class:`MultiDomain`.
 
 
@@ -170,21 +170,21 @@ Operators
 
 All transformations between different NIFTy fields are expressed  (explicitly
 or implicitly) in the form of :class:`Operator` objects. The interface of this
-class is very minimalistic: it has a property called `domain` which returns
-a `Domaintuple` or `MultiDomain` object specifying the structure of the
-`Field`s or `MultiField`s it expects as input, another property `target`
+class is very minimalistic: it has a property called :class:`domain` which returns
+a :class:`Domaintuple` or :class:`MultiDomain` object specifying the structure of the
+:class:`Field` s or :class:`MultiField` s it expects as input, another property :class:`target`
 describing its output, and finally an overloaded `apply` method, which can
 take
 
-- a `Field`/`MultiField`object, in which case it returns the transformed
-  `Field`/`MultiField`
-- a `Linearization` object, in which case it returns the transformed
-  `Linearization`
+- a :class:`Field`/:class:`MultiField`object, in which case it returns the transformed
+  :class:`Field`/:class:`MultiField`
+- a :class:`Linearization` object, in which case it returns the transformed
+  :class:`Linearization`
 
-This is the interface that all objects derived from `Operator` must implement.
-In addition, `Operator` objects can be added/subtracted, multiplied, chained
-(via the `__call__` method) and support pointwise application of functions like
-`exp()`, `log()`, `sqrt()`, `conjugate()` etc.
+This is the interface that all objects derived from :class:`Operator` must implement.
+In addition, :class:`Operator` objects can be added/subtracted, multiplied, chained
+(via the :class:`__call__` method) and support pointwise application of functions like
+:class:`exp()`, :class:`log()`, :class:`sqrt()`, :class:`conjugate()` etc.
 
 
 Linear Operators
@@ -193,7 +193,7 @@ Linear Operators
 A linear operator (represented by NIFTy5's abstract :class:`LinearOperator`
 class) is derived from `Operator` and can be interpreted as an
 (implicitly defined) matrix. Since its operation is linear, it can provide some
-additional functionality which is not available for the more generic `Operator`
+additional functionality which is not available for the more generic :class:`Operator`
 class.
 
 
