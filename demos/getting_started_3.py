@@ -13,28 +13,52 @@
 #
 # Copyright(C) 2013-2018 Max-Planck-Society
 #
-# NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik
-# and financially supported by the Studienstiftung des deutschen Volkes.
+# NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
+
+############################################################
+# Non-linear tomography 
+# data is line of sight (LOS) field
+# random lines (set mode=0), radial lines (mode=1)
+#############################################################
+mode = 0
 
 import nifty5 as ift
 import numpy as np
 
 
 def get_random_LOS(n_los):
+    # Setting up LOS
     starts = list(np.random.uniform(0, 1, (n_los, 2)).T)
-    ends = list(np.random.uniform(0, 1, (n_los, 2)).T)
+    if mode == 0:
+        ends = list(np.random.uniform(0, 1, (n_los, 2)).T)
+    else:
+        ends = list(0.5+0*np.random.uniform(0, 1, (n_los, 2)).T)
     return starts, ends
 
 
 if __name__ == '__main__':
     # FIXME description of the tutorial
-    np.random.seed(42)
+    np.random.seed(420)
     np.seterr(all='raise')
     position_space = ift.RGSpace([128, 128])
 
-    # Setting up an amplitude model
-    A = ift.AmplitudeModel(position_space, 64, 3, 0.4, -4., 1, 1., 1.)
-
+    # Setting up an amplitude model for the field
+    A = ift.AmplitudeModel(position_space, 64, 3, 0.4, -5., 0.5, 0.4, 0.3)
+    # made choices:
+    # 64 spectral bins 
+    #
+    # Spectral smoothness (affects Gaussian process part)
+    # 3 = relatively high variance of spectral curbvature 
+    # 0.4 = quefrency mode below which cepstrum flattens
+    #
+    # power law part of spectrum:
+    # -5= preferred power-law slope
+    # 0.5 = low variance of power-law slope
+    #
+    # Gaussian process part of log-spectrum
+    # 0.4 = y-intercept mean of additional power 
+    # 0.3 = y-intercept variance of additional power
+    
     # Building the model for a correlated signal
     harmonic_space = position_space.get_default_codomain()
     ht = ift.HarmonicTransformOperator(harmonic_space, position_space)
@@ -61,7 +85,7 @@ if __name__ == '__main__':
     noise = .001
     N = ift.ScalingOperator(noise, data_space)
 
-    # generate mock data
+    # generate mock signal and data
     MOCK_POSITION = ift.from_random('normal', signal_response.domain)
     data = signal_response(MOCK_POSITION) + N.draw_sample()
 
@@ -88,18 +112,25 @@ if __name__ == '__main__':
 
     # number of samples used to estimate the KL
     N_samples = 20
+    
+    # five intermediate steps in minimization to illustrate progress
     for i in range(5):
+        # set up KL
         KL = ift.KL_Energy(position, H, N_samples)
+        # minimize KL until iteration limit reached
         KL, convergence = minimizer(KL)
+        # read out position
         position = KL.position
-
+        # plot momentariy field
         plot = ift.Plot()
         plot.add(signal(KL.position), title="reconstruction")
         plot.add([A.force(KL.position), A.force(MOCK_POSITION)], title="power")
         plot.output(ny=1, ysize=6, xsize=16, name="loop-{:02}.png".format(i))
 
+    # final plot 
     KL = ift.KL_Energy(position, H, N_samples)
     plot = ift.Plot()
+    # do statistics
     sc = ift.StatCalculator()
     for sample in KL.samples:
         sc.add(signal(sample + KL.position))
