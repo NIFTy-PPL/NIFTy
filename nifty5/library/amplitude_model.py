@@ -117,7 +117,7 @@ def AmplitudeModel(s_space, Npixdof, ceps_a, ceps_k, sm, sv, im, iv,
                    keys=['tau', 'phi'], zero_mode=True):
     '''
     Computes a smooth power spectrum.
-    Output lives in PowerSpace.
+    Output is defined on a PowerSpace.
 
     Parameters
     ----------

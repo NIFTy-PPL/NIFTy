@@ -95,7 +95,7 @@ if __name__ == '__main__':
     # Build instrument response consisting of a discretization, mask
     # and harmonic transformaion
 
-    # Data lives in a geometry-free space, thus the geometry is removed
+    # Data is defined on a geometry-free space, thus the geometry is removed
     GR = ift.GeometryRemover(position_space)
 
     # Masking operator to model that parts of the field have not been observed

@@ -14,14 +14,14 @@ class Operator(NiftyMetaBase()):
     def domain(self):
         """DomainTuple or MultiDomain : the operator's input domain
 
-            The domain on which the Operator's input Field lives."""
+            The domain on which the Operator's input Field is defined."""
         return self._domain
 
     @property
     def target(self):
         """DomainTuple or MultiDomain : the operator's output domain
 
-            The domain on which the Operator's output Field lives."""
+            The domain on which the Operator's output Field is defined."""
         return self._target
 
     @staticmethod

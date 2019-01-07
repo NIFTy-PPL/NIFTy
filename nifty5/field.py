@@ -336,7 +336,7 @@ class Field(object):
 
         Returns
         ----------
-        Field, lives on the product space of self.domain and x.domain
+        Field, defined on the product space of self.domain and x.domain
         """
         if not isinstance(x, Field):
             raise TypeError("The multiplier must be an instance of " +
@@ -350,7 +350,7 @@ class Field(object):
         Parameters
         ----------
         x : Field
-            x must live on the same domain as `self`.
+            x must be defined on the same domain as `self`.
 
         spaces : None, int or tuple of int (default: None)
             The dot product is only carried out over the sub-domains in this
