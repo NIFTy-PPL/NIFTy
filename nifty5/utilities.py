@@ -20,6 +20,7 @@ import collections
 from itertools import product
 
 import numpy as np
+from future.utils import with_metaclass
 
 from .compat import *
 
