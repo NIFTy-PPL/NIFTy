@@ -116,10 +116,9 @@ if __name__ == '__main__':
 
     # Draw new samples to approximate the KL five times
     for i in range(5):
+        # Draw new samples and minimize KL
         KL = ift.KL_Energy(position, H, N_samples)
-        # Minimize KL
         KL, convergence = minimizer(KL)
-        # Update position
         position = KL.position
 
         # Plot current reconstruction

@@ -21,8 +21,9 @@
 # 1D (set mode=0), 2D (mode=1), or on the sphere (mode=2)
 ###############################################################################
 
-import nifty5 as ift
 import numpy as np
+
+import nifty5 as ift
 
 
 def make_checkerboard_mask(position_space):
