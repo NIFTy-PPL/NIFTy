@@ -84,7 +84,8 @@ MPI support is added via:
 
 ### Running the tests
 
-In oder to run the tests one needs two additional packages:
+To run the tests, additional packages are required:
+
     sudo apt-get install python3-coverage python3-parameterized python3-pytest python3-pytest-cov
 
 Afterwards the tests (including a coverage report) can be run using the
