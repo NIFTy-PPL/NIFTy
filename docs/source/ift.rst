@@ -13,10 +13,15 @@ It can be used without the knowledge of Feynman diagrams. There is a full toolbo
 
 .. tip:: An *in-a-nutshell introduction to information field theory* can be found in [2]_.
 
-.. [1] T. Ensslin et al., "Information field theory for cosmological perturbation reconstruction and nonlinear signal analysis", PhysRevD.80.105005, 09/2009; `arXiv:0806.3474 <http://www.arxiv.org/abs/0806.3474>`_
+.. [1] T. Ensslin (2019), "Information theory for fields", accepted by Annalen der Physik; `arXiv:1804.03350 <http://arxiv.org/abs/1804.03350>`_
 
-.. [2] T. Ensslin, "Information field theory", accepted for the proceedings of MaxEnt 2012 -- the 32nd International Workshop on Bayesian Inference and Maximum Entropy Methods in Science and Engineering; `arXiv:1301.2556 <http://arxiv.org/abs/1301.2556>`_
+.. [2] Wikipedia contributors (2018), "Information field theory", Wikipedia, The Free Encyclopedia. <https://en.wikipedia.org/w/index.php?title=Information_field_theory&oldid=876731720>`_
 
+.. [3] T. Ensslin (2014), "Astrophysical data analysis with information field theory", AIP Conference Proceedings, Volume 1636, Issue 1, p.49; `arXiv:1405.7701 <http://arxiv.org/abs/1405.7701>`_
+
+.. [4] T. Ensslin (2013), "Information field theory", proceedings of MaxEnt 2012 -- the 32nd International Workshop on Bayesian Inference and Maximum Entropy Methods in Science and Engineering; AIP Conference Proceedings, Volume 1553, Issue 1, p.184; `arXiv:1301.2556 <http://arxiv.org/abs/1301.2556>`_
+
+.. [5] T. Ensslin et al. (2009), "Information field theory for cosmological perturbation reconstruction and nonlinear signal analysis", PhysRevD.80.105005, 09/2009; `arXiv:0806.3474 <http://www.arxiv.org/abs/0806.3474>`_
 
 Discretized continuum
 ---------------------
