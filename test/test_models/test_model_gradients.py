@@ -75,7 +75,7 @@ class Model_Tests(unittest.TestCase):
         model = ift.ScalingOperator(2.456, space)(select_s1*select_s2)
         pos = ift.from_random("normal", dom)
         ift.extra.check_value_gradient_consistency(model, pos, ntries=20)
-        model = ift.positive_tanh(ift.ScalingOperator(2.456, space)(
+        model = ift.sigmoid(ift.ScalingOperator(2.456, space)(
             select_s1*select_s2))
         pos = ift.from_random("normal", dom)
         ift.extra.check_value_gradient_consistency(model, pos, ntries=20)
