@@ -11,19 +11,15 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
-# Copyright(C) 2013-2018 Max-Planck-Society
+# Copyright(C) 2013-2019 Max-Planck-Society
 #
-# NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik
-# and financially supported by the Studienstiftung des deutschen Volkes.
-
-from __future__ import absolute_import, division, print_function
+# NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
 
 import sys
-
+from functools import reduce
 import numpy as np
 from mpi4py import MPI
 
-from ..compat import *
 from .random import Random
 
 __all__ = ["ntask", "rank", "master", "local_shape", "data_object", "full",
