@@ -58,7 +58,7 @@ class KL_Energy(Energy):
     def at(self, position):
         return KL_Energy(position, self._h, 0,
                          self._constants, self._constants_samples,
-                         _samples = self._samples)
+                         _samples=self._samples)
 
     @property
     def value(self):

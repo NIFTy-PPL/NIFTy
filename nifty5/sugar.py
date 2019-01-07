@@ -265,6 +265,7 @@ for f in ["sqrt", "exp", "log", "tanh", "positive_tanh", "conjugate"]:
         return func2
     setattr(_current_module, f, func(f))
 
+
 def get_default_codomain(domainoid, space=None):
     """For `RGSpace`, returns the harmonic partner domain.
     For `DomainTuple`, returns a copy of the object in which the domain
