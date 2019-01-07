@@ -7,7 +7,7 @@ RUN apt-get update && apt-get install -y \
     libfftw3-dev \
     python3 python3-pip python3-dev python3-future python3-scipy cython3 \
     # Documentation build dependencies
-    python-sphinx python-sphinx-rtd-theme python-numpydoc \
+    python3-sphinx python3-sphinx-rtd-theme python3-numpydoc \
     # Testing dependencies
     python3-coverage python3-parameterized python3-pytest python3-pytest-cov \
     # Optional NIFTy dependencies
