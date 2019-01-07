@@ -11,17 +11,14 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
-# Copyright(C) 2013-2018 Max-Planck-Society
+# Copyright(C) 2013-2019 Max-Planck-Society
 #
-# NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik
-# and financially supported by the Studienstiftung des deutschen Volkes.
+# NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
 
-from __future__ import absolute_import, division, print_function
-
+from functools import reduce
 import numpy as np
 
 from . import dobj, utilities
-from .compat import *
 from .domain_tuple import DomainTuple
 
 
@@ -336,7 +333,7 @@ class Field(object):
 
         Returns
         ----------
-        Field, lives on the product space of self.domain and x.domain
+        Field, defined on the product space of self.domain and x.domain
         """
         if not isinstance(x, Field):
             raise TypeError("The multiplier must be an instance of " +
@@ -350,7 +347,7 @@ class Field(object):
         Parameters
         ----------
         x : Field
-            x must live on the same domain as `self`.
+            x must be defined on the same domain as `self`.
 
         spaces : None, int or tuple of int (default: None)
             The dot product is only carried out over the sub-domains in this
@@ -633,9 +630,6 @@ class Field(object):
 
     def sigmoid(self):
         return 0.5*(1.+self.tanh())
-
-    def clipped_exp(self):
-        return Field(self._domain, dobj.clipped_exp(self._val))
 
     def clip(self, min=None, max=None):
         return Field(self._domain, dobj.clip(self._val, min, max))

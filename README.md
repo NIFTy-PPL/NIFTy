@@ -37,7 +37,7 @@ Installation
 
 ### Requirements
 
-- [Python](https://www.python.org/) (v2.7.x or 3.5.x)
+- [Python 3](https://www.python.org/) (3.5.x or later)
 - [SciPy](https://www.scipy.org/)
 - [pyFFTW](https://pypi.python.org/pypi/pyFFTW)
 
@@ -61,8 +61,8 @@ distributions, the "apt" lines will need slight changes.
 
 NIFTy5 and its mandatory dependencies can be installed via:
 
-    sudo apt-get install git libfftw3-dev python python-pip python-dev
-    pip install --user git+https://gitlab.mpcdf.mpg.de/ift/NIFTy.git@NIFTy_5
+    sudo apt-get install git libfftw3-dev python3 python3-pip python3-dev
+    pip3 install --user git+https://gitlab.mpcdf.mpg.de/ift/NIFTy.git@NIFTy_5
 
 (Note: If you encounter problems related to `pyFFTW`, make sure that you are
 using a pip-installed `pyFFTW` package. Unfortunately, some distributions are
@@ -71,35 +71,27 @@ with the installed `FFTW3` libraries.)
 
 Plotting support is added via:
 
-    pip install --user matplotlib
+    pip3 install --user matplotlib
 
 Support for spherical harmonic transforms is added via:
 
-    pip install --user git+https://gitlab.mpcdf.mpg.de/ift/pyHealpix.git
+    pip3 install --user git+https://gitlab.mpcdf.mpg.de/ift/pyHealpix.git
 
 MPI support is added via:
 
     sudo apt-get install openmpi-bin libopenmpi-dev
-    pip install --user mpi4py
-
-### Installation for Python 3
-
-If you want to run NIFTy with Python 3, you need to make the following changes
-to the instructions above:
-
-- in all `apt-get` commands, replace `python-*` by `python3-*`
-- in all `pip` commands, replace `pip` by `pip3`
+    pip3 install --user mpi4py
 
 ### Running the tests
 
-In oder to run the tests one needs two additional packages:
+To run the tests, additional packages are required:
 
-    pip install --user nose parameterized coverage
+    sudo apt-get install python3-coverage python3-parameterized python3-pytest python3-pytest-cov
 
 Afterwards the tests (including a coverage report) can be run using the
 following command in the repository root:
 
-    nosetests -x --with-coverage --cover-html --cover-package=nifty5
+    pytest-3 --cov=nifty5 test
 
 
 ### First Steps
@@ -108,7 +100,7 @@ For a quick start, you can browse through the [informal
 introduction](http://ift.pages.mpcdf.de/NIFTy/code.html) or
 dive into NIFTy by running one of the demonstrations, e.g.:
 
-    python demos/getting_started_1.py
+    python3 demos/getting_started_1.py
 
 
 ### Acknowledgement
