@@ -11,17 +11,13 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
-# Copyright(C) 2013-2018 Max-Planck-Society
+# Copyright(C) 2013-2019 Max-Planck-Society
 #
-# NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik
-# and financially supported by the Studienstiftung des deutschen Volkes.
-
-from __future__ import absolute_import, division, print_function
+# NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
 
 import numpy as np
 
 from .. import dobj
-from ..compat import *
 from ..domain_tuple import DomainTuple
 from ..domains.dof_space import DOFSpace
 from ..domains.power_space import PowerSpace
@@ -63,7 +59,7 @@ class DOFDistributor(LinearOperator):
         if not isinstance(dofdex, Field):
             raise TypeError("dofdex must be a Field")
         if not len(dofdex.domain) == 1:
-            raise ValueError("dofdex must live on exactly one Space")
+            raise ValueError("dofdex must be defined on exactly one Space")
         if not np.issubdtype(dofdex.dtype, np.integer):
             raise TypeError("dofdex must contain integer numbers")
         if partner != dofdex.domain[0]:

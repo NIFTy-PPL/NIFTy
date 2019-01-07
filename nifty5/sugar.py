@@ -11,19 +11,15 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
-# Copyright(C) 2013-2018 Max-Planck-Society
+# Copyright(C) 2013-2019 Max-Planck-Society
 #
-# NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik
-# and financially supported by the Studienstiftung des deutschen Volkes.
-
-from __future__ import absolute_import, division, print_function
+# NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
 
 import sys
 
 import numpy as np
 
 from . import dobj, utilities
-from .compat import *
 from .domain_tuple import DomainTuple
 from .domains.power_space import PowerSpace
 from .field import Field
@@ -37,7 +33,9 @@ from .operators.distributors import PowerDistributor
 __all__ = ['PS_field', 'power_analyze', 'create_power_operator',
            'create_harmonic_smoothing_operator', 'from_random',
            'full', 'from_global_data', 'from_local_data',
-           'makeDomain', 'sqrt', 'exp', 'log', 'tanh', 'positive_tanh',
+           'makeDomain', 'sqrt', 'exp', 'log', 'tanh', 'sigmoid',
+           'sin', 'cos', 'tan', 'sinh', 'cosh',
+           'absolute', 'one_over', 'clip', 'sinc',
            'conjugate', 'get_signal_variance', 'makeOp', 'domain_union',
            'get_default_codomain']
 
@@ -175,12 +173,12 @@ def _create_power_field(domain, power_spectrum):
 def create_power_operator(domain, power_spectrum, space=None):
     """ Creates a diagonal operator with the given power spectrum.
 
-    Constructs a diagonal operator that lives over the specified domain.
+    Constructs a diagonal operator that is defined on the specified domain.
 
     Parameters
     ----------
     domain : Domain, tuple of Domain or DomainTuple
-        Domain over which the power operator shall live.
+        Domain on which the power operator shall be defined.
     power_spectrum : callable or Field
         An object that contains the power spectrum as a function of k.
     space : int
@@ -257,7 +255,9 @@ def domain_union(domains):
 
 _current_module = sys.modules[__name__]
 
-for f in ["sqrt", "exp", "log", "tanh", "positive_tanh", "conjugate"]:
+for f in ["sqrt", "exp", "log", "tanh", "sigmoid",
+          "conjugate", 'sin', 'cos', 'tan', 'sinh', 'cosh',
+          'absolute', 'one_over', 'sinc']:
     def func(f):
         def func2(x):
             from .linearization import Linearization
@@ -268,6 +268,11 @@ for f in ["sqrt", "exp", "log", "tanh", "positive_tanh", "conjugate"]:
                 return getattr(np, f)(x)
         return func2
     setattr(_current_module, f, func(f))
+
+
+def clip(a, a_min=None, a_max=None):
+    return a.clip(a_min, a_max)
+
 
 def get_default_codomain(domainoid, space=None):
     """For `RGSpace`, returns the harmonic partner domain.
