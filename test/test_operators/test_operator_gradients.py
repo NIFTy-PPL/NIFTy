@@ -23,7 +23,7 @@ import nifty5 as ift
 import numpy as np
 
 
-class Model_Tests(unittest.TestCase):
+class OperatorTests(unittest.TestCase):
     @staticmethod
     def make_linearization(type, space, seed):
         np.random.seed(seed)
@@ -43,8 +43,8 @@ class Model_Tests(unittest.TestCase):
         ))
     def testBasics(self, space, seed):
         var = self.make_linearization("Variable", space, seed)
-        model = ift.ScalingOperator(6., var.target)
-        ift.extra.check_value_gradient_consistency(model, var.val)
+        op = ift.ScalingOperator(6., var.target)
+        ift.extra.check_value_gradient_consistency(op, var.val)
 
     @expand(product(
         ['Variable', 'Constant'],
@@ -63,29 +63,29 @@ class Model_Tests(unittest.TestCase):
         dom = ift.MultiDomain.union((dom1, dom2))
         select_s1 = ift.ducktape(None, dom, "s1")
         select_s2 = ift.ducktape(None, dom, "s2")
-        model = select_s1*select_s2
+        op = select_s1*select_s2
         pos = ift.from_random("normal", dom)
-        ift.extra.check_value_gradient_consistency(model, pos, ntries=20)
-        model = select_s1+select_s2
+        ift.extra.check_value_gradient_consistency(op, pos, ntries=20)
+        op = select_s1+select_s2
         pos = ift.from_random("normal", dom)
-        ift.extra.check_value_gradient_consistency(model, pos, ntries=20)
-        model = select_s1.scale(3.)
+        ift.extra.check_value_gradient_consistency(op, pos, ntries=20)
+        op = select_s1.scale(3.)
         pos = ift.from_random("normal", dom1)
-        ift.extra.check_value_gradient_consistency(model, pos, ntries=20)
-        model = ift.ScalingOperator(2.456, space)(select_s1*select_s2)
+        ift.extra.check_value_gradient_consistency(op, pos, ntries=20)
+        op = ift.ScalingOperator(2.456, space)(select_s1*select_s2)
         pos = ift.from_random("normal", dom)
-        ift.extra.check_value_gradient_consistency(model, pos, ntries=20)
-        model = ift.sigmoid(ift.ScalingOperator(2.456, space)(
+        ift.extra.check_value_gradient_consistency(op, pos, ntries=20)
+        op = ift.sigmoid(ift.ScalingOperator(2.456, space)(
             select_s1*select_s2))
         pos = ift.from_random("normal", dom)
-        ift.extra.check_value_gradient_consistency(model, pos, ntries=20)
+        ift.extra.check_value_gradient_consistency(op, pos, ntries=20)
         pos = ift.from_random("normal", dom)
-        model = ift.OuterProduct(pos['s1'], ift.makeDomain(space))
-        ift.extra.check_value_gradient_consistency(model, pos['s2'], ntries=20)
+        op = ift.OuterProduct(pos['s1'], ift.makeDomain(space))
+        ift.extra.check_value_gradient_consistency(op, pos['s2'], ntries=20)
         if isinstance(space, ift.RGSpace):
-            model = ift.FFTOperator(space)(select_s1*select_s2)
+            op = ift.FFTOperator(space)(select_s1*select_s2)
             pos = ift.from_random("normal", dom)
-            ift.extra.check_value_gradient_consistency(model, pos, ntries=20)
+            ift.extra.check_value_gradient_consistency(op, pos, ntries=20)
 
     @expand(product(
         [ift.GLSpace(15),
@@ -100,57 +100,45 @@ class Model_Tests(unittest.TestCase):
         [1.3],
         [4, 78, 23],
         ))
-    def testModelLibrary(self, space, Npixdof, ceps_a,
-                         ceps_k, sm, sv, im, iv, seed):
-        # tests amplitude model and coorelated field model
+    def testOperatorLibrary(self, space, Npixdof, ceps_a,
+                            ceps_k, sm, sv, im, iv, seed):
+        # tests amplitude operator and coorelated field operator
         np.random.seed(seed)
-        model = ift.AmplitudeModel(space, Npixdof, ceps_a, ceps_k, sm,
+        op = ift.AmplitudeOperator(space, Npixdof, ceps_a, ceps_k, sm,
                                    sv, im, iv)
-        S = ift.ScalingOperator(1., model.domain)
+        S = ift.ScalingOperator(1., op.domain)
         pos = S.draw_sample()
-        ift.extra.check_value_gradient_consistency(model, pos, ntries=20)
+        ift.extra.check_value_gradient_consistency(op, pos, ntries=20)
 
-        model2 = ift.CorrelatedField(space, model)
-        S = ift.ScalingOperator(1., model2.domain)
+        op2 = ift.CorrelatedField(space, op)
+        S = ift.ScalingOperator(1., op2.domain)
         pos = S.draw_sample()
-        ift.extra.check_value_gradient_consistency(model2, pos, ntries=20)
+        ift.extra.check_value_gradient_consistency(op2, pos, ntries=20)
 
     @expand(product(
         [ift.GLSpace(15),
          ift.RGSpace(64, distances=.789),
          ift.RGSpace([32, 32], distances=.789)],
         [4, 78, 23]))
-    def testPointModel(self, space, seed):
+    def testInvGammaOperator(self, space, seed):
         S = ift.ScalingOperator(1., space)
         pos = S.draw_sample()
         alpha = 1.5
         q = 0.73
-        model = ift.InverseGammaModel(space, alpha, q)
+        op = ift.InverseGammaOperator(space, alpha, q)
         # FIXME All those cdfs and ppfs are not very accurate
-        ift.extra.check_value_gradient_consistency(model, pos, tol=1e-2,
+        ift.extra.check_value_gradient_consistency(op, pos, tol=1e-2,
                                                    ntries=20)
 
     @expand(product(
         [ift.FFTOperator(ift.RGSpace(64, distances=.789)),
          ift.FFTOperator(ift.RGSpace([32, 32], distances=.789)),
          ift.FFTOperator(ift.RGSpace([32, 32, 32], distances=.789))],
-         [4, 78, 23]))
+        [4, 78, 23]))
     def testDynamicModel(self, FFT, seed):
-        model,_ = ift.make_dynamic_operator(FFT,None,1.,1.)
+        model, _ = ift.make_dynamic_operator(FFT,None,1.,1.)
         S = ift.ScalingOperator(1., model.domain)
         pos = S.draw_sample()
         # FIXME I dont know why smaller tol fails for 3D example
-        ift.extra.check_value_gradient_consistency(model, pos, tol=1e-6, ntries=20)
-
-#     @expand(product(
-#         ['Variable', 'Constant'],
-#         [ift.GLSpace(15),
-#          ift.RGSpace(64, distances=.789),
-#          ift.RGSpace([32, 32], distances=.789)],
-#         [4, 78, 23]
-#         ))
-#     def testMultiModel(self, type, space, seed):
-#         model = self.make_model(
-#             type, space_key='s', space=space, seed=seed)['s']
-#         mmodel = ift.MultiModel(model, 'g')
-#         ift.extra.check_value_gradient_consistency(mmodel)
+        ift.extra.check_value_gradient_consistency(model, pos, tol=1e-6,
+                                                   ntries=20)
