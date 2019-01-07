@@ -11,17 +11,13 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
-# Copyright(C) 2013-2018 Max-Planck-Society
+# Copyright(C) 2013-2019 Max-Planck-Society
 #
-# NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik
-# and financially supported by the Studienstiftung des deutschen Volkes.
-
-from __future__ import absolute_import, division, print_function
+# NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
 
 import numpy as np
 
 from . import utilities
-from .compat import *
 from .field import Field
 from .multi_domain import MultiDomain
 from .domain_tuple import DomainTuple
@@ -194,6 +190,10 @@ class MultiField(object):
     def conjugate(self):
         return self._transform(lambda x: x.conjugate())
 
+    def clip(self, min=None, max=None):
+        return MultiField(self._domain,
+                          tuple(clip(v, min, max) for v in self._val))
+
     def all(self):
         for v in self._val:
             if not v.all():
@@ -296,7 +296,7 @@ for op in ["__iadd__", "__isub__", "__imul__", "__idiv__",
     setattr(MultiField, op, func(op))
 
 
-for f in ["sqrt", "exp", "log", "tanh", "clipped_exp"]:
+for f in ["sqrt", "exp", "log", "tanh"]:
     def func(f):
         def func2(self):
             fu = getattr(Field, f)

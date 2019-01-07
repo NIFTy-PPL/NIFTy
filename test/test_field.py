@@ -11,10 +11,9 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
-# Copyright(C) 2013-2018 Max-Planck-Society
+# Copyright(C) 2013-2019 Max-Planck-Society
 #
-# NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik
-# and financially supported by the Studienstiftung des deutschen Volkes.
+# NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
 
 import unittest
 from itertools import product
@@ -292,3 +291,14 @@ class Test_Functionality(unittest.TestCase):
         assert_equal(f.local_data.shape, ())
         assert_equal(f.local_data.size, 1)
         assert_equal(f.vdot(f), 9.)
+
+    @expand(product([float(5), 5.],
+                    [ift.RGSpace((8,), harmonic=True), ()],
+                    ["exp", "log", "sin", "cos", "tan", "sinh", "cosh", "sinc",
+                     "absolute", "sign"]))
+    def test_funcs(self, num, dom, func):
+        num = 5
+        f = ift.Field.full(dom, num)
+        res = getattr(f, func)()
+        res2 = getattr(np, func)(num)
+        assert_allclose(res.local_data, res2)
