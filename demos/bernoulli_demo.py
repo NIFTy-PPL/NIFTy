@@ -15,28 +15,33 @@
 #
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
 
-import nifty5 as ift
+#####################################################################
+# Bernoulli reconstruction
+# Reconstruct an event probability field with values between 0 and 1
+# from the observed events
+# 1D (set mode=0), 2D (mode=1), or on the sphere (mode=2)
+#####################################################################
+
 import numpy as np
 
+import nifty5 as ift
 
 if __name__ == '__main__':
-    # FIXME ABOUT THIS CODE
     np.random.seed(41)
 
     # Set up the position space of the signal
-    #
-    # # One dimensional regular grid with uniform exposure
-    # position_space = ift.RGSpace(1024)
-    # exposure = np.ones(position_space.shape)
+    mode = 2
+    if mode == 0:
+        # One-dimensional regular grid
+        position_space = ift.RGSpace(1024)
+    elif mode == 1:
+        # Two-dimensional regular grid
+        position_space = ift.RGSpace([512, 512])
+    else:
+        # Sphere
+        position_space = ift.HPSpace(128)
 
-    # Two-dimensional regular grid with inhomogeneous exposure
-    position_space = ift.RGSpace([512, 512])
-
-    #  Sphere with uniform exposure
-    # position_space = ift.HPSpace(128)
-    # exposure = ift.Field.full(position_space, 1.)
-
-    # Defining harmonic space and transform
+    # Define harmonic space and transform
     harmonic_space = position_space.get_default_codomain()
     HT = ift.HarmonicTransformOperator(harmonic_space, position_space)
 
@@ -44,15 +49,13 @@ if __name__ == '__main__':
 
     # Define power spectrum and amplitudes
     def sqrtpspec(k):
-        return 1. / (20. + k**2)
+        return 1./(20. + k**2)
 
     A = ift.create_power_operator(harmonic_space, sqrtpspec)
 
-    # Set up a sky model
+    # Set up a sky model and instrumental response
     sky = ift.positive_tanh(HT(A))
-
     GR = ift.GeometryRemover(position_space)
-    # Set up instrumental response
     R = GR
 
     # Generate mock data
@@ -65,8 +68,8 @@ if __name__ == '__main__':
     # Compute likelihood and Hamiltonian
     position = ift.from_random('normal', harmonic_space)
     likelihood = ift.BernoulliEnergy(data)(p)
-    ic_newton = ift.DeltaEnergyController(name='Newton', iteration_limit=100,
-                                          tol_rel_deltaE=1e-8)
+    ic_newton = ift.DeltaEnergyController(
+        name='Newton', iteration_limit=100, tol_rel_deltaE=1e-8)
     minimizer = ift.NewtonCG(ic_newton)
     ic_sampling = ift.GradientNormController(iteration_limit=100)
 
@@ -82,5 +85,4 @@ if __name__ == '__main__':
     plot.add(reconstruction, title='reconstruction')
     plot.add(GR.adjoint_times(data), title='data')
     plot.add(sky(mock_position), title='truth')
-    plot.output(nx=3, xsize=16, ysize=5, title="results",
-                name="bernoulli.png")
+    plot.output(nx=3, xsize=16, ysize=9, title="results", name="bernoulli.png")
