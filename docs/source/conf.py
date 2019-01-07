@@ -1,3 +1,4 @@
+import nifty5
 import sphinx_rtd_theme
 
 napoleon_google_docstring = False
@@ -21,9 +22,9 @@ master_doc = 'index'
 project = u'NIFTy5'
 copyright = u'2013-2018, Max-Planck-Society'
 author = u'Martin Reinecke'
-# FIXME import version from version.py
-version = u'5.0'
-release = u'5.0.0'
+
+release = nifty5.version.__version__
+version = release[:-2]
 
 language = None
 exclude_patterns = []
