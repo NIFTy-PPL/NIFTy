@@ -1,5 +1,3 @@
-from __future__ import absolute_import, division, print_function
-
 from .utilities import iscomplextype
 import numpy as np
 
