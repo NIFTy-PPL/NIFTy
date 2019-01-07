@@ -170,16 +170,6 @@ class Consistency_Tests(unittest.TestCase):
                                                         dtype=dtype))
         ift.extra.consistency_check(op, dtype, dtype)
 
-    @expand(product(_pow_spaces, [np.float64, np.complex128]))
-    def testLaplace(self, sp, dtype):
-        op = ift.LaplaceOperator(sp)
-        ift.extra.consistency_check(op, dtype, dtype)
-
-    @expand(product(_pow_spaces, [np.float64, np.complex128]))
-    def testSmoothness(self, sp, dtype):
-        op = ift.SmoothnessOperator(sp)
-        ift.extra.consistency_check(op, dtype, dtype)
-
     @expand(product(_h_spaces+_p_spaces+_pow_spaces,
                     [np.float64, np.complex128]))
     def testGeometryRemover(self, sp, dtype):
