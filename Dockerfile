@@ -8,7 +8,7 @@ RUN apt-get update && apt-get install -y \
     python python-pip python-dev python-future python-scipy cython \
     python3 python3-pip python3-dev python3-future python3-scipy cython3 \
     # Documentation build dependencies
-    python-sphinx python-sphinx-rtd-theme python-numpydoc \
+    python3-sphinx python3-sphinx-rtd-theme python3-numpydoc \
     # Testing dependencies
     python-nose python-coverage python-parameterized python-pytest python-pytest-cov \
     python3-nose python3-coverage python3-parameterized python3-pytest python3-pytest-cov \
