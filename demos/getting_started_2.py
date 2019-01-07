@@ -15,18 +15,18 @@
 #
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
 
-############################################################
-# Lognormal field reconstruction from Poisson data  
-# from inhomogenous exposure (in case for 2D mode)
+###############################################################################
+# Log-normal field reconstruction from Poissonian data with inhomogenous
+# exposure (in case for 2D mode)
 # 1D (set mode=0), 2D (mode=1), or on the sphere (mode=2)
-#############################################################
+###############################################################################
 
 import nifty5 as ift
 import numpy as np
 
 
-def get_2D_exposure():
-    # set up a structured exposure for 2D mode
+def exposure_2d():
+    # Structured exposure for 2D mode
     x_shape, y_shape = position_space.shape
 
     exposure = np.ones(position_space.shape)
@@ -37,80 +37,73 @@ def get_2D_exposure():
     exposure[:, x_shape*4//5:x_shape] *= .1
     exposure[:, x_shape//2:x_shape*3//2] *= 3.
 
-    exposure = ift.Field.from_global_data(position_space, exposure)
-    return exposure
+    return ift.Field.from_global_data(position_space, exposure)
 
 
 if __name__ == '__main__':
-    # FIXME description of the tutorial
+    # FIXME All random seeds to 42
     np.random.seed(41)
 
-
-    # Choose problem geometry and masking
+    # Choose space on which the signal field is defined
     mode = 2
-    # 1D (mode=0), 2D (mode=1), or on the sphere (mode=2)
-
-    # Set up the position space of the signal depending on mode
     if mode == 0:
-        # One dimensional regular grid with uniform exposure
+        # One-dimensional regular grid with uniform exposure
         position_space = ift.RGSpace(1024)
         exposure = ift.Field.full(position_space, 1.)
     elif mode == 1:
         # Two-dimensional regular grid with inhomogeneous exposure
         position_space = ift.RGSpace([512, 512])
-        exposure = get_2D_exposure()
+        exposure = exposure_2d()
     else:
-        #  Sphere with uniform exposure
+        # Sphere with uniform exposure
         position_space = ift.HPSpace(128)
         exposure = ift.Field.full(position_space, 1.)
-        
-    # Defining harmonic space and harmonic transform
+
+    # Define harmonic space and harmonic transform
     harmonic_space = position_space.get_default_codomain()
     HT = ift.HarmonicTransformOperator(harmonic_space, position_space)
 
-    # domain over which the field's degrees of freedom live
+    # Domain on which the field's degrees of freedom are defined
     domain = ift.DomainTuple.make(harmonic_space)
-    
-    # true value of the of those
-    position = ift.from_random('normal', domain)
 
-    # Define power spectrum and amplitudes
+    # Define amplitude (square root of power spectrum)
     def sqrtpspec(k):
-        return 1. / (20. + k**2)
+        return 1./(20. + k**2)
 
     p_space = ift.PowerSpace(harmonic_space)
     pd = ift.PowerDistributor(harmonic_space, p_space)
     a = ift.PS_field(p_space, sqrtpspec)
     A = pd(a)
 
-    # Set up a sky model
+    # Define sky model
     sky = ift.exp(HT(ift.makeOp(A)))
 
     M = ift.DiagonalOperator(exposure)
     GR = ift.GeometryRemover(position_space)
-    # Set up instrumental response
+    # Define instrumental response
     R = GR(M)
 
-    # Generate mock data
+    # Generate mock data and define likelihood operator
     d_space = R.target[0]
     lamb = R(sky)
     mock_position = ift.from_random('normal', domain)
     data = lamb(mock_position)
     data = np.random.poisson(data.to_global_data().astype(np.float64))
     data = ift.Field.from_global_data(d_space, data)
-
-    # Compute likelihood and Hamiltonian
-    ic_newton = ift.DeltaEnergyController(name='Newton', iteration_limit=100,
-                                          tol_rel_deltaE=1e-8)
     likelihood = ift.PoissonianEnergy(data)(lamb)
+
+    # Settings for minimization
+    ic_newton = ift.DeltaEnergyController(
+        name='Newton', iteration_limit=100, tol_rel_deltaE=1e-8)
     minimizer = ift.NewtonCG(ic_newton)
 
-    # Minimize the Hamiltonian
+    # Compute MAP solution by minimizing the information Hamiltonian
     H = ift.Hamiltonian(likelihood)
-    H = ift.EnergyAdapter(position, H, want_metric=True)
+    initial_position = ift.from_random('normal', domain)
+    H = ift.EnergyAdapter(initial_position, H, want_metric=True)
     H, convergence = minimizer(H)
 
-    # Plot results
+    # Plotting
     signal = sky(mock_position)
     reconst = sky(H.position)
     plot = ift.Plot()
