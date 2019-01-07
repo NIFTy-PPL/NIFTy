@@ -24,7 +24,7 @@ import numpy as np
 
 
 class Energy_Tests(unittest.TestCase):
-    def make_model(self, **kwargs):
+    def make_operator(self, **kwargs):
         np.random.seed(kwargs['seed'])
         S = ift.ScalingOperator(1., kwargs['space'])
         s = S.draw_sample()
@@ -37,10 +37,10 @@ class Energy_Tests(unittest.TestCase):
         [4, 78, 23]
         ))
     def testGaussian(self, space, seed):
-        model = self.make_model(
+        op = self.make_operator(
             space_key='s1', space=space, seed=seed)['s1']
         energy = ift.GaussianEnergy(domain=space)
-        ift.extra.check_value_gradient_consistency(energy, model)
+        ift.extra.check_value_gradient_consistency(energy, op)
 
 #     @expand(product(
 #         [ift.GLSpace(15),
@@ -62,12 +62,12 @@ class Energy_Tests(unittest.TestCase):
             ift.RGSpace([32, 32], distances=.789)
         ], [4, 78, 23]))
     def testInverseGammaLikelihood(self, space, seed):
-        model = self.make_model(space_key='s1', space=space, seed=seed)['s1']
-        model = model.exp()
+        op = self.make_operator(space_key='s1', space=space, seed=seed)['s1']
+        op = op.exp()
         d = np.random.normal(10, size=space.shape)**2
         d = ift.Field.from_global_data(space, d)
         energy = ift.InverseGammaLikelihood(d)
-        ift.extra.check_value_gradient_consistency(energy, model, tol=1e-7)
+        ift.extra.check_value_gradient_consistency(energy, op, tol=1e-7)
 
     @expand(product(
         [ift.GLSpace(15),
@@ -76,13 +76,13 @@ class Energy_Tests(unittest.TestCase):
         [4, 78, 23]
         ))
     def testPoissonian(self, space, seed):
-        model = self.make_model(
+        op = self.make_operator(
             space_key='s1', space=space, seed=seed)['s1']
-        model = model.exp()
+        op = op.exp()
         d = np.random.poisson(120, size=space.shape)
         d = ift.Field.from_global_data(space, d)
         energy = ift.PoissonianEnergy(d)
-        ift.extra.check_value_gradient_consistency(energy, model, tol=1e-7)
+        ift.extra.check_value_gradient_consistency(energy, op, tol=1e-7)
 
     @expand(product(
         [ift.GLSpace(15),
@@ -91,16 +91,16 @@ class Energy_Tests(unittest.TestCase):
         [4, 78, 23]
         ))
     def testHamiltonian_and_KL(self, space, seed):
-        model = self.make_model(
+        op = self.make_operator(
             space_key='s1', space=space, seed=seed)['s1']
-        model = model.exp()
+        op = op.exp()
         lh = ift.GaussianEnergy(domain=space)
         hamiltonian = ift.Hamiltonian(lh)
-        ift.extra.check_value_gradient_consistency(hamiltonian, model)
+        ift.extra.check_value_gradient_consistency(hamiltonian, op)
         S = ift.ScalingOperator(1., space)
         samps = [S.draw_sample() for i in range(3)]
         kl = ift.SampledKullbachLeiblerDivergence(hamiltonian, samps)
-        ift.extra.check_value_gradient_consistency(kl, model)
+        ift.extra.check_value_gradient_consistency(kl, op)
 
     @expand(product(
         [ift.GLSpace(15),
@@ -109,10 +109,10 @@ class Energy_Tests(unittest.TestCase):
         [4, 78, 23]
         ))
     def testBernoulli(self, space, seed):
-        model = self.make_model(
+        op = self.make_operator(
             space_key='s1', space=space, seed=seed)['s1']
-        model = model.positive_tanh()
+        op = op.positive_tanh()
         d = np.random.binomial(1, 0.1, size=space.shape)
         d = ift.Field.from_global_data(space, d)
         energy = ift.BernoulliEnergy(d)
-        ift.extra.check_value_gradient_consistency(energy, model, tol=1e-6)
+        ift.extra.check_value_gradient_consistency(energy, op, tol=1e-6)
