@@ -97,8 +97,8 @@ Combinations of domains
 =======================
 
 The fundamental classes described above are often sufficient to specify the
-domain of a field. In some cases, however, it will be necessary to have the
-field live on a product of elementary domains instead of a single one.
+domain of a field. In some cases, however, it will be necessary to define the
+field on a product of elementary domains instead of a single one.
 More sophisticated models also require a set of several such fields.
 Some examples are:
 
@@ -157,11 +157,11 @@ that are not covered by the provided standard operations, its data content must
 be extracted first, then changed, and a new field has to be created from the
 result.
 
-Fields living on a MultiDomain
+Fields defined on a MultiDomain
 ------------------------------
 
 The :class:`MultiField` class can be seen as a dictionary of individual
-:class:`Field` s, each identified by a name, which lives on an associated
+:class:`Field` s, each identified by a name, which is defined on a
 :class:`MultiDomain`.
 
 
@@ -171,7 +171,7 @@ Operators
 All transformations between different NIFTy fields are expressed  (explicitly
 or implicitly) in the form of :class:`Operator` objects. The interface of this
 class is very minimalistic: it has a property called :class:`domain` which returns
-a :class:`Domaintuple` or :class:`MultiDomain` object specifying the structure of the
+a :class:`DomainTuple` or :class:`MultiDomain` object specifying the structure of the
 :class:`Field` s or :class:`MultiField` s it expects as input, another property :class:`target`
 describing its output, and finally an overloaded `apply` method, which can
 take

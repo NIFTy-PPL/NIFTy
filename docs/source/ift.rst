@@ -151,19 +151,19 @@ The demo codes demos/getting_started_1.py and demos/Wiener_Filter.ipynb illustra
 Generative Models
 -----------------
 
-For more complex measurement situations, involving non-linear measuremnts, unknown covariances, calibration constants and the like, it is recommended to formulate those as generative models. NIFTy provides powerful inference algorithms for such.
+For more sophisticated measurement situations, involving non-linear measuremnts, unknown covariances, calibration constants and the like, it is recommended to formulate those as generative models for which NIFTy provides powerful inference algorithms.
 
 In a generative model, all known or unknown quantities are described as the results of generative processes, which start with simple probability distributions, like the uniform, the i.i.d. Gaussian, or the delta distribution.
 
-The above free theory case looks as a generative model like the following:
+Let us rewrite the above free theory as a generative model:
 
 .. math::
 
     s = A\,\xi
 
-with :math:`{A}` the amplitude operator such that it generates signal field realizations with the correct covariance :math:`{S=A\,A^\dagger}` out of a Gaussian white noise field :math:`{\xi}` with :math:`{\mathcal{P}(\xi)= \mathcal{G}(\xi, 1)}`.
+with :math:`{A}` the amplitude operator such that it generates signal field realizations with the correct covariance :math:`{S=A\,A^\dagger}` when being applied to a white Gaussian field :math:`{\xi}` with :math:`{\mathcal{P}(\xi)= \mathcal{G}(\xi, 1)}`.
 
-The joint information Hamiltonian for the whitened signal field :math:`{\xi}`  reads
+The joint information Hamiltonian for the whitened signal field :math:`{\xi}` reads:
 
 .. math::
 
@@ -171,13 +171,13 @@ The joint information Hamiltonian for the whitened signal field :math:`{\xi}`  r
 
 NIFTy takes advantage of this formulation in several ways: 
 
-1) All prior degrees of freedom have now the same unit variance helping to improve the condition number for the equations to be solved.
-2) The amplitude operator can be regarded as part of the response, :math:`{R'=R\,A}`. In general, more complex responses can be constructed out of the cocatenation of simpler operators.
-3) The response can be made non-linear, e.g. :math:`{R'(s)=R \exp(A\,\xi)}`, see demos/getting_started_2.py.
-4) The amplitude operator can be made dependent on unknowns as well, e.g. :math:`A=A(\tau)= F\, \widehat{e^\tau}` represents an amplitude model with a positive definite, flexible Fourier spectrum. The amplitude field :math:`{\tau}` gets its own amplitude model, with a cepstrum ( = spectrum of a log spectrum) defined in the quefrency space ( = harmonic space of an harmonic space) to tame its degrees of freedom by imposing some (user defined level of) spectral smoothness.
-5) NIFTy can calculate the gradient of the information Hamiltonian and the Fischer information metric with respect to all unknown parameters, here :math:`{\xi}` and :math:`{\tau}`, by automatic differentiation. The gradients are used for MAP and HMCF estimates, and the Fischer matrix is required in addition to the gradient by Metric Gaussian Variational Inference (MGVI), which is also available in NIFTY. MGVI is an implicit operator extension of Automatic Differentiation Variational Inference (ADVI).
+1) All prior degrees of freedom have unit covariance which improves the condition number of operators which need to be inverted.
+2) The amplitude operator can be regarded as part of the response, :math:`{R'=R\,A}`. In general, more sophisticated responses can be constructed out of the composition of simpler operators.
+3) The response can be non-linear, e.g. :math:`{R'(s)=R \exp(A\,\xi)}`, see demos/getting_started_2.py.
+4) The amplitude operator can be made dependent on unknowns as well, e.g. :math:`A=A(\tau)= F\, \widehat{e^\tau}` represents an amplitude model with a positive definite, unknown spectrum defined in Fourier domain. The amplitude field :math:`{\tau}` would get its own amplitude model, with a cepstrum (spectrum of a log spectrum) defined in quefrency space (harmonic space of a logarithmically binned harmonic space) to regularize its degrees of freedom by imposing some (user-defined level of) spectral smoothness.
+5) NIFTy can calculate the gradient of the information Hamiltonian and the Fischer information metric with respect to all unknown parameters, here :math:`{\xi}` and :math:`{\tau}`, by automatic differentiation. The gradients are used for MAP and HMCF estimates, and the Fischer matrix is required in addition to the gradient by Metric Gaussian Variational Inference (MGVI), which is available in NIFTy as well. MGVI is an implicit operator extension of Automatic Differentiation Variational Inference (ADVI).
 
-The reconstruction of a non-Gaussian signal with unknown covarinance from a complex (tomographic) response is performed by demos/getting_started_3.py. Here, the uncertainty of the field and the power spectrum of its generating process are probed via posterior samples provided by the MGVI algorithm.
+The reconstruction of a non-Gaussian signal with unknown covarinance from a non-trivial (tomographic) response is demonstrated in demos/getting_started_3.py. Here, the uncertainty of the field and the power spectrum of its generating process are probed via posterior samples provided by the MGVI algorithm.
 
 +-------------------------------------------------+
 | .. image:: images/getting_started_3_setup.png   |
