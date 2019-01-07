@@ -76,7 +76,7 @@ if __name__ == '__main__':
     # correlated_field = ift.CorrelatedField(position_space, A)
 
     # Apply a nonlinearity
-    signal = ift.positive_tanh(correlated_field)
+    signal = ift.sigmoid(correlated_field)
 
     # Build the line-of-sight response and define signal response
     LOS_starts, LOS_ends = random_los(100) if mode == 1 else radial_los(100)

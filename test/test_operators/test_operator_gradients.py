@@ -75,7 +75,7 @@ class OperatorTests(unittest.TestCase):
         op = ift.ScalingOperator(2.456, space)(select_s1*select_s2)
         pos = ift.from_random("normal", dom)
         ift.extra.check_value_gradient_consistency(op, pos, ntries=20)
-        op = ift.positive_tanh(ift.ScalingOperator(2.456, space)(
+        op = ift.sigmoid(ift.ScalingOperator(2.456, space)(
             select_s1*select_s2))
         pos = ift.from_random("normal", dom)
         ift.extra.check_value_gradient_consistency(op, pos, ntries=20)
