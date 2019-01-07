@@ -11,10 +11,9 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
-# Copyright(C) 2013-2018 Max-Planck-Society
+# Copyright(C) 2013-2019 Max-Planck-Society
 #
-# NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik
-# and financially supported by the Studienstiftung des deutschen Volkes.
+# NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
 
 import nifty5 as ift
 import numpy as np
@@ -78,7 +77,10 @@ if __name__ == '__main__':
     GR = ift.GeometryRemover(position_space)
     mask = ift.Field.from_global_data(position_space, mask)
     Mask = ift.DiagonalOperator(mask)
+    # Operators can be composed either with paranthesis
     R = GR(Mask(HT))
+    # or with @
+    R = GR @ Mask @ HT
 
     data_space = GR.target
 
@@ -93,7 +95,7 @@ if __name__ == '__main__':
 
     # Build propagator D and information source j
     j = R.adjoint_times(N.inverse_times(data))
-    D_inv = R.adjoint(N.inverse(R)) + S.inverse
+    D_inv = R.adjoint @ N.inverse @ R + S.inverse
     # Make it invertible
     IC = ift.GradientNormController(iteration_limit=500, tol_abs_gradnorm=1e-3)
     D = ift.InversionEnabler(D_inv, IC, approximation=S.inverse).inverse
@@ -105,15 +107,16 @@ if __name__ == '__main__':
     rg = isinstance(position_space, ift.RGSpace)
     plot = ift.Plot()
     if rg and len(position_space.shape) == 1:
-        plot.add([HT(MOCK_SIGNAL), GR.adjoint(data), HT(m)],
-                 label=['Mock signal', 'Data', 'Reconstruction'],
-                 alpha=[1, .3, 1])
-        plot.add(mask_to_nan(mask, HT(m-MOCK_SIGNAL)), title='Residuals')
+        plot.add(
+            [HT(MOCK_SIGNAL), GR.adjoint(data),
+             HT(m)],
+            label=['Mock signal', 'Data', 'Reconstruction'],
+            alpha=[1, .3, 1])
+        plot.add(mask_to_nan(mask, HT(m - MOCK_SIGNAL)), title='Residuals')
         plot.output(nx=2, ny=1, xsize=10, ysize=4, title="getting_started_1")
     else:
         plot.add(HT(MOCK_SIGNAL), title='Mock Signal')
-        plot.add(mask_to_nan(mask, (GR(Mask)).adjoint(data)),
-                 title='Data')
+        plot.add(mask_to_nan(mask, (GR(Mask)).adjoint(data)), title='Data')
         plot.add(HT(m), title='Reconstruction')
         plot.add(mask_to_nan(mask, HT(m-MOCK_SIGNAL)), title='Residuals')
         plot.output(nx=2, ny=2, xsize=10, ysize=10, title="getting_started_1")

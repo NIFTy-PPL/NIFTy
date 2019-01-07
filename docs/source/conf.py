@@ -20,7 +20,7 @@ source_suffix = '.rst'
 master_doc = 'index'
 
 project = u'NIFTy5'
-copyright = u'2013-2018, Max-Planck-Society'
+copyright = u'2013-2019, Max-Planck-Society'
 author = u'Martin Reinecke'
 
 release = nifty5.version.__version__
