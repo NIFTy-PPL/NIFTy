@@ -9,7 +9,7 @@ RUN apt-get update && apt-get install -y \
     # Documentation build dependencies
     python-sphinx python-sphinx-rtd-theme python-numpydoc \
     # Testing dependencies
-    python3-nose python3-coverage python3-parameterized python3-pytest python3-pytest-cov \
+    python3-coverage python3-parameterized python3-pytest python3-pytest-cov \
     # Optional NIFTy dependencies
     openmpi-bin libopenmpi-dev python3-mpi4py \
     # Packages needed for NIFTy
