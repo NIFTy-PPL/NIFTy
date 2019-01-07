@@ -138,7 +138,7 @@ the information source. The operation in :math:`{d= D\,R^\dagger N^{-1} d}` is a
 
 NIFTy permits to define the involved operators :math:`{R}`, :math:`{R^\dagger}`, :math:`{S}`, and :math:`{N}` implicitely, as routines that can be applied to vectors, but which do not require the explicit storage of the matrix elements of the operators. 
 
-Some of these operators are diagonal in harmonic (Fourier) basis, and therefore only require the specification of a (power) spectrum, :math:`{S= F\,\widehat{P_s} F^\dagger}`, where :math:`{F^\dagger= \mathrm{HarmonicTransformOperator}}` and :math:`{\widehat{P_s} = \mathrm{DiagonalOperator}(P_s)}`, and :math:`{P_s(k)}` is the power spectrum of the process that generated :math:`{s}` as a function of the (absolute value of the) harmonic (Fourier) space koordinate :math:`{k}`. For those, NIFTy can easily also provide inverse operators, as :math:`{S^{-1}= F\,\widehat{\frac{1}{P_s}} F^\dagger}` in case :math:`{F}` is unitary, :math:`{F^\dagger=F^{-1}}`.
+Some of these operators are diagonal in harmonic (Fourier) basis, and therefore only require the specification of a (power) spectrum and :math:`{S= F\,\widehat{P_s} F^\dagger}`. Here :math:`{F = \mathrm{HarmonicTransformOperator}}`, :math:`{\widehat{P_s} = \mathrm{DiagonalOperator}(P_s)}`, and :math:`{P_s(k)}` is the power spectrum of the process that generated :math:`{s}` as a function of the (absolute value of the) harmonic (Fourier) space koordinate :math:`{k}`. For those, NIFTy can easily also provide inverse operators, as :math:`{S^{-1}= F\,\widehat{\frac{1}{P_s}} F^\dagger}` in case :math:`{F}` is unitary, :math:`{F^\dagger=F^{-1}}`.
 
 These implicit operators can be combined into new operators, e.g. to :math:`{D^{-1} = S^{-1} + R^\dagger N^{-1} R}`, as well as their inverses, e.g. :math:`{D = \left( D^{-1} \right)^{-1}}`.
 The invocation of an inverse operator applied to a vector might trigger the execution of a numerical linear algebra solver.
@@ -151,9 +151,9 @@ The demo codes demos/getting_started_1.py and demos/Wiener_Filter.ipynb illustra
 Generative Models
 -----------------
 
-For more complex measurement situations, involving non-linear measuremnts, unknown covariances, calibration constants and the like, it is recommended to formulate those as generative models. NIFTy provides powerful inference algorithms for such generative models.
+For more complex measurement situations, involving non-linear measuremnts, unknown covariances, calibration constants and the like, it is recommended to formulate those as generative models. NIFTy provides powerful inference algorithms for such.
 
-In a generative model, all known or unknown quantities are described as the results of generative processes, which start with simple probability distributions, like the uniform, the iid Gaussian, or the delta distribution.
+In a generative model, all known or unknown quantities are described as the results of generative processes, which start with simple probability distributions, like the uniform, the i.i.d. Gaussian, or the delta distribution.
 
 The above free theory case looks as a generative model like the following:
 
