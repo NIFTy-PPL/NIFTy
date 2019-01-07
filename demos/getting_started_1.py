@@ -11,7 +11,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
-# Copyright(C) 2013-2018 Max-Planck-Society
+# Copyright(C) 2013-2019 Max-Planck-Society
 #
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
 
@@ -101,12 +101,18 @@ if __name__ == '__main__':
     # Masking operator to model that parts of the field have not been observed
     mask = ift.Field.from_global_data(position_space, mask)
     Mask = ift.DiagonalOperator(mask)
+<<<<<<< HEAD
 
     # The response operator consists out of
     # - an harmonic transform (to get to image space)
     # - the application of the mask
     # - the removal of geometric information
+=======
+    # Operators can be composed either with paranthesis
+>>>>>>> NIFTy_5
     R = GR(Mask(HT))
+    # or with @
+    R = GR @ Mask @ HT
 
     data_space = GR.target
 
@@ -119,10 +125,17 @@ if __name__ == '__main__':
     MOCK_NOISE = N.draw_sample()
     data = R(MOCK_SIGNAL) + MOCK_NOISE
 
+<<<<<<< HEAD
     # Build inverse propagator D and information source j
     D_inv = R.adjoint(N.inverse(R)) + S.inverse
     j = R.adjoint_times(N.inverse_times(data))
     # Make D_inv invertible (via Conjugate Gradient)
+=======
+    # Build propagator D and information source j
+    j = R.adjoint_times(N.inverse_times(data))
+    D_inv = R.adjoint @ N.inverse @ R + S.inverse
+    # Make it invertible
+>>>>>>> NIFTy_5
     IC = ift.GradientNormController(iteration_limit=500, tol_abs_gradnorm=1e-3)
     D = ift.InversionEnabler(D_inv, IC, approximation=S.inverse).inverse
 
