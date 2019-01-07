@@ -103,7 +103,7 @@ and the measurement equation is linear in both, signal and noise,
 with :math:`{R}` the measurement response, which maps the continous signal field into the discrete data space.
 
 This is called a free theory, as the information Hamiltonian
-
+associate professor
 .. math::
 
     \mathcal{H}(d,s)= -\log \mathcal{P}(d,s)= \frac{1}{2} s^\dagger S^{-1} s + \frac{1}{2} (d-R\,s)^\dagger N^{-1} (d-R\,s) + \mathrm{const}
@@ -181,10 +181,10 @@ The reconstruction of a non-Gaussian signal with unknown covarinance from a non-
 
 +-------------------------------------------------+
 | .. image:: images/getting_started_3_setup.png   |
-|     :width:  100 %                              |
+|     :width:  30 %                               |
 +-------------------------------------------------+
 | .. image:: images/getting_started_3_results.png |
-|     :width:  100 %                              |
+|     :width:  30 %                               |
 +-------------------------------------------------+
 | Output of tomography demo getting_started_3.py. |
 | **Top row:** Non-Gaussian signal field,         |
