@@ -291,3 +291,14 @@ class Test_Functionality(unittest.TestCase):
         assert_equal(f.local_data.shape, ())
         assert_equal(f.local_data.size, 1)
         assert_equal(f.vdot(f), 9.)
+
+    @expand(product([float(5), 5.],
+                    [ift.RGSpace((8,), harmonic=True), ()],
+                    ["exp", "log", "sin", "cos", "tan", "sinh", "cosh", "sinc",
+                     "absolute", "sign"]))
+    def test_funcs(self, num, dom, func):
+        num = 5
+        f = ift.Field.full(dom, num)
+        res = getattr(f, func)()
+        res2 = getattr(np, func)(num)
+        assert_allclose(res.local_data, res2)

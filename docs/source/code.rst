@@ -136,7 +136,7 @@ A :class:`Field` object consists of the following components:
 - a data type (e.g. numpy.float64)
 - an array containing the actual values
 
-Usually, the array is stored in the for of a ``numpy.ndarray``, but for very
+Usually, the array is stored in the form of a ``numpy.ndarray``, but for very
 resource-intensive tasks NIFTy also provides an alternative storage method to
 be used with distributed memory processing.
 

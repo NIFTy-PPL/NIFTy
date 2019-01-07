@@ -31,7 +31,8 @@ __all__ = ["ntask", "rank", "master", "local_shape", "data_object", "full",
            "redistribute", "default_distaxis", "is_numpy", "absmax", "norm",
            "lock", "locked", "uniform_full", "transpose", "to_global_data_rw",
            "ensure_not_distributed", "ensure_default_distributed",
-           "clipped_exp"]
+           "tanh", "conjugate", "sin", "cos", "tan",
+           "sinh", "cosh", "sinc", "absolute", "sign", "clip"]
 
 _comm = MPI.COMM_WORLD
 ntask = _comm.Get_size()
@@ -211,6 +212,9 @@ class data_object(object):
         else:
             return data_object(self._shape, tval, self._distaxis)
 
+    def clip(self, min=None, max=None):
+        return data_object(self._shape, np.clip(self._data, min, max))
+
     def __neg__(self):
         return data_object(self._shape, -self._data, self._distaxis)
 
@@ -292,7 +296,8 @@ def _math_helper(x, function, out):
 
 _current_module = sys.modules[__name__]
 
-for f in ["sqrt", "exp", "log", "tanh", "conjugate"]:
+for f in ["sqrt", "exp", "log", "tanh", "conjugate", "sin", "cos", "tan",
+          "sinh", "cosh", "sinc", "absolute", "sign"]:
     def func(f):
         def func2(x, out=None):
             return _math_helper(x, f, out)
@@ -300,8 +305,8 @@ for f in ["sqrt", "exp", "log", "tanh", "conjugate"]:
     setattr(_current_module, f, func(f))
 
 
-def clipped_exp(a):
-    return data_object(x.shape, np.exp(np.clip(x.data, -300, 300), x.distaxis))
+def clip(x, a_min=None, a_max=None):
+    return data_object(x.shape, np.clip(x.data, a_min, a_max), x.distaxis)
 
 
 def from_object(object, dtype, copy, set_locked):

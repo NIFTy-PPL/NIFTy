@@ -20,6 +20,7 @@ import numpy as np
 from .field import Field
 from .multi_field import MultiField
 from .sugar import makeOp
+from .operators.scaling_operator import ScalingOperator
 
 
 class Linearization(object):
@@ -196,22 +197,70 @@ class Linearization(object):
         tmp = self._val.exp()
         return self.new(tmp, makeOp(tmp)(self._jac))
 
-    def clipped_exp(self):
-        tmp = self._val.clipped_exp()
-        return self.new(tmp, makeOp(tmp)(self._jac))
+    def clip(self, min=None, max=None):
+        tmp = self._val.clip(min, max)
+        if (min is None) and (max is None):
+            return self
+        elif max is None:
+            tmp2 = makeOp(1. - (tmp == min))
+        elif min is None:
+            tmp2 = makeOp(1. - (tmp == max))
+        else:
+            tmp2 = makeOp(1. - (tmp == min) - (tmp == max))
+        return self.new(tmp, tmp2(self._jac))
+
+    def sin(self):
+        tmp = self._val.sin()
+        tmp2 = self._val.cos()
+        return self.new(tmp, makeOp(tmp2)(self._jac))
+
+    def cos(self):
+        tmp = self._val.cos()
+        tmp2 = - self._val.sin()
+        return self.new(tmp, makeOp(tmp2)(self._jac))
+
+    def tan(self):
+        tmp = self._val.tan()
+        tmp2 = 1./(self._val.cos()**2)
+        return self.new(tmp, makeOp(tmp2)(self._jac))
+
+    def sinc(self):
+        tmp = self._val.sinc()
+        tmp2 = (self._val.cos()-tmp)/self._val
+        return self.new(tmp, makeOp(tmp2)(self._jac))
 
     def log(self):
         tmp = self._val.log()
         return self.new(tmp, makeOp(1./self._val)(self._jac))
 
+    def sinh(self):
+        tmp = self._val.sinh()
+        tmp2 = self._val.cosh()
+        return self.new(tmp, makeOp(tmp2)(self._jac))
+
+    def cosh(self):
+        tmp = self._val.cosh()
+        tmp2 = self._val.sinh()
+        return self.new(tmp, makeOp(tmp2)(self._jac))
+
     def tanh(self):
         tmp = self._val.tanh()
         return self.new(tmp, makeOp(1.-tmp**2)(self._jac))
 
-    def positive_tanh(self):
+    def sigmoid(self):
         tmp = self._val.tanh()
         tmp2 = 0.5*(1.+tmp)
         return self.new(tmp2, makeOp(0.5*(1.-tmp**2))(self._jac))
+
+    def absolute(self):
+        tmp = self._val.absolute()
+        tmp2 = self._val.sign()
+        return self.new(tmp, makeOp(tmp2)(self._jac))
+
+    def one_over(self):
+        tmp = 1./self._val
+        tmp2 = - tmp/self._val
+        return self.new(tmp, makeOp(tmp2)(self._jac))
 
     def add_metric(self, metric):
         return self.new(self._val, self._jac, metric)
