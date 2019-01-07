@@ -17,7 +17,6 @@
 
 import numpy as np
 
-from ..compat import *
 from ..domain_tuple import DomainTuple
 from ..field import Field
 from .linear_operator import LinearOperator

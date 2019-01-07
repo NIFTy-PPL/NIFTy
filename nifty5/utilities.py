@@ -17,11 +17,10 @@
 
 import collections
 from itertools import product
+from functools import reduce
 
 import numpy as np
 from future.utils import with_metaclass
-
-from .compat import *
 
 __all__ = ["get_slice_list", "safe_cast", "parse_spaces", "infer_space",
            "memo", "NiftyMetaBase", "my_sum", "my_lincomb_simple",

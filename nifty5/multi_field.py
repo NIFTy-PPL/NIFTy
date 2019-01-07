@@ -18,7 +18,6 @@
 import numpy as np
 
 from . import utilities
-from .compat import *
 from .field import Field
 from .multi_domain import MultiDomain
 from .domain_tuple import DomainTuple

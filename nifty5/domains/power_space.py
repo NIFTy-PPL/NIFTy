@@ -18,7 +18,6 @@
 import numpy as np
 
 from .. import dobj
-from ..compat import *
 from .structured_domain import StructuredDomain
 
 

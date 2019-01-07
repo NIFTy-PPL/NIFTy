@@ -17,8 +17,6 @@
 
 import numpy as np
 
-from ..compat import *
-
 
 class Random(object):
     @staticmethod

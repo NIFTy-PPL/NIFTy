@@ -17,7 +17,6 @@
 
 import numpy as np
 
-from ..compat import *
 from .domain import Domain
 
 

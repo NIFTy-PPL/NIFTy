@@ -17,7 +17,6 @@
 
 import numpy as np
 
-from .compat import *
 from .field import Field
 from .multi_field import MultiField
 from .sugar import makeOp

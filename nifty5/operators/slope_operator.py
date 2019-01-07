@@ -17,7 +17,6 @@
 
 import numpy as np
 
-from ..compat import *
 from ..domain_tuple import DomainTuple
 from ..domains.log_rg_space import LogRGSpace
 from ..domains.unstructured_domain import UnstructuredDomain

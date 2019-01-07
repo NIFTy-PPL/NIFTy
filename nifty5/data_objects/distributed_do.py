@@ -20,7 +20,6 @@ import sys
 import numpy as np
 from mpi4py import MPI
 
-from ..compat import *
 from .random import Random
 
 __all__ = ["ntask", "rank", "master", "local_shape", "data_object", "full",

@@ -16,7 +16,6 @@
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
 
 from .. import utilities
-from ..compat import *
 from .diagonal_operator import DiagonalOperator
 from .linear_operator import LinearOperator
 from .scaling_operator import ScalingOperator

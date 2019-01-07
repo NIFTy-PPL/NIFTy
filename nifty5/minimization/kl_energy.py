@@ -15,7 +15,6 @@
 #
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
 
-from ..compat import *
 from .energy import Energy
 from ..linearization import Linearization
 from .. import utilities

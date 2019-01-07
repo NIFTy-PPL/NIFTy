@@ -16,7 +16,6 @@
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
 
 from .. import dobj, utilities
-from ..compat import *
 from ..domain_tuple import DomainTuple
 from ..domains.log_rg_space import LogRGSpace
 from ..field import Field

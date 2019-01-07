@@ -17,7 +17,6 @@
 
 import numpy as np
 
-from ..compat import *
 from ..logger import logger
 from .line_search import LineSearch
 from .minimizer import Minimizer

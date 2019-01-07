@@ -17,7 +17,6 @@
 
 import numpy as np
 
-from ..compat import *
 from .diagonal_operator import DiagonalOperator
 from .endomorphic_operator import EndomorphicOperator
 from .linear_operator import LinearOperator

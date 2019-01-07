@@ -15,9 +15,6 @@
 #
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
 
-from .compat import *
-
-
 def _logger_init():
     import logging
     from . import dobj

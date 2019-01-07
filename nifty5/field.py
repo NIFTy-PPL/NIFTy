@@ -15,10 +15,10 @@
 #
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
 
+from functools import reduce
 import numpy as np
 
 from . import dobj, utilities
-from .compat import *
 from .domain_tuple import DomainTuple
 
 

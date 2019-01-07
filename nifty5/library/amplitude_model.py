@@ -17,7 +17,6 @@
 
 import numpy as np
 
-from ..compat import *
 from ..domains.power_space import PowerSpace
 from ..field import Field
 from ..sugar import makeOp, sqrt

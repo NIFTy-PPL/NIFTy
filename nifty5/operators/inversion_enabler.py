@@ -17,7 +17,6 @@
 
 import numpy as np
 
-from ..compat import *
 from ..logger import logger
 from ..minimization.conjugate_gradient import ConjugateGradient
 from ..minimization.iteration_controllers import IterationController

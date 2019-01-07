@@ -20,7 +20,6 @@ import sys
 import numpy as np
 
 from . import dobj, utilities
-from .compat import *
 from .domain_tuple import DomainTuple
 from .domains.power_space import PowerSpace
 from .field import Field

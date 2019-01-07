@@ -19,7 +19,6 @@ import numpy as np
 from scipy.sparse import coo_matrix
 from scipy.sparse.linalg import aslinearoperator
 
-from ..compat import *
 from ..domains.rg_space import RGSpace
 from ..domains.unstructured_domain import UnstructuredDomain
 from ..field import Field

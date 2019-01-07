@@ -15,7 +15,6 @@
 #
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
 
-from ..compat import *
 from ..minimization.energy_adapter import EnergyAdapter
 from ..multi_domain import MultiDomain
 from ..multi_field import MultiField

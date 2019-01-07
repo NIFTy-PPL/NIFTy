@@ -15,8 +15,8 @@
 #
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
 
+from functools import reduce
 from . import utilities
-from .compat import *
 from .domains.domain import Domain
 
 

@@ -17,7 +17,6 @@
 
 import numpy as np
 
-from ..compat import *
 from ..minimization.conjugate_gradient import ConjugateGradient
 from ..minimization.quadratic_energy import QuadraticEnergy
 from .endomorphic_operator import EndomorphicOperator

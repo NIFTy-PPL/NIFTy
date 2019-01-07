@@ -15,7 +15,7 @@
 #
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
 
-from ..compat import *
+from functools import reduce
 from ..utilities import NiftyMetaBase
 
 

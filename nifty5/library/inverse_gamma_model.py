@@ -18,7 +18,6 @@
 import numpy as np
 from scipy.stats import invgamma, norm
 
-from ..compat import *
 from ..domain_tuple import DomainTuple
 from ..field import Field
 from ..linearization import Linearization

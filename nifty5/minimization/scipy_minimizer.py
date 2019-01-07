@@ -18,7 +18,6 @@
 import numpy as np
 
 from .. import dobj
-from ..compat import *
 from ..field import Field
 from ..logger import logger
 from ..multi_field import MultiField

@@ -21,7 +21,6 @@ from scipy.sparse.linalg import aslinearoperator
 from scipy.special import erfc
 
 from .. import dobj
-from ..compat import *
 from ..domain_tuple import DomainTuple
 from ..domains.rg_space import RGSpace
 from ..domains.unstructured_domain import UnstructuredDomain

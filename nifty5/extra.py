@@ -17,7 +17,6 @@
 
 import numpy as np
 
-from .compat import *
 from .field import Field
 from .linearization import Linearization
 from .sugar import from_random

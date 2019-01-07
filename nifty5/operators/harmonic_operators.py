@@ -18,7 +18,6 @@
 import numpy as np
 
 from .. import dobj, utilities, fft
-from ..compat import *
 from ..domain_tuple import DomainTuple
 from ..domains.gl_space import GLSpace
 from ..domains.lm_space import LMSpace

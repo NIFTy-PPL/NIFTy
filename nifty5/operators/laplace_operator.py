@@ -18,7 +18,6 @@
 import numpy as np
 
 from .. import dobj
-from ..compat import *
 from ..domain_tuple import DomainTuple
 from ..domains.power_space import PowerSpace
 from ..field import Field

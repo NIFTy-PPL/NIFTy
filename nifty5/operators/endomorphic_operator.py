@@ -17,7 +17,6 @@
 
 import numpy as np
 
-from ..compat import *
 from .linear_operator import LinearOperator
 
 

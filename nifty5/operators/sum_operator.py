@@ -19,7 +19,6 @@ from collections import defaultdict
 
 import numpy as np
 
-from ..compat import *
 from ..sugar import domain_union
 from ..utilities import indent
 from .block_diagonal_operator import BlockDiagonalOperator

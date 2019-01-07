@@ -18,7 +18,6 @@
 import numpy as np
 
 from .. import dobj, utilities
-from ..compat import *
 from ..domain_tuple import DomainTuple
 from ..field import Field
 from .endomorphic_operator import EndomorphicOperator

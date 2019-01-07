@@ -20,7 +20,6 @@ import os
 import numpy as np
 
 from . import dobj
-from .compat import *
 from .domains.gl_space import GLSpace
 from .domains.hp_space import HPSpace
 from .domains.power_space import PowerSpace

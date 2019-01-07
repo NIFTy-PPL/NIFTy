@@ -17,7 +17,6 @@
 
 import numpy as np
 
-from ..compat import *
 from ..sugar import full
 from .endomorphic_operator import EndomorphicOperator
 
