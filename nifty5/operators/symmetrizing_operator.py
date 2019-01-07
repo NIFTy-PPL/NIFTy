@@ -16,8 +16,6 @@
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik
 # and financially supported by the Studienstiftung des deutschen Volkes.
 
-from __future__ import absolute_import, division, print_function
-
 from .. import dobj, utilities
 from ..compat import *
 from ..domain_tuple import DomainTuple
