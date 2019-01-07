@@ -15,7 +15,7 @@ From such a perspective,
 
 - IFT problems largely consist of the combination of several high dimensional
   *minimization* problems.
-- Within NIFTy, *models* are used to define the characteristic equations and
+- Within NIFTy, *operators* are used to define the characteristic equations and
   properties of the problems.
 - The equations are built mostly from the application of *linear operators*,
   but there may also be nonlinear functions involved.
@@ -99,13 +99,13 @@ Combinations of domains
 The fundamental classes described above are often sufficient to specify the
 domain of a field. In some cases, however, it will be necessary to define the
 field on a product of elementary domains instead of a single one.
-More sophisticated models also require a set of several such fields.
+More sophisticated operators also require a set of several such fields.
 Some examples are:
 
 - sky emission depending on location and energy. This could be represented by
   a product of an :class:`HPSpace` (for location) with an :class:`RGSpace`
   (for energy).
-- a polarised field, which could be modeled as a product of any structured
+- a polarized field, which could be modeled as a product of any structured
   domain (representing location) with a four-element
   :class:`UnstructuredDomain` holding Stokes I, Q, U and V components.
 - a model for the sky emission, which holds both the current realization
@@ -269,59 +269,59 @@ The properties :attr:`~LinearOperator.adjoint` and
 were the original operator's adjoint or inverse, respectively.
 
 
-Models
-======
+Operators
+=========
 
-Model classes (represented by NIFTy5's abstract :class:`Model` class) are used to construct
+Operator classes (represented by NIFTy5's abstract :class:`Operator` class) are used to construct
 the equations of a specific inference problem.
-Most models are defined via a position, which is a :class:`MultiField` object,
+Most operators are defined via a position, which is a :class:`MultiField` object,
 their value at this position, which is again a :class:`MultiField` object and a Jacobian derivative,
 which is a :class:`LinearOperator` and is needed for the minimization procedure.
 
-Using the existing basic model classes one can construct more complicated models, as
+Using the existing basic operator classes one can construct more complicated operators, as
 NIFTy allows for easy and self-consinstent combination via point-wise multiplication,
-addition and subtraction. The model resulting from these operations then automatically
+addition and subtraction. The operator resulting from these operations then automatically
 contains the correct Jacobians, positions and values.
 Notably, :class:`Constant` and :class:`Variable` allow for an easy way to turn
 inference of specific quantities on and off.
 
-The basic model classes also allow for more complex operations on models such as
+The basic operator classes also allow for more complex operations on operators such as
 the application of :class:`LinearOperators` or local non-linearities.
-As an example one may consider the following combination of ``x``, which is a model of type
-:class:`Variable` and ``y``, which is a model of type :class:`Constant`::
+As an example one may consider the following combination of ``x``, which is an operator of type
+:class:`Variable` and ``y``, which is an operator of type :class:`Constant`::
 
 	z = x*x + y
 
-``z`` will then be a model with the following properties::
+``z`` will then be an operator with the following properties::
 
 	z.value = x.value*x.value + y.value
 	z.position = Union(x.position, y.position)
 	z.jacobian = 2*makeOp(x.value)
 
 
-Basic models
+Basic operators
 ------------
+# FIXME All this is outdated!
 
-Basic model classes provided by NIFTy are
+Basic operator classes provided by NIFTy are
 
 - :class:`Constant` contains a constant value and has a zero valued Jacobian.
-  Like other models, it has a position, but its value does not depend on it.
+  Like other operators, it has a position, but its value does not depend on it.
 - :class:`Variable` returns the position as its value, its derivative is one.
 - :class:`LinearModel` applies a :class:`LinearOperator` on the model.
 - :class:`LocalModel` applies a non-linearity locally on the model.
-- :class:`MultiModel` combines various models into one. In this case the position,
 	value and Jacobian are combined into corresponding :class:`MultiFields` and operators.
 
 
-Advanced models
----------------
+Advanced operators
+------------------
 
-NIFTy also provides a library of more sophisticated models which are used for more
+NIFTy also provides a library of more sophisticated operators which are used for more
 specific inference problems. Currently these are:
 
-- :class:`AmplitudeModel`, which returns a smooth power spectrum.
-- :class:`PointModel`, which models point sources which follow a inverse gamma distribution.
-- :class:`SmoothSkyModel`, which models a diffuse lognormal field. It takes an amplitude model
+- :class:`AmplitudeOperator`, which returns a smooth power spectrum.
+- :class:`InverseGammaOperator`, which models point sources which follow a inverse gamma distribution.
+- :class:`CorrelatedField`, which models a diffuse log-normal field. It takes an amplitude operator
 	to specify the correlation structure of the field.
 
 

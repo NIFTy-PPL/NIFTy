@@ -25,9 +25,9 @@ from ..operators.operator import Operator
 from ..sugar import makeOp
 
 
-class InverseGammaModel(Operator):
+class InverseGammaOperator(Operator):
     def __init__(self, domain, alpha, q, delta=0.001):
-        """Model which transforms a Gaussian into an inverse gamma distribution.
+        """Operator which transforms a Gaussian into an inverse gamma distribution.
 
         The pdf of the inverse gamma distribution is defined as follows:
 

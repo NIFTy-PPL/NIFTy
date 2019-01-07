@@ -76,7 +76,7 @@ if __name__ == '__main__':
     a = ift.PS_field(p_space, sqrtpspec)
     A = pd(a)
 
-    # Define sky model
+    # Define sky operator
     sky = ift.exp(HT(ift.makeOp(A)))
 
     M = ift.DiagonalOperator(exposure)

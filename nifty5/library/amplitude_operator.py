@@ -62,7 +62,7 @@ def create_cepstrum_amplitude_field(domain, cepstrum):
     return Field.from_global_data(domain, cepstrum_field)
 
 
-def CepstrumOperator(logk_space, ceps_a, ceps_k, zero_mode=True):
+def _CepstrumOperator(logk_space, ceps_a, ceps_k, zero_mode=True):
     '''
     Parameters
     ----------
@@ -88,7 +88,7 @@ def CepstrumOperator(logk_space, ceps_a, ceps_k, zero_mode=True):
     return res
 
 
-def SlopeModel(logk_space, sm, sv, im, iv):
+def _SlopePowerSpectrum(logk_space, sm, sv, im, iv):
     '''
     Parameters
     ----------
@@ -109,8 +109,8 @@ def SlopeModel(logk_space, sm, sv, im, iv):
     return slope(OffsetOperator(phi_mean)(makeOp(phi_sig)))
 
 
-def AmplitudeModel(s_space, Npixdof, ceps_a, ceps_k, sm, sv, im, iv,
-                   keys=['tau', 'phi'], zero_mode=True):
+def AmplitudeOperator(s_space, Npixdof, ceps_a, ceps_k, sm, sv, im, iv,
+                      keys=['tau', 'phi'], zero_mode=True):
     '''
     Computes a smooth power spectrum.
     Output is defined on a PowerSpace.
@@ -137,9 +137,9 @@ def AmplitudeModel(s_space, Npixdof, ceps_a, ceps_k, sm, sv, im, iv,
     et = ExpTransform(PowerSpace(h_space), Npixdof)
     logk_space = et.domain[0]
 
-    smooth = CepstrumOperator(logk_space, ceps_a, ceps_k, zero_mode)
+    smooth = _CepstrumOperator(logk_space, ceps_a, ceps_k, zero_mode)
     smooth = smooth.ducktape(keys[0])
-    linear = SlopeModel(logk_space, sm, sv, im, iv)
+    linear = _SlopePowerSpectrum(logk_space, sm, sv, im, iv)
     linear = linear.ducktape(keys[1])
 
     fac = ScalingOperator(0.5, smooth.target)

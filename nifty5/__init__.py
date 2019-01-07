@@ -73,8 +73,8 @@ from .minimization.kl_energy import KL_Energy
 from .sugar import *
 from .plot import Plot
 
-from .library.amplitude_model import AmplitudeModel
-from .library.inverse_gamma_model import InverseGammaModel
+from .library.amplitude_operator import AmplitudeOperator
+from .library.inverse_gamma_operator import InverseGammaOperator
 from .library.los_response import LOSResponse
 
 from .library.wiener_filter_curvature import WienerFilterCurvature
