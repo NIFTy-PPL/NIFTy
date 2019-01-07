@@ -173,12 +173,12 @@ def _create_power_field(domain, power_spectrum):
 def create_power_operator(domain, power_spectrum, space=None):
     """ Creates a diagonal operator with the given power spectrum.
 
-    Constructs a diagonal operator that lives over the specified domain.
+    Constructs a diagonal operator that is defined on the specified domain.
 
     Parameters
     ----------
     domain : Domain, tuple of Domain or DomainTuple
-        Domain over which the power operator shall live.
+        Domain on which the power operator shall be defined.
     power_spectrum : callable or Field
         An object that contains the power spectrum as a function of k.
     space : int

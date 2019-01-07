@@ -35,7 +35,7 @@ class DiagonalOperator(EndomorphicOperator):
     diagonal : Field
         The diagonal entries of the operator.
     domain : Domain, tuple of Domain or DomainTuple, optional
-        The domain on which the Operator's input Field lives.
+        The domain on which the Operator's input Field is defined.
         If None, use the domain of "diagonal".
     spaces : int or tuple of int, optional
         The elements of "domain" on which the operator acts.

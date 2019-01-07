@@ -32,7 +32,7 @@ class ExpTransform(LinearOperator):
 
     This operator creates a log-space subject to the degrees of freedom and
     and its target-domain.
-    Then transforms between this log-space and its target, which lives in
+    Then transforms between this log-space and its target, which is defined in
     normal units.
 
     E.g: A field in log-log-space can be transformed into log-norm-space,

@@ -274,8 +274,8 @@ class Plot(object):
         Parameters
         ----------
         f: Field, or list of Field objects
-            If `f` is a single Field, it must live over a single `RGSpace`,
-            `PowerSpace`, `HPSpace`, `GLSPace`.
+            If `f` is a single Field, it must be defined on a single `RGSpace`,
+            `PowerSpace`, `HPSpace`, `GLSpace`.
             If it is a list, all list members must be Fields living over the
             same one-dimensional `RGSpace` or `PowerSpace`.
         title: string

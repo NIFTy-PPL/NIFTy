@@ -59,7 +59,7 @@ class DOFDistributor(LinearOperator):
         if not isinstance(dofdex, Field):
             raise TypeError("dofdex must be a Field")
         if not len(dofdex.domain) == 1:
-            raise ValueError("dofdex must live on exactly one Space")
+            raise ValueError("dofdex must be defined on exactly one Space")
         if not np.issubdtype(dofdex.dtype, np.integer):
             raise TypeError("dofdex must contain integer numbers")
         if partner != dofdex.domain[0]:
