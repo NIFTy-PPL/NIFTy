@@ -81,7 +81,7 @@ class Operator(NiftyMetaBase()):
     def clip(self, min=None, max=None):
         if min is None and max is None:
             return self
-        return _OpChain.make((_Clipper(sef.target, min, max), self))
+        return _OpChain.make((_Clipper(self.target, min, max), self))
 
     def apply(self, x):
         raise NotImplementedError
