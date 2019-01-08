@@ -25,6 +25,13 @@ from .linear_operator import LinearOperator
 
 
 class VdotOperator(LinearOperator):
+    """Operator computing the scalar product of its input with a given Field.
+
+    Parameters
+    ----------
+    field : Field/MultiField
+        The field used to build the scalar product with the operator input
+    """
     def __init__(self, field):
         self._field = field
         self._domain = field.domain
@@ -39,6 +46,7 @@ class VdotOperator(LinearOperator):
 
 
 class ConjugationOperator(EndomorphicOperator):
+    """Operator computing the complex conjugate of its input."""
     def __init__(self, domain):
         self._domain = DomainTuple.make(domain)
         self._capability = self._all_ops
@@ -49,6 +57,7 @@ class ConjugationOperator(EndomorphicOperator):
 
 
 class Realizer(EndomorphicOperator):
+    """Operator returning the real component of its input."""
     def __init__(self, domain):
         self._domain = DomainTuple.make(domain)
         self._capability = self.TIMES | self.ADJOINT_TIMES
