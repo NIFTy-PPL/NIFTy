@@ -118,20 +118,20 @@ class LOSResponse(LinearOperator):
         has dimensions. The second dimensions must be identical for both arrays
         and indicated the total number of lines of sight.
     sigmas: numpy.ndarray(float) (optional)
-        If this is not None, the inverse of the lengths of the LOSs are assumed to be 
-        Gaussian diastributed with these sigmas. The start point will remain the same,
-        but the endpoint is assumed to be unknown.
+        If this is not None, the inverse of the lengths of the LOSs are assumed
+        to be Gaussian distributed with these sigmas. The start point will
+        remain the same, but the endpoint is assumed to be unknown.
         This is a typical statistical model for astrophysical parallaxes.
         The LOS response then returns the expected integral
-        over the input given that the length of the LOS is unknown and therefore the
-        result is averaged over different endpoints.
+        over the input given that the length of the LOS is unknown and
+        therefore the result is averaged over different endpoints.
         default: None
     truncation: float (optional)
         Use only if the sigmas keyword argument is used!
-        This truncates the probability of the endpoint lying more sigmas away than
-        the truncation. Used to speed up computation and to avoid negative distances.
-        It should hold that 1./(1./length-sigma*truncation)>0 for all lengths of the
-        LOSs and all corresponding sigma of sigmas.
+        This truncates the probability of the endpoint lying more sigmas away
+        than the truncation. Used to speed up computation and to avoid negative
+        distances. It should hold that `1./(1./length-sigma*truncation)>0`
+        for all lengths of the LOSs and all corresponding sigma of sigmas.
         If unsure, leave blank.
         default: 3.
 
@@ -173,8 +173,9 @@ class LOSResponse(LinearOperator):
         difflen = np.linalg.norm(diffs, axis=0)
         diffs /= difflen
         real_distances = 1./(1./difflen - truncation*sigmas)
-        if np.any(real_distances<0):
-            raise ValueError("parallax error truncation to high: getting negative distances")
+        if np.any(real_distances < 0):
+            raise ValueError("parallax error truncation to high: "
+                             "getting negative distances")
         real_ends = starts + diffs*real_distances
         lzp = local_zero_point.reshape((-1, 1))
         dist = np.array(self.domain[0].distances).reshape((-1, 1))
@@ -186,9 +187,9 @@ class LOSResponse(LinearOperator):
                              localized_pixel_ends,
                              self._local_shape,
                              np.array(self.domain[0].distances),
-                             1./(1./difflen+truncation*sigmas), 
-                             difflen, 
-                             1./(1./difflen-truncation*sigmas), 
+                             1./(1./difflen+truncation*sigmas),
+                             difflen,
+                             1./(1./difflen-truncation*sigmas),
                              sigmas,
                              _gaussian_sf)
 
