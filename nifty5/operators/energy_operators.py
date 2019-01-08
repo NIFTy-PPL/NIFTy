@@ -27,6 +27,8 @@ from .simple_linear_operators import VdotOperator
 
 
 class EnergyOperator(Operator):
+    """Basis class EnergyOperator
+    """
     _target = DomainTuple.scalar_domain()
 
 
