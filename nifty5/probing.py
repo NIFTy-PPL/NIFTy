@@ -25,7 +25,8 @@ class StatCalculator(object):
     -----
     - the memory usage of this object is constant, i.e. it does not increase
       with the number of samples added
-    - FIXME describe the kind of variance used (divided by n-1)
+    - the code computes the unbiased variance (which contains a `1./(n-1)`
+      term for `n` samples).
     """
     def __init__(self):
         self._count = 0
@@ -60,7 +61,7 @@ class StatCalculator(object):
     @property
     def var(self):
         """
-        value type : the variance of all samples added so far.
+        value type : the unbiased variance of all samples added so far.
         """
         if self._count < 2:
             raise RuntimeError
