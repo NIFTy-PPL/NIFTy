@@ -30,8 +30,6 @@ from ..operators.linear_operator import LinearOperator
 
 def _gaussian_error_function(x):
     return 0.5*erfc(x/np.sqrt(2.))
-# FIXME which one is right?
-#    return 0.5/erfc(x*np.sqrt(2.))
 
 
 def _comp_traverse(start, end, shp, dist, lo, mid, hi, erf):
