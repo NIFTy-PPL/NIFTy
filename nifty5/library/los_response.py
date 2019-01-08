@@ -28,7 +28,7 @@ from ..field import Field
 from ..operators.linear_operator import LinearOperator
 
 
-def _gaussian_error_function(x):
+def _gaussian_sf(x):
     return 0.5*erfc(x/np.sqrt(2.))
 
 
@@ -180,7 +180,7 @@ class LOSResponse(LinearOperator):
                              self._local_shape,
                              np.array(self.domain[0].distances),
                              difflen-sigmas_low, difflen, difflen+sigmas_up,
-                             _gaussian_error_function)
+                             _gaussian_sf)
 
         boxsz = 16
         nlos = len(w_i)
