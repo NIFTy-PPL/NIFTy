@@ -109,6 +109,34 @@ class FieldAdapter(LinearOperator):
 
 
 def ducktape(left, right, name):
+    """Convenience function for computing an adapter between two operators.
+
+    Parameters
+    ----------
+    left : None, Operator, or Domainoid
+        Something describing the input domain of the left operator.
+        If `left` is an `Operator`, its domain is used as `left`.
+
+    right : None, Operator, or Domainoid
+        Something describing the target domain of the right operator.
+        If `right` is an `Operator`, its target is used as `right`.
+
+    name : string
+        The component of the `MultiDomain` that will be extracted/inserted
+
+    Notes
+    -----
+    - one of the involved domains must be a `DomainTuple`, the other a
+      `MultiDomain`.
+    - `left` and `right` must not be both `None`, but one of them can (and
+      probably should) be `None`. In this case, the missing information is
+      inferred.
+
+    Returns
+    -------
+    FieldAdapter : an adapter operator converting between the two (possibly
+                   partially inferred) domains.
+    """
     from ..sugar import makeDomain
     from .operator import Operator
     if left is None:  # need to infer left from right
