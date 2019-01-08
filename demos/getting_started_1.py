@@ -11,31 +11,40 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
-# Copyright(C) 2013-2018 Max-Planck-Society
+# Copyright(C) 2013-2019 Max-Planck-Society
 #
-# NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik
-# and financially supported by the Studienstiftung des deutschen Volkes.
+# NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
 
-import nifty5 as ift
+###############################################################################
+# Compute a Wiener filter solution with NIFTy
+# Shows how measurement gaps are filled in
+# 1D (set mode=0), 2D (mode=1), or on the sphere (mode=2)
+###############################################################################
+
 import numpy as np
 
+import nifty5 as ift
 
-def make_chess_mask(position_space):
+
+def make_checkerboard_mask(position_space):
+    # Checkerboard mask for 2D mode
     mask = np.ones(position_space.shape)
     for i in range(4):
         for j in range(4):
-            if (i+j) % 2 == 0:
-                mask[i*128//4:(i+1)*128//4, j*128//4:(j+1)*128//4] = 0
+            if (i + j) % 2 == 0:
+                mask[i*128//4:(i + 1)*128//4, j*128//4:(j + 1)*128//4] = 0
     return mask
 
 
 def make_random_mask():
+    # Random mask for spherical mode
     mask = ift.from_random('pm1', position_space)
-    mask = (mask+1)/2
+    mask = (mask + 1)/2
     return mask.to_global_data()
 
 
 def mask_to_nan(mask, field):
+    # Set masked pixels to nan for plotting
     masked_data = field.local_data.copy()
     masked_data[mask.local_data == 0] = np.nan
     return ift.from_local_data(field.domain, masked_data)
@@ -43,46 +52,68 @@ def mask_to_nan(mask, field):
 
 if __name__ == '__main__':
     np.random.seed(42)
-    # FIXME description of the tutorial
 
-    # Choose problem geometry and masking
+    # Choose space on which the signal field is defined
     mode = 1
     if mode == 0:
-        # One dimensional regular grid
+        # One-dimensional regular grid
         position_space = ift.RGSpace([1024])
         mask = np.ones(position_space.shape)
     elif mode == 1:
-        # Two dimensional regular grid with chess mask
+        # Two-dimensional regular grid with checkerboard mask
         position_space = ift.RGSpace([128, 128])
-        mask = make_chess_mask(position_space)
+        mask = make_checkerboard_mask(position_space)
     else:
-        # Sphere with half of its locations randomly masked
+        # Sphere with half of its pixels randomly masked
         position_space = ift.HPSpace(128)
         mask = make_random_mask()
 
+    # Specify harmonic space corresponding to signal
     harmonic_space = position_space.get_default_codomain()
+
+    # Harmonic transform from harmonic space to position space
     HT = ift.HarmonicTransformOperator(harmonic_space, target=position_space)
 
-    # Set correlation structure with a power spectrum and build
-    # prior correlation covariance
+    # Set prior correlation covariance with a power spectrum leading to
+    # homogeneous and isotropic statistics
     def power_spectrum(k):
-        return 100. / (20.+k**3)
+        return 100./(20. + k**3)
+
+    # 1D spectral space on which the power spectrum is defined
     power_space = ift.PowerSpace(harmonic_space)
+
+    # Mapping to (higher dimensional) harmonic space
     PD = ift.PowerDistributor(harmonic_space, power_space)
+
+    # Apply the mapping
     prior_correlation_structure = PD(ift.PS_field(power_space, power_spectrum))
 
+    # Insert the result into the diagonal of an harmonic space operator
     S = ift.DiagonalOperator(prior_correlation_structure)
+    # S is the prior field covariance
 
     # Build instrument response consisting of a discretization, mask
     # and harmonic transformaion
+
+    # Data is defined on a geometry-free space, thus the geometry is removed
     GR = ift.GeometryRemover(position_space)
+
+    # Masking operator to model that parts of the field have not been observed
     mask = ift.Field.from_global_data(position_space, mask)
     Mask = ift.DiagonalOperator(mask)
+
+    # The response operator consists of
+    # - an harmonic transform (to get to image space)
+    # - the application of the mask
+    # - the removal of geometric information
+    # Operators can be composed either with parenthesis
     R = GR(Mask(HT))
+    # or with @
+    R = GR @ Mask @ HT
 
     data_space = GR.target
 
-    # Set the noise covariance
+    # Set the noise covariance N
     noise = 5.
     N = ift.ScalingOperator(noise, data_space)
 
@@ -91,29 +122,30 @@ if __name__ == '__main__':
     MOCK_NOISE = N.draw_sample()
     data = R(MOCK_SIGNAL) + MOCK_NOISE
 
-    # Build propagator D and information source j
+    # Build inverse propagator D and information source j
+    D_inv = R.adjoint @ N.inverse @ R + S.inverse
     j = R.adjoint_times(N.inverse_times(data))
-    D_inv = R.adjoint(N.inverse(R)) + S.inverse
-    # Make it invertible
+    # Make D_inv invertible (via Conjugate Gradient)
     IC = ift.GradientNormController(iteration_limit=500, tol_abs_gradnorm=1e-3)
     D = ift.InversionEnabler(D_inv, IC, approximation=S.inverse).inverse
 
-    # WIENER FILTER
+    # Calculate WIENER FILTER solution
     m = D(j)
 
-    # PLOTTING
+    # Plotting
     rg = isinstance(position_space, ift.RGSpace)
     plot = ift.Plot()
     if rg and len(position_space.shape) == 1:
-        plot.add([HT(MOCK_SIGNAL), GR.adjoint(data), HT(m)],
-                 label=['Mock signal', 'Data', 'Reconstruction'],
-                 alpha=[1, .3, 1])
-        plot.add(mask_to_nan(mask, HT(m-MOCK_SIGNAL)), title='Residuals')
+        plot.add(
+            [HT(MOCK_SIGNAL), GR.adjoint(data),
+             HT(m)],
+            label=['Mock signal', 'Data', 'Reconstruction'],
+            alpha=[1, .3, 1])
+        plot.add(mask_to_nan(mask, HT(m - MOCK_SIGNAL)), title='Residuals')
         plot.output(nx=2, ny=1, xsize=10, ysize=4, title="getting_started_1")
     else:
         plot.add(HT(MOCK_SIGNAL), title='Mock Signal')
-        plot.add(mask_to_nan(mask, (GR(Mask)).adjoint(data)),
-                 title='Data')
+        plot.add(mask_to_nan(mask, (GR(Mask)).adjoint(data)), title='Data')
         plot.add(HT(m), title='Reconstruction')
-        plot.add(mask_to_nan(mask, HT(m-MOCK_SIGNAL)), title='Residuals')
+        plot.add(mask_to_nan(mask, HT(m - MOCK_SIGNAL)), title='Residuals')
         plot.output(nx=2, ny=2, xsize=10, ysize=10, title="getting_started_1")

@@ -11,25 +11,15 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
-# Copyright(C) 2013-2018 Max-Planck-Society
+# Copyright(C) 2013-2019 Max-Planck-Society
 #
-# NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik
-# and financially supported by the Studienstiftung des deutschen Volkes.
+# NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
 
-from __future__ import absolute_import, division, print_function
-
-from .compat import *
-
-dobj_mpi = False
-
-if dobj_mpi:
-    try:
-        from mpi4py import MPI
-        if MPI.COMM_WORLD.Get_size() == 1:
-            from .data_objects.numpy_do import *
-        else:
-            from .data_objects.distributed_do import *
-    except ImportError:
+try:
+    from mpi4py import MPI
+    if MPI.COMM_WORLD.Get_size() == 1:
         from .data_objects.numpy_do import *
-else:
+    else:
+        from .data_objects.distributed_do import *
+except ImportError:
     from .data_objects.numpy_do import *

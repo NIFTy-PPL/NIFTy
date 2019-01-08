@@ -11,16 +11,12 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
-# Copyright(C) 2013-2018 Max-Planck-Society
+# Copyright(C) 2013-2019 Max-Planck-Society
 #
-# NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik
-# and financially supported by the Studienstiftung des deutschen Volkes.
-
-from __future__ import absolute_import, division, print_function
+# NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
 
 import numpy as np
 
-from ..compat import *
 from .domain import Domain
 
 
@@ -92,7 +88,7 @@ class StructuredDomain(Domain):
         """Helper for Gaussian smoothing.
 
         This method, which is only implemented for harmonic domains, helps
-        smoothing fields that live on a domain that has this domain as
+        smoothing fields that are defined on a domain that has this domain as
         its harmonic partner. The returned function multiplies field values of
         a field with a zero centered Gaussian which corresponds to a
         convolution with a Gaussian kernel and sigma standard deviation in
