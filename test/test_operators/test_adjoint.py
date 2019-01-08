@@ -38,9 +38,10 @@ class Consistency_Tests(unittest.TestCase):
     def testLOSResponse(self, sp, dtype):
         starts = np.random.randn(len(sp.shape), 10)
         ends = np.random.randn(len(sp.shape), 10)
-        sigma_low = 1e-4*np.random.randn(10)
-        sigma_ups = 1e-5*np.random.randn(10)
-        op = ift.LOSResponse(sp, starts, ends, sigma_low, sigma_ups)
+        sigmas = 1e-4*np.random.randn(10)**2
+        while np.any(1./(1./np.linalg.norm(ends-starts,axis=0)-2.*sigmas)<0):
+            sigmas /= 2.
+        op = ift.LOSResponse(sp, starts, ends, sigmas, 2.)
         ift.extra.consistency_check(op, dtype, dtype)
 
     @expand(product(_h_spaces + _p_spaces + _pow_spaces,
