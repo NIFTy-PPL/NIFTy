@@ -41,6 +41,18 @@ __all__ = ['PS_field', 'power_analyze', 'create_power_operator',
 
 
 def PS_field(pspace, func):
+    """Convenience function sampling a power spectrum
+
+    Parameters
+    ----------
+    pspace : PowerSpace
+        space at whose `k_lengths` the power spectrum function is evaluated
+    func : function taking and returning a numpy.ndarray(float)
+        the power spectrum function
+    Returns
+    -------
+    Field : a field living on (pspace,) containing the computed function values
+    """
     if not isinstance(pspace, PowerSpace):
         raise TypeError
     data = dobj.from_global_data(func(pspace.k_lengths))
