@@ -32,13 +32,13 @@ def make_dynamic_operator(FFT, harmonic_padding, sm_s0, sm_x0, keys=['f', 'c'],
                           causal=True, cone=True, minimum_phase=False, sigc=3.,
                           quant=5.):
     '''
-    Constructs an operator for a dynamic field prior.
+    Constructs an operator encoding a homogeneous dynamic prior.
 
     Parameters
     ----------
     FFT : FFTOperator
         A Fourier Transformation Operator of the space under consideration
-    harmonic_padding : None, list of float
+    harmonic_padding : None, int, list of int
         Amount of central padding in harmonic space in pixels. If None the field is not padded at all.
     sm_s0 : float
         Cutoff for dynamic smoothness prior
@@ -75,11 +75,15 @@ def make_dynamic_operator(FFT, harmonic_padding, sm_s0, sm_x0, keys=['f', 'c'],
     if harmonic_padding is None:
         CentralPadd = ScalingOperator(1., FFT.target)
     else:
+        if isinstance(harmonic_padding, int):
+            harmonic_padding = list((harmonic_padding,)*len(FFT.target.shape))
+        elif len(harmonic_padding) != len(FFT.target.shape):
+            raise (ValueError, "Shape mismatch!")
         shp = ()
         for i in range(len(FFT.target.shape)):
             shp += (FFT.target.shape[i] + harmonic_padding[i],)
         CentralPadd = FieldZeroPadder(FFT.target, shp, central=True)
-    ops['CentralPadd'] = CentralPadd
+    ops['central_padding'] = CentralPadd
     sdom = CentralPadd.target[0].get_default_codomain()
     FFTB = FFTOperator(sdom)(Realizer(sdom))
 
@@ -99,12 +103,11 @@ def make_dynamic_operator(FFT, harmonic_padding, sm_s0, sm_x0, keys=['f', 'c'],
 
     Sm = makeOp(_field_from_function(m.target, smoothness_prior_func))
     m = CentralPadd.adjoint(FFTB(Sm(m)))
-    ops[keys[0] + '_k'] = m
+    ops['smoothed_dynamics'] = m
 
     m = -m.log()
     if not minimum_phase:
         m = m.exp()
-    ops['Gncc'] = m
     if causal:
         m = FFT.inverse(Realizer(FFT.target).adjoint(m))
         kernel = makeOp(
@@ -127,10 +130,9 @@ def make_dynamic_operator(FFT, harmonic_padding, sm_s0, sm_x0, keys=['f', 'c'],
         ops['lightspeed'] = scaling(lightspeed)
 
         c = LightConeOperator(c.target, m.target, quant)(c.exp())
-        ops['a'] = c
+        ops['light_cone'] = c
         m = c*m
 
-    ops['Gx'] = m
     if causal:
         m = FFT(m)
     if minimum_phase:
