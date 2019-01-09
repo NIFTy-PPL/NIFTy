@@ -100,7 +100,7 @@ def _make_dynamic_operator(domain, harmonic_padding, sm_s0, sm_x0, keys=['f', 'c
         ops['light_cone'] = c
         m = c*m
 
-    if causal:
+    if causal or minimum_phase:
         m = FFT(Real(m))
     if minimum_phase:
         m = m.exp()
