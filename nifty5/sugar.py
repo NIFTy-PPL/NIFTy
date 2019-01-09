@@ -49,6 +49,7 @@ def PS_field(pspace, func):
         space at whose `k_lengths` the power spectrum function is evaluated
     func : function taking and returning a numpy.ndarray(float)
         the power spectrum function
+
     Returns
     -------
     Field : a field living on (pspace,) containing the computed function values
@@ -305,8 +306,7 @@ def makeDomain(domain):
 
     Parameters
     ----------
-    domain : Domainoid (can be DomainTuple, MultiDomain, dict, Domain or
-             list of Domains)
+    domain : Domainoid (can be DomainTuple, MultiDomain, dict, Domain or list of Domains)
         the description of the requested (multi-)domain
 
     Returns

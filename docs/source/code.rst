@@ -158,7 +158,7 @@ be extracted first, then changed, and a new field has to be created from the
 result.
 
 Fields defined on a MultiDomain
-------------------------------
+-------------------------------
 
 The :class:`MultiField` class can be seen as a dictionary of individual
 :class:`Field` s, each identified by a name, which is defined on a
@@ -176,15 +176,27 @@ a :class:`DomainTuple` or :class:`MultiDomain` object specifying the structure o
 describing its output, and finally an overloaded `apply` method, which can
 take
 
-- a :class:`Field`/:class:`MultiField`object, in which case it returns the transformed
+- a :class:`Field`/:class:`MultiField` object, in which case it returns the transformed
   :class:`Field`/:class:`MultiField`
 - a :class:`Linearization` object, in which case it returns the transformed
   :class:`Linearization`
 
 This is the interface that all objects derived from :class:`Operator` must implement.
 In addition, :class:`Operator` objects can be added/subtracted, multiplied, chained
-(via the :class:`__call__` method) and support pointwise application of functions like
+(via the :class:`__call__` method and the `@` operator) and support pointwise
+application of functions like
 :class:`exp()`, :class:`log()`, :class:`sqrt()`, :class:`conjugate()` etc.
+
+
+Advanced operators
+------------------
+
+NIFTy provides a library of more sophisticated operators which are used for more
+specific inference problems. Currently these are:
+
+- :class:`AmplitudeOperator`, which returns a smooth power spectrum.
+- :class:`InverseGammaOperator`, which models point sources which follow a inverse gamma distribution.
+- :class:`CorrelatedField`, which models a diffuse log-normal field. It takes an amplitude operator to specify the correlation structure of the field.
 
 
 Linear Operators
@@ -197,8 +209,8 @@ additional functionality which is not available for the more generic :class:`Ope
 class.
 
 
-Operator basics
----------------
+Linear Operator basics
+----------------------
 
 There are four basic ways of applying an operator :math:`A` to a field :math:`f`:
 
@@ -210,8 +222,8 @@ There are four basic ways of applying an operator :math:`A` to a field :math:`f`
 (Because of the linearity, inverse adjoint and adjoint inverse application
 are equivalent.)
 
-These different actions of an operator ``Op`` on a field ``f`` can be invoked
-in various ways:
+These different actions of a linear operator ``Op`` on a field ``f`` can be
+invoked in various ways:
 
 - direct multiplication: ``Op(f)`` or ``Op.times(f)`` or ``Op.apply(f, Op.TIMES)``
 - adjoint multiplication: ``Op.adjoint_times(f)`` or ``Op.apply(f, Op.ADJOINT_TIMES)``
@@ -267,62 +279,6 @@ as well as the set of operations it can support.
 The properties :attr:`~LinearOperator.adjoint` and
 :attr:`~LinearOperator.inverse` return a new operator which behaves as if it
 were the original operator's adjoint or inverse, respectively.
-
-
-Operators
-=========
-
-Operator classes (represented by NIFTy5's abstract :class:`Operator` class) are used to construct
-the equations of a specific inference problem.
-Most operators are defined via a position, which is a :class:`MultiField` object,
-their value at this position, which is again a :class:`MultiField` object and a Jacobian derivative,
-which is a :class:`LinearOperator` and is needed for the minimization procedure.
-
-Using the existing basic operator classes one can construct more complicated operators, as
-NIFTy allows for easy and self-consinstent combination via point-wise multiplication,
-addition and subtraction. The operator resulting from these operations then automatically
-contains the correct Jacobians, positions and values.
-Notably, :class:`Constant` and :class:`Variable` allow for an easy way to turn
-inference of specific quantities on and off.
-
-The basic operator classes also allow for more complex operations on operators such as
-the application of :class:`LinearOperators` or local non-linearities.
-As an example one may consider the following combination of ``x``, which is an operator of type
-:class:`Variable` and ``y``, which is an operator of type :class:`Constant`::
-
-	z = x*x + y
-
-``z`` will then be an operator with the following properties::
-
-	z.value = x.value*x.value + y.value
-	z.position = Union(x.position, y.position)
-	z.jacobian = 2*makeOp(x.value)
-
-
-Basic operators
-------------
-# FIXME All this is outdated!
-
-Basic operator classes provided by NIFTy are
-
-- :class:`Constant` contains a constant value and has a zero valued Jacobian.
-  Like other operators, it has a position, but its value does not depend on it.
-- :class:`Variable` returns the position as its value, its derivative is one.
-- :class:`LinearModel` applies a :class:`LinearOperator` on the model.
-- :class:`LocalModel` applies a non-linearity locally on the model.
-	value and Jacobian are combined into corresponding :class:`MultiFields` and operators.
-
-
-Advanced operators
-------------------
-
-NIFTy also provides a library of more sophisticated operators which are used for more
-specific inference problems. Currently these are:
-
-- :class:`AmplitudeOperator`, which returns a smooth power spectrum.
-- :class:`InverseGammaOperator`, which models point sources which follow a inverse gamma distribution.
-- :class:`CorrelatedField`, which models a diffuse log-normal field. It takes an amplitude operator
-	to specify the correlation structure of the field.
 
 
 .. _minimization:
