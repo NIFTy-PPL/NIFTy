@@ -17,6 +17,7 @@
 
 import numpy as np
 
+from ..domain_tuple import DomainTuple
 from ..domains.unstructured_domain import UnstructuredDomain
 from ..domains.rg_space import RGSpace
 from ..field import Field
@@ -32,12 +33,12 @@ from .light_cone_operator import LightConeOperator, _field_from_function
 def _make_dynamic_operator(domain, harmonic_padding, sm_s0, sm_x0, keys=['f', 'c'],
                           causal=True, cone=True, minimum_phase=False, sigc=3.,
                           quant=5.):
-
-    if not isinstance(domain, RGSpace):
+    dom = DomainTuple.make(domain)
+    if not isinstance(dom[0], RGSpace):
         raise TypeError("RGSpace required")
     ops = {}
-    FFT = FFTOperator(domain)
-    Real = Realizer(domain)
+    FFT = FFTOperator(dom)
+    Real = Realizer(dom)
     ops['FFT'] = FFT
     ops['Real'] = Real
     if harmonic_padding is None:
