@@ -23,18 +23,18 @@ from .linear_operator import LinearOperator
 
 
 class DomainTupleFieldInserter(LinearOperator):
-    def __init__(self, domain, new_space, index, position):
-        '''Writes the content of a field into one slice of a DomainTuple.
+    '''Writes the content of a field into one slice of a DomainTuple.
 
-        Parameters
-        ----------
-        domain : Domain, tuple of Domain or DomainTuple
-        new_space : Domain, tuple of Domain or DomainTuple
-        index : Integer
-            Index at which new_space shall be added to domain.
-        position : tuple
-            Slice in new_space in which the input field shall be written into.
-        '''
+    Parameters
+    ----------
+    domain : Domain, tuple of Domain or DomainTuple
+    new_space : Domain, tuple of Domain or DomainTuple
+    index : Integer
+        Index at which new_space shall be added to domain.
+    position : tuple
+        Slice in new_space in which the input field shall be written into.
+    '''
+    def __init__(self, domain, new_space, index, position):
         self._domain = DomainTuple.make(domain)
         tgt = list(self.domain)
         tgt.insert(index, new_space)

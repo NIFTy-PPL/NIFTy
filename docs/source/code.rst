@@ -158,7 +158,7 @@ be extracted first, then changed, and a new field has to be created from the
 result.
 
 Fields defined on a MultiDomain
-------------------------------
+-------------------------------
 
 The :class:`MultiField` class can be seen as a dictionary of individual
 :class:`Field` s, each identified by a name, which is defined on a
@@ -300,7 +300,7 @@ As an example one may consider the following combination of ``x``, which is an o
 
 
 Basic operators
-------------
+---------------
 # FIXME All this is outdated!
 
 Basic operator classes provided by NIFTy are
