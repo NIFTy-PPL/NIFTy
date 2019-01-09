@@ -78,7 +78,7 @@ def test_hamiltonian_and_KL(field):
 
 
 def test_bernoulli(field):
-    field = field.positive_tanh()
+    field = field.sigmoid()
     space = field.domain
     d = np.random.binomial(1, 0.1, size=space.shape)
     d = ift.Field.from_global_data(space, d)
