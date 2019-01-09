@@ -131,6 +131,13 @@ def ducktape(left, right, name):
     - `left` and `right` must not be both `None`, but one of them can (and
       probably should) be `None`. In this case, the missing information is
       inferred.
+    - the returned operator's domains are
+        - a `DomainTuple` and
+        - a `MultiDomain` with exactly one entry called `name` and the same
+          `DomainTuple`
+
+      Which of these is the domain and which is the target depends on the
+      input.
 
     Returns
     -------
