@@ -122,7 +122,7 @@ def test_norm(space):
     assert_allclose(f.norm(np.inf), np.linalg.norm(gd, ord=np.inf))
 
 
-def test_vdot(self):
+def test_vdot():
     s = ift.RGSpace((10,))
     f1 = ift.Field.from_random("normal", domain=s, dtype=np.complex128)
     f2 = ift.Field.from_random("normal", domain=s, dtype=np.complex128)
@@ -130,7 +130,7 @@ def test_vdot(self):
     assert_allclose(f1.vdot(f2), np.conj(f2.vdot(f1)))
 
 
-def test_vdot2(self):
+def test_vdot2():
     x1 = ift.RGSpace((200,))
     x2 = ift.RGSpace((150,))
     m = ift.Field.full((x1, x2), .5)
@@ -138,7 +138,7 @@ def test_vdot2(self):
     assert_allclose(res.local_data, 37.5)
 
 
-def test_outer(self):
+def test_outer():
     x1 = ift.RGSpace((9,))
     x2 = ift.RGSpace((3,))
     m1 = ift.Field.full(x1, .5)
@@ -147,7 +147,7 @@ def test_outer(self):
     assert_allclose(res.to_global_data(), np.full((9, 3), 1.5))
 
 
-def test_sum(self):
+def test_sum():
     x1 = ift.RGSpace((9,), distances=2.)
     x2 = ift.RGSpace(
         (
@@ -162,7 +162,7 @@ def test_sum(self):
     assert_allclose(res2.to_global_data(), np.full(9, 2*12*0.45))
 
 
-def test_integrate(self):
+def test_integrate():
     x1 = ift.RGSpace((9,), distances=2.)
     x2 = ift.RGSpace((2, 12), distances=(0.3,))
     m1 = ift.Field.from_global_data(ift.makeDomain(x1), np.arange(9))
@@ -173,7 +173,7 @@ def test_integrate(self):
     assert_allclose(res2.to_global_data(), np.full(9, 2*12*0.45*0.3**2))
 
 
-def test_dataconv(self):
+def test_dataconv():
     s1 = ift.RGSpace((10,))
     ld = np.arange(ift.dobj.local_shape(s1.shape)[0])
     gd = np.arange(s1.shape[0])
@@ -181,7 +181,7 @@ def test_dataconv(self):
     assert_equal(gd, ift.from_global_data(s1, gd).to_global_data())
 
 
-def test_cast_domain(self):
+def test_cast_domain():
     s1 = ift.RGSpace((10,))
     s2 = ift.RGSpace((10,), distances=20.)
     d = np.arange(s1.shape[0])
@@ -189,14 +189,14 @@ def test_cast_domain(self):
     assert_equal(d, d2)
 
 
-def test_empty_domain(self):
+def test_empty_domain():
     f = ift.Field.full((), 5)
     assert_equal(f.local_data, 5)
     f = ift.Field.full(None, 5)
     assert_equal(f.local_data, 5)
 
 
-def test_trivialities(self):
+def test_trivialities():
     s1 = ift.RGSpace((10,))
     f1 = ift.Field.full(s1, 27)
     assert_equal(f1.local_data, f1.real.local_data)
@@ -211,7 +211,7 @@ def test_trivialities(self):
     assert_equal(f1.prod(), 0)
 
 
-def test_weight(self):
+def test_weight():
     s1 = ift.RGSpace((10,))
     f = ift.Field.full(s1, 10.)
     f2 = f.weight(1)
@@ -241,7 +241,7 @@ def test_reduction(dom, dt):
     assert_allclose(s1.std(0), 0., atol=1e-14)
 
 
-def test_err(self):
+def test_err():
     s1 = ift.RGSpace((10,))
     s2 = ift.RGSpace((11,))
     f1 = ift.Field.full(s1, 27)
@@ -268,7 +268,7 @@ def test_err(self):
         ift.full(s1, [2, 3])
 
 
-def test_stdfunc(self):
+def test_stdfunc():
     s = ift.RGSpace((200,))
     f = ift.Field.full(s, 27)
     assert_equal(f.local_data, 27)
@@ -301,7 +301,7 @@ def test_stdfunc(self):
     assert_equal(abs(f).local_data, abs(f.local_data))
 
 
-def test_emptydomain(self):
+def test_emptydomain():
     f = ift.Field.full((), 3.)
     assert_equal(f.sum(), 3.)
     assert_equal(f.prod(), 3.)
