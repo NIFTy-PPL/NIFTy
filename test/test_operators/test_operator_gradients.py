@@ -131,14 +131,28 @@ class OperatorTests(unittest.TestCase):
                                                    ntries=20)
 
     @expand(product(
-        [ift.FFTOperator(ift.RGSpace(64, distances=.789)),
-         ift.FFTOperator(ift.RGSpace([32, 32], distances=.789)),
-         ift.FFTOperator(ift.RGSpace([32, 32, 32], distances=.789))],
+        [ift.RGSpace(64, distances=.789),
+         ift.RGSpace([32, 32], distances=.789),
+         ift.RGSpace([32, 32, 8], distances=.789)],
+        [True, False],
+        [True, False],
         [4, 78, 23]))
-    def testDynamicModel(self, FFT, seed):
-        model, _ = ift.make_dynamic_operator(FFT,None,1.,1.)
+    def testDynamicModel(self, domain, causal, minimum_phase, seed):
+        model, _ = ift.dynamic_operator(domain,None,1.,1.,'f',
+                                        causal = causal,
+                                        minimum_phase = minimum_phase)
         S = ift.ScalingOperator(1., model.domain)
         pos = S.draw_sample()
         # FIXME I dont know why smaller tol fails for 3D example
-        ift.extra.check_value_gradient_consistency(model, pos, tol=1e-6,
+        ift.extra.check_value_gradient_consistency(model, pos, tol=1e-5,
                                                    ntries=20)
+        if len(domain.shape) > 1:
+            model, _ = ift.dynamic_lightcone_operator(domain,None,3.,1.,
+                                                      'f','c',1.,5,
+                                                      causal = causal,
+                                                      minimum_phase = minimum_phase)
+            S = ift.ScalingOperator(1., model.domain)
+            pos = S.draw_sample()
+            # FIXME I dont know why smaller tol fails for 3D example
+            ift.extra.check_value_gradient_consistency(model, pos, tol=1e-5,
+                                                       ntries=20)

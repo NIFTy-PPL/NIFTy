@@ -18,6 +18,7 @@
 import numpy as np
 
 from ..domains.unstructured_domain import UnstructuredDomain
+from ..domains.rg_space import RGSpace
 from ..field import Field
 from ..operators.diagonal_operator import DiagonalOperator
 from ..operators.field_zero_padder import FieldZeroPadder
@@ -28,50 +29,17 @@ from ..sugar import makeOp
 from .light_cone_operator import LightConeOperator, _field_from_function
 
 
-def make_dynamic_operator(FFT, harmonic_padding, sm_s0, sm_x0, keys=['f', 'c'],
+def _make_dynamic_operator(domain, harmonic_padding, sm_s0, sm_x0, keys=['f', 'c'],
                           causal=True, cone=True, minimum_phase=False, sigc=3.,
                           quant=5.):
-    '''
-    Constructs an operator encoding a homogeneous dynamic prior.
 
-    Parameters
-    ----------
-    FFT : FFTOperator
-        A Fourier Transformation Operator of the space under consideration
-    harmonic_padding : None, int, list of int
-        Amount of central padding in harmonic space in pixels. If None the field is not padded at all.
-    sm_s0 : float
-        Cutoff for dynamic smoothness prior
-    sm_x0 : float, List of float
-        Scaling of dynamic smoothness along each axis
-    keys : List of String
-        keys of input fields of operator.
-    causal : boolean
-        Whether or not the reconstructed dynamics should be causal in time
-    cone : boolean
-        Whether or not the reconstructed dynamics should be within a light cone
-    minimum_phase: boolean
-        Whether or not the reconstructed dynamics should be minimum phase
-    sigc : float, List of float
-        variance of light cone parameters.
-        If cone is False this is ignored
-    quant : float
-        Quantization of the light cone in pixels.
-        If cone is False this is ignored
-
-    Returns
-    -------
-    Operator
-        The Operator encoding the dynamic Greens function in harmonic space when evaluated.
-    Dictionary of Operator
-        A collection of sub-chains of Operators which can be used for plotting and evaluation.
-
-    Notes
-    -----
-    Currently only supports RGSpaces.
-    Note that the first axis of the space is interpreted as the time axis.
-    '''
+    if not isinstance(domain, RGSpace):
+        raise TypeError("RGSpace required")
     ops = {}
+    FFT = FFTOperator(domain)
+    Real = Realizer(domain)
+    ops['FFT'] = FFT
+    ops['Real'] = Real
     if harmonic_padding is None:
         CentralPadd = ScalingOperator(1., FFT.target)
     else:
@@ -108,13 +76,11 @@ def make_dynamic_operator(FFT, harmonic_padding, sm_s0, sm_x0, keys=['f', 'c'],
     m = -m.log()
     if not minimum_phase:
         m = m.exp()
-    if causal:
-        m = FFT.inverse(Realizer(FFT.target).adjoint(m))
+    if causal or minimum_phase:
+        m = Real.adjoint(FFT.inverse(Realizer(FFT.target).adjoint(m)))
         kernel = makeOp(
             _field_from_function(FFT.domain, (lambda x: 1. + np.sign(x[0]))))
         m = kernel(m)
-    elif minimum_phase:
-        raise (ValueError, "minimum phase and not causal not possible!")
 
     if cone and len(m.target.shape) > 1:
         if isinstance(sigc, float):
@@ -134,7 +100,96 @@ def make_dynamic_operator(FFT, harmonic_padding, sm_s0, sm_x0, keys=['f', 'c'],
         m = c*m
 
     if causal:
-        m = FFT(m)
+        m = FFT(Real(m))
     if minimum_phase:
         m = m.exp()
     return m, ops
+
+def dynamic_operator(domain, harmonic_padding, sm_s0, sm_x0, key,
+                     causal=True, minimum_phase=False):
+    '''
+    Constructs an operator encoding the Greens function of a linear homogeneous dynamic system.
+
+    Parameters
+    ----------
+    domain : RGSpace
+        The space under consideration
+    harmonic_padding : None, int, list of int
+        Amount of central padding in harmonic space in pixels. If None the field is not padded at all.
+    sm_s0 : float
+        Cutoff for dynamic smoothness prior
+    sm_x0 : float, List of float
+        Scaling of dynamic smoothness along each axis
+    key : String
+        key for dynamics encoding parameter.
+    causal : boolean
+        Whether or not the reconstructed dynamics should be causal in time
+    minimum_phase: boolean
+        Whether or not the reconstructed dynamics should be minimum phase
+
+    Returns
+    -------
+    Operator
+        The Operator encoding the dynamic Greens function in harmonic space.
+    Dictionary of Operator
+        A collection of sub-chains of Operators which can be used for plotting and evaluation.
+
+    Notes
+    -----
+    Currently only supports RGSpaces.
+    Note that the first axis of the space is interpreted as the time axis.
+    '''
+    return _make_dynamic_operator(domain, harmonic_padding, sm_s0, sm_x0,
+                                  keys=[key],
+                                  causal=causal, cone=False,
+                                  minimum_phase=minimum_phase)
+
+def dynamic_lightcone_operator(domain, harmonic_padding, sm_s0, sm_x0, key,
+                               lightcone_key, sigc, quant,
+                               causal=True, minimum_phase=False):
+    '''
+    Constructs an operator encoding the Greens function of a linear homogeneous dynamic system.
+    The Greens function is constrained to be within a light cone.
+
+    Parameters
+    ----------
+    domain : RGSpace
+        The space under consideration. Must have dim > 1.
+    harmonic_padding : None, int, list of int
+        Amount of central padding in harmonic space in pixels. If None the field is not padded at all.
+    sm_s0 : float
+        Cutoff for dynamic smoothness prior
+    sm_x0 : float, List of float
+        Scaling of dynamic smoothness along each axis
+    key : String
+        key for dynamics encoding parameter.
+    lightcone_key: String
+        key for lightspeed paramteter.
+    sigc : float, List of float
+        variance of lightspeed parameter.
+    quant : float
+        Quantization of the light cone in pixels.
+    causal : boolean
+        Whether or not the reconstructed dynamics should be causal in time
+    minimum_phase: boolean
+        Whether or not the reconstructed dynamics should be minimum phase
+
+    Returns
+    -------
+    Operator
+        The Operator encoding the dynamic Greens function in harmonic space when evaluated.
+    Dictionary of Operator
+        A collection of sub-chains of Operators which can be used for plotting and evaluation.
+
+    Notes
+    -----
+    Currently only supports RGSpaces.
+    Note that the first axis of the space is interpreted as the time axis.
+    '''
+    if len(domain.shape) < 2:
+        raise ValueError("Space must be at least 2 dimensional!")
+    return _make_dynamic_operator(domain,harmonic_padding,sm_s0,sm_x0,
+                                  keys=[key,lightcone_key],
+                                  causal=causal, cone=True,
+                                  minimum_phase = minimum_phase,
+                                  sigc = sigc, quant = quant)
