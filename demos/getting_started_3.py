@@ -47,7 +47,7 @@ if __name__ == '__main__':
 
     position_space = ift.RGSpace([128, 128])
 
-    # Set up an amplitude model for the field
+    # Set up an amplitude operator for the field
     # The parameters mean:
     # 64 spectral bins
     #
@@ -60,9 +60,9 @@ if __name__ == '__main__':
     # 0.5 = low variance of power-law slope
     # 0.4 = y-intercept mean
     # 0.3 = relatively high y-intercept variance
-    A = ift.AmplitudeModel(position_space, 64, 3, 0.4, -5., 0.5, 0.4, 0.3)
+    A = ift.AmplitudeOperator(position_space, 64, 3, 0.4, -5., 0.5, 0.4, 0.3)
 
-    # Build the model for a correlated signal
+    # Build the operator for a correlated signal
     harmonic_space = position_space.get_default_codomain()
     ht = ift.HarmonicTransformOperator(harmonic_space, position_space)
     power_space = A.target[0]
@@ -76,7 +76,7 @@ if __name__ == '__main__':
     # correlated_field = ift.CorrelatedField(position_space, A)
 
     # Apply a nonlinearity
-    signal = ift.positive_tanh(correlated_field)
+    signal = ift.sigmoid(correlated_field)
 
     # Build the line-of-sight response and define signal response
     LOS_starts, LOS_ends = random_los(100) if mode == 1 else radial_los(100)
@@ -98,7 +98,7 @@ if __name__ == '__main__':
         name='Newton', tol=1e-7, iteration_limit=35)
     minimizer = ift.NewtonCG(ic_newton)
 
-    # Set up model likelihood and information Hamiltonian
+    # Set up likelihood and information Hamiltonian
     likelihood = ift.GaussianEnergy(mean=data, covariance=N)(signal_response)
     H = ift.Hamiltonian(likelihood, ic_sampling)
 

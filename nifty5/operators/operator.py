@@ -94,6 +94,11 @@ class Operator(NiftyMetaBase()):
             return NotImplemented
         return _OpChain.make((_PowerOp(self.target, power), self))
 
+    def clip(self, min=None, max=None):
+        if min is None and max is None:
+            return self
+        return _OpChain.make((_Clipper(self.target, min, max), self))
+
     def apply(self, x):
         raise NotImplementedError
 
@@ -123,7 +128,8 @@ class Operator(NiftyMetaBase()):
         return self.__class__.__name__
 
 
-for f in ["sqrt", "exp", "log", "tanh", "positive_tanh", 'clipped_exp']:
+for f in ["sqrt", "exp", "log", "tanh", "sigmoid", 'sin', 'cos', 'tan',
+          'sinh', 'cosh', 'absolute', 'sinc', 'one_over']:
     def func(f):
         def func2(self):
             fa = _FunctionApplier(self.target, f)
@@ -141,6 +147,18 @@ class _FunctionApplier(Operator):
     def apply(self, x):
         self._check_input(x)
         return getattr(x, self._funcname)()
+
+
+class _Clipper(Operator):
+    def __init__(self, domain, min=None, max=None):
+        from ..sugar import makeDomain
+        self._domain = self._target = makeDomain(domain)
+        self._min = min
+        self._max = max
+
+    def apply(self, x):
+        self._check_input(x)
+        return x.clip(self._min, self._max)
 
 
 class _PowerOp(Operator):

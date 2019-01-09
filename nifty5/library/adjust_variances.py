@@ -75,14 +75,14 @@ def make_adjust_variances(a,
 
 
 def do_adjust_variances(position,
-                        amplitude_model,
+                        amplitude_operator,
                         minimizer,
                         xi_key='xi',
                         samples=[]):
 
     h_space = position[xi_key].domain[0]
-    pd = PowerDistributor(h_space, amplitude_model.target[0])
-    a = pd(amplitude_model)
+    pd = PowerDistributor(h_space, amplitude_operator.target[0])
+    a = pd(amplitude_operator)
     xi = ducktape(None, position.domain, xi_key)
 
     ham = make_adjust_variances(a, xi, position, samples=samples)

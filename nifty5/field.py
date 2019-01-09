@@ -628,11 +628,14 @@ class Field(object):
     def flexible_addsub(self, other, neg):
         return self-other if neg else self+other
 
-    def positive_tanh(self):
+    def sigmoid(self):
         return 0.5*(1.+self.tanh())
 
-    def clipped_exp(self):
-        return Field(self._domain, dobj.clipped_exp(self._val))
+    def clip(self, min=None, max=None):
+        return Field(self._domain, dobj.clip(self._val, min, max))
+
+    def one_over(self):
+        return 1/self
 
     def _binary_op(self, other, op):
         # if other is a field, make sure that the domains match
@@ -669,7 +672,9 @@ for op in ["__iadd__", "__isub__", "__imul__", "__idiv__",
         return func2
     setattr(Field, op, func(op))
 
-for f in ["sqrt", "exp", "log", "tanh"]:
+for f in ["sqrt", "exp", "log", "tanh",
+          "sin", "cos", "tan", "cosh", "sinh",
+          "absolute", "sinc", "sign"]:
     def func(f):
         def func2(self):
             return Field(self._domain, getattr(dobj, f)(self.val))
