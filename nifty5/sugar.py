@@ -214,30 +214,105 @@ def create_harmonic_smoothing_operator(domain, space, sigma):
 
 
 def full(domain, val):
+    """Convenience function creating Fields/MultiFields with uniform values.
+
+    Parameters
+    ----------
+    domain : Domainoid
+        the intended domain of the output field
+    val : scalar value
+        the uniform value to be placed into all entries of the result
+
+    Returns
+    -------
+    Field / MultiField : the newly created uniform field
+    """
     if isinstance(domain, (dict, MultiDomain)):
         return MultiField.full(domain, val)
     return Field.full(domain, val)
 
 
 def from_random(random_type, domain, dtype=np.float64, **kwargs):
+    """Convenience function creating Fields/MultiFields with random values.
+
+    Parameters
+    ----------
+    random_type : 'pm1', 'normal', or 'uniform'
+            The random distribution to use.
+    domain : Domainoid
+        the intended domain of the output field
+    dtype : type
+        data type of the output field (e.g. numpy.float64)
+    **kwargs : additional parameters for the random distribution
+        ('mean' and 'std' for 'normal', 'low' and 'high' for 'uniform')
+
+    Returns
+    -------
+    Field / MultiField : the newly created random field
+    """
     if isinstance(domain, (dict, MultiDomain)):
         return MultiField.from_random(random_type, domain, dtype, **kwargs)
     return Field.from_random(random_type, domain, dtype, **kwargs)
 
 
 def from_global_data(domain, arr, sum_up=False):
+    """Convenience function creating Fields/MultiFields from Numpy arrays or
+    dicts of Numpy arrays.
+
+    Parameters
+    ----------
+    domain : Domainoid
+        the intended domain of the output field
+    arr : Numpy array if `domain` corresponds to a `DomainTuple`,
+          dictionary of Numpy arrays if `domain` corresponds to a `MultiDomain`
+    sum_up : bool
+        Only meaningful if MPI is enabled
+        If `True`, the contents of the arrays on all tasks are added together,
+        otherwise it is assumed that the array on each task holds the correct
+        field values.
+
+    Returns
+    -------
+    Field / MultiField : the newly created random field
+    """
     if isinstance(domain, (dict, MultiDomain)):
         return MultiField.from_global_data(domain, arr, sum_up)
     return Field.from_global_data(domain, arr, sum_up)
 
 
 def from_local_data(domain, arr):
+    """Convenience function creating Fields/MultiFields from Numpy arrays or
+    dicts of Numpy arrays.
+
+    Parameters
+    ----------
+    domain : Domainoid
+        the intended domain of the output field
+    arr : Numpy array if `domain` corresponds to a `DomainTuple`,
+          dictionary of Numpy arrays if `domain` corresponds to a `MultiDomain`
+
+    Returns
+    -------
+    Field / MultiField : the newly created field
+    """
     if isinstance(domain, (dict, MultiDomain)):
         return MultiField.from_local_data(domain, arr)
     return Field.from_local_data(domain, arr)
 
 
 def makeDomain(domain):
+    """Convenience function creating DomainTuples/MultiDomains Domainoids.
+
+    Parameters
+    ----------
+    domain : Domainoid (can be DomainTuple, MultiDomain, dict, Domain or
+             list of Domains)
+        the description of the requested (multi-)domain
+
+    Returns
+    -------
+    DomainTuple / MultiDomain : the newly created domain object
+    """
     if isinstance(domain, (MultiDomain, dict)):
         return MultiDomain.make(domain)
     return DomainTuple.make(domain)
