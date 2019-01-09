@@ -215,7 +215,7 @@ if __name__ == '__main__':
 
         plo = ift.Plot()
         plo.add(G.adjoint_times(data) , title='data')
-        plo.add(G.adjoint_times(signal_response(MOCK_POSITION))+, title='signal response')
+        plo.add(G.adjoint_times(signal_response(MOCK_POSITION)), title='signal response')
         plo.add(signal(MOCK_POSITION), title='true signal')
         plo.add(signal(position), title='signal')
         plo.add(ift.exp(correlated_field.force(MOCK_POSITION)), title='truediffuse')
