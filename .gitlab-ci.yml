@@ -34,17 +34,21 @@ build_docker_from_cache:
     - docker build -t $CONTAINER_TEST_IMAGE .
     - docker push $CONTAINER_TEST_IMAGE
 
-test:
+test_serial:
   stage: test
-  variables:
-    OMPI_MCA_btl_vader_single_copy_mechanism: none
   script:
-    - mpiexec -n 2 --bind-to none pytest-3 -q test
     - pytest-3 -q --cov=nifty5 test
     - >
       python3 -m coverage report --omit "*plotting*,*distributed_do*"
     - >
       python3 -m coverage report --omit "*plotting*,*distributed_do*" | grep TOTAL | awk '{ print "TOTAL: "$4; }'
+
+test_mpi:
+  stage: test
+  variables:
+    OMPI_MCA_btl_vader_single_copy_mechanism: none
+  script:
+    - mpiexec -n 2 --bind-to none pytest-3 -q test
 
 pages:
   stage: release
