@@ -10,6 +10,7 @@ setup.cfg
 .document
 .svn/
 *.csv
+.pytest_cache/
 
 # from https://github.com/github/gitignore/blob/master/Python.gitignore
 
