@@ -53,7 +53,7 @@ def _k_length_array_helper(index_arr, lmax):
         else:
             index_half = (index_arr + lmax + 1)//2
 
-    m = np.ceil(((2*lmax + 1) - np.sqrt((2*lmax + 1)**2 - 8*
+    m = np.ceil(((2*lmax + 1) - np.sqrt((2*lmax + 1)**2 - 8 *
                                         (index_half - lmax)))/2).astype(int)
 
     return index_half - m*(2*lmax + 1 - m)//2

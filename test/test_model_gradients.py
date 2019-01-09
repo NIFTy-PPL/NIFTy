@@ -91,7 +91,8 @@ def testModelLibrary(space, seed):
     # Tests amplitude model and coorelated field model
     Npixdof, ceps_a, ceps_k, sm, sv, im, iv = 4, 0.5, 2., 3., 1.5, 1.75, 1.3
     np.random.seed(seed)
-    model = ift.AmplitudeOperator(space, Npixdof, ceps_a, ceps_k, sm, sv, im, iv)
+    model = ift.AmplitudeOperator(space, Npixdof, ceps_a, ceps_k, sm, sv, im,
+                                  iv)
     S = ift.ScalingOperator(1., model.domain)
     pos = S.draw_sample()
     ift.extra.check_value_gradient_consistency(model, pos, ntries=20)
