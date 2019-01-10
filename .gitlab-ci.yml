@@ -34,32 +34,28 @@ build_docker_from_cache:
     - docker build -t $CONTAINER_TEST_IMAGE .
     - docker push $CONTAINER_TEST_IMAGE
 
-test_python2_with_coverage:
+test_serial:
   stage: test
-  variables:
-    OMPI_MCA_btl_vader_single_copy_mechanism: none
   script:
-    - mpiexec -n 2 --bind-to none pytest -q test
-    - pytest -q --cov=nifty5 test
+    - pytest-3 -q --cov=nifty5 test
     - >
-      python -m coverage report --omit "*plotting*,*distributed_do*"
+      python3 -m coverage report --omit "*plotting*,*distributed_do*"
     - >
-      python -m coverage report --omit "*plotting*,*distributed_do*" | grep TOTAL | awk '{ print "TOTAL: "$4; }'
+      python3 -m coverage report --omit "*plotting*,*distributed_do*" | grep TOTAL | awk '{ print "TOTAL: "$4; }'
 
-test_python3:
+test_mpi:
   stage: test
   variables:
     OMPI_MCA_btl_vader_single_copy_mechanism: none
   script:
-    - pytest-3 -q
-    - mpiexec -n 2 --bind-to none pytest-3 -q
+    - mpiexec -n 2 --bind-to none pytest-3 -q test
 
 pages:
   stage: release
   before_script:
     - ls
   script:
-    - python setup.py install --user -f
+    - python3 setup.py install --user -f
     - sh docs/generate.sh
     - mv docs/build/ public/
   artifacts:
@@ -69,7 +65,6 @@ pages:
   - NIFTy_4
 
 before_script:
-  - python setup.py install --user -f
   - python3 setup.py install --user -f
 
 run_ipynb:
@@ -80,7 +75,6 @@ run_ipynb:
 run_getting_started_1:
   stage: demo_runs
   script:
-    - python demos/getting_started_1.py
     - python3 demos/getting_started_1.py
     - mpiexec -n 2 --bind-to none python3 demos/getting_started_1.py 2> /dev/null
   artifacts:
@@ -90,7 +84,6 @@ run_getting_started_1:
 run_getting_started_2:
   stage: demo_runs
   script:
-    - python demos/getting_started_2.py
     - python3 demos/getting_started_2.py
     - mpiexec -n 2 --bind-to none python3 demos/getting_started_2.py 2> /dev/null
   artifacts:
@@ -100,7 +93,6 @@ run_getting_started_2:
 run_getting_started_3:
   stage: demo_runs
   script:
-    - python demos/getting_started_3.py
     - python3 demos/getting_started_3.py
   artifacts:
     paths:
@@ -109,7 +101,6 @@ run_getting_started_3:
 run_bernoulli:
   stage: demo_runs
   script:
-    - python demos/bernoulli_demo.py
     - python3 demos/bernoulli_demo.py
   artifacts:
     paths:
@@ -118,7 +109,6 @@ run_bernoulli:
 run_curve_fitting:
   stage: demo_runs
   script:
-    - python demos/polynomial_fit.py
     - python3 demos/polynomial_fit.py
   artifacts:
     paths:

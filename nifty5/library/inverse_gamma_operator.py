@@ -11,17 +11,13 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
-# Copyright(C) 2013-2018 Max-Planck-Society
+# Copyright(C) 2013-2019 Max-Planck-Society
 #
-# NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik
-# and financially supported by the Studienstiftung des deutschen Volkes.
-
-from __future__ import absolute_import, division, print_function
+# NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
 
 import numpy as np
 from scipy.stats import invgamma, norm
 
-from ..compat import *
 from ..domain_tuple import DomainTuple
 from ..field import Field
 from ..linearization import Linearization
@@ -29,9 +25,9 @@ from ..operators.operator import Operator
 from ..sugar import makeOp
 
 
-class InverseGammaModel(Operator):
+class InverseGammaOperator(Operator):
     def __init__(self, domain, alpha, q, delta=0.001):
-        """Model which transforms a Gaussian into an inverse gamma distribution.
+        """Operator which transforms a Gaussian into an inverse gamma distribution.
 
         The pdf of the inverse gamma distribution is defined as follows:
 

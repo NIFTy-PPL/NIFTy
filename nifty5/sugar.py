@@ -11,19 +11,15 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
-# Copyright(C) 2013-2018 Max-Planck-Society
+# Copyright(C) 2013-2019 Max-Planck-Society
 #
-# NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik
-# and financially supported by the Studienstiftung des deutschen Volkes.
-
-from __future__ import absolute_import, division, print_function
+# NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
 
 import sys
 
 import numpy as np
 
 from . import dobj, utilities
-from .compat import *
 from .domain_tuple import DomainTuple
 from .domains.power_space import PowerSpace
 from .field import Field
@@ -37,12 +33,27 @@ from .operators.distributors import PowerDistributor
 __all__ = ['PS_field', 'power_analyze', 'create_power_operator',
            'create_harmonic_smoothing_operator', 'from_random',
            'full', 'from_global_data', 'from_local_data',
-           'makeDomain', 'sqrt', 'exp', 'log', 'tanh', 'positive_tanh',
+           'makeDomain', 'sqrt', 'exp', 'log', 'tanh', 'sigmoid',
+           'sin', 'cos', 'tan', 'sinh', 'cosh',
+           'absolute', 'one_over', 'clip', 'sinc',
            'conjugate', 'get_signal_variance', 'makeOp', 'domain_union',
            'get_default_codomain']
 
 
 def PS_field(pspace, func):
+    """Convenience function sampling a power spectrum
+
+    Parameters
+    ----------
+    pspace : PowerSpace
+        space at whose `k_lengths` the power spectrum function is evaluated
+    func : function taking and returning a numpy.ndarray(float)
+        the power spectrum function
+
+    Returns
+    -------
+    Field : a field living on (pspace,) containing the computed function values
+    """
     if not isinstance(pspace, PowerSpace):
         raise TypeError
     data = dobj.from_global_data(func(pspace.k_lengths))
@@ -175,12 +186,12 @@ def _create_power_field(domain, power_spectrum):
 def create_power_operator(domain, power_spectrum, space=None):
     """ Creates a diagonal operator with the given power spectrum.
 
-    Constructs a diagonal operator that lives over the specified domain.
+    Constructs a diagonal operator that is defined on the specified domain.
 
     Parameters
     ----------
     domain : Domain, tuple of Domain or DomainTuple
-        Domain over which the power operator shall live.
+        Domain on which the power operator shall be defined.
     power_spectrum : callable or Field
         An object that contains the power spectrum as a function of k.
     space : int
@@ -204,30 +215,104 @@ def create_harmonic_smoothing_operator(domain, space, sigma):
 
 
 def full(domain, val):
+    """Convenience function creating Fields/MultiFields with uniform values.
+
+    Parameters
+    ----------
+    domain : Domainoid
+        the intended domain of the output field
+    val : scalar value
+        the uniform value to be placed into all entries of the result
+
+    Returns
+    -------
+    Field / MultiField : the newly created uniform field
+    """
     if isinstance(domain, (dict, MultiDomain)):
         return MultiField.full(domain, val)
     return Field.full(domain, val)
 
 
 def from_random(random_type, domain, dtype=np.float64, **kwargs):
+    """Convenience function creating Fields/MultiFields with random values.
+
+    Parameters
+    ----------
+    random_type : 'pm1', 'normal', or 'uniform'
+            The random distribution to use.
+    domain : Domainoid
+        the intended domain of the output field
+    dtype : type
+        data type of the output field (e.g. numpy.float64)
+    **kwargs : additional parameters for the random distribution
+        ('mean' and 'std' for 'normal', 'low' and 'high' for 'uniform')
+
+    Returns
+    -------
+    Field / MultiField : the newly created random field
+    """
     if isinstance(domain, (dict, MultiDomain)):
         return MultiField.from_random(random_type, domain, dtype, **kwargs)
     return Field.from_random(random_type, domain, dtype, **kwargs)
 
 
 def from_global_data(domain, arr, sum_up=False):
+    """Convenience function creating Fields/MultiFields from Numpy arrays or
+    dicts of Numpy arrays.
+
+    Parameters
+    ----------
+    domain : Domainoid
+        the intended domain of the output field
+    arr : Numpy array if `domain` corresponds to a `DomainTuple`,
+          dictionary of Numpy arrays if `domain` corresponds to a `MultiDomain`
+    sum_up : bool
+        Only meaningful if MPI is enabled
+        If `True`, the contents of the arrays on all tasks are added together,
+        otherwise it is assumed that the array on each task holds the correct
+        field values.
+
+    Returns
+    -------
+    Field / MultiField : the newly created random field
+    """
     if isinstance(domain, (dict, MultiDomain)):
         return MultiField.from_global_data(domain, arr, sum_up)
     return Field.from_global_data(domain, arr, sum_up)
 
 
 def from_local_data(domain, arr):
+    """Convenience function creating Fields/MultiFields from Numpy arrays or
+    dicts of Numpy arrays.
+
+    Parameters
+    ----------
+    domain : Domainoid
+        the intended domain of the output field
+    arr : Numpy array if `domain` corresponds to a `DomainTuple`,
+          dictionary of Numpy arrays if `domain` corresponds to a `MultiDomain`
+
+    Returns
+    -------
+    Field / MultiField : the newly created field
+    """
     if isinstance(domain, (dict, MultiDomain)):
         return MultiField.from_local_data(domain, arr)
     return Field.from_local_data(domain, arr)
 
 
 def makeDomain(domain):
+    """Convenience function creating DomainTuples/MultiDomains Domainoids.
+
+    Parameters
+    ----------
+    domain : Domainoid (can be DomainTuple, MultiDomain, dict, Domain or list of Domains)
+        the description of the requested (multi-)domain
+
+    Returns
+    -------
+    DomainTuple / MultiDomain : the newly created domain object
+    """
     if isinstance(domain, (MultiDomain, dict)):
         return MultiDomain.make(domain)
     return DomainTuple.make(domain)
@@ -257,7 +342,9 @@ def domain_union(domains):
 
 _current_module = sys.modules[__name__]
 
-for f in ["sqrt", "exp", "log", "tanh", "positive_tanh", "conjugate"]:
+for f in ["sqrt", "exp", "log", "tanh", "sigmoid",
+          "conjugate", 'sin', 'cos', 'tan', 'sinh', 'cosh',
+          'absolute', 'one_over', 'sinc']:
     def func(f):
         def func2(x):
             from .linearization import Linearization
@@ -268,6 +355,11 @@ for f in ["sqrt", "exp", "log", "tanh", "positive_tanh", "conjugate"]:
                 return getattr(np, f)(x)
         return func2
     setattr(_current_module, f, func(f))
+
+
+def clip(a, a_min=None, a_max=None):
+    return a.clip(a_min, a_max)
+
 
 def get_default_codomain(domainoid, space=None):
     """For `RGSpace`, returns the harmonic partner domain.

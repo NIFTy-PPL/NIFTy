@@ -11,17 +11,13 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
-# Copyright(C) 2013-2018 Max-Planck-Society
+# Copyright(C) 2013-2019 Max-Planck-Society
 #
-# NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik
-# and financially supported by the Studienstiftung des deutschen Volkes.
-
-from __future__ import absolute_import, division, print_function
+# NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
 
 import numpy as np
 
 from .. import dobj
-from ..compat import *
 from ..field import Field
 from ..logger import logger
 from ..multi_field import MultiField
@@ -152,6 +148,12 @@ def L_BFGS_B(ftol, gtol, maxiter, maxcor=10, disp=False, bounds=None):
 
 
 class ScipyCG(Minimizer):
+    """Returns a ScipyMinimizer object carrying out the conjugate gradient
+    algorithm as implemented by SciPy.
+
+    This class is only intended for double-checking NIFTy's own conjugate
+    gradient implementation and should not be used otherwise.
+    """
     def __init__(self, tol, maxiter):
         if not dobj.is_numpy():
             raise NotImplementedError

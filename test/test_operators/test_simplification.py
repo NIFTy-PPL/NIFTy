@@ -11,44 +11,40 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
-# Copyright(C) 2013-2018 Max-Planck-Society
+# Copyright(C) 2013-2019 Max-Planck-Society
 #
-# NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik
-# and financially supported by the Studienstiftung des deutschen Volkes.
+# NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
 
-import unittest
-from itertools import product
-from test.common import expand
-
-import nifty5 as ift
+import pytest
 from numpy.testing import assert_allclose, assert_equal
 
+import nifty5 as ift
 
-class Simplification_Tests(unittest.TestCase):
-    def test_simplification(self):
-        from nifty5.operators.operator import _ConstantOperator
-        f1 = ift.Field.full(ift.RGSpace(10),2.)
-        op = ift.FFTOperator(f1.domain)
-        _, op2 = op.simplify_for_constant_input(f1)
-        assert_equal(isinstance(op2, _ConstantOperator), True)
-        assert_allclose(op(f1).local_data, op2(f1).local_data)
 
-        dom = {"a": ift.RGSpace(10)}
-        f1 = ift.full(dom,2.)
-        op = ift.FFTOperator(f1.domain["a"]).ducktape("a")
-        _, op2 = op.simplify_for_constant_input(f1)
-        assert_equal(isinstance(op2, _ConstantOperator), True)
-        assert_allclose(op(f1).local_data, op2(f1).local_data)
+def test_simplification():
+    from nifty5.operators.operator import _ConstantOperator
+    f1 = ift.Field.full(ift.RGSpace(10),2.)
+    op = ift.FFTOperator(f1.domain)
+    _, op2 = op.simplify_for_constant_input(f1)
+    assert_equal(isinstance(op2, _ConstantOperator), True)
+    assert_allclose(op(f1).local_data, op2(f1).local_data)
 
-        dom = {"a": ift.RGSpace(10), "b": ift.RGSpace(5)}
-        f1 = ift.full(dom,2.)
-        pdom = {"a": ift.RGSpace(10)}
-        f2 = ift.full(pdom,2.)
-        o1 = ift.FFTOperator(f1.domain["a"])
-        o2 = ift.FFTOperator(f1.domain["b"])
-        op = (o1.ducktape("a").ducktape_left("a") +
-              o2.ducktape("b").ducktape_left("b"))
-        _, op2 = op.simplify_for_constant_input(f2)
-        assert_equal(isinstance(op2._op1, _ConstantOperator), True)
-        assert_allclose(op(f1)["a"].local_data, op2(f1)["a"].local_data)
-        assert_allclose(op(f1)["b"].local_data, op2(f1)["b"].local_data)
+    dom = {"a": ift.RGSpace(10)}
+    f1 = ift.full(dom,2.)
+    op = ift.FFTOperator(f1.domain["a"]).ducktape("a")
+    _, op2 = op.simplify_for_constant_input(f1)
+    assert_equal(isinstance(op2, _ConstantOperator), True)
+    assert_allclose(op(f1).local_data, op2(f1).local_data)
+
+    dom = {"a": ift.RGSpace(10), "b": ift.RGSpace(5)}
+    f1 = ift.full(dom,2.)
+    pdom = {"a": ift.RGSpace(10)}
+    f2 = ift.full(pdom,2.)
+    o1 = ift.FFTOperator(f1.domain["a"])
+    o2 = ift.FFTOperator(f1.domain["b"])
+    op = (o1.ducktape("a").ducktape_left("a") +
+          o2.ducktape("b").ducktape_left("b"))
+    _, op2 = op.simplify_for_constant_input(f2)
+    assert_equal(isinstance(op2._op1, _ConstantOperator), True)
+    assert_allclose(op(f1)["a"].local_data, op2(f1)["a"].local_data)
+    assert_allclose(op(f1)["b"].local_data, op2(f1)["b"].local_data)

@@ -11,22 +11,34 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
-# Copyright(C) 2013-2018 Max-Planck-Society
+# Copyright(C) 2013-2019 Max-Planck-Society
 #
-# NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik
-# and financially supported by the Studienstiftung des deutschen Volkes.
+# NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
 
-from __future__ import absolute_import, division, print_function
-
-from .compat import *
 from .field import Field
 
 
 class StatCalculator(object):
+    """Helper class to compute mean and variance of a set of inputs.
+
+    Notes
+    -----
+    - the memory usage of this object is constant, i.e. it does not increase
+      with the number of samples added
+    - the code computes the unbiased variance (which contains a `1./(n-1)`
+      term for `n` samples).
+    """
     def __init__(self):
         self._count = 0
 
     def add(self, value):
+        """Adds a sample.
+
+        Parameters
+        ----------
+        value: any type that supports multiplication by a scalar and
+               element-wise addition/subtraction/multiplication.
+        """
         self._count += 1
         if self._count == 1:
             self._mean = 1.*value
@@ -39,12 +51,18 @@ class StatCalculator(object):
 
     @property
     def mean(self):
+        """
+        value type : the mean of all samples added so far.
+        """
         if self._count == 0:
             raise RuntimeError
         return 1.*self._mean
 
     @property
     def var(self):
+        """
+        value type : the unbiased variance of all samples added so far.
+        """
         if self._count < 2:
             raise RuntimeError
         return self._M2 * (1./(self._count-1))

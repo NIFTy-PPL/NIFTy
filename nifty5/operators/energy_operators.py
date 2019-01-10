@@ -11,15 +11,11 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
-# Copyright(C) 2013-2018 Max-Planck-Society
+# Copyright(C) 2013-2019 Max-Planck-Society
 #
-# NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik
-# and financially supported by the Studienstiftung des deutschen Volkes.
-
-from __future__ import absolute_import, division, print_function
+# NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
 
 from .. import utilities
-from ..compat import *
 from ..domain_tuple import DomainTuple
 from ..field import Field
 from ..linearization import Linearization
@@ -167,6 +163,11 @@ class Hamiltonian(EnergyOperator):
             mtr = SamplingEnabler(lhx.metric, prx.metric.inverse,
                                   self._ic_samp, prx.metric.inverse)
             return (lhx+prx).add_metric(mtr)
+
+    def __repr__(self):
+        subs = 'Likelihood:\n{}'.format(utilities.indent(self._lh.__repr__()))
+        subs += '\nPrior: Quadratic{}'.format(self._lh.domain.keys())
+        return 'Hamiltonian:\n' + utilities.indent(subs)
 
 
 class SampledKullbachLeiblerDivergence(EnergyOperator):

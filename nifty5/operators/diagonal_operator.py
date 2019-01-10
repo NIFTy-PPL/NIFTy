@@ -11,17 +11,13 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
-# Copyright(C) 2013-2018 Max-Planck-Society
+# Copyright(C) 2013-2019 Max-Planck-Society
 #
-# NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik
-# and financially supported by the Studienstiftung des deutschen Volkes.
-
-from __future__ import absolute_import, division, print_function
+# NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
 
 import numpy as np
 
 from .. import dobj, utilities
-from ..compat import *
 from ..domain_tuple import DomainTuple
 from ..field import Field
 from .endomorphic_operator import EndomorphicOperator
@@ -39,7 +35,7 @@ class DiagonalOperator(EndomorphicOperator):
     diagonal : Field
         The diagonal entries of the operator.
     domain : Domain, tuple of Domain or DomainTuple, optional
-        The domain on which the Operator's input Field lives.
+        The domain on which the Operator's input Field is defined.
         If None, use the domain of "diagonal".
     spaces : int or tuple of int, optional
         The elements of "domain" on which the operator acts.

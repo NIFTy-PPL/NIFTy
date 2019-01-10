@@ -1,6 +1,20 @@
-from __future__ import absolute_import, division, print_function
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+#
+# Copyright(C) 2013-2019 Max-Planck-Society
+#
+# NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
 
-from ..compat import *
 from .energy import Energy
 from ..linearization import Linearization
 from .. import utilities
@@ -8,8 +22,11 @@ from .. import utilities
 
 class KL_Energy(Energy):
     def __init__(self, position, h, nsamp, constants=[],
-                 constants_samples=None, _samples=None):
+                 constants_samples=None, gen_mirrored_samples=False,
+                 _samples=None):
         super(KL_Energy, self).__init__(position)
+        if h.domain is not position.domain:
+            raise TypeError
         self._h = h
         self._constants = constants
         if constants_samples is None:
@@ -20,6 +37,8 @@ class KL_Energy(Energy):
                 position, constants_samples, True)).metric
             _samples = tuple(met.draw_sample(from_inverse=True)
                              for _ in range(nsamp))
+            if gen_mirrored_samples:
+                _samples += tuple(-s for s in _samples)
         self._samples = _samples
 
         self._lin = Linearization.make_partial_var(position, constants)
@@ -37,8 +56,9 @@ class KL_Energy(Energy):
         self._metric = None
 
     def at(self, position):
-        return KL_Energy(position, self._h, 0, self._constants,
-                         self._constants_samples, self._samples)
+        return KL_Energy(position, self._h, 0,
+                         self._constants, self._constants_samples,
+                         _samples=self._samples)
 
     @property
     def value(self):
@@ -67,3 +87,7 @@ class KL_Energy(Energy):
     @property
     def samples(self):
         return self._samples
+
+    def __repr__(self):
+        return 'KL ({} samples):\n'.format(len(
+            self._samples)) + utilities.indent(self._ham.__repr__())

@@ -11,16 +11,12 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
-# Copyright(C) 2013-2018 Max-Planck-Society
+# Copyright(C) 2013-2019 Max-Planck-Society
 #
-# NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik
-# and financially supported by the Studienstiftung des deutschen Volkes.
-
-from __future__ import absolute_import, division, print_function
+# NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
 
 import numpy as np
 
-from ..compat import *
 from ..domains.power_space import PowerSpace
 from ..field import Field
 from ..sugar import makeOp, sqrt
@@ -66,7 +62,7 @@ def create_cepstrum_amplitude_field(domain, cepstrum):
     return Field.from_global_data(domain, cepstrum_field)
 
 
-def CepstrumOperator(logk_space, ceps_a, ceps_k, zero_mode=True):
+def _CepstrumOperator(logk_space, ceps_a, ceps_k, zero_mode=True):
     '''
     Parameters
     ----------
@@ -92,7 +88,7 @@ def CepstrumOperator(logk_space, ceps_a, ceps_k, zero_mode=True):
     return res
 
 
-def SlopeModel(logk_space, sm, sv, im, iv):
+def _SlopePowerSpectrum(logk_space, sm, sv, im, iv):
     '''
     Parameters
     ----------
@@ -113,25 +109,29 @@ def SlopeModel(logk_space, sm, sv, im, iv):
     return slope(OffsetOperator(phi_mean)(makeOp(phi_sig)))
 
 
-def AmplitudeModel(s_space, Npixdof, ceps_a, ceps_k, sm, sv, im, iv,
-                   keys=['tau', 'phi'], zero_mode=True):
-    '''
+def AmplitudeOperator(s_space, Npixdof, ceps_a, ceps_k, sm, sv, im, iv,
+                      keys=['tau', 'phi'], zero_mode=True):
+    ''' Operator for parametrizing smooth power spectra.
+
     Computes a smooth power spectrum.
-    Output lives in PowerSpace.
+    Output is defined on a PowerSpace.
 
     Parameters
     ----------
-
-    Npixdof : #pix in dof_space
-
-    ceps_a, ceps_k0 : Smoothness parameters in ceps_kernel
-                        eg. ceps_kernel(k) = (a/(1+(k/k0)**2))**2
-                        a = ceps_a,  k0 = ceps_k0
-
-    sm, sv : slope_mean = expected exponent of power law (e.g. -4),
-                slope_variance (default=1)
-
-    im, iv : y-intercept_mean, y-intercept_variance  of power_slope
+    Npixdof : int
+        #pix in dof_space
+    ceps_a : float
+        Smoothness parameters in ceps_kernel eg. ceps_kernel(k) = (a/(1+(k/k0)**2))**2 a = ceps_a,  k0 = ceps_k0
+    ceps_k0 : float
+        Smoothness parameters in ceps_kernel eg. ceps_kernel(k) = (a/(1+(k/k0)**2))**2 a = ceps_a,  k0 = ceps_k0
+    sm : float
+        slope_mean = expected exponent of power law (e.g. -4)
+    sv : float
+        slope_variance (default=1)
+    im : float
+        y-intercept_mean
+    iv : float
+        y-intercept_variance  of power_slope
     '''
 
     from ..operators.exp_transform import ExpTransform
@@ -141,9 +141,9 @@ def AmplitudeModel(s_space, Npixdof, ceps_a, ceps_k, sm, sv, im, iv,
     et = ExpTransform(PowerSpace(h_space), Npixdof)
     logk_space = et.domain[0]
 
-    smooth = CepstrumOperator(logk_space, ceps_a, ceps_k, zero_mode)
+    smooth = _CepstrumOperator(logk_space, ceps_a, ceps_k, zero_mode)
     smooth = smooth.ducktape(keys[0])
-    linear = SlopeModel(logk_space, sm, sv, im, iv)
+    linear = _SlopePowerSpectrum(logk_space, sm, sv, im, iv)
     linear = linear.ducktape(keys[1])
 
     fac = ScalingOperator(0.5, smooth.target)

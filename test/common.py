@@ -11,25 +11,16 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
-# Copyright(C) 2013-2018 Max-Planck-Society
+# Copyright(C) 2013-2019 Max-Planck-Society
 #
-# NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik
-# and financially supported by the Studienstiftung des deutschen Volkes.
+# NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
 
-from builtins import str
-
-import numpy as np
-from parameterized import parameterized
-
-np.seterr(all='raise', under='ignore')
+import pytest
 
 
-def _custom_name_func(testcase_func, param_num, param):
-    return "{}_{}".format(
-        testcase_func.__name__,
-        parameterized.to_safe_name("_".join(str(x) for x in param.args)),
-    )
+def list2fixture(lst):
+    @pytest.fixture(params=lst)
+    def myfixture(request):
+        return request.param
 
-
-def expand(*args, **kwargs):
-    return parameterized.expand(*args, func=_custom_name_func, **kwargs)
+    return myfixture

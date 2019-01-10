@@ -11,82 +11,83 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
-# Copyright(C) 2013-2018 Max-Planck-Society
+# Copyright(C) 2013-2019 Max-Planck-Society
 #
-# NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik
-# and financially supported by the Studienstiftung des deutschen Volkes.
+# NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
 
-import unittest
-from itertools import product
-from test.common import expand
-
-import nifty5 as ift
 from numpy.testing import assert_allclose, assert_equal
 
+import nifty5 as ift
 
-class ComposedOperator_Tests(unittest.TestCase):
-    spaces = [ift.RGSpace(4),
-              ift.PowerSpace(ift.RGSpace((4, 4), harmonic=True)),
-              ift.LMSpace(5), ift.HPSpace(4), ift.GLSpace(4)]
+from ..common import list2fixture
 
-    @expand(product(spaces, spaces))
-    def test_times_adjoint_times(self, space1, space2):
-        cspace = (space1, space2)
-        diag1 = ift.Field.from_random('normal', domain=space1)
-        diag2 = ift.Field.from_random('normal', domain=space2)
-        op1 = ift.DiagonalOperator(diag1, cspace, spaces=(0,))
-        op2 = ift.DiagonalOperator(diag2, cspace, spaces=(1,))
+space1 = list2fixture([
+    ift.RGSpace(4),
+    ift.PowerSpace(ift.RGSpace((4, 4), harmonic=True)),
+    ift.LMSpace(5),
+    ift.HPSpace(4),
+    ift.GLSpace(4)
+])
+space2 = space1
 
-        op = op2(op1)
 
-        rand1 = ift.Field.from_random('normal', domain=(space1, space2))
-        rand2 = ift.Field.from_random('normal', domain=(space1, space2))
+def test_times_adjoint_times(space1, space2):
+    cspace = (space1, space2)
+    diag1 = ift.Field.from_random('normal', domain=space1)
+    diag2 = ift.Field.from_random('normal', domain=space2)
+    op1 = ift.DiagonalOperator(diag1, cspace, spaces=(0,))
+    op2 = ift.DiagonalOperator(diag2, cspace, spaces=(1,))
 
-        tt1 = rand2.vdot(op.times(rand1))
-        tt2 = rand1.vdot(op.adjoint_times(rand2))
-        assert_allclose(tt1, tt2)
+    op = op2(op1)
 
-    @expand(product(spaces, spaces))
-    def test_times_inverse_times(self, space1, space2):
-        cspace = (space1, space2)
-        diag1 = ift.Field.from_random('normal', domain=space1)
-        diag2 = ift.Field.from_random('normal', domain=space2)
-        op1 = ift.DiagonalOperator(diag1, cspace, spaces=(0,))
-        op2 = ift.DiagonalOperator(diag2, cspace, spaces=(1,))
+    rand1 = ift.Field.from_random('normal', domain=(space1, space2))
+    rand2 = ift.Field.from_random('normal', domain=(space1, space2))
 
-        op = op2(op1)
+    tt1 = rand2.vdot(op.times(rand1))
+    tt2 = rand1.vdot(op.adjoint_times(rand2))
+    assert_allclose(tt1, tt2)
 
-        rand1 = ift.Field.from_random('normal', domain=(space1, space2))
-        tt1 = op.inverse_times(op.times(rand1))
 
-        assert_allclose(tt1.local_data, rand1.local_data)
+def test_times_inverse_times(space1, space2):
+    cspace = (space1, space2)
+    diag1 = ift.Field.from_random('normal', domain=space1)
+    diag2 = ift.Field.from_random('normal', domain=space2)
+    op1 = ift.DiagonalOperator(diag1, cspace, spaces=(0,))
+    op2 = ift.DiagonalOperator(diag2, cspace, spaces=(1,))
 
-    @expand(product(spaces))
-    def test_sum(self, space):
-        op1 = ift.makeOp(ift.Field.full(space, 2.))
-        op2 = ift.ScalingOperator(3., space)
-        full_op = op1 + op2 - (op2 - op1) + op1 + op1 + op2
-        x = ift.Field.full(space, 1.)
-        res = full_op(x)
-        assert_equal(isinstance(full_op, ift.DiagonalOperator), True)
-        assert_allclose(res.local_data, 11.)
+    op = op2(op1)
 
-    @expand(product(spaces))
-    def test_chain(self, space):
-        op1 = ift.makeOp(ift.Field.full(space, 2.))
-        op2 = ift.ScalingOperator(3., space)
-        full_op = op1(op2)(op2)(op1)(op1)(op1)(op2)
-        x = ift.Field.full(space, 1.)
-        res = full_op(x)
-        assert_equal(isinstance(full_op, ift.DiagonalOperator), True)
-        assert_allclose(res.local_data, 432.)
+    rand1 = ift.Field.from_random('normal', domain=(space1, space2))
+    tt1 = op.inverse_times(op.times(rand1))
 
-    @expand(product(spaces))
-    def test_mix(self, space):
-        op1 = ift.makeOp(ift.Field.full(space, 2.))
-        op2 = ift.ScalingOperator(3., space)
-        full_op = op1(op2+op2)(op1)(op1) - op1(op2)
-        x = ift.Field.full(space, 1.)
-        res = full_op(x)
-        assert_equal(isinstance(full_op, ift.DiagonalOperator), True)
-        assert_allclose(res.local_data, 42.)
+    assert_allclose(tt1.local_data, rand1.local_data)
+
+
+def test_sum(space1):
+    op1 = ift.makeOp(ift.Field.full(space1, 2.))
+    op2 = ift.ScalingOperator(3., space1)
+    full_op = op1 + op2 - (op2 - op1) + op1 + op1 + op2
+    x = ift.Field.full(space1, 1.)
+    res = full_op(x)
+    assert_equal(isinstance(full_op, ift.DiagonalOperator), True)
+    assert_allclose(res.local_data, 11.)
+
+
+def test_chain(space1):
+    op1 = ift.makeOp(ift.Field.full(space1, 2.))
+    op2 = ift.ScalingOperator(3., space1)
+    full_op = op1(op2)(op2)(op1)(op1)(op1)(op2)
+    x = ift.Field.full(space1, 1.)
+    res = full_op(x)
+    assert_equal(isinstance(full_op, ift.DiagonalOperator), True)
+    assert_allclose(res.local_data, 432.)
+
+
+def test_mix(space1):
+    op1 = ift.makeOp(ift.Field.full(space1, 2.))
+    op2 = ift.ScalingOperator(3., space1)
+    full_op = op1(op2 + op2)(op1)(op1) - op1(op2)
+    x = ift.Field.full(space1, 1.)
+    res = full_op(x)
+    assert_equal(isinstance(full_op, ift.DiagonalOperator), True)
+    assert_allclose(res.local_data, 42.)

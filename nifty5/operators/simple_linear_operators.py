@@ -11,14 +11,10 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
-# Copyright(C) 2013-2018 Max-Planck-Society
+# Copyright(C) 2013-2019 Max-Planck-Society
 #
-# NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik
-# and financially supported by the Studienstiftung des deutschen Volkes.
+# NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
 
-from __future__ import absolute_import, division, print_function
-
-from ..compat import *
 from ..domain_tuple import DomainTuple
 from ..domains.unstructured_domain import UnstructuredDomain
 from ..field import Field
@@ -29,6 +25,13 @@ from .linear_operator import LinearOperator
 
 
 class VdotOperator(LinearOperator):
+    """Operator computing the scalar product of its input with a given Field.
+
+    Parameters
+    ----------
+    field : Field/MultiField
+        The field used to build the scalar product with the operator input
+    """
     def __init__(self, field):
         self._field = field
         self._domain = field.domain
@@ -43,6 +46,7 @@ class VdotOperator(LinearOperator):
 
 
 class ConjugationOperator(EndomorphicOperator):
+    """Operator computing the complex conjugate of its input."""
     def __init__(self, domain):
         self._domain = DomainTuple.make(domain)
         self._capability = self._all_ops
@@ -53,6 +57,7 @@ class ConjugationOperator(EndomorphicOperator):
 
 
 class Realizer(EndomorphicOperator):
+    """Operator returning the real component of its input."""
     def __init__(self, domain):
         self._domain = DomainTuple.make(domain)
         self._capability = self.TIMES | self.ADJOINT_TIMES
@@ -62,7 +67,7 @@ class Realizer(EndomorphicOperator):
         return x.real
 
 
-class _FieldAdapter(LinearOperator):
+class FieldAdapter(LinearOperator):
     """Operator for conversion between Fields and MultiFields.
 
     Parameters
@@ -104,6 +109,41 @@ class _FieldAdapter(LinearOperator):
 
 
 def ducktape(left, right, name):
+    """Convenience function for computing an adapter between two operators.
+
+    Parameters
+    ----------
+    left : None, Operator, or Domainoid
+        Something describing the input domain of the left operator.
+        If `left` is an `Operator`, its domain is used as `left`.
+
+    right : None, Operator, or Domainoid
+        Something describing the target domain of the right operator.
+        If `right` is an `Operator`, its target is used as `right`.
+
+    name : string
+        The component of the `MultiDomain` that will be extracted/inserted
+
+    Notes
+    -----
+    - one of the involved domains must be a `DomainTuple`, the other a
+      `MultiDomain`.
+    - `left` and `right` must not be both `None`, but one of them can (and
+      probably should) be `None`. In this case, the missing information is
+      inferred.
+    - the returned operator's domains are
+        - a `DomainTuple` and
+        - a `MultiDomain` with exactly one entry called `name` and the same
+          `DomainTuple`
+
+      Which of these is the domain and which is the target depends on the
+      input.
+
+    Returns
+    -------
+    FieldAdapter : an adapter operator converting between the two (possibly
+                   partially inferred) domains.
+    """
     from ..sugar import makeDomain
     from .operator import Operator
     if left is None:  # need to infer left from right
@@ -120,7 +160,7 @@ def ducktape(left, right, name):
             left = left.domain
         else:
             left = makeDomain(left)
-    return _FieldAdapter(left, name)
+    return FieldAdapter(left, name)
 
 
 class GeometryRemover(LinearOperator):
@@ -131,6 +171,9 @@ class GeometryRemover(LinearOperator):
     ----------
     domain: Domain, tuple of Domain, or DomainTuple:
         the full input domain of the operator.
+    space: int, optional
+        The index of the subdomain on which the operator should act
+        If None, it acts on all spaces
 
     Notes
     -----
@@ -139,10 +182,14 @@ class GeometryRemover(LinearOperator):
     is carried out.
     """
 
-    def __init__(self, domain):
+    def __init__(self, domain, space=None):
         self._domain = DomainTuple.make(domain)
-        target_list = [UnstructuredDomain(dom.shape) for dom in self._domain]
-        self._target = DomainTuple.make(target_list)
+        if space is not None:
+            tgt = [dom for dom in self._domain]
+            tgt[space] = UnstructuredDomain(self._domain[space].shape)
+        else:
+            tgt = [UnstructuredDomain(dom.shape) for dom in self._domain]
+        self._target = DomainTuple.make(tgt)
         self._capability = self.TIMES | self.ADJOINT_TIMES
 
     def apply(self, x, mode):

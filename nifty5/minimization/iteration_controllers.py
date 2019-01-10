@@ -11,14 +11,10 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
-# Copyright(C) 2013-2018 Max-Planck-Society
+# Copyright(C) 2013-2019 Max-Planck-Society
 #
-# NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik
-# and financially supported by the Studienstiftung des deutschen Volkes.
+# NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
 
-from __future__ import absolute_import, division, print_function
-
-from ..compat import *
 from ..logger import logger
 from ..utilities import NiftyMetaBase
 import numpy as np
@@ -147,7 +143,24 @@ class GradientNormController(IterationController):
 
 
 class GradInfNormController(IterationController):
-    def __init__(self, tol=None, convergence_level=1, iteration_limit=None,
+    """An iteration controller checking (mainly) the L_infinity gradient norm.
+
+    Parameters
+    ----------
+    tol : float
+        If the L_infinity norm of the energy gradient is below this value, the
+        convergence counter will be increased in this iteration.
+    convergence_level : int, default=1
+        The number which the convergence counter must reach before the
+        iteration is considered to be converged
+    iteration_limit : int, optional
+        The maximum number of iterations that will be carried out.
+    name : str, optional
+        if supplied, this string and some diagnostic information will be
+        printed after every iteration
+    """
+
+    def __init__(self, tol, convergence_level=1, iteration_limit=None,
                  name=None):
         self._tol = tol
         self._convergence_level = convergence_level
@@ -189,6 +202,25 @@ class GradInfNormController(IterationController):
 
 
 class DeltaEnergyController(IterationController):
+    """An iteration controller checking (mainly) the energy change from one
+    iteration to the next.
+
+    Parameters
+    ----------
+    tol_rel_deltaE : float
+        If the difference between the last and current energies divided by
+        the current energy is below this value, the convergence counter will
+        be increased in this iteration.
+    convergence_level : int, default=1
+        The number which the convergence counter must reach before the
+        iteration is considered to be converged
+    iteration_limit : int, optional
+        The maximum number of iterations that will be carried out.
+    name : str, optional
+        if supplied, this string and some diagnostic information will be
+        printed after every iteration
+    """
+
     def __init__(self, tol_rel_deltaE, convergence_level=1,
                  iteration_limit=None, name=None):
         self._tol_rel_deltaE = tol_rel_deltaE

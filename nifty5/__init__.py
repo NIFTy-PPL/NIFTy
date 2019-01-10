@@ -32,7 +32,6 @@ from .operators.harmonic_operators import (
     HarmonicSmoothingOperator)
 from .operators.field_zero_padder import FieldZeroPadder
 from .operators.inversion_enabler import InversionEnabler
-from .operators.laplace_operator import LaplaceOperator
 from .operators.linear_operator import LinearOperator
 from .operators.mask_operator import MaskOperator
 from .operators.offset_operator import OffsetOperator
@@ -42,13 +41,12 @@ from .operators.sampling_enabler import SamplingEnabler
 from .operators.sandwich_operator import SandwichOperator
 from .operators.scaling_operator import ScalingOperator
 from .operators.slope_operator import SlopeOperator
-from .operators.smoothness_operator import SmoothnessOperator
 from .operators.symmetrizing_operator import SymmetrizingOperator
 from .operators.block_diagonal_operator import BlockDiagonalOperator
 from .operators.outer_product_operator import OuterProduct
 from .operators.simple_linear_operators import (
     VdotOperator, ConjugationOperator, Realizer,
-    ducktape, GeometryRemover, NullOperator)
+    FieldAdapter, ducktape, GeometryRemover, NullOperator)
 from .operators.energy_operators import (
     EnergyOperator, GaussianEnergy, PoissonianEnergy, InverseGammaLikelihood,
     BernoulliEnergy, Hamiltonian, SampledKullbachLeiblerDivergence)
@@ -75,8 +73,8 @@ from .minimization.kl_energy import KL_Energy
 from .sugar import *
 from .plot import Plot
 
-from .library.amplitude_model import AmplitudeModel
-from .library.inverse_gamma_model import InverseGammaModel
+from .library.amplitude_operator import AmplitudeOperator
+from .library.inverse_gamma_operator import InverseGammaOperator
 from .library.los_response import LOSResponse
 
 from .library.wiener_filter_curvature import WienerFilterCurvature

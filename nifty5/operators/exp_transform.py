@@ -11,17 +11,13 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
-# Copyright(C) 2013-2018 Max-Planck-Society
+# Copyright(C) 2013-2019 Max-Planck-Society
 #
-# NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik
-# and financially supported by the Studienstiftung des deutschen Volkes.
-
-from __future__ import absolute_import, division, print_function
+# NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
 
 import numpy as np
 
 from .. import dobj
-from ..compat import *
 from ..domain_tuple import DomainTuple
 from ..domains.power_space import PowerSpace
 from ..domains.rg_space import RGSpace
@@ -36,7 +32,7 @@ class ExpTransform(LinearOperator):
 
     This operator creates a log-space subject to the degrees of freedom and
     and its target-domain.
-    Then transforms between this log-space and its target, which lives in
+    Then transforms between this log-space and its target, which is defined in
     normal units.
 
     E.g: A field in log-log-space can be transformed into log-norm-space,
@@ -59,10 +55,10 @@ class ExpTransform(LinearOperator):
             raise ValueError(
                 "Target must be a harmonic RGSpace or a power space.")
 
-        if np.isscalar(dof):
-            dof = np.full(len(tgt.shape), int(dof), dtype=np.int)
-        dof = np.array(dof)
         ndim = len(tgt.shape)
+        if np.isscalar(dof):
+            dof = np.full(ndim, int(dof), dtype=np.int)
+        dof = np.array(dof)
 
         t_mins = np.empty(ndim)
         bindistances = np.empty(ndim)

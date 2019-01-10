@@ -1,15 +1,45 @@
-
-from __future__ import absolute_import, division, print_function
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+#
+# Copyright(C) 2013-2019 Max-Planck-Society
+#
+# NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
 
 import numpy as np
 
-from .compat import *
 from .field import Field
 from .multi_field import MultiField
 from .sugar import makeOp
+from .operators.scaling_operator import ScalingOperator
 
 
 class Linearization(object):
+    """Let `A` be an operator and `x` a field. `Linearization` stores the value
+    of the operator application (i.e. `A(x)`), the local Jacobian
+    (i.e. `dA(x)/dx`) and, optionally, the local metric.
+
+    Parameters
+    ----------
+    val : Field/MultiField
+        the value of the operator application
+    jac : LinearOperator
+        the Jacobian
+    metric : LinearOperator or None (default: None)
+        the metric
+    want_metric : bool (default: False)
+        if True, the metric will be computed for other Linearizations derived
+        from this one.
+    """
     def __init__(self, val, jac, metric=None, want_metric=False):
         self._val = val
         self._jac = jac
@@ -19,36 +49,63 @@ class Linearization(object):
         self._metric = metric
 
     def new(self, val, jac, metric=None):
+        """Create a new Linearization, taking the `want_metric` property from
+           this one.
+
+        Parameters
+        ----------
+        val : Field/MultiField
+            the value of the operator application
+        jac : LinearOperator
+            the Jacobian
+        metric : LinearOperator or None (default: None)
+            the metric
+        """
         return Linearization(val, jac, metric, self._want_metric)
 
     @property
     def domain(self):
+        """DomainTuple/MultiDomain : the Jacobian's domain"""
         return self._jac.domain
 
     @property
     def target(self):
+        """DomainTuple/MultiDomain : the Jacobian's target (i.e. the value's domain)"""
         return self._jac.target
 
     @property
     def val(self):
+        """Field/MultiField : the value"""
         return self._val
 
     @property
     def jac(self):
+        """LinearOperator : the Jacobian"""
         return self._jac
 
     @property
     def gradient(self):
-        """Only available if target is a scalar"""
+        """Field/MultiField : the gradient
+
+        Notes
+        -----
+        Only available if target is a scalar
+        """
         return self._jac.adjoint_times(Field.scalar(1.))
 
     @property
     def want_metric(self):
+        """bool : the value of `want_metric`"""
         return self._want_metric
 
     @property
     def metric(self):
-        """Only available if target is a scalar"""
+        """LinearOperator : the metric
+
+        Notes
+        -----
+        Only available if target is a scalar
+        """
         return self._metric
 
     def __getitem__(self, name):
@@ -96,20 +153,17 @@ class Linearization(object):
 
     def __truediv__(self, other):
         if isinstance(other, Linearization):
-            return self.__mul__(other.inverse())
+            return self.__mul__(other.one_over())
         return self.__mul__(1./other)
 
     def __rtruediv__(self, other):
-        return self.inverse().__mul__(other)
+        return self.one_over().__mul__(other)
 
     def __pow__(self, power):
         if not np.isscalar(power):
             return NotImplemented
         return self.new(self._val**power,
                         makeOp(self._val**(power-1)).scale(power)(self._jac))
-
-    def inverse(self):
-        return self.new(1./self._val, makeOp(-1./(self._val**2))(self._jac))
 
     def __mul__(self, other):
         from .sugar import makeOp
@@ -183,22 +237,70 @@ class Linearization(object):
         tmp = self._val.exp()
         return self.new(tmp, makeOp(tmp)(self._jac))
 
-    def clipped_exp(self):
-        tmp = self._val.clipped_exp()
-        return self.new(tmp, makeOp(tmp)(self._jac))
+    def clip(self, min=None, max=None):
+        tmp = self._val.clip(min, max)
+        if (min is None) and (max is None):
+            return self
+        elif max is None:
+            tmp2 = makeOp(1. - (tmp == min))
+        elif min is None:
+            tmp2 = makeOp(1. - (tmp == max))
+        else:
+            tmp2 = makeOp(1. - (tmp == min) - (tmp == max))
+        return self.new(tmp, tmp2(self._jac))
+
+    def sin(self):
+        tmp = self._val.sin()
+        tmp2 = self._val.cos()
+        return self.new(tmp, makeOp(tmp2)(self._jac))
+
+    def cos(self):
+        tmp = self._val.cos()
+        tmp2 = - self._val.sin()
+        return self.new(tmp, makeOp(tmp2)(self._jac))
+
+    def tan(self):
+        tmp = self._val.tan()
+        tmp2 = 1./(self._val.cos()**2)
+        return self.new(tmp, makeOp(tmp2)(self._jac))
+
+    def sinc(self):
+        tmp = self._val.sinc()
+        tmp2 = (self._val.cos()-tmp)/self._val
+        return self.new(tmp, makeOp(tmp2)(self._jac))
 
     def log(self):
         tmp = self._val.log()
         return self.new(tmp, makeOp(1./self._val)(self._jac))
 
+    def sinh(self):
+        tmp = self._val.sinh()
+        tmp2 = self._val.cosh()
+        return self.new(tmp, makeOp(tmp2)(self._jac))
+
+    def cosh(self):
+        tmp = self._val.cosh()
+        tmp2 = self._val.sinh()
+        return self.new(tmp, makeOp(tmp2)(self._jac))
+
     def tanh(self):
         tmp = self._val.tanh()
         return self.new(tmp, makeOp(1.-tmp**2)(self._jac))
 
-    def positive_tanh(self):
+    def sigmoid(self):
         tmp = self._val.tanh()
         tmp2 = 0.5*(1.+tmp)
         return self.new(tmp2, makeOp(0.5*(1.-tmp**2))(self._jac))
+
+    def absolute(self):
+        tmp = self._val.absolute()
+        tmp2 = self._val.sign()
+        return self.new(tmp, makeOp(tmp2)(self._jac))
+
+    def one_over(self):
+        tmp = 1./self._val
+        tmp2 = - tmp/self._val
+        return self.new(tmp, makeOp(tmp2)(self._jac))
 
     def add_metric(self, metric):
         return self.new(self._val, self._jac, metric)

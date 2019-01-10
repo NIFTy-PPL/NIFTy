@@ -11,17 +11,16 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
-# Copyright(C) 2013-2018 Max-Planck-Society
+# Copyright(C) 2013-2019 Max-Planck-Society
 #
-# NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik
-# and financially supported by the Studienstiftung des deutschen Volkes.
+# NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
 
 # Data object module for NIFTy that uses simple numpy ndarrays.
 
 import numpy as np
-from numpy import empty, empty_like, exp, full, log
+from numpy import absolute, clip, cos, cosh, empty, empty_like, exp, full, log
 from numpy import ndarray as data_object
-from numpy import ones, sqrt, tanh, vdot, zeros
+from numpy import ones, sign, sin, sinc, sinh, sqrt, tan, tanh, vdot, zeros
 
 from .random import Random
 
@@ -34,7 +33,8 @@ __all__ = ["ntask", "rank", "master", "local_shape", "data_object", "full",
            "redistribute", "default_distaxis", "is_numpy", "absmax", "norm",
            "lock", "locked", "uniform_full", "to_global_data_rw",
            "ensure_not_distributed", "ensure_default_distributed",
-           "clipped_exp"]
+           "clip", "sin", "cos", "tan", "sinh",
+           "cosh", "absolute", "sign", "sinc"]
 
 ntask = 1
 rank = 0
@@ -150,7 +150,3 @@ def absmax(arr):
 
 def norm(arr, ord=2):
     return np.linalg.norm(arr.reshape(-1), ord=ord)
-
-
-def clipped_exp(arr):
-    return np.exp(np.clip(arr, -300, 300))

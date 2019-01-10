@@ -1,8 +1,22 @@
-from __future__ import absolute_import, division, print_function
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+#
+# Copyright(C) 2013-2019 Max-Planck-Society
+#
+# NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
 
 import numpy as np
-from ..compat import *
-from ..utilities import NiftyMetaBase
+from ..utilities import NiftyMetaBase, indent
 
 
 class Operator(NiftyMetaBase()):
@@ -14,14 +28,14 @@ class Operator(NiftyMetaBase()):
     def domain(self):
         """DomainTuple or MultiDomain : the operator's input domain
 
-            The domain on which the Operator's input Field lives."""
+            The domain on which the Operator's input Field is defined."""
         return self._domain
 
     @property
     def target(self):
         """DomainTuple or MultiDomain : the operator's output domain
 
-            The domain on which the Operator's output Field lives."""
+            The domain on which the Operator's output Field is defined."""
         return self._target
 
     @staticmethod
@@ -59,9 +73,11 @@ class Operator(NiftyMetaBase()):
         return _OpChain.make((self, x))
 
     def __mul__(self, x):
-        if not isinstance(x, Operator):
-            return NotImplemented
-        return _OpProd(self, x)
+        if isinstance(x, Operator):
+            return _OpProd(self, x)
+        if np.isscalar(x):
+            return self.scale(x)
+        return NotImplemented
 
     def __add__(self, x):
         if not isinstance(x, Operator):
@@ -77,6 +93,11 @@ class Operator(NiftyMetaBase()):
         if not np.isscalar(power):
             return NotImplemented
         return _OpChain.make((_PowerOp(self.target, power), self))
+
+    def clip(self, min=None, max=None):
+        if min is None and max is None:
+            return self
+        return _OpChain.make((_Clipper(self.target, min, max), self))
 
     def apply(self, x):
         raise NotImplementedError
@@ -113,7 +134,8 @@ class Operator(NiftyMetaBase()):
         return op(c_inp), op
 
 
-for f in ["sqrt", "exp", "log", "tanh", "positive_tanh", 'clipped_exp']:
+for f in ["sqrt", "exp", "log", "tanh", "sigmoid", 'sin', 'cos', 'tan',
+          'sinh', 'cosh', 'absolute', 'sinc', 'one_over']:
     def func(f):
         def func2(self):
             fa = _FunctionApplier(self.target, f)
@@ -217,6 +239,18 @@ class _FunctionApplier(Operator):
     def apply(self, x):
         self._check_input(x)
         return getattr(x, self._funcname)()
+
+
+class _Clipper(Operator):
+    def __init__(self, domain, min=None, max=None):
+        from ..sugar import makeDomain
+        self._domain = self._target = makeDomain(domain)
+        self._min = min
+        self._max = max
+
+    def apply(self, x):
+        self._check_input(x)
+        return x.clip(self._min, self._max)
 
 
 class _PowerOp(Operator):

@@ -11,28 +11,24 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
-# Copyright(C) 2013-2018 Max-Planck-Society
+# Copyright(C) 2013-2019 Max-Planck-Society
 #
-# NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik
-# and financially supported by the Studienstiftung des deutschen Volkes.
-
-import unittest
-from itertools import product
-from test.common import expand
+# NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
 
 from numpy.testing import assert_allclose
 
 import nifty5 as ift
 
+from ..common import list2fixture
 
-class Regridding_Tests(unittest.TestCase):
-    @expand(
-        product([
-            ift.RGSpace(8, distances=12.9),
-            ift.RGSpace(59, distances=.24, harmonic=True),
-            ift.RGSpace([12, 3])
-        ]))
-    def test_value(self, s):
-        Regrid = ift.RegriddingOperator(s, s.shape)
-        f = ift.from_random('normal', Regrid.domain)
-        assert_allclose(f.to_global_data(), Regrid(f).to_global_data())
+s = list2fixture([
+    ift.RGSpace(8, distances=12.9),
+    ift.RGSpace(59, distances=.24, harmonic=True),
+    ift.RGSpace([12, 3])
+])
+
+
+def test_value(s):
+    Regrid = ift.RegriddingOperator(s, s.shape)
+    f = ift.from_random('normal', Regrid.domain)
+    assert_allclose(f.to_global_data(), Regrid(f).to_global_data())

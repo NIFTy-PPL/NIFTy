@@ -1,4 +1,3 @@
-.. currentmodule:: nifty5
 
 =============
 Code Overview
@@ -15,7 +14,7 @@ From such a perspective,
 
 - IFT problems largely consist of the combination of several high dimensional
   *minimization* problems.
-- Within NIFTy, *models* are used to define the characteristic equations and
+- Within NIFTy, *operators* are used to define the characteristic equations and
   properties of the problems.
 - The equations are built mostly from the application of *linear operators*,
   but there may also be nonlinear functions involved.
@@ -37,9 +36,12 @@ Domains
 Abstract base class
 -------------------
 
+.. currentmodule:: nifty5.domains.domain
+
 One of the fundamental building blocks of the NIFTy5 framework is the *domain*.
-Its required capabilities are expressed by the abstract :class:`Domain` class.
+Its required capabilities are expressed by the abstract :py:class:`Domain` class.
 A domain must be able to answer the following queries:
+m
 
 - its total number of data entries (pixels), which is accessible via the
   :attr:`~Domain.size` property
@@ -51,6 +53,8 @@ A domain must be able to answer the following queries:
 Unstructured domains
 --------------------
 
+.. currentmodule:: nifty5.domains.unstructured_domain
+
 Domains can be either *structured* (i.e. there is geometrical information
 associated with them, like position in space and volume factors),
 or *unstructured* (meaning that the data points have no associated manifold).
@@ -61,6 +65,8 @@ Unstructured domains can be described by instances of NIFTy's
 
 Structured domains
 ------------------
+
+.. currentmodule:: nifty5.domains.structured_domain
 
 In contrast to unstructured domains, these domains have an assigned geometry.
 NIFTy requires them to provide the volume elements of their grid cells.
@@ -81,15 +87,17 @@ The additional methods are specified in the abstract class
 
 NIFTy comes with several concrete subclasses of :class:`StructuredDomain`:
 
-- :class:`RGSpace` represents a regular Cartesian grid with an arbitrary
-  number of dimensions, which is supposed to be periodic in each dimension.
-- :class:`HPSpace` and :class:`GLSpace` describe pixelisations of the
-  2-sphere; their counterpart in harmonic space is :class:`LMSpace`, which
-  contains spherical harmonic coefficients.
-- :class:`PowerSpace` is used to describe one-dimensional power spectra.
+.. currentmodule:: nifty5.domains
 
-Among these, :class:`RGSpace` can be harmonic or not (depending on constructor arguments), :class:`GLSpace`, :class:`HPSpace`, and :class:`PowerSpace` are
-pure position domains (i.e. nonharmonic), and :class:`LMSpace` is always
+- :class:`rg_space.RGSpace` represents a regular Cartesian grid with an arbitrary
+  number of dimensions, which is supposed to be periodic in each dimension.
+- :class:`hp_space.HPSpace` and :class:`gl_space.GLSpace` describe pixelisations of the
+  2-sphere; their counterpart in harmonic space is :class:`lm_space.LMSpace`, which
+  contains spherical harmonic coefficients.
+- :class:`power_space.PowerSpace` is used to describe one-dimensional power spectra.
+
+Among these, :class:`rg_space.RGSpace` can be harmonic or not (depending on constructor arguments), :class:`gl_space.GLSpace`, :class:`hp_space.HPSpace`, and :class:`power_space.PowerSpace` are
+pure position domains (i.e. nonharmonic), and :class:`lm_space.LMSpace` is always
 harmonic.
 
 
@@ -97,15 +105,15 @@ Combinations of domains
 =======================
 
 The fundamental classes described above are often sufficient to specify the
-domain of a field. In some cases, however, it will be necessary to have the
-field live on a product of elementary domains instead of a single one.
-More sophisticated models also require a set of several such fields.
+domain of a field. In some cases, however, it will be necessary to define the
+field on a product of elementary domains instead of a single one.
+More sophisticated operators also require a set of several such fields.
 Some examples are:
 
 - sky emission depending on location and energy. This could be represented by
   a product of an :class:`HPSpace` (for location) with an :class:`RGSpace`
   (for energy).
-- a polarised field, which could be modeled as a product of any structured
+- a polarized field, which could be modeled as a product of any structured
   domain (representing location) with a four-element
   :class:`UnstructuredDomain` holding Stokes I, Q, U and V components.
 - a model for the sky emission, which holds both the current realization
@@ -121,7 +129,7 @@ A :class:`DomainTuple` supports iteration and indexing, and also provides the
 properties :attr:`~DomainTuple.shape`, :attr:`~DomainTuple.size` in analogy to
 the elementary :class:`Domain`.
 
-An aggregation of several :class:`DomainTuple`s, each member identified by a
+An aggregation of several :class:`DomainTuple` s, each member identified by a
 name, is described by the :class:`MultiDomain` class.
 
 Fields
@@ -136,7 +144,7 @@ A :class:`Field` object consists of the following components:
 - a data type (e.g. numpy.float64)
 - an array containing the actual values
 
-Usually, the array is stored in the for of a ``numpy.ndarray``, but for very
+Usually, the array is stored in the form of a ``numpy.ndarray``, but for very
 resource-intensive tasks NIFTy also provides an alternative storage method to
 be used with distributed memory processing.
 
@@ -157,11 +165,11 @@ that are not covered by the provided standard operations, its data content must
 be extracted first, then changed, and a new field has to be created from the
 result.
 
-Fields living on a MultiDomain
-------------------------------
+Fields defined on a MultiDomain
+-------------------------------
 
 The :class:`MultiField` class can be seen as a dictionary of individual
-:class:`Field`s, each identified by a name, which lives on an associated
+:class:`Field` s, each identified by a name, which is defined on a
 :class:`MultiDomain`.
 
 
@@ -170,21 +178,33 @@ Operators
 
 All transformations between different NIFTy fields are expressed  (explicitly
 or implicitly) in the form of :class:`Operator` objects. The interface of this
-class is very minimalistic: it has a property called `domain` which returns
-a `Domaintuple` or `MultiDomain` object specifying the structure of the
-`Field`s or `MultiField`s it expects as input, another property `target`
+class is very minimalistic: it has a property called :class:`domain` which returns
+a :class:`DomainTuple` or :class:`MultiDomain` object specifying the structure of the
+:class:`Field` s or :class:`MultiField` s it expects as input, another property :class:`target`
 describing its output, and finally an overloaded `apply` method, which can
 take
 
-- a `Field`/`MultiField`object, in which case it returns the transformed
-  `Field`/`MultiField`
-- a `Linearization` object, in which case it returns the transformed
-  `Linearization`
+- a :class:`Field`/:class:`MultiField` object, in which case it returns the transformed
+  :class:`Field`/:class:`MultiField`
+- a :class:`Linearization` object, in which case it returns the transformed
+  :class:`Linearization`
 
-This is the interface that all objects derived from `Operator` must implement.
-In addition, `Operator` objects can be added/subtracted, multiplied, chained
-(via the `__call__` method) and support pointwise application of functions like
-`exp()`, `log()`, `sqrt()`, `conjugate()` etc.
+This is the interface that all objects derived from :class:`Operator` must implement.
+In addition, :class:`Operator` objects can be added/subtracted, multiplied, chained
+(via the :class:`__call__` method and the `@` operator) and support pointwise
+application of functions like
+:class:`exp()`, :class:`log()`, :class:`sqrt()`, :class:`conjugate()` etc.
+
+
+Advanced operators
+------------------
+
+NIFTy provides a library of more sophisticated operators which are used for more
+specific inference problems. Currently these are:
+
+- :class:`AmplitudeOperator`, which returns a smooth power spectrum.
+- :class:`InverseGammaOperator`, which models point sources which follow a inverse gamma distribution.
+- :class:`CorrelatedField`, which models a diffuse log-normal field. It takes an amplitude operator to specify the correlation structure of the field.
 
 
 Linear Operators
@@ -193,12 +213,12 @@ Linear Operators
 A linear operator (represented by NIFTy5's abstract :class:`LinearOperator`
 class) is derived from `Operator` and can be interpreted as an
 (implicitly defined) matrix. Since its operation is linear, it can provide some
-additional functionality which is not available for the more generic `Operator`
+additional functionality which is not available for the more generic :class:`Operator`
 class.
 
 
-Operator basics
----------------
+Linear Operator basics
+----------------------
 
 There are four basic ways of applying an operator :math:`A` to a field :math:`f`:
 
@@ -210,8 +230,8 @@ There are four basic ways of applying an operator :math:`A` to a field :math:`f`
 (Because of the linearity, inverse adjoint and adjoint inverse application
 are equivalent.)
 
-These different actions of an operator ``Op`` on a field ``f`` can be invoked
-in various ways:
+These different actions of a linear operator ``Op`` on a field ``f`` can be
+invoked in various ways:
 
 - direct multiplication: ``Op(f)`` or ``Op.times(f)`` or ``Op.apply(f, Op.TIMES)``
 - adjoint multiplication: ``Op.adjoint_times(f)`` or ``Op.apply(f, Op.ADJOINT_TIMES)``
@@ -269,59 +289,59 @@ The properties :attr:`~LinearOperator.adjoint` and
 were the original operator's adjoint or inverse, respectively.
 
 
-Models
-======
+Operators
+=========
 
-Model classes (represented by NIFTy5's abstract :class:`Model` class) are used to construct
+Operator classes (represented by NIFTy5's abstract :class:`Operator` class) are used to construct
 the equations of a specific inference problem.
-Most models are defined via a position, which is a :class:`MultiField` object,
+Most operators are defined via a position, which is a :class:`MultiField` object,
 their value at this position, which is again a :class:`MultiField` object and a Jacobian derivative,
 which is a :class:`LinearOperator` and is needed for the minimization procedure.
 
-Using the existing basic model classes one can construct more complicated models, as
+Using the existing basic operator classes one can construct more complicated operators, as
 NIFTy allows for easy and self-consinstent combination via point-wise multiplication,
-addition and subtraction. The model resulting from these operations then automatically
+addition and subtraction. The operator resulting from these operations then automatically
 contains the correct Jacobians, positions and values.
 Notably, :class:`Constant` and :class:`Variable` allow for an easy way to turn
 inference of specific quantities on and off.
 
-The basic model classes also allow for more complex operations on models such as
+The basic operator classes also allow for more complex operations on operators such as
 the application of :class:`LinearOperators` or local non-linearities.
-As an example one may consider the following combination of ``x``, which is a model of type
-:class:`Variable` and ``y``, which is a model of type :class:`Constant`::
+As an example one may consider the following combination of ``x``, which is an operator of type
+:class:`Variable` and ``y``, which is an operator of type :class:`Constant`::
 
 	z = x*x + y
 
-``z`` will then be a model with the following properties::
+``z`` will then be an operator with the following properties::
 
 	z.value = x.value*x.value + y.value
 	z.position = Union(x.position, y.position)
 	z.jacobian = 2*makeOp(x.value)
 
 
-Basic models
-------------
+Basic operators
+---------------
+# FIXME All this is outdated!
 
-Basic model classes provided by NIFTy are
+Basic operator classes provided by NIFTy are
 
 - :class:`Constant` contains a constant value and has a zero valued Jacobian.
-  Like other models, it has a position, but its value does not depend on it.
+  Like other operators, it has a position, but its value does not depend on it.
 - :class:`Variable` returns the position as its value, its derivative is one.
 - :class:`LinearModel` applies a :class:`LinearOperator` on the model.
 - :class:`LocalModel` applies a non-linearity locally on the model.
-- :class:`MultiModel` combines various models into one. In this case the position,
 	value and Jacobian are combined into corresponding :class:`MultiFields` and operators.
 
 
-Advanced models
----------------
+Advanced operators
+------------------
 
-NIFTy also provides a library of more sophisticated models which are used for more
+NIFTy also provides a library of more sophisticated operators which are used for more
 specific inference problems. Currently these are:
 
-- :class:`AmplitudeModel`, which returns a smooth power spectrum.
-- :class:`PointModel`, which models point sources which follow a inverse gamma distribution.
-- :class:`SmoothSkyModel`, which models a diffuse lognormal field. It takes an amplitude model
+- :class:`AmplitudeOperator`, which returns a smooth power spectrum.
+- :class:`InverseGammaOperator`, which models point sources which follow a inverse gamma distribution.
+- :class:`CorrelatedField`, which models a diffuse log-normal field. It takes an amplitude operator
 	to specify the correlation structure of the field.
 
 
