@@ -1,4 +1,3 @@
-.. currentmodule:: nifty5
 
 =============
 Code Overview
@@ -37,9 +36,12 @@ Domains
 Abstract base class
 -------------------
 
+.. currentmodule:: nifty5.domains.domain
+
 One of the fundamental building blocks of the NIFTy5 framework is the *domain*.
-Its required capabilities are expressed by the abstract :class:`Domain` class.
+Its required capabilities are expressed by the abstract :py:class:`Domain` class.
 A domain must be able to answer the following queries:
+m
 
 - its total number of data entries (pixels), which is accessible via the
   :attr:`~Domain.size` property
@@ -51,6 +53,8 @@ A domain must be able to answer the following queries:
 Unstructured domains
 --------------------
 
+.. currentmodule:: nifty5.domains.unstructured_domain
+
 Domains can be either *structured* (i.e. there is geometrical information
 associated with them, like position in space and volume factors),
 or *unstructured* (meaning that the data points have no associated manifold).
@@ -61,6 +65,8 @@ Unstructured domains can be described by instances of NIFTy's
 
 Structured domains
 ------------------
+
+.. currentmodule:: nifty5.domains.structured_domain
 
 In contrast to unstructured domains, these domains have an assigned geometry.
 NIFTy requires them to provide the volume elements of their grid cells.
@@ -81,15 +87,17 @@ The additional methods are specified in the abstract class
 
 NIFTy comes with several concrete subclasses of :class:`StructuredDomain`:
 
-- :class:`RGSpace` represents a regular Cartesian grid with an arbitrary
-  number of dimensions, which is supposed to be periodic in each dimension.
-- :class:`HPSpace` and :class:`GLSpace` describe pixelisations of the
-  2-sphere; their counterpart in harmonic space is :class:`LMSpace`, which
-  contains spherical harmonic coefficients.
-- :class:`PowerSpace` is used to describe one-dimensional power spectra.
+.. currentmodule:: nifty5.domains
 
-Among these, :class:`RGSpace` can be harmonic or not (depending on constructor arguments), :class:`GLSpace`, :class:`HPSpace`, and :class:`PowerSpace` are
-pure position domains (i.e. nonharmonic), and :class:`LMSpace` is always
+- :class:`rg_space.RGSpace` represents a regular Cartesian grid with an arbitrary
+  number of dimensions, which is supposed to be periodic in each dimension.
+- :class:`hp_space.HPSpace` and :class:`gl_space.GLSpace` describe pixelisations of the
+  2-sphere; their counterpart in harmonic space is :class:`lm_space.LMSpace`, which
+  contains spherical harmonic coefficients.
+- :class:`power_space.PowerSpace` is used to describe one-dimensional power spectra.
+
+Among these, :class:`rg_space.RGSpace` can be harmonic or not (depending on constructor arguments), :class:`gl_space.GLSpace`, :class:`hp_space.HPSpace`, and :class:`power_space.PowerSpace` are
+pure position domains (i.e. nonharmonic), and :class:`lm_space.LMSpace` is always
 harmonic.
 
 
@@ -279,6 +287,62 @@ as well as the set of operations it can support.
 The properties :attr:`~LinearOperator.adjoint` and
 :attr:`~LinearOperator.inverse` return a new operator which behaves as if it
 were the original operator's adjoint or inverse, respectively.
+
+
+Operators
+=========
+
+Operator classes (represented by NIFTy5's abstract :class:`Operator` class) are used to construct
+the equations of a specific inference problem.
+Most operators are defined via a position, which is a :class:`MultiField` object,
+their value at this position, which is again a :class:`MultiField` object and a Jacobian derivative,
+which is a :class:`LinearOperator` and is needed for the minimization procedure.
+
+Using the existing basic operator classes one can construct more complicated operators, as
+NIFTy allows for easy and self-consinstent combination via point-wise multiplication,
+addition and subtraction. The operator resulting from these operations then automatically
+contains the correct Jacobians, positions and values.
+Notably, :class:`Constant` and :class:`Variable` allow for an easy way to turn
+inference of specific quantities on and off.
+
+The basic operator classes also allow for more complex operations on operators such as
+the application of :class:`LinearOperators` or local non-linearities.
+As an example one may consider the following combination of ``x``, which is an operator of type
+:class:`Variable` and ``y``, which is an operator of type :class:`Constant`::
+
+	z = x*x + y
+
+``z`` will then be an operator with the following properties::
+
+	z.value = x.value*x.value + y.value
+	z.position = Union(x.position, y.position)
+	z.jacobian = 2*makeOp(x.value)
+
+
+Basic operators
+---------------
+# FIXME All this is outdated!
+
+Basic operator classes provided by NIFTy are
+
+- :class:`Constant` contains a constant value and has a zero valued Jacobian.
+  Like other operators, it has a position, but its value does not depend on it.
+- :class:`Variable` returns the position as its value, its derivative is one.
+- :class:`LinearModel` applies a :class:`LinearOperator` on the model.
+- :class:`LocalModel` applies a non-linearity locally on the model.
+	value and Jacobian are combined into corresponding :class:`MultiFields` and operators.
+
+
+Advanced operators
+------------------
+
+NIFTy also provides a library of more sophisticated operators which are used for more
+specific inference problems. Currently these are:
+
+- :class:`AmplitudeOperator`, which returns a smooth power spectrum.
+- :class:`InverseGammaOperator`, which models point sources which follow a inverse gamma distribution.
+- :class:`CorrelatedField`, which models a diffuse log-normal field. It takes an amplitude operator
+	to specify the correlation structure of the field.
 
 
 .. _minimization:
