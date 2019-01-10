@@ -148,6 +148,12 @@ def L_BFGS_B(ftol, gtol, maxiter, maxcor=10, disp=False, bounds=None):
 
 
 class ScipyCG(Minimizer):
+    """Returns a ScipyMinimizer object carrying out the conjugate gradient
+    algorithm as implemented by SciPy.
+
+    This class is only intended for double-checking NIFTy's own conjugate
+    gradient implementation and should not be used otherwise.
+    """
     def __init__(self, tol, maxiter):
         if not dobj.is_numpy():
             raise NotImplementedError
