@@ -16,61 +16,62 @@
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
 
 import itertools
-import unittest
-from test.common import expand
 
 import numpy as np
-from nifty5 import GLSpace
+import pytest
 from numpy.testing import (assert_, assert_almost_equal, assert_equal,
                            assert_raises)
 
+from nifty5 import GLSpace
+
+pmp = pytest.mark.parametrize
+
 # [nlat, nlon, expected]
-CONSTRUCTOR_CONFIGS = [
-        [2, None, {
-            'nlat': 2,
-            'nlon': 3,
-            'harmonic': False,
-            'shape': (6,),
-            'size': 6,
-            }],
-        [0, None, {
-            'error': ValueError
-            }]
-    ]
+CONSTRUCTOR_CONFIGS = [[
+    2, None, {
+        'nlat': 2,
+        'nlon': 3,
+        'harmonic': False,
+        'shape': (6,),
+        'size': 6,
+    }
+], [0, None, {
+    'error': ValueError
+}]]
 
 
 def get_dvol_configs():
     np.random.seed(42)
-    wgt = [2.0943951,  2.0943951]
+    wgt = [2.0943951, 2.0943951]
     # for GLSpace(nlat=2, nlon=3)
-    dvol_0 = np.array(list(itertools.chain.from_iterable(
-        itertools.repeat(x, 3) for x in wgt)))
+    dvol_0 = np.array(
+        list(
+            itertools.chain.from_iterable(
+                itertools.repeat(x, 3) for x in wgt)))
     return [
         [1, dvol_0],
-        ]
+    ]
 
 
-class GLSpaceInterfaceTests(unittest.TestCase):
-    @expand([['nlat', int],
-            ['nlon', int]])
-    def test_property_ret_type(self, attribute, expected_type):
-        g = GLSpace(2)
-        assert_(isinstance(getattr(g, attribute), expected_type))
+@pmp('attribute', ['nlat', 'nlon'])
+def test_property_ret_type(attribute):
+    g = GLSpace(2)
+    assert_(isinstance(getattr(g, attribute), int))
 
 
-class GLSpaceFunctionalityTests(unittest.TestCase):
-    @expand(CONSTRUCTOR_CONFIGS)
-    def test_constructor(self, nlat, nlon, expected):
-        g = GLSpace(4)
+@pmp('nlat, nlon, expected', CONSTRUCTOR_CONFIGS)
+def test_constructor(nlat, nlon, expected):
+    g = GLSpace(4)
 
-        if 'error' in expected:
-            with assert_raises(expected['error']):
-                GLSpace(nlat, nlon)
-        else:
-            g = GLSpace(nlat, nlon)
-            for key, value in expected.items():
-                assert_equal(getattr(g, key), value)
+    if 'error' in expected:
+        with assert_raises(expected['error']):
+            GLSpace(nlat, nlon)
+    else:
+        g = GLSpace(nlat, nlon)
+        for key, value in expected.items():
+            assert_equal(getattr(g, key), value)
 
-    @expand(get_dvol_configs())
-    def test_dvol(self, power, expected):
-        assert_almost_equal(GLSpace(2).dvol, expected)
+
+@pmp('power, expected', get_dvol_configs())
+def test_dvol(power, expected):
+    assert_almost_equal(GLSpace(2).dvol, expected)
