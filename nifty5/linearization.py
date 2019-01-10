@@ -153,20 +153,17 @@ class Linearization(object):
 
     def __truediv__(self, other):
         if isinstance(other, Linearization):
-            return self.__mul__(other.inverse())
+            return self.__mul__(other.one_over())
         return self.__mul__(1./other)
 
     def __rtruediv__(self, other):
-        return self.inverse().__mul__(other)
+        return self.one_over().__mul__(other)
 
     def __pow__(self, power):
         if not np.isscalar(power):
             return NotImplemented
         return self.new(self._val**power,
                         makeOp(self._val**(power-1)).scale(power)(self._jac))
-
-    def inverse(self):
-        return self.new(1./self._val, makeOp(-1./(self._val**2))(self._jac))
 
     def __mul__(self, other):
         from .sugar import makeOp
