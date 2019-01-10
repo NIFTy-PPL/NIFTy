@@ -143,7 +143,24 @@ class GradientNormController(IterationController):
 
 
 class GradInfNormController(IterationController):
-    def __init__(self, tol=None, convergence_level=1, iteration_limit=None,
+    """An iteration controller checking (mainly) the L_infinity gradient norm.
+
+    Parameters
+    ----------
+    tol : float
+        If the L_infinity norm of the energy gradient is below this value, the
+        convergence counter will be increased in this iteration.
+    convergence_level : int, default=1
+        The number which the convergence counter must reach before the
+        iteration is considered to be converged
+    iteration_limit : int, optional
+        The maximum number of iterations that will be carried out.
+    name : str, optional
+        if supplied, this string and some diagnostic information will be
+        printed after every iteration
+    """
+
+    def __init__(self, tol, convergence_level=1, iteration_limit=None,
                  name=None):
         self._tol = tol
         self._convergence_level = convergence_level
@@ -185,6 +202,25 @@ class GradInfNormController(IterationController):
 
 
 class DeltaEnergyController(IterationController):
+    """An iteration controller checking (mainly) the energy change from one
+    iteration to the next.
+
+    Parameters
+    ----------
+    tol_rel_deltaE : float
+        If the difference between the last and current energies divided by
+        the current energy is below this value, the convergence counter will
+        be increased in this iteration.
+    convergence_level : int, default=1
+        The number which the convergence counter must reach before the
+        iteration is considered to be converged
+    iteration_limit : int, optional
+        The maximum number of iterations that will be carried out.
+    name : str, optional
+        if supplied, this string and some diagnostic information will be
+        printed after every iteration
+    """
+
     def __init__(self, tol_rel_deltaE, convergence_level=1,
                  iteration_limit=None, name=None):
         self._tol_rel_deltaE = tol_rel_deltaE

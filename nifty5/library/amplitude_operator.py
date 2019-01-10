@@ -111,23 +111,27 @@ def _SlopePowerSpectrum(logk_space, sm, sv, im, iv):
 
 def AmplitudeOperator(s_space, Npixdof, ceps_a, ceps_k, sm, sv, im, iv,
                       keys=['tau', 'phi'], zero_mode=True):
-    '''
+    ''' Operator for parametrizing smooth power spectra.
+
     Computes a smooth power spectrum.
     Output is defined on a PowerSpace.
 
     Parameters
     ----------
-
-    Npixdof : #pix in dof_space
-
-    ceps_a, ceps_k0 : Smoothness parameters in ceps_kernel
-                        eg. ceps_kernel(k) = (a/(1+(k/k0)**2))**2
-                        a = ceps_a,  k0 = ceps_k0
-
-    sm, sv : slope_mean = expected exponent of power law (e.g. -4),
-                slope_variance (default=1)
-
-    im, iv : y-intercept_mean, y-intercept_variance  of power_slope
+    Npixdof : int
+        #pix in dof_space
+    ceps_a : float
+        Smoothness parameters in ceps_kernel eg. ceps_kernel(k) = (a/(1+(k/k0)**2))**2 a = ceps_a,  k0 = ceps_k0
+    ceps_k0 : float
+        Smoothness parameters in ceps_kernel eg. ceps_kernel(k) = (a/(1+(k/k0)**2))**2 a = ceps_a,  k0 = ceps_k0
+    sm : float
+        slope_mean = expected exponent of power law (e.g. -4)
+    sv : float
+        slope_variance (default=1)
+    im : float
+        y-intercept_mean
+    iv : float
+        y-intercept_variance  of power_slope
     '''
 
     from ..operators.exp_transform import ExpTransform

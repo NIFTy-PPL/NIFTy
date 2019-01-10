@@ -24,6 +24,22 @@ from .operators.scaling_operator import ScalingOperator
 
 
 class Linearization(object):
+    """Let `A` be an operator and `x` a field. `Linearization` stores the value
+    of the operator application (i.e. `A(x)`), the local Jacobian
+    (i.e. `dA(x)/dx`) and, optionally, the local metric.
+
+    Parameters
+    ----------
+    val : Field/MultiField
+        the value of the operator application
+    jac : LinearOperator
+        the Jacobian
+    metric : LinearOperator or None (default: None)
+        the metric
+    want_metric : bool (default: False)
+        if True, the metric will be computed for other Linearizations derived
+        from this one.
+    """
     def __init__(self, val, jac, metric=None, want_metric=False):
         self._val = val
         self._jac = jac
@@ -33,36 +49,63 @@ class Linearization(object):
         self._metric = metric
 
     def new(self, val, jac, metric=None):
+        """Create a new Linearization, taking the `want_metric` property from
+           this one.
+
+        Parameters
+        ----------
+        val : Field/MultiField
+            the value of the operator application
+        jac : LinearOperator
+            the Jacobian
+        metric : LinearOperator or None (default: None)
+            the metric
+        """
         return Linearization(val, jac, metric, self._want_metric)
 
     @property
     def domain(self):
+        """DomainTuple/MultiDomain : the Jacobian's domain"""
         return self._jac.domain
 
     @property
     def target(self):
+        """DomainTuple/MultiDomain : the Jacobian's target (i.e. the value's domain)"""
         return self._jac.target
 
     @property
     def val(self):
+        """Field/MultiField : the value"""
         return self._val
 
     @property
     def jac(self):
+        """LinearOperator : the Jacobian"""
         return self._jac
 
     @property
     def gradient(self):
-        """Only available if target is a scalar"""
+        """Field/MultiField : the gradient
+
+        Notes
+        -----
+        Only available if target is a scalar
+        """
         return self._jac.adjoint_times(Field.scalar(1.))
 
     @property
     def want_metric(self):
+        """bool : the value of `want_metric`"""
         return self._want_metric
 
     @property
     def metric(self):
-        """Only available if target is a scalar"""
+        """LinearOperator : the metric
+
+        Notes
+        -----
+        Only available if target is a scalar
+        """
         return self._metric
 
     def __getitem__(self, name):

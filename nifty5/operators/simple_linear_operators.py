@@ -25,6 +25,13 @@ from .linear_operator import LinearOperator
 
 
 class VdotOperator(LinearOperator):
+    """Operator computing the scalar product of its input with a given Field.
+
+    Parameters
+    ----------
+    field : Field/MultiField
+        The field used to build the scalar product with the operator input
+    """
     def __init__(self, field):
         self._field = field
         self._domain = field.domain
@@ -39,6 +46,7 @@ class VdotOperator(LinearOperator):
 
 
 class ConjugationOperator(EndomorphicOperator):
+    """Operator computing the complex conjugate of its input."""
     def __init__(self, domain):
         self._domain = DomainTuple.make(domain)
         self._capability = self._all_ops
@@ -49,6 +57,7 @@ class ConjugationOperator(EndomorphicOperator):
 
 
 class Realizer(EndomorphicOperator):
+    """Operator returning the real component of its input."""
     def __init__(self, domain):
         self._domain = DomainTuple.make(domain)
         self._capability = self.TIMES | self.ADJOINT_TIMES
@@ -100,6 +109,41 @@ class FieldAdapter(LinearOperator):
 
 
 def ducktape(left, right, name):
+    """Convenience function for computing an adapter between two operators.
+
+    Parameters
+    ----------
+    left : None, Operator, or Domainoid
+        Something describing the input domain of the left operator.
+        If `left` is an `Operator`, its domain is used as `left`.
+
+    right : None, Operator, or Domainoid
+        Something describing the target domain of the right operator.
+        If `right` is an `Operator`, its target is used as `right`.
+
+    name : string
+        The component of the `MultiDomain` that will be extracted/inserted
+
+    Notes
+    -----
+    - one of the involved domains must be a `DomainTuple`, the other a
+      `MultiDomain`.
+    - `left` and `right` must not be both `None`, but one of them can (and
+      probably should) be `None`. In this case, the missing information is
+      inferred.
+    - the returned operator's domains are
+        - a `DomainTuple` and
+        - a `MultiDomain` with exactly one entry called `name` and the same
+          `DomainTuple`
+
+      Which of these is the domain and which is the target depends on the
+      input.
+
+    Returns
+    -------
+    FieldAdapter : an adapter operator converting between the two (possibly
+                   partially inferred) domains.
+    """
     from ..sugar import makeDomain
     from .operator import Operator
     if left is None:  # need to infer left from right
