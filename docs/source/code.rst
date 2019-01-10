@@ -1,4 +1,3 @@
-.. currentmodule:: nifty5
 
 =============
 Code Overview
@@ -37,9 +36,12 @@ Domains
 Abstract base class
 -------------------
 
+.. currentmodule:: nifty5.domains.domain
+
 One of the fundamental building blocks of the NIFTy5 framework is the *domain*.
-Its required capabilities are expressed by the abstract :class:`Domain` class.
+Its required capabilities are expressed by the abstract :py:class:`Domain` class.
 A domain must be able to answer the following queries:
+m
 
 - its total number of data entries (pixels), which is accessible via the
   :attr:`~Domain.size` property
@@ -51,6 +53,8 @@ A domain must be able to answer the following queries:
 Unstructured domains
 --------------------
 
+.. currentmodule:: nifty5.domains.unstructured_domain
+
 Domains can be either *structured* (i.e. there is geometrical information
 associated with them, like position in space and volume factors),
 or *unstructured* (meaning that the data points have no associated manifold).
@@ -61,6 +65,8 @@ Unstructured domains can be described by instances of NIFTy's
 
 Structured domains
 ------------------
+
+.. currentmodule:: nifty5.domains.structured_domain
 
 In contrast to unstructured domains, these domains have an assigned geometry.
 NIFTy requires them to provide the volume elements of their grid cells.
@@ -81,15 +87,17 @@ The additional methods are specified in the abstract class
 
 NIFTy comes with several concrete subclasses of :class:`StructuredDomain`:
 
-- :class:`RGSpace` represents a regular Cartesian grid with an arbitrary
-  number of dimensions, which is supposed to be periodic in each dimension.
-- :class:`HPSpace` and :class:`GLSpace` describe pixelisations of the
-  2-sphere; their counterpart in harmonic space is :class:`LMSpace`, which
-  contains spherical harmonic coefficients.
-- :class:`PowerSpace` is used to describe one-dimensional power spectra.
+.. currentmodule:: nifty5.domains
 
-Among these, :class:`RGSpace` can be harmonic or not (depending on constructor arguments), :class:`GLSpace`, :class:`HPSpace`, and :class:`PowerSpace` are
-pure position domains (i.e. nonharmonic), and :class:`LMSpace` is always
+- :class:`rg_space.RGSpace` represents a regular Cartesian grid with an arbitrary
+  number of dimensions, which is supposed to be periodic in each dimension.
+- :class:`hp_space.HPSpace` and :class:`gl_space.GLSpace` describe pixelisations of the
+  2-sphere; their counterpart in harmonic space is :class:`lm_space.LMSpace`, which
+  contains spherical harmonic coefficients.
+- :class:`power_space.PowerSpace` is used to describe one-dimensional power spectra.
+
+Among these, :class:`rg_space.RGSpace` can be harmonic or not (depending on constructor arguments), :class:`gl_space.GLSpace`, :class:`hp_space.HPSpace`, and :class:`power_space.PowerSpace` are
+pure position domains (i.e. nonharmonic), and :class:`lm_space.LMSpace` is always
 harmonic.
 
 
