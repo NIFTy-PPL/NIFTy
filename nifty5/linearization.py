@@ -24,7 +24,7 @@ from .operators.scaling_operator import ScalingOperator
 
 
 class Linearization(object):
-    """Given an operator `A` and a field `x`, this class stores the value
+    """Let `A` be an operator and `x` a field. `Linearization` stores the value
     of the operator application (i.e. `A(x)`), the local Jacobian
     (i.e. `dA(x)/dx`) and, optionally, the local metric.
 
