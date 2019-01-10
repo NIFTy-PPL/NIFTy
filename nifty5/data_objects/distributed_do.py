@@ -17,6 +17,7 @@
 
 import sys
 from functools import reduce
+
 import numpy as np
 from mpi4py import MPI
 

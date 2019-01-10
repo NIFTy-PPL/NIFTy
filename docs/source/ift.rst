@@ -104,6 +104,7 @@ with :math:`{R}` the measurement response, which maps the continous signal field
 
 This is called a free theory, as the information Hamiltonian
 associate professor
+
 .. math::
 
     \mathcal{H}(d,s)= -\log \mathcal{P}(d,s)= \frac{1}{2} s^\dagger S^{-1} s + \frac{1}{2} (d-R\,s)^\dagger N^{-1} (d-R\,s) + \mathrm{const}
@@ -179,23 +180,22 @@ NIFTy takes advantage of this formulation in several ways:
 
 The reconstruction of a non-Gaussian signal with unknown covarinance from a non-trivial (tomographic) response is demonstrated in demos/getting_started_3.py. Here, the uncertainty of the field and the power spectrum of its generating process are probed via posterior samples provided by the MGVI algorithm.
 
-+-------------------------------------------------+
-| .. image:: images/getting_started_3_setup.png   |
-|     :width:  30 %                               |
-+-------------------------------------------------+
-| .. image:: images/getting_started_3_results.png |
-|     :width:  30 %                               |
-+-------------------------------------------------+
-| Output of tomography demo getting_started_3.py. |
-| **Top row:** Non-Gaussian signal field,         |
-| data backprojected into the image domain, power |
-| spectrum of underlying Gausssian process.       |
-| **Bottom row:** Posterior mean field signal     |
-| reconstruction, its uncertainty, and the power  |
-| spectrum of the process for different posterior |
-| samples in comparison to the correct one (thick |
-| orange line).                                   |
-+-------------------------------------------------+
-
-
-
++----------------------------------------------------+
+| **Output of tomography demo getting_started_3.py** |
++----------------------------------------------------+
+| .. image:: images/getting_started_3_setup.png      |
+|                                                    |
++----------------------------------------------------+
+| Non-Gaussian signal field,                         |
+| data backprojected into the image domain, power    |
+| spectrum of underlying Gausssian process.          |
++----------------------------------------------------+
+| .. image:: images/getting_started_3_results.png    |
+|                                                    |
++----------------------------------------------------+
+| Posterior mean field signal                        |
+| reconstruction, its uncertainty, and the power     |
+| spectrum of the process for different posterior    |
+| samples in comparison to the correct one (thick    |
+| orange line).                                      |
++----------------------------------------------------+
