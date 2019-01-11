@@ -182,7 +182,7 @@ def NiftyMetaBase():
     return with_metaclass(NiftyMeta, type('NewBase', (object,), {}))
 
 
-class frozendict(collections.Mapping):
+class frozendict(collections.abc.Mapping):
     """
     An immutable wrapper around dictionaries that implements the complete
     :py:class:`collections.Mapping` interface. It can be used as a drop-in
