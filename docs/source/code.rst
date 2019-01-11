@@ -299,62 +299,6 @@ The properties :attr:`~LinearOperator.adjoint` and
 were the original operator's adjoint or inverse, respectively.
 
 
-Operators
-=========
-
-Operator classes (represented by NIFTy5's abstract :class:`operators.operator.Operator` class) are used to construct
-the equations of a specific inference problem.
-Most operators are defined via a position, which is a :class:`~multi_field.MultiField` object,
-their value at this position, which is again a :class:`~multi_field.MultiField` object and a Jacobian derivative,
-which is a :class:`operators.linear_operator.LinearOperator` and is needed for the minimization procedure.
-
-Using the existing basic operator classes one can construct more complicated operators, as
-NIFTy allows for easy and self-consinstent combination via point-wise multiplication,
-addition and subtraction. The operator resulting from these operations then automatically
-contains the correct Jacobians, positions and values.
-Notably, :class:`Constant` and :class:`Variable` allow for an easy way to turn
-inference of specific quantities on and off.
-
-The basic operator classes also allow for more complex operations on operators such as
-the application of :class:`LinearOperators` or local non-linearities.
-As an example one may consider the following combination of ``x``, which is an operator of type
-:class:`Variable` and ``y``, which is an operator of type :class:`Constant`::
-
-	z = x*x + y
-
-``z`` will then be an operator with the following properties::
-
-	z.value = x.value*x.value + y.value
-	z.position = Union(x.position, y.position)
-	z.jacobian = 2*makeOp(x.value)
-
-
-Basic operators
----------------
-# FIXME All this is outdated!
-
-Basic operator classes provided by NIFTy are
-
-- :class:`Constant` contains a constant value and has a zero valued Jacobian.
-  Like other operators, it has a position, but its value does not depend on it.
-- :class:`Variable` returns the position as its value, its derivative is one.
-- :class:`LinearModel` applies a :class:`operators.linear_operator.LinearOperator` on the model.
-- :class:`LocalModel` applies a non-linearity locally on the model.
-	value and Jacobian are combined into corresponding :class:`MultiFields` and operators.
-
-
-Advanced operators
-------------------
-
-NIFTy also provides a library of more sophisticated operators which are used for more
-specific inference problems. Currently these are:
-
-- :class:`AmplitudeOperator`, which returns a smooth power spectrum.
-- :class:`InverseGammaOperator`, which models point sources which follow a inverse gamma distribution.
-- :class:`CorrelatedField`, which models a diffuse log-normal field. It takes an amplitude operator
-	to specify the correlation structure of the field.
-
-
 .. _minimization:
 
 
