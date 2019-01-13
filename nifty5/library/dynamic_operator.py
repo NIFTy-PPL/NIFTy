@@ -153,7 +153,7 @@ def dynamic_operator(domain,
         field is not padded at all.
     sm_s0 : float
         Cutoff for dynamic smoothness prior.
-    sm_x0 : float, List of float
+    sm_x0 : float, list of float
         Scaling of dynamic smoothness along each axis.
     key : String
         key for dynamics encoding parameter.
@@ -167,13 +167,12 @@ def dynamic_operator(domain,
     Operator
         The Operator encoding the dynamic Green's function in harmonic space.
     Dictionary of Operator
-        A collection of sub-chains of Operators which can be used for plotting
+        A collection of sub-chains of Operator which can be used for plotting
         and evaluation.
 
     Notes
     -----
-    Currently only supports RGSpaces.
-    Note that the first axis of the space is interpreted as the time axis.
+    The first axis of the domain is interpreted the time axis.
     '''
     dct = {
         'domain': domain,
@@ -211,13 +210,13 @@ def dynamic_lightcone_operator(domain,
         field is not padded at all.
     sm_s0 : float
         Cutoff for dynamic smoothness prior.
-    sm_x0 : float, List of float
+    sm_x0 : float, list of float
         Scaling of dynamic smoothness along each axis.
     key : String
         Key for dynamics encoding parameter.
     lightcone_key: String
         Key for lightspeed paramteter.
-    sigc : float, List of float
+    sigc : float, list of float
         Variance of lightspeed parameter.
     quant : float
         Quantization of the light cone in pixels.
@@ -232,13 +231,12 @@ def dynamic_lightcone_operator(domain,
         The Operator encoding the dynamic Green's function in harmonic space
         when evaluated.
     dict
-        A collection of sub-chains of :class:`Operator` s which can be used
+        A collection of sub-chains of Operator which can be used
         for plotting and evaluation.
 
     Notes
     -----
-    The first axis of the space is interpreted as the time axis.
-    Supports only RGSpaces currently.
+    The first axis of the domain is interpreted the time axis.
     '''
 
     if len(domain.shape) < 2:
