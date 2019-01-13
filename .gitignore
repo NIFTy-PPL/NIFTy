@@ -11,6 +11,7 @@ setup.cfg
 .svn/
 *.csv
 .pytest_cache/
+*.png
 
 # from https://github.com/github/gitignore/blob/master/Python.gitignore
 
