@@ -164,7 +164,7 @@ def dynamic_operator(domain,
     Returns
     -------
     Operator
-        The Operator encoding the dynamic Greens function in harmonic space.
+        The Operator encoding the dynamic Green's function in harmonic space.
     Dictionary of Operator
         A collection of sub-chains of Operators which can be used for plotting
         and evaluation.
@@ -198,7 +198,7 @@ def dynamic_lightcone_operator(domain,
                                causal=True,
                                minimum_phase=False):
     '''Constructs an operator encoding the Green's function of a linear
-    homogeneous dynamic system. The Greens function is constrained to be
+    homogeneous dynamic system. The Green's function is constrained to be
     within a light cone.
 
     Parameters
@@ -228,7 +228,7 @@ def dynamic_lightcone_operator(domain,
     Returns
     -------
     Operator
-        The Operator encoding the dynamic Greens function in harmonic space
+        The Operator encoding the dynamic Green's function in harmonic space
         when evaluated.
     dict
         A collection of sub-chains of :class:`Operator` s which can be used
