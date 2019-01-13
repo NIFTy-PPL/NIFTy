@@ -25,18 +25,19 @@ class EnergyAdapter(Energy):
 
     Parameters
     -----------
-    op: Operator with a scalar target domain
-        The expression computing the energy from the input data
-    constants: list of strings (default: [])
     position: Field or MultiField
         The position where the minimization process is started.
+    op: EnergyOperator
+        The expression computing the energy from the input data.
+    constants: list of strings
         The component names of the operator's input domain which are assumed
         to be constant during the minimization process.
         If the operator's input domain is not a MultiField, this must be empty.
-    want_metric: bool (default: False)
-        if True, the class will provide a `metric` property. This should only
+        Default: [].
+    want_metric: bool
+        If True, the class will provide a `metric` property. This should only
         be enabled if it is required, because it will most likely consume
-        additional resources.
+        additional resources. Default: False.
     """
 
     def __init__(self, position, op, constants=[], want_metric=False):
