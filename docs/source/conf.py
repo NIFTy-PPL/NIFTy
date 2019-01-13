@@ -10,6 +10,9 @@ master_doc = 'index'
 napoleon_google_docstring = False
 napoleon_numpy_docstring = True
 napoleon_use_ivar = True
+napoleon_use_admonition_for_notes = True
+napoleon_use_admonition_for_examples = True
+napoleon_use_admonition_for_references = True
 
 project = u'NIFTy5'
 copyright = u'2013-2019, Max-Planck-Society'
