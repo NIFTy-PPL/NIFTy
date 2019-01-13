@@ -80,7 +80,7 @@ class Domain(NiftyMetaBase()):
         """tuple of int: number of pixels along each axis
 
         The shape of the array-like object required to store information
-        living on the domain.
+        defined on the domain.
         """
         raise NotImplementedError
 
@@ -89,7 +89,7 @@ class Domain(NiftyMetaBase()):
         """tuple of int: number of pixels along each axis on the local task
 
         The shape of the array-like object required to store information
-        living on part of the domain which is stored on the local MPI task.
+        defined on part of the domain which is stored on the local MPI task.
         """
         from ..dobj import local_shape
         return local_shape(self.shape)

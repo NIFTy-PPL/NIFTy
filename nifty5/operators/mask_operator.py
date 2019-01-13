@@ -24,7 +24,7 @@ from .linear_operator import LinearOperator
 
 
 # MR FIXME: this needs a redesign to avoid most _global_data() calls
-# Possible approach: keep everything living on `domain` distributed and only
+# Possible approach: keep everything defined on `domain` distributed and only
 # collect the unstructured Fields.
 class MaskOperator(LinearOperator):
     def __init__(self, mask):

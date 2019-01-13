@@ -159,7 +159,7 @@ class Field(object):
         Returns
         -------
         Field
-            Field living on `new_domain`, but with the same data as `self`.
+            Field defined on `new_domain`, but with the same data as `self`.
         """
         return Field(DomainTuple.make(new_domain), self._val)
 

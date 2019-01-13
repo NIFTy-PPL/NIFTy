@@ -276,7 +276,7 @@ class Plot(object):
         f: Field, or list of Field objects
             If `f` is a single Field, it must be defined on a single `RGSpace`,
             `PowerSpace`, `HPSpace`, `GLSpace`.
-            If it is a list, all list members must be Fields living over the
+            If it is a list, all list members must be Fields defined over the
             same one-dimensional `RGSpace` or `PowerSpace`.
         title: string
             title of the plot

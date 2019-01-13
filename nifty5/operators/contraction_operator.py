@@ -35,7 +35,7 @@ class ContractionOperator(LinearOperator):
     spaces : int or tuple of int
         The elements of "domain" which are contracted.
     weight : int, default=0
-        if nonzero, the fields living on self.domain are weighted with the
+        if nonzero, the fields defined on self.domain are weighted with the
         specified power.
     """
 

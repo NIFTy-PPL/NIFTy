@@ -52,7 +52,7 @@ def PS_field(pspace, func):
 
     Returns
     -------
-    Field : a field living on (pspace,) containing the computed function values
+    Field : a field defined on (pspace,) containing the computed function values
     """
     if not isinstance(pspace, PowerSpace):
         raise TypeError
@@ -167,7 +167,7 @@ def power_analyze(field, spaces=None, binbounds=None,
 
 
 def _create_power_field(domain, power_spectrum):
-    if not callable(power_spectrum):  # we have a Field living on a PowerSpace
+    if not callable(power_spectrum):  # we have a Field defined on a PowerSpace
         if not isinstance(power_spectrum, Field):
             raise TypeError("Field object expected")
         if len(power_spectrum.domain) != 1:

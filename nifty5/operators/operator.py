@@ -20,7 +20,7 @@ from ..utilities import NiftyMetaBase, indent
 
 
 class Operator(NiftyMetaBase()):
-    """Transforms values living on one domain into values living on another
+    """Transforms values defined on one domain into values defined on another
     domain, and can also provide the Jacobian.
     """
 

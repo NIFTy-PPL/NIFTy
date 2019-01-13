@@ -123,7 +123,7 @@ Some examples are:
 Consequently, NIFTy defines a class called :class:`DomainTuple` holding
 a sequence of :class:`Domain` objects, which is used to specify full field
 domains. In principle, a :class:`DomainTuple` can even be empty, which implies
-that the field living on it is a scalar.
+that the field defined on it is a scalar.
 
 A :class:`DomainTuple` supports iteration and indexing, and also provides the
 properties :attr:`~DomainTuple.shape`, :attr:`~DomainTuple.size` in analogy to
@@ -152,7 +152,7 @@ Fields support a wide range of arithmetic operations, either involving two
 fields with equal domains, or a field and a scalar.
 Contractions (like summation, integration, minimum/maximum, computation of
 statistical moments) can be carried out either over an entire field (producing
-a scalar result) or over sub-domains (resulting in a field living on a smaller
+a scalar result) or over sub-domains (resulting in a field defined on a smaller
 domain). Scalar products of two fields can also be computed easily.
 
 There is also a set of convenience functions to generate fields with constant
@@ -250,7 +250,7 @@ provided by NIFTy's :class:`InversionEnabler` class, which is itself a linear
 operator.
 
 Direct multiplication and adjoint inverse multiplication transform a field
-living on the operator's :attr:`~LinearOperator.domain` to one living on the operator's :attr:`~LinearOperator.target`, whereas adjoint multiplication
+defined on the operator's :attr:`~LinearOperator.domain` to one defined on the operator's :attr:`~LinearOperator.target`, whereas adjoint multiplication
 and inverse multiplication transform from :attr:`~LinearOperator.target` to :attr:`~LinearOperator.domain`.
 
 Operators with identical domain and target can be derived from
@@ -364,7 +364,7 @@ These hold the prescription how to calculate the function's
 (optionally) :attr:`~Energy.metric` at any given :attr:`~Energy.position`
 in parameter space.
 Function values are floating-point scalars, gradients have the form of fields
-living on the energy's position domain, and metrics are represented by
+defined on the energy's position domain, and metrics are represented by
 linear operator objects.
 
 Energies are classes that typically have to be provided by the user when

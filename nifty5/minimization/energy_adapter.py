@@ -25,11 +25,11 @@ class EnergyAdapter(Energy):
 
     Parameters
     -----------
-    position: Field or MultiField living on the operator's input domain.
-        The position where the minimization process is started
     op: Operator with a scalar target domain
         The expression computing the energy from the input data
     constants: list of strings (default: [])
+    position: Field or MultiField
+        The position where the minimization process is started.
         The component names of the operator's input domain which are assumed
         to be constant during the minimization process.
         If the operator's input domain is not a MultiField, this must be empty.
