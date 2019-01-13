@@ -30,23 +30,23 @@ from .linear_operator import LinearOperator
 
 
 class LinearInterpolator(LinearOperator):
+    """
+    Multilinear interpolation for points in an RGSpace
+
+    Parameters
+    ----------
+    domain : RGSpace
+    positions : numpy.ndarray
+        Positions at which to interpolate
+        Field with UnstructuredDomain, shape (dim, ndata)
+
+    Notes
+    -----
+    Positions that are not within the RGSpace are wrapped according to
+    periodic boundary conditions. This reflects the general property of
+    RGSpaces to be tori topologically.
+    """
     def __init__(self, domain, sampling_points):
-        """
-        Multilinear interpolation for points in an RGSpace
-
-        Parameters
-        ----------
-        domain : RGSpace
-        positions : numpy.ndarray
-            Positions at which to interpolate
-            Field with UnstructuredDomain, shape (dim, ndata)
-
-        Notes
-        -----
-        Positions that are not within the RGSpace are wrapped according to
-        periodic boundary conditions. This reflects the general property of
-        RGSpaces to be tori topologically.
-        """
         self._domain = makeDomain(domain)
         for dom in self.domain:
             if not isinstance(dom, RGSpace):
