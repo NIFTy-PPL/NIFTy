@@ -27,7 +27,7 @@ from .simple_linear_operators import VdotOperator
 
 
 class EnergyOperator(Operator):
-    """ NIFTy class for Energy operators.
+    """ Basis class EnergyOperator.
 
     The  NIFTy EnergyOperator class derives from the Operator class.
 
@@ -40,7 +40,6 @@ class EnergyOperator(Operator):
     that converts a field into a field, the gradient of the Hamiltonian at the 
     field location. 
     """
-    # TE FIXME: find out and document how gradient and metric are invoked
     _target = DomainTuple.scalar_domain()
 
 
