@@ -57,7 +57,8 @@ def _make_dynamic_operator(domain,
     causal, minimum_phase = bool(causal), bool(minimum_phase)
     if sigc is not None:
         sigc = _float_or_listoffloat(sigc)
-    quant = float(quant)
+    if quant is not None:
+        quant = float(quant)
     if cone and (sigc is None or quant is None):
         raise RuntimeError
 
