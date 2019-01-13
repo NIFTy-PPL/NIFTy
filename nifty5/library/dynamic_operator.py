@@ -30,6 +30,10 @@ from ..sugar import makeOp
 from .light_cone_operator import LightConeOperator, _field_from_function
 
 
+def _float_or_listoffloat(inp):
+    return [float(x) for x in inp] if isinstance(inp, list) else float(inp)
+
+
 def _make_dynamic_operator(domain,
                            harmonic_padding,
                            sm_s0,
@@ -40,12 +44,24 @@ def _make_dynamic_operator(domain,
                            minimum_phase,
                            sigc=None,
                            quant=None):
+    if not isinstance(domain, RGSpace):
+        raise TypeError("RGSpace required")
+    if not (isinstance(harmonic_padding, int) or harmonic_padding is None
+            or all(isinstance(ii, int) for ii in harmonic_padding)):
+        raise TypeError
+    sm_s0 = float(sm_s0)
+    sm_x0 = _float_or_listoffloat(sm_x0)
+    cone = bool(cone)
+    if not all(isinstance(ss, str) for ss in keys):
+        raise TypeError
+    causal, minimum_phase = bool(causal), bool(minimum_phase)
+    if sigc is not None:
+        sigc = _float_or_listoffloat(sigc)
+    quant = float(quant)
     if cone and (sigc is None or quant is None):
         raise RuntimeError
 
     dom = DomainTuple.make(domain)
-    if not isinstance(dom[0], RGSpace):
-        raise TypeError("RGSpace required")
     ops = {}
     FFT = FFTOperator(dom)
     Real = Realizer(dom)
