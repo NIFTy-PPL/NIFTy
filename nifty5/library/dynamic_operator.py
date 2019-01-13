@@ -74,9 +74,9 @@ def _make_dynamic_operator(domain,
             harmonic_padding = list((harmonic_padding,)*len(FFT.target.shape))
         elif len(harmonic_padding) != len(FFT.target.shape):
             raise (ValueError, "Shape mismatch!")
-        shp = ()
-        for i in range(len(FFT.target.shape)):
-            shp += (FFT.target.shape[i] + harmonic_padding[i],)
+        shp = [
+            sh + harmonic_padding[ii] for ii, sh in enumerate(FFT.target.shape)
+        ]
         CentralPadd = FieldZeroPadder(FFT.target, shp, central=True)
     ops['central_padding'] = CentralPadd
     sdom = CentralPadd.target[0].get_default_codomain()
@@ -213,11 +213,11 @@ def dynamic_lightcone_operator(domain,
     sm_x0 : float, List of float
         Scaling of dynamic smoothness along each axis.
     key : String
-        key for dynamics encoding parameter.
+        Key for dynamics encoding parameter.
     lightcone_key: String
-        key for lightspeed paramteter.
+        Key for lightspeed paramteter.
     sigc : float, List of float
-        variance of lightspeed parameter.
+        Variance of lightspeed parameter.
     quant : float
         Quantization of the light cone in pixels.
     causal : boolean
