@@ -31,13 +31,14 @@ class PowerSpace(StructuredDomain):
     ----------
     harmonic_partner : StructuredDomain
         The harmonic domain of which this is the power space.
-    binbounds : None, or tuple of float (default: None)
-        if None:
-            There will be as many bins as there are distinct k-vector lengths
-            in the harmonic partner space.
-            The `binbounds` property of the PowerSpace will also be None.
+    binbounds : None, or tuple of float
+        FIXME Add docu for binbounds
+        By default (binbounds=None):
+            There are as many bins as there are distinct k-vector lengths in
+            the harmonic partner space.
+            The `binbounds` property of the PowerSpace will be None.
         else:
-            the bin bounds requested for this PowerSpace. The array
+            The bin bounds requested for this PowerSpace. The array
             must be sorted and strictly ascending. The first entry is the right
             boundary of the first bin, and the last entry is the left boundary
             of the last bin, i.e. thee will be `len(binbounds)+1` bins in

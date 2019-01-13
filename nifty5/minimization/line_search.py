@@ -118,18 +118,18 @@ class LineSearch(NiftyMetaBase()):
     preferred_initial_step_size : float, optional
         Newton-based methods should intialize this to 1.
     c1 : float
-        Parameter for Armijo condition rule. (Default: 1e-4)
+        Parameter for Armijo condition rule. Default: 1e-4.
     c2 : float
-        Parameter for curvature condition rule. (Default: 0.9)
+        Parameter for curvature condition rule. Default: 0.9.
     max_step_size : float
         Maximum step allowed in to be made in the descent direction.
-        (Default: 1e30)
+        Default: 1e30.
     max_iterations : int, optional
         Maximum number of iterations performed by the line search algorithm.
-        (Default: 100)
+        Default: 100.
     max_zoom_iterations : int, optional
         Maximum number of iterations performed by the zoom algorithm.
-        (Default: 100)
+        Default: 100.
     """
 
     def __init__(self, preferred_initial_step_size=None, c1=1e-4, c2=0.9,
@@ -159,7 +159,7 @@ class LineSearch(NiftyMetaBase()):
             Vector pointing into the search direction.
         f_k_minus_1 : float, optional
             Value of the fuction (which is being minimized) at the k-1
-            iteration of the line search procedure. (Default: None)
+            iteration of the line search procedure. Default: None.
 
         Returns
         -------

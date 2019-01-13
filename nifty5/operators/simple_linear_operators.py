@@ -29,7 +29,7 @@ class VdotOperator(LinearOperator):
 
     Parameters
     ----------
-    field : Field/MultiField
+    field : Field or MultiField
         The field used to build the scalar product with the operator input
     """
     def __init__(self, field):

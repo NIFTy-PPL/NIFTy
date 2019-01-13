@@ -53,7 +53,7 @@ class ConjugateGradient(Minimizer):
             linear conjugate gradient minimization will fail.
         preconditioner : Operator *optional*
             This operator can be provided which transforms the variables of the
-            system to improve the conditioning (default: None).
+            system to improve the conditioning. Default: None.
 
         Returns
         -------

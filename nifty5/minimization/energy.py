@@ -109,12 +109,12 @@ class Energy(NiftyMetaBase()):
         """
         Parameters
         ----------
-        x: Field/MultiField
+        x: Field or MultiField
             Argument for the metric operator
 
         Returns
         -------
-        Field/MultiField:
+        Field or MultiField:
             Output of the metric operator
         """
         raise NotImplementedError

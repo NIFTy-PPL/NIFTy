@@ -349,14 +349,14 @@ class Field(object):
         x : Field
             x must be defined on the same domain as `self`.
 
-        spaces : None, int or tuple of int (default: None)
+        spaces : None, int or tuple of int
             The dot product is only carried out over the sub-domains in this
             tuple. If None, it is carried out over all sub-domains.
+            Default: None.
 
         Returns
         -------
-        float, complex, either scalar (for full dot products)
-                              or Field (for partial dot products)
+        float, complex, either scalar (for full dot products) or Field (for partial dot products).
         """
         if not isinstance(x, Field):
             raise TypeError("The dot-partner must be an instance of " +
@@ -379,8 +379,8 @@ class Field(object):
 
         Parameters
         ----------
-        ord : int, default=2
-            accepted values: 1, 2, ..., np.inf
+        ord : int
+            Accepted values: 1, 2, ..., np.inf. Default: 2.
 
         Returns
         -------
@@ -441,9 +441,9 @@ class Field(object):
 
         Parameters
         ----------
-        spaces : None, int or tuple of int (default: None)
+        spaces : None, int or tuple of int
             The summation is only carried out over the sub-domains in this
-            tuple. If None, it is carried out over all sub-domains.
+            tuple. If None, it is carried out over all sub-domains. Default: None.
 
         Returns
         -------
@@ -461,9 +461,10 @@ class Field(object):
 
         Parameters
         ----------
-        spaces : None, int or tuple of int (default: None)
+        spaces : None, int or tuple of int
             The summation is only carried out over the sub-domains in this
             tuple. If None, it is carried out over all sub-domains.
+            Default: None.
 
         Returns
         -------
@@ -484,9 +485,10 @@ class Field(object):
 
         Parameters
         ----------
-        spaces : None, int or tuple of int (default: None)
+        spaces : None, int or tuple of int
             The operation is only carried out over the sub-domains in this
             tuple. If None, it is carried out over all sub-domains.
+            Default: None.
 
         Returns
         -------
@@ -544,9 +546,9 @@ class Field(object):
 
         Parameters
         ----------
-        spaces : None, int or tuple of int (default: None)
+        spaces : None, int or tuple of int
             The operation is only carried out over the sub-domains in this
-            tuple. If None, it is carried out over all sub-domains.
+            tuple. If None, it is carried out over all sub-domains. Default: None.
 
         Returns
         -------
@@ -566,9 +568,10 @@ class Field(object):
 
         Parameters
         ----------
-        spaces : None, int or tuple of int (default: None)
+        spaces : None, int or tuple of int
             The operation is only carried out over the sub-domains in this
             tuple. If None, it is carried out over all sub-domains.
+            Default: None.
 
         Returns
         -------
@@ -594,9 +597,10 @@ class Field(object):
 
         Parameters
         ----------
-        spaces : None, int or tuple of int (default: None)
+        spaces : None, int or tuple of int
             The operation is only carried out over the sub-domains in this
             tuple. If None, it is carried out over all sub-domains.
+            Default: None.
 
         Returns
         -------
