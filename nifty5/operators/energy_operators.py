@@ -27,10 +27,31 @@ from .simple_linear_operators import VdotOperator
 
 
 class EnergyOperator(Operator):
+    """ NIFTy class for Energy operators.
+
+    The  NIFTy EnergyOperator class derives from the Operator class.
+
+    An EnergyOperators transforms a field into a scalar, the information energy
+    of the field. Typically, an EnergyOperators is an information Hamiltonian
+    ( = negative log probability) or a Gibbs free energy ( = averaged 
+    Hamiltonian), aka Kullbach-Leibler divergence. 
+    
+    An EnergyOperator can also provide its gradient as an EndomorphicOperator 
+    that converts a field into a field, the gradient of the Hamiltonian at the 
+    field location. 
+    """
+    # TE FIXME: find out and document how gradient and metric are invoked
     _target = DomainTuple.scalar_domain()
 
 
 class SquaredNormOperator(EnergyOperator):
+    """ NIFTy class for a squared norm energy.
+
+    The  NIFTy SquaredNormOperator class derives from the EnergyOperator class.
+
+    A SquaredNormOperator represents a field energy E that is the L2 norm of a 
+    field f: E = f^dagger f
+    """   
     def __init__(self, domain):
         self._domain = domain
 
@@ -44,6 +65,13 @@ class SquaredNormOperator(EnergyOperator):
 
 
 class QuadraticFormOperator(EnergyOperator):
+    """ NIFTy class for quadratic field energies.
+
+    The  NIFTy QuadraticFormOperator derives from the EnergyOperator class.
+
+    It represents a field energy E that is a quadratic form of a field f with 
+    kernel op: E = f^dagger op f /2 
+    """      
     def __init__(self, op):
         from .endomorphic_operator import EndomorphicOperator
         if not isinstance(op, EndomorphicOperator):
