@@ -79,6 +79,9 @@ class Operator(NiftyMetaBase()):
             return self.scale(x)
         return NotImplemented
 
+    def __rmul__(self, x):
+        return self.__mul__(x)
+
     def __add__(self, x):
         if not isinstance(x, Operator):
             return NotImplemented
