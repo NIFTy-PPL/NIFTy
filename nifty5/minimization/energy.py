@@ -19,7 +19,7 @@ from ..utilities import NiftyMetaBase
 
 
 class Energy(NiftyMetaBase()):
-    """ Provides the functional used by minimization schemes.
+    """Provides the functional used by minimization schemes.
 
     The Energy object is an implementation of a scalar function including its
     gradient and metric at some position.
@@ -47,7 +47,7 @@ class Energy(NiftyMetaBase()):
         self._gradnorm = None
 
     def at(self, position):
-        """ Returns a new Energy object, initialized at `position`.
+        """Returns a new Energy object, initialized at `position`.
 
         Parameters
         ----------

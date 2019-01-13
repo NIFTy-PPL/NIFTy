@@ -143,7 +143,7 @@ class LinearOperator(Operator):
         return self.apply(x.extract(self.domain), self.TIMES)
 
     def apply(self, x, mode):
-        """ Applies the Operator to a given `x`, in a specified `mode`.
+        """Applies the Operator to a given `x`, in a specified `mode`.
 
         Parameters
         ----------
@@ -178,7 +178,7 @@ class LinearOperator(Operator):
         return self.__matmul__(x)
 
     def times(self, x):
-        """ Applies the Operator to a given Field.
+        """Applies the Operator to a given Field.
 
         Parameters
         ----------
@@ -223,7 +223,7 @@ class LinearOperator(Operator):
         return self.apply(x, self.ADJOINT_TIMES)
 
     def adjoint_inverse_times(self, x):
-        """ Applies the adjoint-inverse Operator to a given Field.
+        """Applies the adjoint-inverse Operator to a given Field.
 
         Parameters
         ----------

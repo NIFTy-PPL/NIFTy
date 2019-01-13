@@ -21,7 +21,7 @@ import numpy as np
 
 
 class LineEnergy(object):
-    """ Evaluates an underlying Energy along a certain line direction.
+    """Evaluates an underlying Energy along a certain line direction.
 
     Given an Energy class and a line direction, its position is parametrized by
     a scalar step size along the descent direction relative to a zero point.
@@ -60,7 +60,7 @@ class LineEnergy(object):
             self._energy = energy.at(position=pos)
 
     def at(self, line_position):
-        """ Returns LineEnergy at new position, memorizing the zero point.
+        """Returns LineEnergy at new position, memorizing the zero point.
 
         Parameters
         ----------

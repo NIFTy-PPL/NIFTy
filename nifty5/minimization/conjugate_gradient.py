@@ -20,7 +20,7 @@ from .minimizer import Minimizer
 
 
 class ConjugateGradient(Minimizer):
-    """ Implementation of the Conjugate Gradient scheme.
+    """Implementation of the Conjugate Gradient scheme.
 
     It is an iterative method for solving a linear system of equations:
                                     Ax = b
@@ -44,7 +44,7 @@ class ConjugateGradient(Minimizer):
         self._nreset = nreset
 
     def __call__(self, energy, preconditioner=None):
-        """ Runs the conjugate gradient minimization.
+        """Runs the conjugate gradient minimization.
 
         Parameters
         ----------

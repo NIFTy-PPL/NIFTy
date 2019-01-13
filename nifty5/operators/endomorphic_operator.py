@@ -21,7 +21,7 @@ from .linear_operator import LinearOperator
 
 
 class EndomorphicOperator(LinearOperator):
-    """ NIFTy class for endomorphic operators.
+    """NIFTy class for endomorphic operators.
 
     The  NIFTy EndomorphicOperator class is a class derived from the
     LinearOperator. By definition, domain and target are the same in

@@ -23,7 +23,7 @@ from .minimizer import Minimizer
 
 
 class DescentMinimizer(Minimizer):
-    """ A base class used by gradient methods to find a local minimum.
+    """A base class used by gradient methods to find a local minimum.
 
     Descent minimization methods are used to find a local minimum of a scalar
     function by following a descent direction. This class implements the
@@ -44,7 +44,7 @@ class DescentMinimizer(Minimizer):
         self.line_searcher = line_searcher
 
     def __call__(self, energy):
-        """ Performs the minimization of the provided Energy functional.
+        """Performs the minimization of the provided Energy functional.
 
         Parameters
         ----------
@@ -104,7 +104,7 @@ class DescentMinimizer(Minimizer):
         pass
 
     def get_descent_direction(self, energy):
-        """ Calculates the next descent direction.
+        """Calculates the next descent direction.
 
         Parameters
         ----------
@@ -121,7 +121,7 @@ class DescentMinimizer(Minimizer):
 
 
 class SteepestDescent(DescentMinimizer):
-    """ Implementation of the steepest descent minimization scheme.
+    """Implementation of the steepest descent minimization scheme.
 
     Also known as 'gradient descent'. This algorithm simply follows the
     functional's gradient for minimization.
@@ -132,7 +132,7 @@ class SteepestDescent(DescentMinimizer):
 
 
 class RelaxedNewton(DescentMinimizer):
-    """ Calculates the descent direction according to a Newton scheme.
+    """Calculates the descent direction according to a Newton scheme.
 
     The descent direction is determined by weighting the gradient at the
     current parameter position with the inverse local metric.
@@ -149,7 +149,7 @@ class RelaxedNewton(DescentMinimizer):
 
 
 class NewtonCG(DescentMinimizer):
-    """ Calculates the descent direction according to a Newton-CG scheme.
+    """Calculates the descent direction according to a Newton-CG scheme.
 
     Algorithm derived from SciPy sources.
     """

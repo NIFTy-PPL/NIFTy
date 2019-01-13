@@ -30,8 +30,7 @@ from .linear_operator import LinearOperator
 
 
 class LinearInterpolator(LinearOperator):
-    """
-    Multilinear interpolation for points in an RGSpace
+    """Multilinear interpolation for points in an RGSpace
 
     Parameters
     ----------

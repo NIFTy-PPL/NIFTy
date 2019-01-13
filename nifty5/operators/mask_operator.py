@@ -27,16 +27,16 @@ from .linear_operator import LinearOperator
 # Possible approach: keep everything defined on `domain` distributed and only
 # collect the unstructured Fields.
 class MaskOperator(LinearOperator):
+    """Implementation of a mask response
+
+    Takes a field, applies a mask and returns the values of the field in a
+    UnstructuredDomain. It can be used as response operator.
+
+    Parameters
+    ----------
+    mask : Field
+    """
     def __init__(self, mask):
-        """Implementation of a mask response
-
-        This operator takes a field, applies a mask and returns the values of
-        the field in a UnstructuredDomain. It can be used as response operator.
-
-        Parameters
-        ----------
-        mask : Field
-        """
         if not isinstance(mask, Field):
             raise TypeError
 
