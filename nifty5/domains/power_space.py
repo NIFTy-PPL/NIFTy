@@ -32,7 +32,6 @@ class PowerSpace(StructuredDomain):
     harmonic_partner : StructuredDomain
         The harmonic domain of which this is the power space.
     binbounds : None, or tuple of float
-        FIXME Add docu for binbounds
         By default (binbounds=None):
             There are as many bins as there are distinct k-vector lengths in
             the harmonic partner space.

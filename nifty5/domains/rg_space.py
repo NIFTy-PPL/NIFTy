@@ -41,6 +41,11 @@ class RGSpace(StructuredDomain):
     harmonic : bool, optional
         Whether the space represents a grid in position or harmonic space.
         Default: False.
+
+    Notes
+    -----
+    Topologically, a n-dimensional RGSpace is a n-Torus, i.e. it has periodic
+    boundary conditions.
     """
     _needed_for_hash = ["_distances", "_shape", "_harmonic"]
 
