@@ -18,8 +18,8 @@
 import numpy as np
 
 from ..domain_tuple import DomainTuple
-from ..domains.unstructured_domain import UnstructuredDomain
 from ..domains.rg_space import RGSpace
+from ..domains.unstructured_domain import UnstructuredDomain
 from ..field import Field
 from ..operators.diagonal_operator import DiagonalOperator
 from ..operators.field_zero_padder import FieldZeroPadder
@@ -149,19 +149,21 @@ def dynamic_lightcone_operator(domain, harmonic_padding, sm_s0, sm_x0, key,
                                lightcone_key, sigc, quant,
                                causal=True, minimum_phase=False):
     '''
-    Constructs an operator encoding the Greens function of a linear homogeneous dynamic system.
-    The Greens function is constrained to be within a light cone.
+    Constructs an operator encoding the Greens function of a linear
+    homogeneous dynamic system. The Greens function is constrained
+    to be within a light cone.
 
     Parameters
     ----------
     domain : RGSpace
         The space under consideration. Must have dim > 1.
     harmonic_padding : None, int, list of int
-        Amount of central padding in harmonic space in pixels. If None the field is not padded at all.
+        Amount of central padding in harmonic space in pixels. If None the
+        field is not padded at all.
     sm_s0 : float
-        Cutoff for dynamic smoothness prior
+        Cutoff for dynamic smoothness prior.
     sm_x0 : float, List of float
-        Scaling of dynamic smoothness along each axis
+        Scaling of dynamic smoothness along each axis.
     key : String
         key for dynamics encoding parameter.
     lightcone_key: String
@@ -171,21 +173,23 @@ def dynamic_lightcone_operator(domain, harmonic_padding, sm_s0, sm_x0, key,
     quant : float
         Quantization of the light cone in pixels.
     causal : boolean
-        Whether or not the reconstructed dynamics should be causal in time
+        Whether or not the reconstructed dynamics should be causal in time.
     minimum_phase: boolean
-        Whether or not the reconstructed dynamics should be minimum phase
+        Whether or not the reconstructed dynamics should be minimum phase.
 
     Returns
     -------
     Operator
-        The Operator encoding the dynamic Greens function in harmonic space when evaluated.
-    Dictionary of Operator
-        A collection of sub-chains of Operators which can be used for plotting and evaluation.
+        The Operator encoding the dynamic Greens function in harmonic space
+        when evaluated.
+    dict
+        A collection of sub-chains of :class:`Operator` s which can be used
+        for plotting and evaluation.
 
     Notes
     -----
-    Currently only supports RGSpaces.
-    Note that the first axis of the space is interpreted as the time axis.
+    The first axis of the space is interpreted as the time axis.
+    Supports only RGSpaces currently.
     '''
     if len(domain.shape) < 2:
         raise ValueError("Space must be at least 2 dimensional!")
