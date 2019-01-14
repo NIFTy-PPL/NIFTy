@@ -24,7 +24,7 @@ from .structured_domain import StructuredDomain
 
 
 class LogRGSpace(StructuredDomain):
-    """NIFTy subclass for logarithmic Cartesian grids.
+    """Represents a logarithmic Cartesian grid.
 
     Parameters
     ----------

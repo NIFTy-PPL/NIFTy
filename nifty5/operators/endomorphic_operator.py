@@ -21,12 +21,9 @@ from .linear_operator import LinearOperator
 
 
 class EndomorphicOperator(LinearOperator):
-    """NIFTy class for endomorphic operators.
-
-    The  NIFTy EndomorphicOperator describes linear operators with identical
-    domain and target.
+    """Represents a linear operator which is endomorphic, i.e. operators which
+    have identical domain and target.
     """
-
     @property
     def target(self):
         """DomainTuple : returns :attr:`domain`

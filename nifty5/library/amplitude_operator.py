@@ -69,7 +69,6 @@ def SlopeOperator(domain, sm, sv, im, iv):
     '''
     Parameters
     ----------
-
     sm, sv : slope_mean = expected exponent of power law (e.g. -4),
                 slope_variance (default=1)
 

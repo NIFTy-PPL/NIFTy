@@ -21,7 +21,7 @@ from .structured_domain import StructuredDomain
 
 
 class GLSpace(StructuredDomain):
-    """NIFTy subclass for Gauss-Legendre pixelizations of the two-sphere.
+    """Represents a 2-sphere with Gauss-Legendre pixelizations.
 
     Its harmonic partner domain is the
     :class:`~nifty5.domains.lm_space.LMSpace`.

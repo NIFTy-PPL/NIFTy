@@ -22,7 +22,7 @@ from .structured_domain import StructuredDomain
 
 
 class LMSpace(StructuredDomain):
-    """NIFTy subclass for sets of spherical harmonic coefficients.
+    """Represents sets of spherical harmonic coefficients.
 
     Its harmonic partner spaces are :class:`~nifty5.domains.hp_space.HPSpace`
     and :class:`~nifty5.domains.gl_space.GLSpace`.

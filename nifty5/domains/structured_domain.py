@@ -21,7 +21,7 @@ from .domain import Domain
 
 
 class StructuredDomain(Domain):
-    """The abstract base class for all structured NIFTy domains.
+    """The abstract base class for all structured domains.
 
     An instance of a space contains information about the manifold's
     geometry and enhances the functionality of Domain by methods that
