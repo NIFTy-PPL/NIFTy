@@ -422,7 +422,7 @@ derived from IFT, but also for the numerical inversion of linear operators, if
 the desired application mode is not directly available. A classical example is
 the information propagator whose inverse is defined as:
 
-:math:`D^{-1} = \left(R^\dagger N^{-1} R + S^{-1}\right).
+:math:`D^{-1} = \left(R^\dagger N^{-1} R + S^{-1}\right)`.
 
 It needs to be applied in forward direction in order to calculate the Wiener
 filter solution. Only its inverse application is straightforward; to use it in
