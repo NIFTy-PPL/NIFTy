@@ -109,16 +109,17 @@ class FieldAdapter(LinearOperator):
 
 
 def ducktape(left, right, name):
-    """Convenience function for computing an adapter between two operators.
+    """Convenience function creating an operator that converts between a
+    DomainTuple and a single-entry MultiDomain.
 
     Parameters
     ----------
     left : None, Operator, or Domainoid
-        Something describing the input domain of the left operator.
+        Something describing the new operator's target domain.
         If `left` is an `Operator`, its domain is used as `left`.
 
     right : None, Operator, or Domainoid
-        Something describing the target domain of the right operator.
+        Something describing the new operator's input domain.
         If `right` is an `Operator`, its target is used as `right`.
 
     name : string

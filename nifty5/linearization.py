@@ -95,7 +95,7 @@ class Linearization(object):
 
     @property
     def want_metric(self):
-        """bool : the value of `want_metric`"""
+        """bool : True iff the metric was requested in the constructor"""
         return self._want_metric
 
     @property
