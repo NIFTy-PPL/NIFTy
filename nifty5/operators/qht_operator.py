@@ -26,9 +26,9 @@ from .linear_operator import LinearOperator
 class QHTOperator(LinearOperator):
     """Does a Hartley transform on LogRGSpace
 
-    This operator takes a field on a LogRGSpace and transforms it
-    according to the Hartley transform. The zero modes are not transformed
-    because they are infinitely far away.
+    This operator takes a field on a LogRGSpace and performs an Hartley
+    transform. The zero modes are not transformed because they are infinitely
+    far away in LogRGSpaces.
 
     Parameters
     ----------

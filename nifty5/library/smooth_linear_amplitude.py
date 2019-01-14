@@ -17,8 +17,8 @@
 
 import numpy as np
 
+from ..domain_tuple import DomainTuple
 from ..domains.power_space import PowerSpace
-from ..domains.unstructured_domain import UnstructuredDomain
 from ..field import Field
 from ..operators.exp_transform import ExpTransform
 from ..operators.offset_operator import OffsetOperator
@@ -32,39 +32,70 @@ def _ceps_kernel(dof_space, k, a, k0):
     return a**2/(1 + (k/k0)**2)**2
 
 
-def _create_cepstrum_amplitude_field(domain, cepstrum):
-    dim = len(domain.shape)
-    shape = domain.shape
-    q_array = domain.get_k_array()
+def CepstrumOperator(target, a, k0):
+    '''Turns a white Gaussian random field into a smooth field on a LogRGSpace.
 
+    Composed out of three operators:
+
+        sym @ qht @ diag(sqrt_ceps),
+
+    where sym is a :class:`SymmetrizingOperator`, qht is a :class:`QHTOperator`
+    and ceps is the so-called cepstrum:
+
+    .. math::
+        \\mathrm{sqrt\_ceps}(k) = \\frac{a}{1+(k/k0)^2}
+
+    These operators are combined in this fashion in order to generate:
+
+    - A field which is smooth, i.e. second derivatives are punished (note
+      that the sqrt-cepstrum is essentially proportional to 1/k**2).
+
+    - A field which is symmetric around the pixel in the middle of the space.
+      This is result of the :class:`SymmetrizingOperator` and needed in order to
+      decouple the degrees of freedom at the beginning and the end of the
+      amplitude whenever :class:`CepstrumOperator` is used as in
+      :class:`SLAmplitude`.
+
+    FIXME The prior on the zero mode is ...
+
+    Parameters
+    ----------
+    target : LogRGSpace
+        Target domain of the operator, needs to be non-harmonic and
+        one-dimensional.
+    a : float
+        Strength of smoothness prior (positive only). FIXME
+    k0 : float
+        Cutoff of smothness prior in quefrency space (positive only). FIXME
+    '''
+    a, k0 = float(a), float(k0)
+    target = DomainTuple.make(target)
+    if a <= 0 or k0 <= 0:
+        raise ValueError
+    if len(target) > 1 or target[0].harmonic or len(target[0].shape) > 1:
+        raise TypeError
+
+    qht = QHTOperator(target)
+    dom = qht.domain[0]
+    sym = SymmetrizingOperator(target)
+
+    # Compute cepstrum field
+    dim = len(dom.shape)
+    shape = dom.shape
+    q_array = dom.get_k_array()
     # Fill all non-zero modes
     no_zero_modes = (slice(1, None),)*dim
     ks = q_array[(slice(None),) + no_zero_modes]
     cepstrum_field = np.zeros(shape)
-    cepstrum_field[no_zero_modes] = cepstrum(ks)
-
+    cepstrum_field[no_zero_modes] = _ceps_kernel(dom, ks, a, k0)
     # Fill zero-mode subspaces
     for i in range(dim):
         fst_dims = (slice(None),)*i
         sl = fst_dims + (slice(1, None),)
         sl2 = fst_dims + (0,)
         cepstrum_field[sl2] = np.sum(cepstrum_field[sl], axis=i)
-    return Field.from_global_data(domain, cepstrum_field)
+    cepstrum = Field.from_global_data(dom, cepstrum_field)
 
-
-def CepstrumOperator(domain, a, k0):
-    '''
-    .. math::
-        C(k) = \\left(\\frac{a}{1+(k/k0)^2}\\right)^2
-    '''
-    if a <= 0 or k0 <= 0:
-        raise ValueError
-
-    qht = QHTOperator(target=domain)
-    dof_space = qht.domain[0]
-    sym = SymmetrizingOperator(domain)
-    kern = lambda k: _ceps_kernel(dof_space, k, a, k0)
-    cepstrum = _create_cepstrum_amplitude_field(dof_space, kern)
     return sym @ qht @ makeOp(cepstrum.sqrt())
 
 

@@ -32,9 +32,9 @@ class LogRGSpace(StructuredDomain):
         Number of grid points or numbers of gridpoints along each axis.
     bindistances : float or tuple of float
         Distance between two grid points along each axis. These are
-        measured on logarithmic scale and are constant therfore.
+        measured on logarithmic scale and are constant therefore.
     t_0 : float or tuple of float
-        FIXME
+        Coordinate of pixel ndim*(1,).
     harmonic : bool, optional
         Whether the space represents a grid in position or harmonic space.
         Default: False.
