@@ -29,7 +29,7 @@ from ..sugar import makeOp
 
 
 def _ceps_kernel(k, a, k0):
-    return (a/(1+np.sum((k.T/k0)**2, axis=1)))**2
+    return (a/(1+np.sum((k.T/k0)**2, axis=-1).T))**2
 
 
 def CepstrumOperator(target, a, k0):
