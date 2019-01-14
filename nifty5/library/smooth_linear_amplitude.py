@@ -19,6 +19,11 @@ import numpy as np
 
 from ..domains.power_space import PowerSpace
 from ..field import Field
+from ..operators.exp_transform import ExpTransform
+from ..operators.offset_operator import OffsetOperator
+from ..operators.qht_operator import QHTOperator
+from ..operators.slope_operator import SlopeOperator
+from ..operators.symmetrizing_operator import SymmetrizingOperator
 from ..sugar import makeOp
 
 
@@ -51,9 +56,6 @@ def CepstrumOperator(domain, a, k0):
     .. math::
         C(k) = \\left(\\frac{a}{1+(k/k0)^2}\\right)^2
     '''
-    from ..operators.qht_operator import QHTOperator
-    from ..operators.symmetrizing_operator import SymmetrizingOperator
-
     if a <= 0 or k0 <= 0:
         raise ValueError
 
@@ -119,10 +121,6 @@ def SLAmplitude(target, n_pix, a, k0, sm, sv, im, iv, keys=['tau', 'phi']):
         which returns on its target a power spectrum which consists out of a
         smooth and a linear part.
     '''
-    from ..operators.exp_transform import ExpTransform
-    from ..operators.slope_operator import SlopeOperator
-    from ..operators.offset_operator import OffsetOperator
-
     if not (isinstance(n_pix, int) and isinstance(target, PowerSpace)):
         raise TypeError
 
