@@ -103,6 +103,12 @@ def testModelLibrary(space, seed):
     pos = S.draw_sample()
     ift.extra.check_value_gradient_consistency(model2, pos, ntries=20)
 
+    domtup = ift.DomainTuple.make((space, space))
+    model3 = ift.MfCorrelatedField(domtup, [model, model])
+    S = ift.ScalingOperator(1., model3.domain)
+    pos = S.draw_sample()
+    ift.extra.check_value_gradient_consistency(model3, pos, ntries=20)
+
 
 def testPointModel(space, seed):
     S = ift.ScalingOperator(1., space)
