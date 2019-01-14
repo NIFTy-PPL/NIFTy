@@ -147,7 +147,7 @@ def dynamic_operator(domain,
     Parameters
     ----------
     domain : RGSpace
-        The position space in which the Green's function should be constructed.
+        The position space in which the Green's function shall be constructed.
     harmonic_padding : None, int, list of int
         Amount of central padding in harmonic space in pixels. If None the
         field is not padded at all.
@@ -158,9 +158,9 @@ def dynamic_operator(domain,
     key : String
         key for dynamics encoding parameter.
     causal : boolean
-        Whether or not the Green's function should be causal in time.
+        Whether or not the Green's function shall be causal in time.
     minimum_phase: boolean
-        Whether or not the Green's function should be a minimum phase filter.
+        Whether or not the Green's function shall be a minimum phase filter.
 
     Returns
     -------
@@ -203,8 +203,8 @@ def dynamic_lightcone_operator(domain,
     Parameters
     ----------
     domain : RGSpace
-        The position space in which the Green's function should be constructed.
-        Dim > 1 required.
+        The position space in which the Green's function shall be constructed.
+        It needs to have at least two dimensions.
     harmonic_padding : None, int, list of int
         Amount of central padding in harmonic space in pixels. If None the
         field is not padded at all.
@@ -221,9 +221,9 @@ def dynamic_lightcone_operator(domain,
     quant : float
         Quantization of the light cone in pixels.
     causal : boolean
-        Whether or not the Green's function should be causal in time.
+        Whether or not the Green's function shall be causal in time.
     minimum_phase: boolean
-        Whether or not the Green's function should be a minimum phase filter.
+        Whether or not the Green's function shall be a minimum phase filter.
 
     Returns
     -------

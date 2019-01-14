@@ -50,7 +50,7 @@ class StructuredDomain(Domain):
 
     @property
     def total_volume(self):
-        """float : Total domain volume
+        """float : Total domain volume.
 
         Returns the sum over all the domain's pixel volumes.
         """
@@ -63,7 +63,7 @@ class StructuredDomain(Domain):
         raise NotImplementedError
 
     def get_k_length_array(self):
-        """k vector lengths, if applicable,
+        """k vector lengths, if applicable.
 
         Returns the length of the k vector for every pixel.
         This method is only implemented for harmonic domains.

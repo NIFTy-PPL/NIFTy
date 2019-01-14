@@ -24,7 +24,7 @@ from .structured_domain import StructuredDomain
 
 
 class LogRGSpace(StructuredDomain):
-    """Represents a logarithmic Cartesian grid.
+    '''Represents a logarithmic Cartesian grid.
 
     Parameters
     ----------
@@ -38,7 +38,7 @@ class LogRGSpace(StructuredDomain):
     harmonic : bool, optional
         Whether the space represents a grid in position or harmonic space.
         Default: False.
-    """
+    '''
     _needed_for_hash = ['_shape', '_bindistances', '_t_0', '_harmonic']
 
     def __init__(self, shape, bindistances, t_0, harmonic=False):
@@ -76,6 +76,7 @@ class LogRGSpace(StructuredDomain):
 
     @property
     def t_0(self):
+        """np.ndarray : array of coordinates of pixel ndim*(1,)."""
         return np.array(self._t_0)
 
     def __repr__(self):
@@ -83,22 +84,32 @@ class LogRGSpace(StructuredDomain):
             self.shape, self.harmonic))
 
     def get_default_codomain(self):
+        """Returns a :class:`LogRGSpace` object representing the (position or
+        harmonic) partner domain of `self`, depending on `self.harmonic`. The
+        `bindistances` are transformed and `t_0` stays the same.
+
+        Returns
+        -------
+        LogRGSpace
+            The parter domain
+        """
         codomain_bindistances = 1./(self.bindistances*self.shape)
         return LogRGSpace(self.shape, codomain_bindistances, self._t_0, True)
 
     def get_k_length_array(self):
-        """Produces array of distances to origin of the space.
+        """Generates array of distances to origin of the space.
 
         Returns
         -------
-        numpy.ndarray(numpy.float64) with shape self.shape 
-            Distances to origin of the space.
-            If any index of the array is zero then the distance
-            is np.nan if self.harmonic True.
+        numpy.ndarray
+            Distances to origin of the space. If any index of the array is
+            zero then the distance is np.nan if self.harmonic True.
+            The dtype is float64, the shape is `self.shape`.
 
         Raises
         ------
-        NotImplementedError: if self.harmonic is False
+        NotImplementedError
+            If `self.harmonic` is False.
         """
         if not self.harmonic:
             raise NotImplementedError
@@ -106,14 +117,15 @@ class LogRGSpace(StructuredDomain):
         return Field.from_global_data(self, np.linalg.norm(ks, axis=0))
 
     def get_k_array(self):
-        """Produces coordinates of the space.
+        """Generates coordinates of the space.
 
         Returns
         -------
-        numpy.ndarray(numpy.float64) with shape (len(self.shape),) + self.shape 
-            Coordinates of the space.
-            If one index of the array is zero the corresponding coordinate is
-            -np.inf (np.nan) if self.harmonic is False (True).
+        numpy.ndarray
+            Coordinates of the space. If one index of the array is zero the
+            corresponding coordinate is -np.inf (np.nan) if self.harmonic is
+            False (True).
+            The dtype is float64 and shape: `(len(self.shape),) + self.shape`.
         """
         ndim = len(self.shape)
         k_array = np.zeros((ndim,) + self.shape)

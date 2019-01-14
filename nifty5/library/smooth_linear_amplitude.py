@@ -51,13 +51,13 @@ def CepstrumOperator(target, a, k0):
       that the sqrt-cepstrum is essentially proportional to 1/k**2).
 
     - A field which is symmetric around the pixel in the middle of the space.
-      This is result of the :class:`SymmetrizingOperator` and needed in order to
-      decouple the degrees of freedom at the beginning and the end of the
+      This is result of the :class:`SymmetrizingOperator` and needed in order
+      to decouple the degrees of freedom at the beginning and the end of the
       amplitude whenever :class:`CepstrumOperator` is used as in
       :class:`SLAmplitude`.
 
-    The prior on the zero mode, or zero subspaces in the case of dim > 1,
-    is the integral of the prior of all other modes along the corresponding
+    The prior on the zero mode (or zero subspaces for more than one dimensions)
+    is the integral of the prior over all other modes along the corresponding
     axis.
 
     Parameters
@@ -79,9 +79,11 @@ def CepstrumOperator(target, a, k0):
         raise ValueError
     if len(target) > 1 or target[0].harmonic:
         raise TypeError
-    if isinstance(k0, float):
-        k0 = (k0, )*len(target.shape)
-    elif len(k0) != len(target.shape):
+    if isinstance(k0, (float, int)):
+        k0 = np.array([k0]*len(target.shape))
+    else:
+        k0 = np.array(k0)
+    if len(k0) != len(target.shape):
         raise ValueError
     if np.any(np.array(k0) <= 0):
         raise ValueError
@@ -98,7 +100,7 @@ def CepstrumOperator(target, a, k0):
     no_zero_modes = (slice(1, None),)*dim
     ks = q_array[(slice(None),) + no_zero_modes]
     cepstrum_field = np.zeros(shape)
-    cepstrum_field[no_zero_modes] = _ceps_kernel(dom, ks, a, k0)
+    cepstrum_field[no_zero_modes] = _ceps_kernel(ks, a, k0)
     # Fill zero-mode subspaces
     for i in range(dim):
         fst_dims = (slice(None),)*i
