@@ -149,13 +149,15 @@ def SLAmplitude(target, n_pix, a, k0, sm, sv, im, iv, keys=['tau', 'phi']):
     a : float
         Strength of smoothness prior (see :class:`CepstrumOperator`).
     k0 : float
-        Cutoff of smothness prior in quefrency space (see :class:`CepstrumOperator`).
+        Cutoff of smothness prior in quefrency space (see
+        :class:`CepstrumOperator`).
     sm : float
-        Expected exponent of power law. FIXME
+        Expected exponent of power law.
     sv : float
         Prior standard deviation of exponent of power law.
     im : float
-        Expected y-intercept of power law. FIXME
+        Expected y-intercept of power law. This is the value at t_0 of the
+        LogRGSpace (see :class:`ExpTransform`).
     iv : float
         Prior standard deviation of y-intercept of power law.
 
