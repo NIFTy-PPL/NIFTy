@@ -139,13 +139,13 @@ def SLAmplitude(target, n_pix, a, k0, sm, sv, im, iv, keys=['tau', 'phi']):
     # Linear component
     phi_mean = np.array([sm, im + sm*dom.t_0[0]])
     phi_sig = np.array([sv, iv])
-    slope = SlopeOperator(dom)
-    phi_mean = Field.from_global_data(slope.domain, phi_mean)
-    phi_sig = Field.from_global_data(slope.domain, phi_sig)
-    linear = slope(OffsetOperator(phi_mean)(makeOp(phi_sig))).ducktape(keys[1])
+    phi_mean = Field.from_global_data(dom, phi_mean)
+    phi_sig = Field.from_global_data(dom, phi_sig)
+    linear = SlopeOperator(dom) @ OffsetOperator(phi_mean) @ makeOp(phi_sig)
+    linear = linear.ducktape(keys[1])
 
     # Combine linear and smooth component
     loglog_ampl = 0.5*(smooth + linear)
 
     # Go from loglog-space to linear-linear-space
-    return et(loglog_ampl.exp())
+    return et @ loglog_ampl.exp()
