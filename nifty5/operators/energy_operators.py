@@ -29,12 +29,14 @@ from .simple_linear_operators import VdotOperator
 class EnergyOperator(Operator):
     """ Basis class EnergyOperator.
 
-    The  NIFTy EnergyOperator class derives from the Operator class.
+    Operator which has a scalar domain as target domain.
+    
+    An EnergyOperator returns a scalar for a field, and a linearized 
 
-    An EnergyOperators transforms a field into a scalar, the information energy
-    of the field. Typically, an EnergyOperators is an information Hamiltonian
-    ( = negative log probability) or a Gibbs free energy ( = averaged 
-    Hamiltonian), aka Kullbach-Leibler divergence. 
+    Typical usage in IFT: 
+    as an information Hamiltonian ( = negative log probability) 
+    or as a Gibbs free energy ( = averaged Hamiltonian), aka Kullbach-Leibler 
+    divergence. 
     
     An EnergyOperator can also provide its gradient as an EndomorphicOperator 
     that converts a field into a field, the gradient of the Hamiltonian at the 
