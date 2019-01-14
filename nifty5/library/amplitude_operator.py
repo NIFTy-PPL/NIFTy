@@ -54,7 +54,9 @@ def CepstrumOperator(domain, a, k0):
     from ..operators.qht_operator import QHTOperator
     from ..operators.symmetrizing_operator import SymmetrizingOperator
 
-    # FIXME a>0 k0>0
+    if a <= 0 or k0 <= 0:
+        raise ValueError
+
     qht = QHTOperator(target=domain)
     dof_space = qht.domain[0]
     sym = SymmetrizingOperator(domain)
@@ -77,7 +79,8 @@ def SlopeOperator(domain, sm, sv, im, iv):
     from ..operators.slope_operator import SlopeOperator
     from ..operators.offset_operator import OffsetOperator
 
-    # sv, iv>0
+    if sv <= 0 or iv <= 0:
+        raise ValueError
 
     phi_mean = np.array([sm, im + sm*domain.t_0[0]])
     phi_sig = np.array([sv, iv])
