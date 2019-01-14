@@ -32,16 +32,16 @@ def _create_cepstrum_amplitude_field(domain, cepstrum):
     q_array = domain.get_k_array()
 
     # Fill all non-zero modes
-    no_zero_modes = (slice(1, None), )*dim
-    ks = q_array[(slice(None), ) + no_zero_modes]
+    no_zero_modes = (slice(1, None),)*dim
+    ks = q_array[(slice(None),) + no_zero_modes]
     cepstrum_field = np.zeros(shape)
     cepstrum_field[no_zero_modes] = cepstrum(ks)
 
     # Fill zero-mode subspaces
     for i in range(dim):
-        fst_dims = (slice(None), )*i
-        sl = fst_dims + (slice(1, None), )
-        sl2 = fst_dims + (0, )
+        fst_dims = (slice(None),)*i
+        sl = fst_dims + (slice(1, None),)
+        sl2 = fst_dims + (0,)
         cepstrum_field[sl2] = np.sum(cepstrum_field[sl], axis=i)
     return Field.from_global_data(domain, cepstrum_field)
 

@@ -33,20 +33,13 @@ class SlopeOperator(LinearOperator):
 
     Parameters
     ----------
-    domain : domain or DomainTuple, shape=(2,)
-        It has to be an UnstructuredDomain.
-        The domain of the slope mean and the y-intercept mean.
-    target : domain or DomainTuple
-        The output domain has to a LogRGSpace
-    sigmas : np.array, shape=(2,)
-        The slope variance and the y-intercept variance.
+    target : LogRGSpace
+        The target of the operator which needs to be one-dimensional.
     """
 
     def __init__(self, target):
-        if not isinstance(target, LogRGSpace):
-            raise TypeError
-        if len(target.shape) != 1:
-            raise ValueError("Slope Operator only works for ndim == 1")
+        if not isinstance(target, LogRGSpace) or not len(target.shape) != 1:
+            raise TypeError("Slope Operator only works for ndim == 1")
         self._domain = DomainTuple.make(UnstructuredDomain((2,)))
         self._target = DomainTuple.make(target)
         self._capability = self.TIMES | self.ADJOINT_TIMES

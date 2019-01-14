@@ -16,11 +16,10 @@
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
 
 from functools import reduce
+
 import numpy as np
 
-from .. import dobj
 from ..field import Field
-from ..sugar import exp
 from .structured_domain import StructuredDomain
 
 
