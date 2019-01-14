@@ -24,6 +24,7 @@ from .domains.gl_space import GLSpace
 from .domains.hp_space import HPSpace
 from .domains.power_space import PowerSpace
 from .domains.rg_space import RGSpace
+from .domains.log_rg_space import LogRGSpace
 from .domain_tuple import DomainTuple
 from .field import Field
 
@@ -460,6 +461,8 @@ def _plot1D(f, ax, **kwargs):
     ax.set_ylabel(kwargs.pop("ylabel", ""))
 
     if isinstance(dom, RGSpace):
+        plt.xscale(kwargs.pop("xscale", "linear"))
+        plt.yscale(kwargs.pop("yscale", "linear"))
         npoints = dom.shape[0]
         dist = dom.distances[0]
         xcoord = np.arange(npoints, dtype=np.float64)*dist
@@ -471,9 +474,23 @@ def _plot1D(f, ax, **kwargs):
         if label != ([None]*len(f)):
             plt.legend()
         return
+    elif isinstance(dom, LogRGSpace):
+        #plt.xscale(kwargs.pop("xscale", "log"))
+        #plt.yscale(kwargs.pop("yscale", "log"))
+        npoints = dom.shape[0]
+        xcoord = dom.t_0 + np.arange(npoints-1)*dom.bindistances[0]
+        print(xcoord)
+        for i, fld in enumerate(f):
+            ycoord = fld.to_global_data()[1:]
+            plt.plot(xcoord, ycoord, label=label[i],
+                     linewidth=linewidth[i], alpha=alpha[i])
+        _limit_xy(**kwargs)
+        if label != ([None]*len(f)):
+            plt.legend()
+        return
     elif isinstance(dom, PowerSpace):
-        plt.xscale('log')
-        plt.yscale('log')
+        plt.xscale(kwargs.pop("xscale", "log"))
+        plt.yscale(kwargs.pop("yscale", "log"))
         xcoord = dom.k_lengths
         for i, fld in enumerate(f):
             ycoord = fld.to_global_data()
@@ -577,7 +594,8 @@ def _plot(f, ax, **kwargs):
     dom1 = f[0].domain
     if (len(dom1)==1 and
         (isinstance(dom1[0],PowerSpace) or
-            (isinstance(dom1[0], RGSpace) and len(dom1[0].shape) == 1))):
+            (isinstance(dom1[0], (RGSpace, LogRGSpace)) and
+             len(dom1[0].shape) == 1))):
         _plot1D(f, ax, **kwargs)
         return
     else:
