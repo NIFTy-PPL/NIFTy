@@ -25,11 +25,14 @@ from .linear_operator import LinearOperator
 
 
 class SlopeOperator(LinearOperator):
-    """Creates a slope on target.
+    """Evaluates a line on a LogRGSpace given slope and y-intercept
 
-    This operator creates a field on a LogRGSpace, which is created according
-    to a slope of given entries, (mean, y-intercept). The slope mean is the
-    power law of the field in normal-space.
+    Slope and y-intercept of this line are the two parameters which are
+    defined on an UnstructeredDomain (in this order) which is the domain of
+    the operator. Being a LogRGSpace each pixel has a well-defined coordinate
+    value.
+
+    # FIXME Say something about t0.
 
     Parameters
     ----------
