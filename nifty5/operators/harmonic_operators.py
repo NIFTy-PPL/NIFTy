@@ -385,9 +385,8 @@ class HarmonicTransformOperator(LinearOperator):
 
 
 def HarmonicSmoothingOperator(domain, sigma, space=None):
-    """ This function returns an operator that carries out a smoothing with
-    a Gaussian kernel of width `sigma` on the part of `domain` given by
-    `space`.
+    """Returns an operator that carries out a smoothing with a Gaussian kernel
+    of width `sigma` on the part of `domain` given by `space`
 
     Parameters
     ----------
@@ -403,8 +402,8 @@ def HarmonicSmoothingOperator(domain, sigma, space=None):
 
     Notes
     -----
-       The sub-domain on which the smoothing is carried out *must* be a
-       non-harmonic `RGSpace`.
+    The sub-domain on which the smoothing is carried out *must* be a
+    non-harmonic `RGSpace`.
     """
 
     sigma = float(sigma)

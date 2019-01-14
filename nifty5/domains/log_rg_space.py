@@ -38,7 +38,7 @@ class LogRGSpace(StructuredDomain):
         FIXME
     harmonic : bool, optional
         Whether the space represents a grid in position or harmonic space.
-        (default: False).
+        Default: False.
     """
     _needed_for_hash = ['_shape', '_bindistances', '_t_0', '_harmonic']
 

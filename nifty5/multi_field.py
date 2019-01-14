@@ -142,7 +142,7 @@ class MultiField(object):
                           for key in domain.keys()))
 
     def norm(self, ord=2):
-        """ Computes the norm of the field values.
+        """Computes the norm of the field values.
 
         Parameters
         ----------
@@ -161,7 +161,7 @@ class MultiField(object):
 #        return np.sqrt(np.abs(self.vdot(x=self)))
 
     def sum(self):
-        """ Computes the sum all field values.
+        """Computes the sum all field values.
 
         Returns
         -------
@@ -172,7 +172,7 @@ class MultiField(object):
 
     @property
     def size(self):
-        """ Computes the overall degrees of freedom.
+        """Computes the overall degrees of freedom.
 
         Returns
         -------
@@ -232,7 +232,7 @@ class MultiField(object):
 
     @staticmethod
     def union(fields, domain=None):
-        """ Returns the union of its input fields.
+        """Returns the union of its input fields.
 
         Parameters
         ----------

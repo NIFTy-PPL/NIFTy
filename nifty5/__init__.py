@@ -76,6 +76,9 @@ from .plot import Plot
 from .library.amplitude_operator import AmplitudeOperator
 from .library.inverse_gamma_operator import InverseGammaOperator
 from .library.los_response import LOSResponse
+from .library.dynamic_operator import (dynamic_operator,
+                                       dynamic_lightcone_operator)
+from .library.light_cone_operator import LightConeOperator
 
 from .library.wiener_filter_curvature import WienerFilterCurvature
 from .library.correlated_fields import CorrelatedField, MfCorrelatedField

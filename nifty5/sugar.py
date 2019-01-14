@@ -52,7 +52,7 @@ def PS_field(pspace, func):
 
     Returns
     -------
-    Field : a field living on (pspace,) containing the computed function values
+    Field : a field defined on (pspace,) containing the computed function values
     """
     if not isinstance(pspace, PowerSpace):
         raise TypeError
@@ -99,7 +99,7 @@ def _single_power_analyze(field, idx, binbounds):
 # subdomain at once, because it allows only one set of binbounds.
 def power_analyze(field, spaces=None, binbounds=None,
                   keep_phase_information=False):
-    """ Computes the power spectrum for a subspace of `field`.
+    """Computes the power spectrum for a subspace of `field`.
 
     Creates a PowerSpace for the space addressed by `spaces` with the given
     binning and computes the power spectrum as a Field over this
@@ -167,7 +167,7 @@ def power_analyze(field, spaces=None, binbounds=None,
 
 
 def _create_power_field(domain, power_spectrum):
-    if not callable(power_spectrum):  # we have a Field living on a PowerSpace
+    if not callable(power_spectrum):  # we have a Field defined on a PowerSpace
         if not isinstance(power_spectrum, Field):
             raise TypeError("Field object expected")
         if len(power_spectrum.domain) != 1:
@@ -184,7 +184,7 @@ def _create_power_field(domain, power_spectrum):
 
 
 def create_power_operator(domain, power_spectrum, space=None):
-    """ Creates a diagonal operator with the given power spectrum.
+    """Creates a diagonal operator with the given power spectrum.
 
     Constructs a diagonal operator that is defined on the specified domain.
 

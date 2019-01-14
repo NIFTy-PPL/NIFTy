@@ -27,8 +27,7 @@ from .linear_operator import LinearOperator
 
 
 class ExpTransform(LinearOperator):
-    """
-    Transforms log-space to target.
+    """Transforms log-space to target
 
     This operator creates a log-space subject to the degrees of freedom and
     and its target-domain.

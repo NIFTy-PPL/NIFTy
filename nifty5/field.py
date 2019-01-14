@@ -25,7 +25,7 @@ from .domain_tuple import DomainTuple
 class Field(object):
     _scalar_dom = DomainTuple.scalar_domain()
 
-    """ The discrete representation of a continuous field over multiple spaces.
+    """The discrete representation of a continuous field over multiple spaces.
 
     In NIFTy, Fields are used to store data arrays and carry all the needed
     metainformation (i.e. the domain) for operators to be able to work on them.
@@ -159,13 +159,13 @@ class Field(object):
         Returns
         -------
         Field
-            Field living on `new_domain`, but with the same data as `self`.
+            Field defined on `new_domain`, but with the same data as `self`.
         """
         return Field(DomainTuple.make(new_domain), self._val)
 
     @staticmethod
     def from_random(random_type, domain, dtype=np.float64, **kwargs):
-        """ Draws a random field with the given parameters.
+        """Draws a random field with the given parameters.
 
         Parameters
         ----------
@@ -284,7 +284,7 @@ class Field(object):
         return res
 
     def weight(self, power=1, spaces=None):
-        """ Weights the pixels of `self` with their invidual pixel-volume.
+        """Weights the pixels of `self` with their invidual pixel-volume.
 
         Parameters
         ----------
@@ -325,7 +325,7 @@ class Field(object):
         return Field.from_local_data(self._domain, aout)
 
     def outer(self, x):
-        """ Computes the outer product of 'self' with x.
+        """Computes the outer product of 'self' with x.
 
         Parameters
         ----------
@@ -342,21 +342,21 @@ class Field(object):
         return OuterProduct(self, x.domain)(x)
 
     def vdot(self, x=None, spaces=None):
-        """ Computes the dot product of 'self' with x.
+        """Computes the dot product of 'self' with x.
 
         Parameters
         ----------
         x : Field
             x must be defined on the same domain as `self`.
 
-        spaces : None, int or tuple of int (default: None)
+        spaces : None, int or tuple of int
             The dot product is only carried out over the sub-domains in this
             tuple. If None, it is carried out over all sub-domains.
+            Default: None.
 
         Returns
         -------
-        float, complex, either scalar (for full dot products)
-                              or Field (for partial dot products)
+        float, complex, either scalar (for full dot products) or Field (for partial dot products).
         """
         if not isinstance(x, Field):
             raise TypeError("The dot-partner must be an instance of " +
@@ -375,12 +375,12 @@ class Field(object):
         return (self.conjugate()*x).sum(spaces=spaces)
 
     def norm(self, ord=2):
-        """ Computes the L2-norm of the field values.
+        """Computes the L2-norm of the field values.
 
         Parameters
         ----------
-        ord : int, default=2
-            accepted values: 1, 2, ..., np.inf
+        ord : int
+            Accepted values: 1, 2, ..., np.inf. Default: 2.
 
         Returns
         -------
@@ -390,7 +390,7 @@ class Field(object):
         return dobj.norm(self._val, ord)
 
     def conjugate(self):
-        """ Returns the complex conjugate of the field.
+        """Returns the complex conjugate of the field.
 
         Returns
         -------
@@ -441,9 +441,9 @@ class Field(object):
 
         Parameters
         ----------
-        spaces : None, int or tuple of int (default: None)
+        spaces : None, int or tuple of int
             The summation is only carried out over the sub-domains in this
-            tuple. If None, it is carried out over all sub-domains.
+            tuple. If None, it is carried out over all sub-domains. Default: None.
 
         Returns
         -------
@@ -461,9 +461,10 @@ class Field(object):
 
         Parameters
         ----------
-        spaces : None, int or tuple of int (default: None)
+        spaces : None, int or tuple of int
             The summation is only carried out over the sub-domains in this
             tuple. If None, it is carried out over all sub-domains.
+            Default: None.
 
         Returns
         -------
@@ -484,9 +485,10 @@ class Field(object):
 
         Parameters
         ----------
-        spaces : None, int or tuple of int (default: None)
+        spaces : None, int or tuple of int
             The operation is only carried out over the sub-domains in this
             tuple. If None, it is carried out over all sub-domains.
+            Default: None.
 
         Returns
         -------
@@ -544,9 +546,9 @@ class Field(object):
 
         Parameters
         ----------
-        spaces : None, int or tuple of int (default: None)
+        spaces : None, int or tuple of int
             The operation is only carried out over the sub-domains in this
-            tuple. If None, it is carried out over all sub-domains.
+            tuple. If None, it is carried out over all sub-domains. Default: None.
 
         Returns
         -------
@@ -566,9 +568,10 @@ class Field(object):
 
         Parameters
         ----------
-        spaces : None, int or tuple of int (default: None)
+        spaces : None, int or tuple of int
             The operation is only carried out over the sub-domains in this
             tuple. If None, it is carried out over all sub-domains.
+            Default: None.
 
         Returns
         -------
@@ -594,9 +597,10 @@ class Field(object):
 
         Parameters
         ----------
-        spaces : None, int or tuple of int (default: None)
+        spaces : None, int or tuple of int
             The operation is only carried out over the sub-domains in this
             tuple. If None, it is carried out over all sub-domains.
+            Default: None.
 
         Returns
         -------

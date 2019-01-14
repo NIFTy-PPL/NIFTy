@@ -20,7 +20,7 @@ from ..utilities import NiftyMetaBase, indent
 
 
 class Operator(NiftyMetaBase()):
-    """Transforms values living on one domain into values living on another
+    """Transforms values defined on one domain into values defined on another
     domain, and can also provide the Jacobian.
     """
 
@@ -78,6 +78,9 @@ class Operator(NiftyMetaBase()):
         if np.isscalar(x):
             return self.scale(x)
         return NotImplemented
+
+    def __rmul__(self, x):
+        return self.__mul__(x)
 
     def __add__(self, x):
         if not isinstance(x, Operator):
