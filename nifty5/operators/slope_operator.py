@@ -41,10 +41,14 @@ class SlopeOperator(LinearOperator):
     """
 
     def __init__(self, target):
-        if not isinstance(target, LogRGSpace) or not len(target.shape) != 1:
-            raise TypeError("Slope Operator only works for ndim == 1")
-        self._domain = DomainTuple.make(UnstructuredDomain((2,)))
         self._target = DomainTuple.make(target)
+        if len(self._target) > 1:
+            raise TypeError
+        if len(self._target[0].shape) > 1:
+            raise TypeError
+        if not isinstance(self._target[0], LogRGSpace):
+            raise TypeError
+        self._domain = DomainTuple.make(UnstructuredDomain((2,)))
         self._capability = self.TIMES | self.ADJOINT_TIMES
         pos = self.target[0].get_k_array() - self.target[0].t_0[0]
         self._pos = pos[0, 1:]
