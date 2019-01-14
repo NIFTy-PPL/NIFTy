@@ -28,11 +28,8 @@ from ..operators.symmetrizing_operator import SymmetrizingOperator
 from ..sugar import makeOp
 
 
-def _ceps_kernel(dof_space, k, a, k0):
-    res = 1.
-    for i in range(len(k0)):
-        res += (k[i]/k0[i])**2
-    return a**2/(res)**2
+def _ceps_kernel(k, a, k0):
+    return (a/(1+np.sum((k.T/k0)**2, axis=1)))**2
 
 
 def CepstrumOperator(target, a, k0):
