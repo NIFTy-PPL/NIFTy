@@ -22,8 +22,8 @@ from .utilities import frozendict, indent
 class MultiDomain(object):
     """A tuple of domains corresponding to a direct sum.
 
-    This class is the domain of the direct sum of fields living
-    over (possibly different) domains. To make an instance
+    This class is the domain of the direct sum of fields defined
+    on (possibly different) domains. To make an instance
     of this class, call `MultiDomain.make(inp)`.
     """
     _domainCache = {}

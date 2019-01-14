@@ -18,8 +18,8 @@
 import numpy as np
 
 from ..domain_tuple import DomainTuple
-from ..domains.unstructured_domain import UnstructuredDomain
 from ..domains.rg_space import RGSpace
+from ..domains.unstructured_domain import UnstructuredDomain
 from ..field import Field
 from ..operators.diagonal_operator import DiagonalOperator
 from ..operators.field_zero_padder import FieldZeroPadder
@@ -30,12 +30,39 @@ from ..sugar import makeOp
 from .light_cone_operator import LightConeOperator, _field_from_function
 
 
-def _make_dynamic_operator(domain, harmonic_padding, sm_s0, sm_x0, keys=['f', 'c'],
-                          causal=True, cone=True, minimum_phase=False, sigc=3.,
-                          quant=5.):
-    dom = DomainTuple.make(domain)
-    if not isinstance(dom[0], RGSpace):
+def _float_or_listoffloat(inp):
+    return [float(x) for x in inp] if isinstance(inp, list) else float(inp)
+
+
+def _make_dynamic_operator(domain,
+                           harmonic_padding,
+                           sm_s0,
+                           sm_x0,
+                           cone,
+                           keys,
+                           causal,
+                           minimum_phase,
+                           sigc=None,
+                           quant=None):
+    if not isinstance(domain, RGSpace):
         raise TypeError("RGSpace required")
+    if not (isinstance(harmonic_padding, int) or harmonic_padding is None
+            or all(isinstance(ii, int) for ii in harmonic_padding)):
+        raise TypeError
+    sm_s0 = float(sm_s0)
+    sm_x0 = _float_or_listoffloat(sm_x0)
+    cone = bool(cone)
+    if not all(isinstance(ss, str) for ss in keys):
+        raise TypeError
+    causal, minimum_phase = bool(causal), bool(minimum_phase)
+    if sigc is not None:
+        sigc = _float_or_listoffloat(sigc)
+    if quant is not None:
+        quant = float(quant)
+    if cone and (sigc is None or quant is None):
+        raise RuntimeError
+
+    dom = DomainTuple.make(domain)
     ops = {}
     FFT = FFTOperator(dom)
     Real = Realizer(dom)
@@ -48,9 +75,9 @@ def _make_dynamic_operator(domain, harmonic_padding, sm_s0, sm_x0, keys=['f', 'c
             harmonic_padding = list((harmonic_padding,)*len(FFT.target.shape))
         elif len(harmonic_padding) != len(FFT.target.shape):
             raise (ValueError, "Shape mismatch!")
-        shp = ()
-        for i in range(len(FFT.target.shape)):
-            shp += (FFT.target.shape[i] + harmonic_padding[i],)
+        shp = [
+            sh + harmonic_padding[ii] for ii, sh in enumerate(FFT.target.shape)
+        ]
         CentralPadd = FieldZeroPadder(FFT.target, shp, central=True)
     ops['central_padding'] = CentralPadd
     sdom = CentralPadd.target[0].get_default_codomain()
@@ -106,91 +133,124 @@ def _make_dynamic_operator(domain, harmonic_padding, sm_s0, sm_x0, keys=['f', 'c
         m = m.exp()
     return m, ops
 
-def dynamic_operator(domain, harmonic_padding, sm_s0, sm_x0, key,
-                     causal=True, minimum_phase=False):
-    '''
-    Constructs an operator encoding the Greens function of a linear homogeneous dynamic system.
+
+def dynamic_operator(domain,
+                     harmonic_padding,
+                     sm_s0,
+                     sm_x0,
+                     key,
+                     causal=True,
+                     minimum_phase=False):
+    '''Constructs an operator encoding the Green's function of a linear
+    homogeneous dynamic system.
 
     Parameters
     ----------
     domain : RGSpace
-        The space under consideration
+        The space under consideration.
     harmonic_padding : None, int, list of int
-        Amount of central padding in harmonic space in pixels. If None the field is not padded at all.
+        Amount of central padding in harmonic space in pixels. If None the
+        field is not padded at all.
     sm_s0 : float
-        Cutoff for dynamic smoothness prior
-    sm_x0 : float, List of float
-        Scaling of dynamic smoothness along each axis
+        Cutoff for dynamic smoothness prior.
+    sm_x0 : float, list of float
+        Scaling of dynamic smoothness along each axis.
     key : String
         key for dynamics encoding parameter.
     causal : boolean
-        Whether or not the reconstructed dynamics should be causal in time
+        Whether or not the reconstructed dynamics should be causal in time.
     minimum_phase: boolean
-        Whether or not the reconstructed dynamics should be minimum phase
+        Whether or not the reconstructed dynamics should be minimum phase.
 
     Returns
     -------
     Operator
-        The Operator encoding the dynamic Greens function in harmonic space.
+        The Operator encoding the dynamic Green's function in harmonic space.
     Dictionary of Operator
-        A collection of sub-chains of Operators which can be used for plotting and evaluation.
+        A collection of sub-chains of Operator which can be used for plotting
+        and evaluation.
 
     Notes
     -----
-    Currently only supports RGSpaces.
-    Note that the first axis of the space is interpreted as the time axis.
+    The first axis of the domain is interpreted the time axis.
     '''
-    return _make_dynamic_operator(domain, harmonic_padding, sm_s0, sm_x0,
-                                  keys=[key],
-                                  causal=causal, cone=False,
-                                  minimum_phase=minimum_phase)
+    dct = {
+        'domain': domain,
+        'harmonic_padding': harmonic_padding,
+        'sm_s0': sm_s0,
+        'sm_x0': sm_x0,
+        'keys': [key],
+        'causal': causal,
+        'cone': False,
+        'minimum_phase': minimum_phase,
+    }
+    return _make_dynamic_operator(**dct)
 
-def dynamic_lightcone_operator(domain, harmonic_padding, sm_s0, sm_x0, key,
-                               lightcone_key, sigc, quant,
-                               causal=True, minimum_phase=False):
-    '''
-    Constructs an operator encoding the Greens function of a linear homogeneous dynamic system.
-    The Greens function is constrained to be within a light cone.
+
+def dynamic_lightcone_operator(domain,
+                               harmonic_padding,
+                               sm_s0,
+                               sm_x0,
+                               key,
+                               lightcone_key,
+                               sigc,
+                               quant,
+                               causal=True,
+                               minimum_phase=False):
+    '''Constructs an operator encoding the Green's function of a linear
+    homogeneous dynamic system. The Green's function is constrained to be
+    within a light cone.
 
     Parameters
     ----------
     domain : RGSpace
         The space under consideration. Must have dim > 1.
     harmonic_padding : None, int, list of int
-        Amount of central padding in harmonic space in pixels. If None the field is not padded at all.
+        Amount of central padding in harmonic space in pixels. If None the
+        field is not padded at all.
     sm_s0 : float
-        Cutoff for dynamic smoothness prior
-    sm_x0 : float, List of float
-        Scaling of dynamic smoothness along each axis
+        Cutoff for dynamic smoothness prior.
+    sm_x0 : float, list of float
+        Scaling of dynamic smoothness along each axis.
     key : String
-        key for dynamics encoding parameter.
+        Key for dynamics encoding parameter.
     lightcone_key: String
-        key for lightspeed paramteter.
-    sigc : float, List of float
-        variance of lightspeed parameter.
+        Key for lightspeed paramteter.
+    sigc : float, list of float
+        Variance of lightspeed parameter.
     quant : float
         Quantization of the light cone in pixels.
     causal : boolean
-        Whether or not the reconstructed dynamics should be causal in time
+        Whether or not the reconstructed dynamics should be causal in time.
     minimum_phase: boolean
-        Whether or not the reconstructed dynamics should be minimum phase
+        Whether or not the reconstructed dynamics should be minimum phase.
 
     Returns
     -------
     Operator
-        The Operator encoding the dynamic Greens function in harmonic space when evaluated.
-    Dictionary of Operator
-        A collection of sub-chains of Operators which can be used for plotting and evaluation.
+        The Operator encoding the dynamic Green's function in harmonic space
+        when evaluated.
+    dict
+        A collection of sub-chains of Operator which can be used
+        for plotting and evaluation.
 
     Notes
     -----
-    Currently only supports RGSpaces.
-    Note that the first axis of the space is interpreted as the time axis.
+    The first axis of the domain is interpreted the time axis.
     '''
+
     if len(domain.shape) < 2:
         raise ValueError("Space must be at least 2 dimensional!")
-    return _make_dynamic_operator(domain,harmonic_padding,sm_s0,sm_x0,
-                                  keys=[key,lightcone_key],
-                                  causal=causal, cone=True,
-                                  minimum_phase = minimum_phase,
-                                  sigc = sigc, quant = quant)
+    dct = {
+        'domain': domain,
+        'harmonic_padding': harmonic_padding,
+        'sm_s0': sm_s0,
+        'sm_x0': sm_x0,
+        'keys': [key, lightcone_key],
+        'causal': causal,
+        'cone': True,
+        'minimum_phase': minimum_phase,
+        'sigc': sigc,
+        'quant': quant
+    }
+    return _make_dynamic_operator(**dct)

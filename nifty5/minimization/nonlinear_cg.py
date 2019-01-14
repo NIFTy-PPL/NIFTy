@@ -20,7 +20,7 @@ from .minimizer import Minimizer
 
 
 class NonlinearCG(Minimizer):
-    """ Nonlinear Conjugate Gradient scheme according to Polak-Ribiere.
+    """Nonlinear Conjugate Gradient scheme according to Polak-Ribiere.
 
     Algorithm 5.4 from Nocedal & Wright.
 

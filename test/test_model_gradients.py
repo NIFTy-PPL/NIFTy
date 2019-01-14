@@ -17,6 +17,7 @@
 
 import numpy as np
 import pytest
+from numpy.testing import assert_
 
 import nifty5 as ift
 
@@ -53,11 +54,11 @@ def testBasics(space, seed):
 @pmp('type2', ['Variable'])
 def testBinary(type1, type2, space, seed):
     dom1 = ift.MultiDomain.make({'s1': space})
-    # FIXME Remove?
-    lin1 = _make_linearization(type1, dom1, seed)
     dom2 = ift.MultiDomain.make({'s2': space})
-    # FIXME Remove?
-    lin2 = _make_linearization(type2, dom2, seed)
+
+    # FIXME Remove this?
+    _make_linearization(type1, dom1, seed)
+    _make_linearization(type2, dom2, seed)
 
     dom = ift.MultiDomain.union((dom1, dom2))
     select_s1 = ift.ducktape(None, dom, "s1")
@@ -74,8 +75,7 @@ def testBinary(type1, type2, space, seed):
     model = ift.ScalingOperator(2.456, space)(select_s1*select_s2)
     pos = ift.from_random("normal", dom)
     ift.extra.check_value_gradient_consistency(model, pos, ntries=20)
-    model = ift.sigmoid(
-        ift.ScalingOperator(2.456, space)(select_s1*select_s2))
+    model = ift.sigmoid(2.456*(select_s1*select_s2))
     pos = ift.from_random("normal", dom)
     ift.extra.check_value_gradient_consistency(model, pos, ntries=20)
     pos = ift.from_random("normal", dom)
@@ -91,8 +91,10 @@ def testModelLibrary(space, seed):
     # Tests amplitude model and coorelated field model
     Npixdof, ceps_a, ceps_k, sm, sv, im, iv = 4, 0.5, 2., 3., 1.5, 1.75, 1.3
     np.random.seed(seed)
-    model = ift.AmplitudeOperator(space, Npixdof, ceps_a, ceps_k, sm, sv, im,
+    domain = ift.PowerSpace(space.get_default_codomain())
+    model = ift.AmplitudeOperator(domain, Npixdof, ceps_a, ceps_k, sm, sv, im,
                                   iv)
+    assert_(isinstance(model, ift.Operator))
     S = ift.ScalingOperator(1., model.domain)
     pos = S.draw_sample()
     ift.extra.check_value_gradient_consistency(model, pos, ntries=20)
@@ -112,28 +114,38 @@ def testPointModel(space, seed):
     # FIXME All those cdfs and ppfs are not very accurate
     ift.extra.check_value_gradient_consistency(model, pos, tol=1e-2, ntries=20)
 
-@pmp('domain', [ift.RGSpace(64, distances=.789),
-                ift.RGSpace([32, 32], distances=.789),
-                ift.RGSpace([32, 32, 8], distances=.789)])
+
+@pmp('domain', [
+    ift.RGSpace(64, distances=.789),
+    ift.RGSpace([32, 32], distances=.789),
+    ift.RGSpace([32, 32, 8], distances=.789)
+])
 @pmp('causal', [True, False])
 @pmp('minimum_phase', [True, False])
 @pmp('seed', [4, 78, 23])
 def testDynamicModel(domain, causal, minimum_phase, seed):
-    model, _ = ift.dynamic_operator(domain,None,1.,1.,'f',
-                                    causal = causal,
-                                    minimum_phase = minimum_phase)
+    model, _ = ift.dynamic_operator(
+        domain, None, 1., 1., 'f', causal=causal, minimum_phase=minimum_phase)
     S = ift.ScalingOperator(1., model.domain)
     pos = S.draw_sample()
     # FIXME I dont know why smaller tol fails for 3D example
-    ift.extra.check_value_gradient_consistency(model, pos, tol=1e-5,
-                                               ntries=20)
+    ift.extra.check_value_gradient_consistency(model, pos, tol=1e-5, ntries=20)
     if len(domain.shape) > 1:
-        model, _ = ift.dynamic_lightcone_operator(domain,None,3.,1.,
-                                                  'f','c',1.,5,
-                                                  causal = causal,
-                                                  minimum_phase = minimum_phase)
+        dct = {
+            'domain': domain,
+            'harmonic_padding': None,
+            'sm_s0': 3.,
+            'sm_x0': 1.,
+            'key': 'f',
+            'lightcone_key': 'c',
+            'sigc': 1.,
+            'quant': 5,
+            'causal': causal,
+            'minimum_phase': minimum_phase
+        }
+        model, _ = ift.dynamic_lightcone_operator(**dct)
         S = ift.ScalingOperator(1., model.domain)
         pos = S.draw_sample()
         # FIXME I dont know why smaller tol fails for 3D example
-        ift.extra.check_value_gradient_consistency(model, pos, tol=1e-5,
-                                                   ntries=20)
+        ift.extra.check_value_gradient_consistency(
+            model, pos, tol=1e-5, ntries=20)

@@ -15,17 +15,11 @@
 #
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
 
-import itertools
-
 import numpy as np
 
-from .. import dobj, utilities
 from ..domain_tuple import DomainTuple
-from ..domains.rg_space import RGSpace
-from ..multi_field import MultiField, MultiDomain
 from ..field import Field
 from .linear_operator import LinearOperator
-import operator
 
 
 class OuterProduct(LinearOperator):
@@ -37,14 +31,11 @@ class OuterProduct(LinearOperator):
     domain: DomainTuple, the domain of the input field
     ---------
     """
-
     def __init__(self, field, domain):
-
         self._domain = domain
         self._field = field
         self._target = DomainTuple.make(
             tuple(sub_d for sub_d in field.domain._dom + domain._dom))
-
         self._capability = self.TIMES | self.ADJOINT_TIMES
 
     def apply(self, x, mode):

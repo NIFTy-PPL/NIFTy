@@ -143,12 +143,12 @@ class LinearOperator(Operator):
         return self.apply(x.extract(self.domain), self.TIMES)
 
     def apply(self, x, mode):
-        """ Applies the Operator to a given `x`, in a specified `mode`.
+        """Applies the Operator to a given `x`, in a specified `mode`.
 
         Parameters
         ----------
         x : Field
-            The input Field, living on the Operator's domain or target,
+            The input Field, defined on the Operator's domain or target,
             depending on mode.
 
         mode : int
@@ -161,7 +161,7 @@ class LinearOperator(Operator):
         Returns
         -------
         Field
-            The processed Field living on the Operator's target or domain,
+            The processed Field defined on the Operator's target or domain,
             depending on mode.
         """
         raise NotImplementedError
@@ -178,17 +178,17 @@ class LinearOperator(Operator):
         return self.__matmul__(x)
 
     def times(self, x):
-        """ Applies the Operator to a given Field.
+        """Applies the Operator to a given Field.
 
         Parameters
         ----------
         x : Field
-            The input Field, living on the Operator's domain.
+            The input Field, defined on the Operator's domain.
 
         Returns
         -------
         Field
-            The processed Field living on the Operator's target domain.
+            The processed Field defined on the Operator's target domain.
         """
         return self.apply(x, self.TIMES)
 
@@ -198,12 +198,12 @@ class LinearOperator(Operator):
         Parameters
         ----------
         x : Field
-            The input Field, living on the Operator's target domain
+            The input Field, defined on the Operator's target domain
 
         Returns
         -------
         Field
-            The processed Field living on the Operator's domain.
+            The processed Field defined on the Operator's domain.
         """
         return self.apply(x, self.INVERSE_TIMES)
 
@@ -213,27 +213,27 @@ class LinearOperator(Operator):
         Parameters
         ----------
         x : Field
-            The input Field, living on the Operator's target domain
+            The input Field, defined on the Operator's target domain
 
         Returns
         -------
         Field
-            The processed Field living on the Operator's domain.
+            The processed Field defined on the Operator's domain.
         """
         return self.apply(x, self.ADJOINT_TIMES)
 
     def adjoint_inverse_times(self, x):
-        """ Applies the adjoint-inverse Operator to a given Field.
+        """Applies the adjoint-inverse Operator to a given Field.
 
         Parameters
         ----------
         x : Field
-            The input Field, living on the Operator's domain.
+            The input Field, defined on the Operator's domain.
 
         Returns
         -------
         Field
-            The processed Field living on the Operator's target domain.
+            The processed Field defined on the Operator's target domain.
 
         Notes
         -----

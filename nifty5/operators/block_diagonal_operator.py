@@ -21,14 +21,14 @@ from .endomorphic_operator import EndomorphicOperator
 
 
 class BlockDiagonalOperator(EndomorphicOperator):
+    """
+    Parameters
+    ----------
+    operators : dict
+        Dictionary with operators domain names as keys and LinearOperators as
+        items.
+    """
     def __init__(self, domain, operators):
-        """
-        Parameters
-        ----------
-        operators : dict
-            dictionary with operators domain names as keys and
-            LinearOperators as items
-        """
         if not isinstance(domain, MultiDomain):
             raise TypeError("MultiDomain expected")
         if not isinstance(operators, tuple):

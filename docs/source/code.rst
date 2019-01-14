@@ -157,7 +157,7 @@ Fields support a wide range of arithmetic operations, either involving two
 fields with equal domains, or a field and a scalar.
 Contractions (like summation, integration, minimum/maximum, computation of
 statistical moments) can be carried out either over an entire field (producing
-a scalar result) or over sub-domains (resulting in a field living on a smaller
+a scalar result) or over sub-domains (resulting in a field defined on a smaller
 domain). Scalar products of two fields can also be computed easily.
 
 There is also a set of convenience functions to generate fields with constant
@@ -337,7 +337,7 @@ In NIFTy5 such functions are represented by objects of type
 function's :attr:`~energy.Energy.value`, :attr:`~energy.Energy.gradient` and
 (optionally) :attr:`~energy.Energy.metric` at any given
 :attr:`~energy.Energy.position` in parameter space. Function values are
-floating-point scalars, gradients have the form of fields living on the energy's
+floating-point scalars, gradients have the form of fields defined on the energy's
 position domain, and metrics are represented by linear operator objects.
 
 .. currentmodule:: nifty5
