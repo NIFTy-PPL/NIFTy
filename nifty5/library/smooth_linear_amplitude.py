@@ -29,7 +29,10 @@ from ..sugar import makeOp
 
 
 def _ceps_kernel(dof_space, k, a, k0):
-    return a**2/(1 + (k/k0)**2)**2
+    res = 1.
+    for i in range(len(k0)):
+        res += (k[i]/k0[i])**2
+    return a**2/(res)**2
 
 
 def CepstrumOperator(target, a, k0):
@@ -56,24 +59,35 @@ def CepstrumOperator(target, a, k0):
       amplitude whenever :class:`CepstrumOperator` is used as in
       :class:`SLAmplitude`.
 
-    FIXME The prior on the zero mode is ...
+    The prior on the zero mode, or zero subspaces in the case of dim > 1,
+    is the integral of the prior of all other modes along the corresponding
+    axis.
 
     Parameters
     ----------
     target : LogRGSpace
-        Target domain of the operator, needs to be non-harmonic and
-        one-dimensional.
+        Target domain of the operator, needs to be non-harmonic.
     a : float
-        Strength of smoothness prior (positive only). FIXME
-    k0 : float
-        Cutoff of smothness prior in quefrency space (positive only). FIXME
+        Cutoff of smoothness prior (positive only). Controls the
+        regularization of the inverse laplace operator to be finite at zero.
+        Larger values for the cutoff results in a weaker constraining prior.
+    k0 : float, list of float
+        Strength of smothness prior in quefrency space (positive only) along
+        each axis. If float then the strength is the same along each axis.
+        Larger values result in a weaker constraining prior.
     '''
-    a, k0 = float(a), float(k0)
+    a = float(a)
     target = DomainTuple.make(target)
-    if a <= 0 or k0 <= 0:
+    if a <= 0:
         raise ValueError
-    if len(target) > 1 or target[0].harmonic or len(target[0].shape) > 1:
+    if len(target) > 1 or target[0].harmonic:
         raise TypeError
+    if isinstance(k0, float):
+        k0 = (k0, )*len(target.shape)
+    elif len(k0) != len(target.shape):
+        raise ValueError
+    if np.any(np.array(k0) <= 0):
+        raise ValueError
 
     qht = QHTOperator(target)
     dom = qht.domain[0]
