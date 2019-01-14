@@ -25,12 +25,11 @@ from .linear_operator import LinearOperator
 
 
 class SlopeOperator(LinearOperator):
-    """
-    Creates a slope on target.
+    """Creates a slope on target.
 
-    This operator creates a field on a LogRGSpace, which is created
-    according to a slope of given entries, (mean, y-intercept).
-    The slope mean is the power law of the field in normal-space.
+    This operator creates a field on a LogRGSpace, which is created according
+    to a slope of given entries, (mean, y-intercept). The slope mean is the
+    power law of the field in normal-space.
 
     Parameters
     ----------

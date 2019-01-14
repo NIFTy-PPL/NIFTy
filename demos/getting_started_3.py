@@ -46,32 +46,32 @@ if __name__ == '__main__':
     mode = 1
 
     position_space = ift.RGSpace([128, 128])
-
-    # Set up an amplitude operator for the field
-    # The parameters mean:
-    # 64 spectral bins
-    #
-    # Spectral smoothness (affects Gaussian process part)
-    # 3 = relatively high variance of spectral curbvature
-    # 0.4 = quefrency mode below which cepstrum flattens
-    #
-    # Power-law part of spectrum:
-    # -5 = preferred power-law slope
-    # 0.5 = low variance of power-law slope
-    # 0.4 = y-intercept mean
-    # 0.3 = relatively high y-intercept variance
-    A = ift.AmplitudeOperator(position_space, 64, 3, 0.4, -5., 0.5, 0.4, 0.3)
-
-    # Build the operator for a correlated signal
     harmonic_space = position_space.get_default_codomain()
     ht = ift.HarmonicTransformOperator(harmonic_space, position_space)
-    power_space = A.target[0]
-    power_distributor = ift.PowerDistributor(harmonic_space, power_space)
+    power_space = ift.PowerSpace(harmonic_space)
 
-    vol = ift.ScalingOperator(harmonic_space.scalar_dvol**(-0.5),
-                              harmonic_space)
-    correlated_field = ht(
-        vol(power_distributor(A))*ift.ducktape(harmonic_space, None, 'xi'))
+    # Set up an amplitude operator for the field
+    dct = {
+        'target': power_space,
+        'n_pix': 64,  # 64 spectral bins
+
+        # Spectral smoothness (affects Gaussian process part)
+        'a': 3,  # relatively high variance of spectral curbvature
+        'k0': .4,  # quefrency mode below which cepstrum flattens
+
+        # Power-law part of spectrum:
+        'sm': -5,  # preferred power-law slope
+        'sv': .5,  # low variance of power-law slope
+        'im': .4,  # y-intercept mean
+        'iv': .3  # relatively high y-intercept variance
+    }
+    A = ift.AmplitudeOperator(**dct)
+
+    # Build the operator for a correlated signal
+    power_distributor = ift.PowerDistributor(harmonic_space, power_space)
+    vol = harmonic_space.scalar_dvol**-0.5
+    xi = ift.ducktape(harmonic_space, None, 'xi')
+    correlated_field = ht(vol*power_distributor(A)*xi)
     # Alternatively, one can use:
     # correlated_field = ift.CorrelatedField(position_space, A)
 

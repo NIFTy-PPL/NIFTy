@@ -125,7 +125,7 @@ class LOSResponse(LinearOperator):
         The LOS response then returns the expected integral
         over the input given that the length of the LOS is unknown and
         therefore the result is averaged over different endpoints.
-        default: None
+        Default: None.
     truncation: float (optional)
         Use only if the sigmas keyword argument is used!
         This truncates the probability of the endpoint lying more sigmas away
@@ -133,7 +133,7 @@ class LOSResponse(LinearOperator):
         distances. It should hold that `1./(1./length-sigma*truncation)>0`
         for all lengths of the LOSs and all corresponding sigma of sigmas.
         If unsure, leave blank.
-        default: 3.
+        Default: 3.
 
     Notes
     -----

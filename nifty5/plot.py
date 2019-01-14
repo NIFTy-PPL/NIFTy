@@ -273,25 +273,25 @@ class Plot(object):
 
         Parameters
         ----------
-        f: Field, or list of Field objects
+        f: Field or list of Field
             If `f` is a single Field, it must be defined on a single `RGSpace`,
             `PowerSpace`, `HPSpace`, `GLSpace`.
-            If it is a list, all list members must be Fields living over the
+            If it is a list, all list members must be Fields defined over the
             same one-dimensional `RGSpace` or `PowerSpace`.
         title: string
-            title of the plot
+            title of the plot.
         xlabel: string
-            label for the x axis
+            Label for the x axis.
         ylabel: string
-            label for the y axis
+            Label for the y axis.
         [xyz]min, [xyz]max: float
-            limits for the values to plot
+            Limits for the values to plot.
         colormap: string
-            color map to use for the plot (if it is a 2D plot)
+            Color map to use for the plot (if it is a 2D plot).
         linewidth: float or list of floats
-            line width
+            Line width.
         label: string of list of strings
-            annotation string
+            Annotation string.
         alpha: float or list of floats
             transparency value
         """
@@ -304,15 +304,16 @@ class Plot(object):
         Parameters
         ----------
         title: string
-            title of the full plot
-        nx, ny: integer (default: square root of the numer of plots, rounded up)
-            number of subplots to use in x- and y-direction
-        xsize, ysize: float (default: 6)
-            dimensions of the full plot in inches
-        name: string (default: "")
-            if left empty, the plot will be shown on the screen,
+            Title of the full plot.
+        nx, ny: int
+            Number of subplots to use in x- and y-direction.
+            Default: square root of the numer of plots, rounded up.
+        xsize, ysize: float
+            Dimensions of the full plot in inches. Default: 6.
+        name: string
+            If left empty, the plot will be shown on the screen,
             otherwise it will be written to a file with the given name.
-            Supported extensions: .png and .pdf
+            Supported extensions: .png and .pdf. Default: None.
         """
         import matplotlib.pyplot as plt
         nplot = len(self._plots)

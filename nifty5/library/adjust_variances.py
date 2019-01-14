@@ -30,7 +30,7 @@ def make_adjust_variances(a,
                           samples=[],
                           scaling=None,
                           ic_samp=None):
-    """ Creates a Hamiltonian for constant likelihood optimizations.
+    """Creates a Hamiltonian for constant likelihood optimizations.
 
     Constructs a Hamiltonian to solve constant likelihood optimizations of the
     form phi = a * xi under the constraint that phi remains constant.
