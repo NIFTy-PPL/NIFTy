@@ -32,7 +32,7 @@ class SlopeOperator(LinearOperator):
     the operator. Being a LogRGSpace each pixel has a well-defined coordinate
     value.
 
-    # FIXME Say something about t0.
+    y-intercept is defined to be the value at t_0 of the target.
 
     Parameters
     ----------

@@ -31,8 +31,8 @@ class LogRGSpace(StructuredDomain):
     shape : int or tuple of int
         Number of grid points or numbers of gridpoints along each axis.
     bindistances : float or tuple of float
-        Distance between two grid points along each axis. These are
-        measured on logarithmic scale and are constant therefore.
+        Logarithmic distance between two grid points along each axis.
+        Equidistant spacing of bins on logarithmic scale is assumed.
     t_0 : float or tuple of float
         Coordinate of pixel ndim*(1,).
     harmonic : bool, optional
@@ -87,12 +87,34 @@ class LogRGSpace(StructuredDomain):
         return LogRGSpace(self.shape, codomain_bindistances, self._t_0, True)
 
     def get_k_length_array(self):
+        """Produces array of distances to origin of the space.
+
+        Returns
+        -------
+        numpy.ndarray(numpy.float64) with shape self.shape 
+            Distances to origin of the space.
+            If any index of the array is zero then the distance
+            is np.nan if self.harmonic True.
+
+        Raises
+        ------
+        NotImplementedError: if self.harmonic is False
+        """
         if not self.harmonic:
             raise NotImplementedError
         ks = self.get_k_array()
         return Field.from_global_data(self, np.linalg.norm(ks, axis=0))
 
     def get_k_array(self):
+        """Produces coordinates of the space.
+
+        Returns
+        -------
+        numpy.ndarray(numpy.float64) with shape (len(self.shape),) + self.shape 
+            Coordinates of the space.
+            If one index of the array is zero the corresponding coordinate is
+            -np.inf (np.nan) if self.harmonic is False (True).
+        """
         ndim = len(self.shape)
         k_array = np.zeros((ndim,) + self.shape)
         dist = self.bindistances
