@@ -32,13 +32,13 @@ class LMSpace(StructuredDomain):
     lmax : int
         The maximum :math:`l` value of any spherical harmonic coefficient
         :math:`a_{lm}` that is represented by this object.
-        Must be :math:`\ge 0`.
+        Must be :math:`\\ge 0`.
 
     mmax : int, optional
         The maximum :math:`m` value of any spherical harmonic coefficient
         :math:`a_{lm}` that is represented by this object.
         If not supplied, it is set to `lmax`.
-        Must be :math:`\ge 0` and :math:`\le` `lmax`.
+        Must be :math:`\\ge 0` and :math:`\\le` `lmax`.
     """
 
     _needed_for_hash = ["_lmax", "_mmax"]
