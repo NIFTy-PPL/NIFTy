@@ -18,6 +18,7 @@
 import numpy as np
 
 from ..domains.power_space import PowerSpace
+from ..domains.unstructured_domain import UnstructuredDomain
 from ..field import Field
 from ..operators.exp_transform import ExpTransform
 from ..operators.offset_operator import OffsetOperator
@@ -108,11 +109,11 @@ def SLAmplitude(target, n_pix, a, k0, sm, sv, im, iv, keys=['tau', 'phi']):
     sm : float
         Expected exponent of power law. FIXME
     sv : float
-        Prior variance of exponent of power law.
+        Prior standard deviation of exponent of power law.
     im : float
         Expected y-intercept of power law. FIXME
     iv : float
-        Prior variance of y-intercept of power law.
+        Prior standard deviation of y-intercept of power law.
 
     Returns
     -------
@@ -137,12 +138,12 @@ def SLAmplitude(target, n_pix, a, k0, sm, sv, im, iv, keys=['tau', 'phi']):
     smooth = CepstrumOperator(dom, **dct).ducktape(keys[0])
 
     # Linear component
-    phi_mean = np.array([sm, im + sm*dom.t_0[0]])
-    phi_sig = np.array([sv, iv])
-    phi_mean = Field.from_global_data(dom, phi_mean)
-    phi_sig = Field.from_global_data(dom, phi_sig)
-    linear = SlopeOperator(dom) @ OffsetOperator(phi_mean) @ makeOp(phi_sig)
-    linear = linear.ducktape(keys[1])
+    sl = SlopeOperator(dom)
+    mean = np.array([sm, im + sm*dom.t_0[0]])
+    sig = np.array([sv, iv])
+    mean = Field.from_global_data(sl.domain, mean)
+    sig = Field.from_global_data(sl.domain, sig)
+    linear = (sl @ OffsetOperator(mean) @ makeOp(sig)).ducktape(keys[1])
 
     # Combine linear and smooth component
     loglog_ampl = 0.5*(smooth + linear)
