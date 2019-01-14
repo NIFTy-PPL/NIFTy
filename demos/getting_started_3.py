@@ -65,7 +65,7 @@ if __name__ == '__main__':
         'im': .4,  # y-intercept mean
         'iv': .3  # relatively high y-intercept variance
     }
-    A = ift.AmplitudeOperator(**dct)
+    A = ift.SLAmplitude(**dct)
 
     # Build the operator for a correlated signal
     power_distributor = ift.PowerDistributor(harmonic_space, power_space)

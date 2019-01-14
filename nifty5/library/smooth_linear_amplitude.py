@@ -65,42 +65,18 @@ def CepstrumOperator(domain, a, k0):
     return sym @ qht @ makeOp(cepstrum.sqrt())
 
 
-def SlopeOperator(domain, sm, sv, im, iv):
-    '''
-    Parameters
-    ----------
-    sm, sv : slope_mean = expected exponent of power law (e.g. -4),
-                slope_variance (default=1)
-
-    im, iv : y-intercept_mean, y-intercept_std  of power_slope
-
-    '''
-    from ..operators.slope_operator import SlopeOperator
-    from ..operators.offset_operator import OffsetOperator
-
-    if sv <= 0 or iv <= 0:
-        raise ValueError
-
-    phi_mean = np.array([sm, im + sm*domain.t_0[0]])
-    phi_sig = np.array([sv, iv])
-    slope = SlopeOperator(domain)
-    phi_mean = Field.from_global_data(slope.domain, phi_mean)
-    phi_sig = Field.from_global_data(slope.domain, phi_sig)
-    return slope(OffsetOperator(phi_mean)(makeOp(phi_sig)))
-
-
-def AmplitudeOperator(
-        target, n_pix, a, k0, sm, sv, im, iv, keys=['tau', 'phi']):
-    '''Operator for parametrizing smooth power spectra.
+def SLAmplitude(target, n_pix, a, k0, sm, sv, im, iv, keys=['tau', 'phi']):
+    '''Operator for parametrizing smooth amplitudes (square roots of power
+    spectra).
 
     The general guideline for setting up generative models in IFT is to
     transform the problem into the eigenbase of the prior and formulate the
-    generative model in this base. This is done here for the case of a power
-    spectrum which is smooth and has a linear component (both on
+    generative model in this base. This is done here for the case of an
+    amplitude which is smooth and has a linear component (both on
     double-logarithmic scale).
 
     This function assembles an :class:`Operator` which maps two a-priori white
-    Gaussian random fields to a smooth power spectrum which is composed out of
+    Gaussian random fields to a smooth amplitude which is composed out of
     a linear and a smooth component.
 
     On double-logarithmic scale, i.e. both x and y-axis on logarithmic scale,
@@ -108,7 +84,7 @@ def AmplitudeOperator(
 
         AmplitudeOperator = 0.5*(smooth_component + linear_component)
 
-    This is then exponentiated and exponentially binned (via a :class:`ExpTransform`).
+    This is then exponentiated and exponentially binned (in this order).
 
     The prior on the linear component is parametrized by four real numbers,
     being expected value and prior variance on the slope and the y-intercept
@@ -128,13 +104,13 @@ def AmplitudeOperator(
     k0 : float
         Cutoff of smothness prior in quefrency space (see :class:`CepstrumOperator`).
     sm : float
-        Expected exponent of power law (see :class:`SlopeOperator`).
+        Expected exponent of power law. FIXME
     sv : float
-        Prior variance of exponent of power law (see :class:`SlopeOperator`).
+        Prior variance of exponent of power law.
     im : float
-        Expected y-intercept of power law (see :class:`SlopeOperator`).
+        Expected y-intercept of power law. FIXME
     iv : float
-        Prior variance of y-intercept of power law (see :class:`SlopeOperator`).
+        Prior variance of y-intercept of power law.
 
     Returns
     -------
@@ -144,20 +120,34 @@ def AmplitudeOperator(
         smooth and a linear part.
     '''
     from ..operators.exp_transform import ExpTransform
+    from ..operators.slope_operator import SlopeOperator
+    from ..operators.offset_operator import OffsetOperator
 
     if not (isinstance(n_pix, int) and isinstance(target, PowerSpace)):
         raise TypeError
 
     a, k0 = float(a), float(k0)
     sm, sv, im, iv = float(sm), float(sv), float(im), float(iv)
+    if sv <= 0 or iv <= 0:
+        raise ValueError
 
     et = ExpTransform(target, n_pix)
     dom = et.domain[0]
 
+    # Smooth component
     dct = {'a': a, 'k0': k0}
     smooth = CepstrumOperator(dom, **dct).ducktape(keys[0])
 
-    dct = {'sm': sm, 'sv': sv, 'im': im, 'iv': iv}
-    linear = SlopeOperator(dom, **dct).ducktape(keys[1])
+    # Linear component
+    phi_mean = np.array([sm, im + sm*dom.t_0[0]])
+    phi_sig = np.array([sv, iv])
+    slope = SlopeOperator(dom)
+    phi_mean = Field.from_global_data(slope.domain, phi_mean)
+    phi_sig = Field.from_global_data(slope.domain, phi_sig)
+    linear = slope(OffsetOperator(phi_mean)(makeOp(phi_sig))).ducktape(keys[1])
 
-    return et((0.5*(smooth + linear)).exp())
+    # Combine linear and smooth component
+    loglog_ampl = 0.5*(smooth + linear)
+
+    # Go from loglog-space to linear-linear-space
+    return et(loglog_ampl.exp())
