@@ -30,8 +30,8 @@ class InverseGammaOperator(Operator):
 
     The pdf of the inverse gamma distribution is defined as follows:
 
-    .. math::
-        \frac {\beta ^{\alpha }}{\Gamma (\alpha )}}x^{-\alpha -1}\exp \left(-{\frac {\beta }{x}}\right)
+    .. math ::
+        \\frac{\\beta^\\alpha}{\\Gamma(\\alpha)}x^{-\\alpha -1}\\exp \\left(-\\frac{\\beta }{x}\\right)
 
     That means that for large x the pdf falls off like x^(-alpha -1).
     The mean of the pdf is at q / (alpha - 1) if alpha > 1.
