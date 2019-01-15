@@ -132,9 +132,9 @@ if __name__ == '__main__':
     total_space = ift.DomainTuple.make([position_space,energy_space])
 
     # Setting up an amplitude models
-    A_p = ift.AmplitudeOperator(position_space, 64, 3, 0.4, -3., 1, 3, 1.,keys=['tau_p','phi_p'])
-    A_e = ift.AmplitudeOperator(energy_space, 8, 3, 0.4, -2., 1, 1, 0.,keys=['tau_e','phi_e'])
-    A_eu = ift.AmplitudeOperator(energy_space, 8, 0.3, 0.4, -4., 1, -5, 1.,keys=['tau_eu','phi_eu'],zero_mode=False)
+    A_p = ift.SLAmplitude(position_space, 64, 3, 0.4, -3., 1, 3, 1.,keys=['tau_p','phi_p'])
+    A_e = ift.SLAmplitude(energy_space, 8, 3, 0.4, -2., 1, 1, 0.,keys=['tau_e','phi_e'])
+    A_eu = ift.SLAmplitude(energy_space, 8, 0.3, 0.4, -4., 1, -5, 1.,keys=['tau_eu','phi_eu'],zero_mode=False)
 
     correlated_field = ift.MfCorrelatedField(position_space,energy_space,A_p,A_e,)
     # Building the model for a correlated signal
