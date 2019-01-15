@@ -27,31 +27,31 @@ from .simple_linear_operators import VdotOperator
 
 
 class EnergyOperator(Operator):
-    """ Basis class EnergyOperator.
+    """ Basis class EnergyOperator, an abstract class from which
+    other specific EnergyOperator subclasses are derived.
 
-    Operator which has a scalar domain as target domain.
-    
-    An EnergyOperator returns a scalar for a field, and a linearized 
+    An EnergyOperator has a scalar domain as target domain.
+
+    It turns a field into a scalar and a linearization into a linearization. 
+    It is intended as an objective function for field inference.    
 
     Typical usage in IFT: 
     as an information Hamiltonian ( = negative log probability) 
-    or as a Gibbs free energy ( = averaged Hamiltonian), aka Kullbach-Leibler 
-    divergence. 
-    
-    An EnergyOperator can also provide its gradient as an EndomorphicOperator 
-    that converts a field into a field, the gradient of the Hamiltonian at the 
-    field location. 
+    or as a Gibbs free energy ( = averaged Hamiltonian), 
+    aka Kullbach-Leibler divergence. 
     """
     _target = DomainTuple.scalar_domain()
 
 
 class SquaredNormOperator(EnergyOperator):
-    """ NIFTy class for a squared norm energy.
+    """ Class for squared field norm energy.
+    
+    Usage
+    -----
+    E = SquaredNormOperator() represents a field energy E that is the L2 norm 
+    of a field f: 
 
-    The  NIFTy SquaredNormOperator class derives from the EnergyOperator class.
-
-    A SquaredNormOperator represents a field energy E that is the L2 norm of a 
-    field f: E = f^dagger f
+    E(f) = f^dagger f
     """   
     def __init__(self, domain):
         self._domain = domain
@@ -66,12 +66,19 @@ class SquaredNormOperator(EnergyOperator):
 
 
 class QuadraticFormOperator(EnergyOperator):
-    """ NIFTy class for quadratic field energies.
+    """ Class for quadratic field energies.
 
-    The  NIFTy QuadraticFormOperator derives from the EnergyOperator class.
+    Parameters
+    ----------
+    op : EndomorphicOperator
+         kernel of quadratic form
 
-    It represents a field energy E that is a quadratic form of a field f with 
-    kernel op: E = f^dagger op f /2 
+    Usage
+    -----
+    E = QuadraticFormOperator(op) represents a field energy that is a 
+    quadratic form in a field f with kernel op: 
+
+    E(f) = 0.5 f^dagger op f  
     """      
     def __init__(self, op):
         from .endomorphic_operator import EndomorphicOperator
@@ -91,6 +98,28 @@ class QuadraticFormOperator(EnergyOperator):
 
 
 class GaussianEnergy(EnergyOperator):
+    """ Class for energies of fields with Gaussian probability distribution.
+
+    Attributes
+    ----------
+    mean = mean (field) of the Gaussian, 
+           default = 0
+    covariance = field covariance of the Gaussian, 
+           default = identity operator
+    domain = domain of field, 
+           default = domain of mean or covariance if specified
+
+    One of the attributes has to be specified at instanciation of a GaussianEnergy
+    to inform about the domain, otherwise an exception is rasied. 
+ 
+    Usage
+    -----
+    E = GaussianEnergy(mean = m, covariance = D) represents (up to constants)
+
+    E(f) = - log G(f-m, D) = 0.5 (f-m)^dagger D^-1 (f-m)
+
+    an information energy for a Gaussian distribution with mean m and covariance D.
+    """  
     def __init__(self, mean=None, covariance=None, domain=None):
         self._domain = None
         if mean is not None:
@@ -127,6 +156,23 @@ class GaussianEnergy(EnergyOperator):
 
 
 class PoissonianEnergy(EnergyOperator):
+    """Class for likelihood-energies of expected count field constrained by 
+    Poissonian count data.
+
+    Parameters
+    ----------
+    d : Field 
+        data field with counts
+
+    Usage
+    -----
+    E = GaussianEnergy(d) represents (up to an f-independent term log(d!)) 
+
+    E(f) = -log Poisson(d|f) = sum(f) - d^dagger log(f),
+
+    where f is a field in data space (d.domain) with the expectation values for 
+    the counts.  
+    """ 
     def __init__(self, d):
         self._d = d
         self._domain = DomainTuple.make(d.domain)
@@ -143,7 +189,11 @@ class PoissonianEnergy(EnergyOperator):
 
 
 class InverseGammaLikelihood(EnergyOperator):
-    def __init__(self, d):
+    """Special class for inverse Gamma distributed covariances. 
+
+    RL FIXME: To be documented.
+    """
+     def __init__(self, d):
         self._d = d
         self._domain = DomainTuple.make(d.domain)
 
@@ -159,6 +209,23 @@ class InverseGammaLikelihood(EnergyOperator):
 
 
 class BernoulliEnergy(EnergyOperator):
+    """Class for likelihood-energies of expected event frequency constrained by 
+    event data.
+
+    Parameters
+    ----------
+    d : Field 
+        data field with events (=1) or non-events (=0)
+
+    Usage
+    -----
+    E = BernoulliEnergy(d) represents
+
+    E(f) = -log Bernoulli(d|f) = -d^dagger log(f) - (1-d)^dagger log(1-f),
+
+    where f is a field in data space (d.domain) with the expected frequencies of 
+    events. 
+    """     
     def __init__(self, d):
         self._d = d
         self._domain = DomainTuple.make(d.domain)
@@ -176,6 +243,41 @@ class BernoulliEnergy(EnergyOperator):
 
 
 class Hamiltonian(EnergyOperator):
+    """Class for information Hamiltonians.
+
+    Parameters
+    ----------
+    lh : EnergyOperator
+         a likelihood energy
+    ic_samp : IterationController 
+              is passed to SamplingEnabler to draw Gaussian distributed samples
+              with covariance = metric of Hamiltonian 
+                   (= Hessian without terms that generate negative eigenvalues)
+              default = None
+
+    Usage
+    -----
+    H = Hamiltonian(E_lh) represents
+
+    H(f) = 0.5 f^dagger f + E_lh(f)
+
+    an information Hamiltonian for a field f with a white Gaussian prior 
+    (unit covariance) and the likelihood energy E_lh.
+
+    Tip
+    ---
+    Other field priors can be represented via transformations of a white 
+    Gaussian field into a field with the desired prior probability structure.
+
+    By implementing prior information this way, the field prior is represented 
+    by a generative model, from which NIFTy can draw samples and infer a field
+    using the Maximum a Posteriori (MAP) or the Variational Bayes (VB) method.
+
+    For more details see: 
+    "Encoding prior knowledge in the structure of the likelihood"
+    Jakob Knollmüller, Torsten A. Ensslin, submitted, arXiv:1812.04403
+    https://arxiv.org/abs/1812.04403
+    """ 
     def __init__(self, lh, ic_samp=None):
         self._lh = lh
         self._prior = GaussianEnergy(domain=lh.domain)
@@ -200,12 +302,53 @@ class Hamiltonian(EnergyOperator):
 
 
 class SampledKullbachLeiblerDivergence(EnergyOperator):
+    """Class for Kullbach Leibler (KL) Divergence or Gibbs free energies
+    
+    Precisely a sample averaged Hamiltonian (or other energy) that represents 
+    approximatively the relevant part of a KL to be used in Variational Bayes
+    inference if the samples are drawn from the approximating Gaussian.
+
+    Let Q(f) = G(f-m,D) Gaussian used to approximate
+    P(f|d), the correct posterior with information Hamiltonian
+    H(d,f) = - log P(d,f) = - log P(f|d) + const. 
+
+    The KL divergence between those should then be optimized for m. It is
+
+    KL(Q,P) = int Df Q(f) log Q(f)/P(f)
+            = < log Q(f) >_Q(f) - < log P(f) >_Q(f)
+            = const + < H(f) >_G(f-m,D)
+    
+    in essence the information Hamiltonian averaged over a Gaussian distribution 
+    centered on the mean m.
+
+    SampledKullbachLeiblerDivergence(H) approximates < H(f) >_G(f-m,D) if the 
+    residuals f-m are drawn from covariance D.
+    
+    Parameters
+    ----------
+    h: Hamiltonian
+       the Hamiltonian/energy to be averaged
+    res_samples : iterable Field
+                  set of residual sample points to be added to mean field
+                  for approximate estimation of the KL
+
+    Usage:
+    ------
+    KL = SampledKullbachLeiblerDivergence(H, samples) represents
+    
+    KL(m) = sum_i H(m+v_i) / N,
+
+    where v_i are the residual samples, N is their number, and m is the mean field
+    around which the samples are drawn.
+
+    Tip:
+    ----
+    Having symmetrized residual samples, with both, v_i and -v_i being present, 
+    ensures that the distribution mean is exactly represented. This reduces sampling 
+    noise and helps the numerics of the KL minimization process in the variational 
+    Bayes inference. 
+    """    
     def __init__(self, h, res_samples):
-        """
-        # MR FIXME: does h have to be a Hamiltonian? Couldn't it be any energy?
-        h: Hamiltonian
-        N: Number of samples to be used
-        """
         self._h = h
         self._domain = h.domain
         self._res_samples = tuple(res_samples)
