@@ -272,11 +272,8 @@ def _plot2D(f, ax, **kwargs):
             ilon = np.where(ilon == dom.nlon, 0, ilon)
             res[mask] = f.to_global_data()[ilat*dom.nlon + ilon]
         plt.axis('off')
-        if have_rgb:
-            plt.imshow(res, origin="lower")
-        else:
-            plt.imshow(res, vmin=kwargs.get("zmin"), vmax=kwargs.get("zmax"),
-                       cmap=cmap, origin="lower")
+        plt.imshow(res, vmin=kwargs.get("zmin"), vmax=kwargs.get("zmax"),
+                   cmap=cmap, origin="lower")
             plt.colorbar(orientation="horizontal")
         return
     raise ValueError("Field type not(yet) supported")
