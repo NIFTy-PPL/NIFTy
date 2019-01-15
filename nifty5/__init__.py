@@ -19,7 +19,6 @@ from .field import Field
 from .multi_field import MultiField
 
 from .operators.operator import Operator
-from .operators.central_zero_padder import CentralZeroPadder
 from .operators.diagonal_operator import DiagonalOperator
 from .operators.distributors import DOFDistributor, PowerDistributor
 from .operators.domain_tuple_field_inserter import DomainTupleFieldInserter
