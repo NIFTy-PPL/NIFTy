@@ -15,8 +15,6 @@
 #
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
 
-from random import randint
-
 import numpy as np
 import pytest
 from numpy.testing import assert_
@@ -31,11 +29,13 @@ import nifty5 as ift
     ift.HPSpace(4),
     ift.GLSpace(4)
 ])
-def test_value_inserter(sp):
-    ind = tuple([randint(0, ss - 1) for ss in sp.shape])
+@pytest.mark.parametrize('seed', [13, 2])
+def test_value_inserter(sp, seed):
+    np.random.seed(seed)
+    ind = tuple([np.random.randint(0, ss - 1) for ss in sp.shape])
     op = ift.ValueInserter(sp, ind)
     f = ift.from_random('normal', ift.UnstructuredDomain((1,)))
-    inp = f.to_global_data()
+    inp = f.to_global_data()[0]
     ret = op(f).to_global_data()
     assert_(ret[ind] == inp)
     assert_(np.sum(ret) == inp)
