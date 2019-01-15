@@ -49,7 +49,7 @@ from .operators.simple_linear_operators import (
     FieldAdapter, ducktape, GeometryRemover, NullOperator)
 from .operators.energy_operators import (
     EnergyOperator, GaussianEnergy, PoissonianEnergy, InverseGammaLikelihood,
-    BernoulliEnergy, Hamiltonian, SampledKullbachLeiblerDivergence)
+    BernoulliEnergy, StandardHamiltonian, SampledKullbachLeiblerDivergence)
 
 from .probing import probe_with_posterior_samples, probe_diagonal, \
     StatCalculator
@@ -68,7 +68,7 @@ from .minimization.scipy_minimizer import (ScipyMinimizer, L_BFGS_B, ScipyCG)
 from .minimization.energy import Energy
 from .minimization.quadratic_energy import QuadraticEnergy
 from .minimization.energy_adapter import EnergyAdapter
-from .minimization.kl_energy import KL_Energy
+from .minimization.metric_gaussian_kl import MetricGaussianKL
 
 from .sugar import *
 from .plot import Plot

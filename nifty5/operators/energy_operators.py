@@ -147,7 +147,7 @@ class BernoulliEnergy(EnergyOperator):
         return v.add_metric(met)
 
 
-class Hamiltonian(EnergyOperator):
+class StandardHamiltonian(EnergyOperator):
     def __init__(self, lh, ic_samp=None):
         self._lh = lh
         self._prior = GaussianEnergy(domain=lh.domain)

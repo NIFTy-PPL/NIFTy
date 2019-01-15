@@ -69,7 +69,7 @@ def test_hamiltonian_and_KL(field):
     field = field.exp()
     space = field.domain
     lh = ift.GaussianEnergy(domain=space)
-    hamiltonian = ift.Hamiltonian(lh)
+    hamiltonian = ift.StandardHamiltonian(lh)
     ift.extra.check_value_gradient_consistency(hamiltonian, field)
     S = ift.ScalingOperator(1., space)
     samps = [S.draw_sample() for i in range(3)]
