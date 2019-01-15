@@ -27,7 +27,7 @@ from .simple_linear_operators import VdotOperator
 
 
 class EnergyOperator(Operator):
-    """ An abstract class from which
+    """Abstract class from which
     other specific EnergyOperator subclasses are derived.
 
     An EnergyOperator has a scalar domain as target domain.
@@ -50,7 +50,7 @@ class SquaredNormOperator(EnergyOperator):
     E = SquaredNormOperator() represents a field energy E that is the L2 norm
     of a field f:
 
-    E(f) = f^dagger f
+    :math:`E(f) = f^\dagger f`
     """
     def __init__(self, domain):
         self._domain = domain
@@ -65,7 +65,7 @@ class SquaredNormOperator(EnergyOperator):
 
 
 class QuadraticFormOperator(EnergyOperator):
-    """ Class for quadratic field energies.
+    """Class for quadratic field energies.
 
     Parameters
     ----------
@@ -97,7 +97,7 @@ class QuadraticFormOperator(EnergyOperator):
 
 
 class GaussianEnergy(EnergyOperator):
-    """ Class for energies of fields with Gaussian probability distribution.
+    """Class for energies of fields with Gaussian probability distribution.
 
     Attributes
     ----------
@@ -116,6 +116,7 @@ class GaussianEnergy(EnergyOperator):
         an information energy for a Gaussian distribution with mean m and covariance D.
 
     """
+
     def __init__(self, mean=None, covariance=None, domain=None):
         self._domain = None
         if mean is not None:
@@ -164,7 +165,7 @@ class PoissonianEnergy(EnergyOperator):
     -----
     E = GaussianEnergy(d) represents (up to an f-independent term log(d!))
 
-    E(f) = -\log Poisson(d|f) = sum(f) - d^\dagger \log(f),
+    :math:`E(f) = -\log Poisson(d|f) = \sum f - d^\dagger \log(f)`,
 
     where f is a Field in data space with the expectation values for
     the counts.
@@ -244,12 +245,11 @@ class Hamiltonian(EnergyOperator):
     Parameters
     ----------
     lh : EnergyOperator
-         a likelihood energy
+        a likelihood energy
     ic_samp : IterationController
-              is passed to SamplingEnabler to draw Gaussian distributed samples
-              with covariance = metric of Hamiltonian
-                   (= Hessian without terms that generate negative eigenvalues)
-              default = None
+        is passed to SamplingEnabler to draw Gaussian distributed samples
+        with covariance = metric of Hamiltonian
+        (= Hessian without terms that generate negative eigenvalues)
 
     Notes
     -----
@@ -308,9 +308,8 @@ class SampledKullbachLeiblerDivergence(EnergyOperator):
 
     The KL divergence between those should then be optimized for m. It is
 
-    KL(Q,P) = int Df Q(f) log Q(f)/P(f)
-            = < log Q(f) >_Q(f) - < log P(f) >_Q(f)
-            = const + < H(f) >_G(f-m,D)
+    :math:`KL(Q,P) = \int Df Q(f) \log Q(f)/P(f)\\
+    = \left< \log Q(f) \\right>_Q(f) - < \log P(f) >_Q(f) = const + < H(f) >_G(f-m,D)`
 
     in essence the information Hamiltonian averaged over a Gaussian distribution
     centered on the mean m.
@@ -322,15 +321,15 @@ class SampledKullbachLeiblerDivergence(EnergyOperator):
     ----------
     h: Hamiltonian
        the Hamiltonian/energy to be averaged
-    res_samples : iterable Field
-                  set of residual sample points to be added to mean field
-                  for approximate estimation of the KL
+    res_samples : iterable of Fields
+       set of residual sample points to be added to mean field
+       for approximate estimation of the KL
 
     Notes
     -----
     KL = SampledKullbachLeiblerDivergence(H, samples) represents
 
-    KL(m) = sum_i H(m+v_i) / N,
+    :math:`KL(m) = \sum_i H(m+v_i) / N`,
 
     where v_i are the residual samples, N is their number, and m is the mean field
     around which the samples are drawn.
