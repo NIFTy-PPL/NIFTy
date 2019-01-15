@@ -120,6 +120,10 @@ class ReverseOuterProduct(ift.LinearOperator):
                  x.to_global_data(), self._field.to_global_data(),  axes))
 
 
+def _default_powerspace(space):
+    return ift.PowerSpace(space.get_default_codomain())
+
+
 if __name__ == '__main__':
     # FIXME description of the tutorial
     np.random.seed(41)
@@ -128,15 +132,16 @@ if __name__ == '__main__':
     position_space = ift.HPSpace(64)
     energy_space = ift.RGSpace([4])
 
-
     total_space = ift.DomainTuple.make([position_space,energy_space])
 
-    # Setting up an amplitude models
-    A_p = ift.SLAmplitude(position_space, 64, 3, 0.4, -3., 1, 3, 1.,keys=['tau_p','phi_p'])
-    A_e = ift.SLAmplitude(energy_space, 8, 3, 0.4, -2., 1, 1, 0.,keys=['tau_e','phi_e'])
-    A_eu = ift.SLAmplitude(energy_space, 8, 0.3, 0.4, -4., 1, -5, 1.,keys=['tau_eu','phi_eu'],zero_mode=False)
+    # Set up amplitude models
+    A_p = ift.SLAmplitude(**{'target': _default_powerspace( position_space), 'n_pix': 64, 'a': 3, 'k0': 0.4, 'sm': -3, 'sv': 1, 'im': 3, 'iv': 1, 'keys': ['tau_p', 'phi_p']})
+    # FIXME Have corrected iv=0 to iv=1 here
+    A_e = ift.SLAmplitude(**{'target': _default_powerspace(energy_space), 'n_pix': 8, 'a': 3, 'k0': 0.4, 'sm': -2, 'sv': 1, 'im': 1, 'iv': 1, 'keys': ['tau_e', 'phi_e']})
+    # FIXME zero_mode False is not supported any more
+    A_eu = ift.SLAmplitude(**{'target': _default_powerspace( energy_space), 'n_pix': 8, 'a': 0.3, 'k0': 0.4, 'sm': -4, 'sv': 1, 'im': -5, 'iv': 1, 'keys': ['tau_eu', 'phi_eu']})
 
-    correlated_field = ift.MfCorrelatedField(position_space,energy_space,A_p,A_e,)
+    correlated_field = ift.MfCorrelatedField(total_space,[A_p,A_e])
     # Building the model for a correlated signal
     hp_space = position_space.get_default_codomain()
     he_space = energy_space.get_default_codomain()
@@ -226,4 +231,3 @@ if __name__ == '__main__':
         plo.add(signal(position + KL.samples[0]), title='sample')
 
         plo.output(name='signal.pdf', nx=2, ny=4, xsize=15, ysize=20)
-
