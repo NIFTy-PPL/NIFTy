@@ -270,6 +270,11 @@ def testOuter(fdomain, domain):
 @pmp('seed', [12, 3])
 def testValueInserter(sp, seed):
     np.random.seed(seed)
-    ind = tuple([np.random.randint(0, ss-1) for ss in sp.shape])
+    ind = []
+    for ss in sp.shape:
+        if ss == 1:
+            ind.append(0)
+        else:
+            ind.append(np.random.randint(0, ss-1))
     op = ift.ValueInserter(sp, ind)
     ift.extra.consistency_check(op)
