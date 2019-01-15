@@ -112,7 +112,7 @@ def CepstrumOperator(target, a, k0):
     return sym @ qht @ makeOp(cepstrum.sqrt())
 
 
-def SLAmplitude(target, n_pix, a, k0, sm, sv, im, iv, keys=['tau', 'phi']):
+def SLAmplitude(*, target, n_pix, a, k0, sm, sv, im, iv, keys=['tau', 'phi']):
     '''Operator for parametrizing smooth amplitudes (square roots of power
     spectra).
 
