@@ -15,6 +15,8 @@
 #
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
 
+from random import randint
+
 import numpy as np
 import pytest
 
@@ -263,4 +265,11 @@ def testRegridding(args):
 def testOuter(fdomain, domain):
     f = ift.from_random('normal', fdomain)
     op = ift.OuterProduct(f, domain)
+    ift.extra.consistency_check(op)
+
+
+@pmp('sp', _h_spaces + _p_spaces + _pow_spaces)
+def testValueInserter(sp):
+    ind = tuple([randint(0, ss-1) for ss in sp.shape])
+    op = ift.ValueInserter(sp, ind)
     ift.extra.consistency_check(op)
