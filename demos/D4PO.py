@@ -88,6 +88,8 @@ def get_PsfOp():
 
 class ReverseOuterProduct(ift.LinearOperator):
     """Performs the pointwise outer product of two fields.
+    FIXME Update this docstring. What does this class do as opposed to
+    ift.OuterProduct? Can we merge them?
 
     Parameters
     ---------
