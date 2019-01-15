@@ -39,24 +39,17 @@ class MaskOperator(LinearOperator):
     def __init__(self, mask):
         if not isinstance(mask, Field):
             raise TypeError
-
         self._domain = DomainTuple.make(mask.domain)
         self._mask = np.logical_not(mask.to_global_data())
         self._target = DomainTuple.make(UnstructuredDomain(self._mask.sum()))
         self._capability = self.TIMES | self.ADJOINT_TIMES
 
-    def data_indices(self):
-        if len(self.domain.shape) == 1:
-            return np.arange(self.domain.shape[0])[self._mask]
-        if len(self.domain.shape) == 2:
-            return np.indices(self.domain.shape).transpose((1, 2, 0))[self._mask]
-
     def apply(self, x, mode):
         self._check_input(x, mode)
-        if mode == self.TIMES:
-            res = x.to_global_data()[self._mask]
-            return Field.from_global_data(self.target, res)
         x = x.to_global_data()
+        if mode == self.TIMES:
+            res = x[self._mask]
+            return Field.from_global_data(self.target, res)
         res = np.empty(self.domain.shape, x.dtype)
         res[self._mask] = x
         res[~self._mask] = 0
