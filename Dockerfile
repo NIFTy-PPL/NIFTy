@@ -5,7 +5,7 @@ RUN apt-get update && apt-get install -y \
     git \
     # Packages needed for NIFTy
     libfftw3-dev \
-    python3 python3-pip python3-dev python3-scipy cython3 \
+    python3 python3-pip python3-dev python3-scipy \
     # Documentation build dependencies
     python3-sphinx python3-sphinx-rtd-theme \
     # Testing dependencies
