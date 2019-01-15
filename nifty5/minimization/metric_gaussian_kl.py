@@ -21,17 +21,23 @@ from .. import utilities
 
 
 class MetricGaussianKL(Energy):
-    """Provides the sampled Kullback-Leibler divergence between a distribution and a metric Gaussian.
+    """Provides the sampled Kullback-Leibler divergence between a distribution and a Metric Gaussian.
 
-    The Energy object is an implementation of a scalar function including its
-    gradient and metric at some position.
+        A Metric Gaussian is used to approximate some other distribution.
+        It is a Gaussian distribution that uses the Fisher Information Metric
+        of the other distribution at the location of its mean to approximate the variance.
+        In order to infer the mean, the a stochastic estimate of the Kullback-Leibler divergence
+        is minimized. This estimate is obtained by drawing samples from the Metric Gaussian at the current mean.
+        During minimization these samples are kept constant, updating only the mean. Due to the typically nonlinear
+        structure of the true distribution these samples have to be updated by re-initializing this class at some point.
+        Here standard parametrization of the true distribution is assumed.
 
     Parameters
     ----------
     mean : Field
         The current mean of the Gaussian.
-    hamiltonian : Hamiltonian
-        The Hamiltonian of the approximated probability distribution.
+    hamiltonian : StandardHamiltonian
+        The StandardHamiltonian of the approximated probability distribution.
     n_samples : integer
         The number of samples used to stochastically estimate the KL.
     constants : list
@@ -47,15 +53,7 @@ class MetricGaussianKL(Energy):
 
     Notes
     -----
-    An instance of the Energy class is defined at a certain location. If one
-    is interested in the value, gradient or metric of the abstract energy
-    functional one has to 'jump' to the new position using the `at` method.
-    This method returns a new energy instance residing at the new position. By
-    this approach, intermediate results from computing e.g. the gradient can
-    safely be reused for e.g. the value or the metric.
-
-    Memorizing the evaluations of some quantities minimizes the computational
-    effort for multiple calls.
+    For further details see: Metric Gaussian Variational Inference (in preparation)
     """
 
     def __init__(self, mean, hamiltonian, n_sampels, constants=[],
