@@ -47,9 +47,9 @@ def _make_coords(domain, absolute=False):
     return k_array
 
 
-class LightConeDerivative(LinearOperator):
+class _LightConeDerivative(LinearOperator):
     def __init__(self, domain, target, derivatives):
-        super(LightConeDerivative, self).__init__()
+        super(_LightConeDerivative, self).__init__()
         self._domain = domain
         self._target = target
         self._derivatives = derivatives
@@ -67,7 +67,7 @@ class LightConeDerivative(LinearOperator):
         return Field.from_global_data(self._tgt(mode), res)
 
 
-def cone_arrays(c, domain, sigx, want_gradient):
+def _cone_arrays(c, domain, sigx, want_gradient):
     x = _make_coords(domain)
     a = np.zeros(domain.shape, dtype=np.complex)
     if want_gradient:
@@ -96,6 +96,9 @@ def cone_arrays(c, domain, sigx, want_gradient):
 
 
 class LightConeOperator(Operator):
+    '''
+    FIXME
+    '''
     def __init__(self, domain, target, sigx):
         self._domain = domain
         self._target = target
@@ -104,9 +107,9 @@ class LightConeOperator(Operator):
     def apply(self, x):
         islin = isinstance(x, Linearization)
         val = x.val.to_global_data() if islin else x.to_global_data()
-        a, derivs = cone_arrays(val, self.target, self._sigx, islin)
+        a, derivs = _cone_arrays(val, self.target, self._sigx, islin)
         res = Field.from_global_data(self.target, a)
         if not islin:
             return res
-        jac = LightConeDerivative(x.jac.target, self.target, derivs)(x.jac)
+        jac = _LightConeDerivative(x.jac.target, self.target, derivs)(x.jac)
         return Linearization(res, jac, want_metric=x.want_metric)
