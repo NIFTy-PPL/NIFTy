@@ -461,7 +461,6 @@ def _plot1D(f, ax, **kwargs):
     ax.set_ylabel(kwargs.pop("ylabel", ""))
 
     if isinstance(dom, RGSpace):
-        plt.xscale(kwargs.pop("xscale", "linear"))
         plt.yscale(kwargs.pop("yscale", "linear"))
         npoints = dom.shape[0]
         dist = dom.distances[0]
@@ -475,11 +474,9 @@ def _plot1D(f, ax, **kwargs):
             plt.legend()
         return
     elif isinstance(dom, LogRGSpace):
-        #plt.xscale(kwargs.pop("xscale", "log"))
-        #plt.yscale(kwargs.pop("yscale", "log"))
+        plt.yscale(kwargs.pop("yscale", "log"))
         npoints = dom.shape[0]
         xcoord = dom.t_0 + np.arange(npoints-1)*dom.bindistances[0]
-        print(xcoord)
         for i, fld in enumerate(f):
             ycoord = fld.to_global_data()[1:]
             plt.plot(xcoord, ycoord, label=label[i],
