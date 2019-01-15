@@ -274,7 +274,7 @@ def _plot2D(f, ax, **kwargs):
         plt.axis('off')
         plt.imshow(res, vmin=kwargs.get("zmin"), vmax=kwargs.get("zmax"),
                    cmap=cmap, origin="lower")
-            plt.colorbar(orientation="horizontal")
+        plt.colorbar(orientation="horizontal")
         return
     raise ValueError("Field type not(yet) supported")
 
