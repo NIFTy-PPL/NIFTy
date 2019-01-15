@@ -19,6 +19,12 @@ from .operator import Operator
 
 
 class OffsetOperator(Operator):
+    '''Shifts the input by a fixed field.
+
+    Parameters
+    ----------
+    field : Field
+        The field by which the input is shifted.'''
     def __init__(self, field):
         self._field = field
         self._domain = self._target = field.domain

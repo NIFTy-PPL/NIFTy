@@ -21,7 +21,7 @@ from .structured_domain import StructuredDomain
 
 
 class HPSpace(StructuredDomain):
-    """NIFTy subclass for HEALPix discretizations of the two-sphere.
+    """Represents 2-sphere with HEALPix discretization.
 
     Its harmonic partner domain is the
     :class:`~nifty5.domains.lm_space.LMSpace`.

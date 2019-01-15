@@ -25,30 +25,30 @@ from .linear_operator import LinearOperator
 
 
 class SlopeOperator(LinearOperator):
-    """Creates a slope on target.
+    """Evaluates a line on a LogRGSpace given slope and y-intercept
 
-    This operator creates a field on a LogRGSpace, which is created according
-    to a slope of given entries, (mean, y-intercept). The slope mean is the
-    power law of the field in normal-space.
+    Slope and y-intercept of this line are the two parameters which are
+    defined on an UnstructeredDomain (in this order) which is the domain of
+    the operator. Being a LogRGSpace each pixel has a well-defined coordinate
+    value.
+
+    y-intercept is defined to be the value at t_0 of the target.
 
     Parameters
     ----------
-    domain : domain or DomainTuple, shape=(2,)
-        It has to be an UnstructuredDomain.
-        The domain of the slope mean and the y-intercept mean.
-    target : domain or DomainTuple
-        The output domain has to a LogRGSpace
-    sigmas : np.array, shape=(2,)
-        The slope variance and the y-intercept variance.
+    target : LogRGSpace
+        The target of the operator which needs to be one-dimensional.
     """
 
     def __init__(self, target):
-        if not isinstance(target, LogRGSpace):
-            raise TypeError
-        if len(target.shape) != 1:
-            raise ValueError("Slope Operator only works for ndim == 1")
-        self._domain = DomainTuple.make(UnstructuredDomain((2,)))
         self._target = DomainTuple.make(target)
+        if len(self._target) > 1:
+            raise TypeError
+        if len(self._target[0].shape) > 1:
+            raise TypeError
+        if not isinstance(self._target[0], LogRGSpace):
+            raise TypeError
+        self._domain = DomainTuple.make(UnstructuredDomain((2,)))
         self._capability = self.TIMES | self.ADJOINT_TIMES
         pos = self.target[0].get_k_array() - self.target[0].t_0[0]
         self._pos = pos[0, 1:]
