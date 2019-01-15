@@ -21,6 +21,7 @@ def _logger_init():
     from . import dobj
     res = logging.getLogger('NIFTy5')
     res.setLevel(logging.DEBUG)
+    res.propagate = False
     if dobj.rank == 0:
         ch = logging.StreamHandler()
         ch.setLevel(logging.DEBUG)
