@@ -18,37 +18,35 @@
 
 import nifty5 as ift
 import numpy as np
-import scipy as sp
-from matplotlib import pyplot as plt
+
 
 def get_RG_instrument():
-    pointings = 1000*np.random.binomial(1,0.001,position_space.shape)
+    pointings = 1000*np.random.binomial(1, 0.001, position_space.shape)
     psf = np.zeros_like(pointings)
-    psf[0,0] = 1.
+    psf[0, 0] = 1.
 
-    sigmas_sensitivity = np.arange(0.1,0.5,0.4/energy_space.shape[0])
-    sigmas_psf = np.arange(0.005,0.0125,0.0075/energy_space.shape[0])
+    sigmas_sensitivity = np.arange(0.1, 0.5, 0.4/energy_space.shape[0])
+    sigmas_psf = np.arange(0.005, 0.0125, 0.0075/energy_space.shape[0])
     total_psf = np.empty(htp.domain.shape)
     total_psf_sens = np.empty(htp.domain.shape)
 
     sensitivity = np.empty(total_space.shape)
-    sensitivity.T[:]=pointings
+    sensitivity.T[:] = pointings
     kernel = hp_space.get_k_length_array()
 
     for i in range(energy_space.shape[0]):
         smoother = hp_space.get_fft_smoothing_kernel_function(sigmas_psf[i])
-        smoother_sens = hp_space.get_fft_smoothing_kernel_function(sigmas_sensitivity[i])
+        smoother_sens = hp_space.get_fft_smoothing_kernel_function(
+            sigmas_sensitivity[i])
 
-        total_psf.T[i] = np.round(smoother(kernel).val,20)
-        total_psf_sens.T[i] = np.round(smoother_sens(kernel).val,20)
-
+        total_psf.T[i] = np.round(smoother(kernel).val, 20)
+        total_psf_sens.T[i] = np.round(smoother_sens(kernel).val, 20)
 
     sensitivity = ift.Field.from_global_data(total_space, sensitivity)
     total_psf = ift.Field.from_global_data(htp.domain, total_psf)
     total_psf_sens = ift.Field.from_global_data(htp.domain, total_psf_sens)
 
-
-    HT = ift.HartleyOperator(htp.domain,position_space,space=0)
+    HT = ift.HartleyOperator(htp.domain, position_space, space=0)
     K = ift.DiagonalOperator(total_psf)
     KK = ift.DiagonalOperator(total_psf_sens)
     sensitivity = (HT @ KK @ HT.inverse)(sensitivity)
@@ -62,12 +60,12 @@ def get_PsfOp():
     # kernel = get_kernel()
     h_space_spatial = position_space.get_default_codomain()
 
-    sigmas_psf = np.arange(0.02,0.04,0.02/energy_space.shape[0])
+    sigmas_psf = np.arange(0.02, 0.04, 0.02/energy_space.shape[0])
     total_psf = np.empty(htp.domain.shape)
     kernel = hp_space.get_k_length_array()
     for i in range(energy_space.shape[0]):
         smoother = hp_space.get_fft_smoothing_kernel_function(sigmas_psf[i])
-        total_psf.T[i] = np.round(smoother(kernel).val,20)
+        total_psf.T[i] = np.round(smoother(kernel).val, 20)
     total_psf = ift.Field.from_global_data(htp.domain, total_psf)
     K = ift.DiagonalOperator(total_psf)
 
@@ -75,18 +73,17 @@ def get_PsfOp():
     # k_l_a = h_space_spatial.get_k_length_array()
     # kernel = gau(k_l_a).val
     scaling = 4*np.pi/12/position_space.nside**2
-    he_space = ift.DomainTuple.make((h_space_spatial,energy_space))
-    Scaling = ift.ScalingOperator(scaling,he_space)
+    he_space = ift.DomainTuple.make((h_space_spatial, energy_space))
+    Scaling = ift.ScalingOperator(scaling, he_space)
 
-    HT = ift.HarmonicTransformOperator(he_space, target=position_space, space=0)
+    HT = ift.HarmonicTransformOperator(
+        he_space, target=position_space, space=0)
     PI = ift.ScalingOperator(4*np.pi, HT.target)
     # multi_kernel = np.empty(he_space.shape)
     # multi_kernel.T[:] = kernel
     # multi_kernel = ift.Field(he_space,val=multi_kernel)
     # Kernel = ift.DiagonalOperator(multi_kernel)
     return PI @ HT @ K @ Scaling @ HT.adjoint
-
-
 
 
 class ReverseOuterProduct(ift.LinearOperator):
@@ -104,7 +101,7 @@ class ReverseOuterProduct(ift.LinearOperator):
         self._domain = domain
         self._field = field
         self._target = ift.DomainTuple.make(
-            tuple(sub_d for sub_d in  domain._dom + field.domain._dom))
+            tuple(sub_d for sub_d in domain._dom + field.domain._dom))
 
         self._capability = self.TIMES | self.ADJOINT_TIMES
 
@@ -112,12 +109,14 @@ class ReverseOuterProduct(ift.LinearOperator):
         self._check_input(x, mode)
         if mode == self.TIMES:
             return ift.Field.from_global_data(
-                self._target, np.multiply.outer(
-                     x.to_global_data(), self._field.to_global_data()))
+                self._target,
+                np.multiply.outer(x.to_global_data(),
+                                  self._field.to_global_data()))
         axes = len(self._field.shape)
         return ift.Field.from_global_data(
-            self._domain, np.tensordot(
-                 x.to_global_data(), self._field.to_global_data(),  axes))
+            self._domain,
+            np.tensordot(x.to_global_data(), self._field.to_global_data(),
+                         axes))
 
 
 def _default_powerspace(space):
@@ -132,22 +131,50 @@ if __name__ == '__main__':
     position_space = ift.HPSpace(64)
     energy_space = ift.RGSpace([4])
 
-    total_space = ift.DomainTuple.make([position_space,energy_space])
+    total_space = ift.DomainTuple.make([position_space, energy_space])
 
     # Set up amplitude models
-    A_p = ift.SLAmplitude(**{'target': _default_powerspace( position_space), 'n_pix': 64, 'a': 3, 'k0': 0.4, 'sm': -3, 'sv': 1, 'im': 3, 'iv': 1, 'keys': ['tau_p', 'phi_p']})
+    A_p = ift.SLAmplitude(
+        target=_default_powerspace(position_space),
+        n_pix=64,
+        a=3,
+        k0=0.4,
+        sm=-3,
+        sv=1,
+        im=3,
+        iv=1,
+        keys=['tau_p', 'phi_p'])
     # FIXME Have corrected iv=0 to iv=1 here
-    A_e = ift.SLAmplitude(**{'target': _default_powerspace(energy_space), 'n_pix': 8, 'a': 3, 'k0': 0.4, 'sm': -2, 'sv': 1, 'im': 1, 'iv': 1, 'keys': ['tau_e', 'phi_e']})
+    A_e = ift.SLAmplitude(
+        target=_default_powerspace(energy_space),
+        n_pix=8,
+        a=3,
+        k0=0.4,
+        sm=-2,
+        sv=1,
+        im=1,
+        iv=1,
+        keys=['tau_e', 'phi_e'])
     # FIXME zero_mode False is not supported any more
-    A_eu = ift.SLAmplitude(**{'target': _default_powerspace( energy_space), 'n_pix': 8, 'a': 0.3, 'k0': 0.4, 'sm': -4, 'sv': 1, 'im': -5, 'iv': 1, 'keys': ['tau_eu', 'phi_eu']})
+    A_eu = ift.SLAmplitude(
+        target=_default_powerspace(energy_space),
+        n_pix=8,
+        a=0.3,
+        k0=0.4,
+        sm=-4,
+        sv=1,
+        im=-5,
+        iv=1,
+        keys=['tau_eu', 'phi_eu'])
 
-    correlated_field = ift.MfCorrelatedField(total_space,[A_p,A_e])
-    # Building the model for a correlated signal
+    correlated_field = ift.MfCorrelatedField(total_space, [A_p, A_e])
+    # Build the model for a correlated signal
     hp_space = position_space.get_default_codomain()
     he_space = energy_space.get_default_codomain()
-    hpe_space = ift.DomainTuple.make([hp_space,he_space])
+    hpe_space = ift.DomainTuple.make([hp_space, he_space])
     hte = ift.HarmonicTransformOperator(hpe_space, space=1)
-    htp = ift.HarmonicTransformOperator(hte.target,target = position_space,space=0)
+    htp = ift.HarmonicTransformOperator(
+        hte.target, target=position_space, space=0)
     ht = htp @ hte
 
     # EXPERIMENTAL
@@ -155,52 +182,52 @@ if __name__ == '__main__':
 
     Peu = ift.PowerDistributor(he_space, peu_space)
 
-    one_p = ift.full(hp_space,val=1.)
-    one_u = ift.full(energy_space,val=1.)
-    OP_e = ift.OuterProduct(one_p,ift.DomainTuple.make(he_space))
-    OP_u = ReverseOuterProduct(one_u,ift.DomainTuple.make(position_space))
+    one_p = ift.full(hp_space, val=1.)
+    one_u = ift.full(energy_space, val=1.)
+    OP_e = ift.OuterProduct(one_p, ift.DomainTuple.make(he_space))
+    OP_u = ReverseOuterProduct(one_u, ift.DomainTuple.make(position_space))
 
     PA_eu = OP_e(Peu(A_eu))
     #
-    scale = ift.ScalingOperator(1e-16,ht.target)
-    off = ift.OffsetOperator(ift.full(ht.target,0.))
+    scale = ift.ScalingOperator(1e-16, ht.target)
+    off = ift.OffsetOperator(ift.full(ht.target, 0.))
     xi_u = ift.FieldAdapter(hpe_space, "xi_u")
-    u_spectra = (off((ht(PA_eu * xi_u)))).absolute()
-    u = ift.InverseGammaOperator(position_space,1.0,1e-3)(ift.FieldAdapter(position_space,'u'))
-    points = u_spectra * OP_u(u)
+    u_spectra = (off((ht(PA_eu*xi_u)))).absolute()
+    u = ift.InverseGammaOperator(position_space, 1.0, 1e-3)(ift.FieldAdapter(
+        position_space, 'u'))
+    points = u_spectra*OP_u(u)
 
     signal = ift.exp(correlated_field) + points
 
-    # Building the Line of Sight response
+    # Build line-of-sight response
     G = ift.GeometryRemover(signal.target)
     # exposure = get_3D_exposure()
     # exposure = ift.Field.from_global_data(signal.target,exposure)
     # E = ift.DiagonalOperator(exposure)
     # PSF = get_PsfOp()
 
-    R = G #@ PSF
+    R = G  #  @ PSF
     # R =  get_RG_instrument()
-    # build signal response model and model likelihood
+    # Build signal response model and model likelihood
     signal_response = R(signal).clip(min=1e-15)
-    # specify noise
+    # Specify noise
     data_space = R.target
 
-    # generate mock data
+    # Generate mock data
     MOCK_POSITION = ift.from_random('normal', signal_response.domain)
     rate = signal_response(MOCK_POSITION)
     data = np.random.poisson(np.abs(rate.to_global_data().astype(np.float64)))
     data = ift.Field.from_global_data(data_space, data)
 
-
-    # set up model likelihood
+    # Set up model likelihood
     likelihood = ift.PoissonianEnergy(data)(signal_response)
 
-    # set up minimization and inversion schemes
+    # Set up minimization and inversion schemes
     ic_sampling = ift.GradientNormController(iteration_limit=50)
     ic_newton = ift.GradInfNormController(
         name='Newton', tol=1e-7, iteration_limit=10)
     minimizer = ift.NewtonCG(ic_newton)
-    # build model Hamiltonian
+    # Build model Hamiltonian
     H = ift.Hamiltonian(likelihood, ic_sampling)
 
     INITIAL_POSITION = 0.1*ift.from_random('normal', H.domain)
@@ -208,10 +235,10 @@ if __name__ == '__main__':
 
     plo = ift.Plot()
     for i in range(9):
-        plo.add(signal(ift.from_random('normal',signal.domain)))
-    plo.output(name='prior_samples.png', nx=3,ny=3)
+        plo.add(signal(ift.from_random('normal', signal.domain)))
+    plo.output(name='prior_samples.png', nx=3, ny=3)
 
-    # number of samples used to estimate the KL
+    # Number of samples used to estimate the KL
     N_samples = 3
     for i in range(5):
         KL = ift.KL_Energy(position, H, N_samples, gen_mirrored_samples=True)
@@ -219,11 +246,15 @@ if __name__ == '__main__':
         position = KL.position
 
         plo = ift.Plot()
-        plo.add(G.adjoint_times(data) , title='data')
-        plo.add(G.adjoint_times(signal_response(MOCK_POSITION)), title='signal response')
+        plo.add(G.adjoint_times(data), title='data')
+        plo.add(
+            G.adjoint_times(signal_response(MOCK_POSITION)),
+            title='signal response')
         plo.add(signal(MOCK_POSITION), title='true signal')
         plo.add(signal(position), title='signal')
-        plo.add(ift.exp(correlated_field.force(MOCK_POSITION)), title='truediffuse')
+        plo.add(
+            ift.exp(correlated_field.force(MOCK_POSITION)),
+            title='truediffuse')
         plo.add(ift.exp(correlated_field.force(position)), title='diffuse')
 
         plo.add(points.force(position), title='points')
