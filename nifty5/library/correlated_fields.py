@@ -25,8 +25,8 @@ from ..operators.simple_linear_operators import ducktape
 
 
 def CorrelatedField(target, amplitude_operator, name='xi'):
-    '''Constructs operator which turns white Gaussian excitation fields into a
-    correlated field.
+    '''Constructs an operator which turns a white Gaussian excitation field
+    into a correlated field.
 
     This function returns an operator which implements:
 
@@ -38,8 +38,7 @@ def CorrelatedField(target, amplitude_operator, name='xi'):
     Parameters
     ----------
     target : Domain, DomainTuple or tuple of Domain
-        Target of the operator. Is not allowed to be a DomainTuple with more
-        than one space.
+        Target of the operator. Must contain exactly one space.
     amplitude_operator: Operator
     name : string
         :class:`MultiField` key for xi-field.
@@ -61,18 +60,17 @@ def CorrelatedField(target, amplitude_operator, name='xi'):
 
 
 def MfCorrelatedField(target, amplitudes, name='xi'):
-    '''Constructs operator which turns white Gaussian excitation fields into a
-    correlated field defined on a DomainTuple with two entries and two separate
-    correlation structures.
+    '''Constructs an operator which turns white Gaussian excitation fields
+    into a correlated field defined on a DomainTuple with two entries and two
+    separate correlation structures.
 
-    This operator may be used as model for multi-frequency reconstructions
+    This operator may be used as a model for multi-frequency reconstructions
     with a correlation structure in both spatial and energy direction.
 
     Parameters
     ----------
     target : Domain, DomainTuple or tuple of Domain
-        Target of the operator. Is not allowed to be a DomainTuple with more
-        than one space.
+        Target of the operator. Must contain exactly one space.
     amplitudes: iterable of Operator
         List of two amplitude operators.
     name : string

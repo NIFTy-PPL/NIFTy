@@ -25,7 +25,7 @@ from .domain_tuple import DomainTuple
 class Field(object):
     """The discrete representation of a continuous field over multiple spaces.
 
-    Stores data arrays and carry all the needed metainformation (i.e. the
+    Stores data arrays and carries all the needed metainformation (i.e. the
     domain) for operators to be able to operate on them.
 
     Parameters
