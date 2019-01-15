@@ -34,6 +34,8 @@ class ExpTransform(LinearOperator):
     Then transforms between this log-space and its target, which is defined in
     normal units.
 
+    FIXME Write something on t_0 of domain space
+
     E.g: A field in log-log-space can be transformed into log-norm-space,
          that is the y-axis stays logarithmic, but the x-axis is transfromed.
 

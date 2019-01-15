@@ -26,6 +26,19 @@ from .linear_operator import LinearOperator
 
 
 class RegriddingOperator(LinearOperator):
+    '''Linearly interpolates a RGSpace to an RGSpace with coarser resolution.
+
+    Parameters
+    ----------
+    domain : Domain, DomainTuple or tuple of Domain
+        domain[space] needs to be an :class:`RGSpace`.
+    new_shape : tuple of int
+        Shape of the space which domain[space] is replaced by. Each entry must
+        be smaller or equal to the respective entry in `domain[space].shape`.
+    space : int
+        Index of space in `domain` on which the operator shall act.
+        Default is 0.
+    '''
     def __init__(self, domain, new_shape, space=0):
         self._domain = DomainTuple.make(domain)
         self._space = infer_space(self._domain, space)
@@ -38,6 +51,8 @@ class RegriddingOperator(LinearOperator):
             raise ValueError("Shape mismatch")
         if any([a > b for a, b in zip(new_shape, dom.shape)]):
             raise ValueError("New shape must not be larger than old shape")
+        if any([ii <= 0 for ii in new_shape]):
+            raise ValueError('New shape must not be zero or negative.')
 
         newdist = tuple(dom.distances[i]*dom.shape[i]/new_shape[i]
                         for i in range(len(dom.shape)))
