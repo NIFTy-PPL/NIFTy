@@ -28,6 +28,10 @@ def enable_fftw():
     _use_fftw = True
 
 
+def disable_fftw():
+    _use_fftw = False
+
+
 def _init_pyfftw():
     global _fft_extra_args, _fftw_prepped
     if not _fftw_prepped:
