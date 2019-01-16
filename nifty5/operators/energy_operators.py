@@ -15,11 +15,14 @@
 #
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
 
+import numpy as np
+
 from .. import utilities
 from ..domain_tuple import DomainTuple
 from ..field import Field
 from ..linearization import Linearization
-from ..sugar import makeOp, makeDomain
+from ..sugar import makeDomain, makeOp
+from .linear_operator import LinearOperator
 from .operator import Operator
 from .sampling_enabler import SamplingEnabler
 from .sandwich_operator import SandwichOperator
@@ -27,32 +30,28 @@ from .simple_linear_operators import VdotOperator
 
 
 class EnergyOperator(Operator):
-    """Abstract class from which
-    other specific EnergyOperator subclasses are derived.
-
-    An EnergyOperator has a scalar domain as target domain.
+    """Operator which has a scalar domain as target domain.
 
     It is intended as an objective function for field inference.
 
-    Typical usage in IFT:
-
-     - as an information Hamiltonian (i.e. a negative log probability)
-     - or as a Gibbs free energy (i.e. an averaged Hamiltonian),
-       aka Kullbach-Leibler divergence.
+    Examples
+    --------
+     - Information Hamiltonian, i.e. negative-log-probabilities.
+     - Gibbs free energy, i.e. an averaged Hamiltonian, aka Kullbach-Leibler
+       divergence.
     """
     _target = DomainTuple.scalar_domain()
 
 
 class SquaredNormOperator(EnergyOperator):
-    """ Class for squared field norm energy.
+    """Computes the L2-norm of the output of an operator.
 
-    Usage
-    -----
-    ``E = SquaredNormOperator()`` represents a field energy E that is the
-    L2 norm of a field f:
-
-    :math:`E(f) = f^\\dagger f`
+    Parameters
+    ----------
+    domain : Domain, DomainTuple or tuple of Domain
+        Target domain of the operator in which the L2-norm shall be computed.
     """
+
     def __init__(self, domain):
         self._domain = domain
 
@@ -66,26 +65,24 @@ class SquaredNormOperator(EnergyOperator):
 
 
 class QuadraticFormOperator(EnergyOperator):
-    """Class for quadratic field energies.
+    """Computes the L2-norm of a Field or MultiField with respect to a
+    specific metric `endo`.
+
+    .. math ::
+        E(f) = \\frac12 f^\\dagger \\text{endo}(f)
 
     Parameters
     ----------
-    op : EndomorphicOperator
-         kernel of quadratic form
-
-    Notes
-    -----
-    ``E = QuadraticFormOperator(op)`` represents a field energy that is a
-    quadratic form in a field f with kernel op:
-
-    :math:`E(f) = 0.5 f^\\dagger op f`
+    endo : EndomorphicOperator
+         Kernel of quadratic form.
     """
-    def __init__(self, op):
+
+    def __init__(self, endo):
         from .endomorphic_operator import EndomorphicOperator
-        if not isinstance(op, EndomorphicOperator):
+        if not isinstance(endo, EndomorphicOperator):
             raise TypeError("op must be an EndomorphicOperator")
-        self._op = op
-        self._domain = op.domain
+        self._op = endo
+        self._domain = endo.domain
 
     def apply(self, x):
         self._check_input(x)
@@ -100,27 +97,38 @@ class QuadraticFormOperator(EnergyOperator):
 class GaussianEnergy(EnergyOperator):
     """Class for energies of fields with Gaussian probability distribution.
 
-    Attributes
+    Represents up to constants in :math:`m`:
+
+    .. math ::
+        E(f) = - \\log G(f-m, D) = 0.5 (f-m)^\\dagger D^{-1} (f-m),
+
+    an information energy for a Gaussian distribution with mean m and
+    covariance D.
+
+    Parameters
     ----------
     mean : Field
-        mean of the Gaussian, (default 0)
+        Mean of the Gaussian. Default is 0.
     covariance : LinearOperator
-        covariance of the Gaussian (default = identity operator)
-    domain : Domainoid
-        operator domain, inferred from mean or covariance if specified
+        Covariance of the Gaussian. Default is the identity operator.
+    domain : Domain, DomainTuple of tuple of Domain
+        Operator domain. By default it is inferred from `mean` or
+        `covariance` if specified
 
-    Notes
-    -----
-    - At least one of the arguments has to be provided.
-    - ``E = GaussianEnergy(mean=m, covariance=D)`` represents (up to constants)
-
-        :math:`E(f) = - \\log G(f-m, D) = 0.5 (f-m)^\\dagger D^{-1} (f-m)`,
-
-        an information energy for a Gaussian distribution with mean m and
-        covariance D.
+    Note
+    ----
+    At least one of the arguments has to be provided.
     """
 
     def __init__(self, mean=None, covariance=None, domain=None):
+        if mean is not None and not isinstance(mean, Field):
+            raise TypeError
+        if covariance is not None and not isinstance(covariance,
+                                                     LinearOperator):
+            raise TypeError
+        if domain is not None:
+            domain = DomainTuple.make(domain)
+
         self._domain = None
         if mean is not None:
             self._checkEquivalence(mean.domain)
@@ -147,7 +155,7 @@ class GaussianEnergy(EnergyOperator):
 
     def apply(self, x):
         self._check_input(x)
-        residual = x if self._mean is None else x-self._mean
+        residual = x if self._mean is None else x - self._mean
         res = self._op(residual).real
         if not isinstance(x, Linearization) or not x.want_metric:
             return res
@@ -156,25 +164,29 @@ class GaussianEnergy(EnergyOperator):
 
 
 class PoissonianEnergy(EnergyOperator):
-    """Class for likelihood-energies of expected count field constrained by
-    Poissonian count data.
+    """Class for likelihood Hamiltonians of expected count field constrained
+    by Poissonian count data.
+
+    Represents up to an f-independent term :math:`log(d!)`:
+
+    .. math ::
+        E(f) = -\\log \\text{Poisson}(d|f) = \\sum f - d^\\dagger \\log(f),
+
+    where f is a :class:`Field` in data space with the expectation values for
+    the counts.
 
     Parameters
     ----------
     d : Field
-        data field with counts
-
-    Notes
-    -----
-    ``E = PoissonianEnergy(d)`` represents (up to an f-independent term
-    log(d!))
-
-    :math:`E(f) = -\\log \\text{Poisson}(d|f) = \\sum f - d^\\dagger \\log(f)`,
-
-    where f is a Field in data space with the expectation values for
-    the counts.
+        Data field with counts. Needs to have integer dtype and all field
+        values need to be non-negative.
     """
+
     def __init__(self, d):
+        if not isinstance(d, Field) or not np.issubdtype(d.dtype, np.integer):
+            raise TypeError
+        if np.any(d.local_data < 0):
+            raise ValueError
         self._d = d
         self._domain = DomainTuple.make(d.domain)
 
@@ -194,7 +206,10 @@ class InverseGammaLikelihood(EnergyOperator):
 
     RL FIXME: To be documented.
     """
+
     def __init__(self, d):
+        if not isinstance(d, Field):
+            raise TypeError
         self._d = d
         self._domain = DomainTuple.make(d.domain)
 
@@ -228,18 +243,19 @@ class BernoulliEnergy(EnergyOperator):
     where f is a field in data space (d.domain) with the expected
     frequencies of events.
     """
+
     def __init__(self, d):
         self._d = d
         self._domain = DomainTuple.make(d.domain)
 
     def apply(self, x):
         self._check_input(x)
-        v = x.log().vdot(-self._d) - (1.-x).log().vdot(1.-self._d)
+        v = x.log().vdot(-self._d) - (1. - x).log().vdot(1. - self._d)
         if not isinstance(x, Linearization):
             return Field.scalar(v)
         if not x.want_metric:
             return v
-        met = makeOp(1./(x.val*(1.-x.val)))
+        met = makeOp(1./(x.val*(1. - x.val)))
         met = SandwichOperator.make(x.jac, met)
         return v.add_metric(met)
 
@@ -277,6 +293,7 @@ class Hamiltonian(EnergyOperator):
     Jakob Knollmüller, Torsten A. Ensslin, submitted, arXiv:1812.04403
     `<https://arxiv.org/abs/1812.04403>`_
     """
+
     def __init__(self, lh, ic_samp=None):
         self._lh = lh
         self._prior = GaussianEnergy(domain=lh.domain)
@@ -285,14 +302,14 @@ class Hamiltonian(EnergyOperator):
 
     def apply(self, x):
         self._check_input(x)
-        if (self._ic_samp is None or not isinstance(x, Linearization) or
-                not x.want_metric):
-            return self._lh(x)+self._prior(x)
+        if (self._ic_samp is None or not isinstance(x, Linearization)
+                or not x.want_metric):
+            return self._lh(x) + self._prior(x)
         else:
             lhx, prx = self._lh(x), self._prior(x)
             mtr = SamplingEnabler(lhx.metric, prx.metric.inverse,
                                   self._ic_samp, prx.metric.inverse)
-            return (lhx+prx).add_metric(mtr)
+            return (lhx + prx).add_metric(mtr)
 
     def __repr__(self):
         subs = 'Likelihood:\n{}'.format(utilities.indent(self._lh.__repr__()))
@@ -346,6 +363,7 @@ class AveragedEnergy(EnergyOperator):
     sampling noise and helps the numerics of the KL minimization process in the
     variational Bayes inference.
     """
+
     def __init__(self, h, res_samples):
         self._h = h
         self._domain = h.domain
@@ -353,5 +371,5 @@ class AveragedEnergy(EnergyOperator):
 
     def apply(self, x):
         self._check_input(x)
-        mymap = map(lambda v: self._h(x+v), self._res_samples)
-        return utilities.my_sum(mymap) * (1./len(self._res_samples))
+        mymap = map(lambda v: self._h(x + v), self._res_samples)
+        return utilities.my_sum(mymap)*(1./len(self._res_samples))
