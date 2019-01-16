@@ -103,6 +103,13 @@ class Operator(NiftyMetaBase()):
         return _OpChain.make((_Clipper(self.target, min, max), self))
 
     def apply(self, x):
+        """Returns the result of applying the operator to the Field x.
+
+        Parameters
+        ----------
+        x : Field/Multifield
+            the operator's input
+        """
         raise NotImplementedError
 
     def force(self, x):

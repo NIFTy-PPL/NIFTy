@@ -273,7 +273,7 @@ class Hamiltonian(EnergyOperator):
     For more details see:
     "Encoding prior knowledge in the structure of the likelihood"
     Jakob Knollmüller, Torsten A. Ensslin, submitted, arXiv:1812.04403
-    :link:`https://arxiv.org/abs/1812.04403`
+    `<https://arxiv.org/abs/1812.04403>`_
     """
     def __init__(self, lh, ic_samp=None):
         self._lh = lh
