@@ -20,38 +20,38 @@ import numpy as np
 from ..domain_tuple import DomainTuple
 from ..domains.unstructured_domain import UnstructuredDomain
 from ..field import Field
+from ..sugar import makeDomain
 from .linear_operator import LinearOperator
 
 
-# MR FIXME: this needs a redesign to avoid most _global_data() calls
-# Possible approach: keep everything defined on `domain` distributed and only
-# collect the unstructured Fields.
-class MaskOperator(LinearOperator):
-    """Implementation of a mask response
-
-    Takes a field, applies flags and returns the values of the field in a
-    :class:`UnstructuredDomain`.
+class ValueInserter(LinearOperator):
+    """Inserts one value into a field which is zero otherwise.
 
     Parameters
     ----------
-    flags : Field
-        Is converted to boolean. Where True, the input field is flagged.
+    target : Domain, tuple of Domain or DomainTuple
+    index : iterable of int
+        The index of the target into which the value of the domain shall be
+        inserted.
     """
-    def __init__(self, flags):
-        if not isinstance(flags, Field):
+
+    def __init__(self, target, index):
+        self._domain = makeDomain(UnstructuredDomain(1))
+        self._target = DomainTuple.make(target)
+        index = tuple(index)
+        if not all([isinstance(n, int) and n>=0 and n<self.target.shape[i] for i, n in enumerate(index)]):
             raise TypeError
-        self._domain = DomainTuple.make(flags.domain)
-        self._flags = np.logical_not(flags.to_global_data())
-        self._target = DomainTuple.make(UnstructuredDomain(self._flags.sum()))
+        self._index = index
         self._capability = self.TIMES | self.ADJOINT_TIMES
+        # Check whether index is in bounds
+        np.empty(self.target.shape)[self._index]
 
     def apply(self, x, mode):
         self._check_input(x, mode)
         x = x.to_global_data()
         if mode == self.TIMES:
-            res = x[self._flags]
-            return Field.from_global_data(self.target, res)
-        res = np.empty(self.domain.shape, x.dtype)
-        res[self._flags] = x
-        res[~self._flags] = 0
-        return Field.from_global_data(self.domain, res)
+            res = np.zeros(self.target.shape, dtype=x.dtype)
+            res[self._index] = x
+        else:
+            res = np.full((1,), x[self._index], dtype=x.dtype)
+        return Field.from_global_data(self._tgt(mode), res)

@@ -264,3 +264,17 @@ def testOuter(fdomain, domain):
     f = ift.from_random('normal', fdomain)
     op = ift.OuterProduct(f, domain)
     ift.extra.consistency_check(op)
+
+
+@pmp('sp', _h_spaces + _p_spaces + _pow_spaces)
+@pmp('seed', [12, 3])
+def testValueInserter(sp, seed):
+    np.random.seed(seed)
+    ind = []
+    for ss in sp.shape:
+        if ss == 1:
+            ind.append(0)
+        else:
+            ind.append(np.random.randint(0, ss-1))
+    op = ift.ValueInserter(sp, ind)
+    ift.extra.consistency_check(op)
