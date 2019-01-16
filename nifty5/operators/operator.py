@@ -107,7 +107,7 @@ class Operator(NiftyMetaBase()):
 
         Parameters
         ----------
-        x : Field/Multifield
+        x : Field or MultiField
             the operator's input
         """
         raise NotImplementedError

@@ -49,7 +49,7 @@ from .operators.simple_linear_operators import (
     FieldAdapter, ducktape, GeometryRemover, NullOperator)
 from .operators.energy_operators import (
     EnergyOperator, GaussianEnergy, PoissonianEnergy, InverseGammaLikelihood,
-    BernoulliEnergy, Hamiltonian, SampledKullbachLeiblerDivergence)
+    BernoulliEnergy, Hamiltonian, AveragedEnergy)
 
 from .probing import probe_with_posterior_samples, probe_diagonal, \
     StatCalculator

@@ -300,8 +300,8 @@ class Hamiltonian(EnergyOperator):
         return 'Hamiltonian:\n' + utilities.indent(subs)
 
 
-class SampledKullbachLeiblerDivergence(EnergyOperator):
-    """Class for Kullbach Leibler (KL) Divergence or Gibbs free energies
+class AveragedEnergy(EnergyOperator):
+    """Class for Kullbach-Leibler (KL) Divergence or Gibbs free energies
 
     Precisely a sample averaged Hamiltonian (or other energy) that represents
     approximatively the relevant part of a KL to be used in Variational Bayes
@@ -320,7 +320,7 @@ class SampledKullbachLeiblerDivergence(EnergyOperator):
     in essence the information Hamiltonian averaged over a Gaussian
     distribution centered on the mean m.
 
-    SampledKullbachLeiblerDivergence(H) approximates
+    ``AveragedEnergy(H)`` approximates
     :math:`\\left< H(f) \\right>_{G(f-m,D)}` if the residuals
     :math:`f-m` are drawn from covariance :math:`D`.
 
@@ -334,7 +334,7 @@ class SampledKullbachLeiblerDivergence(EnergyOperator):
 
     Notes
     -----
-    ``KL = SampledKullbachLeiblerDivergence(H, samples)`` represents
+    ``KL = AveragedEnergy(H, samples)`` represents
 
     :math:`\\text{KL}(m) = \\sum_i H(m+v_i) / N`,
 
