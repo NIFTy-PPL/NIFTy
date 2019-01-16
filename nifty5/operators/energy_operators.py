@@ -202,9 +202,8 @@ class PoissonianEnergy(EnergyOperator):
 
 
 class InverseGammaLikelihood(EnergyOperator):
-    """Special class for inverse Gamma distributed covariances.
-
-    RL FIXME: To be documented.
+    """
+    FIXME
     """
 
     def __init__(self, d):
@@ -225,32 +224,34 @@ class InverseGammaLikelihood(EnergyOperator):
 
 
 class BernoulliEnergy(EnergyOperator):
-    """Class for likelihood-energies of expected event frequency constrained by
+    """Computes likelihood energy of expected event frequency constrained by
     event data.
+
+    .. math ::
+        E(f) = -\\log \\text{Bernoulli}(d|f)
+             = -d^\\dagger \\log f  - (1-d)^\\dagger \\log(1-f),
+
+    where f is a field defined on `d.domain` with the expected
+    frequencies of events.
 
     Parameters
     ----------
     d : Field
-        data field with events (=1) or non-events (=0)
-
-    Notes
-    -----
-    ``E = BernoulliEnergy(d)`` represents
-
-    :math:`E(f) = -\\log \\text{Bernoulli}(d|f) =
-    -d^\\dagger \\log f  - (1-d)^\\dagger \\log(1-f)`,
-
-    where f is a field in data space (d.domain) with the expected
-    frequencies of events.
+        Data field with events (1) or non-events (0).
     """
 
     def __init__(self, d):
+        print(d.dtype)
+        if not isinstance(d, Field) or not np.issubdtype(d.dtype, np.integer):
+            raise TypeError
+        if not np.all(np.logical_or(d.local_data == 0, d.local_data == 1)):
+            raise ValueError
         self._d = d
         self._domain = DomainTuple.make(d.domain)
 
     def apply(self, x):
         self._check_input(x)
-        v = x.log().vdot(-self._d) - (1. - x).log().vdot(1. - self._d)
+        v = -(x.log().vdot(self._d) + (1. - x).log().vdot(1. - self._d))
         if not isinstance(x, Linearization):
             return Field.scalar(v)
         if not x.want_metric:
@@ -261,25 +262,13 @@ class BernoulliEnergy(EnergyOperator):
 
 
 class Hamiltonian(EnergyOperator):
-    """Class for information Hamiltonians.
+    """Computes an information Hamiltonian in its standard form, i.e. with the
+    prior being a Gaussian with unit covariance.
 
-    Parameters
-    ----------
-    lh : EnergyOperator
-        a likelihood energy
-    ic_samp : IterationController
-        is passed to SamplingEnabler to draw Gaussian distributed samples
-        with covariance = metric of Hamiltonian
-        (= Hessian without terms that generate negative eigenvalues)
+    Let the likelihood energy be :math:`E_{lh}`. Then this operator computes:
 
-    Notes
-    -----
-    ``H = Hamiltonian(E_lh)`` represents
-
-    :math:`H(f) = 0.5 f^\\dagger f + E_{lh}(f)`
-
-    an information Hamiltonian for a field f with a white Gaussian prior
-    (unit covariance) and the likelihood energy :math:`E_{lh}`.
+    .. math ::
+         H(f) = 0.5 f^\\dagger f + E_{lh}(f):
 
     Other field priors can be represented via transformations of a white
     Gaussian field into a field with the desired prior probability structure.
@@ -288,9 +277,22 @@ class Hamiltonian(EnergyOperator):
     by a generative model, from which NIFTy can draw samples and infer a field
     using the Maximum a Posteriori (MAP) or the Variational Bayes (VB) method.
 
-    For more details see:
-    "Encoding prior knowledge in the structure of the likelihood"
-    Jakob Knollmüller, Torsten A. Ensslin, submitted, arXiv:1812.04403
+    The metric of this operator can be used as covariance for drawing Gaussian
+    samples.
+
+    Parameters
+    ----------
+    lh : EnergyOperator
+        The likelihood energy.
+    ic_samp : IterationController
+        Tells an internal :class:`SamplingEnabler` which convergence criterium
+        to use to draw Gaussian samples.
+
+
+    See also
+    --------
+    `Encoding prior knowledge in the structure of the likelihood`,
+    Jakob Knollmüller, Torsten A. Ensslin,
     `<https://arxiv.org/abs/1812.04403>`_
     """
 
@@ -318,17 +320,41 @@ class Hamiltonian(EnergyOperator):
 
 
 class AveragedEnergy(EnergyOperator):
-    """Class for Kullbach-Leibler (KL) Divergence or Gibbs free energies
+    """Computes Kullbach-Leibler (KL) divergence or Gibbs free energies.
 
-    Precisely a sample averaged Hamiltonian (or other energy) that represents
-    approximatively the relevant part of a KL to be used in Variational Bayes
-    inference if the samples are drawn from the approximating Gaussian.
+    A sample-averaged energy, e.g. an Hamiltonian, approximates the relevant
+    part of a KL to be used in Variational Bayes inference if the samples are
+    drawn from the approximating Gaussian:
 
-    Let :math:`Q(f) = G(f-m,D)` Gaussian used to approximate
-    :math:`P(f|d)`, the correct posterior with information Hamiltonian
-    :math:`H(d,f) = -\\log P(d,f) = -\\log P(f|d) + \\text{const.}`
+    .. math ::
+        \\text{KL}(m) = \\frac1{\\#\{v_i\}} \\sum_{v_i} H(m+v_i),
 
-    The KL divergence between those should then be optimized for m. It is
+    where :math:`v_i` are the residual samples and :math:`m` is the mean field
+    around which the samples are drawn.
+
+    Parameters
+    ----------
+    h: Hamiltonian
+       The energy to be averaged.
+    res_samples : iterable of Fields
+       Set of residual sample points to be added to mean field for approximate
+       estimation of the KL.
+
+    Note
+    ----
+    Having symmetrized residual samples, with both v_i and -v_i being present
+    ensures that the distribution mean is exactly represented. This reduces
+    sampling noise and helps the numerics of the KL minimization process in the
+    variational Bayes inference.
+
+    See also
+    --------
+    Let :math:`Q(f) = G(f-m,D)` be the Gaussian distribution
+    which is used to approximate the accurate posterior :math:`P(f|d)` with
+    information Hamiltonian
+    :math:`H(d,f) = -\\log P(d,f) = -\\log P(f|d) + \\text{const}`. In
+    Variational Bayes one needs to optimize the KL divergence between those
+    two distributions for m. It is:
 
     :math:`KL(Q,P) = \\int Df Q(f) \\log Q(f)/P(f)\\\\
     = \\left< \\log Q(f) \\right>_Q(f) - \\left< \\log P(f) \\right>_Q(f)\\\\
@@ -337,31 +363,10 @@ class AveragedEnergy(EnergyOperator):
     in essence the information Hamiltonian averaged over a Gaussian
     distribution centered on the mean m.
 
-    ``AveragedEnergy(H)`` approximates
+    :class:`AveragedEnergy(h)` approximates
     :math:`\\left< H(f) \\right>_{G(f-m,D)}` if the residuals
-    :math:`f-m` are drawn from covariance :math:`D`.
-
-    Parameters
-    ----------
-    h: Hamiltonian
-       the Hamiltonian/energy to be averaged
-    res_samples : iterable of Fields
-       set of residual sample points to be added to mean field
-       for approximate estimation of the KL
-
-    Notes
-    -----
-    ``KL = AveragedEnergy(H, samples)`` represents
-
-    :math:`\\text{KL}(m) = \\sum_i H(m+v_i) / N`,
-
-    where :math:`v_i` are the residual samples, :math:`N` is their number,
-    and :math:`m` is the mean field around which the samples are drawn.
-
-    Having symmetrized residual samples, with both v_i and -v_i being present
-    ensures that the distribution mean is exactly represented. This reduces
-    sampling noise and helps the numerics of the KL minimization process in the
-    variational Bayes inference.
+    :math:`f-m` are drawn from a Gaussian distribution with covariance
+    :math:`D`.
     """
 
     def __init__(self, h, res_samples):
