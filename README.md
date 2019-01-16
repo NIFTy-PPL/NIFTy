@@ -39,11 +39,11 @@ Installation
 
 - [Python 3](https://www.python.org/) (3.5.x or later)
 - [SciPy](https://www.scipy.org/)
-- [pyFFTW](https://pypi.python.org/pypi/pyFFTW)
 
 Optional dependencies:
 - [pyHealpix](https://gitlab.mpcdf.mpg.de/ift/pyHealpix) (for harmonic
     transforms involving domains on the sphere)
+- [pyFFTW](https://pypi.python.org/pypi/pyFFTW)
 - [mpi4py](https://mpi4py.scipy.org) (for MPI-parallel execution)
 - [matplotlib](https://matplotlib.org/) (for field plotting)
 
@@ -61,7 +61,7 @@ distributions, the "apt" lines will need slight changes.
 
 NIFTy5 and its mandatory dependencies can be installed via:
 
-    sudo apt-get install git libfftw3-dev python3 python3-pip python3-dev
+    sudo apt-get install git python3 python3-pip python3-dev
     pip3 install --user git+https://gitlab.mpcdf.mpg.de/ift/NIFTy.git@NIFTy_5
 
 (Note: If you encounter problems related to `pyFFTW`, make sure that you are
@@ -72,6 +72,22 @@ with the installed `FFTW3` libraries.)
 Plotting support is added via:
 
     pip3 install --user matplotlib
+
+FFTW support is added via:
+
+    sudo apt-get install libfftw3-dev
+    pip3 install --user pyfftw
+
+To actually use FFTW in your Nifty calculations, you need to call
+
+    `nifty5.fft.enable_fftw()`
+
+at the beginning of your code.
+
+(Note: If you encounter problems related to `pyFFTW`, make sure that you are
+using a pip-installed `pyFFTW` package. Unfortunately, some distributions are
+shipping an incorrectly configured `pyFFTW` package, which does not cooperate
+with the installed `FFTW3` libraries.)
 
 Support for spherical harmonic transforms is added via:
 
@@ -86,7 +102,7 @@ MPI support is added via:
 
 To run the tests, additional packages are required:
 
-    sudo apt-get install python3-coverage python3-parameterized python3-pytest python3-pytest-cov
+    sudo apt-get install python3-coverage python3-pytest python3-pytest-cov
 
 Afterwards the tests (including a coverage report) can be run using the
 following command in the repository root:

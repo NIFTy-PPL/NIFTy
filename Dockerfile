@@ -12,8 +12,6 @@ RUN apt-get update && apt-get install -y \
     python3-coverage python3-pytest python3-pytest-cov \
     # Optional NIFTy dependencies
     openmpi-bin libopenmpi-dev python3-mpi4py \
-    # Packages needed for NIFTy
-  && pip3 install pyfftw \
   # Optional NIFTy dependencies
   && pip3 install git+https://gitlab.mpcdf.mpg.de/ift/pyHealpix.git \
   # Testing dependencies
