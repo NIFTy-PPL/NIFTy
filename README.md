@@ -41,9 +41,9 @@ Installation
 - [SciPy](https://www.scipy.org/)
 
 Optional dependencies:
+- [pyFFTW](https://pypi.python.org/pypi/pyFFTW) for faster Fourier transforms
 - [pyHealpix](https://gitlab.mpcdf.mpg.de/ift/pyHealpix) (for harmonic
     transforms involving domains on the sphere)
-- [pyFFTW](https://pypi.python.org/pypi/pyFFTW)
 - [mpi4py](https://mpi4py.scipy.org) (for MPI-parallel execution)
 - [matplotlib](https://matplotlib.org/) (for field plotting)
 
@@ -80,7 +80,7 @@ FFTW support is added via:
 
 To actually use FFTW in your Nifty calculations, you need to call
 
-    `nifty5.fft.enable_fftw()`
+    nifty5.fft.enable_fftw()
 
 at the beginning of your code.
 
