@@ -443,7 +443,7 @@ class Field(object):
         ----------
         spaces : None, int or tuple of int
             The summation is only carried out over the sub-domains in this
-            tuple. If None, it is carried out over all sub-domains. Default: None.
+            tuple. If None, it is carried out over all sub-domains.
 
         Returns
         -------
@@ -464,7 +464,6 @@ class Field(object):
         spaces : None, int or tuple of int
             The summation is only carried out over the sub-domains in this
             tuple. If None, it is carried out over all sub-domains.
-            Default: None.
 
         Returns
         -------
@@ -548,7 +547,7 @@ class Field(object):
         ----------
         spaces : None, int or tuple of int
             The operation is only carried out over the sub-domains in this
-            tuple. If None, it is carried out over all sub-domains. Default: None.
+            tuple. If None, it is carried out over all sub-domains.
 
         Returns
         -------

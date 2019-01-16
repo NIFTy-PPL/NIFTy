@@ -51,7 +51,7 @@ class SquaredNormOperator(EnergyOperator):
     ``E = SquaredNormOperator()`` represents a field energy E that is the
     L2 norm of a field f:
 
-    :math:`E(f) = f^\dagger f`
+    :math:`E(f) = f^\\dagger f`
     """
     def __init__(self, domain):
         self._domain = domain
@@ -78,7 +78,7 @@ class QuadraticFormOperator(EnergyOperator):
     ``E = QuadraticFormOperator(op)`` represents a field energy that is a
     quadratic form in a field f with kernel op:
 
-    :math:`E(f) = 0.5 f^\dagger op f`
+    :math:`E(f) = 0.5 f^\\dagger op f`
     """
     def __init__(self, op):
         from .endomorphic_operator import EndomorphicOperator
@@ -114,10 +114,10 @@ class GaussianEnergy(EnergyOperator):
     - At least one of the arguments has to be provided.
     - ``E = GaussianEnergy(mean=m, covariance=D)`` represents (up to constants)
 
-        :math:`E(f) = - \log G(f-m, D) = 0.5 (f-m)^\dagger D^{-1} (f-m)`,
+        :math:`E(f) = - \\log G(f-m, D) = 0.5 (f-m)^\\dagger D^{-1} (f-m)`,
 
-        an information energy for a Gaussian distribution with mean m and covariance D.
-
+        an information energy for a Gaussian distribution with mean m and
+        covariance D.
     """
 
     def __init__(self, mean=None, covariance=None, domain=None):
@@ -166,9 +166,10 @@ class PoissonianEnergy(EnergyOperator):
 
     Notes
     -----
-    ``E = PoissonianEnergy(d)`` represents (up to an f-independent term log(d!))
+    ``E = PoissonianEnergy(d)`` represents (up to an f-independent term
+    log(d!))
 
-    :math:`E(f) = -\log \\text{Poisson}(d|f) = \sum f - d^\dagger \log(f)`,
+    :math:`E(f) = -\\log \\text{Poisson}(d|f) = \\sum f - d^\\dagger \\log(f)`,
 
     where f is a Field in data space with the expectation values for
     the counts.
@@ -221,10 +222,11 @@ class BernoulliEnergy(EnergyOperator):
     -----
     ``E = BernoulliEnergy(d)`` represents
 
-    :math:`E(f) = -\log \\text{Bernoulli}(d|f) = -d^\dagger \log f  - (1-d)^\dagger \log(1-f)`,
+    :math:`E(f) = -\\log \\text{Bernoulli}(d|f) =
+    -d^\\dagger \\log f  - (1-d)^\\dagger \\log(1-f)`,
 
-    where f is a field in data space (d.domain) with the expected frequencies of
-    events.
+    where f is a field in data space (d.domain) with the expected
+    frequencies of events.
     """
     def __init__(self, d):
         self._d = d
@@ -258,7 +260,7 @@ class Hamiltonian(EnergyOperator):
     -----
     ``H = Hamiltonian(E_lh)`` represents
 
-    :math:`H(f) = 0.5 f^\dagger f + E_{lh}(f)`
+    :math:`H(f) = 0.5 f^\\dagger f + E_{lh}(f)`
 
     an information Hamiltonian for a field f with a white Gaussian prior
     (unit covariance) and the likelihood energy :math:`E_{lh}`.
@@ -307,19 +309,19 @@ class SampledKullbachLeiblerDivergence(EnergyOperator):
 
     Let :math:`Q(f) = G(f-m,D)` Gaussian used to approximate
     :math:`P(f|d)`, the correct posterior with information Hamiltonian
-    :math:`H(d,f) = -\log P(d,f) = -\log P(f|d) + \\text{const.}`
+    :math:`H(d,f) = -\\log P(d,f) = -\\log P(f|d) + \\text{const.}`
 
     The KL divergence between those should then be optimized for m. It is
 
-    :math:`KL(Q,P) = \int Df Q(f) \log Q(f)/P(f)\\\\
-    = \left< \log Q(f) \\right>_Q(f) - \left< \log P(f) \\right>_Q(f)\\\\
-    = \\text{const} + \left< H(f) \\right>_G(f-m,D)`
+    :math:`KL(Q,P) = \\int Df Q(f) \\log Q(f)/P(f)\\\\
+    = \\left< \\log Q(f) \\right>_Q(f) - \\left< \\log P(f) \\right>_Q(f)\\\\
+    = \\text{const} + \\left< H(f) \\right>_G(f-m,D)`
 
     in essence the information Hamiltonian averaged over a Gaussian
     distribution centered on the mean m.
 
     SampledKullbachLeiblerDivergence(H) approximates
-    :math:`\left< H(f) \\right>_{G(f-m,D)}` if the residuals
+    :math:`\\left< H(f) \\right>_{G(f-m,D)}` if the residuals
     :math:`f-m` are drawn from covariance :math:`D`.
 
     Parameters
@@ -334,7 +336,7 @@ class SampledKullbachLeiblerDivergence(EnergyOperator):
     -----
     ``KL = SampledKullbachLeiblerDivergence(H, samples)`` represents
 
-    :math:`\\text{KL}(m) = \sum_i H(m+v_i) / N`,
+    :math:`\\text{KL}(m) = \\sum_i H(m+v_i) / N`,
 
     where :math:`v_i` are the residual samples, :math:`N` is their number,
     and :math:`m` is the mean field around which the samples are drawn.
