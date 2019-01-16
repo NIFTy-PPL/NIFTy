@@ -270,7 +270,7 @@ Direct multiplication and adjoint inverse multiplication transform a field
 defined on the operator's :attr:`~LinearOperator.domain` to one defined on the
 operator's :attr:`~LinearOperator.target`, whereas adjoint multiplication and
 inverse multiplication transform from :attr:`~LinearOperator.target` to
-:attr:`~LinearOperator.domain`.
+:attr:`~LinearOperator.domain`. *FIXME* links don't work
 
 .. currentmodule:: nifty5.operators
 
@@ -379,7 +379,7 @@ Minimization algorithms
 
 All minimization algorithms in NIFTy inherit from the abstract
 :class:`~minimizer.Minimizer` class, which presents a minimalistic interface
-consisting only of a :meth:`~minimizer.Minimizer.__call__()` method taking an
+consisting only of a :meth:`~minimizer.Minimizer.__call__()` *FIXME* method taking an
 :class:`~energy.Energy` object and optionally a preconditioning operator, and
 returning the energy at the discovered minimum and a status code.
 
@@ -399,17 +399,16 @@ Many minimizers for nonlinear problems can be characterized as
 This family of algorithms is encapsulated in NIFTy's
 :class:`~descent_minimizers.DescentMinimizer` class, which currently has three
 concrete implementations: :class:`~descent_minimizers.SteepestDescent`,
-:class:`~descent_minimizers.RelaxedNewton`,
 :class:`~descent_minimizers.NewtonCG`, :class:`~descent_minimizers.L_BFGS` and
 :class:`~descent_minimizers.VL_BFGS`. Of these algorithms, only
-:class:`~descent_minimizers.RelaxedNewton` requires the energy object to provide
+:class:`~descent_minimizers.NewtonCG` requires the energy object to provide
 a :attr:`~energy.Energy.metric` property, the others only need energy values and
 gradients.
 
 The flexibility of NIFTy's design allows using externally provided minimizers.
 With only small effort, adapters for two SciPy minimizers were written; they are
 available under the names :class:`~scipy_minimizer.ScipyCG` and
-:class:`L_BFGS_B`.
+:class:`~scipy_minimizer.L_BFGS_B`.
 
 
 Application to operator inversion
@@ -432,4 +431,4 @@ performs a minimization of a
 :class:`~minimization.quadratic_energy.QuadraticEnergy` by means of the
 :class:`~minimization.conjugate_gradient.ConjugateGradient` algorithm. An
 example is provided in
-:func:`~ļibrary.wiener_filter_curvature.WienerFilterCurvature`.
+:func:`~ļibrary.wiener_filter_curvature.WienerFilterCurvature`. *FIXME* this link doesn't work.
