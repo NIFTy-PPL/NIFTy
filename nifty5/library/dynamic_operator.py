@@ -147,7 +147,7 @@ def dynamic_operator(domain,
     Parameters
     ----------
     domain : RGSpace
-        The space under consideration.
+        The position space in which the Green's function shall be constructed.
     harmonic_padding : None, int, list of int
         Amount of central padding in harmonic space in pixels. If None the
         field is not padded at all.
@@ -158,9 +158,9 @@ def dynamic_operator(domain,
     key : String
         key for dynamics encoding parameter.
     causal : boolean
-        Whether or not the reconstructed dynamics should be causal in time.
+        Whether or not the Green's function shall be causal in time.
     minimum_phase: boolean
-        Whether or not the reconstructed dynamics should be minimum phase.
+        Whether or not the Green's function shall be a minimum phase filter.
 
     Returns
     -------
@@ -197,14 +197,14 @@ def dynamic_lightcone_operator(domain,
                                quant,
                                causal=True,
                                minimum_phase=False):
-    '''Constructs an operator encoding the Green's function of a linear
-    homogeneous dynamic system. The Green's function is constrained to be
-    within a light cone.
+    '''Extends the functionality of :function: dynamic_operator to a Green's
+    function which is constrained to be within a light cone.
 
     Parameters
     ----------
     domain : RGSpace
-        The space under consideration. Must have dim > 1.
+        The position space in which the Green's function shall be constructed.
+        It needs to have at least two dimensions.
     harmonic_padding : None, int, list of int
         Amount of central padding in harmonic space in pixels. If None the
         field is not padded at all.
@@ -221,18 +221,17 @@ def dynamic_lightcone_operator(domain,
     quant : float
         Quantization of the light cone in pixels.
     causal : boolean
-        Whether or not the reconstructed dynamics should be causal in time.
+        Whether or not the Green's function shall be causal in time.
     minimum_phase: boolean
-        Whether or not the reconstructed dynamics should be minimum phase.
+        Whether or not the Green's function shall be a minimum phase filter.
 
     Returns
     -------
     Operator
-        The Operator encoding the dynamic Green's function in harmonic space
-        when evaluated.
-    dict
-        A collection of sub-chains of Operator which can be used
-        for plotting and evaluation.
+        The Operator encoding the dynamic Green's function in harmonic space.
+    Dictionary of Operator
+        A collection of sub-chains of Operator which can be used for plotting
+        and evaluation.
 
     Notes
     -----

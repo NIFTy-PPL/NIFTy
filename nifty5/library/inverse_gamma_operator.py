@@ -26,33 +26,33 @@ from ..sugar import makeOp
 
 
 class InverseGammaOperator(Operator):
+    """Operator which transforms a Gaussian into an inverse gamma distribution.
+
+    The pdf of the inverse gamma distribution is defined as follows:
+
+    .. math ::
+        \\frac{\\beta^\\alpha}{\\Gamma(\\alpha)}x^{-\\alpha -1}\\exp \\left(-\\frac{\\beta }{x}\\right)
+
+    That means that for large x the pdf falls off like x^(-alpha -1).
+    The mean of the pdf is at q / (alpha - 1) if alpha > 1.
+    The mode is q / (alpha + 1).
+
+    This transformation is implemented as a linear interpolation which maps a
+    Gaussian onto a inverse gamma distribution.
+
+    Parameters
+    ----------
+    domain : Domain, tuple of Domain or DomainTuple
+        The domain on which the field shall be defined. This is at the same
+        time the domain and the target of the operator.
+    alpha : float
+        The alpha-parameter of the inverse-gamma distribution.
+    q : float
+        The q-parameter of the inverse-gamma distribution.
+    delta : float
+        distance between sampling points for linear interpolation.
+    """
     def __init__(self, domain, alpha, q, delta=0.001):
-        """Operator which transforms a Gaussian into an inverse gamma distribution.
-
-        The pdf of the inverse gamma distribution is defined as follows:
-
-        .. math::
-            \frac {\beta ^{\alpha }}{\Gamma (\alpha )}}x^{-\alpha -1}\exp \left(-{\frac {\beta }{x}}\right)
-
-        That means that for large x the pdf falls off like x^(-alpha -1).
-        The mean of the pdf is at q / (alpha - 1) if alpha > 1.
-        The mode is q / (alpha + 1).
-
-        This transformation is implemented as a linear interpolation which
-        maps a Gaussian onto a inverse gamma distribution.
-
-        Parameters
-        ----------
-        domain : Domain, tuple of Domain or DomainTuple
-            The domain on which the field shall be defined. This is at the same
-            time the domain and the target of the operator.
-        alpha : float
-            The alpha-parameter of the inverse-gamma distribution.
-        q : float
-            The q-parameter of the inverse-gamma distribution.
-        delta : float
-            distance between sampling points for linear interpolation.
-        """
         self._domain = self._target = DomainTuple.make(domain)
         self._alpha, self._q, self._delta = float(alpha), float(q), float(delta)
         self._xmin, self._xmax = -8.2, 8.2

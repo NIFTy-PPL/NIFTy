@@ -24,6 +24,8 @@ from .domains.gl_space import GLSpace
 from .domains.hp_space import HPSpace
 from .domains.power_space import PowerSpace
 from .domains.rg_space import RGSpace
+from .domains.log_rg_space import LogRGSpace
+from .domain_tuple import DomainTuple
 from .field import Field
 
 # relevant properties:
@@ -152,26 +154,20 @@ def _register_cmaps():
     plt.register_cmap(cmap=LinearSegmentedColormap("Plus Minus", pm_cmap))
 
 
-def _plot(f, ax, **kwargs):
+def _plot1D(f, ax, **kwargs):
     import matplotlib.pyplot as plt
-    _register_cmaps()
-    if isinstance(f, Field):
-        f = [f]
-    if not isinstance(f, list):
-        raise TypeError("incorrect data type")
+
     for i, fld in enumerate(f):
         if not isinstance(fld, Field):
             raise TypeError("incorrect data type")
         if i == 0:
             dom = fld.domain
-            if len(dom) != 1:
+            if (len(dom) != 1):
                 raise ValueError("input field must have exactly one domain")
         else:
             if fld.domain != dom:
                 raise ValueError("domain mismatch")
-            if not (isinstance(dom[0], PowerSpace) or
-                    (isinstance(dom[0], RGSpace) and len(dom[0].shape) == 1)):
-                raise ValueError("PowerSpace or 1D RGSpace required")
+    dom = dom[0]
 
     label = kwargs.pop("label", None)
     if not isinstance(label, list):
@@ -185,44 +181,38 @@ def _plot(f, ax, **kwargs):
     if not isinstance(alpha, list):
         alpha = [alpha] * len(f)
 
-    foo = kwargs.pop("norm", None)
-    norm = {} if foo is None else {'norm': foo}
-
-    dom = dom[0]
     ax.set_title(kwargs.pop("title", ""))
     ax.set_xlabel(kwargs.pop("xlabel", ""))
     ax.set_ylabel(kwargs.pop("ylabel", ""))
-    cmap = kwargs.pop("colormap", plt.rcParams['image.cmap'])
+
     if isinstance(dom, RGSpace):
-        if len(dom.shape) == 1:
-            npoints = dom.shape[0]
-            dist = dom.distances[0]
-            xcoord = np.arange(npoints, dtype=np.float64)*dist
-            for i, fld in enumerate(f):
-                ycoord = fld.to_global_data()
-                plt.plot(xcoord, ycoord, label=label[i],
-                         linewidth=linewidth[i], alpha=alpha[i])
-            _limit_xy(**kwargs)
-            if label != ([None]*len(f)):
-                plt.legend()
-            return
-        elif len(dom.shape) == 2:
-            nx, ny = dom.shape
-            dx, dy = dom.distances
-            im = ax.imshow(
-                f[0].to_global_data().T, extent=[0, nx*dx, 0, ny*dy],
-                vmin=kwargs.get("zmin"), vmax=kwargs.get("zmax"),
-                cmap=cmap, origin="lower", **norm)
-            # from mpl_toolkits.axes_grid1 import make_axes_locatable
-            # divider = make_axes_locatable(ax)
-            # cax = divider.append_axes("right", size="5%", pad=0.05)
-            # plt.colorbar(im,cax=cax)
-            plt.colorbar(im)
-            _limit_xy(**kwargs)
-            return
+        plt.yscale(kwargs.pop("yscale", "linear"))
+        npoints = dom.shape[0]
+        dist = dom.distances[0]
+        xcoord = np.arange(npoints, dtype=np.float64)*dist
+        for i, fld in enumerate(f):
+            ycoord = fld.to_global_data()
+            plt.plot(xcoord, ycoord, label=label[i],
+                     linewidth=linewidth[i], alpha=alpha[i])
+        _limit_xy(**kwargs)
+        if label != ([None]*len(f)):
+            plt.legend()
+        return
+    elif isinstance(dom, LogRGSpace):
+        plt.yscale(kwargs.pop("yscale", "log"))
+        npoints = dom.shape[0]
+        xcoord = dom.t_0 + np.arange(npoints-1)*dom.bindistances[0]
+        for i, fld in enumerate(f):
+            ycoord = fld.to_global_data()[1:]
+            plt.plot(xcoord, ycoord, label=label[i],
+                     linewidth=linewidth[i], alpha=alpha[i])
+        _limit_xy(**kwargs)
+        if label != ([None]*len(f)):
+            plt.legend()
+        return
     elif isinstance(dom, PowerSpace):
-        plt.xscale('log')
-        plt.yscale('log')
+        plt.xscale(kwargs.pop("xscale", "log"))
+        plt.yscale(kwargs.pop("yscale", "log"))
         xcoord = dom.k_lengths
         for i, fld in enumerate(f):
             ycoord = fld.to_global_data()
@@ -232,6 +222,38 @@ def _plot(f, ax, **kwargs):
         if label != ([None]*len(f)):
             plt.legend()
         return
+    raise ValueError("Field type not(yet) supported")
+
+
+def _plot2D(f, ax, **kwargs):
+    import matplotlib.pyplot as plt
+
+    dom = f.domain
+
+    if len(dom) > 1:
+        raise ValueError("DomainTuple must have exactly one entry.")
+
+    label = kwargs.pop("label", None)
+
+    foo = kwargs.pop("norm", None)
+    norm = {} if foo is None else {'norm': foo}
+
+    ax.set_title(kwargs.pop("title", ""))
+    ax.set_xlabel(kwargs.pop("xlabel", ""))
+    ax.set_ylabel(kwargs.pop("ylabel", ""))
+    dom = dom[0]
+    cmap = kwargs.pop("colormap", plt.rcParams['image.cmap'])
+
+    if isinstance(dom, RGSpace):
+        nx, ny = dom.shape
+        dx, dy = dom.distances
+        im = ax.imshow(
+            f.to_global_data().T, extent=[0, nx*dx, 0, ny*dy],
+            vmin=kwargs.get("zmin"), vmax=kwargs.get("zmax"),
+            cmap=cmap, origin="lower", **norm)
+        plt.colorbar(im)
+        _limit_xy(**kwargs)
+        return
     elif isinstance(dom, (HPSpace, GLSpace)):
         import pyHealpix
         xsize = 800
@@ -240,21 +262,44 @@ def _plot(f, ax, **kwargs):
             ptg = np.empty((phi.size, 2), dtype=np.float64)
             ptg[:, 0] = theta
             ptg[:, 1] = phi
-            base = pyHealpix.Healpix_Base(int(np.sqrt(f[0].size//12)), "RING")
-            res[mask] = f[0].to_global_data()[base.ang2pix(ptg)]
+            base = pyHealpix.Healpix_Base(int(np.sqrt(dom.size//12)), "RING")
+            res[mask] = f.to_global_data()[base.ang2pix(ptg)]
         else:
             ra = np.linspace(0, 2*np.pi, dom.nlon+1)
             dec = pyHealpix.GL_thetas(dom.nlat)
             ilat = _find_closest(dec, theta)
             ilon = _find_closest(ra, phi)
             ilon = np.where(ilon == dom.nlon, 0, ilon)
-            res[mask] = f[0].to_global_data()[ilat*dom.nlon + ilon]
+            res[mask] = f.to_global_data()[ilat*dom.nlon + ilon]
         plt.axis('off')
         plt.imshow(res, vmin=kwargs.get("zmin"), vmax=kwargs.get("zmax"),
                    cmap=cmap, origin="lower")
         plt.colorbar(orientation="horizontal")
         return
+    raise ValueError("Field type not(yet) supported")
 
+
+def _plot(f, ax, **kwargs):
+    _register_cmaps()
+    if isinstance(f, Field):
+        f = [f]
+    f = list(f)
+    if len(f) == 0:
+        raise ValueError("need something to plot")
+    if not isinstance(f[0], Field):
+            raise TypeError("incorrect data type")
+    dom1 = f[0].domain
+    if (len(dom1)==1 and
+        (isinstance(dom1[0],PowerSpace) or
+            (isinstance(dom1[0], (RGSpace, LogRGSpace)) and
+             len(dom1[0].shape) == 1))):
+        _plot1D(f, ax, **kwargs)
+        return
+    else:
+        if len(f) != 1:
+            raise ValueError("need exactly one Field for 2D plot")
+        _plot2D(f[0], ax, **kwargs)
+        return
     raise ValueError("Field type not(yet) supported")
 
 

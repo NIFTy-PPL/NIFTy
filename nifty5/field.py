@@ -23,18 +23,15 @@ from .domain_tuple import DomainTuple
 
 
 class Field(object):
-    _scalar_dom = DomainTuple.scalar_domain()
-
     """The discrete representation of a continuous field over multiple spaces.
 
-    In NIFTy, Fields are used to store data arrays and carry all the needed
-    metainformation (i.e. the domain) for operators to be able to work on them.
+    Stores data arrays and carries all the needed metainformation (i.e. the
+    domain) for operators to be able to operate on them.
 
     Parameters
     ----------
     domain : DomainTuple
         the domain of the new Field
-
     val : data_object
         This object's global shape must match the domain shape
         After construction, the object will no longer be writeable!
@@ -42,8 +39,10 @@ class Field(object):
     Notes
     -----
     If possible, do not invoke the constructor directly, but use one of the
-    many convenience functions for Field construction!
+    many convenience functions for instantiation!
     """
+
+    _scalar_dom = DomainTuple.scalar_domain()
 
     def __init__(self, domain, val):
         if not isinstance(domain, DomainTuple):
@@ -337,7 +336,7 @@ class Field(object):
         """
         if not isinstance(x, Field):
             raise TypeError("The multiplier must be an instance of " +
-                            "the NIFTy field class")
+                            "the Field class")
         from .operators.outer_product_operator import OuterProduct
         return OuterProduct(self, x.domain)(x)
 
@@ -360,7 +359,7 @@ class Field(object):
         """
         if not isinstance(x, Field):
             raise TypeError("The dot-partner must be an instance of " +
-                            "the NIFTy field class")
+                            "the Field class")
 
         if x._domain != self._domain:
             raise ValueError("Domain mismatch")

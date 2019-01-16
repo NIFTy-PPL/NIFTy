@@ -16,30 +16,29 @@
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
 
 from functools import reduce
+
 import numpy as np
 
-from .. import dobj
 from ..field import Field
-from ..sugar import exp
 from .structured_domain import StructuredDomain
 
 
 class LogRGSpace(StructuredDomain):
-    """NIFTy subclass for logarithmic Cartesian grids.
+    '''Represents a logarithmic Cartesian grid.
 
     Parameters
     ----------
     shape : int or tuple of int
         Number of grid points or numbers of gridpoints along each axis.
     bindistances : float or tuple of float
-        Distance between two grid points along each axis. These are
-        measured on logarithmic scale and are constant therfore.
+        Logarithmic distance between two grid points along each axis.
+        Equidistant spacing of bins on logarithmic scale is assumed.
     t_0 : float or tuple of float
-        FIXME
+        Coordinate of pixel ndim*(1,).
     harmonic : bool, optional
         Whether the space represents a grid in position or harmonic space.
         Default: False.
-    """
+    '''
     _needed_for_hash = ['_shape', '_bindistances', '_t_0', '_harmonic']
 
     def __init__(self, shape, bindistances, t_0, harmonic=False):
@@ -77,6 +76,7 @@ class LogRGSpace(StructuredDomain):
 
     @property
     def t_0(self):
+        """np.ndarray : array of coordinates of pixel ndim*(1,)."""
         return np.array(self._t_0)
 
     def __repr__(self):
@@ -84,16 +84,49 @@ class LogRGSpace(StructuredDomain):
             self.shape, self.harmonic))
 
     def get_default_codomain(self):
+        """Returns a :class:`LogRGSpace` object representing the (position or
+        harmonic) partner domain of `self`, depending on `self.harmonic`. The
+        `bindistances` are transformed and `t_0` stays the same.
+
+        Returns
+        -------
+        LogRGSpace
+            The parter domain
+        """
         codomain_bindistances = 1./(self.bindistances*self.shape)
         return LogRGSpace(self.shape, codomain_bindistances, self._t_0, True)
 
     def get_k_length_array(self):
+        """Generates array of distances to origin of the space.
+
+        Returns
+        -------
+        numpy.ndarray
+            Distances to origin of the space. If any index of the array is
+            zero then the distance is np.nan if self.harmonic True.
+            The dtype is float64, the shape is `self.shape`.
+
+        Raises
+        ------
+        NotImplementedError
+            If `self.harmonic` is False.
+        """
         if not self.harmonic:
             raise NotImplementedError
         ks = self.get_k_array()
         return Field.from_global_data(self, np.linalg.norm(ks, axis=0))
 
     def get_k_array(self):
+        """Generates coordinates of the space.
+
+        Returns
+        -------
+        numpy.ndarray
+            Coordinates of the space. If one index of the array is zero the
+            corresponding coordinate is -np.inf (np.nan) if self.harmonic is
+            False (True).
+            The dtype is float64 and shape: `(len(self.shape),) + self.shape`.
+        """
         ndim = len(self.shape)
         k_array = np.zeros((ndim,) + self.shape)
         dist = self.bindistances

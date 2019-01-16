@@ -22,7 +22,7 @@ from .structured_domain import StructuredDomain
 
 
 class PowerSpace(StructuredDomain):
-    """NIFTy class for spaces of power spectra.
+    """Represents non-equidistantly binned spaces for power spectra.
 
     A power space is the result of a projection of a harmonic domain where
     k-modes of equal length get mapped to one power index.

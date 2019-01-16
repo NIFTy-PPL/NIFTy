@@ -89,11 +89,10 @@ def testBinary(type1, type2, space, seed):
 
 def testModelLibrary(space, seed):
     # Tests amplitude model and coorelated field model
-    Npixdof, ceps_a, ceps_k, sm, sv, im, iv = 4, 0.5, 2., 3., 1.5, 1.75, 1.3
     np.random.seed(seed)
     domain = ift.PowerSpace(space.get_default_codomain())
-    model = ift.AmplitudeOperator(domain, Npixdof, ceps_a, ceps_k, sm, sv, im,
-                                  iv)
+    model = ift.SLAmplitude(target=domain, n_pix=4, a=.5, k0=2, sm=3, sv=1.5,
+                            im=1.75, iv=1.3)
     assert_(isinstance(model, ift.Operator))
     S = ift.ScalingOperator(1., model.domain)
     pos = S.draw_sample()
@@ -103,6 +102,12 @@ def testModelLibrary(space, seed):
     S = ift.ScalingOperator(1., model2.domain)
     pos = S.draw_sample()
     ift.extra.check_value_gradient_consistency(model2, pos, ntries=20)
+
+    domtup = ift.DomainTuple.make((space, space))
+    model3 = ift.MfCorrelatedField(domtup, [model, model])
+    S = ift.ScalingOperator(1., model3.domain)
+    pos = S.draw_sample()
+    ift.extra.check_value_gradient_consistency(model3, pos, ntries=20)
 
 
 def testPointModel(space, seed):

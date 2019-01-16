@@ -24,7 +24,7 @@ from .endomorphic_operator import EndomorphicOperator
 
 
 class DiagonalOperator(EndomorphicOperator):
-    """NIFTy class for diagonal operators.
+    """Represents a linear operator which is diagonal.
 
     The NIFTy DiagonalOperator class is a subclass derived from the
     EndomorphicOperator. It multiplies an input field pixel-wise with its
