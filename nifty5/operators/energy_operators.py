@@ -111,7 +111,7 @@ class GaussianEnergy(EnergyOperator):
         Mean of the Gaussian. Default is 0.
     covariance : LinearOperator
         Covariance of the Gaussian. Default is the identity operator.
-    domain : Domain, DomainTuple of tuple of Domain
+    domain : Domain, DomainTuple, tuple of Domain or MultiDomain
         Operator domain. By default it is inferred from `mean` or
         `covariance` if specified
 
@@ -126,8 +126,6 @@ class GaussianEnergy(EnergyOperator):
         if covariance is not None and not isinstance(covariance,
                                                      LinearOperator):
             raise TypeError
-        if domain is not None:
-            domain = DomainTuple.make(domain)
 
         self._domain = None
         if mean is not None:
