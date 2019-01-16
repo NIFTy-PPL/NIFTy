@@ -19,7 +19,7 @@ There is a full toolbox of methods that can be used, like the classical approxim
 
 .. [3] T.A. Enßlin (2014), "Astrophysical data analysis with information field theory", AIP Conference Proceedings, Volume 1636, Issue 1, p.49; `arXiv:1405.7701 <http://arxiv.org/abs/1405.7701>`_
 
-.. [4] Wikipedia contributors (2018), `"Information field theory" <https://en.wikipedia.org/w/index.php?title=Information_field_theory&oldid=876731720>`_, Wikipedia, The Free Encyclopedia. 
+.. [4] Wikipedia contributors (2018), `"Information field theory" <https://en.wikipedia.org/w/index.php?title=Information_field_theory&oldid=876731720>`_, Wikipedia, The Free Encyclopedia.
 
 .. [5] T.A. Enßlin (2019), "Information theory for fields", accepted by Annalen der Physik; `arXiv:1804.03350 <http://arxiv.org/abs/1804.03350>`_
 
@@ -85,7 +85,7 @@ The above line of argumentation analogously applies to the discretization of ope
 
 The proper discretization of spaces, fields, and operators, as well as the normalization of position integrals, is essential for the conservation of the continuum limit. Their consistent implementation in NIFTY allows a pixelization independent coding of algorithms.
 
-Free Theory & Implicit Operators 
+Free Theory & Implicit Operators
 --------------------------------
 
 A free IFT appears when the signal field :math:`{s}` and the noise :math:`{n}` of the data :math:`{d}` are independent, zero-centered Gaussian processes of kown covariances :math:`{S}` and :math:`{N}`, respectively,
@@ -94,7 +94,7 @@ A free IFT appears when the signal field :math:`{s}` and the noise :math:`{n}` o
 
     \mathcal{P}(s,n) = \mathcal{G}(s,S)\,\mathcal{G}(n,N),
 
-and the measurement equation is linear in both, signal and noise,
+and the measurement equation is linear in both signal and noise,
 
 .. math::
 
@@ -109,15 +109,15 @@ associate professor
 
     \mathcal{H}(d,s)= -\log \mathcal{P}(d,s)= \frac{1}{2} s^\dagger S^{-1} s + \frac{1}{2} (d-R\,s)^\dagger N^{-1} (d-R\,s) + \mathrm{const}
 
-is only of quadratic order in :math:`{s}`, which leads to a linear relation between the data and the posterior mean field. 
+is only of quadratic order in :math:`{s}`, which leads to a linear relation between the data and the posterior mean field.
 
-In this case, the posterior is 
+In this case, the posterior is
 
 .. math::
 
     \mathcal{P}(s|d) = \mathcal{G}(s-m,D)
 
-with 
+with
 
 .. math::
 
@@ -129,7 +129,7 @@ the posterior mean field,
 
     D = \left( S^{-1} + R^\dagger N^{-1} R\right)^{-1}
 
-the posterior covariance operator, and 
+the posterior covariance operator, and
 
 .. math::
 
@@ -137,7 +137,7 @@ the posterior covariance operator, and
 
 the information source. The operation in :math:`{d= D\,R^\dagger N^{-1} d}` is also called the generalized Wiener filter.
 
-NIFTy permits to define the involved operators :math:`{R}`, :math:`{R^\dagger}`, :math:`{S}`, and :math:`{N}` implicitely, as routines that can be applied to vectors, but which do not require the explicit storage of the matrix elements of the operators. 
+NIFTy permits to define the involved operators :math:`{R}`, :math:`{R^\dagger}`, :math:`{S}`, and :math:`{N}` implicitely, as routines that can be applied to vectors, but which do not require the explicit storage of the matrix elements of the operators.
 
 Some of these operators are diagonal in harmonic (Fourier) basis, and therefore only require the specification of a (power) spectrum and :math:`{S= F\,\widehat{P_s} F^\dagger}`. Here :math:`{F = \mathrm{HarmonicTransformOperator}}`, :math:`{\widehat{P_s} = \mathrm{DiagonalOperator}(P_s)}`, and :math:`{P_s(k)}` is the power spectrum of the process that generated :math:`{s}` as a function of the (absolute value of the) harmonic (Fourier) space koordinate :math:`{k}`. For those, NIFTy can easily also provide inverse operators, as :math:`{S^{-1}= F\,\widehat{\frac{1}{P_s}} F^\dagger}` in case :math:`{F}` is unitary, :math:`{F^\dagger=F^{-1}}`.
 
@@ -170,7 +170,7 @@ The joint information Hamiltonian for the whitened signal field :math:`{\xi}` re
 
     \mathcal{H}(d,\xi)= -\log \mathcal{P}(d,s)= \frac{1}{2} \xi^\dagger \xi + \frac{1}{2} (d-R\,A\,\xi)^\dagger N^{-1} (d-R\,A\,\xi) + \mathrm{const}.
 
-NIFTy takes advantage of this formulation in several ways: 
+NIFTy takes advantage of this formulation in several ways:
 
 1) All prior degrees of freedom have unit covariance which improves the condition number of operators which need to be inverted.
 2) The amplitude operator can be regarded as part of the response, :math:`{R'=R\,A}`. In general, more sophisticated responses can be constructed out of the composition of simpler operators.

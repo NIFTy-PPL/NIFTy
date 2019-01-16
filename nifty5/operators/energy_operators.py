@@ -35,6 +35,7 @@ class EnergyOperator(Operator):
     It is intended as an objective function for field inference.
 
     Typical usage in IFT:
+
      - as an information Hamiltonian (i.e. a negative log probability)
      - or as a Gibbs free energy (i.e. an averaged Hamiltonian),
        aka Kullbach-Leibler divergence.
@@ -47,8 +48,8 @@ class SquaredNormOperator(EnergyOperator):
 
     Usage
     -----
-    E = SquaredNormOperator() represents a field energy E that is the L2 norm
-    of a field f:
+    ``E = SquaredNormOperator()`` represents a field energy E that is the
+    L2 norm of a field f:
 
     :math:`E(f) = f^\dagger f`
     """
@@ -74,7 +75,7 @@ class QuadraticFormOperator(EnergyOperator):
 
     Notes
     -----
-    `E = QuadraticFormOperator(op)` represents a field energy that is a
+    ``E = QuadraticFormOperator(op)`` represents a field energy that is a
     quadratic form in a field f with kernel op:
 
     :math:`E(f) = 0.5 f^\dagger op f`
@@ -111,8 +112,10 @@ class GaussianEnergy(EnergyOperator):
     Notes
     -----
     - At least one of the arguments has to be provided.
-    - `E = GaussianEnergy(mean=m, covariance=D)` represents (up to constants)
+    - ``E = GaussianEnergy(mean=m, covariance=D)`` represents (up to constants)
+
         :math:`E(f) = - \log G(f-m, D) = 0.5 (f-m)^\dagger D^{-1} (f-m)`,
+
         an information energy for a Gaussian distribution with mean m and covariance D.
 
     """
@@ -163,9 +166,9 @@ class PoissonianEnergy(EnergyOperator):
 
     Notes
     -----
-    E = GaussianEnergy(d) represents (up to an f-independent term log(d!))
+    ``E = PoissonianEnergy(d)`` represents (up to an f-independent term log(d!))
 
-    :math:`E(f) = -\log Poisson(d|f) = \sum f - d^\dagger \log(f)`,
+    :math:`E(f) = -\log \\text{Poisson}(d|f) = \sum f - d^\dagger \log(f)`,
 
     where f is a Field in data space with the expectation values for
     the counts.
@@ -216,9 +219,9 @@ class BernoulliEnergy(EnergyOperator):
 
     Notes
     -----
-    E = BernoulliEnergy(d) represents
+    ``E = BernoulliEnergy(d)`` represents
 
-    :math:`E(f) = -\log \mbox{Bernoulli}(d|f) = -d^\dagger \log f  - (1-d)^\dagger \log(1-f)`,
+    :math:`E(f) = -\log \\text{Bernoulli}(d|f) = -d^\dagger \log f  - (1-d)^\dagger \log(1-f)`,
 
     where f is a field in data space (d.domain) with the expected frequencies of
     events.
@@ -253,7 +256,7 @@ class Hamiltonian(EnergyOperator):
 
     Notes
     -----
-    H = Hamiltonian(E_lh) represents
+    ``H = Hamiltonian(E_lh)`` represents
 
     :math:`H(f) = 0.5 f^\dagger f + E_{lh}(f)`
 
@@ -270,7 +273,7 @@ class Hamiltonian(EnergyOperator):
     For more details see:
     "Encoding prior knowledge in the structure of the likelihood"
     Jakob Knollmüller, Torsten A. Ensslin, submitted, arXiv:1812.04403
-    https://arxiv.org/abs/1812.04403
+    :link:`https://arxiv.org/abs/1812.04403`
     """
     def __init__(self, lh, ic_samp=None):
         self._lh = lh
@@ -302,20 +305,22 @@ class SampledKullbachLeiblerDivergence(EnergyOperator):
     approximatively the relevant part of a KL to be used in Variational Bayes
     inference if the samples are drawn from the approximating Gaussian.
 
-    Let Q(f) = G(f-m,D) Gaussian used to approximate
-    P(f|d), the correct posterior with information Hamiltonian
-    H(d,f) = - log P(d,f) = - log P(f|d) + const.
+    Let :math:`Q(f) = G(f-m,D)` Gaussian used to approximate
+    :math:`P(f|d)`, the correct posterior with information Hamiltonian
+    :math:`H(d,f) = -\log P(d,f) = -\log P(f|d) + \\text{const.}`
 
     The KL divergence between those should then be optimized for m. It is
 
-    :math:`KL(Q,P) = \int Df Q(f) \log Q(f)/P(f)\\
-    = \left< \log Q(f) \\right>_Q(f) - < \log P(f) >_Q(f) = const + < H(f) >_G(f-m,D)`
+    :math:`KL(Q,P) = \int Df Q(f) \log Q(f)/P(f)\\\\
+    = \left< \log Q(f) \\right>_Q(f) - \left< \log P(f) \\right>_Q(f)\\\\
+    = \\text{const} + \left< H(f) \\right>_G(f-m,D)`
 
-    in essence the information Hamiltonian averaged over a Gaussian distribution
-    centered on the mean m.
+    in essence the information Hamiltonian averaged over a Gaussian
+    distribution centered on the mean m.
 
-    SampledKullbachLeiblerDivergence(H) approximates < H(f) >_G(f-m,D) if the
-    residuals f-m are drawn from covariance D.
+    SampledKullbachLeiblerDivergence(H) approximates
+    :math:`\left< H(f) \\right>_{G(f-m,D)}` if the residuals
+    :math:`f-m` are drawn from covariance :math:`D`.
 
     Parameters
     ----------
@@ -327,17 +332,17 @@ class SampledKullbachLeiblerDivergence(EnergyOperator):
 
     Notes
     -----
-    KL = SampledKullbachLeiblerDivergence(H, samples) represents
+    ``KL = SampledKullbachLeiblerDivergence(H, samples)`` represents
 
-    :math:`KL(m) = \sum_i H(m+v_i) / N`,
+    :math:`\\text{KL}(m) = \sum_i H(m+v_i) / N`,
 
-    where v_i are the residual samples, N is their number, and m is the mean field
-    around which the samples are drawn.
+    where :math:`v_i` are the residual samples, :math:`N` is their number,
+    and :math:`m` is the mean field around which the samples are drawn.
 
-    Having symmetrized residual samples, with both, v_i and -v_i being present,
-    ensures that the distribution mean is exactly represented. This reduces sampling
-    noise and helps the numerics of the KL minimization process in the variational
-    Bayes inference.
+    Having symmetrized residual samples, with both v_i and -v_i being present
+    ensures that the distribution mean is exactly represented. This reduces
+    sampling noise and helps the numerics of the KL minimization process in the
+    variational Bayes inference.
     """
     def __init__(self, h, res_samples):
         self._h = h
