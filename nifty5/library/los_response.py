@@ -104,7 +104,7 @@ def apply_erf(wgt, dist, lo, mid, hi, sig, erf):
 class LOSResponse(LinearOperator):
     """Line-of-sight response operator
 
-    This operator transforms from a single RGSpace to an unstructured domain
+    This operator transforms from a single RGSpace to an UnstructuredDomain
     with as many entries as there were lines of sight passed to the
     constructor. Adjoint application is also provided.
 

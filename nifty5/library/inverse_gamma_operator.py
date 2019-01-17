@@ -31,11 +31,11 @@ class InverseGammaOperator(Operator):
     The pdf of the inverse gamma distribution is defined as follows:
 
     .. math ::
-        \\frac{\\beta^\\alpha}{\\Gamma(\\alpha)}x^{-\\alpha -1}\\exp \\left(-\\frac{\\beta }{x}\\right)
+        \\frac{q^\\alpha}{\\Gamma(\\alpha)}x^{-\\alpha -1}\\exp \\left(-\\frac{q}{x}\\right)
 
-    That means that for large x the pdf falls off like x^(-alpha -1).
-    The mean of the pdf is at q / (alpha - 1) if alpha > 1.
-    The mode is q / (alpha + 1).
+    That means that for large x the pdf falls off like :math:`x^(-\\alpha -1)`.
+    The mean of the pdf is at :math:`q / (\\alpha - 1)` if :math:`\\alpha > 1`.
+    The mode is :math:`q / (\\alpha + 1)`.
 
     This transformation is implemented as a linear interpolation which maps a
     Gaussian onto a inverse gamma distribution.

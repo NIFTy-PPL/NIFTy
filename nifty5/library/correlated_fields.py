@@ -25,15 +25,15 @@ from ..operators.simple_linear_operators import ducktape
 
 
 def CorrelatedField(target, amplitude_operator, name='xi'):
-    '''Constructs an operator which turns a white Gaussian excitation field
+    """Constructs an operator which turns a white Gaussian excitation field
     into a correlated field.
 
     This function returns an operator which implements:
 
         ht @ (vol * A * xi),
 
-    where `ht` is a harmonic transform operator, `A` is the sqare root of the
-    prior covariance an `xi` is the excitation field.
+    where `ht` is a harmonic transform operator, `A` is the square root of the
+    prior covariance and `xi` is the excitation field.
 
     Parameters
     ----------
@@ -41,12 +41,12 @@ def CorrelatedField(target, amplitude_operator, name='xi'):
         Target of the operator. Must contain exactly one space.
     amplitude_operator: Operator
     name : string
-        :class:`MultiField` key for xi-field.
+        :class:`MultiField` key for the xi-field.
 
     Returns
     -------
     Correlated field : Operator
-    '''
+    """
     tgt = DomainTuple.make(target)
     if len(tgt) > 1:
         raise ValueError
@@ -60,7 +60,7 @@ def CorrelatedField(target, amplitude_operator, name='xi'):
 
 
 def MfCorrelatedField(target, amplitudes, name='xi'):
-    '''Constructs an operator which turns white Gaussian excitation fields
+    """Constructs an operator which turns white Gaussian excitation fields
     into a correlated field defined on a DomainTuple with two entries and two
     separate correlation structures.
 
@@ -79,7 +79,7 @@ def MfCorrelatedField(target, amplitudes, name='xi'):
     Returns
     -------
     Correlated field : Operator
-    '''
+    """
     tgt = DomainTuple.make(target)
     if len(tgt) != 2:
         raise ValueError

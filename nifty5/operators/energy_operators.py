@@ -49,7 +49,7 @@ class SquaredNormOperator(EnergyOperator):
     Parameters
     ----------
     domain : Domain, DomainTuple or tuple of Domain
-        Target domain of the operator in which the L2-norm shall be computed.
+        Domain of the operator in which the L2-norm shall be computed.
     """
 
     def __init__(self, domain):
@@ -66,7 +66,7 @@ class SquaredNormOperator(EnergyOperator):
 
 class QuadraticFormOperator(EnergyOperator):
     """Computes the L2-norm of a Field or MultiField with respect to a
-    specific metric `endo`.
+    specific kernel given by `endo`.
 
     .. math ::
         E(f) = \\frac12 f^\\dagger \\text{endo}(f)
@@ -74,7 +74,7 @@ class QuadraticFormOperator(EnergyOperator):
     Parameters
     ----------
     endo : EndomorphicOperator
-         Kernel of quadratic form.
+         Kernel of the quadratic form
     """
 
     def __init__(self, endo):
@@ -283,7 +283,7 @@ class Hamiltonian(EnergyOperator):
     lh : EnergyOperator
         The likelihood energy.
     ic_samp : IterationController
-        Tells an internal :class:`SamplingEnabler` which convergence criterium
+        Tells an internal :class:`SamplingEnabler` which convergence criterion
         to use to draw Gaussian samples.
 
 

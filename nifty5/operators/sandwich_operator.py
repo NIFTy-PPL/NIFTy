@@ -25,7 +25,12 @@ from .scaling_operator import ScalingOperator
 
 class SandwichOperator(EndomorphicOperator):
     """Operator which is equivalent to the expression
-    `bun.adjoint(cheese(bun))`."""
+    `bun.adjoint(cheese(bun))`.
+
+    Notes
+    -----
+    This operator should always be called using the `make` method.
+    """
 
     def __init__(self, bun, cheese, op, _callingfrommake=False):
         if not _callingfrommake:

@@ -26,7 +26,12 @@ from .linear_operator import LinearOperator
 
 
 class SumOperator(LinearOperator):
-    """Class representing sums of operators."""
+    """Class representing sums of operators.
+
+    Notes
+    -----
+    This operator has to be called using the `make` method.
+    """
 
     def __init__(self, ops, neg, dom, tgt, _callingfrommake=False):
         if not _callingfrommake:
