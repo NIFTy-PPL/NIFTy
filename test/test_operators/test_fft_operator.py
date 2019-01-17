@@ -17,7 +17,7 @@
 
 import numpy as np
 import pytest
-from numpy.testing import assert_allclose
+from numpy.testing import assert_, assert_allclose
 
 import nifty5 as ift
 
@@ -35,6 +35,16 @@ pmp = pytest.mark.parametrize
 dtype = list2fixture([np.float64, np.float32, np.complex64, np.complex128])
 op = list2fixture([ift.HartleyOperator, ift.FFTOperator])
 fftw = list2fixture([False, True])
+
+
+def test_switch():
+    ift.fft.enable_fftw()
+    assert_(ift.fft._use_fftw is True)
+    ift.fft.disable_fftw()
+    assert_(ift.fft._use_fftw is False)
+    ift.fft.enable_fftw()
+    assert_(ift.fft._use_fftw is True)
+
 
 @pmp('d', [0.1, 1, 3.7])
 def test_fft1D(d, dtype, op, fftw):
