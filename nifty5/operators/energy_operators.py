@@ -325,7 +325,7 @@ class AveragedEnergy(EnergyOperator):
     drawn from the approximating Gaussian:
 
     .. math ::
-        \\text{KL}(m) = \\frac1{\\#\{v_i\}} \\sum_{v_i} H(m+v_i),
+        \\text{KL}(m) = \\frac1{\\#\\{v_i\\}} \\sum_{v_i} H(m+v_i),
 
     where :math:`v_i` are the residual samples and :math:`m` is the mean field
     around which the samples are drawn.

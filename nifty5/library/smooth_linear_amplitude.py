@@ -43,7 +43,7 @@ def CepstrumOperator(target, a, k0):
     and ceps is the so-called cepstrum:
 
     .. math::
-        \\mathrm{sqrt\_ceps}(k) = \\frac{a}{1+(k/k0)^2}
+        \\mathrm{sqrt\\_ceps}(k) = \\frac{a}{1+(k/k0)^2}
 
     These operators are combined in this fashion in order to generate:
 
