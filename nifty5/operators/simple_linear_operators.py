@@ -46,7 +46,14 @@ class VdotOperator(LinearOperator):
 
 
 class ConjugationOperator(EndomorphicOperator):
-    """Operator computing the complex conjugate of its input."""
+    """Operator computing the complex conjugate of its input.
+
+    Parameters
+    ----------
+    domain: Domain, tuple of domains or DomainTuple
+        domain of the input field
+
+    """
     def __init__(self, domain):
         self._domain = DomainTuple.make(domain)
         self._capability = self._all_ops
@@ -57,7 +64,14 @@ class ConjugationOperator(EndomorphicOperator):
 
 
 class Realizer(EndomorphicOperator):
-    """Operator returning the real component of its input."""
+    """Operator returning the real component of its input.
+
+    Parameters
+    ----------
+    domain: Domain, tuple of domains or DomainTuple
+        domain of the input field
+
+    """
     def __init__(self, domain):
         self._domain = DomainTuple.make(domain)
         self._capability = self.TIMES | self.ADJOINT_TIMES
@@ -173,8 +187,8 @@ class GeometryRemover(LinearOperator):
     domain: Domain, tuple of Domain, or DomainTuple:
         the full input domain of the operator.
     space: int, optional
-        The index of the subdomain on which the operator should act
-        If None, it acts on all spaces
+        The index of the subdomain on which the operator should act. Default is None.
+        If None, it acts on all spaces.
 
     Notes
     -----

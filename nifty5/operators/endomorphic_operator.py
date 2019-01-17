@@ -21,7 +21,7 @@ from .linear_operator import LinearOperator
 
 
 class EndomorphicOperator(LinearOperator):
-    """Represents a linear operator which is endomorphic, i.e. one which
+    """Represents a :class:`LinearOperator` which is endomorphic, i.e. one which
     has identical domain and target.
     """
     @property

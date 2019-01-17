@@ -27,7 +27,8 @@ class BlockDiagonalOperator(EndomorphicOperator):
     domain : MultiDomain
         Domain and target of the operator.
     operators : dict
-        Dictionary with subdomain names as keys and LinearOperators as items.
+        Dictionary with subdomain names as keys and :class:`LinearOperator`s
+        as items.
     """
     def __init__(self, domain, operators):
         if not isinstance(domain, MultiDomain):
