@@ -35,8 +35,8 @@ class LinearInterpolator(LinearOperator):
     Parameters
     ----------
     domain : RGSpace
-    sampling_points : numpy.ndarray, shape (dim, ndata)
-        Positions at which to interpolate.
+    sampling_points : numpy.ndarray
+        Positions at which to interpolate, shape (dim, ndata),
 
     Notes
     -----

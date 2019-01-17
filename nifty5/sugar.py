@@ -110,7 +110,7 @@ def power_analyze(field, spaces=None, binbounds=None,
 
     Parameters
     ----------
-    field : :class:`Field`
+    field : Field
         The field to be analyzed
     spaces : None or int or tuple of int, optional
         The indices of subdomains for which the power spectrum shall be
@@ -133,7 +133,7 @@ def power_analyze(field, spaces=None, binbounds=None,
 
     Returns
     -------
-    :class:`Field`
+    Field
         The output object. Its domain is a PowerSpace and it contains
         the power spectrum of `field`.
     """
