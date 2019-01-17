@@ -107,8 +107,27 @@ def probe_with_posterior_samples(op, post_op, nprobes):
 
 
 def probe_diagonal(op, nprobes, random_type="pm1"):
-    '''
-    FIXME
+    '''Probes the diagonal of an endomorphic operator.
+
+    The operator is called on a user-specified number of randomly generated
+    input vectors :math:`v_i`, producing :math:`r_i`. The estimated diagonal
+    is the mean of :math:`r_i^\dagger v_i`.
+
+    Parameters
+    ----------
+    op: EndomorphicOperator
+        The operator to be probed.
+    nprobes: int
+        The number of probes to be used.
+    random_type: str
+        The kind of random number distribution to be used for the probing.
+        The default value `pm1` causes the probing vector to be randomly
+        filled with values of +1 and -1.
+
+    Returns
+    -------
+    Field
+        The estimated diagonal.
     '''
     sc = StatCalculator()
     for i in range(nprobes):
