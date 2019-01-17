@@ -264,13 +264,13 @@ This functionality is provided by NIFTy's
 :class:`~inversion_enabler.InversionEnabler` class, which is itself a linear
 operator.
 
-.. currentmodule:: nifty5.operators.linear_operator
+.. currentmodule:: nifty5.operators.operator
 
 Direct multiplication and adjoint inverse multiplication transform a field
-defined on the operator's :attr:`~LinearOperator.domain` to one defined on the
-operator's :attr:`~LinearOperator.target`, whereas adjoint multiplication and
-inverse multiplication transform from :attr:`~LinearOperator.target` to
-:attr:`~LinearOperator.domain`. *FIXME* links don't work
+defined on the operator's :attr:`~Operator.domain` to one defined on the
+operator's :attr:`~Operator.target`, whereas adjoint multiplication and inverse
+multiplication transform from :attr:`~Operator.target` to
+:attr:`~Operator.domain`.
 
 .. currentmodule:: nifty5.operators
 
