@@ -146,7 +146,7 @@ def dynamic_operator(*,
                      minimum_phase=False):
     '''Constructs an operator encoding the Green's function of a linear
     homogeneous dynamic system.
-    
+
     When evaluated, this operator returns the Green's function representation
     in harmonic space. This result can be used as a convolution kernel to
     construct solutions of the homogeneous stochastic differential equation
@@ -216,7 +216,7 @@ def dynamic_lightcone_operator(*,
                                minimum_phase=False):
     '''Extends the functionality of :function: dynamic_operator to a Green's
     function which is constrained to be within a light cone.
-    
+
     The resulting Green's function is constrained to be within a light cone.
     This is achieved via convolution of the function with a light cone in
     space-time. Thereby the first axis of the space is set to be the teporal
