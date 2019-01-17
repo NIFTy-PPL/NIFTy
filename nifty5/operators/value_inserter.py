@@ -39,7 +39,10 @@ class ValueInserter(LinearOperator):
         self._domain = makeDomain(UnstructuredDomain(1))
         self._target = DomainTuple.make(target)
         index = tuple(index)
-        if not all([isinstance(n, int) and n>=0 and n<self.target.shape[i] for i, n in enumerate(index)]):
+        if not all([
+                isinstance(n, int) and n >= 0 and n < self.target.shape[i]
+                for i, n in enumerate(index)
+        ]):
             raise TypeError
         self._index = index
         self._capability = self.TIMES | self.ADJOINT_TIMES
