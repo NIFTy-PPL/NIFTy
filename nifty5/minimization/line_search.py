@@ -15,7 +15,7 @@
 #
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
 
-from ..utilities import NiftyMetaBase
+from ..utilities import NiftyMeta
 from ..logger import logger
 import numpy as np
 
@@ -103,7 +103,7 @@ class LineEnergy(object):
         return res.real
 
 
-class LineSearch(NiftyMetaBase()):
+class LineSearch(metaclass=NiftyMeta):
     """Class for finding a step size that satisfies the strong Wolfe
     conditions.
 

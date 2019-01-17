@@ -16,6 +16,8 @@
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
 
 from .field import Field
+from .operators.endomorphic_operator import EndomorphicOperator
+from .operators.operator import Operator
 
 
 class StatCalculator(object):
@@ -69,6 +71,29 @@ class StatCalculator(object):
 
 
 def probe_with_posterior_samples(op, post_op, nprobes):
+    '''FIXME
+
+    Parameters
+    ----------
+    op : EndomorphicOperator
+        FIXME
+    post_op : Operator
+        FIXME
+    nprobes : int
+        Number of samples which shall be drawn.
+
+    Returns
+    -------
+    List of Field
+        List of two fields: the mean and the variance.
+    '''
+    if not isinstance(op, EndomorphicOperator):
+        raise TypeError
+    if post_op is not None:
+        if not isinstance(post_op, Operator):
+            raise TypeError
+        if post_op.domain is not op.target:
+            raise ValueError
     sc = StatCalculator()
     for i in range(nprobes):
         if post_op is None:
@@ -82,6 +107,28 @@ def probe_with_posterior_samples(op, post_op, nprobes):
 
 
 def probe_diagonal(op, nprobes, random_type="pm1"):
+    '''Probes the diagonal of an endomorphic operator.
+
+    The operator is called on a user-specified number of randomly generated
+    input vectors :math:`v_i`, producing :math:`r_i`. The estimated diagonal
+    is the mean of :math:`r_i^\dagger v_i`.
+
+    Parameters
+    ----------
+    op: EndomorphicOperator
+        The operator to be probed.
+    nprobes: int
+        The number of probes to be used.
+    random_type: str
+        The kind of random number distribution to be used for the probing.
+        The default value `pm1` causes the probing vector to be randomly
+        filled with values of +1 and -1.
+
+    Returns
+    -------
+    Field
+        The estimated diagonal.
+    '''
     sc = StatCalculator()
     for i in range(nprobes):
         input = Field.from_random(random_type, op.domain)

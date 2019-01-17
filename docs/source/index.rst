@@ -1,7 +1,7 @@
 NIFTy -- Numerical Information Field Theory
 ===========================================
 
-**NIFTy** [1]_, "\ **N**\umerical **I**\nformation **F**\ield **T**\heor\ **y**\ ", is a versatile library designed to enable the development of signal inference algorithms that are independent of the underlying spatial grid and its resolution.
+**NIFTy** [1]_, [2]_, "\ **N**\umerical **I**\nformation **F**\ield **T**\heor\ **y**\ ", is a versatile library designed to enable the development of signal inference algorithms that are independent of the underlying spatial grid and its resolution.
 Its object-oriented framework is written in Python, although it accesses libraries written in C++ and C for efficiency.
 
 NIFTy offers a toolkit that abstracts discretized representations of continuous spaces, fields in these spaces, and operators acting on fields into classes.
@@ -13,7 +13,9 @@ The set of spaces on which NIFTy operates comprises point sets, *n*-dimensional 
 References
 ----------
 
-.. [1] Steininger et al., "NIFTy 3 - Numerical Information Field Theory - A Python framework for multicomponent signal inference on HPC clusters", 2017, submitted to PLOS One; `[arXiv:1708.01073] <https://arxiv.org/abs/1708.01073>`_
+.. [1] Selig et al., "NIFTY - Numerical Information Field Theory. A versatile PYTHON library for signal inference ", 2013, Astronmy and Astrophysics 554, 26; `[DOI] <https://ui.adsabs.harvard.edu/link_gateway/2013A&A...554A..26S/doi:10.1051/0004-6361/201321236>`_, `[arXiv:1301.4499] <https://arxiv.org/abs/1301.4499>`_
+
+.. [2] Steininger et al., "NIFTy 3 - Numerical Information Field Theory - A Python framework for multicomponent signal inference on HPC clusters", 2017, accepted by Annalen der Physik; `[arXiv:1708.01073] <https://arxiv.org/abs/1708.01073>`_
 
 Contents
 ........
