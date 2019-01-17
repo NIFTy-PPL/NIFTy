@@ -379,7 +379,7 @@ Minimization algorithms
 
 All minimization algorithms in NIFTy inherit from the abstract
 :class:`~minimizer.Minimizer` class, which presents a minimalistic interface
-consisting only of a :meth:`~minimizer.Minimizer.__call__()` *FIXME* method taking an
+consisting only of a :meth:`~minimizer.Minimizer.__call__()` method taking an
 :class:`~energy.Energy` object and optionally a preconditioning operator, and
 returning the energy at the discovered minimum and a status code.
 

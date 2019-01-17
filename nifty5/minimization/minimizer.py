@@ -21,7 +21,6 @@ from ..utilities import NiftyMeta
 class Minimizer(metaclass=NiftyMeta):
     """A base class used by all minimizers."""
 
-    # MR FIXME: the docstring is partially ignored by Sphinx. Why?
     def __call__(self, energy, preconditioner=None):
         """Performs the minimization of the provided Energy functional.
 
