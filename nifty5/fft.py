@@ -25,10 +25,12 @@ _fft_extra_args = {}
 
 
 def enable_fftw():
+    global _use_fftw
     _use_fftw = True
 
 
 def disable_fftw():
+    global _use_fftw
     _use_fftw = False
 
 
