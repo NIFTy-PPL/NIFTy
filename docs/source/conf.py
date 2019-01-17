@@ -13,6 +13,7 @@ napoleon_use_ivar = True
 napoleon_use_admonition_for_notes = True
 napoleon_use_admonition_for_examples = True
 napoleon_use_admonition_for_references = True
+napoleon_include_special_with_doc = True
 
 project = u'NIFTy5'
 copyright = u'2013-2019, Max-Planck-Society'
