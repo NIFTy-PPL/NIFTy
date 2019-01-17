@@ -318,7 +318,7 @@ class Hamiltonian(EnergyOperator):
 
 
 class AveragedEnergy(EnergyOperator):
-    """Computes Kullbach-Leibler (KL) divergence or Gibbs free energies.
+    """Computes Kullback-Leibler (KL) divergence or Gibbs free energies.
 
     A sample-averaged energy, e.g. an Hamiltonian, approximates the relevant
     part of a KL to be used in Variational Bayes inference if the samples are
