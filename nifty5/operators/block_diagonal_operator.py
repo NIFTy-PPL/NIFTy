@@ -24,18 +24,17 @@ class BlockDiagonalOperator(EndomorphicOperator):
     """
     Parameters
     ----------
-    domain : :class:`MultiDomain`
+    domain : MultiDomain
         Domain and target of the operator.
     operators : dict
-        Dictionary with subdomain names as keys and :class:`LinearOperators` as items.
+        Dictionary with subdomain names as keys and :class:`LinearOperator`s
+        as items.
     """
     def __init__(self, domain, operators):
         if not isinstance(domain, MultiDomain):
             raise TypeError("MultiDomain expected")
-        if not isinstance(operators, tuple):
-            raise TypeError("tuple expected")
         self._domain = domain
-        self._ops = operators
+        self._ops = tuple(operators[key] for key in domain.keys())
         self._capability = self._all_ops
         for op in self._ops:
             if op is not None:
@@ -56,13 +55,14 @@ class BlockDiagonalOperator(EndomorphicOperator):
     def _combine_chain(self, op):
         if self._domain != op._domain:
             raise ValueError("domain mismatch")
-        res = tuple(v1(v2) for v1, v2 in zip(self._ops, op._ops))
+        res = {key: v1(v2)
+               for key, v1, v2 in zip(self._domain.keys(), self._ops, op._ops)}
         return BlockDiagonalOperator(self._domain, res)
 
     def _combine_sum(self, op, selfneg, opneg):
         from ..operators.sum_operator import SumOperator
         if self._domain != op._domain:
             raise ValueError("domain mismatch")
-        res = tuple(SumOperator.make([v1, v2], [selfneg, opneg])
-                    for v1, v2 in zip(self._ops, op._ops))
+        res = {key: SumOperator.make([v1, v2], [selfneg, opneg])
+               for key, v1, v2 in zip(self._domain.keys(), self._ops, op._ops)}
         return BlockDiagonalOperator(self._domain, res)
