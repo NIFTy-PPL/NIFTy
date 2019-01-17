@@ -28,9 +28,4 @@ Contents
    installation
    code
    citations
-
-Indices and tables
-..................
-
-* :any:`Module Index <mod/modules>`
-* :ref:`search`
+   Package Documentation <mod/nifty5>

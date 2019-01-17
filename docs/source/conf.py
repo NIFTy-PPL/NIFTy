@@ -28,3 +28,5 @@ add_module_names = False
 
 html_theme = "sphinx_rtd_theme"
 html_logo = 'nifty_logo_black.png'
+
+exclude_patterns = ['mod/modules.rst']
