@@ -111,7 +111,7 @@ def probe_diagonal(op, nprobes, random_type="pm1"):
 
     The operator is called on a user-specified number of randomly generated
     input vectors :math:`v_i`, producing :math:`r_i`. The estimated diagonal
-    is the mean of :math:`r_i^\dagger v_i`.
+    is the mean of :math:`r_i^\\dagger v_i`.
 
     Parameters
     ----------
