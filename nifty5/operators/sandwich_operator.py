@@ -27,8 +27,8 @@ class SandwichOperator(EndomorphicOperator):
     """Operator which is equivalent to the expression
     `bun.adjoint(cheese(bun))`.
 
-    Notes
-    -----
+    Note
+    ----
     This operator should always be called using the `make` method.
     """
 
