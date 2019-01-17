@@ -216,16 +216,6 @@ def testZeroPadder(space, factor, dtype, central):
     ift.extra.consistency_check(op, dtype, dtype)
 
 
-@pmp('space', [0, 2])
-@pmp('factor', [2, 2.7])
-def testZeroPadder2(space, factor, dtype):
-    dom = (ift.RGSpace(10), ift.UnstructuredDomain(13), ift.RGSpace(7, 12),
-           ift.HPSpace(4))
-    newshape = [int(factor*l) for l in dom[space].shape]
-    op = ift.CentralZeroPadder(dom, newshape, space)
-    ift.extra.consistency_check(op, dtype, dtype)
-
-
 @pmp('args',
      [(ift.RGSpace(10, harmonic=True), 4, 0), (ift.RGSpace(
          (24, 31), distances=(0.4, 2.34), harmonic=True), (4, 3), 0),
@@ -273,4 +263,18 @@ def testRegridding(args):
 def testOuter(fdomain, domain):
     f = ift.from_random('normal', fdomain)
     op = ift.OuterProduct(f, domain)
+    ift.extra.consistency_check(op)
+
+
+@pmp('sp', _h_spaces + _p_spaces + _pow_spaces)
+@pmp('seed', [12, 3])
+def testValueInserter(sp, seed):
+    np.random.seed(seed)
+    ind = []
+    for ss in sp.shape:
+        if ss == 1:
+            ind.append(0)
+        else:
+            ind.append(np.random.randint(0, ss-1))
+    op = ift.ValueInserter(sp, ind)
     ift.extra.consistency_check(op)

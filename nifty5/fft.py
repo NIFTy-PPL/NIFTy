@@ -19,23 +19,63 @@ from .utilities import iscomplextype
 import numpy as np
 
 
-_use_fftw = True
+_use_fftw = False
+_fftw_prepped = False
+_fft_extra_args = {}
 
 
-if _use_fftw:
-    import pyfftw
-    from pyfftw.interfaces.numpy_fft import fftn, rfftn, ifftn
-    pyfftw.interfaces.cache.enable()
-    pyfftw.interfaces.cache.set_keepalive_time(1000.)
-    # Optional extra arguments for the FFT calls
-    # if exact reproducibility is needed,
-    # set "planner_effort" to "FFTW_ESTIMATE"
-    import os
-    nthreads = int(os.getenv("OMP_NUM_THREADS", "1"))
-    _fft_extra_args = dict(planner_effort='FFTW_ESTIMATE', threads=nthreads)
-else:
-    from numpy.fft import fftn, rfftn, ifftn
-    _fft_extra_args = {}
+def enable_fftw():
+    global _use_fftw
+    _use_fftw = True
+
+
+def disable_fftw():
+    global _use_fftw
+    _use_fftw = False
+
+
+def _init_pyfftw():
+    global _fft_extra_args, _fftw_prepped
+    if not _fftw_prepped:
+        import pyfftw
+        from pyfftw.interfaces.numpy_fft import fftn, rfftn, ifftn
+        pyfftw.interfaces.cache.enable()
+        pyfftw.interfaces.cache.set_keepalive_time(1000.)
+        # Optional extra arguments for the FFT calls
+        # if exact reproducibility is needed,
+        # set "planner_effort" to "FFTW_ESTIMATE"
+        import os
+        nthreads = int(os.getenv("OMP_NUM_THREADS", "1"))
+        _fft_extra_args = dict(planner_effort='FFTW_ESTIMATE',
+                               threads=nthreads)
+        _fftw_prepped = True
+
+
+def fftn(a, axes=None):
+    if _use_fftw:
+        from pyfftw.interfaces.numpy_fft import fftn
+        _init_pyfftw()
+        return fftn(a, axes=axes, **_fft_extra_args)
+    else:
+        return np.fft.fftn(a, axes=axes)
+
+
+def rfftn(a, axes=None):
+    if _use_fftw:
+        from pyfftw.interfaces.numpy_fft import rfftn
+        _init_pyfftw()
+        return rfftn(a, axes=axes, **_fft_extra_args)
+    else:
+        return np.fft.rfftn(a, axes=axes)
+
+
+def ifftn(a, axes=None):
+    if _use_fftw:
+        from pyfftw.interfaces.numpy_fft import ifftn
+        _init_pyfftw()
+        return ifftn(a, axes=axes, **_fft_extra_args)
+    else:
+        return np.fft.ifftn(a, axes=axes)
 
 
 def hartley(a, axes=None):
@@ -46,7 +86,7 @@ def hartley(a, axes=None):
     if iscomplextype(a.dtype):
         raise TypeError("Hartley transform requires real-valued arrays.")
 
-    tmp = rfftn(a, axes=axes, **_fft_extra_args)
+    tmp = rfftn(a, axes=axes)
 
     def _fill_array(tmp, res, axes):
         if axes is None:
@@ -89,7 +129,7 @@ def my_fftn_r2c(a, axes=None):
     if iscomplextype(a.dtype):
         raise TypeError("Transform requires real-valued input arrays.")
 
-    tmp = rfftn(a, axes=axes, **_fft_extra_args)
+    tmp = rfftn(a, axes=axes)
 
     def _fill_complex_array(tmp, res, axes):
         if axes is None:
@@ -123,4 +163,4 @@ def my_fftn_r2c(a, axes=None):
 
 
 def my_fftn(a, axes=None):
-    return fftn(a, axes=axes, **_fft_extra_args)
+    return fftn(a, axes=axes)

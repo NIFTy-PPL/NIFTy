@@ -15,20 +15,27 @@
 #
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
 
+import numpy as np
+import pytest
+from numpy.testing import assert_
 
-def _logger_init():
-    import logging
-    from . import dobj
-    res = logging.getLogger('NIFTy5')
-    res.setLevel(logging.DEBUG)
-    res.propagate = False
-    if dobj.rank == 0:
-        ch = logging.StreamHandler()
-        ch.setLevel(logging.DEBUG)
-        res.addHandler(ch)
-    else:
-        res.addHandler(logging.NullHandler())
-    return res
+import nifty5 as ift
 
 
-logger = _logger_init()
+@pytest.mark.parametrize('sp', [
+    ift.RGSpace(4),
+    ift.PowerSpace(ift.RGSpace((4, 4), harmonic=True)),
+    ift.LMSpace(5),
+    ift.HPSpace(4),
+    ift.GLSpace(4)
+])
+@pytest.mark.parametrize('seed', [13, 2])
+def test_value_inserter(sp, seed):
+    np.random.seed(seed)
+    ind = tuple([np.random.randint(0, ss - 1) for ss in sp.shape])
+    op = ift.ValueInserter(sp, ind)
+    f = ift.from_random('normal', ift.UnstructuredDomain((1,)))
+    inp = f.to_global_data()[0]
+    ret = op(f).to_global_data()
+    assert_(ret[ind] == inp)
+    assert_(np.sum(ret) == inp)

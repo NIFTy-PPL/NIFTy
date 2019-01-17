@@ -187,6 +187,18 @@ class Linearization(object):
         return self.__mul__(other)
 
     def outer(self, other):
+        """Computes the outer product of this Linearization with a Field or
+        another Linearization
+
+        Parameters
+        ----------
+        other : Field or MultiField or Linearization
+
+        Returns
+        -------
+        Linearization
+            the outer product of self and other
+        """
         from .operators.outer_product_operator import OuterProduct
         if isinstance(other, Linearization):
             return self.new(
@@ -200,6 +212,18 @@ class Linearization(object):
                             OuterProduct(self._jac(self._val), other.domain))
 
     def vdot(self, other):
+        """Computes the inner product of this Linearization with a Field or
+        another Linearization
+
+        Parameters
+        ----------
+        other : Field or MultiField or Linearization
+
+        Returns
+        -------
+        Linearization
+            the inner product of self and other
+        """
         from .operators.simple_linear_operators import VdotOperator
         if isinstance(other, (Field, MultiField)):
             return self.new(
@@ -211,6 +235,19 @@ class Linearization(object):
             VdotOperator(other._val)(self._jac))
 
     def sum(self, spaces=None):
+        """Computes the (partial) sum over self
+
+        Parameters
+        ----------
+        spaces : None, int or list of int
+            - if None, sum over the entire domain
+            - else sum over the specified subspaces
+
+        Returns
+        -------
+        Linearization
+            the (partial) sum
+        """
         from .operators.contraction_operator import ContractionOperator
         if spaces is None:
             return self.new(
@@ -222,6 +259,19 @@ class Linearization(object):
                 ContractionOperator(self._jac.target, spaces)(self._jac))
 
     def integrate(self, spaces=None):
+        """Computes the (partial) integral over self
+
+        Parameters
+        ----------
+        spaces : None, int or list of int
+            - if None, integrate over the entire domain
+            - else integrate over the specified subspaces
+
+        Returns
+        -------
+        Linearization
+            the (partial) integral
+        """
         from .operators.contraction_operator import ContractionOperator
         if spaces is None:
             return self.new(
@@ -309,18 +359,72 @@ class Linearization(object):
 
     @staticmethod
     def make_var(field, want_metric=False):
+        """Converts a Field to a Linearization, with a unity Jacobian
+
+        Parameters
+        ----------
+        field : Field or Multifield
+            the field to be converted
+        want_metric : bool
+            If True, the metric will be computed for other Linearizations
+            derived from this one. Default: False.
+
+        Returns
+        -------
+        Linearization
+            the requested Linearization
+        """
         from .operators.scaling_operator import ScalingOperator
         return Linearization(field, ScalingOperator(1., field.domain),
                              want_metric=want_metric)
 
     @staticmethod
     def make_const(field, want_metric=False):
+        """Converts a Field to a Linearization, with a zero Jacobian
+
+        Parameters
+        ----------
+        field : Field or Multifield
+            the field to be converted
+        want_metric : bool
+            If True, the metric will be computed for other Linearizations
+            derived from this one. Default: False.
+
+        Returns
+        -------
+        Linearization
+            the requested Linearization
+
+        Notes
+        -----
+        The Jacobian is square and contains only zeroes.
+        """
         from .operators.simple_linear_operators import NullOperator
         return Linearization(field, NullOperator(field.domain, field.domain),
                              want_metric=want_metric)
 
     @staticmethod
     def make_const_empty_input(field, want_metric=False):
+        """Converts a Field to a Linearization, with a zero Jacobian
+
+        Parameters
+        ----------
+        field : Field or Multifield
+            the field to be converted
+        want_metric : bool
+            If True, the metric will be computed for other Linearizations
+            derived from this one. Default: False.
+
+        Returns
+        -------
+        Linearization
+            the requested Linearization
+
+        Notes
+        -----
+        The Jacobian has an empty input domain, i.e. its matrix representation
+        has 0 columns.
+        """
         from .operators.simple_linear_operators import NullOperator
         from .multi_domain import MultiDomain
         return Linearization(
@@ -329,6 +433,29 @@ class Linearization(object):
 
     @staticmethod
     def make_partial_var(field, constants, want_metric=False):
+        """Converts a MultiField to a Linearization, with a Jacobian that is
+        unity for some MultiField components and a zero matrix for others.
+
+        Parameters
+        ----------
+        field : Multifield
+            the field to be converted
+        constants : list of string
+            the MultiField components for which the Jacobian should be
+            a zero matrix.
+        want_metric : bool
+            If True, the metric will be computed for other Linearizations
+            derived from this one. Default: False.
+
+        Returns
+        -------
+        Linearization
+            the requested Linearization
+
+        Notes
+        -----
+        The Jacobian is square.
+        """
         from .operators.scaling_operator import ScalingOperator
         from .operators.block_diagonal_operator import BlockDiagonalOperator
         if len(constants) == 0:

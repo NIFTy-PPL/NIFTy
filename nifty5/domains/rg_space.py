@@ -24,7 +24,7 @@ from .structured_domain import StructuredDomain
 
 
 class RGSpace(StructuredDomain):
-    """NIFTy subclass for regular Cartesian grids.
+    """Represents a regular Cartesian grid.
 
     Parameters
     ----------

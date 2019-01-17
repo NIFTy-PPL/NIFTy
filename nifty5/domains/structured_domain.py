@@ -21,7 +21,7 @@ from .domain import Domain
 
 
 class StructuredDomain(Domain):
-    """The abstract base class for all structured NIFTy domains.
+    """The abstract base class for all structured domains.
 
     An instance of a space contains information about the manifold's
     geometry and enhances the functionality of Domain by methods that
@@ -50,7 +50,7 @@ class StructuredDomain(Domain):
 
     @property
     def total_volume(self):
-        """float : Total domain volume
+        """float : Total domain volume.
 
         Returns the sum over all the domain's pixel volumes.
         """
@@ -63,7 +63,7 @@ class StructuredDomain(Domain):
         raise NotImplementedError
 
     def get_k_length_array(self):
-        """k vector lengths, if applicable,
+        """k vector lengths, if applicable.
 
         Returns the length of the k vector for every pixel.
         This method is only implemented for harmonic domains.

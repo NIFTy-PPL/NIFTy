@@ -212,7 +212,7 @@ specific inference problems. Currently these are:
 
 .. currentmodule:: nifty5.library
 
-- :class:`~amplitude_operator.AmplitudeOperator`, which returns a smooth power spectrum.
+- :class:`~smooth_linear_amplitude.SLAmplitude`, which returns a smooth power spectrum.
 - :class:`~inverse_gamma_operator.InverseGammaOperator`, which models point sources which are
   distributed according to a inverse-gamma distribution.
 - :class:`~correlated_fields.CorrelatedField`, which models a diffuse log-normal field. It takes an

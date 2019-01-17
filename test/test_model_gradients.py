@@ -89,11 +89,10 @@ def testBinary(type1, type2, space, seed):
 
 def testModelLibrary(space, seed):
     # Tests amplitude model and coorelated field model
-    Npixdof, ceps_a, ceps_k, sm, sv, im, iv = 4, 0.5, 2., 3., 1.5, 1.75, 1.3
     np.random.seed(seed)
     domain = ift.PowerSpace(space.get_default_codomain())
-    model = ift.AmplitudeOperator(domain, Npixdof, ceps_a, ceps_k, sm, sv, im,
-                                  iv)
+    model = ift.SLAmplitude(target=domain, n_pix=4, a=.5, k0=2, sm=3, sv=1.5,
+                            im=1.75, iv=1.3)
     assert_(isinstance(model, ift.Operator))
     S = ift.ScalingOperator(1., model.domain)
     pos = S.draw_sample()
@@ -103,6 +102,12 @@ def testModelLibrary(space, seed):
     S = ift.ScalingOperator(1., model2.domain)
     pos = S.draw_sample()
     ift.extra.check_value_gradient_consistency(model2, pos, ntries=20)
+
+    domtup = ift.DomainTuple.make((space, space))
+    model3 = ift.MfCorrelatedField(domtup, [model, model])
+    S = ift.ScalingOperator(1., model3.domain)
+    pos = S.draw_sample()
+    ift.extra.check_value_gradient_consistency(model3, pos, ntries=20)
 
 
 def testPointModel(space, seed):
@@ -115,24 +120,32 @@ def testPointModel(space, seed):
     ift.extra.check_value_gradient_consistency(model, pos, tol=1e-2, ntries=20)
 
 
-@pmp('domain', [
-    ift.RGSpace(64, distances=.789),
-    ift.RGSpace([32, 32], distances=.789),
-    ift.RGSpace([32, 32, 8], distances=.789)
+@pmp('target', [
+    ift.RGSpace(64, distances=.789,harmonic=True),
+    ift.RGSpace([32, 32], distances=.789,harmonic=True),
+    ift.RGSpace([32, 32, 8], distances=.789,harmonic=True)
 ])
 @pmp('causal', [True, False])
 @pmp('minimum_phase', [True, False])
 @pmp('seed', [4, 78, 23])
-def testDynamicModel(domain, causal, minimum_phase, seed):
-    model, _ = ift.dynamic_operator(
-        domain, None, 1., 1., 'f', causal=causal, minimum_phase=minimum_phase)
+def testDynamicModel(target, causal, minimum_phase, seed):
+    dct = {
+            'target': target,
+            'harmonic_padding': None,
+            'sm_s0': 3.,
+            'sm_x0': 1.,
+            'key': 'f',
+            'causal': causal,
+            'minimum_phase': minimum_phase
+            }
+    model, _ = ift.dynamic_operator(**dct)
     S = ift.ScalingOperator(1., model.domain)
     pos = S.draw_sample()
     # FIXME I dont know why smaller tol fails for 3D example
     ift.extra.check_value_gradient_consistency(model, pos, tol=1e-5, ntries=20)
-    if len(domain.shape) > 1:
+    if len(target.shape) > 1:
         dct = {
-            'domain': domain,
+            'target': target,
             'harmonic_padding': None,
             'sm_s0': 3.,
             'sm_x0': 1.,
@@ -143,6 +156,9 @@ def testDynamicModel(domain, causal, minimum_phase, seed):
             'causal': causal,
             'minimum_phase': minimum_phase
         }
+        dct['lightcone_key'] = 'c'
+        dct['sigc'] = 1.
+        dct['quant'] = 5
         model, _ = ift.dynamic_lightcone_operator(**dct)
         S = ift.ScalingOperator(1., model.domain)
         pos = S.draw_sample()

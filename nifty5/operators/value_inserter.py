@@ -18,50 +18,40 @@
 import numpy as np
 
 from ..domain_tuple import DomainTuple
-from ..domains.log_rg_space import LogRGSpace
 from ..domains.unstructured_domain import UnstructuredDomain
 from ..field import Field
+from ..sugar import makeDomain
 from .linear_operator import LinearOperator
 
 
-class SlopeOperator(LinearOperator):
-    """Evaluates a line on a LogRGSpace given slope and y-intercept
-
-    Slope and y-intercept of this line are the two parameters which are
-    defined on an UnstructeredDomain (in this order) which is the domain of
-    the operator. Being a LogRGSpace each pixel has a well-defined coordinate
-    value.
-
-    y-intercept is defined to be the value at t_0 of the target.
+class ValueInserter(LinearOperator):
+    """Inserts one value into a field which is zero otherwise.
 
     Parameters
     ----------
-    target : LogRGSpace
-        The target of the operator which needs to be one-dimensional.
+    target : Domain, tuple of Domain or DomainTuple
+    index : iterable of int
+        The index of the target into which the value of the domain shall be
+        inserted.
     """
 
-    def __init__(self, target):
+    def __init__(self, target, index):
+        self._domain = makeDomain(UnstructuredDomain(1))
         self._target = DomainTuple.make(target)
-        if len(self._target) > 1:
+        index = tuple(index)
+        if not all([isinstance(n, int) and n>=0 and n<self.target.shape[i] for i, n in enumerate(index)]):
             raise TypeError
-        if len(self._target[0].shape) > 1:
-            raise TypeError
-        if not isinstance(self._target[0], LogRGSpace):
-            raise TypeError
-        self._domain = DomainTuple.make(UnstructuredDomain((2,)))
+        self._index = index
         self._capability = self.TIMES | self.ADJOINT_TIMES
-        pos = self.target[0].get_k_array() - self.target[0].t_0[0]
-        self._pos = pos[0, 1:]
+        # Check whether index is in bounds
+        np.empty(self.target.shape)[self._index]
 
     def apply(self, x, mode):
         self._check_input(x, mode)
-        inp = x.to_global_data()
+        x = x.to_global_data()
         if mode == self.TIMES:
-            res = np.empty(self.target.shape, dtype=x.dtype)
-            res[0] = 0
-            res[1:] = inp[1] + inp[0]*self._pos
+            res = np.zeros(self.target.shape, dtype=x.dtype)
+            res[self._index] = x
         else:
-            res = np.array(
-                [np.sum(self._pos*inp[1:]),
-                 np.sum(inp[1:])], dtype=x.dtype)
+            res = np.full((1,), x[self._index], dtype=x.dtype)
         return Field.from_global_data(self._tgt(mode), res)

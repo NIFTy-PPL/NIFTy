@@ -15,10 +15,10 @@
 #
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
 
-from ..utilities import NiftyMetaBase
+from ..utilities import NiftyMeta
 
 
-class Minimizer(NiftyMetaBase()):
+class Minimizer(metaclass=NiftyMeta):
     """A base class used by all minimizers."""
 
     # MR FIXME: the docstring is partially ignored by Sphinx. Why?

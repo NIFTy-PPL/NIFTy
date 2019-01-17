@@ -16,26 +16,33 @@
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
 
 import numpy as np
-from ..utilities import NiftyMetaBase, indent
+from ..utilities import NiftyMeta, indent
 
 
-class Operator(NiftyMetaBase()):
+class Operator(metaclass=NiftyMeta):
     """Transforms values defined on one domain into values defined on another
     domain, and can also provide the Jacobian.
     """
 
     @property
     def domain(self):
-        """DomainTuple or MultiDomain : the operator's input domain
+        """The domain on which the Operator's input Field is defined.
 
-            The domain on which the Operator's input Field is defined."""
+        Returns
+        -------
+        domain : DomainTuple or MultiDomain
+        """
         return self._domain
 
     @property
     def target(self):
-        """DomainTuple or MultiDomain : the operator's output domain
+        """The domain on which the Operator's output Field is defined.
 
-            The domain on which the Operator's output Field is defined."""
+        Returns
+        -------
+        target : DomainTuple or MultiDomain
+        """
+
         return self._target
 
     @staticmethod
@@ -103,10 +110,19 @@ class Operator(NiftyMetaBase()):
         return _OpChain.make((_Clipper(self.target, min, max), self))
 
     def apply(self, x):
+        '''Applies the operator to a Field or MultiField.
+
+        Parameters
+        ----------
+        x : Field or MultiField
+            Input on which the operator shall act. Needs to be defined on
+            :attr:`domain`.
+        '''
         raise NotImplementedError
 
     def force(self, x):
-        """Extract correct subset of domain of x and apply operator."""
+        """Extract subset of domain of x according to `self.domain` and apply
+        operator."""
         return self.apply(x.extract(self.domain))
 
     def _check_input(self, x):

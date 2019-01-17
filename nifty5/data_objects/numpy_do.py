@@ -15,7 +15,7 @@
 #
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
 
-# Data object module for NIFTy that uses simple numpy ndarrays.
+# Data object module that uses simple numpy ndarrays.
 
 import numpy as np
 from numpy import absolute, clip, cos, cosh, empty, empty_like, exp, full, log
