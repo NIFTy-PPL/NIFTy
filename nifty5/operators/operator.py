@@ -16,10 +16,10 @@
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
 
 import numpy as np
-from ..utilities import NiftyMetaBase, indent
+from ..utilities import NiftyMeta, indent
 
 
-class Operator(NiftyMetaBase()):
+class Operator(metaclass=NiftyMeta):
     """Transforms values defined on one domain into values defined on another
     domain, and can also provide the Jacobian.
     """
