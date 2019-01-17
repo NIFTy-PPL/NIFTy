@@ -21,16 +21,10 @@ Contents
 ........
 
 .. toctree::
-   :maxdepth: 2
 
    ift
    Gallery <http://wwwmpa.mpa-garching.mpg.de/ift/nifty/gallery/>
    installation
    code
    citations
-
-Indices and tables
-..................
-
-* :any:`Module Index <mod/modules>`
-* :ref:`search`
+   Package Documentation <mod/nifty5>
