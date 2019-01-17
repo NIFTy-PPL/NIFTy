@@ -379,7 +379,7 @@ Minimization algorithms
 
 All minimization algorithms in NIFTy inherit from the abstract
 :class:`~minimizer.Minimizer` class, which presents a minimalistic interface
-consisting only of a :meth:`~minimizer.Minimizer.__call__()` method taking an
+consisting only of a :meth:`~minimizer.Minimizer.__call__` method taking an
 :class:`~energy.Energy` object and optionally a preconditioning operator, and
 returning the energy at the discovered minimum and a status code.
 
@@ -431,4 +431,4 @@ performs a minimization of a
 :class:`~minimization.quadratic_energy.QuadraticEnergy` by means of the
 :class:`~minimization.conjugate_gradient.ConjugateGradient` algorithm. An
 example is provided in
-:func:`~ļibrary.wiener_filter_curvature.WienerFilterCurvature`. *FIXME* this link doesn't work.
+:func:`~library.wiener_filter_curvature.WienerFilterCurvature`.
