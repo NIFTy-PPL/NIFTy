@@ -20,8 +20,8 @@ import numpy as np
 from ..domain_tuple import DomainTuple
 from ..domains.power_space import PowerSpace
 from ..field import Field
+from ..operators.adder import Adder
 from ..operators.exp_transform import ExpTransform
-from ..operators.offset_operator import OffsetOperator
 from ..operators.qht_operator import QHTOperator
 from ..operators.slope_operator import SlopeOperator
 from ..operators.symmetrizing_operator import SymmetrizingOperator
@@ -29,7 +29,7 @@ from ..sugar import makeOp
 
 
 def _ceps_kernel(k, a, k0):
-    return (a/(1+np.sum((k.T/k0)**2, axis=-1).T))**2
+    return (a/(1 + np.sum((k.T/k0)**2, axis=-1).T))**2
 
 
 def CepstrumOperator(target, a, k0):
@@ -189,7 +189,7 @@ def SLAmplitude(*, target, n_pix, a, k0, sm, sv, im, iv, keys=['tau', 'phi']):
     sig = np.array([sv, iv])
     mean = Field.from_global_data(sl.domain, mean)
     sig = Field.from_global_data(sl.domain, sig)
-    linear = (sl @ OffsetOperator(mean) @ makeOp(sig)).ducktape(keys[1])
+    linear = sl @ Adder(mean) @ makeOp(sig).ducktape(keys[1])
 
     # Combine linear and smooth component
     loglog_ampl = 0.5*(smooth + linear)
