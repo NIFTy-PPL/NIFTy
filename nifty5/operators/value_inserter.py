@@ -28,6 +28,7 @@ from .linear_operator import LinearOperator
 
 
 class ValueInserter(LinearOperator):
+    # FIXME THIS IS NOT A LINEAR OPERATOR
     """Inserts one value into a field which is constant otherwise.
 
     Parameters

@@ -33,6 +33,9 @@ class ScalingOperator(EndomorphicOperator):
 
     Notes
     -----
+    :class:`Operator` supports the multiplication with a scalar. So one does
+    not need instantiate :class:`ScalingOperator` explicitly in most cases.
+
     Formally, this operator always supports all operation modes (times,
     adjoint_times, inverse_times and inverse_adjoint_times), even if `factor`
     is 0 or infinity. It is the user's responsibility to apply the operator

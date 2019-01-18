@@ -27,8 +27,8 @@ class DiagonalOperator(EndomorphicOperator):
     """Represents a :class:`LinearOperator` which is diagonal.
 
     The NIFTy DiagonalOperator class is a subclass derived from the
-    :class:`EndomorphicOperator`. It multiplies an input field pixel-wise with its
-    diagonal.
+    :class:`EndomorphicOperator`. It multiplies an input field pixel-wise with
+    its diagonal.
 
     Parameters
     ----------
