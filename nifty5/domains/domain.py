@@ -16,10 +16,10 @@
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
 
 from functools import reduce
-from ..utilities import NiftyMetaBase
+from ..utilities import NiftyMeta
 
 
-class Domain(NiftyMetaBase()):
+class Domain(metaclass=NiftyMeta):
     """The abstract class repesenting a (structured or unstructured) domain.
     """
     def __repr__(self):

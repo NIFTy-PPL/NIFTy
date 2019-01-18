@@ -19,7 +19,6 @@ from .field import Field
 from .multi_field import MultiField
 
 from .operators.operator import Operator
-from .operators.central_zero_padder import CentralZeroPadder
 from .operators.diagonal_operator import DiagonalOperator
 from .operators.distributors import DOFDistributor, PowerDistributor
 from .operators.domain_tuple_field_inserter import DomainTupleFieldInserter
@@ -47,9 +46,10 @@ from .operators.outer_product_operator import OuterProduct
 from .operators.simple_linear_operators import (
     VdotOperator, ConjugationOperator, Realizer,
     FieldAdapter, ducktape, GeometryRemover, NullOperator)
+from .operators.value_inserter import ValueInserter
 from .operators.energy_operators import (
     EnergyOperator, GaussianEnergy, PoissonianEnergy, InverseGammaLikelihood,
-    BernoulliEnergy, StandardHamiltonian, SampledKullbachLeiblerDivergence)
+    BernoulliEnergy, StandardHamiltonian, AveragedEnergy)
 
 from .probing import probe_with_posterior_samples, probe_diagonal, \
     StatCalculator

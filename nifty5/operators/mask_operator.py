@@ -29,35 +29,29 @@ from .linear_operator import LinearOperator
 class MaskOperator(LinearOperator):
     """Implementation of a mask response
 
-    Takes a field, applies a mask and returns the values of the field in a
-    UnstructuredDomain. It can be used as response operator.
+    Takes a field, applies flags and returns the values of the field in a
+    :class:`UnstructuredDomain`.
 
     Parameters
     ----------
-    mask : Field
+    flags : Field
+        Is converted to boolean. Where True, the input field is flagged.
     """
-    def __init__(self, mask):
-        if not isinstance(mask, Field):
+    def __init__(self, flags):
+        if not isinstance(flags, Field):
             raise TypeError
-
-        self._domain = DomainTuple.make(mask.domain)
-        self._mask = np.logical_not(mask.to_global_data())
-        self._target = DomainTuple.make(UnstructuredDomain(self._mask.sum()))
+        self._domain = DomainTuple.make(flags.domain)
+        self._flags = np.logical_not(flags.to_global_data())
+        self._target = DomainTuple.make(UnstructuredDomain(self._flags.sum()))
         self._capability = self.TIMES | self.ADJOINT_TIMES
-
-    def data_indices(self):
-        if len(self.domain.shape) == 1:
-            return np.arange(self.domain.shape[0])[self._mask]
-        if len(self.domain.shape) == 2:
-            return np.indices(self.domain.shape).transpose((1, 2, 0))[self._mask]
 
     def apply(self, x, mode):
         self._check_input(x, mode)
-        if mode == self.TIMES:
-            res = x.to_global_data()[self._mask]
-            return Field.from_global_data(self.target, res)
         x = x.to_global_data()
+        if mode == self.TIMES:
+            res = x[self._flags]
+            return Field.from_global_data(self.target, res)
         res = np.empty(self.domain.shape, x.dtype)
-        res[self._mask] = x
-        res[~self._mask] = 0
+        res[self._flags] = x
+        res[~self._flags] = 0
         return Field.from_global_data(self.domain, res)

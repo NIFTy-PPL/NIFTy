@@ -29,10 +29,10 @@ class SlopeOperator(LinearOperator):
 
     Slope and y-intercept of this line are the two parameters which are
     defined on an UnstructeredDomain (in this order) which is the domain of
-    the operator. Being a LogRGSpace each pixel has a well-defined coordinate
+    the operator. Being a LogRGSpace instance each pixel has a well-defined coordinate
     value.
 
-    y-intercept is defined to be the value at t_0 of the target.
+    The y-intercept is defined to be the value at t_0 of the target.
 
     Parameters
     ----------

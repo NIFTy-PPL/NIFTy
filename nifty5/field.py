@@ -25,7 +25,7 @@ from .domain_tuple import DomainTuple
 class Field(object):
     """The discrete representation of a continuous field over multiple spaces.
 
-    Stores data arrays and carries all the needed metainformation (i.e. the
+    Stores data arrays and carries all the needed meta-information (i.e. the
     domain) for operators to be able to operate on them.
 
     Parameters
@@ -442,7 +442,7 @@ class Field(object):
         ----------
         spaces : None, int or tuple of int
             The summation is only carried out over the sub-domains in this
-            tuple. If None, it is carried out over all sub-domains. Default: None.
+            tuple. If None, it is carried out over all sub-domains.
 
         Returns
         -------
@@ -463,7 +463,6 @@ class Field(object):
         spaces : None, int or tuple of int
             The summation is only carried out over the sub-domains in this
             tuple. If None, it is carried out over all sub-domains.
-            Default: None.
 
         Returns
         -------
@@ -547,7 +546,7 @@ class Field(object):
         ----------
         spaces : None, int or tuple of int
             The operation is only carried out over the sub-domains in this
-            tuple. If None, it is carried out over all sub-domains. Default: None.
+            tuple. If None, it is carried out over all sub-domains.
 
         Returns
         -------

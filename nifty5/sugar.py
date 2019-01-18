@@ -52,7 +52,8 @@ def PS_field(pspace, func):
 
     Returns
     -------
-    Field : a field defined on (pspace,) containing the computed function values
+    Field
+        A field defined on (pspace,) containing the computed function values
     """
     if not isinstance(pspace, PowerSpace):
         raise TypeError
@@ -64,7 +65,7 @@ def get_signal_variance(spec, space):
     """
     Computes how much a field with a given power spectrum will vary in space
 
-    This is a small helper function that computes how the expected variance
+    This is a small helper function that computes the expected variance
     of a harmonically transformed sample of this power spectrum.
 
     Parameters
@@ -102,7 +103,7 @@ def power_analyze(field, spaces=None, binbounds=None,
     """Computes the power spectrum for a subspace of `field`.
 
     Creates a PowerSpace for the space addressed by `spaces` with the given
-    binning and computes the power spectrum as a Field over this
+    binning and computes the power spectrum as a :class:`Field` over this
     PowerSpace. This can only be done if the subspace to  be analyzed is a
     harmonic space. The resulting field has the same units as the square of the
     initial field.
@@ -121,11 +122,11 @@ def power_analyze(field, spaces=None, binbounds=None,
         if binbounds is None : bins are inferred.
     keep_phase_information : bool, optional
         If False, return a real-valued result containing the power spectrum
-        of the input Field.
+        of `field`.
         If True, return a complex-valued result whose real component
-        contains the power spectrum computed from the real part of the
-        input Field, and whose imaginary component contains the power
-        spectrum computed from the imaginary part of the input Field.
+        contains the power spectrum computed from the real part of `field`,
+        and whose imaginary component contains the power
+        spectrum computed from the imaginary part of `field`.
         The absolute value of this result should be identical to the output
         of power_analyze with keep_phase_information=False.
         (default : False).
@@ -209,6 +210,23 @@ def create_power_operator(domain, power_spectrum, space=None):
 
 
 def create_harmonic_smoothing_operator(domain, space, sigma):
+    """Creates an operator which smoothes a subspace of a harmonic domain.
+
+    Parameters
+    ----------
+    domain: DomainTuple
+        The total domain and target of the operator
+    space : int
+        the index of the subspace on which the operator acts.
+        This must be a harmonic space
+    sigma : float
+        The sigma of the Gaussian smoothing kernel
+
+    Returns
+    -------
+    DiagonalOperator
+        The requested smoothing operator
+    """
     kfunc = domain[space].get_fft_smoothing_kernel_function(sigma)
     return DiagonalOperator(kfunc(domain[space].get_k_length_array()), domain,
                             space)
@@ -226,7 +244,8 @@ def full(domain, val):
 
     Returns
     -------
-    Field / MultiField : the newly created uniform field
+    Field or MultiField
+        The newly created uniform field
     """
     if isinstance(domain, (dict, MultiDomain)):
         return MultiField.full(domain, val)
@@ -249,7 +268,8 @@ def from_random(random_type, domain, dtype=np.float64, **kwargs):
 
     Returns
     -------
-    Field / MultiField : the newly created random field
+    Field or MultiField
+        The newly created random field
     """
     if isinstance(domain, (dict, MultiDomain)):
         return MultiField.from_random(random_type, domain, dtype, **kwargs)
@@ -274,7 +294,8 @@ def from_global_data(domain, arr, sum_up=False):
 
     Returns
     -------
-    Field / MultiField : the newly created random field
+    Field or MultiField
+        The newly created random field
     """
     if isinstance(domain, (dict, MultiDomain)):
         return MultiField.from_global_data(domain, arr, sum_up)
@@ -294,7 +315,8 @@ def from_local_data(domain, arr):
 
     Returns
     -------
-    Field / MultiField : the newly created field
+    Field or MultiField
+        The newly created field
     """
     if isinstance(domain, (dict, MultiDomain)):
         return MultiField.from_local_data(domain, arr)
@@ -311,7 +333,8 @@ def makeDomain(domain):
 
     Returns
     -------
-    DomainTuple / MultiDomain : the newly created domain object
+    DomainTuple or MultiDomain
+        The newly created domain object
     """
     if isinstance(domain, (MultiDomain, dict)):
         return MultiDomain.make(domain)
@@ -319,17 +342,40 @@ def makeDomain(domain):
 
 
 def makeOp(input):
+    """Converts a Field or MultiField to a diagonal operator.
+
+    Parameters
+    ----------
+    input : None, Field or MultiField
+        - if None, None is returned.
+        - if Field, a DiagonalOperator with the coefficients given by this
+            Field is returned.
+        - if MultiField, a BlockDiagonalOperator with entries given by this
+            MultiField is returned.
+
+    Notes
+    -----
+    No volume factors are applied.
+    """
     if input is None:
         return None
     if isinstance(input, Field):
         return DiagonalOperator(input)
     if isinstance(input, MultiField):
         return BlockDiagonalOperator(
-            input.domain, tuple(makeOp(val) for val in input.values()))
+            input.domain, {key: makeOp(val) for key, val in enumerate(input)})
     raise NotImplementedError
 
 
 def domain_union(domains):
+    """Computes the union of multiple DomainTuples/MultiDomains.
+
+    Parameters
+    ----------
+    domains : list of DomainTuple or MultiDomain
+        - if DomainTuple, all entries must be equal
+        - if MultiDomain, there must not be any conflicting components
+    """
     if isinstance(domains[0], DomainTuple):
         if any(dom != domains[0] for dom in domains[1:]):
             raise ValueError("domain mismatch")

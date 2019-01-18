@@ -73,7 +73,7 @@ def test_hamiltonian_and_KL(field):
     ift.extra.check_value_gradient_consistency(hamiltonian, field)
     S = ift.ScalingOperator(1., space)
     samps = [S.draw_sample() for i in range(3)]
-    kl = ift.SampledKullbachLeiblerDivergence(hamiltonian, samps)
+    kl = ift.AveragedEnergy(hamiltonian, samps)
     ift.extra.check_value_gradient_consistency(kl, field)
 
 

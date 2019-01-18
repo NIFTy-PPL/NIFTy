@@ -25,7 +25,8 @@ from .domain_tuple import DomainTuple
 
 class MultiField(object):
     def __init__(self, domain, val):
-        """
+        """The discrete representation of a continuous field over a sum space.
+
         Parameters
         ----------
         domain: MultiDomain
@@ -213,6 +214,21 @@ class MultiField(object):
                           tuple(self[key] for key in subset.keys()))
 
     def unite(self, other):
+        """Merges two MultiFields on potentially different MultiDomains.
+
+        Parameters
+        ----------
+        other : MultiField
+            the partner Field
+
+        Returns
+        -------
+        MultiField
+            This MultiField's domain is the union of the input fields'
+            domains. The values are the sum of the fields in self and other.
+            If a field is not present, it is assumed to have an uniform value
+            of zero.
+        """
         if self._domain is other._domain:
             return self + other
         res = self.to_dict()
@@ -249,6 +265,23 @@ class MultiField(object):
         return MultiField.from_dict(res, domain)
 
     def flexible_addsub(self, other, neg):
+        """Merges two MultiFields on potentially different MultiDomains.
+
+        Parameters
+        ----------
+        other : MultiField
+            the partner Field
+        neg : bool
+            if True, the partner field is subtracted, otherwise added
+
+        Returns
+        -------
+        MultiField
+            This MultiField's domain is the union of the input fields'
+            domains. The values are the sum (or difference, if neg==True) of
+            the fields in self and other. If a field is not present, it is
+            assumed to have an uniform value of zero.
+        """
         if self._domain is other._domain:
             return self-other if neg else self+other
         res = self.to_dict()

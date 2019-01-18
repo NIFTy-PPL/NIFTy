@@ -34,7 +34,7 @@ def _float_or_listoffloat(inp):
     return [float(x) for x in inp] if isinstance(inp, list) else float(inp)
 
 
-def _make_dynamic_operator(domain,
+def _make_dynamic_operator(target,
                            harmonic_padding,
                            sm_s0,
                            sm_x0,
@@ -44,8 +44,10 @@ def _make_dynamic_operator(domain,
                            minimum_phase,
                            sigc=None,
                            quant=None):
-    if not isinstance(domain, RGSpace):
+    if not isinstance(target, RGSpace):
         raise TypeError("RGSpace required")
+    if not target.harmonic:
+        raise TypeError("Target space must be harmonic")
     if not (isinstance(harmonic_padding, int) or harmonic_padding is None
             or all(isinstance(ii, int) for ii in harmonic_padding)):
         raise TypeError
@@ -62,7 +64,7 @@ def _make_dynamic_operator(domain,
     if cone and (sigc is None or quant is None):
         raise RuntimeError
 
-    dom = DomainTuple.make(domain)
+    dom = DomainTuple.make(target.get_default_codomain())
     ops = {}
     FFT = FFTOperator(dom)
     Real = Realizer(dom)
@@ -134,20 +136,32 @@ def _make_dynamic_operator(domain,
     return m, ops
 
 
-def dynamic_operator(domain,
+def dynamic_operator(*,
+                     target,
                      harmonic_padding,
                      sm_s0,
                      sm_x0,
                      key,
                      causal=True,
                      minimum_phase=False):
-    '''Constructs an operator encoding the Green's function of a linear
+    """Constructs an operator encoding the Green's function of a linear
     homogeneous dynamic system.
+    
+    When evaluated, this operator returns the Green's function representation
+    in harmonic space. This result can be used as a convolution kernel to
+    construct solutions of the homogeneous stochastic differential equation
+    encoded in this operator. Note that if causal is True, the Green's function
+    is convolved with a step function in time, where the temporal axis is the
+    first axis of the space. In this case the resulting function only extends
+    up to half the length of the first axis of the space to avoid boundary
+    effects during convolution. If minimum_phase is true then the spectrum of
+    the Green's function is used to construct a corresponding minimum phase
+    filter.
 
     Parameters
     ----------
-    domain : RGSpace
-        The position space in which the Green's function shall be constructed.
+    target : RGSpace
+        The harmonic space in which the Green's function shall be constructed.
     harmonic_padding : None, int, list of int
         Amount of central padding in harmonic space in pixels. If None the
         field is not padded at all.
@@ -159,13 +173,15 @@ def dynamic_operator(domain,
         key for dynamics encoding parameter.
     causal : boolean
         Whether or not the Green's function shall be causal in time.
+        Default is True.
     minimum_phase: boolean
         Whether or not the Green's function shall be a minimum phase filter.
+        Default is False.
 
     Returns
     -------
     Operator
-        The Operator encoding the dynamic Green's function in harmonic space.
+        The Operator encoding the dynamic Green's function in target space.
     Dictionary of Operator
         A collection of sub-chains of Operator which can be used for plotting
         and evaluation.
@@ -173,9 +189,9 @@ def dynamic_operator(domain,
     Notes
     -----
     The first axis of the domain is interpreted the time axis.
-    '''
+    """
     dct = {
-        'domain': domain,
+        'target': target,
         'harmonic_padding': harmonic_padding,
         'sm_s0': sm_s0,
         'sm_x0': sm_x0,
@@ -187,7 +203,8 @@ def dynamic_operator(domain,
     return _make_dynamic_operator(**dct)
 
 
-def dynamic_lightcone_operator(domain,
+def dynamic_lightcone_operator(*,
+                               target,
                                harmonic_padding,
                                sm_s0,
                                sm_x0,
@@ -199,11 +216,16 @@ def dynamic_lightcone_operator(domain,
                                minimum_phase=False):
     '''Extends the functionality of :function: dynamic_operator to a Green's
     function which is constrained to be within a light cone.
+    
+    The resulting Green's function is constrained to be within a light cone.
+    This is achieved via convolution of the function with a light cone in
+    space-time. Thereby the first axis of the space is set to be the teporal
+    axis.
 
     Parameters
     ----------
-    domain : RGSpace
-        The position space in which the Green's function shall be constructed.
+    target : RGSpace
+        The harmonic space in which the Green's function shall be constructed.
         It needs to have at least two dimensions.
     harmonic_padding : None, int, list of int
         Amount of central padding in harmonic space in pixels. If None the
@@ -222,8 +244,10 @@ def dynamic_lightcone_operator(domain,
         Quantization of the light cone in pixels.
     causal : boolean
         Whether or not the Green's function shall be causal in time.
+        Default is True.
     minimum_phase: boolean
         Whether or not the Green's function shall be a minimum phase filter.
+        Default is False.
 
     Returns
     -------
@@ -238,10 +262,10 @@ def dynamic_lightcone_operator(domain,
     The first axis of the domain is interpreted the time axis.
     '''
 
-    if len(domain.shape) < 2:
+    if len(target.shape) < 2:
         raise ValueError("Space must be at least 2 dimensional!")
     dct = {
-        'domain': domain,
+        'target': target,
         'harmonic_padding': harmonic_padding,
         'sm_s0': sm_s0,
         'sm_x0': sm_x0,
