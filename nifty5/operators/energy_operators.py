@@ -259,7 +259,7 @@ class BernoulliEnergy(EnergyOperator):
         return v.add_metric(met)
 
 
-class Hamiltonian(EnergyOperator):
+class StandardHamiltonian(EnergyOperator):
     """Computes an information Hamiltonian in its standard form, i.e. with the
     prior being a Gaussian with unit covariance.
 
@@ -314,13 +314,13 @@ class Hamiltonian(EnergyOperator):
     def __repr__(self):
         subs = 'Likelihood:\n{}'.format(utilities.indent(self._lh.__repr__()))
         subs += '\nPrior: Quadratic{}'.format(self._lh.domain.keys())
-        return 'Hamiltonian:\n' + utilities.indent(subs)
+        return 'StandardHamiltonian:\n' + utilities.indent(subs)
 
 
 class AveragedEnergy(EnergyOperator):
     """Computes Kullback-Leibler (KL) divergence or Gibbs free energies.
 
-    A sample-averaged energy, e.g. an Hamiltonian, approximates the relevant
+    A sample-averaged energy, e.g. a Hamiltonian, approximates the relevant
     part of a KL to be used in Variational Bayes inference if the samples are
     drawn from the approximating Gaussian:
 
