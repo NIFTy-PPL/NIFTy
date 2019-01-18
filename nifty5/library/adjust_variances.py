@@ -53,7 +53,7 @@ def make_adjust_variances(a,
 
     Returns
     -------
-    Energy
+    StandardHamiltonian
         A Hamiltonian that can be used for further minimization.
     """
 
