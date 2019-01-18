@@ -64,7 +64,7 @@ from .minimization.nonlinear_cg import NonlinearCG
 from .minimization.descent_minimizers import (
     DescentMinimizer, SteepestDescent, VL_BFGS, L_BFGS, RelaxedNewton,
     NewtonCG)
-from .minimization.scipy_minimizer import (ScipyMinimizer, L_BFGS_B, ScipyCG)
+from .minimization.scipy_minimizer import L_BFGS_B
 from .minimization.energy import Energy
 from .minimization.quadratic_energy import QuadraticEnergy
 from .minimization.energy_adapter import EnergyAdapter
@@ -73,7 +73,7 @@ from .minimization.kl_energy import KL_Energy
 from .sugar import *
 from .plot import Plot
 
-from .library.smooth_linear_amplitude import (SLAmplitude, CepstrumOperator)
+from .library.smooth_linear_amplitude import SLAmplitude, CepstrumOperator
 from .library.inverse_gamma_operator import InverseGammaOperator
 from .library.los_response import LOSResponse
 from .library.dynamic_operator import (dynamic_operator,
