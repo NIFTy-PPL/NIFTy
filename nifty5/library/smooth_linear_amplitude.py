@@ -33,7 +33,7 @@ def _ceps_kernel(k, a, k0):
 
 
 def CepstrumOperator(target, a, k0):
-    '''Turns a white Gaussian random field into a smooth field on a LogRGSpace.
+    """Turns a white Gaussian random field into a smooth field on a LogRGSpace.
 
     Composed out of three operators:
 
@@ -69,10 +69,10 @@ def CepstrumOperator(target, a, k0):
         regularization of the inverse laplace operator to be finite at zero.
         Larger values for the cutoff results in a weaker constraining prior.
     k0 : float, list of float
-        Strength of smothness prior in quefrency space (positive only) along
+        Strength of smoothness prior in quefrency space (positive only) along
         each axis. If float then the strength is the same along each axis.
         Larger values result in a weaker constraining prior.
-    '''
+    """
     a = float(a)
     target = DomainTuple.make(target)
     if a <= 0:

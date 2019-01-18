@@ -42,8 +42,8 @@ def make_adjust_variances(a,
         Gives the amplitude when evaluated at a position.
     xi : Operator
         Gives the excitation when evaluated at a position.
-    postion : Field, MultiField
-        Position of the whole problem.
+    position : Field, MultiField
+        Position of the entire problem.
     samples : Field, MultiField
         Residual samples of the whole problem.
     scaling : Float

@@ -23,7 +23,12 @@ from .simple_linear_operators import NullOperator
 
 
 class ChainOperator(LinearOperator):
-    """Class representing chains of operators."""
+    """Class representing chains of operators.
+
+    Notes
+    -----
+    This operator has to be called using the :attr:`make` method.
+    """
 
     def __init__(self, ops, _callingfrommake=False):
         if not _callingfrommake:

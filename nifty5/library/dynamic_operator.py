@@ -144,7 +144,7 @@ def dynamic_operator(*,
                      key,
                      causal=True,
                      minimum_phase=False):
-    '''Constructs an operator encoding the Green's function of a linear
+    """Constructs an operator encoding the Green's function of a linear
     homogeneous dynamic system.
 
     When evaluated, this operator returns the Green's function representation
@@ -189,7 +189,7 @@ def dynamic_operator(*,
     Notes
     -----
     The first axis of the domain is interpreted the time axis.
-    '''
+    """
     dct = {
         'target': target,
         'harmonic_padding': harmonic_padding,
