@@ -15,18 +15,22 @@
 #
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
 
+from ..field import Field
+from ..multi_field import MultiField
 from .operator import Operator
 
 
-class OffsetOperator(Operator):
-    """Shifts the input by a fixed field.
+class Adder(Operator):
+    """Adds a fixed field.
 
     Parameters
     ----------
-    field : Field
+    field : Field or MultiField
         The field by which the input is shifted.
     """
     def __init__(self, field):
+        if not isinstance(field, (Field, MultiField)):
+            raise TypeError
         self._field = field
         self._domain = self._target = field.domain
 
