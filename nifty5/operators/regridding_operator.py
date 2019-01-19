@@ -26,7 +26,7 @@ from .linear_operator import LinearOperator
 
 
 class RegriddingOperator(LinearOperator):
-    '''Linearly interpolates a RGSpace to an RGSpace with coarser resolution.
+    """Linearly interpolates a RGSpace to an RGSpace with coarser resolution.
 
     Parameters
     ----------
@@ -38,7 +38,7 @@ class RegriddingOperator(LinearOperator):
     space : int
         Index of space in `domain` on which the operator shall act.
         Default is 0.
-    '''
+    """
     def __init__(self, domain, new_shape, space=0):
         self._domain = DomainTuple.make(domain)
         self._space = infer_space(self._domain, space)

@@ -24,11 +24,11 @@ from .endomorphic_operator import EndomorphicOperator
 
 
 class DiagonalOperator(EndomorphicOperator):
-    """Represents a linear operator which is diagonal.
+    """Represents a :class:`LinearOperator` which is diagonal.
 
     The NIFTy DiagonalOperator class is a subclass derived from the
-    EndomorphicOperator. It multiplies an input field pixel-wise with its
-    diagonal.
+    :class:`EndomorphicOperator`. It multiplies an input field pixel-wise with
+    its diagonal.
 
     Parameters
     ----------

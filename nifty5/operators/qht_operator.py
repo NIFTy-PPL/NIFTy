@@ -36,7 +36,7 @@ class QHTOperator(LinearOperator):
         The full output domain
     space : int
         The index of the domain on which the operator acts.
-        target[space] must be a nonharmonic LogRGSpace.
+        target[space] must be a non-harmonic LogRGSpace.
     """
 
     def __init__(self, target, space=0):

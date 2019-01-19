@@ -49,7 +49,7 @@ class SquaredNormOperator(EnergyOperator):
     Parameters
     ----------
     domain : Domain, DomainTuple or tuple of Domain
-        Target domain of the operator in which the L2-norm shall be computed.
+        Domain of the operator in which the L2-norm shall be computed.
     """
 
     def __init__(self, domain):
@@ -66,7 +66,7 @@ class SquaredNormOperator(EnergyOperator):
 
 class QuadraticFormOperator(EnergyOperator):
     """Computes the L2-norm of a Field or MultiField with respect to a
-    specific metric `endo`.
+    specific kernel given by `endo`.
 
     .. math ::
         E(f) = \\frac12 f^\\dagger \\text{endo}(f)
@@ -74,7 +74,7 @@ class QuadraticFormOperator(EnergyOperator):
     Parameters
     ----------
     endo : EndomorphicOperator
-         Kernel of quadratic form.
+         Kernel of the quadratic form
     """
 
     def __init__(self, endo):
@@ -259,7 +259,7 @@ class BernoulliEnergy(EnergyOperator):
         return v.add_metric(met)
 
 
-class Hamiltonian(EnergyOperator):
+class StandardHamiltonian(EnergyOperator):
     """Computes an information Hamiltonian in its standard form, i.e. with the
     prior being a Gaussian with unit covariance.
 
@@ -283,7 +283,7 @@ class Hamiltonian(EnergyOperator):
     lh : EnergyOperator
         The likelihood energy.
     ic_samp : IterationController
-        Tells an internal :class:`SamplingEnabler` which convergence criterium
+        Tells an internal :class:`SamplingEnabler` which convergence criterion
         to use to draw Gaussian samples.
 
 
@@ -314,7 +314,7 @@ class Hamiltonian(EnergyOperator):
     def __repr__(self):
         subs = 'Likelihood:\n{}'.format(utilities.indent(self._lh.__repr__()))
         subs += '\nPrior: Quadratic{}'.format(self._lh.domain.keys())
-        return 'Hamiltonian:\n' + utilities.indent(subs)
+        return 'StandardHamiltonian:\n' + utilities.indent(subs)
 
 
 class AveragedEnergy(EnergyOperator):
@@ -328,7 +328,7 @@ class AveragedEnergy(EnergyOperator):
     the samples are drawn from the approximating Gaussian:
 
     .. math ::
-        \\text{KL}(m) = \\frac1{\\#\{v_i\}} \\sum_{v_i} H(m+v_i),
+        \\text{KL}(m) = \\frac1{\\#\\{v_i\\}} \\sum_{v_i} H(m+v_i),
 
     where :math:`v_i` are the residual samples and :math:`m` is the 
     mean field around which the samples are drawn.

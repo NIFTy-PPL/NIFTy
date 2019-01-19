@@ -65,7 +65,7 @@ def get_signal_variance(spec, space):
     """
     Computes how much a field with a given power spectrum will vary in space
 
-    This is a small helper function that computes how the expected variance
+    This is a small helper function that computes the expected variance
     of a harmonically transformed sample of this power spectrum.
 
     Parameters
@@ -103,7 +103,7 @@ def power_analyze(field, spaces=None, binbounds=None,
     """Computes the power spectrum for a subspace of `field`.
 
     Creates a PowerSpace for the space addressed by `spaces` with the given
-    binning and computes the power spectrum as a Field over this
+    binning and computes the power spectrum as a :class:`Field` over this
     PowerSpace. This can only be done if the subspace to  be analyzed is a
     harmonic space. The resulting field has the same units as the square of the
     initial field.
@@ -122,11 +122,11 @@ def power_analyze(field, spaces=None, binbounds=None,
         if binbounds is None : bins are inferred.
     keep_phase_information : bool, optional
         If False, return a real-valued result containing the power spectrum
-        of the input Field.
+        of `field`.
         If True, return a complex-valued result whose real component
-        contains the power spectrum computed from the real part of the
-        input Field, and whose imaginary component contains the power
-        spectrum computed from the imaginary part of the input Field.
+        contains the power spectrum computed from the real part of `field`,
+        and whose imaginary component contains the power
+        spectrum computed from the imaginary part of `field`.
         The absolute value of this result should be identical to the output
         of power_analyze with keep_phase_information=False.
         (default : False).
@@ -363,7 +363,7 @@ def makeOp(input):
         return DiagonalOperator(input)
     if isinstance(input, MultiField):
         return BlockDiagonalOperator(
-            input.domain, tuple(makeOp(val) for val in input.values()))
+            input.domain, {key: makeOp(val) for key, val in enumerate(input)})
     raise NotImplementedError
 
 

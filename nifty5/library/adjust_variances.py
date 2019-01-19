@@ -16,10 +16,9 @@
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
 
 from ..minimization.energy_adapter import EnergyAdapter
-from ..multi_domain import MultiDomain
 from ..multi_field import MultiField
 from ..operators.distributors import PowerDistributor
-from ..operators.energy_operators import Hamiltonian, InverseGammaLikelihood
+from ..operators.energy_operators import StandardHamiltonian, InverseGammaLikelihood
 from ..operators.scaling_operator import ScalingOperator
 from ..operators.simple_linear_operators import ducktape
 
@@ -35,25 +34,27 @@ def make_adjust_variances(a,
     Constructs a Hamiltonian to solve constant likelihood optimizations of the
     form phi = a * xi under the constraint that phi remains constant.
 
+    FIXME xi is white.
+
     Parameters
     ----------
     a : Operator
-        Operator which gives the amplitude when evaluated at a position
+        Gives the amplitude when evaluated at a position.
     xi : Operator
-        Operator which gives the excitation when evaluated at a position
-    postion : Field, MultiField
-        Position of the whole problem
+        Gives the excitation when evaluated at a position.
+    position : Field, MultiField
+        Position of the entire problem.
     samples : Field, MultiField
-        Residual samples of the whole problem
+        Residual samples of the whole problem.
     scaling : Float
-        Optional rescaling of the Likelihood
+        Optional rescaling of the Likelihood.
     ic_samp : Controller
-        Iteration Controller for Hamiltonian
+        Iteration Controller for Hamiltonian.
 
     Returns
     -------
-    Hamiltonian
-        A Hamiltonian that can be used for further minimization
+    StandardHamiltonian
+        A Hamiltonian that can be used for further minimization.
     """
 
     d = a*xi
@@ -71,7 +72,7 @@ def make_adjust_variances(a,
     if scaling is not None:
         x = ScalingOperator(scaling, x.target)(x)
 
-    return Hamiltonian(InverseGammaLikelihood(d_eval)(x), ic_samp=ic_samp)
+    return StandardHamiltonian(InverseGammaLikelihood(d_eval)(x), ic_samp=ic_samp)
 
 
 def do_adjust_variances(position,
@@ -79,6 +80,9 @@ def do_adjust_variances(position,
                         minimizer,
                         xi_key='xi',
                         samples=[]):
+    '''
+    FIXME
+    '''
 
     h_space = position[xi_key].domain[0]
     pd = PowerDistributor(h_space, amplitude_operator.target[0])

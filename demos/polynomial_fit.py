@@ -103,7 +103,7 @@ N = ift.DiagonalOperator(ift.from_global_data(d_space, var))
 
 IC = ift.DeltaEnergyController(tol_rel_deltaE=1e-12, iteration_limit=200)
 likelihood = ift.GaussianEnergy(d, N)(R)
-Ham = ift.Hamiltonian(likelihood, IC)
+Ham = ift.StandardHamiltonian(likelihood, IC)
 H = ift.EnergyAdapter(params, Ham, want_metric=True)
 
 # Minimize
