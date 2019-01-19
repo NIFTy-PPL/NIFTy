@@ -9,7 +9,7 @@ Theoretical Background
 
 IFT is fully Bayesian. How else could infinitely many field degrees of freedom be constrained by finite data?
 
-There is a full toolbox of methods that can be used, like the classical approximation (= Maximum a posteriori = MAP), effective action (= Variational Bayes = VI), Feynman diagrams, renormalitation, and more. IFT reproduces many known well working algorithms. This should be reassuring. And, there were certainly previous works in a similar spirit. Anyhow, in many cases IFT provides novel rigorous ways to extract information from data. NIFTy comes with reimplemented MAP and VI estimators. It also provides a Hamiltonian Monte Carlo sampler for Fields (HMCF).
+There is a full toolbox of methods that can be used, like the classical approximation (= Maximum a posteriori = MAP), effective action (= Variational Bayes = VI), Feynman diagrams, renormalitation, and more. IFT reproduces many known well working algorithms. This should be reassuring. And, there were certainly previous works in a similar spirit. Anyhow, in many cases IFT provides novel rigorous ways to extract information from data. NIFTy comes with reimplemented MAP and VI estimators. 
 
 .. tip:: *In-a-nutshell introductions to information field theory* can be found in [2]_, [3]_, [4]_, and [5]_, with the latter probably being the most didactically.
 
@@ -176,7 +176,9 @@ NIFTy takes advantage of this formulation in several ways:
 2) The amplitude operator can be regarded as part of the response, :math:`{R'=R\,A}`. In general, more sophisticated responses can be constructed out of the composition of simpler operators.
 3) The response can be non-linear, e.g. :math:`{R'(s)=R \exp(A\,\xi)}`, see demos/getting_started_2.py.
 4) The amplitude operator can be made dependent on unknowns as well, e.g. :math:`A=A(\tau)= F\, \widehat{e^\tau}` represents an amplitude operator with a positive definite, unknown spectrum defined in Fourier domain. The amplitude field :math:`{\tau}` would get its own amplitude operator, with a cepstrum (spectrum of a log spectrum) defined in quefrency space (harmonic space of a logarithmically binned harmonic space) to regularize its degrees of freedom by imposing some (user-defined level of) spectral smoothness.
-5) NIFTy can calculate the gradient of the information Hamiltonian and the Fischer information metric with respect to all unknown parameters, here :math:`{\xi}` and :math:`{\tau}`, by automatic differentiation. The gradients are used for MAP and HMCF estimates, and the Fischer matrix is required in addition to the gradient by Metric Gaussian Variational Inference (MGVI), which is available in NIFTy as well. MGVI is an implicit operator extension of Automatic Differentiation Variational Inference (ADVI).
+5) NIFTy can calculate the gradient of the information Hamiltonian and the Fischer information metric with respect to all unknown parameters, here :math:`{\xi}` and :math:`{\tau}`, by automatic differentiation. The gradients are used for MAP estimates, and the Fischer matrix is required in addition to the gradient by Metric Gaussian Variational Inference (MGVI), which is available in NIFTy as well.
+
+MGVI is an implicit operator extension of Automatic Differentiation Variational Inference (ADVI). The basic idea of Variational Inference (VI) is described in the next section.
 
 The reconstruction of a non-Gaussian signal with unknown covarinance from a non-trivial (tomographic) response is demonstrated in demos/getting_started_3.py. Here, the uncertainty of the field and the power spectrum of its generating process are probed via posterior samples provided by the MGVI algorithm.
 
@@ -184,14 +186,14 @@ The reconstruction of a non-Gaussian signal with unknown covarinance from a non-
 | **Output of tomography demo getting_started_3.py** |
 +----------------------------------------------------+
 | .. image:: images/getting_started_3_setup.png      |
-|                                                    |
+|     :width:  50 %                                  |
 +----------------------------------------------------+
 | Non-Gaussian signal field,                         |
 | data backprojected into the image domain, power    |
 | spectrum of underlying Gausssian process.          |
 +----------------------------------------------------+
 | .. image:: images/getting_started_3_results.png    |
-|                                                    |
+|     :width:  50 %                                  |
 +----------------------------------------------------+
 | Posterior mean field signal                        |
 | reconstruction, its uncertainty, and the power     |
@@ -199,3 +201,54 @@ The reconstruction of a non-Gaussian signal with unknown covarinance from a non-
 | samples in comparison to the correct one (thick    |
 | orange line).                                      |
 +----------------------------------------------------+
+
+Variational Inference
+---------------------
+
+One popular field estimation method is MAP.
+It only requires to minimize the information Hamiltonian, e.g by a gradient descent method that stops when
+
+.. math::
+
+    \frac{\partial \mathcal{H}(d,\xi)}{\partial \xi} = 0.
+
+NIFTy5 is able to calculate the necessary gradient from a generative model of the signal and the data and to minimize the Hamiltonian.
+
+However, MAP provides often unsatisfactory result in case a deep hirachical Bayesian networks describes the singal and data generation.
+The reason for this is that MAP ignores the volume factors in parameter space, which are not to be neglected in deciding whether a solution is reasonable or not.
+In the high dimensional setting of field inference these volume factors can differ by large ratios.
+A MAP estimate, which is only representative for a tiny fraction of the parameter space, might be a poorer choice (with respect to an error norm) compared to a slightly worse location with slightly lower posterior probability, which, however, is associated with a much larger volume (of nearby locations with similar probability).
+
+This causes MAP signal estimates to be more prone to overfitting the noise as well as to perception thresholds than methods that take volume effects into account.
+
+One such method is VI. In VI, the posterior :math:`\mathcal{P}(\xi|d)` is approximated by a simpler distribution, often a Gaussian :math:`\mathcal{Q}(\xi)=\mathcal{G}(\xi-m,D)`.
+The parameters of :math:`\mathcal{Q}`, the mean :math:`m` and its uncertainty dispersion :math:`D` are obtained by minimization of an appropriate information distance measure between :math:`\mathcal{Q}` and :math:`\mathcal{P}`.
+As a compromise between being optimal and being computational affordable the (reverse) Kullbach Leiberler (KL) divergence is used in VI:
+
+.. math::
+
+    \mathrm{KL}(m,D|d)= \mathcal{D}_\mathrm{KL}(\mathcal{Q}||\mathcal{P})=
+    \int \mathcal{D}\xi \,\mathcal{Q}(\xi) \log \left( \frac{\mathcal{Q}(\xi)}{\mathcal{P}(\xi)} \right)
+
+Minimizing this with respect to all entries of the covariance :math:`D` is unfeasible for fields.
+Therefore, MGVI makes the Ansatz to approximate the precision matrix :math:`M=D^{-1}` by the Bayesian Fisher information metric,
+
+.. math::
+
+    M \approx \left\langle \frac{\partial \mathcal{H}(d,\xi)}{\partial \xi} \, \frac{\partial \mathcal{H}(d,\xi)}{\partial \xi}^\dagger \right\rangle_{(d,\xi)},
+
+where  in the MGVI practice the average is performed over :math:`\mathcal{Q}` by evaluating the expression at samples drawn from this Gaussian.
+With this approximation, the KL becomes effectively a function of the mean  :math:`m`, as :math:`D= D(m) \approx M^{-1}`. Thus, only the gradient of the KL is needed with respect to this, which can be expressed as
+
+.. math::
+
+    \frac{\partial \mathrm{KL}(m|d)}{\partial m} = \left\langle \frac{\partial \mathcal{H}(d,\xi)}{\partial \xi}  \right\rangle_{\mathcal{G}(\xi-m,D)}.
+
+The advantage of this Ansatz is that the averages can be represented by sample averages, and all the gradients are represented by operators that NIFTy5 can calculate and that do not need the storage of full matrices. Therefore, NIFTy5 is able to draw samples according to a Gaussian with a covariance given by the inverse information metric, and to minimize the KL correspondingly.
+As this requires stochastic optimization, the parameters governing the numerics might need problem specific tuning.
+The demo getting_started_3.py for example infers this way not only a field, but also the power spectrum of the process that has generated the field.
+The cross-correlation of field and power spectum is taken care of thereby.
+Posterior samples can be obtained to study this cross-correlation.
+
+It should be noted that MGVI as any VI method typically underestimates uncertainties due to the fact that :math:`\mathcal{D}_\mathrm{KL}(\mathcal{Q}||\mathcal{P})`, the reverse KL, is used, whereas :math:`\mathcal{D}_\mathrm{KL}(\mathcal{P}||\mathcal{Q})` would be optimal to approximate  :math:`\mathcal{P}` by  :math:`\mathcal{Q}` from an information theoretical perspective.
+This, however, would require that one is  able to integrate the posterior, in wich case one can calculate the desired posterior mean and its uncertainty covariance directly.
