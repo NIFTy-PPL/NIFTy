@@ -20,8 +20,8 @@ import numpy as np
 from ..domain_tuple import DomainTuple
 from ..domains.power_space import PowerSpace
 from ..field import Field
+from ..operators.adder import Adder
 from ..operators.exp_transform import ExpTransform
-from ..operators.offset_operator import OffsetOperator
 from ..operators.qht_operator import QHTOperator
 from ..operators.slope_operator import SlopeOperator
 from ..operators.symmetrizing_operator import SymmetrizingOperator
@@ -29,11 +29,11 @@ from ..sugar import makeOp
 
 
 def _ceps_kernel(k, a, k0):
-    return (a/(1+np.sum((k.T/k0)**2, axis=-1).T))**2
+    return (a/(1 + np.sum((k.T/k0)**2, axis=-1).T))**2
 
 
 def CepstrumOperator(target, a, k0):
-    '''Turns a white Gaussian random field into a smooth field on a LogRGSpace.
+    """Turns a white Gaussian random field into a smooth field on a LogRGSpace.
 
     Composed out of three operators:
 
@@ -43,7 +43,7 @@ def CepstrumOperator(target, a, k0):
     and ceps is the so-called cepstrum:
 
     .. math::
-        \\mathrm{sqrt\_ceps}(k) = \\frac{a}{1+(k/k0)^2}
+        \\mathrm{sqrt\\_ceps}(k) = \\frac{a}{1+(k/k0)^2}
 
     These operators are combined in this fashion in order to generate:
 
@@ -69,10 +69,10 @@ def CepstrumOperator(target, a, k0):
         regularization of the inverse laplace operator to be finite at zero.
         Larger values for the cutoff results in a weaker constraining prior.
     k0 : float, list of float
-        Strength of smothness prior in quefrency space (positive only) along
+        Strength of smoothness prior in quefrency space (positive only) along
         each axis. If float then the strength is the same along each axis.
         Larger values result in a weaker constraining prior.
-    '''
+    """
     a = float(a)
     target = DomainTuple.make(target)
     if a <= 0:
@@ -189,7 +189,7 @@ def SLAmplitude(*, target, n_pix, a, k0, sm, sv, im, iv, keys=['tau', 'phi']):
     sig = np.array([sv, iv])
     mean = Field.from_global_data(sl.domain, mean)
     sig = Field.from_global_data(sl.domain, sig)
-    linear = (sl @ OffsetOperator(mean) @ makeOp(sig)).ducktape(keys[1])
+    linear = sl @ Adder(mean) @ makeOp(sig).ducktape(keys[1])
 
     # Combine linear and smooth component
     loglog_ampl = 0.5*(smooth + linear)

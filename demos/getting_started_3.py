@@ -100,10 +100,10 @@ if __name__ == '__main__':
 
     # Set up likelihood and information Hamiltonian
     likelihood = ift.GaussianEnergy(mean=data, covariance=N)(signal_response)
-    H = ift.Hamiltonian(likelihood, ic_sampling)
+    H = ift.StandardHamiltonian(likelihood, ic_sampling)
 
-    initial_position = ift.MultiField.full(H.domain, 0.)
-    position = initial_position
+    initial_mean = ift.MultiField.full(H.domain, 0.)
+    mean = initial_mean
 
     plot = ift.Plot()
     plot.add(signal(mock_position), title='Ground Truth')
@@ -117,9 +117,9 @@ if __name__ == '__main__':
     # Draw new samples to approximate the KL five times
     for i in range(5):
         # Draw new samples and minimize KL
-        KL = ift.KL_Energy(position, H, N_samples)
+        KL = ift.MetricGaussianKL(mean, H, N_samples)
         KL, convergence = minimizer(KL)
-        position = KL.position
+        mean = KL.position
 
         # Plot current reconstruction
         plot = ift.Plot()
@@ -128,7 +128,7 @@ if __name__ == '__main__':
         plot.output(ny=1, ysize=6, xsize=16, name="loop-{:02}.png".format(i))
 
     # Draw posterior samples
-    KL = ift.KL_Energy(position, H, N_samples)
+    KL = ift.MetricGaussianKL(mean, H, N_samples)
     sc = ift.StatCalculator()
     for sample in KL.samples:
         sc.add(signal(sample + KL.position))

@@ -16,11 +16,11 @@
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
 
 from ..logger import logger
-from ..utilities import NiftyMetaBase
+from ..utilities import NiftyMeta
 import numpy as np
 
 
-class IterationController(NiftyMetaBase()):
+class IterationController(metaclass=NiftyMeta):
     """The abstract base class for all iteration controllers.
     An iteration controller is an object that monitors the progress of a
     minimization iteration. At the begin of the minimization, its start()

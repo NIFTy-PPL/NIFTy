@@ -20,10 +20,9 @@ from itertools import product
 from functools import reduce
 
 import numpy as np
-from future.utils import with_metaclass
 
 __all__ = ["get_slice_list", "safe_cast", "parse_spaces", "infer_space",
-           "memo", "NiftyMetaBase", "my_sum", "my_lincomb_simple",
+           "memo", "NiftyMeta", "my_sum", "my_lincomb_simple",
            "my_lincomb", "indent",
            "my_product", "frozendict", "special_add_at", "iscomplextype"]
 
@@ -176,10 +175,6 @@ class _DocStringInheritor(type):
 
 class NiftyMeta(_DocStringInheritor):
     pass
-
-
-def NiftyMetaBase():
-    return with_metaclass(NiftyMeta, type('NewBase', (object,), {}))
 
 
 class frozendict(collections.abc.Mapping):

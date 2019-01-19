@@ -23,7 +23,7 @@ from .linear_operator import LinearOperator
 
 
 class DomainTupleFieldInserter(LinearOperator):
-    '''Writes the content of a field into one slice of a DomainTuple.
+    """Writes the content of a :class:`Field` into one slice of a :class:`DomainTuple`.
 
     Parameters
     ----------
@@ -33,7 +33,7 @@ class DomainTupleFieldInserter(LinearOperator):
         Index at which new_space shall be added to domain.
     position : tuple
         Slice in new_space in which the input field shall be written into.
-    '''
+    """
     def __init__(self, domain, new_space, index, position):
         self._domain = DomainTuple.make(domain)
         tgt = list(self.domain)

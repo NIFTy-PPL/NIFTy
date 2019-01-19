@@ -23,7 +23,7 @@ from .linear_operator import LinearOperator
 
 
 class OuterProduct(LinearOperator):
-    """Performs the pointwise outer product of two fields.
+    """Performs the point-wise outer product of two fields.
 
     Parameters
     ---------

@@ -16,10 +16,10 @@
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
 
 import numpy as np
-from ..utilities import NiftyMetaBase, indent
+from ..utilities import NiftyMeta, indent
 
 
-class Operator(NiftyMetaBase()):
+class Operator(metaclass=NiftyMeta):
     """Transforms values defined on one domain into values defined on another
     domain, and can also provide the Jacobian.
     """
@@ -110,14 +110,14 @@ class Operator(NiftyMetaBase()):
         return _OpChain.make((_Clipper(self.target, min, max), self))
 
     def apply(self, x):
-        '''Applies the operator to a Field or MultiField.
+        """Applies the operator to a Field or MultiField.
 
         Parameters
         ----------
         x : Field or MultiField
             Input on which the operator shall act. Needs to be defined on
             :attr:`domain`.
-        '''
+        """
         raise NotImplementedError
 
     def force(self, x):

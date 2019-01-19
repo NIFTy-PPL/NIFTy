@@ -74,7 +74,7 @@ if __name__ == '__main__':
     ic_sampling = ift.GradientNormController(iteration_limit=100)
 
     # Minimize the Hamiltonian
-    H = ift.Hamiltonian(likelihood, ic_sampling)
+    H = ift.StandardHamiltonian(likelihood, ic_sampling)
     H = ift.EnergyAdapter(position, H, want_metric=True)
     # minimizer = ift.L_BFGS(ic_newton)
     H, convergence = minimizer(H)
