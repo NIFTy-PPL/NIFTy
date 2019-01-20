@@ -259,7 +259,7 @@ class BernoulliEnergy(EnergyOperator):
         return v.add_metric(met)
 
 
-class Hamiltonian(EnergyOperator):
+class StandardHamiltonian(EnergyOperator):
     """Computes an information Hamiltonian in its standard form, i.e. with the
     prior being a Gaussian with unit covariance.
 
@@ -314,52 +314,24 @@ class Hamiltonian(EnergyOperator):
     def __repr__(self):
         subs = 'Likelihood:\n{}'.format(utilities.indent(self._lh.__repr__()))
         subs += '\nPrior: Quadratic{}'.format(self._lh.domain.keys())
-        return 'Hamiltonian:\n' + utilities.indent(subs)
+        return 'StandardHamiltonian:\n' + utilities.indent(subs)
 
 
 class AveragedEnergy(EnergyOperator):
-    """Computes Kullback-Leibler (KL) divergence or Gibbs free energies.
-
-    A sample-averaged energy, e.g. an Hamiltonian, approximates the relevant
-    part of a KL to be used in Variational Bayes inference if the samples are
-    drawn from the approximating Gaussian:
-
-    .. math ::
-        \\text{KL}(m) = \\frac1{\\#\\{v_i\\}} \\sum_{v_i} H(m+v_i),
-
-    where :math:`v_i` are the residual samples and :math:`m` is the mean field
-    around which the samples are drawn.
+    """Averages an energy over samples
 
     Parameters
     ----------
     h: Hamiltonian
        The energy to be averaged.
     res_samples : iterable of Fields
-       Set of residual sample points to be added to mean field for approximate
-       estimation of the KL.
+       Set of residual sample points to be added to mean field for
+       approximate estimation of the KL.
 
     Note
     ----
-    Having symmetrized residual samples, with both v_i and -v_i being present
-    ensures that the distribution mean is exactly represented. This reduces
-    sampling noise and helps the numerics of the KL minimization process in the
-    variational Bayes inference.
-
-    See also
-    --------
-    Let :math:`Q(f) = G(f-m,D)` be the Gaussian distribution
-    which is used to approximate the accurate posterior :math:`P(f|d)` with
-    information Hamiltonian
-    :math:`H(d,f) = -\\log P(d,f) = -\\log P(f|d) + \\text{const}`. In
-    Variational Bayes one needs to optimize the KL divergence between those
-    two distributions for m. It is:
-
-    :math:`KL(Q,P) = \\int Df Q(f) \\log Q(f)/P(f)\\\\
-    = \\left< \\log Q(f) \\right>_Q(f) - \\left< \\log P(f) \\right>_Q(f)\\\\
-    = \\text{const} + \\left< H(f) \\right>_G(f-m,D)`
-
-    in essence the information Hamiltonian averaged over a Gaussian
-    distribution centered on the mean m.
+    Having symmetrized residual samples, with both v_i and -v_i being 
+    present ensures that the distribution mean is exactly represented. 
 
     :class:`AveragedEnergy(h)` approximates
     :math:`\\left< H(f) \\right>_{G(f-m,D)}` if the residuals
