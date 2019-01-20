@@ -184,14 +184,14 @@ The reconstruction of a non-Gaussian signal with unknown covariance from a non-t
 | **Output of tomography demo getting_started_3.py** |
 +----------------------------------------------------+
 | .. image:: images/getting_started_3_setup.png      |
-|     :width:  50 %                                  |
+|                                                    |
 +----------------------------------------------------+
 | Non-Gaussian signal field,                         |
 | data backprojected into the image domain, power    |
 | spectrum of underlying Gausssian process.          |
 +----------------------------------------------------+
 | .. image:: images/getting_started_3_results.png    |
-|     :width:  50 %                                  |
+|                                                    |
 +----------------------------------------------------+
 | Posterior mean field signal                        |
 | reconstruction, its uncertainty, and the power     |
