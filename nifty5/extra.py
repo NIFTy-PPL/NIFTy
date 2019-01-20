@@ -74,6 +74,26 @@ def _check_linearity(op, domain_dtype, atol, rtol):
 
 def consistency_check(op, domain_dtype=np.float64, target_dtype=np.float64,
                       atol=0, rtol=1e-7):
+    """Checks whether times(), adjoint_times(), inverse_times() and
+    adjoint_inverse_times() (if in capability list) is implemented
+    consistently. Additionally, it checks whether the operator is linear
+    actually.
+
+    Parameters
+    ----------
+    op : LinearOperator
+        Operator which shall be checked.
+    domain_dtype : FIXME
+        The data type of the random vectors in the operator's domain. Default
+        is `np.float64`.
+    target_dtype : FIXME
+        The data type of the random vectors in the operator's target. Default
+        is `np.float64`.
+    atol : float
+        FIXME. Default is 0.
+    rtol : float
+        FIXME. Default is 0.
+    """
     if not isinstance(op, LinearOperator):
         raise TypeError('This test tests only linear operators.')
     _check_linearity(op, domain_dtype, atol, rtol)
@@ -137,8 +157,10 @@ def _check_consistency(op, loc, tol, ntries, do_metric):
 
 
 def check_value_gradient_consistency(op, loc, tol=1e-8, ntries=100):
+    """FIXME"""
     _check_consistency(op, loc, tol, ntries, False)
 
 
 def check_value_gradient_metric_consistency(op, loc, tol=1e-8, ntries=100):
+    """FIXME"""
     _check_consistency(op, loc, tol, ntries, True)
