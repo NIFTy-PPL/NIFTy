@@ -47,7 +47,8 @@ def CorrelatedField(target, amplitude_operator, name='xi', codomain=None):
 
     Returns
     -------
-    Correlated field : Operator
+    Operator
+        Correlated field
     """
     tgt = DomainTuple.make(target)
     if len(tgt) > 1:
@@ -74,7 +75,7 @@ def MfCorrelatedField(target, amplitudes, name='xi'):
     Parameters
     ----------
     target : Domain, DomainTuple or tuple of Domain
-        Target of the operator. Must contain exactly one space.
+        Target of the operator. Must contain exactly two spaces.
     amplitudes: iterable of Operator
         List of two amplitude operators.
     name : string
@@ -82,7 +83,8 @@ def MfCorrelatedField(target, amplitudes, name='xi'):
 
     Returns
     -------
-    Correlated field : Operator
+    Operator
+        Correlated field
     """
     tgt = DomainTuple.make(target)
     if len(tgt) != 2:
