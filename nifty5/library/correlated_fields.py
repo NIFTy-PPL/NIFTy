@@ -16,6 +16,7 @@
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
 
 from functools import reduce
+from operator import mul
 
 from ..domain_tuple import DomainTuple
 from ..operators.contraction_operator import ContractionOperator
@@ -105,8 +106,8 @@ def MfCorrelatedField(target, amplitudes, name='xi'):
     d = [dd0, dd1]
 
     a = [dd @ amplitudes[ii] for ii, dd in enumerate(d)]
-    a = reduce(lambda x, y: x*y, a)
+    a = reduce(mul, a)
     A = pd @ a
     # For `vol` see comment in `CorrelatedField`
-    vol = reduce(lambda x, y: x*y, [sp.scalar_dvol**-0.5 for sp in hsp])
+    vol = reduce(mul, [sp.scalar_dvol**-0.5 for sp in hsp])
     return ht(vol*A*ducktape(hsp, None, name))
