@@ -24,7 +24,7 @@ from ..operators.harmonic_operators import HarmonicTransformOperator
 from ..operators.simple_linear_operators import ducktape
 
 
-def CorrelatedField(target, amplitude_operator, name='xi'):
+def CorrelatedField(target, amplitude_operator, name='xi', codomain=None):
     """Constructs an operator which turns a white Gaussian excitation field
     into a correlated field.
 
@@ -42,6 +42,8 @@ def CorrelatedField(target, amplitude_operator, name='xi'):
     amplitude_operator: Operator
     name : string
         :class:`MultiField` key for the xi-field.
+    codomain : Domain
+        The codomain for target[0]. If not supplied, it is inferred.
 
     Returns
     -------
@@ -50,7 +52,9 @@ def CorrelatedField(target, amplitude_operator, name='xi'):
     tgt = DomainTuple.make(target)
     if len(tgt) > 1:
         raise ValueError
-    h_space = tgt[0].get_default_codomain()
+    if codomain is None:
+        codomain = tgt[0].get_default_codomain()
+    h_space = codomain
     ht = HarmonicTransformOperator(h_space, tgt[0])
     p_space = amplitude_operator.target[0]
     power_distributor = PowerDistributor(h_space, p_space)
