@@ -37,9 +37,11 @@ class QHTOperator(LinearOperator):
     space : int
         The index of the domain on which the operator acts.
         target[space] must be a non-harmonic LogRGSpace.
+    codomain : Domain
+        The codomain for target[space]. If not supplied, it is inferred.
     """
 
-    def __init__(self, target, space=0):
+    def __init__(self, target, space=0, codomain=None):
         self._target = DomainTuple.make(target)
         self._space = infer_space(self._target, space)
 
@@ -51,8 +53,9 @@ class QHTOperator(LinearOperator):
             raise TypeError("target[space] must be a nonharmonic space")
 
         self._domain = [dom for dom in self._target]
-        self._domain[self._space] = \
-            self._target[self._space].get_default_codomain()
+        if codomain is None:
+            codomain = self._target[self._space].get_default_codomain()
+        self._domain[self._space] = codomain
         self._domain = DomainTuple.make(self._domain)
         self._capability = self.TIMES | self.ADJOINT_TIMES
 

@@ -43,7 +43,8 @@ def _make_dynamic_operator(target,
                            causal,
                            minimum_phase,
                            sigc=None,
-                           quant=None):
+                           quant=None,
+                           codomain=None):
     if not isinstance(target, RGSpace):
         raise TypeError("RGSpace required")
     if not target.harmonic:
@@ -64,7 +65,9 @@ def _make_dynamic_operator(target,
     if cone and (sigc is None or quant is None):
         raise RuntimeError
 
-    dom = DomainTuple.make(target.get_default_codomain())
+    if codomain is None:
+        codomain = target.get_default_codomain()
+    dom = DomainTuple.make(codomain)
     ops = {}
     FFT = FFTOperator(dom)
     Real = Realizer(dom)
