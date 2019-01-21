@@ -313,8 +313,8 @@ class Plot(object):
 
         Notes
         -----
-        After doing one or more calls `plot()`, one also needs to call
-        `plot_finish()` to output the result.
+        After doing one or more calls `add()`, one needs to call `output()` to
+        show or save the plot.
 
         Parameters
         ----------
@@ -324,7 +324,7 @@ class Plot(object):
             If it is a list, all list members must be Fields defined over the
             same one-dimensional `RGSpace` or `PowerSpace`.
         title: string
-            title of the plot.
+            Title of the plot.
         xlabel: string
             Label for the x axis.
         ylabel: string
@@ -338,7 +338,7 @@ class Plot(object):
         label: string of list of strings
             Annotation string.
         alpha: float or list of floats
-            transparency value
+            Transparency value.
         """
         self._plots.append(f)
         self._kwargs.append(kwargs)
