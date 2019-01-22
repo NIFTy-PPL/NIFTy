@@ -58,7 +58,7 @@ def make_adjust_variances(a,
     """
 
     d = a*xi
-    d = (d.conjugate()*d).real
+    d = (d.conjugate()*d).real/2
     n = len(samples)
     if n > 0:
         d_eval = 0.

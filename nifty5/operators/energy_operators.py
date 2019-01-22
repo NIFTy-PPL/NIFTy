@@ -201,23 +201,41 @@ class PoissonianEnergy(EnergyOperator):
 
 class InverseGammaLikelihood(EnergyOperator):
     """
-    FIXME
+    This describes the negative log-likelihood of the inverse gamma distribution.
+
+    It negative log-pdf(x) is given by
+    
+    sum_i (alpha_i+1)*ln(x_i) + beta_i/x_i
+
+    This is the likelihood for the variance x=S_k given data beta = 0.5 |s_k|^2 where the Field s is known to have the covariance S_k. 
+
+    Parameters
+    ----------
+    beta : Field
+        beta parameter of the inverse gamma distribution
+    alpha : Scalar, Field, optional
+        alpha parameter of the inverse gamma distribution
     """
 
-    def __init__(self, d):
-        if not isinstance(d, Field):
+    def __init__(self, beta, alpha=-0.5):
+        if not isinstance(beta, Field):
             raise TypeError
-        self._d = d
-        self._domain = DomainTuple.make(d.domain)
+        self._beta = beta
+        if np.isscalar(alpha):
+            alpha = Field.from_local_data(beta.domain, np.full(beta.local_data.shape, alpha+1))
+        elif not isinstance(alpha, Field):
+            raise TypeError
+        self._alphap1 = alpha+1
+        self._domain = DomainTuple.make(beta.domain)
 
     def apply(self, x):
         self._check_input(x)
-        res = 0.5*(x.log().sum() + (1./x).vdot(self._d))
+        res = x.log().vdot(self._alphap1) + (1./x).vdot(self._beta)
         if not isinstance(x, Linearization):
             return Field.scalar(res)
         if not x.want_metric:
             return res
-        metric = SandwichOperator.make(x.jac, makeOp(0.5/(x.val**2)))
+        metric = SandwichOperator.make(x.jac, makeOp(self._alphap1/(x.val**2)))
         return res.add_metric(metric)
 
 
