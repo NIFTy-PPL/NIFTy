@@ -139,7 +139,7 @@ the information source. The operation in :math:`{m = D\,R^\dagger N^{-1} d}` is 
 
 NIFTy permits to define the involved operators :math:`{R}`, :math:`{R^\dagger}`, :math:`{S}`, and :math:`{N}` implicitly, as routines that can be applied to vectors, but which do not require the explicit storage of the matrix elements of the operators.
 
-Some of these operators are diagonal in harmonic (Fourier) basis, and therefore only require the specification of a (power) spectrum and :math:`{S= F\,\widehat{P_s} F^\dagger}`. Here :math:`{F = \mathrm{HarmonicTransformOperator}}`, :math:`{\widehat{P_s} = \mathrm{DiagonalOperator}(P_s)}`, and :math:`{P_s(k)}` is the power spectrum of the process that generated :math:`{s}` as a function of the (absolute value of the) harmonic (Fourier) space koordinate :math:`{k}`. For those, NIFTy can easily also provide inverse operators, as :math:`{S^{-1}= F\,\widehat{\frac{1}{P_s}} F^\dagger}` in case :math:`{F}` is unitary, :math:`{F^\dagger=F^{-1}}`.
+Some of these operators are diagonal in harmonic (Fourier) basis, and therefore only require the specification of a (power) spectrum and :math:`{S= F\,\widehat{P_s} F^\dagger}`. Here :math:`{F = \mathrm{HarmonicTransformOperator}}`, :math:`{\widehat{P_s} = \mathrm{DiagonalOperator}(P_s)}`, and :math:`{P_s(k)}` is the power spectrum of the process that generated :math:`{s}` as a function of the (absolute value of the) harmonic (Fourier) space coordinate :math:`{k}`. For those, NIFTy can easily also provide inverse operators, as :math:`{S^{-1}= F\,\widehat{\frac{1}{P_s}} F^\dagger}` in case :math:`{F}` is unitary, :math:`{F^\dagger=F^{-1}}`.
 
 These implicit operators can be combined into new operators, e.g. to :math:`{D^{-1} = S^{-1} + R^\dagger N^{-1} R}`, as well as their inverses, e.g. :math:`{D = \left( D^{-1} \right)^{-1}}`.
 The invocation of an inverse operator applied to a vector might trigger the execution of a numerical linear algebra solver.
@@ -164,7 +164,7 @@ Let us rewrite the above free theory as a generative model:
 
 with :math:`{A}` the amplitude operator such that it generates signal field realizations with the correct covariance :math:`{S=A\,A^\dagger}` when being applied to a white Gaussian field :math:`{\xi}` with :math:`{\mathcal{P}(\xi)= \mathcal{G}(\xi, 1)}`.
 
-The joint information Hamiltonian for the whitened signal field :math:`{\xi}` reads:
+The joint information Hamiltonian for the standardized signal field :math:`{\xi}` reads:
 
 .. math::
 
@@ -172,11 +172,11 @@ The joint information Hamiltonian for the whitened signal field :math:`{\xi}` re
 
 NIFTy takes advantage of this formulation in several ways:
 
-1) All prior degrees of freedom have unit covariance which improves the condition number of operators which need to be inverted.
+1) All prior degrees of freedom have unit covariance, which improves the condition number of operators that need to be inverted.
 2) The amplitude operator can be regarded as part of the response, :math:`{R'=R\,A}`. In general, more sophisticated responses can be constructed out of the composition of simpler operators.
 3) The response can be non-linear, e.g. :math:`{R'(s)=R \exp(A\,\xi)}`, see demos/getting_started_2.py.
-4) The amplitude operator can be made dependent on unknowns as well, e.g. :math:`A=A(\tau)= F\, \widehat{e^\tau}` represents an amplitude operator with a positive definite, unknown spectrum defined in the Fourier domain. The amplitude field :math:`{\tau}` would get its own amplitude operator, with a cepstrum (spectrum of a log spectrum) defined in quefrency space (harmonic space of a logarithmically binned harmonic space) to regularize its degrees of freedom by imposing some (user-defined degree of) spectral smoothness.
-5) NIFTy can calculate the gradient of the information Hamiltonian and the Fisher information metric with respect to all unknown parameters, here :math:`{\xi}` and :math:`{\tau}`, by automatic differentiation. The gradients are used for MAP and HMCF estimates, and the Fisher matrix is required in addition to the gradient by Metric Gaussian Variational Inference (MGVI), which is available in NIFTy as well. MGVI is an implicit operator extension of Automatic Differentiation Variational Inference (ADVI).
+4) The amplitude operator may dependent on further parameters, e.g. :math:`A=A(\tau)= F\, \widehat{e^\tau}` represents an amplitude operator with a positive definite, unknown spectrum defined in the Fourier domain. The amplitude field :math:`{\tau}` would get its own amplitude operator, with a cepstrum (spectrum of a log spectrum) defined in quefrency space (harmonic space of a logarithmically binned harmonic space) to regularize its degrees of freedom by imposing some (user-defined degree of) spectral smoothness.
+5) NIFTy calculates the gradient of the information Hamiltonian and the Fisher information metric with respect to all unknown parameters, here :math:`{\xi}` and :math:`{\tau}`, by automatic differentiation. The gradients are used for MAP and HMCF estimates, and the Fisher matrix is required in addition to the gradient by Metric Gaussian Variational Inference (MGVI), which is available in NIFTy as well. MGVI is an implicit operator extension of Automatic Differentiation Variational Inference (ADVI).
 
 The reconstruction of a non-Gaussian signal with unknown covariance from a non-trivial (tomographic) response is demonstrated in demos/getting_started_3.py. Here, the uncertainty of the field and the power spectrum of its generating process are probed via posterior samples provided by the MGVI algorithm.
 
@@ -211,9 +211,9 @@ It only requires to minimize the information Hamiltonian, e.g by a gradient desc
 
     \frac{\partial \mathcal{H}(d,\xi)}{\partial \xi} = 0.
 
-NIFTy5 is able to calculate the necessary gradient from a generative model of the signal and the data and to minimize the Hamiltonian.
+NIFTy5 calculates the necessary gradient automatically from a generative model of the signal and the data and to minimize the Hamiltonian.
 
-However, MAP provides often unsatisfactory result in case a deep hirachical Bayesian networks describes the singal and data generation.
+However, MAP often provides unsatisfactory results in cases of deep hirachical Bayesian networks.
 The reason for this is that MAP ignores the volume factors in parameter space, which are not to be neglected in deciding whether a solution is reasonable or not.
 In the high dimensional setting of field inference these volume factors can differ by large ratios.
 A MAP estimate, which is only representative for a tiny fraction of the parameter space, might be a poorer choice (with respect to an error norm) compared to a slightly worse location with slightly lower posterior probability, which, however, is associated with a much larger volume (of nearby locations with similar probability).
@@ -225,9 +225,9 @@ Variational Inference
 ---------------------
 
 One method that takes volume effects into account is Variational Inference (VI). 
-In VI, the posterior :math:`\mathcal{P}(\xi|d)` is approximated by a simpler distribution, often a Gaussian :math:`\mathcal{Q}(\xi)=\mathcal{G}(\xi-m,D)`.
-The parameters of :math:`\mathcal{Q}`, the mean :math:`m` and its uncertainty dispersion :math:`D` are obtained by minimization of an appropriate information distance measure between :math:`\mathcal{Q}` and :math:`\mathcal{P}`.
-As a compromise between being optimal and being computational affordable the (reverse) Kullbach Leiberler (KL) divergence is used in VI:
+In VI, the posterior :math:`\mathcal{P}(\xi|d)` is approximated by a simpler, parametrized distribution, often a Gaussian :math:`\mathcal{Q}(\xi)=\mathcal{G}(\xi-m,D)`.
+The parameters of :math:`\mathcal{Q}`, the mean :math:`m` and its covariance :math:`D` are obtained by minimization of an appropriate information distance measure between :math:`\mathcal{Q}` and :math:`\mathcal{P}`.
+As a compromise between being optimal and being computational affordable the variational Kullback-Leibler (KL) divergence is used:
 
 .. math::
 
@@ -235,74 +235,33 @@ As a compromise between being optimal and being computational affordable the (re
     \int \mathcal{D}\xi \,\mathcal{Q}(\xi) \log \left( \frac{\mathcal{Q}(\xi)}{\mathcal{P}(\xi)} \right)
 
 Minimizing this with respect to all entries of the covariance :math:`D` is unfeasible for fields.
-Therefore, Metric Gaussian Variational Inference (MGVI) makes the Ansatz to approximate the precision matrix :math:`M=D^{-1}` by the Bayesian Fisher information metric,
+Therefore, Metric Gaussian Variational Inference (MGVI) approximates the precision matrix at the location of the current mean :math:`M=D^{-1}` by the Bayesian Fisher information metric,
 
 .. math::
 
-    M \approx \left\langle \frac{\partial \mathcal{H}(d,\xi)}{\partial \xi} \, \frac{\partial \mathcal{H}(d,\xi)}{\partial \xi}^\dagger \right\rangle_{(d,\xi)},
+    M \approx \left\langle \frac{\partial \mathcal{H}(d,\xi)}{\partial \xi} \, \frac{\partial \mathcal{H}(d,\xi)}{\partial \xi}^\dagger \right\rangle_{(d,\xi)}.
 
-where  in the MGVI practice the average is performed over :math:`\mathcal{P}(d,\xi)\approx \mathcal{P}(d|\xi)\,\mathcal{Q}(\xi)` by evaluating the expression at :math:`\xi` samples drawn from the Gaussian :math:`\mathcal{Q}(\xi)` and corrsponding data samples dran from their generative process :math:`\mathcal{P}(d|\xi)`.
-
-With this approximation, the KL becomes effectively a function of the mean  :math:`m`, as :math:`D= D(m) \approx M^{-1}`. Thus, only the gradient of the KL is needed with respect to this, which can be expressed as
-
-.. math::
-
-    \frac{\partial \mathrm{KL}(m|d)}{\partial m} = \left\langle \frac{\partial \mathcal{H}(d,\xi)}{\partial \xi}  \right\rangle_{\mathcal{G}(\xi-m,D)}.
-
-The advantage of this Ansatz is that the averages can be represented by sample averages, and all the gradients are represented by operators that NIFTy5 can calculate and that do not need the storage of full matrices. Therefore, NIFTy5 is able to draw samples according to a Gaussian with a covariance given by the inverse information metric, and to minimize the KL correspondingly.
-Setting up a KL for MGVI is done via objects of the class MetricGaussianKL.
-
-It should be noted that MetricGaussianKL does not estimate the full KL, as within the MGVI approximation only the KL is optimized with respect to the posterior mean and any other additive part of the KL is dropped. It turns out that a metric Gaussian average of the original information Hamiltonian contains all necessary dependencies:
-
-.. math::
-
-    \mathrm{KL}(m|d) =   \left\langle - \mathcal{H}_\mathcal{Q}(\xi|m) + \mathcal{H}(\xi|d) 
-     \right\rangle_{\mathcal{Q}(\xi)}
-
-where
-
-.. math::
-
-    \mathcal{H}_\mathcal{Q}(\xi|m) = - \log \mathcal{Q}(\xi) =
-    - \log \mathcal{G}(\xi-m,D)
-
-is the information Hamiltonian of the approximating Gaussian and
-
-.. math::
-
-    \mathcal{H}(\xi|d) = - \log \mathcal{P}(\xi|d) =
-    - \log \left( \frac{\mathcal{P}(d,\xi)}{\mathcal{P}(d)} \right) =
-    \mathcal{H}(d,\xi) - \mathcal{H}(d)
-
-the posterior information Hamiltonian.
-
-Since neither
-
-.. math::
-
-    \left\langle \mathcal{H}_\mathcal{Q}(\xi|m) \right\rangle_{\mathcal{Q}(\xi)} =
-    \frac{1}{2} \log \left| 2\pi e D \right|
-
-nor
-
-.. math::
-
-    \left\langle \mathcal{H}(d) \right\rangle_{\mathcal{Q}(\xi)} =
-    \mathcal{H}(d)
-
-depend directly on :math:`m`, they are dropped from the KL to be minimized. What remains is
-
+In practice the average is performed over :math:`\mathcal{P}(d,\xi)\approx \mathcal{P}(d|\xi)\,\delta(\xi-m)` by evaluating the expression at the current mean :math:`m`. This results in a Fisher information metric of the likelihood evaluated at the mean plus the prior information metric.
+Therefore we will only have to infer the mean of the approximate distribution.
+The only term within the KL-divergence that explicitly depends on it is the Hamiltonian of the true problem averaged over the approximation:
 .. math::
 
     \mathrm{KL}(m|d) \;\widehat{=}\;
     \left\langle  \mathcal{H}(\xi,d)    \right\rangle_{\mathcal{Q}(\xi)},
 
 where :math:`\widehat{=}` expresses equality up to irrelvant (here not :math:`m`-dependent) terms.
-The fact that the KL depends indirectly also through :math:`D=D(m)` in a second way on :math:`m` is ignored in the MGVI approach. This can often be justified by uncertainties usually being mostly determined by the :math:`m`-independent measurment setup and the variation of the uncertainty with the posterior mean is expected to be subdominant and of moderate importance for the KL.
+    Thus, only the gradient of the KL is needed with respect to this, which can be expressed as
+
+.. math::
+
+    \frac{\partial \mathrm{KL}(m|d)}{\partial m} = \left\langle \frac{\partial \mathcal{H}(d,\xi)}{\partial \xi}  \right\rangle_{\mathcal{G}(\xi-m,D)}.
+
+We stochastically estimate the KL-divergence and gradients with a set of samples drawn from the approximate posterior distribution. The particular structure of the covariance allows us to draw independent samples solving a certain system of equations.
+This KL-divergence for MGVI is implemented in the class MetricGaussianKL within NIFTy5.
+
 
 The demo getting_started_3.py for example infers this way not only a field, but also the power spectrum of the process that has generated the field.
 The cross-correlation of field and power spectum is taken care of thereby.
 Posterior samples can be obtained to study this cross-correlation.
 
-It should be noted that MGVI as any VI method typically underestimates uncertainties due to the fact that :math:`\mathcal{D}_\mathrm{KL}(\mathcal{Q}||\mathcal{P})`, the reverse KL, is used, whereas :math:`\mathcal{D}_\mathrm{KL}(\mathcal{P}||\mathcal{Q})` would be optimal to approximate  :math:`\mathcal{P}` by  :math:`\mathcal{Q}` from an information theoretical perspective.
-This, however, would require that one is  able to integrate the posterior, in wich case one could calculate the desired posterior mean and its uncertainty covariance directly and therefore would not have any need to perform VI.
+It should be noted that MGVI as any VI method typically only provide a lower bound on the variance.
