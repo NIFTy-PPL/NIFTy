@@ -37,7 +37,7 @@ class EnergyOperator(Operator):
     Examples
     --------
      - Information Hamiltonian, i.e. negative-log-probabilities.
-     - Gibbs free energy, i.e. an averaged Hamiltonian, aka Kullbach-Leibler
+     - Gibbs free energy, i.e. an averaged Hamiltonian, aka Kullback-Leibler
        divergence.
     """
     _target = DomainTuple.scalar_domain()
@@ -330,8 +330,8 @@ class AveragedEnergy(EnergyOperator):
 
     Note
     ----
-    Having symmetrized residual samples, with both v_i and -v_i being 
-    present ensures that the distribution mean is exactly represented. 
+    Having symmetrized residual samples, with both v_i and -v_i being
+    present ensures that the distribution mean is exactly represented.
 
     :class:`AveragedEnergy(h)` approximates
     :math:`\\left< H(f) \\right>_{G(f-m,D)}` if the residuals

@@ -9,7 +9,7 @@ Theoretical Background
 
 IFT is fully Bayesian. How else could infinitely many field degrees of freedom be constrained by finite data?
 
-There is a full toolbox of methods that can be used, like the classical approximation (= Maximum a posteriori = MAP), effective action (= Variational Bayes = VI), Feynman diagrams, renormalitation, and more. IFT reproduces many known well working algorithms. This should be reassuring. And, there were certainly previous works in a similar spirit. Anyhow, in many cases IFT provides novel rigorous ways to extract information from data. NIFTy comes with reimplemented MAP and VI estimators. 
+There is a full toolbox of methods that can be used, like the classical approximation (= Maximum a posteriori = MAP), effective action (= Variational Bayes = VI), Feynman diagrams, renormalitation, and more. IFT reproduces many known well working algorithms. This should be reassuring. And, there were certainly previous works in a similar spirit. Anyhow, in many cases IFT provides novel rigorous ways to extract information from data. NIFTy comes with reimplemented MAP and VI estimators.
 
 .. tip:: *In-a-nutshell introductions to information field theory* can be found in [2]_, [3]_, [4]_, and [5]_, with the latter probably being the most didactical.
 
@@ -146,7 +146,7 @@ The invocation of an inverse operator applied to a vector might trigger the exec
 
 Thus, when NIFTy calculates :math:`{m = D\, j}` it actually solves  :math:`{D^{-1} m = j}` for :math:`{m}` behind the scenes. The advantage of implicit operators to explicit matrices is the reduced memory requirements. The reconstruction of only a Megapixel image would otherwithe require the storage and processing of matrices with sizes of several Terrabytes. Larger images could not be dealt with due to the quadratic memory requirements of explicit operator representations.
 
-The demo codes demos/getting_started_1.py and demos/Wiener_Filter.ipynb illustrate this.
+The demo codes `demos/getting_started_1.py` and `demos/Wiener_Filter.ipynb` illustrate this.
 
 
 Generative Models
@@ -174,11 +174,11 @@ NIFTy takes advantage of this formulation in several ways:
 
 1) All prior degrees of freedom have unit covariance, which improves the condition number of operators that need to be inverted.
 2) The amplitude operator can be regarded as part of the response, :math:`{R'=R\,A}`. In general, more sophisticated responses can be constructed out of the composition of simpler operators.
-3) The response can be non-linear, e.g. :math:`{R'(s)=R \exp(A\,\xi)}`, see demos/getting_started_2.py.
+3) The response can be non-linear, e.g. :math:`{R'(s)=R \exp(A\,\xi)}`, see `demos/getting_started_2.py`.
 4) The amplitude operator may dependent on further parameters, e.g. :math:`A=A(\tau)= F\, \widehat{e^\tau}` represents an amplitude operator with a positive definite, unknown spectrum defined in the Fourier domain. The amplitude field :math:`{\tau}` would get its own amplitude operator, with a cepstrum (spectrum of a log spectrum) defined in quefrency space (harmonic space of a logarithmically binned harmonic space) to regularize its degrees of freedom by imposing some (user-defined degree of) spectral smoothness.
 5) NIFTy calculates the gradient of the information Hamiltonian and the Fisher information metric with respect to all unknown parameters, here :math:`{\xi}` and :math:`{\tau}`, by automatic differentiation. The gradients are used for MAP and HMCF estimates, and the Fisher matrix is required in addition to the gradient by Metric Gaussian Variational Inference (MGVI), which is available in NIFTy as well. MGVI is an implicit operator extension of Automatic Differentiation Variational Inference (ADVI).
 
-The reconstruction of a non-Gaussian signal with unknown covariance from a non-trivial (tomographic) response is demonstrated in demos/getting_started_3.py. Here, the uncertainty of the field and the power spectrum of its generating process are probed via posterior samples provided by the MGVI algorithm.
+The reconstruction of a non-Gaussian signal with unknown covariance from a non-trivial (tomographic) response is demonstrated in `demos/getting_started_3.py`. Here, the uncertainty of the field and the power spectrum of its generating process are probed via posterior samples provided by the MGVI algorithm.
 
 +----------------------------------------------------+
 | **Output of tomography demo getting_started_3.py** |
@@ -211,7 +211,7 @@ It only requires to minimize the information Hamiltonian, e.g by a gradient desc
 
     \frac{\partial \mathcal{H}(d,\xi)}{\partial \xi} = 0.
 
-NIFTy5 calculates the necessary gradient automatically from a generative model of the signal and the data and to minimize the Hamiltonian.
+NIFTy5 automatically calculates the necessary gradient from a generative model of the signal and the data and to minimize the Hamiltonian.
 
 However, MAP often provides unsatisfactory results in cases of deep hirachical Bayesian networks.
 The reason for this is that MAP ignores the volume factors in parameter space, which are not to be neglected in deciding whether a solution is reasonable or not.
@@ -224,10 +224,10 @@ This causes MAP signal estimates to be more prone to overfitting the noise as we
 Variational Inference
 ---------------------
 
-One method that takes volume effects into account is Variational Inference (VI). 
+One method that takes volume effects into account is Variational Inference (VI).
 In VI, the posterior :math:`\mathcal{P}(\xi|d)` is approximated by a simpler, parametrized distribution, often a Gaussian :math:`\mathcal{Q}(\xi)=\mathcal{G}(\xi-m,D)`.
 The parameters of :math:`\mathcal{Q}`, the mean :math:`m` and its covariance :math:`D` are obtained by minimization of an appropriate information distance measure between :math:`\mathcal{Q}` and :math:`\mathcal{P}`.
-As a compromise between being optimal and being computational affordable the variational Kullback-Leibler (KL) divergence is used:
+As a compromise between being optimal and being computationally affordable, the variational Kullback-Leibler (KL) divergence is used:
 
 .. math::
 
@@ -244,12 +244,14 @@ Therefore, Metric Gaussian Variational Inference (MGVI) approximates the precisi
 In practice the average is performed over :math:`\mathcal{P}(d,\xi)\approx \mathcal{P}(d|\xi)\,\delta(\xi-m)` by evaluating the expression at the current mean :math:`m`. This results in a Fisher information metric of the likelihood evaluated at the mean plus the prior information metric.
 Therefore we will only have to infer the mean of the approximate distribution.
 The only term within the KL-divergence that explicitly depends on it is the Hamiltonian of the true problem averaged over the approximation:
+
 .. math::
 
     \mathrm{KL}(m|d) \;\widehat{=}\;
     \left\langle  \mathcal{H}(\xi,d)    \right\rangle_{\mathcal{Q}(\xi)},
 
 where :math:`\widehat{=}` expresses equality up to irrelvant (here not :math:`m`-dependent) terms.
+
     Thus, only the gradient of the KL is needed with respect to this, which can be expressed as
 
 .. math::
@@ -260,8 +262,8 @@ We stochastically estimate the KL-divergence and gradients with a set of samples
 This KL-divergence for MGVI is implemented in the class MetricGaussianKL within NIFTy5.
 
 
-The demo getting_started_3.py for example infers this way not only a field, but also the power spectrum of the process that has generated the field.
-The cross-correlation of field and power spectum is taken care of thereby.
+The demo `getting_started_3.py` for example not only  infers a field this way, but also the power spectrum of the process that has generated the field.
+The cross-correlation of field and power spectrum is taken care of in this process.
 Posterior samples can be obtained to study this cross-correlation.
 
 It should be noted that MGVI as any VI method typically only provide a lower bound on the variance.
