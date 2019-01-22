@@ -262,7 +262,7 @@ We stochastically estimate the KL-divergence and gradients with a set of samples
 This KL-divergence for MGVI is implemented in the class MetricGaussianKL within NIFTy5.
 
 
-The demo `getting_started_3.py` for example not only  infers a field this way, but also the power spectrum of the process that has generated the field.
+The demo `getting_started_3.py` for example not only infers a field this way, but also the power spectrum of the process that has generated the field.
 The cross-correlation of field and power spectrum is taken care of in this process.
 Posterior samples can be obtained to study this cross-correlation.
 
