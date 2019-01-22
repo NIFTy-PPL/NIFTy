@@ -22,10 +22,9 @@ import numpy as np
 from . import dobj
 from .domains.gl_space import GLSpace
 from .domains.hp_space import HPSpace
+from .domains.log_rg_space import LogRGSpace
 from .domains.power_space import PowerSpace
 from .domains.rg_space import RGSpace
-from .domains.log_rg_space import LogRGSpace
-from .domain_tuple import DomainTuple
 from .field import Field
 
 # relevant properties:
