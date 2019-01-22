@@ -331,7 +331,7 @@ class AveragedEnergy(EnergyOperator):
     Note
     ----
     Having symmetrized residual samples, with both v_i and -v_i being
-    present ensures that the distribution mean is exactly represented.
+    present, ensures that the distribution mean is exactly represented.
 
     :class:`AveragedEnergy(h)` approximates
     :math:`\\left< H(f) \\right>_{G(f-m,D)}` if the residuals
