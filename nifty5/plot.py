@@ -236,6 +236,8 @@ def _plot2D(f, ax, **kwargs):
 
     foo = kwargs.pop("norm", None)
     norm = {} if foo is None else {'norm': foo}
+    aspect = kwargs.pop("aspect", None)
+    aspect = {} if foo is None else {'aspect': foo}
 
     ax.set_title(kwargs.pop("title", ""))
     ax.set_xlabel(kwargs.pop("xlabel", ""))
@@ -249,7 +251,7 @@ def _plot2D(f, ax, **kwargs):
         im = ax.imshow(
             f.to_global_data().T, extent=[0, nx*dx, 0, ny*dy],
             vmin=kwargs.get("zmin"), vmax=kwargs.get("zmax"),
-            cmap=cmap, origin="lower", **norm)
+            cmap=cmap, origin="lower", **norm, **aspect)
         plt.colorbar(im)
         _limit_xy(**kwargs)
         return
