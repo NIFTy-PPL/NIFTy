@@ -167,7 +167,7 @@ For those, NIFTy can easily also provide inverse operators, as :math:`{S^{-1}= F
 These implicit operators can be combined into new operators, e.g. to :math:`{D^{-1} = S^{-1} + R^\dagger N^{-1} R}`, as well as their inverses, e.g. :math:`{D = \left( D^{-1} \right)^{-1}}`.
 The invocation of an inverse operator applied to a vector might trigger the execution of a numerical linear algebra solver.
 
-Thus, when NIFTy calculates :math:`{m = D\, j}` it actually solves  :math:`{D^{-1} m = j}` for :math:`{m}` behind the scenes.
+Thus, when NIFTy calculates :math:`{m = D\, j}`, it actually solves :math:`{D^{-1} m = j}` for :math:`{m}` behind the scenes.
 The advantage of implicit operators to explicit matrices is the reduced memory requirements.
 The reconstruction of only a Megapixel image would otherwithe require the storage and processing of matrices with sizes of several Terabytes.
 Larger images could not be dealt with due to the quadratic memory requirements of explicit operator representations.
@@ -199,14 +199,18 @@ The joint information Hamiltonian for the standardized signal field :math:`{\xi}
 NIFTy takes advantage of this formulation in several ways:
 
 1) All prior degrees of freedom have unit covariance, which improves the condition number of operators that need to be inverted.
+
 2) The amplitude operator can be regarded as part of the response, :math:`{R'=R\,A}`.
-In general, more sophisticated responses can be constructed out of the composition of simpler operators.
+   In general, more sophisticated responses can be constructed out of the composition of simpler operators.
+
 3) The response can be non-linear, e.g. :math:`{R'(s)=R \exp(A\,\xi)}`, see `demos/getting_started_2.py`.
+
 4) The amplitude operator may dependent on further parameters, e.g. :math:`A=A(\tau)= F\, \widehat{e^\tau}` represents an amplitude operator with a positive definite, unknown spectrum defined in the Fourier domain.
-The amplitude field :math:`{\tau}` would get its own amplitude operator, with a cepstrum (spectrum of a log spectrum) defined in quefrency space (harmonic space of a logarithmically binned harmonic space) to regularize its degrees of freedom by imposing some (user-defined degree of) spectral smoothness.
+   The amplitude field :math:`{\tau}` would get its own amplitude operator, with a cepstrum (spectrum of a log spectrum) defined in quefrency space (harmonic space of a logarithmically binned harmonic space) to regularize its degrees of freedom by imposing some (user-defined degree of) spectral smoothness.
+
 5) NIFTy calculates the gradient of the information Hamiltonian and the Fisher information metric with respect to all unknown parameters, here :math:`{\xi}` and :math:`{\tau}`, by automatic differentiation.
-The gradients are used for MAP and HMCF estimates, and the Fisher matrix is required in addition to the gradient by Metric Gaussian Variational Inference (MGVI), which is available in NIFTy as well.
-MGVI is an implicit operator extension of Automatic Differentiation Variational Inference (ADVI).
+   The gradients are used for MAP and HMCF estimates, and the Fisher matrix is required in addition to the gradient by Metric Gaussian Variational Inference (MGVI), which is available in NIFTy as well.
+   MGVI is an implicit operator extension of Automatic Differentiation Variational Inference (ADVI).
 
 The reconstruction of a non-Gaussian signal with unknown covariance from a non-trivial (tomographic) response is demonstrated in `demos/getting_started_3.py`.
 Here, the uncertainty of the field and the power spectrum of its generating process are probed via posterior samples provided by the MGVI algorithm.
@@ -284,7 +288,7 @@ The only term within the KL-divergence that explicitly depends on it is the Hami
 
 where :math:`\widehat{=}` expresses equality up to irrelvant (here not :math:`m`-dependent) terms.
 
-    Thus, only the gradient of the KL is needed with respect to this, which can be expressed as
+Thus, only the gradient of the KL is needed with respect to this, which can be expressed as
 
 .. math::
 
@@ -299,4 +303,4 @@ The demo `getting_started_3.py` for example not only infers a field this way, bu
 The cross-correlation of field and power spectrum is taken care of in this process.
 Posterior samples can be obtained to study this cross-correlation.
 
-It should be noted that MGVI as any VI method typically only provide a lower bound on the variance.
+It should be noted that MGVI, as any VI method, can typically only provide a lower bound on the variance.
