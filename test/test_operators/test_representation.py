@@ -58,6 +58,12 @@ def testOperatorCombinations(sp, dtype):
     print(op)
     op = a + b
     print(op)
+    op = a * b
+    print(op)
+    op = a**2
+    print(op)
+    op = a - b
+    print(op)
 
 
 def testLinearInterpolator():
