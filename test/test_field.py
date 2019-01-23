@@ -340,3 +340,9 @@ def test_funcs(num, dom, func):
     res = getattr(f, func)()
     res2 = getattr(np, func)(num)
     assert_allclose(res.local_data, res2)
+
+
+def test_field_of_objects():
+    arr = np.array(['x', 'y', 'z'])
+    sp = ift.RGSpace(3)
+    f = ift.Field.from_global_data(sp, arr)
