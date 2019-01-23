@@ -273,7 +273,7 @@ def test_err():
     with assert_raises(TypeError):
         ift.full(s1, [2, 3])
     with assert_raises(TypeError):
-        ift.from_global_data(s2, [0,1])
+        ift.Field(s2, [0,1])
     with assert_raises(TypeError):
         f1.outer([0,1])
     with assert_raises(ValueError):

@@ -307,7 +307,7 @@ for f in ["sqrt", "exp", "log", "tanh", "conjugate", "sin", "cos", "tan",
 
 
 def clip(x, a_min=None, a_max=None):
-    return data_object(x.shape, np.clip(x.data, a_min, a_max), x.distaxis)
+    return data_object(x.shape, np.clip(x._data, a_min, a_max), x.distaxis)
 
 
 def from_object(object, dtype, copy, set_locked):
