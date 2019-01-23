@@ -199,12 +199,18 @@ def test_empty_domain():
 def test_trivialities():
     s1 = ift.RGSpace((10,))
     f1 = ift.Field.full(s1, 27)
+    assert_equal(f1.clip(min=29).local_data, 29.)
+    assert_equal(f1.clip(max=25).local_data, 25.)
     assert_equal(f1.local_data, f1.real.local_data)
+    assert_equal(f1.local_data, (+f1).local_data)
+    print(f1)
+    print(str(f1))
     f1 = ift.Field.full(s1, 27. + 3j)
+    assert_equal(f1.one_over().local_data, (1./f1).local_data)
     assert_equal(f1.real.local_data, 27.)
     assert_equal(f1.imag.local_data, 3.)
-    assert_equal(f1.local_data, +f1.local_data)
     assert_equal(f1.sum(), f1.sum(0))
+    assert_equal(f1.conjugate().local_data, ift.Field.full(s1, 27. - 3j).local_data)
     f1 = ift.from_global_data(s1, np.arange(10))
     # assert_equal(f1.min(), 0)
     # assert_equal(f1.max(), 9)
@@ -266,6 +272,17 @@ def test_err():
         f1.vdot(ift.Field.full(s2, 1.))
     with assert_raises(TypeError):
         ift.full(s1, [2, 3])
+    with assert_raises(TypeError):
+        ift.from_global_data(s2, [0,1])
+    with assert_raises(TypeError):
+        f1.outer([0,1])
+    with assert_raises(ValueError):
+        f1.extract(s2)
+    with assert_raises(TypeError):
+        f1 += f1
+    f2 = ift.Field.full(s2, 27)
+    with assert_raises(ValueError):
+        f1 + f2
 
 
 def test_stdfunc():
