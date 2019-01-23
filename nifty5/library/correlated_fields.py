@@ -24,7 +24,7 @@ from ..operators.harmonic_operators import HarmonicTransformOperator
 from ..operators.simple_linear_operators import ducktape
 
 
-def CorrelatedField(target, amplitude_operator, name='xi'):
+def CorrelatedField(target, amplitude_operator, name='xi', codomain=None):
     """Constructs an operator which turns a white Gaussian excitation field
     into a correlated field.
 
@@ -42,16 +42,21 @@ def CorrelatedField(target, amplitude_operator, name='xi'):
     amplitude_operator: Operator
     name : string
         :class:`MultiField` key for the xi-field.
+    codomain : Domain
+        The codomain for target[0]. If not supplied, it is inferred.
 
     Returns
     -------
-    Correlated field : Operator
+    Operator
+        Correlated field
     """
     tgt = DomainTuple.make(target)
     if len(tgt) > 1:
         raise ValueError
-    h_space = tgt[0].get_default_codomain()
-    ht = HarmonicTransformOperator(h_space, tgt[0])
+    if codomain is None:
+        codomain = tgt[0].get_default_codomain()
+    h_space = codomain
+    ht = HarmonicTransformOperator(h_space, target=tgt[0])
     p_space = amplitude_operator.target[0]
     power_distributor = PowerDistributor(h_space, p_space)
     A = power_distributor(amplitude_operator)
@@ -70,7 +75,7 @@ def MfCorrelatedField(target, amplitudes, name='xi'):
     Parameters
     ----------
     target : Domain, DomainTuple or tuple of Domain
-        Target of the operator. Must contain exactly one space.
+        Target of the operator. Must contain exactly two spaces.
     amplitudes: iterable of Operator
         List of two amplitude operators.
     name : string
@@ -78,7 +83,8 @@ def MfCorrelatedField(target, amplitudes, name='xi'):
 
     Returns
     -------
-    Correlated field : Operator
+    Operator
+        Correlated field
     """
     tgt = DomainTuple.make(target)
     if len(tgt) != 2:
@@ -88,7 +94,7 @@ def MfCorrelatedField(target, amplitudes, name='xi'):
 
     hsp = DomainTuple.make([tt.get_default_codomain() for tt in tgt])
     ht1 = HarmonicTransformOperator(hsp, target=tgt[0], space=0)
-    ht2 = HarmonicTransformOperator(ht1.target, space=1)
+    ht2 = HarmonicTransformOperator(ht1.target, target=tgt[1], space=1)
     ht = ht2 @ ht1
 
     psp = [aa.target[0] for aa in amplitudes]
