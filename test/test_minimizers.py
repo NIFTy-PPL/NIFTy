@@ -86,7 +86,6 @@ def test_WF_curvature(space):
     N = ift.DiagonalOperator(n)
     all_diag = 1./s + r**2/n
     curv = ift.WienerFilterCurvature(R,N,S, iteration_controller=IC, iteration_controller_sampling=IC)
-
     m = curv.inverse(required_result)
     assert_allclose(
         m.local_data,
@@ -95,6 +94,22 @@ def test_WF_curvature(space):
         atol=1e-3)
     curv.draw_sample()
     curv.draw_sample(from_inverse=True)
+
+    if len(space.shape) == 1:
+        R = ift.ValueInserter(space, [0])
+        n = ift.from_random('uniform', R.domain) + 0.5
+        N = ift.DiagonalOperator(n)
+        all_diag = 1./s + R(1/n)
+        curv = ift.WienerFilterCurvature(R.adjoint,N,S, iteration_controller=IC, iteration_controller_sampling=IC)
+        m = curv.inverse(required_result)
+        assert_allclose(
+            m.local_data,
+            1./all_diag.local_data,
+            rtol=1e-3,
+            atol=1e-3)
+        curv.draw_sample()
+        curv.draw_sample(from_inverse=True)
+
 
 
 
