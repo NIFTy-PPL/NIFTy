@@ -25,7 +25,7 @@ import nifty5 as ift
 def test_get_signal_variance():
     space = ift.RGSpace(3)
     hspace = space.get_default_codomain()
-    spec1 = lambda x : 1.
+    spec1 = lambda x : np.ones_like(x)
     assert_equal(ift.get_signal_variance(spec1, hspace), 3.)
 
     space = ift.RGSpace(3, distances=1.)
