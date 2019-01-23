@@ -34,4 +34,4 @@ def test_get_signal_variance():
         t = np.zeros_like(k)
         t[k==0] = 1.
         return t
-    assert_equal(ift.get_signal_variance(spec2, hspace), 1/3.)
+    assert_equal(ift.get_signal_variance(spec2, hspace), 1/9.)
