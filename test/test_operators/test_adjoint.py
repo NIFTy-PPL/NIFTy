@@ -58,6 +58,8 @@ def testOperatorCombinations(sp, dtype):
     ift.extra.consistency_check(op, dtype, dtype)
     op = a + b
     ift.extra.consistency_check(op, dtype, dtype)
+    op = a - b
+    ift.extra.consistency_check(op, dtype, dtype)
 
 
 def testLinearInterpolator():
