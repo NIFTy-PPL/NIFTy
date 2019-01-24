@@ -5,13 +5,13 @@ RUN apt-get update && apt-get install -y \
     git \
     # Packages needed for NIFTy
     libfftw3-dev \
-    python3 python3-pip python3-dev python3-scipy \
+    python3 python3-pip python3-scipy \
     # Documentation build dependencies
-    python3-sphinx python3-sphinx-rtd-theme \
+    python3-sphinx-rtd-theme \
     # Testing dependencies
-    python3-coverage python3-pytest python3-pytest-cov \
+    python3-pytest-cov \
     # Optional NIFTy dependencies
-    openmpi-bin libopenmpi-dev python3-mpi4py \
+    python3-mpi4py \
     # Packages needed for NIFTy
   && pip3 install pyfftw \
   # Optional NIFTy dependencies
