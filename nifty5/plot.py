@@ -22,10 +22,9 @@ import numpy as np
 from . import dobj
 from .domains.gl_space import GLSpace
 from .domains.hp_space import HPSpace
+from .domains.log_rg_space import LogRGSpace
 from .domains.power_space import PowerSpace
 from .domains.rg_space import RGSpace
-from .domains.log_rg_space import LogRGSpace
-from .domain_tuple import DomainTuple
 from .field import Field
 
 # relevant properties:
@@ -237,6 +236,8 @@ def _plot2D(f, ax, **kwargs):
 
     foo = kwargs.pop("norm", None)
     norm = {} if foo is None else {'norm': foo}
+    aspect = kwargs.pop("aspect", None)
+    aspect = {} if foo is None else {'aspect': foo}
 
     ax.set_title(kwargs.pop("title", ""))
     ax.set_xlabel(kwargs.pop("xlabel", ""))
@@ -250,7 +251,7 @@ def _plot2D(f, ax, **kwargs):
         im = ax.imshow(
             f.to_global_data().T, extent=[0, nx*dx, 0, ny*dy],
             vmin=kwargs.get("zmin"), vmax=kwargs.get("zmax"),
-            cmap=cmap, origin="lower", **norm)
+            cmap=cmap, origin="lower", **norm, **aspect)
         plt.colorbar(im)
         _limit_xy(**kwargs)
         return
@@ -313,8 +314,8 @@ class Plot(object):
 
         Notes
         -----
-        After doing one or more calls `plot()`, one also needs to call
-        `plot_finish()` to output the result.
+        After doing one or more calls `add()`, one needs to call `output()` to
+        show or save the plot.
 
         Parameters
         ----------
@@ -324,7 +325,7 @@ class Plot(object):
             If it is a list, all list members must be Fields defined over the
             same one-dimensional `RGSpace` or `PowerSpace`.
         title: string
-            title of the plot.
+            Title of the plot.
         xlabel: string
             Label for the x axis.
         ylabel: string
@@ -338,7 +339,7 @@ class Plot(object):
         label: string of list of strings
             Annotation string.
         alpha: float or list of floats
-            transparency value
+            Transparency value.
         """
         self._plots.append(f)
         self._kwargs.append(kwargs)

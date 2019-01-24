@@ -219,14 +219,14 @@ Here, the uncertainty of the field and the power spectrum of its generating proc
 | **Output of tomography demo getting_started_3.py** |
 +----------------------------------------------------+
 | .. image:: images/getting_started_3_setup.png      |
-|     :width:  50 %                                  |
+|                                                    |
 +----------------------------------------------------+
 | Non-Gaussian signal field,                         |
 | data backprojected into the image domain, power    |
 | spectrum of underlying Gausssian process.          |
 +----------------------------------------------------+
 | .. image:: images/getting_started_3_results.png    |
-|     :width:  50 %                                  |
+|                                                    |
 +----------------------------------------------------+
 | Posterior mean field signal                        |
 | reconstruction, its uncertainty, and the power     |
@@ -238,7 +238,7 @@ Here, the uncertainty of the field and the power spectrum of its generating proc
 Maximum a Posteriori
 --------------------
 
-One popular field estimation method is Maximim a Posteriori (MAP).
+One popular field estimation method is Maximum a Posteriori (MAP).
 
 It only requires to minimize the information Hamiltonian, e.g by a gradient descent method that stops when
 
