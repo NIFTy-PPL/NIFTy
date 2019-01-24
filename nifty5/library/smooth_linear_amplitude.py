@@ -138,7 +138,8 @@ def SLAmplitude(*, target, n_pix, a, k0, sm, sv, im, iv, keys=['tau', 'phi']):
     of the linear function.
 
     The prior on the smooth component is parametrized by two real numbers: the
-    strength and the cutoff of the smoothness prior (see :class:`CepstrumOperator`).
+    strength and the cutoff of the smoothness prior
+    (see :class:`CepstrumOperator`).
 
     Parameters
     ----------

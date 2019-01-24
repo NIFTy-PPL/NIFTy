@@ -290,8 +290,8 @@ def _plot(f, ax, **kwargs):
     if not isinstance(f[0], Field):
             raise TypeError("incorrect data type")
     dom1 = f[0].domain
-    if (len(dom1)==1 and
-        (isinstance(dom1[0],PowerSpace) or
+    if (len(dom1) == 1 and
+        (isinstance(dom1[0], PowerSpace) or
             (isinstance(dom1[0], (RGSpace, LogRGSpace)) and
              len(dom1[0].shape) == 1))):
         _plot1D(f, ax, **kwargs)

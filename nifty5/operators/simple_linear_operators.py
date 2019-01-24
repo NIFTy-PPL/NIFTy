@@ -187,7 +187,7 @@ class GeometryRemover(LinearOperator):
     domain: Domain, tuple of Domain, or DomainTuple:
         the full input domain of the operator.
     space: int, optional
-        The index of the subdomain on which the operator should act. Default is None.
+        The index of the subdomain on which the operator should act.
         If None, it acts on all spaces.
 
     Notes

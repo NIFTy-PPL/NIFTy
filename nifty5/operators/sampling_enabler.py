@@ -38,10 +38,10 @@ class SamplingEnabler(EndomorphicOperator):
         The iteration controller to use for the iterative numerical inversion
         done by a :class:`ConjugateGradient` object.
     approximation : :class:`LinearOperator`, optional
-        if not None, this linear operator should be an approximation to the operator, which
-        supports the operation modes that the operator doesn't have. It is used as a
-        preconditioner during the iterative inversion, to accelerate
-        convergence.
+        if not None, this linear operator should be an approximation to the
+        operator, which supports the operation modes that the operator doesn't
+        have. It is used as a preconditioner during the iterative inversion,
+        to accelerate convergence.
     """
 
     def __init__(self, likelihood, prior, iteration_controller,
