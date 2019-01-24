@@ -38,32 +38,29 @@ pmp = pytest.mark.parametrize
 dtype = list2fixture([np.float64, np.complex128])
 
 
+def _check_repr(op):
+    rep = op.__repr__()
+
+
 @pmp('sp', _p_RG_spaces)
 def testLOSResponse(sp, dtype):
     starts = np.random.randn(len(sp.shape), 10)
     ends = np.random.randn(len(sp.shape), 10)
     sigma_low = 1e-4*np.random.randn(10)
     sigma_ups = 1e-5*np.random.randn(10)
-    op = ift.LOSResponse(sp, starts, ends, sigma_low, sigma_ups)
-    print(op)
+    _check_repr(ift.LOSResponse(sp, starts, ends, sigma_low, sigma_ups))
 
 
 @pmp('sp', _h_spaces + _p_spaces + _pow_spaces)
 def testOperatorCombinations(sp, dtype):
     a = ift.DiagonalOperator(ift.Field.from_random("normal", sp, dtype=dtype))
     b = ift.DiagonalOperator(ift.Field.from_random("normal", sp, dtype=dtype))
-    op = ift.SandwichOperator.make(a, b)
-    print(op)
-    op = a(b)
-    print(op)
-    op = a + b
-    print(op)
-    op = a * b
-    print(op)
-    op = a**2
-    print(op)
-    op = a - b
-    print(op)
+    _check_repr(ift.SandwichOperator.make(a, b))
+    _check_repr(a(b))
+    _check_repr(a+b)
+    _check_repr(a-b)
+    _check_repr(a*b)
+    _check_repr(a**2)
 
 
 def testLinearInterpolator():
@@ -71,8 +68,7 @@ def testLinearInterpolator():
     pos = np.random.rand(2, 23)
     pos[0, :] *= 0.9
     pos[1, :] *= 7*3.5
-    op = ift.LinearInterpolator(sp, pos)
-    print(op)
+    _check_repr(ift.LinearInterpolator(sp, pos))
 
 
 @pmp('args', [(ift.RGSpace(10, harmonic=True), 4, 0), (ift.RGSpace(
@@ -81,16 +77,15 @@ def testLinearInterpolator():
 def testSlopeOperator(args, dtype):
     tmp = ift.ExpTransform(ift.PowerSpace(args[0]), args[1], args[2])
     tgt = tmp.domain[0]
-    op = ift.SlopeOperator(tgt)
-    print(op)
+    _check_repr(ift.SlopeOperator(tgt))
 
 
 @pmp('sp', _h_spaces + _p_spaces + _pow_spaces)
 def testOperatorAdaptor(sp, dtype):
     op = ift.DiagonalOperator(ift.Field.from_random("normal", sp, dtype=dtype))
-    print(op.adjoint)
-    print(op.inverse)
-    print(op.inverse.adjoint)
+    _check_repr(op.adjoint)
+    _check_repr(op.inverse)
+    _check_repr(op.inverse.adjoint)
 
 
 @pmp('sp1', _h_spaces + _p_spaces + _pow_spaces)
@@ -100,18 +95,14 @@ def testNullOperator(sp1, sp2, dtype):
     ift.extra.consistency_check(op, dtype, dtype)
     mdom1 = ift.MultiDomain.make({'a': sp1})
     mdom2 = ift.MultiDomain.make({'b': sp2})
-    op = ift.NullOperator(mdom1, mdom2)
-    print(op)
-    op = ift.NullOperator(sp1, mdom2)
-    print(op)
-    op = ift.NullOperator(mdom1, sp2)
-    print(op)
+    _check_repr(ift.NullOperator(mdom1, mdom2))
+    _check_repr(ift.NullOperator(sp1, mdom2))
+    _check_repr(ift.NullOperator(mdom1, sp2))
 
 
 @pmp('sp', _p_RG_spaces)
 def testHarmonicSmoothingOperator(sp, dtype):
-    op = ift.HarmonicSmoothingOperator(sp, 0.1)
-    print(op)
+    _check_repr(ift.HarmonicSmoothingOperator(sp, 0.1))
 
 
 @pmp('sp', _h_spaces + _p_spaces + _pow_spaces)
@@ -121,44 +112,35 @@ def testDOFDistributor(sp, dtype):
         return
     dofdex = np.arange(sp.size).reshape(sp.shape) % 3
     dofdex = ift.Field.from_global_data(sp, dofdex)
-    op = ift.DOFDistributor(dofdex)
-    print(op)
+    _check_repr(ift.DOFDistributor(dofdex))
 
 
 @pmp('sp', _h_spaces)
 def testPPO(sp, dtype):
-    op = ift.PowerDistributor(target=sp)
-    print(op)
+    _check_repr(ift.PowerDistributor(target=sp))
     ps = ift.PowerSpace(
         sp, ift.PowerSpace.useful_binbounds(sp, logarithmic=False, nbin=3))
-    op = ift.PowerDistributor(target=sp, power_space=ps)
-    print(op)
+    _check_repr(ift.PowerDistributor(target=sp, power_space=ps))
     ps = ift.PowerSpace(
         sp, ift.PowerSpace.useful_binbounds(sp, logarithmic=True, nbin=3))
-    op = ift.PowerDistributor(target=sp, power_space=ps)
-    print(op)
+    _check_repr(ift.PowerDistributor(target=sp, power_space=ps))
 
 
 @pmp('sp', _h_RG_spaces + _p_RG_spaces)
 def testFFT(sp, dtype):
-    op = ift.FFTOperator(sp)
-    print(op)
-    op = ift.FFTOperator(sp.get_default_codomain())
-    print(op)
+    _check_repr(ift.FFTOperator(sp))
+    _check_repr(ift.FFTOperator(sp.get_default_codomain()))
 
 
 @pmp('sp', _h_RG_spaces + _p_RG_spaces)
 def testHartley(sp, dtype):
-    op = ift.HartleyOperator(sp)
-    print(op)
-    op = ift.HartleyOperator(sp.get_default_codomain())
-    print(op)
+    _check_repr(ift.HartleyOperator(sp))
+    _check_repr(ift.HartleyOperator(sp.get_default_codomain()))
 
 
 @pmp('sp', _h_spaces)
 def testHarmonic(sp, dtype):
-    op = ift.HarmonicTransformOperator(sp)
-    print(op)
+    _check_repr(ift.HarmonicTransformOperator(sp))
 
 
 @pmp('sp', _p_spaces)
@@ -169,28 +151,25 @@ def testMask(sp, dtype):
     mask[f > 0] = 1
     mask = ift.Field.from_global_data(sp, mask)
     # Test MaskOperator
-    op = ift.MaskOperator(mask)
-    print(op)
+    _check_repr(ift.MaskOperator(mask))
 
 
 @pmp('sp', _h_spaces + _p_spaces)
 def testDiagonal(sp, dtype):
     op = ift.DiagonalOperator(ift.Field.from_random("normal", sp, dtype=dtype))
-    print(op)
+    _check_repr(op)
 
 
 @pmp('sp', _h_spaces + _p_spaces + _pow_spaces)
 def testGeometryRemover(sp, dtype):
-    op = ift.GeometryRemover(sp)
-    print(op)
+    _check_repr(ift.GeometryRemover(sp))
 
 
 @pmp('spaces', [0, 1, 2, 3, (0, 1), (0, 2), (0, 1, 2), (0, 2, 3), (1, 3)])
 @pmp('wgt', [0, 1, 2, -1])
 def testContractionOperator(spaces, wgt, dtype):
     dom = (ift.RGSpace(10), ift.RGSpace(13), ift.GLSpace(5), ift.HPSpace(4))
-    op = ift.ContractionOperator(dom, spaces, wgt)
-    ift.extra.consistency_check(op, dtype, dtype)
+    _check_repr(ift.ContractionOperator(dom, spaces, wgt))
 
 
 def testDomainTupleFieldInserter():
@@ -198,16 +177,14 @@ def testDomainTupleFieldInserter():
                                    ift.RGSpace([4, 22])))
     new_space = ift.UnstructuredDomain(7)
     pos = (5,)
-    op = ift.DomainTupleFieldInserter(domain, new_space, 0, pos)
-    print(op)
+    _check_repr(ift.DomainTupleFieldInserter(domain, new_space, 0, pos))
 
 
 @pmp('space', [0, 2])
 def testSymmetrizingOperator(space, dtype):
     dom = (ift.LogRGSpace(10, [2.], [1.]), ift.UnstructuredDomain(13),
            ift.LogRGSpace((5, 27), [1., 2.7], [0., 4.]), ift.HPSpace(4))
-    op = ift.SymmetrizingOperator(dom, space)
-    print(op)
+    _check_repr(ift.SymmetrizingOperator(dom, space))
 
 
 @pmp('space', [0, 2])
@@ -217,8 +194,7 @@ def testZeroPadder(space, factor, dtype, central):
     dom = (ift.RGSpace(10), ift.UnstructuredDomain(13), ift.RGSpace(7, 12),
            ift.HPSpace(4))
     newshape = [int(factor*l) for l in dom[space].shape]
-    op = ift.FieldZeroPadder(dom, newshape, space, central)
-    print(op)
+    _check_repr(ift.FieldZeroPadder(dom, newshape, space, central))
 
 
 @pmp('args',
@@ -228,8 +204,7 @@ def testZeroPadder(space, factor, dtype, central):
        (10,), 1),
       (ift.PowerSpace(ift.RGSpace(10, distances=0.3, harmonic=True)), 6, 0)])
 def testExpTransform(args, dtype):
-    op = ift.ExpTransform(args[0], args[1], args[2])
-    print(op)
+    _check_repr(ift.ExpTransform(args[0], args[1], args[2]))
 
 
 @pmp('args',
@@ -239,8 +214,7 @@ def testExpTransform(args, dtype):
 def testQHTOperator(args):
     dtype = np.float64
     tgt = ift.DomainTuple.make(args[0])
-    op = ift.QHTOperator(tgt, args[1])
-    print(op)
+    _check_repr(ift.QHTOperator(tgt, args[1]))
 
 
 @pmp('args', [[ift.RGSpace(
@@ -249,8 +223,7 @@ def testQHTOperator(args):
             (ift.HPSpace(3), ift.RGSpace((12, 24), distances=0.3)), (12, 12), 1
         ]])
 def testRegridding(args):
-    op = ift.RegriddingOperator(*args)
-    print(op)
+    _check_repr(ift.RegriddingOperator(*args))
 
 
 @pmp(
@@ -267,8 +240,7 @@ def testRegridding(args):
 ])
 def testOuter(fdomain, domain):
     f = ift.from_random('normal', fdomain)
-    op = ift.OuterProduct(f, domain)
-    print(op)
+    _check_repr(ift.OuterProduct(f, domain))
 
 
 @pmp('sp', _h_spaces + _p_spaces + _pow_spaces)
@@ -281,5 +253,4 @@ def testValueInserter(sp, seed):
             ind.append(0)
         else:
             ind.append(np.random.randint(0, ss-1))
-    op = ift.ValueInserter(sp, ind)
-    print(op)
+    _check_repr(ift.ValueInserter(sp, ind))
