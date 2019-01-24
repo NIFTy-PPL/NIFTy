@@ -222,7 +222,7 @@ class InverseGammaLikelihood(EnergyOperator):
             raise TypeError
         self._beta = beta
         if np.isscalar(alpha):
-            alpha = Field.from_local_data(beta.domain, np.full(beta.local_data.shape, alpha+1))
+            alpha = Field.from_local_data(beta.domain, np.full(beta.local_data.shape, alpha))
         elif not isinstance(alpha, Field):
             raise TypeError
         self._alphap1 = alpha+1

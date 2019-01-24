@@ -58,7 +58,7 @@ def make_adjust_variances(a,
     """
 
     d = a*xi
-    d = (d.conjugate()*d).real/2
+    d = (d.conjugate()*d).real
     n = len(samples)
     if n > 0:
         d_eval = 0.
@@ -72,7 +72,7 @@ def make_adjust_variances(a,
     if scaling is not None:
         x = ScalingOperator(scaling, x.target)(x)
 
-    return StandardHamiltonian(InverseGammaLikelihood(d_eval)(x), ic_samp=ic_samp)
+    return StandardHamiltonian(InverseGammaLikelihood(d_eval/2.)(x), ic_samp=ic_samp)
 
 
 def do_adjust_variances(position,
