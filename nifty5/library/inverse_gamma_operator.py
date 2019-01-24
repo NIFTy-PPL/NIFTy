@@ -26,7 +26,7 @@ from ..sugar import makeOp
 
 
 class InverseGammaOperator(Operator):
-    """Operator which transforms a Gaussian into an inverse gamma distribution.
+    """Transforms a Gaussian into an inverse gamma distribution.
 
     The pdf of the inverse gamma distribution is defined as follows:
 

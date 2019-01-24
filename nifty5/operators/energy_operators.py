@@ -95,7 +95,7 @@ class QuadraticFormOperator(EnergyOperator):
 
 
 class GaussianEnergy(EnergyOperator):
-    """Class for energies of fields with Gaussian probability distribution.
+    """Computes a negative-log Gaussian.
 
     Represents up to constants in :math:`m`:
 
@@ -162,8 +162,8 @@ class GaussianEnergy(EnergyOperator):
 
 
 class PoissonianEnergy(EnergyOperator):
-    """Class for likelihood Hamiltonians of expected count field constrained
-    by Poissonian count data.
+    """Computes likelihood Hamiltonians of expected count field constrained by
+    Poissonian count data.
 
     Represents up to an f-independent term :math:`log(d!)`:
 
@@ -200,8 +200,7 @@ class PoissonianEnergy(EnergyOperator):
 
 
 class InverseGammaLikelihood(EnergyOperator):
-    """This describes the negative log-likelihood of the inverse
-    gamma distribution.
+    """Computes the negative log-likelihood of the inverse gamma distribution.
 
     It negative log-pdf(x) is given by
 
@@ -341,7 +340,7 @@ class StandardHamiltonian(EnergyOperator):
 
 
 class AveragedEnergy(EnergyOperator):
-    """Averages an energy over samples
+    """Averages an energy over samples.
 
     Parameters
     ----------
@@ -351,15 +350,15 @@ class AveragedEnergy(EnergyOperator):
        Set of residual sample points to be added to mean field for
        approximate estimation of the KL.
 
-    Note
-    ----
-    Having symmetrized residual samples, with both v_i and -v_i being
-    present, ensures that the distribution mean is exactly represented.
+    Notes
+    -----
+    - Having symmetrized residual samples, with both :math:`v_i` and
+      :math:`-v_i` being present, ensures that the distribution mean is
+      exactly represented.
 
-    :class:`AveragedEnergy(h)` approximates
-    :math:`\\left< H(f) \\right>_{G(f-m,D)}` if the residuals
-    :math:`f-m` are drawn from a Gaussian distribution with covariance
-    :math:`D`.
+    - :class:`AveragedEnergy(h)` approximates
+      :math:`\\left< H(f) \\right>_{G(f-m,D)}` if the residuals :math:`f-m`
+      are drawn from a Gaussian distribution with covariance :math:`D`.
     """
 
     def __init__(self, h, res_samples):
