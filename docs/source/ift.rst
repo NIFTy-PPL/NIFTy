@@ -235,10 +235,10 @@ Here, the uncertainty of the field and the power spectrum of its generating proc
 | orange line).                                      |
 +----------------------------------------------------+
 
-Maximim a Posteriori
+Maximum a Posteriori
 --------------------
 
-One popular field estimation method is Maximim a Posteriori (MAP).
+One popular field estimation method is Maximum a Posteriori (MAP).
 
 It only requires to minimize the information Hamiltonian, e.g by a gradient descent method that stops when
 
