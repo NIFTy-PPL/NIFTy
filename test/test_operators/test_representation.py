@@ -39,7 +39,7 @@ dtype = list2fixture([np.float64, np.complex128])
 
 
 def _check_repr(op):
-    rep = op.__repr__()
+    op.__repr__()
 
 
 @pmp('sp', _p_RG_spaces)
