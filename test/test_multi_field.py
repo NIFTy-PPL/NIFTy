@@ -34,12 +34,27 @@ def test_func():
     assert_allclose(
         ift.log(ift.exp((f1)))["d1"].local_data, f1["d1"].local_data)
 
+def test_multifield_field_consistency():
+    f1 = ift.full(dom, 27)
+    f2 = ift.from_global_data(dom, f1.to_global_data())
+    assert_equal(f1.sum(), f2.sum())
+    assert_equal(-f1, (-f2)['d1'])
+    assert_equal(f1.__abs__(), (f2.__abs__())['d1'])
+
+
 
 def test_dataconv():
     f1 = ift.full(dom, 27)
     f2 = ift.from_global_data(dom, f1.to_global_data())
     for key, val in f1.items():
         assert_equal(val.local_data, f2[key].local_data)
+    if not "d1" in f2:
+        raise KeyError()
+    assert_equal({"d1": f1}, f2.to_dict())
+    f3 = ift.full(dom, 27+1.j)
+    f4 = ift.full(dom, 1.j)
+    assert_equal(f2, f3.real)
+    assert_equal(f4, f3.imag)
 
 
 def test_blockdiagonal():
