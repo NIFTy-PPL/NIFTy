@@ -37,10 +37,9 @@ def test_func():
 
 def test_multifield_field_consistency():
     f1 = ift.full(dom, 27)
-    f2 = ift.from_global_data(dom, f1.to_global_data())
+    f2 = ift.from_global_data(dom['d1'], f1['d1'].to_global_data())
     assert_equal(f1.sum(), f2.sum())
-    assert_equal(-f1, (-f2)['d1'])
-    assert_equal(abs(f1), (abs(f2))['d1'])
+    assert_equal(f1.size, f2.size)
 
 
 def test_dataconv():
