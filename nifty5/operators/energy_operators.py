@@ -200,14 +200,18 @@ class PoissonianEnergy(EnergyOperator):
 
 
 class InverseGammaLikelihood(EnergyOperator):
-    """
-    This describes the negative log-likelihood of the inverse gamma distribution.
+    """This describes the negative log-likelihood of the inverse
+    gamma distribution.
 
     It negative log-pdf(x) is given by
-    
-    sum_i (alpha_i+1)*ln(x_i) + beta_i/x_i
 
-    This is the likelihood for the variance x=S_k given data beta = 0.5 |s_k|^2 where the Field s is known to have the covariance S_k. 
+    .. math ::
+
+        \\sum_i (\\alpha_i+1)*\\ln(x_i) + \\beta_i/x_i
+
+    This is the likelihood for the variance :math:`x=S_k` given data
+    :math:`\\beta = 0.5 |s_k|^2` where the Field :math:`s` is known to have
+    the covariance :math:`S_k`.
 
     Parameters
     ----------
@@ -222,7 +226,8 @@ class InverseGammaLikelihood(EnergyOperator):
             raise TypeError
         self._beta = beta
         if np.isscalar(alpha):
-            alpha = Field.from_local_data(beta.domain, np.full(beta.local_data.shape, alpha))
+            alpha = Field.from_local_data(
+                beta.domain, np.full(beta.local_data.shape, alpha))
         elif not isinstance(alpha, Field):
             raise TypeError
         self._alphap1 = alpha+1
