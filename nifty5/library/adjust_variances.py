@@ -72,7 +72,7 @@ def make_adjust_variances(a,
     if scaling is not None:
         x = ScalingOperator(scaling, x.target)(x)
 
-    return StandardHamiltonian(InverseGammaLikelihood(d_eval)(x), ic_samp=ic_samp)
+    return StandardHamiltonian(InverseGammaLikelihood(d_eval/2.)(x), ic_samp=ic_samp)
 
 
 def do_adjust_variances(position,
