@@ -43,7 +43,8 @@ def _make_dynamic_operator(target,
                            causal,
                            minimum_phase,
                            sigc=None,
-                           quant=None):
+                           quant=None,
+                           codomain=None):
     if not isinstance(target, RGSpace):
         raise TypeError("RGSpace required")
     if not target.harmonic:
@@ -64,7 +65,9 @@ def _make_dynamic_operator(target,
     if cone and (sigc is None or quant is None):
         raise RuntimeError
 
-    dom = DomainTuple.make(target.get_default_codomain())
+    if codomain is None:
+        codomain = target.get_default_codomain()
+    dom = DomainTuple.make(codomain)
     ops = {}
     FFT = FFTOperator(dom)
     Real = Realizer(dom)
@@ -146,7 +149,7 @@ def dynamic_operator(*,
                      minimum_phase=False):
     """Constructs an operator encoding the Green's function of a linear
     homogeneous dynamic system.
-    
+
     When evaluated, this operator returns the Green's function representation
     in harmonic space. This result can be used as a convolution kernel to
     construct solutions of the homogeneous stochastic differential equation
@@ -216,7 +219,7 @@ def dynamic_lightcone_operator(*,
                                minimum_phase=False):
     '''Extends the functionality of :function: dynamic_operator to a Green's
     function which is constrained to be within a light cone.
-    
+
     The resulting Green's function is constrained to be within a light cone.
     This is achieved via convolution of the function with a light cone in
     space-time. Thereby the first axis of the space is set to be the teporal

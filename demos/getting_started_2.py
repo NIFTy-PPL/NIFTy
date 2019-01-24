@@ -99,7 +99,7 @@ if __name__ == '__main__':
     minimizer = ift.NewtonCG(ic_newton)
 
     # Compute MAP solution by minimizing the information Hamiltonian
-    H = ift.Hamiltonian(likelihood)
+    H = ift.StandardHamiltonian(likelihood)
     initial_position = ift.from_random('normal', domain)
     H = ift.EnergyAdapter(initial_position, H, want_metric=True)
     H, convergence = minimizer(H)

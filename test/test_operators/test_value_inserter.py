@@ -17,7 +17,7 @@
 
 import numpy as np
 import pytest
-from numpy.testing import assert_allclose
+from numpy.testing import assert_
 
 import nifty5 as ift
 
@@ -37,17 +37,5 @@ def test_value_inserter(sp, seed):
     f = ift.from_random('normal', ift.UnstructuredDomain((1,)))
     inp = f.to_global_data()[0]
     ret = op(f).to_global_data()
-    assert_allclose(ret[ind], inp)
-    assert_allclose(np.sum(ret), inp)
-
-
-def test_value_inserter_nonzero():
-    sp = ift.RGSpace(4)
-    ind = (1,)
-    default = 1.24
-    op = ift.ValueInserter(sp, ind, default)
-    f = ift.from_random('normal', ift.UnstructuredDomain((1,)))
-    inp = f.to_global_data()[0]
-    ret = op(f).to_global_data()
-    assert_allclose(ret[ind], inp)
-    assert_allclose(np.sum(ret), inp + 3*default)
+    assert_(ret[ind] == inp)
+    assert_(np.sum(ret) == inp)

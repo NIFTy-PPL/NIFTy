@@ -25,6 +25,29 @@ from .linear_operator import LinearOperator
 
 
 class FieldZeroPadder(LinearOperator):
+    """Operator which applies zero-padding to one of the subdomains of its
+    input field
+
+    Parameters
+    ----------
+    domain : Domain, DomainTuple or tuple of Domain
+        The operator's input domain.
+    new_shape : list or tuple of int
+        The new dimensions of the subdomain which is zero-padded.
+        No entry must be smaller than the corresponding dimension in the
+        operator's domain.
+    space : int
+        The index of the subdomain to be zero-padded. If None, it is set to 0
+        if domain contains exactly one space. domain[space] must be an RGSpace.
+    central : bool
+        If `False`, padding is performed at the end of the domain axes,
+        otherwise in the middle.
+
+    Notes
+    -----
+    When doing central padding on an axis with an even length, the "central"
+    entry should in principle be split up; this is currently not done.
+    """
     def __init__(self, domain, new_shape, space=0, central=False):
         self._domain = DomainTuple.make(domain)
         self._space = utilities.infer_space(self._domain, space)
