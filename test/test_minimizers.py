@@ -41,7 +41,8 @@ minimizers = [
 
 newton_minimizers = ['ift.RelaxedNewton(IC)']
 quadratic_only_minimizers = [
-    'ift.ConjugateGradient(IC)', 'ift.ScipyCG(tol=1e-5, maxiter=300)'
+    'ift.ConjugateGradient(IC)',
+    'ift.minimization.scipy_minimizer._ScipyCG(tol=1e-5, maxiter=300)'
 ]
 slow_minimizers = ['ift.SteepestDescent(IC)']
 

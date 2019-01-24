@@ -16,6 +16,7 @@
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
 
 from functools import reduce
+from operator import mul
 
 from ..domain_tuple import DomainTuple
 from ..operators.contraction_operator import ContractionOperator
@@ -61,6 +62,10 @@ def CorrelatedField(target, amplitude_operator, name='xi', codomain=None):
     power_distributor = PowerDistributor(h_space, p_space)
     A = power_distributor(amplitude_operator)
     vol = h_space.scalar_dvol**-0.5
+    # When doubling the resolution of `tgt` the value of the highest k-mode
+    # will scale with a square root. `vol` cancels this effect such that the
+    # same power spectrum can be used for the spaces with the same volume,
+    # different resolutions and the same object in them.
     return ht(vol*A*ducktape(h_space, None, name))
 
 
@@ -107,7 +112,8 @@ def MfCorrelatedField(target, amplitudes, name='xi'):
     d = [dd0, dd1]
 
     a = [dd @ amplitudes[ii] for ii, dd in enumerate(d)]
-    a = reduce(lambda x, y: x*y, a)
+    a = reduce(mul, a)
     A = pd @ a
-    vol = reduce(lambda x, y: x*y, [sp.scalar_dvol**-0.5 for sp in hsp])
+    # For `vol` see comment in `CorrelatedField`
+    vol = reduce(mul, [sp.scalar_dvol**-0.5 for sp in hsp])
     return ht(vol*A*ducktape(hsp, None, name))

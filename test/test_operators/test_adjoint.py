@@ -191,11 +191,10 @@ def testContractionOperator(spaces, wgt, dtype):
 
 
 def testDomainTupleFieldInserter():
-    domain = ift.DomainTuple.make((ift.UnstructuredDomain(12),
+    target = ift.DomainTuple.make((ift.UnstructuredDomain([3, 2]),
+                                   ift.UnstructuredDomain(7),
                                    ift.RGSpace([4, 22])))
-    new_space = ift.UnstructuredDomain(7)
-    pos = (5,)
-    op = ift.DomainTupleFieldInserter(domain, new_space, 0, pos)
+    op = ift.DomainTupleFieldInserter(target, 1, (5,))
     ift.extra.consistency_check(op)
 
 

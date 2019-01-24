@@ -95,7 +95,7 @@ class QuadraticFormOperator(EnergyOperator):
 
 
 class GaussianEnergy(EnergyOperator):
-    """Class for energies of fields with Gaussian probability distribution.
+    """Computes a negative-log Gaussian.
 
     Represents up to constants in :math:`m`:
 
@@ -162,8 +162,8 @@ class GaussianEnergy(EnergyOperator):
 
 
 class PoissonianEnergy(EnergyOperator):
-    """Class for likelihood Hamiltonians of expected count field constrained
-    by Poissonian count data.
+    """Computes likelihood Hamiltonians of expected count field constrained by
+    Poissonian count data.
 
     Represents up to an f-independent term :math:`log(d!)`:
 
@@ -200,24 +200,46 @@ class PoissonianEnergy(EnergyOperator):
 
 
 class InverseGammaLikelihood(EnergyOperator):
-    """
-    FIXME
+    """Computes the negative log-likelihood of the inverse gamma distribution.
+
+    It negative log-pdf(x) is given by
+
+    .. math ::
+
+        \\sum_i (\\alpha_i+1)*\\ln(x_i) + \\beta_i/x_i
+
+    This is the likelihood for the variance :math:`x=S_k` given data
+    :math:`\\beta = 0.5 |s_k|^2` where the Field :math:`s` is known to have
+    the covariance :math:`S_k`.
+
+    Parameters
+    ----------
+    beta : Field
+        beta parameter of the inverse gamma distribution
+    alpha : Scalar, Field, optional
+        alpha parameter of the inverse gamma distribution
     """
 
-    def __init__(self, d):
-        if not isinstance(d, Field):
+    def __init__(self, beta, alpha=-0.5):
+        if not isinstance(beta, Field):
             raise TypeError
-        self._d = d
-        self._domain = DomainTuple.make(d.domain)
+        self._beta = beta
+        if np.isscalar(alpha):
+            alpha = Field.from_local_data(
+                beta.domain, np.full(beta.local_data.shape, alpha))
+        elif not isinstance(alpha, Field):
+            raise TypeError
+        self._alphap1 = alpha+1
+        self._domain = DomainTuple.make(beta.domain)
 
     def apply(self, x):
         self._check_input(x)
-        res = 0.5*(x.log().sum() + (1./x).vdot(self._d))
+        res = x.log().vdot(self._alphap1) + (1./x).vdot(self._beta)
         if not isinstance(x, Linearization):
             return Field.scalar(res)
         if not x.want_metric:
             return res
-        metric = SandwichOperator.make(x.jac, makeOp(0.5/(x.val**2)))
+        metric = SandwichOperator.make(x.jac, makeOp(self._alphap1/(x.val**2)))
         return res.add_metric(metric)
 
 
@@ -318,7 +340,7 @@ class StandardHamiltonian(EnergyOperator):
 
 
 class AveragedEnergy(EnergyOperator):
-    """Averages an energy over samples
+    """Averages an energy over samples.
 
     Parameters
     ----------
@@ -328,15 +350,15 @@ class AveragedEnergy(EnergyOperator):
        Set of residual sample points to be added to mean field for
        approximate estimation of the KL.
 
-    Note
-    ----
-    Having symmetrized residual samples, with both v_i and -v_i being
-    present, ensures that the distribution mean is exactly represented.
+    Notes
+    -----
+    - Having symmetrized residual samples, with both :math:`v_i` and
+      :math:`-v_i` being present, ensures that the distribution mean is
+      exactly represented.
 
-    :class:`AveragedEnergy(h)` approximates
-    :math:`\\left< H(f) \\right>_{G(f-m,D)}` if the residuals
-    :math:`f-m` are drawn from a Gaussian distribution with covariance
-    :math:`D`.
+    - :class:`AveragedEnergy(h)` approximates
+      :math:`\\left< H(f) \\right>_{G(f-m,D)}` if the residuals :math:`f-m`
+      are drawn from a Gaussian distribution with covariance :math:`D`.
     """
 
     def __init__(self, h, res_samples):

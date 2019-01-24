@@ -25,9 +25,9 @@ class StatCalculator(object):
 
     Notes
     -----
-    - the memory usage of this object is constant, i.e. it does not increase
-      with the number of samples added
-    - the code computes the unbiased variance (which contains a `1./(n-1)`
+    - The memory usage of this object is constant, i.e. it does not increase
+      with the number of samples added.
+    - The code computes the unbiased variance (which contains a `1./(n-1)`
       term for `n` samples).
     """
     def __init__(self):

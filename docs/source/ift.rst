@@ -219,14 +219,14 @@ Here, the uncertainty of the field and the power spectrum of its generating proc
 | **Output of tomography demo getting_started_3.py** |
 +----------------------------------------------------+
 | .. image:: images/getting_started_3_setup.png      |
-|     :width:  50 %                                  |
+|                                                    |
 +----------------------------------------------------+
 | Non-Gaussian signal field,                         |
 | data backprojected into the image domain, power    |
 | spectrum of underlying Gausssian process.          |
 +----------------------------------------------------+
 | .. image:: images/getting_started_3_results.png    |
-|     :width:  50 %                                  |
+|                                                    |
 +----------------------------------------------------+
 | Posterior mean field signal                        |
 | reconstruction, its uncertainty, and the power     |
@@ -235,10 +235,10 @@ Here, the uncertainty of the field and the power spectrum of its generating proc
 | orange line).                                      |
 +----------------------------------------------------+
 
-Maximim a Posteriori
+Maximum a Posteriori
 --------------------
 
-One popular field estimation method is Maximim a Posteriori (MAP).
+One popular field estimation method is Maximum a Posteriori (MAP).
 
 It only requires to minimize the information Hamiltonian, e.g by a gradient descent method that stops when
 
@@ -246,7 +246,7 @@ It only requires to minimize the information Hamiltonian, e.g by a gradient desc
 
     \frac{\partial \mathcal{H}(d,\xi)}{\partial \xi} = 0.
 
-NIFTy5 automatically calculates the necessary gradient from a generative model of the signal and the data and to minimize the Hamiltonian.
+NIFTy5 automatically calculates the necessary gradient from a generative model of the signal and the data and uses this to minimize the Hamiltonian.
 
 However, MAP often provides unsatisfactory results in cases of deep hirachical Bayesian networks.
 The reason for this is that MAP ignores the volume factors in parameter space, which are not to be neglected in deciding whether a solution is reasonable or not.
@@ -270,7 +270,7 @@ As a compromise between being optimal and being computationally affordable, the 
     \int \mathcal{D}\xi \,\mathcal{Q}(\xi) \log \left( \frac{\mathcal{Q}(\xi)}{\mathcal{P}(\xi)} \right)
 
 Minimizing this with respect to all entries of the covariance :math:`D` is unfeasible for fields.
-Therefore, Metric Gaussian Variational Inference (MGVI) approximates the precision matrix at the location of the current mean :math:`M=D^{-1}` by the Bayesian Fisher information metric,
+Therefore, Metric Gaussian Variational Inference (MGVI) approximates the posterior precision matrix :math:`D^{-1}` at the location of the current mean :math:`m` by the Bayesian Fisher information metric,
 
 .. math::
 
