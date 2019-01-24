@@ -18,7 +18,8 @@
 from ..minimization.energy_adapter import EnergyAdapter
 from ..multi_field import MultiField
 from ..operators.distributors import PowerDistributor
-from ..operators.energy_operators import StandardHamiltonian, InverseGammaLikelihood
+from ..operators.energy_operators import (StandardHamiltonian,
+                                          InverseGammaLikelihood)
 from ..operators.scaling_operator import ScalingOperator
 from ..operators.simple_linear_operators import ducktape
 
@@ -72,7 +73,8 @@ def make_adjust_variances(a,
     if scaling is not None:
         x = ScalingOperator(scaling, x.target)(x)
 
-    return StandardHamiltonian(InverseGammaLikelihood(d_eval/2.)(x), ic_samp=ic_samp)
+    return StandardHamiltonian(InverseGammaLikelihood(d_eval/2.)(x),
+                               ic_samp=ic_samp)
 
 
 def do_adjust_variances(position,
