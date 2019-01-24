@@ -130,4 +130,4 @@ class MetricGaussianKL(Energy):
 
     def __repr__(self):
         return 'KL ({} samples):\n'.format(len(
-            self._samples)) + utilities.indent(self._ham.__repr__())
+            self._samples)) + utilities.indent(self._hamiltonian.__repr__())
