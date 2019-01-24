@@ -387,10 +387,14 @@ def distaxis(arr):
 
 
 def from_local_data(shape, arr, distaxis=0):
+    if arr.dtype.kind not in "fciub":
+        raise TypeError
     return data_object(shape, arr, distaxis)
 
 
 def from_global_data(arr, sum_up=False, distaxis=0):
+    if arr.dtype.kind not in "fciub":
+        raise TypeError
     if sum_up:
         arr = np_allreduce_sum(arr)
     if distaxis == -1:
