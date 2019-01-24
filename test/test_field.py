@@ -272,9 +272,9 @@ def test_err():
     with assert_raises(TypeError):
         ift.full(s1, [2, 3])
     with assert_raises(TypeError):
-        ift.Field(s2, [0,1])
+        ift.Field(s2, [0, 1])
     with assert_raises(TypeError):
-        f1.outer([0,1])
+        f1.outer([0, 1])
     with assert_raises(ValueError):
         f1.extract(s2)
     with assert_raises(TypeError):
@@ -340,11 +340,13 @@ def test_funcs(num, dom, func):
     res2 = getattr(np, func)(num)
     assert_allclose(res.local_data, res2)
 
+
 @pmp('rtype', ['normal', 'pm1', 'uniform'])
 @pmp('dtype', [np.float64, np.complex128])
 def test_from_random(rtype, dtype):
     sp = ift.RGSpace(3)
     f = ift.Field.from_random(rtype, sp, dtype=dtype)
+
 
 def test_field_of_objects():
     arr = np.array(['x', 'y', 'z'])

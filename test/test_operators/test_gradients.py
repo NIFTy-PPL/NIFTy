@@ -81,10 +81,10 @@ def testBinary(type1, type2, space, seed):
     pos = ift.from_random("normal", dom)
     model = ift.OuterProduct(pos['s1'], ift.makeDomain(space))
     ift.extra.check_value_gradient_consistency(model, pos['s2'], ntries=20)
-    model = select_s1 **2
+    model = select_s1**2
     pos = ift.from_random("normal", dom1)
     ift.extra.check_value_gradient_consistency(model, pos, ntries=20)
-    model = select_s1.clip(-1,1)
+    model = select_s1.clip(-1, 1)
     pos = ift.from_random("normal", dom1)
     ift.extra.check_value_gradient_consistency(model, pos, ntries=20)
     if isinstance(space, ift.RGSpace):
@@ -127,9 +127,9 @@ def testPointModel(space, seed):
 
 
 @pmp('target', [
-    ift.RGSpace(64, distances=.789,harmonic=True),
-    ift.RGSpace([32, 32], distances=.789,harmonic=True),
-    ift.RGSpace([32, 32, 8], distances=.789,harmonic=True)
+    ift.RGSpace(64, distances=.789, harmonic=True),
+    ift.RGSpace([32, 32], distances=.789, harmonic=True),
+    ift.RGSpace([32, 32, 8], distances=.789, harmonic=True)
 ])
 @pmp('causal', [True, False])
 @pmp('minimum_phase', [True, False])
