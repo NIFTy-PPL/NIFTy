@@ -24,10 +24,11 @@ from .linear_operator import LinearOperator
 
 
 class ContractionOperator(LinearOperator):
-    """A linear operator which sums up fields into the direction of subspaces.
+    """A  :class:`LinearOperator` which sums up fields into the direction of
+    subspaces.
 
-    This ContractionOperator sums up a field with is defined on a DomainTuple
-    to a DomainTuple which contains the former as a subset.
+    This Operator sums up a field with is defined on a :class:`DomainTuple`
+    to a :class:`DomainTuple` which contains the former as a subset.
 
     Parameters
     ----------

@@ -110,14 +110,14 @@ class Operator(metaclass=NiftyMeta):
         return _OpChain.make((_Clipper(self.target, min, max), self))
 
     def apply(self, x):
-        '''Applies the operator to a Field or MultiField.
+        """Applies the operator to a Field or MultiField.
 
         Parameters
         ----------
         x : Field or MultiField
             Input on which the operator shall act. Needs to be defined on
             :attr:`domain`.
-        '''
+        """
         raise NotImplementedError
 
     def force(self, x):

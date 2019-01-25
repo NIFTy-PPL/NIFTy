@@ -23,7 +23,7 @@ from .endomorphic_operator import EndomorphicOperator
 
 
 class SymmetrizingOperator(EndomorphicOperator):
-    '''Subtracts the field axes-wise in reverse order from itself. The slice of
+    """Subtracts the field axes-wise in reverse order from itself. The slice of
     all elements with at least one index being zero is not touched.
 
     Parameters
@@ -33,7 +33,7 @@ class SymmetrizingOperator(EndomorphicOperator):
         :class:`LogRGSpace`.
     space : int
         Index of space in domain on which the operator shall act. Default is 0.
-    '''
+    """
     def __init__(self, domain, space=0):
         self._domain = DomainTuple.make(domain)
         self._capability = self.TIMES | self.ADJOINT_TIMES

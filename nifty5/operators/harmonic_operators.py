@@ -143,7 +143,7 @@ class HartleyOperator(LinearOperator):
     (https://en.wikipedia.org/wiki/Discrete_Hartley_transform).
     For complex input fields, the operator will transform the real and
     imaginary parts separately and use the results as real and imaginary parts
-    of the result field, respectivey.
+    of the result field, respectively.
     In many contexts the Hartley transform is a perfect substitute for the
     Fourier transform, but in some situations (e.g. convolution with a general,
     non-symmetric kernel, the full FFT must be used instead.
@@ -386,7 +386,7 @@ class HarmonicTransformOperator(LinearOperator):
 
 def HarmonicSmoothingOperator(domain, sigma, space=None):
     """Returns an operator that carries out a smoothing with a Gaussian kernel
-    of width `sigma` on the part of `domain` given by `space`
+    of width `sigma` on the part of `domain` given by `space`.
 
     Parameters
     ----------
@@ -408,7 +408,7 @@ def HarmonicSmoothingOperator(domain, sigma, space=None):
 
     sigma = float(sigma)
     if sigma < 0.:
-        raise ValueError("sigma must be nonnegative")
+        raise ValueError("sigma must be non-negative")
     if sigma == 0.:
         return ScalingOperator(1., domain)
 

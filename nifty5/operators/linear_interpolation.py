@@ -35,9 +35,8 @@ class LinearInterpolator(LinearOperator):
     Parameters
     ----------
     domain : RGSpace
-    positions : numpy.ndarray
-        Positions at which to interpolate
-        Field with UnstructuredDomain, shape (dim, ndata)
+    sampling_points : numpy.ndarray
+        Positions at which to interpolate, shape (dim, ndata),
 
     Notes
     -----
@@ -54,9 +53,8 @@ class LinearInterpolator(LinearOperator):
 
         # FIXME This needs to be removed as soon as the bug below is fixed.
         if dims.count(dims[0]) != len(dims):
-            raise TypeError(
-                'This is a bug. Please extend LinearInterpolators functionality!'
-            )
+            raise TypeError("This is a bug. Please extend"
+                            "LinearInterpolator's functionality!")
 
         shp = sampling_points.shape
         if not (isinstance(sampling_points, np.ndarray) and len(shp) == 2):

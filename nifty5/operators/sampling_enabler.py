@@ -23,7 +23,7 @@ from .endomorphic_operator import EndomorphicOperator
 
 
 class SamplingEnabler(EndomorphicOperator):
-    """Class which acts as the operator object (likelihood + prior)
+    """Class which acts as a operator object built of (`likelihood` + `prior`)
     and enables sampling from its inverse even if the operator object
     itself does not support it.
 
@@ -38,10 +38,10 @@ class SamplingEnabler(EndomorphicOperator):
         The iteration controller to use for the iterative numerical inversion
         done by a :class:`ConjugateGradient` object.
     approximation : :class:`LinearOperator`, optional
-        if not None, this operator should be an approximation to `op`, which
-        supports the operation modes that `op` doesn't have. It is used as a
-        preconditioner during the iterative inversion, to accelerate
-        convergence.
+        if not None, this linear operator should be an approximation to the
+        operator, which supports the operation modes that the operator doesn't
+        have. It is used as a preconditioner during the iterative inversion,
+        to accelerate convergence.
     """
 
     def __init__(self, likelihood, prior, iteration_controller,

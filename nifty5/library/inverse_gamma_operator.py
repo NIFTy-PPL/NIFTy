@@ -26,16 +26,17 @@ from ..sugar import makeOp
 
 
 class InverseGammaOperator(Operator):
-    """Operator which transforms a Gaussian into an inverse gamma distribution.
+    """Transforms a Gaussian into an inverse gamma distribution.
 
     The pdf of the inverse gamma distribution is defined as follows:
 
-    .. math ::
-        \\frac{\\beta^\\alpha}{\\Gamma(\\alpha)}x^{-\\alpha -1}\\exp \\left(-\\frac{\\beta }{x}\\right)
+    .. math::
+        \\frac{q^\\alpha}{\\Gamma(\\alpha)}x^{-\\alpha -1}
+        \\exp \\left(-\\frac{q}{x}\\right)
 
-    That means that for large x the pdf falls off like x^(-alpha -1).
-    The mean of the pdf is at q / (alpha - 1) if alpha > 1.
-    The mode is q / (alpha + 1).
+    That means that for large x the pdf falls off like :math:`x^(-\\alpha -1)`.
+    The mean of the pdf is at :math:`q / (\\alpha - 1)` if :math:`\\alpha > 1`.
+    The mode is :math:`q / (\\alpha + 1)`.
 
     This transformation is implemented as a linear interpolation which maps a
     Gaussian onto a inverse gamma distribution.
@@ -54,7 +55,8 @@ class InverseGammaOperator(Operator):
     """
     def __init__(self, domain, alpha, q, delta=0.001):
         self._domain = self._target = DomainTuple.make(domain)
-        self._alpha, self._q, self._delta = float(alpha), float(q), float(delta)
+        self._alpha, self._q, self._delta = \
+            float(alpha), float(q), float(delta)
         self._xmin, self._xmax = -8.2, 8.2
         # Precompute
         xs = np.arange(self._xmin, self._xmax+2*delta, delta)

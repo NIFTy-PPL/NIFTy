@@ -16,6 +16,7 @@
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
 
 from functools import reduce
+from operator import mul
 
 from ..domain_tuple import DomainTuple
 from ..operators.contraction_operator import ContractionOperator
@@ -24,16 +25,16 @@ from ..operators.harmonic_operators import HarmonicTransformOperator
 from ..operators.simple_linear_operators import ducktape
 
 
-def CorrelatedField(target, amplitude_operator, name='xi'):
-    '''Constructs an operator which turns a white Gaussian excitation field
+def CorrelatedField(target, amplitude_operator, name='xi', codomain=None):
+    """Constructs an operator which turns a white Gaussian excitation field
     into a correlated field.
 
     This function returns an operator which implements:
 
         ht @ (vol * A * xi),
 
-    where `ht` is a harmonic transform operator, `A` is the sqare root of the
-    prior covariance an `xi` is the excitation field.
+    where `ht` is a harmonic transform operator, `A` is the square root of the
+    prior covariance and `xi` is the excitation field.
 
     Parameters
     ----------
@@ -41,26 +42,35 @@ def CorrelatedField(target, amplitude_operator, name='xi'):
         Target of the operator. Must contain exactly one space.
     amplitude_operator: Operator
     name : string
-        :class:`MultiField` key for xi-field.
+        :class:`MultiField` key for the xi-field.
+    codomain : Domain
+        The codomain for target[0]. If not supplied, it is inferred.
 
     Returns
     -------
-    Correlated field : Operator
-    '''
+    Operator
+        Correlated field
+    """
     tgt = DomainTuple.make(target)
     if len(tgt) > 1:
         raise ValueError
-    h_space = tgt[0].get_default_codomain()
-    ht = HarmonicTransformOperator(h_space, tgt[0])
+    if codomain is None:
+        codomain = tgt[0].get_default_codomain()
+    h_space = codomain
+    ht = HarmonicTransformOperator(h_space, target=tgt[0])
     p_space = amplitude_operator.target[0]
     power_distributor = PowerDistributor(h_space, p_space)
     A = power_distributor(amplitude_operator)
     vol = h_space.scalar_dvol**-0.5
+    # When doubling the resolution of `tgt` the value of the highest k-mode
+    # will scale with a square root. `vol` cancels this effect such that the
+    # same power spectrum can be used for the spaces with the same volume,
+    # different resolutions and the same object in them.
     return ht(vol*A*ducktape(h_space, None, name))
 
 
 def MfCorrelatedField(target, amplitudes, name='xi'):
-    '''Constructs an operator which turns white Gaussian excitation fields
+    """Constructs an operator which turns white Gaussian excitation fields
     into a correlated field defined on a DomainTuple with two entries and two
     separate correlation structures.
 
@@ -70,7 +80,7 @@ def MfCorrelatedField(target, amplitudes, name='xi'):
     Parameters
     ----------
     target : Domain, DomainTuple or tuple of Domain
-        Target of the operator. Must contain exactly one space.
+        Target of the operator. Must contain exactly two spaces.
     amplitudes: iterable of Operator
         List of two amplitude operators.
     name : string
@@ -78,8 +88,9 @@ def MfCorrelatedField(target, amplitudes, name='xi'):
 
     Returns
     -------
-    Correlated field : Operator
-    '''
+    Operator
+        Correlated field
+    """
     tgt = DomainTuple.make(target)
     if len(tgt) != 2:
         raise ValueError
@@ -88,7 +99,7 @@ def MfCorrelatedField(target, amplitudes, name='xi'):
 
     hsp = DomainTuple.make([tt.get_default_codomain() for tt in tgt])
     ht1 = HarmonicTransformOperator(hsp, target=tgt[0], space=0)
-    ht2 = HarmonicTransformOperator(ht1.target, space=1)
+    ht2 = HarmonicTransformOperator(ht1.target, target=tgt[1], space=1)
     ht = ht2 @ ht1
 
     psp = [aa.target[0] for aa in amplitudes]
@@ -101,7 +112,8 @@ def MfCorrelatedField(target, amplitudes, name='xi'):
     d = [dd0, dd1]
 
     a = [dd @ amplitudes[ii] for ii, dd in enumerate(d)]
-    a = reduce(lambda x, y: x*y, a)
+    a = reduce(mul, a)
     A = pd @ a
-    vol = reduce(lambda x, y: x*y, [sp.scalar_dvol**-0.5 for sp in hsp])
+    # For `vol` see comment in `CorrelatedField`
+    vol = reduce(mul, [sp.scalar_dvol**-0.5 for sp in hsp])
     return ht(vol*A*ducktape(hsp, None, name))

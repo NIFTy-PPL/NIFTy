@@ -15,20 +15,24 @@
 #
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
 
-from .operator import Operator
+import numpy as np
+import pytest
+from numpy.testing import assert_allclose, assert_equal, assert_raises
+
+import nifty5 as ift
 
 
-class OffsetOperator(Operator):
-    '''Shifts the input by a fixed field.
+def test_get_signal_variance():
+    space = ift.RGSpace(3)
+    hspace = space.get_default_codomain()
+    spec1 = lambda x: np.ones_like(x)
+    assert_equal(ift.get_signal_variance(spec1, hspace), 3.)
 
-    Parameters
-    ----------
-    field : Field
-        The field by which the input is shifted.'''
-    def __init__(self, field):
-        self._field = field
-        self._domain = self._target = field.domain
+    space = ift.RGSpace(3, distances=1.)
+    hspace = space.get_default_codomain()
 
-    def apply(self, x):
-        self._check_input(x)
-        return x + self._field
+    def spec2(k):
+        t = np.zeros_like(k)
+        t[k == 0] = 1.
+        return t
+    assert_equal(ift.get_signal_variance(spec2, hspace), 1/9.)

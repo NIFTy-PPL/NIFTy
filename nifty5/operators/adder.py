@@ -15,27 +15,25 @@
 #
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
 
-from ..utilities import NiftyMeta
+from ..field import Field
+from ..multi_field import MultiField
+from .operator import Operator
 
 
-class Minimizer(metaclass=NiftyMeta):
-    """A base class used by all minimizers."""
+class Adder(Operator):
+    """Adds a fixed field.
 
-    def __call__(self, energy, preconditioner=None):
-        """Performs the minimization of the provided Energy functional.
+    Parameters
+    ----------
+    field : Field or MultiField
+        The field by which the input is shifted.
+    """
+    def __init__(self, field):
+        if not isinstance(field, (Field, MultiField)):
+            raise TypeError
+        self._field = field
+        self._domain = self._target = field.domain
 
-        Parameters
-        ----------
-        energy : Energy
-           Energy object at the starting point of the iteration
-
-        preconditioner : LinearOperator, optional
-           Preconditioner to accelerate the minimization
-
-        Returns
-        -------
-        Energy : Latest `energy` of the minimization.
-        int : exit status of the minimization
-            Can be controller.CONVERGED or controller.ERROR
-        """
-        raise NotImplementedError
+    def apply(self, x):
+        self._check_input(x)
+        return x + self._field

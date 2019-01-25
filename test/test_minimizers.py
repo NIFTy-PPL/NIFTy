@@ -41,7 +41,8 @@ minimizers = [
 
 newton_minimizers = ['ift.RelaxedNewton(IC)']
 quadratic_only_minimizers = [
-    'ift.ConjugateGradient(IC)', 'ift.ScipyCG(tol=1e-5, maxiter=300)'
+    'ift.ConjugateGradient(IC)',
+    'ift.minimization.scipy_minimizer._ScipyCG(tol=1e-5, maxiter=300)'
 ]
 slow_minimizers = ['ift.SteepestDescent(IC)']
 
@@ -71,6 +72,48 @@ def test_quadratic_minimization(minimizer, space):
         1./covariance_diagonal.local_data,
         rtol=1e-3,
         atol=1e-3)
+
+
+@pmp('space', spaces)
+def test_WF_curvature(space):
+    np.random.seed(42)
+    starting_point = ift.Field.from_random('normal', domain=space)*10
+    required_result = ift.full(space, 1.)
+
+    s = ift.Field.from_random('uniform', domain=space) + 0.5
+    S = ift.DiagonalOperator(s)
+    r = ift.Field.from_random('uniform', domain=space)
+    R = ift.DiagonalOperator(r)
+    n = ift.Field.from_random('uniform', domain=space) + 0.5
+    N = ift.DiagonalOperator(n)
+    all_diag = 1./s + r**2/n
+    curv = ift.WienerFilterCurvature(R, N, S, iteration_controller=IC,
+                                     iteration_controller_sampling=IC)
+    m = curv.inverse(required_result)
+    assert_allclose(
+        m.local_data,
+        1./all_diag.local_data,
+        rtol=1e-3,
+        atol=1e-3)
+    curv.draw_sample()
+    curv.draw_sample(from_inverse=True)
+
+    if len(space.shape) == 1:
+        R = ift.ValueInserter(space, [0])
+        n = ift.from_random('uniform', R.domain) + 0.5
+        N = ift.DiagonalOperator(n)
+        all_diag = 1./s + R(1/n)
+        curv = ift.WienerFilterCurvature(R.adjoint, N, S,
+                                         iteration_controller=IC,
+                                         iteration_controller_sampling=IC)
+        m = curv.inverse(required_result)
+        assert_allclose(
+            m.local_data,
+            1./all_diag.local_data,
+            rtol=1e-3,
+            atol=1e-3)
+        curv.draw_sample()
+        curv.draw_sample(from_inverse=True)
 
 
 @pmp('minimizer', minimizers + newton_minimizers)

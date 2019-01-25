@@ -19,6 +19,7 @@ from .field import Field
 from .multi_field import MultiField
 
 from .operators.operator import Operator
+from .operators.adder import Adder
 from .operators.diagonal_operator import DiagonalOperator
 from .operators.distributors import DOFDistributor, PowerDistributor
 from .operators.domain_tuple_field_inserter import DomainTupleFieldInserter
@@ -33,7 +34,6 @@ from .operators.field_zero_padder import FieldZeroPadder
 from .operators.inversion_enabler import InversionEnabler
 from .operators.linear_operator import LinearOperator
 from .operators.mask_operator import MaskOperator
-from .operators.offset_operator import OffsetOperator
 from .operators.qht_operator import QHTOperator
 from .operators.regridding_operator import RegriddingOperator
 from .operators.sampling_enabler import SamplingEnabler
@@ -49,7 +49,7 @@ from .operators.simple_linear_operators import (
 from .operators.value_inserter import ValueInserter
 from .operators.energy_operators import (
     EnergyOperator, GaussianEnergy, PoissonianEnergy, InverseGammaLikelihood,
-    BernoulliEnergy, Hamiltonian, AveragedEnergy)
+    BernoulliEnergy, StandardHamiltonian, AveragedEnergy)
 
 from .probing import probe_with_posterior_samples, probe_diagonal, \
     StatCalculator
@@ -64,16 +64,16 @@ from .minimization.nonlinear_cg import NonlinearCG
 from .minimization.descent_minimizers import (
     DescentMinimizer, SteepestDescent, VL_BFGS, L_BFGS, RelaxedNewton,
     NewtonCG)
-from .minimization.scipy_minimizer import (ScipyMinimizer, L_BFGS_B, ScipyCG)
+from .minimization.scipy_minimizer import L_BFGS_B
 from .minimization.energy import Energy
 from .minimization.quadratic_energy import QuadraticEnergy
 from .minimization.energy_adapter import EnergyAdapter
-from .minimization.kl_energy import KL_Energy
+from .minimization.metric_gaussian_kl import MetricGaussianKL
 
 from .sugar import *
 from .plot import Plot
 
-from .library.smooth_linear_amplitude import (SLAmplitude, CepstrumOperator)
+from .library.smooth_linear_amplitude import SLAmplitude, CepstrumOperator
 from .library.inverse_gamma_operator import InverseGammaOperator
 from .library.los_response import LOSResponse
 from .library.dynamic_operator import (dynamic_operator,

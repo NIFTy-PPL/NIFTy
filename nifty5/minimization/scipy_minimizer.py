@@ -93,7 +93,7 @@ class _MinHelper(object):
         return _toArray_rw(res)
 
 
-class ScipyMinimizer(Minimizer):
+class _ScipyMinimizer(Minimizer):
     """Scipy-based minimizer
 
     Parameters
@@ -136,19 +136,19 @@ class ScipyMinimizer(Minimizer):
 
 
 def L_BFGS_B(ftol, gtol, maxiter, maxcor=10, disp=False, bounds=None):
-    """Returns a ScipyMinimizer object carrying out the L-BFGS-B algorithm.
+    """Returns a _ScipyMinimizer object carrying out the L-BFGS-B algorithm.
 
     See Also
     --------
-    ScipyMinimizer
+    _ScipyMinimizer
     """
     options = {"ftol": ftol, "gtol": gtol, "maxiter": maxiter,
                "maxcor": maxcor, "disp": disp}
-    return ScipyMinimizer("L-BFGS-B", options, False, bounds)
+    return _ScipyMinimizer("L-BFGS-B", options, False, bounds)
 
 
-class ScipyCG(Minimizer):
-    """Returns a ScipyMinimizer object carrying out the conjugate gradient
+class _ScipyCG(Minimizer):
+    """Returns a _ScipyMinimizer object carrying out the conjugate gradient
     algorithm as implemented by SciPy.
 
     This class is only intended for double-checking NIFTy's own conjugate

@@ -97,10 +97,14 @@ def distaxis(arr):
 def from_local_data(shape, arr, distaxis=-1):
     if tuple(shape) != arr.shape:
         raise ValueError
+    if arr.dtype.kind not in "fciub":
+        raise TypeError
     return arr
 
 
 def from_global_data(arr, sum_up=False, distaxis=-1):
+    if arr.dtype.kind not in "fciub":
+        raise TypeError
     return arr
 
 

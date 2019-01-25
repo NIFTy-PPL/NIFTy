@@ -25,19 +25,19 @@ from .domain_tuple import DomainTuple
 class Field(object):
     """The discrete representation of a continuous field over multiple spaces.
 
-    Stores data arrays and carries all the needed metainformation (i.e. the
+    Stores data arrays and carries all the needed meta-information (i.e. the
     domain) for operators to be able to operate on them.
 
     Parameters
     ----------
     domain : DomainTuple
-        the domain of the new Field
+        The domain of the new Field.
     val : data_object
         This object's global shape must match the domain shape
         After construction, the object will no longer be writeable!
 
-    Notes
-    -----
+    Note
+    ----
     If possible, do not invoke the constructor directly, but use one of the
     many convenience functions for instantiation!
     """
@@ -76,14 +76,14 @@ class Field(object):
         Parameters
         ----------
         domain : Domain, tuple of Domain, or DomainTuple
-            domain of the new Field
+            Domain of the new Field.
         val : float/complex/int scalar
-            fill value. Data type of the field is inferred from val.
+            Fill value. Data type of the field is inferred from val.
 
         Returns
         -------
         Field
-            the newly created field
+            The newly created Field.
         """
         if not np.isscalar(val):
             raise TypeError("val must be a scalar")
@@ -99,7 +99,7 @@ class Field(object):
         Parameters
         ----------
         domain : DomainTuple, tuple of Domain, or Domain
-            the domain of the new Field
+            The domain of the new Field.
         arr : numpy.ndarray
             The data content to be used for the new Field.
             Its shape must match the shape of `domain`.
@@ -132,8 +132,9 @@ class Field(object):
 
         Returns
         -------
-        numpy.ndarray : array containing all field entries, which can be
-            modified. Its shape is identical to `self.shape`.
+        numpy.ndarray
+            Array containing all field entries, which can be modified. Its
+            shape is identical to `self.shape`.
         """
         return dobj.to_global_data_rw(self._val)
 
@@ -171,9 +172,9 @@ class Field(object):
         random_type : 'pm1', 'normal', or 'uniform'
             The random distribution to use.
         domain : DomainTuple
-            The domain of the output random field
+            The domain of the output random Field.
         dtype : type
-            The datatype of the output random field
+            The datatype of the output random Field.
 
         Returns
         -------
@@ -187,10 +188,10 @@ class Field(object):
 
     @property
     def val(self):
-        """dobj.data_object : the data object storing the field's entries
+        """dobj.data_object : the data object storing the field's entries.
 
-        Notes
-        -----
+        Note
+        ----
         This property is intended for low-level, internal use only. Do not use
         from outside of NIFTy's core; there should be better alternatives.
         """
@@ -236,13 +237,13 @@ class Field(object):
         Parameters
         ----------
         spaces : int, tuple of int or None
-            indices of the sub-domains of the field's domain to be considered.
+            Indices of the sub-domains of the field's domain to be considered.
             If `None`, the entire domain is used.
 
         Returns
         -------
         float or None
-            if the requested sub-domain has a uniform volume element, it is
+            If the requested sub-domain has a uniform volume element, it is
             returned. Otherwise, `None` is returned.
         """
         if np.isscalar(spaces):
@@ -264,7 +265,7 @@ class Field(object):
         Parameters
         ----------
         spaces : int, tuple of int or None
-            indices of the sub-domains of the field's domain to be considered.
+            Indices of the sub-domains of the field's domain to be considered.
             If `None`, the entire domain is used.
 
         Returns
@@ -331,8 +332,9 @@ class Field(object):
         x : Field
 
         Returns
-        ----------
-        Field, defined on the product space of self.domain and x.domain
+        -------
+        Field
+            Defined on the product space of self.domain and x.domain.
         """
         if not isinstance(x, Field):
             raise TypeError("The multiplier must be an instance of " +

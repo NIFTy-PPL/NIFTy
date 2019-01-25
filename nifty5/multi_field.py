@@ -25,7 +25,8 @@ from .domain_tuple import DomainTuple
 
 class MultiField(object):
     def __init__(self, domain, val):
-        """
+        """The discrete representation of a continuous field over a sum space.
+
         Parameters
         ----------
         domain: MultiDomain

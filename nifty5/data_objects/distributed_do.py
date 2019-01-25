@@ -307,7 +307,7 @@ for f in ["sqrt", "exp", "log", "tanh", "conjugate", "sin", "cos", "tan",
 
 
 def clip(x, a_min=None, a_max=None):
-    return data_object(x.shape, np.clip(x.data, a_min, a_max), x.distaxis)
+    return data_object(x.shape, np.clip(x._data, a_min, a_max), x._distaxis)
 
 
 def from_object(object, dtype, copy, set_locked):
@@ -387,10 +387,14 @@ def distaxis(arr):
 
 
 def from_local_data(shape, arr, distaxis=0):
+    if arr.dtype.kind not in "fciub":
+        raise TypeError
     return data_object(shape, arr, distaxis)
 
 
 def from_global_data(arr, sum_up=False, distaxis=0):
+    if arr.dtype.kind not in "fciub":
+        raise TypeError
     if sum_up:
         arr = np_allreduce_sum(arr)
     if distaxis == -1:
