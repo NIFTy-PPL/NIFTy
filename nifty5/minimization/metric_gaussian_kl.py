@@ -57,7 +57,7 @@ class MetricGaussianKL(Energy):
     Notes
     -----
     For further details see: Metric Gaussian Variational Inference
-    (in preparation)
+    (FIXME in preparation)
     """
 
     def __init__(self, mean, hamiltonian, n_samples, constants=[],
