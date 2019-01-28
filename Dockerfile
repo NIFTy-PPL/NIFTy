@@ -6,7 +6,7 @@ RUN apt-get update && apt-get install -y \
     # Packages needed for NIFTy
     python3-scipy \
     # Documentation build dependencies
-    python3-sphinx-rtd-theme \
+    python3-sphinx-rtd-theme dvipng texlive-latex-base texlive-latex-extra \
     # Testing dependencies
     python3-pytest-cov jupyter \
     # Optional NIFTy dependencies
