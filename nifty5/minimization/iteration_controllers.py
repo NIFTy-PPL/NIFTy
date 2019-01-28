@@ -133,7 +133,7 @@ class GradientNormController(IterationController):
         if self._iteration_limit is not None:
             if self._itcount >= self._iteration_limit:
                 logger.warning(
-                    "{} Iteration limit reached. Assuming convergence"
+                    "{}Iteration limit reached. Assuming convergence"
                     .format("" if self._name is None else self._name+": "))
                 return self.CONVERGED
         if self._ccount >= self._convergence_level:
