@@ -22,8 +22,7 @@ from .linearization import Linearization
 from .operators.linear_operator import LinearOperator
 from .sugar import from_random
 
-__all__ = ["consistency_check", "check_value_gradient_consistency",
-           "check_value_gradient_metric_consistency"]
+__all__ = ["consistency_check", "check_jacobian_consistency"]
 
 
 def _assert_allclose(f1, f2, atol, rtol):
@@ -92,12 +91,12 @@ def consistency_check(op, domain_dtype=np.float64, target_dtype=np.float64,
         The data type of the random vectors in the operator's target. Default
         is `np.float64`.
     atol : float
-        Absolute tolerance for the check. If rtol is specified, 
-        then satisfying any tolerance will let the check pass. 
+        Absolute tolerance for the check. If rtol is specified,
+        then satisfying any tolerance will let the check pass.
         Default: 0.
     rtol : float
-        Relative tolerance for the check. If atol is specified, 
-        then satisfying any tolerance will let the check pass. 
+        Relative tolerance for the check. If atol is specified,
+        then satisfying any tolerance will let the check pass.
         Default: 0.
     """
     if not isinstance(op, LinearOperator):
@@ -134,7 +133,24 @@ def _get_acceptable_location(op, loc, lin):
     return loc2, lin2
 
 
-def _check_consistency(op, loc, tol, ntries):
+def check_jacobian_consistency(op, loc, tol=1e-8, ntries=100):
+    """
+    Checks the Jacobian of an operator against its finite difference
+    approximation.
+
+    Computes the Jacobian with finite differences and compares it to the
+    implemented Jacobian.
+
+    Parameters
+    ----------
+    op : Operator
+        Operator which shall be checked.
+    loc : Field or MultiField
+        An Field or MultiField instance which has the same domain
+        as op. The location at which the gradient is checked
+    tol : float
+        Tolerance for the check.
+    """
     for _ in range(ntries):
         lin = op(Linearization.make_var(loc))
         loc2, lin2 = _get_acceptable_location(op, loc, lin)
@@ -147,8 +163,7 @@ def _check_consistency(op, loc, tol, ntries):
             dirder = linmid.jac(dir)
             numgrad = (lin2.val-lin.val)
             xtol = tol * dirder.norm() / np.sqrt(dirder.size)
-            cond = (abs(numgrad-dirder) <= xtol).all()
-            if cond:
+            if (abs(numgrad-dirder) <= xtol).all():
                 break
             dir = dir*0.5
             dirnorm *= 0.5
@@ -156,30 +171,4 @@ def _check_consistency(op, loc, tol, ntries):
         else:
             raise ValueError("gradient and value seem inconsistent")
         loc = locnext
-
-
-def check_value_gradient_consistency(op, loc, tol=1e-8, ntries=100):
-    """
-    Checks the gradient (jacobian) of an operator against its value. 
-
-    Computes the gradient (jacobian) with finite differences and compares
-    it to the implemented gradient (jacobian).
-
-    Parameters
-    ----------
-    op : Operator
-        Operator which shall be checked.
-    loc : Field or MultiField
-        An Field or MultiField instance which has the same domain
-        as op. The location at which the gradient is checked
-    atol : float
-        Absolute tolerance for the check. If rtol is specified, 
-        then satisfying any tolerance will let the check pass. 
-        Default: 0.
-    rtol : float
-        Relative tolerance for the check. If atol is specified, 
-        then satisfying any tolerance will let the check pass. 
-        Default: 0
-    """
-    _check_consistency(op, loc, tol, ntries)
 

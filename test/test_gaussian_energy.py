@@ -69,5 +69,5 @@ def test_gaussian_energy(space, nonlinearity, noise, seed):
         N = None
 
     energy = ift.GaussianEnergy(d, N)(d_model())
-    ift.extra.check_value_gradient_consistency(
+    ift.extra.check_jacobian_consistency(
         energy, xi0, ntries=10, tol=5e-8)
