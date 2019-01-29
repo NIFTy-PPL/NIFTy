@@ -23,6 +23,7 @@ Contents
 .. toctree::
 
    ift
+   volume
    Gallery <http://wwwmpa.mpa-garching.mpg.de/ift/nifty/gallery/>
    installation
    code
