@@ -14,12 +14,15 @@ Plotting support is added via::
 
     pip3 install --user matplotlib
 
-FFTW support is added via::
+Since Jan. 2019 we use Numpy's FFT implementation in order to minimize
+dependencies. However, on some problems like FFTs of non-prime length arrays,
+the library FFTW performs a lot better. If you use NIFTy for large problems
+involving FFTs, you may wish to use the FFTW support. It is added via::
 
     sudo apt-get install libfftw3-dev
     pip3 install --user pyfftw
 
-To actually use FFTW in your Nifty calculations, you need to call::
+To actually use FFTW in your NIFTy calculations, you need to call::
 
     nifty5.fft.enable_fftw()
 
