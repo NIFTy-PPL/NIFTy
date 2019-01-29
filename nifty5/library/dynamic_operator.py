@@ -217,7 +217,7 @@ def dynamic_lightcone_operator(*,
                                quant,
                                causal=True,
                                minimum_phase=False):
-    '''Extends the functionality of :function: dynamic_operator to a Green's
+    '''Extends the functionality of :func:`dynamic_operator` to a Green's
     function which is constrained to be within a light cone.
 
     The resulting Green's function is constrained to be within a light cone.

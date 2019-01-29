@@ -47,7 +47,7 @@ def _make_linearization(type, space, seed):
 def testBasics(space, seed):
     var = _make_linearization("Variable", space, seed)
     model = ift.ScalingOperator(6., var.target)
-    ift.extra.check_value_gradient_consistency(model, var.val)
+    ift.extra.check_jacobian_consistency(model, var.val)
 
 
 @pmp('type1', ['Variable', 'Constant'])
@@ -65,32 +65,32 @@ def testBinary(type1, type2, space, seed):
     select_s2 = ift.ducktape(None, dom, "s2")
     model = select_s1*select_s2
     pos = ift.from_random("normal", dom)
-    ift.extra.check_value_gradient_consistency(model, pos, ntries=20)
+    ift.extra.check_jacobian_consistency(model, pos, ntries=20)
     model = select_s1 + select_s2
     pos = ift.from_random("normal", dom)
-    ift.extra.check_value_gradient_consistency(model, pos, ntries=20)
+    ift.extra.check_jacobian_consistency(model, pos, ntries=20)
     model = select_s1.scale(3.)
     pos = ift.from_random("normal", dom1)
-    ift.extra.check_value_gradient_consistency(model, pos, ntries=20)
+    ift.extra.check_jacobian_consistency(model, pos, ntries=20)
     model = ift.ScalingOperator(2.456, space)(select_s1*select_s2)
     pos = ift.from_random("normal", dom)
-    ift.extra.check_value_gradient_consistency(model, pos, ntries=20)
+    ift.extra.check_jacobian_consistency(model, pos, ntries=20)
     model = ift.sigmoid(2.456*(select_s1*select_s2))
     pos = ift.from_random("normal", dom)
-    ift.extra.check_value_gradient_consistency(model, pos, ntries=20)
+    ift.extra.check_jacobian_consistency(model, pos, ntries=20)
     pos = ift.from_random("normal", dom)
     model = ift.OuterProduct(pos['s1'], ift.makeDomain(space))
-    ift.extra.check_value_gradient_consistency(model, pos['s2'], ntries=20)
+    ift.extra.check_jacobian_consistency(model, pos['s2'], ntries=20)
     model = select_s1**2
     pos = ift.from_random("normal", dom1)
-    ift.extra.check_value_gradient_consistency(model, pos, ntries=20)
+    ift.extra.check_jacobian_consistency(model, pos, ntries=20)
     model = select_s1.clip(-1, 1)
     pos = ift.from_random("normal", dom1)
-    ift.extra.check_value_gradient_consistency(model, pos, ntries=20)
+    ift.extra.check_jacobian_consistency(model, pos, ntries=20)
     if isinstance(space, ift.RGSpace):
         model = ift.FFTOperator(space)(select_s1*select_s2)
         pos = ift.from_random("normal", dom)
-        ift.extra.check_value_gradient_consistency(model, pos, ntries=20)
+        ift.extra.check_jacobian_consistency(model, pos, ntries=20)
 
 
 def testModelLibrary(space, seed):
@@ -102,18 +102,18 @@ def testModelLibrary(space, seed):
     assert_(isinstance(model, ift.Operator))
     S = ift.ScalingOperator(1., model.domain)
     pos = S.draw_sample()
-    ift.extra.check_value_gradient_consistency(model, pos, ntries=20)
+    ift.extra.check_jacobian_consistency(model, pos, ntries=20)
 
     model2 = ift.CorrelatedField(space, model)
     S = ift.ScalingOperator(1., model2.domain)
     pos = S.draw_sample()
-    ift.extra.check_value_gradient_consistency(model2, pos, ntries=20)
+    ift.extra.check_jacobian_consistency(model2, pos, ntries=20)
 
     domtup = ift.DomainTuple.make((space, space))
     model3 = ift.MfCorrelatedField(domtup, [model, model])
     S = ift.ScalingOperator(1., model3.domain)
     pos = S.draw_sample()
-    ift.extra.check_value_gradient_consistency(model3, pos, ntries=20)
+    ift.extra.check_jacobian_consistency(model3, pos, ntries=20)
 
 
 def testPointModel(space, seed):
@@ -123,7 +123,7 @@ def testPointModel(space, seed):
     q = 0.73
     model = ift.InverseGammaOperator(space, alpha, q)
     # FIXME All those cdfs and ppfs are not very accurate
-    ift.extra.check_value_gradient_consistency(model, pos, tol=1e-2, ntries=20)
+    ift.extra.check_jacobian_consistency(model, pos, tol=1e-2, ntries=20)
 
 
 @pmp('target', [
@@ -148,7 +148,7 @@ def testDynamicModel(target, causal, minimum_phase, seed):
     S = ift.ScalingOperator(1., model.domain)
     pos = S.draw_sample()
     # FIXME I dont know why smaller tol fails for 3D example
-    ift.extra.check_value_gradient_consistency(model, pos, tol=1e-5, ntries=20)
+    ift.extra.check_jacobian_consistency(model, pos, tol=1e-5, ntries=20)
     if len(target.shape) > 1:
         dct = {
             'target': target,
@@ -169,5 +169,5 @@ def testDynamicModel(target, causal, minimum_phase, seed):
         S = ift.ScalingOperator(1., model.domain)
         pos = S.draw_sample()
         # FIXME I dont know why smaller tol fails for 3D example
-        ift.extra.check_value_gradient_consistency(
+        ift.extra.check_jacobian_consistency(
             model, pos, tol=1e-5, ntries=20)

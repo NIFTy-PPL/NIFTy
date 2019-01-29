@@ -96,12 +96,39 @@ def _cone_arrays(c, domain, sigx, want_gradient):
 
 
 class LightConeOperator(Operator):
-    '''
-    FIXME
+    '''Constructs a Light cone from a set of lightspeed parameters.
+    
+    The resulting cone is defined as follows
+    
+    .. math::
+        \\exp \\left(- \\frac{1}{2} \\Re \\left( \\Delta \\right)^2 \\right)
+    
+    with
+    
+    .. math::
+        \\Delta = \\sqrt{- \\left(t^2 - \\frac{x^\\dagger C^{-1} x}
+        {\\sigma_x^2} \\right)}
+        
+    where t and x are the coordinates of the target space. Note that axis zero
+    of the space is interpreted as the time axis. C denotes the input
+    paramters of the operator and parametrizes the shape of the cone.
+    sigx is the width of the asymptotic Gaussian in x necessary for
+    discretization.
+    
+    Parameters
+    ----------
+    domain : Domain, tuple of Domain or DomainTuple
+        The domain of the input parameters of the light cone, the values of the
+        lightspeed tensor.
+    target : Domain, tuple of Domain or DomainTuple
+        Output space on which the lightcone should be defined. The zeroth axis
+        of this space is interpreted as the time axis.
+    sigx : float
+        Width of the Gaussian for the discretized representation of the cone.
     '''
     def __init__(self, domain, target, sigx):
-        self._domain = domain
-        self._target = target
+        self._domain = DomainTuple.make(domain)
+        self._target = DomainTuple.make(target)
         self._sigx = sigx
 
     def apply(self, x):

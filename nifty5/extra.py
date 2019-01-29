@@ -22,8 +22,7 @@ from .linearization import Linearization
 from .operators.linear_operator import LinearOperator
 from .sugar import from_random
 
-__all__ = ["consistency_check", "check_value_gradient_consistency",
-           "check_value_gradient_metric_consistency"]
+__all__ = ["consistency_check", "check_jacobian_consistency"]
 
 
 def _assert_allclose(f1, f2, atol, rtol):
@@ -74,25 +73,31 @@ def _check_linearity(op, domain_dtype, atol, rtol):
 
 def consistency_check(op, domain_dtype=np.float64, target_dtype=np.float64,
                       atol=0, rtol=1e-7):
-    """Checks whether times(), adjoint_times(), inverse_times() and
+    """
+    Checks an operator for algebraic consistency of its capabilities.
+
+    Checks whether times(), adjoint_times(), inverse_times() and
     adjoint_inverse_times() (if in capability list) is implemented
-    consistently. Additionally, it checks whether the operator is linear
-    actually.
+    consistently. Additionally, it checks whether the operator is linear.
 
     Parameters
     ----------
     op : LinearOperator
         Operator which shall be checked.
-    domain_dtype : FIXME
+    domain_dtype : dtype
         The data type of the random vectors in the operator's domain. Default
         is `np.float64`.
-    target_dtype : FIXME
+    target_dtype : dtype
         The data type of the random vectors in the operator's target. Default
         is `np.float64`.
     atol : float
-        FIXME. Default is 0.
+        Absolute tolerance for the check. If rtol is specified,
+        then satisfying any tolerance will let the check pass.
+        Default: 0.
     rtol : float
-        FIXME. Default is 0.
+        Relative tolerance for the check. If atol is specified,
+        then satisfying any tolerance will let the check pass.
+        Default: 0.
     """
     if not isinstance(op, LinearOperator):
         raise TypeError('This test tests only linear operators.')
@@ -128,25 +133,37 @@ def _get_acceptable_location(op, loc, lin):
     return loc2, lin2
 
 
-def _check_consistency(op, loc, tol, ntries, do_metric):
+def check_jacobian_consistency(op, loc, tol=1e-8, ntries=100):
+    """
+    Checks the Jacobian of an operator against its finite difference
+    approximation.
+
+    Computes the Jacobian with finite differences and compares it to the
+    implemented Jacobian.
+
+    Parameters
+    ----------
+    op : Operator
+        Operator which shall be checked.
+    loc : Field or MultiField
+        An Field or MultiField instance which has the same domain
+        as op. The location at which the gradient is checked
+    tol : float
+        Tolerance for the check.
+    """
     for _ in range(ntries):
-        lin = op(Linearization.make_var(loc, do_metric))
+        lin = op(Linearization.make_var(loc))
         loc2, lin2 = _get_acceptable_location(op, loc, lin)
         dir = loc2-loc
         locnext = loc2
         dirnorm = dir.norm()
         for i in range(50):
             locmid = loc + 0.5*dir
-            linmid = op(Linearization.make_var(locmid, do_metric))
+            linmid = op(Linearization.make_var(locmid))
             dirder = linmid.jac(dir)
             numgrad = (lin2.val-lin.val)
             xtol = tol * dirder.norm() / np.sqrt(dirder.size)
-            cond = (abs(numgrad-dirder) <= xtol).all()
-            if do_metric:
-                dgrad = linmid.metric(dir)
-                dgrad2 = (lin2.gradient-lin.gradient)
-                cond = cond and (abs(dgrad-dgrad2) <= xtol).all()
-            if cond:
+            if (abs(numgrad-dirder) <= xtol).all():
                 break
             dir = dir*0.5
             dirnorm *= 0.5
@@ -155,12 +172,3 @@ def _check_consistency(op, loc, tol, ntries, do_metric):
             raise ValueError("gradient and value seem inconsistent")
         loc = locnext
 
-
-def check_value_gradient_consistency(op, loc, tol=1e-8, ntries=100):
-    """FIXME"""
-    _check_consistency(op, loc, tol, ntries, False)
-
-
-def check_value_gradient_metric_consistency(op, loc, tol=1e-8, ntries=100):
-    """FIXME"""
-    _check_consistency(op, loc, tol, ntries, True)

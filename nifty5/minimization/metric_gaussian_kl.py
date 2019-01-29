@@ -57,10 +57,10 @@ class MetricGaussianKL(Energy):
     Notes
     -----
     For further details see: Metric Gaussian Variational Inference
-    (in preparation)
+    (FIXME in preparation)
     """
 
-    def __init__(self, mean, hamiltonian, n_sampels, constants=[],
+    def __init__(self, mean, hamiltonian, n_samples, constants=[],
                  point_estimates=None, mirror_samples=False,
                  _samples=None):
         super(MetricGaussianKL, self).__init__(mean)
@@ -75,7 +75,7 @@ class MetricGaussianKL(Energy):
             met = hamiltonian(Linearization.make_partial_var(
                 mean, point_estimates, True)).metric
             _samples = tuple(met.draw_sample(from_inverse=True)
-                             for _ in range(n_sampels))
+                             for _ in range(n_samples))
             if mirror_samples:
                 _samples += tuple(-s for s in _samples)
         self._samples = _samples

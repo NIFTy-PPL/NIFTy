@@ -51,18 +51,14 @@ test_mpi:
     - mpiexec -n 2 --bind-to none pytest-3 -q test
 
 pages:
-  stage: release
-  before_script:
-    - ls
+  # FIXME Build only for main branch and set stage to release
+  stage: test
   script:
-    - python3 setup.py install --user -f
     - sh docs/generate.sh
     - mv docs/build/ public/
   artifacts:
     paths:
     - public
-  only:
-  - NIFTy_4
 
 before_script:
   - python3 setup.py install --user -f

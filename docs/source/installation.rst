@@ -14,12 +14,12 @@ Plotting support is added via::
 
     pip3 install --user matplotlib
 
-FFTW support is added via:
+FFTW support is added via::
 
     sudo apt-get install libfftw3-dev
     pip3 install --user pyfftw
 
-To actually use FFTW in your Nifty calculations, you need to call
+To actually use FFTW in your Nifty calculations, you need to call::
 
     nifty5.fft.enable_fftw()
 

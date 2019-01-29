@@ -44,7 +44,7 @@ def field(request):
 
 def test_gaussian(field):
     energy = ift.GaussianEnergy(domain=field.domain)
-    ift.extra.check_value_gradient_consistency(energy, field)
+    ift.extra.check_jacobian_consistency(energy, field)
 
 
 def test_inverse_gamma(field):
@@ -53,7 +53,7 @@ def test_inverse_gamma(field):
     d = np.random.normal(10, size=space.shape)**2
     d = ift.Field.from_global_data(space, d)
     energy = ift.InverseGammaLikelihood(d)
-    ift.extra.check_value_gradient_consistency(energy, field, tol=1e-7)
+    ift.extra.check_jacobian_consistency(energy, field, tol=1e-7)
 
 
 def testPoissonian(field):
@@ -62,7 +62,7 @@ def testPoissonian(field):
     d = np.random.poisson(120, size=space.shape)
     d = ift.Field.from_global_data(space, d)
     energy = ift.PoissonianEnergy(d)
-    ift.extra.check_value_gradient_consistency(energy, field, tol=1e-7)
+    ift.extra.check_jacobian_consistency(energy, field, tol=1e-7)
 
 
 def test_hamiltonian_and_KL(field):
@@ -70,11 +70,11 @@ def test_hamiltonian_and_KL(field):
     space = field.domain
     lh = ift.GaussianEnergy(domain=space)
     hamiltonian = ift.StandardHamiltonian(lh)
-    ift.extra.check_value_gradient_consistency(hamiltonian, field)
+    ift.extra.check_jacobian_consistency(hamiltonian, field)
     S = ift.ScalingOperator(1., space)
     samps = [S.draw_sample() for i in range(3)]
     kl = ift.AveragedEnergy(hamiltonian, samps)
-    ift.extra.check_value_gradient_consistency(kl, field)
+    ift.extra.check_jacobian_consistency(kl, field)
 
 
 def test_bernoulli(field):
@@ -83,4 +83,4 @@ def test_bernoulli(field):
     d = np.random.binomial(1, 0.1, size=space.shape)
     d = ift.Field.from_global_data(space, d)
     energy = ift.BernoulliEnergy(d)
-    ift.extra.check_value_gradient_consistency(energy, field, tol=1e-6)
+    ift.extra.check_jacobian_consistency(energy, field, tol=1e-6)

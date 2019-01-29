@@ -36,8 +36,8 @@ class Field(object):
         This object's global shape must match the domain shape
         After construction, the object will no longer be writeable!
 
-    Note
-    ----
+    Notes
+    -----
     If possible, do not invoke the constructor directly, but use one of the
     many convenience functions for instantiation!
     """
@@ -190,8 +190,8 @@ class Field(object):
     def val(self):
         """dobj.data_object : the data object storing the field's entries.
 
-        Note
-        ----
+        Notes
+        -----
         This property is intended for low-level, internal use only. Do not use
         from outside of NIFTy's core; there should be better alternatives.
         """
