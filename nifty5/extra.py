@@ -134,24 +134,20 @@ def _get_acceptable_location(op, loc, lin):
     return loc2, lin2
 
 
-def _check_consistency(op, loc, tol, ntries, do_metric):
+def _check_consistency(op, loc, tol, ntries):
     for _ in range(ntries):
-        lin = op(Linearization.make_var(loc, do_metric))
+        lin = op(Linearization.make_var(loc))
         loc2, lin2 = _get_acceptable_location(op, loc, lin)
         dir = loc2-loc
         locnext = loc2
         dirnorm = dir.norm()
         for i in range(50):
             locmid = loc + 0.5*dir
-            linmid = op(Linearization.make_var(locmid, do_metric))
+            linmid = op(Linearization.make_var(locmid))
             dirder = linmid.jac(dir)
             numgrad = (lin2.val-lin.val)
             xtol = tol * dirder.norm() / np.sqrt(dirder.size)
             cond = (abs(numgrad-dirder) <= xtol).all()
-            if do_metric:
-                dgrad = linmid.metric(dir)
-                dgrad2 = (lin2.gradient-lin.gradient)
-                cond = cond and (abs(dgrad-dgrad2) <= xtol).all()
             if cond:
                 break
             dir = dir*0.5
@@ -185,9 +181,5 @@ def check_value_gradient_consistency(op, loc, tol=1e-8, ntries=100):
         then satisfying any tolerance will let the check pass. 
         Default: 0
     """
-    _check_consistency(op, loc, tol, ntries, False)
+    _check_consistency(op, loc, tol, ntries)
 
-
-def check_value_gradient_metric_consistency(op, loc, tol=1e-8, ntries=100):
-    """FIXME"""
-    _check_consistency(op, loc, tol, ntries, True)
