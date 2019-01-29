@@ -183,7 +183,7 @@ One can make this more explicit by denoting intensive quantities with upper inde
 
 where we used Einstein sum convention.
 This notation connects to the theoretical discussion before.
-One of the fields has to have the volume metric already incorperated to assure the continouum limit works.
+One of the fields has to have the volume metric already incorporated to assure the continouum limit works.
 When building statistical models, all indices will end up matching this upper-lower convention automatically, e.g. for a Gaussian log-likelihood :math:`L` we have
 
 .. math::
