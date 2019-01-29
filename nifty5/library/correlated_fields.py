@@ -50,6 +50,13 @@ def CorrelatedField(target, amplitude_operator, name='xi', codomain=None):
     -------
     Operator
         Correlated field
+
+    Notes
+    -----
+    In NIFTy, non-harmonic RGSpaces are by definition periodic. Therefore
+    the operator constructed by this method will output a correlated field
+    with *periodic* boundary conditions. If a non-periodic field is needed,
+    one needs to combine this operator with a :class:`FieldZeroPadder`.
     """
     tgt = DomainTuple.make(target)
     if len(tgt) > 1:
@@ -90,6 +97,14 @@ def MfCorrelatedField(target, amplitudes, name='xi'):
     -------
     Operator
         Correlated field
+
+    Notes
+    -----
+    In NIFTy, non-harmonic RGSpaces are by definition periodic. Therefore
+    the operator constructed by this method will output a correlated field
+    with *periodic* boundary conditions. If a non-periodic field is needed,
+    one needs to combine this operator with a :class:`FieldZeroPadder` or even
+    two (one for the energy and one for the spatial subdomain)
     """
     tgt = DomainTuple.make(target)
     if len(tgt) != 2:
