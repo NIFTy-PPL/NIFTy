@@ -39,9 +39,9 @@ test_serial:
   script:
     - pytest-3 -q --cov=nifty5 test
     - >
-      python3 -m coverage report --omit "*plot*,*distributed_do*"
+      python3 -m coverage report --omit "*plot*,*distributed_do*" | tee coverage.txt
     - >
-      python3 -m coverage report --omit "*plot*,*distributed_do*" | grep TOTAL | awk '{ print "TOTAL: "$4; }'
+      grep TOTAL coverage.txt | awk '{ print "TOTAL: "$4; }'
 
 test_mpi:
   stage: test
