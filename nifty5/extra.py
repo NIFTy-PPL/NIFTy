@@ -74,25 +74,31 @@ def _check_linearity(op, domain_dtype, atol, rtol):
 
 def consistency_check(op, domain_dtype=np.float64, target_dtype=np.float64,
                       atol=0, rtol=1e-7):
-    """Checks whether times(), adjoint_times(), inverse_times() and
+    """
+    Checks an operator for algebraic consistency of its capabilities.
+
+    Checks whether times(), adjoint_times(), inverse_times() and
     adjoint_inverse_times() (if in capability list) is implemented
-    consistently. Additionally, it checks whether the operator is linear
-    actually.
+    consistently. Additionally, it checks whether the operator is linear.
 
     Parameters
     ----------
     op : LinearOperator
         Operator which shall be checked.
-    domain_dtype : FIXME
+    domain_dtype : dtype
         The data type of the random vectors in the operator's domain. Default
         is `np.float64`.
-    target_dtype : FIXME
+    target_dtype : dtype
         The data type of the random vectors in the operator's target. Default
         is `np.float64`.
     atol : float
-        FIXME. Default is 0.
+        Absolute tolerance for the check. If rtol is specified, 
+        then satisfying any tolerance will let the check pass. 
+        Default: 0.
     rtol : float
-        FIXME. Default is 0.
+        Relative tolerance for the check. If atol is specified, 
+        then satisfying any tolerance will let the check pass. 
+        Default: 0.
     """
     if not isinstance(op, LinearOperator):
         raise TypeError('This test tests only linear operators.')
@@ -157,7 +163,28 @@ def _check_consistency(op, loc, tol, ntries, do_metric):
 
 
 def check_value_gradient_consistency(op, loc, tol=1e-8, ntries=100):
-    """FIXME"""
+    """
+    Checks the gradient (jacobian) of an operator against its value. 
+
+    Computes the gradient (jacobian) with finite differences and compares
+    it to the implemented gradient (jacobian).
+
+    Parameters
+    ----------
+    op : Operator
+        Operator which shall be checked.
+    loc : Field or MultiField
+        An Field or MultiField instance which has the same domain
+        as op. The location at which the gradient is checked
+    atol : float
+        Absolute tolerance for the check. If rtol is specified, 
+        then satisfying any tolerance will let the check pass. 
+        Default: 0.
+    rtol : float
+        Relative tolerance for the check. If atol is specified, 
+        then satisfying any tolerance will let the check pass. 
+        Default: 0
+    """
     _check_consistency(op, loc, tol, ntries, False)
 
 
