@@ -138,17 +138,11 @@ NIFTy is implemented such that in order to change resolution, only the line of c
 It automatically takes care of depended structures like volume factors, discretised operators and responses.
 A visualisation of this can be seen in figure 2 and 3, which displays the MAP inference of a signal at various resolutions.
 
-.. figure:: images/42vs6.png
-    :scale: 40%
+.. figure:: images/converging_discretization.png
+    :scale: 80%
     :align: center
 
-    Figure 2: MAP inference for different resolutions of the function space.
-
-.. figure:: images/42vs9.png
-    :scale: 40%
-    :align: center
-
-    Figure 3: MAP inference converging at high resolution.
+    Figure 3: Inference result converging at high resolution.
 
 
 Implementation in NIFTy
