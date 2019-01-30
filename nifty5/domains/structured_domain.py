@@ -30,7 +30,7 @@ class StructuredDomain(Domain):
 
     @property
     def scalar_dvol(self):
-        """float or None : uniform cell volume, if applicable
+        """float or None : uniform pixel volume, if applicable
 
         Returns the volume factors of this domain as a floating
         point scalar, if the volume factors are all identical, otherwise
@@ -40,7 +40,7 @@ class StructuredDomain(Domain):
 
     @property
     def dvol(self):
-        """float or numpy.ndarray(dtype=float): Volume factors
+        """float or numpy.ndarray(dtype=float): pixel volume(s)
 
         Returns the volume factors of this domain, either as a floating
         point scalar (if the volume factors are all identical) or as a
