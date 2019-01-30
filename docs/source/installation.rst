@@ -14,14 +14,13 @@ Plotting support is added via::
 
     pip3 install --user matplotlib
 
-Since Jan. 2019 NIFTy uses Numpy's FFT implementation by default, in order to
-minimize dependencies. However, for long-running production jobs we still
-recommend using FFTW because of its higher performance. This is achieved via:
+NIFTy uses Numpy's FFT implementation by default. For large problems FFTW may be
+used because of its higher performance. It can be installed via::
 
     sudo apt-get install libfftw3-dev
     pip3 install --user pyfftw
 
-To actually enable FFTW in your NIFTy calculations, you need to call::
+To enable FFTW usage in NIFTy, call::
 
     nifty5.fft.enable_fftw()
 
