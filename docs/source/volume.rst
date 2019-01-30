@@ -146,23 +146,23 @@ A visualisation of this can be seen in figure 2, which displays the MAP inferenc
 
 
 Implementation in NIFTy
------------------------
+.......................
 
 .. currentmodule:: nifty5
 
 Most codes in NIFTy will contain the description of a measurement process or,
 more generally, a log-likelihood.
 This log-likelihood is necessarily a map from the quantity of interest (a field) to a real number.
-The likelihood has to be unitless because it is a log-probability and should not scale with resolution.
-Often, likelihoods contain integrals over the quantity of interest :math:`s`, which have to be discretized, e.g. by a sum
+The log-likelihood has to be unitless because it is a log-probability and should not scale with resolution.
+Often, log-likelihoods contain integrals over the quantity of interest :math:`s`, which have to be discretized, e.g. by a sum
 
 .. math::
 
-    \int_\Omega \text{d}x\, s(x) \approx \sum_i s_i\int_{\Omega_i}\text{d}x\, 1
+    \int_\Omega \text{d}x\, s(x) \approx \sum_i s^i\int_{\Omega_i}\text{d}x\, 1
 
 Here the domain of the integral :math:`\Omega = \dot{\bigcup_q} \; \Omega_i` is the disjoint union over smaller :math:`\Omega_i`, e.g. the pixels of the space, and :math:`s_i` is the discretized field value on the :math:`i`-th pixel.
 This introduces the weighting :math:`V_i=\int_{\Omega_i}\text{d}x\, 1`, also called the volume factor, a property of the space.
-NIFTy aids you in constructing your own likelihood by providing methods like :func:`~field.Field.weight`, which weights all pixels of a field with their corresponding volume.
+NIFTy aids you in constructing your own log-likelihood by providing methods like :func:`~field.Field.weight`, which weights all pixels of a field with their corresponding volume.
 An integral over a :class:`~field.Field` :code:`s` can be performed by calling :code:`s.weight(1).sum()`, which is equivalent to :code:`s.integrate()`.
 Volume factors are also applied automatically in the following places:
 
@@ -170,32 +170,38 @@ Volume factors are also applied automatically in the following places:
  - some response operators, such as the :class:`~library.los_response.LOSResponse`. In this operator a line integral is descritized, so a 1-dimensional volume factor is applied.
  - In :class:`~library.correlated_fields.CorrelatedField` as well :class:`~library.correlated_fields.MfCorrelatedField`, the field is multiplied by the square root of the total volume in configuration space. This ensures that the same field reconstructed over a larger domain has the same variance in position space in the limit of infinite resolution. It also ensures that power spectra in NIFTy behave according to the definition of a power spectrum, namely the power of a k-mode is the expectation of the k-mode square, divided by the volume of the space.
 
-Note that in contrast to some older versions of NIFTy, the dot product of fields does **not** apply a volume factor
+Note that in contrast to some older versions of NIFTy, the dot product :code:`s.vdot(t)` of fields does **not** apply a volume factor, but instead just sums over the field components,
 
 .. math::
-  s^\dagger t = \sum_i s_i^* t_i .
+  s^\dagger t = \sum_i \overline{s^i}\, t^i \, ,
 
-If this dot product is supposed to be invariant under changes in resolution, then either :math:`s_i` or :math:`t_i` has to decrease as the number of pixels increases, or more specifically, one of the two fields has to be an extensive quantity while the other has to be intensive.
-One can make this more explicit by denoting intensive quantities with upper index and extensive quantities with lower index
+where the bar denotes complex conjugation.
+This dot product is **not** invariant under changes in resolution, as then the number of discretised field components increases.
+Upper index components like :math:`s^i`, however, are designed **not** to scale with the volume.
+
+One solution to obtain a resolution independent quantity is to make one of the two factors a extensive while the other stays intensive.
+This is more explicit when intensive quantities are denoted by an upper index and extensive quantities by a lower index,
 
 .. math::
-  s^\dagger t =  (s^*)^i t_i
+  s^\dagger t =  \overline{s^i} t_i
 
 where we used Einstein sum convention.
-This notation connects to the theoretical discussion before.
-One of the fields has to have the volume metric already incorporated to assure the continouum limit works.
+Here, the volume metric is incorporated by lowering one index, i.e. :math:`t_i = v_{ij}\,t^j`.
 When building statistical models, all indices will end up matching this upper-lower convention automatically, e.g. for a Gaussian log-likelihood :math:`L` we have
 
 .. math::
-  L = \frac{1}{2}s^i \left(S^{-1}\right)_{ij} s^j
+  L = \frac{1}{2}\overline{s^i} \left(S^{-1}\right)_{ij} s^j
 
-with
+with the covariance defined by
 
 .. math::
-  \left(S^{-1}\right)_{ij} = \left(S^{kl}\right)_ij^{-1} = \left(\left<(s^*)^ks^l\right>\right)^{-1})_{ij}\ .
+   S^{ij} = \left<s^i\overline{s^j}\right>\ .
 
-Thus the covariance matrix :math:`S` will ensure that the whole likelihood expression does not scale with resolution.
+Consequently, the inverse covariance operator will automatically have lower indices, 
+
+.. math::
+   \left(S^{-1}\right)_{ij} S^{jk} = \delta^{\,\,k}_j\ ,
+
+ensuring that the whole log-likelihood expression does not scale with resolution.
 **This upper-lower index convention is not coded into NIFTy**, in order to not reduce user freedom.
-One should however have this in mind when constructing algorithms in order to ensure resolution independence.
-
-Note that while the upper-lower index convention ensures resolution independence, this does not automatically fix the pixelization.
+One should however have this in mind when constructing log-likelihoods in order to ensure resolution independence.
