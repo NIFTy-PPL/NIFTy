@@ -26,7 +26,7 @@ from .linear_operator import LinearOperator
 
 
 class RegriddingOperator(LinearOperator):
-    """Linearly interpolates a RGSpace to an RGSpace with coarser resolution.
+    """Linearly interpolates an RGSpace to an RGSpace with coarser resolution.
 
     Parameters
     ----------
