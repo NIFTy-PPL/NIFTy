@@ -157,8 +157,8 @@ fields with equal domains, or a field and a scalar.
 Contractions (like summation, integration, minimum/maximum, computation of
 statistical moments) can be carried out either over an entire field (producing
 a scalar result) or over sub-domains (resulting in a field defined on a smaller
-domain). Scalar products of two fields can also be computed easily. See the
-documentation of :class:`~field.Field` for details.
+domain). Scalar products of two fields can also be computed easily.
+See the documentation of :class:`~field.Field` for details.
 
 There is also a set of convenience functions to generate fields with constant
 values or fields filled with random numbers according to a user-specified
@@ -431,7 +431,7 @@ It needs to be applied in forward direction in order to calculate the Wiener
 filter solution, but only its inverse application is straightforward.
 To use it in forward direction, we make use of NIFTy's
 :class:`~operators.inversion_enabler.InversionEnabler` class, which internally
-does the inverse application of the given operator :math:`x = Op^{-1} (y)` by
+applies the (approximate) inverse of the given operator :math:`x = Op^{-1} (y)` by
 solving the equation :math:`y = Op (x)` for :math:`x`.
 This is accomplished by minimizing a suitable
 :class:`~minimization.quadratic_energy.QuadraticEnergy`
