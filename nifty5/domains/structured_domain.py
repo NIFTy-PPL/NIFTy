@@ -87,11 +87,11 @@ class StructuredDomain(Domain):
     def get_fft_smoothing_kernel_function(self, sigma):
         """Helper for Gaussian smoothing.
 
-        This method, which is only implemented for harmonic domains, helps
-        smoothing fields that are defined on a domain that has this domain as
-        its harmonic partner. The returned function multiplies field values of
-        a field with a zero centered Gaussian which corresponds to a
-        convolution with a Gaussian kernel and sigma standard deviation in
+        This method, which is only implemented for harmonic domains, helps to
+        smoothe fields that are defined on a domain that has this domain as
+        its harmonic partner. The returned function does a pointwise evaluation
+        of a zero-centered Gaussian on the field values, which corresponds to a
+        convolution with a Gaussian kernel with sigma standard deviation in
         position space.
 
         Parameters
