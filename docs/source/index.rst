@@ -6,7 +6,8 @@ Its object-oriented framework is written in Python, although it accesses librari
 
 NIFTy offers a toolkit that abstracts discretized representations of continuous spaces, fields in these spaces, and operators acting on these fields into classes.
 This allows for an abstract formulation and programming of inference algorithms, including those derived within information field theory.
-The user can develop algorithms on subsets of problems and on spaces where the detailed performance of the algorithm can be properly evaluated and then easily generalize them to other, more complex spaces and the full problem, respectively.
+NIFTy's interface is designed to resemble IFT formulae in the sense that the user implements algorithms in NIFTy independent of the topology of the underlying spaces and the discretization scheme.
+Thus, the user can develop algorithms on subsets of problems and on spaces where the detailed performance of the algorithm can be properly evaluated and then easily generalize them to other, more complex spaces and the full problem, respectively.
 
 The set of spaces on which NIFTy operates comprises point sets, *n*-dimensional regular grids, spherical spaces, their harmonic counterparts, and product spaces constructed as combinations of those.
 NIFTy takes care of numerical subtleties like the normalization of operations on fields and the numerical representation of model components, allowing the user to focus on formulating the abstract inference procedures and process-specific model properties.
