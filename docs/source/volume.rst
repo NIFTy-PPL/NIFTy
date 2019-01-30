@@ -70,7 +70,7 @@ After projection, any function :math:`f \in \mathcal{S}` is represented by its a
 
 which defines an embedding :math:`\hat{\mathcal{S}} \hookrightarrow \mathcal{S} = \mathcal{F}(\mathcal{M})`.
 
-**Changes of bases** are performed by reapproximating the :math:`\{\phi_i\}_{i\in \mathcal{I}}` in terms of another basis :math:`\{\phi'_i\}_{i\in \mathcal{I'}}`:
+**Changes of base** are performed by reapproximating the :math:`\{\phi_i\}_{i\in \mathcal{I}}` in terms of another basis :math:`\{\phi'_i\}_{i\in \mathcal{I'}}`:
 
 .. math::
 
@@ -179,7 +179,7 @@ where the bar denotes complex conjugation.
 This dot product is **not** invariant under changes in resolution, as then the number of discretised field components increases.
 Upper index components like :math:`s^i`, however, are designed **not** to scale with the volume.
 
-One solution to obtain a resolution independent quantity is to make one of the two factors a extensive while the other stays intensive.
+One solution to obtain a resolution independent quantity is to make one of the two factors extensive while the other stays intensive.
 This is more explicit when intensive quantities are denoted by an upper index and extensive quantities by a lower index,
 
 .. math::
@@ -197,7 +197,7 @@ with the covariance defined by
 .. math::
    S^{ij} = \left<s^i\overline{s^j}\right>\ .
 
-Consequently, the inverse covariance operator will automatically have lower indices, 
+Consequently, the inverse covariance operator will automatically have lower indices,
 
 .. math::
    \left(S^{-1}\right)_{ij} S^{jk} = \delta^{\,\,k}_j\ ,
