@@ -137,7 +137,7 @@ NIFTy takes advantage of this formulation in several ways:
    The amplitude field :math:`{\tau}` would get its own amplitude operator, with a cepstrum (spectrum of a log spectrum) defined in quefrency space (harmonic space of a logarithmically binned harmonic space) to regularize its degrees of freedom by imposing some (user-defined degree of) spectral smoothness.
 
 5) NIFTy calculates the gradient of the information Hamiltonian and the Fisher information metric with respect to all unknown parameters, here :math:`{\xi}` and :math:`{\tau}`, by automatic differentiation.
-   The gradients are used for MAP and HMCF estimates, and the Fisher matrix is required in addition to the gradient by Metric Gaussian Variational Inference (MGVI), which is available in NIFTy as well.
+   The gradients are used for MAP estimates, and the Fisher matrix is required in addition to the gradient by Metric Gaussian Variational Inference (MGVI), which is available in NIFTy as well.
    MGVI is an implicit operator extension of Automatic Differentiation Variational Inference (ADVI).
 
 The reconstruction of a non-Gaussian signal with unknown covariance from a non-trivial (tomographic) response is demonstrated in `demos/getting_started_3.py`.
