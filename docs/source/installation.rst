@@ -12,7 +12,7 @@ NIFTy5 and its mandatory dependencies can be installed via::
 
 Plotting support is added via::
 
-    pip3 install --user matplotlib
+    sudo apt-get install python3-matplotlib
 
 NIFTy uses Numpy's FFT implementation by default. For large problems FFTW may be
 used because of its higher performance. It can be installed via::
@@ -37,5 +37,4 @@ Support for spherical harmonic transforms is added via::
 
 MPI support is added via::
 
-    sudo apt-get install openmpi-bin libopenmpi-dev
-    pip3 install --user mpi4py
+    sudo apt-get install python3-mpi4py
