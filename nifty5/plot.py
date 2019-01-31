@@ -154,17 +154,13 @@ def _rgb_data(spectral_cube):
     spectral_cube = spectral_cube.reshape((-1, spectral_cube.shape[-1]))
     xyz = getxyz(spectral_cube.shape[-1])
     xyz_data = np.tensordot(spectral_cube, xyz, axes=[-1, -1])
-#    vmax = max(xyz_data[:,0].max()/0.9505,
-#               xyz_data[:,1].max(),
-#               xyz_data[:,2].max()/1.0890)
-    vmax = xyz_data.max()
-    xyz_data /= vmax
-    xyz_data = to_logscale(xyz_data, 1e-3, 1.)
+    xyz_data /= xyz_data.max()
+    xyz_data = to_logscale(xyz_data, max(1e-3, xyz_data.min()), 1.)
     rgb_data = xyz_data.copy()
     it = np.nditer(xyz_data[:, 0], flags=['multi_index'])
     for x in range(xyz_data.shape[0]):
         rgb_data[x] = _gammacorr(np.matmul(MATRIX_SRGB_D65, xyz_data[x]))
-    rgb_data = rgb_data.clip(1e-13, 1.)
+    rgb_data = rgb_data.clip(0., 1.)
     return rgb_data.reshape(spectral_cube.shape[:-1]+(-1,))
 
 
