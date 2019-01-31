@@ -27,7 +27,7 @@ Contents
 
    ift
    volume
-   Gallery <http://wwwmpa.mpa-garching.mpg.de/ift/nifty/gallery/>
+   Gallery <http://wwwmpa.mpa-garching.mpg.de/~ensslin/nifty-gallery/index.html>
    installation
    code
    citations
