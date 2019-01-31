@@ -110,62 +110,37 @@ def _rgb_data(spectral_cube):
             0.000000]])
 
     MATRIX_SRGB_D65 = np.array(
-            [[ 3.2404542, -1.5371385, -0.4985314],
+            [[3.2404542, -1.5371385, -0.4985314],
              [-0.9692660,  1.8760108,  0.0415560],
-             [ 0.0556434, -0.2040259,  1.0572252]])
-
+             [0.0556434, -0.2040259,  1.0572252]])
 
     def _gammacorr(inp):
         mask = np.zeros(inp.shape, dtype=np.float64)
         mask[inp <= 0.0031308] = 1.
         r1 = 12.92*inp
         a = 0.055
-        r2 = (1 + a) * (np.maximum(inp,0.0031308) ** (1/2.4)) - a
+        r2 = (1 + a) * (np.maximum(inp, 0.0031308) ** (1/2.4)) - a
         return r1*mask + r2*(1.-mask)
 
-
-    def lambda2rgb(lam):
-        lammin=380.
-        lammax=780.
-        lam=np.asarray(lam, dtype=np.float64)
-        lam = np.clip(lam, lammin, lammax)
-
-        idx = (lam-lammin)/(lammax-lammin)*(_xyz.shape[1]-1)
-        ii = np.maximum(0, np.minimum(79, int(idx)))
-        w1 = 1.-(idx-ii)
-        w2 = 1.-w1
-        c = w1*_xyz[:,ii] + w2*_xyz[:,ii+1]
-        c = _gammacorr(np.matmul(MATRIX_SRGB_D65, c))
-        c = c.clip(0.,1.)
-        return c
-
     def lambda2xyz(lam):
-        lammin=380.
-        lammax=780.
-        lam=np.asarray(lam, dtype=np.float64)
+        lammin = 380.
+        lammax = 780.
+        lam = np.asarray(lam, dtype=np.float64)
         lam = np.clip(lam, lammin, lammax)
 
         idx = (lam-lammin)/(lammax-lammin)*(_xyz.shape[1]-1)
         ii = np.maximum(0, np.minimum(79, int(idx)))
         w1 = 1.-(idx-ii)
         w2 = 1.-w1
-        c = w1*_xyz[:,ii] + w2*_xyz[:,ii+1]
+        c = w1*_xyz[:, ii] + w2*_xyz[:, ii+1]
         return c
-
-    def getcol(n):
-        E0, E1 = 1./700., 1./400.
-        E = E0 + np.arange(n)*(E1-E0)/(n-1)
-        res = np.zeros((3, n), dtype=np.float64)
-        for i in range(n):
-            res[:,i] = lambda2rgb(1./E[i])
-        return res
 
     def getxyz(n):
         E0, E1 = 1./700., 1./400.
         E = E0 + np.arange(n)*(E1-E0)/(n-1)
         res = np.zeros((3, n), dtype=np.float64)
         for i in range(n):
-            res[:,i] = lambda2xyz(1./E[i])
+            res[:, i] = lambda2xyz(1./E[i])
         return res
 
     def to_logscale(arr, lo, hi):
@@ -186,10 +161,10 @@ def _rgb_data(spectral_cube):
     xyz_data /= vmax
     xyz_data = to_logscale(xyz_data, 1e-3, 1.)
     rgb_data = xyz_data.copy()
-    it = np.nditer(xyz_data[:,0], flags=['multi_index'])
+    it = np.nditer(xyz_data[:, 0], flags=['multi_index'])
     for x in range(xyz_data.shape[0]):
         rgb_data[x] = _gammacorr(np.matmul(MATRIX_SRGB_D65, xyz_data[x]))
-    rgb_data = rgb_data.clip(1e-13,1.)
+    rgb_data = rgb_data.clip(1e-13, 1.)
     return rgb_data.reshape(spectral_cube.shape[:-1]+(-1,))
 
 
@@ -412,7 +387,8 @@ def _plot2D(f, ax, **kwargs):
         xsize = 800
         res, mask, theta, phi = _mollweide_helper(xsize)
         if have_rgb:
-            res = np.full(shape=res.shape+(3,), fill_value=1., dtype=np.float64)
+            res = np.full(shape=res.shape+(3,), fill_value=1.,
+                          dtype=np.float64)
 
         if isinstance(dom, HPSpace):
             ptg = np.empty((phi.size, 2), dtype=np.float64)
