@@ -11,51 +11,56 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
-# Copyright(C) 2013-2018 Max-Planck-Society
+# Copyright(C) 2013-2019 Max-Planck-Society
 #
-# NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik
-# and financially supported by the Studienstiftung des deutschen Volkes.
+# NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
 
-import numpy as np
+from .. import utilities
+from .diagonal_operator import DiagonalOperator
 from .linear_operator import LinearOperator
+from .scaling_operator import ScalingOperator
+from .simple_linear_operators import NullOperator
 
 
 class ChainOperator(LinearOperator):
-    """Class representing chains of operators."""
+    """Class representing chains of operators.
+
+    Notes
+    -----
+    This operator has to be called using the :attr:`make` method.
+    """
 
     def __init__(self, ops, _callingfrommake=False):
         if not _callingfrommake:
             raise NotImplementedError
-        super(ChainOperator, self).__init__()
         self._ops = ops
         self._capability = self._all_ops
         for op in ops:
             self._capability &= op.capability
+        self._domain = self._ops[-1].domain
+        self._target = self._ops[0].target
 
     @staticmethod
     def simplify(ops):
-        from .scaling_operator import ScalingOperator
-        from .diagonal_operator import DiagonalOperator
-        # Step 1: verify domains
-        for i in range(len(ops)-1):
-            if ops[i+1].target != ops[i].domain:
+        # verify domains
+        for i in range(len(ops) - 1):
+            if ops[i + 1].target != ops[i].domain:
                 raise ValueError("domain mismatch")
-        # Step 2: unpack ChainOperators
+        # unpack ChainOperators
         opsnew = []
         for op in ops:
-            if isinstance(op, ChainOperator):
-                opsnew += op._ops
-            else:
-                opsnew.append(op)
+            opsnew += op._ops if isinstance(op, ChainOperator) else [op]
         ops = opsnew
-        # Step 3: collect ScalingOperators
+        # check for NullOperators
+        if any(isinstance(op, NullOperator) for op in ops):
+            ops = (NullOperator(ops[-1].domain, ops[0].target),)
+        # collect ScalingOperators
         fct = 1.
         opsnew = []
         lastdom = ops[-1].domain
         for op in ops:
-            if (isinstance(op, ScalingOperator) and
-                    not np.issubdtype(type(op._factor), np.complexfloating)):
-                fct *= op._factor
+            if (isinstance(op, ScalingOperator) and op._factor.imag == 0):
+                fct *= op._factor.real
             else:
                 opsnew.append(op)
         if fct != 1.:
@@ -69,23 +74,22 @@ class ChainOperator(LinearOperator):
             # have to add the scaling operator at the end
             opsnew.append(ScalingOperator(fct, lastdom))
         ops = opsnew
-        # Step 4: combine DiagonalOperators where possible
+        # combine DiagonalOperators where possible
         opsnew = []
         for op in ops:
-            if (len(opsnew) > 0 and
-                    isinstance(opsnew[-1], DiagonalOperator) and
-                    isinstance(op, DiagonalOperator)):
+            if (len(opsnew) > 0 and isinstance(opsnew[-1], DiagonalOperator)
+                    and isinstance(op, DiagonalOperator)):
                 opsnew[-1] = opsnew[-1]._combine_prod(op)
             else:
                 opsnew.append(op)
         ops = opsnew
-        # Step 5: combine BlockDiagonalOperators where possible
-        from ..multi.block_diagonal_operator import BlockDiagonalOperator
+        # combine BlockDiagonalOperators where possible
+        from .block_diagonal_operator import BlockDiagonalOperator
         opsnew = []
         for op in ops:
-            if (len(opsnew) > 0 and
-                    isinstance(opsnew[-1], BlockDiagonalOperator) and
-                    isinstance(op, BlockDiagonalOperator)):
+            if (len(opsnew) > 0
+                    and isinstance(opsnew[-1], BlockDiagonalOperator)
+                    and isinstance(op, BlockDiagonalOperator)):
                 opsnew[-1] = opsnew[-1]._combine_chain(op)
             else:
                 opsnew.append(op)
@@ -94,6 +98,14 @@ class ChainOperator(LinearOperator):
 
     @staticmethod
     def make(ops):
+        """Build a ChainOperator (or something simpler if possible),
+        a sequence of concatenated LinearOperators.
+
+        Parameters
+        ----------
+        ops: list of LinearOperator
+            Individual operators of the chain.
+        """
         ops = tuple(ops)
         if len(ops) == 0:
             raise ValueError("ops is empty")
@@ -102,14 +114,6 @@ class ChainOperator(LinearOperator):
             return ops[0]
         return ChainOperator(ops, _callingfrommake=True)
 
-    @property
-    def domain(self):
-        return self._ops[-1].domain
-
-    @property
-    def target(self):
-        return self._ops[0].target
-
     def _flip_modes(self, trafo):
         ADJ = self.ADJOINT_BIT
         INV = self.INVERSE_BIT
@@ -117,15 +121,11 @@ class ChainOperator(LinearOperator):
         if trafo == 0:
             return self
         if trafo == ADJ or trafo == INV:
-            return self.make([op._flip_modes(trafo)
-                              for op in reversed(self._ops)])
+            return self.make(
+                [op._flip_modes(trafo) for op in reversed(self._ops)])
         if trafo == ADJ | INV:
             return self.make([op._flip_modes(trafo) for op in self._ops])
         raise ValueError("invalid operator transformation")
-
-    @property
-    def capability(self):
-        return self._capability
 
     def apply(self, x, mode):
         self._check_mode(mode)
@@ -133,3 +133,18 @@ class ChainOperator(LinearOperator):
         for op in t_ops:
             x = op.apply(x, mode)
         return x
+
+    def __repr__(self):
+        subs = "\n".join(sub.__repr__() for sub in self._ops)
+        return "ChainOperator:\n" + utilities.indent(subs)
+
+#     def draw_sample(self, from_inverse=False, dtype=np.float64):
+#         from ..sugar import from_random
+#         if len(self._ops) == 1:
+#             return self._ops[0].draw_sample(from_inverse, dtype)
+#
+#         samp = from_random(random_type="normal", domain=self._domain,
+#                            dtype=dtype)
+#         for op in self._ops:
+#             samp = op.process_sample(samp, from_inverse)
+#         return samp

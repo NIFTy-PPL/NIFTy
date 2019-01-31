@@ -11,13 +11,12 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
-# Copyright(C) 2013-2018 Max-Planck-Society
+# Copyright(C) 2013-2019 Max-Planck-Society
 #
-# NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik
-# and financially supported by the Studienstiftung des deutschen Volkes.
+# NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
 
-from .domain import Domain
 from functools import reduce
+from .domain import Domain
 
 
 class UnstructuredDomain(Domain):
@@ -36,14 +35,13 @@ class UnstructuredDomain(Domain):
     _needed_for_hash = ["_shape"]
 
     def __init__(self, shape):
-        super(UnstructuredDomain, self).__init__()
         try:
             self._shape = tuple([int(i) for i in shape])
         except TypeError:
             self._shape = (int(shape), )
 
     def __repr__(self):
-        return "UnstructuredDomain(shape=%r)" % (self.shape, )
+        return "UnstructuredDomain(shape={})".format(self.shape)
 
     @property
     def shape(self):

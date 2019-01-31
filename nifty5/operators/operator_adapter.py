@@ -11,36 +11,43 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
-# Copyright(C) 2013-2018 Max-Planck-Society
+# Copyright(C) 2013-2019 Max-Planck-Society
 #
-# NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik
-# and financially supported by the Studienstiftung des deutschen Volkes.
+# NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
+
+import numpy as np
 
 from .linear_operator import LinearOperator
-import numpy as np
 
 
 class OperatorAdapter(LinearOperator):
-    """Class representing the inverse and/or adjoint of another operator."""
+    """Class representing the inverse and/or adjoint of another operator.
+
+    Objects of this class are created internally by `LinearOperator` whenever
+    the inverse and/or adjoint of an already existing operator object is
+    requested via the `LinearOperator` attributes `inverse`, `adjoint` or
+    `_flip_modes()`.
+
+    Users should never have to create instances of this class directly.
+
+    Parameters
+    ----------
+    op : LinearOperator
+        The operator on which the adapter will act
+    op_transform : int
+        1) adjoint
+        2) inverse
+        3) adjoint inverse
+    """
 
     def __init__(self, op, op_transform):
-        super(OperatorAdapter, self).__init__()
         self._op = op
         self._trafo = int(op_transform)
         if self._trafo < 1 or self._trafo > 3:
             raise ValueError("invalid operator transformation")
-
-    @property
-    def domain(self):
-        return self._op._dom(1 << self._trafo)
-
-    @property
-    def target(self):
-        return self._op._tgt(1 << self._trafo)
-
-    @property
-    def capability(self):
-        return self._capTable[self._trafo][self._op.capability]
+        self._domain = self._op._dom(1 << self._trafo)
+        self._target = self._op._tgt(1 << self._trafo)
+        self._capability = self._capTable[self._trafo][self._op.capability]
 
     def _flip_modes(self, trafo):
         newtrafo = trafo ^ self._trafo
@@ -55,3 +62,9 @@ class OperatorAdapter(LinearOperator):
         if self._trafo & self.INVERSE_BIT:
             return self._op.draw_sample(not from_inverse, dtype)
         return self._op.draw_sample(from_inverse, dtype)
+
+    def __repr__(self):
+        from ..utilities import indent
+        mode = ["adjoint", "inverse", "adjoint inverse"][self._trafo-1]
+        res = "OperatorAdapter: {}\n".format(mode)
+        return res + indent(self._op.__repr__())

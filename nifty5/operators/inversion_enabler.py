@@ -11,17 +11,17 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
-# Copyright(C) 2013-2018 Max-Planck-Society
+# Copyright(C) 2013-2019 Max-Planck-Society
 #
-# NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik
-# and financially supported by the Studienstiftung des deutschen Volkes.
+# NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
 
 import numpy as np
 
 from ..logger import logger
 from ..minimization.conjugate_gradient import ConjugateGradient
-from ..minimization.iteration_controller import IterationController
+from ..minimization.iteration_controllers import IterationController
 from ..minimization.quadratic_energy import QuadraticEnergy
+from ..sugar import full
 from .endomorphic_operator import EndomorphicOperator
 
 
@@ -47,25 +47,18 @@ class InversionEnabler(EndomorphicOperator):
     """
 
     def __init__(self, op, iteration_controller, approximation=None):
-        super(InversionEnabler, self).__init__()
         self._op = op
         self._ic = iteration_controller
         self._approximation = approximation
-
-    @property
-    def domain(self):
-        return self._op.domain
-
-    @property
-    def capability(self):
-        return self._addInverse[self._op.capability]
+        self._domain = op.domain
+        self._capability = self._addInverse[self._op.capability]
 
     def apply(self, x, mode):
         self._check_mode(mode)
         if self._op.capability & mode:
             return self._op.apply(x, mode)
 
-        x0 = x.empty_copy().fill(0.)
+        x0 = full(x.domain, 0.)
         invmode = self._modeTable[self.INVERSE_BIT][self._ilog[mode]]
         invop = self._op._flip_modes(self._ilog[invmode])
         prec = self._approximation

@@ -11,22 +11,31 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
-# Copyright(C) 2013-2018 Max-Planck-Society
+# Copyright(C) 2013-2019 Max-Planck-Society
 #
-# NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik
-# and financially supported by the Studienstiftung des deutschen Volkes.
+# NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
 
 import numpy as np
+
 from .structured_domain import StructuredDomain
 
 
 class DOFSpace(StructuredDomain):
-    """Generic degree-of-freedom space."""
+    """Generic degree-of-freedom space. It is defined as the domain of some
+    DOFDistributor.
+    Its entries represent the underlying degrees of freedom of some other
+    space, according to the dofdex.
+
+    Parameters
+    ----------
+    dof_weights: 1-D numpy array
+        A numpy array containing the multiplicity of each individual degree of
+        freedom.
+    """
 
     _needed_for_hash = ["_dvol"]
 
     def __init__(self, dof_weights):
-        super(DOFSpace, self).__init__()
         self._dvol = tuple(dof_weights)
 
     @property

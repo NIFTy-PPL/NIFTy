@@ -11,47 +11,45 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
-# Copyright(C) 2013-2018 Max-Planck-Society
+# Copyright(C) 2013-2019 Max-Planck-Society
 #
-# NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik
-# and financially supported by the Studienstiftung des deutschen Volkes.
+# NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
 
-from __future__ import division
-from builtins import range
 from functools import reduce
 import numpy as np
-from .structured_domain import StructuredDomain
-from ..field import Field
+
 from .. import dobj
+from ..field import Field
+from .structured_domain import StructuredDomain
 
 
 class RGSpace(StructuredDomain):
-    """NIFTy subclass for regular Cartesian grids.
+    """Represents a regular Cartesian grid.
 
     Parameters
     ----------
     shape : int or tuple of int
         Number of grid points or numbers of gridpoints along each axis.
     distances : None or float or tuple of float, optional
-        Distance between two grid points along each axis
-        (default: None).
+        Distance between two grid points along each axis.
 
-        If distances is None:
-
-          - if harmonic==True, all distances will be set to 1
-
-          - if harmonic==False, the distance along each axis will be
+        By default (distances=None):
+          - If harmonic==True, all distances will be set to 1
+          - If harmonic==False, the distance along each axis will be
             set to the inverse of the number of points along that axis.
 
     harmonic : bool, optional
         Whether the space represents a grid in position or harmonic space.
-        (default: False).
+        Default: False.
+
+    Notes
+    -----
+    Topologically, a n-dimensional RGSpace is a n-Torus, i.e. it has periodic
+    boundary conditions.
     """
     _needed_for_hash = ["_distances", "_shape", "_harmonic"]
 
     def __init__(self, shape, distances=None, harmonic=False):
-        super(RGSpace, self).__init__()
-
         self._harmonic = bool(harmonic)
         if np.isscalar(shape):
             shape = (shape,)
@@ -73,8 +71,8 @@ class RGSpace(StructuredDomain):
         self._size = int(reduce(lambda x, y: x*y, self._shape))
 
     def __repr__(self):
-        return ("RGSpace(shape=%r, distances=%r, harmonic=%r)"
-                % (self.shape, self.distances, self.harmonic))
+        return ("RGSpace(shape={}, distances={}, harmonic={})"
+                .format(self.shape, self.distances, self.harmonic))
 
     @property
     def harmonic(self):
@@ -95,22 +93,18 @@ class RGSpace(StructuredDomain):
     def get_k_length_array(self):
         if (not self.harmonic):
             raise NotImplementedError
-        out = Field(self, dtype=np.float64)
-        oloc = out.local_data
-        ibegin = dobj.ibegin(out.val)
-        res = np.arange(oloc.shape[0], dtype=np.float64) + ibegin[0]
+        ibegin = dobj.ibegin_from_shape(self._shape)
+        res = np.arange(self.local_shape[0], dtype=np.float64) + ibegin[0]
         res = np.minimum(res, self.shape[0]-res)*self.distances[0]
         if len(self.shape) == 1:
-            oloc[()] = res
-            return out
+            return Field.from_local_data(self, res)
         res *= res
         for i in range(1, len(self.shape)):
-            tmp = np.arange(oloc.shape[i], dtype=np.float64) + ibegin[i]
+            tmp = np.arange(self.local_shape[i], dtype=np.float64) + ibegin[i]
             tmp = np.minimum(tmp, self.shape[i]-tmp)*self.distances[i]
             tmp *= tmp
             res = np.add.outer(res, tmp)
-        oloc[()] = np.sqrt(res)
-        return out
+        return Field.from_local_data(self, np.sqrt(res))
 
     def get_unique_k_lengths(self):
         if (not self.harmonic):
@@ -145,10 +139,7 @@ class RGSpace(StructuredDomain):
     @staticmethod
     def _kernel(x, sigma):
         from ..sugar import exp
-        tmp = x*x
-        tmp *= -2.*np.pi*np.pi*sigma*sigma
-        exp(tmp, out=tmp)
-        return tmp
+        return exp(x*x * (-2.*np.pi*np.pi*sigma*sigma))
 
     def get_fft_smoothing_kernel_function(self, sigma):
         if (not self.harmonic):

@@ -1,7 +1,7 @@
 image: $CONTAINER_TEST_IMAGE
 
 variables:
-  CONTAINER_TEST_IMAGE: gitlab-registry.mpcdf.mpg.de/ift/nifty:$CI_BUILD_REF_NAME
+  CONTAINER_TEST_IMAGE: gitlab-registry.mpcdf.mpg.de/ift/nifty-dev:$CI_BUILD_REF_NAME
   OMP_NUM_THREADS: 1
 
 stages:
@@ -15,6 +15,8 @@ build_docker_from_scratch:
     - schedules
   image: docker:stable
   stage: build_docker
+  before_script:
+    - ls
   script:
     - docker login -u gitlab-ci-token -p $CI_BUILD_TOKEN gitlab-registry.mpcdf.mpg.de
     - docker build -t $CONTAINER_TEST_IMAGE --no-cache .
@@ -25,177 +27,87 @@ build_docker_from_cache:
     - schedules
   image: docker:stable
   stage: build_docker
+  before_script:
+    - ls
   script:
     - docker login -u gitlab-ci-token -p $CI_BUILD_TOKEN gitlab-registry.mpcdf.mpg.de
     - docker build -t $CONTAINER_TEST_IMAGE .
     - docker push $CONTAINER_TEST_IMAGE
 
-test_python2_with_coverage:
+test_serial:
   stage: test
   script:
-    - python setup.py install --user -f
-    - mpiexec -n 2 --bind-to none nosetests -q 2> /dev/null
-    - nosetests -q --with-coverage --cover-package=nifty5 --cover-erase
+    - pytest-3 -q --cov=nifty5 test
     - >
-      coverage report --omit "*plotting*,*distributed_do*"
+      python3 -m coverage report --omit "*plot*,*distributed_do*" | tee coverage.txt
     - >
-      coverage report --omit "*plotting*,*distributed_do*" | grep TOTAL | awk '{ print "TOTAL: "$4; }'
+      grep TOTAL coverage.txt | awk '{ print "TOTAL: "$4; }'
 
-test_python3:
+test_mpi:
   stage: test
+  variables:
+    OMPI_MCA_btl_vader_single_copy_mechanism: none
   script:
-    - python3 setup.py install --user -f
-    - mpiexec -n 2 --bind-to none nosetests3 -q 2> /dev/null
-    - nosetests3 -q
+    - mpiexec -n 2 --bind-to none pytest-3 -q test
 
 pages:
   stage: release
   script:
-    - python setup.py install --user -f
     - sh docs/generate.sh
     - mv docs/build/ public/
   artifacts:
     paths:
     - public
   only:
-  - NIFTy_4
+  - NIFTy_5
+
 
 before_script:
-  - export MPLBACKEND="agg"
-
-run_critical_filtering:
-  stage: demo_runs
-  script:
-    - ls
-    - python setup.py install --user -f
-    - python3 setup.py install --user -f
-    - python demos/critical_filtering.py
-    - python3 demos/critical_filtering.py
-  artifacts:
-    paths:
-      - '*.png'
-
-run_nonlinear_critical_filter:
-  stage: demo_runs
-  script:
-    - python setup.py install --user -f
-    - python3 setup.py install --user -f
-    - python demos/nonlinear_critical_filter.py
-    - python3 demos/nonlinear_critical_filter.py
-  artifacts:
-    paths:
-      - '*.png'
-
-run_nonlinear_wiener_filter:
-  stage: demo_runs
-  script:
-    - python setup.py install --user -f
-    - python3 setup.py install --user -f
-    - python demos/nonlinear_wiener_filter.py
-    - python3 demos/nonlinear_wiener_filter.py
-  only:
-    - run_demos
-  artifacts:
-    paths:
-      - '*.png'
-
-# FIXME: disable for now. Fixing it is part of issue #244.
-#run_poisson_demo:
-#  stage: demo_runs
-#  script:
-#    - python setup.py install --user -f
-#    - python3 setup.py install --user -f
-#    - python demos/poisson_demo.py
-#    - python3 demos/poisson_demo.py
-#  artifacts:
-#    paths:
-#      - '*.png'
-
-run_probing:
-  stage: demo_runs
-  script:
-    - python setup.py install --user -f
-    - python3 setup.py install --user -f
-    - python demos/probing.py
-    - python3 demos/probing.py
-  artifacts:
-    paths:
-      - '*.png'
-
-run_sampling:
-  stage: demo_runs
-  script:
-    - python setup.py install --user -f
-    - python3 setup.py install --user -f
-    - python demos/sampling.py
-    - python3 demos/sampling.py
-  artifacts:
-    paths:
-      - '*.png'
-
-run_tomography:
-  stage: demo_runs
-  script:
-    - python setup.py install --user -f
-    - python3 setup.py install --user -f
-    - python demos/tomography.py
-    - python3 demos/tomography.py
-  artifacts:
-    paths:
-      - '*.png'
-
-run_wiener_filter_data_space_noiseless:
-  stage: demo_runs
-  script:
-    - python setup.py install --user -f
-    - python3 setup.py install --user -f
-    - python demos/wiener_filter_data_space_noiseless.py
-    - python3 demos/wiener_filter_data_space_noiseless.py
-  artifacts:
-    paths:
-      - '*.png'
-
-run_wiener_filter_easy.py:
-  stage: demo_runs
-  script:
-    - python setup.py install --user -f
-    - python3 setup.py install --user -f
-    - python demos/wiener_filter_easy.py
-    - python3 demos/wiener_filter_easy.py
-  artifacts:
-    paths:
-      - '*.png'
-
-run_wiener_filter_via_curvature.py:
-  stage: demo_runs
-  script:
-    - pip install --user numericalunits
-    - pip3 install --user numericalunits
-    - python setup.py install --user -f
-    - python3 setup.py install --user -f
-    - python demos/wiener_filter_via_curvature.py
-    - python3 demos/wiener_filter_via_curvature.py
-  artifacts:
-    paths:
-      - '*.png'
-
-run_wiener_filter_via_hamiltonian.py:
-  stage: demo_runs
-  script:
-    - python setup.py install --user -f
-    - python3 setup.py install --user -f
-    - python demos/wiener_filter_via_hamiltonian.py
-    - python3 demos/wiener_filter_via_hamiltonian.py
-  artifacts:
-    paths:
-      - '*.png'
+  - python3 setup.py install --user -f
 
 run_ipynb:
   stage: demo_runs
   script:
-    - python setup.py install --user -f
-    - python3 setup.py install --user -f
     - jupyter nbconvert --execute --ExecutePreprocessor.timeout=None demos/Wiener_Filter.ipynb
+
+run_getting_started_1:
+  stage: demo_runs
+  script:
+    - python3 demos/getting_started_1.py
+    - mpiexec -n 2 --bind-to none python3 demos/getting_started_1.py 2> /dev/null
+  artifacts:
+    paths:
+      - '*.png'
+
+run_getting_started_2:
+  stage: demo_runs
+  script:
+    - python3 demos/getting_started_2.py
+    - mpiexec -n 2 --bind-to none python3 demos/getting_started_2.py 2> /dev/null
+  artifacts:
+    paths:
+      - '*.png'
+
+run_getting_started_3:
+  stage: demo_runs
+  script:
+    - python3 demos/getting_started_3.py
+  artifacts:
+    paths:
+      - '*.png'
+
+run_bernoulli:
+  stage: demo_runs
+  script:
+    - python3 demos/bernoulli_demo.py
+  artifacts:
+    paths:
+      - '*.png'
+
+run_curve_fitting:
+  stage: demo_runs
+  script:
+    - python3 demos/polynomial_fit.py
   artifacts:
     paths:
       - '*.png'

@@ -11,18 +11,16 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
-# Copyright(C) 2013-2018 Max-Planck-Society
+# Copyright(C) 2013-2019 Max-Planck-Society
 #
-# NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik
-# and financially supported by the Studienstiftung des deutschen Volkes.
+# NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
 
-from __future__ import division
-from .minimizer import Minimizer
 from ..logger import logger
+from .minimizer import Minimizer
 
 
 class ConjugateGradient(Minimizer):
-    """ Implementation of the Conjugate Gradient scheme.
+    """Implementation of the Conjugate Gradient scheme.
 
     It is an iterative method for solving a linear system of equations:
                                     Ax = b
@@ -31,6 +29,9 @@ class ConjugateGradient(Minimizer):
     ----------
     controller : :py:class:`nifty5.IterationController`
         Object that decides when to terminate the minimization.
+    nreset : int
+        every `nreset` CG steps the residual will be recomputed accurately
+        by applying the operator instead of updating the old residual
 
     References
     ----------
@@ -38,20 +39,21 @@ class ConjugateGradient(Minimizer):
     2006, Springer-Verlag New York
     """
 
-    def __init__(self, controller):
+    def __init__(self, controller, nreset=20):
         self._controller = controller
+        self._nreset = nreset
 
     def __call__(self, energy, preconditioner=None):
-        """ Runs the conjugate gradient minimization.
+        """Runs the conjugate gradient minimization.
 
         Parameters
         ----------
         energy : Energy object at the starting point of the iteration.
-            Its curvature operator must be independent of position, otherwise
+            Its metric operator must be independent of position, otherwise
             linear conjugate gradient minimization will fail.
         preconditioner : Operator *optional*
             This operator can be provided which transforms the variables of the
-            system to improve the conditioning (default: None).
+            system to improve the conditioning. Default: None.
 
         Returns
         -------
@@ -66,14 +68,15 @@ class ConjugateGradient(Minimizer):
             return energy, status
 
         r = energy.gradient
-        d = r.copy() if preconditioner is None else preconditioner(r)
+        d = r if preconditioner is None else preconditioner(r)
 
         previous_gamma = r.vdot(d).real
         if previous_gamma == 0:
             return energy, controller.CONVERGED
 
+        iter = 0
         while True:
-            q = energy.curvature(d)
+            q = energy.apply_metric(d)
             ddotq = d.vdot(q).real
             if ddotq == 0.:
                 logger.error("Error: ConjugateGradient: ddotq==0.")
@@ -84,10 +87,14 @@ class ConjugateGradient(Minimizer):
                 logger.error("Error: ConjugateGradient: alpha<0.")
                 return energy, controller.ERROR
 
-            q *= -alpha
-            r = r + q
-
-            energy = energy.at_with_grad(energy.position - alpha*d, r)
+            iter += 1
+            if iter < self._nreset:
+                r = r - q*alpha
+                energy = energy.at_with_grad(energy.position - alpha*d, r)
+            else:
+                energy = energy.at(energy.position - alpha*d)
+                r = energy.gradient
+                iter = 0
 
             s = r if preconditioner is None else preconditioner(r)
 
@@ -103,7 +110,6 @@ class ConjugateGradient(Minimizer):
             if status != controller.CONTINUE:
                 return energy, status
 
-            d *= max(0, gamma/previous_gamma)
-            d += s
+            d = d * max(0, gamma/previous_gamma) + s
 
             previous_gamma = gamma

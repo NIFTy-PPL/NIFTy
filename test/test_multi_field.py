@@ -11,57 +11,62 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
-# Copyright(C) 2013-2018 Max-Planck-Society
+# Copyright(C) 2013-2019 Max-Planck-Society
 #
-# NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik
-# and financially supported by the Studienstiftung des deutschen Volkes.
+# NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
 
-import unittest
 import numpy as np
-from numpy.testing import assert_equal, assert_allclose, assert_raises
-from itertools import product
+from numpy.testing import assert_allclose, assert_equal
+
 import nifty5 as ift
-from test.common import expand
 
 dom = ift.makeDomain({"d1": ift.RGSpace(10)})
 
 
-class Test_Functionality(unittest.TestCase):
-    def test_vdot(self):
-        f1 = ift.from_random("normal", domain=dom, dtype=np.complex128)
-        f2 = ift.from_random("normal", domain=dom, dtype=np.complex128)
-        assert_allclose(f1.vdot(f2), np.conj(f2.vdot(f1)))
+def test_vdot():
+    f1 = ift.from_random("normal", domain=dom, dtype=np.complex128)
+    f2 = ift.from_random("normal", domain=dom, dtype=np.complex128)
+    assert_allclose(f1.vdot(f2), np.conj(f2.vdot(f1)))
 
-    def test_lock(self):
-        f1 = ift.full(dom, 27)
-        assert_equal(f1.locked, False)
-        f1.lock()
-        assert_equal(f1.locked, True)
-        assert_equal(f1.locked_copy() is f1, True)
 
-    def test_fill(self):
-        f1 = ift.full(dom, 27)
-        f1.fill(10)
-        for val in f1.values():
-            assert_equal((val == 10).all(), True)
+def test_func():
+    f1 = ift.from_random("normal", domain=dom, dtype=np.complex128)
+    assert_allclose(
+        ift.log(ift.exp((f1)))["d1"].local_data, f1["d1"].local_data)
 
-    def test_dataconv(self):
-        f1 = ift.full(dom, 27)
-        f2 = ift.from_global_data(dom, f1.to_global_data())
-        for key, val in f1.items():
-            assert_equal(val.local_data, f2[key].local_data)
 
-    def test_blockdiagonal(self):
-        op = ift.BlockDiagonalOperator({"d1":
-                                        ift.ScalingOperator(20., dom["d1"])})
-        op2 = op*op
-        ift.extra.consistency_check(op2)
-        assert_equal(type(op2), ift.BlockDiagonalOperator)
-        f1 = op2(ift.full(dom, 1))
-        for val in f1.values():
-            assert_equal((val == 400).all(), True)
-        op2 = op+op
-        assert_equal(type(op2), ift.BlockDiagonalOperator)
-        f1 = op2(ift.full(dom, 1))
-        for val in f1.values():
-            assert_equal((val == 40).all(), True)
+def test_multifield_field_consistency():
+    f1 = ift.full(dom, 27)
+    f2 = ift.from_global_data(dom['d1'], f1['d1'].to_global_data())
+    assert_equal(f1.sum(), f2.sum())
+    assert_equal(f1.size, f2.size)
+
+
+def test_dataconv():
+    f1 = ift.full(dom, 27)
+    f2 = ift.from_global_data(dom, f1.to_global_data())
+    for key, val in f1.items():
+        assert_equal(val.local_data, f2[key].local_data)
+    if "d1" not in f2:
+        raise KeyError()
+    assert_equal({"d1": f1}, f2.to_dict())
+    f3 = ift.full(dom, 27+1.j)
+    f4 = ift.full(dom, 1.j)
+    assert_equal(f2, f3.real)
+    assert_equal(f4, f3.imag)
+
+
+def test_blockdiagonal():
+    op = ift.BlockDiagonalOperator(
+        dom, {"d1": ift.ScalingOperator(20., dom["d1"])})
+    op2 = op(op)
+    ift.extra.consistency_check(op2)
+    assert_equal(type(op2), ift.BlockDiagonalOperator)
+    f1 = op2(ift.full(dom, 1))
+    for val in f1.values():
+        assert_equal((val == 400).all(), True)
+    op2 = op + op
+    assert_equal(type(op2), ift.BlockDiagonalOperator)
+    f1 = op2(ift.full(dom, 1))
+    for val in f1.values():
+        assert_equal((val == 40).all(), True)

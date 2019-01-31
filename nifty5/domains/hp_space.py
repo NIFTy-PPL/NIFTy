@@ -11,18 +11,17 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
-# Copyright(C) 2013-2018 Max-Planck-Society
+# Copyright(C) 2013-2019 Max-Planck-Society
 #
-# NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik
-# and financially supported by the Studienstiftung des deutschen Volkes.
+# NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
 
-from __future__ import division
 import numpy as np
+
 from .structured_domain import StructuredDomain
 
 
 class HPSpace(StructuredDomain):
-    """NIFTy subclass for HEALPix discretizations of the two-sphere.
+    """Represents 2-sphere with HEALPix discretization.
 
     Its harmonic partner domain is the
     :class:`~nifty5.domains.lm_space.LMSpace`.
@@ -37,13 +36,12 @@ class HPSpace(StructuredDomain):
     _needed_for_hash = ["_nside"]
 
     def __init__(self, nside):
-        super(HPSpace, self).__init__()
         self._nside = int(nside)
         if self._nside < 1:
             raise ValueError("nside must be >=1.")
 
     def __repr__(self):
-        return ("HPSpace(nside=%r)" % self.nside)
+        return "HPSpace(nside={})".format(self.nside)
 
     @property
     def harmonic(self):
@@ -80,7 +78,7 @@ class HPSpace(StructuredDomain):
         The `lmax` and `mmax` parameters of the returned :class:`LMSpace` are
         set to `2*self.nside`.
         """
-        from .. import LMSpace
+        from ..domains.lm_space import LMSpace
         return LMSpace(lmax=2*self.nside)
 
     def check_codomain(self, codomain):
@@ -92,6 +90,6 @@ class HPSpace(StructuredDomain):
         This function only checks whether `codomain` is of type
         :class:`LMSpace`.
         """
-        from .. import LMSpace
+        from ..domains.lm_space import LMSpace
         if not isinstance(codomain, LMSpace):
             raise TypeError("codomain must be a LMSpace.")

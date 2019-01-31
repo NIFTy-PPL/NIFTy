@@ -11,20 +11,22 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
-# Copyright(C) 2013-2018 Max-Planck-Society
+# Copyright(C) 2013-2019 Max-Planck-Society
 #
-# NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik
-# and financially supported by the Studienstiftung des deutschen Volkes.
+# NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
 
 from functools import reduce
+from . import utilities
 from .domains.domain import Domain
 
 
 class DomainTuple(object):
     """Ordered sequence of Domain objects.
 
-    This class holds a set of :class:`Domain` objects, which together form the
-    space on which a :class:`Field` is defined.
+    This class holds a tuple of :class:`Domain` objects, which together form
+    the space on which a :class:`Field` is defined.
+    This corresponds to a tensor product of the corresponding vector
+    fields.
 
     Notes
     -----
@@ -33,15 +35,16 @@ class DomainTuple(object):
     via the factory function :attr:`make`!
     """
     _tupleCache = {}
+    _scalarDomain = None
 
     def __init__(self, domain, _callingfrommake=False):
         if not _callingfrommake:
             raise NotImplementedError
         self._dom = self._parse_domain(domain)
         self._axtuple = self._get_axes_tuple()
-        shape_tuple = tuple(sp.shape for sp in self._dom)
-        self._shape = reduce(lambda x, y: x + y, shape_tuple, ())
-        self._size = reduce(lambda x, y: x * y, self._shape, 1)
+        self._shape = reduce(lambda x, y: x+y, (sp.shape for sp in self._dom),
+                             ())
+        self._size = reduce(lambda x, y: x*y, self._shape, 1)
 
     def _get_axes_tuple(self):
         i = 0
@@ -50,7 +53,7 @@ class DomainTuple(object):
             nax = len(thing.shape)
             res[idx] = tuple(range(i, i+nax))
             i += nax
-        return res
+        return tuple(res)
 
     @staticmethod
     def make(domain):
@@ -100,9 +103,19 @@ class DomainTuple(object):
         """tuple of int: number of pixels along each axis
 
         The shape of the array-like object required to store information
-        living on the DomainTuple.
+        defined on the DomainTuple.
         """
         return self._shape
+
+    @property
+    def local_shape(self):
+        """tuple of int: number of pixels along each axis on the local task
+
+        The shape of the array-like object required to store information
+        defined on part of the domain which is stored on the local MPI task.
+        """
+        from .dobj import local_shape
+        return local_shape(self._shape)
 
     @property
     def size(self):
@@ -124,30 +137,28 @@ class DomainTuple(object):
         return self._dom.__hash__()
 
     def __eq__(self, x):
-        if self is x:
-            return True
-        x = DomainTuple.make(x)
-        return self is x
+        return (self is x) or (self._dom == x._dom)
 
     def __ne__(self, x):
         return not self.__eq__(x)
 
-    def compatibleTo(self, x):
-        return self.__eq__(x)
-
-    def subsetOf(self, x):
-        return self.__eq__(x)
-
-    def unitedWith(self, x):
-        if self is x:
-            return self
-        x = DomainTuple.make(x)
-        if self is not x:
-            raise ValueError("domain mismatch")
-        return self
-
     def __str__(self):
-        res = "DomainTuple, len: " + str(len(self))
-        for i in self:
-            res += "\n" + str(i)
-        return res
+        return ("DomainTuple, len: {}\n".format(len(self)) +
+                "\n".join(str(i) for i in self))
+
+    def __reduce__(self):
+        return (_unpickleDomainTuple, (self._dom,))
+
+    @staticmethod
+    def scalar_domain():
+        if DomainTuple._scalarDomain is None:
+            DomainTuple._scalarDomain = DomainTuple.make(())
+        return DomainTuple._scalarDomain
+
+    def __repr__(self):
+        subs = "\n".join(sub.__repr__() for sub in self._dom)
+        return "DomainTuple:\n"+utilities.indent(subs)
+
+
+def _unpickleDomainTuple(*args):
+    return DomainTuple.make(*args)

@@ -11,18 +11,18 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
-# Copyright(C) 2013-2018 Max-Planck-Society
+# Copyright(C) 2013-2019 Max-Planck-Society
 #
-# NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik
-# and financially supported by the Studienstiftung des deutschen Volkes.
+# NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
 
 import numpy as np
-from .structured_domain import StructuredDomain
+
 from .. import dobj
+from .structured_domain import StructuredDomain
 
 
 class PowerSpace(StructuredDomain):
-    """NIFTy class for spaces of power spectra.
+    """Represents non-equidistantly binned spaces for power spectra.
 
     A power space is the result of a projection of a harmonic domain where
     k-modes of equal length get mapped to one power index.
@@ -31,13 +31,13 @@ class PowerSpace(StructuredDomain):
     ----------
     harmonic_partner : StructuredDomain
         The harmonic domain of which this is the power space.
-    binbounds : None, or tuple of float (default: None)
-        if None:
-            There will be as many bins as there are distinct k-vector lengths
-            in the harmonic partner space.
-            The `binbounds` property of the PowerSpace will also be None.
+    binbounds : None, or tuple of float
+        By default (binbounds=None):
+            There are as many bins as there are distinct k-vector lengths in
+            the harmonic partner space.
+            The `binbounds` property of the PowerSpace will be None.
         else:
-            the bin bounds requested for this PowerSpace. The array
+            The bin bounds requested for this PowerSpace. The array
             must be sorted and strictly ascending. The first entry is the right
             boundary of the first bin, and the last entry is the left boundary
             of the last bin, i.e. thee will be `len(binbounds)+1` bins in
@@ -154,8 +154,6 @@ class PowerSpace(StructuredDomain):
             return PowerSpace.linear_binbounds(nbin, lbound, rbound)
 
     def __init__(self, harmonic_partner, binbounds=None):
-        super(PowerSpace, self).__init__()
-
         if not (isinstance(harmonic_partner, StructuredDomain) and
                 harmonic_partner.harmonic):
             raise ValueError("harmonic_partner must be a harmonic space.")
@@ -205,8 +203,8 @@ class PowerSpace(StructuredDomain):
             self._powerIndexCache[key]
 
     def __repr__(self):
-        return ("PowerSpace(harmonic_partner=%r, binbounds=%r)"
-                % (self.harmonic_partner, self._binbounds))
+        return ("PowerSpace(harmonic_partner={}, binbounds={})"
+                .format(self.harmonic_partner, self._binbounds))
 
     @property
     def harmonic(self):

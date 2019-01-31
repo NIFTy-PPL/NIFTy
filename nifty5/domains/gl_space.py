@@ -11,18 +11,17 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
-# Copyright(C) 2013-2018 Max-Planck-Society
+# Copyright(C) 2013-2019 Max-Planck-Society
 #
-# NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik
-# and financially supported by the Studienstiftung des deutschen Volkes.
+# NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
 
-from __future__ import division
 import numpy as np
+
 from .structured_domain import StructuredDomain
 
 
 class GLSpace(StructuredDomain):
-    """NIFTy subclass for Gauss-Legendre pixelizations of the two-sphere.
+    """Represents a 2-sphere with Gauss-Legendre pixelization.
 
     Its harmonic partner domain is the
     :class:`~nifty5.domains.lm_space.LMSpace`.
@@ -34,14 +33,12 @@ class GLSpace(StructuredDomain):
         pixelization.
     nlon : int, optional
         Number of longitudinal bins that are used for this pixelization.
-        Default value is 2*nlat + 1.
+        Default value is 2*nlat - 1.
     """
 
     _needed_for_hash = ["_nlat", "_nlon"]
 
     def __init__(self, nlat, nlon=None):
-        super(GLSpace, self).__init__()
-
         self._nlat = int(nlat)
         if self._nlat < 1:
             raise ValueError("nlat must be a positive number.")
@@ -54,7 +51,7 @@ class GLSpace(StructuredDomain):
         self._dvol = None
 
     def __repr__(self):
-        return ("GLSpace(nlat=%r, nlon=%r)" % (self.nlat, self.nlon))
+        return "GLSpace(nlat={}, nlon={})".format(self.nlat, self.nlon)
 
     @property
     def harmonic(self):
@@ -105,7 +102,7 @@ class GLSpace(StructuredDomain):
         LMSpace
             The partner domain
         """
-        from .. import LMSpace
+        from ..domains.lm_space import LMSpace
         return LMSpace(lmax=self._nlat-1, mmax=self._nlon//2)
 
     def check_codomain(self, codomain):
@@ -117,6 +114,6 @@ class GLSpace(StructuredDomain):
         This function only checks whether `codomain` is of type
         :class:`LMSpace`.
         """
-        from .. import LMSpace
+        from ..domains.lm_space import LMSpace
         if not isinstance(codomain, LMSpace):
             raise TypeError("codomain must be a LMSpace.")

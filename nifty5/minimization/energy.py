@@ -11,21 +11,18 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
-# Copyright(C) 2013-2018 Max-Planck-Society
+# Copyright(C) 2013-2019 Max-Planck-Society
 #
-# NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik
-# and financially supported by the Studienstiftung des deutschen Volkes.
+# NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
 
-from ..field import Field
-from ..multi import MultiField
-from ..utilities import NiftyMetaBase, memo
+from ..utilities import NiftyMeta
 
 
-class Energy(NiftyMetaBase()):
-    """ Provides the functional used by minimization schemes.
+class Energy(metaclass=NiftyMeta):
+    """Provides the functional used by minimization schemes.
 
-   The Energy object is an implementation of a scalar function including its
-   gradient and curvature at some position.
+    The Energy object is an implementation of a scalar function including its
+    gradient and metric at some position.
 
     Parameters
     ----------
@@ -35,27 +32,22 @@ class Energy(NiftyMetaBase()):
     Notes
     -----
     An instance of the Energy class is defined at a certain location. If one
-    is interested in the value, gradient or curvature of the abstract energy
+    is interested in the value, gradient or metric of the abstract energy
     functional one has to 'jump' to the new position using the `at` method.
     This method returns a new energy instance residing at the new position. By
     this approach, intermediate results from computing e.g. the gradient can
-    safely be reused for e.g. the value or the curvature.
+    safely be reused for e.g. the value or the metric.
 
-    Memorizing the evaluations of some quantities (using the memo decorator)
-    minimizes the computational effort for multiple calls.
-
-    See Also
-    --------
-    memo
-
+    Memorizing the evaluations of some quantities minimizes the computational
+    effort for multiple calls.
     """
 
     def __init__(self, position):
-        super(Energy, self).__init__()
-        self._position = position.lock()
+        self._position = position
+        self._gradnorm = None
 
     def at(self, position):
-        """ Returns a new Energy object, initialized at `position`.
+        """Returns a new Energy object, initialized at `position`.
 
         Parameters
         ----------
@@ -75,7 +67,7 @@ class Energy(NiftyMetaBase()):
         Field : selected location in parameter space.
 
         The Field location in parameter space where value, gradient and
-        curvature are evaluated.
+        metric are evaluated.
         """
         return self._position
 
@@ -96,19 +88,34 @@ class Energy(NiftyMetaBase()):
         raise NotImplementedError
 
     @property
-    @memo
     def gradient_norm(self):
         """
         float : L2-norm of the gradient at given `position`.
         """
-        return self.gradient.norm()
+        if self._gradnorm is None:
+            self._gradnorm = self.gradient.norm()
+        return self._gradnorm
 
     @property
-    def curvature(self):
+    def metric(self):
         """
-        LinearOperator : implicitly defined curvature.
+        LinearOperator : implicitly defined metric.
             A positive semi-definite operator or function describing the
-            curvature of the potential at the given `position`.
+            metric of the potential at the given `position`.
+        """
+        raise NotImplementedError
+
+    def apply_metric(self, x):
+        """
+        Parameters
+        ----------
+        x: Field or MultiField
+            Argument for the metric operator
+
+        Returns
+        -------
+        Field or MultiField:
+            Output of the metric operator
         """
         raise NotImplementedError
 
@@ -127,31 +134,3 @@ class Energy(NiftyMetaBase()):
             `dir`. If None, the step size is not limited.
         """
         return None
-
-    def __add__(self, other):
-        if not isinstance(other, Energy):
-            raise TypeError
-        return Add(self, other)
-
-    def __sub__(self, other):
-        if not isinstance(other, Energy):
-            raise TypeError
-        return Add(self, (-1) * other)
-
-
-def Add(energy1, energy2):
-    if (isinstance(energy1.position, MultiField) and
-            isinstance(energy2.position, MultiField)):
-        a = energy1.position._val
-        b = energy2.position._val
-        # Note: In python >3.5 one could do {**a, **b}
-        ab = a.copy()
-        ab.update(b)
-        position = MultiField(ab)
-    elif (isinstance(energy1.position, Field) and
-          isinstance(energy2.position, Field)):
-        position = energy1.position
-    else:
-        raise TypeError
-    from .energy_sum import EnergySum
-    return EnergySum(position, [energy1, energy2])

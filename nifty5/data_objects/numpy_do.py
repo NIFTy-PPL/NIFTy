@@ -11,18 +11,30 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
-# Copyright(C) 2013-2018 Max-Planck-Society
+# Copyright(C) 2013-2019 Max-Planck-Society
 #
-# NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik
-# and financially supported by the Studienstiftung des deutschen Volkes.
+# NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
 
-# Data object module for NIFTy that uses simple numpy ndarrays.
+# Data object module that uses simple numpy ndarrays.
 
 import numpy as np
+from numpy import absolute, clip, cos, cosh, empty, empty_like, exp, full, log
 from numpy import ndarray as data_object
-from numpy import full, empty, empty_like, sqrt, ones, zeros, vdot, \
-                  exp, log, tanh
+from numpy import ones, sign, sin, sinc, sinh, sqrt, tan, tanh, vdot, zeros
+
 from .random import Random
+
+__all__ = ["ntask", "rank", "master", "local_shape", "data_object", "full",
+           "empty", "zeros", "ones", "empty_like", "vdot", "exp",
+           "log", "tanh", "sqrt", "from_object", "from_random",
+           "local_data", "ibegin", "ibegin_from_shape", "np_allreduce_sum",
+           "np_allreduce_min", "np_allreduce_max",
+           "distaxis", "from_local_data", "from_global_data", "to_global_data",
+           "redistribute", "default_distaxis", "is_numpy", "absmax", "norm",
+           "lock", "locked", "uniform_full", "to_global_data_rw",
+           "ensure_not_distributed", "ensure_default_distributed",
+           "clip", "sin", "cos", "tan", "sinh",
+           "cosh", "absolute", "sign", "sinc"]
 
 ntask = 1
 rank = 0
@@ -74,22 +86,34 @@ def np_allreduce_min(arr):
     return arr
 
 
+def np_allreduce_max(arr):
+    return arr
+
+
 def distaxis(arr):
     return -1
 
 
 def from_local_data(shape, arr, distaxis=-1):
-    if shape != arr.shape:
+    if tuple(shape) != arr.shape:
         raise ValueError
+    if arr.dtype.kind not in "fciub":
+        raise TypeError
     return arr
 
 
 def from_global_data(arr, sum_up=False, distaxis=-1):
+    if arr.dtype.kind not in "fciub":
+        raise TypeError
     return arr
 
 
 def to_global_data(arr):
     return arr
+
+
+def to_global_data_rw(arr):
+    return arr.copy()
 
 
 def redistribute(arr, dist=None, nodist=None):
@@ -110,3 +134,23 @@ def lock(arr):
 
 def locked(arr):
     return not arr.flags.writeable
+
+
+def uniform_full(shape, fill_value, dtype=None, distaxis=-1):
+    return np.broadcast_to(fill_value, shape)
+
+
+def ensure_not_distributed(arr, axes):
+    return arr, arr
+
+
+def ensure_default_distributed(arr):
+    return arr
+
+
+def absmax(arr):
+    return np.linalg.norm(arr.rehape(-1), ord=np.inf)
+
+
+def norm(arr, ord=2):
+    return np.linalg.norm(arr.reshape(-1), ord=ord)

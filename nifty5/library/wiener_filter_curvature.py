@@ -11,14 +11,13 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
-# Copyright(C) 2013-2018 Max-Planck-Society
+# Copyright(C) 2013-2019 Max-Planck-Society
 #
-# NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik
-# and financially supported by the Studienstiftung des deutschen Volkes.
+# NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
 
-from ..operators.sandwich_operator import SandwichOperator
 from ..operators.inversion_enabler import InversionEnabler
 from ..operators.sampling_enabler import SamplingEnabler
+from ..operators.sandwich_operator import SandwichOperator
 
 
 def WienerFilterCurvature(R, N, S, iteration_controller=None,
@@ -45,7 +44,7 @@ def WienerFilterCurvature(R, N, S, iteration_controller=None,
         The iteration controller to use for sampling.
     """
     M = SandwichOperator.make(R, N.inverse)
-    if iteration_controller is not None:
+    if iteration_controller_sampling is not None:
         op = SamplingEnabler(M, S.inverse, iteration_controller_sampling,
                              S.inverse)
     else:

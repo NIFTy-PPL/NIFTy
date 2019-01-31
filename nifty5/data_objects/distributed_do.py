@@ -11,16 +11,29 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
-# Copyright(C) 2013-2018 Max-Planck-Society
+# Copyright(C) 2013-2019 Max-Planck-Society
 #
-# NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik
-# and financially supported by the Studienstiftung des deutschen Volkes.
+# NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
 
-import numpy as np
-from .random import Random
-from mpi4py import MPI
 import sys
 from functools import reduce
+
+import numpy as np
+from mpi4py import MPI
+
+from .random import Random
+
+__all__ = ["ntask", "rank", "master", "local_shape", "data_object", "full",
+           "empty", "zeros", "ones", "empty_like", "vdot", "exp",
+           "log", "tanh", "sqrt", "from_object", "from_random",
+           "local_data", "ibegin", "ibegin_from_shape", "np_allreduce_sum",
+           "np_allreduce_min", "np_allreduce_max",
+           "distaxis", "from_local_data", "from_global_data", "to_global_data",
+           "redistribute", "default_distaxis", "is_numpy", "absmax", "norm",
+           "lock", "locked", "uniform_full", "transpose", "to_global_data_rw",
+           "ensure_not_distributed", "ensure_default_distributed",
+           "tanh", "conjugate", "sin", "cos", "tan",
+           "sinh", "cosh", "sinc", "absolute", "sign", "clip"]
 
 _comm = MPI.COMM_WORLD
 ntask = _comm.Get_size()
@@ -57,8 +70,15 @@ class data_object(object):
         self._shape = tuple(shape)
         if len(self._shape) == 0:
             distaxis = -1
+            if not isinstance(data, np.ndarray):
+                data = np.full((), data)
         self._distaxis = distaxis
         self._data = data
+        if local_shape(self._shape, self._distaxis) != self._data.shape:
+            raise ValueError("shape mismatch")
+
+    def copy(self):
+        return data_object(self._shape, self._data.copy(), self._distaxis)
 
 #     def _sanity_checks(self):
 #         # check whether the distaxis is consistent
@@ -149,11 +169,11 @@ class data_object(object):
     def prod(self, axis=None):
         return self._contraction_helper("prod", MPI.PROD, axis)
 
-    def min(self, axis=None):
-        return self._contraction_helper("min", MPI.MIN, axis)
+#    def min(self, axis=None):
+#        return self._contraction_helper("min", MPI.MIN, axis)
 
-    def max(self, axis=None):
-        return self._contraction_helper("max", MPI.MAX, axis)
+#    def max(self, axis=None):
+#        return self._contraction_helper("max", MPI.MAX, axis)
 
     def mean(self, axis=None):
         if axis is None:
@@ -184,9 +204,6 @@ class data_object(object):
         elif np.isscalar(other):
             a = a._data
             b = other
-        elif isinstance(other, np.ndarray):
-            a = a._data
-            b = other
         else:
             return NotImplemented
 
@@ -195,6 +212,9 @@ class data_object(object):
             return self
         else:
             return data_object(self._shape, tval, self._distaxis)
+
+    def clip(self, min=None, max=None):
+        return data_object(self._shape, np.clip(self._data, min, max))
 
     def __neg__(self):
         return data_object(self._shape, -self._data, self._distaxis)
@@ -232,6 +252,12 @@ def full(shape, fill_value, dtype=None, distaxis=0):
                                       fill_value, dtype), distaxis)
 
 
+def uniform_full(shape, fill_value, dtype=None, distaxis=0):
+    return data_object(
+        shape, np.broadcast_to(fill_value, local_shape(shape, distaxis)),
+        distaxis)
+
+
 def empty(shape, dtype=None, distaxis=0):
     return data_object(shape, np.empty(local_shape(shape, distaxis),
                                        dtype), distaxis)
@@ -253,6 +279,8 @@ def empty_like(a, dtype=None):
 
 def vdot(a, b):
     tmp = np.array(np.vdot(a._data, b._data))
+    if a._distaxis == -1:
+        return tmp[()]
     res = np.empty((), dtype=tmp.dtype)
     _comm.Allreduce(tmp, res, MPI.SUM)
     return res[()]
@@ -269,12 +297,17 @@ def _math_helper(x, function, out):
 
 _current_module = sys.modules[__name__]
 
-for f in ["sqrt", "exp", "log", "tanh", "conjugate"]:
+for f in ["sqrt", "exp", "log", "tanh", "conjugate", "sin", "cos", "tan",
+          "sinh", "cosh", "sinc", "absolute", "sign"]:
     def func(f):
         def func2(x, out=None):
             return _math_helper(x, f, out)
         return func2
     setattr(_current_module, f, func(f))
+
+
+def clip(x, a_min=None, a_max=None):
+    return data_object(x.shape, np.clip(x._data, a_min, a_max), x._distaxis)
 
 
 def from_object(object, dtype, copy, set_locked):
@@ -300,6 +333,10 @@ def from_object(object, dtype, copy, set_locked):
 # algorithm.
 def from_random(random_type, shape, dtype=np.float64, **kwargs):
     generator_function = getattr(Random, random_type)
+    if len(shape) == 0:
+        ldat = generator_function(dtype=dtype, shape=shape, **kwargs)
+        ldat = _comm.bcast(ldat)
+        return from_local_data(shape, ldat, distaxis=-1)
     for i in range(ntask):
         lshape = list(shape)
         lshape[0] = _shareSize(shape[0], ntask, i)
@@ -339,15 +376,25 @@ def np_allreduce_min(arr):
     return res
 
 
+def np_allreduce_max(arr):
+    res = np.empty_like(arr)
+    _comm.Allreduce(arr, res, MPI.MAX)
+    return res
+
+
 def distaxis(arr):
     return arr._distaxis
 
 
 def from_local_data(shape, arr, distaxis=0):
+    if arr.dtype.kind not in "fciub":
+        raise TypeError
     return data_object(shape, arr, distaxis)
 
 
 def from_global_data(arr, sum_up=False, distaxis=0):
+    if arr.dtype.kind not in "fciub":
+        raise TypeError
     if sum_up:
         arr = np_allreduce_sum(arr)
     if distaxis == -1:
@@ -355,12 +402,19 @@ def from_global_data(arr, sum_up=False, distaxis=0):
     lo, hi = _shareRange(arr.shape[distaxis], ntask, rank)
     sl = [slice(None)]*len(arr.shape)
     sl[distaxis] = slice(lo, hi)
-    return data_object(arr.shape, arr[sl], distaxis)
+    return data_object(arr.shape, arr[tuple(sl)], distaxis)
 
 
 def to_global_data(arr):
     if arr._distaxis == -1:
         return arr._data
+    tmp = redistribute(arr, dist=-1)
+    return tmp._data
+
+
+def to_global_data_rw(arr):
+    if arr._distaxis == -1:
+        return arr._data.copy()
     tmp = redistribute(arr, dist=-1)
     return tmp._data
 
@@ -424,7 +478,7 @@ def redistribute(arr, dist=None, nodist=None):
             lo, hi = _shareRange(arr.shape[dist], ntask, i)
             sslice[dist] = slice(lo, hi)
             ssz[i] = ssz0*(hi-lo)
-            sbuf[ofs:ofs+ssz[i]] = arr._data[sslice].flat
+            sbuf[ofs:ofs+ssz[i]] = arr._data[tuple(sslice)].flat
             ofs += ssz[i]
             rsz[i] = rsz0*_shareSize(arr.shape[arr._distaxis], ntask, i)
     ssz *= arr._data.itemsize
@@ -439,15 +493,16 @@ def redistribute(arr, dist=None, nodist=None):
         rbuf = rbuf.reshape(local_shape(arr.shape, dist))
         arrnew = from_local_data(arr.shape, rbuf, distaxis=dist)
     else:
-        arrnew = empty(arr.shape, dtype=arr.dtype, distaxis=dist)
+        arrnew = np.empty(local_shape(arr.shape, dist), dtype=arr.dtype)
         rslice = [slice(None)]*arr._data.ndim
         ofs = 0
         for i in range(ntask):
             lo, hi = _shareRange(arr.shape[arr._distaxis], ntask, i)
             rslice[arr._distaxis] = slice(lo, hi)
             sz = rsz[i]//arr._data.itemsize
-            arrnew._data[rslice].flat = rbuf[ofs:ofs+sz]
+            arrnew[tuple(rslice)].flat = rbuf[ofs:ofs+sz]
             ofs += sz
+        arrnew = from_local_data(arr.shape, arrnew, distaxis=dist)
     return arrnew
 
 
@@ -476,15 +531,15 @@ def transpose(arr):
     r_msg = [rbuf, (rsz, rdisp), MPI.BYTE]
     _comm.Alltoallv(s_msg, r_msg)
     del sbuf  # free memory
-    arrnew = empty((arr.shape[1], arr.shape[0]), dtype=arr.dtype, distaxis=0)
-    ofs = 0
     sz2 = _shareSize(arr.shape[1], ntask, rank)
+    arrnew = np.empty((sz2, arr.shape[0]), dtype=arr.dtype)
+    ofs = 0
     for i in range(ntask):
         lo, hi = _shareRange(arr.shape[0], ntask, i)
         sz = rsz[i]//arr._data.itemsize
-        arrnew._data[:, lo:hi] = rbuf[ofs:ofs+sz].reshape(hi-lo, sz2).T
+        arrnew[:, lo:hi] = rbuf[ofs:ofs+sz].reshape(hi-lo, sz2).T
         ofs += sz
-    return arrnew
+    return from_local_data((arr.shape[1], arr.shape[0]), arrnew, 0)
 
 
 def default_distaxis():
@@ -497,3 +552,37 @@ def lock(arr):
 
 def locked(arr):
     return not arr._data.flags.writeable
+
+
+def ensure_not_distributed(arr, axes):
+    if arr._distaxis in axes:
+        arr = redistribute(arr, nodist=axes)
+    return arr, arr._data
+
+
+def ensure_default_distributed(arr):
+    if arr._distaxis != 0:
+        arr = redistribute(arr, dist=0)
+    return arr
+
+
+def absmax(arr):
+    if arr._data.size == 0:
+        tmp = np.array(0, dtype=arr._data.dtype)
+    else:
+        tmp = np.asarray(np.linalg.norm(arr._data.reshape(-1), ord=np.inf))
+    res = np.empty_like(tmp)
+    _comm.Allreduce(tmp, res, MPI.MAX)
+    return res[()]
+
+
+def norm(arr, ord=2):
+    if ord == np.inf:
+        return absmax(arr)
+    tmp = np.asarray(np.linalg.norm(arr._data.reshape(-1), ord=ord) ** ord)
+    res = np.empty_like(tmp)
+    if len(arr._data.shape) == 0:
+        res = tmp
+    else:
+        _comm.Allreduce(tmp, res, MPI.SUM)
+    return res[()] ** (1./ord)

@@ -11,29 +11,62 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
-# Copyright(C) 2013-2018 Max-Planck-Society
+# Copyright(C) 2013-2019 Max-Planck-Society
 #
-# NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik
-# and financially supported by the Studienstiftung des deutschen Volkes.
+# NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
 
-from __future__ import division
-from .minimizer import Minimizer
-from ..field import Field
+import numpy as np
+
 from .. import dobj
+from ..field import Field
 from ..logger import logger
-from .iteration_controller import IterationController
+from ..multi_field import MultiField
+from ..utilities import iscomplextype
+from .iteration_controllers import IterationController
+from .minimizer import Minimizer
 
 
-def _toNdarray(fld):
-    return fld.to_global_data().reshape(-1)
+def _multiToArray(fld):
+    szall = sum(2*v.size if iscomplextype(v.dtype) else v.size
+                for v in fld.values())
+    res = np.empty(szall, dtype=np.float64)
+    ofs = 0
+    for val in fld.values():
+        sz2 = 2*val.size if iscomplextype(val.dtype) else val.size
+        locdat = val.local_data.reshape(-1)
+        if iscomplextype(val.dtype):
+            locdat = locdat.view(locdat.real.dtype)
+        res[ofs:ofs+sz2] = locdat
+        ofs += sz2
+    return res
 
 
-def _toFlatNdarray(fld):
-    return fld.val.flatten()
+def _toArray(fld):
+    if isinstance(fld, Field):
+        return fld.local_data.reshape(-1)
+    return _multiToArray(fld)
 
 
-def _toField(arr, dom):
-    return Field.from_global_data(dom, arr.reshape(dom.shape))
+def _toArray_rw(fld):
+    if isinstance(fld, Field):
+        return fld.local_data.copy().reshape(-1)
+    return _multiToArray(fld)
+
+
+def _toField(arr, template):
+    if isinstance(template, Field):
+        return Field.from_local_data(template.domain,
+                                     arr.reshape(template.shape).copy())
+    ofs = 0
+    res = []
+    for v in template.values():
+        sz2 = 2*v.size if iscomplextype(v.dtype) else v.size
+        locdat = arr[ofs:ofs+sz2].copy()
+        if iscomplextype(v.dtype):
+            locdat = locdat.view(np.complex128)
+        res.append(Field.from_local_data(v.domain, locdat.reshape(v.shape)))
+        ofs += sz2
+    return MultiField(template.domain, tuple(res))
 
 
 class _MinHelper(object):
@@ -42,9 +75,9 @@ class _MinHelper(object):
         self._domain = energy.position.domain
 
     def _update(self, x):
-        pos = _toField(x, self._domain)
+        pos = _toField(x, self._energy.position)
         if (pos != self._energy.position).any():
-            self._energy = self._energy.at(pos.locked_copy())
+            self._energy = self._energy.at(pos)
 
     def fun(self, x):
         self._update(x)
@@ -52,15 +85,15 @@ class _MinHelper(object):
 
     def jac(self, x):
         self._update(x)
-        return _toFlatNdarray(self._energy.gradient)
+        return _toArray_rw(self._energy.gradient)
 
     def hessp(self, x, p):
         self._update(x)
-        res = self._energy.curvature(_toField(p, self._domain))
-        return _toFlatNdarray(res)
+        res = self._energy.apply_metric(_toField(p, self._energy.position))
+        return _toArray_rw(res)
 
 
-class ScipyMinimizer(Minimizer):
+class _ScipyMinimizer(Minimizer):
     """Scipy-based minimizer
 
     Parameters
@@ -72,7 +105,6 @@ class ScipyMinimizer(Minimizer):
     """
 
     def __init__(self, method, options, need_hessp, bounds):
-        super(ScipyMinimizer, self).__init__()
         if not dobj.is_numpy():
             raise NotImplementedError
         self._method = method
@@ -93,7 +125,7 @@ class ScipyMinimizer(Minimizer):
             else:
                 raise ValueError("unrecognized bounds")
 
-        x = hlp._energy.position.val.flatten()
+        x = _toArray_rw(hlp._energy.position)
         hessp = hlp.hessp if self._need_hessp else None
         r = opt.minimize(hlp.fun, x, method=self._method, jac=hlp.jac,
                          hessp=hessp, options=self._options, bounds=bounds)
@@ -103,32 +135,26 @@ class ScipyMinimizer(Minimizer):
         return hlp._energy, IterationController.CONVERGED
 
 
-def NewtonCG(xtol, maxiter, disp=False):
-    """Returns a ScipyMinimizer object carrying out the Newton-CG algorithm.
-
-    See Also
-    --------
-    ScipyMinimizer
-    """
-    options = {"xtol": xtol, "maxiter": maxiter, "disp": disp}
-    return ScipyMinimizer("Newton-CG", options, True, None)
-
-
 def L_BFGS_B(ftol, gtol, maxiter, maxcor=10, disp=False, bounds=None):
-    """Returns a ScipyMinimizer object carrying out the L-BFGS-B algorithm.
+    """Returns a _ScipyMinimizer object carrying out the L-BFGS-B algorithm.
 
     See Also
     --------
-    ScipyMinimizer
+    _ScipyMinimizer
     """
     options = {"ftol": ftol, "gtol": gtol, "maxiter": maxiter,
                "maxcor": maxcor, "disp": disp}
-    return ScipyMinimizer("L-BFGS-B", options, False, bounds)
+    return _ScipyMinimizer("L-BFGS-B", options, False, bounds)
 
 
-class ScipyCG(Minimizer):
+class _ScipyCG(Minimizer):
+    """Returns a _ScipyMinimizer object carrying out the conjugate gradient
+    algorithm as implemented by SciPy.
+
+    This class is only intended for double-checking NIFTy's own conjugate
+    gradient implementation and should not be used otherwise.
+    """
     def __init__(self, tol, maxiter):
-        super(ScipyCG, self).__init__()
         if not dobj.is_numpy():
             raise NotImplementedError
         self._tol = tol
@@ -145,11 +171,11 @@ class ScipyCG(Minimizer):
                 self._op = op
 
             def __call__(self, inp):
-                return _toNdarray(self._op(_toField(inp, self._op.domain)))
+                return _toArray(self._op(_toField(inp, energy.position)))
 
         op = energy._A
-        b = _toNdarray(energy._b)
-        sx = _toNdarray(energy.position)
+        b = _toArray(energy._b)
+        sx = _toArray(energy.position)
         sci_op = scipy_linop(shape=(op.domain.size, op.target.size),
                              matvec=mymatvec(op))
         prec_op = None
@@ -157,7 +183,7 @@ class ScipyCG(Minimizer):
             prec_op = scipy_linop(shape=(op.domain.size, op.target.size),
                                   matvec=mymatvec(preconditioner))
         res, stat = cg(sci_op, b, x0=sx, tol=self._tol, M=prec_op,
-                       maxiter=self._maxiter)
+                       maxiter=self._maxiter, atol='legacy')
         stat = (IterationController.CONVERGED if stat >= 0 else
                 IterationController.ERROR)
-        return energy.at(_toField(res, op.domain)), stat
+        return energy.at(_toField(res, energy.position)), stat

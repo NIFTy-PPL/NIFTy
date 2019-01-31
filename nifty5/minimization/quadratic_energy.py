@@ -11,17 +11,16 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
-# Copyright(C) 2013-2018 Max-Planck-Society
+# Copyright(C) 2013-2019 Max-Planck-Society
 #
-# NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik
-# and financially supported by the Studienstiftung des deutschen Volkes.
+# NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
 
 from .energy import Energy
 
 
 class QuadraticEnergy(Energy):
     """The Energy for a quadratic form.
-    The most important aspect of this energy is that its curvature must be
+    The most important aspect of this energy is that its metric must be
     position-independent.
     """
 
@@ -33,18 +32,17 @@ class QuadraticEnergy(Energy):
             self._grad = _grad
             Ax = _grad if b is None else _grad + b
         else:
-            Ax = self._A(self.position)
+            Ax = self._A(self._position)
             self._grad = Ax if b is None else Ax - b
-        self._grad.lock()
-        self._value = 0.5*self.position.vdot(Ax)
+        self._value = 0.5*self._position.vdot(Ax)
         if b is not None:
-            self._value -= b.vdot(self.position)
+            self._value -= b.vdot(self._position)
 
     def at(self, position):
-        return QuadraticEnergy(position=position, A=self._A, b=self._b)
+        return QuadraticEnergy(position, self._A, self._b)
 
     def at_with_grad(self, position, grad):
-        """ Specialized version of `at`, taking also a gradient.
+        """Specialized version of `at`, taking also a gradient.
 
         This custom method is meant for use within :class:ConjugateGradient`
         minimizers, which already have the gradient available. It saves time
@@ -62,8 +60,7 @@ class QuadraticEnergy(Energy):
         Energy
             Energy object at new position.
         """
-        return QuadraticEnergy(position=position, A=self._A, b=self._b,
-                               _grad=grad)
+        return QuadraticEnergy(position, self._A, self._b, grad)
 
     @property
     def value(self):
@@ -74,5 +71,8 @@ class QuadraticEnergy(Energy):
         return self._grad
 
     @property
-    def curvature(self):
+    def metric(self):
         return self._A
+
+    def apply_metric(self, x):
+        return self._A(x)

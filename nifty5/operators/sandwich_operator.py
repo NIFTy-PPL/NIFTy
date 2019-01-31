@@ -11,29 +11,35 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
-# Copyright(C) 2013-2018 Max-Planck-Society
+# Copyright(C) 2013-2019 Max-Planck-Society
 #
-# NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik
-# and financially supported by the Studienstiftung des deutschen Volkes.
+# NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
 
 import numpy as np
-from .linear_operator import LinearOperator
+
 from .diagonal_operator import DiagonalOperator
 from .endomorphic_operator import EndomorphicOperator
+from .linear_operator import LinearOperator
 from .scaling_operator import ScalingOperator
 
 
 class SandwichOperator(EndomorphicOperator):
-    """Operator which is equivalent to the expression `bun.adjoint*cheese*bun`.
+    """Operator which is equivalent to the expression
+    `bun.adjoint(cheese(bun))`.
+
+    Note
+    ----
+    This operator should always be called using the `make` method.
     """
 
     def __init__(self, bun, cheese, op, _callingfrommake=False):
         if not _callingfrommake:
             raise NotImplementedError
-        super(SandwichOperator, self).__init__()
         self._bun = bun
         self._cheese = cheese
         self._op = op
+        self._domain = op.domain
+        self._capability = op._capability
 
     @staticmethod
     def make(bun, cheese=None):
@@ -49,33 +55,25 @@ class SandwichOperator(EndomorphicOperator):
         if not isinstance(bun, LinearOperator):
             raise TypeError("bun must be a linear operator")
         if cheese is not None and not isinstance(cheese, LinearOperator):
-            raise TypeError("cheese must be a linear operator")
+            raise TypeError("cheese must be a linear operator or None")
         if cheese is None:
             cheese = ScalingOperator(1., bun.target)
-            op = bun.adjoint*bun
+            op = bun.adjoint(bun)
         else:
-            op = bun.adjoint*cheese*bun
+            op = bun.adjoint(cheese(bun))
 
         # if our sandwich is diagonal, we can return immediately
         if isinstance(op, (ScalingOperator, DiagonalOperator)):
             return op
         return SandwichOperator(bun, cheese, op, _callingfrommake=True)
 
-    @property
-    def domain(self):
-        return self._op.domain
-
-    @property
-    def capability(self):
-        return self._op.capability
-
     def apply(self, x, mode):
         return self._op.apply(x, mode)
 
     def draw_sample(self, from_inverse=False, dtype=np.float64):
-        # Inverse samples from general sandwiches is not possible
+        # Inverse samples from general sandwiches are not possible
         if from_inverse:
-            if self._bun.capabilities & self._bun.INVERSE_TIMES:
+            if self._bun.capability & self._bun.INVERSE_TIMES:
                 try:
                     s = self._cheese.draw_sample(from_inverse, dtype)
                     return self._bun.inverse_times(s)
@@ -87,3 +85,11 @@ class SandwichOperator(EndomorphicOperator):
         # Samples from general sandwiches
         return self._bun.adjoint_times(
             self._cheese.draw_sample(from_inverse, dtype))
+
+    def __repr__(self):
+        from ..utilities import indent
+        return "\n".join((
+            "SandwichOperator:",
+            indent("\n".join((
+                "Cheese:", self._cheese.__repr__(),
+                "Bun:", self._bun.__repr__())))))

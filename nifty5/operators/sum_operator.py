@@ -11,22 +11,31 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
-# Copyright(C) 2013-2018 Max-Planck-Society
+# Copyright(C) 2013-2019 Max-Planck-Society
 #
-# NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik
-# and financially supported by the Studienstiftung des deutschen Volkes.
+# NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
 
-from .linear_operator import LinearOperator
+from collections import defaultdict
+
 import numpy as np
+
+from ..sugar import domain_union
+from ..utilities import indent
+from .block_diagonal_operator import BlockDiagonalOperator
+from .linear_operator import LinearOperator
 
 
 class SumOperator(LinearOperator):
-    """Class representing sums of operators."""
+    """Class representing sums of operators.
+
+    Notes
+    -----
+    This operator has to be called using the `make` method.
+    """
 
     def __init__(self, ops, neg, dom, tgt, _callingfrommake=False):
         if not _callingfrommake:
             raise NotImplementedError
-        super(SumOperator, self).__init__()
         self._ops = ops
         self._neg = neg
         self._domain = dom
@@ -39,14 +48,8 @@ class SumOperator(LinearOperator):
     def simplify(ops, neg):
         from .scaling_operator import ScalingOperator
         from .diagonal_operator import DiagonalOperator
-        # Step 1: verify domains
-        dom = ops[0].domain
-        tgt = ops[0].target
-        for op in ops[1:]:
-            dom = dom.unitedWith(op.domain)
-            tgt = tgt.unitedWith(op.target)
 
-        # Step 2: unpack SumOperators
+        # unpack SumOperators
         opsnew = []
         negnew = []
         for op, ng in zip(ops, neg):
@@ -61,78 +64,103 @@ class SumOperator(LinearOperator):
                 negnew.append(ng)
         ops = opsnew
         neg = negnew
-        # Step 3: collect ScalingOperators
-        sum = 0.
-        opsnew = []
-        negnew = []
-        lastdom = ops[-1].domain
+
+        # sort operators according to domains
+        sorted = defaultdict(list)
         for op, ng in zip(ops, neg):
-            if isinstance(op, ScalingOperator):
-                sum += op._factor * (-1 if ng else 1)
-            else:
-                opsnew.append(op)
-                negnew.append(ng)
-        if sum != 0.:
-            # try to absorb the factor into a DiagonalOperator
-            for i in range(len(opsnew)):
-                if isinstance(opsnew[i], DiagonalOperator):
-                    sum *= (-1 if negnew[i] else 1)
-                    opsnew[i] = opsnew[i]._add(sum)
-                    sum = 0.
-                    break
-        if sum != 0:
-            # have to add the scaling operator at the end
-            opsnew.append(ScalingOperator(sum, lastdom))
-            negnew.append(False)
-        ops = opsnew
-        neg = negnew
-        # Step 4: combine DiagonalOperators where possible
-        processed = [False] * len(ops)
-        opsnew = []
-        negnew = []
-        for i in range(len(ops)):
-            if not processed[i]:
-                if isinstance(ops[i], DiagonalOperator):
-                    op = ops[i]
-                    opneg = neg[i]
-                    for j in range(i+1, len(ops)):
-                        if isinstance(ops[j], DiagonalOperator):
-                            op = op._combine_sum(ops[j], opneg, neg[j])
-                            opneg = False
-                            processed[j] = True
-                    opsnew.append(op)
-                    negnew.append(opneg)
+            sorted[(op.domain, op.target)].append((op, ng))
+
+        xxops = []
+        xxneg = []
+        for opset in sorted.values():
+            # collect ScalingOperators
+            sum = 0.
+            opsnew = []
+            negnew = []
+
+            for op, ng in opset:
+                if isinstance(op, ScalingOperator):
+                    sum += op._factor * (-1 if ng else 1)
                 else:
-                    opsnew.append(ops[i])
-                    negnew.append(neg[i])
-        ops = opsnew
-        neg = negnew
-        # Step 5: combine BlockDiagonalOperators where possible
-        from ..multi.block_diagonal_operator import BlockDiagonalOperator
-        processed = [False] * len(ops)
-        opsnew = []
-        negnew = []
-        for i in range(len(ops)):
-            if not processed[i]:
-                if isinstance(ops[i], BlockDiagonalOperator):
-                    op = ops[i]
-                    opneg = neg[i]
-                    for j in range(i+1, len(ops)):
-                        if isinstance(ops[j], BlockDiagonalOperator):
-                            op = op._combine_sum(ops[j], opneg, neg[j])
-                            opneg = False
-                            processed[j] = True
                     opsnew.append(op)
-                    negnew.append(opneg)
-                else:
-                    opsnew.append(ops[i])
-                    negnew.append(neg[i])
-        ops = opsnew
-        neg = negnew
-        return ops, neg, dom, tgt
+                    negnew.append(ng)
+
+            lastdom = opset[0][0].domain
+            if sum != 0.:
+                # try to absorb the factor into a DiagonalOperator
+                for i in range(len(opsnew)):
+                    if isinstance(opsnew[i], DiagonalOperator):
+                        sum *= (-1 if negnew[i] else 1)
+                        opsnew[i] = opsnew[i]._add(sum)
+                        sum = 0.
+                        break
+            if sum != 0 or len(opsnew) == 0:
+                # have to add the scaling operator at the end
+                opsnew.append(ScalingOperator(sum, lastdom))
+                negnew.append(False)
+
+            ops = opsnew
+            neg = negnew
+            # Step 4: combine DiagonalOperators where possible
+            processed = [False] * len(ops)
+            opsnew = []
+            negnew = []
+            for i in range(len(ops)):
+                if not processed[i]:
+                    if isinstance(ops[i], DiagonalOperator):
+                        op = ops[i]
+                        opneg = neg[i]
+                        for j in range(i+1, len(ops)):
+                            if isinstance(ops[j], DiagonalOperator):
+                                op = op._combine_sum(ops[j], opneg, neg[j])
+                                opneg = False
+                                processed[j] = True
+                        opsnew.append(op)
+                        negnew.append(opneg)
+                    else:
+                        opsnew.append(ops[i])
+                        negnew.append(neg[i])
+            ops = opsnew
+            neg = negnew
+
+            # combine BlockDiagonalOperators where possible
+            processed = [False] * len(ops)
+            opsnew = []
+            negnew = []
+            for i in range(len(ops)):
+                if not processed[i]:
+                    if isinstance(ops[i], BlockDiagonalOperator):
+                        op = ops[i]
+                        opneg = neg[i]
+                        for j in range(i+1, len(ops)):
+                            if isinstance(ops[j], BlockDiagonalOperator):
+                                op = op._combine_sum(ops[j], opneg, neg[j])
+                                opneg = False
+                                processed[j] = True
+                        opsnew.append(op)
+                        negnew.append(opneg)
+                    else:
+                        opsnew.append(ops[i])
+                        negnew.append(neg[i])
+            xxops += opsnew
+            xxneg += negnew
+
+        dom = domain_union([op.domain for op in xxops])
+        tgt = domain_union([op.target for op in xxops])
+        return xxops, xxneg, dom, tgt
 
     @staticmethod
     def make(ops, neg):
+        """Build a SumOperator (or something simpler if possible)
+
+        Parameters
+        ----------
+        ops: list of LinearOperator
+            Individual operators of the sum.
+        neg: list of bool
+            Same length as ops.
+            If True then the equivalent operator gets a minus in the sum.
+        """
         ops = tuple(ops)
         neg = tuple(neg)
         if len(ops) == 0:
@@ -140,43 +168,35 @@ class SumOperator(LinearOperator):
         if len(ops) != len(neg):
             raise ValueError("length mismatch between ops and neg")
         ops, neg, dom, tgt = SumOperator.simplify(ops, neg)
-        if len(ops) == 1 and not neg[0]:
-            return ops[0]
+        if len(ops) == 1:
+            return -ops[0] if neg[0] else ops[0]
         return SumOperator(ops, neg, dom, tgt, _callingfrommake=True)
-
-    @property
-    def domain(self):
-        return self._domain
-
-    @property
-    def target(self):
-        return self._target
 
     @property
     def adjoint(self):
         return self.make([op.adjoint for op in self._ops], self._neg)
 
-    @property
-    def capability(self):
-        return self._capability
-
     def apply(self, x, mode):
         self._check_mode(mode)
-        for i, op in enumerate(self._ops):
-            if i == 0:
-                res = -op.apply(x, mode) if self._neg[i] else op.apply(x, mode)
+        res = None
+        for op, neg in zip(self._ops, self._neg):
+            tmp = op.apply(x.extract(op._dom(mode)), mode)
+            if res is None:
+                res = -tmp if neg else tmp
             else:
-                if self._neg[i]:
-                    res -= op.apply(x, mode)
-                else:
-                    res += op.apply(x, mode)
+                res = res.flexible_addsub(tmp, neg)
         return res
 
     def draw_sample(self, from_inverse=False, dtype=np.float64):
         if from_inverse:
             raise NotImplementedError(
                 "cannot draw from inverse of this operator")
-        res = self._ops[0].draw_sample(from_inverse, dtype)
-        for op in self._ops[1:]:
-            res += op.draw_sample(from_inverse, dtype)
+        res = None
+        for op in self._ops:
+            tmp = op.draw_sample(from_inverse, dtype)
+            res = tmp if res is None else res.unite(tmp)
         return res
+
+    def __repr__(self):
+        subs = "\n".join(sub.__repr__() for sub in self._ops)
+        return "SumOperator:\n"+indent(subs)

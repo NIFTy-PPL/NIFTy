@@ -11,27 +11,26 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
-# Copyright(C) 2013-2018 Max-Planck-Society
+# Copyright(C) 2013-2019 Max-Planck-Society
 #
-# NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik
-# and financially supported by the Studienstiftung des deutschen Volkes.
+# NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
 
-import abc
-from .domain import Domain
 import numpy as np
+
+from .domain import Domain
 
 
 class StructuredDomain(Domain):
-    """The abstract base class for all structured NIFTy domains.
+    """The abstract base class for all structured domains.
 
     An instance of a space contains information about the manifold's
     geometry and enhances the functionality of Domain by methods that
     are needed for power spectrum analysis and smoothing.
     """
 
-    @abc.abstractproperty
+    @property
     def scalar_dvol(self):
-        """float or None : uniform cell volume, if applicable
+        """float or None : uniform pixel volume, if applicable
 
         Returns the volume factors of this domain as a floating
         point scalar, if the volume factors are all identical, otherwise
@@ -41,7 +40,7 @@ class StructuredDomain(Domain):
 
     @property
     def dvol(self):
-        """float or numpy.ndarray(dtype=float): Volume factors
+        """float or numpy.ndarray(dtype=float): pixel volume(s)
 
         Returns the volume factors of this domain, either as a floating
         point scalar (if the volume factors are all identical) or as a
@@ -51,20 +50,20 @@ class StructuredDomain(Domain):
 
     @property
     def total_volume(self):
-        """float : Total domain volume
+        """float : Total domain volume.
 
         Returns the sum over all the domain's pixel volumes.
         """
         tmp = self.dvol
         return self.size * tmp if np.isscalar(tmp) else np.sum(tmp)
 
-    @abc.abstractproperty
+    @property
     def harmonic(self):
         """bool : True iff this domain is a harmonic domain."""
         raise NotImplementedError
 
     def get_k_length_array(self):
-        """k vector lengths, if applicable,
+        """k vector lengths, if applicable.
 
         Returns the length of the k vector for every pixel.
         This method is only implemented for harmonic domains.
@@ -88,11 +87,11 @@ class StructuredDomain(Domain):
     def get_fft_smoothing_kernel_function(self, sigma):
         """Helper for Gaussian smoothing.
 
-        This method, which is only implemented for harmonic domains, helps
-        smoothing fields that live on a domain that has this domain as
-        its harmonic partner. The returned function multiplies field values of
-        a field with a zero centered Gaussian which corresponds to a
-        convolution with a Gaussian kernel and sigma standard deviation in
+        This method, which is only implemented for harmonic domains, helps to
+        smoothe fields that are defined on a domain that has this domain as
+        its harmonic partner. The returned function does a pointwise evaluation
+        of a zero-centered Gaussian on the field values, which corresponds to a
+        convolution with a Gaussian kernel with sigma standard deviation in
         position space.
 
         Parameters

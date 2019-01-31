@@ -11,22 +11,17 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
-# Copyright(C) 2013-2018 Max-Planck-Society
+# Copyright(C) 2013-2019 Max-Planck-Society
 #
-# NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik
-# and financially supported by the Studienstiftung des deutschen Volkes.
+# NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
 
-import abc
-from ..utilities import NiftyMetaBase
+from functools import reduce
+from ..utilities import NiftyMeta
 
 
-class Domain(NiftyMetaBase()):
+class Domain(metaclass=NiftyMeta):
     """The abstract class repesenting a (structured or unstructured) domain.
     """
-    def __init__(self):
-        self._hash = None
-
-    @abc.abstractmethod
     def __repr__(self):
         raise NotImplementedError
 
@@ -38,11 +33,12 @@ class Domain(NiftyMetaBase()):
         Only members that are explicitly added to
         :attr:`._needed_for_hash` will be used for hashing.
         """
-        if self._hash is None:
-            h = 0
-            for key in self._needed_for_hash:
-                h ^= hash(vars(self)[key])
-            self._hash = h
+        try:
+            return self._hash
+        except AttributeError:
+            v = vars(self)
+            self._hash = reduce(lambda x, y: x ^ y, (hash(v[key])
+                                for key in self._needed_for_hash), 0)
         return self._hash
 
     def __eq__(self, x):
@@ -79,16 +75,29 @@ class Domain(NiftyMetaBase()):
         """Returns the opposite of :meth:`.__eq__()`"""
         return not self.__eq__(x)
 
-    @abc.abstractproperty
+    @property
     def shape(self):
         """tuple of int: number of pixels along each axis
 
         The shape of the array-like object required to store information
-        living on the domain.
+        defined on the domain.
         """
         raise NotImplementedError
 
-    @abc.abstractproperty
+    @property
+    def local_shape(self):
+        """tuple of int: number of pixels along each axis on the local task,
+        mainly relevant for MPI.
+
+        See :meth:`.shape()` for general explanation of property.
+
+        The shape of the array-like object required to store information
+        defined on part of the domain which is stored on the local MPI task.
+        """
+        from ..dobj import local_shape
+        return local_shape(self.shape)
+
+    @property
     def size(self):
         """int: total number of pixels.
 

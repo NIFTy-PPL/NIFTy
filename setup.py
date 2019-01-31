@@ -11,17 +11,16 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
-# Copyright(C) 2013-2018 Max-Planck-Society
+# Copyright(C) 2013-2019 Max-Planck-Society
 #
-# NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik
-# and financially supported by the Studienstiftung des deutschen Volkes.
+# NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
 
-from setuptools import setup, find_packages
+from setuptools import find_packages, setup
 
 
 def write_version():
     import subprocess
-    p = subprocess.Popen(["git", "describe", "--dirty", "--tags"],
+    p = subprocess.Popen(["git", "describe", "--dirty", "--tags", "--always"],
                          stdout=subprocess.PIPE)
     res = p.communicate()[0].strip().decode('utf-8')
     with open("nifty5/git_version.py", "w") as file:
@@ -40,8 +39,8 @@ setup(name="nifty5",
       packages=find_packages(include=["nifty5", "nifty5.*"]),
       zip_safe=True,
       license="GPLv3",
-      setup_requires=['future', 'scipy'],
-      install_requires=['future', 'scipy', 'pyfftw>=0.10.4'],
+      setup_requires=['scipy'],
+      install_requires=['scipy'],
       classifiers=[
         "Development Status :: 4 - Beta",
         "Topic :: Utilities",

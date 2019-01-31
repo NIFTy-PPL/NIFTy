@@ -11,19 +11,18 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
-# Copyright(C) 2013-2018 Max-Planck-Society
+# Copyright(C) 2013-2019 Max-Planck-Society
 #
-# NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik
-# and financially supported by the Studienstiftung des deutschen Volkes.
+# NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
 
-from __future__ import division
 import numpy as np
-from .structured_domain import StructuredDomain
+
 from ..field import Field
+from .structured_domain import StructuredDomain
 
 
 class LMSpace(StructuredDomain):
-    """NIFTy subclass for sets of spherical harmonic coefficients.
+    """Represents a set of spherical harmonic coefficients.
 
     Its harmonic partner spaces are :class:`~nifty5.domains.hp_space.HPSpace`
     and :class:`~nifty5.domains.gl_space.GLSpace`.
@@ -33,30 +32,29 @@ class LMSpace(StructuredDomain):
     lmax : int
         The maximum :math:`l` value of any spherical harmonic coefficient
         :math:`a_{lm}` that is represented by this object.
-        Must be :math:`\ge 0`.
+        Must be :math:`\\ge 0`.
 
     mmax : int, optional
         The maximum :math:`m` value of any spherical harmonic coefficient
         :math:`a_{lm}` that is represented by this object.
         If not supplied, it is set to `lmax`.
-        Must be :math:`\ge 0` and :math:`\le` `lmax`.
+        Must be :math:`\\ge 0` and :math:`\\le` `lmax`.
     """
 
     _needed_for_hash = ["_lmax", "_mmax"]
 
     def __init__(self, lmax, mmax=None):
-        super(LMSpace, self).__init__()
-        self._lmax = np.int(lmax)
+        self._lmax = int(lmax)
         if self._lmax < 0:
             raise ValueError("lmax must be >=0.")
         if mmax is None:
             mmax = self._lmax
-        self._mmax = np.int(mmax)
+        self._mmax = int(mmax)
         if self._mmax < 0 or self._mmax > self._lmax:
             raise ValueError("mmax must be >=0 and <=lmax.")
 
     def __repr__(self):
-        return ("LMSpace(lmax=%r, mmax=%r)" % (self.lmax, self.mmax))
+        return "LMSpace(lmax={}, mmax={})".format(self.lmax, self.mmax)
 
     @property
     def harmonic(self):
@@ -64,12 +62,11 @@ class LMSpace(StructuredDomain):
 
     @property
     def shape(self):
-        return (self.size, )
+        return (self.size,)
 
     @property
     def size(self):
-        l = self._lmax
-        m = self._mmax
+        l, m = self._lmax, self._mmax
         # the LMSpace consists of the full triangle (including -m's!),
         # minus two little triangles if mmax < lmax
         return (l+1)**2 - (l-m)*(l-m+1)
@@ -101,12 +98,7 @@ class LMSpace(StructuredDomain):
         # by Challinor et al.
         # http://arxiv.org/abs/astro-ph/0008228
         from ..sugar import exp
-
-        res = x+1.
-        res *= x
-        res *= -0.5*sigma*sigma
-        exp(res, out=res)
-        return res
+        return exp((x+1.) * x * (-0.5*sigma*sigma))
 
     def get_fft_smoothing_kernel_function(self, sigma):
         return lambda x: self._kernel(x, sigma)
@@ -139,7 +131,7 @@ class LMSpace(StructuredDomain):
         GLSpace
             The partner domain
         """
-        from .. import GLSpace
+        from ..domains.gl_space import GLSpace
         return GLSpace(self.lmax+1, self.mmax*2+1)
 
     def check_codomain(self, codomain):
@@ -151,6 +143,7 @@ class LMSpace(StructuredDomain):
         This function only checks whether `codomain` is of type
         :class:`GLSpace` or :class:`HPSpace`.
         """
-        from .. import GLSpace, HPSpace
+        from ..domains.gl_space import GLSpace
+        from ..domains.hp_space import HPSpace
         if not isinstance(codomain, (GLSpace, HPSpace)):
             raise TypeError("codomain must be a GLSpace or HPSpace.")
