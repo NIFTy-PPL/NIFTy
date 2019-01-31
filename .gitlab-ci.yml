@@ -1,7 +1,7 @@
 image: $CONTAINER_TEST_IMAGE
 
 variables:
-  CONTAINER_TEST_IMAGE: gitlab-registry.mpcdf.mpg.de/$CI_PROJECT_NAMESPACE/$CI_PROJECT_NAME:$CI_BUILD_REF_NAME
+  CONTAINER_TEST_IMAGE: gitlab-registry.mpcdf.mpg.de/$CI_PROJECT_PATH:$CI_BUILD_REF_NAME
   OMP_NUM_THREADS: 1
 
 stages:
