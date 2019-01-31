@@ -284,12 +284,12 @@ class Field(object):
         return res
 
     def weight(self, power=1, spaces=None):
-        """Weights the pixels of `self` with their invidual pixel-volume.
+        """Weights the pixels of `self` with their invidual pixel volumes.
 
         Parameters
         ----------
         power : number
-            The pixels get weighted with the volume-factor**power.
+            The pixel values get multiplied with their volume-factor**power.
 
         spaces : None, int or tuple of int
             Determines on which sub-domain the operation takes place.
