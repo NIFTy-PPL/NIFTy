@@ -43,11 +43,16 @@ def radial_los(n_los):
 
 
 if __name__ == '__main__':
+    import sys
     np.random.seed(420)  # picked for a nice field realization
 
     # Choose between random line-of-sight response (mode=0) and radial lines
     # of sight (mode=1)
-    mode = 0
+    if len(sys.argv) == 2:
+        mode = int(sys.argv[1])
+    else:
+        mode = 0
+    filename = f"getting_started_3_mode_{mode}_" + "{}.png"
 
     position_space = ift.RGSpace([128, 128])
     harmonic_space = position_space.get_default_codomain()
@@ -113,7 +118,7 @@ if __name__ == '__main__':
     plot.add(signal(mock_position), title='Ground Truth')
     plot.add(R.adjoint_times(data), title='Data')
     plot.add([A.force(mock_position)], title='Power Spectrum')
-    plot.output(ny=1, nx=3, xsize=24, ysize=6, name="setup.png")
+    plot.output(ny=1, nx=3, xsize=24, ysize=6, name=filename.format("setup"))
 
     # number of samples used to estimate the KL
     N_samples = 20
@@ -129,7 +134,8 @@ if __name__ == '__main__':
         plot = ift.Plot()
         plot.add(signal(KL.position), title="reconstruction")
         plot.add([A.force(KL.position), A.force(mock_position)], title="power")
-        plot.output(ny=1, ysize=6, xsize=16, name="loop-{:02}.png".format(i))
+        plot.output(ny=1, ysize=6, xsize=16,
+                    name=filename.format(f"loop_{i:02}"))
 
     # Draw posterior samples
     KL = ift.MetricGaussianKL(mean, H, N_samples)
@@ -138,6 +144,7 @@ if __name__ == '__main__':
         sc.add(signal(sample + KL.position))
 
     # Plotting
+    filename_res = filename.format("results")
     plot = ift.Plot()
     plot.add(sc.mean, title="Posterior Mean")
     plot.add(ift.sqrt(sc.var), title="Posterior Standard Deviation")
@@ -148,4 +155,5 @@ if __name__ == '__main__':
                   A.force(mock_position)],
         title="Sampled Posterior Power Spectrum",
         linewidth=[1.]*len(powers) + [3., 3.])
-    plot.output(ny=1, nx=3, xsize=24, ysize=6, name="results.png")
+    plot.output(ny=1, nx=3, xsize=24, ysize=6, name=filename_res)
+    print(f"Saved results as '{filename_res}'.")

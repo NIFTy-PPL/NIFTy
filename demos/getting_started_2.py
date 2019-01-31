@@ -42,11 +42,16 @@ def exposure_2d():
 
 
 if __name__ == '__main__':
+    import sys
     # FIXME All random seeds to 42
     np.random.seed(42)
 
     # Choose space on which the signal field is defined
-    mode = 1
+    if len(sys.argv) == 2:
+        mode = int(sys.argv[1])
+    else:
+        mode = 1
+
     if mode == 0:
         # One-dimensional regular grid with uniform exposure of 10
         position_space = ift.RGSpace(1024)
@@ -107,9 +112,11 @@ if __name__ == '__main__':
     # Plotting
     signal = sky(mock_position)
     reconst = sky(H.position)
+    filename = f"getting_started_2_mode_{mode}.png"
     plot = ift.Plot()
     plot.add(signal, title='Signal')
     plot.add(GR.adjoint(data), title='Data')
     plot.add(reconst, title='Reconstruction')
     plot.add(reconst - signal, title='Residuals')
-    plot.output(name='getting_started_2.pdf', xsize=16, ysize=16)
+    plot.output(xsize=12, ysize=10, name=filename)
+    print(f"Saved results as '{filename}'.")
