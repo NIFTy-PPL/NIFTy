@@ -24,29 +24,31 @@ from ..operators.scaling_operator import ScalingOperator
 from ..operators.simple_linear_operators import ducktape
 
 
-def make_adjust_variances(a,
-                          xi,
-                          position,
-                          samples=[],
-                          scaling=None,
-                          ic_samp=None):
+def make_adjust_variances_hamiltonian(a,
+                                      xi,
+                                      position,
+                                      samples=[],
+                                      scaling=None,
+                                      ic_samp=None):
     """Creates a Hamiltonian for constant likelihood optimizations.
 
     Constructs a Hamiltonian to solve constant likelihood optimizations of the
     form phi = a * xi under the constraint that phi remains constant.
 
-    FIXME xi is white.
+    xi is desired to be a Gaussian white Field, thus variations that are
+    more easily represented by a should be absorbed in a.
 
     Parameters
     ----------
     a : Operator
-        Gives the amplitude when evaluated at a position.
+        Gives the amplitude when evaluated at position.
     xi : Operator
-        Gives the excitation when evaluated at a position.
+        Field Adapter selecting a part of position.
+        xi is desired to be a Gaussian white Field.
     position : Field, MultiField
-        Position of the entire problem.
+        Contains the initial values for the operators a and xi, to be adjusted
     samples : Field, MultiField
-        Residual samples of the whole problem.
+        Residual samples of position.
     scaling : Float
         Optional rescaling of the Likelihood.
     ic_samp : Controller
@@ -82,16 +84,45 @@ def do_adjust_variances(position,
                         minimizer,
                         xi_key='xi',
                         samples=[]):
-    '''
-    FIXME
-    '''
+    """Adjusts the variance of xi_key to be represented by amplitude_operator.
+    
+    Solves a constant likelihood optimization of the
+    form phi = amplitude_operator * position[xi_key] under the constraint that
+    phi remains constant.
+
+    The field indexed by xi_key is desired to be a Gaussian white Field, 
+    thus variations that are more easily represented by amplitude_operator 
+    will be absorbed in amplitude_operator.
+
+    Parameters
+    ----------
+    position : Field, MultiField
+        Contains the initial values for amplitude_operator and the key xi_key,
+        to be adjusted.
+    amplitude_operator : Operator
+        Gives the amplitude when evaluated at position.
+    minimizer : Minimizer
+        Used to solve the optimization problem.
+    xi_key : String
+        Key of the Field containing undesired variations. This Field is
+        contained in position.
+    samples : Field, MultiField, optional
+        Residual samples of position. If samples are supplied then phi remains
+        only approximately constant. Default: [].
+
+    Returns
+    -------
+    MultiField
+        The new position after variances were adjusted.
+    """
+
 
     h_space = position[xi_key].domain[0]
     pd = PowerDistributor(h_space, amplitude_operator.target[0])
     a = pd(amplitude_operator)
     xi = ducktape(None, position.domain, xi_key)
 
-    ham = make_adjust_variances(a, xi, position, samples=samples)
+    ham = make_adjust_variances_hamiltonian(a, xi, position, samples=samples)
 
     # Minimize
     e = EnergyAdapter(
@@ -106,10 +137,4 @@ def do_adjust_variances(position,
     position = MultiField.from_dict(position)
     position = MultiField.union([position, e.position])
 
-    s_h_new = (a*xi).force(position)
-
-    import numpy as np
-    # TODO Move this into the tests
-    np.testing.assert_allclose(s_h_new.to_global_data(),
-                               s_h_old.to_global_data())
     return position
