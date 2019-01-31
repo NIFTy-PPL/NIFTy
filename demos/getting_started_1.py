@@ -51,10 +51,15 @@ def mask_to_nan(mask, field):
 
 
 if __name__ == '__main__':
+    import sys
     np.random.seed(42)
 
     # Choose space on which the signal field is defined
-    mode = 1
+    if len(sys.argv) == 2:
+        mode = int(sys.argv[1])
+    else:
+        mode = 1
+
     if mode == 0:
         # One-dimensional regular grid
         position_space = ift.RGSpace([1024])
@@ -135,6 +140,7 @@ if __name__ == '__main__':
     # Plotting
     rg = isinstance(position_space, ift.RGSpace)
     plot = ift.Plot()
+    filename = f"getting_started_1_mode_{mode}.png"
     if rg and len(position_space.shape) == 1:
         plot.add(
             [HT(MOCK_SIGNAL), GR.adjoint(data),
@@ -142,10 +148,11 @@ if __name__ == '__main__':
             label=['Mock signal', 'Data', 'Reconstruction'],
             alpha=[1, .3, 1])
         plot.add(mask_to_nan(mask, HT(m - MOCK_SIGNAL)), title='Residuals')
-        plot.output(nx=2, ny=1, xsize=10, ysize=4, title="getting_started_1")
+        plot.output(nx=2, ny=1, xsize=10, ysize=4, name=filename)
     else:
         plot.add(HT(MOCK_SIGNAL), title='Mock Signal')
         plot.add(mask_to_nan(mask, (GR(Mask)).adjoint(data)), title='Data')
         plot.add(HT(m), title='Reconstruction')
         plot.add(mask_to_nan(mask, HT(m - MOCK_SIGNAL)), title='Residuals')
-        plot.output(nx=2, ny=2, xsize=10, ysize=10, title="getting_started_1")
+        plot.output(nx=2, ny=2, xsize=10, ysize=10, name=filename)
+    print(f"Saved results as '{filename}'.")
