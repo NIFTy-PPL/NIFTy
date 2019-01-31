@@ -68,8 +68,6 @@ class MetricGaussianKL(Energy):
             raise TypeError
         self._hamiltonian = hamiltonian
         self._constants = constants
-        if point_estimates is None:
-            point_estimates = constants
         self._constants_samples = point_estimates
         if _samples is None:
             met = hamiltonian(Linearization.make_partial_var(
