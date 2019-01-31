@@ -1,7 +1,7 @@
 NIFTy - Numerical Information Field Theory
 ==========================================
-[![build status](https://gitlab.mpcdf.mpg.de/ift/nifty-dev/badges/NIFTy_5/build.svg)](https://gitlab.mpcdf.mpg.de/ift/nifty-dev/commits/NIFTy_5)
-[![coverage report](https://gitlab.mpcdf.mpg.de/ift/nifty-dev/badges/NIFTy_5/coverage.svg)](https://gitlab.mpcdf.mpg.de/ift/nifty-dev/commits/NIFTy_5)
+[![build status](https://gitlab.mpcdf.mpg.de/ift/NIFTy/badges/NIFTy_5/build.svg)](https://gitlab.mpcdf.mpg.de/ift/NIFTy/commits/NIFTy_5)
+[![coverage report](https://gitlab.mpcdf.mpg.de/ift/NIFTy/badges/NIFTy_5/coverage.svg)](https://gitlab.mpcdf.mpg.de/ift/NIFTy/commits/NIFTy_5)
 
 **NIFTy** project homepage:
 [http://ift.pages.mpcdf.de/NIFTy](http://ift.pages.mpcdf.de/NIFTy)
@@ -66,14 +66,15 @@ NIFTy5 and its mandatory dependencies can be installed via:
 
 Plotting support is added via:
 
-    pip3 install --user matplotlib
+    sudo apt-get install python3-matplotlib
 
-FFTW support is added via:
+NIFTy uses Numpy's FFT implementation by default. For large problems FFTW may be
+used because of its higher performance. It can be installed via:
 
     sudo apt-get install libfftw3-dev
     pip3 install --user pyfftw
 
-To actually use FFTW in your Nifty calculations, you need to call
+To enable FFTW usage in NIFTy, call
 
     nifty5.fft.enable_fftw()
 
@@ -90,14 +91,13 @@ Support for spherical harmonic transforms is added via:
 
 MPI support is added via:
 
-    sudo apt-get install openmpi-bin libopenmpi-dev
-    pip3 install --user mpi4py
+    sudo apt-get install python3-mpi4py
 
 ### Running the tests
 
 To run the tests, additional packages are required:
 
-    sudo apt-get install python3-coverage python3-pytest python3-pytest-cov
+    sudo apt-get install python3-pytest-cov
 
 Afterwards the tests (including a coverage report) can be run using the
 following command in the repository root:

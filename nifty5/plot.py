@@ -55,6 +55,115 @@ def _mollweide_helper(xsize):
     return res, mask, theta, phi
 
 
+def _rgb_data(spectral_cube):
+    _xyz = np.array(
+          [[0.000160, 0.000662, 0.002362, 0.007242, 0.019110,
+            0.043400, 0.084736, 0.140638, 0.204492, 0.264737,
+            0.314679, 0.357719, 0.383734, 0.386726, 0.370702,
+            0.342957, 0.302273, 0.254085, 0.195618, 0.132349,
+            0.080507, 0.041072, 0.016172, 0.005132, 0.003816,
+            0.015444, 0.037465, 0.071358, 0.117749, 0.172953,
+            0.236491, 0.304213, 0.376772, 0.451584, 0.529826,
+            0.616053, 0.705224, 0.793832, 0.878655, 0.951162,
+            1.014160, 1.074300, 1.118520, 1.134300, 1.123990,
+            1.089100, 1.030480, 0.950740, 0.856297, 0.754930,
+            0.647467, 0.535110, 0.431567, 0.343690, 0.268329,
+            0.204300, 0.152568, 0.112210, 0.081261, 0.057930,
+            0.040851, 0.028623, 0.019941, 0.013842, 0.009577,
+            0.006605, 0.004553, 0.003145, 0.002175, 0.001506,
+            0.001045, 0.000727, 0.000508, 0.000356, 0.000251,
+            0.000178, 0.000126, 0.000090, 0.000065, 0.000046,
+            0.000033],
+           [0.000017, 0.000072, 0.000253, 0.000769, 0.002004,
+            0.004509, 0.008756, 0.014456, 0.021391, 0.029497,
+            0.038676, 0.049602, 0.062077, 0.074704, 0.089456,
+            0.106256, 0.128201, 0.152761, 0.185190, 0.219940,
+            0.253589, 0.297665, 0.339133, 0.395379, 0.460777,
+            0.531360, 0.606741, 0.685660, 0.761757, 0.823330,
+            0.875211, 0.923810, 0.961988, 0.982200, 0.991761,
+            0.999110, 0.997340, 0.982380, 0.955552, 0.915175,
+            0.868934, 0.825623, 0.777405, 0.720353, 0.658341,
+            0.593878, 0.527963, 0.461834, 0.398057, 0.339554,
+            0.283493, 0.228254, 0.179828, 0.140211, 0.107633,
+            0.081187, 0.060281, 0.044096, 0.031800, 0.022602,
+            0.015905, 0.011130, 0.007749, 0.005375, 0.003718,
+            0.002565, 0.001768, 0.001222, 0.000846, 0.000586,
+            0.000407, 0.000284, 0.000199, 0.000140, 0.000098,
+            0.000070, 0.000050, 0.000036, 0.000025, 0.000018,
+            0.000013],
+           [0.000705, 0.002928, 0.010482, 0.032344, 0.086011,
+            0.197120, 0.389366, 0.656760, 0.972542, 1.282500,
+            1.553480, 1.798500, 1.967280, 2.027300, 1.994800,
+            1.900700, 1.745370, 1.554900, 1.317560, 1.030200,
+            0.772125, 0.570060, 0.415254, 0.302356, 0.218502,
+            0.159249, 0.112044, 0.082248, 0.060709, 0.043050,
+            0.030451, 0.020584, 0.013676, 0.007918, 0.003988,
+            0.001091, 0.000000, 0.000000, 0.000000, 0.000000,
+            0.000000, 0.000000, 0.000000, 0.000000, 0.000000,
+            0.000000, 0.000000, 0.000000, 0.000000, 0.000000,
+            0.000000, 0.000000, 0.000000, 0.000000, 0.000000,
+            0.000000, 0.000000, 0.000000, 0.000000, 0.000000,
+            0.000000, 0.000000, 0.000000, 0.000000, 0.000000,
+            0.000000, 0.000000, 0.000000, 0.000000, 0.000000,
+            0.000000, 0.000000, 0.000000, 0.000000, 0.000000,
+            0.000000, 0.000000, 0.000000, 0.000000, 0.000000,
+            0.000000]])
+
+    MATRIX_SRGB_D65 = np.array(
+            [[3.2404542, -1.5371385, -0.4985314],
+             [-0.9692660,  1.8760108,  0.0415560],
+             [0.0556434, -0.2040259,  1.0572252]])
+
+    def _gammacorr(inp):
+        mask = np.zeros(inp.shape, dtype=np.float64)
+        mask[inp <= 0.0031308] = 1.
+        r1 = 12.92*inp
+        a = 0.055
+        r2 = (1 + a) * (np.maximum(inp, 0.0031308) ** (1/2.4)) - a
+        return r1*mask + r2*(1.-mask)
+
+    def lambda2xyz(lam):
+        lammin = 380.
+        lammax = 780.
+        lam = np.asarray(lam, dtype=np.float64)
+        lam = np.clip(lam, lammin, lammax)
+
+        idx = (lam-lammin)/(lammax-lammin)*(_xyz.shape[1]-1)
+        ii = np.maximum(0, np.minimum(79, int(idx)))
+        w1 = 1.-(idx-ii)
+        w2 = 1.-w1
+        c = w1*_xyz[:, ii] + w2*_xyz[:, ii+1]
+        return c
+
+    def getxyz(n):
+        E0, E1 = 1./700., 1./400.
+        E = E0 + np.arange(n)*(E1-E0)/(n-1)
+        res = np.zeros((3, n), dtype=np.float64)
+        for i in range(n):
+            res[:, i] = lambda2xyz(1./E[i])
+        return res
+
+    def to_logscale(arr, lo, hi):
+        res = arr.clip(lo, hi)
+        res = np.log(res/hi)
+        tmp = np.log(hi/lo)
+        res += tmp
+        res /= tmp
+        return res
+
+    spectral_cube = spectral_cube.reshape((-1, spectral_cube.shape[-1]))
+    xyz = getxyz(spectral_cube.shape[-1])
+    xyz_data = np.tensordot(spectral_cube, xyz, axes=[-1, -1])
+    xyz_data /= xyz_data.max()
+    xyz_data = to_logscale(xyz_data, max(1e-3, xyz_data.min()), 1.)
+    rgb_data = xyz_data.copy()
+    it = np.nditer(xyz_data[:, 0], flags=['multi_index'])
+    for x in range(xyz_data.shape[0]):
+        rgb_data[x] = _gammacorr(np.matmul(MATRIX_SRGB_D65, xyz_data[x]))
+    rgb_data = rgb_data.clip(0., 1.)
+    return rgb_data.reshape(spectral_cube.shape[:-1]+(-1,))
+
+
 def _find_closest(A, target):
     # A must be sorted
     idx = np.clip(A.searchsorted(target), 1, len(A)-1)
@@ -229,8 +338,16 @@ def _plot2D(f, ax, **kwargs):
 
     dom = f.domain
 
-    if len(dom) > 1:
-        raise ValueError("DomainTuple must have exactly one entry.")
+    if len(dom) > 2:
+        raise ValueError("DomainTuple can have at most two entries.")
+
+    # check for multifrequency plotting
+    have_rgb = False
+    if len(dom) == 2:
+        if (not isinstance(dom[1], RGSpace)) or len(dom[1].shape) != 1:
+            raise TypeError("need 1D RGSpace as second domain")
+        rgb = _rgb_data(f.to_global_data())
+        have_rgb = True
 
     label = kwargs.pop("label", None)
 
@@ -243,39 +360,58 @@ def _plot2D(f, ax, **kwargs):
     ax.set_xlabel(kwargs.pop("xlabel", ""))
     ax.set_ylabel(kwargs.pop("ylabel", ""))
     dom = dom[0]
-    cmap = kwargs.pop("colormap", plt.rcParams['image.cmap'])
+    if not have_rgb:
+        cmap = kwargs.pop("colormap", plt.rcParams['image.cmap'])
 
     if isinstance(dom, RGSpace):
         nx, ny = dom.shape
         dx, dy = dom.distances
-        im = ax.imshow(
-            f.to_global_data().T, extent=[0, nx*dx, 0, ny*dy],
-            vmin=kwargs.get("zmin"), vmax=kwargs.get("zmax"),
-            cmap=cmap, origin="lower", **norm, **aspect)
-        plt.colorbar(im)
+        if have_rgb:
+            im = ax.imshow(
+                rgb, extent=[0, nx*dx, 0, ny*dy], origin="lower", **norm,
+                **aspect)
+        else:
+            im = ax.imshow(
+                f.to_global_data().T, extent=[0, nx*dx, 0, ny*dy],
+                vmin=kwargs.get("zmin"), vmax=kwargs.get("zmax"),
+                cmap=cmap, origin="lower", **norm, **aspect)
+            plt.colorbar(im)
         _limit_xy(**kwargs)
         return
     elif isinstance(dom, (HPSpace, GLSpace)):
         import pyHealpix
         xsize = 800
         res, mask, theta, phi = _mollweide_helper(xsize)
+        if have_rgb:
+            res = np.full(shape=res.shape+(3,), fill_value=1.,
+                          dtype=np.float64)
+
         if isinstance(dom, HPSpace):
             ptg = np.empty((phi.size, 2), dtype=np.float64)
             ptg[:, 0] = theta
             ptg[:, 1] = phi
             base = pyHealpix.Healpix_Base(int(np.sqrt(dom.size//12)), "RING")
-            res[mask] = f.to_global_data()[base.ang2pix(ptg)]
+            if have_rgb:
+                res[mask] = rgb[base.ang2pix(ptg)]
+            else:
+                res[mask] = f.to_global_data()[base.ang2pix(ptg)]
         else:
             ra = np.linspace(0, 2*np.pi, dom.nlon+1)
             dec = pyHealpix.GL_thetas(dom.nlat)
             ilat = _find_closest(dec, theta)
             ilon = _find_closest(ra, phi)
             ilon = np.where(ilon == dom.nlon, 0, ilon)
-            res[mask] = f.to_global_data()[ilat*dom.nlon + ilon]
+            if have_rgb:
+                res[mask] = rgb[ilat*dom[0].nlon + ilon]
+            else:
+                res[mask] = f.to_global_data()[ilat*dom.nlon + ilon]
         plt.axis('off')
-        plt.imshow(res, vmin=kwargs.get("zmin"), vmax=kwargs.get("zmax"),
-                   cmap=cmap, origin="lower")
-        plt.colorbar(orientation="horizontal")
+        if have_rgb:
+            plt.imshow(res, origin="lower")
+        else:
+            plt.imshow(res, vmin=kwargs.get("zmin"), vmax=kwargs.get("zmax"),
+                       cmap=cmap, origin="lower")
+            plt.colorbar(orientation="horizontal")
         return
     raise ValueError("Field type not(yet) supported")
 
