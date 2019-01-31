@@ -97,24 +97,24 @@ def _cone_arrays(c, domain, sigx, want_gradient):
 
 class LightConeOperator(Operator):
     '''Constructs a Light cone from a set of lightspeed parameters.
-    
+
     The resulting cone is defined as follows
-    
+
     .. math::
         \\exp \\left(- \\frac{1}{2} \\Re \\left( \\Delta \\right)^2 \\right)
-    
+
     with
-    
+
     .. math::
         \\Delta = \\sqrt{- \\left(t^2 - \\frac{x^\\dagger C^{-1} x}
         {\\sigma_x^2} \\right)}
-        
+
     where t and x are the coordinates of the target space. Note that axis zero
     of the space is interpreted as the time axis. C denotes the input
     paramters of the operator and parametrizes the shape of the cone.
     sigx is the width of the asymptotic Gaussian in x necessary for
     discretization.
-    
+
     Parameters
     ----------
     domain : Domain, tuple of Domain or DomainTuple

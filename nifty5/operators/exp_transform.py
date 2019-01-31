@@ -31,8 +31,8 @@ class ExpTransform(LinearOperator):
 
     This operator creates a log-space subject to the degrees of freedom and
     and its target-domain.
-    Then it transforms between this log-space and its target, which is defined in
-    normal units.
+    Then it transforms between this log-space and its target, which is defined
+    in normal units.
 
     FIXME Write something on t_0 of domain space
 

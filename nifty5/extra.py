@@ -171,4 +171,3 @@ def check_jacobian_consistency(op, loc, tol=1e-8, ntries=100):
         else:
             raise ValueError("gradient and value seem inconsistent")
         loc = locnext
-

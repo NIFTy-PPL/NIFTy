@@ -17,8 +17,12 @@
 
 ############################################################
 # Non-linear tomography
-# The data is integrated lines of sight
-# Random lines (set mode=0), radial lines (mode=1)
+#
+# The signal is a sigmoid-normal distributed field.
+# The data is the field integrated along lines of sight that are
+# randomly (set mode=0) or radially (mode=1) distributed
+#
+# Demo takes a while to compute
 #############################################################
 
 import numpy as np
@@ -28,22 +32,22 @@ import nifty5 as ift
 
 def random_los(n_los):
     starts = list(np.random.uniform(0, 1, (n_los, 2)).T)
-    ends = list(0.5 + 0*np.random.uniform(0, 1, (n_los, 2)).T)
+    ends = list(np.random.uniform(0, 1, (n_los, 2)).T)
     return starts, ends
 
 
 def radial_los(n_los):
     starts = list(np.random.uniform(0, 1, (n_los, 2)).T)
-    ends = list(np.random.uniform(0, 1, (n_los, 2)).T)
+    ends = list(0.5 + 0*np.random.uniform(0, 1, (n_los, 2)).T)
     return starts, ends
 
 
 if __name__ == '__main__':
-    np.random.seed(420)
+    np.random.seed(420)  # picked for a nice field realization
 
-    # Choose between random line-of-sight response (mode=1) and radial lines
-    # of sight (mode=2)
-    mode = 1
+    # Choose between random line-of-sight response (mode=0) and radial lines
+    # of sight (mode=1)
+    mode = 0
 
     position_space = ift.RGSpace([128, 128])
     harmonic_space = position_space.get_default_codomain()
@@ -62,8 +66,8 @@ if __name__ == '__main__':
         # Power-law part of spectrum:
         'sm': -5,  # preferred power-law slope
         'sv': .5,  # low variance of power-law slope
-        'im': .4,  # y-intercept mean
-        'iv': .3  # relatively high y-intercept variance
+        'im':  0,  # y-intercept mean, in-/decrease for more/less contrast
+        'iv': .3   # y-intercept variance
     }
     A = ift.SLAmplitude(**dct)
 
@@ -79,7 +83,7 @@ if __name__ == '__main__':
     signal = ift.sigmoid(correlated_field)
 
     # Build the line-of-sight response and define signal response
-    LOS_starts, LOS_ends = random_los(100) if mode == 1 else radial_los(100)
+    LOS_starts, LOS_ends = random_los(100) if mode == 0 else radial_los(100)
     R = ift.LOSResponse(position_space, starts=LOS_starts, ends=LOS_ends)
     signal_response = R(signal)
 

@@ -34,8 +34,8 @@ Discretisation and index notation
 .................................
 
 To compute anything numerically, we first need to represent the problem in finite dimensions.
-As for stochastic processes, several discretisations of :math:`\mathcal{S}` like collocation methods, expansion into orthogonal polynomials, etc. can be used (see [6]_, [7]_ for an overview and further information about their reliability).
-In particular, NIFTy uses the midpoint method as reviewed in section 2.1 in [6]_ and Fourier expansion.
+As for stochastic processes, several discretisations of :math:`\mathcal{S}` like collocation methods, expansion into orthogonal polynomials, etc. can be used (see [1]_, [2]_ for an overview and further information about their reliability).
+In particular, NIFTy uses the midpoint method as reviewed in section 2.1 of [1]_ and Fourier expansion.
 
 Without going into the details, discretisation methods basically introduce a finite set of basis functions :math:`\{\phi_i\}_{i\in \mathcal{I}}`, where :math:`\mathcal{I}` denotes a generic index set with :math:`|\mathcal{I}| = N` being the chosen discretisation dimension.
 Any Riemannian manifold :math:`(\mathcal{M},g)` is equipped with a canonical scalar product given by
@@ -70,7 +70,7 @@ After projection, any function :math:`f \in \mathcal{S}` is represented by its a
 
 which defines an embedding :math:`\hat{\mathcal{S}} \hookrightarrow \mathcal{S} = \mathcal{F}(\mathcal{M})`.
 
-**Changes of bases** are performed by reapproximating the :math:`\{\phi_i\}_{i\in \mathcal{I}}` in terms of another basis :math:`\{\phi'_i\}_{i\in \mathcal{I'}}` :
+**Changes of base** are performed by reapproximating the :math:`\{\phi_i\}_{i\in \mathcal{I}}` in terms of another basis :math:`\{\phi'_i\}_{i\in \mathcal{I'}}`:
 
 .. math::
 
@@ -81,7 +81,7 @@ The latter is e.g. true for regular collocation grids on tori and the associated
 The discrete Fourier transform then maps between those bases without loss of information.
 
 **Discretisation of operators** works in the same way by expansion.
-For illustration purposes, let :math:`A: \mathcal{S} \rightarrow \mathcal{S}` be a not necessarily linear operator.
+For illustration purposes, let :math:`A: \mathcal{S} \rightarrow \mathcal{S}` be a (not necessarily linear) operator.
 The result of its action on functions :math:`s` is known and may be expanded in :math:`\{\phi_i\}_{i\in \mathcal{I}}`, i.e.
 
 .. math::
@@ -94,14 +94,14 @@ Integrals can now be written as
 
     \left< s , A[t] \right>_{\mathcal{M}} \approx s^i \left< \phi_i , \phi_j \right>_{\mathcal{M}} (A[t])^j \equiv s^i \, v_{ij} \, (A[t])^j \, ,
 
-where the appearence of the volume metric can be hidden by lowering the first index of the operator,
+where the appearance of the volume metric can be hidden by lowering the first index of the operator,
 
 .. math::
 
     (A[w])_k := v_{km} \, (A[w])^m \, .
 
-Hence, the volume metric needs not to be carried along if the operators are defined in this fashion right from the start.
-Linear operators mapping several functions to another function are completly specified by their action on a given basis, and we define
+Hence, the volume metric need not be carried along if the operators are defined in this fashion right from the start.
+Linear operators mapping several functions to another function are completely specified by their action on a given basis, and we define
 
 .. math::
 
@@ -115,8 +115,8 @@ If :math:`A` is a (linear) integral operator defined by a kernel :math:`\tilde{A
     &= v^{km} \, \left< \phi_m, A[\phi_i,\phi_j,\ldots] \right>_{\mathcal{M}} \\
     &= v^{km} \, \int_{\mathcal{M}} \mathrm{d} x\,\sqrt{|g|}\,\left(\prod_{n}^{|\{ij\ldots\}|}\int_{\mathcal{M}} \mathrm{d} y_n \, \sqrt{|g|}\right) \,\,\phi_m(x)\, \tilde{A}(x,y_1,y_2,\ldots)\, \phi_i(y_1) \, \phi_j(y_2) \cdots \, .
 
-.. [6] Bruno Sudret and Armen Der Kiureghian (2000), "Stochastic Finite Element Methods and Reliability: A State-of-the-Art Report"
-.. [7] Dongbin Xiu (2010), "Numerical methods for stochastic computations", Princeton University Press.
+.. [1] Bruno Sudret and Armen Der Kiureghian (2000), "Stochastic Finite Element Methods and Reliability: A State-of-the-Art Report"
+.. [2] Dongbin Xiu (2010), "Numerical methods for stochastic computations", Princeton University Press.
 
 Resolution and self-consistency
 ...............................
@@ -129,40 +129,40 @@ Apparently, the discretisation and the discretised response need to satisfy a se
 .. math::
     R = \hat{R} \circ D \, .
 
-An obvious corrollary is that different discretisations :math:`D, D'` with resulting discretised responses :math:`\hat{R}, \hat{R}'` will need to satisfy
+An obvious corollary is that different discretisations :math:`D, D'` with resulting discretised responses :math:`\hat{R}, \hat{R}'` will need to satisfy
 
 .. math::
     \hat{R} \circ D = \hat{R}' \circ D' \, .
 
 NIFTy is implemented such that in order to change resolution, only the line of code defining the space needs to be altered.
-It automatically takes care of depended structures like volume factors, discretised operators and responses.
-A visualisation of this can be seen in figure 2 and 3, which displays the MAP inference of a signal at various resolutions.
+It automatically takes care of dependent structures like volume factors, discretised operators and responses.
+A visualisation of this can be seen in figure 2, which displays the MAP inference of a signal at various resolutions.
 
 .. figure:: images/converging_discretization.png
     :scale: 80%
     :align: center
 
-    Figure 3: Inference result converging at high resolution.
+    Figure 2: Inference result converging at high resolution.
 
 
 Implementation in NIFTy
------------------------
+.......................
 
 .. currentmodule:: nifty5
 
-Most codes in NIFTy will contain the description of a measurement process,
-or more generally, a log-likelihood.
+Most codes in NIFTy will contain the description of a measurement process or,
+more generally, a log-likelihood.
 This log-likelihood is necessarily a map from the quantity of interest (a field) to a real number.
-The likelihood has to be unitless because it is a log-probability and should not scale with resolution.
-Often, likelihoods contain integrals over the quantity of interest :math:`s`, which have to be discretized, e.g. by a sum
+The log-likelihood has to be unitless because it is a log-probability and should not scale with resolution.
+Often, log-likelihoods contain integrals over the quantity of interest :math:`s`, which have to be discretized, e.g. by a sum
 
 .. math::
 
-    \int_\Omega \text{d}x\, s(x) \approx \sum_i s_i\int_{\Omega_i}\text{d}x\, 1
+    \int_\Omega \text{d}x\, s(x) \approx \sum_i s^i\int_{\Omega_i}\text{d}x\, 1
 
 Here the domain of the integral :math:`\Omega = \dot{\bigcup_q} \; \Omega_i` is the disjoint union over smaller :math:`\Omega_i`, e.g. the pixels of the space, and :math:`s_i` is the discretized field value on the :math:`i`-th pixel.
 This introduces the weighting :math:`V_i=\int_{\Omega_i}\text{d}x\, 1`, also called the volume factor, a property of the space.
-NIFTy aids you in constructing your own likelihood by providing methods like :func:`~field.Field.weight`, which weights all pixels of a field with its corresponding volume.
+NIFTy aids you in constructing your own log-likelihood by providing methods like :func:`~field.Field.weight`, which weights all pixels of a field with their corresponding volume.
 An integral over a :class:`~field.Field` :code:`s` can be performed by calling :code:`s.weight(1).sum()`, which is equivalent to :code:`s.integrate()`.
 Volume factors are also applied automatically in the following places:
 
@@ -170,32 +170,38 @@ Volume factors are also applied automatically in the following places:
  - some response operators, such as the :class:`~library.los_response.LOSResponse`. In this operator a line integral is descritized, so a 1-dimensional volume factor is applied.
  - In :class:`~library.correlated_fields.CorrelatedField` as well :class:`~library.correlated_fields.MfCorrelatedField`, the field is multiplied by the square root of the total volume in configuration space. This ensures that the same field reconstructed over a larger domain has the same variance in position space in the limit of infinite resolution. It also ensures that power spectra in NIFTy behave according to the definition of a power spectrum, namely the power of a k-mode is the expectation of the k-mode square, divided by the volume of the space.
 
-Note that in contrast to some older versions of NIFTy, the dot product of fields does not apply a volume factor
+Note that in contrast to some older versions of NIFTy, the dot product :code:`s.vdot(t)` of fields does **not** apply a volume factor, but instead just sums over the field components,
 
 .. math::
-  s^\dagger t = \sum_i s_i^* t_i .
+  s^\dagger t = \sum_i \overline{s^i}\, t^i \, ,
 
-If this dot product is supposed to be invariant under changes in resolution, then either :math:`s_i` or :math:`t_i` has to decrease as the number of pixels increases, or more specifically, one of the two fields has to be an extensive quantity while the other has to be intensive.
-One can make this more explicit by denoting intensive quantities with upper index and extensive quantities with lower index
+where the bar denotes complex conjugation.
+This dot product is **not** invariant under changes in resolution, as then the number of discretised field components increases.
+Upper index components like :math:`s^i`, however, are designed **not** to scale with the volume.
+
+One solution to obtain a resolution independent quantity is to make one of the two factors extensive while the other stays intensive.
+This is more explicit when intensive quantities are denoted by an upper index and extensive quantities by a lower index,
 
 .. math::
-  s^\dagger t =  (s^*)^i t_i
+  s^\dagger t =  \overline{s^i} t_i
 
 where we used Einstein sum convention.
-This notation connects to the theoretical discussion before.
-One of the field has to have the volume metric already incorperated to assure the continouum limit works.
+Here, the volume metric is incorporated by lowering one index, i.e. :math:`t_i = v_{ij}\,t^j`.
 When building statistical models, all indices will end up matching this upper-lower convention automatically, e.g. for a Gaussian log-likelihood :math:`L` we have
 
 .. math::
-  L = \frac{1}{2}s^i \left(S^{-1}\right)_{ij} s^j
+  L = \frac{1}{2}\overline{s^i} \left(S^{-1}\right)_{ij} s^j
 
-with
+with the covariance defined by
 
 .. math::
-  \left(S^{-1}\right)_{ij} = \left(S^{kl}\right)_ij^{-1} = \left(\left<(s^*)^ks^l\right>\right)^{-1})_{ij}\ .
+   S^{ij} = \left<s^i\overline{s^j}\right>\ .
 
-Thus the covariance matrix :math:`S` will ensure that the whole likelihood expression does not scale with resolution.
+Consequently, the inverse covariance operator will automatically have lower indices,
+
+.. math::
+   \left(S^{-1}\right)_{ij} S^{jk} = \delta^{\,\,k}_j\ ,
+
+ensuring that the whole log-likelihood expression does not scale with resolution.
 **This upper-lower index convention is not coded into NIFTy**, in order to not reduce user freedom.
-One should however have this in mind when constructing algorithms in order to ensure resolution independence.
-
-Note that while the upper-lower index convention ensures resolution independence, this does not automatically fix the pixilization.
+One should however have this in mind when constructing log-likelihoods in order to ensure resolution independence.

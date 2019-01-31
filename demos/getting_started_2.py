@@ -43,22 +43,22 @@ def exposure_2d():
 
 if __name__ == '__main__':
     # FIXME All random seeds to 42
-    np.random.seed(41)
+    np.random.seed(42)
 
     # Choose space on which the signal field is defined
-    mode = 2
+    mode = 1
     if mode == 0:
-        # One-dimensional regular grid with uniform exposure
+        # One-dimensional regular grid with uniform exposure of 10
         position_space = ift.RGSpace(1024)
-        exposure = ift.Field.full(position_space, 1.)
+        exposure = ift.Field.full(position_space, 10.)
     elif mode == 1:
         # Two-dimensional regular grid with inhomogeneous exposure
         position_space = ift.RGSpace([512, 512])
         exposure = exposure_2d()
     else:
-        # Sphere with uniform exposure
+        # Sphere with uniform exposure of 100
         position_space = ift.HPSpace(128)
-        exposure = ift.Field.full(position_space, 1.)
+        exposure = ift.Field.full(position_space, 100.)
 
     # Define harmonic space and harmonic transform
     harmonic_space = position_space.get_default_codomain()

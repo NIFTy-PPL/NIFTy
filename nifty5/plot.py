@@ -530,8 +530,14 @@ class Plot(object):
         fig = plt.figure()
         if "title" in kwargs:
             plt.suptitle(kwargs.pop("title"))
-        nx = kwargs.pop("nx", int(np.ceil(np.sqrt(nplot))))
-        ny = kwargs.pop("ny", int(np.ceil(np.sqrt(nplot))))
+        nx = kwargs.pop("nx", 0)
+        ny = kwargs.pop("ny", 0)
+        if nx == ny == 0:
+            nx = ny = int(np.ceil(np.sqrt(nplot)))
+        elif nx == 0:
+            nx = np.ceil(nplot/ny)
+        elif ny == 0:
+            ny = np.ceil(nplot/nx)
         if nx*ny < nplot:
             raise ValueError(
                 'Figure dimensions not sufficient for number of plots. '
