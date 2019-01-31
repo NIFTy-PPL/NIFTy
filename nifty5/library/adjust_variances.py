@@ -85,13 +85,13 @@ def do_adjust_variances(position,
                         xi_key='xi',
                         samples=[]):
     """Adjusts the variance of xi_key to be represented by amplitude_operator.
-    
+
     Solves a constant likelihood optimization of the
     form phi = amplitude_operator * position[xi_key] under the constraint that
     phi remains constant.
 
-    The field indexed by xi_key is desired to be a Gaussian white Field, 
-    thus variations that are more easily represented by amplitude_operator 
+    The field indexed by xi_key is desired to be a Gaussian white Field,
+    thus variations that are more easily represented by amplitude_operator
     will be absorbed in amplitude_operator.
 
     Parameters
@@ -115,7 +115,6 @@ def do_adjust_variances(position,
     MultiField
         The new position after variances were adjusted.
     """
-
 
     h_space = position[xi_key].domain[0]
     pd = PowerDistributor(h_space, amplitude_operator.target[0])
