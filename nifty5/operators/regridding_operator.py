@@ -26,7 +26,7 @@ from .linear_operator import LinearOperator
 
 
 class RegriddingOperator(LinearOperator):
-    """Linearly interpolates a RGSpace to an RGSpace with coarser resolution.
+    """Linearly interpolates an RGSpace to an RGSpace with coarser resolution.
 
     Parameters
     ----------
@@ -47,7 +47,6 @@ class RegriddingOperator(LinearOperator):
         if not isinstance(dom, RGSpace):
             raise TypeError("RGSpace required")
         if len(new_shape) != len(dom.shape):
-            print(new_shape, dom.shape)
             raise ValueError("Shape mismatch")
         if any([a > b for a, b in zip(new_shape, dom.shape)]):
             raise ValueError("New shape must not be larger than old shape")
