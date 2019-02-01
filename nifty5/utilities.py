@@ -143,7 +143,7 @@ def memo(f):
 class _DocStringInheritor(type):
     """
     A variation on
-    http://groups.google.com/group/comp.lang.python/msg/26f7b4fcb4d66c95
+    https://groups.google.com/group/comp.lang.python/msg/26f7b4fcb4d66c95
     by Paul McGuire
     """
     def __new__(meta, name, bases, clsdict):

@@ -4,7 +4,7 @@ IFT -- Information Field Theory
 Theoretical Background
 ----------------------
 
-`Information Field Theory <http://www.mpa-garching.mpg.de/ift/>`_ [1]_  (IFT) is information theory, the logic of reasoning under uncertainty, applied to fields.
+`Information Field Theory <https://www.mpa-garching.mpg.de/ift/>`_ [1]_  (IFT) is information theory, the logic of reasoning under uncertainty, applied to fields.
 A field can be any quantity defined over some space, e.g. the air temperature over Europe, the magnetic field strength in the Milky Way, or the matter density in the Universe.
 IFT describes how data and knowledge can be used to infer field properties.
 Mathematically it is a statistical field theory and exploits many of the tools developed for such.
@@ -21,15 +21,15 @@ NIFTy comes with reimplemented MAP and VI estimators.
 
 .. tip:: *In-a-nutshell introductions to information field theory* can be found in [2]_, [3]_, [4]_, and [5]_, with the latter probably being the most didactical.
 
-.. [1] T.A. Enßlin et al. (2009), "Information field theory for cosmological perturbation reconstruction and nonlinear signal analysis", PhysRevD.80.105005, 09/2009; `[arXiv:0806.3474] <http://www.arxiv.org/abs/0806.3474>`_
+.. [1] T.A. Enßlin et al. (2009), "Information field theory for cosmological perturbation reconstruction and nonlinear signal analysis", PhysRevD.80.105005, 09/2009; `[arXiv:0806.3474] <https://www.arxiv.org/abs/0806.3474>`_
 
-.. [2] T.A. Enßlin (2013), "Information field theory", proceedings of MaxEnt 2012 -- the 32nd International Workshop on Bayesian Inference and Maximum Entropy Methods in Science and Engineering; AIP Conference Proceedings, Volume 1553, Issue 1, p.184; `[arXiv:1301.2556] <http://arxiv.org/abs/1301.2556>`_
+.. [2] T.A. Enßlin (2013), "Information field theory", proceedings of MaxEnt 2012 -- the 32nd International Workshop on Bayesian Inference and Maximum Entropy Methods in Science and Engineering; AIP Conference Proceedings, Volume 1553, Issue 1, p.184; `[arXiv:1301.2556] <https://arxiv.org/abs/1301.2556>`_
 
-.. [3] T.A. Enßlin (2014), "Astrophysical data analysis with information field theory", AIP Conference Proceedings, Volume 1636, Issue 1, p.49; `[arXiv:1405.7701] <http://arxiv.org/abs/1405.7701>`_
+.. [3] T.A. Enßlin (2014), "Astrophysical data analysis with information field theory", AIP Conference Proceedings, Volume 1636, Issue 1, p.49; `[arXiv:1405.7701] <https://arxiv.org/abs/1405.7701>`_
 
 .. [4] Wikipedia contributors (2018), `"Information field theory" <https://en.wikipedia.org/w/index.php?title=Information_field_theory&oldid=876731720>`_, Wikipedia, The Free Encyclopedia.
 
-.. [5] T.A. Enßlin (2019), "Information theory for fields", accepted by Annalen der Physik; `[DOI] <https://doi.org/10.1002/andp.201800127>`_, `[arXiv:1804.03350] <http://arxiv.org/abs/1804.03350>`_
+.. [5] T.A. Enßlin (2019), "Information theory for fields", accepted by Annalen der Physik; `[DOI] <https://doi.org/10.1002/andp.201800127>`_, `[arXiv:1804.03350] <https://arxiv.org/abs/1804.03350>`_
 
 
 

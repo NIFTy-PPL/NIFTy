@@ -96,7 +96,7 @@ class LMSpace(StructuredDomain):
     def _kernel(x, sigma):
         # cf. "All-sky convolution for polarimetry experiments"
         # by Challinor et al.
-        # http://arxiv.org/abs/astro-ph/0008228
+        # https://arxiv.org/abs/astro-ph/0008228
         from ..sugar import exp
         return exp((x+1.) * x * (-0.5*sigma*sigma))
 
