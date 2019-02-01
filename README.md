@@ -122,7 +122,7 @@ dive into NIFTy by running one of the demonstrations, e.g.:
     python3 demos/getting_started_1.py
 
 
-### Acknowledgement
+### Acknowledgements
 
 Please acknowledge the use of NIFTy in your publication(s) by using a
 phrase such as the following:
@@ -133,7 +133,7 @@ phrase such as the following:
 and a citation to one of the [publications](http://ift.pages.mpcdf.de/NIFTy/citations.html).
 
 
-### Release Notes
+### Licensing terms
 
 The NIFTy package is licensed under the terms of the
 [GPLv3](https://www.gnu.org/licenses/gpl.html) and is distributed

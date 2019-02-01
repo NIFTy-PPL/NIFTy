@@ -402,7 +402,7 @@ Many minimizers for nonlinear problems can be characterized as
 
 This family of algorithms is encapsulated in NIFTy's
 :class:`~descent_minimizers.DescentMinimizer` class, which currently has three
-concrete implementations: :class:`~descent_minimizers.SteepestDescent`,
+generally usable concrete implementations:
 :class:`~descent_minimizers.NewtonCG`, :class:`~descent_minimizers.L_BFGS` and
 :class:`~descent_minimizers.VL_BFGS`. Of these algorithms, only
 :class:`~descent_minimizers.NewtonCG` requires the energy object to provide
