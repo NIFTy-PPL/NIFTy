@@ -25,6 +25,8 @@
 # Demo takes a while to compute
 #############################################################
 
+import sys
+
 import numpy as np
 
 import nifty5 as ift
@@ -43,8 +45,7 @@ def radial_los(n_los):
 
 
 if __name__ == '__main__':
-    import sys
-    np.random.seed(420)  # picked for a nice field realization
+    np.random.seed(420)
 
     # Choose between random line-of-sight response (mode=0) and radial lines
     # of sight (mode=1)
@@ -52,7 +53,7 @@ if __name__ == '__main__':
         mode = int(sys.argv[1])
     else:
         mode = 0
-    filename = f"getting_started_3_mode_{mode}_" + "{}.png"
+    filename = "getting_started_3_mode_{}_".format(mode) + "{}.png"
 
     position_space = ift.RGSpace([128, 128])
     harmonic_space = position_space.get_default_codomain()
@@ -135,7 +136,7 @@ if __name__ == '__main__':
         plot.add(signal(KL.position), title="reconstruction")
         plot.add([A.force(KL.position), A.force(mock_position)], title="power")
         plot.output(ny=1, ysize=6, xsize=16,
-                    name=filename.format(f"loop_{i:02}"))
+                    name=filename.format("loop_{:02d}".format(i)))
 
     # Draw posterior samples
     KL = ift.MetricGaussianKL(mean, H, N_samples)
@@ -156,4 +157,4 @@ if __name__ == '__main__':
         title="Sampled Posterior Power Spectrum",
         linewidth=[1.]*len(powers) + [3., 3.])
     plot.output(ny=1, nx=3, xsize=24, ysize=6, name=filename_res)
-    print(f"Saved results as '{filename_res}'.")
+    print("Saved results as '{}'.".format(filename_res))
