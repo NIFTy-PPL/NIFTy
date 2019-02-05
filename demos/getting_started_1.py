@@ -21,6 +21,8 @@
 # 1D (set mode=0), 2D (mode=1), or on the sphere (mode=2)
 ###############################################################################
 
+import sys
+
 import numpy as np
 
 import nifty5 as ift
@@ -51,7 +53,6 @@ def mask_to_nan(mask, field):
 
 
 if __name__ == '__main__':
-    import sys
     np.random.seed(42)
 
     # Choose space on which the signal field is defined
@@ -140,7 +141,7 @@ if __name__ == '__main__':
     # Plotting
     rg = isinstance(position_space, ift.RGSpace)
     plot = ift.Plot()
-    filename = f"getting_started_1_mode_{mode}.png"
+    filename = "getting_started_1_mode_{}.png".format(mode)
     if rg and len(position_space.shape) == 1:
         plot.add(
             [HT(MOCK_SIGNAL), GR.adjoint(data),
@@ -155,4 +156,4 @@ if __name__ == '__main__':
         plot.add(HT(m), title='Reconstruction')
         plot.add(mask_to_nan(mask, HT(m - MOCK_SIGNAL)), title='Residuals')
         plot.output(nx=2, ny=2, xsize=10, ysize=10, name=filename)
-    print(f"Saved results as '{filename}'.")
+    print("Saved results as '{}'.".format(filename))

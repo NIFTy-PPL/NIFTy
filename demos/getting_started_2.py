@@ -21,6 +21,8 @@
 # 1D (set mode=0), 2D (mode=1), or on the sphere (mode=2)
 ###############################################################################
 
+import sys
+
 import numpy as np
 
 import nifty5 as ift
@@ -42,8 +44,6 @@ def exposure_2d():
 
 
 if __name__ == '__main__':
-    import sys
-    # FIXME All random seeds to 42
     np.random.seed(42)
 
     # Choose space on which the signal field is defined
@@ -112,11 +112,11 @@ if __name__ == '__main__':
     # Plotting
     signal = sky(mock_position)
     reconst = sky(H.position)
-    filename = f"getting_started_2_mode_{mode}.png"
+    filename = "getting_started_2_mode_{}.png".format(mode)
     plot = ift.Plot()
     plot.add(signal, title='Signal')
     plot.add(GR.adjoint(data), title='Data')
     plot.add(reconst, title='Reconstruction')
     plot.add(reconst - signal, title='Residuals')
     plot.output(xsize=12, ysize=10, name=filename)
-    print(f"Saved results as '{filename}'.")
+    print("Saved results as '{}'.".format(filename))
