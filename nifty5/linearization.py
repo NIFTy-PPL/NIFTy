@@ -109,7 +109,7 @@ class Linearization(object):
 
     def __getitem__(self, name):
         from .operators.simple_linear_operators import ducktape
-        return self.new(self._val[name], self._jac.ducktape_left(name))
+        return self.new(self._val[name], ducktape(None, self.target, name))
 
     def __neg__(self):
         return self.new(-self._val, -self._jac,
