@@ -150,7 +150,8 @@ class _SlowFieldAdapter(LinearOperator):
         if isinstance(x, MultiField):
             return x[self._name]
         else:
-            return MultiField.from_dict({self._name: x}, domain=self._tgt(mode))
+            return MultiField.from_dict({self._name: x},
+                                        domain=self._tgt(mode))
 
     def __repr__(self):
         return '_SlowFieldAdapter'
