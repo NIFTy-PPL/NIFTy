@@ -189,20 +189,20 @@ def ducktape(left, right, name):
     """
     from ..sugar import makeDomain
     from .operator import Operator
+    if isinstance(right, Operator):
+        right = right.target
+    elif right is not None:
+        right = makeDomain(right)
+    if isinstance(left, Operator):
+        left = left.domain
+    elif left is not None:
+        left = makeDomain(left)
     if left is None:  # need to infer left from right
-        if isinstance(right, Operator):
-            right = right.target
-        elif right is not None:
-            right = makeDomain(right)
         if isinstance(right, MultiDomain):
             left = right[name]
         else:
             left = MultiDomain.make({name: right})
-    else:  # need to infer right from left
-        if isinstance(left, Operator):
-            left = left.domain
-        else:
-            left = makeDomain(left)
+    elif right is None:  # need to infer right from left
         if isinstance(left, MultiDomain):
             right = left[name]
         else:
@@ -218,7 +218,7 @@ def ducktape(left, right, name):
             return _SlowFieldAdapter(left, name).adjoint
     if rmulti:
         if len(right) == 1:
-            return FieldAdapter(right, name)
+            return FieldAdapter(left, name)
         else:
             return _SlowFieldAdapter(right, name)
     raise ValueError("must not arrive here")

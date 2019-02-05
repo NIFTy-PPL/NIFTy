@@ -61,8 +61,8 @@ def testBinary(type1, type2, space, seed):
     _make_linearization(type2, dom2, seed)
 
     dom = ift.MultiDomain.union((dom1, dom2))
-    select_s1 = ift.ducktape(None, dom, "s1")
-    select_s2 = ift.ducktape(None, dom, "s2")
+    select_s1 = ift.ducktape(None, dom1, "s1")
+    select_s2 = ift.ducktape(None, dom2, "s2")
     model = select_s1*select_s2
     pos = ift.from_random("normal", dom)
     ift.extra.check_jacobian_consistency(model, pos, ntries=20)
