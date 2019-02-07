@@ -60,7 +60,7 @@ Optional dependencies:
 The current version of Nifty5 can be obtained by cloning the repository and
 switching to the NIFTy_5 branch:
 
-    git clone https://gitlab.mpcdf.mpg.de/ift/NIFTy.git
+    git clone https://gitlab.mpcdf.mpg.de/ift/nifty.git
 
 ### Installation
 
@@ -70,7 +70,7 @@ distributions, the "apt" lines will need slight changes.
 NIFTy5 and its mandatory dependencies can be installed via:
 
     sudo apt-get install git python3 python3-pip python3-dev
-    pip3 install --user git+https://gitlab.mpcdf.mpg.de/ift/NIFTy.git@NIFTy_5
+    pip3 install --user git+https://gitlab.mpcdf.mpg.de/ift/nifty.git@NIFTy_5
 
 Plotting support is added via:
 
