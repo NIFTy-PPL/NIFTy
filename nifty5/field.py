@@ -36,8 +36,8 @@ class Field(object):
         This object's global shape must match the domain shape
         After construction, the object will no longer be writeable!
 
-    Note
-    ----
+    Notes
+    -----
     If possible, do not invoke the constructor directly, but use one of the
     many convenience functions for instantiation!
     """
@@ -190,8 +190,8 @@ class Field(object):
     def val(self):
         """dobj.data_object : the data object storing the field's entries.
 
-        Note
-        ----
+        Notes
+        -----
         This property is intended for low-level, internal use only. Do not use
         from outside of NIFTy's core; there should be better alternatives.
         """
@@ -284,12 +284,12 @@ class Field(object):
         return res
 
     def weight(self, power=1, spaces=None):
-        """Weights the pixels of `self` with their invidual pixel-volume.
+        """Weights the pixels of `self` with their invidual pixel volumes.
 
         Parameters
         ----------
         power : number
-            The pixels get weighted with the volume-factor**power.
+            The pixel values get multiplied with their volume-factor**power.
 
         spaces : None, int or tuple of int
             Determines on which sub-domain the operation takes place.

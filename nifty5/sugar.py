@@ -363,7 +363,7 @@ def makeOp(input):
         return DiagonalOperator(input)
     if isinstance(input, MultiField):
         return BlockDiagonalOperator(
-            input.domain, {key: makeOp(val) for key, val in enumerate(input)})
+            input.domain, {key: makeOp(val) for key, val in input.items()})
     raise NotImplementedError
 
 

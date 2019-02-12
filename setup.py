@@ -41,6 +41,7 @@ setup(name="nifty5",
       license="GPLv3",
       setup_requires=['scipy'],
       install_requires=['scipy'],
+      python_requires='>=3.5',
       classifiers=[
         "Development Status :: 4 - Beta",
         "Topic :: Utilities",

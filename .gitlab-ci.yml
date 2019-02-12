@@ -1,7 +1,7 @@
 image: $CONTAINER_TEST_IMAGE
 
 variables:
-  CONTAINER_TEST_IMAGE: gitlab-registry.mpcdf.mpg.de/ift/nifty-dev:$CI_BUILD_REF_NAME
+  CONTAINER_TEST_IMAGE: gitlab-registry.mpcdf.mpg.de/$CI_PROJECT_PATH:$CI_BUILD_REF_NAME
   OMP_NUM_THREADS: 1
 
 stages:
@@ -39,9 +39,9 @@ test_serial:
   script:
     - pytest-3 -q --cov=nifty5 test
     - >
-      python3 -m coverage report --omit "*plot*,*distributed_do*"
+      python3 -m coverage report --omit "*plot*,*distributed_do*" | tee coverage.txt
     - >
-      python3 -m coverage report --omit "*plot*,*distributed_do*" | grep TOTAL | awk '{ print "TOTAL: "$4; }'
+      grep TOTAL coverage.txt | awk '{ print "TOTAL: "$4; }'
 
 test_mpi:
   stage: test
@@ -52,17 +52,15 @@ test_mpi:
 
 pages:
   stage: release
-  before_script:
-    - ls
   script:
-    - python3 setup.py install --user -f
     - sh docs/generate.sh
     - mv docs/build/ public/
   artifacts:
     paths:
     - public
   only:
-  - NIFTy_4
+  - NIFTy_5
+
 
 before_script:
   - python3 setup.py install --user -f

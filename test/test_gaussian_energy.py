@@ -45,8 +45,6 @@ def test_gaussian_energy(space, nonlinearity, noise, seed):
     pspace = ift.PowerSpace(hspace, binbounds=binbounds)
     Dist = ift.PowerDistributor(target=hspace, power_space=pspace)
     xi0 = ift.Field.from_random(domain=hspace, random_type='normal')
-    # FIXME Needed?
-    xi0_var = ift.Linearization.make_var(xi0)
 
     def pspec(k):
         return 1/(1 + k**2)**dim
@@ -55,8 +53,6 @@ def test_gaussian_energy(space, nonlinearity, noise, seed):
     A = Dist(ift.sqrt(pspec))
     N = ift.ScalingOperator(noise, space)
     n = N.draw_sample()
-    # FIXME Needed?
-    s = ht(ift.makeOp(A)(xi0_var))
     R = ift.ScalingOperator(10., space)
 
     def d_model():
@@ -73,9 +69,5 @@ def test_gaussian_energy(space, nonlinearity, noise, seed):
         N = None
 
     energy = ift.GaussianEnergy(d, N)(d_model())
-    if nonlinearity == "":
-        ift.extra.check_value_gradient_metric_consistency(
-            energy, xi0, ntries=10)
-    else:
-        ift.extra.check_value_gradient_consistency(
-            energy, xi0, ntries=10, tol=5e-8)
+    ift.extra.check_jacobian_consistency(
+        energy, xi0, ntries=10, tol=5e-8)

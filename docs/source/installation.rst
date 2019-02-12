@@ -8,18 +8,19 @@ distributions, the "apt" lines will need slight changes.
 NIFTy5 and its mandatory dependencies can be installed via::
 
     sudo apt-get install git python3 python3-pip python3-dev
-    pip3 install --user git+https://gitlab.mpcdf.mpg.de/ift/NIFTy.git@NIFTy_5
+    pip3 install --user git+https://gitlab.mpcdf.mpg.de/ift/nifty.git@NIFTy_5
 
 Plotting support is added via::
 
-    pip3 install --user matplotlib
+    sudo apt-get install python3-matplotlib
 
-FFTW support is added via:
+NIFTy uses Numpy's FFT implementation by default. For large problems FFTW may be
+used because of its higher performance. It can be installed via::
 
     sudo apt-get install libfftw3-dev
     pip3 install --user pyfftw
 
-To actually use FFTW in your Nifty calculations, you need to call
+To enable FFTW usage in NIFTy, call::
 
     nifty5.fft.enable_fftw()
 
@@ -36,5 +37,4 @@ Support for spherical harmonic transforms is added via::
 
 MPI support is added via::
 
-    sudo apt-get install openmpi-bin libopenmpi-dev
-    pip3 install --user mpi4py
+    sudo apt-get install python3-mpi4py

@@ -41,7 +41,6 @@ Abstract base class
 One of the fundamental building blocks of the NIFTy5 framework is the *domain*.
 Its required capabilities are expressed by the abstract :py:class:`Domain` class.
 A domain must be able to answer the following queries:
-m
 
 - its total number of data entries (pixels), which is accessible via the
   :attr:`~Domain.size` property
@@ -129,7 +128,7 @@ specify full field domains. In principle, a :class:`~domain_tuple.DomainTuple`
 can even be empty, which implies that the field living on it is a scalar.
 
 A :class:`~domain_tuple.DomainTuple` supports iteration and indexing, and also
-provides the properties :attr:`~domain_tuple.DomainTuple.shape`,
+provides the properties :attr:`~domain_tuple.DomainTuple.shape` and
 :attr:`~domain_tuple.DomainTuple.size` in analogy to the elementary
 :class:`~domains.domain.Domain`.
 
@@ -159,10 +158,11 @@ Contractions (like summation, integration, minimum/maximum, computation of
 statistical moments) can be carried out either over an entire field (producing
 a scalar result) or over sub-domains (resulting in a field defined on a smaller
 domain). Scalar products of two fields can also be computed easily.
+See the documentation of :class:`~field.Field` for details.
 
 There is also a set of convenience functions to generate fields with constant
 values or fields filled with random numbers according to a user-specified
-distribution.
+distribution: :attr:`~sugar.full`, :attr:`~sugar.from_random`.
 
 Like almost all NIFTy objects, fields are immutable: their value or any other
 attribute cannot be modified after construction. To manipulate a field in ways
@@ -311,11 +311,15 @@ and ``f1`` and ``f2`` are of type :class:`~field.Field`, writing::
 
 will perform the operation suggested intuitively by the notation, checking
 domain compatibility while building the composed operator.
-The combined operator infers its domain and target from its constituents,
-as well as the set of operations it can support.
 The properties :attr:`~LinearOperator.adjoint` and
 :attr:`~LinearOperator.inverse` return a new operator which behaves as if it
 were the original operator's adjoint or inverse, respectively.
+The combined operator infers its domain and target from its constituents,
+as well as the set of operations it can support.
+Instantiating operator adjoints or inverses by :attr:`~LinearOperator.adjoint`
+and similar methods is to be distinguished from the instant application of
+operators performed by :attr:`~LinearOperator.adjoint_times` and similar
+methods.
 
 
 .. _minimization:
@@ -368,8 +372,8 @@ failure.
 Sensible stopping criteria can vary significantly with the problem being
 solved; NIFTy provides one concrete sub-class of :class:`IterationController`
 called :class:`GradientNormController`, which should be appropriate in many
-circumstances, but users have complete freedom to implement custom sub-classes
-for their specific applications.
+circumstances, but users have complete freedom to implement custom
+:class:`IterationController` sub-classes for their specific applications.
 
 
 Minimization algorithms
@@ -398,7 +402,7 @@ Many minimizers for nonlinear problems can be characterized as
 
 This family of algorithms is encapsulated in NIFTy's
 :class:`~descent_minimizers.DescentMinimizer` class, which currently has three
-concrete implementations: :class:`~descent_minimizers.SteepestDescent`,
+generally usable concrete implementations:
 :class:`~descent_minimizers.NewtonCG`, :class:`~descent_minimizers.L_BFGS` and
 :class:`~descent_minimizers.VL_BFGS`. Of these algorithms, only
 :class:`~descent_minimizers.NewtonCG` requires the energy object to provide
@@ -424,11 +428,13 @@ the information propagator whose inverse is defined as:
 :math:`D^{-1} = \left(R^\dagger N^{-1} R + S^{-1}\right)`.
 
 It needs to be applied in forward direction in order to calculate the Wiener
-filter solution. Only its inverse application is straightforward; to use it in
-forward direction, we make use of NIFTy's
+filter solution, but only its inverse application is straightforward.
+To use it in forward direction, we make use of NIFTy's
 :class:`~operators.inversion_enabler.InversionEnabler` class, which internally
-performs a minimization of a
-:class:`~minimization.quadratic_energy.QuadraticEnergy` by means of the
-:class:`~minimization.conjugate_gradient.ConjugateGradient` algorithm. An
-example is provided in
+applies the (approximate) inverse of the given operator :math:`x = Op^{-1} (y)` by
+solving the equation :math:`y = Op (x)` for :math:`x`.
+This is accomplished by minimizing a suitable
+:class:`~minimization.quadratic_energy.QuadraticEnergy`
+with the :class:`~minimization.conjugate_gradient.ConjugateGradient`
+algorithm. An example is provided in
 :func:`~library.wiener_filter_curvature.WienerFilterCurvature`.

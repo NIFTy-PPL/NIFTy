@@ -82,7 +82,7 @@ from .library.light_cone_operator import LightConeOperator
 
 from .library.wiener_filter_curvature import WienerFilterCurvature
 from .library.correlated_fields import CorrelatedField, MfCorrelatedField
-from .library.adjust_variances import (make_adjust_variances,
+from .library.adjust_variances import (make_adjust_variances_hamiltonian,
                                        do_adjust_variances)
 
 from . import extra

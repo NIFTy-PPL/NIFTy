@@ -44,7 +44,8 @@ def polynomial(coefficients, sampling_points):
 
 
 class PolynomialResponse(ift.LinearOperator):
-    """Calculates values of a polynomial parameterized by input at sampling points.
+    """Calculates values of a polynomial parameterized by input at sampling
+    points.
 
     Parameters
     ----------

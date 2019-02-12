@@ -261,7 +261,6 @@ class BernoulliEnergy(EnergyOperator):
     """
 
     def __init__(self, d):
-        print(d.dtype)
         if not isinstance(d, Field) or not np.issubdtype(d.dtype, np.integer):
             raise TypeError
         if not np.all(np.logical_or(d.local_data == 0, d.local_data == 1)):
@@ -329,8 +328,8 @@ class StandardHamiltonian(EnergyOperator):
             return self._lh(x) + self._prior(x)
         else:
             lhx, prx = self._lh(x), self._prior(x)
-            mtr = SamplingEnabler(lhx.metric, prx.metric.inverse,
-                                  self._ic_samp, prx.metric.inverse)
+            mtr = SamplingEnabler(lhx.metric, prx.metric,
+                                  self._ic_samp)
             return (lhx + prx).add_metric(mtr)
 
     def __repr__(self):

@@ -75,8 +75,8 @@ class LinearInterpolator(LinearOperator):
         # dimensions.
         dist = np.array(dist).reshape(-1, 1)
         pos = sampling_points/dist
-        excess = pos - pos.astype(np.int64)
-        pos = pos.astype(np.int64)
+        excess = pos - np.floor(pos)
+        pos = np.floor(pos).astype(np.int64)
         max_index = np.array(self.domain.shape).reshape(-1, 1)
         data = np.zeros((len(mg[0]), N_points))
         ii = np.zeros((len(mg[0]), N_points), dtype=np.int64)

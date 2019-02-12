@@ -21,6 +21,8 @@
 # 1D (set mode=0), 2D (mode=1), or on the sphere (mode=2)
 ###############################################################################
 
+import sys
+
 import numpy as np
 
 import nifty5 as ift
@@ -42,23 +44,26 @@ def exposure_2d():
 
 
 if __name__ == '__main__':
-    # FIXME All random seeds to 42
-    np.random.seed(41)
+    np.random.seed(42)
 
     # Choose space on which the signal field is defined
-    mode = 2
+    if len(sys.argv) == 2:
+        mode = int(sys.argv[1])
+    else:
+        mode = 1
+
     if mode == 0:
-        # One-dimensional regular grid with uniform exposure
+        # One-dimensional regular grid with uniform exposure of 10
         position_space = ift.RGSpace(1024)
-        exposure = ift.Field.full(position_space, 1.)
+        exposure = ift.Field.full(position_space, 10.)
     elif mode == 1:
         # Two-dimensional regular grid with inhomogeneous exposure
         position_space = ift.RGSpace([512, 512])
         exposure = exposure_2d()
     else:
-        # Sphere with uniform exposure
+        # Sphere with uniform exposure of 100
         position_space = ift.HPSpace(128)
-        exposure = ift.Field.full(position_space, 1.)
+        exposure = ift.Field.full(position_space, 100.)
 
     # Define harmonic space and harmonic transform
     harmonic_space = position_space.get_default_codomain()
@@ -107,9 +112,11 @@ if __name__ == '__main__':
     # Plotting
     signal = sky(mock_position)
     reconst = sky(H.position)
+    filename = "getting_started_2_mode_{}.png".format(mode)
     plot = ift.Plot()
     plot.add(signal, title='Signal')
     plot.add(GR.adjoint(data), title='Data')
     plot.add(reconst, title='Reconstruction')
     plot.add(reconst - signal, title='Residuals')
-    plot.output(name='getting_started_2.pdf', xsize=16, ysize=16)
+    plot.output(xsize=12, ysize=10, name=filename)
+    print("Saved results as '{}'.".format(filename))
