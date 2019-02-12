@@ -138,14 +138,7 @@ class ChainOperator(LinearOperator):
         subs = "\n".join(sub.__repr__() for sub in self._ops)
         return "ChainOperator:\n" + utilities.indent(subs)
 
-    def simplify_for_constant_input(self, c_inp):
-        if c_inp is None:
-            return None, self
-        if c_inp.domain == self.domain:
-            from .operator import _ConstantOperator
-            op = _ConstantOperator(self.domain, self(c_inp))
-            return op(c_inp), op
-
+    def _simplify_for_constant_input_nontrivial(self, c_inp):
         from ..multi_domain import MultiDomain
         if not isinstance(self._domain, MultiDomain):
             return None, self

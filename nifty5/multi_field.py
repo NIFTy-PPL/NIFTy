@@ -219,10 +219,6 @@ class MultiField(object):
         return MultiField.from_dict({key: self[key] for key in subset.keys()
                                      if key in self})
 
-    def extract_by_keys(self, keys):
-        keys = set(self.domain.keys()) & set(keys)
-        return MultiField.from_dict({key: self[key] for key in keys})
-
     def unite(self, other):
         """Merges two MultiFields on potentially different MultiDomains.
 
