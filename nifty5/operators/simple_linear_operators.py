@@ -296,15 +296,13 @@ class _PartialExtractor(LinearOperator):
             raise TypeError("MultiDomain expected")
         self._domain = domain
         self._target = target
+        for key in self._target.keys():
+            if not (self._domain[key] is not self._target[key]):
+                raise ValueError("domain mismatch")
         self._capability = self.TIMES | self.ADJOINT_TIMES
 
     def apply(self, x, mode):
         self._check_input(x, mode)
         if mode == self.TIMES:
-            res = x.extract(self._target)
-            assert res.domain is self.target
-            return res
-        fld = {key: x[key] if key in x.domain.keys() else Field.full(self._domain[key], 0.)
-               for key in self._domain.keys()}
-        assert MultiField.from_dict(fld).domain is self.domain
-        return MultiField.from_dict(fld)
+            return x.extract(self._target)
+        return MultiField.from_dict({key: x[key] for key in x.domain.keys()})

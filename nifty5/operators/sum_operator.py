@@ -202,8 +202,8 @@ class SumOperator(LinearOperator):
         return "SumOperator:\n"+indent(subs)
 
     def _simplify_for_constant_input_nontrivial(self, c_inp):
-        f=[]
-        o=[]
+        f = []
+        o = []
         for op in self._ops:
             tf, to = op.simplify_for_constant_input(
                 c_inp.extract_part(op.domain))

@@ -196,7 +196,8 @@ class _ConstCollector(object):
             self._nc |= set(fulldom.keys()) - set(const.keys())
             if self._const is None:
                 self._const = MultiField.from_dict(
-                    {key: const[key] for key in const.keys() if key not in self._nc})
+                    {key: const[key]
+                     for key in const.keys() if key not in self._nc})
             else:
                 self._const = self._const.unite(const)
                 self._const = MultiField.from_dict(
