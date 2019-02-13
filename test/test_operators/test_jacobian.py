@@ -87,6 +87,10 @@ def testBinary(type1, type2, space, seed):
     model = select_s1.clip(-1, 1)
     pos = ift.from_random("normal", dom1)
     ift.extra.check_jacobian_consistency(model, pos, ntries=20)
+    f = ift.from_random("normal", space)
+    model = select_s1.clip(f-0.1, f+1.)
+    pos = ift.from_random("normal", dom1)
+    ift.extra.check_jacobian_consistency(model, pos, ntries=20)
     if isinstance(space, ift.RGSpace):
         model = ift.FFTOperator(space)(select_s1*select_s2)
         pos = ift.from_random("normal", dom)

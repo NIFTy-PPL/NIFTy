@@ -636,6 +636,10 @@ class Field(object):
         return 0.5*(1.+self.tanh())
 
     def clip(self, min=None, max=None):
+        if isinstance(min, Field):
+            min = min.local_data
+        if isinstance(max, Field):
+            max = max.local_data
         return Field(self._domain, dobj.clip(self._val, min, max))
 
     def one_over(self):

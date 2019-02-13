@@ -192,8 +192,18 @@ class MultiField(object):
         return self._transform(lambda x: x.conjugate())
 
     def clip(self, min=None, max=None):
-        return MultiField(self._domain,
-                          tuple(clip(v, min, max) for v in self._val))
+        fields = []
+        for i in range(len(self._val)):
+            if isinstance(min, MultiField):
+                this_min = min._val[i]
+            else:
+                this_min = min
+            if isinstance(max, MultiField):
+                this_max = max._val[i]
+            else:
+                this_max = max
+            fields += [self._val[i].clip(this_min, this_max)]
+        return MultiField(self._domain, tuple(fields)) 
 
     def all(self):
         for v in self._val:
