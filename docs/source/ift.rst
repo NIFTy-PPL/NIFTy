@@ -106,7 +106,7 @@ The demo codes `demos/getting_started_1.py` and `demos/Wiener_Filter.ipynb` illu
 Generative Models
 -----------------
 
-For more sophisticated measurement situations, involving non-linear measuremnts, unknown covariances, calibration constants and the like, it is recommended to formulate those as generative models for which NIFTy provides powerful inference algorithms.
+For more sophisticated measurement situations, involving non-linear measurements, unknown covariances, calibration constants and the like, it is recommended to formulate those as generative models for which NIFTy provides powerful inference algorithms.
 
 In a generative model, all known or unknown quantities are described as the results of generative processes, which start with simple probability distributions, like the uniform, the i.i.d. Gaussian, or the delta distribution.
 
