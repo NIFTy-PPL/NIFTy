@@ -147,3 +147,40 @@ class LMSpace(StructuredDomain):
         from ..domains.hp_space import HPSpace
         if not isinstance(codomain, (GLSpace, HPSpace)):
             raise TypeError("codomain must be a GLSpace or HPSpace.")
+
+
+def apply_spherical_convolution(inp, func):
+    """Convolves `inp` with a kernel defined by `func`
+    which is assumed to be radially symmetric around theta==0."""
+
+    import pyHealpix
+    from .gl_space import GLSpace
+    from ..operators.harmonic_operators import HarmonicTransformOperator
+    if len(inp.domain) != 1:
+        raise ValueError("need exactly one domain")
+    sph = inp.domain[0]
+    # define an appropriate harmonic partner space
+    lm = sph.get_default_codomain()
+    if not isinstance(lm, LMSpace):
+        raise TypeError("need a spherical domain")
+    # define azimuthally symmetric spaces for kernel transform
+    gl = GLSpace(lm.lmax + 1, 1)
+    lm0 = gl.get_default_codomain()
+    theta = pyHealpix.GL_thetas(gl.nlat)
+    # evaluate the kernel function at the required thetas
+    kernel_sphere = Field.from_global_data(gl, func(theta))
+    # normalize the kernel such that the integral over the sphere is 4pi
+    kernel_sphere = kernel_sphere * (4 * np.pi / kernel_sphere.integrate())
+    # compute the spherical harmonic coefficients of the kernel
+    op = HarmonicTransformOperator(lm0, gl)
+    kernel_lm = op.adjoint_times(kernel_sphere.weight(1)).to_global_data()
+    # evaluate the k lengths of the harmonic space
+    k_lengths = lm.get_k_length_array().to_global_data().astype(np.int)
+    op = HarmonicTransformOperator(lm, sph)
+    # "inverse" transform to harmonic space
+    inp_lm = op.adjoint_times(inp.weight(1)).to_global_data()
+    # multiply the kernel to the coefficients and adjust normalization
+    inp_lm = inp_lm * kernel_lm[k_lengths] * 4 * np.pi
+    out = Field.from_global_data(lm, inp_lm)
+    # back to the original space
+    return op(out)
