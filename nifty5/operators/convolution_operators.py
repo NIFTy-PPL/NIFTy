@@ -26,32 +26,25 @@ from ..domain_tuple import DomainTuple
 from ..field import Field
 
 
-class SphericalFuncConvolutionOperator(EndomorphicOperator):
+def SphericalFuncConvolutionOperator(domain, func):
     """Convolves input with a radially symmetric kernel defined by `func`
 
     Parameters
     ----------
-    domain: domain of the operator
-    func:   function defining the sperical convolution kernel
-            dependant only on theta in radians
+    domain: DomainTuple
+            Domain of the operator. Must have exactly one entry, which is
+            of type `HPSpace` or `GLSpace`.
+    func:   function
+            This function needs to take exactly one argument, which is
+            colatitude in radians, and return the kernel amplitude at that
+            colatitude.
     """
-
-    def __init__(self, domain, func):
-        if len(domain) != 1:
-            raise ValueError("need exactly one domain")
-        if not isinstance(domain[0], (HPSpace, GLSpace)):
-            raise TypeError("need a spherical domain")
-        self._domain = domain
-        self.lm = domain[0].get_default_codomain()
-        self.kernel = self.lm.get_conv_kernel_from_func(func)
-        self.HT = HarmonicTransformOperator(self.lm, domain[0])
-        self._capability = self.TIMES | self.ADJOINT_TIMES
-
-    def apply(self, x, mode):
-        self._check_input(x, mode)
-        x_lm = self.HT.adjoint_times(x.weight(1))
-        x_lm = x_lm * self.kernel * (4. * np.pi)
-        return self.HT(x_lm)
+    if len(domain) != 1:
+        raise ValueError("need exactly one domain")
+    if not isinstance(domain[0], (HPSpace, GLSpace)):
+        raise TypeError("need a spherical domain")
+    kernel = domain[0].get_default_codomain().get_conv_kernel_from_func(func)
+    return SphericalConvolutionOperator(domain, kernel)
 
 
 class SphericalConvolutionOperator(EndomorphicOperator):

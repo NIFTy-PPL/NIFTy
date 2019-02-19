@@ -15,10 +15,12 @@ for i in range(0, npix, npix//12 + 27):
     signal_vals[i] = 1.
 signal = ift.from_global_data(dom_tuple, signal_vals)
 
+
 # Define kernel function
 def func(theta):
     ct = np.cos(theta)
     return 1. * np.logical_and(ct > 0.7, ct <= 0.8)
+
 
 # Create Convolution Operator
 conv_op = ift.SphericalFuncConvolutionOperator(dom_tuple, func)
