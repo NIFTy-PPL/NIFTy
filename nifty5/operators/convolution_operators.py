@@ -32,12 +32,12 @@ def SphericalFuncConvolutionOperator(domain, func):
     Parameters
     ----------
     domain: DomainTuple
-            Domain of the operator. Must have exactly one entry, which is
-            of type `HPSpace` or `GLSpace`.
-    func:   function
-            This function needs to take exactly one argument, which is
-            colatitude in radians, and return the kernel amplitude at that
-            colatitude.
+        Domain of the operator. Must have exactly one entry, which is
+        of type `HPSpace` or `GLSpace`.
+    func: function
+        This function needs to take exactly one argument, which is
+        colatitude in radians, and return the kernel amplitude at that
+        colatitude.
     """
     if len(domain) != 1:
         raise ValueError("need exactly one domain")
