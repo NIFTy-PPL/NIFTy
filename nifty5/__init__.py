@@ -50,8 +50,7 @@ from .operators.value_inserter import ValueInserter
 from .operators.energy_operators import (
     EnergyOperator, GaussianEnergy, PoissonianEnergy, InverseGammaLikelihood,
     BernoulliEnergy, StandardHamiltonian, AveragedEnergy)
-from .operators.convolution_operators import (
-    SphericalConvolutionOperator, SphericalFuncConvolutionOperator)
+from .operators.convolution_operators import SphericalFuncConvolutionOperator
 
 from .probing import probe_with_posterior_samples, probe_diagonal, \
     StatCalculator

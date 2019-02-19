@@ -44,10 +44,10 @@ def SphericalFuncConvolutionOperator(domain, func):
     if not isinstance(domain[0], (HPSpace, GLSpace)):
         raise TypeError("need a spherical domain")
     kernel = domain[0].get_default_codomain().get_conv_kernel_from_func(func)
-    return SphericalConvolutionOperator(domain, kernel)
+    return _SphericalConvolutionOperator(domain, kernel)
 
 
-class SphericalConvolutionOperator(EndomorphicOperator):
+class _SphericalConvolutionOperator(EndomorphicOperator):
     """Convolves with kernel living on the appropriate LMSpace"""
 
     def __init__(self, domain, kernel):
