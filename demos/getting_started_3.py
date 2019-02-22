@@ -122,12 +122,12 @@ if __name__ == '__main__':
     plot.output(ny=1, nx=3, xsize=24, ysize=6, name=filename.format("setup"))
 
     # number of samples used to estimate the KL
-    N_samples = 20
+    N_samples = 2
 
     # Draw new samples to approximate the KL five times
     for i in range(5):
         # Draw new samples and minimize KL
-        KL = ift.MetricGaussianKL(mean, H, N_samples)
+        KL = ift.MetricGaussianKL_MPI(mean, H, N_samples)
         KL, convergence = minimizer(KL)
         mean = KL.position
 
@@ -139,7 +139,7 @@ if __name__ == '__main__':
                     name=filename.format("loop_{:02d}".format(i)))
 
     # Draw posterior samples
-    KL = ift.MetricGaussianKL(mean, H, N_samples)
+    KL = ift.MetricGaussianKL_MPI(mean, H, N_samples)
     sc = ift.StatCalculator()
     for sample in KL.samples:
         sc.add(signal(sample + KL.position))

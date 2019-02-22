@@ -69,7 +69,7 @@ from .minimization.scipy_minimizer import L_BFGS_B
 from .minimization.energy import Energy
 from .minimization.quadratic_energy import QuadraticEnergy
 from .minimization.energy_adapter import EnergyAdapter
-from .minimization.metric_gaussian_kl import MetricGaussianKL, MetricGaussianKL_MPI
+from .minimization.metric_gaussian_kl import MetricGaussianKL
 
 from .sugar import *
 from .plot import Plot
@@ -93,6 +93,11 @@ from .utilities import memo, frozendict
 from .logger import logger
 
 from .linearization import Linearization
+
+from . import parallelization_scheme
+_scheme = parallelization_scheme.scheme()
+if _scheme == "Samples":
+    from .minimization.metric_gaussian_kl_mpi import MetricGaussianKL_MPI
 
 # We deliberately don't set __all__ here, because we don't want people to do a
 # "from nifty5 import *"; that would swamp the global namespace.
