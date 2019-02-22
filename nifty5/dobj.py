@@ -15,11 +15,16 @@
 #
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
 
-try:
-    from mpi4py import MPI
-    if MPI.COMM_WORLD.Get_size() == 1:
-        from .data_objects.numpy_do import *
-    else:
-        from .data_objects.distributed_do import *
-except ImportError:
+_always_use_numpy_do = True
+
+if _always_use_numpy_do:
     from .data_objects.numpy_do import *
+else:
+    try:
+        from mpi4py import MPI
+        if MPI.COMM_WORLD.Get_size() == 1:
+            from .data_objects.numpy_do import *
+        else:
+            from .data_objects.distributed_do import *
+    except ImportError:
+        from .data_objects.numpy_do import *
