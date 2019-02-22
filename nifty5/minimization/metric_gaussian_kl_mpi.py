@@ -40,6 +40,7 @@ def _shareRange(nwork, nshares, myshare):
 
 
 def np_allreduce_sum(arr):
+    arr = np.array(arr)
     res = np.empty_like(arr)
     _comm.Allreduce(arr, res, MPI.SUM)
     return res
