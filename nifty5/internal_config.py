@@ -15,7 +15,11 @@
 #
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
 
-def scheme():
-    # return "Standard"
-    return "Samples"
+
+# Internal configuration switches, typically for experimental features.
+# Leave unchanged unless you know what you are doing!
+
+def parallelization_scheme():
+    return "Standard"
+    # return "Samples"
     # return "None"

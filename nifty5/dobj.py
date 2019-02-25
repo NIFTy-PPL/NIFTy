@@ -15,10 +15,10 @@
 #
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
 
-from . import parallelization_scheme
+from . import internal_config
 
 
-_scheme = parallelization_scheme.scheme()
+_scheme = internal_config.parallelization_scheme()
 
 if _scheme in ("Samples", "None"):
     from .data_objects.numpy_do import *

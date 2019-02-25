@@ -94,8 +94,8 @@ from .logger import logger
 
 from .linearization import Linearization
 
-from . import parallelization_scheme
-_scheme = parallelization_scheme.scheme()
+from . import internal_config
+_scheme = internal_config.parallelization_scheme()
 if _scheme == "Samples":
     from .minimization.metric_gaussian_kl_mpi import MetricGaussianKL_MPI
 
