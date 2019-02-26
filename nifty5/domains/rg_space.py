@@ -90,9 +90,7 @@ class RGSpace(StructuredDomain):
     def scalar_dvol(self):
         return self._dvol
 
-    def get_k_length_array(self):
-        if (not self.harmonic):
-            raise NotImplementedError
+    def _get_dist_array(self):
         ibegin = dobj.ibegin_from_shape(self._shape)
         res = np.arange(self.local_shape[0], dtype=np.float64) + ibegin[0]
         res = np.minimum(res, self.shape[0]-res)*self.distances[0]
@@ -105,6 +103,11 @@ class RGSpace(StructuredDomain):
             tmp *= tmp
             res = np.add.outer(res, tmp)
         return Field.from_local_data(self, np.sqrt(res))
+
+    def get_k_length_array(self):
+        if (not self.harmonic):
+            raise NotImplementedError
+        return self._get_dist_array()
 
     def get_unique_k_lengths(self):
         if (not self.harmonic):
@@ -145,6 +148,27 @@ class RGSpace(StructuredDomain):
         if (not self.harmonic):
             raise NotImplementedError
         return lambda x: self._kernel(x, sigma)
+
+    def get_conv_kernel_from_func(self, func):
+        """Creates a convolution kernel defined by a function.
+
+        Parameters
+        ----------
+        func: function
+            This function needs to take exactly one argument, which is
+            distance from center (in the same units as the RGSpace distances),
+            and return the kernel amplitude at that distance.
+
+        Assumes the function to be radially symmetric,
+        e.g. only dependant on distance"""
+        from ..operators.harmonic_operators import HarmonicTransformOperator
+        if (not self.harmonic):
+            raise NotImplementedError
+        op = HarmonicTransformOperator(self, self.get_default_codomain())
+        dist = op.target[0]._get_dist_array()
+        kernel = Field.from_local_data(op.target, func(dist.local_data))
+        kernel = kernel / kernel.integrate()
+        return op.adjoint_times(kernel.weight(1))
 
     def get_default_codomain(self):
         """Returns a :class:`RGSpace` object representing the (position or

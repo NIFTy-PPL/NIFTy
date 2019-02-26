@@ -17,56 +17,57 @@
 
 import numpy as np
 
+from ..domains.rg_space import RGSpace
 from ..domains.lm_space import LMSpace
 from ..domains.hp_space import HPSpace
 from ..domains.gl_space import GLSpace
 from .endomorphic_operator import EndomorphicOperator
 from .harmonic_operators import HarmonicTransformOperator
+from .diagonal_operator import DiagonalOperator
+from .simple_linear_operators import WeightApplier
 from ..domain_tuple import DomainTuple
 from ..field import Field
+from .. import utilities
 
 
-def SphericalFuncConvolutionOperator(domain, func):
+def FuncConvolutionOperator(domain, func, space=None):
     """Convolves input with a radially symmetric kernel defined by `func`
 
     Parameters
     ----------
     domain: DomainTuple
-        Domain of the operator. Must have exactly one entry, which is
-        of type `HPSpace` or `GLSpace`.
+        Domain of the operator.
     func: function
         This function needs to take exactly one argument, which is
         colatitude in radians, and return the kernel amplitude at that
         colatitude.
+    space: int, optional
+        The index of the subdomain on which the operator should act
+        If None, it is set to 0 if `domain` contains exactly one space.
+        `domain[space]` must be of type `RGSpace`, `HPSpace`, or `GLSpace`.
     """
-    if len(domain) != 1:
-        raise ValueError("need exactly one domain")
-    if not isinstance(domain[0], (HPSpace, GLSpace)):
-        raise TypeError("need a spherical domain")
-    kernel = domain[0].get_default_codomain().get_conv_kernel_from_func(func)
-    return _SphericalConvolutionOperator(domain, kernel)
+    domain = DomainTuple.make(domain)
+    space = utilities.infer_space(domain, space)
+    if not isinstance(domain[space], (RGSpace, HPSpace, GLSpace)):
+        raise TypeError("unsupported domain")
+    codomain = domain[space].get_default_codomain()
+    kernel = codomain.get_conv_kernel_from_func(func)
+    return _ConvolutionOperator(domain, kernel, space)
 
 
-class _SphericalConvolutionOperator(EndomorphicOperator):
-    """Convolves with kernel living on the appropriate LMSpace"""
-
-    def __init__(self, domain, kernel):
-        if len(domain) != 1:
-            raise ValueError("need exactly one domain")
-        if len(kernel.domain) != 1:
-            raise ValueError("kernel needs exactly one domain")
-        if not isinstance(domain[0], (HPSpace, GLSpace)):
-            raise TypeError("need a spherical domain")
-        self._domain = domain
-        self.lm = domain[0].get_default_codomain()
-        if self.lm != kernel.domain[0]:
-            raise ValueError("Input domain and kernel are incompatible")
-        self.kernel = kernel
-        self.HT = HarmonicTransformOperator(self.lm, domain[0])
-        self._capability = self.TIMES | self.ADJOINT_TIMES
-
-    def apply(self, x, mode):
-        self._check_input(x, mode)
-        x_lm = self.HT.adjoint_times(x.weight(1))
-        x_lm = x_lm * self.kernel * (4. * np.pi)
-        return self.HT(x_lm)
+def _ConvolutionOperator(domain, kernel, space=None):
+    domain = DomainTuple.make(domain)
+    space = utilities.infer_space(domain, space)
+    if len(kernel.domain) != 1:
+        raise ValueError("kernel needs exactly one domain")
+    if not isinstance(domain[space], (HPSpace, GLSpace, RGSpace)):
+        raise TypeError("need RGSpace, HPSpace, or GLSpace")
+    lm = [d for d in domain]
+    lm[space] = lm[space].get_default_codomain()
+    lm = DomainTuple.make(lm)
+    if lm[space] != kernel.domain[0]:
+        raise ValueError("Input domain and kernel are incompatible")
+    HT = HarmonicTransformOperator(lm, domain[space], space)
+    diag = DiagonalOperator(kernel*domain[space].total_volume, lm, (space,))
+    wgt = WeightApplier(domain, space, 1)
+    return HT(diag(HT.adjoint(wgt)))
