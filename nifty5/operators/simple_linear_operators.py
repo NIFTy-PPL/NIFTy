@@ -63,6 +63,35 @@ class ConjugationOperator(EndomorphicOperator):
         return x.conjugate()
 
 
+class WeightApplier(EndomorphicOperator):
+    """Operator multiplying its input by a given power of dvol.
+
+    Parameters
+    ----------
+    domain: Domain, tuple of domains or DomainTuple
+        domain of the input field
+    spaces: list or tuple of int
+        indices of subdomains for which the weights shall be applied
+    power: int
+        the power of to be used for the volume factors
+
+    """
+    def __init__(self, domain, spaces, power):
+        from .. import utilities
+        self._domain = DomainTuple.make(domain)
+        if spaces is None:
+            self._spaces = None
+        else:
+            self._spaces = utilities.parse_spaces(spaces, len(self._domain))
+        self._power = int(power)
+        self._capability = self._all_ops
+
+    def apply(self, x, mode):
+        self._check_input(x, mode)
+        power = self._power if (mode & 3) else -self._power
+        return x.weight(power, spaces=self._spaces)
+
+
 class Realizer(EndomorphicOperator):
     """Operator returning the real component of its input.
 
