@@ -5,16 +5,15 @@ import nifty5 as ift
 def convtest(test_signal, delta, func):
     domain = test_signal.domain
 
-    codom = domain[0].get_default_codomain()
-
     # Create Convolution Operator
     conv_op = ift.FuncConvolutionOperator(domain, func)
 
     # Convolve, Adjoint-Convolve
-    conv_signal = conv_op(signal)
+    conv_signal = conv_op(test_signal)
     cac_signal = conv_op.adjoint_times(conv_signal)
 
-    print(signal.integrate(), conv_signal.integrate(), cac_signal.integrate())
+    print(test_signal.integrate(), conv_signal.integrate(),
+          cac_signal.integrate())
 
     # generate kernel image
     conv_delta = conv_op(delta)
@@ -37,7 +36,7 @@ domain = ift.HPSpace(nside)
 # Define test signal (some point sources)
 signal_vals = np.zeros(npix, dtype=np.float64)
 for i in range(0, npix, npix//12 + 27):
-    signal_vals[i] = 1.
+    signal_vals[i] = 500.
 
 signal = ift.from_global_data(domain, signal_vals)
 
@@ -57,8 +56,8 @@ convtest(signal, delta, func)
 domain = ift.RGSpace((100, 100))
 # Define test signal (some point sources)
 signal_vals = np.zeros(domain.shape, dtype=np.float64)
-signal_vals[35, 70] = 1
-signal_vals[45, 8] = 1
+signal_vals[35, 70] = 5000.
+signal_vals[45, 8] = 5000.
 signal = ift.from_global_data(domain, signal_vals)
 
 # Define delta signal, generate kernel image
