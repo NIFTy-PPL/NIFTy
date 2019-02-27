@@ -11,23 +11,15 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
-# Copyright(C) 2013-2019 Max-Planck-Society
+# Copyright(C) 2019 Max-Planck-Society
 #
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
 
-from . import internal_config
 
+# Internal configuration switches, typically for experimental features.
+# Leave unchanged unless you know what you are doing!
 
-_scheme = internal_config.parallelization_scheme()
-
-if _scheme in ("Samples", "None"):
-    from .data_objects.numpy_do import *
-else:
-    try:
-        from mpi4py import MPI
-        if MPI.COMM_WORLD.Get_size() == 1:
-            from .data_objects.numpy_do import *
-        else:
-            from .data_objects.distributed_do import *
-    except ImportError:
-        from .data_objects.numpy_do import *
+def parallelization_scheme():
+    return "Standard"
+    # return "Samples"
+    # return "None"
