@@ -235,7 +235,6 @@ class data_object(object):
 for op in ["__add__", "__radd__", "__iadd__",
            "__sub__", "__rsub__", "__isub__",
            "__mul__", "__rmul__", "__imul__",
-           "__div__", "__rdiv__", "__idiv__",
            "__truediv__", "__rtruediv__", "__itruediv__",
            "__floordiv__", "__rfloordiv__", "__ifloordiv__",
            "__pow__", "__rpow__", "__ipow__",
