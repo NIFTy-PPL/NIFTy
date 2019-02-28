@@ -193,6 +193,9 @@ class SumOperator(LinearOperator):
                 "cannot draw from inverse of this operator")
         res = None
         for op in self._ops:
+            from .simple_linear_operators import NullOperator
+            if isinstance(op, NullOperator):
+                continue
             tmp = op.draw_sample(from_inverse, dtype)
             res = tmp if res is None else res.unite(tmp)
         return res
