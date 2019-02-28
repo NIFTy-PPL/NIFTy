@@ -48,3 +48,8 @@ def test_simplification():
     assert_equal(isinstance(op2._op1, _ConstantOperator), True)
     assert_allclose(op(f1)["a"].local_data, op2(f1)["a"].local_data)
     assert_allclose(op(f1)["b"].local_data, op2(f1)["b"].local_data)
+    lin = ift.Linearization.make_var(ift.MultiField.full(op2.domain, 2.), True)
+    assert_allclose(op(lin).val["a"].local_data,
+                    op2(lin).val["a"].local_data)
+    assert_allclose(op(lin).val["b"].local_data,
+                    op2(lin).val["b"].local_data)

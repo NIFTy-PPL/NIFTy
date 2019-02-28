@@ -219,10 +219,16 @@ class _ConstantOperator(Operator):
     def apply(self, x):
         from ..linearization import Linearization
         from .simple_linear_operators import NullOperator
+        from ..domain_tuple import DomainTuple
         self._check_input(x)
         if not isinstance(x, Linearization):
             return self._output
-        return x.new(self._output, NullOperator(self._domain, self._target))
+        if x.want_metric and self._target is DomainTuple.scalar_domain():
+            met = NullOperator(self._domain, self._domain)
+        else:
+            met = None
+        return x.new(self._output, NullOperator(self._domain, self._target),
+                     met)
 
     def __repr__(self):
         return 'ConstantOperator <- {}'.format(self.domain.keys())
