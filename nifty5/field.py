@@ -658,7 +658,6 @@ class Field(object):
 for op in ["__add__", "__radd__",
            "__sub__", "__rsub__",
            "__mul__", "__rmul__",
-           "__div__", "__rdiv__",
            "__truediv__", "__rtruediv__",
            "__floordiv__", "__rfloordiv__",
            "__pow__", "__rpow__",
