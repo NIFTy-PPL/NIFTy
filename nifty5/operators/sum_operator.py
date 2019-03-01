@@ -23,6 +23,7 @@ from ..sugar import domain_union
 from ..utilities import indent
 from .block_diagonal_operator import BlockDiagonalOperator
 from .linear_operator import LinearOperator
+from .simple_linear_operators import NullOperator
 
 
 class SumOperator(LinearOperator):
@@ -59,6 +60,8 @@ class SumOperator(LinearOperator):
                     negnew += [not n for n in op._neg]
                 else:
                     negnew += list(op._neg)
+            elif isinstance(op, NullOperator):
+                pass
             else:
                 opsnew.append(op)
                 negnew.append(ng)
