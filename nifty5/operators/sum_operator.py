@@ -60,8 +60,9 @@ class SumOperator(LinearOperator):
                     negnew += [not n for n in op._neg]
                 else:
                     negnew += list(op._neg)
-            elif isinstance(op, NullOperator):
-                pass
+# FIXME: this needs some more work to keep the domain and target unchanged!
+#            elif isinstance(op, NullOperator):
+#                pass
             else:
                 opsnew.append(op)
                 negnew.append(ng)
