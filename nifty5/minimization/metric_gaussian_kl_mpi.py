@@ -76,17 +76,27 @@ class MetricGaussianKL_MPI(Energy):
         self._hamiltonian = hamiltonian
 
         if _samples is None:
-            lo, hi = _shareRange(n_samples, ntask, rank)
+            if mirror_samples:
+                lo, hi = _shareRange(n_samples*2, ntask, rank)
+            else:
+                lo, hi = _shareRange(n_samples, ntask, rank)
             met = hamiltonian(Linearization.make_partial_var(
                 mean, point_estimates, True)).metric
             _samples = []
             for i in range(lo, hi):
-                np.random.seed(i)
-                _samples.append(met.draw_sample(from_inverse=True))
-            if mirror_samples:
-                _samples += [-s for s in _samples]
-                n_samples *= 2
+                if mirror_samples:
+                    np.random.seed(i//2)
+                    if i%2 and i-1 >= lo:
+                        _samples.append(-_samples[-1])
+
+                    else:
+                        _samples.append(((i%2)*2-1)*met.draw_sample(from_inverse=True))
+                else:
+                    np.random.seed(i)
+                    _samples.append(met.draw_sample(from_inverse=True))
             _samples = tuple(_samples)
+            if mirror_samples:
+                n_samples *= 2
         self._samples = _samples
         self._n_samples = n_samples
         self._lin = Linearization.make_partial_var(mean, constants)
