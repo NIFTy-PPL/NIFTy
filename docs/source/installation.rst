@@ -38,3 +38,17 @@ Support for spherical harmonic transforms is added via::
 MPI support is added via::
 
     sudo apt-get install python3-mpi4py
+
+NIFTy documentation is provided by Sphinx. To build the documentation::
+
+    sudo apt-get install python3-sphinx-rtd-theme dvipng
+    cd <nifty_directory>
+    sh docs/generate.sh
+
+To view the documentation in firefox::
+
+    firefox docs/build/index.html
+
+(Note: Make sure that you reinstall nifty after each change since sphinx
+imports nifty from the python path.)
+

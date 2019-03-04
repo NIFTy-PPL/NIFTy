@@ -77,7 +77,7 @@ The additional methods are specified in the abstract class
   provide information about the domain's pixel volume(s) and its total volume.
 - The property :attr:`~StructuredDomain.harmonic` specifies whether a domain
   is harmonic (i.e. describes a frequency space) or not
-- Iff the domain is harmonic, the methods
+- If the domain is harmonic, the methods
   :meth:`~StructuredDomain.get_k_length_array`,
   :meth:`~StructuredDomain.get_unique_k_lengths`, and
   :meth:`~StructuredDomain.get_fft_smoothing_kernel_function` provide absolute
@@ -90,13 +90,16 @@ NIFTy comes with several concrete subclasses of :class:`StructuredDomain`:
 
 - :class:`~rg_space.RGSpace` represents a regular Cartesian grid with an arbitrary
   number of dimensions, which is supposed to be periodic in each dimension.
+- :class:`~log_rg_space.LogRGSpace` implements a Cartesian grid wit logarithimcally
+  spaced bins and an arbitrary number of dimensions.
 - :class:`~hp_space.HPSpace` and :class:`~gl_space.GLSpace` describe pixelisations of the
   2-sphere; their counterpart in harmonic space is :class:`~lm_space.LMSpace`, which
   contains spherical harmonic coefficients.
 - :class:`~power_space.PowerSpace` is used to describe one-dimensional power spectra.
 
-Among these, :class:`~rg_space.RGSpace` can be harmonic or not (depending on
-constructor arguments), :class:`~gl_space.GLSpace`, :class:`~hp_space.HPSpace`,
+Among these, :class:`~rg_space.RGSpace` and :class:`~log_rg_space.LogRGSpace` can
+be harmonic or not (depending on constructor arguments),
+:class:`~gl_space.GLSpace`, :class:`~hp_space.HPSpace`,
 and :class:`~power_space.PowerSpace` are pure position domains (i.e.
 nonharmonic), and :class:`~lm_space.LMSpace` is always harmonic.
 
@@ -122,10 +125,17 @@ Some examples are:
 
 .. currentmodule:: nifty5
 
-Consequently, NIFTy defines a class called :class:`~domain_tuple.DomainTuple`
-holding a sequence of :class:`~domains.domain.Domain` objects, which is used to
-specify full field domains. In principle, a :class:`~domain_tuple.DomainTuple`
+Consequently, NIFTy defined a class called :class:`~domain_tuple.DomainTuple`
+holding a sequence of :class:`~domains.domain.Domain` objects. The full domain is
+specified as the product of all elementary domains. Thus, an instance of
+:class:`~domain_tuple.DomainTuple` would be suitable to describe the former two
+examples above. In principle, a :class:`~domain_tuple.DomainTuple`
 can even be empty, which implies that the field living on it is a scalar.
+
+.. Consequently, NIFTy defines a class called :class:`~domain_tuple.DomainTuple`
+.. holding a sequence of :class:`~domains.domain.Domain` objects, which is used to
+.. specify full field domains. In principle, a :class:`~domain_tuple.DomainTuple`
+.. can even be empty, which implies that the field living on it is a scalar.
 
 A :class:`~domain_tuple.DomainTuple` supports iteration and indexing, and also
 provides the properties :attr:`~domain_tuple.DomainTuple.shape` and
@@ -134,7 +144,10 @@ provides the properties :attr:`~domain_tuple.DomainTuple.shape` and
 
 An aggregation of several :class:`~domain_tuple.DomainTuple` s, each member
 identified by a name, is described by the :class:`~multi_domain.MultiDomain`
-class.
+class. In contrast to a :class:`~domain_tuple.DomainTuple` a
+:class:`~multi_domain.MultiDomain` is a collection and does not define the
+product space of its elements.  It would be the adequate space to use in the
+latter of above's examples.
 
 Fields
 ======
@@ -152,12 +165,21 @@ Usually, the array is stored in the form of a ``numpy.ndarray``, but for very
 resource-intensive tasks NIFTy also provides an alternative storage method to
 be used with distributed memory processing.
 
-Fields support a wide range of arithmetic operations, either involving two
-fields with equal domains, or a field and a scalar.
+Fields support a wide range of arithmetic operations, either involving
+two fields of equal domains or a field and a scalar. Arithmetic operations are
+performed point-wise, and the returned field has the same domain as the input field(s). Available operators are addition ("+"), subtraction ("-"),
+multiplication ("*"), division ("/"), floor division ("//") and
+exponentiation ("**"). Inplace operators ("+=", etc.) are not supported.
+Further, boolean operators, performing a point wise comparison of a field with
+either another field of equal domain or a scalar, are available as well. These
+include equals ("=="), not equals ("!="), less ("<"), less or equal ("<="),
+greater (">") and greater or equal (">=). The domain of the field returned equals
+that of the input field(s), while the stored data is of boolean type.
+
 Contractions (like summation, integration, minimum/maximum, computation of
 statistical moments) can be carried out either over an entire field (producing
 a scalar result) or over sub-domains (resulting in a field defined on a smaller
-domain). Scalar products of two fields can also be computed easily.
+domain). Scalar products of two fields can also be computed easily as well.
 See the documentation of :class:`~field.Field` for details.
 
 There is also a set of convenience functions to generate fields with constant
