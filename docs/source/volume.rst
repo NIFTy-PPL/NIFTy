@@ -160,7 +160,7 @@ Often, log-likelihoods contain integrals over the quantity of interest :math:`s`
 
     \int_\Omega \text{d}x\, s(x) \approx \sum_i s^i\int_{\Omega_i}\text{d}x\, 1
 
-Here the domain of the integral :math:`\Omega = \dot{\discretised_q} \; \Omega_i` is the disjoint union over smaller :math:`\Omega_i`, e.g. the pixels of the space, and :math:`s_i` is the discretised field value on the :math:`i`-th pixel.
+Here the domain of the integral :math:`\Omega = \dot{\bigcup_q} \; \Omega_i` is the disjoint union over smaller :math:`\Omega_i`, e.g. the pixels of the space, and :math:`s_i` is the discretised field value on the :math:`i`-th pixel.
 This introduces the weighting :math:`V_i=\int_{\Omega_i}\text{d}x\, 1`, also called the volume factor, a property of the space.
 NIFTy aids you in constructing your own log-likelihood by providing methods like :func:`~field.Field.weight`, which weights all pixels of a field with their corresponding volume.
 An integral over a :class:`~field.Field` :code:`s` can be performed by calling :code:`s.weight(1).sum()`, which is equivalent to :code:`s.integrate()`.

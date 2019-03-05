@@ -116,10 +116,10 @@ Some examples are:
 - sky emission depending on location and energy. This could be represented by a
   product of an :class:`~hp_space.HPSpace` (for location) with an
   :class:`~rg_space.RGSpace` (for energy).
-- a polarized field, which could be modeled as a product of any structured
+- a polarized field, which could be modelled as a product of any structured
   domain (representing location) with a four-element
   :class:`~unstructured_domain.UnstructuredDomain` holding Stokes I, Q, U and V components.
-- a model for the sky emission, which holds both the current realization
+- a model for the sky emission, which holds both the current realisation
   (on a harmonic domain) and a few inferred model parameters (e.g. on an
   unstructured grid).
 
@@ -237,8 +237,10 @@ specific inference problems. Currently these are:
 - :class:`~smooth_linear_amplitude.SLAmplitude`, which returns a smooth power spectrum.
 - :class:`~inverse_gamma_operator.InverseGammaOperator`, which models point sources which are
   distributed according to a inverse-gamma distribution.
-- :class:`~correlated_fields.CorrelatedField`, which models a diffuse log-normal field. It takes an
-  amplitude operator to specify the correlation structure of the field.
+- :class:`~correlated_fields.CorrelatedField`, which models a diffuse field whose correlation
+  structure is described by an amplitude operator.
+.. - :class:`~correlated_fields.CorrelatedField`, which models a diffuse log-normal field. It takes an
+   amplitude operator to specify the correlation structure of the field.
 
 
 Linear Operators
@@ -373,13 +375,25 @@ tackling new IFT problems. An example of concrete energy classes delivered with
 NIFTy5 is :class:`~minimization.quadratic_energy.QuadraticEnergy` (with
 position-independent metric, mainly used with conjugate gradient minimization).
 
+For MGVI, NIFTy provides the :class:`~energy.Energy` subclass :class:`~minimization.metric_gaussian_kl.MetricGaussianKL`,
+which computes the sampled estimated of the KL divergence, its gradient and the Fisher metric. The constructor
+of :class:`~minimization.metric_gaussian_kl.MetricGaussianKL` requires an instance of
+:class:`~operators.energy_operators.StandardHamiltonian`, an operator to compute the negative log-likelihood of the problem in standardized coordinates
+at a given position in parameter space. Finally, the :class:`~operators.energy_operators.StandardHamiltonian` can be constructed from
+the likelihood, represented by an :class:`~operators.energy_operators.EnergyOperator` instance. Several commonly used forms of the likelihoods are already provided in
+NIFTy, such as :class:`~operators.energy_operators.GaussianEnergy`, :class:`~operators.energy_operators.PoissonianEnergy`,
+:class:`~operators.energy_operators.InverseGammaLikelihood` or :class:`~operators.energy_operators.BernoulliEnergy`, but the user
+is free to implement a likelihood customized to the problem at hand. The dome code `demos/getting_started_3.py` illustrates how to set up an energy functional
+for MGVI and minimize it.
+
+
 
 Iteration control
 -----------------
 
 .. currentmodule:: nifty5.minimization.iteration_controllers
 
-Iterative minimization of an energy reqires some means of
+Iterative minimization of an energy requires some means of
 checking the quality of the current solution estimate and stopping once
 it is sufficiently accurate. In case of numerical problems, the iteration needs
 to be terminated as well, returning a suitable error description.
@@ -392,11 +406,11 @@ the minimization or return the current estimate indicating convergence or
 failure.
 
 Sensible stopping criteria can vary significantly with the problem being
-solved; NIFTy provides one concrete sub-class of :class:`IterationController`
+solved; NIFTy provides a concrete sub-class of :class:`IterationController`
 called :class:`GradientNormController`, which should be appropriate in many
-circumstances, but users have complete freedom to implement custom
+circumstances. A full list of the available :class:`IterationController` s
+in NIFTy can be found below, but users have complete freedom to implement custom
 :class:`IterationController` sub-classes for their specific applications.
-
 
 Minimization algorithms
 -----------------------
@@ -429,10 +443,11 @@ generally usable concrete implementations:
 :class:`~descent_minimizers.VL_BFGS`. Of these algorithms, only
 :class:`~descent_minimizers.NewtonCG` requires the energy object to provide
 a :attr:`~energy.Energy.metric` property, the others only need energy values and
-gradients.
+gradients. Further available descent minimizers are :class:`~descent_minimizers.RelaxedNewton`
+and :class:`~descent_minimizers.SteepestDescent`.
 
 The flexibility of NIFTy's design allows using externally provided minimizers.
-With only small effort, adapters for two SciPy minimizers were written; they are
+With only small effort, adaptors for two SciPy minimizers were written; they are
 available under the names :class:`~scipy_minimizer.ScipyCG` and
 :class:`~scipy_minimizer.L_BFGS_B`.
 
@@ -460,3 +475,16 @@ This is accomplished by minimizing a suitable
 with the :class:`~minimization.conjugate_gradient.ConjugateGradient`
 algorithm. An example is provided in
 :func:`~library.wiener_filter_curvature.WienerFilterCurvature`.
+
+      
+Posterior analysis and visualization
+---------------------------------
+
+After the minimization of an energy functional has converged, samples can be drawn
+from the posterior distribution at the current position to investigate the result.
+The probing module offers class called :class:`~probing.StatCalculator`
+which allows to evaluate the :attr:`~probing.StatCalculator.mean` and the unbiased
+variance :attr:`~probing.StatCalculator.mean` of these samples.
+
+Fields can be visualized using the :class:`~plot.Plot` class, which invokes
+matplotlib for plotting.
