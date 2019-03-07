@@ -35,6 +35,19 @@ class ScalingOperator(EndomorphicOperator):
     -----
     :class:`Operator` supports the multiplication with a scalar. So one does
     not need instantiate :class:`ScalingOperator` explicitly in most cases.
+
+    Formally, this operator always supports all operation modes (times,
+    adjoint_times, inverse_times and inverse_adjoint_times), even if `factor`
+    is 0 or infinity. It is the user's responsibility to apply the operator
+    only in appropriate ways (e.g. call inverse_times only if `factor` is
+    nonzero).
+
+    Along with this behaviour comes the feature that it is possible to draw an
+    inverse sample from a :class:`ScalingOperator` (which is a zero-field).
+    This occurs if one draws an inverse sample of a positive definite sum of
+    two operators each of which are only positive semi-definite. However, it
+    is unclear whether this beviour does not lead to unwanted effects
+    somewhere else.
     """
 
     def __init__(self, factor, domain):
@@ -44,10 +57,7 @@ class ScalingOperator(EndomorphicOperator):
             raise TypeError("Scalar required")
         self._factor = factor
         self._domain = makeDomain(domain)
-        if self._factor == 0.:
-            self._capability = self.TIMES | self.ADJOINT_TIMES
-        else:
-            self._capability = self._all_ops
+        self._capability = self._all_ops
 
     def apply(self, x, mode):
         self._check_input(x, mode)
