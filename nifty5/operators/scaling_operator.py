@@ -42,7 +42,12 @@ class ScalingOperator(EndomorphicOperator):
     only in appropriate ways (e.g. call inverse_times only if `factor` is
     nonzero).
 
-    This shortcoming will hopefully be fixed in the future.
+    Along with this behaviour comes the feature that it is possible to draw an
+    inverse sample from a :class:`ScalingOperator` (which is a zero-field).
+    This occurs if one draws an inverse sample of a positive definite sum of
+    two operators each of which are only positive semi-definite. However, it
+    is unclear whether this beviour does not lead to unwanted effects
+    somewhere else.
     """
 
     def __init__(self, factor, domain):
