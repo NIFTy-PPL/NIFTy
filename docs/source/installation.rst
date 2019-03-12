@@ -50,5 +50,5 @@ To view the documentation in firefox::
     firefox docs/build/index.html
 
 (Note: Make sure that you reinstall nifty after each change since sphinx
-imports nifty from the python path.)
+imports nifty from the Python path.)
 

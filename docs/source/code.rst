@@ -77,7 +77,7 @@ The additional methods are specified in the abstract class
   provide information about the domain's pixel volume(s) and its total volume.
 - The property :attr:`~StructuredDomain.harmonic` specifies whether a domain
   is harmonic (i.e. describes a frequency space) or not
-- If the domain is harmonic, the methods
+- If (and only if) the domain is harmonic, the methods
   :meth:`~StructuredDomain.get_k_length_array`,
   :meth:`~StructuredDomain.get_unique_k_lengths`, and
   :meth:`~StructuredDomain.get_fft_smoothing_kernel_function` provide absolute
@@ -90,7 +90,7 @@ NIFTy comes with several concrete subclasses of :class:`StructuredDomain`:
 
 - :class:`~rg_space.RGSpace` represents a regular Cartesian grid with an arbitrary
   number of dimensions, which is supposed to be periodic in each dimension.
-- :class:`~log_rg_space.LogRGSpace` implements a Cartesian grid wit logarithimcally
+- :class:`~log_rg_space.LogRGSpace` implements a Cartesian grid with logarithmically
   spaced bins and an arbitrary number of dimensions.
 - :class:`~hp_space.HPSpace` and :class:`~gl_space.GLSpace` describe pixelisations of the
   2-sphere; their counterpart in harmonic space is :class:`~lm_space.LMSpace`, which
@@ -125,17 +125,12 @@ Some examples are:
 
 .. currentmodule:: nifty5
 
-Consequently, NIFTy defined a class called :class:`~domain_tuple.DomainTuple`
+Consequently, NIFTy defines a class called :class:`~domain_tuple.DomainTuple`
 holding a sequence of :class:`~domains.domain.Domain` objects. The full domain is
 specified as the product of all elementary domains. Thus, an instance of
-:class:`~domain_tuple.DomainTuple` would be suitable to describe the former two
+:class:`~domain_tuple.DomainTuple` would be suitable to describe the first two
 examples above. In principle, a :class:`~domain_tuple.DomainTuple`
 can even be empty, which implies that the field living on it is a scalar.
-
-.. Consequently, NIFTy defines a class called :class:`~domain_tuple.DomainTuple`
-.. holding a sequence of :class:`~domains.domain.Domain` objects, which is used to
-.. specify full field domains. In principle, a :class:`~domain_tuple.DomainTuple`
-.. can even be empty, which implies that the field living on it is a scalar.
 
 A :class:`~domain_tuple.DomainTuple` supports iteration and indexing, and also
 provides the properties :attr:`~domain_tuple.DomainTuple.shape` and
@@ -147,7 +142,7 @@ identified by a name, is described by the :class:`~multi_domain.MultiDomain`
 class. In contrast to a :class:`~domain_tuple.DomainTuple` a
 :class:`~multi_domain.MultiDomain` is a collection and does not define the
 product space of its elements.  It would be the adequate space to use in the
-latter of above's examples.
+last of the above examples.
 
 Fields
 ======
@@ -167,10 +162,11 @@ be used with distributed memory processing.
 
 Fields support a wide range of arithmetic operations, either involving
 two fields of equal domains or a field and a scalar. Arithmetic operations are
-performed point-wise, and the returned field has the same domain as the input field(s). Available operators are addition ("+"), subtraction ("-"),
+performed point-wise, and the returned field has the same domain as the input field(s).
+Available operators are addition ("+"), subtraction ("-"),
 multiplication ("*"), division ("/"), floor division ("//") and
 exponentiation ("**"). Inplace operators ("+=", etc.) are not supported.
-Further, boolean operators, performing a point wise comparison of a field with
+Further, boolean operators, performing a point-wise comparison of a field with
 either another field of equal domain or a scalar, are available as well. These
 include equals ("=="), not equals ("!="), less ("<"), less or equal ("<="),
 greater (">") and greater or equal (">=). The domain of the field returned equals
@@ -375,16 +371,25 @@ tackling new IFT problems. An example of concrete energy classes delivered with
 NIFTy5 is :class:`~minimization.quadratic_energy.QuadraticEnergy` (with
 position-independent metric, mainly used with conjugate gradient minimization).
 
-For MGVI, NIFTy provides the :class:`~energy.Energy` subclass :class:`~minimization.metric_gaussian_kl.MetricGaussianKL`,
-which computes the sampled estimated of the KL divergence, its gradient and the Fisher metric. The constructor
-of :class:`~minimization.metric_gaussian_kl.MetricGaussianKL` requires an instance of
-:class:`~operators.energy_operators.StandardHamiltonian`, an operator to compute the negative log-likelihood of the problem in standardized coordinates
-at a given position in parameter space. Finally, the :class:`~operators.energy_operators.StandardHamiltonian` can be constructed from
-the likelihood, represented by an :class:`~operators.energy_operators.EnergyOperator` instance. Several commonly used forms of the likelihoods are already provided in
-NIFTy, such as :class:`~operators.energy_operators.GaussianEnergy`, :class:`~operators.energy_operators.PoissonianEnergy`,
-:class:`~operators.energy_operators.InverseGammaLikelihood` or :class:`~operators.energy_operators.BernoulliEnergy`, but the user
-is free to implement a likelihood customized to the problem at hand. The dome code `demos/getting_started_3.py` illustrates how to set up an energy functional
-for MGVI and minimize it.
+For MGVI, NIFTy provides the :class:`~energy.Energy` subclass
+:class:`~minimization.metric_gaussian_kl.MetricGaussianKL`,
+which computes the sampled estimated of the KL divergence, its gradient and the
+Fisher metric. The constructor of
+:class:`~minimization.metric_gaussian_kl.MetricGaussianKL` requires an instance
+of :class:`~operators.energy_operators.StandardHamiltonian`, an operator to
+compute the negative log-likelihood of the problem in standardized coordinates
+at a given position in parameter space.
+Finally, the :class:`~operators.energy_operators.StandardHamiltonian`
+can be constructed from the likelihood, represented by an
+:class:`~operators.energy_operators.EnergyOperator` instance.
+Several commonly used forms of the likelihoods are already provided in
+NIFTy, such as :class:`~operators.energy_operators.GaussianEnergy`,
+:class:`~operators.energy_operators.PoissonianEnergy`,
+:class:`~operators.energy_operators.InverseGammaLikelihood` or
+:class:`~operators.energy_operators.BernoulliEnergy`, but the user
+is free to implement any likelihood customized to the problem at hand.
+The demo code `demos/getting_started_3.py` illustrates how to set up an energy
+functional for MGVI and minimize it.
 
 
 
@@ -443,7 +448,8 @@ generally usable concrete implementations:
 :class:`~descent_minimizers.VL_BFGS`. Of these algorithms, only
 :class:`~descent_minimizers.NewtonCG` requires the energy object to provide
 a :attr:`~energy.Energy.metric` property, the others only need energy values and
-gradients. Further available descent minimizers are :class:`~descent_minimizers.RelaxedNewton`
+gradients. Further available descent minimizers are
+:class:`~descent_minimizers.RelaxedNewton`
 and :class:`~descent_minimizers.SteepestDescent`.
 
 The flexibility of NIFTy's design allows using externally provided minimizers.
@@ -476,15 +482,15 @@ with the :class:`~minimization.conjugate_gradient.ConjugateGradient`
 algorithm. An example is provided in
 :func:`~library.wiener_filter_curvature.WienerFilterCurvature`.
 
-      
+
 Posterior analysis and visualization
----------------------------------
+------------------------------------
 
 After the minimization of an energy functional has converged, samples can be drawn
 from the posterior distribution at the current position to investigate the result.
 The probing module offers class called :class:`~probing.StatCalculator`
 which allows to evaluate the :attr:`~probing.StatCalculator.mean` and the unbiased
-variance :attr:`~probing.StatCalculator.mean` of these samples.
+variance :attr:`~probing.StatCalculator.var` of these samples.
 
 Fields can be visualized using the :class:`~plot.Plot` class, which invokes
 matplotlib for plotting.
