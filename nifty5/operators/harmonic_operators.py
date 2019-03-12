@@ -361,6 +361,12 @@ class HarmonicTransformOperator(LinearOperator):
         The index of the domain on which the operator should act
         If None, it is set to 0 if domain contains exactly one subdomain.
         domain[space] must be a harmonic domain.
+
+    Notes
+    -----
+    HarmonicTransformOperator uses a Hartly transformation to transform between harmonic and
+    non-harmonic RGSpaces. This has the advantage that all field values are real in either space.
+    If you require a true Fourier transform you should use FFTOperator instead. 
     """
 
     def __init__(self, domain, target=None, space=None):
