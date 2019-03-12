@@ -45,6 +45,12 @@ def FuncConvolutionOperator(domain, func, space=None):
         The index of the subdomain on which the operator should act
         If None, it is set to 0 if `domain` contains exactly one space.
         `domain[space]` must be of type `RGSpace`, `HPSpace`, or `GLSpace`.
+
+    Notes
+    -----
+    The operator assumes periodic boundaries in the input domain. This means for a sufficiently
+    broad function a point source close to the boundary will blur into the opposite side of the
+    image. Zero padding can be applied to avoid this behaviour.
     """
     domain = DomainTuple.make(domain)
     space = utilities.infer_space(domain, space)
