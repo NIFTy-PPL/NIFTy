@@ -48,9 +48,10 @@ def FuncConvolutionOperator(domain, func, space=None):
 
     Notes
     -----
-    The operator assumes periodic boundaries in the input domain. This means for a sufficiently
-    broad function a point source close to the boundary will blur into the opposite side of the
-    image. Zero padding can be applied to avoid this behaviour.
+    The operator assumes periodic boundaries in the input domain. This means
+    for a sufficiently broad function a point source close to the boundary will
+    blur into the opposite side of the image. Zero padding can be applied to
+    avoid this behaviour.
     """
     domain = DomainTuple.make(domain)
     space = utilities.infer_space(domain, space)
