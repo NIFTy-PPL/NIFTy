@@ -147,7 +147,16 @@ class FieldAdapter(LinearOperator):
             return MultiField(self._tgt(mode), (x,))
 
     def __repr__(self):
-        return 'FieldAdapter'
+        s = 'FieldAdapter'
+        dom = isinstance(self._domain, MultiDomain)
+        tgt = isinstance(self._target, MultiDomain)
+        if dom and tgt:
+            s += ' {} <- {}'.format(self._target.keys(), self._domain.keys())
+        elif dom:
+            s += ' <- {}'.format(self._domain.keys())
+        elif tgt:
+            s += ' {} <-'.format(self._target.keys())
+        return s
 
 
 class _SlowFieldAdapter(LinearOperator):
