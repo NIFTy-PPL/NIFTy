@@ -279,3 +279,10 @@ def testValueInserter(sp, seed):
             ind.append(np.random.randint(0, ss-1))
     op = ift.ValueInserter(sp, ind)
     ift.extra.consistency_check(op)
+
+
+def testNFFT():
+    dom = ift.RGSpace(2*(16,))
+    uv = np.array([[.2, .4], [-.22, .452]])
+    op = ift.NFFT(dom, uv)
+    ift.extra.consistency_check(op)

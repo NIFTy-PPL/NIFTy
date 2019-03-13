@@ -20,7 +20,7 @@ import numpy as np
 import nifty5 as ift
 
 
-class NFFTOperator(ift.LinearOperator):
+class NFFT(ift.LinearOperator):
     """Performs a non-equidistant Fourier transform, i.e. a Fourier transform
     followed by a degridding operation.
 
