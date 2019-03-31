@@ -138,6 +138,17 @@ class ChainOperator(LinearOperator):
         subs = "\n".join(sub.__repr__() for sub in self._ops)
         return "ChainOperator:\n" + utilities.indent(subs)
 
+    def _simplify_for_constant_input_nontrivial(self, c_inp):
+        from ..multi_domain import MultiDomain
+        if not isinstance(self._domain, MultiDomain):
+            return None, self
+
+        newop = None
+        for op in reversed(self._ops):
+            c_inp, t_op = op.simplify_for_constant_input(c_inp)
+            newop = t_op if newop is None else op(newop)
+        return c_inp, newop
+
 #     def draw_sample(self, from_inverse=False, dtype=np.float64):
 #         from ..sugar import from_random
 #         if len(self._ops) == 1:

@@ -626,6 +626,11 @@ class Field(object):
             raise ValueError("domain mismatch")
         return self
 
+    def extract_part(self, dom):
+        if dom != self._domain:
+            raise ValueError("domain mismatch")
+        return self
+
     def unite(self, other):
         return self+other
 

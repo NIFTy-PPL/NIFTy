@@ -217,6 +217,12 @@ class MultiField(object):
         return MultiField(subset,
                           tuple(self[key] for key in subset.keys()))
 
+    def extract_part(self, subset):
+        if subset is self._domain:
+            return self
+        return MultiField.from_dict({key: self[key] for key in subset.keys()
+                                     if key in self})
+
     def unite(self, other):
         """Merges two MultiFields on potentially different MultiDomains.
 
