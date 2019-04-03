@@ -393,7 +393,8 @@ class _OpSum(Operator):
         res = lin1.new(lin1._val.unite(lin2._val), op(x.jac))
         if lin1._metric is not None and lin2._metric is not None:
             from .sandwich_operator import SandwichOperator
-            met = SandwichOperator.make(x.jac, lin1._metric._myadd(lin2._metric, False))
+            met = lin1._metric._myadd(lin2._metric, False)
+            met = SandwichOperator.make(x.jac, met)
             res = res.add_metric(met)
         return res
 
