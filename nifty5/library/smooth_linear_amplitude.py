@@ -168,7 +168,7 @@ def SLAmplitude(*, target, n_pix, a, k0, sm, sv, im, iv, keys=['tau', 'phi']):
         which returns on its target a power spectrum which consists out of a
         smooth and a linear part.
     '''
-    return LinearSLAmplitude(target, n_pix, a, k0, sm, sv, im, iv, keys).exp()
+    return LinearSLAmplitude(target=target, n_pix=n_pix, a=a, k0=k0, sm=sm, sv=sv, im=im, iv=iv, keys=keys).exp()
 
 
 def LinearSLAmplitude(*, target, n_pix, a, k0, sm, sv, im, iv, keys=['tau', 'phi']):
