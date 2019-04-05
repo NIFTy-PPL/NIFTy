@@ -20,6 +20,7 @@ import numpy as np
 from .. import utilities
 from ..domain_tuple import DomainTuple
 from ..field import Field
+from ..multi_field import MultiField
 from ..linearization import Linearization
 from ..sugar import makeDomain, makeOp
 from .linear_operator import LinearOperator
@@ -122,7 +123,8 @@ class GaussianEnergy(EnergyOperator):
 
     def __init__(self, mean=None, covariance=None, domain=None):
         if mean is not None and not isinstance(mean, Field):
-            raise TypeError
+            if not isinstance(mean, MultiField):
+                raise TypeError
         if covariance is not None and not isinstance(covariance,
                                                      LinearOperator):
             raise TypeError
