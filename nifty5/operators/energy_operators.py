@@ -122,9 +122,8 @@ class GaussianEnergy(EnergyOperator):
     """
 
     def __init__(self, mean=None, covariance=None, domain=None):
-        if mean is not None and not isinstance(mean, Field):
-            if not isinstance(mean, MultiField):
-                raise TypeError
+        if mean is not None and not isinstance(mean, (Field, MultiField)):
+            raise TypeError
         if covariance is not None and not isinstance(covariance,
                                                      LinearOperator):
             raise TypeError
@@ -308,7 +307,6 @@ class StandardHamiltonian(EnergyOperator):
     ic_samp : IterationController
         Tells an internal :class:`SamplingEnabler` which convergence criterion
         to use to draw Gaussian samples.
-
 
     See also
     --------
