@@ -74,7 +74,8 @@ from .minimization.metric_gaussian_kl import MetricGaussianKL
 from .sugar import *
 from .plot import Plot
 
-from .library.smooth_linear_amplitude import SLAmplitude, LinearSLAmplitude, CepstrumOperator
+from .library.smooth_linear_amplitude import (
+    SLAmplitude, LinearSLAmplitude, CepstrumOperator)
 from .library.inverse_gamma_operator import InverseGammaOperator
 from .library.los_response import LOSResponse
 from .library.dynamic_operator import (dynamic_operator,
