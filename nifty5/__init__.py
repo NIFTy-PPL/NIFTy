@@ -87,6 +87,7 @@ from .library.correlated_fields import CorrelatedField, MfCorrelatedField
 from .library.adjust_variances import (make_adjust_variances_hamiltonian,
                                        do_adjust_variances)
 from .library.nfft import NFFT
+from .library.gridder import GridderMaker
 
 from . import extra
 
