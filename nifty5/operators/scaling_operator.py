@@ -66,9 +66,12 @@ class ScalingOperator(EndomorphicOperator):
             return x
         if fct == 0.:
             return full(self.domain, 0.)
-        if (mode & 10) != 0:
+
+        MODES_WITH_ADJOINT = self.ADJOINT_TIMES | self.ADJOINT_INVERSE_TIMES
+        MODES_WITH_INVERSE = self.INVERSE_TIMES | self.ADJOINT_INVERSE_TIMES
+        if (mode & MODES_WITH_ADJOINT) != 0:
             fct = np.conj(fct)
-        if (mode & 12) != 0:
+        if (mode & MODES_WITH_INVERSE) != 0:
             fct = 1./fct
         return x*fct
 
