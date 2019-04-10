@@ -149,7 +149,7 @@ def ensure_default_distributed(arr):
 
 
 def absmax(arr):
-    return np.linalg.norm(arr.rehape(-1), ord=np.inf)
+    return np.linalg.norm(arr.reshape(-1), ord=np.inf)
 
 
 def norm(arr, ord=2):
