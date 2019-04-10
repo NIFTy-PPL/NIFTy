@@ -14,6 +14,7 @@ RUN apt-get update && apt-get install -y \
   # more optional NIFTy dependencies
   && pip3 install pyfftw \
   && pip3 install git+https://gitlab.mpcdf.mpg.de/ift/pyHealpix.git \
+  && pip3 install git+https://gitlab.mpcdf.mpg.de/ift/nifty_gridder.git \
   && pip3 install jupyter \
   && rm -rf /var/lib/apt/lists/*
 

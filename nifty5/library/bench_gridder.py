@@ -24,7 +24,7 @@ for ii in range(1, 8):
 
     visspace = ift.UnstructuredDomain(N)
 
-    img = np.random.randn(nu*nv) + 1j*np.random.randn(nu*nv)
+    img = np.random.randn(nu*nv)
     img = img.reshape((nu, nv))
     img = ift.from_global_data(uvspace, img)
 

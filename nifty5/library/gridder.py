@@ -20,7 +20,7 @@ import numpy as np
 from ..domain_tuple import DomainTuple
 from ..domains.rg_space import RGSpace
 from ..domains.unstructured_domain import UnstructuredDomain
-from ..fft import fftn, ifftn
+from ..fft import hartley
 from ..operators.linear_operator import LinearOperator
 from ..sugar import from_global_data, makeDomain
 
@@ -50,7 +50,7 @@ class GridderMaker(object):
         self._rest = _RestOperator(domain, oversampled_domain, r2lamb)
 
     def getReordering(self, uv):
-        from testgridder import peanoindex
+        from nifty_gridder import peanoindex
         nu2, nv2 = self._rest._domain.shape
         return peanoindex(uv, nu2, nv2)
 
@@ -79,27 +79,28 @@ class _RestOperator(LinearOperator):
         rng = np.arange(nv)
         k = np.minimum(rng, nv-rng)
         c = np.pi*r2lamb/nv2**2
-        self._deconv_v = np.roll(np.exp(c*k**2)/r2lamb, -nv//2).reshape((1, -1))
+        self._deconv_v = np.roll(
+            np.exp(c*k**2)/r2lamb, -nv//2).reshape((1, -1))
         self._capability = self.TIMES | self.ADJOINT_TIMES
 
     def apply(self, x, mode):
         self._check_input(x, mode)
         nu, nv = self._target.shape
-        res = x.to_global_data_rw()
+        res = x.to_global_data()
         if mode == self.TIMES:
-            res = ifftn(res)*res.size
+            res = hartley(res)
             res = np.roll(res, (nu//2, nv//2), axis=(0, 1))
             res = res[:nu, :nv]
             res *= self._deconv_u
             res *= self._deconv_v
         else:
-            res *= self._deconv_u
+            res = res*self._deconv_u
             res *= self._deconv_v
             nu2, nv2 = self._domain.shape
-            res = np.pad(res, ((0, nu2-nu), (0, nv2-nv)), 'constant',
+            res = np.pad(res, ((0, nu2-nu), (0, nv2-nv)), mode='constant',
                          constant_values=0)
             res = np.roll(res, (-nu//2, -nv//2), axis=(0, 1))
-            res = fftn(res)
+            res = hartley(res)
         return from_global_data(self._tgt(mode), res)
 
 
@@ -113,14 +114,16 @@ class RadioGridder(LinearOperator):
         self._uv = uv  # FIXME: should we write-protect this?
 
     def apply(self, x, mode):
-        from testgridder import to_grid, from_grid
+        from nifty_gridder import to_grid, from_grid
         self._check_input(x, mode)
         nu2, nv2 = self._target.shape
         x = x.to_global_data()
         if mode == self.TIMES:
-            res = to_grid(self._uv, x, nu2, nv2, self._nspread,
-                          self._r2lamb)
+            res = to_grid(self._uv, x, nu2, nv2, self._nspread, self._r2lamb)
+            res += np.conj(np.roll(res[::-1, ::-1], (1, 1), axis=(0, 1)))
+            res = 0.5*(res.real+res.imag)
         else:
-            res = from_grid(self._uv, x, nu2, nv2, self._nspread,
-                            self._r2lamb)
+            mirr = np.roll(x[::-1, ::-1], (1, 1), axis=(0, 1))
+            x = 0.5*(x+mirr + 1j*(x-mirr))
+            res = from_grid(self._uv, x, nu2, nv2, self._nspread, self._r2lamb)
         return from_global_data(self._tgt(mode), res)

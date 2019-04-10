@@ -47,7 +47,7 @@ def test_gridding(nu, nv, N):
         *[-ss/2 + np.arange(ss) for ss in [nu, nv]], indexing='ij')
     dft = pynu*0.
     for i in range(N):
-        dft += vis.val[i]*np.exp(2j*np.pi*(x*uv[i, 0] + y*uv[i, 1]))
+        dft += (vis.val[i]*np.exp(2j*np.pi*(x*uv[i, 0] + y*uv[i, 1]))).real
     assert_allclose(dft, pynu)
 
 
@@ -68,8 +68,9 @@ def test_build(nu, nv, N, eps):
     RF = GM.getFull(uv)
 
     # Consistency checks
-    dt = np.complex
-    ift.extra.consistency_check(R0, domain_dtype=dt, target_dtype=dt)
-    ift.extra.consistency_check(R1, domain_dtype=dt, target_dtype=dt)
-    ift.extra.consistency_check(R, domain_dtype=dt, target_dtype=dt)
-    ift.extra.consistency_check(RF, domain_dtype=dt, target_dtype=dt)
+    flt = np.float64
+    cmplx = np.complex128
+    ift.extra.consistency_check(R0, cmplx, flt, only_r_linear=True)
+    ift.extra.consistency_check(R1, flt, flt)
+    ift.extra.consistency_check(R, cmplx, flt, only_r_linear=True)
+    ift.extra.consistency_check(RF, cmplx, flt, only_r_linear=True)
