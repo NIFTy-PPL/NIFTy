@@ -235,8 +235,6 @@ specific inference problems. Currently these are:
   distributed according to a inverse-gamma distribution.
 - :class:`~correlated_fields.CorrelatedField`, which models a diffuse field whose correlation
   structure is described by an amplitude operator.
-.. - :class:`~correlated_fields.CorrelatedField`, which models a diffuse log-normal field. It takes an
-   amplitude operator to specify the correlation structure of the field.
 
 
 Linear Operators

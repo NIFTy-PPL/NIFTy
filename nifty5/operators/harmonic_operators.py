@@ -364,9 +364,10 @@ class HarmonicTransformOperator(LinearOperator):
 
     Notes
     -----
-    HarmonicTransformOperator uses a Hartly transformation to transform between harmonic and
-    non-harmonic RGSpaces. This has the advantage that all field values are real in either space.
-    If you require a true Fourier transform you should use FFTOperator instead. 
+    HarmonicTransformOperator uses a Hartley transformation to transform
+    between harmonic and non-harmonic RGSpaces. This has the advantage that all
+    field values are real in either space. If you require a true Fourier
+    transform you should use FFTOperator instead.
     """
 
     def __init__(self, domain, target=None, space=None):
