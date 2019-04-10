@@ -38,16 +38,16 @@ def test_gridding(nu, nv, N):
     # re-order for performance
     idx = GM.getReordering(uv)
     uv, vis = uv[idx], vis[idx]
-    vis = ift.from_global_data(ift.UnstructuredDomain(vis.shape), vis)
+    vis2 = ift.from_global_data(ift.UnstructuredDomain(vis.shape), vis)
 
     Op = GM.getFull(uv)
-    pynu = Op(vis).to_global_data()
+    pynu = Op(vis2).to_global_data()
     # DFT
     x, y = np.meshgrid(
         *[-ss/2 + np.arange(ss) for ss in [nu, nv]], indexing='ij')
     dft = pynu*0.
     for i in range(N):
-        dft += (vis.val[i]*np.exp(2j*np.pi*(x*uv[i, 0] + y*uv[i, 1]))).real
+        dft += (vis[i]*np.exp(2j*np.pi*(x*uv[i, 0] + y*uv[i, 1]))).real
     assert_allclose(dft, pynu)
 
 
