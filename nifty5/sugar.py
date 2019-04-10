@@ -29,6 +29,7 @@ from .multi_field import MultiField
 from .operators.block_diagonal_operator import BlockDiagonalOperator
 from .operators.diagonal_operator import DiagonalOperator
 from .operators.distributors import PowerDistributor
+from .plot import Plot
 
 __all__ = ['PS_field', 'power_analyze', 'create_power_operator',
            'create_harmonic_smoothing_operator', 'from_random',
@@ -37,7 +38,7 @@ __all__ = ['PS_field', 'power_analyze', 'create_power_operator',
            'sin', 'cos', 'tan', 'sinh', 'cosh',
            'absolute', 'one_over', 'clip', 'sinc',
            'conjugate', 'get_signal_variance', 'makeOp', 'domain_union',
-           'get_default_codomain']
+           'get_default_codomain', 'single_plot']
 
 
 def PS_field(pspace, func):
@@ -434,3 +435,14 @@ def get_default_codomain(domainoid, space=None):
     ret = [dom for dom in domainoid]
     ret[space] = domainoid[space].get_default_codomain()
     return DomainTuple.make(ret)
+
+
+def single_plot(field, **kwargs):
+    """Creates a single plot using `Plot`.
+    Keyword arguments are passed to both `Plot.add` and `Plot.output`.
+    """
+    p = Plot()
+    p.add(field, **kwargs)
+    if 'title' in kwargs:
+        del(kwargs['title'])
+    p.output(**kwargs)

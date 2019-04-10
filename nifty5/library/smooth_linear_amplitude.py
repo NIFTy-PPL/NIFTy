@@ -169,6 +169,18 @@ def SLAmplitude(*, target, n_pix, a, k0, sm, sv, im, iv, keys=['tau', 'phi']):
         which returns on its target a power spectrum which consists out of a
         smooth and a linear part.
     '''
+    return LinearSLAmplitude(target=target, n_pix=n_pix, a=a, k0=k0, sm=sm,
+                             sv=sv, im=im, iv=iv, keys=keys).exp()
+
+
+def LinearSLAmplitude(*, target, n_pix, a, k0, sm, sv, im, iv,
+                      keys=['tau', 'phi']):
+    '''LinearOperator for parametrizing smooth log-amplitudes (square roots of
+    power spectra).
+
+    Logarithm of SLAmplitude
+    See documentation of SLAmplitude for more details
+    '''
     if not (isinstance(n_pix, int) and isinstance(target, PowerSpace)):
         raise TypeError
 
@@ -196,4 +208,4 @@ def SLAmplitude(*, target, n_pix, a, k0, sm, sv, im, iv, keys=['tau', 'phi']):
     loglog_ampl = 0.5*(smooth + linear)
 
     # Go from loglog-space to linear-linear-space
-    return et @ loglog_ampl.exp()
+    return et @ loglog_ampl
