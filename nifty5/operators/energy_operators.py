@@ -20,6 +20,7 @@ import numpy as np
 from .. import utilities
 from ..domain_tuple import DomainTuple
 from ..field import Field
+from ..multi_field import MultiField
 from ..linearization import Linearization
 from ..sugar import makeDomain, makeOp
 from .linear_operator import LinearOperator
@@ -121,7 +122,7 @@ class GaussianEnergy(EnergyOperator):
     """
 
     def __init__(self, mean=None, covariance=None, domain=None):
-        if mean is not None and not isinstance(mean, Field):
+        if mean is not None and not isinstance(mean, (Field, MultiField)):
             raise TypeError
         if covariance is not None and not isinstance(covariance,
                                                      LinearOperator):
@@ -310,7 +311,6 @@ class StandardHamiltonian(EnergyOperator):
     ic_samp : IterationController
         Tells an internal :class:`SamplingEnabler` which convergence criterion
         to use to draw Gaussian samples.
-
 
     See also
     --------

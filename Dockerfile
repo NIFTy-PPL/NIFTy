@@ -10,7 +10,7 @@ RUN apt-get update && apt-get install -y \
     # Testing dependencies
     python3-pytest-cov jupyter \
     # Optional NIFTy dependencies
-    libfftw3-dev python3-mpi4py python3-matplotlib \
+    libfftw3-dev python3-mpi4py python3-matplotlib python3-pynfft \
   # more optional NIFTy dependencies
   && pip3 install pyfftw \
   && pip3 install git+https://gitlab.mpcdf.mpg.de/ift/pyHealpix.git \
