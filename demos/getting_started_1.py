@@ -97,9 +97,9 @@ if __name__ == '__main__':
     # Masking operator to model that parts of the field have not been observed
     mask = ift.Field.from_global_data(position_space, mask)
     Mask = ift.MaskOperator(mask)
-    
+
     # The response operator consists of
-    # - an harmonic transform (to get to image space)
+    # - a harmonic transform (to get to image space)
     # - the application of the mask
     # - the removal of geometric information
     # The removal of geometric information is included in the MaskOperator
@@ -146,6 +146,7 @@ if __name__ == '__main__':
         plot.add(HT(MOCK_SIGNAL), title='Mock Signal')
         plot.add(Mask.adjoint(data), title='Data')
         plot.add(HT(m), title='Reconstruction')
-        plot.add(Mask.adjoint(Mask(HT(m) - HT(MOCK_SIGNAL))), title='Residuals')
+        plot.add(Mask.adjoint(Mask(HT(m) - HT(MOCK_SIGNAL))),
+                 title='Residuals')
         plot.output(nx=2, ny=2, xsize=10, ysize=10, name=filename)
     print("Saved results as '{}'.".format(filename))
