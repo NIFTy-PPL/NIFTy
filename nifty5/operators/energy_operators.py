@@ -193,12 +193,8 @@ class PoissonianEnergy(EnergyOperator):
         self._check_input(x)
         res = x.sum() - x.log().vdot(self._d)
         if not isinstance(x, Linearization):
-            if res.val != res.val:
-                return Field.scalar(np.inf)
             return Field.scalar(res)
         if not x.want_metric:
-            if res.val.val != res.val.val:
-                res = res.new(Field.scalar(np.inf), res.jac) 
             return res
         metric = SandwichOperator.make(x.jac, makeOp(1./x.val))
         return res.add_metric(metric)
