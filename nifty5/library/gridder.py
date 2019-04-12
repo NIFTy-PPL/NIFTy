@@ -114,16 +114,15 @@ class RadioGridder(LinearOperator):
         self._uv = uv  # FIXME: should we write-protect this?
 
     def apply(self, x, mode):
-        from nifty_gridder import to_grid, from_grid
+        from nifty_gridder import (to_grid, to_grid_post,
+                                   from_grid, from_grid_pre)
         self._check_input(x, mode)
         nu2, nv2 = self._target.shape
         x = x.to_global_data()
         if mode == self.TIMES:
             res = to_grid(self._uv, x, nu2, nv2, self._nspread, self._r2lamb)
-            res += np.conj(np.roll(res[::-1, ::-1], (1, 1), axis=(0, 1)))
-            res = 0.5*(res.real+res.imag)
+            res = to_grid_post(res)
         else:
-            mirr = np.roll(x[::-1, ::-1], (1, 1), axis=(0, 1))
-            x = 0.5*(x+mirr + 1j*(x-mirr))
+            x = from_grid_pre(x)
             res = from_grid(self._uv, x, nu2, nv2, self._nspread, self._r2lamb)
         return from_global_data(self._tgt(mode), res)
