@@ -17,6 +17,7 @@
 
 from .utilities import iscomplextype
 import numpy as np
+import pypocketfft
 
 
 _use_fftw = False
@@ -51,13 +52,25 @@ def _init_pyfftw():
         _fftw_prepped = True
 
 
+# FIXME this should not be necessary ... no one should call a complex FFT
+# with a float array.
+def _make_complex(a):
+    if a.dtype in (np.complex64, np.complex128):
+        return a
+    if a.dtype == np.float64:
+        return a.astype(np.complex128)
+    if a.dtype == np.float32:
+        return a.astype(np.complex64)
+    raise NotImplementedError
+
+
 def fftn(a, axes=None):
     if _use_fftw:
         from pyfftw.interfaces.numpy_fft import fftn
         _init_pyfftw()
         return fftn(a, axes=axes, **_fft_extra_args)
     else:
-        return np.fft.fftn(a, axes=axes)
+        return pypocketfft.fftn(_make_complex(a), axes=axes)
 
 
 def rfftn(a, axes=None):
@@ -66,7 +79,10 @@ def rfftn(a, axes=None):
         _init_pyfftw()
         return rfftn(a, axes=axes, **_fft_extra_args)
     else:
-        return np.fft.rfftn(a, axes=axes)
+        if axes is None:
+            return pypocketfft.rfftn(a)
+        else:
+            return pypocketfft.rfftn(a, axes=axes)
 
 
 def ifftn(a, axes=None):
@@ -75,7 +91,12 @@ def ifftn(a, axes=None):
         _init_pyfftw()
         return ifftn(a, axes=axes, **_fft_extra_args)
     else:
-        return np.fft.ifftn(a, axes=axes)
+        # FIXME this is a temporary fix and can be done more elegantly
+        if axes is None:
+            fct = 1./a.size
+        else:
+            fct = 1./np.prod(np.take(a.shape, axes))
+        return pypocketfft.ifftn(_make_complex(a), axes=axes, fct=fct)
 
 
 def hartley(a, axes=None):
