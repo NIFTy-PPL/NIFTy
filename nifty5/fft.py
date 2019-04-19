@@ -79,10 +79,7 @@ def rfftn(a, axes=None):
         _init_pyfftw()
         return rfftn(a, axes=axes, **_fft_extra_args)
     else:
-        if axes is None:
-            return pypocketfft.rfftn(a)
-        else:
-            return pypocketfft.rfftn(a, axes=axes)
+        return pypocketfft.rfftn(a, axes=axes)
 
 
 def ifftn(a, axes=None):
