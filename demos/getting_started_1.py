@@ -45,13 +45,6 @@ def make_random_mask():
     return mask.to_global_data()
 
 
-def mask_to_nan(mask, field):
-    # Set masked pixels to nan for plotting
-    masked_data = field.local_data.copy()
-    masked_data[mask.local_data == 0] = np.nan
-    return ift.from_local_data(field.domain, masked_data)
-
-
 if __name__ == '__main__':
     np.random.seed(42)
 
@@ -64,7 +57,7 @@ if __name__ == '__main__':
     if mode == 0:
         # One-dimensional regular grid
         position_space = ift.RGSpace([1024])
-        mask = np.ones(position_space.shape)
+        mask = np.zeros(position_space.shape)
     elif mode == 1:
         # Two-dimensional regular grid with checkerboard mask
         position_space = ift.RGSpace([128, 128])
@@ -101,23 +94,22 @@ if __name__ == '__main__':
     # Build instrument response consisting of a discretization, mask
     # and harmonic transformaion
 
-    # Data is defined on a geometry-free space, thus the geometry is removed
-    GR = ift.GeometryRemover(position_space)
-
     # Masking operator to model that parts of the field have not been observed
     mask = ift.Field.from_global_data(position_space, mask)
-    Mask = ift.DiagonalOperator(mask)
+    Mask = ift.MaskOperator(mask)
 
     # The response operator consists of
-    # - an harmonic transform (to get to image space)
+    # - a harmonic transform (to get to image space)
     # - the application of the mask
     # - the removal of geometric information
+    # The removal of geometric information is included in the MaskOperator
+    # it can also be implemented with a GeometryRemover
     # Operators can be composed either with parenthesis
-    R = GR(Mask(HT))
+    R = Mask(HT)
     # or with @
-    R = GR @ Mask @ HT
+    R = Mask @ HT
 
-    data_space = GR.target
+    data_space = R.target
 
     # Set the noise covariance N
     noise = 5.
@@ -144,16 +136,17 @@ if __name__ == '__main__':
     filename = "getting_started_1_mode_{}.png".format(mode)
     if rg and len(position_space.shape) == 1:
         plot.add(
-            [HT(MOCK_SIGNAL), GR.adjoint(data),
+            [HT(MOCK_SIGNAL), Mask.adjoint(data),
              HT(m)],
             label=['Mock signal', 'Data', 'Reconstruction'],
             alpha=[1, .3, 1])
-        plot.add(mask_to_nan(mask, HT(m - MOCK_SIGNAL)), title='Residuals')
+        plot.add(Mask.adjoint(Mask(HT(m - MOCK_SIGNAL))), title='Residuals')
         plot.output(nx=2, ny=1, xsize=10, ysize=4, name=filename)
     else:
         plot.add(HT(MOCK_SIGNAL), title='Mock Signal')
-        plot.add(mask_to_nan(mask, (GR(Mask)).adjoint(data)), title='Data')
+        plot.add(Mask.adjoint(data), title='Data')
         plot.add(HT(m), title='Reconstruction')
-        plot.add(mask_to_nan(mask, HT(m - MOCK_SIGNAL)), title='Residuals')
+        plot.add(Mask.adjoint(Mask(HT(m) - HT(MOCK_SIGNAL))),
+                 title='Residuals')
         plot.output(nx=2, ny=2, xsize=10, ysize=10, name=filename)
     print("Saved results as '{}'.".format(filename))

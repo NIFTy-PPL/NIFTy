@@ -384,7 +384,6 @@ class _OpSum(Operator):
         v = x._val if lin else x
         v1 = v.extract(self._op1.domain)
         v2 = v.extract(self._op2.domain)
-        res = None
         if not lin:
             return self._op1(v1).unite(self._op2(v2))
         wm = x.want_metric
@@ -393,7 +392,10 @@ class _OpSum(Operator):
         op = lin1._jac._myadd(lin2._jac, False)
         res = lin1.new(lin1._val.unite(lin2._val), op(x.jac))
         if lin1._metric is not None and lin2._metric is not None:
-            res = res.add_metric(lin1._metric + lin2._metric)
+            from .sandwich_operator import SandwichOperator
+            met = lin1._metric._myadd(lin2._metric, False)
+            met = SandwichOperator.make(x.jac, met)
+            res = res.add_metric(met)
         return res
 
     def _simplify_for_constant_input_nontrivial(self, c_inp):

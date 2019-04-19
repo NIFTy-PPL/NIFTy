@@ -52,6 +52,8 @@ Optional dependencies:
 - [pyFFTW](https://pypi.python.org/pypi/pyFFTW) for faster Fourier transforms
 - [pyHealpix](https://gitlab.mpcdf.mpg.de/ift/pyHealpix) (for harmonic
     transforms involving domains on the sphere)
+- [nifty_gridder](https://gitlab.mpcdf.mpg.de/ift/nifty_gridder) (for radio
+    interferometry responses)
 - [mpi4py](https://mpi4py.scipy.org) (for MPI-parallel execution)
 - [matplotlib](https://matplotlib.org/) (for field plotting)
 
@@ -96,6 +98,10 @@ with the installed `FFTW3` libraries.)
 Support for spherical harmonic transforms is added via:
 
     pip3 install --user git+https://gitlab.mpcdf.mpg.de/ift/pyHealpix.git
+
+Support for the radio interferometry gridder is added via:
+
+    pip3 install git+https://gitlab.mpcdf.mpg.de/ift/nifty_gridder.git
 
 MPI support is added via:
 
