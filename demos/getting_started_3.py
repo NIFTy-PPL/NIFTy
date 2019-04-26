@@ -31,7 +31,7 @@ import numpy as np
 
 import nifty5 as ift
 
-ift.fft.enable_fftw()
+
 def random_los(n_los):
     starts = list(np.random.uniform(0, 1, (n_los, 2)).T)
     ends = list(np.random.uniform(0, 1, (n_los, 2)).T)
