@@ -1,4 +1,4 @@
-Discretization and Volume in NIFTy
+Discretisation and Volume in NIFTy
 ==================================
 
 .. note:: Some of this discussion is rather technical and may be skipped in a first read-through.
@@ -160,15 +160,21 @@ Often, log-likelihoods contain integrals over the quantity of interest :math:`s`
 
     \int_\Omega \text{d}x\, s(x) \approx \sum_i s^i\int_{\Omega_i}\text{d}x\, 1
 
-Here the domain of the integral :math:`\Omega = \dot{\bigcup_q} \; \Omega_i` is the disjoint union over smaller :math:`\Omega_i`, e.g. the pixels of the space, and :math:`s_i` is the discretized field value on the :math:`i`-th pixel.
+Here the domain of the integral :math:`\Omega = \dot{\bigcup_q} \; \Omega_i` is the disjoint union over smaller :math:`\Omega_i`, e.g. the pixels of the space, and :math:`s_i` is the discretised field value on the :math:`i`-th pixel.
 This introduces the weighting :math:`V_i=\int_{\Omega_i}\text{d}x\, 1`, also called the volume factor, a property of the space.
 NIFTy aids you in constructing your own log-likelihood by providing methods like :func:`~field.Field.weight`, which weights all pixels of a field with their corresponding volume.
 An integral over a :class:`~field.Field` :code:`s` can be performed by calling :code:`s.weight(1).sum()`, which is equivalent to :code:`s.integrate()`.
 Volume factors are also applied automatically in the following places:
 
- - :class:`~operators.harmonic_operators.FFTOperator` as well as all other harmonic operators. Here the zero mode of the transformed field is the integral over the original field, thus the whole field is weighted once.
- - some response operators, such as the :class:`~library.los_response.LOSResponse`. In this operator a line integral is descritized, so a 1-dimensional volume factor is applied.
- - In :class:`~library.correlated_fields.CorrelatedField` as well :class:`~library.correlated_fields.MfCorrelatedField`, the field is multiplied by the square root of the total volume in configuration space. This ensures that the same field reconstructed over a larger domain has the same variance in position space in the limit of infinite resolution. It also ensures that power spectra in NIFTy behave according to the definition of a power spectrum, namely the power of a k-mode is the expectation of the k-mode square, divided by the volume of the space.
+ - :class:`~operators.harmonic_operators.FFTOperator` as well as all other harmonic operators.
+   Here the zero mode of the transformed field is the integral over the original field, thus the whole field is weighted once.
+ - Some response operators, such as the :class:`~library.los_response.LOSResponse`.
+   In this operator a line integral is discretised, so a 1-dimensional volume factor is applied.
+ - In :class:`~library.correlated_fields.CorrelatedField` as well as :class:`~library.correlated_fields.MfCorrelatedField`.
+   Both describe fields with a smooth, a priori unknown correlation structure specified by a power spectrum.
+   The field is multiplied by the square root of the total volume of it domain's harmonic counterpart.
+   This ensures that the same power spectrum can be used regardless of the chosen resolution, provided the total volume of the space remains the same.
+   It also guarantees that the power spectra in NIFTy behave according to their definition, i.e. the power of a mode :math:`s_k` is the expectation value of that mode squared, divided by the volume of its space :math:`P(k) = \left\langle s_k^2 \right\rangle / V_k`.
 
 Note that in contrast to some older versions of NIFTy, the dot product :code:`s.vdot(t)` of fields does **not** apply a volume factor, but instead just sums over the field components,
 

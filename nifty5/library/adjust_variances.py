@@ -17,9 +17,8 @@
 
 from ..minimization.energy_adapter import EnergyAdapter
 from ..multi_field import MultiField
-from ..operators.distributors import PowerDistributor
-from ..operators.energy_operators import (StandardHamiltonian,
-                                          InverseGammaLikelihood)
+from ..operators.energy_operators import (InverseGammaLikelihood,
+                                          StandardHamiltonian)
 from ..operators.scaling_operator import ScalingOperator
 from ..operators.simple_linear_operators import ducktape
 
@@ -79,27 +78,23 @@ def make_adjust_variances_hamiltonian(a,
                                ic_samp=ic_samp)
 
 
-def do_adjust_variances(position,
-                        amplitude_operator,
-                        minimizer,
-                        xi_key='xi',
-                        samples=[]):
+def do_adjust_variances(position, A, minimizer, xi_key='xi', samples=[]):
     """Adjusts the variance of xi_key to be represented by amplitude_operator.
 
     Solves a constant likelihood optimization of the
-    form phi = amplitude_operator * position[xi_key] under the constraint that
-    phi remains constant.
+    form phi = A * position[xi_key] under the constraint that phi remains
+    constant.
 
     The field indexed by xi_key is desired to be a Gaussian white Field,
-    thus variations that are more easily represented by amplitude_operator
-    will be absorbed in amplitude_operator.
+    thus variations that are more easily represented by A will be absorbed in
+    A.
 
     Parameters
     ----------
     position : Field, MultiField
         Contains the initial values for amplitude_operator and the key xi_key,
         to be adjusted.
-    amplitude_operator : Operator
+    A : Operator
         Gives the amplitude when evaluated at position.
     minimizer : Minimizer
         Used to solve the optimization problem.
@@ -113,27 +108,20 @@ def do_adjust_variances(position,
     Returns
     -------
     MultiField
-        The new position after variances were adjusted.
+        The new position after variances have been adjusted.
     """
-
-    h_space = position[xi_key].domain[0]
-    pd = PowerDistributor(h_space, amplitude_operator.target[0])
-    a = pd(amplitude_operator)
     xi = ducktape(None, position.domain, xi_key)
-
-    ham = make_adjust_variances_hamiltonian(a, xi, position, samples=samples)
+    ham = make_adjust_variances_hamiltonian(A, xi, position, samples=samples)
 
     # Minimize
     e = EnergyAdapter(
-        position.extract(a.domain), ham, constants=[], want_metric=True)
+        position.extract(A.domain), ham, constants=[], want_metric=True)
     e, _ = minimizer(e)
 
     # Update position
-    s_h_old = (a*xi).force(position)
+    s_h_old = (A*xi).force(position)
 
     position = position.to_dict()
-    position[xi_key] = s_h_old/a(e.position)
+    position[xi_key] = s_h_old/A(e.position)
     position = MultiField.from_dict(position)
-    position = MultiField.union([position, e.position])
-
-    return position
+    return MultiField.union([position, e.position])
