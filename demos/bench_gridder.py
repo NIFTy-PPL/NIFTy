@@ -9,7 +9,6 @@ ift.fft.enable_fftw()
 np.random.seed(40)
 
 N0s, a0s, b0s, c0s = [], [], [], []
-N1s, a1s, b1s, c1s = [], [], [], []
 
 for ii in range(10, 23):
     nu = 1024
@@ -58,7 +57,7 @@ print('FFT shape', res.shape)
 plt.scatter(N0s, a0s, label='Gridder mr')
 plt.legend()
 # no idea why this is necessary, but if it is omitted, the range is wrong
-plt.ylim(min(a0s+a1s), max(a0s+a1s))
+plt.ylim(min(a0s), max(a0s))
 plt.ylabel('time [s]')
 plt.title('Initialization')
 plt.loglog()
