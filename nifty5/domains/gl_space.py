@@ -103,7 +103,9 @@ class GLSpace(StructuredDomain):
             The partner domain
         """
         from ..domains.lm_space import LMSpace
-        return LMSpace(lmax=self._nlat-1, mmax=self._nlon//2)
+        mmax = self._nlon//2
+        lmax = max(mmax, self._nlat-1)
+        return LMSpace(lmax=lmax, mmax=mmax)
 
     def check_codomain(self, codomain):
         """Raises `TypeError` if `codomain` is not a matching partner domain
