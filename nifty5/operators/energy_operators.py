@@ -191,9 +191,21 @@ class PoissonianEnergy(EnergyOperator):
 
     def apply(self, x):
         self._check_input(x)
-        res = x.sum() - x.log().vdot(self._d)
+        if isinstance(x, Linearization):
+            inp_vals = x.val.local_data
+        else:
+            inp_vals = x.local_data
+        fix_inf = False
+        if np.any(inp_vals==np.inf):
+            if not np.any(np.isnan(inp_vals)):
+                fix_inf=True #Note: This will break for MPI if there are NaNs in some threads but not others
         if not isinstance(x, Linearization):
+            if fix_inf:
+                res = np.inf
             return Field.scalar(res)
+        res = x.sum() - x.log().vdot(self._d)
+        if fix_inf:
+            res = Linearization(Field.scalar(np.inf), res.jac)
         if not x.want_metric:
             return res
         metric = SandwichOperator.make(x.jac, makeOp(1./x.val))
