@@ -8,7 +8,6 @@ import nifty5 as ift
 np.random.seed(40)
 
 N0s, a0s, b0s, c0s = [], [], [], []
-N1s, a1s, b1s, c1s = [], [], [], []
 
 for ii in range(10, 23):
     nu = 1024
@@ -44,18 +43,6 @@ for ii in range(10, 23):
     b0s.append(t2 - t1)
     c0s.append(t3 - t2)
 
-    t0 = time()
-    op = ift.NFFT(uvspace, uv)
-    t1 = time()
-    op(img).to_global_data()
-    t2 = time()
-    op.adjoint(vis).to_global_data()
-    t3 = time()
-    N1s.append(N)
-    a1s.append(t1 - t0)
-    b1s.append(t2 - t1)
-    c1s.append(t3 - t2)
-
 print('Measure rest operator')
 sc = ift.StatCalculator()
 op = GM.getRest().adjoint
@@ -67,10 +54,9 @@ t_fft = sc.mean
 print('FFT shape', res.shape)
 
 plt.scatter(N0s, a0s, label='Gridder mr')
-plt.scatter(N1s, a1s, marker='^', label='NFFT')
 plt.legend()
 # no idea why this is necessary, but if it is omitted, the range is wrong
-plt.ylim(min(a0s+a1s), max(a0s+a1s))
+plt.ylim(min(a0s), max(a0s))
 plt.ylabel('time [s]')
 plt.title('Initialization')
 plt.loglog()
@@ -78,9 +64,7 @@ plt.savefig('bench0.png')
 plt.close()
 
 plt.scatter(N0s, b0s, color='k', marker='^', label='Gridder mr times')
-plt.scatter(N1s, b1s, color='r', marker='^', label='NFFT times')
 plt.scatter(N0s, c0s, color='k', label='Gridder mr adjoint times')
-plt.scatter(N1s, c1s, color='r', label='NFFT adjoint times')
 plt.axhline(sc.mean, label='FFT')
 plt.axhline(sc.mean + np.sqrt(sc.var))
 plt.axhline(sc.mean - np.sqrt(sc.var))
