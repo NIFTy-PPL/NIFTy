@@ -192,11 +192,10 @@ class PoissonianEnergy(EnergyOperator):
     def apply(self, x):
         self._check_input(x)
         res = x.sum()
-        tmp = (res.val.local_data if isinstance(res, Linearization)
-            else res.local_data)
+        tmp = res.val.local_data if isinstance(res, Linearization) else res
         # if we have no infinity here, we can continue with the calculation;
         # otherwise we know that the result must also be infinity
-        if not np.any(np.isinf(tmp)):
+        if not np.isinf(tmp):
             res = res - x.log().vdot(self._d)
         if not isinstance(x, Linearization):
             return Field.scalar(res)
