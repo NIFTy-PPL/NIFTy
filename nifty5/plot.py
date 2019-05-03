@@ -349,11 +349,10 @@ def _plot2D(f, ax, **kwargs):
         rgb = _rgb_data(f.to_global_data())
         have_rgb = True
 
-    label = kwargs.pop("label", None)
-
     foo = kwargs.pop("norm", None)
     norm = {} if foo is None else {'norm': foo}
-    aspect = kwargs.pop("aspect", None)
+
+    foo = kwargs.pop("aspect", None)
     aspect = {} if foo is None else {'aspect': foo}
 
     ax.set_title(kwargs.pop("title", ""))
