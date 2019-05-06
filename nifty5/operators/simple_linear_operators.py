@@ -22,6 +22,7 @@ from ..multi_domain import MultiDomain
 from ..multi_field import MultiField
 from .endomorphic_operator import EndomorphicOperator
 from .linear_operator import LinearOperator
+from .. import utilities
 
 
 class VdotOperator(LinearOperator):
@@ -344,3 +345,36 @@ class _PartialExtractor(LinearOperator):
         if mode == self.TIMES:
             return x.extract(self._target)
         return MultiField.from_dict({key: x[key] for key in x.domain.keys()})
+
+
+class MatrixProductOperator(EndomorphicOperator):
+    """Endomorphic matrix multiplication with input field.
+
+    Parameters
+    ----------
+    domain: DomainTuple
+        Domain of the operator.
+    matrix:
+        Matrix of shape (field.shape, field.shape)
+    space: int, optional
+        The index of the subdomain on which the operator should act
+    """
+    def __init__(self, domain, matrix, space=None):
+        self._domain = DomainTuple.make(domain)
+        self._capability = self.TIMES | self.ADJOINT_TIMES
+        self._space = utilities.infer_space(self._domain, space)
+
+        self._mat = matrix
+        self._mat_tr = matrix.transpose()
+
+    def apply(self, x, mode):
+        self._check_input(x, mode)
+        res = x.to_global_data()
+        if mode == self.TIMES:
+            res = self._mat.dot(res)
+        if mode == self.ADJOINT_TIMES:
+            res = self._mat_tr.dot(res)
+        return Field.from_global_data(self._domain, res)
+
+    def __repr__(self):
+        return "MatrixProductOperator"
