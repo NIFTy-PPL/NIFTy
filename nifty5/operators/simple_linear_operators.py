@@ -352,11 +352,11 @@ class MatrixProductOperator(EndomorphicOperator):
 
     Parameters
     ----------
-    domain: Domain or DomainTuple
+    domain: :class:`Domain` or :class:`DomainTuple`
         Domain of the operator.
-        If DomainTuple it is assumed to have only one entry.
+        If :class:`DomainTuple` it is assumed to have only one entry.
     matrix: scipy.sparse matrix or numpy array
-        Matrix of shape (field.shape, field.shape). Needs to support
+        Matrix of shape `(domain.shape, domain.shape)`. Needs to support
         `dot()` and `transpose()` in the style of numpy arrays.
     """
     def __init__(self, domain, matrix):
