@@ -352,17 +352,16 @@ class MatrixProductOperator(EndomorphicOperator):
 
     Parameters
     ----------
-    domain: DomainTuple
+    domain: Domain or DomainTuple
         Domain of the operator.
-    matrix:
-        Matrix of shape (field.shape, field.shape)
-    space: int, optional
-        The index of the subdomain on which the operator should act
+        If DomainTuple it is assumed to have only one entry.
+    matrix: scipy.sparse matrix or numpy array
+        Matrix of shape (field.shape, field.shape). Needs to support
+        `dot()` and `transpose()` in the style of numpy arrays.
     """
-    def __init__(self, domain, matrix, space=None):
-        self._domain = DomainTuple.make(domain)
+    def __init__(self, domain, matrix):
+        self._domain = domain
         self._capability = self.TIMES | self.ADJOINT_TIMES
-        self._space = utilities.infer_space(self._domain, space)
 
         self._mat = matrix
         self._mat_tr = matrix.transpose()
