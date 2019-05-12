@@ -37,6 +37,7 @@ _pow_spaces = [ift.PowerSpace(ift.RGSpace((17, 38), harmonic=True))]
 pmp = pytest.mark.parametrize
 dtype = list2fixture([np.float64, np.complex128])
 
+np.random.seed(42)
 
 @pmp('sp', _p_RG_spaces)
 def testLOSResponse(sp, dtype):
