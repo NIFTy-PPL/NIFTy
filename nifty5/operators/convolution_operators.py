@@ -30,7 +30,7 @@ from ..field import Field
 from .. import utilities
 
 
-def FuncConvolutionOperator(domain, func, space=None, without_mean=False):
+def FuncConvolutionOperator(domain, func, space=None, without_mean=None):
     """Convolves input with a radially symmetric kernel defined by `func`
 
     Parameters
@@ -46,6 +46,9 @@ def FuncConvolutionOperator(domain, func, space=None, without_mean=False):
         If None, it is set to 0 if `domain` contains exactly one space.
         `domain[space]` must be of type `RGSpace`, `HPSpace`, or `GLSpace`.
     without_mean: bool, optional
+        If `None`, chooses domain-dependant default value:
+        - `True` for spherical domains (`HPSpace`, `GLSpace`)
+        - `False` for RGSpaces.
         If `True`, subtracts the input mean before applying the convolution
         and adds it back afterwards.
 
@@ -62,6 +65,11 @@ def FuncConvolutionOperator(domain, func, space=None, without_mean=False):
         raise TypeError("unsupported domain")
     codomain = domain[space].get_default_codomain()
     kernel = codomain.get_conv_kernel_from_func(func)
+    if without_mean == None:
+        if isinstance(domain[space], (HPSpace, GLSpace)):
+            without_mean = True
+        else:
+            without_mean = False
     return _ConvolutionOperator(domain, kernel, space, without_mean)
 
 
