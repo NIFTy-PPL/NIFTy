@@ -63,21 +63,21 @@ class GridderMaker(object):
 
 class _RestOperator(LinearOperator):
     def __init__(self, domain, oversampled_domain, eps):
+        from nifty_gridder import correction_factors
         self._domain = makeDomain(oversampled_domain)
         self._target = domain
         nu, nv = domain.shape
         nu2, nv2 = oversampled_domain.shape
 
+        fu = correction_factors(nu2, nu//2+1, eps)
+        fv = correction_factors(nv2, nv//2+1, eps)
         # compute deconvolution operator
-#        rng = np.arange(nu)
-#        k = np.minimum(rng, nu-rng)
-#        c = np.pi*r2lamb/nu2**2
-#        self._deconv_u = np.roll(np.exp(c*k**2), -nu//2).reshape((-1, 1))
-#        rng = np.arange(nv)
-#        k = np.minimum(rng, nv-rng)
-#        c = np.pi*r2lamb/nv2**2
-#        self._deconv_v = np.roll(
-#            np.exp(c*k**2)/r2lamb, -nv//2).reshape((1, -1))
+        rng = np.arange(nu)
+        k = np.minimum(rng, nu-rng)
+        self._deconv_u = np.roll(fu[k], -nu//2).reshape((-1, 1))
+        rng = np.arange(nv)
+        k = np.minimum(rng, nv-rng)
+        self._deconv_v = np.roll(fv[k], -nv//2).reshape((1, -1))
         self._capability = self.TIMES | self.ADJOINT_TIMES
 
     def apply(self, x, mode):
@@ -88,11 +88,11 @@ class _RestOperator(LinearOperator):
             res = hartley(res)
             res = np.roll(res, (nu//2, nv//2), axis=(0, 1))
             res = res[:nu, :nv]
-#            res *= self._deconv_u
-#            res *= self._deconv_v
+            res *= self._deconv_u
+            res *= self._deconv_v
         else:
-#            res = res*self._deconv_u
-#            res *= self._deconv_v
+            res = res*self._deconv_u
+            res *= self._deconv_v
             nu2, nv2 = self._domain.shape
             res = np.pad(res, ((0, nu2-nu), (0, nv2-nv)), mode='constant',
                          constant_values=0)

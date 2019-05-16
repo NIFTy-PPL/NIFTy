@@ -25,16 +25,20 @@ np.random.seed(40)
 
 pmp = pytest.mark.parametrize
 
+def _l2error(a,b):
+    return np.sqrt(np.sum(np.abs(a-b)**2)/np.sum(np.abs(a)**2))
 
+
+@pmp('eps', [1e-2, 1e-6, 1e-7, 1e-15])
 @pmp('nu', [12, 128])
 @pmp('nv', [4, 12, 128])
 @pmp('N', [1, 10, 100])
-def test_gridding(nu, nv, N):
+def test_gridding(nu, nv, N, eps):
     uv = np.random.rand(N, 2) - 0.5
     vis = np.random.randn(N) + 1j*np.random.randn(N)
 
     # Nifty
-    GM = ift.GridderMaker(ift.RGSpace((nu, nv)))
+    GM = ift.GridderMaker(ift.RGSpace((nu, nv)),eps=eps)
     # re-order for performance
     idx = GM.getReordering(uv)
     uv, vis = uv[idx], vis[idx]
@@ -48,7 +52,7 @@ def test_gridding(nu, nv, N):
     dft = pynu*0.
     for i in range(N):
         dft += (vis[i]*np.exp(2j*np.pi*(x*uv[i, 0] + y*uv[i, 1]))).real
-    assert_allclose(dft, pynu)
+    assert(_l2error(dft,pynu)<max(1e-13,10*eps))
 
 
 @pmp('eps', [1e-2, 1e-6, 1e-15])
