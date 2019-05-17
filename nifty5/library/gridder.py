@@ -27,6 +27,7 @@ from ..sugar import from_global_data, makeDomain
 
 class GridderMaker(object):
     def __init__(self, domain, eps=1e-15):
+        from nifty_gridder import get_w
         domain = makeDomain(domain)
         if (len(domain) != 1 or not isinstance(domain[0], RGSpace) or
                 not len(domain.shape) == 2):
@@ -35,7 +36,7 @@ class GridderMaker(object):
         if nu % 2 != 0 or nv % 2 != 0:
             raise ValueError("dimensions must be even")
         nu2, nv2 = 2*nu, 2*nv
-        w = int(-np.log10(eps)+1.9999)
+        w = get_w(eps)
         nsafe = (w+1)//2
         nu2 = max([nu2, 2*nsafe])
         nv2 = max([nv2, 2*nsafe])
@@ -111,15 +112,11 @@ class RadioGridder(LinearOperator):
         self._uv = uv  # FIXME: should we write-protect this?
 
     def apply(self, x, mode):
-        from nifty_gridder import (to_grid, to_grid_post,
-                                   from_grid, from_grid_pre)
+        from nifty_gridder import to_grid, from_grid
         self._check_input(x, mode)
-        nu2, nv2 = self._target.shape
-        x = x.to_global_data()
         if mode == self.TIMES:
-            res = to_grid(self._uv, x, nu2, nv2, self._eps)
-            res = to_grid_post(res)
+            nu2, nv2 = self._target.shape
+            res = to_grid(self._uv, x.to_global_data(), nu2, nv2, self._eps)
         else:
-            x = from_grid_pre(x)
-            res = from_grid(self._uv, x, nu2, nv2, self._eps)
+            res = from_grid(self._uv, x.to_global_data(), self._eps)
         return from_global_data(self._tgt(mode), res)
