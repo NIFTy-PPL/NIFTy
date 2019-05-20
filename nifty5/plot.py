@@ -423,7 +423,7 @@ def _plot(f, ax, **kwargs):
     if len(f) == 0:
         raise ValueError("need something to plot")
     if not isinstance(f[0], Field):
-            raise TypeError("incorrect data type")
+        raise TypeError("incorrect data type")
     dom1 = f[0].domain
     if (len(dom1) == 1 and
         (isinstance(dom1[0], PowerSpace) or

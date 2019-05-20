@@ -39,6 +39,7 @@ dtype = list2fixture([np.float64, np.complex128])
 
 np.random.seed(42)
 
+
 @pmp('sp', _p_RG_spaces)
 def testLOSResponse(sp, dtype):
     starts = np.random.randn(len(sp.shape), 10)
@@ -76,14 +77,14 @@ def testLinearInterpolator():
 def testRealizer(sp):
     op = ift.Realizer(sp)
     ift.extra.consistency_check(op, np.complex128, np.float64,
-    only_r_linear=True)
+                                only_r_linear=True)
 
 
 @pmp('sp', _h_spaces + _p_spaces + _pow_spaces)
 def testConjugationOperator(sp):
     op = ift.ConjugationOperator(sp)
     ift.extra.consistency_check(op, np.complex128, np.complex128,
-    only_r_linear=True)
+                                only_r_linear=True)
 
 
 @pmp('args', [(ift.RGSpace(10, harmonic=True), 4, 0), (ift.RGSpace(

@@ -72,7 +72,7 @@ def _full_implementation(op, domain_dtype, target_dtype, atol, rtol,
 def _check_linearity(op, domain_dtype, atol, rtol):
     fld1 = from_random("normal", op.domain, dtype=domain_dtype)
     fld2 = from_random("normal", op.domain, dtype=domain_dtype)
-    alpha = np.random.random() # FIXME: this can break badly with MPI!
+    alpha = np.random.random()  # FIXME: this can break badly with MPI!
     val1 = op(alpha*fld1+fld2)
     val2 = alpha*op(fld1)+op(fld2)
     _assert_allclose(val1, val2, atol=atol, rtol=rtol)
@@ -81,8 +81,9 @@ def _check_linearity(op, domain_dtype, atol, rtol):
 def _domain_check(op):
     for dd in [op.domain, op.target]:
         if not isinstance(dd, (DomainTuple, MultiDomain)):
-            raise TypeError('The domain and the target of an operator need to',
-                            'be instances of either DomainTuple or MultiDomain.')
+            raise TypeError(
+                'The domain and the target of an operator need to',
+                'be instances of either DomainTuple or MultiDomain.')
 
 
 def consistency_check(op, domain_dtype=np.float64, target_dtype=np.float64,
