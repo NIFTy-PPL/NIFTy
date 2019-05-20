@@ -25,11 +25,12 @@ np.random.seed(40)
 
 pmp = pytest.mark.parametrize
 
+
 def _l2error(a,b):
     return np.sqrt(np.sum(np.abs(a-b)**2)/np.sum(np.abs(a)**2))
 
 
-@pmp('eps', [1e-2, 1e-6, 1e-7, 1e-15])
+@pmp('eps', [ 1e-2, 1e-4, 1e-7, 1e-10, 1e-11, 1e-12, 2e-13])
 @pmp('nu', [12, 128])
 @pmp('nv', [4, 12, 128])
 @pmp('N', [1, 10, 100])
@@ -52,17 +53,17 @@ def test_gridding(nu, nv, N, eps):
     dft = pynu*0.
     for i in range(N):
         dft += (vis[i]*np.exp(2j*np.pi*(x*uv[i, 0] + y*uv[i, 1]))).real
-    assert(_l2error(dft,pynu)<max(1e-13,10*eps))
+    assert(_l2error(dft,pynu)<eps)
 
 
-@pmp('eps', [1e-2, 1e-6, 1e-15])
+@pmp('eps', [1e-2, 1e-6, 2e-13])
 @pmp('nu', [12, 128])
 @pmp('nv', [4, 12, 128])
 @pmp('N', [1, 10, 100])
 def test_build(nu, nv, N, eps):
     dom = ift.RGSpace([nu, nv])
     uv = np.random.rand(N, 2) - 0.5
-    GM = ift.GridderMaker(dom)
+    GM = ift.GridderMaker(dom, eps=eps)
     # re-order for performance
     idx = GM.getReordering(uv)
     uv = uv[idx]

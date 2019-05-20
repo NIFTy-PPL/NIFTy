@@ -26,7 +26,7 @@ from ..sugar import from_global_data, makeDomain
 
 
 class GridderMaker(object):
-    def __init__(self, domain, eps=1e-15):
+    def __init__(self, domain, eps=2e-13):
         from nifty_gridder import get_w
         domain = makeDomain(domain)
         if (len(domain) != 1 or not isinstance(domain[0], RGSpace) or
