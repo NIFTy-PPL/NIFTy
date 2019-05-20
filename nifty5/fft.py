@@ -19,37 +19,17 @@ from .utilities import iscomplextype
 import numpy as np
 import pypocketfft
 
-
-_use_fftw = False
-_fftw_prepped = False
-_fft_extra_args = {}
+_nthreads = 1
 
 
-def enable_fftw():
-    global _use_fftw
-    _use_fftw = True
+def nthreads():
+    return _nthreads
 
 
-def disable_fftw():
-    global _use_fftw
-    _use_fftw = False
+def set_nthreads(nthr):
+    global _nthreads
+    _nthreads = nthr
 
-
-def _init_pyfftw():
-    global _fft_extra_args, _fftw_prepped
-    if not _fftw_prepped:
-        import pyfftw
-        from pyfftw.interfaces.numpy_fft import fftn, rfftn, ifftn
-        pyfftw.interfaces.cache.enable()
-        pyfftw.interfaces.cache.set_keepalive_time(1000.)
-        # Optional extra arguments for the FFT calls
-        # if exact reproducibility is needed,
-        # set "planner_effort" to "FFTW_ESTIMATE"
-        import os
-        nthreads = int(os.getenv("OMP_NUM_THREADS", "1"))
-        _fft_extra_args = dict(planner_effort='FFTW_ESTIMATE',
-                               threads=nthreads)
-        _fftw_prepped = True
 
 # FIXME this should not be necessary ... no one should call a complex FFT
 # with a float array.
@@ -64,41 +44,25 @@ def _make_complex(a):
 
 
 def fftn(a, axes=None):
-    if _use_fftw:
-        from pyfftw.interfaces.numpy_fft import fftn
-        _init_pyfftw()
-        return fftn(a, axes=axes, **_fft_extra_args)
-    return pypocketfft.fftn(_make_complex(a), axes=axes)
+    return pypocketfft.fftn(_make_complex(a), axes=axes, nthreads=_nthreads)
 
 
 def rfftn(a, axes=None):
-    if _use_fftw:
-        from pyfftw.interfaces.numpy_fft import rfftn
-        _init_pyfftw()
-        return rfftn(a, axes=axes, **_fft_extra_args)
-    return pypocketfft.rfftn(a, axes=axes)
+    return pypocketfft.rfftn(a, axes=axes, nthreads=_nthreads)
 
 
 def ifftn(a, axes=None):
-    if _use_fftw:
-        from pyfftw.interfaces.numpy_fft import ifftn
-        _init_pyfftw()
-        return ifftn(a, axes=axes, **_fft_extra_args)
     # FIXME this is a temporary fix and can be done more elegantly
     if axes is None:
         fct = 1./a.size
     else:
         fct = 1./np.prod(np.take(a.shape, axes))
-    return pypocketfft.ifftn(_make_complex(a), axes=axes, fct=fct)
+    return pypocketfft.ifftn(_make_complex(a), axes=axes, fct=fct,
+                             nthreads=_nthreads)
 
 
 def hartley(a, axes=None):
-    if _use_fftw:
-        from pyfftw.interfaces.numpy_fft import rfftn
-        _init_pyfftw()
-        tmp = rfftn(a, axes=axes, **_fft_extra_args)
-        return pypocketfft.complex2hartley(a, tmp, axes)
-    return pypocketfft.hartley2(a, axes=axes)
+    return pypocketfft.hartley2(a, axes=axes, nthreads=_nthreads)
 
 
 # Do a real-to-complex forward FFT and return the _full_ output array

@@ -15,23 +15,6 @@ Plotting support is added via::
 
     sudo apt-get install python3-matplotlib
 
-NIFTy uses pypocketfft by default. For large problems FFTW may be
-used because of its higher performance. It can be installed via::
-
-    sudo apt-get install libfftw3-dev
-    pip3 install --user pyfftw
-
-To enable FFTW usage in NIFTy, call::
-
-    nifty5.fft.enable_fftw()
-
-at the beginning of your code.
-
-(Note: If you encounter problems related to `pyFFTW`, make sure that you are
-using a pip-installed `pyFFTW` package. Unfortunately, some distributions are
-shipping an incorrectly configured `pyFFTW` package, which does not cooperate
-with the installed `FFTW3` libraries.)
-
 Support for spherical harmonic transforms is added via::
 
     pip3 install --user git+https://gitlab.mpcdf.mpg.de/ift/pyHealpix.git
