@@ -349,11 +349,10 @@ def _plot2D(f, ax, **kwargs):
         rgb = _rgb_data(f.to_global_data())
         have_rgb = True
 
-    label = kwargs.pop("label", None)
-
     foo = kwargs.pop("norm", None)
     norm = {} if foo is None else {'norm': foo}
-    aspect = kwargs.pop("aspect", None)
+
+    foo = kwargs.pop("aspect", None)
     aspect = {} if foo is None else {'aspect': foo}
 
     ax.set_title(kwargs.pop("title", ""))
@@ -424,7 +423,7 @@ def _plot(f, ax, **kwargs):
     if len(f) == 0:
         raise ValueError("need something to plot")
     if not isinstance(f[0], Field):
-            raise TypeError("incorrect data type")
+        raise TypeError("incorrect data type")
     dom1 = f[0].domain
     if (len(dom1) == 1 and
         (isinstance(dom1[0], PowerSpace) or

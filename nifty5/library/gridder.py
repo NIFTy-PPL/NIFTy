@@ -26,7 +26,8 @@ from ..sugar import from_global_data, makeDomain
 
 
 class GridderMaker(object):
-    def __init__(self, domain, eps=1e-15):
+    def __init__(self, domain, eps=2e-13):
+        from nifty_gridder import get_w
         domain = makeDomain(domain)
         if (len(domain) != 1 or not isinstance(domain[0], RGSpace) or
                 not len(domain.shape) == 2):
@@ -34,20 +35,17 @@ class GridderMaker(object):
         nu, nv = domain.shape
         if nu % 2 != 0 or nv % 2 != 0:
             raise ValueError("dimensions must be even")
-        rat = 3 if eps < 1e-11 else 2
-        nu2, nv2 = rat*nu, rat*nv
-
-        nspread = int(-np.log(eps)/(np.pi*(rat-1)/(rat-.5)) + .5) + 1
-        nu2 = max([nu2, 2*nspread])
-        nv2 = max([nv2, 2*nspread])
-        r2lamb = rat*rat*nspread/(rat*(rat-.5))
+        nu2, nv2 = 2*nu, 2*nv
+        w = get_w(eps)
+        nsafe = (w+1)//2
+        nu2 = max([nu2, 2*nsafe])
+        nv2 = max([nv2, 2*nsafe])
 
         oversampled_domain = RGSpace(
             [nu2, nv2], distances=[1, 1], harmonic=False)
 
-        self._nspread = nspread
-        self._r2lamb = r2lamb
-        self._rest = _RestOperator(domain, oversampled_domain, r2lamb)
+        self._eps = eps
+        self._rest = _RestOperator(domain, oversampled_domain, eps)
 
     def getReordering(self, uv):
         from nifty_gridder import peanoindex
@@ -55,7 +53,7 @@ class GridderMaker(object):
         return peanoindex(uv, nu2, nv2)
 
     def getGridder(self, uv):
-        return RadioGridder(self._rest.domain, self._nspread, self._r2lamb, uv)
+        return RadioGridder(self._rest.domain, self._eps, uv)
 
     def getRest(self):
         return self._rest
@@ -65,22 +63,22 @@ class GridderMaker(object):
 
 
 class _RestOperator(LinearOperator):
-    def __init__(self, domain, oversampled_domain, r2lamb):
+    def __init__(self, domain, oversampled_domain, eps):
+        from nifty_gridder import correction_factors
         self._domain = makeDomain(oversampled_domain)
         self._target = domain
         nu, nv = domain.shape
         nu2, nv2 = oversampled_domain.shape
 
+        fu = correction_factors(nu2, nu//2+1, eps)
+        fv = correction_factors(nv2, nv//2+1, eps)
         # compute deconvolution operator
         rng = np.arange(nu)
         k = np.minimum(rng, nu-rng)
-        c = np.pi*r2lamb/nu2**2
-        self._deconv_u = np.roll(np.exp(c*k**2), -nu//2).reshape((-1, 1))
+        self._deconv_u = np.roll(fu[k], -nu//2).reshape((-1, 1))
         rng = np.arange(nv)
         k = np.minimum(rng, nv-rng)
-        c = np.pi*r2lamb/nv2**2
-        self._deconv_v = np.roll(
-            np.exp(c*k**2)/r2lamb, -nv//2).reshape((1, -1))
+        self._deconv_v = np.roll(fv[k], -nv//2).reshape((1, -1))
         self._capability = self.TIMES | self.ADJOINT_TIMES
 
     def apply(self, x, mode):
@@ -105,24 +103,20 @@ class _RestOperator(LinearOperator):
 
 
 class RadioGridder(LinearOperator):
-    def __init__(self, target, nspread, r2lamb, uv):
+    def __init__(self, target, eps, uv):
         self._domain = DomainTuple.make(
             UnstructuredDomain((uv.shape[0],)))
         self._target = DomainTuple.make(target)
         self._capability = self.TIMES | self.ADJOINT_TIMES
-        self._nspread, self._r2lamb = int(nspread), float(r2lamb)
+        self._eps = float(eps)
         self._uv = uv  # FIXME: should we write-protect this?
 
     def apply(self, x, mode):
-        from nifty_gridder import (to_grid, to_grid_post,
-                                   from_grid, from_grid_pre)
+        from nifty_gridder import to_grid, from_grid
         self._check_input(x, mode)
-        nu2, nv2 = self._target.shape
-        x = x.to_global_data()
         if mode == self.TIMES:
-            res = to_grid(self._uv, x, nu2, nv2, self._nspread, self._r2lamb)
-            res = to_grid_post(res)
+            nu2, nv2 = self._target.shape
+            res = to_grid(self._uv, x.to_global_data(), nu2, nv2, self._eps)
         else:
-            x = from_grid_pre(x)
-            res = from_grid(self._uv, x, nu2, nv2, self._nspread, self._r2lamb)
+            res = from_grid(self._uv, x.to_global_data(), self._eps)
         return from_global_data(self._tgt(mode), res)

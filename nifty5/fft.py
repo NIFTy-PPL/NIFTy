@@ -17,107 +17,52 @@
 
 from .utilities import iscomplextype
 import numpy as np
+import pypocketfft
+
+_nthreads = 1
 
 
-_use_fftw = False
-_fftw_prepped = False
-_fft_extra_args = {}
+def nthreads():
+    return _nthreads
 
 
-def enable_fftw():
-    global _use_fftw
-    _use_fftw = True
+def set_nthreads(nthr):
+    global _nthreads
+    _nthreads = nthr
 
 
-def disable_fftw():
-    global _use_fftw
-    _use_fftw = False
-
-
-def _init_pyfftw():
-    global _fft_extra_args, _fftw_prepped
-    if not _fftw_prepped:
-        import pyfftw
-        from pyfftw.interfaces.numpy_fft import fftn, rfftn, ifftn
-        pyfftw.interfaces.cache.enable()
-        pyfftw.interfaces.cache.set_keepalive_time(1000.)
-        # Optional extra arguments for the FFT calls
-        # if exact reproducibility is needed,
-        # set "planner_effort" to "FFTW_ESTIMATE"
-        import os
-        nthreads = int(os.getenv("OMP_NUM_THREADS", "1"))
-        _fft_extra_args = dict(planner_effort='FFTW_ESTIMATE',
-                               threads=nthreads)
-        _fftw_prepped = True
+# FIXME this should not be necessary ... no one should call a complex FFT
+# with a float array.
+def _make_complex(a):
+    if a.dtype in (np.complex64, np.complex128):
+        return a
+    if a.dtype == np.float64:
+        return a.astype(np.complex128)
+    if a.dtype == np.float32:
+        return a.astype(np.complex64)
+    raise NotImplementedError
 
 
 def fftn(a, axes=None):
-    if _use_fftw:
-        from pyfftw.interfaces.numpy_fft import fftn
-        _init_pyfftw()
-        return fftn(a, axes=axes, **_fft_extra_args)
-    else:
-        return np.fft.fftn(a, axes=axes)
+    return pypocketfft.fftn(_make_complex(a), axes=axes, nthreads=_nthreads)
 
 
 def rfftn(a, axes=None):
-    if _use_fftw:
-        from pyfftw.interfaces.numpy_fft import rfftn
-        _init_pyfftw()
-        return rfftn(a, axes=axes, **_fft_extra_args)
-    else:
-        return np.fft.rfftn(a, axes=axes)
+    return pypocketfft.rfftn(a, axes=axes, nthreads=_nthreads)
 
 
 def ifftn(a, axes=None):
-    if _use_fftw:
-        from pyfftw.interfaces.numpy_fft import ifftn
-        _init_pyfftw()
-        return ifftn(a, axes=axes, **_fft_extra_args)
+    # FIXME this is a temporary fix and can be done more elegantly
+    if axes is None:
+        fct = 1./a.size
     else:
-        return np.fft.ifftn(a, axes=axes)
+        fct = 1./np.prod(np.take(a.shape, axes))
+    return pypocketfft.ifftn(_make_complex(a), axes=axes, fct=fct,
+                             nthreads=_nthreads)
 
 
 def hartley(a, axes=None):
-    # Check if the axes provided are valid given the shape
-    if axes is not None and \
-            not all(axis < len(a.shape) for axis in axes):
-        raise ValueError("Provided axes do not match array shape")
-    if iscomplextype(a.dtype):
-        raise TypeError("Hartley transform requires real-valued arrays.")
-
-    tmp = rfftn(a, axes=axes)
-
-    def _fill_array(tmp, res, axes):
-        if axes is None:
-            axes = tuple(range(tmp.ndim))
-        lastaxis = axes[-1]
-        ntmplast = tmp.shape[lastaxis]
-        slice1 = (slice(None),)*lastaxis + (slice(0, ntmplast),)
-        np.add(tmp.real, tmp.imag, out=res[slice1])
-
-        def _fill_upper_half(tmp, res, axes):
-            lastaxis = axes[-1]
-            nlast = res.shape[lastaxis]
-            ntmplast = tmp.shape[lastaxis]
-            nrem = nlast - ntmplast
-            slice1 = [slice(None)]*lastaxis + [slice(ntmplast, None)]
-            slice2 = [slice(None)]*lastaxis + [slice(nrem, 0, -1)]
-            for i in axes[:-1]:
-                slice1[i] = slice(1, None)
-                slice2[i] = slice(None, 0, -1)
-            slice1 = tuple(slice1)
-            slice2 = tuple(slice2)
-            np.subtract(tmp[slice2].real, tmp[slice2].imag, out=res[slice1])
-            for i, ax in enumerate(axes[:-1]):
-                dim1 = (slice(None),)*ax + (slice(0, 1),)
-                axes2 = axes[:i] + axes[i+1:]
-                _fill_upper_half(tmp[dim1], res[dim1], axes2)
-
-        _fill_upper_half(tmp, res, axes)
-        return res
-
-    return _fill_array(tmp, np.empty_like(a), axes)
+    return pypocketfft.hartley2(a, axes=axes, nthreads=_nthreads)
 
 
 # Do a real-to-complex forward FFT and return the _full_ output array

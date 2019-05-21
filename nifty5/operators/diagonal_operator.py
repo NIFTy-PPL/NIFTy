@@ -158,7 +158,7 @@ class DiagonalOperator(EndomorphicOperator):
     def process_sample(self, samp, from_inverse):
         if (self._complex or (self._diagmin < 0.) or
                 (self._diagmin == 0. and from_inverse)):
-                    raise ValueError("operator not positive definite")
+            raise ValueError("operator not positive definite")
         if from_inverse:
             res = samp.local_data/np.sqrt(self._ldiag)
         else:

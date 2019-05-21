@@ -5,7 +5,6 @@ import numpy as np
 
 import nifty5 as ift
 
-ift.fft.enable_fftw()
 np.random.seed(40)
 
 N0s, a0s, b0s, c0s = [], [], [], []
