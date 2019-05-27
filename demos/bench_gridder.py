@@ -27,12 +27,9 @@ for ii in range(10, 23):
     img = ift.from_global_data(uvspace, img)
 
     t0 = time()
-    GM = ift.GridderMaker(uvspace, eps=1e-7)
-    idx = GM.getReordering(uv)
-    uv = uv[idx]
-    vis = vis[idx]
+    GM = ift.GridderMaker(uvspace, eps=1e-7, uv=uv)
     vis = ift.from_global_data(visspace, vis)
-    op = GM.getFull(uv).adjoint
+    op = GM.getFull().adjoint
     t1 = time()
     op(img).to_global_data()
     t2 = time()

@@ -39,13 +39,10 @@ def test_gridding(nu, nv, N, eps):
     vis = np.random.randn(N) + 1j*np.random.randn(N)
 
     # Nifty
-    GM = ift.GridderMaker(ift.RGSpace((nu, nv)), eps=eps)
-    # re-order for performance
-    idx = GM.getReordering(uv)
-    uv, vis = uv[idx], vis[idx]
+    GM = ift.GridderMaker(ift.RGSpace((nu, nv)), eps=eps, uv=uv)
     vis2 = ift.from_global_data(ift.UnstructuredDomain(vis.shape), vis)
 
-    Op = GM.getFull(uv)
+    Op = GM.getFull()
     pynu = Op(vis2).to_global_data()
     # DFT
     x, y = np.meshgrid(
@@ -63,14 +60,12 @@ def test_gridding(nu, nv, N, eps):
 def test_build(nu, nv, N, eps):
     dom = ift.RGSpace([nu, nv])
     uv = np.random.rand(N, 2) - 0.5
-    GM = ift.GridderMaker(dom, eps=eps)
+    GM = ift.GridderMaker(dom, eps=eps, uv=uv)
     # re-order for performance
-    idx = GM.getReordering(uv)
-    uv = uv[idx]
-    R0 = GM.getGridder(uv)
+    R0 = GM.getGridder()
     R1 = GM.getRest()
     R = R1@R0
-    RF = GM.getFull(uv)
+    RF = GM.getFull()
 
     # Consistency checks
     flt = np.float64
