@@ -36,9 +36,7 @@ def _l2error(a, b):
 @pmp('N', [1, 10, 100])
 def test_gridding(nu, nv, N, eps):
     uvw = np.random.rand(N, 3) - 0.5
-    ms = (np.random.randn(N) + 1j*np.random.randn(N)).reshape((-1,1))
-    # FIXME temporary!
-    vis = np.ones((N,))+1j*np.ones((N,))
+    vis = (np.random.randn(N) + 1j*np.random.randn(N))
 
     # Nifty
     GM = ift.GridderMaker(ift.RGSpace((nu, nv)), uvw=uvw, channel_fact=np.array([1.]), eps=eps)
