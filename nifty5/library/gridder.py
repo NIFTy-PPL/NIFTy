@@ -26,20 +26,21 @@ from ..sugar import from_global_data, makeDomain
 
 
 class GridderMaker(object):
-    def __init__(self, dirty_domain, uv, eps=2e-13):
+    def __init__(self, dirty_domain, uvw, channel_fact, eps=2e-13):
         import nifty_gridder
         dirty_domain = makeDomain(dirty_domain)
         if (len(dirty_domain) != 1 or
                 not isinstance(dirty_domain[0], RGSpace) or
                 not len(dirty_domain.shape) == 2):
             raise ValueError("need dirty_domain with exactly one 2D RGSpace")
-        bl = nifty_gridder.Baselines(uv, np.array([1.]));
+        if channel_fact.ndim != 1:
+            raise ValueError("channel_fact must be a 1D array")
+        bl = nifty_gridder.Baselines(uvw, channel_fact);
         nxdirty, nydirty = dirty_domain.shape
         gconf = nifty_gridder.GridderConfig(nxdirty, nydirty, eps, 1., 1.)
         nu = gconf.Nu()
         nv = gconf.Nv()
-        idx = bl.getIndices()
-        idx = gconf.reorderIndices(idx, bl)
+        idx = nifty_gridder.getIndices(bl, gconf)
 
         grid_domain = RGSpace([nu, nv], distances=[1, 1], harmonic=False)
 
@@ -62,43 +63,23 @@ class _RestOperator(LinearOperator):
         self._domain = makeDomain(grid_domain)
         self._target = makeDomain(dirty_domain)
         self._gconf = gconf
-        fu = gconf.U_corrections()
-        fv = gconf.V_corrections()
-        nu, nv = dirty_domain.shape
-        # compute deconvolution operator
-        rng = np.arange(nu)
-        k = np.minimum(rng, nu-rng)
-        self._deconv_u = np.roll(fu[k], -nu//2).reshape((-1, 1))
-        rng = np.arange(nv)
-        k = np.minimum(rng, nv-rng)
-        self._deconv_v = np.roll(fv[k], -nv//2).reshape((1, -1))
         self._capability = self.TIMES | self.ADJOINT_TIMES
 
     def apply(self, x, mode):
         import nifty_gridder
         self._check_input(x, mode)
-        nu, nv = self._target.shape
         res = x.to_global_data()
         if mode == self.TIMES:
-            res = hartley(res)
-            res = np.roll(res, (nu//2, nv//2), axis=(0, 1))
-            res = res[:nu, :nv]
-            res *= self._deconv_u
-            res *= self._deconv_v
+            res = self._gconf.grid2dirty(res)
         else:
-            res = res*self._deconv_u
-            res *= self._deconv_v
-            nu2, nv2 = self._domain.shape
-            res = np.pad(res, ((0, nu2-nu), (0, nv2-nv)), mode='constant',
-                         constant_values=0)
-            res = np.roll(res, (-nu//2, -nv//2), axis=(0, 1))
-            res = hartley(res)
+            res = self._gconf.dirty2grid(res)
         return from_global_data(self._tgt(mode), res)
 
 
 class RadioGridder(LinearOperator):
     def __init__(self, grid_domain, bl, gconf, idx):
-        self._domain = DomainTuple.make(UnstructuredDomain((idx.shape[0],)))
+        self._domain = DomainTuple.make(UnstructuredDomain(
+                                        (idx.shape[0],)))
         self._target = DomainTuple.make(grid_domain)
         self._bl = bl
         self._gconf = gconf
@@ -109,9 +90,9 @@ class RadioGridder(LinearOperator):
         import nifty_gridder
         self._check_input(x, mode)
         if mode == self.TIMES:
-            res = nifty_gridder.ms2grid(
-                self._bl, self._gconf, self._idx, x.to_global_data().reshape((-1,1)))
+            res = nifty_gridder.vis2grid(
+                self._bl, self._gconf, self._idx, x.to_global_data())
         else:
-            res = nifty_gridder.grid2ms(
+            res = nifty_gridder.grid2vis(
                 self._bl, self._gconf, self._idx, x.to_global_data())
         return from_global_data(self._tgt(mode), res)

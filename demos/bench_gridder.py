@@ -9,13 +9,13 @@ np.random.seed(40)
 
 N0s, a0s, b0s, c0s = [], [], [], []
 
-for ii in range(10, 23):
-    nu = 1024
-    nv = 1024
+for ii in range(10, 26):
+    nu = 2048
+    nv = 2048
     N = int(2**ii)
     print('N = {}'.format(N))
 
-    uv = np.random.rand(N, 2) - 0.5
+    uvw = np.random.rand(N, 3) - 0.5
     vis = np.random.randn(N) + 1j*np.random.randn(N)
 
     uvspace = ift.RGSpace((nu, nv))
@@ -27,7 +27,7 @@ for ii in range(10, 23):
     img = ift.from_global_data(uvspace, img)
 
     t0 = time()
-    GM = ift.GridderMaker(uvspace, eps=1e-7, uv=uv)
+    GM = ift.GridderMaker(uvspace, eps=1e-7, uvw=uvw, channel_fact=np.array([1.]))
     vis = ift.from_global_data(visspace, vis)
     op = GM.getFull().adjoint
     t1 = time()
@@ -35,6 +35,7 @@ for ii in range(10, 23):
     t2 = time()
     op.adjoint(vis).to_global_data()
     t3 = time()
+    print(t2-t1, t3-t2)
     N0s.append(N)
     a0s.append(t1 - t0)
     b0s.append(t2 - t1)

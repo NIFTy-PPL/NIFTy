@@ -35,11 +35,13 @@ def _l2error(a, b):
 @pmp('nv', [4, 12, 128])
 @pmp('N', [1, 10, 100])
 def test_gridding(nu, nv, N, eps):
-    uv = np.random.rand(N, 2) - 0.5
-    vis = np.random.randn(N) + 1j*np.random.randn(N)
+    uvw = np.random.rand(N, 3) - 0.5
+    ms = (np.random.randn(N) + 1j*np.random.randn(N)).reshape((-1,1))
+    # FIXME temporary!
+    vis = np.ones((N,))+1j*np.ones((N,))
 
     # Nifty
-    GM = ift.GridderMaker(ift.RGSpace((nu, nv)), eps=eps, uv=uv)
+    GM = ift.GridderMaker(ift.RGSpace((nu, nv)), uvw=uvw, channel_fact=np.array([1.]), eps=eps)
     vis2 = ift.from_global_data(ift.UnstructuredDomain(vis.shape), vis)
 
     Op = GM.getFull()
@@ -49,7 +51,7 @@ def test_gridding(nu, nv, N, eps):
         *[-ss/2 + np.arange(ss) for ss in [nu, nv]], indexing='ij')
     dft = pynu*0.
     for i in range(N):
-        dft += (vis[i]*np.exp(2j*np.pi*(x*uv[i, 0] + y*uv[i, 1]))).real
+        dft += (vis[i]*np.exp(2j*np.pi*(x*uvw[i, 0] + y*uvw[i, 1]))).real
     assert_(_l2error(dft, pynu) < eps)
 
 
@@ -59,9 +61,8 @@ def test_gridding(nu, nv, N, eps):
 @pmp('N', [1, 10, 100])
 def test_build(nu, nv, N, eps):
     dom = ift.RGSpace([nu, nv])
-    uv = np.random.rand(N, 2) - 0.5
-    GM = ift.GridderMaker(dom, eps=eps, uv=uv)
-    # re-order for performance
+    uvw = np.random.rand(N, 3) - 0.5
+    GM = ift.GridderMaker(dom, uvw=uvw, channel_fact=np.array([1.]), eps=eps)
     R0 = GM.getGridder()
     R1 = GM.getRest()
     R = R1@R0
