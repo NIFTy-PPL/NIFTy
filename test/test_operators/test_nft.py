@@ -34,13 +34,14 @@ def _l2error(a, b):
 @pmp('nu', [12, 128])
 @pmp('nv', [4, 12, 128])
 @pmp('N', [1, 10, 100])
-def test_gridding(nu, nv, N, eps):
+@pmp('channel_fact', [1, 1.2])
+def test_gridding(nu, nv, N, eps, channel_fact):
     uvw = np.random.rand(N, 3) - 0.5
     vis = (np.random.randn(N) + 1j*np.random.randn(N))
 
     # Nifty
     GM = ift.GridderMaker(ift.RGSpace((nu, nv)), uvw=uvw,
-                          channel_fact=np.array([1.]), eps=eps,
+                          channel_fact=np.array([channel_fact]), eps=eps,
                           flags=np.zeros((N, 1), dtype=np.bool))
     vis2 = ift.from_global_data(ift.UnstructuredDomain(vis.shape), vis)
 
@@ -51,7 +52,7 @@ def test_gridding(nu, nv, N, eps):
         *[-ss/2 + np.arange(ss) for ss in [nu, nv]], indexing='ij')
     dft = pynu*0.
     for i in range(N):
-        dft += (vis[i]*np.exp(2j*np.pi*(x*uvw[i, 0] + y*uvw[i, 1]))).real
+        dft += (vis[i]*np.exp(2j*np.pi*(x*uvw[i, 0] + y*uvw[i, 1])*channel_fact)).real
     assert_(_l2error(dft, pynu) < eps)
 
 
