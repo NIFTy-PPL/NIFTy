@@ -39,7 +39,8 @@ def test_gridding(nu, nv, N, eps):
     vis = (np.random.randn(N) + 1j*np.random.randn(N))
 
     # Nifty
-    GM = ift.GridderMaker(ift.RGSpace((nu, nv)), uvw=uvw, channel_fact=np.array([1.]), eps=eps)
+    GM = ift.GridderMaker(ift.RGSpace((nu, nv)), uvw=uvw,
+                          channel_fact=np.array([1.]), eps=eps)
     vis2 = ift.from_global_data(ift.UnstructuredDomain(vis.shape), vis)
 
     Op = GM.getFull()

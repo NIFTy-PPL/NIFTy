@@ -35,7 +35,9 @@ class GridderMaker(object):
             raise ValueError("need dirty_domain with exactly one 2D RGSpace")
         if channel_fact.ndim != 1:
             raise ValueError("channel_fact must be a 1D array")
-        bl = nifty_gridder.Baselines(uvw, channel_fact);
+        bl = nifty_gridder.Baselines(
+            uvw, channel_fact,
+            np.zeros((uvw.shape[0], channel_fact.shape[0]), dtype=np.bool))
         nxdirty, nydirty = dirty_domain.shape
         gconf = nifty_gridder.GridderConfig(nxdirty, nydirty, eps, 1., 1.)
         nu = gconf.Nu()
@@ -59,14 +61,12 @@ class GridderMaker(object):
 
 class _RestOperator(LinearOperator):
     def __init__(self, dirty_domain, grid_domain, gconf):
-        import nifty_gridder
         self._domain = makeDomain(grid_domain)
         self._target = makeDomain(dirty_domain)
         self._gconf = gconf
         self._capability = self.TIMES | self.ADJOINT_TIMES
 
     def apply(self, x, mode):
-        import nifty_gridder
         self._check_input(x, mode)
         res = x.to_global_data()
         if mode == self.TIMES:
@@ -90,7 +90,7 @@ class RadioGridder(LinearOperator):
         import nifty_gridder
         self._check_input(x, mode)
         if mode == self.TIMES:
-            x = x.to_global_data().reshape((-1,1))
+            x = x.to_global_data().reshape((-1, 1))
             x = self._bl.ms2vis(x, self._idx)
             res = nifty_gridder.vis2grid(
                 self._bl, self._gconf, self._idx, x)
