@@ -77,7 +77,8 @@ class _RestOperator(LinearOperator):
 
 class RadioGridder(LinearOperator):
     def __init__(self, grid_domain, bl, gconf, idx):
-        self._domain = DomainTuple.make(UnstructuredDomain((idx.shape[0],)))
+        self._domain = DomainTuple.make(
+            UnstructuredDomain((bl.Nrows(),bl.Nchannels())))
         self._target = DomainTuple.make(grid_domain)
         self._bl = bl
         self._gconf = gconf
@@ -88,11 +89,10 @@ class RadioGridder(LinearOperator):
         import nifty_gridder
         self._check_input(x, mode)
         if mode == self.TIMES:
-            x = x.to_global_data().reshape((-1, 1))
-            x = self._bl.ms2vis(x, self._idx)
+            x = self._bl.ms2vis(x.to_global_data(), self._idx)
             res = nifty_gridder.vis2grid(self._bl, self._gconf, self._idx, x)
         else:
             res = nifty_gridder.grid2vis(self._bl, self._gconf, self._idx,
                                          x.to_global_data())
-            res = self._bl.vis2ms(res, self._idx).reshape((-1,))
+            res = self._bl.vis2ms(res, self._idx)
         return from_global_data(self._tgt(mode), res)

@@ -16,11 +16,11 @@ for ii in range(10, 26):
     print('N = {}'.format(N))
 
     uvw = np.random.rand(N, 3) - 0.5
-    vis = np.random.randn(N) + 1j*np.random.randn(N)
+    vis = (np.random.randn(N) + 1j*np.random.randn(N)).reshape((-1,1))
 
     uvspace = ift.RGSpace((nu, nv))
 
-    visspace = ift.UnstructuredDomain(N)
+    visspace = ift.UnstructuredDomain((N,1))
 
     img = np.random.randn(nu*nv)
     img = img.reshape((nu, nv))

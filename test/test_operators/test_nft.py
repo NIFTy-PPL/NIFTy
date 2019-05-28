@@ -37,7 +37,7 @@ def _l2error(a, b):
 @pmp('channel_fact', [1, 1.2])
 def test_gridding(nu, nv, N, eps, channel_fact):
     uvw = np.random.rand(N, 3) - 0.5
-    vis = (np.random.randn(N) + 1j*np.random.randn(N))
+    vis = (np.random.randn(N) + 1j*np.random.randn(N)).reshape((-1,1))
 
     # Nifty
     GM = ift.GridderMaker(ift.RGSpace((nu, nv)), uvw=uvw,
@@ -60,11 +60,14 @@ def test_gridding(nu, nv, N, eps, channel_fact):
 @pmp('nu', [12, 128])
 @pmp('nv', [4, 12, 128])
 @pmp('N', [1, 10, 100])
-def test_build(nu, nv, N, eps):
+@pmp('cfact', [np.array([1.]), np.array([0.3, 0.5, 2.3])])
+def test_build(nu, nv, N, eps, cfact):
     dom = ift.RGSpace([nu, nv])
     uvw = np.random.rand(N, 3) - 0.5
-    GM = ift.GridderMaker(dom, uvw=uvw, channel_fact=np.array([1.]), eps=eps,
-                          flags=np.zeros((N, 1), dtype=np.bool))
+    flags=np.zeros((N, cfact.shape[0]), dtype=np.bool)
+    flags[0,0]=True
+    GM = ift.GridderMaker(dom, uvw=uvw, channel_fact=cfact, eps=eps,
+                          flags=flags)
     R0 = GM.getGridder()
     R1 = GM.getRest()
     R = R1@R0
