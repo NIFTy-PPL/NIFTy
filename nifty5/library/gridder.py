@@ -23,7 +23,7 @@ from ..sugar import from_global_data, makeDomain
 
 
 class GridderMaker(object):
-    def __init__(self, dirty_domain, uvw, channel_fact, eps=2e-13):
+    def __init__(self, dirty_domain, uvw, channel_fact, flags, eps=2e-13):
         import nifty_gridder
         dirty_domain = makeDomain(dirty_domain)
         if (len(dirty_domain) != 1 or not isinstance(dirty_domain[0], RGSpace)
@@ -31,17 +31,18 @@ class GridderMaker(object):
             raise ValueError("need dirty_domain with exactly one 2D RGSpace")
         if channel_fact.ndim != 1:
             raise ValueError("channel_fact must be a 1D array")
-        bl = nifty_gridder.Baselines(uvw, channel_fact)
+        bl = nifty_gridder.Baselines(uvw, channel_fact, flags)
         nxdirty, nydirty = dirty_domain.shape
         gconf = nifty_gridder.GridderConfig(nxdirty, nydirty, eps, 1., 1.)
         nu = gconf.Nu()
         nv = gconf.Nv()
-        idx = nifty_gridder.getIndices(bl, gconf)
+        self._idx = nifty_gridder.getIndices(bl, gconf)
+        self._bl = bl
 
         grid_domain = RGSpace([nu, nv], distances=[1, 1], harmonic=False)
 
         self._rest = _RestOperator(dirty_domain, grid_domain, gconf)
-        self._gridder = RadioGridder(grid_domain, bl, gconf, idx)
+        self._gridder = RadioGridder(grid_domain, bl, gconf, self._idx)
 
     def getGridder(self):
         return self._gridder
@@ -51,6 +52,9 @@ class GridderMaker(object):
 
     def getFull(self):
         return self.getRest() @ self._gridder
+
+    def ms2vis(self, x):
+        return self._bl.ms2vis(x, self._idx)
 
 
 class _RestOperator(LinearOperator):
