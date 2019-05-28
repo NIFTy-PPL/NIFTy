@@ -29,7 +29,7 @@ for ii in range(10, 26):
     t0 = time()
     GM = ift.GridderMaker(uvspace, eps=1e-7, uvw=uvw,
                           channel_fact=np.array([1.]),
-                          flags=np.zeros((N,1), dtype=np.bool))
+                          flags=np.zeros((N, 1), dtype=np.bool))
     vis = ift.from_global_data(visspace, vis)
     op = GM.getFull().adjoint
     t1 = time()
