@@ -15,23 +15,20 @@
 #
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
 
-import numpy as np
-
 from ..domain_tuple import DomainTuple
 from ..domains.rg_space import RGSpace
 from ..domains.unstructured_domain import UnstructuredDomain
-from ..fft import hartley
 from ..operators.linear_operator import LinearOperator
 from ..sugar import from_global_data, makeDomain
+import numpy as np
 
 
 class GridderMaker(object):
     def __init__(self, dirty_domain, uvw, channel_fact, eps=2e-13):
         import nifty_gridder
         dirty_domain = makeDomain(dirty_domain)
-        if (len(dirty_domain) != 1 or
-                not isinstance(dirty_domain[0], RGSpace) or
-                not len(dirty_domain.shape) == 2):
+        if (len(dirty_domain) != 1 or not isinstance(dirty_domain[0], RGSpace)
+                or not len(dirty_domain.shape) == 2):
             raise ValueError("need dirty_domain with exactly one 2D RGSpace")
         if channel_fact.ndim != 1:
             raise ValueError("channel_fact must be a 1D array")
@@ -78,8 +75,7 @@ class _RestOperator(LinearOperator):
 
 class RadioGridder(LinearOperator):
     def __init__(self, grid_domain, bl, gconf, idx):
-        self._domain = DomainTuple.make(UnstructuredDomain(
-                                        (idx.shape[0],)))
+        self._domain = DomainTuple.make(UnstructuredDomain((idx.shape[0],)))
         self._target = DomainTuple.make(grid_domain)
         self._bl = bl
         self._gconf = gconf
@@ -92,10 +88,9 @@ class RadioGridder(LinearOperator):
         if mode == self.TIMES:
             x = x.to_global_data().reshape((-1, 1))
             x = self._bl.ms2vis(x, self._idx)
-            res = nifty_gridder.vis2grid(
-                self._bl, self._gconf, self._idx, x)
+            res = nifty_gridder.vis2grid(self._bl, self._gconf, self._idx, x)
         else:
-            res = nifty_gridder.grid2vis(
-                self._bl, self._gconf, self._idx, x.to_global_data())
+            res = nifty_gridder.grid2vis(self._bl, self._gconf, self._idx,
+                                         x.to_global_data())
             res = self._bl.vis2ms(res, self._idx).reshape((-1,))
         return from_global_data(self._tgt(mode), res)
