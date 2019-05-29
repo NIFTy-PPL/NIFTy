@@ -28,12 +28,15 @@ class Adder(Operator):
     field : Field or MultiField
         The field by which the input is shifted.
     """
-    def __init__(self, field):
+    def __init__(self, field, neg=False):
         if not isinstance(field, (Field, MultiField)):
             raise TypeError
         self._field = field
         self._domain = self._target = field.domain
+        self._neg = bool(neg)
 
     def apply(self, x):
         self._check_input(x)
+        if self._neg:
+            return x - self._field
         return x + self._field
