@@ -32,12 +32,12 @@ class GridderMaker(object):
             raise ValueError("need dirty_domain with exactly one 2D RGSpace")
         if channel_fact.ndim != 1:
             raise ValueError("channel_fact must be a 1D array")
-        bl = nifty_gridder.Baselines(uvw, channel_fact, flags)
+        bl = nifty_gridder.Baselines(uvw, channel_fact)
         nxdirty, nydirty = dirty_domain.shape
         gconf = nifty_gridder.GridderConfig(nxdirty, nydirty, eps, 1., 1.)
         nu = gconf.Nu()
         nv = gconf.Nv()
-        self._idx = nifty_gridder.getIndices(bl, gconf)
+        self._idx = nifty_gridder.getIndices(bl, gconf, flags)
         self._bl = bl
 
         grid_domain = RGSpace([nu, nv], distances=[1, 1], harmonic=False)
