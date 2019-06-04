@@ -105,7 +105,7 @@ class DiagonalOperator(EndomorphicOperator):
             res._spaces = None
         else:
             res._spaces = tuple(set(self._spaces) | set(spc))
-        res._ldiag = ldiag
+        res._ldiag = np.array(ldiag)
         res._fill_rest()
         return res
 
