@@ -10,17 +10,19 @@ np.random.seed(40)
 N0s, a0s, b0s, c0s = [], [], [], []
 
 for ii in range(10, 26):
-    nu = 2048
-    nv = 2048
+    nu = 1024
+    nv = 1024
     N = int(2**ii)
     print('N = {}'.format(N))
-
-    uvw = np.random.rand(N, 3) - 0.5
-    vis = (np.random.randn(N) + 1j*np.random.randn(N)).reshape((-1,1))
+    nchan=16
+    nrow=N//nchan
+    fct = 1.+0.00001*np.arange(nchan)
+    uvw = np.random.rand(nrow, 3) - 0.5
+    vis = (np.random.randn(N) + 1j*np.random.randn(N)).reshape((nrow,nchan))
 
     uvspace = ift.RGSpace((nu, nv))
 
-    visspace = ift.UnstructuredDomain((N,1))
+    visspace = ift.UnstructuredDomain((N//nchan,nchan))
 
     img = np.random.randn(nu*nv)
     img = img.reshape((nu, nv))
@@ -28,8 +30,8 @@ for ii in range(10, 26):
 
     t0 = time()
     GM = ift.GridderMaker(uvspace, eps=1e-7, uvw=uvw,
-                          channel_fact=np.array([1.]),
-                          flags=np.zeros((N, 1), dtype=np.bool))
+                          channel_fact=fct,
+                          flags=np.zeros((N//nchan, nchan), dtype=np.bool))
     vis = ift.from_global_data(visspace, vis)
     op = GM.getFull().adjoint
     t1 = time()
