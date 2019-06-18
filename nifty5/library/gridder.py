@@ -24,17 +24,17 @@ import numpy as np
 
 
 class GridderMaker(object):
-    def __init__(self, dirty_domain, uvw, channel_fact, flags, eps=2e-13):
+    def __init__(self, dirty_domain, uvw, freq, fovx, fovy, flags, eps=2e-13):
         import nifty_gridder
         dirty_domain = makeDomain(dirty_domain)
         if (len(dirty_domain) != 1 or not isinstance(dirty_domain[0], RGSpace)
                 or not len(dirty_domain.shape) == 2):
             raise ValueError("need dirty_domain with exactly one 2D RGSpace")
-        if channel_fact.ndim != 1:
-            raise ValueError("channel_fact must be a 1D array")
-        bl = nifty_gridder.Baselines(uvw, channel_fact)
+        if freq.ndim != 1:
+            raise ValueError("freq must be a 1D array")
+        bl = nifty_gridder.Baselines(uvw, freq)
         nxdirty, nydirty = dirty_domain.shape
-        gconf = nifty_gridder.GridderConfig(nxdirty, nydirty, eps, 1., 1.)
+        gconf = nifty_gridder.GridderConfig(nxdirty, nydirty, eps, fovx, fovy)
         nu = gconf.Nu()
         nv = gconf.Nv()
         self._idx = nifty_gridder.getIndices(bl, gconf, flags)
