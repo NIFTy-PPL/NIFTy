@@ -39,7 +39,7 @@ class GridderMaker(object):
         uvw = np.empty((uv.shape[0],3), dtype=np.float64)
         uvw[:,0:2] = uv
         uvw[:,2] = 0.
-        # Scale uv such that 0<uv<=1 which is assmued by nifty_gridder
+        # Scale uv such that 0<uv<=1 which is assumed by nifty_gridder
         uvw[:, 0] = uvw[:,0]*dstx
         uvw[:, 1] = uvw[:,1]*dsty
         speedOfLight = 299792458.
