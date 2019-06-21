@@ -29,37 +29,30 @@ pmp = pytest.mark.parametrize
 def _l2error(a, b):
     return np.sqrt(np.sum(np.abs(a-b)**2)/np.sum(np.abs(a)**2))
 
-speedOfLight = 299792458.
 
 @pmp('eps', [1e-2, 1e-4, 1e-7, 1e-10, 1e-11, 1e-12, 2e-13])
 @pmp('nu', [12, 128])
 @pmp('nv', [4, 12, 128])
 @pmp('N', [1, 10, 100])
-@pmp('freq', [1e9])
-def test_gridding(nu, nv, N, eps, freq):
-    fovx = 0.0001
-    fovy = 0.0002
-    uvw = (np.random.rand(N, 3) - 0.5)
-    uvw[:,0] /= fovx*freq/speedOfLight
-    uvw[:,1] /= fovy*freq/speedOfLight
-    vis = (np.random.randn(N) + 1j*np.random.randn(N)).reshape((-1,1))
+def test_gridding(nu, nv, N, eps):
+    uv = np.random.rand(N, 2) - 0.5
+    vis = np.random.randn(N) + 1j*np.random.randn(N)
 
     # Nifty
-    GM = ift.GridderMaker(ift.RGSpace((nu, nv)), uvw=uvw,
-                          freq=np.array([freq]), eps=eps, fovx=fovx, fovy=fovy,
-                          flags=np.zeros((N, 1), dtype=np.bool))
+    GM = ift.GridderMaker(ift.RGSpace((nu, nv)), uv=uv, eps=eps)
     vis2 = ift.from_global_data(ift.UnstructuredDomain(vis.shape), vis)
 
     Op = GM.getFull()
     pynu = Op(vis2).to_global_data()
+    import matplotlib.pyplot as plt
+    plt.imshow(pynu)
+    plt.show()
     # DFT
     x, y = np.meshgrid(
         *[-ss/2 + np.arange(ss) for ss in [nu, nv]], indexing='ij')
-    x *= fovx*freq/speedOfLight
-    y *= fovy*freq/speedOfLight
     dft = pynu*0.
     for i in range(N):
-        dft += (vis[i]*np.exp(2j*np.pi*(x*uvw[i, 0] + y*uvw[i, 1]))).real
+        dft += (vis[i]*np.exp(2j*np.pi*(x*uv[i, 0] + y*uv[i, 1]))).real
     assert_(_l2error(dft, pynu) < eps)
 
 
@@ -67,15 +60,10 @@ def test_gridding(nu, nv, N, eps, freq):
 @pmp('nu', [12, 128])
 @pmp('nv', [4, 12, 128])
 @pmp('N', [1, 10, 100])
-@pmp('freq', [np.array([1e9]), np.array([1e9, 2e9, 2.5e9])])
-def test_build(nu, nv, N, eps, freq):
+def test_build(nu, nv, N, eps):
     dom = ift.RGSpace([nu, nv])
-    fov = np.pi/180/60
-    uvw = np.random.rand(N, 3) - 0.5
-    flags=np.zeros((N, freq.shape[0]), dtype=np.bool)
-    flags[0,0]=True
-    GM = ift.GridderMaker(dom, uvw=uvw, freq=freq, eps=eps,
-                          flags=flags, fovx=fov, fovy=fov)
+    uv = np.random.rand(N, 2) - 0.5
+    GM = ift.GridderMaker(dom, uv=uv, eps=eps)
     R0 = GM.getGridder()
     R1 = GM.getRest()
     R = R1@R0

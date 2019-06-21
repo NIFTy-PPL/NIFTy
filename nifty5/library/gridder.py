@@ -24,20 +24,28 @@ import numpy as np
 
 
 class GridderMaker(object):
-    def __init__(self, dirty_domain, uvw, freq, fovx, fovy, flags, eps=2e-13):
+    def __init__(self, dirty_domain, uv, eps=2e-13):
         import nifty_gridder
         dirty_domain = makeDomain(dirty_domain)
         if (len(dirty_domain) != 1 or not isinstance(dirty_domain[0], RGSpace)
                 or not len(dirty_domain.shape) == 2):
             raise ValueError("need dirty_domain with exactly one 2D RGSpace")
-        if freq.ndim != 1:
-            raise ValueError("freq must be a 1D array")
-        bl = nifty_gridder.Baselines(uvw, freq)
+        if uv.ndim != 2:
+            raise ValueError("uv must be a 2D array")
+        if uv.shape[1] != 2:
+            raise ValueError("second dimension of uv must have length 2")
+        # wasteful hack to adjust to shape required by nifty_gridder
+        uvw = np.empty((uv.shape[0],3), dtype=np.float64)
+        uvw[:,0:2] = uv
+        uvw[:,2] = 0.
+        speedOfLight = 299792458.
+        bl = nifty_gridder.Baselines(uvw, np.array([speedOfLight]))
         nxdirty, nydirty = dirty_domain.shape
-        gconf = nifty_gridder.GridderConfig(nxdirty, nydirty, eps, fovx, fovy)
-        nu = gconf.Nu()
-        nv = gconf.Nv()
-        self._idx = nifty_gridder.getIndices(bl, gconf, flags)
+        nxd, nyd = dirty_domain.shape
+        gconf = nifty_gridder.GridderConfig(nxdirty, nydirty, eps, 1., 1.)
+        nu, nv = gconf.Nu(), gconf.Nv()
+        self._idx = nifty_gridder.getIndices(
+            bl, gconf, np.zeros((uv.shape[0],1),dtype=np.bool))
         self._bl = bl
 
         grid_domain = RGSpace([nu, nv], distances=[1, 1], harmonic=False)
@@ -78,7 +86,7 @@ class _RestOperator(LinearOperator):
 class RadioGridder(LinearOperator):
     def __init__(self, grid_domain, bl, gconf, idx):
         self._domain = DomainTuple.make(
-            UnstructuredDomain((bl.Nrows(),bl.Nchannels())))
+            UnstructuredDomain((bl.Nrows())))
         self._target = DomainTuple.make(grid_domain)
         self._bl = bl
         self._gconf = gconf
@@ -89,10 +97,10 @@ class RadioGridder(LinearOperator):
         import nifty_gridder
         self._check_input(x, mode)
         if mode == self.TIMES:
-            x = self._bl.ms2vis(x.to_global_data(), self._idx)
+            x = self._bl.ms2vis(x.to_global_data().reshape((-1, 1)), self._idx)
             res = nifty_gridder.vis2grid(self._bl, self._gconf, self._idx, x)
         else:
             res = nifty_gridder.grid2vis(self._bl, self._gconf, self._idx,
                                          x.to_global_data())
-            res = self._bl.vis2ms(res, self._idx)
+            res = self._bl.vis2ms(res, self._idx).reshape((-1,))
         return from_global_data(self._tgt(mode), res)
