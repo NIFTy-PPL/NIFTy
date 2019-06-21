@@ -34,10 +34,14 @@ class GridderMaker(object):
             raise ValueError("uv must be a 2D array")
         if uv.shape[1] != 2:
             raise ValueError("second dimension of uv must have length 2")
+        dstx, dsty = dirty_domain[0].distances
         # wasteful hack to adjust to shape required by nifty_gridder
         uvw = np.empty((uv.shape[0],3), dtype=np.float64)
         uvw[:,0:2] = uv
         uvw[:,2] = 0.
+        # Scale uv such that 0<uv<=1 which is assmued by nifty_gridder
+        uvw[:, 0] = uvw[:,0]*dstx
+        uvw[:, 1] = uvw[:,1]*dsty
         speedOfLight = 299792458.
         bl = nifty_gridder.Baselines(uvw, np.array([speedOfLight]))
         nxdirty, nydirty = dirty_domain.shape

@@ -39,20 +39,21 @@ def test_gridding(nu, nv, N, eps):
     vis = np.random.randn(N) + 1j*np.random.randn(N)
 
     # Nifty
-    GM = ift.GridderMaker(ift.RGSpace((nu, nv)), uv=uv, eps=eps)
+    dom = ift.RGSpace((nu, nv), distances=(0.2, 1.12))
+    dstx, dsty = dom.distances
+    uv[:,0] = uv[:,0]/dstx
+    uv[:,1] = uv[:,1]/dsty
+    GM = ift.GridderMaker(dom, uv=uv, eps=eps)
     vis2 = ift.from_global_data(ift.UnstructuredDomain(vis.shape), vis)
 
     Op = GM.getFull()
     pynu = Op(vis2).to_global_data()
-    import matplotlib.pyplot as plt
-    plt.imshow(pynu)
-    plt.show()
     # DFT
     x, y = np.meshgrid(
         *[-ss/2 + np.arange(ss) for ss in [nu, nv]], indexing='ij')
     dft = pynu*0.
     for i in range(N):
-        dft += (vis[i]*np.exp(2j*np.pi*(x*uv[i, 0] + y*uv[i, 1]))).real
+        dft += (vis[i]*np.exp(2j*np.pi*(x*uv[i, 0]*dstx + y*uv[i, 1]*dsty))).real
     assert_(_l2error(dft, pynu) < eps)
 
 
