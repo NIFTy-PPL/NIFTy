@@ -41,8 +41,8 @@ def test_gridding(nu, nv, N, eps):
     # Nifty
     dom = ift.RGSpace((nu, nv), distances=(0.2, 1.12))
     dstx, dsty = dom.distances
-    uv[:,0] = uv[:,0]/dstx
-    uv[:,1] = uv[:,1]/dsty
+    uv[:, 0] = uv[:, 0]/dstx
+    uv[:, 1] = uv[:, 1]/dsty
     GM = ift.GridderMaker(dom, uv=uv, eps=eps)
     vis2 = ift.from_global_data(ift.UnstructuredDomain(vis.shape), vis)
 
@@ -53,8 +53,37 @@ def test_gridding(nu, nv, N, eps):
         *[-ss/2 + np.arange(ss) for ss in [nu, nv]], indexing='ij')
     dft = pynu*0.
     for i in range(N):
-        dft += (vis[i]*np.exp(2j*np.pi*(x*uv[i, 0]*dstx + y*uv[i, 1]*dsty))).real
+        dft += (
+            vis[i]*np.exp(2j*np.pi*(x*uv[i, 0]*dstx + y*uv[i, 1]*dsty))).real
     assert_(_l2error(dft, pynu) < eps)
+
+
+def test_cartesian():
+    nx, ny = 2, 6
+    dstx, dsty = 0.3, 0.2
+    dom = ift.RGSpace((nx, ny), (dstx, dsty))
+
+    kx = np.fft.fftfreq(nx, dstx)
+    ky = np.fft.fftfreq(ny, dsty)
+    uu, vv = np.meshgrid(kx, ky)
+    tmp = np.vstack([uu[None, :], vv[None, :]])
+    uv = np.transpose(tmp, (2, 1, 0)).reshape(-1, 2)
+
+    GM = ift.GridderMaker(dom, uv=uv)
+    op = GM.getFull().adjoint
+
+    fld = ift.from_random('normal', dom)
+    arr = fld.to_global_data()
+
+    fld2 = ift.from_global_data(dom, np.roll(arr, (nx//2, ny//2), axis=(0, 1)))
+    res = op(fld2).to_global_data().reshape(nx, ny)
+
+    fft = ift.FFTOperator(dom.get_default_codomain(), target=dom).adjoint
+    vol = ift.full(dom, 1.).integrate()
+    res1 = fft(fld).to_global_data()
+
+    # FIXME: we don't understand the conjugate() yet
+    np.testing.assert_allclose(res, res1.conjugate()*vol)
 
 
 @pmp('eps', [1e-2, 1e-6, 2e-13])

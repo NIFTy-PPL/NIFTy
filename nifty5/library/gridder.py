@@ -36,23 +36,23 @@ class GridderMaker(object):
             raise ValueError("second dimension of uv must have length 2")
         dstx, dsty = dirty_domain[0].distances
         # wasteful hack to adjust to shape required by nifty_gridder
-        uvw = np.empty((uv.shape[0],3), dtype=np.float64)
-        uvw[:,0:2] = uv
-        uvw[:,2] = 0.
+        uvw = np.empty((uv.shape[0], 3), dtype=np.float64)
+        uvw[:, 0:2] = uv
+        uvw[:, 2] = 0.
         # Scale uv such that 0<uv<=1 which is assumed by nifty_gridder
-        uvw[:, 0] = uvw[:,0]*dstx
-        uvw[:, 1] = uvw[:,1]*dsty
+        uvw[:, 0] = uvw[:, 0]*dstx
+        uvw[:, 1] = uvw[:, 1]*dsty
         speedOfLight = 299792458.
         bl = nifty_gridder.Baselines(uvw, np.array([speedOfLight]))
         nxdirty, nydirty = dirty_domain.shape
-        nxd, nyd = dirty_domain.shape
         gconf = nifty_gridder.GridderConfig(nxdirty, nydirty, eps, 1., 1.)
         nu, nv = gconf.Nu(), gconf.Nv()
         self._idx = nifty_gridder.getIndices(
-            bl, gconf, np.zeros((uv.shape[0],1),dtype=np.bool))
+            bl, gconf, np.zeros((uv.shape[0], 1), dtype=np.bool))
         self._bl = bl
 
-        grid_domain = RGSpace([nu, nv], distances=[1, 1], harmonic=False)
+        du, dv = 1./(nu*dstx), 1./(nv*dsty)
+        grid_domain = RGSpace([nu, nv], distances=[du, dv], harmonic=True)
 
         self._rest = _RestOperator(dirty_domain, grid_domain, gconf)
         self._gridder = RadioGridder(grid_domain, bl, gconf, self._idx)
