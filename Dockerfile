@@ -18,6 +18,7 @@ RUN apt-get update && apt-get install -y \
   && pip3 install jupyter \
   && rm -rf /var/lib/apt/lists/*
 
+
 # Set matplotlib backend
 ENV MPLBACKEND agg
 
