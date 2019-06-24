@@ -9,7 +9,7 @@ np.random.seed(40)
 
 N0s, a0s, b0s, c0s = [], [], [], []
 
-for ii in range(10, 23):
+for ii in range(10, 26):
     nu = 1024
     nv = 1024
     N = int(2**ii)
@@ -27,17 +27,15 @@ for ii in range(10, 23):
     img = ift.from_global_data(uvspace, img)
 
     t0 = time()
-    GM = ift.GridderMaker(uvspace, eps=1e-7)
-    idx = GM.getReordering(uv)
-    uv = uv[idx]
-    vis = vis[idx]
+    GM = ift.GridderMaker(uvspace, eps=1e-7, uv=uv)
     vis = ift.from_global_data(visspace, vis)
-    op = GM.getFull(uv).adjoint
+    op = GM.getFull().adjoint
     t1 = time()
     op(img).to_global_data()
     t2 = time()
     op.adjoint(vis).to_global_data()
     t3 = time()
+    print(t2-t1, t3-t2)
     N0s.append(N)
     a0s.append(t1 - t0)
     b0s.append(t2 - t1)

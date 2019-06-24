@@ -39,21 +39,51 @@ def test_gridding(nu, nv, N, eps):
     vis = np.random.randn(N) + 1j*np.random.randn(N)
 
     # Nifty
-    GM = ift.GridderMaker(ift.RGSpace((nu, nv)), eps=eps)
-    # re-order for performance
-    idx = GM.getReordering(uv)
-    uv, vis = uv[idx], vis[idx]
+    dom = ift.RGSpace((nu, nv), distances=(0.2, 1.12))
+    dstx, dsty = dom.distances
+    uv[:, 0] = uv[:, 0]/dstx
+    uv[:, 1] = uv[:, 1]/dsty
+    GM = ift.GridderMaker(dom, uv=uv, eps=eps)
     vis2 = ift.from_global_data(ift.UnstructuredDomain(vis.shape), vis)
 
-    Op = GM.getFull(uv)
+    Op = GM.getFull()
     pynu = Op(vis2).to_global_data()
     # DFT
     x, y = np.meshgrid(
         *[-ss/2 + np.arange(ss) for ss in [nu, nv]], indexing='ij')
     dft = pynu*0.
     for i in range(N):
-        dft += (vis[i]*np.exp(2j*np.pi*(x*uv[i, 0] + y*uv[i, 1]))).real
+        dft += (
+            vis[i]*np.exp(2j*np.pi*(x*uv[i, 0]*dstx + y*uv[i, 1]*dsty))).real
     assert_(_l2error(dft, pynu) < eps)
+
+
+def test_cartesian():
+    nx, ny = 2, 6
+    dstx, dsty = 0.3, 0.2
+    dom = ift.RGSpace((nx, ny), (dstx, dsty))
+
+    kx = np.fft.fftfreq(nx, dstx)
+    ky = np.fft.fftfreq(ny, dsty)
+    uu, vv = np.meshgrid(kx, ky)
+    tmp = np.vstack([uu[None, :], vv[None, :]])
+    uv = np.transpose(tmp, (2, 1, 0)).reshape(-1, 2)
+
+    GM = ift.GridderMaker(dom, uv=uv)
+    op = GM.getFull().adjoint
+
+    fld = ift.from_random('normal', dom)
+    arr = fld.to_global_data()
+
+    fld2 = ift.from_global_data(dom, np.roll(arr, (nx//2, ny//2), axis=(0, 1)))
+    res = op(fld2).to_global_data().reshape(nx, ny)
+
+    fft = ift.FFTOperator(dom.get_default_codomain(), target=dom).adjoint
+    vol = ift.full(dom, 1.).integrate()
+    res1 = fft(fld).to_global_data()
+
+    # FIXME: we don't understand the conjugate() yet
+    np.testing.assert_allclose(res, res1.conjugate()*vol)
 
 
 @pmp('eps', [1e-2, 1e-6, 2e-13])
@@ -63,14 +93,11 @@ def test_gridding(nu, nv, N, eps):
 def test_build(nu, nv, N, eps):
     dom = ift.RGSpace([nu, nv])
     uv = np.random.rand(N, 2) - 0.5
-    GM = ift.GridderMaker(dom, eps=eps)
-    # re-order for performance
-    idx = GM.getReordering(uv)
-    uv = uv[idx]
-    R0 = GM.getGridder(uv)
+    GM = ift.GridderMaker(dom, uv=uv, eps=eps)
+    R0 = GM.getGridder()
     R1 = GM.getRest()
     R = R1@R0
-    RF = GM.getFull(uv)
+    RF = GM.getFull()
 
     # Consistency checks
     flt = np.float64
