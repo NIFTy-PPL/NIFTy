@@ -15,114 +15,96 @@
 #
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
 
-import numpy as np
-
 from ..domain_tuple import DomainTuple
 from ..domains.rg_space import RGSpace
 from ..domains.unstructured_domain import UnstructuredDomain
-from ..fft import hartley
 from ..operators.linear_operator import LinearOperator
 from ..sugar import from_global_data, makeDomain
+import numpy as np
 
 
 class GridderMaker(object):
-    def __init__(self, domain, eps=1e-15):
-        domain = makeDomain(domain)
-        if (len(domain) != 1 or not isinstance(domain[0], RGSpace) or
-                not len(domain.shape) == 2):
-            raise ValueError("need domain with exactly one 2D RGSpace")
-        nu, nv = domain.shape
-        if nu % 2 != 0 or nv % 2 != 0:
-            raise ValueError("dimensions must be even")
-        rat = 3 if eps < 1e-11 else 2
-        nu2, nv2 = rat*nu, rat*nv
+    def __init__(self, dirty_domain, uv, eps=2e-13):
+        import nifty_gridder
+        dirty_domain = makeDomain(dirty_domain)
+        if (len(dirty_domain) != 1 or not isinstance(dirty_domain[0], RGSpace)
+                or not len(dirty_domain.shape) == 2):
+            raise ValueError("need dirty_domain with exactly one 2D RGSpace")
+        if uv.ndim != 2:
+            raise ValueError("uv must be a 2D array")
+        if uv.shape[1] != 2:
+            raise ValueError("second dimension of uv must have length 2")
+        dstx, dsty = dirty_domain[0].distances
+        # wasteful hack to adjust to shape required by nifty_gridder
+        uvw = np.empty((uv.shape[0], 3), dtype=np.float64)
+        uvw[:, 0:2] = uv
+        uvw[:, 2] = 0.
+        # Scale uv such that 0<uv<=1 which is assumed by nifty_gridder
+        uvw[:, 0] = uvw[:, 0]*dstx
+        uvw[:, 1] = uvw[:, 1]*dsty
+        speedOfLight = 299792458.
+        bl = nifty_gridder.Baselines(uvw, np.array([speedOfLight]))
+        nxdirty, nydirty = dirty_domain.shape
+        gconf = nifty_gridder.GridderConfig(nxdirty, nydirty, eps, 1., 1.)
+        nu, nv = gconf.Nu(), gconf.Nv()
+        self._idx = nifty_gridder.getIndices(
+            bl, gconf, np.zeros((uv.shape[0], 1), dtype=np.bool))
+        self._bl = bl
 
-        nspread = int(-np.log(eps)/(np.pi*(rat-1)/(rat-.5)) + .5) + 1
-        nu2 = max([nu2, 2*nspread])
-        nv2 = max([nv2, 2*nspread])
-        r2lamb = rat*rat*nspread/(rat*(rat-.5))
+        du, dv = 1./(nu*dstx), 1./(nv*dsty)
+        grid_domain = RGSpace([nu, nv], distances=[du, dv], harmonic=True)
 
-        oversampled_domain = RGSpace(
-            [nu2, nv2], distances=[1, 1], harmonic=False)
+        self._rest = _RestOperator(dirty_domain, grid_domain, gconf)
+        self._gridder = RadioGridder(grid_domain, bl, gconf, self._idx)
 
-        self._nspread = nspread
-        self._r2lamb = r2lamb
-        self._rest = _RestOperator(domain, oversampled_domain, r2lamb)
-
-    def getReordering(self, uv):
-        from nifty_gridder import peanoindex
-        nu2, nv2 = self._rest._domain.shape
-        return peanoindex(uv, nu2, nv2)
-
-    def getGridder(self, uv):
-        return RadioGridder(self._rest.domain, self._nspread, self._r2lamb, uv)
+    def getGridder(self):
+        return self._gridder
 
     def getRest(self):
         return self._rest
 
-    def getFull(self, uv):
-        return self.getRest() @ self.getGridder(uv)
+    def getFull(self):
+        return self.getRest() @ self._gridder
+
+    def ms2vis(self, x):
+        return self._bl.ms2vis(x, self._idx)
 
 
 class _RestOperator(LinearOperator):
-    def __init__(self, domain, oversampled_domain, r2lamb):
-        self._domain = makeDomain(oversampled_domain)
-        self._target = domain
-        nu, nv = domain.shape
-        nu2, nv2 = oversampled_domain.shape
-
-        # compute deconvolution operator
-        rng = np.arange(nu)
-        k = np.minimum(rng, nu-rng)
-        c = np.pi*r2lamb/nu2**2
-        self._deconv_u = np.roll(np.exp(c*k**2), -nu//2).reshape((-1, 1))
-        rng = np.arange(nv)
-        k = np.minimum(rng, nv-rng)
-        c = np.pi*r2lamb/nv2**2
-        self._deconv_v = np.roll(
-            np.exp(c*k**2)/r2lamb, -nv//2).reshape((1, -1))
+    def __init__(self, dirty_domain, grid_domain, gconf):
+        self._domain = makeDomain(grid_domain)
+        self._target = makeDomain(dirty_domain)
+        self._gconf = gconf
         self._capability = self.TIMES | self.ADJOINT_TIMES
 
     def apply(self, x, mode):
         self._check_input(x, mode)
-        nu, nv = self._target.shape
         res = x.to_global_data()
         if mode == self.TIMES:
-            res = hartley(res)
-            res = np.roll(res, (nu//2, nv//2), axis=(0, 1))
-            res = res[:nu, :nv]
-            res *= self._deconv_u
-            res *= self._deconv_v
+            res = self._gconf.grid2dirty(res)
         else:
-            res = res*self._deconv_u
-            res *= self._deconv_v
-            nu2, nv2 = self._domain.shape
-            res = np.pad(res, ((0, nu2-nu), (0, nv2-nv)), mode='constant',
-                         constant_values=0)
-            res = np.roll(res, (-nu//2, -nv//2), axis=(0, 1))
-            res = hartley(res)
+            res = self._gconf.dirty2grid(res)
         return from_global_data(self._tgt(mode), res)
 
 
 class RadioGridder(LinearOperator):
-    def __init__(self, target, nspread, r2lamb, uv):
+    def __init__(self, grid_domain, bl, gconf, idx):
         self._domain = DomainTuple.make(
-            UnstructuredDomain((uv.shape[0],)))
-        self._target = DomainTuple.make(target)
+            UnstructuredDomain((bl.Nrows())))
+        self._target = DomainTuple.make(grid_domain)
+        self._bl = bl
+        self._gconf = gconf
+        self._idx = idx
         self._capability = self.TIMES | self.ADJOINT_TIMES
-        self._nspread, self._r2lamb = int(nspread), float(r2lamb)
-        self._uv = uv  # FIXME: should we write-protect this?
 
     def apply(self, x, mode):
-        from nifty_gridder import (to_grid, to_grid_post,
-                                   from_grid, from_grid_pre)
+        import nifty_gridder
         self._check_input(x, mode)
-        nu2, nv2 = self._target.shape
-        x = x.to_global_data()
         if mode == self.TIMES:
-            res = to_grid(self._uv, x, nu2, nv2, self._nspread, self._r2lamb)
-            res = to_grid_post(res)
+            x = self._bl.ms2vis(x.to_global_data().reshape((-1, 1)), self._idx)
+            res = nifty_gridder.vis2grid(self._bl, self._gconf, self._idx, x)
         else:
-            x = from_grid_pre(x)
-            res = from_grid(self._uv, x, nu2, nv2, self._nspread, self._r2lamb)
+            res = nifty_gridder.grid2vis(self._bl, self._gconf, self._idx,
+                                         x.to_global_data())
+            res = self._bl.vis2ms(res, self._idx).reshape((-1,))
         return from_global_data(self._tgt(mode), res)
