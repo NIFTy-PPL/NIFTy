@@ -90,18 +90,18 @@ def _ConvolutionOperator(domain, kernel, space=None, without_mean=False):
     wgt = WeightApplier(domain, space, 1)
     op = HT(diag(HT.adjoint(wgt)))
     if without_mean:
-        return _ApplicationWithoutMeanOperator(domain, op)
+        return _ApplicationWithoutMeanOperator(op)
     else:
         return op
 
 
 class _ApplicationWithoutMeanOperator(EndomorphicOperator):
-    def __init__(self, domain, op):
+    def __init__(self, op):
         self._capability = self.TIMES | self.ADJOINT_TIMES
-        self._domain = domain
+        if op.domain != op.target:
+            raise TypeError("Operator needs to be endomorphic")
+        self._domain = op.domain
         self._op = op
-        if (op.domain != domain) or (op.domain != op.target):
-            raise TypeError("domains incompatible")
 
     def apply(self, x, mode):
         self._check_input(x, mode)
