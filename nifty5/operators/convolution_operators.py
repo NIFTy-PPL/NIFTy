@@ -30,7 +30,7 @@ from ..field import Field
 from .. import utilities
 
 
-def FuncConvolutionOperator(domain, func, space=None, without_mean=None):
+def FuncConvolutionOperator(domain, func, space=None):
     """Convolves input with a radially symmetric kernel defined by `func`
 
     Parameters
@@ -65,15 +65,10 @@ def FuncConvolutionOperator(domain, func, space=None, without_mean=None):
         raise TypeError("unsupported domain")
     codomain = domain[space].get_default_codomain()
     kernel = codomain.get_conv_kernel_from_func(func)
-    if without_mean == None:
-        if isinstance(domain[space], (HPSpace, GLSpace)):
-            without_mean = True
-        else:
-            without_mean = False
-    return _ConvolutionOperator(domain, kernel, space, without_mean)
+    return _ConvolutionOperator(domain, kernel, space)
 
 
-def _ConvolutionOperator(domain, kernel, space=None, without_mean=False):
+def _ConvolutionOperator(domain, kernel, space=None):
     domain = DomainTuple.make(domain)
     space = utilities.infer_space(domain, space)
     if len(kernel.domain) != 1:
@@ -89,10 +84,7 @@ def _ConvolutionOperator(domain, kernel, space=None, without_mean=False):
     diag = DiagonalOperator(kernel*domain[space].total_volume, lm, (space,))
     wgt = WeightApplier(domain, space, 1)
     op = HT(diag(HT.adjoint(wgt)))
-    if without_mean:
-        return _ApplicationWithoutMeanOperator(op)
-    else:
-        return op
+    return _ApplicationWithoutMeanOperator(op)
 
 
 class _ApplicationWithoutMeanOperator(EndomorphicOperator):
