@@ -20,17 +20,34 @@ from numpy.testing import assert_allclose, assert_equal
 import nifty5 as ift
 import numpy as np
 
+from ..common import list2fixture
+
+space = list2fixture([
+    ift.RGSpace(4),
+    ift.HPSpace(4),
+    ift.GLSpace(4)
+])
+
+
+def test_const_func(space):
+    ones = lambda x: np.ones(x.shape)
+    sig = ift.Field.from_random('normal', domain=space)
+    fco_op = ift.FuncConvolutionOperator(space, ones)
+    vals = fco_op(sig).to_global_data()
+    vals = np.round(vals, decimals=5)
+    assert len(np.unique(vals)) == 1
+
 
 def gauss(x, sigma):
     normalization = np.sqrt(2. * np.pi) * sigma
     return np.exp(-0.5 * x * x / sigma**2) / normalization
 
 
-def test_rgspace():
+def test_gaussian_smoothing():
     N = 128
-    sigma = N/10**4
+    sigma = N / 10**4
     dom = ift.RGSpace(N)
-    sig = ift.exp(ift.from_random('normal', dom))
+    sig = ift.exp(ift.Field.from_random('normal', dom))
     fco_op = ift.FuncConvolutionOperator(dom, lambda x: gauss(x, sigma))
     sm_op = ift.HarmonicSmoothingOperator(dom, sigma)
     assert_allclose(fco_op(sig).to_global_data(),
