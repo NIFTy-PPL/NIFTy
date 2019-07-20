@@ -97,6 +97,8 @@ from .logger import logger
 
 from .linearization import Linearization
 
+from .operator_spectrum import operator_spectrum
+
 from . import internal_config
 _scheme = internal_config.parallelization_scheme()
 if _scheme == "Samples":
