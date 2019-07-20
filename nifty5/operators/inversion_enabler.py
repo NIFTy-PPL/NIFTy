@@ -23,6 +23,7 @@ from ..minimization.iteration_controllers import IterationController
 from ..minimization.quadratic_energy import QuadraticEnergy
 from ..sugar import full
 from .endomorphic_operator import EndomorphicOperator
+from .linear_operator import LinearOperator
 
 
 class InversionEnabler(EndomorphicOperator):
@@ -47,6 +48,10 @@ class InversionEnabler(EndomorphicOperator):
     """
 
     def __init__(self, op, iteration_controller, approximation=None):
+        if not isinstance(op, LinearOperator):
+            raise TypeError('Operator needs to be linear.')
+        if op.domain is not op.target:
+            raise TypeError('Operator needs to be endomorphic.')
         self._op = op
         self._ic = iteration_controller
         self._approximation = approximation
