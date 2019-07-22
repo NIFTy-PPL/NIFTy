@@ -160,14 +160,14 @@ class NewtonCG(DescentMinimizer):
         super(NewtonCG, self).__init__(controller=controller,
                                        line_searcher=line_searcher)
 
-    def get_descent_direction(self, energy):
+    def get_descent_direction(self, energy, preconditioner=None):
         float64eps = np.finfo(np.float64).eps
         r = energy.gradient
         maggrad = abs(r).sum()
         termcond = np.min([0.5, np.sqrt(maggrad)]) * maggrad
         pos = energy.position*0
-        d = r
-        previous_gamma = r.vdot(r)
+        d = r if preconditioner is None else preconditioner(r)
+        previous_gamma = r.vdot(d)
         ii = 0
         while True:
             if abs(r).sum() <= termcond:
@@ -182,7 +182,8 @@ class NewtonCG(DescentMinimizer):
             alpha = previous_gamma/curv
             pos = pos - alpha*d
             r = r - alpha*q
-            gamma = r.vdot(r)
+            s = r if preconditioner is None else preconditioner(r)
+            gamma = r.vdot(s)
             d = d*(gamma/previous_gamma)+r
             previous_gamma = gamma
 
