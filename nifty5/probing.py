@@ -134,3 +134,18 @@ def probe_diagonal(op, nprobes, random_type="pm1"):
         x = from_random(random_type, op.domain)
         sc.add(op(x).conjugate()*x)
     return sc.mean
+
+
+def approximation2endo(op, nsamples):
+    from .sugar import from_global_data
+    from .multi_field import MultiField
+    sc = StatCalculator()
+    for _ in range(nsamples):
+        sc.add(op.draw_sample())
+    approx = sc.var
+    dct = approx.to_dict()
+    for kk in dct:
+        foo = dct[kk].to_global_data_rw()
+        foo[foo == 0] = 1
+        dct[kk] = from_global_data(dct[kk].domain, foo)
+    return MultiField.from_dict(dct)

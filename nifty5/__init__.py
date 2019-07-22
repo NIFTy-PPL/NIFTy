@@ -54,7 +54,7 @@ from .operators.energy_operators import (
 from .operators.convolution_operators import FuncConvolutionOperator
 
 from .probing import probe_with_posterior_samples, probe_diagonal, \
-    StatCalculator
+    StatCalculator, approximation2endo
 
 from .minimization.line_search import LineSearch
 from .minimization.iteration_controllers import (
