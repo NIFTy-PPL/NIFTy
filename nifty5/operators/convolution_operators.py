@@ -77,4 +77,25 @@ def _ConvolutionOperator(domain, kernel, space=None):
     HT = HarmonicTransformOperator(lm, domain[space], space)
     diag = DiagonalOperator(kernel*domain[space].total_volume, lm, (space,))
     wgt = WeightApplier(domain, space, 1)
-    return HT(diag(HT.adjoint(wgt)))
+    op = HT(diag(HT.adjoint(wgt)))
+    return _ApplicationWithoutMeanOperator(op)
+
+
+class _ApplicationWithoutMeanOperator(EndomorphicOperator):
+    def __init__(self, op):
+        self._capability = self.TIMES | self.ADJOINT_TIMES
+        if op.domain != op.target:
+            raise TypeError("Operator needs to be endomorphic")
+        self._domain = op.domain
+        self._op = op
+
+    def apply(self, x, mode):
+        self._check_input(x, mode)
+        mean = x.mean()
+        return mean + self._op.apply(x - mean, mode)
+
+    def __repr__(self):
+        from ..utilities import indent
+        return "\n".join((
+            "_ApplicationWithoutMeanOperator:",
+            indent(self._op.__repr__())))
