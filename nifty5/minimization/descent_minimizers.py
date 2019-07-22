@@ -196,7 +196,7 @@ class NewtonCG(DescentMinimizer):
 
             # compute a step length that reduces energy.value sufficiently
             new_energy, success = self.line_searcher.perform_line_search(
-                energy=energy, pk=self.get_descent_direction(energy),
+                energy=energy, pk=self.get_descent_direction(energy, preconditioner),
                 f_k_minus_1=f_k_minus_1)
             if not success:
                 self.reset()
