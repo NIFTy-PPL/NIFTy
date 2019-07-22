@@ -73,7 +73,7 @@ def _op2lambda(op):
     return lambda x: op(from_global_data(op.domain, x)).to_global_data()
 
 
-def operator_spectrum(op, n, hermitian, tol=1e-5):
+def operator_spectrum(op, n, hermitian, tol=0):
     if not isinstance(op, LinearOperator):
         raise TypeError('Operator needs to be linear.')
     if op.domain is not op.target:
