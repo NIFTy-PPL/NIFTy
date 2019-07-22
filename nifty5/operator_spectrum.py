@@ -67,19 +67,13 @@ class _DomRemover(LinearOperator):
         return from_global_data(self._tgt(mode), res)
 
 
-def _op2lambda(op):
-    remover = _DomRemover(op.domain).adjoint
-    op = SandwichOperator.make(remover, op)
-    return lambda x: op(from_global_data(op.domain, x)).to_global_data()
-
-
 def operator_spectrum(A, k, hermitian, which='LM', tol=0):
     '''
     Find k eigenvalues and eigenvectors of the endomorphism A.
 
     Parameters
     ----------
-    A : EndomorphicOperator
+    A : LinearOperator
         Operator of which eigenvalues shall be computed.
     k : int
         The number of eigenvalues and eigenvectors desired. `k` must be
@@ -89,12 +83,19 @@ def operator_spectrum(A, k, hermitian, which='LM', tol=0):
         Specifies whether A is hermitian or not.
     which : str, ['LM' | 'SM' | 'LR' | 'SR' | 'LI' | 'SI'], optional
         Which `k` eigenvectors and eigenvalues to find:
+
             'LM' : largest magnitude
+
             'SM' : smallest magnitude
+
             'LR' : largest real part
+
             'SR' : smallest real part
+
             'LI' : largest imaginary part
+
             'SI' : smallest imaginary part
+
     tol : float, optional
         Relative accuracy for eigenvalues (stopping criterion)
         The default value of 0 implies machine precision.
@@ -117,7 +118,10 @@ def operator_spectrum(A, k, hermitian, which='LM', tol=0):
     if A.domain is not A.target:
         raise TypeError('Operator needs to be endomorphism.')
     size = A.domain.size
-    M = ssl.LinearOperator(shape=2*(size,), matvec=_op2lambda(A))
+    Ar = SandwichOperator.make(_DomRemover(A.domain).adjoint, A)
+    M = ssl.LinearOperator(
+        shape=2*(size,),
+        matvec=lambda x: Ar(from_global_data(Ar.domain, x)).to_global_data())
     f = ssl.eigsh if hermitian else ssl.eigs
     eigs = f(M, k=k, tol=tol, return_eigenvectors=False, which=which)
     return np.flip(np.sort(eigs), axis=0)
