@@ -79,7 +79,7 @@ class DescentMinimizer(Minimizer):
 
             # compute a step length that reduces energy.value sufficiently
             new_energy, success = self.line_searcher.perform_line_search(
-                energy=energy, pk=self.get_descent_direction(energy, preconditioner),
+                energy=energy, pk=self.get_descent_direction(energy),
                 f_k_minus_1=f_k_minus_1)
             if not success:
                 self.reset()
@@ -160,6 +160,63 @@ class NewtonCG(DescentMinimizer):
         super(NewtonCG, self).__init__(controller=controller,
                                        line_searcher=line_searcher)
 
+    def __call__(self, energy, preconditioner=None):
+        """Performs the minimization of the provided Energy functional.
+
+        Parameters
+        ----------
+        energy : Energy
+           Energy object which provides value, gradient and metric at a
+           specific position in parameter space.
+
+        Returns
+        -------
+        Energy
+            Latest `energy` of the minimization.
+        int
+            Can be controller.CONVERGED or controller.ERROR
+
+        Notes
+        -----
+        The minimization is stopped if
+            * the controller returns controller.CONVERGED or controller.ERROR,
+            * a perfectly flat point is reached,
+            * according to the line-search the minimum is found,
+        """
+        f_k_minus_1 = None
+        controller = self._controller
+        status = controller.start(energy)
+        if status != controller.CONTINUE:
+            return energy, status
+
+        while True:
+            # check if position is at a flat point
+            if energy.gradient_norm == 0:
+                return energy, controller.CONVERGED
+
+            # compute a step length that reduces energy.value sufficiently
+            new_energy, success = self.line_searcher.perform_line_search(
+                energy=energy, pk=self.get_descent_direction(energy),
+                f_k_minus_1=f_k_minus_1)
+            if not success:
+                self.reset()
+
+            f_k_minus_1 = energy.value
+
+            if new_energy.value > energy.value:
+                logger.error("Error: Energy has increased")
+                return energy, controller.ERROR
+
+            if new_energy.value == energy.value:
+                logger.warning(
+                    "Warning: Energy has not changed. Assuming convergence...")
+                return new_energy, controller.CONVERGED
+
+            energy = new_energy
+            status = self._controller.check(energy)
+            if status != controller.CONTINUE:
+                return energy, status
+
     def get_descent_direction(self, energy, preconditioner=None):
         float64eps = np.finfo(np.float64).eps
         r = energy.gradient
@@ -170,6 +227,8 @@ class NewtonCG(DescentMinimizer):
         previous_gamma = r.vdot(d)
         ii = 0
         while True:
+            if not ii % 10 and ii > 0:
+                print(ii)
             if abs(r).sum() <= termcond:
                 return pos
             q = energy.apply_metric(d)
