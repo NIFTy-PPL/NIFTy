@@ -100,6 +100,7 @@ class GradientNormController(IterationController):
         self._name = name
 
     def start(self, energy):
+        self.energyhistory = []
         self._itcount = -1
         self._ccount = 0
         if self._tol_rel_gradnorm is not None:
@@ -128,6 +129,7 @@ class GradientNormController(IterationController):
                 "{}: Iteration #{} energy={:.6E} gradnorm={:.2E} clvl={}"
                 .format(self._name, self._itcount, energy.value,
                         energy.gradient_norm, self._ccount))
+        self.energyhistory.append(energy.value)
 
         # Are we done?
         if self._iteration_limit is not None:
