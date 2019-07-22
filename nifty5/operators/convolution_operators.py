@@ -45,12 +45,6 @@ def FuncConvolutionOperator(domain, func, space=None):
         The index of the subdomain on which the operator should act
         If None, it is set to 0 if `domain` contains exactly one space.
         `domain[space]` must be of type `RGSpace`, `HPSpace`, or `GLSpace`.
-    without_mean: bool, optional
-        If `None`, chooses domain-dependant default value:
-        - `True` for spherical domains (`HPSpace`, `GLSpace`)
-        - `False` for RGSpaces.
-        If `True`, subtracts the input mean before applying the convolution
-        and adds it back afterwards.
 
     Notes
     -----
