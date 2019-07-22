@@ -166,7 +166,7 @@ class NewtonCG(DescentMinimizer):
         maggrad = abs(r).sum()
         termcond = np.min([0.5, np.sqrt(maggrad)]) * maggrad
         pos = energy.position*0
-        d = -r
+        d = r
         previous_gamma = r.vdot(r)
         ii = 0
         while True:
@@ -178,12 +178,12 @@ class NewtonCG(DescentMinimizer):
                 return pos
             if curv < 0:
                 return pos if ii > 0 else previous_gamma/curv*r
-            alpha = previous_gamma/curv
-            pos = pos + alpha*d
-            r = r + alpha*q
-            gamma = r.vdot(r)
-            d = (gamma/previous_gamma)*d - r
             ii += 1
+            alpha = previous_gamma/curv
+            pos = pos - alpha*d
+            r = r - alpha*q
+            gamma = r.vdot(r)
+            d = d*(gamma/previous_gamma)+r
             previous_gamma = gamma
 
         # curvature keeps increasing, bail out
