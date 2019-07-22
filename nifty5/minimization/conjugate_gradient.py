@@ -74,27 +74,27 @@ class ConjugateGradient(Minimizer):
         if previous_gamma == 0:
             return energy, controller.CONVERGED
 
-        iter = 0
+        ii = 0
         while True:
             q = energy.apply_metric(d)
-            ddotq = d.vdot(q).real
-            if ddotq == 0.:
-                logger.error("Error: ConjugateGradient: ddotq==0.")
+            curv = d.vdot(q).real
+            if curv == 0.:
+                logger.error("Error: ConjugateGradient: curv==0.")
                 return energy, controller.ERROR
-            alpha = previous_gamma/ddotq
+            alpha = previous_gamma/curv
 
             if alpha < 0:
                 logger.error("Error: ConjugateGradient: alpha<0.")
                 return energy, controller.ERROR
 
-            iter += 1
-            if iter < self._nreset:
+            ii += 1
+            if ii < self._nreset:
                 r = r - q*alpha
                 energy = energy.at_with_grad(energy.position - alpha*d, r)
             else:
                 energy = energy.at(energy.position - alpha*d)
                 r = energy.gradient
-                iter = 0
+                ii = 0
 
             s = r if preconditioner is None else preconditioner(r)
 

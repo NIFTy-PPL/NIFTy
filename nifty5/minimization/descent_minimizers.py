@@ -162,32 +162,29 @@ class NewtonCG(DescentMinimizer):
 
     def get_descent_direction(self, energy):
         float64eps = np.finfo(np.float64).eps
-        grad = energy.gradient
-        maggrad = abs(grad).sum()
+        r = energy.gradient
+        maggrad = abs(r).sum()
         termcond = np.min([0.5, np.sqrt(maggrad)]) * maggrad
-        xsupi = energy.position*0
-        ri = grad
-        psupi = -ri
-        dri0 = ri.vdot(ri)
-
-        i = 0
+        pos = energy.position*0
+        d = -r
+        previous_gamma = r.vdot(r)
+        ii = 0
         while True:
-            if abs(ri).sum() <= termcond:
-                return xsupi
-            Ap = energy.apply_metric(psupi)
-            # check curvature
-            curv = psupi.vdot(Ap)
+            if abs(r).sum() <= termcond:
+                return pos
+            q = energy.apply_metric(d)
+            curv = d.vdot(q)
             if 0 <= curv <= 3*float64eps:
-                return xsupi
-            elif curv < 0:
-                return xsupi if i > 0 else (dri0/curv) * grad
-            alphai = dri0/curv
-            xsupi = xsupi + alphai*psupi
-            ri = ri + alphai*Ap
-            dri1 = ri.vdot(ri)
-            psupi = (dri1/dri0)*psupi - ri
-            i += 1
-            dri0 = dri1  # update numpy.dot(ri,ri) for next time.
+                return pos
+            if curv < 0:
+                return pos if ii > 0 else previous_gamma/curv*r
+            alpha = previous_gamma/curv
+            pos = pos + alpha*d
+            r = r + alpha*q
+            gamma = r.vdot(r)
+            d = (gamma/previous_gamma)*d - r
+            ii += 1
+            previous_gamma = gamma
 
         # curvature keeps increasing, bail out
         raise ValueError("Warning: CG iterations didn't converge. "
