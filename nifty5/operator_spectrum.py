@@ -73,13 +73,51 @@ def _op2lambda(op):
     return lambda x: op(from_global_data(op.domain, x)).to_global_data()
 
 
-def operator_spectrum(op, n, hermitian, tol=0):
-    if not isinstance(op, LinearOperator):
+def operator_spectrum(A, k, hermitian, which='LM', tol=0):
+    '''
+    Find k eigenvalues and eigenvectors of the endomorphism A.
+
+    Parameters
+    ----------
+    A : EndomorphicOperator
+        Operator of which eigenvalues shall be computed.
+    k : int
+        The number of eigenvalues and eigenvectors desired. `k` must be
+        smaller than N-1. It is not possible to compute all eigenvectors of a
+        matrix.
+    hermitian: bool
+        Specifies whether A is hermitian or not.
+    which : str, ['LM' | 'SM' | 'LR' | 'SR' | 'LI' | 'SI'], optional
+        Which `k` eigenvectors and eigenvalues to find:
+            'LM' : largest magnitude
+            'SM' : smallest magnitude
+            'LR' : largest real part
+            'SR' : smallest real part
+            'LI' : largest imaginary part
+            'SI' : smallest imaginary part
+    tol : float, optional
+        Relative accuracy for eigenvalues (stopping criterion)
+        The default value of 0 implies machine precision.
+
+    Returns
+    -------
+    w : ndarray
+        Array of k eigenvalues.
+
+    Raises
+    ------
+    ArpackNoConvergence
+        When the requested convergence is not obtained.
+        The currently converged eigenvalues and eigenvectors can be found
+        as ``eigenvalues`` and ``eigenvectors`` attributes of the exception
+        object.
+    '''
+    if not isinstance(A, LinearOperator):
         raise TypeError('Operator needs to be linear.')
-    if op.domain is not op.target:
+    if A.domain is not A.target:
         raise TypeError('Operator needs to be endomorphism.')
-    size = op.domain.size
-    M = ssl.LinearOperator(shape=2*(size,), matvec=_op2lambda(op))
+    size = A.domain.size
+    M = ssl.LinearOperator(shape=2*(size,), matvec=_op2lambda(A))
     f = ssl.eigsh if hermitian else ssl.eigs
-    eigs = f(M, k=n, tol=tol, return_eigenvectors=False)
+    eigs = f(M, k=k, tol=tol, return_eigenvectors=False, which=which)
     return np.flip(np.sort(eigs), axis=0)
