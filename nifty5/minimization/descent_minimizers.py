@@ -19,7 +19,6 @@ import numpy as np
 
 from ..logger import logger
 from .conjugate_gradient import ConjugateGradient
-from .iteration_controllers import GradientNormController
 from .line_search import LineSearch
 from .minimizer import Minimizer
 from .quadratic_energy import QuadraticEnergy
@@ -46,7 +45,7 @@ class DescentMinimizer(Minimizer):
         self._controller = controller
         self.line_searcher = line_searcher
 
-    def __call__(self, energy, preconditioner=None):
+    def __call__(self, energy):
         """Performs the minimization of the provided Energy functional.
 
         Parameters
@@ -82,7 +81,7 @@ class DescentMinimizer(Minimizer):
 
             # compute a step length that reduces energy.value sufficiently
             new_energy, success = self.line_searcher.perform_line_search(
-                energy=energy, pk=self.get_descent_direction(energy),
+                energy=energy, pk=self.get_descent_direction(energy, f_k_minus_1),
                 f_k_minus_1=f_k_minus_1)
             if not success:
                 self.reset()
@@ -163,12 +162,15 @@ class NewtonCG(DescentMinimizer):
         super(NewtonCG, self).__init__(controller=controller,
                                        line_searcher=line_searcher)
 
-    def get_descent_direction(self, energy):
-        g = energy.gradient
-        maggrad = abs(g).sum()
-        termcond = np.min([0.5, np.sqrt(maggrad)]) * maggrad
-        ic = GradientNormController(tol_abs_gradnorm=termcond, p=1)
-        e = QuadraticEnergy(0*energy.position, energy.metric, g)
+    def get_descent_direction(self, energy, f_k_minus_1):
+        from .iteration_controllers import AbsDeltaEnergyController, GradientNormController
+        if f_k_minus_1 is None:
+            ic = GradientNormController(iteration_limit=1)
+        else:
+            alpha = 0.1
+            ediff = alpha*(f_k_minus_1 - energy.value)
+            ic = AbsDeltaEnergyController(ediff, iteration_limit=200, name='    Internal', convergence_level=1)
+        e = QuadraticEnergy(0*energy.position, energy.metric, energy.gradient)
         e, conv = ConjugateGradient(ic, nreset=np.inf)(e)
         if conv == ic.ERROR:
             raise RuntimeError
