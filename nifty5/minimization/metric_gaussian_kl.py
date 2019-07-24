@@ -72,7 +72,8 @@ class MetricGaussianKL(Energy):
 
     See also
     --------
-    Metric Gaussian Variational Inference (FIXME in preparation)
+    `Metric Gaussian Variational Inference`, Jakob Knollmüller,
+    Torsten A. Enßlin, `<https://arxiv.org/abs/1901.11033>`_
     """
 
     def __init__(self, mean, hamiltonian, n_samples, constants=[],

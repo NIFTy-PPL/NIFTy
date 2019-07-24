@@ -17,7 +17,7 @@ NIFTy-related publications
       date = {2018-04-05},
     }
 
-    @ARTICLE{2013A&A...554A..26S,
+    @article{2013A&A...554A..26S,
       author = {{Selig}, M. and {Bell}, M.~R. and {Junklewitz}, H. and {Oppermann}, N. and {Reinecke}, M. and {Greiner}, M. and {Pachajoa}, C. and {En{\ss}lin}, T.~A.},
       title = "{NIFTY - Numerical Information Field Theory. A versatile PYTHON library for signal inference}",
       journal = {\aap},
@@ -35,7 +35,7 @@ NIFTy-related publications
       adsnote = {Provided by the SAO/NASA Astrophysics Data System}
     }
 
-    @ARTICLE{2017arXiv170801073S,
+    @article{2017arXiv170801073S,
       author = {{Steininger}, T. and {Dixit}, J. and {Frank}, P. and {Greiner}, M. and {Hutschenreuter}, S. and {Knollm{\"u}ller}, J. and {Leike}, R. and {Porqueres}, N. and {Pumpe}, D. and {Reinecke}, M. and {{\v S}raml}, M. and {Varady}, C. and {En{\ss}lin}, T.},
       title = "{NIFTy 3 - Numerical Information Field Theory - A Python framework for multicomponent signal inference on HPC clusters}",
       journal = {ArXiv e-prints},
