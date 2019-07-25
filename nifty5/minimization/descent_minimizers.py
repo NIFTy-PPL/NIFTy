@@ -18,7 +18,11 @@
 import numpy as np
 
 from ..logger import logger
+from ..probing import approximation2endo
+from ..sugar import makeOp
 from .conjugate_gradient import ConjugateGradient
+from .iteration_controllers import (AbsDeltaEnergyController,
+                                    GradientNormController)
 from .line_search import LineSearch
 from .minimizer import Minimizer
 from .quadratic_energy import QuadraticEnergy
@@ -156,22 +160,29 @@ class NewtonCG(DescentMinimizer):
     Algorithm derived from SciPy sources.
     """
 
-    def __init__(self, controller, line_searcher=None):
+    def __init__(self, controller, napprox=0, line_searcher=None):
         if line_searcher is None:
             line_searcher = LineSearch(preferred_initial_step_size=1.)
         super(NewtonCG, self).__init__(controller=controller,
                                        line_searcher=line_searcher)
+        self._napprox = napprox
 
     def get_descent_direction(self, energy, f_k_minus_1):
-        from .iteration_controllers import AbsDeltaEnergyController, GradientNormController
         if f_k_minus_1 is None:
             ic = GradientNormController(iteration_limit=1)
         else:
             alpha = 0.1
             ediff = alpha*(f_k_minus_1 - energy.value)
-            ic = AbsDeltaEnergyController(ediff, iteration_limit=200, name='    Internal', convergence_level=1)
+            ic = AbsDeltaEnergyController(ediff, iteration_limit=200,
+                                          name='    Internal',
+                                          convergence_level=1)
         e = QuadraticEnergy(0*energy.position, energy.metric, energy.gradient)
-        e, conv = ConjugateGradient(ic, nreset=np.inf)(e)
+        p = None
+        if self._napprox > 1:
+            unscmet, sc = energy.unscaled_metric()
+            approx = makeOp(approximation2endo(unscmet, self._napprox)*sc)
+            p = approx.inverse
+        e, conv = ConjugateGradient(ic, nreset=np.inf)(e, preconditioner=p)
         if conv == ic.ERROR:
             raise RuntimeError
         return -e.position
