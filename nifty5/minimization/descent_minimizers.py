@@ -160,7 +160,7 @@ class NewtonCG(DescentMinimizer):
     Algorithm derived from SciPy sources.
     """
 
-    def __init__(self, controller, napprox=0, line_searcher=None):
+    def __init__(self, controller, napprox=0, line_searcher=None, name=None):
         if line_searcher is None:
             line_searcher = LineSearch(preferred_initial_step_size=1.)
         super(NewtonCG, self).__init__(controller=controller,
@@ -169,13 +169,12 @@ class NewtonCG(DescentMinimizer):
 
     def get_descent_direction(self, energy, f_k_minus_1):
         if f_k_minus_1 is None:
-            ic = GradientNormController(iteration_limit=1)
+            ic = GradientNormController(iteration_limit=5)
         else:
             alpha = 0.1
             ediff = alpha*(f_k_minus_1 - energy.value)
-            ic = AbsDeltaEnergyController(ediff, iteration_limit=200,
-                                          name='    Internal',
-                                          convergence_level=1)
+            ic = AbsDeltaEnergyController(
+                ediff, iteration_limit=200, name=self._name)
         e = QuadraticEnergy(0*energy.position, energy.metric, energy.gradient)
         p = None
         if self._napprox > 1:
