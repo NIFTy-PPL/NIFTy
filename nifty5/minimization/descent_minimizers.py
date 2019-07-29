@@ -166,6 +166,7 @@ class NewtonCG(DescentMinimizer):
         super(NewtonCG, self).__init__(controller=controller,
                                        line_searcher=line_searcher)
         self._napprox = napprox
+        self._name = name
 
     def get_descent_direction(self, energy, f_k_minus_1):
         if f_k_minus_1 is None:
