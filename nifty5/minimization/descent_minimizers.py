@@ -186,8 +186,6 @@ class NewtonCG(DescentMinimizer):
             p = approx.inverse
         e, conv = ConjugateGradient(ic, nreset=self._nreset)(e,
                                                              preconditioner=p)
-        if conv == ic.ERROR:
-            raise RuntimeError
         return -e.position
 
 
