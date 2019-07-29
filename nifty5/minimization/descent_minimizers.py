@@ -133,7 +133,7 @@ class SteepestDescent(DescentMinimizer):
     functional's gradient for minimization.
     """
 
-    def get_descent_direction(self, energy):
+    def get_descent_direction(self, energy, _):
         return -energy.gradient
 
 
@@ -150,7 +150,7 @@ class RelaxedNewton(DescentMinimizer):
         super(RelaxedNewton, self).__init__(controller=controller,
                                             line_searcher=line_searcher)
 
-    def get_descent_direction(self, energy):
+    def get_descent_direction(self, energy, _):
         return -energy.metric.inverse_times(energy.gradient)
 
 
@@ -204,7 +204,7 @@ class L_BFGS(DescentMinimizer):
         self._s = [None]*self.max_history_length
         self._y = [None]*self.max_history_length
 
-    def get_descent_direction(self, energy):
+    def get_descent_direction(self, energy, _):
         x = energy.position
         s = self._s
         y = self._y
@@ -267,7 +267,7 @@ class VL_BFGS(DescentMinimizer):
     def reset(self):
         self._information_store = None
 
-    def get_descent_direction(self, energy):
+    def get_descent_direction(self, energy, _):
         x = energy.position
         gradient = energy.gradient
         # initialize the information store if it doesn't already exist
