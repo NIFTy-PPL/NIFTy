@@ -50,6 +50,10 @@ class LogRGSpace(StructuredDomain):
 
         self._bindistances = tuple(bindistances)
         self._t_0 = tuple(t_0)
+        if min(self._bindistances) <= 0:
+            raise ValueError('Non-positive bindistances encountered')
+        if min(self._t_0) <= 0:
+            raise ValueError('Non-positive t_0 encountered')
 
         self._dim = int(reduce(lambda x, y: x*y, self._shape))
         self._dvol = float(reduce(lambda x, y: x*y, self._bindistances))
