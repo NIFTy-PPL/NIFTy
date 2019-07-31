@@ -32,29 +32,14 @@ def jt(lin, check):
     assert_allclose(_lin2grad(lin), check)
 
 
-def test_lin():
+def test_special_gradients():
     dom = ift.UnstructuredDomain((1,))
     f = ift.full(dom, 2.4)
     var = ift.Linearization.make_var(f)
     s = f.local_data
 
-    jt(var.exp(), np.exp(s))
     jt(var.clip(0, 10), np.ones_like(s))
     jt(var.clip(-1, 0), np.zeros_like(s))
-    jt(var.sqrt(), .5/np.sqrt(s))
-    jt(var.sin(), np.cos(s))
-    jt(var.cos(), -np.sin(s))
-    jt(var.tan(), 1/np.cos(s)**2)
-    jt(var.sinc(), (np.cos(np.pi*s) - np.sinc(s))/s)
-    jt(var.log(), 1/s)
-    jt(var.sinh(), np.cosh(s))
-    jt(var.cosh(), np.sinh(s))
-    jt(var.tanh(), 1 - np.tanh(s)**2)
-    jt(var.absolute(), np.ones_like(s))
-    jt(var.one_over(), -1/s**2)
-
-    sigmoid = 0.5*(1 + var.tanh())
-    jt(var.sigmoid(), sigmoid.jac(ift.full(sigmoid.domain, 1.)).local_data)
 
     assert_allclose(
         _lin2grad(ift.Linearization.make_var(0*f).sinc()), np.zeros(s.shape))
