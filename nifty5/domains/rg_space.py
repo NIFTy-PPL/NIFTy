@@ -54,6 +54,8 @@ class RGSpace(StructuredDomain):
         if np.isscalar(shape):
             shape = (shape,)
         self._shape = tuple(int(i) for i in shape)
+        if min(self._shape) < 0:
+            raise ValueError('Negative number of pixels encountered')
 
         if distances is None:
             if self.harmonic:
@@ -66,6 +68,8 @@ class RGSpace(StructuredDomain):
             temp = np.empty(len(self.shape), dtype=np.float64)
             temp[:] = distances
             self._distances = tuple(temp)
+        if min(self._distances) <= 0:
+            raise ValueError('Non-positive distances encountered')
 
         self._dvol = float(reduce(lambda x, y: x*y, self._distances))
         self._size = int(reduce(lambda x, y: x*y, self._shape))
