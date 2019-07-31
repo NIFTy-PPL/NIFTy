@@ -298,6 +298,9 @@ class Linearization(object):
             tmp2 = makeOp(1. - (tmp == min) - (tmp == max))
         return self.new(tmp, tmp2(self._jac))
 
+    def sqrt(self):
+        return self.__pow__(0.5)
+
     def sin(self):
         tmp = self._val.sin()
         tmp2 = self._val.cos()
