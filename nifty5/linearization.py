@@ -20,6 +20,7 @@ import numpy as np
 from .field import Field
 from .multi_field import MultiField
 from .sugar import makeOp
+from . import utilities
 
 
 class Linearization(object):
@@ -350,6 +351,8 @@ class Linearization(object):
         return self.new(tmp2, makeOp(0.5*(1.-tmp**2))(self._jac))
 
     def absolute(self):
+        if utilities.iscomplextype(self._val.dtype):
+            raise TypeError("Argument must not be complex")
         tmp = self._val.absolute()
         tmp2 = self._val.sign()
 
