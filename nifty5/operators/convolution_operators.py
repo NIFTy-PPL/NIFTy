@@ -15,19 +15,16 @@
 #
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
 
-import numpy as np
 
-from ..domains.rg_space import RGSpace
-from ..domains.lm_space import LMSpace
-from ..domains.hp_space import HPSpace
+from .. import utilities
+from ..domain_tuple import DomainTuple
 from ..domains.gl_space import GLSpace
+from ..domains.hp_space import HPSpace
+from ..domains.rg_space import RGSpace
+from .diagonal_operator import DiagonalOperator
 from .endomorphic_operator import EndomorphicOperator
 from .harmonic_operators import HarmonicTransformOperator
-from .diagonal_operator import DiagonalOperator
 from .simple_linear_operators import WeightApplier
-from ..domain_tuple import DomainTuple
-from ..field import Field
-from .. import utilities
 
 
 def FuncConvolutionOperator(domain, func, space=None):
