@@ -299,7 +299,8 @@ class Linearization(object):
         return self.new(tmp, tmp2(self._jac))
 
     def sqrt(self):
-        return self.__pow__(0.5)
+        tmp = self._val.sqrt()
+        return self.new(tmp, makeOp(0.5/tmp)(self._jac))
 
     def sin(self):
         tmp = self._val.sin()
@@ -319,6 +320,10 @@ class Linearization(object):
     def sinc(self):
         tmp = self._val.sinc()
         tmp2 = (self._val.cos()-tmp)/self._val
+        ind = self._val.local_data == 0
+        loc = tmp2.local_data.copy()
+        loc[ind] = 0
+        tmp2 = Field.from_local_data(tmp.domain, loc)
         return self.new(tmp, makeOp(tmp2)(self._jac))
 
     def log(self):
@@ -347,6 +352,12 @@ class Linearization(object):
     def absolute(self):
         tmp = self._val.absolute()
         tmp2 = self._val.sign()
+
+        ind = self._val.local_data == 0
+        loc = tmp2.local_data.copy().astype(float)
+        loc[ind] = np.nan
+        tmp2 = Field.from_local_data(tmp.domain, loc)
+
         return self.new(tmp, makeOp(tmp2)(self._jac))
 
     def one_over(self):
