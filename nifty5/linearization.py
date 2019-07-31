@@ -319,7 +319,7 @@ class Linearization(object):
 
     def sinc(self):
         tmp = self._val.sinc()
-        tmp2 = (self._val.cos()-tmp)/self._val
+        tmp2 = ((np.pi*self._val).cos()-tmp)/self._val
         ind = self._val.local_data == 0
         loc = tmp2.local_data.copy()
         loc[ind] = 0
