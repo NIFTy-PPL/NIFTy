@@ -165,7 +165,7 @@ class PowerSpace(StructuredDomain):
 
         if binbounds is not None:
             binbounds = tuple(binbounds)
-            if min(self._distances) < 0:
+            if min(binbounds) < 0:
                 raise ValueError('Negative binbounds encountered')
 
         key = (harmonic_partner, binbounds)
