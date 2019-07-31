@@ -57,8 +57,8 @@ def testOperatorCombinations(sp, dtype):
     b = ift.DiagonalOperator(ift.Field.from_random("normal", sp, dtype=dtype))
     _check_repr(ift.SandwichOperator.make(a, b))
     _check_repr(a(b))
-    _check_repr(a+b)
-    _check_repr(a-b)
+    _check_repr(a + b)
+    _check_repr(a - b)
     _check_repr(a*b)
     _check_repr(a**2)
 
@@ -211,7 +211,6 @@ def testExpTransform(args, dtype):
       ((ift.LogRGSpace(10, [2.], [1.]), ift.UnstructuredDomain(13)), 0),
       ((ift.UnstructuredDomain(13), ift.LogRGSpace(17, [3.], [.7])), 1)])
 def testQHTOperator(args):
-    dtype = np.float64
     tgt = ift.DomainTuple.make(args[0])
     _check_repr(ift.QHTOperator(tgt, args[1]))
 
@@ -225,14 +224,11 @@ def testRegridding(args):
     _check_repr(ift.RegriddingOperator(*args))
 
 
-@pmp(
-    'fdomain',
-    [
-        ift.DomainTuple.make((ift.RGSpace(
-            (3, 5, 4)), ift.RGSpace((16,), distances=(7.,))),),
-        ift.DomainTuple.make(ift.HPSpace(12),)
-    ],
-)
+@pmp('fdomain', [
+    ift.DomainTuple.make((ift.RGSpace(
+        (3, 5, 4)), ift.RGSpace((16,), distances=(7.,))),),
+    ift.DomainTuple.make(ift.HPSpace(12),)
+])
 @pmp('domain', [
     ift.DomainTuple.make((ift.RGSpace((2,)), ift.GLSpace(10)),),
     ift.DomainTuple.make(ift.RGSpace((10, 12), distances=(0.1, 1.)),)
@@ -251,5 +247,5 @@ def testValueInserter(sp, seed):
         if ss == 1:
             ind.append(0)
         else:
-            ind.append(np.random.randint(0, ss-1))
+            ind.append(np.random.randint(0, ss - 1))
     _check_repr(ift.ValueInserter(sp, ind))
