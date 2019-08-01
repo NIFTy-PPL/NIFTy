@@ -57,8 +57,8 @@ def testOperatorCombinations(sp, dtype):
     b = ift.DiagonalOperator(ift.Field.from_random("normal", sp, dtype=dtype))
     _check_repr(ift.SandwichOperator.make(a, b))
     _check_repr(a(b))
-    _check_repr(a + b)
-    _check_repr(a - b)
+    _check_repr(a+b)
+    _check_repr(a-b)
     _check_repr(a*b)
     _check_repr(a**2)
 
