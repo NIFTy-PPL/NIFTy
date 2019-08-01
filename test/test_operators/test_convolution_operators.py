@@ -15,7 +15,7 @@
 #
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
 
-from numpy.testing import assert_allclose, assert_equal
+from numpy.testing import assert_allclose
 
 import nifty5 as ift
 import numpy as np
@@ -30,9 +30,8 @@ space = list2fixture([
 
 
 def test_const_func(space):
-    ones = lambda x: np.ones(x.shape)
     sig = ift.Field.from_random('normal', domain=space)
-    fco_op = ift.FuncConvolutionOperator(space, ones)
+    fco_op = ift.FuncConvolutionOperator(space, lambda x: np.ones(x.shape))
     vals = fco_op(sig).to_global_data()
     vals = np.round(vals, decimals=5)
     assert len(np.unique(vals)) == 1

@@ -33,19 +33,11 @@ space1 = space
 seed = list2fixture([4, 78, 23])
 
 
-def _make_linearization(type, space, seed):
+def testBasics(space, seed):
     np.random.seed(seed)
     S = ift.ScalingOperator(1., space)
     s = S.draw_sample()
-    if type == "Constant":
-        return ift.Linearization.make_const(s)
-    elif type == "Variable":
-        return ift.Linearization.make_var(s)
-    raise ValueError('unknown type passed')
-
-
-def testBasics(space, seed):
-    var = _make_linearization("Variable", space, seed)
+    var = ift.Linearization.make_var(s)
     model = ift.ScalingOperator(6., var.target)
     ift.extra.check_jacobian_consistency(model, var.val)
 
@@ -55,11 +47,7 @@ def testBasics(space, seed):
 def testBinary(type1, type2, space, seed):
     dom1 = ift.MultiDomain.make({'s1': space})
     dom2 = ift.MultiDomain.make({'s2': space})
-
-    # FIXME Remove this?
-    _make_linearization(type1, dom1, seed)
-    _make_linearization(type2, dom2, seed)
-
+    np.random.seed(seed)
     dom = ift.MultiDomain.union((dom1, dom2))
     select_s1 = ift.ducktape(None, dom1, "s1")
     select_s2 = ift.ducktape(None, dom2, "s2")

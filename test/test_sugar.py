@@ -16,8 +16,7 @@
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
 
 import numpy as np
-import pytest
-from numpy.testing import assert_allclose, assert_equal, assert_raises
+from numpy.testing import assert_equal
 
 import nifty5 as ift
 
@@ -25,8 +24,8 @@ import nifty5 as ift
 def test_get_signal_variance():
     space = ift.RGSpace(3)
     hspace = space.get_default_codomain()
-    spec1 = lambda x: np.ones_like(x)
-    assert_equal(ift.get_signal_variance(spec1, hspace), 3.)
+    sv = ift.get_signal_variance(lambda x: np.ones_like(x), hspace)
+    assert_equal(sv, 3.)
 
     space = ift.RGSpace(3, distances=1.)
     hspace = space.get_default_codomain()

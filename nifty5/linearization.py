@@ -20,6 +20,7 @@ import numpy as np
 from .field import Field
 from .multi_field import MultiField
 from .sugar import makeOp
+from . import utilities
 
 
 class Linearization(object):
@@ -108,7 +109,6 @@ class Linearization(object):
         return self._metric
 
     def __getitem__(self, name):
-        from .operators.simple_linear_operators import ducktape
         return self.new(self._val[name], self._jac.ducktape_left(name))
 
     def __neg__(self):
@@ -299,7 +299,8 @@ class Linearization(object):
         return self.new(tmp, tmp2(self._jac))
 
     def sqrt(self):
-        return self.__pow__(0.5)
+        tmp = self._val.sqrt()
+        return self.new(tmp, makeOp(0.5/tmp)(self._jac))
 
     def sin(self):
         tmp = self._val.sin()
@@ -318,7 +319,11 @@ class Linearization(object):
 
     def sinc(self):
         tmp = self._val.sinc()
-        tmp2 = (self._val.cos()-tmp)/self._val
+        tmp2 = ((np.pi*self._val).cos()-tmp)/self._val
+        ind = self._val.local_data == 0
+        loc = tmp2.local_data.copy()
+        loc[ind] = 0
+        tmp2 = Field.from_local_data(tmp.domain, loc)
         return self.new(tmp, makeOp(tmp2)(self._jac))
 
     def log(self):
@@ -345,8 +350,16 @@ class Linearization(object):
         return self.new(tmp2, makeOp(0.5*(1.-tmp**2))(self._jac))
 
     def absolute(self):
+        if utilities.iscomplextype(self._val.dtype):
+            raise TypeError("Argument must not be complex")
         tmp = self._val.absolute()
         tmp2 = self._val.sign()
+
+        ind = self._val.local_data == 0
+        loc = tmp2.local_data.copy().astype(float)
+        loc[ind] = np.nan
+        tmp2 = Field.from_local_data(tmp.domain, loc)
+
         return self.new(tmp, makeOp(tmp2)(self._jac))
 
     def one_over(self):

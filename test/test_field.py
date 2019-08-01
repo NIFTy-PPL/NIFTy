@@ -57,8 +57,6 @@ def test_power_synthesize_analyze(space1, space2):
     fp1 = ift.PS_field(p1, _spec1)
     p2 = ift.PowerSpace(space2)
     fp2 = ift.PS_field(p2, _spec2)
-    outer = np.outer(fp1.to_global_data(), fp2.to_global_data())
-    fp = ift.Field.from_global_data((p1, p2), outer)
 
     op1 = ift.create_power_operator((space1, space2), _spec1, 0)
     op2 = ift.create_power_operator((space1, space2), _spec2, 1)
@@ -345,11 +343,11 @@ def test_funcs(num, dom, func):
 @pmp('dtype', [np.float64, np.complex128])
 def test_from_random(rtype, dtype):
     sp = ift.RGSpace(3)
-    f = ift.Field.from_random(rtype, sp, dtype=dtype)
+    ift.Field.from_random(rtype, sp, dtype=dtype)
 
 
 def test_field_of_objects():
     arr = np.array(['x', 'y', 'z'])
     sp = ift.RGSpace(3)
     with assert_raises(TypeError):
-        f = ift.Field.from_global_data(sp, arr)
+        ift.Field.from_global_data(sp, arr)

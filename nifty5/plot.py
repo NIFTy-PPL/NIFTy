@@ -157,7 +157,6 @@ def _rgb_data(spectral_cube):
     xyz_data /= xyz_data.max()
     xyz_data = to_logscale(xyz_data, max(1e-3, xyz_data.min()), 1.)
     rgb_data = xyz_data.copy()
-    it = np.nditer(xyz_data[:, 0], flags=['multi_index'])
     for x in range(xyz_data.shape[0]):
         rgb_data[x] = _gammacorr(np.matmul(MATRIX_SRGB_D65, xyz_data[x]))
     rgb_data = rgb_data.clip(0., 1.)

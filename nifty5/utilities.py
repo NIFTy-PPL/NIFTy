@@ -240,6 +240,8 @@ def special_add_at(a, axis, index, b):
 
 
 _iscomplex_tpl = (np.complex64, np.complex128)
+
+
 def iscomplextype(dtype):
     return dtype.type in _iscomplex_tpl
 
