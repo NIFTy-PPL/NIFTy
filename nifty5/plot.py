@@ -151,6 +151,7 @@ def _rgb_data(spectral_cube):
         res /= tmp
         return res
 
+    shp = spectral_cube.shape[:-1]+(3,)
     spectral_cube = spectral_cube.reshape((-1, spectral_cube.shape[-1]))
     xyz = getxyz(spectral_cube.shape[-1])
     xyz_data = np.tensordot(spectral_cube, xyz, axes=[-1, -1])
@@ -160,7 +161,7 @@ def _rgb_data(spectral_cube):
     for x in range(xyz_data.shape[0]):
         rgb_data[x] = _gammacorr(np.matmul(MATRIX_SRGB_D65, xyz_data[x]))
     rgb_data = rgb_data.clip(0., 1.)
-    return rgb_data.reshape(spectral_cube.shape[:-1]+(-1,))
+    return rgb_data.reshape(shp)
 
 
 def _find_closest(A, target):
