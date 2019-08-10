@@ -73,7 +73,7 @@ from .minimization.energy_adapter import EnergyAdapter
 from .minimization.metric_gaussian_kl import MetricGaussianKL
 
 from .sugar import *
-from .plot import Plot
+from .plot import Plot, energy_history_analysis
 
 from .library.smooth_linear_amplitude import (
     SLAmplitude, LinearSLAmplitude, CepstrumOperator)
