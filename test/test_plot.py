@@ -15,11 +15,13 @@
 #
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
 
-import nifty5 as ift
 import numpy as np
 
+import nifty5 as ift
 
-def plot_test():
+
+def test_plots():
+    # FIXME Write to temporary folder?
     rg_space1 = ift.makeDomain(ift.RGSpace((100,)))
     rg_space2 = ift.makeDomain(ift.RGSpace((80, 60), distances=1))
     hp_space = ift.makeDomain(ift.HPSpace(64))
@@ -35,18 +37,16 @@ def plot_test():
     field_gl = ift.Field.from_global_data(gl_space, np.random.randn(32640))
     field_ps = ift.power_analyze(fft.times(field_rg2))
 
-    # Start various plotting tests
-
     plot = ift.Plot()
     plot.add(field_rg1_1, title='Single plot')
-    plot.output()
+    plot.output(name='plot1.png')
 
     plot = ift.Plot()
     plot.add(field_rg2, title='2d rg')
     plot.add([field_rg1_1, field_rg1_2], title='list 1d rg', label=['1', '2'])
     plot.add(field_rg1_2, title='1d rg, xmin, ymin', xmin=0.5, ymin=0.,
              xlabel='xmin=0.5', ylabel='ymin=0')
-    plot.output(title='Three plots')
+    plot.output(title='Three plots', name='plot2.png')
 
     plot = ift.Plot()
     plot.add(field_hp, title='HP planck-color', colormap='Planck-like')
@@ -54,8 +54,4 @@ def plot_test():
     plot.add(field_ps)
     plot.add(field_gl, title='GL')
     plot.add(field_rg2, title='2d rg')
-    plot.output(nx=2, ny=3, title='Five plots')
-
-
-if __name__ == '__main__':
-    plot_test()
+    plot.output(nx=2, ny=3, title='Five plots', name='plot3.png')

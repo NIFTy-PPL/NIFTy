@@ -111,3 +111,11 @@ run_curve_fitting:
   artifacts:
     paths:
       - '*.png'
+
+run_plotting_test:
+  stage: demo_runs
+  script:
+    - python3 demos/polynomial_fit.py
+  artifacts:
+    paths:
+      - '*.png'
