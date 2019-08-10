@@ -66,8 +66,7 @@ def get_k_length_array_configs():
 
 @pmp('attribute', ['lmax', 'mmax', 'size'])
 def test_property_ret_type(attribute):
-    l = ift.LMSpace(7, 5)
-    assert_(isinstance(getattr(l, attribute), int))
+    assert_(isinstance(getattr(ift.LMSpace(7, 5), attribute), int))
 
 
 @pmp('lmax, mmax, expected', CONSTRUCTOR_CONFIGS)
@@ -76,9 +75,8 @@ def test_constructor(lmax, mmax, expected):
         with assert_raises(expected['error']):
             ift.LMSpace(lmax, mmax)
     else:
-        l = ift.LMSpace(lmax, mmax)
         for key, value in expected.items():
-            assert_equal(getattr(l, key), value)
+            assert_equal(getattr(ift.LMSpace(lmax, mmax), key), value)
 
 
 def test_dvol():
@@ -87,5 +85,5 @@ def test_dvol():
 
 @pmp('lmax, expected', get_k_length_array_configs())
 def test_k_length_array(lmax, expected):
-    l = ift.LMSpace(lmax)
-    assert_allclose(l.get_k_length_array().to_global_data(), expected)
+    assert_allclose(ift.LMSpace(lmax).get_k_length_array().to_global_data(),
+                    expected)
