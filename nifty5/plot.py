@@ -555,7 +555,7 @@ def energy_history_analysis(fname_outer, fname_inner, fname_sampling,
     tsa, esa, _ = np.loadtxt(fname_sampling, delimiter=' ').T
     tou, eou, _ = np.loadtxt(fname_outer, delimiter=' ').T
     tin, ein, _ = np.loadtxt(fname_inner, delimiter=' ').T
-    t0 = np.min([tsa, tou, tin])
+    t0 = np.min([*tsa, *tou, *tin])
     tsa = (tsa-t0)/3600
     tou = (tou-t0)/3600
     tin = (tin-t0)/3600
@@ -569,11 +569,11 @@ def energy_history_analysis(fname_outer, fname_inner, fname_sampling,
     ax0.legend([p1, p2], [p1.get_label(), p2.get_label()])
     ax1.scatter(tou, eou, marker='>', c='g')
     ax1.set_ylabel('Newton energy')
-    ax1.set_yscale('log')
+    # ax1.set_yscale('log')
     ax1.set_xlabel("Time [h]")
     plt.tight_layout()
     if fname is None:
-        plt.savefig(fname)
-    else:
         plt.show()
+    else:
+        plt.savefig(fname)
     plt.close()
