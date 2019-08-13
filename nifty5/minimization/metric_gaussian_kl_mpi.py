@@ -59,7 +59,7 @@ def allreduce_sum_field(fld):
 class MetricGaussianKL_MPI(Energy):
     def __init__(self, mean, hamiltonian, n_samples, constants=[],
                  point_estimates=[], mirror_samples=False,
-                 _samples=None):
+                 _samples=None, seed_offset=0):
         super(MetricGaussianKL_MPI, self).__init__(mean)
 
         if not isinstance(hamiltonian, StandardHamiltonian):
@@ -85,7 +85,7 @@ class MetricGaussianKL_MPI(Energy):
             _samples = []
             for i in range(lo, hi):
                 if mirror_samples:
-                    np.random.seed(i//2)
+                    np.random.seed(i//2+seed_offset)
                     if i%2 and i-1 >= lo:
                         _samples.append(-_samples[-1])
 
@@ -98,6 +98,7 @@ class MetricGaussianKL_MPI(Energy):
             if mirror_samples:
                 n_samples *= 2
         self._samples = _samples
+        self._seed_offset = seed_offset
         self._n_samples = n_samples
         self._lin = Linearization.make_partial_var(mean, constants)
         v, g = None, None
@@ -121,7 +122,7 @@ class MetricGaussianKL_MPI(Energy):
     def at(self, position):
         return MetricGaussianKL_MPI(
             position, self._hamiltonian, self._n_samples, self._constants,
-            self._point_estimates, _samples=self._samples)
+            self._point_estimates, _samples=self._samples, seed_offset=self._seed_offset)
 
     @property
     def value(self):
