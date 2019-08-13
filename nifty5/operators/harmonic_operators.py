@@ -202,7 +202,7 @@ class HartleyOperator(LinearOperator):
             rem_axes = tuple(i for i in axes if i != oldax)
             tmp = x.val
             ldat = dobj.local_data(tmp)
-            ldat = fft.my_fftn_r2c(ldat, axes=rem_axes)
+            ldat = fft.fftn(ldat, axes=rem_axes)
             if oldax != 0:
                 raise ValueError("bad distribution")
             ldat2 = ldat.reshape((ldat.shape[0],
@@ -211,7 +211,7 @@ class HartleyOperator(LinearOperator):
             tmp = dobj.from_local_data(shp2d, ldat2, distaxis=0)
             tmp = dobj.transpose(tmp)
             ldat2 = dobj.local_data(tmp)
-            ldat2 = fft.my_fftn(ldat2, axes=(1,))
+            ldat2 = fft.fftn(ldat2, axes=(1,))
             ldat2 = ldat2.real+ldat2.imag
             tmp = dobj.from_local_data(tmp.shape, ldat2, distaxis=0)
             tmp = dobj.transpose(tmp)

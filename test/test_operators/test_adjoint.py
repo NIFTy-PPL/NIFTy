@@ -37,6 +37,8 @@ _pow_spaces = [ift.PowerSpace(ift.RGSpace((17, 38), harmonic=True))]
 pmp = pytest.mark.parametrize
 dtype = list2fixture([np.float64, np.complex128])
 
+np.random.seed(42)
+
 
 @pmp('sp', _p_RG_spaces)
 def testLOSResponse(sp, dtype):
@@ -75,14 +77,14 @@ def testLinearInterpolator():
 def testRealizer(sp):
     op = ift.Realizer(sp)
     ift.extra.consistency_check(op, np.complex128, np.float64,
-    only_r_linear=True)
+                                only_r_linear=True)
 
 
 @pmp('sp', _h_spaces + _p_spaces + _pow_spaces)
 def testConjugationOperator(sp):
     op = ift.ConjugationOperator(sp)
     ift.extra.consistency_check(op, np.complex128, np.complex128,
-    only_r_linear=True)
+                                only_r_linear=True)
 
 
 @pmp('args', [(ift.RGSpace(10, harmonic=True), 4, 0), (ift.RGSpace(
@@ -292,11 +294,4 @@ def testValueInserter(sp, seed):
         else:
             ind.append(np.random.randint(0, ss-1))
     op = ift.ValueInserter(sp, ind)
-    ift.extra.consistency_check(op)
-
-
-def testNFFT():
-    dom = ift.RGSpace(2*(16,))
-    uv = np.array([[.2, .4], [-.22, .452]])
-    op = ift.NFFT(dom, uv)
     ift.extra.consistency_check(op)

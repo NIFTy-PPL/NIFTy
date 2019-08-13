@@ -147,7 +147,16 @@ class FieldAdapter(LinearOperator):
             return MultiField(self._tgt(mode), (x,))
 
     def __repr__(self):
-        return 'FieldAdapter'
+        s = 'FieldAdapter'
+        dom = isinstance(self._domain, MultiDomain)
+        tgt = isinstance(self._target, MultiDomain)
+        if dom and tgt:
+            s += ' {} <- {}'.format(self._target.keys(), self._domain.keys())
+        elif dom:
+            s += ' <- {}'.format(self._domain.keys())
+        elif tgt:
+            s += ' {} <-'.format(self._target.keys())
+        return s
 
 
 class _SlowFieldAdapter(LinearOperator):
@@ -335,3 +344,35 @@ class _PartialExtractor(LinearOperator):
         if mode == self.TIMES:
             return x.extract(self._target)
         return MultiField.from_dict({key: x[key] for key in x.domain.keys()})
+
+
+class MatrixProductOperator(EndomorphicOperator):
+    """Endomorphic matrix multiplication with input field.
+
+    Parameters
+    ----------
+    domain: :class:`Domain` or :class:`DomainTuple`
+        Domain of the operator.
+        If :class:`DomainTuple` it is assumed to have only one entry.
+    matrix: scipy.sparse matrix or numpy array
+        Matrix of shape `(domain.shape, domain.shape)`. Needs to support
+        `dot()` and `transpose()` in the style of numpy arrays.
+    """
+    def __init__(self, domain, matrix):
+        self._domain = domain
+        self._capability = self.TIMES | self.ADJOINT_TIMES
+
+        self._mat = matrix
+        self._mat_tr = matrix.transpose()
+
+    def apply(self, x, mode):
+        self._check_input(x, mode)
+        res = x.to_global_data()
+        if mode == self.TIMES:
+            res = self._mat.dot(res)
+        if mode == self.ADJOINT_TIMES:
+            res = self._mat_tr.dot(res)
+        return Field.from_global_data(self._domain, res)
+
+    def __repr__(self):
+        return "MatrixProductOperator"

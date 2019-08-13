@@ -110,8 +110,8 @@ class GaussianEnergy(EnergyOperator):
     ----------
     mean : Field
         Mean of the Gaussian. Default is 0.
-    covariance : LinearOperator
-        Covariance of the Gaussian. Default is the identity operator.
+    inverse_covariance : LinearOperator
+        Inverse covariance of the Gaussian. Default is the identity operator.
     domain : Domain, DomainTuple, tuple of Domain or MultiDomain
         Operator domain. By default it is inferred from `mean` or
         `covariance` if specified
@@ -121,28 +121,27 @@ class GaussianEnergy(EnergyOperator):
     At least one of the arguments has to be provided.
     """
 
-    def __init__(self, mean=None, covariance=None, domain=None):
+    def __init__(self, mean=None, inverse_covariance=None, domain=None):
         if mean is not None and not isinstance(mean, (Field, MultiField)):
             raise TypeError
-        if covariance is not None and not isinstance(covariance,
-                                                     LinearOperator):
+        if inverse_covariance is not None and not isinstance(inverse_covariance, LinearOperator):
             raise TypeError
 
         self._domain = None
         if mean is not None:
             self._checkEquivalence(mean.domain)
-        if covariance is not None:
-            self._checkEquivalence(covariance.domain)
+        if inverse_covariance is not None:
+            self._checkEquivalence(inverse_covariance.domain)
         if domain is not None:
             self._checkEquivalence(domain)
         if self._domain is None:
             raise ValueError("no domain given")
         self._mean = mean
-        if covariance is None:
+        if inverse_covariance is None:
             self._op = SquaredNormOperator(self._domain).scale(0.5)
         else:
-            self._op = QuadraticFormOperator(covariance.inverse)
-        self._icov = None if covariance is None else covariance.inverse
+            self._op = QuadraticFormOperator(inverse_covariance)
+        self._icov = None if inverse_covariance is None else inverse_covariance
 
     def _checkEquivalence(self, newdom):
         newdom = makeDomain(newdom)
@@ -191,7 +190,12 @@ class PoissonianEnergy(EnergyOperator):
 
     def apply(self, x):
         self._check_input(x)
-        res = x.sum() - x.log().vdot(self._d)
+        res = x.sum()
+        tmp = res.val.local_data if isinstance(res, Linearization) else res
+        # if we have no infinity here, we can continue with the calculation;
+        # otherwise we know that the result must also be infinity
+        if not np.isinf(tmp):
+            res = res - x.log().vdot(self._d)
         if not isinstance(x, Linearization):
             return Field.scalar(res)
         if not x.want_metric:

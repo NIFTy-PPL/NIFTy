@@ -34,22 +34,10 @@ def _get_rtol(tp):
 pmp = pytest.mark.parametrize
 dtype = list2fixture([np.float64, np.float32, np.complex64, np.complex128])
 op = list2fixture([ift.HartleyOperator, ift.FFTOperator])
-fftw = list2fixture([False, True])
-
-
-def test_switch():
-    ift.fft.enable_fftw()
-    assert_(ift.fft._use_fftw is True)
-    ift.fft.disable_fftw()
-    assert_(ift.fft._use_fftw is False)
-    ift.fft.enable_fftw()
-    assert_(ift.fft._use_fftw is True)
 
 
 @pmp('d', [0.1, 1, 3.7])
-def test_fft1D(d, dtype, op, fftw):
-    if fftw:
-        ift.fft.enable_fftw()
+def test_fft1D(d, dtype, op):
     dim1 = 16
     tol = _get_rtol(dtype)
     a = ift.RGSpace(dim1, distances=d)
@@ -69,16 +57,16 @@ def test_fft1D(d, dtype, op, fftw):
         domain=a, random_type='normal', std=7, mean=3, dtype=dtype)
     out = fft.inverse_times(fft.times(inp))
     assert_allclose(inp.local_data, out.local_data, rtol=tol, atol=tol)
-    ift.fft.disable_fftw()
 
 
 @pmp('dim1', [12, 15])
 @pmp('dim2', [9, 12])
 @pmp('d1', [0.1, 1, 3.7])
 @pmp('d2', [0.4, 1, 2.7])
-def test_fft2D(dim1, dim2, d1, d2, dtype, op, fftw):
-    if fftw:
-        ift.fft.enable_fftw()
+@pmp('nthreads', [0, 1, 2, 3, 4])
+def test_fft2D(dim1, dim2, d1, d2, dtype, op, nthreads):
+    ift.fft.set_nthreads(nthreads)
+    assert_(ift.fft.nthreads() == nthreads)
     tol = _get_rtol(dtype)
     a = ift.RGSpace([dim1, dim2], distances=[d1, d2])
     b = ift.RGSpace(
@@ -97,13 +85,11 @@ def test_fft2D(dim1, dim2, d1, d2, dtype, op, fftw):
         domain=a, random_type='normal', std=7, mean=3, dtype=dtype)
     out = fft.inverse_times(fft.times(inp))
     assert_allclose(inp.local_data, out.local_data, rtol=tol, atol=tol)
-    ift.fft.disable_fftw()
+    ift.fft.set_nthreads(1)
 
 
 @pmp('index', [0, 1, 2])
-def test_composed_fft(index, dtype, op, fftw):
-    if fftw:
-        ift.fft.enable_fftw()
+def test_composed_fft(index, dtype, op):
     tol = _get_rtol(dtype)
     a = [a1, a2,
          a3] = [ift.RGSpace((32,)),
@@ -115,7 +101,6 @@ def test_composed_fft(index, dtype, op, fftw):
         domain=(a1, a2, a3), random_type='normal', std=7, mean=3, dtype=dtype)
     out = fft.inverse_times(fft.times(inp))
     assert_allclose(inp.local_data, out.local_data, rtol=tol, atol=tol)
-    ift.fft.disable_fftw()
 
 
 @pmp('space', [
@@ -123,9 +108,7 @@ def test_composed_fft(index, dtype, op, fftw):
     ift.RGSpace((15, 27), distances=(.7, .33), harmonic=True),
     ift.RGSpace(73, distances=0.5643)
 ])
-def test_normalisation(space, dtype, op, fftw):
-    if fftw:
-        ift.fft.enable_fftw()
+def test_normalisation(space, dtype, op):
     tol = 10*_get_rtol(dtype)
     cospace = space.get_default_codomain()
     fft = op(space, cospace)
@@ -138,4 +121,3 @@ def test_normalisation(space, dtype, op, fftw):
     assert_allclose(
         inp.to_global_data()[zero_idx], out.integrate(), rtol=tol, atol=tol)
     assert_allclose(out.local_data, out2.local_data, rtol=tol, atol=tol)
-    ift.fft.disable_fftw()

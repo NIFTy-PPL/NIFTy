@@ -87,7 +87,7 @@ class ScalingOperator(EndomorphicOperator):
         fct = self._factor
         if (fct.imag != 0. or fct.real < 0. or
                 (fct.real == 0. and from_inverse)):
-                    raise ValueError("operator not positive definite")
+            raise ValueError("operator not positive definite")
         return 1./np.sqrt(fct) if from_inverse else np.sqrt(fct)
 
 #     def process_sample(self, samp, from_inverse):

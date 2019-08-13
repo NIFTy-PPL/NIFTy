@@ -23,23 +23,23 @@ import nifty5 as ift
 
 def test_simplification():
     from nifty5.operators.operator import _ConstantOperator
-    f1 = ift.Field.full(ift.RGSpace(10),2.)
+    f1 = ift.Field.full(ift.RGSpace(10), 2.)
     op = ift.FFTOperator(f1.domain)
     _, op2 = op.simplify_for_constant_input(f1)
     assert_equal(isinstance(op2, _ConstantOperator), True)
     assert_allclose(op(f1).local_data, op2(f1).local_data)
 
     dom = {"a": ift.RGSpace(10)}
-    f1 = ift.full(dom,2.)
+    f1 = ift.full(dom, 2.)
     op = ift.FFTOperator(f1.domain["a"]).ducktape("a")
     _, op2 = op.simplify_for_constant_input(f1)
     assert_equal(isinstance(op2, _ConstantOperator), True)
     assert_allclose(op(f1).local_data, op2(f1).local_data)
 
     dom = {"a": ift.RGSpace(10), "b": ift.RGSpace(5)}
-    f1 = ift.full(dom,2.)
+    f1 = ift.full(dom, 2.)
     pdom = {"a": ift.RGSpace(10)}
-    f2 = ift.full(pdom,2.)
+    f2 = ift.full(pdom, 2.)
     o1 = ift.FFTOperator(f1.domain["a"])
     o2 = ift.FFTOperator(f1.domain["b"])
     op = (o1.ducktape("a").ducktape_left("a") +

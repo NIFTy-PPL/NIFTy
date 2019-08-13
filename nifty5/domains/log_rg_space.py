@@ -80,8 +80,8 @@ class LogRGSpace(StructuredDomain):
         return np.array(self._t_0)
 
     def __repr__(self):
-        return ("LogRGSpace(shape={}, harmonic={})".format(
-            self.shape, self.harmonic))
+        return ("LogRGSpace(shape={}, bindistances={}, t_0={}, harmonic={})".format(
+            self.shape, self.bindistances, self.t_0, self.harmonic))
 
     def get_default_codomain(self):
         """Returns a :class:`LogRGSpace` object representing the (position or
