@@ -105,6 +105,7 @@ class MetricGaussianKL(Energy):
                 _samples += tuple(-s for s in _samples)
         self._samples = _samples
 
+        # FIXME Use simplify for constant input instead
         self._lin = Linearization.make_partial_var(mean, constants)
         v, g = None, None
         for s in self._samples:
