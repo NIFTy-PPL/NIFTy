@@ -86,11 +86,12 @@ class MetricGaussianKL_MPI(Energy):
             for i in range(lo, hi):
                 if mirror_samples:
                     np.random.seed(i//2+seed_offset)
-                    if i%2 and i-1 >= lo:
+                    if (i % 2) and (i-1 >= lo):
                         _samples.append(-_samples[-1])
 
                     else:
-                        _samples.append(((i%2)*2-1)*met.draw_sample(from_inverse=True))
+                        _samples.append(((i % 2)*2-1) *
+                                        met.draw_sample(from_inverse=True))
                 else:
                     np.random.seed(i)
                     _samples.append(met.draw_sample(from_inverse=True))
@@ -122,7 +123,8 @@ class MetricGaussianKL_MPI(Energy):
     def at(self, position):
         return MetricGaussianKL_MPI(
             position, self._hamiltonian, self._n_samples, self._constants,
-            self._point_estimates, _samples=self._samples, seed_offset=self._seed_offset)
+            self._point_estimates, _samples=self._samples,
+            seed_offset=self._seed_offset)
 
     @property
     def value(self):
