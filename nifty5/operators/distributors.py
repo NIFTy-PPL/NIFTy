@@ -30,7 +30,7 @@ class DOFDistributor(LinearOperator):
     """Operator which distributes actual degrees of freedom (dof) according to
     some distribution scheme into a higher dimensional space. This distribution
     scheme is defined by the dofdex, a degree of freedom index, which
-    associates the entries within the operators domain to locations in its
+    associates the entries within the operator's domain to locations in its
     target. This operator's domain is a DOFSpace, which is defined according to
     the distribution scheme.
 

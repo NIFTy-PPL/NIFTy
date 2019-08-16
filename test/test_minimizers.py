@@ -77,7 +77,6 @@ def test_quadratic_minimization(minimizer, space):
 @pmp('space', spaces)
 def test_WF_curvature(space):
     np.random.seed(42)
-    starting_point = ift.Field.from_random('normal', domain=space)*10
     required_result = ift.full(space, 1.)
 
     s = ift.Field.from_random('uniform', domain=space) + 0.5

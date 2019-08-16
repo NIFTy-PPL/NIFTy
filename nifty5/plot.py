@@ -151,17 +151,17 @@ def _rgb_data(spectral_cube):
         res /= tmp
         return res
 
+    shp = spectral_cube.shape[:-1]+(3,)
     spectral_cube = spectral_cube.reshape((-1, spectral_cube.shape[-1]))
     xyz = getxyz(spectral_cube.shape[-1])
     xyz_data = np.tensordot(spectral_cube, xyz, axes=[-1, -1])
     xyz_data /= xyz_data.max()
     xyz_data = to_logscale(xyz_data, max(1e-3, xyz_data.min()), 1.)
     rgb_data = xyz_data.copy()
-    it = np.nditer(xyz_data[:, 0], flags=['multi_index'])
     for x in range(xyz_data.shape[0]):
         rgb_data[x] = _gammacorr(np.matmul(MATRIX_SRGB_D65, xyz_data[x]))
     rgb_data = rgb_data.clip(0., 1.)
-    return rgb_data.reshape(spectral_cube.shape[:-1]+(-1,))
+    return rgb_data.reshape(shp)
 
 
 def _find_closest(A, target):
@@ -323,7 +323,8 @@ def _plot1D(f, ax, **kwargs):
         plt.yscale(kwargs.pop("yscale", "log"))
         xcoord = dom.k_lengths
         for i, fld in enumerate(f):
-            ycoord = fld.to_global_data()
+            ycoord = fld.to_global_data_rw()
+            ycoord[0] = ycoord[1]
             plt.plot(xcoord, ycoord, label=label[i],
                      linewidth=linewidth[i], alpha=alpha[i])
         _limit_xy(**kwargs)

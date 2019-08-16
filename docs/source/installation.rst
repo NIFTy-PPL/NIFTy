@@ -19,9 +19,9 @@ Support for spherical harmonic transforms is added via::
 
     pip3 install --user git+https://gitlab.mpcdf.mpg.de/ift/pyHealpix.git
 
-Support for the radio interferometry gridder is added via:
+Support for the radio interferometry gridder is added via::
 
-    pip3 install git+https://gitlab.mpcdf.mpg.de/ift/nifty_gridder.git
+    pip3 install --user git+https://gitlab.mpcdf.mpg.de/ift/nifty_gridder.git
 
 MPI support is added via::
 

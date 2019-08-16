@@ -15,19 +15,16 @@
 #
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
 
-import numpy as np
 
-from ..domains.rg_space import RGSpace
-from ..domains.lm_space import LMSpace
-from ..domains.hp_space import HPSpace
+from .. import utilities
+from ..domain_tuple import DomainTuple
 from ..domains.gl_space import GLSpace
+from ..domains.hp_space import HPSpace
+from ..domains.rg_space import RGSpace
+from .diagonal_operator import DiagonalOperator
 from .endomorphic_operator import EndomorphicOperator
 from .harmonic_operators import HarmonicTransformOperator
-from .diagonal_operator import DiagonalOperator
 from .simple_linear_operators import WeightApplier
-from ..domain_tuple import DomainTuple
-from ..field import Field
-from .. import utilities
 
 
 def FuncConvolutionOperator(domain, func, space=None):
@@ -77,4 +74,25 @@ def _ConvolutionOperator(domain, kernel, space=None):
     HT = HarmonicTransformOperator(lm, domain[space], space)
     diag = DiagonalOperator(kernel*domain[space].total_volume, lm, (space,))
     wgt = WeightApplier(domain, space, 1)
-    return HT(diag(HT.adjoint(wgt)))
+    op = HT(diag(HT.adjoint(wgt)))
+    return _ApplicationWithoutMeanOperator(op)
+
+
+class _ApplicationWithoutMeanOperator(EndomorphicOperator):
+    def __init__(self, op):
+        self._capability = self.TIMES | self.ADJOINT_TIMES
+        if op.domain != op.target:
+            raise TypeError("Operator needs to be endomorphic")
+        self._domain = op.domain
+        self._op = op
+
+    def apply(self, x, mode):
+        self._check_input(x, mode)
+        mean = x.mean()
+        return mean + self._op.apply(x - mean, mode)
+
+    def __repr__(self):
+        from ..utilities import indent
+        return "\n".join((
+            "_ApplicationWithoutMeanOperator:",
+            indent(self._op.__repr__())))
