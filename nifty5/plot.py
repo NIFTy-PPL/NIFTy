@@ -482,8 +482,8 @@ class Plot(object):
         alpha: float or list of floats
             Transparency value.
         """
-        from .multi_domain import MultiDomain
-        if isinstance(f.domain, MultiDomain):
+        from .multi_field import MultiField
+        if isinstance(f, MultiField):
             for kk in f.domain.keys():
                 self._plots.append(f[kk])
                 mykwargs = kwargs.copy()
