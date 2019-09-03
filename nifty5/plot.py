@@ -482,6 +482,17 @@ class Plot(object):
         alpha: float or list of floats
             Transparency value.
         """
+        from .multi_domain import MultiDomain
+        if isinstance(f.domain, MultiDomain):
+            for kk in f.domain.keys():
+                self._plots.append(f[kk])
+                mykwargs = kwargs.copy()
+                if 'title' in kwargs:
+                    mykwargs['title'] = "{} {}".format(kk, kwargs['title'])
+                else:
+                    mykwargs['title'] = "{}".format(kk)
+                self._kwargs.append(mykwargs)
+            return
         self._plots.append(f)
         self._kwargs.append(kwargs)
 
