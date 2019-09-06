@@ -300,10 +300,9 @@ class AbsDeltaEnergyController(IterationController):
 
     Parameters
     ----------
-    tol_rel_deltaE : float
-        If the difference between the last and current energies divided by
-        the current energy is below this value, the convergence counter will
-        be increased in this iteration.
+    deltaE : float
+        If the difference between the last and current energies is below this
+        value, the convergence counter will be increased in this iteration.
     convergence_level : int, default=1
         The number which the convergence counter must reach before the
         iteration is considered to be converged
