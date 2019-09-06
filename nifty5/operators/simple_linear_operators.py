@@ -326,7 +326,7 @@ class NullOperator(LinearOperator):
         return self._nullfield(self._tgt(mode))
 
 
-class _PartialExtractor(LinearOperator):
+class PartialExtractor(LinearOperator):
     def __init__(self, domain, target):
         if not isinstance(domain, MultiDomain):
             raise TypeError("MultiDomain expected")
