@@ -345,7 +345,7 @@ class AbsDeltaEnergyController(IterationController):
         # report
         if self._name is not None:
             logger.info(
-                "{}: Iteration #{} energy={:.6E} diff={:.6E} crit={:.6E} clvl={}"
+                "{}: Iteration #{} energy={:.6E} diff={:.6E} crit={:.1E} clvl={}"
                 .format(self._name, self._itcount, Eval, diff, self._deltaE,
                         self._ccount))
 
