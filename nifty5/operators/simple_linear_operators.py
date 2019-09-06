@@ -335,7 +335,7 @@ class PartialExtractor(LinearOperator):
         self._domain = domain
         self._target = target
         for key in self._target.keys():
-            if not (self._domain[key] is not self._target[key]):
+            if self._domain[key] is not self._target[key]:
                 raise ValueError("domain mismatch")
         self._capability = self.TIMES | self.ADJOINT_TIMES
 
