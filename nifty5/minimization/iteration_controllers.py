@@ -15,10 +15,10 @@
 #
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
 
+import numpy as np
+
 from ..logger import logger
 from ..utilities import NiftyMeta
-import numpy as np
-from time import time
 
 
 class IterationController(metaclass=NiftyMeta):
@@ -289,12 +289,11 @@ class AbsDeltaEnergyController(IterationController):
     """
 
     def __init__(self, deltaE, convergence_level=1, iteration_limit=None,
-                 name=None, file_name=None):
+                 name=None):
         self._deltaE = deltaE
         self._convergence_level = convergence_level
         self._iteration_limit = iteration_limit
         self._name = name
-        self._file_name = file_name
 
     def start(self, energy):
         self._itcount = -1
@@ -333,10 +332,5 @@ class AbsDeltaEnergyController(IterationController):
                 return self.CONVERGED
         if self._ccount >= self._convergence_level:
             return self.CONVERGED
-
-        # Write energy to file
-        if self._file_name is not None:
-            with open(self._file_name, 'a+') as f:
-                f.write('{} {} {}\n'.format(time(), energy.value, diff))
 
         return self.CONTINUE
