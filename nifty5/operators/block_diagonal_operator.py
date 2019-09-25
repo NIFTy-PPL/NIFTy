@@ -30,7 +30,7 @@ class BlockDiagonalOperator(EndomorphicOperator):
         Domain and target of the operator.
     operators : dict
         Dictionary with subdomain names as keys and :class:`LinearOperator` s
-        as items. Any item None will be treated as unity operator.
+        as items. Any missing item will be treated as unity operator.
     """
     def __init__(self, domain, operators):
         if not isinstance(domain, MultiDomain):
