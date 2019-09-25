@@ -22,7 +22,6 @@ from ..multi_field import MultiField
 from .endomorphic_operator import EndomorphicOperator
 
 
-
 class BlockDiagonalOperator(EndomorphicOperator):
     """
     Parameters
@@ -51,9 +50,11 @@ class BlockDiagonalOperator(EndomorphicOperator):
 
     def draw_sample(self, from_inverse=False, dtype=np.float64):
         from ..sugar import from_random
-        val = tuple(op.draw_sample(from_inverse, dtype)
-                    if op is not None else from_random('normal', self._domain[key], dtype=dtype) 
-                    for op, key in zip(self._ops, self._domain.keys()))
+        val = tuple(
+            op.draw_sample(from_inverse, dtype)
+            if op is not None
+            else from_random('normal', self._domain[key], dtype=dtype)
+            for op, key in zip(self._ops, self._domain.keys()))
         return MultiField(self._domain, val)
 
     def _combine_chain(self, op):
