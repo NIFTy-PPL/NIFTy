@@ -15,6 +15,8 @@
 #
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
 
+import numpy as np
+
 from ..multi_domain import MultiDomain
 from ..multi_field import MultiField
 from .endomorphic_operator import EndomorphicOperator
@@ -46,11 +48,10 @@ class BlockDiagonalOperator(EndomorphicOperator):
                     for op, v in zip(self._ops, x.values()))
         return MultiField(self._domain, val)
 
-#    def draw_sample(self, from_inverse=False, dtype=np.float64):
-#        dtype = MultiField.build_dtype(dtype, self._domain)
-#        val = tuple(op.draw_sample(from_inverse, dtype)
-#                    for op in self._op)
-#        return MultiField(self._domain, val)
+    def draw_sample(self, from_inverse=False, dtype=np.float64):
+        val = tuple(op.draw_sample(from_inverse, dtype)
+                    if op is not None else None for op in self._ops)
+        return MultiField(self._domain, val)
 
     def _combine_chain(self, op):
         if self._domain != op._domain:

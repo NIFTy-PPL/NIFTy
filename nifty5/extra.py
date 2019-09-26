@@ -70,6 +70,9 @@ def _full_implementation(op, domain_dtype, target_dtype, atol, rtol,
 
 
 def _check_linearity(op, domain_dtype, atol, rtol):
+    needed_cap = op.TIMES
+    if (op.capability & needed_cap) != needed_cap:
+        return
     fld1 = from_random("normal", op.domain, dtype=domain_dtype)
     fld2 = from_random("normal", op.domain, dtype=domain_dtype)
     alpha = np.random.random()  # FIXME: this can break badly with MPI!
@@ -121,6 +124,9 @@ def consistency_check(op, domain_dtype=np.float64, target_dtype=np.float64,
         raise TypeError('This test tests only linear operators.')
     _domain_check(op)
     _check_linearity(op, domain_dtype, atol, rtol)
+    _check_linearity(op.adjoint, target_dtype, atol, rtol)
+    _check_linearity(op.inverse, target_dtype, atol, rtol)
+    _check_linearity(op.adjoint.inverse, domain_dtype, atol, rtol)
     _full_implementation(op, domain_dtype, target_dtype, atol, rtol,
                          only_r_linear)
     _full_implementation(op.adjoint, target_dtype, domain_dtype, atol, rtol,

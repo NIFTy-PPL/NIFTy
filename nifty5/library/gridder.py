@@ -15,12 +15,13 @@
 #
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
 
+import numpy as np
+
 from ..domain_tuple import DomainTuple
 from ..domains.rg_space import RGSpace
 from ..domains.unstructured_domain import UnstructuredDomain
 from ..operators.linear_operator import LinearOperator
 from ..sugar import from_global_data, makeDomain
-import numpy as np
 
 
 class GridderMaker(object):
