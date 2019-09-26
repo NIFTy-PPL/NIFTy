@@ -181,7 +181,7 @@ class RGSpace(StructuredDomain):
         Returns
         -------
         RGSpace
-            The parter domain
+            The partner domain
         """
         distances = 1. / (np.array(self.shape)*np.array(self.distances))
         return RGSpace(self.shape, distances, not self.harmonic)
