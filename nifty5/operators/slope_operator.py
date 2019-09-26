@@ -58,7 +58,7 @@ class SlopeOperator(LinearOperator):
         self._check_input(x, mode)
         inp = x.to_global_data()
         n = self._domain.axes[self._space][0]
-        N = self._domain.axes[-1][0]
+        N = self._domain.axes[-1][-1]
         s0 = (slice(None),)*n + (slice(None,1),) + (slice(None),)*(N-n)
         s1= (slice(None),)*n + (slice(1,None),) + (slice(None),)*(N-n)
         spos = (None,)*n + (slice(None),) + (None,)*(N-n)
