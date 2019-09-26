@@ -85,7 +85,8 @@ class DescentMinimizer(Minimizer):
 
             # compute a step length that reduces energy.value sufficiently
             new_energy, success = self.line_searcher.perform_line_search(
-                energy=energy, pk=self.get_descent_direction(energy, f_k_minus_1),
+                energy=energy,
+                pk=self.get_descent_direction(energy, f_k_minus_1),
                 f_k_minus_1=f_k_minus_1)
             if not success:
                 self.reset()
@@ -109,7 +110,7 @@ class DescentMinimizer(Minimizer):
     def reset(self):
         pass
 
-    def get_descent_direction(self, energy):
+    def get_descent_direction(self, energy, old_value=None):
         """Calculates the next descent direction.
 
         Parameters
@@ -117,6 +118,10 @@ class DescentMinimizer(Minimizer):
         energy : Energy
             An instance of the Energy class which shall be minimized. The
             position of `energy` is used as the starting point of minimization.
+
+        old_value : float
+            if provided, this must be the value of the energy in the previous
+            step.
 
         Returns
         -------
@@ -133,7 +138,7 @@ class SteepestDescent(DescentMinimizer):
     functional's gradient for minimization.
     """
 
-    def get_descent_direction(self, energy, _):
+    def get_descent_direction(self, energy, _=None):
         return -energy.gradient
 
 
@@ -150,7 +155,7 @@ class RelaxedNewton(DescentMinimizer):
         super(RelaxedNewton, self).__init__(controller=controller,
                                             line_searcher=line_searcher)
 
-    def get_descent_direction(self, energy, _):
+    def get_descent_direction(self, energy, _=None):
         return -energy.metric.inverse_times(energy.gradient)
 
 
@@ -171,12 +176,12 @@ class NewtonCG(DescentMinimizer):
         self._nreset = nreset
         self._file_name = file_name
 
-    def get_descent_direction(self, energy, f_k_minus_1):
-        if f_k_minus_1 is None:
+    def get_descent_direction(self, energy, old_value=None):
+        if old_value is None:
             ic = GradientNormController(iteration_limit=5)
         else:
             alpha = 0.1
-            ediff = alpha*(f_k_minus_1 - energy.value)
+            ediff = alpha*(old_value-energy.value)
             ic = AbsDeltaEnergyController(
                 ediff, iteration_limit=200, name=self._name,
                 file_name=self._file_name)
@@ -205,7 +210,7 @@ class L_BFGS(DescentMinimizer):
         self._s = [None]*self.max_history_length
         self._y = [None]*self.max_history_length
 
-    def get_descent_direction(self, energy, _):
+    def get_descent_direction(self, energy, _=None):
         x = energy.position
         s = self._s
         y = self._y
@@ -268,7 +273,7 @@ class VL_BFGS(DescentMinimizer):
     def reset(self):
         self._information_store = None
 
-    def get_descent_direction(self, energy, _):
+    def get_descent_direction(self, energy, _=None):
         x = energy.position
         gradient = energy.gradient
         # initialize the information store if it doesn't already exist
