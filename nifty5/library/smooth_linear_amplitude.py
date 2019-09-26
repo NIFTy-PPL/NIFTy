@@ -25,6 +25,7 @@ from ..operators.exp_transform import ExpTransform
 from ..operators.qht_operator import QHTOperator
 from ..operators.slope_operator import SlopeOperator
 from ..operators.symmetrizing_operator import SymmetrizingOperator
+from ..utilities import infer_space
 from ..sugar import makeOp
 
 
@@ -32,7 +33,7 @@ def _ceps_kernel(k, a, k0):
     return (a/(1 + np.sum((k.T/k0)**2, axis=-1).T))**2
 
 
-def CepstrumOperator(target, a, k0):
+def CepstrumOperator(target, a, k0, space = 0):
     """Turns a white Gaussian random field into a smooth field on a LogRGSpace.
 
     Composed out of three operators:
@@ -73,40 +74,46 @@ def CepstrumOperator(target, a, k0):
         each axis. If float then the strength is the same along each axis.
         Larger values result in a weaker constraining prior.
     """
-    a = float(a)
     target = DomainTuple.make(target)
+    space = infer_space(target, space)
+
+    a = float(a)
     if a <= 0:
         raise ValueError
-    if len(target) > 1 or target[0].harmonic:
+    if target[space].harmonic:
         raise TypeError
     if isinstance(k0, (float, int)):
-        k0 = np.array([k0]*len(target.shape))
+        k0 = np.array([k0]*len(target[space].shape))
     else:
         k0 = np.array(k0)
-    if len(k0) != len(target.shape):
+    if len(k0) != len(target[space].shape):
         raise ValueError
     if np.any(np.array(k0) <= 0):
         raise ValueError
+   
 
-    qht = QHTOperator(target)
-    dom = qht.domain[0]
-    sym = SymmetrizingOperator(target)
+    qht = QHTOperator(target, space)
+    dom = qht.domain
+    sym = SymmetrizingOperator(target, space)
 
     # Compute cepstrum field
-    dim = len(dom.shape)
+    dim = len(dom[space].shape)
+    n = dom.axes[space][0]
+    N = dom.axes[-1][-1]
     shape = dom.shape
-    q_array = dom.get_k_array()
+    sl_extender = (slice(None),) + (None,)*n + (slice(None),)*dim + (None,)*(N-n-dim+1)
+    q_array = dom[space].get_k_array()[sl_extender]
+
     # Fill all non-zero modes
-    no_zero_modes = (slice(1, None),)*dim
-    ks = q_array[(slice(None),) + no_zero_modes]
+    no_zero_modes = (slice(None),)*(n) + (slice(1, None),)*dim + (slice(None),)*(N-n-dim+1)
+    ks = q_array[(slice(None),)+no_zero_modes]
     cepstrum_field = np.zeros(shape)
     cepstrum_field[no_zero_modes] = _ceps_kernel(ks, a, k0)
     # Fill zero-mode subspaces
     for i in range(dim):
-        fst_dims = (slice(None),)*i
-        sl = fst_dims + (slice(1, None),)
-        sl2 = fst_dims + (0,)
-        cepstrum_field[sl2] = np.sum(cepstrum_field[sl], axis=i)
+        sl = (slice(None),)*(n+i) + (slice(1, None),) + (slice(None),)*(N-n-i-1)
+        sl2 = (slice(None),)*(n+i) + (0,) + (slice(None),)*(N-n-i-1)
+        cepstrum_field[sl2] = np.sum(cepstrum_field[sl], axis=n+i)
     cepstrum = Field.from_global_data(dom, cepstrum_field)
 
     return sym @ qht @ makeOp(cepstrum.sqrt())
