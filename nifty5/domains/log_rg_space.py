@@ -93,7 +93,7 @@ class LogRGSpace(StructuredDomain):
         Returns
         -------
         LogRGSpace
-            The parter domain
+            The partner domain
         """
         codomain_bindistances = 1./(self.bindistances*self.shape)
         return LogRGSpace(self.shape, codomain_bindistances, self._t_0, not self.harmonic)
