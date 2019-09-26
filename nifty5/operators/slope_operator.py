@@ -22,6 +22,7 @@ from ..domains.log_rg_space import LogRGSpace
 from ..domains.unstructured_domain import UnstructuredDomain
 from ..field import Field
 from .linear_operator import LinearOperator
+from ..utilities import infer_space
 
 
 class SlopeOperator(LinearOperator):
@@ -40,28 +41,33 @@ class SlopeOperator(LinearOperator):
         The target of the operator which needs to be one-dimensional.
     """
 
-    def __init__(self, target):
+    def __init__(self, target, space = 0):
         self._target = DomainTuple.make(target)
-        if len(self._target) > 1:
+        self._space = infer_space(self._target,space)
+        if not isinstance(self._target[self._space], LogRGSpace):
             raise TypeError
-        if len(self._target[0].shape) > 1:
-            raise TypeError
-        if not isinstance(self._target[0], LogRGSpace):
-            raise TypeError
-        self._domain = DomainTuple.make(UnstructuredDomain((2,)))
+
+        domain = list(self._target[:])
+        domain[self._space] = UnstructuredDomain((2,))
+        self._domain = DomainTuple.make(domain)
         self._capability = self.TIMES | self.ADJOINT_TIMES
-        pos = self.target[0].get_k_array() - self.target[0].t_0[0]
+        pos = self.target[self._space].get_k_array() - self.target[self._space].t_0[0]
         self._pos = pos[0, 1:]
 
     def apply(self, x, mode):
         self._check_input(x, mode)
         inp = x.to_global_data()
+        n = self._domain.axes[self._space][0]
+        N = self._domain.axes[-1][0]
+        s0 = (slice(None),)*n + (slice(None,1),) + (slice(None),)*(N-n)
+        s1= (slice(None),)*n + (slice(1,None),) + (slice(None),)*(N-n)
+        spos = (None,)*n + (slice(None),) + (None,)*(N-n)
         if mode == self.TIMES:
-            res = np.empty(self.target.shape, dtype=x.dtype)
-            res[0] = 0
-            res[1:] = inp[1] + inp[0]*self._pos
+            res = np.empty(self._target.shape, dtype = x.dtype)
+            res[s0] = 0
+            res[s1] = inp[s1] + inp[s0]*self._pos[spos]
         else:
-            res = np.array(
-                [np.sum(self._pos*inp[1:]),
-                 np.sum(inp[1:])], dtype=x.dtype)
+            res = np.empty(self._domain.shape, dtype = x.dtype)
+            res[s0] = np.sum(self._pos[spos]*inp[s1], axis = n, keepdims = True)
+            res[s1] = np.sum(inp[s1], axis = n, keepdims = True)
         return Field.from_global_data(self._tgt(mode), res)
