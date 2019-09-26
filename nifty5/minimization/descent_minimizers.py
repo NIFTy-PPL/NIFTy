@@ -18,8 +18,14 @@
 import numpy as np
 
 from ..logger import logger
+from ..probing import approximation2endo
+from ..sugar import makeOp
+from .conjugate_gradient import ConjugateGradient
+from .iteration_controllers import (AbsDeltaEnergyController,
+                                    GradientNormController)
 from .line_search import LineSearch
 from .minimizer import Minimizer
+from .quadratic_energy import QuadraticEnergy
 
 
 class DescentMinimizer(Minimizer):
@@ -79,7 +85,8 @@ class DescentMinimizer(Minimizer):
 
             # compute a step length that reduces energy.value sufficiently
             new_energy, success = self.line_searcher.perform_line_search(
-                energy=energy, pk=self.get_descent_direction(energy),
+                energy=energy,
+                pk=self.get_descent_direction(energy, f_k_minus_1),
                 f_k_minus_1=f_k_minus_1)
             if not success:
                 self.reset()
@@ -103,7 +110,7 @@ class DescentMinimizer(Minimizer):
     def reset(self):
         pass
 
-    def get_descent_direction(self, energy):
+    def get_descent_direction(self, energy, old_value=None):
         """Calculates the next descent direction.
 
         Parameters
@@ -111,6 +118,10 @@ class DescentMinimizer(Minimizer):
         energy : Energy
             An instance of the Energy class which shall be minimized. The
             position of `energy` is used as the starting point of minimization.
+
+        old_value : float
+            if provided, this must be the value of the energy in the previous
+            step.
 
         Returns
         -------
@@ -127,7 +138,7 @@ class SteepestDescent(DescentMinimizer):
     functional's gradient for minimization.
     """
 
-    def get_descent_direction(self, energy):
+    def get_descent_direction(self, energy, _=None):
         return -energy.gradient
 
 
@@ -144,7 +155,7 @@ class RelaxedNewton(DescentMinimizer):
         super(RelaxedNewton, self).__init__(controller=controller,
                                             line_searcher=line_searcher)
 
-    def get_descent_direction(self, energy):
+    def get_descent_direction(self, energy, _=None):
         return -energy.metric.inverse_times(energy.gradient)
 
 
@@ -154,44 +165,32 @@ class NewtonCG(DescentMinimizer):
     Algorithm derived from SciPy sources.
     """
 
-    def __init__(self, controller, line_searcher=None):
+    def __init__(self, controller, napprox=0, line_searcher=None, name=None,
+                 nreset=20, max_cg_iterations=200, energy_reduction_factor=0.1):
         if line_searcher is None:
             line_searcher = LineSearch(preferred_initial_step_size=1.)
         super(NewtonCG, self).__init__(controller=controller,
                                        line_searcher=line_searcher)
+        self._napprox = napprox
+        self._name = name
+        self._nreset = nreset
+        self._max_cg_iterations = max_cg_iterations
+        self._alpha = energy_reduction_factor
 
-    def get_descent_direction(self, energy):
-        float64eps = np.finfo(np.float64).eps
-        grad = energy.gradient
-        maggrad = abs(grad).sum()
-        termcond = np.min([0.5, np.sqrt(maggrad)]) * maggrad
-        xsupi = energy.position*0
-        ri = grad
-        psupi = -ri
-        dri0 = ri.vdot(ri)
-
-        i = 0
-        while True:
-            if abs(ri).sum() <= termcond:
-                return xsupi
-            Ap = energy.apply_metric(psupi)
-            # check curvature
-            curv = psupi.vdot(Ap)
-            if 0 <= curv <= 3*float64eps:
-                return xsupi
-            elif curv < 0:
-                return xsupi if i > 0 else (dri0/curv) * grad
-            alphai = dri0/curv
-            xsupi = xsupi + alphai*psupi
-            ri = ri + alphai*Ap
-            dri1 = ri.vdot(ri)
-            psupi = (dri1/dri0)*psupi - ri
-            i += 1
-            dri0 = dri1  # update numpy.dot(ri,ri) for next time.
-
-        # curvature keeps increasing, bail out
-        raise ValueError("Warning: CG iterations didn't converge. "
-                         "The Hessian is not positive definite.")
+    def get_descent_direction(self, energy, old_value=None):
+        if old_value is None:
+            ic = GradientNormController(iteration_limit=5)
+        else:
+            ediff = self._alpha*(old_value-energy.value)
+            ic = AbsDeltaEnergyController(
+                ediff, iteration_limit=self._max_cg_iterations, name=self._name)
+        e = QuadraticEnergy(0*energy.position, energy.metric, energy.gradient)
+        p = None
+        if self._napprox > 1:
+            unscmet, sc = energy.unscaled_metric()
+            p = makeOp(approximation2endo(unscmet, self._napprox)*sc).inverse
+        e, conv = ConjugateGradient(ic, nreset=self._nreset)(e, p)
+        return -e.position
 
 
 class L_BFGS(DescentMinimizer):
@@ -210,7 +209,7 @@ class L_BFGS(DescentMinimizer):
         self._s = [None]*self.max_history_length
         self._y = [None]*self.max_history_length
 
-    def get_descent_direction(self, energy):
+    def get_descent_direction(self, energy, _=None):
         x = energy.position
         s = self._s
         y = self._y
@@ -273,7 +272,7 @@ class VL_BFGS(DescentMinimizer):
     def reset(self):
         self._information_store = None
 
-    def get_descent_direction(self, energy):
+    def get_descent_direction(self, energy, _=None):
         x = energy.position
         gradient = energy.gradient
         # initialize the information store if it doesn't already exist

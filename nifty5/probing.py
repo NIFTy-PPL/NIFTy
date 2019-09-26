@@ -15,9 +15,10 @@
 #
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
 
+from .multi_field import MultiField
 from .operators.endomorphic_operator import EndomorphicOperator
 from .operators.operator import Operator
-from .sugar import from_random
+from .sugar import from_global_data, from_random
 
 
 class StatCalculator(object):
@@ -134,3 +135,16 @@ def probe_diagonal(op, nprobes, random_type="pm1"):
         x = from_random(random_type, op.domain)
         sc.add(op(x).conjugate()*x)
     return sc.mean
+
+
+def approximation2endo(op, nsamples):
+    sc = StatCalculator()
+    for _ in range(nsamples):
+        sc.add(op.draw_sample())
+    approx = sc.var
+    dct = approx.to_dict()
+    for kk in dct:
+        foo = dct[kk].to_global_data_rw()
+        foo[foo == 0] = 1
+        dct[kk] = from_global_data(dct[kk].domain, foo)
+    return MultiField.from_dict(dct)
