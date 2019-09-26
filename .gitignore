@@ -2,6 +2,7 @@
 git_version.py
 
 # custom
+*.txt
 setup.cfg
 .idea
 .DS_Store

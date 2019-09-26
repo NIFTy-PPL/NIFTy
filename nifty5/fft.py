@@ -26,7 +26,7 @@ def nthreads():
 
 def set_nthreads(nthr):
     global _nthreads
-    _nthreads = nthr
+    _nthreads = int(nthr)
 
 
 def fftn(a, axes=None):
