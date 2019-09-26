@@ -96,7 +96,7 @@ class LogRGSpace(StructuredDomain):
             The parter domain
         """
         codomain_bindistances = 1./(self.bindistances*self.shape)
-        return LogRGSpace(self.shape, codomain_bindistances, self._t_0, True)
+        return LogRGSpace(self.shape, codomain_bindistances, self._t_0, not self.harmonic)
 
     def get_k_length_array(self):
         """Generates array of distances to origin of the space.
