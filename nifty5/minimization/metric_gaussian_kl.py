@@ -18,6 +18,8 @@
 from .. import utilities
 from ..linearization import Linearization
 from ..operators.energy_operators import StandardHamiltonian
+from ..probing import approximation2endo
+from ..sugar import makeOp
 from .energy import Energy
 
 
@@ -56,6 +58,9 @@ class MetricGaussianKL(Energy):
         as they are equally legitimate samples. If true, the number of used
         samples doubles. Mirroring samples stabilizes the KL estimate as
         extreme sample variation is counterbalanced. Default is False.
+    napprox : int
+        Number of samples for computing preconditioner for sampling. No
+        preconditioning is done by default.
     _samples : None
         Only a parameter for internal uses. Typically not to be set by users.
 
@@ -67,12 +72,13 @@ class MetricGaussianKL(Energy):
 
     See also
     --------
-    Metric Gaussian Variational Inference (FIXME in preparation)
+    `Metric Gaussian Variational Inference`, Jakob Knollmüller,
+    Torsten A. Enßlin, `<https://arxiv.org/abs/1901.11033>`_
     """
 
     def __init__(self, mean, hamiltonian, n_samples, constants=[],
                  point_estimates=[], mirror_samples=False,
-                 _samples=None):
+                 napprox=0, _samples=None):
         super(MetricGaussianKL, self).__init__(mean)
 
         if not isinstance(hamiltonian, StandardHamiltonian):
@@ -91,12 +97,15 @@ class MetricGaussianKL(Energy):
         if _samples is None:
             met = hamiltonian(Linearization.make_partial_var(
                 mean, point_estimates, True)).metric
+            if napprox > 1:
+                met._approximation = makeOp(approximation2endo(met, napprox))
             _samples = tuple(met.draw_sample(from_inverse=True)
                              for _ in range(n_samples))
             if mirror_samples:
                 _samples += tuple(-s for s in _samples)
         self._samples = _samples
 
+        # FIXME Use simplify for constant input instead
         self._lin = Linearization.make_partial_var(mean, constants)
         v, g = None, None
         for s in self._samples:
@@ -110,11 +119,12 @@ class MetricGaussianKL(Energy):
         self._val = v / len(self._samples)
         self._grad = g * (1./len(self._samples))
         self._metric = None
+        self._napprox = napprox
 
     def at(self, position):
         return MetricGaussianKL(position, self._hamiltonian, 0,
                                 self._constants, self._point_estimates,
-                                _samples=self._samples)
+                                napprox=self._napprox, _samples=self._samples)
 
     @property
     def value(self):
@@ -129,8 +139,12 @@ class MetricGaussianKL(Energy):
             lin = self._lin.with_want_metric()
             mymap = map(lambda v: self._hamiltonian(lin+v).metric,
                         self._samples)
-            self._metric = utilities.my_sum(mymap)
-            self._metric = self._metric.scale(1./len(self._samples))
+            self._unscaled_metric = utilities.my_sum(mymap)
+            self._metric = self._unscaled_metric.scale(1./len(self._samples))
+
+    def unscaled_metric(self):
+        self._get_metric()
+        return self._unscaled_metric, 1/len(self._samples)
 
     def apply_metric(self, x):
         self._get_metric()
