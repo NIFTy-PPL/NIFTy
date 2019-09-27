@@ -105,21 +105,21 @@ def CepstrumOperator(target, a, k0, space = 0):
     q_array = dom[space].get_k_array()[sl_extender]
 
     # Fill all non-zero modes
-    no_zero_modes = (slice(None),)*(n) + (slice(1, None),)*dim + (slice(None),)*(N-n-dim+1)
+    no_zero_modes = (slice(None),)*(n) + (slice(1, None),)*dim
     ks = q_array[(slice(None),)+no_zero_modes]
     cepstrum_field = np.zeros(shape)
     cepstrum_field[no_zero_modes] = _ceps_kernel(ks, a, k0)
     # Fill zero-mode subspaces
     for i in range(dim):
-        sl = (slice(None),)*(n+i) + (slice(1, None),) + (slice(None),)*(N-n-i-1)
-        sl2 = (slice(None),)*(n+i) + (0,) + (slice(None),)*(N-n-i-1)
+        sl = (slice(None),)*(n+i) + (slice(1, None),)
+        sl2 = (slice(None),)*(n+i) + (0,)
         cepstrum_field[sl2] = np.sum(cepstrum_field[sl], axis=n+i)
     cepstrum = Field.from_global_data(dom, cepstrum_field)
 
     return sym @ qht @ makeOp(cepstrum.sqrt())
 
 
-def SLAmplitude(*, target, n_pix, a, k0, sm, sv, im, iv, keys=['tau', 'phi']):
+def SLAmplitude(*, target, n_pix, a, k0, sm, sv, im, iv, keys=['tau', 'phi'], space = 0):
     '''Operator for parametrizing smooth amplitudes (square roots of power
     spectra).
 
@@ -177,38 +177,43 @@ def SLAmplitude(*, target, n_pix, a, k0, sm, sv, im, iv, keys=['tau', 'phi']):
         smooth and a linear part.
     '''
     return LinearSLAmplitude(target=target, n_pix=n_pix, a=a, k0=k0, sm=sm,
-                             sv=sv, im=im, iv=iv, keys=keys).exp()
+                             sv=sv, im=im, iv=iv, keys=keys, space = space).exp()
 
 
 def LinearSLAmplitude(*, target, n_pix, a, k0, sm, sv, im, iv,
-                      keys=['tau', 'phi']):
+                      keys=['tau', 'phi'], space = 0):
     '''LinearOperator for parametrizing smooth log-amplitudes (square roots of
     power spectra).
 
     Logarithm of SLAmplitude
     See documentation of SLAmplitude for more details
     '''
-    if not (isinstance(n_pix, int) and isinstance(target, PowerSpace)):
+    space = infer_space(target, space)
+    if not (isinstance(n_pix, int) and isinstance(target[space], PowerSpace)):
         raise TypeError
 
-    a, k0 = float(a), float(k0)
-    sm, sv, im, iv = float(sm), float(sv), float(im), float(iv)
-    if sv <= 0 or iv <= 0:
+    sm, sv = np.array(sm, dtype = np.float), np.array(sv, dtype = np.float)
+    im, iv = np.array(im, dtype = np.float), np.array(iv, dtype = np.float)
+    if np.any(sv <= 0) or np.any(iv <= 0):
         raise ValueError
 
-    et = ExpTransform(target, n_pix)
-    dom = et.domain[0]
+    et = ExpTransform(target, n_pix, space)
+    dom = et.domain
 
     # Smooth component
-    dct = {'a': a, 'k0': k0}
+    dct = {'a': a, 'k0': k0, 'space': space}
     smooth = CepstrumOperator(dom, **dct).ducktape(keys[0])
 
     # Linear component
-    sl = SlopeOperator(dom)
-    mean = np.array([sm, im + sm*dom.t_0[0]])
+    sl = SlopeOperator(dom, space)
+    n = sl.domain.axes[space][0]
+    N = sl.domain.axes[-1][-1]
+    extender_slice = (np.newaxis,)*n + (slice(None),) + (np.newaxis,)*(N-n)
+    u = np.ones(sl.domain.shape)
+    mean = np.array([sm, im + sm*dom[space].t_0[0]])
     sig = np.array([sv, iv])
-    mean = Field.from_global_data(sl.domain, mean)
-    sig = Field.from_global_data(sl.domain, sig)
+    mean = Field.from_global_data(sl.domain, u*mean[extender_slice])
+    sig = Field.from_global_data(sl.domain, u*sig[extender_slice])
     linear = sl @ Adder(mean) @ makeOp(sig).ducktape(keys[1])
 
     # Combine linear and smooth component
