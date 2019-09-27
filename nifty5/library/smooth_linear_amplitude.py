@@ -188,6 +188,7 @@ def LinearSLAmplitude(*, target, n_pix, a, k0, sm, sv, im, iv,
     Logarithm of SLAmplitude
     See documentation of SLAmplitude for more details
     '''
+    target = DomainTuple.make(target)
     space = infer_space(target, space)
     if not (isinstance(n_pix, int) and isinstance(target[space], PowerSpace)):
         raise TypeError
