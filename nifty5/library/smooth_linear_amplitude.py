@@ -29,8 +29,18 @@ from ..utilities import infer_space
 from ..sugar import makeOp
 
 
+def _parameter_shaper(p, shape):
+    p = np.array(p)
+    if p.shape is shape:
+        return np.asfarray(p)
+    elif p.shape is () or (1,):
+        return np.full(shape, p, dtype = np.float)
+    else:
+        raise TypeError("Shape of parameters cannot be interpreted")
+
+
 def _ceps_kernel(k, a, k0):
-    return (a/(1 + np.sum((k.T/k0)**2, axis=-1).T))**2
+    return (a/(1 + np.sum((k/k0)**2, axis=0)))**2
 
 
 def CepstrumOperator(target, a, k0, space = 0):
@@ -76,33 +86,29 @@ def CepstrumOperator(target, a, k0, space = 0):
     """
     target = DomainTuple.make(target)
     space = infer_space(target, space)
+    dim = len(target[space].shape)
+    shape = [s for i in range(len(target)) if i is not space
+            for s in target[i].shape]
+    a = _parameter_shaper(a, tuple(shape))
+    k0 = _parameter_shaper(k0, tuple([dim,]+shape))
 
-    a = float(a)
-    if a <= 0:
-        raise ValueError
     if target[space].harmonic:
         raise TypeError
-    if isinstance(k0, (float, int)):
-        k0 = np.array([k0]*len(target[space].shape))
-    else:
-        k0 = np.array(k0)
-    if len(k0) != len(target[space].shape):
-        raise ValueError
-    if np.any(np.array(k0) <= 0):
+    if np.any(a <= 0) or np.any(k0 <= 0):
         raise ValueError
    
-
     qht = QHTOperator(target, space)
     dom = qht.domain
     sym = SymmetrizingOperator(target, space)
 
     # Compute cepstrum field
-    dim = len(dom[space].shape)
     n = dom.axes[space][0]
     N = dom.axes[-1][-1]
     shape = dom.shape
     sl_extender = (slice(None),) + (None,)*n + (slice(None),)*dim + (None,)*(N-n-dim+1)
     q_array = dom[space].get_k_array()[sl_extender]
+    a = a[(slice(None),)*n+(None,)*dim]
+    k0 =  k0[(slice(None),)*(1+n)+(None,)*dim]
 
     # Fill all non-zero modes
     no_zero_modes = (slice(None),)*(n) + (slice(1, None),)*dim
@@ -180,16 +186,6 @@ def SLAmplitude(*, target, n_pix, a, k0, sm, sv, im, iv, keys=['tau', 'phi'], sp
                              sv=sv, im=im, iv=iv, keys=keys, space = space).exp()
 
 
-def _get_linear_parameters(p, shape):
-    p = np.array(p)
-    if p.shape is shape:
-        return np.asfarray(p)
-    elif p.shape is () or (1,):
-        return np.full(shape, p, dtype = np.float)
-    else:
-        raise TypeError("Shape of parameters cannot be interpreted")
-
-
 def LinearSLAmplitude(*, target, n_pix, a, k0, sm, sv, im, iv,
                       keys=['tau', 'phi'], space = 0):
     '''LinearOperator for parametrizing smooth log-amplitudes (square roots of
@@ -205,7 +201,7 @@ def LinearSLAmplitude(*, target, n_pix, a, k0, sm, sv, im, iv,
 
     shape = tuple(s for i in range(len(target)) if i is not space
             for s in target[i].shape)
-    sm, sv, im, iv = (_get_linear_parameters(a, shape) for a in (sm, sv, im, iv))
+    sm, sv, im, iv = (_parameter_shaper(a, shape) for a in (sm, sv, im, iv))
     if np.any(sv <= 0) or np.any(iv <= 0):
         raise ValueError
 
@@ -218,15 +214,10 @@ def LinearSLAmplitude(*, target, n_pix, a, k0, sm, sv, im, iv,
 
     # Linear component
     sl = SlopeOperator(dom, space)
-    n = sl.domain.axes[space][0]
-    N = sl.domain.axes[-1][-1]
-    extender_slice = (None,)*n + (slice(None),) + (None,)*(N-n)
-    sl_unity = np.ones(sl.domain.shape)
-    
     mean = np.array([sm, im + sm*dom[space].t_0[0]])
     sig = np.array([sv, iv])
-    mean = Field.from_global_data(sl.domain, np.swapaxes(mean, 0, space))
-    sig = Field.from_global_data(sl.domain, np.swapaxes(sig, 0, space))
+    mean = Field.from_global_data(sl.domain, np.moveaxis(mean, 0, space))
+    sig = Field.from_global_data(sl.domain, np.moveaxis(sig, 0, space))
     linear = sl @ Adder(mean) @ makeOp(sig).ducktape(keys[1])
 
     # Combine linear and smooth component
