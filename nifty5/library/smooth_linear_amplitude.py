@@ -180,6 +180,16 @@ def SLAmplitude(*, target, n_pix, a, k0, sm, sv, im, iv, keys=['tau', 'phi'], sp
                              sv=sv, im=im, iv=iv, keys=keys, space = space).exp()
 
 
+def _get_linear_parameters(p, shape):
+    p = np.array(p)
+    if p.shape is shape:
+        return np.asfarray(p)
+    elif p.shape is () or (1,):
+        return np.full(shape, p, dtype = np.float)
+    else:
+        raise TypeError("Shape of parameters cannot be interpreted")
+
+
 def LinearSLAmplitude(*, target, n_pix, a, k0, sm, sv, im, iv,
                       keys=['tau', 'phi'], space = 0):
     '''LinearOperator for parametrizing smooth log-amplitudes (square roots of
@@ -193,8 +203,9 @@ def LinearSLAmplitude(*, target, n_pix, a, k0, sm, sv, im, iv,
     if not (isinstance(n_pix, int) and isinstance(target[space], PowerSpace)):
         raise TypeError
 
-    sm, sv = np.array(sm, dtype = np.float), np.array(sv, dtype = np.float)
-    im, iv = np.array(im, dtype = np.float), np.array(iv, dtype = np.float)
+    shape = tuple(s for i in range(len(target)) if i is not space
+            for s in target[i].shape)
+    sm, sv, im, iv = (_get_linear_parameters(a, shape) for a in (sm, sv, im, iv))
     if np.any(sv <= 0) or np.any(iv <= 0):
         raise ValueError
 
@@ -209,12 +220,13 @@ def LinearSLAmplitude(*, target, n_pix, a, k0, sm, sv, im, iv,
     sl = SlopeOperator(dom, space)
     n = sl.domain.axes[space][0]
     N = sl.domain.axes[-1][-1]
-    extender_slice = (np.newaxis,)*n + (slice(None),) + (np.newaxis,)*(N-n)
-    u = np.ones(sl.domain.shape)
+    extender_slice = (None,)*n + (slice(None),) + (None,)*(N-n)
+    sl_unity = np.ones(sl.domain.shape)
+    
     mean = np.array([sm, im + sm*dom[space].t_0[0]])
     sig = np.array([sv, iv])
-    mean = Field.from_global_data(sl.domain, u*mean[extender_slice])
-    sig = Field.from_global_data(sl.domain, u*sig[extender_slice])
+    mean = Field.from_global_data(sl.domain, np.swapaxes(mean, 0, space))
+    sig = Field.from_global_data(sl.domain, np.swapaxes(sig, 0, space))
     linear = sl @ Adder(mean) @ makeOp(sig).ducktape(keys[1])
 
     # Combine linear and smooth component
