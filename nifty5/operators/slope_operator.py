@@ -47,7 +47,7 @@ class SlopeOperator(LinearOperator):
         if not isinstance(self._target[self._space], LogRGSpace):
             raise TypeError
 
-        domain = list(self._target[:])
+        domain = [dom for dom in self._target]
         domain[self._space] = UnstructuredDomain((2,))
         self._domain = DomainTuple.make(domain)
         self._capability = self.TIMES | self.ADJOINT_TIMES
