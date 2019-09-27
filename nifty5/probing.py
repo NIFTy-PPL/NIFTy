@@ -138,7 +138,6 @@ def probe_diagonal(op, nprobes, random_type="pm1"):
 
 
 def approximation2endo(op, nsamples):
-    print('Calculate preconditioner')
     sc = StatCalculator()
     for _ in range(nsamples):
         sc.add(op.draw_sample())
