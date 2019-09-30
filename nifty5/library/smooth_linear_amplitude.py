@@ -216,8 +216,9 @@ def LinearSLAmplitude(*, target, n_pix, a, k0, sm, sv, im, iv,
     sl = SlopeOperator(dom, space)
     mean = np.array([sm, im + sm*dom[space].t_0[0]])
     sig = np.array([sv, iv])
-    mean = Field.from_global_data(sl.domain, np.moveaxis(mean, 0, space))
-    sig = Field.from_global_data(sl.domain, np.moveaxis(sig, 0, space))
+    axis = sl.domain.axes[space][0]
+    mean = Field.from_global_data(sl.domain, np.moveaxis(mean, 0, axis))
+    sig = Field.from_global_data(sl.domain, np.moveaxis(sig, 0, axis))
     linear = sl @ Adder(mean) @ makeOp(sig).ducktape(keys[1])
 
     # Combine linear and smooth component
