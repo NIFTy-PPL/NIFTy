@@ -23,7 +23,7 @@ from .energy import Energy
 from mpi4py import MPI
 import numpy as np
 from ..probing import approximation2endo
-from ..sugar import makeOp
+from ..sugar import makeOp, full
 from ..field import Field
 from ..multi_field import MultiField
 
@@ -70,7 +70,7 @@ class KLMetric(EndomorphicOperator):
         return self._KL.apply_metric(x)
 
     def draw_sample(self, from_inverse=False, dtype=np.float64):
-        self._KL.metric_sample(from_inverse, dtype)
+        return self._KL.metric_sample(from_inverse, dtype)
 
 
 
@@ -241,9 +241,9 @@ class MetricGaussianKL_MPI(Energy):
         if from_inverse:
             raise NotImplementedError()
         lin = self._lin.with_want_metric()
-        samp = ift.full(self._hamiltonian.domain, 0.)
-        for s in self._samples:
-            samp = samp + self._hamiltonian(lin+v).metric.draw_sample(dtype)
+        samp = full(self._hamiltonian.domain, 0.)
+        for v in self._samples:
+            samp = samp + self._hamiltonian(lin+v).metric.draw_sample(from_inverse=False, dtype=dtype)
         return allreduce_sum_field(samp)
 
     def metric_sample(self, from_inverse=False, dtype=np.float64):
