@@ -190,8 +190,8 @@ class NewtonCG(DescentMinimizer):
         e = QuadraticEnergy(0*energy.position, energy.metric, energy.gradient)
         p = None
         if self._napprox > 1:
-            unscmet, sc = energy.unscaled_metric()
-            p = makeOp(approximation2endo(unscmet, self._napprox)*sc).inverse
+            met = energy.metric
+            p = makeOp(approximation2endo(met, self._napprox)).inverse
         e, conv = ConjugateGradient(ic, nreset=self._nreset)(e, p)
         return -e.position
 
