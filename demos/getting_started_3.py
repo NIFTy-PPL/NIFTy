@@ -103,9 +103,10 @@ if __name__ == '__main__':
     data = signal_response(mock_position) + N.draw_sample()
 
     # Minimization parameters
-    ic_sampling = ift.GradientNormController(iteration_limit=100)
-    ic_newton = ift.GradInfNormController(
-        name='Newton', tol=1e-7, iteration_limit=35)
+    ic_sampling = ift.AbsDeltaEnergyController(
+        name='Sampling', deltaE=0.05, iteration_limit=100)
+    ic_newton = ift.AbsDeltaEnergyController(
+        name='Newton', deltaE=0.5, iteration_limit=35)
     minimizer = ift.NewtonCG(ic_newton)
 
     # Set up likelihood and information Hamiltonian
