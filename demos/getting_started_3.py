@@ -103,8 +103,7 @@ if __name__ == '__main__':
     data = signal_response(mock_position) + N.draw_sample()
 
     # Minimization parameters
-    ic_sampling = ift.AbsDeltaEnergyController(0.5, convergence_level=5,
-                                               iteration_limit=100)
+    ic_sampling = ift.GradientNormController(iteration_limit=100)
     ic_newton = ift.GradInfNormController(
         name='Newton', tol=1e-7, iteration_limit=35)
     minimizer = ift.NewtonCG(ic_newton)
@@ -129,7 +128,7 @@ if __name__ == '__main__':
     # Draw new samples to approximate the KL five times
     for i in range(5):
         # Draw new samples and minimize KL
-        KL = ift.MetricGaussianKL(mean, H, N_samples, napprox=20)
+        KL = ift.MetricGaussianKL(mean, H, N_samples)
         KL, convergence = minimizer(KL)
         mean = KL.position
 
