@@ -23,27 +23,38 @@ import nifty5 as ift
 
 @pytest.mark.parametrize('power_space', [
     ift.PowerSpace(ift.RGSpace((4, 4), harmonic=True)),
-    ift.PowerSpace(ift.LMSpace(5)),
+    ift.PowerSpace(ift.LMSpace(5))
 ])
-
 @pytest.mark.parametrize('seed', [13, 2])
-
 @pytest.mark.parametrize('space', [None, 0, 1, 2])
-
 def test_SLAmplitude(power_space, seed, space):
     np.random.seed(seed)
-    domains = [ift.UnstructuredDomain([2,2]), ift.RGSpace(2)]
+    domains = [ift.UnstructuredDomain([2, 2]), ift.RGSpace(2)]
     if space is None:
         ps = power_space
-        dct = { 'target': ps, 'n_pix': 32,
-               'a': 1.5,  'k0': 5,  'sm': -2,  'sv': 0.2, 'im':  0, 'iv': .02 }
+        dct = {
+            'target': ps,
+            'n_pix': 32,
+            'a': 1.5,
+            'k0': 5,
+            'sm': -2,
+            'sv': 0.2,
+            'im': 0,
+            'iv': .02
+        }
     else:
         domains.insert(space, power_space)
         ps = ift.makeDomain(domains)
-        dct = { 'target': ps, 'n_pix': 32,
-            'a': np.ones([2,2,2]),  'k0': 5,
-            'sm': [[[-2, -3],[-1, -1]], [[-2, -3], [-2, -1]]], 'sv': 0.2, 'im':  0, 'iv': .02 }
-    A = ift.SLAmplitude(**dct, space = space)
+        dct = {
+            'target': ps,
+            'n_pix': 32,
+            'a': np.ones([2, 2, 2]),
+            'k0': 5,
+            'sm': [[[-2, -3], [-1, -1]], [[-2, -3], [-2, -1]]],
+            'sv': 0.2,
+            'im': 0,
+            'iv': .02
+        }
+    A = ift.SLAmplitude(**dct, space=space)
     x = ift.from_random('normal', A.domain)
     ift.extra.check_jacobian_consistency(A, x)
-    #assert_(A(x) is not None)
