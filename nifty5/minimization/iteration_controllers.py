@@ -15,8 +15,6 @@
 #
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
 
-from time import time
-
 import numpy as np
 
 from ..logger import logger
@@ -92,43 +90,33 @@ class GradientNormController(IterationController):
     name : str, optional
         if supplied, this string and some diagnostic information will be
         printed after every iteration
-    p : float
-        Order of norm, default is the 2-Norm (p=2)
     """
 
     def __init__(self, tol_abs_gradnorm=None, tol_rel_gradnorm=None,
-                 convergence_level=1, iteration_limit=None, name=None, p=2,
-                 file_name=None):
+                 convergence_level=1, iteration_limit=None, name=None):
         self._tol_abs_gradnorm = tol_abs_gradnorm
         self._tol_rel_gradnorm = tol_rel_gradnorm
         self._convergence_level = convergence_level
         self._iteration_limit = iteration_limit
         self._name = name
-        self._p = p
-        self._file_name = file_name
 
     def start(self, energy):
         self._itcount = -1
         self._ccount = 0
         if self._tol_rel_gradnorm is not None:
-            self._tol_rel_gradnorm_now = self._tol_rel_gradnorm * self._norm(energy)
+            self._tol_rel_gradnorm_now = self._tol_rel_gradnorm \
+                                       * energy.gradient_norm
         return self.check(energy)
-
-    def _norm(self, energy):
-        # FIXME Only p=2 norm is cached in energy class
-        if self._p == 2:
-            return energy.gradient_norm
-        return energy.gradient.norm(self._p)
 
     def check(self, energy):
         self._itcount += 1
 
         inclvl = False
         if self._tol_abs_gradnorm is not None:
-            if self._norm(energy) <= self._tol_abs_gradnorm:
+            if energy.gradient_norm <= self._tol_abs_gradnorm:
                 inclvl = True
         if self._tol_rel_gradnorm is not None:
-            if self._norm(energy) <= self._tol_rel_gradnorm_now:
+            if energy.gradient_norm <= self._tol_rel_gradnorm_now:
                 inclvl = True
         if inclvl:
             self._ccount += 1
@@ -140,7 +128,7 @@ class GradientNormController(IterationController):
             logger.info(
                 "{}: Iteration #{} energy={:.6E} gradnorm={:.2E} clvl={}"
                 .format(self._name, self._itcount, energy.value,
-                        self._norm(energy), self._ccount))
+                        energy.gradient_norm, self._ccount))
 
         # Are we done?
         if self._iteration_limit is not None:
@@ -151,12 +139,6 @@ class GradientNormController(IterationController):
                 return self.CONVERGED
         if self._ccount >= self._convergence_level:
             return self.CONVERGED
-
-        # Write energy to file
-        if self._file_name is not None:
-            with open(self._file_name, 'a+') as f:
-                f.write('{} {} {}\n'.format(time(), energy.value,
-                                            self._norm(energy)))
 
         return self.CONTINUE
 
@@ -180,12 +162,11 @@ class GradInfNormController(IterationController):
     """
 
     def __init__(self, tol, convergence_level=1, iteration_limit=None,
-                 name=None, file_name=None):
+                 name=None):
         self._tol = tol
         self._convergence_level = convergence_level
         self._iteration_limit = iteration_limit
         self._name = name
-        self._file_name = file_name
 
     def start(self, energy):
         self._itcount = -1
@@ -217,12 +198,6 @@ class GradInfNormController(IterationController):
                 return self.CONVERGED
         if self._ccount >= self._convergence_level:
             return self.CONVERGED
-
-        # Write energy to file
-        if self._file_name is not None:
-            with open(self._file_name, 'a+') as f:
-                f.write('{} {} {}\n'.format(time(), energy.value,
-                                            crit))
 
         return self.CONTINUE
 
@@ -314,12 +289,11 @@ class AbsDeltaEnergyController(IterationController):
     """
 
     def __init__(self, deltaE, convergence_level=1, iteration_limit=None,
-                 name=None, file_name=None):
+                 name=None):
         self._deltaE = deltaE
         self._convergence_level = convergence_level
         self._iteration_limit = iteration_limit
         self._name = name
-        self._file_name = file_name
 
     def start(self, energy):
         self._itcount = -1
@@ -358,10 +332,5 @@ class AbsDeltaEnergyController(IterationController):
                 return self.CONVERGED
         if self._ccount >= self._convergence_level:
             return self.CONVERGED
-
-        # Write energy to file
-        if self._file_name is not None:
-            with open(self._file_name, 'a+') as f:
-                f.write('{} {} {}\n'.format(time(), energy.value, diff))
 
         return self.CONTINUE

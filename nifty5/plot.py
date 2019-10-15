@@ -17,7 +17,6 @@
 
 import os
 
-import matplotlib.pyplot as plt
 import numpy as np
 
 from . import dobj
@@ -348,12 +347,8 @@ def _plot2D(f, ax, **kwargs):
     if len(dom) == 2:
         if (not isinstance(dom[1], RGSpace)) or len(dom[1].shape) != 1:
             raise TypeError("need 1D RGSpace as second domain")
-        if dom[1].shape[0] == 1:
-            from .sugar import from_global_data
-            f = from_global_data(f.domain[0], f.to_global_data()[..., 0])
-        else:
-            rgb = _rgb_data(f.to_global_data())
-            have_rgb = True
+        rgb = _rgb_data(f.to_global_data())
+        have_rgb = True
 
     foo = kwargs.pop("norm", None)
     norm = {} if foo is None else {'norm': foo}
@@ -482,17 +477,6 @@ class Plot(object):
         alpha: float or list of floats
             Transparency value.
         """
-        from .multi_field import MultiField
-        if isinstance(f, MultiField):
-            for kk in f.domain.keys():
-                self._plots.append(f[kk])
-                mykwargs = kwargs.copy()
-                if 'title' in kwargs:
-                    mykwargs['title'] = "{} {}".format(kk, kwargs['title'])
-                else:
-                    mykwargs['title'] = "{}".format(kk)
-                self._kwargs.append(mykwargs)
-            return
         self._plots.append(f)
         self._kwargs.append(kwargs)
 
@@ -539,56 +523,3 @@ class Plot(object):
             _plot(self._plots[i], ax, **self._kwargs[i])
         fig.tight_layout()
         _makeplot(kwargs.pop("name", None))
-
-
-def energy_history_analysis(fname_outer, fname_inner, fname_sampling,
-                            fname=None, figsize=[30, 10]):
-    """Visualizes the behaviour of the various minimizers during a
-    minimization procedure.
-
-    Parameters
-    ----------
-    fname_outer : string
-        File name of file which was written by an :class:`IterationController`
-        and contains the energy history of the Newton minimizer.
-    fname_inner : string
-        File name of file which was written by an :class:`IterationController`
-        and contains the energy history of the inverter inside of the Newton
-        minimizer.
-    fname_sampling : string
-        File name of file which was written by an :class:`IterationController`
-        and contains the energy history of the inverter which controls the
-        sampling.
-    fname : string
-        File name of the output plot. None lets matplotlib open an interactive
-        window and no file is written. Default is None.
-    figsize : tuple of float
-        figsize of output plot (see `matplotlib.pyplot.subplots`). Default is
-        [30, 10].
-    """
-    # FIXME Visualize convergence criteria as well
-    tsa, esa, _ = np.loadtxt(fname_sampling, delimiter=' ').T
-    tou, eou, _ = np.loadtxt(fname_outer, delimiter=' ').T
-    tin, ein, _ = np.loadtxt(fname_inner, delimiter=' ').T
-    t0 = np.min([*tsa, *tou, *tin])
-    tsa = (tsa-t0)/3600
-    tou = (tou-t0)/3600
-    tin = (tin-t0)/3600
-
-    fig, (ax0, ax1) = plt.subplots(nrows=2, sharex=True, figsize=figsize)
-    p1 = ax0.scatter(tin, ein, marker='x', c='r', label='Newton inverter',
-                     alpha=.3)
-    p2 = ax0.scatter(tsa, esa, marker='x', label='Sampling inverter', alpha=.3)
-    ax0.set_ylim([1.5*np.min(esa), np.max(esa) - 0.1*np.min(esa)])
-    ax0.set_ylabel('Conjugate gradient energy')
-    ax0.legend([p1, p2], [p1.get_label(), p2.get_label()])
-    ax1.scatter(tou, eou, marker='>', c='g')
-    ax1.set_ylabel('Newton energy')
-    # ax1.set_yscale('log')
-    ax1.set_xlabel("Time [h]")
-    plt.tight_layout()
-    if fname is None:
-        plt.show()
-    else:
-        plt.savefig(fname)
-    plt.close()

@@ -46,16 +46,15 @@ from .operators.outer_product_operator import OuterProduct
 from .operators.simple_linear_operators import (
     VdotOperator, ConjugationOperator, Realizer,
     FieldAdapter, ducktape, GeometryRemover, NullOperator,
-    MatrixProductOperator, PartialExtractor)
+    MatrixProductOperator)
 from .operators.value_inserter import ValueInserter
 from .operators.energy_operators import (
     EnergyOperator, GaussianEnergy, PoissonianEnergy, InverseGammaLikelihood,
-    BernoulliEnergy, StandardHamiltonian, AveragedEnergy, QuadraticFormOperator,
-    SquaredNormOperator)
+    BernoulliEnergy, StandardHamiltonian, AveragedEnergy)
 from .operators.convolution_operators import FuncConvolutionOperator
 
 from .probing import probe_with_posterior_samples, probe_diagonal, \
-    StatCalculator, approximation2endo
+    StatCalculator
 
 from .minimization.line_search import LineSearch
 from .minimization.iteration_controllers import (
@@ -74,7 +73,7 @@ from .minimization.energy_adapter import EnergyAdapter
 from .minimization.metric_gaussian_kl import MetricGaussianKL
 
 from .sugar import *
-from .plot import Plot, energy_history_analysis
+from .plot import Plot
 
 from .library.smooth_linear_amplitude import (
     SLAmplitude, LinearSLAmplitude, CepstrumOperator)
@@ -97,8 +96,6 @@ from .utilities import memo, frozendict
 from .logger import logger
 
 from .linearization import Linearization
-
-from .operator_spectrum import operator_spectrum
 
 from . import internal_config
 _scheme = internal_config.parallelization_scheme()

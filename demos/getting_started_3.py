@@ -103,15 +103,10 @@ if __name__ == '__main__':
     data = signal_response(mock_position) + N.draw_sample()
 
     # Minimization parameters
-    fo = 'energy0.txt'
-    fs = 'energy1.txt'
-    fi = 'energy2.txt'
-    ic_sampling = ift.AbsDeltaEnergyController(0.5, convergence_level=5,
-                                               iteration_limit=100,
-                                               file_name=fs)
-    ic_newton = ift.GradInfNormController(name='Newton', tol=1e-7,
-                                          iteration_limit=35, file_name=fo)
-    minimizer = ift.NewtonCG(ic_newton, file_name=fi)
+    ic_sampling = ift.GradientNormController(iteration_limit=100)
+    ic_newton = ift.GradInfNormController(
+        name='Newton', tol=1e-7, iteration_limit=35)
+    minimizer = ift.NewtonCG(ic_newton)
 
     # Set up likelihood and information Hamiltonian
     likelihood = ift.GaussianEnergy(mean=data,
@@ -133,7 +128,7 @@ if __name__ == '__main__':
     # Draw new samples to approximate the KL five times
     for i in range(5):
         # Draw new samples and minimize KL
-        KL = ift.MetricGaussianKL(mean, H, N_samples, napprox=20)
+        KL = ift.MetricGaussianKL(mean, H, N_samples)
         KL, convergence = minimizer(KL)
         mean = KL.position
 
@@ -164,5 +159,3 @@ if __name__ == '__main__':
         linewidth=[1.]*len(powers) + [3., 3.])
     plot.output(ny=1, nx=3, xsize=24, ysize=6, name=filename_res)
     print("Saved results as '{}'.".format(filename_res))
-
-    ift.energy_history_analysis(fo, fi, fs, fname='energy_history.png')
