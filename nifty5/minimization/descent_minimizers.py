@@ -166,8 +166,7 @@ class NewtonCG(DescentMinimizer):
     """
 
     def __init__(self, controller, napprox=0, line_searcher=None, name=None,
-                 nreset=20, max_cg_iterations=200, energy_reduction_factor=0.1,
-                 file_name=None):
+                 nreset=20, max_cg_iterations=200, energy_reduction_factor=0.1):
         if line_searcher is None:
             line_searcher = LineSearch(preferred_initial_step_size=1.)
         super(NewtonCG, self).__init__(controller=controller,
@@ -175,7 +174,6 @@ class NewtonCG(DescentMinimizer):
         self._napprox = napprox
         self._name = name
         self._nreset = nreset
-        self._file_name = file_name
         self._max_cg_iterations = max_cg_iterations
         self._alpha = energy_reduction_factor
 
@@ -185,8 +183,7 @@ class NewtonCG(DescentMinimizer):
         else:
             ediff = self._alpha*(old_value-energy.value)
             ic = AbsDeltaEnergyController(
-                ediff, iteration_limit=self._max_cg_iterations, name=self._name,
-                file_name=self._file_name)
+                ediff, iteration_limit=self._max_cg_iterations, name=self._name)
         e = QuadraticEnergy(0*energy.position, energy.metric, energy.gradient)
         p = None
         if self._napprox > 1:
