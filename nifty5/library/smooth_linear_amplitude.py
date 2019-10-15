@@ -96,7 +96,7 @@ def CepstrumOperator(target, a, k0, space = 0):
         raise TypeError
     if np.any(a <= 0) or np.any(k0 <= 0):
         raise ValueError
-   
+
     qht = QHTOperator(target, space)
     dom = qht.domain
     sym = SymmetrizingOperator(target, space)

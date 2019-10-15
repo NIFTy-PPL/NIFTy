@@ -17,7 +17,6 @@
 
 import numpy as np
 import pytest
-from numpy.testing import assert_
 
 import nifty5 as ift
 
@@ -42,7 +41,7 @@ def test_SLAmplitude(power_space, seed, space):
         domains.insert(space, power_space)
         ps = ift.makeDomain(domains)
         dct = { 'target': ps, 'n_pix': 32,
-            'a': np.ones([2,2,2]),  'k0': 5,  
+            'a': np.ones([2,2,2]),  'k0': 5,
             'sm': [[[-2, -3],[-1, -1]], [[-2, -3], [-2, -1]]], 'sv': 0.2, 'im':  0, 'iv': .02 }
     A = ift.SLAmplitude(**dct, space = space)
     x = ift.from_random('normal', A.domain)
