@@ -34,7 +34,7 @@ def _parameter_shaper(p, shape):
     if p.shape is shape:
         return np.asfarray(p)
     elif p.shape is () or (1,):
-        return np.full(shape, p, dtype = np.float)
+        return np.full(shape, p, dtype=np.float)
     else:
         raise TypeError("Shape of parameters cannot be interpreted")
 
@@ -43,7 +43,7 @@ def _ceps_kernel(k, a, k0):
     return (a/(1 + np.sum((k/k0)**2, axis=0)))**2
 
 
-def CepstrumOperator(target, a, k0, space = 0):
+def CepstrumOperator(target, a, k0, space=0):
     """Turns a white Gaussian random field into a smooth field on a LogRGSpace.
 
     Composed out of three operators:
@@ -87,16 +87,15 @@ def CepstrumOperator(target, a, k0, space = 0):
     target = DomainTuple.make(target)
     space = infer_space(target, space)
     dim = len(target[space].shape)
-    shape = [s for i in range(len(target)) if i is not space
-            for s in target[i].shape]
-    a = _parameter_shaper(a, tuple(shape))
-    k0 = _parameter_shaper(k0, tuple([dim,]+shape))
+    shape = tuple(s for i in range(len(target)) if i is not space for s in target[i].shape)
+    a = _parameter_shaper(a, shape)
+    k0 = _parameter_shaper(k0, (dim,)+shape)
 
     if target[space].harmonic:
         raise TypeError
     if np.any(a <= 0) or np.any(k0 <= 0):
         raise ValueError
-   
+
     qht = QHTOperator(target, space)
     dom = qht.domain
     sym = SymmetrizingOperator(target, space)
@@ -108,13 +107,14 @@ def CepstrumOperator(target, a, k0, space = 0):
     sl_extender = (slice(None),) + (None,)*n + (slice(None),)*dim + (None,)*(N-n-dim+1)
     q_array = dom[space].get_k_array()[sl_extender]
     a = a[(slice(None),)*n+(None,)*dim]
-    k0 =  k0[(slice(None),)*(1+n)+(None,)*dim]
+    k0 = k0[(slice(None),)*(1+n)+(None,)*dim]
 
     # Fill all non-zero modes
     no_zero_modes = (slice(None),)*(n) + (slice(1, None),)*dim
     ks = q_array[(slice(None),)+no_zero_modes]
     cepstrum_field = np.zeros(shape)
     cepstrum_field[no_zero_modes] = _ceps_kernel(ks, a, k0)
+
     # Fill zero-mode subspaces
     for i in range(dim):
         sl = (slice(None),)*(n+i) + (slice(1, None),)
@@ -125,7 +125,8 @@ def CepstrumOperator(target, a, k0, space = 0):
     return sym @ qht @ makeOp(cepstrum.sqrt())
 
 
-def SLAmplitude(*, target, n_pix, a, k0, sm, sv, im, iv, keys=['tau', 'phi'], space = 0):
+def SLAmplitude(*, target, n_pix, a, k0, sm, sv, im, iv, keys=['tau', 'phi'],
+                space=0):
     '''Operator for parametrizing smooth amplitudes (square roots of power
     spectra).
 
@@ -183,11 +184,11 @@ def SLAmplitude(*, target, n_pix, a, k0, sm, sv, im, iv, keys=['tau', 'phi'], sp
         smooth and a linear part.
     '''
     return LinearSLAmplitude(target=target, n_pix=n_pix, a=a, k0=k0, sm=sm,
-                             sv=sv, im=im, iv=iv, keys=keys, space = space).exp()
+                             sv=sv, im=im, iv=iv, keys=keys, space=space).exp()
 
 
 def LinearSLAmplitude(*, target, n_pix, a, k0, sm, sv, im, iv,
-                      keys=['tau', 'phi'], space = 0):
+                      keys=['tau', 'phi'], space=0):
     '''LinearOperator for parametrizing smooth log-amplitudes (square roots of
     power spectra).
 
@@ -199,8 +200,7 @@ def LinearSLAmplitude(*, target, n_pix, a, k0, sm, sv, im, iv,
     if not (isinstance(n_pix, int) and isinstance(target[space], PowerSpace)):
         raise TypeError
 
-    shape = tuple(s for i in range(len(target)) if i is not space
-            for s in target[i].shape)
+    shape = tuple(s for i in range(len(target)) if i is not space for s in target[i].shape)
     sm, sv, im, iv = (_parameter_shaper(a, shape) for a in (sm, sv, im, iv))
     if np.any(sv <= 0) or np.any(iv <= 0):
         raise ValueError
