@@ -57,7 +57,7 @@ class _DomRemover(LinearOperator):
             res = x.ravel() if mode == self.TIMES else x.reshape(
                 self._domain.shape)
         else:
-            res = np.empty(self.target.shape) if mode == self.TIMES else {}
+            res = np.empty(self.target.shape, dtype=x.dtype) if mode == self.TIMES else {}
             for ii, (kk, dd) in enumerate(self.domain.items()):
                 i0, i1 = self._size_array[ii:ii + 2]
                 if mode == self.TIMES:
