@@ -87,10 +87,10 @@ def CepstrumOperator(target, a, k0, space=0):
     target = DomainTuple.make(target)
     space = infer_space(target, space)
     dim = len(target[space].shape)
-    shape = (s for i in range(len(target)) if i is not space
-             for s in target[i].shape)
-    a = _parameter_shaper(a, shape)
-    k0 = _parameter_shaper(k0, (dim,)+shape)
+    shape = [s for i in range(len(target)) if i is not space
+            for s in target[i].shape]
+    a = _parameter_shaper(a, tuple(shape))
+    k0 = _parameter_shaper(k0, tuple([dim,]+shape))
 
     if target[space].harmonic:
         raise TypeError
@@ -201,8 +201,8 @@ def LinearSLAmplitude(*, target, n_pix, a, k0, sm, sv, im, iv,
     if not (isinstance(n_pix, int) and isinstance(target[space], PowerSpace)):
         raise TypeError
 
-    shape = (s for i in range(len(target)) if i is not space
-             for s in target[i].shape)
+    shape = tuple(s for i in range(len(target)) if i is not space
+            for s in target[i].shape)
     sm, sv, im, iv = (_parameter_shaper(a, shape) for a in (sm, sv, im, iv))
     if np.any(sv <= 0) or np.any(iv <= 0):
         raise ValueError
