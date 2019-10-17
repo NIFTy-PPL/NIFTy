@@ -319,9 +319,11 @@ class StandardHamiltonian(EnergyOperator):
     `<https://arxiv.org/abs/1812.04403>`_
     """
 
-    def __init__(self, lh, ic_samp=None):
+    def __init__(self, lh, ic_samp=None, _c_inp=None):
         self._lh = lh
         self._prior = GaussianEnergy(domain=lh.domain)
+        if _c_inp is not None:
+            _, self._prior = self._prior.simplify_for_constant_input(_c_inp)
         self._ic_samp = ic_samp
         self._domain = lh.domain
 
@@ -338,8 +340,12 @@ class StandardHamiltonian(EnergyOperator):
 
     def __repr__(self):
         subs = 'Likelihood:\n{}'.format(utilities.indent(self._lh.__repr__()))
-        subs += '\nPrior: Quadratic{}'.format(self._lh.domain.keys())
+        subs += '\nPrior:\n{}'.format(self._prior)
         return 'StandardHamiltonian:\n' + utilities.indent(subs)
+
+    def _simplify_for_constant_input_nontrivial(self, c_inp):
+        out, lh1 = self._lh.simplify_for_constant_input(c_inp)
+        return out, StandardHamiltonian(lh1, self._ic_samp, _c_inp=c_inp)
 
 
 class AveragedEnergy(EnergyOperator):
