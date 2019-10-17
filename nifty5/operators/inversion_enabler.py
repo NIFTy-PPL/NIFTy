@@ -48,6 +48,8 @@ class InversionEnabler(EndomorphicOperator):
     """
 
     def __init__(self, op, iteration_controller, approximation=None):
+        # isinstance(op, EndomorphicOperator) does not suffice since op can be
+        # a ChainOperator
         if not isinstance(op, LinearOperator):
             raise TypeError('Operator needs to be linear.')
         if op.domain is not op.target:
