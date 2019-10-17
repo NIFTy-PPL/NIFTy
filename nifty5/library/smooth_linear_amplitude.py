@@ -43,7 +43,7 @@ def _ceps_kernel(k, a, k0):
     return (a/(1 + np.sum((k/k0)**2, axis=0)))**2
 
 
-def CepstrumOperator(target, a, k0, space=0):
+def CepstrumOperator(target, a, k0, space = None):
     """Turns a white Gaussian random field into a smooth field on a LogRGSpace.
 
     Composed out of three operators:
@@ -73,9 +73,9 @@ def CepstrumOperator(target, a, k0, space=0):
 
     Parameters
     ----------
-    target : LogRGSpace
-        Target domain of the operator, needs to be non-harmonic.
-    a : float
+    target : domain, tuple of domains or DomainTuple
+        Target domain of the operator, must contain a non-harmonic LogRGSpace.
+    a : float, list of float
         Cutoff of smoothness prior (positive only). Controls the
         regularization of the inverse laplace operator to be finite at zero.
         Larger values for the cutoff results in a weaker constraining prior.
@@ -83,6 +83,9 @@ def CepstrumOperator(target, a, k0, space=0):
         Strength of smoothness prior in quefrency space (positive only) along
         each axis. If float then the strength is the same along each axis.
         Larger values result in a weaker constraining prior.
+    space: int
+        The index of the domain on which the CepstrumOperator acts.
+        target[space] must be a non-harmonic LogRGSpace.
     """
     target = DomainTuple.make(target)
     space = infer_space(target, space)
@@ -126,7 +129,7 @@ def CepstrumOperator(target, a, k0, space=0):
 
 
 def SLAmplitude(*, target, n_pix, a, k0, sm, sv, im, iv, keys=['tau', 'phi'],
-                space=0):
+                space = None):
     '''Operator for parametrizing smooth amplitudes (square roots of power
     spectra).
 
@@ -155,26 +158,30 @@ def SLAmplitude(*, target, n_pix, a, k0, sm, sv, im, iv, keys=['tau', 'phi'],
     strength and the cutoff of the smoothness prior
     (see :class:`CepstrumOperator`).
 
+
     Parameters
     ----------
     n_pix : int
         Number of pixels of the space in which the .
-    target : PowerSpace
-        Target of the Operator.
-    a : float
+    target : domain, tuple of domains or DomainTuple
+        Target of the Operator, must contain a PowerSpace.
+    a : float, list or array of float
         Strength of smoothness prior (see :class:`CepstrumOperator`).
-    k0 : float
+    k0 : float, list or array of float
         Cutoff of smothness prior in quefrency space (see
         :class:`CepstrumOperator`).
-    sm : float
+    sm : float, list or array of float
         Expected exponent of power law.
-    sv : float
+    sv : float, list or array of float
         Prior standard deviation of exponent of power law.
-    im : float
+    im : float, list or array of float
         Expected y-intercept of power law. This is the value at t_0 of the
         LogRGSpace (see :class:`ExpTransform`).
-    iv : float
+    iv : float, list or array of float
         Prior standard deviation of y-intercept of power law.
+    space : int
+        The index of the domain on which the amplitude operator acts.
+        target[space] must be a PowerSpace.
 
     Returns
     -------
@@ -182,13 +189,20 @@ def SLAmplitude(*, target, n_pix, a, k0, sm, sv, im, iv, keys=['tau', 'phi'],
         Operator which is defined on the space of white excitations fields and
         which returns on its target a power spectrum which consists out of a
         smooth and a linear part.
+
+    Notes
+    -----
+    If one of the parameters a, k0, sm, sv, im, or iv are a list or arrya,
+    every slice of target[space] must have its own value,
+    i.e. the shape of the array must match the shape of target without the PowerSpace.
+    If they are a float, the same value will be used for each slice of the target.
     '''
     return LinearSLAmplitude(target=target, n_pix=n_pix, a=a, k0=k0, sm=sm,
                              sv=sv, im=im, iv=iv, keys=keys, space=space).exp()
 
 
 def LinearSLAmplitude(*, target, n_pix, a, k0, sm, sv, im, iv,
-                      keys=['tau', 'phi'], space=0):
+                      keys=['tau', 'phi'], space = None):
     '''LinearOperator for parametrizing smooth log-amplitudes (square roots of
     power spectra).
 
