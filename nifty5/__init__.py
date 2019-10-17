@@ -51,7 +51,7 @@ from .operators.value_inserter import ValueInserter
 from .operators.energy_operators import (
     EnergyOperator, GaussianEnergy, PoissonianEnergy, InverseGammaLikelihood,
     BernoulliEnergy, StandardHamiltonian, AveragedEnergy, QuadraticFormOperator,
-    SquaredNormOperator)
+    Squared2NormOperator)
 from .operators.convolution_operators import FuncConvolutionOperator
 
 from .probing import probe_with_posterior_samples, probe_diagonal, \
