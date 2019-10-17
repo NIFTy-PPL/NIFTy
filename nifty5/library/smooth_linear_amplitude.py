@@ -31,9 +31,9 @@ from ..sugar import makeOp
 
 def _parameter_shaper(p, shape):
     p = np.array(p)
-    if p.shape is shape:
+    if p.shape == shape:
         return np.asfarray(p)
-    elif p.shape is () or (1,):
+    elif p.shape in [(), (1,)]:
         return np.full(shape, p, dtype=np.float)
     else:
         raise TypeError("Shape of parameters cannot be interpreted")
@@ -87,7 +87,7 @@ def CepstrumOperator(target, a, k0, space=0):
     target = DomainTuple.make(target)
     space = infer_space(target, space)
     dim = len(target[space].shape)
-    shape = tuple(s for i in range(len(target)) if i is not space for s in target[i].shape)
+    shape = tuple(s for i in range(len(target)) if i != space for s in target[i].shape)
     a = _parameter_shaper(a, shape)
     k0 = _parameter_shaper(k0, (dim,)+shape)
 
@@ -200,7 +200,7 @@ def LinearSLAmplitude(*, target, n_pix, a, k0, sm, sv, im, iv,
     if not (isinstance(n_pix, int) and isinstance(target[space], PowerSpace)):
         raise TypeError
 
-    shape = tuple(s for i in range(len(target)) if i is not space for s in target[i].shape)
+    shape = tuple(s for i in range(len(target)) if i != space for s in target[i].shape)
     sm, sv, im, iv = (_parameter_shaper(a, shape) for a in (sm, sv, im, iv))
     if np.any(sv <= 0) or np.any(iv <= 0):
         raise ValueError
