@@ -273,11 +273,13 @@ class Field(object):
         float
             the total volume of the requested sub-domain.
         """
+        if spaces is None:
+            return self._domain.total_volume
+
         if np.isscalar(spaces):
             return self._domain[spaces].total_volume
 
-        if spaces is None:
-            spaces = range(len(self._domain))
+        # tuple of spaces given
         res = 1.
         for i in spaces:
             res *= self._domain[i].total_volume

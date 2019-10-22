@@ -126,6 +126,13 @@ class DomainTuple(object):
         return self._size
 
     @property
+    def total_volume(self):
+        res = 1.
+        for d in self._dom:
+            res *= d.total_volume
+        return res
+
+    @property
     def axes(self):
         """tuple of tuple of int : axis indices of the underlying domains"""
         return self._axtuple
