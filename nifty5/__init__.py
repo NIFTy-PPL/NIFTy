@@ -20,6 +20,7 @@ from .multi_field import MultiField
 
 from .operators.operator import Operator
 from .operators.adder import Adder
+from .operators.log1p import Log1p
 from .operators.diagonal_operator import DiagonalOperator
 from .operators.distributors import DOFDistributor, PowerDistributor
 from .operators.domain_tuple_field_inserter import DomainTupleFieldInserter
@@ -51,7 +52,7 @@ from .operators.value_inserter import ValueInserter
 from .operators.energy_operators import (
     EnergyOperator, GaussianEnergy, PoissonianEnergy, InverseGammaLikelihood,
     BernoulliEnergy, StandardHamiltonian, AveragedEnergy, QuadraticFormOperator,
-    Squared2NormOperator)
+    Squared2NormOperator, StudentTEnergy)
 from .operators.convolution_operators import FuncConvolutionOperator
 
 from .probing import probe_with_posterior_samples, probe_diagonal, \

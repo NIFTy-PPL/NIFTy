@@ -27,6 +27,7 @@ from .linear_operator import LinearOperator
 from .operator import Operator
 from .sampling_enabler import SamplingEnabler
 from .sandwich_operator import SandwichOperator
+from .scaling_operator import ScalingOperator
 from .simple_linear_operators import VdotOperator
 
 
@@ -63,7 +64,6 @@ class Squared2NormOperator(EnergyOperator):
             jac = VdotOperator(2*x.val)(x.jac)
             return x.new(val, jac)
         return Field.scalar(x.vdot(x))
-
 
 class QuadraticFormOperator(EnergyOperator):
     """Computes the L2-norm of a Field or MultiField with respect to a
@@ -246,6 +246,43 @@ class InverseGammaLikelihood(EnergyOperator):
             return res
         metric = SandwichOperator.make(x.jac, makeOp(self._alphap1/(x.val**2)))
         return res.add_metric(metric)
+
+
+class StudentTEnergy(EnergyOperator):
+    """Computes likelihood energy of expected event frequency constrained by
+    event data.
+
+    .. math ::
+        E(f) = -\\log \\text{Bernoulli}(d|f)
+             = -d^\\dagger \\log f  - (1-d)^\\dagger \\log(1-f),
+
+    where f is a field defined on `d.domain` with the expected
+    frequencies of events.
+
+    Parameters
+    ----------
+    d : Field
+        Data field with events (1) or non-events (0).
+    theta : Scalar
+        Degree of freedom parameter for the student t distribution
+    """
+
+    def __init__(self, domain, theta):
+        self._domain = DomainTuple.make(domain)
+        self._theta = theta
+        from .log1p import Log1p
+        self._l1p = Log1p(domain)
+
+    def apply(self, x):
+        self._check_input(x)
+        v = ((self._theta+1)/2)*self._l1p(x**2/self._theta).sum()
+        if not isinstance(x, Linearization):
+            return Field.scalar(v)
+        if not x.want_metric:
+            return v
+        met = ScalingOperator(self.domain, (self._theta+1)/(self._theta+3))
+        met = SandwichOperator.make(x.jac, met)
+        return v.add_metric(met)
 
 
 class BernoulliEnergy(EnergyOperator):
