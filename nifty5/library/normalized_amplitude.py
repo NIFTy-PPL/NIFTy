@@ -170,6 +170,7 @@ class Normalization(ift.Operator):
         self._domain = self._target = ift.makeDomain(domain)
         hspace = self._domain[0].harmonic_partner
         pd = ift.PowerDistributor(hspace, power_space=self._domain[0])
+        # TODO Does not work on sphere yet
         self._cst = pd.adjoint(ift.full(pd.target, hspace.scalar_dvol))
         self._specsum = SpecialSum(self._domain)
 
