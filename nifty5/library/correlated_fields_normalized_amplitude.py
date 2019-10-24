@@ -66,7 +66,7 @@ def CorrelatedFieldNormAmplitude(target, amplitudes,
     if stdstd <= 0:
         raise ValueError
     
-    psp = [aa.target[0] for aa in amplitudes]
+    psp = [aa.target[0] for aa in amps]
     hsp = ift.DomainTuple.make([tt.get_default_codomain() for tt in tgt])
     
     ht = ift.HarmonicTransformOperator(hsp, target=tgt[0], space=0)
