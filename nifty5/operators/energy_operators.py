@@ -44,8 +44,8 @@ class EnergyOperator(Operator):
     _target = DomainTuple.scalar_domain()
 
 
-class SquaredNormOperator(EnergyOperator):
-    """Computes the L2-norm of the output of an operator.
+class Squared2NormOperator(EnergyOperator):
+    """Computes the square of the L2-norm of the output of an operator.
 
     Parameters
     ----------
@@ -138,7 +138,7 @@ class GaussianEnergy(EnergyOperator):
             raise ValueError("no domain given")
         self._mean = mean
         if inverse_covariance is None:
-            self._op = SquaredNormOperator(self._domain).scale(0.5)
+            self._op = Squared2NormOperator(self._domain).scale(0.5)
         else:
             self._op = QuadraticFormOperator(inverse_covariance)
         self._icov = None if inverse_covariance is None else inverse_covariance
