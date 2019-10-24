@@ -71,10 +71,10 @@ def LogIntegratedWienerProcess(target, means, stddevs, wienersigmastddev,
     m = means[1]
     L = np.log(target.k_lengths[-1]) - np.log(target.k_lengths[1])
 
-    s = np.log(np.abs(m/L))
-    from scipy.special import erfinv
-    wienermean = s - erfinv(wienersigmaprob)*wienersigmastddev
-    print(s, wienermean, wienersigmastddev)
+    from scipy.stats import norm
+    wienermean = np.sqrt(3/L)*np.abs(m)/norm.ppf(wienersigmaprob)
+    wienermean = np.log(wienermean)
+
     sigma = ift.Adder(ift.full(expander.domain, wienermean)) @ (
         wienersigmastddev*ift.ducktape(expander.domain, None, keys[2]))
     sigma = expander @ sigma.exp()
@@ -156,13 +156,13 @@ if __name__ == '__main__':
     hspace1 = sspace1.get_default_codomain()
     target1 = ift.PowerSpace(hspace1,
                              ift.PowerSpace.useful_binbounds(hspace1, True))
-    A1 = Amplitude(target1, [0, -2, 1], [1, 1, 1], 1, 0.99,
+    A1 = Amplitude(target1, [0, -2, 0], [1E-5, 1, 1], 1, 0.99,
                    ['rest1', 'smooth1', 'wienersigma1'])
     sspace2 = ift.RGSpace((20,), distances=(1e7))
     hspace2 = sspace2.get_default_codomain()
     target2 = ift.PowerSpace(hspace2,
                              ift.PowerSpace.useful_binbounds(hspace2, True))
-    A2 = Amplitude(target2, [0, -2, 1], [1, 1, 1], 1, 0.99,
+    A2 = Amplitude(target2, [0, -2, 0], [1E-5, 1, 1], 1, 0.99,
                    ['rest2', 'smooth2', 'wienersigma2'])
     op = CorrelatedFieldNormAmplitude((sspace1, sspace2), (A1, A2), 3, 2)
     for jj in range(10):
