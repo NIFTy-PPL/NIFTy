@@ -46,7 +46,7 @@ from .operators.outer_product_operator import OuterProduct
 from .operators.simple_linear_operators import (
     VdotOperator, ConjugationOperator, Realizer,
     FieldAdapter, ducktape, GeometryRemover, NullOperator,
-    MatrixProductOperator)
+    MatrixProductOperator, PartialExtractor)
 from .operators.value_inserter import ValueInserter
 from .operators.energy_operators import (
     EnergyOperator, GaussianEnergy, PoissonianEnergy, InverseGammaLikelihood,
@@ -55,7 +55,7 @@ from .operators.energy_operators import (
 from .operators.convolution_operators import FuncConvolutionOperator
 
 from .probing import probe_with_posterior_samples, probe_diagonal, \
-    StatCalculator
+    StatCalculator, approximation2endo
 
 from .minimization.line_search import LineSearch
 from .minimization.iteration_controllers import (
@@ -97,6 +97,8 @@ from .utilities import memo, frozendict
 from .logger import logger
 
 from .linearization import Linearization
+
+from .operator_spectrum import operator_spectrum
 
 from . import internal_config
 _scheme = internal_config.parallelization_scheme()

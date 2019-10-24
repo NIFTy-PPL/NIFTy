@@ -23,6 +23,7 @@ from ..minimization.iteration_controllers import IterationController
 from ..minimization.quadratic_energy import QuadraticEnergy
 from ..sugar import full
 from .endomorphic_operator import EndomorphicOperator
+from .linear_operator import LinearOperator
 
 
 class InversionEnabler(EndomorphicOperator):
