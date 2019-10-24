@@ -280,7 +280,7 @@ class StudentTEnergy(EnergyOperator):
             return Field.scalar(v)
         if not x.want_metric:
             return v
-        met = ScalingOperator(self.domain, (self._theta+1)/(self._theta+3))
+        met = ScalingOperator((self._theta+1)/(self._theta+3), self.domain)
         met = SandwichOperator.make(x.jac, met)
         return v.add_metric(met)
 

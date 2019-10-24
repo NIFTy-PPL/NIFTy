@@ -35,7 +35,7 @@ class Log1p(Operator):
         lin = isinstance(x, Linearization)
         xval = x.val if lin else x
         xlval = xval.local_data
-        res = from_local_data(x.domain, log1p(xlval))
+        res = from_local_data(xval.domain, log1p(xlval))
         if not lin:
             return res
         jac = DiagonalOperator(1/(1+xval))
