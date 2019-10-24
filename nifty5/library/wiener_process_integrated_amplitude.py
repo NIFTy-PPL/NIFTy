@@ -12,25 +12,29 @@ class WienerProcessIntegratedAmplitude(ift.LinearOperator):
 
     def apply(self, x, mode):
         self._check_input(x, mode)
+        k_lengths = self._target[0].k_lengths
+        vol = k_lengths[2:] - k_lengths[1:-1]
+        ks = k_lengths[1:-1] + vol/2
+        logvol = vol/ks
         if mode == self.TIMES:
             x = x.to_global_data()
             res = np.empty(self._target.shape)
             res[0] = 0
             res[1] = 0
-            res[2:] = np.cumsum(x)
-            res[1:] = np.cumsum(res[1:])
+            res[2:] = np.cumsum(x*logvol)
+            res[2:] = np.cumsum(res[2:]*logvol)
             return ift.from_global_data(self._target, res)
         else:
             x = x.to_global_data()
             res = np.empty(self._target.shape)
-            res[1:] = np.cumsum(x[1:][::-1])[::-1]
-            res[2:] = np.cumsum(res[2:][::-1])[::-1]
+            res[2:] = np.cumsum(x[2:][::-1])[::-1]*logvol
+            res[2:] = np.cumsum(res[2:][::-1])[::-1]*logvol
             return ift.from_global_data(self._domain, res[2:])
 
 
 if __name__ == '__main__':
     np.random.seed(42)
-    ndim = 1
+    ndim = 2
     sspace = ift.RGSpace(
         np.linspace(16, 20, num=ndim).astype(np.int),
         np.linspace(2.3, 7.99, num=ndim))
@@ -39,4 +43,5 @@ if __name__ == '__main__':
     op = WienerProcessIntegratedAmplitude(target)
     ift.extra.consistency_check(op)
     fld = ift.from_random('normal', op.domain)
-    ift.single_plot(op(fld) + 100, name='debug.png')
+    op = op.exp()
+    ift.single_plot(op(fld), name='debug.png')
