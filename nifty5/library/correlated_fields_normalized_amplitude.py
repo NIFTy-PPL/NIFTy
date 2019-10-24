@@ -19,21 +19,6 @@ import nifty5 as ift
 from functools import reduce
 from operator import mul
 
-class FullExpander(ift.LinearOperator):
-    def __init__(self,target):
-        self._domain = ift.makeDomain(ift.UnstructuredDomain(1))
-        self._target = ift.makeDomain(target)
-        self._capability = self.TIMES | self.ADJOINT_TIMES
-
-    def apply(self,x,mode):
-        self._check_input(x,mode)
-        x = x.to_global_data()
-        if mode == self.TIMES:
-            res = x[0]
-        else:
-            res = x.sum()
-        return ift.full(self._tgt(mode),res)
-
 def CorrelatedFieldNormAmplitude(target, amplitudes,
                                  stdmean,
                                  stdstd,
@@ -98,11 +83,10 @@ def CorrelatedFieldNormAmplitude(target, amplitudes,
         a = a * (ift.ContractionOperator(pd.domain,
                  spaces[:i] + spaces[(i+1):]).adjoint @ amps[i])
     
-    expander = FullExpander(a.target)
-    fstdstd = ift.full(expander.domain,stdstd)
-    fstdmean = ift.full(expander.domain,stdmean)
-    Std = ift.makeOp(fstdstd) @ ift.ducktape(expander.domain, None, names[1])
-    Std = expander @ (ift.Adder(fstdmean)@Std).exp()
+    expander = ift.VdotOperator(ift.full(a.target,1.)).adjoint
+
+    Std = stdstd * ift.ducktape(expander.domain, None, names[1])
+    Std = expander @ (ift.Adder(ift.full(expander.domain,stdmean))@Std).exp()
     
     A = pd @ (Std * a)
     # For `vol` see comment in `CorrelatedField`
