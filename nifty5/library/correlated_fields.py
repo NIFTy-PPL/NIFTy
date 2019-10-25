@@ -84,7 +84,7 @@ def CorrelatedField(target, amplitude_operator, name='xi', codomain=None):
     # same power spectrum can be used for the spaces with the same volume,
     # different resolutions and the same object in them.
     if isinstance(amplitude_operator, Field):
-        return ht(makeOp(A)@xi).scale(vol)
+        return ht(makeOp(A) @ xi).scale(vol)
     return ht(A*xi).scale(vol)
 
 
@@ -187,7 +187,10 @@ def CorrelatedFieldNormAmplitude(target,
 
     amps = [
         amplitudes,
-    ] if isinstance(amplitudes, Operator) else amplitudes
+    ] if isinstance(amplitudes, (Operator, Field)) else amplitudes
+
+    cls = Operator if isinstance(amps[0], Operator) else Field
+    assert all([isinstance(aa, cls) for aa in amps])
 
     tgt = DomainTuple.make(target)
     if len(tgt) != len(amps):
@@ -196,7 +199,10 @@ def CorrelatedFieldNormAmplitude(target,
     if stdstd <= 0:
         raise ValueError
 
-    psp = [aa.target[0] for aa in amps]
+    if cls == Field:
+        psp = [aa.domain[0] for aa in amps]
+    else:
+        psp = [aa.target[0] for aa in amps]
     hsp = DomainTuple.make([tt.get_default_codomain() for tt in tgt])
 
     ht = HarmonicTransformOperator(hsp, target=tgt[0], space=0)
@@ -208,17 +214,20 @@ def CorrelatedFieldNormAmplitude(target,
 
     spaces = tuple(range(len(amps)))
 
-    a = ContractionOperator(pd.domain, spaces[1:]).adjoint @ amps[0]
+    a = ContractionOperator(pd.domain, spaces[1:]).adjoint(amps[0])
     for i in range(1, len(amps)):
-        a = a*(ContractionOperator(pd.domain, spaces[:i] + spaces[
-            (i + 1):]).adjoint @ amps[i])
+        a = a*(ContractionOperator(
+            pd.domain, spaces[:i] + spaces[(i + 1):]).adjoint(amps[i]))
 
-    expander = VdotOperator(full(a.target, 1.)).adjoint
+    expander = VdotOperator(full(pd.domain, 1.)).adjoint
 
     Std = stdstd*ducktape(expander.domain, None, names[1])
     Std = expander @ (Adder(full(expander.domain, stdmean)) @ Std).exp()
 
-    A = pd @ (Std*a)
+    if cls == Field:
+        A = pd @ (makeOp(a) @ Std)
+    else:
+        A = pd @ (Std*a)
     # For `vol` see comment in `CorrelatedField`
     vol = reduce(mul, [sp.scalar_dvol**-0.5 for sp in hsp])
     return ht(vol*A*ducktape(hsp, None, names[0]))
