@@ -19,13 +19,14 @@ from functools import reduce
 from operator import mul
 
 from ..domain_tuple import DomainTuple
+from ..field import Field
 from ..operators.adder import Adder
 from ..operators.contraction_operator import ContractionOperator
 from ..operators.distributors import PowerDistributor
 from ..operators.harmonic_operators import HarmonicTransformOperator
 from ..operators.operator import Operator
 from ..operators.simple_linear_operators import VdotOperator, ducktape
-from ..sugar import full
+from ..sugar import full, makeOp
 
 
 def CorrelatedField(target, amplitude_operator, name='xi', codomain=None):
@@ -68,15 +69,23 @@ def CorrelatedField(target, amplitude_operator, name='xi', codomain=None):
         codomain = tgt[0].get_default_codomain()
     h_space = codomain
     ht = HarmonicTransformOperator(h_space, target=tgt[0])
-    p_space = amplitude_operator.target[0]
+    if isinstance(amplitude_operator, Operator):
+        p_space = amplitude_operator.target[0]
+    elif isinstance(amplitude_operator, Field):
+        p_space = amplitude_operator.domain[0]
+    else:
+        raise TypeError
     power_distributor = PowerDistributor(h_space, p_space)
     A = power_distributor(amplitude_operator)
     vol = h_space.scalar_dvol**-0.5
+    xi = ducktape(h_space, None, name)
     # When doubling the resolution of `tgt` the value of the highest k-mode
     # will scale with a square root. `vol` cancels this effect such that the
     # same power spectrum can be used for the spaces with the same volume,
     # different resolutions and the same object in them.
-    return ht(vol*A*ducktape(h_space, None, name))
+    if isinstance(amplitude_operator, Field):
+        return ht(makeOp(A)@xi).scale(vol)
+    return ht(A*xi).scale(vol)
 
 
 def MfCorrelatedField(target, amplitudes, name='xi'):
