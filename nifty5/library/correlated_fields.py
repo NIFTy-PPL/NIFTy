@@ -19,10 +19,13 @@ from functools import reduce
 from operator import mul
 
 from ..domain_tuple import DomainTuple
+from ..operators.adder import Adder
 from ..operators.contraction_operator import ContractionOperator
 from ..operators.distributors import PowerDistributor
 from ..operators.harmonic_operators import HarmonicTransformOperator
-from ..operators.simple_linear_operators import ducktape
+from ..operators.operator import Operator
+from ..operators.simple_linear_operators import VdotOperator, ducktape
+from ..sugar import full
 
 
 def CorrelatedField(target, amplitude_operator, name='xi', codomain=None):
@@ -132,3 +135,81 @@ def MfCorrelatedField(target, amplitudes, name='xi'):
     # For `vol` see comment in `CorrelatedField`
     vol = reduce(mul, [sp.scalar_dvol**-0.5 for sp in hsp])
     return ht(vol*A*ducktape(hsp, None, name))
+
+
+def CorrelatedFieldNormAmplitude(target,
+                                 amplitudes,
+                                 stdmean,
+                                 stdstd,
+                                 names=['xi', 'std']):
+    """Constructs an operator which turns white Gaussian excitation fields
+    into a correlated field defined on a DomainTuple with n entries and n
+    separate correlation structures.
+
+    This operator may be used as a model for multi-frequency reconstructions
+    with a correlation structure in both spatial and energy direction.
+
+    Parameters
+    ----------
+    target : Domain, DomainTuple or tuple of Domain
+        Target of the operator. Must contain exactly n spaces.
+    amplitudes: Opertor, iterable of Operator
+        Amplitude operator if n = 1 or list of n amplitude operators.
+    stdmean : float
+        Prior mean of the overall standart deviation.
+    stdstd : float
+        Prior standart deviation of the overall standart deviation.
+    names : iterable of string
+        :class:`MultiField` keys for xi-field and std-field.
+
+    Returns
+    -------
+    Operator
+        Correlated field
+
+    Notes
+    -----
+    In NIFTy, non-harmonic RGSpaces are by definition periodic. Therefore
+    the operator constructed by this method will output a correlated field
+    with *periodic* boundary conditions. If a non-periodic field is needed,
+    one needs to combine this operator with a :class:`FieldZeroPadder` or even
+    two (one for the energy and one for the spatial subdomain)
+    """
+
+    amps = [
+        amplitudes,
+    ] if isinstance(amplitudes, Operator) else amplitudes
+
+    tgt = DomainTuple.make(target)
+    if len(tgt) != len(amps):
+        raise ValueError
+    stdmean, stdstd = float(stdmean), float(stdstd)
+    if stdstd <= 0:
+        raise ValueError
+
+    psp = [aa.target[0] for aa in amps]
+    hsp = DomainTuple.make([tt.get_default_codomain() for tt in tgt])
+
+    ht = HarmonicTransformOperator(hsp, target=tgt[0], space=0)
+    pd = PowerDistributor(hsp, psp[0], 0)
+
+    for i in range(1, len(amps)):
+        ht = HarmonicTransformOperator(ht.target, target=tgt[i], space=i) @ ht
+        pd = pd @ PowerDistributor(pd.domain, psp[i], space=i)
+
+    spaces = tuple(range(len(amps)))
+
+    a = ContractionOperator(pd.domain, spaces[1:]).adjoint @ amps[0]
+    for i in range(1, len(amps)):
+        a = a*(ContractionOperator(pd.domain, spaces[:i] + spaces[
+            (i + 1):]).adjoint @ amps[i])
+
+    expander = VdotOperator(full(a.target, 1.)).adjoint
+
+    Std = stdstd*ducktape(expander.domain, None, names[1])
+    Std = expander @ (Adder(full(expander.domain, stdmean)) @ Std).exp()
+
+    A = pd @ (Std*a)
+    # For `vol` see comment in `CorrelatedField`
+    vol = reduce(mul, [sp.scalar_dvol**-0.5 for sp in hsp])
+    return ht(vol*A*ducktape(hsp, None, names[0]))

@@ -19,13 +19,19 @@ import numpy as np
 
 from ..domain_tuple import DomainTuple
 from ..domains.power_space import PowerSpace
+from ..domains.unstructured_domain import UnstructuredDomain
 from ..field import Field
 from ..operators.adder import Adder
+from ..operators.distributors import PowerDistributor
+from ..operators.endomorphic_operator import EndomorphicOperator
 from ..operators.exp_transform import ExpTransform
+from ..operators.linear_operator import LinearOperator
+from ..operators.operator import Operator
 from ..operators.qht_operator import QHTOperator
+from ..operators.simple_linear_operators import VdotOperator, ducktape
 from ..operators.slope_operator import SlopeOperator
 from ..operators.symmetrizing_operator import SymmetrizingOperator
-from ..sugar import makeOp
+from ..sugar import from_global_data, full, makeDomain, makeOp
 
 
 def _ceps_kernel(k, a, k0):
@@ -209,3 +215,114 @@ def LinearSLAmplitude(*, target, n_pix, a, k0, sm, sv, im, iv,
 
     # Go from loglog-space to linear-linear-space
     return et @ loglog_ampl
+
+
+class _TwoLogIntegrations(LinearOperator):
+    def __init__(self, target):
+        self._target = makeDomain(target)
+        self._domain = makeDomain(
+            UnstructuredDomain(self.target.shape[0] - 2))
+        self._capability = self.TIMES | self.ADJOINT_TIMES
+        if not isinstance(self._target[0], PowerSpace):
+            raise TypeError
+        logk_lengths = np.log(self._target[0].k_lengths[1:])
+        self._logvol = logk_lengths[1:] - logk_lengths[:-1]
+
+    def apply(self, x, mode):
+        self._check_input(x, mode)
+        if mode == self.TIMES:
+            x = x.to_global_data()
+            res = np.empty(self._target.shape)
+            res[0] = 0
+            res[1] = 0
+            res[2:] = np.cumsum(x*self._logvol)
+            res[2:] = np.cumsum(res[2:]*self._logvol)
+            return from_global_data(self._target, res)
+        else:
+            x = x.to_global_data()
+            res = np.empty(self._target.shape)
+            res[2:] = np.cumsum(x[2:][::-1])[::-1]*self._logvol
+            res[2:] = np.cumsum(res[2:][::-1])[::-1]*self._logvol
+            return from_global_data(self._domain, res[2:])
+
+
+class _Rest(LinearOperator):
+    def __init__(self, target):
+        self._target = makeDomain(target)
+        self._domain = makeDomain(UnstructuredDomain(3))
+        self._logk_lengths = np.log(self._target[0].k_lengths[1:])
+        self._logk_lengths -= self._logk_lengths[0]
+        self._capability = self.TIMES | self.ADJOINT_TIMES
+
+    def apply(self, x, mode):
+        self._check_input(x, mode)
+        x = x.to_global_data()
+        res = np.empty(self._tgt(mode).shape)
+        if mode == self.TIMES:
+            res[0] = x[0]
+            res[1:] = x[1]*self._logk_lengths + x[2]
+        else:
+            res[0] = x[0]
+            res[1] = np.vdot(self._logk_lengths, x[1:])
+            res[2] = np.sum(x[1:])
+        return from_global_data(self._tgt(mode), res)
+
+
+def LogIntegratedWienerProcess(target, means, stddevs, wienersigmastddev,
+                               wienersigmaprob, keys):
+    # means and stddevs: zm, slope, yintercept
+    # keys: rest smooth wienersigma
+    if not (len(means) == 3 and len(stddevs) == 3 and len(keys) == 3):
+        raise ValueError
+    means = np.array(means)
+    stddevs = np.array(stddevs)
+    # FIXME More checks
+    rest = _Rest(target)
+    restmeans = from_global_data(rest.domain, means)
+    reststddevs = from_global_data(rest.domain, stddevs)
+    rest = rest @ Adder(restmeans) @ makeOp(reststddevs)
+
+    expander = VdotOperator(full(target, 1.)).adjoint
+    m = means[1]
+    L = np.log(target.k_lengths[-1]) - np.log(target.k_lengths[1])
+
+    from scipy.stats import norm
+    wienermean = np.sqrt(3/L)*np.abs(m)/norm.ppf(wienersigmaprob)
+    wienermean = np.log(wienermean)
+
+    sigma = Adder(full(expander.domain, wienermean)) @ (
+        wienersigmastddev*ducktape(expander.domain, None, keys[2]))
+    sigma = expander @ sigma.exp()
+    smooth = _TwoLogIntegrations(target).ducktape(keys[1])*sigma
+    return rest.ducktape(keys[0]) + smooth
+
+
+class Normalization(Operator):
+    def __init__(self, domain):
+        self._domain = self._target = makeDomain(domain)
+        hspace = self._domain[0].harmonic_partner
+        pd = PowerDistributor(hspace, power_space=self._domain[0])
+        # TODO Does not work on sphere yet
+        self._cst = pd.adjoint(full(pd.target, hspace.scalar_dvol))
+        self._specsum = SpecialSum(self._domain)
+
+    def apply(self, x):
+        self._check_input(x)
+        return self._specsum(self._cst*x).one_over()*x
+
+
+class SpecialSum(EndomorphicOperator):
+    def __init__(self, domain):
+        self._domain = makeDomain(domain)
+        self._capability = self.TIMES | self.ADJOINT_TIMES
+
+    def apply(self, x, mode):
+        self._check_input(x, mode)
+        return full(self._tgt(mode), x.sum())
+
+
+def WPAmplitude(target, means, stddevs, wienersigmastddev, wienersigmaprob,
+              keys):
+    op = LogIntegratedWienerProcess(target, means, stddevs, wienersigmastddev,
+                                    wienersigmaprob, keys)
+    return Normalization(target) @ op.exp()
