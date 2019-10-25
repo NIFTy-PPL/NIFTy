@@ -41,13 +41,13 @@ if __name__ == '__main__':
     target1 = ift.PowerSpace(hspace1,
                              ift.PowerSpace.useful_binbounds(hspace1, True))
     A1 = ift.WPAmplitude(target1, [0, -2, 0], [1E-5, 1, 1], 1, 0.99,
-                   ['rest1', 'smooth1', 'wienersigma1'])
+                         ['rest1', 'smooth1', 'wienersigma1'])
     sspace2 = ift.RGSpace((20,), distances=(1e7))
     hspace2 = sspace2.get_default_codomain()
     target2 = ift.PowerSpace(hspace2,
                              ift.PowerSpace.useful_binbounds(hspace2, True))
     A2 = ift.WPAmplitude(target2, [0, -2, 0], [1E-5, 1, 1], 1, 0.99,
-                   ['rest2', 'smooth2', 'wienersigma2'])
+                         ['rest2', 'smooth2', 'wienersigma2'])
     op = ift.CorrelatedFieldNormAmplitude((sspace1, sspace2), (A1, A2), 3, 2)
     for jj in range(10):
         fld = ift.from_random('normal', op.domain)
