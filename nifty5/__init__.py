@@ -98,7 +98,7 @@ from .logger import logger
 
 from .linearization import Linearization
 
-from .operator_spectrum import operator_spectrum
+from .operator_spectrum import operator_spectrum, nonlinConditionNumber
 
 from . import internal_config
 _scheme = internal_config.parallelization_scheme()

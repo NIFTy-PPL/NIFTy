@@ -23,6 +23,7 @@ from .multi_domain import MultiDomain
 from .multi_field import MultiField
 from .operators.linear_operator import LinearOperator
 from .operators.sandwich_operator import SandwichOperator
+from .linearization import Linearization
 from .sugar import from_global_data, makeDomain
 
 
@@ -141,3 +142,27 @@ def operator_spectrum(A, k, hermitian, which='LM', tol=0):
     f = ssl.eigsh if hermitian else ssl.eigs
     eigs = f(M, k=k, tol=tol, return_eigenvectors=False, which=which)
     return np.flip(np.sort(eigs), axis=0)
+
+
+def nonlinConditionNumber(A, loc):
+    '''
+    Compute the relative condition number of a nonlinear operator according to
+        c = |dA(x)/dx|/|A(x)/x|
+
+    Prarameters
+    -------
+    A : operator
+    loc : field
+        location at which the condition number will be evaluated
+
+    Retruns
+    -------
+    c: double
+        The condition number
+    '''
+    lin = Linearization.make_var(loc)
+    ones_field = Field.full(A.target, 1.)
+    J = A(lin).jac(ones_field)
+    return J.norm()*(loc/A(loc)).norm()
+    
+    
