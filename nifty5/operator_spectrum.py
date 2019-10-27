@@ -147,11 +147,12 @@ def operator_spectrum(A, k, hermitian, which='LM', tol=0):
 def nonlinConditionNumber(A, loc):
     '''
     Compute the relative condition number of a nonlinear operator according to
-        c = |dA(x)/dx|/|A(x)/x|
+        c = |dA(x)/dx|/(|A(x)|/|x|)
 
     Prarameters
     -------
     A : operator
+        differentiable operator
     loc : field
         location at which the condition number will be evaluated
 
@@ -163,6 +164,6 @@ def nonlinConditionNumber(A, loc):
     lin = Linearization.make_var(loc)
     ones_field = Field.full(A.target, 1.)
     J = A(lin).jac(ones_field)
-    return J.norm()*(loc/A(loc)).norm()
+    return J.norm()*loc.norm()/A(loc).norm()
     
     
