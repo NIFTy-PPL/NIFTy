@@ -211,3 +211,12 @@ Consequently, the inverse covariance operator will automatically have lower indi
 ensuring that the whole log-likelihood expression does not scale with resolution.
 **This upper-lower index convention is not coded into NIFTy**, in order to not reduce user freedom.
 One should however have this in mind when constructing log-likelihoods in order to ensure resolution independence.
+
+Harmonic Transform Convention
+.............................
+
+In NIFTy the convention for the harmonic transformations is set by requiring the zero mode of the transformed field to be the integral over the original field. This choice is convenient for the Fourier transformation and used throughout the literature. Note, for the spherical harmonics this convention is only seldomly used and might result in unexpected factors in the transformed field.
+
+To be specific, for the spherical harmonics transformation this means that a monopole of unit amplitude in position-space which is transformed to the spherical harmonics domain and back to the original position space via the adjoint transformation will have a non-unit amplitude afterwards. The factor between the input field and the twice transformed field is :math:`1/4\pi`. In comparison to the convention used in HEALPix, this corresponds to dividing the output of the HEALPix transformed field by :math:`\sqrt{4\pi}` in each transformation.
+
+Depending on the use-case, additional volume factors must be accounted for. This is especially true if one wants to define the inverse transformation. Note, the convention for the harmonic transformations used in NIFTy results in non-unitary operators.
