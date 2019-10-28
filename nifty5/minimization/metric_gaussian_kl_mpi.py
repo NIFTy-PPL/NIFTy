@@ -73,7 +73,6 @@ class KLMetric(EndomorphicOperator):
         return self._KL.metric_sample(from_inverse, dtype)
 
 
-
 class MetricGaussianKL_MPI(Energy):
     """Provides the sampled Kullback-Leibler divergence between a distribution
     and a Metric Gaussian.
@@ -116,7 +115,7 @@ class MetricGaussianKL_MPI(Energy):
     _samples : None
         Only a parameter for internal uses. Typically not to be set by users.
     seed_offset : int
-        A parameter with which one can controll from which seed the samples 
+        A parameter with which one can controll from which seed the samples
         are drawn. Per default, the seed is different for MPI tasks, but the
         same every time this class is initialized.
 
@@ -131,7 +130,6 @@ class MetricGaussianKL_MPI(Energy):
     `Metric Gaussian Variational Inference`, Jakob Knollmüller,
     Torsten A. Enßlin, `<https://arxiv.org/abs/1901.11033>`_
     """
-
 
     def __init__(self, mean, hamiltonian, n_samples, constants=[],
                  point_estimates=[], mirror_samples=False,
