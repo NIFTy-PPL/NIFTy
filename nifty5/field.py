@@ -234,6 +234,8 @@ class Field(object):
     def scalar_weight(self, spaces=None):
         """Returns the uniform volume element for a sub-domain of `self`.
 
+        DEPRECATED! Use `self.domain.scalar_weight` instead.
+
         Parameters
         ----------
         spaces : int, tuple of int or None
@@ -250,6 +252,8 @@ class Field(object):
 
     def total_volume(self, spaces=None):
         """Returns the total volume of the field's domain or of a subspace of it.
+
+        DEPRECATED! Use `self.domain.total_volume` instead.
 
         Parameters
         ----------
