@@ -159,7 +159,7 @@ class Operator(metaclass=NiftyMeta):
 
 
 for f in ["sqrt", "exp", "log", "tanh", "sigmoid", 'sin', 'cos', 'tan',
-          'sinh', 'cosh', 'absolute', 'sinc', 'one_over']:
+          'sinh', 'cosh', 'absolute', 'sinc', 'one_over', 'log10']:
     def func(f):
         def func2(self):
             fa = _FunctionApplier(self.target, f)

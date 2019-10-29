@@ -329,7 +329,7 @@ def test_emptydomain():
 @pmp('dom', [ift.RGSpace((8,), harmonic=True), ()])
 @pmp('func', [
     "exp", "log", "sin", "cos", "tan", "sinh", "cosh", "sinc", "absolute",
-    "sign"
+    "sign", "log10"
 ])
 def test_funcs(num, dom, func):
     num = 5

@@ -389,7 +389,7 @@ def domain_union(domains):
 
 _current_module = sys.modules[__name__]
 
-for f in ["sqrt", "exp", "log", "tanh", "sigmoid",
+for f in ["sqrt", "exp", "log", "log10", "tanh", "sigmoid",
           "conjugate", 'sin', 'cos', 'tan', 'sinh', 'cosh',
           'absolute', 'one_over', 'sinc']:
     def func(f):

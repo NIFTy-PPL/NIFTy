@@ -330,6 +330,11 @@ class Linearization(object):
         tmp = self._val.log()
         return self.new(tmp, makeOp(1./self._val)(self._jac))
 
+    def log10(self):
+        tmp = self._val.log10()
+        tmp2 = 1. / (self._val * np.log(10))
+        return self.new(tmp, makeOp(tmp2)(self._jac))
+
     def sinh(self):
         tmp = self._val.sinh()
         tmp2 = self._val.cosh()
