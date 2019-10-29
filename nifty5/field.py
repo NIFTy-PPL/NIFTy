@@ -260,30 +260,20 @@ class Field(object):
         return res
 
     def total_volume(self, spaces=None):
-        """Returns the total volume of a sub-domain of `self`.
+        """Returns the total volume of the field's domain or of a subspace of it.
 
         Parameters
         ----------
         spaces : int, tuple of int or None
             Indices of the sub-domains of the field's domain to be considered.
-            If `None`, the entire domain is used.
+            If `None`, the total volume of the whole domain is returned.
 
         Returns
         -------
         float
-            the total volume of the requested sub-domain.
+            the total volume of the requested (sub-)domain.
         """
-        if spaces is None:
-            return self._domain.total_volume
-
-        if np.isscalar(spaces):
-            return self._domain[spaces].total_volume
-
-        # tuple of spaces given
-        res = 1.
-        for i in spaces:
-            res *= self._domain[i].total_volume
-        return res
+        return self._domain.total_volume(spaces)
 
     def weight(self, power=1, spaces=None):
         """Weights the pixels of `self` with their invidual pixel volumes.

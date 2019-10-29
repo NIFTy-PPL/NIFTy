@@ -19,6 +19,8 @@ from functools import reduce
 from . import utilities
 from .domains.domain import Domain
 
+import numpy as np
+
 
 class DomainTuple(object):
     """Ordered sequence of Domain objects.
@@ -125,11 +127,28 @@ class DomainTuple(object):
         """
         return self._size
 
-    @property
-    def total_volume(self):
+    def total_volume(self, spaces=None):
+        """Returns the total volume of `self` or of a subspace of it.
+
+        Parameters
+        ----------
+        spaces : int, tuple of int or None
+            Indices of the sub-domains of the domain to be considered.
+            If `None`, the total volume of the whole domain is returned.
+
+        Returns
+        -------
+        float
+            the total volume of the requested (sub-)domain.
+        """
+        if np.isscalar(spaces):
+            return self._dom[spaces].total_volume
+
+        if spaces is None:
+            spaces = range(len(self._dom))
         res = 1.
-        for d in self._dom:
-            res *= d.total_volume
+        for i in spaces:
+            res *= self._dom[i].total_volume
         return res
 
     @property
