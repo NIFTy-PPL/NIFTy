@@ -23,9 +23,11 @@ from ..operators.contraction_operator import ContractionOperator
 from ..operators.distributors import PowerDistributor
 from ..operators.harmonic_operators import HarmonicTransformOperator
 from ..operators.simple_linear_operators import ducktape
+from ..utilities import infer_space
+from ..sugar import get_default_codomain
 
 
-def CorrelatedField(target, amplitude_operator, name='xi', codomain=None):
+def CorrelatedField(target, amplitude_operator, name='xi', codomain=None, space = None):
     """Constructs an operator which turns a white Gaussian excitation field
     into a correlated field.
 
@@ -39,12 +41,14 @@ def CorrelatedField(target, amplitude_operator, name='xi', codomain=None):
     Parameters
     ----------
     target : Domain, DomainTuple or tuple of Domain
-        Target of the operator. Must contain exactly one space.
+        Target of the operator.
     amplitude_operator: Operator
     name : string
         :class:`MultiField` key for the xi-field.
     codomain : Domain
-        The codomain for target[0]. If not supplied, it is inferred.
+        The codomain for target[space]. If not supplied, it is inferred.
+    space: int
+        The index of the domain on which the amplitude operator acts.
 
     Returns
     -------
@@ -59,21 +63,19 @@ def CorrelatedField(target, amplitude_operator, name='xi', codomain=None):
     one needs to combine this operator with a :class:`FieldZeroPadder`.
     """
     tgt = DomainTuple.make(target)
-    if len(tgt) > 1:
-        raise ValueError
+    space = infer_space(tgt, space)
     if codomain is None:
-        codomain = tgt[0].get_default_codomain()
-    h_space = codomain
-    ht = HarmonicTransformOperator(h_space, target=tgt[0])
-    p_space = amplitude_operator.target[0]
-    power_distributor = PowerDistributor(h_space, p_space)
+        codomain = get_default_codomain(tgt, space)
+    ht = HarmonicTransformOperator(codomain, target=tgt[space], space = space)
+    p_space = amplitude_operator.target[space]
+    power_distributor = PowerDistributor(codomain, p_space, space)
     A = power_distributor(amplitude_operator)
-    vol = h_space.scalar_dvol**-0.5
+    vol = codomain[space].scalar_dvol**-0.5
     # When doubling the resolution of `tgt` the value of the highest k-mode
     # will scale with a square root. `vol` cancels this effect such that the
     # same power spectrum can be used for the spaces with the same volume,
     # different resolutions and the same object in them.
-    return ht(vol*A*ducktape(h_space, None, name))
+    return ht(vol*A*ducktape(codomain, None, name))
 
 
 def MfCorrelatedField(target, amplitudes, name='xi'):
