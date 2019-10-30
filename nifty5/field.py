@@ -457,7 +457,7 @@ class Field(object):
             The result of the integration. If it is carried out over the
             entire domain, this is a scalar, otherwise a Field.
         """
-        swgt = self.scalar_weight(spaces)
+        swgt = self._domain.scalar_weight(spaces)
         if swgt is not None:
             res = self.sum(spaces)
             res = res*swgt
@@ -527,7 +527,7 @@ class Field(object):
         """Determines the mean over the sub-domains given by `spaces`.
 
         ``x.mean(spaces)`` is equivalent to
-        ``x.integrate(spaces)/x.total_volume(spaces)``.
+        ``x.integrate(spaces)/x.domain.total_volume(spaces)``.
 
         Parameters
         ----------
@@ -541,12 +541,12 @@ class Field(object):
             The result of the operation. If it is carried out over the entire
             domain, this is a scalar, otherwise a Field.
         """
-        if self.scalar_weight(spaces) is not None:
+        if self._domain.scalar_weight(spaces) is not None:
             return self._contraction_helper('mean', spaces)
         # MR FIXME: not very efficient
         # MR FIXME: do we need "spaces" here?
         tmp = self.weight(1, spaces)
-        return tmp.sum(spaces)*(1./tmp.total_volume(spaces))
+        return tmp.sum(spaces)*(1./tmp._domain.total_volume(spaces))
 
     def var(self, spaces=None):
         """Determines the variance over the sub-domains given by `spaces`.
@@ -564,7 +564,7 @@ class Field(object):
             The result of the operation. If it is carried out over the entire
             domain, this is a scalar, otherwise a Field.
         """
-        if self.scalar_weight(spaces) is not None:
+        if self._domain.scalar_weight(spaces) is not None:
             return self._contraction_helper('var', spaces)
         # MR FIXME: not very efficient or accurate
         m1 = self.mean(spaces)
@@ -594,7 +594,7 @@ class Field(object):
             domain, this is a scalar, otherwise a Field.
         """
         from .sugar import sqrt
-        if self.scalar_weight(spaces) is not None:
+        if self._domain.scalar_weight(spaces) is not None:
             return self._contraction_helper('std', spaces)
         return sqrt(self.var(spaces))
 
