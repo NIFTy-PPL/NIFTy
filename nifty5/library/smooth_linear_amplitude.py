@@ -90,9 +90,11 @@ def CepstrumOperator(target, a, k0, space = None):
     target = DomainTuple.make(target)
     space = infer_space(target, space)
     dim = len(target[space].shape)
-    shape = tuple(s for i in range(len(target)) if i != space for s in target[i].shape)
-    a = _parameter_shaper(a, shape)
-    k0 = _parameter_shaper(k0, (dim,)+shape)
+
+    #Shape of the domain without target[space] subdomain
+    param_shape = tuple(s for i in range(len(target)) for s in target[i].shape if i != space)
+    a = _parameter_shaper(a, param_shape)
+    k0 = _parameter_shaper(k0, (dim,) + param_shape)
 
     if target[space].harmonic:
         raise TypeError
@@ -109,12 +111,12 @@ def CepstrumOperator(target, a, k0, space = None):
     shape = dom.shape
     sl_extender = (slice(None),) + (None,)*n + (slice(None),)*dim + (None,)*(N-n-dim+1)
     q_array = dom[space].get_k_array()[sl_extender]
-    a = a[(slice(None),)*n+(None,)*dim]
-    k0 = k0[(slice(None),)*(1+n)+(None,)*dim]
+    a = a[(slice(None),)*n + (None,)*dim]
+    k0 = k0[(slice(None),)*(1+n) + (None,)*dim]
 
     # Fill all non-zero modes
     no_zero_modes = (slice(None),)*(n) + (slice(1, None),)*dim
-    ks = q_array[(slice(None),)+no_zero_modes]
+    ks = q_array[(slice(None),) + no_zero_modes]
     cepstrum_field = np.zeros(shape)
     cepstrum_field[no_zero_modes] = _ceps_kernel(ks, a, k0)
 
@@ -214,8 +216,9 @@ def LinearSLAmplitude(*, target, n_pix, a, k0, sm, sv, im, iv,
     if not (isinstance(n_pix, int) and isinstance(target[space], PowerSpace)):
         raise TypeError
 
-    shape = tuple(s for i in range(len(target)) if i != space for s in target[i].shape)
-    sm, sv, im, iv = (_parameter_shaper(a, shape) for a in (sm, sv, im, iv))
+    #Shape of the domain without target[space] subdomain
+    param_shape = tuple(s for i in range(len(target)) for s in target[i].shape if i != space)
+    sm, sv, im, iv = (_parameter_shaper(a, param_shape) for a in (sm, sv, im, iv))
     if np.any(sv <= 0) or np.any(iv <= 0):
         raise ValueError
 

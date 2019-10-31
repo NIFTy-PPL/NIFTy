@@ -424,14 +424,17 @@ def get_default_codomain(domainoid, space=None):
         codomain. `domain[space]` must be of class `RGSpace`.
     """
     from .domains.rg_space import RGSpace
+    from .domains.hp_space import HPSpace
+    from .domains.gl_space import GLSpace
+    from .domains.lm_space import LMSpace
     if isinstance(domainoid, RGSpace):
         return domainoid.get_default_codomain()
     if not isinstance(domainoid, DomainTuple):
         raise TypeError(
             'Works only on RGSpaces and DomainTuples containing those')
     space = utilities.infer_space(domainoid, space)
-    if not isinstance(domainoid[space], RGSpace):
-        raise TypeError("can only codomain RGSpaces")
+    if not isinstance(domainoid[space], (RGSpace, HPSpace, GLSpace, LMSpace)):
+        raise TypeError("can only codomain structrued spaces")
     ret = [dom for dom in domainoid]
     ret[space] = domainoid[space].get_default_codomain()
     return DomainTuple.make(ret)

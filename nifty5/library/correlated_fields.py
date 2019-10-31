@@ -27,7 +27,7 @@ from ..utilities import infer_space
 from ..sugar import get_default_codomain
 
 
-def CorrelatedField(target, amplitude_operator, name='xi', codomain=None, space = None):
+def CorrelatedField(target, amplitude_operator, name='xi', codomain=None, space=None):
     """Constructs an operator which turns a white Gaussian excitation field
     into a correlated field.
 
