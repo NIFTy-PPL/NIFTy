@@ -87,12 +87,15 @@ def CepstrumOperator(target, a, k0, space = None):
         The index of the domain on which the CepstrumOperator acts.
         target[space] must be a non-harmonic LogRGSpace.
     """
+    from functools import reduce
+
     target = DomainTuple.make(target)
     space = infer_space(target, space)
     dim = len(target[space].shape)
 
     #Shape of the domain without target[space] subdomain
-    param_shape = tuple(s for i in range(len(target)) for s in target[i].shape if i != space)
+    param_shape = reduce(lambda x,y: x+y,
+            (target[i].shape for i in range(len(target)) if i != space),())
     a = _parameter_shaper(a, param_shape)
     k0 = _parameter_shaper(k0, (dim,) + param_shape)
 
@@ -211,13 +214,16 @@ def LinearSLAmplitude(*, target, n_pix, a, k0, sm, sv, im, iv,
     Logarithm of SLAmplitude
     See documentation of SLAmplitude for more details
     '''
+    from functools import reduce
+
     target = DomainTuple.make(target)
     space = infer_space(target, space)
     if not (isinstance(n_pix, int) and isinstance(target[space], PowerSpace)):
         raise TypeError
 
     #Shape of the domain without target[space] subdomain
-    param_shape = tuple(s for i in range(len(target)) for s in target[i].shape if i != space)
+    param_shape = reduce(lambda x,y: x+y,
+            (target[i].shape for i in range(len(target)) if i != space),())
     sm, sv, im, iv = (_parameter_shaper(a, param_shape) for a in (sm, sv, im, iv))
     if np.any(sv <= 0) or np.any(iv <= 0):
         raise ValueError
