@@ -682,7 +682,7 @@ for op in ["__iadd__", "__isub__", "__imul__", "__idiv__",
         return func2
     setattr(Field, op, func(op))
 
-for f in ["sqrt", "exp", "log", "tanh",
+for f in ["sqrt", "exp", "log", "log10", "tanh",
           "sin", "cos", "tan", "cosh", "sinh",
           "absolute", "sinc", "sign"]:
     def func(f):
