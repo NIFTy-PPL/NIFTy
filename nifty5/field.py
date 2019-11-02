@@ -246,42 +246,23 @@ class Field(object):
             If the requested sub-domain has a uniform volume element, it is
             returned. Otherwise, `None` is returned.
         """
-        if np.isscalar(spaces):
-            return self._domain[spaces].scalar_dvol
-
-        if spaces is None:
-            spaces = range(len(self._domain))
-        res = 1.
-        for i in spaces:
-            tmp = self._domain[i].scalar_dvol
-            if tmp is None:
-                return None
-            res *= tmp
-        return res
+        return self._domain.scalar_weight(spaces)
 
     def total_volume(self, spaces=None):
-        """Returns the total volume of a sub-domain of `self`.
+        """Returns the total volume of the field's domain or of a subspace of it.
 
         Parameters
         ----------
         spaces : int, tuple of int or None
             Indices of the sub-domains of the field's domain to be considered.
-            If `None`, the entire domain is used.
+            If `None`, the total volume of the whole domain is returned.
 
         Returns
         -------
         float
-            the total volume of the requested sub-domain.
+            the total volume of the requested (sub-)domain.
         """
-        if np.isscalar(spaces):
-            return self._domain[spaces].total_volume
-
-        if spaces is None:
-            spaces = range(len(self._domain))
-        res = 1.
-        for i in spaces:
-            res *= self._domain[i].total_volume
-        return res
+        return self._domain.total_volume(spaces)
 
     def weight(self, power=1, spaces=None):
         """Weights the pixels of `self` with their invidual pixel volumes.
