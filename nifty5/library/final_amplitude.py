@@ -1,21 +1,21 @@
 import numpy as np
+from numpy.testing import assert_allclose
 
 from ..domain_tuple import DomainTuple
-from ..operators.value_inserter import ValueInserter
 from ..domains.power_space import PowerSpace
 from ..domains.unstructured_domain import UnstructuredDomain
+from ..extra import check_jacobian_consistency
 from ..field import Field
 from ..operators.adder import Adder
+from ..operators.contraction_operator import ContractionOperator
 from ..operators.distributors import PowerDistributor
 from ..operators.endomorphic_operator import EndomorphicOperator
-from ..operators.exp_transform import ExpTransform
+from ..operators.harmonic_operators import HarmonicTransformOperator
 from ..operators.linear_operator import LinearOperator
 from ..operators.operator import Operator
-from ..operators.qht_operator import QHTOperator
 from ..operators.simple_linear_operators import VdotOperator, ducktape
-from ..operators.slope_operator import SlopeOperator
-from ..operators.symmetrizing_operator import SymmetrizingOperator
-from ..sugar import from_global_data, full, makeDomain, makeOp
+from ..operators.value_inserter import ValueInserter
+from ..sugar import from_global_data, from_random, full, makeDomain
 
 
 def _lognormal_moment_matching(mean, sig, key):
@@ -135,11 +135,8 @@ class FinalAmplitude:
         smooth = twolog @ (scale*ducktape(scale.target, None, key))
 
         # move to tests
-        from numpy.testing import assert_allclose
-        from ..sugar import from_random
         assert_allclose(
             smooth(from_random('normal', smooth.domain)).val[0:2], 0)
-        from ..extra import check_jacobian_consistency
         check_jacobian_consistency(smooth, from_random('normal',
                                                        smooth.domain))
         # end move to tests
@@ -225,7 +222,6 @@ class FinalAmplitude:
         azm = Adder(from_global_data(hspace, foo)) @ ValueInserter(
             hspace, zeroind) @ azm
 
-        from ..operators.harmonic_operators import HarmonicTransformOperator
         ht = HarmonicTransformOperator(hspace, space=0)
         pd = PowerDistributor(hspace, self._amplitudes[0].target[0], 0)
         for i in range(1, len(self._amplitudes)):
@@ -234,7 +230,6 @@ class FinalAmplitude:
                 pd.domain, self._amplitudes[i].target[0], space=i)
 
         spaces = tuple(range(len(self._amplitudes)))
-        from ..operators.contraction_operator import ContractionOperator
         a = ContractionOperator(pd.domain,
                                 spaces[1:]).adjoint(self._amplitudes[0])
         for i in range(1, len(self._amplitudes)):
