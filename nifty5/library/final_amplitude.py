@@ -267,4 +267,8 @@ class FinalAmplitude:
                 (i + 1):]).adjoint(self._amplitudes[i]))
 
         A = pd @ a
-        return ht(A*ducktape(hspace, None, prefix + 'xi'))
+        return ht(azm*A*ducktape(hspace, None, prefix + 'xi'))
+
+    @property
+    def amplitudes(self):
+        return self._amplitudes
