@@ -6,6 +6,7 @@ from ..domains.power_space import PowerSpace
 from ..domains.unstructured_domain import UnstructuredDomain
 from ..extra import check_jacobian_consistency
 from ..field import Field
+from ..multi_domain import MultiDomain
 from ..operators.adder import Adder
 from ..operators.contraction_operator import ContractionOperator
 from ..operators.distributors import PowerDistributor
@@ -31,6 +32,34 @@ def _normal(mean, sig, key):
         sig*ducktape(DomainTuple.scalar_domain(), None, key))
 
 
+class _SlopeOperator(Operator):
+    def __init__(self, smooth, loglogavgslope):
+        self._domain = MultiDomain.union(
+            [smooth.domain, loglogavgslope.domain])
+        self._target = smooth.target
+        self._smooth = smooth
+        self._llas = loglogavgslope
+        logkl = _log_k_lengths(self._target[0])
+        assert logkl.shape[0] == self._target[0].shape[0] - 1
+        logkl -= logkl[0]
+        logkl = np.insert(logkl, 0, 0)
+        self._t = VdotOperator(from_global_data(self._target, logkl)).adjoint
+        self._T = float(logkl[-1])
+        ind = (smooth.target.shape[0] - 1,)
+        self._extr_op = ValueInserter(smooth.target, ind).adjoint
+
+    def apply(self, x):
+        self._check_input(x)
+        smooth = self._smooth(x.extract(self._smooth.domain))
+        res0 = self._llas(x.extract(self._llas.domain))
+        res1 = self._extr_op(smooth)/self._T
+        return self._t(res0 - res1) + smooth
+
+
+def _log_k_lengths(pspace):
+    return np.log(pspace.k_lengths[1:])
+
+
 class _TwoLogIntegrations(LinearOperator):
     def __init__(self, target):
         self._target = makeDomain(target)
@@ -39,7 +68,7 @@ class _TwoLogIntegrations(LinearOperator):
         self._capability = self.TIMES | self.ADJOINT_TIMES
         if not isinstance(self._target[0], PowerSpace):
             raise TypeError
-        logk_lengths = np.log(self._target[0].k_lengths[1:])
+        logk_lengths = _log_k_lengths(self._target[0])
         self._logvol = logk_lengths[1:] - logk_lengths[:-1]
 
     def apply(self, x, mode):
@@ -133,6 +162,7 @@ class FinalAmplitude:
         scale = sigmasq*(Adder(shift) @ scale).sqrt()
 
         smooth = twolog @ (scale*ducktape(scale.target, None, key))
+        smoothslope = _SlopeOperator(smooth, loglogavgslope)
 
         # move to tests
         assert_allclose(
@@ -141,7 +171,7 @@ class FinalAmplitude:
                                                        smooth.domain))
         # end move to tests
 
-        normal_ampl = _Normalization(target) @ smooth
+        normal_ampl = _Normalization(target) @ smoothslope
         vol = target[0].harmonic_partner.get_default_codomain().total_volume
         arr = np.zeros(target.shape)
         arr[1:] = vol
