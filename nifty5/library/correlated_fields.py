@@ -22,7 +22,7 @@ from numpy.testing import assert_allclose
 from ..domain_tuple import DomainTuple
 from ..domains.power_space import PowerSpace
 from ..domains.unstructured_domain import UnstructuredDomain
-from ..extra import check_jacobian_consistency
+from ..extra import check_jacobian_consistency, consistency_check
 from ..field import Field
 from ..multi_domain import MultiDomain
 from ..operators.adder import Adder
@@ -55,8 +55,10 @@ class _SlopeOperator(Operator):
         self._domain = MultiDomain.union(
             [smooth.domain, loglogavgslope.domain])
         self._target = smooth.target
-        self._smooth = smooth
-        self._llas = loglogavgslope
+        from ..operators.simple_linear_operators import PartialExtractor
+        self._smooth = smooth @ PartialExtractor(self._domain, smooth.domain)
+        self._llas = loglogavgslope @ PartialExtractor(self._domain,
+                                                       loglogavgslope.domain)
         logkl = _log_k_lengths(self._target[0])
         assert logkl.shape[0] == self._target[0].shape[0] - 1
         logkl -= logkl[0]
@@ -68,8 +70,8 @@ class _SlopeOperator(Operator):
 
     def apply(self, x):
         self._check_input(x)
-        smooth = self._smooth(x.extract(self._smooth.domain))
-        res0 = self._llas(x.extract(self._llas.domain))
+        smooth = self._smooth(x)
+        res0 = self._llas(x)
         res1 = self._extr_op(smooth)/self._T
         return self._t(res0 - res1) + smooth
 
@@ -121,6 +123,8 @@ class _Normalization(Operator):
         cst[0] = 0
         self._cst = from_global_data(self._domain, cst)
         self._specsum = _SpecialSum(self._domain)
+        # FIXME Move to tests
+        consistency_check(self._specsum)
 
     def apply(self, x):
         self._check_input(x)
@@ -185,8 +189,11 @@ class CorrelatedFieldMaker:
         # move to tests
         assert_allclose(
             smooth(from_random('normal', smooth.domain)).val[0:2], 0)
+        consistency_check(twolog)
         check_jacobian_consistency(smooth, from_random('normal',
                                                        smooth.domain))
+        check_jacobian_consistency(smoothslope,
+                                   from_random('normal', smoothslope.domain))
         # end move to tests
 
         normal_ampl = _Normalization(target) @ smoothslope
@@ -204,6 +211,8 @@ class CorrelatedFieldMaker:
         # assert_allclose(
         #     normal_ampl(from_random('normal', normal_ampl.domain)).val[0], 1)
         assert_allclose(ampl(from_random('normal', ampl.domain)).val[0], vol)
+        op = _Normalization(target)
+        check_jacobian_consistency(op, from_random('normal', op.domain))
         # End move to tests
 
         self._amplitudes.append(ampl)
