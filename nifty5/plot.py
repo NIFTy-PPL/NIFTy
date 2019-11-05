@@ -171,14 +171,15 @@ def _find_closest(A, target):
     return idx
 
 
-def _makeplot(name):
+def _makeplot(name, block=True):
     import matplotlib.pyplot as plt
     if dobj.rank != 0:
         plt.close()
         return
     if name is None:
-        plt.show()
-        plt.close()
+        plt.show(block=block)
+        if block:
+            plt.close()
         return
     extension = os.path.splitext(name)[1]
     if extension in (".pdf", ".png", ".svg"):
@@ -511,6 +512,9 @@ class Plot(object):
             If left empty, the plot will be shown on the screen,
             otherwise it will be written to a file with the given name.
             Supported extensions: .png and .pdf. Default: None.
+        block: bool
+            Override the blocking behavior of the non-interactive plotting
+            mode. The plot will not be closed in this case but is left open!
         """
         import matplotlib.pyplot as plt
         nplot = len(self._plots)
@@ -537,4 +541,4 @@ class Plot(object):
             ax = fig.add_subplot(ny, nx, i+1)
             _plot(self._plots[i], ax, **self._kwargs[i])
         fig.tight_layout()
-        _makeplot(kwargs.pop("name", None))
+        _makeplot(kwargs.pop("name", None), block=kwargs.pop("block", True))
