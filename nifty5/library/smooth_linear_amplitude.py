@@ -216,29 +216,31 @@ def LinearSLAmplitude(*, target, n_pix, a, k0, sm, sv, im, iv,
     # Go from loglog-space to linear-linear-space
     return et @ loglog_ampl
 
+
 class _Customscale(LinearOperator):
-    def __init__(self,target,dt):
+    def __init__(self, target, dt):
         self._target = DomainTuple.make(target)
         self._domain = DomainTuple.scalar_domain()
         self._sc = 12/dt**2
         self._capability = self.TIMES | self.ADJOINT_TIMES
-    
-    def apply(self,x,mode):
-        self._check_input(x,mode)
+
+    def apply(self, x, mode):
+        self._check_input(x, mode)
         if mode == self.TIMES:
             res = np.zeros(self._target.shape)
-            res[1] = self._sc * x.to_global_data()
-            res = from_global_data(self.target,res)
+            res[1] = self._sc*x.to_global_data()
+            res = from_global_data(self.target, res)
         else:
             res = (self._sc*x.to_global_data()[1]).sum()
             res = Field.scalar(res)
         return res
 
+
 class _TwoLogIntegrations(LinearOperator):
     def __init__(self, target):
         self._target = makeDomain(target)
         self._domain = makeDomain(
-            UnstructuredDomain((2,self.target.shape[0] - 2)))
+            UnstructuredDomain((2, self.target.shape[0] - 2)))
         self._capability = self.TIMES | self.ADJOINT_TIMES
         if not isinstance(self._target[0], PowerSpace):
             raise TypeError
@@ -255,7 +257,7 @@ class _TwoLogIntegrations(LinearOperator):
             res[2:] = np.cumsum(x[0]*np.sqrt(self._logvol))
             res[2:] *= self._logvol
             res[2:] += (self._logvol*np.sqrt(self._logvol)*
-                           (x[1]/np.sqrt(12) - x[0]/2.))
+                        (x[1]/np.sqrt(12) - x[0]/2.))
             res[2:] = np.cumsum(res[2:])
             return from_global_data(self._target, res)
         else:
@@ -317,16 +319,16 @@ def LogIntegratedWienerProcess(target, means, stddevs, wienersigmastddev,
         wienersigmastddev*ducktape(expander.domain, None, keys[2]))
     sigma = expander @ sigma.exp()
     twolog = _TwoLogIntegrations(target)
-    
+
     ep = ducktape(expander.domain, None, keys[3])
     ep = Adder(Field.scalar(mymean)) @ (mystd*ep)
-    ep =ep.exp()
-    
-    scale = _Customscale(twolog.domain,twolog._logvol) @ ep
-    scale = Adder(full(scale.target,1.))@scale
+    ep = ep.exp()
+
+    scale = _Customscale(twolog.domain, twolog._logvol) @ ep
+    scale = Adder(full(scale.target, 1.)) @ scale
     scale = scale**0.5
-    
-    smooth = sigma*(twolog@(scale*ducktape(scale.target,None,keys[1])))
+
+    smooth = sigma*(twolog @ (scale*ducktape(scale.target, None, keys[1])))
     return rest.ducktape(keys[0]) + smooth
 
 
@@ -355,7 +357,7 @@ class SpecialSum(EndomorphicOperator):
 
 
 def WPAmplitude(target, means, stddevs, wienersigmastddev, wienersigmaprob,
-              keys):
+                keys):
     op = LogIntegratedWienerProcess(target, means, stddevs, wienersigmastddev,
                                     wienersigmaprob, keys)
     return Normalization(target) @ op.exp()
