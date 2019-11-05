@@ -226,8 +226,10 @@ class FinalAmplitude:
             hspace, zeroind) @ azm
 
         from ..operators.harmonic_operators import HarmonicTransformOperator
+        ht = HarmonicTransformOperator(hspace, space=0)
         pd = PowerDistributor(hspace, self._amplitudes[0].target[0], 0)
         for i in range(1, len(self._amplitudes)):
+            ht = HarmonicTransformOperator(ht.target, space=i) @ ht
             pd = pd @ PowerDistributor(
                 pd.domain, self._amplitudes[i].target[0], space=i)
 
@@ -240,5 +242,4 @@ class FinalAmplitude:
                 (i + 1):]).adjoint(self._amplitudes[i]))
 
         A = pd @ a
-        ht = HarmonicTransformOperator(hspace)
         return ht(A*ducktape(hspace, None, prefix + 'xi'))

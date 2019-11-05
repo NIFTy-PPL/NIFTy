@@ -18,9 +18,7 @@
 import numpy as np
 
 from ..domain_tuple import DomainTuple
-from ..domains.unstructured_domain import UnstructuredDomain
 from ..field import Field
-from ..sugar import makeDomain
 from .linear_operator import LinearOperator
 
 
@@ -36,7 +34,7 @@ class ValueInserter(LinearOperator):
     """
 
     def __init__(self, target, index):
-        self._domain = makeDomain(UnstructuredDomain(1))
+        self._domain = DomainTuple.scalar_domain()
         self._target = DomainTuple.make(target)
         index = tuple(index)
         if not all([
