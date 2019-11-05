@@ -56,34 +56,12 @@ if __name__ == '__main__':
     filename = "getting_started_3_mode_{}_".format(mode) + "{}.png"
 
     position_space = ift.RGSpace([128, 128])
-    harmonic_space = position_space.get_default_codomain()
-    ht = ift.HarmonicTransformOperator(harmonic_space, position_space)
-    power_space = ift.PowerSpace(harmonic_space)
+    power_space = ift.PowerSpace(position_space.get_default_codomain())
 
-    # Set up an amplitude operator for the field
-    dct = {
-        'target': power_space,
-        'n_pix': 64,  # 64 spectral bins
-
-        # Spectral smoothness (affects Gaussian process part)
-        'a': 3,  # relatively high variance of spectral curbvature
-        'k0': .4,  # quefrency mode below which cepstrum flattens
-
-        # Power-law part of spectrum:
-        'sm': -5,  # preferred power-law slope
-        'sv': .5,  # low variance of power-law slope
-        'im':  0,  # y-intercept mean, in-/decrease for more/less contrast
-        'iv': .3   # y-intercept variance
-    }
-    A = ift.SLAmplitude(**dct)
-
-    # Build the operator for a correlated signal
-    power_distributor = ift.PowerDistributor(harmonic_space, power_space)
-    vol = harmonic_space.scalar_dvol**-0.5
-    xi = ift.ducktape(harmonic_space, None, 'xi')
-    correlated_field = ht(vol*power_distributor(A)*xi)
-    # Alternatively, one can use:
-    # correlated_field = ift.CorrelatedField(position_space, A)
+    cfmaker = ift.CorrelatedFieldMaker()
+    cfmaker.add_fluctuations(power_space, 1, 1e-2, 1, 1e-2, 1, 1e-2, -3, 0.5, '')
+    correlated_field = cfmaker.finalize(1e-3, 1e-6, '')
+    A = cfmaker.amplitudes[0]
 
     # Apply a nonlinearity
     signal = ift.sigmoid(correlated_field)
