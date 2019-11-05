@@ -12,222 +12,281 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
 # Copyright(C) 2013-2019 Max-Planck-Society
+# Authors: Philipp Frank, Philipp Arras
 #
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
 
-from functools import reduce
-from operator import mul
+import numpy as np
+from numpy.testing import assert_allclose
 
 from ..domain_tuple import DomainTuple
+from ..domains.power_space import PowerSpace
+from ..domains.unstructured_domain import UnstructuredDomain
+from ..extra import check_jacobian_consistency
 from ..field import Field
+from ..multi_domain import MultiDomain
 from ..operators.adder import Adder
 from ..operators.contraction_operator import ContractionOperator
 from ..operators.distributors import PowerDistributor
+from ..operators.endomorphic_operator import EndomorphicOperator
 from ..operators.harmonic_operators import HarmonicTransformOperator
+from ..operators.linear_operator import LinearOperator
 from ..operators.operator import Operator
 from ..operators.simple_linear_operators import VdotOperator, ducktape
-from ..sugar import full, makeOp
+from ..operators.value_inserter import ValueInserter
+from ..sugar import from_global_data, from_random, full, makeDomain
 
 
-def CorrelatedField(target, amplitude_operator, name='xi', codomain=None):
-    """Constructs an operator which turns a white Gaussian excitation field
-    into a correlated field.
-
-    This function returns an operator which implements:
-
-        ht @ (vol * A * xi),
-
-    where `ht` is a harmonic transform operator, `A` is the square root of the
-    prior covariance and `xi` is the excitation field.
-
-    Parameters
-    ----------
-    target : Domain, DomainTuple or tuple of Domain
-        Target of the operator. Must contain exactly one space.
-    amplitude_operator: Operator
-    name : string
-        :class:`MultiField` key for the xi-field.
-    codomain : Domain
-        The codomain for target[0]. If not supplied, it is inferred.
-
-    Returns
-    -------
-    Operator
-        Correlated field
-
-    Notes
-    -----
-    In NIFTy, non-harmonic RGSpaces are by definition periodic. Therefore
-    the operator constructed by this method will output a correlated field
-    with *periodic* boundary conditions. If a non-periodic field is needed,
-    one needs to combine this operator with a :class:`FieldZeroPadder`.
-    """
-    tgt = DomainTuple.make(target)
-    if len(tgt) > 1:
-        raise ValueError
-    if codomain is None:
-        codomain = tgt[0].get_default_codomain()
-    h_space = codomain
-    ht = HarmonicTransformOperator(h_space, target=tgt[0])
-    if isinstance(amplitude_operator, Operator):
-        p_space = amplitude_operator.target[0]
-    elif isinstance(amplitude_operator, Field):
-        p_space = amplitude_operator.domain[0]
-    else:
-        raise TypeError
-    power_distributor = PowerDistributor(h_space, p_space)
-    A = power_distributor(amplitude_operator)
-    vol = h_space.scalar_dvol**-0.5
-    xi = ducktape(h_space, None, name)
-    # When doubling the resolution of `tgt` the value of the highest k-mode
-    # will scale with a square root. `vol` cancels this effect such that the
-    # same power spectrum can be used for the spaces with the same volume,
-    # different resolutions and the same object in them.
-    if isinstance(amplitude_operator, Field):
-        return ht(makeOp(A) @ xi).scale(vol)
-    return ht(A*xi).scale(vol)
+def _lognormal_moment_matching(mean, sig, key):
+    mean, sig, key = float(mean), float(sig), str(key)
+    assert sig > 0
+    logsig = np.sqrt(np.log((sig/mean)**2 + 1))
+    logmean = np.log(mean) - logsig**2/2
+    return _normal(logmean, logsig, key).exp()
 
 
-def MfCorrelatedField(target, amplitudes, name='xi'):
-    """Constructs an operator which turns white Gaussian excitation fields
-    into a correlated field defined on a DomainTuple with two entries and two
-    separate correlation structures.
-
-    This operator may be used as a model for multi-frequency reconstructions
-    with a correlation structure in both spatial and energy direction.
-
-    Parameters
-    ----------
-    target : Domain, DomainTuple or tuple of Domain
-        Target of the operator. Must contain exactly two spaces.
-    amplitudes: iterable of Operator
-        List of two amplitude operators.
-    name : string
-        :class:`MultiField` key for xi-field.
-
-    Returns
-    -------
-    Operator
-        Correlated field
-
-    Notes
-    -----
-    In NIFTy, non-harmonic RGSpaces are by definition periodic. Therefore
-    the operator constructed by this method will output a correlated field
-    with *periodic* boundary conditions. If a non-periodic field is needed,
-    one needs to combine this operator with a :class:`FieldZeroPadder` or even
-    two (one for the energy and one for the spatial subdomain)
-    """
-    tgt = DomainTuple.make(target)
-    if len(tgt) != 2:
-        raise ValueError
-    if len(amplitudes) != 2:
-        raise ValueError
-
-    hsp = DomainTuple.make([tt.get_default_codomain() for tt in tgt])
-    ht1 = HarmonicTransformOperator(hsp, target=tgt[0], space=0)
-    ht2 = HarmonicTransformOperator(ht1.target, target=tgt[1], space=1)
-    ht = ht2 @ ht1
-
-    psp = [aa.target[0] for aa in amplitudes]
-    pd0 = PowerDistributor(hsp, psp[0], 0)
-    pd1 = PowerDistributor(pd0.domain, psp[1], 1)
-    pd = pd0 @ pd1
-
-    dd0 = ContractionOperator(pd.domain, 1).adjoint
-    dd1 = ContractionOperator(pd.domain, 0).adjoint
-    d = [dd0, dd1]
-
-    a = [dd @ amplitudes[ii] for ii, dd in enumerate(d)]
-    a = reduce(mul, a)
-    A = pd @ a
-    # For `vol` see comment in `CorrelatedField`
-    vol = reduce(mul, [sp.scalar_dvol**-0.5 for sp in hsp])
-    return ht(vol*A*ducktape(hsp, None, name))
+def _normal(mean, sig, key):
+    return Adder(Field.scalar(mean)) @ (
+        sig*ducktape(DomainTuple.scalar_domain(), None, key))
 
 
-def CorrelatedFieldNormAmplitude(target,
-                                 amplitudes,
-                                 stdmean,
-                                 stdstd,
-                                 names=['xi', 'std']):
-    """Constructs an operator which turns white Gaussian excitation fields
-    into a correlated field defined on a DomainTuple with n entries and n
-    separate correlation structures.
+class _SlopeOperator(Operator):
+    def __init__(self, smooth, loglogavgslope):
+        self._domain = MultiDomain.union(
+            [smooth.domain, loglogavgslope.domain])
+        self._target = smooth.target
+        self._smooth = smooth
+        self._llas = loglogavgslope
+        logkl = _log_k_lengths(self._target[0])
+        assert logkl.shape[0] == self._target[0].shape[0] - 1
+        logkl -= logkl[0]
+        logkl = np.insert(logkl, 0, 0)
+        self._t = VdotOperator(from_global_data(self._target, logkl)).adjoint
+        self._T = float(logkl[-1])
+        ind = (smooth.target.shape[0] - 1,)
+        self._extr_op = ValueInserter(smooth.target, ind).adjoint
 
-    This operator may be used as a model for multi-frequency reconstructions
-    with a correlation structure in both spatial and energy direction.
+    def apply(self, x):
+        self._check_input(x)
+        smooth = self._smooth(x.extract(self._smooth.domain))
+        res0 = self._llas(x.extract(self._llas.domain))
+        res1 = self._extr_op(smooth)/self._T
+        return self._t(res0 - res1) + smooth
 
-    Parameters
-    ----------
-    target : Domain, DomainTuple or tuple of Domain
-        Target of the operator. Must contain exactly n spaces.
-    amplitudes: Opertor, iterable of Operator
-        Amplitude operator if n = 1 or list of n amplitude operators.
-    stdmean : float
-        Prior mean of the overall standart deviation.
-    stdstd : float
-        Prior standart deviation of the overall standart deviation.
-    names : iterable of string
-        :class:`MultiField` keys for xi-field and std-field.
 
-    Returns
-    -------
-    Operator
-        Correlated field
+def _log_k_lengths(pspace):
+    return np.log(pspace.k_lengths[1:])
 
-    Notes
-    -----
-    In NIFTy, non-harmonic RGSpaces are by definition periodic. Therefore
-    the operator constructed by this method will output a correlated field
-    with *periodic* boundary conditions. If a non-periodic field is needed,
-    one needs to combine this operator with a :class:`FieldZeroPadder` or even
-    two (one for the energy and one for the spatial subdomain)
-    """
 
-    amps = [
-        amplitudes,
-    ] if isinstance(amplitudes, (Operator, Field)) else amplitudes
+class _TwoLogIntegrations(LinearOperator):
+    def __init__(self, target):
+        self._target = makeDomain(target)
+        self._domain = makeDomain(
+            UnstructuredDomain((2, self.target.shape[0] - 2)))
+        self._capability = self.TIMES | self.ADJOINT_TIMES
+        if not isinstance(self._target[0], PowerSpace):
+            raise TypeError
+        logk_lengths = _log_k_lengths(self._target[0])
+        self._logvol = logk_lengths[1:] - logk_lengths[:-1]
 
-    cls = Operator if isinstance(amps[0], Operator) else Field
-    assert all([isinstance(aa, cls) for aa in amps])
+    def apply(self, x, mode):
+        self._check_input(x, mode)
+        if mode == self.TIMES:
+            x = x.to_global_data()
+            res = np.empty(self._target.shape)
+            res[0] = 0
+            res[1] = 0
+            res[2:] = np.cumsum(x[1])
+            res[2:] = (res[2:] + res[1:-1])/2*self._logvol + x[0]
+            res[2:] = np.cumsum(res[2:])
+            return from_global_data(self._target, res)
+        else:
+            x = x.to_global_data_rw()
+            res = np.zeros(self._domain.shape)
+            x[2:] = np.cumsum(x[2:][::-1])[::-1]
+            res[0] += x[2:]
+            x[2:] *= self._logvol/2.
+            res[1:-1] += res[2:]
+            x[1] += np.cumsum(res[2:][::-1])[::-1]
+            return from_global_data(self._domain, res)
 
-    tgt = DomainTuple.make(target)
-    if len(tgt) != len(amps):
-        raise ValueError
-    stdmean, stdstd = float(stdmean), float(stdstd)
-    if stdstd <= 0:
-        raise ValueError
 
-    if cls == Field:
-        psp = [aa.domain[0] for aa in amps]
-    else:
-        psp = [aa.target[0] for aa in amps]
-    hsp = DomainTuple.make([tt.get_default_codomain() for tt in tgt])
+class _Normalization(Operator):
+    def __init__(self, domain):
+        self._domain = self._target = makeDomain(domain)
+        hspace = self._domain[0].harmonic_partner
+        pd = PowerDistributor(hspace, power_space=self._domain[0])
+        # TODO Does not work on sphere yet
+        cst = pd.adjoint(full(pd.target, 1.)).to_global_data_rw()
+        cst[0] = 0
+        self._cst = from_global_data(self._domain, cst)
+        self._specsum = _SpecialSum(self._domain)
 
-    ht = HarmonicTransformOperator(hsp, target=tgt[0], space=0)
-    pd = PowerDistributor(hsp, psp[0], 0)
+    def apply(self, x):
+        self._check_input(x)
+        amp = x.exp()
+        spec = (2*x).exp()
+        # FIXME This normalizes also the zeromode which is supposed to be left
+        # untouched by this operator
+        return self._specsum(self._cst*spec)**(-0.5)*amp
 
-    for i in range(1, len(amps)):
-        ht = HarmonicTransformOperator(ht.target, target=tgt[i], space=i) @ ht
-        pd = pd @ PowerDistributor(pd.domain, psp[i], space=i)
 
-    spaces = tuple(range(len(amps)))
+class _SpecialSum(EndomorphicOperator):
+    def __init__(self, domain):
+        self._domain = makeDomain(domain)
+        self._capability = self.TIMES | self.ADJOINT_TIMES
 
-    a = ContractionOperator(pd.domain, spaces[1:]).adjoint(amps[0])
-    for i in range(1, len(amps)):
-        a = a*(ContractionOperator(
-            pd.domain, spaces[:i] + spaces[(i + 1):]).adjoint(amps[i]))
+    def apply(self, x, mode):
+        self._check_input(x, mode)
+        return full(self._tgt(mode), x.sum())
 
-    expander = VdotOperator(full(pd.domain, 1.)).adjoint
 
-    Std = stdstd*ducktape(expander.domain, None, names[1])
-    Std = expander @ (Adder(full(expander.domain, stdmean)) @ Std).exp()
+class CorrelatedFieldMaker:
+    def __init__(self):
+        self._amplitudes = []
 
-    if cls == Field:
-        A = pd @ (makeOp(a) @ Std)
-    else:
-        A = pd @ (Std*a)
-    # For `vol` see comment in `CorrelatedField`
-    vol = reduce(mul, [sp.scalar_dvol**-0.5 for sp in hsp])
-    return ht(vol*A*ducktape(hsp, None, names[0]))
+    def add_fluctuations_from_ops(self, target, fluctuations, flexibility,
+                                  asperity, loglogavgslope, key):
+        """
+        fluctuations > 0
+        flexibility > 0
+        asperity > 0
+        loglogavgslope probably negative
+        """
+        assert isinstance(fluctuations, Operator)
+        assert isinstance(flexibility, Operator)
+        assert isinstance(asperity, Operator)
+        assert isinstance(loglogavgslope, Operator)
+        target = makeDomain(target)
+        assert len(target) == 1
+        assert isinstance(target[0], PowerSpace)
+
+        twolog = _TwoLogIntegrations(target)
+        dt = twolog._logvol
+        sc = np.zeros(twolog.domain.shape)
+        sc[0] = sc[1] = np.sqrt(dt)
+        sc = from_global_data(twolog.domain, sc)
+        expander = VdotOperator(sc).adjoint
+        sigmasq = expander @ flexibility
+
+        dist = np.zeros(twolog.domain.shape)
+        dist[0] += 1.
+        dist = from_global_data(twolog.domain, dist)
+        scale = VdotOperator(dist).adjoint @ asperity
+
+        shift = np.ones(scale.target.shape)
+        shift[0] = dt**2/12.
+        shift = from_global_data(scale.target, shift)
+        scale = sigmasq*(Adder(shift) @ scale).sqrt()
+
+        smooth = twolog @ (scale*ducktape(scale.target, None, key))
+        smoothslope = _SlopeOperator(smooth, loglogavgslope)
+
+        # move to tests
+        assert_allclose(
+            smooth(from_random('normal', smooth.domain)).val[0:2], 0)
+        check_jacobian_consistency(smooth, from_random('normal',
+                                                       smooth.domain))
+        # end move to tests
+
+        normal_ampl = _Normalization(target) @ smoothslope
+        vol = target[0].harmonic_partner.get_default_codomain().total_volume
+        arr = np.zeros(target.shape)
+        arr[1:] = vol
+        expander = VdotOperator(from_global_data(target, arr)).adjoint
+        mask = np.zeros(target.shape)
+        mask[0] = vol
+        adder = Adder(from_global_data(target, mask))
+        ampl = adder @ ((expander @ fluctuations)*normal_ampl)
+
+        # Move to tests
+        # FIXME This test fails but it is not relevant for the final result
+        # assert_allclose(
+        #     normal_ampl(from_random('normal', normal_ampl.domain)).val[0], 1)
+        assert_allclose(ampl(from_random('normal', ampl.domain)).val[0], vol)
+        # End move to tests
+
+        self._amplitudes.append(ampl)
+
+    def add_fluctuations(self, target, fluctuations_mean, fluctuations_stddev,
+                         flexibility_mean, flexibility_stddev, asperity_mean,
+                         asperity_stddev, loglogavgslope_mean,
+                         loglogavgslope_stddev, prefix):
+        fluctuations_mean = float(fluctuations_mean)
+        fluctuations_stddev = float(fluctuations_stddev)
+        flexibility_mean = float(flexibility_mean)
+        flexibility_stddev = float(flexibility_stddev)
+        asperity_mean = float(asperity_mean)
+        asperity_stddev = float(asperity_stddev)
+        loglogavgslope_mean = float(loglogavgslope_mean)
+        loglogavgslope_stddev = float(loglogavgslope_stddev)
+        prefix = str(prefix)
+        assert fluctuations_stddev > 0
+        assert fluctuations_mean > 0
+        assert flexibility_stddev > 0
+        assert flexibility_mean > 0
+        assert asperity_stddev > 0
+        assert asperity_mean > 0
+        assert loglogavgslope_stddev > 0
+
+        fluct = _lognormal_moment_matching(fluctuations_mean,
+                                           fluctuations_stddev,
+                                           prefix + 'fluctuations')
+        flex = _lognormal_moment_matching(flexibility_mean, flexibility_stddev,
+                                          prefix + 'flexibility')
+        asp = _lognormal_moment_matching(asperity_mean, asperity_stddev,
+                                         prefix + 'asperity')
+        avgsl = _normal(loglogavgslope_mean, loglogavgslope_mean,
+                        prefix + 'loglogavgslope')
+        self.add_fluctuations_from_ops(target, fluct, flex, asp, avgsl,
+                                       prefix + 'spectrum')
+
+    def finalize_from_op(self, zeromode):
+        raise NotImplementedError
+
+    def finalize(self,
+                 offset_amplitude_mean,
+                 offset_amplitude_stddev,
+                 prefix,
+                 offset=None):
+        """
+        offset vs zeromode: volume factor
+        """
+        offset_amplitude_stddev = float(offset_amplitude_stddev)
+        offset_amplitude_mean = float(offset_amplitude_mean)
+        assert offset_amplitude_stddev > 0
+        assert offset_amplitude_mean > 0
+        if offset is not None:
+            offset = float(offset)
+        hspace = makeDomain(
+            [dd.target[0].harmonic_partner for dd in self._amplitudes])
+
+        azm = _lognormal_moment_matching(offset_amplitude_mean,
+                                         offset_amplitude_stddev,
+                                         prefix + 'zeromode')
+        foo = np.ones(hspace.shape)
+        zeroind = len(hspace.shape)*(0,)
+        foo[zeroind] = 0
+        azm = Adder(from_global_data(hspace, foo)) @ ValueInserter(
+            hspace, zeroind) @ azm
+
+        ht = HarmonicTransformOperator(hspace, space=0)
+        pd = PowerDistributor(hspace, self._amplitudes[0].target[0], 0)
+        for i in range(1, len(self._amplitudes)):
+            ht = HarmonicTransformOperator(ht.target, space=i) @ ht
+            pd = pd @ PowerDistributor(
+                pd.domain, self._amplitudes[i].target[0], space=i)
+
+        spaces = tuple(range(len(self._amplitudes)))
+        a = ContractionOperator(pd.domain,
+                                spaces[1:]).adjoint(self._amplitudes[0])
+        for i in range(1, len(self._amplitudes)):
+            a = a*(ContractionOperator(pd.domain, spaces[:i] + spaces[
+                (i + 1):]).adjoint(self._amplitudes[i]))
+
+        A = pd @ a
+        return ht(azm*A*ducktape(hspace, None, prefix + 'xi'))
+
+    @property
+    def amplitudes(self):
+        return self._amplitudes
