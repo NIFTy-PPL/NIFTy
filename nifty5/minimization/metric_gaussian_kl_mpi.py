@@ -170,7 +170,7 @@ class MetricGaussianKL_MPI(Energy):
                         _samples.append(((i % 2)*2-1) *
                                         met.draw_sample(from_inverse=True))
                 else:
-                    np.random.seed(i)
+                    np.random.seed(i+seed_offset)
                     _samples.append(met.draw_sample(from_inverse=True))
             np.random.set_state(rand_state)
             _samples = tuple(_samples)
@@ -242,8 +242,11 @@ class MetricGaussianKL_MPI(Energy):
             raise NotImplementedError()
         lin = self._lin.with_want_metric()
         samp = full(self._hamiltonian.domain, 0.)
+        rand_state = np.random.get_state()
+        np.random.seed(rank+np.random.randint(99999))
         for v in self._samples:
             samp = samp + self._hamiltonian(lin+v).metric.draw_sample(from_inverse=False, dtype=dtype)
+        np.random.set_state(rand_state)
         return allreduce_sum_field(samp)
 
     def metric_sample(self, from_inverse=False, dtype=np.float64):
