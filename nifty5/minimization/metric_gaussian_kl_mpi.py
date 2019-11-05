@@ -161,6 +161,7 @@ class MetricGaussianKL_MPI(Energy):
             if napprox > 1:
                 met._approximation = makeOp(approximation2endo(met, napprox))
             _samples = []
+            rand_state = np.random.get_state()
             for i in range(lo, hi):
                 if mirror_samples:
                     np.random.seed(i//2+seed_offset)
@@ -173,6 +174,7 @@ class MetricGaussianKL_MPI(Energy):
                 else:
                     np.random.seed(i)
                     _samples.append(met.draw_sample(from_inverse=True))
+            np.random.set_state(rand_state)
             _samples = tuple(_samples)
             if mirror_samples:
                 n_samples *= 2
