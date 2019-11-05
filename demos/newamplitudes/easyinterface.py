@@ -6,6 +6,13 @@ sspace = ift.RGSpace((128, 128), (0.2, 0.2))
 hspace = sspace.get_default_codomain()
 target = ift.PowerSpace(hspace)
 
+fa = ift.FinalAmplitude()
+fa.add_fluctuations(target, 1, 0.1, 1, 0.1, 1, 0.1, -2, 0.1, 'fst')
+fa.add_fluctuations(target, 1, 0.1, 1, 0.1, 1, 0.1, -2, 0.1, 'snd')
+fa.finalize(1, 0.1, '', offset=-10)
+
+exit()
+
 A = ift.NormalizedAmplitude(target, 16, 1, 1, -3, 1, 0, 1, 0, 1)
 A = ift.WPAmplitude(target, [0, -2, 0], [1E-5, 1, 1], 1, 0.99,
                     ['rest', 'smooth', 'wienersigma'])

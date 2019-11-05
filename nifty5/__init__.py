@@ -90,6 +90,7 @@ from .library.correlated_fields import CorrelatedField, MfCorrelatedField, Corre
 from .library.adjust_variances import (make_adjust_variances_hamiltonian,
                                        do_adjust_variances)
 from .library.gridder import GridderMaker
+from .library.final_amplitude import FinalAmplitude
 
 from . import extra
 
