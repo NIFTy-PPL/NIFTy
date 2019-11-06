@@ -108,8 +108,8 @@ class _TwoLogIntegrations(LinearOperator):
             x[2:] = np.cumsum(x[2:][::-1])[::-1]
             res[0] += x[2:]
             x[2:] *= self._logvol/2.
-            res[1:-1] += res[2:]
-            x[1] += np.cumsum(res[2:][::-1])[::-1]
+            x[1:-1] += x[2:]
+            res[1] += np.cumsum(x[2:][::-1])[::-1]
             return from_global_data(self._domain, res)
 
 
