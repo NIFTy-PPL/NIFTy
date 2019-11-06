@@ -50,35 +50,36 @@ def _normal(mean, sig, key):
         sig*ducktape(DomainTuple.scalar_domain(), None, key))
 
 
-class _SlopeOperator(Operator):
-    def __init__(self, smooth, loglogavgslope):
-        self._domain = MultiDomain.union(
-            [smooth.domain, loglogavgslope.domain])
-        self._target = smooth.target
-        from ..operators.simple_linear_operators import PartialExtractor
-        self._smooth = smooth @ PartialExtractor(self._domain, smooth.domain)
-        self._llas = loglogavgslope @ PartialExtractor(self._domain,
-                                                       loglogavgslope.domain)
-        logkl = _log_k_lengths(self._target[0])
-        assert logkl.shape[0] == self._target[0].shape[0] - 1
-        logkl = np.insert(logkl, 0, 0)
+class _SlopeRemover(EndomorphicOperator):
+    def __init__(self,domain,logkl):
+        self._domain = makeDomain(domain)
+        self._sc = logkl / float(logkl[-1])
 
-        self._t = VdotOperator(from_global_data(self._target, logkl)).adjoint
-        self._T = float(logkl[-1] - logkl[1])
-        ind = (smooth.target.shape[0] - 1,)
-        self._extr_op = ValueInserter(smooth.target, ind).adjoint
+        self._capability = self.TIMES | self.ADJOINT_TIMES
 
-    def apply(self, x):
-        self._check_input(x)
-        smooth = self._smooth(x)
-        res0 = self._llas(x)
-        res1 = self._extr_op(smooth)/self._T
-        return  self._t(res0 - res1) + smooth
+    def apply(self,x,mode):
+        self._check_input(x,mode)
+        x = x.to_global_data()
+        if mode == self.TIMES:
+            res = x - x[-1] * self._sc
+        else:
+            res = np.empty(x.shape)
+            res += x
+            res[-1] -= (x*self._sc).sum()
+        return from_global_data(self._tgt(mode),res)
 
+def _make_slope_Operator(smooth,loglogavgslope):
+    tg = smooth.target
+    logkl = _log_k_lengths(tg[0])
+    assert logkl.shape[0] == tg[0].shape[0] - 1
+    logkl -= logkl[0]
+    logkl = np.insert(logkl, 0, 0)
+    noslope = _SlopeRemover(tg,logkl) @ smooth
+    _t = VdotOperator(from_global_data(tg, logkl)).adjoint
+    return noslope + _t @ loglogavgslope
 
 def _log_k_lengths(pspace):
     return np.log(pspace.k_lengths[1:])
-
 
 class _TwoLogIntegrations(LinearOperator):
     def __init__(self, target):
@@ -184,8 +185,8 @@ class CorrelatedFieldMaker:
         scale = sigmasq*(Adder(shift) @ scale).sqrt()
 
         smooth = twolog @ (scale*ducktape(scale.target, None, key))
-        smoothslope = _SlopeOperator(smooth, loglogavgslope)
-
+        smoothslope = _make_slope_Operator(smooth,loglogavgslope)
+        
         # move to tests
         assert_allclose(
             smooth(from_random('normal', smooth.domain)).val[0:2], 0)
