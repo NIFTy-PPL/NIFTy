@@ -319,3 +319,10 @@ def testPartialExtractor(seed):
     tgt = ift.MultiDomain.make(tgt)
     op = ift.PartialExtractor(dom, tgt)
     ift.extra.consistency_check(op)
+
+
+@pmp('seed', [12, 3])
+def testSlowFieldAdapter(seed):
+    dom = {'a': ift.RGSpace(1), 'b': ift.RGSpace(2)}
+    op = ift.operators.simple_linear_operators._SlowFieldAdapter(dom, 'a')
+    ift.extra.consistency_check(op)
