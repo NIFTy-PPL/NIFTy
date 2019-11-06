@@ -59,7 +59,7 @@ if __name__ == '__main__':
     power_space = ift.PowerSpace(position_space.get_default_codomain())
 
     cfmaker = ift.CorrelatedFieldMaker()
-    cfmaker.add_fluctuations(power_space, 1, 1e-2, 1, 1e-2, 1, 1e-2, -3, 0.5, '')
+    cfmaker.add_fluctuations(power_space, 1, 1e-2, 1, .5, .1, .5, -3, 0.5, '')
     correlated_field = cfmaker.finalize(1e-3, 1e-6, '')
     A = cfmaker.amplitudes[0]
 
