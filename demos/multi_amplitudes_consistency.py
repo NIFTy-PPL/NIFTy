@@ -6,7 +6,9 @@ offset_std = 40
 intergated_fluct_std0 = 10.
 intergated_fluct_std1 = 2.
 
-sspace = ift.RGSpace((32,64),(1.1,0.3))
+#sspace = ift.RGSpace((32,64),(1.1,0.3))
+sspace = ift.HPSpace(64)
+sspace = ift.GLSpace(64)
 hspace = sspace.get_default_codomain()
 target0 = ift.PowerSpace(hspace)
 

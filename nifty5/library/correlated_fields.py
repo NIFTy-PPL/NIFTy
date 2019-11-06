@@ -47,7 +47,6 @@ def _lognormal_moment_matching(mean, sig, key):
     logmean, logsig = _lognormal_moments(mean, sig)
     return _normal(logmean, logsig, key).exp()
 
-
 def _normal(mean, sig, key):
     return Adder(Field.scalar(mean)) @ (
         sig*ducktape(DomainTuple.scalar_domain(), None, key))
@@ -125,7 +124,6 @@ class _Normalization(Operator):
         self._domain = self._target = makeDomain(domain)
         hspace = self._domain[0].harmonic_partner
         pd = PowerDistributor(hspace, power_space=self._domain[0])
-        # TODO Does not work on sphere yet
         cst = pd.adjoint(full(pd.target, 1.)).to_global_data_rw()
         cst[0] = 0
         self._cst = from_global_data(self._domain, cst)
