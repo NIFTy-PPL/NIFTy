@@ -295,3 +295,15 @@ def testValueInserter(sp, seed):
             ind.append(np.random.randint(0, ss-1))
     op = ift.ValueInserter(sp, ind)
     ift.extra.consistency_check(op)
+
+
+@pmp('seed', [12, 3])
+def testPartialExtractor(seed):
+    np.random.seed(seed)
+    tgt = {'a': ift.RGSpace(1), 'b': ift.RGSpace(2)}
+    dom = tgt.copy()
+    dom['c'] = ift.RGSpace(3)
+    dom = ift.MultiDomain.make(dom)
+    tgt = ift.MultiDomain.make(tgt)
+    op = ift.PartialExtractor(dom, tgt)
+    ift.extra.consistency_check(op)

@@ -338,12 +338,17 @@ class PartialExtractor(LinearOperator):
             if self._domain[key] is not self._target[key]:
                 raise ValueError("domain mismatch")
         self._capability = self.TIMES | self.ADJOINT_TIMES
+        self._compldomain = MultiDomain.make({kk: self._domain[kk]
+                                              for kk in self._domain.keys()
+                                              if kk not in self._target.keys()})
 
     def apply(self, x, mode):
         self._check_input(x, mode)
         if mode == self.TIMES:
             return x.extract(self._target)
-        return MultiField.from_dict({key: x[key] for key in x.domain.keys()})
+        res0 = MultiField.from_dict({key: x[key] for key in x.domain.keys()})
+        res1 = MultiField.full(self._compldomain, 0.)
+        return res0.unite(res1)
 
 
 class MatrixProductOperator(EndomorphicOperator):
