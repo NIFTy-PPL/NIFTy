@@ -297,6 +297,18 @@ def testValueInserter(sp, seed):
     ift.extra.consistency_check(op)
 
 
+@pmp('sp', [ift.RGSpace(10)])
+@pmp('seed', [12, 3])
+def testMatrixProductOperator(sp, seed):
+    np.random.seed(seed)
+    mat = np.random.randn(*sp.shape, *sp.shape)
+    op = ift.MatrixProductOperator(sp, mat)
+    ift.extra.consistency_check(op)
+    mat = mat + 1j*np.random.randn(*sp.shape, *sp.shape)
+    op = ift.MatrixProductOperator(sp, mat)
+    ift.extra.consistency_check(op)
+
+
 @pmp('seed', [12, 3])
 def testPartialExtractor(seed):
     np.random.seed(seed)
