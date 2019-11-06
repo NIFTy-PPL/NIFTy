@@ -95,7 +95,7 @@ def _actual_domain_check(op, domain_dtype=None, inp=None):
     assert_(op(inp).domain is op.target)
 
 
-def _actual_domain_check_nonlinear(op, loc, target_dtype=np.float64):
+def _actual_domain_check_nonlinear(op, loc):
     assert isinstance(loc, (Field, MultiField))
     assert_(loc.domain is op.domain)
     lin = Linearization.make_var(loc, False)
@@ -112,7 +112,7 @@ def _actual_domain_check_nonlinear(op, loc, target_dtype=np.float64):
     assert_(reslin.jac.domain is reslin.domain)
     assert_(reslin.jac.target is reslin.target)
     _actual_domain_check(reslin.jac, inp=loc)
-    _actual_domain_check(reslin.jac.adjoint, domain_dtype=target_dtype)
+    _actual_domain_check(reslin.jac.adjoint, inp=reslin.jac(loc))
 
 
 def _domain_check(op):
