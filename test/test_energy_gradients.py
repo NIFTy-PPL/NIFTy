@@ -53,7 +53,7 @@ def test_inverse_gamma(field):
     d = np.random.normal(10, size=space.shape)**2
     d = ift.Field.from_global_data(space, d)
     energy = ift.InverseGammaLikelihood(d)
-    ift.extra.check_jacobian_consistency(energy, field, tol=1e-7)
+    ift.extra.check_jacobian_consistency(energy, field, tol=1e-5)
 
 
 def testPoissonian(field):
@@ -83,4 +83,4 @@ def test_bernoulli(field):
     d = np.random.binomial(1, 0.1, size=space.shape)
     d = ift.Field.from_global_data(space, d)
     energy = ift.BernoulliEnergy(d)
-    ift.extra.check_jacobian_consistency(energy, field, tol=1e-6)
+    ift.extra.check_jacobian_consistency(energy, field, tol=1e-5)
