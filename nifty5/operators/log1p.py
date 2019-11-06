@@ -40,4 +40,3 @@ class Log1p(Operator):
             return res
         jac = DiagonalOperator(1/(1+xval))
         return x.new(res, jac@x.jac)
-

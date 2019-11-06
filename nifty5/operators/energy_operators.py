@@ -65,6 +65,7 @@ class Squared2NormOperator(EnergyOperator):
             return x.new(val, jac)
         return Field.scalar(x.vdot(x))
 
+
 class QuadraticFormOperator(EnergyOperator):
     """Computes the L2-norm of a Field or MultiField with respect to a
     specific kernel given by `endo`.
