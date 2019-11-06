@@ -6,7 +6,7 @@ sspace = ift.RGSpace((128,))
 hspace = sspace.get_default_codomain()
 target0 = ift.PowerSpace(hspace)
 
-fa = ift.FinalAmplitude()
+fa = ift.CorrelatedFieldMaker()
 fa.add_fluctuations(target0, 10, 2, 1, 1e-6, 2, 1e-6, -2, 1e-6, 'spatial')
 op = fa.finalize(10, 0.1, '')
 A = fa.amplitudes[0]

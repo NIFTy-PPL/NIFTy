@@ -61,10 +61,10 @@ class _SlopeOperator(Operator):
                                                        loglogavgslope.domain)
         logkl = _log_k_lengths(self._target[0])
         assert logkl.shape[0] == self._target[0].shape[0] - 1
-        logkl -= logkl[0]
         logkl = np.insert(logkl, 0, 0)
+
         self._t = VdotOperator(from_global_data(self._target, logkl)).adjoint
-        self._T = float(logkl[-1])
+        self._T = float(logkl[-1] - logkl[1])
         ind = (smooth.target.shape[0] - 1,)
         self._extr_op = ValueInserter(smooth.target, ind).adjoint
 
@@ -73,7 +73,7 @@ class _SlopeOperator(Operator):
         smooth = self._smooth(x)
         res0 = self._llas(x)
         res1 = self._extr_op(smooth)/self._T
-        return self._t(res0 - res1) + smooth
+        return  self._t(res0 - res1) + smooth
 
 
 def _log_k_lengths(pspace):
@@ -245,7 +245,7 @@ class CorrelatedFieldMaker:
                                           prefix + 'flexibility')
         asp = _lognormal_moment_matching(asperity_mean, asperity_stddev,
                                          prefix + 'asperity')
-        avgsl = _normal(loglogavgslope_mean, loglogavgslope_mean,
+        avgsl = _normal(loglogavgslope_mean, loglogavgslope_stddev,
                         prefix + 'loglogavgslope')
         self.add_fluctuations_from_ops(target, fluct, flex, asp, avgsl,
                                        prefix + 'spectrum')
