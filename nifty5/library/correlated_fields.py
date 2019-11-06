@@ -24,7 +24,6 @@ from ..domains.power_space import PowerSpace
 from ..domains.unstructured_domain import UnstructuredDomain
 from ..extra import check_jacobian_consistency, consistency_check
 from ..field import Field
-from ..multi_domain import MultiDomain
 from ..operators.adder import Adder
 from ..operators.contraction_operator import ContractionOperator
 from ..operators.distributors import PowerDistributor
@@ -36,12 +35,16 @@ from ..operators.simple_linear_operators import VdotOperator, ducktape
 from ..operators.value_inserter import ValueInserter
 from ..sugar import from_global_data, from_random, full, makeDomain
 
-
-def _lognormal_moment_matching(mean, sig, key):
-    mean, sig, key = float(mean), float(sig), str(key)
+def _lognormal_moments(mean, sig):
+    mean, sig = float(mean), float(sig)
     assert sig > 0
     logsig = np.sqrt(np.log((sig/mean)**2 + 1))
     logmean = np.log(mean) - logsig**2/2
+    return logmean, logsig
+
+def _lognormal_moment_matching(mean, sig, key):
+    key = str(key)
+    logmean, logsig = _lognormal_moments(mean, sig)
     return _normal(logmean, logsig, key).exp()
 
 
@@ -304,3 +307,18 @@ class CorrelatedFieldMaker:
     @property
     def amplitudes(self):
         return self._amplitudes
+
+    def effective_total_fluctuation(self,fluctuations_means,
+                                    fluctuations_stddevs,
+                                    nsamples = 100):
+        namps = len(fluctuations_means)
+        xis = np.random.normal(size=namps*nsamples).reshape((namps,nsamples))
+        
+        q=np.ones(nsamples)
+        for i in range(len(fluctuations_means)):
+            m, sig = _lognormal_moments(fluctuations_means[i],
+                                        fluctuations_stddevs[i])
+            f = np.exp(m + sig*xis[i])
+            q *= (1.+ f**2)
+        q = np.sqrt(q-1.)
+        return np.mean(q), np.std(q)
