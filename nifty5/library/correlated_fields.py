@@ -63,7 +63,7 @@ class _SlopeRemover(EndomorphicOperator):
         if mode == self.TIMES:
             res = x - x[-1] * self._sc
         else:
-            res = np.empty(x.shape)
+            res = np.zeros(x.shape,dtype=x.dtype)
             res += x
             res[-1] -= (x*self._sc).sum()
         return from_global_data(self._tgt(mode),res)
@@ -75,8 +75,11 @@ def _make_slope_Operator(smooth,loglogavgslope):
     logkl -= logkl[0]
     logkl = np.insert(logkl, 0, 0)
     noslope = _SlopeRemover(tg,logkl) @ smooth
+    # FIXME Move to tests
+    consistency_check(_SlopeRemover(tg,logkl))
+
     _t = VdotOperator(from_global_data(tg, logkl)).adjoint
-    return noslope + _t @ loglogavgslope
+    return _t @ loglogavgslope + noslope
 
 def _log_k_lengths(pspace):
     return np.log(pspace.k_lengths[1:])
@@ -186,6 +189,7 @@ class CorrelatedFieldMaker:
 
         smooth = twolog @ (scale*ducktape(scale.target, None, key))
         smoothslope = _make_slope_Operator(smooth,loglogavgslope)
+        #smoothslope = smooth
         
         # move to tests
         assert_allclose(
