@@ -95,7 +95,7 @@ def _actual_domain_check(op, domain_dtype=None, inp=None):
     assert_(op(inp).domain is op.target)
 
 
-def _actual_domain_check_nonlinear(op, loc):
+def _actual_domain_check_nonlinear(op, loc, target_dtype=np.float64):
     assert isinstance(loc, (Field, MultiField))
     assert_(loc.domain is op.domain)
     lin = Linearization.make_var(loc, False)
@@ -112,7 +112,7 @@ def _actual_domain_check_nonlinear(op, loc):
     assert_(reslin.jac.domain is reslin.domain)
     assert_(reslin.jac.target is reslin.target)
     _actual_domain_check(reslin.jac, inp=loc)
-    _actual_domain_check(reslin.jac.adjoint, domain_dtype=np.float64)
+    _actual_domain_check(reslin.jac.adjoint, domain_dtype=target_dtype)
 
 
 def _domain_check(op):
@@ -158,8 +158,8 @@ def consistency_check(op, domain_dtype=np.float64, target_dtype=np.float64,
         raise TypeError('This test tests only linear operators.')
     _domain_check(op)
     _actual_domain_check(op, domain_dtype)
-    _actual_domain_check(op.adjoint, domain_dtype)
-    _actual_domain_check(op.inverse, domain_dtype)
+    _actual_domain_check(op.adjoint, target_dtype)
+    _actual_domain_check(op.inverse, target_dtype)
     _actual_domain_check(op.adjoint.inverse, domain_dtype)
     _check_linearity(op, domain_dtype, atol, rtol)
     _check_linearity(op.adjoint, target_dtype, atol, rtol)
