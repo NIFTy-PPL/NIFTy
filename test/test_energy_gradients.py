@@ -47,6 +47,11 @@ def test_gaussian(field):
     ift.extra.check_jacobian_consistency(energy, field)
 
 
+def test_studentt(field):
+    energy = ift.StudentTEnergy(domain=field.domain, theta=.5)
+    ift.extra.check_jacobian_consistency(energy, field, tol=1e-6)
+
+
 def test_inverse_gamma(field):
     field = field.exp()
     space = field.domain
