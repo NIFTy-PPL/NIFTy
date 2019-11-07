@@ -32,7 +32,11 @@ _p_RG_spaces = [
     ift.RGSpace((1, 2, 3, 6), distances=(0.2, 0.25, 0.34, .8))
 ]
 _p_spaces = _p_RG_spaces + [ift.HPSpace(17), ift.GLSpace(8, 13)]
-_pow_spaces = [ift.PowerSpace(ift.RGSpace((17, 38), harmonic=True))]
+_pow_spaces = [
+    ift.PowerSpace(ift.RGSpace((17, 38), (0.99, 1340), harmonic=True)),
+    ift.PowerSpace(ift.LMSpace(18),
+                   ift.PowerSpace.useful_binbounds(ift.LMSpace(18), False))
+]
 
 pmp = pytest.mark.parametrize
 dtype = list2fixture([np.float64, np.complex128])
@@ -294,4 +298,22 @@ def testValueInserter(sp, seed):
         else:
             ind.append(np.random.randint(0, ss-1))
     op = ift.ValueInserter(sp, ind)
+    ift.extra.consistency_check(op)
+
+
+@pmp('sp', _pow_spaces)
+def testSlopeRemover(sp):
+    op = ift.library.correlated_fields._SlopeRemover(sp)
+    ift.extra.consistency_check(op)
+
+
+@pmp('sp', _pow_spaces)
+def testTwoLogIntegrations(sp):
+    op = ift.library.correlated_fields._TwoLogIntegrations(sp)
+    ift.extra.consistency_check(op)
+
+
+@pmp('sp', _h_spaces + _p_spaces + _pow_spaces)
+def testSpecialSum(sp):
+    op = ift.library.correlated_fields._SpecialSum(sp)
     ift.extra.consistency_check(op)
