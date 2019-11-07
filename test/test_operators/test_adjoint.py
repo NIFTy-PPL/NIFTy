@@ -277,3 +277,34 @@ def testTwoLogIntegrations(sp):
 def testSpecialSum(sp):
     op = ift.library.correlated_fields._SpecialSum(sp)
     ift.extra.consistency_check(op)
+
+
+@pmp('sp', [ift.RGSpace(10)])
+@pmp('seed', [12, 3])
+def testMatrixProductOperator(sp, seed):
+    np.random.seed(seed)
+    mat = np.random.randn(*sp.shape, *sp.shape)
+    op = ift.MatrixProductOperator(sp, mat)
+    ift.extra.consistency_check(op)
+    mat = mat + 1j*np.random.randn(*sp.shape, *sp.shape)
+    op = ift.MatrixProductOperator(sp, mat)
+    ift.extra.consistency_check(op)
+
+
+@pmp('seed', [12, 3])
+def testPartialExtractor(seed):
+    np.random.seed(seed)
+    tgt = {'a': ift.RGSpace(1), 'b': ift.RGSpace(2)}
+    dom = tgt.copy()
+    dom['c'] = ift.RGSpace(3)
+    dom = ift.MultiDomain.make(dom)
+    tgt = ift.MultiDomain.make(tgt)
+    op = ift.PartialExtractor(dom, tgt)
+    ift.extra.consistency_check(op)
+
+
+@pmp('seed', [12, 3])
+def testSlowFieldAdapter(seed):
+    dom = {'a': ift.RGSpace(1), 'b': ift.RGSpace(2)}
+    op = ift.operators.simple_linear_operators._SlowFieldAdapter(dom, 'a')
+    ift.extra.consistency_check(op)

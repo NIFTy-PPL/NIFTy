@@ -54,7 +54,7 @@ def test_special_gradients():
 
 @pmp('f', [
     'log', 'exp', 'sqrt', 'sin', 'cos', 'tan', 'sinc', 'sinh', 'cosh', 'tanh',
-    'absolute', 'one_over', 'sigmoid'
+    'absolute', 'one_over', 'sigmoid', 'log10'
 ])
 def test_actual_gradients(f):
     dom = ift.UnstructuredDomain((1,))
