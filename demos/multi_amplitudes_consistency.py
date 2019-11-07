@@ -65,6 +65,10 @@ def testAmplitudesConsistency(seed, sspace):
     fluct_freq = np.sqrt(fluct_freq/nsam)
     zm_std_mean = np.sqrt(zm_std_mean/nsam)
 
+    np.testing.assert_allclose(offset_std, zm_std_mean, rtol=0.5)
+    np.testing.assert_allclose(intergated_fluct_std0, fluct_space, rtol=0.5)
+    np.testing.assert_allclose(tot_flm, fluct_total, rtol=0.5)
+
     print("Expected  offset Std: " + str(offset_std))
     print("Estimated offset Std: " + str(zm_std_mean))
 
