@@ -72,18 +72,6 @@ class _SlopeRemover(EndomorphicOperator):
         return from_global_data(self._tgt(mode), res)
 
 
-def _make_slope_Operator(smooth, loglogavgslope):
-    tg = smooth.target
-    logkl = _log_k_lengths(tg[0])
-    assert logkl.shape[0] == tg[0].shape[0] - 1
-    logkl -= logkl[0]
-    logkl = np.insert(logkl, 0, 0)
-    noslope = _SlopeRemover(tg, logkl) @ smooth
-
-    _t = VdotOperator(from_global_data(tg, logkl)).adjoint
-    return _t @ loglogavgslope + noslope
-
-
 def _log_k_lengths(pspace):
     return np.log(pspace.k_lengths[1:])
 
@@ -186,7 +174,14 @@ class _Amplitude(Operator):
         scale = sigmasq*(Adder(shift) @ scale).sqrt()
 
         smooth = twolog @ (scale*ducktape(scale.target, None, key))
-        smoothslope = _make_slope_Operator(smooth, loglogavgslope)
+        tg = smooth.target
+        logkl = _log_k_lengths(tg[0])
+        assert logkl.shape[0] == tg[0].shape[0] - 1
+        logkl -= logkl[0]
+        logkl = np.insert(logkl, 0, 0)
+        noslope = _SlopeRemover(tg, logkl) @ smooth
+        _t = VdotOperator(from_global_data(tg, logkl)).adjoint
+        smoothslope = _t @ loglogavgslope + noslope
 
         normal_ampl = _Normalization(target) @ smoothslope
         vol = target[0].harmonic_partner.get_default_codomain().total_volume
