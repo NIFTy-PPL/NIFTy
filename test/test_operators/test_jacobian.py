@@ -29,6 +29,11 @@ space = list2fixture([
     ift.RGSpace(64, distances=.789),
     ift.RGSpace([32, 32], distances=.789)
 ])
+_h_RG_spaces = [
+    ift.RGSpace(7, distances=0.2, harmonic=True),
+    ift.RGSpace((12, 46), distances=(.2, .3), harmonic=True)
+]
+_h_spaces = _h_RG_spaces + [ift.LMSpace(17)]
 space1 = space
 seed = list2fixture([4, 78, 23])
 
@@ -163,3 +168,20 @@ def testDynamicModel(target, causal, minimum_phase, seed):
         # FIXME I dont know why smaller tol fails for 3D example
         ift.extra.check_jacobian_consistency(
             model, pos, tol=1e-5, ntries=20)
+
+
+@pmp('h_space', _h_spaces)
+@pmp('specialbinbounds', [True, False])
+@pmp('logarithmic', [True, False])
+@pmp('nbin', [3, None])
+def testNormalization(h_space, specialbinbounds, logarithmic, nbin):
+    if not specialbinbounds and (not logarithmic or nbin is not None):
+        return
+    if specialbinbounds:
+        binbounds = ift.PowerSpace.useful_binbounds(h_space, logarithmic, nbin)
+    else:
+        binbounds = None
+    dom = ift.PowerSpace(h_space, binbounds)
+    op = ift.library.correlated_fields._Normalization(dom)
+    pos = 0.1*ift.from_random('normal', op.domain)
+    ift.extra.check_jacobian_consistency(op, pos)

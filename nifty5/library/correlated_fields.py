@@ -128,7 +128,7 @@ class _Normalization(Operator):
     def __init__(self, domain):
         self._domain = self._target = makeDomain(domain)
         assert len(self._domain) == 1
-        assert isinstance(domain[0], PowerSpace)
+        assert isinstance(self._domain[0], PowerSpace)
         hspace = self._domain[0].harmonic_partner
         pd = PowerDistributor(hspace, power_space=self._domain[0])
         cst = pd.adjoint(full(pd.target, 1.)).to_global_data_rw()
