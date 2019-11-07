@@ -17,7 +17,6 @@
 
 import numpy as np
 import pytest
-from numpy.testing import assert_
 
 import nifty5 as ift
 
@@ -88,29 +87,6 @@ def testBinary(type1, type2, space, seed):
         model = ift.FFTOperator(space)(select_s1*select_s2)
         pos = ift.from_random("normal", dom)
         ift.extra.check_jacobian_consistency(model, pos, ntries=20)
-
-
-def testModelLibrary(space, seed):
-    # Tests amplitude model and coorelated field model
-    np.random.seed(seed)
-    domain = ift.PowerSpace(space.get_default_codomain())
-    model = ift.SLAmplitude(target=domain, n_pix=4, a=.5, k0=2, sm=3, sv=1.5,
-                            im=1.75, iv=1.3)
-    assert_(isinstance(model, ift.Operator))
-    S = ift.ScalingOperator(1., model.domain)
-    pos = S.draw_sample()
-    ift.extra.check_jacobian_consistency(model, pos, ntries=20)
-
-    model2 = ift.CorrelatedField(space, model)
-    S = ift.ScalingOperator(1., model2.domain)
-    pos = S.draw_sample()
-    ift.extra.check_jacobian_consistency(model2, pos, ntries=20)
-
-    domtup = ift.DomainTuple.make((space, space))
-    model3 = ift.MfCorrelatedField(domtup, [model, model])
-    S = ift.ScalingOperator(1., model3.domain)
-    pos = S.draw_sample()
-    ift.extra.check_jacobian_consistency(model3, pos, ntries=20)
 
 
 def testPointModel(space, seed):
