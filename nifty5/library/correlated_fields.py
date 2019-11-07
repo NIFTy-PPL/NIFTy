@@ -17,12 +17,10 @@
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
 
 import numpy as np
-from numpy.testing import assert_allclose
 
 from ..domain_tuple import DomainTuple
 from ..domains.power_space import PowerSpace
 from ..domains.unstructured_domain import UnstructuredDomain
-from ..extra import check_jacobian_consistency, consistency_check
 from ..field import Field
 from ..operators.adder import Adder
 from ..operators.contraction_operator import ContractionOperator
@@ -33,7 +31,8 @@ from ..operators.linear_operator import LinearOperator
 from ..operators.operator import Operator
 from ..operators.simple_linear_operators import VdotOperator, ducktape
 from ..operators.value_inserter import ValueInserter
-from ..sugar import from_global_data, from_random, full, makeDomain
+from ..sugar import from_global_data, full, makeDomain
+
 
 def _lognormal_moments(mean, sig):
     mean, sig = float(mean), float(sig)
@@ -42,10 +41,12 @@ def _lognormal_moments(mean, sig):
     logmean = np.log(mean) - logsig**2/2
     return logmean, logsig
 
+
 def _lognormal_moment_matching(mean, sig, key):
     key = str(key)
     logmean, logsig = _lognormal_moments(mean, sig)
     return _normal(logmean, logsig, key).exp()
+
 
 def _normal(mean, sig, key):
     return Adder(Field.scalar(mean)) @ (
@@ -53,38 +54,39 @@ def _normal(mean, sig, key):
 
 
 class _SlopeRemover(EndomorphicOperator):
-    def __init__(self,domain,logkl):
+    def __init__(self, domain, logkl):
         self._domain = makeDomain(domain)
-        self._sc = logkl / float(logkl[-1])
+        self._sc = logkl/float(logkl[-1])
 
         self._capability = self.TIMES | self.ADJOINT_TIMES
 
-    def apply(self,x,mode):
-        self._check_input(x,mode)
+    def apply(self, x, mode):
+        self._check_input(x, mode)
         x = x.to_global_data()
         if mode == self.TIMES:
-            res = x - x[-1] * self._sc
+            res = x - x[-1]*self._sc
         else:
-            res = np.zeros(x.shape,dtype=x.dtype)
+            res = np.zeros(x.shape, dtype=x.dtype)
             res += x
             res[-1] -= (x*self._sc).sum()
-        return from_global_data(self._tgt(mode),res)
+        return from_global_data(self._tgt(mode), res)
 
-def _make_slope_Operator(smooth,loglogavgslope):
+
+def _make_slope_Operator(smooth, loglogavgslope):
     tg = smooth.target
     logkl = _log_k_lengths(tg[0])
     assert logkl.shape[0] == tg[0].shape[0] - 1
     logkl -= logkl[0]
     logkl = np.insert(logkl, 0, 0)
-    noslope = _SlopeRemover(tg,logkl) @ smooth
-    # FIXME Move to tests
-    consistency_check(_SlopeRemover(tg,logkl))
+    noslope = _SlopeRemover(tg, logkl) @ smooth
 
     _t = VdotOperator(from_global_data(tg, logkl)).adjoint
     return _t @ loglogavgslope + noslope
 
+
 def _log_k_lengths(pspace):
     return np.log(pspace.k_lengths[1:])
+
 
 class _TwoLogIntegrations(LinearOperator):
     def __init__(self, target):
@@ -128,8 +130,6 @@ class _Normalization(Operator):
         cst[0] = 0
         self._cst = from_global_data(self._domain, cst)
         self._specsum = _SpecialSum(self._domain)
-        # FIXME Move to tests
-        consistency_check(self._specsum)
 
     def apply(self, x):
         self._check_input(x)
@@ -189,18 +189,7 @@ class CorrelatedFieldMaker:
         scale = sigmasq*(Adder(shift) @ scale).sqrt()
 
         smooth = twolog @ (scale*ducktape(scale.target, None, key))
-        smoothslope = _make_slope_Operator(smooth,loglogavgslope)
-        #smoothslope = smooth
-        
-        # move to tests
-        assert_allclose(
-            smooth(from_random('normal', smooth.domain)).val[0:2], 0)
-        consistency_check(twolog)
-        check_jacobian_consistency(smooth, from_random('normal',
-                                                       smooth.domain))
-        check_jacobian_consistency(smoothslope,
-                                   from_random('normal', smoothslope.domain))
-        # end move to tests
+        smoothslope = _make_slope_Operator(smooth, loglogavgslope)
 
         normal_ampl = _Normalization(target) @ smoothslope
         vol = target[0].harmonic_partner.get_default_codomain().total_volume
@@ -211,15 +200,6 @@ class CorrelatedFieldMaker:
         mask[0] = vol
         adder = Adder(from_global_data(target, mask))
         ampl = adder @ ((expander @ fluctuations)*normal_ampl)
-
-        # Move to tests
-        # FIXME This test fails but it is not relevant for the final result
-        # assert_allclose(
-        #     normal_ampl(from_random('normal', normal_ampl.domain)).val[0], 1)
-        assert_allclose(ampl(from_random('normal', ampl.domain)).val[0], vol)
-        op = _Normalization(target)
-        check_jacobian_consistency(op, from_random('normal', op.domain))
-        # End move to tests
 
         self._amplitudes.append(ampl)
 
@@ -306,17 +286,18 @@ class CorrelatedFieldMaker:
     def amplitudes(self):
         return self._amplitudes
 
-    def effective_total_fluctuation(self,fluctuations_means,
+    def effective_total_fluctuation(self,
+                                    fluctuations_means,
                                     fluctuations_stddevs,
-                                    nsamples = 100):
+                                    nsamples=100):
         namps = len(fluctuations_means)
-        xis = np.random.normal(size=namps*nsamples).reshape((namps,nsamples))
-        
-        q=np.ones(nsamples)
+        xis = np.random.normal(size=namps*nsamples).reshape((namps, nsamples))
+
+        q = np.ones(nsamples)
         for i in range(len(fluctuations_means)):
             m, sig = _lognormal_moments(fluctuations_means[i],
                                         fluctuations_stddevs[i])
             f = np.exp(m + sig*xis[i])
-            q *= (1.+ f**2)
-        q = np.sqrt(q-1.)
+            q *= (1. + f**2)
+        q = np.sqrt(q - 1.)
         return np.mean(q), np.std(q)
