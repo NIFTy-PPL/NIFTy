@@ -34,8 +34,8 @@ def test_value_inserter(sp, seed):
     np.random.seed(seed)
     ind = tuple([np.random.randint(0, ss - 1) for ss in sp.shape])
     op = ift.ValueInserter(sp, ind)
-    f = ift.from_random('normal', ift.UnstructuredDomain((1,)))
-    inp = f.to_global_data()[0]
+    f = ift.from_random('normal', op.domain)
+    inp = f.to_global_data()
     ret = op(f).to_global_data()
     assert_(ret[ind] == inp)
     assert_(np.sum(ret) == inp)
