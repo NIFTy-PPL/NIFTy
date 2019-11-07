@@ -150,12 +150,9 @@ class _SpecialSum(EndomorphicOperator):
         return full(self._tgt(mode), x.sum())
 
 
-class CorrelatedFieldMaker:
-    def __init__(self):
-        self._amplitudes = []
-
-    def add_fluctuations_from_ops(self, target, fluctuations, flexibility,
-                                  asperity, loglogavgslope, key):
+class _Amplitude(Operator):
+    def __init__(self, target, fluctuations, flexibility, asperity,
+                 loglogavgslope, key):
         """
         fluctuations > 0
         flexibility > 0
@@ -199,14 +196,31 @@ class CorrelatedFieldMaker:
         mask = np.zeros(target.shape)
         mask[0] = vol
         adder = Adder(from_global_data(target, mask))
-        ampl = adder @ ((expander @ fluctuations)*normal_ampl)
+        self._op = adder @ ((expander @ fluctuations)*normal_ampl)
 
-        self._amplitudes.append(ampl)
+        self._domain = self._op.domain
+        self._target = self._op.target
 
-    def add_fluctuations(self, target, fluctuations_mean, fluctuations_stddev,
-                         flexibility_mean, flexibility_stddev, asperity_mean,
-                         asperity_stddev, loglogavgslope_mean,
-                         loglogavgslope_stddev, prefix):
+    def apply(self, x):
+        self._check_input(x)
+        return self._op(x)
+
+
+class CorrelatedFieldMaker:
+    def __init__(self):
+        self._a = []
+
+    def add_fluctuations(self,
+                         target,
+                         fluctuations_mean,
+                         fluctuations_stddev,
+                         flexibility_mean,
+                         flexibility_stddev,
+                         asperity_mean,
+                         asperity_stddev,
+                         loglogavgslope_mean,
+                         loglogavgslope_stddev,
+                         prefix=''):
         fluctuations_mean = float(fluctuations_mean)
         fluctuations_stddev = float(fluctuations_stddev)
         flexibility_mean = float(flexibility_mean)
@@ -233,16 +247,40 @@ class CorrelatedFieldMaker:
                                          prefix + 'asperity')
         avgsl = _normal(loglogavgslope_mean, loglogavgslope_stddev,
                         prefix + 'loglogavgslope')
-        self.add_fluctuations_from_ops(target, fluct, flex, asp, avgsl,
-                                       prefix + 'spectrum')
+        self._a.append(
+            _Amplitude(target, fluct, flex, asp, avgsl, prefix + 'spectrum'))
 
-    def finalize_from_op(self, zeromode):
-        raise NotImplementedError
+    def finalize_from_op(self, zeromode, prefix=''):
+        assert isinstance(zeromode, Operator)
+        hspace = makeDomain([dd.target[0].harmonic_partner for dd in self._a])
+        foo = np.ones(hspace.shape)
+        zeroind = len(hspace.shape)*(0,)
+        foo[zeroind] = 0
+        azm = Adder(from_global_data(hspace, foo)) @ ValueInserter(
+            hspace, zeroind) @ zeromode
+
+        n_amplitudes = len(self._a)
+        ht = HarmonicTransformOperator(hspace, space=0)
+        for i in range(1, n_amplitudes):
+            ht = HarmonicTransformOperator(ht.target, space=i) @ ht
+
+        pd = PowerDistributor(hspace, self._a[0].target[0], 0)
+        for i in range(1, n_amplitudes):
+            foo = PowerDistributor(pd.domain, self._a[i].target[0], space=i)
+            pd = pd @ foo
+
+        spaces = tuple(range(n_amplitudes))
+        a = ContractionOperator(pd.domain, spaces[1:]).adjoint @ self._a[0]
+        for i in range(1, n_amplitudes):
+            co = ContractionOperator(pd.domain, spaces[:i] + spaces[(i + 1):])
+            a = a*(co.adjoint @ self._a[i])
+
+        return ht(azm*(pd @ a)*ducktape(hspace, None, prefix + 'xi'))
 
     def finalize(self,
                  offset_amplitude_mean,
                  offset_amplitude_stddev,
-                 prefix,
+                 prefix='',
                  offset=None):
         """
         offset vs zeromode: volume factor
@@ -252,39 +290,16 @@ class CorrelatedFieldMaker:
         assert offset_amplitude_stddev > 0
         assert offset_amplitude_mean > 0
         if offset is not None:
+            raise NotImplementedError
             offset = float(offset)
-        hspace = makeDomain(
-            [dd.target[0].harmonic_partner for dd in self._amplitudes])
-
         azm = _lognormal_moment_matching(offset_amplitude_mean,
                                          offset_amplitude_stddev,
                                          prefix + 'zeromode')
-        foo = np.ones(hspace.shape)
-        zeroind = len(hspace.shape)*(0,)
-        foo[zeroind] = 0
-        azm = Adder(from_global_data(hspace, foo)) @ ValueInserter(
-            hspace, zeroind) @ azm
-
-        ht = HarmonicTransformOperator(hspace, space=0)
-        pd = PowerDistributor(hspace, self._amplitudes[0].target[0], 0)
-        for i in range(1, len(self._amplitudes)):
-            ht = HarmonicTransformOperator(ht.target, space=i) @ ht
-            pd = pd @ PowerDistributor(
-                pd.domain, self._amplitudes[i].target[0], space=i)
-
-        spaces = tuple(range(len(self._amplitudes)))
-        a = ContractionOperator(pd.domain,
-                                spaces[1:]).adjoint(self._amplitudes[0])
-        for i in range(1, len(self._amplitudes)):
-            a = a*(ContractionOperator(pd.domain, spaces[:i] + spaces[
-                (i + 1):]).adjoint(self._amplitudes[i]))
-
-        A = pd @ a
-        return ht(azm*A*ducktape(hspace, None, prefix + 'xi'))
+        return self.finalize_from_op(azm, prefix)
 
     @property
     def amplitudes(self):
-        return self._amplitudes
+        return self._a
 
     def effective_total_fluctuation(self,
                                     fluctuations_means,
@@ -292,7 +307,6 @@ class CorrelatedFieldMaker:
                                     nsamples=100):
         namps = len(fluctuations_means)
         xis = np.random.normal(size=namps*nsamples).reshape((namps, nsamples))
-
         q = np.ones(nsamples)
         for i in range(len(fluctuations_means)):
             m, sig = _lognormal_moments(fluctuations_means[i],
