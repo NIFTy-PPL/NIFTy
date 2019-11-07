@@ -205,14 +205,9 @@ class _Amplitude(Operator):
         mask = np.zeros(target.shape)
         mask[0] = vol
         adder = Adder(from_global_data(target, mask))
-        self._op = adder @ ((expander @ fluctuations)*normal_ampl)
-
-        self._domain = self._op.domain
-        self._target = self._op.target
-
-    def apply(self, x):
-        self._check_input(x)
-        return self._op(x)
+        op = adder @ ((expander @ fluctuations)*normal_ampl)
+        self.apply = op.apply
+        self._domain, self._target = op.domain, op.target
 
 
 class CorrelatedFieldMaker:
