@@ -57,11 +57,23 @@ def _log_k_lengths(pspace):
     return np.log(pspace.k_lengths[1:])
 
 
+def _logkl(power_space):
+    power_space = DomainTuple.make(power_space)
+    assert isinstance(power_space[0], PowerSpace)
+    assert len(power_space) == 1
+    logkl = _log_k_lengths(power_space[0])
+    assert logkl.shape[0] == power_space[0].shape[0] - 1
+    logkl -= logkl[0]
+    logkl = np.insert(logkl, 0, 0)
+    return logkl
+
+
 class _SlopeRemover(EndomorphicOperator):
-    def __init__(self, domain, logkl):
+    def __init__(self, domain):
         self._domain = makeDomain(domain)
         assert len(self._domain) == 1
         assert isinstance(self._domain[0], PowerSpace)
+        logkl = _logkl(self._domain)
         self._sc = logkl/float(logkl[-1])
         self._capability = self.TIMES | self.ADJOINT_TIMES
 
@@ -181,12 +193,8 @@ class _Amplitude(Operator):
 
         smooth = twolog @ (scale*ducktape(scale.target, None, key))
         tg = smooth.target
-        logkl = _log_k_lengths(tg[0])
-        assert logkl.shape[0] == tg[0].shape[0] - 1
-        logkl -= logkl[0]
-        logkl = np.insert(logkl, 0, 0)
-        noslope = _SlopeRemover(tg, logkl) @ smooth
-        _t = VdotOperator(from_global_data(tg, logkl)).adjoint
+        noslope = _SlopeRemover(tg) @ smooth
+        _t = VdotOperator(from_global_data(tg, _logkl(tg))).adjoint
         smoothslope = _t @ loglogavgslope + noslope
 
         normal_ampl = _Normalization(target) @ smoothslope
