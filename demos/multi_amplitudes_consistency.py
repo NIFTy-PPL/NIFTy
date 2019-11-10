@@ -70,6 +70,19 @@ def testAmplitudesConsistency(seed, sspace):
 
     print("Expected  total fluct. Std: " + str(tot_flm))
     print("Estimated total fluct. Std: " + str(fluct_total))
+    
+    fa = ift.CorrelatedFieldMaker()
+    fa.add_fluctuations(target1, intergated_fluct_std1, 1., 3.1, 1., .5, .1,
+                        -4, 1., 'freq')
+    m = 3.
+    x = fa.moment_slice_to_average(m)
+    fa.add_fluctuations(target0, x, 1.5, 1.1, 2., 2.1, .5,
+                        -2, 1., 'spatial', 0)
+    op = fa.finalize(offset_std, .1, '')
+    em, estd = fa.stats(fa.slice_fluctuation(0),samples)
+    print("Forced   slice fluct. space Std: "+str(m))
+    print("Expected slice fluct. Std: " + str(em))
+    np.testing.assert_allclose(m, em, rtol=0.5)
 
 
 # Move to tests

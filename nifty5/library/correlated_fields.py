@@ -42,12 +42,24 @@ def _lognormal_moments(mean, sig):
     logmean = np.log(mean) - logsig**2/2
     return logmean, logsig
 
+class _lognormal_moment_matching(Operator):
+    def __init__(self,mean, sig, key):
+        key = str(key)
+        logmean, logsig = _lognormal_moments(mean, sig)
+        self._mean = mean
+        self._sig = sig
+        op = _normal(logmean, logsig, key).exp()
+        self._domain = op.domain
+        self._target = op.target
+        self.apply = op.apply
 
-def _lognormal_moment_matching(mean, sig, key):
-    key = str(key)
-    logmean, logsig = _lognormal_moments(mean, sig)
-    return _normal(logmean, logsig, key).exp()
+    @property
+    def mean(self):
+        return self._mean
 
+    @property
+    def std(self):
+        return self._sig
 
 def _normal(mean, sig, key):
     return Adder(Field.scalar(mean)) @ (
@@ -227,7 +239,8 @@ class CorrelatedFieldMaker:
                          asperity_stddev,
                          loglogavgslope_mean,
                          loglogavgslope_stddev,
-                         prefix=''):
+                         prefix='',
+                         index = None):
         fluctuations_mean = float(fluctuations_mean)
         fluctuations_stddev = float(fluctuations_stddev)
         flexibility_mean = float(flexibility_mean)
@@ -254,8 +267,11 @@ class CorrelatedFieldMaker:
                                          prefix + 'asperity')
         avgsl = _normal(loglogavgslope_mean, loglogavgslope_stddev,
                         prefix + 'loglogavgslope')
-        self._a.append(
-            _Amplitude(target, fluct, flex, asp, avgsl, prefix + 'spectrum'))
+        amp = _Amplitude(target, fluct, flex, asp, avgsl, prefix + 'spectrum')
+        if index is not None:
+            self._a.insert(index, amp)
+        else:
+            self._a.append(amp)
 
     def finalize_from_op(self, zeromode, prefix=''):
         assert isinstance(zeromode, Operator)
@@ -397,3 +413,19 @@ class CorrelatedFieldMaker:
         for s in samples:
             sc.add(op(s.extract(op.domain)))
         return sc.mean.to_global_data(), sc.var.sqrt().to_global_data()
+    
+    def moment_slice_to_average(self,
+                                fluctuations_slice_mean,
+                                nsamples = 1000):
+        fluctuations_slice_mean = float(fluctuations_slice_mean)
+        assert fluctuations_slice_mean > 0
+        scm = 1.
+        for a in self._a:
+            m, std = a.fluctuation_amplitude.mean, a.fluctuation_amplitude.std
+            mu, sig = _lognormal_moments(m,std)
+            flm = np.exp(mu + sig * np.random.normal(size=nsamples))
+            scm *= flm**2 + 1.
+        scm = np.mean(np.sqrt(scm))
+        return fluctuations_slice_mean / scm
+        
+        
