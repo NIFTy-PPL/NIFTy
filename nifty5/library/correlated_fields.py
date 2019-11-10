@@ -32,6 +32,7 @@ from ..operators.operator import Operator
 from ..operators.simple_linear_operators import VdotOperator, ducktape
 from ..operators.value_inserter import ValueInserter
 from ..sugar import from_global_data, full, makeDomain
+from ..probing import StatCalculator
 
 
 def _lognormal_moments(mean, sig):
@@ -207,12 +208,14 @@ class _Amplitude(Operator):
         adder = Adder(from_global_data(target, mask))
         op = adder @ ((expander @ fluctuations)*normal_ampl)
         self.apply = op.apply
+        self.fluctuation_amplitude = fluctuations
         self._domain, self._target = op.domain, op.target
 
 
 class CorrelatedFieldMaker:
     def __init__(self):
         self._a = []
+        self._azm = None
 
     def add_fluctuations(self,
                          target,
@@ -256,6 +259,7 @@ class CorrelatedFieldMaker:
 
     def finalize_from_op(self, zeromode, prefix=''):
         assert isinstance(zeromode, Operator)
+        self._azm = zeromode
         hspace = makeDomain([dd.target[0].harmonic_partner for dd in self._a])
         foo = np.ones(hspace.shape)
         zeroind = len(hspace.shape)*(0,)
@@ -305,17 +309,91 @@ class CorrelatedFieldMaker:
     def amplitudes(self):
         return self._a
 
-    def effective_total_fluctuation(self,
-                                    fluctuations_means,
-                                    fluctuations_stddevs,
-                                    nsamples=100):
-        namps = len(fluctuations_means)
-        xis = np.random.normal(size=namps*nsamples).reshape((namps, nsamples))
-        q = np.ones(nsamples)
-        for i in range(len(fluctuations_means)):
-            m, sig = _lognormal_moments(fluctuations_means[i],
-                                        fluctuations_stddevs[i])
-            f = np.exp(m + sig*xis[i])
-            q *= (1. + f**2)
-        q = np.sqrt(q - 1.)
-        return np.mean(q), np.std(q)
+    @property
+    def amplitude_total_offset(self):
+        return self._azm
+
+    @property
+    def total_fluctuation(self):
+        if len(self._a) == 0:
+            raise(NotImplementedError)
+        if len(self._a) == 1:
+            return self._a[0].fluctuation_amplitude
+        q = 1.
+        for a in self._a:
+            fl = a.fluctuation_amplitude
+            q = q * (Adder(full(fl.target,1.)) @ fl**2)
+        return (Adder(full(q.target,-1.)) @ q).sqrt()
+
+    def slice_fluctuation(self,space):
+        if len(self._a) == 0:
+            raise(NotImplementedError)
+        assert space < len(self._a)
+        if len(self._a) == 1:
+            return self._a[0].fluctuation_amplitude
+        q = 1.
+        for j in range(len(self._a)):
+            fl = self._a[j].fluctuation_amplitude
+            if j == space:
+                q = q * fl**2
+            else:
+                q = q * (Adder(full(fl.target,1.)) @ fl**2)
+        return q.sqrt()
+    
+    def average_fluctuation(self,space):
+        if len(self._a) == 0:
+            raise(NotImplementedError)
+        assert space < len(self._a)
+        if len(self._a) == 1:
+            return self._a[0].fluctuation_amplitude
+        return self._a[space].fluctuation_amplitude
+
+    def offset_amplitude_realized(self,samples):
+        res = 0.
+        for s in samples:
+            res += s.mean()**2
+        return np.sqrt(res/len(samples))
+    
+    def total_fluctuation_realized(self,samples):
+        res = 0.
+        for s in samples:
+            res = res + (s-s.mean())**2
+        res = res/len(samples)
+        return np.sqrt(res.mean())
+    
+    def average_fluctuation_realized(self,samples,space):
+        ldom = len(samples[0].domain)
+        assert space < ldom
+        if ldom == 1:
+            return self.total_fluctuation_realized(samples)
+        spaces=()
+        for i in range(ldom):
+            if i != space:
+                spaces += (i,)
+        res = 0.
+        for s in samples:
+            r = s.mean(spaces)
+            res = res + (r-r.mean())**2
+        res = res/len(samples)
+        return np.sqrt(res.mean())
+    
+    def slice_fluctuation_realized(self,samples,space):
+        ldom = len(samples[0].domain)
+        assert space < ldom
+        if ldom == 1:
+            return self.total_fluctuation_realized(samples)
+        res1 = 0.
+        res2 = 0.
+        for s in samples:
+            res1 = res1 + s**2
+            res2 = res2 + s.mean(space)**2
+        res1 = res1/len(samples)
+        res2 = res2/len(samples)
+        res = res1.mean() -  res2.mean()
+        return np.sqrt(res)
+
+    def stats(self,op,samples):
+        sc = StatCalculator()
+        for s in samples:
+            sc.add(op(s.extract(op.domain)))
+        return sc.mean.to_global_data(), sc.var.sqrt().to_global_data()
