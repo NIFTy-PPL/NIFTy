@@ -39,6 +39,7 @@ from ..sugar import from_global_data, from_random, full, makeDomain
 
 def _lognormal_moment_matching(mean, sig, key):
     mean, sig, key = float(mean), float(sig), str(key)
+    assert mean > 0
     assert sig > 0
     logsig = np.sqrt(np.log((sig/mean)**2 + 1))
     logmean = np.log(mean) - logsig**2/2
@@ -46,6 +47,7 @@ def _lognormal_moment_matching(mean, sig, key):
 
 
 def _normal(mean, sig, key):
+    assert sig > 0
     return Adder(Field.scalar(mean)) @ (
         sig*ducktape(DomainTuple.scalar_domain(), None, key))
 
@@ -235,13 +237,6 @@ class CorrelatedFieldMaker:
         loglogavgslope_mean = float(loglogavgslope_mean)
         loglogavgslope_stddev = float(loglogavgslope_stddev)
         prefix = str(prefix)
-        assert fluctuations_stddev > 0
-        assert fluctuations_mean > 0
-        assert flexibility_stddev > 0
-        assert flexibility_mean > 0
-        assert asperity_stddev > 0
-        assert asperity_mean > 0
-        assert loglogavgslope_stddev > 0
 
         fluct = _lognormal_moment_matching(fluctuations_mean,
                                            fluctuations_stddev,
