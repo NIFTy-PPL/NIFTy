@@ -87,36 +87,45 @@ def _log_k_lengths(pspace):
     return np.log(pspace.k_lengths[1:])
 
 class _TwoLogIntegrations(LinearOperator):
-    def __init__(self, target):
+    def __init__(self, target, space = 0):
         self._target = makeDomain(target)
-        self._domain = makeDomain(
-            UnstructuredDomain((2, self.target.shape[0] - 2)))
+        assert isinstance(self.target[space], PowerSpace)
+        dom = list(self._target)
+        dom[space] = UnstructuredDomain((2, self.target[space].shape[0]-2))
+        self._domain = makeDomain(dom)
+        self._space = space
         self._capability = self.TIMES | self.ADJOINT_TIMES
-        if not isinstance(self._target[0], PowerSpace):
-            raise TypeError
-        logk_lengths = _log_k_lengths(self._target[0])
+        logk_lengths = _log_k_lengths(self._target[space])
         self._logvol = logk_lengths[1:] - logk_lengths[:-1]
 
     def apply(self, x, mode):
         self._check_input(x, mode)
+
+        #Maybe make class properties
+        axis = self._target.axes[self._space][0]
+        sl = (slice(None),)*axis
+        first = sl + (0,)
+        second = sl + (1,)
+        from_third = sl + (slice(2,None),)
+        no_border = sl + (slice(1,-1),)
+        reverse = sl + (slice(None,None,-1),)
         if mode == self.TIMES:
             x = x.to_global_data()
             res = np.empty(self._target.shape)
-            res[0] = 0
-            res[1] = 0
-            res[2:] = np.cumsum(x[1])
-            res[2:] = (res[2:] + res[1:-1])/2*self._logvol + x[0]
-            res[2:] = np.cumsum(res[2:])
-            return from_global_data(self._target, res)
+            res[first] = 0
+            res[second] = 0
+            res[from_third] = np.cumsum(x[second], axis = axis)
+            res[from_third] = (res[from_third] + res[no_border])/2*self._logvol + x[first]
+            res[from_third] = np.cumsum(res[from_third], axis = axis)
         else:
             x = x.to_global_data_rw()
             res = np.zeros(self._domain.shape)
-            x[2:] = np.cumsum(x[2:][::-1])[::-1]
-            res[0] += x[2:]
-            x[2:] *= self._logvol/2.
-            x[1:-1] += x[2:]
-            res[1] += np.cumsum(x[2:][::-1])[::-1]
-            return from_global_data(self._domain, res)
+            x[from_third] = np.cumsum(x[from_third][reverse], axis = axis)[reverse]
+            res[first] += x[from_third]
+            x[from_third] *= self._logvol/2.
+            x[no_border] += x[from_third]
+            res[second] += np.cumsum(x[from_third][reverse], axis = axis)[reverse]
+        return from_global_data(self._tgt(mode), res)
 
 
 class _Normalization(Operator):
@@ -156,7 +165,7 @@ class CorrelatedFieldMaker:
         self._amplitudes = []
 
     def add_fluctuations_from_ops(self, target, fluctuations, flexibility,
-                                  asperity, loglogavgslope, key):
+                                  asperity, loglogavgslope, key, space):
         """
         fluctuations > 0
         flexibility > 0
@@ -168,11 +177,11 @@ class CorrelatedFieldMaker:
         assert isinstance(asperity, Operator)
         assert isinstance(loglogavgslope, Operator)
         target = makeDomain(target)
-        assert len(target) == 1
-        assert isinstance(target[0], PowerSpace)
+        assert isinstance(target[space], PowerSpace)
 
-        twolog = _TwoLogIntegrations(target)
-        dt = twolog._logvol
+        twolog = _TwoLogIntegrations(target, space)
+        #NOTE space might not be required here
+        dt = twolog[space]._logvol 
         sc = np.zeros(twolog.domain.shape)
         sc[0] = sc[1] = np.sqrt(dt)
         sc = from_global_data(twolog.domain, sc)
