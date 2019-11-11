@@ -31,11 +31,13 @@ from ..operators.distributors import PowerDistributor
 from ..operators.endomorphic_operator import EndomorphicOperator
 from ..operators.harmonic_operators import HarmonicTransformOperator
 from ..operators.linear_operator import LinearOperator
+from ..operators.diagonal_operator import DiagonalOperator
 from ..operators.operator import Operator
 from ..operators.simple_linear_operators import VdotOperator, ducktape
 from ..operators.value_inserter import ValueInserter
 from ..sugar import from_global_data, from_random, full, makeDomain
 
+#FIXME for all space operators, check if it is valid first (e.g. parse_space())
 
 def _lognormal_moment_matching(mean, sig, key):
     mean, sig, key = float(mean), float(sig), str(key)
@@ -53,35 +55,38 @@ def _normal(mean, sig, key):
 
 
 class _SlopeRemover(EndomorphicOperator):
-    def __init__(self,domain,logkl):
+    def __init__(self, domain, cooridinates, space = 0):
         self._domain = makeDomain(domain)
-        self._sc = logkl / float(logkl[-1])
+        self._sc = cooridinates / float(cooridinates[-1])
 
+        self._space = space
+        self._last = (slice(None),)*self._domain.axes[space][0] + (-1,)
         self._capability = self.TIMES | self.ADJOINT_TIMES
 
     def apply(self,x,mode):
         self._check_input(x,mode)
         x = x.to_global_data()
         if mode == self.TIMES:
-            res = x - x[-1] * self._sc
+            res = x - x[self._last] * self._sc
         else:
+            #NOTE Why not x.copy()?
             res = np.zeros(x.shape,dtype=x.dtype)
             res += x
-            res[-1] -= (x*self._sc).sum()
+            res[self._last] -= (x*self._sc).sum(axis = self._space)
         return from_global_data(self._tgt(mode),res)
 
-def _make_slope_Operator(smooth,loglogavgslope):
+def _make_slope_Operator(smooth,loglogavgslope, space = 0):
     tg = smooth.target
-    logkl = _log_k_lengths(tg[0])
-    assert logkl.shape[0] == tg[0].shape[0] - 1
+    logkl = _log_k_lengths(tg[space])
     logkl -= logkl[0]
     logkl = np.insert(logkl, 0, 0)
-    noslope = _SlopeRemover(tg,logkl) @ smooth
+    noslope = _SlopeRemover(tg,logkl, space) @ smooth
     # FIXME Move to tests
     consistency_check(_SlopeRemover(tg,logkl))
 
-    _t = VdotOperator(from_global_data(tg, logkl)).adjoint
-    return _t @ loglogavgslope + noslope
+    expander = ContractionOperator(tg, spaces = space).adjoint
+    _t = DiagonalOperator(from_global_data(tg, logkl), tg, spaces = space)
+    return _t @ expander @ loglogavgslope + noslope
 
 def _log_k_lengths(pspace):
     return np.log(pspace.k_lengths[1:])
@@ -165,7 +170,7 @@ class CorrelatedFieldMaker:
         self._amplitudes = []
 
     def add_fluctuations_from_ops(self, target, fluctuations, flexibility,
-                                  asperity, loglogavgslope, key, space):
+                                  asperity, loglogavgslope, key, space = 0):
         """
         fluctuations > 0
         flexibility > 0
@@ -180,23 +185,33 @@ class CorrelatedFieldMaker:
         assert isinstance(target[space], PowerSpace)
 
         twolog = _TwoLogIntegrations(target, space)
-        #NOTE space might not be required here
-        dt = twolog[space]._logvol 
-        sc = np.zeros(twolog.domain.shape)
-        sc[0] = sc[1] = np.sqrt(dt)
-        sc = from_global_data(twolog.domain, sc)
-        expander = VdotOperator(sc).adjoint
-        sigmasq = expander @ flexibility
+        dt = twolog._logvol
+        sl = (slice(None),)*target.axes[space][0]
+        first = sl + (0,)
+        second = sl + (1,)
+        expander = ContractionOperator(twolog.domain, spaces = space).adjoint
+        
+        sqrt_t = np.zeros(twolog.domain.shape)
+        sqrt_t[first] = sqrt_t[second] = np.sqrt(dt)
+        sqrt_t = from_global_data(twolog.domain, sqrt_t)
+        sqrt_t = DiagonalOperator(sqrt_t, twolog.domain, spaces = space)
+        sigmasq = sqrt_t @ expander @ flexibility
 
+        #FIXME apply dist in asperity target domain, as it is smaller
+        #dist = np.zeros(asperity.target.shape)
+        #dist[first] = 1.
+        #dist = from_global_data(asperity.target, dist)
+        #dist = DiagonalOperator(dist, asperity.target, spaces = space)
+        #scale = sigmasq*(Adder(shift) @ expander @ dist @ asperity).sqrt()
         dist = np.zeros(twolog.domain.shape)
-        dist[0] += 1.
+        dist += 1.
         dist = from_global_data(twolog.domain, dist)
-        scale = VdotOperator(dist).adjoint @ asperity
+        dist = DiagonalOperator(dist, twolog.domain, spaces = space)
 
-        shift = np.ones(scale.target.shape)
-        shift[0] = dt**2/12.
-        shift = from_global_data(scale.target, shift)
-        scale = sigmasq*(Adder(shift) @ scale).sqrt()
+        shift = np.ones(twolog.domain.shape)
+        shift[first] = dt**2/12.
+        shift = from_global_data(twolog.domain, shift)
+        scale = sigmasq*(Adder(shift) @ dist @ expander @ asperity).sqrt()
 
         smooth = twolog @ (scale*ducktape(scale.target, None, key))
         smoothslope = _make_slope_Operator(smooth,loglogavgslope)
