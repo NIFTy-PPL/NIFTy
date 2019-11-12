@@ -31,8 +31,8 @@ from ..operators.linear_operator import LinearOperator
 from ..operators.operator import Operator
 from ..operators.simple_linear_operators import VdotOperator, ducktape
 from ..operators.value_inserter import ValueInserter
-from ..sugar import from_global_data, full, makeDomain
 from ..probing import StatCalculator
+from ..sugar import from_global_data, full, makeDomain
 
 
 def _lognormal_moments(mean, sig):
