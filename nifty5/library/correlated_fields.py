@@ -73,7 +73,7 @@ def _log_k_lengths(pspace):
     return np.log(pspace.k_lengths[1:])
 
 
-def _logkl(power_space):
+def _relative_log_k_lengths(power_space):
     """Log-distance to first bin
     logkl.shape==power_space.shape, logkl[0]=logkl[1]=0"""
     power_space = DomainTuple.make(power_space)
@@ -98,7 +98,7 @@ class _SlopeRemover(EndomorphicOperator):
         self._domain = makeDomain(domain)
         assert len(self._domain) == 1
         assert isinstance(self._domain[0], PowerSpace)
-        logkl = _logkl(self._domain)
+        logkl = _relative_log_k_lengths(self._domain)
         self._sc = logkl/float(logkl[-1])
         self._capability = self.TIMES | self.ADJOINT_TIMES
 
@@ -131,8 +131,7 @@ class _TwoLogIntegrations(LinearOperator):
         if mode == self.TIMES:
             x = x.to_global_data()
             res = np.empty(self._target.shape)
-            res[0] = 0
-            res[1] = 0
+            res[0] = res[1] = 0
             res[2:] = np.cumsum(x[1])
             res[2:] = (res[2:] + res[1:-1])/2*self._log_vol + x[0]
             res[2:] = np.cumsum(res[2:])
@@ -215,7 +214,7 @@ class _Amplitude(Operator):
         foo[0] = _log_vol(target)**2/12.
         shift = from_global_data(dom, foo)
 
-        t = from_global_data(target, _logkl(target))
+        t = from_global_data(target, _relative_log_k_lengths(target))
 
         foo, bar = 2*(np.zeros(target.shape),)
         foo[1:] = bar[0] = totvol
