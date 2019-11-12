@@ -185,9 +185,30 @@ class _SpecialSum(EndomorphicOperator):
         return self._contractor.adjoint(self._contractor(x))
 
 
+class _slice_extractor(LinearOperator):
+    #FIXME it should be tested if the the domain and target are consistent with the slice
+    def __init__(self, domain, target, sl):
+        self._domain = makeDomain(domain)
+        self._target = makeDomain(target)
+        self._sl = sl
+        self._capability = self.TIMES | self.ADJOINT_TIMES
+
+    def apply(self, x, mode):
+        self._check_input(x, mode)
+        x = x.to_global_data()
+        if mode == self.TIMES:
+            res = x[self._sl]
+            res = res.reshape(self._target.shape)
+        else:
+            res = np.zeros(self._domain.shape)
+            res[self._sl] = x
+        return from_global_data(self._tgt(mode), res)
+    
+
 class CorrelatedFieldMaker:
     def __init__(self):
         self._amplitudes = []
+        self._spaces = []
 
     def add_fluctuations_from_ops(self, target, fluctuations, flexibility,
                                   asperity, loglogavgslope, key, space = 0):
@@ -260,6 +281,7 @@ class CorrelatedFieldMaker:
         # End move to tests
 
         self._amplitudes.append(ampl)
+        self._spaces.append(space)
 
     def add_fluctuations(self, target, fluctuations_mean, fluctuations_stddev,
                          flexibility_mean, flexibility_stddev, asperity_mean,
@@ -268,13 +290,13 @@ class CorrelatedFieldMaker:
         prefix = str(prefix)
 
         fluct = _lognormal_moment_matching(fluctuations_mean, fluctuations_stddev,
-                                           prefix + 'fluctuations', space)
+                                           prefix + 'fluctuations', space = space)
         flex = _lognormal_moment_matching(flexibility_mean, flexibility_stddev,
-                                          prefix + 'flexibility', space)
+                                          prefix + 'flexibility', space = space)
         asp = _lognormal_moment_matching(asperity_mean, asperity_stddev,
-                                         prefix + 'asperity', space)
+                                         prefix + 'asperity', space = space)
         avgsl = _normal(loglogavgslope_mean, loglogavgslope_stddev,
-                        prefix + 'loglogavgslope', space)
+                        prefix + 'loglogavgslope', space = space)
         self.add_fluctuations_from_ops(target, fluct, flex, asp, avgsl,
                                        prefix + 'spectrum', space)
 
@@ -289,29 +311,40 @@ class CorrelatedFieldMaker:
         """
         offset vs zeromode: volume factor
         """
+        prefix = str(prefix)
         if offset is not None:
             offset = float(offset)
-        #TODO correct hspace
-        hspace = makeDomain(
-            [dd.target[0].harmonic_partner for dd in self._amplitudes])
+
+        hspace = []
+        zeroind = ()
+        for amp, space in zip(self._amplitudes, self._spaces):
+            dd =  list(amp.target)
+            dd[space] = dd[space].harmonic_partner
+            hspace.extend(dd)
+            zeroind += (slice(None),)*space + (0,)*len(dd[space].shape)
+        hspace = makeDomain(hspace)
+        spaces = np.cumsum(self._spaces) + np.arange(len(self._spaces))
 
         azm = _lognormal_moment_matching(offset_amplitude_mean,
                                          offset_amplitude_stddev,
-                                         prefix + 'zeromode')
+                                         prefix + 'zeromode', space = space)
+
         foo = np.ones(hspace.shape)
-        zeroind = len(hspace.shape)*(0,)
         foo[zeroind] = 0
-        azm = Adder(from_global_data(hspace, foo)) @ ValueInserter(
-            hspace, zeroind) @ azm
 
-        ht = HarmonicTransformOperator(hspace, space=0)
-        pd = PowerDistributor(hspace, self._amplitudes[0].target[0], 0)
+        ZeroModeInserter = _slice_extractor(hspace, azm.target, zeroind).adjoint
+
+        azm = Adder(from_global_data(hspace, foo)) @ ZeroModeInserter @ azm
+
+        #NOTE ht and pd operator able to act on several spaces might be nice
+        ht = HarmonicTransformOperator(hspace, space = spaces[0])
+        pd = PowerDistributor(hspace, 
+                self._amplitudes[0].target[spaces[0]], spaces[0])
         for i in range(1, len(self._amplitudes)):
-            ht = HarmonicTransformOperator(ht.target, space=i) @ ht
-            pd = pd @ PowerDistributor(
-                pd.domain, self._amplitudes[i].target[0], space=i)
+            ht = HarmonicTransformOperator(ht.target, space = spaces[i]) @ ht
+            pd = pd @ PowerDistributor( pd.domain, 
+                    self._amplitudes[i].target[spaces[i]], space = spaces[i])
 
-        spaces = tuple(range(len(self._amplitudes)))
         a = ContractionOperator(pd.domain,
                                 spaces[1:]).adjoint(self._amplitudes[0])
         for i in range(1, len(self._amplitudes)):
