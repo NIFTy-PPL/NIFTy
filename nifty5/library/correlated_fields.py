@@ -42,8 +42,9 @@ def _lognormal_moments(mean, sig):
     logmean = np.log(mean) - logsig**2/2
     return logmean, logsig
 
+
 class _lognormal_moment_matching(Operator):
-    def __init__(self,mean, sig, key):
+    def __init__(self, mean, sig, key):
         key = str(key)
         logmean, logsig = _lognormal_moments(mean, sig)
         self._mean = mean
@@ -60,6 +61,7 @@ class _lognormal_moment_matching(Operator):
     @property
     def std(self):
         return self._sig
+
 
 def _normal(mean, sig, key):
     return Adder(Field.scalar(mean)) @ (
@@ -194,17 +196,17 @@ class _Amplitude(Operator):
         expander = VdotOperator(sc).adjoint
         sigmasq = expander @ flexibility
 
-        dist = np.zeros(twolog.domain.shape)
-        dist[0] += 1.
-        dist = from_global_data(twolog.domain, dist)
-        scale = VdotOperator(dist).adjoint @ asperity
+        dist = np.zeros(twolog.domain.shape, dtype=np.float64)
+        dist[0] += 1
+        scale = VdotOperator(from_global_data(twolog.domain,
+                                              dist)).adjoint @ asperity
 
         shift = np.ones(scale.target.shape)
         shift[0] = dt**2/12.
         shift = from_global_data(scale.target, shift)
         scale = sigmasq*(Adder(shift) @ scale).sqrt()
-
         smooth = twolog @ (scale*ducktape(scale.target, None, key))
+
         tg = smooth.target
         noslope = _SlopeRemover(tg) @ smooth
         _t = VdotOperator(from_global_data(tg, _logkl(tg))).adjoint
@@ -240,7 +242,7 @@ class CorrelatedFieldMaker:
                          loglogavgslope_mean,
                          loglogavgslope_stddev,
                          prefix='',
-                         index = None):
+                         index=None):
         fluctuations_mean = float(fluctuations_mean)
         fluctuations_stddev = float(fluctuations_stddev)
         flexibility_mean = float(flexibility_mean)
@@ -332,18 +334,18 @@ class CorrelatedFieldMaker:
     @property
     def total_fluctuation(self):
         if len(self._a) == 0:
-            raise(NotImplementedError)
+            raise NotImplementedError
         if len(self._a) == 1:
             return self._a[0].fluctuation_amplitude
         q = 1.
         for a in self._a:
             fl = a.fluctuation_amplitude
-            q = q * (Adder(full(fl.target,1.)) @ fl**2)
-        return (Adder(full(q.target,-1.)) @ q).sqrt()
+            q = q*(Adder(full(fl.target, 1.)) @ fl**2)
+        return (Adder(full(q.target, -1.)) @ q).sqrt()
 
-    def slice_fluctuation(self,space):
+    def slice_fluctuation(self, space):
         if len(self._a) == 0:
-            raise(NotImplementedError)
+            raise NotImplementedError
         assert space < len(self._a)
         if len(self._a) == 1:
             return self._a[0].fluctuation_amplitude
@@ -351,49 +353,49 @@ class CorrelatedFieldMaker:
         for j in range(len(self._a)):
             fl = self._a[j].fluctuation_amplitude
             if j == space:
-                q = q * fl**2
+                q = q*fl**2
             else:
-                q = q * (Adder(full(fl.target,1.)) @ fl**2)
+                q = q*(Adder(full(fl.target, 1.)) @ fl**2)
         return q.sqrt()
-    
-    def average_fluctuation(self,space):
+
+    def average_fluctuation(self, space):
         if len(self._a) == 0:
-            raise(NotImplementedError)
+            raise NotImplementedError
         assert space < len(self._a)
         if len(self._a) == 1:
             return self._a[0].fluctuation_amplitude
         return self._a[space].fluctuation_amplitude
 
-    def offset_amplitude_realized(self,samples):
+    def offset_amplitude_realized(self, samples):
         res = 0.
         for s in samples:
             res += s.mean()**2
         return np.sqrt(res/len(samples))
-    
-    def total_fluctuation_realized(self,samples):
+
+    def total_fluctuation_realized(self, samples):
         res = 0.
         for s in samples:
-            res = res + (s-s.mean())**2
+            res = res + (s - s.mean())**2
         res = res/len(samples)
         return np.sqrt(res.mean())
-    
-    def average_fluctuation_realized(self,samples,space):
+
+    def average_fluctuation_realized(self, samples, space):
         ldom = len(samples[0].domain)
         assert space < ldom
         if ldom == 1:
             return self.total_fluctuation_realized(samples)
-        spaces=()
+        spaces = ()
         for i in range(ldom):
             if i != space:
                 spaces += (i,)
         res = 0.
         for s in samples:
             r = s.mean(spaces)
-            res = res + (r-r.mean())**2
+            res = res + (r - r.mean())**2
         res = res/len(samples)
         return np.sqrt(res.mean())
-    
-    def slice_fluctuation_realized(self,samples,space):
+
+    def slice_fluctuation_realized(self, samples, space):
         ldom = len(samples[0].domain)
         assert space < ldom
         if ldom == 1:
@@ -405,27 +407,23 @@ class CorrelatedFieldMaker:
             res2 = res2 + s.mean(space)**2
         res1 = res1/len(samples)
         res2 = res2/len(samples)
-        res = res1.mean() -  res2.mean()
+        res = res1.mean() - res2.mean()
         return np.sqrt(res)
 
-    def stats(self,op,samples):
+    def stats(self, op, samples):
         sc = StatCalculator()
         for s in samples:
             sc.add(op(s.extract(op.domain)))
         return sc.mean.to_global_data(), sc.var.sqrt().to_global_data()
-    
-    def moment_slice_to_average(self,
-                                fluctuations_slice_mean,
-                                nsamples = 1000):
+
+    def moment_slice_to_average(self, fluctuations_slice_mean, nsamples=1000):
         fluctuations_slice_mean = float(fluctuations_slice_mean)
         assert fluctuations_slice_mean > 0
         scm = 1.
         for a in self._a:
             m, std = a.fluctuation_amplitude.mean, a.fluctuation_amplitude.std
-            mu, sig = _lognormal_moments(m,std)
-            flm = np.exp(mu + sig * np.random.normal(size=nsamples))
+            mu, sig = _lognormal_moments(m, std)
+            flm = np.exp(mu + sig*np.random.normal(size=nsamples))
             scm *= flm**2 + 1.
         scm = np.mean(np.sqrt(scm))
-        return fluctuations_slice_mean / scm
-        
-        
+        return fluctuations_slice_mean/scm
