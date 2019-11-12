@@ -69,18 +69,20 @@ def _normal(mean, sig, key):
 
 
 def _log_k_lengths(pspace):
+    """Log(k_lengths) without zeromode"""
     return np.log(pspace.k_lengths[1:])
 
 
 def _logkl(power_space):
+    """Log-distance to first bin
+    logkl.shape==power_space.shape, logkl[0]=logkl[1]=0"""
     power_space = DomainTuple.make(power_space)
     assert isinstance(power_space[0], PowerSpace)
     assert len(power_space) == 1
     logkl = _log_k_lengths(power_space[0])
     assert logkl.shape[0] == power_space[0].shape[0] - 1
     logkl -= logkl[0]
-    logkl = np.insert(logkl, 0, 0)
-    return logkl
+    return np.insert(logkl, 0, 0)
 
 
 def _log_vol(power_space):
@@ -196,37 +198,42 @@ class _Amplitude(Operator):
         assert isinstance(target[0], PowerSpace)
 
         twolog = _TwoLogIntegrations(target)
-        sc = np.zeros(twolog.domain.shape)
-        sc[0] = sc[1] = np.sqrt(_log_vol(target))
-        sc = from_global_data(twolog.domain, sc)
-        expander = VdotOperator(sc).adjoint
-        sig_flex = expander @ flexibility
+        dom = twolog.domain
+        shp = dom.shape
+        totvol = target[0].harmonic_partner.get_default_codomain().total_volume
 
-        dist = np.zeros(twolog.domain.shape, dtype=np.float64)
-        dist[0] += 1
-        sig_asp = VdotOperator(from_global_data(twolog.domain,
-                                                dist)).adjoint @ asperity
+        # Prepare constant fields
+        foo = np.zeros(shp)
+        foo[0] = foo[1] = np.sqrt(_log_vol(target))
+        sc = from_global_data(dom, foo)
 
-        shift = np.ones(twolog.domain.shape)
-        shift[0] = _log_vol(target)**2/12.
-        shift = from_global_data(twolog.domain, shift)
+        foo = np.zeros(shp, dtype=np.float64)
+        foo[0] += 1
+        dist = from_global_data(dom, foo)
+
+        foo = np.ones(shp)
+        foo[0] = _log_vol(target)**2/12.
+        shift = from_global_data(dom, foo)
+
+        t = from_global_data(target, _logkl(target))
+
+        foo, bar = 2*(np.zeros(target.shape),)
+        foo[1:] = bar[0] = totvol
+        vol1 = from_global_data(target, foo)
+        vol0 = from_global_data(target, bar)
+        # End prepare constant fields
+
+        slope = VdotOperator(t).adjoint @ loglogavgslope
+        sig_flex = VdotOperator(sc).adjoint @ flexibility
+        sig_asp = VdotOperator(dist).adjoint @ asperity
+        sig_fluc = VdotOperator(vol1).adjoint @ fluctuations
+
+        xi = ducktape(dom, None, key)
         sigma = sig_flex*(Adder(shift) @ sig_asp).sqrt()
-        smooth = twolog @ (sigma*ducktape(twolog.domain, None, key))
+        smooth = _SlopeRemover(target) @ twolog @ (sigma*xi)
+        op = _Normalization(target) @ (slope + smooth)
+        op = Adder(vol0) @ (sig_fluc*op)
 
-        tg = smooth.target
-        noslope = _SlopeRemover(tg) @ smooth
-        _t = VdotOperator(from_global_data(tg, _logkl(tg))).adjoint
-        smoothslope = _t @ loglogavgslope + noslope
-
-        normal_ampl = _Normalization(target) @ smoothslope
-        vol = target[0].harmonic_partner.get_default_codomain().total_volume
-        arr = np.zeros(target.shape)
-        arr[1:] = vol
-        expander = VdotOperator(from_global_data(target, arr)).adjoint
-        mask = np.zeros(target.shape)
-        mask[0] = vol
-        adder = Adder(from_global_data(target, mask))
-        op = adder @ ((expander @ fluctuations)*normal_ampl)
         self.apply = op.apply
         self.fluctuation_amplitude = fluctuations
         self._domain, self._target = op.domain, op.target
