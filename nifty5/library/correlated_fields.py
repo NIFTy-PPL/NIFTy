@@ -204,27 +204,26 @@ class _Amplitude(Operator):
         # Prepare constant fields
         foo = np.zeros(shp)
         foo[0] = foo[1] = np.sqrt(_log_vol(target))
-        sc = from_global_data(dom, foo)
+        vflex = from_global_data(dom, foo)
 
         foo = np.zeros(shp, dtype=np.float64)
         foo[0] += 1
-        dist = from_global_data(dom, foo)
+        vasp = from_global_data(dom, foo)
 
         foo = np.ones(shp)
         foo[0] = _log_vol(target)**2/12.
         shift = from_global_data(dom, foo)
 
-        t = from_global_data(target, _relative_log_k_lengths(target))
+        vslope = from_global_data(target, _relative_log_k_lengths(target))
 
         foo, bar = 2*(np.zeros(target.shape),)
-        foo[1:] = bar[0] = totvol
-        vol1 = from_global_data(target, foo)
-        vol0 = from_global_data(target, bar)
+        bar[1:] = foo[0] = totvol
+        vol0, vol1 = [from_global_data(target, aa) for aa in (foo, bar)]
         # End prepare constant fields
 
-        slope = VdotOperator(t).adjoint @ loglogavgslope
-        sig_flex = VdotOperator(sc).adjoint @ flexibility
-        sig_asp = VdotOperator(dist).adjoint @ asperity
+        slope = VdotOperator(vslope).adjoint @ loglogavgslope
+        sig_flex = VdotOperator(vflex).adjoint @ flexibility
+        sig_asp = VdotOperator(vasp).adjoint @ asperity
         sig_fluc = VdotOperator(vol1).adjoint @ fluctuations
 
         xi = ducktape(dom, None, key)
