@@ -31,8 +31,8 @@ from ..operators.linear_operator import LinearOperator
 from ..operators.operator import Operator
 from ..operators.simple_linear_operators import VdotOperator, ducktape
 from ..operators.value_inserter import ValueInserter
-from ..sugar import from_global_data, full, makeDomain
 from ..probing import StatCalculator
+from ..sugar import from_global_data, full, makeDomain
 
 
 def _lognormal_moments(mean, sig):
@@ -42,15 +42,45 @@ def _lognormal_moments(mean, sig):
     logmean = np.log(mean) - logsig**2/2
     return logmean, logsig
 
-class _lognormal_moment_matching(Operator):
-    def __init__(self,mean, sig, key):
+
+def _normal(mean, sig, key):
+    return Adder(Field.scalar(mean)) @ (
+        sig*ducktape(DomainTuple.scalar_domain(), None, key))
+
+
+def _log_k_lengths(pspace):
+    """Log(k_lengths) without zeromode"""
+    return np.log(pspace.k_lengths[1:])
+
+
+def _relative_log_k_lengths(power_space):
+    """Log-distance to first bin
+    logkl.shape==power_space.shape, logkl[0]=logkl[1]=0"""
+    power_space = DomainTuple.make(power_space)
+    assert isinstance(power_space[0], PowerSpace)
+    assert len(power_space) == 1
+    logkl = _log_k_lengths(power_space[0])
+    assert logkl.shape[0] == power_space[0].shape[0] - 1
+    logkl -= logkl[0]
+    return np.insert(logkl, 0, 0)
+
+
+def _log_vol(power_space):
+    power_space = DomainTuple.make(power_space)
+    assert isinstance(power_space[0], PowerSpace)
+    assert len(power_space) == 1
+    logk_lengths = _log_k_lengths(power_space[0])
+    return logk_lengths[1:] - logk_lengths[:-1]
+
+
+class _LognormalMomentMatching(Operator):
+    def __init__(self, mean, sig, key):
         key = str(key)
         logmean, logsig = _lognormal_moments(mean, sig)
         self._mean = mean
         self._sig = sig
         op = _normal(logmean, logsig, key).exp()
-        self._domain = op.domain
-        self._target = op.target
+        self._domain, self._target = op.domain, op.target
         self.apply = op.apply
 
     @property
@@ -61,32 +91,13 @@ class _lognormal_moment_matching(Operator):
     def std(self):
         return self._sig
 
-def _normal(mean, sig, key):
-    return Adder(Field.scalar(mean)) @ (
-        sig*ducktape(DomainTuple.scalar_domain(), None, key))
-
-
-def _log_k_lengths(pspace):
-    return np.log(pspace.k_lengths[1:])
-
-
-def _logkl(power_space):
-    power_space = DomainTuple.make(power_space)
-    assert isinstance(power_space[0], PowerSpace)
-    assert len(power_space) == 1
-    logkl = _log_k_lengths(power_space[0])
-    assert logkl.shape[0] == power_space[0].shape[0] - 1
-    logkl -= logkl[0]
-    logkl = np.insert(logkl, 0, 0)
-    return logkl
-
 
 class _SlopeRemover(EndomorphicOperator):
     def __init__(self, domain):
         self._domain = makeDomain(domain)
         assert len(self._domain) == 1
         assert isinstance(self._domain[0], PowerSpace)
-        logkl = _logkl(self._domain)
+        logkl = _relative_log_k_lengths(self._domain)
         self._sc = logkl/float(logkl[-1])
         self._capability = self.TIMES | self.ADJOINT_TIMES
 
@@ -112,18 +123,16 @@ class _TwoLogIntegrations(LinearOperator):
         self._capability = self.TIMES | self.ADJOINT_TIMES
         if not isinstance(self._target[0], PowerSpace):
             raise TypeError
-        logk_lengths = _log_k_lengths(self._target[0])
-        self._logvol = logk_lengths[1:] - logk_lengths[:-1]
+        self._log_vol = _log_vol(self._target[0])
 
     def apply(self, x, mode):
         self._check_input(x, mode)
         if mode == self.TIMES:
             x = x.to_global_data()
             res = np.empty(self._target.shape)
-            res[0] = 0
-            res[1] = 0
+            res[0] = res[1] = 0
             res[2:] = np.cumsum(x[1])
-            res[2:] = (res[2:] + res[1:-1])/2*self._logvol + x[0]
+            res[2:] = (res[2:] + res[1:-1])/2*self._log_vol + x[0]
             res[2:] = np.cumsum(res[2:])
             return from_global_data(self._target, res)
         else:
@@ -131,7 +140,7 @@ class _TwoLogIntegrations(LinearOperator):
             res = np.zeros(self._domain.shape)
             x[2:] = np.cumsum(x[2:][::-1])[::-1]
             res[0] += x[2:]
-            x[2:] *= self._logvol/2.
+            x[2:] *= self._log_vol/2.
             x[1:-1] += x[2:]
             res[1] += np.cumsum(x[2:][::-1])[::-1]
             return from_global_data(self._domain, res)
@@ -187,38 +196,41 @@ class _Amplitude(Operator):
         assert isinstance(target[0], PowerSpace)
 
         twolog = _TwoLogIntegrations(target)
-        dt = twolog._logvol
-        sc = np.zeros(twolog.domain.shape)
-        sc[0] = sc[1] = np.sqrt(dt)
-        sc = from_global_data(twolog.domain, sc)
-        expander = VdotOperator(sc).adjoint
-        sigmasq = expander @ flexibility
+        dom = twolog.domain
+        shp = dom.shape
+        totvol = target[0].harmonic_partner.get_default_codomain().total_volume
 
-        dist = np.zeros(twolog.domain.shape)
-        dist[0] += 1.
-        dist = from_global_data(twolog.domain, dist)
-        scale = VdotOperator(dist).adjoint @ asperity
+        # Prepare constant fields
+        foo = np.zeros(shp)
+        foo[0] = foo[1] = np.sqrt(_log_vol(target))
+        vflex = from_global_data(dom, foo)
 
-        shift = np.ones(scale.target.shape)
-        shift[0] = dt**2/12.
-        shift = from_global_data(scale.target, shift)
-        scale = sigmasq*(Adder(shift) @ scale).sqrt()
+        foo = np.zeros(shp, dtype=np.float64)
+        foo[0] += 1
+        vasp = from_global_data(dom, foo)
 
-        smooth = twolog @ (scale*ducktape(scale.target, None, key))
-        tg = smooth.target
-        noslope = _SlopeRemover(tg) @ smooth
-        _t = VdotOperator(from_global_data(tg, _logkl(tg))).adjoint
-        smoothslope = _t @ loglogavgslope + noslope
+        foo = np.ones(shp)
+        foo[0] = _log_vol(target)**2/12.
+        shift = from_global_data(dom, foo)
 
-        normal_ampl = _Normalization(target) @ smoothslope
-        vol = target[0].harmonic_partner.get_default_codomain().total_volume
-        arr = np.zeros(target.shape)
-        arr[1:] = vol
-        expander = VdotOperator(from_global_data(target, arr)).adjoint
-        mask = np.zeros(target.shape)
-        mask[0] = vol
-        adder = Adder(from_global_data(target, mask))
-        op = adder @ ((expander @ fluctuations)*normal_ampl)
+        vslope = from_global_data(target, _relative_log_k_lengths(target))
+
+        foo, bar = 2*(np.zeros(target.shape),)
+        bar[1:] = foo[0] = totvol
+        vol0, vol1 = [from_global_data(target, aa) for aa in (foo, bar)]
+        # End prepare constant fields
+
+        slope = VdotOperator(vslope).adjoint @ loglogavgslope
+        sig_flex = VdotOperator(vflex).adjoint @ flexibility
+        sig_asp = VdotOperator(vasp).adjoint @ asperity
+        sig_fluc = VdotOperator(vol1).adjoint @ fluctuations
+
+        xi = ducktape(dom, None, key)
+        sigma = sig_flex*(Adder(shift) @ sig_asp).sqrt()
+        smooth = _SlopeRemover(target) @ twolog @ (sigma*xi)
+        op = _Normalization(target) @ (slope + smooth)
+        op = Adder(vol0) @ (sig_fluc*op)
+
         self.apply = op.apply
         self.fluctuation_amplitude = fluctuations
         self._domain, self._target = op.domain, op.target
@@ -240,7 +252,7 @@ class CorrelatedFieldMaker:
                          loglogavgslope_mean,
                          loglogavgslope_stddev,
                          prefix='',
-                         index = None):
+                         index=None):
         fluctuations_mean = float(fluctuations_mean)
         fluctuations_stddev = float(fluctuations_stddev)
         flexibility_mean = float(flexibility_mean)
@@ -258,13 +270,13 @@ class CorrelatedFieldMaker:
         assert asperity_mean > 0
         assert loglogavgslope_stddev > 0
 
-        fluct = _lognormal_moment_matching(fluctuations_mean,
-                                           fluctuations_stddev,
-                                           prefix + 'fluctuations')
-        flex = _lognormal_moment_matching(flexibility_mean, flexibility_stddev,
-                                          prefix + 'flexibility')
-        asp = _lognormal_moment_matching(asperity_mean, asperity_stddev,
-                                         prefix + 'asperity')
+        fluct = _LognormalMomentMatching(fluctuations_mean,
+                                         fluctuations_stddev,
+                                         prefix + 'fluctuations')
+        flex = _LognormalMomentMatching(flexibility_mean, flexibility_stddev,
+                                        prefix + 'flexibility')
+        asp = _LognormalMomentMatching(asperity_mean, asperity_stddev,
+                                       prefix + 'asperity')
         avgsl = _normal(loglogavgslope_mean, loglogavgslope_stddev,
                         prefix + 'loglogavgslope')
         amp = _Amplitude(target, fluct, flex, asp, avgsl, prefix + 'spectrum')
@@ -316,9 +328,9 @@ class CorrelatedFieldMaker:
         if offset is not None:
             raise NotImplementedError
             offset = float(offset)
-        azm = _lognormal_moment_matching(offset_amplitude_mean,
-                                         offset_amplitude_stddev,
-                                         prefix + 'zeromode')
+        azm = _LognormalMomentMatching(offset_amplitude_mean,
+                                       offset_amplitude_stddev,
+                                       prefix + 'zeromode')
         return self.finalize_from_op(azm, prefix)
 
     @property
@@ -332,18 +344,18 @@ class CorrelatedFieldMaker:
     @property
     def total_fluctuation(self):
         if len(self._a) == 0:
-            raise(NotImplementedError)
+            raise NotImplementedError
         if len(self._a) == 1:
             return self._a[0].fluctuation_amplitude
         q = 1.
         for a in self._a:
             fl = a.fluctuation_amplitude
-            q = q * (Adder(full(fl.target,1.)) @ fl**2)
-        return (Adder(full(q.target,-1.)) @ q).sqrt()
+            q = q*(Adder(full(fl.target, 1.)) @ fl**2)
+        return (Adder(full(q.target, -1.)) @ q).sqrt()
 
-    def slice_fluctuation(self,space):
+    def slice_fluctuation(self, space):
         if len(self._a) == 0:
-            raise(NotImplementedError)
+            raise NotImplementedError
         assert space < len(self._a)
         if len(self._a) == 1:
             return self._a[0].fluctuation_amplitude
@@ -351,49 +363,36 @@ class CorrelatedFieldMaker:
         for j in range(len(self._a)):
             fl = self._a[j].fluctuation_amplitude
             if j == space:
-                q = q * fl**2
+                q = q*fl**2
             else:
-                q = q * (Adder(full(fl.target,1.)) @ fl**2)
+                q = q*(Adder(full(fl.target, 1.)) @ fl**2)
         return q.sqrt()
-    
-    def average_fluctuation(self,space):
+
+    def average_fluctuation(self, space):
         if len(self._a) == 0:
-            raise(NotImplementedError)
+            raise NotImplementedError
         assert space < len(self._a)
         if len(self._a) == 1:
             return self._a[0].fluctuation_amplitude
         return self._a[space].fluctuation_amplitude
 
-    def offset_amplitude_realized(self,samples):
-        res = 0.
-        for s in samples:
-            res += s.mean()**2
-        return np.sqrt(res/len(samples))
-    
-    def total_fluctuation_realized(self,samples):
-        res = 0.
-        for s in samples:
-            res = res + (s-s.mean())**2
-        res = res/len(samples)
-        return np.sqrt(res.mean())
-    
-    def average_fluctuation_realized(self,samples,space):
+    def average_fluctuation_realized(self, samples, space):
         ldom = len(samples[0].domain)
         assert space < ldom
         if ldom == 1:
             return self.total_fluctuation_realized(samples)
-        spaces=()
+        spaces = ()
         for i in range(ldom):
             if i != space:
                 spaces += (i,)
         res = 0.
         for s in samples:
             r = s.mean(spaces)
-            res = res + (r-r.mean())**2
+            res = res + (r - r.mean())**2
         res = res/len(samples)
         return np.sqrt(res.mean())
-    
-    def slice_fluctuation_realized(self,samples,space):
+
+    def slice_fluctuation_realized(self, samples, space):
         ldom = len(samples[0].domain)
         assert space < ldom
         if ldom == 1:
@@ -405,27 +404,39 @@ class CorrelatedFieldMaker:
             res2 = res2 + s.mean(space)**2
         res1 = res1/len(samples)
         res2 = res2/len(samples)
-        res = res1.mean() -  res2.mean()
+        res = res1.mean() - res2.mean()
         return np.sqrt(res)
 
-    def stats(self,op,samples):
-        sc = StatCalculator()
-        for s in samples:
-            sc.add(op(s.extract(op.domain)))
-        return sc.mean.to_global_data(), sc.var.sqrt().to_global_data()
-    
-    def moment_slice_to_average(self,
-                                fluctuations_slice_mean,
-                                nsamples = 1000):
+    def moment_slice_to_average(self, fluctuations_slice_mean, nsamples=1000):
         fluctuations_slice_mean = float(fluctuations_slice_mean)
         assert fluctuations_slice_mean > 0
         scm = 1.
         for a in self._a:
             m, std = a.fluctuation_amplitude.mean, a.fluctuation_amplitude.std
-            mu, sig = _lognormal_moments(m,std)
-            flm = np.exp(mu + sig * np.random.normal(size=nsamples))
+            mu, sig = _lognormal_moments(m, std)
+            flm = np.exp(mu + sig*np.random.normal(size=nsamples))
             scm *= flm**2 + 1.
         scm = np.mean(np.sqrt(scm))
-        return fluctuations_slice_mean / scm
-        
-        
+        return fluctuations_slice_mean/scm
+
+    @staticmethod
+    def offset_amplitude_realized(samples):
+        res = 0.
+        for s in samples:
+            res += s.mean()**2
+        return np.sqrt(res/len(samples))
+
+    @staticmethod
+    def total_fluctuation_realized(samples):
+        res = 0.
+        for s in samples:
+            res = res + (s - s.mean())**2
+        res = res/len(samples)
+        return np.sqrt(res.mean())
+
+    @staticmethod
+    def stats(op, samples):
+        sc = StatCalculator()
+        for s in samples:
+            sc.add(op(s.extract(op.domain)))
+        return sc.mean.to_global_data(), sc.var.sqrt().to_global_data()
