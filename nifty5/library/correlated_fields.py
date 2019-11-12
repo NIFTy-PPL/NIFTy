@@ -43,25 +43,6 @@ def _lognormal_moments(mean, sig):
     return logmean, logsig
 
 
-class _lognormal_moment_matching(Operator):
-    def __init__(self, mean, sig, key):
-        key = str(key)
-        logmean, logsig = _lognormal_moments(mean, sig)
-        self._mean = mean
-        self._sig = sig
-        op = _normal(logmean, logsig, key).exp()
-        self._domain, self._target = op.domain, op.target
-        self.apply = op.apply
-
-    @property
-    def mean(self):
-        return self._mean
-
-    @property
-    def std(self):
-        return self._sig
-
-
 def _normal(mean, sig, key):
     return Adder(Field.scalar(mean)) @ (
         sig*ducktape(DomainTuple.scalar_domain(), None, key))
@@ -90,6 +71,25 @@ def _log_vol(power_space):
     assert len(power_space) == 1
     logk_lengths = _log_k_lengths(power_space[0])
     return logk_lengths[1:] - logk_lengths[:-1]
+
+
+class _LognormalMomentMatching(Operator):
+    def __init__(self, mean, sig, key):
+        key = str(key)
+        logmean, logsig = _lognormal_moments(mean, sig)
+        self._mean = mean
+        self._sig = sig
+        op = _normal(logmean, logsig, key).exp()
+        self._domain, self._target = op.domain, op.target
+        self.apply = op.apply
+
+    @property
+    def mean(self):
+        return self._mean
+
+    @property
+    def std(self):
+        return self._sig
 
 
 class _SlopeRemover(EndomorphicOperator):
@@ -270,13 +270,13 @@ class CorrelatedFieldMaker:
         assert asperity_mean > 0
         assert loglogavgslope_stddev > 0
 
-        fluct = _lognormal_moment_matching(fluctuations_mean,
-                                           fluctuations_stddev,
-                                           prefix + 'fluctuations')
-        flex = _lognormal_moment_matching(flexibility_mean, flexibility_stddev,
-                                          prefix + 'flexibility')
-        asp = _lognormal_moment_matching(asperity_mean, asperity_stddev,
-                                         prefix + 'asperity')
+        fluct = _LognormalMomentMatching(fluctuations_mean,
+                                         fluctuations_stddev,
+                                         prefix + 'fluctuations')
+        flex = _LognormalMomentMatching(flexibility_mean, flexibility_stddev,
+                                        prefix + 'flexibility')
+        asp = _LognormalMomentMatching(asperity_mean, asperity_stddev,
+                                       prefix + 'asperity')
         avgsl = _normal(loglogavgslope_mean, loglogavgslope_stddev,
                         prefix + 'loglogavgslope')
         amp = _Amplitude(target, fluct, flex, asp, avgsl, prefix + 'spectrum')
@@ -328,9 +328,9 @@ class CorrelatedFieldMaker:
         if offset is not None:
             raise NotImplementedError
             offset = float(offset)
-        azm = _lognormal_moment_matching(offset_amplitude_mean,
-                                         offset_amplitude_stddev,
-                                         prefix + 'zeromode')
+        azm = _LognormalMomentMatching(offset_amplitude_mean,
+                                       offset_amplitude_stddev,
+                                       prefix + 'zeromode')
         return self.finalize_from_op(azm, prefix)
 
     @property
