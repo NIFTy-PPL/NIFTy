@@ -50,8 +50,7 @@ class _lognormal_moment_matching(Operator):
         self._mean = mean
         self._sig = sig
         op = _normal(logmean, logsig, key).exp()
-        self._domain = op.domain
-        self._target = op.target
+        self._domain, self._target = op.domain, op.target
         self.apply = op.apply
 
     @property
