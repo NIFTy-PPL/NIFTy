@@ -66,7 +66,7 @@ def _normal(mean, sig, key,
     mean, sig = (_reshaper(param, domain.shape) for param in (mean, sig))
     assert np.all(sig > 0)
     return Adder(from_global_data(domain, mean)) @ (
-        sig*ducktape(domain, None, key))
+        DiagonalOperator(from_global_data(domain,sig)) @ ducktape(domain, None, key))
 
 
 class _SlopeRemover(EndomorphicOperator):
@@ -82,7 +82,10 @@ class _SlopeRemover(EndomorphicOperator):
         self._check_input(x,mode)
         x = x.to_global_data()
         if mode == self.TIMES:
-            res = x - x[self._last] * self._sc
+            print(self._sc.shape)
+            print(x.shape)
+            print(x[self._last].shape)
+            res = x - np.tensordot(x[self._last], self._sc, axes = 0)
         else:
             #NOTE Why not x.copy()?
             res = np.zeros(x.shape,dtype=x.dtype)
@@ -95,12 +98,13 @@ def _make_slope_Operator(smooth,loglogavgslope, space = 0):
     logkl = _log_k_lengths(tg[space])
     logkl -= logkl[0]
     logkl = np.insert(logkl, 0, 0)
+    noslope = smooth
     noslope = _SlopeRemover(tg,logkl, space) @ smooth
     # FIXME Move to tests
     consistency_check(_SlopeRemover(tg,logkl))
 
     expander = ContractionOperator(tg, spaces = space).adjoint
-    _t = DiagonalOperator(from_global_data(tg, logkl), tg, spaces = space)
+    _t = DiagonalOperator(from_global_data(tg[space], logkl), tg, spaces = space)
     return _t @ expander @ loglogavgslope + noslope
 
 def _log_k_lengths(pspace):
@@ -124,6 +128,7 @@ class _TwoLogIntegrations(LinearOperator):
         #Maybe make class properties
         axis = self._target.axes[self._space][0]
         sl = (slice(None),)*axis
+        extender_sl = (None,)*axis + (slice(None),) + (None,)*(self._target.axes[-1][-1] - axis)
         first = sl + (0,)
         second = sl + (1,)
         from_third = sl + (slice(2,None),)
@@ -135,14 +140,14 @@ class _TwoLogIntegrations(LinearOperator):
             res[first] = 0
             res[second] = 0
             res[from_third] = np.cumsum(x[second], axis = axis)
-            res[from_third] = (res[from_third] + res[no_border])/2*self._logvol + x[first]
+            res[from_third] = (res[from_third] + res[no_border])/2*self._logvol[extender_sl] + x[first]
             res[from_third] = np.cumsum(res[from_third], axis = axis)
         else:
             x = x.to_global_data_rw()
             res = np.zeros(self._domain.shape)
             x[from_third] = np.cumsum(x[from_third][reverse], axis = axis)[reverse]
             res[first] += x[from_third]
-            x[from_third] *= self._logvol/2.
+            x[from_third] *= (self._logvol/2.)[extender_sl]
             x[no_border] += x[from_third]
             res[second] += np.cumsum(x[from_third][reverse], axis = axis)[reverse]
         return from_global_data(self._tgt(mode), res)
@@ -226,29 +231,31 @@ class CorrelatedFieldMaker:
 
         twolog = _TwoLogIntegrations(target, space)
         dt = twolog._logvol
-        sl = (slice(None),)*target.axes[space][0]
+        axis = target.axes[space][0]
+        sl = (slice(None),)*axis
+        extender_sl = (None,)*axis + (slice(None),) + (None,)*(target.axes[-1][-1] - axis)
         first = sl + (0,)
         second = sl + (1,)
         expander = ContractionOperator(twolog.domain, spaces = space).adjoint
         
-        sqrt_t = np.zeros(twolog.domain.shape)
+        sqrt_t = np.zeros(twolog.domain[space].shape)
         sqrt_t[first] = sqrt_t[second] = np.sqrt(dt)
-        sqrt_t = from_global_data(twolog.domain, sqrt_t)
+        sqrt_t = from_global_data(twolog.domain[space], sqrt_t)
         sqrt_t = DiagonalOperator(sqrt_t, twolog.domain, spaces = space)
         sigmasq = sqrt_t @ expander @ flexibility
 
-        dist = np.zeros(twolog.domain.shape)
+        dist = np.zeros(twolog.domain[space].shape)
         dist[first] += 1.
-        dist = from_global_data(twolog.domain, dist)
+        dist = from_global_data(twolog.domain[space], dist)
         dist = DiagonalOperator(dist, twolog.domain, spaces = space)
 
         shift = np.ones(twolog.domain.shape)
-        shift[first] = dt**2/12.
+        shift[first] = (dt**2/12.)[extender_sl]
         shift = from_global_data(twolog.domain, shift)
         scale = sigmasq*(Adder(shift) @ dist @ expander @ asperity).sqrt()
 
         smooth = twolog @ (scale*ducktape(scale.target, None, key))
-        smoothslope = _make_slope_Operator(smooth,loglogavgslope)
+        smoothslope = _make_slope_Operator(smooth,loglogavgslope, space)
         
         # move to tests
         assert_allclose(
@@ -260,11 +267,13 @@ class CorrelatedFieldMaker:
                                    from_random('normal', smoothslope.domain))
         # end move to tests
 
-        normal_ampl = _Normalization(target) @ smoothslope
+        normal_ampl = _Normalization(target, space) @ smoothslope
         vol = target[0].harmonic_partner.get_default_codomain().total_volume
-        arr = np.zeros(target.shape)
+        arr = np.zeros(target[space].shape)
         arr[1:] = vol
-        expander = VdotOperator(from_global_data(target, arr)).adjoint
+        expander = ContractionOperator(target, spaces = space).adjoint
+        expander = DiagonalOperator(from_global_data(target[space], arr)
+                , target, spaces = space) @ expander
         mask = np.zeros(target.shape)
         mask[0] = vol
         adder = Adder(from_global_data(target, mask))
@@ -275,7 +284,7 @@ class CorrelatedFieldMaker:
         # assert_allclose(
         #     normal_ampl(from_random('normal', normal_ampl.domain)).val[0], 1)
         assert_allclose(ampl(from_random('normal', ampl.domain)).val[0], vol)
-        op = _Normalization(target)
+        op = _Normalization(target, space)
         check_jacobian_consistency(op, from_random('normal', op.domain))
         # End move to tests
 
@@ -304,7 +313,7 @@ class CorrelatedFieldMaker:
         avgsl = _normal(loglogavgslope_mean, loglogavgslope_stddev,
                         prefix + 'loglogavgslope', parameter_domain, space = space)
 
-        self.add_fluctuations_from_ops(target, fluct, flex, asp, avgsl,
+        return self.add_fluctuations_from_ops(target, fluct, flex, asp, avgsl,
                                        prefix + 'spectrum', space)
 
     def finalize_from_op(self, zeromode):
