@@ -83,6 +83,14 @@ def _logkl(power_space):
     return logkl
 
 
+def _log_vol(power_space):
+    power_space = DomainTuple.make(power_space)
+    assert isinstance(power_space[0], PowerSpace)
+    assert len(power_space) == 1
+    logk_lengths = _log_k_lengths(power_space[0])
+    return logk_lengths[1:] - logk_lengths[:-1]
+
+
 class _SlopeRemover(EndomorphicOperator):
     def __init__(self, domain):
         self._domain = makeDomain(domain)
@@ -114,8 +122,7 @@ class _TwoLogIntegrations(LinearOperator):
         self._capability = self.TIMES | self.ADJOINT_TIMES
         if not isinstance(self._target[0], PowerSpace):
             raise TypeError
-        logk_lengths = _log_k_lengths(self._target[0])
-        self._logvol = logk_lengths[1:] - logk_lengths[:-1]
+        self._log_vol = _log_vol(self._target[0])
 
     def apply(self, x, mode):
         self._check_input(x, mode)
@@ -125,7 +132,7 @@ class _TwoLogIntegrations(LinearOperator):
             res[0] = 0
             res[1] = 0
             res[2:] = np.cumsum(x[1])
-            res[2:] = (res[2:] + res[1:-1])/2*self._logvol + x[0]
+            res[2:] = (res[2:] + res[1:-1])/2*self._log_vol + x[0]
             res[2:] = np.cumsum(res[2:])
             return from_global_data(self._target, res)
         else:
@@ -133,7 +140,7 @@ class _TwoLogIntegrations(LinearOperator):
             res = np.zeros(self._domain.shape)
             x[2:] = np.cumsum(x[2:][::-1])[::-1]
             res[0] += x[2:]
-            x[2:] *= self._logvol/2.
+            x[2:] *= self._log_vol/2.
             x[1:-1] += x[2:]
             res[1] += np.cumsum(x[2:][::-1])[::-1]
             return from_global_data(self._domain, res)
@@ -189,23 +196,22 @@ class _Amplitude(Operator):
         assert isinstance(target[0], PowerSpace)
 
         twolog = _TwoLogIntegrations(target)
-        dt = twolog._logvol
         sc = np.zeros(twolog.domain.shape)
-        sc[0] = sc[1] = np.sqrt(dt)
+        sc[0] = sc[1] = np.sqrt(_log_vol(target))
         sc = from_global_data(twolog.domain, sc)
         expander = VdotOperator(sc).adjoint
-        sigmasq = expander @ flexibility
+        sig_flex = expander @ flexibility
 
         dist = np.zeros(twolog.domain.shape, dtype=np.float64)
         dist[0] += 1
-        scale = VdotOperator(from_global_data(twolog.domain,
-                                              dist)).adjoint @ asperity
+        sig_asp = VdotOperator(from_global_data(twolog.domain,
+                                                dist)).adjoint @ asperity
 
-        shift = np.ones(scale.target.shape)
-        shift[0] = dt**2/12.
-        shift = from_global_data(scale.target, shift)
-        scale = sigmasq*(Adder(shift) @ scale).sqrt()
-        smooth = twolog @ (scale*ducktape(scale.target, None, key))
+        shift = np.ones(twolog.domain.shape)
+        shift[0] = _log_vol(target)**2/12.
+        shift = from_global_data(twolog.domain, shift)
+        sigma = sig_flex*(Adder(shift) @ sig_asp).sqrt()
+        smooth = twolog @ (sigma*ducktape(twolog.domain, None, key))
 
         tg = smooth.target
         noslope = _SlopeRemover(tg) @ smooth
