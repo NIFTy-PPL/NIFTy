@@ -24,20 +24,21 @@ from .linear_operator import LinearOperator
 
 
 class ContractionOperator(LinearOperator):
-    """A  :class:`LinearOperator` which sums up fields into the direction of
+    """A :class:`LinearOperator` which sums up fields into the direction of
     subspaces.
 
     This Operator sums up a field with is defined on a :class:`DomainTuple`
-    to a :class:`DomainTuple` which contains the former as a subset.
+    to a :class:`DomainTuple` which is a subset of the former.
 
     Parameters
     ----------
     domain : Domain, tuple of Domain or DomainTuple
-    spaces : int or tuple of int
+    spaces : None, int or tuple of int
         The elements of "domain" which are contracted.
+        If `None`, everything is contracted
     weight : int, default=0
         If nonzero, the fields defined on self.domain are weighted with the
-        specified power.
+        specified power along the submdomains which are contracted.
     """
 
     def __init__(self, domain, spaces, weight=0):
