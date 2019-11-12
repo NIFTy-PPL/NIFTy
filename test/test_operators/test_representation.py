@@ -71,15 +71,6 @@ def testLinearInterpolator():
     _check_repr(ift.LinearInterpolator(sp, pos))
 
 
-@pmp('args', [(ift.RGSpace(10, harmonic=True), 4, 0), (ift.RGSpace(
-    (24, 31), distances=(0.4, 2.34), harmonic=True), 3, 0),
-              (ift.LMSpace(4), 10, 0)])
-def testSlopeOperator(args, dtype):
-    tmp = ift.ExpTransform(ift.PowerSpace(args[0]), args[1], args[2])
-    tgt = tmp.domain[0]
-    _check_repr(ift.SlopeOperator(tgt))
-
-
 @pmp('sp', _h_spaces + _p_spaces + _pow_spaces)
 def testOperatorAdaptor(sp, dtype):
     op = ift.DiagonalOperator(ift.Field.from_random("normal", sp, dtype=dtype))
@@ -180,13 +171,6 @@ def testDomainTupleFieldInserter():
 
 
 @pmp('space', [0, 2])
-def testSymmetrizingOperator(space, dtype):
-    dom = (ift.LogRGSpace(10, [2.], [1.]), ift.UnstructuredDomain(13),
-           ift.LogRGSpace((5, 27), [1., 2.7], [0., 4.]), ift.HPSpace(4))
-    _check_repr(ift.SymmetrizingOperator(dom, space))
-
-
-@pmp('space', [0, 2])
 @pmp('factor', [1, 2, 2.7])
 @pmp('central', [False, True])
 def testZeroPadder(space, factor, dtype, central):
@@ -194,25 +178,6 @@ def testZeroPadder(space, factor, dtype, central):
            ift.HPSpace(4))
     newshape = [int(factor*l) for l in dom[space].shape]
     _check_repr(ift.FieldZeroPadder(dom, newshape, space, central))
-
-
-@pmp('args',
-     [(ift.RGSpace(10, harmonic=True), 4, 0), (ift.RGSpace(
-         (24, 31), distances=(0.4, 2.34), harmonic=True), (4, 3), 0),
-      ((ift.HPSpace(4), ift.RGSpace(27, distances=0.3, harmonic=True)),
-       (10,), 1),
-      (ift.PowerSpace(ift.RGSpace(10, distances=0.3, harmonic=True)), 6, 0)])
-def testExpTransform(args, dtype):
-    _check_repr(ift.ExpTransform(args[0], args[1], args[2]))
-
-
-@pmp('args',
-     [(ift.LogRGSpace([10, 17], [2., 3.], [1., 0.]), 0),
-      ((ift.LogRGSpace(10, [2.], [1.]), ift.UnstructuredDomain(13)), 0),
-      ((ift.UnstructuredDomain(13), ift.LogRGSpace(17, [3.], [.7])), 1)])
-def testQHTOperator(args):
-    tgt = ift.DomainTuple.make(args[0])
-    _check_repr(ift.QHTOperator(tgt, args[1]))
 
 
 @pmp('args', [[ift.RGSpace(
