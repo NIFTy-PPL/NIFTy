@@ -232,8 +232,12 @@ class _Amplitude(Operator):
         op = Adder(vol0) @ (sig_fluc*op)
 
         self.apply = op.apply
-        self.fluctuation_amplitude = fluctuations
+        self._fluc = fluctuations
         self._domain, self._target = op.domain, op.target
+
+    @property
+    def fluctuation_amplitude(self):
+        return self._fluc
 
 
 class CorrelatedFieldMaker:
