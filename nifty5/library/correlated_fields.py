@@ -17,6 +17,7 @@
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
 
 import numpy as np
+from functools import reduce
 from numpy.testing import assert_allclose
 
 from ..domain_tuple import DomainTuple
@@ -35,23 +36,38 @@ from ..operators.diagonal_operator import DiagonalOperator
 from ..operators.operator import Operator
 from ..operators.simple_linear_operators import VdotOperator, ducktape
 from ..operators.value_inserter import ValueInserter
-from ..sugar import from_global_data, from_random, full, makeDomain
+from ..sugar import from_global_data, from_random, full, makeDomain, get_default_codomain
 
-#FIXME for all space operators, check if it is valid first (e.g. parse_space())
+def _reshaper(domain, x, space):
+    shape = reduce(lambda x,y: x+y,
+            (domain[i].shape for i in range(len(domain)) if i != space),())
+    x = np.array(x)
+    if x.shape == shape:
+        return np.asfarray(x)
+    elif x.shape in [(), (1,)]:
+        return np.full(shape, x, dtype=np.float)
+    else:
+        raise TypeError("Shape of parameters cannot be interpreted")
 
-def _lognormal_moment_matching(mean, sig, key):
-    mean, sig, key = float(mean), float(sig), str(key)
-    assert mean > 0
-    assert sig > 0
+def _lognormal_moment_matching(mean, sig, key,
+        domain = DomainTuple.scalar_domain(), space = 0):
+    domain = makeDomain(domain)
+    mean, sig = (_reshaper(domain, param, space) for param in (mean, sig))
+    key = str(key)
+    assert np.all(mean > 0)
+    assert np.all(sig > 0)
     logsig = np.sqrt(np.log((sig/mean)**2 + 1))
     logmean = np.log(mean) - logsig**2/2
-    return _normal(logmean, logsig, key).exp()
+    return _normal(logmean, logsig, key, domain).exp()
 
 
-def _normal(mean, sig, key):
-    assert sig > 0
-    return Adder(Field.scalar(mean)) @ (
-        sig*ducktape(DomainTuple.scalar_domain(), None, key))
+def _normal(mean, sig, key,
+        domain = DomainTuple.scalar_domain(), space = 0):
+    domain = makeDomain(domain)
+    mean, sig = (_reshaper(domain, param, space) for param in (mean, sig))
+    assert np.all(sig > 0)
+    return Adder(from_global_data(domain, mean)) @ (
+        sig*ducktape(domain, None, key))
 
 
 class _SlopeRemover(EndomorphicOperator):
@@ -92,7 +108,7 @@ def _log_k_lengths(pspace):
     return np.log(pspace.k_lengths[1:])
 
 class _TwoLogIntegrations(LinearOperator):
-    def __init__(self, target, space = 0):
+    def __init__(self, target, space = None):
         self._target = makeDomain(target)
         assert isinstance(self.target[space], PowerSpace)
         dom = list(self._target)
@@ -134,15 +150,17 @@ class _TwoLogIntegrations(LinearOperator):
 
 
 class _Normalization(Operator):
-    def __init__(self, domain):
+    def __init__(self, domain, space = 0):
         self._domain = self._target = makeDomain(domain)
-        hspace = self._domain[0].harmonic_partner
-        pd = PowerDistributor(hspace, power_space=self._domain[0])
+        hspace = list(self._domain)
+        hspace[space] = hspace[space].harmonic_partner
+        hspace = makeDomain(hspace)
+        pd = PowerDistributor(hspace, power_space=self._domain[space], space = space)
         # TODO Does not work on sphere yet
-        cst = pd.adjoint(full(pd.target, 1.)).to_global_data_rw()
-        cst[0] = 0
-        self._cst = from_global_data(self._domain, cst)
-        self._specsum = _SpecialSum(self._domain)
+        mode_multiplicity = pd.adjoint(full(pd.target, 1.)).to_global_data_rw()
+        mode_multiplicity[0] = 0
+        self._mode_multiplicity = from_global_data(self._domain, mode_multiplicity)
+        self._specsum = _SpecialSum(self._domain, space)
         # FIXME Move to tests
         consistency_check(self._specsum)
 
@@ -152,17 +170,19 @@ class _Normalization(Operator):
         spec = (2*x).exp()
         # FIXME This normalizes also the zeromode which is supposed to be left
         # untouched by this operator
-        return self._specsum(self._cst*spec)**(-0.5)*amp
+        return self._specsum(self._mode_multiplicity*spec)**(-0.5)*amp
 
 
 class _SpecialSum(EndomorphicOperator):
-    def __init__(self, domain):
+    def __init__(self, domain, space = 0):
         self._domain = makeDomain(domain)
         self._capability = self.TIMES | self.ADJOINT_TIMES
+        self._contractor = ContractionOperator(domain, space)
+        self._zero_mode = (slice(None),)*domain.axes[space][0] + (0,)
 
     def apply(self, x, mode):
         self._check_input(x, mode)
-        return full(self._tgt(mode), x.sum())
+        return self._contractor.adjoint(self._contractor(x))
 
 
 class CorrelatedFieldMaker:
@@ -197,14 +217,8 @@ class CorrelatedFieldMaker:
         sqrt_t = DiagonalOperator(sqrt_t, twolog.domain, spaces = space)
         sigmasq = sqrt_t @ expander @ flexibility
 
-        #FIXME apply dist in asperity target domain, as it is smaller
-        #dist = np.zeros(asperity.target.shape)
-        #dist[first] = 1.
-        #dist = from_global_data(asperity.target, dist)
-        #dist = DiagonalOperator(dist, asperity.target, spaces = space)
-        #scale = sigmasq*(Adder(shift) @ expander @ dist @ asperity).sqrt()
         dist = np.zeros(twolog.domain.shape)
-        dist += 1.
+        dist[first] += 1.
         dist = from_global_data(twolog.domain, dist)
         dist = DiagonalOperator(dist, twolog.domain, spaces = space)
 
@@ -215,7 +229,6 @@ class CorrelatedFieldMaker:
 
         smooth = twolog @ (scale*ducktape(scale.target, None, key))
         smoothslope = _make_slope_Operator(smooth,loglogavgslope)
-        #smoothslope = smooth
         
         # move to tests
         assert_allclose(
@@ -251,28 +264,19 @@ class CorrelatedFieldMaker:
     def add_fluctuations(self, target, fluctuations_mean, fluctuations_stddev,
                          flexibility_mean, flexibility_stddev, asperity_mean,
                          asperity_stddev, loglogavgslope_mean,
-                         loglogavgslope_stddev, prefix):
-        fluctuations_mean = float(fluctuations_mean)
-        fluctuations_stddev = float(fluctuations_stddev)
-        flexibility_mean = float(flexibility_mean)
-        flexibility_stddev = float(flexibility_stddev)
-        asperity_mean = float(asperity_mean)
-        asperity_stddev = float(asperity_stddev)
-        loglogavgslope_mean = float(loglogavgslope_mean)
-        loglogavgslope_stddev = float(loglogavgslope_stddev)
+                         loglogavgslope_stddev, prefix, space = 0):
         prefix = str(prefix)
 
-        fluct = _lognormal_moment_matching(fluctuations_mean,
-                                           fluctuations_stddev,
-                                           prefix + 'fluctuations')
+        fluct = _lognormal_moment_matching(fluctuations_mean, fluctuations_stddev,
+                                           prefix + 'fluctuations', space)
         flex = _lognormal_moment_matching(flexibility_mean, flexibility_stddev,
-                                          prefix + 'flexibility')
+                                          prefix + 'flexibility', space)
         asp = _lognormal_moment_matching(asperity_mean, asperity_stddev,
-                                         prefix + 'asperity')
+                                         prefix + 'asperity', space)
         avgsl = _normal(loglogavgslope_mean, loglogavgslope_stddev,
-                        prefix + 'loglogavgslope')
+                        prefix + 'loglogavgslope', space)
         self.add_fluctuations_from_ops(target, fluct, flex, asp, avgsl,
-                                       prefix + 'spectrum')
+                                       prefix + 'spectrum', space)
 
     def finalize_from_op(self, zeromode):
         raise NotImplementedError
@@ -285,12 +289,9 @@ class CorrelatedFieldMaker:
         """
         offset vs zeromode: volume factor
         """
-        offset_amplitude_stddev = float(offset_amplitude_stddev)
-        offset_amplitude_mean = float(offset_amplitude_mean)
-        assert offset_amplitude_stddev > 0
-        assert offset_amplitude_mean > 0
         if offset is not None:
             offset = float(offset)
+        #TODO correct hspace
         hspace = makeDomain(
             [dd.target[0].harmonic_partner for dd in self._amplitudes])
 
