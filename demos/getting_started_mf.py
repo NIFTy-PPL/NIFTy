@@ -84,11 +84,6 @@ if __name__ == '__main__':
                              -1.5, .5,
                              'amp2')
     correlated_field = cfmaker.finalize(1e-3, 1e-6, '')
-    sams = [ift.from_random('normal',correlated_field.domain)
-            for _ in range(20)]
-
-    print("Prior expected total fluctuations: "+str(
-          cfmaker.stats(cfmaker.total_fluctuation,sams)[0]))
     
     A1 = cfmaker.amplitudes[0]
     A2 = cfmaker.amplitudes[1]
