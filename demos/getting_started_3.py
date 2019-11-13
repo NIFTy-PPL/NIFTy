@@ -56,10 +56,10 @@ if __name__ == '__main__':
     filename = "getting_started_3_mode_{}_".format(mode) + "{}.png"
 
     position_space = ift.RGSpace([128, 128])
-    power_space = ift.PowerSpace(position_space.get_default_codomain())
 
     cfmaker = ift.CorrelatedFieldMaker()
-    cfmaker.add_fluctuations(power_space, 1, 1e-2, 1, .5, .1, .5, -3, 0.5, '')
+    cfmaker.add_fluctuations(position_space,
+                             1, 1e-2, 1, .5, .1, .5, -3, 0.5, '')
     correlated_field = cfmaker.finalize(1e-3, 1e-6, '')
     A = cfmaker.amplitudes[0]
 
@@ -88,8 +88,8 @@ if __name__ == '__main__':
     minimizer = ift.NewtonCG(ic_newton)
 
     # Set up likelihood and information Hamiltonian
-    likelihood = ift.GaussianEnergy(mean=data,
-                                    inverse_covariance=N.inverse)(signal_response)
+    likelihood = (ift.GaussianEnergy(mean=data, inverse_covariance=N.inverse) @
+                  signal_response)
     H = ift.StandardHamiltonian(likelihood, ic_sampling)
 
     initial_mean = ift.MultiField.full(H.domain, 0.)

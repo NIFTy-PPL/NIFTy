@@ -11,17 +11,13 @@ def testAmplitudesConsistency(seed, sspace):
     
     nsam = 100
 
-    hspace = sspace.get_default_codomain()
-    target0 = ift.PowerSpace(hspace)
 
     fsspace = ift.RGSpace((12,), (0.4,))
-    fhspace = fsspace.get_default_codomain()
-    target1 = ift.PowerSpace(fhspace)
 
     fa = ift.CorrelatedFieldMaker()
-    fa.add_fluctuations(target0, intergated_fluct_std0, 1E-8, 1.1, 2., 2.1, .5,
+    fa.add_fluctuations(sspace, intergated_fluct_std0, 1E-8, 1.1, 2., 2.1, .5,
                         -2, 1., 'spatial')
-    fa.add_fluctuations(target1, intergated_fluct_std1, 1E-8, 3.1, 1., .5, .1,
+    fa.add_fluctuations(fsspace, intergated_fluct_std1, 1E-8, 3.1, 1., .5, .1,
                         -4, 1., 'freq')
     op = fa.finalize(offset_std, 1E-8, '')
 
@@ -72,17 +68,20 @@ def testAmplitudesConsistency(seed, sspace):
     print("Estimated total fluct. Std: " + str(fluct_total))
     
     fa = ift.CorrelatedFieldMaker()
-    fa.add_fluctuations(target1, intergated_fluct_std1, 1., 3.1, 1., .5, .1,
+    fa.add_fluctuations(fsspace, intergated_fluct_std1, 1., 3.1, 1., .5, .1,
                         -4, 1., 'freq')
     m = 3.
     x = fa.moment_slice_to_average(m)
-    fa.add_fluctuations(target0, x, 1.5, 1.1, 2., 2.1, .5,
+    fa.add_fluctuations(sspace, x, 1.5, 1.1, 2., 2.1, .5,
                         -2, 1., 'spatial', 0)
     op = fa.finalize(offset_std, .1, '')
     em, estd = fa.stats(fa.slice_fluctuation(0),samples)
     print("Forced   slice fluct. space Std: "+str(m))
     print("Expected slice fluct. Std: " + str(em))
     np.testing.assert_allclose(m, em, rtol=0.5)
+    
+    assert op.target[0] == sspace
+    assert op.target[1] == fsspace
 
 
 # Move to tests

@@ -68,18 +68,16 @@ if __name__ == '__main__':
     sp1 = ift.RGSpace(npix1)
     sp2 = ift.RGSpace(npix2)
     
-    power_space1 = ift.PowerSpace(sp1.get_default_codomain())
-    power_space2 = ift.PowerSpace(sp2.get_default_codomain())
 
     cfmaker = ift.CorrelatedFieldMaker()
     amp1 = 0.5
-    cfmaker.add_fluctuations(power_space1,
+    cfmaker.add_fluctuations(sp1,
                              amp1, 1e-2,
                              1, .1,
                              .01, .5,
                              -2, 1.,
                              'amp1')
-    cfmaker.add_fluctuations(power_space2,
+    cfmaker.add_fluctuations(sp2,
                              np.sqrt(1.-amp1**2), 1e-2,
                              1, .1,
                              .01, .5,

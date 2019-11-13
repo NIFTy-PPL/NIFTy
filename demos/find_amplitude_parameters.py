@@ -31,11 +31,11 @@ if __name__ == '__main__':
     fa = ift.CorrelatedFieldMaker()
     n_samps = 20
     slope_means = [-2, -3]
-    fa.add_fluctuations(_default_pspace(ift.RGSpace(128, 0.1)), 10, 2, 1, 1e-6,
+    fa.add_fluctuations(ift.RGSpace(128, 0.1), 10, 2, 1, 1e-6,
                         2, 1e-6, slope_means[0], 0.2, 'spatial')
     # fa.add_fluctuations(_default_pspace(ift.RGSpace((128, 64))), 10, 2, 1,
     #                     1e-6, 2, 1e-6, slope_means[0], 0.2, 'spatial')
-    fa.add_fluctuations(_default_pspace(ift.RGSpace(32)), 10, 5, 1, 1e-6, 2,
+    fa.add_fluctuations(ift.RGSpace(32), 10, 5, 1, 1e-6, 2,
                         1e-6, slope_means[1], 1, 'freq')
     correlated_field = fa.finalize(10, 0.1, '')
     amplitudes = fa.amplitudes

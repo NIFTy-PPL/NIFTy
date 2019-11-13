@@ -240,9 +240,10 @@ class CorrelatedFieldMaker:
     def __init__(self):
         self._a = []
         self._azm = None
+        self._position_spaces = []
 
     def add_fluctuations(self,
-                         target,
+                         position_space,
                          fluctuations_mean,
                          fluctuations_stddev,
                          flexibility_mean,
@@ -279,16 +280,20 @@ class CorrelatedFieldMaker:
                                        prefix + 'asperity')
         avgsl = _normal(loglogavgslope_mean, loglogavgslope_stddev,
                         prefix + 'loglogavgslope')
-        amp = _Amplitude(target, fluct, flex, asp, avgsl, prefix + 'spectrum')
+        amp = _Amplitude(PowerSpace(position_space.get_default_codomain()),
+                         fluct, flex, asp, avgsl, prefix + 'spectrum')
         if index is not None:
             self._a.insert(index, amp)
+            self._position_spaces.insert(index, position_space)
         else:
             self._a.append(amp)
+            self._position_spaces.append(position_space)
 
     def finalize_from_op(self, zeromode, prefix=''):
         assert isinstance(zeromode, Operator)
         self._azm = zeromode
-        hspace = makeDomain([dd.target[0].harmonic_partner for dd in self._a])
+        hspace = makeDomain([dd.get_default_codomain()
+                             for dd in self._position_spaces])
         foo = np.ones(hspace.shape)
         zeroind = len(hspace.shape)*(0,)
         foo[zeroind] = 0
@@ -296,9 +301,12 @@ class CorrelatedFieldMaker:
             hspace, zeroind) @ zeromode
 
         n_amplitudes = len(self._a)
-        ht = HarmonicTransformOperator(hspace, space=0)
+        ht = HarmonicTransformOperator(hspace, self._position_spaces[0],
+                                       space=0)
         for i in range(1, n_amplitudes):
-            ht = HarmonicTransformOperator(ht.target, space=i) @ ht
+            ht = (HarmonicTransformOperator(ht.target,
+                                            self._position_spaces[i],
+                                            space=i) @ ht)
 
         pd = PowerDistributor(hspace, self._a[0].target[0], 0)
         for i in range(1, n_amplitudes):
