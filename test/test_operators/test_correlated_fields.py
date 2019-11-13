@@ -32,6 +32,11 @@ import nifty5 as ift
 @pytest.mark.parametrize('Astds', [[1.,3.],[0.2,1.4]])
 @pytest.mark.parametrize('offset_std', [1.,10.])
 def testAmplitudesConsistency(rseed, sspace, Astds, offset_std):
+    def stats(op,samples):
+        sc = ift.StatCalculator()
+        for s in samples:
+            sc.add(op(s.extract(op.domain)))
+        return sc.mean.to_global_data(), sc.var.sqrt().to_global_data()
     seed(rseed)
     nsam = 100
 
@@ -45,13 +50,13 @@ def testAmplitudesConsistency(rseed, sspace, Astds, offset_std):
     op = fa.finalize(offset_std, 1E-8, '')
 
     samples = [ift.from_random('normal',op.domain) for _ in range(nsam)]
-    tot_flm, _ = fa.stats(fa.total_fluctuation,samples)
-    offset_std,_ = fa.stats(fa.amplitude_total_offset,samples)
-    intergated_fluct_std0,_ = fa.stats(fa.average_fluctuation(0),samples)
-    intergated_fluct_std1,_ = fa.stats(fa.average_fluctuation(1),samples)
+    tot_flm, _ = stats(fa.total_fluctuation,samples)
+    offset_std,_ = stats(fa.amplitude_total_offset,samples)
+    intergated_fluct_std0,_ = stats(fa.average_fluctuation(0),samples)
+    intergated_fluct_std1,_ = stats(fa.average_fluctuation(1),samples)
     
-    slice_fluct_std0,_ = fa.stats(fa.slice_fluctuation(0),samples)
-    slice_fluct_std1,_ = fa.stats(fa.slice_fluctuation(1),samples)
+    slice_fluct_std0,_ = stats(fa.slice_fluctuation(0),samples)
+    slice_fluct_std1,_ = stats(fa.slice_fluctuation(1),samples)
 
     sams = [op(s) for s in samples]
     fluct_total = fa.total_fluctuation_realized(sams)
@@ -76,7 +81,7 @@ def testAmplitudesConsistency(rseed, sspace, Astds, offset_std):
     fa.add_fluctuations(sspace, x, 1.5, 1.1, 2., 2.1, .5,
                         -2, 1., 'spatial', 0)
     op = fa.finalize(offset_std, .1, '')
-    em, estd = fa.stats(fa.slice_fluctuation(0),samples)
+    em, estd = stats(fa.slice_fluctuation(0),samples)
 
     assert_allclose(m, em, rtol=0.5)
     

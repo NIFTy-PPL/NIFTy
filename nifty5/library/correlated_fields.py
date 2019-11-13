@@ -444,7 +444,7 @@ class CorrelatedFieldMaker:
     def offset_amplitude_realized(samples):
         res = 0.
         for s in samples:
-            res += s.mean()**2
+            res = res + s.mean()**2
         return np.sqrt(res/len(samples))
 
     @staticmethod
@@ -461,9 +461,13 @@ class CorrelatedFieldMaker:
             return _total_fluctuation_realized(samples)
         res1, res2 = 0., 0.
         for s in samples:
-            res1 += s**2
-            res2 += s.mean(space)**2
-        return np.sqrt((res1 - res2).mean()/len(samples))
+            res1 = res1 + s**2
+            res2 = res2 + s.mean(space)**2
+        res1 = res1/len(samples)
+        res2 = res2/len(samples)
+        res = res1.mean() - res2.mean()
+        return np.sqrt(res)
+
 
     @staticmethod
     def average_fluctuation_realized(samples, space):
