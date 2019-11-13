@@ -409,15 +409,11 @@ class CorrelatedFieldMaker:
         assert space < ldom
         if ldom == 1:
             return self.total_fluctuation_realized(samples)
-        res1 = 0.
-        res2 = 0.
+        res1, res2 = 0., 0.
         for s in samples:
-            res1 = res1 + s**2
-            res2 = res2 + s.mean(space)**2
-        res1 = res1/len(samples)
-        res2 = res2/len(samples)
-        res = res1.mean() - res2.mean()
-        return np.sqrt(res)
+            res1 += s**2
+            res2 += s.mean(space)**2
+        return np.sqrt((res1 - res2).mean()/len(samples))
 
     def moment_slice_to_average(self, fluctuations_slice_mean, nsamples=1000):
         fluctuations_slice_mean = float(fluctuations_slice_mean)
@@ -428,8 +424,7 @@ class CorrelatedFieldMaker:
             mu, sig = _lognormal_moments(m, std)
             flm = np.exp(mu + sig*np.random.normal(size=nsamples))
             scm *= flm**2 + 1.
-        scm = np.mean(np.sqrt(scm))
-        return fluctuations_slice_mean/scm
+        return fluctuations_slice_mean/np.mean(np.sqrt(scm))
 
     @staticmethod
     def offset_amplitude_realized(samples):
@@ -443,8 +438,7 @@ class CorrelatedFieldMaker:
         res = 0.
         for s in samples:
             res = res + (s - s.mean())**2
-        res = res/len(samples)
-        return np.sqrt(res.mean())
+        return np.sqrt((res/len(samples)).mean())
 
     @staticmethod
     def stats(op, samples):
