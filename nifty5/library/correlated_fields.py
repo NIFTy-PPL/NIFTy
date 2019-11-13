@@ -75,22 +75,21 @@ class _SlopeRemover(EndomorphicOperator):
         self._sc = cooridinates / float(cooridinates[-1])
 
         self._space = space
-        self._last = (slice(None),)*self._domain.axes[space][0] + (-1,)
+        axis = self._domain.axes[space][0]
+        self._last = (slice(None),)*axis + (-1,) + (None,)
+        self._extender = (None,)*(axis) + (slice(None),) + (None,)*(self._domain.axes[-1][-1]-axis)
         self._capability = self.TIMES | self.ADJOINT_TIMES
 
     def apply(self,x,mode):
         self._check_input(x,mode)
         x = x.to_global_data()
         if mode == self.TIMES:
-            print(self._sc.shape)
-            print(x.shape)
-            print(x[self._last].shape)
-            res = x - np.tensordot(x[self._last], self._sc, axes = 0)
+            res = x - x[self._last]*self._sc[self._extender]
         else:
             #NOTE Why not x.copy()?
             res = np.zeros(x.shape,dtype=x.dtype)
             res += x
-            res[self._last] -= (x*self._sc).sum(axis = self._space)
+            res[self._last] -= np.sum(x*self._sc[self._extender], axis = self._space, keepdims = True)
         return from_global_data(self._tgt(mode),res)
 
 def _make_slope_Operator(smooth,loglogavgslope, space = 0):
@@ -101,7 +100,7 @@ def _make_slope_Operator(smooth,loglogavgslope, space = 0):
     noslope = smooth
     noslope = _SlopeRemover(tg,logkl, space) @ smooth
     # FIXME Move to tests
-    consistency_check(_SlopeRemover(tg,logkl))
+    consistency_check(_SlopeRemover(tg,logkl, space))
 
     expander = ContractionOperator(tg, spaces = space).adjoint
     _t = DiagonalOperator(from_global_data(tg[space], logkl), tg, spaces = space)
@@ -162,7 +161,8 @@ class _Normalization(Operator):
         pd = PowerDistributor(hspace, power_space=self._domain[space], space = space)
         # TODO Does not work on sphere yet
         mode_multiplicity = pd.adjoint(full(pd.target, 1.)).to_global_data_rw()
-        mode_multiplicity[0] = 0
+        zero_mode = (slice(None),)*domain.axes[space][0] + (0,)
+        mode_multiplicity[zero_mode] = 0
         self._mode_multiplicity = from_global_data(self._domain, mode_multiplicity)
         self._specsum = _SpecialSum(self._domain, space)
         # FIXME Move to tests
@@ -182,7 +182,6 @@ class _SpecialSum(EndomorphicOperator):
         self._domain = makeDomain(domain)
         self._capability = self.TIMES | self.ADJOINT_TIMES
         self._contractor = ContractionOperator(domain, space)
-        self._zero_mode = (slice(None),)*domain.axes[space][0] + (0,)
 
     def apply(self, x, mode):
         self._check_input(x, mode)
@@ -239,7 +238,8 @@ class CorrelatedFieldMaker:
         expander = ContractionOperator(twolog.domain, spaces = space).adjoint
         
         sqrt_t = np.zeros(twolog.domain[space].shape)
-        sqrt_t[first] = sqrt_t[second] = np.sqrt(dt)
+        #sqrt_t[first] = sqrt_t[second] = np.sqrt(dt)
+        sqrt_t[0] = sqrt_t[1] = np.sqrt(dt)
         sqrt_t = from_global_data(twolog.domain[space], sqrt_t)
         sqrt_t = DiagonalOperator(sqrt_t, twolog.domain, spaces = space)
         sigmasq = sqrt_t @ expander @ flexibility
@@ -258,8 +258,8 @@ class CorrelatedFieldMaker:
         smoothslope = _make_slope_Operator(smooth,loglogavgslope, space)
         
         # move to tests
-        assert_allclose(
-            smooth(from_random('normal', smooth.domain)).val[0:2], 0)
+        #assert_allclose(
+        #    smooth(from_random('normal', smooth.domain)).val[0:2], 0)
         consistency_check(twolog)
         check_jacobian_consistency(smooth, from_random('normal',
                                                        smooth.domain))
@@ -268,7 +268,7 @@ class CorrelatedFieldMaker:
         # end move to tests
 
         normal_ampl = _Normalization(target, space) @ smoothslope
-        vol = target[0].harmonic_partner.get_default_codomain().total_volume
+        vol = target[space].harmonic_partner.get_default_codomain().total_volume
         arr = np.zeros(target[space].shape)
         arr[1:] = vol
         expander = ContractionOperator(target, spaces = space).adjoint
@@ -283,7 +283,7 @@ class CorrelatedFieldMaker:
         # FIXME This test fails but it is not relevant for the final result
         # assert_allclose(
         #     normal_ampl(from_random('normal', normal_ampl.domain)).val[0], 1)
-        assert_allclose(ampl(from_random('normal', ampl.domain)).val[0], vol)
+        #assert_allclose(ampl(from_random('normal', ampl.domain)).val[space][0], vol)
         op = _Normalization(target, space)
         check_jacobian_consistency(op, from_random('normal', op.domain))
         # End move to tests
