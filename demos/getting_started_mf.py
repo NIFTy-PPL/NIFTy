@@ -31,14 +31,17 @@ import numpy as np
 
 import nifty5 as ift
 
+
 class SingleDomain(ift.LinearOperator):
-    def __init__(self,domain,target):
+    def __init__(self, domain, target):
         self._domain = ift.makeDomain(domain)
         self._target = ift.makeDomain(target)
         self._capability = self.TIMES | self.ADJOINT_TIMES
-    def apply(self,x,mode):
-        self._check_input(x,mode)
-        return ift.from_global_data(self._tgt(mode),x.to_global_data())
+
+    def apply(self, x, mode):
+        self._check_input(x, mode)
+        return ift.from_global_data(self._tgt(mode), x.to_global_data())
+
 
 def random_los(n_los):
     starts = list(np.random.uniform(0, 1, (n_los, 2)).T)
@@ -67,27 +70,17 @@ if __name__ == '__main__':
     position_space = ift.RGSpace([npix1, npix2])
     sp1 = ift.RGSpace(npix1)
     sp2 = ift.RGSpace(npix2)
-    
 
     cfmaker = ift.CorrelatedFieldMaker()
     amp1 = 0.5
-    cfmaker.add_fluctuations(sp1,
-                             amp1, 1e-2,
-                             1, .1,
-                             .01, .5,
-                             -2, 1.,
-                             'amp1')
-    cfmaker.add_fluctuations(sp2,
-                             np.sqrt(1.-amp1**2), 1e-2,
-                             1, .1,
-                             .01, .5,
-                             -1.5, .5,
-                             'amp2')
+    cfmaker.add_fluctuations(sp1, amp1, 1e-2, 1, .1, .01, .5, -2, 1., 'amp1')
+    cfmaker.add_fluctuations(sp2, np.sqrt(1. - amp1**2), 1e-2, 1, .1, .01, .5,
+                             -1.5, .5, 'amp2')
     correlated_field = cfmaker.finalize(1e-3, 1e-6, '')
-    
+
     A1 = cfmaker.amplitudes[0]
     A2 = cfmaker.amplitudes[1]
-    DC = SingleDomain(correlated_field.target,position_space)
+    DC = SingleDomain(correlated_field.target, position_space)
 
     # Apply a nonlinearity
     signal = DC @ ift.sigmoid(correlated_field)
@@ -107,15 +100,17 @@ if __name__ == '__main__':
     data = signal_response(mock_position) + N.draw_sample()
 
     # Minimization parameters
-    ic_sampling = ift.AbsDeltaEnergyController(
-        name='Sampling', deltaE=0.01, iteration_limit=100)
-    ic_newton = ift.AbsDeltaEnergyController(
-        name='Newton', deltaE=0.01, iteration_limit=35)
+    ic_sampling = ift.AbsDeltaEnergyController(name='Sampling',
+                                               deltaE=0.01,
+                                               iteration_limit=100)
+    ic_newton = ift.AbsDeltaEnergyController(name='Newton',
+                                             deltaE=0.01,
+                                             iteration_limit=35)
     minimizer = ift.NewtonCG(ic_newton)
 
     # Set up likelihood and information Hamiltonian
-    likelihood = ift.GaussianEnergy(mean=data,
-                                    inverse_covariance=N.inverse)(signal_response)
+    likelihood = ift.GaussianEnergy(
+        mean=data, inverse_covariance=N.inverse)(signal_response)
     H = ift.StandardHamiltonian(likelihood, ic_sampling)
 
     initial_mean = ift.MultiField.full(H.domain, 0.)
@@ -142,9 +137,16 @@ if __name__ == '__main__':
         plot = ift.Plot()
         plot.add(signal(mock_position), title="ground truth")
         plot.add(signal(KL.position), title="reconstruction")
-        plot.add([A1.force(KL.position), A1.force(mock_position)], title="power1")
-        plot.add([A2.force(KL.position), A2.force(mock_position)], title="power2")
-        plot.output(nx = 2, ny=2, ysize=10, xsize=10,
+        plot.add([A1.force(KL.position),
+                  A1.force(mock_position)],
+                 title="power1")
+        plot.add([A2.force(KL.position),
+                  A2.force(mock_position)],
+                 title="power2")
+        plot.output(nx=2,
+                    ny=2,
+                    ysize=10,
+                    xsize=10,
                     name=filename.format("loop_{:02d}".format(i)))
 
     # Draw posterior samples
@@ -172,15 +174,11 @@ if __name__ == '__main__':
 
     powers1 = [A1.force(s + KL.position) for s in KL.samples]
     powers2 = [A2.force(s + KL.position) for s in KL.samples]
-    plot.add(
-        powers1 + [scA1.mean,
-                   A1.force(mock_position)],
-        title="Sampled Posterior Power Spectrum 1",
-        linewidth=[1.]*len(powers1) + [3., 3.])
-    plot.add(
-        powers2 + [scA2.mean,
-                   A2.force(mock_position)],
-        title="Sampled Posterior Power Spectrum 2",
-        linewidth=[1.]*len(powers2) + [3., 3.])
+    plot.add(powers1 + [scA1.mean, A1.force(mock_position)],
+             title="Sampled Posterior Power Spectrum 1",
+             linewidth=[1.]*len(powers1) + [3., 3.])
+    plot.add(powers2 + [scA2.mean, A2.force(mock_position)],
+             title="Sampled Posterior Power Spectrum 2",
+             linewidth=[1.]*len(powers2) + [3., 3.])
     plot.output(ny=2, nx=2, xsize=15, ysize=15, name=filename_res)
     print("Saved results as '{}'.".format(filename_res))
