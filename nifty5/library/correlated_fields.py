@@ -215,7 +215,7 @@ class _Amplitude(Operator):
 
         vslope = from_global_data(target, _relative_log_k_lengths(target))
 
-        foo, bar = 2*(np.zeros(target.shape),)
+        foo, bar = [np.zeros(target.shape) for _ in range(2)]
         bar[1:] = foo[0] = totvol
         vol0, vol1 = [from_global_data(target, aa) for aa in (foo, bar)]
         # End prepare constant fields

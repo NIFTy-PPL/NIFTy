@@ -9,7 +9,7 @@ def testAmplitudesConsistency(seed, sspace):
     intergated_fluct_std0 = .003
     intergated_fluct_std1 = 0.1
     
-    nsam = 1000
+    nsam = 100
 
     hspace = sspace.get_default_codomain()
     target0 = ift.PowerSpace(hspace)
@@ -97,7 +97,7 @@ def testAmplitudesConsistency(seed, sspace):
 for seed in [1, 42]:
     for sp in [
             ift.RGSpace((32, 64), (1.1, 0.3)),
-            ift.HPSpace(64),
-            ift.GLSpace(64)
+            ift.HPSpace(32),
+            ift.GLSpace(32)
     ]:
         testAmplitudesConsistency(seed, sp)
