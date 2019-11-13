@@ -1,15 +1,16 @@
 import nifty5 as ift
 import numpy as np
 
-np.random.seed(42)
+
 
 
 def testAmplitudesConsistency(seed, sspace):
+    np.random.seed(seed)
     offset_std = 30
     intergated_fluct_std0 = .003
     intergated_fluct_std1 = 0.1
     
-    nsam = 100
+    nsam = 1000
 
 
     fsspace = ift.RGSpace((12,), (0.4,))
