@@ -57,10 +57,10 @@ if __name__ == '__main__':
 
     position_space = ift.RGSpace([128, 128])
 
-    cfmaker = ift.CorrelatedFieldMaker()
+    cfmaker = ift.CorrelatedFieldMaker.make(1e-3, 1e-6, '')
     cfmaker.add_fluctuations(position_space,
-                             1, 1e-2, 1, .5, .1, .5, -3, 0.5, '')
-    correlated_field = cfmaker.finalize(1e-3, 1e-6, '')
+                             1., 1e-2, 1, .5, .1, .5, -3, 0.5, '')
+    correlated_field = cfmaker.finalize()
     A = cfmaker.amplitudes[0]
 
     # Apply a nonlinearity

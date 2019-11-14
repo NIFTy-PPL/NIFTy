@@ -4,9 +4,9 @@ np.random.seed(42)
 
 sspace = ift.RGSpace((128,))
 
-fa = ift.CorrelatedFieldMaker()
+fa = ift.CorrelatedFieldMaker.make(10, 0.1, '')
 fa.add_fluctuations(sspace, 10, 2, 1, 1e-6, 2, 1e-6, -2, 1e-6, 'spatial')
-op = fa.finalize(10, 0.1, '')
+op = fa.finalize()
 A = fa.amplitudes[0]
 
 cstpos = ift.from_random('normal', op.domain)
