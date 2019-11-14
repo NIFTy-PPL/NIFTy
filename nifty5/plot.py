@@ -22,7 +22,6 @@ import numpy as np
 from . import dobj
 from .domains.gl_space import GLSpace
 from .domains.hp_space import HPSpace
-from .domains.log_rg_space import LogRGSpace
 from .domains.power_space import PowerSpace
 from .domains.rg_space import RGSpace
 from .field import Field
@@ -171,14 +170,15 @@ def _find_closest(A, target):
     return idx
 
 
-def _makeplot(name):
+def _makeplot(name, block=True):
     import matplotlib.pyplot as plt
     if dobj.rank != 0:
         plt.close()
         return
     if name is None:
-        plt.show()
-        plt.close()
+        plt.show(block=block)
+        if block:
+            plt.close()
         return
     extension = os.path.splitext(name)[1]
     if extension in (".pdf", ".png", ".svg"):
@@ -306,18 +306,6 @@ def _plot1D(f, ax, **kwargs):
         if label != ([None]*len(f)):
             plt.legend()
         return
-    elif isinstance(dom, LogRGSpace):
-        plt.yscale(kwargs.pop("yscale", "log"))
-        npoints = dom.shape[0]
-        xcoord = dom.t_0 + np.arange(npoints-1)*dom.bindistances[0]
-        for i, fld in enumerate(f):
-            ycoord = fld.to_global_data()[1:]
-            plt.plot(xcoord, ycoord, label=label[i],
-                     linewidth=linewidth[i], alpha=alpha[i])
-        _limit_xy(**kwargs)
-        if label != ([None]*len(f)):
-            plt.legend()
-        return
     elif isinstance(dom, PowerSpace):
         plt.xscale(kwargs.pop("xscale", "log"))
         plt.yscale(kwargs.pop("yscale", "log"))
@@ -432,8 +420,8 @@ def _plot(f, ax, **kwargs):
     dom1 = f[0].domain
     if (len(dom1) == 1 and
         (isinstance(dom1[0], PowerSpace) or
-            (isinstance(dom1[0], (RGSpace, LogRGSpace)) and
-             len(dom1[0].shape) == 1))):
+         (isinstance(dom1[0], RGSpace) and
+          len(dom1[0].shape) == 1))):
         _plot1D(f, ax, **kwargs)
         return
     else:
@@ -511,6 +499,9 @@ class Plot(object):
             If left empty, the plot will be shown on the screen,
             otherwise it will be written to a file with the given name.
             Supported extensions: .png and .pdf. Default: None.
+        block: bool
+            Override the blocking behavior of the non-interactive plotting
+            mode. The plot will not be closed in this case but is left open!
         """
         import matplotlib.pyplot as plt
         nplot = len(self._plots)
@@ -537,4 +528,4 @@ class Plot(object):
             ax = fig.add_subplot(ny, nx, i+1)
             _plot(self._plots[i], ax, **self._kwargs[i])
         fig.tight_layout()
-        _makeplot(kwargs.pop("name", None))
+        _makeplot(kwargs.pop("name", None), block=kwargs.pop("block", True))

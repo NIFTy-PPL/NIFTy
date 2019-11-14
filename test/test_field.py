@@ -219,17 +219,23 @@ def test_weight():
     f = ift.Field.full(s1, 10.)
     f2 = f.weight(1)
     assert_equal(f.weight(1).local_data, f2.local_data)
+    assert_equal(f.domain.total_volume(), 1)
+    assert_equal(f.domain.total_volume(0), 1)
+    assert_equal(f.domain.total_volume((0,)), 1)
     assert_equal(f.total_volume(), 1)
     assert_equal(f.total_volume(0), 1)
     assert_equal(f.total_volume((0,)), 1)
+    assert_equal(f.domain.scalar_weight(), 0.1)
+    assert_equal(f.domain.scalar_weight(0), 0.1)
+    assert_equal(f.domain.scalar_weight((0,)), 0.1)
     assert_equal(f.scalar_weight(), 0.1)
     assert_equal(f.scalar_weight(0), 0.1)
     assert_equal(f.scalar_weight((0,)), 0.1)
     s1 = ift.GLSpace(10)
     f = ift.Field.full(s1, 10.)
-    assert_equal(f.scalar_weight(), None)
-    assert_equal(f.scalar_weight(0), None)
-    assert_equal(f.scalar_weight((0,)), None)
+    assert_equal(f.domain.scalar_weight(), None)
+    assert_equal(f.domain.scalar_weight(0), None)
+    assert_equal(f.domain.scalar_weight((0,)), None)
 
 
 @pmp('dom', [ift.RGSpace(10), ift.GLSpace(10)])
@@ -329,7 +335,7 @@ def test_emptydomain():
 @pmp('dom', [ift.RGSpace((8,), harmonic=True), ()])
 @pmp('func', [
     "exp", "log", "sin", "cos", "tan", "sinh", "cosh", "sinc", "absolute",
-    "sign"
+    "sign", "log10"
 ])
 def test_funcs(num, dom, func):
     num = 5

@@ -19,6 +19,8 @@ from functools import reduce
 from . import utilities
 from .domains.domain import Domain
 
+import numpy as np
+
 
 class DomainTuple(object):
     """Ordered sequence of Domain objects.
@@ -124,6 +126,58 @@ class DomainTuple(object):
         Equivalent to the products over all entries in the object's shape.
         """
         return self._size
+
+    def scalar_weight(self, spaces=None):
+        """Returns the uniform volume element for a sub-domain of `self`.
+
+        Parameters
+        ----------
+        spaces : int, tuple of int or None
+            Indices of the sub-domains to be considered.
+            If `None`, the entire domain is used.
+
+        Returns
+        -------
+        float or None
+            If the requested sub-domain has a uniform volume element, it is
+            returned. Otherwise, `None` is returned.
+        """
+        if np.isscalar(spaces):
+            return self._dom[spaces].scalar_dvol
+
+        if spaces is None:
+            spaces = range(len(self._dom))
+        res = 1.
+        for i in spaces:
+            tmp = self._dom[i].scalar_dvol
+            if tmp is None:
+                return None
+            res *= tmp
+        return res
+
+    def total_volume(self, spaces=None):
+        """Returns the total volume of `self` or of a subspace of it.
+
+        Parameters
+        ----------
+        spaces : int, tuple of int or None
+            Indices of the sub-domains of the domain to be considered.
+            If `None`, the total volume of the whole domain is returned.
+
+        Returns
+        -------
+        float
+            the total volume of the requested (sub-)domain.
+        """
+        if np.isscalar(spaces):
+            return self._dom[spaces].total_volume
+
+        if spaces is None:
+            spaces = range(len(self._dom))
+        res = 1.
+        for i in spaces:
+            res *= self._dom[i].total_volume
+        return res
 
     @property
     def axes(self):

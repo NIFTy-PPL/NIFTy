@@ -32,7 +32,7 @@ __all__ = ["ntask", "rank", "master", "local_shape", "data_object", "full",
            "redistribute", "default_distaxis", "is_numpy", "absmax", "norm",
            "lock", "locked", "uniform_full", "transpose", "to_global_data_rw",
            "ensure_not_distributed", "ensure_default_distributed",
-           "tanh", "conjugate", "sin", "cos", "tan",
+           "tanh", "conjugate", "sin", "cos", "tan", "log10",
            "sinh", "cosh", "sinc", "absolute", "sign", "clip"]
 
 _comm = MPI.COMM_WORLD
@@ -297,7 +297,7 @@ def _math_helper(x, function, out):
 _current_module = sys.modules[__name__]
 
 for f in ["sqrt", "exp", "log", "tanh", "conjugate", "sin", "cos", "tan",
-          "sinh", "cosh", "sinc", "absolute", "sign"]:
+          "sinh", "cosh", "sinc", "absolute", "sign", "log10"]:
     def func(f):
         def func2(x, out=None):
             return _math_helper(x, f, out)

@@ -63,7 +63,7 @@ class _LightConeDerivative(LinearOperator):
             if mode == self.TIMES:
                 res += self._derivatives[i]*x[i]
             else:
-                res[i] = np.sum(self._derivatives[i]*x)
+                res[i] = np.sum(self._derivatives[i]*x.real)
         return Field.from_global_data(self._tgt(mode), res)
 
 

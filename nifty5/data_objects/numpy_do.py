@@ -18,9 +18,11 @@
 # Data object module that uses simple numpy ndarrays.
 
 import numpy as np
-from numpy import absolute, clip, cos, cosh, empty, empty_like, exp, full, log
 from numpy import ndarray as data_object
-from numpy import ones, sign, sin, sinc, sinh, sqrt, tan, tanh, vdot, zeros
+from numpy import empty, empty_like, ones, zeros, full
+from numpy import absolute, sign, clip, vdot
+from numpy import sin, cos, sinh, cosh, tan, tanh
+from numpy import exp, log, log10, sqrt, sinc
 
 from .random import Random
 
@@ -34,7 +36,7 @@ __all__ = ["ntask", "rank", "master", "local_shape", "data_object", "full",
            "lock", "locked", "uniform_full", "to_global_data_rw",
            "ensure_not_distributed", "ensure_default_distributed",
            "clip", "sin", "cos", "tan", "sinh",
-           "cosh", "absolute", "sign", "sinc"]
+           "cosh", "absolute", "sign", "sinc", "log10"]
 
 ntask = 1
 rank = 0

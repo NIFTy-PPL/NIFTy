@@ -11,7 +11,6 @@ from .domains.gl_space import GLSpace
 from .domains.hp_space import HPSpace
 from .domains.power_space import PowerSpace
 from .domains.dof_space import DOFSpace
-from .domains.log_rg_space import LogRGSpace
 
 from .domain_tuple import DomainTuple
 from .multi_domain import MultiDomain
@@ -20,13 +19,13 @@ from .multi_field import MultiField
 
 from .operators.operator import Operator
 from .operators.adder import Adder
+from .operators.log1p import Log1p
 from .operators.diagonal_operator import DiagonalOperator
 from .operators.distributors import DOFDistributor, PowerDistributor
 from .operators.domain_tuple_field_inserter import DomainTupleFieldInserter
 from .operators.contraction_operator import ContractionOperator
 from .operators.linear_interpolation import LinearInterpolator
 from .operators.endomorphic_operator import EndomorphicOperator
-from .operators.exp_transform import ExpTransform
 from .operators.harmonic_operators import (
     FFTOperator, HartleyOperator, SHTOperator, HarmonicTransformOperator,
     HarmonicSmoothingOperator)
@@ -34,13 +33,10 @@ from .operators.field_zero_padder import FieldZeroPadder
 from .operators.inversion_enabler import InversionEnabler
 from .operators.linear_operator import LinearOperator
 from .operators.mask_operator import MaskOperator
-from .operators.qht_operator import QHTOperator
 from .operators.regridding_operator import RegriddingOperator
 from .operators.sampling_enabler import SamplingEnabler
 from .operators.sandwich_operator import SandwichOperator
 from .operators.scaling_operator import ScalingOperator
-from .operators.slope_operator import SlopeOperator
-from .operators.symmetrizing_operator import SymmetrizingOperator
 from .operators.block_diagonal_operator import BlockDiagonalOperator
 from .operators.outer_product_operator import OuterProduct
 from .operators.simple_linear_operators import (
@@ -51,7 +47,7 @@ from .operators.value_inserter import ValueInserter
 from .operators.energy_operators import (
     EnergyOperator, GaussianEnergy, PoissonianEnergy, InverseGammaLikelihood,
     BernoulliEnergy, StandardHamiltonian, AveragedEnergy, QuadraticFormOperator,
-    Squared2NormOperator)
+    Squared2NormOperator, StudentTEnergy)
 from .operators.convolution_operators import FuncConvolutionOperator
 
 from .probing import probe_with_posterior_samples, probe_diagonal, \

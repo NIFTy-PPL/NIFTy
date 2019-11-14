@@ -32,7 +32,11 @@ _p_RG_spaces = [
     ift.RGSpace((1, 2, 3, 6), distances=(0.2, 0.25, 0.34, .8))
 ]
 _p_spaces = _p_RG_spaces + [ift.HPSpace(17), ift.GLSpace(8, 13)]
-_pow_spaces = [ift.PowerSpace(ift.RGSpace((17, 38), harmonic=True))]
+_pow_spaces = [
+    ift.PowerSpace(ift.RGSpace((17, 38), (0.99, 1340), harmonic=True)),
+    ift.PowerSpace(ift.LMSpace(18),
+                   ift.PowerSpace.useful_binbounds(ift.LMSpace(18), False))
+]
 
 pmp = pytest.mark.parametrize
 dtype = list2fixture([np.float64, np.complex128])
@@ -85,16 +89,6 @@ def testConjugationOperator(sp):
     op = ift.ConjugationOperator(sp)
     ift.extra.consistency_check(op, np.complex128, np.complex128,
                                 only_r_linear=True)
-
-
-@pmp('args', [(ift.RGSpace(10, harmonic=True), 4, 0), (ift.RGSpace(
-    (24, 31), distances=(0.4, 2.34), harmonic=True), 3, 0),
-              (ift.LMSpace(4), 10, 0)])
-def testSlopeOperator(args, dtype):
-    tmp = ift.ExpTransform(ift.PowerSpace(args[0]), args[1], args[2])
-    tgt = tmp.domain[0]
-    op = ift.SlopeOperator(tgt)
-    ift.extra.consistency_check(op, dtype, dtype)
 
 
 @pmp('sp', _h_spaces + _p_spaces + _pow_spaces)
@@ -215,14 +209,6 @@ def testDomainTupleFieldInserter():
 
 
 @pmp('space', [0, 2])
-def testSymmetrizingOperator(space, dtype):
-    dom = (ift.LogRGSpace(10, [2.], [1.]), ift.UnstructuredDomain(13),
-           ift.LogRGSpace((5, 27), [1., 2.7], [0., 4.]), ift.HPSpace(4))
-    op = ift.SymmetrizingOperator(dom, space)
-    ift.extra.consistency_check(op, dtype, dtype)
-
-
-@pmp('space', [0, 2])
 @pmp('factor', [1, 2, 2.7])
 @pmp('central', [False, True])
 def testZeroPadder(space, factor, dtype, central):
@@ -230,28 +216,6 @@ def testZeroPadder(space, factor, dtype, central):
            ift.HPSpace(4))
     newshape = [int(factor*l) for l in dom[space].shape]
     op = ift.FieldZeroPadder(dom, newshape, space, central)
-    ift.extra.consistency_check(op, dtype, dtype)
-
-
-@pmp('args',
-     [(ift.RGSpace(10, harmonic=True), 4, 0), (ift.RGSpace(
-         (24, 31), distances=(0.4, 2.34), harmonic=True), (4, 3), 0),
-      ((ift.HPSpace(4), ift.RGSpace(27, distances=0.3, harmonic=True)),
-       (10,), 1),
-      (ift.PowerSpace(ift.RGSpace(10, distances=0.3, harmonic=True)), 6, 0)])
-def testExpTransform(args, dtype):
-    op = ift.ExpTransform(args[0], args[1], args[2])
-    ift.extra.consistency_check(op, dtype, dtype)
-
-
-@pmp('args',
-     [(ift.LogRGSpace([10, 17], [2., 3.], [1., 0.]), 0),
-      ((ift.LogRGSpace(10, [2.], [1.]), ift.UnstructuredDomain(13)), 0),
-      ((ift.UnstructuredDomain(13), ift.LogRGSpace(17, [3.], [.7])), 1)])
-def testQHTOperator(args):
-    dtype = np.float64
-    tgt = ift.DomainTuple.make(args[0])
-    op = ift.QHTOperator(tgt, args[1])
     ift.extra.consistency_check(op, dtype, dtype)
 
 
@@ -294,4 +258,53 @@ def testValueInserter(sp, seed):
         else:
             ind.append(np.random.randint(0, ss-1))
     op = ift.ValueInserter(sp, ind)
+    ift.extra.consistency_check(op)
+
+
+@pmp('sp', _pow_spaces)
+def testSlopeRemover(sp):
+    op = ift.library.correlated_fields._SlopeRemover(sp)
+    ift.extra.consistency_check(op)
+
+
+@pmp('sp', _pow_spaces)
+def testTwoLogIntegrations(sp):
+    op = ift.library.correlated_fields._TwoLogIntegrations(sp)
+    ift.extra.consistency_check(op)
+
+
+@pmp('sp', _h_spaces + _p_spaces + _pow_spaces)
+def testSpecialSum(sp):
+    op = ift.library.correlated_fields._SpecialSum(sp)
+    ift.extra.consistency_check(op)
+
+
+@pmp('sp', [ift.RGSpace(10)])
+@pmp('seed', [12, 3])
+def testMatrixProductOperator(sp, seed):
+    np.random.seed(seed)
+    mat = np.random.randn(*sp.shape, *sp.shape)
+    op = ift.MatrixProductOperator(sp, mat)
+    ift.extra.consistency_check(op)
+    mat = mat + 1j*np.random.randn(*sp.shape, *sp.shape)
+    op = ift.MatrixProductOperator(sp, mat)
+    ift.extra.consistency_check(op)
+
+
+@pmp('seed', [12, 3])
+def testPartialExtractor(seed):
+    np.random.seed(seed)
+    tgt = {'a': ift.RGSpace(1), 'b': ift.RGSpace(2)}
+    dom = tgt.copy()
+    dom['c'] = ift.RGSpace(3)
+    dom = ift.MultiDomain.make(dom)
+    tgt = ift.MultiDomain.make(tgt)
+    op = ift.PartialExtractor(dom, tgt)
+    ift.extra.consistency_check(op)
+
+
+@pmp('seed', [12, 3])
+def testSlowFieldAdapter(seed):
+    dom = {'a': ift.RGSpace(1), 'b': ift.RGSpace(2)}
+    op = ift.operators.simple_linear_operators._SlowFieldAdapter(dom, 'a')
     ift.extra.consistency_check(op)
