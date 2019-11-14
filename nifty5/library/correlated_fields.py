@@ -58,7 +58,6 @@ def _lognormal_moments(mean, sig, shape = ()):
 def _normal(mean, sig, key, domain = DomainTuple.scalar_domain()):
     domain = makeDomain(domain)
     mean, sig = (_reshaper(param, domain.shape) for param in (mean, sig))
-    assert np.all(sig > 0)
     return Adder(from_global_data(domain, mean)) @ (
         DiagonalOperator(from_global_data(domain,sig))
         @ ducktape(domain, None, key))
@@ -378,8 +377,10 @@ class CorrelatedFieldMaker:
         hspace = makeDomain(hspace)
         zeroind = ()
         for i, dd in enumerate(self._position_spaces):
-               zeroind += (slice(None),)*self._spaces[i]
+               zeroind += (slice(None),)*(self._spaces[i])
                zeroind += (0,)*len(dd[self._spaces[i]].shape) 
+               zeroind += (slice(None),)*(len(dd)-self._spaces[i]-1)
+
         #tuple(zeroind = zeroind + (slice(None),)*space +  len(dd.shape)*(0,)
         foo = np.ones(hspace.shape)
         foo[zeroind] = 0
@@ -389,24 +390,31 @@ class CorrelatedFieldMaker:
         azm = Adder(from_global_data(hspace, foo)) @ ZeroModeInserter @ zeromode
 
         n_amplitudes = len(self._a)
+        spaces = [self._spaces[0],]
+        for i in range(1,n_amplitudes):
+               spaces.extend(
+                       [len(self._position_spaces[i-1]) 
+                       - self._spaces[i-1] + self._spaces[i]])
+        spaces = list(np.cumsum(spaces))
         ht = HarmonicTransformOperator(hspace,
                                    self._position_spaces[0][self._spaces[0]],
-                                   space=self._spaces[0])
+                                   space=spaces[0])
         for i in range(1, n_amplitudes):
             ht = (HarmonicTransformOperator(ht.target,
                                     self._position_spaces[i][self._spaces[i]],
-                                    space=self._spaces[i]) @ ht)
+                                    space=spaces[i]) @ ht)
 
         pd = PowerDistributor(hspace, self._a[0].target[self._spaces[0]], self._spaces[0])
         for i in range(1, n_amplitudes):
-            pd = (PowerDistributor(pd.domain,
+            pd = (pd @ PowerDistributor(pd.domain,
                                    self._a[i].target[self._spaces[i]],
-                                   space=self._spaces[i]) @ pd)
+                                   space=spaces[i]))
 
-        spaces = np.cumsum(self._spaces) + np.arange(len(self._spaces))
+        all_spaces = list(range(len(hspace)))
         a = ContractionOperator(pd.domain, spaces[1:]).adjoint @ self._a[0]
         for i in range(1, n_amplitudes):
-            co = ContractionOperator(pd.domain, spaces[:i] + spaces[(i + 1):])
+            co = ContractionOperator(pd.domain,
+                    all_spaces[:spaces[i]] + all_spaces[spaces[i] + 1:])
             a = a*(co.adjoint @ self._a[i])
 
         return ht(azm*(pd @ a)*ducktape(hspace, None, prefix + 'xi'))
