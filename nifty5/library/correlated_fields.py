@@ -258,10 +258,10 @@ class CorrelatedFieldMaker:
     def __init__(self, amplitude_offset, prefix):
         self._a = []
         self._position_spaces = []
-        
+
         self._azm = amplitude_offset
         self._prefix = prefix
-    
+
     @staticmethod
     def make(offset_amplitude_mean, offset_amplitude_stddev, prefix):
         offset_amplitude_stddev = float(offset_amplitude_stddev)
@@ -323,20 +323,20 @@ class CorrelatedFieldMaker:
 
     def finalize_from_op(self, zeromode, prefix=''):
         assert isinstance(zeromode, Operator)
-        hspace = makeDomain([dd.get_default_codomain()
-                             for dd in self._position_spaces])
+        hspace = makeDomain(
+            [dd.get_default_codomain() for dd in self._position_spaces])
         foo = np.ones(hspace.shape)
         zeroind = len(hspace.shape)*(0,)
         foo[zeroind] = 0
-        azm = VdotOperator(full(hspace,1.)).adjoint @ zeromode
+        azm = VdotOperator(full(hspace, 1.)).adjoint @ zeromode
 
         n_amplitudes = len(self._a)
-        ht = HarmonicTransformOperator(hspace, self._position_spaces[0],
+        ht = HarmonicTransformOperator(hspace,
+                                       self._position_spaces[0],
                                        space=0)
         for i in range(1, n_amplitudes):
-            ht = (HarmonicTransformOperator(ht.target,
-                                            self._position_spaces[i],
-                                            space=i) @ ht)
+            ht = (HarmonicTransformOperator(
+                ht.target, self._position_spaces[i], space=i) @ ht)
 
         pd = PowerDistributor(hspace, self._a[0].target[0], 0)
         for i in range(1, n_amplitudes):
@@ -351,16 +351,14 @@ class CorrelatedFieldMaker:
 
         return ht(azm*(pd @ a)*ducktape(hspace, None, prefix + 'xi'))
 
-    def finalize(self,
-                 offset=None,
-                 prior_info=100):
+    def finalize(self, offset=None, prior_info=100):
         """
         offset vs zeromode: volume factor
         """
         if offset is not None:
             raise NotImplementedError
             offset = float(offset)
-        
+
         op = self.finalize_from_op(self._azm, self._prefix)
         if prior_info > 0:
             from ..sugar import from_random
@@ -393,8 +391,10 @@ class CorrelatedFieldMaker:
         scm = 1.
         for a in self._a:
             op = a.fluctuation_amplitude
-            res= np.array([op(from_random('normal',op.domain)).to_global_data()
-                            for _ in range(nsamples)])
+            res = np.array([
+                op(from_random('normal', op.domain)).to_global_data()
+                for _ in range(nsamples)
+            ])
             scm *= res**2 + 1.
         return fluctuations_slice_mean/np.mean(np.sqrt(scm))
 
@@ -417,7 +417,7 @@ class CorrelatedFieldMaker:
         for a in self._a:
             fl = a.fluctuation_amplitude
             q = q*(Adder(full(fl.target, 1.)) @ fl**2)
-        return (Adder(full(q.target, -1.)) @ q).sqrt() * self._azm
+        return (Adder(full(q.target, -1.)) @ q).sqrt()*self._azm
 
     def slice_fluctuation(self, space):
         """Returns operator which acts on prior or posterior samples"""
@@ -433,7 +433,7 @@ class CorrelatedFieldMaker:
                 q = q*fl**2
             else:
                 q = q*(Adder(full(fl.target, 1.)) @ fl**2)
-        return q.sqrt() * self._azm
+        return q.sqrt()*self._azm
 
     def average_fluctuation(self, space):
         """Returns operator which acts on prior or posterior samples"""
@@ -471,7 +471,6 @@ class CorrelatedFieldMaker:
         res2 = res2/len(samples)
         res = res1.mean() - res2.mean()
         return np.sqrt(res)
-
 
     @staticmethod
     def average_fluctuation_realized(samples, space):
