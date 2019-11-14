@@ -367,7 +367,7 @@ class CorrelatedFieldMaker:
         else:
             self._a.append(amp)
             self._position_spaces.append(position_space)
-            self._spaces.append(spaces)
+            self._spaces.append(space)
 
     def finalize_from_op(self, zeromode, prefix='', space = 0):
         assert isinstance(zeromode, Operator)
