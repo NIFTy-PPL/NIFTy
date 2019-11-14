@@ -38,7 +38,7 @@ if __name__ == '__main__':
     fa.add_fluctuations(ift.RGSpace(32), 3, 5, 1, 1e-6, 2,
                         1e-6, slope_means[1], 1, 'freq')
     correlated_field = fa.finalize()
-    amplitudes = fa.amplitudes
+    amplitudes = fa.normalized_amplitudes
     plt.style.use('seaborn-notebook')
 
     tgt = correlated_field.target

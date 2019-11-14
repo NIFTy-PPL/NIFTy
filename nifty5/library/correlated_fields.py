@@ -372,7 +372,7 @@ class CorrelatedFieldMaker:
         lst = [('Offset amplitude', self.amplitude_total_offset),
                ('Total fluctuation amplitude', self.total_fluctuation)]
 
-        namps = len(self.amplitudes)
+        namps = len(self._a)
         if namps > 1:
             for ii in range(namps):
                 lst.append(('Slice fluctuation (space {})'.format(ii),
@@ -399,8 +399,18 @@ class CorrelatedFieldMaker:
         return fluctuations_slice_mean/np.mean(np.sqrt(scm))
 
     @property
-    def amplitudes(self):
+    def normalized_amplitudes(self):
         return self._a
+
+    @property
+    def amplitude(self):
+        if len(self._a) > 1:
+            s = ('If more than one spectrum is present in the model,',
+                 ' no unique set of amplitudes exist because only the',
+                 ' relative scale is determined.')
+            raise NotImplementedError(s)
+        expand = VdotOperator(full(self._a[0].target, 1)).adjoint
+        return self._a[0]*(expand @ self.amplitude_total_offset)
 
     @property
     def amplitude_total_offset(self):

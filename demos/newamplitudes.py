@@ -7,7 +7,7 @@ sspace = ift.RGSpace((128,))
 fa = ift.CorrelatedFieldMaker.make(10, 0.1, '')
 fa.add_fluctuations(sspace, 10, 2, 1, 1e-6, 2, 1e-6, -2, 1e-6, 'spatial')
 op = fa.finalize()
-A = fa.amplitudes[0]
+A = fa.amplitude
 
 cstpos = ift.from_random('normal', op.domain)
 p1, p2 = [ift.Plot() for _ in range(2)]
