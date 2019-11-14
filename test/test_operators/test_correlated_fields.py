@@ -42,12 +42,12 @@ def testAmplitudesConsistency(rseed, sspace, Astds, offset_std):
 
     fsspace = ift.RGSpace((12,), (0.4,))
 
-    fa = ift.CorrelatedFieldMaker()
+    fa = ift.CorrelatedFieldMaker.make(offset_std, 1E-8, '')
     fa.add_fluctuations(sspace, Astds[0], 1E-8, 1.1, 2., 2.1, .5,
                         -2, 1., 'spatial')
     fa.add_fluctuations(fsspace, Astds[1], 1E-8, 3.1, 1., .5, .1,
                         -4, 1., 'freq')
-    op = fa.finalize(offset_std, 1E-8, '')
+    op = fa.finalize()
 
     samples = [ift.from_random('normal',op.domain) for _ in range(nsam)]
     tot_flm, _ = stats(fa.total_fluctuation,samples)
@@ -73,14 +73,14 @@ def testAmplitudesConsistency(rseed, sspace, Astds, offset_std):
     assert_allclose(slice_fluct_std0, sl_fluct_space, rtol=0.5)
     assert_allclose(slice_fluct_std1, sl_fluct_freq, rtol=0.5)
 
-    fa = ift.CorrelatedFieldMaker()
+    fa = ift.CorrelatedFieldMaker.make(offset_std, .1, '')
     fa.add_fluctuations(fsspace, Astds[1], 1., 3.1, 1., .5, .1,
                         -4, 1., 'freq')
     m = 3.
     x = fa.moment_slice_to_average(m)
     fa.add_fluctuations(sspace, x, 1.5, 1.1, 2., 2.1, .5,
                         -2, 1., 'spatial', 0)
-    op = fa.finalize(offset_std, .1, '')
+    op = fa.finalize()
     em, estd = stats(fa.slice_fluctuation(0),samples)
 
     assert_allclose(m, em, rtol=0.5)

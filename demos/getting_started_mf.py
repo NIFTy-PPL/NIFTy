@@ -56,7 +56,7 @@ def radial_los(n_los):
 
 
 if __name__ == '__main__':
-    np.random.seed(45)
+    np.random.seed(43)
 
     # Choose between random line-of-sight response (mode=0) and radial lines
     # of sight (mode=1)
@@ -71,12 +71,12 @@ if __name__ == '__main__':
     sp1 = ift.RGSpace(npix1)
     sp2 = ift.RGSpace(npix2)
 
-    cfmaker = ift.CorrelatedFieldMaker()
+    cfmaker = ift.CorrelatedFieldMaker.make(1e-2, 1e-6, '')
     amp1 = 0.5
-    cfmaker.add_fluctuations(sp1, amp1, 1e-2, 1, .1, .01, .5, -2, 1., 'amp1')
-    cfmaker.add_fluctuations(sp2, np.sqrt(1. - amp1**2), 1e-2, 1, .1, .01, .5,
+    cfmaker.add_fluctuations(sp1, 0.1, 1e-2, 1, .1, .01, .5, -2, 1., 'amp1')
+    cfmaker.add_fluctuations(sp2, 0.1, 1e-2, 1, .1, .01, .5,
                              -1.5, .5, 'amp2')
-    correlated_field = cfmaker.finalize(1e-3, 1e-6, '')
+    correlated_field = cfmaker.finalize()
 
     A1 = cfmaker.amplitudes[0]
     A2 = cfmaker.amplitudes[1]

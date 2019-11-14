@@ -11,7 +11,7 @@ def testAmplitudesConsistency(seed, sspace):
             sc.add(op(s.extract(op.domain)))
         return sc.mean.to_global_data(), sc.var.sqrt().to_global_data()
     np.random.seed(seed)
-    offset_std = 30
+    offset_std = .1
     intergated_fluct_std0 = .003
     intergated_fluct_std1 = 0.1
     
@@ -20,12 +20,12 @@ def testAmplitudesConsistency(seed, sspace):
 
     fsspace = ift.RGSpace((12,), (0.4,))
 
-    fa = ift.CorrelatedFieldMaker()
+    fa = ift.CorrelatedFieldMaker.make(offset_std, 1E-8, '')
     fa.add_fluctuations(sspace, intergated_fluct_std0, 1E-8, 1.1, 2., 2.1, .5,
                         -2, 1., 'spatial')
     fa.add_fluctuations(fsspace, intergated_fluct_std1, 1E-8, 3.1, 1., .5, .1,
                         -4, 1., 'freq')
-    op = fa.finalize(offset_std, 1E-8, '')
+    op = fa.finalize()
 
     samples = [ift.from_random('normal',op.domain) for _ in range(nsam)]
     tot_flm, _ = stats(fa.total_fluctuation,samples)
@@ -43,13 +43,6 @@ def testAmplitudesConsistency(seed, sspace):
     zm_std_mean = fa.offset_amplitude_realized(sams)
     sl_fluct_space = fa.slice_fluctuation_realized(sams,0)
     sl_fluct_freq = fa.slice_fluctuation_realized(sams,1)
-
-    np.testing.assert_allclose(offset_std, zm_std_mean, rtol=0.5)
-    np.testing.assert_allclose(intergated_fluct_std0, fluct_space, rtol=0.5)
-    np.testing.assert_allclose(intergated_fluct_std1, fluct_freq, rtol=0.5)
-    np.testing.assert_allclose(tot_flm, fluct_total, rtol=0.5)
-    np.testing.assert_allclose(slice_fluct_std0, sl_fluct_space, rtol=0.5)
-    np.testing.assert_allclose(slice_fluct_std1, sl_fluct_freq, rtol=0.5)
 
     print("Expected  offset Std: " + str(offset_std))
     print("Estimated offset Std: " + str(zm_std_mean))
@@ -73,14 +66,23 @@ def testAmplitudesConsistency(seed, sspace):
     print("Expected  total fluct. Std: " + str(tot_flm))
     print("Estimated total fluct. Std: " + str(fluct_total))
     
-    fa = ift.CorrelatedFieldMaker()
+    
+    np.testing.assert_allclose(offset_std, zm_std_mean, rtol=0.5)
+    np.testing.assert_allclose(intergated_fluct_std0, fluct_space, rtol=0.5)
+    np.testing.assert_allclose(intergated_fluct_std1, fluct_freq, rtol=0.5)
+    np.testing.assert_allclose(tot_flm, fluct_total, rtol=0.5)
+    np.testing.assert_allclose(slice_fluct_std0, sl_fluct_space, rtol=0.5)
+    np.testing.assert_allclose(slice_fluct_std1, sl_fluct_freq, rtol=0.5)
+
+    
+    fa = ift.CorrelatedFieldMaker.make(offset_std, .1, '')
     fa.add_fluctuations(fsspace, intergated_fluct_std1, 1., 3.1, 1., .5, .1,
                         -4, 1., 'freq')
     m = 3.
     x = fa.moment_slice_to_average(m)
     fa.add_fluctuations(sspace, x, 1.5, 1.1, 2., 2.1, .5,
                         -2, 1., 'spatial', 0)
-    op = fa.finalize(offset_std, .1, '')
+    op = fa.finalize()
     em, estd = stats(fa.slice_fluctuation(0),samples)
     print("Forced   slice fluct. space Std: "+str(m))
     print("Expected slice fluct. Std: " + str(em))

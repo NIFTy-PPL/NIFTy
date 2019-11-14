@@ -255,10 +255,23 @@ class _Amplitude(Operator):
 
 
 class CorrelatedFieldMaker:
-    def __init__(self):
+    def __init__(self, amplitude_offset, prefix):
         self._a = []
-        self._azm = None
         self._position_spaces = []
+        
+        self._azm = amplitude_offset
+        self._prefix = prefix
+    
+    @staticmethod
+    def make(offset_amplitude_mean, offset_amplitude_stddev, prefix):
+        offset_amplitude_stddev = float(offset_amplitude_stddev)
+        offset_amplitude_mean = float(offset_amplitude_mean)
+        assert offset_amplitude_stddev > 0
+        assert offset_amplitude_mean > 0
+        zm = _LognormalMomentMatching(offset_amplitude_mean,
+                                      offset_amplitude_stddev,
+                                      prefix + 'zeromode')
+        return CorrelatedFieldMaker(zm, prefix)
 
     def add_fluctuations(self,
                          position_space,
@@ -292,6 +305,7 @@ class CorrelatedFieldMaker:
         fluct = _LognormalMomentMatching(fluctuations_mean,
                                          fluctuations_stddev,
                                          prefix + 'fluctuations')
+        fluct = fluct*self._azm.one_over()
         flex = _LognormalMomentMatching(flexibility_mean, flexibility_stddev,
                                         prefix + 'flexibility')
         asp = _LognormalMomentMatching(asperity_mean, asperity_stddev,
@@ -309,14 +323,12 @@ class CorrelatedFieldMaker:
 
     def finalize_from_op(self, zeromode, prefix=''):
         assert isinstance(zeromode, Operator)
-        self._azm = zeromode
         hspace = makeDomain([dd.get_default_codomain()
                              for dd in self._position_spaces])
         foo = np.ones(hspace.shape)
         zeroind = len(hspace.shape)*(0,)
         foo[zeroind] = 0
-        azm = Adder(from_global_data(hspace, foo)) @ ValueInserter(
-            hspace, zeroind) @ zeromode
+        azm = VdotOperator(full(hspace,1.)).adjoint @ zeromode
 
         n_amplitudes = len(self._a)
         ht = HarmonicTransformOperator(hspace, self._position_spaces[0],
@@ -340,25 +352,16 @@ class CorrelatedFieldMaker:
         return ht(azm*(pd @ a)*ducktape(hspace, None, prefix + 'xi'))
 
     def finalize(self,
-                 offset_amplitude_mean,
-                 offset_amplitude_stddev,
-                 prefix='',
                  offset=None,
                  prior_info=100):
         """
         offset vs zeromode: volume factor
         """
-        offset_amplitude_stddev = float(offset_amplitude_stddev)
-        offset_amplitude_mean = float(offset_amplitude_mean)
-        assert offset_amplitude_stddev > 0
-        assert offset_amplitude_mean > 0
         if offset is not None:
             raise NotImplementedError
             offset = float(offset)
-        azm = _LognormalMomentMatching(offset_amplitude_mean,
-                                       offset_amplitude_stddev,
-                                       prefix + 'zeromode')
-        op = self.finalize_from_op(azm, prefix)
+        
+        op = self.finalize_from_op(self._azm, self._prefix)
         if prior_info > 0:
             from ..sugar import from_random
             samps = [
@@ -386,12 +389,13 @@ class CorrelatedFieldMaker:
     def moment_slice_to_average(self, fluctuations_slice_mean, nsamples=1000):
         fluctuations_slice_mean = float(fluctuations_slice_mean)
         assert fluctuations_slice_mean > 0
+        from ..sugar import from_random
         scm = 1.
         for a in self._a:
-            m, std = a.fluctuation_amplitude.mean, a.fluctuation_amplitude.std
-            mu, sig = _lognormal_moments(m, std)
-            flm = np.exp(mu + sig*np.random.normal(size=nsamples))
-            scm *= flm**2 + 1.
+            op = a.fluctuation_amplitude
+            res= np.array([op(from_random('normal',op.domain)).to_global_data()
+                            for _ in range(nsamples)])
+            scm *= res**2 + 1.
         return fluctuations_slice_mean/np.mean(np.sqrt(scm))
 
     @property
@@ -408,12 +412,12 @@ class CorrelatedFieldMaker:
         if len(self._a) == 0:
             raise NotImplementedError
         if len(self._a) == 1:
-            return self._a[0].fluctuation_amplitude
+            return self.average_fluctuation(0)
         q = 1.
         for a in self._a:
             fl = a.fluctuation_amplitude
             q = q*(Adder(full(fl.target, 1.)) @ fl**2)
-        return (Adder(full(q.target, -1.)) @ q).sqrt()
+        return (Adder(full(q.target, -1.)) @ q).sqrt() * self._azm
 
     def slice_fluctuation(self, space):
         """Returns operator which acts on prior or posterior samples"""
@@ -421,7 +425,7 @@ class CorrelatedFieldMaker:
             raise NotImplementedError
         assert space < len(self._a)
         if len(self._a) == 1:
-            return self._a[0].fluctuation_amplitude
+            return self.average_fluctuation(0)
         q = 1.
         for j in range(len(self._a)):
             fl = self._a[j].fluctuation_amplitude
@@ -429,7 +433,7 @@ class CorrelatedFieldMaker:
                 q = q*fl**2
             else:
                 q = q*(Adder(full(fl.target, 1.)) @ fl**2)
-        return q.sqrt()
+        return q.sqrt() * self._azm
 
     def average_fluctuation(self, space):
         """Returns operator which acts on prior or posterior samples"""
@@ -437,8 +441,8 @@ class CorrelatedFieldMaker:
             raise NotImplementedError
         assert space < len(self._a)
         if len(self._a) == 1:
-            return self._a[0].fluctuation_amplitude
-        return self._a[space].fluctuation_amplitude
+            return self._a[0].fluctuation_amplitude*self._azm
+        return self._a[space].fluctuation_amplitude*self._azm
 
     @staticmethod
     def offset_amplitude_realized(samples):
