@@ -269,12 +269,10 @@ class StudentTEnergy(EnergyOperator):
     def __init__(self, domain, theta):
         self._domain = DomainTuple.make(domain)
         self._theta = theta
-        from .log1p import Log1p
-        self._l1p = Log1p(domain)
 
     def apply(self, x):
         self._check_input(x)
-        v = ((self._theta+1)/2)*self._l1p(x**2/self._theta).sum()
+        v = ((self._theta+1)/2)*(x**2/self._theta).log1p().sum()
         if not isinstance(x, Linearization):
             return Field.scalar(v)
         if not x.want_metric:

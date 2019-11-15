@@ -22,7 +22,7 @@ from numpy import ndarray as data_object
 from numpy import empty, empty_like, ones, zeros, full
 from numpy import absolute, sign, clip, vdot
 from numpy import sin, cos, sinh, cosh, tan, tanh
-from numpy import exp, log, log10, sqrt, sinc
+from numpy import exp, log, log10, sqrt, sinc, log1p
 
 from .random import Random
 
@@ -36,7 +36,7 @@ __all__ = ["ntask", "rank", "master", "local_shape", "data_object", "full",
            "lock", "locked", "uniform_full", "to_global_data_rw",
            "ensure_not_distributed", "ensure_default_distributed",
            "clip", "sin", "cos", "tan", "sinh",
-           "cosh", "absolute", "sign", "sinc", "log10"]
+           "cosh", "absolute", "sign", "sinc", "log10", "log1p"]
 
 ntask = 1
 rank = 0
