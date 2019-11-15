@@ -20,7 +20,6 @@ from .multi_field import MultiField
 
 from .operators.operator import Operator
 from .operators.adder import Adder
-from .operators.log1p import Log1p
 from .operators.diagonal_operator import DiagonalOperator
 from .operators.distributors import DOFDistributor, PowerDistributor
 from .operators.domain_tuple_field_inserter import DomainTupleFieldInserter
