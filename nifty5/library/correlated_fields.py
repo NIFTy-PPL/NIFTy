@@ -97,7 +97,7 @@ def _log_vol(power_space):
 def _total_fluctuation_realized(samples, space = 0):
     res = 0.
     for s in samples:
-        res = res + (s - s.mean(space, keepdims = True))**2
+        res = res + (s - s.mean())**2
     return np.sqrt((res/len(samples)).mean(space))
 
 
@@ -327,8 +327,6 @@ class _Amplitude(Operator):
                 target, space) for aa in (foo, bar)]
 
         #Prepare fields for Adder
-        #NOTE alternative would be adjoint contraction_operator acting
-        #on every space except the specified on
         shift, vol0 = [op(full(op.domain, 1)) for op in (shift, vol0)]
         # End prepare constant fields
 
@@ -371,10 +369,6 @@ class CorrelatedFieldMaker:
     
     @staticmethod
     def make(offset_amplitude_mean, offset_amplitude_stddev, prefix, total_N = 0):
-        offset_amplitude_stddev = float(offset_amplitude_stddev)
-        offset_amplitude_mean = float(offset_amplitude_mean)
-        assert offset_amplitude_stddev > 0
-        assert offset_amplitude_mean > 0
         zm = _LognormalMomentMatching(offset_amplitude_mean,
                                       offset_amplitude_stddev,
                                       prefix + 'zeromode',
