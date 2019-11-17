@@ -437,8 +437,6 @@ class CorrelatedFieldMaker:
             hspace = makeDomain([UnstructuredDomain(self._total_N)] +
                     [dd[-1].get_default_codomain() for dd in self._position_spaces])
             spaces = list(1 + np.arange(n_amplitudes))
-            #spaces = tuple(len(dd) for dd in self._position_spaces)
-            #spaces = 1 + np.cumsum(spaces)
             zeroind = (slice(None),) + (0,)*(len(hspace.shape)-1)
         else:
             hspace = makeDomain(
