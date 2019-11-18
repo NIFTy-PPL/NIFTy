@@ -94,11 +94,11 @@ def _log_vol(power_space):
     return logk_lengths[1:] - logk_lengths[:-1]
 
 
-def _total_fluctuation_realized(samples, space = 0):
+def _total_fluctuation_realized(samples):
     res = 0.
     for s in samples:
         res = res + (s - s.mean())**2
-    return np.sqrt((res/len(samples)).mean(space))
+    return np.sqrt((res/len(samples)).mean())
 
 
 def _stats(op, samples):
@@ -490,7 +490,7 @@ class CorrelatedFieldMaker:
         from ..sugar import from_random
         scm = 1.
         for a in self._a:
-            op = a.fluctuation_amplitude
+            op = a.fluctuation_amplitude*self._azm.one_over()
             res= np.array([op(from_random('normal',op.domain)).to_global_data()
                             for _ in range(nsamples)])
             scm *= res**2 + 1.
@@ -513,7 +513,7 @@ class CorrelatedFieldMaker:
             return self.average_fluctuation(0)
         q = 1.
         for a in self._a:
-            fl = a.fluctuation_amplitude
+            fl = a.fluctuation_amplitude*self._azm.one_over()
             q = q*(Adder(full(fl.target, 1.)) @ fl**2)
         return (Adder(full(q.target, -1.)) @ q).sqrt() * self._azm
 
@@ -526,7 +526,7 @@ class CorrelatedFieldMaker:
             return self.average_fluctuation(0)
         q = 1.
         for j in range(len(self._a)):
-            fl = self._a[j].fluctuation_amplitude
+            fl = self._a[j].fluctuation_amplitude*self._azm.one_over()
             if j == space:
                 q = q*fl**2
             else:
@@ -539,8 +539,8 @@ class CorrelatedFieldMaker:
             raise NotImplementedError
         assert space < len(self._a)
         if len(self._a) == 1:
-            return self._a[0].fluctuation_amplitude*self._azm
-        return self._a[space].fluctuation_amplitude*self._azm
+            return self._a[0].fluctuation_amplitude
+        return self._a[space].fluctuation_amplitude
 
     @staticmethod
     def offset_amplitude_realized(samples):
