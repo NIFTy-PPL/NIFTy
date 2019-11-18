@@ -1,13 +1,14 @@
+from .linear_operator import LinearOperator
+from ..domain_tuple import DomainTuple
+from ..domains.rg_space import RGSpace
+from ..domains.hp_space import HPSpace
+from ..domains.gl_space import GLSpace
+from ..field import Field
+from ..utilities import infer_space
+
 import numpy as np
 import pyHealpix as hp
 from scipy.sparse import csr_matrix
-from nifty5.domain_tuple import DomainTuple
-from nifty5.domains.rg_space import RGSpace
-from nifty5.domains.hp_space import HPSpace
-from nifty5.domains.gl_space import GLSpace
-from nifty5.field import Field
-from nifty5.utilities import infer_space
-from nifty5.operators.linear_operator import LinearOperator
 
 
 class ProjectionOperator(LinearOperator):
