@@ -32,7 +32,7 @@ __all__ = ["ntask", "rank", "master", "local_shape", "data_object", "full",
            "redistribute", "default_distaxis", "is_numpy", "absmax", "norm",
            "lock", "locked", "uniform_full", "transpose", "to_global_data_rw",
            "ensure_not_distributed", "ensure_default_distributed",
-           "tanh", "conjugate", "sin", "cos", "tan", "log10",
+           "tanh", "conjugate", "sin", "cos", "tan", "log10", "log1p", "expm1",
            "sinh", "cosh", "sinc", "absolute", "sign", "clip"]
 
 _comm = MPI.COMM_WORLD
@@ -297,7 +297,8 @@ def _math_helper(x, function, out):
 _current_module = sys.modules[__name__]
 
 for f in ["sqrt", "exp", "log", "tanh", "conjugate", "sin", "cos", "tan",
-          "sinh", "cosh", "sinc", "absolute", "sign", "log10"]:
+          "sinh", "cosh", "sinc", "absolute", "sign", "log10", "log1p",
+          "expm1"]:
     def func(f):
         def func2(x, out=None):
             return _math_helper(x, f, out)
@@ -396,6 +397,8 @@ def from_global_data(arr, sum_up=False, distaxis=0):
         raise TypeError
     if sum_up:
         arr = np_allreduce_sum(arr)
+    if arr.ndim == 0:
+        distaxis = -1
     if distaxis == -1:
         return data_object(arr.shape, arr, distaxis)
     lo, hi = _shareRange(arr.shape[distaxis], ntask, rank)

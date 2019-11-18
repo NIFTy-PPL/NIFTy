@@ -391,7 +391,7 @@ _current_module = sys.modules[__name__]
 
 for f in ["sqrt", "exp", "log", "log10", "tanh", "sigmoid",
           "conjugate", 'sin', 'cos', 'tan', 'sinh', 'cosh',
-          'absolute', 'one_over', 'sinc']:
+          'absolute', 'one_over', 'sinc', 'log1p', 'expm1']:
     def func(f):
         def func2(x):
             from .linearization import Linearization

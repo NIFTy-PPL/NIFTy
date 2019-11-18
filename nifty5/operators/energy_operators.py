@@ -250,20 +250,18 @@ class InverseGammaLikelihood(EnergyOperator):
 
 
 class StudentTEnergy(EnergyOperator):
-    """Computes likelihood energy of expected event frequency constrained by
-    event data.
+    """Computes likelihood energy corresponding to Student's t-distribution.
 
     .. math ::
-        E(f) = -\\log \\text{Bernoulli}(d|f)
-             = -d^\\dagger \\log f  - (1-d)^\\dagger \\log(1-f),
+        E_\\theta(f) = -\\log \\text{StudentT}_\\theta(f)
+                     = \\frac{\\theta + 1}{2} \\log(1 + \\frac{f^2}{\\theta}),
 
-    where f is a field defined on `d.domain` with the expected
-    frequencies of events.
+    where f is a field defined on `domain`.
 
     Parameters
     ----------
-    d : Field
-        Data field with events (1) or non-events (0).
+    domain : `Domain` or `DomainTuple`
+        Domain of the operator
     theta : Scalar
         Degree of freedom parameter for the student t distribution
     """
@@ -271,12 +269,10 @@ class StudentTEnergy(EnergyOperator):
     def __init__(self, domain, theta):
         self._domain = DomainTuple.make(domain)
         self._theta = theta
-        from .log1p import Log1p
-        self._l1p = Log1p(domain)
 
     def apply(self, x):
         self._check_input(x)
-        v = ((self._theta+1)/2)*self._l1p(x**2/self._theta).sum()
+        v = ((self._theta+1)/2)*(x**2/self._theta).log1p().sum()
         if not isinstance(x, Linearization):
             return Field.scalar(v)
         if not x.want_metric:
