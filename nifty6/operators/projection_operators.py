@@ -32,8 +32,7 @@ class ProjectionOperator(LinearOperator):
             raise ValueError('radius: must be strictly less than pi')
 
         # prepare sparse projection matrix generation
-        if isinstance(self._domain[self._space], HPSpace) or \
-           isinstance(self._domain[self._space], GLSpace):
+        if isinstance(self._domain[self._space], (HPSpace, GLSpace)):
             # forward projection
             self._base = self._get_base(self._domain[self._space])
             if target == None:
@@ -42,6 +41,7 @@ class ProjectionOperator(LinearOperator):
                 if shape == None:
                     if isinstance(self._domain[self._space], HPSpace):
                         self._shape = tuple([
+                            #FIXME: where is this formula from?
                             int(8. * self._domain[self._space].nside *
                                 self._radius / np.pi)
                         ] * 2)
@@ -68,7 +68,6 @@ class ProjectionOperator(LinearOperator):
                     self._target = DomainTuple.make(target)
                     self._shape = target.shape
                     self._distances = self._make_distances()
-
                 else:
                     raise ValueError('target[space]: must be RGSpace '
                                      'if domain is HPSpace or GLSpace')
@@ -79,8 +78,7 @@ class ProjectionOperator(LinearOperator):
         elif isinstance(self._domain[self._space], RGSpace):
             # backward projection
             self._target = DomainTuple.make(target)
-            if isinstance(self._target[self._space], HPSpace) or \
-               isinstance(self._target[self._space], GLSpace):
+            if isinstance(self._target[self._space], (HPSpace, GLSpace)):
                 self._shape = self._domain[self._space].shape
                 self._base = self._get_base(self._target[self._space])
                 self._distances = self._make_distances()
@@ -267,12 +265,12 @@ class StereographicProjectionOperator(ProjectionOperator):
     radius : float
         Radius of the disc around `pointing`.
         Must be a single float and less then pi/2.
-    shape : int
-        Shape of resulting RGSpace. Must be a tuple int.
-        Default is to be as close as possible to domains angular resolution.
-    space : int
+    space : int, optional
         Index of space in `domain` on which the operator shall act.
         Default is 0.
+    shape : int, optional
+        Shape of target RGSpace. Must be a tuple int.
+        Default is to be as close as possible to domains angular resolution.
     """
     def __init__(self, *args, **kwargs):
         super(StereographicProjectionOperator, self).__init__(*args, **kwargs)
@@ -370,12 +368,12 @@ class GnomonicProjectionOperator(ProjectionOperator):
     radius : float
         Radius of the disc around `pointing`.
         Must be a single float and less then pi/2.
-    shape : int
-        Shape of resulting RGSpace. Must be a tuple int.
-        Default is to be as close as possible to domains angular resolution.
-    space : int
+    space : int, optional
         Index of space in `domain` on which the operator shall act.
         Default is 0.
+    shape : int, optional
+        Shape of target RGSpace. Must be a tuple int.
+        Default is to be as close as possible to domains angular resolution.
     """
     def __init__(self, *args, **kwargs):
         super(GnomonicProjectionOperator, self).__init__(*args, **kwargs)
