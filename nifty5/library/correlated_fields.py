@@ -33,7 +33,7 @@ from ..operators.operator import Operator
 from ..operators.simple_linear_operators import VdotOperator, ducktape
 from ..operators.value_inserter import ValueInserter
 from ..probing import StatCalculator
-from ..sugar import from_global_data, from_random, full, makeDomain, get_default_codomain
+from ..sugar import from_global_data, from_random, full, makeDomain
 
 
 def _reshaper(x, N):
@@ -177,14 +177,15 @@ class _TwoLogIntegrations(LinearOperator):
         no_border = sl + (slice(1,-1),)
         reverse = sl + (slice(None,None,-1),)
 
-        x = x.to_global_data_rw()
         if mode == self.TIMES:
+            x = x.to_global_data()
             res = np.empty(self._target.shape)
             res[first] = res[second] = 0
             res[from_third] = np.cumsum(x[second], axis = axis)
             res[from_third] = (res[from_third] + res[no_border])/2*self._log_vol[extender_sl] + x[first]
             res[from_third] = np.cumsum(res[from_third], axis = axis)
         else:
+            x = x.to_global_data_rw()
             res = np.zeros(self._domain.shape)
             x[from_third] = np.cumsum(x[from_third][reverse], axis = axis)[reverse]
             res[first] += x[from_third]
