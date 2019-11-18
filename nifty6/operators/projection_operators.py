@@ -16,15 +16,13 @@ class ProjectionOperator(LinearOperator):
                  space=None):
         # make sure we work on the correct space
         self._domain = DomainTuple.make(domain)
-        self._space  = infer_space(self._domain, space)
+        self._space = infer_space(self._domain, space)
 
         # ensure correct types and values for angular arguments
         self._pointing = tuple([float(p) for p in pointing])
-        if (len(self._pointing) != 2 or (
-            not ((0. <= self._pointing[0] <= np.pi)
-                 and (0. <= self._pointing[1] <= 2*np.pi)
-                )
-        )):
+        if (len(self._pointing) != 2
+                or (not ((0. <= self._pointing[0] <= np.pi) and
+                         (0. <= self._pointing[1] <= 2 * np.pi)))):
             raise ValueError('pointing: must be tuple of '
                              '(co-latitude, longitude) in radians')
 
@@ -37,17 +35,22 @@ class ProjectionOperator(LinearOperator):
         if isinstance(self._domain[self._space], HPSpace) or \
            isinstance(self._domain[self._space], GLSpace):
             # forward projection
-            self._base   = self._get_base(self._domain[self._space])
+            self._base = self._get_base(self._domain[self._space])
             if target == None:
                 # if not specified, shape is as close as possible
                 # to domain's angular resolution
                 if shape == None:
                     if isinstance(self._domain[self._space], HPSpace):
-                        self._shape = tuple([int(8. * self._domain[self._space].nside * self._radius / np.pi)]*2)
-                    else: # domain is GLSpace
                         self._shape = tuple([
-                            int(2. * self._domain[self._space].nlat * self._radius / np.pi), # theta
-                            int(self._domain[self._space].nlon * self._radius / np.pi),      # phi
+                            int(8. * self._domain[self._space].nside *
+                                self._radius / np.pi)
+                        ] * 2)
+                    else:  # domain is GLSpace
+                        self._shape = tuple([
+                            int(2. * self._domain[self._space].nlat *
+                                self._radius / np.pi),  # theta
+                            int(self._domain[self._space].nlon * self._radius /
+                                np.pi),  # phi
                         ])
                 else:
                     self._shape = tuple([int(s) for s in shape])
@@ -57,13 +60,13 @@ class ProjectionOperator(LinearOperator):
                 self._distances = self._make_distances()
                 domains = list(self._domain._dom)
                 domains[self._space] = RGSpace(self._shape, self._distances)
-                self._target    = DomainTuple.make(domains)
+                self._target = DomainTuple.make(domains)
 
             else:
                 self._target = DomainTuple.make(target)
                 if isinstance(self._target[self._space], RGSpace):
-                    self._target    = DomainTuple.make(target)
-                    self._shape     = target.shape
+                    self._target = DomainTuple.make(target)
+                    self._shape = target.shape
                     self._distances = self._make_distances()
 
                 else:
@@ -78,10 +81,10 @@ class ProjectionOperator(LinearOperator):
             self._target = DomainTuple.make(target)
             if isinstance(self._target[self._space], HPSpace) or \
                isinstance(self._target[self._space], GLSpace):
-                self._shape     = self._domain[self._space].shape
-                self._base      = self._get_base(self._target[self._space])
+                self._shape = self._domain[self._space].shape
+                self._base = self._get_base(self._target[self._space])
                 self._distances = self._make_distances()
-                self._mat       = self._make_bac_mat()
+                self._mat = self._make_bac_mat()
             else:
                 raise ValueError('target: must be HPSpace or GLSpace '
                                  'if domain is RGSpace')
@@ -94,22 +97,14 @@ class ProjectionOperator(LinearOperator):
         # we only support two modes
         self._capability = self.TIMES | self.ADJOINT_TIMES
 
-
     def __repr__(self):
         """Returns a representation string for type casting to string."""
 
         return (
             self.__class__.__name__ +
-            "(domain={}, pointing={}, radius={}, target={}, shape={})"
-            .format(
-                self._domain,
-                self._pointing,
-                self._radius,
-                self._target,
-                self._shape
-            )
-        )
-
+            "(domain={}, pointing={}, radius={}, target={}, shape={})".format(
+                self._domain, self._pointing, self._radius, self._target,
+                self._shape))
 
     def apply(self, x, mode):
         """Applies the projection to a given field :attr:`x`."""
@@ -154,7 +149,6 @@ class ProjectionOperator(LinearOperator):
 
             return Field.from_global_data(self._domain, result)
 
-
     def _make_distances(self):
         """Returns the internal units of the projection plane."""
 
@@ -167,7 +161,6 @@ class ProjectionOperator(LinearOperator):
 
         return distances
 
-
     def _make_for_mat(self):
         """The matrix defined in this function describes a surjective mapping
         from the projected disc on the sphere into the projection plane. It
@@ -175,14 +168,12 @@ class ProjectionOperator(LinearOperator):
 
         raise NotImplementedError
 
-
     def _make_bac_mat(self):
         """The matrix defined in this function describes a surjective mapping
         from the projection plane into the projected disc on the sphere. It
         should therefore be used for the back projection."""
 
         raise NotImplementedError
-
 
     def _get_base(self, domain):
         """Returns an implementation of the coordinate arithmetic for
@@ -193,17 +184,13 @@ class ProjectionOperator(LinearOperator):
 
         if isinstance(domain, HPSpace):
             # Healpix_Base implments HEALPix geometry
-            return hp.Healpix_Base(
-                nside  = domain.nside,
-                scheme = 'RING'
-            )
-        else: # domain is GLSpace
+            return hp.Healpix_Base(nside=domain.nside, scheme='RING')
+        else:  # domain is GLSpace
             #return GLPix_Base(
             #    nlat = domain.nlat,
             #    nlon = domain.nlon
             #)
             raise NotImplementedError
-
 
     def _get_local_basis(self):
         """Returns a tuple of the three local base vectors spanning the
@@ -216,19 +203,19 @@ class ProjectionOperator(LinearOperator):
         in that order.
         """
 
-        t = self._pointing[0] # theta
-        p = self._pointing[1] # phi
-        n = np.array([ # normal
+        t = self._pointing[0]  # theta
+        p = self._pointing[1]  # phi
+        n = np.array([  # normal
             np.sin(t) * np.cos(p),
             np.sin(t) * np.sin(p),
             np.cos(t)
         ])
-        e_t = np.array([ # unit vector in theta direction
+        e_t = np.array([  # unit vector in theta direction
              np.cos(t) * np.cos(p),
              np.cos(t) * np.sin(p),
             -np.sin(t)
         ])
-        e_p = np.array([ # unit vector in phi direction
+        e_p = np.array([  # unit vector in phi direction
             -np.sin(p),
              np.cos(p),
              0
@@ -236,23 +223,18 @@ class ProjectionOperator(LinearOperator):
 
         return n, e_t, e_p
 
-
     def _get_disc_pixels(self):
         """Returns a tuple with the all pixel indices within the projected
         disc."""
 
         # query pixel ranges for disc
-        disc = self._base.query_disc(
-            ptg    = self._pointing,
-            radius = self._radius
-        )
+        disc = self._base.query_disc(ptg=self._pointing, radius=self._radius)
         # generate tuple of pixels
         pixels = tuple([])
         for sector in disc:
-            pixels += tuple(range(sector[0],sector[1]))
+            pixels += tuple(range(sector[0], sector[1]))
 
         return pixels
-
 
     def _get_disc_vectors(self):
         """Returns an array of unit vectors pointing to all pixels in
@@ -263,16 +245,11 @@ class ProjectionOperator(LinearOperator):
         # generate unit pointings to points d in disc
         return self._base.pix2vec(pixels)
 
-
     def _ang2vec(self, ang):
-        x = np.sin(ang[:,0]) * np.cos(ang[:,1])
-        y = np.sin(ang[:,0]) * np.sin(ang[:,1])
-        z = np.cos(ang[:,0])
-        vec = np.hstack((
-            x.reshape(-1,1),
-            y.reshape(-1,1),
-            z.reshape(-1,1)
-        ))
+        x = np.sin(ang[:, 0]) * np.cos(ang[:, 1])
+        y = np.sin(ang[:, 0]) * np.sin(ang[:, 1])
+        z = np.cos(ang[:, 0])
+        vec = np.hstack((x.reshape(-1, 1), y.reshape(-1, 1), z.reshape(-1, 1)))
         return vec
 
 
@@ -297,10 +274,8 @@ class StereographicProjectionOperator(ProjectionOperator):
         Index of space in `domain` on which the operator shall act.
         Default is 0.
     """
-
     def __init__(self, *args, **kwargs):
         super(StereographicProjectionOperator, self).__init__(*args, **kwargs)
-
 
     def _make_for_mat(self):
         # normal vector and local basis of projection plane
@@ -325,9 +300,9 @@ class StereographicProjectionOperator(ProjectionOperator):
         # pointings from projection anticenter to plane pixels
         p = b + n + v
         # normalize anticenter to plane pointings
-        p /= np.linalg.norm(p, axis=1).reshape(-1,1)
+        p /= np.linalg.norm(p, axis=1).reshape(-1, 1)
         # length of p from projection anticenter to sphere
-        l = 2 * np.einsum('ij, ij->i', p, n[np.newaxis,:]).reshape(-1,1)
+        l = 2 * np.einsum('ij, ij->i', p, n[np.newaxis, :]).reshape(-1, 1)
         # pointing from origin to sphere pixel
         u = -n + l * p
         # convert pointings to angles
@@ -340,7 +315,6 @@ class StereographicProjectionOperator(ProjectionOperator):
         mat = csr_matrix(mapping, shape)
 
         return mat.transpose()
-
 
     def _make_bac_mat(self):
         # normal vector and local basis of projection plane
@@ -356,7 +330,7 @@ class StereographicProjectionOperator(ProjectionOperator):
         # lenghts of intersection vectors with plane
         l = (1. + d) * np.reciprocal(a.dot(n))
         # intersection pointings from projection anticenter
-        p = l.reshape(a.shape[0],1) * a
+        p = l.reshape(a.shape[0], 1) * a
         # vectors from projection center to intersections
         v = p - n - b
         # project v into local basis
@@ -375,12 +349,11 @@ class StereographicProjectionOperator(ProjectionOperator):
         # nonzero entries of projection mapping matrix
         mapping = (np.ones(ppi.shape, dtype=np.int64), (ppi, dpi))
         # shape to map from spherical pixels to projection pixels
-        shape = tuple([self._shape[0]**2,self._base.npix()])
+        shape = tuple([self._shape[0]**2, self._base.npix()])
         # represent as compressed sparse row matrix
         mat = csr_matrix(mapping, shape)
 
         return mat.transpose()
-
 
 
 class GnomonicProjectionOperator(ProjectionOperator):
@@ -404,11 +377,8 @@ class GnomonicProjectionOperator(ProjectionOperator):
         Index of space in `domain` on which the operator shall act.
         Default is 0.
     """
-
-
     def __init__(self, *args, **kwargs):
         super(GnomonicProjectionOperator, self).__init__(*args, **kwargs)
-
 
     def _make_for_mat(self):
         # normal vector and local basis of projection plane
@@ -437,12 +407,11 @@ class GnomonicProjectionOperator(ProjectionOperator):
         # nonzero entries of projection mapping matrix
         mapping = (np.ones(spi.shape, dtype=np.int64), (spi, ppi))
         # shape to map from spherical pixels to projection pixels
-        shape = tuple([self._base.npix(),self._shape[0]**2])
+        shape = tuple([self._base.npix(), self._shape[0]**2])
         # represent as compressed sparse row matrix
         mat = csr_matrix(mapping, shape)
 
         return mat.transpose()
-
 
     def _make_bac_mat(self):
         # normal vector and local basis of projection plane
@@ -456,7 +425,7 @@ class GnomonicProjectionOperator(ProjectionOperator):
         # lenghts of intersection vectors with plane
         l = d * np.reciprocal(u.dot(n))
         # intersection pointings
-        p = l.reshape(u.shape[0],1) * u
+        p = l.reshape(u.shape[0], 1) * u
         # vectors from projection center to intersections
         v = p - b
         # project v into local basis
@@ -475,7 +444,7 @@ class GnomonicProjectionOperator(ProjectionOperator):
         # nonzero entries of projection mapping matrix
         mapping = (np.ones(ppi.shape, dtype=np.int64), (ppi, dpi))
         # shape to map from spherical pixels to projection pixels
-        shape = tuple([self._shape[0]**2,self._base.npix()])
+        shape = tuple([self._shape[0]**2, self._base.npix()])
         # represent as compressed sparse row matrix
         mat = csr_matrix(mapping, shape)
 
