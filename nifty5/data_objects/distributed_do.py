@@ -397,6 +397,8 @@ def from_global_data(arr, sum_up=False, distaxis=0):
         raise TypeError
     if sum_up:
         arr = np_allreduce_sum(arr)
+    if arr.ndim == 0:
+        distaxis = -1
     if distaxis == -1:
         return data_object(arr.shape, arr, distaxis)
     lo, hi = _shareRange(arr.shape[distaxis], ntask, rank)
