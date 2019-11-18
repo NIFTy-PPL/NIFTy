@@ -229,26 +229,6 @@ class _SpecialSum(EndomorphicOperator):
         return self._contractor.adjoint(self._contractor(x))
 
 
-class _slice_extractor(LinearOperator):
-    #FIXME it should be tested if the the domain and target are consistent with the slice
-    def __init__(self, domain, target, sl):
-        self._domain = makeDomain(domain)
-        self._target = makeDomain(target)
-        self._sl = sl
-        self._capability = self.TIMES | self.ADJOINT_TIMES
-
-    def apply(self, x, mode):
-        self._check_input(x, mode)
-        x = x.to_global_data()
-        if mode == self.TIMES:
-            res = x[self._sl]
-            res = res.reshape(self._target.shape)
-        else:
-            res = np.zeros(self._domain.shape)
-            res[self._sl] = x
-        return from_global_data(self._tgt(mode), res)
-
-
 class _Distributor(LinearOperator):
     def __init__(self, dofdex, domain, target, space = 0):
         self._dofdex = dofdex
@@ -267,7 +247,6 @@ class _Distributor(LinearOperator):
             res = np.empty(self._tgt(mode).shape)
             res[self._dofdex] = x
         return from_global_data(self._tgt(mode), res)
-
     
 
 class _Amplitude(Operator):
@@ -437,20 +416,14 @@ class CorrelatedFieldMaker:
             hspace = makeDomain([UnstructuredDomain(self._total_N)] +
                     [dd[-1].get_default_codomain() for dd in self._position_spaces])
             spaces = list(1 + np.arange(n_amplitudes))
-            zeroind = (slice(None),) + (0,)*(len(hspace.shape)-1)
         else:
             hspace = makeDomain(
                     [dd[-1].get_default_codomain() for dd in self._position_spaces])
             spaces = tuple(range(n_amplitudes))
             spaces = list(np.arange(n_amplitudes))
-            zeroind = (0,)*len(hspace.shape)
 
-        foo = np.ones(hspace.shape)
-        foo[zeroind] = 0
-
-        ZeroModeInserter = _slice_extractor(hspace, 
-                     self._azm.target, zeroind).adjoint
-        azm = Adder(from_global_data(hspace, foo)) @ ZeroModeInserter @ zeromode
+        expander = ContractionOperator(hspace, spaces = spaces).adjoint
+        azm = expander @ zeromode
 
         #spaces = np.array(range(n_amplitudes)) + 1 - 1//self._total_N
         ht = HarmonicTransformOperator(hspace,
