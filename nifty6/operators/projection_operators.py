@@ -12,7 +12,8 @@ from scipy.sparse import csr_matrix
 
 
 class ProjectionOperator(LinearOperator):
-    def __init__(self, domain, pointing, radius, target=None, shape=None, space=None):
+    def __init__(self, domain, pointing, radius, target=None, shape=None,
+                 space=None):
         # make sure we work on the correct space
         self._domain = DomainTuple.make(domain)
         self._space  = infer_space(self._domain, space)
@@ -24,7 +25,8 @@ class ProjectionOperator(LinearOperator):
                  and (0. <= self._pointing[1] <= 2*np.pi)
                 )
         )):
-            raise ValueError('pointing: must be tuple of (co-latitude, longitude) in radians')
+            raise ValueError('pointing: must be tuple of '
+                             '(co-latitude, longitude) in radians')
 
         # ensure disc is smaller than sphere
         self._radius = float(radius)
@@ -32,10 +34,13 @@ class ProjectionOperator(LinearOperator):
             raise ValueError('radius: must be strictly less than pi')
 
         # prepare sparse projection matrix generation
-        if isinstance(self._domain[self._space], HPSpace) or isinstance(self._domain[self._space], GLSpace): # forward projection
+        if isinstance(self._domain[self._space], HPSpace) or \
+           isinstance(self._domain[self._space], GLSpace):
+            # forward projection
             self._base   = self._get_base(self._domain[self._space])
             if target == None:
-                # if not specified, shape is as close as possible to domain's angular resolution
+                # if not specified, shape is as close as possible
+                # to domain's angular resolution
                 if shape == None:
                     if isinstance(self._domain[self._space], HPSpace):
                         self._shape = tuple([int(8. * self._domain[self._space].nside * self._radius / np.pi)]*2)
@@ -62,25 +67,31 @@ class ProjectionOperator(LinearOperator):
                     self._distances = self._make_distances()
 
                 else:
-                    raise ValueError('target[space]: must be RGSpace if domain is HPSpace or GLSpace')
+                    raise ValueError('target[space]: must be RGSpace '
+                                     'if domain is HPSpace or GLSpace')
 
             # generate sparse forward projection matrix
             self._mat = self._make_for_mat()
 
-        elif isinstance(self._domain[self._space], RGSpace): # backward projection
+        elif isinstance(self._domain[self._space], RGSpace):
+            # backward projection
             self._target = DomainTuple.make(target)
-            if isinstance(self._target[self._space], HPSpace) or isinstance(self._target[self._space], GLSpace):
+            if isinstance(self._target[self._space], HPSpace) or \
+               isinstance(self._target[self._space], GLSpace):
                 self._shape     = self._domain[self._space].shape
                 self._base      = self._get_base(self._target[self._space])
                 self._distances = self._make_distances()
                 self._mat       = self._make_bac_mat()
             else:
-                raise ValueError('target: must be HPSpace or GLSpace if domain is RGSpace')
+                raise ValueError('target: must be HPSpace or GLSpace '
+                                 'if domain is RGSpace')
 
         else:
-            raise ValueError('domain[space]: must be HPSpace, GLSpace or RGSpace')
+            raise ValueError('domain[space]: must be HPSpace, GLSpace '
+                             'or RGSpace')
 
-        # since this operator is generally not invertible we only support two modes
+        # since this operator is generally not invertible
+        # we only support two modes
         self._capability = self.TIMES | self.ADJOINT_TIMES
 
 
@@ -111,7 +122,8 @@ class ProjectionOperator(LinearOperator):
         if mode == self.TIMES:
             # number of axes for requested space
             axes = self._domain.axes[self._space]
-            if len(axes) > 1: # RGSpace must be reshaped for matrix multiplication
+            if len(axes) > 1:
+                # RGSpace must be reshaped for matrix multiplication
                 shape = list(self._domain.shape)
                 shape[self._space] = -1
                 del shape[self._space + 1]
@@ -127,7 +139,8 @@ class ProjectionOperator(LinearOperator):
         else:
             # number of axes for requested space
             axes = self._target.axes[self._space]
-            if len(axes) > 1: # RGSpace must be reshaped for matrix multiplication
+            if len(axes) > 1:
+                # RGSpace must be reshaped for matrix multiplication
                 shape = list(self._target.shape)
                 shape[self._space] = -1
                 del shape[self._space + 1]
@@ -135,7 +148,8 @@ class ProjectionOperator(LinearOperator):
             else:
                 shape = self._target.shape
 
-            result = self._mat.transpose().dot(values.reshape(shape).transpose())
+            result = self._mat.transpose().dot(
+                values.reshape(shape).transpose())
             result = result.transpose().reshape(self._domain.shape)
 
             return Field.from_global_data(self._domain, result)
@@ -155,25 +169,27 @@ class ProjectionOperator(LinearOperator):
 
 
     def _make_for_mat(self):
-        """The matrix defined in this function describes a surjective mapping from the
-        projected disc on the sphere into the projection plane. It should therefore be
-        used for the forward projection."""
+        """The matrix defined in this function describes a surjective mapping
+        from the projected disc on the sphere into the projection plane. It
+        should therefore be used for the forward projection."""
 
         raise NotImplementedError
 
 
     def _make_bac_mat(self):
-        """The matrix defined in this function describes a surjective mapping from the
-        projection plane into the projected disc on the sphere. It should therefore be
-        used for the back projection."""
+        """The matrix defined in this function describes a surjective mapping
+        from the projection plane into the projected disc on the sphere. It
+        should therefore be used for the back projection."""
 
         raise NotImplementedError
 
 
     def _get_base(self, domain):
-        """Returns an implementation of the coordinate arithmetic for :attr:`domain`.
-        This method is the reason why projection operators can comfortably be written
-        for both GLSpace and HPSpace."""
+        """Returns an implementation of the coordinate arithmetic for
+        :attr:`domain`.
+
+        This method is the reason why projection operators can
+        comfortably be written for both GLSpace and HPSpace."""
 
         if isinstance(domain, HPSpace):
             # Healpix_Base implments HEALPix geometry
@@ -190,10 +206,13 @@ class ProjectionOperator(LinearOperator):
 
 
     def _get_local_basis(self):
-        """Returns a tuple of the three local base vectors spanning the tangential space:
+        """Returns a tuple of the three local base vectors spanning the
+        tangential space:
+
         * n   : normal
         * e_t : theta unit vector
         * e_p : phi unit vector
+
         in that order.
         """
 
@@ -219,7 +238,9 @@ class ProjectionOperator(LinearOperator):
 
 
     def _get_disc_pixels(self):
-        """Returns a tuple with the all pixel indices within the projected disc."""
+        """Returns a tuple with the all pixel indices within the projected
+        disc."""
+
         # query pixel ranges for disc
         disc = self._base.query_disc(
             ptg    = self._pointing,
@@ -234,7 +255,9 @@ class ProjectionOperator(LinearOperator):
 
 
     def _get_disc_vectors(self):
-        """Returns an array of unit vectors pointing to all pixels in the projected disc."""
+        """Returns an array of unit vectors pointing to all pixels in
+        the projected disc."""
+
         # query pixel ranges for disc
         pixels = self._get_disc_pixels()
         # generate unit pointings to points d in disc
@@ -254,21 +277,22 @@ class ProjectionOperator(LinearOperator):
 
 
 class StereographicProjectionOperator(ProjectionOperator):
-    """Projects pixels whose centers fall within disc of `radius` around `pointing`
-    stereographically into an RGSpace and vice versa.
+    """Projects pixels whose centers fall within disc of `radius` around
+    `pointing` stereographically into an RGSpace and vice versa.
 
     Parameters
     ----------
     domain : Domain, DomainTuple or tuple of Domain
         domain[space] needs to be either :class:`HPSpace` or :class:`GLSpace`.
     pointing : tuple of float
-        Pointing around which the projected disc is spanned. Must be a single
-        (co-latitude, longitude) tuple.
+        Pointing around which the projected disc is spanned.
+        Must be a single (co-latitude, longitude) tuple.
     radius : float
-        Radius of the disc around `pointing`. Must be a single float and less then pi/2.
+        Radius of the disc around `pointing`.
+        Must be a single float and less then pi/2.
     shape : int
-        Shape of resulting RGSpace. Must be a tuple int. Default is to be as close
-        as possible to domains angular resolution.
+        Shape of resulting RGSpace. Must be a tuple int.
+        Default is to be as close as possible to domains angular resolution.
     space : int
         Index of space in `domain` on which the operator shall act.
         Default is 0.
@@ -360,21 +384,22 @@ class StereographicProjectionOperator(ProjectionOperator):
 
 
 class GnomonicProjectionOperator(ProjectionOperator):
-    """Projects pixels whose center fall within disc of `radius` around `pointing`
-    gnomonically into an RGSpace and vice versa.
+    """Projects pixels whose center fall within disc of `radius` around
+    `pointing` gnomonically into an RGSpace and vice versa.
 
     Parameters
     ----------
     domain : Domain, DomainTuple or tuple of Domain
         domain[space] needs to be either :class:`HPSpace` or :class:`GLSpace`.
     pointing : tuple of float
-        Pointing around which the projected disc is spanned. Must be a single
-        (co-latitude, longitude) tuple.
+        Pointing around which the projected disc is spanned.
+        Must be a single (co-latitude, longitude) tuple.
     radius : float
-        Radius of the disc around `pointing`. Must be a single float and less then pi/2.
+        Radius of the disc around `pointing`.
+        Must be a single float and less then pi/2.
     shape : int
-        Shape of resulting RGSpace. Must be a tuple int. Default is to be as close
-        as possible to domains angular resolution.
+        Shape of resulting RGSpace. Must be a tuple int.
+        Default is to be as close as possible to domains angular resolution.
     space : int
         Index of space in `domain` on which the operator shall act.
         Default is 0.
