@@ -341,6 +341,11 @@ class Linearization(object):
         jac = makeOp(1. / (1. + xval))
         return self.new(res, jac @ self.jac)
 
+    def expm1(self):
+        tmp = self._val.expm1()
+        tmp2 = self._val.exp()
+        return self.new(tmp, makeOp(tmp2)(self.jac))
+
     def sinh(self):
         tmp = self._val.sinh()
         tmp2 = self._val.cosh()
