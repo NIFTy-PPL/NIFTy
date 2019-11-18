@@ -36,7 +36,7 @@ __all__ = ['PS_field', 'power_analyze', 'create_power_operator',
            'full', 'from_global_data', 'from_local_data',
            'makeDomain', 'sqrt', 'exp', 'log', 'tanh', 'sigmoid',
            'sin', 'cos', 'tan', 'sinh', 'cosh', 'log10',
-           'absolute', 'one_over', 'clip', 'sinc',
+           'absolute', 'one_over', 'clip', 'sinc', "log1p", "expm1",
            'conjugate', 'get_signal_variance', 'makeOp', 'domain_union',
            'get_default_codomain', 'single_plot']
 
