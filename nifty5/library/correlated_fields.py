@@ -284,7 +284,10 @@ class CorrelatedFieldMaker:
                          loglogavgslope_mean,
                          loglogavgslope_stddev,
                          prefix='',
-                         index=None):
+                         index=None,
+                         harmonic_partner = None):
+        if harmonic_partner is None:
+            harmonic_partner = position_space.get_default_codomain()
         fluctuations_mean = float(fluctuations_mean)
         fluctuations_stddev = float(fluctuations_stddev)
         flexibility_mean = float(flexibility_mean)
@@ -312,7 +315,7 @@ class CorrelatedFieldMaker:
                                        prefix + 'asperity')
         avgsl = _normal(loglogavgslope_mean, loglogavgslope_stddev,
                         prefix + 'loglogavgslope')
-        amp = _Amplitude(PowerSpace(position_space.get_default_codomain()),
+        amp = _Amplitude(PowerSpace(harmonic_partner),
                          fluct, flex, asp, avgsl, prefix + 'spectrum')
         if index is not None:
             self._a.insert(index, amp)
@@ -323,8 +326,7 @@ class CorrelatedFieldMaker:
 
     def finalize_from_op(self, zeromode, prefix=''):
         assert isinstance(zeromode, Operator)
-        hspace = makeDomain(
-            [dd.get_default_codomain() for dd in self._position_spaces])
+        hspace = makeDomain([dd.target[0] for dd in self._a])
         foo = np.ones(hspace.shape)
         zeroind = len(hspace.shape)*(0,)
         foo[zeroind] = 0
