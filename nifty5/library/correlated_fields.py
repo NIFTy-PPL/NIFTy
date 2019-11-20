@@ -194,7 +194,7 @@ class _SpecialSum(EndomorphicOperator):
 
 class _Amplitude(Operator):
     def __init__(self, target, fluctuations, flexibility, asperity,
-                 loglogavgslope, key):
+                 loglogavgslope, totvol, key):
         """
         fluctuations > 0
         flexibility > 0
@@ -212,7 +212,6 @@ class _Amplitude(Operator):
         twolog = _TwoLogIntegrations(target)
         dom = twolog.domain
         shp = dom.shape
-        totvol = target[0].harmonic_partner.get_default_codomain().total_volume
 
         # Prepare constant fields
         foo = np.zeros(shp)
@@ -288,6 +287,9 @@ class CorrelatedFieldMaker:
                          harmonic_partner = None):
         if harmonic_partner is None:
             harmonic_partner = position_space.get_default_codomain()
+        else:
+            position_space.check_codomain(harmonic_partner)
+            harmonic_partner.check_codomain(position_space)
         fluctuations_mean = float(fluctuations_mean)
         fluctuations_stddev = float(fluctuations_stddev)
         flexibility_mean = float(flexibility_mean)
@@ -316,7 +318,8 @@ class CorrelatedFieldMaker:
         avgsl = _normal(loglogavgslope_mean, loglogavgslope_stddev,
                         prefix + 'loglogavgslope')
         amp = _Amplitude(PowerSpace(harmonic_partner),
-                         fluct, flex, asp, avgsl, prefix + 'spectrum')
+                         fluct, flex, asp, avgsl, position_space.total_volume,
+                         prefix + 'spectrum')
         if index is not None:
             self._a.insert(index, amp)
             self._position_spaces.insert(index, position_space)
@@ -326,7 +329,7 @@ class CorrelatedFieldMaker:
 
     def finalize_from_op(self, zeromode, prefix=''):
         assert isinstance(zeromode, Operator)
-        hspace = makeDomain([dd.target[0] for dd in self._a])
+        hspace = makeDomain([dd.target[0].harmonic_partner for dd in self._a])
         foo = np.ones(hspace.shape)
         zeroind = len(hspace.shape)*(0,)
         foo[zeroind] = 0
