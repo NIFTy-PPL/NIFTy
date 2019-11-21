@@ -309,17 +309,17 @@ class CorrelatedFieldMaker:
 
         fluct = _LognormalMomentMatching(fluctuations_mean,
                                          fluctuations_stddev,
-                                         prefix + 'fluctuations')
+                                         self._prefix + prefix + 'fluctuations')
         fluct = fluct*self._azm.one_over()
         flex = _LognormalMomentMatching(flexibility_mean, flexibility_stddev,
-                                        prefix + 'flexibility')
+                                        self._prefix + prefix + 'flexibility')
         asp = _LognormalMomentMatching(asperity_mean, asperity_stddev,
-                                       prefix + 'asperity')
+                                       self._prefix + prefix + 'asperity')
         avgsl = _normal(loglogavgslope_mean, loglogavgslope_stddev,
-                        prefix + 'loglogavgslope')
+                        self._prefix + prefix + 'loglogavgslope')
         amp = _Amplitude(PowerSpace(harmonic_partner),
                          fluct, flex, asp, avgsl, position_space.total_volume,
-                         prefix + 'spectrum')
+                         self._prefix + prefix + 'spectrum')
         if index is not None:
             self._a.insert(index, amp)
             self._position_spaces.insert(index, position_space)
@@ -354,7 +354,7 @@ class CorrelatedFieldMaker:
             co = ContractionOperator(pd.domain, spaces[:i] + spaces[(i + 1):])
             a = a*(co.adjoint @ self._a[i])
 
-        return ht(azm*(pd @ a)*ducktape(hspace, None, prefix + 'xi'))
+        return ht(azm*(pd @ a)*ducktape(hspace, None, self._prefix + prefix + 'xi'))
 
     def finalize(self, offset=None, prior_info=100):
         """
@@ -364,7 +364,7 @@ class CorrelatedFieldMaker:
             raise NotImplementedError
             offset = float(offset)
 
-        op = self.finalize_from_op(self._azm, self._prefix)
+        op = self.finalize_from_op(self._azm)
         if prior_info > 0:
             from ..sugar import from_random
             samps = [
