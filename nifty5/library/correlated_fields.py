@@ -431,7 +431,7 @@ class CorrelatedFieldMaker:
         n_amplitudes = len(self._a)
         if self._total_N > 0:
             hspace = makeDomain([UnstructuredDomain(self._total_N)] +
-                    [dd.target[-1]for dd in self._a])
+                    [dd.target[-1].harmonic_partner for dd in self._a])
             spaces = list(1 + np.arange(n_amplitudes))
         else:
             hspace = makeDomain(
@@ -443,6 +443,7 @@ class CorrelatedFieldMaker:
         azm = expander @ self._azm
 
         #spaces = np.array(range(n_amplitudes)) + 1 - 1//self._total_N
+        print(hspace)
         ht = HarmonicTransformOperator(hspace,
                                    self._position_spaces[0][self._spaces[0]],
                                    space=spaces[0])
