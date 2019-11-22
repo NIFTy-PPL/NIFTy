@@ -281,7 +281,6 @@ class _Amplitude(Operator):
         dom = twolog.domain
 
         shp = dom[space].shape
-        totvol = target[space].harmonic_partner.get_default_codomain().total_volume
         expander = ContractionOperator(dom, spaces = space).adjoint
         ps_expander = ContractionOperator(twolog.target, spaces = space).adjoint
 
@@ -344,6 +343,7 @@ class _Amplitude(Operator):
 
 class CorrelatedFieldMaker:
     def __init__(self, amplitude_offset, prefix, total_N):
+        assert isinstance(amplitude_offset, Operator)
         self._a = []
         self._spaces = []
         self._position_spaces = []
@@ -418,7 +418,8 @@ class CorrelatedFieldMaker:
         avgsl = _normal(loglogavgslope_mean, loglogavgslope_stddev,
                         self._prefix + prefix + 'loglogavgslope', N)
         amp = _Amplitude(PowerSpace(harmonic_partner),
-                         fluct, flex, asp, avgsl, self._azm,
+                         fluct, flex, asp, avgsl, self._azm, 
+                         position_space[-1].total_volume,
                          self._prefix + prefix + 'spectrum', dofdex)
 
         if index is not None:
@@ -430,8 +431,7 @@ class CorrelatedFieldMaker:
             self._position_spaces.append(position_space)
             self._spaces.append(space)
 
-    def _finalize_from_op(self, zeromode, prefix=''):
-        assert isinstance(zeromode, Operator)
+    def _finalize_from_op(self):
         n_amplitudes = len(self._a)
         if self._total_N > 0:
             hspace = makeDomain([UnstructuredDomain(self._total_N)] +
@@ -444,7 +444,7 @@ class CorrelatedFieldMaker:
             spaces = list(np.arange(n_amplitudes))
 
         expander = ContractionOperator(hspace, spaces = spaces).adjoint
-        azm = expander @ zeromode
+        azm = expander @ self._azm
 
         #spaces = np.array(range(n_amplitudes)) + 1 - 1//self._total_N
         ht = HarmonicTransformOperator(hspace,
@@ -467,7 +467,7 @@ class CorrelatedFieldMaker:
                     spaces[:i] + spaces[i+1:])
             a = a*(co.adjoint @ self._a[i])
 
-        return ht(azm*(pd @ a)*ducktape(hspace, None, self._prefix + prefix + 'xi'))
+        return ht(azm*(pd @ a)*ducktape(hspace, None, self._prefix + 'xi'))
 
     def finalize(self, offset=None, prior_info=100):
         """
@@ -477,7 +477,7 @@ class CorrelatedFieldMaker:
             raise NotImplementedError
             offset = float(offset)
 
-        op = self.finalize_from_op(self._azm)
+        op = self._finalize_from_op()
         if prior_info > 0:
             from ..sugar import from_random
             samps = [
