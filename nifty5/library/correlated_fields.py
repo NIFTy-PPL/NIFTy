@@ -21,7 +21,6 @@ import numpy as np
 from ..domain_tuple import DomainTuple
 from ..domains.power_space import PowerSpace
 from ..domains.unstructured_domain import UnstructuredDomain
-from ..field import Field
 from ..operators.adder import Adder
 from ..operators.contraction_operator import ContractionOperator
 from ..operators.distributors import PowerDistributor
@@ -31,9 +30,8 @@ from ..operators.linear_operator import LinearOperator
 from ..operators.diagonal_operator import DiagonalOperator
 from ..operators.operator import Operator
 from ..operators.simple_linear_operators import VdotOperator, ducktape
-from ..operators.value_inserter import ValueInserter
 from ..probing import StatCalculator
-from ..sugar import from_global_data, from_random, full, makeDomain
+from ..sugar import from_global_data, full, makeDomain
 
 
 def _reshaper(x, N):
@@ -160,7 +158,6 @@ class _TwoLogIntegrations(LinearOperator):
         dom[space] = UnstructuredDomain((2, self.target[space].shape[0]-2))
         self._domain = makeDomain(dom)
         self._space = space
-        logk_lengths = _log_k_lengths(self._target[space])
         self._log_vol = _log_vol(self._target[space])
         self._capability = self.TIMES | self.ADJOINT_TIMES
 
@@ -203,7 +200,6 @@ class _Normalization(Operator):
         hspace[space] = hspace[space].harmonic_partner
         hspace = makeDomain(hspace)
         pd = PowerDistributor(hspace, power_space=self._domain[space], space = space)
-        # TODO Does not work on sphere yet
         mode_multiplicity = pd.adjoint(full(pd.target, 1.)).to_global_data_rw()
         zero_mode = (slice(None),)*self._domain.axes[space][0] + (0,)
         mode_multiplicity[zero_mode] = 0
@@ -267,7 +263,8 @@ class _Amplitude(Operator):
         if len(dofdex) > 0:
             N_copies = max(dofdex) + 1
             space = 1
-            distributed_tgt = makeDomain((UnstructuredDomain(len(dofdex)), target))
+            distributed_tgt = makeDomain((UnstructuredDomain(len(dofdex)),
+                                          target))
             target = makeDomain((UnstructuredDomain(N_copies), target))
             Distributor = _Distributor(dofdex, target, distributed_tgt, 0)
         else:
@@ -305,7 +302,7 @@ class _Amplitude(Operator):
         foo, bar = [np.zeros(target[space].shape) for _ in range(2)]
         bar[1:] = foo[0] = totvol
         vol0, vol1 = [DiagonalOperator(from_global_data(target[space], aa), 
-                target, space) for aa in (foo, bar)]
+                                       target, space) for aa in (foo, bar)]
 
         #Prepare fields for Adder
         shift, vol0 = [op(full(op.domain, 1)) for op in (shift, vol0)]
@@ -328,11 +325,10 @@ class _Amplitude(Operator):
             self._fluc = (_Distributor(dofdex, fluctuations.target, distributed_tgt[0]) @ 
                           fluctuations)
         else:
-            op = (Adder(vol0)) @ (sig_fluc*(azm_expander @ azm.one_over())*op)
+            op = Adder(vol0) @ (sig_fluc*(azm_expander @ azm.one_over())*op)
             self._fluc = fluctuations
 
         self.apply = op.apply
-        
         self._domain, self._target = op.domain, op.target
         self._space = space
 
