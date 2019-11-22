@@ -324,11 +324,14 @@ class _Amplitude(Operator):
             op = Distributor @ op
             sig_fluc = Distributor @ sig_fluc
             op = Adder(Distributor(vol0)) @ (sig_fluc*(azm_expander @ azm.one_over())*op)
+            self._fluc = (_Distributor(dofdex, fluctuations.target, distributed_tgt[0]) @ 
+                          fluctuations)
         else:
             op = (Adder(vol0)) @ (sig_fluc*(azm_expander @ azm.one_over())*op)
+            self._fluct = fluctuations
 
         self.apply = op.apply
-        self._fluc = fluctuations
+        
         self._domain, self._target = op.domain, op.target
         self._space = space
 
@@ -348,11 +351,19 @@ class CorrelatedFieldMaker:
         self._total_N = total_N
     
     @staticmethod
-    def make(offset_amplitude_mean, offset_amplitude_stddev, prefix, total_N = 0):
+    def make(offset_amplitude_mean, offset_amplitude_stddev, prefix,
+             total_N = 0,
+             dofdex = None):
+        if dofdex is None:
+            dofdex = np.full(total_N, 0)
+        else:
+            assert len(dofdex) == total_N
+        N = max(dofdex) + 1 if total_N > 0 else 0
         zm = _LognormalMomentMatching(offset_amplitude_mean,
                                       offset_amplitude_stddev,
                                       prefix + 'zeromode',
-                                      total_N)
+                                      N)
+        zm = _Distributor(dofdex,zm.target,UnstructuredDomain(total_N)) @ zm
         return CorrelatedFieldMaker(zm, prefix, total_N)
 
     def add_fluctuations(self,
@@ -409,9 +420,7 @@ class CorrelatedFieldMaker:
             self._position_spaces.append(position_space)
             self._spaces.append(space)
 
-    def finalize_from_op(self, zeromode, prefix=''):
-        assert isinstance(zeromode, Operator)
-        self._azm = zeromode
+    def _finalize_from_op(self, zeromode, prefix=''):
         n_amplitudes = len(self._a)
         if self._total_N > 0:
             hspace = makeDomain([UnstructuredDomain(self._total_N)] +
@@ -459,7 +468,7 @@ class CorrelatedFieldMaker:
             raise NotImplementedError
             offset = float(offset)
 
-        op = self.finalize_from_op(self._azm, self._prefix)
+        op = self._finalize_from_op(self._azm, self._prefix)
         if prior_info > 0:
             from ..sugar import from_random
             samps = [
