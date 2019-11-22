@@ -252,7 +252,7 @@ class _Distributor(LinearOperator):
 
 class _Amplitude(Operator):
     def __init__(self, target, fluctuations, flexibility, asperity,
-                 loglogavgslope, azm, key, dofdex):
+                 loglogavgslope, azm, totvol, key, dofdex):
         """
         fluctuations > 0
         flexibility > 0
@@ -279,10 +279,12 @@ class _Amplitude(Operator):
         
         twolog = _TwoLogIntegrations(target, space)
         dom = twolog.domain
+
         shp = dom[space].shape
         totvol = target[space].harmonic_partner.get_default_codomain().total_volume
         expander = ContractionOperator(dom, spaces = space).adjoint
         ps_expander = ContractionOperator(twolog.target, spaces = space).adjoint
+
 
         # Prepare constant fields
         foo = np.zeros(shp)
@@ -345,11 +347,11 @@ class CorrelatedFieldMaker:
         self._a = []
         self._spaces = []
         self._position_spaces = []
-        
+
         self._azm = amplitude_offset
         self._prefix = prefix
         self._total_N = total_N
-    
+
     @staticmethod
     def make(offset_amplitude_mean, offset_amplitude_stddev, prefix,
              total_N = 0,
@@ -379,7 +381,14 @@ class CorrelatedFieldMaker:
                          loglogavgslope_stddev,
                          prefix = '',
                          index = None,
-                         dofdex = None):
+                         dofdex = None,
+                         harmonic_partner = None):
+        if harmonic_partner is None:
+            harmonic_partner = position_space.get_default_codomain()
+        else:
+            position_space.check_codomain(harmonic_partner)
+            harmonic_partner.check_codomain(position_space)
+
         if dofdex is None:
             dofdex = np.full(self._total_N, 0)
         else:
@@ -393,24 +402,24 @@ class CorrelatedFieldMaker:
             space = 0
             N = 0
             position_space = makeDomain(position_space)
-        power_space = PowerSpace(position_space[space].get_default_codomain())
         prefix = str(prefix)
         #assert isinstance(position_space[space], (RGSpace, HPSpace, GLSpace)
 
         fluct = _LognormalMomentMatching(fluctuations_mean,
                                          fluctuations_stddev,
-                                         prefix + 'fluctuations',
+                                         self._prefix + prefix + 'fluctuations',
                                          N)
         flex = _LognormalMomentMatching(flexibility_mean, flexibility_stddev,
-                                        prefix + 'flexibility',
+                                        self._prefix + prefix + 'flexibility',
                                         N)
         asp = _LognormalMomentMatching(asperity_mean, asperity_stddev,
-                                       prefix + 'asperity', 
+                                       self._prefix + prefix + 'asperity', 
                                        N)
         avgsl = _normal(loglogavgslope_mean, loglogavgslope_stddev,
-                        prefix + 'loglogavgslope', N)
-        amp = _Amplitude(power_space,
-                         fluct, flex, asp, avgsl, self._azm, prefix + 'spectrum', dofdex)
+                        self._prefix + prefix + 'loglogavgslope', N)
+        amp = _Amplitude(PowerSpace(harmonic_partner),
+                         fluct, flex, asp, avgsl, self._azm,
+                         self._prefix + prefix + 'spectrum', dofdex)
 
         if index is not None:
             self._a.insert(index, amp)
@@ -422,14 +431,15 @@ class CorrelatedFieldMaker:
             self._spaces.append(space)
 
     def _finalize_from_op(self, zeromode, prefix=''):
+        assert isinstance(zeromode, Operator)
         n_amplitudes = len(self._a)
         if self._total_N > 0:
             hspace = makeDomain([UnstructuredDomain(self._total_N)] +
-                    [dd[-1].get_default_codomain() for dd in self._position_spaces])
+                    [dd.target[-1]for dd in self._a])
             spaces = list(1 + np.arange(n_amplitudes))
         else:
             hspace = makeDomain(
-                    [dd[-1].get_default_codomain() for dd in self._position_spaces])
+                     [dd.target[0].harmonic_partner for dd in self._a])
             spaces = tuple(range(n_amplitudes))
             spaces = list(np.arange(n_amplitudes))
 
@@ -457,11 +467,9 @@ class CorrelatedFieldMaker:
                     spaces[:i] + spaces[i+1:])
             a = a*(co.adjoint @ self._a[i])
 
-        return ht(azm*(pd @ a)*ducktape(hspace, None, prefix + 'xi'))
+        return ht(azm*(pd @ a)*ducktape(hspace, None, self._prefix + prefix + 'xi'))
 
-    def finalize(self,
-                 offset=None,
-                 prior_info=100):
+    def finalize(self, offset=None, prior_info=100):
         """
         offset vs zeromode: volume factor
         """
@@ -469,7 +477,7 @@ class CorrelatedFieldMaker:
             raise NotImplementedError
             offset = float(offset)
 
-        op = self._finalize_from_op(self._azm, self._prefix)
+        op = self.finalize_from_op(self._azm)
         if prior_info > 0:
             from ..sugar import from_random
             samps = [
@@ -482,7 +490,8 @@ class CorrelatedFieldMaker:
         lst = [('Offset amplitude', self.amplitude_total_offset),
                ('Total fluctuation amplitude', self.total_fluctuation)]
 
-        namps = len(self.normalized_amplitudes)
+
+        namps = len(self._a)
         if namps > 1:
             for ii in range(namps):
                 lst.append(('Slice fluctuation (space {})'.format(ii),
@@ -536,7 +545,7 @@ class CorrelatedFieldMaker:
         for a in self._a:
             fl = a.fluctuation_amplitude*self._azm.one_over()
             q = q*(Adder(full(fl.target, 1.)) @ fl**2)
-        return (Adder(full(q.target, -1.)) @ q).sqrt() * self._azm
+        return (Adder(full(q.target, -1.)) @ q).sqrt()*self._azm
 
     def slice_fluctuation(self, space):
         """Returns operator which acts on prior or posterior samples"""
@@ -552,7 +561,7 @@ class CorrelatedFieldMaker:
                 q = q*fl**2
             else:
                 q = q*(Adder(full(fl.target, 1.)) @ fl**2)
-        return q.sqrt() * self._azm
+        return q.sqrt()*self._azm
 
     def average_fluctuation(self, space):
         """Returns operator which acts on prior or posterior samples"""
@@ -590,7 +599,6 @@ class CorrelatedFieldMaker:
         res2 = res2/len(samples)
         res = res1.mean() - res2.mean()
         return np.sqrt(res)
-
 
     @staticmethod
     def average_fluctuation_realized(samples, space):

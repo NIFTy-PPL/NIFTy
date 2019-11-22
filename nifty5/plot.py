@@ -170,7 +170,7 @@ def _find_closest(A, target):
     return idx
 
 
-def _makeplot(name, block=True):
+def _makeplot(name, block=True, dpi=None):
     import matplotlib.pyplot as plt
     if dobj.rank != 0:
         plt.close()
@@ -182,7 +182,10 @@ def _makeplot(name, block=True):
         return
     extension = os.path.splitext(name)[1]
     if extension in (".pdf", ".png", ".svg"):
-        plt.savefig(name)
+        args= {}
+        if dpi is not None:
+            args['dpi'] = float(dpi)
+        plt.savefig(name, **args)
         plt.close()
     else:
         raise ValueError("file format not understood")
@@ -528,4 +531,4 @@ class Plot(object):
             ax = fig.add_subplot(ny, nx, i+1)
             _plot(self._plots[i], ax, **self._kwargs[i])
         fig.tight_layout()
-        _makeplot(kwargs.pop("name", None), block=kwargs.pop("block", True))
+        _makeplot(kwargs.pop("name", None), block=kwargs.pop("block", True), dpi=kwargs.pop("dpi", None))
