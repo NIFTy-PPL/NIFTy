@@ -328,7 +328,7 @@ class _Amplitude(Operator):
                           fluctuations)
         else:
             op = (Adder(vol0)) @ (sig_fluc*(azm_expander @ azm.one_over())*op)
-            self._fluct = fluctuations
+            self._fluc = fluctuations
 
         self.apply = op.apply
         
@@ -363,7 +363,8 @@ class CorrelatedFieldMaker:
                                       offset_amplitude_stddev,
                                       prefix + 'zeromode',
                                       N)
-        zm = _Distributor(dofdex,zm.target,UnstructuredDomain(total_N)) @ zm
+        if total_N > 0:
+            zm = _Distributor(dofdex,zm.target,UnstructuredDomain(total_N)) @ zm
         return CorrelatedFieldMaker(zm, prefix, total_N)
 
     def add_fluctuations(self,
