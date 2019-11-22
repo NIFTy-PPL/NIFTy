@@ -443,7 +443,6 @@ class CorrelatedFieldMaker:
         azm = expander @ self._azm
 
         #spaces = np.array(range(n_amplitudes)) + 1 - 1//self._total_N
-        print(hspace)
         ht = HarmonicTransformOperator(hspace,
                                    self._position_spaces[0][self._spaces[0]],
                                    space=spaces[0])
