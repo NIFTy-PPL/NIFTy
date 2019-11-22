@@ -61,7 +61,7 @@ if __name__ == '__main__':
     cfmaker.add_fluctuations(position_space,
                              1., 1e-2, 1, .5, .1, .5, -3, 0.5, '')
     correlated_field = cfmaker.finalize()
-    A = cfmaker.amplitudes[0]
+    A = cfmaker.amplitude
 
     # Apply a nonlinearity
     signal = ift.sigmoid(correlated_field)

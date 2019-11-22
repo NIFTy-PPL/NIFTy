@@ -78,8 +78,8 @@ if __name__ == '__main__':
                              -1.5, .5, 'amp2')
     correlated_field = cfmaker.finalize()
 
-    A1 = cfmaker.amplitudes[0]
-    A2 = cfmaker.amplitudes[1]
+    A1 = cfmaker.normalized_amplitudes[0]
+    A2 = cfmaker.normalized_amplitudes[1]
     DC = SingleDomain(correlated_field.target, position_space)
 
     # Apply a nonlinearity
