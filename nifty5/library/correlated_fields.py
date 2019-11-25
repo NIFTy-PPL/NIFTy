@@ -12,7 +12,7 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
 # Copyright(C) 2013-2019 Max-Planck-Society
-# Authors: Philipp Frank, Philipp Arras
+# Authors: Philipp Frank, Philipp Arras, Philipp Haim
 #
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
 
@@ -21,31 +21,51 @@ import numpy as np
 from ..domain_tuple import DomainTuple
 from ..domains.power_space import PowerSpace
 from ..domains.unstructured_domain import UnstructuredDomain
-from ..field import Field
 from ..operators.adder import Adder
 from ..operators.contraction_operator import ContractionOperator
 from ..operators.distributors import PowerDistributor
 from ..operators.endomorphic_operator import EndomorphicOperator
 from ..operators.harmonic_operators import HarmonicTransformOperator
 from ..operators.linear_operator import LinearOperator
+from ..operators.diagonal_operator import DiagonalOperator
 from ..operators.operator import Operator
 from ..operators.simple_linear_operators import VdotOperator, ducktape
-from ..operators.value_inserter import ValueInserter
 from ..probing import StatCalculator
 from ..sugar import from_global_data, full, makeDomain
 
 
-def _lognormal_moments(mean, sig):
-    mean, sig = float(mean), float(sig)
-    assert sig > 0
+def _reshaper(x, N):
+    x = np.asfarray(x)
+    if x.shape in [(), (1,)]:
+        return np.full(N, x) if N != 0 else x.reshape(())
+    elif x.shape == (N,):
+        return x
+    else:
+        raise TypeError("Shape of parameters cannot be interpreted")
+
+
+def _lognormal_moments(mean, sig, N = 0):
+    if N == 0:
+        mean, sig = np.asfarray(mean), np.asfarray(sig)
+    else:
+        mean, sig = (_reshaper(param, N) for param in (mean, sig))
+    assert np.all(mean > 0 )
+    assert np.all(sig > 0)
     logsig = np.sqrt(np.log((sig/mean)**2 + 1))
     logmean = np.log(mean) - logsig**2/2
     return logmean, logsig
 
 
-def _normal(mean, sig, key):
-    return Adder(Field.scalar(mean)) @ (
-        sig*ducktape(DomainTuple.scalar_domain(), None, key))
+def _normal(mean, sig, key, N = 0):
+    if N == 0:
+        domain = DomainTuple.scalar_domain()
+        mean, sig = np.asfarray(mean), np.asfarray(sig)
+    else:
+        domain = UnstructuredDomain(N)
+        mean, sig = (_reshaper(param, N) for param in (mean, sig))
+    return Adder(from_global_data(domain, mean)) @ (
+        DiagonalOperator(from_global_data(domain,sig))
+        @ ducktape(domain, None, key))
 
 
 def _log_k_lengths(pspace):
@@ -66,9 +86,8 @@ def _relative_log_k_lengths(power_space):
 
 
 def _log_vol(power_space):
-    power_space = DomainTuple.make(power_space)
+    power_space = makeDomain(power_space)
     assert isinstance(power_space[0], PowerSpace)
-    assert len(power_space) == 1
     logk_lengths = _log_k_lengths(power_space[0])
     return logk_lengths[1:] - logk_lengths[:-1]
 
@@ -88,12 +107,12 @@ def _stats(op, samples):
 
 
 class _LognormalMomentMatching(Operator):
-    def __init__(self, mean, sig, key):
+    def __init__(self, mean, sig, key, N_copies):
         key = str(key)
-        logmean, logsig = _lognormal_moments(mean, sig)
+        logmean, logsig = _lognormal_moments(mean, sig, N_copies)
         self._mean = mean
         self._sig = sig
-        op = _normal(logmean, logsig, key).exp()
+        op = _normal(logmean, logsig, key, N_copies).exp()
         self._domain, self._target = op.domain, op.target
         self.apply = op.apply
 
@@ -107,70 +126,85 @@ class _LognormalMomentMatching(Operator):
 
 
 class _SlopeRemover(EndomorphicOperator):
-    def __init__(self, domain):
+    def __init__(self, domain, space = 0):
         self._domain = makeDomain(domain)
-        assert len(self._domain) == 1
-        assert isinstance(self._domain[0], PowerSpace)
-        logkl = _relative_log_k_lengths(self._domain)
+        assert isinstance(self._domain[space], PowerSpace)
+        logkl = _relative_log_k_lengths(self._domain[space])
         self._sc = logkl/float(logkl[-1])
+
+        self._space = space
+        axis = self._domain.axes[space][0]
+        self._last = (slice(None),)*axis + (-1,) + (None,)
+        self._extender = (None,)*(axis) + (slice(None),) + (None,)*(self._domain.axes[-1][-1]-axis)
         self._capability = self.TIMES | self.ADJOINT_TIMES
 
     def apply(self, x, mode):
         self._check_input(x, mode)
         x = x.to_global_data()
         if mode == self.TIMES:
-            res = x - x[-1]*self._sc
+            res = x - x[self._last]*self._sc[self._extender]
         else:
-            res = np.zeros(x.shape, dtype=x.dtype)
-            res += x
-            res[-1] -= (x*self._sc).sum()
+            res = x.copy()
+            res[self._last] -= (x*self._sc[self._extender]).sum(
+                    axis = self._space, keepdims = True)
         return from_global_data(self._tgt(mode), res)
 
 
 class _TwoLogIntegrations(LinearOperator):
-    def __init__(self, target):
+    def __init__(self, target, space = 0):
         self._target = makeDomain(target)
-        assert len(self._target) == 1
-        assert isinstance(self._target[0], PowerSpace)
-        self._domain = makeDomain(
-            UnstructuredDomain((2, self.target.shape[0] - 2)))
+        assert isinstance(self.target[space], PowerSpace)
+        dom = list(self._target)
+        dom[space] = UnstructuredDomain((2, self.target[space].shape[0]-2))
+        self._domain = makeDomain(dom)
+        self._space = space
+        self._log_vol = _log_vol(self._target[space])
         self._capability = self.TIMES | self.ADJOINT_TIMES
-        if not isinstance(self._target[0], PowerSpace):
-            raise TypeError
-        self._log_vol = _log_vol(self._target[0])
 
     def apply(self, x, mode):
         self._check_input(x, mode)
+
+        #Maybe make class properties
+        axis = self._target.axes[self._space][0]
+        sl = (slice(None),)*axis
+        extender_sl = (None,)*axis + (slice(None),) + (None,)*(self._target.axes[-1][-1] - axis)
+        first = sl + (0,)
+        second = sl + (1,)
+        from_third = sl + (slice(2,None),)
+        no_border = sl + (slice(1,-1),)
+        reverse = sl + (slice(None,None,-1),)
+
         if mode == self.TIMES:
             x = x.to_global_data()
             res = np.empty(self._target.shape)
-            res[0] = res[1] = 0
-            res[2:] = np.cumsum(x[1])
-            res[2:] = (res[2:] + res[1:-1])/2*self._log_vol + x[0]
-            res[2:] = np.cumsum(res[2:])
-            return from_global_data(self._target, res)
+            res[first] = res[second] = 0
+            res[from_third] = np.cumsum(x[second], axis = axis)
+            res[from_third] = (res[from_third] + res[no_border])/2*self._log_vol[extender_sl] + x[first]
+            res[from_third] = np.cumsum(res[from_third], axis = axis)
         else:
             x = x.to_global_data_rw()
             res = np.zeros(self._domain.shape)
-            x[2:] = np.cumsum(x[2:][::-1])[::-1]
-            res[0] += x[2:]
-            x[2:] *= self._log_vol/2.
-            x[1:-1] += x[2:]
-            res[1] += np.cumsum(x[2:][::-1])[::-1]
-            return from_global_data(self._domain, res)
+            x[from_third] = np.cumsum(x[from_third][reverse], axis = axis)[reverse]
+            res[first] += x[from_third]
+            x[from_third] *= (self._log_vol/2.)[extender_sl]
+            x[no_border] += x[from_third]
+            res[second] += np.cumsum(x[from_third][reverse], axis = axis)[reverse]
+        return from_global_data(self._tgt(mode), res)
 
 
 class _Normalization(Operator):
-    def __init__(self, domain):
+    def __init__(self, domain, space = 0):
         self._domain = self._target = makeDomain(domain)
-        assert len(self._domain) == 1
-        assert isinstance(self._domain[0], PowerSpace)
-        hspace = self._domain[0].harmonic_partner
-        pd = PowerDistributor(hspace, power_space=self._domain[0])
-        cst = pd.adjoint(full(pd.target, 1.)).to_global_data_rw()
-        cst[0] = 0
-        self._cst = from_global_data(self._domain, cst)
-        self._specsum = _SpecialSum(self._domain)
+        assert isinstance(self._domain[space], PowerSpace)
+        hspace = list(self._domain)
+        hspace[space] = hspace[space].harmonic_partner
+        hspace = makeDomain(hspace)
+        pd = PowerDistributor(hspace, power_space=self._domain[space], space = space)
+        mode_multiplicity = pd.adjoint(full(pd.target, 1.)).to_global_data_rw()
+        zero_mode = (slice(None),)*self._domain.axes[space][0] + (0,)
+        mode_multiplicity[zero_mode] = 0
+        self._mode_multiplicity = from_global_data(self._domain, mode_multiplicity)
+        self._specsum = _SpecialSum(self._domain, space)
 
     def apply(self, x):
         self._check_input(x)
@@ -178,23 +212,43 @@ class _Normalization(Operator):
         spec = (2*x).exp()
         # FIXME This normalizes also the zeromode which is supposed to be left
         # untouched by this operator
-        return self._specsum(self._cst*spec)**(-0.5)*amp
+        return self._specsum(self._mode_multiplicity*spec)**(-0.5)*amp
 
 
 class _SpecialSum(EndomorphicOperator):
-    def __init__(self, domain):
+    def __init__(self, domain, space = 0):
         self._domain = makeDomain(domain)
-        assert len(self._domain) == 1
+        self._capability = self.TIMES | self.ADJOINT_TIMES
+        self._contractor = ContractionOperator(domain, space)
+
+    def apply(self, x, mode):
+        self._check_input(x, mode)
+        return self._contractor.adjoint(self._contractor(x))
+
+
+class _Distributor(LinearOperator):
+    def __init__(self, dofdex, domain, target, space = 0):
+        self._dofdex = dofdex
+
+        self._target = makeDomain(target)
+        self._domain = makeDomain(domain)
+        self._sl = (slice(None),)*space
         self._capability = self.TIMES | self.ADJOINT_TIMES
 
     def apply(self, x, mode):
         self._check_input(x, mode)
-        return full(self._tgt(mode), x.sum())
-
+        x = x.to_global_data()
+        if mode == self.TIMES:
+            res = x[self._dofdex]
+        else:
+            res = np.empty(self._tgt(mode).shape)
+            res[self._dofdex] = x
+        return from_global_data(self._tgt(mode), res)
+    
 
 class _Amplitude(Operator):
     def __init__(self, target, fluctuations, flexibility, asperity,
-                 loglogavgslope, totvol, key):
+                 loglogavgslope, azm, totvol, key, dofdex):
         """
         fluctuations > 0
         flexibility > 0
@@ -205,48 +259,78 @@ class _Amplitude(Operator):
         assert isinstance(flexibility, Operator)
         assert isinstance(asperity, Operator)
         assert isinstance(loglogavgslope, Operator)
-        target = makeDomain(target)
-        assert len(target) == 1
-        assert isinstance(target[0], PowerSpace)
 
-        twolog = _TwoLogIntegrations(target)
+        if len(dofdex) > 0:
+            N_copies = max(dofdex) + 1
+            space = 1
+            distributed_tgt = makeDomain((UnstructuredDomain(len(dofdex)),
+                                          target))
+            target = makeDomain((UnstructuredDomain(N_copies), target))
+            Distributor = _Distributor(dofdex, target, distributed_tgt, 0)
+        else:
+            N_copies = 0
+            space = 0
+            distributed_tgt = target = makeDomain(target)
+        azm_expander = ContractionOperator(distributed_tgt, spaces = space).adjoint
+        assert isinstance(target[space], PowerSpace)
+        
+        twolog = _TwoLogIntegrations(target, space)
         dom = twolog.domain
-        shp = dom.shape
+
+        shp = dom[space].shape
+        expander = ContractionOperator(dom, spaces = space).adjoint
+        ps_expander = ContractionOperator(twolog.target, spaces = space).adjoint
+
 
         # Prepare constant fields
         foo = np.zeros(shp)
-        foo[0] = foo[1] = np.sqrt(_log_vol(target))
-        vflex = from_global_data(dom, foo)
+        foo[0] = foo[1] = np.sqrt(_log_vol(target[space]))
+        vflex = DiagonalOperator(from_global_data(dom[space], foo), dom, space)
 
         foo = np.zeros(shp, dtype=np.float64)
         foo[0] += 1
-        vasp = from_global_data(dom, foo)
+        vasp = DiagonalOperator(from_global_data(dom[space], foo), dom, space)
 
         foo = np.ones(shp)
-        foo[0] = _log_vol(target)**2/12.
-        shift = from_global_data(dom, foo)
+        foo[0] = _log_vol(target[space])**2/12.
+        shift = DiagonalOperator(from_global_data(dom[space], foo), dom, space)
+        
+        vslope = DiagonalOperator(
+                    from_global_data(target[space], _relative_log_k_lengths(target[space])),
+                    target, space)
 
-        vslope = from_global_data(target, _relative_log_k_lengths(target))
-
-        foo, bar = [np.zeros(target.shape) for _ in range(2)]
+        foo, bar = [np.zeros(target[space].shape) for _ in range(2)]
         bar[1:] = foo[0] = totvol
-        vol0, vol1 = [from_global_data(target, aa) for aa in (foo, bar)]
+        vol0, vol1 = [DiagonalOperator(from_global_data(target[space], aa), 
+                                       target, space) for aa in (foo, bar)]
+
+        #Prepare fields for Adder
+        shift, vol0 = [op(full(op.domain, 1)) for op in (shift, vol0)]
         # End prepare constant fields
 
-        slope = VdotOperator(vslope).adjoint @ loglogavgslope
-        sig_flex = VdotOperator(vflex).adjoint @ flexibility
-        sig_asp = VdotOperator(vasp).adjoint @ asperity
-        sig_fluc = VdotOperator(vol1).adjoint @ fluctuations
+        slope = vslope @ ps_expander @ loglogavgslope
+        sig_flex = vflex @ expander @ flexibility
+        sig_asp = vasp @ expander @ asperity
+        sig_fluc = vol1 @ ps_expander @ fluctuations
+        sig_fluc = vol1 @ ps_expander @ fluctuations
 
         xi = ducktape(dom, None, key)
         sigma = sig_flex*(Adder(shift) @ sig_asp).sqrt()
-        smooth = _SlopeRemover(target) @ twolog @ (sigma*xi)
-        op = _Normalization(target) @ (slope + smooth)
-        op = Adder(vol0) @ (sig_fluc*op)
+        smooth = _SlopeRemover(target, space) @ twolog @ (sigma*xi)
+        op = _Normalization(target, space) @ (slope + smooth)
+        if N_copies > 0:
+            op = Distributor @ op
+            sig_fluc = Distributor @ sig_fluc
+            op = Adder(Distributor(vol0)) @ (sig_fluc*(azm_expander @ azm.one_over())*op)
+            self._fluc = (_Distributor(dofdex, fluctuations.target, distributed_tgt[0]) @ 
+                          fluctuations)
+        else:
+            op = Adder(vol0) @ (sig_fluc*(azm_expander @ azm.one_over())*op)
+            self._fluc = fluctuations
 
         self.apply = op.apply
-        self._fluc = fluctuations
         self._domain, self._target = op.domain, op.target
+        self._space = space
 
     @property
     def fluctuation_amplitude(self):
@@ -254,23 +338,32 @@ class _Amplitude(Operator):
 
 
 class CorrelatedFieldMaker:
-    def __init__(self, amplitude_offset, prefix):
+    def __init__(self, amplitude_offset, prefix, total_N):
+        assert isinstance(amplitude_offset, Operator)
         self._a = []
+        self._spaces = []
         self._position_spaces = []
 
         self._azm = amplitude_offset
         self._prefix = prefix
+        self._total_N = total_N
 
     @staticmethod
-    def make(offset_amplitude_mean, offset_amplitude_stddev, prefix):
-        offset_amplitude_stddev = float(offset_amplitude_stddev)
-        offset_amplitude_mean = float(offset_amplitude_mean)
-        assert offset_amplitude_stddev > 0
-        assert offset_amplitude_mean > 0
+    def make(offset_amplitude_mean, offset_amplitude_stddev, prefix,
+             total_N = 0,
+             dofdex = None):
+        if dofdex is None:
+            dofdex = np.full(total_N, 0)
+        else:
+            assert len(dofdex) == total_N
+        N = max(dofdex) + 1 if total_N > 0 else 0
         zm = _LognormalMomentMatching(offset_amplitude_mean,
                                       offset_amplitude_stddev,
-                                      prefix + 'zeromode')
-        return CorrelatedFieldMaker(zm, prefix)
+                                      prefix + 'zeromode',
+                                      N)
+        if total_N > 0:
+            zm = _Distributor(dofdex,zm.target,UnstructuredDomain(total_N)) @ zm
+        return CorrelatedFieldMaker(zm, prefix, total_N)
 
     def add_fluctuations(self,
                          position_space,
@@ -282,79 +375,95 @@ class CorrelatedFieldMaker:
                          asperity_stddev,
                          loglogavgslope_mean,
                          loglogavgslope_stddev,
-                         prefix='',
-                         index=None,
+                         prefix = '',
+                         index = None,
+                         dofdex = None,
                          harmonic_partner = None):
         if harmonic_partner is None:
             harmonic_partner = position_space.get_default_codomain()
         else:
             position_space.check_codomain(harmonic_partner)
             harmonic_partner.check_codomain(position_space)
-        fluctuations_mean = float(fluctuations_mean)
-        fluctuations_stddev = float(fluctuations_stddev)
-        flexibility_mean = float(flexibility_mean)
-        flexibility_stddev = float(flexibility_stddev)
-        asperity_mean = float(asperity_mean)
-        asperity_stddev = float(asperity_stddev)
-        loglogavgslope_mean = float(loglogavgslope_mean)
-        loglogavgslope_stddev = float(loglogavgslope_stddev)
+
+        if dofdex is None:
+            dofdex = np.full(self._total_N, 0)
+        else:
+            assert len(dofdex) == self._total_N
+
+        if self._total_N > 0:
+            space = 1
+            N = max(dofdex) + 1
+            position_space = makeDomain((UnstructuredDomain(N), position_space))
+        else:
+            space = 0
+            N = 0
+            position_space = makeDomain(position_space)
         prefix = str(prefix)
-        assert fluctuations_stddev > 0
-        assert fluctuations_mean > 0
-        assert flexibility_stddev > 0
-        assert flexibility_mean > 0
-        assert asperity_stddev > 0
-        assert asperity_mean > 0
-        assert loglogavgslope_stddev > 0
+        #assert isinstance(position_space[space], (RGSpace, HPSpace, GLSpace)
 
         fluct = _LognormalMomentMatching(fluctuations_mean,
                                          fluctuations_stddev,
-                                         self._prefix + prefix + 'fluctuations')
-        fluct = fluct*self._azm.one_over()
+                                         self._prefix + prefix + 'fluctuations',
+                                         N)
         flex = _LognormalMomentMatching(flexibility_mean, flexibility_stddev,
-                                        self._prefix + prefix + 'flexibility')
+                                        self._prefix + prefix + 'flexibility',
+                                        N)
         asp = _LognormalMomentMatching(asperity_mean, asperity_stddev,
-                                       self._prefix + prefix + 'asperity')
+                                       self._prefix + prefix + 'asperity', 
+                                       N)
         avgsl = _normal(loglogavgslope_mean, loglogavgslope_stddev,
-                        self._prefix + prefix + 'loglogavgslope')
+                        self._prefix + prefix + 'loglogavgslope', N)
         amp = _Amplitude(PowerSpace(harmonic_partner),
-                         fluct, flex, asp, avgsl, position_space.total_volume,
-                         self._prefix + prefix + 'spectrum')
+                         fluct, flex, asp, avgsl, self._azm, 
+                         position_space[-1].total_volume,
+                         self._prefix + prefix + 'spectrum', dofdex)
+
         if index is not None:
             self._a.insert(index, amp)
             self._position_spaces.insert(index, position_space)
+            self._spaces.insert(index, space)
         else:
             self._a.append(amp)
             self._position_spaces.append(position_space)
+            self._spaces.append(space)
 
-    def finalize_from_op(self, zeromode, prefix=''):
-        assert isinstance(zeromode, Operator)
-        hspace = makeDomain([dd.target[0].harmonic_partner for dd in self._a])
-        foo = np.ones(hspace.shape)
-        zeroind = len(hspace.shape)*(0,)
-        foo[zeroind] = 0
-        azm = VdotOperator(full(hspace, 1.)).adjoint @ zeromode
-
+    def _finalize_from_op(self):
         n_amplitudes = len(self._a)
+        if self._total_N > 0:
+            hspace = makeDomain([UnstructuredDomain(self._total_N)] +
+                    [dd.target[-1].harmonic_partner for dd in self._a])
+            spaces = list(1 + np.arange(n_amplitudes))
+        else:
+            hspace = makeDomain(
+                     [dd.target[0].harmonic_partner for dd in self._a])
+            spaces = tuple(range(n_amplitudes))
+            spaces = list(np.arange(n_amplitudes))
+
+        expander = ContractionOperator(hspace, spaces = spaces).adjoint
+        azm = expander @ self._azm
+
+        #spaces = np.array(range(n_amplitudes)) + 1 - 1//self._total_N
         ht = HarmonicTransformOperator(hspace,
-                                       self._position_spaces[0],
-                                       space=0)
+                                   self._position_spaces[0][self._spaces[0]],
+                                   space=spaces[0])
         for i in range(1, n_amplitudes):
-            ht = (HarmonicTransformOperator(
-                ht.target, self._position_spaces[i], space=i) @ ht)
+            ht = (HarmonicTransformOperator(ht.target,
+                                    self._position_spaces[i][self._spaces[i]],
+                                    space=spaces[i]) @ ht)
 
-        pd = PowerDistributor(hspace, self._a[0].target[0], 0)
+        pd = PowerDistributor(hspace, self._a[0].target[self._spaces[0]], self._spaces[0])
         for i in range(1, n_amplitudes):
-            foo = PowerDistributor(pd.domain, self._a[i].target[0], space=i)
-            pd = pd @ foo
+            pd = (pd @ PowerDistributor(pd.domain,
+                                   self._a[i].target[self._spaces[i]],
+                                   space=spaces[i]))
 
-        spaces = tuple(range(n_amplitudes))
         a = ContractionOperator(pd.domain, spaces[1:]).adjoint @ self._a[0]
         for i in range(1, n_amplitudes):
-            co = ContractionOperator(pd.domain, spaces[:i] + spaces[(i + 1):])
+            co = ContractionOperator(pd.domain,
+                    spaces[:i] + spaces[i+1:])
             a = a*(co.adjoint @ self._a[i])
 
-        return ht(azm*(pd @ a)*ducktape(hspace, None, self._prefix + prefix + 'xi'))
+        return ht(azm*(pd @ a)*ducktape(hspace, None, self._prefix + 'xi'))
 
     def finalize(self, offset=None, prior_info=100):
         """
@@ -364,7 +473,7 @@ class CorrelatedFieldMaker:
             raise NotImplementedError
             offset = float(offset)
 
-        op = self.finalize_from_op(self._azm)
+        op = self._finalize_from_op()
         if prior_info > 0:
             from ..sugar import from_random
             samps = [
@@ -377,6 +486,7 @@ class CorrelatedFieldMaker:
         lst = [('Offset amplitude', self.amplitude_total_offset),
                ('Total fluctuation amplitude', self.total_fluctuation)]
 
+
         namps = len(self._a)
         if namps > 1:
             for ii in range(namps):
@@ -387,7 +497,8 @@ class CorrelatedFieldMaker:
 
         for kk, op in lst:
             mean, stddev = _stats(op, samples)
-            print('{}: {:.02E} ± {:.02E}'.format(kk, mean, stddev))
+            for m, s in zip(mean.flatten(), stddev.flatten()):
+                print('{}: {:.02E} ± {:.02E}'.format(kk, m, s))
 
     def moment_slice_to_average(self, fluctuations_slice_mean, nsamples=1000):
         fluctuations_slice_mean = float(fluctuations_slice_mean)
@@ -395,11 +506,9 @@ class CorrelatedFieldMaker:
         from ..sugar import from_random
         scm = 1.
         for a in self._a:
-            op = a.fluctuation_amplitude
-            res = np.array([
-                op(from_random('normal', op.domain)).to_global_data()
-                for _ in range(nsamples)
-            ])
+            op = a.fluctuation_amplitude*self._azm.one_over()
+            res= np.array([op(from_random('normal',op.domain)).to_global_data()
+                            for _ in range(nsamples)])
             scm *= res**2 + 1.
         return fluctuations_slice_mean/np.mean(np.sqrt(scm))
 
@@ -430,7 +539,7 @@ class CorrelatedFieldMaker:
             return self.average_fluctuation(0)
         q = 1.
         for a in self._a:
-            fl = a.fluctuation_amplitude
+            fl = a.fluctuation_amplitude*self._azm.one_over()
             q = q*(Adder(full(fl.target, 1.)) @ fl**2)
         return (Adder(full(q.target, -1.)) @ q).sqrt()*self._azm
 
@@ -443,7 +552,7 @@ class CorrelatedFieldMaker:
             return self.average_fluctuation(0)
         q = 1.
         for j in range(len(self._a)):
-            fl = self._a[j].fluctuation_amplitude
+            fl = self._a[j].fluctuation_amplitude*self._azm.one_over()
             if j == space:
                 q = q*fl**2
             else:
@@ -456,8 +565,8 @@ class CorrelatedFieldMaker:
             raise NotImplementedError
         assert space < len(self._a)
         if len(self._a) == 1:
-            return self._a[0].fluctuation_amplitude*self._azm
-        return self._a[space].fluctuation_amplitude*self._azm
+            return self._a[0].fluctuation_amplitude
+        return self._a[space].fluctuation_amplitude
 
     @staticmethod
     def offset_amplitude_realized(samples):

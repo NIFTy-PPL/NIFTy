@@ -663,9 +663,8 @@ for op in ["__iadd__", "__isub__", "__imul__", "__idiv__",
         return func2
     setattr(Field, op, func(op))
 
-for f in ["sqrt", "exp", "log", "log10", "tanh",
-          "sin", "cos", "tan", "cosh", "sinh",
-          "absolute", "sinc", "sign"]:
+for f in ["sqrt", "exp", "log", "sin", "cos", "tan", "sinh", "cosh", "tanh",
+          "absolute", "sinc", "sign", "log10", "log1p", "expm1"]:
     def func(f):
         def func2(self):
             return Field(self._domain, getattr(dobj, f)(self.val))
