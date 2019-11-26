@@ -18,7 +18,7 @@
 import numpy as np
 from numpy.testing import assert_equal
 
-import nifty5 as ift
+import nifty6 as ift
 
 
 def test_get_signal_variance():

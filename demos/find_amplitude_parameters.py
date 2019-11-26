@@ -18,7 +18,7 @@
 
 import numpy as np
 
-import nifty5 as ift
+import nifty6 as ift
 import matplotlib.pyplot as plt
 
 

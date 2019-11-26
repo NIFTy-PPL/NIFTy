@@ -19,7 +19,7 @@ import numpy as np
 import pytest
 from numpy.testing import assert_allclose, assert_equal, assert_raises
 
-import nifty5 as ift
+import nifty6 as ift
 
 pmp = pytest.mark.parametrize
 SPACES = [ift.RGSpace((4,)), ift.RGSpace((5))]

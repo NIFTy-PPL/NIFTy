@@ -25,7 +25,7 @@ import sys
 
 import numpy as np
 
-import nifty5 as ift
+import nifty6 as ift
 
 
 def make_checkerboard_mask(position_space):

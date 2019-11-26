@@ -595,10 +595,10 @@ class Field(object):
         return sqrt(self.var(spaces))
 
     def __repr__(self):
-        return "<nifty5.Field>"
+        return "<nifty6.Field>"
 
     def __str__(self):
-        return "nifty5.Field instance\n- domain      = " + \
+        return "nifty6.Field instance\n- domain      = " + \
                self._domain.__str__() + \
                "\n- val         = " + repr(self._val)
 

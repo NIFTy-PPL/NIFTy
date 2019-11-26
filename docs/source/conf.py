@@ -1,4 +1,4 @@
-import nifty5
+import nifty6
 
 extensions = [
     'sphinx.ext.napoleon',  # Support for NumPy and Google style docstrings
@@ -15,11 +15,11 @@ napoleon_use_admonition_for_examples = True
 napoleon_use_admonition_for_references = True
 napoleon_include_special_with_doc = True
 
-project = u'NIFTy5'
+project = u'NIFTy6'
 copyright = u'2013-2019, Max-Planck-Society'
 author = u'Martin Reinecke'
 
-release = nifty5.version.__version__
+release = nifty6.version.__version__
 version = release[:-2]
 
 language = None
@@ -30,5 +30,5 @@ html_theme = "sphinx_rtd_theme"
 html_logo = 'nifty_logo_black.png'
 
 exclude_patterns = [
-    'mod/modules.rst', 'mod/nifty5.git_version.rst', 'mod/nifty5.logger.rst'
+    'mod/modules.rst', 'mod/nifty6.git_version.rst', 'mod/nifty6.logger.rst'
 ]
