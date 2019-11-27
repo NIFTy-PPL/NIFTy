@@ -16,6 +16,7 @@
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
 
 import sys
+from time import time
 
 import numpy as np
 
@@ -23,12 +24,16 @@ from . import dobj, utilities
 from .domain_tuple import DomainTuple
 from .domains.power_space import PowerSpace
 from .field import Field
+from .linearization import Linearization
 from .logger import logger
+from .minimization.energy import Energy
 from .multi_domain import MultiDomain
 from .multi_field import MultiField
 from .operators.block_diagonal_operator import BlockDiagonalOperator
 from .operators.diagonal_operator import DiagonalOperator
 from .operators.distributors import PowerDistributor
+from .operators.energy_operators import EnergyOperator
+from .operators.operator import Operator
 from .plot import Plot
 
 __all__ = ['PS_field', 'power_analyze', 'create_power_operator',
@@ -38,7 +43,7 @@ __all__ = ['PS_field', 'power_analyze', 'create_power_operator',
            'sin', 'cos', 'tan', 'sinh', 'cosh', 'log10',
            'absolute', 'one_over', 'clip', 'sinc',
            'conjugate', 'get_signal_variance', 'makeOp', 'domain_union',
-           'get_default_codomain', 'single_plot']
+           'get_default_codomain', 'single_plot', 'exec_time']
 
 
 def PS_field(pspace, func):
@@ -449,3 +454,52 @@ def single_plot(field, **kwargs):
     if 'title' in kwargs:
         del(kwargs['title'])
     p.output(**kwargs)
+
+
+def exec_time(obj, want_metric=True):
+    """Times the execution time of an operator or an energy."""
+    if isinstance(obj, Energy):
+        t0 = time()
+        obj.at(0.99*obj.position)
+        print('Energy.at():', time() - t0)
+
+        t0 = time()
+        obj.value
+        print('Energy.value:', time() - t0)
+        t0 = time()
+        obj.gradient
+        print('Energy.gradient:', time() - t0)
+        t0 = time()
+        obj.metric
+        print('Energy.metric:', time() - t0)
+
+        t0 = time()
+        obj.apply_metric(obj.position)
+        print('Energy.apply_metric:', time() - t0)
+
+        t0 = time()
+        obj.metric(obj.position)
+        print('Energy.metric(position):', time() - t0)
+    elif isinstance(obj, Operator):
+        want_metric = bool(want_metric)
+        pos = from_random('normal', obj.domain)
+        t0 = time()
+        obj(pos)
+        print('Operator call with field:', time() - t0)
+
+        lin = Linearization.make_var(pos, want_metric=want_metric)
+        t0 = time()
+        res = obj(lin)
+        print('Operator call with linearization:', time() - t0)
+
+        if isinstance(obj, EnergyOperator):
+            t0 = time()
+            res.gradient
+            print('Gradient evaluation:', time() - t0)
+
+            if want_metric:
+                t0 = time()
+                res.metric(pos)
+                print('Metric apply:', time() - t0)
+    else:
+        raise TypeError
