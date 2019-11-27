@@ -59,7 +59,7 @@ pages:
     paths:
     - public
   only:
-  - NIFTy_6
+  - NIFTy_5
 
 
 before_script:
