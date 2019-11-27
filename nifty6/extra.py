@@ -26,15 +26,16 @@ from .multi_field import MultiField
 from .operators.linear_operator import LinearOperator
 from .sugar import from_random
 
-__all__ = ["consistency_check", "check_jacobian_consistency"]
+__all__ = ["consistency_check", "check_jacobian_consistency",
+           "assert_allclose"]
 
 
-def _assert_allclose(f1, f2, atol, rtol):
+def assert_allclose(f1, f2, atol, rtol):
     if isinstance(f1, Field):
         return np.testing.assert_allclose(f1.local_data, f2.local_data,
                                           atol=atol, rtol=rtol)
     for key, val in f1.items():
-        _assert_allclose(val, f2[key], atol=atol, rtol=rtol)
+        assert_allclose(val, f2[key], atol=atol, rtol=rtol)
 
 
 def _adjoint_implementation(op, domain_dtype, target_dtype, atol, rtol,
@@ -57,11 +58,11 @@ def _inverse_implementation(op, domain_dtype, target_dtype, atol, rtol):
         return
     foo = from_random("normal", op.target, dtype=target_dtype)
     res = op(op.inverse_times(foo))
-    _assert_allclose(res, foo, atol=atol, rtol=rtol)
+    assert_allclose(res, foo, atol=atol, rtol=rtol)
 
     foo = from_random("normal", op.domain, dtype=domain_dtype)
     res = op.inverse_times(op(foo))
-    _assert_allclose(res, foo, atol=atol, rtol=rtol)
+    assert_allclose(res, foo, atol=atol, rtol=rtol)
 
 
 def _full_implementation(op, domain_dtype, target_dtype, atol, rtol,
@@ -80,7 +81,7 @@ def _check_linearity(op, domain_dtype, atol, rtol):
     alpha = np.random.random()  # FIXME: this can break badly with MPI!
     val1 = op(alpha*fld1+fld2)
     val2 = alpha*op(fld1)+op(fld2)
-    _assert_allclose(val1, val2, atol=atol, rtol=rtol)
+    assert_allclose(val1, val2, atol=atol, rtol=rtol)
 
 
 def _actual_domain_check(op, domain_dtype=None, inp=None):
