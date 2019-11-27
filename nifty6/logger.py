@@ -19,7 +19,7 @@
 def _logger_init():
     import logging
     from . import dobj
-    res = logging.getLogger('NIFTy5')
+    res = logging.getLogger('NIFTy6')
     res.setLevel(logging.DEBUG)
     res.propagate = False
     if dobj.rank == 0:

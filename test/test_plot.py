@@ -17,7 +17,7 @@
 
 import numpy as np
 
-import nifty5 as ift
+import nifty6 as ift
 
 
 def test_plots():

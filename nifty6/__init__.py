@@ -99,4 +99,4 @@ if _scheme == "Samples":
     from .minimization.metric_gaussian_kl_mpi import MetricGaussianKL_MPI
 
 # We deliberately don't set __all__ here, because we don't want people to do a
-# "from nifty5 import *"; that would swamp the global namespace.
+# "from nifty6 import *"; that would swamp the global namespace.

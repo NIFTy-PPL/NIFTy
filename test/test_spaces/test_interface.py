@@ -20,7 +20,7 @@ from types import LambdaType
 import pytest
 from numpy.testing import assert_
 
-import nifty5 as ift
+import nifty6 as ift
 
 pmp = pytest.mark.parametrize
 

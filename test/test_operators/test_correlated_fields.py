@@ -19,7 +19,7 @@ import pytest
 from numpy.testing import assert_allclose
 from numpy.random import seed
 
-import nifty5 as ift
+import nifty6 as ift
 
 
 @pytest.mark.parametrize('sspace', [

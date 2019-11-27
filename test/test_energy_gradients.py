@@ -18,7 +18,7 @@
 import numpy as np
 import pytest
 
-import nifty5 as ift
+import nifty6 as ift
 from itertools import product
 
 # Currently it is not possible to parametrize fixtures. But this will

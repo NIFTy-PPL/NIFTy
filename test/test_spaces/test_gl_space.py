@@ -22,7 +22,7 @@ import pytest
 from numpy.testing import (assert_, assert_almost_equal, assert_equal,
                            assert_raises)
 
-from nifty5 import GLSpace
+from nifty6 import GLSpace
 
 pmp = pytest.mark.parametrize
 
