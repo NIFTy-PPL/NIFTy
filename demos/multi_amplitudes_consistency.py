@@ -1,4 +1,4 @@
-import nifty5 as ift
+import nifty6 as ift
 import numpy as np
 
 

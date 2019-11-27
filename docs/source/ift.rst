@@ -174,7 +174,7 @@ It only requires minimizing the information Hamiltonian, e.g. by a gradient desc
 
     \frac{\partial \mathcal{H}(d,\xi)}{\partial \xi} = 0.
 
-NIFTy5 automatically calculates the necessary gradient from a generative model of the signal and the data and uses this to minimize the Hamiltonian.
+NIFTy6 automatically calculates the necessary gradient from a generative model of the signal and the data and uses this to minimize the Hamiltonian.
 
 However, MAP often provides unsatisfactory results in cases of deep hirachical Bayesian networks.
 The reason for this is that MAP ignores the volume factors in parameter space, which are not to be neglected in deciding whether a solution is reasonable or not.
@@ -224,7 +224,7 @@ Thus, only the gradient of the KL is needed with respect to this, which can be e
 
 We stochastically estimate the KL-divergence and gradients with a set of samples drawn from the approximate posterior distribution.
 The particular structure of the covariance allows us to draw independent samples solving a certain system of equations.
-This KL-divergence for MGVI is implemented in the class :class:`~minimization.metric_gaussian_kl.MetricGaussianKL` within NIFTy5.
+This KL-divergence for MGVI is implemented in the class :class:`~minimization.metric_gaussian_kl.MetricGaussianKL` within NIFTy6.
 
 
 The demo `getting_started_3.py` for example not only infers a field this way, but also the power spectrum of the process that has generated the field.

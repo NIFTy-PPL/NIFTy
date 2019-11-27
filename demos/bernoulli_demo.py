@@ -24,7 +24,7 @@
 
 import numpy as np
 
-import nifty5 as ift
+import nifty6 as ift
 
 if __name__ == '__main__':
     np.random.seed(41)

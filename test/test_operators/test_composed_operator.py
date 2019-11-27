@@ -17,7 +17,7 @@
 
 from numpy.testing import assert_allclose, assert_equal
 
-import nifty5 as ift
+import nifty6 as ift
 
 from ..common import list2fixture
 

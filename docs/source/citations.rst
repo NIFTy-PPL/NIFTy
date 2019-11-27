@@ -2,8 +2,8 @@ NIFTy-related publications
 ==========================
 
 ::
-    @article{asclnifty5,
-      title={NIFTy5: Numerical Information Field Theory v5},
+    @article{asclnifty6,
+      title={NIFTy6: Numerical Information Field Theory v5},
       author={Arras, Philipp and Baltac, Mihai and Ensslin, Torsten A and Frank, Philipp and Hutschenreuter, Sebastian and Knollmueller, Jakob and Leike, Reimar and Newrzella, Max-Niklas and Platz, Lukas and Reinecke, Martin and others},
       journal={Astrophysics Source Code Library},
       year={2019}
@@ -13,7 +13,7 @@ NIFTy-related publications
       author = {{Martin Reinecke, Theo Steininger, Marco Selig}},
       title = {NIFTy -- Numerical Information Field TheorY},
       url = {https://gitlab.mpcdf.mpg.de/ift/NIFTy},
-      version = {nifty5},
+      version = {nifty6},
       date = {2018-04-05},
     }
 

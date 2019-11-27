@@ -18,7 +18,7 @@
 import matplotlib.pyplot as plt
 import numpy as np
 
-import nifty5 as ift
+import nifty6 as ift
 np.random.seed(12)
 
 
