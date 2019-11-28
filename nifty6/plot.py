@@ -182,7 +182,7 @@ def _makeplot(name, block=True, dpi=None):
         return
     extension = os.path.splitext(name)[1]
     if extension in (".pdf", ".png", ".svg"):
-        args= {}
+        args = {}
         if dpi is not None:
             args['dpi'] = float(dpi)
         plt.savefig(name, **args)
