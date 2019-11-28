@@ -16,6 +16,7 @@
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
 
 import sys
+from time import time
 
 import numpy as np
 
@@ -29,6 +30,7 @@ from .multi_field import MultiField
 from .operators.block_diagonal_operator import BlockDiagonalOperator
 from .operators.diagonal_operator import DiagonalOperator
 from .operators.distributors import PowerDistributor
+from .operators.operator import Operator
 from .plot import Plot
 
 __all__ = ['PS_field', 'power_analyze', 'create_power_operator',
@@ -38,7 +40,8 @@ __all__ = ['PS_field', 'power_analyze', 'create_power_operator',
            'sin', 'cos', 'tan', 'sinh', 'cosh', 'log10',
            'absolute', 'one_over', 'clip', 'sinc', "log1p", "expm1",
            'conjugate', 'get_signal_variance', 'makeOp', 'domain_union',
-           'get_default_codomain', 'single_plot']
+           'get_default_codomain', 'single_plot', 'exec_time',
+           'calculate_position']
 
 
 def PS_field(pspace, func):
@@ -449,3 +452,81 @@ def single_plot(field, **kwargs):
     if 'title' in kwargs:
         del(kwargs['title'])
     p.output(**kwargs)
+
+
+def exec_time(obj, want_metric=True):
+    """Times the execution time of an operator or an energy."""
+    from .linearization import Linearization
+    from .minimization.energy import Energy
+    from .operators.energy_operators import EnergyOperator
+    if isinstance(obj, Energy):
+        t0 = time()
+        obj.at(0.99*obj.position)
+        print('Energy.at():', time() - t0)
+
+        t0 = time()
+        obj.value
+        print('Energy.value:', time() - t0)
+        t0 = time()
+        obj.gradient
+        print('Energy.gradient:', time() - t0)
+        t0 = time()
+        obj.metric
+        print('Energy.metric:', time() - t0)
+
+        t0 = time()
+        obj.apply_metric(obj.position)
+        print('Energy.apply_metric:', time() - t0)
+
+        t0 = time()
+        obj.metric(obj.position)
+        print('Energy.metric(position):', time() - t0)
+    elif isinstance(obj, Operator):
+        want_metric = bool(want_metric)
+        pos = from_random('normal', obj.domain)
+        t0 = time()
+        obj(pos)
+        print('Operator call with field:', time() - t0)
+
+        lin = Linearization.make_var(pos, want_metric=want_metric)
+        t0 = time()
+        res = obj(lin)
+        print('Operator call with linearization:', time() - t0)
+
+        if isinstance(obj, EnergyOperator):
+            t0 = time()
+            res.gradient
+            print('Gradient evaluation:', time() - t0)
+
+            if want_metric:
+                t0 = time()
+                res.metric(pos)
+                print('Metric apply:', time() - t0)
+    else:
+        raise TypeError
+
+
+def calculate_position(operator, output):
+    """Finds approximate preimage of an operator for a given output."""
+    from .minimization.descent_minimizers import NewtonCG
+    from .minimization.iteration_controllers import GradientNormController
+    from .minimization.metric_gaussian_kl import MetricGaussianKL
+    from .operators.scaling_operator import ScalingOperator
+    from .operators.energy_operators import GaussianEnergy, StandardHamiltonian
+    if not isinstance(operator, Operator):
+        raise TypeError
+    if output.domain != operator.target:
+        raise TypeError
+    cov = 1e-3*output.to_global_data().max()**2
+    invcov = ScalingOperator(cov, output.domain).inverse
+    d = output + invcov.draw_sample(from_inverse=True)
+    lh = GaussianEnergy(d, invcov)(operator)
+    H = StandardHamiltonian(
+        lh, ic_samp=GradientNormController(iteration_limit=200))
+    pos = 0.1*from_random('normal', operator.domain)
+    minimizer = NewtonCG(GradientNormController(iteration_limit=10))
+    for ii in range(3):
+        kl = MetricGaussianKL(pos, H, 3, mirror_samples=True)
+        kl, _ = minimizer(kl)
+        pos = kl.position
+    return pos
