@@ -523,7 +523,7 @@ class CorrelatedFieldMaker:
                  ' no unique set of amplitudes exist because only the',
                  ' relative scale is determined.')
             raise NotImplementedError(s)
-        expand = VdotOperator(full(self._a[0].target, 1)).adjoint
+        expand = ContractionOperator(self._a[0].target, 1).adjoint
         return self._a[0]*(expand @ self.amplitude_total_offset)
 
     @property
