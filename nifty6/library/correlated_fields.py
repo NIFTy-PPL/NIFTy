@@ -520,7 +520,8 @@ class CorrelatedFieldMaker:
                  ' no unique set of amplitudes exist because only the',
                  ' relative scale is determined.')
             raise NotImplementedError(s)
-        expand = ContractionOperator(self._a[0].target, 1).adjoint
+        dom = self._a[0].target
+        expand = ContractionOperator(dom, len(dom)-1).adjoint
         return self._a[0]*(expand @ self.amplitude_total_offset)
 
     @property
