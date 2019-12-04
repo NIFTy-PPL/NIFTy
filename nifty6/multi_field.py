@@ -132,6 +132,10 @@ class MultiField(object):
         return MultiField(domain, tuple(Field(dom, val)
                           for dom in domain._domains))
 
+    def to_global_data(self):
+        return {key: val.val
+                for key, val in zip(self._domain.keys(), self._val)}
+
     @staticmethod
     def from_global_data(domain, arr):
         return MultiField(
