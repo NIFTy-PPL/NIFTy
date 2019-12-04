@@ -54,13 +54,13 @@ class ContractionOperator(LinearOperator):
     def apply(self, x, mode):
         self._check_input(x, mode)
         if mode == self.ADJOINT_TIMES:
-            ldat = x.to_global_data() if 0 in self._spaces else x.local_data
+            ldat = x.val
             shp = []
             for i, dom in enumerate(self._domain):
-                tmp = dom.shape if i > 0 else dom.local_shape
+                tmp = dom.shape
                 shp += tmp if i not in self._spaces else (1,)*len(dom.shape)
-            ldat = np.broadcast_to(ldat.reshape(shp), self._domain.local_shape)
-            res = Field.from_local_data(self._domain, ldat)
+            ldat = np.broadcast_to(ldat.reshape(shp), self._domain.shape)
+            res = Field(self._domain, ldat)
             if self._weight != 0:
                 res = res.weight(self._weight, spaces=self._spaces)
             return res

@@ -227,9 +227,9 @@ class LOSResponse(LinearOperator):
     def apply(self, x, mode):
         self._check_input(x, mode)
         if mode == self.TIMES:
-            result_arr = self._smat.matvec(x.local_data.reshape(-1))
+            result_arr = self._smat.matvec(x.val.reshape(-1))
             return Field.from_global_data(self._target, result_arr,
                                           sum_up=True)
         local_input_data = x.to_global_data().reshape(-1)
         res = self._smat.rmatvec(local_input_data).reshape(self._local_shape)
-        return Field.from_local_data(self._domain, res)
+        return Field(self._domain, res)

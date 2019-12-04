@@ -64,18 +64,18 @@ class DOFDistributor(LinearOperator):
         if partner != dofdex.domain[0]:
             raise ValueError("incorrect dofdex domain")
 
-        ldat = dofdex.local_data
+        ldat = dofdex.val
         if ldat.size == 0:  # can happen for weird configurations
             nbin = 0
         else:
             nbin = ldat.max()
         nbin = nbin + 1
         if partner.scalar_dvol is not None:
-            wgt = np.bincount(dofdex.local_data.ravel(), minlength=nbin)
+            wgt = np.bincount(dofdex.val.ravel(), minlength=nbin)
             wgt = wgt*partner.scalar_dvol
         else:
-            dvol = Field.from_global_data(partner, partner.dvol).local_data
-            wgt = np.bincount(dofdex.local_data.ravel(),
+            dvol = Field.from_global_data(partner, partner.dvol).val
+            wgt = np.bincount(dofdex.val.ravel(),
                               minlength=nbin, weights=dvol)
         # The explicit conversion to float64 is necessary because bincount
         # sometimes returns its result as an integer array, even when

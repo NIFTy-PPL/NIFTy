@@ -111,10 +111,10 @@ class MetricGaussianKL(Energy):
         for s in self._samples:
             tmp = self._hamiltonian(self._lin+s)
             if v is None:
-                v = tmp.val.local_data[()]
+                v = tmp.val.val[()]
                 g = tmp.gradient
             else:
-                v += tmp.val.local_data[()]
+                v += tmp.val.val[()]
                 g = g + tmp.gradient
         self._val = v / len(self._samples)
         self._grad = g * (1./len(self._samples))

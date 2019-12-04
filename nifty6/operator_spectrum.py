@@ -73,9 +73,9 @@ class _DomRemover(LinearOperator):
     @staticmethod
     def _check_float_dtype(fld):
         if isinstance(fld, MultiField):
-            dts = [ff.local_data.dtype for ff in fld.values()]
+            dts = [ff.dtype for ff in fld.values()]
         elif isinstance(fld, Field):
-            dts = [fld.local_data.dtype]
+            dts = [fld.dtype]
         else:
             raise TypeError
         for dt in dts:

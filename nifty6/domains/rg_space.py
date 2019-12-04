@@ -167,7 +167,7 @@ class RGSpace(StructuredDomain):
             raise NotImplementedError
         op = HarmonicTransformOperator(self, self.get_default_codomain())
         dist = op.target[0]._get_dist_array()
-        kernel = Field.from_local_data(op.target, func(dist.local_data))
+        kernel = Field(op.target, func(dist.val))
         kernel = kernel / kernel.integrate()
         return op.adjoint_times(kernel.weight(1))
 

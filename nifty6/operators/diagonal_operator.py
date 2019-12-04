@@ -130,15 +130,15 @@ class DiagonalOperator(EndomorphicOperator):
         self._check_input(x, mode)
         # shortcut for most common cases
         if mode == 1 or (not self._complex and mode == 2):
-            return Field.from_local_data(x.domain, x.local_data*self._ldiag)
+            return Field(x.domain, x.val*self._ldiag)
 
         xdiag = self._ldiag
         if self._complex and (mode & 10):  # adjoint or inverse adjoint
             xdiag = xdiag.conj()
 
         if mode & 3:
-            return Field.from_local_data(x.domain, x.local_data*xdiag)
-        return Field.from_local_data(x.domain, x.local_data/xdiag)
+            return Field(x.domain, x.val*xdiag)
+        return Field(x.domain, x.val/xdiag)
 
     def _flip_modes(self, trafo):
         if trafo == self.ADJOINT_BIT and not self._complex:  # shortcut

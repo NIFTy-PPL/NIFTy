@@ -320,10 +320,10 @@ class Linearization(object):
     def sinc(self):
         tmp = self._val.sinc()
         tmp2 = ((np.pi*self._val).cos()-tmp)/self._val
-        ind = self._val.local_data == 0
-        loc = tmp2.local_data.copy()
+        ind = self._val.val == 0
+        loc = tmp2.val.copy()
         loc[ind] = 0
-        tmp2 = Field.from_local_data(tmp.domain, loc)
+        tmp2 = Field(tmp.domain, loc)
         return self.new(tmp, makeOp(tmp2)(self._jac))
 
     def log(self):
@@ -370,10 +370,10 @@ class Linearization(object):
         tmp = self._val.absolute()
         tmp2 = self._val.sign()
 
-        ind = self._val.local_data == 0
-        loc = tmp2.local_data.copy().astype(float)
+        ind = self._val.val == 0
+        loc = tmp2.val.copy().astype(float)
         loc[ind] = np.nan
-        tmp2 = Field.from_local_data(tmp.domain, loc)
+        tmp2 = Field(tmp.domain, loc)
 
         return self.new(tmp, makeOp(tmp2)(self._jac))
 

@@ -42,7 +42,7 @@ class VdotOperator(LinearOperator):
         self._check_mode(mode)
         if mode == self.TIMES:
             return Field.scalar(self._field.vdot(x))
-        return self._field*x.local_data[()]
+        return self._field*x.val[()]
 
 
 class ConjugationOperator(EndomorphicOperator):
