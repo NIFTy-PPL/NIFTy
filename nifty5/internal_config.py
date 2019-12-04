@@ -21,7 +21,7 @@
 
 def parallelization_scheme():
     """Sets the MPI parallelization scheme according to the
-    environment variable `NIFTy_MPI_SCHEME`.
+    environment variable `NIFTY_MPI_SCHEME`.
 
     If not set, "Standard" parallelization is used.
 
@@ -48,7 +48,7 @@ def parallelization_scheme():
     "None":     Disables all parallelization.
     """
     import os
-    scheme = os.getenv("NIFTy_MPI_SCHEME", default="Standard")
+    scheme = os.getenv("NIFTY_MPI_SCHEME", default="Standard")
     if scheme not in ["Standard", "Samples", "None"]:
         raise ValueError("Unrecognized MPI parallelization scheme!")
     return scheme
