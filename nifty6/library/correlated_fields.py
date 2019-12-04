@@ -341,7 +341,6 @@ class CorrelatedFieldMaker:
     def __init__(self, amplitude_offset, prefix, total_N):
         assert isinstance(amplitude_offset, Operator)
         self._a = []
-        self._spaces = []
         self._position_spaces = []
 
         self._azm = amplitude_offset
@@ -421,11 +420,9 @@ class CorrelatedFieldMaker:
         if index is not None:
             self._a.insert(index, amp)
             self._position_spaces.insert(index, position_space)
-            self._spaces.insert(index, space)
         else:
             self._a.append(amp)
             self._position_spaces.append(position_space)
-            self._spaces.append(space)
 
     def _finalize_from_op(self):
         n_amplitudes = len(self._a)
@@ -433,29 +430,29 @@ class CorrelatedFieldMaker:
             hspace = makeDomain([UnstructuredDomain(self._total_N)] +
                                 [dd.target[-1].harmonic_partner
                                     for dd in self._a])
-            spaces = list(1 + np.arange(n_amplitudes))
+            spaces = tuple(range(1, n_amplitudes + 1))
+            amp_space = 1
         else:
             hspace = makeDomain(
                      [dd.target[0].harmonic_partner for dd in self._a])
             spaces = tuple(range(n_amplitudes))
-            spaces = list(np.arange(n_amplitudes))
+            amp_space = 0
 
         expander = ContractionOperator(hspace, spaces=spaces).adjoint
         azm = expander @ self._azm
 
-        # spaces = np.array(range(n_amplitudes)) + 1 - 1//self._total_N
         ht = HarmonicTransformOperator(hspace,
-                                       self._position_spaces[0][self._spaces[0]],
+                                       self._position_spaces[0][amp_space],
                                        space=spaces[0])
         for i in range(1, n_amplitudes):
             ht = (HarmonicTransformOperator(ht.target,
-                                            self._position_spaces[i][self._spaces[i]],
+                                            self._position_spaces[i][amp_space],
                                             space=spaces[i]) @ ht)
 
-        pd = PowerDistributor(hspace, self._a[0].target[self._spaces[0]], self._spaces[0])
+        pd = PowerDistributor(hspace, self._a[0].target[amp_space], amp_space)
         for i in range(1, n_amplitudes):
             pd = (pd @ PowerDistributor(pd.domain,
-                                        self._a[i].target[self._spaces[i]],
+                                        self._a[i].target[amp_space],
                                         space=spaces[i]))
 
         a = ContractionOperator(pd.domain, spaces[1:]).adjoint @ self._a[0]
@@ -523,7 +520,8 @@ class CorrelatedFieldMaker:
                  ' no unique set of amplitudes exist because only the',
                  ' relative scale is determined.')
             raise NotImplementedError(s)
-        expand = VdotOperator(full(self._a[0].target, 1)).adjoint
+        dom = self._a[0].target
+        expand = ContractionOperator(dom, len(dom)-1).adjoint
         return self._a[0]*(expand @ self.amplitude_total_offset)
 
     @property
