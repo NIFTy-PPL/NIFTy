@@ -20,6 +20,35 @@
 # Leave unchanged unless you know what you are doing!
 
 def parallelization_scheme():
-    return "Standard"
-    # return "Samples"
-    # return "None"
+    """Sets the MPI parallelization scheme according to the
+    environment variable `NIFTY_MPI_SCHEME`.
+
+    If not set, "Standard" parallelization is used.
+
+    Possible Values:
+    ---------------
+
+    "Standard": Fields are distributed over all MPI instances
+                along their first axis.
+                This mode is useful if the fields involved are
+                too large for the memory of a single machine,
+                otherwise it is not recommended.
+
+    "Samples":  :class:`MetricGaussianKL_MPI` becomes available.
+                The :class:`MetricGaussianKL` usually has
+                multiple samples for which it needs to perform
+                the same calculations.
+                :class:`MetricGaussianKL_MPI` distributes these
+                calculations to the MPI instances by sample.
+                This mode is useful when the "Standard" mode
+                is not needed and the calculations w.r.t. each
+                sample take long w.r.t. the MPI communication
+                overhead introduced by the parallelization.
+
+    "None":     Disables all parallelization.
+    """
+    import os
+    scheme = os.getenv("NIFTY_MPI_SCHEME", default="Standard")
+    if scheme not in ["Standard", "Samples", "None"]:
+        raise ValueError("Unrecognized MPI parallelization scheme!")
+    return scheme
