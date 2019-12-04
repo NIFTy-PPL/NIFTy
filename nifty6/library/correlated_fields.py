@@ -32,6 +32,8 @@ from ..operators.operator import Operator
 from ..operators.simple_linear_operators import VdotOperator, ducktape
 from ..probing import StatCalculator
 from ..sugar import from_global_data, full, makeDomain
+from ..field import Field
+from ..multi_field import MultiField
 
 
 def _reshaper(x, N):
@@ -467,11 +469,16 @@ class CorrelatedFieldMaker:
         """
         offset vs zeromode: volume factor
         """
-        if offset is not None:
-            raise NotImplementedError
-            offset = float(offset)
-
         op = self._finalize_from_op()
+        if offset is not None:
+            # Deviations from this offset must not be considered here as they
+            # are learned by the zeromode
+            if isinstance(offset, (Field, MultiField)):
+                op = Adder(offset) @ op
+            else:
+                offset = float(offset)
+                op = Adder(full(op.target, offset)) @ op
+
         if prior_info > 0:
             from ..sugar import from_random
             samps = [
