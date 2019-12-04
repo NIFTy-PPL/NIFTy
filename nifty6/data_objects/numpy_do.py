@@ -18,141 +18,15 @@
 # Data object module that uses simple numpy ndarrays.
 
 import numpy as np
-from numpy import ndarray as data_object
-from numpy import empty, empty_like, ones, zeros, full
-from numpy import absolute, sign, clip, vdot
-from numpy import sin, cos, sinh, cosh, tan, tanh
-from numpy import exp, log, log10, sqrt, sinc, log1p, expm1
+#from numpy import ndarray as data_object
+#from numpy import empty, empty_like, ones, zeros, full
+#from numpy import absolute, sign, clip, vdot
+#from numpy import sin, cos, sinh, cosh, tan, tanh
+#from numpy import exp, log, log10, sqrt, sinc, log1p, expm1
 
 from .random import Random
-
-__all__ = ["ntask", "rank", "master", "local_shape", "data_object", "full",
-           "empty", "zeros", "ones", "empty_like", "vdot", "exp",
-           "log", "tanh", "sqrt", "from_object", "from_random",
-           "local_data", "ibegin", "ibegin_from_shape", "np_allreduce_sum",
-           "np_allreduce_min", "np_allreduce_max",
-           "distaxis", "from_local_data", "from_global_data", "to_global_data",
-           "redistribute", "default_distaxis", "is_numpy", "absmax", "norm",
-           "lock", "locked", "uniform_full", "to_global_data_rw",
-           "ensure_not_distributed", "ensure_default_distributed",
-           "clip", "sin", "cos", "tan", "sinh", "cosh",
-           "absolute", "sign", "sinc", "log10", "log1p", "expm1"]
-
-ntask = 1
-rank = 0
-master = True
-
-
-def is_numpy():
-    return True
-
-
-def from_object(object, dtype, copy, set_locked):
-    if dtype is None:
-        dtype = object.dtype
-    dtypes_equal = dtype == object.dtype
-    if set_locked and dtypes_equal and locked(object):
-        return object
-    if not dtypes_equal and not copy:
-        raise ValueError("cannot change data type without copying")
-    if set_locked and not copy:
-        raise ValueError("cannot lock object without copying")
-    res = np.array(object, dtype=dtype, copy=copy)
-    if set_locked:
-        lock(res)
-    return res
 
 
 def from_random(random_type, shape, dtype=np.float64, **kwargs):
     generator_function = getattr(Random, random_type)
     return generator_function(dtype=dtype, shape=shape, **kwargs)
-
-
-def local_data(arr):
-    return arr
-
-
-def ibegin_from_shape(glob_shape, distaxis=-1):
-    return (0,)*len(glob_shape)
-
-
-def ibegin(arr):
-    return (0,)*arr.ndim
-
-
-def np_allreduce_sum(arr):
-    return arr
-
-
-def np_allreduce_min(arr):
-    return arr
-
-
-def np_allreduce_max(arr):
-    return arr
-
-
-def distaxis(arr):
-    return -1
-
-
-def from_local_data(shape, arr, distaxis=-1):
-    if tuple(shape) != arr.shape:
-        raise ValueError
-    if arr.dtype.kind not in "fciub":
-        raise TypeError
-    return arr
-
-
-def from_global_data(arr, sum_up=False, distaxis=-1):
-    if arr.dtype.kind not in "fciub":
-        raise TypeError
-    return arr
-
-
-def to_global_data(arr):
-    return arr
-
-
-def to_global_data_rw(arr):
-    return arr.copy()
-
-
-def redistribute(arr, dist=None, nodist=None):
-    return arr
-
-
-def default_distaxis():
-    return -1
-
-
-def local_shape(glob_shape, distaxis=-1):
-    return glob_shape
-
-
-def lock(arr):
-    arr.flags.writeable = False
-
-
-def locked(arr):
-    return not arr.flags.writeable
-
-
-def uniform_full(shape, fill_value, dtype=None, distaxis=-1):
-    return np.broadcast_to(fill_value, shape)
-
-
-def ensure_not_distributed(arr, axes):
-    return arr, arr
-
-
-def ensure_default_distributed(arr):
-    return arr
-
-
-def absmax(arr):
-    return np.linalg.norm(arr.reshape(-1), ord=np.inf)
-
-
-def norm(arr, ord=2):
-    return np.linalg.norm(arr.reshape(-1), ord=ord)

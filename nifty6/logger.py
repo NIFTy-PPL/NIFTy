@@ -18,16 +18,12 @@
 
 def _logger_init():
     import logging
-    from . import dobj
     res = logging.getLogger('NIFTy6')
     res.setLevel(logging.DEBUG)
     res.propagate = False
-    if dobj.rank == 0:
-        ch = logging.StreamHandler()
-        ch.setLevel(logging.DEBUG)
-        res.addHandler(ch)
-    else:
-        res.addHandler(logging.NullHandler())
+    ch = logging.StreamHandler()
+    ch.setLevel(logging.DEBUG)
+    res.addHandler(ch)
     return res
 
 

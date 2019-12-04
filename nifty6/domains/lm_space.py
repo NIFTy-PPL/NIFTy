@@ -87,7 +87,7 @@ class LMSpace(StructuredDomain):
         for m in range(1, mmax+1):
             ldist[idx:idx+2*(lmax+1-m)] = tmp[2*m:]
             idx += 2*(lmax+1-m)
-        return Field.from_global_data(self, ldist)
+        return Field.from_arr(self, ldist)
 
     def get_unique_k_lengths(self):
         return np.arange(self.lmax+1, dtype=np.float64)

@@ -20,7 +20,6 @@ from scipy.sparse import coo_matrix
 from scipy.sparse.linalg import aslinearoperator
 from scipy.special import erfc
 
-from .. import dobj
 from ..domain_tuple import DomainTuple
 from ..domains.rg_space import RGSpace
 from ..domains.unstructured_domain import UnstructuredDomain
@@ -164,11 +163,6 @@ class LOSResponse(LinearOperator):
         if starts.shape != ends.shape:
             raise TypeError("dimension mismatch")
 
-        self._local_shape = dobj.local_shape(self.domain[0].shape)
-        local_zero_point = (np.array(
-            dobj.ibegin_from_shape(self.domain[0].shape)) *
-            np.array(self.domain[0].distances))
-
         diffs = ends-starts
         difflen = np.linalg.norm(diffs, axis=0)
         diffs /= difflen
@@ -177,10 +171,9 @@ class LOSResponse(LinearOperator):
             raise ValueError("parallax error truncation to high: "
                              "getting negative distances")
         real_ends = starts + diffs*real_distances
-        lzp = local_zero_point.reshape((-1, 1))
         dist = np.array(self.domain[0].distances).reshape((-1, 1))
-        localized_pixel_starts = (starts-lzp)/dist + 0.5
-        localized_pixel_ends = (real_ends-lzp)/dist + 0.5
+        localized_pixel_starts = starts/dist + 0.5
+        localized_pixel_ends = real_ends/dist + 0.5
 
         # get the shape of the local data slice
         w_i = _comp_traverse(localized_pixel_starts,

@@ -19,7 +19,6 @@ import os
 
 import numpy as np
 
-from . import dobj
 from .domains.gl_space import GLSpace
 from .domains.hp_space import HPSpace
 from .domains.power_space import PowerSpace
@@ -172,9 +171,6 @@ def _find_closest(A, target):
 
 def _makeplot(name, block=True, dpi=None):
     import matplotlib.pyplot as plt
-    if dobj.rank != 0:
-        plt.close()
-        return
     if name is None:
         plt.show(block=block)
         if block:

@@ -18,7 +18,7 @@
 from functools import reduce
 import numpy as np
 
-from . import dobj, utilities
+from . import utilities
 from .domain_tuple import DomainTuple
 
 
@@ -47,16 +47,16 @@ class Field(object):
     def __init__(self, domain, val):
         if not isinstance(domain, DomainTuple):
             raise TypeError("domain must be of type DomainTuple")
-        if type(val) is not dobj.data_object:
+        if not isinstance(val, np.ndarray):
             if np.isscalar(val):
-                val = dobj.full(domain.shape, val)
+                val = np.full(domain.shape, val)
             else:
-                raise TypeError("val must be of type dobj.data_object")
+                raise TypeError("val must be of type numpy.ndarray")
         if domain.shape != val.shape:
             raise ValueError("shape mismatch between val and domain")
         self._domain = domain
         self._val = val
-        dobj.lock(self._val)
+        self._val.flags.writeable = False
 
     @staticmethod
     def scalar(val):
@@ -93,7 +93,7 @@ class Field(object):
         return Field(domain, val)
 
     @staticmethod
-    def from_global_data(domain, arr, sum_up=False):
+    def from_arr(domain, arr):
         """Returns a Field constructed from `domain` and `arr`.
 
         Parameters
@@ -103,49 +103,8 @@ class Field(object):
         arr : numpy.ndarray
             The data content to be used for the new Field.
             Its shape must match the shape of `domain`.
-        sum_up : bool, optional
-            If True, the contents of `arr` are summed up over all MPI tasks
-            (if any), and the sum is used as data content.
-            If False, the contens of `arr` are used directly, and must be
-            identical on all MPI tasks.
         """
-        return Field(DomainTuple.make(domain),
-                     dobj.from_global_data(arr, sum_up))
-
-    @staticmethod
-    def from_local_data(domain, arr):
-        return Field(DomainTuple.make(domain),
-                     dobj.from_local_data(domain.shape, arr))
-
-    def to_global_data(self):
-        """Returns an array containing the full data of the field.
-
-        Returns
-        -------
-        numpy.ndarray : array containing all field entries.
-            Its shape is identical to `self.shape`.
-        """
-        return dobj.to_global_data(self._val)
-
-    def to_global_data_rw(self):
-        """Returns a modifiable array containing the full data of the field.
-
-        Returns
-        -------
-        numpy.ndarray
-            Array containing all field entries, which can be modified. Its
-            shape is identical to `self.shape`.
-        """
-        return dobj.to_global_data_rw(self._val)
-
-    @property
-    def local_data(self):
-        """numpy.ndarray : locally residing field data
-
-        Returns a handle to the part of the array data residing on the local
-        task (or to the entore array if MPI is not active).
-        """
-        return dobj.local_data(self._val)
+        return Field(DomainTuple.make(domain), arr)
 
     def cast_domain(self, new_domain):
         """Returns a field with the same data, but a different domain
@@ -181,6 +140,7 @@ class Field(object):
         Field
             The newly created Field.
         """
+        from . import dobj
         domain = DomainTuple.make(domain)
         return Field(domain=domain,
                      val=dobj.from_random(random_type, dtype=dtype,
@@ -188,7 +148,7 @@ class Field(object):
 
     @property
     def val(self):
-        """dobj.data_object : the data object storing the field's entries.
+        """numpy.ndarray : the data object storing the field's entries.
 
         Notes
         -----
@@ -281,7 +241,7 @@ class Field(object):
         Field
             The weighted field.
         """
-        aout = self.local_data.copy()
+        aout = self.val.copy()
 
         spaces = utilities.parse_spaces(spaces, len(self._domain))
 
@@ -295,15 +255,12 @@ class Field(object):
                 new_shape[self._domain.axes[ind][0]:
                           self._domain.axes[ind][-1]+1] = wgt.shape
                 wgt = wgt.reshape(new_shape)
-                if dobj.distaxis(self._val) >= 0 and ind == 0:
-                    # we need to distribute the weights along axis 0
-                    wgt = dobj.local_data(dobj.from_global_data(wgt))
                 aout *= wgt**power
         fct = fct**power
         if fct != 1.:
             aout *= fct
 
-        return Field.from_local_data(self._domain, aout)
+        return Field(self._domain, aout)
 
     def outer(self, x):
         """Computes the outer product of 'self' with x.
@@ -351,7 +308,7 @@ class Field(object):
         spaces = utilities.parse_spaces(spaces, ndom)
 
         if len(spaces) == ndom:
-            return dobj.vdot(self._val, x._val)
+            return np.vdot(self._val, x._val)
         # If we arrive here, we have to do a partial dot product.
         # For the moment, do this the explicit, non-optimized way
         return (self.conjugate()*x).sum(spaces=spaces)
@@ -369,7 +326,7 @@ class Field(object):
         float
             The L2-norm of the field values.
         """
-        return dobj.norm(self._val, ord)
+        return np.linalg.norm(self._val.reshape(-1), ord=ord)
 
     def conjugate(self):
         """Returns the complex conjugate of the field.
@@ -622,9 +579,9 @@ class Field(object):
         return 0.5*(1.+self.tanh())
 
     def clip(self, min=None, max=None):
-        min = min.local_data if isinstance(min, Field) else min
-        max = max.local_data if isinstance(max, Field) else max
-        return Field(self._domain, dobj.clip(self._val, min, max))
+        min = min.val if isinstance(min, Field) else min
+        max = max.val if isinstance(max, Field) else max
+        return Field(self._domain, np.clip(self._val, min, max))
 
     def one_over(self):
         return 1/self
@@ -667,6 +624,6 @@ for f in ["sqrt", "exp", "log", "sin", "cos", "tan", "sinh", "cosh", "tanh",
           "absolute", "sinc", "sign", "log10", "log1p", "expm1"]:
     def func(f):
         def func2(self):
-            return Field(self._domain, getattr(dobj, f)(self.val))
+            return Field(self._domain, getattr(np, f)(self.val))
         return func2
     setattr(Field, f, func(f))

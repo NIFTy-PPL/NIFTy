@@ -17,7 +17,6 @@
 
 import numpy as np
 
-from .. import dobj
 from .structured_domain import StructuredDomain
 
 
@@ -176,26 +175,20 @@ class PowerSpace(StructuredDomain):
                 tbb = 0.5*(tmp[:-1]+tmp[1:])
             else:
                 tbb = binbounds
-            locdat = np.searchsorted(tbb, k_length_array.local_data)
-            temp_pindex = dobj.from_local_data(
-                k_length_array.val.shape, locdat,
-                dobj.distaxis(k_length_array.val))
+            temp_pindex = np.searchsorted(tbb, k_length_array.val)
             nbin = len(tbb)+1
-            temp_rho = np.bincount(dobj.local_data(temp_pindex).ravel(),
-                                   minlength=nbin)
-            temp_rho = dobj.np_allreduce_sum(temp_rho)
+            temp_rho = np.bincount(temp_pindex.ravel(), minlength=nbin)
             if (temp_rho == 0).any():
                 raise ValueError("empty bins detected")
             # The explicit conversion to float64 is necessary because bincount
             # sometimes returns its result as an integer array, even when
             # floating-point weights are present ...
-            temp_k_lengths = np.bincount(
-                dobj.local_data(temp_pindex).ravel(),
-                weights=k_length_array.local_data.ravel(),
+            temp_k_lengths = np.bincount(temp_pindex.ravel(),
+                weights=k_length_array.val.ravel(),
                 minlength=nbin).astype(np.float64, copy=False)
-            temp_k_lengths = dobj.np_allreduce_sum(temp_k_lengths) / temp_rho
+            temp_k_lengths = temp_k_lengths / temp_rho
             temp_k_lengths.flags.writeable = False
-            dobj.lock(temp_pindex)
+            temp_pindex.flags.writeable = False
             temp_dvol = temp_rho*pdvol
             temp_dvol.flags.writeable = False
             self._powerIndexCache[key] = (binbounds, temp_pindex,

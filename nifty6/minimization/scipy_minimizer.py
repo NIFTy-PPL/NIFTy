@@ -17,7 +17,6 @@
 
 import numpy as np
 
-from .. import dobj
 from ..field import Field
 from ..logger import logger
 from ..multi_field import MultiField
@@ -105,8 +104,6 @@ class _ScipyMinimizer(Minimizer):
     """
 
     def __init__(self, method, options, need_hessp, bounds):
-        if not dobj.is_numpy():
-            raise NotImplementedError
         self._method = method
         self._options = options
         self._need_hessp = need_hessp
@@ -155,8 +152,6 @@ class _ScipyCG(Minimizer):
     gradient implementation and should not be used otherwise.
     """
     def __init__(self, tol, maxiter):
-        if not dobj.is_numpy():
-            raise NotImplementedError
         self._tol = tol
         self._maxiter = maxiter
 

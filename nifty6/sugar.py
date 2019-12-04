@@ -20,7 +20,7 @@ from time import time
 
 import numpy as np
 
-from . import dobj, utilities
+from . import utilities
 from .domain_tuple import DomainTuple
 from .domains.power_space import PowerSpace
 from .field import Field
@@ -61,7 +61,7 @@ def PS_field(pspace, func):
     """
     if not isinstance(pspace, PowerSpace):
         raise TypeError
-    data = dobj.from_global_data(func(pspace.k_lengths))
+    data = func(pspace.k_lengths)
     return Field(DomainTuple.make(pspace), data)
 
 
@@ -280,7 +280,7 @@ def from_random(random_type, domain, dtype=np.float64, **kwargs):
     return Field.from_random(random_type, domain, dtype, **kwargs)
 
 
-def from_global_data(domain, arr, sum_up=False):
+def from_global_data(domain, arr):
     """Convenience function creating Fields/MultiFields from Numpy arrays or
     dicts of Numpy arrays.
 
@@ -290,11 +290,6 @@ def from_global_data(domain, arr, sum_up=False):
         the intended domain of the output field
     arr : Numpy array if `domain` corresponds to a `DomainTuple`,
           dictionary of Numpy arrays if `domain` corresponds to a `MultiDomain`
-    sum_up : bool
-        Only meaningful if MPI is enabled
-        If `True`, the contents of the arrays on all tasks are added together,
-        otherwise it is assumed that the array on each task holds the correct
-        field values.
 
     Returns
     -------
@@ -303,7 +298,7 @@ def from_global_data(domain, arr, sum_up=False):
     """
     if isinstance(domain, (dict, MultiDomain)):
         return MultiField.from_global_data(domain, arr, sum_up)
-    return Field.from_global_data(domain, arr, sum_up)
+    return Field.from_arr(domain, arr)
 
 
 def from_local_data(domain, arr):
@@ -324,7 +319,7 @@ def from_local_data(domain, arr):
     """
     if isinstance(domain, (dict, MultiDomain)):
         return MultiField.from_local_data(domain, arr)
-    return Field.from_local_data(domain, arr)
+    return Field.from_arr(domain, arr)
 
 
 def makeDomain(domain):

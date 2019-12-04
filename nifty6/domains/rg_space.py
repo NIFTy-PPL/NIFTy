@@ -18,7 +18,6 @@
 from functools import reduce
 import numpy as np
 
-from .. import dobj
 from ..field import Field
 from .structured_domain import StructuredDomain
 
@@ -95,18 +94,17 @@ class RGSpace(StructuredDomain):
         return self._dvol
 
     def _get_dist_array(self):
-        ibegin = dobj.ibegin_from_shape(self._shape)
-        res = np.arange(self.local_shape[0], dtype=np.float64) + ibegin[0]
+        res = np.arange(self.shape[0], dtype=np.float64)
         res = np.minimum(res, self.shape[0]-res)*self.distances[0]
         if len(self.shape) == 1:
-            return Field.from_local_data(self, res)
+            return Field.from_arr(self, res)
         res *= res
         for i in range(1, len(self.shape)):
-            tmp = np.arange(self.local_shape[i], dtype=np.float64) + ibegin[i]
+            tmp = np.arange(self.shape[i], dtype=np.float64)
             tmp = np.minimum(tmp, self.shape[i]-tmp)*self.distances[i]
             tmp *= tmp
             res = np.add.outer(res, tmp)
-        return Field.from_local_data(self, np.sqrt(res))
+        return Field.from_arr(self, np.sqrt(res))
 
     def get_k_length_array(self):
         if (not self.harmonic):
@@ -133,8 +131,7 @@ class RGSpace(StructuredDomain):
             tmp[t2] = True
             return np.sqrt(np.nonzero(tmp)[0])*self.distances[0]
         else:  # do it the hard way
-            # FIXME: this needs to improve for MPI. Maybe unique()/gather()?
-            tmp = self.get_k_length_array().to_global_data()
+            tmp = self.get_k_length_array().val
             tmp = np.unique(tmp)
             tol = 1e-12*tmp[-1]
             # remove all points that are closer than tol to their right

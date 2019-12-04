@@ -17,7 +17,7 @@
 
 import numpy as np
 
-from .. import dobj, utilities, fft
+from .. import utilities, fft
 from ..domain_tuple import DomainTuple
 from ..domains.gl_space import GLSpace
 from ..domains.lm_space import LMSpace
@@ -81,37 +81,7 @@ class FFTOperator(LinearOperator):
             fct = ncells
         axes = x.domain.axes[self._space]
         tdom = self._tgt(mode)
-        oldax = dobj.distaxis(x.val)
-        if oldax not in axes:  # straightforward, no redistribution needed
-            ldat = x.local_data
-            ldat = func(ldat, axes=axes)
-            tmp = dobj.from_local_data(x.val.shape, ldat, distaxis=oldax)
-        elif len(axes) < len(x.shape) or len(axes) == 1:
-            # we can use one FFT pass in between the redistributions
-            tmp = dobj.redistribute(x.val, nodist=axes)
-            newax = dobj.distaxis(tmp)
-            ldat = dobj.local_data(tmp)
-            ldat = func(ldat, axes=axes)
-            tmp = dobj.from_local_data(tmp.shape, ldat, distaxis=newax)
-            tmp = dobj.redistribute(tmp, dist=oldax)
-        else:  # two separate FFTs needed
-            rem_axes = tuple(i for i in axes if i != oldax)
-            tmp = x.val
-            ldat = dobj.local_data(tmp)
-            ldat = func(ldat, axes=rem_axes)
-            if oldax != 0:
-                raise ValueError("bad distribution")
-            ldat2 = ldat.reshape((ldat.shape[0],
-                                  np.prod(ldat.shape[1:])))
-            shp2d = (x.val.shape[0], np.prod(x.val.shape[1:]))
-            tmp = dobj.from_local_data(shp2d, ldat2, distaxis=0)
-            tmp = dobj.transpose(tmp)
-            ldat2 = dobj.local_data(tmp)
-            ldat2 = func(ldat2, axes=(1,))
-            tmp = dobj.from_local_data(tmp.shape, ldat2, distaxis=0)
-            tmp = dobj.transpose(tmp)
-            ldat2 = dobj.local_data(tmp).reshape(ldat.shape)
-            tmp = dobj.from_local_data(x.val.shape, ldat2, distaxis=0)
+        tmp = func(x.val, axes=axes)
         Tval = Field(tdom, tmp)
         if mode & (LinearOperator.TIMES | LinearOperator.ADJOINT_TIMES):
             fct *= self._domain[self._space].scalar_dvol
@@ -178,45 +148,7 @@ class HartleyOperator(LinearOperator):
     def _apply_cartesian(self, x, mode):
         axes = x.domain.axes[self._space]
         tdom = self._tgt(mode)
-        oldax = dobj.distaxis(x.val)
-        if oldax not in axes:  # straightforward, no redistribution needed
-            ldat = x.local_data
-            ldat = fft.hartley(ldat, axes=axes)
-            tmp = dobj.from_local_data(x.val.shape, ldat, distaxis=oldax)
-        elif len(axes) < len(x.shape) or len(axes) == 1:
-            # we can use one Hartley pass in between the redistributions
-            tmp = dobj.redistribute(x.val, nodist=axes)
-            newax = dobj.distaxis(tmp)
-            ldat = dobj.local_data(tmp)
-            ldat = fft.hartley(ldat, axes=axes)
-            tmp = dobj.from_local_data(tmp.shape, ldat, distaxis=newax)
-            tmp = dobj.redistribute(tmp, dist=oldax)
-        else:  # two separate, full FFTs needed
-            # ideal strategy for the moment would be:
-            # - do real-to-complex FFT on all local axes
-            # - fill up array
-            # - redistribute array
-            # - do complex-to-complex FFT on remaining axis
-            # - add re+im
-            # - redistribute back
-            rem_axes = tuple(i for i in axes if i != oldax)
-            tmp = x.val
-            ldat = dobj.local_data(tmp)
-            ldat = fft.fftn(ldat, axes=rem_axes)
-            if oldax != 0:
-                raise ValueError("bad distribution")
-            ldat2 = ldat.reshape((ldat.shape[0],
-                                  np.prod(ldat.shape[1:])))
-            shp2d = (x.val.shape[0], np.prod(x.val.shape[1:]))
-            tmp = dobj.from_local_data(shp2d, ldat2, distaxis=0)
-            tmp = dobj.transpose(tmp)
-            ldat2 = dobj.local_data(tmp)
-            ldat2 = fft.fftn(ldat2, axes=(1,))
-            ldat2 = ldat2.real+ldat2.imag
-            tmp = dobj.from_local_data(tmp.shape, ldat2, distaxis=0)
-            tmp = dobj.transpose(tmp)
-            ldat2 = dobj.local_data(tmp).reshape(ldat.shape)
-            tmp = dobj.from_local_data(x.val.shape, ldat2, distaxis=0)
+        tmp = fft.hartley(x.val, axes=axes)
         Tval = Field(tdom, tmp)
         if mode & (LinearOperator.TIMES | LinearOperator.ADJOINT_TIMES):
             fct = self._domain[self._space].scalar_dvol
@@ -318,18 +250,14 @@ class SHTOperator(LinearOperator):
         axes = x.domain.axes[self._space]
         axis = axes[0]
         v = x.val
-        v, idat = dobj.ensure_not_distributed(v, (axis,))
-        distaxis = dobj.distaxis(v)
 
         p2h = not x.domain[self._space].harmonic
         tdom = self._tgt(mode)
         func = self._slice_p2h if p2h else self._slice_h2p
-        odat = np.empty(dobj.local_shape(tdom.shape, distaxis=distaxis),
-                        dtype=x.dtype)
-        for slice in utilities.get_slice_list(idat.shape, axes):
-            odat[slice] = func(idat[slice])
-        odat = dobj.from_local_data(tdom.shape, odat, distaxis)
-        return Field(tdom, dobj.ensure_default_distributed(odat))
+        odat = np.empty(tdom.shape, dtype=x.dtype)
+        for slice in utilities.get_slice_list(v.shape, axes):
+            odat[slice] = func(v[slice])
+        return Field(tdom, odat)
 
 
 def _unpickleSHTOperator(*args):

@@ -17,7 +17,6 @@
 
 import numpy as np
 
-from .. import dobj
 from ..domain_tuple import DomainTuple
 from ..domains.rg_space import RGSpace
 from ..field import Field
@@ -81,18 +80,15 @@ class RegriddingOperator(LinearOperator):
             idx = (slice(None),) * d
             wgt = self._frac[d-d0].reshape((1,)*d + (-1,) + (1,)*(ndim-d-1))
 
-            v, x = dobj.ensure_not_distributed(v, (d,))
-
             if mode == self.ADJOINT_TIMES:
-                shp = list(x.shape)
+                shp = list(v.shape)
                 shp[d] = tgtshp[d]
-                xnew = np.zeros(shp, dtype=x.dtype)
-                xnew = special_add_at(xnew, d, self._bindex[d-d0], x*(1.-wgt))
-                xnew = special_add_at(xnew, d, self._bindex[d-d0]+1, x*wgt)
+                xnew = np.zeros(shp, dtype=v.dtype)
+                xnew = special_add_at(xnew, d, self._bindex[d-d0], v*(1.-wgt))
+                xnew = special_add_at(xnew, d, self._bindex[d-d0]+1, v*wgt)
             else:  # TIMES
-                xnew = x[idx + (self._bindex[d-d0],)] * (1.-wgt)
-                xnew += x[idx + (self._bindex[d-d0]+1,)] * wgt
+                xnew = v[idx + (self._bindex[d-d0],)] * (1.-wgt)
+                xnew += v[idx + (self._bindex[d-d0]+1,)] * wgt
 
             curshp[d] = xnew.shape[d]
-            v = dobj.from_local_data(curshp, xnew, distaxis=dobj.distaxis(v))
-        return Field(self._tgt(mode), dobj.ensure_default_distributed(v))
+        return Field(self._tgt(mode), xnew)

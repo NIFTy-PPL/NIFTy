@@ -28,7 +28,7 @@ SPACE_COMBINATIONS = [(), SPACES[0], SPACES[1], SPACES]
 
 @pmp('domain', SPACE_COMBINATIONS)
 @pmp('attribute_desired_type',
-     [['domain', ift.DomainTuple], ['val', ift.dobj.data_object],
+     [['domain', ift.DomainTuple], ['val', np.ndarray],
       ['shape', tuple], ['size', (np.int, np.int64)]])
 def test_return_types(domain, attribute_desired_type):
     attribute = attribute_desired_type[0]
@@ -72,8 +72,8 @@ def test_power_synthesize_analyze(space1, space2):
         sc1.add(sp.sum(spaces=1)/fp2.sum())
         sc2.add(sp.sum(spaces=0)/fp1.sum())
 
-    assert_allclose(sc1.mean.local_data, fp1.local_data, rtol=0.2)
-    assert_allclose(sc2.mean.local_data, fp2.local_data, rtol=0.2)
+    assert_allclose(sc1.mean.val, fp1.val, rtol=0.2)
+    assert_allclose(sc2.mean.val, fp2.val, rtol=0.2)
 
 
 @pmp('space1', [
@@ -101,8 +101,8 @@ def test_DiagonalOperator_power_analyze2(space1, space2):
         sc1.add(sp.sum(spaces=1)/fp2.sum())
         sc2.add(sp.sum(spaces=0)/fp1.sum())
 
-    assert_allclose(sc1.mean.local_data, fp1.local_data, rtol=0.2)
-    assert_allclose(sc2.mean.local_data, fp2.local_data, rtol=0.2)
+    assert_allclose(sc1.mean.val, fp1.val, rtol=0.2)
+    assert_allclose(sc2.mean.val, fp2.val, rtol=0.2)
 
 
 @pmp('space', [
@@ -112,7 +112,7 @@ def test_DiagonalOperator_power_analyze2(space1, space2):
 ])
 def test_norm(space):
     f = ift.Field.from_random("normal", domain=space, dtype=np.complex128)
-    gd = f.to_global_data().reshape(-1)
+    gd = f.val.reshape(-1)
     assert_allclose(f.norm(), np.linalg.norm(gd))
     assert_allclose(f.norm(1), np.linalg.norm(gd, ord=1))
     assert_allclose(f.norm(2), np.linalg.norm(gd, ord=2))
@@ -133,7 +133,7 @@ def test_vdot2():
     x2 = ift.RGSpace((150,))
     m = ift.Field.full((x1, x2), .5)
     res = m.vdot(m, spaces=1)
-    assert_allclose(res.local_data, 37.5)
+    assert_allclose(res.val, 37.5)
 
 
 def test_outer():
@@ -142,7 +142,7 @@ def test_outer():
     m1 = ift.Field.full(x1, .5)
     m2 = ift.Field.full(x2, 3.)
     res = m1.outer(m2)
-    assert_allclose(res.to_global_data(), np.full((9, 3), 1.5))
+    assert_allclose(res.val, np.full((9, 3), 1.5))
 
 
 def test_sum():
@@ -152,62 +152,62 @@ def test_sum():
             2,
             12,
         ), distances=(0.3,))
-    m1 = ift.Field.from_global_data(ift.makeDomain(x1), np.arange(9))
+    m1 = ift.Field(ift.makeDomain(x1), np.arange(9))
     m2 = ift.Field.full(ift.makeDomain((x1, x2)), 0.45)
     res1 = m1.sum()
     res2 = m2.sum(spaces=1)
     assert_allclose(res1, 36)
-    assert_allclose(res2.to_global_data(), np.full(9, 2*12*0.45))
+    assert_allclose(res2.val, np.full(9, 2*12*0.45))
 
 
 def test_integrate():
     x1 = ift.RGSpace((9,), distances=2.)
     x2 = ift.RGSpace((2, 12), distances=(0.3,))
-    m1 = ift.Field.from_global_data(ift.makeDomain(x1), np.arange(9))
+    m1 = ift.Field(ift.makeDomain(x1), np.arange(9))
     m2 = ift.Field.full(ift.makeDomain((x1, x2)), 0.45)
     res1 = m1.integrate()
     res2 = m2.integrate(spaces=1)
     assert_allclose(res1, 36*2)
-    assert_allclose(res2.to_global_data(), np.full(9, 2*12*0.45*0.3**2))
+    assert_allclose(res2.val, np.full(9, 2*12*0.45*0.3**2))
 
 
 def test_dataconv():
     s1 = ift.RGSpace((10,))
-    ld = np.arange(ift.dobj.local_shape(s1.shape)[0])
+    ld = np.arange(s1.shape[0])
     gd = np.arange(s1.shape[0])
-    assert_equal(ld, ift.from_local_data(s1, ld).local_data)
-    assert_equal(gd, ift.from_global_data(s1, gd).to_global_data())
+    assert_equal(ld, ift.from_local_data(s1, ld).val)
+    assert_equal(gd, ift.from_global_data(s1, gd).val)
 
 
 def test_cast_domain():
     s1 = ift.RGSpace((10,))
     s2 = ift.RGSpace((10,), distances=20.)
     d = np.arange(s1.shape[0])
-    d2 = ift.from_global_data(s1, d).cast_domain(s2).to_global_data()
+    d2 = ift.from_global_data(s1, d).cast_domain(s2).val
     assert_equal(d, d2)
 
 
 def test_empty_domain():
     f = ift.Field.full((), 5)
-    assert_equal(f.local_data, 5)
+    assert_equal(f.val, 5)
     f = ift.Field.full(None, 5)
-    assert_equal(f.local_data, 5)
+    assert_equal(f.val, 5)
 
 
 def test_trivialities():
     s1 = ift.RGSpace((10,))
     f1 = ift.Field.full(s1, 27)
-    assert_equal(f1.clip(min=29).local_data, 29.)
-    assert_equal(f1.clip(max=25).local_data, 25.)
-    assert_equal(f1.local_data, f1.real.local_data)
-    assert_equal(f1.local_data, (+f1).local_data)
+    assert_equal(f1.clip(min=29).val, 29.)
+    assert_equal(f1.clip(max=25).val, 25.)
+    assert_equal(f1.val, f1.real.val)
+    assert_equal(f1.val, (+f1).val)
     f1 = ift.Field.full(s1, 27. + 3j)
-    assert_equal(f1.one_over().local_data, (1./f1).local_data)
-    assert_equal(f1.real.local_data, 27.)
-    assert_equal(f1.imag.local_data, 3.)
+    assert_equal(f1.one_over().val, (1./f1).val)
+    assert_equal(f1.real.val, 27.)
+    assert_equal(f1.imag.val, 3.)
     assert_equal(f1.sum(), f1.sum(0))
-    assert_equal(f1.conjugate().local_data,
-                 ift.Field.full(s1, 27. - 3j).local_data)
+    assert_equal(f1.conjugate().val,
+                 ift.Field.full(s1, 27. - 3j).val)
     f1 = ift.from_global_data(s1, np.arange(10))
     # assert_equal(f1.min(), 0)
     # assert_equal(f1.max(), 9)
@@ -218,7 +218,7 @@ def test_weight():
     s1 = ift.RGSpace((10,))
     f = ift.Field.full(s1, 10.)
     f2 = f.weight(1)
-    assert_equal(f.weight(1).local_data, f2.local_data)
+    assert_equal(f.weight(1).val, f2.val)
     assert_equal(f.domain.total_volume(), 1)
     assert_equal(f.domain.total_volume(0), 1)
     assert_equal(f.domain.total_volume((0,)), 1)
@@ -291,43 +291,43 @@ def test_err():
 def test_stdfunc():
     s = ift.RGSpace((200,))
     f = ift.Field.full(s, 27)
-    assert_equal(f.local_data, 27)
+    assert_equal(f.val, 27)
     assert_equal(f.shape, (200,))
     assert_equal(f.dtype, np.int)
     fx = ift.full(f.domain, 0)
     assert_equal(f.dtype, fx.dtype)
     assert_equal(f.shape, fx.shape)
-    assert_equal(fx.local_data, 0)
+    assert_equal(fx.val, 0)
     fx = ift.full(f.domain, 1)
     assert_equal(f.dtype, fx.dtype)
     assert_equal(f.shape, fx.shape)
-    assert_equal(fx.local_data, 1)
+    assert_equal(fx.val, 1)
     fx = ift.full(f.domain, 67.)
     assert_equal(f.shape, fx.shape)
-    assert_equal(fx.local_data, 67.)
+    assert_equal(fx.val, 67.)
     f = ift.Field.from_random("normal", s)
     f2 = ift.Field.from_random("normal", s)
-    assert_equal((f > f2).local_data, f.local_data > f2.local_data)
-    assert_equal((f >= f2).local_data, f.local_data >= f2.local_data)
-    assert_equal((f < f2).local_data, f.local_data < f2.local_data)
-    assert_equal((f <= f2).local_data, f.local_data <= f2.local_data)
-    assert_equal((f != f2).local_data, f.local_data != f2.local_data)
-    assert_equal((f == f2).local_data, f.local_data == f2.local_data)
-    assert_equal((f + f2).local_data, f.local_data + f2.local_data)
-    assert_equal((f - f2).local_data, f.local_data - f2.local_data)
-    assert_equal((f*f2).local_data, f.local_data*f2.local_data)
-    assert_equal((f/f2).local_data, f.local_data/f2.local_data)
-    assert_equal((-f).local_data, -(f.local_data))
-    assert_equal(abs(f).local_data, abs(f.local_data))
+    assert_equal((f > f2).val, f.val > f2.val)
+    assert_equal((f >= f2).val, f.val >= f2.val)
+    assert_equal((f < f2).val, f.val < f2.val)
+    assert_equal((f <= f2).val, f.val <= f2.val)
+    assert_equal((f != f2).val, f.val != f2.val)
+    assert_equal((f == f2).val, f.val == f2.val)
+    assert_equal((f + f2).val, f.val + f2.val)
+    assert_equal((f - f2).val, f.val - f2.val)
+    assert_equal((f*f2).val, f.val*f2.val)
+    assert_equal((f/f2).val, f.val/f2.val)
+    assert_equal((-f).val, -(f.val))
+    assert_equal(abs(f).val, abs(f.val))
 
 
 def test_emptydomain():
     f = ift.Field.full((), 3.)
     assert_equal(f.sum(), 3.)
     assert_equal(f.prod(), 3.)
-    assert_equal(f.local_data, 3.)
-    assert_equal(f.local_data.shape, ())
-    assert_equal(f.local_data.size, 1)
+    assert_equal(f.val, 3.)
+    assert_equal(f.val.shape, ())
+    assert_equal(f.val.size, 1)
     assert_equal(f.vdot(f), 9.)
 
 
@@ -342,7 +342,7 @@ def test_funcs(num, dom, func):
     f = ift.Field.full(dom, num)
     res = getattr(f, func)()
     res2 = getattr(np, func)(num)
-    assert_allclose(res.local_data, res2)
+    assert_allclose(res.val, res2)
 
 
 @pmp('rtype', ['normal', 'pm1', 'uniform'])
@@ -356,4 +356,4 @@ def test_field_of_objects():
     arr = np.array(['x', 'y', 'z'])
     sp = ift.RGSpace(3)
     with assert_raises(TypeError):
-        ift.Field.from_global_data(sp, arr)
+        ift.Field(sp, arr)
