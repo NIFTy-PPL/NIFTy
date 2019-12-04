@@ -47,7 +47,7 @@ def test_gridding(nu, nv, N, eps):
     vis2 = ift.from_global_data(ift.UnstructuredDomain(vis.shape), vis)
 
     Op = GM.getFull()
-    pynu = Op(vis2).to_global_data()
+    pynu = Op(vis2).val
     # DFT
     x, y = np.meshgrid(
         *[-ss/2 + np.arange(ss) for ss in [nu, nv]], indexing='ij')
@@ -73,14 +73,14 @@ def test_cartesian():
     op = GM.getFull().adjoint
 
     fld = ift.from_random('normal', dom)
-    arr = fld.to_global_data()
+    arr = fld.val
 
     fld2 = ift.from_global_data(dom, np.roll(arr, (nx//2, ny//2), axis=(0, 1)))
-    res = op(fld2).to_global_data().reshape(nx, ny)
+    res = op(fld2).val.reshape(nx, ny)
 
     fft = ift.FFTOperator(dom.get_default_codomain(), target=dom).adjoint
     vol = ift.full(dom, 1.).integrate()
-    res1 = fft(fld).to_global_data()
+    res1 = fft(fld).val
 
     # FIXME: we don't understand the conjugate() yet
     np.testing.assert_allclose(res, res1.conjugate()*vol)

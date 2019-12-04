@@ -48,7 +48,7 @@ def test_fft1D(d, dtype, op):
     inp = ift.Field.from_random(
         domain=a, random_type='normal', std=7, mean=3, dtype=dtype)
     out = fft.inverse_times(fft.times(inp))
-    assert_allclose(inp.local_data, out.local_data, rtol=tol, atol=tol)
+    assert_allclose(inp.val, out.val, rtol=tol, atol=tol)
 
     a, b = b, a
 
@@ -56,7 +56,7 @@ def test_fft1D(d, dtype, op):
     inp = ift.Field.from_random(
         domain=a, random_type='normal', std=7, mean=3, dtype=dtype)
     out = fft.inverse_times(fft.times(inp))
-    assert_allclose(inp.local_data, out.local_data, rtol=tol, atol=tol)
+    assert_allclose(inp.val, out.val, rtol=tol, atol=tol)
 
 
 @pmp('dim1', [12, 15])
@@ -76,7 +76,7 @@ def test_fft2D(dim1, dim2, d1, d2, dtype, op, nthreads):
     inp = ift.Field.from_random(
         domain=a, random_type='normal', std=7, mean=3, dtype=dtype)
     out = fft.inverse_times(fft.times(inp))
-    assert_allclose(inp.local_data, out.local_data, rtol=tol, atol=tol)
+    assert_allclose(inp.val, out.val, rtol=tol, atol=tol)
 
     a, b = b, a
 
@@ -84,7 +84,7 @@ def test_fft2D(dim1, dim2, d1, d2, dtype, op, nthreads):
     inp = ift.Field.from_random(
         domain=a, random_type='normal', std=7, mean=3, dtype=dtype)
     out = fft.inverse_times(fft.times(inp))
-    assert_allclose(inp.local_data, out.local_data, rtol=tol, atol=tol)
+    assert_allclose(inp.val, out.val, rtol=tol, atol=tol)
     ift.fft.set_nthreads(1)
 
 
@@ -100,7 +100,7 @@ def test_composed_fft(index, dtype, op):
     inp = ift.Field.from_random(
         domain=(a1, a2, a3), random_type='normal', std=7, mean=3, dtype=dtype)
     out = fft.inverse_times(fft.times(inp))
-    assert_allclose(inp.local_data, out.local_data, rtol=tol, atol=tol)
+    assert_allclose(inp.val, out.val, rtol=tol, atol=tol)
 
 
 @pmp('space', [
@@ -119,5 +119,5 @@ def test_normalisation(space, dtype, op):
     out2 = fft2.inverse_times(inp)
     zero_idx = tuple([0]*len(space.shape))
     assert_allclose(
-        inp.to_global_data()[zero_idx], out.integrate(), rtol=tol, atol=tol)
-    assert_allclose(out.local_data, out2.local_data, rtol=tol, atol=tol)
+        inp.val[zero_idx], out.integrate(), rtol=tol, atol=tol)
+    assert_allclose(out.val, out2.val, rtol=tol, atol=tol)

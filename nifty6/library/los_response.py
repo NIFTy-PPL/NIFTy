@@ -178,7 +178,7 @@ class LOSResponse(LinearOperator):
         # get the shape of the local data slice
         w_i = _comp_traverse(localized_pixel_starts,
                              localized_pixel_ends,
-                             self._local_shape,
+                             self.domain[0].shape,
                              np.array(self.domain[0].distances),
                              1./(1./difflen+truncation*sigmas),
                              difflen,
@@ -188,7 +188,7 @@ class LOSResponse(LinearOperator):
 
         boxsz = 16
         nlos = len(w_i)
-        npix = np.prod(self._local_shape)
+        npix = np.prod(self.domain[0].shape)
         ntot = 0
         for i in w_i:
             ntot += len(i[1])
@@ -203,12 +203,12 @@ class LOSResponse(LinearOperator):
             ilos[ofs:ofs+nval] = cnt
             iarr[ofs:ofs+nval] = i[0]
             xwgt[ofs:ofs+nval] = i[1]
-            fullidx = np.unravel_index(i[0], self._local_shape)
+            fullidx = np.unravel_index(i[0], self.domain[0].shape)
             tmp = np.zeros(nval, dtype=np.float64)
             fct = 1.
             for j in range(ndim):
                 tmp += (fullidx[j]//boxsz)*fct
-                fct *= self._local_shape[j]
+                fct *= self.domain[0].shape[j]
             tmp += cnt/float(nlos)
             tmp += iarr[ofs:ofs+nval]/(float(nlos)*float(npix))
             pri[ofs:ofs+nval] = tmp
@@ -220,7 +220,7 @@ class LOSResponse(LinearOperator):
         xwgt = xwgt[xtmp]
         self._smat = aslinearoperator(
             coo_matrix((xwgt, (ilos, iarr)),
-                       shape=(nlos, np.prod(self._local_shape))))
+                       shape=(nlos, np.prod(self.domain[0].shape))))
 
         self._target = DomainTuple.make(UnstructuredDomain(nlos))
 
@@ -228,8 +228,7 @@ class LOSResponse(LinearOperator):
         self._check_input(x, mode)
         if mode == self.TIMES:
             result_arr = self._smat.matvec(x.val.reshape(-1))
-            return Field.from_global_data(self._target, result_arr,
-                                          sum_up=True)
-        local_input_data = x.to_global_data().reshape(-1)
-        res = self._smat.rmatvec(local_input_data).reshape(self._local_shape)
+            return Field(self._target, result_arr)
+        local_input_data = x.val.reshape(-1)
+        res = self._smat.rmatvec(local_input_data).reshape(self.domain[0].shape)
         return Field(self._domain, res)

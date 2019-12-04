@@ -26,14 +26,14 @@ def test_simplification():
     op = ift.FFTOperator(f1.domain)
     _, op2 = op.simplify_for_constant_input(f1)
     assert_equal(isinstance(op2, _ConstantOperator), True)
-    assert_allclose(op(f1).local_data, op2(f1).local_data)
+    assert_allclose(op(f1).val, op2(f1).val)
 
     dom = {"a": ift.RGSpace(10)}
     f1 = ift.full(dom, 2.)
     op = ift.FFTOperator(f1.domain["a"]).ducktape("a")
     _, op2 = op.simplify_for_constant_input(f1)
     assert_equal(isinstance(op2, _ConstantOperator), True)
-    assert_allclose(op(f1).local_data, op2(f1).local_data)
+    assert_allclose(op(f1).val, op2(f1).val)
 
     dom = {"a": ift.RGSpace(10), "b": ift.RGSpace(5)}
     f1 = ift.full(dom, 2.)
@@ -45,10 +45,10 @@ def test_simplification():
           o2.ducktape("b").ducktape_left("b"))
     _, op2 = op.simplify_for_constant_input(f2)
     assert_equal(isinstance(op2._op1, _ConstantOperator), True)
-    assert_allclose(op(f1)["a"].local_data, op2(f1)["a"].local_data)
-    assert_allclose(op(f1)["b"].local_data, op2(f1)["b"].local_data)
+    assert_allclose(op(f1)["a"].val, op2(f1)["a"].val)
+    assert_allclose(op(f1)["b"].val, op2(f1)["b"].val)
     lin = ift.Linearization.make_var(ift.MultiField.full(op2.domain, 2.), True)
-    assert_allclose(op(lin).val["a"].local_data,
-                    op2(lin).val["a"].local_data)
-    assert_allclose(op(lin).val["b"].local_data,
-                    op2(lin).val["b"].local_data)
+    assert_allclose(op(lin).val["a"].val,
+                    op2(lin).val["a"].val)
+    assert_allclose(op(lin).val["b"].val,
+                    op2(lin).val["b"].val)

@@ -175,7 +175,6 @@ def test_dataconv():
     s1 = ift.RGSpace((10,))
     ld = np.arange(s1.shape[0])
     gd = np.arange(s1.shape[0])
-    assert_equal(ld, ift.from_local_data(s1, ld).val)
     assert_equal(gd, ift.from_global_data(s1, gd).val)
 
 

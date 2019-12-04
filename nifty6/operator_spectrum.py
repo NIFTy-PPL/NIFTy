@@ -137,7 +137,7 @@ def operator_spectrum(A, k, hermitian, which='LM', tol=0):
     Ar = SandwichOperator.make(_DomRemover(A.domain).adjoint, A)
     M = ssl.LinearOperator(
         shape=2*(size,),
-        matvec=lambda x: Ar(from_global_data(Ar.domain, x)).to_global_data())
+        matvec=lambda x: Ar(from_global_data(Ar.domain, x)).val)
     f = ssl.eigsh if hermitian else ssl.eigs
     eigs = f(M, k=k, tol=tol, return_eigenvectors=False, which=which)
     return np.flip(np.sort(eigs), axis=0)

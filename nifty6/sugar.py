@@ -35,7 +35,7 @@ from .plot import Plot
 
 __all__ = ['PS_field', 'power_analyze', 'create_power_operator',
            'create_harmonic_smoothing_operator', 'from_random',
-           'full', 'from_global_data', 'from_local_data',
+           'full', 'from_global_data',
            'makeDomain', 'sqrt', 'exp', 'log', 'tanh', 'sigmoid',
            'sin', 'cos', 'tan', 'sinh', 'cosh', 'log10',
            'absolute', 'one_over', 'clip', 'sinc', "log1p", "expm1",
@@ -297,28 +297,7 @@ def from_global_data(domain, arr):
         The newly created random field
     """
     if isinstance(domain, (dict, MultiDomain)):
-        return MultiField.from_global_data(domain, arr, sum_up)
-    return Field.from_arr(domain, arr)
-
-
-def from_local_data(domain, arr):
-    """Convenience function creating Fields/MultiFields from Numpy arrays or
-    dicts of Numpy arrays.
-
-    Parameters
-    ----------
-    domain : Domainoid
-        the intended domain of the output field
-    arr : Numpy array if `domain` corresponds to a `DomainTuple`,
-          dictionary of Numpy arrays if `domain` corresponds to a `MultiDomain`
-
-    Returns
-    -------
-    Field or MultiField
-        The newly created field
-    """
-    if isinstance(domain, (dict, MultiDomain)):
-        return MultiField.from_local_data(domain, arr)
+        return MultiField.from_global_data(domain, arr)
     return Field.from_arr(domain, arr)
 
 
@@ -512,7 +491,7 @@ def calculate_position(operator, output):
         raise TypeError
     if output.domain != operator.target:
         raise TypeError
-    cov = 1e-3*output.to_global_data().max()**2
+    cov = 1e-3*output.val.max()**2
     invcov = ScalingOperator(cov, output.domain).inverse
     d = output + invcov.draw_sample(from_inverse=True)
     lh = GaussianEnergy(d, invcov)(operator)

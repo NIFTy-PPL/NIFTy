@@ -298,7 +298,7 @@ def _plot1D(f, ax, **kwargs):
         dist = dom.distances[0]
         xcoord = np.arange(npoints, dtype=np.float64)*dist
         for i, fld in enumerate(f):
-            ycoord = fld.to_global_data()
+            ycoord = fld.val
             plt.plot(xcoord, ycoord, label=label[i],
                      linewidth=linewidth[i], alpha=alpha[i])
         _limit_xy(**kwargs)
@@ -310,7 +310,7 @@ def _plot1D(f, ax, **kwargs):
         plt.yscale(kwargs.pop("yscale", "log"))
         xcoord = dom.k_lengths
         for i, fld in enumerate(f):
-            ycoord = fld.to_global_data_rw()
+            ycoord = fld.val.copy()
             ycoord[0] = ycoord[1]
             plt.plot(xcoord, ycoord, label=label[i],
                      linewidth=linewidth[i], alpha=alpha[i])
@@ -336,9 +336,9 @@ def _plot2D(f, ax, **kwargs):
             raise TypeError("need 1D RGSpace as second domain")
         if dom[1].shape[0] == 1:
             from .sugar import from_global_data
-            f = from_global_data(f.domain[0], f.to_global_data()[..., 0])
+            f = from_global_data(f.domain[0], f.val[..., 0])
         else:
-            rgb = _rgb_data(f.to_global_data())
+            rgb = _rgb_data(f.val)
             have_rgb = True
 
     foo = kwargs.pop("norm", None)
@@ -363,7 +363,7 @@ def _plot2D(f, ax, **kwargs):
                 **aspect)
         else:
             im = ax.imshow(
-                f.to_global_data().T, extent=[0, nx*dx, 0, ny*dy],
+                f.val.T, extent=[0, nx*dx, 0, ny*dy],
                 vmin=kwargs.get("zmin"), vmax=kwargs.get("zmax"),
                 cmap=cmap, origin="lower", **norm, **aspect)
             plt.colorbar(im)
@@ -385,7 +385,7 @@ def _plot2D(f, ax, **kwargs):
             if have_rgb:
                 res[mask] = rgb[base.ang2pix(ptg)]
             else:
-                res[mask] = f.to_global_data()[base.ang2pix(ptg)]
+                res[mask] = f.val[base.ang2pix(ptg)]
         else:
             ra = np.linspace(0, 2*np.pi, dom.nlon+1)
             dec = pyHealpix.GL_thetas(dom.nlat)
@@ -395,7 +395,7 @@ def _plot2D(f, ax, **kwargs):
             if have_rgb:
                 res[mask] = rgb[ilat*dom[0].nlon + ilon]
             else:
-                res[mask] = f.to_global_data()[ilat*dom.nlon + ilon]
+                res[mask] = f.val[ilat*dom.nlon + ilon]
         plt.axis('off')
         if have_rgb:
             plt.imshow(res, origin="lower")

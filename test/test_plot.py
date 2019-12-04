@@ -29,12 +29,12 @@ def test_plots():
 
     fft = ift.FFTOperator(rg_space2)
 
-    field_rg1_1 = ift.Field.from_global_data(rg_space1, np.random.randn(100))
-    field_rg1_2 = ift.Field.from_global_data(rg_space1, np.random.randn(100))
-    field_rg2 = ift.Field.from_global_data(
+    field_rg1_1 = ift.Field(rg_space1, np.random.randn(100))
+    field_rg1_2 = ift.Field(rg_space1, np.random.randn(100))
+    field_rg2 = ift.Field(
         rg_space2, np.random.randn(80*60).reshape((80, 60)))
-    field_hp = ift.Field.from_global_data(hp_space, np.random.randn(12*64**2))
-    field_gl = ift.Field.from_global_data(gl_space, np.random.randn(32640))
+    field_hp = ift.Field(hp_space, np.random.randn(12*64**2))
+    field_gl = ift.Field(gl_space, np.random.randn(32640))
     field_ps = ift.power_analyze(fft.times(field_rg2))
 
     plot = ift.Plot()

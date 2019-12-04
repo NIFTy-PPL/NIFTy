@@ -31,4 +31,4 @@ s = list2fixture([
 def test_value(s):
     Regrid = ift.RegriddingOperator(s, s.shape)
     f = ift.from_random('normal', Regrid.domain)
-    assert_allclose(f.to_global_data(), Regrid(f).to_global_data())
+    assert_allclose(f.val, Regrid(f).val)

@@ -374,7 +374,7 @@ class MatrixProductOperator(EndomorphicOperator):
 
     def apply(self, x, mode):
         self._check_input(x, mode)
-        res = x.to_global_data()
+        res = x.val
         f = self._mat.dot if mode == self.TIMES else self._mat_tr.dot
         res = f(res)
-        return Field.from_global_data(self._domain, res)
+        return Field(self._domain, res)

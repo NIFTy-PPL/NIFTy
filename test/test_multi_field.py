@@ -32,12 +32,12 @@ def test_vdot():
 def test_func():
     f1 = ift.from_random("normal", domain=dom, dtype=np.complex128)
     assert_allclose(
-        ift.log(ift.exp((f1)))["d1"].local_data, f1["d1"].local_data)
+        ift.log(ift.exp((f1)))["d1"].val, f1["d1"].val)
 
 
 def test_multifield_field_consistency():
     f1 = ift.full(dom, 27)
-    f2 = ift.from_global_data(dom['d1'], f1['d1'].to_global_data())
+    f2 = ift.from_global_data(dom['d1'], f1['d1'].val)
     assert_equal(f1.sum(), f2.sum())
     assert_equal(f1.size, f2.size)
 
@@ -46,7 +46,7 @@ def test_dataconv():
     f1 = ift.full(dom, 27)
     f2 = ift.from_global_data(dom, f1.to_global_data())
     for key, val in f1.items():
-        assert_equal(val.local_data, f2[key].local_data)
+        assert_equal(val.val, f2[key].val)
     if "d1" not in f2:
         raise KeyError()
     assert_equal({"d1": f1}, f2.to_dict())

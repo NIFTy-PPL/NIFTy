@@ -132,14 +132,10 @@ class MultiField(object):
         return MultiField(domain, tuple(Field(dom, val)
                           for dom in domain._domains))
 
-    def to_global_data(self):
-        return {key: val.to_global_data()
-                for key, val in zip(self._domain.keys(), self._val)}
-
     @staticmethod
-    def from_global_data(domain, arr, sum_up=False):
+    def from_global_data(domain, arr):
         return MultiField(
-            domain, tuple(Field.from_global_data(domain[key], arr[key], sum_up)
+            domain, tuple(Field(domain[key], arr[key])
                           for key in domain.keys()))
 
     def norm(self, ord=2):

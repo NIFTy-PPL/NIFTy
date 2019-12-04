@@ -63,7 +63,7 @@ CONSTRUCTOR_CONFIGS = [
             'binbounds':
             None,
             'pindex':
-            ift.dobj.from_global_data(np.array([0, 1, 2, 3, 4, 3, 2, 1])),
+            np.array([0, 1, 2, 3, 4, 3, 2, 1]),
             'k_lengths':
             np.array([0., 1., 2., 3., 4.]),
         }
@@ -79,7 +79,7 @@ CONSTRUCTOR_CONFIGS = [
             ift.RGSpace((8,), harmonic=True),
             'binbounds': (0.5, 1.3228756555322954, 3.5),
             'pindex':
-            ift.dobj.from_global_data(np.array([0, 1, 2, 2, 3, 2, 2, 1])),
+            np.array([0, 1, 2, 2, 3, 2, 2, 1]),
             'k_lengths':
             np.array([0., 1., 2.5, 4.]),
         }
@@ -97,7 +97,7 @@ def k_lengths_configs():
 @pmp('attribute, expected_type', [
     ['harmonic_partner', ift.StructuredDomain],
     ['binbounds', type(None)],
-    ['pindex', ift.dobj.data_object],
+    ['pindex', np.ndarray],
     ['k_lengths', np.ndarray],
 ])
 def test_property_ret_type(attribute, expected_type):
@@ -112,7 +112,7 @@ def test_rhopindexConsistency(harmonic_partner, binbounds, nbin, logarithmic):
     p = ift.PowerSpace(harmonic_partner=harmonic_partner, binbounds=bb)
 
     assert_equal(
-        np.bincount(ift.dobj.to_global_data(p.pindex).ravel()),
+        np.bincount(p.pindex.ravel()),
         p.dvol,
         err_msg='rho is not equal to pindex degeneracy')
 

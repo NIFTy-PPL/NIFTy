@@ -91,4 +91,5 @@ class RegriddingOperator(LinearOperator):
                 xnew += v[idx + (self._bindex[d-d0]+1,)] * wgt
 
             curshp[d] = xnew.shape[d]
+            v = xnew.copy()
         return Field(self._tgt(mode), xnew)

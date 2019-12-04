@@ -102,7 +102,7 @@ def testDOFDistributor(sp, dtype):
     if sp.size < 4:
         return
     dofdex = np.arange(sp.size).reshape(sp.shape) % 3
-    dofdex = ift.Field.from_global_data(sp, dofdex)
+    dofdex = ift.Field.from_arr(sp, dofdex)
     _check_repr(ift.DOFDistributor(dofdex))
 
 
@@ -137,10 +137,10 @@ def testHarmonic(sp, dtype):
 @pmp('sp', _p_spaces)
 def testMask(sp, dtype):
     # Create mask
-    f = ift.from_random('normal', sp).to_global_data()
+    f = ift.from_random('normal', sp).val
     mask = np.zeros_like(f)
     mask[f > 0] = 1
-    mask = ift.Field.from_global_data(sp, mask)
+    mask = ift.Field.from_arr(sp, mask)
     # Test MaskOperator
     _check_repr(ift.MaskOperator(mask))
 

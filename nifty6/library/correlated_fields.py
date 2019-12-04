@@ -103,7 +103,7 @@ def _stats(op, samples):
     sc = StatCalculator()
     for s in samples:
         sc.add(op(s.extract(op.domain)))
-    return sc.mean.to_global_data(), sc.var.sqrt().to_global_data()
+    return sc.mean.val, sc.var.sqrt().val
 
 
 class _LognormalMomentMatching(Operator):
@@ -140,7 +140,7 @@ class _SlopeRemover(EndomorphicOperator):
 
     def apply(self, x, mode):
         self._check_input(x, mode)
-        x = x.to_global_data()
+        x = x.val
         if mode == self.TIMES:
             res = x - x[self._last]*self._sc[self._extender]
         else:
@@ -175,14 +175,14 @@ class _TwoLogIntegrations(LinearOperator):
         reverse = sl + (slice(None, None, -1),)
 
         if mode == self.TIMES:
-            x = x.to_global_data()
+            x = x.val
             res = np.empty(self._target.shape)
             res[first] = res[second] = 0
             res[from_third] = np.cumsum(x[second], axis=axis)
             res[from_third] = (res[from_third] + res[no_border])/2*self._log_vol[extender_sl] + x[first]
             res[from_third] = np.cumsum(res[from_third], axis=axis)
         else:
-            x = x.to_global_data_rw()
+            x = x.val.copy()
             res = np.zeros(self._domain.shape)
             x[from_third] = np.cumsum(x[from_third][reverse], axis=axis)[reverse]
             res[first] += x[from_third]
@@ -200,7 +200,7 @@ class _Normalization(Operator):
         hspace[space] = hspace[space].harmonic_partner
         hspace = makeDomain(hspace)
         pd = PowerDistributor(hspace, power_space=self._domain[space], space=space)
-        mode_multiplicity = pd.adjoint(full(pd.target, 1.)).to_global_data_rw()
+        mode_multiplicity = pd.adjoint(full(pd.target, 1.)).val.copy()
         zero_mode = (slice(None),)*self._domain.axes[space][0] + (0,)
         mode_multiplicity[zero_mode] = 0
         self._mode_multiplicity = from_global_data(self._domain, mode_multiplicity)
@@ -237,7 +237,7 @@ class _Distributor(LinearOperator):
 
     def apply(self, x, mode):
         self._check_input(x, mode)
-        x = x.to_global_data()
+        x = x.val
         if mode == self.TIMES:
             res = x[self._dofdex]
         else:
@@ -504,7 +504,7 @@ class CorrelatedFieldMaker:
         scm = 1.
         for a in self._a:
             op = a.fluctuation_amplitude*self._azm.one_over()
-            res = np.array([op(from_random('normal', op.domain)).to_global_data()
+            res = np.array([op(from_random('normal', op.domain)).val
                             for _ in range(nsamples)])
             scm *= res**2 + 1.
         return fluctuations_slice_mean/np.mean(np.sqrt(scm))

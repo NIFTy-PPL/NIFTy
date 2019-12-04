@@ -92,7 +92,7 @@ class FieldZeroPadder(LinearOperator):
 #                         i1 = idx+(-Nyquist,)
 #                         xnew[i1] *= 0.5
                 else:
-                    xnew[idx + (slice(0, v.shape[d]),)] = x
+                    xnew[idx + (slice(0, v.shape[d]),)] = v
             else:  # ADJOINT_TIMES
                 if self._central:
                     shp = list(x.shape)
@@ -110,4 +110,5 @@ class FieldZeroPadder(LinearOperator):
                     xnew = v[idx + (slice(0, tgtshp[d]),)]
 
             curshp[d] = xnew.shape[d]
-        return Field(self._tgt(mode), xnew)
+            v = xnew.copy()
+        return Field(self._tgt(mode), v)
