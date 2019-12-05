@@ -9,12 +9,12 @@ def testAmplitudesConsistency(seed, sspace):
         sc = ift.StatCalculator()
         for s in samples:
             sc.add(op(s.extract(op.domain)))
-        return sc.mean.to_global_data(), sc.var.sqrt().to_global_data()
+        return sc.mean.val, sc.var.sqrt().val
     np.random.seed(seed)
     offset_std = .1
     intergated_fluct_std0 = .003
     intergated_fluct_std1 = 0.1
-    
+
     nsam = 1000
 
 
@@ -32,7 +32,7 @@ def testAmplitudesConsistency(seed, sspace):
     offset_std,_ = stats(fa.amplitude_total_offset,samples)
     intergated_fluct_std0,_ = stats(fa.average_fluctuation(0),samples)
     intergated_fluct_std1,_ = stats(fa.average_fluctuation(1),samples)
-    
+
     slice_fluct_std0,_ = stats(fa.slice_fluctuation(0),samples)
     slice_fluct_std1,_ = stats(fa.slice_fluctuation(1),samples)
 
@@ -54,7 +54,7 @@ def testAmplitudesConsistency(seed, sspace):
     print("Expected  integrated fluct. frequency Std: " +
           str(intergated_fluct_std1))
     print("Estimated integrated fluct. frequency Std: " + str(fluct_freq))
-    
+
     print("Expected  slice fluct. space Std: " +
           str(slice_fluct_std0))
     print("Estimated slice fluct. space Std: " + str(sl_fluct_space))
@@ -65,8 +65,8 @@ def testAmplitudesConsistency(seed, sspace):
 
     print("Expected  total fluct. Std: " + str(tot_flm))
     print("Estimated total fluct. Std: " + str(fluct_total))
-    
-    
+
+
     np.testing.assert_allclose(offset_std, zm_std_mean, rtol=0.5)
     np.testing.assert_allclose(intergated_fluct_std0, fluct_space, rtol=0.5)
     np.testing.assert_allclose(intergated_fluct_std1, fluct_freq, rtol=0.5)
@@ -74,7 +74,7 @@ def testAmplitudesConsistency(seed, sspace):
     np.testing.assert_allclose(slice_fluct_std0, sl_fluct_space, rtol=0.5)
     np.testing.assert_allclose(slice_fluct_std1, sl_fluct_freq, rtol=0.5)
 
-    
+
     fa = ift.CorrelatedFieldMaker.make(offset_std, .1, '')
     fa.add_fluctuations(fsspace, intergated_fluct_std1, 1., 3.1, 1., .5, .1,
                         -4, 1., 'freq')
@@ -87,7 +87,7 @@ def testAmplitudesConsistency(seed, sspace):
     print("Forced   slice fluct. space Std: "+str(m))
     print("Expected slice fluct. Std: " + str(em))
     np.testing.assert_allclose(m, em, rtol=0.5)
-    
+
     assert op.target[0] == sspace
     assert op.target[1] == fsspace
 

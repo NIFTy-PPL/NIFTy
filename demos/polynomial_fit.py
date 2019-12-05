@@ -36,7 +36,7 @@ def polynomial(coefficients, sampling_points):
     if not (isinstance(coefficients, ift.Field)
             and isinstance(sampling_points, np.ndarray)):
         raise TypeError
-    params = coefficients.to_global_data()
+    params = coefficients.val
     out = np.zeros_like(sampling_points)
     for ii in range(len(params)):
         out += params[ii] * sampling_points**ii
@@ -71,7 +71,7 @@ class PolynomialResponse(ift.LinearOperator):
 
     def apply(self, x, mode):
         self._check_input(x, mode)
-        val = x.to_global_data_rw()
+        val = x.val.copy()
         if mode == self.TIMES:
             # FIXME Use polynomial() here
             out = self._mat.dot(val)
@@ -136,9 +136,8 @@ plt.savefig('fit.png')
 plt.close()
 
 # Print parameters
-mean = sc.mean.to_global_data()
-sigma = np.sqrt(sc.var.to_global_data())
-if ift.dobj.master:
-    for ii in range(len(mean)):
-        print('Coefficient x**{}: {:.2E} +/- {:.2E}'.format(ii, mean[ii],
+mean = sc.mean.val
+sigma = np.sqrt(sc.var.val)
+for ii in range(len(mean)):
+    print('Coefficient x**{}: {:.2E} +/- {:.2E}'.format(ii, mean[ii],
                                                             sigma[ii]))

@@ -31,9 +31,9 @@ for ii in range(10, 26):
     vis = ift.from_global_data(visspace, vis)
     op = GM.getFull().adjoint
     t1 = time()
-    op(img).to_global_data()
+    op(img).val
     t2 = time()
-    op.adjoint(vis).to_global_data()
+    op.adjoint(vis).val
     t3 = time()
     print(t2-t1, t3-t2)
     N0s.append(N)
