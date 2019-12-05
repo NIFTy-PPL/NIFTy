@@ -20,6 +20,7 @@ from time import time
 
 import numpy as np
 
+from .logger import logger
 from . import dobj, utilities
 from .domain_tuple import DomainTuple
 from .domains.power_space import PowerSpace
@@ -462,46 +463,46 @@ def exec_time(obj, want_metric=True):
     if isinstance(obj, Energy):
         t0 = time()
         obj.at(0.99*obj.position)
-        print('Energy.at():', time() - t0)
+        logger.info('Energy.at(): {}'.format(time() - t0))
 
         t0 = time()
         obj.value
-        print('Energy.value:', time() - t0)
+        logger.info('Energy.value: {}'.format(time() - t0))
         t0 = time()
         obj.gradient
-        print('Energy.gradient:', time() - t0)
+        logger.info('Energy.gradient: {}'.format(time() - t0))
         t0 = time()
         obj.metric
-        print('Energy.metric:', time() - t0)
+        logger.info('Energy.metric: {}'.format(time() - t0))
 
         t0 = time()
         obj.apply_metric(obj.position)
-        print('Energy.apply_metric:', time() - t0)
+        logger.info('Energy.apply_metric: {}'.format(time() - t0))
 
         t0 = time()
         obj.metric(obj.position)
-        print('Energy.metric(position):', time() - t0)
+        logger.info('Energy.metric(position): {}'.format(time() - t0))
     elif isinstance(obj, Operator):
         want_metric = bool(want_metric)
         pos = from_random('normal', obj.domain)
         t0 = time()
         obj(pos)
-        print('Operator call with field:', time() - t0)
+        logger.info('Operator call with field: {}'.format(time() - t0))
 
         lin = Linearization.make_var(pos, want_metric=want_metric)
         t0 = time()
         res = obj(lin)
-        print('Operator call with linearization:', time() - t0)
+        logger.info('Operator call with linearization: {}'.format(time() - t0))
 
         if isinstance(obj, EnergyOperator):
             t0 = time()
             res.gradient
-            print('Gradient evaluation:', time() - t0)
+            logger.info('Gradient evaluation: {}'.format(time() - t0))
 
             if want_metric:
                 t0 = time()
                 res.metric(pos)
-                print('Metric apply:', time() - t0)
+                logger.info('Metric apply: {}'.format(time() - t0))
     else:
         raise TypeError
 

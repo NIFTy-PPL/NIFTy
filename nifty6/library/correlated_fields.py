@@ -18,6 +18,7 @@
 
 import numpy as np
 
+from ..logger import logger
 from ..domain_tuple import DomainTuple
 from ..domains.power_space import PowerSpace
 from ..domains.unstructured_domain import UnstructuredDomain
@@ -501,7 +502,7 @@ class CorrelatedFieldMaker:
             mean = sc.mean.to_global_data()
             stddev = sc.var.sqrt().to_global_data()
             for m, s in zip(mean.flatten(), stddev.flatten()):
-                print('{}: {:.02E} ± {:.02E}'.format(kk, m, s))
+                logger.info('{}: {:.02E} ± {:.02E}'.format(kk, m, s))
 
     def moment_slice_to_average(self, fluctuations_slice_mean, nsamples=1000):
         fluctuations_slice_mean = float(fluctuations_slice_mean)
