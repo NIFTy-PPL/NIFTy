@@ -110,5 +110,5 @@ class FieldZeroPadder(LinearOperator):
                     xnew = v[idx + (slice(0, tgtshp[d]),)]
 
             curshp[d] = xnew.shape[d]
-            v = xnew.copy()
+            v = xnew
         return Field(self._tgt(mode), v)
