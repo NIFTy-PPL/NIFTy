@@ -61,9 +61,9 @@ if __name__ == '__main__':
     # Generate mock data
     p = R(sky)
     mock_position = ift.from_random('normal', harmonic_space)
-    tmp = p(mock_position).to_global_data().astype(np.float64)
+    tmp = p(mock_position).val.astype(np.float64)
     data = np.random.binomial(1, tmp)
-    data = ift.Field.from_global_data(R.target, data)
+    data = ift.Field.from_arr(R.target, data)
 
     # Compute likelihood and Hamiltonian
     position = ift.from_random('normal', harmonic_space)
