@@ -297,8 +297,8 @@ def makeField(domain, arr):
         The newly created random field
     """
     if isinstance(domain, (dict, MultiDomain)):
-        return MultiField.from_global_data(domain, arr)
-    return Field.from_arr(domain, arr)
+        return MultiField.from_raw(domain, arr)
+    return Field.from_raw(domain, arr)
 
 
 def makeDomain(domain):

@@ -188,7 +188,7 @@ class MetricGaussianKL_MPI(Energy):
             for s in self._samples:
                 tmp = self._hamiltonian(self._lin+s)
                 if v is None:
-                    v = tmp.val.val.copy()
+                    v = tmp.val.val_rw()
                     g = tmp.gradient
                 else:
                     v += tmp.val.val

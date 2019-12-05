@@ -74,7 +74,7 @@ class DOFDistributor(LinearOperator):
             wgt = np.bincount(dofdex.val.ravel(), minlength=nbin)
             wgt = wgt*partner.scalar_dvol
         else:
-            dvol = Field.from_arr(partner, partner.dvol).val
+            dvol = Field.from_raw(partner, partner.dvol).val
             wgt = np.bincount(dofdex.val.ravel(),
                               minlength=nbin, weights=dvol)
         # The explicit conversion to float64 is necessary because bincount
@@ -108,7 +108,7 @@ class DOFDistributor(LinearOperator):
         oarr = np.zeros(self._hshape, dtype=x.dtype)
         oarr = special_add_at(oarr, 1, self._dofdex, arr)
         oarr = oarr.reshape(self._domain.shape)
-        res = Field.from_arr(self._domain, oarr)
+        res = Field.from_raw(self._domain, oarr)
         return res
 
     def _times(self, x):

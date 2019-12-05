@@ -95,7 +95,7 @@ if __name__ == '__main__':
     # and harmonic transformaion
 
     # Masking operator to model that parts of the field have not been observed
-    mask = ift.Field.from_arr(position_space, mask)
+    mask = ift.Field.from_raw(position_space, mask)
     Mask = ift.MaskOperator(mask)
 
     # The response operator consists of

@@ -71,7 +71,7 @@ class PolynomialResponse(ift.LinearOperator):
 
     def apply(self, x, mode):
         self._check_input(x, mode)
-        val = x.val.copy()
+        val = x.val_rw()
         if mode == self.TIMES:
             # FIXME Use polynomial() here
             out = self._mat.dot(val)

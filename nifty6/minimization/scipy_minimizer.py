@@ -48,7 +48,7 @@ def _toArray(fld):
 
 def _toArray_rw(fld):
     if isinstance(fld, Field):
-        return fld.val.copy().reshape(-1)
+        return fld.val_rw().reshape(-1)
     return _multiToArray(fld)
 
 

@@ -57,7 +57,7 @@ if __name__ == '__main__':
         for _ in range(n_samps):
             fld = pspec(ift.from_random('normal', pspec.domain))
             klengths = fld.domain[0].k_lengths
-            ycoord = fld.val.copy()
+            ycoord = fld.val_rw()
             ycoord[0] = ycoord[1]
             ax.plot(klengths, ycoord, alpha=1)
 

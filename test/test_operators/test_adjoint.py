@@ -127,7 +127,7 @@ def testDOFDistributor(sp, dtype):
     if sp.size < 4:
         return
     dofdex = np.arange(sp.size).reshape(sp.shape) % 3
-    dofdex = ift.Field.from_arr(sp, dofdex)
+    dofdex = ift.Field.from_raw(sp, dofdex)
     op = ift.DOFDistributor(dofdex)
     ift.extra.consistency_check(op, dtype, dtype)
 
@@ -174,7 +174,7 @@ def testMask(sp, dtype):
     f = ift.from_random('normal', sp).val
     mask = np.zeros_like(f)
     mask[f > 0] = 1
-    mask = ift.Field.from_arr(sp, mask)
+    mask = ift.Field.from_raw(sp, mask)
     # Test MaskOperator
     op = ift.MaskOperator(mask)
     ift.extra.consistency_check(op, dtype, dtype)

@@ -44,7 +44,7 @@ def test_multifield_field_consistency():
 
 def test_dataconv():
     f1 = ift.full(dom, 27)
-    f2 = ift.makeField(dom, f1.to_global_data())
+    f2 = ift.makeField(dom, f1.val)
     for key, val in f1.items():
         assert_equal(val.val, f2[key].val)
     if "d1" not in f2:

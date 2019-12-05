@@ -144,7 +144,7 @@ def approximation2endo(op, nsamples):
     approx = sc.var
     dct = approx.to_dict()
     for kk in dct:
-        foo = dct[kk].to_global_data_rw()
+        foo = dct[kk].val_rw()
         foo[foo == 0] = 1
         dct[kk] = makeField(dct[kk].domain, foo)
     return MultiField.from_dict(dct)

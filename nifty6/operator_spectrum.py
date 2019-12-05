@@ -56,7 +56,7 @@ class _DomRemover(LinearOperator):
     def apply(self, x, mode):
         self._check_input(x, mode)
         self._check_float_dtype(x)
-        x = x.to_global_data()
+        x = x.val
         if isinstance(self._domain, DomainTuple):
             res = x.ravel() if mode == self.TIMES else x.reshape(
                 self._domain.shape)

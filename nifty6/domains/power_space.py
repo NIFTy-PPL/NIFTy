@@ -240,7 +240,7 @@ class PowerSpace(StructuredDomain):
 
     @property
     def pindex(self):
-        """data_object : bin indices
+        """numpy.ndarray : bin indices
 
         Bin index for every pixel in the harmonic partner.
         """

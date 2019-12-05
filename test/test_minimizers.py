@@ -131,11 +131,11 @@ def test_rosenbrock(minimizer):
 
         @property
         def value(self):
-            return rosen(self._position.val.copy())
+            return rosen(self._position.val_rw())
 
         @property
         def gradient(self):
-            inp = self._position.val.copy()
+            inp = self._position.val_rw()
             out = ift.Field(space, rosen_der(inp))
             return out
 
@@ -143,13 +143,13 @@ def test_rosenbrock(minimizer):
         def metric(self):
             class RBCurv(ift.EndomorphicOperator):
                 def __init__(self, loc):
-                    self._loc = loc.val.copy()
+                    self._loc = loc.val_rw()
                     self._capability = self.TIMES
                     self._domain = space
 
                 def apply(self, x, mode):
                     self._check_input(x, mode)
-                    inp = x.val.copy()
+                    inp = x.val_rw()
                     out = ift.Field(
                         space, rosen_hess_prod(self._loc.copy(), inp))
                     return out
@@ -159,8 +159,8 @@ def test_rosenbrock(minimizer):
             return ift.InversionEnabler(RBCurv(self._position), t1)
 
         def apply_metric(self, x):
-            inp = x.val.copy()
-            pos = self._position.val.copy()
+            inp = x.val_rw()
+            pos = self._position.val_rw()
             return ift.Field(space, rosen_hess_prod(pos, inp))
 
     try:

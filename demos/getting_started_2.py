@@ -40,7 +40,7 @@ def exposure_2d():
     exposure[:, x_shape*4//5:x_shape] *= .1
     exposure[:, x_shape//2:x_shape*3//2] *= 3.
 
-    return ift.Field.from_arr(position_space, exposure)
+    return ift.Field.from_raw(position_space, exposure)
 
 
 if __name__ == '__main__':
@@ -95,7 +95,7 @@ if __name__ == '__main__':
     mock_position = ift.from_random('normal', domain)
     data = lamb(mock_position)
     data = np.random.poisson(data.val.astype(np.float64))
-    data = ift.Field.from_arr(d_space, data)
+    data = ift.Field.from_raw(d_space, data)
     likelihood = ift.PoissonianEnergy(data)(lamb)
 
     # Settings for minimization

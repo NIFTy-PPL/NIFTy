@@ -179,7 +179,7 @@ class _TwoLogIntegrations(LinearOperator):
             res[from_third] = (res[from_third] + res[no_border])/2*self._log_vol[extender_sl] + x[first]
             res[from_third] = np.cumsum(res[from_third], axis=axis)
         else:
-            x = x.val.copy()
+            x = x.val_rw()
             res = np.zeros(self._domain.shape)
             x[from_third] = np.cumsum(x[from_third][reverse], axis=axis)[reverse]
             res[first] += x[from_third]
@@ -199,7 +199,7 @@ class _Normalization(Operator):
         pd = PowerDistributor(hspace,
                               power_space=self._domain[space],
                               space=space)
-        mode_multiplicity = pd.adjoint(full(pd.target, 1.)).val.copy()
+        mode_multiplicity = pd.adjoint(full(pd.target, 1.)).val_rw()
         zero_mode = (slice(None),)*self._domain.axes[space][0] + (0,)
         mode_multiplicity[zero_mode] = 0
         self._mode_multiplicity = makeField(self._domain,

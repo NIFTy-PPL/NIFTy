@@ -63,7 +63,7 @@ if __name__ == '__main__':
     mock_position = ift.from_random('normal', harmonic_space)
     tmp = p(mock_position).val.astype(np.float64)
     data = np.random.binomial(1, tmp)
-    data = ift.Field.from_arr(R.target, data)
+    data = ift.Field.from_raw(R.target, data)
 
     # Compute likelihood and Hamiltonian
     position = ift.from_random('normal', harmonic_space)

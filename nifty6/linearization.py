@@ -321,7 +321,7 @@ class Linearization(object):
         tmp = self._val.sinc()
         tmp2 = ((np.pi*self._val).cos()-tmp)/self._val
         ind = self._val.val == 0
-        loc = tmp2.val.copy()
+        loc = tmp2.val_rw()
         loc[ind] = 0
         tmp2 = Field(tmp.domain, loc)
         return self.new(tmp, makeOp(tmp2)(self._jac))
@@ -371,7 +371,7 @@ class Linearization(object):
         tmp2 = self._val.sign()
 
         ind = self._val.val == 0
-        loc = tmp2.val.copy().astype(float)
+        loc = tmp2.val_rw().astype(float)
         loc[ind] = np.nan
         tmp2 = Field(tmp.domain, loc)
 

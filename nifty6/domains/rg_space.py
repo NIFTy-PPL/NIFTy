@@ -97,14 +97,14 @@ class RGSpace(StructuredDomain):
         res = np.arange(self.shape[0], dtype=np.float64)
         res = np.minimum(res, self.shape[0]-res)*self.distances[0]
         if len(self.shape) == 1:
-            return Field.from_arr(self, res)
+            return Field.from_raw(self, res)
         res *= res
         for i in range(1, len(self.shape)):
             tmp = np.arange(self.shape[i], dtype=np.float64)
             tmp = np.minimum(tmp, self.shape[i]-tmp)*self.distances[i]
             tmp *= tmp
             res = np.add.outer(res, tmp)
-        return Field.from_arr(self, np.sqrt(res))
+        return Field.from_raw(self, np.sqrt(res))
 
     def get_k_length_array(self):
         if (not self.harmonic):

@@ -310,7 +310,7 @@ def _plot1D(f, ax, **kwargs):
         plt.yscale(kwargs.pop("yscale", "log"))
         xcoord = dom.k_lengths
         for i, fld in enumerate(f):
-            ycoord = fld.val.copy()
+            ycoord = fld.val_rw()
             ycoord[0] = ycoord[1]
             plt.plot(xcoord, ycoord, label=label[i],
                      linewidth=linewidth[i], alpha=alpha[i])

@@ -172,12 +172,11 @@ class LOSResponse(LinearOperator):
                              "getting negative distances")
         real_ends = starts + diffs*real_distances
         dist = np.array(self.domain[0].distances).reshape((-1, 1))
-        localized_pixel_starts = starts/dist + 0.5
-        localized_pixel_ends = real_ends/dist + 0.5
+        pixel_starts = starts/dist + 0.5
+        pixel_ends = real_ends/dist + 0.5
 
-        # get the shape of the local data slice
-        w_i = _comp_traverse(localized_pixel_starts,
-                             localized_pixel_ends,
+        w_i = _comp_traverse(pixel_starts,
+                             pixel_ends,
                              self.domain[0].shape,
                              np.array(self.domain[0].distances),
                              1./(1./difflen+truncation*sigmas),
@@ -229,6 +228,6 @@ class LOSResponse(LinearOperator):
         if mode == self.TIMES:
             result_arr = self._smat.matvec(x.val.reshape(-1))
             return Field(self._target, result_arr)
-        local_input_data = x.val.reshape(-1)
-        res = self._smat.rmatvec(local_input_data).reshape(self.domain[0].shape)
+        input_data = x.val.reshape(-1)
+        res = self._smat.rmatvec(input_data).reshape(self.domain[0].shape)
         return Field(self._domain, res)

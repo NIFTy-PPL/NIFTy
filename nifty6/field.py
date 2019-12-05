@@ -32,8 +32,8 @@ class Field(object):
     ----------
     domain : DomainTuple
         The domain of the new Field.
-    val : data_object
-        This object's global shape must match the domain shape
+    val : numpy.ndarray
+        This object's shape must match the domain shape
         After construction, the object will no longer be writeable!
 
     Notes
@@ -93,7 +93,7 @@ class Field(object):
         return Field(domain, val)
 
     @staticmethod
-    def from_arr(domain, arr):
+    def from_raw(domain, arr):
         """Returns a Field constructed from `domain` and `arr`.
 
         Parameters
@@ -148,14 +148,18 @@ class Field(object):
 
     @property
     def val(self):
-        """numpy.ndarray : the data object storing the field's entries.
+        """numpy.ndarray : the array storing the field's entries.
 
         Notes
         -----
-        This property is intended for low-level, internal use only. Do not use
-        from outside of NIFTy's core; there should be better alternatives.
+        The returned array is read-only.
         """
         return self._val
+
+    def val_rw(self):
+        """numpy.ndarray : a copy of the array storing the field's entries.
+        """
+        return self._val.copy()
 
     @property
     def dtype(self):
@@ -241,7 +245,7 @@ class Field(object):
         Field
             The weighted field.
         """
-        aout = self.val.copy()
+        aout = self.val_rw()
 
         spaces = utilities.parse_spaces(spaces, len(self._domain))
 
