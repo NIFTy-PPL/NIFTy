@@ -26,10 +26,10 @@ class ScalingOperator(EndomorphicOperator):
 
     Parameters
     ----------
-    factor : scalar
-        The multiplication factor
     domain : Domain or tuple of Domain or DomainTuple
         The domain on which the Operator's input Field is defined.
+    factor : scalar
+        The multiplication factor
 
     Notes
     -----
@@ -50,13 +50,13 @@ class ScalingOperator(EndomorphicOperator):
     somewhere else.
     """
 
-    def __init__(self, factor, domain):
+    def __init__(self, domain, factor):
         from ..sugar import makeDomain
 
         if not np.isscalar(factor):
             raise TypeError("Scalar required")
-        self._factor = factor
         self._domain = makeDomain(domain)
+        self._factor = factor
         self._capability = self._all_ops
 
     def apply(self, x, mode):
@@ -81,7 +81,7 @@ class ScalingOperator(EndomorphicOperator):
             fct = np.conj(fct)
         if trafo & self.INVERSE_BIT:
             fct = 1./fct
-        return ScalingOperator(fct, self._domain)
+        return ScalingOperator(self._domain, fct)
 
     def _get_fct(self, from_inverse):
         fct = self._factor

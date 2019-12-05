@@ -74,7 +74,7 @@ if __name__ == '__main__':
     # Specify noise
     data_space = R.target
     noise = .001
-    N = ift.ScalingOperator(noise, data_space)
+    N = ift.ScalingOperator(data_space, noise)
 
     # Generate mock signal and data
     mock_position = ift.from_random('normal', signal_response.domain)

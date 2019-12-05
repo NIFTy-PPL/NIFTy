@@ -58,7 +58,7 @@ def test_dataconv():
 
 def test_blockdiagonal():
     op = ift.BlockDiagonalOperator(
-        dom, {"d1": ift.ScalingOperator(20., dom["d1"])})
+        dom, {"d1": ift.ScalingOperator(dom["d1"], 20.)})
     op2 = op(op)
     ift.extra.consistency_check(op2)
     assert_equal(type(op2), ift.BlockDiagonalOperator)

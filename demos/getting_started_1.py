@@ -113,7 +113,7 @@ if __name__ == '__main__':
 
     # Set the noise covariance N
     noise = 5.
-    N = ift.ScalingOperator(noise, data_space)
+    N = ift.ScalingOperator(data_space, noise)
 
     # Create mock data
     MOCK_SIGNAL = S.draw_sample()

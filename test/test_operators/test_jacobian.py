@@ -39,10 +39,10 @@ seed = list2fixture([4, 78, 23])
 
 def testBasics(space, seed):
     np.random.seed(seed)
-    S = ift.ScalingOperator(1., space)
+    S = ift.ScalingOperator(space, 1.)
     s = S.draw_sample()
     var = ift.Linearization.make_var(s)
-    model = ift.ScalingOperator(6., var.target)
+    model = ift.ScalingOperator(var.target, 6.)
     ift.extra.check_jacobian_consistency(model, var.val)
 
 
@@ -64,7 +64,7 @@ def testBinary(type1, type2, space, seed):
     model = select_s1.scale(3.)
     pos = ift.from_random("normal", dom1)
     ift.extra.check_jacobian_consistency(model, pos, ntries=20)
-    model = ift.ScalingOperator(2.456, space)(select_s1*select_s2)
+    model = ift.ScalingOperator(space, 2.456)(select_s1*select_s2)
     pos = ift.from_random("normal", dom)
     ift.extra.check_jacobian_consistency(model, pos, ntries=20)
     model = ift.sigmoid(2.456*(select_s1*select_s2))
@@ -90,7 +90,7 @@ def testBinary(type1, type2, space, seed):
 
 
 def testPointModel(space, seed):
-    S = ift.ScalingOperator(1., space)
+    S = ift.ScalingOperator(space, 1.)
     pos = S.draw_sample()
     alpha = 1.5
     q = 0.73
@@ -118,7 +118,7 @@ def testDynamicModel(target, causal, minimum_phase, seed):
             'minimum_phase': minimum_phase
             }
     model, _ = ift.dynamic_operator(**dct)
-    S = ift.ScalingOperator(1., model.domain)
+    S = ift.ScalingOperator(model.domain, 1.)
     pos = S.draw_sample()
     # FIXME I dont know why smaller tol fails for 3D example
     ift.extra.check_jacobian_consistency(model, pos, tol=1e-5, ntries=20)
@@ -139,7 +139,7 @@ def testDynamicModel(target, causal, minimum_phase, seed):
         dct['sigc'] = 1.
         dct['quant'] = 5
         model, _ = ift.dynamic_lightcone_operator(**dct)
-        S = ift.ScalingOperator(1., model.domain)
+        S = ift.ScalingOperator(model.domain, 1.)
         pos = S.draw_sample()
         # FIXME I dont know why smaller tol fails for 3D example
         ift.extra.check_jacobian_consistency(
