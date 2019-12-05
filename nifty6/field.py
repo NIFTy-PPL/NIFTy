@@ -140,11 +140,11 @@ class Field(object):
         Field
             The newly created Field.
         """
-        from . import dobj
+        from .random import Random
         domain = DomainTuple.make(domain)
-        return Field(domain=domain,
-                     val=dobj.from_random(random_type, dtype=dtype,
-                                          shape=domain.shape, **kwargs))
+        generator_function = getattr(Random, random_type)
+        arr = generator_function(dtype=dtype, shape=domain.shape, **kwargs)
+        return Field(domain, arr)
 
     @property
     def val(self):
