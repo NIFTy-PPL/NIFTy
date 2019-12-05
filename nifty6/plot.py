@@ -335,8 +335,8 @@ def _plot2D(f, ax, **kwargs):
         if (not isinstance(dom[1], RGSpace)) or len(dom[1].shape) != 1:
             raise TypeError("need 1D RGSpace as second domain")
         if dom[1].shape[0] == 1:
-            from .sugar import from_global_data
-            f = from_global_data(f.domain[0], f.val[..., 0])
+            from .sugar import makeField
+            f = makeField(f.domain[0], f.val[..., 0])
         else:
             rgb = _rgb_data(f.val)
             have_rgb = True

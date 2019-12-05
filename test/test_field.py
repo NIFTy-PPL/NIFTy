@@ -175,14 +175,14 @@ def test_dataconv():
     s1 = ift.RGSpace((10,))
     ld = np.arange(s1.shape[0])
     gd = np.arange(s1.shape[0])
-    assert_equal(gd, ift.from_global_data(s1, gd).val)
+    assert_equal(gd, ift.makeField(s1, gd).val)
 
 
 def test_cast_domain():
     s1 = ift.RGSpace((10,))
     s2 = ift.RGSpace((10,), distances=20.)
     d = np.arange(s1.shape[0])
-    d2 = ift.from_global_data(s1, d).cast_domain(s2).val
+    d2 = ift.makeField(s1, d).cast_domain(s2).val
     assert_equal(d, d2)
 
 
@@ -207,7 +207,7 @@ def test_trivialities():
     assert_equal(f1.sum(), f1.sum(0))
     assert_equal(f1.conjugate().val,
                  ift.Field.full(s1, 27. - 3j).val)
-    f1 = ift.from_global_data(s1, np.arange(10))
+    f1 = ift.makeField(s1, np.arange(10))
     # assert_equal(f1.min(), 0)
     # assert_equal(f1.max(), 9)
     assert_equal(f1.prod(), 0)

@@ -18,7 +18,7 @@
 from .multi_field import MultiField
 from .operators.endomorphic_operator import EndomorphicOperator
 from .operators.operator import Operator
-from .sugar import from_global_data, from_random
+from .sugar import makeField, from_random
 
 
 class StatCalculator(object):
@@ -146,5 +146,5 @@ def approximation2endo(op, nsamples):
     for kk in dct:
         foo = dct[kk].to_global_data_rw()
         foo[foo == 0] = 1
-        dct[kk] = from_global_data(dct[kk].domain, foo)
+        dct[kk] = makeField(dct[kk].domain, foo)
     return MultiField.from_dict(dct)

@@ -78,7 +78,7 @@ class PolynomialResponse(ift.LinearOperator):
         else:
             # FIXME Can this be optimized?
             out = self._mat.conj().T.dot(val)
-        return ift.from_global_data(self._tgt(mode), out)
+        return ift.makeField(self._tgt(mode), out)
 
 
 # Generate some mock data
@@ -99,8 +99,8 @@ R = PolynomialResponse(p_space, x)
 ift.extra.consistency_check(R)
 
 d_space = R.target
-d = ift.from_global_data(d_space, y)
-N = ift.DiagonalOperator(ift.from_global_data(d_space, var))
+d = ift.makeField(d_space, y)
+N = ift.DiagonalOperator(ift.makeField(d_space, var))
 
 IC = ift.DeltaEnergyController(tol_rel_deltaE=1e-12, iteration_limit=200)
 likelihood = ift.GaussianEnergy(d, N)(R)

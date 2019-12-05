@@ -33,7 +33,7 @@ from ..operators.linear_operator import LinearOperator
 from ..operators.operator import Operator
 from ..operators.simple_linear_operators import ducktape
 from ..probing import StatCalculator
-from ..sugar import from_global_data, full, makeDomain
+from ..sugar import makeField, full, makeDomain
 
 
 def _reshaper(x, N):
@@ -68,8 +68,8 @@ def _normal(mean, sig, key, N=0):
     else:
         domain = UnstructuredDomain(N)
         mean, sig = (_reshaper(param, N) for param in (mean, sig))
-    return Adder(from_global_data(domain, mean)) @ (DiagonalOperator(
-        from_global_data(domain, sig)) @ ducktape(domain, None, key))
+    return Adder(makeField(domain, mean)) @ (DiagonalOperator(
+        makeField(domain, sig)) @ ducktape(domain, None, key))
 
 
 def _log_k_lengths(pspace):
@@ -144,7 +144,7 @@ class _SlopeRemover(EndomorphicOperator):
             res = x.copy()
             res[self._last] -= (x*self._sc[self._extender]).sum(
                 axis=self._space, keepdims=True)
-        return from_global_data(self._tgt(mode), res)
+        return makeField(self._tgt(mode), res)
 
 
 class _TwoLogIntegrations(LinearOperator):
@@ -186,7 +186,7 @@ class _TwoLogIntegrations(LinearOperator):
             x[from_third] *= (self._log_vol/2.)[extender_sl]
             x[no_border] += x[from_third]
             res[second] += np.cumsum(x[from_third][reverse], axis=axis)[reverse]
-        return from_global_data(self._tgt(mode), res)
+        return makeField(self._tgt(mode), res)
 
 
 class _Normalization(Operator):
@@ -202,7 +202,7 @@ class _Normalization(Operator):
         mode_multiplicity = pd.adjoint(full(pd.target, 1.)).val.copy()
         zero_mode = (slice(None),)*self._domain.axes[space][0] + (0,)
         mode_multiplicity[zero_mode] = 0
-        self._mode_multiplicity = from_global_data(self._domain,
+        self._mode_multiplicity = makeField(self._domain,
                                                    mode_multiplicity)
         self._specsum = _SpecialSum(self._domain, space)
 
@@ -243,7 +243,7 @@ class _Distributor(LinearOperator):
         else:
             res = np.empty(self._tgt(mode).shape)
             res[self._dofdex] = x
-        return from_global_data(self._tgt(mode), res)
+        return makeField(self._tgt(mode), res)
 
 
 class _Amplitude(Operator):
@@ -284,24 +284,24 @@ class _Amplitude(Operator):
         # Prepare constant fields
         foo = np.zeros(shp)
         foo[0] = foo[1] = np.sqrt(_log_vol(target[space]))
-        vflex = DiagonalOperator(from_global_data(dom[space], foo), dom, space)
+        vflex = DiagonalOperator(makeField(dom[space], foo), dom, space)
 
         foo = np.zeros(shp, dtype=np.float64)
         foo[0] += 1
-        vasp = DiagonalOperator(from_global_data(dom[space], foo), dom, space)
+        vasp = DiagonalOperator(makeField(dom[space], foo), dom, space)
 
         foo = np.ones(shp)
         foo[0] = _log_vol(target[space])**2/12.
-        shift = DiagonalOperator(from_global_data(dom[space], foo), dom, space)
+        shift = DiagonalOperator(makeField(dom[space], foo), dom, space)
 
         vslope = DiagonalOperator(
-            from_global_data(target[space],
+            makeField(target[space],
                              _relative_log_k_lengths(target[space])),
             target, space)
 
         foo, bar = [np.zeros(target[space].shape) for _ in range(2)]
         bar[1:] = foo[0] = totvol
-        vol0, vol1 = [DiagonalOperator(from_global_data(target[space], aa),
+        vol0, vol1 = [DiagonalOperator(makeField(target[space], aa),
                                        target, space) for aa in (foo, bar)]
 
         # Prepare fields for Adder

@@ -35,7 +35,7 @@ from .plot import Plot
 
 __all__ = ['PS_field', 'power_analyze', 'create_power_operator',
            'create_harmonic_smoothing_operator', 'from_random',
-           'full', 'from_global_data',
+           'full', 'makeField',
            'makeDomain', 'sqrt', 'exp', 'log', 'tanh', 'sigmoid',
            'sin', 'cos', 'tan', 'sinh', 'cosh', 'log10',
            'absolute', 'one_over', 'clip', 'sinc', "log1p", "expm1",
@@ -280,7 +280,7 @@ def from_random(random_type, domain, dtype=np.float64, **kwargs):
     return Field.from_random(random_type, domain, dtype, **kwargs)
 
 
-def from_global_data(domain, arr):
+def makeField(domain, arr):
     """Convenience function creating Fields/MultiFields from Numpy arrays or
     dicts of Numpy arrays.
 

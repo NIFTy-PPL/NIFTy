@@ -21,7 +21,7 @@ from ..domain_tuple import DomainTuple
 from ..domains.rg_space import RGSpace
 from ..domains.unstructured_domain import UnstructuredDomain
 from ..operators.linear_operator import LinearOperator
-from ..sugar import from_global_data, makeDomain
+from ..sugar import makeField, makeDomain
 
 
 class GridderMaker(object):
@@ -85,7 +85,7 @@ class _RestOperator(LinearOperator):
             res = self._gconf.grid2dirty(res)
         else:
             res = self._gconf.dirty2grid(res)
-        return from_global_data(self._tgt(mode), res)
+        return makeField(self._tgt(mode), res)
 
 
 class RadioGridder(LinearOperator):
@@ -108,4 +108,4 @@ class RadioGridder(LinearOperator):
             res = nifty_gridder.grid2vis(self._bl, self._gconf, self._idx,
                                          x.val)
             res = self._bl.vis2ms(res, self._idx).reshape((-1,))
-        return from_global_data(self._tgt(mode), res)
+        return makeField(self._tgt(mode), res)

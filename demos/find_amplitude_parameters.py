@@ -57,7 +57,7 @@ if __name__ == '__main__':
         for _ in range(n_samps):
             fld = pspec(ift.from_random('normal', pspec.domain))
             klengths = fld.domain[0].k_lengths
-            ycoord = fld.to_global_data_rw()
+            ycoord = fld.val.copy()
             ycoord[0] = ycoord[1]
             ax.plot(klengths, ycoord, alpha=1)
 
@@ -80,7 +80,7 @@ if __name__ == '__main__':
         foo = []
         for ax in axs:
             pos = ift.from_random('normal', correlated_field.domain)
-            fld = correlated_field(pos).to_global_data()
+            fld = correlated_field(pos).val
             foo.append((ax, fld))
         mi, ma = np.inf, -np.inf
         for _, fld in foo:
@@ -106,7 +106,7 @@ if __name__ == '__main__':
         flds = []
         for _ in range(n_samps):
             pos = ift.from_random('normal', correlated_field.domain)
-            ax.plot(correlated_field(pos).to_global_data())
+            ax.plot(correlated_field(pos).val)
 
     plt.savefig('correlated_fields.png')
     plt.close()

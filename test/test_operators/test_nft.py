@@ -44,7 +44,7 @@ def test_gridding(nu, nv, N, eps):
     uv[:, 0] = uv[:, 0]/dstx
     uv[:, 1] = uv[:, 1]/dsty
     GM = ift.GridderMaker(dom, uv=uv, eps=eps)
-    vis2 = ift.from_global_data(ift.UnstructuredDomain(vis.shape), vis)
+    vis2 = ift.makeField(ift.UnstructuredDomain(vis.shape), vis)
 
     Op = GM.getFull()
     pynu = Op(vis2).val
@@ -75,7 +75,7 @@ def test_cartesian():
     fld = ift.from_random('normal', dom)
     arr = fld.val
 
-    fld2 = ift.from_global_data(dom, np.roll(arr, (nx//2, ny//2), axis=(0, 1)))
+    fld2 = ift.makeField(dom, np.roll(arr, (nx//2, ny//2), axis=(0, 1)))
     res = op(fld2).val.reshape(nx, ny)
 
     fft = ift.FFTOperator(dom.get_default_codomain(), target=dom).adjoint
