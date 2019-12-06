@@ -417,7 +417,7 @@ def HarmonicSmoothingOperator(domain, sigma, space=None):
     if sigma < 0.:
         raise ValueError("sigma must be non-negative")
     if sigma == 0.:
-        return ScalingOperator(1., domain)
+        return ScalingOperator(domain, 1.)
 
     domain = DomainTuple.make(domain)
     space = utilities.infer_space(domain, space)

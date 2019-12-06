@@ -37,7 +37,7 @@ PARAMS = product(SEEDS, SPACES)
 @pytest.fixture(params=PARAMS)
 def field(request):
     np.random.seed(request.param[0])
-    S = ift.ScalingOperator(1., request.param[1])
+    S = ift.ScalingOperator(request.param[1], 1.)
     s = S.draw_sample()
     return ift.MultiField.from_dict({'s1': s})['s1']
 
@@ -76,7 +76,7 @@ def test_hamiltonian_and_KL(field):
     lh = ift.GaussianEnergy(domain=space)
     hamiltonian = ift.StandardHamiltonian(lh)
     ift.extra.check_jacobian_consistency(hamiltonian, field)
-    S = ift.ScalingOperator(1., space)
+    S = ift.ScalingOperator(space, 1.)
     samps = [S.draw_sample() for i in range(3)]
     kl = ift.AveragedEnergy(hamiltonian, samps)
     ift.extra.check_jacobian_consistency(kl, field)

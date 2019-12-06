@@ -60,7 +60,7 @@ class Operator(metaclass=NiftyMeta):
         if factor == 1:
             return self
         from .scaling_operator import ScalingOperator
-        return ScalingOperator(factor, self.target)(self)
+        return ScalingOperator(self.target, factor)(self)
 
     def conjugate(self):
         from .simple_linear_operators import ConjugationOperator

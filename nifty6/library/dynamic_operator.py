@@ -74,7 +74,7 @@ def _make_dynamic_operator(target,
     ops['FFT'] = FFT
     ops['Real'] = Real
     if harmonic_padding is None:
-        CentralPadd = ScalingOperator(1., FFT.target)
+        CentralPadd = ScalingOperator(FFT.target, 1.)
     else:
         if isinstance(harmonic_padding, int):
             harmonic_padding = list((harmonic_padding,)*len(FFT.target.shape))
@@ -123,7 +123,7 @@ def _make_dynamic_operator(target,
         c = FieldAdapter(UnstructuredDomain(len(sigc)), keys[1])
         c = makeOp(Field.from_global_data(c.target, np.array(sigc)))(c)
 
-        lightspeed = ScalingOperator(-0.5, c.target)(c).exp()
+        lightspeed = ScalingOperator(c.target, -0.5)(c).exp()
         scaling = np.array(m.target[0].distances[1:])/m.target[0].distances[0]
         scaling = DiagonalOperator(Field.from_global_data(c.target, scaling))
         ops['lightspeed'] = scaling(lightspeed)
