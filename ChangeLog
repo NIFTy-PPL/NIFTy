@@ -17,8 +17,8 @@ onto each other exactly. We experienced that preconditioning in the `MetricGauss
 via `napprox` breaks the inference scheme with the new model so `napprox` may not
 be used here.
 
-Removal of the standard parallelization scheme:
-===============================================
+Removal of the standard MPI parallelization scheme:
+===================================================
 
 When several MPI tasks are present, NIFTy5 distributes every Field over these
 tasks by splitting it along the first axis. This approach to parallelism is not
@@ -37,3 +37,11 @@ User-visible changes:
 - the property `local_shape` has been removed from `Domain` (and subclasses)
   and `DomainTuple`.
 
+Transfer of MPI parallelization into operators:
+===============================================
+
+As was already the case with the `MetricGaussianKL_MPI` in NIFTy5, MPI
+parallelization in NIFTy6 is handled by specialized MPI-enabled operators.
+
+They are accessible via the `nifty6.mpi` namespace, from which they can be
+imported directly: `from nifty6.mpi import MPIenabledOperator`.
