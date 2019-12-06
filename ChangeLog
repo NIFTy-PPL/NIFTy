@@ -1,0 +1,18 @@
+Changes since NIFTy 5:
+
+Updates regarding correlated fields
+===================================
+
+The most commonly used model for homogeneous and isotropic correlated fields in
+nifty5 has been `SLAmplitude` combined with `CorrelatedField`. This model
+exhibits unintuitive couplings between its parameters and as been replaced
+by `CorrelatedFieldMaker` in NIFTy 6. This model aims to conceptionally provide
+the same functionality. However, internally it works quite differently. Therefore,
+specific classes for `SLAmplitude` like `LogRGSpace`, `QHTOperator`, `ExpTransform`,
+`SlopeOperator`, `SymmetrizingOperator`, `CepstrumOperator`, `CorrelatedField`
+and `MfCorrelatedField` are not needed anymore and have been removed. In general,
+`CorrelatedFieldMaker` feels to be better conditioned leading to faster convergence
+but it is hard to make explicit tests since the two approaches cannot be mapped
+onto each other exactly. We experienced that preconditioning in the `MetricGaussianKL`
+via `napprox` breaks the inference scheme with the new model so `napprox` may not
+be used here.
