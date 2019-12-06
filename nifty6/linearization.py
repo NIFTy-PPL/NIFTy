@@ -406,7 +406,7 @@ class Linearization(object):
             the requested Linearization
         """
         from .operators.scaling_operator import ScalingOperator
-        return Linearization(field, ScalingOperator(1., field.domain),
+        return Linearization(field, ScalingOperator(field.domain, 1.),
                              want_metric=want_metric)
 
     @staticmethod
@@ -492,7 +492,7 @@ class Linearization(object):
         if len(constants) == 0:
             return Linearization.make_var(field, want_metric)
         else:
-            ops = {key: ScalingOperator(0. if key in constants else 1., dom)
+            ops = {key: ScalingOperator(dom, 0. if key in constants else 1.)
                    for key, dom in field.domain.items()}
             bdop = BlockDiagonalOperator(field.domain, ops)
             return Linearization(field, bdop, want_metric=want_metric)

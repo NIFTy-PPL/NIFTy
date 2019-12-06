@@ -65,7 +65,7 @@ def test_times_inverse_times(space1, space2):
 
 def test_sum(space1):
     op1 = ift.makeOp(ift.Field.full(space1, 2.))
-    op2 = ift.ScalingOperator(3., space1)
+    op2 = ift.ScalingOperator(space1, 3.)
     full_op = op1 + op2 - (op2 - op1) + op1 + op1 + op2
     x = ift.Field.full(space1, 1.)
     res = full_op(x)
@@ -75,7 +75,7 @@ def test_sum(space1):
 
 def test_chain(space1):
     op1 = ift.makeOp(ift.Field.full(space1, 2.))
-    op2 = ift.ScalingOperator(3., space1)
+    op2 = ift.ScalingOperator(space1, 3.,)
     full_op = op1(op2)(op2)(op1)(op1)(op1)(op2)
     x = ift.Field.full(space1, 1.)
     res = full_op(x)
@@ -85,7 +85,7 @@ def test_chain(space1):
 
 def test_mix(space1):
     op1 = ift.makeOp(ift.Field.full(space1, 2.))
-    op2 = ift.ScalingOperator(3., space1)
+    op2 = ift.ScalingOperator(space1, 3.)
     full_op = op1(op2 + op2)(op1)(op1) - op1(op2)
     x = ift.Field.full(space1, 1.)
     res = full_op(x)

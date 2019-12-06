@@ -99,7 +99,7 @@ class SumOperator(LinearOperator):
                         break
             if sum != 0 or len(opsnew) == 0:
                 # have to add the scaling operator at the end
-                opsnew.append(ScalingOperator(sum, lastdom))
+                opsnew.append(ScalingOperator(lastdom, sum))
                 negnew.append(False)
 
             ops = opsnew

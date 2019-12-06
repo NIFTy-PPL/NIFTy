@@ -72,7 +72,7 @@ class ChainOperator(LinearOperator):
                     break
         if fct != 1 or len(opsnew) == 0:
             # have to add the scaling operator at the end
-            opsnew.append(ScalingOperator(fct, lastdom))
+            opsnew.append(ScalingOperator(lastdom, fct))
         ops = opsnew
         # combine DiagonalOperators where possible
         opsnew = []

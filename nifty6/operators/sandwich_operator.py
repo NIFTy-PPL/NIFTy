@@ -57,7 +57,7 @@ class SandwichOperator(EndomorphicOperator):
         if cheese is not None and not isinstance(cheese, LinearOperator):
             raise TypeError("cheese must be a linear operator or None")
         if cheese is None:
-            cheese = ScalingOperator(1., bun.target)
+            cheese = ScalingOperator(bun.target, 1.)
             op = bun.adjoint(bun)
         else:
             op = bun.adjoint(cheese(bun))

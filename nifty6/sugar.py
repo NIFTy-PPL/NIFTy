@@ -493,7 +493,7 @@ def calculate_position(operator, output):
     if output.domain != operator.target:
         raise TypeError
     cov = 1e-3*output.val.max()**2
-    invcov = ScalingOperator(cov, output.domain).inverse
+    invcov = ScalingOperator(output.domain, cov).inverse
     d = output + invcov.draw_sample(from_inverse=True)
     lh = GaussianEnergy(d, invcov)(operator)
     H = StandardHamiltonian(

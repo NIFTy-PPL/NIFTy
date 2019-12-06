@@ -72,7 +72,7 @@ def make_adjust_variances_hamiltonian(a,
 
     x = (a.conjugate()*a).real
     if scaling is not None:
-        x = ScalingOperator(scaling, x.target)(x)
+        x = ScalingOperator(x.target, scaling)(x)
 
     return StandardHamiltonian(InverseGammaLikelihood(d_eval/2.)(x),
                                ic_samp=ic_samp)
