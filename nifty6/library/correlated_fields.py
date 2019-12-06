@@ -18,6 +18,7 @@
 
 import numpy as np
 
+from ..logger import logger
 from ..domain_tuple import DomainTuple
 from ..domains.power_space import PowerSpace
 from ..domains.unstructured_domain import UnstructuredDomain
@@ -52,9 +53,9 @@ def _lognormal_moments(mean, sig, N=0):
     else:
         mean, sig = (_reshaper(param, N) for param in (mean, sig))
     if not np.all(mean > 0):
-        raise ValueError(f"mean must be greater 0; got {mean!r}")
+        raise ValueError("mean must be greater 0; got {!r}".format(mean))
     if not np.all(sig > 0):
-        raise ValueError(f"sig must be greater 0; got {sig!r}")
+        raise ValueError("sig must be greater 0; got {!r}".format(sig))
 
     logsig = np.sqrt(np.log((sig/mean)**2 + 1))
     logmean = np.log(mean) - logsig**2/2
@@ -501,7 +502,7 @@ class CorrelatedFieldMaker:
             mean = sc.mean.val
             stddev = sc.var.sqrt().val
             for m, s in zip(mean.flatten(), stddev.flatten()):
-                print('{}: {:.02E} ± {:.02E}'.format(kk, m, s))
+                logger.info('{}: {:.02E} ± {:.02E}'.format(kk, m, s))
 
     def moment_slice_to_average(self, fluctuations_slice_mean, nsamples=1000):
         fluctuations_slice_mean = float(fluctuations_slice_mean)
@@ -554,7 +555,7 @@ class CorrelatedFieldMaker:
         if len(self._a) == 0:
             raise NotImplementedError
         if space >= len(self._a):
-            raise ValueError(f"invalid space specified; got {space!r}")
+            raise ValueError("invalid space specified; got {!r}".format(space))
         if len(self._a) == 1:
             return self.average_fluctuation(0)
         q = 1.
@@ -571,7 +572,7 @@ class CorrelatedFieldMaker:
         if len(self._a) == 0:
             raise NotImplementedError
         if space >= len(self._a):
-            raise ValueError(f"invalid space specified; got {space!r}")
+            raise ValueError("invalid space specified; got {!r}".format(space))
         if len(self._a) == 1:
             return self._a[0].fluctuation_amplitude
         return self._a[space].fluctuation_amplitude
@@ -593,7 +594,7 @@ class CorrelatedFieldMaker:
         space) realizations."""
         ldom = len(samples[0].domain)
         if space >= ldom:
-            raise ValueError(f"invalid space specified; got {space!r}")
+            raise ValueError("invalid space specified; got {!r}".format(space))
         if ldom == 1:
             return _total_fluctuation_realized(samples)
         res1, res2 = 0., 0.
@@ -611,7 +612,7 @@ class CorrelatedFieldMaker:
         space) realizations."""
         ldom = len(samples[0].domain)
         if space >= ldom:
-            raise ValueError(f"invalid space specified; got {space!r}")
+            raise ValueError("invalid space specified; got {!r}".format(space))
         if ldom == 1:
             return _total_fluctuation_realized(samples)
         spaces = ()
