@@ -38,11 +38,11 @@ signal_vals = np.zeros(npix, dtype=np.float64)
 for i in range(0, npix, npix//12 + 27):
     signal_vals[i] = 500.
 
-signal = ift.from_global_data(domain, signal_vals)
+signal = ift.makeField(domain, signal_vals)
 
 delta_vals = np.zeros(npix, dtype=np.float64)
 delta_vals[0] = 1.0
-delta = ift.from_global_data(domain, delta_vals)
+delta = ift.makeField(domain, delta_vals)
 
 
 # Define kernel function
@@ -58,12 +58,12 @@ domain = ift.RGSpace((100, 100))
 signal_vals = np.zeros(domain.shape, dtype=np.float64)
 signal_vals[35, 70] = 5000.
 signal_vals[45, 8] = 5000.
-signal = ift.from_global_data(domain, signal_vals)
+signal = ift.makeField(domain, signal_vals)
 
 # Define delta signal, generate kernel image
 delta_vals = np.zeros(domain.shape, dtype=np.float64)
 delta_vals[0, 0] = 1.0
-delta = ift.from_global_data(domain, delta_vals)
+delta = ift.makeField(domain, delta_vals)
 
 
 # Define kernel function

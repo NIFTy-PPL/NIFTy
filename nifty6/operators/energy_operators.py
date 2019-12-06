@@ -184,7 +184,7 @@ class PoissonianEnergy(EnergyOperator):
     def __init__(self, d):
         if not isinstance(d, Field) or not np.issubdtype(d.dtype, np.integer):
             raise TypeError
-        if np.any(d.local_data < 0):
+        if np.any(d.val < 0):
             raise ValueError
         self._d = d
         self._domain = DomainTuple.make(d.domain)
@@ -192,7 +192,7 @@ class PoissonianEnergy(EnergyOperator):
     def apply(self, x):
         self._check_input(x)
         res = x.sum()
-        tmp = res.val.local_data if isinstance(res, Linearization) else res
+        tmp = res.val.val if isinstance(res, Linearization) else res
         # if we have no infinity here, we can continue with the calculation;
         # otherwise we know that the result must also be infinity
         if not np.isinf(tmp):
@@ -231,8 +231,7 @@ class InverseGammaLikelihood(EnergyOperator):
             raise TypeError
         self._beta = beta
         if np.isscalar(alpha):
-            alpha = Field.from_local_data(
-                beta.domain, np.full(beta.local_data.shape, alpha))
+            alpha = Field(beta.domain, np.full(beta.shape, alpha))
         elif not isinstance(alpha, Field):
             raise TypeError
         self._alphap1 = alpha+1
@@ -302,7 +301,7 @@ class BernoulliEnergy(EnergyOperator):
     def __init__(self, d):
         if not isinstance(d, Field) or not np.issubdtype(d.dtype, np.integer):
             raise TypeError
-        if not np.all(np.logical_or(d.local_data == 0, d.local_data == 1)):
+        if not np.all(np.logical_or(d.val == 0, d.val == 1)):
             raise ValueError
         self._d = d
         self._domain = DomainTuple.make(d.domain)

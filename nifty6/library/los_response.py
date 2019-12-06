@@ -20,7 +20,6 @@ from scipy.sparse import coo_matrix
 from scipy.sparse.linalg import aslinearoperator
 from scipy.special import erfc
 
-from .. import dobj
 from ..domain_tuple import DomainTuple
 from ..domains.rg_space import RGSpace
 from ..domains.unstructured_domain import UnstructuredDomain
@@ -164,11 +163,6 @@ class LOSResponse(LinearOperator):
         if starts.shape != ends.shape:
             raise TypeError("dimension mismatch")
 
-        self._local_shape = dobj.local_shape(self.domain[0].shape)
-        local_zero_point = (np.array(
-            dobj.ibegin_from_shape(self.domain[0].shape)) *
-            np.array(self.domain[0].distances))
-
         diffs = ends-starts
         difflen = np.linalg.norm(diffs, axis=0)
         diffs /= difflen
@@ -177,15 +171,13 @@ class LOSResponse(LinearOperator):
             raise ValueError("parallax error truncation to high: "
                              "getting negative distances")
         real_ends = starts + diffs*real_distances
-        lzp = local_zero_point.reshape((-1, 1))
         dist = np.array(self.domain[0].distances).reshape((-1, 1))
-        localized_pixel_starts = (starts-lzp)/dist + 0.5
-        localized_pixel_ends = (real_ends-lzp)/dist + 0.5
+        pixel_starts = starts/dist + 0.5
+        pixel_ends = real_ends/dist + 0.5
 
-        # get the shape of the local data slice
-        w_i = _comp_traverse(localized_pixel_starts,
-                             localized_pixel_ends,
-                             self._local_shape,
+        w_i = _comp_traverse(pixel_starts,
+                             pixel_ends,
+                             self.domain[0].shape,
                              np.array(self.domain[0].distances),
                              1./(1./difflen+truncation*sigmas),
                              difflen,
@@ -195,7 +187,7 @@ class LOSResponse(LinearOperator):
 
         boxsz = 16
         nlos = len(w_i)
-        npix = np.prod(self._local_shape)
+        npix = np.prod(self.domain[0].shape)
         ntot = 0
         for i in w_i:
             ntot += len(i[1])
@@ -210,12 +202,12 @@ class LOSResponse(LinearOperator):
             ilos[ofs:ofs+nval] = cnt
             iarr[ofs:ofs+nval] = i[0]
             xwgt[ofs:ofs+nval] = i[1]
-            fullidx = np.unravel_index(i[0], self._local_shape)
+            fullidx = np.unravel_index(i[0], self.domain[0].shape)
             tmp = np.zeros(nval, dtype=np.float64)
             fct = 1.
             for j in range(ndim):
                 tmp += (fullidx[j]//boxsz)*fct
-                fct *= self._local_shape[j]
+                fct *= self.domain[0].shape[j]
             tmp += cnt/float(nlos)
             tmp += iarr[ofs:ofs+nval]/(float(nlos)*float(npix))
             pri[ofs:ofs+nval] = tmp
@@ -227,16 +219,15 @@ class LOSResponse(LinearOperator):
         xwgt = xwgt[xtmp]
         self._smat = aslinearoperator(
             coo_matrix((xwgt, (ilos, iarr)),
-                       shape=(nlos, np.prod(self._local_shape))))
+                       shape=(nlos, np.prod(self.domain[0].shape))))
 
         self._target = DomainTuple.make(UnstructuredDomain(nlos))
 
     def apply(self, x, mode):
         self._check_input(x, mode)
         if mode == self.TIMES:
-            result_arr = self._smat.matvec(x.local_data.reshape(-1))
-            return Field.from_global_data(self._target, result_arr,
-                                          sum_up=True)
-        local_input_data = x.to_global_data().reshape(-1)
-        res = self._smat.rmatvec(local_input_data).reshape(self._local_shape)
-        return Field.from_local_data(self._domain, res)
+            result_arr = self._smat.matvec(x.val.reshape(-1))
+            return Field(self._target, result_arr)
+        input_data = x.val.reshape(-1)
+        res = self._smat.rmatvec(input_data).reshape(self.domain[0].shape)
+        return Field(self._domain, res)

@@ -1,7 +1,5 @@
 from .version import __version__
 
-from . import dobj
-
 from .domains.domain import Domain
 from .domains.structured_domain import StructuredDomain
 from .domains.unstructured_domain import UnstructuredDomain
@@ -92,11 +90,6 @@ from .logger import logger
 from .linearization import Linearization
 
 from .operator_spectrum import operator_spectrum
-
-from . import internal_config
-_scheme = internal_config.parallelization_scheme()
-if _scheme == "Samples":
-    from .minimization.metric_gaussian_kl_mpi import MetricGaussianKL_MPI
 
 # We deliberately don't set __all__ here, because we don't want people to do a
 # "from nifty6 import *"; that would swamp the global namespace.

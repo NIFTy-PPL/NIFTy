@@ -32,8 +32,7 @@ __all__ = ["consistency_check", "check_jacobian_consistency",
 
 def assert_allclose(f1, f2, atol, rtol):
     if isinstance(f1, Field):
-        return np.testing.assert_allclose(f1.local_data, f2.local_data,
-                                          atol=atol, rtol=rtol)
+        return np.testing.assert_allclose(f1.val, f2.val, atol=atol, rtol=rtol)
     for key, val in f1.items():
         assert_allclose(val, f2[key], atol=atol, rtol=rtol)
 

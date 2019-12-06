@@ -23,9 +23,6 @@ from ..field import Field
 from .linear_operator import LinearOperator
 
 
-# MR FIXME: this needs a redesign to avoid most _global_data() calls
-# Possible approach: keep everything defined on `domain` distributed and only
-# collect the unstructured Fields.
 class MaskOperator(LinearOperator):
     """Implementation of a mask response
 
@@ -41,17 +38,17 @@ class MaskOperator(LinearOperator):
         if not isinstance(flags, Field):
             raise TypeError
         self._domain = DomainTuple.make(flags.domain)
-        self._flags = np.logical_not(flags.to_global_data())
+        self._flags = np.logical_not(flags.val)
         self._target = DomainTuple.make(UnstructuredDomain(self._flags.sum()))
         self._capability = self.TIMES | self.ADJOINT_TIMES
 
     def apply(self, x, mode):
         self._check_input(x, mode)
-        x = x.to_global_data()
+        x = x.val
         if mode == self.TIMES:
             res = x[self._flags]
-            return Field.from_global_data(self.target, res)
+            return Field(self.target, res)
         res = np.empty(self.domain.shape, x.dtype)
         res[self._flags] = x
         res[~self._flags] = 0
-        return Field.from_global_data(self.domain, res)
+        return Field(self.domain, res)

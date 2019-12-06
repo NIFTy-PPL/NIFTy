@@ -42,7 +42,7 @@ def make_random_mask():
     # Random mask for spherical mode
     mask = ift.from_random('pm1', position_space)
     mask = (mask + 1)/2
-    return mask.to_global_data()
+    return mask.val
 
 
 if __name__ == '__main__':
@@ -95,7 +95,7 @@ if __name__ == '__main__':
     # and harmonic transformaion
 
     # Masking operator to model that parts of the field have not been observed
-    mask = ift.Field.from_global_data(position_space, mask)
+    mask = ift.Field.from_raw(position_space, mask)
     Mask = ift.MaskOperator(mask)
 
     # The response operator consists of

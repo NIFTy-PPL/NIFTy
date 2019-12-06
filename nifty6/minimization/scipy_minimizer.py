@@ -17,7 +17,6 @@
 
 import numpy as np
 
-from .. import dobj
 from ..field import Field
 from ..logger import logger
 from ..multi_field import MultiField
@@ -33,7 +32,7 @@ def _multiToArray(fld):
     ofs = 0
     for val in fld.values():
         sz2 = 2*val.size if iscomplextype(val.dtype) else val.size
-        locdat = val.local_data.reshape(-1)
+        locdat = val.val.reshape(-1)
         if iscomplextype(val.dtype):
             locdat = locdat.view(locdat.real.dtype)
         res[ofs:ofs+sz2] = locdat
@@ -43,20 +42,19 @@ def _multiToArray(fld):
 
 def _toArray(fld):
     if isinstance(fld, Field):
-        return fld.local_data.reshape(-1)
+        return fld.val.reshape(-1)
     return _multiToArray(fld)
 
 
 def _toArray_rw(fld):
     if isinstance(fld, Field):
-        return fld.local_data.copy().reshape(-1)
+        return fld.val_rw().reshape(-1)
     return _multiToArray(fld)
 
 
 def _toField(arr, template):
     if isinstance(template, Field):
-        return Field.from_local_data(template.domain,
-                                     arr.reshape(template.shape).copy())
+        return Field(template.domain, arr.reshape(template.shape).copy())
     ofs = 0
     res = []
     for v in template.values():
@@ -64,7 +62,7 @@ def _toField(arr, template):
         locdat = arr[ofs:ofs+sz2].copy()
         if iscomplextype(v.dtype):
             locdat = locdat.view(np.complex128)
-        res.append(Field.from_local_data(v.domain, locdat.reshape(v.shape)))
+        res.append(Field(v.domain, locdat.reshape(v.shape)))
         ofs += sz2
     return MultiField(template.domain, tuple(res))
 
@@ -105,8 +103,6 @@ class _ScipyMinimizer(Minimizer):
     """
 
     def __init__(self, method, options, need_hessp, bounds):
-        if not dobj.is_numpy():
-            raise NotImplementedError
         self._method = method
         self._options = options
         self._need_hessp = need_hessp
@@ -155,8 +151,6 @@ class _ScipyCG(Minimizer):
     gradient implementation and should not be used otherwise.
     """
     def __init__(self, tol, maxiter):
-        if not dobj.is_numpy():
-            raise NotImplementedError
         self._tol = tol
         self._maxiter = maxiter
 

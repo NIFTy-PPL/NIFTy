@@ -56,7 +56,7 @@ def test_times(space, sigma):
     op = ift.HarmonicSmoothingOperator(space, sigma=sigma)
     fld = np.zeros(space.shape, dtype=np.float64)
     fld[0] = 1.
-    rand1 = ift.Field.from_global_data(space, fld)
+    rand1 = ift.Field.from_raw(space, fld)
     tt1 = op.times(rand1)
     assert_allclose(1, tt1.sum())
 

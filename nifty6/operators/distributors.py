@@ -17,7 +17,6 @@
 
 import numpy as np
 
-from .. import dobj
 from ..domain_tuple import DomainTuple
 from ..domains.dof_space import DOFSpace
 from ..domains.power_space import PowerSpace
@@ -65,24 +64,23 @@ class DOFDistributor(LinearOperator):
         if partner != dofdex.domain[0]:
             raise ValueError("incorrect dofdex domain")
 
-        ldat = dofdex.local_data
+        ldat = dofdex.val
         if ldat.size == 0:  # can happen for weird configurations
             nbin = 0
         else:
             nbin = ldat.max()
-        nbin = dobj.np_allreduce_max(np.array(nbin))[()] + 1
+        nbin = nbin + 1
         if partner.scalar_dvol is not None:
-            wgt = np.bincount(dofdex.local_data.ravel(), minlength=nbin)
+            wgt = np.bincount(dofdex.val.ravel(), minlength=nbin)
             wgt = wgt*partner.scalar_dvol
         else:
-            dvol = Field.from_global_data(partner, partner.dvol).local_data
-            wgt = np.bincount(dofdex.local_data.ravel(),
+            dvol = Field.from_raw(partner, partner.dvol).val
+            wgt = np.bincount(dofdex.val.ravel(),
                               minlength=nbin, weights=dvol)
         # The explicit conversion to float64 is necessary because bincount
         # sometimes returns its result as an integer array, even when
         # floating-point weights are present ...
         wgt = wgt.astype(np.float64, copy=False)
-        wgt = dobj.np_allreduce_sum(wgt)
         if (wgt == 0).any():
             raise ValueError("empty bins detected")
 
@@ -95,42 +93,30 @@ class DOFDistributor(LinearOperator):
         self._domain = DomainTuple.make(dom)
         self._capability = self.TIMES | self.ADJOINT_TIMES
 
-        if dobj.default_distaxis() in self._domain.axes[self._space]:
-            dofdex = dobj.local_data(dofdex)
-        else:  # dofdex must be available fully on every task
-            dofdex = dobj.to_global_data(dofdex)
         self._dofdex = dofdex.ravel()
         firstaxis = self._target.axes[self._space][0]
         lastaxis = self._target.axes[self._space][-1]
-        arrshape = dobj.local_shape(self._target.shape, 0)
+        arrshape = self._target.shape
         presize = np.prod(arrshape[0:firstaxis], dtype=np.int)
         postsize = np.prod(arrshape[lastaxis+1:], dtype=np.int)
         self._hshape = (presize, self._domain[self._space].shape[0], postsize)
         self._pshape = (presize, self._dofdex.size, postsize)
 
     def _adjoint_times(self, x):
-        arr = x.local_data
+        arr = x.val
         arr = arr.reshape(self._pshape)
         oarr = np.zeros(self._hshape, dtype=x.dtype)
         oarr = special_add_at(oarr, 1, self._dofdex, arr)
-        if dobj.distaxis(x.val) in x.domain.axes[self._space]:
-            oarr = oarr.reshape(self._domain.shape)
-            res = Field.from_global_data(self._domain, oarr, sum_up=True)
-        else:
-            oarr = oarr.reshape(self._domain.local_shape)
-            res = Field.from_local_data(self._domain, oarr)
+        oarr = oarr.reshape(self._domain.shape)
+        res = Field.from_raw(self._domain, oarr)
         return res
 
     def _times(self, x):
-        if dobj.distaxis(x.val) in x.domain.axes[self._space]:
-            arr = x.to_global_data()
-        else:
-            arr = x.local_data
+        arr = x.val
         arr = arr.reshape(self._hshape)
         oarr = np.empty(self._pshape, dtype=x.dtype)
         oarr[()] = arr[(slice(None), self._dofdex, slice(None))]
-        return Field.from_local_data(
-            self._target, oarr.reshape(self._target.local_shape))
+        return Field(self._target, oarr.reshape(self._target.shape))
 
     def apply(self, x, mode):
         self._check_input(x, mode)

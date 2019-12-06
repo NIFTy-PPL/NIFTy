@@ -57,10 +57,10 @@ def test_kl(constants, point_estimates, mirror_samples):
 
     # Test gradient
     for kk in h.domain.keys():
-        res0 = klpure.gradient.to_global_data()[kk]
+        res0 = klpure.gradient[kk].val
         if kk in constants:
             res0 = 0*res0
-        res1 = kl.gradient.to_global_data()[kk]
+        res1 = kl.gradient[kk].val
         assert_allclose(res0, res1)
 
     # Test number of samples
@@ -70,13 +70,13 @@ def test_kl(constants, point_estimates, mirror_samples):
     # Test point_estimates (after drawing samples)
     for kk in point_estimates:
         for ss in kl.samples:
-            ss = ss.to_global_data()[kk]
+            ss = ss[kk].val
             assert_allclose(ss, 0*ss)
 
     # Test constants (after some minimization)
     cg = ift.GradientNormController(iteration_limit=5)
     minimizer = ift.NewtonCG(cg)
     kl, _ = minimizer(kl)
-    diff = (mean0 - kl.position).to_global_data()
+    diff = (mean0 - kl.position).to_dict()
     for kk in constants:
-        assert_allclose(diff[kk], 0*diff[kk])
+        assert_allclose(diff[kk].val, 0*diff[kk].val)

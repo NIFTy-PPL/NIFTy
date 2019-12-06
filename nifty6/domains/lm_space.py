@@ -87,7 +87,7 @@ class LMSpace(StructuredDomain):
         for m in range(1, mmax+1):
             ldist[idx:idx+2*(lmax+1-m)] = tmp[2*m:]
             idx += 2*(lmax+1-m)
-        return Field.from_global_data(self, ldist)
+        return Field.from_raw(self, ldist)
 
     def get_unique_k_lengths(self):
         return np.arange(self.lmax+1, dtype=np.float64)
@@ -123,15 +123,15 @@ class LMSpace(StructuredDomain):
         lm0 = gl.get_default_codomain()
         theta = pyHealpix.GL_thetas(gl.nlat)
         # evaluate the kernel function at the required thetas
-        kernel_sphere = Field.from_global_data(gl, func(theta))
+        kernel_sphere = Field.from_raw(gl, func(theta))
         # normalize the kernel such that the integral over the sphere is 4pi
         kernel_sphere = kernel_sphere * (4 * np.pi / kernel_sphere.integrate())
         # compute the spherical harmonic coefficients of the kernel
         op = HarmonicTransformOperator(lm0, gl)
-        kernel_lm = op.adjoint_times(kernel_sphere.weight(1)).to_global_data()
+        kernel_lm = op.adjoint_times(kernel_sphere.weight(1)).val
         # evaluate the k lengths of the harmonic space
-        k_lengths = self.get_k_length_array().to_global_data().astype(np.int)
-        return Field.from_global_data(self, kernel_lm[k_lengths])
+        k_lengths = self.get_k_length_array().val.astype(np.int)
+        return Field.from_raw(self, kernel_lm[k_lengths])
 
     @property
     def lmax(self):

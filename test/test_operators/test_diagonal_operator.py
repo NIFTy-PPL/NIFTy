@@ -52,7 +52,7 @@ def test_times_inverse(space):
     diag = ift.Field.from_random('normal', domain=space)
     D = ift.DiagonalOperator(diag)
     tt1 = D.times(D.inverse_times(rand1))
-    assert_allclose(rand1.local_data, tt1.local_data)
+    assert_allclose(rand1.val, tt1.val)
 
 
 def test_times(space):
@@ -91,4 +91,4 @@ def test_diagonal(space):
     diag = ift.Field.from_random('normal', domain=space)
     D = ift.DiagonalOperator(diag)
     diag_op = D(ift.Field.full(space, 1.))
-    assert_allclose(diag.local_data, diag_op.local_data)
+    assert_allclose(diag.val, diag_op.val)

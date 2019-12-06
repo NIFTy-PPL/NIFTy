@@ -85,19 +85,6 @@ class Domain(metaclass=NiftyMeta):
         raise NotImplementedError
 
     @property
-    def local_shape(self):
-        """tuple of int: number of pixels along each axis on the local task,
-        mainly relevant for MPI.
-
-        See :meth:`.shape()` for general explanation of property.
-
-        The shape of the array-like object required to store information
-        defined on part of the domain which is stored on the local MPI task.
-        """
-        from ..dobj import local_shape
-        return local_shape(self.shape)
-
-    @property
     def size(self):
         """int: total number of pixels.
 

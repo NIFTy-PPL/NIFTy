@@ -58,11 +58,9 @@ class DomainTupleFieldInserter(LinearOperator):
 
     def apply(self, x, mode):
         self._check_input(x, mode)
-        # FIXME Make fully MPI compatible without global_data
         if mode == self.TIMES:
             res = np.zeros(self.target.shape, dtype=x.dtype)
-            res[self._slc] = x.to_global_data()
-            return Field.from_global_data(self.target, res)
+            res[self._slc] = x.val
+            return Field(self.target, res)
         else:
-            return Field.from_global_data(self.domain,
-                                          x.to_global_data()[self._slc])
+            return Field(self.domain, x.val[self._slc])

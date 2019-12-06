@@ -95,9 +95,9 @@ class LinearInterpolator(LinearOperator):
 
     def apply(self, x, mode):
         self._check_input(x, mode)
-        x_val = x.to_global_data()
+        x_val = x.val
         if mode == self.TIMES:
             res = self._mat.matvec(x_val.reshape(-1))
         else:
             res = self._mat.rmatvec(x_val).reshape(self.domain.shape)
-        return Field.from_global_data(self._tgt(mode), res)
+        return Field(self._tgt(mode), res)

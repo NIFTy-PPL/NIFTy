@@ -24,16 +24,16 @@ for ii in range(10, 26):
 
     img = np.random.randn(nu*nv)
     img = img.reshape((nu, nv))
-    img = ift.from_global_data(uvspace, img)
+    img = ift.makeField(uvspace, img)
 
     t0 = time()
     GM = ift.GridderMaker(uvspace, eps=1e-7, uv=uv)
-    vis = ift.from_global_data(visspace, vis)
+    vis = ift.makeField(visspace, vis)
     op = GM.getFull().adjoint
     t1 = time()
-    op(img).to_global_data()
+    op(img).val
     t2 = time()
-    op.adjoint(vis).to_global_data()
+    op.adjoint(vis).val
     t3 = time()
     print(t2-t1, t3-t2)
     N0s.append(N)

@@ -51,10 +51,10 @@ class ValueInserter(LinearOperator):
 
     def apply(self, x, mode):
         self._check_input(x, mode)
-        x = x.to_global_data()
+        x = x.val
         if mode == self.TIMES:
             res = np.zeros(self.target.shape, dtype=x.dtype)
             res[self._index] = x
-            return Field.from_global_data(self._tgt(mode), res)
+            return Field(self._tgt(mode), res)
         else:
             return Field.scalar(x[self._index])

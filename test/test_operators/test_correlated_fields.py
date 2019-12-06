@@ -36,7 +36,7 @@ def testAmplitudesConsistency(rseed, sspace, Astds, offset_std):
         sc = ift.StatCalculator()
         for s in samples:
             sc.add(op(s.extract(op.domain)))
-        return sc.mean.to_global_data(), sc.var.sqrt().to_global_data()
+        return sc.mean.val, sc.var.sqrt().val
     seed(rseed)
     nsam = 100
 
@@ -54,7 +54,7 @@ def testAmplitudesConsistency(rseed, sspace, Astds, offset_std):
     offset_std,_ = stats(fa.amplitude_total_offset,samples)
     intergated_fluct_std0,_ = stats(fa.average_fluctuation(0),samples)
     intergated_fluct_std1,_ = stats(fa.average_fluctuation(1),samples)
-    
+
     slice_fluct_std0,_ = stats(fa.slice_fluctuation(0),samples)
     slice_fluct_std1,_ = stats(fa.slice_fluctuation(1),samples)
 
@@ -84,6 +84,6 @@ def testAmplitudesConsistency(rseed, sspace, Astds, offset_std):
     em, estd = stats(fa.slice_fluctuation(0),samples)
 
     assert_allclose(m, em, rtol=0.5)
-    
+
     assert op.target[0] == sspace
     assert op.target[1] == fsspace

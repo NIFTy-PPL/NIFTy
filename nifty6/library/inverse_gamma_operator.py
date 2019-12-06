@@ -67,7 +67,7 @@ class InverseGammaOperator(Operator):
     def apply(self, x):
         self._check_input(x)
         lin = isinstance(x, Linearization)
-        val = x.val.local_data if lin else x.local_data
+        val = x.val.val if lin else x.val
 
         val = (np.clip(val, self._xmin, self._xmax) - self._xmin) / self._delta
 
@@ -76,26 +76,26 @@ class InverseGammaOperator(Operator):
         w = val - fi
         res = np.exp((1 - w)*self._table[fi] + w*self._table[fi + 1])
 
-        points = Field.from_local_data(self._domain, res)
+        points = Field(self._domain, res)
         if not lin:
             return points
 
         # Derivative of linear interpolation
         der = self._deriv[fi]*res
 
-        jac = makeOp(Field.from_local_data(self._domain, der))
+        jac = makeOp(Field(self._domain, der))
         jac = jac(x.jac)
         return x.new(points, jac)
 
     @staticmethod
     def IG(field, alpha, q):
-        foo = invgamma.ppf(norm.cdf(field.local_data), alpha, scale=q)
-        return Field.from_local_data(field.domain, foo)
+        foo = invgamma.ppf(norm.cdf(field.val), alpha, scale=q)
+        return Field(field.domain, foo)
 
     @staticmethod
     def inverseIG(u, alpha, q):
-        res = norm.ppf(invgamma.cdf(u.local_data, alpha, scale=q))
-        return Field.from_local_data(u.domain, res)
+        res = norm.ppf(invgamma.cdf(u.val, alpha, scale=q))
+        return Field(u.domain, res)
 
     @property
     def alpha(self):

@@ -60,7 +60,7 @@ def test_times_inverse_times(space1, space2):
     rand1 = ift.Field.from_random('normal', domain=(space1, space2))
     tt1 = op.inverse_times(op.times(rand1))
 
-    assert_allclose(tt1.local_data, rand1.local_data)
+    assert_allclose(tt1.val, rand1.val)
 
 
 def test_sum(space1):
@@ -70,7 +70,7 @@ def test_sum(space1):
     x = ift.Field.full(space1, 1.)
     res = full_op(x)
     assert_equal(isinstance(full_op, ift.DiagonalOperator), True)
-    assert_allclose(res.local_data, 11.)
+    assert_allclose(res.val, 11.)
 
 
 def test_chain(space1):
@@ -80,7 +80,7 @@ def test_chain(space1):
     x = ift.Field.full(space1, 1.)
     res = full_op(x)
     assert_equal(isinstance(full_op, ift.DiagonalOperator), True)
-    assert_allclose(res.local_data, 432.)
+    assert_allclose(res.val, 432.)
 
 
 def test_mix(space1):
@@ -90,4 +90,4 @@ def test_mix(space1):
     x = ift.Field.full(space1, 1.)
     res = full_op(x)
     assert_equal(isinstance(full_op, ift.DiagonalOperator), True)
-    assert_allclose(res.local_data, 42.)
+    assert_allclose(res.val, 42.)

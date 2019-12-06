@@ -17,7 +17,7 @@
 
 import numpy as np
 
-from .. import dobj, utilities
+from .. import utilities
 from ..domain_tuple import DomainTuple
 from ..field import Field
 from .endomorphic_operator import EndomorphicOperator
@@ -78,16 +78,12 @@ class DiagonalOperator(EndomorphicOperator):
             for space_index in self._spaces:
                 active_axes += self._domain.axes[space_index]
 
-            if self._spaces[0] == 0:
-                self._ldiag = diagonal.local_data
-            else:
-                self._ldiag = diagonal.to_global_data()
-            locshape = dobj.local_shape(self._domain.shape, 0)
+            self._ldiag = diagonal.val
             self._reshaper = [shp if i in active_axes else 1
-                              for i, shp in enumerate(locshape)]
+                              for i, shp in enumerate(self._domain.shape)]
             self._ldiag = self._ldiag.reshape(self._reshaper)
         else:
-            self._ldiag = diagonal.local_data
+            self._ldiag = diagonal.val
         self._fill_rest()
 
     def _fill_rest(self):
@@ -95,8 +91,7 @@ class DiagonalOperator(EndomorphicOperator):
         self._complex = utilities.iscomplextype(self._ldiag.dtype)
         self._capability = self._all_ops
         if not self._complex:
-            lmin = self._ldiag.min() if self._ldiag.size > 0 else 1.
-            self._diagmin = dobj.np_allreduce_min(np.array(lmin))[()]
+            self._diagmin = self._ldiag.min()
 
     def _from_ldiag(self, spc, ldiag):
         res = DiagonalOperator.__new__(DiagonalOperator)
@@ -135,15 +130,15 @@ class DiagonalOperator(EndomorphicOperator):
         self._check_input(x, mode)
         # shortcut for most common cases
         if mode == 1 or (not self._complex and mode == 2):
-            return Field.from_local_data(x.domain, x.local_data*self._ldiag)
+            return Field(x.domain, x.val*self._ldiag)
 
         xdiag = self._ldiag
         if self._complex and (mode & 10):  # adjoint or inverse adjoint
             xdiag = xdiag.conj()
 
         if mode & 3:
-            return Field.from_local_data(x.domain, x.local_data*xdiag)
-        return Field.from_local_data(x.domain, x.local_data/xdiag)
+            return Field(x.domain, x.val*xdiag)
+        return Field(x.domain, x.val/xdiag)
 
     def _flip_modes(self, trafo):
         if trafo == self.ADJOINT_BIT and not self._complex:  # shortcut
@@ -160,10 +155,10 @@ class DiagonalOperator(EndomorphicOperator):
                 (self._diagmin == 0. and from_inverse)):
             raise ValueError("operator not positive definite")
         if from_inverse:
-            res = samp.local_data/np.sqrt(self._ldiag)
+            res = samp.val/np.sqrt(self._ldiag)
         else:
-            res = samp.local_data*np.sqrt(self._ldiag)
-        return Field.from_local_data(self._domain, res)
+            res = samp.val*np.sqrt(self._ldiag)
+        return Field(self._domain, res)
 
     def draw_sample(self, from_inverse=False, dtype=np.float64):
         res = Field.from_random(random_type="normal", domain=self._domain,

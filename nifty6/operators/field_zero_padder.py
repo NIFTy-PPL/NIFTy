@@ -17,7 +17,7 @@
 
 import numpy as np
 
-from .. import dobj, utilities
+from .. import utilities
 from ..domain_tuple import DomainTuple
 from ..domains.rg_space import RGSpace
 from ..field import Field
@@ -76,41 +76,39 @@ class FieldZeroPadder(LinearOperator):
 
             idx = (slice(None),) * d
 
-            v, x = dobj.ensure_not_distributed(v, (d,))
-
             if mode == self.TIMES:
-                shp = list(x.shape)
+                shp = list(v.shape)
                 shp[d] = tgtshp[d]
-                xnew = np.zeros(shp, dtype=x.dtype)
+                xnew = np.zeros(shp, dtype=v.dtype)
                 if self._central:
-                    Nyquist = x.shape[d]//2
+                    Nyquist = v.shape[d]//2
                     i1 = idx + (slice(0, Nyquist+1),)
-                    xnew[i1] = x[i1]
+                    xnew[i1] = v[i1]
                     i1 = idx + (slice(None, -(Nyquist+1), -1),)
-                    xnew[i1] = x[i1]
-#                     if (x.shape[d] & 1) == 0:  # even number of pixels
+                    xnew[i1] = v[i1]
+#                     if (v.shape[d] & 1) == 0:  # even number of pixels
 #                         i1 = idx+(Nyquist,)
 #                         xnew[i1] *= 0.5
 #                         i1 = idx+(-Nyquist,)
 #                         xnew[i1] *= 0.5
                 else:
-                    xnew[idx + (slice(0, x.shape[d]),)] = x
+                    xnew[idx + (slice(0, v.shape[d]),)] = v
             else:  # ADJOINT_TIMES
                 if self._central:
                     shp = list(x.shape)
                     shp[d] = tgtshp[d]
-                    xnew = np.zeros(shp, dtype=x.dtype)
+                    xnew = np.zeros(shp, dtype=v.dtype)
                     Nyquist = xnew.shape[d]//2
                     i1 = idx + (slice(0, Nyquist+1),)
-                    xnew[i1] = x[i1]
+                    xnew[i1] = v[i1]
                     i1 = idx + (slice(None, -(Nyquist+1), -1),)
-                    xnew[i1] += x[i1]
+                    xnew[i1] += v[i1]
 #                     if (xnew.shape[d] & 1) == 0:  # even number of pixels
 #                         i1 = idx+(Nyquist,)
 #                         xnew[i1] *= 0.5
                 else:
-                    xnew = x[idx + (slice(0, tgtshp[d]),)]
+                    xnew = v[idx + (slice(0, tgtshp[d]),)]
 
             curshp[d] = xnew.shape[d]
-            v = dobj.from_local_data(curshp, xnew, distaxis=dobj.distaxis(v))
-        return Field(self._tgt(mode), dobj.ensure_default_distributed(v))
+            v = xnew
+        return Field(self._tgt(mode), v)

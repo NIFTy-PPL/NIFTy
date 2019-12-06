@@ -90,7 +90,7 @@ def test_constructor(shape, distances, harmonic, expected):
 @pmp('shape, distances, expected', get_k_length_array_configs())
 def test_k_length_array(shape, distances, expected):
     r = ift.RGSpace(shape=shape, distances=distances, harmonic=True)
-    assert_allclose(r.get_k_length_array().to_global_data(), expected)
+    assert_allclose(r.get_k_length_array().val, expected)
 
 
 @pmp('shape, distances, harmonic, power', get_dvol_configs())

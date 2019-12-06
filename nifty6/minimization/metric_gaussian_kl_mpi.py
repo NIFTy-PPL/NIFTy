@@ -51,10 +51,9 @@ def np_allreduce_sum(arr):
 
 def allreduce_sum_field(fld):
     if isinstance(fld, Field):
-        return Field.from_local_data(fld.domain,
-                                     np_allreduce_sum(fld.local_data))
+        return Field(fld.domain, np_allreduce_sum(fld.val))
     res = tuple(
-        Field.from_local_data(f.domain, np_allreduce_sum(f.local_data))
+        Field(f.domain, np_allreduce_sum(f.val))
         for f in fld.values())
     return MultiField(fld.domain, res)
 
@@ -183,16 +182,16 @@ class MetricGaussianKL_MPI(Energy):
         v, g = None, None
         if len(self._samples) == 0:  # hack if there are too many MPI tasks
             tmp = self._hamiltonian(self._lin)
-            v = 0. * tmp.val.local_data
+            v = 0. * tmp.val.val
             g = 0. * tmp.gradient
         else:
             for s in self._samples:
                 tmp = self._hamiltonian(self._lin+s)
                 if v is None:
-                    v = tmp.val.local_data.copy()
+                    v = tmp.val.val_rw()
                     g = tmp.gradient
                 else:
-                    v += tmp.val.local_data
+                    v += tmp.val.val
                     g = g + tmp.gradient
         self._val = np_allreduce_sum(v)[()] / self._n_samples
         self._grad = allreduce_sum_field(g) / self._n_samples

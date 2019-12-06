@@ -16,3 +16,24 @@ but it is hard to make explicit tests since the two approaches cannot be mapped
 onto each other exactly. We experienced that preconditioning in the `MetricGaussianKL`
 via `napprox` breaks the inference scheme with the new model so `napprox` may not
 be used here.
+
+Removal of the standard parallelization scheme:
+===============================================
+
+When several MPI tasks are present, NIFTy5 distributes every Field over these
+tasks by splitting it along the first axis. This approach to parallelism is not
+very efficient, and it has not been used by anyone for several years, so we
+decided to remove it, which led to many simplifications within NIFTy.
+User-visible changes:
+- the methods `to_global_data`, `from_global_data`, `from_local_data` and
+  the property `local_data` have been removed from `Field` and `MultiField`.
+  Instead there are now the property `val` (returning a read-only numpy.ndarray
+  for `Field` and a dictionary of read-only numpy.ndarrays for `MultiField`) and
+  the method `val_rw()` (returning the same structures with writable copies of
+  the arrays). Fields and MultiFields can be created from such structures using
+  the static method `from_raw`
+- the functions `from_global_data` and `from_local_data` in `sugar` have been
+  replaced by a single function called `makeField`
+- the property `local_shape` has been removed from `Domain` (and subclasses)
+  and `DomainTuple`.
+

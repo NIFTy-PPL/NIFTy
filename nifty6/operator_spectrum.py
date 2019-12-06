@@ -23,7 +23,7 @@ from .multi_domain import MultiDomain
 from .multi_field import MultiField
 from .operators.linear_operator import LinearOperator
 from .operators.sandwich_operator import SandwichOperator
-from .sugar import from_global_data, makeDomain
+from .sugar import makeField, makeDomain
 
 
 class _DomRemover(LinearOperator):
@@ -56,7 +56,7 @@ class _DomRemover(LinearOperator):
     def apply(self, x, mode):
         self._check_input(x, mode)
         self._check_float_dtype(x)
-        x = x.to_global_data()
+        x = x.val
         if isinstance(self._domain, DomainTuple):
             res = x.ravel() if mode == self.TIMES else x.reshape(
                 self._domain.shape)
@@ -68,14 +68,14 @@ class _DomRemover(LinearOperator):
                     res[i0:i1] = x[kk].ravel()
                 else:
                     res[kk] = x[i0:i1].reshape(dd.shape)
-        return from_global_data(self._tgt(mode), res)
+        return makeField(self._tgt(mode), res)
 
     @staticmethod
     def _check_float_dtype(fld):
         if isinstance(fld, MultiField):
-            dts = [ff.local_data.dtype for ff in fld.values()]
+            dts = [ff.dtype for ff in fld.values()]
         elif isinstance(fld, Field):
-            dts = [fld.local_data.dtype]
+            dts = [fld.dtype]
         else:
             raise TypeError
         for dt in dts:
@@ -137,7 +137,7 @@ def operator_spectrum(A, k, hermitian, which='LM', tol=0):
     Ar = SandwichOperator.make(_DomRemover(A.domain).adjoint, A)
     M = ssl.LinearOperator(
         shape=2*(size,),
-        matvec=lambda x: Ar(from_global_data(Ar.domain, x)).to_global_data())
+        matvec=lambda x: Ar(makeField(Ar.domain, x)).val)
     f = ssl.eigsh if hermitian else ssl.eigs
     eigs = f(M, k=k, tol=tol, return_eigenvectors=False, which=which)
     return np.flip(np.sort(eigs), axis=0)

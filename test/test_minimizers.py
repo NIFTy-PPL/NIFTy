@@ -68,8 +68,8 @@ def test_quadratic_minimization(minimizer, space):
 
     assert_equal(convergence, IC.CONVERGED)
     assert_allclose(
-        energy.position.local_data,
-        1./covariance_diagonal.local_data,
+        energy.position.val,
+        1./covariance_diagonal.val,
         rtol=1e-3,
         atol=1e-3)
 
@@ -90,8 +90,8 @@ def test_WF_curvature(space):
                                      iteration_controller_sampling=IC)
     m = curv.inverse(required_result)
     assert_allclose(
-        m.local_data,
-        1./all_diag.local_data,
+        m.val,
+        1./all_diag.val,
         rtol=1e-3,
         atol=1e-3)
     curv.draw_sample()
@@ -107,8 +107,8 @@ def test_WF_curvature(space):
                                          iteration_controller_sampling=IC)
         m = curv.inverse(required_result)
         assert_allclose(
-            m.local_data,
-            1./all_diag.local_data,
+            m.val,
+            1./all_diag.val,
             rtol=1e-3,
             atol=1e-3)
         curv.draw_sample()
@@ -131,26 +131,26 @@ def test_rosenbrock(minimizer):
 
         @property
         def value(self):
-            return rosen(self._position.to_global_data_rw())
+            return rosen(self._position.val_rw())
 
         @property
         def gradient(self):
-            inp = self._position.to_global_data_rw()
-            out = ift.Field.from_global_data(space, rosen_der(inp))
+            inp = self._position.val_rw()
+            out = ift.Field(space, rosen_der(inp))
             return out
 
         @property
         def metric(self):
             class RBCurv(ift.EndomorphicOperator):
                 def __init__(self, loc):
-                    self._loc = loc.to_global_data_rw()
+                    self._loc = loc.val_rw()
                     self._capability = self.TIMES
                     self._domain = space
 
                 def apply(self, x, mode):
                     self._check_input(x, mode)
-                    inp = x.to_global_data_rw()
-                    out = ift.Field.from_global_data(
+                    inp = x.val_rw()
+                    out = ift.Field(
                         space, rosen_hess_prod(self._loc.copy(), inp))
                     return out
 
@@ -159,9 +159,9 @@ def test_rosenbrock(minimizer):
             return ift.InversionEnabler(RBCurv(self._position), t1)
 
         def apply_metric(self, x):
-            inp = x.to_global_data_rw()
-            pos = self._position.to_global_data_rw()
-            return ift.Field.from_global_data(space, rosen_hess_prod(pos, inp))
+            inp = x.val_rw()
+            pos = self._position.val_rw()
+            return ift.Field(space, rosen_hess_prod(pos, inp))
 
     try:
         minimizer = eval(minimizer)
@@ -172,7 +172,7 @@ def test_rosenbrock(minimizer):
         raise SkipTest
 
     assert_equal(convergence, IC.CONVERGED)
-    assert_allclose(energy.position.local_data, 1., rtol=1e-3, atol=1e-3)
+    assert_allclose(energy.position.val, 1., rtol=1e-3, atol=1e-3)
 
 
 @pmp('minimizer', minimizers + slow_minimizers)
@@ -186,16 +186,16 @@ def test_gauss(minimizer):
 
         @property
         def value(self):
-            x = self.position.to_global_data()[0]
+            x = self.position.val[0]
             return -np.exp(-(x**2))
 
         @property
         def gradient(self):
-            x = self.position.to_global_data()[0]
+            x = self.position.val[0]
             return ift.Field.full(self.position.domain, 2*x*np.exp(-(x**2)))
 
         def apply_metric(self, x):
-            p = self.position.to_global_data()[0]
+            p = self.position.val[0]
             v = (2 - 4*p*p)*np.exp(-p**2)
             return ift.DiagonalOperator(
                 ift.Field.full(self.position.domain, v))(x)
@@ -209,7 +209,7 @@ def test_gauss(minimizer):
         raise SkipTest
 
     assert_equal(convergence, IC.CONVERGED)
-    assert_allclose(energy.position.local_data, 0., atol=1e-3)
+    assert_allclose(energy.position.val, 0., atol=1e-3)
 
 
 @pmp('minimizer', minimizers + newton_minimizers + slow_minimizers)
@@ -223,23 +223,23 @@ def test_cosh(minimizer):
 
         @property
         def value(self):
-            x = self.position.to_global_data()[0]
+            x = self.position.val[0]
             return np.cosh(x)
 
         @property
         def gradient(self):
-            x = self.position.to_global_data()[0]
+            x = self.position.val[0]
             return ift.Field.full(self.position.domain, np.sinh(x))
 
         @property
         def metric(self):
-            x = self.position.to_global_data()[0]
+            x = self.position.val[0]
             v = np.cosh(x)
             return ift.DiagonalOperator(
                 ift.Field.full(self.position.domain, v))
 
         def apply_metric(self, x):
-            p = self.position.to_global_data()[0]
+            p = self.position.val[0]
             v = np.cosh(p)
             return ift.DiagonalOperator(
                 ift.Field.full(self.position.domain, v))(x)
@@ -253,4 +253,4 @@ def test_cosh(minimizer):
         raise SkipTest
 
     assert_equal(convergence, IC.CONVERGED)
-    assert_allclose(energy.position.local_data, 0., atol=1e-3)
+    assert_allclose(energy.position.val, 0., atol=1e-3)

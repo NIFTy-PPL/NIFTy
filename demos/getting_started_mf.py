@@ -40,7 +40,7 @@ class SingleDomain(ift.LinearOperator):
 
     def apply(self, x, mode):
         self._check_input(x, mode)
-        return ift.from_global_data(self._tgt(mode), x.to_global_data())
+        return ift.makeField(self._tgt(mode), x.val)
 
 
 def random_los(n_los):
