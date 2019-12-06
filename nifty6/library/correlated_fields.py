@@ -16,13 +16,16 @@
 #
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
 
+from functools import reduce
+from operator import mul
+
 import numpy as np
 
-from ..logger import logger
 from ..domain_tuple import DomainTuple
 from ..domains.power_space import PowerSpace
 from ..domains.unstructured_domain import UnstructuredDomain
 from ..field import Field
+from ..logger import logger
 from ..multi_field import MultiField
 from ..operators.adder import Adder
 from ..operators.contraction_operator import ContractionOperator
@@ -447,21 +450,17 @@ class CorrelatedFieldMaker:
                                        self._position_spaces[0][amp_space],
                                        space=spaces[0])
         for i in range(1, n_amplitudes):
-            ht = (HarmonicTransformOperator(ht.target,
-                                            self._position_spaces[i][amp_space],
-                                            space=spaces[i]) @ ht)
-
-        pd = PowerDistributor(hspace, self._a[0].target[amp_space], amp_space)
-        for i in range(1, n_amplitudes):
-            pd = (pd @ PowerDistributor(
-                pd.domain, self._a[i].target[amp_space], space=spaces[i]))
-
-        a = ContractionOperator(pd.domain, spaces[1:]).adjoint @ self._a[0]
-        for i in range(1, n_amplitudes):
-            co = ContractionOperator(pd.domain, spaces[:i] + spaces[i + 1:])
-            a = a*(co.adjoint @ self._a[i])
-
-        return ht(azm*(pd @ a)*ducktape(hspace, None, self._prefix + 'xi'))
+            ht = HarmonicTransformOperator(ht.target,
+                                           self._position_spaces[i][amp_space],
+                                           space=spaces[i]) @ ht
+        a = []
+        for ii in range(n_amplitudes):
+            co = ContractionOperator(hspace, spaces[:ii] + spaces[ii + 1:])
+            pp = self._a[ii].target[amp_space]
+            pd = PowerDistributor(pp.harmonic_partner, pp, amp_space)
+            a.append(co.adjoint @ pd @ self._a[ii])
+        corr = reduce(mul, a)
+        return ht(azm*corr*ducktape(hspace, None, self._prefix + 'xi'))
 
     def finalize(self, offset=None, prior_info=100):
         """
