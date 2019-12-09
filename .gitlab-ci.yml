@@ -89,6 +89,14 @@ run_getting_started_3:
     paths:
       - '*.png'
 
+run_getting_started_mf:
+  stage: demo_runs
+  script:
+    - python3 demos/getting_started_mf.py
+  artifacts:
+    paths:
+      - '*.png'
+
 run_bernoulli:
   stage: demo_runs
   script:
