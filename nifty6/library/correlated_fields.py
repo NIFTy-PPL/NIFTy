@@ -206,8 +206,7 @@ class _Normalization(Operator):
         mode_multiplicity = pd.adjoint(full(pd.target, 1.)).val_rw()
         zero_mode = (slice(None),)*self._domain.axes[space][0] + (0,)
         mode_multiplicity[zero_mode] = 0
-        self._mode_multiplicity = makeField(self._domain,
-                                                   mode_multiplicity)
+        self._mode_multiplicity = makeField(self._domain, mode_multiplicity)
         self._specsum = _SpecialSum(self._domain, space)
 
     def apply(self, x):
@@ -299,14 +298,15 @@ class _Amplitude(Operator):
         shift = DiagonalOperator(makeField(dom[space], foo), dom, space)
 
         vslope = DiagonalOperator(
-            makeField(target[space],
-                             _relative_log_k_lengths(target[space])),
+            makeField(target[space], _relative_log_k_lengths(target[space])),
             target, space)
 
         foo, bar = [np.zeros(target[space].shape) for _ in range(2)]
         bar[1:] = foo[0] = totvol
-        vol0, vol1 = [DiagonalOperator(makeField(target[space], aa),
-                                       target, space) for aa in (foo, bar)]
+        vol0, vol1 = [
+            DiagonalOperator(makeField(target[space], aa), target, space)
+            for aa in (foo, bar)
+        ]
 
         # Prepare fields for Adder
         shift, vol0 = [op(full(op.domain, 1)) for op in (shift, vol0)]
@@ -413,13 +413,11 @@ class CorrelatedFieldMaker:
                                         self._prefix + prefix + 'flexibility',
                                         N)
         asp = _LognormalMomentMatching(asperity_mean, asperity_stddev,
-                                       self._prefix + prefix + 'asperity',
-                                       N)
+                                       self._prefix + prefix + 'asperity', N)
         avgsl = _normal(loglogavgslope_mean, loglogavgslope_stddev,
                         self._prefix + prefix + 'loglogavgslope', N)
-        amp = _Amplitude(PowerSpace(harmonic_partner),
-                         fluct, flex, asp, avgsl, self._azm,
-                         position_space[-1].total_volume,
+        amp = _Amplitude(PowerSpace(harmonic_partner), fluct, flex, asp, avgsl,
+                         self._azm, position_space[-1].total_volume,
                          self._prefix + prefix + 'spectrum', dofdex)
 
         if index is not None:
