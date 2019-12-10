@@ -455,7 +455,7 @@ class CorrelatedFieldMaker:
         for ii in range(n_amplitudes):
             co = ContractionOperator(hspace, spaces[:ii] + spaces[ii + 1:])
             pp = self._a[ii].target[amp_space]
-            pd = PowerDistributor(pp.harmonic_partner, pp, amp_space)
+            pd = PowerDistributor(co.target, pp, amp_space)
             a.append(co.adjoint @ pd @ self._a[ii])
         corr = reduce(mul, a)
         return ht(azm*corr*ducktape(hspace, None, self._prefix + 'xi'))
