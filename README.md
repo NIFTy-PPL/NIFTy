@@ -47,7 +47,6 @@ Installation
 
 - [Python 3](https://www.python.org/) (3.5.x or later)
 - [SciPy](https://www.scipy.org/)
-- [pypocketfft](https://gitlab.mpcdf.mpg.de/mtr/pypocketfft)
 
 Optional dependencies:
 - [pyHealpix](https://gitlab.mpcdf.mpg.de/ift/pyHealpix) (for harmonic
@@ -73,7 +72,6 @@ NIFTy6 and its mandatory dependencies can be installed via:
 
     sudo apt-get install git python3 python3-pip python3-dev
     pip3 install --user git+https://gitlab.mpcdf.mpg.de/ift/nifty.git@NIFTy_6
-    pip3 install --user git+https://gitlab.mpcdf.mpg.de/mtr/pypocketfft
 
 Plotting support is added via:
 

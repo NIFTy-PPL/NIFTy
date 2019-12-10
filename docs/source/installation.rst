@@ -9,7 +9,6 @@ NIFTy6 and its mandatory dependencies can be installed via::
 
     sudo apt-get install git python3 python3-pip python3-dev
     pip3 install --user git+https://gitlab.mpcdf.mpg.de/ift/nifty.git@NIFTy_6
-    pip3 install --user git+https://gitlab.mpcdf.mpg.de/mtr/pypocketfft
 
 Plotting support is added via::
 

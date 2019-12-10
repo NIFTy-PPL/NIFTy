@@ -40,7 +40,7 @@ setup(name="nifty6",
       zip_safe=True,
       license="GPLv3",
       setup_requires=['scipy'],
-      install_requires=['scipy'],
+      install_requires=['scipy>=1.4'],
       python_requires='>=3.5',
       classifiers=[
         "Development Status :: 4 - Beta",

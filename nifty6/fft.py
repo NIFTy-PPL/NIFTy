@@ -15,7 +15,7 @@
 #
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
 
-import pypocketfft
+import scipy.fft
 
 _nthreads = 1
 
@@ -30,13 +30,13 @@ def set_nthreads(nthr):
 
 
 def fftn(a, axes=None):
-    return pypocketfft.c2c(a, axes=axes, nthreads=_nthreads)
+    return scipy.fft.fftn(a, axes=axes, workers=_nthreads)
 
 
 def ifftn(a, axes=None):
-    return pypocketfft.c2c(a, axes=axes, inorm=2, forward=False,
-                           nthreads=_nthreads)
+    return scipy.fft.ifftn(a, axes=axes, workers=_nthreads)
 
 
 def hartley(a, axes=None):
-    return pypocketfft.genuine_hartley(a, axes=axes, nthreads=_nthreads)
+    tmp = scipy.fft.fftn(a, axes=axes, workers=_nthreads)
+    return tmp.real+tmp.imag
