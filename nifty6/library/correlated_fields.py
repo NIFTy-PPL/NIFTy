@@ -633,16 +633,15 @@ class CorrelatedFieldMaker:
         space = space + spaces[0]
         sub_spaces = set(spaces)
         sub_spaces.remove(space)
+        #Domain containing domain[space] and domain[0] iff total_N>0
         sub_dom = makeDomain([samples[0].domain[ind]
-                              for ind in set([0,]) | set([space,])])
+                              for ind in (set([0,])-set(spaces))|set([space,])])
         co = ContractionOperator(sub_dom, len(sub_dom)-1)
+        size = co.domain.size/co.target.size
         res = 0.
         for s in samples:
             r = s.mean(sub_spaces)
-            if min(spaces) == 0:
-                res = res + (r - r.mean(spaces[:-1]))**2
-            else:
-                res = res + (r - co.adjoint(r.mean(spaces[:-1])))**2
+            res = res + (r - co.adjoint(co(r)/size))**2
         res = res.mean(spaces[0])/len(samples)
         if np.isscalar(res):
             return np.sqrt(res)
