@@ -39,7 +39,7 @@ setup(name="nifty6",
       packages=find_packages(include=["nifty6", "nifty6.*"]),
       zip_safe=True,
       license="GPLv3",
-      setup_requires=['scipy'],
+      setup_requires=['scipy>=1.4'],
       install_requires=['scipy>=1.4'],
       python_requires='>=3.5',
       classifiers=[
