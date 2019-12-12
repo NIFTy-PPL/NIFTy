@@ -114,9 +114,7 @@ def _total_fluctuation_realized(samples):
     for s in samples:
         res = res + (s - co.adjoint(co(s)/size))**2
     res = res.mean(spaces)/len(samples)
-    if np.isscalar(res):
-        return np.sqrt(res)
-    return np.sqrt(res.val)
+    return np.sqrt(res if np.isscalar(res) else res.val)
 
 
 class _LognormalMomentMatching(Operator):
@@ -592,9 +590,8 @@ class CorrelatedFieldMaker:
         res = 0.
         for s in samples:
             res = res + s.mean(spaces)**2
-        if np.isscalar(res):
-            return np.sqrt(res/len(samples))
-        return np.sqrt(res.val/len(samples))
+        res = res/len(samples)
+        return np.sqrt(res if np.isscalar(res) else res.val)
 
     @staticmethod
     def total_fluctuation_realized(samples):
@@ -617,9 +614,7 @@ class CorrelatedFieldMaker:
         res1 = res1/len(samples)
         res2 = res2/len(samples)
         res = res1.mean(spaces) - res2.mean(spaces[:-1])
-        if np.isscalar(res):
-            return np.sqrt(res)
-        return np.sqrt(res.val)
+        return np.sqrt(res if np.isscalar(res) else res.val)
 
     @staticmethod
     def average_fluctuation_realized(samples, space):
@@ -643,6 +638,4 @@ class CorrelatedFieldMaker:
             r = s.mean(sub_spaces)
             res = res + (r - co.adjoint(co(r)/size))**2
         res = res.mean(spaces[0])/len(samples)
-        if np.isscalar(res):
-            return np.sqrt(res)
-        return np.sqrt(res.val)
+        return np.sqrt(res if np.isscalar(res) else res.val)
