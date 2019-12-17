@@ -15,7 +15,6 @@
 #
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
 
-import scipy.fft
 
 _nthreads = 1
 
@@ -29,14 +28,35 @@ def set_nthreads(nthr):
     _nthreads = int(nthr)
 
 
-def fftn(a, axes=None):
-    return scipy.fft.fftn(a, axes=axes, workers=_nthreads)
+try:
+    import pypocketfft
 
 
-def ifftn(a, axes=None):
-    return scipy.fft.ifftn(a, axes=axes, workers=_nthreads)
+    def fftn(a, axes=None):
+        return pypocketfft.c2c(a, axes=axes, nthreads=max(_nthreads, 0))
 
 
-def hartley(a, axes=None):
-    tmp = scipy.fft.fftn(a, axes=axes, workers=_nthreads)
-    return tmp.real+tmp.imag
+    def ifftn(a, axes=None):
+        return pypocketfft.c2c(a, axes=axes, inorm=2, forward=False,
+                               nthreads=max(_nthreads, 0))
+
+
+    def hartley(a, axes=None):
+        return pypocketfft.genuine_hartley(a, axes=axes,
+                                           nthreads=max(_nthreads, 0))
+
+except:
+    import scipy.fft
+
+
+    def fftn(a, axes=None):
+        return scipy.fft.fftn(a, axes=axes, workers=_nthreads)
+
+
+    def ifftn(a, axes=None):
+        return scipy.fft.ifftn(a, axes=axes, workers=_nthreads)
+
+
+    def hartley(a, axes=None):
+        tmp = scipy.fft.fftn(a, axes=axes, workers=_nthreads)
+        return tmp.real+tmp.imag
