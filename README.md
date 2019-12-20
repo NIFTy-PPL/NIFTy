@@ -47,7 +47,6 @@ Installation
 
 - [Python 3](https://www.python.org/) (3.5.x or later)
 - [SciPy](https://www.scipy.org/)
-- [pypocketfft](https://gitlab.mpcdf.mpg.de/mtr/pypocketfft)
 
 Optional dependencies:
 - [pyHealpix](https://gitlab.mpcdf.mpg.de/ift/pyHealpix) (for harmonic
@@ -56,6 +55,7 @@ Optional dependencies:
     interferometry responses)
 - [mpi4py](https://mpi4py.scipy.org) (for MPI-parallel execution)
 - [matplotlib](https://matplotlib.org/) (for field plotting)
+- [pypocketfft](https://gitlab.mpcdf.mpg.de/mtr/pypocketfft) (for faster FFTs)
 
 ### Sources
 
@@ -73,7 +73,6 @@ NIFTy6 and its mandatory dependencies can be installed via:
 
     sudo apt-get install git python3 python3-pip python3-dev
     pip3 install --user git+https://gitlab.mpcdf.mpg.de/ift/nifty.git@NIFTy_6
-    pip3 install --user git+https://gitlab.mpcdf.mpg.de/mtr/pypocketfft
 
 Plotting support is added via:
 
@@ -90,6 +89,14 @@ Support for the radio interferometry gridder is added via:
 MPI support is added via:
 
     sudo apt-get install python3-mpi4py
+
+Pypocketfft is added via:
+    pip3 install --user git+https://gitlab.mpcdf.mpg.de/mtr/pypocketfft
+
+If this library is present, NIFTy will detect it automatically and prefer
+it over SciPy's FFT. The underlying code is actually the same, but
+pypocketfft is compiled with optimizations for the host CPU and can provide
+significantly faster transforms.
 
 ### Running the tests
 

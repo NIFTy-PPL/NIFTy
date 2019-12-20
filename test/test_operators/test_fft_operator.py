@@ -63,7 +63,7 @@ def test_fft1D(d, dtype, op):
 @pmp('dim2', [9, 12])
 @pmp('d1', [0.1, 1, 3.7])
 @pmp('d2', [0.4, 1, 2.7])
-@pmp('nthreads', [0, 1, 2, 3, 4])
+@pmp('nthreads', [-1, 1, 2, 3, 4])
 def test_fft2D(dim1, dim2, d1, d2, dtype, op, nthreads):
     ift.fft.set_nthreads(nthreads)
     assert_(ift.fft.nthreads() == nthreads)
