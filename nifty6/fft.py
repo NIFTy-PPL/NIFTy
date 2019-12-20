@@ -45,7 +45,7 @@ try:
         return pypocketfft.genuine_hartley(a, axes=axes,
                                            nthreads=max(_nthreads, 0))
 
-except:
+except ImportError:
     import scipy.fft
 
 
