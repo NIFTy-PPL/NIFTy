@@ -44,6 +44,30 @@ class EnergyOperator(Operator):
     """
     _target = DomainTuple.scalar_domain()
 
+    def scale(self, scalar):
+        if scalar >= 0:
+            return ScaledEnergy(self._target, scalar)(self)
+        return super(self, Operator).scale(scalar)
+
+      
+
+class ScaledEnergy(EnergyOperator):
+    def __init__(self, domain, scalar):
+        self._domain = domain
+        assert scalar >= 0
+        self._scalar = scalar
+
+    def apply(self, x):
+        self._check_input(x)
+        res = ScalingOperator(self._target, self._scalar)(x)
+        if isinstance(x, Linearization):
+            if x.metric is not None:
+                met = SandwichOperator.make(ScalingOperator(self._target, np.sqrt(self._scalar)), x.metric)
+                res = res.add_metric(met)
+        return res
+
+
+           
 
 class Squared2NormOperator(EnergyOperator):
     """Computes the square of the L2-norm of the output of an operator.
