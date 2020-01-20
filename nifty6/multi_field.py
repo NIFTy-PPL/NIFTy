@@ -343,7 +343,7 @@ for op in ["__iadd__", "__isub__", "__imul__", "__idiv__",
     setattr(MultiField, op, func(op))
 
 
-for f in ["sqrt", "exp", "log", "log1p", "expm1", "tanh"]:
+for f in ["sqrt", "exp", "log", "log1p", "expm1", "tanh", "one_over"]:
     def func(f):
         def func2(self):
             fu = getattr(Field, f)
