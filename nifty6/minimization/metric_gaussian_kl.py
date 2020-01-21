@@ -79,7 +79,7 @@ class MetricGaussianKL(Energy):
 
     def __init__(self, mean, hamiltonian, n_samples, constants=[],
                  point_estimates=[], mirror_samples=False,
-                 napprox=0, _samples=None, lh_sampling_dtype = np.float):
+                 napprox=0, _samples=None, lh_sampling_dtype=np.float64):
         super(MetricGaussianKL, self).__init__(mean)
 
         if not isinstance(hamiltonian, StandardHamiltonian):
@@ -101,7 +101,7 @@ class MetricGaussianKL(Energy):
             if napprox > 1:
                 met._approximation = makeOp(approximation2endo(met, napprox))
             _samples = tuple(met.draw_sample(from_inverse=True,
-                                             dtype = lh_sampling_dtype)
+                                             dtype=lh_sampling_dtype)
                              for _ in range(n_samples))
             if mirror_samples:
                 _samples += tuple(-s for s in _samples)
