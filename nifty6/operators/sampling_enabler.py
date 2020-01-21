@@ -71,7 +71,7 @@ class SamplingEnabler(EndomorphicOperator):
             else:
                 s = self._prior.draw_sample(from_inverse=True)
                 sp = self._prior(s)
-                nj = self._likelihood.draw_sample()
+                nj = self._likelihood.draw_sample(dtype = dtype)
                 energy = QuadraticEnergy(s, self._op, sp + nj,
                                          _grad=self._likelihood(s) - nj)
             inverter = ConjugateGradient(self._ic)
