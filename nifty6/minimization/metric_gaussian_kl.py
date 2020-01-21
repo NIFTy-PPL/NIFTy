@@ -122,11 +122,13 @@ class MetricGaussianKL(Energy):
         self._grad = g * (1./len(self._samples))
         self._metric = None
         self._napprox = napprox
+        self._sampdt = lh_sampling_dtype
 
     def at(self, position):
         return MetricGaussianKL(position, self._hamiltonian, 0,
                                 self._constants, self._point_estimates,
-                                napprox=self._napprox, _samples=self._samples)
+                                napprox=self._napprox, _samples=self._samples,
+                                lh_sampling_dtype=self._sampdt)
 
     @property
     def value(self):
