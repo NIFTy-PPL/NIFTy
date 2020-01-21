@@ -14,6 +14,7 @@
 # Copyright(C) 2013-2019 Max-Planck-Society
 #
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
+import numpy as np
 
 from .. import utilities
 from ..linearization import Linearization
@@ -78,7 +79,7 @@ class MetricGaussianKL(Energy):
 
     def __init__(self, mean, hamiltonian, n_samples, constants=[],
                  point_estimates=[], mirror_samples=False,
-                 napprox=0, _samples=None):
+                 napprox=0, _samples=None, lh_sampling_dtype=np.float64):
         super(MetricGaussianKL, self).__init__(mean)
 
         if not isinstance(hamiltonian, StandardHamiltonian):
@@ -99,7 +100,8 @@ class MetricGaussianKL(Energy):
                 mean, point_estimates, True)).metric
             if napprox > 1:
                 met._approximation = makeOp(approximation2endo(met, napprox))
-            _samples = tuple(met.draw_sample(from_inverse=True)
+            _samples = tuple(met.draw_sample(from_inverse=True,
+                                             dtype=lh_sampling_dtype)
                              for _ in range(n_samples))
             if mirror_samples:
                 _samples += tuple(-s for s in _samples)
@@ -120,11 +122,13 @@ class MetricGaussianKL(Energy):
         self._grad = g * (1./len(self._samples))
         self._metric = None
         self._napprox = napprox
+        self._sampdt = lh_sampling_dtype
 
     def at(self, position):
         return MetricGaussianKL(position, self._hamiltonian, 0,
                                 self._constants, self._point_estimates,
-                                napprox=self._napprox, _samples=self._samples)
+                                napprox=self._napprox, _samples=self._samples,
+                                lh_sampling_dtype=self._sampdt)
 
     @property
     def value(self):
