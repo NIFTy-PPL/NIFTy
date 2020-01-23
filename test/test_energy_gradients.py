@@ -50,13 +50,13 @@ def test_ScaledEnergy(field):
     energy = ift.GaussianEnergy(domain=field.domain)
     ift.extra.check_jacobian_consistency(energy.scale(0.3), field)
 
-    # TODO: Fix tests
-    #lin =  ift.Linearization.make_var(field)
-    #met1 = ift.GaussianEnergy(field)
-    #met2 = ift.GaussianEnergy.scale(0.3)(field)
-    #assert met1 == met2 / 0.3
-
-    #assert isinstance(met2, ift.SandwichOperator)
+    lin =  ift.Linearization.make_var(field, want_metric=True)
+    met1 = energy(lin).metric
+    sE = energy.scale(0.3)
+    linn = sE(lin)
+    met2 = linn.metric
+    assert np.assert_allclose(met1(field), met2(field) / 0.3, rtol=1e-12)
+    assert isinstance(met2, ift.SandwichOperator)
 
 def test_studentt(field):
     energy = ift.StudentTEnergy(domain=field.domain, theta=.5)
