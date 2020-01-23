@@ -175,7 +175,7 @@ class LinearOperator(Operator):
         from ..linearization import Linearization
         if isinstance(x, Linearization):
             return x.new(self(x._val), self(x._jac))
-        return self.__matmul__(x)
+        return self@x
 
     def times(self, x):
         """Applies the Operator to a given Field.

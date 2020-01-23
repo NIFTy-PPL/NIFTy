@@ -79,6 +79,11 @@ class Operator(metaclass=NiftyMeta):
             return NotImplemented
         return _OpChain.make((self, x))
 
+    def __rmatmul__(self, x):
+        if not isinstance(x, Operator):
+            return NotImplemented
+        return _OpChain.make((x, self))
+
     def partial_insert(self, x):
         from ..multi_domain import MultiDomain
         if not isinstance(x, Operator):
