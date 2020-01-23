@@ -100,11 +100,21 @@ def _log_vol(power_space):
     return logk_lengths[1:] - logk_lengths[:-1]
 
 
+def _structured_spaces(domain):
+    if isinstance(domain[0], UnstructuredDomain):
+        return np.arange(1, len(domain))
+    return np.arange(len(domain))
+
+
 def _total_fluctuation_realized(samples):
+    spaces = _structured_spaces(samples[0].domain)
+    co = ContractionOperator(samples[0].domain, spaces)
+    size = co.domain.size/co.target.size
     res = 0.
     for s in samples:
-        res = res + (s - s.mean())**2
-    return np.sqrt((res/len(samples)).mean())
+        res = res + (s - co.adjoint(co(s)/size))**2
+    res = res.mean(spaces)/len(samples)
+    return np.sqrt(res if np.isscalar(res) else res.val)
 
 
 class _LognormalMomentMatching(Operator):
@@ -206,8 +216,7 @@ class _Normalization(Operator):
         mode_multiplicity = pd.adjoint(full(pd.target, 1.)).val_rw()
         zero_mode = (slice(None),)*self._domain.axes[space][0] + (0,)
         mode_multiplicity[zero_mode] = 0
-        self._mode_multiplicity = makeField(self._domain,
-                                                   mode_multiplicity)
+        self._mode_multiplicity = makeField(self._domain, mode_multiplicity)
         self._specsum = _SpecialSum(self._domain, space)
 
     def apply(self, x):
@@ -299,14 +308,15 @@ class _Amplitude(Operator):
         shift = DiagonalOperator(makeField(dom[space], foo), dom, space)
 
         vslope = DiagonalOperator(
-            makeField(target[space],
-                             _relative_log_k_lengths(target[space])),
+            makeField(target[space], _relative_log_k_lengths(target[space])),
             target, space)
 
         foo, bar = [np.zeros(target[space].shape) for _ in range(2)]
         bar[1:] = foo[0] = totvol
-        vol0, vol1 = [DiagonalOperator(makeField(target[space], aa),
-                                       target, space) for aa in (foo, bar)]
+        vol0, vol1 = [
+            DiagonalOperator(makeField(target[space], aa), target, space)
+            for aa in (foo, bar)
+        ]
 
         # Prepare fields for Adder
         shift, vol0 = [op(full(op.domain, 1)) for op in (shift, vol0)]
@@ -413,13 +423,11 @@ class CorrelatedFieldMaker:
                                         self._prefix + prefix + 'flexibility',
                                         N)
         asp = _LognormalMomentMatching(asperity_mean, asperity_stddev,
-                                       self._prefix + prefix + 'asperity',
-                                       N)
+                                       self._prefix + prefix + 'asperity', N)
         avgsl = _normal(loglogavgslope_mean, loglogavgslope_stddev,
                         self._prefix + prefix + 'loglogavgslope', N)
-        amp = _Amplitude(PowerSpace(harmonic_partner),
-                         fluct, flex, asp, avgsl, self._azm,
-                         position_space[-1].total_volume,
+        amp = _Amplitude(PowerSpace(harmonic_partner), fluct, flex, asp, avgsl,
+                         self._azm, position_space[-1].total_volume,
                          self._prefix + prefix + 'spectrum', dofdex)
 
         if index is not None:
@@ -457,7 +465,7 @@ class CorrelatedFieldMaker:
         for ii in range(n_amplitudes):
             co = ContractionOperator(hspace, spaces[:ii] + spaces[ii + 1:])
             pp = self._a[ii].target[amp_space]
-            pd = PowerDistributor(pp.harmonic_partner, pp, amp_space)
+            pd = PowerDistributor(co.target, pp, amp_space)
             a.append(co.adjoint @ pd @ self._a[ii])
         corr = reduce(mul, a)
         return ht(azm*corr*ducktape(hspace, None, self._prefix + 'xi'))
@@ -578,10 +586,12 @@ class CorrelatedFieldMaker:
 
     @staticmethod
     def offset_amplitude_realized(samples):
+        spaces = _structured_spaces(samples[0].domain)
         res = 0.
         for s in samples:
-            res = res + s.mean()**2
-        return np.sqrt(res/len(samples))
+            res = res + s.mean(spaces)**2
+        res = res/len(samples)
+        return np.sqrt(res if np.isscalar(res) else res.val)
 
     @staticmethod
     def total_fluctuation_realized(samples):
@@ -591,36 +601,41 @@ class CorrelatedFieldMaker:
     def slice_fluctuation_realized(samples, space):
         """Computes slice fluctuations from collection of field (defined in signal
         space) realizations."""
-        ldom = len(samples[0].domain)
-        if space >= ldom:
+        spaces = _structured_spaces(samples[0].domain)
+        if space >= len(spaces):
             raise ValueError("invalid space specified; got {!r}".format(space))
-        if ldom == 1:
+        if len(spaces) == 1:
             return _total_fluctuation_realized(samples)
+        space = space + spaces[0]
         res1, res2 = 0., 0.
         for s in samples:
             res1 = res1 + s**2
             res2 = res2 + s.mean(space)**2
         res1 = res1/len(samples)
         res2 = res2/len(samples)
-        res = res1.mean() - res2.mean()
-        return np.sqrt(res)
+        res = res1.mean(spaces) - res2.mean(spaces[:-1])
+        return np.sqrt(res if np.isscalar(res) else res.val)
 
     @staticmethod
     def average_fluctuation_realized(samples, space):
         """Computes average fluctuations from collection of field (defined in signal
         space) realizations."""
-        ldom = len(samples[0].domain)
-        if space >= ldom:
+        spaces = _structured_spaces(samples[0].domain)
+        if space >= len(spaces):
             raise ValueError("invalid space specified; got {!r}".format(space))
-        if ldom == 1:
+        if len(spaces) == 1:
             return _total_fluctuation_realized(samples)
-        spaces = ()
-        for i in range(ldom):
-            if i != space:
-                spaces += (i,)
+        space = space + spaces[0]
+        sub_spaces = set(spaces)
+        sub_spaces.remove(space)
+        #Domain containing domain[space] and domain[0] iff total_N>0
+        sub_dom = makeDomain([samples[0].domain[ind]
+                              for ind in (set([0,])-set(spaces))|set([space,])])
+        co = ContractionOperator(sub_dom, len(sub_dom)-1)
+        size = co.domain.size/co.target.size
         res = 0.
         for s in samples:
-            r = s.mean(spaces)
-            res = res + (r - r.mean())**2
-        res = res/len(samples)
-        return np.sqrt(res.mean())
+            r = s.mean(sub_spaces)
+            res = res + (r - co.adjoint(co(r)/size))**2
+        res = res.mean(spaces[0])/len(samples)
+        return np.sqrt(res if np.isscalar(res) else res.val)

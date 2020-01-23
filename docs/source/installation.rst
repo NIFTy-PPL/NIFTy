@@ -9,7 +9,6 @@ NIFTy6 and its mandatory dependencies can be installed via::
 
     sudo apt-get install git python3 python3-pip python3-dev
     pip3 install --user git+https://gitlab.mpcdf.mpg.de/ift/nifty.git@NIFTy_6
-    pip3 install --user git+https://gitlab.mpcdf.mpg.de/mtr/pypocketfft
 
 Plotting support is added via::
 
@@ -26,6 +25,14 @@ Support for the radio interferometry gridder is added via::
 MPI support is added via::
 
     sudo apt-get install python3-mpi4py
+
+Pypocketfft is added via:
+    pip3 install --user git+https://gitlab.mpcdf.mpg.de/mtr/pypocketfft
+
+If this library is present, NIFTy will detect it automatically and prefer
+it over SciPy's FFT. The underlying code is actually the same, but
+pypocketfft is compiled with optimizations for the host CPU and can provide
+significantly faster transforms.
 
 NIFTy documentation is provided by Sphinx. To build the documentation::
 

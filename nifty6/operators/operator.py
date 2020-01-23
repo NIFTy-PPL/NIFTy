@@ -79,6 +79,35 @@ class Operator(metaclass=NiftyMeta):
             return NotImplemented
         return _OpChain.make((self, x))
 
+    def partial_insert(self, x):
+        from ..multi_domain import MultiDomain
+        if not isinstance(x, Operator):
+            raise TypeError
+        if not isinstance(self.domain, MultiDomain):
+            raise TypeError
+        if not isinstance(x.target, MultiDomain):
+            raise TypeError
+        bigdom = MultiDomain.union([self.domain, x.target])
+        k1, k2 = set(self.domain.keys()), set(x.target.keys())
+        le, ri = k2 - k1, k1 - k2
+        leop, riop = self, x
+        if len(ri) > 0:
+            riop = riop + self.identity_operator(
+                MultiDomain.make({kk: bigdom[kk]
+                                  for kk in ri}))
+        if len(le) > 0:
+            leop = leop + self.identity_operator(
+                MultiDomain.make({kk: bigdom[kk]
+                                  for kk in le}))
+        return leop @ riop
+
+    @staticmethod
+    def identity_operator(dom):
+        from .block_diagonal_operator import BlockDiagonalOperator
+        from .scaling_operator import ScalingOperator
+        idops = {kk: ScalingOperator(dd, 1.) for kk, dd in dom.items()}
+        return BlockDiagonalOperator(dom, idops)
+
     def __mul__(self, x):
         if isinstance(x, Operator):
             return _OpProd(self, x)
