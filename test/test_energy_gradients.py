@@ -32,6 +32,7 @@ SPACES = [
 ]
 SEEDS = [4, 78, 23]
 PARAMS = product(SEEDS, SPACES)
+pmp = pytest.mark.parametrize
 
 
 @pytest.fixture(params=PARAMS)
@@ -46,6 +47,18 @@ def test_gaussian(field):
     energy = ift.GaussianEnergy(domain=field.domain)
     ift.extra.check_jacobian_consistency(energy, field)
 
+@pmp('icov', [lambda dom:ift.ScalingOperator(dom, 1.),
+    lambda dom:ift.SandwichOperator.make(ift.GeometryRemover(dom))])
+def test_ScaledEnergy(field, icov):
+    icov = icov(field.domain)
+    energy = ift.GaussianEnergy(inverse_covariance=icov)
+    ift.extra.check_jacobian_consistency(energy.scale(0.3), field)
+
+    lin =  ift.Linearization.make_var(field, want_metric=True)
+    met1 = energy(lin).metric
+    met2 = energy.scale(0.3)(lin).metric
+    np.testing.assert_allclose(met1(field).val, met2(field).val / 0.3, rtol=1e-12)
+    met2.draw_sample()
 
 def test_studentt(field):
     energy = ift.StudentTEnergy(domain=field.domain, theta=.5)
