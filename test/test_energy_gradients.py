@@ -56,9 +56,7 @@ def test_ScaledEnergy(field, icov):
 
     lin =  ift.Linearization.make_var(field, want_metric=True)
     met1 = energy(lin).metric
-    sE = energy.scale(0.3)
-    linn = sE(lin)
-    met2 = linn.metric
+    met2 = energy.scale(0.3)(lin).metric
     np.testing.assert_allclose(met1(field).val, met2(field).val / 0.3, rtol=1e-12)
     met2.draw_sample()
 
