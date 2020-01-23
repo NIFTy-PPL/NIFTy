@@ -174,10 +174,7 @@ class LinearOperator(Operator):
             return self.apply(x, self.TIMES)
         from ..linearization import Linearization
         if isinstance(x, Linearization):
-            res = x.new(self(x._val), self(x._jac))
-            if x.metric is not None:
-                res = res.add_metric(self(x.metric))
-            return res
+            return x.new(self(x._val), self(x._jac))
         return self.__matmul__(x)
 
     def times(self, x):

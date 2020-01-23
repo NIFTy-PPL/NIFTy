@@ -98,14 +98,19 @@ class ScalingOperator(EndomorphicOperator):
         return from_random(random_type="normal", domain=self._domain,
                            std=self._get_fct(from_inverse), dtype=dtype)
 
-    def __matmul__(self, other):
-        if np.isreal(self._factor) and self._factor > 0:
-            from .sandwich_operator import SandwichOperator
-            if isinstance(other, SandwichOperator):
-                sqrt_fac = np.sqrt(self._factor)
-                newop = ScalingOperator(other.domain, sqrt_fac)
-                return SandwichOperator.make(newop, other)
-        return EndomorphicOperator.__matmul__(self, other)
+    def __call__(self, other):
+        if np.isreal(self._factor) and self._factor >= 0:
+            from ..linearization import Linearization
+            if isinstance(other, Linearization):
+                res = EndomorphicOperator.__call__(self, other)
+                if other.metric is not None:
+                    from .sandwich_operator import SandwichOperator
+                    sqrt_fac = np.sqrt(self._factor)
+                    newop = ScalingOperator(other.metric.domain, sqrt_fac)
+                    met = SandwichOperator.make(newop, other.metric)
+                    res = res.add_metric(met)
+                return res
+        return EndomorphicOperator.__call__(self, other)
 
     def __repr__(self):
         return "ScalingOperator ({})".format(self._factor)
