@@ -46,6 +46,17 @@ def test_gaussian(field):
     energy = ift.GaussianEnergy(domain=field.domain)
     ift.extra.check_jacobian_consistency(energy, field)
 
+def test_ScaledEnergy(field):
+    energy = ift.GaussianEnergy(domain=field.domain)
+    ift.extra.check_jacobian_consistency(energy.scale(0.3), field)
+
+    # TODO: Fix tests
+    #lin =  ift.Linearization.make_var(field)
+    #met1 = ift.GaussianEnergy(field)
+    #met2 = ift.GaussianEnergy.scale(0.3)(field)
+    #assert met1 == met2 / 0.3
+
+    #assert isinstance(met2, ift.SandwichOperator)
 
 def test_studentt(field):
     energy = ift.StudentTEnergy(domain=field.domain, theta=.5)
