@@ -64,15 +64,18 @@ if __name__ == '__main__':
         mode = int(sys.argv[1])
     else:
         mode = 0
+
+    # Preparing the filename string for store results
     filename = "getting_started_mf_mode_{}_".format(mode) + "{}.png"
 
+    # Set up signal domain
     npix1, npix2 = 128, 128
     position_space = ift.RGSpace([npix1, npix2])
     sp1 = ift.RGSpace(npix1)
     sp2 = ift.RGSpace(npix2)
 
+    # Set up signal model
     cfmaker = ift.CorrelatedFieldMaker.make(1e-2, 1e-6, '')
-    amp1 = 0.5
     cfmaker.add_fluctuations(sp1, 0.1, 1e-2, 1, .1, .01, .5, -2, 1., 'amp1')
     cfmaker.add_fluctuations(sp2, 0.1, 1e-2, 1, .1, .01, .5,
                              -1.5, .5, 'amp2')
@@ -82,7 +85,7 @@ if __name__ == '__main__':
     A2 = cfmaker.normalized_amplitudes[1]
     DC = SingleDomain(correlated_field.target, position_space)
 
-    # Apply a nonlinearity
+    ## Apply a nonlinearity
     signal = DC @ ift.sigmoid(correlated_field)
 
     # Build the line-of-sight response and define signal response
@@ -99,6 +102,13 @@ if __name__ == '__main__':
     mock_position = ift.from_random('normal', signal_response.domain)
     data = signal_response(mock_position) + N.draw_sample()
 
+    plot = ift.Plot()
+    plot.add(signal(mock_position), title='Ground Truth')
+    plot.add(R.adjoint_times(data), title='Data')
+    plot.add([A1.force(mock_position)], title='Power Spectrum 1')
+    plot.add([A2.force(mock_position)], title='Power Spectrum 2')
+    plot.output(ny=2, nx=2, xsize=10, ysize=10, name=filename.format("setup"))
+
     # Minimization parameters
     ic_sampling = ift.AbsDeltaEnergyController(name='Sampling',
                                                deltaE=0.01,
@@ -108,25 +118,18 @@ if __name__ == '__main__':
                                              iteration_limit=35)
     minimizer = ift.NewtonCG(ic_newton)
 
+    ## number of samples used to estimate the KL
+    N_samples = 20
+
     # Set up likelihood and information Hamiltonian
     likelihood = ift.GaussianEnergy(
         mean=data, inverse_covariance=N.inverse)(signal_response)
     H = ift.StandardHamiltonian(likelihood, ic_sampling)
 
+    # Begin minimization
     initial_mean = ift.MultiField.full(H.domain, 0.)
     mean = initial_mean
 
-    plot = ift.Plot()
-    plot.add(signal(mock_position), title='Ground Truth')
-    plot.add(R.adjoint_times(data), title='Data')
-    plot.add([A1.force(mock_position)], title='Power Spectrum 1')
-    plot.add([A2.force(mock_position)], title='Power Spectrum 2')
-    plot.output(ny=2, nx=2, xsize=10, ysize=10, name=filename.format("setup"))
-
-    # number of samples used to estimate the KL
-    N_samples = 20
-
-    # Draw new samples to approximate the KL five times
     for i in range(10):
         # Draw new samples and minimize KL
         KL = ift.MetricGaussianKL(mean, H, N_samples)
@@ -149,7 +152,7 @@ if __name__ == '__main__':
                     xsize=10,
                     name=filename.format("loop_{:02d}".format(i)))
 
-    # Draw posterior samples
+    # Done, draw posterior samples
     Nsamples = 20
     KL = ift.MetricGaussianKL(mean, H, N_samples)
     sc = ift.StatCalculator()
