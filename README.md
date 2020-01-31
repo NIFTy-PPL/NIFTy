@@ -109,7 +109,6 @@ following command in the repository root:
 
     pytest-3 --cov=nifty6 test
 
-
 ### First Steps
 
 For a quick start, you can browse through the [informal
@@ -118,6 +117,14 @@ dive into NIFTy by running one of the demonstrations, e.g.:
 
     python3 demos/getting_started_1.py
 
+### Building the documentation from source
+
+To build the documentation from source, install
+[sphinx](https://www.sphinx-doc.org/en/stable/index.html) and the
+[Read The Docs Sphinx Theme](https://github.com/readthedocs/sphinx_rtd_theme)
+on your system and run
+
+    sh docs/generate.sh
 
 ### Acknowledgements
 
