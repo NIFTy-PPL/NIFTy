@@ -69,9 +69,11 @@ def _normal(mean, sig, key, N=0):
     if N == 0:
         domain = DomainTuple.scalar_domain()
         mean, sig = np.asfarray(mean), np.asfarray(sig)
-    else:
-        domain = UnstructuredDomain(N)
-        mean, sig = (_reshaper(param, N) for param in (mean, sig))
+        return Adder(makeField(domain, mean)) @ (
+            sig * ducktape(domain, None, key))
+
+    domain = UnstructuredDomain(N)
+    mean, sig = (_reshaper(param, N) for param in (mean, sig))
     return Adder(makeField(domain, mean)) @ (DiagonalOperator(
         makeField(domain, sig)) @ ducktape(domain, None, key))
 
