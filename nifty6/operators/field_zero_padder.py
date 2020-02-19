@@ -95,7 +95,7 @@ class FieldZeroPadder(LinearOperator):
                     xnew[idx + (slice(0, v.shape[d]),)] = v
             else:  # ADJOINT_TIMES
                 if self._central:
-                    shp = list(x.shape)
+                    shp = list(v.shape)
                     shp[d] = tgtshp[d]
                     xnew = np.zeros(shp, dtype=v.dtype)
                     Nyquist = xnew.shape[d]//2
