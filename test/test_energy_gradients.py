@@ -42,6 +42,12 @@ def field(request):
     s = S.draw_sample()
     return ift.MultiField.from_dict({'s1': s})['s1']
 
+def test_variablecovariancegaussian(field):
+    dc = {'a':field, 'b':field.exp()}
+    mf = ift.MultiField.from_dict(dc)
+    energy = ift.VariableCovarianceGaussianEnergy(field.domain,
+            residual='a', inverse_covariance='b')
+    ift.extra.check_jacobian_consistency(energy, mf)
 
 def test_gaussian(field):
     energy = ift.GaussianEnergy(domain=field.domain)
