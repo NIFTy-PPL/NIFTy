@@ -47,7 +47,7 @@ def test_variablecovariancegaussian(field):
     mf = ift.MultiField.from_dict(dc)
     energy = ift.VariableCovarianceGaussianEnergy(field.domain,
             residual='a', inverse_covariance='b')
-    ift.extra.check_jacobian_consistency(energy, mf, tol=1e-7)
+    ift.extra.check_jacobian_consistency(energy, mf, tol=1e-6)
 
 def test_gaussian(field):
     energy = ift.GaussianEnergy(domain=field.domain)
