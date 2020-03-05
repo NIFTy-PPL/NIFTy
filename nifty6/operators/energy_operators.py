@@ -99,7 +99,7 @@ class QuadraticFormOperator(EnergyOperator):
 class VariableCovarianceGaussianEnergy(EnergyOperator):
     """Computes a negative-log Gaussian with unknown covariance.
 
-    Represents up to constants in :math:`m`:
+    Represents up to constants in :math:`s`:
 
     .. math ::
         E(f) = - \\log G(s, D) = 0.5 (s)^\\dagger D^{-1} (s),
@@ -109,13 +109,15 @@ class VariableCovarianceGaussianEnergy(EnergyOperator):
 
     Parameters
     ----------
+    domain : Domain, DomainTuple, tuple of Domain
+        Operator domain. By default it is inferred from `s` or
+        `covariance` if specified
+
     residual : key
         residual of the Gaussian. 
+    
     inverse_covariance : key
         Inverse covariance of the Gaussian. 
-    domain : Domain, DomainTuple, tuple of Domain
-        Operator domain. By default it is inferred from `mean` or
-        `covariance` if specified
 
     """
 
@@ -134,15 +136,19 @@ class VariableCovarianceGaussianEnergy(EnergyOperator):
                 - .5*xval[self._icov].log().sum()
         if not lin:
             return res
+
         FA_res = FieldAdapter(self._singledom, self._residual)
         FA_sig = FieldAdapter(self._singledom, self._icov)
         jac_res = xval[self._residual]*xval[self._icov]
         jac_res = VdotOperator(jac_res)(FA_res)
+
+        # So here we are varying w.r.t. inverse covariance
         jac_sig = .5*(xval[self._residual].absolute()**2)
         jac_sig = VdotOperator(jac_sig)(FA_sig)
-        jac_sig = jac_sig - VdotOperator(1./xval[self._residual])(FA_sig)
+        jac_sig = jac_sig - .5*VdotOperator(1./xval[self._icov])(FA_sig)
         jac = (jac_sig + jac_res)(x.jac)
-        res = x.new(res, jac)
+
+        res = x.new(Field.scalar(res), jac)
         if not x.want_metric:
             return res
         mf = {self._residual:xval[self._icov],
