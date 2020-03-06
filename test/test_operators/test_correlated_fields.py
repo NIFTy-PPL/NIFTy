@@ -30,9 +30,9 @@ import nifty6 as ift
 ])
 @pytest.mark.parametrize('rseed', [13, 2])
 @pytest.mark.parametrize('Astds', [[1., 3.], [0.2, 1.4]])
-@pytest.mark.parametrize('offset_std', [1., 10.])
+@pytest.mark.parametrize('offset_std_mean', [1., 10.])
 @pytest.mark.parametrize('N', [0,2])
-def testAmplitudesConsistency(rseed, sspace, Astds, offset_std, N):
+def testAmplitudesConsistency(rseed, sspace, Astds, offset_std_mean, N):
     def stats(op, samples):
         sc = ift.StatCalculator()
         for s in samples:
@@ -50,7 +50,7 @@ def testAmplitudesConsistency(rseed, sspace, Astds, offset_std, N):
     else:
         dofdex1, dofdex2, dofdex3 = None, None, None
 
-    fa = ift.CorrelatedFieldMaker.make(offset_std, 1E-8, '', N, dofdex1)
+    fa = ift.CorrelatedFieldMaker.make(0., offset_std_mean, 1E-8, '', N, dofdex1)
     fa.add_fluctuations(sspace, Astds[0], 1E-8, 1.1, 2., 2.1, .5, -2, 1.,
                         'spatial', dofdex = dofdex2)
     fa.add_fluctuations(fsspace, Astds[1], 1E-8, 3.1, 1., .5, .1, -4, 1.,
@@ -81,8 +81,7 @@ def testAmplitudesConsistency(rseed, sspace, Astds, offset_std, N):
     assert_allclose(slice_fluct_std0, sl_fluct_space, rtol=0.5)
     assert_allclose(slice_fluct_std1, sl_fluct_freq, rtol=0.5)
 
-    
-    fa = ift.CorrelatedFieldMaker.make(offset_std, .1, '', N, dofdex1)
+    fa = ift.CorrelatedFieldMaker.make(0., offset_std_mean, .1, '', N, dofdex1)
     fa.add_fluctuations(fsspace, Astds[1], 1., 3.1, 1., .5, .1, -4, 1., 'freq', dofdex = dofdex3)
     m = 3.
     x = fa.moment_slice_to_average(m)
