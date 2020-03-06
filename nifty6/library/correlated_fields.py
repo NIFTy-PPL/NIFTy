@@ -364,16 +364,33 @@ class CorrelatedFieldMaker:
         self._total_N = total_N
 
     @staticmethod
-    def make(offset_mean, offset_variation_mean, offset_variation_stddev, prefix,
+    def make(offset_mean, offset_std_mean, offset_std_std, prefix,
              total_N=0,
              dofdex=None):
+        """Returns a CorrelatedFieldMaker object.
+
+        Parameters
+        ----------
+        offset_mean : float
+            Mean offset from zero of the correlated field to be made.
+        offset_std_mean : float
+            Mean standard deviation of the offset value.
+        offset_std_std : float
+            Standard deviation of the stddev of the offset value.
+        prefix : string
+            Prefix to the names of the domains of the cf operator to be made.
+        total_N : integer
+            ?
+        dofdex : np.array
+            ?
+        """
         if dofdex is None:
             dofdex = np.full(total_N, 0)
         elif len(dofdex) != total_N:
             raise ValueError("length of dofdex needs to match total_N")
         N = max(dofdex) + 1 if total_N > 0 else 0
-        zm = _LognormalMomentMatching(offset_variation_mean,
-                                      offset_variation_stddev,
+        zm = _LognormalMomentMatching(offset_std_mean,
+                                      offset_std_std,
                                       prefix + 'zeromode',
                                       N)
         if total_N > 0:

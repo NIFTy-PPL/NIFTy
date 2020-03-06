@@ -58,14 +58,14 @@ if __name__ == '__main__':
     position_space = ift.RGSpace([128, 128])
 
     cfmaker = ift.CorrelatedFieldMaker.make(
-        offset_mean = 0.,  # 0.
-        offset_variation_mean =   1e-3,  # 1e-3
-        offset_variation_stddev = 1e-6,  # 1e-6
+        offset_mean =      0.0,  # 0.
+        offset_std_mean = 1e-3,  # 1e-3
+        offset_std_std =  1e-6,  # 1e-6
         prefix = '')
 
     fluctuations_dict = {
         # Amplitude of the fluctuations
-        'fluctuations_mean':   2.0,   # 1.0
+        'fluctuations_mean':   2.0,  # 1.0
         'fluctuations_stddev': 1.0,  # 1e-2
 
         # Smooth variation speed
