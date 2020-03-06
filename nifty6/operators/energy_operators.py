@@ -138,7 +138,7 @@ class VariableCovarianceGaussianEnergy(EnergyOperator):
             return res
         mf = {self._r: x.val[self._icov], self._icov: .5*x.val[self._icov]**(-2)}
         metric = makeOp(MultiField.from_dict(mf))
-        return res.add_metric(SandwichOperator(x.jac, metric))
+        return res.add_metric(SandwichOperator.make(x.jac, metric))
 
 
 class GaussianEnergy(EnergyOperator):

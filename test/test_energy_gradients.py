@@ -48,6 +48,7 @@ def test_variablecovariancegaussian(field):
     mf = ift.MultiField.from_dict(dc)
     energy = ift.VariableCovarianceGaussianEnergy(field.domain, 'a', 'b')
     ift.extra.check_jacobian_consistency(energy, mf, tol=1e-6)
+    energy(ift.Linearization.make_var(mf, want_metric=True)).metric.draw_sample()
 
 
 def test_gaussian(field):
