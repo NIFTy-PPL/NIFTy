@@ -23,7 +23,7 @@ from ..multi_domain import MultiDomain
 from ..field import Field
 from ..multi_field import MultiField
 from ..linearization import Linearization
-from ..sugar import makeDomain, makeOp
+from ..sugar import makeDomain, makeOp, full
 from .linear_operator import LinearOperator
 from .operator import Operator
 from .sampling_enabler import SamplingEnabler
@@ -130,10 +130,17 @@ class VariableCovarianceGaussianEnergy(EnergyOperator):
 
     def apply(self, x):
         self._check_input(x)
-        res0 = x[self._r].vdot(x[self._r]*x[self._icov]).real
-        res1 = x[self._icov].log().sum()
+        from .contraction_operator import ContractionOperator
+        lin = isinstance(x, Linearization)
+        r = FieldAdapter(self._domain[self._r], self._r)
+        icov = FieldAdapter(self._domain[self._icov], self._icov)
+        res0 = r.conjugate()*r*icov
+        sum_it = ContractionOperator(res0.target, None)
+        res0 = sum_it(res0).real
+        res1 = sum_it(icov.log())
         res = 0.5*(res0-res1)
-        if not isinstance(x, Linearization):
+        res = res(x)
+        if not lin:
             return Field.scalar(res)
         if not x.want_metric:
             return res
