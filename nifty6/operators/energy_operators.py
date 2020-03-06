@@ -128,11 +128,9 @@ class VariableCovarianceGaussianEnergy(EnergyOperator):
 
     def apply(self, x):
         self._check_input(x)
-        res0 = x[self._r].vdot(x[self._r]*x[self._icov]).absolute()
+        res0 = x[self._r].vdot(x[self._r]*x[self._icov]).real
         res1 = x[self._icov].log().sum()
         res = 0.5*(res0-res1)
-        if (not isinstance(x, Linearization)) or (not x.want_metric):
-            return res
         mf = {self._r: x.val[self._icov], self._icov: .5*x.val[self._icov]**(-2)}
         metric = makeOp(MultiField.from_dict(mf))
         return res.add_metric(SandwichOperator.make(x.jac, metric))
