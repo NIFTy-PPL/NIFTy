@@ -98,20 +98,22 @@ class QuadraticFormOperator(EnergyOperator):
 
 
 class VariableCovarianceGaussianEnergy(EnergyOperator):
-    """Computes a negative-log Gaussian with unknown covariance.
+    """Computes the negative log pdf of a Gaussian with unknown covariance.
 
-    Represents up to constants in :math:`s`:
+    The covariance is assumed to be diagonal.
 
     .. math ::
-        E(f) = - \\log G(s, D) = 0.5 (s)^\\dagger D^{-1} (s) + 0.5 tr log(D),
+        E(s,D) = - \\log G(s, D) = 0.5 (s)^\\dagger D^{-1} (s) + 0.5 tr log(D),
 
     an information energy for a Gaussian distribution with residual s and
     diagonal covariance D.
+    The domain of this energy will be a MultiDomain with two keys,
+    the target will be the scalar domain.
 
     Parameters
     ----------
     domain : Domain, DomainTuple, tuple of Domain
-        Operator domain.
+        domain of the residual and domain of the covariance diagonal.
 
     residual : key
         Residual key of the Gaussian.
