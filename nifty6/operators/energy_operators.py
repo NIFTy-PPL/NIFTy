@@ -129,7 +129,7 @@ class VariableCovarianceGaussianEnergy(EnergyOperator):
     def apply(self, x):
         self._check_input(x)
         lin = isinstance(x, Linearization)
-        res0 = x[self._r].vdot(x[self._r]*x[self._icov])
+        res0 = x[self._r].vdot(x[self._r]*x[self._icov]).real
         res1 = x[self._icov].log().sum()
         res = 0.5*(res0-res1)
         if not lin:
