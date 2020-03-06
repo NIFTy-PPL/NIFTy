@@ -103,10 +103,10 @@ class VariableCovarianceGaussianEnergy(EnergyOperator):
     Represents up to constants in :math:`s`:
 
     .. math ::
-        E(f) = - \\log G(s, D) = 0.5 (s)^\\dagger D^{-1} (s),
+        E(f) = - \\log G(s, D) = 0.5 (s)^\\dagger D^{-1} (s) + 0.5 tr log(D),
 
     an information energy for a Gaussian distribution with residual s and
-    covariance D.
+    diagonal covariance D.
 
     Parameters
     ----------
@@ -117,7 +117,7 @@ class VariableCovarianceGaussianEnergy(EnergyOperator):
         Residual key of the Gaussian.
 
     inverse_covariance : key
-        Inverse covariance key of the Gaussian.
+        Inverse covariance diagonal key of the Gaussian.
     """
 
     def __init__(self, domain, residual_key, inverse_covariance_key):
@@ -128,13 +128,10 @@ class VariableCovarianceGaussianEnergy(EnergyOperator):
 
     def apply(self, x):
         self._check_input(x)
-        lin = isinstance(x, Linearization)
-        res0 = x[self._r].vdot(x[self._r]*x[self._icov])
+        res0 = x[self._r].vdot(x[self._r]*x[self._icov]).absolute()
         res1 = x[self._icov].log().sum()
         res = 0.5*(res0-res1)
-        if not lin:
-            return res
-        if not x.want_metric:
+        if (not isinstance(x, Linearization)) or (not x.want_metric):
             return res
         mf = {self._r: x.val[self._icov], self._icov: .5*x.val[self._icov]**(-2)}
         metric = makeOp(MultiField.from_dict(mf))
