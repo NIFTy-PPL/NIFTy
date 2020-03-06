@@ -96,68 +96,44 @@ class QuadraticFormOperator(EnergyOperator):
             return x.new(val, jac)
         return Field.scalar(0.5*x.vdot(self._op(x)))
 
+
 class VariableCovarianceGaussianEnergy(EnergyOperator):
     """Computes a negative-log Gaussian with unknown covariance.
 
     Represents up to constants in :math:`s`:
 
     .. math ::
-        E(f) = - \\log G(s, D) = 0.5 (s)^\\dagger D^{-1} (s),
+        E(f) = - \\log G(s, D) = 0.5 (s)^\\dagger D^{-1} (s) + 0.5 tr log(D),
 
     an information energy for a Gaussian distribution with residual s and
-    covariance D.
+    diagonal covariance D.
 
     Parameters
     ----------
     domain : Domain, DomainTuple, tuple of Domain
-        Operator domain. By default it is inferred from `s` or
-        `covariance` if specified
+        Operator domain.
 
     residual : key
-        residual of the Gaussian. 
-    
-    inverse_covariance : key
-        Inverse covariance of the Gaussian. 
+        Residual key of the Gaussian.
 
+    inverse_covariance : key
+        Inverse covariance diagonal key of the Gaussian.
     """
 
-    def __init__(self, domain, residual, inverse_covariance):
-        self._residual = residual
-        self._icov = inverse_covariance
-        self._domain = MultiDomain.make({self._residual:domain,
-            self._icov:domain})
-        self._singledom = domain
+    def __init__(self, domain, residual_key, inverse_covariance_key):
+        self._r = str(residual_key)
+        self._icov = str(inverse_covariance_key)
+        dom = DomainTuple.make(domain)
+        self._domain = MultiDomain.make({self._r: dom, self._icov: dom})
 
     def apply(self, x):
         self._check_input(x)
-        lin = isinstance(x, Linearization)
-        xval = x.val if lin else x
-        res = .5*xval[self._residual].vdot(xval[self._residual]*xval[self._icov])\
-                - .5*xval[self._icov].log().sum()
-        if not lin:
-            return res
-
-        FA_res = FieldAdapter(self._singledom, self._residual)
-        FA_sig = FieldAdapter(self._singledom, self._icov)
-        jac_res = xval[self._residual]*xval[self._icov]
-        jac_res = VdotOperator(jac_res)(FA_res)
-
-        # So here we are varying w.r.t. inverse covariance
-        jac_sig = .5*(xval[self._residual].absolute()**2)
-        jac_sig = VdotOperator(jac_sig)(FA_sig)
-        jac_sig = jac_sig - .5*VdotOperator(1./xval[self._icov])(FA_sig)
-        jac = (jac_sig + jac_res)(x.jac)
-
-        res = x.new(Field.scalar(res), jac)
-        if not x.want_metric:
-            return res
-        mf = {self._residual:xval[self._icov],
-                self._icov:.5*xval[self._icov]**(-2)}
-        mf = MultiField.from_dict(mf)
-        metric = makeOp(mf)
-        metric = SandwichOperator(x.jac, metric)
-        return res.add_metric(metric)
-
+        res0 = x[self._r].vdot(x[self._r]*x[self._icov]).real
+        res1 = x[self._icov].log().sum()
+        res = 0.5*(res0-res1)
+        mf = {self._r: x.val[self._icov], self._icov: .5*x.val[self._icov]**(-2)}
+        metric = makeOp(MultiField.from_dict(mf))
+        return res.add_metric(SandwichOperator.make(x.jac, metric))
 
 
 class GaussianEnergy(EnergyOperator):
