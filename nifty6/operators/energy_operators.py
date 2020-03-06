@@ -133,7 +133,7 @@ class VariableCovarianceGaussianEnergy(EnergyOperator):
         res1 = x[self._icov].log().sum()
         res = 0.5*(res0-res1)
         if not lin:
-            return res
+            return Field.scalar(res)
         if not x.want_metric:
             return res
         mf = {self._r: x.val[self._icov], self._icov: .5*x.val[self._icov]**(-2)}
