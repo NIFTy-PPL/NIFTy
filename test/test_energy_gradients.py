@@ -42,29 +42,32 @@ def field(request):
     s = S.draw_sample()
     return ift.MultiField.from_dict({'s1': s})['s1']
 
+
 def test_variablecovariancegaussian(field):
-    dc = {'a':field, 'b': field.exp()}
+    dc = {'a': field, 'b': field.exp()}
     mf = ift.MultiField.from_dict(dc)
-    energy = ift.VariableCovarianceGaussianEnergy(field.domain,
-            residual='a', inverse_covariance='b')
+    energy = ift.VariableCovarianceGaussianEnergy(field.domain, 'a', 'b')
     ift.extra.check_jacobian_consistency(energy, mf, tol=1e-6)
+
 
 def test_gaussian(field):
     energy = ift.GaussianEnergy(domain=field.domain)
     ift.extra.check_jacobian_consistency(energy, field)
 
+
 @pmp('icov', [lambda dom:ift.ScalingOperator(dom, 1.),
-    lambda dom:ift.SandwichOperator.make(ift.GeometryRemover(dom))])
+              lambda dom:ift.SandwichOperator.make(ift.GeometryRemover(dom))])
 def test_ScaledEnergy(field, icov):
     icov = icov(field.domain)
     energy = ift.GaussianEnergy(inverse_covariance=icov)
     ift.extra.check_jacobian_consistency(energy.scale(0.3), field)
 
-    lin =  ift.Linearization.make_var(field, want_metric=True)
+    lin = ift.Linearization.make_var(field, want_metric=True)
     met1 = energy(lin).metric
     met2 = energy.scale(0.3)(lin).metric
-    np.testing.assert_allclose(met1(field).val, met2(field).val / 0.3, rtol=1e-12)
+    np.testing.assert_allclose(met1(field).val, met2(field).val/0.3, rtol=1e-12)
     met2.draw_sample()
+
 
 def test_studentt(field):
     energy = ift.StudentTEnergy(domain=field.domain, theta=.5)
