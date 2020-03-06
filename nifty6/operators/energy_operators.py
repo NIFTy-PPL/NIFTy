@@ -19,6 +19,7 @@ import numpy as np
 
 from .. import utilities
 from ..domain_tuple import DomainTuple
+from ..multi_domain import MultiDomain
 from ..field import Field
 from ..multi_field import MultiField
 from ..linearization import Linearization
@@ -28,7 +29,7 @@ from .operator import Operator
 from .sampling_enabler import SamplingEnabler
 from .sandwich_operator import SandwichOperator
 from .scaling_operator import ScalingOperator
-from .simple_linear_operators import VdotOperator
+from .simple_linear_operators import VdotOperator, FieldAdapter
 
 
 class EnergyOperator(Operator):
@@ -94,6 +95,47 @@ class QuadraticFormOperator(EnergyOperator):
             val = Field.scalar(0.5*x.val.vdot(t1))
             return x.new(val, jac)
         return Field.scalar(0.5*x.vdot(self._op(x)))
+
+
+class VariableCovarianceGaussianEnergy(EnergyOperator):
+    """Computes the negative log pdf of a Gaussian with unknown covariance.
+
+    The covariance is assumed to be diagonal.
+
+    .. math ::
+        E(s,D) = - \\log G(s, D) = 0.5 (s)^\\dagger D^{-1} (s) + 0.5 tr log(D),
+
+    an information energy for a Gaussian distribution with residual s and
+    diagonal covariance D.
+    The domain of this energy will be a MultiDomain with two keys,
+    the target will be the scalar domain.
+
+    Parameters
+    ----------
+    domain : Domain, DomainTuple, tuple of Domain
+        domain of the residual and domain of the covariance diagonal.
+
+    residual : key
+        Residual key of the Gaussian.
+
+    inverse_covariance : key
+        Inverse covariance diagonal key of the Gaussian.
+    """
+
+    def __init__(self, domain, residual_key, inverse_covariance_key):
+        self._r = str(residual_key)
+        self._icov = str(inverse_covariance_key)
+        dom = DomainTuple.make(domain)
+        self._domain = MultiDomain.make({self._r: dom, self._icov: dom})
+
+    def apply(self, x):
+        self._check_input(x)
+        res0 = x[self._r].vdot(x[self._r]*x[self._icov]).real
+        res1 = x[self._icov].log().sum()
+        res = 0.5*(res0-res1)
+        mf = {self._r: x.val[self._icov], self._icov: .5*x.val[self._icov]**(-2)}
+        metric = makeOp(MultiField.from_dict(mf))
+        return res.add_metric(SandwichOperator.make(x.jac, metric))
 
 
 class GaussianEnergy(EnergyOperator):
