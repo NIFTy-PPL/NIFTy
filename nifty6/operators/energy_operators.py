@@ -134,10 +134,8 @@ class VariableCovarianceGaussianEnergy(EnergyOperator):
         lin = isinstance(x, Linearization)
         r = FieldAdapter(self._domain[self._r], self._r)
         icov = FieldAdapter(self._domain[self._icov], self._icov)
-        res0 = r.conjugate()*r*icov
-        sum_it = ContractionOperator(res0.target, None)
-        res0 = sum_it(res0).real
-        res1 = sum_it(icov.log())
+        res0 = r.vdot(r*icov).real
+        res1 = icov.log().sum()
         res = 0.5*(res0-res1)
         res = res(x)
         if not lin:

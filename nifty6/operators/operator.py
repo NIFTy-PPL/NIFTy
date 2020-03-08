@@ -66,6 +66,13 @@ class Operator(metaclass=NiftyMeta):
         from .simple_linear_operators import ConjugationOperator
         return ConjugationOperator(self.target)(self)
 
+    def sum(self, spaces=None):
+        from .contraction_operator import ContractionOperator
+        return ContractionOperator(self.target, spaces)(self)
+
+    def vdot(self, other):
+        return (self.conjugate()*other).sum()
+
     @property
     def real(self):
         from .simple_linear_operators import Realizer
