@@ -237,7 +237,15 @@ def _get_acceptable_location(op, loc, lin):
     return loc2, lin2
 
 
-def check_jacobian_consistency(op, loc, tol=1e-8, ntries=100):
+def _linearization_value_consistency(op, loc):
+    for wm in [False, True]:
+        lin = Linearization.make_var(loc, wm)
+        fld0 = op(loc)
+        fld1 = op(lin).val
+        assert_allclose(fld0, fld1, 0, 1e-7)
+
+
+def check_jacobian_consistency(op, loc, tol=1e-8, ntries=100, perf_check=True):
     """
     Checks the Jacobian of an operator against its finite difference
     approximation.
@@ -254,10 +262,13 @@ def check_jacobian_consistency(op, loc, tol=1e-8, ntries=100):
         as op. The location at which the gradient is checked
     tol : float
         Tolerance for the check.
+    perf_check : Boolean
+        Do performance check. May be disabled for very unimportant operators.
     """
     _domain_check(op)
     _actual_domain_check_nonlinear(op, loc)
-    _performance_check(op, loc, True)  # FIXME Make the default False
+    _performance_check(op, loc, bool(perf_check))
+    _linearization_value_consistency(op, loc)
     for _ in range(ntries):
         lin = op(Linearization.make_var(loc))
         loc2, lin2 = _get_acceptable_location(op, loc, lin)
