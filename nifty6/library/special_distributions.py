@@ -25,7 +25,35 @@ from ..operators.operator import Operator
 from ..sugar import makeOp
 
 
-class InverseGammaOperator(Operator):
+class _InterpolationOperator(Operator):
+    def __init__(self, domain, func, xmin, xmax, delta, table_func=None, inverse_table_func=None):
+        self._domain = self._target = DomainTuple.make(domain)
+        self._xmin, self._xmax = float(xmin), float(xmax)
+        self._d = float(delta)
+        self._xs = np.arange(xmin, xmax+2*self._d, self._d)
+        if table_func is not None:
+            foo = func(np.random.randn(10))
+            np.testing.assert_allclose(foo, inverse_table_func(table_func(foo)))
+        self._table = table_func(func(self._xs))
+        self._deriv = (self._table[1:]-self._table[:-1]) / self._d
+        self._inv_table_func = inverse_table_func
+
+    def apply(self, x):
+        self._check_input(x)
+        lin = isinstance(x, Linearization)
+        val = x.val.val if lin else x.val
+        val = (np.clip(val, self._xmin, self._xmax) - self._xmin) / self._d
+        fi = np.floor(val).astype(int)
+        w = val - fi
+        res = self._inv_table_func((1-w)*self._table[fi] + w*self._table[fi+1])
+        resfld = Field(self._domain, res)
+        if not lin:
+            return resfld
+        jac = makeOp(Field(self._domain, self._deriv[fi]*res)) @ x.jac
+        return x.new(resfld, jac)
+
+
+def InverseGammaOperator(domain, alpha, q, delta=0.001):
     """Transforms a Gaussian into an inverse gamma distribution.
 
     The pdf of the inverse gamma distribution is defined as follows:
@@ -53,54 +81,9 @@ class InverseGammaOperator(Operator):
     delta : float
         distance between sampling points for linear interpolation.
     """
-    def __init__(self, domain, alpha, q, delta=0.001):
-        self._domain = self._target = DomainTuple.make(domain)
-        self._alpha, self._q, self._delta = \
-            float(alpha), float(q), float(delta)
-        self._xmin, self._xmax = -8.2, 8.2
-        # Precompute
-        xs = np.arange(self._xmin, self._xmax+2*delta, delta)
-        self._table = np.log(invgamma.ppf(norm.cdf(xs), self._alpha,
-                                          scale=self._q))
-        self._deriv = (self._table[1:]-self._table[:-1]) / delta
-
-    def apply(self, x):
-        self._check_input(x)
-        lin = isinstance(x, Linearization)
-        val = x.val.val if lin else x.val
-
-        val = (np.clip(val, self._xmin, self._xmax) - self._xmin) / self._delta
-
-        # Operator
-        fi = np.floor(val).astype(int)
-        w = val - fi
-        res = np.exp((1 - w)*self._table[fi] + w*self._table[fi + 1])
-
-        points = Field(self._domain, res)
-        if not lin:
-            return points
-
-        # Derivative of linear interpolation
-        der = self._deriv[fi]*res
-
-        jac = makeOp(Field(self._domain, der))
-        jac = jac(x.jac)
-        return x.new(points, jac)
-
-    @staticmethod
-    def IG(field, alpha, q):
-        foo = invgamma.ppf(norm.cdf(field.val), alpha, scale=q)
-        return Field(field.domain, foo)
-
-    @staticmethod
-    def inverseIG(u, alpha, q):
-        res = norm.ppf(invgamma.cdf(u.val, alpha, scale=q))
-        return Field(u.domain, res)
-
-    @property
-    def alpha(self):
-        return self._alpha
-
-    @property
-    def q(self):
-        return self._q
+    op = _InterpolationOperator(domain,
+                                lambda x: invgamma.ppf(norm.cdf(x), float(alpha)),
+                                -8.2, 8.2, delta, np.log, np.exp)
+    if np.isscalar(q):
+        return op.scale(q)
+    return makeOp(q) @ op

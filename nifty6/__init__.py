@@ -69,7 +69,7 @@ from .minimization.metric_gaussian_kl import MetricGaussianKL
 from .sugar import *
 from .plot import Plot
 
-from .library.inverse_gamma_operator import InverseGammaOperator
+from .library.special_distributions import InverseGammaOperator
 from .library.los_response import LOSResponse
 from .library.dynamic_operator import (dynamic_operator,
                                        dynamic_lightcone_operator)
