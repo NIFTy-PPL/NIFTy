@@ -81,6 +81,9 @@ def InverseGammaOperator(domain, alpha, q, delta=0.001):
     delta : float
         distance between sampling points for linear interpolation.
     """
-    return _InterpolationOperator(domain,
-                                  lambda x: invgamma.ppf(norm.cdf(x), float(alpha)),
-                                  -8.2, 8.2, delta, np.log, np.exp).scale(q)
+    op = _InterpolationOperator(domain,
+                                lambda x: invgamma.ppf(norm.cdf(x), float(alpha)),
+                                -8.2, 8.2, delta, np.log, np.exp)
+    if np.isscalar(q):
+        return op.scale(q)
+    return makeOp(q) @ op

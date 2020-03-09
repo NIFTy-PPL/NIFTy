@@ -15,6 +15,7 @@
 #
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
 
+import numpy as np
 import pytest
 from numpy.testing import assert_allclose
 from scipy.stats import invgamma, norm
@@ -35,8 +36,12 @@ def testInverseGammaAccuracy(space, seed):
     S = ift.ScalingOperator(space, 1.)
     pos = S.draw_sample()
     alpha = 1.5
-    q = 0.73
-    op = ift.InverseGammaOperator(space, alpha, q)
-    arr1 = op(pos).val
-    arr0 = q*invgamma.ppf(norm.cdf(pos.val), alpha)
-    assert_allclose(arr0, arr1)
+    qs = [0.73, pos.exp().val]
+    for q in qs:
+        qfld = q
+        if not np.isscalar(q):
+            qfld = ift.makeField(space, q)
+        op = ift.InverseGammaOperator(space, alpha, qfld)
+        arr1 = op(pos).val
+        arr0 = invgamma.ppf(norm.cdf(pos.val), alpha, scale=q)
+        assert_allclose(arr0, arr1)
