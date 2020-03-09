@@ -18,9 +18,6 @@
 import numpy as np
 
 from .endomorphic_operator import EndomorphicOperator
-from ..field import Field
-from ..multi_domain import MultiDomain
-from ..multi_field import MultiField
 
 
 class ScalingOperator(EndomorphicOperator):
@@ -62,15 +59,14 @@ class ScalingOperator(EndomorphicOperator):
         self._capability = self._all_ops
 
     def apply(self, x, mode):
+        from ..sugar import full
+
         self._check_input(x, mode)
         fct = self._factor
         if fct == 1.:
             return x
         if fct == 0.:
-            # Avoid a circular import by replicating `..sugar.full`
-            if isinstance(x.domain, (dict, MultiDomain)):
-                return MultiField.full(x.domain, 0.)
-            return Field.full(x.domain, 0.)
+            return full(x.domain, 0.)
 
         MODES_WITH_ADJOINT = self.ADJOINT_TIMES | self.ADJOINT_INVERSE_TIMES
         MODES_WITH_INVERSE = self.INVERSE_TIMES | self.ADJOINT_INVERSE_TIMES
