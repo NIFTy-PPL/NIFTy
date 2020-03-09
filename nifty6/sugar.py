@@ -25,13 +25,13 @@ from . import utilities
 from .domain_tuple import DomainTuple
 from .domains.power_space import PowerSpace
 from .field import Field
-from .logger import logger
 from .multi_domain import MultiDomain
 from .multi_field import MultiField
 from .operators.block_diagonal_operator import BlockDiagonalOperator
 from .operators.diagonal_operator import DiagonalOperator
 from .operators.distributors import PowerDistributor
 from .operators.operator import Operator
+from .operators.scaling_operator import ScalingOperator
 from .plot import Plot
 
 __all__ = ['PS_field', 'power_analyze', 'create_power_operator',
@@ -327,6 +327,8 @@ def makeOp(input):
     ----------
     input : None, Field or MultiField
         - if None, None is returned.
+        - if Field on scalar-domain, a ScalingOperator with the coefficient
+            given by the Field is returned.
         - if Field, a DiagonalOperator with the coefficients given by this
             Field is returned.
         - if MultiField, a BlockDiagonalOperator with entries given by this
@@ -338,6 +340,8 @@ def makeOp(input):
     """
     if input is None:
         return None
+    if input.domain is DomainTuple.scalar_domain():
+        return ScalingOperator(input.domain, float(input.val))
     if isinstance(input, Field):
         return DiagonalOperator(input)
     if isinstance(input, MultiField):
