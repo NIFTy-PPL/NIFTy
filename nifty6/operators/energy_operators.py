@@ -19,17 +19,17 @@ import numpy as np
 
 from .. import utilities
 from ..domain_tuple import DomainTuple
-from ..multi_domain import MultiDomain
 from ..field import Field
-from ..multi_field import MultiField
 from ..linearization import Linearization
-from ..sugar import makeDomain, makeOp, full
+from ..multi_domain import MultiDomain
+from ..multi_field import MultiField
+from ..sugar import makeDomain, makeOp
 from .linear_operator import LinearOperator
 from .operator import Operator
 from .sampling_enabler import SamplingEnabler
 from .sandwich_operator import SandwichOperator
 from .scaling_operator import ScalingOperator
-from .simple_linear_operators import VdotOperator, FieldAdapter
+from .simple_linear_operators import FieldAdapter, VdotOperator
 
 
 class EnergyOperator(Operator):
@@ -130,14 +130,12 @@ class VariableCovarianceGaussianEnergy(EnergyOperator):
 
     def apply(self, x):
         self._check_input(x)
-        from .contraction_operator import ContractionOperator
         lin = isinstance(x, Linearization)
         r = FieldAdapter(self._domain[self._r], self._r)
         icov = FieldAdapter(self._domain[self._icov], self._icov)
         res0 = r.vdot(r*icov).real
         res1 = icov.log().sum()
-        res = 0.5*(res0-res1)
-        res = res(x)
+        res = (res0-res1).scale(0.5)(x)
         if not lin:
             return Field.scalar(res)
         if not x.want_metric:
