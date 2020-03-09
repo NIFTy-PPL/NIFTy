@@ -35,9 +35,9 @@ from ..operators.endomorphic_operator import EndomorphicOperator
 from ..operators.harmonic_operators import HarmonicTransformOperator
 from ..operators.linear_operator import LinearOperator
 from ..operators.operator import Operator
-from ..operators.simple_linear_operators import ducktape
+from ..operators.simple_linear_operators import FieldAdapter, ducktape
 from ..probing import StatCalculator
-from ..sugar import makeField, full, makeDomain
+from ..sugar import full, makeDomain, makeField, makeOp
 
 
 def _reshaper(x, N):
@@ -207,7 +207,7 @@ class _TwoLogIntegrations(LinearOperator):
 
 class _Normalization(Operator):
     def __init__(self, domain, space=0):
-        self._domain = self._target = makeDomain(domain)
+        self._domain = self._target = DomainTuple.make(domain)
         assert isinstance(self._domain[space], PowerSpace)
         hspace = list(self._domain)
         hspace[space] = hspace[space].harmonic_partner
@@ -218,16 +218,17 @@ class _Normalization(Operator):
         mode_multiplicity = pd.adjoint(full(pd.target, 1.)).val_rw()
         zero_mode = (slice(None),)*self._domain.axes[space][0] + (0,)
         mode_multiplicity[zero_mode] = 0
-        self._mode_multiplicity = makeField(self._domain, mode_multiplicity)
+        self._mode_multiplicity = makeOp(makeField(self._domain, mode_multiplicity))
         self._specsum = _SpecialSum(self._domain, space)
 
     def apply(self, x):
         self._check_input(x)
-        amp = x.exp()
-        spec = (2*x).exp()
+        fa = FieldAdapter(self._domain, 'foo')
+        amp = fa.exp()
+        spec = (2*fa).exp()
         # FIXME This normalizes also the zeromode which is supposed to be left
         # untouched by this operator
-        return self._specsum(self._mode_multiplicity*spec)**(-0.5)*amp
+        return (self._specsum(self._mode_multiplicity(spec))**(-0.5)*amp)(fa.adjoint(x))
 
 
 class _SpecialSum(EndomorphicOperator):

@@ -71,7 +71,16 @@ class Operator(metaclass=NiftyMeta):
         return ContractionOperator(self.target, spaces)(self)
 
     def vdot(self, other):
-        return (self.conjugate()*other).sum()
+        from ..field import Field
+        from ..multi_field import MultiField
+        from ..sugar import makeOp
+        if isinstance(other, Operator):
+            res = self.conjugate()*other
+        elif isinstance(other, (Field, MultiField)):
+            res = makeOp(other) @ self.conjugate()
+        else:
+            raise TypeError
+        return res.sum()
 
     @property
     def real(self):

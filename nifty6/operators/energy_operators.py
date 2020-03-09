@@ -19,17 +19,17 @@ import numpy as np
 
 from .. import utilities
 from ..domain_tuple import DomainTuple
-from ..multi_domain import MultiDomain
 from ..field import Field
-from ..multi_field import MultiField
 from ..linearization import Linearization
-from ..sugar import makeDomain, makeOp, full
+from ..multi_domain import MultiDomain
+from ..multi_field import MultiField
+from ..sugar import makeDomain, makeOp
 from .linear_operator import LinearOperator
 from .operator import Operator
 from .sampling_enabler import SamplingEnabler
 from .sandwich_operator import SandwichOperator
 from .scaling_operator import ScalingOperator
-from .simple_linear_operators import VdotOperator, FieldAdapter
+from .simple_linear_operators import FieldAdapter, VdotOperator
 
 
 class EnergyOperator(Operator):
@@ -130,17 +130,13 @@ class VariableCovarianceGaussianEnergy(EnergyOperator):
 
     def apply(self, x):
         self._check_input(x)
-        from .contraction_operator import ContractionOperator
         lin = isinstance(x, Linearization)
         r = FieldAdapter(self._domain[self._r], self._r)
         icov = FieldAdapter(self._domain[self._icov], self._icov)
         res0 = r.vdot(r*icov).real
         res1 = icov.log().sum()
-        res = 0.5*(res0-res1)
-        res = res(x)
-        if not lin:
-            return Field.scalar(res)
-        if not x.want_metric:
+        res = (res0-res1).scale(0.5)(x)
+        if not lin or not x.want_metric:
             return res
         mf = {self._r: x.val[self._icov], self._icov: .5*x.val[self._icov]**(-2)}
         metric = makeOp(MultiField.from_dict(mf))
@@ -242,15 +238,9 @@ class PoissonianEnergy(EnergyOperator):
 
     def apply(self, x):
         self._check_input(x)
-        res = x.sum()
-        tmp = res.val.val if isinstance(res, Linearization) else res
-        # if we have no infinity here, we can continue with the calculation;
-        # otherwise we know that the result must also be infinity
-        if not np.isinf(tmp):
-            res = res - x.log().vdot(self._d)
-        if not isinstance(x, Linearization):
-            return Field.scalar(res)
-        if not x.want_metric:
+        fa = FieldAdapter(self._domain, 'foo')
+        res = (fa.sum() - fa.log().vdot(self._d))(fa.adjoint(x))
+        if not isinstance(x, Linearization) or not x.want_metric:
             return res
         metric = SandwichOperator.make(x.jac, makeOp(1./x.val))
         return res.add_metric(metric)
@@ -280,20 +270,20 @@ class InverseGammaLikelihood(EnergyOperator):
     def __init__(self, beta, alpha=-0.5):
         if not isinstance(beta, Field):
             raise TypeError
+        self._domain = DomainTuple.make(beta.domain)
         self._beta = beta
         if np.isscalar(alpha):
             alpha = Field(beta.domain, np.full(beta.shape, alpha))
         elif not isinstance(alpha, Field):
             raise TypeError
         self._alphap1 = alpha+1
-        self._domain = DomainTuple.make(beta.domain)
 
     def apply(self, x):
         self._check_input(x)
-        res = x.log().vdot(self._alphap1) + (1./x).vdot(self._beta)
-        if not isinstance(x, Linearization):
-            return Field.scalar(res)
-        if not x.want_metric:
+        fa = FieldAdapter(self._domain, 'foo')
+        x = fa.adjoint(x)
+        res = (fa.log().vdot(self._alphap1) + fa.one_over().vdot(self._beta))(x)
+        if not isinstance(x, Linearization) or not x.want_metric:
             return res
         metric = SandwichOperator.make(x.jac, makeOp(self._alphap1/(x.val**2)))
         return res.add_metric(metric)
@@ -359,10 +349,11 @@ class BernoulliEnergy(EnergyOperator):
 
     def apply(self, x):
         self._check_input(x)
-        v = -(x.log().vdot(self._d) + (1. - x).log().vdot(1. - self._d))
-        if not isinstance(x, Linearization):
-            return Field.scalar(v)
-        if not x.want_metric:
+        iden = FieldAdapter(self._domain, 'foo')
+        from .adder import Adder
+        v = -iden.log().vdot(self._d) + (Adder(1, domain=self._domain) @ iden.scale(-1)).log().vdot(self._d-1.)
+        v = v(iden.adjoint(x))
+        if not isinstance(x, Linearization) or not x.want_metric:
             return v
         met = makeOp(1./(x.val*(1. - x.val)))
         met = SandwichOperator.make(x.jac, met)
@@ -413,13 +404,11 @@ class StandardHamiltonian(EnergyOperator):
 
     def apply(self, x):
         self._check_input(x)
-        if (self._ic_samp is None or not isinstance(x, Linearization)
-                or not x.want_metric):
-            return self._lh(x) + self._prior(x)
+        if (self._ic_samp is None or not isinstance(x, Linearization) or not x.want_metric):
+            return (self._lh + self._prior)(x)
         else:
             lhx, prx = self._lh(x), self._prior(x)
-            mtr = SamplingEnabler(lhx.metric, prx.metric,
-                                  self._ic_samp)
+            mtr = SamplingEnabler(lhx.metric, prx.metric, self._ic_samp)
             return (lhx + prx).add_metric(mtr)
 
     def __repr__(self):
@@ -461,5 +450,11 @@ class AveragedEnergy(EnergyOperator):
 
     def apply(self, x):
         self._check_input(x)
-        mymap = map(lambda v: self._h(x + v), self._res_samples)
-        return utilities.my_sum(mymap)*(1./len(self._res_samples))
+        if isinstance(self._domain, MultiDomain):
+            iden = ScalingOperator(self._domain, 1.)
+        else:
+            iden = FieldAdapter(self._domain, 'foo')
+            x = iden.adjoint(x)
+        from .adder import Adder
+        mymap = map(lambda v: self._h(Adder(v) @ iden), self._res_samples)
+        return utilities.my_sum(mymap).scale(1./len(self._res_samples))(x)
