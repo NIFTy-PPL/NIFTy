@@ -25,14 +25,13 @@ from itertools import product
 # hopefully be fixed in the future.
 # https://docs.pytest.org/en/latest/proposals/parametrize_with_fixtures.html
 
-SPACES = [
-    ift.GLSpace(15),
-    ift.RGSpace(64, distances=.789),
-    ift.RGSpace([32, 32], distances=.789)
-]
+SPACES = [ift.GLSpace(15),
+          ift.RGSpace(64, distances=.789),
+          ift.RGSpace([32, 32], distances=.789)]
 SEEDS = [4, 78, 23]
 PARAMS = product(SEEDS, SPACES)
 pmp = pytest.mark.parametrize
+# FIXME Test also with multifields in domain
 
 
 @pytest.fixture(params=PARAMS)
