@@ -136,9 +136,7 @@ class VariableCovarianceGaussianEnergy(EnergyOperator):
         res0 = r.vdot(r*icov).real
         res1 = icov.log().sum()
         res = (res0-res1).scale(0.5)(x)
-        if not lin:
-            return Field.scalar(res)
-        if not x.want_metric:
+        if not lin or not x.want_metric:
             return res
         mf = {self._r: x.val[self._icov], self._icov: .5*x.val[self._icov]**(-2)}
         metric = makeOp(MultiField.from_dict(mf))
@@ -242,9 +240,7 @@ class PoissonianEnergy(EnergyOperator):
         self._check_input(x)
         fa = FieldAdapter(self._domain, 'foo')
         res = (fa.sum() - fa.log().vdot(self._d))(fa.adjoint(x))
-        if not isinstance(x, Linearization):
-            return Field.scalar(res)
-        if not x.want_metric:
+        if not isinstance(x, Linearization) or not x.want_metric:
             return res
         metric = SandwichOperator.make(x.jac, makeOp(1./x.val))
         return res.add_metric(metric)
@@ -287,9 +283,7 @@ class InverseGammaLikelihood(EnergyOperator):
         fa = FieldAdapter(self._domain, 'foo')
         x = fa.adjoint(x)
         res = (fa.log().vdot(self._alphap1) + fa.one_over().vdot(self._beta))(x)
-        if not isinstance(x, Linearization):
-            return Field.scalar(res)
-        if not x.want_metric:
+        if not isinstance(x, Linearization) or not x.want_metric:
             return res
         metric = SandwichOperator.make(x.jac, makeOp(self._alphap1/(x.val**2)))
         return res.add_metric(metric)
@@ -357,11 +351,9 @@ class BernoulliEnergy(EnergyOperator):
         self._check_input(x)
         iden = FieldAdapter(self._domain, 'foo')
         from .adder import Adder
-        v = -iden.log().vdot(self._d) + (Adder(Field.full(self._domain, 1.)) @ iden.scale(-1)).log().vdot(self._d-1.)
+        v = -iden.log().vdot(self._d) + (Adder(1, domain=self._domain) @ iden.scale(-1)).log().vdot(self._d-1.)
         v = v(iden.adjoint(x))
-        if not isinstance(x, Linearization):
-            return Field.scalar(v)
-        if not x.want_metric:
+        if not isinstance(x, Linearization) or not x.want_metric:
             return v
         met = makeOp(1./(x.val*(1. - x.val)))
         met = SandwichOperator.make(x.jac, met)
