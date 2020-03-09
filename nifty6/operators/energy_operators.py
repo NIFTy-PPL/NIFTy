@@ -242,12 +242,8 @@ class PoissonianEnergy(EnergyOperator):
 
     def apply(self, x):
         self._check_input(x)
-        res = x.sum()
-        tmp = res.val.val if isinstance(res, Linearization) else res
-        # if we have no infinity here, we can continue with the calculation;
-        # otherwise we know that the result must also be infinity
-        if not np.isinf(tmp):
-            res = res - x.log().vdot(self._d)
+        fa = FieldAdapter(self._domain, 'foo')
+        res = (fa.sum() - fa.log().vdot(self._d))(fa.adjoint(x))
         if not isinstance(x, Linearization):
             return Field.scalar(res)
         if not x.want_metric:
@@ -280,17 +276,19 @@ class InverseGammaLikelihood(EnergyOperator):
     def __init__(self, beta, alpha=-0.5):
         if not isinstance(beta, Field):
             raise TypeError
+        self._domain = DomainTuple.make(beta.domain)
         self._beta = beta
         if np.isscalar(alpha):
             alpha = Field(beta.domain, np.full(beta.shape, alpha))
         elif not isinstance(alpha, Field):
             raise TypeError
         self._alphap1 = alpha+1
-        self._domain = DomainTuple.make(beta.domain)
 
     def apply(self, x):
         self._check_input(x)
-        res = x.log().vdot(self._alphap1) + (1./x).vdot(self._beta)
+        fa = FieldAdapter(self._domain, 'foo')
+        x = fa.adjoint(x)
+        res = (fa.log().vdot(self._alphap1) + fa.one_over().vdot(self._beta))(x)
         if not isinstance(x, Linearization):
             return Field.scalar(res)
         if not x.want_metric:
@@ -413,13 +411,11 @@ class StandardHamiltonian(EnergyOperator):
 
     def apply(self, x):
         self._check_input(x)
-        if (self._ic_samp is None or not isinstance(x, Linearization)
-                or not x.want_metric):
-            return self._lh(x) + self._prior(x)
+        if (self._ic_samp is None or not isinstance(x, Linearization) or not x.want_metric):
+            return (self._lh + self._prior)(x)
         else:
             lhx, prx = self._lh(x), self._prior(x)
-            mtr = SamplingEnabler(lhx.metric, prx.metric,
-                                  self._ic_samp)
+            mtr = SamplingEnabler(lhx.metric, prx.metric, self._ic_samp)
             return (lhx + prx).add_metric(mtr)
 
     def __repr__(self):
