@@ -138,20 +138,27 @@ def _performance_check(op, pos, raise_on_fail):
         @property
         def count(self):
             return self._count
-    cop = CountingOp(op.domain)
-    op = op @ cop
-    lin = op(Linearization.make_var(pos))
-    cond = [cop.count != 1]
-    lin.jac(pos)
-    cond.append(cop.count != 2)
-    lin.jac.adjoint(lin.val)
-    cond.append(cop.count != 3)
-    if any(cond):
-        s = 'The operator has a performance problem.'
-        if raise_on_fail:
-            raise RuntimeError(s)
-        from .logger import logger
-        logger.warn(s)
+    for wm in [False, True]:
+        cop = CountingOp(op.domain)
+        op = op @ cop
+        op(pos)
+        cond = [cop.count != 1]
+        lin = op(Linearization.make_var(pos, wm))
+        cond.append(cop.count != 2)
+        lin.jac(pos)
+        cond.append(cop.count != 3)
+        lin.jac.adjoint(lin.val)
+        cond.append(cop.count != 4)
+        if wm and op.target is DomainTuple.scalar_domain():
+            lin.metric(pos)
+            cond.append(cop.count != 6)
+        if any(cond):
+            s = 'The operator has a performance problem (want_metric={}).'.format(wm)
+            from .logger import logger
+            logger.error(s)
+            logger.info(cond)
+            if raise_on_fail:
+                raise RuntimeError(s)
 
 
 def consistency_check(op, domain_dtype=np.float64, target_dtype=np.float64,
