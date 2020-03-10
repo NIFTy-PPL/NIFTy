@@ -499,7 +499,7 @@ def calculate_position(operator, output):
     cov = 1e-3*output.val.max()**2
     invcov = ScalingOperator(output.domain, cov).inverse
     d = output + invcov.draw_sample(from_inverse=True)
-    lh = GaussianEnergy(d, invcov)(operator)
+    lh = GaussianEnergy(d, invcov) @ operator
     H = StandardHamiltonian(
         lh, ic_samp=GradientNormController(iteration_limit=200))
     pos = 0.1*from_random('normal', operator.domain)

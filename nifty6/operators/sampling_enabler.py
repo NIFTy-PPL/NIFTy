@@ -20,6 +20,7 @@ import numpy as np
 from ..minimization.conjugate_gradient import ConjugateGradient
 from ..minimization.quadratic_energy import QuadraticEnergy
 from .endomorphic_operator import EndomorphicOperator
+from .operator import Operator
 
 
 class SamplingEnabler(EndomorphicOperator):
@@ -50,6 +51,8 @@ class SamplingEnabler(EndomorphicOperator):
 
     def __init__(self, likelihood, prior, iteration_controller,
                  approximation=None, start_from_zero=False):
+        if not isinstance(likelihood, Operator) or not isinstance(prior, Operator):
+            raise TypeError
         self._likelihood = likelihood
         self._prior = prior
         self._ic = iteration_controller

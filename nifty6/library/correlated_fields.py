@@ -25,6 +25,7 @@ from ..domain_tuple import DomainTuple
 from ..domains.power_space import PowerSpace
 from ..domains.unstructured_domain import UnstructuredDomain
 from ..field import Field
+from ..linearization import Linearization
 from ..logger import logger
 from ..multi_field import MultiField
 from ..operators.adder import Adder
@@ -221,14 +222,15 @@ class _Normalization(Operator):
         self._mode_multiplicity = makeOp(makeField(self._domain, mode_multiplicity))
         self._specsum = _SpecialSum(self._domain, space)
 
-    def apply(self, x):
+    def apply(self, x, difforder):
         self._check_input(x)
-        fa = FieldAdapter(self._domain, 'foo')
-        amp = fa.exp()
-        spec = (2*fa).exp()
+        if difforder >= self.WITH_JAC:
+            x = Linearization.make_var(x, difforder == self.WITH_METRIC)
+        amp = x.exp()
+        spec = (2*x).exp()
         # FIXME This normalizes also the zeromode which is supposed to be left
         # untouched by this operator
-        return (self._specsum(self._mode_multiplicity(spec))**(-0.5)*amp)(fa.adjoint(x))
+        return self._specsum(self._mode_multiplicity(spec))**(-0.5)*amp
 
 
 class _SpecialSum(EndomorphicOperator):

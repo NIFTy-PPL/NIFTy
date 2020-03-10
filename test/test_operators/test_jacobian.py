@@ -49,9 +49,9 @@ def testBasics(space, seed):
 @pmp('type1', ['Variable', 'Constant'])
 @pmp('type2', ['Variable'])
 def testBinary(type1, type2, space, seed):
+    np.random.seed(seed)
     dom1 = ift.MultiDomain.make({'s1': space})
     dom2 = ift.MultiDomain.make({'s2': space})
-    np.random.seed(seed)
     dom = ift.MultiDomain.union((dom1, dom2))
     select_s1 = ift.ducktape(None, dom1, "s1")
     select_s2 = ift.ducktape(None, dom2, "s2")
@@ -90,6 +90,7 @@ def testBinary(type1, type2, space, seed):
 
 
 def testPointModel(space, seed):
+    np.random.seed(seed)
     S = ift.ScalingOperator(space, 1.)
     pos = S.draw_sample()
     alpha = 1.5
@@ -99,15 +100,25 @@ def testPointModel(space, seed):
     ift.extra.check_jacobian_consistency(model, pos, tol=1e-2, ntries=20)
 
 
-@pmp('target', [
-    ift.RGSpace(64, distances=.789, harmonic=True),
-    ift.RGSpace([32, 32], distances=.789, harmonic=True),
-    ift.RGSpace([32, 32, 8], distances=.789, harmonic=True)
-])
+@pmp('neg', [True, False])
+def testAdder(space, seed, neg):
+    np.random.seed(seed)
+    S = ift.ScalingOperator(space, 1.)
+    f = S.draw_sample()
+    f1 = S.draw_sample()
+    op = ift.Adder(f1, neg)
+    ift.extra.check_jacobian_consistency(op, f)
+    op = ift.Adder(f1.val.ravel()[0], neg=neg, domain=space)
+    ift.extra.check_jacobian_consistency(op, f)
+
+
+@pmp('target', [ift.RGSpace(64, distances=.789, harmonic=True),
+                ift.RGSpace([32, 32], distances=.789, harmonic=True),
+                ift.RGSpace([32, 32, 8], distances=.789, harmonic=True)])
 @pmp('causal', [True, False])
 @pmp('minimum_phase', [True, False])
-@pmp('seed', [4, 78, 23])
 def testDynamicModel(target, causal, minimum_phase, seed):
+    np.random.seed(seed)
     dct = {
             'target': target,
             'harmonic_padding': None,

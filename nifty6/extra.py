@@ -114,7 +114,7 @@ def _actual_domain_check_nonlinear(op, loc):
         assert_(reslin.jac.target is reslin.target)
         _actual_domain_check_linear(reslin.jac, inp=loc)
         _actual_domain_check_linear(reslin.jac.adjoint, inp=reslin.jac(loc))
-        if wm:
+        if reslin.metric is not None:
             assert_(reslin.metric.domain is reslin.metric.target)
             assert_(reslin.metric.domain is op.domain)
 
@@ -153,7 +153,7 @@ def _performance_check(op, pos, raise_on_fail):
         cond.append(cop.count != 3)
         lin.jac.adjoint(lin.val)
         cond.append(cop.count != 4)
-        if wm and myop.target is DomainTuple.scalar_domain():
+        if lin.metric is not None:
             lin.metric(pos)
             cond.append(cop.count != 6)
         if any(cond):

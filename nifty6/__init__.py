@@ -15,7 +15,11 @@ from .multi_domain import MultiDomain
 from .field import Field
 from .multi_field import MultiField
 
+from .linearization import Linearization
+
 from .operators.operator import Operator
+from .operators.linear_operator import LinearOperator
+
 from .operators.adder import Adder
 from .operators.diagonal_operator import DiagonalOperator
 from .operators.distributors import DOFDistributor, PowerDistributor
@@ -28,7 +32,6 @@ from .operators.harmonic_operators import (
     HarmonicSmoothingOperator)
 from .operators.field_zero_padder import FieldZeroPadder
 from .operators.inversion_enabler import InversionEnabler
-from .operators.linear_operator import LinearOperator
 from .operators.mask_operator import MaskOperator
 from .operators.regridding_operator import RegriddingOperator
 from .operators.sampling_enabler import SamplingEnabler
@@ -86,8 +89,6 @@ from . import extra
 from .utilities import memo, frozendict
 
 from .logger import logger
-
-from .linearization import Linearization
 
 from .operator_spectrum import operator_spectrum
 
