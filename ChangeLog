@@ -1,5 +1,23 @@
 Changes since NIFTy 5:
 
+Interface Change for non-linear Operators
+=========================================
+
+The method `Operator.apply()` takes a `Linearization` or a `Field` or a
+`MultiField` as input. This has not changed. However, now each non-linear
+operator assumes that the input `Linearization` comes with an identity operator
+as jacobian. Also it is assumed that the `apply()` method returns a
+`Linearization` with the jacobian of the operator itself. The user is not in
+charge anymore of stacking together the jacobians of operator chains. Something
+like `x.jac` should not appear in any self-written `apply()` methods. The method
+`Operator._check_input` tests if this condition is met. The same goes for the
+metric. There is no need anymore to call `SandwichOperator` in an `apply()`
+method when implementing new energies. This change should not lead to unexpected
+behaviour since both `Operator._check_input()` and
+`extra.check_jacobian_consistency()` tests for the new conditions to be
+fulfilled.
+
+
 Special functions for complete Field reduction operations
 =========================================================
 
