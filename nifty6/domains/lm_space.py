@@ -11,7 +11,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
-# Copyright(C) 2013-2019 Max-Planck-Society
+# Copyright(C) 2013-2020 Max-Planck-Society
 #
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
 
@@ -125,7 +125,7 @@ class LMSpace(StructuredDomain):
         # evaluate the kernel function at the required thetas
         kernel_sphere = Field.from_raw(gl, func(theta))
         # normalize the kernel such that the integral over the sphere is 4pi
-        kernel_sphere = kernel_sphere * (4 * np.pi / kernel_sphere.integrate())
+        kernel_sphere = kernel_sphere * (4 * np.pi / kernel_sphere.s_integrate())
         # compute the spherical harmonic coefficients of the kernel
         op = HarmonicTransformOperator(lm0, gl)
         kernel_lm = op.adjoint_times(kernel_sphere.weight(1)).val

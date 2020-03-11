@@ -41,15 +41,15 @@ class _InterpolationOperator(Operator):
     def apply(self, x):
         self._check_input(x)
         lin = isinstance(x, Linearization)
-        val = x.val.val if lin else x.val
-        val = (np.clip(val, self._xmin, self._xmax) - self._xmin) / self._d
+        xval = x.val.val if lin else x.val
+        val = (np.clip(xval, self._xmin, self._xmax) - self._xmin) / self._d
         fi = np.floor(val).astype(int)
         w = val - fi
         res = self._inv_table_func((1-w)*self._table[fi] + w*self._table[fi+1])
         resfld = Field(self._domain, res)
         if not lin:
             return resfld
-        jac = makeOp(Field(self._domain, self._deriv[fi]*res)) @ x.jac
+        jac = makeOp(Field(self._domain, self._deriv[fi]*res))
         return x.new(resfld, jac)
 
 

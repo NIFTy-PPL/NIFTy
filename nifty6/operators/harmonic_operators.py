@@ -17,7 +17,7 @@
 
 import numpy as np
 
-from .. import utilities, fft
+from .. import fft, utilities
 from ..domain_tuple import DomainTuple
 from ..domains.gl_space import GLSpace
 from ..domains.lm_space import LMSpace
@@ -248,7 +248,6 @@ class SHTOperator(LinearOperator):
 
     def _apply_spherical(self, x, mode):
         axes = x.domain.axes[self._space]
-        axis = axes[0]
         v = x.val
 
         p2h = not x.domain[self._space].harmonic

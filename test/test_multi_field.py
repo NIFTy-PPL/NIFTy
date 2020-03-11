@@ -26,7 +26,7 @@ dom = ift.makeDomain({"d1": ift.RGSpace(10)})
 def test_vdot():
     f1 = ift.from_random("normal", domain=dom, dtype=np.complex128)
     f2 = ift.from_random("normal", domain=dom, dtype=np.complex128)
-    assert_allclose(f1.vdot(f2), np.conj(f2.vdot(f1)))
+    assert_allclose(f1.s_vdot(f2), np.conj(f2.s_vdot(f1)))
 
 
 def test_func():
@@ -38,7 +38,7 @@ def test_func():
 def test_multifield_field_consistency():
     f1 = ift.full(dom, 27)
     f2 = ift.makeField(dom['d1'], f1['d1'].val)
-    assert_equal(f1.sum(), f2.sum())
+    assert_equal(f1.s_sum(), f2.s_sum())
     assert_equal(f1.size, f2.size)
 
 
@@ -64,9 +64,9 @@ def test_blockdiagonal():
     assert_equal(type(op2), ift.BlockDiagonalOperator)
     f1 = op2(ift.full(dom, 1))
     for val in f1.values():
-        assert_equal((val == 400).all(), True)
+        assert_equal((val == 400).s_all(), True)
     op2 = op + op
     assert_equal(type(op2), ift.BlockDiagonalOperator)
     f1 = op2(ift.full(dom, 1))
     for val in f1.values():
-        assert_equal((val == 40).all(), True)
+        assert_equal((val == 40).s_all(), True)

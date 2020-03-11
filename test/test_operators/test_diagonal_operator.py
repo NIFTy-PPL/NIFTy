@@ -42,8 +42,8 @@ def test_times_adjoint(space):
     rand2 = ift.Field.from_random('normal', domain=space)
     diag = ift.Field.from_random('normal', domain=space)
     D = ift.DiagonalOperator(diag)
-    tt1 = rand1.vdot(D.times(rand2))
-    tt2 = rand2.vdot(D.times(rand1))
+    tt1 = rand1.s_vdot(D.times(rand2))
+    tt2 = rand2.s_vdot(D.times(rand1))
     assert_allclose(tt1, tt2)
 
 

@@ -122,8 +122,7 @@ if __name__ == '__main__':
     N_samples = 20
 
     # Set up likelihood and information Hamiltonian
-    likelihood = ift.GaussianEnergy(
-        mean=data, inverse_covariance=N.inverse)(signal_response)
+    likelihood = ift.GaussianEnergy(mean=data, inverse_covariance=N.inverse) @ signal_response
     H = ift.StandardHamiltonian(likelihood, ic_sampling)
 
     # Begin minimization

@@ -119,5 +119,5 @@ def test_normalisation(space, dtype, op):
     out2 = fft2.inverse_times(inp)
     zero_idx = tuple([0]*len(space.shape))
     assert_allclose(
-        inp.val[zero_idx], out.integrate(), rtol=tol, atol=tol)
+        inp.val[zero_idx], out.s_integrate(), rtol=tol, atol=tol)
     assert_allclose(out.val, out2.val, rtol=tol, atol=tol)

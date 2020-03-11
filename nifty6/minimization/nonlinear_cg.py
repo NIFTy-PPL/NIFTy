@@ -75,17 +75,17 @@ class NonlinearCG(Minimizer):
 
             if self._beta_heuristic == 'Hestenes-Stiefel':
                 # Eq. (5.46) in Nocedal & Wright.
-                beta = max(0.0, (grad_new.vdot(grad_new-grad_old) /
-                                 (grad_new-grad_old).vdot(p)).real)
+                beta = max(0.0, (grad_new.s_vdot(grad_new-grad_old) /
+                                 (grad_new-grad_old).s_vdot(p)).real)
             elif self._beta_heuristic == 'Polak-Ribiere':
                 # Eq. (5.44) in Nocedal & Wright. (with (5.45) additionally)
-                beta = max(0.0, (grad_new.vdot(grad_new-grad_old) /
-                                 (grad_old.vdot(grad_old))).real)
+                beta = max(0.0, (grad_new.s_vdot(grad_new-grad_old) /
+                                 (grad_old.s_vdot(grad_old))).real)
             elif self._beta_heuristic == 'Fletcher-Reeves':
                 # Eq. (5.41a) in Nocedal & Wright.
-                beta = (grad_new.vdot(grad_new)/(grad_old.vdot(grad_old))).real
+                beta = (grad_new.s_vdot(grad_new)/(grad_old.s_vdot(grad_old))).real
             else:
                 # Eq. (5.49) in Nocedal & Wright.
-                beta = (grad_new.vdot(grad_new) /
-                        ((grad_new-grad_old).vdot(p))).real
+                beta = (grad_new.s_vdot(grad_new) /
+                        ((grad_new-grad_old).s_vdot(p))).real
             p = beta*p - grad_new

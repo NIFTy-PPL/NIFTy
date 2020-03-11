@@ -25,6 +25,7 @@ from ..domain_tuple import DomainTuple
 from ..domains.power_space import PowerSpace
 from ..domains.unstructured_domain import UnstructuredDomain
 from ..field import Field
+from ..linearization import Linearization
 from ..logger import logger
 from ..multi_field import MultiField
 from ..operators.adder import Adder
@@ -35,7 +36,7 @@ from ..operators.endomorphic_operator import EndomorphicOperator
 from ..operators.harmonic_operators import HarmonicTransformOperator
 from ..operators.linear_operator import LinearOperator
 from ..operators.operator import Operator
-from ..operators.simple_linear_operators import FieldAdapter, ducktape
+from ..operators.simple_linear_operators import ducktape
 from ..probing import StatCalculator
 from ..sugar import full, makeDomain, makeField, makeOp
 
@@ -223,12 +224,11 @@ class _Normalization(Operator):
 
     def apply(self, x):
         self._check_input(x)
-        fa = FieldAdapter(self._domain, 'foo')
-        amp = fa.exp()
-        spec = (2*fa).exp()
+        amp = x.exp()
+        spec = (2*x).exp()
         # FIXME This normalizes also the zeromode which is supposed to be left
         # untouched by this operator
-        return (self._specsum(self._mode_multiplicity(spec))**(-0.5)*amp)(fa.adjoint(x))
+        return self._specsum(self._mode_multiplicity(spec))**(-0.5)*amp
 
 
 class _SpecialSum(EndomorphicOperator):
@@ -408,11 +408,9 @@ class CorrelatedFieldMaker:
             raise ValueError("length of dofdex needs to match total_N")
 
         if self._total_N > 0:
-            space = 1
             N = max(dofdex) + 1
             position_space = makeDomain((UnstructuredDomain(N), position_space))
         else:
-            space = 0
             N = 0
             position_space = makeDomain(position_space)
         prefix = str(prefix)
@@ -631,9 +629,9 @@ class CorrelatedFieldMaker:
         space = space + spaces[0]
         sub_spaces = set(spaces)
         sub_spaces.remove(space)
-        #Domain containing domain[space] and domain[0] iff total_N>0
+        # Domain containing domain[space] and domain[0] iff total_N>0
         sub_dom = makeDomain([samples[0].domain[ind]
-                              for ind in (set([0,])-set(spaces))|set([space,])])
+                              for ind in (set([0])-set(spaces)) | set([space])])
         co = ContractionOperator(sub_dom, len(sub_dom)-1)
         size = co.domain.size/co.target.size
         res = 0.

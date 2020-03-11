@@ -79,7 +79,7 @@ def test_cartesian():
     res = op(fld2).val.reshape(nx, ny)
 
     fft = ift.FFTOperator(dom.get_default_codomain(), target=dom).adjoint
-    vol = ift.full(dom, 1.).integrate()
+    vol = ift.full(dom, 1.).s_integrate()
     res1 = fft(fld).val
 
     # FIXME: we don't understand the conjugate() yet

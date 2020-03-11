@@ -69,8 +69,8 @@ def test_power_synthesize_analyze(space1, space2):
         sk = opfull.draw_sample()
 
         sp = ift.power_analyze(sk, spaces=(0, 1), keep_phase_information=False)
-        sc1.add(sp.sum(spaces=1)/fp2.sum())
-        sc2.add(sp.sum(spaces=0)/fp1.sum())
+        sc1.add(sp.sum(spaces=1)/fp2.s_sum())
+        sc2.add(sp.sum(spaces=0)/fp1.s_sum())
 
     assert_allclose(sc1.mean.val, fp1.val, rtol=0.2)
     assert_allclose(sc2.mean.val, fp2.val, rtol=0.2)
@@ -98,8 +98,8 @@ def test_DiagonalOperator_power_analyze2(space1, space2):
     for ii in range(samples):
         sk = S_full.draw_sample()
         sp = ift.power_analyze(sk, spaces=(0, 1), keep_phase_information=False)
-        sc1.add(sp.sum(spaces=1)/fp2.sum())
-        sc2.add(sp.sum(spaces=0)/fp1.sum())
+        sc1.add(sp.sum(spaces=1)/fp2.s_sum())
+        sc2.add(sp.sum(spaces=0)/fp1.s_sum())
 
     assert_allclose(sc1.mean.val, fp1.val, rtol=0.2)
     assert_allclose(sc2.mean.val, fp2.val, rtol=0.2)
@@ -124,8 +124,8 @@ def test_vdot():
     s = ift.RGSpace((10,))
     f1 = ift.Field.from_random("normal", domain=s, dtype=np.complex128)
     f2 = ift.Field.from_random("normal", domain=s, dtype=np.complex128)
-    assert_allclose(f1.vdot(f2), f1.vdot(f2, spaces=0))
-    assert_allclose(f1.vdot(f2), np.conj(f2.vdot(f1)))
+    assert_allclose(f1.s_vdot(f2), f1.vdot(f2, spaces=0).val)
+    assert_allclose(f1.s_vdot(f2), np.conj(f2.s_vdot(f1)))
 
 
 def test_vdot2():
@@ -154,7 +154,7 @@ def test_sum():
         ), distances=(0.3,))
     m1 = ift.Field(ift.makeDomain(x1), np.arange(9))
     m2 = ift.Field.full(ift.makeDomain((x1, x2)), 0.45)
-    res1 = m1.sum()
+    res1 = m1.s_sum()
     res2 = m2.sum(spaces=1)
     assert_allclose(res1, 36)
     assert_allclose(res2.val, np.full(9, 2*12*0.45))
@@ -165,7 +165,7 @@ def test_integrate():
     x2 = ift.RGSpace((2, 12), distances=(0.3,))
     m1 = ift.Field(ift.makeDomain(x1), np.arange(9))
     m2 = ift.Field.full(ift.makeDomain((x1, x2)), 0.45)
-    res1 = m1.integrate()
+    res1 = m1.s_integrate()
     res2 = m2.integrate(spaces=1)
     assert_allclose(res1, 36*2)
     assert_allclose(res2.val, np.full(9, 2*12*0.45*0.3**2))
@@ -204,13 +204,13 @@ def test_trivialities():
     assert_equal(f1.one_over().val, (1./f1).val)
     assert_equal(f1.real.val, 27.)
     assert_equal(f1.imag.val, 3.)
-    assert_equal(f1.sum(), f1.sum(0))
+    assert_equal(f1.s_sum(), f1.sum(0).val)
     assert_equal(f1.conjugate().val,
                  ift.Field.full(s1, 27. - 3j).val)
     f1 = ift.makeField(s1, np.arange(10))
     # assert_equal(f1.min(), 0)
     # assert_equal(f1.max(), 9)
-    assert_equal(f1.prod(), 0)
+    assert_equal(f1.s_prod(), 0)
 
 
 def test_weight():
@@ -241,12 +241,12 @@ def test_weight():
 @pmp('dt', [np.float64, np.complex128])
 def test_reduction(dom, dt):
     s1 = ift.Field.full(dom, dt(1.))
-    assert_allclose(s1.mean(), 1.)
-    assert_allclose(s1.mean(0), 1.)
-    assert_allclose(s1.var(), 0., atol=1e-14)
-    assert_allclose(s1.var(0), 0., atol=1e-14)
-    assert_allclose(s1.std(), 0., atol=1e-14)
-    assert_allclose(s1.std(0), 0., atol=1e-14)
+    assert_allclose(s1.s_mean(), 1.)
+    assert_allclose(s1.mean(0).val, 1.)
+    assert_allclose(s1.s_var(), 0., atol=1e-14)
+    assert_allclose(s1.var(0).val, 0., atol=1e-14)
+    assert_allclose(s1.s_std(), 0., atol=1e-14)
+    assert_allclose(s1.std(0).val, 0., atol=1e-14)
 
 
 def test_err():
@@ -322,12 +322,12 @@ def test_stdfunc():
 
 def test_emptydomain():
     f = ift.Field.full((), 3.)
-    assert_equal(f.sum(), 3.)
-    assert_equal(f.prod(), 3.)
+    assert_equal(f.s_sum(), 3.)
+    assert_equal(f.s_prod(), 3.)
     assert_equal(f.val, 3.)
     assert_equal(f.val.shape, ())
     assert_equal(f.val.size, 1)
-    assert_equal(f.vdot(f), 9.)
+    assert_equal(f.s_vdot(f), 9.)
 
 
 @pmp('num', [float(5), 5.])

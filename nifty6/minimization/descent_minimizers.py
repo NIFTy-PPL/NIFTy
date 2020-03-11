@@ -227,16 +227,16 @@ class L_BFGS(DescentMinimizer):
         if nhist > 0:
             for i in range(k-1, k-nhist-1, -1):
                 idx = i % maxhist
-                alpha[idx] = s[idx].vdot(p)/s[idx].vdot(y[idx])
+                alpha[idx] = s[idx].s_vdot(p)/s[idx].s_vdot(y[idx])
                 p = p - alpha[idx]*y[idx]
             idx = (k-1) % maxhist
-            fact = s[idx].vdot(y[idx]) / y[idx].vdot(y[idx])
+            fact = s[idx].s_vdot(y[idx]) / y[idx].s_vdot(y[idx])
             if fact <= 0.:
                 logger.error("L-BFGS curvature not positive definite!")
             p = p*fact
             for i in range(k-nhist, k):
                 idx = i % maxhist
-                beta = y[idx].vdot(p) / s[idx].vdot(y[idx])
+                beta = y[idx].s_vdot(p) / s[idx].s_vdot(y[idx])
                 p = p + (alpha[idx]-beta)*s[idx]
         self._lastx = x
         self._lastgrad = gradient
@@ -388,12 +388,12 @@ class _InformationStore(object):
         k1 = (k-1) % mmax
         for i in range(m):
             kmi = (k-m+i) % mmax
-            self.ss[kmi, k1] = self.ss[k1, kmi] = self.s[kmi].vdot(self.s[k1])
-            self.yy[kmi, k1] = self.yy[k1, kmi] = self.y[kmi].vdot(self.y[k1])
-            self.sy[kmi, k1] = self.s[kmi].vdot(self.y[k1])
+            self.ss[kmi, k1] = self.ss[k1, kmi] = self.s[kmi].s_vdot(self.s[k1])
+            self.yy[kmi, k1] = self.yy[k1, kmi] = self.y[kmi].s_vdot(self.y[k1])
+            self.sy[kmi, k1] = self.s[kmi].s_vdot(self.y[k1])
         for j in range(m-1):
             kmj = (k-m+j) % mmax
-            self.sy[k1, kmj] = self.s[k1].vdot(self.y[kmj])
+            self.sy[k1, kmj] = self.s[k1].s_vdot(self.y[kmj])
 
         for i in range(m):
             kmi = (k-m+i) % mmax
@@ -403,10 +403,10 @@ class _InformationStore(object):
                 result[i, m+j] = result[m+j, i] = self.sy[kmi, kmj]
                 result[m+i, m+j] = self.yy[kmi, kmj]
 
-            sgrad_i = self.s[kmi].vdot(self.last_gradient)
+            sgrad_i = self.s[kmi].s_vdot(self.last_gradient)
             result[2*m, i] = result[i, 2*m] = sgrad_i
 
-            ygrad_i = self.y[kmi].vdot(self.last_gradient)
+            ygrad_i = self.y[kmi].s_vdot(self.last_gradient)
             result[2*m, m+i] = result[m+i, 2*m] = ygrad_i
 
         result[2*m, 2*m] = self.last_gradient.norm()

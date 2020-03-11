@@ -19,8 +19,8 @@ import numpy as np
 
 from ..field import Field
 from ..multi_field import MultiField
-from .operator import Operator
 from ..sugar import makeDomain
+from .operator import Operator
 
 
 class Adder(Operator):

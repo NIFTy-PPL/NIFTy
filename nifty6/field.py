@@ -11,7 +11,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
-# Copyright(C) 2013-2019 Max-Planck-Society
+# Copyright(C) 2013-2020 Max-Planck-Society
 #
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
 
@@ -284,7 +284,7 @@ class Field(object):
         from .operators.outer_product_operator import OuterProduct
         return OuterProduct(self, x.domain)(x)
 
-    def vdot(self, x=None, spaces=None):
+    def vdot(self, x, spaces=None):
         """Computes the dot product of 'self' with x.
 
         Parameters
@@ -312,10 +312,32 @@ class Field(object):
         spaces = utilities.parse_spaces(spaces, ndom)
 
         if len(spaces) == ndom:
-            return np.vdot(self._val, x._val)
+            return Field.scalar(np.array(np.vdot(self._val, x._val)))
         # If we arrive here, we have to do a partial dot product.
         # For the moment, do this the explicit, non-optimized way
         return (self.conjugate()*x).sum(spaces=spaces)
+
+    def s_vdot(self, x):
+        """Computes the dot product of 'self' with x.
+
+        Parameters
+        ----------
+        x : Field
+            x must be defined on the same domain as `self`.
+
+        Returns
+        -------
+        float or complex
+            The dot product
+        """
+        if not isinstance(x, Field):
+            raise TypeError("The dot-partner must be an instance of " +
+                            "the Field class")
+
+        if x._domain != self._domain:
+            raise ValueError("Domain mismatch")
+
+        return np.vdot(self._val, x._val)
 
     def norm(self, ord=2):
         """Computes the L2-norm of the field values.
@@ -357,7 +379,7 @@ class Field(object):
 
     def _contraction_helper(self, op, spaces):
         if spaces is None:
-            return getattr(self._val, op)()
+            return Field.scalar(getattr(self._val, op)())
 
         spaces = utilities.parse_spaces(spaces, len(self._domain))
 
@@ -371,7 +393,7 @@ class Field(object):
 
         # check if the result is scalar or if a result_field must be constr.
         if np.isscalar(data):
-            return data
+            return Field.scalar(data)
         else:
             return_domain = tuple(dom
                                   for i, dom in enumerate(self._domain)
@@ -390,11 +412,20 @@ class Field(object):
 
         Returns
         -------
-        Field or scalar
-            The result of the summation. If it is carried out over the entire
-            domain, this is a scalar, otherwise a Field.
+        Field
+            The result of the summation.
         """
         return self._contraction_helper('sum', spaces)
+
+    def s_sum(self):
+        """Returns the sum over all entries
+
+        Returns
+        -------
+        scalar
+            The result of the summation.
+        """
+        return self._val.sum()
 
     def integrate(self, spaces=None):
         """Integrates over the sub-domains given by `spaces`.
@@ -410,9 +441,8 @@ class Field(object):
 
         Returns
         -------
-        Field or scalar
-            The result of the integration. If it is carried out over the
-            entire domain, this is a scalar, otherwise a Field.
+        Field
+            The result of the integration.
         """
         swgt = self.scalar_weight(spaces)
         if swgt is not None:
@@ -421,6 +451,23 @@ class Field(object):
             return res
         tmp = self.weight(1, spaces=spaces)
         return tmp.sum(spaces)
+
+    def s_integrate(self):
+        """Integrates over the Field.
+
+        Integration is performed by summing over `self` multiplied by its
+        volume factors.
+
+        Returns
+        -------
+        Scalar
+            The result of the integration.
+        """
+        swgt = self.scalar_weight()
+        if swgt is not None:
+            return self.s_sum()*swgt
+        tmp = self.weight(1)
+        return tmp.s_sum()
 
     def prod(self, spaces=None):
         """Computes the product over the sub-domains given by `spaces`.
@@ -434,17 +481,25 @@ class Field(object):
 
         Returns
         -------
-        Field or scalar
-            The result of the product. If it is carried out over the entire
-            domain, this is a scalar, otherwise a Field.
+        Field
+            The result of the product.
         """
         return self._contraction_helper('prod', spaces)
+
+    def s_prod(self):
+        return self._val.prod()
 
     def all(self, spaces=None):
         return self._contraction_helper('all', spaces)
 
+    def s_all(self):
+        return self._val.all()
+
     def any(self, spaces=None):
         return self._contraction_helper('any', spaces)
+
+    def s_any(self):
+        return self._val.any()
 
 #     def min(self, spaces=None):
 #         """Determines the minimum over the sub-domains given by `spaces`.
@@ -457,9 +512,8 @@ class Field(object):
 #
 #         Returns
 #         -------
-#         Field or scalar
-#             The result of the operation. If it is carried out over the entire
-#             domain, this is a scalar, otherwise a Field.
+#         Field
+#             The result of the operation.
 #         """
 #         return self._contraction_helper('min', spaces)
 #
@@ -474,9 +528,8 @@ class Field(object):
 #
 #         Returns
 #         -------
-#         Field or scalar
-#             The result of the operation. If it is carried out over the entire
-#             domain, this is a scalar, otherwise a Field.
+#         Field
+#             The result of the operation.
 #         """
 #         return self._contraction_helper('max', spaces)
 
@@ -494,9 +547,8 @@ class Field(object):
 
         Returns
         -------
-        Field or scalar
-            The result of the operation. If it is carried out over the entire
-            domain, this is a scalar, otherwise a Field.
+        Field
+            The result of the operation.
         """
         if self.scalar_weight(spaces) is not None:
             return self._contraction_helper('mean', spaces)
@@ -504,6 +556,19 @@ class Field(object):
         # MR FIXME: do we need "spaces" here?
         tmp = self.weight(1, spaces)
         return tmp.sum(spaces)*(1./tmp.total_volume(spaces))
+
+    def s_mean(self):
+        """Determines the field mean
+
+        ``x.s_mean()`` is equivalent to
+        ``x.s_integrate()/x.total_volume()``.
+
+        Returns
+        -------
+        scalar
+            The result of the operation.
+        """
+        return self.s_integrate()/self.total_volume()
 
     def var(self, spaces=None):
         """Determines the variance over the sub-domains given by `spaces`.
@@ -517,19 +582,39 @@ class Field(object):
 
         Returns
         -------
-        Field or scalar
-            The result of the operation. If it is carried out over the entire
-            domain, this is a scalar, otherwise a Field.
+        Field
+            The result of the operation.
         """
         if self.scalar_weight(spaces) is not None:
             return self._contraction_helper('var', spaces)
         # MR FIXME: not very efficient or accurate
         m1 = self.mean(spaces)
+        from .operators.contraction_operator import ContractionOperator
+        op = ContractionOperator(self._domain, spaces)
+        m1 = op.adjoint_times(m1)
         if utilities.iscomplextype(self.dtype):
             sq = abs(self-m1)**2
         else:
             sq = (self-m1)**2
         return sq.mean(spaces)
+
+    def s_var(self):
+        """Determines the field variance
+
+        Returns
+        -------
+        scalar
+            The result of the operation.
+        """
+        if self.scalar_weight() is not None:
+            return self._val.var()
+        # MR FIXME: not very efficient or accurate
+        m1 = self.s_mean()
+        if utilities.iscomplextype(self.dtype):
+            sq = abs(self-m1)**2
+        else:
+            sq = (self-m1)**2
+        return sq.s_mean()
 
     def std(self, spaces=None):
         """Determines the standard deviation over the sub-domains given by
@@ -546,14 +631,27 @@ class Field(object):
 
         Returns
         -------
-        Field or scalar
-            The result of the operation. If it is carried out over the entire
-            domain, this is a scalar, otherwise a Field.
+        Field
+            The result of the operation.
         """
         from .sugar import sqrt
         if self.scalar_weight(spaces) is not None:
             return self._contraction_helper('std', spaces)
         return sqrt(self.var(spaces))
+
+    def s_std(self):
+        """Determines the standard deviation of the Field.
+
+        ``x.s_std()`` is equivalent to ``sqrt(x.s_var())``.
+
+        Returns
+        -------
+        scalar
+            The result of the operation.
+        """
+        if self.scalar_weight() is not None:
+            return self._val.std()
+        return np.sqrt(self.s_var())
 
     def __repr__(self):
         return "<nifty6.Field>"

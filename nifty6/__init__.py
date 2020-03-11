@@ -15,7 +15,10 @@ from .multi_domain import MultiDomain
 from .field import Field
 from .multi_field import MultiField
 
+
 from .operators.operator import Operator
+from .operators.linear_operator import LinearOperator
+
 from .operators.adder import Adder
 from .operators.diagonal_operator import DiagonalOperator
 from .operators.distributors import DOFDistributor, PowerDistributor
@@ -28,7 +31,6 @@ from .operators.harmonic_operators import (
     HarmonicSmoothingOperator)
 from .operators.field_zero_padder import FieldZeroPadder
 from .operators.inversion_enabler import InversionEnabler
-from .operators.linear_operator import LinearOperator
 from .operators.mask_operator import MaskOperator
 from .operators.regridding_operator import RegriddingOperator
 from .operators.sampling_enabler import SamplingEnabler
@@ -67,6 +69,7 @@ from .minimization.energy_adapter import EnergyAdapter
 from .minimization.metric_gaussian_kl import MetricGaussianKL
 
 from .sugar import *
+
 from .plot import Plot
 
 from .library.special_distributions import InverseGammaOperator

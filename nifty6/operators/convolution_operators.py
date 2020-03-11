@@ -88,7 +88,7 @@ class _ApplicationWithoutMeanOperator(EndomorphicOperator):
 
     def apply(self, x, mode):
         self._check_input(x, mode)
-        mean = x.mean()
+        mean = x.s_mean()
         return mean + self._op.apply(x - mean, mode)
 
     def __repr__(self):

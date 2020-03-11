@@ -61,6 +61,13 @@ def test_ScaledEnergy(field):
     met2.draw_sample()
 
 
+def test_QuadraticFormOperator(field):
+    op = ift.ScalingOperator(field.domain, 1.2)
+    endo = ift.makeOp(op.draw_sample())
+    energy = ift.QuadraticFormOperator(endo)
+    ift.extra.check_jacobian_consistency(energy, field)
+
+
 def test_studentt(field):
     if isinstance(field.domain, ift.MultiDomain):
         return

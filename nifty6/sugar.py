@@ -92,7 +92,7 @@ def get_signal_variance(spec, space):
     field = PS_field(space, spec)
     dist = PowerDistributor(space.harmonic_partner, space)
     k_field = dist(field)
-    return k_field.weight(2).sum()
+    return k_field.weight(2).s_sum()
 
 
 def _single_power_analyze(field, idx, binbounds):
@@ -499,7 +499,7 @@ def calculate_position(operator, output):
     cov = 1e-3*output.val.max()**2
     invcov = ScalingOperator(output.domain, cov).inverse
     d = output + invcov.draw_sample(from_inverse=True)
-    lh = GaussianEnergy(d, invcov)(operator)
+    lh = GaussianEnergy(d, invcov) @ operator
     H = StandardHamiltonian(
         lh, ic_samp=GradientNormController(iteration_limit=200))
     pos = 0.1*from_random('normal', operator.domain)
