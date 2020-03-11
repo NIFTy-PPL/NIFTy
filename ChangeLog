@@ -1,5 +1,17 @@
 Changes since NIFTy 5:
 
+Special functions for complete Field reduction operations
+=========================================================
+
+So far, reduction operations called on Fields (like `vdot`, `sum`, `integrate`,
+`mean`, `var`, `std`, `prod` etc.) returned a scalar when the reduction was
+carried out over all domains, and otherwise a `Field`.
+Having the data type of the returned value depend on input parameters is
+extremely confusing, so all of these reduction operations now always return a
+Field. We also introduced another set of reduction operations which always
+operate over all subdomains and therefore don't take a `spaces` argument; they
+are named `s_vdot`, `s_sum` etc. and always return a scalar.
+
 Updates regarding correlated fields
 ===================================
 
