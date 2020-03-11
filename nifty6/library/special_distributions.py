@@ -18,12 +18,13 @@
 import numpy as np
 from scipy.stats import invgamma, norm
 
+from .. import Adder
 from ..domain_tuple import DomainTuple
 from ..field import Field
 from ..linearization import Linearization
 from ..operators.operator import Operator
 from ..sugar import makeOp
-from .. import Adder
+
 
 class _InterpolationOperator(Operator):
     """
@@ -57,7 +58,7 @@ class _InterpolationOperator(Operator):
         self._table = func(self._xs)
         self._transform = table_func is not None
         self._args = []
-        if exponent is not None and table_func is not 'power':
+        if exponent is not None and table_func != 'power':
             raise Exception("exponent is only used when table_func is 'power'.")
         if table_func is None:
             pass
@@ -98,7 +99,8 @@ class _InterpolationOperator(Operator):
 
 
 def InverseGammaOperator(domain, alpha, q, delta=0.001):
-    """Transforms a Gaussian with unit covariance and zero mean into an inverse gamma distribution.
+    """Transforms a Gaussian with unit covariance and zero mean into an
+    inverse gamma distribution.
 
     The pdf of the inverse gamma distribution is defined as follows:
 
@@ -125,17 +127,17 @@ def InverseGammaOperator(domain, alpha, q, delta=0.001):
     delta : float
         Distance between sampling points for linear interpolation.
     """
-    op = _InterpolationOperator(domain,
-                                lambda x: invgamma.ppf(norm.cdf(x), float(alpha)),
-                                -8.2, 8.2, delta, 'log')
+    func = lambda x: invgamma.ppf(norm.cdf(x), float(alpha))
+    op = _InterpolationOperator(domain, func, -8.2, 8.2, delta, 'log')
     if np.isscalar(q):
         return op.scale(q)
     return makeOp(q) @ op
 
+
 def UniformOperator(domain, loc=0, scale=1, delta=1e-3):
     """
-    Transforms a Gaussian with unit covariance and zero mean into a uniform distribution.
-    The uniform distribution's support is ``[loc, loc + scale]``.
+    Transforms a Gaussian with unit covariance and zero mean into a uniform
+    distribution. The uniform distribution's support is ``[loc, loc + scale]``.
 
     Parameters
     ----------
@@ -149,10 +151,8 @@ def UniformOperator(domain, loc=0, scale=1, delta=1e-3):
     delta : float
         Distance between sampling points for linear interpolation.
     """
-    op = _InterpolationOperator(domain,
-                                lambda x: norm.cdf(x),
-                                -8.2, 8.2, delta)
+    op = _InterpolationOperator(domain, lambda x: norm.cdf(x), -8.2, 8.2, delta)
     loc = Adder(loc, domain=domain)
     if np.isscalar(scale):
-        return loc(op.scale(scale))
-    return loc(makeOp(scale) @ op)
+        return loc @ op.scale(scale)
+    return loc @ makeOp(scale) @ op
