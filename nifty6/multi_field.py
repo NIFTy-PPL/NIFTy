@@ -310,6 +310,9 @@ class MultiField(object):
                 res[key] = -val if neg else val
         return MultiField.from_dict(res)
 
+    def one_over(self):
+        return 1/self
+
     def _binary_op(self, other, op):
         f = getattr(Field, op)
         if isinstance(other, MultiField):
