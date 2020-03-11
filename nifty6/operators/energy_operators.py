@@ -29,7 +29,7 @@ from .operator import Operator
 from .sampling_enabler import SamplingEnabler
 from .sandwich_operator import SandwichOperator
 from .scaling_operator import ScalingOperator
-from .simple_linear_operators import FieldAdapter, VdotOperator
+from .simple_linear_operators import VdotOperator
 
 
 class EnergyOperator(Operator):

@@ -148,14 +148,3 @@ class ChainOperator(LinearOperator):
             c_inp, t_op = op.simplify_for_constant_input(c_inp)
             newop = t_op if newop is None else op(newop)
         return c_inp, newop
-
-#     def draw_sample(self, from_inverse=False, dtype=np.float64):
-#         from ..sugar import from_random
-#         if len(self._ops) == 1:
-#             return self._ops[0].draw_sample(from_inverse, dtype)
-#
-#         samp = from_random(random_type="normal", domain=self._domain,
-#                            dtype=dtype)
-#         for op in self._ops:
-#             samp = op.process_sample(samp, from_inverse)
-#         return samp

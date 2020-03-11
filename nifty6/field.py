@@ -482,7 +482,7 @@ class Field(object):
         Returns
         -------
         Field
-            The result of the product. 
+            The result of the product.
         """
         return self._contraction_helper('prod', spaces)
 
@@ -649,7 +649,6 @@ class Field(object):
         scalar
             The result of the operation.
         """
-        from .sugar import sqrt
         if self.scalar_weight() is not None:
             return self._val.std()
         return np.sqrt(self.s_var())
