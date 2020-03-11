@@ -95,7 +95,7 @@ class _InterpolationOperator(Operator):
         if self._transform:
             lin = getattr(lin, self._inv_table_func)(*self._args)
         jac = makeOp(Field(self._domain, self._deriv[fi]))
-        return x.new(lin.val, lin.jac@jac)
+        return x.new(lin.val, lin.jac @ jac)
 
 
 def InverseGammaOperator(domain, alpha, q, delta=0.001):

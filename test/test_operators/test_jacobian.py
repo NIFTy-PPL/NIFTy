@@ -89,7 +89,7 @@ def testBinary(type1, type2, space, seed):
         ift.extra.check_jacobian_consistency(model, pos, ntries=20)
 
 
-def testPointModel(space, seed):
+def testInterpolationOps(space, seed):
     np.random.seed(seed)
     S = ift.ScalingOperator(space, 1.)
     pos = S.draw_sample()
