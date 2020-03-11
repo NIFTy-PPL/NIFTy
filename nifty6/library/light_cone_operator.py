@@ -138,4 +138,4 @@ class LightConeOperator(Operator):
         if not lin:
             return res
         jac = _LightConeDerivative(self._domain, self._target, derivs)
-        return Linearization(res, jac)
+        return x.new(res, jac)
