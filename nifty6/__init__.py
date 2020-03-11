@@ -15,7 +15,6 @@ from .multi_domain import MultiDomain
 from .field import Field
 from .multi_field import MultiField
 
-from .linearization import Linearization
 
 from .operators.operator import Operator
 from .operators.linear_operator import LinearOperator
@@ -70,6 +69,7 @@ from .minimization.energy_adapter import EnergyAdapter
 from .minimization.metric_gaussian_kl import MetricGaussianKL
 
 from .sugar import *
+
 from .plot import Plot
 
 from .library.special_distributions import InverseGammaOperator
@@ -89,6 +89,8 @@ from . import extra
 from .utilities import memo, frozendict
 
 from .logger import logger
+
+from .linearization import Linearization
 
 from .operator_spectrum import operator_spectrum
 

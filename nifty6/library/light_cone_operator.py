@@ -133,7 +133,7 @@ class LightConeOperator(Operator):
 
     def apply(self, x):
         lin = isinstance(x, Linearization)
-        a, derivs = _cone_arrays(x.val, self.target, self._sigx, lin)
+        a, derivs = _cone_arrays(x.val.val if lin else x.val, self.target, self._sigx, lin)
         res = Field(self.target, a)
         if not lin:
             return res
