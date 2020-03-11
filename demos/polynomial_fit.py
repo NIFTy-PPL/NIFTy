@@ -81,63 +81,63 @@ class PolynomialResponse(ift.LinearOperator):
         return ift.makeField(self._tgt(mode), out)
 
 
-# Generate some mock data
-N_params = 10
-N_samples = 100
-size = (12,)
-x = np.random.random(size) * 10
-y = np.sin(x**2) * x**3
-var = np.full_like(y, y.var() / 10)
-var[-2] *= 4
-var[5] /= 2
-y[5] -= 0
+if __name__ == '__main__':
+    # Generate some mock data
+    N_params = 10
+    N_samples = 100
+    size = (12,)
+    x = np.random.random(size) * 10
+    y = np.sin(x**2) * x**3
+    var = np.full_like(y, y.var() / 10)
+    var[-2] *= 4
+    var[5] /= 2
+    y[5] -= 0
 
-# Set up minimization problem
-p_space = ift.UnstructuredDomain(N_params)
-params = ift.full(p_space, 0.)
-R = PolynomialResponse(p_space, x)
-ift.extra.consistency_check(R)
+    # Set up minimization problem
+    p_space = ift.UnstructuredDomain(N_params)
+    params = ift.full(p_space, 0.)
+    R = PolynomialResponse(p_space, x)
+    ift.extra.consistency_check(R)
 
-d_space = R.target
-d = ift.makeField(d_space, y)
-N = ift.DiagonalOperator(ift.makeField(d_space, var))
+    d_space = R.target
+    d = ift.makeField(d_space, y)
+    N = ift.DiagonalOperator(ift.makeField(d_space, var))
 
-IC = ift.DeltaEnergyController(tol_rel_deltaE=1e-12, iteration_limit=200)
-likelihood = ift.GaussianEnergy(d, N)(R)
-Ham = ift.StandardHamiltonian(likelihood, IC)
-H = ift.EnergyAdapter(params, Ham, want_metric=True)
+    IC = ift.DeltaEnergyController(tol_rel_deltaE=1e-12, iteration_limit=200)
+    likelihood = ift.GaussianEnergy(d, N) @ R
+    Ham = ift.StandardHamiltonian(likelihood, IC)
+    H = ift.EnergyAdapter(params, Ham, want_metric=True)
 
-# Minimize
-minimizer = ift.NewtonCG(IC)
-H, _ = minimizer(H)
+    # Minimize
+    minimizer = ift.NewtonCG(IC)
+    H, _ = minimizer(H)
 
-# Draw posterior samples
-metric = Ham(ift.Linearization.make_var(H.position, want_metric=True)).metric
-samples = [metric.draw_sample(from_inverse=True) + H.position
-           for _ in range(N_samples)]
+    # Draw posterior samples
+    metric = Ham(ift.Linearization.make_var(H.position, want_metric=True)).metric
+    samples = [metric.draw_sample(from_inverse=True) + H.position
+               for _ in range(N_samples)]
 
-# Plotting
-plt.errorbar(x, y, np.sqrt(var), fmt='ko', label='Data with error bars')
-xmin, xmax = x.min(), x.max()
-xs = np.linspace(xmin, xmax, 100)
+    # Plotting
+    plt.errorbar(x, y, np.sqrt(var), fmt='ko', label='Data with error bars')
+    xmin, xmax = x.min(), x.max()
+    xs = np.linspace(xmin, xmax, 100)
 
-sc = ift.StatCalculator()
-for ii in range(len(samples)):
-    sc.add(samples[ii])
-    ys = polynomial(samples[ii], xs)
-    if ii == 0:
-        plt.plot(xs, ys, 'k', alpha=.05, label='Posterior samples')
-        continue
-    plt.plot(xs, ys, 'k', alpha=.05)
-ys = polynomial(H.position, xs)
-plt.plot(xs, ys, 'r', linewidth=2., label='Interpolation')
-plt.legend()
-plt.savefig('fit.png')
-plt.close()
+    sc = ift.StatCalculator()
+    for ii in range(len(samples)):
+        sc.add(samples[ii])
+        ys = polynomial(samples[ii], xs)
+        if ii == 0:
+            plt.plot(xs, ys, 'k', alpha=.05, label='Posterior samples')
+            continue
+        plt.plot(xs, ys, 'k', alpha=.05)
+    ys = polynomial(H.position, xs)
+    plt.plot(xs, ys, 'r', linewidth=2., label='Interpolation')
+    plt.legend()
+    plt.savefig('fit.png')
+    plt.close()
 
-# Print parameters
-mean = sc.mean.val
-sigma = np.sqrt(sc.var.val)
-for ii in range(len(mean)):
-    print('Coefficient x**{}: {:.2E} +/- {:.2E}'.format(ii, mean[ii],
-                                                            sigma[ii]))
+    # Print parameters
+    mean = sc.mean.val
+    sigma = np.sqrt(sc.var.val)
+    for ii in range(len(mean)):
+        print('Coefficient x**{}: {:.2E} +/- {:.2E}'.format(ii, mean[ii], sigma[ii]))
