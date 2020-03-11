@@ -74,7 +74,7 @@ class _MinHelper(object):
 
     def _update(self, x):
         pos = _toField(x, self._energy.position)
-        if (pos != self._energy.position).any():
+        if (pos != self._energy.position).s_any():
             self._energy = self._energy.at(pos)
 
     def fun(self, x):

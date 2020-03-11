@@ -169,7 +169,7 @@ class MultiField(object):
         return (nrm ** ord).sum() ** (1./ord)
 #        return np.sqrt(np.abs(self.vdot(x=self)))
 
-    def sum(self):
+    def s_sum(self):
         """Computes the sum all field values.
 
         Returns
@@ -177,7 +177,7 @@ class MultiField(object):
         norm : float
             The sum of the field values.
         """
-        return utilities.my_sum(map(lambda v: v.sum(), self._val))
+        return utilities.my_sum(map(lambda v: v.s_sum(), self._val))
 
     @property
     def size(self):
@@ -207,15 +207,15 @@ class MultiField(object):
             self._domain,
             tuple(self._val[i].clip(lmin[i], lmax[i]) for i in range(ncomp)))
 
-    def all(self):
+    def s_all(self):
         for v in self._val:
-            if not v.all():
+            if not v.s_all():
                 return False
         return True
 
-    def any(self):
+    def s_any(self):
         for v in self._val:
-            if v.any():
+            if v.s_any():
                 return True
         return False
 

@@ -47,8 +47,8 @@ def test_adjoint_times(space, sigma):
     op = ift.HarmonicSmoothingOperator(space, sigma=sigma)
     rand1 = ift.Field.from_random('normal', domain=space)
     rand2 = ift.Field.from_random('normal', domain=space)
-    tt1 = rand1.vdot(op.times(rand2))
-    tt2 = rand2.vdot(op.adjoint_times(rand1))
+    tt1 = rand1.s_vdot(op.times(rand2))
+    tt2 = rand2.s_vdot(op.adjoint_times(rand1))
     assert_allclose(tt1, tt2)
 
 
@@ -58,7 +58,7 @@ def test_times(space, sigma):
     fld[0] = 1.
     rand1 = ift.Field.from_raw(space, fld)
     tt1 = op.times(rand1)
-    assert_allclose(1, tt1.sum())
+    assert_allclose(1, tt1.s_sum())
 
 
 @pmp('sz', [128, 256])
@@ -70,7 +70,7 @@ def test_smooth_regular1(sz, d, sigma, tp):
     inp = ift.Field.from_random(
         domain=sp, random_type='normal', std=1, mean=4, dtype=tp)
     out = smo(inp)
-    assert_allclose(inp.sum(), out.sum(), rtol=tol, atol=tol)
+    assert_allclose(inp.s_sum(), out.s_sum(), rtol=tol, atol=tol)
 
 
 @pmp('sz1', [10, 15])
@@ -84,4 +84,4 @@ def test_smooth_regular2(sz1, sz2, d1, d2, sigma, tp):
     inp = ift.Field.from_random(
         domain=sp, random_type='normal', std=1, mean=4, dtype=tp)
     out = smo(inp)
-    assert_allclose(inp.sum(), out.sum(), rtol=tol, atol=tol)
+    assert_allclose(inp.s_sum(), out.s_sum(), rtol=tol, atol=tol)

@@ -70,14 +70,14 @@ class ConjugateGradient(Minimizer):
         r = energy.gradient
         d = r if preconditioner is None else preconditioner(r)
 
-        previous_gamma = r.vdot(d).real
+        previous_gamma = r.s_vdot(d).real
         if previous_gamma == 0:
             return energy, controller.CONVERGED
 
         ii = 0
         while True:
             q = energy.apply_metric(d)
-            curv = d.vdot(q).real
+            curv = d.s_vdot(q).real
             if curv == 0.:
                 logger.error("Error: ConjugateGradient: curv==0.")
                 return energy, controller.ERROR
@@ -98,7 +98,7 @@ class ConjugateGradient(Minimizer):
 
             s = r if preconditioner is None else preconditioner(r)
 
-            gamma = r.vdot(s).real
+            gamma = r.s_vdot(s).real
             if gamma < 0:
                 logger.error(
                     "Positive definiteness of preconditioner violated!")

@@ -95,7 +95,7 @@ class LineEnergy(object):
         """
         float : The directional derivative at the given `position`.
         """
-        res = self._energy.gradient.vdot(self._line_direction)
+        res = self._energy.gradient.s_vdot(self._line_direction)
         if abs(res.imag) / max(abs(res.real), 1.) > 1e-12:
             from ..logger import logger
             logger.warning("directional derivative has non-negligible "
