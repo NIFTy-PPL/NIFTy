@@ -401,9 +401,6 @@ class Field(object):
 
             return Field(DomainTuple.make(return_domain), data)
 
-#     def _s_contraction_helper(self, op):
-#         return getattr(self._val, op)()
-
     def sum(self, spaces=None):
         """Sums up over the sub-domains given by `spaces`.
 
@@ -592,6 +589,9 @@ class Field(object):
             return self._contraction_helper('var', spaces)
         # MR FIXME: not very efficient or accurate
         m1 = self.mean(spaces)
+        from .operators.contraction_operator import ContractionOperator
+        op = ContractionOperator(self._domain, spaces)
+        m1 = op.adjoint_times(m1)
         if utilities.iscomplextype(self.dtype):
             sq = abs(self-m1)**2
         else:
