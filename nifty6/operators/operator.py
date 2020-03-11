@@ -180,7 +180,7 @@ class Operator(metaclass=NiftyMeta):
     def force(self, x):
         """Extract subset of domain of x according to `self.domain` and apply
         operator."""
-        return self.apply(x.extract(self.domain), 0)
+        return self.apply(x.extract(self.domain))
 
     def _check_input(self, x):
         from ..linearization import Linearization
