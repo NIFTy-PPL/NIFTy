@@ -18,7 +18,6 @@
 import numpy as np
 
 from ..field import Field
-from ..linearization import Linearization
 from ..multi_field import MultiField
 from ..sugar import makeDomain
 from .operator import Operator
@@ -43,10 +42,8 @@ class Adder(Operator):
         self._domain = self._target = dom
         self._neg = bool(neg)
 
-    def apply(self, x, difforder):
+    def apply(self, x):
         self._check_input(x)
-        if difforder >= self.WITH_JAC:
-            x = Linearization.make_var(x, difforder == self.WITH_METRIC)
         if self._neg:
             return x - self._a
         return x + self._a

@@ -222,10 +222,8 @@ class _Normalization(Operator):
         self._mode_multiplicity = makeOp(makeField(self._domain, mode_multiplicity))
         self._specsum = _SpecialSum(self._domain, space)
 
-    def apply(self, x, difforder):
+    def apply(self, x):
         self._check_input(x)
-        if difforder >= self.WITH_JAC:
-            x = Linearization.make_var(x, difforder == self.WITH_METRIC)
         amp = x.exp()
         spec = (2*x).exp()
         # FIXME This normalizes also the zeromode which is supposed to be left

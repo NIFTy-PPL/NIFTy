@@ -166,7 +166,7 @@ class Operator(metaclass=NiftyMeta):
             return self
         return _OpChain.make((_Clipper(self.target, min, max), self))
 
-    def apply(self, x, difforder):
+    def apply(self, x):
         """Applies the operator to a Field or MultiField.
 
         Parameters
@@ -183,7 +183,8 @@ class Operator(metaclass=NiftyMeta):
         return self.apply(x.extract(self.domain), 0)
 
     def _check_input(self, x):
-        if not isinstance(x, (Field, MultiField)):
+        from ..linearization import Linearization
+        if not isinstance(x, (Field, MultiField, Linearization)):
             raise TypeError
         self._check_domain_equality(self._domain, x.domain)
 
@@ -192,10 +193,9 @@ class Operator(metaclass=NiftyMeta):
         from ..field import Field
         from ..multi_field import MultiField
         if isinstance(x, Linearization):
-            difforder = self.WITH_METRIC if x.want_metric else self.WITH_JAC
-            return self.apply(x.val, difforder).prepend_jac(x.jac)
+            return self.apply(x.trivial_jac()).prepend_jac(x.jac)
         elif isinstance(x, (Field, MultiField)):
-            return self.apply(x, self.VALUE_ONLY)
+            return self.apply(x)
         raise TypeError('Operator can only consume Field, MultiFields and Linearizations')
 
     def ducktape(self, name):
@@ -279,12 +279,12 @@ class _ConstantOperator(Operator):
         self._target = output.domain
         self._output = output
 
-    def apply(self, x, difforder):
+    def apply(self, x):
         from ..linearization import Linearization
         from .simple_linear_operators import NullOperator
         self._check_input(x)
-        if difforder >= self.WITH_JAC:
-            return Linearization(self._output, NullOperator(self._domain, self._target))
+        if isinstance(x, Linearization):
+            return x.new(self._output, NullOperator(self._domain, self._target))
         return self._output
 
     def __repr__(self):
@@ -297,11 +297,8 @@ class _FunctionApplier(Operator):
         self._domain = self._target = makeDomain(domain)
         self._funcname = funcname
 
-    def apply(self, x, difforder):
+    def apply(self, x):
         self._check_input(x)
-        from ..linearization import Linearization
-        if difforder >= self.WITH_JAC:
-            x = Linearization.make_var(x, difforder == self.WITH_METRIC)
         return getattr(x, self._funcname)()
 
 
@@ -312,11 +309,8 @@ class _Clipper(Operator):
         self._min = min
         self._max = max
 
-    def apply(self, x, difforder):
+    def apply(self, x):
         self._check_input(x)
-        from ..linearization import Linearization
-        if difforder >= self.WITH_JAC:
-            x = Linearization.make_var(x, difforder == self.WITH_METRIC)
         return x.clip(self._min, self._max)
 
 
@@ -326,11 +320,8 @@ class _PowerOp(Operator):
         self._domain = self._target = makeDomain(domain)
         self._power = power
 
-    def apply(self, x, difforder):
+    def apply(self, x):
         self._check_input(x)
-        from ..linearization import Linearization
-        if difforder >= self.WITH_JAC:
-            x = Linearization.make_var(x, difforder == self.WITH_METRIC)
         return x**self._power
 
 
@@ -366,11 +357,8 @@ class _OpChain(_CombinedOperator):
             if self._ops[i-1].domain != self._ops[i].target:
                 raise ValueError("domain mismatch")
 
-    def apply(self, x, difforder):
+    def apply(self, x):
         self._check_input(x)
-        if difforder >= self.WITH_JAC:
-            from ..linearization import Linearization
-            x = Linearization.make_var(x, difforder == self.WITH_METRIC)
         for op in reversed(self._ops):
             x = op(x)
         return x
@@ -401,15 +389,17 @@ class _OpProd(Operator):
         self._op1 = op1
         self._op2 = op2
 
-    def apply(self, x, difforder):
+    def apply(self, x):
         from ..linearization import Linearization
         from ..sugar import makeOp
         self._check_input(x)
+        lin = isinstance(x, Linearization)
+        wm = x.want_metric if lin else None
+        x = x.val if lin else x
         v1 = x.extract(self._op1.domain)
         v2 = x.extract(self._op2.domain)
-        if difforder == self.VALUE_ONLY:
+        if not lin:
             return self._op1(v1) * self._op2(v2)
-        wm = difforder == self.WITH_METRIC
         lin1 = self._op1(Linearization.make_var(v1, wm))
         lin2 = self._op2(Linearization.make_var(v2, wm))
         jac = (makeOp(lin1._val)(lin2._jac))._myadd(makeOp(lin2._val)(lin1._jac), False)
@@ -443,14 +433,16 @@ class _OpSum(Operator):
         self._op1 = op1
         self._op2 = op2
 
-    def apply(self, x, difforder):
+    def apply(self, x):
         from ..linearization import Linearization
         self._check_input(x)
-        v1 = x.extract(self._op1.domain)
-        v2 = x.extract(self._op2.domain)
-        if difforder == self.VALUE_ONLY:
+        if not isinstance(x, Linearization):
+            v1 = x.extract(self._op1.domain)
+            v2 = x.extract(self._op2.domain)
             return self._op1(v1).unite(self._op2(v2))
-        wm = difforder == self.WITH_METRIC
+        v1 = x.val.extract(self._op1.domain)
+        v2 = x.val.extract(self._op2.domain)
+        wm = x.want_metric
         lin1 = self._op1(Linearization.make_var(v1, wm))
         lin2 = self._op2(Linearization.make_var(v2, wm))
         op = lin1._jac._myadd(lin2._jac, False)

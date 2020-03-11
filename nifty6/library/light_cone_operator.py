@@ -131,10 +131,11 @@ class LightConeOperator(Operator):
         self._target = DomainTuple.make(target)
         self._sigx = sigx
 
-    def apply(self, x, difforder):
-        a, derivs = _cone_arrays(x.val, self.target, self._sigx, difforder >= self.WITH_JAC)
+    def apply(self, x):
+        lin = isinstance(x, Linearization)
+        a, derivs = _cone_arrays(x.val, self.target, self._sigx, lin)
         res = Field(self.target, a)
-        if difforder == self.VALUE_ONLY:
+        if not lin:
             return res
         jac = _LightConeDerivative(self._domain, self._target, derivs)
         return Linearization(res, jac)

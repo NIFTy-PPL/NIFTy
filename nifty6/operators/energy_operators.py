@@ -27,7 +27,6 @@ from ..sugar import makeDomain, makeOp
 from .linear_operator import LinearOperator
 from .operator import Operator
 from .sampling_enabler import SamplingEnabler
-from .sandwich_operator import SandwichOperator
 from .scaling_operator import ScalingOperator
 from .simple_linear_operators import VdotOperator
 
@@ -58,13 +57,13 @@ class Squared2NormOperator(EnergyOperator):
     def __init__(self, domain):
         self._domain = domain
 
-    def apply(self, x, difforder):
+    def apply(self, x):
         self._check_input(x)
-        res = x.vdot(x)
-        if difforder == self.VALUE_ONLY:
+        if not isinstance(x, Linearization):
+            res = x.vdot(x)
             return res
-        jac = VdotOperator(2*x)
-        return Linearization(res, jac, want_metric=difforder == self.WITH_METRIC)
+        res = x.val.vdot(x.val)
+        return x.new(res, VdotOperator(2*x.val))
 
 
 class QuadraticFormOperator(EnergyOperator):
@@ -87,13 +86,12 @@ class QuadraticFormOperator(EnergyOperator):
         self._op = endo
         self._domain = endo.domain
 
-    def apply(self, x, difforder):
+    def apply(self, x):
         self._check_input(x)
-        t1 = self._op(x)
-        res = 0.5*x.vdot(t1)
-        if difforder == self.VALUE_ONLY:
-            return res
-        return Linearization(res, VdotOperator(t1))
+        if not isinstance(x, Linearization):
+            return 0.5*x.vdot(self._op(x))
+        res = 0.5*x.val.vdot(self._op(x.val))
+        return x.new(res, VdotOperator(self._op(x.val)))
 
 
 class VariableCovarianceGaussianEnergy(EnergyOperator):
@@ -127,12 +125,10 @@ class VariableCovarianceGaussianEnergy(EnergyOperator):
         dom = DomainTuple.make(domain)
         self._domain = MultiDomain.make({self._r: dom, self._icov: dom})
 
-    def apply(self, x, difforder):
+    def apply(self, x):
         self._check_input(x)
-        if difforder >= self.WITH_JAC:
-            x = Linearization.make_var(x, difforder == self.WITH_METRIC)
         res = 0.5*(x[self._r].vdot(x[self._r]*x[self._icov]).real - x[self._icov].log().sum())
-        if difforder <= self.WITH_JAC:
+        if not isinstance(x, Linearization) or not x.want_metric:
             return res
         mf = {self._r: x.val[self._icov], self._icov: .5*x.val[self._icov]**(-2)}
         return res.add_metric(makeOp(MultiField.from_dict(mf)))
@@ -195,15 +191,13 @@ class GaussianEnergy(EnergyOperator):
             if self._domain != newdom:
                 raise ValueError("domain mismatch")
 
-    def apply(self, x, difforder):
+    def apply(self, x):
         self._check_input(x)
-        if difforder >= self.WITH_JAC:
-            x = Linearization.make_var(x, difforder == self.WITH_METRIC)
         residual = x if self._mean is None else x - self._mean
         res = self._op(residual).real
-        if difforder < self.WITH_METRIC:
-            return res
-        return res.add_metric(self._met)
+        if isinstance(x, Linearization) and x.want_metric:
+            return res.add_metric(self._met)
+        return res
 
 
 class PoissonianEnergy(EnergyOperator):
@@ -233,12 +227,10 @@ class PoissonianEnergy(EnergyOperator):
         self._d = d
         self._domain = DomainTuple.make(d.domain)
 
-    def apply(self, x, difforder):
+    def apply(self, x):
         self._check_input(x)
-        if difforder >= self.WITH_JAC:
-            x = Linearization.make_var(x, difforder == self.WITH_METRIC)
         res = x.sum() - x.log().vdot(self._d)
-        if difforder <= self.WITH_JAC:
+        if not isinstance(x, Linearization) or not x.want_metric:
             return res
         return res.add_metric(makeOp(1./x.val))
 
@@ -275,12 +267,10 @@ class InverseGammaLikelihood(EnergyOperator):
             raise TypeError
         self._alphap1 = alpha+1
 
-    def apply(self, x, difforder):
+    def apply(self, x):
         self._check_input(x)
-        if difforder >= self.WITH_JAC:
-            x = Linearization.make_var(x, difforder == self.WITH_METRIC)
         res = x.log().vdot(self._alphap1) + x.one_over().vdot(self._beta)
-        if difforder <= self.WITH_JAC:
+        if not isinstance(x, Linearization) or not x.want_metric:
             return res
         return res.add_metric(makeOp(self._alphap1/(x.val**2)))
 
@@ -306,12 +296,10 @@ class StudentTEnergy(EnergyOperator):
         self._domain = DomainTuple.make(domain)
         self._theta = theta
 
-    def apply(self, x, difforder):
+    def apply(self, x):
         self._check_input(x)
-        if difforder >= self.WITH_JAC:
-            x = Linearization.make_var(x, difforder == self.WITH_METRIC)
         res = ((self._theta+1)/2)*(x**2/self._theta).log1p().sum()
-        if difforder <= self.WITH_JAC:
+        if not isinstance(x, Linearization) or not x.want_metric:
             return res
         met = ScalingOperator(self.domain, (self._theta+1) / (self._theta+3))
         return res.add_metric(met)
@@ -342,16 +330,12 @@ class BernoulliEnergy(EnergyOperator):
         self._d = d
         self._domain = DomainTuple.make(d.domain)
 
-    def apply(self, x, difforder):
+    def apply(self, x):
         self._check_input(x)
-        if difforder >= self.WITH_JAC:
-            x = Linearization.make_var(x, difforder == self.WITH_METRIC)
         res = -x.log().vdot(self._d) + (1.-x).log().vdot(self._d-1.)
-        if difforder <= self.WITH_JAC:
+        if not isinstance(x, Linearization) or not x.want_metric:
             return res
-        met = makeOp(1./(x.val*(1. - x.val)))
-        met = SandwichOperator.make(x.jac, met)
-        return res.add_metric(met)
+        return res.add_metric(makeOp(1./(x.val*(1. - x.val))))
 
 
 class StandardHamiltonian(EnergyOperator):
@@ -396,11 +380,9 @@ class StandardHamiltonian(EnergyOperator):
         self._ic_samp = ic_samp
         self._domain = lh.domain
 
-    def apply(self, x, difforder):
+    def apply(self, x):
         self._check_input(x)
-        if difforder >= self.WITH_JAC:
-            x = Linearization.make_var(x, difforder == self.WITH_METRIC)
-        if difforder <= self.WITH_JAC or self._ic_samp is None:
+        if not isinstance(x, Linearization) or not x.want_metric or self._ic_samp is None:
             return (self._lh + self._prior)(x)
         lhx, prx = self._lh(x), self._prior(x)
         return (lhx+prx).add_metric(SamplingEnabler(lhx.metric, prx.metric, self._ic_samp))
@@ -442,9 +424,7 @@ class AveragedEnergy(EnergyOperator):
         self._domain = h.domain
         self._res_samples = tuple(res_samples)
 
-    def apply(self, x, difforder):
+    def apply(self, x):
         self._check_input(x)
-        if difforder >= self.WITH_JAC:
-            x = Linearization.make_var(x, difforder == self.WITH_METRIC)
         mymap = map(lambda v: self._h(x+v), self._res_samples)
         return utilities.my_sum(mymap)/len(self._res_samples)

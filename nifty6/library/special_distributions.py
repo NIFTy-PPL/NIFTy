@@ -38,14 +38,14 @@ class _InterpolationOperator(Operator):
         self._deriv = (self._table[1:]-self._table[:-1]) / self._d
         self._inv_table_func = inverse_table_func
 
-    def apply(self, x, difforder):
+    def apply(self, x):
         self._check_input(x)
         val = (np.clip(x.val, self._xmin, self._xmax) - self._xmin) / self._d
         fi = np.floor(val).astype(int)
         w = val - fi
         res = self._inv_table_func((1-w)*self._table[fi] + w*self._table[fi+1])
         resfld = Field(self._domain, res)
-        if difforder == self.VALUE_ONLY:
+        if not isinstance(x, Linearization):
             return resfld
         jac = makeOp(Field(self._domain, self._deriv[fi]*res))
         return Linearization(resfld, jac)

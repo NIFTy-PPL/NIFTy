@@ -63,6 +63,9 @@ class Linearization(object):
         """
         return Linearization(val, jac, metric, self._want_metric)
 
+    def trivial_jac(self):
+        return Linearization.make_var(self._val, self._want_metric)
+
     def prepend_jac(self, jac):
         metric = None
         if self._metric is not None:
