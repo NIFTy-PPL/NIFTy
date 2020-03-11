@@ -60,7 +60,7 @@ class Squared2NormOperator(EnergyOperator):
 
     def apply(self, x, difforder):
         self._check_input(x)
-        res = Field.scalar(x.vdot(x))
+        res = x.vdot(x)
         if difforder == self.VALUE_ONLY:
             return res
         jac = VdotOperator(2*x)
@@ -90,7 +90,7 @@ class QuadraticFormOperator(EnergyOperator):
     def apply(self, x, difforder):
         self._check_input(x)
         t1 = self._op(x)
-        res = Field.scalar(0.5*x.vdot(t1))
+        res = 0.5*x.vdot(t1)
         if difforder == self.VALUE_ONLY:
             return res
         return Linearization(res, VdotOperator(t1))
@@ -132,9 +132,7 @@ class VariableCovarianceGaussianEnergy(EnergyOperator):
         if difforder >= self.WITH_JAC:
             x = Linearization.make_var(x, difforder == self.WITH_METRIC)
         res = 0.5*(x[self._r].vdot(x[self._r]*x[self._icov]).real - x[self._icov].log().sum())
-        if difforder == self.VALUE_ONLY:
-            return Field.scalar(res)
-        if difforder == self.WITH_JAC:
+        if difforder <= self.WITH_JAC:
             return res
         mf = {self._r: x.val[self._icov], self._icov: .5*x.val[self._icov]**(-2)}
         return res.add_metric(makeOp(MultiField.from_dict(mf)))
@@ -240,9 +238,7 @@ class PoissonianEnergy(EnergyOperator):
         if difforder >= self.WITH_JAC:
             x = Linearization.make_var(x, difforder == self.WITH_METRIC)
         res = x.sum() - x.log().vdot(self._d)
-        if difforder == self.VALUE_ONLY:
-            return Field.scalar(res)
-        if difforder == self.WITH_JAC:
+        if difforder <= self.WITH_JAC:
             return res
         return res.add_metric(makeOp(1./x.val))
 
@@ -284,9 +280,7 @@ class InverseGammaLikelihood(EnergyOperator):
         if difforder >= self.WITH_JAC:
             x = Linearization.make_var(x, difforder == self.WITH_METRIC)
         res = x.log().vdot(self._alphap1) + x.one_over().vdot(self._beta)
-        if difforder == self.VALUE_ONLY:
-            return Field.scalar(res)
-        if difforder == self.WITH_JAC:
+        if difforder <= self.WITH_JAC:
             return res
         return res.add_metric(makeOp(self._alphap1/(x.val**2)))
 
@@ -317,9 +311,7 @@ class StudentTEnergy(EnergyOperator):
         if difforder >= self.WITH_JAC:
             x = Linearization.make_var(x, difforder == self.WITH_METRIC)
         res = ((self._theta+1)/2)*(x**2/self._theta).log1p().sum()
-        if difforder == self.VALUE_ONLY:
-            return Field.scalar(res)
-        if difforder == self.WITH_JAC:
+        if difforder <= self.WITH_JAC:
             return res
         met = ScalingOperator(self.domain, (self._theta+1) / (self._theta+3))
         return res.add_metric(met)
@@ -355,9 +347,7 @@ class BernoulliEnergy(EnergyOperator):
         if difforder >= self.WITH_JAC:
             x = Linearization.make_var(x, difforder == self.WITH_METRIC)
         res = -x.log().vdot(self._d) + (1.-x).log().vdot(self._d-1.)
-        if difforder == self.VALUE_ONLY:
-            return Field.scalar(res)
-        if difforder == self.WITH_JAC:
+        if difforder <= self.WITH_JAC:
             return res
         met = makeOp(1./(x.val*(1. - x.val)))
         met = SandwichOperator.make(x.jac, met)

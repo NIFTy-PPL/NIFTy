@@ -11,7 +11,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
-# Copyright(C) 2013-2019 Max-Planck-Society
+# Copyright(C) 2013-2020 Max-Planck-Society
 #
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
 
@@ -44,8 +44,8 @@ def _adjoint_implementation(op, domain_dtype, target_dtype, atol, rtol,
         return
     f1 = from_random("normal", op.domain, dtype=domain_dtype)
     f2 = from_random("normal", op.target, dtype=target_dtype)
-    res1 = f1.vdot(op.adjoint_times(f2))
-    res2 = op.times(f1).vdot(f2)
+    res1 = f1.s_vdot(op.adjoint_times(f2))
+    res2 = op.times(f1).s_vdot(f2)
     if only_r_linear:
         res1, res2 = res1.real, res2.real
     np.testing.assert_allclose(res1, res2, atol=atol, rtol=rtol)
@@ -218,7 +218,7 @@ def consistency_check(op, domain_dtype=np.float64, target_dtype=np.float64,
 
 
 def _get_acceptable_location(op, loc, lin):
-    if not np.isfinite(lin.val.sum()):
+    if not np.isfinite(lin.val.s_sum()):
         raise ValueError('Initial value must be finite')
     dir = from_random("normal", loc.domain)
     dirder = lin.jac(dir)
@@ -231,7 +231,7 @@ def _get_acceptable_location(op, loc, lin):
         try:
             loc2 = loc+dir
             lin2 = op(Linearization.make_var(loc2, lin.want_metric))
-            if np.isfinite(lin2.val.sum()) and abs(lin2.val.sum()) < 1e20:
+            if np.isfinite(lin2.val.s_sum()) and abs(lin2.val.s_sum()) < 1e20:
                 break
         except FloatingPointError:
             pass
@@ -285,7 +285,7 @@ def check_jacobian_consistency(op, loc, tol=1e-8, ntries=100, perf_check=True):
             dirder = linmid.jac(dir)
             numgrad = (lin2.val-lin.val)
             xtol = tol * dirder.norm() / np.sqrt(dirder.size)
-            if (abs(numgrad-dirder) <= xtol).all():
+            if (abs(numgrad-dirder) <= xtol).s_all():
                 break
             dir = dir*0.5
             dirnorm *= 0.5

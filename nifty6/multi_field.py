@@ -111,12 +111,15 @@ class MultiField(object):
         if other._domain != self._domain:
             raise ValueError("domains are incompatible.")
 
-    def vdot(self, x):
+    def s_vdot(self, x):
         result = 0.
         self._check_domain(x)
         for v1, v2 in zip(self._val, x._val):
-            result += v1.vdot(v2)
+            result += v1.s_vdot(v2)
         return result
+
+    def vdot(self, x):
+        return Field.scalar(self.s_vdot(x))
 
 #    @staticmethod
 #    def build_dtype(dtype, domain):

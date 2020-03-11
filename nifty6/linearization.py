@@ -234,10 +234,10 @@ class Linearization(object):
         from .operators.simple_linear_operators import VdotOperator
         if isinstance(other, (Field, MultiField)):
             return self.new(
-                Field.scalar(self._val.vdot(other)),
+                self._val.vdot(other),
                 VdotOperator(other)(self._jac))
         return self.new(
-            Field.scalar(self._val.vdot(other._val)),
+            self._val.vdot(other._val),
             VdotOperator(self._val)(other._jac) +
             VdotOperator(other._val)(self._jac))
 
@@ -256,14 +256,9 @@ class Linearization(object):
             the (partial) sum
         """
         from .operators.contraction_operator import ContractionOperator
-        if spaces is None:
-            return self.new(
-                Field.scalar(self._val.sum()),
-                ContractionOperator(self._jac.target, None)(self._jac))
-        else:
-            return self.new(
-                self._val.sum(spaces),
-                ContractionOperator(self._jac.target, spaces)(self._jac))
+        return self.new(
+            self._val.sum(spaces),
+            ContractionOperator(self._jac.target, spaces)(self._jac))
 
     def integrate(self, spaces=None):
         """Computes the (partial) integral over self
@@ -280,14 +275,9 @@ class Linearization(object):
             the (partial) integral
         """
         from .operators.contraction_operator import ContractionOperator
-        if spaces is None:
-            return self.new(
-                Field.scalar(self._val.integrate()),
-                ContractionOperator(self._jac.target, None, 1)(self._jac))
-        else:
-            return self.new(
-                self._val.integrate(spaces),
-                ContractionOperator(self._jac.target, spaces, 1)(self._jac))
+        return self.new(
+            self._val.integrate(spaces),
+            ContractionOperator(self._jac.target, spaces, 1)(self._jac))
 
     def exp(self):
         tmp = self._val.exp()
