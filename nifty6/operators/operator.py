@@ -184,8 +184,14 @@ class Operator(metaclass=NiftyMeta):
 
     def _check_input(self, x):
         from ..linearization import Linearization
+        from .scaling_operator import ScalingOperator
         if not isinstance(x, (Field, MultiField, Linearization)):
             raise TypeError
+        if isinstance(x, Linearization):
+            if not isinstance(x.jac, ScalingOperator):
+                raise ValueError
+            if x.jac._factor != 1:
+                raise ValueError
         self._check_domain_equality(self._domain, x.domain)
 
     def __call__(self, x):
