@@ -104,14 +104,13 @@ def _actual_domain_check_nonlinear(op, loc):
         assert_(lin.domain is op.domain)
         assert_(lin.target is op.domain)
         assert_(lin.val.domain is lin.domain)
-
         assert_(reslin.domain is op.domain)
         assert_(reslin.target is op.target)
         assert_(reslin.val.domain is reslin.target)
-
         assert_(reslin.target is op.target)
         assert_(reslin.jac.domain is reslin.domain)
         assert_(reslin.jac.target is reslin.target)
+        assert_(lin.want_metric == reslin.want_metric)
         _actual_domain_check_linear(reslin.jac, inp=loc)
         _actual_domain_check_linear(reslin.jac.adjoint, inp=reslin.jac(loc))
         if reslin.metric is not None:
