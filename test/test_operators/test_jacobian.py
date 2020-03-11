@@ -96,8 +96,9 @@ def testPointModel(space, seed):
     alpha = 1.5
     q = 0.73
     model = ift.InverseGammaOperator(space, alpha, q)
-    # FIXME All those cdfs and ppfs are not very accurate
-    ift.extra.check_jacobian_consistency(model, pos, tol=1e-2, ntries=20)
+    ift.extra.check_jacobian_consistency(model, pos, tol=1e-5, ntries=20)
+    model = ift.UniformOperator(space)
+    ift.extra.check_jacobian_consistency(model, pos, tol=1e-6, ntries=20)
 
 
 @pmp('neg', [True, False])

@@ -32,7 +32,7 @@ space = list2fixture([ift.GLSpace(15),
 seed = list2fixture([4, 78, 23])
 
 
-def testInverseGammaAccuracy(space, seed):
+def testInterpolationAccuracy(space, seed):
     S = ift.ScalingOperator(space, 1.)
     pos = S.draw_sample()
     alpha = 1.5
@@ -45,3 +45,7 @@ def testInverseGammaAccuracy(space, seed):
         arr1 = op(pos).val
         arr0 = invgamma.ppf(norm.cdf(pos.val), alpha, scale=q)
         assert_allclose(arr0, arr1)
+        op = ift.UniformOperator(space, scale=qfld)
+        arr1 = op(pos).val
+        arr0 = norm.cdf(pos.val)*q
+        assert_allclose(arr0, arr1, rtol=1e-5)
