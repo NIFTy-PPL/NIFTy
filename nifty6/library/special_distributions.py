@@ -17,6 +17,7 @@
 
 import numpy as np
 from scipy.stats import invgamma, norm
+from scipy.interpolate import CubicSpline
 
 from .. import Adder
 from ..domain_tuple import DomainTuple
@@ -62,7 +63,7 @@ class _InterpolationOperator(Operator):
         self._domain = self._target = DomainTuple.make(domain)
         self._xmin, self._xmax = float(xmin), float(xmax)
         self._d = float(delta)
-        self._xs = np.arange(xmin, xmax+2*self._d, self._d)
+        self._xs = np.arange(xmin, xmax, self._d)
         self._table = func(self._xs)
         if table_func is not None:
             if inv_table_func is None:
@@ -71,26 +72,25 @@ class _InterpolationOperator(Operator):
             a1 = _f_on_np(lambda x: inv_table_func(table_func(x)), a)
             np.testing.assert_allclose(a, a1)
             self._table = _f_on_np(table_func, self._table)
+        self._interpolator = CubicSpline(self._xs, self._table)
+        self._deriv = self._interpolator.derivative()
         self._inv_table_func = inv_table_func
-        self._deriv = (self._table[1:] - self._table[:-1]) / self._d
+
 
     def apply(self, x):
         self._check_input(x)
         lin = isinstance(x, Linearization)
         xval = x.val.val if lin else x.val
-        val = (np.clip(xval, self._xmin, self._xmax) - self._xmin) / self._d
-        fi = np.floor(val).astype(int)
-        w = val - fi
-        res = (1-w)*self._table[fi] + w*self._table[fi+1]
+        res = self._interpolator(xval)
         res = Field(self._domain, res)
         if lin:
-            res = x.new(res, makeOp(Field(self._domain, self._deriv[fi])))
+            res = x.new(res, makeOp(Field(self._domain, self._deriv(xval))))
         if self._inv_table_func is not None:
             res = self._inv_table_func(res)
         return res
 
 
-def InverseGammaOperator(domain, alpha, q, delta=0.001):
+def InverseGammaOperator(domain, alpha, q, delta=1e-2):
     """Transforms a Gaussian with unit covariance and zero mean into an
     inverse gamma distribution.
 
@@ -126,7 +126,7 @@ def InverseGammaOperator(domain, alpha, q, delta=0.001):
     return makeOp(q) @ op
 
 
-def UniformOperator(domain, loc=0, scale=1, delta=1e-3):
+class UniformOperator(Operator):
     """
     Transforms a Gaussian with unit covariance and zero mean into a uniform
     distribution. The uniform distribution's support is ``[loc, loc + scale]``.
@@ -136,15 +136,35 @@ def UniformOperator(domain, loc=0, scale=1, delta=1e-3):
     domain : Domain, tuple of Domain or DomainTuple
         The domain on which the field shall be defined. This is at the same
         time the domain and the target of the operator.
-    loc: float or Field
+    loc: float
 
-    scale: float or Field
+    scale: float
 
-    delta : float
-        Distance between sampling points for linear interpolation.
     """
-    op = _InterpolationOperator(domain, lambda x: norm.cdf(x), -8.2, 8.2, delta)
-    loc = Adder(loc, domain=domain)
-    if np.isscalar(scale):
-        return loc @ op.scale(scale)
-    return loc @ makeOp(scale) @ op
+    def __init__(self, domain, loc=0, scale=1):
+        self._target = self._domain = DomainTuple.make(domain)
+        self.loc = loc
+        self.scale = scale
+
+
+    def apply(self, x):
+        self._check_input(x)
+        lin = isinstance(x, Linearization)
+        xval = x.val.val if lin else x.val
+        res = Field(self._target, norm.cdf(xval) * self.scale + self.loc)
+        if not lin:
+            return res
+        jac = makeOp(Field(self._domain, norm.pdf(xval)*self.scale))
+        return x.new(res, jac)
+
+
+    @staticmethod
+    def uni(field, loc=0, high=1):
+        foo = norm.cdf(field.val) * scale + loc
+        return Field(field.domain, foo)
+
+
+    @staticmethod
+    def inverse_uni(field, low=0, scale=1):
+        res = norm.ppf(field.val/scale - loc)
+        return Field(field.domain, res)
