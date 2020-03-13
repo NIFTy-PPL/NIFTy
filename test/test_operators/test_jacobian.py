@@ -89,16 +89,16 @@ def testBinary(type1, type2, space, seed):
         ift.extra.check_jacobian_consistency(model, pos, ntries=20)
 
 
-def testInterpolationOps(space, seed):
+def testSpecialDistributionOps(space, seed):
     np.random.seed(seed)
     S = ift.ScalingOperator(space, 1.)
     pos = S.draw_sample()
     alpha = 1.5
     q = 0.73
     model = ift.InverseGammaOperator(space, alpha, q)
-    ift.extra.check_jacobian_consistency(model, pos, tol=1e-5, ntries=20)
-    model = ift.UniformOperator(space)
-    ift.extra.check_jacobian_consistency(model, pos, tol=1e-6, ntries=20)
+    ift.extra.check_jacobian_consistency(model, pos, ntries=20)
+    model = ift.UniformOperator(space, alpha, q)
+    ift.extra.check_jacobian_consistency(model, pos, ntries=20)
 
 
 @pmp('neg', [True, False])

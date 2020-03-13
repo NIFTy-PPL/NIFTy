@@ -45,7 +45,4 @@ def testInterpolationAccuracy(space, seed):
         arr1 = op(pos).val
         arr0 = invgamma.ppf(norm.cdf(pos.val), alpha, scale=q)
         assert_allclose(arr0, arr1)
-        op = ift.UniformOperator(space, scale=qfld)
-        arr1 = op(pos).val
-        arr0 = norm.cdf(pos.val)*q
-        assert_allclose(arr0, arr1, rtol=1e-5)
+
