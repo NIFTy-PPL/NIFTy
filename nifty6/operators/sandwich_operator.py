@@ -52,6 +52,10 @@ class SandwichOperator(EndomorphicOperator):
         cheese: EndomorphicOperator
             the cheese part
         """
+        if isinstance(cheese, SandwichOperator):
+            old_cheese = cheese
+            cheese = old_cheese._cheese
+            bun = old_cheese._bun @ bun
         if not isinstance(bun, LinearOperator):
             raise TypeError("bun must be a linear operator")
         if cheese is not None and not isinstance(cheese, LinearOperator):
