@@ -119,7 +119,7 @@ def InverseGammaOperator(domain, alpha, q, delta=1e-2):
     delta : float
         Distance between sampling points for linear interpolation.
     """
-    op = _InterpolationOperator(domain, lambda x: invgamma.ppf(norm.cdf(x), float(alpha)),
+    op = _InterpolationOperator(domain, lambda x: invgamma.ppf(norm._cdf(x), float(alpha)),
                                 -8.2, 8.2, delta, lambda x: x.log(), lambda x: x.exp())
     if np.isscalar(q):
         return op.scale(q)
@@ -151,20 +151,20 @@ class UniformOperator(Operator):
         self._check_input(x)
         lin = isinstance(x, Linearization)
         xval = x.val.val if lin else x.val
-        res = Field(self._target, norm.cdf(xval) * self.scale + self.loc)
+        res = Field(self._target, norm._cdf(xval) * self.scale + self.loc)
         if not lin:
             return res
-        jac = makeOp(Field(self._domain, norm.pdf(xval)*self.scale))
+        jac = makeOp(Field(self._domain, norm._pdf(xval)*self.scale))
         return x.new(res, jac)
 
 
     @staticmethod
     def uni(field, loc=0, high=1):
-        foo = norm.cdf(field.val) * scale + loc
+        foo = norm._cdf(field.val) * scale + loc
         return Field(field.domain, foo)
 
 
     @staticmethod
     def inverse_uni(field, low=0, scale=1):
-        res = norm.ppf(field.val/scale - loc)
+        res = norm._ppf(field.val/scale - loc)
         return Field(field.domain, res)
