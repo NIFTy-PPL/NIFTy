@@ -89,15 +89,16 @@ def testBinary(type1, type2, space, seed):
         ift.extra.check_jacobian_consistency(model, pos, ntries=20)
 
 
-def testPointModel(space, seed):
+def testSpecialDistributionOps(space, seed):
     np.random.seed(seed)
     S = ift.ScalingOperator(space, 1.)
     pos = S.draw_sample()
     alpha = 1.5
     q = 0.73
     model = ift.InverseGammaOperator(space, alpha, q)
-    # FIXME All those cdfs and ppfs are not very accurate
-    ift.extra.check_jacobian_consistency(model, pos, tol=1e-2, ntries=20)
+    ift.extra.check_jacobian_consistency(model, pos, ntries=20)
+    model = ift.UniformOperator(space, alpha, q)
+    ift.extra.check_jacobian_consistency(model, pos, ntries=20)
 
 
 @pmp('neg', [True, False])
