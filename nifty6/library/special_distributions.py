@@ -19,7 +19,6 @@ import numpy as np
 from scipy.stats import invgamma, norm
 from scipy.interpolate import CubicSpline
 
-from .. import Adder
 from ..domain_tuple import DomainTuple
 from ..domains.unstructured_domain import UnstructuredDomain
 from ..field import Field
@@ -75,7 +74,6 @@ class _InterpolationOperator(Operator):
         self._interpolator = CubicSpline(self._xs, self._table)
         self._deriv = self._interpolator.derivative()
         self._inv_table_func = inv_table_func
-
 
     def apply(self, x):
         self._check_input(x)
@@ -143,28 +141,19 @@ class UniformOperator(Operator):
     """
     def __init__(self, domain, loc=0, scale=1):
         self._target = self._domain = DomainTuple.make(domain)
-        self.loc = loc
-        self.scale = scale
-
+        self._loc = float(loc)
+        self._scale = float(scale)
 
     def apply(self, x):
         self._check_input(x)
         lin = isinstance(x, Linearization)
         xval = x.val.val if lin else x.val
-        res = Field(self._target, norm._cdf(xval) * self.scale + self.loc)
+        res = Field(self._target, self._scale*norm._cdf(xval) + self._loc)
         if not lin:
             return res
-        jac = makeOp(Field(self._domain, norm._pdf(xval)*self.scale))
+        jac = makeOp(Field(self._domain, norm._pdf(xval)*self._scale))
         return x.new(res, jac)
 
-
-    @staticmethod
-    def uni(field, loc=0, high=1):
-        foo = norm._cdf(field.val) * scale + loc
-        return Field(field.domain, foo)
-
-
-    @staticmethod
-    def inverse_uni(field, low=0, scale=1):
-        res = norm._ppf(field.val/scale - loc)
+    def inverse(self, field):
+        res = norm._ppf(field.val/self._scale - self._loc)
         return Field(field.domain, res)
