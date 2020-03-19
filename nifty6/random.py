@@ -18,8 +18,8 @@
 import numpy as np
 
 
-def seed(_seed):
-    np.random.seed(_seed)
+def seed(seed):
+    np.random.seed(seed)
 
 
 class Random(object):
