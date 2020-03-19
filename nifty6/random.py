@@ -19,14 +19,14 @@ import numpy as np
 
 _initialized = False
 
-def init(seed):
+def seed(_seed):
     global _initialized
     if _initialized:
-        print("WARNING: re-intializing random generator")
-        np.random.seed(seed)
+#        print("WARNING: re-intializing random generator")
+        np.random.seed(_seed)
     else:
         _initialized = True
-        np.random.seed(seed)
+        np.random.seed(_seed)
 
 def pm1(dtype, shape):
     global _initialized
