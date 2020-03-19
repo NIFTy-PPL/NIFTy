@@ -140,9 +140,9 @@ class Field(object):
         Field
             The newly created Field.
         """
-        from .random import Random
+        from . import random
         domain = DomainTuple.make(domain)
-        generator_function = getattr(Random, random_type)
+        generator_function = getattr(random, random_type)
         arr = generator_function(dtype=dtype, shape=domain.shape, **kwargs)
         return Field(domain, arr)
 
