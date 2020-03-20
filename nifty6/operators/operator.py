@@ -27,10 +27,6 @@ class Operator(metaclass=NiftyMeta):
     domain, and can also provide the Jacobian.
     """
 
-    VALUE_ONLY = 0
-    WITH_JAC = 1
-    WITH_METRIC = 2
-
     @property
     def domain(self):
         """The domain on which the Operator's input Field is defined.
