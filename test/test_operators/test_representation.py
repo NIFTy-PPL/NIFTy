@@ -11,7 +11,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
-# Copyright(C) 2013-2019 Max-Planck-Society
+# Copyright(C) 2013-2020 Max-Planck-Society
 #
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
 
@@ -44,10 +44,10 @@ def _check_repr(op):
 
 @pmp('sp', _p_RG_spaces)
 def testLOSResponse(sp, dtype):
-    starts = np.random.randn(len(sp.shape), 10)
-    ends = np.random.randn(len(sp.shape), 10)
-    sigma_low = 1e-4*np.random.randn(10)
-    sigma_ups = 1e-5*np.random.randn(10)
+    starts = ift.random.current_rng().standard_normal((len(sp.shape), 10))
+    ends = ift.random.current_rng().standard_normal((len(sp.shape), 10))
+    sigma_low = 1e-4*ift.random.current_rng().standard_normal(10)
+    sigma_ups = 1e-5*ift.random.current_rng().standard_normal(10)
     _check_repr(ift.LOSResponse(sp, starts, ends, sigma_low, sigma_ups))
 
 
@@ -65,7 +65,7 @@ def testOperatorCombinations(sp, dtype):
 
 def testLinearInterpolator():
     sp = ift.RGSpace((10, 8), distances=(0.1, 3.5))
-    pos = np.random.rand(2, 23)
+    pos = ift.random.current_rng().random((2, 23))
     pos[0, :] *= 0.9
     pos[1, :] *= 7*3.5
     _check_repr(ift.LinearInterpolator(sp, pos))
@@ -206,11 +206,12 @@ def testOuter(fdomain, domain):
 @pmp('sp', _h_spaces + _p_spaces + _pow_spaces)
 @pmp('seed', [12, 3])
 def testValueInserter(sp, seed):
-    np.random.seed(seed)
+    ift.random.push_sseq_from_seed(seed)
     ind = []
     for ss in sp.shape:
         if ss == 1:
             ind.append(0)
         else:
-            ind.append(np.random.randint(0, ss - 1))
+            ind.append(int(ift.random.current_rng().integers(0, ss - 1)))
     _check_repr(ift.ValueInserter(sp, ind))
+    ift.random.pop_sseq()

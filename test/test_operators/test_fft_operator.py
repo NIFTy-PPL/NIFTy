@@ -42,7 +42,6 @@ def test_fft1D(d, dtype, op):
     tol = _get_rtol(dtype)
     a = ift.RGSpace(dim1, distances=d)
     b = ift.RGSpace(dim1, distances=1./(dim1*d), harmonic=True)
-    np.random.seed(16)
 
     fft = op(domain=a, target=b)
     inp = ift.Field.from_random(

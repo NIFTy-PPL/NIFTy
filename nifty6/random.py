@@ -11,11 +11,40 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
-# Copyright(C) 2013-2019 Max-Planck-Society
+# Copyright(C) 2013-2020 Max-Planck-Society
 #
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
 
 import numpy as np
+
+_sseq = [np.random.SeedSequence(42)]
+_rng = [np.random.default_rng(_sseq[-1])]
+
+
+def spawn_sseq(n, parent=None):
+    if parent is None:
+        global _sseq
+        parent = _sseq[-1]
+    return parent.spawn(n)
+
+
+def current_rng():
+    return _rng[-1]
+
+
+def push_sseq(sseq):
+    _sseq.append(sseq)
+    _rng.append(np.random.default_rng(_sseq[-1]))
+
+
+def push_sseq_from_seed(seed):
+    _sseq.append(np.random.SeedSequence(seed))
+    _rng.append(np.random.default_rng(_sseq[-1]))
+
+
+def pop_sseq():
+    _sseq.pop()
+    _rng.pop()
 
 
 class Random(object):
@@ -23,9 +52,9 @@ class Random(object):
     def pm1(dtype, shape):
         if np.issubdtype(dtype, np.complexfloating):
             x = np.array([1+0j, 0+1j, -1+0j, 0-1j], dtype=dtype)
-            x = x[np.random.randint(4, size=shape)]
+            x = x[_rng[-1].integers(0, 4, size=shape)]
         else:
-            x = 2*np.random.randint(2, size=shape) - 1
+            x = 2*_rng[-1].integers(0, 2, size=shape)-1
         return x.astype(dtype, copy=False)
 
     @staticmethod
@@ -42,10 +71,10 @@ class Random(object):
             raise TypeError("mean must not be complex for a real result field")
         if np.issubdtype(dtype, np.complexfloating):
             x = np.empty(shape, dtype=dtype)
-            x.real = np.random.normal(mean.real, std*np.sqrt(0.5), shape)
-            x.imag = np.random.normal(mean.imag, std*np.sqrt(0.5), shape)
+            x.real = _rng[-1].normal(mean.real, std*np.sqrt(0.5), shape)
+            x.imag = _rng[-1].normal(mean.imag, std*np.sqrt(0.5), shape)
         else:
-            x = np.random.normal(mean, std, shape).astype(dtype, copy=False)
+            x = _rng[-1].normal(mean, std, shape).astype(dtype, copy=False)
         return x
 
     @staticmethod
@@ -57,13 +86,13 @@ class Random(object):
             raise TypeError("low and high must not be complex")
         if np.issubdtype(dtype, np.complexfloating):
             x = np.empty(shape, dtype=dtype)
-            x.real = np.random.uniform(low, high, shape)
-            x.imag = np.random.uniform(low, high, shape)
+            x.real = _rng[-1].uniform(low, high, shape)
+            x.imag = _rng[-1].uniform(low, high, shape)
         elif np.issubdtype(dtype, np.integer):
             if not (np.issubdtype(type(low), np.integer) and
                     np.issubdtype(type(high), np.integer)):
                 raise TypeError("low and high must be integer")
-            x = np.random.randint(low, high+1, shape)
+            x = _rng[-1].integers(low, high+1, shape)
         else:
-            x = np.random.uniform(low, high, shape)
+            x = _rng[-1].uniform(low, high, shape)
         return x.astype(dtype, copy=False)

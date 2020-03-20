@@ -21,8 +21,6 @@ from numpy.testing import assert_
 
 import nifty6 as ift
 
-np.random.seed(40)
-
 pmp = pytest.mark.parametrize
 
 
@@ -35,8 +33,9 @@ def _l2error(a, b):
 @pmp('nv', [4, 12, 128])
 @pmp('N', [1, 10, 100])
 def test_gridding(nu, nv, N, eps):
-    uv = np.random.rand(N, 2) - 0.5
-    vis = np.random.randn(N) + 1j*np.random.randn(N)
+    uv = ift.random.current_rng().random((N, 2)) - 0.5
+    vis = (ift.random.current_rng().standard_normal(N)
+           + 1j*ift.random.current_rng().standard_normal(N))
 
     # Nifty
     dom = ift.RGSpace((nu, nv), distances=(0.2, 1.12))
@@ -92,7 +91,7 @@ def test_cartesian():
 @pmp('N', [1, 10, 100])
 def test_build(nu, nv, N, eps):
     dom = ift.RGSpace([nu, nv])
-    uv = np.random.rand(N, 2) - 0.5
+    uv = ift.random.current_rng().random((N, 2)) - 0.5
     GM = ift.GridderMaker(dom, uv=uv, eps=eps)
     R0 = GM.getGridder()
     R1 = GM.getRest()

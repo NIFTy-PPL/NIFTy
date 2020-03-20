@@ -51,7 +51,6 @@ slow_minimizers = ['ift.SteepestDescent(IC)']
      slow_minimizers)
 @pmp('space', spaces)
 def test_quadratic_minimization(minimizer, space):
-    np.random.seed(42)
     starting_point = ift.Field.from_random('normal', domain=space)*10
     covariance_diagonal = ift.Field.from_random('uniform', domain=space) + 0.5
     covariance = ift.DiagonalOperator(covariance_diagonal)
@@ -76,7 +75,6 @@ def test_quadratic_minimization(minimizer, space):
 
 @pmp('space', spaces)
 def test_WF_curvature(space):
-    np.random.seed(42)
     required_result = ift.full(space, 1.)
 
     s = ift.Field.from_random('uniform', domain=space) + 0.5
@@ -121,7 +119,6 @@ def test_rosenbrock(minimizer):
         from scipy.optimize import rosen, rosen_der, rosen_hess_prod
     except ImportError:
         raise SkipTest
-    np.random.seed(42)
     space = ift.DomainTuple.make(ift.UnstructuredDomain((2,)))
     starting_point = ift.Field.from_random('normal', domain=space)*10
 

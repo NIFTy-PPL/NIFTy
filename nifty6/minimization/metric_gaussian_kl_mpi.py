@@ -11,7 +11,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
-# Copyright(C) 2013-2019 Max-Planck-Society
+# Copyright(C) 2013-2020 Max-Planck-Society
 #
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
 
@@ -113,10 +113,6 @@ class MetricGaussianKL_MPI(Energy):
         preconditioning is done by default.
     _samples : None
         Only a parameter for internal uses. Typically not to be set by users.
-    seed_offset : int
-        A parameter with which one can controll from which seed the samples
-        are drawn. Per default, the seed is different for MPI tasks, but the
-        same every time this class is initialized.
 
     Note
     ----
@@ -132,7 +128,7 @@ class MetricGaussianKL_MPI(Energy):
 
     def __init__(self, mean, hamiltonian, n_samples, constants=[],
                  point_estimates=[], mirror_samples=False,
-                 napprox=0, _samples=None, seed_offset=0,
+                 napprox=0, _samples=None,
                  lh_sampling_dtype=np.float64):
         super(MetricGaussianKL_MPI, self).__init__(mean)
 
@@ -159,10 +155,10 @@ class MetricGaussianKL_MPI(Energy):
             if napprox > 1:
                 met._approximation = makeOp(approximation2endo(met, napprox))
             _samples = []
-            rand_state = np.random.get_state()
+            sseq = random.spawn_sseq(n_samples)
             for i in range(lo, hi):
                 if mirror_samples:
-                    np.random.seed(i//2+seed_offset)
+                    random.push_sseq(sseq[i//2])
                     if (i % 2) and (i-1 >= lo):
                         _samples.append(-_samples[-1])
 
@@ -170,16 +166,16 @@ class MetricGaussianKL_MPI(Energy):
                         _samples.append(((i % 2)*2-1) *
                                         met.draw_sample(from_inverse=True,
                                                         dtype=lh_sampling_dtype))
+                    random.pop_sseq()
                 else:
-                    np.random.seed(i+seed_offset)
+                    random.push_sseq(sseq[i])
                     _samples.append(met.draw_sample(from_inverse=True,
                                                     dtype=lh_sampling_dtype))
-            np.random.set_state(rand_state)
+                    random.pop_sseq()
             _samples = tuple(_samples)
             if mirror_samples:
                 n_samples *= 2
         self._samples = _samples
-        self._seed_offset = seed_offset
         self._n_samples = n_samples
         self._lin = Linearization.make_partial_var(mean, constants)
         v, g = None, None
@@ -205,7 +201,7 @@ class MetricGaussianKL_MPI(Energy):
         return MetricGaussianKL_MPI(
             position, self._hamiltonian, self._n_samples, self._constants,
             self._point_estimates, _samples=self._samples,
-            seed_offset=self._seed_offset, lh_sampling_dtype=self._sampdt)
+            lh_sampling_dtype=self._sampdt)
 
     @property
     def value(self):
@@ -245,11 +241,13 @@ class MetricGaussianKL_MPI(Energy):
             raise NotImplementedError()
         lin = self._lin.with_want_metric()
         samp = full(self._hamiltonian.domain, 0.)
-        rand_state = np.random.get_state()
-        np.random.seed(rank+np.random.randint(99999))
-        for v in self._samples:
+        sseq = random.spawn_sseq(n_samples)
+        for i, v in enumerate(self._samples):
+            # FIXME: this is not yet correct. We need to use the _global_ sample
+            # index, not the local one!
+            random.push_sseq(sseq[i])
             samp = samp + self._hamiltonian(lin+v).metric.draw_sample(from_inverse=False, dtype=dtype)
-        np.random.set_state(rand_state)
+            random.pop_sseq()
         return allreduce_sum_field(samp)
 
     def metric_sample(self, from_inverse=False, dtype=np.float64):

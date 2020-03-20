@@ -52,7 +52,6 @@ def test_exec_time():
 
 
 def test_calc_pos():
-    np.random.seed(42)
     dom = ift.RGSpace(12, harmonic=True)
     op = ift.HarmonicTransformOperator(dom).exp()
     fld = op(0.1*ift.from_random('normal', op.domain))

@@ -28,7 +28,6 @@ pmp = pytest.mark.parametrize
 @pmp('point_estimates', ([], ['a'], ['b'], ['a', 'b']))
 @pmp('mirror_samples', (True, False))
 def test_kl(constants, point_estimates, mirror_samples):
-    np.random.seed(42)
     dom = ift.RGSpace((12,), (2.12))
     op0 = ift.HarmonicSmoothingOperator(dom, 3)
     op = ift.ducktape(dom, None, 'a')*(op0.ducktape('b'))

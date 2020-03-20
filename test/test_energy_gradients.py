@@ -37,9 +37,11 @@ pmp = pytest.mark.parametrize
 
 @pytest.fixture(params=PARAMS)
 def field(request):
-    np.random.seed(request.param[0])
+    ift.random.push_sseq_from_seed(request.param[0])
     S = ift.ScalingOperator(request.param[1], 1.)
-    return S.draw_sample()
+    res = S.draw_sample()
+    ift.random.pop_sseq()
+    return res
 
 
 def test_gaussian(field):
@@ -102,7 +104,7 @@ def test_inverse_gamma(field):
         return
     field = field.exp()
     space = field.domain
-    d = np.random.normal(10, size=space.shape)**2
+    d = ift.random.current_rng().normal(10, size=space.shape)**2
     d = ift.Field(space, d)
     energy = ift.InverseGammaLikelihood(d)
     ift.extra.check_jacobian_consistency(energy, field, tol=1e-5)
@@ -113,7 +115,7 @@ def testPoissonian(field):
         return
     field = field.exp()
     space = field.domain
-    d = np.random.poisson(120, size=space.shape)
+    d = ift.random.current_rng().poisson(120, size=space.shape)
     d = ift.Field(space, d)
     energy = ift.PoissonianEnergy(d)
     ift.extra.check_jacobian_consistency(energy, field, tol=1e-7)
@@ -124,7 +126,7 @@ def test_bernoulli(field):
         return
     field = field.sigmoid()
     space = field.domain
-    d = np.random.binomial(1, 0.1, size=space.shape)
+    d = ift.random.current_rng().binomial(1, 0.1, size=space.shape)
     d = ift.Field(space, d)
     energy = ift.BernoulliEnergy(d)
     ift.extra.check_jacobian_consistency(energy, field, tol=1e-5)

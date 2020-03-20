@@ -25,6 +25,7 @@ from ..field import Field
 from ..linearization import Linearization
 from ..operators.operator import Operator
 from ..sugar import makeOp
+from .. import random
 
 
 def _f_on_np(f, arr):
@@ -67,7 +68,8 @@ class _InterpolationOperator(Operator):
         if table_func is not None:
             if inv_table_func is None:
                 raise ValueError
-            a = func(np.random.randn(10))
+# MR FIXME: not sure whether we should have this in production code
+            a = func(random.current_rng().random(10))
             a1 = _f_on_np(lambda x: inv_table_func(table_func(x)), a)
             np.testing.assert_allclose(a, a1)
             self._table = _f_on_np(table_func, self._table)

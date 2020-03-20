@@ -19,7 +19,6 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 import nifty6 as ift
-np.random.seed(12)
 
 
 def polynomial(coefficients, sampling_points):
@@ -86,7 +85,7 @@ if __name__ == '__main__':
     N_params = 10
     N_samples = 100
     size = (12,)
-    x = np.random.random(size) * 10
+    x = ift.random.current_rng().random(size) * 10
     y = np.sin(x**2) * x**3
     var = np.full_like(y, y.var() / 10)
     var[-2] *= 4

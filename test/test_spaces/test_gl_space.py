@@ -41,7 +41,6 @@ CONSTRUCTOR_CONFIGS = [[
 
 
 def get_dvol_configs():
-    np.random.seed(42)
     wgt = [2.0943951, 2.0943951]
     # for GLSpace(nlat=2, nlon=3)
     dvol_0 = np.array(
