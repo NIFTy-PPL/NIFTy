@@ -198,7 +198,7 @@ class Operator(metaclass=NiftyMeta):
             return self.apply(x.trivial_jac()).prepend_jac(x.jac)
         elif isinstance(x, (Field, MultiField)):
             return self.apply(x)
-        raise TypeError('Operator can only consume Field, MultiFields and Linearizations')
+        return self @ x
 
     def ducktape(self, name):
         from .simple_linear_operators import ducktape
