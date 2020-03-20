@@ -17,11 +17,30 @@
 
 import numpy as np
 
+# Stack of SeedSequence objects. Will always start out with a well-defined
+# default. Users can change the "random seed" used by a calculation by pushing
+# a different SeedSequence before invoking any other nifty6.random calls
 _sseq = [np.random.SeedSequence(42)]
+# Stack of random number generators associated with _sseq.
 _rng = [np.random.default_rng(_sseq[-1])]
 
 
 def spawn_sseq(n, parent=None):
+    """Returns a list of `n` SeedSequence objects which are children of `parent`
+
+    Parameters
+    ----------
+    n : int
+        number of requested SeedSequence objects
+    parent : SeedSequence
+        the object from which the returned objects will be derived
+        If `None`, the top of the current SeedSequence stack will be used
+
+    Returns
+    -------
+    list(SeedSequence)
+        the requested SeedSequence objects
+    """
     if parent is None:
         global _sseq
         parent = _sseq[-1]
@@ -29,20 +48,47 @@ def spawn_sseq(n, parent=None):
 
 
 def current_rng():
+    """Returns the RNG object currently in use by NIFTy
+
+    Returns
+    -------
+    Generator
+        the current Generator object (top of the generatir stack)
+    """
     return _rng[-1]
 
 
 def push_sseq(sseq):
+    """Pushes a new SeedSequence object onto the SeedSequence stack.
+    This also pushes a new Generator object built from the new SeedSequence
+    to the generator stack.
+
+    Parameters
+    ----------
+    sseq: SeedSequence
+        the SeedSequence object to be used from this point
+    """
     _sseq.append(sseq)
     _rng.append(np.random.default_rng(_sseq[-1]))
 
 
 def push_sseq_from_seed(seed):
+    """Pushes a new SeedSequence object derived from an integer seed onto the
+    SeedSequence stack.
+    This also pushes a new Generator object built from the new SeedSequence
+    to the generator stack.
+
+    Parameters
+    ----------
+    seed: int
+        the seed from which the new SeedSequence will be built
+    """
     _sseq.append(np.random.SeedSequence(seed))
     _rng.append(np.random.default_rng(_sseq[-1]))
 
 
 def pop_sseq():
+    """Pops the top of the SeedSequence and generator stacks."""
     _sseq.pop()
     _rng.pop()
 
