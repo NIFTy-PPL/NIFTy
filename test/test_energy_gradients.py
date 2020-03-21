@@ -118,7 +118,7 @@ def testPoissonian(field):
     d = ift.random.current_rng().poisson(120, size=space.shape)
     d = ift.Field(space, d)
     energy = ift.PoissonianEnergy(d)
-    ift.extra.check_jacobian_consistency(energy, field, tol=1e-7)
+    ift.extra.check_jacobian_consistency(energy, field, tol=1e-6)
 
 
 def test_bernoulli(field):
