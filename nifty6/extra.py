@@ -278,17 +278,21 @@ def check_jacobian_consistency(op, loc, tol=1e-8, ntries=100, perf_check=True):
         dir = loc2-loc
         locnext = loc2
         dirnorm = dir.norm()
+        hist = []
         for i in range(50):
             locmid = loc + 0.5*dir
             linmid = op(Linearization.make_var(locmid))
             dirder = linmid.jac(dir)
             numgrad = (lin2.val-lin.val)
             xtol = tol * dirder.norm() / np.sqrt(dirder.size)
+            hist.append((numgrad-dirder).norm())
+#            print(len(hist),hist[-1])
             if (abs(numgrad-dirder) <= xtol).s_all():
                 break
             dir = dir*0.5
             dirnorm *= 0.5
             loc2, lin2 = locmid, linmid
         else:
+            print(hist)
             raise ValueError("gradient and value seem inconsistent")
         loc = locnext
