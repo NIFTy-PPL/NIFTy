@@ -11,7 +11,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
-# Copyright(C) 2013-2019 Max-Planck-Society
+# Copyright(C) 2013-2020 Max-Planck-Society
 #
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
 
@@ -20,6 +20,7 @@ import pytest
 
 import nifty6 as ift
 from itertools import product
+from .common import setup_function, teardown_function
 
 # Currently it is not possible to parametrize fixtures. But this will
 # hopefully be fixed in the future.
@@ -124,11 +125,9 @@ def testPoissonian(field):
 def test_bernoulli(field):
     if isinstance(field.domain, ift.MultiDomain):
         return
-    ift.random.push_sseq_from_seed(42)
     field = field.sigmoid()
     space = field.domain
     d = ift.random.current_rng().binomial(1, 0.1, size=space.shape)
     d = ift.Field(space, d)
     energy = ift.BernoulliEnergy(d)
     ift.extra.check_jacobian_consistency(energy, field, tol=1e-5)
-    ift.random.pop_sseq()

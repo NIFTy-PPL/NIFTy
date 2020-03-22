@@ -18,6 +18,7 @@
 import numpy as np
 
 import nifty6 as ift
+from .common import setup_function, teardown_function
 
 
 def test_plots():

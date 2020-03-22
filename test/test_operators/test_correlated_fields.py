@@ -19,6 +19,7 @@ import pytest
 from numpy.testing import assert_allclose
 
 import nifty6 as ift
+from ..common import setup_function, teardown_function
 
 
 @pytest.mark.parametrize('sspace', [

@@ -19,6 +19,7 @@ import numpy as np
 import pytest
 
 import nifty6 as ift
+from .common import setup_function, teardown_function
 
 
 def _flat_PS(k):

@@ -20,6 +20,7 @@ import numpy as np
 import nifty6 as ift
 from numpy.testing import assert_, assert_allclose
 import pytest
+from .common import setup_function, teardown_function
 
 pmp = pytest.mark.parametrize
 

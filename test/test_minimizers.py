@@ -22,6 +22,7 @@ import pytest
 from numpy.testing import assert_allclose, assert_equal
 
 import nifty6 as ift
+from .common import setup_function, teardown_function
 
 pmp = pytest.mark.parametrize
 IC = ift.GradientNormController(tol_abs_gradnorm=1e-5, iteration_limit=1000)
@@ -119,7 +120,6 @@ def test_rosenbrock(minimizer):
         from scipy.optimize import rosen, rosen_der, rosen_hess_prod
     except ImportError:
         raise SkipTest
-    ift.random.push_sseq_from_seed(42)
     space = ift.DomainTuple.make(ift.UnstructuredDomain((2,)))
     starting_point = ift.Field.from_random('normal', domain=space)*10
 
@@ -171,7 +171,6 @@ def test_rosenbrock(minimizer):
 
     assert_equal(convergence, IC.CONVERGED)
     assert_allclose(energy.position.val, 1., rtol=1e-3, atol=1e-3)
-    ift.random.pop_sseq()
 
 
 @pmp('minimizer', minimizers + slow_minimizers)

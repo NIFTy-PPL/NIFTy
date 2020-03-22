@@ -19,7 +19,7 @@ from numpy.testing import assert_allclose, assert_equal
 
 import nifty6 as ift
 
-from ..common import list2fixture
+from ..common import list2fixture, setup_function, teardown_function
 
 space = list2fixture([
     ift.RGSpace(4),

@@ -20,6 +20,7 @@ import pytest
 from numpy.testing import assert_allclose, assert_equal, assert_raises
 
 import nifty6 as ift
+from .common import setup_function, teardown_function
 
 pmp = pytest.mark.parametrize
 SPACES = [ift.RGSpace((4,)), ift.RGSpace((5))]

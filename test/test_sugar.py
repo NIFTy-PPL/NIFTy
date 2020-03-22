@@ -19,6 +19,7 @@ import numpy as np
 from numpy.testing import assert_equal
 
 import nifty6 as ift
+from .common import setup_function, teardown_function
 
 
 def test_get_signal_variance():

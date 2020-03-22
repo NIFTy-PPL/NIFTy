@@ -20,7 +20,7 @@ import pytest
 
 import nifty6 as ift
 
-from ..common import list2fixture
+from ..common import list2fixture, setup_function, teardown_function
 
 _h_RG_spaces = [
     ift.RGSpace(7, distances=0.2, harmonic=True),
