@@ -16,7 +16,6 @@
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
 
 import pytest
-from numpy.random import seed
 from numpy.testing import assert_allclose
 
 import nifty6 as ift
@@ -39,7 +38,7 @@ def testAmplitudesConsistency(rseed, sspace, Astds, offset_std, N):
             sc.add(op(s.extract(op.domain)))
         return sc.mean.val, sc.var.sqrt().val
 
-    seed(rseed)
+    ift.random.push_sseq_from_seed(rseed)
     nsam = 100
 
     fsspace = ift.RGSpace((12,), (0.4,))
@@ -91,6 +90,7 @@ def testAmplitudesConsistency(rseed, sspace, Astds, offset_std, N):
     em, estd = stats(fa.slice_fluctuation(0), samples)
 
     assert_allclose(m, em, rtol=0.5)
+    ift.random.pop_sseq()
 
     assert op.target[-2] == sspace
     assert op.target[-1] == fsspace
