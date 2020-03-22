@@ -15,6 +15,60 @@
 #
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
 
+"""
+Some remarks on NIFTy's treatment of random numbers
+
+NIFTy makes use of the `Generator` and `SeedSequence` classes introduced to
+`numpy.random` in numpy 1.17.
+
+On first load of the `nifty6.random` module, it creates a stack of
+`SeedSequence` objects which contains a single `SeedSequence` with a fixed seed,
+and also a stack of `Generator` objects, which contains a single generator
+derived from the above seed sequence. Without user intervention, this generator
+will be used for all random number generation tasks within NIFTy. This means
+
+- that random numbers drawn by NIFTy will be reproducible across multiple runs
+  (assuming there are no complications like MPI-enabled runs with a varying
+  number of tasks), and
+- that trying to change random seeds via `numpy.random.seed` will have no
+  effect on the random numbers drawn by NIFTy.
+
+Users who want to change the random seed for a given run can achieve this
+by calling `push_sseq_from_seed()` with a seed of their choice. This will push
+a new seed sequence generated from tat seed onto the seed sequence stack, and a
+generator derived from this seed sequence onto the generator stack. Since all
+NIFTy RNG-related calls will use the generator on the top of the stack, all
+calls from this point on wil use the new generator.
+If the user already has a `SeedSequence` object at hand, they can pass this to
+NIFTy via `push_sseq`. A new generator derived from this sequence will then also
+be pushed onto the generator stack.
+These operations can be reverted (and should be, as soon as the new generator is
+no longer needed) by a call to `pop_sseq()`.
+When users need diect access to the RNG currently in use, they can access it
+via the `current_rng` function.
+
+
+Example for using multiple seed sequences:
+
+Assume that N samples are needed to compute a KL, which are distributed over
+a variable number of MPI tasks. In this situation, whenever random numbers
+need to be drawn for these samples:
+- each MPI task should spawn as many seed sequences as there are samples
+  _in total_, using `sseq = spawn_sseq(N)`
+- each task loops over the local samples
+  - first pushing the seed sequence for the global(!) index of the
+    current sample via `push_sseq(sseq[iglob])`
+  - drawing the required random numbers
+  - then popping the seed sequence again via `pop_sseq()`
+
+That way, random numbers should be reproducible and independent of the number
+of MPI tasks.
+
+WARNING: do not push/pop the same `SeedSequence` object more than once - this
+will lead to repeated random sequences! Whenever you have to push `SeedSequence`
+objects, generate new ones via `spawn_sseq()`.
+"""
+
 import numpy as np
 
 # Stack of SeedSequence objects. Will always start out with a well-defined

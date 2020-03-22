@@ -128,8 +128,7 @@ class MetricGaussianKL_MPI(Energy):
 
     def __init__(self, mean, hamiltonian, n_samples, constants=[],
                  point_estimates=[], mirror_samples=False,
-                 napprox=0, _samples=None,
-                 lh_sampling_dtype=np.float64):
+                 napprox=0, _samples=None, lh_sampling_dtype=np.float64):
         super(MetricGaussianKL_MPI, self).__init__(mean)
 
         if not isinstance(hamiltonian, StandardHamiltonian):
