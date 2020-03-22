@@ -45,7 +45,6 @@ def test_gaussian_energy(space, nonlinearity, noise, seed):
     pspace = ift.PowerSpace(hspace, binbounds=binbounds)
     Dist = ift.PowerDistributor(target=hspace, power_space=pspace)
     xi0 = ift.Field.from_random(domain=hspace, random_type='normal')
-    ift.random.pop_sseq()
 
     def pspec(k):
         return 1/(1 + k**2)**dim
@@ -71,4 +70,5 @@ def test_gaussian_energy(space, nonlinearity, noise, seed):
 
     energy = ift.GaussianEnergy(d, N) @ d_model()
     ift.extra.check_jacobian_consistency(
-        energy, xi0, ntries=10, tol=5e-8)
+        energy, xi0, ntries=10, tol=1e-6)
+    ift.random.pop_sseq()
