@@ -119,6 +119,7 @@ def test_rosenbrock(minimizer):
         from scipy.optimize import rosen, rosen_der, rosen_hess_prod
     except ImportError:
         raise SkipTest
+    ift.random.push_sseq_from_seed(42)
     space = ift.DomainTuple.make(ift.UnstructuredDomain((2,)))
     starting_point = ift.Field.from_random('normal', domain=space)*10
 
@@ -170,6 +171,7 @@ def test_rosenbrock(minimizer):
 
     assert_equal(convergence, IC.CONVERGED)
     assert_allclose(energy.position.val, 1., rtol=1e-3, atol=1e-3)
+    ift.random.pop_sseq()
 
 
 @pmp('minimizer', minimizers + slow_minimizers)

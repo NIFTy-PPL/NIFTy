@@ -124,9 +124,11 @@ def testPoissonian(field):
 def test_bernoulli(field):
     if isinstance(field.domain, ift.MultiDomain):
         return
+    ift.random.push_sseq_from_seed(42)
     field = field.sigmoid()
     space = field.domain
     d = ift.random.current_rng().binomial(1, 0.1, size=space.shape)
     d = ift.Field(space, d)
     energy = ift.BernoulliEnergy(d)
     ift.extra.check_jacobian_consistency(energy, field, tol=1e-5)
+    ift.random.pop_sseq()
