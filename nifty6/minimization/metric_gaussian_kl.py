@@ -115,10 +115,15 @@ class MetricGaussianKL(Energy):
         If MPI is enabled, samples will be distributed as evenly as possible
         across MPI.COMM_WORLD. If `mirror_samples` is set, then a sample and
         its mirror image will always reside on the same task.
+    lh_sampling_dtype : type
+        Determines which dtype in data space shall be used for drawing samples
+        from the metric. If the inference is based on complex data,
+        lh_sampling_dtype shall be set to complex accordingly. The reason for
+        the presence of this parameter is that metric of the likelihood energy
+        is just an `Operator` which does not know anything about the dtype of
+        the fields on which it acts. Default is float64.
     _samples : None
         Only a parameter for internal uses. Typically not to be set by users.
-
-FIXME: lh_sampling_dtype not documented!
 
     Note
     ----
