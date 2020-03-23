@@ -147,6 +147,10 @@ def pop_sseq():
     _rng.pop()
 
 
+def seed(seed):
+    np.random.seed(seed)
+
+
 class Random(object):
     @staticmethod
     def pm1(dtype, shape):
