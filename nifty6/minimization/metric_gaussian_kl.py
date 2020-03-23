@@ -156,18 +156,18 @@ class MetricGaussianKL(Energy):
 
         self._hamiltonian = hamiltonian
 
+        self._n_samples = int(n_samples)
         self._use_mpi = bool(use_mpi)
         if self._use_mpi:
             from mpi4py import MPI
             self._comm = MPI.COMM_WORLD
-            self._ntask = self._comm.Get_size()
-            self._rank = self._comm.Get_rank()
-            self._master = (self._rank == 0)
+            ntask = self._comm.Get_size()
+            rank = self._comm.Get_rank()
+            self._lo, self._hi = _shareRange(self._n_samples, ntask, rank)
         else:
-            self._comm, self._ntask, self._rank, self._master = None, 1, 0, True
+            self._comm = None
+            self._lo, self._hi = 0, self._n_samples
 
-        self._n_samples = int(n_samples)
-        self._lo, self._hi = _shareRange(self._n_samples, self._ntask, self._rank)
         self._mirror_samples = bool(mirror_samples)
         self._n_eff_samples = self._n_samples
         if self._mirror_samples:
