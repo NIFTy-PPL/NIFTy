@@ -248,7 +248,7 @@ class MetricGaussianKL(Energy):
     @property
     def samples(self):
         if self._comm is not None:
-            res = _comm.allgather(self._samples)
+            res = self._comm.allgather(self._samples)
             res = [item for sublist in res for item in sublist]
         else:
             res = self._samples
@@ -261,7 +261,7 @@ class MetricGaussianKL(Energy):
             raise NotImplementedError()
         lin = self._lin.with_want_metric()
         samp = full(self._hamiltonian.domain, 0.)
-        sseq = random.spawn_sseq(n_samples)
+        sseq = random.spawn_sseq(self._n_samples)
         for i, v in enumerate(self._samples):
             random.push_sseq(sseq[self._lo+i])
             samp = samp + self._hamiltonian(lin+v).metric.draw_sample(from_inverse=False, dtype=dtype)
