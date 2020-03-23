@@ -1,5 +1,14 @@
 Changes since NIFTy 5:
 
+New approach for random number generation
+=========================================
+
+The code now uses `numpy`'s new `SeedSequence` and `Generator` classes for the
+production of random numbers (introduced in numpy 1.17. This greatly simplifies
+the generation of reproducible random numbers in the presence of MPI parallelism
+and leads to cleaner code overall. Please see the documentation of
+`nifty6.random` for details.
+
 Interface Change for non-linear Operators
 =========================================
 
@@ -16,7 +25,6 @@ method when implementing new energies. This change should not lead to unexpected
 behaviour since both `Operator._check_input()` and
 `extra.check_jacobian_consistency()` tests for the new conditions to be
 fulfilled.
-
 
 Special functions for complete Field reduction operations
 =========================================================
