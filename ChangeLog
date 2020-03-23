@@ -1,5 +1,11 @@
 Changes since NIFTy 5:
 
+MPI parallelisation over samples in MetricGaussianKL
+====================================================
+
+The classes `MetricGaussianKL` and `MetricGaussianKL_MPI` have been unified
+into one `MetricGaussianKL` class which has MPI support built in.
+
 New approach for random number generation
 =========================================
 
@@ -74,12 +80,3 @@ User-visible changes:
   replaced by a single function called `makeField`
 - the property `local_shape` has been removed from `Domain` (and subclasses)
   and `DomainTuple`.
-
-Transfer of MPI parallelization into operators:
-===============================================
-
-As was already the case with the `MetricGaussianKL_MPI` in NIFTy5, MPI
-parallelization in NIFTy6 is handled by specialized MPI-enabled operators.
-
-They are accessible via the `nifty6.mpi` namespace, from which they can be
-imported directly: `from nifty6.mpi import MPIenabledOperator`.
