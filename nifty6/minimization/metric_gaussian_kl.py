@@ -187,7 +187,7 @@ class MetricGaussianKL(Energy):
                 random.pop_sseq()
             _samples = tuple(_samples)
         else:
-            if len(_samples) != self._n_samples:
+            if len(_samples) != self._hi-self._lo:
                 raise ValueError("# of samples mismatch")
         self._samples = _samples
         self._lin = Linearization.make_partial_var(mean, self._constants)
