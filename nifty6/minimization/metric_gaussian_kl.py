@@ -176,8 +176,7 @@ class MetricGaussianKL(Energy):
         if _samples is None:
             met = hamiltonian(Linearization.make_partial_var(
                 mean, self._point_estimates, True)).metric
-# FIXME: should this be ">=1" instead of ">1"?
-            if napprox > 1:
+            if napprox >= 1:
                 met._approximation = makeOp(approximation2endo(met, napprox))
             _samples = []
             sseq = random.spawn_sseq(self._n_samples)
