@@ -15,17 +15,17 @@
 #
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
 
-from .. import utilities
-from ..linearization import Linearization
-from ..operators.energy_operators import StandardHamiltonian
-from ..operators.endomorphic_operator import EndomorphicOperator
-from .energy import Energy
 import numpy as np
-from ..probing import approximation2endo
-from ..sugar import makeOp, full
+
+from .. import random, utilities
 from ..field import Field
+from ..linearization import Linearization
 from ..multi_field import MultiField
-from .. import random
+from ..operators.endomorphic_operator import EndomorphicOperator
+from ..operators.energy_operators import StandardHamiltonian
+from ..probing import approximation2endo
+from ..sugar import full, makeOp
+from .energy import Energy
 
 
 def _shareRange(nwork, nshares, myshare):
