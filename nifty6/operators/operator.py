@@ -27,10 +27,6 @@ class Operator(metaclass=NiftyMeta):
     domain, and can also provide the Jacobian.
     """
 
-    VALUE_ONLY = 0
-    WITH_JAC = 1
-    WITH_METRIC = 2
-
     @property
     def domain(self):
         """The domain on which the Operator's input Field is defined.
@@ -202,7 +198,7 @@ class Operator(metaclass=NiftyMeta):
             return self.apply(x.trivial_jac()).prepend_jac(x.jac)
         elif isinstance(x, (Field, MultiField)):
             return self.apply(x)
-        raise TypeError('Operator can only consume Field, MultiFields and Linearizations')
+        return self @ x
 
     def ducktape(self, name):
         from .simple_linear_operators import ducktape
