@@ -61,7 +61,7 @@ def _lognormal_moments(mean, sig, N=0):
     if not np.all(sig > 0):
         raise ValueError("sig must be greater 0; got {!r}".format(sig))
 
-    logsig = np.sqrt(np.log((sig/mean)**2 + 1))
+    logsig = np.sqrt(np.log1p((sig/mean)**2))
     logmean = np.log(mean) - logsig**2/2
     return logmean, logsig
 
