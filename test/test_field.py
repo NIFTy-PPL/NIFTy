@@ -20,6 +20,7 @@ import pytest
 from numpy.testing import assert_allclose, assert_equal, assert_raises
 
 import nifty6 as ift
+from .common import setup_function, teardown_function
 
 pmp = pytest.mark.parametrize
 SPACES = [ift.RGSpace((4,)), ift.RGSpace((5))]
@@ -51,8 +52,6 @@ def _spec2(k):
 ])
 @pmp('space2', [ift.RGSpace((8,), harmonic=True), ift.LMSpace(12)])
 def test_power_synthesize_analyze(space1, space2):
-    np.random.seed(11)
-
     p1 = ift.PowerSpace(space1)
     fp1 = ift.PS_field(p1, _spec1)
     p2 = ift.PowerSpace(space2)
@@ -82,8 +81,6 @@ def test_power_synthesize_analyze(space1, space2):
 ])
 @pmp('space2', [ift.RGSpace((8,), harmonic=True), ift.LMSpace(12)])
 def test_DiagonalOperator_power_analyze2(space1, space2):
-    np.random.seed(11)
-
     fp1 = ift.PS_field(ift.PowerSpace(space1), _spec1)
     fp2 = ift.PS_field(ift.PowerSpace(space2), _spec2)
 

@@ -22,7 +22,7 @@ from scipy.stats import invgamma, norm
 
 import nifty6 as ift
 
-from ..common import list2fixture
+from ..common import list2fixture, setup_function, teardown_function
 
 pmp = pytest.mark.parametrize
 pmp = pytest.mark.parametrize

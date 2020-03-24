@@ -15,11 +15,136 @@
 #
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
 
+"""
+Some remarks on NIFTy's treatment of random numbers
+
+NIFTy makes use of the `Generator` and `SeedSequence` classes introduced to
+`numpy.random` in numpy 1.17.
+
+On first load of the `nifty6.random` module, it creates a stack of
+`SeedSequence` objects which contains a single `SeedSequence` with a fixed seed,
+and also a stack of `Generator` objects, which contains a single generator
+derived from the above seed sequence. Without user intervention, this generator
+will be used for all random number generation tasks within NIFTy. This means
+
+- that random numbers drawn by NIFTy will be reproducible across multiple runs
+  (assuming there are no complications like MPI-enabled runs with a varying
+  number of tasks), and
+- that trying to change random seeds via `numpy.random.seed` will have no
+  effect on the random numbers drawn by NIFTy.
+
+Users who want to change the random seed for a given run can achieve this
+by calling `push_sseq_from_seed()` with a seed of their choice. This will push
+a new seed sequence generated from that seed onto the seed sequence stack, and a
+generator derived from this seed sequence onto the generator stack. Since all
+NIFTy RNG-related calls will use the generator on the top of the stack, all
+calls from this point on will use the new generator.
+If the user already has a `SeedSequence` object at hand, they can pass this to
+NIFTy via `push_sseq`. A new generator derived from this sequence will then also
+be pushed onto the generator stack.
+These operations can be reverted (and should be, as soon as the new generator is
+no longer needed) by a call to `pop_sseq()`.
+When users need direct access to the RNG currently in use, they can access it
+via the `current_rng` function.
+
+
+Example for using multiple seed sequences:
+
+Assume that N samples are needed to compute a KL, which are distributed over
+a variable number of MPI tasks. In this situation, whenever random numbers
+need to be drawn for these samples:
+- each MPI task should spawn as many seed sequences as there are samples
+  _in total_, using `sseq = spawn_sseq(N)`
+- each task loops over the local samples
+  - first pushing the seed sequence for the global(!) index of the
+    current sample via `push_sseq(sseq[iglob])`
+  - drawing the required random numbers
+  - then popping the seed sequence again via `pop_sseq()`
+
+That way, random numbers should be reproducible and independent of the number
+of MPI tasks.
+
+WARNING: do not push/pop the same `SeedSequence` object more than once - this
+will lead to repeated random sequences! Whenever you have to push `SeedSequence`
+objects, generate new ones via `spawn_sseq()`.
+"""
+
 import numpy as np
 
+# Stack of SeedSequence objects. Will always start out with a well-defined
+# default. Users can change the "random seed" used by a calculation by pushing
+# a different SeedSequence before invoking any other nifty6.random calls
+_sseq = [np.random.SeedSequence(42)]
+# Stack of random number generators associated with _sseq.
+_rng = [np.random.default_rng(_sseq[-1])]
 
-def seed(seed):
-    np.random.seed(seed)
+
+def spawn_sseq(n, parent=None):
+    """Returns a list of `n` SeedSequence objects which are children of `parent`
+
+    Parameters
+    ----------
+    n : int
+        number of requested SeedSequence objects
+    parent : SeedSequence
+        the object from which the returned objects will be derived
+        If `None`, the top of the current SeedSequence stack will be used
+
+    Returns
+    -------
+    list(SeedSequence)
+        the requested SeedSequence objects
+    """
+    if parent is None:
+        global _sseq
+        parent = _sseq[-1]
+    return parent.spawn(n)
+
+
+def current_rng():
+    """Returns the RNG object currently in use by NIFTy
+
+    Returns
+    -------
+    Generator
+        the current Generator object (top of the generatir stack)
+    """
+    return _rng[-1]
+
+
+def push_sseq(sseq):
+    """Pushes a new SeedSequence object onto the SeedSequence stack.
+    This also pushes a new Generator object built from the new SeedSequence
+    to the generator stack.
+
+    Parameters
+    ----------
+    sseq: SeedSequence
+        the SeedSequence object to be used from this point
+    """
+    _sseq.append(sseq)
+    _rng.append(np.random.default_rng(_sseq[-1]))
+
+
+def push_sseq_from_seed(seed):
+    """Pushes a new SeedSequence object derived from an integer seed onto the
+    SeedSequence stack.
+    This also pushes a new Generator object built from the new SeedSequence
+    to the generator stack.
+
+    Parameters
+    ----------
+    seed: int
+        the seed from which the new SeedSequence will be built
+    """
+    _sseq.append(np.random.SeedSequence(seed))
+    _rng.append(np.random.default_rng(_sseq[-1]))
+
+
+def pop_sseq():
+    """Pops the top of the SeedSequence and generator stacks."""
+    _sseq.pop()
+    _rng.pop()
 
 
 class Random(object):
@@ -27,9 +152,9 @@ class Random(object):
     def pm1(dtype, shape):
         if np.issubdtype(dtype, np.complexfloating):
             x = np.array([1+0j, 0+1j, -1+0j, 0-1j], dtype=dtype)
-            x = x[np.random.randint(4, size=shape)]
+            x = x[_rng[-1].integers(0, 4, size=shape)]
         else:
-            x = 2*np.random.randint(2, size=shape) - 1
+            x = 2*_rng[-1].integers(0, 2, size=shape)-1
         return x.astype(dtype, copy=False)
 
     @staticmethod
@@ -46,10 +171,10 @@ class Random(object):
             raise TypeError("mean must not be complex for a real result field")
         if np.issubdtype(dtype, np.complexfloating):
             x = np.empty(shape, dtype=dtype)
-            x.real = np.random.normal(mean.real, std*np.sqrt(0.5), shape)
-            x.imag = np.random.normal(mean.imag, std*np.sqrt(0.5), shape)
+            x.real = _rng[-1].normal(mean.real, std*np.sqrt(0.5), shape)
+            x.imag = _rng[-1].normal(mean.imag, std*np.sqrt(0.5), shape)
         else:
-            x = np.random.normal(mean, std, shape).astype(dtype, copy=False)
+            x = _rng[-1].normal(mean, std, shape).astype(dtype, copy=False)
         return x
 
     @staticmethod
@@ -61,13 +186,13 @@ class Random(object):
             raise TypeError("low and high must not be complex")
         if np.issubdtype(dtype, np.complexfloating):
             x = np.empty(shape, dtype=dtype)
-            x.real = np.random.uniform(low, high, shape)
-            x.imag = np.random.uniform(low, high, shape)
+            x.real = _rng[-1].uniform(low, high, shape)
+            x.imag = _rng[-1].uniform(low, high, shape)
         elif np.issubdtype(dtype, np.integer):
             if not (np.issubdtype(type(low), np.integer) and
                     np.issubdtype(type(high), np.integer)):
                 raise TypeError("low and high must be integer")
-            x = np.random.randint(low, high+1, shape)
+            x = _rng[-1].integers(low, high+1, shape)
         else:
-            x = np.random.uniform(low, high, shape)
+            x = _rng[-1].uniform(low, high, shape)
         return x.astype(dtype, copy=False)

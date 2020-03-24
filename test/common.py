@@ -11,7 +11,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
-# Copyright(C) 2013-2019 Max-Planck-Society
+# Copyright(C) 2013-2020 Max-Planck-Society
 #
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
 
@@ -24,3 +24,13 @@ def list2fixture(lst):
         return request.param
 
     return myfixture
+
+
+def setup_function():
+    import nifty6 as ift
+    ift.random.push_sseq_from_seed(42)
+
+
+def teardown_function():
+    import nifty6 as ift
+    ift.random.pop_sseq()

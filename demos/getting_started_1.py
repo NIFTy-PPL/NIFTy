@@ -46,8 +46,6 @@ def make_random_mask():
 
 
 if __name__ == '__main__':
-    np.random.seed(42)
-
     # Choose space on which the signal field is defined
     if len(sys.argv) == 2:
         mode = int(sys.argv[1])

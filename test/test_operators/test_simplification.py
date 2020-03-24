@@ -18,6 +18,7 @@
 from numpy.testing import assert_allclose, assert_equal
 
 import nifty6 as ift
+from ..common import setup_function, teardown_function
 
 
 def test_simplification():

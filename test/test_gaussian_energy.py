@@ -19,6 +19,7 @@ import numpy as np
 import pytest
 
 import nifty6 as ift
+from .common import setup_function, teardown_function
 
 
 def _flat_PS(k):
@@ -37,7 +38,7 @@ pmp = pytest.mark.parametrize
 @pmp('noise', [1, 1e-2, 1e2])
 @pmp('seed', [4, 78, 23])
 def test_gaussian_energy(space, nonlinearity, noise, seed):
-    np.random.seed(seed)
+    ift.random.push_sseq_from_seed(seed)
     dim = len(space.shape)
     hspace = space.get_default_codomain()
     ht = ift.HarmonicTransformOperator(hspace, target=space)
@@ -70,4 +71,5 @@ def test_gaussian_energy(space, nonlinearity, noise, seed):
 
     energy = ift.GaussianEnergy(d, N) @ d_model()
     ift.extra.check_jacobian_consistency(
-        energy, xi0, ntries=10, tol=5e-8)
+        energy, xi0, ntries=10, tol=1e-6)
+    ift.random.pop_sseq()

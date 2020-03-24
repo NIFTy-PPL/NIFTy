@@ -20,6 +20,7 @@ import numpy as np
 import nifty6 as ift
 from numpy.testing import assert_, assert_allclose
 import pytest
+from .common import setup_function, teardown_function
 
 pmp = pytest.mark.parametrize
 
@@ -28,7 +29,6 @@ pmp = pytest.mark.parametrize
 @pmp('point_estimates', ([], ['a'], ['b'], ['a', 'b']))
 @pmp('mirror_samples', (True, False))
 def test_kl(constants, point_estimates, mirror_samples):
-    np.random.seed(42)
     dom = ift.RGSpace((12,), (2.12))
     op0 = ift.HarmonicSmoothingOperator(dom, 3)
     op = ift.ducktape(dom, None, 'a')*(op0.ducktape('b'))
@@ -45,12 +45,13 @@ def test_kl(constants, point_estimates, mirror_samples):
                               point_estimates=point_estimates,
                               mirror_samples=mirror_samples,
                               napprox=0)
+    samp_full = kl.samples
     klpure = ift.MetricGaussianKL(mean0,
                                   h,
-                                  nsamps,
-                                  mirror_samples=mirror_samples,
+                                  len(samp_full),
+                                  mirror_samples=False,
                                   napprox=0,
-                                  _samples=kl.samples)
+                                  _samples=samp_full)
 
     # Test value
     assert_allclose(kl.value, klpure.value)

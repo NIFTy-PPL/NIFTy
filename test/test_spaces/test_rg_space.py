@@ -20,6 +20,7 @@ import pytest
 from numpy.testing import assert_, assert_allclose, assert_equal
 
 import nifty6 as ift
+from ..common import setup_function, teardown_function
 
 pmp = pytest.mark.parametrize
 # [shape, distances, harmonic, expected]
@@ -66,7 +67,6 @@ def get_k_length_array_configs():
 
 
 def get_dvol_configs():
-    np.random.seed(42)
     return [[(11, 11), None, False, 1], [(11, 11), None, False, 1],
             [(11, 11), (1.3, 1.3), False, 1], [(11, 11), (1.3, 1.3), False,
                                                1], [(11, 11), None, True, 1],
