@@ -35,16 +35,16 @@ will be used for all random number generation tasks within NIFTy. This means
 
 Users who want to change the random seed for a given run can achieve this
 by calling `push_sseq_from_seed()` with a seed of their choice. This will push
-a new seed sequence generated from tat seed onto the seed sequence stack, and a
+a new seed sequence generated from that seed onto the seed sequence stack, and a
 generator derived from this seed sequence onto the generator stack. Since all
 NIFTy RNG-related calls will use the generator on the top of the stack, all
-calls from this point on wil use the new generator.
+calls from this point on will use the new generator.
 If the user already has a `SeedSequence` object at hand, they can pass this to
 NIFTy via `push_sseq`. A new generator derived from this sequence will then also
 be pushed onto the generator stack.
 These operations can be reverted (and should be, as soon as the new generator is
 no longer needed) by a call to `pop_sseq()`.
-When users need diect access to the RNG currently in use, they can access it
+When users need direct access to the RNG currently in use, they can access it
 via the `current_rng` function.
 
 
