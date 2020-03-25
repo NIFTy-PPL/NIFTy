@@ -22,12 +22,10 @@ from numpy.testing import assert_allclose
 import nifty6 as ift
 
 
-@pytest.mark.parametrize('sspace', [
-    ift.RGSpace(4),
-    ift.RGSpace((4, 4), (0.123, 0.4)),
-    ift.HPSpace(8),
-    ift.GLSpace(4)
-])
+@pytest.mark.parametrize('sspace', [ift.RGSpace(4),
+                                    ift.RGSpace((4, 4), (0.123, 0.4)),
+                                    ift.HPSpace(8),
+                                    ift.GLSpace(4)])
 @pytest.mark.parametrize('rseed', [13, 2])
 @pytest.mark.parametrize('Astds', [[1., 3.], [0.2, 1.4]])
 @pytest.mark.parametrize('offset_std_mean', [1., 10.])
