@@ -246,7 +246,7 @@ class MetricGaussianKL(Energy):
     def samples(self):
         if self._comm is not None:
             res = self._comm.allgather(self._samples)
-            res = [item for sublist in res for item in sublist]
+            res = tuple(item for sublist in res for item in sublist)
         else:
             res = self._samples
         if self._mirror_samples:
