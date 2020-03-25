@@ -257,7 +257,7 @@ class MetricGaussianKL(Energy):
             res = res + tuple(-item for item in res)
         return res
 
-    def _unscaled_metric_sample(self, from_inverse=False, dtype=np.float64):
+    def _metric_sample(self, from_inverse=False, dtype=np.float64):
         if from_inverse:
             raise NotImplementedError()
         lin = self._lin.with_want_metric()
@@ -269,7 +269,4 @@ class MetricGaussianKL(Energy):
             if self._mirror_samples:
                 samp = samp + self._hamiltonian(lin-v).metric.draw_sample(from_inverse=False, dtype=dtype)
             random.pop_sseq()
-        return _allreduce_sum_field(self._comm, samp)
-
-    def _metric_sample(self, from_inverse=False, dtype=np.float64):
-        return self._unscaled_metric_sample(from_inverse, dtype)/self._n_eff_samples
+        return _allreduce_sum_field(self._comm, samp)/self._n_eff_samples
