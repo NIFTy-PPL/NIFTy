@@ -45,13 +45,13 @@ def test_kl(constants, point_estimates, mirror_samples):
                               point_estimates=point_estimates,
                               mirror_samples=mirror_samples,
                               napprox=0)
-    samp_full = kl.samples
+    locsamp = kl._local_samples
     klpure = ift.MetricGaussianKL(mean0,
                                   h,
-                                  len(samp_full),
-                                  mirror_samples=False,
+                                  nsamps,
+                                  mirror_samples=mirror_samples,
                                   napprox=0,
-                                  _samples=samp_full)
+                                  _local_samples=locsamp)
 
     # Test value
     assert_allclose(kl.value, klpure.value)
@@ -66,7 +66,7 @@ def test_kl(constants, point_estimates, mirror_samples):
 
     # Test number of samples
     expected_nsamps = 2*nsamps if mirror_samples else nsamps
-    assert_(len(kl.samples) == expected_nsamps)
+    assert_(len(tuple(kl.samples)) == expected_nsamps)
 
     # Test point_estimates (after drawing samples)
     for kk in point_estimates:
