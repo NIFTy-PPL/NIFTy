@@ -231,8 +231,12 @@ class MetricGaussianKL(Energy):
             else:
                 mymap = map(lambda v: self._hamiltonian(lin+v).metric,
                             self._samples)
-                self.unscaled_metric = utilities.my_sum(mymap)
-                self._metric = self.unscaled_metric.scale(1./self._n_eff_samples)
+                unscaled_metric = utilities.my_sum(mymap)
+                if self._mirror_samples:
+                    mymap = map(lambda v: self._hamiltonian(lin-v).metric,
+                            self._samples)
+                    unscaled_metric = unscaled_metric + utilities.my_sum(mymap)
+                self._metric = unscaled_metric.scale(1./self._n_eff_samples)
 
     def apply_metric(self, x):
         self._get_metric()
