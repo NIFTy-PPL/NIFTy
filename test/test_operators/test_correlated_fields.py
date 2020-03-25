@@ -32,7 +32,8 @@ import nifty6 as ift
 @pytest.mark.parametrize('Astds', [[1., 3.], [0.2, 1.4]])
 @pytest.mark.parametrize('offset_std_mean', [1., 10.])
 @pytest.mark.parametrize('N', [0, 2])
-def testAmplitudesConsistency(rseed, sspace, Astds, offset_std_mean, N):
+@pytest.mark.parametrize('zm_mean', [0, 1.])
+def testAmplitudesConsistency(rseed, sspace, Astds, offset_std_mean, N, zm_mean):
     def stats(op, samples):
         sc = ift.StatCalculator()
         for s in samples:
@@ -50,7 +51,7 @@ def testAmplitudesConsistency(rseed, sspace, Astds, offset_std_mean, N):
     else:
         dofdex1, dofdex2, dofdex3 = None, None, None
 
-    fa = ift.CorrelatedFieldMaker.make(0., offset_std_mean, 1E-8, '', N, dofdex1)
+    fa = ift.CorrelatedFieldMaker.make(zm_mean, offset_std_mean, 1E-8, '', N, dofdex1)
     fa.add_fluctuations(sspace, Astds[0], 1E-8, 1.1, 2., 2.1, .5, -2, 1., 'spatial', dofdex=dofdex2)
     fa.add_fluctuations(fsspace, Astds[1], 1E-8, 3.1, 1., .5, .1, -4, 1., 'freq', dofdex=dofdex3)
     op = fa.finalize()
