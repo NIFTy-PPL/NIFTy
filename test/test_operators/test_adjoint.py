@@ -280,13 +280,28 @@ def testSpecialSum(sp):
 
 @pmp('sp', [ift.RGSpace(10)])
 @pmp('seed', [12, 3])
-def testMatrixProductOperator(sp, seed):
+def testMatrixProductOperator_1d(sp, seed):
     ift.random.push_sseq_from_seed(seed)
     mat = ift.random.current_rng().standard_normal((*sp.shape, *sp.shape))
     op = ift.MatrixProductOperator(sp, mat)
     ift.extra.consistency_check(op)
     mat = mat + 1j*ift.random.current_rng().standard_normal((*sp.shape, *sp.shape))
     op = ift.MatrixProductOperator(sp, mat)
+    ift.extra.consistency_check(op)
+    ift.random.pop_sseq()
+
+
+@pmp('sp', [ift.RGSpace((2, 10))])
+@pmp('axis', [0, 1])
+@pmp('seed', [12, 3])
+def testMatrixProductOperator_2d(sp, axis, seed):
+    mat_shp = (sp.shape[axis], sp.shape[axis])
+    ift.random.push_sseq_from_seed(seed)
+    mat = ift.random.current_rng().standard_normal(mat_shp)
+    op = ift.MatrixProductOperator(sp, mat, axis)
+    ift.extra.consistency_check(op)
+    mat = mat + 1j*ift.random.current_rng().standard_normal(mat_shp)
+    op = ift.MatrixProductOperator(sp, mat, axis)
     ift.extra.consistency_check(op)
     ift.random.pop_sseq()
 
