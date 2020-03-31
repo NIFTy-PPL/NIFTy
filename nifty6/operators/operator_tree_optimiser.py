@@ -26,7 +26,7 @@ def optimize_operator(op):
     Recognizes same leaves and structures them.
     Works partly inplace, rendering the old operator unusable"""
 
-    # Format: List of tuple [op, parent_index, left=True right=False, pos in op_chain]
+    # Format: List of tuple [op, parent_index, left=True right=False]
     nodes = []
     # Format: ID: index in nodes[]
     id_dic = {}
@@ -68,10 +68,10 @@ def optimize_operator(op):
         if isinstance(op, _OpChain):
            for i in range(len(op._ops)):
                 if isnode(op._ops[i]):
-                    nodes.append((op._ops[i], active_node, left, i))
+                    nodes.append((op._ops[i], active_node, left))
                     isleave = False
         elif isnode(op):
-            nodes.append((op, active_node, left, -1))
+            nodes.append((op, active_node, left))
             isleave = False
         if isleave:
             leaves.add((active_node, left))
@@ -103,8 +103,6 @@ def optimize_operator(op):
 
             list_index_traversed += 1
         return
-
-    equal_nodes(op)
 
     def equal_leaves(leaves, edited):
         id_leave = {}
@@ -182,6 +180,8 @@ def optimize_operator(op):
                     setattr(parent, attr, same_op[key][1])
         return key_list_op, same_op, edited
 
+    equal_nodes(op)
+
     edited = set()
     key_list_op, same_op, edited = equal_leaves(leaves, edited)
     cond = True
@@ -196,8 +196,8 @@ def optimize_operator(op):
     key_list_tree = []
     same_tree = {}
     subtree_leaves = set()
-
-
+    key_list_tree_w_leaves = []
+    same_tree_w_leaves = {}
     for item in list(id_dic.items()):
         if len(item[1]) > 1:
             key_list_tree.append(item[0])
@@ -209,18 +209,22 @@ def optimize_operator(op):
 
         for node_indices in id_dic[key]:
             edited.add(node_indices)
-            pos = nodes[node_indices][3]
             parent = nodes[nodes[node_indices][1]][0]
-            #TODO: cut subtrees can also be regarded as leaves
-            #Some kind of order is needed to get the domains right at the end...
-            #leaves.add((node_indices, nodes[node_indices][2]))
             attr = left_parser(nodes[node_indices][2])
-            if pos is not -1:
-                getattr(parent, attr)._ops = getattr(parent, attr)._ops[:pos] + (performance_adapter,) + \
-                                                  getattr(parent, attr)._ops[pos+1:]
+            if isinstance(getattr(parent, attr), _OpChain):
+                getattr(parent, attr)._ops = getattr(parent, attr)._ops[:-1] + (performance_adapter,)
             else:
                 setattr(parent, attr, performance_adapter)
-
+            subtree_leaves.add((nodes[node_indices][1], nodes[node_indices][2]))
+        cond = True
+        while cond:
+            key_temp, same_op_temp, _ = equal_leaves(subtree_leaves, edited)
+            key_list_tree_w_leaves += key_temp
+            same_tree_w_leaves.update(same_op_temp)
+            cond = len(same_op_temp) > 0
+        key_list_tree_w_leaves += [key,]
+        subtree_leaves.clear()
+    same_tree_w_leaves.update(same_tree)
 
     for index in edited:
         rebuild_domains(index)
@@ -228,8 +232,8 @@ def optimize_operator(op):
         op._domain = op._ops[-1].domain
 
     # Insert trees before leaves
-    for key in key_list_tree:
-        op = op.partial_insert(same_tree[key][1].adjoint(same_tree[key][0]))
+    for key in key_list_tree_w_leaves:
+        op = op.partial_insert(same_tree_w_leaves[key][1].adjoint(same_tree_w_leaves[key][0]))
     for key in reversed(key_list_op):
         op = op.partial_insert(same_op[key][1].adjoint(same_op[key][0]))
     return op
