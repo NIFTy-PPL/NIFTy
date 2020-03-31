@@ -197,6 +197,21 @@ def optimize_operator(op):
     # Insert trees before leaves
     for key in key_list_tree:
         op = op.partial_insert(same_tree[key][1].adjoint(same_tree[key][0]))
-    for key in reversed(key_list_op):
+    for key in key_list_op:
         op = op.partial_insert(same_op[key][1].adjoint(same_op[key][0]))
     return op
+
+from copy import deepcopy
+from nifty6 import from_random, MultiField
+from numpy import allclose
+def optimize_operator_safe(op):
+    op_optimized = deepcopy(op)
+    op_optimized = optimize_operator(op_optimized)
+    test_field = from_random('normal', op.domain)
+
+    if isinstance(op(test_field), MultiField):
+        for key in op(test_field).keys():
+            assert allclose(op(test_field).val[key], op_optimized(test_field).val[key])
+    else:
+        assert allclose(op(test_field).val, op_optimized(test_field).val)
+    return op_optimized
