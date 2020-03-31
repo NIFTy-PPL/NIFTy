@@ -41,7 +41,7 @@ class VdotOperator(LinearOperator):
     def apply(self, x, mode):
         self._check_mode(mode)
         if mode == self.TIMES:
-            return Field.scalar(self._field.vdot(x))
+            return self._field.vdot(x)
         return self._field*x.val[()]
 
 

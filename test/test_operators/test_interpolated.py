@@ -15,20 +15,34 @@
 #
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
 
+import numpy as np
+import pytest
 from numpy.testing import assert_allclose
+from scipy.stats import invgamma, norm
 
 import nifty6 as ift
 
 from ..common import list2fixture, setup_function, teardown_function
 
-s = list2fixture([
-    ift.RGSpace(8, distances=12.9),
-    ift.RGSpace(59, distances=.24, harmonic=True),
-    ift.RGSpace([12, 3])
-])
+pmp = pytest.mark.parametrize
+pmp = pytest.mark.parametrize
+space = list2fixture([ift.GLSpace(15),
+                      ift.RGSpace(64, distances=.789),
+                      ift.RGSpace([32, 32], distances=.789)])
+seed = list2fixture([4, 78, 23])
 
 
-def test_value(s):
-    Regrid = ift.RegriddingOperator(s, s.shape)
-    f = ift.from_random('normal', Regrid.domain)
-    assert_allclose(f.val, Regrid(f).val)
+def testInterpolationAccuracy(space, seed):
+    S = ift.ScalingOperator(space, 1.)
+    pos = S.draw_sample()
+    alpha = 1.5
+    qs = [0.73, pos.exp().val]
+    for q in qs:
+        qfld = q
+        if not np.isscalar(q):
+            qfld = ift.makeField(space, q)
+        op = ift.InverseGammaOperator(space, alpha, qfld)
+        arr1 = op(pos).val
+        arr0 = invgamma.ppf(norm.cdf(pos.val), alpha, scale=q)
+        assert_allclose(arr0, arr1)
+

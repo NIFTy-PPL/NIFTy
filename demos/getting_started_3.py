@@ -33,20 +33,18 @@ import nifty6 as ift
 
 
 def random_los(n_los):
-    starts = list(np.random.uniform(0, 1, (n_los, 2)).T)
-    ends = list(np.random.uniform(0, 1, (n_los, 2)).T)
+    starts = list(ift.random.current_rng().random((n_los, 2)).T)
+    ends = list(ift.random.current_rng().random((n_los, 2)).T)
     return starts, ends
 
 
 def radial_los(n_los):
-    starts = list(np.random.uniform(0, 1, (n_los, 2)).T)
-    ends = list(0.5 + 0*np.random.uniform(0, 1, (n_los, 2)).T)
+    starts = list(ift.random.current_rng().random((n_los, 2)).T)
+    ends = list(0.5 + 0*ift.random.current_rng().random((n_los, 2)).T)
     return starts, ends
 
 
 if __name__ == '__main__':
-    np.random.seed(420)
-
     # Choose between random line-of-sight response (mode=0) and radial lines
     # of sight (mode=1)
     if len(sys.argv) == 2:

@@ -132,11 +132,10 @@ class LightConeOperator(Operator):
         self._sigx = sigx
 
     def apply(self, x):
-        islin = isinstance(x, Linearization)
-        val = x.val.val if islin else x.val
-        a, derivs = _cone_arrays(val, self.target, self._sigx, islin)
+        lin = isinstance(x, Linearization)
+        a, derivs = _cone_arrays(x.val.val if lin else x.val, self.target, self._sigx, lin)
         res = Field(self.target, a)
-        if not islin:
+        if not lin:
             return res
-        jac = _LightConeDerivative(x.jac.target, self.target, derivs)(x.jac)
-        return Linearization(res, jac, want_metric=x.want_metric)
+        jac = _LightConeDerivative(self._domain, self._target, derivs)
+        return x.new(res, jac)

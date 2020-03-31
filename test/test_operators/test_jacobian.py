@@ -20,7 +20,7 @@ import pytest
 
 import nifty6 as ift
 
-from ..common import list2fixture
+from ..common import list2fixture, setup_function, teardown_function
 
 pmp = pytest.mark.parametrize
 space = list2fixture([
@@ -38,20 +38,21 @@ seed = list2fixture([4, 78, 23])
 
 
 def testBasics(space, seed):
-    np.random.seed(seed)
+    ift.random.push_sseq_from_seed(seed)
     S = ift.ScalingOperator(space, 1.)
     s = S.draw_sample()
     var = ift.Linearization.make_var(s)
     model = ift.ScalingOperator(var.target, 6.)
     ift.extra.check_jacobian_consistency(model, var.val)
+    ift.random.pop_sseq()
 
 
 @pmp('type1', ['Variable', 'Constant'])
 @pmp('type2', ['Variable'])
 def testBinary(type1, type2, space, seed):
+    ift.random.push_sseq_from_seed(seed)
     dom1 = ift.MultiDomain.make({'s1': space})
     dom2 = ift.MultiDomain.make({'s2': space})
-    np.random.seed(seed)
     dom = ift.MultiDomain.union((dom1, dom2))
     select_s1 = ift.ducktape(None, dom1, "s1")
     select_s2 = ift.ducktape(None, dom2, "s2")
@@ -87,27 +88,42 @@ def testBinary(type1, type2, space, seed):
         model = ift.FFTOperator(space)(select_s1*select_s2)
         pos = ift.from_random("normal", dom)
         ift.extra.check_jacobian_consistency(model, pos, ntries=20)
+    ift.random.pop_sseq()
 
 
-def testPointModel(space, seed):
+def testSpecialDistributionOps(space, seed):
+    ift.random.push_sseq_from_seed(seed)
     S = ift.ScalingOperator(space, 1.)
     pos = S.draw_sample()
     alpha = 1.5
     q = 0.73
     model = ift.InverseGammaOperator(space, alpha, q)
-    # FIXME All those cdfs and ppfs are not very accurate
-    ift.extra.check_jacobian_consistency(model, pos, tol=1e-2, ntries=20)
+    ift.extra.check_jacobian_consistency(model, pos, ntries=20)
+    model = ift.UniformOperator(space, alpha, q)
+    ift.extra.check_jacobian_consistency(model, pos, ntries=20)
+    ift.random.pop_sseq()
 
 
-@pmp('target', [
-    ift.RGSpace(64, distances=.789, harmonic=True),
-    ift.RGSpace([32, 32], distances=.789, harmonic=True),
-    ift.RGSpace([32, 32, 8], distances=.789, harmonic=True)
-])
+@pmp('neg', [True, False])
+def testAdder(space, seed, neg):
+    ift.random.push_sseq_from_seed(seed)
+    S = ift.ScalingOperator(space, 1.)
+    f = S.draw_sample()
+    f1 = S.draw_sample()
+    op = ift.Adder(f1, neg)
+    ift.extra.check_jacobian_consistency(op, f)
+    op = ift.Adder(f1.val.ravel()[0], neg=neg, domain=space)
+    ift.extra.check_jacobian_consistency(op, f)
+    ift.random.pop_sseq()
+
+
+@pmp('target', [ift.RGSpace(64, distances=.789, harmonic=True),
+                ift.RGSpace([32, 32], distances=.789, harmonic=True),
+                ift.RGSpace([32, 32, 8], distances=.789, harmonic=True)])
 @pmp('causal', [True, False])
 @pmp('minimum_phase', [True, False])
-@pmp('seed', [4, 78, 23])
 def testDynamicModel(target, causal, minimum_phase, seed):
+    ift.random.push_sseq_from_seed(seed)
     dct = {
             'target': target,
             'harmonic_padding': None,
@@ -144,6 +160,7 @@ def testDynamicModel(target, causal, minimum_phase, seed):
         # FIXME I dont know why smaller tol fails for 3D example
         ift.extra.check_jacobian_consistency(
             model, pos, tol=1e-5, ntries=20)
+    ift.random.pop_sseq()
 
 
 @pmp('h_space', _h_spaces)

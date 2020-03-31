@@ -19,7 +19,7 @@ from numpy.testing import assert_allclose, assert_equal
 
 import nifty6 as ift
 
-from ..common import list2fixture
+from ..common import list2fixture, setup_function, teardown_function
 
 space1 = list2fixture([
     ift.RGSpace(4),
@@ -43,8 +43,8 @@ def test_times_adjoint_times(space1, space2):
     rand1 = ift.Field.from_random('normal', domain=(space1, space2))
     rand2 = ift.Field.from_random('normal', domain=(space1, space2))
 
-    tt1 = rand2.vdot(op.times(rand1))
-    tt2 = rand1.vdot(op.adjoint_times(rand2))
+    tt1 = rand2.s_vdot(op.times(rand1))
+    tt2 = rand1.s_vdot(op.adjoint_times(rand2))
     assert_allclose(tt1, tt2)
 
 

@@ -11,7 +11,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
-# Copyright(C) 2013-2019 Max-Planck-Society
+# Copyright(C) 2013-2020 Max-Planck-Society
 #
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
 
@@ -168,7 +168,7 @@ class RGSpace(StructuredDomain):
         op = HarmonicTransformOperator(self, self.get_default_codomain())
         dist = op.target[0]._get_dist_array()
         kernel = Field(op.target, func(dist.val))
-        kernel = kernel / kernel.integrate()
+        kernel = kernel / kernel.s_integrate()
         return op.adjoint_times(kernel.weight(1))
 
     def get_default_codomain(self):

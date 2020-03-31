@@ -19,17 +19,16 @@ import numpy as np
 
 from .. import utilities
 from ..domain_tuple import DomainTuple
-from ..multi_domain import MultiDomain
 from ..field import Field
-from ..multi_field import MultiField
 from ..linearization import Linearization
+from ..multi_domain import MultiDomain
+from ..multi_field import MultiField
 from ..sugar import makeDomain, makeOp
 from .linear_operator import LinearOperator
 from .operator import Operator
 from .sampling_enabler import SamplingEnabler
-from .sandwich_operator import SandwichOperator
 from .scaling_operator import ScalingOperator
-from .simple_linear_operators import VdotOperator, FieldAdapter
+from .simple_linear_operators import VdotOperator
 
 
 class EnergyOperator(Operator):
@@ -60,11 +59,11 @@ class Squared2NormOperator(EnergyOperator):
 
     def apply(self, x):
         self._check_input(x)
-        if isinstance(x, Linearization):
-            val = Field.scalar(x.val.vdot(x.val))
-            jac = VdotOperator(2*x.val)(x.jac)
-            return x.new(val, jac)
-        return Field.scalar(x.vdot(x))
+        if not isinstance(x, Linearization):
+            res = x.vdot(x)
+            return res
+        res = x.val.vdot(x.val)
+        return x.new(res, VdotOperator(2*x.val))
 
 
 class QuadraticFormOperator(EnergyOperator):
@@ -89,12 +88,10 @@ class QuadraticFormOperator(EnergyOperator):
 
     def apply(self, x):
         self._check_input(x)
-        if isinstance(x, Linearization):
-            t1 = self._op(x.val)
-            jac = VdotOperator(t1)(x.jac)
-            val = Field.scalar(0.5*x.val.vdot(t1))
-            return x.new(val, jac)
-        return Field.scalar(0.5*x.vdot(self._op(x)))
+        if not isinstance(x, Linearization):
+            return 0.5*x.vdot(self._op(x))
+        res = 0.5*x.val.vdot(self._op(x.val))
+        return x.new(res, VdotOperator(self._op(x.val)))
 
 
 class VariableCovarianceGaussianEnergy(EnergyOperator):
@@ -130,12 +127,11 @@ class VariableCovarianceGaussianEnergy(EnergyOperator):
 
     def apply(self, x):
         self._check_input(x)
-        res0 = x[self._r].vdot(x[self._r]*x[self._icov]).real
-        res1 = x[self._icov].log().sum()
-        res = 0.5*(res0-res1)
+        res = 0.5*(x[self._r].vdot(x[self._r]*x[self._icov]).real - x[self._icov].log().sum())
+        if not isinstance(x, Linearization) or not x.want_metric:
+            return res
         mf = {self._r: x.val[self._icov], self._icov: .5*x.val[self._icov]**(-2)}
-        metric = makeOp(MultiField.from_dict(mf))
-        return res.add_metric(SandwichOperator.make(x.jac, metric))
+        return res.add_metric(makeOp(MultiField.from_dict(mf)))
 
 
 class GaussianEnergy(EnergyOperator):
@@ -182,9 +178,10 @@ class GaussianEnergy(EnergyOperator):
         self._mean = mean
         if inverse_covariance is None:
             self._op = Squared2NormOperator(self._domain).scale(0.5)
+            self._met = ScalingOperator(self._domain, 1)
         else:
             self._op = QuadraticFormOperator(inverse_covariance)
-        self._icov = None if inverse_covariance is None else inverse_covariance
+            self._met = inverse_covariance
 
     def _checkEquivalence(self, newdom):
         newdom = makeDomain(newdom)
@@ -198,10 +195,9 @@ class GaussianEnergy(EnergyOperator):
         self._check_input(x)
         residual = x if self._mean is None else x - self._mean
         res = self._op(residual).real
-        if not isinstance(x, Linearization) or not x.want_metric:
-            return res
-        metric = SandwichOperator.make(x.jac, self._icov)
-        return res.add_metric(metric)
+        if isinstance(x, Linearization) and x.want_metric:
+            return res.add_metric(self._met)
+        return res
 
 
 class PoissonianEnergy(EnergyOperator):
@@ -233,18 +229,10 @@ class PoissonianEnergy(EnergyOperator):
 
     def apply(self, x):
         self._check_input(x)
-        res = x.sum()
-        tmp = res.val.val if isinstance(res, Linearization) else res
-        # if we have no infinity here, we can continue with the calculation;
-        # otherwise we know that the result must also be infinity
-        if not np.isinf(tmp):
-            res = res - x.log().vdot(self._d)
-        if not isinstance(x, Linearization):
-            return Field.scalar(res)
-        if not x.want_metric:
+        res = x.sum() - x.log().vdot(self._d)
+        if not isinstance(x, Linearization) or not x.want_metric:
             return res
-        metric = SandwichOperator.make(x.jac, makeOp(1./x.val))
-        return res.add_metric(metric)
+        return res.add_metric(makeOp(1./x.val))
 
 
 class InverseGammaLikelihood(EnergyOperator):
@@ -271,23 +259,20 @@ class InverseGammaLikelihood(EnergyOperator):
     def __init__(self, beta, alpha=-0.5):
         if not isinstance(beta, Field):
             raise TypeError
+        self._domain = DomainTuple.make(beta.domain)
         self._beta = beta
         if np.isscalar(alpha):
             alpha = Field(beta.domain, np.full(beta.shape, alpha))
         elif not isinstance(alpha, Field):
             raise TypeError
         self._alphap1 = alpha+1
-        self._domain = DomainTuple.make(beta.domain)
 
     def apply(self, x):
         self._check_input(x)
-        res = x.log().vdot(self._alphap1) + (1./x).vdot(self._beta)
-        if not isinstance(x, Linearization):
-            return Field.scalar(res)
-        if not x.want_metric:
+        res = x.log().vdot(self._alphap1) + x.one_over().vdot(self._beta)
+        if not isinstance(x, Linearization) or not x.want_metric:
             return res
-        metric = SandwichOperator.make(x.jac, makeOp(self._alphap1/(x.val**2)))
-        return res.add_metric(metric)
+        return res.add_metric(makeOp(self._alphap1/(x.val**2)))
 
 
 class StudentTEnergy(EnergyOperator):
@@ -313,14 +298,11 @@ class StudentTEnergy(EnergyOperator):
 
     def apply(self, x):
         self._check_input(x)
-        v = ((self._theta+1)/2)*(x**2/self._theta).log1p().sum()
-        if not isinstance(x, Linearization):
-            return Field.scalar(v)
-        if not x.want_metric:
-            return v
+        res = ((self._theta+1)/2)*(x**2/self._theta).log1p().sum()
+        if not isinstance(x, Linearization) or not x.want_metric:
+            return res
         met = ScalingOperator(self.domain, (self._theta+1) / (self._theta+3))
-        met = SandwichOperator.make(x.jac, met)
-        return v.add_metric(met)
+        return res.add_metric(met)
 
 
 class BernoulliEnergy(EnergyOperator):
@@ -350,14 +332,10 @@ class BernoulliEnergy(EnergyOperator):
 
     def apply(self, x):
         self._check_input(x)
-        v = -(x.log().vdot(self._d) + (1. - x).log().vdot(1. - self._d))
-        if not isinstance(x, Linearization):
-            return Field.scalar(v)
-        if not x.want_metric:
-            return v
-        met = makeOp(1./(x.val*(1. - x.val)))
-        met = SandwichOperator.make(x.jac, met)
-        return v.add_metric(met)
+        res = -x.log().vdot(self._d) + (1.-x).log().vdot(self._d-1.)
+        if not isinstance(x, Linearization) or not x.want_metric:
+            return res
+        return res.add_metric(makeOp(1./(x.val*(1. - x.val))))
 
 
 class StandardHamiltonian(EnergyOperator):
@@ -404,14 +382,10 @@ class StandardHamiltonian(EnergyOperator):
 
     def apply(self, x):
         self._check_input(x)
-        if (self._ic_samp is None or not isinstance(x, Linearization)
-                or not x.want_metric):
-            return self._lh(x) + self._prior(x)
-        else:
-            lhx, prx = self._lh(x), self._prior(x)
-            mtr = SamplingEnabler(lhx.metric, prx.metric,
-                                  self._ic_samp)
-            return (lhx + prx).add_metric(mtr)
+        if not isinstance(x, Linearization) or not x.want_metric or self._ic_samp is None:
+            return (self._lh + self._prior)(x)
+        lhx, prx = self._lh(x), self._prior(x)
+        return (lhx+prx).add_metric(SamplingEnabler(lhx.metric, prx.metric, self._ic_samp))
 
     def __repr__(self):
         subs = 'Likelihood:\n{}'.format(utilities.indent(self._lh.__repr__()))
@@ -452,5 +426,5 @@ class AveragedEnergy(EnergyOperator):
 
     def apply(self, x):
         self._check_input(x)
-        mymap = map(lambda v: self._h(x + v), self._res_samples)
-        return utilities.my_sum(mymap)*(1./len(self._res_samples))
+        mymap = map(lambda v: self._h(x+v), self._res_samples)
+        return utilities.my_sum(mymap)/len(self._res_samples)

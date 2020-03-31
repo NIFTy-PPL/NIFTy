@@ -25,6 +25,7 @@ from ..domain_tuple import DomainTuple
 from ..domains.power_space import PowerSpace
 from ..domains.unstructured_domain import UnstructuredDomain
 from ..field import Field
+from ..linearization import Linearization
 from ..logger import logger
 from ..multi_field import MultiField
 from ..operators.adder import Adder
@@ -37,7 +38,7 @@ from ..operators.linear_operator import LinearOperator
 from ..operators.operator import Operator
 from ..operators.simple_linear_operators import ducktape
 from ..probing import StatCalculator
-from ..sugar import makeField, full, makeDomain
+from ..sugar import full, makeDomain, makeField, makeOp
 
 
 def _reshaper(x, N):
@@ -69,9 +70,11 @@ def _normal(mean, sig, key, N=0):
     if N == 0:
         domain = DomainTuple.scalar_domain()
         mean, sig = np.asfarray(mean), np.asfarray(sig)
-    else:
-        domain = UnstructuredDomain(N)
-        mean, sig = (_reshaper(param, N) for param in (mean, sig))
+        return Adder(makeField(domain, mean)) @ (
+            sig * ducktape(domain, None, key))
+
+    domain = UnstructuredDomain(N)
+    mean, sig = (_reshaper(param, N) for param in (mean, sig))
     return Adder(makeField(domain, mean)) @ (DiagonalOperator(
         makeField(domain, sig)) @ ducktape(domain, None, key))
 
@@ -205,7 +208,7 @@ class _TwoLogIntegrations(LinearOperator):
 
 class _Normalization(Operator):
     def __init__(self, domain, space=0):
-        self._domain = self._target = makeDomain(domain)
+        self._domain = self._target = DomainTuple.make(domain)
         assert isinstance(self._domain[space], PowerSpace)
         hspace = list(self._domain)
         hspace[space] = hspace[space].harmonic_partner
@@ -216,7 +219,7 @@ class _Normalization(Operator):
         mode_multiplicity = pd.adjoint(full(pd.target, 1.)).val_rw()
         zero_mode = (slice(None),)*self._domain.axes[space][0] + (0,)
         mode_multiplicity[zero_mode] = 0
-        self._mode_multiplicity = makeField(self._domain, mode_multiplicity)
+        self._mode_multiplicity = makeOp(makeField(self._domain, mode_multiplicity))
         self._specsum = _SpecialSum(self._domain, space)
 
     def apply(self, x):
@@ -225,7 +228,7 @@ class _Normalization(Operator):
         spec = (2*x).exp()
         # FIXME This normalizes also the zeromode which is supposed to be left
         # untouched by this operator
-        return self._specsum(self._mode_multiplicity*spec)**(-0.5)*amp
+        return self._specsum(self._mode_multiplicity(spec))**(-0.5)*amp
 
 
 class _SpecialSum(EndomorphicOperator):
@@ -423,11 +426,9 @@ class CorrelatedFieldMaker:
             raise ValueError("length of dofdex needs to match total_N")
 
         if self._total_N > 0:
-            space = 1
             N = max(dofdex) + 1
             position_space = makeDomain((UnstructuredDomain(N), position_space))
         else:
-            space = 0
             N = 0
             position_space = makeDomain(position_space)
         prefix = str(prefix)
@@ -647,9 +648,9 @@ class CorrelatedFieldMaker:
         space = space + spaces[0]
         sub_spaces = set(spaces)
         sub_spaces.remove(space)
-        #Domain containing domain[space] and domain[0] iff total_N>0
+        # Domain containing domain[space] and domain[0] iff total_N>0
         sub_dom = makeDomain([samples[0].domain[ind]
-                              for ind in (set([0,])-set(spaces))|set([space,])])
+                              for ind in (set([0])-set(spaces)) | set([space])])
         co = ContractionOperator(sub_dom, len(sub_dom)-1)
         size = co.domain.size/co.target.size
         res = 0.

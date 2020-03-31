@@ -21,7 +21,7 @@ from numpy.testing import assert_, assert_allclose
 
 import nifty6 as ift
 
-from ..common import list2fixture
+from ..common import list2fixture, setup_function, teardown_function
 
 
 def _get_rtol(tp):
@@ -42,7 +42,6 @@ def test_fft1D(d, dtype, op):
     tol = _get_rtol(dtype)
     a = ift.RGSpace(dim1, distances=d)
     b = ift.RGSpace(dim1, distances=1./(dim1*d), harmonic=True)
-    np.random.seed(16)
 
     fft = op(domain=a, target=b)
     inp = ift.Field.from_random(
@@ -119,5 +118,5 @@ def test_normalisation(space, dtype, op):
     out2 = fft2.inverse_times(inp)
     zero_idx = tuple([0]*len(space.shape))
     assert_allclose(
-        inp.val[zero_idx], out.integrate(), rtol=tol, atol=tol)
+        inp.val[zero_idx], out.s_integrate(), rtol=tol, atol=tol)
     assert_allclose(out.val, out2.val, rtol=tol, atol=tol)

@@ -44,20 +44,18 @@ class SingleDomain(ift.LinearOperator):
 
 
 def random_los(n_los):
-    starts = list(np.random.uniform(0, 1, (n_los, 2)).T)
-    ends = list(np.random.uniform(0, 1, (n_los, 2)).T)
+    starts = list(ift.random.current_rng().random((n_los, 2)).T)
+    ends = list(ift.random.current_rng().random((n_los, 2)).T)
     return starts, ends
 
 
 def radial_los(n_los):
-    starts = list(np.random.uniform(0, 1, (n_los, 2)).T)
-    ends = list(0.5 + 0*np.random.uniform(0, 1, (n_los, 2)).T)
+    starts = list(ift.random.current_rng().random((n_los, 2)).T)
+    ends = list(0.5 + 0*ift.random.current_rng().random((n_los, 2)).T)
     return starts, ends
 
 
 if __name__ == '__main__':
-    np.random.seed(43)
-
     # Choose between random line-of-sight response (mode=0) and radial lines
     # of sight (mode=1)
     if len(sys.argv) == 2:
@@ -122,8 +120,7 @@ if __name__ == '__main__':
     N_samples = 20
 
     # Set up likelihood and information Hamiltonian
-    likelihood = ift.GaussianEnergy(
-        mean=data, inverse_covariance=N.inverse)(signal_response)
+    likelihood = ift.GaussianEnergy(mean=data, inverse_covariance=N.inverse) @ signal_response
     H = ift.StandardHamiltonian(likelihood, ic_sampling)
 
     # Begin minimization

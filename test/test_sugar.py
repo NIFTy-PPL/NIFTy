@@ -19,6 +19,7 @@ import numpy as np
 from numpy.testing import assert_equal
 
 import nifty6 as ift
+from .common import setup_function, teardown_function
 
 
 def test_get_signal_variance():
@@ -52,7 +53,6 @@ def test_exec_time():
 
 
 def test_calc_pos():
-    np.random.seed(42)
     dom = ift.RGSpace(12, harmonic=True)
     op = ift.HarmonicTransformOperator(dom).exp()
     fld = op(0.1*ift.from_random('normal', op.domain))

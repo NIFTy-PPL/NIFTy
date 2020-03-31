@@ -17,7 +17,6 @@
 
 import numpy as np
 
-from ..sugar import full
 from .endomorphic_operator import EndomorphicOperator
 
 
@@ -60,12 +59,14 @@ class ScalingOperator(EndomorphicOperator):
         self._capability = self._all_ops
 
     def apply(self, x, mode):
+        from ..sugar import full
+
         self._check_input(x, mode)
         fct = self._factor
         if fct == 1.:
             return x
         if fct == 0.:
-            return full(self.domain, 0.)
+            return full(x.domain, 0.)
 
         MODES_WITH_ADJOINT = self.ADJOINT_TIMES | self.ADJOINT_INVERSE_TIMES
         MODES_WITH_INVERSE = self.INVERSE_TIMES | self.ADJOINT_INVERSE_TIMES
@@ -89,9 +90,6 @@ class ScalingOperator(EndomorphicOperator):
                 (fct.real == 0. and from_inverse)):
             raise ValueError("operator not positive definite")
         return 1./np.sqrt(fct) if from_inverse else np.sqrt(fct)
-
-#     def process_sample(self, samp, from_inverse):
-#         return samp*self._get_fct(from_inverse)
 
     def draw_sample(self, from_inverse=False, dtype=np.float64):
         from ..sugar import from_random

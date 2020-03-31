@@ -23,6 +23,7 @@ from numpy.testing import (assert_, assert_almost_equal, assert_equal,
                            assert_raises)
 
 from nifty6 import GLSpace
+from ..common import setup_function, teardown_function
 
 pmp = pytest.mark.parametrize
 
@@ -41,7 +42,6 @@ CONSTRUCTOR_CONFIGS = [[
 
 
 def get_dvol_configs():
-    np.random.seed(42)
     wgt = [2.0943951, 2.0943951]
     # for GLSpace(nlat=2, nlon=3)
     dvol_0 = np.array(

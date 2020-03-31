@@ -27,8 +27,6 @@ import numpy as np
 import nifty6 as ift
 
 if __name__ == '__main__':
-    np.random.seed(41)
-
     # Set up the position space of the signal
     mode = 2
     if mode == 0:
@@ -62,12 +60,12 @@ if __name__ == '__main__':
     p = R(sky)
     mock_position = ift.from_random('normal', harmonic_space)
     tmp = p(mock_position).val.astype(np.float64)
-    data = np.random.binomial(1, tmp)
+    data = ift.random.current_rng().binomial(1, tmp)
     data = ift.Field.from_raw(R.target, data)
 
     # Compute likelihood and Hamiltonian
     position = ift.from_random('normal', harmonic_space)
-    likelihood = ift.BernoulliEnergy(data)(p)
+    likelihood = ift.BernoulliEnergy(data) @ p
     ic_newton = ift.DeltaEnergyController(
         name='Newton', iteration_limit=100, tol_rel_deltaE=1e-8)
     minimizer = ift.NewtonCG(ic_newton)

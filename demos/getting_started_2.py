@@ -44,8 +44,6 @@ def exposure_2d():
 
 
 if __name__ == '__main__':
-    np.random.seed(42)
-
     # Choose space on which the signal field is defined
     if len(sys.argv) == 2:
         mode = int(sys.argv[1])
@@ -94,9 +92,9 @@ if __name__ == '__main__':
     lamb = R(sky)
     mock_position = ift.from_random('normal', domain)
     data = lamb(mock_position)
-    data = np.random.poisson(data.val.astype(np.float64))
+    data = ift.random.current_rng().poisson(data.val.astype(np.float64))
     data = ift.Field.from_raw(d_space, data)
-    likelihood = ift.PoissonianEnergy(data)(lamb)
+    likelihood = ift.PoissonianEnergy(data) @ lamb
 
     # Settings for minimization
     ic_newton = ift.DeltaEnergyController(

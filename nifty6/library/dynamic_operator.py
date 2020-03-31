@@ -34,17 +34,8 @@ def _float_or_listoffloat(inp):
     return [float(x) for x in inp] if isinstance(inp, list) else float(inp)
 
 
-def _make_dynamic_operator(target,
-                           harmonic_padding,
-                           sm_s0,
-                           sm_x0,
-                           cone,
-                           keys,
-                           causal,
-                           minimum_phase,
-                           sigc=None,
-                           quant=None,
-                           codomain=None):
+def _make_dynamic_operator(target, harmonic_padding, sm_s0, sm_x0, cone, keys, causal,
+                           minimum_phase, sigc=None, quant=None, codomain=None):
     if not isinstance(target, RGSpace):
         raise TypeError("RGSpace required")
     if not target.harmonic:
@@ -128,7 +119,7 @@ def _make_dynamic_operator(target,
         scaling = DiagonalOperator(Field(c.target, scaling))
         ops['lightspeed'] = scaling(lightspeed)
 
-        c = LightConeOperator(c.target, m.target, quant)(c.exp())
+        c = LightConeOperator(c.target, m.target, quant) @ c.exp()
         ops['light_cone'] = c
         m = c*m
 
@@ -139,13 +130,7 @@ def _make_dynamic_operator(target,
     return m, ops
 
 
-def dynamic_operator(*,
-                     target,
-                     harmonic_padding,
-                     sm_s0,
-                     sm_x0,
-                     key,
-                     causal=True,
+def dynamic_operator(*, target, harmonic_padding, sm_s0, sm_x0, key, causal=True,
                      minimum_phase=False):
     """Constructs an operator encoding the Green's function of a linear
     homogeneous dynamic system.
@@ -206,17 +191,8 @@ def dynamic_operator(*,
     return _make_dynamic_operator(**dct)
 
 
-def dynamic_lightcone_operator(*,
-                               target,
-                               harmonic_padding,
-                               sm_s0,
-                               sm_x0,
-                               key,
-                               lightcone_key,
-                               sigc,
-                               quant,
-                               causal=True,
-                               minimum_phase=False):
+def dynamic_lightcone_operator(*, target, harmonic_padding, sm_s0, sm_x0, key, lightcone_key,
+                               sigc, quant, causal=True, minimum_phase=False):
     '''Extends the functionality of :func:`dynamic_operator` to a Green's
     function which is constrained to be within a light cone.
 

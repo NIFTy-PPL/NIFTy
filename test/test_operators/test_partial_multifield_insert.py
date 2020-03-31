@@ -21,7 +21,7 @@ from numpy.testing import assert_, assert_allclose
 
 import nifty6 as ift
 
-from ..common import list2fixture
+from ..common import list2fixture, setup_function, teardown_function
 
 pmp = pytest.mark.parametrize
 dtype = list2fixture([np.float64, np.float32, np.complex64, np.complex128])

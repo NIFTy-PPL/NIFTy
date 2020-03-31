@@ -21,7 +21,7 @@ from numpy.testing import assert_allclose
 
 import nifty6 as ift
 
-from ..common import list2fixture
+from ..common import list2fixture, setup_function, teardown_function
 
 
 def _get_rtol(tp):
@@ -44,8 +44,8 @@ def test_dotsht(lm, tp):
     inp = ift.Field.from_random(
         domain=a, random_type='normal', std=1, mean=0, dtype=tp)
     out = fft.times(inp)
-    v1 = np.sqrt(out.vdot(out))
-    v2 = np.sqrt(inp.vdot(fft.adjoint_times(out)))
+    v1 = np.sqrt(out.s_vdot(out))
+    v2 = np.sqrt(inp.s_vdot(fft.adjoint_times(out)))
     assert_allclose(v1, v2, rtol=tol, atol=tol)
 
 
@@ -57,8 +57,8 @@ def test_dotsht2(lm, tp):
     inp = ift.Field.from_random(
         domain=a, random_type='normal', std=1, mean=0, dtype=tp)
     out = fft.times(inp)
-    v1 = np.sqrt(out.vdot(out))
-    v2 = np.sqrt(inp.vdot(fft.adjoint_times(out)))
+    v1 = np.sqrt(out.s_vdot(out))
+    v2 = np.sqrt(inp.s_vdot(fft.adjoint_times(out)))
     assert_allclose(v1, v2, rtol=tol, atol=tol)
 
 
@@ -72,4 +72,4 @@ def test_normalisation(space, tp):
     out = fft.times(inp)
     zero_idx = tuple([0]*len(space.shape))
     assert_allclose(
-        inp.val[zero_idx], out.integrate(), rtol=tol, atol=tol)
+        inp.val[zero_idx], out.s_integrate(), rtol=tol, atol=tol)

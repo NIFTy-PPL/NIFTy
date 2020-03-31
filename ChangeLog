@@ -1,5 +1,49 @@
 Changes since NIFTy 5:
 
+MPI parallelisation over samples in MetricGaussianKL
+====================================================
+
+The classes `MetricGaussianKL` and `MetricGaussianKL_MPI` have been unified
+into one `MetricGaussianKL` class which has MPI support built in.
+
+New approach for random number generation
+=========================================
+
+The code now uses `numpy`'s new `SeedSequence` and `Generator` classes for the
+production of random numbers (introduced in numpy 1.17. This greatly simplifies
+the generation of reproducible random numbers in the presence of MPI parallelism
+and leads to cleaner code overall. Please see the documentation of
+`nifty6.random` for details.
+
+Interface Change for non-linear Operators
+=========================================
+
+The method `Operator.apply()` takes a `Linearization` or a `Field` or a
+`MultiField` as input. This has not changed. However, now each non-linear
+operator assumes that the input `Linearization` comes with an identity operator
+as jacobian. Also it is assumed that the `apply()` method returns a
+`Linearization` with the jacobian of the operator itself. The user is not in
+charge anymore of stacking together the jacobians of operator chains. Something
+like `x.jac` should not appear in any self-written `apply()` methods. The method
+`Operator._check_input` tests if this condition is met. The same goes for the
+metric. There is no need anymore to call `SandwichOperator` in an `apply()`
+method when implementing new energies. This change should not lead to unexpected
+behaviour since both `Operator._check_input()` and
+`extra.check_jacobian_consistency()` tests for the new conditions to be
+fulfilled.
+
+Special functions for complete Field reduction operations
+=========================================================
+
+So far, reduction operations called on Fields (like `vdot`, `sum`, `integrate`,
+`mean`, `var`, `std`, `prod` etc.) returned a scalar when the reduction was
+carried out over all domains, and otherwise a `Field`.
+Having the data type of the returned value depend on input parameters is
+extremely confusing, so all of these reduction operations now always return a
+Field. We also introduced another set of reduction operations which always
+operate over all subdomains and therefore don't take a `spaces` argument; they
+are named `s_vdot`, `s_sum` etc. and always return a scalar.
+
 Updates regarding correlated fields
 ===================================
 
@@ -36,12 +80,3 @@ User-visible changes:
   replaced by a single function called `makeField`
 - the property `local_shape` has been removed from `Domain` (and subclasses)
   and `DomainTuple`.
-
-Transfer of MPI parallelization into operators:
-===============================================
-
-As was already the case with the `MetricGaussianKL_MPI` in NIFTy5, MPI
-parallelization in NIFTy6 is handled by specialized MPI-enabled operators.
-
-They are accessible via the `nifty6.mpi` namespace, from which they can be
-imported directly: `from nifty6.mpi import MPIenabledOperator`.

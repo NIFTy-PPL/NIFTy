@@ -5,8 +5,6 @@ import numpy as np
 
 import nifty6 as ift
 
-np.random.seed(40)
-
 N0s, a0s, b0s, c0s = [], [], [], []
 
 for ii in range(10, 26):
@@ -15,15 +13,15 @@ for ii in range(10, 26):
     N = int(2**ii)
     print('N = {}'.format(N))
 
-    uv = np.random.rand(N, 2) - 0.5
-    vis = np.random.randn(N) + 1j*np.random.randn(N)
+    rng = ift.random.current_rng()
+    uv = rng.uniform(-.5, .5, (N,2))
+    vis = rng.normal(0., 1., N) + 1j*rng.normal(0., 1., N)
 
     uvspace = ift.RGSpace((nu, nv))
 
     visspace = ift.UnstructuredDomain(N)
 
-    img = np.random.randn(nu*nv)
-    img = img.reshape((nu, nv))
+    img = rng.standard_normal((nu, nv))
     img = ift.makeField(uvspace, img)
 
     t0 = time()

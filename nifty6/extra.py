@@ -11,7 +11,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
-# Copyright(C) 2013-2019 Max-Planck-Society
+# Copyright(C) 2013-2020 Max-Planck-Society
 #
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
 
@@ -44,8 +44,8 @@ def _adjoint_implementation(op, domain_dtype, target_dtype, atol, rtol,
         return
     f1 = from_random("normal", op.domain, dtype=domain_dtype)
     f2 = from_random("normal", op.target, dtype=target_dtype)
-    res1 = f1.vdot(op.adjoint_times(f2))
-    res2 = op.times(f1).vdot(f2)
+    res1 = f1.s_vdot(op.adjoint_times(f2))
+    res2 = op.times(f1).s_vdot(f2)
     if only_r_linear:
         res1, res2 = res1.real, res2.real
     np.testing.assert_allclose(res1, res2, atol=atol, rtol=rtol)
@@ -83,7 +83,7 @@ def _check_linearity(op, domain_dtype, atol, rtol):
     assert_allclose(val1, val2, atol=atol, rtol=rtol)
 
 
-def _actual_domain_check(op, domain_dtype=None, inp=None):
+def _actual_domain_check_linear(op, domain_dtype=None, inp=None):
     needed_cap = op.TIMES
     if (op.capability & needed_cap) != needed_cap:
         return
@@ -98,21 +98,24 @@ def _actual_domain_check(op, domain_dtype=None, inp=None):
 def _actual_domain_check_nonlinear(op, loc):
     assert isinstance(loc, (Field, MultiField))
     assert_(loc.domain is op.domain)
-    lin = Linearization.make_var(loc, False)
-    reslin = op(lin)
-    assert_(lin.domain is op.domain)
-    assert_(lin.target is op.domain)
-    assert_(lin.val.domain is lin.domain)
-
-    assert_(reslin.domain is op.domain)
-    assert_(reslin.target is op.target)
-    assert_(reslin.val.domain is reslin.target)
-
-    assert_(reslin.target is op.target)
-    assert_(reslin.jac.domain is reslin.domain)
-    assert_(reslin.jac.target is reslin.target)
-    _actual_domain_check(reslin.jac, inp=loc)
-    _actual_domain_check(reslin.jac.adjoint, inp=reslin.jac(loc))
+    for wm in [False, True]:
+        lin = Linearization.make_var(loc, wm)
+        reslin = op(lin)
+        assert_(lin.domain is op.domain)
+        assert_(lin.target is op.domain)
+        assert_(lin.val.domain is lin.domain)
+        assert_(reslin.domain is op.domain)
+        assert_(reslin.target is op.target)
+        assert_(reslin.val.domain is reslin.target)
+        assert_(reslin.target is op.target)
+        assert_(reslin.jac.domain is reslin.domain)
+        assert_(reslin.jac.target is reslin.target)
+        assert_(lin.want_metric == reslin.want_metric)
+        _actual_domain_check_linear(reslin.jac, inp=loc)
+        _actual_domain_check_linear(reslin.jac.adjoint, inp=reslin.jac(loc))
+        if reslin.metric is not None:
+            assert_(reslin.metric.domain is reslin.metric.target)
+            assert_(reslin.metric.domain is op.domain)
 
 
 def _domain_check(op):
@@ -121,6 +124,44 @@ def _domain_check(op):
             raise TypeError(
                 'The domain and the target of an operator need to',
                 'be instances of either DomainTuple or MultiDomain.')
+
+
+def _performance_check(op, pos, raise_on_fail):
+    class CountingOp(LinearOperator):
+        def __init__(self, domain):
+            from .sugar import makeDomain
+            self._domain = self._target = makeDomain(domain)
+            self._capability = self.TIMES | self.ADJOINT_TIMES
+            self._count = 0
+
+        def apply(self, x, mode):
+            self._count += 1
+            return x
+
+        @property
+        def count(self):
+            return self._count
+    for wm in [False, True]:
+        cop = CountingOp(op.domain)
+        myop = op @ cop
+        myop(pos)
+        cond = [cop.count != 1]
+        lin = myop(2*Linearization.make_var(pos, wm))
+        cond.append(cop.count != 2)
+        lin.jac(pos)
+        cond.append(cop.count != 3)
+        lin.jac.adjoint(lin.val)
+        cond.append(cop.count != 4)
+        if lin.metric is not None:
+            lin.metric(pos)
+            cond.append(cop.count != 6)
+        if any(cond):
+            s = 'The operator has a performance problem (want_metric={}).'.format(wm)
+            from .logger import logger
+            logger.error(s)
+            logger.info(cond)
+            if raise_on_fail:
+                raise RuntimeError(s)
 
 
 def consistency_check(op, domain_dtype=np.float64, target_dtype=np.float64,
@@ -157,10 +198,10 @@ def consistency_check(op, domain_dtype=np.float64, target_dtype=np.float64,
     if not isinstance(op, LinearOperator):
         raise TypeError('This test tests only linear operators.')
     _domain_check(op)
-    _actual_domain_check(op, domain_dtype)
-    _actual_domain_check(op.adjoint, target_dtype)
-    _actual_domain_check(op.inverse, target_dtype)
-    _actual_domain_check(op.adjoint.inverse, domain_dtype)
+    _actual_domain_check_linear(op, domain_dtype)
+    _actual_domain_check_linear(op.adjoint, target_dtype)
+    _actual_domain_check_linear(op.inverse, target_dtype)
+    _actual_domain_check_linear(op.adjoint.inverse, domain_dtype)
     _check_linearity(op, domain_dtype, atol, rtol)
     _check_linearity(op.adjoint, target_dtype, atol, rtol)
     _check_linearity(op.inverse, target_dtype, atol, rtol)
@@ -176,7 +217,7 @@ def consistency_check(op, domain_dtype=np.float64, target_dtype=np.float64,
 
 
 def _get_acceptable_location(op, loc, lin):
-    if not np.isfinite(lin.val.sum()):
+    if not np.isfinite(lin.val.s_sum()):
         raise ValueError('Initial value must be finite')
     dir = from_random("normal", loc.domain)
     dirder = lin.jac(dir)
@@ -189,7 +230,7 @@ def _get_acceptable_location(op, loc, lin):
         try:
             loc2 = loc+dir
             lin2 = op(Linearization.make_var(loc2, lin.want_metric))
-            if np.isfinite(lin2.val.sum()) and abs(lin2.val.sum()) < 1e20:
+            if np.isfinite(lin2.val.s_sum()) and abs(lin2.val.s_sum()) < 1e20:
                 break
         except FloatingPointError:
             pass
@@ -199,7 +240,15 @@ def _get_acceptable_location(op, loc, lin):
     return loc2, lin2
 
 
-def check_jacobian_consistency(op, loc, tol=1e-8, ntries=100):
+def _linearization_value_consistency(op, loc):
+    for wm in [False, True]:
+        lin = Linearization.make_var(loc, wm)
+        fld0 = op(loc)
+        fld1 = op(lin).val
+        assert_allclose(fld0, fld1, 0, 1e-7)
+
+
+def check_jacobian_consistency(op, loc, tol=1e-8, ntries=100, perf_check=True):
     """
     Checks the Jacobian of an operator against its finite difference
     approximation.
@@ -216,26 +265,34 @@ def check_jacobian_consistency(op, loc, tol=1e-8, ntries=100):
         as op. The location at which the gradient is checked
     tol : float
         Tolerance for the check.
+    perf_check : Boolean
+        Do performance check. May be disabled for very unimportant operators.
     """
     _domain_check(op)
     _actual_domain_check_nonlinear(op, loc)
+    _performance_check(op, loc, bool(perf_check))
+    _linearization_value_consistency(op, loc)
     for _ in range(ntries):
         lin = op(Linearization.make_var(loc))
         loc2, lin2 = _get_acceptable_location(op, loc, lin)
         dir = loc2-loc
         locnext = loc2
         dirnorm = dir.norm()
+        hist = []
         for i in range(50):
             locmid = loc + 0.5*dir
             linmid = op(Linearization.make_var(locmid))
             dirder = linmid.jac(dir)
             numgrad = (lin2.val-lin.val)
             xtol = tol * dirder.norm() / np.sqrt(dirder.size)
-            if (abs(numgrad-dirder) <= xtol).all():
+            hist.append((numgrad-dirder).norm())
+#            print(len(hist),hist[-1])
+            if (abs(numgrad-dirder) <= xtol).s_all():
                 break
             dir = dir*0.5
             dirnorm *= 0.5
             loc2, lin2 = locmid, linmid
         else:
+            print(hist)
             raise ValueError("gradient and value seem inconsistent")
         loc = locnext

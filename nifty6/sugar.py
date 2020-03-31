@@ -25,13 +25,13 @@ from . import utilities
 from .domain_tuple import DomainTuple
 from .domains.power_space import PowerSpace
 from .field import Field
-from .logger import logger
 from .multi_domain import MultiDomain
 from .multi_field import MultiField
 from .operators.block_diagonal_operator import BlockDiagonalOperator
 from .operators.diagonal_operator import DiagonalOperator
 from .operators.distributors import PowerDistributor
 from .operators.operator import Operator
+from .operators.scaling_operator import ScalingOperator
 from .plot import Plot
 
 __all__ = ['PS_field', 'power_analyze', 'create_power_operator',
@@ -92,7 +92,7 @@ def get_signal_variance(spec, space):
     field = PS_field(space, spec)
     dist = PowerDistributor(space.harmonic_partner, space)
     k_field = dist(field)
-    return k_field.weight(2).sum()
+    return k_field.weight(2).s_sum()
 
 
 def _single_power_analyze(field, idx, binbounds):
@@ -327,6 +327,8 @@ def makeOp(input):
     ----------
     input : None, Field or MultiField
         - if None, None is returned.
+        - if Field on scalar-domain, a ScalingOperator with the coefficient
+            given by the Field is returned.
         - if Field, a DiagonalOperator with the coefficients given by this
             Field is returned.
         - if MultiField, a BlockDiagonalOperator with entries given by this
@@ -338,6 +340,8 @@ def makeOp(input):
     """
     if input is None:
         return None
+    if input.domain is DomainTuple.scalar_domain():
+        return ScalingOperator(input.domain, float(input.val))
     if isinstance(input, Field):
         return DiagonalOperator(input)
     if isinstance(input, MultiField):
@@ -495,7 +499,7 @@ def calculate_position(operator, output):
     cov = 1e-3*output.val.max()**2
     invcov = ScalingOperator(output.domain, cov).inverse
     d = output + invcov.draw_sample(from_inverse=True)
-    lh = GaussianEnergy(d, invcov)(operator)
+    lh = GaussianEnergy(d, invcov) @ operator
     H = StandardHamiltonian(
         lh, ic_samp=GradientNormController(iteration_limit=200))
     pos = 0.1*from_random('normal', operator.domain)

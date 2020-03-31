@@ -111,12 +111,15 @@ class MultiField(object):
         if other._domain != self._domain:
             raise ValueError("domains are incompatible.")
 
-    def vdot(self, x):
+    def s_vdot(self, x):
         result = 0.
         self._check_domain(x)
         for v1, v2 in zip(self._val, x._val):
-            result += v1.vdot(v2)
+            result += v1.s_vdot(v2)
         return result
+
+    def vdot(self, x):
+        return Field.scalar(self.s_vdot(x))
 
 #    @staticmethod
 #    def build_dtype(dtype, domain):
@@ -166,7 +169,7 @@ class MultiField(object):
         return (nrm ** ord).sum() ** (1./ord)
 #        return np.sqrt(np.abs(self.vdot(x=self)))
 
-    def sum(self):
+    def s_sum(self):
         """Computes the sum all field values.
 
         Returns
@@ -174,7 +177,7 @@ class MultiField(object):
         norm : float
             The sum of the field values.
         """
-        return utilities.my_sum(map(lambda v: v.sum(), self._val))
+        return utilities.my_sum(map(lambda v: v.s_sum(), self._val))
 
     @property
     def size(self):
@@ -204,15 +207,15 @@ class MultiField(object):
             self._domain,
             tuple(self._val[i].clip(lmin[i], lmax[i]) for i in range(ncomp)))
 
-    def all(self):
+    def s_all(self):
         for v in self._val:
-            if not v.all():
+            if not v.s_all():
                 return False
         return True
 
-    def any(self):
+    def s_any(self):
         for v in self._val:
-            if v.any():
+            if v.s_any():
                 return True
         return False
 
@@ -307,6 +310,9 @@ class MultiField(object):
                 res[key] = -val if neg else val
         return MultiField.from_dict(res)
 
+    def one_over(self):
+        return 1/self
+
     def _binary_op(self, other, op):
         f = getattr(Field, op)
         if isinstance(other, MultiField):
@@ -343,7 +349,8 @@ for op in ["__iadd__", "__isub__", "__imul__", "__idiv__",
     setattr(MultiField, op, func(op))
 
 
-for f in ["sqrt", "exp", "log", "log1p", "expm1", "tanh", "one_over"]:
+for f in ["sqrt", "exp", "log", "sin", "cos", "tan", "sinh", "cosh", "tanh",
+          "absolute", "sinc", "sign", "log10", "log1p", "expm1"]:
     def func(f):
         def func2(self):
             fu = getattr(Field, f)

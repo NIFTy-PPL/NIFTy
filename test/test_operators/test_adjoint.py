@@ -20,7 +20,7 @@ import pytest
 
 import nifty6 as ift
 
-from ..common import list2fixture
+from ..common import list2fixture, setup_function, teardown_function
 
 _h_RG_spaces = [
     ift.RGSpace(7, distances=0.2, harmonic=True),
@@ -41,15 +41,13 @@ _pow_spaces = [
 pmp = pytest.mark.parametrize
 dtype = list2fixture([np.float64, np.complex128])
 
-np.random.seed(42)
-
 
 @pmp('sp', _p_RG_spaces)
 def testLOSResponse(sp, dtype):
-    starts = np.random.randn(len(sp.shape), 10)
-    ends = np.random.randn(len(sp.shape), 10)
-    sigma_low = 1e-4*np.random.randn(10)
-    sigma_ups = 1e-5*np.random.randn(10)
+    starts = ift.random.current_rng().standard_normal((len(sp.shape), 10))
+    ends = ift.random.current_rng().standard_normal((len(sp.shape), 10))
+    sigma_low = 1e-4*ift.random.current_rng().standard_normal(10)
+    sigma_ups = 1e-5*ift.random.current_rng().standard_normal(10)
     op = ift.LOSResponse(sp, starts, ends, sigma_low, sigma_ups)
     ift.extra.consistency_check(op, dtype, dtype)
 
@@ -70,7 +68,7 @@ def testOperatorCombinations(sp, dtype):
 
 def testLinearInterpolator():
     sp = ift.RGSpace((10, 8), distances=(0.1, 3.5))
-    pos = np.random.rand(2, 23)
+    pos = ift.random.current_rng().random((2, 23))
     pos[0, :] *= 0.9
     pos[1, :] *= 7*3.5
     op = ift.LinearInterpolator(sp, pos)
@@ -250,15 +248,16 @@ def testOuter(fdomain, domain):
 @pmp('sp', _h_spaces + _p_spaces + _pow_spaces)
 @pmp('seed', [12, 3])
 def testValueInserter(sp, seed):
-    np.random.seed(seed)
+    ift.random.push_sseq_from_seed(seed)
     ind = []
     for ss in sp.shape:
         if ss == 1:
             ind.append(0)
         else:
-            ind.append(np.random.randint(0, ss-1))
+            ind.append(int(ift.random.current_rng().integers(0, ss-1)))
     op = ift.ValueInserter(sp, ind)
     ift.extra.consistency_check(op)
+    ift.random.pop_sseq()
 
 
 @pmp('sp', _pow_spaces)
@@ -282,18 +281,19 @@ def testSpecialSum(sp):
 @pmp('sp', [ift.RGSpace(10)])
 @pmp('seed', [12, 3])
 def testMatrixProductOperator(sp, seed):
-    np.random.seed(seed)
-    mat = np.random.randn(*sp.shape, *sp.shape)
+    ift.random.push_sseq_from_seed(seed)
+    mat = ift.random.current_rng().standard_normal((*sp.shape, *sp.shape))
     op = ift.MatrixProductOperator(sp, mat)
     ift.extra.consistency_check(op)
-    mat = mat + 1j*np.random.randn(*sp.shape, *sp.shape)
+    mat = mat + 1j*ift.random.current_rng().standard_normal((*sp.shape, *sp.shape))
     op = ift.MatrixProductOperator(sp, mat)
     ift.extra.consistency_check(op)
+    ift.random.pop_sseq()
 
 
 @pmp('seed', [12, 3])
 def testPartialExtractor(seed):
-    np.random.seed(seed)
+    ift.random.push_sseq_from_seed(seed)
     tgt = {'a': ift.RGSpace(1), 'b': ift.RGSpace(2)}
     dom = tgt.copy()
     dom['c'] = ift.RGSpace(3)
@@ -301,6 +301,7 @@ def testPartialExtractor(seed):
     tgt = ift.MultiDomain.make(tgt)
     op = ift.PartialExtractor(dom, tgt)
     ift.extra.consistency_check(op)
+    ift.random.pop_sseq()
 
 
 @pmp('seed', [12, 3])
