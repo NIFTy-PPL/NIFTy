@@ -159,23 +159,27 @@ def optimize_operator(op):
             attr = left_parser(leave[1])
             leave_op = getattr(parent, attr)
             if isinstance(leave_op, _OpChain):
-                to_compare.append(leave_op._ops)
+                to_compare.append(tuple(reversed(leave_op._ops)))
             else:
                 to_compare.append((leave_op,))
         first_difference = 1
+        max_diff = min(len(i) for i in to_compare)
+        if not max_diff == 1:
+            compare_iterator = iter(to_compare)
+            first = next(compare_iterator)
+            while all(first[first_difference] == rest[first_difference] for rest in compare_iterator):
+                first_difference +=1
+                if first_difference >= max_diff:
+                    break
+                compare_iterator = iter(to_compare)
+                first = next(compare_iterator)
 
-        try:
-            while to_compare[1:][first_difference] == to_compare[-1:][first_difference]:
-                first_difference += 1
-        except IndexError:
-            pass
         # Do not optimise leaves which only have equal FieldAdapters
-        if first_difference >= int(isinstance(to_compare[0][0], FieldAdapter)):
-            to_compare[0][:first_difference]
+        if first_difference > int(isinstance(to_compare[0][-1], FieldAdapter)):
             common_op = to_compare[0][:first_difference]
-            res_op = common_op[-1]
-            for ops in reversed(common_op[:-1]):
-                res_op = res_op @ ops
+            res_op = common_op[0]
+            for ops in common_op[1:]:
+                res_op = ops @ res_op
 
             same_op[key] = [res_op, FieldAdapter(res_op.target, str(id(res_op)))]
 
@@ -185,7 +189,10 @@ def optimize_operator(op):
                 attr = left_parser(leave[1])
                 leave_op = getattr(parent, attr)
                 if isinstance(leave_op, _OpChain):
-                    leave_op._ops = leave_op._ops[:first_difference] + (same_op[key][1],)
+                    if first_difference == len(leave_op._ops):
+                        setattr(parent, attr, same_op[key][1])
+                    else:
+                        leave_op._ops = leave_op._ops[:-first_difference] + (same_op[key][1],)
                 else:
                     setattr(parent, attr, same_op[key][1])
 
@@ -211,7 +218,7 @@ def optimize_operator_safe(op):
 
     if isinstance(op(test_field), MultiField):
         for key in op(test_field).keys():
-            assert allclose(op(test_field).val[key], op_optimized(test_field).val[key])
+            assert allclose(op(test_field).val[key], op_optimized(test_field).val[key], 1e-10)
     else:
-        assert allclose(op(test_field).val, op_optimized(test_field).val)
+        assert allclose(op(test_field).val, op_optimized(test_field).val, 1e-10)
     return op_optimized
