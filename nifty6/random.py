@@ -243,4 +243,5 @@ class Context(object):
         push_sseq(self._sseq)
 
     def __exit__(self, exc_type, exc_value, tb):
+        pop_sseq()
         return exc_type is None

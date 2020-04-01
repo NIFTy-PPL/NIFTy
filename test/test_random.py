@@ -20,11 +20,17 @@ import numpy as np
 import nifty6 as ift
 
 
+def check_state_back_to_orig():
+    np.testing.assert_equal(len(ift.random._rng),1)
+    np.testing.assert_equal(len(ift.random._sseq),1)
+
+
 def test_rand1():
     with ift.random.Context(31):
         a = ift.random.current_rng().integers(0,1000000000)
     with ift.random.Context(31):
         b = ift.random.current_rng().integers(0,1000000000)
+    check_state_back_to_orig()
     np.testing.assert_equal(a,b)
 
 
@@ -34,6 +40,7 @@ def test_rand2():
         a = ift.random.current_rng().integers(0,1000000000)
     with ift.random.Context(sseq[2]):
         b = ift.random.current_rng().integers(0,1000000000)
+    check_state_back_to_orig()
     np.testing.assert_equal(a,b)
 
 
@@ -48,6 +55,7 @@ def test_rand3():
         sseq = ift.random.spawn_sseq(1)
         with ift.random.Context(sseq[0]):
             b = ift.random.current_rng().integers(0,1000000000)
+    check_state_back_to_orig()
     np.testing.assert_equal(a,b)
 
 
@@ -68,6 +76,7 @@ def test_rand5():
     ift.random.pop_sseq()
     d = ift.random.current_rng().integers(0,1000000000)
     ift.random.pop_sseq()
+    check_state_back_to_orig()
     np.testing.assert_equal(a,b)
     np.testing.assert_equal(c,d)
 
@@ -79,4 +88,5 @@ def test_rand6():
     b = ift.random.current_rng().integers(0,1000000000)
     np.testing.assert_equal(a,b)
     ift.random.pop_sseq()
+    check_state_back_to_orig()
 
