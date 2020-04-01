@@ -79,4 +79,5 @@ def test_rand6():
     ift.random.setState(state)
     b = ift.random.current_rng().integers(0,1000000000)
     np.testing.assert_equal(a,b)
+    ift.random.pop_sseq()
 

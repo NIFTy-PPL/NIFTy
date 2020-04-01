@@ -248,16 +248,15 @@ def testOuter(fdomain, domain):
 @pmp('sp', _h_spaces + _p_spaces + _pow_spaces)
 @pmp('seed', [12, 3])
 def testValueInserter(sp, seed):
-    ift.random.push_sseq_from_seed(seed)
-    ind = []
-    for ss in sp.shape:
-        if ss == 1:
-            ind.append(0)
-        else:
-            ind.append(int(ift.random.current_rng().integers(0, ss-1)))
-    op = ift.ValueInserter(sp, ind)
-    ift.extra.consistency_check(op)
-    ift.random.pop_sseq()
+    with ift.random.Context(seed):
+        ind = []
+        for ss in sp.shape:
+            if ss == 1:
+                ind.append(0)
+            else:
+                ind.append(int(ift.random.current_rng().integers(0, ss-1)))
+        op = ift.ValueInserter(sp, ind)
+        ift.extra.consistency_check(op)
 
 
 @pmp('sp', _pow_spaces)
@@ -278,14 +277,13 @@ def testSpecialSum(sp):
     ift.extra.consistency_check(op)
 
 def metatestMatrixProductOperator(sp, mat_shape, seed, **kwargs):
-    ift.random.push_sseq_from_seed(seed)
-    mat = ift.random.current_rng().standard_normal(mat_shape)
-    op = ift.MatrixProductOperator(sp, mat, **kwargs)
-    ift.extra.consistency_check(op)
-    mat = mat + 1j*ift.random.current_rng().standard_normal(mat_shape)
-    op = ift.MatrixProductOperator(sp, mat, **kwargs)
-    ift.extra.consistency_check(op)
-    ift.random.pop_sseq()
+    with ift.random.Context(seed):
+        mat = ift.random.current_rng().standard_normal(mat_shape)
+        op = ift.MatrixProductOperator(sp, mat, **kwargs)
+        ift.extra.consistency_check(op)
+        mat = mat + 1j*ift.random.current_rng().standard_normal(mat_shape)
+        op = ift.MatrixProductOperator(sp, mat, **kwargs)
+        ift.extra.consistency_check(op)
 
 @pmp('sp', [ift.RGSpace(10)])
 @pmp('spaces', [None, (0,)])
@@ -314,15 +312,14 @@ def testMatrixProductOperator_2d_flatten(sp, seed):
 
 @pmp('seed', [12, 3])
 def testPartialExtractor(seed):
-    ift.random.push_sseq_from_seed(seed)
-    tgt = {'a': ift.RGSpace(1), 'b': ift.RGSpace(2)}
-    dom = tgt.copy()
-    dom['c'] = ift.RGSpace(3)
-    dom = ift.MultiDomain.make(dom)
-    tgt = ift.MultiDomain.make(tgt)
-    op = ift.PartialExtractor(dom, tgt)
-    ift.extra.consistency_check(op)
-    ift.random.pop_sseq()
+    with ift.random.Context(seed):
+        tgt = {'a': ift.RGSpace(1), 'b': ift.RGSpace(2)}
+        dom = tgt.copy()
+        dom['c'] = ift.RGSpace(3)
+        dom = ift.MultiDomain.make(dom)
+        tgt = ift.MultiDomain.make(tgt)
+        op = ift.PartialExtractor(dom, tgt)
+        ift.extra.consistency_check(op)
 
 @pmp('seed', [12, 3])
 def testSlowFieldAdapter(seed):

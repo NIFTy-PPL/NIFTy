@@ -206,12 +206,11 @@ def testOuter(fdomain, domain):
 @pmp('sp', _h_spaces + _p_spaces + _pow_spaces)
 @pmp('seed', [12, 3])
 def testValueInserter(sp, seed):
-    ift.random.push_sseq_from_seed(seed)
-    ind = []
-    for ss in sp.shape:
-        if ss == 1:
-            ind.append(0)
-        else:
-            ind.append(int(ift.random.current_rng().integers(0, ss - 1)))
-    _check_repr(ift.ValueInserter(sp, ind))
-    ift.random.pop_sseq()
+    with ift.random.Context(seed):
+        ind = []
+        for ss in sp.shape:
+            if ss == 1:
+                ind.append(0)
+            else:
+                ind.append(int(ift.random.current_rng().integers(0, ss - 1)))
+        _check_repr(ift.ValueInserter(sp, ind))
