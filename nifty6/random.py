@@ -146,6 +146,11 @@ def push_sseq(sseq):
     ----------
     sseq: SeedSequence
         the SeedSequence object to be used from this point
+
+    Notes
+    -----
+    Make sure that every call to `push_sseq` has a matching call to
+    `pop_sseq`, otherwise the module's internal stack will grow indefinitely!
     """
     _sseq.append(sseq)
     _rng.append(np.random.default_rng(_sseq[-1]))
@@ -161,6 +166,11 @@ def push_sseq_from_seed(seed):
     ----------
     seed: int
         the seed from which the new SeedSequence will be built
+
+    Notes
+    -----
+    Make sure that every call to `push_sseq_from_seed` has a matching call to
+    `pop_sseq`, otherwise the module's internal stack will grow indefinitely!
     """
     _sseq.append(np.random.SeedSequence(seed))
     _rng.append(np.random.default_rng(_sseq[-1]))
