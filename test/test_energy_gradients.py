@@ -38,11 +38,9 @@ pmp = pytest.mark.parametrize
 
 @pytest.fixture(params=PARAMS)
 def field(request):
-    ift.random.push_sseq_from_seed(request.param[0])
-    S = ift.ScalingOperator(request.param[1], 1.)
-    res = S.draw_sample()
-    ift.random.pop_sseq()
-    return res
+    with ift.random.Context(request.param[0]):
+        S = ift.ScalingOperator(request.param[1], 1.)
+        return S.draw_sample()
 
 
 def test_gaussian(field):

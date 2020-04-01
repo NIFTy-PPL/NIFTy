@@ -178,10 +178,9 @@ class MetricGaussianKL(Energy):
             _local_samples = []
             sseq = random.spawn_sseq(self._n_samples)
             for i in range(self._lo, self._hi):
-                random.push_sseq(sseq[i])
-                _local_samples.append(met.draw_sample(from_inverse=True,
-                                                      dtype=lh_sampling_dtype))
-                random.pop_sseq()
+                with random.Context(sseq[i]):
+                    _local_samples.append(met.draw_sample(
+                        from_inverse=True, dtype=lh_sampling_dtype))
             _local_samples = tuple(_local_samples)
         else:
             if len(_local_samples) != self._hi-self._lo:
@@ -272,9 +271,8 @@ class MetricGaussianKL(Energy):
         samp = full(self._hamiltonian.domain, 0.)
         sseq = random.spawn_sseq(self._n_samples)
         for i, v in enumerate(self._local_samples):
-            random.push_sseq(sseq[self._lo+i])
-            samp = samp + self._hamiltonian(lin+v).metric.draw_sample(from_inverse=False, dtype=dtype)
-            if self._mirror_samples:
-                samp = samp + self._hamiltonian(lin-v).metric.draw_sample(from_inverse=False, dtype=dtype)
-            random.pop_sseq()
+            with random.Context(sseq[self._lo+i]):
+                samp = samp + self._hamiltonian(lin+v).metric.draw_sample(from_inverse=False, dtype=dtype)
+                if self._mirror_samples:
+                    samp = samp + self._hamiltonian(lin-v).metric.draw_sample(from_inverse=False, dtype=dtype)
         return _allreduce_sum_field(self._comm, samp)/self._n_eff_samples

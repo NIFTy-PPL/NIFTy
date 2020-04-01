@@ -231,3 +231,16 @@ class Random(object):
         else:
             x = _rng[-1].uniform(low, high, shape)
         return x.astype(dtype, copy=False)
+
+
+class Context(object):
+    def __init__(self, inp):
+        if not isinstance(inp, np.random.SeedSequence):
+            inp = np.random.SeedSequence(inp)
+        self._sseq = inp
+
+    def __enter__(self):
+        push_sseq(self._sseq)
+
+    def __exit__(self, exc_type, exc_value, tb):
+        return exc_type is None
