@@ -29,16 +29,13 @@ def test_rand1():
 
 
 def test_rand2():
-    ift.random.push_sseq_from_seed(31)
-    sseq = ift.random.spawn_sseq(10)
-    ift.random.push_sseq(sseq[2])
-    a = ift.random.current_rng().integers(0,1000000000)
-    ift.random.pop_sseq()
-    ift.random.push_sseq(sseq[2])
-    b = ift.random.current_rng().integers(0,1000000000)
-    ift.random.pop_sseq()
+    with ift.random.Context(31):
+        sseq = ift.random.spawn_sseq(10)
+        with ift.random.Context(sseq[2]):
+            a = ift.random.current_rng().integers(0,1000000000)
+        with ift.random.Context(sseq[2]):
+            b = ift.random.current_rng().integers(0,1000000000)
     np.testing.assert_equal(a,b)
-    ift.random.pop_sseq()
 
 
 def test_rand3():
@@ -56,16 +53,6 @@ def test_rand3():
 
 
 def test_rand4():
-    ift.random.push_sseq_from_seed(31)
-    a = ift.random.current_rng().integers(0,1000000000)
-    ift.random.push_sseq_from_seed(31)
-    b = ift.random.current_rng().integers(0,1000000000)
-    ift.random.pop_sseq()
-    ift.random.pop_sseq()
-    np.testing.assert_equal(a,b)
-
-
-def test_rand4b():
     with ift.random.Context(31):
         a = ift.random.current_rng().integers(0,1000000000)
         with ift.random.Context(31):
