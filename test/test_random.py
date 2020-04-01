@@ -29,12 +29,11 @@ def test_rand1():
 
 
 def test_rand2():
-    with ift.random.Context(31):
-        sseq = ift.random.spawn_sseq(10)
-        with ift.random.Context(sseq[2]):
-            a = ift.random.current_rng().integers(0,1000000000)
-        with ift.random.Context(sseq[2]):
-            b = ift.random.current_rng().integers(0,1000000000)
+    sseq = ift.random.spawn_sseq(10)
+    with ift.random.Context(sseq[2]):
+        a = ift.random.current_rng().integers(0,1000000000)
+    with ift.random.Context(sseq[2]):
+        b = ift.random.current_rng().integers(0,1000000000)
     np.testing.assert_equal(a,b)
 
 
