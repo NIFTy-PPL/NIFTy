@@ -55,9 +55,32 @@ if __name__ == '__main__':
 
     position_space = ift.RGSpace([128, 128])
 
-    cfmaker = ift.CorrelatedFieldMaker.make(1e-3, 1e-6, '')
-    cfmaker.add_fluctuations(position_space,
-                             1., 1e-2, 1, .5, .1, .5, -3, 0.5, '')
+    cfmaker = ift.CorrelatedFieldMaker.make(
+        offset_mean =      0.0,  # 0.
+        offset_std_mean = 1e-3,  # 1e-3
+        offset_std_std =  1e-6,  # 1e-6
+        prefix = '')
+
+    fluctuations_dict = {
+        # Amplitude of the fluctuations
+        'fluctuations_mean':   2.0,  # 1.0
+        'fluctuations_stddev': 1.0,  # 1e-2
+
+        # Smooth variation speed
+        'flexibility_mean':   2.5,  # 1.0
+        'flexibility_stddev': 1.0,  # 0.5
+
+        # How strong the ragged component of the spectrum is
+        # (Ratio of Wiener process and integrated Wiener process ?)
+        'asperity_mean':   0.5,  # 0.1
+        'asperity_stddev': 0.5,  # 0.5
+
+        # Slope of linear spectrum component
+        'loglogavgslope_mean': -2.0,  # -3.0
+        'loglogavgslope_stddev': 0.5  #  0.5
+    }
+    cfmaker.add_fluctuations(position_space, **fluctuations_dict)
+
     correlated_field = cfmaker.finalize()
     A = cfmaker.amplitude
 

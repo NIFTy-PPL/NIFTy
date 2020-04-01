@@ -355,32 +355,50 @@ class _Amplitude(Operator):
 
 
 class CorrelatedFieldMaker:
-    def __init__(self, amplitude_offset, prefix, total_N):
-        if not isinstance(amplitude_offset, Operator):
-            raise TypeError("amplitude_offset needs to be an operator")
+    def __init__(self, offset_mean, offset_fluctuations_op, prefix, total_N):
+        if not isinstance(offset_fluctuations_op, Operator):
+            raise TypeError("offset_fluctuations_op needs to be an operator")
         self._a = []
         self._position_spaces = []
 
-        self._azm = amplitude_offset
+        self._offset_mean = offset_mean
+        self._azm = offset_fluctuations_op
         self._prefix = prefix
         self._total_N = total_N
 
     @staticmethod
-    def make(offset_amplitude_mean, offset_amplitude_stddev, prefix,
+    def make(offset_mean, offset_std_mean, offset_std_std, prefix,
              total_N=0,
              dofdex=None):
+        """Returns a CorrelatedFieldMaker object.
+
+        Parameters
+        ----------
+        offset_mean : float
+            Mean offset from zero of the correlated field to be made.
+        offset_std_mean : float
+            Mean standard deviation of the offset value.
+        offset_std_std : float
+            Standard deviation of the stddev of the offset value.
+        prefix : string
+            Prefix to the names of the domains of the cf operator to be made.
+        total_N : integer
+            ?
+        dofdex : np.array
+            ?
+        """
         if dofdex is None:
             dofdex = np.full(total_N, 0)
         elif len(dofdex) != total_N:
             raise ValueError("length of dofdex needs to match total_N")
         N = max(dofdex) + 1 if total_N > 0 else 0
-        zm = _LognormalMomentMatching(offset_amplitude_mean,
-                                      offset_amplitude_stddev,
+        zm = _LognormalMomentMatching(offset_std_mean,
+                                      offset_std_std,
                                       prefix + 'zeromode',
                                       N)
         if total_N > 0:
             zm = _Distributor(dofdex, zm.target, UnstructuredDomain(total_N)) @ zm
-        return CorrelatedFieldMaker(zm, prefix, total_N)
+        return CorrelatedFieldMaker(offset_mean, zm, prefix, total_N)
 
     def add_fluctuations(self,
                          position_space,
@@ -471,12 +489,13 @@ class CorrelatedFieldMaker:
         corr = reduce(mul, a)
         return ht(azm*corr*ducktape(hspace, None, self._prefix + 'xi'))
 
-    def finalize(self, offset=None, prior_info=100):
+    def finalize(self, prior_info=100):
         """
         offset vs zeromode: volume factor
         """
         op = self._finalize_from_op()
-        if offset is not None:
+        if self._offset_mean is not None:
+            offset = self._offset_mean
             # Deviations from this offset must not be considered here as they
             # are learned by the zeromode
             if isinstance(offset, (Field, MultiField)):
