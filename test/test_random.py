@@ -81,3 +81,12 @@ def test_rand5():
     ift.random.pop_sseq()
     np.testing.assert_equal(a,b)
     np.testing.assert_equal(c,d)
+
+def test_rand6():
+    ift.random.push_sseq_from_seed(31)
+    state = ift.random.getState()
+    a = ift.random.current_rng().integers(0,1000000000)
+    ift.random.setState(state)
+    b = ift.random.current_rng().integers(0,1000000000)
+    np.testing.assert_equal(a,b)
+

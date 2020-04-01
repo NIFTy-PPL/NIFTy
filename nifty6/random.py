@@ -79,6 +79,31 @@ _sseq = [np.random.SeedSequence(42)]
 _rng = [np.random.default_rng(_sseq[-1])]
 
 
+def getState():
+    """Returns the full internal state of the module. Intended for pickling.
+
+    Returns
+    -------
+    state : unspecified
+    """
+    import pickle
+    return pickle.dumps((_sseq, _rng))
+
+
+def setState(state):
+    """Restores the full internal state of the module. Intended for unpickling.
+
+
+    Parameters
+    ----------
+    state : unspecified
+        Result of an earlier call to `getState`.
+    """
+    import pickle
+    global _sseq, _rng
+    _sseq, _rng = pickle.loads(state)
+
+
 def spawn_sseq(n, parent=None):
     """Returns a list of `n` SeedSequence objects which are children of `parent`
 
