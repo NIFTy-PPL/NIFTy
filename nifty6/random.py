@@ -79,6 +79,31 @@ _sseq = [np.random.SeedSequence(42)]
 _rng = [np.random.default_rng(_sseq[-1])]
 
 
+def getState():
+    """Returns the full internal state of the module. Intended for pickling.
+
+    Returns
+    -------
+    state : unspecified
+    """
+    import pickle
+    return pickle.dumps((_sseq, _rng))
+
+
+def setState(state):
+    """Restores the full internal state of the module. Intended for unpickling.
+
+
+    Parameters
+    ----------
+    state : unspecified
+        Result of an earlier call to `getState`.
+    """
+    import pickle
+    global _sseq, _rng
+    _sseq, _rng = pickle.loads(state)
+
+
 def spawn_sseq(n, parent=None):
     """Returns a list of `n` SeedSequence objects which are children of `parent`
 
@@ -121,6 +146,11 @@ def push_sseq(sseq):
     ----------
     sseq: SeedSequence
         the SeedSequence object to be used from this point
+
+    Notes
+    -----
+    Make sure that every call to `push_sseq` has a matching call to
+    `pop_sseq`, otherwise the module's internal stack will grow indefinitely!
     """
     _sseq.append(sseq)
     _rng.append(np.random.default_rng(_sseq[-1]))
@@ -136,6 +166,11 @@ def push_sseq_from_seed(seed):
     ----------
     seed: int
         the seed from which the new SeedSequence will be built
+
+    Notes
+    -----
+    Make sure that every call to `push_sseq_from_seed` has a matching call to
+    `pop_sseq`, otherwise the module's internal stack will grow indefinitely!
     """
     _sseq.append(np.random.SeedSequence(seed))
     _rng.append(np.random.default_rng(_sseq[-1]))
@@ -196,3 +231,16 @@ class Random(object):
         else:
             x = _rng[-1].uniform(low, high, shape)
         return x.astype(dtype, copy=False)
+
+
+class Context(object):
+    def __init__(self, inp):
+        if not isinstance(inp, np.random.SeedSequence):
+            inp = np.random.SeedSequence(inp)
+        self._sseq = inp
+
+    def __enter__(self):
+        push_sseq(self._sseq)
+
+    def __exit__(self, exc_type, exc_value, tb):
+        return exc_type is None

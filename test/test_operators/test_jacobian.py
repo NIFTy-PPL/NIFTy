@@ -38,83 +38,79 @@ seed = list2fixture([4, 78, 23])
 
 
 def testBasics(space, seed):
-    ift.random.push_sseq_from_seed(seed)
-    S = ift.ScalingOperator(space, 1.)
-    s = S.draw_sample()
-    var = ift.Linearization.make_var(s)
-    model = ift.ScalingOperator(var.target, 6.)
-    ift.extra.check_jacobian_consistency(model, var.val)
-    ift.random.pop_sseq()
+    with ift.random.Context(seed):
+        S = ift.ScalingOperator(space, 1.)
+        s = S.draw_sample()
+        var = ift.Linearization.make_var(s)
+        model = ift.ScalingOperator(var.target, 6.)
+        ift.extra.check_jacobian_consistency(model, var.val)
 
 
 @pmp('type1', ['Variable', 'Constant'])
 @pmp('type2', ['Variable'])
 def testBinary(type1, type2, space, seed):
-    ift.random.push_sseq_from_seed(seed)
-    dom1 = ift.MultiDomain.make({'s1': space})
-    dom2 = ift.MultiDomain.make({'s2': space})
-    dom = ift.MultiDomain.union((dom1, dom2))
-    select_s1 = ift.ducktape(None, dom1, "s1")
-    select_s2 = ift.ducktape(None, dom2, "s2")
-    model = select_s1*select_s2
-    pos = ift.from_random("normal", dom)
-    ift.extra.check_jacobian_consistency(model, pos, ntries=20)
-    model = select_s1 + select_s2
-    pos = ift.from_random("normal", dom)
-    ift.extra.check_jacobian_consistency(model, pos, ntries=20)
-    model = select_s1.scale(3.)
-    pos = ift.from_random("normal", dom1)
-    ift.extra.check_jacobian_consistency(model, pos, ntries=20)
-    model = ift.ScalingOperator(space, 2.456)(select_s1*select_s2)
-    pos = ift.from_random("normal", dom)
-    ift.extra.check_jacobian_consistency(model, pos, ntries=20)
-    model = ift.sigmoid(2.456*(select_s1*select_s2))
-    pos = ift.from_random("normal", dom)
-    ift.extra.check_jacobian_consistency(model, pos, ntries=20)
-    pos = ift.from_random("normal", dom)
-    model = ift.OuterProduct(pos['s1'], ift.makeDomain(space))
-    ift.extra.check_jacobian_consistency(model, pos['s2'], ntries=20)
-    model = select_s1**2
-    pos = ift.from_random("normal", dom1)
-    ift.extra.check_jacobian_consistency(model, pos, ntries=20)
-    model = select_s1.clip(-1, 1)
-    pos = ift.from_random("normal", dom1)
-    ift.extra.check_jacobian_consistency(model, pos, ntries=20)
-    f = ift.from_random("normal", space)
-    model = select_s1.clip(f-0.1, f+1.)
-    pos = ift.from_random("normal", dom1)
-    ift.extra.check_jacobian_consistency(model, pos, ntries=20)
-    if isinstance(space, ift.RGSpace):
-        model = ift.FFTOperator(space)(select_s1*select_s2)
+    with ift.random.Context(seed):
+        dom1 = ift.MultiDomain.make({'s1': space})
+        dom2 = ift.MultiDomain.make({'s2': space})
+        dom = ift.MultiDomain.union((dom1, dom2))
+        select_s1 = ift.ducktape(None, dom1, "s1")
+        select_s2 = ift.ducktape(None, dom2, "s2")
+        model = select_s1*select_s2
         pos = ift.from_random("normal", dom)
         ift.extra.check_jacobian_consistency(model, pos, ntries=20)
-    ift.random.pop_sseq()
+        model = select_s1 + select_s2
+        pos = ift.from_random("normal", dom)
+        ift.extra.check_jacobian_consistency(model, pos, ntries=20)
+        model = select_s1.scale(3.)
+        pos = ift.from_random("normal", dom1)
+        ift.extra.check_jacobian_consistency(model, pos, ntries=20)
+        model = ift.ScalingOperator(space, 2.456)(select_s1*select_s2)
+        pos = ift.from_random("normal", dom)
+        ift.extra.check_jacobian_consistency(model, pos, ntries=20)
+        model = ift.sigmoid(2.456*(select_s1*select_s2))
+        pos = ift.from_random("normal", dom)
+        ift.extra.check_jacobian_consistency(model, pos, ntries=20)
+        pos = ift.from_random("normal", dom)
+        model = ift.OuterProduct(pos['s1'], ift.makeDomain(space))
+        ift.extra.check_jacobian_consistency(model, pos['s2'], ntries=20)
+        model = select_s1**2
+        pos = ift.from_random("normal", dom1)
+        ift.extra.check_jacobian_consistency(model, pos, ntries=20)
+        model = select_s1.clip(-1, 1)
+        pos = ift.from_random("normal", dom1)
+        ift.extra.check_jacobian_consistency(model, pos, ntries=20)
+        f = ift.from_random("normal", space)
+        model = select_s1.clip(f-0.1, f+1.)
+        pos = ift.from_random("normal", dom1)
+        ift.extra.check_jacobian_consistency(model, pos, ntries=20)
+        if isinstance(space, ift.RGSpace):
+            model = ift.FFTOperator(space)(select_s1*select_s2)
+            pos = ift.from_random("normal", dom)
+            ift.extra.check_jacobian_consistency(model, pos, ntries=20)
 
 
 def testSpecialDistributionOps(space, seed):
-    ift.random.push_sseq_from_seed(seed)
-    S = ift.ScalingOperator(space, 1.)
-    pos = S.draw_sample()
-    alpha = 1.5
-    q = 0.73
-    model = ift.InverseGammaOperator(space, alpha, q)
-    ift.extra.check_jacobian_consistency(model, pos, ntries=20)
-    model = ift.UniformOperator(space, alpha, q)
-    ift.extra.check_jacobian_consistency(model, pos, ntries=20)
-    ift.random.pop_sseq()
+    with ift.random.Context(seed):
+        S = ift.ScalingOperator(space, 1.)
+        pos = S.draw_sample()
+        alpha = 1.5
+        q = 0.73
+        model = ift.InverseGammaOperator(space, alpha, q)
+        ift.extra.check_jacobian_consistency(model, pos, ntries=20)
+        model = ift.UniformOperator(space, alpha, q)
+        ift.extra.check_jacobian_consistency(model, pos, ntries=20)
 
 
 @pmp('neg', [True, False])
 def testAdder(space, seed, neg):
-    ift.random.push_sseq_from_seed(seed)
-    S = ift.ScalingOperator(space, 1.)
-    f = S.draw_sample()
-    f1 = S.draw_sample()
-    op = ift.Adder(f1, neg)
-    ift.extra.check_jacobian_consistency(op, f)
-    op = ift.Adder(f1.val.ravel()[0], neg=neg, domain=space)
-    ift.extra.check_jacobian_consistency(op, f)
-    ift.random.pop_sseq()
+    with ift.random.Context(seed):
+        S = ift.ScalingOperator(space, 1.)
+        f = S.draw_sample()
+        f1 = S.draw_sample()
+        op = ift.Adder(f1, neg)
+        ift.extra.check_jacobian_consistency(op, f)
+        op = ift.Adder(f1.val.ravel()[0], neg=neg, domain=space)
+        ift.extra.check_jacobian_consistency(op, f)
 
 
 @pmp('target', [ift.RGSpace(64, distances=.789, harmonic=True),
@@ -123,44 +119,43 @@ def testAdder(space, seed, neg):
 @pmp('causal', [True, False])
 @pmp('minimum_phase', [True, False])
 def testDynamicModel(target, causal, minimum_phase, seed):
-    ift.random.push_sseq_from_seed(seed)
-    dct = {
-            'target': target,
-            'harmonic_padding': None,
-            'sm_s0': 3.,
-            'sm_x0': 1.,
-            'key': 'f',
-            'causal': causal,
-            'minimum_phase': minimum_phase
-            }
-    model, _ = ift.dynamic_operator(**dct)
-    S = ift.ScalingOperator(model.domain, 1.)
-    pos = S.draw_sample()
-    # FIXME I dont know why smaller tol fails for 3D example
-    ift.extra.check_jacobian_consistency(model, pos, tol=1e-5, ntries=20)
-    if len(target.shape) > 1:
+    with ift.random.Context(seed):
         dct = {
-            'target': target,
-            'harmonic_padding': None,
-            'sm_s0': 3.,
-            'sm_x0': 1.,
-            'key': 'f',
-            'lightcone_key': 'c',
-            'sigc': 1.,
-            'quant': 5,
-            'causal': causal,
-            'minimum_phase': minimum_phase
-        }
-        dct['lightcone_key'] = 'c'
-        dct['sigc'] = 1.
-        dct['quant'] = 5
-        model, _ = ift.dynamic_lightcone_operator(**dct)
+                'target': target,
+                'harmonic_padding': None,
+                'sm_s0': 3.,
+                'sm_x0': 1.,
+                'key': 'f',
+                'causal': causal,
+                'minimum_phase': minimum_phase
+                }
+        model, _ = ift.dynamic_operator(**dct)
         S = ift.ScalingOperator(model.domain, 1.)
         pos = S.draw_sample()
         # FIXME I dont know why smaller tol fails for 3D example
-        ift.extra.check_jacobian_consistency(
-            model, pos, tol=1e-5, ntries=20)
-    ift.random.pop_sseq()
+        ift.extra.check_jacobian_consistency(model, pos, tol=1e-5, ntries=20)
+        if len(target.shape) > 1:
+            dct = {
+                'target': target,
+                'harmonic_padding': None,
+                'sm_s0': 3.,
+                'sm_x0': 1.,
+                'key': 'f',
+                'lightcone_key': 'c',
+                'sigc': 1.,
+                'quant': 5,
+                'causal': causal,
+                'minimum_phase': minimum_phase
+            }
+            dct['lightcone_key'] = 'c'
+            dct['sigc'] = 1.
+            dct['quant'] = 5
+            model, _ = ift.dynamic_lightcone_operator(**dct)
+            S = ift.ScalingOperator(model.domain, 1.)
+            pos = S.draw_sample()
+            # FIXME I dont know why smaller tol fails for 3D example
+            ift.extra.check_jacobian_consistency(
+                model, pos, tol=1e-5, ntries=20)
 
 
 @pmp('h_space', _h_spaces)
