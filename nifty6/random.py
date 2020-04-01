@@ -253,7 +253,7 @@ class Context(object):
         <code using the new RNG state>
     ```
 
-    At the end of the scope, the otiginal RNG state will be restored
+    At the end of the scope, the original RNG state will be restored
     automatically.
 
     Parameters
