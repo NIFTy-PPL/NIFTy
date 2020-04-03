@@ -379,7 +379,7 @@ class Linearization(object):
 
     def one_over(self):
         tmp = 1./self._val
-        tmp2 = - tmp/self._val
+        tmp2 = - tmp*tmp
         return self.new(tmp, makeOp(tmp2)(self._jac))
 
     def add_metric(self, metric):
