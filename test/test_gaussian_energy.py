@@ -51,7 +51,7 @@ def test_gaussian_energy(space, nonlinearity, noise, seed):
             return 1/(1 + k**2)**dim
 
         pspec = ift.PS_field(pspace, pspec)
-        A = Dist(ift.sqrt(pspec))
+        A = Dist(pspec.ptw("sqrt"))
         N = ift.ScalingOperator(space, noise)
         n = N.draw_sample()
         R = ift.ScalingOperator(space, 10.)
@@ -61,7 +61,7 @@ def test_gaussian_energy(space, nonlinearity, noise, seed):
                 return R @ ht @ ift.makeOp(A)
             else:
                 tmp = ht @ ift.makeOp(A)
-                nonlin = getattr(tmp, nonlinearity)()
+                nonlin = tmp.ptw(nonlinearity)
                 return R @ nonlin
 
         d = d_model()(xi0) + n

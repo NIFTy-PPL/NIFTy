@@ -127,7 +127,7 @@ class VariableCovarianceGaussianEnergy(EnergyOperator):
 
     def apply(self, x):
         self._check_input(x)
-        res = 0.5*(x[self._r].vdot(x[self._r]*x[self._icov]).real - x[self._icov].log().sum())
+        res = 0.5*(x[self._r].vdot(x[self._r]*x[self._icov]).real - x[self._icov].ptw("log").sum())
         if not isinstance(x, Linearization) or not x.want_metric:
             return res
         mf = {self._r: x.val[self._icov], self._icov: .5*x.val[self._icov]**(-2)}
@@ -229,7 +229,7 @@ class PoissonianEnergy(EnergyOperator):
 
     def apply(self, x):
         self._check_input(x)
-        res = x.sum() - x.log().vdot(self._d)
+        res = x.sum() - x.ptw("log").vdot(self._d)
         if not isinstance(x, Linearization) or not x.want_metric:
             return res
         return res.add_metric(makeOp(1./x.val))
@@ -269,7 +269,7 @@ class InverseGammaLikelihood(EnergyOperator):
 
     def apply(self, x):
         self._check_input(x)
-        res = x.log().vdot(self._alphap1) + x.one_over().vdot(self._beta)
+        res = x.ptw("log").vdot(self._alphap1) + x.ptw("reciprocal").vdot(self._beta)
         if not isinstance(x, Linearization) or not x.want_metric:
             return res
         return res.add_metric(makeOp(self._alphap1/(x.val**2)))
@@ -298,7 +298,7 @@ class StudentTEnergy(EnergyOperator):
 
     def apply(self, x):
         self._check_input(x)
-        res = ((self._theta+1)/2)*(x**2/self._theta).log1p().sum()
+        res = ((self._theta+1)/2)*(x**2/self._theta).ptw("log1p").sum()
         if not isinstance(x, Linearization) or not x.want_metric:
             return res
         met = ScalingOperator(self.domain, (self._theta+1) / (self._theta+3))
@@ -332,7 +332,7 @@ class BernoulliEnergy(EnergyOperator):
 
     def apply(self, x):
         self._check_input(x)
-        res = -x.log().vdot(self._d) + (1.-x).log().vdot(self._d-1.)
+        res = -x.ptw("log").vdot(self._d) + (1.-x).ptw("log").vdot(self._d-1.)
         if not isinstance(x, Linearization) or not x.want_metric:
             return res
         return res.add_metric(makeOp(1./(x.val*(1. - x.val))))

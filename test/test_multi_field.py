@@ -33,7 +33,7 @@ def test_vdot():
 def test_func():
     f1 = ift.from_random("normal", domain=dom, dtype=np.complex128)
     assert_allclose(
-        ift.log(ift.exp((f1)))["d1"].val, f1["d1"].val)
+        f1.ptw("exp").ptw("log")["d1"].val, f1["d1"].val)
 
 
 def test_multifield_field_consistency():

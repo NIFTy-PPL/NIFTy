@@ -634,10 +634,9 @@ class Field(object):
         Field
             The result of the operation.
         """
-        from .sugar import sqrt
         if self.scalar_weight(spaces) is not None:
             return self._contraction_helper('std', spaces)
-        return sqrt(self.var(spaces))
+        return self.var(spaces).ptw("sqrt")
 
     def s_std(self):
         """Determines the standard deviation of the Field.
@@ -677,16 +676,10 @@ class Field(object):
     def flexible_addsub(self, other, neg):
         return self-other if neg else self+other
 
-    def sigmoid(self):
-        return 0.5*(1.+self.tanh())
-
     def clip(self, min=None, max=None):
         min = min.val if isinstance(min, Field) else min
         max = max.val if isinstance(max, Field) else max
         return Field(self._domain, np.clip(self._val, min, max))
-
-    def one_over(self):
-        return 1/self
 
     def _binary_op(self, other, op):
         # if other is a field, make sure that the domains match
@@ -699,6 +692,13 @@ class Field(object):
             return Field(self._domain, f(other))
         return NotImplemented
 
+    def ptw(self, op, with_deriv=False):
+        from .pointwise import ptw_dict
+        if with_deriv:
+            tmp = ptw_dict[op][1](self._val)
+            return (Field(self._domain, tmp[0]),
+                    Field(self._domain, tmp[1]))
+        return Field(self._domain, ptw_dict[op][0](self._val))
 
 for op in ["__add__", "__radd__",
            "__sub__", "__rsub__",
@@ -721,11 +721,3 @@ for op in ["__iadd__", "__isub__", "__imul__", "__idiv__",
                 "In-place operations are deliberately not supported")
         return func2
     setattr(Field, op, func(op))
-
-for f in ["sqrt", "exp", "log", "sin", "cos", "tan", "sinh", "cosh", "tanh",
-          "absolute", "sinc", "sign", "log10", "log1p", "expm1"]:
-    def func(f):
-        def func2(self):
-            return Field(self._domain, getattr(np, f)(self.val))
-        return func2
-    setattr(Field, f, func(f))

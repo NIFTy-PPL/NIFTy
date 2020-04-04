@@ -222,15 +222,8 @@ class Operator(metaclass=NiftyMeta):
     def _simplify_for_constant_input_nontrivial(self, c_inp):
         return None, self
 
-
-for f in ["sqrt", "exp", "log", "sin", "cos", "tan", "sinh", "cosh", "tanh",
-          "sinc", "sigmoid", "absolute", "one_over", "log10", "log1p", "expm1"]:
-    def func(f):
-        def func2(self):
-            fa = _FunctionApplier(self.target, f)
-            return _OpChain.make((fa, self))
-        return func2
-    setattr(Operator, f, func(f))
+    def ptw(self, op):
+        return _OpChain.make((_FunctionApplier(self.target, op), self))
 
 
 class _ConstCollector(object):
@@ -301,7 +294,7 @@ class _FunctionApplier(Operator):
 
     def apply(self, x):
         self._check_input(x)
-        return getattr(x, self._funcname)()
+        return x.ptw(self._funcname)
 
 
 class _Clipper(Operator):

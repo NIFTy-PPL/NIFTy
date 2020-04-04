@@ -46,7 +46,7 @@ def test_gaussian_smoothing():
     N = 128
     sigma = N / 10**4
     dom = ift.RGSpace(N)
-    sig = ift.exp(ift.Field.from_random('normal', dom))
+    sig = ift.Field.from_random('normal', dom).ptw("exp")
     fco_op = ift.FuncConvolutionOperator(dom, lambda x: gauss(x, sigma))
     sm_op = ift.HarmonicSmoothingOperator(dom, sigma)
     assert_allclose(fco_op(sig).val,

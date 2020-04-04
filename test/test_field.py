@@ -198,7 +198,7 @@ def test_trivialities():
     assert_equal(f1.val, f1.real.val)
     assert_equal(f1.val, (+f1).val)
     f1 = ift.Field.full(s1, 27. + 3j)
-    assert_equal(f1.one_over().val, (1./f1).val)
+    assert_equal(f1.ptw("reciprocal").val, (1./f1).val)
     assert_equal(f1.real.val, 27.)
     assert_equal(f1.imag.val, 3.)
     assert_equal(f1.s_sum(), f1.sum(0).val)
@@ -336,7 +336,7 @@ def test_emptydomain():
 def test_funcs(num, dom, func):
     num = 5
     f = ift.Field.full(dom, num)
-    res = getattr(f, func)()
+    res = f.ptw(func)
     res2 = getattr(np, func)(num)
     assert_allclose(res.val, res2)
 

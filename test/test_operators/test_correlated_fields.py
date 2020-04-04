@@ -36,7 +36,7 @@ def testAmplitudesConsistency(rseed, sspace, Astds, offset_std_mean, N, zm_mean)
         sc = ift.StatCalculator()
         for s in samples:
             sc.add(op(s.extract(op.domain)))
-        return sc.mean.val, sc.var.sqrt().val
+        return sc.mean.val, sc.var.ptw("sqrt").val
 
     with ift.random.Context(rseed):
         nsam = 100

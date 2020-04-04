@@ -41,7 +41,7 @@ def test_get_signal_variance():
 def test_exec_time():
     dom = ift.RGSpace(12, harmonic=True)
     op = ift.HarmonicTransformOperator(dom)
-    op1 = op.exp()
+    op1 = op.ptw("exp")
     lh = ift.GaussianEnergy(domain=op.target) @ op1
     ic = ift.GradientNormController(iteration_limit=2)
     ham = ift.StandardHamiltonian(lh, ic_samp=ic)
@@ -54,7 +54,7 @@ def test_exec_time():
 
 def test_calc_pos():
     dom = ift.RGSpace(12, harmonic=True)
-    op = ift.HarmonicTransformOperator(dom).exp()
+    op = ift.HarmonicTransformOperator(dom).ptw("exp")
     fld = op(0.1*ift.from_random('normal', op.domain))
     pos = ift.calculate_position(op, fld)
     ift.extra.assert_allclose(op(pos), fld, 1e-1, 1e-1)

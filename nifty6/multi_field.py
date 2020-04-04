@@ -310,8 +310,12 @@ class MultiField(object):
                 res[key] = -val if neg else val
         return MultiField.from_dict(res)
 
-    def one_over(self):
-        return 1/self
+    def ptw(self, op, with_deriv=False):
+        tmp = tuple(val.ptw(op, with_deriv) for val in self.values())
+        if with_deriv:
+            return (MultiField(self.domain, tuple(v[0] for v in tmp)),
+                    MultiField(self.domain, tuple(v[1] for v in tmp)))
+        return MultiField(self.domain, tmp)
 
     def _binary_op(self, other, op):
         f = getattr(Field, op)
@@ -347,14 +351,3 @@ for op in ["__iadd__", "__isub__", "__imul__", "__idiv__",
                 "In-place operations are deliberately not supported")
         return func2
     setattr(MultiField, op, func(op))
-
-
-for f in ["sqrt", "exp", "log", "sin", "cos", "tan", "sinh", "cosh", "tanh",
-          "absolute", "sinc", "sign", "log10", "log1p", "expm1"]:
-    def func(f):
-        def func2(self):
-            fu = getattr(Field, f)
-            return MultiField(self.domain,
-                              tuple(fu(val) for val in self.values()))
-        return func2
-    setattr(MultiField, f, func(f))

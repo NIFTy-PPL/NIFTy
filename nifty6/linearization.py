@@ -166,7 +166,7 @@ class Linearization(object):
         return self.__mul__(1./other)
 
     def __rtruediv__(self, other):
-        return self.one_over().__mul__(other)
+        return self.reciprocal().__mul__(other)
 
     def __pow__(self, power):
         if not np.isscalar(power):
@@ -282,9 +282,10 @@ class Linearization(object):
             self._val.integrate(spaces),
             ContractionOperator(self._jac.target, spaces, 1)(self._jac))
 
-    def exp(self):
-        tmp = self._val.exp()
-        return self.new(tmp, makeOp(tmp)(self._jac))
+    def ptw(self, op):
+        from .pointwise import ptw_dict
+        t1, t2 = self._val.ptw(op, True)
+        return self.new(t1, makeOp(t2)(self._jac))
 
     def clip(self, min=None, max=None):
         tmp = self._val.clip(min, max)
@@ -297,90 +298,6 @@ class Linearization(object):
         else:
             tmp2 = makeOp(1. - (tmp == min) - (tmp == max))
         return self.new(tmp, tmp2(self._jac))
-
-    def sqrt(self):
-        tmp = self._val.sqrt()
-        return self.new(tmp, makeOp(0.5/tmp)(self._jac))
-
-    def sin(self):
-        tmp = self._val.sin()
-        tmp2 = self._val.cos()
-        return self.new(tmp, makeOp(tmp2)(self._jac))
-
-    def cos(self):
-        tmp = self._val.cos()
-        tmp2 = - self._val.sin()
-        return self.new(tmp, makeOp(tmp2)(self._jac))
-
-    def tan(self):
-        tmp = self._val.tan()
-        tmp2 = 1./(self._val.cos()**2)
-        return self.new(tmp, makeOp(tmp2)(self._jac))
-
-    def sinc(self):
-        tmp = self._val.sinc()
-        tmp2 = ((np.pi*self._val).cos()-tmp)/self._val
-        ind = self._val.val == 0
-        loc = tmp2.val_rw()
-        loc[ind] = 0
-        tmp2 = Field(tmp.domain, loc)
-        return self.new(tmp, makeOp(tmp2)(self._jac))
-
-    def log(self):
-        tmp = self._val.log()
-        return self.new(tmp, makeOp(1./self._val)(self._jac))
-
-    def log10(self):
-        tmp = self._val.log10()
-        tmp2 = 1. / (self._val * np.log(10))
-        return self.new(tmp, makeOp(tmp2)(self._jac))
-
-    def log1p(self):
-        tmp = self._val.log1p()
-        tmp2 = 1. / (1. + self._val)
-        return self.new(tmp, makeOp(tmp2)(self.jac))
-
-    def expm1(self):
-        tmp = self._val.expm1()
-        tmp2 = self._val.exp()
-        return self.new(tmp, makeOp(tmp2)(self.jac))
-
-    def sinh(self):
-        tmp = self._val.sinh()
-        tmp2 = self._val.cosh()
-        return self.new(tmp, makeOp(tmp2)(self._jac))
-
-    def cosh(self):
-        tmp = self._val.cosh()
-        tmp2 = self._val.sinh()
-        return self.new(tmp, makeOp(tmp2)(self._jac))
-
-    def tanh(self):
-        tmp = self._val.tanh()
-        return self.new(tmp, makeOp(1.-tmp**2)(self._jac))
-
-    def sigmoid(self):
-        tmp = self._val.tanh()
-        tmp2 = 0.5*(1.+tmp)
-        return self.new(tmp2, makeOp(0.5*(1.-tmp**2))(self._jac))
-
-    def absolute(self):
-        if utilities.iscomplextype(self._val.dtype):
-            raise TypeError("Argument must not be complex")
-        tmp = self._val.absolute()
-        tmp2 = self._val.sign()
-
-        ind = self._val.val == 0
-        loc = tmp2.val_rw().astype(float)
-        loc[ind] = np.nan
-        tmp2 = Field(tmp.domain, loc)
-
-        return self.new(tmp, makeOp(tmp2)(self._jac))
-
-    def one_over(self):
-        tmp = 1./self._val
-        tmp2 = - tmp/self._val
-        return self.new(tmp, makeOp(tmp2)(self._jac))
 
     def add_metric(self, metric):
         return self.new(self._val, self._jac, metric)

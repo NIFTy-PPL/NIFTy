@@ -37,10 +37,7 @@ from .plot import Plot
 __all__ = ['PS_field', 'power_analyze', 'create_power_operator',
            'create_harmonic_smoothing_operator', 'from_random',
            'full', 'makeField',
-           'makeDomain', 'sqrt', 'exp', 'log', 'tanh', 'sigmoid',
-           'sin', 'cos', 'tan', 'sinh', 'cosh', 'log10',
-           'absolute', 'one_over', 'clip', 'sinc', "log1p", "expm1",
-           'conjugate', 'get_signal_variance', 'makeOp', 'domain_union',
+           'makeDomain', 'get_signal_variance', 'makeOp', 'domain_union',
            'get_default_codomain', 'single_plot', 'exec_time',
            'calculate_position']
 
@@ -364,26 +361,6 @@ def domain_union(domains):
             raise ValueError("domain mismatch")
         return domains[0]
     return MultiDomain.union(domains)
-
-
-# Arithmetic functions working on Fields
-
-
-_current_module = sys.modules[__name__]
-
-for f in ["sqrt", "exp", "log", "log10", "tanh", "sigmoid",
-          "conjugate", 'sin', 'cos', 'tan', 'sinh', 'cosh',
-          'absolute', 'one_over', 'sinc', 'log1p', 'expm1']:
-    def func(f):
-        def func2(x):
-            from .linearization import Linearization
-            from .operators.operator import Operator
-            if isinstance(x, (Field, MultiField, Linearization, Operator)):
-                return getattr(x, f)()
-            else:
-                return getattr(np, f)(x)
-        return func2
-    setattr(_current_module, f, func(f))
 
 
 def clip(a, a_min=None, a_max=None):
