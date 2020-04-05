@@ -544,4 +544,6 @@ class Plot(object):
             ax = fig.add_subplot(ny, nx, i+1)
             _plot(self._plots[i], ax, **self._kwargs[i])
         fig.tight_layout()
-        _makeplot(kwargs.pop("name", None), block=kwargs.pop("block", True), dpi=kwargs.pop("dpi", None))
+        _makeplot(kwargs.pop("name", None),
+                  block=kwargs.pop("block", True),
+                  dpi=kwargs.pop("dpi", None))
