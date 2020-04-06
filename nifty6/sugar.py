@@ -317,7 +317,7 @@ def makeDomain(domain):
     return DomainTuple.make(domain)
 
 
-def makeOp(input):
+def makeOp(input, dom=None):
     """Converts a Field or MultiField to a diagonal operator.
 
     Parameters
@@ -331,12 +331,22 @@ def makeOp(input):
         - if MultiField, a BlockDiagonalOperator with entries given by this
             MultiField is returned.
 
+    dom : DomainTuple or MultiDomain
+        if `input` is a scalar, this is used as the operator's domain
+
     Notes
     -----
     No volume factors are applied.
     """
     if input is None:
         return None
+    if np.isscalar(input):
+        if not isinstance(dom, (DomaiTuple, MultiDomain)):
+            raise TypeError("need proper `dom` argument")
+        return SalingOperator(dom, input)
+    if dom is not None:
+        if not dom == input.domain:
+            raise ValueError("domain mismatch")
     if input.domain is DomainTuple.scalar_domain():
         return ScalingOperator(input.domain, float(input.val))
     if isinstance(input, Field):

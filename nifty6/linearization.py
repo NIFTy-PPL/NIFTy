@@ -162,11 +162,11 @@ class Linearization(object):
 
     def __truediv__(self, other):
         if isinstance(other, Linearization):
-            return self.__mul__(other.one_over())
+            return self.__mul__(other.ptw("reciprocal"))
         return self.__mul__(1./other)
 
     def __rtruediv__(self, other):
-        return self.reciprocal().__mul__(other)
+        return self.ptw("reciprocal").__mul__(other)
 
     def __pow__(self, power):
         if not np.isscalar(power):
