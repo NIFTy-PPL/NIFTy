@@ -20,9 +20,10 @@ import numpy as np
 
 from . import utilities
 from .domain_tuple import DomainTuple
+from .operators.operator import Operator
 
 
-class Field(object):
+class Field(Operator):
     """The discrete representation of a continuous field over multiple spaces.
 
     Stores data arrays and carries all the needed meta-information (i.e. the
@@ -676,10 +677,8 @@ class Field(object):
     def flexible_addsub(self, other, neg):
         return self-other if neg else self+other
 
-    def clip(self, min=None, max=None):
-        min = min.val if isinstance(min, Field) else min
-        max = max.val if isinstance(max, Field) else max
-        return Field(self._domain, np.clip(self._val, min, max))
+    def clip(self, a_min=None, a_max=None):
+        return self.ptw("clip", a_min, a_max)
 
     def _binary_op(self, other, op):
         # if other is a field, make sure that the domains match
@@ -692,13 +691,22 @@ class Field(object):
             return Field(self._domain, f(other))
         return NotImplemented
 
-    def ptw(self, op, with_deriv=False):
+    def ptw(self, op, *args, **kwargs):
         from .pointwise import ptw_dict
-        if with_deriv:
-            tmp = ptw_dict[op][1](self._val)
-            return (Field(self._domain, tmp[0]),
-                    Field(self._domain, tmp[1]))
-        return Field(self._domain, ptw_dict[op][0](self._val))
+        argstmp = tuple(arg if arg is None or np.isscalar(arg) else arg._val
+                        for arg in args)
+        kwargstmp = {key: val if val is None or np.isscalar(val) else val._val
+                     for key, val in kwargs.items()}
+        return Field(self._domain, ptw_dict[op][0](self._val, *argstmp, **kwargstmp))
+
+    def ptw_with_deriv(self, op, *args, **kwargs):
+        from .pointwise import ptw_dict
+        argstmp = tuple(arg if arg is None or np.isscalar(arg) else arg._val
+                        for arg in args)
+        kwargstmp = {key: val if val is None or np.isscalar(val) else val._val
+                     for key, val in kwargs.items()}
+        tmp = ptw_dict[op][1](self._val, *argstmp, **kwargstmp)
+        return (Field(self._domain, tmp[0]), Field(self._domain, tmp[1]))
 
 for op in ["__add__", "__radd__",
            "__sub__", "__rsub__",

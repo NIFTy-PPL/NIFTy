@@ -193,8 +193,8 @@ def test_empty_domain():
 def test_trivialities():
     s1 = ift.RGSpace((10,))
     f1 = ift.Field.full(s1, 27)
-    assert_equal(f1.clip(min=29).val, 29.)
-    assert_equal(f1.clip(max=25).val, 25.)
+    assert_equal(f1.clip(a_min=29).val, 29.)
+    assert_equal(f1.clip(a_max=25).val, 25.)
     assert_equal(f1.val, f1.real.val)
     assert_equal(f1.val, (+f1).val)
     f1 = ift.Field.full(s1, 27. + 3j)

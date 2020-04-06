@@ -17,8 +17,6 @@
 
 import numpy as np
 
-from ..field import Field
-from ..multi_field import MultiField
 from ..utilities import NiftyMeta, indent
 
 
@@ -45,8 +43,64 @@ class Operator(metaclass=NiftyMeta):
         -------
         target : DomainTuple or MultiDomain
         """
-
         return self._target
+
+    @property
+    def val(self):
+        """The numerical value associated with this object
+        For "pure" operators this is `None`. For Field-like objects this
+        is a `numpy.ndarray` or a dictionary of `numpy.ndarray`s mathcing the
+        object's `target`.
+
+        Returns
+        -------
+        None or numpy.ndarray or dictionary of np.ndarrays : the numerical value
+        """
+        return None
+
+    @property
+    def jac(self):
+        """The Jacobian associated with this object
+        For "pure" operators this is `None`. For Field-like objects this
+        can be `None` (in which case the object is a constant), or it can be a
+        `LinearOperator` with `domain` and `target` matching the object's.
+
+        Returns
+        -------
+        None or LinearOperator : the Jacobian
+
+        Notes
+        -----
+        if `value` is None, this must be `None` as well!
+        """
+        return None
+
+    @property
+    def want_metric(self):
+        """Whether a metric should be computed for the full expression.
+        This is `False` whenever `jac` is `None`. In other cases it signals
+        that operators processing this object should compute the metric.
+
+        Returns
+        -------
+        bool : whether the metric should be computed
+        """
+        return False
+
+    @property
+    def metric(self):
+        """The metric associated with the object.
+        This is `None`, except when all the following conditions hold:
+        - `want_metric` is `True`
+        - `target` is the scalar domain
+        - the operator chain contained an operator which could compute the
+          metric
+
+        Returns
+        -------
+        None or LinearOperator : the metric
+        """
+        return None
 
     @staticmethod
     def _check_domain_equality(dom_op, dom_field):
@@ -153,14 +207,22 @@ class Operator(metaclass=NiftyMeta):
         return _OpSum(self, -x)
 
     def __pow__(self, power):
-        if not np.isscalar(power):
+        from ..field import Field
+        from ..multi_field import MultiField
+        if not (np.isscalar(power) or isinstance(power, (Field, MultiField))):
             return NotImplemented
-        return _OpChain.make((_PowerOp(self.target, power), self))
+        return self.ptw("power", power)
 
-    def clip(self, min=None, max=None):
-        if min is None and max is None:
+    def clip(self, a_min=None, a_max=None):
+        from ..field import Field
+        from ..multi_field import MultiField
+        if a_min is None and a_max is None:
             return self
-        return _OpChain.make((_Clipper(self.target, min, max), self))
+        if not (a_min is None or np.isscalar(a_min) or isinstance(a_min, (Field, MultiField))):
+            return NotImplemented
+        if not (a_max is None or np.isscalar(a_max) or isinstance(a_max, (Field, MultiField))):
+            return NotImplemented
+        return self.ptw("clip", a_min, a_max)
 
     def apply(self, x):
         """Applies the operator to a Field or MultiField.
@@ -179,6 +241,8 @@ class Operator(metaclass=NiftyMeta):
         return self.apply(x.extract(self.domain))
 
     def _check_input(self, x):
+        from ..field import Field
+        from ..multi_field import MultiField
         from ..linearization import Linearization
         from .scaling_operator import ScalingOperator
         if not isinstance(x, (Field, MultiField, Linearization)):
@@ -222,8 +286,8 @@ class Operator(metaclass=NiftyMeta):
     def _simplify_for_constant_input_nontrivial(self, c_inp):
         return None, self
 
-    def ptw(self, op):
-        return _OpChain.make((_FunctionApplier(self.target, op), self))
+    def ptw(self, op, *args, **kwargs):
+        return _OpChain.make((_FunctionApplier(self.target, op, *args, **kwargs), self))
 
 
 class _ConstCollector(object):
@@ -287,37 +351,16 @@ class _ConstantOperator(Operator):
 
 
 class _FunctionApplier(Operator):
-    def __init__(self, domain, funcname):
+    def __init__(self, domain, funcname, *args, **kwargs):
         from ..sugar import makeDomain
         self._domain = self._target = makeDomain(domain)
         self._funcname = funcname
+        self._args = args
+        self._kwargs = kwargs
 
     def apply(self, x):
         self._check_input(x)
-        return x.ptw(self._funcname)
-
-
-class _Clipper(Operator):
-    def __init__(self, domain, min=None, max=None):
-        from ..sugar import makeDomain
-        self._domain = self._target = makeDomain(domain)
-        self._min = min
-        self._max = max
-
-    def apply(self, x):
-        self._check_input(x)
-        return x.clip(self._min, self._max)
-
-
-class _PowerOp(Operator):
-    def __init__(self, domain, power):
-        from ..sugar import makeDomain
-        self._domain = self._target = makeDomain(domain)
-        self._power = power
-
-    def apply(self, x):
-        self._check_input(x)
-        return x**self._power
+        return x.ptw(self._funcname, *self._args, **self._kwargs)
 
 
 class _CombinedOperator(Operator):

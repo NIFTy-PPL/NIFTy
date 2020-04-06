@@ -21,9 +21,10 @@ from .field import Field
 from .multi_field import MultiField
 from .sugar import makeOp
 from . import utilities
+from .operators.operator import Operator
 
 
-class Linearization(object):
+class Linearization(Operator):
     """Let `A` be an operator and `x` a field. `Linearization` stores the value
     of the operator application (i.e. `A(x)`), the local Jacobian
     (i.e. `dA(x)/dx`) and, optionally, the local metric.
@@ -169,10 +170,9 @@ class Linearization(object):
         return self.ptw("reciprocal").__mul__(other)
 
     def __pow__(self, power):
-        if not np.isscalar(power):
+        if not (np.isscalar(power) or isinstance(power, (Field, MultiField))):
             return NotImplemented
-        return self.new(self._val**power,
-                        makeOp(self._val**(power-1)).scale(power)(self._jac))
+        return self.ptw("power", power)
 
     def __mul__(self, other):
         from .sugar import makeOp
@@ -282,22 +282,19 @@ class Linearization(object):
             self._val.integrate(spaces),
             ContractionOperator(self._jac.target, spaces, 1)(self._jac))
 
-    def ptw(self, op):
+    def ptw(self, op, *args, **kwargs):
         from .pointwise import ptw_dict
-        t1, t2 = self._val.ptw(op, True)
+        t1, t2 = self._val.ptw_with_deriv(op, *args, **kwargs)
         return self.new(t1, makeOp(t2)(self._jac))
 
-    def clip(self, min=None, max=None):
-        tmp = self._val.clip(min, max)
-        if (min is None) and (max is None):
+    def clip(self, a_min=None, a_max=None):
+        if a_min is None and a_max is None:
             return self
-        elif max is None:
-            tmp2 = makeOp(1. - (tmp == min))
-        elif min is None:
-            tmp2 = makeOp(1. - (tmp == max))
-        else:
-            tmp2 = makeOp(1. - (tmp == min) - (tmp == max))
-        return self.new(tmp, tmp2(self._jac))
+        if not (a_min is None or np.isscalar(a_min) or isinstance(a_min, (Field, MultiField))):
+            return NotImplemented
+        if not (a_max is None or np.isscalar(a_max) or isinstance(a_max, (Field, MultiField))):
+            return NotImplemented
+        return self.ptw("clip", a_min, a_max)
 
     def add_metric(self, metric):
         return self.new(self._val, self._jac, metric)

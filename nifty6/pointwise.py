@@ -52,15 +52,31 @@ def _reciprocal_helper(v):
 
 
 def _abs_helper(v):
-    if np.iscomplex(v):
+    if np.issubdtype(v.dtype, np.complexfloating):
         raise TypeError("Argument must not be complex")
     return (np.abs(v), np.where(v==0, np.nan, np.sign(v)))
 
 
 def _sign_helper(v):
-    if np.iscomplex(v):
+    if np.issubdtype(v.dtype, np.complexfloating):
         raise TypeError("Argument must not be complex")
     return (np.sign(v), np.where(v==0, np.nan, 0))
+
+
+def _power_helper(v, expo):
+    return (np.power(v, expo), expo*np.power(v, expo-1))
+
+
+def _clip_helper(v, a_min=None, a_max=None):
+    if np.issubdtype(v.dtype, np.complexfloating):
+        raise TypeError("Argument must not be complex")
+    tmp = np.clip(v, a_min, a_max)
+    tmp2 = np.ones(v.shape)
+    if a_min is not None:
+        tmp2 = np.where(tmp==a_min, 0., tmp2)
+    if a_max is not None:
+        tmp2 = np.where(tmp==a_max, 0., tmp2)
+    return (tmp, tmp2)
 
 
 ptw_dict = {
@@ -81,5 +97,7 @@ ptw_dict = {
     "reciprocal": (lambda v: 1./v, _reciprocal_helper),
     "abs": (np.abs, _abs_helper),
     "absolute": (np.abs, _abs_helper),
-    "sign": (np.sign, _sign_helper)
+    "sign": (np.sign, _sign_helper),
+    "power": (np.power, _power_helper),
+    "clip": (np.clip, _clip_helper),
     }
