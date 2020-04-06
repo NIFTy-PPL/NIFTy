@@ -171,10 +171,10 @@ class LinearOperator(Operator):
     def __call__(self, x):
         """Same as :meth:`times`"""
         from ..linearization import Linearization
-        if isinstance(x, (Field, MultiField)):
-            return self.apply(x, self.TIMES)
-        if isinstance(x, Linearization):
+        if x.jac is not None:
             return x.new(self(x._val), self).prepend_jac(x.jac)
+        if x.val is not None:
+            return self.apply(x, self.TIMES)
         return self@x
 
     def times(self, x):

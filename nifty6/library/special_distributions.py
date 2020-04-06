@@ -22,7 +22,6 @@ from scipy.interpolate import CubicSpline
 from ..domain_tuple import DomainTuple
 from ..domains.unstructured_domain import UnstructuredDomain
 from ..field import Field
-from ..linearization import Linearization
 from ..operators.operator import Operator
 from ..sugar import makeOp
 from .. import random
@@ -79,7 +78,7 @@ class _InterpolationOperator(Operator):
 
     def apply(self, x):
         self._check_input(x)
-        lin = isinstance(x, Linearization)
+        lin = x.jac is not None
         xval = x.val.val if lin else x.val
         res = self._interpolator(xval)
         res = Field(self._domain, res)
@@ -148,7 +147,7 @@ class UniformOperator(Operator):
 
     def apply(self, x):
         self._check_input(x)
-        lin = isinstance(x, Linearization)
+        lin = x.jac is not None
         xval = x.val.val if lin else x.val
         res = Field(self._target, self._scale*norm._cdf(xval) + self._loc)
         if not lin:

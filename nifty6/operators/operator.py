@@ -329,10 +329,9 @@ class _ConstantOperator(Operator):
         self._output = output
 
     def apply(self, x):
-        from ..linearization import Linearization
         from .simple_linear_operators import NullOperator
         self._check_input(x)
-        if isinstance(x, Linearization):
+        if x.jac is not None:
             return x.new(self._output, NullOperator(self._domain, self._target))
         return self._output
 
@@ -421,8 +420,8 @@ class _OpProd(Operator):
         from ..linearization import Linearization
         from ..sugar import makeOp
         self._check_input(x)
-        lin = isinstance(x, Linearization)
-        wm = x.want_metric if lin else None
+        lin = x.jac is not None
+        wm = x.want_metric if lin else False
         x = x.val if lin else x
         v1 = x.extract(self._op1.domain)
         v2 = x.extract(self._op2.domain)
@@ -464,7 +463,7 @@ class _OpSum(Operator):
     def apply(self, x):
         from ..linearization import Linearization
         self._check_input(x)
-        if not isinstance(x, Linearization):
+        if x.jac is None:
             v1 = x.extract(self._op1.domain)
             v2 = x.extract(self._op2.domain)
             return self._op1(v1).unite(self._op2(v2))

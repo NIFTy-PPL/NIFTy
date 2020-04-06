@@ -99,8 +99,7 @@ class ScalingOperator(EndomorphicOperator):
     def __call__(self, other):
         res = EndomorphicOperator.__call__(self, other)
         if np.isreal(self._factor) and self._factor >= 0:
-            from ..linearization import Linearization
-            if isinstance(other, Linearization):
+            if other.jac is not None:
                 if other.metric is not None:
                     from .sandwich_operator import SandwichOperator
                     sqrt_fac = np.sqrt(self._factor)
