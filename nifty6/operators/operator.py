@@ -128,15 +128,13 @@ class Operator(metaclass=NiftyMeta):
         return ContractionOperator(self.target, spaces)(self)
 
     def vdot(self, other):
-        from ..field import Field
-        from ..multi_field import MultiField
         from ..sugar import makeOp
-        if isinstance(other, Operator):
-            res = self.conjugate()*other
-        elif isinstance(other, (Field, MultiField)):
-            res = makeOp(other) @ self.conjugate()
-        else:
+        if not isinstance(other, Operator):
             raise TypeError
+        if other.jac is None:
+            res = self.conjugate()*other
+        else:
+            res = makeOp(other) @ self.conjugate()
         return res.sum()
 
     @property
@@ -207,20 +205,16 @@ class Operator(metaclass=NiftyMeta):
         return _OpSum(self, -x)
 
     def __pow__(self, power):
-        from ..field import Field
-        from ..multi_field import MultiField
-        if not (np.isscalar(power) or isinstance(power, (Field, MultiField))):
+        if not (np.isscalar(power) or power.jac is None):
             return NotImplemented
         return self.ptw("power", power)
 
     def clip(self, a_min=None, a_max=None):
-        from ..field import Field
-        from ..multi_field import MultiField
         if a_min is None and a_max is None:
             return self
-        if not (a_min is None or np.isscalar(a_min) or isinstance(a_min, (Field, MultiField))):
+        if not (a_min is None or np.isscalar(a_min) or a_min.jac is None):
             return NotImplemented
-        if not (a_max is None or np.isscalar(a_max) or isinstance(a_max, (Field, MultiField))):
+        if not (a_max is None or np.isscalar(a_max) or a_max.jac is None):
             return NotImplemented
         return self.ptw("clip", a_min, a_max)
 
@@ -241,13 +235,10 @@ class Operator(metaclass=NiftyMeta):
         return self.apply(x.extract(self.domain))
 
     def _check_input(self, x):
-        from ..field import Field
-        from ..multi_field import MultiField
-        from ..linearization import Linearization
         from .scaling_operator import ScalingOperator
-        if not isinstance(x, (Field, MultiField, Linearization)):
+        if not (isinstance(x, Operator) and x.val is not None):
             raise TypeError
-        if isinstance(x, Linearization):
+        if x.jac is not None:
             if not isinstance(x.jac, ScalingOperator):
                 raise ValueError
             if x.jac._factor != 1:
@@ -255,12 +246,11 @@ class Operator(metaclass=NiftyMeta):
         self._check_domain_equality(self._domain, x.domain)
 
     def __call__(self, x):
-        from ..linearization import Linearization
-        from ..field import Field
-        from ..multi_field import MultiField
-        if isinstance(x, Linearization):
+        if not isinstance(x, Operator):
+            raise TypeError
+        if x.jac is not None:
             return self.apply(x.trivial_jac()).prepend_jac(x.jac)
-        elif isinstance(x, (Field, MultiField)):
+        elif x.val is not None:
             return self.apply(x)
         return self @ x
 
