@@ -20,6 +20,11 @@ import numpy as np
 import nifty6 as ift
 from .common import setup_function, teardown_function
 
+nr = 0
+def name():
+    global nr
+    nr += 1
+    return 'plot{}.png'.format(nr)
 
 def test_plots():
     # FIXME Write to temporary folder?
@@ -40,14 +45,14 @@ def test_plots():
 
     plot = ift.Plot()
     plot.add(field_rg1_1, title='Single plot')
-    plot.output(name='plot1.png')
+    plot.output(name=name())
 
     plot = ift.Plot()
     plot.add(field_rg2, title='2d rg')
     plot.add([field_rg1_1, field_rg1_2], title='list 1d rg', label=['1', '2'])
     plot.add(field_rg1_2, title='1d rg, xmin, ymin', xmin=0.5, ymin=0.,
              xlabel='xmin=0.5', ylabel='ymin=0')
-    plot.output(title='Three plots', name='plot2.png')
+    plot.output(title='Three plots', name=name())
 
     plot = ift.Plot()
     plot.add(field_hp, title='HP planck-color', colormap='Planck-like')
@@ -55,4 +60,20 @@ def test_plots():
     plot.add(field_ps)
     plot.add(field_gl, title='GL')
     plot.add(field_rg2, title='2d rg')
-    plot.output(nx=2, ny=3, title='Five plots', name='plot3.png')
+    plot.output(nx=2, ny=3, title='Five plots', name=name())
+
+
+def test_mf_plot():
+    x_space = ift.RGSpace((16, 16))
+    f_space = ift.RGSpace(4)
+
+    d1 = ift.DomainTuple.make([x_space, f_space])
+    d2 = ift.DomainTuple.make([f_space, x_space])
+
+    f1 = ift.from_random('normal', d1)
+    f2 = ift.makeField(d2, np.moveaxis(f1.val, -1, 0))
+
+    plot = ift.Plot()
+    plot.add(f1, block=False, title='f_space_idx = 1')
+    plot.add(f2, freq_space_idx=0, title='f_space_idx = 0')
+    plot.output(nx=2, ny=1, title='MF-Plots, should look identical', name=name())

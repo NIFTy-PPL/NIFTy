@@ -331,14 +331,26 @@ def _plot2D(f, ax, **kwargs):
 
     # check for multifrequency plotting
     have_rgb = False
+    x_space = 0
     if len(dom) == 2:
-        if (not isinstance(dom[1], RGSpace)) or len(dom[1].shape) != 1:
-            raise TypeError("need 1D RGSpace as second domain")
-        if dom[1].shape[0] == 1:
+        f_space = kwargs.pop("freq_space_idx", 1)
+        if not f_space in [0, 1]:
+            raise ValueError("Invalid frequency space index")
+        if (not isinstance(dom[f_space], RGSpace)) \
+            or len(dom[f_space].shape) != 1:
+            raise TypeError("Need 1D RGSpace as frequency space domain")
+        x_space = 1 - f_space
+
+        # Only one frequency?
+        if dom[f_space].shape[0] == 1:
             from .sugar import makeField
-            f = makeField(f.domain[0], f.val[..., 0])
+            f = makeField(f.domain[x_space],
+                          f.val.squeeze(axis=dom.axes[f_space]))
         else:
-            rgb = _rgb_data(f.val)
+            val = f.val
+            if f_space == 0:
+                val = np.moveaxis(val, 0, -1)
+            rgb = _rgb_data(val)
             have_rgb = True
 
     foo = kwargs.pop("norm", None)
@@ -350,7 +362,7 @@ def _plot2D(f, ax, **kwargs):
     ax.set_title(kwargs.pop("title", ""))
     ax.set_xlabel(kwargs.pop("xlabel", ""))
     ax.set_ylabel(kwargs.pop("ylabel", ""))
-    dom = dom[0]
+    dom = dom[x_space]
     if not have_rgb:
         cmap = kwargs.pop("colormap", plt.rcParams['image.cmap'])
 
@@ -451,6 +463,9 @@ class Plot(object):
             `PowerSpace`, `HPSpace`, `GLSpace`.
             If it is a list, all list members must be Fields defined over the
             same one-dimensional `RGSpace` or `PowerSpace`.
+
+        Optional Parameters
+        -------------------
         title: string
             Title of the plot.
         xlabel: string
@@ -467,6 +482,8 @@ class Plot(object):
             Annotation string.
         alpha: float or list of floats
             Transparency value.
+        freq_space_idx: int
+            for multi-frequency plotting: index of frequency space in domain
         """
         from .multi_field import MultiField
         if isinstance(f, MultiField):
@@ -527,4 +544,6 @@ class Plot(object):
             ax = fig.add_subplot(ny, nx, i+1)
             _plot(self._plots[i], ax, **self._kwargs[i])
         fig.tight_layout()
-        _makeplot(kwargs.pop("name", None), block=kwargs.pop("block", True), dpi=kwargs.pop("dpi", None))
+        _makeplot(kwargs.pop("name", None),
+                  block=kwargs.pop("block", True),
+                  dpi=kwargs.pop("dpi", None))
