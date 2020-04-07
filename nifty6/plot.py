@@ -412,7 +412,7 @@ def _plot2D(f, ax, **kwargs):
         if have_rgb:
             plt.imshow(res, origin="lower")
         else:
-            plt.imshow(res, vmin=kwargs.get("zmin"), vmax=kwargs.get("zmax"),
+            plt.imshow(res, vmin=kwargs.get("zmin"), vmax=kwargs.get("zmax"), norm=norm.get('norm'),
                        cmap=cmap, origin="lower")
             plt.colorbar(orientation="horizontal")
         return
