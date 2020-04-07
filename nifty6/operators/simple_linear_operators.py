@@ -464,3 +464,41 @@ class MatrixProductOperator(EndomorphicOperator):
         res = np.tensordot(m, x.val, axes=(mat_axes, self._active_axes))
         res = np.moveaxis(res, move_axes, self._active_axes)
         return Field(self._domain, res)
+
+
+class SwitchSpacesOperator(LinearOperator):
+    """Operator to permutate the domain entries of fields.
+
+    Exchanges the entries `space1` and `space2` of the input's domain.
+    """
+    def __init__(self, domain, space1, space2=0):
+        self._capability = self.TIMES | self.ADJOINT_TIMES
+        self._domain = DomainTuple.make(domain)
+
+        n_spaces = len(self._domain)
+        if space1 >= n_spaces or space1 < 0 \
+          or space2 >= n_spaces or space2 < 0:
+            raise ValueError("invalid space value")
+
+        tgt = list(self._domain)
+        tgt[space2] = self._domain[space1]
+        tgt[space1] = self._domain[space2]
+        self._target = DomainTuple.make(tgt)
+
+        dom_axes = self._domain.axes
+        tgt_axes = self._target.axes
+
+        self._axes_dom = dom_axes[space1] + dom_axes[space2]
+        self._axes_tgt = tgt_axes[space2] + tgt_axes[space1]
+
+    def apply(self, x, mode):
+        self._check_input(x, mode)
+
+        if mode == self.TIMES:
+            val = np.moveaxis(x.val, self._axes_dom, self._axes_tgt)
+            dom = self._target
+        else:
+            val = np.moveaxis(x.val, self._axes_tgt, self._axes_dom)
+            dom = self._domain
+
+        return Field(dom, val)
