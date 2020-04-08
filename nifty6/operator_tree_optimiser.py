@@ -270,6 +270,8 @@ def optimise_operator(op):
     """
     Merges redundant operations in the tree structure of an operator.
     For example it is ensured that for ``(f@x + x)`` ``x`` is only computed once.
+    Currently works only on ``_OpChain``, ``_OpSum`` and ``_OpProd`` and does not optimise their linear pendants
+    ``ChainOp`` and ``SumOperator``.
 
     Parameters
     ----------
@@ -289,7 +291,6 @@ def optimise_operator(op):
     >>> op = (uni1 + uni2)*(uni1 + uni2)
 
     is replaced by something comparable to
-    >>> from nifty6 import UniformOperator, DomainTuple
     >>> uni = UniformOperator(DomainTuple.scalar_domain())
     >>> uni_add = uni + uni
     >>> op = uni_add * uni_add
