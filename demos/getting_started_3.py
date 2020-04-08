@@ -85,7 +85,7 @@ if __name__ == '__main__':
     A = cfmaker.amplitude
 
     # Apply a nonlinearity
-    signal = correlated_field.ptw("sigmoid")
+    signal = ift.sigmoid(correlated_field)
 
     # Build the line-of-sight response and define signal response
     LOS_starts, LOS_ends = random_los(100) if mode == 0 else radial_los(100)
@@ -149,7 +149,7 @@ if __name__ == '__main__':
     filename_res = filename.format("results")
     plot = ift.Plot()
     plot.add(sc.mean, title="Posterior Mean")
-    plot.add(sc.var.ptw("sqrt"), title="Posterior Standard Deviation")
+    plot.add(ift.sqrt(sc.var), title="Posterior Standard Deviation")
 
     powers = [A.force(s + KL.position) for s in KL.samples]
     plot.add(

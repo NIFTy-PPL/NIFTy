@@ -18,6 +18,7 @@
 import numpy as np
 
 from ..utilities import NiftyMeta, indent
+from .. import pointwise
 
 
 class Operator(metaclass=NiftyMeta):
@@ -278,6 +279,14 @@ class Operator(metaclass=NiftyMeta):
 
     def ptw(self, op, *args, **kwargs):
         return _OpChain.make((_FunctionApplier(self.target, op, *args, **kwargs), self))
+
+
+for f in pointwise.ptw_dict.keys():
+    def func(f):
+        def func2(self, *args, **kwargs):
+            return self.ptw(f, *args, **kwargs)
+        return func2
+    setattr(Operator, f, func(f))
 
 
 class _ConstCollector(object):

@@ -80,7 +80,7 @@ if __name__ == '__main__':
     A = pd(a)
 
     # Define sky operator
-    sky = HT(ift.makeOp(A)).ptw("exp")
+    sky = ift.exp(HT(ift.makeOp(A)))
 
     M = ift.DiagonalOperator(exposure)
     GR = ift.GeometryRemover(position_space)

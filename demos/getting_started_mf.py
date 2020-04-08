@@ -84,7 +84,7 @@ if __name__ == '__main__':
     DC = SingleDomain(correlated_field.target, position_space)
 
     ## Apply a nonlinearity
-    signal = DC @ correlated_field.ptw("sigmoid")
+    signal = DC @ ift.sigmoid(correlated_field)
 
     # Build the line-of-sight response and define signal response
     LOS_starts, LOS_ends = random_los(100) if mode == 0 else radial_los(100)
@@ -170,7 +170,7 @@ if __name__ == '__main__':
     filename_res = filename.format("results")
     plot = ift.Plot()
     plot.add(sc.mean, title="Posterior Mean")
-    plot.add(sc.var.ptw("sqrt"), title="Posterior Standard Deviation")
+    plot.add(ift.sqrt(sc.var), title="Posterior Standard Deviation")
 
     powers1 = [A1.force(s + KL.position) for s in KL.samples]
     powers2 = [A2.force(s + KL.position) for s in KL.samples]

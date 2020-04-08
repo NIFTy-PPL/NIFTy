@@ -33,13 +33,15 @@ from .operators.distributors import PowerDistributor
 from .operators.operator import Operator
 from .operators.scaling_operator import ScalingOperator
 from .plot import Plot
+from . import pointwise
+
 
 __all__ = ['PS_field', 'power_analyze', 'create_power_operator',
            'create_harmonic_smoothing_operator', 'from_random',
            'full', 'makeField',
            'makeDomain', 'get_signal_variance', 'makeOp', 'domain_union',
            'get_default_codomain', 'single_plot', 'exec_time',
-           'calculate_position']
+           'calculate_position'] + list(pointwise.ptw_dict.keys())
 
 
 def PS_field(pspace, func):
@@ -373,8 +375,16 @@ def domain_union(domains):
     return MultiDomain.union(domains)
 
 
-def clip(a, a_min=None, a_max=None):
-    return a.clip(a_min, a_max)
+# Pointwise functions
+
+_current_module = sys.modules[__name__]
+
+for f in pointwise.ptw_dict.keys():
+    def func(f):
+        def func2(x, *args, **kwargs):
+           return x.ptw(f, *args, **kwargs)
+        return func2
+    setattr(_current_module, f, func(f))
 
 
 def get_default_codomain(domainoid, space=None):
