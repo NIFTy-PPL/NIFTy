@@ -225,7 +225,7 @@ class _Normalization(Operator):
     def apply(self, x):
         self._check_input(x)
         amp = x.ptw("exp")
-        spec = amp*amp
+        spec = amp**2
         # FIXME This normalizes also the zeromode which is supposed to be left
         # untouched by this operator
         return self._specsum(self._mode_multiplicity(spec))**(-0.5)*amp
