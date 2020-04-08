@@ -341,7 +341,7 @@ def makeOp(input, dom=None):
     if input is None:
         return None
     if np.isscalar(input):
-        if not isinstance(dom, (DomaiTuple, MultiDomain)):
+        if not isinstance(dom, (DomainTuple, MultiDomain)):
             raise TypeError("need proper `dom` argument")
         return SalingOperator(dom, input)
     if dom is not None:
