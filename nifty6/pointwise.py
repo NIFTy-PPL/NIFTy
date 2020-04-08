@@ -67,7 +67,7 @@ def _power_helper(v, expo):
     return (np.power(v, expo), expo*np.power(v, expo-1))
 
 
-def _clip_helper(v, a_min=None, a_max=None):
+def _clip_helper(v, a_min, a_max):
     if np.issubdtype(v.dtype, np.complexfloating):
         raise TypeError("Argument must not be complex")
     tmp = np.clip(v, a_min, a_max)

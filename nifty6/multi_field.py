@@ -306,25 +306,27 @@ class MultiField(Operator):
                 res[key] = -val if neg else val
         return MultiField.from_dict(res)
 
+    def _prep_args(self, args, kwargs, i):
+        for arg in args + tuple(kwargs.values()):
+            if not (arg is None or np.isscalar(arg) or arg.jac is None):
+                raise TypeError("bad argument")
+        argstmp = tuple(arg if arg is None or np.isscalar(arg) else arg._val[i]
+                        for arg in args)
+        kwargstmp = {key: val if val is None or np.isscalar(val) else val._val[i]
+                     for key, val in kwargs.items()}
+        return argstmp, kwargstmp
+
     def ptw(self, op, *args, **kwargs):
-#        _check_args(args, kwargs)
         tmp = []
         for i in range(len(self._val)):
-            argstmp = tuple(arg if arg is None or np.isscalar(arg) else arg._val[i]
-                            for arg in args)
-            kwargstmp = {key: val if val is None or np.isscalar(val) else val._val[i]
-                         for key, val in kwargs.items()}
+            argstmp, kwargstmp = self._prep_args(args, kwargs, i)
             tmp.append(self._val[i].ptw(op, *argstmp, **kwargstmp))
         return MultiField(self.domain, tuple(tmp))
 
     def ptw_with_deriv(self, op, *args, **kwargs):
-#        _check_args(args, kwargs)
         tmp = []
         for i in range(len(self._val)):
-            argstmp = tuple(arg if arg is None or np.isscalar(arg) else arg._val[i]
-                            for arg in args)
-            kwargstmp = {key: val if val is None or np.isscalar(val) else val._val[i]
-                         for key, val in kwargs.items()}
+            argstmp, kwargstmp = self._prep_args(args, kwargs, i)
             tmp.append(self._val[i].ptw_with_deriv(op, *argstmp, **kwargstmp))
         return (MultiField(self.domain, tuple(v[0] for v in tmp)),
                 MultiField(self.domain, tuple(v[1] for v in tmp)))

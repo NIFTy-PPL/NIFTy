@@ -677,9 +677,6 @@ class Field(Operator):
     def flexible_addsub(self, other, neg):
         return self-other if neg else self+other
 
-    def clip(self, a_min=None, a_max=None):
-        return self.ptw("clip", a_min, a_max)
-
     def _binary_op(self, other, op):
         # if other is a field, make sure that the domains match
         f = getattr(self._val, op)
@@ -691,20 +688,24 @@ class Field(Operator):
             return Field(self._domain, f(other))
         return NotImplemented
 
-    def ptw(self, op, *args, **kwargs):
-        from .pointwise import ptw_dict
+    def _prep_args(self, args, kwargs):
+        for arg in args + tuple(kwargs.values()):
+            if not (arg is None or np.isscalar(arg) or arg.jac is None):
+                raise TypeError("bad argument")
         argstmp = tuple(arg if arg is None or np.isscalar(arg) else arg._val
                         for arg in args)
         kwargstmp = {key: val if val is None or np.isscalar(val) else val._val
                      for key, val in kwargs.items()}
+        return argstmp, kwargstmp
+
+    def ptw(self, op, *args, **kwargs):
+        from .pointwise import ptw_dict
+        argstmp, kwargstmp = self._prep_args(args, kwargs)
         return Field(self._domain, ptw_dict[op][0](self._val, *argstmp, **kwargstmp))
 
     def ptw_with_deriv(self, op, *args, **kwargs):
         from .pointwise import ptw_dict
-        argstmp = tuple(arg if arg is None or np.isscalar(arg) else arg._val
-                        for arg in args)
-        kwargstmp = {key: val if val is None or np.isscalar(val) else val._val
-                     for key, val in kwargs.items()}
+        argstmp, kwargstmp = self._prep_args(args, kwargs)
         tmp = ptw_dict[op][1](self._val, *argstmp, **kwargstmp)
         return (Field(self._domain, tmp[0]), Field(self._domain, tmp[1]))
 

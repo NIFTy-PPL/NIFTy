@@ -210,15 +210,6 @@ class Operator(metaclass=NiftyMeta):
             return NotImplemented
         return self.ptw("power", power)
 
-    def clip(self, a_min=None, a_max=None):
-        if a_min is None and a_max is None:
-            return self
-        if not (a_min is None or np.isscalar(a_min) or a_min.jac is None):
-            return NotImplemented
-        if not (a_max is None or np.isscalar(a_max) or a_max.jac is None):
-            return NotImplemented
-        return self.ptw("clip", a_min, a_max)
-
     def apply(self, x):
         """Applies the operator to a Field or MultiField.
 

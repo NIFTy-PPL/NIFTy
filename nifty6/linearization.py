@@ -281,15 +281,6 @@ class Linearization(Operator):
         t1, t2 = self._val.ptw_with_deriv(op, *args, **kwargs)
         return self.new(t1, makeOp(t2)(self._jac))
 
-    def clip(self, a_min=None, a_max=None):
-        if a_min is None and a_max is None:
-            return self
-        if not (a_min is None or np.isscalar(a_min) or a_min.jac is None):
-            return NotImplemented
-        if not (a_max is None or np.isscalar(a_max) or a_max.jac is None):
-            return NotImplemented
-        return self.ptw("clip", a_min, a_max)
-
     def add_metric(self, metric):
         return self.new(self._val, self._jac, metric)
 
