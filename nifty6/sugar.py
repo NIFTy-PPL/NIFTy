@@ -496,7 +496,10 @@ def calculate_position(operator, output):
         raise TypeError
     if output.domain != operator.target:
         raise TypeError
-    cov = 1e-3*output.val.max()**2
+    if isinstance(output, MultiField):
+        cov = 1e-3*max([vv.max() for vv in output.val.values()])**2
+    else:
+        cov = 1e-3*output.val.max()**2
     invcov = ScalingOperator(output.domain, cov).inverse
     d = output + invcov.draw_sample(from_inverse=True)
     lh = GaussianEnergy(d, invcov) @ operator
