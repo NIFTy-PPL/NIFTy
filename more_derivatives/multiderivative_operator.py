@@ -1,5 +1,5 @@
 import nifty6 as ift
-from differential_tensor import DiagonalTensor, SumTensor
+from differential_tensor import DiagonalTensor, SumTensor, GenLeibnizTensor
 from multi_linearization import MultiLinearization
 
 
@@ -93,6 +93,28 @@ class MultiSumOperator(MultiOperator):
                 jacs.append(SumTensor(tm))
             else:
                 jacs.append(None)
+        return x.new(res, jacs)
+
+class MultiPointwiseProduct(MultiOperator):
+    def __init__(self, op1, op2):
+        self._target = op1.target
+        assert op1.target == op2.target
+        self._domain = ift.domain_union([op1.domain, op2.domain])
+        self._op1, self._op2 = op1, op2
+
+    def apply(self, x):
+        v = x.val
+        v1 = v.extract(self._op1.domain)
+        v2 = v.extract(self._op2.domain)
+        vl1 = MultiLinearization.make_var(v1, x.maxderiv)
+        vl2 = MultiLinearization.make_var(v2, x.maxderiv)
+        rl1 = self._op1(vl1)
+        rl2 = self._op2(vl2)
+        res = rl1.val*rl2.val
+        jacs = [ift.makeOp(rl2.val)@rl1.jacs[0] + ift.makeOp(rl1.val)@rl2.jacs[0], ]
+        for i in range(x.maxderiv)[1:]:
+            jacs.append(GenLeibnizTensor(rl1.jacs[:(i+1)], rl2.jacs[:(i+1)],
+                                         rl1.val, rl2.val))
         return x.new(res, jacs)
 
 class MultiOpChain(MultiOperator):

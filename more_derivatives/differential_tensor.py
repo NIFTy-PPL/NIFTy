@@ -30,6 +30,7 @@ of 2nd order) from a n+1 order tensor by contracting with n-1 vectors. This new
 operator then has the same capabilities as usual Linear operators.
 """
 import nifty6 as ift
+import scipy.special as sp
 
 class DiffTensor:
     @property
@@ -140,7 +141,48 @@ class SumTensor(DiffTensor):
             res = res + self._tlist[i].contract_to_one(l)
         return res
 
+class GenLeibnizTensor(DiffTensor):
+    def __init__(self, j1, j2, v1, v2):
+        self._domain = ift.domain_union([j1[0].domain, j2[0].domain])
+        self._target = j1[0].target
+        self._nderiv = len(j1)
+        assert len(j1) == len(j2)
+        for i in range(len(j1)):
+            if j1[i] != None:
+                assert j1[i].target == self._target
+            if j2[i] != None:
+                assert j2[i].target == self._target
+        assert v1.domain == self._target
+        assert v2.domain == self._target
+        self._j1 = [v1, ] + j1
+        self._j2 = [v2, ] + j2
+
+    def _apply(self, x):
+        # TODO: Not symmetric yet!
+        x1 = []
+        x2 = []
+        for j in range(len(x)):
+            x1.append(x[j].extract(self._j1[1].domain))
+            x2.append(x[j].extract(self._j2[1].domain))
+        res = 0.
+        for i in range(self._nderiv+1):
+            if i == 0:
+                tm = self._j1[0]*self._j2[-1](x2)
+            elif i==self._nderiv:
+                tm = self._j2[0]*self._j1[-1](x1)
+            else:
+                xx1 = x1[:i] if i!= 1 else x1[0]
+                xx2 = x2[i:] if i!= len(x2)-1 else x2[-1]
+                tm = self._j1[i](xx1)*self._j2[self._nderiv-i](xx2)
+            res = res + sp.binom(self._nderiv,i)*tm
+        return res
+
 class ComposedTensor(DiffTensor):
+    """Implements a generalization of the chain rule for higher derivatives.
+    Currently only supports max. 4th derivative. However there exists a
+    (somewhat complicated) closed form solution known as:
+    "Faà di Bruno's formula".
+    """
     def __init__(self, old, new):
         assert len(old) == len(new)
         self._nderiv = len(new)
