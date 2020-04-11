@@ -27,7 +27,7 @@ unique new tensor irrespective of how we contracted:
     B_{ik} := J_{i,jk} a_j = J_{i,kj} a_j
 This leads to the special case where we can form a new Linear operator (Tensor
 of 2nd order) from a n+1 order tensor by contracting with n-1 vectors. This new
-operator then has the same capabilities as usial Linear operators.
+operator then has the same capabilities as usual Linear operators.
 """
 import nifty6 as ift
 
@@ -42,11 +42,23 @@ class DiffTensor:
     def nderiv(self):
         return self._nderiv
 
+    def __call__(self, x):
+        return self.apply(x)
+
     def apply(self, x):
         assert len(x) == self._nderiv
         for xx in x:
             assert xx.domain == self._domain
         return self._apply(x)
+    
+    def partial_contract(self, x):
+        if len(x) > self._nderiv:
+            raise ValueError("Too many indices to contract")
+        if len(x) == self._nderiv:
+            return self.apply(x)
+        if len(x) == self._nderiv-1:
+            return self.contract_to_one(x)
+        return PartialContractedTensor(self, x)
 
     def contract_to_one(self, y):
         assert len(y) == self._nderiv-1
@@ -59,6 +71,28 @@ class DiffTensor:
     
     def _contract_to_one(self,y):
         raise NotImplementedError
+
+class PartialContractedTensor(DiffTensor):
+    def __init__(self, tensor, y):
+        self._tensor = tensor
+        self._domain = tensor.domain
+        self._target = tensor.target
+        self._nderiv = tensor.nderiv-len(y)
+        self._y = y
+    def _apply(self, x):
+        return self._tensor(x+self._y)
+
+    def _contract_to_one(self, y):
+        self._tensor.contract_to_one(y+self._y)
+
+    def partial_contract(self, x):
+        if len(x) > self._nderiv:
+            raise ValueError("Too many indices to contract")
+        if len(x) == self._nderiv:
+            return self(x)
+        if len(x) == self._nderiv-1:
+            return self.contract_to_one(x)
+        return PartialContractedTensor(self._tensor, x+self._y)
 
 class DiagonalTensor(DiffTensor):
     def __init__(self, domain, target, vec, n):
@@ -91,7 +125,7 @@ class SumTensor(DiffTensor):
             l = []
             for j in range(len(x)):
                 l.append(x[j].extract(self._tlist[i].domain))
-            res = res + self._tlist[i].apply(l)
+            res = res + self._tlist[i](l)
         return res
 
     def _contract_to_one(self, y):
@@ -122,44 +156,44 @@ class ComposedTensor(DiffTensor):
 
     def _apply(self, x):
         if self._nderiv == 2:
-            tm = self._old[1].apply(x)
+            tm = self._old[1](x)
             res = self._new[0](tm)
             if self._new[1] != None:
                 tm = self._old[0](x[0])
                 tm2 = self._old[0](x[1])
-                res = res + self._new[1].apply([tm, tm2])
+                res = res + self._new[1]([tm, tm2])
             return res
 
         if self._nderiv == 3:
-            tm = self._old[2].apply(x)
+            tm = self._old[2](x)
             res = self._new[0](tm)
             if self._new[1] != None:
                 dx1 = self._old[0](x[0])
-                tm = self._old[1].apply(x[1:])
-                res = res + 3.*self._new[1].apply([dx1, tm])
+                tm = self._old[1](x[1:])
+                res = res + 3.*self._new[1]([dx1, tm])
             if self._new[2] != None:
                 dx2 = self._old[0](x[1])
                 dx3 = self._old[0](x[2])
-                res = res + self._new[2].apply([dx1, dx2, dx3])
+                res = res + self._new[2]([dx1, dx2, dx3])
             return res
 
         if self._nderiv == 4:
-            tm = self._old[3].apply(x)
+            tm = self._old[3](x)
             res = self._new[0](tm)
             if self._new[1] != None:
                 dx1 = self._old[0](x[0])
-                tm = self._old[2].apply(x[1:])
-                tm2 = self._old[1].apply(x[:2])
-                dx34 = self._old[1].apply(x[2:])
+                tm = self._old[2](x[1:])
+                tm2 = self._old[1](x[:2])
+                dx34 = self._old[1](x[2:])
                 lst = [3.*tm2+4.*dx1, 3.*dx34+4.*tm]
-                res = res + self._new[1].apply(lst)
+                res = res + self._new[1](lst)
             if self._new[2] != None:
                 dx2 = self._old[0](x[1])
-                res = res + 6.*self._new[2].apply([dx1, dx2, dx34])
+                res = res + 6.*self._new[2]([dx1, dx2, dx34])
             if self._new[3] != None:
                 dx3 = self._old[0](x[2])
                 dx4 = self._old[0](x[3])
-                res = res + self._new[3].apply([dx1, dx2, dx3, dx4])
+                res = res + self._new[3]([dx1, dx2, dx3, dx4])
             return res
 
         if self._nderiv == 1 or self._nderiv > 4:
@@ -178,7 +212,7 @@ class ComposedTensor(DiffTensor):
             tm = self._old[2].contract_to_one(y)
             res = self._new[0](tm)
             if self._new[1] != None:
-                tm = self._old[1].apply(y)
+                tm = self._old[1](y)
                 res = res + 3.*self._new[1].contract_to_one([tm,])@self._old[0]
             if self._new[2] != None:
                 dx1 = self._old[0](y[0])
@@ -190,8 +224,8 @@ class ComposedTensor(DiffTensor):
             tm = self._old[3].contract_to_one(y)
             res = self._new[0] @ tm
             if self._new[1] != None:
-                tm = self._old[2].apply(y)
-                dy23 = self._old[1].apply(y[1:])
+                tm = self._old[2](y)
+                dy23 = self._old[1](y[1:])
                 re = self._new[1].contract_to_one([3.*dy23+4.*tm, ])
                 re = re @ (3.*self._old[1].contract_to_one([y[0],])+4.*self._old[0])
                 res = res + re

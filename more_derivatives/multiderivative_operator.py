@@ -12,6 +12,9 @@ class MultiOperator:
     def target(self):
         return self._target
 
+    def __call__(self, x):
+        return self.apply(x)
+
     def apply(self, x):
         raise NotImplementedError
 
