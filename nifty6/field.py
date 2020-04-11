@@ -20,9 +20,10 @@ import numpy as np
 
 from . import utilities
 from .domain_tuple import DomainTuple
+from .operators.operator import Operator
 
 
-class Field(object):
+class Field(Operator):
     """The discrete representation of a continuous field over multiple spaces.
 
     Stores data arrays and carries all the needed meta-information (i.e. the
@@ -634,10 +635,9 @@ class Field(object):
         Field
             The result of the operation.
         """
-        from .sugar import sqrt
         if self.scalar_weight(spaces) is not None:
             return self._contraction_helper('std', spaces)
-        return sqrt(self.var(spaces))
+        return self.var(spaces).ptw("sqrt")
 
     def s_std(self):
         """Determines the standard deviation of the Field.
@@ -677,17 +677,6 @@ class Field(object):
     def flexible_addsub(self, other, neg):
         return self-other if neg else self+other
 
-    def sigmoid(self):
-        return 0.5*(1.+self.tanh())
-
-    def clip(self, min=None, max=None):
-        min = min.val if isinstance(min, Field) else min
-        max = max.val if isinstance(max, Field) else max
-        return Field(self._domain, np.clip(self._val, min, max))
-
-    def one_over(self):
-        return 1/self
-
     def _binary_op(self, other, op):
         # if other is a field, make sure that the domains match
         f = getattr(self._val, op)
@@ -699,6 +688,26 @@ class Field(object):
             return Field(self._domain, f(other))
         return NotImplemented
 
+    def _prep_args(self, args, kwargs):
+        for arg in args + tuple(kwargs.values()):
+            if not (arg is None or np.isscalar(arg) or arg.jac is None):
+                raise TypeError("bad argument")
+        argstmp = tuple(arg if arg is None or np.isscalar(arg) else arg._val
+                        for arg in args)
+        kwargstmp = {key: val if val is None or np.isscalar(val) else val._val
+                     for key, val in kwargs.items()}
+        return argstmp, kwargstmp
+
+    def ptw(self, op, *args, **kwargs):
+        from .pointwise import ptw_dict
+        argstmp, kwargstmp = self._prep_args(args, kwargs)
+        return Field(self._domain, ptw_dict[op][0](self._val, *argstmp, **kwargstmp))
+
+    def ptw_with_deriv(self, op, *args, **kwargs):
+        from .pointwise import ptw_dict
+        argstmp, kwargstmp = self._prep_args(args, kwargs)
+        tmp = ptw_dict[op][1](self._val, *argstmp, **kwargstmp)
+        return (Field(self._domain, tmp[0]), Field(self._domain, tmp[1]))
 
 for op in ["__add__", "__radd__",
            "__sub__", "__rsub__",
@@ -721,11 +730,3 @@ for op in ["__iadd__", "__isub__", "__imul__", "__idiv__",
                 "In-place operations are deliberately not supported")
         return func2
     setattr(Field, op, func(op))
-
-for f in ["sqrt", "exp", "log", "sin", "cos", "tan", "sinh", "cosh", "tanh",
-          "absolute", "sinc", "sign", "log10", "log1p", "expm1"]:
-    def func(f):
-        def func2(self):
-            return Field(self._domain, getattr(np, f)(self.val))
-        return func2
-    setattr(Field, f, func(f))

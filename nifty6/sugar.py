@@ -33,16 +33,15 @@ from .operators.distributors import PowerDistributor
 from .operators.operator import Operator
 from .operators.scaling_operator import ScalingOperator
 from .plot import Plot
+from . import pointwise
+
 
 __all__ = ['PS_field', 'power_analyze', 'create_power_operator',
            'create_harmonic_smoothing_operator', 'from_random',
            'full', 'makeField',
-           'makeDomain', 'sqrt', 'exp', 'log', 'tanh', 'sigmoid',
-           'sin', 'cos', 'tan', 'sinh', 'cosh', 'log10',
-           'absolute', 'one_over', 'clip', 'sinc', "log1p", "expm1",
-           'conjugate', 'get_signal_variance', 'makeOp', 'domain_union',
+           'makeDomain', 'get_signal_variance', 'makeOp', 'domain_union',
            'get_default_codomain', 'single_plot', 'exec_time',
-           'calculate_position']
+           'calculate_position'] + list(pointwise.ptw_dict.keys())
 
 
 def PS_field(pspace, func):
@@ -320,7 +319,7 @@ def makeDomain(domain):
     return DomainTuple.make(domain)
 
 
-def makeOp(input):
+def makeOp(input, dom=None):
     """Converts a Field or MultiField to a diagonal operator.
 
     Parameters
@@ -334,12 +333,22 @@ def makeOp(input):
         - if MultiField, a BlockDiagonalOperator with entries given by this
             MultiField is returned.
 
+    dom : DomainTuple or MultiDomain
+        if `input` is a scalar, this is used as the operator's domain
+
     Notes
     -----
     No volume factors are applied.
     """
     if input is None:
         return None
+    if np.isscalar(input):
+        if not isinstance(dom, (DomainTuple, MultiDomain)):
+            raise TypeError("need proper `dom` argument")
+        return SalingOperator(dom, input)
+    if dom is not None:
+        if not dom == input.domain:
+            raise ValueError("domain mismatch")
     if input.domain is DomainTuple.scalar_domain():
         return ScalingOperator(input.domain, float(input.val))
     if isinstance(input, Field):
@@ -366,28 +375,16 @@ def domain_union(domains):
     return MultiDomain.union(domains)
 
 
-# Arithmetic functions working on Fields
-
+# Pointwise functions
 
 _current_module = sys.modules[__name__]
 
-for f in ["sqrt", "exp", "log", "log10", "tanh", "sigmoid",
-          "conjugate", 'sin', 'cos', 'tan', 'sinh', 'cosh',
-          'absolute', 'one_over', 'sinc', 'log1p', 'expm1']:
+for f in pointwise.ptw_dict.keys():
     def func(f):
-        def func2(x):
-            from .linearization import Linearization
-            from .operators.operator import Operator
-            if isinstance(x, (Field, MultiField, Linearization, Operator)):
-                return getattr(x, f)()
-            else:
-                return getattr(np, f)(x)
+        def func2(x, *args, **kwargs):
+           return x.ptw(f, *args, **kwargs)
         return func2
     setattr(_current_module, f, func(f))
-
-
-def clip(a, a_min=None, a_max=None):
-    return a.clip(a_min, a_max)
 
 
 def get_default_codomain(domainoid, space=None):

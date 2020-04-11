@@ -126,7 +126,7 @@ class _LognormalMomentMatching(Operator):
         logmean, logsig = _lognormal_moments(mean, sig, N_copies)
         self._mean = mean
         self._sig = sig
-        op = _normal(logmean, logsig, key, N_copies).exp()
+        op = _normal(logmean, logsig, key, N_copies).ptw("exp")
         self._domain, self._target = op.domain, op.target
         self.apply = op.apply
 
@@ -224,8 +224,8 @@ class _Normalization(Operator):
 
     def apply(self, x):
         self._check_input(x)
-        amp = x.exp()
-        spec = (2*x).exp()
+        amp = x.ptw("exp")
+        spec = amp**2
         # FIXME This normalizes also the zeromode which is supposed to be left
         # untouched by this operator
         return self._specsum(self._mode_multiplicity(spec))**(-0.5)*amp
@@ -332,17 +332,17 @@ class _Amplitude(Operator):
         sig_fluc = vol1 @ ps_expander @ fluctuations
 
         xi = ducktape(dom, None, key)
-        sigma = sig_flex*(Adder(shift) @ sig_asp).sqrt()
+        sigma = sig_flex*(Adder(shift) @ sig_asp).ptw("sqrt")
         smooth = _SlopeRemover(target, space) @ twolog @ (sigma*xi)
         op = _Normalization(target, space) @ (slope + smooth)
         if N_copies > 0:
             op = Distributor @ op
             sig_fluc = Distributor @ sig_fluc
-            op = Adder(Distributor(vol0)) @ (sig_fluc*(azm_expander @ azm.one_over())*op)
+            op = Adder(Distributor(vol0)) @ (sig_fluc*(azm_expander @ azm.ptw("reciprocal"))*op)
             self._fluc = (_Distributor(dofdex, fluctuations.target,
                                        distributed_tgt[0]) @ fluctuations)
         else:
-            op = Adder(vol0) @ (sig_fluc*(azm_expander @ azm.one_over())*op)
+            op = Adder(vol0) @ (sig_fluc*(azm_expander @ azm.ptw("reciprocal"))*op)
             self._fluc = fluctuations
 
         self.apply = op.apply
@@ -527,7 +527,7 @@ class CorrelatedFieldMaker:
             for _ in range(prior_info):
                 sc.add(op(from_random('normal', op.domain)))
             mean = sc.mean.val
-            stddev = sc.var.sqrt().val
+            stddev = sc.var.ptw("sqrt").val
             for m, s in zip(mean.flatten(), stddev.flatten()):
                 logger.info('{}: {:.02E} ± {:.02E}'.format(kk, m, s))
 
@@ -539,7 +539,7 @@ class CorrelatedFieldMaker:
         from ..sugar import from_random
         scm = 1.
         for a in self._a:
-            op = a.fluctuation_amplitude*self._azm.one_over()
+            op = a.fluctuation_amplitude*self._azm.ptw("reciprocal")
             res = np.array([op(from_random('normal', op.domain)).val
                             for _ in range(nsamples)])
             scm *= res**2 + 1.
@@ -573,9 +573,9 @@ class CorrelatedFieldMaker:
             return self.average_fluctuation(0)
         q = 1.
         for a in self._a:
-            fl = a.fluctuation_amplitude*self._azm.one_over()
+            fl = a.fluctuation_amplitude*self._azm.ptw("reciprocal")
             q = q*(Adder(full(fl.target, 1.)) @ fl**2)
-        return (Adder(full(q.target, -1.)) @ q).sqrt()*self._azm
+        return (Adder(full(q.target, -1.)) @ q).ptw("sqrt")*self._azm
 
     def slice_fluctuation(self, space):
         """Returns operator which acts on prior or posterior samples"""
@@ -587,12 +587,12 @@ class CorrelatedFieldMaker:
             return self.average_fluctuation(0)
         q = 1.
         for j in range(len(self._a)):
-            fl = self._a[j].fluctuation_amplitude*self._azm.one_over()
+            fl = self._a[j].fluctuation_amplitude*self._azm.ptw("reciprocal")
             if j == space:
                 q = q*fl**2
             else:
                 q = q*(Adder(full(fl.target, 1.)) @ fl**2)
-        return q.sqrt()*self._azm
+        return q.ptw("sqrt")*self._azm
 
     def average_fluctuation(self, space):
         """Returns operator which acts on prior or posterior samples"""

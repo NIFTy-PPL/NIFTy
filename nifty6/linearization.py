@@ -17,13 +17,12 @@
 
 import numpy as np
 
-from .field import Field
-from .multi_field import MultiField
 from .sugar import makeOp
 from . import utilities
+from .operators.operator import Operator
 
 
-class Linearization(object):
+class Linearization(Operator):
     """Let `A` be an operator and `x` a field. `Linearization` stores the value
     of the operator application (i.e. `A(x)`), the local Jacobian
     (i.e. `dA(x)/dx`) and, optionally, the local metric.
@@ -64,7 +63,7 @@ class Linearization(object):
         return Linearization(val, jac, metric, self._want_metric)
 
     def trivial_jac(self):
-        return Linearization.make_var(self._val, self._want_metric)
+        return self.make_var(self._val, self._want_metric)
 
     def prepend_jac(self, jac):
         metric = None
@@ -101,6 +100,7 @@ class Linearization(object):
         -----
         Only available if target is a scalar
         """
+        from .field import Field
         return self._jac.adjoint_times(Field.scalar(1.))
 
     @property
@@ -135,18 +135,15 @@ class Linearization(object):
         return self.new(self._val.real, self._jac.real)
 
     def _myadd(self, other, neg):
-        if isinstance(other, Linearization):
-            met = None
-            if self._metric is not None and other._metric is not None:
-                met = self._metric._myadd(other._metric, neg)
-            return self.new(
-                self._val.flexible_addsub(other._val, neg),
-                self._jac._myadd(other._jac, neg), met)
-        if isinstance(other, (int, float, complex, Field, MultiField)):
-            if neg:
-                return self.new(self._val-other, self._jac, self._metric)
-            else:
-                return self.new(self._val+other, self._jac, self._metric)
+        if np.isscalar(other) or other.jac is None:
+            return self.new(self._val-other if neg else self._val+other,
+                            self._jac, self._metric)
+        met = None
+        if self._metric is not None and other._metric is not None:
+            met = self._metric._myadd(other._metric, neg)
+        return self.new(
+            self.val.flexible_addsub(other.val, neg),
+            self.jac._myadd(other.jac, neg), met)
 
     def __add__(self, other):
         return self._myadd(other, False)
@@ -161,37 +158,35 @@ class Linearization(object):
         return (-self).__add__(other)
 
     def __truediv__(self, other):
-        if isinstance(other, Linearization):
-            return self.__mul__(other.one_over())
-        return self.__mul__(1./other)
+        if np.isscalar(other):
+            return self.__mul__(1/other)
+        return self.__mul__(other.ptw("reciprocal"))
 
     def __rtruediv__(self, other):
-        return self.one_over().__mul__(other)
+        return self.ptw("reciprocal").__mul__(other)
 
     def __pow__(self, power):
-        if not np.isscalar(power):
+        if not (np.isscalar(power) or power.jac is None):
             return NotImplemented
-        return self.new(self._val**power,
-                        makeOp(self._val**(power-1)).scale(power)(self._jac))
+        return self.ptw("power", power)
 
     def __mul__(self, other):
-        from .sugar import makeOp
-        if isinstance(other, Linearization):
-            if self.target != other.target:
-                raise ValueError("domain mismatch")
-            return self.new(
-                self._val*other._val,
-                (makeOp(other._val)(self._jac))._myadd(
-                 makeOp(self._val)(other._jac), False))
         if np.isscalar(other):
             if other == 1:
                 return self
             met = None if self._metric is None else self._metric.scale(other)
             return self.new(self._val*other, self._jac.scale(other), met)
-        if isinstance(other, (Field, MultiField)):
+        from .sugar import makeOp
+        if other.jac is None:
             if self.target != other.domain:
                 raise ValueError("domain mismatch")
             return self.new(self._val*other, makeOp(other)(self._jac))
+        if self.target != other.target:
+            raise ValueError("domain mismatch")
+        return self.new(
+            self.val*other.val,
+            (makeOp(other.val)(self.jac))._myadd(
+             makeOp(self.val)(other.jac), False))
 
     def __rmul__(self, other):
         return self.__mul__(other)
@@ -209,17 +204,16 @@ class Linearization(object):
         Linearization
             the outer product of self and other
         """
-        from .operators.outer_product_operator import OuterProduct
-        if isinstance(other, Linearization):
-            return self.new(
-                OuterProduct(self._val, other.target)(other._val),
-                OuterProduct(self._jac(self._val), other.target)._myadd(
-                    OuterProduct(self._val, other.target)(other._jac), False))
         if np.isscalar(other):
             return self.__mul__(other)
-        if isinstance(other, (Field, MultiField)):
+        from .operators.outer_product_operator import OuterProduct
+        if other.jac is None:
             return self.new(OuterProduct(self._val, other.domain)(other),
                             OuterProduct(self._jac(self._val), other.domain))
+        return self.new(
+            OuterProduct(self._val, other.target)(other._val),
+            OuterProduct(self._jac(self._val), other.target)._myadd(
+                OuterProduct(self._val, other.target)(other._jac), False))
 
     def vdot(self, other):
         """Computes the inner product of this Linearization with a Field or
@@ -235,7 +229,7 @@ class Linearization(object):
             the inner product of self and other
         """
         from .operators.simple_linear_operators import VdotOperator
-        if isinstance(other, (Field, MultiField)):
+        if other.jac is None:
             return self.new(
                 self._val.vdot(other),
                 VdotOperator(other)(self._jac))
@@ -282,105 +276,10 @@ class Linearization(object):
             self._val.integrate(spaces),
             ContractionOperator(self._jac.target, spaces, 1)(self._jac))
 
-    def exp(self):
-        tmp = self._val.exp()
-        return self.new(tmp, makeOp(tmp)(self._jac))
-
-    def clip(self, min=None, max=None):
-        tmp = self._val.clip(min, max)
-        if (min is None) and (max is None):
-            return self
-        elif max is None:
-            tmp2 = makeOp(1. - (tmp == min))
-        elif min is None:
-            tmp2 = makeOp(1. - (tmp == max))
-        else:
-            tmp2 = makeOp(1. - (tmp == min) - (tmp == max))
-        return self.new(tmp, tmp2(self._jac))
-
-    def sqrt(self):
-        tmp = self._val.sqrt()
-        return self.new(tmp, makeOp(0.5/tmp)(self._jac))
-
-    def sin(self):
-        tmp = self._val.sin()
-        tmp2 = self._val.cos()
-        return self.new(tmp, makeOp(tmp2)(self._jac))
-
-    def cos(self):
-        tmp = self._val.cos()
-        tmp2 = - self._val.sin()
-        return self.new(tmp, makeOp(tmp2)(self._jac))
-
-    def tan(self):
-        tmp = self._val.tan()
-        tmp2 = 1./(self._val.cos()**2)
-        return self.new(tmp, makeOp(tmp2)(self._jac))
-
-    def sinc(self):
-        tmp = self._val.sinc()
-        tmp2 = ((np.pi*self._val).cos()-tmp)/self._val
-        ind = self._val.val == 0
-        loc = tmp2.val_rw()
-        loc[ind] = 0
-        tmp2 = Field(tmp.domain, loc)
-        return self.new(tmp, makeOp(tmp2)(self._jac))
-
-    def log(self):
-        tmp = self._val.log()
-        return self.new(tmp, makeOp(1./self._val)(self._jac))
-
-    def log10(self):
-        tmp = self._val.log10()
-        tmp2 = 1. / (self._val * np.log(10))
-        return self.new(tmp, makeOp(tmp2)(self._jac))
-
-    def log1p(self):
-        tmp = self._val.log1p()
-        tmp2 = 1. / (1. + self._val)
-        return self.new(tmp, makeOp(tmp2)(self.jac))
-
-    def expm1(self):
-        tmp = self._val.expm1()
-        tmp2 = self._val.exp()
-        return self.new(tmp, makeOp(tmp2)(self.jac))
-
-    def sinh(self):
-        tmp = self._val.sinh()
-        tmp2 = self._val.cosh()
-        return self.new(tmp, makeOp(tmp2)(self._jac))
-
-    def cosh(self):
-        tmp = self._val.cosh()
-        tmp2 = self._val.sinh()
-        return self.new(tmp, makeOp(tmp2)(self._jac))
-
-    def tanh(self):
-        tmp = self._val.tanh()
-        return self.new(tmp, makeOp(1.-tmp**2)(self._jac))
-
-    def sigmoid(self):
-        tmp = self._val.tanh()
-        tmp2 = 0.5*(1.+tmp)
-        return self.new(tmp2, makeOp(0.5*(1.-tmp**2))(self._jac))
-
-    def absolute(self):
-        if utilities.iscomplextype(self._val.dtype):
-            raise TypeError("Argument must not be complex")
-        tmp = self._val.absolute()
-        tmp2 = self._val.sign()
-
-        ind = self._val.val == 0
-        loc = tmp2.val_rw().astype(float)
-        loc[ind] = np.nan
-        tmp2 = Field(tmp.domain, loc)
-
-        return self.new(tmp, makeOp(tmp2)(self._jac))
-
-    def one_over(self):
-        tmp = 1./self._val
-        tmp2 = - tmp/self._val
-        return self.new(tmp, makeOp(tmp2)(self._jac))
+    def ptw(self, op, *args, **kwargs):
+        from .pointwise import ptw_dict
+        t1, t2 = self._val.ptw_with_deriv(op, *args, **kwargs)
+        return self.new(t1, makeOp(t2)(self._jac))
 
     def add_metric(self, metric):
         return self.new(self._val, self._jac, metric)

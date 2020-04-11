@@ -77,7 +77,7 @@ def test_studentt(field):
 
 
 def test_hamiltonian_and_KL(field):
-    field = field.exp()
+    field = field.ptw("exp")
     space = field.domain
     lh = ift.GaussianEnergy(domain=space)
     hamiltonian = ift.StandardHamiltonian(lh)
@@ -91,7 +91,7 @@ def test_hamiltonian_and_KL(field):
 def test_variablecovariancegaussian(field):
     if isinstance(field.domain, ift.MultiDomain):
         return
-    dc = {'a': field, 'b': field.exp()}
+    dc = {'a': field, 'b': field.ptw("exp")}
     mf = ift.MultiField.from_dict(dc)
     energy = ift.VariableCovarianceGaussianEnergy(field.domain, 'a', 'b')
     ift.extra.check_jacobian_consistency(energy, mf, tol=1e-6)
@@ -101,7 +101,7 @@ def test_variablecovariancegaussian(field):
 def test_inverse_gamma(field):
     if isinstance(field.domain, ift.MultiDomain):
         return
-    field = field.exp()
+    field = field.ptw("exp")
     space = field.domain
     d = ift.random.current_rng().normal(10, size=space.shape)**2
     d = ift.Field(space, d)
@@ -112,7 +112,7 @@ def test_inverse_gamma(field):
 def testPoissonian(field):
     if isinstance(field.domain, ift.MultiDomain):
         return
-    field = field.exp()
+    field = field.ptw("exp")
     space = field.domain
     d = ift.random.current_rng().poisson(120, size=space.shape)
     d = ift.Field(space, d)
@@ -123,7 +123,7 @@ def testPoissonian(field):
 def test_bernoulli(field):
     if isinstance(field.domain, ift.MultiDomain):
         return
-    field = field.sigmoid()
+    field = field.ptw("sigmoid")
     space = field.domain
     d = ift.random.current_rng().binomial(1, 0.1, size=space.shape)
     d = ift.Field(space, d)

@@ -21,9 +21,10 @@ from . import utilities
 from .field import Field
 from .multi_domain import MultiDomain
 from .domain_tuple import DomainTuple
+from .operators.operator import Operator
 
 
-class MultiField(object):
+class MultiField(Operator):
     def __init__(self, domain, val):
         """The discrete representation of a continuous field over a sum space.
 
@@ -199,13 +200,8 @@ class MultiField(object):
     def conjugate(self):
         return self._transform(lambda x: x.conjugate())
 
-    def clip(self, min=None, max=None):
-        ncomp = len(self._val)
-        lmin = min._val if isinstance(min, MultiField) else (min,)*ncomp
-        lmax = max._val if isinstance(max, MultiField) else (max,)*ncomp
-        return MultiField(
-            self._domain,
-            tuple(self._val[i].clip(lmin[i], lmax[i]) for i in range(ncomp)))
+    def clip(self, a_min=None, a_max=None):
+        return self.ptw("clip", a_min, a_max)
 
     def s_all(self):
         for v in self._val:
@@ -310,8 +306,30 @@ class MultiField(object):
                 res[key] = -val if neg else val
         return MultiField.from_dict(res)
 
-    def one_over(self):
-        return 1/self
+    def _prep_args(self, args, kwargs, i):
+        for arg in args + tuple(kwargs.values()):
+            if not (arg is None or np.isscalar(arg) or arg.jac is None):
+                raise TypeError("bad argument")
+        argstmp = tuple(arg if arg is None or np.isscalar(arg) else arg._val[i]
+                        for arg in args)
+        kwargstmp = {key: val if val is None or np.isscalar(val) else val._val[i]
+                     for key, val in kwargs.items()}
+        return argstmp, kwargstmp
+
+    def ptw(self, op, *args, **kwargs):
+        tmp = []
+        for i in range(len(self._val)):
+            argstmp, kwargstmp = self._prep_args(args, kwargs, i)
+            tmp.append(self._val[i].ptw(op, *argstmp, **kwargstmp))
+        return MultiField(self.domain, tuple(tmp))
+
+    def ptw_with_deriv(self, op, *args, **kwargs):
+        tmp = []
+        for i in range(len(self._val)):
+            argstmp, kwargstmp = self._prep_args(args, kwargs, i)
+            tmp.append(self._val[i].ptw_with_deriv(op, *argstmp, **kwargstmp))
+        return (MultiField(self.domain, tuple(v[0] for v in tmp)),
+                MultiField(self.domain, tuple(v[1] for v in tmp)))
 
     def _binary_op(self, other, op):
         f = getattr(Field, op)
@@ -347,14 +365,3 @@ for op in ["__iadd__", "__isub__", "__imul__", "__idiv__",
                 "In-place operations are deliberately not supported")
         return func2
     setattr(MultiField, op, func(op))
-
-
-for f in ["sqrt", "exp", "log", "sin", "cos", "tan", "sinh", "cosh", "tanh",
-          "absolute", "sinc", "sign", "log10", "log1p", "expm1"]:
-    def func(f):
-        def func2(self):
-            fu = getattr(Field, f)
-            return MultiField(self.domain,
-                              tuple(fu(val) for val in self.values()))
-        return func2
-    setattr(MultiField, f, func(f))

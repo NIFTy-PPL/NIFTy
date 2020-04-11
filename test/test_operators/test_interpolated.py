@@ -36,7 +36,7 @@ def testInterpolationAccuracy(space, seed):
     S = ift.ScalingOperator(space, 1.)
     pos = S.draw_sample()
     alpha = 1.5
-    qs = [0.73, pos.exp().val]
+    qs = [0.73, pos.ptw("exp").val]
     for q in qs:
         qfld = q
         if not np.isscalar(q):

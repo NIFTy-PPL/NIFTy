@@ -43,19 +43,19 @@ def test_special_gradients():
     jt(var.clip(-1, 0), np.zeros_like(s))
 
     assert_allclose(
-        _lin2grad(ift.Linearization.make_var(0*f).sinc()), np.zeros(s.shape))
-    assert_(np.isnan(_lin2grad(ift.Linearization.make_var(0*f).absolute())))
+        _lin2grad(ift.Linearization.make_var(0*f).ptw("sinc")), np.zeros(s.shape))
+    assert_(np.isnan(_lin2grad(ift.Linearization.make_var(0*f).ptw("abs"))))
     assert_allclose(
-        _lin2grad(ift.Linearization.make_var(0*f + 10).absolute()),
+        _lin2grad(ift.Linearization.make_var(0*f + 10).ptw("abs")),
         np.ones(s.shape))
     assert_allclose(
-        _lin2grad(ift.Linearization.make_var(0*f - 10).absolute()),
+        _lin2grad(ift.Linearization.make_var(0*f - 10).ptw("abs")),
         -np.ones(s.shape))
 
 
 @pmp('f', [
     'log', 'exp', 'sqrt', 'sin', 'cos', 'tan', 'sinc', 'sinh', 'cosh', 'tanh',
-    'absolute', 'one_over', 'sigmoid', 'log10', 'log1p', "expm1"
+    'absolute', 'reciprocal', 'sigmoid', 'log10', 'log1p', "expm1"
 ])
 def test_actual_gradients(f):
     dom = ift.UnstructuredDomain((1,))
@@ -63,8 +63,8 @@ def test_actual_gradients(f):
     eps = 1e-8
     var0 = ift.Linearization.make_var(fld)
     var1 = ift.Linearization.make_var(fld + eps)
-    f0 = getattr(var0, f)().val.val
-    f1 = getattr(var1, f)().val.val
+    f0 = var0.ptw(f).val.val
+    f1 = var1.ptw(f).val.val
     df0 = (f1 - f0)/eps
-    df1 = _lin2grad(getattr(var0, f)())
+    df1 = _lin2grad(var0.ptw(f))
     assert_allclose(df0, df1, rtol=100*eps)

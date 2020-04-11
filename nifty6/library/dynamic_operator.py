@@ -97,9 +97,9 @@ def _make_dynamic_operator(target, harmonic_padding, sm_s0, sm_x0, cone, keys, c
     m = CentralPadd.adjoint(FFTB(Sm(m)))
     ops['smoothed_dynamics'] = m
 
-    m = -m.log()
+    m = -m.ptw("log")
     if not minimum_phase:
-        m = m.exp()
+        m = m.ptw("exp")
     if causal or minimum_phase:
         m = Real.adjoint(FFT.inverse(Realizer(FFT.target).adjoint(m)))
         kernel = makeOp(
@@ -114,19 +114,19 @@ def _make_dynamic_operator(target, harmonic_padding, sm_s0, sm_x0, cone, keys, c
         c = FieldAdapter(UnstructuredDomain(len(sigc)), keys[1])
         c = makeOp(Field(c.target, np.array(sigc)))(c)
 
-        lightspeed = ScalingOperator(c.target, -0.5)(c).exp()
+        lightspeed = ScalingOperator(c.target, -0.5)(c).ptw("exp")
         scaling = np.array(m.target[0].distances[1:])/m.target[0].distances[0]
         scaling = DiagonalOperator(Field(c.target, scaling))
         ops['lightspeed'] = scaling(lightspeed)
 
-        c = LightConeOperator(c.target, m.target, quant) @ c.exp()
+        c = LightConeOperator(c.target, m.target, quant) @ c.ptw("exp")
         ops['light_cone'] = c
         m = c*m
 
     if causal or minimum_phase:
         m = FFT(Real(m))
     if minimum_phase:
-        m = m.exp()
+        m = m.ptw("exp")
     return m, ops
 
 

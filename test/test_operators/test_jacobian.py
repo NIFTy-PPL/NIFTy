@@ -67,7 +67,7 @@ def testBinary(type1, type2, space, seed):
         model = ift.ScalingOperator(space, 2.456)(select_s1*select_s2)
         pos = ift.from_random("normal", dom)
         ift.extra.check_jacobian_consistency(model, pos, ntries=20)
-        model = ift.sigmoid(2.456*(select_s1*select_s2))
+        model = (2.456*(select_s1*select_s2)).ptw("sigmoid")
         pos = ift.from_random("normal", dom)
         ift.extra.check_jacobian_consistency(model, pos, ntries=20)
         pos = ift.from_random("normal", dom)

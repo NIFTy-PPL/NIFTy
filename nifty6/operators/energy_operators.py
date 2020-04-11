@@ -20,7 +20,6 @@ import numpy as np
 from .. import utilities
 from ..domain_tuple import DomainTuple
 from ..field import Field
-from ..linearization import Linearization
 from ..multi_domain import MultiDomain
 from ..multi_field import MultiField
 from ..sugar import makeDomain, makeOp
@@ -59,9 +58,8 @@ class Squared2NormOperator(EnergyOperator):
 
     def apply(self, x):
         self._check_input(x)
-        if not isinstance(x, Linearization):
-            res = x.vdot(x)
-            return res
+        if x.jac is None:
+            return x.vdot(x)
         res = x.val.vdot(x.val)
         return x.new(res, VdotOperator(2*x.val))
 
@@ -88,7 +86,7 @@ class QuadraticFormOperator(EnergyOperator):
 
     def apply(self, x):
         self._check_input(x)
-        if not isinstance(x, Linearization):
+        if x.jac is None:
             return 0.5*x.vdot(self._op(x))
         res = 0.5*x.val.vdot(self._op(x.val))
         return x.new(res, VdotOperator(self._op(x.val)))
@@ -127,8 +125,8 @@ class VariableCovarianceGaussianEnergy(EnergyOperator):
 
     def apply(self, x):
         self._check_input(x)
-        res = 0.5*(x[self._r].vdot(x[self._r]*x[self._icov]).real - x[self._icov].log().sum())
-        if not isinstance(x, Linearization) or not x.want_metric:
+        res = 0.5*(x[self._r].vdot(x[self._r]*x[self._icov]).real - x[self._icov].ptw("log").sum())
+        if not x.want_metric:
             return res
         mf = {self._r: x.val[self._icov], self._icov: .5*x.val[self._icov]**(-2)}
         return res.add_metric(makeOp(MultiField.from_dict(mf)))
@@ -195,7 +193,7 @@ class GaussianEnergy(EnergyOperator):
         self._check_input(x)
         residual = x if self._mean is None else x - self._mean
         res = self._op(residual).real
-        if isinstance(x, Linearization) and x.want_metric:
+        if x.want_metric:
             return res.add_metric(self._met)
         return res
 
@@ -229,8 +227,8 @@ class PoissonianEnergy(EnergyOperator):
 
     def apply(self, x):
         self._check_input(x)
-        res = x.sum() - x.log().vdot(self._d)
-        if not isinstance(x, Linearization) or not x.want_metric:
+        res = x.sum() - x.ptw("log").vdot(self._d)
+        if not x.want_metric:
             return res
         return res.add_metric(makeOp(1./x.val))
 
@@ -269,8 +267,8 @@ class InverseGammaLikelihood(EnergyOperator):
 
     def apply(self, x):
         self._check_input(x)
-        res = x.log().vdot(self._alphap1) + x.one_over().vdot(self._beta)
-        if not isinstance(x, Linearization) or not x.want_metric:
+        res = x.ptw("log").vdot(self._alphap1) + x.ptw("reciprocal").vdot(self._beta)
+        if not x.want_metric:
             return res
         return res.add_metric(makeOp(self._alphap1/(x.val**2)))
 
@@ -298,8 +296,8 @@ class StudentTEnergy(EnergyOperator):
 
     def apply(self, x):
         self._check_input(x)
-        res = ((self._theta+1)/2)*(x**2/self._theta).log1p().sum()
-        if not isinstance(x, Linearization) or not x.want_metric:
+        res = ((self._theta+1)/2)*(x**2/self._theta).ptw("log1p").sum()
+        if not x.want_metric:
             return res
         met = ScalingOperator(self.domain, (self._theta+1) / (self._theta+3))
         return res.add_metric(met)
@@ -332,8 +330,8 @@ class BernoulliEnergy(EnergyOperator):
 
     def apply(self, x):
         self._check_input(x)
-        res = -x.log().vdot(self._d) + (1.-x).log().vdot(self._d-1.)
-        if not isinstance(x, Linearization) or not x.want_metric:
+        res = -x.ptw("log").vdot(self._d) + (1.-x).ptw("log").vdot(self._d-1.)
+        if not x.want_metric:
             return res
         return res.add_metric(makeOp(1./(x.val*(1. - x.val))))
 
@@ -382,7 +380,7 @@ class StandardHamiltonian(EnergyOperator):
 
     def apply(self, x):
         self._check_input(x)
-        if not isinstance(x, Linearization) or not x.want_metric or self._ic_samp is None:
+        if not x.want_metric or self._ic_samp is None:
             return (self._lh + self._prior)(x)
         lhx, prx = self._lh(x), self._prior(x)
         return (lhx+prx).add_metric(SamplingEnabler(lhx.metric, prx.metric, self._ic_samp))
