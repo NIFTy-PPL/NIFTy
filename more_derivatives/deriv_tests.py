@@ -59,7 +59,7 @@ op = MultiLocalExp(dom)
 op2 = MultiLinearOperator(ift.FFTOperator(dom))
 
 x = ift.from_random('normal', op0._domain)
-ml = MultiLinearization.make_var(x, 4)
+ml = MultiLinearization.make_var(x, 6)
 res = MultiOpChain([op0,op,op2])(ml)
 
 dxs = [ift.from_random('normal', x.domain),]
