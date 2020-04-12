@@ -3,7 +3,7 @@ Some general remarks on the special type of tensors we need for higher order
 derivatives (We ignore the notion of dual spaces here):
 
 Consider a function f that maps from space A to space B:
-    
+
 The first derivative is a Linear operator that maps from A to B, it can be
 denoted as a 2nd order tensor of the form J_{i,j} where i labels the
 coordinates of A and j the coords of B. The comma "," indicates derivatives,
@@ -30,7 +30,6 @@ of 2nd order) from a n+1 order tensor by contracting with n-1 vectors. This new
 operator then has the same capabilities as usual Linear operators.
 """
 import nifty6 as ift
-import scipy.special as sp
 import numpy as np
 import itertools
 
@@ -53,7 +52,7 @@ class DiffTensor:
         for xx in x:
             assert xx.domain == self._domain
         return self._apply(x)
-    
+
     def partial_contract(self, x):
         if len(x) > self._nderiv:
             raise ValueError("Too many indices to contract")
@@ -98,9 +97,8 @@ class PartialContractedTensor(DiffTensor):
         return PartialContractedTensor(self._tensor, x+self._y)
 
 class DiagonalTensor(DiffTensor):
-    def __init__(self, domain, target, vec, n):
-        self._domain = domain
-        self._target = target
+    def __init__(self, vec, n):
+        self._domain = self._target = vec.domain
         self._vec = vec
         self._nderiv = n
     def _apply(self, x):
@@ -124,23 +122,15 @@ class SumTensor(DiffTensor):
 
     def _apply(self, x):
         res = 0.
-        for i in range(len(self._tlist)):
-            l = []
-            for j in range(len(x)):
-                l.append(x[j].extract(self._tlist[i].domain))
-            res = res + self._tlist[i](l)
+        for tli in self._tlist:
+            res = res + tli([xj.extract(tli.domain) for xj in x])
         return res
 
     def _contract_to_one(self, y):
-        l = []
-        for j in range(len(y)):
-            l.append(y[j].extract(self._tlist[0].domain))
-        res = self._tlist[0].contract_to_one(l)
-        for i in range(len(self._tlist))[1:]:
-            l = []
-            for j in range(len(y)):
-                l.append(y[j].extract(self._tlist[i].domain))
-            res = res + self._tlist[i].contract_to_one(l)
+        res = None
+        for tli in self._tlist:
+            tmp = tli.contract_to_one([yj.extract(tli.domain) for yj in y])
+            res = tmp if res is None else res + tmp
         return res
 
 class GenLeibnizTensor(DiffTensor):
@@ -149,22 +139,17 @@ class GenLeibnizTensor(DiffTensor):
         self._target = j1[0].target
         self._nderiv = len(j1)
         assert len(j1) == len(j2)
-        for i in range(len(j1)):
-            if j1[i] != None:
-                assert j1[i].target == self._target
-            if j2[i] != None:
-                assert j2[i].target == self._target
+        for f1, f2 in zip(j1, j2):
+            assert f1 is None or f1.target == self._target
+            assert f2 is None or f2.target == self._target
         assert v1.domain == self._target
         assert v2.domain == self._target
         self._j1 = [v1, ] + j1
         self._j2 = [v2, ] + j2
 
     def _apply(self, x):
-        x1 = []
-        x2 = []
-        for j in range(len(x)):
-            x1.append(x[j].extract(self._j1[1].domain))
-            x2.append(x[j].extract(self._j2[1].domain))
+        x1 = [xj.extract(self._j1[1].domain) for xj in x]
+        x2 = [xj.extract(self._j2[1].domain) for xj in x]
         lst = list(itertools.product([0, 1], repeat=self._nderiv))
         res = 0.
         for inds in lst:
@@ -172,20 +157,16 @@ class GenLeibnizTensor(DiffTensor):
             inds2 = np.ones(self._nderiv) - inds
             inds = np.where(inds == 1)[0]
             inds2 = np.where(inds2 == 1)[0]
-            xx1 = []
-            for inp in inds:
-                xx1.append(x1[inp])
-            xx2 = []
-            for inp in inds2:
-                xx2.append(x2[inp])
+            xx1 = [x1[inp] for inp in inds] # FIXME: just xx1 = x1[inds] ?
+            xx2 = [x2[inp] for inp in inds2] 
             l1 = len(xx1)
-            l2 = len(xx2)
             if l1 == 0:
                 tm = self._j1[0]
             elif l1 == 1:
                 tm = self._j1[1](xx1[0])
             else:
                 tm = self._j1[l1](xx1)
+            l2 = len(xx2)
             if l2 == 0:
                 tm = tm*self._j2[0]
             elif l2 == 1:
@@ -218,20 +199,18 @@ class ComposedTensor(DiffTensor):
         if self._nderiv == 2:
             tm = self._old[1](x)
             res = self._new[0](tm)
-            if self._new[1] != None:
-                tm = self._old[0](x[0])
-                tm2 = self._old[0](x[1])
-                res = res + self._new[1]([tm, tm2])
+            if self._new[1] is not None:
+                res = res + self._new[1]([self._old[0](x[0]), self._old[0](x[1])])
             return res
 
         if self._nderiv == 3:
             tm = self._old[2](x)
             res = self._new[0](tm)
-            if self._new[1] != None:
+            if self._new[1] is not None:
                 dx1 = self._old[0](x[0])
                 tm = self._old[1](x[1:])
                 res = res + 3.*self._new[1]([dx1, tm])
-            if self._new[2] != None:
+            if self._new[2] is not None:
                 dx2 = self._old[0](x[1])
                 dx3 = self._old[0](x[2])
                 res = res + self._new[2]([dx1, dx2, dx3])
@@ -240,17 +219,17 @@ class ComposedTensor(DiffTensor):
         if self._nderiv == 4:
             tm = self._old[3](x)
             res = self._new[0](tm)
-            if self._new[1] != None:
+            if self._new[1] is not None:
                 dx1 = self._old[0](x[0])
                 tm = self._old[2](x[1:])
                 tm2 = self._old[1](x[:2])
                 dx34 = self._old[1](x[2:])
                 lst = [3.*tm2+4.*dx1, 3.*dx34+4.*tm]
                 res = res + self._new[1](lst)
-            if self._new[2] != None:
+            if self._new[2] is not None:
                 dx2 = self._old[0](x[1])
                 res = res + 6.*self._new[2]([dx1, dx2, dx34])
-            if self._new[3] != None:
+            if self._new[3] is not None:
                 dx3 = self._old[0](x[2])
                 dx4 = self._old[0](x[3])
                 res = res + self._new[3]([dx1, dx2, dx3, dx4])
@@ -263,7 +242,7 @@ class ComposedTensor(DiffTensor):
         if self._nderiv == 2:
             tm = self._old[1].contract_to_one(y)
             res = self._new[0](tm)
-            if self._new[1] != None:
+            if self._new[1] is not None:
                 tm = self._old[0](y[0])
                 res = res + self._new[1].contract_to_one([tm,]) @ self._old[0]
             return res
@@ -271,10 +250,10 @@ class ComposedTensor(DiffTensor):
         if self._nderiv == 3:
             tm = self._old[2].contract_to_one(y)
             res = self._new[0](tm)
-            if self._new[1] != None:
+            if self._new[1] is not None:
                 tm = self._old[1](y)
                 res = res + 3.*self._new[1].contract_to_one([tm,])@self._old[0]
-            if self._new[2] != None:
+            if self._new[2] is not None:
                 dx1 = self._old[0](y[0])
                 dx2 = self._old[0](y[1])
                 res = res + self._new[2].contract_to_one([dx1, dx2])@self._old[0]
@@ -283,16 +262,16 @@ class ComposedTensor(DiffTensor):
         if self._nderiv == 4:
             tm = self._old[3].contract_to_one(y)
             res = self._new[0] @ tm
-            if self._new[1] != None:
+            if self._new[1] is not None:
                 tm = self._old[2](y)
                 dy23 = self._old[1](y[1:])
                 re = self._new[1].contract_to_one([3.*dy23+4.*tm, ])
                 re = re @ (3.*self._old[1].contract_to_one([y[0],])+4.*self._old[0])
                 res = res + re
-            if self._new[2] != None:
+            if self._new[2] is not None:
                 dy1 = self._old[0](y[0])
                 res = res + 6.*self._new[2].contract_to_one([dy1,dy23])@self._old[0]
-            if self._new[3] != None:
+            if self._new[3] is not None:
                 dy2 = self._old[0](y[1])
                 dy3 = self._old[0](y[2])
                 res = res + self._new[3].contract_to_one([dy1,dy2,dy3])@self._old[0]

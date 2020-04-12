@@ -20,31 +20,26 @@ class MultiOperator:
 
 class MultiLocalNonlin(MultiOperator):
     def __init__(self, domain, f, jacs):
-        self._domain = ift.makeDomain(domain)
-        self._target = ift.makeDomain(domain)
+        self._domain = self._target = ift.makeDomain(domain)
         self._f, self._jacs = f, jacs
 
     def apply(self, x):
         v = x.val
         res = self._f(v)
         jacs = [ift.makeOp(self._jacs[0](v)),]
-        for i in range(len(self._jacs))[1:]:
-            jacs.append(DiagonalTensor(self._domain, self._target,
-                                       self._jacs[i](v), i+1))
+        jacs += [DiagonalTensor(jac_i(v), i+2)
+                 for i, jac_i in enumerate(self._jacs[1:])]
         return x.new(res, jacs)
 
 class MultiLocalExp(MultiOperator):
     def __init__(self, domain):
-        self._domain = ift.makeDomain(domain)
-        self._target = ift.makeDomain(domain)
+        self._domain = self._target = ift.makeDomain(domain)
 
     def apply(self, x):
         v = x.val
         res = v.exp()
         jacs = [ift.makeOp(res), ]
-        for i in range(x.maxderiv)[1:]:
-            jacs.append(DiagonalTensor(self._domain, self._target,
-                                       res, i+1))
+        jacs += [DiagonalTensor(res, i) for i in range(2, x.maxderiv+1)]
         return x.new(res, jacs)
 
 class MultiLinearOperator(MultiOperator):
@@ -69,7 +64,7 @@ class MultiSumOperator(MultiOperator):
 
     def apply(self, x):
         v = x.val
-        
+
         j0 = None
         pjacs = []
         res = 0.
@@ -79,20 +74,11 @@ class MultiSumOperator(MultiOperator):
             rl = op.apply(lp)
             res = res + rl.val
             pjacs.append(rl.jacs)
-            if j0 == None:
-                j0 = rl.jacs[0]
-            else:
-                j0 = j0 + rl.jacs[0]
+            j0 = rl.jacs[0] if j0 is None else j0 + rl.jacs[0]
         jacs = [j0, ]
-        for i in range(x.maxderiv)[1:]:
-            tm = []
-            for j in range(len(pjacs)):
-                if pjacs[j][i] is not None:
-                    tm.append(pjacs[j][i])
-            if len(tm) != 0:
-                jacs.append(SumTensor(tm))
-            else:
-                jacs.append(None)
+        for i in range(1, x.maxderiv):
+            tm = [jacj[i] for jacj in pjacs if jacj[i] is not None]
+            jacs.append(None if len(tm) == 0 else SumTensor(tm))
         return x.new(res, jacs)
 
 class MultiPointwiseProduct(MultiOperator):
@@ -105,10 +91,10 @@ class MultiPointwiseProduct(MultiOperator):
     def apply(self, x):
         v = x.val
         v1 = v.extract(self._op1.domain)
-        v2 = v.extract(self._op2.domain)
         vl1 = MultiLinearization.make_var(v1, x.maxderiv)
-        vl2 = MultiLinearization.make_var(v2, x.maxderiv)
         rl1 = self._op1(vl1)
+        v2 = v.extract(self._op2.domain)
+        vl2 = MultiLinearization.make_var(v2, x.maxderiv)
         rl2 = self._op2(vl2)
         res = rl1.val*rl2.val
         jacs = [ift.makeOp(rl2.val)@rl1.jacs[0] + ift.makeOp(rl1.val)@rl2.jacs[0], ]
@@ -126,7 +112,6 @@ class MultiOpChain(MultiOperator):
             assert oplist[i].target == oplist[i+1].domain
 
     def apply(self, x):
-        res = self._oplist[0].apply(x)
-        for i in range(len(self._oplist)-1):
-            res = self._oplist[i+1].apply(res)
-        return res
+        for op in self._oplist:
+            x = op.apply(x)
+        return x
