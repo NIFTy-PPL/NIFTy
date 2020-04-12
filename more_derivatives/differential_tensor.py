@@ -3,7 +3,7 @@ Some general remarks on the special type of tensors we need for higher order
 derivatives (We ignore the notion of dual spaces here):
 
 Consider a function f that maps from space A to space B:
-    
+
 The first derivative is a Linear operator that maps from A to B, it can be
 denoted as a 2nd order tensor of the form J_{i,j} where i labels the
 coordinates of A and j the coords of B. The comma "," indicates derivatives,
@@ -53,7 +53,7 @@ class DiffTensor:
         for xx in x:
             assert xx.domain == self._domain
         return self._apply(x)
-    
+
     def partial_contract(self, x):
         if len(x) > self._nderiv:
             raise ValueError("Too many indices to contract")
@@ -98,9 +98,8 @@ class PartialContractedTensor(DiffTensor):
         return PartialContractedTensor(self._tensor, x+self._y)
 
 class DiagonalTensor(DiffTensor):
-    def __init__(self, domain, target, vec, n):
-        self._domain = domain
-        self._target = target
+    def __init__(self, vec, n):
+        self._domain = self._target = vec.domain
         self._vec = vec
         self._nderiv = n
     def _apply(self, x):
@@ -124,23 +123,16 @@ class SumTensor(DiffTensor):
 
     def _apply(self, x):
         res = 0.
-        for i in range(len(self._tlist)):
-            l = []
-            for j in range(len(x)):
-                l.append(x[j].extract(self._tlist[i].domain))
-            res = res + self._tlist[i](l)
+        for tli in self._tlist:
+            res = res + tli([xj.extract(tli.domain) for xj in x])
         return res
 
     def _contract_to_one(self, y):
-        l = []
-        for j in range(len(y)):
-            l.append(y[j].extract(self._tlist[0].domain))
+        l= [yj.extract(self._tlist[0].domain) for yj in y]
         res = self._tlist[0].contract_to_one(l)
-        for i in range(len(self._tlist))[1:]:
-            l = []
-            for j in range(len(y)):
-                l.append(y[j].extract(self._tlist[i].domain))
-            res = res + self._tlist[i].contract_to_one(l)
+        for tli in self._tlist[1:]:
+            l = [yj.extract(tli.domain) for yj in y]
+            res = res + tli.contract_to_one(l)
         return res
 
 class GenLeibnizTensor(DiffTensor):
@@ -150,21 +142,16 @@ class GenLeibnizTensor(DiffTensor):
         self._nderiv = len(j1)
         assert len(j1) == len(j2)
         for i in range(len(j1)):
-            if j1[i] != None:
-                assert j1[i].target == self._target
-            if j2[i] != None:
-                assert j2[i].target == self._target
+            assert j1[i] is None or j1[i].target == self._target
+            assert j2[i] is None or j2[i].target == self._target
         assert v1.domain == self._target
         assert v2.domain == self._target
         self._j1 = [v1, ] + j1
         self._j2 = [v2, ] + j2
 
     def _apply(self, x):
-        x1 = []
-        x2 = []
-        for j in range(len(x)):
-            x1.append(x[j].extract(self._j1[1].domain))
-            x2.append(x[j].extract(self._j2[1].domain))
+        x1 = [xj.extract(self._j1[1].domain) for xj in x]
+        x2 = [xj.extract(self._j2[1].domain) for xj in x]
         lst = list(itertools.product([0, 1], repeat=self._nderiv))
         res = 0.
         for inds in lst:
@@ -172,20 +159,16 @@ class GenLeibnizTensor(DiffTensor):
             inds2 = np.ones(self._nderiv) - inds
             inds = np.where(inds == 1)[0]
             inds2 = np.where(inds2 == 1)[0]
-            xx1 = []
-            for inp in inds:
-                xx1.append(x1[inp])
-            xx2 = []
-            for inp in inds2:
-                xx2.append(x2[inp])
+            xx1 = [x1[inp] for inp in inds] # FIXME: just xx1 = x1[inds] ?
+            xx2 = [x2[inp] for inp in inds2] 
             l1 = len(xx1)
-            l2 = len(xx2)
             if l1 == 0:
                 tm = self._j1[0]
             elif l1 == 1:
                 tm = self._j1[1](xx1[0])
             else:
                 tm = self._j1[l1](xx1)
+            l2 = len(xx2)
             if l2 == 0:
                 tm = tm*self._j2[0]
             elif l2 == 1:
@@ -218,10 +201,8 @@ class ComposedTensor(DiffTensor):
         if self._nderiv == 2:
             tm = self._old[1](x)
             res = self._new[0](tm)
-            if self._new[1] != None:
-                tm = self._old[0](x[0])
-                tm2 = self._old[0](x[1])
-                res = res + self._new[1]([tm, tm2])
+            if self._new[1] is not None:
+                res = res + self._new[1]([self._old[0](x[0]), self._old[0](x[1])])
             return res
 
         if self._nderiv == 3:

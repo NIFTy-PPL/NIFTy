@@ -23,13 +23,12 @@ class MultiLinearization:
     def make_var(val, maxorder):
         jacs = [ift.makeOp(ift.full(val.domain,1.)), ]
         for i in range(maxorder-1):
-            jacs.append(DiagonalTensor(val.domain, val.domain,
-                                       ift.full(val.domain,0.), i+2))
+            jacs.append(DiagonalTensor(ift.full(val.domain,0.), i+2))
         return MultiLinearization(val, jacs)
 
     def new(self, val, jacs):
         assert len(jacs) == len(self.jacs)
         gn = [jacs[0]@self.jacs[0], ]
-        for i in range(len(self.jacs))[1:]:
-            gn.append(ComposedTensor(self.jacs[:(i+1)], jacs[:(i+1)]))
+        gn += [ComposedTensor(self.jacs[:i], jacs[:i])
+               for i in range(2, len(self.jacs)+1)]
         return MultiLinearization(val, gn)
