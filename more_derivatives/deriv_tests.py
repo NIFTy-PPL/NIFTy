@@ -14,7 +14,7 @@ def ddf(x):
     return 4.*ift.exp(2.*x)
 expjacs = [df, ddf]
 
-dom = ift.RGSpace(16)
+dom = ift.RGSpace(256)
 
 x = ift.from_random('normal', dom)
 ml = MultiLinearization.make_var(x, 2)
@@ -149,5 +149,5 @@ twotest = twotest + r1.val*r2.jacs[1](dxs2[:2])
 assert np.allclose(twotest.val, myrs[1].val)
 
 random.shuffle(dxs)
-r2 = rl.jacs[0](dxs[0])
-assert np.allclose(myrs[0].val, r2.val)
+r2 = rl.jacs[-1](dxs)
+assert np.allclose(myrs[-1].val, r2.val)
