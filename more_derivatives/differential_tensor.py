@@ -155,10 +155,8 @@ class GenLeibnizTensor(DiffTensor):
         for inds in lst:
             inds = np.array(inds)
             inds2 = np.ones(self._nderiv) - inds
-            inds = np.where(inds == 1)[0]
-            inds2 = np.where(inds2 == 1)[0]
-            xx1 = [x1[inp] for inp in inds] # FIXME: just xx1 = x1[inds] ?
-            xx2 = [x2[inp] for inp in inds2] 
+            xx1 = [x1[inp] for inp in np.where(inds == 1)[0]] #FIXME: xx1 = x1[inds] does not work for lists?
+            xx2 = [x2[inp] for inp in np.where(inds2 == 1)[0]]
             l1 = len(xx1)
             if l1 == 0:
                 tm = self._j1[0]
@@ -174,6 +172,45 @@ class GenLeibnizTensor(DiffTensor):
             else:
                 tm = tm*self._j2[l2](xx2)
             res = res + tm
+        return res
+
+    def _contract_to_one(self, x):
+        x1 = [xj.extract(self._j1[1].domain) for xj in x]
+        x2 = [xj.extract(self._j2[1].domain) for xj in x]
+        x1.append(None)
+        x2.append(None)
+        lst = list(itertools.product([0, 1], repeat=self._nderiv))
+        res = None
+        for inds in lst:
+            inds = np.array(inds)
+            inds2 = np.ones(self._nderiv) - inds
+            xx1 = [x1[inp] for inp in np.where(inds == 1)[0]]
+            xx2 = [x2[inp] for inp in np.where(inds2 == 1)[0]]
+            l1 = len(xx1)
+            if l1 == 0:
+                tm = self._j1[0]
+            elif l1 == 1:
+                tm = self._j1[1] if xx1[0] is None else self._j1[1](xx1[0])
+            else:
+                if xx1[-1] is None:
+                    tm = self._j1[l1].contract_to_one(xx1[:-1])
+                else:
+                    tm = self._j1[l1](xx1)
+            l2 = len(xx2)
+            if l2 == 0:
+                tmm = self._j2[0]
+            elif l2 == 1:
+                tmm = self._j2[1] if xx2[0] is None else self._j2[1](xx2[0])
+            else:
+                if xx2[-1] is None:
+                    tmm = self._j2[l2].contract_to_one(xx2[:-1])
+                else:
+                    tmm = self._j2[l2](xx2)
+            if isinstance(tm, (ift.Field, ift.MultiField)):
+                tm = ift.makeOp(tm)@tmm
+            else:
+                tm = ift.makeOp(tmm)@tm
+            res = tm if res is None else res + tm
         return res
 
 class ComposedTensor(DiffTensor):

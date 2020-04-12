@@ -151,3 +151,7 @@ assert np.allclose(twotest.val, myrs[1].val)
 random.shuffle(dxs)
 r2 = rl.jacs[-1](dxs)
 assert np.allclose(myrs[-1].val, r2.val)
+
+r3 = rl.jacs[-1].contract_to_one(dxs[:-1])
+r3 = r3(dxs[-1])
+assert np.allclose(r3.val, r2.val)
