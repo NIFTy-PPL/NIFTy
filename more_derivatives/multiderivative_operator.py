@@ -20,8 +20,7 @@ class MultiOperator:
 
 class MultiLocalNonlin(MultiOperator):
     def __init__(self, domain, f, jacs):
-        self._domain = ift.makeDomain(domain)
-        self._target = ift.makeDomain(domain)
+        self._domain = self._target = ift.makeDomain(domain)
         self._f, self._jacs = f, jacs
 
     def apply(self, x):
