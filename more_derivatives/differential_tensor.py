@@ -30,7 +30,6 @@ of 2nd order) from a n+1 order tensor by contracting with n-1 vectors. This new
 operator then has the same capabilities as usual Linear operators.
 """
 import nifty6 as ift
-import scipy.special as sp
 import numpy as np
 import itertools
 
