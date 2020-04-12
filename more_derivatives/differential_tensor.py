@@ -31,7 +31,8 @@ operator then has the same capabilities as usual Linear operators.
 """
 import nifty6 as ift
 import numpy as np
-import itertools
+from itertools import product
+from scipy.special import factorial
 
 class DiffTensor:
     @property
@@ -150,7 +151,7 @@ class GenLeibnizTensor(DiffTensor):
     def _apply(self, x):
         x1 = [xj.extract(self._j1[1].domain) for xj in x]
         x2 = [xj.extract(self._j2[1].domain) for xj in x]
-        lst = list(itertools.product([0, 1], repeat=self._nderiv))
+        lst = list(product([0, 1], repeat=self._nderiv))
         res = 0.
         for inds in lst:
             inds = np.array(inds)
@@ -179,7 +180,7 @@ class GenLeibnizTensor(DiffTensor):
         x2 = [xj.extract(self._j2[1].domain) for xj in x]
         x1.append(None)
         x2.append(None)
-        lst = list(itertools.product([0, 1], repeat=self._nderiv))
+        lst = list(product([0, 1], repeat=self._nderiv))
         res = None
         for inds in lst:
             inds = np.array(inds)
@@ -213,6 +214,29 @@ class GenLeibnizTensor(DiffTensor):
             res = tm if res is None else res + tm
         return res
 
+def _constraint(lst):
+    res = 0
+    for n in range(len(lst)):
+        res += lst[n]*(n+1)
+    return res == len(lst)
+
+def _multifact(lst,idx):
+    res = factorial(len(lst))
+    for ind in idx:
+        res /= factorial(lst[ind])*factorial(ind)**lst[ind]
+    return res
+
+def _get_all_comb(n):
+    maxvals = []
+    for i in range(n):
+        maxvals.append(n//(i+1))
+    lst = [i for i in product(*(range(i+1) for i in maxvals)) if _constraint(i)]
+    idx, coeff = [], []
+    for ll in lst:
+        idx.append(np.where(np.array(ll)!=0)[0])
+        coeff.append(_multifact(ll, idx[-1]))
+    return lst, idx, coeff
+
 class ComposedTensor(DiffTensor):
     """Implements a generalization of the chain rule for higher derivatives.
     Currently only supports max. 4th derivative. However there exists a
@@ -231,88 +255,61 @@ class ComposedTensor(DiffTensor):
                 assert old[i].target == new[i].domain
         self._old = old
         self._new = new
+        self._lst, self._idx, self._coeff = _get_all_comb(self._nderiv)
+        self._newmap = []
+        i, nmax = 0, len(self._lst)
+        while i < nmax:
+            rr = 0
+            for ll in self._lst[i]:
+                rr += ll
+            rr -= 1
+            if self._new[rr] == None:
+                del self._lst[i]
+                del self._idx[i]
+                del self._coeff[i]
+                nmax -= 1
+            else:
+                self._newmap.append(rr)
+                i += 1
 
     def _apply(self, x):
-        if self._nderiv == 2:
-            tm = self._old[1](x)
-            res = self._new[0](tm)
-            if self._new[1] is not None:
-                res = res + self._new[1]([self._old[0](x[0]), self._old[0](x[1])])
-            return res
-
-        if self._nderiv == 3:
-            tm = self._old[2](x)
-            res = self._new[0](tm)
-            if self._new[1] is not None:
-                dx1 = self._old[0](x[0])
-                tm = self._old[1](x[1:])
-                res = res + 3.*self._new[1]([dx1, tm])
-            if self._new[2] is not None:
-                dx2 = self._old[0](x[1])
-                dx3 = self._old[0](x[2])
-                res = res + self._new[2]([dx1, dx2, dx3])
-            return res
-
-        if self._nderiv == 4:
-            tm = self._old[3](x)
-            res = self._new[0](tm)
-            if self._new[1] is not None:
-                dx1 = self._old[0](x[0])
-                tm = self._old[2](x[1:])
-                tm2 = self._old[1](x[:2])
-                dx34 = self._old[1](x[2:])
-                lst = [3.*tm2+4.*dx1, 3.*dx34+4.*tm]
-                res = res + self._new[1](lst)
-            if self._new[2] is not None:
-                dx2 = self._old[0](x[1])
-                res = res + 6.*self._new[2]([dx1, dx2, dx34])
-            if self._new[3] is not None:
-                dx3 = self._old[0](x[2])
-                dx4 = self._old[0](x[3])
-                res = res + self._new[3]([dx1, dx2, dx3, dx4])
-            return res
-
-        if self._nderiv == 1 or self._nderiv > 4:
-            raise NotImplementedError
+        res = None
+        for i in range(len(self._lst)):
+            tm = []
+            cnt = 0
+            for a in self._idx[i]:
+                op = self._old[a]
+                for _ in range(self._lst[i][a]):
+                    sl = x[cnt:(cnt+a+1)]
+                    sl = sl[0] if len(sl)==1 else sl
+                    tm.append(op(sl))
+                    cnt += a+1
+            tm = tm[0] if len(tm)==1 else tm
+            rr = self._new[self._newmap[i]](tm)
+            res = rr if res is None else res+rr
+        return res
 
     def _contract_to_one(self, y):
-        if self._nderiv == 2:
-            tm = self._old[1].contract_to_one(y)
-            res = self._new[0](tm)
-            if self._new[1] is not None:
-                tm = self._old[0](y[0])
-                res = res + self._new[1].contract_to_one([tm,]) @ self._old[0]
-            return res
-
-        if self._nderiv == 3:
-            tm = self._old[2].contract_to_one(y)
-            res = self._new[0](tm)
-            if self._new[1] is not None:
-                tm = self._old[1](y)
-                res = res + 3.*self._new[1].contract_to_one([tm,])@self._old[0]
-            if self._new[2] is not None:
-                dx1 = self._old[0](y[0])
-                dx2 = self._old[0](y[1])
-                res = res + self._new[2].contract_to_one([dx1, dx2])@self._old[0]
-            return res
-
-        if self._nderiv == 4:
-            tm = self._old[3].contract_to_one(y)
-            res = self._new[0] @ tm
-            if self._new[1] is not None:
-                tm = self._old[2](y)
-                dy23 = self._old[1](y[1:])
-                re = self._new[1].contract_to_one([3.*dy23+4.*tm, ])
-                re = re @ (3.*self._old[1].contract_to_one([y[0],])+4.*self._old[0])
-                res = res + re
-            if self._new[2] is not None:
-                dy1 = self._old[0](y[0])
-                res = res + 6.*self._new[2].contract_to_one([dy1,dy23])@self._old[0]
-            if self._new[3] is not None:
-                dy2 = self._old[0](y[1])
-                dy3 = self._old[0](y[2])
-                res = res + self._new[3].contract_to_one([dy1,dy2,dy3])@self._old[0]
-            return res
-
-        if self._nderiv == 1 or self._nderiv > 4:
-            raise NotImplementedError
+        x = y + [None,]
+        res = None
+        for i in range(len(self._lst)):
+            tm = []
+            rr = None
+            cnt = 0
+            for a in self._idx[i]:
+                op = self._old[a]
+                for _ in range(self._lst[i][a]):
+                    sl = x[cnt:(cnt+a+1)]
+                    if sl[-1] is None:
+                        rr = op if len(sl)==1 else op.contract_to_one(sl[:-1])
+                    else:
+                        sl = sl[0] if len(sl)==1 else sl
+                        tm.append(op(sl))
+                    cnt += a+1
+            
+            if len(tm)==0:
+                rr = self._new[self._newmap[i]]@rr
+            else:
+                rr = self._new[self._newmap[i]].contract_to_one(tm)@rr
+            res = rr if res is None else res+rr
+        return res

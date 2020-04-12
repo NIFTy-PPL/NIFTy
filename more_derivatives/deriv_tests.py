@@ -120,7 +120,6 @@ for i in range(len(res.jacs))[1:]:
 for i in range(len(myres)):
     assert np.allclose(myres[i].val, myres2[i].val)
 
-
 no = 4
 op = MultiPointwiseProduct(fa,fa2)
 x = ift.from_random('normal', op.domain)
