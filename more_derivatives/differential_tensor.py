@@ -147,17 +147,15 @@ class GenLeibnizTensor(DiffTensor):
         assert v2.domain == self._target
         self._j1 = [v1, ] + j1
         self._j2 = [v2, ] + j2
+        self._lst = list(np.array(i) for i in product([0, 1], repeat=self._nderiv))
 
     def _apply(self, x):
         x1 = [xj.extract(self._j1[1].domain) for xj in x]
         x2 = [xj.extract(self._j2[1].domain) for xj in x]
-        lst = list(product([0, 1], repeat=self._nderiv))
         res = 0.
-        for inds in lst:
-            inds = np.array(inds)
-            inds2 = np.ones(self._nderiv) - inds
+        for inds in self._lst:
             xx1 = [x1[inp] for inp in np.where(inds == 1)[0]] #FIXME: xx1 = x1[inds] does not work for lists?
-            xx2 = [x2[inp] for inp in np.where(inds2 == 1)[0]]
+            xx2 = [x2[inp] for inp in np.where(inds == 0)[0]]
             l1 = len(xx1)
             if l1 == 0:
                 tm = self._j1[0]
@@ -215,9 +213,7 @@ class GenLeibnizTensor(DiffTensor):
         return res
 
 def _constraint(lst):
-    res = 0
-    for n in range(len(lst)):
-        res += lst[n]*(n+1)
+    res = (np.array(lst)*(np.arange(len(lst))+1.)).sum()
     return res == len(lst)
 
 def _multifact(lst,idx,n):
@@ -227,8 +223,8 @@ def _multifact(lst,idx,n):
     return res
 
 def _get_all_comb(n):
-    maxvals = n//(np.arange(n)+1)
-    lst = [np.array(i) for i in product(*(range(i+1) for i in maxvals)) if _constraint(i)]
+    mv = n//(np.arange(n)+1)
+    lst = [np.array(i) for i in product(*(range(i+1) for i in mv)) if _constraint(i)]
     idx, coeff = [], []
     for ll in lst:
         idx.append(np.where(np.array(ll)!=0)[0])
@@ -254,10 +250,7 @@ class ComposedTensor(DiffTensor):
         self._oldmap = []
         i, nmax = 0, len(self._lst)
         while i < nmax:
-            rr = 0
-            for ll in self._lst[i]:
-                rr += ll
-            rr -= 1
+            rr = self._lst[i].sum()-1
             if new[rr] == None:
                 del self._lst[i]
                 del self._idx[i]
