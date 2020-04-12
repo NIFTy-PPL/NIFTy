@@ -160,8 +160,6 @@ class GenLeibnizTensor(DiffTensor):
         self._j2 = [v2, ] + j2
 
     def _apply(self, x):
-        #x = ["".join(seq) for seq in itertools.product("01", repeat=3)]
-        #list(map(int, list(x[1])))
         # TODO: Not symmetric yet!
         x1 = []
         x2 = []

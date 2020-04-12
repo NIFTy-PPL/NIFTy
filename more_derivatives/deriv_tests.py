@@ -14,7 +14,7 @@ def ddf(x):
     return 4.*ift.exp(2.*x)
 expjacs = [df, ddf]
 
-dom = ift.RGSpace(256)
+dom = ift.RGSpace(16)
 
 x = ift.from_random('normal', dom)
 ml = MultiLinearization.make_var(x, 2)
