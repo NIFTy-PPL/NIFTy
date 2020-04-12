@@ -238,10 +238,8 @@ def _get_all_comb(n):
     return lst, idx, coeff
 
 class ComposedTensor(DiffTensor):
-    """Implements a generalization of the chain rule for higher derivatives.
-    Currently only supports max. 4th derivative. However there exists a
-    (somewhat complicated) closed form solution known as:
-    "Faà di Bruno's formula".
+    """Implements a generalization of the chain rule for higher derivatives
+    based on the Faà di Bruno's formula.
     """
     def __init__(self, old, new):
         assert len(old) == len(new)
