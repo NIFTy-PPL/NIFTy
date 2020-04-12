@@ -143,10 +143,11 @@ for i in range(no)[1:]:
     myrs.append(rl.jacs[i](dxs[:(i+1)]))
 
 twotest = r1.jacs[1](dxs1[:2])*r2.val
-twotest = twotest + 2.*r1.jacs[0](dxs1[0])*r2.jacs[0](dxs2[1])
+twotest = twotest + r1.jacs[0](dxs1[0])*r2.jacs[0](dxs2[1])
+twotest = twotest + r1.jacs[0](dxs1[1])*r2.jacs[0](dxs2[0])
 twotest = twotest + r1.val*r2.jacs[1](dxs2[:2])
 assert np.allclose(twotest.val, myrs[1].val)
 
 random.shuffle(dxs)
-r2 = rl.jacs[-1](dxs)
-assert np.allclose(myrs[-1].val, r2.val)
+r2 = rl.jacs[0](dxs[0])
+assert np.allclose(myrs[0].val, r2.val)

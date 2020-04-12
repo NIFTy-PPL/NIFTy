@@ -31,6 +31,8 @@ operator then has the same capabilities as usual Linear operators.
 """
 import nifty6 as ift
 import scipy.special as sp
+import numpy as np
+import itertools
 
 class DiffTensor:
     @property
@@ -158,23 +160,42 @@ class GenLeibnizTensor(DiffTensor):
         self._j2 = [v2, ] + j2
 
     def _apply(self, x):
+        #x = ["".join(seq) for seq in itertools.product("01", repeat=3)]
+        #list(map(int, list(x[1])))
         # TODO: Not symmetric yet!
         x1 = []
         x2 = []
         for j in range(len(x)):
             x1.append(x[j].extract(self._j1[1].domain))
             x2.append(x[j].extract(self._j2[1].domain))
+        lst = list(itertools.product([0, 1], repeat=self._nderiv))
         res = 0.
-        for i in range(self._nderiv+1):
-            if i == 0:
-                tm = self._j1[0]*self._j2[-1](x2)
-            elif i==self._nderiv:
-                tm = self._j2[0]*self._j1[-1](x1)
+        for inds in lst:
+            inds = np.array(inds)
+            inds2 = np.ones(self._nderiv) - inds
+            inds = np.where(inds == 1)[0]
+            inds2 = np.where(inds2 == 1)[0]
+            xx1 = []
+            for inp in inds:
+                xx1.append(x1[inp])
+            xx2 = []
+            for inp in inds2:
+                xx2.append(x2[inp])
+            l1 = len(xx1)
+            l2 = len(xx2)
+            if l1 == 0:
+                tm = self._j1[0]
+            elif l1 == 1:
+                tm = self._j1[1](xx1[0])
             else:
-                xx1 = x1[:i] if i!= 1 else x1[0]
-                xx2 = x2[i:] if i!= len(x2)-1 else x2[-1]
-                tm = self._j1[i](xx1)*self._j2[self._nderiv-i](xx2)
-            res = res + sp.binom(self._nderiv,i)*tm
+                tm = self._j1[l1](xx1)
+            if l2 == 0:
+                tm = tm*self._j2[0]
+            elif l2 == 1:
+                tm = tm*self._j2[1](xx2[0])
+            else:
+                tm = tm*self._j2[l2](xx2)
+            res = res + tm
         return res
 
 class ComposedTensor(DiffTensor):
