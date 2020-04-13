@@ -230,6 +230,11 @@ def _get_all_comb(n):
         coeff.append(_multifact(ll, idx[-1],n))
     return lst, idx, coeff
 
+def _mysum(a,b):
+    if isinstance(a, list) or isinstance(b,list):
+        return [aa+bb for aa,bb in zip(a,b)]
+    return a+b
+
 class ComposedTensor(DiffTensor):
     """Implements a generalization of the chain rule for higher derivatives
     based on the Faà di Bruno's formula.
@@ -245,6 +250,8 @@ class ComposedTensor(DiffTensor):
                 assert new[i].target == self.target
                 assert old[i].target == new[i].domain
         lst, self._idx, self._coeff = _get_all_comb(self._nderiv)
+        self._newidx = []
+        self._new = new
         self._newmap = []
         self._oldmap = []
         i, nmax = 0, len(lst)
@@ -254,6 +261,7 @@ class ComposedTensor(DiffTensor):
                 del lst[i], self._idx[i], self._coeff[i]
                 nmax -= 1
             else:
+                self._newidx.append(rr)
                 self._newmap.append(new[rr])
                 mi = []
                 for a in self._idx[i]:
@@ -262,8 +270,8 @@ class ComposedTensor(DiffTensor):
                 i += 1
 
     def _apply(self, x):
-        res = None
-        for oldmap, newmap, coeff in zip(self._oldmap, self._newmap, self._coeff):
+        res = [None, ]*self._nderiv
+        for oldmap, newidx, coeff in zip(self._oldmap, self._newidx, self._coeff):
             tm = []
             cnt = 0
             for op in oldmap:
@@ -273,16 +281,17 @@ class ComposedTensor(DiffTensor):
                 else:
                     sl = x[cnt:(cnt+op.nderiv)]
                     cnt += op.nderiv
-                tm.append(op(sl))
+                tm.append(coeff*op(sl))
             tm = tm[0] if len(tm)==1 else tm
-            rr = coeff*newmap(tm)
-            res = rr if res is None else res+rr
+            res[newidx] = tm if res[newidx] is None else _mysum(res[newidx],tm)
+        res = sum([m(rr) for m,rr in zip(self._new, res) if rr is not None])
         return res
 
     def _contract_to_one(self, y):
         x = y + [None,]
-        res = None
-        for oldmap, newmap, coeff in zip(self._oldmap, self._newmap, self._coeff):
+        tms = [None, ]*self._nderiv
+        rrs = [None, ]*self._nderiv
+        for oldmap, newidx, coeff in zip(self._oldmap, self._newidx, self._coeff):
             tm = []
             rr = None
             cnt = 0
@@ -300,10 +309,15 @@ class ComposedTensor(DiffTensor):
                     else:
                         tm.append(op(sl))
                     cnt += op.nderiv
-            if len(tm)==0:
-                rr = newmap@rr
-            else:
-                rr = newmap.contract_to_one(tm)@rr
             rr = coeff*rr
-            res = rr if res is None else res+rr
+            tms[newidx] = tm if tms[newidx] is None else _mysum(tms[newidx],tm)
+            rrs[newidx] = rr if rrs[newidx] is None else rrs[newidx]+rr
+        res = None
+        for newmap, tm, rr in zip(self._new, tms, rrs):
+            if tm is not None:
+                if len(tm)==0:
+                    rr = newmap@rr
+                else:
+                    rr = newmap.contract_to_one(tm)@rr
+                res = rr if res is None else res+rr
         return res
