@@ -6,19 +6,19 @@ from multiderivative_operator import (MultiOpChain, MultiLocalNonlin,
                                       MultiSumOperator, MultiPointwiseProduct)
 import random
 
-def exp(x):
+def myfunc(x):
     return ift.exp(2.*x)
 def df(x):
     return 2.*ift.exp(2.*x)
 def ddf(x):
     return 4.*ift.exp(2.*x)
-expjacs = [df, ddf]
+myjacs = [df, ddf]
 
 dom = ift.RGSpace(256)
 
 x = ift.from_random('normal', dom)
 ml = MultiLinearization.make_var(x, 2)
-op = MultiLocalNonlin(dom, exp, expjacs)
+op = MultiLocalNonlin(dom, myfunc, myjacs)
 
 res = op(ml)
 dx1 = ift.from_random('normal', dom)

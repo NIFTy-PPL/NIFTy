@@ -5,10 +5,9 @@ class MultiLinearization:
     def __init__(self, res, jacs):
         self._res = res
         self._jacs = jacs
-        self._domain = res.domain
     @property
     def domain(self):
-        return self._domain
+        return self._res.domain
     @property
     def val(self):
         return self._res
