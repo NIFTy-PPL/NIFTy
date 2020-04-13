@@ -213,8 +213,7 @@ class GenLeibnizTensor(DiffTensor):
         return res
 
 def _constraint(lst):
-    res = (np.array(lst)*(np.arange(len(lst))+1.)).sum()
-    return res == len(lst)
+    return len(lst) == sum([v*(i+1) for i,v in enumerate(lst)])
 
 def _multifact(lst,idx,n):
     res = factorial(n)
@@ -245,31 +244,29 @@ class ComposedTensor(DiffTensor):
             if new[i] is not None:
                 assert new[i].target == self.target
                 assert old[i].target == new[i].domain
-        self._lst, self._idx, self._coeff = _get_all_comb(self._nderiv)
+        lst, self._idx, self._coeff = _get_all_comb(self._nderiv)
         self._newmap = []
         self._oldmap = []
-        i, nmax = 0, len(self._lst)
+        i, nmax = 0, len(lst)
         while i < nmax:
-            rr = self._lst[i].sum()-1
-            if new[rr] == None:
-                del self._lst[i]
-                del self._idx[i]
-                del self._coeff[i]
+            rr = lst[i].sum()-1
+            if new[rr] is None:
+                del lst[i], self._idx[i], self._coeff[i]
                 nmax -= 1
             else:
                 self._newmap.append(new[rr])
                 mi = []
                 for a in self._idx[i]:
-                    mi = mi + [old[a] ,]*self._lst[i][a]
+                    mi = mi + [old[a] ,]*lst[i][a]
                 self._oldmap.append(mi)
                 i += 1
 
     def _apply(self, x):
         res = None
-        for i in range(len(self._lst)):
+        for oldmap, newmap, coeff in zip(self._oldmap, self._newmap, self._coeff):
             tm = []
             cnt = 0
-            for op in self._oldmap[i]:
+            for op in oldmap:
                 if isinstance(op, ift.LinearOperator):
                     sl = x[cnt]
                     cnt +=1
@@ -278,18 +275,18 @@ class ComposedTensor(DiffTensor):
                     cnt += op.nderiv
                 tm.append(op(sl))
             tm = tm[0] if len(tm)==1 else tm
-            rr = self._coeff[i]*self._newmap[i](tm)
+            rr = coeff*newmap(tm)
             res = rr if res is None else res+rr
         return res
 
     def _contract_to_one(self, y):
         x = y + [None,]
         res = None
-        for i in range(len(self._lst)):
+        for oldmap, newmap, coeff in zip(self._oldmap, self._newmap, self._coeff):
             tm = []
             rr = None
             cnt = 0
-            for op in self._oldmap[i]:
+            for op in oldmap:
                 if isinstance(op, ift.LinearOperator):
                     if x[cnt] is None:
                         rr = op
@@ -304,9 +301,9 @@ class ComposedTensor(DiffTensor):
                         tm.append(op(sl))
                     cnt += op.nderiv
             if len(tm)==0:
-                rr = self._newmap[i]@rr
+                rr = newmap@rr
             else:
-                rr = self._newmap[i].contract_to_one(tm)@rr
-            rr = self._coeff[i]*rr
+                rr = newmap.contract_to_one(tm)@rr
+            rr = coeff*rr
             res = rr if res is None else res+rr
         return res
