@@ -6,19 +6,19 @@ from multiderivative_operator import (MultiOpChain, MultiLocalNonlin,
                                       MultiSumOperator, MultiPointwiseProduct)
 import random
 
-def exp(x):
+def myfunc(x):
     return ift.exp(2.*x)
 def df(x):
     return 2.*ift.exp(2.*x)
 def ddf(x):
     return 4.*ift.exp(2.*x)
-expjacs = [df, ddf]
+myjacs = [df, ddf]
 
 dom = ift.RGSpace(256)
 
 x = ift.from_random('normal', dom)
 ml = MultiLinearization.make_var(x, 2)
-op = MultiLocalNonlin(dom, exp, expjacs)
+op = MultiLocalNonlin(dom, myfunc, myjacs)
 
 res = op(ml)
 dx1 = ift.from_random('normal', dom)
@@ -59,7 +59,7 @@ op = MultiLocalExp(dom)
 op2 = MultiLinearOperator(ift.FFTOperator(dom))
 
 x = ift.from_random('normal', op0._domain)
-ml = MultiLinearization.make_var(x, 4)
+ml = MultiLinearization.make_var(x, 6)
 res = MultiOpChain([op0,op,op2])(ml)
 
 dxs = [ift.from_random('normal', x.domain),]
@@ -119,7 +119,6 @@ for i in range(len(res.jacs))[1:]:
 
 for i in range(len(myres)):
     assert np.allclose(myres[i].val, myres2[i].val)
-
 
 no = 4
 op = MultiPointwiseProduct(fa,fa2)
