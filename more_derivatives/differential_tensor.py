@@ -147,15 +147,17 @@ class GenLeibnizTensor(DiffTensor):
         assert v2.domain == self._target
         self._j1 = [v1, ] + j1
         self._j2 = [v2, ] + j2
-        self._lst = list(np.array(i) for i in product([0, 1], repeat=self._nderiv))
+        lst = list(np.array(i) for i in product([0, 1], repeat=self._nderiv))
+        self._id1 = [np.where(inds == 1)[0] for inds in lst]
+        self._id2 = [np.where(inds == 0)[0] for inds in lst]
 
     def _apply(self, x):
         x1 = [xj.extract(self._j1[1].domain) for xj in x]
         x2 = [xj.extract(self._j2[1].domain) for xj in x]
         res = 0.
-        for inds in self._lst:
-            xx1 = [x1[inp] for inp in np.where(inds == 1)[0]] #FIXME: xx1 = x1[inds] does not work for lists?
-            xx2 = [x2[inp] for inp in np.where(inds == 0)[0]]
+        for id1, id2 in zip(self._id1, self._id2):
+            xx1 = [x1[inp] for inp in id1] #FIXME: xx1 = x1[inds] does not work for lists?
+            xx2 = [x2[inp] for inp in id2]
             l1 = len(xx1)
             if l1 == 0:
                 tm = self._j1[0]
@@ -178,13 +180,10 @@ class GenLeibnizTensor(DiffTensor):
         x2 = [xj.extract(self._j2[1].domain) for xj in x]
         x1.append(None)
         x2.append(None)
-        lst = list(product([0, 1], repeat=self._nderiv))
         res = None
-        for inds in lst:
-            inds = np.array(inds)
-            inds2 = np.ones(self._nderiv) - inds
-            xx1 = [x1[inp] for inp in np.where(inds == 1)[0]]
-            xx2 = [x2[inp] for inp in np.where(inds2 == 1)[0]]
+        for id1, id2 in zip(self._id1, self._id2):
+            xx1 = [x1[inp] for inp in id1]
+            xx2 = [x2[inp] for inp in id2]
             l1 = len(xx1)
             if l1 == 0:
                 tm = self._j1[0]
