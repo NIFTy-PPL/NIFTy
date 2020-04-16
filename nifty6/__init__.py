@@ -43,7 +43,7 @@ from .operators.outer_product_operator import OuterProduct
 from .operators.simple_linear_operators import (
     VdotOperator, ConjugationOperator, Realizer,
     FieldAdapter, ducktape, GeometryRemover, NullOperator,
-    MatrixProductOperator, PartialExtractor)
+    MatrixProductOperator, PartialExtractor, SwitchSpacesOperator)
 from .operators.value_inserter import ValueInserter
 from .operators.energy_operators import (
     EnergyOperator, GaussianEnergy, PoissonianEnergy, InverseGammaLikelihood,

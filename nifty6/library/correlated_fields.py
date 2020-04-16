@@ -243,12 +243,11 @@ class _SpecialSum(EndomorphicOperator):
 
 
 class _Distributor(LinearOperator):
-    def __init__(self, dofdex, domain, target, space=0):
+    def __init__(self, dofdex, domain, target):
         self._dofdex = dofdex
 
         self._target = makeDomain(target)
         self._domain = makeDomain(domain)
-        self._sl = (slice(None),)*space
         self._capability = self.TIMES | self.ADJOINT_TIMES
 
     def apply(self, x, mode):
@@ -282,7 +281,7 @@ class _Amplitude(Operator):
             distributed_tgt = makeDomain((UnstructuredDomain(len(dofdex)),
                                           target))
             target = makeDomain((UnstructuredDomain(N_copies), target))
-            Distributor = _Distributor(dofdex, target, distributed_tgt, 0)
+            Distributor = _Distributor(dofdex, target, distributed_tgt)
         else:
             N_copies = 0
             space = 0
