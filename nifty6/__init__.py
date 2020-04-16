@@ -2,6 +2,8 @@ from .version import __version__
 
 from . import random
 
+from .diff_tensor import DiffTensor
+
 from .domains.domain import Domain
 from .domains.structured_domain import StructuredDomain
 from .domains.unstructured_domain import UnstructuredDomain
