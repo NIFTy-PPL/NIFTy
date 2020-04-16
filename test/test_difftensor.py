@@ -26,11 +26,16 @@ from .common import setup_function, teardown_function
 def test_simple():
     a = ift.Field.full(ift.RGSpace(10),3.)
     b = ift.Field.full(ift.RGSpace(11),3.)
-    t = ift.DiffTensor.makeDiagonal(a, 3)
-    t = t.contract((a,))
-    t = t + t
-    print(t)
-    print(t.linop(a).val)
-    t = t.contract((a,))
-    print(t._arg, t.rank)
-    print(t.vec)
+    t3 = ift.DiffTensor.makeDiagonal(a, 3)
+    t2 = t3.contract((a,))
+    ts = t2 + t2
+    print(t2)
+    print(t2.linop(a).val)
+    t1 = t2.contract((a,))
+    print(t1._arg, t1.rank)
+    print(t1.vec)
+    x = ift.diff_tensor.Taylor.make_var(a,3)
+    bla = ift.diff_tensor.GenLeibnizTensor(x,x)
+    print(type(bla.getVec((a,a,a))))
+    print(type(bla.getLinop((a,a))))
+    

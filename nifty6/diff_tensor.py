@@ -32,19 +32,30 @@ operator then has the same capabilities as usual Linear operators.
 import numpy as np
 from itertools import product
 from scipy.special import factorial
-from .sugar import makeOp
+from .sugar import makeOp, domain_union, full
 from .field import Field
 from .multi_field import MultiField
 
 
 def assertIsinstance(t1, t2):
     if not isinstance(t1, t2):
+        print("Error: {} is not an instance of {}".format(t1, t2))
         raise TypeError("type mismatch")
 
 
 def assertIdentical(t1, t2):
     if t1 is not t2:
         raise ValueError("objects are not identical")
+
+
+def assertEqual(t1, t2):
+    if t1 != t2:
+        print("Error: {} is not equal to {}".format(t1, t2))
+        raise ValueError("objects are not equal")
+
+def assertTrue(t1):
+    if not t1:
+        raise ValueError("assertion failed")
 
 
 class _DiffTensorImpl(object):
@@ -110,10 +121,10 @@ class DiffTensor(_DiffTensorImpl):
         return self._impl.rank-len(self._arg)
 
     def getVec(self, x=()):
-        return self._impl.getVec(x+self._arg)
+        return self._impl.getVec(tuple(x)+self._arg)
 
     def getLinop(self, x=()):
-        return self._impl.getLinop(x+self._arg)
+        return self._impl.getLinop(tuple(x)+self._arg)
 
     @property
     def vec(self):
@@ -126,6 +137,49 @@ class DiffTensor(_DiffTensorImpl):
     def contract(self, x):
         return DiffTensor(self._impl, x+self._arg)
 
+
+class Taylor(object):
+    def __init__(self, tensors):
+        assertTrue(len(tensors)>=1)
+        for i, t in enumerate(tensors):
+            assertIsinstance(t, DiffTensor)
+            assertEqual(i+1, t.rank)
+            assertIdentical(t.domain, tensors[0].domain)
+            assertIdentical(t.target, tensors[0].target)
+        self._tensors = tensors
+
+    @property
+    def domain(self):
+        return self._tensors[0].domain
+
+    @property
+    def target(self):
+        return self._tensors[0].target
+
+    @property
+    def maxorder(self):
+        return len(self._tensors)-1
+
+    def __len__(self):
+        return len(self._tensors)
+
+    def __getitem__(self, i):
+        return self._tensors[i]
+
+    @staticmethod
+    def make_var(val, maxorder):
+        jacs = [DiffTensor.makeDiagonal(val,1)]
+        jacs.append(DiffTensor.makeDiagonal(full(val.domain,1.),2))
+        f0 = full(val.domain,0.)
+        jacs += [DiffTensor.makeDiagonal(f0, i+1) for i in range(2,maxorder+1)]
+        return Taylor(jacs)
+
+    def new(self, val, jacs):
+        assert len(jacs) == len(self.jacs)
+        gn = [jacs[0]@self.jacs[0], ]
+        gn += [ComposedTensor(self.jacs[:i], jacs[:i])
+               for i in range(2, len(self.jacs)+1)]
+        return MultiLinearization(val, gn)
 
 # class DiffTensorRank1(DiffTensor):
 #     def __init__(self, vec):
@@ -181,7 +235,6 @@ class SumTensor(_DiffTensorImpl):
             assert isinstance(ts, _DiffTensorImpl)
             assert ts.target == tlist[0].target
             assert ts.rank == tlist[0].rank
-            print("xxx", ts, ts.rank)
         dom = domain_union([t.domain for t in tlist])
         super(SumTensor, self).__init__(dom, tlist[0].target, tlist[0].rank)
         self._tlist = tlist
@@ -208,34 +261,35 @@ class SumTensor(_DiffTensorImpl):
 
 class GenLeibnizTensor(_DiffTensorImpl):
     def __init__(self, t1, t2):
-# t1 and t2 are Taylor objects ... exact interface TBD
-        assert len(t1) == len(t2)
-        dom = ift.domain_union(t1.domain, t22.domain)
+        assertIsinstance(t1, Taylor)
+        assertIsinstance(t2, Taylor)
+        assertEqual(t1.maxorder, t2.maxorder)
+        dom = domain_union((t1.domain, t2.domain))
         self._t1 = t1
-        self._t22 = t2
-        super(GenLeibnizTensor, self).__init__(dom, t1.target, len(t1)+1)
-        lst = tuple(np.array(i) for i in product([0, 1], repeat=len(t1)))
+        self._t2 = t2
+        super(GenLeibnizTensor, self).__init__(dom, t1.target, len(t1))
+        lst = tuple(np.array(i) for i in product([0, 1], repeat=t1.maxorder))
         self._id1 = [np.where(inds == 1)[0] for inds in lst]
         self._id2 = [np.where(inds == 0)[0] for inds in lst]
 
     def getVec(self, x=()):
         if self._rank-len(x) != 1:
             raise ValueError
-        x1 = [xj.extract(self._lin1.domain) for xj in x]
-        x2 = [xj.extract(self._lin2.domain) for xj in x]
+        x1 = [xj.extract(self._t1.domain) for xj in x]
+        x2 = [xj.extract(self._t2.domain) for xj in x]
         res = None
         for id1, id2 in zip(self._id1, self._id2):
-            xx1 = [x1[inp] for inp in id1] #FIXME: xx1 = x1[inds] does not work for lists?
+            xx1 = [x1[inp] for inp in id1]
             xx2 = [x2[inp] for inp in id2]
-            tmp = self._lin1[len(xx1)].getVec(xx1)*self._lin2[len(xx2)].getVec(xx2)
+            tmp = self._t1[len(xx1)].getVec(xx1)*self._t2[len(xx2)].getVec(xx2)
             res = tmp if res is None else res+tmp
         return res
 
     def getLinop(self, x=()):
         if self.rank-len(x) != 2:
             raise ValueError
-        x1 = [xj.extract(self._lin1.domain) for xj in x]
-        x2 = [xj.extract(self._lin2.domain) for xj in x]
+        x1 = [xj.extract(self._t1.domain) for xj in x]
+        x2 = [xj.extract(self._t2.domain) for xj in x]
         res = None
         for id1, id2 in zip(self._id1, self._id2):
             xx1 = [x1[inp] for inp in id1]
