@@ -53,6 +53,7 @@ def assertEqual(t1, t2):
         print("Error: {} is not equal to {}".format(t1, t2))
         raise ValueError("objects are not equal")
 
+
 def assertTrue(t1):
     if not t1:
         raise ValueError("assertion failed")
@@ -292,6 +293,7 @@ class GenLeibnizTensor(_DiffTensorImpl):
         x2 = [xj.extract(self._t2.domain) for xj in x]
         res = None
         for id1, id2 in zip(self._id1, self._id2):
+# FIXME this is completely wrong, but I don't understand the algorithm in the original _contract_to_one()
             xx1 = [x1[inp] for inp in id1]
             xx2 = [x2[inp] for inp in id2]
             tmp = self._t1[len(xx1)].getLinop(xx1)@self._t2[len(xx2)].getLinop(xx2)
