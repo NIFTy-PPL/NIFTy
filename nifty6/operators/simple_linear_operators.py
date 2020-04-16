@@ -248,7 +248,7 @@ def ducktape(left, right, name):
             right = MultiDomain.make({name: left})
     lmulti = isinstance(left, MultiDomain)
     rmulti = isinstance(right, MultiDomain)
-    if lmulti+rmulti != 1:
+    if lmulti + rmulti != 1:
         raise ValueError("need exactly one MultiDomain")
     if lmulti:
         if len(left) == 1:
