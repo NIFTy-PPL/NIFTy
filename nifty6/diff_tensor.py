@@ -215,8 +215,6 @@ class DiagonalTensor(_DiffTensorImpl):
         self._vec = vec
 
     def _helper(self, x, rnk):
-        print(rnk)
-        print(self._rank-len(x))
         if self._rank-len(x) != rnk:
             raise ValueError
         res = self._vec
@@ -296,7 +294,6 @@ class GenLeibnizTensor(_DiffTensorImpl):
         x2 = [xj.extract(self._t2.domain) for xj in x]
         res = None
         for id1, id2 in zip(self._id1, self._id2):
-# FIXME this is completely wrong, but I don't understand the algorithm in the original _contract_to_one()
             xx1 = [x1[inp] for inp in id1 if inp != self._t1.maxorder-1]
             xx2 = [x2[inp] for inp in id2 if inp != self._t1.maxorder-1]
             if self._t1.maxorder-1 in id1:
