@@ -54,7 +54,7 @@ def test_plots():
     plot.output(title='Three plots', name=next(name))
 
     plot = ift.Plot()
-    plot.add(field_hp, title='HP planck-color', colormap='Planck-like')
+    plot.add(field_hp, title='HP planck-color', cmap='Planck-like')
     plot.add(field_rg1_2, title='1d rg')
     plot.add(field_ps)
     plot.add(field_gl, title='GL')

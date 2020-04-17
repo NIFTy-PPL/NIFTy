@@ -417,7 +417,7 @@ def _plot2D(f, ax, **kwargs):
         else:
             im = ax.imshow(
                 f.val.T, extent=[0, nx*dx, 0, ny*dy],
-                vmin=kwargs.get("zmin"), vmax=kwargs.get("zmax"),
+                vmin=kwargs.get("vmin"), vmax=kwargs.get("vmax"),
                 cmap=cmap, origin="lower", **norm, **aspect)
             plt.colorbar(im)
         _limit_xy(**kwargs)
@@ -453,7 +453,7 @@ def _plot2D(f, ax, **kwargs):
         if have_rgb:
             plt.imshow(res, origin="lower")
         else:
-            plt.imshow(res, vmin=kwargs.get("zmin"), vmax=kwargs.get("zmax"),
+            plt.imshow(res, vmin=kwargs.get("vmin"), vmax=kwargs.get("vmax"),
                        norm=norm.get('norm'), cmap=cmap, origin="lower")
             plt.colorbar(orientation="horizontal")
         return
