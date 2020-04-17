@@ -38,4 +38,5 @@ def test_simple():
     bla = ift.diff_tensor.GenLeibnizTensor(x,x)
     print(type(bla.getVec((a,a,a))))
     print(type(bla.getLinop((a,a))))
-    
+    foo = ift.diff_tensor.ComposedTensor(x,x)
+    print(type(foo.getVec((a,a))))

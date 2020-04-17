@@ -229,6 +229,17 @@ class DiagonalTensor(_DiffTensorImpl):
         return self._helper(x, 1)
 
 
+class NullTensor(_DiffTensorImpl):
+    def __init__(self, domain, target, rank):
+        super(NullTensor, self).__init__(domain, target, rank)
+
+    def getLinop(self, x=()):
+        return NullOperator(self.domain, self.target)
+
+    def getVec(self, x=()):
+        return full(self.target, 0.)
+
+
 class SumTensor(_DiffTensorImpl):
     def __init__(self, tlist):
         from .sugar import domain_union
@@ -272,7 +283,6 @@ class GenLeibnizTensor(_DiffTensorImpl):
         lst = tuple(np.array(i) for i in product([0, 1], repeat=t1.maxorder))
         self._id1 = [np.where(inds == 1)[0] for inds in lst]
         self._id2 = [np.where(inds == 0)[0] for inds in lst]
-        
 
     def getVec(self, x=()):
         if self._rank-len(x) != 1:
@@ -324,54 +334,42 @@ def _get_all_comb(n):
     return lst, idx, coeff
 
 def _mysum(a,b):
-    if isinstance(a, list) or isinstance(b,list):
-        return [aa+bb for aa,bb in zip(a,b)]
-    return a+b
+    return [aa+bb for aa,bb in zip(a,b)]
 
 class ComposedTensor(_DiffTensorImpl):
     """Implements a generalization of the chain rule for higher derivatives
     based on the Faà di Bruno's formula.
     """
     def __init__(self, old, new):
-        assert len(old) == len(new)
-        super(ComposedTensor, self).__init__(old[0].domain, new[0].target, len(new)+1)
-        for o, n in zip(old, new):
-            assert o.domain == self._domain
-            if n is not None:
-                assert n.target == self.target
-                assert o.target == n.domain
-        lst, self._idx, self._coeff = _get_all_comb(self._rank-1)
-        self._newidx = []
+        assertIsinstance(old, Taylor)
+        assertIsinstance(new, Taylor)
+        assertEqual(old.maxorder, new.maxorder)
+        super(ComposedTensor, self).__init__(old[0].domain, new[0].target, len(new))
+        lst, self._idx, self._coeff = _get_all_comb(old.maxorder)
+        self._newidx, self._newmap, self._oldmap = [], [], []
         self._new = new
-        self._newmap = []
-        self._oldmap = []
         i, nmax = 0, len(lst)
         while i < nmax:
             rr = lst[i].sum()-1
-            if new[rr] is None:
-                del lst[i], self._idx[i], self._coeff[i]
-                nmax -= 1
-            else:
-                self._newidx.append(rr)
-                self._newmap.append(new[rr])
-                mi = []
-                for a in self._idx[i]:
-                    mi = mi + [old[a] ,]*lst[i][a]
-                self._oldmap.append(mi)
-                i += 1
+            self._newidx.append(rr)
+            self._newmap.append(new[rr])
+            mi = []
+            for a in self._idx[i]:
+                mi += [old[a] ,]*lst[i][a]
+            self._oldmap.append(mi)
+            i += 1
 
     def getVec(self, x):
-        res = [None, ]*(self._nrank-1)
+        res = [None, ]*(self._rank-1)
         for oldmap, newidx, coeff in zip(self._oldmap, self._newidx, self._coeff):
             tm = []
             cnt = 0
             for op in oldmap:
-                sl = x[cnt:(cnt+op.nderiv)]
+                sl = x[cnt:(cnt+op.rank-1)]
                 cnt += op.rank-1
                 tm.append(coeff*op(sl))
-            tm = tm[0] if len(tm)==1 else tm
-            res[newidx] = tm if res[newidx] is None else _mysum(res[newidx],tm)
-        res = sum([m(rr) for m,rr in zip(self._new, res) if rr is not None])
+            res[newidx] = _mysum(res[newidx],tm)
+        res = sum([m(rr) for m,rr in zip(self._new, res)])
         return res
 
     def _contract_to_one(self, y):
