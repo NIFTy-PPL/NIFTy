@@ -405,7 +405,7 @@ def _plot2D(f, ax, **kwargs):
     ax.set_ylabel(kwargs.pop("ylabel", ""))
     dom = dom[x_space]
     if not have_rgb:
-        cmap = kwargs.pop("colormap", plt.rcParams['image.cmap'])
+        cmap = kwargs.pop("cmap", plt.rcParams['image.cmap'])
 
     if isinstance(dom, RGSpace):
         nx, ny = dom.shape
@@ -518,7 +518,7 @@ class Plot(object):
             Label for the y axis.
         [xyz]min, [xyz]max: float
             Limits for the values to plot.
-        colormap: string
+        cmap: string
             Color map to use for the plot (if it is a 2D plot).
         linewidth: float or list of floats
             Line width.
