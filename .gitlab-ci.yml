@@ -61,7 +61,7 @@ before_script:
 run_ipynb:
   stage: demo_runs
   script:
-    - jupyter nbconvert --execute --ExecutePreprocessor.timeout=None demos/Wiener_Filter.ipynb
+    - jupyter nbconvert --execute --ExecutePreprocessor.timeout=None demos/getting_started_0.ipynb
 
 run_getting_started_1:
   stage: demo_runs
