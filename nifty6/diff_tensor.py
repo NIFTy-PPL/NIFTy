@@ -272,6 +272,7 @@ class GenLeibnizTensor(_DiffTensorImpl):
         lst = tuple(np.array(i) for i in product([0, 1], repeat=t1.maxorder))
         self._id1 = [np.where(inds == 1)[0] for inds in lst]
         self._id2 = [np.where(inds == 0)[0] for inds in lst]
+        
 
     def getVec(self, x=()):
         if self._rank-len(x) != 1:
@@ -293,10 +294,14 @@ class GenLeibnizTensor(_DiffTensorImpl):
         x2 = [xj.extract(self._t2.domain) for xj in x]
         res = None
         for id1, id2 in zip(self._id1, self._id2):
-# FIXME this is completely wrong, but I don't understand the algorithm in the original _contract_to_one()
-            xx1 = [x1[inp] for inp in id1]
-            xx2 = [x2[inp] for inp in id2]
-            tmp = self._t1[len(xx1)].getLinop(xx1)@self._t2[len(xx2)].getLinop(xx2)
+            xx1 = [x1[inp] for inp in id1 if inp != self._t1.maxorder-1]
+            xx2 = [x2[inp] for inp in id2 if inp != self._t1.maxorder-1]
+            if self._t1.maxorder-1 in id1:
+                tmp = (makeOp(self._t2[len(xx2)].getVec(xx2))@
+                       self._t1[len(xx1)+1].getLinop(xx1))
+            else:
+                tmp = (makeOp(self._t1[len(xx1)].getVec(xx1))@
+                       self._t2[len(xx2)+1].getLinop(xx2))
             res = tmp if res is None else res+tmp
         return res
 
