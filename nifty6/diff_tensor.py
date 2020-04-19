@@ -328,11 +328,11 @@ def _multifact(lst,idx,n):
 def _get_all_comb(n):
     mv = n//(np.arange(n)+1)
     lst = [np.array(i) for i in product(*(range(i+1) for i in mv)) if _constraint(i)]
-    idx, coeff = [], []
+    coeff = []
     for ll in lst:
-        idx.append(np.where(np.array(ll)!=0)[0])
-        coeff.append(_multifact(ll, idx[-1],n))
-    return lst, idx, coeff
+        idx = np.where(np.array(ll)!=0)[0]
+        coeff.append(_multifact(ll, idx, n))
+    return lst, coeff
 
 def _mysum(a,b):
     return [aa+bb for aa,bb in zip(a,b)]
@@ -347,19 +347,15 @@ class ComposedTensor(_DiffTensorImpl):
         assertEqual(old.maxorder, new.maxorder)
         assertIdentical(old.target, new.domain)
         super(ComposedTensor, self).__init__(old.domain, new.target, len(new))
-        lst, self._idx, self._coeff = _get_all_comb(old.maxorder)
+        lst, self._coeff = _get_all_comb(old.maxorder)
         self._newidx, self._newmap, self._oldmap = [], [], []
         self._new = new
-        i, nmax = 0, len(lst)
-        while i < nmax:
-            rr = lst[i].sum()-1
+        for lsti in lst:
+            rr = lsti.sum()-1
             self._newidx.append(rr)
             self._newmap.append(new[rr])
-            mi = []
-            for a in self._idx[i]:
-                mi += [old[a] ,]*lst[i][a]
+            mi = [o for o, l in zip(old, lsti) for cnt in range(l)]
             self._oldmap.append(mi)
-            i += 1
 
     def getVec(self, x):
         res = [None, ]*(self._rank-1)
@@ -371,8 +367,7 @@ class ComposedTensor(_DiffTensorImpl):
                 cnt += op.rank-1
                 tm.append(coeff*op.getVec(sl))
             res[newidx] = tm if res[newidx] is None else _mysum(res[newidx],tm)
-        res = [[]]+res
-        res = sum([m.getVec(rr) for m,rr in zip(self._new, res) if rr is not None])
+        res = sum([m.getVec(rr) for m,rr in zip(self._new[1:], res) if rr is not None])
         return res
 
     def getLinop(self, y):
