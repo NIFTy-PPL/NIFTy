@@ -280,19 +280,18 @@ class GenLeibnizTensor(_DiffTensorImpl):
         self._t1 = t1
         self._t2 = t2
         super(GenLeibnizTensor, self).__init__(dom, t1.target, len(t1))
-        lst = tuple(np.array(i) for i in product([0, 1], repeat=t1.maxorder))
-        self._id1 = [np.where(inds == 1)[0] for inds in lst]
-        self._id2 = [np.where(inds == 0)[0] for inds in lst]
 
     def getVec(self, x=()):
         if self._rank-len(x) != 1:
             raise ValueError
         x1 = [xj.extract(self._t1.domain) for xj in x]
         x2 = [xj.extract(self._t2.domain) for xj in x]
+        ord = self._t1.maxorder
         res = None
-        for id1, id2 in zip(self._id1, self._id2):
-            xx1 = [x1[inp] for inp in id1]
-            xx2 = [x2[inp] for inp in id2]
+        for i in range(1<<ord):
+            # (i & (1<<j)) is True iff the j-th bit is set in i
+            xx1 = [x1[j] for j in range(ord) if (i & (1<<j))]
+            xx2 = [x2[j] for j in range(ord) if not (i & (1<<j))]
             tmp = self._t1[len(xx1)].getVec(xx1)*self._t2[len(xx2)].getVec(xx2)
             res = tmp if res is None else res+tmp
         return res
@@ -302,11 +301,13 @@ class GenLeibnizTensor(_DiffTensorImpl):
             raise ValueError
         x1 = [xj.extract(self._t1.domain) for xj in x]
         x2 = [xj.extract(self._t2.domain) for xj in x]
+        ord = self._t1.maxorder
         res = None
-        for id1, id2 in zip(self._id1, self._id2):
-            xx1 = [x1[inp] for inp in id1 if inp != self._t1.maxorder-1]
-            xx2 = [x2[inp] for inp in id2 if inp != self._t1.maxorder-1]
-            if self._t1.maxorder-1 in id1:
+        for i in range(1<<ord):
+            # (i & (1<<j)) is True iff the j-th bit is set in i
+            xx1 = [x1[j] for j in range(ord-1) if (i & (1<<j))]
+            xx2 = [x2[j] for j in range(ord-1) if not (i & (1<<j))]
+            if i & (1<<(ord-1)):
                 tmp = (makeOp(self._t2[len(xx2)].getVec(xx2))@
                        self._t1[len(xx1)+1].getLinop(xx1))
             else:
