@@ -40,3 +40,4 @@ def test_simple():
     print(type(bla.getLinop((a,a))))
     foo = ift.diff_tensor.ComposedTensor(x,x)
     print(type(foo.getVec((a,a))))
+#    print(type(foo.getLinop((a,))))

@@ -344,7 +344,8 @@ class ComposedTensor(_DiffTensorImpl):
         assertIsinstance(old, Taylor)
         assertIsinstance(new, Taylor)
         assertEqual(old.maxorder, new.maxorder)
-        super(ComposedTensor, self).__init__(old[0].domain, new[0].target, len(new))
+        assertIdentical(old.target, new.domain)
+        super(ComposedTensor, self).__init__(old.domain, new.target, len(new))
         lst, self._idx, self._coeff = _get_all_comb(old.maxorder)
         self._newidx, self._newmap, self._oldmap = [], [], []
         self._new = new
@@ -367,33 +368,37 @@ class ComposedTensor(_DiffTensorImpl):
             for op in oldmap:
                 sl = x[cnt:(cnt+op.rank-1)]
                 cnt += op.rank-1
-                tm.append(coeff*op(sl))
-            res[newidx] = _mysum(res[newidx],tm)
-        res = sum([m(rr) for m,rr in zip(self._new, res)])
+                tm.append(coeff*op.getVec(sl))
+            res[newidx] = tm if res[newidx] is None else _mysum(res[newidx],tm)
+        res = [[]]+res
+        res = sum([m.getVec(rr) for m,rr in zip(self._new, res) if rr is not None])
         return res
 
-    def _contract_to_one(self, y):
-        x = y + [None,]
-        tms = [None, ]*self._nderiv
-        rrs = [None, ]*self._nderiv
+    def getLinop(self, y):
+        nderiv = self.rank-1
+        x = y + (None,)
+        tms = [None, ]*nderiv
+        rrs = [None, ]*nderiv
         for oldmap, newidx, coeff in zip(self._oldmap, self._newidx, self._coeff):
             tm = []
             rr = None
             cnt = 0
             for op in oldmap:
-                if isinstance(op, ift.LinearOperator):
+                if op.rank == 1:
+                    rr = 0.
+                elif op.rank == 2:
                     if x[cnt] is None:
-                        rr = op
+                        rr = op.getLinop()
                     else:
-                        tm.append(op(x[cnt]))
+                        tm.append(op.getLinop()(x[cnt]))
                     cnt +=1
                 else:
-                    sl = x[cnt:(cnt+op.nderiv)]
+                    sl = x[cnt:(cnt+(op.rank-1))]
                     if sl[-1] is None:
-                        rr = op.contract_to_one(sl[:-1])
+                        rr = op.getLinop(sl[:-1])
                     else:
-                        tm.append(op(sl))
-                    cnt += op.nderiv
+                        tm.append(op.getLinop()(sl))
+                    cnt += op.rank-1
             rr = coeff*rr
             tms[newidx] = tm if tms[newidx] is None else _mysum(tms[newidx],tm)
             rrs[newidx] = rr if rrs[newidx] is None else rrs[newidx]+rr
@@ -401,8 +406,8 @@ class ComposedTensor(_DiffTensorImpl):
         for newmap, tm, rr in zip(self._new, tms, rrs):
             if tm is not None:
                 if len(tm)==0:
-                    rr = newmap@rr
+                    rr = newmap.getLinop()@rr
                 else:
-                    rr = newmap.contract_to_one(tm)@rr
+                    rr = newmap.getLinop(tm)@rr
                 res = rr if res is None else res+rr
         return res
