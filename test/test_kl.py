@@ -15,8 +15,6 @@
 #
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
 
-import numpy as np
-
 import nifty6 as ift
 from numpy.testing import assert_, assert_allclose
 import pytest
@@ -28,10 +26,14 @@ pmp = pytest.mark.parametrize
 @pmp('constants', ([], ['a'], ['b'], ['a', 'b']))
 @pmp('point_estimates', ([], ['a'], ['b'], ['a', 'b']))
 @pmp('mirror_samples', (True, False))
-def test_kl(constants, point_estimates, mirror_samples):
+@pmp('mf', (True, False))
+def test_kl(constants, point_estimates, mirror_samples, mf):
+    if not mf and (len(point_estimates) != 0 or len(constants) != 0):
+        return
     dom = ift.RGSpace((12,), (2.12))
-    op0 = ift.HarmonicSmoothingOperator(dom, 3)
-    op = ift.ducktape(dom, None, 'a')*(op0.ducktape('b'))
+    op = ift.HarmonicSmoothingOperator(dom, 3)
+    if mf:
+        op = ift.ducktape(dom, None, 'a')*(op.ducktape('b'))
     lh = ift.GaussianEnergy(domain=op.target) @ op
     ic = ift.GradientNormController(iteration_limit=5)
     h = ift.StandardHamiltonian(lh, ic_samp=ic)
@@ -53,20 +55,24 @@ def test_kl(constants, point_estimates, mirror_samples):
                                   napprox=0,
                                   _local_samples=locsamp)
 
+    # Test number of samples
+    expected_nsamps = 2*nsamps if mirror_samples else nsamps
+    assert_(len(tuple(kl.samples)) == expected_nsamps)
+
     # Test value
     assert_allclose(kl.value, klpure.value)
 
     # Test gradient
+    if not mf:
+        ift.extra.assert_allclose(kl.gradient, klpure.gradient, 0, 1e-14)
+        return
+
     for kk in h.domain.keys():
         res0 = klpure.gradient[kk].val
         if kk in constants:
             res0 = 0*res0
         res1 = kl.gradient[kk].val
         assert_allclose(res0, res1)
-
-    # Test number of samples
-    expected_nsamps = 2*nsamps if mirror_samples else nsamps
-    assert_(len(tuple(kl.samples)) == expected_nsamps)
 
     # Test point_estimates (after drawing samples)
     for kk in point_estimates:
