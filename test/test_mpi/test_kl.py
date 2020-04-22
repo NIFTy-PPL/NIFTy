@@ -38,10 +38,12 @@ pms = pytest.mark.skipif
 @pmp('point_estimates', ([], ['a'], ['b'], ['a', 'b']))
 @pmp('mirror_samples', (False, True))
 @pmp('mode', (0, 1))
-def test_kl(constants, point_estimates, mirror_samples, mode):
+@pmp('mf', (False, True))
+def test_kl(constants, point_estimates, mirror_samples, mode, mf):
     dom = ift.RGSpace((12,), (2.12))
-    op0 = ift.HarmonicSmoothingOperator(dom, 3)
-    op = ift.ducktape(dom, None, 'a')*(op0.ducktape('b'))
+    op = ift.HarmonicSmoothingOperator(dom, 3)
+    if mf:
+        op = ift.ducktape(dom, None, 'a')*(op.ducktape('b'))
     lh = ift.GaussianEnergy(domain=op.target) @ op
     ic = ift.GradientNormController(iteration_limit=5)
     h = ift.StandardHamiltonian(lh, ic_samp=ic)
