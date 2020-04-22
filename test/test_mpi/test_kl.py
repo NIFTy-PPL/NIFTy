@@ -40,6 +40,8 @@ pms = pytest.mark.skipif
 @pmp('mode', (0, 1))
 @pmp('mf', (False, True))
 def test_kl(constants, point_estimates, mirror_samples, mode, mf):
+    if not mf and (len(point_estimates) != 0 or len(constants) != 0):
+        return
     dom = ift.RGSpace((12,), (2.12))
     op = ift.HarmonicSmoothingOperator(dom, 3)
     if mf:
@@ -67,21 +69,24 @@ def test_kl(constants, point_estimates, mirror_samples, mode, mf):
         locsamp = samples[slc]
         kl1 = ift.MetricGaussianKL(**args, comm=comm, _local_samples=locsamp)
 
+    # Test number of samples
+    expected_nsamps = 2*nsamps if mirror_samples else nsamps
+    assert_(len(tuple(kl0.samples)) == expected_nsamps)
+    assert_(len(tuple(kl1.samples)) == expected_nsamps)
+
     # Test value
     assert_allclose(kl0.value, kl1.value)
 
     # Test gradient
+    if not mf:
+        ift.extra.assert_allclose(kl0.gradient, kl1.gradient, 0, 1e-14)
+        return
     for kk in h.domain.keys():
         res0 = kl0.gradient[kk].val
         if kk in constants:
             res0 = 0*res0
         res1 = kl1.gradient[kk].val
         assert_allclose(res0, res1)
-
-    # Test number of samples
-    expected_nsamps = 2*nsamps if mirror_samples else nsamps
-    assert_(len(tuple(kl0.samples)) == expected_nsamps)
-    assert_(len(tuple(kl1.samples)) == expected_nsamps)
 
     # Test point_estimates (after drawing samples)
     for kk in point_estimates:

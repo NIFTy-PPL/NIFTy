@@ -50,7 +50,7 @@ def _allreduce_sum_field(comm, fld):
     if comm is None:
         return fld
     if isinstance(fld, Field):
-        return Field(fld.domain, _np_allreduce_sum(fld.val))
+        return Field(fld.domain, _np_allreduce_sum(comm, fld.val))
     res = tuple(
         Field(f.domain, _np_allreduce_sum(comm, f.val))
         for f in fld.values())
