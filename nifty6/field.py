@@ -50,7 +50,7 @@ class Field(Operator):
             raise TypeError("domain must be of type DomainTuple")
         if not isinstance(val, np.ndarray):
             if np.isscalar(val):
-                val = np.full(domain.shape, val)
+                val = np.broadcast_to(val, domain.shape)
             else:
                 raise TypeError("val must be of type numpy.ndarray")
         if domain.shape != val.shape:

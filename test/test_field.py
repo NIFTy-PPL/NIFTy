@@ -65,7 +65,7 @@ def test_power_synthesize_analyze(space1, space2):
     sc1 = ift.StatCalculator()
     sc2 = ift.StatCalculator()
     for ii in range(samples):
-        sk = opfull.draw_sample()
+        sk = opfull.draw_sample(dtype=np.float64)
 
         sp = ift.power_analyze(sk, spaces=(0, 1), keep_phase_information=False)
         sc1.add(sp.sum(spaces=1)/fp2.s_sum())
@@ -93,7 +93,7 @@ def test_DiagonalOperator_power_analyze2(space1, space2):
     sc2 = ift.StatCalculator()
 
     for ii in range(samples):
-        sk = S_full.draw_sample()
+        sk = S_full.draw_sample(dtype=np.float64)
         sp = ift.power_analyze(sk, spaces=(0, 1), keep_phase_information=False)
         sc1.add(sp.sum(spaces=1)/fp2.s_sum())
         sc2.add(sp.sum(spaces=0)/fp1.s_sum())

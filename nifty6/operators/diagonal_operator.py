@@ -160,7 +160,7 @@ class DiagonalOperator(EndomorphicOperator):
             res = samp.val*np.sqrt(self._ldiag)
         return Field(self._domain, res)
 
-    def draw_sample(self, from_inverse=False, dtype=np.float64):
+    def draw_sample(self, dtype, from_inverse=False):
         res = Field.from_random(random_type="normal", domain=self._domain,
                                 dtype=dtype)
         return self.process_sample(res, from_inverse)

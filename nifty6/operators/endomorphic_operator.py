@@ -32,7 +32,7 @@ class EndomorphicOperator(LinearOperator):
         for endomorphic operators."""
         return self._domain
 
-    def draw_sample(self, from_inverse=False, dtype=np.float64):
+    def draw_sample(self, dtype, from_inverse=False):
         """Generate a zero-mean sample
 
         Generates a sample from a Gaussian distribution with zero mean and
@@ -42,7 +42,7 @@ class EndomorphicOperator(LinearOperator):
         ----------
         from_inverse : bool (default : False)
             if True, the sample is drawn from the inverse of the operator
-        dtype : numpy datatype (default : numpy.float64)
+        dtype : numpy datatype
             the data type to be used for the sample
 
         Returns

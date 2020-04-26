@@ -48,10 +48,10 @@ class BlockDiagonalOperator(EndomorphicOperator):
                     for op, v in zip(self._ops, x.values()))
         return MultiField(self._domain, val)
 
-    def draw_sample(self, from_inverse=False, dtype=np.float64):
+    def draw_sample(self, dtype, from_inverse=False):
         from ..sugar import from_random
         val = tuple(
-            op.draw_sample(from_inverse, dtype)
+            op.draw_sample(dtype, from_inverse)
             if op is not None
             else from_random('normal', self._domain[key], dtype=dtype)
             for op, key in zip(self._ops, self._domain.keys()))

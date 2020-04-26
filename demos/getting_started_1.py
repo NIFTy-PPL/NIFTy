@@ -114,8 +114,8 @@ if __name__ == '__main__':
     N = ift.ScalingOperator(data_space, noise)
 
     # Create mock data
-    MOCK_SIGNAL = S.draw_sample()
-    MOCK_NOISE = N.draw_sample()
+    MOCK_SIGNAL = S.draw_sample(dtype=np.float64)
+    MOCK_NOISE = N.draw_sample(dtype=np.float64)
     data = R(MOCK_SIGNAL) + MOCK_NOISE
 
     # Build inverse propagator D and information source j
