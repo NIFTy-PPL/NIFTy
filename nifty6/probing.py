@@ -71,7 +71,7 @@ class StatCalculator(object):
         return self._M2 * (1./(self._count-1))
 
 
-def probe_with_posterior_samples(op, post_op, nprobes):
+def probe_with_posterior_samples(op, post_op, nprobes, dtype):
     '''FIXME
 
     Parameters
@@ -82,6 +82,8 @@ def probe_with_posterior_samples(op, post_op, nprobes):
         FIXME
     nprobes : int
         Number of samples which shall be drawn.
+    dtype :
+        the data type of the samples
 
     Returns
     -------
@@ -97,12 +99,10 @@ def probe_with_posterior_samples(op, post_op, nprobes):
             raise ValueError
     sc = StatCalculator()
     for i in range(nprobes):
-        # FIXME which dtype should we use here?
-        import numpy as np
         if post_op is None:
-            sc.add(op.draw_sample(dtype=np.float64, from_inverse=True))
+            sc.add(op.draw_sample(dtype=dtype, from_inverse=True))
         else:
-            sc.add(post_op(op.draw_sample(dtype=np.float64, from_inverse=True)))
+            sc.add(post_op(op.draw_sample(dtype=dtype, from_inverse=True)))
 
     if nprobes == 1:
         return sc.mean, None
