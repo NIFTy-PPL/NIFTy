@@ -40,10 +40,10 @@ class EndomorphicOperator(LinearOperator):
 
         Parameters
         ----------
-        from_inverse : bool (default : False)
-            if True, the sample is drawn from the inverse of the operator
         dtype : numpy datatype
             the data type to be used for the sample
+        from_inverse : bool (default : False)
+            if True, the sample is drawn from the inverse of the operator
 
         Returns
         -------
