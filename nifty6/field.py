@@ -709,6 +709,7 @@ class Field(Operator):
         tmp = ptw_dict[op][1](self._val, *argstmp, **kwargstmp)
         return (Field(self._domain, tmp[0]), Field(self._domain, tmp[1]))
 
+
 for op in ["__add__", "__radd__",
            "__sub__", "__rsub__",
            "__mul__", "__rmul__",

@@ -18,7 +18,6 @@
 import numpy as np
 
 from .sugar import makeOp
-from . import utilities
 from .operators.operator import Operator
 
 
@@ -277,7 +276,6 @@ class Linearization(Operator):
             ContractionOperator(self._jac.target, spaces, 1)(self._jac))
 
     def ptw(self, op, *args, **kwargs):
-        from .pointwise import ptw_dict
         t1, t2 = self._val.ptw_with_deriv(op, *args, **kwargs)
         return self.new(t1, makeOp(t2)(self._jac))
 

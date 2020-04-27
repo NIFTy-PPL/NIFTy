@@ -15,8 +15,6 @@
 #
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
 
-from ..field import Field
-from ..multi_field import MultiField
 from .operator import Operator
 
 
@@ -170,7 +168,6 @@ class LinearOperator(Operator):
 
     def __call__(self, x):
         """Same as :meth:`times`"""
-        from ..linearization import Linearization
         if x.jac is not None:
             return x.new(self(x._val), self).prepend_jac(x.jac)
         if x.val is not None:
