@@ -133,6 +133,10 @@ class Linearization(Operator):
     def real(self):
         return self.new(self._val.real, self._jac.real)
 
+    @property
+    def imag(self):
+        return self.new(self._val.imag, self._jac.imag)
+
     def _myadd(self, other, neg):
         if np.isscalar(other) or other.jac is None:
             return self.new(self._val-other if neg else self._val+other,

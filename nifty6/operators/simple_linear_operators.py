@@ -112,6 +112,24 @@ class Realizer(EndomorphicOperator):
         return x.real
 
 
+class Imaginizer(EndomorphicOperator):
+    """Operator returning the imaginary component of its input.
+
+    Parameters
+    ----------
+    domain: Domain, tuple of domains or DomainTuple
+        domain of the input field
+
+    """
+    def __init__(self, domain):
+        self._domain = DomainTuple.make(domain)
+        self._capability = self.TIMES | self.ADJOINT_TIMES
+
+    def apply(self, x, mode):
+        self._check_input(x, mode)
+        return x.imag
+
+
 class FieldAdapter(LinearOperator):
     """Operator for conversion between Fields and MultiFields.
 
