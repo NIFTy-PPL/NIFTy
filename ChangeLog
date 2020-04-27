@@ -1,5 +1,12 @@
 Changes since NIFTy 5:
 
+Interface change in EndomorphicOperator.draw_sample()
+=====================================================
+
+This method now requires a `dtype` argument to be passed.
+As a consequence, `dtype` moves to the first place of the argument list.
+(This of course applies to all derived classes as well.)
+
 MPI parallelisation over samples in MetricGaussianKL
 ====================================================
 

@@ -93,8 +93,8 @@ def test_WF_curvature(space):
         1./all_diag.val,
         rtol=1e-3,
         atol=1e-3)
-    curv.draw_sample()
-    curv.draw_sample(from_inverse=True)
+    curv.draw_sample(dtype=np.float64)
+    curv.draw_sample(dtype=np.float64, from_inverse=True)
 
     if len(space.shape) == 1:
         R = ift.ValueInserter(space, [0])
@@ -110,8 +110,8 @@ def test_WF_curvature(space):
             1./all_diag.val,
             rtol=1e-3,
             atol=1e-3)
-        curv.draw_sample()
-        curv.draw_sample(from_inverse=True)
+        curv.draw_sample(dtype=np.float64)
+        curv.draw_sample(dtype=np.float64, from_inverse=True)
 
 
 @pmp('minimizer', minimizers + newton_minimizers)

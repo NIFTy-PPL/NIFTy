@@ -58,10 +58,10 @@ class OperatorAdapter(LinearOperator):
         return self._op.apply(x,
                               self._modeTable[self._trafo][self._ilog[mode]])
 
-    def draw_sample(self, from_inverse=False, dtype=np.float64):
+    def draw_sample(self, dtype, from_inverse=False):
         if self._trafo & self.INVERSE_BIT:
-            return self._op.draw_sample(not from_inverse, dtype)
-        return self._op.draw_sample(from_inverse, dtype)
+            return self._op.draw_sample(dtype, not from_inverse)
+        return self._op.draw_sample(dtype, from_inverse)
 
     def __repr__(self):
         from ..utilities import indent

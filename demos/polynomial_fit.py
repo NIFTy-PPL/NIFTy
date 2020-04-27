@@ -113,7 +113,7 @@ if __name__ == '__main__':
 
     # Draw posterior samples
     metric = Ham(ift.Linearization.make_var(H.position, want_metric=True)).metric
-    samples = [metric.draw_sample(from_inverse=True) + H.position
+    samples = [metric.draw_sample(dtype=np.float64, from_inverse=True) + H.position
                for _ in range(N_samples)]
 
     # Plotting

@@ -62,19 +62,19 @@ class SamplingEnabler(EndomorphicOperator):
         self._domain = self._op.domain
         self._capability = self._op.capability
 
-    def draw_sample(self, from_inverse=False, dtype=np.float64):
+    def draw_sample(self, dtype, from_inverse=False):
         try:
-            return self._op.draw_sample(from_inverse, dtype)
+            return self._op.draw_sample(dtype, from_inverse)
         except NotImplementedError:
             if not from_inverse:
                 raise ValueError("from_inverse must be True here")
             if self._start_from_zero:
-                b = self._op.draw_sample()
+                b = self._op.draw_sample(dtype)
                 energy = QuadraticEnergy(0*b, self._op, b)
             else:
-                s = self._prior.draw_sample(from_inverse=True)
+                s = self._prior.draw_sample(dtype, from_inverse=True)
                 sp = self._prior(s)
-                nj = self._likelihood.draw_sample(dtype=dtype)
+                nj = self._likelihood.draw_sample(dtype)
                 energy = QuadraticEnergy(s, self._op, sp + nj,
                                          _grad=self._likelihood(s) - nj)
             inverter = ConjugateGradient(self._ic)
