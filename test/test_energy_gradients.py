@@ -74,6 +74,9 @@ def test_studentt(field):
         return
     energy = ift.StudentTEnergy(domain=field.domain, theta=.5)
     ift.extra.check_jacobian_consistency(energy, field, tol=1e-6)
+    theta = ift.from_random('normal',field.domain).exp()
+    energy = ift.StudentTEnergy(domain=field.domain, theta=theta)
+    ift.extra.check_jacobian_consistency(energy, field, tol=1e-6)
 
 
 def test_hamiltonian_and_KL(field):
