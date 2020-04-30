@@ -296,7 +296,7 @@ class StudentTEnergy(EnergyOperator):
 
     def apply(self, x):
         self._check_input(x)
-        res = ((self._theta+1)/2)*(x**2/self._theta).ptw("log1p").sum()
+        res = (((self._theta+1)/2)*(x**2/self._theta).ptw("log1p")).sum()
         if not x.want_metric:
             return res
         met = ScalingOperator(self.domain, (self._theta+1) / (self._theta+3))
