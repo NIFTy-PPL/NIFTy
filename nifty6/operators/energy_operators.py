@@ -286,7 +286,7 @@ class StudentTEnergy(EnergyOperator):
     ----------
     domain : `Domain` or `DomainTuple`
         Domain of the operator
-    theta : Scalar
+    theta : Scalar or Field
         Degree of freedom parameter for the student t distribution
     """
 
@@ -296,10 +296,10 @@ class StudentTEnergy(EnergyOperator):
 
     def apply(self, x):
         self._check_input(x)
-        res = ((self._theta+1)/2)*(x**2/self._theta).ptw("log1p").sum()
+        res = (((self._theta+1)/2)*(x**2/self._theta).ptw("log1p")).sum()
         if not x.want_metric:
             return res
-        met = ScalingOperator(self.domain, (self._theta+1) / (self._theta+3))
+        met = makeOp((self._theta+1) / (self._theta+3), self.domain)
         return res.add_metric(met)
 
 
