@@ -299,10 +299,7 @@ class StudentTEnergy(EnergyOperator):
         res = (((self._theta+1)/2)*(x**2/self._theta).ptw("log1p")).sum()
         if not x.want_metric:
             return res
-        if isinstance(self._theta, Field):
-            met = makeOp((self._theta+1) / (self._theta+3))
-        else:
-            met = ScalingOperator(self.domain, (self._theta+1) / (self._theta+3))
+        met = makeOp((self._theta+1) / (self._theta+3), self.domain)
         return res.add_metric(met)
 
 
