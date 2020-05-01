@@ -286,7 +286,7 @@ class StudentTEnergy(EnergyOperator):
     ----------
     domain : `Domain` or `DomainTuple`
         Domain of the operator
-    theta : Scalar
+    theta : Scalar or Field
         Degree of freedom parameter for the student t distribution
     """
 
