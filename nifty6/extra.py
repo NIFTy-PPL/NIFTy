@@ -296,3 +296,4 @@ def check_jacobian_consistency(op, loc, tol=1e-8, ntries=100, perf_check=True):
             print(hist)
             raise ValueError("gradient and value seem inconsistent")
         loc = locnext
+        consistency_check(linmid.jac)
