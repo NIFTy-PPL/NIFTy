@@ -350,7 +350,7 @@ def makeOp(input, dom=None):
         if not dom == input.domain:
             raise ValueError("domain mismatch")
     if input.domain is DomainTuple.scalar_domain():
-        return ScalingOperator(input.domain, float(input.val))
+        return ScalingOperator(input.domain, input.val[()])
     if isinstance(input, Field):
         return DiagonalOperator(input)
     if isinstance(input, MultiField):
