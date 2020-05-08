@@ -40,7 +40,7 @@ seed = list2fixture([4, 78, 23])
 def testBasics(space, seed):
     with ift.random.Context(seed):
         S = ift.ScalingOperator(space, 1.)
-        s = S.draw_sample()
+        s = S.draw_sample(dtype=np.float64)
         var = ift.Linearization.make_var(s)
         model = ift.ScalingOperator(var.target, 6.)
         ift.extra.check_jacobian_consistency(model, var.val)
@@ -92,7 +92,7 @@ def testBinary(type1, type2, space, seed):
 def testSpecialDistributionOps(space, seed):
     with ift.random.Context(seed):
         S = ift.ScalingOperator(space, 1.)
-        pos = S.draw_sample()
+        pos = S.draw_sample(dtype=np.float64)
         alpha = 1.5
         q = 0.73
         model = ift.InverseGammaOperator(space, alpha, q)
@@ -105,8 +105,8 @@ def testSpecialDistributionOps(space, seed):
 def testAdder(space, seed, neg):
     with ift.random.Context(seed):
         S = ift.ScalingOperator(space, 1.)
-        f = S.draw_sample()
-        f1 = S.draw_sample()
+        f = S.draw_sample(dtype=np.float64)
+        f1 = S.draw_sample(dtype=np.float64)
         op = ift.Adder(f1, neg)
         ift.extra.check_jacobian_consistency(op, f)
         op = ift.Adder(f1.val.ravel()[0], neg=neg, domain=space)
@@ -131,7 +131,7 @@ def testDynamicModel(target, causal, minimum_phase, seed):
                 }
         model, _ = ift.dynamic_operator(**dct)
         S = ift.ScalingOperator(model.domain, 1.)
-        pos = S.draw_sample()
+        pos = S.draw_sample(dtype=np.float64)
         # FIXME I dont know why smaller tol fails for 3D example
         ift.extra.check_jacobian_consistency(model, pos, tol=1e-5, ntries=20)
         if len(target.shape) > 1:
@@ -152,7 +152,7 @@ def testDynamicModel(target, causal, minimum_phase, seed):
             dct['quant'] = 5
             model, _ = ift.dynamic_lightcone_operator(**dct)
             S = ift.ScalingOperator(model.domain, 1.)
-            pos = S.draw_sample()
+            pos = S.draw_sample(dtype=np.float64)
             # FIXME I dont know why smaller tol fails for 3D example
             ift.extra.check_jacobian_consistency(
                 model, pos, tol=1e-5, ntries=20)

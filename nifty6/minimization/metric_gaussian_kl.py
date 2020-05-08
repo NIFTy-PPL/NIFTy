@@ -50,7 +50,7 @@ def _allreduce_sum_field(comm, fld):
     if comm is None:
         return fld
     if isinstance(fld, Field):
-        return Field(fld.domain, _np_allreduce_sum(fld.val))
+        return Field(fld.domain, _np_allreduce_sum(comm, fld.val))
     res = tuple(
         Field(f.domain, _np_allreduce_sum(comm, f.val))
         for f in fld.values())
@@ -67,8 +67,8 @@ class _KLMetric(EndomorphicOperator):
         self._check_input(x, mode)
         return self._KL.apply_metric(x)
 
-    def draw_sample(self, from_inverse=False, dtype=np.float64):
-        return self._KL._metric_sample(from_inverse, dtype)
+    def draw_sample(self, dtype, from_inverse=False):
+        return self._KL._metric_sample(dtype, from_inverse)
 
 
 class MetricGaussianKL(Energy):
@@ -180,7 +180,7 @@ class MetricGaussianKL(Energy):
             for i in range(self._lo, self._hi):
                 with random.Context(sseq[i]):
                     _local_samples.append(met.draw_sample(
-                        from_inverse=True, dtype=lh_sampling_dtype))
+                        dtype=lh_sampling_dtype, from_inverse=True))
             _local_samples = tuple(_local_samples)
         else:
             if len(_local_samples) != self._hi-self._lo:
@@ -264,7 +264,7 @@ class MetricGaussianKL(Energy):
                     if self._mirror_samples:
                         yield -s
 
-    def _metric_sample(self, from_inverse=False, dtype=np.float64):
+    def _metric_sample(self, dtype, from_inverse=False):
         if from_inverse:
             raise NotImplementedError()
         lin = self._lin.with_want_metric()
@@ -272,7 +272,7 @@ class MetricGaussianKL(Energy):
         sseq = random.spawn_sseq(self._n_samples)
         for i, v in enumerate(self._local_samples):
             with random.Context(sseq[self._lo+i]):
-                samp = samp + self._hamiltonian(lin+v).metric.draw_sample(from_inverse=False, dtype=dtype)
+                samp = samp + self._hamiltonian(lin+v).metric.draw_sample(dtype=dtype, from_inverse=False)
                 if self._mirror_samples:
-                    samp = samp + self._hamiltonian(lin-v).metric.draw_sample(from_inverse=False, dtype=dtype)
+                    samp = samp + self._hamiltonian(lin-v).metric.draw_sample(dtype=dtype, from_inverse=False)
         return _allreduce_sum_field(self._comm, samp)/self._n_eff_samples

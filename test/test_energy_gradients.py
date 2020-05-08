@@ -40,7 +40,7 @@ pmp = pytest.mark.parametrize
 def field(request):
     with ift.random.Context(request.param[0]):
         S = ift.ScalingOperator(request.param[1], 1.)
-        return S.draw_sample()
+        return S.draw_sample(dtype=np.float64)
 
 
 def test_gaussian(field):
@@ -59,12 +59,12 @@ def test_ScaledEnergy(field):
     res1 = met1(field)
     res2 = met2(field)/0.3
     ift.extra.assert_allclose(res1, res2, 0, 1e-12)
-    met2.draw_sample()
+    met2.draw_sample(dtype=np.float64)
 
 
 def test_QuadraticFormOperator(field):
     op = ift.ScalingOperator(field.domain, 1.2)
-    endo = ift.makeOp(op.draw_sample())
+    endo = ift.makeOp(op.draw_sample(dtype=np.float64))
     energy = ift.QuadraticFormOperator(endo)
     ift.extra.check_jacobian_consistency(energy, field)
 
@@ -73,6 +73,9 @@ def test_studentt(field):
     if isinstance(field.domain, ift.MultiDomain):
         return
     energy = ift.StudentTEnergy(domain=field.domain, theta=.5)
+    ift.extra.check_jacobian_consistency(energy, field, tol=1e-6)
+    theta = ift.from_random('normal',field.domain).exp()
+    energy = ift.StudentTEnergy(domain=field.domain, theta=theta)
     ift.extra.check_jacobian_consistency(energy, field, tol=1e-6)
 
 
@@ -83,7 +86,7 @@ def test_hamiltonian_and_KL(field):
     hamiltonian = ift.StandardHamiltonian(lh)
     ift.extra.check_jacobian_consistency(hamiltonian, field)
     S = ift.ScalingOperator(space, 1.)
-    samps = [S.draw_sample() for i in range(3)]
+    samps = [S.draw_sample(dtype=np.float64) for i in range(3)]
     kl = ift.AveragedEnergy(hamiltonian, samps)
     ift.extra.check_jacobian_consistency(kl, field)
 
@@ -95,7 +98,7 @@ def test_variablecovariancegaussian(field):
     mf = ift.MultiField.from_dict(dc)
     energy = ift.VariableCovarianceGaussianEnergy(field.domain, 'a', 'b')
     ift.extra.check_jacobian_consistency(energy, mf, tol=1e-6)
-    energy(ift.Linearization.make_var(mf, want_metric=True)).metric.draw_sample()
+    energy(ift.Linearization.make_var(mf, want_metric=True)).metric.draw_sample(dtype=np.float64)
 
 
 def test_inverse_gamma(field):

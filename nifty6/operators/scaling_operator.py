@@ -91,7 +91,7 @@ class ScalingOperator(EndomorphicOperator):
             raise ValueError("operator not positive definite")
         return 1./np.sqrt(fct) if from_inverse else np.sqrt(fct)
 
-    def draw_sample(self, from_inverse=False, dtype=np.float64):
+    def draw_sample(self, dtype, from_inverse=False):
         from ..sugar import from_random
         return from_random(random_type="normal", domain=self._domain,
                            std=self._get_fct(from_inverse), dtype=dtype)

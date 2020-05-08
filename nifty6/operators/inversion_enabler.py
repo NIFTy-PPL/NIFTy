@@ -78,5 +78,5 @@ class InversionEnabler(EndomorphicOperator):
             logger.warning("Error detected during operator inversion")
         return r.position
 
-    def draw_sample(self, from_inverse=False, dtype=np.float64):
-        return self._op.draw_sample(from_inverse, dtype)
+    def draw_sample(self, dtype, from_inverse=False):
+        return self._op.draw_sample(dtype, from_inverse)

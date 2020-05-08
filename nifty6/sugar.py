@@ -345,7 +345,7 @@ def makeOp(input, dom=None):
     if np.isscalar(input):
         if not isinstance(dom, (DomainTuple, MultiDomain)):
             raise TypeError("need proper `dom` argument")
-        return SalingOperator(dom, input)
+        return ScalingOperator(dom, input)
     if dom is not None:
         if not dom == input.domain:
             raise ValueError("domain mismatch")
@@ -493,9 +493,12 @@ def calculate_position(operator, output):
         raise TypeError
     if output.domain != operator.target:
         raise TypeError
-    cov = 1e-3*output.val.max()**2
+    if isinstance(output, MultiField):
+        cov = 1e-3*max([vv.max() for vv in output.val.values()])**2
+    else:
+        cov = 1e-3*output.val.max()**2
     invcov = ScalingOperator(output.domain, cov).inverse
-    d = output + invcov.draw_sample(from_inverse=True)
+    d = output + invcov.draw_sample(dtype=output.dtype, from_inverse=True)
     lh = GaussianEnergy(d, invcov) @ operator
     H = StandardHamiltonian(
         lh, ic_samp=GradientNormController(iteration_limit=200))
