@@ -38,6 +38,9 @@ def test_gridding(nu, nv, N, eps):
     vis = (ift.random.current_rng().standard_normal(N)
            + 1j*ift.random.current_rng().standard_normal(N))
 
+    if N > 2:
+        uv[-1] = 0
+        uv[-2] = 1e-5
     # Nifty
     dom = ift.RGSpace((nu, nv), distances=(0.2, 1.12))
     dstx, dsty = dom.distances
