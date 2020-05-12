@@ -99,7 +99,7 @@ if __name__ == '__main__':
 
     # Generate mock signal and data
     mock_position = ift.from_random('normal', signal_response.domain)
-    data = signal_response(mock_position) + N.draw_sample(dtype=np.float64)
+    data = signal_response(mock_position) + N.draw_sample_with_dtype(dtype=np.float64)
 
     # Minimization parameters
     ic_sampling = ift.AbsDeltaEnergyController(

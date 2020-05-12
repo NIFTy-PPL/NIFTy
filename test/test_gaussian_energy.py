@@ -53,7 +53,7 @@ def test_gaussian_energy(space, nonlinearity, noise, seed):
         pspec = ift.PS_field(pspace, pspec)
         A = Dist(pspec.ptw("sqrt"))
         N = ift.ScalingOperator(space, noise)
-        n = N.draw_sample(dtype=np.float64)
+        n = N.draw_sample_with_dtype(dtype=np.float64)
         R = ift.ScalingOperator(space, 10.)
 
         def d_model():

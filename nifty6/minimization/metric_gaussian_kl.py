@@ -67,8 +67,8 @@ class _KLMetric(EndomorphicOperator):
         self._check_input(x, mode)
         return self._KL.apply_metric(x)
 
-    def draw_sample(self, dtype, from_inverse=False):
-        return self._KL._metric_sample(dtype, from_inverse)
+    def draw_sample(self, from_inverse=False):
+        return self._KL._metric_sample(from_inverse)
 
 
 class MetricGaussianKL(Energy):
@@ -114,13 +114,6 @@ class MetricGaussianKL(Energy):
         If not None, samples will be distributed as evenly as possible
         across this communicator. If `mirror_samples` is set, then a sample and
         its mirror image will always reside on the same task.
-    lh_sampling_dtype : type
-        Determines which dtype in data space shall be used for drawing samples
-        from the metric. If the inference is based on complex data,
-        lh_sampling_dtype shall be set to complex accordingly. The reason for
-        the presence of this parameter is that metric of the likelihood energy
-        is just an `Operator` which does not know anything about the dtype of
-        the fields on which it acts. Default is float64.
     _local_samples : None
         Only a parameter for internal uses. Typically not to be set by users.
 
@@ -138,8 +131,7 @@ class MetricGaussianKL(Energy):
 
     def __init__(self, mean, hamiltonian, n_samples, constants=[],
                  point_estimates=[], mirror_samples=False,
-                 napprox=0, comm=None, _local_samples=None,
-                 lh_sampling_dtype=np.float64):
+                 napprox=0, comm=None, _local_samples=None):
         super(MetricGaussianKL, self).__init__(mean)
 
         if not isinstance(hamiltonian, StandardHamiltonian):
@@ -179,8 +171,7 @@ class MetricGaussianKL(Energy):
             sseq = random.spawn_sseq(self._n_samples)
             for i in range(self._lo, self._hi):
                 with random.Context(sseq[i]):
-                    _local_samples.append(met.draw_sample(
-                        dtype=lh_sampling_dtype, from_inverse=True))
+                    _local_samples.append(met.draw_sample(from_inverse=True))
             _local_samples = tuple(_local_samples)
         else:
             if len(_local_samples) != self._hi-self._lo:
@@ -206,13 +197,12 @@ class MetricGaussianKL(Energy):
         self._val = _np_allreduce_sum(self._comm, v)[()] / self._n_eff_samples
         self._grad = _allreduce_sum_field(self._comm, g) / self._n_eff_samples
         self._metric = None
-        self._sampdt = lh_sampling_dtype
 
     def at(self, position):
         return MetricGaussianKL(
             position, self._hamiltonian, self._n_samples, self._constants,
             self._point_estimates, self._mirror_samples, comm=self._comm,
-            _local_samples=self._local_samples, lh_sampling_dtype=self._sampdt)
+            _local_samples=self._local_samples)
 
     @property
     def value(self):
@@ -264,7 +254,7 @@ class MetricGaussianKL(Energy):
                     if self._mirror_samples:
                         yield -s
 
-    def _metric_sample(self, dtype, from_inverse=False):
+    def _metric_sample(self, from_inverse=False):
         if from_inverse:
             raise NotImplementedError()
         lin = self._lin.with_want_metric()
@@ -272,7 +262,7 @@ class MetricGaussianKL(Energy):
         sseq = random.spawn_sseq(self._n_samples)
         for i, v in enumerate(self._local_samples):
             with random.Context(sseq[self._lo+i]):
-                samp = samp + self._hamiltonian(lin+v).metric.draw_sample(dtype=dtype, from_inverse=False)
+                samp = samp + self._hamiltonian(lin+v).metric.draw_sample(from_inverse=False)
                 if self._mirror_samples:
-                    samp = samp + self._hamiltonian(lin-v).metric.draw_sample(dtype=dtype, from_inverse=False)
+                    samp = samp + self._hamiltonian(lin-v).metric.draw_sample(from_inverse=False)
         return _allreduce_sum_field(self._comm, samp)/self._n_eff_samples

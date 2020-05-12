@@ -11,7 +11,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
-# Copyright(C) 2013-2019 Max-Planck-Society
+# Copyright(C) 2013-2020 Max-Planck-Society
 #
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
 
@@ -49,15 +49,15 @@ class MultiField(Operator):
         self._val = val
 
     @staticmethod
-    def from_dict(dict, domain=None):
+    def from_dict(dct, domain=None):
         if domain is None:
-            for dd in dict.values():
+            for dd in dct.values():
                 if not isinstance(dd.domain, DomainTuple):
                     raise TypeError('Values of dictionary need to be Fields '
                                     'defined on DomainTuples.')
             domain = MultiDomain.make({key: v._domain
-                                       for key, v in dict.items()})
-        res = tuple(dict[key] if key in dict else Field(dom, 0.)
+                                       for key, v in dct.items()})
+        res = tuple(dct[key] if key in dct else Field(dom, 0.)
                     for key, dom in zip(domain.keys(), domain.domains()))
         return MultiField(domain, res)
 
@@ -103,10 +103,11 @@ class MultiField(Operator):
     @staticmethod
     def from_random(random_type, domain, dtype=np.float64, **kwargs):
         domain = MultiDomain.make(domain)
-#        dtype = MultiField.build_dtype(dtype, domain)
-        return MultiField(
-            domain, tuple(Field.from_random(random_type, dom, dtype, **kwargs)
-                          for dom in domain._domains))
+        if dtype in [np.float64, np.complex128]:
+            dtype = {kk: dtype for kk in domain.keys()}
+        dct = {kk: Field.from_random(random_type, domain[kk], dtype[kk], **kwargs)
+               for kk in domain.keys()}
+        return MultiField.from_dict(dct)
 
     def _check_domain(self, other):
         if other._domain != self._domain:

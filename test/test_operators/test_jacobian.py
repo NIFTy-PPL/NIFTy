@@ -39,8 +39,7 @@ seed = list2fixture([4, 78, 23])
 
 def testBasics(space, seed):
     with ift.random.Context(seed):
-        S = ift.ScalingOperator(space, 1.)
-        s = S.draw_sample(dtype=np.float64)
+        s = ift.from_random('normal', space)
         var = ift.Linearization.make_var(s)
         model = ift.ScalingOperator(var.target, 6.)
         ift.extra.check_jacobian_consistency(model, var.val)
@@ -91,8 +90,7 @@ def testBinary(type1, type2, space, seed):
 
 def testSpecialDistributionOps(space, seed):
     with ift.random.Context(seed):
-        S = ift.ScalingOperator(space, 1.)
-        pos = S.draw_sample(dtype=np.float64)
+        pos = ift.from_random('normal', space)
         alpha = 1.5
         q = 0.73
         model = ift.InverseGammaOperator(space, alpha, q)
@@ -104,9 +102,8 @@ def testSpecialDistributionOps(space, seed):
 @pmp('neg', [True, False])
 def testAdder(space, seed, neg):
     with ift.random.Context(seed):
-        S = ift.ScalingOperator(space, 1.)
-        f = S.draw_sample(dtype=np.float64)
-        f1 = S.draw_sample(dtype=np.float64)
+        f = ift.from_random('normal', space)
+        f1 = ift.from_random('normal', space)
         op = ift.Adder(f1, neg)
         ift.extra.check_jacobian_consistency(op, f)
         op = ift.Adder(f1.val.ravel()[0], neg=neg, domain=space)
@@ -130,8 +127,7 @@ def testDynamicModel(target, causal, minimum_phase, seed):
                 'minimum_phase': minimum_phase
                 }
         model, _ = ift.dynamic_operator(**dct)
-        S = ift.ScalingOperator(model.domain, 1.)
-        pos = S.draw_sample(dtype=np.float64)
+        pos = ift.from_random('normal', model.domain)
         # FIXME I dont know why smaller tol fails for 3D example
         ift.extra.check_jacobian_consistency(model, pos, tol=1e-5, ntries=20)
         if len(target.shape) > 1:
@@ -151,8 +147,7 @@ def testDynamicModel(target, causal, minimum_phase, seed):
             dct['sigc'] = 1.
             dct['quant'] = 5
             model, _ = ift.dynamic_lightcone_operator(**dct)
-            S = ift.ScalingOperator(model.domain, 1.)
-            pos = S.draw_sample(dtype=np.float64)
+            pos = ift.from_random('normal', model.domain)
             # FIXME I dont know why smaller tol fails for 3D example
             ift.extra.check_jacobian_consistency(
                 model, pos, tol=1e-5, ntries=20)

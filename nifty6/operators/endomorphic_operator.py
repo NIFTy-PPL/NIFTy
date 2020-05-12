@@ -11,11 +11,9 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
-# Copyright(C) 2013-2019 Max-Planck-Society
+# Copyright(C) 2013-2020 Max-Planck-Society
 #
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
-
-import numpy as np
 
 from .linear_operator import LinearOperator
 
@@ -32,15 +30,16 @@ class EndomorphicOperator(LinearOperator):
         for endomorphic operators."""
         return self._domain
 
-    def draw_sample(self, dtype, from_inverse=False):
+    def draw_sample_with_dtype(self, dtype, from_inverse=False):
         """Generate a zero-mean sample
+        FIXME
 
         Generates a sample from a Gaussian distribution with zero mean and
         covariance given by the operator.
 
         Parameters
         ----------
-        dtype : numpy datatype
+        dtype : numpy datatype FIXME
             the data type to be used for the sample
         from_inverse : bool (default : False)
             if True, the sample is drawn from the inverse of the operator

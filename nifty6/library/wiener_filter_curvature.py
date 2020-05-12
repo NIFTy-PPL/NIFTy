@@ -21,7 +21,9 @@ from ..operators.sandwich_operator import SandwichOperator
 
 
 def WienerFilterCurvature(R, N, S, iteration_controller=None,
-                          iteration_controller_sampling=None):
+                          iteration_controller_sampling=None,
+                          data_sampling_dtype=None,
+                          prior_sampling_dtype=None):
     """The curvature of the WienerFilterEnergy.
 
     This operator implements the second derivative of the
@@ -43,10 +45,19 @@ def WienerFilterCurvature(R, N, S, iteration_controller=None,
     iteration_controller_sampling : IterationController
         The iteration controller to use for sampling.
     """
-    M = SandwichOperator.make(R, N.inverse)
+    Ninv = N.inverse
+    Sinv = S.inverse
+    if data_sampling_dtype is not None:
+        from ..operators.energy_operators import SamplingDtypeEnabler
+        Ninv = SamplingDtypeEnabler(Ninv, data_sampling_dtype)
+    if prior_sampling_dtype is not None:
+        from ..operators.energy_operators import SamplingDtypeEnabler
+        Sinv = SamplingDtypeEnabler(Sinv, data_sampling_dtype)
+    M = SandwichOperator.make(R, Ninv)
     if iteration_controller_sampling is not None:
-        op = SamplingEnabler(M, S.inverse, iteration_controller_sampling,
-                             S.inverse)
+        op = SamplingEnabler(M, Sinv, iteration_controller_sampling,
+                             Sinv)
     else:
-        op = M + S.inverse
-    return InversionEnabler(op, iteration_controller, S.inverse)
+        op = M + Sinv
+    op = InversionEnabler(op, iteration_controller, Sinv)
+    return op

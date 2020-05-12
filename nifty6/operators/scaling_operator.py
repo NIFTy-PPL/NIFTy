@@ -11,7 +11,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
-# Copyright(C) 2013-2019 Max-Planck-Society
+# Copyright(C) 2013-2020 Max-Planck-Society
 #
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
 
@@ -91,7 +91,7 @@ class ScalingOperator(EndomorphicOperator):
             raise ValueError("operator not positive definite")
         return 1./np.sqrt(fct) if from_inverse else np.sqrt(fct)
 
-    def draw_sample(self, dtype, from_inverse=False):
+    def draw_sample_with_dtype(self, dtype, from_inverse=False):
         from ..sugar import from_random
         return from_random(random_type="normal", domain=self._domain,
                            std=self._get_fct(from_inverse), dtype=dtype)
