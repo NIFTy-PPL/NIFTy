@@ -11,7 +11,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
-# Copyright(C) 2013-2019 Max-Planck-Society
+# Copyright(C) 2013-2020 Max-Planck-Society
 #
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
 
@@ -61,6 +61,7 @@ class SamplingEnabler(EndomorphicOperator):
         self._op = likelihood + prior
         self._domain = self._op.domain
         self._capability = self._op.capability
+        self.apply = self._op.apply
 
     def draw_sample(self, from_inverse=False):
         try:
@@ -87,9 +88,6 @@ class SamplingEnabler(EndomorphicOperator):
 
     def draw_sample_with_dtype(self, dtype, from_inverse=False):
         return self._op.draw_sample_with_dtype(dtype, from_inverse)
-
-    def apply(self, x, mode):
-        return self._op.apply(x, mode)
 
     def __repr__(self):
         from ..utilities import indent
