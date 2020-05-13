@@ -19,6 +19,7 @@ import numpy as np
 
 from ..minimization.conjugate_gradient import ConjugateGradient
 from ..minimization.quadratic_energy import QuadraticEnergy
+from ..multi_domain import MultiDomain
 from .endomorphic_operator import EndomorphicOperator
 from .operator import Operator
 
@@ -96,3 +97,52 @@ class SamplingEnabler(EndomorphicOperator):
             indent("\n".join((
                 "Likelihood:", self._likelihood.__repr__(),
                 "Prior:", self._prior.__repr__())))))
+
+
+class SamplingDtypeSetter(EndomorphicOperator):
+    """Class that adds the information whether the operator at hand is the
+    covariance of a real-valued Gaussian or a complex-valued Gaussian
+    probability distribution.
+
+    This wrapper class shall address the following ambiguity which arises when
+    drawing a sampling from a Gaussian distribution with zero mean and given
+    covariance. E.g. a `ScalingOperator` with `1.` on its diagonal can be
+    viewed as the covariance operator of both a real-valued and complex-valued
+    Gaussian distribution. `SamplingDtypeSetter` specifies this data type.
+
+    Parameters
+    ----------
+    op : EndomorphicOperator
+        Operator which shall be supplemented with a dtype for sampling. Needs
+        to be positive definite, hermitian and needs to implement the method
+        `draw_sample_with_dtype()`. Note that these three properties are not
+        checked in the constructor.
+    dtype : numpy.dtype or dict of numpy.dtype
+        Dtype used for sampling from this operator. If the domain of `op` is a
+        `MultiDomain`, the dtype can either be specified as one value for all
+        components of the `MultiDomain` or in form of a dictionary whose keys
+        need to conincide the with keys of the `MultiDomain`.
+    """
+    def __init__(self, op, dtype):
+        if not isinstance(op, EndomorphicOperator):
+            raise TypeError
+        if not hasattr(op, 'draw_sample_with_dtype'):
+            raise TypeError
+        if isinstance(dtype, dict):
+            dtype = {kk: np.dtype(vv) for kk, vv in dtype.items()}
+        else:
+            dtype = np.dtype(dtype)
+        if isinstance(op.domain, MultiDomain):
+            if isinstance(dtype, np.dtype):
+                dtype = {kk: dtype for kk in op.domain.keys()}
+            if set(dtype.keys()) != set(op.domain.keys()):
+                raise TypeError
+        self._dtype = dtype
+        self._domain = op.domain
+        self._capability = op.capability
+        self.apply = op.apply
+        self._op = op
+
+    def draw_sample(self, from_inverse=False):
+        return self._op.draw_sample_with_dtype(self._dtype,
+                                               from_inverse=from_inverse)

@@ -25,10 +25,9 @@ from ..multi_field import MultiField
 from ..sugar import makeDomain, makeOp
 from .linear_operator import LinearOperator
 from .operator import Operator
-from .sampling_enabler import SamplingEnabler
+from .sampling_enabler import SamplingDtypeSetter, SamplingEnabler
 from .scaling_operator import ScalingOperator
 from .simple_linear_operators import VdotOperator
-from .endomorphic_operator import EndomorphicOperator
 
 
 def _check_sampling_dtype(domain, dtypes):
@@ -58,43 +57,6 @@ def _field_to_dtype(field):
         raise TypeError
     _check_sampling_dtype(field.domain, dt)
     return dt
-
-
-class SamplingDtypeEnabler(EndomorphicOperator):
-    def __init__(self, endomorphic_operator, dtype):
-        if not isinstance(endomorphic_operator, EndomorphicOperator):
-            raise TypeError
-        if not hasattr(endomorphic_operator, 'draw_sample_with_dtype'):
-            raise TypeError
-        dom = endomorphic_operator.domain
-        if isinstance(dom, MultiDomain):
-            if dtype in [np.float64, np.complex128]:
-                dtype = {kk: dtype for kk in dom.keys()}
-            if set(dtype.keys()) != set(dom.keys()):
-                raise TypeError
-        self._dtype = dtype
-        self._domain = dom
-        self._capability = endomorphic_operator._capability
-        self.apply = endomorphic_operator.apply
-        self._op = endomorphic_operator
-
-    def draw_sample(self, from_inverse=False):
-        """Generate a zero-mean sample
-
-        Generates a sample from a Gaussian distribution with zero mean and
-        covariance given by the operator.
-
-        Parameters
-        ----------
-        from_inverse : bool (default : False)
-            if True, the sample is drawn from the inverse of the operator
-
-        Returns
-        -------
-        Field
-            A sample from the Gaussian of given covariance.
-        """
-        return self._op.draw_sample_with_dtype(self._dtype, from_inverse=from_inverse)
 
 
 class EnergyOperator(Operator):
@@ -199,7 +161,7 @@ class VariableCovarianceGaussianEnergy(EnergyOperator):
             return res
         mf = {self._r: x.val[self._icov], self._icov: .5*x.val[self._icov]**(-2)}
         met = makeOp(MultiField.from_dict(mf))
-        return res.add_metric(SamplingDtypeEnabler(met, self._sampling_dtype))
+        return res.add_metric(SamplingDtypeSetter(met, self._sampling_dtype))
 
 
 class GaussianEnergy(EnergyOperator):
@@ -262,7 +224,7 @@ class GaussianEnergy(EnergyOperator):
             self._op = QuadraticFormOperator(inverse_covariance)
             self._met = inverse_covariance
         if sampling_dtype is not None:
-            self._met = SamplingDtypeEnabler(self._met, sampling_dtype)
+            self._met = SamplingDtypeSetter(self._met, sampling_dtype)
 
     def _checkEquivalence(self, newdom):
         newdom = makeDomain(newdom)
@@ -313,7 +275,7 @@ class PoissonianEnergy(EnergyOperator):
         res = x.sum() - x.ptw("log").vdot(self._d)
         if not x.want_metric:
             return res
-        return res.add_metric(SamplingDtypeEnabler(makeOp(1./x.val), np.float64))
+        return res.add_metric(SamplingDtypeSetter(makeOp(1./x.val), np.float64))
 
 
 class InverseGammaLikelihood(EnergyOperator):
@@ -359,7 +321,7 @@ class InverseGammaLikelihood(EnergyOperator):
             return res
         met = makeOp(self._alphap1/(x.val**2))
         if self._sampling_dtype is not None:
-            met = SamplingDtypeEnabler(met, self._sampling_dtype)
+            met = SamplingDtypeSetter(met, self._sampling_dtype)
         return res.add_metric(met)
 
 
@@ -394,7 +356,7 @@ class StudentTEnergy(EnergyOperator):
             return res
         met = makeOp((self._theta+1) / (self._theta+3), self.domain)
         if self._sampling_dtype is not None:
-            met = SamplingDtypeEnabler(met, self._sampling_dtype)
+            met = SamplingDtypeSetter(met, self._sampling_dtype)
         return res.add_metric(met)
 
 
@@ -429,7 +391,7 @@ class BernoulliEnergy(EnergyOperator):
         if not x.want_metric:
             return res
         met = makeOp(1./(x.val*(1. - x.val)))
-        return res.add_metric(SamplingDtypeEnabler(met, np.float64))
+        return res.add_metric(SamplingDtypeSetter(met, np.float64))
 
 
 class StandardHamiltonian(EnergyOperator):

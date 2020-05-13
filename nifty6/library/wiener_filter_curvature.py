@@ -11,12 +11,12 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
-# Copyright(C) 2013-2019 Max-Planck-Society
+# Copyright(C) 2013-2020 Max-Planck-Society
 #
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
 
 from ..operators.inversion_enabler import InversionEnabler
-from ..operators.sampling_enabler import SamplingEnabler
+from ..operators.sampling_enabler import SamplingDtypeSetter, SamplingEnabler
 from ..operators.sandwich_operator import SandwichOperator
 
 
@@ -48,11 +48,9 @@ def WienerFilterCurvature(R, N, S, iteration_controller=None,
     Ninv = N.inverse
     Sinv = S.inverse
     if data_sampling_dtype is not None:
-        from ..operators.energy_operators import SamplingDtypeEnabler
-        Ninv = SamplingDtypeEnabler(Ninv, data_sampling_dtype)
+        Ninv = SamplingDtypeSetter(Ninv, data_sampling_dtype)
     if prior_sampling_dtype is not None:
-        from ..operators.energy_operators import SamplingDtypeEnabler
-        Sinv = SamplingDtypeEnabler(Sinv, data_sampling_dtype)
+        Sinv = SamplingDtypeSetter(Sinv, data_sampling_dtype)
     M = SandwichOperator.make(R, Ninv)
     if iteration_controller_sampling is not None:
         op = SamplingEnabler(M, Sinv, iteration_controller_sampling,

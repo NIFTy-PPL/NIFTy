@@ -30,23 +30,47 @@ class EndomorphicOperator(LinearOperator):
         for endomorphic operators."""
         return self._domain
 
-    def draw_sample_with_dtype(self, dtype, from_inverse=False):
-        """Generate a zero-mean sample
-        FIXME
-
-        Generates a sample from a Gaussian distribution with zero mean and
+    def draw_sample(self, from_inverse=False):
+        """Generates a sample from a Gaussian distribution with zero mean and
         covariance given by the operator.
+
+        May or may not be implemented. Only optional.
 
         Parameters
         ----------
-        dtype : numpy datatype FIXME
-            the data type to be used for the sample
         from_inverse : bool (default : False)
             if True, the sample is drawn from the inverse of the operator
 
         Returns
         -------
-        Field
+        Field or MultiField
+            A sample from the Gaussian of given covariance.
+        """
+        raise NotImplementedError
+
+    def draw_sample_with_dtype(self, dtype, from_inverse=False):
+        """Generates a sample from a Gaussian distribution with zero mean,
+        covariance given by the operator and specified data type.
+
+        This method is implemented only for operators which actually draw
+        samples (e.g. `DiagonalOperator`). Operators which process the sample
+        (like `SandwichOperator`) implement only `draw_sample()`.
+
+        May or may not be implemented. Only optional.
+
+        Parameters
+        ----------
+        dtype : numpy.dtype or dict of numpy.dtype
+            Dtype used for sampling from this operator. If the domain of `op`
+            is a `MultiDomain`, the dtype can either be specified as one value
+            for all components of the `MultiDomain` or in form of a dictionary
+            whose keys need to conincide the with keys of the `MultiDomain`.
+        from_inverse : bool (default : False)
+            if True, the sample is drawn from the inverse of the operator
+
+        Returns
+        -------
+        Field or MultiField
             A sample from the Gaussian of given covariance.
         """
         raise NotImplementedError

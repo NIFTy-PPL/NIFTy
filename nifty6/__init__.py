@@ -35,7 +35,7 @@ from .operators.field_zero_padder import FieldZeroPadder
 from .operators.inversion_enabler import InversionEnabler
 from .operators.mask_operator import MaskOperator
 from .operators.regridding_operator import RegriddingOperator
-from .operators.sampling_enabler import SamplingEnabler
+from .operators.sampling_enabler import SamplingEnabler, SamplingDtypeSetter
 from .operators.sandwich_operator import SandwichOperator
 from .operators.scaling_operator import ScalingOperator
 from .operators.block_diagonal_operator import BlockDiagonalOperator
