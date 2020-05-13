@@ -11,11 +11,9 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
-# Copyright(C) 2013-2019 Max-Planck-Society
+# Copyright(C) 2013-2020 Max-Planck-Society
 #
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
-
-import numpy as np
 
 from ..logger import logger
 from ..minimization.conjugate_gradient import ConjugateGradient
@@ -78,5 +76,8 @@ class InversionEnabler(EndomorphicOperator):
             logger.warning("Error detected during operator inversion")
         return r.position
 
-    def draw_sample(self, dtype, from_inverse=False):
-        return self._op.draw_sample(dtype, from_inverse)
+    def draw_sample(self, from_inverse=False):
+        return self._op.draw_sample(from_inverse)
+
+    def draw_sample_with_dtype(self, dtype, from_inverse=False):
+        return self._op.draw_sample_with_dtype(dtype, from_inverse)

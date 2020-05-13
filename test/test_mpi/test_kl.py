@@ -11,10 +11,11 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
-# Copyright(C) 2013-2019 Max-Planck-Society
+# Copyright(C) 2013-2020 Max-Planck-Society
 #
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
 
+import numpy as np
 import pytest
 from mpi4py import MPI
 from numpy.testing import assert_, assert_allclose
@@ -46,7 +47,7 @@ def test_kl(constants, point_estimates, mirror_samples, mode, mf):
     op = ift.HarmonicSmoothingOperator(dom, 3)
     if mf:
         op = ift.ducktape(dom, None, 'a')*(op.ducktape('b'))
-    lh = ift.GaussianEnergy(domain=op.target) @ op
+    lh = ift.GaussianEnergy(domain=op.target, sampling_dtype=np.float64) @ op
     ic = ift.GradientNormController(iteration_limit=5)
     h = ift.StandardHamiltonian(lh, ic_samp=ic)
     mean0 = ift.from_random('normal', h.domain)

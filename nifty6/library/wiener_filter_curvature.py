@@ -11,17 +11,21 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
-# Copyright(C) 2013-2019 Max-Planck-Society
+# Copyright(C) 2013-2020 Max-Planck-Society
 #
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
 
+import numpy as np
+
 from ..operators.inversion_enabler import InversionEnabler
-from ..operators.sampling_enabler import SamplingEnabler
+from ..operators.sampling_enabler import SamplingDtypeSetter, SamplingEnabler
 from ..operators.sandwich_operator import SandwichOperator
 
 
 def WienerFilterCurvature(R, N, S, iteration_controller=None,
-                          iteration_controller_sampling=None):
+                          iteration_controller_sampling=None,
+                          data_sampling_dtype=np.float64,
+                          prior_sampling_dtype=np.float64):
     """The curvature of the WienerFilterEnergy.
 
     This operator implements the second derivative of the
@@ -42,11 +46,25 @@ def WienerFilterCurvature(R, N, S, iteration_controller=None,
         ConjugateGradient.
     iteration_controller_sampling : IterationController
         The iteration controller to use for sampling.
+    data_sampling_dtype : numpy.dtype or dict of numpy.dtype
+        Data type used for sampling from likelihood. Conincides with the data
+        type of the data used in the inference problem. Default is float64.
+    prior_sampling_dtype : numpy.dtype or dict of numpy.dtype
+        Data type used for sampling from likelihood. Coincides with the data
+        type of the parameters of the forward model used for the inference
+        problem. Default is float64.
     """
-    M = SandwichOperator.make(R, N.inverse)
+    Ninv = N.inverse
+    Sinv = S.inverse
+    if data_sampling_dtype is not None:
+        Ninv = SamplingDtypeSetter(Ninv, data_sampling_dtype)
+    if prior_sampling_dtype is not None:
+        Sinv = SamplingDtypeSetter(Sinv, data_sampling_dtype)
+    M = SandwichOperator.make(R, Ninv)
     if iteration_controller_sampling is not None:
-        op = SamplingEnabler(M, S.inverse, iteration_controller_sampling,
-                             S.inverse)
+        op = SamplingEnabler(M, Sinv, iteration_controller_sampling,
+                             Sinv)
     else:
-        op = M + S.inverse
-    return InversionEnabler(op, iteration_controller, S.inverse)
+        op = M + Sinv
+    op = InversionEnabler(op, iteration_controller, Sinv)
+    return op

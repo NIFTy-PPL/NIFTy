@@ -34,7 +34,8 @@ def test_kl(constants, point_estimates, mirror_samples, mf):
     op = ift.HarmonicSmoothingOperator(dom, 3)
     if mf:
         op = ift.ducktape(dom, None, 'a')*(op.ducktape('b'))
-    lh = ift.GaussianEnergy(domain=op.target) @ op
+    import numpy as np
+    lh = ift.GaussianEnergy(domain=op.target, sampling_dtype=np.float64) @ op
     ic = ift.GradientNormController(iteration_limit=5)
     h = ift.StandardHamiltonian(lh, ic_samp=ic)
     mean0 = ift.from_random('normal', h.domain)

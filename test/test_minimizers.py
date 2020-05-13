@@ -86,15 +86,17 @@ def test_WF_curvature(space):
     N = ift.DiagonalOperator(n)
     all_diag = 1./s + r**2/n
     curv = ift.WienerFilterCurvature(R, N, S, iteration_controller=IC,
-                                     iteration_controller_sampling=IC)
+                                     iteration_controller_sampling=IC,
+                                     data_sampling_dtype=np.float64,
+                                     prior_sampling_dtype=np.float64)
     m = curv.inverse(required_result)
     assert_allclose(
         m.val,
         1./all_diag.val,
         rtol=1e-3,
         atol=1e-3)
-    curv.draw_sample(dtype=np.float64)
-    curv.draw_sample(dtype=np.float64, from_inverse=True)
+    curv.draw_sample()
+    curv.draw_sample(from_inverse=True)
 
     if len(space.shape) == 1:
         R = ift.ValueInserter(space, [0])
@@ -103,15 +105,17 @@ def test_WF_curvature(space):
         all_diag = 1./s + R(1/n)
         curv = ift.WienerFilterCurvature(R.adjoint, N, S,
                                          iteration_controller=IC,
-                                         iteration_controller_sampling=IC)
+                                         iteration_controller_sampling=IC,
+                                         data_sampling_dtype=np.float64,
+                                         prior_sampling_dtype=np.float64)
         m = curv.inverse(required_result)
         assert_allclose(
             m.val,
             1./all_diag.val,
             rtol=1e-3,
             atol=1e-3)
-        curv.draw_sample(dtype=np.float64)
-        curv.draw_sample(dtype=np.float64, from_inverse=True)
+        curv.draw_sample()
+        curv.draw_sample(from_inverse=True)
 
 
 @pmp('minimizer', minimizers + newton_minimizers)

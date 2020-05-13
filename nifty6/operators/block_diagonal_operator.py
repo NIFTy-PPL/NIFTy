@@ -11,11 +11,9 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
-# Copyright(C) 2013-2019 Max-Planck-Society
+# Copyright(C) 2013-2020 Max-Planck-Society
 #
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
-
-import numpy as np
 
 from ..multi_domain import MultiDomain
 from ..multi_field import MultiField
@@ -48,10 +46,10 @@ class BlockDiagonalOperator(EndomorphicOperator):
                     for op, v in zip(self._ops, x.values()))
         return MultiField(self._domain, val)
 
-    def draw_sample(self, dtype, from_inverse=False):
+    def draw_sample_with_dtype(self, dtype, from_inverse=False):
         from ..sugar import from_random
         val = tuple(
-            op.draw_sample(dtype, from_inverse)
+            op.draw_sample_with_dtype(dtype[key], from_inverse)
             if op is not None
             else from_random('normal', self._domain[key], dtype=dtype)
             for op, key in zip(self._ops, self._domain.keys()))
