@@ -103,7 +103,10 @@ class MultiField(Operator):
     @staticmethod
     def from_random(random_type, domain, dtype=np.float64, **kwargs):
         domain = MultiDomain.make(domain)
-        if dtype in [np.float64, np.complex128]:
+        if isinstance(dtype, dict):
+            dtype = {kk: np.dtype(dt) for kk, dt in dtype.items()}
+        else:
+            dtype = np.dtype(dtype)
             dtype = {kk: dtype for kk in domain.keys()}
         dct = {kk: Field.from_random(random_type, domain[kk], dtype[kk], **kwargs)
                for kk in domain.keys()}
