@@ -15,6 +15,8 @@
 #
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
 
+import numpy as np
+
 from ..operators.inversion_enabler import InversionEnabler
 from ..operators.sampling_enabler import SamplingDtypeSetter, SamplingEnabler
 from ..operators.sandwich_operator import SandwichOperator
@@ -22,8 +24,8 @@ from ..operators.sandwich_operator import SandwichOperator
 
 def WienerFilterCurvature(R, N, S, iteration_controller=None,
                           iteration_controller_sampling=None,
-                          data_sampling_dtype=None,
-                          prior_sampling_dtype=None):
+                          data_sampling_dtype=np.float64,
+                          prior_sampling_dtype=np.float64):
     """The curvature of the WienerFilterEnergy.
 
     This operator implements the second derivative of the
@@ -44,6 +46,13 @@ def WienerFilterCurvature(R, N, S, iteration_controller=None,
         ConjugateGradient.
     iteration_controller_sampling : IterationController
         The iteration controller to use for sampling.
+    data_sampling_dtype : numpy.dtype or dict of numpy.dtype
+        Data type used for sampling from likelihood. Conincides with the data
+        type of the data used in the inference problem. Default is float64.
+    prior_sampling_dtype : numpy.dtype or dict of numpy.dtype
+        Data type used for sampling from likelihood. Coincides with the data
+        type of the parameters of the forward model used for the inference
+        problem. Default is float64.
     """
     Ninv = N.inverse
     Sinv = S.inverse
