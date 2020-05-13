@@ -296,3 +296,11 @@ def check_jacobian_consistency(op, loc, tol=1e-8, ntries=100, perf_check=True):
             print(hist)
             raise ValueError("gradient and value seem inconsistent")
         loc = locnext
+
+        # FIXME The following code shows that we need prober tests for complex
+        # derivatives
+        ddtype = loc.values()[0].dtype if isinstance(loc, MultiField) else loc.dtype
+        tdtype = dirder.values()[0].dtype if isinstance(dirder, MultiField) else dirder.dtype
+        only_r_linear = ddtype != tdtype
+        consistency_check(linmid.jac, domain_dtype=ddtype, target_dtype=tdtype,
+                          only_r_linear=only_r_linear)
