@@ -74,11 +74,11 @@ class FFTOperator(LinearOperator):
         self._check_input(x, mode)
         ncells = x.domain[self._space].size
         if x.domain[self._space].harmonic:  # harmonic -> position
-            func = fft.fftn
-            fct = 1.
-        else:
             func = fft.ifftn
             fct = ncells
+        else:
+            func = fft.fftn
+            fct = 1.
         axes = x.domain.axes[self._space]
         tdom = self._tgt(mode)
         tmp = func(x.val, axes=axes)

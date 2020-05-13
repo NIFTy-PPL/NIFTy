@@ -82,8 +82,7 @@ def test_cartesian():
     vol = ift.full(dom, 1.).s_integrate()
     res1 = fft(fld).val
 
-    # FIXME: we don't understand the conjugate() yet
-    np.testing.assert_allclose(res, res1.conjugate()*vol)
+    np.testing.assert_allclose(res, res1*vol)
 
 
 @pmp('eps', [1e-2, 1e-6, 2e-13])

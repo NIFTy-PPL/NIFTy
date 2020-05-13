@@ -1,5 +1,12 @@
 Changes since NIFTy 5:
 
+FFT convention adjusted
+=======================
+
+When going to harmonic space, NIFTy's FFT operator now uses a minus sign in the
+exponent (and, consequently, a plus sign on the adjoint transform). This
+convention is consistent with almost all other numerical FFT libraries.
+
 Interface change in EndomorphicOperator.draw_sample()
 =====================================================
 
