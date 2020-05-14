@@ -10,9 +10,34 @@ convention is consistent with almost all other numerical FFT libraries.
 Interface change in EndomorphicOperator.draw_sample()
 =====================================================
 
-This method now requires a `dtype` argument to be passed.
-As a consequence, `dtype` moves to the first place of the argument list.
-(This of course applies to all derived classes as well.)
+Both complex-valued and real-valued Gaussian probability distributions have
+Hermitian and positive endomorphisms as covariance. Just by looking at an
+endomorphic operator itself it is not clear whether it is viewed as covariance
+for real or complex Gaussians when a sample of the respective distribution shall
+be drawn. Therefore, we introduce the method `draw_sample_with_dtype()` which
+needs to be given the data type of the probability distribution. This function
+is implemented for all operators which actually draw random numbers
+(`DiagonalOperator` and `ScalingOperator`). The class `SamplingDtypeSetter` acts
+as a wrapper for this kind of operators in order to fix the data type of the
+distribution. Samples from these operators can be drawn with `.draw_sample()`.
+In order to dive into those subtleties I suggest running the following code and
+playing around with the dtypes.
+
+```
+import nifty6 as ift
+import numpy as np
+
+dom = ift.UnstructuredDomain(5)
+dtype = [np.float64, np.complex128][1]
+invcov = ift.ScalingOperator(dom, 3)
+e = ift.GaussianEnergy(mean=ift.from_random('normal', dom, dtype=dtype),
+                       inverse_covariance=invcov)
+pos = ift.from_random('normal', dom, dtype=np.complex128)
+lin = e(ift.Linearization.make_var(pos, want_metric=True))
+met = lin.metric
+print(met)
+print(met.draw_sample())
+```
 
 MPI parallelisation over samples in MetricGaussianKL
 ====================================================
