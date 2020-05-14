@@ -21,31 +21,35 @@ from numpy.testing import assert_allclose
 from nifty6.extra import check_jacobian_consistency, consistency_check
 
 import nifty6 as ift
-from ..common import setup_function, teardown_function
+from ..common import list2fixture, setup_function, teardown_function
 
 pmp = pytest.mark.parametrize
+spaces = (ift.UnstructuredDomain(4),
+          ift.RGSpace((3,2)),
+          ift.LMSpace(5),
+          ift.HPSpace(4),
+          ift.GLSpace(4))
+
+space1 = list2fixture(spaces)
+space2 = list2fixture(spaces)
 
 
-@pmp("n_unstructured", (3, 9))
-@pmp("nside", (4, 8))
-def test_linear_einsum_outer(n_unstructured, nside, n_invocations=10):
+def test_linear_einsum_outer(space1, space2, n_invocations=10):
     setup_function()
 
-    pos_space = ift.HPSpace(nside)
     mf_dom = ift.MultiDomain.make(
         {
-            "dom01":
-                ift.UnstructuredDomain(n_unstructured),
+            "dom01": space1,
             "dom02":
                 ift.DomainTuple.make(
-                    (ift.UnstructuredDomain(n_unstructured), pos_space)
+                    (space1, space2)
                 )
         }
     )
     mf = ift.from_random("normal", mf_dom)
     ss = "i,ij,j->ij"
     key_order = ("dom01", "dom02")
-    le = ift.LinearEinsum(pos_space, mf, ss, key_order=key_order)
+    le = ift.LinearEinsum(space2, mf, ss, key_order=key_order)
     assert consistency_check(le) is None
 
     le_ift = ift.DiagonalOperator(
@@ -63,26 +67,22 @@ def test_linear_einsum_outer(n_unstructured, nside, n_invocations=10):
     teardown_function()
 
 
-@pmp("n_unstructured", (3, 9))
-@pmp("nside", (4, 8))
-def test_linear_einsum_contraction(n_unstructured, nside, n_invocations=10):
+def test_linear_einsum_contraction(space1, space2, n_invocations=10):
     setup_function()
 
-    pos_space = ift.HPSpace(nside)
     mf_dom = ift.MultiDomain.make(
         {
-            "dom01":
-                ift.UnstructuredDomain(n_unstructured),
+            "dom01": space1,
             "dom02":
                 ift.DomainTuple.make(
-                    (ift.UnstructuredDomain(n_unstructured), pos_space)
+                    (space1, space2)
                 )
         }
     )
     mf = ift.from_random("normal", mf_dom)
     ss = "i,ij,j->i"
     key_order = ("dom01", "dom02")
-    le = ift.LinearEinsum(pos_space, mf, ss, key_order=key_order)
+    le = ift.LinearEinsum(space2, mf, ss, key_order=key_order)
     assert consistency_check(le) is None
 
     le_ift = ift.ContractionOperator(mf_dom["dom02"], 1) @ ift.DiagonalOperator(
@@ -100,24 +100,16 @@ def test_linear_einsum_contraction(n_unstructured, nside, n_invocations=10):
     teardown_function()
 
 
-@pmp("n_unstructured", (3, 9))
-@pmp("nside", (4, 8))
 def test_multi_linear_einsum_outer(
-    n_unstructured, nside, n_invocations=10, ntries=100
+    space1, space2, n_invocations=10, ntries=100
 ):
     setup_function()
 
-    pos_space = ift.HPSpace(nside)
     mf_dom = ift.MultiDomain.make(
         {
-            "dom01":
-                ift.UnstructuredDomain(n_unstructured),
-            "dom02":
-                ift.DomainTuple.make(
-                    (ift.UnstructuredDomain(n_unstructured), pos_space)
-                ),
-            "dom03":
-                pos_space
+            "dom01": space1,
+            "dom02":ift.DomainTuple.make((space1, space2)),
+            "dom03": space2
         }
     )
     ss = "i,ij,j->ij"
