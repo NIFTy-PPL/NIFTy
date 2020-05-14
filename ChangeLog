@@ -11,14 +11,14 @@ Interface change in EndomorphicOperator.draw_sample()
 =====================================================
 
 Both complex-valued and real-valued Gaussian probability distributions have
-hermitian and positive endomorphisms as covariance. Just by looking at an
+Hermitian and positive endomorphisms as covariance. Just by looking at an
 endomorphic operator itself it is not clear whether it is viewed as covariance
 for real or complex Gaussians when a sample of the respective distribution shall
 be drawn. Therefore, we introduce the method `draw_sample_with_dtype()` which
 needs to be given the data type of the probability distribution. This function
 is implemented for all operators which actually draw random numbers
 (`DiagonalOperator` and `ScalingOperator`). The class `SamplingDtypeSetter` acts
-as a wrapper for these kind of operators in order to fix the data type of the
+as a wrapper for this kind of operators in order to fix the data type of the
 distribution. Samples from these operators can be drawn with `.draw_sample()`.
 In order to dive into those subtleties I suggest running the following code and
 playing around with the dtypes.
