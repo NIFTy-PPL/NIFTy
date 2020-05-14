@@ -146,3 +146,9 @@ class SamplingDtypeSetter(EndomorphicOperator):
     def draw_sample(self, from_inverse=False):
         return self._op.draw_sample_with_dtype(self._dtype,
                                                from_inverse=from_inverse)
+
+    def __repr__(self):
+        from ..utilities import indent
+        return "\n".join((
+            f"SamplingDtypeSetter {self._dtype}:",
+            indent(self._op.__repr__())))
