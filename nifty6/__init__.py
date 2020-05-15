@@ -25,7 +25,7 @@ from .operators.adder import Adder
 from .operators.diagonal_operator import DiagonalOperator
 from .operators.distributors import DOFDistributor, PowerDistributor
 from .operators.domain_tuple_field_inserter import DomainTupleFieldInserter
-from .operators.contraction_operator import ContractionOperator
+from .operators.contraction_operator import ContractionOperator, IntegrationOperator
 from .operators.linear_interpolation import LinearInterpolator
 from .operators.endomorphic_operator import EndomorphicOperator
 from .operators.harmonic_operators import (
