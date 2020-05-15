@@ -24,7 +24,6 @@ from nifty6.extra import check_jacobian_consistency, consistency_check
 import nifty6 as ift
 from ..common import list2fixture, setup_function, teardown_function
 
-pmp = pytest.mark.parametrize
 spaces = (ift.UnstructuredDomain(4),
           ift.RGSpace((3,2)),
           ift.LMSpace(5),
@@ -36,8 +35,6 @@ dtype = list2fixture([np.float64, np.complex128])
 
 
 def test_linear_einsum_outer(space1, space2, dtype, n_invocations=10):
-    setup_function()
-
     mf_dom = ift.MultiDomain.make(
         {
             "dom01": space1,
@@ -65,12 +62,8 @@ def test_linear_einsum_outer(space1, space2, dtype, n_invocations=10):
         r_adj = ift.from_random("normal", le.target, dtype=dtype)
         assert_allclose(le.adjoint(r_adj).val, le_ift.adjoint(r_adj).val)
 
-    teardown_function()
-
 
 def test_linear_einsum_contraction(space1, space2, dtype, n_invocations=10):
-    setup_function()
-
     mf_dom = ift.MultiDomain.make(
         {
             "dom01": space1,
@@ -98,14 +91,10 @@ def test_linear_einsum_contraction(space1, space2, dtype, n_invocations=10):
         r_adj = ift.from_random("normal", le.target, dtype=dtype)
         assert_allclose(le.adjoint(r_adj).val, le_ift.adjoint(r_adj).val)
 
-    teardown_function()
-
 
 def test_multi_linear_einsum_outer(
     space1, space2, dtype, n_invocations=10, ntries=100
 ):
-    setup_function()
-
     mf_dom = ift.MultiDomain.make(
         {
             "dom01": space1,
@@ -145,5 +134,3 @@ def test_multi_linear_einsum_outer(
         mle_ift_j_val = mle_ift_rl.jac.adjoint(rj_adj).val
         for k in mle_ift.domain.keys():
             assert_allclose(mle_j_val[k], mle_ift_j_val[k])
-
-    teardown_function()
