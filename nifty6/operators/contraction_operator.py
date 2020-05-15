@@ -27,7 +27,7 @@ class ContractionOperator(LinearOperator):
     """A :class:`LinearOperator` which sums up fields into the direction of
     subspaces.
 
-    This Operator sums up a field with is defined on a :class:`DomainTuple`
+    This Operator sums up a field which is defined on a :class:`DomainTuple`
     to a :class:`DomainTuple` which is a subset of the former.
 
     Parameters
@@ -72,6 +72,19 @@ class ContractionOperator(LinearOperator):
 
 
 def IntegrationOperator(domain, spaces):
+    """A :class:`LinearOperator` which integrates fields into the direction
+    of subspaces.
+
+    This Operator integrates a field which is defined on a :class:`DomainTuple`
+    to a :class:`DomainTuple` which is a subset of the former.
+
+    Parameters
+    ----------
+    domain : Domain, tuple of Domain or DomainTuple
+    spaces : None, int or tuple of int
+        The elements of "domain" which are contracted.
+        If `None`, everything is contracted
+    """
     domain = DomainTuple.make(domain)
     swgt = domain.scalar_weight(spaces)
     return ContractionOperator(domain, spaces, swgt)
