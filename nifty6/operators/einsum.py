@@ -51,7 +51,7 @@ class MultiLinearEinsum(Operator):
     -----
     By convention :class:`MultiLinearEinsum` only performs operations with
     lower indices. Therefore no complex conjugation is performed on complex
-    Inputs. To achieve operations with upper/lower indices use
+    inputs. To achieve operations with upper/lower indices use
     :class:`PartialConjugate` before applying this operator.
     """
     def __init__(self, domain, subscripts,
@@ -181,6 +181,13 @@ class LinearEinsum(LinearOperator):
         the order of the keys in the multi-field.
     optimize: bool, String or List, optional
         Parameter passed on to einsum_path.
+
+    Notes
+    -----
+    By convention :class:`LinearEinsum` only performs operations with
+    lower indices. Therefore no complex conjugation is performed on complex
+    inputs or mf. To achieve operations with upper/lower indices use
+    :class:`PartialConjugate` before applying this operator.
     """
     def __init__(self, domain, mf, subscripts, key_order=None, optimize='optimal',
                  _target=None, _calling_as_lin=False):
