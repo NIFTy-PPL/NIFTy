@@ -37,12 +37,12 @@ class MultiDomain(object):
     """
     _domainCache = {}
 
-    def __init__(self, dict, _callingfrommake=False):
+    def __init__(self, dct, _callingfrommake=False):
         if not _callingfrommake:
             raise NotImplementedError(
                 'To create a MultiDomain call `MultiDomain.make()`.')
-        self._keys = tuple(sorted(dict.keys()))
-        self._domains = tuple(dict[key] for key in self._keys)
+        self._keys = tuple(sorted(dct.keys()))
+        self._domains = tuple(dct[key] for key in self._keys)
         self._idx = frozendict({key: i for i, key in enumerate(self._keys)})
 
     @staticmethod
