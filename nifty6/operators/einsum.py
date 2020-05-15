@@ -12,7 +12,7 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
 # Copyright(C) 2013-2019 Max-Planck-Society
-# Authors: Gordian Edenhofer
+# Authors: Gordian Edenhofer, Philipp Frank
 #
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
 
@@ -28,9 +28,7 @@ from .linear_operator import LinearOperator
 
 
 class MultiLinearEinsum(Operator):
-    """Multi-linear Einsum operator with corresponding derivates
-
-    FIXME: This operator does not perform any complex conjugation!
+    """Multi-linear Einsum operator with corresponding derivates.
 
     Parameters
     ----------
@@ -48,6 +46,13 @@ class MultiLinearEinsum(Operator):
         Linearization.
     optimize: bool, String or List, optional
         Parameter passed on to einsum_path.
+
+    Notes
+    -----
+    By convention :class:`MultiLinearEinsum` only performs operations with
+    lower indices. Therefore no complex conjugation is performed on complex
+    Inputs. To achieve operations with upper/lower indices use
+    :class:`PartialConjugate` before applying this operator.
     """
     def __init__(self, domain, subscripts,
                  key_order=None, static_mf=None, optimize='optimal'):
@@ -159,7 +164,6 @@ class MultiLinearEinsum(Operator):
 class LinearEinsum(LinearOperator):
     """Linear Einsum operator with exactly one freely varying field
 
-    FIXME: This operator does not perform any complex conjugation!
 
     Parameters
     ----------
@@ -259,11 +263,11 @@ class LinearEinsum(LinearOperator):
     def apply(self, x, mode):
         self._check_input(x, mode)
         if mode == self.TIMES:
-            dom, ss = self.target, self._sscr
+            dom, ss, mf = self.target, self._sscr, self._mf
         else:
-            dom, ss = self.domain, self._adj_sscr
+            dom, ss, mf = self.domain, self._adj_sscr, self._mf.conjugate()
         res = np.einsum(
-            ss, *(self._mf.val[k] for k in self._key_order), x.val,
+            ss, *(mf[k].val for k in self._key_order), x.val,
             **self._ein_kw
         )
         return Field.from_raw(dom, res)

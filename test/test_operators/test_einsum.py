@@ -12,12 +12,13 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
 # Copyright(C) 2013-2019 Max-Planck-Society
-# Authors: Gordian Edenhofer
+# Authors: Gordian Edenhofer, Philipp Frank
 #
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
 
 import pytest
 from numpy.testing import assert_allclose
+import numpy as np
 from nifty6.extra import check_jacobian_consistency, consistency_check
 
 import nifty6 as ift
@@ -27,14 +28,14 @@ pmp = pytest.mark.parametrize
 spaces = (ift.UnstructuredDomain(4),
           ift.RGSpace((3,2)),
           ift.LMSpace(5),
-          ift.HPSpace(4),
           ift.GLSpace(4))
 
 space1 = list2fixture(spaces)
 space2 = list2fixture(spaces)
+dtype = list2fixture([np.float64, np.complex128])
 
 
-def test_linear_einsum_outer(space1, space2, n_invocations=10):
+def test_linear_einsum_outer(space1, space2, dtype, n_invocations=10):
     setup_function()
 
     mf_dom = ift.MultiDomain.make(
@@ -46,11 +47,11 @@ def test_linear_einsum_outer(space1, space2, n_invocations=10):
                 )
         }
     )
-    mf = ift.from_random("normal", mf_dom)
+    mf = ift.from_random("normal", mf_dom, dtype=dtype)
     ss = "i,ij,j->ij"
     key_order = ("dom01", "dom02")
     le = ift.LinearEinsum(space2, mf, ss, key_order=key_order)
-    assert consistency_check(le) is None
+    assert consistency_check(le, domain_dtype=dtype,target_dtype=dtype) is None
 
     le_ift = ift.DiagonalOperator(
         mf["dom01"], domain=mf_dom["dom02"], spaces=0
@@ -59,15 +60,15 @@ def test_linear_einsum_outer(space1, space2, n_invocations=10):
     )
 
     for _ in range(n_invocations):
-        r = ift.from_random("normal", le.domain)
+        r = ift.from_random("normal", le.domain, dtype=dtype)
         assert_allclose(le(r).val, le_ift(r).val)
-        r_adj = ift.from_random("normal", le.target)
+        r_adj = ift.from_random("normal", le.target, dtype=dtype)
         assert_allclose(le.adjoint(r_adj).val, le_ift.adjoint(r_adj).val)
 
     teardown_function()
 
 
-def test_linear_einsum_contraction(space1, space2, n_invocations=10):
+def test_linear_einsum_contraction(space1, space2, dtype, n_invocations=10):
     setup_function()
 
     mf_dom = ift.MultiDomain.make(
@@ -79,11 +80,11 @@ def test_linear_einsum_contraction(space1, space2, n_invocations=10):
                 )
         }
     )
-    mf = ift.from_random("normal", mf_dom)
+    mf = ift.from_random("normal", mf_dom, dtype=dtype)
     ss = "i,ij,j->i"
     key_order = ("dom01", "dom02")
     le = ift.LinearEinsum(space2, mf, ss, key_order=key_order)
-    assert consistency_check(le) is None
+    assert consistency_check(le, domain_dtype=dtype,target_dtype=dtype) is None
 
     le_ift = ift.ContractionOperator(mf_dom["dom02"], 1) @ ift.DiagonalOperator(
         mf["dom01"], domain=mf_dom["dom02"], spaces=0
@@ -92,16 +93,16 @@ def test_linear_einsum_contraction(space1, space2, n_invocations=10):
     )
 
     for _ in range(n_invocations):
-        r = ift.from_random("normal", le.domain)
+        r = ift.from_random("normal", le.domain, dtype=dtype)
         assert_allclose(le(r).val, le_ift(r).val)
-        r_adj = ift.from_random("normal", le.target)
+        r_adj = ift.from_random("normal", le.target, dtype=dtype)
         assert_allclose(le.adjoint(r_adj).val, le_ift.adjoint(r_adj).val)
 
     teardown_function()
 
 
 def test_multi_linear_einsum_outer(
-    space1, space2, n_invocations=10, ntries=100
+    space1, space2, dtype, n_invocations=10, ntries=100
 ):
     setup_function()
 
@@ -116,7 +117,7 @@ def test_multi_linear_einsum_outer(
     key_order = ("dom01", "dom02", "dom03")
     mle = ift.MultiLinearEinsum(mf_dom, ss, key_order=key_order)
     check_jacobian_consistency(
-        mle, ift.from_random("normal", mle.domain), ntries=ntries
+        mle, ift.from_random("normal", mle.domain, dtype=dtype), ntries=ntries
     )
 
     outer_i = ift.OuterProduct(
@@ -133,12 +134,13 @@ def test_multi_linear_einsum_outer(
     ) * (outer_j @ ift.FieldAdapter(mf_dom["dom03"], "dom03"))
 
     for _ in range(n_invocations):
-        rl = ift.Linearization.make_var(ift.from_random("normal", mle.domain))
+        rl = ift.Linearization.make_var(
+                ift.from_random("normal", mle.domain, dtype=dtype))
         mle_rl, mle_ift_rl = mle(rl), mle_ift(rl)
         assert_allclose(mle_rl.val.val, mle_ift_rl.val.val)
         assert_allclose(mle_rl.jac(rl.val).val, mle_ift_rl.jac(rl.val).val)
 
-        rj_adj = ift.from_random("normal", mle_rl.jac.target)
+        rj_adj = ift.from_random("normal", mle_rl.jac.target, dtype=dtype)
         mle_j_val = mle_rl.jac.adjoint(rj_adj).val
         mle_ift_j_val = mle_ift_rl.jac.adjoint(rj_adj).val
         for k in mle_ift.domain.keys():
