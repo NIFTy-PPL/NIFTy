@@ -102,6 +102,29 @@ class MultiField(Operator):
 
     @staticmethod
     def from_random(random_type, domain, dtype=np.float64, **kwargs):
+        """Draws a random multi-field with the given parameters.
+
+        Parameters
+        ----------
+        random_type : 'pm1', 'normal', or 'uniform'
+            The random distribution to use.
+        domain : DomainTuple
+            The domain of the output random Field.
+        dtype : type
+            The datatype of the output random Field.
+
+        Returns
+        -------
+        MultiField
+            The newly created :class:`MultiField`.
+
+        Notes
+        -----
+        The individual fields within this multi-field will be drawn in alphabetical
+        order of the multi-field's domain keys. As a consequence, renaming these
+        keys may cause the multi-field to be filled with different random numbers,
+        even for the same initial RNG state.
+        """
         domain = MultiDomain.make(domain)
         if isinstance(dtype, dict):
             dtype = {kk: np.dtype(dt) for kk, dt in dtype.items()}
