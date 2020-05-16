@@ -120,10 +120,10 @@ class MultiField(Operator):
 
         Notes
         -----
-        The ordering of the keys within a multi-domain WILL change the resulting
-        :class:`MultiField`. Note, since keys in a :class:`MultiDomain` are sorted,
-        renaming keys may also impacts the ordering of the generated random numbers
-        within the returned :class:`MultiField`.
+        The individual fields within this multi-field will be drawn in alphabetical
+        order of the multi-field's domain keys. As a consequence, renaming these
+        keys may cause the multi-field to be filled with different random numbers,
+        even for the same initial RNG state.
         """
         domain = MultiDomain.make(domain)
         if isinstance(dtype, dict):

@@ -31,7 +31,7 @@ class MultiDomain(object):
     For consistency and to be independent of the order of insertion, the keys
     within a multi-domain are sorted. Hence, renaming a domain may result in it
     being placed at a different index within a multi-domain. This is especially
-    important if a sequence of e.g. random number are distributed sequentially
+    important if a sequence of, e.g., random numbers is distributed sequentially
     over a multi-domain. In this example, ordering keys differently will change
     the resulting :class:`MultiField`.
     """
