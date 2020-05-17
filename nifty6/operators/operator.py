@@ -128,7 +128,7 @@ class Operator(metaclass=NiftyMeta):
         from .contraction_operator import ContractionOperator
         return ContractionOperator(self.target, spaces)(self)
 
-    def intergate(self, spaces=None):
+    def integrate(self, spaces=None):
         from .contraction_operator import IntegrationOperator
         return IntegrationOperator(self.target, spaces)(self)
 
