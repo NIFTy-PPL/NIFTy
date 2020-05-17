@@ -41,7 +41,7 @@ setup(name="nifty6",
       license="GPLv3",
       setup_requires=['scipy>=1.4.1', 'numpy>=1.17'],
       install_requires=['scipy>=1.4.1', 'numpy>=1.17'],
-      python_requires='>=3.5',
+      python_requires='>=3.6',
       classifiers=[
         "Development Status :: 4 - Beta",
         "Topic :: Utilities",

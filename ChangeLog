@@ -1,5 +1,9 @@
 Changes since NIFTy 5:
 
+Minimum Python version increased to 3.6
+=======================================
+
+
 FFT convention adjusted
 =======================
 
