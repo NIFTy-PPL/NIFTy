@@ -17,7 +17,7 @@
 
 import numpy as np
 
-import nifty6 as ift
+import nifty7 as ift
 from .common import setup_function, teardown_function
 
 nr = 0

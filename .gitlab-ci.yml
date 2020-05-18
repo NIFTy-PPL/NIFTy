@@ -37,7 +37,7 @@ build_docker_from_cache:
 test_serial:
   stage: test
   script:
-    - pytest-3 -q --cov=nifty6 test
+    - pytest-3 -q --cov=nifty7 test
     - >
       python3 -m coverage report --omit "*plot*" | tee coverage.txt
     - >
@@ -59,7 +59,7 @@ pages:
     paths:
     - public
   only:
-  - NIFTy_5
+  - NIFTy_6
 
 
 before_script:

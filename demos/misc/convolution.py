@@ -1,5 +1,5 @@
 import numpy as np
-import nifty6 as ift
+import nifty7 as ift
 
 
 def convtest(test_signal, delta, func):

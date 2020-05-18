@@ -21,7 +21,7 @@ Some remarks on NIFTy's treatment of random numbers
 NIFTy makes use of the `Generator` and `SeedSequence` classes introduced to
 `numpy.random` in numpy 1.17.
 
-On first load of the `nifty6.random` module, it creates a stack of
+On first load of the `nifty7.random` module, it creates a stack of
 `SeedSequence` objects which contains a single `SeedSequence` with a fixed seed,
 and also a stack of `Generator` objects, which contains a single generator
 derived from the above seed sequence. Without user intervention, this generator
@@ -73,7 +73,7 @@ import numpy as np
 
 # Stack of SeedSequence objects. Will always start out with a well-defined
 # default. Users can change the "random seed" used by a calculation by pushing
-# a different SeedSequence before invoking any other nifty6.random calls
+# a different SeedSequence before invoking any other nifty7.random calls
 _sseq = [np.random.SeedSequence(42)]
 # Stack of random number generators associated with _sseq.
 _rng = [np.random.default_rng(_sseq[-1])]

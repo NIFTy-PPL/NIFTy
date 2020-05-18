@@ -27,10 +27,10 @@ def list2fixture(lst):
 
 
 def setup_function():
-    import nifty6 as ift
+    import nifty7 as ift
     ift.random.push_sseq_from_seed(42)
 
 
 def teardown_function():
-    import nifty6 as ift
+    import nifty7 as ift
     ift.random.pop_sseq()

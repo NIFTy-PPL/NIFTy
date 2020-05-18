@@ -18,7 +18,7 @@
 import numpy as np
 import pytest
 
-import nifty6 as ift
+import nifty7 as ift
 
 from ..common import list2fixture, setup_function, teardown_function
 

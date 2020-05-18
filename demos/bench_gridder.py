@@ -3,7 +3,7 @@ from time import time
 import matplotlib.pyplot as plt
 import numpy as np
 
-import nifty6 as ift
+import nifty7 as ift
 
 N0s, a0s, b0s, c0s = [], [], [], []
 

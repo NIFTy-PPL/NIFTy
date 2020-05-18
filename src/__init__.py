@@ -99,4 +99,4 @@ from .linearization import Linearization
 from .operator_spectrum import operator_spectrum
 
 # We deliberately don't set __all__ here, because we don't want people to do a
-# "from nifty6 import *"; that would swamp the global namespace.
+# "from nifty7 import *"; that would swamp the global namespace.

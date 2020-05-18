@@ -18,10 +18,10 @@
 
 import pytest
 from numpy.testing import assert_allclose, assert_array_equal
-from nifty6.extra import consistency_check
+from nifty7.extra import consistency_check
 
 import numpy as np
-import nifty6 as ift
+import nifty7 as ift
 from ..common import list2fixture, setup_function, teardown_function
 
 pmp = pytest.mark.parametrize

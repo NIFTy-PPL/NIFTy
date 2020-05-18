@@ -148,7 +148,7 @@ A visualisation of this can be seen in figure 2, which displays the MAP inferenc
 Implementation in NIFTy
 .......................
 
-.. currentmodule:: nifty6
+.. currentmodule:: nifty7
 
 Most codes in NIFTy will contain the description of a measurement process or,
 more generally, a log-likelihood.

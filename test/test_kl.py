@@ -15,7 +15,7 @@
 #
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
 
-import nifty6 as ift
+import nifty7 as ift
 from numpy.testing import assert_, assert_allclose
 import pytest
 from .common import setup_function, teardown_function
