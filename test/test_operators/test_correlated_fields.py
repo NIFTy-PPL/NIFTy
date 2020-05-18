@@ -24,11 +24,13 @@ from ..common import setup_function, teardown_function
 
 pmp = pytest.mark.parametrize
 
+
 def _stats(op, samples):
     sc = ift.StatCalculator()
     for s in samples:
         sc.add(op(s.extract(op.domain)))
     return sc.mean.val, sc.var.ptw("sqrt").val
+
 
 @pmp('sspace', [ift.RGSpace(4), ift.RGSpace((4, 4), (0.123, 0.4)),
                 ift.HPSpace(8), ift.GLSpace(4)])
