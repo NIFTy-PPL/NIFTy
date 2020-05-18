@@ -326,20 +326,3 @@ def testSlowFieldAdapter(seed):
     dom = {'a': ift.RGSpace(1), 'b': ift.RGSpace(2)}
     op = ift.operators.simple_linear_operators._SlowFieldAdapter(dom, 'a')
     ift.extra.consistency_check(op)
-
-@pmp('sp1', [0, 2])
-@pmp('sp2', [1])
-@pmp('seed', [12, 3])
-def testSwitchSpacesOperator(sp1, sp2, seed):
-    with ift.random.Context(seed):
-        dom1 = ift.RGSpace(1)
-        dom2 = ift.RGSpace((2, 2))
-        dom3 = ift.RGSpace(3)
-        dom = ift.DomainTuple.make([dom1, dom2, dom3])
-        op = ift.SwitchSpacesOperator(dom, sp1, sp2)
-
-        tgt = list(dom)
-        tgt[sp1] = dom[sp2]
-        tgt[sp2] = dom[sp1]
-        assert op.target == ift.DomainTuple.make(tgt)
-        ift.extra.consistency_check(op)

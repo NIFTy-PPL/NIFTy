@@ -16,7 +16,6 @@ In addition to the below changes, the following operators were introduced:
 * PartialConjugate: Conjugates parts of a multi-field
 * SliceOperator: Geometry preserving mask operator
 * SplitOperator: Splits a single field into a multi-field
-* SwitchSpacesOperator: Permutes the domain entries of fields
 
 FFT convention adjusted
 =======================

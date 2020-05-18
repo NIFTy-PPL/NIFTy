@@ -43,9 +43,9 @@ from .operators.selection_operators import SliceOperator, SplitOperator
 from .operators.block_diagonal_operator import BlockDiagonalOperator
 from .operators.outer_product_operator import OuterProduct
 from .operators.simple_linear_operators import (
-    VdotOperator, ConjugationOperator, Realizer,
-    FieldAdapter, ducktape, GeometryRemover, NullOperator,
-    MatrixProductOperator, PartialExtractor, SwitchSpacesOperator)
+    VdotOperator, ConjugationOperator, Realizer, FieldAdapter, ducktape,
+    GeometryRemover, NullOperator, PartialExtractor)
+from .operators.matrix_product_operator import MatrixProductOperator
 from .operators.value_inserter import ValueInserter
 from .operators.energy_operators import (
     EnergyOperator, GaussianEnergy, PoissonianEnergy, InverseGammaLikelihood,
