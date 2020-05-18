@@ -38,6 +38,7 @@ from .operators.regridding_operator import RegriddingOperator
 from .operators.sampling_enabler import SamplingEnabler, SamplingDtypeSetter
 from .operators.sandwich_operator import SandwichOperator
 from .operators.scaling_operator import ScalingOperator
+from .operators.selection_operators import SliceOperator, SplitOperator
 from .operators.block_diagonal_operator import BlockDiagonalOperator
 from .operators.outer_product_operator import OuterProduct
 from .operators.simple_linear_operators import (
