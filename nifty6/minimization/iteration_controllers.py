@@ -16,6 +16,7 @@
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
 
 import functools
+from time import time
 
 import numpy as np
 
@@ -39,6 +40,10 @@ class IterationController(metaclass=NiftyMeta):
     class; the implementer has full flexibility to use whichever criteria are
     appropriate for a particular problem - as long as they can be computed from
     the information passed to the controller during the iteration process.
+
+    For analyzing minimization procedures IterationControllers can log energy
+    values together with the respective time stamps. In order to activate this
+    feature `activate_and_reset_logging()` needs to be called.
     """
 
     CONVERGED, CONTINUE, ERROR = list(range(3))
@@ -75,7 +80,13 @@ class IterationController(metaclass=NiftyMeta):
         raise NotImplementedError
 
     def pop_history(self):
-        """FIXME"""
+        """Returns the collected history of energy values and resets the
+        history afterwards.
+
+        Returns
+        -------
+        list : List of (unix timestamp, energy values) tuples
+        """
         if self._history is None:
             raise RuntimeError('No history was taken')
         res = self._history
@@ -83,16 +94,17 @@ class IterationController(metaclass=NiftyMeta):
         return res
 
     def activate_and_reset_logging(self):
-        """FIXME"""
+        """Activates the logging functionality. If the log has been populated
+        before, it is reset."""
         self._history = []
 
 
 def append_history(func):
-    """FIXME"""
     @functools.wraps(func)
     def wrapper(*args, **kwargs):
         if args[0]._history is not None:
-            args[0]._history.append(args[1].value)
+            energy_val = args[1].value
+            args[0]._history.append((time(), energy_val))
         return func(*args, **kwargs)
     return wrapper
 
