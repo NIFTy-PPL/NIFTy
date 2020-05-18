@@ -193,7 +193,7 @@ def testGeometryRemover(sp, dtype):
 @pmp('spaces', [0, 1, 2, 3, (0, 1), (0, 2), (0, 1, 2), (0, 2, 3), (1, 3)])
 @pmp('wgt', [0, 1, 2, -1])
 def testContractionOperator(spaces, wgt, dtype):
-    dom = (ift.RGSpace(10), ift.RGSpace(13), ift.GLSpace(5), ift.HPSpace(4))
+    dom = (ift.RGSpace(1), ift.RGSpace(2), ift.GLSpace(3), ift.HPSpace(2))
     op = ift.ContractionOperator(dom, spaces, wgt)
     ift.extra.consistency_check(op, dtype, dtype)
 
@@ -210,8 +210,8 @@ def testDomainTupleFieldInserter():
 @pmp('factor', [1, 2, 2.7])
 @pmp('central', [False, True])
 def testZeroPadder(space, factor, dtype, central):
-    dom = (ift.RGSpace(10), ift.UnstructuredDomain(13), ift.RGSpace(7, 12),
-           ift.HPSpace(4))
+    dom = (ift.RGSpace(4), ift.UnstructuredDomain(5), ift.RGSpace(3, 4),
+           ift.HPSpace(2))
     newshape = [int(factor*l) for l in dom[space].shape]
     op = ift.FieldZeroPadder(dom, newshape, space, central)
     ift.extra.consistency_check(op, dtype, dtype)
