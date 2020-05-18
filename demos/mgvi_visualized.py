@@ -57,9 +57,9 @@ if __name__ == '__main__':
             xs.append(samp['a'])
             ys.append(samp['b'])
         plt.scatter(np.array(xs)*uninformative_scaling, np.array(ys))
-        plt.scatter(pos.val['a'], pos.val['b'], color='red')
+        plt.scatter(pos.val['a']*uninformative_scaling, pos.val['b'], color='red')
         plt.draw()
-        plt.pause(0.01)
+        plt.pause(1.0)
 
         mgkl, _ = newton(mgkl)
         pos = mgkl.position
