@@ -92,6 +92,44 @@ def test_linear_einsum_contraction(space1, space2, dtype, n_invocations=10):
         assert_allclose(le.adjoint(r_adj).val, le_ift.adjoint(r_adj).val)
 
 
+class _SwitchSpacesOperator(ift.LinearOperator):
+    """Operator to permutate the domain entries of fields.
+
+    Exchanges the entries `space1` and `space2` of the input's domain.
+    """
+    def __init__(self, domain, space1, space2=0):
+        self._capability = self.TIMES | self.ADJOINT_TIMES
+        self._domain = ift.DomainTuple.make(domain)
+
+        n_spaces = len(self._domain)
+        if space1 >= n_spaces or space1 < 0 \
+          or space2 >= n_spaces or space2 < 0:
+            raise ValueError("invalid space value")
+
+        tgt = list(self._domain)
+        tgt[space2] = self._domain[space1]
+        tgt[space1] = self._domain[space2]
+        self._target = ift.DomainTuple.make(tgt)
+
+        dom_axes = self._domain.axes
+        tgt_axes = self._target.axes
+
+        self._axes_dom = dom_axes[space1] + dom_axes[space2]
+        self._axes_tgt = tgt_axes[space2] + tgt_axes[space1]
+
+    def apply(self, x, mode):
+        self._check_input(x, mode)
+
+        if mode == self.TIMES:
+            val = np.moveaxis(x.val, self._axes_dom, self._axes_tgt)
+            dom = self._target
+        else:
+            val = np.moveaxis(x.val, self._axes_tgt, self._axes_dom)
+            dom = self._domain
+
+        return ift.Field(dom, val)
+
+
 def test_multi_linear_einsum_outer(
     space1, space2, dtype, n_invocations=10, ntries=100
 ):
@@ -116,7 +154,7 @@ def test_multi_linear_einsum_outer(
         ift.full(mf_dom["dom01"], 1.), ift.DomainTuple.make(mf_dom["dom02"][1])
     )
     # SwitchSpacesOperator is equivalent to LinearEinsum with "ij->ji"
-    mle_ift = ift.SwitchSpacesOperator(
+    mle_ift = _SwitchSpacesOperator(
         outer_i.target, 1
     ) @ outer_i @ ift.FieldAdapter(mf_dom["dom01"], "dom01") * ift.FieldAdapter(
         mf_dom["dom02"], "dom02"
