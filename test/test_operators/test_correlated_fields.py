@@ -11,7 +11,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
-# Copyright(C) 2013-2019 Max-Planck-Society
+# Copyright(C) 2013-2020 Max-Planck-Society
 #
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
 
@@ -19,19 +19,19 @@ import pytest
 from numpy.testing import assert_allclose
 
 import nifty6 as ift
+
 from ..common import setup_function, teardown_function
 
+pmp = pytest.mark.parametrize
 
-@pytest.mark.parametrize('sspace', [ift.RGSpace(4),
-                                    ift.RGSpace((4, 4), (0.123, 0.4)),
-                                    ift.HPSpace(8),
-                                    ift.GLSpace(4)])
-@pytest.mark.parametrize('rseed', [13, 2])
-@pytest.mark.parametrize('Astds', [[1., 3.], [0.2, 1.4]])
-@pytest.mark.parametrize('offset_std_mean', [1., 10.])
-@pytest.mark.parametrize('N', [0, 2])
-@pytest.mark.parametrize('zm_mean', [0, 1.])
-def testAmplitudesConsistency(rseed, sspace, Astds, offset_std_mean, N, zm_mean):
+@pmp('sspace', [ift.RGSpace(4), ift.RGSpace((4, 4), (0.123, 0.4)),
+                ift.HPSpace(8), ift.GLSpace(4)])
+@pmp('rseed', [13, 2])
+@pmp('astds', [[1., 3.], [0.2, 1.4]])
+@pmp('offset_std_mean', [1., 10.])
+@pmp('N', [0, 2])
+@pmp('zm_mean', [0, 1.])
+def testAmplitudesConsistency(rseed, sspace, astds, offset_std_mean, N, zm_mean):
     def stats(op, samples):
         sc = ift.StatCalculator()
         for s in samples:
@@ -42,18 +42,19 @@ def testAmplitudesConsistency(rseed, sspace, Astds, offset_std_mean, N, zm_mean)
         nsam = 100
 
         fsspace = ift.RGSpace((12,), (0.4,))
-        if N==2:
-            dofdex1 = [0,0]
-            dofdex2 = [1,0]
-            dofdex3 = [1,1]
+        if N == 2:
+            dofdex1 = [0, 0]
+            dofdex2 = [1, 0]
+            dofdex3 = [1, 1]
         else:
             dofdex1, dofdex2, dofdex3 = None, None, None
 
-        fa = ift.CorrelatedFieldMaker.make(zm_mean, offset_std_mean, 1E-8, '', N, dofdex1)
-        fa.add_fluctuations(sspace, Astds[0], 1E-8, 1.1, 2., 2.1, .5, -2, 1.,
-                            'spatial', dofdex = dofdex2)
-        fa.add_fluctuations(fsspace, Astds[1], 1E-8, 3.1, 1., .5, .1, -4, 1.,
-                            'freq', dofdex = dofdex3)
+        fa = ift.CorrelatedFieldMaker.make(zm_mean, offset_std_mean, 1e-8, '',
+                                           N, dofdex1)
+        fa.add_fluctuations(sspace, astds[0], 1e-8, 1.1, 2., 2.1, .5, -2, 1.,
+                            'spatial', dofdex=dofdex2)
+        fa.add_fluctuations(fsspace, astds[1], 1e-8, 3.1, 1., .5, .1, -4, 1.,
+                            'freq', dofdex=dofdex3)
         op = fa.finalize()
 
         samples = [ift.from_random('normal', op.domain) for _ in range(nsam)]
@@ -80,11 +81,14 @@ def testAmplitudesConsistency(rseed, sspace, Astds, offset_std_mean, N, zm_mean)
         assert_allclose(slice_fluct_std0, sl_fluct_space, rtol=0.5)
         assert_allclose(slice_fluct_std1, sl_fluct_freq, rtol=0.5)
 
-        fa = ift.CorrelatedFieldMaker.make(0., offset_std_mean, .1, '', N, dofdex1)
-        fa.add_fluctuations(fsspace, Astds[1], 1., 3.1, 1., .5, .1, -4, 1., 'freq', dofdex = dofdex3)
+        fa = ift.CorrelatedFieldMaker.make(0., offset_std_mean, .1, '', N,
+                                           dofdex1)
+        fa.add_fluctuations(fsspace, astds[1], 1., 3.1, 1., .5, .1, -4, 1.,
+                            'freq', dofdex=dofdex3)
         m = 3.
         x = fa.moment_slice_to_average(m)
-        fa.add_fluctuations(sspace, x, 1.5, 1.1, 2., 2.1, .5, -2, 1., 'spatial', 0, dofdex = dofdex2)
+        fa.add_fluctuations(sspace, x, 1.5, 1.1, 2., 2.1, .5, -2, 1.,
+                            'spatial', 0, dofdex=dofdex2)
         op = fa.finalize()
         em, estd = stats(fa.slice_fluctuation(0), samples)
 
