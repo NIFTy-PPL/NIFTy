@@ -145,11 +145,7 @@ def test_outer():
 
 def test_sum():
     x1 = ift.RGSpace((9,), distances=2.)
-    x2 = ift.RGSpace(
-        (
-            2,
-            12,
-        ), distances=(0.3,))
+    x2 = ift.RGSpace((2, 12), distances=(0.3,))
     m1 = ift.Field(ift.makeDomain(x1), np.arange(9))
     m2 = ift.Field.full(ift.makeDomain((x1, x2)), 0.45)
     res1 = m1.s_sum()
