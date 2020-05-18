@@ -119,3 +119,8 @@ run_curve_fitting:
   artifacts:
     paths:
       - '*.png'
+
+run_visual_mgvi:
+  stage: demo_runs
+  script:
+    - python3 demos/mgvi_visualized.py
