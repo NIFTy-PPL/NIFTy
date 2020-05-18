@@ -112,8 +112,8 @@ class _SwitchSpacesOperator(ift.LinearOperator):
 
 
 def test_multi_linear_einsum_outer(space1, space2, dtype):
-    ntries = 100
-    n_invocations = 10
+    ntries = 10
+    n_invocations = 5
     mf_dom = ift.MultiDomain.make({
         "dom01": space1,
         "dom02": ift.DomainTuple.make((space1, space2)),
