@@ -167,6 +167,9 @@ def test_integrate():
         res3 = m.integrate()
         res4 = m.s_integrate()
         assert_allclose(res3.val, res4)
+    dom = ift.HPSpace(3)
+    assert_allclose(ift.full(dom, 1).s_integrate(), 4*np.pi)
+
 
 def test_dataconv():
     s1 = ift.RGSpace((10,))
