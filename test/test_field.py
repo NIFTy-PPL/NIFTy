@@ -163,7 +163,10 @@ def test_integrate():
     res2 = m2.integrate(spaces=1)
     assert_allclose(res1, 36*2)
     assert_allclose(res2.val, np.full(9, 2*12*0.45*0.3**2))
-
+    for m in [m1, m2]:
+        res3 = m.integrate()
+        res4 = m.s_integrate()
+        assert_allclose(res3.val, res4)
 
 def test_dataconv():
     s1 = ift.RGSpace((10,))
