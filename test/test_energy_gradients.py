@@ -15,32 +15,28 @@
 #
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
 
+from itertools import product
+
 import numpy as np
 import pytest
 
 import nifty6 as ift
-from itertools import product
+
 from .common import setup_function, teardown_function
 
 # Currently it is not possible to parametrize fixtures. But this will
 # hopefully be fixed in the future.
 # https://docs.pytest.org/en/latest/proposals/parametrize_with_fixtures.html
 
-SPACES = [ift.GLSpace(15),
-          ift.RGSpace(64, distances=.789),
-          ift.RGSpace([32, 32], distances=.789)]
-for sp in SPACES[:3]:
-    SPACES.append(ift.MultiDomain.make({'asdf': sp}))
-SEEDS = [4, 78, 23]
-PARAMS = product(SEEDS, SPACES)
+spaces = [ift.GLSpace(15),
+          ift.MultiDomain.make({'': ift.RGSpace(64, distances=.789)}),
+          (ift.RGSpace(4, distances=.789), ift.UnstructuredDomain(3))]
 pmp = pytest.mark.parametrize
 
 
-@pytest.fixture(params=PARAMS)
+@pytest.fixture(params=[spaces])
 def field(request):
-    with ift.random.Context(request.param[0]):
-        S = ift.ScalingOperator(request.param[1], 1.)
-        return S.draw_sample_with_dtype(dtype=np.float64)
+    return ift.from_random('normal', request.param[0])
 
 
 def test_gaussian(field):
