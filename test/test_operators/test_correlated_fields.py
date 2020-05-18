@@ -16,7 +16,7 @@
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
 
 import pytest
-from numpy.testing import assert_allclose
+from numpy.testing import assert_, assert_allclose
 
 import nifty6 as ift
 
@@ -24,23 +24,21 @@ from ..common import setup_function, teardown_function
 
 pmp = pytest.mark.parametrize
 
+def _stats(op, samples):
+    sc = ift.StatCalculator()
+    for s in samples:
+        sc.add(op(s.extract(op.domain)))
+    return sc.mean.val, sc.var.ptw("sqrt").val
+
 @pmp('sspace', [ift.RGSpace(4), ift.RGSpace((4, 4), (0.123, 0.4)),
                 ift.HPSpace(8), ift.GLSpace(4)])
 @pmp('N', [0, 2])
-def testAmplitudesConsistency(sspace, N):
-    def stats(op, samples):
-        sc = ift.StatCalculator()
-        for s in samples:
-            sc.add(op(s.extract(op.domain)))
-        return sc.mean.val, sc.var.ptw("sqrt").val
+def testAmplitudesInvariants(sspace, N):
 
     fsspace = ift.RGSpace((12,), (0.4,))
+    dofdex1, dofdex2, dofdex3 = None, None, None
     if N == 2:
-        dofdex1 = [0, 0]
-        dofdex2 = [1, 0]
-        dofdex3 = [1, 1]
-    else:
-        dofdex1, dofdex2, dofdex3 = None, None, None
+        dofdex1, dofdex2, dofdex3 = [0, 0], [1, 0], [1, 1]
 
     astds = 0.2, 1.2
     offset_std_mean = 1.3
@@ -53,13 +51,13 @@ def testAmplitudesConsistency(sspace, N):
     op = fa.finalize()
 
     samples = [ift.from_random('normal', op.domain) for _ in range(100)]
-    tot_flm, _ = stats(fa.total_fluctuation, samples)
-    offset_amp_std, _ = stats(fa.amplitude_total_offset, samples)
-    intergated_fluct_std0, _ = stats(fa.average_fluctuation(0), samples)
-    intergated_fluct_std1, _ = stats(fa.average_fluctuation(1), samples)
+    tot_flm, _ = _stats(fa.total_fluctuation, samples)
+    offset_amp_std, _ = _stats(fa.amplitude_total_offset, samples)
+    intergated_fluct_std0, _ = _stats(fa.average_fluctuation(0), samples)
+    intergated_fluct_std1, _ = _stats(fa.average_fluctuation(1), samples)
 
-    slice_fluct_std0, _ = stats(fa.slice_fluctuation(0), samples)
-    slice_fluct_std1, _ = stats(fa.slice_fluctuation(1), samples)
+    slice_fluct_std0, _ = _stats(fa.slice_fluctuation(0), samples)
+    slice_fluct_std1, _ = _stats(fa.slice_fluctuation(1), samples)
 
     sams = [op(s) for s in samples]
     fluct_total = fa.total_fluctuation_realized(sams)
@@ -77,16 +75,15 @@ def testAmplitudesConsistency(sspace, N):
     assert_allclose(slice_fluct_std1, sl_fluct_freq, rtol=0.5)
 
     fa = ift.CorrelatedFieldMaker.make(0., offset_std_mean, .1, '', N, dofdex1)
-    fa.add_fluctuations(fsspace, astds[1], 1., 3.1, 1., .5, .1, -4, 1.,
-                        'freq', dofdex=dofdex3)
+    fa.add_fluctuations(fsspace, astds[1], 1., 3.1, 1., .5, .1, -4, 1., 'freq',
+                        dofdex=dofdex3)
     m = 3.
     x = fa.moment_slice_to_average(m)
-    fa.add_fluctuations(sspace, x, 1.5, 1.1, 2., 2.1, .5, -2, 1.,
-                        'spatial', 0, dofdex=dofdex2)
+    fa.add_fluctuations(sspace, x, 1.5, 1.1, 2., 2.1, .5, -2, 1., 'spatial', 0,
+                        dofdex=dofdex2)
     op = fa.finalize()
-    em, estd = stats(fa.slice_fluctuation(0), samples)
+    em, estd = _stats(fa.slice_fluctuation(0), samples)
 
     assert_allclose(m, em, rtol=0.5)
-
-    assert op.target[-2] == sspace
-    assert op.target[-1] == fsspace
+    assert_(op.target[-2] == sspace)
+    assert_(op.target[-1] == fsspace)
