@@ -20,6 +20,7 @@ import pytest
 from numpy.testing import assert_allclose, assert_equal, assert_raises
 
 import nifty6 as ift
+
 from .common import setup_function, teardown_function
 
 pmp = pytest.mark.parametrize
@@ -170,7 +171,6 @@ def test_integrate():
 
 def test_dataconv():
     s1 = ift.RGSpace((10,))
-    ld = np.arange(s1.shape[0])
     gd = np.arange(s1.shape[0])
     assert_equal(gd, ift.makeField(s1, gd).val)
 
