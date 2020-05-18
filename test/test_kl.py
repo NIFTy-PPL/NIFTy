@@ -15,9 +15,11 @@
 #
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
 
-import nifty6 as ift
-from numpy.testing import assert_, assert_allclose
 import pytest
+from numpy.testing import assert_, assert_allclose
+
+import nifty6 as ift
+
 from .common import setup_function, teardown_function
 
 pmp = pytest.mark.parametrize
@@ -37,6 +39,7 @@ def test_kl(constants, point_estimates, mirror_samples, mf):
     import numpy as np
     lh = ift.GaussianEnergy(domain=op.target, sampling_dtype=np.float64) @ op
     ic = ift.GradientNormController(iteration_limit=5)
+    ic.activate_and_reset_logging()
     h = ift.StandardHamiltonian(lh, ic_samp=ic)
     mean0 = ift.from_random('normal', h.domain)
 
@@ -48,6 +51,7 @@ def test_kl(constants, point_estimates, mirror_samples, mf):
                               point_estimates=point_estimates,
                               mirror_samples=mirror_samples,
                               napprox=0)
+    ic.pop_history()
     locsamp = kl._local_samples
     klpure = ift.MetricGaussianKL(mean0,
                                   h,
