@@ -4,6 +4,20 @@ Minimum Python version increased to 3.6
 =======================================
 
 
+New operators
+=============
+
+In addition to the below changes, the following operators were introduced:
+
+* UniformOperator: Transforms a Gaussian into a uniform distribution
+* VariableCovarianceGaussianEnergy: Energy operator for inferring covariances
+* MultiLinearEinsum: Multi-linear version of numpy's einsum with derivates
+* LinearEinsum: Linear version of numpy's einsum with one free field
+* PartialConjugate: Conjugates parts of a multi-field
+* SliceOperator: Geometry preserving mask operator
+* SplitOperator: Splits a single field into a multi-field
+* SwitchSpacesOperator: Permutes the domain entries of fields
+
 FFT convention adjusted
 =======================
 
