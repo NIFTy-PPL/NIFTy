@@ -93,7 +93,9 @@ class Operator(metaclass=NiftyMeta):
         """The metric associated with the object.
         This is `None`, except when all the following conditions hold:
         - `want_metric` is `True`
+
         - `target` is the scalar domain
+
         - the operator chain contained an operator which could compute the
           metric
 
