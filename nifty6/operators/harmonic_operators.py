@@ -263,7 +263,7 @@ def _unpickleSHTOperator(*args):
     return SHTOperator(*args)
 
 
-def HarmonicTransformOperator(domain, target=None, space=None):
+class HarmonicTransformOperator(LinearOperator):
     """Transforms between a harmonic domain and a position domain counterpart.
 
     Built-in domain pairs are
@@ -271,8 +271,8 @@ def HarmonicTransformOperator(domain, target=None, space=None):
       - an LMSpace and a HPSpace
       - an LMSpace and a GLSpace
 
-    The supported operations are times() and adjoint_times() for LMSpaces
-    and all for RGSpaces.
+    The supported operations are times() and adjoint_times().
+    If inverse_times() on RGSpaces is needed the HartleyOperator should be used instead.
 
     Parameters
     ----------
@@ -288,7 +288,7 @@ def HarmonicTransformOperator(domain, target=None, space=None):
     space : int, optional
         The index of the domain on which the operator should act
         If None, it is set to 0 if domain contains exactly one subdomain.
-        domain[space] must be a harmonic domain on the sphere or an RGSpace.
+        domain[space] must be a harmonic domain.
 
     Notes
     -----
@@ -297,14 +297,26 @@ def HarmonicTransformOperator(domain, target=None, space=None):
     field values are real in either space. If you require a true Fourier
     transform you should use FFTOperator instead.
     """
-    domain = DomainTuple.make(domain)
-    space = utilities.infer_space(domain, space)
-    hspc = domain[space]
-    if isinstance(hspc, RGSpace):
-        return HartleyOperator(domain, target, space)
-    else:
-        return SHTOperator(domain, target, space)
 
+    def __init__(self, domain, target=None, space=None):
+        domain = DomainTuple.make(domain)
+        space = utilities.infer_space(domain, space)
+
+        hspc = domain[space]
+        if not hspc.harmonic:
+            raise TypeError(
+                "HarmonicTransformOperator only works on a harmonic space")
+        if isinstance(hspc, RGSpace):
+            self._op = HartleyOperator(domain, target, space)
+        else:
+            self._op = SHTOperator(domain, target, space)
+        self._domain = self._op.domain
+        self._target = self._op.target
+        self._capability = self.TIMES | self.ADJOINT_TIMES
+
+    def apply(self, x, mode):
+        self._check_input(x, mode)
+        return self._op.apply(x, mode)
 
 
 def HarmonicSmoothingOperator(domain, sigma, space=None):
