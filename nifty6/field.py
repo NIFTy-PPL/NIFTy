@@ -283,7 +283,7 @@ class Field(Operator):
             raise TypeError("The multiplier must be an instance of " +
                             "the Field class")
         from .operators.outer_product_operator import OuterProduct
-        return OuterProduct(self, x.domain)(x)
+        return OuterProduct(x.domain, self)(x)
 
     def vdot(self, x, spaces=None):
         """Computes the dot product of 'self' with x.
