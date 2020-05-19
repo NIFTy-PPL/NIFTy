@@ -43,6 +43,13 @@ test_serial:
     - >
       grep TOTAL coverage.txt | awk '{ print "TOTAL: "$4; }'
 
+test_mpi:
+  stage: test
+  variables:
+    OMPI_MCA_btl_vader_single_copy_mechanism: none
+  script:
+    - mpiexec -n 2 --bind-to none pytest-3 -q test/test_mpi
+
 pages:
   stage: release
   script:
@@ -61,7 +68,7 @@ before_script:
 run_ipynb:
   stage: demo_runs
   script:
-    - jupyter nbconvert --execute --ExecutePreprocessor.timeout=None demos/Wiener_Filter.ipynb
+    - jupyter nbconvert --execute --ExecutePreprocessor.timeout=None demos/getting_started_0.ipynb
 
 run_getting_started_1:
   stage: demo_runs

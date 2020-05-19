@@ -11,7 +11,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
-# Copyright(C) 2013-2019 Max-Planck-Society
+# Copyright(C) 2013-2020 Max-Planck-Society
 #
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
 
@@ -19,6 +19,7 @@ import numpy as np
 
 from ..minimization.conjugate_gradient import ConjugateGradient
 from ..minimization.quadratic_energy import QuadraticEnergy
+from ..multi_domain import MultiDomain
 from .endomorphic_operator import EndomorphicOperator
 from .operator import Operator
 
@@ -61,10 +62,11 @@ class SamplingEnabler(EndomorphicOperator):
         self._op = likelihood + prior
         self._domain = self._op.domain
         self._capability = self._op.capability
+        self.apply = self._op.apply
 
-    def draw_sample(self, from_inverse=False, dtype=np.float64):
+    def draw_sample(self, from_inverse=False):
         try:
-            return self._op.draw_sample(from_inverse, dtype)
+            return self._op.draw_sample(from_inverse)
         except NotImplementedError:
             if not from_inverse:
                 raise ValueError("from_inverse must be True here")
@@ -74,7 +76,7 @@ class SamplingEnabler(EndomorphicOperator):
             else:
                 s = self._prior.draw_sample(from_inverse=True)
                 sp = self._prior(s)
-                nj = self._likelihood.draw_sample(dtype=dtype)
+                nj = self._likelihood.draw_sample()
                 energy = QuadraticEnergy(s, self._op, sp + nj,
                                          _grad=self._likelihood(s) - nj)
             inverter = ConjugateGradient(self._ic)
@@ -85,8 +87,8 @@ class SamplingEnabler(EndomorphicOperator):
                 energy, convergence = inverter(energy)
             return energy.position
 
-    def apply(self, x, mode):
-        return self._op.apply(x, mode)
+    def draw_sample_with_dtype(self, dtype, from_inverse=False):
+        return self._op.draw_sample_with_dtype(dtype, from_inverse)
 
     def __repr__(self):
         from ..utilities import indent
@@ -95,3 +97,58 @@ class SamplingEnabler(EndomorphicOperator):
             indent("\n".join((
                 "Likelihood:", self._likelihood.__repr__(),
                 "Prior:", self._prior.__repr__())))))
+
+
+class SamplingDtypeSetter(EndomorphicOperator):
+    """Class that adds the information whether the operator at hand is the
+    covariance of a real-valued Gaussian or a complex-valued Gaussian
+    probability distribution.
+
+    This wrapper class shall address the following ambiguity which arises when
+    drawing a sampling from a Gaussian distribution with zero mean and given
+    covariance. E.g. a `ScalingOperator` with `1.` on its diagonal can be
+    viewed as the covariance operator of both a real-valued and complex-valued
+    Gaussian distribution. `SamplingDtypeSetter` specifies this data type.
+
+    Parameters
+    ----------
+    op : EndomorphicOperator
+        Operator which shall be supplemented with a dtype for sampling. Needs
+        to be positive definite, hermitian and needs to implement the method
+        `draw_sample_with_dtype()`. Note that these three properties are not
+        checked in the constructor.
+    dtype : numpy.dtype or dict of numpy.dtype
+        Dtype used for sampling from this operator. If the domain of `op` is a
+        `MultiDomain`, the dtype can either be specified as one value for all
+        components of the `MultiDomain` or in form of a dictionary whose keys
+        need to conincide the with keys of the `MultiDomain`.
+    """
+    def __init__(self, op, dtype):
+        if not isinstance(op, EndomorphicOperator):
+            raise TypeError
+        if not hasattr(op, 'draw_sample_with_dtype'):
+            raise TypeError
+        if isinstance(dtype, dict):
+            dtype = {kk: np.dtype(vv) for kk, vv in dtype.items()}
+        else:
+            dtype = np.dtype(dtype)
+        if isinstance(op.domain, MultiDomain):
+            if isinstance(dtype, np.dtype):
+                dtype = {kk: dtype for kk in op.domain.keys()}
+            if set(dtype.keys()) != set(op.domain.keys()):
+                raise TypeError
+        self._dtype = dtype
+        self._domain = op.domain
+        self._capability = op.capability
+        self.apply = op.apply
+        self._op = op
+
+    def draw_sample(self, from_inverse=False):
+        return self._op.draw_sample_with_dtype(self._dtype,
+                                               from_inverse=from_inverse)
+
+    def __repr__(self):
+        from ..utilities import indent
+        return "\n".join((
+            f"SamplingDtypeSetter {self._dtype}:",
+            indent(self._op.__repr__())))

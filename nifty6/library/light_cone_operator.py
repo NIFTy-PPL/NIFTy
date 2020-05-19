@@ -19,7 +19,6 @@ import numpy as np
 
 from ..domain_tuple import DomainTuple
 from ..field import Field
-from ..linearization import Linearization
 from ..operators.linear_operator import LinearOperator
 from ..operators.operator import Operator
 
@@ -132,7 +131,7 @@ class LightConeOperator(Operator):
         self._sigx = sigx
 
     def apply(self, x):
-        lin = isinstance(x, Linearization)
+        lin = x.jac is not None
         a, derivs = _cone_arrays(x.val.val if lin else x.val, self.target, self._sigx, lin)
         res = Field(self.target, a)
         if not lin:

@@ -25,20 +25,21 @@ from ..common import list2fixture, setup_function, teardown_function
 
 pmp = pytest.mark.parametrize
 dtype = list2fixture([np.float64, np.float32, np.complex64, np.complex128])
+ntries = 10
 
 
 def test_part_mf_insert():
     dom = ift.RGSpace(3)
     op1 = ift.ScalingOperator(dom, 1.32).ducktape('a').ducktape_left('a1')
-    op2 = ift.ScalingOperator(dom, 1).exp().ducktape('b').ducktape_left('b1')
-    op3 = ift.ScalingOperator(dom, 1).sin().ducktape('c').ducktape_left('c1')
+    op2 = ift.ScalingOperator(dom, 1).ptw("exp").ducktape('b').ducktape_left('b1')
+    op3 = ift.ScalingOperator(dom, 1).ptw("sin").ducktape('c').ducktape_left('c1')
     op4 = ift.ScalingOperator(dom, 1).ducktape('c0').ducktape_left('c')**2
-    op5 = ift.ScalingOperator(dom, 1).tan().ducktape('d0').ducktape_left('d')
+    op5 = ift.ScalingOperator(dom, 1).ptw("tan").ducktape('d0').ducktape_left('d')
     a = op1 + op2 + op3
     b = op4 + op5
     op = a.partial_insert(b)
-    fld = ift.from_random('normal', op.domain)
-    ift.extra.check_jacobian_consistency(op, fld)
+    fld = ift.from_random(op.domain, 'normal')
+    ift.extra.check_jacobian_consistency(op, fld, ntries=ntries)
     assert_(op.domain is ift.MultiDomain.union(
         [op1.domain, op2.domain, op4.domain, op5.domain]))
     assert_(op.target is ift.MultiDomain.union(

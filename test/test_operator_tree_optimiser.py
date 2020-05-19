@@ -35,7 +35,7 @@ def test_operator_tree_optimiser():
     op = op3@op2@op1 + op2@op1 + op3@op2@op1 + op2@op1
     op = op + op
     op = op4@(op4@op + op4@op)
-    fld = ift.from_random('normal', op.domain, np.float64)
+    fld = ift.from_random(op.domain, 'normal', np.float64)
     op_orig = deepcopy(op)
     op = ift.operator_tree_optimiser._optimise_operator(op)
     assert_allclose(op(fld).val, op_orig(fld).val, rtol=np.finfo(np.float64).eps)

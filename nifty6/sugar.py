@@ -33,16 +33,15 @@ from .operators.distributors import PowerDistributor
 from .operators.operator import Operator
 from .operators.scaling_operator import ScalingOperator
 from .plot import Plot
+from . import pointwise
+
 
 __all__ = ['PS_field', 'power_analyze', 'create_power_operator',
            'create_harmonic_smoothing_operator', 'from_random',
            'full', 'makeField',
-           'makeDomain', 'sqrt', 'exp', 'log', 'tanh', 'sigmoid',
-           'sin', 'cos', 'tan', 'sinh', 'cosh', 'log10',
-           'absolute', 'one_over', 'clip', 'sinc', "log1p", "expm1",
-           'conjugate', 'get_signal_variance', 'makeOp', 'domain_union',
+           'makeDomain', 'get_signal_variance', 'makeOp', 'domain_union',
            'get_default_codomain', 'single_plot', 'exec_time',
-           'calculate_position']
+           'calculate_position'] + list(pointwise.ptw_dict.keys())
 
 
 def PS_field(pspace, func):
@@ -257,7 +256,7 @@ def full(domain, val):
     return Field.full(domain, val)
 
 
-def from_random(random_type, domain, dtype=np.float64, **kwargs):
+def from_random(domain, random_type='normal', dtype=np.float64, **kwargs):
     """Convenience function creating Fields/MultiFields with random values.
 
     Parameters
@@ -275,10 +274,17 @@ def from_random(random_type, domain, dtype=np.float64, **kwargs):
     -------
     Field or MultiField
         The newly created random field
+
+    Notes
+    -----
+    When called with a multi-domain, the individual fields will be drawn in
+    alphabetical order of the multi-domain's domain keys. As a consequence,
+    renaming these keys may cause the multi-field to be filled with different
+    random numbers, even for the same initial RNG state.
     """
     if isinstance(domain, (dict, MultiDomain)):
-        return MultiField.from_random(random_type, domain, dtype, **kwargs)
-    return Field.from_random(random_type, domain, dtype, **kwargs)
+        return MultiField.from_random(domain, random_type, dtype, **kwargs)
+    return Field.from_random(domain, random_type, dtype, **kwargs)
 
 
 def makeField(domain, arr):
@@ -320,7 +326,7 @@ def makeDomain(domain):
     return DomainTuple.make(domain)
 
 
-def makeOp(input):
+def makeOp(input, dom=None):
     """Converts a Field or MultiField to a diagonal operator.
 
     Parameters
@@ -334,14 +340,24 @@ def makeOp(input):
         - if MultiField, a BlockDiagonalOperator with entries given by this
             MultiField is returned.
 
+    dom : DomainTuple or MultiDomain
+        if `input` is a scalar, this is used as the operator's domain
+
     Notes
     -----
     No volume factors are applied.
     """
     if input is None:
         return None
+    if np.isscalar(input):
+        if not isinstance(dom, (DomainTuple, MultiDomain)):
+            raise TypeError("need proper `dom` argument")
+        return ScalingOperator(dom, input)
+    if dom is not None:
+        if not dom == input.domain:
+            raise ValueError("domain mismatch")
     if input.domain is DomainTuple.scalar_domain():
-        return ScalingOperator(input.domain, float(input.val))
+        return ScalingOperator(input.domain, input.val[()])
     if isinstance(input, Field):
         return DiagonalOperator(input)
     if isinstance(input, MultiField):
@@ -366,28 +382,16 @@ def domain_union(domains):
     return MultiDomain.union(domains)
 
 
-# Arithmetic functions working on Fields
-
+# Pointwise functions
 
 _current_module = sys.modules[__name__]
 
-for f in ["sqrt", "exp", "log", "log10", "tanh", "sigmoid",
-          "conjugate", 'sin', 'cos', 'tan', 'sinh', 'cosh',
-          'absolute', 'one_over', 'sinc', 'log1p', 'expm1']:
+for f in pointwise.ptw_dict.keys():
     def func(f):
-        def func2(x):
-            from .linearization import Linearization
-            from .operators.operator import Operator
-            if isinstance(x, (Field, MultiField, Linearization, Operator)):
-                return getattr(x, f)()
-            else:
-                return getattr(np, f)(x)
+        def func2(x, *args, **kwargs):
+           return x.ptw(f, *args, **kwargs)
         return func2
     setattr(_current_module, f, func(f))
-
-
-def clip(a, a_min=None, a_max=None):
-    return a.clip(a_min, a_max)
 
 
 def get_default_codomain(domainoid, space=None):
@@ -462,7 +466,7 @@ def exec_time(obj, want_metric=True):
         logger.info('Energy.metric(position): {}'.format(time() - t0))
     elif isinstance(obj, Operator):
         want_metric = bool(want_metric)
-        pos = from_random('normal', obj.domain)
+        pos = from_random(obj.domain, 'normal')
         t0 = time()
         obj(pos)
         logger.info('Operator call with field: {}'.format(time() - t0))
@@ -496,13 +500,16 @@ def calculate_position(operator, output):
         raise TypeError
     if output.domain != operator.target:
         raise TypeError
-    cov = 1e-3*output.val.max()**2
+    if isinstance(output, MultiField):
+        cov = 1e-3*max([vv.max() for vv in output.val.values()])**2
+    else:
+        cov = 1e-3*output.val.max()**2
     invcov = ScalingOperator(output.domain, cov).inverse
-    d = output + invcov.draw_sample(from_inverse=True)
+    d = output + invcov.draw_sample_with_dtype(dtype=output.dtype, from_inverse=True)
     lh = GaussianEnergy(d, invcov) @ operator
     H = StandardHamiltonian(
         lh, ic_samp=GradientNormController(iteration_limit=200))
-    pos = 0.1*from_random('normal', operator.domain)
+    pos = 0.1 * from_random(operator.domain, 'normal')
     minimizer = NewtonCG(GradientNormController(iteration_limit=10))
     for ii in range(3):
         kl = MetricGaussianKL(pos, H, 3, mirror_samples=True)

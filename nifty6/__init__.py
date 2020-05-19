@@ -25,7 +25,8 @@ from .operators.adder import Adder
 from .operators.diagonal_operator import DiagonalOperator
 from .operators.distributors import DOFDistributor, PowerDistributor
 from .operators.domain_tuple_field_inserter import DomainTupleFieldInserter
-from .operators.contraction_operator import ContractionOperator
+from .operators.einsum import LinearEinsum, MultiLinearEinsum
+from .operators.contraction_operator import ContractionOperator, IntegrationOperator
 from .operators.linear_interpolation import LinearInterpolator
 from .operators.endomorphic_operator import EndomorphicOperator
 from .operators.harmonic_operators import (
@@ -35,15 +36,16 @@ from .operators.field_zero_padder import FieldZeroPadder
 from .operators.inversion_enabler import InversionEnabler
 from .operators.mask_operator import MaskOperator
 from .operators.regridding_operator import RegriddingOperator
-from .operators.sampling_enabler import SamplingEnabler
+from .operators.sampling_enabler import SamplingEnabler, SamplingDtypeSetter
 from .operators.sandwich_operator import SandwichOperator
 from .operators.scaling_operator import ScalingOperator
+from .operators.selection_operators import SliceOperator, SplitOperator
 from .operators.block_diagonal_operator import BlockDiagonalOperator
 from .operators.outer_product_operator import OuterProduct
 from .operators.simple_linear_operators import (
-    VdotOperator, ConjugationOperator, Realizer,
-    FieldAdapter, ducktape, GeometryRemover, NullOperator,
-    MatrixProductOperator, PartialExtractor)
+    VdotOperator, ConjugationOperator, Realizer, FieldAdapter, ducktape,
+    GeometryRemover, NullOperator, PartialExtractor)
+from .operators.matrix_product_operator import MatrixProductOperator
 from .operators.value_inserter import ValueInserter
 from .operators.energy_operators import (
     EnergyOperator, GaussianEnergy, PoissonianEnergy, InverseGammaLikelihood,

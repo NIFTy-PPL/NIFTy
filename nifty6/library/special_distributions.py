@@ -22,7 +22,6 @@ from scipy.interpolate import CubicSpline
 from ..domain_tuple import DomainTuple
 from ..domains.unstructured_domain import UnstructuredDomain
 from ..field import Field
-from ..linearization import Linearization
 from ..operators.operator import Operator
 from ..sugar import makeOp
 from .. import random
@@ -79,7 +78,7 @@ class _InterpolationOperator(Operator):
 
     def apply(self, x):
         self._check_input(x)
-        lin = isinstance(x, Linearization)
+        lin = x.jac is not None
         xval = x.val.val if lin else x.val
         res = self._interpolator(xval)
         res = Field(self._domain, res)
@@ -120,7 +119,7 @@ def InverseGammaOperator(domain, alpha, q, delta=1e-2):
         Distance between sampling points for linear interpolation.
     """
     op = _InterpolationOperator(domain, lambda x: invgamma.ppf(norm._cdf(x), float(alpha)),
-                                -8.2, 8.2, delta, lambda x: x.log(), lambda x: x.exp())
+                                -8.2, 8.2, delta, lambda x: x.ptw("log"), lambda x: x.ptw("exp"))
     if np.isscalar(q):
         return op.scale(q)
     return makeOp(q) @ op
@@ -148,7 +147,7 @@ class UniformOperator(Operator):
 
     def apply(self, x):
         self._check_input(x)
-        lin = isinstance(x, Linearization)
+        lin = x.jac is not None
         xval = x.val.val if lin else x.val
         res = Field(self._target, self._scale*norm._cdf(xval) + self._loc)
         if not lin:

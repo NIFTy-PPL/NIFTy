@@ -71,7 +71,7 @@ class StatCalculator(object):
         return self._M2 * (1./(self._count-1))
 
 
-def probe_with_posterior_samples(op, post_op, nprobes):
+def probe_with_posterior_samples(op, post_op, nprobes, dtype):
     '''FIXME
 
     Parameters
@@ -82,6 +82,8 @@ def probe_with_posterior_samples(op, post_op, nprobes):
         FIXME
     nprobes : int
         Number of samples which shall be drawn.
+    dtype :
+        the data type of the samples
 
     Returns
     -------
@@ -132,7 +134,7 @@ def probe_diagonal(op, nprobes, random_type="pm1"):
     '''
     sc = StatCalculator()
     for i in range(nprobes):
-        x = from_random(random_type, op.domain)
+        x = from_random(op.domain, random_type)
         sc.add(op(x).conjugate()*x)
     return sc.mean
 

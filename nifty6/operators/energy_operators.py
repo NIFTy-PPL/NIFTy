@@ -11,7 +11,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
-# Copyright(C) 2013-2019 Max-Planck-Society
+# Copyright(C) 2013-2020 Max-Planck-Society
 #
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
 
@@ -20,15 +20,43 @@ import numpy as np
 from .. import utilities
 from ..domain_tuple import DomainTuple
 from ..field import Field
-from ..linearization import Linearization
 from ..multi_domain import MultiDomain
 from ..multi_field import MultiField
 from ..sugar import makeDomain, makeOp
 from .linear_operator import LinearOperator
 from .operator import Operator
-from .sampling_enabler import SamplingEnabler
+from .sampling_enabler import SamplingDtypeSetter, SamplingEnabler
 from .scaling_operator import ScalingOperator
 from .simple_linear_operators import VdotOperator
+
+
+def _check_sampling_dtype(domain, dtypes):
+    if dtypes is None:
+        return
+    if isinstance(domain, DomainTuple):
+        np.dtype(dtypes)
+        return
+    elif isinstance(domain, MultiDomain):
+        if isinstance(dtypes, dict):
+            for dt in dtypes.values():
+                np.dtype(dt)
+            if set(domain.keys()) == set(dtypes.keys()):
+                return
+        else:
+            np.dtype(dtypes)
+            return
+    raise TypeError
+
+
+def _field_to_dtype(field):
+    if isinstance(field, Field):
+        dt = field.dtype
+    elif isinstance(field, MultiField):
+        dt = {kk: ff.dtype for kk, ff in field.items()}
+    else:
+        raise TypeError
+    _check_sampling_dtype(field.domain, dt)
+    return dt
 
 
 class EnergyOperator(Operator):
@@ -59,9 +87,8 @@ class Squared2NormOperator(EnergyOperator):
 
     def apply(self, x):
         self._check_input(x)
-        if not isinstance(x, Linearization):
-            res = x.vdot(x)
-            return res
+        if x.jac is None:
+            return x.vdot(x)
         res = x.val.vdot(x.val)
         return x.new(res, VdotOperator(2*x.val))
 
@@ -88,7 +115,7 @@ class QuadraticFormOperator(EnergyOperator):
 
     def apply(self, x):
         self._check_input(x)
-        if not isinstance(x, Linearization):
+        if x.jac is None:
             return 0.5*x.vdot(self._op(x))
         res = 0.5*x.val.vdot(self._op(x.val))
         return x.new(res, VdotOperator(self._op(x.val)))
@@ -119,19 +146,22 @@ class VariableCovarianceGaussianEnergy(EnergyOperator):
         Inverse covariance diagonal key of the Gaussian.
     """
 
-    def __init__(self, domain, residual_key, inverse_covariance_key):
+    def __init__(self, domain, residual_key, inverse_covariance_key, sampling_dtype):
         self._r = str(residual_key)
         self._icov = str(inverse_covariance_key)
         dom = DomainTuple.make(domain)
         self._domain = MultiDomain.make({self._r: dom, self._icov: dom})
+        self._sampling_dtype = sampling_dtype
+        _check_sampling_dtype(self._domain, sampling_dtype)
 
     def apply(self, x):
         self._check_input(x)
-        res = 0.5*(x[self._r].vdot(x[self._r]*x[self._icov]).real - x[self._icov].log().sum())
-        if not isinstance(x, Linearization) or not x.want_metric:
+        res = 0.5*(x[self._r].vdot(x[self._r]*x[self._icov]).real - x[self._icov].ptw("log").sum())
+        if not x.want_metric:
             return res
         mf = {self._r: x.val[self._icov], self._icov: .5*x.val[self._icov]**(-2)}
-        return res.add_metric(makeOp(MultiField.from_dict(mf)))
+        met = makeOp(MultiField.from_dict(mf))
+        return res.add_metric(SamplingDtypeSetter(met, self._sampling_dtype))
 
 
 class GaussianEnergy(EnergyOperator):
@@ -160,7 +190,7 @@ class GaussianEnergy(EnergyOperator):
     At least one of the arguments has to be provided.
     """
 
-    def __init__(self, mean=None, inverse_covariance=None, domain=None):
+    def __init__(self, mean=None, inverse_covariance=None, domain=None, sampling_dtype=None):
         if mean is not None and not isinstance(mean, (Field, MultiField)):
             raise TypeError
         if inverse_covariance is not None and not isinstance(inverse_covariance, LinearOperator):
@@ -176,12 +206,25 @@ class GaussianEnergy(EnergyOperator):
         if self._domain is None:
             raise ValueError("no domain given")
         self._mean = mean
+
+        # Infer sampling dtype
+        if self._mean is None:
+            _check_sampling_dtype(self._domain, sampling_dtype)
+        else:
+            if sampling_dtype is None:
+                sampling_dtype = _field_to_dtype(self._mean)
+            else:
+                if sampling_dtype != _field_to_dtype(self._mean):
+                    raise ValueError("Sampling dtype and mean not compatible")
+
         if inverse_covariance is None:
             self._op = Squared2NormOperator(self._domain).scale(0.5)
             self._met = ScalingOperator(self._domain, 1)
         else:
             self._op = QuadraticFormOperator(inverse_covariance)
             self._met = inverse_covariance
+        if sampling_dtype is not None:
+            self._met = SamplingDtypeSetter(self._met, sampling_dtype)
 
     def _checkEquivalence(self, newdom):
         newdom = makeDomain(newdom)
@@ -195,7 +238,7 @@ class GaussianEnergy(EnergyOperator):
         self._check_input(x)
         residual = x if self._mean is None else x - self._mean
         res = self._op(residual).real
-        if isinstance(x, Linearization) and x.want_metric:
+        if x.want_metric:
             return res.add_metric(self._met)
         return res
 
@@ -229,10 +272,10 @@ class PoissonianEnergy(EnergyOperator):
 
     def apply(self, x):
         self._check_input(x)
-        res = x.sum() - x.log().vdot(self._d)
-        if not isinstance(x, Linearization) or not x.want_metric:
+        res = x.sum() - x.ptw("log").vdot(self._d)
+        if not x.want_metric:
             return res
-        return res.add_metric(makeOp(1./x.val))
+        return res.add_metric(SamplingDtypeSetter(makeOp(1./x.val), np.float64))
 
 
 class InverseGammaLikelihood(EnergyOperator):
@@ -266,13 +309,20 @@ class InverseGammaLikelihood(EnergyOperator):
         elif not isinstance(alpha, Field):
             raise TypeError
         self._alphap1 = alpha+1
+        if not self._beta.dtype == np.float64:
+            # FIXME Add proper complex support for this energy
+            raise TypeError
+        self._sampling_dtype = _field_to_dtype(self._beta)
 
     def apply(self, x):
         self._check_input(x)
-        res = x.log().vdot(self._alphap1) + x.one_over().vdot(self._beta)
-        if not isinstance(x, Linearization) or not x.want_metric:
+        res = x.ptw("log").vdot(self._alphap1) + x.ptw("reciprocal").vdot(self._beta)
+        if not x.want_metric:
             return res
-        return res.add_metric(makeOp(self._alphap1/(x.val**2)))
+        met = makeOp(self._alphap1/(x.val**2))
+        if self._sampling_dtype is not None:
+            met = SamplingDtypeSetter(met, self._sampling_dtype)
+        return res.add_metric(met)
 
 
 class StudentTEnergy(EnergyOperator):
@@ -282,13 +332,14 @@ class StudentTEnergy(EnergyOperator):
         E_\\theta(f) = -\\log \\text{StudentT}_\\theta(f)
                      = \\frac{\\theta + 1}{2} \\log(1 + \\frac{f^2}{\\theta}),
 
-    where f is a field defined on `domain`.
+    where f is a field defined on `domain`. Assumes that the data is `float64`
+    for sampling.
 
     Parameters
     ----------
     domain : `Domain` or `DomainTuple`
         Domain of the operator
-    theta : Scalar
+    theta : Scalar or Field
         Degree of freedom parameter for the student t distribution
     """
 
@@ -298,11 +349,11 @@ class StudentTEnergy(EnergyOperator):
 
     def apply(self, x):
         self._check_input(x)
-        res = ((self._theta+1)/2)*(x**2/self._theta).log1p().sum()
-        if not isinstance(x, Linearization) or not x.want_metric:
+        res = (((self._theta+1)/2)*(x**2/self._theta).ptw("log1p")).sum()
+        if not x.want_metric:
             return res
-        met = ScalingOperator(self.domain, (self._theta+1) / (self._theta+3))
-        return res.add_metric(met)
+        met = makeOp((self._theta+1) / (self._theta+3), self.domain)
+        return res.add_metric(SamplingDtypeSetter(met, np.float64))
 
 
 class BernoulliEnergy(EnergyOperator):
@@ -325,17 +376,18 @@ class BernoulliEnergy(EnergyOperator):
     def __init__(self, d):
         if not isinstance(d, Field) or not np.issubdtype(d.dtype, np.integer):
             raise TypeError
-        if not np.all(np.logical_or(d.val == 0, d.val == 1)):
+        if np.any(np.logical_and(d.val != 0, d.val != 1)):
             raise ValueError
         self._d = d
         self._domain = DomainTuple.make(d.domain)
 
     def apply(self, x):
         self._check_input(x)
-        res = -x.log().vdot(self._d) + (1.-x).log().vdot(self._d-1.)
-        if not isinstance(x, Linearization) or not x.want_metric:
+        res = -x.ptw("log").vdot(self._d) + (1.-x).ptw("log").vdot(self._d-1.)
+        if not x.want_metric:
             return res
-        return res.add_metric(makeOp(1./(x.val*(1. - x.val))))
+        met = makeOp(1./(x.val*(1. - x.val)))
+        return res.add_metric(SamplingDtypeSetter(met, np.float64))
 
 
 class StandardHamiltonian(EnergyOperator):
@@ -364,6 +416,8 @@ class StandardHamiltonian(EnergyOperator):
     ic_samp : IterationController
         Tells an internal :class:`SamplingEnabler` which convergence criterion
         to use to draw Gaussian samples.
+    prior_dtype : numpy.dtype or dict of numpy.dtype, optional
+        Data type of prior used for sampling.
 
     See also
     --------
@@ -372,9 +426,9 @@ class StandardHamiltonian(EnergyOperator):
     `<https://arxiv.org/abs/1812.04403>`_
     """
 
-    def __init__(self, lh, ic_samp=None, _c_inp=None):
+    def __init__(self, lh, ic_samp=None, _c_inp=None, prior_dtype=np.float64):
         self._lh = lh
-        self._prior = GaussianEnergy(domain=lh.domain)
+        self._prior = GaussianEnergy(domain=lh.domain, sampling_dtype=prior_dtype)
         if _c_inp is not None:
             _, self._prior = self._prior.simplify_for_constant_input(_c_inp)
         self._ic_samp = ic_samp
@@ -382,7 +436,7 @@ class StandardHamiltonian(EnergyOperator):
 
     def apply(self, x):
         self._check_input(x)
-        if not isinstance(x, Linearization) or not x.want_metric or self._ic_samp is None:
+        if not x.want_metric or self._ic_samp is None:
             return (self._lh + self._prior)(x)
         lhx, prx = self._lh(x), self._prior(x)
         return (lhx+prx).add_metric(SamplingEnabler(lhx.metric, prx.metric, self._ic_samp))

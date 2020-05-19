@@ -32,11 +32,10 @@ from ..common import setup_function, teardown_function
 ])
 @pytest.mark.parametrize('seed', [13, 2])
 def test_value_inserter(sp, seed):
-    ift.random.push_sseq_from_seed(seed)
-    ind = tuple([int(ift.random.current_rng().integers(0, ss - 1)) for ss in sp.shape])
-    op = ift.ValueInserter(sp, ind)
-    f = ift.from_random('normal', op.domain)
-    ift.random.pop_sseq()
+    with ift.random.Context(seed):
+        ind = tuple([int(ift.random.current_rng().integers(0, ss - 1)) for ss in sp.shape])
+        op = ift.ValueInserter(sp, ind)
+        f = ift.from_random(op.domain, 'normal')
     inp = f.val
     ret = op(f).val
     assert_(ret[ind] == inp)

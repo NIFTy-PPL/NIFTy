@@ -54,8 +54,8 @@ def testLOSResponse(sp, dtype):
 
 @pmp('sp', _h_spaces + _p_spaces + _pow_spaces)
 def testOperatorCombinations(sp, dtype):
-    a = ift.DiagonalOperator(ift.Field.from_random("normal", sp, dtype=dtype))
-    b = ift.DiagonalOperator(ift.Field.from_random("normal", sp, dtype=dtype))
+    a = ift.DiagonalOperator(ift.Field.from_random(sp, "normal", dtype=dtype))
+    b = ift.DiagonalOperator(ift.Field.from_random(sp, "normal", dtype=dtype))
     op = ift.SandwichOperator.make(a, b)
     ift.extra.consistency_check(op, dtype, dtype)
     op = a(b)
@@ -91,7 +91,7 @@ def testConjugationOperator(sp):
 
 @pmp('sp', _h_spaces + _p_spaces + _pow_spaces)
 def testOperatorAdaptor(sp, dtype):
-    op = ift.DiagonalOperator(ift.Field.from_random("normal", sp, dtype=dtype))
+    op = ift.DiagonalOperator(ift.Field.from_random(sp, "normal", dtype=dtype))
     ift.extra.consistency_check(op.adjoint, dtype, dtype)
     ift.extra.consistency_check(op.inverse, dtype, dtype)
     ift.extra.consistency_check(op.inverse.adjoint, dtype, dtype)
@@ -169,7 +169,7 @@ def testHarmonic(sp, dtype):
 @pmp('sp', _p_spaces)
 def testMask(sp, dtype):
     # Create mask
-    f = ift.from_random('normal', sp).val
+    f = ift.from_random(sp, 'normal').val
     mask = np.zeros_like(f)
     mask[f > 0] = 1
     mask = ift.Field.from_raw(sp, mask)
@@ -180,7 +180,7 @@ def testMask(sp, dtype):
 
 @pmp('sp', _h_spaces + _p_spaces)
 def testDiagonal(sp, dtype):
-    op = ift.DiagonalOperator(ift.Field.from_random("normal", sp, dtype=dtype))
+    op = ift.DiagonalOperator(ift.Field.from_random(sp, "normal", dtype=dtype))
     ift.extra.consistency_check(op, dtype, dtype)
 
 
@@ -193,7 +193,7 @@ def testGeometryRemover(sp, dtype):
 @pmp('spaces', [0, 1, 2, 3, (0, 1), (0, 2), (0, 1, 2), (0, 2, 3), (1, 3)])
 @pmp('wgt', [0, 1, 2, -1])
 def testContractionOperator(spaces, wgt, dtype):
-    dom = (ift.RGSpace(10), ift.RGSpace(13), ift.GLSpace(5), ift.HPSpace(4))
+    dom = (ift.RGSpace(1), ift.RGSpace(2), ift.GLSpace(3), ift.HPSpace(2))
     op = ift.ContractionOperator(dom, spaces, wgt)
     ift.extra.consistency_check(op, dtype, dtype)
 
@@ -210,8 +210,8 @@ def testDomainTupleFieldInserter():
 @pmp('factor', [1, 2, 2.7])
 @pmp('central', [False, True])
 def testZeroPadder(space, factor, dtype, central):
-    dom = (ift.RGSpace(10), ift.UnstructuredDomain(13), ift.RGSpace(7, 12),
-           ift.HPSpace(4))
+    dom = (ift.RGSpace(4), ift.UnstructuredDomain(5), ift.RGSpace(3, 4),
+           ift.HPSpace(2))
     newshape = [int(factor*l) for l in dom[space].shape]
     op = ift.FieldZeroPadder(dom, newshape, space, central)
     ift.extra.consistency_check(op, dtype, dtype)
@@ -240,24 +240,23 @@ def testRegridding(args):
     ift.DomainTuple.make(ift.RGSpace((10, 12), distances=(0.1, 1.)),)
 ])
 def testOuter(fdomain, domain):
-    f = ift.from_random('normal', fdomain)
-    op = ift.OuterProduct(f, domain)
+    f = ift.from_random(fdomain, 'normal')
+    op = ift.OuterProduct(domain, f)
     ift.extra.consistency_check(op)
 
 
 @pmp('sp', _h_spaces + _p_spaces + _pow_spaces)
 @pmp('seed', [12, 3])
 def testValueInserter(sp, seed):
-    ift.random.push_sseq_from_seed(seed)
-    ind = []
-    for ss in sp.shape:
-        if ss == 1:
-            ind.append(0)
-        else:
-            ind.append(int(ift.random.current_rng().integers(0, ss-1)))
-    op = ift.ValueInserter(sp, ind)
-    ift.extra.consistency_check(op)
-    ift.random.pop_sseq()
+    with ift.random.Context(seed):
+        ind = []
+        for ss in sp.shape:
+            if ss == 1:
+                ind.append(0)
+            else:
+                ind.append(int(ift.random.current_rng().integers(0, ss-1)))
+        op = ift.ValueInserter(sp, ind)
+        ift.extra.consistency_check(op)
 
 
 @pmp('sp', _pow_spaces)
@@ -277,32 +276,50 @@ def testSpecialSum(sp):
     op = ift.library.correlated_fields._SpecialSum(sp)
     ift.extra.consistency_check(op)
 
+def metatestMatrixProductOperator(sp, mat_shape, seed, **kwargs):
+    with ift.random.Context(seed):
+        mat = ift.random.current_rng().standard_normal(mat_shape)
+        op = ift.MatrixProductOperator(sp, mat, **kwargs)
+        ift.extra.consistency_check(op)
+        mat = mat + 1j*ift.random.current_rng().standard_normal(mat_shape)
+        op = ift.MatrixProductOperator(sp, mat, **kwargs)
+        ift.extra.consistency_check(op)
 
 @pmp('sp', [ift.RGSpace(10)])
+@pmp('spaces', [None, (0,)])
 @pmp('seed', [12, 3])
-def testMatrixProductOperator(sp, seed):
-    ift.random.push_sseq_from_seed(seed)
-    mat = ift.random.current_rng().standard_normal((*sp.shape, *sp.shape))
-    op = ift.MatrixProductOperator(sp, mat)
-    ift.extra.consistency_check(op)
-    mat = mat + 1j*ift.random.current_rng().standard_normal((*sp.shape, *sp.shape))
-    op = ift.MatrixProductOperator(sp, mat)
-    ift.extra.consistency_check(op)
-    ift.random.pop_sseq()
+def testMatrixProductOperator_1d(sp, spaces, seed):
+    mat_shape = sp.shape * 2
+    metatestMatrixProductOperator(sp, mat_shape, seed, spaces=spaces)
 
+@pmp('sp', [ift.DomainTuple.make((ift.RGSpace((2)), ift.RGSpace((10))))])
+@pmp('spaces', [(0,), (1,), (0, 1)])
+@pmp('seed', [12, 3])
+def testMatrixProductOperator_2d_spaces(sp, spaces, seed):
+    appl_shape = []
+    for sp_idx in spaces:
+        appl_shape += sp[sp_idx].shape
+    appl_shape = tuple(appl_shape)
+    mat_shape = appl_shape * 2
+    metatestMatrixProductOperator(sp, mat_shape, seed, spaces=spaces)
+
+@pmp('sp', [ift.RGSpace((2, 10))])
+@pmp('seed', [12, 3])
+def testMatrixProductOperator_2d_flatten(sp, seed):
+    appl_shape = (ift.utilities.my_product(sp.shape),)
+    mat_shape = appl_shape * 2
+    metatestMatrixProductOperator(sp, mat_shape, seed, flatten=True)
 
 @pmp('seed', [12, 3])
 def testPartialExtractor(seed):
-    ift.random.push_sseq_from_seed(seed)
-    tgt = {'a': ift.RGSpace(1), 'b': ift.RGSpace(2)}
-    dom = tgt.copy()
-    dom['c'] = ift.RGSpace(3)
-    dom = ift.MultiDomain.make(dom)
-    tgt = ift.MultiDomain.make(tgt)
-    op = ift.PartialExtractor(dom, tgt)
-    ift.extra.consistency_check(op)
-    ift.random.pop_sseq()
-
+    with ift.random.Context(seed):
+        tgt = {'a': ift.RGSpace(1), 'b': ift.RGSpace(2)}
+        dom = tgt.copy()
+        dom['c'] = ift.RGSpace(3)
+        dom = ift.MultiDomain.make(dom)
+        tgt = ift.MultiDomain.make(tgt)
+        op = ift.PartialExtractor(dom, tgt)
+        ift.extra.consistency_check(op)
 
 @pmp('seed', [12, 3])
 def testSlowFieldAdapter(seed):

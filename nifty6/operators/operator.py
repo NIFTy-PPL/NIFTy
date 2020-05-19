@@ -17,9 +17,8 @@
 
 import numpy as np
 
-from ..field import Field
-from ..multi_field import MultiField
 from ..utilities import NiftyMeta, indent
+from .. import pointwise
 
 
 class Operator(metaclass=NiftyMeta):
@@ -45,8 +44,64 @@ class Operator(metaclass=NiftyMeta):
         -------
         target : DomainTuple or MultiDomain
         """
-
         return self._target
+
+    @property
+    def val(self):
+        """The numerical value associated with this object
+        For "pure" operators this is `None`. For Field-like objects this
+        is a `numpy.ndarray` or a dictionary of `numpy.ndarray`s mathcing the
+        object's `target`.
+
+        Returns
+        -------
+        None or numpy.ndarray or dictionary of np.ndarrays : the numerical value
+        """
+        return None
+
+    @property
+    def jac(self):
+        """The Jacobian associated with this object
+        For "pure" operators this is `None`. For Field-like objects this
+        can be `None` (in which case the object is a constant), or it can be a
+        `LinearOperator` with `domain` and `target` matching the object's.
+
+        Returns
+        -------
+        None or LinearOperator : the Jacobian
+
+        Notes
+        -----
+        if `value` is None, this must be `None` as well!
+        """
+        return None
+
+    @property
+    def want_metric(self):
+        """Whether a metric should be computed for the full expression.
+        This is `False` whenever `jac` is `None`. In other cases it signals
+        that operators processing this object should compute the metric.
+
+        Returns
+        -------
+        bool : whether the metric should be computed
+        """
+        return False
+
+    @property
+    def metric(self):
+        """The metric associated with the object.
+        This is `None`, except when all the following conditions hold:
+        - `want_metric` is `True`
+        - `target` is the scalar domain
+        - the operator chain contained an operator which could compute the
+          metric
+
+        Returns
+        -------
+        None or LinearOperator : the metric
+        """
+        return None
 
     @staticmethod
     def _check_domain_equality(dom_op, dom_field):
@@ -73,16 +128,18 @@ class Operator(metaclass=NiftyMeta):
         from .contraction_operator import ContractionOperator
         return ContractionOperator(self.target, spaces)(self)
 
+    def integrate(self, spaces=None):
+        from .contraction_operator import IntegrationOperator
+        return IntegrationOperator(self.target, spaces)(self)
+
     def vdot(self, other):
-        from ..field import Field
-        from ..multi_field import MultiField
         from ..sugar import makeOp
-        if isinstance(other, Operator):
-            res = self.conjugate()*other
-        elif isinstance(other, (Field, MultiField)):
-            res = makeOp(other) @ self.conjugate()
-        else:
+        if not isinstance(other, Operator):
             raise TypeError
+        if other.jac is None:
+            res = self.conjugate()*other
+        else:
+            res = makeOp(other) @ self.conjugate()
         return res.sum()
 
     @property
@@ -153,14 +210,9 @@ class Operator(metaclass=NiftyMeta):
         return _OpSum(self, -x)
 
     def __pow__(self, power):
-        if not np.isscalar(power):
+        if not (np.isscalar(power) or power.jac is None):
             return NotImplemented
-        return _OpChain.make((_PowerOp(self.target, power), self))
-
-    def clip(self, min=None, max=None):
-        if min is None and max is None:
-            return self
-        return _OpChain.make((_Clipper(self.target, min, max), self))
+        return self.ptw("power", power)
 
     def apply(self, x):
         """Applies the operator to a Field or MultiField.
@@ -179,11 +231,10 @@ class Operator(metaclass=NiftyMeta):
         return self.apply(x.extract(self.domain))
 
     def _check_input(self, x):
-        from ..linearization import Linearization
         from .scaling_operator import ScalingOperator
-        if not isinstance(x, (Field, MultiField, Linearization)):
+        if not (isinstance(x, Operator) and x.val is not None):
             raise TypeError
-        if isinstance(x, Linearization):
+        if x.jac is not None:
             if not isinstance(x.jac, ScalingOperator):
                 raise ValueError
             if x.jac._factor != 1:
@@ -191,12 +242,11 @@ class Operator(metaclass=NiftyMeta):
         self._check_domain_equality(self._domain, x.domain)
 
     def __call__(self, x):
-        from ..linearization import Linearization
-        from ..field import Field
-        from ..multi_field import MultiField
-        if isinstance(x, Linearization):
+        if not isinstance(x, Operator):
+            raise TypeError
+        if x.jac is not None:
             return self.apply(x.trivial_jac()).prepend_jac(x.jac)
-        elif isinstance(x, (Field, MultiField)):
+        elif x.val is not None:
             return self.apply(x)
         return self @ x
 
@@ -222,13 +272,14 @@ class Operator(metaclass=NiftyMeta):
     def _simplify_for_constant_input_nontrivial(self, c_inp):
         return None, self
 
+    def ptw(self, op, *args, **kwargs):
+        return _OpChain.make((_FunctionApplier(self.target, op, *args, **kwargs), self))
 
-for f in ["sqrt", "exp", "log", "sin", "cos", "tan", "sinh", "cosh", "tanh",
-          "sinc", "sigmoid", "absolute", "one_over", "log10", "log1p", "expm1"]:
+
+for f in pointwise.ptw_dict.keys():
     def func(f):
-        def func2(self):
-            fa = _FunctionApplier(self.target, f)
-            return _OpChain.make((fa, self))
+        def func2(self, *args, **kwargs):
+            return self.ptw(f, *args, **kwargs)
         return func2
     setattr(Operator, f, func(f))
 
@@ -282,10 +333,9 @@ class _ConstantOperator(Operator):
         self._output = output
 
     def apply(self, x):
-        from ..linearization import Linearization
         from .simple_linear_operators import NullOperator
         self._check_input(x)
-        if isinstance(x, Linearization):
+        if x.jac is not None:
             return x.new(self._output, NullOperator(self._domain, self._target))
         return self._output
 
@@ -294,37 +344,16 @@ class _ConstantOperator(Operator):
 
 
 class _FunctionApplier(Operator):
-    def __init__(self, domain, funcname):
+    def __init__(self, domain, funcname, *args, **kwargs):
         from ..sugar import makeDomain
         self._domain = self._target = makeDomain(domain)
         self._funcname = funcname
+        self._args = args
+        self._kwargs = kwargs
 
     def apply(self, x):
         self._check_input(x)
-        return getattr(x, self._funcname)()
-
-
-class _Clipper(Operator):
-    def __init__(self, domain, min=None, max=None):
-        from ..sugar import makeDomain
-        self._domain = self._target = makeDomain(domain)
-        self._min = min
-        self._max = max
-
-    def apply(self, x):
-        self._check_input(x)
-        return x.clip(self._min, self._max)
-
-
-class _PowerOp(Operator):
-    def __init__(self, domain, power):
-        from ..sugar import makeDomain
-        self._domain = self._target = makeDomain(domain)
-        self._power = power
-
-    def apply(self, x):
-        self._check_input(x)
-        return x**self._power
+        return x.ptw(self._funcname, *self._args, **self._kwargs)
 
 
 class _CombinedOperator(Operator):
@@ -395,8 +424,8 @@ class _OpProd(Operator):
         from ..linearization import Linearization
         from ..sugar import makeOp
         self._check_input(x)
-        lin = isinstance(x, Linearization)
-        wm = x.want_metric if lin else None
+        lin = x.jac is not None
+        wm = x.want_metric if lin else False
         x = x.val if lin else x
         v1 = x.extract(self._op1.domain)
         v2 = x.extract(self._op2.domain)
@@ -438,7 +467,7 @@ class _OpSum(Operator):
     def apply(self, x):
         from ..linearization import Linearization
         self._check_input(x)
-        if not isinstance(x, Linearization):
+        if x.jac is None:
             v1 = x.extract(self._op1.domain)
             v2 = x.extract(self._op2.domain)
             return self._op1(v1).unite(self._op2(v2))

@@ -16,12 +16,14 @@
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
 
 from ..domain_tuple import DomainTuple
+from ..multi_domain import MultiDomain
 from ..domains.unstructured_domain import UnstructuredDomain
 from ..field import Field
-from ..multi_domain import MultiDomain
 from ..multi_field import MultiField
-from .endomorphic_operator import EndomorphicOperator
 from .linear_operator import LinearOperator
+from .endomorphic_operator import EndomorphicOperator
+from .. import utilities
+import numpy as np
 
 
 class VdotOperator(LinearOperator):
@@ -128,9 +130,9 @@ class FieldAdapter(LinearOperator):
         The relevant key of the MultiDomain.
     """
 
-    def __init__(self, tgt, name):
+    def __init__(self, target, name):
         from ..sugar import makeDomain
-        tmp = makeDomain(tgt)
+        tmp = makeDomain(target)
         if isinstance(tmp, DomainTuple):
             self._target = tmp
             self._domain = MultiDomain.make({name: tmp})
@@ -173,9 +175,9 @@ class _SlowFieldAdapter(LinearOperator):
         The relevant key of the MultiDomain.
     """
 
-    def __init__(self, dom, name):
+    def __init__(self, domain, name):
         from ..sugar import makeDomain
-        tmp = makeDomain(dom)
+        tmp = makeDomain(domain)
         if not isinstance(tmp, MultiDomain):
             raise TypeError("MultiDomain expected")
         self._name = str(name)
@@ -246,7 +248,7 @@ def ducktape(left, right, name):
             right = MultiDomain.make({name: left})
     lmulti = isinstance(left, MultiDomain)
     rmulti = isinstance(right, MultiDomain)
-    if lmulti+rmulti != 1:
+    if lmulti + rmulti != 1:
         raise ValueError("need exactly one MultiDomain")
     if lmulti:
         if len(left) == 1:
@@ -347,34 +349,3 @@ class PartialExtractor(LinearOperator):
         res0 = MultiField.from_dict({key: x[key] for key in x.domain.keys()})
         res1 = MultiField.full(self._compldomain, 0.)
         return res0.unite(res1)
-
-
-class MatrixProductOperator(EndomorphicOperator):
-    """Endomorphic matrix multiplication with input field.
-
-    Parameters
-    ----------
-    domain: :class:`Domain` or :class:`DomainTuple`
-        Domain of the operator.
-        If :class:`DomainTuple` it is assumed to have only one entry.
-    matrix: scipy.sparse matrix or numpy array
-        Matrix of shape `(domain.shape, domain.shape)`. Needs to support
-        `dot()` and `transpose()` in the style of numpy arrays.
-    """
-    def __init__(self, domain, matrix):
-        self._domain = DomainTuple.make(domain)
-        shp = self._domain.shape
-        if len(shp) > 1:
-            raise TypeError('Only 1D-domain supported yet.')
-        if matrix.shape != (*shp, *shp):
-            raise ValueError
-        self._capability = self.TIMES | self.ADJOINT_TIMES
-        self._mat = matrix
-        self._mat_tr = matrix.transpose().conjugate()
-
-    def apply(self, x, mode):
-        self._check_input(x, mode)
-        res = x.val
-        f = self._mat.dot if mode == self.TIMES else self._mat_tr.dot
-        res = f(res)
-        return Field(self._domain, res)

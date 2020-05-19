@@ -11,7 +11,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
-# Copyright(C) 2013-2019 Max-Planck-Society
+# Copyright(C) 2013-2020 Max-Planck-Society
 #
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
 
@@ -21,9 +21,10 @@ from . import utilities
 from .field import Field
 from .multi_domain import MultiDomain
 from .domain_tuple import DomainTuple
+from .operators.operator import Operator
 
 
-class MultiField(object):
+class MultiField(Operator):
     def __init__(self, domain, val):
         """The discrete representation of a continuous field over a sum space.
 
@@ -48,15 +49,15 @@ class MultiField(object):
         self._val = val
 
     @staticmethod
-    def from_dict(dict, domain=None):
+    def from_dict(dct, domain=None):
         if domain is None:
-            for dd in dict.values():
+            for dd in dct.values():
                 if not isinstance(dd.domain, DomainTuple):
                     raise TypeError('Values of dictionary need to be Fields '
                                     'defined on DomainTuples.')
             domain = MultiDomain.make({key: v._domain
-                                       for key, v in dict.items()})
-        res = tuple(dict[key] if key in dict else Field(dom, 0.)
+                                       for key, v in dct.items()})
+        res = tuple(dct[key] if key in dct else Field(dom, 0.)
                     for key, dom in zip(domain.keys(), domain.domains()))
         return MultiField(domain, res)
 
@@ -100,12 +101,39 @@ class MultiField(object):
         return self._transform(lambda x: x.imag)
 
     @staticmethod
-    def from_random(random_type, domain, dtype=np.float64, **kwargs):
+    def from_random(domain, random_type='normal', dtype=np.float64, **kwargs):
+        """Draws a random multi-field with the given parameters.
+
+        Parameters
+        ----------
+        random_type : 'pm1', 'normal', or 'uniform'
+            The random distribution to use.
+        domain : DomainTuple
+            The domain of the output random Field.
+        dtype : type
+            The datatype of the output random Field.
+
+        Returns
+        -------
+        MultiField
+            The newly created :class:`MultiField`.
+
+        Notes
+        -----
+        The individual fields within this multi-field will be drawn in alphabetical
+        order of the multi-field's domain keys. As a consequence, renaming these
+        keys may cause the multi-field to be filled with different random numbers,
+        even for the same initial RNG state.
+        """
         domain = MultiDomain.make(domain)
-#        dtype = MultiField.build_dtype(dtype, domain)
-        return MultiField(
-            domain, tuple(Field.from_random(random_type, dom, dtype, **kwargs)
-                          for dom in domain._domains))
+        if isinstance(dtype, dict):
+            dtype = {kk: np.dtype(dt) for kk, dt in dtype.items()}
+        else:
+            dtype = np.dtype(dtype)
+            dtype = {kk: dtype for kk in domain.keys()}
+        dct = {kk: Field.from_random(domain[kk], random_type, dtype[kk], **kwargs)
+               for kk in domain.keys()}
+        return MultiField.from_dict(dct)
 
     def _check_domain(self, other):
         if other._domain != self._domain:
@@ -199,13 +227,8 @@ class MultiField(object):
     def conjugate(self):
         return self._transform(lambda x: x.conjugate())
 
-    def clip(self, min=None, max=None):
-        ncomp = len(self._val)
-        lmin = min._val if isinstance(min, MultiField) else (min,)*ncomp
-        lmax = max._val if isinstance(max, MultiField) else (max,)*ncomp
-        return MultiField(
-            self._domain,
-            tuple(self._val[i].clip(lmin[i], lmax[i]) for i in range(ncomp)))
+    def clip(self, a_min=None, a_max=None):
+        return self.ptw("clip", a_min, a_max)
 
     def s_all(self):
         for v in self._val:
@@ -310,8 +333,30 @@ class MultiField(object):
                 res[key] = -val if neg else val
         return MultiField.from_dict(res)
 
-    def one_over(self):
-        return 1/self
+    def _prep_args(self, args, kwargs, i):
+        for arg in args + tuple(kwargs.values()):
+            if not (arg is None or np.isscalar(arg) or arg.jac is None):
+                raise TypeError("bad argument")
+        argstmp = tuple(arg if arg is None or np.isscalar(arg) else arg._val[i]
+                        for arg in args)
+        kwargstmp = {key: val if val is None or np.isscalar(val) else val._val[i]
+                     for key, val in kwargs.items()}
+        return argstmp, kwargstmp
+
+    def ptw(self, op, *args, **kwargs):
+        tmp = []
+        for i in range(len(self._val)):
+            argstmp, kwargstmp = self._prep_args(args, kwargs, i)
+            tmp.append(self._val[i].ptw(op, *argstmp, **kwargstmp))
+        return MultiField(self.domain, tuple(tmp))
+
+    def ptw_with_deriv(self, op, *args, **kwargs):
+        tmp = []
+        for i in range(len(self._val)):
+            argstmp, kwargstmp = self._prep_args(args, kwargs, i)
+            tmp.append(self._val[i].ptw_with_deriv(op, *argstmp, **kwargstmp))
+        return (MultiField(self.domain, tuple(v[0] for v in tmp)),
+                MultiField(self.domain, tuple(v[1] for v in tmp)))
 
     def _binary_op(self, other, op):
         f = getattr(Field, op)
@@ -347,14 +392,3 @@ for op in ["__iadd__", "__isub__", "__imul__", "__idiv__",
                 "In-place operations are deliberately not supported")
         return func2
     setattr(MultiField, op, func(op))
-
-
-for f in ["sqrt", "exp", "log", "sin", "cos", "tan", "sinh", "cosh", "tanh",
-          "absolute", "sinc", "sign", "log10", "log1p", "expm1"]:
-    def func(f):
-        def func2(self):
-            fu = getattr(Field, f)
-            return MultiField(self.domain,
-                              tuple(fu(val) for val in self.values()))
-        return func2
-    setattr(MultiField, f, func(f))

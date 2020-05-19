@@ -19,30 +19,15 @@ import numpy as np
 import pytest
 
 import nifty6 as ift
-from itertools import product
-from .common import setup_function, teardown_function
 
-# Currently it is not possible to parametrize fixtures. But this will
-# hopefully be fixed in the future.
-# https://docs.pytest.org/en/latest/proposals/parametrize_with_fixtures.html
+from .common import list2fixture, setup_function, teardown_function
 
-SPACES = [ift.GLSpace(15),
-          ift.RGSpace(64, distances=.789),
-          ift.RGSpace([32, 32], distances=.789)]
-for sp in SPACES[:3]:
-    SPACES.append(ift.MultiDomain.make({'asdf': sp}))
-SEEDS = [4, 78, 23]
-PARAMS = product(SEEDS, SPACES)
+spaces = [ift.GLSpace(5),
+          ift.MultiDomain.make({'': ift.RGSpace(5, distances=.789)}),
+          (ift.RGSpace(3, distances=.789), ift.UnstructuredDomain(2))]
 pmp = pytest.mark.parametrize
-
-
-@pytest.fixture(params=PARAMS)
-def field(request):
-    ift.random.push_sseq_from_seed(request.param[0])
-    S = ift.ScalingOperator(request.param[1], 1.)
-    res = S.draw_sample()
-    ift.random.pop_sseq()
-    return res
+field = list2fixture([ift.from_random(sp, 'normal') for sp in spaces])
+ntries = 10
 
 
 def test_gaussian(field):
@@ -52,7 +37,7 @@ def test_gaussian(field):
 
 def test_ScaledEnergy(field):
     icov = ift.ScalingOperator(field.domain, 1.2)
-    energy = ift.GaussianEnergy(inverse_covariance=icov)
+    energy = ift.GaussianEnergy(inverse_covariance=icov, sampling_dtype=np.float64)
     ift.extra.check_jacobian_consistency(energy.scale(0.3), field)
 
     lin = ift.Linearization.make_var(field, want_metric=True)
@@ -61,12 +46,13 @@ def test_ScaledEnergy(field):
     res1 = met1(field)
     res2 = met2(field)/0.3
     ift.extra.assert_allclose(res1, res2, 0, 1e-12)
+    met1.draw_sample()
     met2.draw_sample()
 
 
 def test_QuadraticFormOperator(field):
     op = ift.ScalingOperator(field.domain, 1.2)
-    endo = ift.makeOp(op.draw_sample())
+    endo = ift.makeOp(op.draw_sample_with_dtype(dtype=np.float64))
     energy = ift.QuadraticFormOperator(endo)
     ift.extra.check_jacobian_consistency(energy, field)
 
@@ -76,34 +62,36 @@ def test_studentt(field):
         return
     energy = ift.StudentTEnergy(domain=field.domain, theta=.5)
     ift.extra.check_jacobian_consistency(energy, field, tol=1e-6)
+    theta = ift.from_random(field.domain, 'normal').exp()
+    energy = ift.StudentTEnergy(domain=field.domain, theta=theta)
+    ift.extra.check_jacobian_consistency(energy, field, tol=1e-6, ntries=ntries)
 
 
 def test_hamiltonian_and_KL(field):
-    field = field.exp()
+    field = field.ptw("exp")
     space = field.domain
     lh = ift.GaussianEnergy(domain=space)
     hamiltonian = ift.StandardHamiltonian(lh)
-    ift.extra.check_jacobian_consistency(hamiltonian, field)
-    S = ift.ScalingOperator(space, 1.)
-    samps = [S.draw_sample() for i in range(3)]
+    ift.extra.check_jacobian_consistency(hamiltonian, field, ntries=ntries)
+    samps = [ift.from_random(space, 'normal') for i in range(2)]
     kl = ift.AveragedEnergy(hamiltonian, samps)
-    ift.extra.check_jacobian_consistency(kl, field)
+    ift.extra.check_jacobian_consistency(kl, field, ntries=ntries)
 
 
 def test_variablecovariancegaussian(field):
     if isinstance(field.domain, ift.MultiDomain):
         return
-    dc = {'a': field, 'b': field.exp()}
+    dc = {'a': field, 'b': field.ptw("exp")}
     mf = ift.MultiField.from_dict(dc)
-    energy = ift.VariableCovarianceGaussianEnergy(field.domain, 'a', 'b')
-    ift.extra.check_jacobian_consistency(energy, mf, tol=1e-6)
+    energy = ift.VariableCovarianceGaussianEnergy(field.domain, 'a', 'b', np.float64)
+    ift.extra.check_jacobian_consistency(energy, mf, tol=1e-6, ntries=ntries)
     energy(ift.Linearization.make_var(mf, want_metric=True)).metric.draw_sample()
 
 
 def test_inverse_gamma(field):
     if isinstance(field.domain, ift.MultiDomain):
         return
-    field = field.exp()
+    field = field.ptw("exp")
     space = field.domain
     d = ift.random.current_rng().normal(10, size=space.shape)**2
     d = ift.Field(space, d)
@@ -114,7 +102,7 @@ def test_inverse_gamma(field):
 def testPoissonian(field):
     if isinstance(field.domain, ift.MultiDomain):
         return
-    field = field.exp()
+    field = field.ptw("exp")
     space = field.domain
     d = ift.random.current_rng().poisson(120, size=space.shape)
     d = ift.Field(space, d)
@@ -125,7 +113,7 @@ def testPoissonian(field):
 def test_bernoulli(field):
     if isinstance(field.domain, ift.MultiDomain):
         return
-    field = field.sigmoid()
+    field = field.ptw("sigmoid")
     space = field.domain
     d = ift.random.current_rng().binomial(1, 0.1, size=space.shape)
     d = ift.Field(space, d)

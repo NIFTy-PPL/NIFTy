@@ -31,16 +31,16 @@ space = list2fixture([
 
 
 def test_property(space):
-    diag = ift.Field.from_random('normal', domain=space)
+    diag = ift.Field.from_random(domain=space, random_type='normal')
     D = ift.DiagonalOperator(diag)
     if D.domain[0] != space:
         raise TypeError
 
 
 def test_times_adjoint(space):
-    rand1 = ift.Field.from_random('normal', domain=space)
-    rand2 = ift.Field.from_random('normal', domain=space)
-    diag = ift.Field.from_random('normal', domain=space)
+    rand1 = ift.Field.from_random(domain=space, random_type='normal')
+    rand2 = ift.Field.from_random(domain=space, random_type='normal')
+    diag = ift.Field.from_random(domain=space, random_type='normal')
     D = ift.DiagonalOperator(diag)
     tt1 = rand1.s_vdot(D.times(rand2))
     tt2 = rand2.s_vdot(D.times(rand1))
@@ -48,47 +48,47 @@ def test_times_adjoint(space):
 
 
 def test_times_inverse(space):
-    rand1 = ift.Field.from_random('normal', domain=space)
-    diag = ift.Field.from_random('normal', domain=space)
+    rand1 = ift.Field.from_random(domain=space, random_type='normal')
+    diag = ift.Field.from_random(domain=space, random_type='normal')
     D = ift.DiagonalOperator(diag)
     tt1 = D.times(D.inverse_times(rand1))
     assert_allclose(rand1.val, tt1.val)
 
 
 def test_times(space):
-    rand1 = ift.Field.from_random('normal', domain=space)
-    diag = ift.Field.from_random('normal', domain=space)
+    rand1 = ift.Field.from_random(domain=space, random_type='normal')
+    diag = ift.Field.from_random(domain=space, random_type='normal')
     D = ift.DiagonalOperator(diag)
     tt = D.times(rand1)
     assert_equal(tt.domain[0], space)
 
 
 def test_adjoint_times(space):
-    rand1 = ift.Field.from_random('normal', domain=space)
-    diag = ift.Field.from_random('normal', domain=space)
+    rand1 = ift.Field.from_random(domain=space, random_type='normal')
+    diag = ift.Field.from_random(domain=space, random_type='normal')
     D = ift.DiagonalOperator(diag)
     tt = D.adjoint_times(rand1)
     assert_equal(tt.domain[0], space)
 
 
 def test_inverse_times(space):
-    rand1 = ift.Field.from_random('normal', domain=space)
-    diag = ift.Field.from_random('normal', domain=space)
+    rand1 = ift.Field.from_random(domain=space, random_type='normal')
+    diag = ift.Field.from_random(domain=space, random_type='normal')
     D = ift.DiagonalOperator(diag)
     tt = D.inverse_times(rand1)
     assert_equal(tt.domain[0], space)
 
 
 def test_adjoint_inverse_times(space):
-    rand1 = ift.Field.from_random('normal', domain=space)
-    diag = ift.Field.from_random('normal', domain=space)
+    rand1 = ift.Field.from_random(domain=space, random_type='normal')
+    diag = ift.Field.from_random(domain=space, random_type='normal')
     D = ift.DiagonalOperator(diag)
     tt = D.adjoint_inverse_times(rand1)
     assert_equal(tt.domain[0], space)
 
 
 def test_diagonal(space):
-    diag = ift.Field.from_random('normal', domain=space)
+    diag = ift.Field.from_random(domain=space, random_type='normal')
     D = ift.DiagonalOperator(diag)
     diag_op = D(ift.Field.full(space, 1.))
     assert_allclose(diag.val, diag_op.val)
