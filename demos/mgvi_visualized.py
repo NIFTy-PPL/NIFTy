@@ -21,12 +21,14 @@ import pylab as plt
 
 import nifty6 as ift
 
+
 if __name__ == '__main__':
     dom = ift.UnstructuredDomain(1)
+    uninformative_scaling = 10
+
+
     a = ift.FieldAdapter(dom, 'a')
     b = ift.FieldAdapter(dom, 'b')
-
-    uninformative_scaling = 10
     lh = (a.adjoint @ a).scale(uninformative_scaling) + (b.adjoint @ b).scale(-1.35*2).exp()
     lh = ift.VariableCovarianceGaussianEnergy(dom, 'a', 'b', np.float64) @ lh
     icsamp = ift.AbsDeltaEnergyController(deltaE=0.1, iteration_limit=2)
@@ -34,13 +36,16 @@ if __name__ == '__main__':
 
     x_limits = [-8/uninformative_scaling, 8/uninformative_scaling]
     y_limits = [-4, 4]
-    x = np.linspace(*x_limits, num=201)
-    y = np.linspace(*y_limits, num=201)
-    z = np.empty((x.size, y.size))
-    for ii, xx in enumerate(x):
-        for jj, yy in enumerate(y):
-            inp = ift.MultiField.from_raw(lh.domain, {'a': xx, 'b': yy})
-            z[ii, jj] = np.exp(-1*ham(inp).val)
+    x = np.linspace(*x_limits, num=401)
+    y = np.linspace(*y_limits, num=401)
+    xx, yy = np.meshgrid(x, y, indexing='ij')
+    def np_ham(x, y):
+        prior =  x**2 + y**2
+        mean = x*uninformative_scaling
+        lcov = 1.35*2*y
+        lh = .5*(mean**2*np.exp(-lcov) + lcov)
+        return lh + prior
+    z = np.exp(-1*np_ham(xx, yy))
     plt.plot(y, np.sum(z, axis=0))
     plt.xlabel('y')
     plt.ylabel('pdf')
