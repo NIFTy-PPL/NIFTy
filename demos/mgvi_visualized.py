@@ -21,15 +21,14 @@ import pylab as plt
 
 import nifty6 as ift
 
-
 if __name__ == '__main__':
     dom = ift.UnstructuredDomain(1)
     uninformative_scaling = 10
 
-
     a = ift.FieldAdapter(dom, 'a')
     b = ift.FieldAdapter(dom, 'b')
-    lh = (a.adjoint @ a).scale(uninformative_scaling) + (b.adjoint @ b).scale(-1.35*2).exp()
+    lh = (a.adjoint @ a).scale(uninformative_scaling) + (b.adjoint @ b).scale(
+        -1.35*2).exp()
     lh = ift.VariableCovarianceGaussianEnergy(dom, 'a', 'b', np.float64) @ lh
     icsamp = ift.AbsDeltaEnergyController(deltaE=0.1, iteration_limit=2)
     ham = ift.StandardHamiltonian(lh, icsamp)
@@ -39,12 +38,14 @@ if __name__ == '__main__':
     x = np.linspace(*x_limits, num=401)
     y = np.linspace(*y_limits, num=401)
     xx, yy = np.meshgrid(x, y, indexing='ij')
+
     def np_ham(x, y):
-        prior =  x**2 + y**2
+        prior = x**2 + y**2
         mean = x*uninformative_scaling
         lcov = 1.35*2*y
         lh = .5*(mean**2*np.exp(-lcov) + lcov)
         return lh + prior
+
     z = np.exp(-1*np_ham(xx, yy))
     plt.plot(y, np.sum(z, axis=0))
     plt.xlabel('y')
@@ -59,8 +60,8 @@ if __name__ == '__main__':
 
     pos = ift.from_random('normal', ham.domain)
     MAP = ift.EnergyAdapter(pos, ham, want_metric=True)
-    minimizer = ift.NewtonCG(ift.GradientNormController(iteration_limit=20,
-                                                               name='Mini'))
+    minimizer = ift.NewtonCG(
+        ift.GradientNormController(iteration_limit=20, name='Mini'))
     MAP, _ = minimizer(MAP)
     map_xs, map_ys = [], []
     for ii in range(10):
@@ -69,7 +70,7 @@ if __name__ == '__main__':
         map_ys.append(samp['b'])
 
     minimizer = ift.NewtonCG(
-            ift.GradientNormController(iteration_limit=2, name='Mini'))
+        ift.GradientNormController(iteration_limit=2, name='Mini'))
     pos = ift.from_random('normal', ham.domain)
     for ii in range(15):
         if ii % 3 == 0:
@@ -77,10 +78,14 @@ if __name__ == '__main__':
 
         plt.cla()
         from matplotlib.colors import LogNorm
-        plt.imshow(z.T, origin='lower', 
-                extent=(x_limits[0]*uninformative_scaling,
-                        x_limits[1]*uninformative_scaling)+tuple(y_limits), norm=LogNorm(), vmin=1e-3, vmax=np.max(z))
-        if ii==0:
+        plt.imshow(z.T,
+                   origin='lower',
+                   extent=(x_limits[0]*uninformative_scaling, x_limits[1]*
+                           uninformative_scaling) + tuple(y_limits),
+                   norm=LogNorm(),
+                   vmin=1e-3,
+                   vmax=np.max(z))
+        if ii == 0:
             plt.colorbar()
         xs, ys = [], []
         for samp in mgkl.samples:
