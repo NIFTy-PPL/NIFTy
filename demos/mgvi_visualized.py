@@ -30,10 +30,7 @@ if __name__ == '__main__':
     lh = (a.adjoint @ a).scale(uninformative_scaling) + (b.adjoint @ b).scale(-1.35*2).exp()
     lh = ift.VariableCovarianceGaussianEnergy(dom, 'a', 'b', np.float64) @ lh
     icsamp = ift.AbsDeltaEnergyController(deltaE=0.1, iteration_limit=2)
-    icnewton = ift.GradientNormController(iteration_limit=1, name='Mini')
     ham = ift.StandardHamiltonian(lh, icsamp)
-    newton = ift.SteepestDescent(icnewton)
-    pos = ift.from_random('normal', ham.domain)
 
     x_limits = [-2/uninformative_scaling, 2/uninformative_scaling]
     y_limits = [-4, 2]
@@ -45,6 +42,20 @@ if __name__ == '__main__':
             inp = ift.MultiField.from_raw(lh.domain, {'a': xx, 'b': yy})
             z[ii, jj] = np.exp(-1*ham(inp).val)
 
+    pos = ift.from_random('normal', ham.domain)
+    MAP = ift.EnergyAdapter(pos, ham, want_metric=True)
+    minimizer = ift.SteepestDescent(ift.GradientNormController(iteration_limit=20,
+                                                               name='Mini'))
+    MAP, _ = minimizer(MAP)
+    map_xs, map_ys = [], []
+    for ii in range(10):
+        samp = (MAP.metric.draw_sample(from_inverse=True) + MAP.position).val
+        map_xs.append(samp['a'])
+        map_ys.append(samp['b'])
+
+    minimizer = ift.SteepestDescent(
+        ift.GradientNormController(iteration_limit=1, name='Mini'))
+    pos = ift.from_random('normal', ham.domain)
     for ii in range(10):
         if ii % 2 == 0:
             mgkl = ift.MetricGaussianKL(pos, ham, 40)
@@ -57,11 +68,15 @@ if __name__ == '__main__':
             xs.append(samp['a'])
             ys.append(samp['b'])
         plt.scatter(np.array(xs)*uninformative_scaling, np.array(ys))
-        plt.scatter(pos.val['a']*uninformative_scaling, pos.val['b'], color='red')
+        plt.scatter(pos.val['a']*uninformative_scaling, pos.val['b'])
+        plt.scatter(np.array(map_xs)*uninformative_scaling, np.array(map_ys))
+        plt.scatter(MAP.position.val['a']*uninformative_scaling,
+                    MAP.position.val['b'])
         plt.draw()
         plt.pause(1.0)
 
-        mgkl, _ = newton(mgkl)
+        mgkl, _ = minimizer(mgkl)
         pos = mgkl.position
     ift.logger.info('Finished')
+    # Uncomment the following line in order to leave the plots open
     # plt.show()
