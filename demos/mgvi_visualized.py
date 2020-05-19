@@ -32,10 +32,10 @@ if __name__ == '__main__':
     icsamp = ift.AbsDeltaEnergyController(deltaE=0.1, iteration_limit=2)
     ham = ift.StandardHamiltonian(lh, icsamp)
 
-    x_limits = [-5/uninformative_scaling, 5/uninformative_scaling]
+    x_limits = [-8/uninformative_scaling, 8/uninformative_scaling]
     y_limits = [-4, 4]
-    x = np.linspace(*x_limits, num=101)
-    y = np.linspace(*y_limits, num=101)
+    x = np.linspace(*x_limits, num=201)
+    y = np.linspace(*y_limits, num=201)
     z = np.empty((x.size, y.size))
     for ii, xx in enumerate(x):
         for jj, yy in enumerate(y):
@@ -73,7 +73,7 @@ if __name__ == '__main__':
         plt.cla()
         plt.imshow(z.T, origin='lower', 
                 extent=(x_limits[0]*uninformative_scaling,
-                    x_limits[1]*uninformative_scaling)+tuple(y_limits), vmin=0., vmax=4)
+                    x_limits[1]*uninformative_scaling)+tuple(y_limits), vmin=0., vmax=np.amax(z))
         if ii==0:
             plt.colorbar()
         xs, ys = [], []
