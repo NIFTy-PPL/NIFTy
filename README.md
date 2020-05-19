@@ -45,7 +45,7 @@ Installation
 
 ### Requirements
 
-- [Python 3](https://www.python.org/) (3.5.x or later)
+- [Python 3](https://www.python.org/) (3.6.x or later)
 - [SciPy](https://www.scipy.org/)
 
 Optional dependencies:

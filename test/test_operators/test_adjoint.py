@@ -193,7 +193,7 @@ def testGeometryRemover(sp, dtype):
 @pmp('spaces', [0, 1, 2, 3, (0, 1), (0, 2), (0, 1, 2), (0, 2, 3), (1, 3)])
 @pmp('wgt', [0, 1, 2, -1])
 def testContractionOperator(spaces, wgt, dtype):
-    dom = (ift.RGSpace(10), ift.RGSpace(13), ift.GLSpace(5), ift.HPSpace(4))
+    dom = (ift.RGSpace(1), ift.RGSpace(2), ift.GLSpace(3), ift.HPSpace(2))
     op = ift.ContractionOperator(dom, spaces, wgt)
     ift.extra.consistency_check(op, dtype, dtype)
 
@@ -210,8 +210,8 @@ def testDomainTupleFieldInserter():
 @pmp('factor', [1, 2, 2.7])
 @pmp('central', [False, True])
 def testZeroPadder(space, factor, dtype, central):
-    dom = (ift.RGSpace(10), ift.UnstructuredDomain(13), ift.RGSpace(7, 12),
-           ift.HPSpace(4))
+    dom = (ift.RGSpace(4), ift.UnstructuredDomain(5), ift.RGSpace(3, 4),
+           ift.HPSpace(2))
     newshape = [int(factor*l) for l in dom[space].shape]
     op = ift.FieldZeroPadder(dom, newshape, space, central)
     ift.extra.consistency_check(op, dtype, dtype)
@@ -326,20 +326,3 @@ def testSlowFieldAdapter(seed):
     dom = {'a': ift.RGSpace(1), 'b': ift.RGSpace(2)}
     op = ift.operators.simple_linear_operators._SlowFieldAdapter(dom, 'a')
     ift.extra.consistency_check(op)
-
-@pmp('sp1', [0, 2])
-@pmp('sp2', [1])
-@pmp('seed', [12, 3])
-def testSwitchSpacesOperator(sp1, sp2, seed):
-    with ift.random.Context(seed):
-        dom1 = ift.RGSpace(1)
-        dom2 = ift.RGSpace((2, 2))
-        dom3 = ift.RGSpace(3)
-        dom = ift.DomainTuple.make([dom1, dom2, dom3])
-        op = ift.SwitchSpacesOperator(dom, sp1, sp2)
-
-        tgt = list(dom)
-        tgt[sp1] = dom[sp2]
-        tgt[sp2] = dom[sp1]
-        assert op.target == ift.DomainTuple.make(tgt)
-        ift.extra.consistency_check(op)

@@ -274,6 +274,13 @@ def from_random(random_type, domain, dtype=np.float64, **kwargs):
     -------
     Field or MultiField
         The newly created random field
+
+    Notes
+    -----
+    When called with a multi-domain, the individual fields will be drawn in
+    alphabetical order of the multi-domain's domain keys. As a consequence,
+    renaming these keys may cause the multi-field to be filled with different
+    random numbers, even for the same initial RNG state.
     """
     if isinstance(domain, (dict, MultiDomain)):
         return MultiField.from_random(random_type, domain, dtype, **kwargs)

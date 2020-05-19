@@ -19,28 +19,15 @@ import numpy as np
 import pytest
 
 import nifty6 as ift
-from itertools import product
-from .common import setup_function, teardown_function
 
-# Currently it is not possible to parametrize fixtures. But this will
-# hopefully be fixed in the future.
-# https://docs.pytest.org/en/latest/proposals/parametrize_with_fixtures.html
+from .common import list2fixture, setup_function, teardown_function
 
-SPACES = [ift.GLSpace(15),
-          ift.RGSpace(64, distances=.789),
-          ift.RGSpace([32, 32], distances=.789)]
-for sp in SPACES[:3]:
-    SPACES.append(ift.MultiDomain.make({'asdf': sp}))
-SEEDS = [4, 78, 23]
-PARAMS = product(SEEDS, SPACES)
+spaces = [ift.GLSpace(5),
+          ift.MultiDomain.make({'': ift.RGSpace(5, distances=.789)}),
+          (ift.RGSpace(3, distances=.789), ift.UnstructuredDomain(2))]
 pmp = pytest.mark.parametrize
-
-
-@pytest.fixture(params=PARAMS)
-def field(request):
-    with ift.random.Context(request.param[0]):
-        S = ift.ScalingOperator(request.param[1], 1.)
-        return S.draw_sample_with_dtype(dtype=np.float64)
+field = list2fixture([ift.from_random('normal', sp) for sp in spaces])
+ntries = 10
 
 
 def test_gaussian(field):
@@ -77,7 +64,7 @@ def test_studentt(field):
     ift.extra.check_jacobian_consistency(energy, field, tol=1e-6)
     theta = ift.from_random('normal',field.domain).exp()
     energy = ift.StudentTEnergy(domain=field.domain, theta=theta)
-    ift.extra.check_jacobian_consistency(energy, field, tol=1e-6)
+    ift.extra.check_jacobian_consistency(energy, field, tol=1e-6, ntries=ntries)
 
 
 def test_hamiltonian_and_KL(field):
@@ -85,10 +72,10 @@ def test_hamiltonian_and_KL(field):
     space = field.domain
     lh = ift.GaussianEnergy(domain=space)
     hamiltonian = ift.StandardHamiltonian(lh)
-    ift.extra.check_jacobian_consistency(hamiltonian, field)
-    samps = [ift.from_random('normal', space) for i in range(3)]
+    ift.extra.check_jacobian_consistency(hamiltonian, field, ntries=ntries)
+    samps = [ift.from_random('normal', space) for i in range(2)]
     kl = ift.AveragedEnergy(hamiltonian, samps)
-    ift.extra.check_jacobian_consistency(kl, field)
+    ift.extra.check_jacobian_consistency(kl, field, ntries=ntries)
 
 
 def test_variablecovariancegaussian(field):
@@ -97,7 +84,7 @@ def test_variablecovariancegaussian(field):
     dc = {'a': field, 'b': field.ptw("exp")}
     mf = ift.MultiField.from_dict(dc)
     energy = ift.VariableCovarianceGaussianEnergy(field.domain, 'a', 'b', np.float64)
-    ift.extra.check_jacobian_consistency(energy, mf, tol=1e-6)
+    ift.extra.check_jacobian_consistency(energy, mf, tol=1e-6, ntries=ntries)
     energy(ift.Linearization.make_var(mf, want_metric=True)).metric.draw_sample()
 
 

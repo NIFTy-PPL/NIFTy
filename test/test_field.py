@@ -47,31 +47,26 @@ def _spec2(k):
     return 42/(1. + k)**3
 
 
-@pmp('space1', [
-    ift.RGSpace((8,), harmonic=True),
-    ift.RGSpace((8, 8), harmonic=True, distances=0.123)
-])
+@pmp('space1', [ift.RGSpace((8,), harmonic=True),
+                ift.RGSpace((8, 8), harmonic=True, distances=0.123)])
 @pmp('space2', [ift.RGSpace((8,), harmonic=True), ift.LMSpace(12)])
 def test_power_synthesize_analyze(space1, space2):
     p1 = ift.PowerSpace(space1)
     fp1 = ift.PS_field(p1, _spec1)
     p2 = ift.PowerSpace(space2)
     fp2 = ift.PS_field(p2, _spec2)
-
     op1 = ift.create_power_operator((space1, space2), _spec1, 0)
     op2 = ift.create_power_operator((space1, space2), _spec2, 1)
-    opfull = op2(op1)
+    opfull = op2 @ op1
 
-    samples = 500
+    samples = 120
     sc1 = ift.StatCalculator()
     sc2 = ift.StatCalculator()
     for ii in range(samples):
         sk = opfull.draw_sample_with_dtype(dtype=np.float64)
-
         sp = ift.power_analyze(sk, spaces=(0, 1), keep_phase_information=False)
         sc1.add(sp.sum(spaces=1)/fp2.s_sum())
         sc2.add(sp.sum(spaces=0)/fp1.s_sum())
-
     assert_allclose(sc1.mean.val, fp1.val, rtol=0.2)
     assert_allclose(sc2.mean.val, fp2.val, rtol=0.2)
 
