@@ -11,7 +11,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
-# Copyright(C) 2020 Max-Planck-Society
+# Copyright(C) 2013-2020 Max-Planck-Society
 #
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
 
@@ -47,4 +47,3 @@ def test_integration_operator():
                                     target_dtype=np.float64)
         ift.extra.consistency_check(op, domain_dtype=np.complex128,
                                     target_dtype=np.complex128)
-    

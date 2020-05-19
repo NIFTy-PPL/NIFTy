@@ -11,7 +11,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
-# Copyright(C) 2020 Max-Planck-Society
+# Copyright(C) 2013-2020 Max-Planck-Society
 #
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
 
@@ -26,12 +26,12 @@ from ..common import setup_function, teardown_function
 def test_conjugation_operator():
     sp = ift.RGSpace(8)
     dom = ift.makeDomain(sp)
-    f = ift.from_random(dom, dtype= np.complex128)
-    op = ift.ScalingOperator(sp,1).conjugate()
+    f = ift.from_random(dom, dtype=np.complex128)
+    op = ift.ScalingOperator(sp, 1).conjugate()
     res1 = f.conjugate()
     res2 = op(f)
     assert_allclose(res1.val, res2.val)
     ift.extra.consistency_check(op, domain_dtype=np.float64,
-                                    target_dtype=np.float64)
+                                target_dtype=np.float64)
     ift.extra.consistency_check(op, domain_dtype=np.complex128,
                                 target_dtype=np.complex128, only_r_linear=True)
