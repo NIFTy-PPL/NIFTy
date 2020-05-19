@@ -128,6 +128,10 @@ class Operator(metaclass=NiftyMeta):
         from .contraction_operator import ContractionOperator
         return ContractionOperator(self.target, spaces)(self)
 
+    def integrate(self, spaces=None):
+        from .contraction_operator import IntegrationOperator
+        return IntegrationOperator(self.target, spaces)(self)
+
     def vdot(self, other):
         from ..sugar import makeOp
         if not isinstance(other, Operator):

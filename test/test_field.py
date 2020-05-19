@@ -11,7 +11,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
-# Copyright(C) 2013-2019 Max-Planck-Society
+# Copyright(C) 2013-2020 Max-Planck-Society
 #
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
 
@@ -140,11 +140,7 @@ def test_outer():
 
 def test_sum():
     x1 = ift.RGSpace((9,), distances=2.)
-    x2 = ift.RGSpace(
-        (
-            2,
-            12,
-        ), distances=(0.3,))
+    x2 = ift.RGSpace((2, 12), distances=(0.3,))
     m1 = ift.Field(ift.makeDomain(x1), np.arange(9))
     m2 = ift.Field.full(ift.makeDomain((x1, x2)), 0.45)
     res1 = m1.s_sum()
@@ -162,11 +158,16 @@ def test_integrate():
     res2 = m2.integrate(spaces=1)
     assert_allclose(res1, 36*2)
     assert_allclose(res2.val, np.full(9, 2*12*0.45*0.3**2))
+    for m in [m1, m2]:
+        res3 = m.integrate()
+        res4 = m.s_integrate()
+        assert_allclose(res3.val, res4)
+    dom = ift.HPSpace(3)
+    assert_allclose(ift.full(dom, 1).s_integrate(), 4*np.pi)
 
 
 def test_dataconv():
     s1 = ift.RGSpace((10,))
-    ld = np.arange(s1.shape[0])
     gd = np.arange(s1.shape[0])
     assert_equal(gd, ift.makeField(s1, gd).val)
 
