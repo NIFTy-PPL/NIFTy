@@ -104,7 +104,7 @@ def test_DiagonalOperator_power_analyze2(space1, space2):
     ift.RGSpace((2, 3, 7))
 ])
 def test_norm(space):
-    f = ift.Field.from_random("normal", domain=space, dtype=np.complex128)
+    f = ift.Field.from_random(domain=space, random_type="normal", dtype=np.complex128)
     gd = f.val.reshape(-1)
     assert_allclose(f.norm(), np.linalg.norm(gd))
     assert_allclose(f.norm(1), np.linalg.norm(gd, ord=1))
@@ -115,8 +115,8 @@ def test_norm(space):
 
 def test_vdot():
     s = ift.RGSpace((10,))
-    f1 = ift.Field.from_random("normal", domain=s, dtype=np.complex128)
-    f2 = ift.Field.from_random("normal", domain=s, dtype=np.complex128)
+    f1 = ift.Field.from_random(domain=s, random_type="normal", dtype=np.complex128)
+    f2 = ift.Field.from_random(domain=s, random_type="normal", dtype=np.complex128)
     assert_allclose(f1.s_vdot(f2), f1.vdot(f2, spaces=0).val)
     assert_allclose(f1.s_vdot(f2), np.conj(f2.s_vdot(f1)))
 
@@ -298,8 +298,8 @@ def test_stdfunc():
     fx = ift.full(f.domain, 67.)
     assert_equal(f.shape, fx.shape)
     assert_equal(fx.val, 67.)
-    f = ift.Field.from_random("normal", s)
-    f2 = ift.Field.from_random("normal", s)
+    f = ift.Field.from_random(s, "normal")
+    f2 = ift.Field.from_random(s, "normal")
     assert_equal((f > f2).val, f.val > f2.val)
     assert_equal((f >= f2).val, f.val >= f2.val)
     assert_equal((f < f2).val, f.val < f2.val)
@@ -342,7 +342,7 @@ def test_funcs(num, dom, func):
 @pmp('dtype', [np.float64, np.complex128])
 def test_from_random(rtype, dtype):
     sp = ift.RGSpace(3)
-    ift.Field.from_random(rtype, sp, dtype=dtype)
+    ift.Field.from_random(sp, rtype, dtype=dtype)
 
 
 def test_field_of_objects():

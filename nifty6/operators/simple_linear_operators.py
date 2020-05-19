@@ -130,9 +130,9 @@ class FieldAdapter(LinearOperator):
         The relevant key of the MultiDomain.
     """
 
-    def __init__(self, tgt, name):
+    def __init__(self, target, name):
         from ..sugar import makeDomain
-        tmp = makeDomain(tgt)
+        tmp = makeDomain(target)
         if isinstance(tmp, DomainTuple):
             self._target = tmp
             self._domain = MultiDomain.make({name: tmp})
@@ -175,9 +175,9 @@ class _SlowFieldAdapter(LinearOperator):
         The relevant key of the MultiDomain.
     """
 
-    def __init__(self, dom, name):
+    def __init__(self, domain, name):
         from ..sugar import makeDomain
-        tmp = makeDomain(dom)
+        tmp = makeDomain(domain)
         if not isinstance(tmp, MultiDomain):
             raise TypeError("MultiDomain expected")
         self._name = str(name)

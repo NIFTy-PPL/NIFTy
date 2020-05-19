@@ -35,11 +35,11 @@ def test_plots():
 
     fft = ift.FFTOperator(rg_space2)
 
-    field_rg1_1 = ift.from_random('normal', rg_space1)
-    field_rg1_2 = ift.from_random('normal', rg_space1)
-    field_rg2 = ift.from_random('normal', rg_space2)
-    field_hp = ift.from_random('normal', hp_space)
-    field_gl = ift.from_random('normal', gl_space)
+    field_rg1_1 = ift.from_random(rg_space1, 'normal')
+    field_rg1_2 = ift.from_random(rg_space1, 'normal')
+    field_rg2 = ift.from_random(rg_space2, 'normal')
+    field_hp = ift.from_random(hp_space, 'normal')
+    field_gl = ift.from_random(gl_space, 'normal')
     field_ps = ift.power_analyze(fft.times(field_rg2))
 
     plot = ift.Plot()
@@ -69,7 +69,7 @@ def test_mf_plot():
     d1 = ift.DomainTuple.make([x_space, f_space])
     d2 = ift.DomainTuple.make([f_space, x_space])
 
-    f1 = ift.from_random('normal', d1)
+    f1 = ift.from_random(d1, 'normal')
     f2 = ift.makeField(d2, np.moveaxis(f1.val, -1, 0))
 
     plot = ift.Plot()

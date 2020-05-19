@@ -41,7 +41,7 @@ def test_kl(constants, point_estimates, mirror_samples, mf):
     ic = ift.GradientNormController(iteration_limit=5)
     ic.enable_logging()
     h = ift.StandardHamiltonian(lh, ic_samp=ic)
-    mean0 = ift.from_random('normal', h.domain)
+    mean0 = ift.from_random(h.domain, 'normal')
 
     nsamps = 2
     kl = ift.MetricGaussianKL(mean0,

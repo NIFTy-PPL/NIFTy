@@ -41,8 +41,7 @@ def test_dotsht(lm, tp):
     a = ift.LMSpace(lmax=lm)
     b = ift.GLSpace(nlat=lm + 1)
     fft = ift.HarmonicTransformOperator(domain=a, target=b)
-    inp = ift.Field.from_random(
-        domain=a, random_type='normal', std=1, mean=0, dtype=tp)
+    inp = ift.Field.from_random(domain=a, random_type='normal', dtype=tp, std=1, mean=0)
     out = fft.times(inp)
     v1 = np.sqrt(out.s_vdot(out))
     v2 = np.sqrt(inp.s_vdot(fft.adjoint_times(out)))
@@ -54,8 +53,7 @@ def test_dotsht2(lm, tp):
     a = ift.LMSpace(lmax=lm)
     b = ift.HPSpace(nside=lm//2)
     fft = ift.HarmonicTransformOperator(domain=a, target=b)
-    inp = ift.Field.from_random(
-        domain=a, random_type='normal', std=1, mean=0, dtype=tp)
+    inp = ift.Field.from_random(domain=a, random_type='normal', dtype=tp, std=1, mean=0)
     out = fft.times(inp)
     v1 = np.sqrt(out.s_vdot(out))
     v2 = np.sqrt(inp.s_vdot(fft.adjoint_times(out)))
@@ -67,8 +65,7 @@ def test_normalisation(space, tp):
     tol = 10*_get_rtol(tp)
     cospace = space.get_default_codomain()
     fft = ift.HarmonicTransformOperator(space, cospace)
-    inp = ift.Field.from_random(
-        domain=space, random_type='normal', std=1, mean=2, dtype=tp)
+    inp = ift.Field.from_random(domain=space, random_type='normal', dtype=tp, std=1, mean=2)
     out = fft.times(inp)
     zero_idx = tuple([0]*len(space.shape))
     assert_allclose(

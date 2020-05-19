@@ -524,7 +524,7 @@ class CorrelatedFieldMaker:
         for kk, op in lst:
             sc = StatCalculator()
             for _ in range(prior_info):
-                sc.add(op(from_random('normal', op.domain)))
+                sc.add(op(from_random(op.domain, 'normal')))
             mean = sc.mean.val
             stddev = sc.var.ptw("sqrt").val
             for m, s in zip(mean.flatten(), stddev.flatten()):
@@ -539,7 +539,7 @@ class CorrelatedFieldMaker:
         scm = 1.
         for a in self._a:
             op = a.fluctuation_amplitude*self._azm.ptw("reciprocal")
-            res = np.array([op(from_random('normal', op.domain)).val
+            res = np.array([op(from_random(op.domain, 'normal')).val
                             for _ in range(nsamples)])
             scm *= res**2 + 1.
         return fluctuations_slice_mean/np.mean(np.sqrt(scm))

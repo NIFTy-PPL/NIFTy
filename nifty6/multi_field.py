@@ -101,7 +101,7 @@ class MultiField(Operator):
         return self._transform(lambda x: x.imag)
 
     @staticmethod
-    def from_random(random_type, domain, dtype=np.float64, **kwargs):
+    def from_random(domain, random_type='normal', dtype=np.float64, **kwargs):
         """Draws a random multi-field with the given parameters.
 
         Parameters
@@ -131,7 +131,7 @@ class MultiField(Operator):
         else:
             dtype = np.dtype(dtype)
             dtype = {kk: dtype for kk in domain.keys()}
-        dct = {kk: Field.from_random(random_type, domain[kk], dtype[kk], **kwargs)
+        dct = {kk: Field.from_random(domain[kk], random_type, dtype[kk], **kwargs)
                for kk in domain.keys()}
         return MultiField.from_dict(dct)
 

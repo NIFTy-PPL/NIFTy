@@ -35,7 +35,7 @@ def test_value_inserter(sp, seed):
     with ift.random.Context(seed):
         ind = tuple([int(ift.random.current_rng().integers(0, ss - 1)) for ss in sp.shape])
         op = ift.ValueInserter(sp, ind)
-        f = ift.from_random('normal', op.domain)
+        f = ift.from_random(op.domain, 'normal')
     inp = f.val
     ret = op(f).val
     assert_(ret[ind] == inp)

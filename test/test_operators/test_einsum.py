@@ -38,20 +38,20 @@ def test_linear_einsum_outer(space1, space2, dtype, n_invocations=10):
     mf_dom = ift.MultiDomain.make({
         "dom01": space1,
         "dom02": ift.DomainTuple.make((space1, space2))})
-    mf = ift.from_random("normal", mf_dom, dtype=dtype)
+    mf = ift.from_random(mf_dom, "normal", dtype=dtype)
     ss = "i,ij,j->ij"
     key_order = ("dom01", "dom02")
     le = ift.LinearEinsum(space2, mf, ss, key_order=key_order)
     assert_(consistency_check(le, domain_dtype=dtype, target_dtype=dtype) is None)
 
     le_ift = ift.DiagonalOperator(mf["dom01"], domain=mf_dom["dom02"], spaces=0) @ ift.DiagonalOperator(mf["dom02"])
-    le_ift = le_ift @ ift.OuterProduct(ift.full(mf_dom["dom01"], 1.),
-                                       ift.DomainTuple.make(mf_dom["dom02"][1]))
+    le_ift = le_ift @ ift.OuterProduct(ift.DomainTuple.make(mf_dom["dom02"][1]),
+                                       ift.full(mf_dom["dom01"], 1.))
 
     for _ in range(n_invocations):
-        r = ift.from_random("normal", le.domain, dtype=dtype)
+        r = ift.from_random(le.domain, "normal", dtype=dtype)
         assert_allclose(le(r).val, le_ift(r).val)
-        r_adj = ift.from_random("normal", le.target, dtype=dtype)
+        r_adj = ift.from_random(le.target, "normal", dtype=dtype)
         assert_allclose(le.adjoint(r_adj).val, le_ift.adjoint(r_adj).val)
 
 
@@ -59,7 +59,7 @@ def test_linear_einsum_contraction(space1, space2, dtype, n_invocations=10):
     mf_dom = ift.MultiDomain.make({
         "dom01": space1,
         "dom02": ift.DomainTuple.make((space1, space2))})
-    mf = ift.from_random("normal", mf_dom, dtype=dtype)
+    mf = ift.from_random(mf_dom, "normal", dtype=dtype)
     ss = "i,ij,j->i"
     key_order = ("dom01", "dom02")
     le = ift.LinearEinsum(space2, mf, ss, key_order=key_order)
@@ -68,13 +68,13 @@ def test_linear_einsum_contraction(space1, space2, dtype, n_invocations=10):
     le_ift = ift.ContractionOperator(mf_dom["dom02"], 1)
     le_ift = le_ift @ ift.DiagonalOperator(mf["dom01"], domain=mf_dom["dom02"], spaces=0)
     le_ift = le_ift @ ift.DiagonalOperator(mf["dom02"])
-    le_ift = le_ift @ ift.OuterProduct(ift.full(mf_dom["dom01"], 1.),
-                                       ift.DomainTuple.make(mf_dom["dom02"][1]))
+    le_ift = le_ift @ ift.OuterProduct(ift.DomainTuple.make(mf_dom["dom02"][1]),
+                                       ift.full(mf_dom["dom01"], 1.),)
 
     for _ in range(n_invocations):
-        r = ift.from_random("normal", le.domain, dtype=dtype)
+        r = ift.from_random(le.domain, "normal", dtype=dtype)
         assert_allclose(le(r).val, le_ift(r).val)
-        r_adj = ift.from_random("normal", le.target, dtype=dtype)
+        r_adj = ift.from_random(le.target, "normal", dtype=dtype)
         assert_allclose(le.adjoint(r_adj).val, le_ift.adjoint(r_adj).val)
 
 
@@ -121,13 +121,13 @@ def test_multi_linear_einsum_outer(space1, space2, dtype):
     ss = "i,ij,j->ij"
     key_order = ("dom01", "dom02", "dom03")
     mle = ift.MultiLinearEinsum(mf_dom, ss, key_order=key_order)
-    check_jacobian_consistency(mle, ift.from_random("normal", mle.domain, dtype=dtype), ntries=ntries)
+    check_jacobian_consistency(mle, ift.from_random(mle.domain, "normal", dtype=dtype), ntries=ntries)
 
     outer_i = ift.OuterProduct(
-        ift.full(mf_dom["dom03"], 1.), ift.DomainTuple.make(mf_dom["dom02"][0])
+        ift.DomainTuple.make(mf_dom["dom02"][0]), ift.full(mf_dom["dom03"], 1.)
     )
     outer_j = ift.OuterProduct(
-        ift.full(mf_dom["dom01"], 1.), ift.DomainTuple.make(mf_dom["dom02"][1])
+        ift.DomainTuple.make(mf_dom["dom02"][1]), ift.full(mf_dom["dom01"], 1.)
     )
     # SwitchSpacesOperator is equivalent to LinearEinsum with "ij->ji"
     mle_ift = _SwitchSpacesOperator(outer_i.target, 1) @ outer_i @ \
@@ -136,12 +136,12 @@ def test_multi_linear_einsum_outer(space1, space2, dtype):
         (outer_j @ ift.FieldAdapter(mf_dom["dom03"], "dom03"))
 
     for _ in range(n_invocations):
-        rl = ift.Linearization.make_var(ift.from_random("normal", mle.domain, dtype=dtype))
+        rl = ift.Linearization.make_var(ift.from_random(mle.domain, "normal", dtype=dtype))
         mle_rl, mle_ift_rl = mle(rl), mle_ift(rl)
         assert_allclose(mle_rl.val.val, mle_ift_rl.val.val)
         assert_allclose(mle_rl.jac(rl.val).val, mle_ift_rl.jac(rl.val).val)
 
-        rj_adj = ift.from_random("normal", mle_rl.jac.target, dtype=dtype)
+        rj_adj = ift.from_random(mle_rl.jac.target, "normal", dtype=dtype)
         mle_j_val = mle_rl.jac.adjoint(rj_adj).val
         mle_ift_j_val = mle_ift_rl.jac.adjoint(rj_adj).val
         for k in mle_ift.domain.keys():
