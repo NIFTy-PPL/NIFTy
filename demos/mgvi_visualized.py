@@ -76,9 +76,10 @@ if __name__ == '__main__':
             mgkl = ift.MetricGaussianKL(pos, ham, 40)
 
         plt.cla()
+        from matplotlib.colors import LogNorm
         plt.imshow(z.T, origin='lower', 
                 extent=(x_limits[0]*uninformative_scaling,
-                    x_limits[1]*uninformative_scaling)+tuple(y_limits), vmin=0., vmax=np.amax(z))
+                        x_limits[1]*uninformative_scaling)+tuple(y_limits), norm=LogNorm(), vmin=1e-3, vmax=np.max(z))
         if ii==0:
             plt.colorbar()
         xs, ys = [], []
