@@ -18,7 +18,7 @@
 from ..multi_domain import MultiDomain
 from ..multi_field import MultiField
 from .endomorphic_operator import EndomorphicOperator
-
+from .linear_operator import LinearOperator
 
 class BlockDiagonalOperator(EndomorphicOperator):
     """
@@ -38,7 +38,13 @@ class BlockDiagonalOperator(EndomorphicOperator):
         self._capability = self._all_ops
         for op in self._ops:
             if op is not None:
-                self._capability &= op.capability
+                if isinstance(op, LinearOperator):
+                    if op.target is not op.domain:
+                        raise TypeError("domain and target mismatch")
+                    self._capability &= op.capability
+                else:
+                    raise TypeError("LinearOperator expected")
+
 
     def apply(self, x, mode):
         self._check_input(x, mode)
