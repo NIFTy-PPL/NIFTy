@@ -56,16 +56,16 @@ a variable number of MPI tasks. In this situation, whenever random numbers
 need to be drawn for these samples:
 
 - each MPI task should spawn as many seed sequences as there are samples
-  *in total*, using `sseq = spawn_sseq(N)`
+  *in total*, using ``sseq = spawn_sseq(N)``
 
 - each task loops over the local samples
 
   - first pushing the seed sequence for the **global** index of the
-    current sample via `push_sseq(sseq[iglob])`
+    current sample via ``push_sseq(sseq[iglob])```
 
   - drawing the required random numbers
 
-  - then popping the seed sequence again via :func:`pop_sseq()`
+  - then popping the seed sequence again via ``pop_sseq()``
 
 That way, random numbers should be reproducible and independent of the number
 of MPI tasks.
