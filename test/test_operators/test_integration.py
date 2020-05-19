@@ -24,7 +24,7 @@ from ..common import setup_function, teardown_function
 
 
 def test_integration_operator():
-    x1 = ift.RGSpace((9,), distances= 2.) # FIXME: it works for distances = 1
+    x1 = ift.RGSpace((9,), distances= 2.)
     x2 = ift.RGSpace((2, 12), distances=(0.3,))
     dom1 = ift.makeDomain(x1)
     dom2 = ift.makeDomain((x1, x2))
