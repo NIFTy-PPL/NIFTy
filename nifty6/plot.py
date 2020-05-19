@@ -334,10 +334,10 @@ def _plot2D(f, ax, **kwargs):
     x_space = 0
     if len(dom) == 2:
         f_space = kwargs.pop("freq_space_idx", 1)
-        if not f_space in [0, 1]:
+        if f_space not in [0, 1]:
             raise ValueError("Invalid frequency space index")
         if (not isinstance(dom[f_space], RGSpace)) \
-            or len(dom[f_space].shape) != 1:
+           or len(dom[f_space].shape) != 1:
             raise TypeError("Need 1D RGSpace as frequency space domain")
         x_space = 1 - f_space
 
@@ -412,8 +412,8 @@ def _plot2D(f, ax, **kwargs):
         if have_rgb:
             plt.imshow(res, origin="lower")
         else:
-            plt.imshow(res, vmin=kwargs.get("zmin"), vmax=kwargs.get("zmax"), norm=norm.get('norm'),
-                       cmap=cmap, origin="lower")
+            plt.imshow(res, vmin=kwargs.get("zmin"), vmax=kwargs.get("zmax"),
+                       norm=norm.get('norm'), cmap=cmap, origin="lower")
             plt.colorbar(orientation="horizontal")
         return
     raise ValueError("Field type not(yet) supported")
