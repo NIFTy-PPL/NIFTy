@@ -47,3 +47,4 @@ def test_integration_operator():
                                     target_dtype=np.float64)
         ift.extra.consistency_check(op, domain_dtype=np.complex128,
                                     target_dtype=np.complex128)
+    
