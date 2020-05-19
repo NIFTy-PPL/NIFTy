@@ -40,7 +40,7 @@ def make_checkerboard_mask(position_space):
 
 def make_random_mask():
     # Random mask for spherical mode
-    mask = ift.from_random('pm1', position_space)
+    mask = ift.from_random(position_space, 'pm1')
     mask = (mask + 1)/2
     return mask.val
 

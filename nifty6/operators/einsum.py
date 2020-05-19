@@ -11,20 +11,22 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
-# Copyright(C) 2013-2019 Max-Planck-Society
+# Copyright(C) 2013-2020 Max-Planck-Society
 # Authors: Gordian Edenhofer, Philipp Frank
 #
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
 
-import numpy as np
 import string
+
+import numpy as np
+
 from ..domain_tuple import DomainTuple
-from ..linearization import Linearization
 from ..field import Field
+from ..linearization import Linearization
 from ..multi_domain import MultiDomain
 from ..multi_field import MultiField
-from .operator import Operator
 from .linear_operator import LinearOperator
+from .operator import Operator
 
 
 class MultiLinearEinsum(Operator):
@@ -250,7 +252,6 @@ class LinearEinsum(LinearOperator):
                 plc = (np.broadcast_to(np.nan, shp) for shp in shapes)
                 path = np.einsum_path(numpy_subscripts, *plc, optimize=optimize)[0]
             self._init_wo_preproc(mf, numpy_subscripts, _key_order, path, _target)
-
 
     def _init_wo_preproc(self, mf, subscripts, keyorder, optimize, target):
         self._ein_kw = {"optimize": optimize}

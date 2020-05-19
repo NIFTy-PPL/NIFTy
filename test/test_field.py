@@ -11,7 +11,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
-# Copyright(C) 2013-2019 Max-Planck-Society
+# Copyright(C) 2013-2020 Max-Planck-Society
 #
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
 
@@ -20,6 +20,7 @@ import pytest
 from numpy.testing import assert_allclose, assert_equal, assert_raises
 
 import nifty6 as ift
+
 from .common import setup_function, teardown_function
 
 pmp = pytest.mark.parametrize
@@ -46,31 +47,26 @@ def _spec2(k):
     return 42/(1. + k)**3
 
 
-@pmp('space1', [
-    ift.RGSpace((8,), harmonic=True),
-    ift.RGSpace((8, 8), harmonic=True, distances=0.123)
-])
+@pmp('space1', [ift.RGSpace((8,), harmonic=True),
+                ift.RGSpace((8, 8), harmonic=True, distances=0.123)])
 @pmp('space2', [ift.RGSpace((8,), harmonic=True), ift.LMSpace(12)])
 def test_power_synthesize_analyze(space1, space2):
     p1 = ift.PowerSpace(space1)
     fp1 = ift.PS_field(p1, _spec1)
     p2 = ift.PowerSpace(space2)
     fp2 = ift.PS_field(p2, _spec2)
-
     op1 = ift.create_power_operator((space1, space2), _spec1, 0)
     op2 = ift.create_power_operator((space1, space2), _spec2, 1)
-    opfull = op2(op1)
+    opfull = op2 @ op1
 
-    samples = 500
+    samples = 120
     sc1 = ift.StatCalculator()
     sc2 = ift.StatCalculator()
     for ii in range(samples):
         sk = opfull.draw_sample_with_dtype(dtype=np.float64)
-
         sp = ift.power_analyze(sk, spaces=(0, 1), keep_phase_information=False)
         sc1.add(sp.sum(spaces=1)/fp2.s_sum())
         sc2.add(sp.sum(spaces=0)/fp1.s_sum())
-
     assert_allclose(sc1.mean.val, fp1.val, rtol=0.2)
     assert_allclose(sc2.mean.val, fp2.val, rtol=0.2)
 
@@ -108,7 +104,7 @@ def test_DiagonalOperator_power_analyze2(space1, space2):
     ift.RGSpace((2, 3, 7))
 ])
 def test_norm(space):
-    f = ift.Field.from_random("normal", domain=space, dtype=np.complex128)
+    f = ift.Field.from_random(domain=space, random_type="normal", dtype=np.complex128)
     gd = f.val.reshape(-1)
     assert_allclose(f.norm(), np.linalg.norm(gd))
     assert_allclose(f.norm(1), np.linalg.norm(gd, ord=1))
@@ -119,8 +115,8 @@ def test_norm(space):
 
 def test_vdot():
     s = ift.RGSpace((10,))
-    f1 = ift.Field.from_random("normal", domain=s, dtype=np.complex128)
-    f2 = ift.Field.from_random("normal", domain=s, dtype=np.complex128)
+    f1 = ift.Field.from_random(domain=s, random_type="normal", dtype=np.complex128)
+    f2 = ift.Field.from_random(domain=s, random_type="normal", dtype=np.complex128)
     assert_allclose(f1.s_vdot(f2), f1.vdot(f2, spaces=0).val)
     assert_allclose(f1.s_vdot(f2), np.conj(f2.s_vdot(f1)))
 
@@ -144,11 +140,7 @@ def test_outer():
 
 def test_sum():
     x1 = ift.RGSpace((9,), distances=2.)
-    x2 = ift.RGSpace(
-        (
-            2,
-            12,
-        ), distances=(0.3,))
+    x2 = ift.RGSpace((2, 12), distances=(0.3,))
     m1 = ift.Field(ift.makeDomain(x1), np.arange(9))
     m2 = ift.Field.full(ift.makeDomain((x1, x2)), 0.45)
     res1 = m1.s_sum()
@@ -166,11 +158,16 @@ def test_integrate():
     res2 = m2.integrate(spaces=1)
     assert_allclose(res1, 36*2)
     assert_allclose(res2.val, np.full(9, 2*12*0.45*0.3**2))
+    for m in [m1, m2]:
+        res3 = m.integrate()
+        res4 = m.s_integrate()
+        assert_allclose(res3.val, res4)
+    dom = ift.HPSpace(3)
+    assert_allclose(ift.full(dom, 1).s_integrate(), 4*np.pi)
 
 
 def test_dataconv():
     s1 = ift.RGSpace((10,))
-    ld = np.arange(s1.shape[0])
     gd = np.arange(s1.shape[0])
     assert_equal(gd, ift.makeField(s1, gd).val)
 
@@ -301,8 +298,8 @@ def test_stdfunc():
     fx = ift.full(f.domain, 67.)
     assert_equal(f.shape, fx.shape)
     assert_equal(fx.val, 67.)
-    f = ift.Field.from_random("normal", s)
-    f2 = ift.Field.from_random("normal", s)
+    f = ift.Field.from_random(s, "normal")
+    f2 = ift.Field.from_random(s, "normal")
     assert_equal((f > f2).val, f.val > f2.val)
     assert_equal((f >= f2).val, f.val >= f2.val)
     assert_equal((f < f2).val, f.val < f2.val)
@@ -345,7 +342,7 @@ def test_funcs(num, dom, func):
 @pmp('dtype', [np.float64, np.complex128])
 def test_from_random(rtype, dtype):
     sp = ift.RGSpace(3)
-    ift.Field.from_random(rtype, sp, dtype=dtype)
+    ift.Field.from_random(sp, rtype, dtype=dtype)
 
 
 def test_field_of_objects():

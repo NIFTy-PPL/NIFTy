@@ -30,7 +30,7 @@ space = list2fixture([
 
 
 def test_const_func(space):
-    sig = ift.Field.from_random('normal', domain=space)
+    sig = ift.Field.from_random(domain=space, random_type='normal')
     fco_op = ift.FuncConvolutionOperator(space, lambda x: np.ones(x.shape))
     vals = fco_op(sig).val
     vals = np.round(vals, decimals=5)
@@ -46,7 +46,7 @@ def test_gaussian_smoothing():
     N = 128
     sigma = N / 10**4
     dom = ift.RGSpace(N)
-    sig = ift.Field.from_random('normal', dom).ptw("exp")
+    sig = ift.Field.from_random(dom, 'normal').ptw("exp")
     fco_op = ift.FuncConvolutionOperator(dom, lambda x: gauss(x, sigma))
     sm_op = ift.HarmonicSmoothingOperator(dom, sigma)
     assert_allclose(fco_op(sig).val,
