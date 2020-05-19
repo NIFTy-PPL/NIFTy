@@ -288,7 +288,7 @@ def _plot_history(f, ax, **kwargs):
     plt.yscale(kwargs.pop("yscale", "linear"))
     mi, ma = np.inf, -np.inf
     for i, fld in enumerate(f):
-        xcoord = date2num([dt.fromtimestamp(ts) for ts in fld.timestamps])
+        xcoord = date2num([dt.fromtimestamp(ts) for ts in fld.time_stamps])
         ycoord = fld.energy_values
         ax.scatter(xcoord, ycoord, label=label[i], alpha=alpha[i],
                    color=color[i], s=size[i])

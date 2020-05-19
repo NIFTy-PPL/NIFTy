@@ -108,7 +108,7 @@ class EnergyHistory(object):
         self._lst = []
 
     @property
-    def timestamps(self):
+    def time_stamps(self):
         return [x for x, _ in self._lst]
 
     @property
@@ -127,6 +127,9 @@ class EnergyHistory(object):
             return NotImplemented
         self._lst += other._lst
         return self
+
+    def __len__(self):
+        return len(self._lst)
 
 
 def append_history(func):

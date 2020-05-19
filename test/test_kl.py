@@ -39,7 +39,7 @@ def test_kl(constants, point_estimates, mirror_samples, mf):
     import numpy as np
     lh = ift.GaussianEnergy(domain=op.target, sampling_dtype=np.float64) @ op
     ic = ift.GradientNormController(iteration_limit=5)
-    ic.activate_and_reset_logging()
+    ic.enable_logging()
     h = ift.StandardHamiltonian(lh, ic_samp=ic)
     mean0 = ift.from_random('normal', h.domain)
 
@@ -51,7 +51,14 @@ def test_kl(constants, point_estimates, mirror_samples, mf):
                               point_estimates=point_estimates,
                               mirror_samples=mirror_samples,
                               napprox=0)
-    ic.pop_history()
+    assert_(len(ic.history) > 0)
+    assert_(len(ic.history) == len(ic.history.time_stamps))
+    assert_(len(ic.history) == len(ic.history.energy_values))
+    ic.history.reset()
+    assert_(len(ic.history) == 0)
+    assert_(len(ic.history) == len(ic.history.time_stamps))
+    assert_(len(ic.history) == len(ic.history.energy_values))
+
     locsamp = kl._local_samples
     klpure = ift.MetricGaussianKL(mean0,
                                   h,
@@ -87,8 +94,10 @@ def test_kl(constants, point_estimates, mirror_samples, mf):
 
     # Test constants (after some minimization)
     cg = ift.GradientNormController(iteration_limit=5)
-    minimizer = ift.NewtonCG(cg)
+    minimizer = ift.NewtonCG(cg, activate_logging=True)
     kl, _ = minimizer(kl)
+    if len(constants) != 2:
+        assert_(len(minimizer.inversion_history) > 0)
     diff = (mean0 - kl.position).to_dict()
     for kk in constants:
         assert_allclose(diff[kk].val, 0*diff[kk].val)
