@@ -36,19 +36,19 @@ class ContractionOperator(LinearOperator):
     spaces : None, int or tuple of int
         The elements of "domain" which are contracted.
         If `None`, everything is contracted
-    weight : int, default=0
+    power : int, default=0
         If nonzero, the fields defined on self.domain are weighted with the
         specified power along the submdomains which are contracted.
     """
 
-    def __init__(self, domain, spaces, weight=0):
+    def __init__(self, domain, spaces, power=0):
         self._domain = DomainTuple.make(domain)
         self._spaces = utilities.parse_spaces(spaces, len(self._domain))
         self._target = [
             dom for i, dom in enumerate(self._domain) if i not in self._spaces
         ]
         self._target = DomainTuple.make(self._target)
-        self._weight = weight
+        self._power = power
         self._capability = self.TIMES | self.ADJOINT_TIMES
 
     def apply(self, x, mode):
@@ -61,12 +61,12 @@ class ContractionOperator(LinearOperator):
                 shp += tmp if i not in self._spaces else (1,)*len(dom.shape)
             ldat = np.broadcast_to(ldat.reshape(shp), self._domain.shape)
             res = Field(self._domain, ldat)
-            if self._weight != 0:
-                res = res.weight(self._weight, spaces=self._spaces)
+            if self._power != 0:
+                res = res.weight(self._power, spaces=self._spaces)
             return res
         else:
-            if self._weight != 0:
-                x = x.weight(self._weight, spaces=self._spaces)
+            if self._power != 0:
+                x = x.weight(self._power, spaces=self._spaces)
             res = x.sum(self._spaces)
             return res if isinstance(res, Field) else Field.scalar(res)
 
