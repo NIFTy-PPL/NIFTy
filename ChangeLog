@@ -47,9 +47,9 @@ import numpy as np
 dom = ift.UnstructuredDomain(5)
 dtype = [np.float64, np.complex128][1]
 invcov = ift.ScalingOperator(dom, 3)
-e = ift.GaussianEnergy(mean=ift.from_random('normal', dom, dtype=dtype),
+e = ift.GaussianEnergy(mean=ift.from_random(dom, 'normal', dtype=dtype),
                        inverse_covariance=invcov)
-pos = ift.from_random('normal', dom, dtype=np.complex128)
+pos = ift.from_random(dom, 'normal', dtype=np.complex128)
 lin = e(ift.Linearization.make_var(pos, want_metric=True))
 met = lin.metric
 print(met)
