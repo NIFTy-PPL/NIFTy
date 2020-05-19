@@ -207,12 +207,13 @@ class Linearization(Operator):
             return self.__mul__(other)
         from .operators.outer_product_operator import OuterProduct
         if other.jac is None:
-            return self.new(OuterProduct(self._val, other.domain)(other),
-                            OuterProduct(self._jac(self._val), other.domain))
+            return self.new(OuterProduct(other.domain, self._val)(other),
+                            OuterProduct(other.domain, self._jac(self._val)))
+        tmp_op = OuterProduct(other.target, self._val)
         return self.new(
-            OuterProduct(self._val, other.target)(other._val),
-            OuterProduct(self._jac(self._val), other.target)._myadd(
-                OuterProduct(self._val, other.target)(other._jac), False))
+            tmp_op(other._val),
+            OuterProduct(other.target, self._jac(self._val))._myadd(
+                tmp_op(other._jac), False))
 
     def vdot(self, other):
         """Computes the inner product of this Linearization with a Field or
