@@ -52,7 +52,7 @@ def testAmplitudesInvariants(sspace, N):
                         'freq', dofdex=dofdex3)
     op = fa.finalize()
 
-    samples = [ift.from_random('normal', op.domain) for _ in range(100)]
+    samples = [ift.from_random(op.domain, 'normal') for _ in range(100)]
     tot_flm, _ = _stats(fa.total_fluctuation, samples)
     offset_amp_std, _ = _stats(fa.amplitude_total_offset, samples)
     intergated_fluct_std0, _ = _stats(fa.average_fluctuation(0), samples)

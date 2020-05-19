@@ -93,8 +93,7 @@ class ScalingOperator(EndomorphicOperator):
 
     def draw_sample_with_dtype(self, dtype, from_inverse=False):
         from ..sugar import from_random
-        return from_random(random_type="normal", domain=self._domain,
-                           std=self._get_fct(from_inverse), dtype=dtype)
+        return from_random(domain=self._domain, random_type="normal", dtype=dtype, std=self._get_fct(from_inverse))
 
     def __call__(self, other):
         res = EndomorphicOperator.__call__(self, other)

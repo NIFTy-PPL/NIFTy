@@ -134,7 +134,7 @@ def probe_diagonal(op, nprobes, random_type="pm1"):
     '''
     sc = StatCalculator()
     for i in range(nprobes):
-        x = from_random(random_type, op.domain)
+        x = from_random(op.domain, random_type)
         sc.add(op(x).conjugate()*x)
     return sc.mean
 

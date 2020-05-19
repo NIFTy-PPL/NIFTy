@@ -39,7 +39,7 @@ ntries = 10
 
 def testBasics(space, seed):
     with ift.random.Context(seed):
-        s = ift.from_random('normal', space)
+        s = ift.from_random(space, 'normal')
         var = ift.Linearization.make_var(s)
         model = ift.ScalingOperator(var.target, 6.)
         ift.extra.check_jacobian_consistency(model, var.val, ntries=ntries)
@@ -55,42 +55,42 @@ def testBinary(type1, type2, space, seed):
         select_s1 = ift.ducktape(None, dom1, "s1")
         select_s2 = ift.ducktape(None, dom2, "s2")
         model = select_s1*select_s2
-        pos = ift.from_random("normal", dom)
+        pos = ift.from_random(dom, "normal")
         ift.extra.check_jacobian_consistency(model, pos, ntries=ntries)
         model = select_s1 + select_s2
-        pos = ift.from_random("normal", dom)
+        pos = ift.from_random(dom, "normal")
         ift.extra.check_jacobian_consistency(model, pos, ntries=ntries)
         model = select_s1.scale(3.)
-        pos = ift.from_random("normal", dom1)
+        pos = ift.from_random(dom1, "normal")
         ift.extra.check_jacobian_consistency(model, pos, ntries=ntries)
         model = ift.ScalingOperator(space, 2.456)(select_s1*select_s2)
-        pos = ift.from_random("normal", dom)
+        pos = ift.from_random(dom, "normal")
         ift.extra.check_jacobian_consistency(model, pos, ntries=ntries)
         model = (2.456*(select_s1*select_s2)).ptw("sigmoid")
-        pos = ift.from_random("normal", dom)
+        pos = ift.from_random(dom, "normal")
         ift.extra.check_jacobian_consistency(model, pos, ntries=ntries)
-        pos = ift.from_random("normal", dom)
-        model = ift.OuterProduct(pos['s1'], ift.makeDomain(space))
+        pos = ift.from_random(dom, "normal")
+        model = ift.OuterProduct(ift.makeDomain(space), pos['s1'])
         ift.extra.check_jacobian_consistency(model, pos['s2'], ntries=ntries)
         model = select_s1**2
-        pos = ift.from_random("normal", dom1)
+        pos = ift.from_random(dom1, "normal")
         ift.extra.check_jacobian_consistency(model, pos, ntries=ntries)
         model = select_s1.clip(-1, 1)
-        pos = ift.from_random("normal", dom1)
+        pos = ift.from_random(dom1, "normal")
         ift.extra.check_jacobian_consistency(model, pos, ntries=ntries)
-        f = ift.from_random("normal", space)
+        f = ift.from_random(space, "normal")
         model = select_s1.clip(f-0.1, f+1.)
-        pos = ift.from_random("normal", dom1)
+        pos = ift.from_random(dom1, "normal")
         ift.extra.check_jacobian_consistency(model, pos, ntries=ntries)
         if isinstance(space, ift.RGSpace):
             model = ift.FFTOperator(space)(select_s1*select_s2)
-            pos = ift.from_random("normal", dom)
+            pos = ift.from_random(dom, "normal")
             ift.extra.check_jacobian_consistency(model, pos, ntries=ntries)
 
 
 def testSpecialDistributionOps(space, seed):
     with ift.random.Context(seed):
-        pos = ift.from_random('normal', space)
+        pos = ift.from_random(space, 'normal')
         alpha = 1.5
         q = 0.73
         model = ift.InverseGammaOperator(space, alpha, q)
@@ -102,8 +102,8 @@ def testSpecialDistributionOps(space, seed):
 @pmp('neg', [True, False])
 def testAdder(space, seed, neg):
     with ift.random.Context(seed):
-        f = ift.from_random('normal', space)
-        f1 = ift.from_random('normal', space)
+        f = ift.from_random(space, 'normal')
+        f1 = ift.from_random(space, 'normal')
         op = ift.Adder(f1, neg)
         ift.extra.check_jacobian_consistency(op, f, ntries=ntries)
         op = ift.Adder(f1.val.ravel()[0], neg=neg, domain=space)
@@ -124,7 +124,7 @@ def testDynamicModel(target, causal, minimum_phase, seed):
                'causal': causal,
                'minimum_phase': minimum_phase}
         model, _ = ift.dynamic_operator(**dct)
-        pos = ift.from_random('normal', model.domain)
+        pos = ift.from_random(model.domain, 'normal')
         ift.extra.check_jacobian_consistency(model, pos, tol=1e-7, ntries=ntries)
         if len(target.shape) > 1:
             dct = {
@@ -143,7 +143,7 @@ def testDynamicModel(target, causal, minimum_phase, seed):
             dct['sigc'] = 1.
             dct['quant'] = 5
             model, _ = ift.dynamic_lightcone_operator(**dct)
-            pos = ift.from_random('normal', model.domain)
+            pos = ift.from_random(model.domain, 'normal')
             ift.extra.check_jacobian_consistency(model, pos, tol=1e-7, ntries=ntries)
 
 
@@ -159,5 +159,5 @@ def testNormalization(h_space, specialbinbounds, logarithmic, nbin):
         binbounds = ift.PowerSpace.useful_binbounds(h_space, logarithmic, nbin)
     dom = ift.PowerSpace(h_space, binbounds)
     op = ift.library.correlated_fields._Normalization(dom)
-    pos = 0.1*ift.from_random('normal', op.domain)
+    pos = 0.1 * ift.from_random(op.domain, 'normal')
     ift.extra.check_jacobian_consistency(op, pos, ntries=10)

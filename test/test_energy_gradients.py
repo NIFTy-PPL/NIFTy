@@ -26,7 +26,7 @@ spaces = [ift.GLSpace(5),
           ift.MultiDomain.make({'': ift.RGSpace(5, distances=.789)}),
           (ift.RGSpace(3, distances=.789), ift.UnstructuredDomain(2))]
 pmp = pytest.mark.parametrize
-field = list2fixture([ift.from_random('normal', sp) for sp in spaces])
+field = list2fixture([ift.from_random(sp, 'normal') for sp in spaces])
 ntries = 10
 
 
@@ -62,7 +62,7 @@ def test_studentt(field):
         return
     energy = ift.StudentTEnergy(domain=field.domain, theta=.5)
     ift.extra.check_jacobian_consistency(energy, field, tol=1e-6)
-    theta = ift.from_random('normal',field.domain).exp()
+    theta = ift.from_random(field.domain, 'normal').exp()
     energy = ift.StudentTEnergy(domain=field.domain, theta=theta)
     ift.extra.check_jacobian_consistency(energy, field, tol=1e-6, ntries=ntries)
 
@@ -73,7 +73,7 @@ def test_hamiltonian_and_KL(field):
     lh = ift.GaussianEnergy(domain=space)
     hamiltonian = ift.StandardHamiltonian(lh)
     ift.extra.check_jacobian_consistency(hamiltonian, field, ntries=ntries)
-    samps = [ift.from_random('normal', space) for i in range(2)]
+    samps = [ift.from_random(space, 'normal') for i in range(2)]
     kl = ift.AveragedEnergy(hamiltonian, samps)
     ift.extra.check_jacobian_consistency(kl, field, ntries=ntries)
 

@@ -124,7 +124,7 @@ class Field(Operator):
         return Field(DomainTuple.make(new_domain), self._val)
 
     @staticmethod
-    def from_random(random_type, domain, dtype=np.float64, **kwargs):
+    def from_random(domain, random_type='normal', dtype=np.float64, **kwargs):
         """Draws a random field with the given parameters.
 
         Parameters

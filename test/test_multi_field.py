@@ -25,13 +25,13 @@ dom = ift.makeDomain({"d1": ift.RGSpace(10)})
 
 
 def test_vdot():
-    f1 = ift.from_random("normal", domain=dom, dtype=np.complex128)
-    f2 = ift.from_random("normal", domain=dom, dtype=np.complex128)
+    f1 = ift.from_random(domain=dom, random_type="normal", dtype=np.complex128)
+    f2 = ift.from_random(domain=dom, random_type="normal", dtype=np.complex128)
     assert_allclose(f1.s_vdot(f2), np.conj(f2.s_vdot(f1)))
 
 
 def test_func():
-    f1 = ift.from_random("normal", domain=dom, dtype=np.complex128)
+    f1 = ift.from_random(domain=dom, random_type="normal", dtype=np.complex128)
     assert_allclose(
         f1.ptw("exp").ptw("log")["d1"].val, f1["d1"].val)
 

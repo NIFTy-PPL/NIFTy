@@ -38,7 +38,7 @@ def test_kl(constants, point_estimates, mirror_samples, mf):
     lh = ift.GaussianEnergy(domain=op.target, sampling_dtype=np.float64) @ op
     ic = ift.GradientNormController(iteration_limit=5)
     h = ift.StandardHamiltonian(lh, ic_samp=ic)
-    mean0 = ift.from_random('normal', h.domain)
+    mean0 = ift.from_random(h.domain, 'normal')
 
     nsamps = 2
     kl = ift.MetricGaussianKL(mean0,

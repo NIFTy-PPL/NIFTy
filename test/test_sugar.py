@@ -55,6 +55,6 @@ def test_exec_time():
 def test_calc_pos():
     dom = ift.RGSpace(12, harmonic=True)
     op = ift.HarmonicTransformOperator(dom).ptw("exp")
-    fld = op(0.1*ift.from_random('normal', op.domain))
+    fld = op(0.1 * ift.from_random(op.domain, 'normal'))
     pos = ift.calculate_position(op, fld)
     ift.extra.assert_allclose(op(pos), fld, 1e-1, 1e-1)

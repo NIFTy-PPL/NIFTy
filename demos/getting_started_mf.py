@@ -97,7 +97,7 @@ if __name__ == '__main__':
     N = ift.ScalingOperator(data_space, noise)
 
     # Generate mock signal and data
-    mock_position = ift.from_random('normal', signal_response.domain)
+    mock_position = ift.from_random(signal_response.domain, 'normal')
     data = signal_response(mock_position) + N.draw_sample_with_dtype(dtype=np.float64)
 
     plot = ift.Plot()

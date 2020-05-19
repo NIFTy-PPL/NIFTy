@@ -61,7 +61,7 @@ class BlockDiagonalOperator(EndomorphicOperator):
         val = tuple(
             op.draw_sample_with_dtype(dtype[key], from_inverse)
             if op is not None
-            else from_random('normal', self._domain[key], dtype=dtype)
+            else from_random(self._domain[key], 'normal', dtype=dtype)
             for op, key in zip(self._ops, self._domain.keys()))
         return MultiField(self._domain, val)
 
