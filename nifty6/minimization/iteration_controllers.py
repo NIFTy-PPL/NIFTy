@@ -98,6 +98,12 @@ class IterationController(metaclass=NiftyMeta):
         before, it is reset."""
         self._history = []
 
+    def activate_logging(self):
+        """Activates the logging functionality. If the log has been populated
+        before, it stays as it is."""
+        if self._history is None:
+            self._history = []
+
 
 def append_history(func):
     @functools.wraps(func)
