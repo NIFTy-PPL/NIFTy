@@ -85,6 +85,4 @@ def IntegrationOperator(domain, spaces):
         The elements of "domain" which are contracted.
         If `None`, everything is contracted
     """
-    domain = DomainTuple.make(domain)
-    swgt = domain.scalar_weight(spaces)
-    return ContractionOperator(domain, spaces, swgt)
+    return ContractionOperator(domain, spaces, 1)
