@@ -9,10 +9,12 @@ from ..common import setup_function, teardown_function
 def test_conjugation_operator():
     sp = ift.RGSpace(8)
     dom = ift.makeDomain(sp)
-    f_real = ift.from_random(dom)
-    f_imag = ift.from_random(dom)
-    f_complex = f_real + 1.j*f_imag
+    f = ift.from_random(dom, dtype= np.complex128)
     op = ift.ScalingOperator(sp,1).conjugate()
-    res1 = f_complex.conjugate()
-    res2 = op(f_complex)
+    res1 = f.conjugate()
+    res2 = op(f)
     assert_allclose(res1.val, res2.val)
+    ift.extra.consistency_check(op, domain_dtype=np.float64,
+                                    target_dtype=np.float64)
+    ift.extra.consistency_check(op, domain_dtype=np.complex128,
+                                target_dtype=np.complex128, only_r_linear=True)
