@@ -16,14 +16,17 @@
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
 
 import os
+from datetime import datetime as dt
 
 import numpy as np
+from matplotlib.dates import DateFormatter, date2num
 
 from .domains.gl_space import GLSpace
 from .domains.hp_space import HPSpace
 from .domains.power_space import PowerSpace
 from .domains.rg_space import RGSpace
 from .field import Field
+from .minimization.iteration_controllers import EnergyHistory
 
 # relevant properties:
 # - x/y size
@@ -261,6 +264,38 @@ def _register_cmaps():
     plt.register_cmap(cmap=LinearSegmentedColormap("Plus Minus", pm_cmap))
 
 
+def _plot_history(f, ax, **kwargs):
+    import matplotlib.pyplot as plt
+    for i, fld in enumerate(f):
+        if not isinstance(fld, EnergyHistory):
+            raise TypeError
+    label = kwargs.pop("label", None)
+    if not isinstance(label, list):
+        label = [label] * len(f)
+    alpha = kwargs.pop("alpha", None)
+    if not isinstance(alpha, list):
+        alpha = [alpha] * len(f)
+    color = kwargs.pop("color", None)
+    if not isinstance(color, list):
+        color = [color] * len(f)
+    ax.set_title(kwargs.pop("title", ""))
+    ax.set_xlabel(kwargs.pop("xlabel", ""))
+    ax.set_ylabel(kwargs.pop("ylabel", ""))
+    plt.xscale(kwargs.pop("xscale", "linear"))
+    plt.yscale(kwargs.pop("yscale", "linear"))
+    for i, fld in enumerate(f):
+        xcoord = fld.timestamps
+        # xcoord = date2num([dt.fromtimestamp(ts) for ts in xcoord])
+        # xfmt = DateFormatter('%H:%M')
+        # ax.xaxis.set_major_formatter(xfmt)
+        ycoord = fld.energy_values
+        ax.scatter(xcoord, ycoord, label=label[i], alpha=alpha[i],
+                   color=color[i])
+    _limit_xy(**kwargs)
+    if label != ([None]*len(f)):
+        plt.legend()
+
+
 def _plot1D(f, ax, **kwargs):
     import matplotlib.pyplot as plt
 
@@ -421,11 +456,14 @@ def _plot2D(f, ax, **kwargs):
 
 def _plot(f, ax, **kwargs):
     _register_cmaps()
-    if isinstance(f, Field):
+    if isinstance(f, Field) or isinstance(f, EnergyHistory):
         f = [f]
     f = list(f)
     if len(f) == 0:
         raise ValueError("need something to plot")
+    if isinstance(f[0], EnergyHistory):
+        _plot_history(f, ax, **kwargs)
+        return
     if not isinstance(f[0], Field):
         raise TypeError("incorrect data type")
     dom1 = f[0].domain

@@ -43,7 +43,7 @@ class IterationController(metaclass=NiftyMeta):
 
     For analyzing minimization procedures IterationControllers can log energy
     values together with the respective time stamps. In order to activate this
-    feature `activate_and_reset_logging()` needs to be called.
+    feature `activate_logging()` needs to be called.
     """
 
     CONVERGED, CONTINUE, ERROR = list(range(3))
@@ -79,38 +79,64 @@ class IterationController(metaclass=NiftyMeta):
         """
         raise NotImplementedError
 
-    def pop_history(self):
-        """Returns the collected history of energy values and resets the
-        history afterwards.
-
-        Returns
-        -------
-        list : List of (unix timestamp, energy values) tuples
-        """
-        if self._history is None:
-            raise RuntimeError('No history was taken')
-        res = self._history
-        self._history = []
-        return res
-
-    def activate_and_reset_logging(self):
-        """Activates the logging functionality. If the log has been populated
-        before, it is reset."""
-        self._history = []
-
-    def activate_logging(self):
-        """Activates the logging functionality. If the log has been populated
+    def enable_logging(self):
+        """Enables the logging functionality. If the log has been populated
         before, it stays as it is."""
         if self._history is None:
-            self._history = []
+            self._history = EnergyHistory()
+
+    def disable_logging(self):
+        """Disables the logging functionality. If the log has been populated
+        before, it is dropped."""
+        self._history = None
+
+    @property
+    def history(self):
+        return self._history
+
+
+class EnergyHistory(object):
+    def __init__(self):
+        self._lst = []
+
+    def append(self, x):
+        if len(x) != 2:
+            raise ValueError
+        self._lst.append((float(x[0]), float(x[1])))
+
+    def pop_all(self):
+        lst = self._lst
+        self._lst = []
+        return lst
+
+    @property
+    def timestamps(self):
+        return [x for x, _ in self._lst]
+
+    @property
+    def energy_values(self):
+        return [x for _, x in self._lst]
+
+    def __add__(self, other):
+        if not isinstance(other, EnergyHistory):
+            return NotImplemented
+        res = EnergyHistory()
+        res._lst = self._lst + other._lst
+        return res
+
+    def __iadd__(self, other):
+        if not isinstance(other, EnergyHistory):
+            return NotImplemented
+        self._lst += other._lst
+        return self
 
 
 def append_history(func):
     @functools.wraps(func)
     def wrapper(*args, **kwargs):
-        if args[0]._history is not None:
-            energy_val = args[1].value
-            args[0]._history.append((time(), energy_val))
+        hist = args[0].history
+        if isinstance(hist, EnergyHistory):
+            hist.append((time(), args[1].value))
         return func(*args, **kwargs)
     return wrapper
 

@@ -177,7 +177,8 @@ class NewtonCG(DescentMinimizer):
         self._nreset = nreset
         self._max_cg_iterations = max_cg_iterations
         self._alpha = energy_reduction_factor
-        self._history = [] if activate_logging else None
+        from .iteration_controllers import EnergyHistory
+        self._history = EnergyHistory() if activate_logging else None
 
     def get_descent_direction(self, energy, old_value=None):
         if old_value is None:
@@ -187,7 +188,7 @@ class NewtonCG(DescentMinimizer):
             ic = AbsDeltaEnergyController(
                 ediff, iteration_limit=self._max_cg_iterations, name=self._name)
         if self._history is not None:
-            ic.activate_logging()
+            ic.enable_logging()
         e = QuadraticEnergy(0*energy.position, energy.metric, energy.gradient)
         p = None
         if self._napprox > 1:
@@ -195,15 +196,12 @@ class NewtonCG(DescentMinimizer):
             p = makeOp(approximation2endo(met, self._napprox)).inverse
         e, conv = ConjugateGradient(ic, nreset=self._nreset)(e, p)
         if self._history is not None:
-            self._history.extend(ic.pop_history())
+            self._history += ic.history
         return -e.position
 
-    def pop_inversion_energy_history(self):
-        if self._history is None:
-            raise RuntimeError('Logging has not been enabled.')
-        hist = self._history
-        self._history = []
-        return hist
+    @property
+    def inversion_history(self):
+        return self._history
 
 
 class L_BFGS(DescentMinimizer):
