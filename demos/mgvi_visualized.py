@@ -18,22 +18,23 @@
 
 import numpy as np
 import pylab as plt
+from matplotlib.colors import LogNorm
 
 import nifty6 as ift
 
 if __name__ == '__main__':
     dom = ift.UnstructuredDomain(1)
-    uninformative_scaling = 10
+    scale = 10
 
     a = ift.FieldAdapter(dom, 'a')
     b = ift.FieldAdapter(dom, 'b')
-    lh = (a.adjoint @ a).scale(uninformative_scaling) + (b.adjoint @ b).scale(
-        -1.35*2).exp()
+    lh = (a.adjoint @ a).scale(scale) + (b.adjoint @ b).scale(-1.35*2).exp()
     lh = ift.VariableCovarianceGaussianEnergy(dom, 'a', 'b', np.float64) @ lh
     icsamp = ift.AbsDeltaEnergyController(deltaE=0.1, iteration_limit=2)
     ham = ift.StandardHamiltonian(lh, icsamp)
 
-    x_limits = [-8/uninformative_scaling, 8/uninformative_scaling]
+    x_limits = [-8/scale, 8/scale]
+    x_limits_scaled = [-8, 8]
     y_limits = [-4, 4]
     x = np.linspace(*x_limits, num=401)
     y = np.linspace(*y_limits, num=401)
@@ -41,7 +42,7 @@ if __name__ == '__main__':
 
     def np_ham(x, y):
         prior = x**2 + y**2
-        mean = x*uninformative_scaling
+        mean = x*scale
         lcov = 1.35*2*y
         lh = .5*(mean**2*np.exp(-lcov) + lcov)
         return lh + prior
@@ -50,13 +51,15 @@ if __name__ == '__main__':
     plt.plot(y, np.sum(z, axis=0))
     plt.xlabel('y')
     plt.ylabel('pdf')
-    plt.title('marginal density')
-    plt.show()
-    plt.plot(x*uninformative_scaling, np.sum(z, axis=1))
+    plt.title('Marginal density')
+    plt.pause(2.0)
+    plt.close()
+    plt.plot(x*scale, np.sum(z, axis=1))
     plt.xlabel('x')
     plt.ylabel('pdf')
-    plt.title('marginal density')
-    plt.show()
+    plt.title('Marginal density')
+    plt.pause(2.0)
+    plt.close()
 
     pos = ift.from_random('normal', ham.domain)
     MAP = ift.EnergyAdapter(pos, ham, want_metric=True)
@@ -72,31 +75,30 @@ if __name__ == '__main__':
     minimizer = ift.NewtonCG(
         ift.GradientNormController(iteration_limit=2, name='Mini'))
     pos = ift.from_random('normal', ham.domain)
+    plt.figure(figsize=[12, 8])
     for ii in range(15):
         if ii % 3 == 0:
             mgkl = ift.MetricGaussianKL(pos, ham, 40)
 
         plt.cla()
-        from matplotlib.colors import LogNorm
-        plt.imshow(z.T,
-                   origin='lower',
-                   extent=(x_limits[0]*uninformative_scaling, x_limits[1]*
-                           uninformative_scaling) + tuple(y_limits),
-                   norm=LogNorm(),
-                   vmin=1e-3,
-                   vmax=np.max(z))
+        plt.imshow(z.T, origin='lower', norm=LogNorm(), vmin=1e-3,
+                   vmax=np.max(z), cmap='gist_earth_r',
+                   extent=x_limits_scaled + y_limits)
         if ii == 0:
-            plt.colorbar()
+            cbar = plt.colorbar()
+        cbar.ax.set_ylabel('pdf')
         xs, ys = [], []
         for samp in mgkl.samples:
             samp = (samp + pos).val
             xs.append(samp['a'])
             ys.append(samp['b'])
-        plt.scatter(np.array(xs)*uninformative_scaling, np.array(ys))
-        plt.scatter(pos.val['a']*uninformative_scaling, pos.val['b'])
-        plt.scatter(np.array(map_xs)*uninformative_scaling, np.array(map_ys))
-        plt.scatter(MAP.position.val['a']*uninformative_scaling,
-                    MAP.position.val['b'])
+        plt.scatter(np.array(xs)*scale, np.array(ys), label='MGVI samples')
+        plt.scatter(pos.val['a']*scale, pos.val['b'], label='MGVI latent mean')
+        plt.scatter(np.array(map_xs)*scale, np.array(map_ys),
+                    label='Laplace samples')
+        plt.scatter(MAP.position.val['a']*scale, MAP.position.val['b'],
+                    label='Maximum a posterior solution')
+        plt.legend()
         plt.draw()
         plt.pause(1.0)
 
