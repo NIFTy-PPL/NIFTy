@@ -104,10 +104,8 @@ class EnergyHistory(object):
             raise ValueError
         self._lst.append((float(x[0]), float(x[1])))
 
-    def pop_all(self):
-        lst = self._lst
+    def reset(self):
         self._lst = []
-        return lst
 
     @property
     def timestamps(self):

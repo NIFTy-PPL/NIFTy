@@ -278,19 +278,25 @@ def _plot_history(f, ax, **kwargs):
     color = kwargs.pop("color", None)
     if not isinstance(color, list):
         color = [color] * len(f)
+    size = kwargs.pop("s", None)
+    if not isinstance(size, list):
+        size = [size] * len(f)
     ax.set_title(kwargs.pop("title", ""))
     ax.set_xlabel(kwargs.pop("xlabel", ""))
     ax.set_ylabel(kwargs.pop("ylabel", ""))
     plt.xscale(kwargs.pop("xscale", "linear"))
     plt.yscale(kwargs.pop("yscale", "linear"))
+    mi, ma = np.inf, -np.inf
     for i, fld in enumerate(f):
-        xcoord = fld.timestamps
-        # xcoord = date2num([dt.fromtimestamp(ts) for ts in xcoord])
-        # xfmt = DateFormatter('%H:%M')
-        # ax.xaxis.set_major_formatter(xfmt)
+        xcoord = date2num([dt.fromtimestamp(ts) for ts in fld.timestamps])
         ycoord = fld.energy_values
         ax.scatter(xcoord, ycoord, label=label[i], alpha=alpha[i],
-                   color=color[i])
+                   color=color[i], s=size[i])
+        mi, ma = min([min(xcoord), mi]), max([max(xcoord), ma])
+    delta = (ma-mi)*0.05
+    ax.set_xlim((mi-delta, ma+delta))
+    xfmt = DateFormatter('%H:%M')
+    ax.xaxis.set_major_formatter(xfmt)
     _limit_xy(**kwargs)
     if label != ([None]*len(f)):
         plt.legend()
