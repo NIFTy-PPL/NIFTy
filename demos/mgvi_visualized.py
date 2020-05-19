@@ -16,6 +16,18 @@
 #
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
 
+###############################################################################
+# Metric Gaussian Variational Inference (MGVI)
+#
+# This script demonstrates how MGVI works for an inference problem with only
+# two real quantities of interest. This enables us to plot the posterior
+# probability density as two-dimensional plot. The posterior samples generated
+# by MGVI are contrasted with the maximum-a-posterior (MAP) solution together
+# with samples drawn with the Laplace method. This method uses the local
+# curvature at the MAP solution as inverse covariance of a Gaussian probability
+# density.
+###############################################################################
+
 import numpy as np
 import pylab as plt
 from matplotlib.colors import LogNorm
