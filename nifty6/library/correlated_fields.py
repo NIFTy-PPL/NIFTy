@@ -408,8 +408,12 @@ class CorrelatedFieldMaker:
             If not 0, the first entry of the operators target will be an
             :class:`~nifty.domains.unstructured_domain.UnstructuredDomain`
             with length `total_N`.
-        dofdex : np.array
-            #FixMe
+        dofdex : np.array of integers
+            An integer array specifying the zero mode models used if
+            total_N > 1. It needs to have length of total_N. If total_N=3 and
+            dofdex=[0,0,1], that means that two models for the zero mode are
+            instanciated; the first one is used for the first and second copy
+            of the model and the second is used for the third.
         """
         if dofdex is None:
             dofdex = np.full(total_N, 0)
@@ -472,10 +476,15 @@ class CorrelatedFieldMaker:
             Power law component exponent
         prefix : string
             prefix of the power spectrum parameter domain names
-        index :
-            #FixMe
-        dofdex :
-            #FixMe
+        index : int
+            Position target_subdomain in the final total domain of the
+            correlated field operator.
+        dofdex : np.array
+            An integer array specifying the amplitude models used if
+            total_N > 1. It needs to have length of total_N. If total_N=3 and
+            dofdex=[0,0,1], that means that two models for the zero mode are
+            instanciated; the first one is used for the first and second copy
+            of the model and the second is used for the third.
         harmonic_partner : :class:`~nifty6.domain.Domain`, \
                            :class:`~nifty6.domain_tuple.DomainTuple`
             In which harmonic space to define the power spectrum
