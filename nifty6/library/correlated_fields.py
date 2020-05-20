@@ -11,7 +11,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
-# Copyright(C) 2013-2019 Max-Planck-Society
+# Copyright(C) 2013-2020 Max-Planck-Society
 # Authors: Philipp Frank, Philipp Arras, Philipp Haim
 #
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
@@ -25,7 +25,6 @@ from ..domain_tuple import DomainTuple
 from ..domains.power_space import PowerSpace
 from ..domains.unstructured_domain import UnstructuredDomain
 from ..field import Field
-from ..linearization import Linearization
 from ..logger import logger
 from ..multi_field import MultiField
 from ..operators.adder import Adder
@@ -244,10 +243,9 @@ class _SpecialSum(EndomorphicOperator):
 
 class _Distributor(LinearOperator):
     def __init__(self, dofdex, domain, target):
-        self._dofdex = dofdex
-
-        self._target = makeDomain(target)
-        self._domain = makeDomain(domain)
+        self._dofdex = np.array(dofdex)
+        self._target = DomainTuple.make(target)
+        self._domain = DomainTuple.make(domain)
         self._capability = self.TIMES | self.ADJOINT_TIMES
 
     def apply(self, x, mode):
@@ -256,7 +254,7 @@ class _Distributor(LinearOperator):
         if mode == self.TIMES:
             res = x[self._dofdex]
         else:
-            res = np.empty(self._tgt(mode).shape)
+            res = np.zeros(self._tgt(mode).shape, dtype=x.dtype)
             res[self._dofdex] = x
         return makeField(self._tgt(mode), res)
 
@@ -354,11 +352,35 @@ class _Amplitude(Operator):
 
 
 class CorrelatedFieldMaker:
+    """Constrution helper for hirarchical correlated field models.
+
+    The correlated field models are parametrized by creating
+    powerspectrum operators acting on their target subdomains
+    via calls to :func:`add_fluctuations`.
+    During creation of the :class:`CorrelatedFieldMaker` via
+    :func:`make`, a global offset from zero can be added to the
+    field to be created and an operator applying gaussian fluctuations
+    around this offset needs to be parametrized.
+
+    The resulting correlated field model operator has a
+    :class:`~nifty6.multi_domain.MultiDomain` as its domain and
+    expects its input values to be univariately gaussian.
+
+    The target of the constructed operator will be a
+    :class:`~nifty6.domain_tuple.DomainTuple`
+    containing the `target_subdomains` of the added fluctuations in the
+    order of the `add_fluctuations` calls.
+
+    Creation of the model operator is finished by calling the method
+    :func:`finalize`, which returns the configured operator.
+
+    See the methods :func:`make`, :func:`add_fluctuations`
+    and :func:`finalize` for usage instructions."""
     def __init__(self, offset_mean, offset_fluctuations_op, prefix, total_N):
         if not isinstance(offset_fluctuations_op, Operator):
             raise TypeError("offset_fluctuations_op needs to be an operator")
         self._a = []
-        self._position_spaces = []
+        self._target_subdomains = []
 
         self._offset_mean = offset_mean
         self._azm = offset_fluctuations_op
@@ -366,8 +388,7 @@ class CorrelatedFieldMaker:
         self._total_N = total_N
 
     @staticmethod
-    def make(offset_mean, offset_std_mean, offset_std_std, prefix,
-             total_N=0,
+    def make(offset_mean, offset_std_mean, offset_std_std, prefix, total_N=0,
              dofdex=None):
         """Returns a CorrelatedFieldMaker object.
 
@@ -376,15 +397,23 @@ class CorrelatedFieldMaker:
         offset_mean : float
             Mean offset from zero of the correlated field to be made.
         offset_std_mean : float
-            Mean standard deviation of the offset value.
+            Mean standard deviation of the offset.
         offset_std_std : float
-            Standard deviation of the stddev of the offset value.
+            Standard deviation of the stddev of the offset.
         prefix : string
             Prefix to the names of the domains of the cf operator to be made.
+            This determines the names of the operator domain.
         total_N : integer
-            ?
-        dofdex : np.array
-            ?
+            Number of copies with of the field to return.
+            If not 0, the first entry of the operators target will be an
+            :class:`~nifty.domains.unstructured_domain.UnstructuredDomain`
+            with length `total_N`.
+        dofdex : np.array of integers
+            An integer array specifying the zero mode models used if
+            total_N > 1. It needs to have length of total_N. If total_N=3 and
+            dofdex=[0,0,1], that means that two models for the zero mode are
+            instanciated; the first one is used for the first and second copy
+            of the model and the second is used for the third.
         """
         if dofdex is None:
             dofdex = np.full(total_N, 0)
@@ -400,7 +429,7 @@ class CorrelatedFieldMaker:
         return CorrelatedFieldMaker(offset_mean, zm, prefix, total_N)
 
     def add_fluctuations(self,
-                         position_space,
+                         target_subdomain,
                          fluctuations_mean,
                          fluctuations_stddev,
                          flexibility_mean,
@@ -413,11 +442,58 @@ class CorrelatedFieldMaker:
                          index=None,
                          dofdex=None,
                          harmonic_partner=None):
+        """Function to add correlation structures to the field to be made.
+
+        Correlations are described by their power spectrum and the subdomain
+        on which they apply.
+
+        The parameters `fluctuations`, `flexibility`, `asperity` and
+        `loglogavgslope` configure the power spectrum model used on the
+        target field subdomain `target_subdomain`.
+        It is assembled as the sum of a power law component
+        (linear slope in log-log power-frequency-space),
+        a smooth varying component (integrated wiener process) and
+        a ragged componenent (unintegrated wiener process).
+
+        Multiple calls to `add_fluctuations` are possible, in which case
+        the constructed field will have the outer product of the individual
+        power spectra as its global power spectrum.
+
+        Parameters
+        ----------
+        target_subdomain : :class:`~nifty6.domain.Domain`, \
+                           :class:`~nifty6.domain_tuple.DomainTuple`
+            Target subdomain on which the correlation structure defined
+            in this call should hold.
+        fluctuations_{mean,stddev} : float
+            Total spectral energy -> Amplitude of the fluctuations
+        flexibility_{mean,stddev} : float
+            Smooth variation speed of the power spectrum
+        asperity_{mean,stddev} : float
+            Strength of unsmoothed power spectrum variations
+            Used to accomodate single frequency peaks
+        loglogavgslope_{mean,stddev} : float
+            Power law component exponent
+        prefix : string
+            prefix of the power spectrum parameter domain names
+        index : int
+            Position target_subdomain in the final total domain of the
+            correlated field operator.
+        dofdex : np.array
+            An integer array specifying the amplitude models used if
+            total_N > 1. It needs to have length of total_N. If total_N=3 and
+            dofdex=[0,0,1], that means that two models for the zero mode are
+            instanciated; the first one is used for the first and second copy
+            of the model and the second is used for the third.
+        harmonic_partner : :class:`~nifty6.domain.Domain`, \
+                           :class:`~nifty6.domain_tuple.DomainTuple`
+            In which harmonic space to define the power spectrum
+        """
         if harmonic_partner is None:
-            harmonic_partner = position_space.get_default_codomain()
+            harmonic_partner = target_subdomain.get_default_codomain()
         else:
-            position_space.check_codomain(harmonic_partner)
-            harmonic_partner.check_codomain(position_space)
+            target_subdomain.check_codomain(harmonic_partner)
+            harmonic_partner.check_codomain(target_subdomain)
 
         if dofdex is None:
             dofdex = np.full(self._total_N, 0)
@@ -426,12 +502,12 @@ class CorrelatedFieldMaker:
 
         if self._total_N > 0:
             N = max(dofdex) + 1
-            position_space = makeDomain((UnstructuredDomain(N), position_space))
+            target_subdomain = makeDomain((UnstructuredDomain(N), target_subdomain))
         else:
             N = 0
-            position_space = makeDomain(position_space)
+            target_subdomain = makeDomain(target_subdomain)
         prefix = str(prefix)
-        # assert isinstance(position_space[space], (RGSpace, HPSpace, GLSpace)
+        # assert isinstance(target_subdomain[space], (RGSpace, HPSpace, GLSpace)
 
         fluct = _LognormalMomentMatching(fluctuations_mean,
                                          fluctuations_stddev,
@@ -445,15 +521,15 @@ class CorrelatedFieldMaker:
         avgsl = _normal(loglogavgslope_mean, loglogavgslope_stddev,
                         self._prefix + prefix + 'loglogavgslope', N)
         amp = _Amplitude(PowerSpace(harmonic_partner), fluct, flex, asp, avgsl,
-                         self._azm, position_space[-1].total_volume,
+                         self._azm, target_subdomain[-1].total_volume,
                          self._prefix + prefix + 'spectrum', dofdex)
 
         if index is not None:
             self._a.insert(index, amp)
-            self._position_spaces.insert(index, position_space)
+            self._target_subdomains.insert(index, target_subdomain)
         else:
             self._a.append(amp)
-            self._position_spaces.append(position_space)
+            self._target_subdomains.append(target_subdomain)
 
     def _finalize_from_op(self):
         n_amplitudes = len(self._a)
@@ -473,11 +549,11 @@ class CorrelatedFieldMaker:
         azm = expander @ self._azm
 
         ht = HarmonicTransformOperator(hspace,
-                                       self._position_spaces[0][amp_space],
+                                       self._target_subdomains[0][amp_space],
                                        space=spaces[0])
         for i in range(1, n_amplitudes):
             ht = HarmonicTransformOperator(ht.target,
-                                           self._position_spaces[i][amp_space],
+                                           self._target_subdomains[i][amp_space],
                                            space=spaces[i]) @ ht
         a = []
         for ii in range(n_amplitudes):
@@ -489,8 +565,14 @@ class CorrelatedFieldMaker:
         return ht(azm*corr*ducktape(hspace, None, self._prefix + 'xi'))
 
     def finalize(self, prior_info=100):
-        """
-        offset vs zeromode: volume factor
+        """Finishes model construction process and returns the constructed
+        operator.
+
+        Parameters
+        ----------
+        prior_info : integer
+            How many prior samples to draw for property verification statistics
+            If zero, skips calculating and displaying statistics.
         """
         op = self._finalize_from_op()
         if self._offset_mean is not None:

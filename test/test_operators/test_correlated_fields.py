@@ -36,7 +36,6 @@ def _stats(op, samples):
                 ift.HPSpace(8), ift.GLSpace(4)])
 @pmp('N', [0, 2])
 def testAmplitudesInvariants(sspace, N):
-
     fsspace = ift.RGSpace((12,), (0.4,))
     dofdex1, dofdex2, dofdex3 = None, None, None
     if N == 2:
@@ -52,7 +51,7 @@ def testAmplitudesInvariants(sspace, N):
                         'freq', dofdex=dofdex3)
     op = fa.finalize()
 
-    samples = [ift.from_random(op.domain, 'normal') for _ in range(100)]
+    samples = [ift.from_random(op.domain) for _ in range(100)]
     tot_flm, _ = _stats(fa.total_fluctuation, samples)
     offset_amp_std, _ = _stats(fa.amplitude_total_offset, samples)
     intergated_fluct_std0, _ = _stats(fa.average_fluctuation(0), samples)
@@ -89,3 +88,13 @@ def testAmplitudesInvariants(sspace, N):
     assert_allclose(m, em, rtol=0.5)
     assert_(op.target[-2] == sspace)
     assert_(op.target[-1] == fsspace)
+
+    # FIXME
+    if N > 1:
+        return
+
+    for ampl in fa.normalized_amplitudes:
+        ift.extra.check_jacobian_consistency(ampl, ift.from_random(ampl.domain),
+                                             ntries=10)
+    ift.extra.check_jacobian_consistency(op, ift.from_random(op.domain),
+                                         ntries=10)
