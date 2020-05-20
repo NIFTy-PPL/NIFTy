@@ -224,12 +224,12 @@ def testRegridding(args):
     ift.extra.consistency_check(op)
 
 
-@pmp('fdomain', [(ift.RGSpace((3, 5, 4)), ift.RGSpace((16,), distances=(7.,))),
-                 ift.HPSpace(12)])
+@pmp('fdomain', [(ift.RGSpace((2, 3, 2)), ift.RGSpace((4,), distances=(7.,))),
+                 ift.HPSpace(3)])
 @pmp('domain', [(ift.RGSpace(2), ift.GLSpace(10)),
-                ift.RGSpace((10, 12), distances=(0.1, 1.))])
+                ift.RGSpace((4, 3), distances=(0.1, 1.))])
 def testOuter(fdomain, domain):
-    f = ift.from_random(fdomain, 'normal')
+    f = ift.from_random(ift.makeDomain(fdomain), 'normal')
     op = ift.OuterProduct(domain, f)
     ift.extra.consistency_check(op)
 
