@@ -161,3 +161,10 @@ def testNormalization(h_space, specialbinbounds, logarithmic, nbin):
     op = ift.library.correlated_fields._Normalization(dom)
     pos = 0.1 * ift.from_random(op.domain, 'normal')
     ift.extra.check_jacobian_consistency(op, pos, ntries=10)
+
+
+@pmp('N', [1, 3])
+def testMomentMatchingJacobian(N):
+    op = ift.library.correlated_fields._LognormalMomentMatching(1, 0.2, '', N)
+    ift.extra.check_jacobian_consistency(op, ift.from_random(op.domain),
+                                         ntries=10)
