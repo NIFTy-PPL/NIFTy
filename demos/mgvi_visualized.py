@@ -73,7 +73,7 @@ if __name__ == '__main__':
     plt.pause(2.0)
     plt.close()
 
-    pos = ift.from_random('normal', ham.domain)
+    pos = ift.from_random(ham.domain, 'normal')
     MAP = ift.EnergyAdapter(pos, ham, want_metric=True)
     minimizer = ift.NewtonCG(
         ift.GradientNormController(iteration_limit=20, name='Mini'))
@@ -86,7 +86,7 @@ if __name__ == '__main__':
 
     minimizer = ift.NewtonCG(
         ift.GradientNormController(iteration_limit=2, name='Mini'))
-    pos = ift.from_random('normal', ham.domain)
+    pos = ift.from_random(ham.domain, 'normal')
     plt.figure(figsize=[12, 8])
     for ii in range(15):
         if ii % 3 == 0:
