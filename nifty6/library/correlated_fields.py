@@ -38,6 +38,7 @@ from ..operators.operator import Operator
 from ..operators.simple_linear_operators import ducktape
 from ..probing import StatCalculator
 from ..sugar import full, makeDomain, makeField, makeOp
+from .. import utilities
 
 
 def _reshaper(x, N):
@@ -255,7 +256,7 @@ class _Distributor(LinearOperator):
             res = x[self._dofdex]
         else:
             res = np.zeros(self._tgt(mode).shape, dtype=x.dtype)
-            res[self._dofdex] = x
+            res = utilities.special_add_at(res, 0, self._dofdex, x)
         return makeField(self._tgt(mode), res)
 
 

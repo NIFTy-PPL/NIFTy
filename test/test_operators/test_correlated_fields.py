@@ -32,8 +32,26 @@ def _stats(op, samples):
     return sc.mean.val, sc.var.ptw("sqrt").val
 
 
-@pmp('sspace', [ift.RGSpace(4), ift.RGSpace((4, 4), (0.123, 0.4)),
-                ift.HPSpace(8), ift.GLSpace(4)])
+@pmp('dofdex', [[0, 0], [0, 1]])
+@pmp('seed', [12, 3])
+def testDistributor(dofdex, seed):
+    with ift.random.Context(seed):
+        dom = ift.RGSpace(3)
+        N_copies = max(dofdex) + 1
+        distributed_target = ift.makeDomain(
+            (ift.UnstructuredDomain(len(dofdex)), dom))
+        target = ift.makeDomain((ift.UnstructuredDomain(N_copies), dom))
+        op = ift.library.correlated_fields._Distributor(
+            dofdex, target, distributed_target)
+        ift.extra.consistency_check(op)
+
+
+@pmp('sspace', [
+    ift.RGSpace(4),
+    ift.RGSpace((4, 4), (0.123, 0.4)),
+    ift.HPSpace(8),
+    ift.GLSpace(4)
+])
 @pmp('N', [0, 2])
 def testAmplitudesInvariants(sspace, N):
     fsspace = ift.RGSpace((12,), (0.4,))
@@ -94,7 +112,9 @@ def testAmplitudesInvariants(sspace, N):
         return
 
     for ampl in fa.normalized_amplitudes:
-        ift.extra.check_jacobian_consistency(ampl, ift.from_random(ampl.domain),
+        ift.extra.check_jacobian_consistency(ampl,
+                                             ift.from_random(ampl.domain),
                                              ntries=10)
-    ift.extra.check_jacobian_consistency(op, ift.from_random(op.domain),
+    ift.extra.check_jacobian_consistency(op,
+                                         ift.from_random(op.domain),
                                          ntries=10)
