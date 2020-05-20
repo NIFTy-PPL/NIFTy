@@ -22,21 +22,14 @@ import nifty6 as ift
 
 from ..common import list2fixture, setup_function, teardown_function
 
-_h_RG_spaces = [
-    ift.RGSpace(7, distances=0.2, harmonic=True),
-    ift.RGSpace((12, 46), distances=(.2, .3), harmonic=True)
-]
+_h_RG_spaces = [ift.RGSpace(7, distances=0.2, harmonic=True),
+                ift.RGSpace((12, 46), distances=(.2, .3), harmonic=True)]
 _h_spaces = _h_RG_spaces + [ift.LMSpace(17)]
-_p_RG_spaces = [
-    ift.RGSpace(19, distances=0.7),
-    ift.RGSpace((1, 2, 3, 6), distances=(0.2, 0.25, 0.34, .8))
-]
+_p_RG_spaces = [ift.RGSpace(19, distances=0.7),
+                ift.RGSpace((1, 2, 3, 6), distances=(0.2, 0.25, 0.34, .8))]
 _p_spaces = _p_RG_spaces + [ift.HPSpace(17), ift.GLSpace(8, 13)]
-_pow_spaces = [
-    ift.PowerSpace(ift.RGSpace((17, 38), (0.99, 1340), harmonic=True)),
-    ift.PowerSpace(ift.LMSpace(18),
-                   ift.PowerSpace.useful_binbounds(ift.LMSpace(18), False))
-]
+_pow_spaces = [ift.PowerSpace(ift.RGSpace((17, 38), (0.99, 1340), harmonic=True)),
+               ift.PowerSpace(ift.LMSpace(18), ift.PowerSpace.useful_binbounds(ift.LMSpace(18), False))]
 
 pmp = pytest.mark.parametrize
 dtype = list2fixture([np.float64, np.complex128])
@@ -168,12 +161,10 @@ def testHarmonic(sp, dtype):
 
 @pmp('sp', _p_spaces)
 def testMask(sp, dtype):
-    # Create mask
     f = ift.from_random('normal', sp).val
     mask = np.zeros_like(f)
     mask[f > 0] = 1
     mask = ift.Field.from_raw(sp, mask)
-    # Test MaskOperator
     op = ift.MaskOperator(mask)
     ift.extra.consistency_check(op, dtype, dtype)
 
@@ -212,33 +203,24 @@ def testDomainTupleFieldInserter():
 def testZeroPadder(space, factor, dtype, central):
     dom = (ift.RGSpace(10), ift.UnstructuredDomain(13), ift.RGSpace(7, 12),
            ift.HPSpace(4))
-    newshape = [int(factor*l) for l in dom[space].shape]
+    newshape = [int(factor*ll) for ll in dom[space].shape]
     op = ift.FieldZeroPadder(dom, newshape, space, central)
     ift.extra.consistency_check(op, dtype, dtype)
 
 
-@pmp('args', [[ift.RGSpace(
-    (13, 52, 40)), (4, 6, 25), None], [ift.RGSpace(
-        (128, 128)), (45, 48), 0], [ift.RGSpace(13), (7,), None], [
-            (ift.HPSpace(3), ift.RGSpace((12, 24), distances=0.3)), (12, 12), 1
-        ]])
+@pmp('args', [[ift.RGSpace((13, 52, 40)), (4, 6, 25), None],
+              [ift.RGSpace((128, 128)), (45, 48), 0],
+              [ift.RGSpace(13), (7,), None],
+              [(ift.HPSpace(3), ift.RGSpace((12, 24), distances=0.3)), (12, 12), 1]])
 def testRegridding(args):
     op = ift.RegriddingOperator(*args)
     ift.extra.consistency_check(op)
 
 
-@pmp(
-    'fdomain',
-    [
-        ift.DomainTuple.make((ift.RGSpace(
-            (3, 5, 4)), ift.RGSpace((16,), distances=(7.,))),),
-        ift.DomainTuple.make(ift.HPSpace(12),)
-    ],
-)
-@pmp('domain', [
-    ift.DomainTuple.make((ift.RGSpace((2,)), ift.GLSpace(10)),),
-    ift.DomainTuple.make(ift.RGSpace((10, 12), distances=(0.1, 1.)),)
-])
+@pmp('fdomain', [(ift.RGSpace((3, 5, 4)), ift.RGSpace((16,), distances=(7.,))),
+                 ift.HPSpace(12)])
+@pmp('domain', [(ift.RGSpace(2), ift.GLSpace(10)),
+                ift.RGSpace((10, 12), distances=(0.1, 1.))])
 def testOuter(fdomain, domain):
     f = ift.from_random('normal', fdomain)
     op = ift.OuterProduct(f, domain)
@@ -276,6 +258,7 @@ def testSpecialSum(sp):
     op = ift.library.correlated_fields._SpecialSum(sp)
     ift.extra.consistency_check(op)
 
+
 def metatestMatrixProductOperator(sp, mat_shape, seed, **kwargs):
     with ift.random.Context(seed):
         mat = ift.random.current_rng().standard_normal(mat_shape)
@@ -285,12 +268,14 @@ def metatestMatrixProductOperator(sp, mat_shape, seed, **kwargs):
         op = ift.MatrixProductOperator(sp, mat, **kwargs)
         ift.extra.consistency_check(op)
 
+
 @pmp('sp', [ift.RGSpace(10)])
 @pmp('spaces', [None, (0,)])
 @pmp('seed', [12, 3])
 def testMatrixProductOperator_1d(sp, spaces, seed):
     mat_shape = sp.shape * 2
     metatestMatrixProductOperator(sp, mat_shape, seed, spaces=spaces)
+
 
 @pmp('sp', [ift.DomainTuple.make((ift.RGSpace((2)), ift.RGSpace((10))))])
 @pmp('spaces', [(0,), (1,), (0, 1)])
@@ -303,12 +288,14 @@ def testMatrixProductOperator_2d_spaces(sp, spaces, seed):
     mat_shape = appl_shape * 2
     metatestMatrixProductOperator(sp, mat_shape, seed, spaces=spaces)
 
+
 @pmp('sp', [ift.RGSpace((2, 10))])
 @pmp('seed', [12, 3])
 def testMatrixProductOperator_2d_flatten(sp, seed):
     appl_shape = (ift.utilities.my_product(sp.shape),)
     mat_shape = appl_shape * 2
     metatestMatrixProductOperator(sp, mat_shape, seed, flatten=True)
+
 
 @pmp('seed', [12, 3])
 def testPartialExtractor(seed):
@@ -320,6 +307,7 @@ def testPartialExtractor(seed):
         tgt = ift.MultiDomain.make(tgt)
         op = ift.PartialExtractor(dom, tgt)
         ift.extra.consistency_check(op)
+
 
 @pmp('seed', [12, 3])
 def testSlowFieldAdapter(seed):

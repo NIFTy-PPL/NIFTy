@@ -388,8 +388,7 @@ class CorrelatedFieldMaker:
         self._total_N = total_N
 
     @staticmethod
-    def make(offset_mean, offset_std_mean, offset_std_std, prefix,
-             total_N=0,
+    def make(offset_mean, offset_std_mean, offset_std_std, prefix, total_N=0,
              dofdex=None):
         """Returns a CorrelatedFieldMaker object.
 
