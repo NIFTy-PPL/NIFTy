@@ -11,7 +11,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
-# Copyright(C) 2013-2019 Max-Planck-Society
+# Copyright(C) 2013-2020 Max-Planck-Society
 # Authors: Philipp Frank, Philipp Arras, Philipp Haim
 #
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
@@ -25,7 +25,6 @@ from ..domain_tuple import DomainTuple
 from ..domains.power_space import PowerSpace
 from ..domains.unstructured_domain import UnstructuredDomain
 from ..field import Field
-from ..linearization import Linearization
 from ..logger import logger
 from ..multi_field import MultiField
 from ..operators.adder import Adder
@@ -244,10 +243,9 @@ class _SpecialSum(EndomorphicOperator):
 
 class _Distributor(LinearOperator):
     def __init__(self, dofdex, domain, target):
-        self._dofdex = dofdex
-
-        self._target = makeDomain(target)
-        self._domain = makeDomain(domain)
+        self._dofdex = np.array(dofdex)
+        self._target = DomainTuple.make(target)
+        self._domain = DomainTuple.make(domain)
         self._capability = self.TIMES | self.ADJOINT_TIMES
 
     def apply(self, x, mode):
@@ -256,7 +254,7 @@ class _Distributor(LinearOperator):
         if mode == self.TIMES:
             res = x[self._dofdex]
         else:
-            res = np.empty(self._tgt(mode).shape)
+            res = np.zeros(self._tgt(mode).shape, dtype=x.dtype)
             res[self._dofdex] = x
         return makeField(self._tgt(mode), res)
 

@@ -326,3 +326,11 @@ def testSlowFieldAdapter(seed):
     dom = {'a': ift.RGSpace(1), 'b': ift.RGSpace(2)}
     op = ift.operators.simple_linear_operators._SlowFieldAdapter(dom, 'a')
     ift.extra.consistency_check(op)
+
+
+@pmp('dofdex', [(0,), (1,), (0, 1), (1, 0)])
+def testCorFldDistr(dofdex):
+    tgt = ift.UnstructuredDomain(len(dofdex))
+    dom = ift.UnstructuredDomain(2)
+    op = ift.library.correlated_fields._Distributor(dofdex, dom, tgt)
+    ift.extra.consistency_check(op)
