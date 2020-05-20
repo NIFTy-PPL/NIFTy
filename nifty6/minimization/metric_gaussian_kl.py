@@ -114,6 +114,11 @@ class MetricGaussianKL(Energy):
         If not None, samples will be distributed as evenly as possible
         across this communicator. If `mirror_samples` is set, then a sample and
         its mirror image will always reside on the same task.
+    nanisinf : bool
+        If true, nan energies which can happen due to overflows in the forward
+        model are interpreted as inf. Thereby, the code does not crash on
+        these occaisions but rather the minimizer is told that the position it
+        has tried is not sensible.
     _local_samples : None
         Only a parameter for internal uses. Typically not to be set by users.
 
