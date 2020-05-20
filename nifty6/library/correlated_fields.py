@@ -642,6 +642,7 @@ class CorrelatedFieldMaker:
 
     @property
     def normalized_amplitudes(self):
+        """Returns the power spectrum operators used in the model"""
         return self._a
 
     @property
