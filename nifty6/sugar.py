@@ -25,15 +25,11 @@ from .domain_tuple import DomainTuple
 from .domains.power_space import PowerSpace
 from .field import Field
 from .logger import logger
-from .minimization.descent_minimizers import NewtonCG
-from .minimization.iteration_controllers import GradientNormController
-from .minimization.metric_gaussian_kl import MetricGaussianKL
 from .multi_domain import MultiDomain
 from .multi_field import MultiField
 from .operators.block_diagonal_operator import BlockDiagonalOperator
 from .operators.diagonal_operator import DiagonalOperator
 from .operators.distributors import PowerDistributor
-from .operators.energy_operators import GaussianEnergy, StandardHamiltonian
 from .operators.operator import Operator
 from .operators.sampling_enabler import SamplingDtypeSetter
 from .operators.scaling_operator import ScalingOperator
@@ -494,6 +490,11 @@ def exec_time(obj, want_metric=True):
 
 def calculate_position(operator, output):
     """Finds approximate preimage of an operator for a given output."""
+    from .minimization.descent_minimizers import NewtonCG
+    from .minimization.iteration_controllers import GradientNormController
+    from .minimization.metric_gaussian_kl import MetricGaussianKL
+    from .operators.scaling_operator import ScalingOperator
+    from .operators.energy_operators import GaussianEnergy, StandardHamiltonian
     if not isinstance(operator, Operator):
         raise TypeError
     if output.domain != operator.target:
