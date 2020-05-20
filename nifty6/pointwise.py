@@ -25,9 +25,13 @@ def _sqrt_helper(v):
 
 
 def _sinc_helper(v):
-    tmp = np.sinc(v)
-    tmp2 = (np.cos(np.pi*v)-tmp)/v
-    return (tmp, np.where(v==0., 0, tmp2))
+    fv = np.sinc(v)
+    df = np.empty(v.shape, dtype=v.dtype)
+    sel = v != 0.
+    v = v[sel]
+    df[sel] = (np.cos(np.pi*v)-fv[sel])/v
+    df[~sel] = 0
+    return (fv, df)
 
 
 def _expm1_helper(v):
