@@ -531,7 +531,16 @@ class CorrelatedFieldMaker:
             self._a.append(amp)
             self._target_subdomains.append(target_subdomain)
 
-    def _finalize_from_op(self):
+    def finalize(self, prior_info=100):
+        """Finishes model construction process and returns the constructed
+        operator.
+
+        Parameters
+        ----------
+        prior_info : integer
+            How many prior samples to draw for property verification statistics
+            If zero, skips calculating and displaying statistics.
+        """
         n_amplitudes = len(self._a)
         if self._total_N > 0:
             hspace = makeDomain(
@@ -562,19 +571,8 @@ class CorrelatedFieldMaker:
             pd = PowerDistributor(co.target, pp, amp_space)
             a.append(co.adjoint @ pd @ self._a[ii])
         corr = reduce(mul, a)
-        return ht(azm*corr*ducktape(hspace, None, self._prefix + 'xi'))
+        op = ht(azm*corr*ducktape(hspace, None, self._prefix + 'xi'))
 
-    def finalize(self, prior_info=100):
-        """Finishes model construction process and returns the constructed
-        operator.
-
-        Parameters
-        ----------
-        prior_info : integer
-            How many prior samples to draw for property verification statistics
-            If zero, skips calculating and displaying statistics.
-        """
-        op = self._finalize_from_op()
         if self._offset_mean is not None:
             offset = self._offset_mean
             # Deviations from this offset must not be considered here as they

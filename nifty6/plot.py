@@ -405,7 +405,7 @@ def _plot2D(f, ax, **kwargs):
     ax.set_ylabel(kwargs.pop("ylabel", ""))
     dom = dom[x_space]
     if not have_rgb:
-        cmap = kwargs.pop("colormap", plt.rcParams['image.cmap'])
+        cmap = kwargs.pop("cmap", plt.rcParams['image.cmap'])
 
     if isinstance(dom, RGSpace):
         nx, ny = dom.shape
@@ -417,7 +417,7 @@ def _plot2D(f, ax, **kwargs):
         else:
             im = ax.imshow(
                 f.val.T, extent=[0, nx*dx, 0, ny*dy],
-                vmin=kwargs.get("zmin"), vmax=kwargs.get("zmax"),
+                vmin=kwargs.get("vmin"), vmax=kwargs.get("vmax"),
                 cmap=cmap, origin="lower", **norm, **aspect)
             plt.colorbar(im)
         _limit_xy(**kwargs)
@@ -453,7 +453,7 @@ def _plot2D(f, ax, **kwargs):
         if have_rgb:
             plt.imshow(res, origin="lower")
         else:
-            plt.imshow(res, vmin=kwargs.get("zmin"), vmax=kwargs.get("zmax"),
+            plt.imshow(res, vmin=kwargs.get("vmin"), vmax=kwargs.get("vmax"),
                        norm=norm.get('norm'), cmap=cmap, origin="lower")
             plt.colorbar(orientation="horizontal")
         return
@@ -518,7 +518,7 @@ class Plot(object):
             Label for the y axis.
         [xyz]min, [xyz]max: float
             Limits for the values to plot.
-        colormap: string
+        cmap: string
             Color map to use for the plot (if it is a 2D plot).
         linewidth: float or list of floats
             Line width.
