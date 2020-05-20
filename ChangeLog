@@ -17,6 +17,7 @@ In addition to the below changes, the following operators were introduced:
 * SliceOperator: Geometry preserving mask operator
 * SplitOperator: Splits a single field into a multi-field
 * MatrixProductOperator: Applies matrices (scipy.sparse, numpy) to fields
+* IntegrationOperator: Integrates over subspaces of fields
 
 FFT convention adjusted
 =======================
