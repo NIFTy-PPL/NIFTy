@@ -112,6 +112,26 @@ class Realizer(EndomorphicOperator):
         return x.real
 
 
+class Imaginizer(EndomorphicOperator):
+    """Operator returning the imaginary component of its input.
+
+    Parameters
+    ----------
+    domain: Domain, tuple of domains or DomainTuple
+        domain of the input field
+
+    """
+    def __init__(self, domain):
+        self._domain = DomainTuple.make(domain)
+        self._capability = self.TIMES | self.ADJOINT_TIMES
+
+    def apply(self, x, mode):
+        self._check_input(x, mode)
+        if mode == self.TIMES:
+            return x.imag
+        return 1j*x
+
+
 class FieldAdapter(LinearOperator):
     """Operator for conversion between Fields and MultiFields.
 
@@ -130,9 +150,9 @@ class FieldAdapter(LinearOperator):
         The relevant key of the MultiDomain.
     """
 
-    def __init__(self, tgt, name):
+    def __init__(self, target, name):
         from ..sugar import makeDomain
-        tmp = makeDomain(tgt)
+        tmp = makeDomain(target)
         if isinstance(tmp, DomainTuple):
             self._target = tmp
             self._domain = MultiDomain.make({name: tmp})
@@ -175,9 +195,9 @@ class _SlowFieldAdapter(LinearOperator):
         The relevant key of the MultiDomain.
     """
 
-    def __init__(self, dom, name):
+    def __init__(self, domain, name):
         from ..sugar import makeDomain
-        tmp = makeDomain(dom)
+        tmp = makeDomain(domain)
         if not isinstance(tmp, MultiDomain):
             raise TypeError("MultiDomain expected")
         self._name = str(name)

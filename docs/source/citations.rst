@@ -7,7 +7,7 @@ NIFTy-related publications
       author={Arras, Philipp and Baltac, Mihai and Ensslin, Torsten A and Frank, Philipp and Hutschenreuter, Sebastian and Knollmueller, Jakob and Leike, Reimar and Newrzella, Max-Niklas and Platz, Lukas and Reinecke, Martin and others},
       journal={Astrophysics Source Code Library},
       year={2019}
-    }
+      }
 
     @software{nifty,
       author = {{Martin Reinecke, Theo Steininger, Marco Selig}},
@@ -15,7 +15,7 @@ NIFTy-related publications
       url = {https://gitlab.mpcdf.mpg.de/ift/NIFTy},
       version = {nifty7},
       date = {2018-04-05},
-    }
+      }
 
     @article{2013A&A...554A..26S,
       author = {{Selig}, M. and {Bell}, M.~R. and {Junklewitz}, H. and {Oppermann}, N. and {Reinecke}, M. and {Greiner}, M. and {Pachajoa}, C. and {En{\ss}lin}, T.~A.},
@@ -33,7 +33,7 @@ NIFTy-related publications
       doi = {10.1051/0004-6361/201321236},
       adsurl = {http://cdsads.u-strasbg.fr/abs/2013A%26A...554A..26S},
       adsnote = {Provided by the SAO/NASA Astrophysics Data System}
-    }
+      }
 
     @article{2017arXiv170801073S,
       author = {{Steininger}, T. and {Dixit}, J. and {Frank}, P. and {Greiner}, M. and {Hutschenreuter}, S. and {Knollm{\"u}ller}, J. and {Leike}, R. and {Porqueres}, N. and {Pumpe}, D. and {Reinecke}, M. and {{\v S}raml}, M. and {Varady}, C. and {En{\ss}lin}, T.},
@@ -47,4 +47,4 @@ NIFTy-related publications
       month = aug,
       adsurl = {http://cdsads.u-strasbg.fr/abs/2017arXiv170801073S},
       adsnote = {Provided by the SAO/NASA Astrophysics Data System}
-    }
+      }

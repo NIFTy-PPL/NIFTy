@@ -33,7 +33,7 @@ seed = list2fixture([4, 78, 23])
 
 
 def testInterpolationAccuracy(space, seed):
-    pos = ift.from_random('normal', space)
+    pos = ift.from_random(space, 'normal')
     alpha = 1.5
     qs = [0.73, pos.ptw("exp").val]
     for q in qs:

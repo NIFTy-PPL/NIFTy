@@ -43,7 +43,7 @@ if __name__ == '__main__':
     harmonic_space = position_space.get_default_codomain()
     HT = ift.HarmonicTransformOperator(harmonic_space, position_space)
 
-    position = ift.from_random('normal', harmonic_space)
+    position = ift.from_random(harmonic_space, 'normal')
 
     # Define power spectrum and amplitudes
     def sqrtpspec(k):
@@ -58,13 +58,13 @@ if __name__ == '__main__':
 
     # Generate mock data
     p = R(sky)
-    mock_position = ift.from_random('normal', harmonic_space)
+    mock_position = ift.from_random(harmonic_space, 'normal')
     tmp = p(mock_position).val.astype(np.float64)
     data = ift.random.current_rng().binomial(1, tmp)
     data = ift.Field.from_raw(R.target, data)
 
     # Compute likelihood and Hamiltonian
-    position = ift.from_random('normal', harmonic_space)
+    position = ift.from_random(harmonic_space, 'normal')
     likelihood = ift.BernoulliEnergy(data) @ p
     ic_newton = ift.DeltaEnergyController(
         name='Newton', iteration_limit=100, tol_rel_deltaE=1e-8)

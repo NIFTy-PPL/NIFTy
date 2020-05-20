@@ -26,7 +26,7 @@ from .operators.diagonal_operator import DiagonalOperator
 from .operators.distributors import DOFDistributor, PowerDistributor
 from .operators.domain_tuple_field_inserter import DomainTupleFieldInserter
 from .operators.einsum import LinearEinsum, MultiLinearEinsum
-from .operators.contraction_operator import ContractionOperator
+from .operators.contraction_operator import ContractionOperator, IntegrationOperator
 from .operators.linear_interpolation import LinearInterpolator
 from .operators.endomorphic_operator import EndomorphicOperator
 from .operators.harmonic_operators import (
@@ -44,7 +44,7 @@ from .operators.block_diagonal_operator import BlockDiagonalOperator
 from .operators.outer_product_operator import OuterProduct
 from .operators.simple_linear_operators import (
     VdotOperator, ConjugationOperator, Realizer, FieldAdapter, ducktape,
-    GeometryRemover, NullOperator, PartialExtractor)
+    GeometryRemover, NullOperator, PartialExtractor, Imaginizer)
 from .operators.matrix_product_operator import MatrixProductOperator
 from .operators.value_inserter import ValueInserter
 from .operators.energy_operators import (
@@ -97,6 +97,8 @@ from .logger import logger
 from .linearization import Linearization
 
 from .operator_spectrum import operator_spectrum
+
+from .operator_tree_optimiser import optimise_operator
 
 # We deliberately don't set __all__ here, because we don't want people to do a
 # "from nifty7 import *"; that would swamp the global namespace.

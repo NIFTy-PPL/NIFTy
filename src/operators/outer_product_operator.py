@@ -27,12 +27,12 @@ class OuterProduct(LinearOperator):
 
     Parameters
     ---------
-    field: Field,
     domain: DomainTuple, the domain of the input field
+    field: Field
     ---------
     """
-    def __init__(self, field, domain):
-        self._domain = domain
+    def __init__(self, domain, field):
+        self._domain = DomainTuple.make(domain)
         self._field = field
         self._target = DomainTuple.make(
             tuple(sub_d for sub_d in field.domain._dom + domain._dom))

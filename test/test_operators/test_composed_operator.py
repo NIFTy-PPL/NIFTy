@@ -33,15 +33,15 @@ space2 = space1
 
 def test_times_adjoint_times(space1, space2):
     cspace = (space1, space2)
-    diag1 = ift.Field.from_random('normal', domain=space1)
-    diag2 = ift.Field.from_random('normal', domain=space2)
+    diag1 = ift.Field.from_random(domain=space1, random_type='normal')
+    diag2 = ift.Field.from_random(domain=space2, random_type='normal')
     op1 = ift.DiagonalOperator(diag1, cspace, spaces=(0,))
     op2 = ift.DiagonalOperator(diag2, cspace, spaces=(1,))
 
     op = op2(op1)
 
-    rand1 = ift.Field.from_random('normal', domain=(space1, space2))
-    rand2 = ift.Field.from_random('normal', domain=(space1, space2))
+    rand1 = ift.Field.from_random(domain=(space1, space2), random_type='normal')
+    rand2 = ift.Field.from_random(domain=(space1, space2), random_type='normal')
 
     tt1 = rand2.s_vdot(op.times(rand1))
     tt2 = rand1.s_vdot(op.adjoint_times(rand2))
@@ -50,14 +50,14 @@ def test_times_adjoint_times(space1, space2):
 
 def test_times_inverse_times(space1, space2):
     cspace = (space1, space2)
-    diag1 = ift.Field.from_random('normal', domain=space1)
-    diag2 = ift.Field.from_random('normal', domain=space2)
+    diag1 = ift.Field.from_random(domain=space1, random_type='normal')
+    diag2 = ift.Field.from_random(domain=space2, random_type='normal')
     op1 = ift.DiagonalOperator(diag1, cspace, spaces=(0,))
     op2 = ift.DiagonalOperator(diag2, cspace, spaces=(1,))
 
     op = op2(op1)
 
-    rand1 = ift.Field.from_random('normal', domain=(space1, space2))
+    rand1 = ift.Field.from_random(domain=(space1, space2), random_type='normal')
     tt1 = op.inverse_times(op.times(rand1))
 
     assert_allclose(tt1.val, rand1.val)

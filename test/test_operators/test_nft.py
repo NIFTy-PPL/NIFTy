@@ -72,7 +72,7 @@ def test_cartesian():
     GM = ift.GridderMaker(dom, uv=uv)
     op = GM.getFull().adjoint
 
-    fld = ift.from_random('normal', dom)
+    fld = ift.from_random(dom, 'normal')
     arr = fld.val
 
     fld2 = ift.makeField(dom, np.roll(arr, (nx//2, ny//2), axis=(0, 1)))

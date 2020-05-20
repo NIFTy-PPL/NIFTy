@@ -256,7 +256,7 @@ def full(domain, val):
     return Field.full(domain, val)
 
 
-def from_random(random_type, domain, dtype=np.float64, **kwargs):
+def from_random(domain, random_type='normal', dtype=np.float64, **kwargs):
     """Convenience function creating Fields/MultiFields with random values.
 
     Parameters
@@ -283,8 +283,8 @@ def from_random(random_type, domain, dtype=np.float64, **kwargs):
     random numbers, even for the same initial RNG state.
     """
     if isinstance(domain, (dict, MultiDomain)):
-        return MultiField.from_random(random_type, domain, dtype, **kwargs)
-    return Field.from_random(random_type, domain, dtype, **kwargs)
+        return MultiField.from_random(domain, random_type, dtype, **kwargs)
+    return Field.from_random(domain, random_type, dtype, **kwargs)
 
 
 def makeField(domain, arr):
@@ -466,7 +466,7 @@ def exec_time(obj, want_metric=True):
         logger.info('Energy.metric(position): {}'.format(time() - t0))
     elif isinstance(obj, Operator):
         want_metric = bool(want_metric)
-        pos = from_random('normal', obj.domain)
+        pos = from_random(obj.domain, 'normal')
         t0 = time()
         obj(pos)
         logger.info('Operator call with field: {}'.format(time() - t0))
@@ -509,7 +509,7 @@ def calculate_position(operator, output):
     lh = GaussianEnergy(d, invcov) @ operator
     H = StandardHamiltonian(
         lh, ic_samp=GradientNormController(iteration_limit=200))
-    pos = 0.1*from_random('normal', operator.domain)
+    pos = 0.1 * from_random(operator.domain, 'normal')
     minimizer = NewtonCG(GradientNormController(iteration_limit=10))
     for ii in range(3):
         kl = MetricGaussianKL(pos, H, 3, mirror_samples=True)

@@ -35,7 +35,7 @@ class DomainTupleFieldInserter(LinearOperator):
         Slice in new sub-domain in which the input field shall be written into.
     """
 
-    def __init__(self, target, space, pos):
+    def __init__(self, target, space, index):
         if not space <= len(target) or space < 0:
             raise ValueError
         self._target = DomainTuple.make(target)
@@ -48,13 +48,13 @@ class DomainTupleFieldInserter(LinearOperator):
         nshp = new_space.shape
         fst_dims = sum(len(dd.shape) for dd in self.target[:space])
 
-        if len(pos) != len(nshp):
+        if len(index) != len(nshp):
             raise ValueError("shape mismatch between new_space and position")
-        for s, p in zip(nshp, pos):
+        for s, p in zip(nshp, index):
             if p < 0 or p >= s:
                 raise ValueError("bad position value")
 
-        self._slc = (slice(None),)*fst_dims + pos
+        self._slc = (slice(None),)*fst_dims + index
 
     def apply(self, x, mode):
         self._check_input(x, mode)

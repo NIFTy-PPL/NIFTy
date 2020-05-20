@@ -52,7 +52,7 @@ def test_split_operator_first_axes_without_intersections(
     )
     assert consistency_check(split) is None
 
-    r = ift.from_random("normal", dom)
+    r = ift.from_random(dom, "normal")
     split_r = split(r)
     # This relies on the keys of the target domain either being in the order of
     # insertion or being alphabetically sorted
@@ -81,7 +81,7 @@ def test_split_operator_first_axes_with_intersections(
     print(split_idx)
     assert consistency_check(split) is None
 
-    r = ift.from_random("normal", dom)
+    r = ift.from_random(dom, "normal")
     split_r = split(r)
     # This relies on the keys of the target domain either being in the order of
     # insertion or being alphabetically sorted

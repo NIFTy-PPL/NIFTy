@@ -166,7 +166,8 @@ class NewtonCG(DescentMinimizer):
     """
 
     def __init__(self, controller, napprox=0, line_searcher=None, name=None,
-                 nreset=20, max_cg_iterations=200, energy_reduction_factor=0.1):
+                 nreset=20, max_cg_iterations=200, energy_reduction_factor=0.1,
+                 activate_logging=False):
         if line_searcher is None:
             line_searcher = LineSearch(preferred_initial_step_size=1.)
         super(NewtonCG, self).__init__(controller=controller,
@@ -176,6 +177,8 @@ class NewtonCG(DescentMinimizer):
         self._nreset = nreset
         self._max_cg_iterations = max_cg_iterations
         self._alpha = energy_reduction_factor
+        from .iteration_controllers import EnergyHistory
+        self._history = EnergyHistory() if activate_logging else None
 
     def get_descent_direction(self, energy, old_value=None):
         if old_value is None:
@@ -184,13 +187,21 @@ class NewtonCG(DescentMinimizer):
             ediff = self._alpha*(old_value-energy.value)
             ic = AbsDeltaEnergyController(
                 ediff, iteration_limit=self._max_cg_iterations, name=self._name)
+        if self._history is not None:
+            ic.enable_logging()
         e = QuadraticEnergy(0*energy.position, energy.metric, energy.gradient)
         p = None
         if self._napprox > 1:
             met = energy.metric
             p = makeOp(approximation2endo(met, self._napprox)).inverse
         e, conv = ConjugateGradient(ic, nreset=self._nreset)(e, p)
+        if self._history is not None:
+            self._history += ic.history
         return -e.position
+
+    @property
+    def inversion_history(self):
+        return self._history
 
 
 class L_BFGS(DescentMinimizer):

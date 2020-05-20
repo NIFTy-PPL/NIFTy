@@ -272,6 +272,7 @@ class HarmonicTransformOperator(LinearOperator):
       - an LMSpace and a GLSpace
 
     The supported operations are times() and adjoint_times().
+    If inverse_times() on RGSpaces is needed the HartleyOperator should be used instead.
 
     Parameters
     ----------
