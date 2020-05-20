@@ -93,7 +93,9 @@ class Operator(metaclass=NiftyMeta):
         """The metric associated with the object.
         This is `None`, except when all the following conditions hold:
         - `want_metric` is `True`
+
         - `target` is the scalar domain
+
         - the operator chain contained an operator which could compute the
           metric
 
@@ -127,6 +129,10 @@ class Operator(metaclass=NiftyMeta):
     def sum(self, spaces=None):
         from .contraction_operator import ContractionOperator
         return ContractionOperator(self.target, spaces)(self)
+
+    def integrate(self, spaces=None):
+        from .contraction_operator import IntegrationOperator
+        return IntegrationOperator(self.target, spaces)(self)
 
     def vdot(self, other):
         from ..sugar import makeOp

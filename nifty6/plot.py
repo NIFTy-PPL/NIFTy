@@ -16,14 +16,17 @@
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
 
 import os
+from datetime import datetime as dt
 
 import numpy as np
+from matplotlib.dates import DateFormatter, date2num
 
 from .domains.gl_space import GLSpace
 from .domains.hp_space import HPSpace
 from .domains.power_space import PowerSpace
 from .domains.rg_space import RGSpace
 from .field import Field
+from .minimization.iteration_controllers import EnergyHistory
 
 # relevant properties:
 # - x/y size
@@ -261,6 +264,44 @@ def _register_cmaps():
     plt.register_cmap(cmap=LinearSegmentedColormap("Plus Minus", pm_cmap))
 
 
+def _plot_history(f, ax, **kwargs):
+    import matplotlib.pyplot as plt
+    for i, fld in enumerate(f):
+        if not isinstance(fld, EnergyHistory):
+            raise TypeError
+    label = kwargs.pop("label", None)
+    if not isinstance(label, list):
+        label = [label] * len(f)
+    alpha = kwargs.pop("alpha", None)
+    if not isinstance(alpha, list):
+        alpha = [alpha] * len(f)
+    color = kwargs.pop("color", None)
+    if not isinstance(color, list):
+        color = [color] * len(f)
+    size = kwargs.pop("s", None)
+    if not isinstance(size, list):
+        size = [size] * len(f)
+    ax.set_title(kwargs.pop("title", ""))
+    ax.set_xlabel(kwargs.pop("xlabel", ""))
+    ax.set_ylabel(kwargs.pop("ylabel", ""))
+    plt.xscale(kwargs.pop("xscale", "linear"))
+    plt.yscale(kwargs.pop("yscale", "linear"))
+    mi, ma = np.inf, -np.inf
+    for i, fld in enumerate(f):
+        xcoord = date2num([dt.fromtimestamp(ts) for ts in fld.time_stamps])
+        ycoord = fld.energy_values
+        ax.scatter(xcoord, ycoord, label=label[i], alpha=alpha[i],
+                   color=color[i], s=size[i])
+        mi, ma = min([min(xcoord), mi]), max([max(xcoord), ma])
+    delta = (ma-mi)*0.05
+    ax.set_xlim((mi-delta, ma+delta))
+    xfmt = DateFormatter('%H:%M')
+    ax.xaxis.set_major_formatter(xfmt)
+    _limit_xy(**kwargs)
+    if label != ([None]*len(f)):
+        plt.legend()
+
+
 def _plot1D(f, ax, **kwargs):
     import matplotlib.pyplot as plt
 
@@ -334,10 +375,10 @@ def _plot2D(f, ax, **kwargs):
     x_space = 0
     if len(dom) == 2:
         f_space = kwargs.pop("freq_space_idx", 1)
-        if not f_space in [0, 1]:
+        if f_space not in [0, 1]:
             raise ValueError("Invalid frequency space index")
         if (not isinstance(dom[f_space], RGSpace)) \
-            or len(dom[f_space].shape) != 1:
+           or len(dom[f_space].shape) != 1:
             raise TypeError("Need 1D RGSpace as frequency space domain")
         x_space = 1 - f_space
 
@@ -412,8 +453,8 @@ def _plot2D(f, ax, **kwargs):
         if have_rgb:
             plt.imshow(res, origin="lower")
         else:
-            plt.imshow(res, vmin=kwargs.get("zmin"), vmax=kwargs.get("zmax"), norm=norm.get('norm'),
-                       cmap=cmap, origin="lower")
+            plt.imshow(res, vmin=kwargs.get("zmin"), vmax=kwargs.get("zmax"),
+                       norm=norm.get('norm'), cmap=cmap, origin="lower")
             plt.colorbar(orientation="horizontal")
         return
     raise ValueError("Field type not(yet) supported")
@@ -421,11 +462,14 @@ def _plot2D(f, ax, **kwargs):
 
 def _plot(f, ax, **kwargs):
     _register_cmaps()
-    if isinstance(f, Field):
+    if isinstance(f, Field) or isinstance(f, EnergyHistory):
         f = [f]
     f = list(f)
     if len(f) == 0:
         raise ValueError("need something to plot")
+    if isinstance(f[0], EnergyHistory):
+        _plot_history(f, ax, **kwargs)
+        return
     if not isinstance(f[0], Field):
         raise TypeError("incorrect data type")
     dom1 = f[0].domain

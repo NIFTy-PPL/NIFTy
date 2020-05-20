@@ -256,7 +256,7 @@ def full(domain, val):
     return Field.full(domain, val)
 
 
-def from_random(random_type, domain, dtype=np.float64, **kwargs):
+def from_random(domain, random_type='normal', dtype=np.float64, **kwargs):
     """Convenience function creating Fields/MultiFields with random values.
 
     Parameters
@@ -274,10 +274,17 @@ def from_random(random_type, domain, dtype=np.float64, **kwargs):
     -------
     Field or MultiField
         The newly created random field
+
+    Notes
+    -----
+    When called with a multi-domain, the individual fields will be drawn in
+    alphabetical order of the multi-domain's domain keys. As a consequence,
+    renaming these keys may cause the multi-field to be filled with different
+    random numbers, even for the same initial RNG state.
     """
     if isinstance(domain, (dict, MultiDomain)):
-        return MultiField.from_random(random_type, domain, dtype, **kwargs)
-    return Field.from_random(random_type, domain, dtype, **kwargs)
+        return MultiField.from_random(domain, random_type, dtype, **kwargs)
+    return Field.from_random(domain, random_type, dtype, **kwargs)
 
 
 def makeField(domain, arr):
@@ -345,12 +352,12 @@ def makeOp(input, dom=None):
     if np.isscalar(input):
         if not isinstance(dom, (DomainTuple, MultiDomain)):
             raise TypeError("need proper `dom` argument")
-        return SalingOperator(dom, input)
+        return ScalingOperator(dom, input)
     if dom is not None:
         if not dom == input.domain:
             raise ValueError("domain mismatch")
     if input.domain is DomainTuple.scalar_domain():
-        return ScalingOperator(input.domain, float(input.val))
+        return ScalingOperator(input.domain, input.val[()])
     if isinstance(input, Field):
         return DiagonalOperator(input)
     if isinstance(input, MultiField):
@@ -459,7 +466,7 @@ def exec_time(obj, want_metric=True):
         logger.info('Energy.metric(position): {}'.format(time() - t0))
     elif isinstance(obj, Operator):
         want_metric = bool(want_metric)
-        pos = from_random('normal', obj.domain)
+        pos = from_random(obj.domain, 'normal')
         t0 = time()
         obj(pos)
         logger.info('Operator call with field: {}'.format(time() - t0))
@@ -498,11 +505,11 @@ def calculate_position(operator, output):
     else:
         cov = 1e-3*output.val.max()**2
     invcov = ScalingOperator(output.domain, cov).inverse
-    d = output + invcov.draw_sample(from_inverse=True)
+    d = output + invcov.draw_sample_with_dtype(dtype=output.dtype, from_inverse=True)
     lh = GaussianEnergy(d, invcov) @ operator
     H = StandardHamiltonian(
         lh, ic_samp=GradientNormController(iteration_limit=200))
-    pos = 0.1*from_random('normal', operator.domain)
+    pos = 0.1 * from_random(operator.domain, 'normal')
     minimizer = NewtonCG(GradientNormController(iteration_limit=10))
     for ii in range(3):
         kl = MetricGaussianKL(pos, H, 3, mirror_samples=True)

@@ -50,7 +50,7 @@ class Field(Operator):
             raise TypeError("domain must be of type DomainTuple")
         if not isinstance(val, np.ndarray):
             if np.isscalar(val):
-                val = np.full(domain.shape, val)
+                val = np.broadcast_to(val, domain.shape)
             else:
                 raise TypeError("val must be of type numpy.ndarray")
         if domain.shape != val.shape:
@@ -124,7 +124,7 @@ class Field(Operator):
         return Field(DomainTuple.make(new_domain), self._val)
 
     @staticmethod
-    def from_random(random_type, domain, dtype=np.float64, **kwargs):
+    def from_random(domain, random_type='normal', dtype=np.float64, **kwargs):
         """Draws a random field with the given parameters.
 
         Parameters
@@ -283,7 +283,7 @@ class Field(Operator):
             raise TypeError("The multiplier must be an instance of " +
                             "the Field class")
         from .operators.outer_product_operator import OuterProduct
-        return OuterProduct(self, x.domain)(x)
+        return OuterProduct(x.domain, self)(x)
 
     def vdot(self, x, spaces=None):
         """Computes the dot product of 'self' with x.

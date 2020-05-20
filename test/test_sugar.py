@@ -42,7 +42,7 @@ def test_exec_time():
     dom = ift.RGSpace(12, harmonic=True)
     op = ift.HarmonicTransformOperator(dom)
     op1 = op.ptw("exp")
-    lh = ift.GaussianEnergy(domain=op.target) @ op1
+    lh = ift.GaussianEnergy(domain=op.target, sampling_dtype=np.float64) @ op1
     ic = ift.GradientNormController(iteration_limit=2)
     ham = ift.StandardHamiltonian(lh, ic_samp=ic)
     kl = ift.MetricGaussianKL(ift.full(ham.domain, 0.), ham, 1)
@@ -55,6 +55,6 @@ def test_exec_time():
 def test_calc_pos():
     dom = ift.RGSpace(12, harmonic=True)
     op = ift.HarmonicTransformOperator(dom).ptw("exp")
-    fld = op(0.1*ift.from_random('normal', op.domain))
+    fld = op(0.1 * ift.from_random(op.domain, 'normal'))
     pos = ift.calculate_position(op, fld)
     ift.extra.assert_allclose(op(pos), fld, 1e-1, 1e-1)

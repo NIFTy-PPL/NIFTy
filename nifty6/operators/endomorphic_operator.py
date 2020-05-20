@@ -11,11 +11,9 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
-# Copyright(C) 2013-2019 Max-Planck-Society
+# Copyright(C) 2013-2020 Max-Planck-Society
 #
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
-
-import numpy as np
 
 from .linear_operator import LinearOperator
 
@@ -32,22 +30,47 @@ class EndomorphicOperator(LinearOperator):
         for endomorphic operators."""
         return self._domain
 
-    def draw_sample(self, from_inverse=False, dtype=np.float64):
-        """Generate a zero-mean sample
-
-        Generates a sample from a Gaussian distribution with zero mean and
+    def draw_sample(self, from_inverse=False):
+        """Generates a sample from a Gaussian distribution with zero mean and
         covariance given by the operator.
+
+        May or may not be implemented. Only optional.
 
         Parameters
         ----------
         from_inverse : bool (default : False)
             if True, the sample is drawn from the inverse of the operator
-        dtype : numpy datatype (default : numpy.float64)
-            the data type to be used for the sample
 
         Returns
         -------
-        Field
+        Field or MultiField
+            A sample from the Gaussian of given covariance.
+        """
+        raise NotImplementedError
+
+    def draw_sample_with_dtype(self, dtype, from_inverse=False):
+        """Generates a sample from a Gaussian distribution with zero mean,
+        covariance given by the operator and specified data type.
+
+        This method is implemented only for operators which actually draw
+        samples (e.g. `DiagonalOperator`). Operators which process the sample
+        (like `SandwichOperator`) implement only `draw_sample()`.
+
+        May or may not be implemented. Only optional.
+
+        Parameters
+        ----------
+        dtype : numpy.dtype or dict of numpy.dtype
+            Dtype used for sampling from this operator. If the domain of `op`
+            is a `MultiDomain`, the dtype can either be specified as one value
+            for all components of the `MultiDomain` or in form of a dictionary
+            whose keys need to conincide the with keys of the `MultiDomain`.
+        from_inverse : bool (default : False)
+            if True, the sample is drawn from the inverse of the operator
+
+        Returns
+        -------
+        Field or MultiField
             A sample from the Gaussian of given covariance.
         """
         raise NotImplementedError

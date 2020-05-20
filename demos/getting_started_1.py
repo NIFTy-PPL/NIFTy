@@ -40,7 +40,7 @@ def make_checkerboard_mask(position_space):
 
 def make_random_mask():
     # Random mask for spherical mode
-    mask = ift.from_random('pm1', position_space)
+    mask = ift.from_random(position_space, 'pm1')
     mask = (mask + 1)/2
     return mask.val
 
@@ -114,8 +114,8 @@ if __name__ == '__main__':
     N = ift.ScalingOperator(data_space, noise)
 
     # Create mock data
-    MOCK_SIGNAL = S.draw_sample()
-    MOCK_NOISE = N.draw_sample()
+    MOCK_SIGNAL = S.draw_sample_with_dtype(dtype=np.float64)
+    MOCK_NOISE = N.draw_sample_with_dtype(dtype=np.float64)
     data = R(MOCK_SIGNAL) + MOCK_NOISE
 
     # Build inverse propagator D and information source j

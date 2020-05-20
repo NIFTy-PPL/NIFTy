@@ -30,22 +30,23 @@ will be used for all random number generation tasks within NIFTy. This means
 - that random numbers drawn by NIFTy will be reproducible across multiple runs
   (assuming there are no complications like MPI-enabled runs with a varying
   number of tasks), and
+
 - that trying to change random seeds via `numpy.random.seed` will have no
   effect on the random numbers drawn by NIFTy.
 
 Users who want to change the random seed for a given run can achieve this
-by calling `push_sseq_from_seed()` with a seed of their choice. This will push
-a new seed sequence generated from that seed onto the seed sequence stack, and a
-generator derived from this seed sequence onto the generator stack. Since all
-NIFTy RNG-related calls will use the generator on the top of the stack, all
-calls from this point on will use the new generator.
+by calling :func:`push_sseq_from_seed()` with a seed of their choice. This will
+push a new seed sequence generated from that seed onto the seed sequence stack,
+and a generator derived from this seed sequence onto the generator stack.
+Since all NIFTy RNG-related calls will use the generator on the top of the stack,
+all calls from this point on will use the new generator.
 If the user already has a `SeedSequence` object at hand, they can pass this to
-NIFTy via `push_sseq`. A new generator derived from this sequence will then also
-be pushed onto the generator stack.
+NIFTy via :func:`push_sseq`. A new generator derived from this sequence will then
+also be pushed onto the generator stack.
 These operations can be reverted (and should be, as soon as the new generator is
-no longer needed) by a call to `pop_sseq()`.
+no longer needed) by a call to :func:`pop_sseq()`.
 When users need direct access to the RNG currently in use, they can access it
-via the `current_rng` function.
+via the :func:`current_rng` function.
 
 
 Example for using multiple seed sequences:
@@ -53,20 +54,25 @@ Example for using multiple seed sequences:
 Assume that N samples are needed to compute a KL, which are distributed over
 a variable number of MPI tasks. In this situation, whenever random numbers
 need to be drawn for these samples:
+
 - each MPI task should spawn as many seed sequences as there are samples
-  _in total_, using `sseq = spawn_sseq(N)`
+  *in total*, using ``sseq = spawn_sseq(N)``
+
 - each task loops over the local samples
-  - first pushing the seed sequence for the global(!) index of the
-    current sample via `push_sseq(sseq[iglob])`
+
+  - first pushing the seed sequence for the **global** index of the
+    current sample via ``push_sseq(sseq[iglob])```
+
   - drawing the required random numbers
-  - then popping the seed sequence again via `pop_sseq()`
+
+  - then popping the seed sequence again via ``pop_sseq()``
 
 That way, random numbers should be reproducible and independent of the number
 of MPI tasks.
 
 WARNING: do not push/pop the same `SeedSequence` object more than once - this
 will lead to repeated random sequences! Whenever you have to push `SeedSequence`
-objects, generate new ones via `spawn_sseq()`.
+objects, generate new ones via :func:`spawn_sseq()`.
 """
 
 import numpy as np
@@ -150,13 +156,16 @@ def push_sseq(sseq):
     Notes
     -----
     This function should only be used
+
     - if you only want to change the random seed once at the very beginning
       of a run, or
+
     - if the restoring of the previous state has to happen in a different
       Python function. In this case, please make sure that there is a matching
-      call to `pop_sseq` for every call to this function!
-    In all other situations, it is highly recommended to use the `Context`
-    class for managing the RNG state.
+      call to :func:`pop_sseq` for every call to this function!
+
+    In all other situations, it is highly recommended to use the
+    :class:`Context` class for managing the RNG state.
     """
     _sseq.append(sseq)
     _rng.append(np.random.default_rng(_sseq[-1]))
@@ -176,13 +185,16 @@ def push_sseq_from_seed(seed):
     Notes
     -----
     This function should only be used
+
     - if you only want to change the random seed once at the very beginning
       of a run, or
+
     - if the restoring of the previous state has to happen in a different
       Python function. In this case, please make sure that there is a matching
-      call to `pop_sseq` for every call to this function!
-    In all other situations, it is highly recommended to use the `Context`
-    class for managing the RNG state.
+      call to :func:`pop_sseq` for every call to this function!
+
+    In all other situations, it is highly recommended to use the
+    :class:`Context` class for managing the RNG state.
     """
     _sseq.append(np.random.SeedSequence(seed))
     _rng.append(np.random.default_rng(_sseq[-1]))
@@ -247,11 +259,10 @@ class Random(object):
 
 class Context(object):
     """Convenience class for easy management of the RNG state.
-    Usage:
-    ```
-    with ift.random.Context(seed|sseq):
-        <code using the new RNG state>
-    ```
+    Usage: ::
+
+        with ift.random.Context(seed|sseq):
+            code using the new RNG state
 
     At the end of the scope, the original RNG state will be restored
     automatically.
