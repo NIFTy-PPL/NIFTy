@@ -11,7 +11,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
-# Copyright(C) 2013-2019 Max-Planck-Society
+# Copyright(C) 2013-2020 Max-Planck-Society
 #
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
 
@@ -20,21 +20,20 @@ from time import time
 
 import numpy as np
 
-from .logger import logger
-from . import utilities
+from . import pointwise, utilities
 from .domain_tuple import DomainTuple
 from .domains.power_space import PowerSpace
 from .field import Field
+from .logger import logger
 from .multi_domain import MultiDomain
 from .multi_field import MultiField
 from .operators.block_diagonal_operator import BlockDiagonalOperator
 from .operators.diagonal_operator import DiagonalOperator
 from .operators.distributors import PowerDistributor
 from .operators.operator import Operator
+from .operators.sampling_enabler import SamplingDtypeSetter
 from .operators.scaling_operator import ScalingOperator
 from .plot import Plot
-from . import pointwise
-
 
 __all__ = ['PS_field', 'power_analyze', 'create_power_operator',
            'create_harmonic_smoothing_operator', 'from_random',
@@ -501,17 +500,26 @@ def calculate_position(operator, output):
     if output.domain != operator.target:
         raise TypeError
     if isinstance(output, MultiField):
-        cov = 1e-3*max([vv.max() for vv in output.val.values()])**2
+        cov = 1e-3*max([np.max(np.abs(vv)) for vv in output.val.values()])**2
+        invcov = ScalingOperator(output.domain, cov).inverse
+        dtype = list(set([ff.dtype for ff in output.values()]))
+        if len(dtype) != 1:
+            raise ValueError('Only MultiFields with one dtype supported.')
+        dtype = dtype[0]
     else:
-        cov = 1e-3*output.val.max()**2
+        cov = 1e-3*np.max(np.abs(output.val))**2
+        dtype = output.dtype
     invcov = ScalingOperator(output.domain, cov).inverse
-    d = output + invcov.draw_sample_with_dtype(dtype=output.dtype, from_inverse=True)
+    invcov = SamplingDtypeSetter(invcov, output.dtype)
+    invcov = SamplingDtypeSetter(invcov, output.dtype)
+    d = output + invcov.draw_sample(from_inverse=True)
     lh = GaussianEnergy(d, invcov) @ operator
     H = StandardHamiltonian(
         lh, ic_samp=GradientNormController(iteration_limit=200))
-    pos = 0.1 * from_random(operator.domain, 'normal')
-    minimizer = NewtonCG(GradientNormController(iteration_limit=10))
+    pos = 0.1*from_random(operator.domain)
+    minimizer = NewtonCG(GradientNormController(iteration_limit=10, name='findpos'))
     for ii in range(3):
+        logger.info(f'Start iteration {ii+1}/3')
         kl = MetricGaussianKL(pos, H, 3, mirror_samples=True)
         kl, _ = minimizer(kl)
         pos = kl.position

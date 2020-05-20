@@ -83,9 +83,9 @@ class MultiField(Operator):
     def domain(self):
         return self._domain
 
-#    @property
-#    def dtype(self):
-#        return {key: val.dtype for key, val in self._val.items()}
+    @property
+    def dtype(self):
+        return {key: val.dtype for key, val in self.items()}
 
     def _transform(self, op):
         return MultiField(self._domain, tuple(op(v) for v in self._val))
