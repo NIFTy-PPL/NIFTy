@@ -107,10 +107,6 @@ def testAmplitudesInvariants(sspace, N):
     assert_(op.target[-2] == sspace)
     assert_(op.target[-1] == fsspace)
 
-    # FIXME
-    if N > 1:
-        return
-
     for ampl in fa.normalized_amplitudes:
         ift.extra.check_jacobian_consistency(ampl,
                                              ift.from_random(ampl.domain),
