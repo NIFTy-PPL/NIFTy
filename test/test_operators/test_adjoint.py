@@ -83,6 +83,13 @@ def testRealizer(sp):
 
 
 @pmp('sp', _h_spaces + _p_spaces + _pow_spaces)
+def testImaginizer(sp):
+    op = ift.Imaginizer(sp)
+    ift.extra.consistency_check(op, np.complex128, np.float64,
+                                only_r_linear=True)
+
+
+@pmp('sp', _h_spaces + _p_spaces + _pow_spaces)
 def testConjugationOperator(sp):
     op = ift.ConjugationOperator(sp)
     ift.extra.consistency_check(op, np.complex128, np.complex128,

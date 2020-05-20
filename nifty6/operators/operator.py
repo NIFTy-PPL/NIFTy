@@ -149,6 +149,11 @@ class Operator(metaclass=NiftyMeta):
         from .simple_linear_operators import Realizer
         return Realizer(self.target)(self)
 
+    @property
+    def imag(self):
+        from .simple_linear_operators import Imaginizer
+        return Imaginizer(self.target)(self)
+
     def __neg__(self):
         return self.scale(-1)
 
