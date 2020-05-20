@@ -47,9 +47,9 @@ import numpy as np
 dom = ift.UnstructuredDomain(5)
 dtype = [np.float64, np.complex128][1]
 invcov = ift.ScalingOperator(dom, 3)
-e = ift.GaussianEnergy(mean=ift.from_random('normal', dom, dtype=dtype),
+e = ift.GaussianEnergy(mean=ift.from_random(dom, 'normal', dtype=dtype),
                        inverse_covariance=invcov)
-pos = ift.from_random('normal', dom, dtype=np.complex128)
+pos = ift.from_random(dom, 'normal', dtype=np.complex128)
 lin = e(ift.Linearization.make_var(pos, want_metric=True))
 met = lin.metric
 print(met)
@@ -70,6 +70,13 @@ production of random numbers (introduced in numpy 1.17. This greatly simplifies
 the generation of reproducible random numbers in the presence of MPI parallelism
 and leads to cleaner code overall. Please see the documentation of
 `nifty6.random` for details.
+
+Interface Change for from_random and OuterProduct
+=================================================
+
+The sugar.from_random, Field.from_random, MultiField.from_random now take domain
+as the first argument and default to 'normal' for the second argument.
+Likewise OuterProduct takes domain as the first argument and a field as the second.
 
 Interface Change for non-linear Operators
 =========================================

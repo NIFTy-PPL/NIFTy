@@ -161,8 +161,7 @@ class DiagonalOperator(EndomorphicOperator):
         return Field(self._domain, res)
 
     def draw_sample_with_dtype(self, dtype, from_inverse=False):
-        res = Field.from_random(random_type="normal", domain=self._domain,
-                                dtype=dtype)
+        res = Field.from_random(domain=self._domain, random_type="normal", dtype=dtype)
         return self.process_sample(res, from_inverse)
 
     def __repr__(self):

@@ -25,6 +25,7 @@ from ..common import list2fixture, setup_function, teardown_function
 
 pmp = pytest.mark.parametrize
 dtype = list2fixture([np.float64, np.float32, np.complex64, np.complex128])
+ntries = 10
 
 
 def test_part_mf_insert():
@@ -37,8 +38,8 @@ def test_part_mf_insert():
     a = op1 + op2 + op3
     b = op4 + op5
     op = a.partial_insert(b)
-    fld = ift.from_random('normal', op.domain)
-    ift.extra.check_jacobian_consistency(op, fld)
+    fld = ift.from_random(op.domain, 'normal')
+    ift.extra.check_jacobian_consistency(op, fld, ntries=ntries)
     assert_(op.domain is ift.MultiDomain.union(
         [op1.domain, op2.domain, op4.domain, op5.domain]))
     assert_(op.target is ift.MultiDomain.union(

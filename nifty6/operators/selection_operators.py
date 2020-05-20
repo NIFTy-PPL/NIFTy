@@ -36,7 +36,7 @@ class SliceOperator(LinearOperator):
     ----------
     domain : Domain, DomainTuple or tuple of Domain
         The operator's input domain.
-    tgt_shape : tuple of integers or None
+    new_shape : tuple of integers or None
         The shape of the target domain with None indicating to copy the shape
         of the original domain for this axis.
     center : bool, optional
@@ -44,11 +44,11 @@ class SliceOperator(LinearOperator):
     preserve_dist: bool, optional
         Whether to preserve the distance of the input field.
     """
-    def __init__(self, domain, tgt_shape, center=False, preserve_dist=True):
+    def __init__(self, domain, new_shape, center=False, preserve_dist=True):
         self._domain = DomainTuple.make(domain)
-        if len(tgt_shape) != len(self._domain.shape):
+        if len(new_shape) != len(self._domain.shape):
             ve = (
-                f"shape ({tgt_shape}) is incompatible with the shape of the"
+                f"shape ({new_shape}) is incompatible with the shape of the"
                 f" domain ({self._domain.shape})"
             )
             raise ValueError(ve)
@@ -56,9 +56,9 @@ class SliceOperator(LinearOperator):
         tgt = []
         slc_by_ax = []
         for i, d in enumerate(self._domain):
-            if tgt_shape[i] is None or self._domain.shape[i] == tgt_shape[i]:
+            if new_shape[i] is None or self._domain.shape[i] == new_shape[i]:
                 tgt += [d]
-            elif tgt_shape[i] < self._domain.shape[i]:
+            elif new_shape[i] < self._domain.shape[i]:
                 dom_kw = dict()
                 if isinstance(d, RGSpace):
                     if preserve_dist:
@@ -68,22 +68,22 @@ class SliceOperator(LinearOperator):
                     # Some domains like HPSpace or LMSPace can not be sliced
                     ve = f"{d.__class__.__name__} can not be sliced"
                     raise ValueError(ve)
-                tgt += [d.__class__(tgt_shape[i], **dom_kw)]
+                tgt += [d.__class__(new_shape[i], **dom_kw)]
             else:
                 ve = (
                     f"domain axes ({d}) is smaller than the target shape"
-                    f"{tgt_shape[i]}"
+                    f"{new_shape[i]}"
                 )
                 raise ValueError(ve)
 
             if center:
                 slc_start = np.floor(
-                    (self._domain.shape[i] - tgt_shape[i]) / 2.
+                    (self._domain.shape[i] - new_shape[i]) / 2.
                 ).astype(int)
-                slc_end = slc_start + tgt_shape[i]
+                slc_end = slc_start + new_shape[i]
             else:
                 slc_start = 0
-                slc_end = tgt_shape[i]
+                slc_end = new_shape[i]
             slc_by_ax += [slice(slc_start, slc_end)]
 
         self._slc_by_ax = tuple(slc_by_ax)

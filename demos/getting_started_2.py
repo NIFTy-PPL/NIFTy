@@ -90,7 +90,7 @@ if __name__ == '__main__':
     # Generate mock data and define likelihood operator
     d_space = R.target[0]
     lamb = R(sky)
-    mock_position = ift.from_random('normal', domain)
+    mock_position = ift.from_random(domain, 'normal')
     data = lamb(mock_position)
     data = ift.random.current_rng().poisson(data.val.astype(np.float64))
     data = ift.Field.from_raw(d_space, data)
@@ -103,7 +103,7 @@ if __name__ == '__main__':
 
     # Compute MAP solution by minimizing the information Hamiltonian
     H = ift.StandardHamiltonian(likelihood)
-    initial_position = ift.from_random('normal', domain)
+    initial_position = ift.from_random(domain, 'normal')
     H = ift.EnergyAdapter(initial_position, H, want_metric=True)
     H, convergence = minimizer(H)
 
