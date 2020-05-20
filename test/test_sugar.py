@@ -52,9 +52,18 @@ def test_exec_time():
             ift.exec_time(oo, wm)
 
 
-def test_calc_pos():
+import pytest
+pmp = pytest.mark.parametrize
+@pmp('mf', [False, True])
+@pmp('cplx', [False, True])
+def test_calc_pos(mf, cplx):
     dom = ift.RGSpace(12, harmonic=True)
     op = ift.HarmonicTransformOperator(dom).ptw("exp")
+    if mf:
+        op = op.ducktape_left('foo')
+        dom = ift.makeDomain({'': dom})
+    if cplx:
+        op = op + 1j*op
     fld = op(0.1 * ift.from_random(op.domain, 'normal'))
     pos = ift.calculate_position(op, fld)
     ift.extra.assert_allclose(op(pos), fld, 1e-1, 1e-1)
