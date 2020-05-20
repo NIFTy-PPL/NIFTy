@@ -127,7 +127,9 @@ class Imaginizer(EndomorphicOperator):
 
     def apply(self, x, mode):
         self._check_input(x, mode)
-        return x.imag
+        if mode == self.TIMES:
+            return x.imag
+        return 1j*x
 
 
 class FieldAdapter(LinearOperator):
