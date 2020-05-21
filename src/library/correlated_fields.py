@@ -365,11 +365,11 @@ class CorrelatedFieldMaker:
     around this offset needs to be parametrized.
 
     The resulting correlated field model operator has a
-    :class:`~nifty6.multi_domain.MultiDomain` as its domain and
+    :class:`~nifty7.multi_domain.MultiDomain` as its domain and
     expects its input values to be univariately gaussian.
 
     The target of the constructed operator will be a
-    :class:`~nifty6.domain_tuple.DomainTuple`
+    :class:`~nifty7.domain_tuple.DomainTuple`
     containing the `target_subdomains` of the added fluctuations in the
     order of the `add_fluctuations` calls.
 
@@ -475,8 +475,8 @@ class CorrelatedFieldMaker:
 
         Parameters
         ----------
-        target_subdomain : :class:`~nifty6.domain.Domain`, \
-                           :class:`~nifty6.domain_tuple.DomainTuple`
+        target_subdomain : :class:`~nifty7.domain.Domain`, \
+                           :class:`~nifty7.domain_tuple.DomainTuple`
             Target subdomain on which the correlation structure defined
             in this call should hold.
         fluctuations_{mean,stddev} : float
@@ -501,8 +501,8 @@ class CorrelatedFieldMaker:
             field model and the second one is used for the third field model.
             *If not given*, use the same power spectrum model for all
             constructed field models.
-        harmonic_partner : :class:`~nifty6.domain.Domain`, \
-                           :class:`~nifty6.domain_tuple.DomainTuple`
+        harmonic_partner : :class:`~nifty7.domain.Domain`, \
+                           :class:`~nifty7.domain_tuple.DomainTuple`
             In which harmonic space to define the power spectrum
         """
         if harmonic_partner is None:
