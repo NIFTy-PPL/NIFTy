@@ -73,7 +73,7 @@ run_ipynb0:
 run_ipynb1:
   stage: demo_runs
   script:
-    - jupyter nbconvert --execute --ExecutePreprocessor.timeout=None demos/getting_started_CorrelatedFields.ipynb
+    - jupyter nbconvert --execute --ExecutePreprocessor.timeout=None demos/getting_started_4_CorrelatedFields.ipynb
 
 run_getting_started_1:
   stage: demo_runs
@@ -104,7 +104,7 @@ run_getting_started_3:
 run_getting_started_mf:
   stage: demo_runs
   script:
-    - python3 demos/getting_started_mf.py
+    - python3 demos/getting_started_5_mf.py
   artifacts:
     paths:
       - '*.png'
