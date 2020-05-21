@@ -356,7 +356,8 @@ class CorrelatedFieldMaker:
     """Constrution helper for hirarchical correlated field models.
 
     The correlated field models are parametrized by creating
-    powerspectrum operators acting on their target subdomains
+    power spectrum operators ("amplitudes")
+    acting on their target subdomains
     via calls to :func:`add_fluctuations`.
     During creation of the :class:`CorrelatedFieldMaker` via
     :func:`make`, a global offset from zero can be added to the
@@ -375,8 +376,18 @@ class CorrelatedFieldMaker:
     Creation of the model operator is finished by calling the method
     :func:`finalize`, which returns the configured operator.
 
+    An operator representing an array of correlated field models
+    can be constructed by setting the `total_N` parameter of
+    :func:`make`. It will have an
+    :class:`~nifty.domains.unstructucture_domain.UnstructureDomain`
+    of shape `(total_N,)` prepended to its target domain and represent
+    `total_N` correlated fields simulataneously.
+    The degree of information sharing between the correlated field
+    models can be configured via the `dofdex` parameters
+    of :func:`make` and :func:`add_fluctuations`.
+
     See the methods :func:`make`, :func:`add_fluctuations`
-    and :func:`finalize` for usage instructions."""
+    and :func:`finalize` for further usage information."""
     def __init__(self, offset_mean, offset_fluctuations_op, prefix, total_N):
         if not isinstance(offset_fluctuations_op, Operator):
             raise TypeError("offset_fluctuations_op needs to be an operator")
@@ -404,17 +415,19 @@ class CorrelatedFieldMaker:
         prefix : string
             Prefix to the names of the domains of the cf operator to be made.
             This determines the names of the operator domain.
-        total_N : integer
-            Number of copies with of the field to return.
+        total_N : integer, optional
+            Number of field models to create.
             If not 0, the first entry of the operators target will be an
             :class:`~nifty.domains.unstructured_domain.UnstructuredDomain`
             with length `total_N`.
-        dofdex : np.array of integers
+        dofdex : np.array of integers, optional
             An integer array specifying the zero mode models used if
             total_N > 1. It needs to have length of total_N. If total_N=3 and
             dofdex=[0,0,1], that means that two models for the zero mode are
-            instanciated; the first one is used for the first and second copy
-            of the model and the second is used for the third.
+            instanciated; the first one is used for the first and second
+            field model and the second is used for the third field model.
+            *If not specified*, use the same zero mode model for all
+            constructed field models.
         """
         if dofdex is None:
             dofdex = np.full(total_N, 0)
@@ -449,8 +462,8 @@ class CorrelatedFieldMaker:
         on which they apply.
 
         The parameters `fluctuations`, `flexibility`, `asperity` and
-        `loglogavgslope` configure the power spectrum model used on the
-        target field subdomain `target_subdomain`.
+        `loglogavgslope` configure the power spectrum model ("amplitude")
+        used on the target field subdomain `target_subdomain`.
         It is assembled as the sum of a power law component
         (linear slope in log-log power-frequency-space),
         a smooth varying component (integrated wiener process) and
@@ -480,12 +493,14 @@ class CorrelatedFieldMaker:
         index : int
             Position target_subdomain in the final total domain of the
             correlated field operator.
-        dofdex : np.array
-            An integer array specifying the amplitude models used if
+        dofdex : np.array, optional
+            An integer array specifying the power spectrum models used if
             total_N > 1. It needs to have length of total_N. If total_N=3 and
-            dofdex=[0,0,1], that means that two models for the zero mode are
-            instanciated; the first one is used for the first and second copy
-            of the model and the second is used for the third.
+            dofdex=[0,0,1], that means that two power spectrum models are
+            instanciated; the first one is used for the first and second
+            field model and the second one is used for the third field model.
+            *If not given*, use the same power spectrum model for all
+            constructed field models.
         harmonic_partner : :class:`~nifty6.domain.Domain`, \
                            :class:`~nifty6.domain_tuple.DomainTuple`
             In which harmonic space to define the power spectrum
@@ -627,6 +642,7 @@ class CorrelatedFieldMaker:
 
     @property
     def normalized_amplitudes(self):
+        """Returns the power spectrum operators used in the model"""
         return self._a
 
     @property
