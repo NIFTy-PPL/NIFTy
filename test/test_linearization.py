@@ -57,14 +57,28 @@ def test_special_gradients():
     'log', 'exp', 'sqrt', 'sin', 'cos', 'tan', 'sinc', 'sinh', 'cosh', 'tanh',
     'absolute', 'reciprocal', 'sigmoid', 'log10', 'log1p', "expm1"
 ])
-def test_actual_gradients(f):
+@pmp('cplxpos', [True, False])
+@pmp('cplxdir', [True, False])
+@pmp('holomorphic', [True, False])
+def test_actual_gradients(f, cplxpos, cplxdir, holomorphic):
+    if (cplxpos or cplxdir) and f in ['absolute']:
+        return
+    if holomorphic and f in ['absolute']:
+        # These function are not holomorphic
+        return
     dom = ift.UnstructuredDomain((1,))
     fld = ift.full(dom, 2.4)
-    eps = 1e-8
+    if cplxpos:
+        fld = fld + 0.21j
+    eps = 1e-7
+    if cplxdir:
+        eps *= 1j
+    if holomorphic:
+        eps *= (1+0.78j)
     var0 = ift.Linearization.make_var(fld)
     var1 = ift.Linearization.make_var(fld + eps)
     f0 = var0.ptw(f).val.val
     f1 = var1.ptw(f).val.val
     df0 = (f1 - f0)/eps
     df1 = _lin2grad(var0.ptw(f))
-    assert_allclose(df0, df1, rtol=100*eps)
+    assert_allclose(df0, df1, rtol=100*np.abs(eps))

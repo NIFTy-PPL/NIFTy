@@ -27,7 +27,6 @@ name = (f'plot{nr}.png' for nr in count())
 
 
 def test_plots():
-    # FIXME Write to temporary folder?
     rg_space1 = ift.makeDomain(ift.RGSpace((10,)))
     rg_space2 = ift.makeDomain(ift.RGSpace((8, 6), distances=1))
     hp_space = ift.makeDomain(ift.HPSpace(5))
@@ -54,7 +53,7 @@ def test_plots():
     plot.output(title='Three plots', name=next(name))
 
     plot = ift.Plot()
-    plot.add(field_hp, title='HP planck-color', colormap='Planck-like')
+    plot.add(field_hp, title='HP planck-color', cmap='Planck-like')
     plot.add(field_rg1_2, title='1d rg')
     plot.add(field_ps)
     plot.add(field_gl, title='GL')
@@ -75,4 +74,5 @@ def test_mf_plot():
     plot = ift.Plot()
     plot.add(f1, block=False, title='f_space_idx = 1')
     plot.add(f2, freq_space_idx=0, title='f_space_idx = 0')
-    plot.output(nx=2, ny=1, title='MF-Plots, should look identical', name=next(name))
+    plot.output(nx=2, ny=1, title='MF-Plots, should look identical',
+                name=next(name))

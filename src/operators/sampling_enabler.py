@@ -124,6 +124,10 @@ class SamplingDtypeSetter(EndomorphicOperator):
         need to conincide the with keys of the `MultiDomain`.
     """
     def __init__(self, op, dtype):
+        if isinstance(op, SamplingDtypeSetter):
+            if op._dtype != dtype:
+                raise ValueError('Dtype for sampling already set to another dtype.')
+            op = op._op
         if not isinstance(op, EndomorphicOperator):
             raise TypeError
         if not hasattr(op, 'draw_sample_with_dtype'):
