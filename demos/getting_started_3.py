@@ -55,6 +55,10 @@ if __name__ == '__main__':
 
     position_space = ift.RGSpace([128, 128])
 
+    #  For a detailed showcase of the effects the parameters
+    #  of the CorrelatedField model have on the generated fields,
+    #  see 'getting_started_CorrelatedFields.ipynb'.
+
     cfmaker = ift.CorrelatedFieldMaker.make(
         offset_mean =      0.0,  # 0.
         offset_std_mean = 1e-3,  # 1e-3
@@ -62,22 +66,21 @@ if __name__ == '__main__':
         prefix = '')
 
     fluctuations_dict = {
-        # Amplitude of the fluctuations
+        # Amplitude of field fluctuations
         'fluctuations_mean':   2.0,  # 1.0
         'fluctuations_stddev': 1.0,  # 1e-2
 
-        # Smooth variation speed
+        # Exponent of power law power spectrum component
+        'loglogavgslope_mean': -2.0,  # -3.0
+        'loglogavgslope_stddev': 0.5,  #  0.5
+
+        # Amplitude of integrated Wiener process power spectrum component
         'flexibility_mean':   2.5,  # 1.0
         'flexibility_stddev': 1.0,  # 0.5
 
-        # How strong the ragged component of the spectrum is
-        # (Ratio of Wiener process and integrated Wiener process ?)
+        # How ragged the integrated Wiener process component is
         'asperity_mean':   0.5,  # 0.1
-        'asperity_stddev': 0.5,  # 0.5
-
-        # Slope of linear spectrum component
-        'loglogavgslope_mean': -2.0,  # -3.0
-        'loglogavgslope_stddev': 0.5  #  0.5
+        'asperity_stddev': 0.5  # 0.5
     }
     cfmaker.add_fluctuations(position_space, **fluctuations_dict)
 
@@ -135,7 +138,7 @@ if __name__ == '__main__':
         # Plot current reconstruction
         plot = ift.Plot()
         plot.add(signal(KL.position), title="reconstruction")
-        plot.add([A.force(KL.position), A.force(mock_position)], title="power")
+        plot.add([A.force(mock_position), A.force(KL.position)], title="power")
         plot.output(ny=1, ysize=6, xsize=16,
                     name=filename.format("loop_{:02d}".format(i)))
 
@@ -153,8 +156,8 @@ if __name__ == '__main__':
 
     powers = [A.force(s + KL.position) for s in KL.samples]
     plot.add(
-        powers + [A.force(KL.position),
-                  A.force(mock_position)],
+        powers + [A.force(mock_position),
+                  A.force(KL.position)],
         title="Sampled Posterior Power Spectrum",
         linewidth=[1.]*len(powers) + [3., 3.])
     plot.output(ny=1, nx=3, xsize=24, ysize=6, name=filename_res)
