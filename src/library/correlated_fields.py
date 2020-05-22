@@ -356,24 +356,23 @@ class CorrelatedFieldMaker:
     """Constrution helper for hirarchical correlated field models.
 
     The correlated field models are parametrized by creating
-    power spectrum operators ("amplitudes")
-    acting on their target subdomains
-    via calls to :func:`add_fluctuations`.
+    power spectrum operators ("amplitudes") via calls to
+    :func:`add_fluctuations` that act on the targeted field subdomains.
     During creation of the :class:`CorrelatedFieldMaker` via
-    :func:`make`, a global offset from zero can be added to the
-    field to be created and an operator applying gaussian fluctuations
-    around this offset needs to be parametrized.
+    :func:`make`, a global offset from zero of the field model
+    can be defined and an operator applying fluctuations
+    around this offset is parametrized.
 
     The resulting correlated field model operator has a
     :class:`~nifty7.multi_domain.MultiDomain` as its domain and
     expects its input values to be univariately gaussian.
 
     The target of the constructed operator will be a
-    :class:`~nifty7.domain_tuple.DomainTuple`
-    containing the `target_subdomains` of the added fluctuations in the
-    order of the `add_fluctuations` calls.
+    :class:`~nifty7.domain_tuple.DomainTuple` containing the
+    `target_subdomains` of the added fluctuations in the order of
+    the `add_fluctuations` calls.
 
-    Creation of the model operator is finished by calling the method
+    Creation of the model operator is completed by calling the method
     :func:`finalize`, which returns the configured operator.
 
     An operator representing an array of correlated field models
@@ -482,9 +481,9 @@ class CorrelatedFieldMaker:
         fluctuations_{mean,stddev} : float
             Total spectral energy -> Amplitude of the fluctuations
         flexibility_{mean,stddev} : float
-            Smooth variation speed of the power spectrum
+            Amplitude of the non-power-law power spectrum component
         asperity_{mean,stddev} : float
-            Strength of unsmoothed power spectrum variations
+            Roughness of the non-power-law power spectrum component
             Used to accomodate single frequency peaks
         loglogavgslope_{mean,stddev} : float
             Power law component exponent
