@@ -142,3 +142,87 @@ and a citation to one of the [publications](http://ift.pages.mpcdf.de/nifty/cita
 The NIFTy package is licensed under the terms of the
 [GPLv3](https://www.gnu.org/licenses/gpl.html) and is distributed
 *without any warranty*.
+
+
+Contributors
+------------
+
+### NIFTy6
+
+Andrija Kostic
+Gordian Edenhofer
+Lukas Platz
+Martin Reinecke
+Philipp Arras
+Philipp Frank
+Philipp Haim
+Reimar Heinrich Leike
+Rouven Lemmerz
+Torsten Ensslin
+Vincent Eberle
+ru87him
+
+
+### NIFTy5
+
+Christoph Lienhard
+Gordian Edenhofer
+Jakob Knollmüller
+Julia Stadler
+Julian Rüstig
+Lukas Platz
+Lukas Platz
+Martin Reinecke
+Max-Niklas Newrzella
+Natalia
+Philipp Arras
+Philipp Frank
+Philipp Haim
+Reimar Heinrich Leike
+Reimar Leike
+Sebastian Hutschenreuter
+Silvan Streit
+Torsten Ensslin
+
+
+### NIFTy4
+
+Christoph Lienhard
+Jakob Knollmüller
+Lukas Platz
+Martin Reinecke
+Mihai Baltac
+Philipp Arras
+Philipp Frank
+Reimar Heinrich Leike
+Silvan Streit
+Torsten Ensslin
+
+
+### NIFTy3
+
+Daniel Pumpe
+Jait Dixit
+Jakob Knollmüller
+Martin Reinecke
+Mihai Baltac
+Natalia
+Philipp Arras
+Philipp Frank
+Reimar Leike
+Sraml Matevz
+Theo Steininger
+csongor
+
+### NIFTy2
+
+Jait Dixit
+Theo Steininger
+csongor
+
+
+### NIFTy1
+
+Johannes Buchner
+Marco Selig
+Theo Steininger
