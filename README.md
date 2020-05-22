@@ -146,6 +146,7 @@ The NIFTy package is licensed under the terms of the
 
 Contributors
 ------------
+Find the list of all people who authored commits in this repository.
 
 ### NIFTy6
 
@@ -158,7 +159,7 @@ Contributors
 - Philipp Haim
 - Reimar Heinrich Leike
 - Rouven Lemmerz
-- Torsten Ensslin
+- [Torsten Enßlin](https://wwwmpa.mpa-garching.mpg.de/~ensslin/)
 - Vincent Eberle
 
 
@@ -181,7 +182,7 @@ Contributors
 - Reimar Leike
 - Sebastian Hutschenreuter
 - Silvan Streit
-- Torsten Ensslin
+- [Torsten Enßlin](https://wwwmpa.mpa-garching.mpg.de/~ensslin/)
 
 
 ### NIFTy4
@@ -195,7 +196,7 @@ Contributors
 - Philipp Frank
 - Reimar Heinrich Leike
 - Silvan Streit
-- Torsten Ensslin
+- [Torsten Enßlin](https://wwwmpa.mpa-garching.mpg.de/~ensslin/)
 
 
 ### NIFTy3
