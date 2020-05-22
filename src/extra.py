@@ -219,7 +219,7 @@ def consistency_check(op, domain_dtype=np.float64, target_dtype=np.float64,
 def _get_acceptable_location(op, loc, lin):
     if not np.isfinite(lin.val.s_sum()):
         raise ValueError('Initial value must be finite')
-    dir = from_random(loc.domain, "normal")
+    dir = from_random(loc.domain, dtype=loc.dtype)
     dirder = lin.jac(dir)
     if dirder.norm() == 0:
         dir = dir * (lin.val.norm()*1e-5)

@@ -80,6 +80,8 @@ def testImaginizer(sp):
     op = ift.Imaginizer(sp)
     ift.extra.consistency_check(op, np.complex128, np.float64,
                                 only_r_linear=True)
+    loc = ift.from_random(op.domain, dtype=np.complex128)
+    ift.extra.check_jacobian_consistency(op, loc)
 
 
 @pmp('sp', _h_spaces + _p_spaces + _pow_spaces)
