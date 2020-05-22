@@ -157,7 +157,7 @@ Find the list of all people who authored commits in this repository.
 - [Philipp Arras](https://wwwmpa.mpa-garching.mpg.de/~parras/)
 - Philipp Frank
 - Philipp Haim
-- Reimar Heinrich Leike
+- [Reimar Heinrich Leike](https://wwwmpa.mpa-garching.mpg.de/~reimar/)
 - Rouven Lemmerz
 - [Torsten Enßlin](https://wwwmpa.mpa-garching.mpg.de/~ensslin/)
 - Vincent Eberle
