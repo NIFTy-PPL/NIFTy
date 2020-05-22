@@ -57,7 +57,7 @@ if __name__ == '__main__':
 
     #  For a detailed showcase of the effects the parameters
     #  of the CorrelatedField model have on the generated fields,
-    #  see 'getting_started_CorrelatedFields.ipynb'.
+    #  see 'getting_started_4_CorrelatedFields.ipynb'.
 
     cfmaker = ift.CorrelatedFieldMaker.make(
         offset_mean =      0.0,  # 0.
