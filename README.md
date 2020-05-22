@@ -154,7 +154,7 @@ Find the list of all people who authored commits in this repository.
 - Gordian Edenhofer
 - Lukas Platz
 - Martin Reinecke
-- Philipp Arras
+- [Philipp Arras](https://wwwmpa.mpa-garching.mpg.de/~parras/)
 - Philipp Frank
 - Philipp Haim
 - Reimar Heinrich Leike
@@ -174,7 +174,7 @@ Find the list of all people who authored commits in this repository.
 - Martin Reinecke
 - Max-Niklas Newrzella
 - Natalia
-- Philipp Arras
+- [Philipp Arras](https://wwwmpa.mpa-garching.mpg.de/~parras/)
 - Philipp Frank
 - Philipp Haim
 - Reimar Heinrich Leike
@@ -190,7 +190,7 @@ Find the list of all people who authored commits in this repository.
 - Lukas Platz
 - Martin Reinecke
 - Mihai Baltac
-- Philipp Arras
+- [Philipp Arras](https://wwwmpa.mpa-garching.mpg.de/~parras/)
 - Philipp Frank
 - Reimar Heinrich Leike
 - Silvan Streit
@@ -205,7 +205,7 @@ Find the list of all people who authored commits in this repository.
 - Martin Reinecke
 - Mihai Baltac
 - Natalia
-- Philipp Arras
+- [Philipp Arras](https://wwwmpa.mpa-garching.mpg.de/~parras/)
 - Philipp Frank
 - Reimar Heinrich Leike
 - Matevz Sraml
