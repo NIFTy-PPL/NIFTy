@@ -171,7 +171,6 @@ Find the list of all people who authored commits in this repository.
 - Julia Stadler
 - Julian Rüstig
 - Lukas Platz
-- Lukas Platz
 - Martin Reinecke
 - Max-Niklas Newrzella
 - Natalia
@@ -179,7 +178,6 @@ Find the list of all people who authored commits in this repository.
 - Philipp Frank
 - Philipp Haim
 - Reimar Heinrich Leike
-- Reimar Leike
 - Sebastian Hutschenreuter
 - Silvan Streit
 - [Torsten Enßlin](https://wwwmpa.mpa-garching.mpg.de/~ensslin/)
@@ -209,8 +207,8 @@ Find the list of all people who authored commits in this repository.
 - Natalia
 - Philipp Arras
 - Philipp Frank
-- Reimar Leike
-- Sraml Matevz
+- Reimar Heinrich Leike
+- Matevz Sraml
 - Theo Steininger
 - csongor
 
