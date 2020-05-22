@@ -160,7 +160,6 @@ Contributors
 - Rouven Lemmerz
 - Torsten Ensslin
 - Vincent Eberle
-- ru87him
 
 
 ### NIFTy5
