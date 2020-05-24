@@ -262,8 +262,11 @@ class LinearEinsum(LinearOperator):
         iss, oss, *_ = subscripts.split("->")
         iss_spl = iss.split(",")
 
-        adj_iss = ",".join((",".join(iss_spl[:-1]), oss))
-        self._adj_sscr = "->".join((adj_iss, iss_spl[-1]))
+        if len(iss_spl) == 1:
+            self._adj_sscr = "->".join((oss, iss))
+        else:
+            adj_iss = ",".join((",".join(iss_spl[:-1]), oss))
+            self._adj_sscr = "->".join((adj_iss, iss_spl[-1]))
         self._capability = self.TIMES | self.ADJOINT_TIMES
 
     def apply(self, x, mode):
