@@ -23,7 +23,7 @@ from .multi_domain import MultiDomain
 from .multi_field import MultiField
 from .operators.linear_operator import LinearOperator
 from .operators.sandwich_operator import SandwichOperator
-from .sugar import makeField, makeDomain
+from .sugar import makeDomain, makeField
 
 
 class _DomRemover(LinearOperator):

@@ -17,6 +17,7 @@
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
 
 import numpy as np
+
 from ..domain_tuple import DomainTuple
 from ..domains.rg_space import RGSpace
 from ..domains.unstructured_domain import UnstructuredDomain

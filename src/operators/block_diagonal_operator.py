@@ -20,6 +20,7 @@ from ..multi_field import MultiField
 from .endomorphic_operator import EndomorphicOperator
 from .linear_operator import LinearOperator
 
+
 class BlockDiagonalOperator(EndomorphicOperator):
     """
     Parameters

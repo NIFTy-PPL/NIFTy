@@ -18,7 +18,7 @@
 from .multi_field import MultiField
 from .operators.endomorphic_operator import EndomorphicOperator
 from .operators.operator import Operator
-from .sugar import makeField, from_random
+from .sugar import from_random, makeField
 
 
 class StatCalculator(object):

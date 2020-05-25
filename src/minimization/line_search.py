@@ -15,9 +15,10 @@
 #
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
 
-from ..utilities import NiftyMeta
-from ..logger import logger
 import numpy as np
+
+from ..logger import logger
+from ..utilities import NiftyMeta
 
 
 class LineEnergy(object):
