@@ -107,6 +107,9 @@ class EnergyHistory(object):
     def reset(self):
         self._lst = []
 
+    def __getitem__(self, i):
+        return self._lst[i]
+
     @property
     def time_stamps(self):
         return [x for x, _ in self._lst]
