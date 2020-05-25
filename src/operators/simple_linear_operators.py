@@ -109,7 +109,13 @@ class Realizer(EndomorphicOperator):
 
     def apply(self, x, mode):
         self._check_input(x, mode)
-        return x.real
+        if mode == self.TIMES:
+            if not np.issubdtype(x.dtype, np.complexfloating):
+                raise ValueError
+            return x.real
+        if x.dtype not in (np.float64, np.float32):
+            raise ValueError
+        return Field(x.domain, x.val.astype(np.complex128))
 
 
 class Imaginizer(EndomorphicOperator):
