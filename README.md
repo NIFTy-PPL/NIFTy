@@ -146,12 +146,12 @@ The NIFTy package is licensed under the terms of the
 
 Contributors
 ------------
-Find the list of all people who authored commits in this repository.
 
 ### NIFTy6
 
 - Andrija Kostic
 - Gordian Edenhofer
+- Jakob Knollmüller
 - Lukas Platz
 - Martin Reinecke
 - [Philipp Arras](https://wwwmpa.mpa-garching.mpg.de/~parras/)
