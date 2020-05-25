@@ -94,7 +94,7 @@ def test_kl(constants, point_estimates, mirror_samples, mf):
 
     # Test constants (after some minimization)
     cg = ift.GradientNormController(iteration_limit=5)
-    minimizer = ift.NewtonCG(cg, activate_logging=True)
+    minimizer = ift.NewtonCG(cg, enable_logging=True)
     kl, _ = minimizer(kl)
     if len(constants) != 2:
         assert_(len(minimizer.inversion_history) > 0)

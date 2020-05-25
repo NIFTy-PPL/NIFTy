@@ -116,7 +116,7 @@ if __name__ == '__main__':
                                              iteration_limit=35)
     ic_sampling.enable_logging()
     ic_newton.enable_logging()
-    minimizer = ift.NewtonCG(ic_newton, activate_logging=True)
+    minimizer = ift.NewtonCG(ic_newton, enable_logging=True)
 
     ## number of samples used to estimate the KL
     N_samples = 20

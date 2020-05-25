@@ -111,6 +111,23 @@ class _SwitchSpacesOperator(ift.LinearOperator):
         return ift.Field(self._tgt(mode), np.moveaxis(x.val, *args))
 
 
+def test_linear_einsum_transpose(space1, space2, dtype, n_invocations=10):
+    dom = ift.DomainTuple.make((space1, space2))
+    mf = ift.MultiField.from_dict({})
+    ss = "ij->ji"
+    le = ift.LinearEinsum(dom, mf, ss)
+    assert_(consistency_check(le, domain_dtype=dtype, target_dtype=dtype) is None)
+
+    # SwitchSpacesOperator is equivalent to LinearEinsum with "ij->ji"
+    le_ift = _SwitchSpacesOperator(dom, 1)
+
+    for _ in range(n_invocations):
+        r = ift.from_random(le.domain, "normal", dtype=dtype)
+        assert_allclose(le(r).val, le_ift(r).val)
+        r_adj = ift.from_random(le.target, "normal", dtype=dtype)
+        assert_allclose(le.adjoint(r_adj).val, le_ift.adjoint(r_adj).val)
+
+
 def test_multi_linear_einsum_outer(space1, space2, dtype):
     ntries = 10
     n_invocations = 5
