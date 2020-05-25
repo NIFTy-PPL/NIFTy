@@ -15,11 +15,12 @@
 #
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
 
+import numpy as np
+
+from .. import utilities
 from ..domain_tuple import DomainTuple
 from ..field import Field
 from .endomorphic_operator import EndomorphicOperator
-from .. import utilities
-import numpy as np
 
 
 class MatrixProductOperator(EndomorphicOperator):

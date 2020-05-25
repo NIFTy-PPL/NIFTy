@@ -16,15 +16,15 @@
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
 
 import numpy as np
-from scipy.stats import invgamma, norm
 from scipy.interpolate import CubicSpline
+from scipy.stats import invgamma, norm
 
+from .. import random
 from ..domain_tuple import DomainTuple
 from ..domains.unstructured_domain import UnstructuredDomain
 from ..field import Field
 from ..operators.operator import Operator
 from ..sugar import makeOp
-from .. import random
 
 
 def _f_on_np(f, arr):

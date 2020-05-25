@@ -16,10 +16,11 @@
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
 
 from functools import reduce
-from . import utilities
-from .domains.domain import Domain
 
 import numpy as np
+
+from . import utilities
+from .domains.domain import Domain
 
 
 class DomainTuple(object):

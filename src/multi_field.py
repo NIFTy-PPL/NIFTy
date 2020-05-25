@@ -18,9 +18,9 @@
 import numpy as np
 
 from . import utilities
+from .domain_tuple import DomainTuple
 from .field import Field
 from .multi_domain import MultiDomain
-from .domain_tuple import DomainTuple
 from .operators.operator import Operator
 
 

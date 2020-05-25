@@ -17,8 +17,8 @@
 
 import numpy as np
 
-from ..utilities import NiftyMeta, indent
 from .. import pointwise
+from ..utilities import NiftyMeta, indent
 
 
 class Operator(metaclass=NiftyMeta):

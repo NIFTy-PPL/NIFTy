@@ -17,8 +17,8 @@
 
 import numpy as np
 
-from .sugar import makeOp
 from .operators.operator import Operator
+from .sugar import makeOp
 
 
 class Linearization(Operator):

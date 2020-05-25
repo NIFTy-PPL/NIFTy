@@ -15,9 +15,15 @@
 #
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
 
-from .operators.operator import _OpChain, _OpSum, _OpProd
-from .sugar import domain_union
+from copy import deepcopy
+
+from numpy import allclose
+
+from .multi_field import MultiField
+from .operators.operator import _OpChain, _OpProd, _OpSum
 from .operators.simple_linear_operators import FieldAdapter
+from .sugar import domain_union, from_random
+
 
 def _optimise_operator(op):
     """
@@ -260,10 +266,6 @@ def _optimise_operator(op):
     return op
 
 
-from copy import deepcopy
-from .sugar import from_random
-from .multi_field import MultiField
-from numpy import allclose
 
 
 def optimise_operator(op):

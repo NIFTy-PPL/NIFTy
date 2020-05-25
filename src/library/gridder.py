@@ -21,7 +21,7 @@ from ..domain_tuple import DomainTuple
 from ..domains.rg_space import RGSpace
 from ..domains.unstructured_domain import UnstructuredDomain
 from ..operators.linear_operator import LinearOperator
-from ..sugar import makeField, makeDomain
+from ..sugar import makeDomain, makeField
 
 
 class GridderMaker(object):

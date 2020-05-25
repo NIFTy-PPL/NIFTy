@@ -21,6 +21,7 @@ from operator import mul
 
 import numpy as np
 
+from .. import utilities
 from ..domain_tuple import DomainTuple
 from ..domains.power_space import PowerSpace
 from ..domains.unstructured_domain import UnstructuredDomain
@@ -38,7 +39,6 @@ from ..operators.operator import Operator
 from ..operators.simple_linear_operators import ducktape
 from ..probing import StatCalculator
 from ..sugar import full, makeDomain, makeField, makeOp
-from .. import utilities
 
 
 def _reshaper(x, N):

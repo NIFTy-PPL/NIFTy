@@ -16,8 +16,8 @@
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
 
 import collections
-from itertools import product
 from functools import reduce
+from itertools import product
 
 import numpy as np
 
