@@ -1,11 +1,18 @@
-Changes since NIFTy 5:
+Changes since NIFTy 6
+=====================
+
+*None.*
+
+
+Changes since NIFTy 5
+=====================
 
 Minimum Python version increased to 3.6
-=======================================
+---------------------------------------
 
 
 New operators
-=============
+-------------
 
 In addition to the below changes, the following operators were introduced:
 
@@ -20,14 +27,14 @@ In addition to the below changes, the following operators were introduced:
 * IntegrationOperator: Integrates over subspaces of fields
 
 FFT convention adjusted
-=======================
+-----------------------
 
 When going to harmonic space, NIFTy's FFT operator now uses a minus sign in the
 exponent (and, consequently, a plus sign on the adjoint transform). This
 convention is consistent with almost all other numerical FFT libraries.
 
 Interface change in EndomorphicOperator.draw_sample()
-=====================================================
+-----------------------------------------------------
 
 Both complex-valued and real-valued Gaussian probability distributions have
 Hermitian and positive endomorphisms as covariance. Just by looking at an
@@ -59,13 +66,13 @@ print(met.draw_sample())
 ```
 
 MPI parallelisation over samples in MetricGaussianKL
-====================================================
+----------------------------------------------------
 
 The classes `MetricGaussianKL` and `MetricGaussianKL_MPI` have been unified
 into one `MetricGaussianKL` class which has MPI support built in.
 
 New approach for random number generation
-=========================================
+-----------------------------------------
 
 The code now uses `numpy`'s new `SeedSequence` and `Generator` classes for the
 production of random numbers (introduced in numpy 1.17. This greatly simplifies
@@ -74,14 +81,14 @@ and leads to cleaner code overall. Please see the documentation of
 `nifty7.random` for details.
 
 Interface Change for from_random and OuterProduct
-=================================================
+-------------------------------------------------
 
 The sugar.from_random, Field.from_random, MultiField.from_random now take domain
 as the first argument and default to 'normal' for the second argument.
 Likewise OuterProduct takes domain as the first argument and a field as the second.
 
 Interface Change for non-linear Operators
-=========================================
+-----------------------------------------
 
 The method `Operator.apply()` takes a `Linearization` or a `Field` or a
 `MultiField` as input. This has not changed. However, now each non-linear
@@ -98,7 +105,7 @@ behaviour since both `Operator._check_input()` and
 fulfilled.
 
 Special functions for complete Field reduction operations
-=========================================================
+---------------------------------------------------------
 
 So far, reduction operations called on Fields (like `vdot`, `sum`, `integrate`,
 `mean`, `var`, `std`, `prod` etc.) returned a scalar when the reduction was
@@ -110,7 +117,7 @@ operate over all subdomains and therefore don't take a `spaces` argument; they
 are named `s_vdot`, `s_sum` etc. and always return a scalar.
 
 Updates regarding correlated fields
-===================================
+-----------------------------------
 
 The most commonly used model for homogeneous and isotropic correlated fields in
 nifty5 has been `SLAmplitude` combined with `CorrelatedField`. This model
@@ -127,7 +134,7 @@ via `napprox` breaks the inference scheme with the new model so `napprox` may no
 be used here.
 
 Removal of the standard MPI parallelization scheme:
-===================================================
+---------------------------------------------------
 
 When several MPI tasks are present, NIFTy5 distributes every Field over these
 tasks by splitting it along the first axis. This approach to parallelism is not
