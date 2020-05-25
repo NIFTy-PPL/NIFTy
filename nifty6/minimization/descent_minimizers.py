@@ -167,7 +167,7 @@ class NewtonCG(DescentMinimizer):
 
     def __init__(self, controller, napprox=0, line_searcher=None, name=None,
                  nreset=20, max_cg_iterations=200, energy_reduction_factor=0.1,
-                 activate_logging=False):
+                 enable_logging=False):
         if line_searcher is None:
             line_searcher = LineSearch(preferred_initial_step_size=1.)
         super(NewtonCG, self).__init__(controller=controller,
@@ -178,7 +178,7 @@ class NewtonCG(DescentMinimizer):
         self._max_cg_iterations = max_cg_iterations
         self._alpha = energy_reduction_factor
         from .iteration_controllers import EnergyHistory
-        self._history = EnergyHistory() if activate_logging else None
+        self._history = EnergyHistory() if enable_logging else None
 
     def get_descent_direction(self, energy, old_value=None):
         if old_value is None:

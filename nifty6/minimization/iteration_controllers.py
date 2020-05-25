@@ -43,7 +43,7 @@ class IterationController(metaclass=NiftyMeta):
 
     For analyzing minimization procedures IterationControllers can log energy
     values together with the respective time stamps. In order to activate this
-    feature `activate_logging()` needs to be called.
+    feature `enable_logging()` needs to be called.
     """
 
     CONVERGED, CONTINUE, ERROR = list(range(3))
