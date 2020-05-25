@@ -144,6 +144,9 @@ class VariableCovarianceGaussianEnergy(EnergyOperator):
 
     inverse_covariance : key
         Inverse covariance diagonal key of the Gaussian.
+    
+    sampling_dtype : np.dtype
+        Data type of the samples. Usually either 'np.float*' or 'np.complex*'  
     """
 
     def __init__(self, domain, residual_key, inverse_covariance_key, sampling_dtype):
