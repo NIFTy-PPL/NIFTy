@@ -260,10 +260,10 @@ def from_random(domain, random_type='normal', dtype=np.float64, **kwargs):
 
     Parameters
     ----------
-    random_type : 'pm1', 'normal', or 'uniform'
-            The random distribution to use.
     domain : Domainoid
         the intended domain of the output field
+    random_type : 'pm1', 'normal', or 'uniform'
+            The random distribution to use.
     dtype : type
         data type of the output field (e.g. numpy.float64)
     **kwargs : additional parameters for the random distribution
