@@ -159,7 +159,7 @@ class VariableCovarianceGaussianEnergy(EnergyOperator):
 
     def apply(self, x):
         self._check_input(x)
-        res = 0.5*(x[self._r].vdot(x[self._r]*x[self._icov]).real - x[self._icov].ptw("log").sum())
+        res = 0.5*(x[self._r].vdot(x[self._r]*x[self._icov].real).real - x[self._icov].ptw("log").sum())
         if not x.want_metric:
             return res
         mf = {self._r: x.val[self._icov], self._icov: .5*x.val[self._icov]**(-2)}
