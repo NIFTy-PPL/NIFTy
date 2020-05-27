@@ -17,14 +17,13 @@
 
 import numpy as np
 
-from .. import random, utilities
-from ..field import Field
+from .. import random
 from ..linearization import Linearization
 from ..multi_field import MultiField
 from ..operators.endomorphic_operator import EndomorphicOperator
 from ..operators.energy_operators import StandardHamiltonian
 from ..probing import approximation2endo
-from ..sugar import full, makeOp
+from ..sugar import makeDomain, makeOp
 from .energy import Energy
 
 
@@ -131,16 +130,17 @@ class MetricGaussianKL(Energy):
         if not isinstance(mirror_samples, bool):
             raise TypeError
         if isinstance(mean, MultiField) and set(point_estimates) == set(mean.keys()):
-            raise RuntimeError('Point estimates for whole domain. Use EnergyAdapter instead.')
+            raise RuntimeError(
+                'Point estimates for whole domain. Use EnergyAdapter instead.')
 
         self._hamiltonian = hamiltonian
         self._ham4eval = _ham4eval
-        from ..sugar import makeDomain
         if self._ham4eval is None:
             if len(constants) > 0:
                 dom = {kk: vv for kk, vv in mean.domain.items() if kk in constants}
                 dom = makeDomain(dom)
-                self._ham4eval = hamiltonian.simplify_for_constant_input(mean.extract(dom))[1]
+                cstpos = mean.extract(dom)
+                _, self._ham4eval = hamiltonian.simplify_for_constant_input(cstpos)
             else:
                 self._ham4eval = hamiltonian
 
