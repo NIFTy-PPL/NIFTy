@@ -251,8 +251,10 @@ class MultiField(Operator):
     def extract_part(self, subset):
         if subset is self._domain:
             return self
-        return MultiField.from_dict({key: self[key] for key in subset.keys()
-                                     if key in self})
+        dct = {key: self[key] for key in subset.keys() if key in self}
+        if len(dct) == 0:
+            return None
+        return MultiField.from_dict(dct)
 
     def unite(self, other):
         """Merges two MultiFields on potentially different MultiDomains.
