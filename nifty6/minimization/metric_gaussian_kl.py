@@ -239,13 +239,13 @@ class MetricGaussianKL(Energy):
         lin = self._lin.with_want_metric()
         if self._metric is None:
             if len(self._local_samples) == 0:  # hack if there are too many MPI tasks
-                self._metric = self._hamiltonian(lin).metric.scale(0.)
+                self._metric = self._ham4eval(lin).metric.scale(0.)
             else:
-                mymap = map(lambda v: self._hamiltonian(lin+v).metric,
+                mymap = map(lambda v: self._ham4eval(lin+v).metric,
                             self._local_samples)
                 unscaled_metric = utilities.my_sum(mymap)
                 if self._mirror_samples:
-                    mymap = map(lambda v: self._hamiltonian(lin-v).metric,
+                    mymap = map(lambda v: self._ham4eval(lin-v).metric,
                             self._local_samples)
                     unscaled_metric = unscaled_metric + utilities.my_sum(mymap)
                 self._metric = unscaled_metric.scale(1./self._n_eff_samples)
