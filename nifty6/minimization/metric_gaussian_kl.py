@@ -229,6 +229,9 @@ class MetricGaussianKL(Energy):
                         yield -s
 
     def _sumup(self, obj):
+        # This is a deterministic implementation of MPI allreduce in the sense
+        # that it takes into account that floating point operations are not
+        # associative.
         res = None
         if self._comm is None:
             for o in obj:
