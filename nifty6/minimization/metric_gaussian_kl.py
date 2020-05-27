@@ -179,7 +179,6 @@ class MetricGaussianKL(Energy):
         if np.isnan(self._val) and self._mitigate_nans:
             self._val = np.inf
         self._grad = self._sumup(g)/self._n_eff_samples
-        self._metric = None
 
     def at(self, position):
         return MetricGaussianKL(
