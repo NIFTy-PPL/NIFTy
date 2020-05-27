@@ -130,6 +130,8 @@ class MetricGaussianKL(Energy):
         self._mitigate_nans = nanisinf
         if not isinstance(mirror_samples, bool):
             raise TypeError
+        if isinstance(mean, MultiField) and set(point_estimates) == set(mean.keys()):
+            raise RuntimeError('Point estimates for whole domain. Use EnergyAdapter instead.')
 
         self._hamiltonian = hamiltonian
         self._ham4eval = _ham4eval

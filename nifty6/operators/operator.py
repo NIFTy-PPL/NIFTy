@@ -269,10 +269,14 @@ class Operator(metaclass=NiftyMeta):
         return self.__class__.__name__
 
     def simplify_for_constant_input(self, c_inp):
+        from .energy_operators import EnergyOperator, _ConstantEnergyOperator
         if c_inp is None:
             return None, self
         if c_inp.domain == self.domain:
-            op = _ConstantOperator(self.domain, self(c_inp))
+            if isinstance(self, EnergyOperator):
+                op = _ConstantEnergyOperator(self.domain, self(c_inp))
+            else:
+                op = _ConstantOperator(self.domain, self(c_inp))
             return op(c_inp), op
         return self._simplify_for_constant_input_nontrivial(c_inp)
 
