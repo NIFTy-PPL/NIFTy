@@ -22,6 +22,7 @@ import nifty6 as ift
 
 from ..common import setup_function, teardown_function
 
+
 def test_vdot_operator():
     dom = ift.makeDomain(ift.RGSpace(8))
     fa_1 = ift.FieldAdapter(dom, 'f1')
@@ -36,4 +37,3 @@ def test_vdot_operator():
     assert_allclose(res1.val, res2.val)
     assert_allclose(res1.val, res3)
     ift.extra.check_jacobian_consistency(op1, f)
-    #another Test for linearization?

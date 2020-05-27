@@ -23,7 +23,7 @@ import nifty6 as ift
 from ..common import setup_function, teardown_function
 
 
-def test_contraction_operator(): # actually this tests .sum() -> clarification
+def test_operator_sum():
     x1 = ift.RGSpace((9,), distances=2.)
     x2 = ift.RGSpace((2, 12), distances=(0.3,))
     dom1 = ift.makeDomain(x1)
@@ -47,9 +47,9 @@ def test_contraction_operator(): # actually this tests .sum() -> clarification
     assert_allclose(res4.val, res6)
     res7 = f2.sum(spaces=1)
     res8 = op3(f2)
-    res9 = arr2.sum(axis=(1,2))
+    res9 = arr2.sum(axis=(1, 2))
     assert_allclose(res7.val, res8.val)
-    assert_allclose(res7.val,res9)
+    assert_allclose(res7.val, res9)
     for op in [op1, op2, op3]:
         ift.extra.consistency_check(op, domain_dtype=np.float64,
                                     target_dtype=np.float64)

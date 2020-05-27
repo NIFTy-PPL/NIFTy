@@ -35,17 +35,17 @@ def test_integration_operator():
     op3 = ift.ScalingOperator(dom2, 1).integrate(spaces=1)
     res1 = f1.integrate()
     res2 = op1(f1)
-    res3 = (f1.val*x1.dvol).sum()           #richtig?
+    res3 = (f1.val*x1.dvol).sum()
     assert_allclose(res1.val, res2.val)
     assert_allclose(res1.val, res3)
     res4 = f2.integrate()
     res5 = op2(f2)
-    res6 = (f2.val*x1.dvol*x2.dvol).sum() # richtig?
+    res6 = (f2.val*x1.dvol*x2.dvol).sum()
     assert_allclose(res4.val, res5.val)
     assert_allclose(res4.val, res6)
     res7 = f2.integrate(spaces=1)
     res8 = op3(f2)
-    res9 = (f2.val*x2.dvol).sum(axis=(1,2))
+    res9 = (f2.val*x2.dvol).sum(axis=(1, 2))
     assert_allclose(res7.val, res8.val)
     assert_allclose(res7.val, res9)
     for op in [op1, op2, op3]:
