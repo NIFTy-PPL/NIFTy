@@ -165,10 +165,16 @@ class MetricGaussianKL(Energy):
         self._local_samples = _local_samples
         self._lin = Linearization.make_partial_var(mean, self._constants)
         v, g = [], []
-        for s in self._locsamp:
+        for s in self._local_samples:
             tmp = self._hamiltonian(self._lin+s)
-            v.append(tmp.val.val_rw())
-            g.append(tmp.gradient)
+            tv = tmp.val.val_rw()
+            tg = tmp.gradient
+            if self._mirror_samples:
+                tmp = self._hamiltonian(self._lin-s)
+                tv = tv + tmp.val.val_rw()
+                tg = tg + tmp.gradient
+            v.append(tv)
+            g.append(tg)
         self._val = self._sumup(v)[()]/self._n_eff_samples
         if np.isnan(self._val) and self._mitigate_nans:
             self._val = np.inf
@@ -189,26 +195,14 @@ class MetricGaussianKL(Energy):
     def gradient(self):
         return self._grad
 
-    def _get_metric(self):
-        lin = self._lin.with_want_metric()
-        if self._metric is None:
-            if len(self._local_samples) == 0:  # hack if there are too many MPI tasks
-                self._metric = self._hamiltonian(lin).metric.scale(0.)
-            else:
-                mymap = map(lambda v: self._hamiltonian(lin+v).metric,
-                            self._local_samples)
-                unscaled_metric = utilities.my_sum(mymap)
-                if self._mirror_samples:
-                    mymap = map(lambda v: self._hamiltonian(lin-v).metric,
-                            self._local_samples)
-                    unscaled_metric = unscaled_metric + utilities.my_sum(mymap)
-                self._metric = unscaled_metric.scale(1./self._n_eff_samples)
-
     def apply_metric(self, x):
         lin = self._lin.with_want_metric()
         res = []
-        for s in self._locsamp:
-            res.append(self._hamiltonian(lin+s).metric(x))
+        for s in self._local_samples:
+            tmp = self._hamiltonian(lin+s).metric(x)
+            if self._mirror_samples:
+                tmp = tmp + self._hamiltonian(lin-s).metric(x)
+            res.append(tmp)
         return self._sumup(res)/self._n_eff_samples
 
     @property
@@ -245,27 +239,10 @@ class MetricGaussianKL(Energy):
             rank_lo_hi = [_shareRange(self._n_samples, ntask, i) for i in range(ntask)]
             for itask, (l, h) in enumerate(rank_lo_hi):
                 for i in range(l, h):
-                    iloc = i-self._lo
-                    if self._mirror_samples:
-                        o = obj[2*iloc] if rank == itask else None
-                        o = self._comm.bcast(o, root=itask)
-                        res = o if res is None else res + o
-                        o = obj[2*iloc+1] if rank == itask else None
-                        o = self._comm.bcast(o, root=itask)
-                        res = o if res is None else res + o
-                    else:
-                        o = obj[iloc] if rank == itask else None
-                        o = self._comm.bcast(o, root=itask)
-                        res = o if res is None else res + o
-
+                    o = obj[i-self._lo] if rank == itask else None
+                    o = self._comm.bcast(o, root=itask)
+                    res = o if res is None else res + o
         return res
-
-    @property
-    def _locsamp(self):
-        for s in self._local_samples:
-            yield s
-            if self._mirror_samples:
-                yield -s
 
     def _metric_sample(self, from_inverse=False):
         if from_inverse:
@@ -275,7 +252,8 @@ class MetricGaussianKL(Energy):
         sseq = random.spawn_sseq(self._n_samples)
         for i, v in enumerate(self._local_samples):
             with random.Context(sseq[self._lo+i]):
-                samp.append(self._hamiltonian(lin+v).metric.draw_sample(from_inverse=False))
+                tmp = self._hamiltonian(lin+v).metric.draw_sample(from_inverse=False)
                 if self._mirror_samples:
-                    samp.append(self._hamiltonian(lin-v).metric.draw_sample(from_inverse=False))
+                    tmp = tmp + self._hamiltonian(lin-v).metric.draw_sample(from_inverse=False)
+                samp.append(tmp)
         return self._sumup(samp)/self._n_eff_samples
