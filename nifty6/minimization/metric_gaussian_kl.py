@@ -162,9 +162,11 @@ class MetricGaussianKL(Energy):
         if _local_samples is None:
             sample_hamiltonian = hamiltonian
             if len(point_estimates) > 0:
-                dom = {kk: vv for kk, vv in mean.domain.items() if kk in point_estimates}
+                dom = {kk: vv for kk, vv in mean.domain.items()
+                       if kk in point_estimates}
                 dom = makeDomain(dom)
-                sample_hamiltonian = hamiltonian.simplify_for_constant_input(mean.extract(dom))[1]
+                cstpos = mean.extract(dom)
+                _, sample_hamiltonian = hamiltonian.simplify_for_constant_input(cstpos)
             met = sample_hamiltonian(Linearization.make_partial_var(
                 mean, self._point_estimates, True)).metric
             if napprox >= 1:
@@ -201,7 +203,8 @@ class MetricGaussianKL(Energy):
         return MetricGaussianKL(
             position, self._hamiltonian, self._n_samples, self._constants,
             self._point_estimates, self._mirror_samples, comm=self._comm,
-            _local_samples=self._local_samples, nanisinf=self._mitigate_nans, _ham4eval=self._ham4eval)
+            _local_samples=self._local_samples, nanisinf=self._mitigate_nans,
+            _ham4eval=self._ham4eval)
 
     @property
     def value(self):
