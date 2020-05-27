@@ -349,6 +349,11 @@ class NullOperator(LinearOperator):
         self._check_input(x, mode)
         return self._nullfield(self._tgt(mode))
 
+    def __repr__(self):
+        dom = self.domain.keys() if isinstance(self.domain, MultiDomain) else '()'
+        tgt = self.target.keys() if isinstance(self.target, MultiDomain) else '()'
+        return f'{tgt} <- NullOperator <- {dom}'
+
 
 class PartialExtractor(LinearOperator):
     def __init__(self, domain, target):
