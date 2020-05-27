@@ -236,44 +236,39 @@ class MetricGaussianKL(Energy):
         if self._comm is None:
             who = np.zeros(self._n_samples, dtype=np.int32)
             rank = 0
-            vals = obj
+            vals = list(obj)
         else:
             ntask = self._comm.Get_size()
             rank = self._comm.Get_rank()
             rank_lo_hi = [_shareRange(self._n_samples, ntask, i) for i in range(ntask)]
-            lo = rank_lo_hi[rank][0]
-            hi = rank_lo_hi[rank][1]
-            vals = [None]*lo + obj + [None]*(self._n_samples-hi)
+            lo, hi = rank_lo_hi[rank]
+            vals = [None]*lo + list(obj) + [None]*(self._n_samples-hi)
             who = np.zeros(len(vals), dtype=np.int32)
             for t, (l,h) in enumerate(rank_lo_hi):
                 who[l:h] = t
-        def add2(v, w, rank):
-            #Note that communication only happens if rank in w
-            if len(v) == 1:
-                return v[0]
-            if rank == w[0]:
-                if w[0] == w[1]:
-                    return v[0]+v[1]
-                self._comm.send(v[0], dest=w[1])
-                return None
-            if rank == w[1]:
-                return self._comm.recv(source=w[0]) + v[1] 
 
-        while len(vals) > 1:
-            new_vals = []
-            new_who = []
-            for j in range((len(vals)+1)//2):
-                w = who[2*j:2*j+2]
-                nv = add2(vals[2*j:2*j+2],w, rank)
-                new_vals += [nv]
-                new_who += [w[-1]]
-            vals = new_vals
-            who = new_who
+        step = 1
+        # `step` doubles with every iteration
+        # first round:  add entries 0 and 1, store result in 0
+        #               add entries 2 and 3, store result in 2
+        #               ...
+        # second round: add entries 0 and 2, store result in 0
+        #               add entries 4 and 6, store result in 4
+        #               ...
+        while step < self._n_samples:
+            for j in range(0, self._n_samples, 2*step):
+                if j+step < self._n_samples:  # summation partner found
+                    if rank == who[j]:
+                        if who[j] == who[j+step]:  # no communication required
+                            vals[j] = vals[j] + vals[j+step]
+                        else:
+                            vals[j] = vals[j] + self._comm.recv(source=who[j+step])
+                    elif rank == who[j+step]:
+                        self._comm.send(vals[j+step], dest=who[j])
+            step *= 2
         if self._comm is None:
             return vals[0]
-        res = self._comm.bcast(vals[0], root=who[0])
-        return res
-
+        return self._comm.bcast(vals[0], root=who[0])
 
 
     def _metric_sample(self, from_inverse=False):
