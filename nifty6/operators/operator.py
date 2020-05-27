@@ -297,7 +297,20 @@ class Operator(metaclass=NiftyMeta):
 
     def _simplify_for_constant_input_nontrivial(self, c_inp):
         from .simplify_for_const import SlowPartialConstantOperator
-        return None, SlowPartialConstantOperator(self, c_inp)
+        from ..multi_field import MultiField
+        try:
+            c_out = self.force(c_inp)
+        except KeyError:
+            c_out = None
+
+        if isinstance(c_out, MultiField):
+            dct = {}
+            for kk in set(c_inp.keys()) - set(self.domain.keys()):
+                if isinstance(self.target, MultiDomain) and kk in self.target.keys():
+                    raise NotImplementedError
+                dct[kk] = c_inp[kk]
+            c_out = c_out.unite(MultiField.from_dict(dct))
+        return c_out, self @ SlowPartialConstantOperator(self.domain, c_inp.keys())
 
     def ptw(self, op, *args, **kwargs):
         return _OpChain.make((_FunctionApplier(self.target, op, *args, **kwargs), self))

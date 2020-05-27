@@ -245,6 +245,10 @@ class GaussianEnergy(EnergyOperator):
             return res.add_metric(self._met)
         return res
 
+    def __repr__(self):
+        dom = '()' if isinstance(self.domain, DomainTuple) else self.domain.keys()
+        return f'GaussianEnergy {dom}'
+
 
 class PoissonianEnergy(EnergyOperator):
     """Computes likelihood Hamiltonians of expected count field constrained by
