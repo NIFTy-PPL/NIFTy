@@ -485,24 +485,3 @@ class AveragedEnergy(EnergyOperator):
         self._check_input(x)
         mymap = map(lambda v: self._h(x+v), self._res_samples)
         return utilities.my_sum(mymap)/len(self._res_samples)
-
-
-class _ConstantEnergyOperator(EnergyOperator):
-    def __init__(self, dom, output):
-        from ..sugar import makeDomain
-        self._domain = makeDomain(dom)
-        if self.target is not output.domain:
-            raise TypeError
-        self._output = output
-
-    def apply(self, x):
-        self._check_input(x)
-        if x.jac is not None:
-            val = self._output
-            jac = NullOperator(self._domain, self._target)
-            met = NullOperator(self._domain, self._domain) if x.want_metric else None
-            return x.new(val, jac, met)
-        return self._output
-
-    def __repr__(self):
-        return 'ConstantEnergyOperator <- {}'.format(self.domain.keys())
