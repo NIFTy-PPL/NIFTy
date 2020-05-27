@@ -351,7 +351,9 @@ class _ConstantOperator(Operator):
         return self._output
 
     def __repr__(self):
-        return 'ConstantOperator <- {}'.format(self.domain.keys())
+        dom = self.domain.keys() if isinstance(self.domain, MultiDomain) else '()'
+        tgt = self.target.keys() if isinstance(self.target, MultiDomain) else '()'
+        return f'{tgt} <- ConstantOperator <- {dom}'
 
 
 class _FunctionApplier(Operator):
