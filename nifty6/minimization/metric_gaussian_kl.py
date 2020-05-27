@@ -243,12 +243,7 @@ class MetricGaussianKL(Energy):
             rank_lo_hi = [_shareRange(self._n_samples, ntask, i) for i in range(ntask)]
             lo = rank_lo_hi[rank][0]
             hi = rank_lo_hi[rank][1]
-            vals = []
-            for i in range(self._n_samples):
-                if (i>=lo) and (i<hi):
-                    vals += [obj[i-lo]]
-                else:
-                    vals += [None]
+            vals = [None]*lo + obj + [None]*(self._n_samples-hi)
             who = np.zeros(len(vals), dtype=np.int32)
             for t, (l,h) in enumerate(rank_lo_hi):
                 who[l:h] = t
