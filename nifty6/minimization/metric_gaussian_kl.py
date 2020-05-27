@@ -167,8 +167,7 @@ class MetricGaussianKL(Energy):
                 dom = makeDomain(dom)
                 cstpos = mean.extract(dom)
                 _, sample_hamiltonian = hamiltonian.simplify_for_constant_input(cstpos)
-            met = sample_hamiltonian(Linearization.make_partial_var(
-                mean, self._point_estimates, True)).metric
+            met = sample_hamiltonian(Linearization.make_var(mean, True)).metric
             if napprox >= 1:
                 met._approximation = makeOp(approximation2endo(met, napprox))
             _local_samples = []
@@ -181,7 +180,7 @@ class MetricGaussianKL(Energy):
             if len(_local_samples) != self._hi-self._lo:
                 raise ValueError("# of samples mismatch")
         self._local_samples = _local_samples
-        self._lin = Linearization.make_partial_var(mean, self._constants)
+        self._lin = Linearization.make_var(mean)
         v, g = [], []
         for s in self._local_samples:
             tmp = self._ham4eval(self._lin+s)

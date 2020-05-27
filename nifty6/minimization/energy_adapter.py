@@ -56,7 +56,7 @@ class EnergyAdapter(Energy):
             else:
                 self._op4eval = op
         self._want_metric = want_metric
-        lin = Linearization.make_partial_var(position, constants, want_metric)
+        lin = Linearization.make_var(position, want_metric)
         tmp = self._op(lin)
         self._val = tmp.val.val[()]
         self._grad = tmp.gradient
