@@ -167,11 +167,11 @@ class MetricGaussianKL(Energy):
         v, g = [], []
         for s in self._local_samples:
             tmp = self._hamiltonian(self._lin+s)
-            tv = tmp.val.val_rw()
+            tv = tmp.val.val
             tg = tmp.gradient
             if self._mirror_samples:
                 tmp = self._hamiltonian(self._lin-s)
-                tv = tv + tmp.val.val_rw()
+                tv = tv + tmp.val.val
                 tg = tg + tmp.gradient
             v.append(tv)
             g.append(tg)
