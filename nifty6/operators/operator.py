@@ -18,6 +18,7 @@
 import numpy as np
 
 from .. import pointwise
+from ..logger import logger
 from ..multi_domain import MultiDomain
 from ..utilities import NiftyMeta, indent
 
@@ -274,8 +275,12 @@ class Operator(metaclass=NiftyMeta):
         from .simplify_for_const import ConstantEnergyOperator, ConstantOperator
         if c_inp is None:
             return None, self
+
         if isinstance(self.domain, MultiDomain):
             assert isinstance(c_inp.domain, MultiDomain)
+            if set(c_inp.keys()) > set(self.domain.keys()):
+                raise ValueError
+
         if c_inp.domain is self.domain:
             if isinstance(self, EnergyOperator):
                 op = ConstantEnergyOperator(self.domain, self(c_inp))
@@ -283,34 +288,17 @@ class Operator(metaclass=NiftyMeta):
                 op = ConstantOperator(self.domain, self(c_inp))
             op = ConstantOperator(self.domain, self(c_inp))
             return op(c_inp), op
-        if isinstance(self.domain, MultiDomain) and \
-           set(c_inp.keys()) > set(self.domain.keys()):
-            raise NotImplementedError('This branch is not tested yet')
-            op = ConstantOperator(self.domain, self.force(c_inp))
-            from ..sugar import makeField
-            unaffected = makeField({kk: vv for kk, vv in c_inp.items() if kk not in self.domain})
-            for kk in unaffected:
-                assert kk not in self.domain
-                assert kk not in self.target
-            return op.force(c_inp), op
+        if not isinstance(c_inp.domain, MultiDomain):
+            raise RuntimeError
         return self._simplify_for_constant_input_nontrivial(c_inp)
 
     def _simplify_for_constant_input_nontrivial(self, c_inp):
         from .simplify_for_const import SlowPartialConstantOperator
-        from ..multi_field import MultiField
-        try:
-            c_out = self.force(c_inp)
-        except KeyError:
-            c_out = None
-
-        if isinstance(c_out, MultiField):
-            dct = {}
-            for kk in set(c_inp.keys()) - set(self.domain.keys()):
-                if isinstance(self.target, MultiDomain) and kk in self.target.keys():
-                    raise NotImplementedError
-                dct[kk] = c_inp[kk]
-            c_out = c_out.unite(MultiField.from_dict(dct))
-        return c_out, self @ SlowPartialConstantOperator(self.domain, c_inp.keys())
+        s = ('SlowPartialConstantOperator used. You might want to consider',
+             ' implementing `_simplify_for_constant_input_nontrivial()` for',
+             ' this operator.')
+        logger.warning(s)
+        return None, self @ SlowPartialConstantOperator(self.domain, c_inp.keys())
 
     def ptw(self, op, *args, **kwargs):
         return _OpChain.make((_FunctionApplier(self.target, op, *args, **kwargs), self))

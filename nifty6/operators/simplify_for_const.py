@@ -16,7 +16,6 @@
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
 
 from ..multi_domain import MultiDomain
-from ..multi_field import MultiField
 from .block_diagonal_operator import BlockDiagonalOperator
 from .energy_operators import EnergyOperator
 from .operator import Operator
@@ -90,21 +89,17 @@ class SlowPartialConstantOperator(Operator):
         from ..sugar import makeDomain
         if not isinstance(domain, MultiDomain):
             raise TypeError
-        self._keys = set(constant_keys) & set(domain.keys())
-        if len(self._keys) == 0:
+        if set(constant_keys) > set(domain.keys()) or len(constant_keys) == 0:
             raise ValueError
+        self._keys = set(constant_keys) & set(domain.keys())
         self._domain = self._target = makeDomain(domain)
 
     def apply(self, x):
         self._check_input(x)
         if x.jac is None:
             return x
-        jac = {}
-        for kk, dd in self._domain.items():
-            fac = 1
-            if kk in self._keys:
-                fac = 0
-            jac[kk] = ScalingOperator(dd, fac)
+        jac = {kk: ScalingOperator(dd, 0 if kk in self._keys else 1)
+               for kk, dd in self._domain.items()}
         return x.prepend_jac(BlockDiagonalOperator(x.jac.domain, jac))
 
     def __repr__(self):
