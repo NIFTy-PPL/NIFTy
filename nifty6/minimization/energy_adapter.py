@@ -46,6 +46,7 @@ class EnergyAdapter(Energy):
         super(EnergyAdapter, self).__init__(position)
         self._op = op
         self._constants = constants
+        self._op4eval = _op4eval
         if self._op4eval is None:
             if len(constants) > 0:
                 dom = {kk: vv for kk, vv in position.domain.items()
