@@ -1,7 +1,7 @@
 NIFTy - Numerical Information Field Theory
 ==========================================
-[![build status](https://gitlab.mpcdf.mpg.de/ift/NIFTy/badges/NIFTy_6/build.svg)](https://gitlab.mpcdf.mpg.de/ift/NIFTy/commits/NIFTy_6)
-[![coverage report](https://gitlab.mpcdf.mpg.de/ift/NIFTy/badges/NIFTy_6/coverage.svg)](https://gitlab.mpcdf.mpg.de/ift/NIFTy/commits/NIFTy_6)
+[![pipeline status](https://gitlab.mpcdf.mpg.de/ift/nifty/badges/NIFTy_6/pipeline.svg)](https://gitlab.mpcdf.mpg.de/ift/nifty/-/commits/NIFTy_6)
+[![coverage report](https://gitlab.mpcdf.mpg.de/ift/nifty/badges/NIFTy_6/coverage.svg)](https://gitlab.mpcdf.mpg.de/ift/nifty/-/commits/NIFTy_6)
 
 **NIFTy** project homepage:
 [http://ift.pages.mpcdf.de/nifty](http://ift.pages.mpcdf.de/nifty)
@@ -91,6 +91,7 @@ MPI support is added via:
     sudo apt-get install python3-mpi4py
 
 Pypocketfft is added via:
+
     pip3 install --user git+https://gitlab.mpcdf.mpg.de/mtr/pypocketfft
 
 If this library is present, NIFTy will detect it automatically and prefer
