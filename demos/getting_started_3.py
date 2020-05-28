@@ -137,8 +137,9 @@ if __name__ == '__main__':
 
         # Plot current reconstruction
         plot = ift.Plot()
-        plot.add(signal(KL.position), title="reconstruction")
-        plot.add([A.force(mock_position), A.force(KL.position)], title="power")
+        plot.add(signal(KL.position), title="Latent mean")
+        plot.add([A.force(KL.position + ss) for ss in KL.samples],
+                 title="Samples power spectrum")
         plot.output(ny=1, ysize=6, xsize=16,
                     name=filename.format("loop_{:02d}".format(i)))
 

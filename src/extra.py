@@ -77,7 +77,7 @@ def _check_linearity(op, domain_dtype, atol, rtol):
         return
     fld1 = from_random(op.domain, "normal", dtype=domain_dtype)
     fld2 = from_random(op.domain, "normal", dtype=domain_dtype)
-    alpha = np.random.random()  # FIXME: this can break badly with MPI!
+    alpha = 0.42
     val1 = op(alpha*fld1+fld2)
     val2 = alpha*op(fld1)+op(fld2)
     assert_allclose(val1, val2, atol=atol, rtol=rtol)

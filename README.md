@@ -91,6 +91,7 @@ MPI support is added via:
     sudo apt-get install python3-mpi4py
 
 Pypocketfft is added via:
+
     pip3 install --user git+https://gitlab.mpcdf.mpg.de/mtr/pypocketfft
 
 If this library is present, NIFTy will detect it automatically and prefer
@@ -146,12 +147,12 @@ The NIFTy package is licensed under the terms of the
 
 Contributors
 ------------
-Find the list of all people who authored commits in this repository.
 
 ### NIFTy6
 
 - Andrija Kostic
 - Gordian Edenhofer
+- Jakob Knollmüller
 - Lukas Platz
 - Martin Reinecke
 - [Philipp Arras](https://wwwmpa.mpa-garching.mpg.de/~parras/)

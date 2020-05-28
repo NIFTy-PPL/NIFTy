@@ -39,7 +39,6 @@ class CountingOp(ift.Operator):
 
 def test_operator_tree_optimiser():
     dom = ift.RGSpace(10, harmonic=True)
-    hdom = dom.get_default_codomain()
     cop1 = CountingOp(dom)
     op1 = (ift.UniformOperator(dom, -1, 2)@cop1).ducktape('a')
     cop2 = CountingOp(dom)
@@ -58,3 +57,5 @@ def test_operator_tree_optimiser():
     op = ift.operator_tree_optimiser._optimise_operator(op)
     assert_allclose(op(fld).val, op_orig(fld).val, rtol=np.finfo(np.float64).eps)
     assert_(1 == ( (cop4.count-1) * cop3.count * cop2.count * cop1.count))
+    # test testing
+    ift.optimise_operator(op_orig)

@@ -36,27 +36,6 @@ def _shareRange(nwork, nshares, myshare):
     return lo, hi
 
 
-def _np_allreduce_sum(comm, arr):
-    if comm is None:
-        return arr
-    from mpi4py import MPI
-    arr = np.array(arr)
-    res = np.empty_like(arr)
-    comm.Allreduce(arr, res, MPI.SUM)
-    return res
-
-
-def _allreduce_sum_field(comm, fld):
-    if comm is None:
-        return fld
-    if isinstance(fld, Field):
-        return Field(fld.domain, _np_allreduce_sum(comm, fld.val))
-    res = tuple(
-        Field(f.domain, _np_allreduce_sum(comm, f.val))
-        for f in fld.values())
-    return MultiField(fld.domain, res)
-
-
 class _KLMetric(EndomorphicOperator):
     def __init__(self, KL):
         self._KL = KL
@@ -185,27 +164,21 @@ class MetricGaussianKL(Energy):
                 raise ValueError("# of samples mismatch")
         self._local_samples = _local_samples
         self._lin = Linearization.make_partial_var(mean, self._constants)
-        v, g = None, None
-        if len(self._local_samples) == 0:  # hack if there are too many MPI tasks
-            tmp = self._hamiltonian(self._lin)
-            v = 0. * tmp.val.val
-            g = 0. * tmp.gradient
-        else:
-            for s in self._local_samples:
-                tmp = self._hamiltonian(self._lin+s)
-                if self._mirror_samples:
-                    tmp = tmp + self._hamiltonian(self._lin-s)
-                if v is None:
-                    v = tmp.val.val_rw()
-                    g = tmp.gradient
-                else:
-                    v += tmp.val.val
-                    g = g + tmp.gradient
-        self._val = _np_allreduce_sum(self._comm, v)[()] / self._n_eff_samples
+        v, g = [], []
+        for s in self._local_samples:
+            tmp = self._hamiltonian(self._lin+s)
+            tv = tmp.val.val
+            tg = tmp.gradient
+            if self._mirror_samples:
+                tmp = self._hamiltonian(self._lin-s)
+                tv = tv + tmp.val.val
+                tg = tg + tmp.gradient
+            v.append(tv)
+            g.append(tg)
+        self._val = self._sumup(v)[()]/self._n_eff_samples
         if np.isnan(self._val) and self._mitigate_nans:
             self._val = np.inf
-        self._grad = _allreduce_sum_field(self._comm, g) / self._n_eff_samples
-        self._metric = None
+        self._grad = self._sumup(g)/self._n_eff_samples
 
     def at(self, position):
         return MetricGaussianKL(
@@ -221,24 +194,15 @@ class MetricGaussianKL(Energy):
     def gradient(self):
         return self._grad
 
-    def _get_metric(self):
-        lin = self._lin.with_want_metric()
-        if self._metric is None:
-            if len(self._local_samples) == 0:  # hack if there are too many MPI tasks
-                self._metric = self._hamiltonian(lin).metric.scale(0.)
-            else:
-                mymap = map(lambda v: self._hamiltonian(lin+v).metric,
-                            self._local_samples)
-                unscaled_metric = utilities.my_sum(mymap)
-                if self._mirror_samples:
-                    mymap = map(lambda v: self._hamiltonian(lin-v).metric,
-                            self._local_samples)
-                    unscaled_metric = unscaled_metric + utilities.my_sum(mymap)
-                self._metric = unscaled_metric.scale(1./self._n_eff_samples)
-
     def apply_metric(self, x):
-        self._get_metric()
-        return _allreduce_sum_field(self._comm, self._metric(x))
+        lin = self._lin.with_want_metric()
+        res = []
+        for s in self._local_samples:
+            tmp = self._hamiltonian(lin+s).metric(x)
+            if self._mirror_samples:
+                tmp = tmp + self._hamiltonian(lin-s).metric(x)
+            res.append(tmp)
+        return self._sumup(res)/self._n_eff_samples
 
     @property
     def metric(self):
@@ -263,15 +227,73 @@ class MetricGaussianKL(Energy):
                     if self._mirror_samples:
                         yield -s
 
+    def _sumup(self, obj):
+        """ This is a deterministic implementation of MPI allreduce
+
+        Numeric addition is not associative due to rounding errors.
+        Therefore we provide our own implementation that is consistent
+        no matter if MPI is used and how many tasks there are.
+
+        At the beginning, a list `who` is constructed, that states which obj can
+        be found on which MPI task.
+        Then elements are added pairwise, with increasing pair distance.
+        In the first round, the distance between pair members is 1:
+          v[0] := v[0] + v[1]
+          v[2] := v[2] + v[3]
+          v[4] := v[4] + v[5]
+        Entries whose summation partner lies beyond the end of the array
+        stay unchanged.
+        When both summation partners are not located on the same MPI task,
+        the second summand is sent to the task holding the first summand and
+        the operation is carried out there.
+        For the next round, the distance is doubled:
+          v[0] := v[0] + v[2]
+          v[4] := v[4] + v[6]
+          v[8] := v[8] + v[10]
+        This is repeated until the distance exceeds the length of the array.
+        At this point v[0] contains the sum of all entries, which is then
+        broadcast to all tasks.
+        """
+        if self._comm is None:
+            who = np.zeros(self._n_samples, dtype=np.int32)
+            rank = 0
+            vals = list(obj)  # necessary since we don't want to modify `obj`
+        else:
+            ntask = self._comm.Get_size()
+            rank = self._comm.Get_rank()
+            rank_lo_hi = [_shareRange(self._n_samples, ntask, i) for i in range(ntask)]
+            lo, hi = rank_lo_hi[rank]
+            vals = [None]*lo + list(obj) + [None]*(self._n_samples-hi)
+            who = [t for t, (l, h) in enumerate(rank_lo_hi) for cnt in range(h-l)]
+
+        step = 1
+        while step < self._n_samples:
+            for j in range(0, self._n_samples, 2*step):
+                if j+step < self._n_samples:  # summation partner found
+                    if rank == who[j]:
+                        if who[j] == who[j+step]:  # no communication required
+                            vals[j] = vals[j] + vals[j+step]
+                            vals[j+step] = None
+                        else:
+                            vals[j] = vals[j] + self._comm.recv(source=who[j+step])
+                    elif rank == who[j+step]:
+                        self._comm.send(vals[j+step], dest=who[j])
+                        vals[j+step] = None
+            step *= 2
+        if self._comm is None:
+            return vals[0]
+        return self._comm.bcast(vals[0], root=who[0])
+
     def _metric_sample(self, from_inverse=False):
         if from_inverse:
             raise NotImplementedError()
         lin = self._lin.with_want_metric()
-        samp = full(self._hamiltonian.domain, 0.)
+        samp = []
         sseq = random.spawn_sseq(self._n_samples)
         for i, v in enumerate(self._local_samples):
             with random.Context(sseq[self._lo+i]):
-                samp = samp + self._hamiltonian(lin+v).metric.draw_sample(from_inverse=False)
+                tmp = self._hamiltonian(lin+v).metric.draw_sample(from_inverse=False)
                 if self._mirror_samples:
-                    samp = samp + self._hamiltonian(lin-v).metric.draw_sample(from_inverse=False)
-        return _allreduce_sum_field(self._comm, samp)/self._n_eff_samples
+                    tmp = tmp + self._hamiltonian(lin-v).metric.draw_sample(from_inverse=False)
+                samp.append(tmp)
+        return self._sumup(samp)/self._n_eff_samples

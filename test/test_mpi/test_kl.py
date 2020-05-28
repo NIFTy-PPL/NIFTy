@@ -18,7 +18,7 @@
 import numpy as np
 import pytest
 from mpi4py import MPI
-from numpy.testing import assert_, assert_allclose
+from numpy.testing import assert_, assert_equal
 
 import nifty7 as ift
 
@@ -76,33 +76,35 @@ def test_kl(constants, point_estimates, mirror_samples, mode, mf):
     assert_(len(tuple(kl1.samples)) == expected_nsamps)
 
     # Test value
-    assert_allclose(kl0.value, kl1.value)
+    assert_equal(kl0.value, kl1.value)
 
     # Test gradient
-    if not mf:
-        ift.extra.assert_allclose(kl0.gradient, kl1.gradient, 0, 1e-14)
-        return
-    for kk in h.domain.keys():
-        res0 = kl0.gradient[kk].val
-        if kk in constants:
-            res0 = 0*res0
-        res1 = kl1.gradient[kk].val
-        assert_allclose(res0, res1)
+    if mf:
+        for kk in h.domain.keys():
+            res0 = kl0.gradient[kk].val
+            if kk in constants:
+                res0 = 0*res0
+            res1 = kl1.gradient[kk].val
+            assert_equal(res0, res1)
+    else:
+        assert_equal(kl0.gradient.val, kl1.gradient.val)
 
     # Test point_estimates (after drawing samples)
-    for kk in point_estimates:
-        for ss in kl0.samples:
-            ss = ss[kk].val
-            assert_allclose(ss, 0*ss)
-        for ss in kl1.samples:
-            ss = ss[kk].val
-            assert_allclose(ss, 0*ss)
+    if mf:
+        for kk in point_estimates:
+            for ss in kl0.samples:
+                ss = ss[kk].val
+                assert_equal(ss, 0*ss)
+            for ss in kl1.samples:
+                ss = ss[kk].val
+                assert_equal(ss, 0*ss)
 
     # Test constants (after some minimization)
-    cg = ift.GradientNormController(iteration_limit=5)
-    minimizer = ift.NewtonCG(cg)
-    for e in [kl0, kl1]:
-        e, _ = minimizer(e)
-        diff = (mean0 - e.position).to_dict()
-        for kk in constants:
-            assert_allclose(diff[kk].val, 0*diff[kk].val)
+    if mf:
+        cg = ift.GradientNormController(iteration_limit=5)
+        minimizer = ift.NewtonCG(cg)
+        for e in [kl0, kl1]:
+            e, _ = minimizer(e)
+            diff = (mean0 - e.position).to_dict()
+            for kk in constants:
+                assert_equal(diff[kk].val, 0*diff[kk].val)
