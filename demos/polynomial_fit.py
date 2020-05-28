@@ -18,7 +18,7 @@
 import matplotlib.pyplot as plt
 import numpy as np
 
-import nifty6 as ift
+import nifty7 as ift
 
 
 def polynomial(coefficients, sampling_points):

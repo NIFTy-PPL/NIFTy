@@ -17,12 +17,12 @@
 
 from numpy.testing import assert_allclose, assert_equal
 
-import nifty6 as ift
+import nifty7 as ift
 from ..common import setup_function, teardown_function
 
 
 def test_simplification():
-    from nifty6.operators.simplify_for_const import ConstantOperator
+    from nifty7.operators.simplify_for_const import ConstantOperator
     f1 = ift.Field.full(ift.RGSpace(10), 2.)
     op = ift.FFTOperator(f1.domain)
     _, op2 = op.simplify_for_constant_input(f1)

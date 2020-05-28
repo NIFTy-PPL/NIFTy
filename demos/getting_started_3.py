@@ -29,7 +29,7 @@ import sys
 
 import numpy as np
 
-import nifty6 as ift
+import nifty7 as ift
 
 
 def random_los(n_los):

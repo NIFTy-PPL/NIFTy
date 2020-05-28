@@ -18,7 +18,7 @@
 import numpy as np
 from numpy.testing import assert_allclose, assert_equal
 
-import nifty6 as ift
+import nifty7 as ift
 from .common import setup_function, teardown_function
 
 dom = ift.makeDomain({"d1": ift.RGSpace(10)})

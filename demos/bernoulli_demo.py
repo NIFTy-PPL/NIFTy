@@ -24,7 +24,7 @@
 
 import numpy as np
 
-import nifty6 as ift
+import nifty7 as ift
 
 if __name__ == '__main__':
     # Set up the position space of the signal
