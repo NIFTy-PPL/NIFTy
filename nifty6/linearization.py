@@ -19,6 +19,7 @@ import numpy as np
 
 from .sugar import makeOp
 from .operators.operator import Operator
+from .operators.sandwich_operator import SandwichOperator
 
 
 class Linearization(Operator):
@@ -65,10 +66,7 @@ class Linearization(Operator):
         return self.make_var(self._val, self._want_metric)
 
     def prepend_jac(self, jac):
-        metric = None
-        if self._metric is not None:
-            from .operators.sandwich_operator import SandwichOperator
-            metric = None if self._metric is None else SandwichOperator.make(jac, self._metric)
+        metric = None if self._metric is None else SandwichOperator.make(jac, self._metric)
         return self.new(self._val, self._jac @ jac, metric)
 
     @property
