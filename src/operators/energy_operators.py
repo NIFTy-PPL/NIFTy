@@ -27,7 +27,7 @@ from .linear_operator import LinearOperator
 from .operator import Operator
 from .sampling_enabler import SamplingDtypeSetter, SamplingEnabler
 from .scaling_operator import ScalingOperator
-from .simple_linear_operators import NullOperator, VdotOperator
+from .simple_linear_operators import VdotOperator
 
 
 def _check_sampling_dtype(domain, dtypes):
