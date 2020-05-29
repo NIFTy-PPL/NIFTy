@@ -16,7 +16,7 @@
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
 
 import pytest
-from numpy.testing import assert_, assert_allclose
+from numpy.testing import assert_, assert_allclose, assert_raises
 
 import nifty7 as ift
 
@@ -44,13 +44,17 @@ def test_kl(constants, point_estimates, mirror_samples, mf):
     mean0 = ift.from_random(h.domain, 'normal')
 
     nsamps = 2
-    kl = ift.MetricGaussianKL(mean0,
-                              h,
-                              nsamps,
-                              constants=constants,
-                              point_estimates=point_estimates,
-                              mirror_samples=mirror_samples,
-                              napprox=0)
+    args = {'constants': constants,
+            'point_estimates': point_estimates,
+            'mirror_samples': mirror_samples,
+            'n_samples': nsamps,
+            'mean': mean0,
+            'hamiltonian': h}
+    if isinstance(mean0, ift.MultiField) and set(point_estimates) == set(mean0.keys()):
+        with assert_raises(RuntimeError):
+            ift.MetricGaussianKL(**args)
+        return
+    kl = ift.MetricGaussianKL(**args)
     assert_(len(ic.history) > 0)
     assert_(len(ic.history) == len(ic.history.time_stamps))
     assert_(len(ic.history) == len(ic.history.energy_values))
@@ -64,7 +68,8 @@ def test_kl(constants, point_estimates, mirror_samples, mf):
                                   h,
                                   nsamps,
                                   mirror_samples=mirror_samples,
-                                  napprox=0,
+                                  constants=constants,
+                                  point_estimates=point_estimates,
                                   _local_samples=locsamp)
 
     # Test number of samples

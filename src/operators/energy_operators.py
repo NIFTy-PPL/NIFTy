@@ -150,21 +150,21 @@ class VariableCovarianceGaussianEnergy(EnergyOperator):
     """
 
     def __init__(self, domain, residual_key, inverse_covariance_key, sampling_dtype):
-        self._r = str(residual_key)
-        self._icov = str(inverse_covariance_key)
+        self._kr = str(residual_key)
+        self._ki = str(inverse_covariance_key)
         dom = DomainTuple.make(domain)
-        self._domain = MultiDomain.make({self._r: dom, self._icov: dom})
-        self._sampling_dtype = sampling_dtype
+        self._domain = MultiDomain.make({self._kr: dom, self._ki: dom})
+        self._dt = sampling_dtype
         _check_sampling_dtype(self._domain, sampling_dtype)
 
     def apply(self, x):
         self._check_input(x)
-        res = 0.5*(x[self._r].vdot(x[self._r]*x[self._icov]).real - x[self._icov].ptw("log").sum())
+        r, i = x[self._kr], x[self._ki]
+        res = 0.5*(r.vdot(r*i.real).real - i.ptw("log").sum())
         if not x.want_metric:
             return res
-        mf = {self._r: x.val[self._icov], self._icov: .5*x.val[self._icov]**(-2)}
-        met = makeOp(MultiField.from_dict(mf))
-        return res.add_metric(SamplingDtypeSetter(met, self._sampling_dtype))
+        met = MultiField.from_dict({self._kr: i.val, self._ki: .5*i.val**(-2)})
+        return res.add_metric(SamplingDtypeSetter(makeOp(met), self._dt))
 
 
 class GaussianEnergy(EnergyOperator):
@@ -223,9 +223,11 @@ class GaussianEnergy(EnergyOperator):
         if inverse_covariance is None:
             self._op = Squared2NormOperator(self._domain).scale(0.5)
             self._met = ScalingOperator(self._domain, 1)
+            self._trivial_invcov = True
         else:
             self._op = QuadraticFormOperator(inverse_covariance)
             self._met = inverse_covariance
+            self._trivial_invcov = False
         if sampling_dtype is not None:
             self._met = SamplingDtypeSetter(self._met, sampling_dtype)
 
@@ -244,6 +246,10 @@ class GaussianEnergy(EnergyOperator):
         if x.want_metric:
             return res.add_metric(self._met)
         return res
+
+    def __repr__(self):
+        dom = '()' if isinstance(self.domain, DomainTuple) else self.domain.keys()
+        return f'GaussianEnergy {dom}'
 
 
 class PoissonianEnergy(EnergyOperator):

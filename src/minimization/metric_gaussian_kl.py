@@ -17,14 +17,14 @@
 
 import numpy as np
 
-from .. import random, utilities
-from ..field import Field
+from .. import random
 from ..linearization import Linearization
+from ..logger import logger
 from ..multi_field import MultiField
 from ..operators.endomorphic_operator import EndomorphicOperator
 from ..operators.energy_operators import StandardHamiltonian
 from ..probing import approximation2endo
-from ..sugar import full, makeOp
+from ..sugar import makeDomain, makeOp
 from .energy import Energy
 
 
@@ -125,13 +125,19 @@ class MetricGaussianKL(Energy):
             raise ValueError
         if not isinstance(n_samples, int):
             raise TypeError
-        self._constants = tuple(constants)
-        self._point_estimates = tuple(point_estimates)
         self._mitigate_nans = nanisinf
         if not isinstance(mirror_samples, bool):
             raise TypeError
+        if isinstance(mean, MultiField) and set(point_estimates) == set(mean.keys()):
+            raise RuntimeError(
+                'Point estimates for whole domain. Use EnergyAdapter instead.')
 
         self._hamiltonian = hamiltonian
+        if len(constants) > 0:
+            dom = {kk: vv for kk, vv in mean.domain.items() if kk in constants}
+            dom = makeDomain(dom)
+            cstpos = mean.extract(dom)
+            _, self._hamiltonian = hamiltonian.simplify_for_constant_input(cstpos)
 
         self._n_samples = int(n_samples)
         if comm is not None:
@@ -149,8 +155,13 @@ class MetricGaussianKL(Energy):
             self._n_eff_samples *= 2
 
         if _local_samples is None:
-            met = hamiltonian(Linearization.make_partial_var(
-                mean, self._point_estimates, True)).metric
+            if len(point_estimates) > 0:
+                dom = {kk: vv for kk, vv in mean.domain.items()
+                       if kk in point_estimates}
+                dom = makeDomain(dom)
+                cstpos = mean.extract(dom)
+                _, hamiltonian = hamiltonian.simplify_for_constant_input(cstpos)
+            met = hamiltonian(Linearization.make_var(mean, True)).metric
             if napprox >= 1:
                 met._approximation = makeOp(approximation2endo(met, napprox))
             _local_samples = []
@@ -163,7 +174,7 @@ class MetricGaussianKL(Energy):
             if len(_local_samples) != self._hi-self._lo:
                 raise ValueError("# of samples mismatch")
         self._local_samples = _local_samples
-        self._lin = Linearization.make_partial_var(mean, self._constants)
+        self._lin = Linearization.make_var(mean)
         v, g = [], []
         for s in self._local_samples:
             tmp = self._hamiltonian(self._lin+s)
@@ -176,14 +187,14 @@ class MetricGaussianKL(Energy):
             v.append(tv)
             g.append(tg)
         self._val = self._sumup(v)[()]/self._n_eff_samples
-        if np.isnan(self._val) and self._mitigate_nans:
+        if self._mitigate_nans and np.isnan(self._val):
             self._val = np.inf
         self._grad = self._sumup(g)/self._n_eff_samples
 
     def at(self, position):
         return MetricGaussianKL(
-            position, self._hamiltonian, self._n_samples, self._constants,
-            self._point_estimates, self._mirror_samples, comm=self._comm,
+            position, self._hamiltonian, self._n_samples,
+            mirror_samples=self._mirror_samples, comm=self._comm,
             _local_samples=self._local_samples, nanisinf=self._mitigate_nans)
 
     @property
@@ -287,6 +298,10 @@ class MetricGaussianKL(Energy):
     def _metric_sample(self, from_inverse=False):
         if from_inverse:
             raise NotImplementedError()
+        s = ('This draws from the Hamiltonian used for evaluation and does '
+             ' not take point_estimates into accout. Make sure that this '
+             'is your intended use.')
+        logger.warning(s)
         lin = self._lin.with_want_metric()
         samp = []
         sseq = random.spawn_sseq(self._n_samples)

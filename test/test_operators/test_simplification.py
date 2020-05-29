@@ -22,18 +22,18 @@ from ..common import setup_function, teardown_function
 
 
 def test_simplification():
-    from nifty7.operators.operator import _ConstantOperator
+    from nifty7.operators.simplify_for_const import ConstantOperator
     f1 = ift.Field.full(ift.RGSpace(10), 2.)
     op = ift.FFTOperator(f1.domain)
     _, op2 = op.simplify_for_constant_input(f1)
-    assert_equal(isinstance(op2, _ConstantOperator), True)
+    assert_equal(isinstance(op2, ConstantOperator), True)
     assert_allclose(op(f1).val, op2(f1).val)
 
     dom = {"a": ift.RGSpace(10)}
     f1 = ift.full(dom, 2.)
     op = ift.FFTOperator(f1.domain["a"]).ducktape("a")
     _, op2 = op.simplify_for_constant_input(f1)
-    assert_equal(isinstance(op2, _ConstantOperator), True)
+    assert_equal(isinstance(op2, ConstantOperator), True)
     assert_allclose(op(f1).val, op2(f1).val)
 
     dom = {"a": ift.RGSpace(10), "b": ift.RGSpace(5)}
@@ -45,7 +45,7 @@ def test_simplification():
     op = (o1.ducktape("a").ducktape_left("a") +
           o2.ducktape("b").ducktape_left("b"))
     _, op2 = op.simplify_for_constant_input(f2)
-    assert_equal(isinstance(op2._op1, _ConstantOperator), True)
+    assert_equal(isinstance(op2._op1, ConstantOperator), True)
     assert_allclose(op(f1)["a"].val, op2(f1)["a"].val)
     assert_allclose(op(f1)["b"].val, op2(f1)["b"].val)
     lin = ift.Linearization.make_var(ift.MultiField.full(op2.domain, 2.), True)

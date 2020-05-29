@@ -11,13 +11,15 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
-# Copyright(C) 2013-2019 Max-Planck-Society
+# Copyright(C) 2013-2020 Max-Planck-Society
 #
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
 
 import numpy as np
 
 from .. import pointwise
+from ..logger import logger
+from ..multi_domain import MultiDomain
 from ..utilities import NiftyMeta, indent
 
 
@@ -269,15 +271,35 @@ class Operator(metaclass=NiftyMeta):
         return self.__class__.__name__
 
     def simplify_for_constant_input(self, c_inp):
+        from .energy_operators import EnergyOperator
+        from .simplify_for_const import ConstantEnergyOperator, ConstantOperator
         if c_inp is None:
             return None, self
-        if c_inp.domain == self.domain:
-            op = _ConstantOperator(self.domain, self(c_inp))
+
+        if isinstance(self.domain, MultiDomain):
+            assert isinstance(c_inp.domain, MultiDomain)
+            if set(c_inp.keys()) > set(self.domain.keys()):
+                raise ValueError
+
+        if c_inp.domain is self.domain:
+            if isinstance(self, EnergyOperator):
+                op = ConstantEnergyOperator(self.domain, self(c_inp))
+            else:
+                op = ConstantOperator(self.domain, self(c_inp))
+            op = ConstantOperator(self.domain, self(c_inp))
             return op(c_inp), op
+        if not isinstance(c_inp.domain, MultiDomain):
+            raise RuntimeError
         return self._simplify_for_constant_input_nontrivial(c_inp)
 
     def _simplify_for_constant_input_nontrivial(self, c_inp):
-        return None, self
+        from .simplify_for_const import SlowPartialConstantOperator
+        s = ('SlowPartialConstantOperator used. You might want to consider'
+             ' implementing `_simplify_for_constant_input_nontrivial()` for'
+             ' this operator:')
+        logger.warning(s)
+        logger.warning(self.__repr__())
+        return None, self @ SlowPartialConstantOperator(self.domain, c_inp.keys())
 
     def ptw(self, op, *args, **kwargs):
         return _OpChain.make((_FunctionApplier(self.target, op, *args, **kwargs), self))
@@ -289,65 +311,6 @@ for f in pointwise.ptw_dict.keys():
             return self.ptw(f, *args, **kwargs)
         return func2
     setattr(Operator, f, func(f))
-
-
-class _ConstCollector(object):
-    def __init__(self):
-        self._const = None
-        self._nc = set()
-
-    def mult(self, const, fulldom):
-        if const is None:
-            self._nc |= set(fulldom)
-        else:
-            self._nc |= set(fulldom) - set(const)
-            if self._const is None:
-                from ..multi_field import MultiField
-                self._const = MultiField.from_dict(
-                    {key: const[key] for key in const if key not in self._nc})
-            else:
-                from ..multi_field import MultiField
-                self._const = MultiField.from_dict(
-                    {key: self._const[key]*const[key]
-                     for key in const if key not in self._nc})
-
-    def add(self, const, fulldom):
-        if const is None:
-            self._nc |= set(fulldom.keys())
-        else:
-            from ..multi_field import MultiField
-            self._nc |= set(fulldom.keys()) - set(const.keys())
-            if self._const is None:
-                self._const = MultiField.from_dict(
-                    {key: const[key]
-                     for key in const.keys() if key not in self._nc})
-            else:
-                self._const = self._const.unite(const)
-                self._const = MultiField.from_dict(
-                    {key: self._const[key]
-                     for key in self._const if key not in self._nc})
-
-    @property
-    def constfield(self):
-        return self._const
-
-
-class _ConstantOperator(Operator):
-    def __init__(self, dom, output):
-        from ..sugar import makeDomain
-        self._domain = makeDomain(dom)
-        self._target = output.domain
-        self._output = output
-
-    def apply(self, x):
-        from .simple_linear_operators import NullOperator
-        self._check_input(x)
-        if x.jac is not None:
-            return x.new(self._output, NullOperator(self._domain, self._target))
-        return self._output
-
-    def __repr__(self):
-        return 'ConstantOperator <- {}'.format(self.domain.keys())
 
 
 class _FunctionApplier(Operator):
@@ -444,16 +407,16 @@ class _OpProd(Operator):
         return lin1.new(lin1._val*lin2._val, jac)
 
     def _simplify_for_constant_input_nontrivial(self, c_inp):
+        from ..multi_domain import MultiDomain
+        from .simplify_for_const import ConstCollector
+
         f1, o1 = self._op1.simplify_for_constant_input(
             c_inp.extract_part(self._op1.domain))
         f2, o2 = self._op2.simplify_for_constant_input(
             c_inp.extract_part(self._op2.domain))
-
-        from ..multi_domain import MultiDomain
         if not isinstance(self._target, MultiDomain):
             return None, _OpProd(o1, o2)
-
-        cc = _ConstCollector()
+        cc = ConstCollector()
         cc.mult(f1, o1.target)
         cc.mult(f2, o2.target)
         return cc.constfield, _OpProd(o1, o2)
@@ -490,16 +453,16 @@ class _OpSum(Operator):
         return res
 
     def _simplify_for_constant_input_nontrivial(self, c_inp):
+        from ..multi_domain import MultiDomain
+        from .simplify_for_const import ConstCollector
+
         f1, o1 = self._op1.simplify_for_constant_input(
             c_inp.extract_part(self._op1.domain))
         f2, o2 = self._op2.simplify_for_constant_input(
             c_inp.extract_part(self._op2.domain))
-
-        from ..multi_domain import MultiDomain
         if not isinstance(self._target, MultiDomain):
             return None, _OpSum(o1, o2)
-
-        cc = _ConstCollector()
+        cc = ConstCollector()
         cc.add(f1, o1.target)
         cc.add(f2, o2.target)
         return cc.constfield, _OpSum(o1, o2)

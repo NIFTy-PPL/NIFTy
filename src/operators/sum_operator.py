@@ -224,8 +224,8 @@ class SumOperator(LinearOperator):
                 fullop = op if fullop is None else fullop + op
             return None, fullop
 
-        from .operator import _ConstCollector
-        cc = _ConstCollector()
+        from .simplify_for_const import ConstCollector
+        cc = ConstCollector()
         fullop = None
         for tf, to, n in zip(f, o, self._neg):
             cc.add(tf, to.target)
