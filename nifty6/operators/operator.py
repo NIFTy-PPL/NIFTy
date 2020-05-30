@@ -362,6 +362,9 @@ class _FunctionApplier(Operator):
         self._check_input(x)
         return x.ptw(self._funcname, *self._args, **self._kwargs)
 
+    def __repr__(self):
+        return f"_FunctionApplier ('{self._funcname}')"
+
 
 class _CombinedOperator(Operator):
     def __init__(self, ops, _callingfrommake=False):
