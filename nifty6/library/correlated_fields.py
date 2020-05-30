@@ -129,6 +129,7 @@ class _LognormalMomentMatching(Operator):
         op = _normal(logmean, logsig, key, N_copies).ptw("exp")
         self._domain, self._target = op.domain, op.target
         self.apply = op.apply
+        self._repr_str = f"_LognormalMomentMatching: " + op.__repr__()
 
     @property
     def mean(self):
@@ -137,6 +138,9 @@ class _LognormalMomentMatching(Operator):
     @property
     def std(self):
         return self._sig
+
+    def __repr__(self):
+        return self._repr_str
 
 
 class _SlopeRemover(EndomorphicOperator):
@@ -346,10 +350,14 @@ class _Amplitude(Operator):
         self.apply = op.apply
         self._domain, self._target = op.domain, op.target
         self._space = space
+        self._repr_str = "_Amplitude: " + op.__repr__()
 
     @property
     def fluctuation_amplitude(self):
         return self._fluc
+
+    def __repr__(self):
+        return self._repr_str
 
 
 class CorrelatedFieldMaker:
