@@ -301,5 +301,7 @@ def check_jacobian_consistency(op, loc, tol=1e-8, ntries=100, perf_check=True,
             raise ValueError("gradient and value seem inconsistent")
         loc = locnext
 
+        ddtype = loc.values()[0].dtype if isinstance(loc, MultiField) else loc.dtype
+        tdtype = dirder.values()[0].dtype if isinstance(dirder, MultiField) else dirder.dtype
         consistency_check(linmid.jac, domain_dtype=ddtype, target_dtype=tdtype,
                           only_r_linear=only_r_differentiable)
