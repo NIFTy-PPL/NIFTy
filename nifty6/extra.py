@@ -268,6 +268,9 @@ def check_jacobian_consistency(op, loc, tol=1e-8, ntries=100, perf_check=True,
         Tolerance for the check.
     perf_check : Boolean
         Do performance check. May be disabled for very unimportant operators.
+    only_r_differentiable : Boolean
+        Jacobians of C-differentiable operators need to be C-linear. 
+        Default: True
     """
     _domain_check(op)
     _actual_domain_check_nonlinear(op, loc)
