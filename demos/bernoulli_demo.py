@@ -11,7 +11,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
-# Copyright(C) 2013-2019 Max-Planck-Society
+# Copyright(C) 2013-2020 Max-Planck-Society
 #
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
 
@@ -26,7 +26,8 @@ import numpy as np
 
 import nifty7 as ift
 
-if __name__ == '__main__':
+
+def main():
     # Set up the position space of the signal
     mode = 2
     if mode == 0:
@@ -84,3 +85,7 @@ if __name__ == '__main__':
     plot.add(GR.adjoint_times(data), title='data')
     plot.add(sky(mock_position), title='truth')
     plot.output(nx=3, xsize=16, ysize=9, title="results", name="bernoulli.png")
+
+
+if __name__ == '__main__':
+    main()
