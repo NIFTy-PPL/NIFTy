@@ -248,7 +248,8 @@ def _linearization_value_consistency(op, loc):
         assert_allclose(fld0, fld1, 0, 1e-7)
 
 
-def check_jacobian_consistency(op, loc, tol=1e-8, ntries=100, perf_check=True):
+def check_jacobian_consistency(op, loc, tol=1e-8, ntries=100, perf_check=True,
+        only_r_differentiable=True):
     """
     Checks the Jacobian of an operator against its finite difference
     approximation.
@@ -267,6 +268,9 @@ def check_jacobian_consistency(op, loc, tol=1e-8, ntries=100, perf_check=True):
         Tolerance for the check.
     perf_check : Boolean
         Do performance check. May be disabled for very unimportant operators.
+    only_r_differentiable : Boolean
+        Jacobians of C-differentiable operators need to be C-linear. 
+        Default: True
     """
     _domain_check(op)
     _actual_domain_check_nonlinear(op, loc)
@@ -297,10 +301,7 @@ def check_jacobian_consistency(op, loc, tol=1e-8, ntries=100, perf_check=True):
             raise ValueError("gradient and value seem inconsistent")
         loc = locnext
 
-        # FIXME The following code shows that we need prober tests for complex
-        # derivatives
         ddtype = loc.values()[0].dtype if isinstance(loc, MultiField) else loc.dtype
         tdtype = dirder.values()[0].dtype if isinstance(dirder, MultiField) else dirder.dtype
-        only_r_linear = ddtype != tdtype
         consistency_check(linmid.jac, domain_dtype=ddtype, target_dtype=tdtype,
-                          only_r_linear=only_r_linear)
+                          only_r_linear=only_r_differentiable)
