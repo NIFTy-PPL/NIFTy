@@ -347,6 +347,12 @@ class NullOperator(LinearOperator):
         tgt = self.target.keys() if isinstance(self.target, MultiDomain) else '()'
         return f'{tgt} <- NullOperator <- {dom}'
 
+    def draw_sample(self, from_inverse=False):
+        if self._domain is not self._target:
+            raise RuntimeError
+        from ..sugar import full
+        return full(self._domain, 0.)
+
 
 class PartialExtractor(LinearOperator):
     def __init__(self, domain, target):

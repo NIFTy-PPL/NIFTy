@@ -175,6 +175,47 @@ class VariableCovarianceGaussianEnergy(EnergyOperator):
         met = MultiField.from_dict({self._kr: i.val, self._ki: met**(-2)})
         return res.add_metric(SamplingDtypeSetter(makeOp(met), self._dt))
 
+    def _simplify_for_constant_input_nontrivial(self, c_inp):
+        from .simplify_for_const import ConstantEnergyOperator
+        assert len(c_inp.keys()) == 1
+        key = c_inp.keys()[0]
+        assert key in self._domain.keys()
+        cst = c_inp[key]
+        if key == self._kr:
+            res = _SpecialGammaEnergy(cst).ducktape(self._ki)
+        else:
+            dt = self._dt[self._kr]
+            res = GaussianEnergy(inverse_covariance=makeOp(cst),
+                                 sampling_dtype=dt).ducktape(self._kr)
+            trlog = cst.log().sum().val_rw()
+            if not _iscomplex(dt):
+                trlog /= 2
+            res = res + ConstantEnergyOperator(res.domain, -trlog)
+        res = res + ConstantEnergyOperator(self._domain, 0.)
+        assert res.domain is self.domain
+        assert res.target is self.target
+        return None, res
+
+
+class _SpecialGammaEnergy(EnergyOperator):
+    def __init__(self, residual):
+        self._domain = DomainTuple.make(residual.domain)
+        self._resi = residual
+        self._cplx = _iscomplex(self._resi.dtype)
+        self._scale = ScalingOperator(self._domain, 1 if self._cplx else .5)
+
+    def apply(self, x):
+        self._check_input(x)
+        r = self._resi
+        if self._cplx:
+            res = 0.5*(r*x.real).vdot(r).real - x.ptw("log").sum()
+        else:
+            res = 0.5*((r*x).vdot(r) - x.ptw("log").sum())
+        if not x.want_metric:
+            return res
+        met = makeOp((self._scale(x.val))**(-2))
+        return res.add_metric(SamplingDtypeSetter(met, self._resi.dtype))
+
 
 class GaussianEnergy(EnergyOperator):
     """Computes a negative-log Gaussian.
