@@ -25,9 +25,13 @@ def _sqrt_helper(v):
 
 
 def _sinc_helper(v):
-    tmp = np.sinc(v)
-    tmp2 = (np.cos(np.pi*v)-tmp)/v
-    return (tmp, np.where(v==0., 0, tmp2))
+    fv = np.sinc(v)
+    df = np.empty(v.shape, dtype=v.dtype)
+    sel = v != 0.
+    v = v[sel]
+    df[sel] = (np.cos(np.pi*v)-fv[sel])/v
+    df[~sel] = 0
+    return (fv, df)
 
 
 def _expm1_helper(v):
@@ -54,13 +58,13 @@ def _reciprocal_helper(v):
 def _abs_helper(v):
     if np.issubdtype(v.dtype, np.complexfloating):
         raise TypeError("Argument must not be complex")
-    return (np.abs(v), np.where(v==0, np.nan, np.sign(v)))
+    return (np.abs(v), np.where(v == 0, np.nan, np.sign(v)))
 
 
 def _sign_helper(v):
     if np.issubdtype(v.dtype, np.complexfloating):
         raise TypeError("Argument must not be complex")
-    return (np.sign(v), np.where(v==0, np.nan, 0))
+    return (np.sign(v), np.where(v == 0, np.nan, 0))
 
 
 def _power_helper(v, expo):
@@ -73,21 +77,21 @@ def _clip_helper(v, a_min, a_max):
     tmp = np.clip(v, a_min, a_max)
     tmp2 = np.ones(v.shape)
     if a_min is not None:
-        tmp2 = np.where(tmp==a_min, 0., tmp2)
+        tmp2 = np.where(tmp == a_min, 0., tmp2)
     if a_max is not None:
-        tmp2 = np.where(tmp==a_max, 0., tmp2)
+        tmp2 = np.where(tmp == a_max, 0., tmp2)
     return (tmp, tmp2)
 
 
 ptw_dict = {
     "sqrt": (np.sqrt, _sqrt_helper),
-    "sin" : (np.sin, lambda v: (np.sin(v), np.cos(v))),
-    "cos" : (np.cos, lambda v: (np.cos(v), -np.sin(v))),
-    "tan" : (np.tan, lambda v: (np.tan(v), 1./np.cos(v)**2)),
+    "sin": (np.sin, lambda v: (np.sin(v), np.cos(v))),
+    "cos": (np.cos, lambda v: (np.cos(v), -np.sin(v))),
+    "tan": (np.tan, lambda v: (np.tan(v), 1./np.cos(v)**2)),
     "sinc": (np.sinc, _sinc_helper),
-    "exp" : (np.exp, lambda v: (2*(np.exp(v),))),
-    "expm1" : (np.expm1, _expm1_helper),
-    "log" : (np.log, lambda v: (np.log(v), 1./v)),
+    "exp": (np.exp, lambda v: (2*(np.exp(v),))),
+    "expm1": (np.expm1, _expm1_helper),
+    "log": (np.log, lambda v: (np.log(v), 1./v)),
     "log10": (np.log10, lambda v: (np.log10(v), (1./np.log(10.))/v)),
     "log1p": (np.log1p, lambda v: (np.log1p(v), 1./(1.+v))),
     "sinh": (np.sinh, lambda v: (np.sinh(v), np.cosh(v))),

@@ -11,7 +11,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
-# Copyright(C) 2013-2019 Max-Planck-Society
+# Copyright(C) 2013-2020 Max-Planck-Society
 #
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
 
@@ -49,15 +49,15 @@ class MultiField(Operator):
         self._val = val
 
     @staticmethod
-    def from_dict(dict, domain=None):
+    def from_dict(dct, domain=None):
         if domain is None:
-            for dd in dict.values():
+            for dd in dct.values():
                 if not isinstance(dd.domain, DomainTuple):
                     raise TypeError('Values of dictionary need to be Fields '
                                     'defined on DomainTuples.')
             domain = MultiDomain.make({key: v._domain
-                                       for key, v in dict.items()})
-        res = tuple(dict[key] if key in dict else Field(dom, 0.)
+                                       for key, v in dct.items()})
+        res = tuple(dct[key] if key in dct else Field(dom, 0.)
                     for key, dom in zip(domain.keys(), domain.domains()))
         return MultiField(domain, res)
 
@@ -83,9 +83,9 @@ class MultiField(Operator):
     def domain(self):
         return self._domain
 
-#    @property
-#    def dtype(self):
-#        return {key: val.dtype for key, val in self._val.items()}
+    @property
+    def dtype(self):
+        return {key: val.dtype for key, val in self.items()}
 
     def _transform(self, op):
         return MultiField(self._domain, tuple(op(v) for v in self._val))
@@ -101,12 +101,39 @@ class MultiField(Operator):
         return self._transform(lambda x: x.imag)
 
     @staticmethod
-    def from_random(random_type, domain, dtype=np.float64, **kwargs):
+    def from_random(domain, random_type='normal', dtype=np.float64, **kwargs):
+        """Draws a random multi-field with the given parameters.
+
+        Parameters
+        ----------
+        random_type : 'pm1', 'normal', or 'uniform'
+            The random distribution to use.
+        domain : DomainTuple
+            The domain of the output random Field.
+        dtype : type
+            The datatype of the output random Field.
+
+        Returns
+        -------
+        MultiField
+            The newly created :class:`MultiField`.
+
+        Notes
+        -----
+        The individual fields within this multi-field will be drawn in alphabetical
+        order of the multi-field's domain keys. As a consequence, renaming these
+        keys may cause the multi-field to be filled with different random numbers,
+        even for the same initial RNG state.
+        """
         domain = MultiDomain.make(domain)
-#        dtype = MultiField.build_dtype(dtype, domain)
-        return MultiField(
-            domain, tuple(Field.from_random(random_type, dom, dtype, **kwargs)
-                          for dom in domain._domains))
+        if isinstance(dtype, dict):
+            dtype = {kk: np.dtype(dt) for kk, dt in dtype.items()}
+        else:
+            dtype = np.dtype(dtype)
+            dtype = {kk: dtype for kk in domain.keys()}
+        dct = {kk: Field.from_random(domain[kk], random_type, dtype[kk], **kwargs)
+               for kk in domain.keys()}
+        return MultiField.from_dict(dct)
 
     def _check_domain(self, other):
         if other._domain != self._domain:

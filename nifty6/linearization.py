@@ -11,14 +11,13 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
-# Copyright(C) 2013-2019 Max-Planck-Society
+# Copyright(C) 2013-2020 Max-Planck-Society
 #
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
 
 import numpy as np
 
 from .sugar import makeOp
-from . import utilities
 from .operators.operator import Operator
 
 
@@ -66,10 +65,10 @@ class Linearization(Operator):
         return self.make_var(self._val, self._want_metric)
 
     def prepend_jac(self, jac):
-        metric = None
-        if self._metric is not None:
-            from .operators.sandwich_operator import SandwichOperator
-            metric = None if self._metric is None else SandwichOperator.make(jac, self._metric)
+        if self._metric is None:
+            return self.new(self._val, self._jac @ jac)
+        from .operators.sandwich_operator import SandwichOperator
+        metric = SandwichOperator.make(jac, self._metric)
         return self.new(self._val, self._jac @ jac, metric)
 
     @property
@@ -133,6 +132,10 @@ class Linearization(Operator):
     @property
     def real(self):
         return self.new(self._val.real, self._jac.real)
+
+    @property
+    def imag(self):
+        return self.new(self._val.imag, self._jac.imag)
 
     def _myadd(self, other, neg):
         if np.isscalar(other) or other.jac is None:
@@ -208,12 +211,13 @@ class Linearization(Operator):
             return self.__mul__(other)
         from .operators.outer_product_operator import OuterProduct
         if other.jac is None:
-            return self.new(OuterProduct(self._val, other.domain)(other),
-                            OuterProduct(self._jac(self._val), other.domain))
+            return self.new(OuterProduct(other.domain, self._val)(other),
+                            OuterProduct(other.domain, self._jac(self._val)))
+        tmp_op = OuterProduct(other.target, self._val)
         return self.new(
-            OuterProduct(self._val, other.target)(other._val),
-            OuterProduct(self._jac(self._val), other.target)._myadd(
-                OuterProduct(self._val, other.target)(other._jac), False))
+            tmp_op(other._val),
+            OuterProduct(other.target, self._jac(self._val))._myadd(
+                tmp_op(other._jac), False))
 
     def vdot(self, other):
         """Computes the inner product of this Linearization with a Field or
@@ -271,13 +275,10 @@ class Linearization(Operator):
         Linearization
             the (partial) integral
         """
-        from .operators.contraction_operator import ContractionOperator
-        return self.new(
-            self._val.integrate(spaces),
-            ContractionOperator(self._jac.target, spaces, 1)(self._jac))
+        from .operators.contraction_operator import IntegrationOperator
+        return IntegrationOperator(self._target, spaces)(self)
 
     def ptw(self, op, *args, **kwargs):
-        from .pointwise import ptw_dict
         t1, t2 = self._val.ptw_with_deriv(op, *args, **kwargs)
         return self.new(t1, makeOp(t2)(self._jac))
 

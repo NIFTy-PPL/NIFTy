@@ -42,8 +42,8 @@ def _adjoint_implementation(op, domain_dtype, target_dtype, atol, rtol,
     needed_cap = op.TIMES | op.ADJOINT_TIMES
     if (op.capability & needed_cap) != needed_cap:
         return
-    f1 = from_random("normal", op.domain, dtype=domain_dtype)
-    f2 = from_random("normal", op.target, dtype=target_dtype)
+    f1 = from_random(op.domain, "normal", dtype=domain_dtype)
+    f2 = from_random(op.target, "normal", dtype=target_dtype)
     res1 = f1.s_vdot(op.adjoint_times(f2))
     res2 = op.times(f1).s_vdot(f2)
     if only_r_linear:
@@ -55,11 +55,11 @@ def _inverse_implementation(op, domain_dtype, target_dtype, atol, rtol):
     needed_cap = op.TIMES | op.INVERSE_TIMES
     if (op.capability & needed_cap) != needed_cap:
         return
-    foo = from_random("normal", op.target, dtype=target_dtype)
+    foo = from_random(op.target, "normal", dtype=target_dtype)
     res = op(op.inverse_times(foo))
     assert_allclose(res, foo, atol=atol, rtol=rtol)
 
-    foo = from_random("normal", op.domain, dtype=domain_dtype)
+    foo = from_random(op.domain, "normal", dtype=domain_dtype)
     res = op.inverse_times(op(foo))
     assert_allclose(res, foo, atol=atol, rtol=rtol)
 
@@ -75,9 +75,9 @@ def _check_linearity(op, domain_dtype, atol, rtol):
     needed_cap = op.TIMES
     if (op.capability & needed_cap) != needed_cap:
         return
-    fld1 = from_random("normal", op.domain, dtype=domain_dtype)
-    fld2 = from_random("normal", op.domain, dtype=domain_dtype)
-    alpha = np.random.random()  # FIXME: this can break badly with MPI!
+    fld1 = from_random(op.domain, "normal", dtype=domain_dtype)
+    fld2 = from_random(op.domain, "normal", dtype=domain_dtype)
+    alpha = 0.42
     val1 = op(alpha*fld1+fld2)
     val2 = alpha*op(fld1)+op(fld2)
     assert_allclose(val1, val2, atol=atol, rtol=rtol)
@@ -88,7 +88,7 @@ def _actual_domain_check_linear(op, domain_dtype=None, inp=None):
     if (op.capability & needed_cap) != needed_cap:
         return
     if domain_dtype is not None:
-        inp = from_random("normal", op.domain, dtype=domain_dtype)
+        inp = from_random(op.domain, "normal", dtype=domain_dtype)
     elif inp is None:
         raise ValueError('Need to specify either dtype or inp')
     assert_(inp.domain is op.domain)
@@ -219,7 +219,7 @@ def consistency_check(op, domain_dtype=np.float64, target_dtype=np.float64,
 def _get_acceptable_location(op, loc, lin):
     if not np.isfinite(lin.val.s_sum()):
         raise ValueError('Initial value must be finite')
-    dir = from_random("normal", loc.domain)
+    dir = from_random(loc.domain, dtype=loc.dtype)
     dirder = lin.jac(dir)
     if dirder.norm() == 0:
         dir = dir * (lin.val.norm()*1e-5)
@@ -248,7 +248,8 @@ def _linearization_value_consistency(op, loc):
         assert_allclose(fld0, fld1, 0, 1e-7)
 
 
-def check_jacobian_consistency(op, loc, tol=1e-8, ntries=100, perf_check=True):
+def check_jacobian_consistency(op, loc, tol=1e-8, ntries=100, perf_check=True,
+        only_r_differentiable=True):
     """
     Checks the Jacobian of an operator against its finite difference
     approximation.
@@ -267,6 +268,9 @@ def check_jacobian_consistency(op, loc, tol=1e-8, ntries=100, perf_check=True):
         Tolerance for the check.
     perf_check : Boolean
         Do performance check. May be disabled for very unimportant operators.
+    only_r_differentiable : Boolean
+        Jacobians of C-differentiable operators need to be C-linear. 
+        Default: True
     """
     _domain_check(op)
     _actual_domain_check_nonlinear(op, loc)
@@ -296,3 +300,8 @@ def check_jacobian_consistency(op, loc, tol=1e-8, ntries=100, perf_check=True):
             print(hist)
             raise ValueError("gradient and value seem inconsistent")
         loc = locnext
+
+        ddtype = loc.values()[0].dtype if isinstance(loc, MultiField) else loc.dtype
+        tdtype = dirder.values()[0].dtype if isinstance(dirder, MultiField) else dirder.dtype
+        consistency_check(linmid.jac, domain_dtype=ddtype, target_dtype=tdtype,
+                          only_r_linear=only_r_differentiable)

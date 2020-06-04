@@ -38,6 +38,9 @@ def test_gridding(nu, nv, N, eps):
     vis = (ift.random.current_rng().standard_normal(N)
            + 1j*ift.random.current_rng().standard_normal(N))
 
+    if N > 2:
+        uv[-1] = 0
+        uv[-2] = 1e-5
     # Nifty
     dom = ift.RGSpace((nu, nv), distances=(0.2, 1.12))
     dstx, dsty = dom.distances
@@ -72,7 +75,7 @@ def test_cartesian():
     GM = ift.GridderMaker(dom, uv=uv)
     op = GM.getFull().adjoint
 
-    fld = ift.from_random('normal', dom)
+    fld = ift.from_random(dom, 'normal')
     arr = fld.val
 
     fld2 = ift.makeField(dom, np.roll(arr, (nx//2, ny//2), axis=(0, 1)))
@@ -82,8 +85,7 @@ def test_cartesian():
     vol = ift.full(dom, 1.).s_integrate()
     res1 = fft(fld).val
 
-    # FIXME: we don't understand the conjugate() yet
-    np.testing.assert_allclose(res, res1.conjugate()*vol)
+    np.testing.assert_allclose(res, res1*vol)
 
 
 @pmp('eps', [1e-2, 1e-6, 2e-13])

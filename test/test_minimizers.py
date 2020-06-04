@@ -52,8 +52,8 @@ slow_minimizers = ['ift.SteepestDescent(IC)']
      slow_minimizers)
 @pmp('space', spaces)
 def test_quadratic_minimization(minimizer, space):
-    starting_point = ift.Field.from_random('normal', domain=space)*10
-    covariance_diagonal = ift.Field.from_random('uniform', domain=space) + 0.5
+    starting_point = ift.Field.from_random(domain=space, random_type='normal') * 10
+    covariance_diagonal = ift.Field.from_random(domain=space, random_type='uniform') + 0.5
     covariance = ift.DiagonalOperator(covariance_diagonal)
     required_result = ift.full(space, 1.)
 
@@ -78,15 +78,17 @@ def test_quadratic_minimization(minimizer, space):
 def test_WF_curvature(space):
     required_result = ift.full(space, 1.)
 
-    s = ift.Field.from_random('uniform', domain=space) + 0.5
+    s = ift.Field.from_random(domain=space, random_type='uniform') + 0.5
     S = ift.DiagonalOperator(s)
-    r = ift.Field.from_random('uniform', domain=space)
+    r = ift.Field.from_random(domain=space, random_type='uniform')
     R = ift.DiagonalOperator(r)
-    n = ift.Field.from_random('uniform', domain=space) + 0.5
+    n = ift.Field.from_random(domain=space, random_type='uniform') + 0.5
     N = ift.DiagonalOperator(n)
     all_diag = 1./s + r**2/n
     curv = ift.WienerFilterCurvature(R, N, S, iteration_controller=IC,
-                                     iteration_controller_sampling=IC)
+                                     iteration_controller_sampling=IC,
+                                     data_sampling_dtype=np.float64,
+                                     prior_sampling_dtype=np.float64)
     m = curv.inverse(required_result)
     assert_allclose(
         m.val,
@@ -98,12 +100,14 @@ def test_WF_curvature(space):
 
     if len(space.shape) == 1:
         R = ift.ValueInserter(space, [0])
-        n = ift.from_random('uniform', R.domain) + 0.5
+        n = ift.from_random(R.domain, 'uniform') + 0.5
         N = ift.DiagonalOperator(n)
         all_diag = 1./s + R(1/n)
         curv = ift.WienerFilterCurvature(R.adjoint, N, S,
                                          iteration_controller=IC,
-                                         iteration_controller_sampling=IC)
+                                         iteration_controller_sampling=IC,
+                                         data_sampling_dtype=np.float64,
+                                         prior_sampling_dtype=np.float64)
         m = curv.inverse(required_result)
         assert_allclose(
             m.val,
@@ -121,7 +125,7 @@ def test_rosenbrock(minimizer):
     except ImportError:
         raise SkipTest
     space = ift.DomainTuple.make(ift.UnstructuredDomain((2,)))
-    starting_point = ift.Field.from_random('normal', domain=space)*10
+    starting_point = ift.Field.from_random(domain=space, random_type='normal') * 10
 
     class RBEnergy(ift.Energy):
         def __init__(self, position):
