@@ -270,14 +270,13 @@ class GaussianEnergy(EnergyOperator):
                 if sampling_dtype != _field_to_dtype(self._mean):
                     raise ValueError("Sampling dtype and mean not compatible")
 
+        self._icov = inverse_covariance
         if inverse_covariance is None:
             self._op = Squared2NormOperator(self._domain).scale(0.5)
             self._met = ScalingOperator(self._domain, 1)
-            self._trivial_invcov = True
         else:
             self._op = QuadraticFormOperator(inverse_covariance)
             self._met = inverse_covariance
-            self._trivial_invcov = False
         if sampling_dtype is not None:
             self._met = SamplingDtypeSetter(self._met, sampling_dtype)
 
