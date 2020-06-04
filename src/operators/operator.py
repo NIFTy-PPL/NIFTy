@@ -276,6 +276,8 @@ class Operator(metaclass=NiftyMeta):
         if c_inp is None:
             return None, self
 
+        # Convention: If c_inp is MultiField, it needs to be defined on a
+        # subdomain of self._domain
         if isinstance(self.domain, MultiDomain):
             assert isinstance(c_inp.domain, MultiDomain)
             if set(c_inp.keys()) > set(self.domain.keys()):

@@ -48,6 +48,10 @@ def _check_sampling_dtype(domain, dtypes):
     raise TypeError
 
 
+def _iscomplex(dtype):
+    return np.issubdtype(dtype, np.complexfloating)
+
+
 def _field_to_dtype(field):
     if isinstance(field, Field):
         dt = field.dtype
@@ -127,10 +131,10 @@ class VariableCovarianceGaussianEnergy(EnergyOperator):
     The covariance is assumed to be diagonal.
 
     .. math ::
-        E(s,D) = - \\log G(s, D) = 0.5 (s)^\\dagger D^{-1} (s) + 0.5 tr log(D),
+        E(s,D) = - \\log G(s, C) = 0.5 (s)^\\dagger C (s) - 0.5 tr log(C),
 
     an information energy for a Gaussian distribution with residual s and
-    diagonal covariance D.
+    inverse diagonal covariance C.
     The domain of this energy will be a MultiDomain with two keys,
     the target will be the scalar domain.
 
@@ -139,10 +143,10 @@ class VariableCovarianceGaussianEnergy(EnergyOperator):
     domain : Domain, DomainTuple, tuple of Domain
         domain of the residual and domain of the covariance diagonal.
 
-    residual : key
+    residual_key : key
         Residual key of the Gaussian.
 
-    inverse_covariance : key
+    inverse_covariance_key : key
         Inverse covariance diagonal key of the Gaussian.
 
     sampling_dtype : np.dtype
@@ -156,7 +160,7 @@ class VariableCovarianceGaussianEnergy(EnergyOperator):
         self._domain = MultiDomain.make({self._kr: dom, self._ki: dom})
         self._dt = {self._kr: sampling_dtype, self._ki: np.float64}
         _check_sampling_dtype(self._domain, self._dt)
-        self._cplx = np.issubdtype(sampling_dtype, np.complexfloating)
+        self._cplx = _iscomplex(sampling_dtype)
 
     def apply(self, x):
         self._check_input(x)

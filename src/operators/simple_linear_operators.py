@@ -173,16 +173,9 @@ class FieldAdapter(LinearOperator):
             return MultiField(self._tgt(mode), (x,))
 
     def __repr__(self):
-        s = 'FieldAdapter'
-        dom = isinstance(self._domain, MultiDomain)
-        tgt = isinstance(self._target, MultiDomain)
-        if dom and tgt:
-            s += ' {} <- {}'.format(self._target.keys(), self._domain.keys())
-        elif dom:
-            s += ' <- {}'.format(self._domain.keys())
-        elif tgt:
-            s += ' {} <-'.format(self._target.keys())
-        return s
+        dom = self.domain.keys() if isinstance(self.domain, MultiDomain) else '()'
+        tgt = self.target.keys() if isinstance(self.target, MultiDomain) else '()'
+        return f'{tgt} <- {dom}'
 
 
 class _SlowFieldAdapter(LinearOperator):
@@ -378,3 +371,6 @@ class PartialExtractor(LinearOperator):
         res0 = MultiField.from_dict({key: x[key] for key in x.domain.keys()})
         res1 = MultiField.full(self._compldomain, 0.)
         return res0.unite(res1)
+
+    def __repr__(self):
+        return f'{self.target.keys()} <- {self.domain.keys()}'
