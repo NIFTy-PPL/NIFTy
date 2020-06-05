@@ -37,6 +37,13 @@ def assert_allclose(f1, f2, atol, rtol):
         assert_allclose(val, f2[key], atol=atol, rtol=rtol)
 
 
+def assert_equal(f1, f2):
+    if isinstance(f1, Field):
+        return np.testing.assert_equal(f1.val, f2.val)
+    for key, val in f1.items():
+        assert_equal(val, f2[key])
+
+
 def _adjoint_implementation(op, domain_dtype, target_dtype, atol, rtol,
                             only_r_linear):
     needed_cap = op.TIMES | op.ADJOINT_TIMES
@@ -249,7 +256,7 @@ def _linearization_value_consistency(op, loc):
 
 
 def check_jacobian_consistency(op, loc, tol=1e-8, ntries=100, perf_check=True,
-        only_r_differentiable=True):
+                               only_r_differentiable=True):
     """
     Checks the Jacobian of an operator against its finite difference
     approximation.

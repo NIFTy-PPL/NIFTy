@@ -48,6 +48,10 @@ def _check_sampling_dtype(domain, dtypes):
     raise TypeError
 
 
+def _iscomplex(dtype):
+    return np.issubdtype(dtype, np.complexfloating)
+
+
 def _field_to_dtype(field):
     if isinstance(field, Field):
         dt = field.dtype
@@ -127,10 +131,10 @@ class VariableCovarianceGaussianEnergy(EnergyOperator):
     The covariance is assumed to be diagonal.
 
     .. math ::
-        E(s,D) = - \\log G(s, D) = 0.5 (s)^\\dagger D^{-1} (s) + 0.5 tr log(D),
+        E(s,D) = - \\log G(s, C) = 0.5 (s)^\\dagger C (s) - 0.5 tr log(C),
 
     an information energy for a Gaussian distribution with residual s and
-    diagonal covariance D.
+    inverse diagonal covariance C.
     The domain of this energy will be a MultiDomain with two keys,
     the target will be the scalar domain.
 
@@ -139,10 +143,10 @@ class VariableCovarianceGaussianEnergy(EnergyOperator):
     domain : Domain, DomainTuple, tuple of Domain
         domain of the residual and domain of the covariance diagonal.
 
-    residual : key
+    residual_key : key
         Residual key of the Gaussian.
 
-    inverse_covariance : key
+    inverse_covariance_key : key
         Inverse covariance diagonal key of the Gaussian.
 
     sampling_dtype : np.dtype
@@ -156,7 +160,7 @@ class VariableCovarianceGaussianEnergy(EnergyOperator):
         self._domain = MultiDomain.make({self._kr: dom, self._ki: dom})
         self._dt = {self._kr: sampling_dtype, self._ki: np.float64}
         _check_sampling_dtype(self._domain, self._dt)
-        self._cplx = np.issubdtype(sampling_dtype, np.complexfloating)
+        self._cplx = _iscomplex(sampling_dtype)
 
     def apply(self, x):
         self._check_input(x)
@@ -170,6 +174,47 @@ class VariableCovarianceGaussianEnergy(EnergyOperator):
         met = i.val if self._cplx else 0.5*i.val
         met = MultiField.from_dict({self._kr: i.val, self._ki: met**(-2)})
         return res.add_metric(SamplingDtypeSetter(makeOp(met), self._dt))
+
+    def _simplify_for_constant_input_nontrivial(self, c_inp):
+        from .simplify_for_const import ConstantEnergyOperator
+        assert len(c_inp.keys()) == 1
+        key = c_inp.keys()[0]
+        assert key in self._domain.keys()
+        cst = c_inp[key]
+        if key == self._kr:
+            res = _SpecialGammaEnergy(cst).ducktape(self._ki)
+        else:
+            dt = self._dt[self._kr]
+            res = GaussianEnergy(inverse_covariance=makeOp(cst),
+                                 sampling_dtype=dt).ducktape(self._kr)
+            trlog = cst.log().sum().val_rw()
+            if not _iscomplex(dt):
+                trlog /= 2
+            res = res + ConstantEnergyOperator(res.domain, -trlog)
+        res = res + ConstantEnergyOperator(self._domain, 0.)
+        assert res.domain is self.domain
+        assert res.target is self.target
+        return None, res
+
+
+class _SpecialGammaEnergy(EnergyOperator):
+    def __init__(self, residual):
+        self._domain = DomainTuple.make(residual.domain)
+        self._resi = residual
+        self._cplx = _iscomplex(self._resi.dtype)
+        self._scale = ScalingOperator(self._domain, 1 if self._cplx else .5)
+
+    def apply(self, x):
+        self._check_input(x)
+        r = self._resi
+        if self._cplx:
+            res = 0.5*(r*x.real).vdot(r).real - x.ptw("log").sum()
+        else:
+            res = 0.5*((r*x).vdot(r) - x.ptw("log").sum())
+        if not x.want_metric:
+            return res
+        met = makeOp((self._scale(x.val))**(-2))
+        return res.add_metric(SamplingDtypeSetter(met, self._resi.dtype))
 
 
 class GaussianEnergy(EnergyOperator):
@@ -225,14 +270,13 @@ class GaussianEnergy(EnergyOperator):
                 if sampling_dtype != _field_to_dtype(self._mean):
                     raise ValueError("Sampling dtype and mean not compatible")
 
+        self._icov = inverse_covariance
         if inverse_covariance is None:
             self._op = Squared2NormOperator(self._domain).scale(0.5)
             self._met = ScalingOperator(self._domain, 1)
-            self._trivial_invcov = True
         else:
             self._op = QuadraticFormOperator(inverse_covariance)
             self._met = inverse_covariance
-            self._trivial_invcov = False
         if sampling_dtype is not None:
             self._met = SamplingDtypeSetter(self._met, sampling_dtype)
 

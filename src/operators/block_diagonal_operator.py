@@ -46,7 +46,6 @@ class BlockDiagonalOperator(EndomorphicOperator):
                 else:
                     raise TypeError("LinearOperator expected")
 
-
     def apply(self, x, mode):
         self._check_input(x, mode)
         val = tuple(op.apply(v, mode=mode) if op is not None else v

@@ -109,7 +109,10 @@ class SlowPartialConstantOperator(Operator):
 class ConstantEnergyOperator(EnergyOperator):
     def __init__(self, dom, output):
         from ..sugar import makeDomain
+        from ..field import Field
         self._domain = makeDomain(dom)
+        if not isinstance(output, Field):
+            output = Field.scalar(float(output))
         if self.target is not output.domain:
             raise TypeError
         self._output = output

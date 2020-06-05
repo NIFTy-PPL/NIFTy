@@ -88,6 +88,15 @@ def test_variablecovariancegaussian(field):
     energy(ift.Linearization.make_var(mf, want_metric=True)).metric.draw_sample()
 
 
+def test_specialgamma(field):
+    if isinstance(field.domain, ift.MultiDomain):
+        return
+    energy = ift.operators.energy_operators._SpecialGammaEnergy(field)
+    loc = ift.from_random(energy.domain).exp()
+    ift.extra.check_jacobian_consistency(energy, loc, tol=1e-6, ntries=ntries)
+    energy(ift.Linearization.make_var(loc, want_metric=True)).metric.draw_sample()
+
+
 def test_inverse_gamma(field):
     if isinstance(field.domain, ift.MultiDomain):
         return
