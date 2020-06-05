@@ -1,7 +1,12 @@
 Changes since NIFTy 6
 =====================
 
-*None.*
+Change in external dependencies
+-------------------------------
+
+Instead of the optional external packages `pypocketfft` and `pyHealpix`, NIFTy
+now uses the DUCC package (<https://gitlab.mpcdf.mpg.de/mtr/ducc)>,
+which is their successor.
 
 
 Changes since NIFTy 5

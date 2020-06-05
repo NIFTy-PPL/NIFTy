@@ -29,21 +29,20 @@ def set_nthreads(nthr):
 
 
 try:
-    import pypocketfft
+    import ducc_0_1.fft as my_fft
 
 
     def fftn(a, axes=None):
-        return pypocketfft.c2c(a, axes=axes, nthreads=max(_nthreads, 0))
+        return my_fft.c2c(a, axes=axes, nthreads=max(_nthreads, 0))
 
 
     def ifftn(a, axes=None):
-        return pypocketfft.c2c(a, axes=axes, inorm=2, forward=False,
-                               nthreads=max(_nthreads, 0))
+        return my_fft.c2c(a, axes=axes, inorm=2, forward=False,
+                          nthreads=max(_nthreads, 0))
 
 
     def hartley(a, axes=None):
-        return pypocketfft.genuine_hartley(a, axes=axes,
-                                           nthreads=max(_nthreads, 0))
+        return my_fft.genuine_hartley(a, axes=axes, nthreads=max(_nthreads, 0))
 
 except ImportError:
     import scipy.fft

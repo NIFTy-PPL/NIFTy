@@ -12,7 +12,7 @@ RUN apt-get update && apt-get install -y \
     # Optional NIFTy dependencies
     python3-mpi4py python3-matplotlib \
   # more optional NIFTy dependencies
-  && pip3 install git+https://gitlab.mpcdf.mpg.de/ift/pyHealpix.git \
+  && pip3 install git+https://gitlab.mpcdf.mpg.de/mtr/ducc.git@ducc_0_1 \
   && pip3 install git+https://gitlab.mpcdf.mpg.de/ift/nifty_gridder.git \
   && pip3 install jupyter \
   && rm -rf /var/lib/apt/lists/*

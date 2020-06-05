@@ -117,11 +117,11 @@ class LMSpace(StructuredDomain):
         e.g. only dependant on theta in radians"""
         from .gl_space import GLSpace
         from ..operators.harmonic_operators import HarmonicTransformOperator
-        import pyHealpix
+        from ducc_0_1.misc import GL_thetas
         # define azimuthally symmetric spaces for kernel transform
         gl = GLSpace(self.lmax + 1, 1)
         lm0 = gl.get_default_codomain()
-        theta = pyHealpix.GL_thetas(gl.nlat)
+        theta = GL_thetas(gl.nlat)
         # evaluate the kernel function at the required thetas
         kernel_sphere = Field.from_raw(gl, func(theta))
         # normalize the kernel such that the integral over the sphere is 4pi
