@@ -74,7 +74,7 @@ def _make_dynamic_operator(target, harmonic_padding, sm_s0, sm_x0, cone, keys, c
         shp = [
             sh + harmonic_padding[ii] for ii, sh in enumerate(FFT.target.shape)
         ]
-        CentralPadd = FieldZeroPadder(FFT.target, shp, central=True)
+        CentralPadd = FieldZeroPadder(FFT.target, shp, padding_position='center')
     ops['central_padding'] = CentralPadd
     sdom = CentralPadd.target[0].get_default_codomain()
     FFTB = FFTOperator(sdom)(Realizer(sdom))
