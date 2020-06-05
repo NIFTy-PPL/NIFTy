@@ -172,12 +172,12 @@ def testDomainTupleFieldInserter():
 
 @pmp('space', [0, 2])
 @pmp('factor', [1, 2, 2.7])
-@pmp('central', [False, True])
-def testZeroPadder(space, factor, dtype, central):
+@pmp('padding_position', [None, 'front', 'center', 'back'])
+def testZeroPadder(space, factor, dtype, padding_position):
     dom = (ift.RGSpace(10), ift.UnstructuredDomain(13), ift.RGSpace(7, 12),
            ift.HPSpace(4))
     newshape = [int(factor*l) for l in dom[space].shape]
-    _check_repr(ift.FieldZeroPadder(dom, newshape, space, central))
+    _check_repr(ift.FieldZeroPadder(dom, newshape, space, padding_position))
 
 
 @pmp('args', [[ift.RGSpace(
