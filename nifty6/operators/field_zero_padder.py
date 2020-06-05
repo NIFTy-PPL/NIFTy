@@ -39,19 +39,33 @@ class FieldZeroPadder(LinearOperator):
     space : int
         The index of the subdomain to be zero-padded. If None, it is set to 0
         if domain contains exactly one space. domain[space] must be an RGSpace.
-    central : bool
-        If `False`, padding is performed at the end of the domain axes,
-        otherwise in the middle.
+    padding_position : string, optional
+        Where to add the padding. Valid values are 'front', 'center' and 'back'
+        correponding to padding at the beginning of the domain axes, in the
+        middle and at the end of them.
+    central : bool, optional, DEPRECATED
+        `True` is equivalent to ``padding_position = 'center'``.
+        If `False` and `padding_position` is not given, padding is performed
+        at the end of the domain axes.
 
     Notes
     -----
     When doing central padding on an axis with an even length, the "central"
     entry should in principle be split up; this is currently not done.
     """
-    def __init__(self, domain, new_shape, space=0, central=False):
+    def __init__(self, domain, new_shape, space=0, padding_position=None, central=None):
         self._domain = DomainTuple.make(domain)
         self._space = utilities.infer_space(self._domain, space)
-        self._central = central
+        if padding_position not in ['front', 'center', 'back', None]:
+            raise ValueError("Invalid `padding_position` value given")
+        if central is not None:
+            if padding_position is not None and \
+               ((central is True and padding_position != 'center') or \
+                (central is False and padding_position != 'back')):
+                raise ValueError("Incompatible `central` and `padding_position` values")
+            self._position = 'center' if central else 'back'
+        else:
+            self._position = padding_position if padding_position is not None else 'back'
         dom = self._domain[self._space]
         if not isinstance(dom, RGSpace):
             raise TypeError("RGSpace required")
@@ -80,7 +94,7 @@ class FieldZeroPadder(LinearOperator):
                 shp = list(v.shape)
                 shp[d] = tgtshp[d]
                 xnew = np.zeros(shp, dtype=v.dtype)
-                if self._central:
+                if self._position == 'center':
                     Nyquist = v.shape[d]//2
                     i1 = idx + (slice(0, Nyquist+1),)
                     xnew[i1] = v[i1]
@@ -91,10 +105,13 @@ class FieldZeroPadder(LinearOperator):
 #                         xnew[i1] *= 0.5
 #                         i1 = idx+(-Nyquist,)
 #                         xnew[i1] *= 0.5
-                else:
+                elif self._position == 'back':
                     xnew[idx + (slice(0, v.shape[d]),)] = v
+                else:
+                    d_len = tgtshp[d]
+                    xnew[idx + (slice(d_len - v.shape[d], d_len),)] = v
             else:  # ADJOINT_TIMES
-                if self._central:
+                if self._position == 'center':
                     shp = list(v.shape)
                     shp[d] = tgtshp[d]
                     xnew = np.zeros(shp, dtype=v.dtype)
@@ -106,8 +123,11 @@ class FieldZeroPadder(LinearOperator):
 #                     if (xnew.shape[d] & 1) == 0:  # even number of pixels
 #                         i1 = idx+(Nyquist,)
 #                         xnew[i1] *= 0.5
-                else:
+                elif self._position == 'back':
                     xnew = v[idx + (slice(0, tgtshp[d]),)]
+                else:
+                    d_len = v.shape[d]
+                    xnew = v[idx + (slice(d_len - tgtshp[d], d_len),)]
 
             curshp[d] = xnew.shape[d]
             v = xnew
