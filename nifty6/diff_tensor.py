@@ -37,6 +37,7 @@ from .field import Field
 from .multi_field import MultiField
 from .operators.operator import Operator
 from .operators.simple_linear_operators import NullOperator
+from .operators.scaling_operator import ScalingOperator
 
 
 def assertIsinstance(t1, t2):
@@ -99,6 +100,10 @@ class DiffTensor(_DiffTensorImpl):
             assertIdentical(f.domain, self._impl.domain)
         self._arg = arg
 
+    @property
+    def isNullTensor(self):
+        return isinstance(self._impl, NullTensor)
+
     @staticmethod
     def makeDiagonal(vec, rank):
         return DiffTensor(DiagonalTensor(vec, rank))
@@ -112,7 +117,8 @@ class DiffTensor(_DiffTensorImpl):
         if order_derivative<0:
             raise ValueError
         if order_derivative==0:
-            return DiffTensor.makeDiagonal(t1[0].vec*t2[0].vec, 1)
+            return DiffTensor.makeVec(t1[0].vec*t2[0].vec,
+                                      domain=domain_union((t1.domain,t2.domain)))
         return DiffTensor(GenLeibnizTensor(t1,t2,order_derivative))
 
     @staticmethod
@@ -120,7 +126,14 @@ class DiffTensor(_DiffTensorImpl):
         if order_derivative < 1:
             raise ValueError
         return DiffTensor(ComposedTensor(new, old, order_derivative))
-        
+
+    @staticmethod
+    def makeVec(vec, domain=None):
+        return DiffTensor(VecTensor(vec, domain=domain))
+
+    @staticmethod
+    def makeLinear(op):
+        return DiffTensor(LinearTensor(op))
 
     def __add__(self, other):
         assertIsinstance(other, _DiffTensorImpl)
@@ -230,23 +243,45 @@ class Taylor(Operator):
     def __getitem__(self, i):
         return self._tensors[i]
 
-    @staticmethod
-    def make_var(val, maxorder):
-        if maxorder < 2:
-            raise ValueError
-        jacs = [DiffTensor.makeDiagonal(val,1)]
-        jacs.append(DiffTensor.makeDiagonal(full(val.domain,1.),2))
-        jacs += [DiffTensor.makeNull(val.domain, val.domain, i+1) for i in range(2,maxorder+1)]
-        return Taylor(jacs)
+    def trivial_derivatives(self):
+        return self.make_var(self.val, self.maxorder)
+
+    def new_from_lin(self, op):
+        tensors = (DiffTensor.makeVec(op(self.val), domain=op.domain),
+                   DiffTensor.makeLinear(op))
+        tensors += tuple(DiffTensor.makeNull(op.domain,op.target,i+1)
+                    for i in range(2,self.maxorder+1))
+        return self.new(tensors)
 
     def new_from_prod(self, t2):
         assert self.maxorder == t2.maxorder
-        return Taylor([DiffTensor.makeGenLeibniz(self, t2, i) for i in range(self.maxorder+1)])
+        return self.new(tuple(DiffTensor.makeGenLeibniz(self, t2, i) for i in range(self.maxorder+1)))
 
-    def new(self, new):
-        res = [DiffTensor.makeDiagonal(new[0].vec,1),]
-        res += [DiffTensor.makeComposed(new, self, i) for i in range(1, self.maxorder+1)]
-        return Taylor(res)
+    def prepend(self, old):
+        tensors = (DiffTensor.makeVec(self.val, domain=old.domain), )
+        tensors += tuple(DiffTensor.makeComposed(self, old, i) for i in range(1,self.maxorder+1))
+        return self.new(tensors)
+
+    def new(self, tensors):
+        return Taylor(tensors)
+
+    def ptw(self, op, *args, **kwargs):
+        tmp = self.val.ptw_with_derivs(op, self.maxorder)
+        tensors = (DiffTensor.makeVec(tmp[0],domain=self.domain), )
+        tensors += tuple(DiffTensor.makeDiagonal(tm, i+2) for i,tm in enumerate(tmp[1:]))
+        return self.new(tensors)
+
+    @staticmethod
+    def make_var(val, maxorder):
+        # Currently maxorder 0 and 1 are defined via Field and Linearization
+        # Will be unified in the future
+        if maxorder < 2:
+            raise ValueError
+        tensors = (DiffTensor.makeVec(val),
+                   DiffTensor.makeLinear(ScalingOperator(val.domain, 1.)))
+        tensors += tuple(DiffTensor.makeNull(val.domain, val.domain, i+1)
+                    for i in range(2,maxorder+1))
+        return Taylor(tensors)
 
 # class DiffTensorRank1(DiffTensor):
 #     def __init__(self, vec):
@@ -274,6 +309,18 @@ class Taylor(Operator):
 #     def _contract(self,x):
 #         return DiffTensorRank1(self._op(x[0]))
 
+class VecTensor(_DiffTensorImpl):
+    def __init__(self, vec, domain=None):
+        if domain is None:
+            domain = vec.domain
+        super(VecTensor, self).__init__(domain, vec.domain, 1)
+        self._vec = vec
+
+    def getVec(self, x=()):
+        if len(x) != 0:
+            raise ValueError
+        return self._vec
+
 class LinearTensor(_DiffTensorImpl):
     def __init__(self, op):
         super(LinearTensor, self).__init__(op.domain, op.target, 2)
@@ -287,7 +334,7 @@ class LinearTensor(_DiffTensorImpl):
     def getVec(self, x=()):
         if len(x) != 1:
             raise ValueError
-        return self._op(x)
+        return self._op(x[0])
 
 class DiagonalTensor(_DiffTensorImpl):
     def __init__(self, vec, rank):
@@ -307,7 +354,6 @@ class DiagonalTensor(_DiffTensorImpl):
 
     def getVec(self, x=()):
         return self._helper(x, 1)
-
 
 class NullTensor(_DiffTensorImpl):
     def __init__(self, domain, target, rank):
@@ -373,8 +419,8 @@ class GenLeibnizTensor(_DiffTensorImpl):
             # (i & (1<<j)) is True iff the j-th bit is set in i
             xx1 = [x1[j] for j in range(ord) if (i & (1<<j))]
             xx2 = [x2[j] for j in range(ord) if not (i & (1<<j))]
-            if not (isinstance(self._t1[len(xx1)]._impl, NullTensor) or
-                    isinstance(self._t2[len(xx2)]._impl, NullTensor)):
+            if not (self._t1[len(xx1)].isNullTensor or
+                    self._t2[len(xx2)].isNullTensor):
                 tmp = (self._t1[len(xx1)].getVec(xx1)*
                        self._t2[len(xx2)].getVec(xx2))
                 res = tmp if res is None else res+tmp
@@ -394,14 +440,14 @@ class GenLeibnizTensor(_DiffTensorImpl):
             xx1 = [x1[j] for j in range(ord-1) if (i & (1<<j))]
             xx2 = [x2[j] for j in range(ord-1) if not (i & (1<<j))]
             if i & (1<<(ord-1)):
-                if not (isinstance(self._t1[len(xx1)+1]._impl, NullTensor) or
-                        isinstance(self._t2[len(xx2)]._impl, NullTensor)):
+                if not (self._t1[len(xx1)+1].isNullTensor or
+                        self._t2[len(xx2)].isNullTensor):
                     tmp = (makeOp(self._t2[len(xx2)].getVec(xx2))@
                            self._t1[len(xx1)+1].getLinop(xx1))
                     res = tmp if res is None else res+tmp
             else:
-                if not (isinstance(self._t1[len(xx1)]._impl, NullTensor) or
-                        isinstance(self._t2[len(xx2)+1]._impl, NullTensor)):
+                if not (self._t1[len(xx1)].isNullTensor or
+                        self._t2[len(xx2)+1].isNullTensor):
                     tmp = (makeOp(self._t1[len(xx1)].getVec(xx1))@
                            self._t2[len(xx2)+1].getLinop(xx2))
                     res = tmp if res is None else res+tmp

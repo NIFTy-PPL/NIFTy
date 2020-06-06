@@ -34,9 +34,9 @@ def _sinc_helper(v):
     return (fv, df)
 
 
-def _expm1_helper(v):
+def _expm1_helper(v, maxorder):
     tmp = np.expm1(v)
-    return (tmp, tmp+1.)
+    return (tmp, ) + (tmp+1.,)*maxorder
 
 
 def _tanh_helper(v):
@@ -49,11 +49,9 @@ def _sigmoid_helper(v):
     tmp2 = 0.5+(0.5*tmp)
     return (tmp2, 0.5-0.5*tmp**2)
 
-
-def _reciprocal_helper(v):
+def _reciprocal_helper(v, maxorder):
     tmp = 1./v
-    return (tmp, -tmp**2)
-
+    return (tmp, ) + tuple(tmp**(m+1)*np.math.factorial(m)*(1.-2.*(m%2)) for m in range(1,maxorder+1))
 
 def _abs_helper(v):
     if np.issubdtype(v.dtype, np.complexfloating):
@@ -82,15 +80,19 @@ def _clip_helper(v, a_min, a_max):
         tmp2 = np.where(tmp == a_max, 0., tmp2)
     return (tmp, tmp2)
 
+def _sc_helper(v, maxorder, sin):
+    s,c = np.sin(v), np.cos(v)
+    return tuple(s if i%2 ^ sin else c for i in range(maxorder+1))
+        
 
 ptw_dict = {
     "sqrt": (np.sqrt, _sqrt_helper),
-    "sin": (np.sin, lambda v: (np.sin(v), np.cos(v))),
-    "cos": (np.cos, lambda v: (np.cos(v), -np.sin(v))),
-    "tan": (np.tan, lambda v: (np.tan(v), 1./np.cos(v)**2)),
-    "sinc": (np.sinc, _sinc_helper),
-    "exp": (np.exp, lambda v: (2*(np.exp(v),))),
-    "expm1": (np.expm1, _expm1_helper),
+    "sin": (np.sin, lambda v: (np.sin(v), np.cos(v)), lambda v,m: _sc_helper(v,m,True)),
+    "cos": (np.cos, lambda v: (np.cos(v), -np.sin(v)), lambda v,m: _sc_helper(v,m,False)),
+    "tan": (np.tan, lambda v: (np.tan(v), 1./np.cos(v)**2), None),
+    "sinc": (np.sinc, _sinc_helper, None),
+    "exp": (np.exp, lambda v: (2*(np.exp(v),)), lambda v,m: (m+1)*(np.exp(v), )),
+    "expm1": (np.expm1, lambda v: _expm1_helper(v,1), lambda v,m: _expm1_helper(v,m)),
     "log": (np.log, lambda v: (np.log(v), 1./v)),
     "log10": (np.log10, lambda v: (np.log10(v), (1./np.log(10.))/v)),
     "log1p": (np.log1p, lambda v: (np.log1p(v), 1./(1.+v))),
@@ -98,7 +100,7 @@ ptw_dict = {
     "cosh": (np.cosh, lambda v: (np.cosh(v), np.sinh(v))),
     "tanh": (np.tanh, _tanh_helper),
     "sigmoid": (lambda v: 0.5+(0.5*np.tanh(v)), _sigmoid_helper),
-    "reciprocal": (lambda v: 1./v, _reciprocal_helper),
+    "reciprocal": (lambda v: 1./v, lambda v:_reciprocal_helper(v,1), lambda v,m:_reciprocal_helper(v,m)),
     "abs": (np.abs, _abs_helper),
     "absolute": (np.abs, _abs_helper),
     "sign": (np.sign, _sign_helper),

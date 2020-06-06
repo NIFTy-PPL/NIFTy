@@ -77,6 +77,10 @@ class Operator(metaclass=NiftyMeta):
         return None
 
     @property
+    def tensors(self):
+        return None
+
+    @property
     def want_metric(self):
         """Whether a metric should be computed for the full expression.
         This is `False` whenever `jac` is `None`. In other cases it signals
@@ -241,6 +245,10 @@ class Operator(metaclass=NiftyMeta):
         from .scaling_operator import ScalingOperator
         if not (isinstance(x, Operator) and x.val is not None):
             raise TypeError
+        if x.tensors is not None:
+            for tt in x.tensors[2:]:
+                if not tt.isNullTensor:
+                    raise ValueError
         if x.jac is not None:
             if not isinstance(x.jac, ScalingOperator):
                 raise ValueError
@@ -251,7 +259,9 @@ class Operator(metaclass=NiftyMeta):
     def __call__(self, x):
         if not isinstance(x, Operator):
             raise TypeError
-        if x.jac is not None:
+        if x.tensors is not None:
+            return self.apply(x.trivial_derivatives()).prepend(x)
+        elif x.jac is not None:
             return self.apply(x.trivial_jac()).prepend_jac(x.jac)
         elif x.val is not None:
             return self.apply(x)
@@ -434,6 +444,13 @@ class _OpProd(Operator):
         from ..linearization import Linearization
         from ..sugar import makeOp
         self._check_input(x)
+        if x.tensors is not None:
+            from ..diff_tensor import Taylor
+            t1 = self._op1(Taylor.make_var(x.val.extract(self._op1.domain),
+                                           maxorder=x.maxorder))
+            t2 = self._op2(Taylor.make_var(x.val.extract(self._op2.domain),
+                                           maxorder=x.maxorder))
+            return t1.new_from_prod(t2)
         lin = x.jac is not None
         wm = x.want_metric if lin else False
         x = x.val if lin else x

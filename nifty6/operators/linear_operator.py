@@ -168,6 +168,8 @@ class LinearOperator(Operator):
 
     def __call__(self, x):
         """Same as :meth:`times`"""
+        if x.tensors is not None:
+            return x.new_from_lin(self).prepend(x)
         if x.jac is not None:
             return x.new(self(x._val), self).prepend_jac(x.jac)
         if x.val is not None:

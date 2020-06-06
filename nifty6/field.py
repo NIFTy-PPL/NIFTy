@@ -709,6 +709,11 @@ class Field(Operator):
         tmp = ptw_dict[op][1](self._val, *argstmp, **kwargstmp)
         return (Field(self._domain, tmp[0]), Field(self._domain, tmp[1]))
 
+    def ptw_with_derivs(self, op, maxorder, *args, **kwargs):
+        from .pointwise import ptw_dict
+        argstmp, kwargstmp = self._prep_args(args, kwargs)
+        tmp = ptw_dict[op][2](self._val, maxorder, *argstmp, **kwargstmp)
+        return tuple(Field(self._domain, tm) for tm in tmp)
 
 for op in ["__add__", "__radd__",
            "__sub__", "__rsub__",
