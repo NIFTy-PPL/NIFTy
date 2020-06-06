@@ -35,6 +35,8 @@ from scipy.special import factorial
 from .sugar import makeOp, domain_union, full
 from .field import Field
 from .multi_field import MultiField
+from .operators.operator import Operator
+from .operators.simple_linear_operators import NullOperator
 
 
 def assertIsinstance(t1, t2):
@@ -101,14 +103,31 @@ class DiffTensor(_DiffTensorImpl):
     def makeDiagonal(vec, rank):
         return DiffTensor(DiagonalTensor(vec, rank))
 
+    @staticmethod
+    def makeNull(domain, target, rank):
+        return DiffTensor(NullTensor(domain, target, rank))
+
+    @staticmethod
+    def makeGenLeibniz(t1, t2, order_derivative):
+        if order_derivative<0:
+            raise ValueError
+        if order_derivative==0:
+            return DiffTensor.makeDiagonal(t1[0].vec*t2[0].vec, 1)
+        return DiffTensor(GenLeibnizTensor(t1,t2,order_derivative))
+
+    @staticmethod
+    def makeComposed(new, old, order_derivative):
+        if order_derivative < 1:
+            raise ValueError
+        return DiffTensor(ComposedTensor(new, old, order_derivative))
+        
+
     def __add__(self, other):
         assertIsinstance(other, _DiffTensorImpl)
         return DiffTensor(SumTensor((self, other)))
 
 #     @staticmethod
 #     def makeSum
-#     def makeGenLeibniz
-#     def makeComposed
 
     @property
     def domain(self):
@@ -154,7 +173,7 @@ class DiffTensor(_DiffTensorImpl):
         return DiffTensor(self._impl, x+self._arg)
 
 
-class Taylor(object):
+class Taylor(Operator):
     """Class describing a Taylor approximation up to a given order
 
     This class is a generalization of Fields/MultiFields (which are Taylor
@@ -189,6 +208,18 @@ class Taylor(object):
         return self._tensors[0].target
 
     @property
+    def val(self):
+        return self._tensors[0].vec
+
+    @property
+    def jac(self):
+        return self._tensors[1].linop
+
+    @property
+    def tensors(self):
+        return self._tensors
+
+    @property
     def maxorder(self):
         """int: the maximum approximation order, i.e. one less than the number of stored tensors"""
         return len(self._tensors)-1
@@ -201,11 +232,21 @@ class Taylor(object):
 
     @staticmethod
     def make_var(val, maxorder):
+        if maxorder < 2:
+            raise ValueError
         jacs = [DiffTensor.makeDiagonal(val,1)]
         jacs.append(DiffTensor.makeDiagonal(full(val.domain,1.),2))
-        f0 = full(val.domain,0.)
-        jacs += [DiffTensor.makeDiagonal(f0, i+1) for i in range(2,maxorder+1)]
+        jacs += [DiffTensor.makeNull(val.domain, val.domain, i+1) for i in range(2,maxorder+1)]
         return Taylor(jacs)
+
+    def new_from_prod(self, t2):
+        assert self.maxorder == t2.maxorder
+        return Taylor([DiffTensor.makeGenLeibniz(self, t2, i) for i in range(self.maxorder+1)])
+
+    def new(self, new):
+        res = [DiffTensor.makeDiagonal(new[0].vec,1),]
+        res += [DiffTensor.makeComposed(new, self, i) for i in range(1, self.maxorder+1)]
+        return Taylor(res)
 
 # class DiffTensorRank1(DiffTensor):
 #     def __init__(self, vec):
@@ -233,6 +274,20 @@ class Taylor(object):
 #     def _contract(self,x):
 #         return DiffTensorRank1(self._op(x[0]))
 
+class LinearTensor(_DiffTensorImpl):
+    def __init__(self, op):
+        super(LinearTensor, self).__init__(op.domain, op.target, 2)
+        self._op = op
+
+    def getLinop(self, x=()):
+        if len(x) != 0:
+            raise ValueError
+        return self._op
+
+    def getVec(self, x=()):
+        if len(x) != 1:
+            raise ValueError
+        return self._op(x)
 
 class DiagonalTensor(_DiffTensorImpl):
     def __init__(self, vec, rank):
@@ -297,15 +352,15 @@ class SumTensor(_DiffTensorImpl):
 # unfinished code from here on ...
 
 class GenLeibnizTensor(_DiffTensorImpl):
-    def __init__(self, t1, t2, maxorder):
+    def __init__(self, t1, t2, order_derivative):
         assertIsinstance(t1, Taylor)
         assertIsinstance(t2, Taylor)
-        assert(t1.maxorder >= maxorder)
-        assert(t2.maxorder >= maxorder)
+        assert(t1.maxorder >= order_derivative)
+        assert(t2.maxorder >= order_derivative)
         dom = domain_union((t1.domain, t2.domain))
         self._t1 = t1
         self._t2 = t2
-        super(GenLeibnizTensor, self).__init__(dom, t1.target, maxorder+1)
+        super(GenLeibnizTensor, self).__init__(dom, t1.target, order_derivative+1)
 
     def getVec(self, x=()):
         if self._rank-len(x) != 1:
@@ -318,8 +373,13 @@ class GenLeibnizTensor(_DiffTensorImpl):
             # (i & (1<<j)) is True iff the j-th bit is set in i
             xx1 = [x1[j] for j in range(ord) if (i & (1<<j))]
             xx2 = [x2[j] for j in range(ord) if not (i & (1<<j))]
-            tmp = self._t1[len(xx1)].getVec(xx1)*self._t2[len(xx2)].getVec(xx2)
-            res = tmp if res is None else res+tmp
+            if not (isinstance(self._t1[len(xx1)]._impl, NullTensor) or
+                    isinstance(self._t2[len(xx2)]._impl, NullTensor)):
+                tmp = (self._t1[len(xx1)].getVec(xx1)*
+                       self._t2[len(xx2)].getVec(xx2))
+                res = tmp if res is None else res+tmp
+        if res is None:
+            return full(self.target, 0.)
         return res
 
     def getLinop(self, x=()):
@@ -334,13 +394,21 @@ class GenLeibnizTensor(_DiffTensorImpl):
             xx1 = [x1[j] for j in range(ord-1) if (i & (1<<j))]
             xx2 = [x2[j] for j in range(ord-1) if not (i & (1<<j))]
             if i & (1<<(ord-1)):
-                tmp = (makeOp(self._t2[len(xx2)].getVec(xx2))@
-                       self._t1[len(xx1)+1].getLinop(xx1))
+                if not (isinstance(self._t1[len(xx1)+1]._impl, NullTensor) or
+                        isinstance(self._t2[len(xx2)]._impl, NullTensor)):
+                    tmp = (makeOp(self._t2[len(xx2)].getVec(xx2))@
+                           self._t1[len(xx1)+1].getLinop(xx1))
+                    res = tmp if res is None else res+tmp
             else:
-                tmp = (makeOp(self._t1[len(xx1)].getVec(xx1))@
-                       self._t2[len(xx2)+1].getLinop(xx2))
-            res = tmp if res is None else res+tmp
+                if not (isinstance(self._t1[len(xx1)]._impl, NullTensor) or
+                        isinstance(self._t2[len(xx2)+1]._impl, NullTensor)):
+                    tmp = (makeOp(self._t1[len(xx1)].getVec(xx1))@
+                           self._t2[len(xx2)+1].getLinop(xx2))
+                    res = tmp if res is None else res+tmp
+        if res is None:
+            return NullOperator(self.domain, self.target)
         return res
+
 
 def _constraint(lst):
     return len(lst) == sum([v*(i+1) for i,v in enumerate(lst)])
@@ -367,24 +435,36 @@ class ComposedTensor(_DiffTensorImpl):
     """Implements a generalization of the chain rule for higher derivatives
     based on the Faà di Bruno's formula.
     """
-    def __init__(self, old, new, maxorder):
+    def __init__(self, new, old, order_derivative):
         assertIsinstance(old, Taylor)
         assertIsinstance(new, Taylor)
-        assert(old.maxorder >= maxorder)
-        assert(new.maxorder >= maxorder)
+        assert(old.maxorder >= order_derivative)
+        assert(new.maxorder >= order_derivative)
         assertIdentical(old.target, new.domain)
-        super(ComposedTensor, self).__init__(old.domain, new.target, maxorder+1)
-        lst, self._coeff = _get_all_comb(maxorder)
+        super(ComposedTensor, self).__init__(old.domain, new.target, order_derivative+1)
+        lst, self._coeff = _get_all_comb(order_derivative)
         self._oldidx, self._newidx = [], []
         self._old = old
         self._new = new
-        for lsti in lst:
-            rr = lsti.sum()-1
-            self._newidx.append(rr)
-            mi = [oi+1 for oi, l in enumerate(lsti) for cnt in range(l)]
-            self._oldidx.append(mi)
-        print(self._newidx)
-        print(self._oldidx)
+        #for lsti in lst:
+        #    rr = lsti.sum()-1
+        #    self._newidx.append(rr)
+        #    mi = [oi+1 for oi, l in enumerate(lsti) for cnt in range(l)]
+        #    self._oldidx.append(mi)
+        #print(self._newidx)
+        #print(self._oldidx)
+
+        i, nmax = 0, len(lst)
+        while i<nmax:
+            rr = lst[i].sum()-1
+            if isinstance(self._new[rr]._impl, NullTensor):
+                del lst[i], self._coeff[i]
+                nmax -=1
+            else:
+                self._newidx.append(rr)
+                mi = [oi+1 for oi, l in enumerate(lst[i]) for cnt in range(l)]
+                self._oldidx.append(mi)
+                i += 1
 
     def getVec(self, x):
         res = [None, ]*(self._rank-1)
@@ -412,19 +492,20 @@ class ComposedTensor(_DiffTensorImpl):
             for i in oldidx:
                 op = self._old[i]
                 if op.rank == 1:
+                    raise ValueError
                     rr = 0.
                 elif op.rank == 2:
                     if x[cnt] is None:
                         rr = op.getLinop()
                     else:
-                        tm.append(op.getLinop()(x[cnt]))
+                        tm.append(op.getVec((x[cnt],)))
                     cnt +=1
                 else:
                     sl = x[cnt:(cnt+(op.rank-1))]
                     if sl[-1] is None:
                         rr = op.getLinop(sl[:-1])
                     else:
-                        tm.append(op.getLinop()(sl))
+                        tm.append(op.getVec((sl,)))
                     cnt += op.rank-1
             rr = coeff*rr
             tms[newidx] = tm if tms[newidx] is None else _mysum(tms[newidx],tm)
@@ -432,9 +513,6 @@ class ComposedTensor(_DiffTensorImpl):
         res = None
         for newmap, tm, rr in zip(self._new[1:self._rank], tms, rrs):
             if tm is not None:
-                if len(tm)==0:
-                    rr = newmap.getLinop()@rr
-                else:
-                    rr = newmap.getLinop(tm)@rr
+                rr = newmap.getLinop(tuple(tm))@rr
                 res = rr if res is None else res+rr
         return res
