@@ -30,8 +30,6 @@ of 2nd order) from a n+1 order tensor by contracting with n-1 vectors. This new
 operator then has the same capabilities as usual Linear operators.
 """
 import numpy as np
-from itertools import product
-from scipy.special import factorial
 from .sugar import makeOp, domain_union, full
 from .field import Field
 from .multi_field import MultiField
@@ -242,6 +240,10 @@ class Taylor(Operator):
 
     def __getitem__(self, i):
         return self._tensors[i]
+
+    def __add__(self, other):
+        assertIsinstance(other, Taylor)
+        return self.new(tuple(aa+bb for aa,bb in zip(self.tensors,other.tensors)))
 
     def trivial_derivatives(self):
         return self.make_var(self.val, self.maxorder)
@@ -455,31 +457,27 @@ class GenLeibnizTensor(_DiffTensorImpl):
             return NullOperator(self.domain, self.target)
         return res
 
+def _partition(collection):
+    if len(collection) == 1:
+        yield [ collection ]
+        return
 
-def _constraint(lst):
-    return len(lst) == sum([v*(i+1) for i,v in enumerate(lst)])
+    first = collection[0]
+    for smaller in _partition(collection[1:]):
+        # insert `first` in each of the subpartition's subsets
+        for n, subset in enumerate(smaller):
+            yield smaller[:n] + [[ first ] + subset]  + smaller[n+1:]
+        # put `first` in its own subset 
+        yield [ [ first ] ] + smaller
 
-def _multifact(lst,idx,n):
-    res = factorial(n)
-    ls = lst[idx]
-    res /= np.prod(factorial(ls)*factorial(np.array(idx)+1.)**ls)
-    return res
-
-def _get_all_comb(n):
-    mv = n//(np.arange(n)+1)
-    lst = [np.array(i) for i in product(*(range(i+1) for i in mv)) if _constraint(i)]
-    coeff = []
-    for ll in lst:
-        idx = np.where(np.array(ll)!=0)[0]
-        coeff.append(_multifact(ll, idx, n))
-    return lst, coeff
+def _all_partitions(n):
+    return list(_partition(list(np.arange(n))))
 
 def _mysum(a,b):
-    return [aa+bb for aa,bb in zip(a,b)]
+    return tuple(aa+bb for aa,bb in zip(a,b))
 
 class ComposedTensor(_DiffTensorImpl):
-    """Implements a generalization of the chain rule for higher derivatives
-    based on the Faà di Bruno's formula.
+    """Implements a generalization of the chain rule for higher derivatives.
     """
     def __init__(self, new, old, order_derivative):
         assertIsinstance(old, Taylor)
@@ -488,77 +486,32 @@ class ComposedTensor(_DiffTensorImpl):
         assert(new.maxorder >= order_derivative)
         assertIdentical(old.target, new.domain)
         super(ComposedTensor, self).__init__(old.domain, new.target, order_derivative+1)
-        lst, self._coeff = _get_all_comb(order_derivative)
-        self._oldidx, self._newidx = [], []
         self._old = old
         self._new = new
-        #for lsti in lst:
-        #    rr = lsti.sum()-1
-        #    self._newidx.append(rr)
-        #    mi = [oi+1 for oi, l in enumerate(lsti) for cnt in range(l)]
-        #    self._oldidx.append(mi)
-        #print(self._newidx)
-        #print(self._oldidx)
+        self._partitions = _all_partitions(order_derivative)
 
-        i, nmax = 0, len(lst)
-        while i<nmax:
-            rr = lst[i].sum()-1
-            if isinstance(self._new[rr]._impl, NullTensor):
-                del lst[i], self._coeff[i]
-                nmax -=1
-            else:
-                self._newidx.append(rr)
-                mi = [oi+1 for oi, l in enumerate(lst[i]) for cnt in range(l)]
-                self._oldidx.append(mi)
-                i += 1
 
     def getVec(self, x):
-        res = [None, ]*(self._rank-1)
-        for oldidx, newidx, coeff in zip(self._oldidx, self._newidx, self._coeff):
-            tm = []
-            cnt = 0
-            for i in oldidx:
-                op = self._old[i]
-                sl = x[cnt:(cnt+op.rank-1)]
-                cnt += op.rank-1
-                tm.append(coeff*op.getVec(sl))
-            res[newidx] = tm if res[newidx] is None else _mysum(res[newidx],tm)
-        res = sum([m.getVec(rr) for m,rr in zip(self._new[1:self._rank], res) if rr is not None])
+        if len(x) != self._rank-1:
+            raise ValueError
+        res = 0.
+        for p in self._partitions:
+            rr = (self._old[len(b)].getVec(tuple(x[ind] for ind in b)) for b in p)
+            res = res + self._new[len(p)].getVec(rr)
         return res
 
-    def getLinop(self, y):
-        nderiv = self.rank-1
-        x = y + (None,)
-        tms = [None, ]*nderiv
-        rrs = [None, ]*nderiv
-        for oldidx, newidx, coeff in zip(self._oldidx, self._newidx, self._coeff):
-            tm = [] # list of linops
-            rr = None # linop
-            cnt = 0
-            for i in oldidx:
-                op = self._old[i]
-                if op.rank == 1:
-                    raise ValueError
-                    rr = 0.
-                elif op.rank == 2:
-                    if x[cnt] is None:
-                        rr = op.getLinop()
-                    else:
-                        tm.append(op.getVec((x[cnt],)))
-                    cnt +=1
-                else:
-                    sl = x[cnt:(cnt+(op.rank-1))]
-                    if sl[-1] is None:
-                        rr = op.getLinop(sl[:-1])
-                    else:
-                        tm.append(op.getVec((sl,)))
-                    cnt += op.rank-1
-            rr = coeff*rr
-            tms[newidx] = tm if tms[newidx] is None else _mysum(tms[newidx],tm)
-            rrs[newidx] = rr if rrs[newidx] is None else rrs[newidx]+rr
+    def getLinop(self, x):
+        if len(x) != self._rank-2:
+            raise ValueError
         res = None
-        for newmap, tm, rr in zip(self._new[1:self._rank], tms, rrs):
-            if tm is not None:
-                rr = newmap.getLinop(tuple(tm))@rr
-                res = rr if res is None else res+rr
+        for p in self._partitions:
+            #rr = (self._old[len(b)].getVec(tuple(x[ind] for ind in b)) for b in p)
+            rr = ()
+            for b in p:
+                if self._rank-2 not in b:
+                    rr += (self._old[len(b)].getVec(tuple(x[ind] for ind in b)), )
+                else:
+                    tm = self._old[len(b)].getLinop(tuple(x[ind] for ind in b if ind != self._rank-2))
+            r = self._new[len(p)].getLinop(rr)@tm
+            res = r if res is None else res+r
         return res

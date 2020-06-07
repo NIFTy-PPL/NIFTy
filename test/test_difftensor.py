@@ -65,27 +65,84 @@ def test_leibnitz_simple():
 
     assert isinstance(ops[3].getLinop((c,c)), ift.NullOperator)
 
-def test_composed_simple():
-    dom = ift.RGSpace(10)
+def test_tensors():
+    dom = ift.RGSpace(5)
     a = ift.from_random(dom)
-    b = ift.from_random(dom)
-    c = ift.from_random(dom)
-
     x = ift.diff_tensor.Taylor.make_var(a, 4)
-    y = ift.diff_tensor.Taylor.make_var(b, 4)
-    z = x.new_from_prod(y)
-    p = ift.diff_tensor.Taylor.make_var(ift.full(z.domain,5.),4)
+    op = ift.ScalingOperator(dom, 4.)
+    y = op(x)
+    assert_allclose(y.val.val, op(a).val)
 
+    ht = ift.ScalingOperator(dom,3.)#ift.HarmonicTransformOperator(dom.get_default_codomain())
+    op = ht.ducktape("hi")
+    op = op.exp()
+    a = ift.from_random(op.domain)
+    x = ift.diff_tensor.Taylor.make_var(a, 5)
+    y = op(x)
+
+    bs = tuple(ift.from_random(op.domain) for _ in range(6))
+    for i in range(6):
+        print(i)
+        res1 = y[i].getVec(bs[:i])
+        rr = y[i].getVec(bs[:i][::-1])
+        assert_allclose(res1.val,rr.val)
+        if i > 0:
+            rr = y[i].getLinop(bs[:i-1])
+            rr = rr(bs[i-1])
+            assert_allclose(rr.val,res1.val)
+        tm = 1.
+        for j in range(i):
+            tm = tm*ht(bs[j]['hi'])
+        res2 = ht(a['hi']).exp() * tm
+        assert_allclose(res1.val,res2.val)
+
+    op2 = ift.ScalingOperator(dom, 1.).ducktape('ho')
+    #r = (op+op2).reciprocal()
+    r = op2.exp().reciprocal()
+    a = ift.from_random(r.domain)
+    x = ift.diff_tensor.Taylor.make_var(a, 5)
+    z = r(x)
+
+    bs = tuple(ift.from_random(r.domain) for _ in range(6))
+    for i in range(6):
+        print(i)
+        res = z[i].getVec(bs[:i])
+        rr = z[i].getVec(bs[:i][::-1])
+        assert_allclose(res.val,rr.val)
+        if i>0:
+            res2 = z[i].getLinop(bs[:i-1])(bs[i-1])
+            #assert_allclose(res.val,res2.val)
+        tm = 1.
+        for bb in bs[:i]:
+            tm = tm*bb
+        re = (1.-2.*(i%2))*(-a).exp()*tm
+        print(res.val)
+        print(re['ho'].val)
+        #assert_allclose(re['ho'].val,res.val)
+
+def test_comp():
+    dom = ift.RGSpace(10)
+    ht = ift.ScalingOperator(dom,3.)
+    op = ht.ducktape("hi")
+    op = op.exp()
     
+    a = ift.from_random(op.domain)
+    x = ift.diff_tensor.Taylor.make_var(a,5)
+    y = op(x)
 
-    ops = x.new(y)
-    print(ops[4].getVec((c,c,c,c)).val)
-
-    assert ops[0].vec is b
-    print(ops[1].linop)
-    print(ops[1].getVec((c,)).val)
-
+    b1 = ift.from_random(op.domain)
+    b2 = ift.from_random(op.domain)
+    bs = (b1,b2)
     
-    
+    r1 = y[2].getVec(bs[:2])
+    r2 = y[2].getLinop(bs[:1])(bs[1])
+    assert_allclose(r1.val,r2.val)
+
+    r1 = y[1].getVec((b1,))
+    r2 = y[1].getLinop()(b1)
+    assert_allclose(r1.val,r2.val)
+
+test_comp()
 test_leibnitz_simple()
-test_composed_simple()
+test_tensors()
+

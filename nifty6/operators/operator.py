@@ -441,8 +441,6 @@ class _OpProd(Operator):
         self._op2 = op2
 
     def apply(self, x):
-        from ..linearization import Linearization
-        from ..sugar import makeOp
         self._check_input(x)
         if x.tensors is not None:
             from ..diff_tensor import Taylor
@@ -451,6 +449,8 @@ class _OpProd(Operator):
             t2 = self._op2(Taylor.make_var(x.val.extract(self._op2.domain),
                                            maxorder=x.maxorder))
             return t1.new_from_prod(t2)
+        from ..linearization import Linearization
+        from ..sugar import makeOp
         lin = x.jac is not None
         wm = x.want_metric if lin else False
         x = x.val if lin else x
@@ -492,8 +492,15 @@ class _OpSum(Operator):
         self._op2 = op2
 
     def apply(self, x):
-        from ..linearization import Linearization
         self._check_input(x)
+        if x.tensors is not None:
+            from ..diff_tensor import Taylor
+            t1 = self._op1(Taylor.make_var(x.val.extract(self._op1.domain),
+                                           maxorder=x.maxorder))
+            t2 = self._op2(Taylor.make_var(x.val.extract(self._op2.domain),
+                                           maxorder=x.maxorder))
+            return t1+t2
+        from ..linearization import Linearization
         if x.jac is None:
             v1 = x.extract(self._op1.domain)
             v2 = x.extract(self._op2.domain)
