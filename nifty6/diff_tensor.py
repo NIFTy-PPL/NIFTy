@@ -47,6 +47,7 @@ operator then has the same capabilities as usual Linear operators.
 """
 
 import numpy as np
+from functools import reduce
 from .sugar import makeOp, domain_union, full
 from .field import Field
 from .multi_field import MultiField
@@ -242,9 +243,7 @@ class DiagonalTensor(_DiffTensorImpl):
     def _helper(self, x, rnk):
         if self._rank-len(x) != rnk:
             raise ValueError
-        res = self._vec
-        for xx in x:
-            res = res*xx
+        res = reduce(lambda a,b:a*b, x, 1.)*self._vec
         return res if rnk == 1 else makeOp(res)
 
     def getLinop(self, x=()):
@@ -257,12 +256,13 @@ class DiagonalTensor(_DiffTensorImpl):
 class NullTensor(_DiffTensorImpl):
     def __init__(self, domain, target, rank):
         super(NullTensor, self).__init__(domain, target, rank)
+        self._op, self._vec = NullOperator(self.domain, self.target), full(self.target, 0.)
 
     def getLinop(self, x=()):
-        return NullOperator(self.domain, self.target)
+        return self._op
 
     def getVec(self, x=()):
-        return full(self.target, 0.)
+        return self._vec
 
 
 class SumTensor(_DiffTensorImpl):
@@ -325,9 +325,7 @@ class GenLeibnizTensor(_DiffTensorImpl):
                 tmp = (self._t1[len(xx1)].getVec(xx1)*
                        self._t2[len(xx2)].getVec(xx2))
                 res = tmp if res is None else res+tmp
-        if res is None:
-            return full(self.target, 0.)
-        return res
+        return res if res is not None else full(self.target, 0.)
 
     def getLinop(self, x=()):
         if self._rank-len(x) != 2:
@@ -352,9 +350,7 @@ class GenLeibnizTensor(_DiffTensorImpl):
                     tmp = (makeOp(self._t1[len(xx1)].getVec(xx1))@
                            self._t2[len(xx2)+1].getLinop(xx2))
                     res = tmp if res is None else res+tmp
-        if res is None:
-            return NullOperator(self.domain, self.target)
-        return res
+        return res if res is not None else NullOperator(self.domain, self.target)
 
 
 def _partition(collection):
@@ -370,8 +366,16 @@ def _partition(collection):
         # put `first` in its own subset 
         yield [ [ first ] ] + smaller
 
-def _all_partitions(n):
-    return list(_partition(list(np.arange(n))))
+def _all_partitions_nontrivial(n, new):
+    pps = list(_partition(list(np.arange(n))))
+    i,nm = 0,len(pps)
+    while i<nm:
+        if new[len(pps[i])].isNullTensor:
+            del pps[i]
+            nm -=1
+        else:
+            i+=1
+    return pps
 
 def _mysum(a,b):
     return tuple(aa+bb for aa,bb in zip(a,b))
@@ -390,17 +394,16 @@ class ComposedTensor(_DiffTensorImpl):
         super(ComposedTensor, self).__init__(old.domain, new.target, order_derivative+1)
         self._old = old
         self._new = new
-        self._partitions = _all_partitions(order_derivative)
-
+        self._partitions = _all_partitions_nontrivial(order_derivative, self._new)
 
     def getVec(self, x):
         if len(x) != self._rank-1:
             raise ValueError
-        res = 0.
+        res = None
         for p in self._partitions:
             rr = (self._old[len(b)].getVec(tuple(x[ind] for ind in b)) for b in p)
-            res = res + self._new[len(p)].getVec(rr)
-        return res
+            res = self._new[len(p)].getVec(rr) if res is None else res + self._new[len(p)].getVec(rr)
+        return res if res is not None else full(self.target, 0.)
 
     def getLinop(self, x):
         if len(x) != self._rank-2:
@@ -410,9 +413,9 @@ class ComposedTensor(_DiffTensorImpl):
             rr = ()
             for b in p:
                 if self._rank-2 not in b:
-                    rr += (self._old[len(b)].getVec(tuple(x[ind] for ind in b)), )
+                    rr += (self._old[len(b)].getVec((x[ind] for ind in b)), )
                 else:
-                    tm = self._old[len(b)].getLinop(tuple(x[ind] for ind in b if ind != self._rank-2))
+                    tm = self._old[len(b)].getLinop((x[ind] for ind in b if ind != self._rank-2))
             r = self._new[len(p)].getLinop(rr)@tm
             res = r if res is None else res+r
-        return res
+        return res if res is not None else NullOperator(self.domain, self.target)
