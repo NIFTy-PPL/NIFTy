@@ -2,7 +2,6 @@ from .version import __version__
 
 from . import random
 
-from .diff_tensor import DiffTensor
 
 from .domains.domain import Domain
 from .domains.structured_domain import StructuredDomain
@@ -18,6 +17,8 @@ from .domain_tuple import DomainTuple
 from .multi_domain import MultiDomain
 from .field import Field
 from .multi_field import MultiField
+from .taylor import Taylor
+from .diff_tensor import DiffTensor
 
 
 from .operators.operator import Operator

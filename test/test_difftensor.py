@@ -22,15 +22,16 @@ from numpy.testing import assert_allclose#, assert_equal, assert_raises
 import nifty6 as ift
 #from .common import setup_function, teardown_function
 
+
 def test_leibnitz_simple():
     dom = ift.RGSpace(10)
     a = ift.from_random(dom)
     b = ift.from_random(dom)
     c = ift.from_random(dom)
 
-    x = ift.diff_tensor.Taylor.make_var(a, 4)
+    x = ift.Taylor.make_var(a, 4)
     assert x[0].vec is a
-    y = ift.diff_tensor.Taylor.make_var(b, 4)
+    y = ift.Taylor.make_var(b, 4)
     assert y[0].vec is b
     ops = x.new_from_prod(y)
     assert_allclose(ops[0].vec.val, (a*b).val)
@@ -42,10 +43,11 @@ def test_leibnitz_simple():
 
     assert isinstance(ops[3].getLinop((c,c)), ift.NullOperator)
 
+
 def test_tensors():
     dom = ift.RGSpace(5)
     a = ift.from_random(dom)
-    x = ift.diff_tensor.Taylor.make_var(a, 4)
+    x = ift.Taylor.make_var(a, 4)
     op = ift.ScalingOperator(dom, 4.)
     y = op(x)
     assert_allclose(y.val.val, op(a).val)
@@ -54,7 +56,7 @@ def test_tensors():
     op = ht.ducktape("hi")
     op = op.exp()
     a = ift.from_random(op.domain)
-    x = ift.diff_tensor.Taylor.make_var(a, 5)
+    x = ift.Taylor.make_var(a, 5)
     y = op(x)
 
     bs = tuple(ift.from_random(op.domain) for _ in range(6))
@@ -76,9 +78,9 @@ def test_tensors():
     r = (op+op2).reciprocal()
     r2 = op2.exp().reciprocal()
     a = ift.from_random(r.domain)
-    z = r(ift.diff_tensor.Taylor.make_var(a, 4))
+    z = r(ift.Taylor.make_var(a, 4))
     a2 = ift.from_random(r2.domain)
-    z2 = r2(ift.diff_tensor.Taylor.make_var(a2, 4))
+    z2 = r2(ift.Taylor.make_var(a2, 4))
 
     bs = tuple(ift.from_random(r.domain) for _ in range(5))
     bs2 = tuple(ift.from_random(r2.domain) for _ in range(5))
@@ -95,6 +97,7 @@ def test_tensors():
         re = (1.-2.*(i%2))*(-a2).exp()*tm
         assert_allclose(re['ho'].val,z2[i].getVec(bs2[:i]).val)
 
+
 def test_comp():
     dom = ift.RGSpace(10)
     ht = ift.ScalingOperator(dom,3.)
@@ -102,7 +105,7 @@ def test_comp():
     op = op.exp()
     
     a = ift.from_random(op.domain)
-    x = ift.diff_tensor.Taylor.make_var(a,5)
+    x = ift.Taylor.make_var(a,5)
     y = op(x)
 
     b1 = ift.from_random(op.domain)
@@ -116,7 +119,6 @@ def test_comp():
     r1 = y[1].getVec((b1,))
     r2 = y[1].getLinop()(b1)
     assert_allclose(r1.val,r2.val)
-
 
 
 def test_cf():
@@ -143,7 +145,7 @@ def test_cf():
     correlated_field = cf.finalize(prior_info=0)
 
     x = ift.from_random(correlated_field.domain)
-    t = ift.diff_tensor.Taylor.make_var(x, 2)
+    t = ift.Taylor.make_var(x, 2)
     y = correlated_field(t)
 
     assert_allclose(y.val.val,correlated_field(x).val)

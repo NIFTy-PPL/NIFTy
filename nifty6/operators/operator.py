@@ -443,7 +443,7 @@ class _OpProd(Operator):
     def apply(self, x):
         self._check_input(x)
         if x.tensors is not None:
-            from ..diff_tensor import Taylor
+            from ..taylor import Taylor
             t1 = self._op1(Taylor.make_var(x.val.extract(self._op1.domain),
                                            maxorder=x.maxorder))
             t2 = self._op2(Taylor.make_var(x.val.extract(self._op2.domain),
@@ -494,7 +494,7 @@ class _OpSum(Operator):
     def apply(self, x):
         self._check_input(x)
         if x.tensors is not None:
-            from ..diff_tensor import Taylor
+            from ..taylor import Taylor
             t1 = self._op1(Taylor.make_var(x.val.extract(self._op1.domain),
                                            maxorder=x.maxorder))
             t2 = self._op2(Taylor.make_var(x.val.extract(self._op2.domain),
