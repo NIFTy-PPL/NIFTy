@@ -203,7 +203,7 @@ class DiffTensor(_DiffTensorImpl):
         """Contracts the tensor with the fields in `x` and returns a new tensor
         with a rank of self.rank-len(x).
         If the resulting rank is lower than 1, an exception is raised."""
-        return DiffTensor(self._impl, x+self._arg)
+        return DiffTensor(self._impl, tuple(x)+self._arg)
 
 
 class VecTensor(_DiffTensorImpl):
@@ -282,7 +282,7 @@ class SumTensor(_DiffTensorImpl):
             raise ValueError
         res = 0.
         for tli, sign in zip(self._tlist, self._sign):
-            tm = tli.getVec(tuple(xj.extract(tli.domain) for xj in x))
+            tm = tli.getVec((xj.extract(tli.domain) for xj in x))
             res = res + tm if sign else res - tm
         return res
 
@@ -291,7 +291,7 @@ class SumTensor(_DiffTensorImpl):
             raise ValueError
         res = None
         for tli, sign in zip(self._tlist, self._sign):
-            tmp = tli.getLinop(tuple(xj.extract(tli.domain) for xj in x))
+            tmp = tli.getLinop((xj.extract(tli.domain) for xj in x))
             tmp = tmp if sign else -tmp
             res = tmp if res is None else res + tmp
         return res
@@ -377,9 +377,6 @@ def _all_partitions_nontrivial(n, new):
             i+=1
     return pps
 
-def _mysum(a,b):
-    return tuple(aa+bb for aa,bb in zip(a,b))
-
 
 class ComposedTensor(_DiffTensorImpl):
     """Implements a generalization of the chain rule for higher derivatives.
@@ -401,7 +398,7 @@ class ComposedTensor(_DiffTensorImpl):
             raise ValueError
         res = None
         for p in self._partitions:
-            rr = (self._old[len(b)].getVec(tuple(x[ind] for ind in b)) for b in p)
+            rr = (self._old[len(b)].getVec((x[ind] for ind in b)) for b in p)
             res = self._new[len(p)].getVec(rr) if res is None else res + self._new[len(p)].getVec(rr)
         return res if res is not None else full(self.target, 0.)
 
