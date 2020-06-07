@@ -36,47 +36,10 @@ from ..operators.harmonic_operators import HarmonicTransformOperator
 from ..operators.linear_operator import LinearOperator
 from ..operators.operator import Operator
 from ..operators.simple_linear_operators import ducktape
+from ..operators.normal_operators import NormalTransform, LognormalTransform
 from ..probing import StatCalculator
 from ..sugar import full, makeDomain, makeField, makeOp
 from .. import utilities
-
-
-def _reshaper(x, N):
-    x = np.asfarray(x)
-    if x.shape in [(), (1,)]:
-        return np.full(N, x) if N != 0 else x.reshape(())
-    elif x.shape == (N,):
-        return x
-    else:
-        raise TypeError("Shape of parameters cannot be interpreted")
-
-
-def _lognormal_moments(mean, sig, N=0):
-    if N == 0:
-        mean, sig = np.asfarray(mean), np.asfarray(sig)
-    else:
-        mean, sig = (_reshaper(param, N) for param in (mean, sig))
-    if not np.all(mean > 0):
-        raise ValueError("mean must be greater 0; got {!r}".format(mean))
-    if not np.all(sig > 0):
-        raise ValueError("sig must be greater 0; got {!r}".format(sig))
-
-    logsig = np.sqrt(np.log1p((sig/mean)**2))
-    logmean = np.log(mean) - logsig**2/2
-    return logmean, logsig
-
-
-def _normal(mean, sig, key, N=0):
-    if N == 0:
-        domain = DomainTuple.scalar_domain()
-        mean, sig = np.asfarray(mean), np.asfarray(sig)
-        return Adder(makeField(domain, mean)) @ (
-            sig * ducktape(domain, None, key))
-
-    domain = UnstructuredDomain(N)
-    mean, sig = (_reshaper(param, N) for param in (mean, sig))
-    return Adder(makeField(domain, mean)) @ (DiagonalOperator(
-        makeField(domain, sig)) @ ducktape(domain, None, key))
 
 
 def _log_k_lengths(pspace):
@@ -118,29 +81,6 @@ def _total_fluctuation_realized(samples):
         res = res + (s - co.adjoint(co(s)/size))**2
     res = res.mean(spaces)/len(samples)
     return np.sqrt(res if np.isscalar(res) else res.val)
-
-
-class _LognormalMomentMatching(Operator):
-    def __init__(self, mean, sig, key, N_copies):
-        key = str(key)
-        logmean, logsig = _lognormal_moments(mean, sig, N_copies)
-        self._mean = mean
-        self._sig = sig
-        op = _normal(logmean, logsig, key, N_copies).ptw("exp")
-        self._domain, self._target = op.domain, op.target
-        self.apply = op.apply
-        self._repr_str = f"_LognormalMomentMatching: " + op.__repr__()
-
-    @property
-    def mean(self):
-        return self._mean
-
-    @property
-    def std(self):
-        return self._sig
-
-    def __repr__(self):
-        return self._repr_str
 
 
 class _SlopeRemover(EndomorphicOperator):
@@ -441,10 +381,8 @@ class CorrelatedFieldMaker:
         elif len(dofdex) != total_N:
             raise ValueError("length of dofdex needs to match total_N")
         N = max(dofdex) + 1 if total_N > 0 else 0
-        zm = _LognormalMomentMatching(offset_std_mean,
-                                      offset_std_std,
-                                      prefix + 'zeromode',
-                                      N)
+        zm = LognormalTransform(offset_std_mean, offset_std_std,
+                                prefix + 'zeromode', N)
         if total_N > 0:
             zm = _Distributor(dofdex, zm.target, UnstructuredDomain(total_N)) @ zm
         return CorrelatedFieldMaker(offset_mean, zm, prefix, total_N)
@@ -532,17 +470,15 @@ class CorrelatedFieldMaker:
         prefix = str(prefix)
         # assert isinstance(target_subdomain[space], (RGSpace, HPSpace, GLSpace)
 
-        fluct = _LognormalMomentMatching(fluctuations_mean,
-                                         fluctuations_stddev,
-                                         self._prefix + prefix + 'fluctuations',
-                                         N)
-        flex = _LognormalMomentMatching(flexibility_mean, flexibility_stddev,
-                                        self._prefix + prefix + 'flexibility',
-                                        N)
-        asp = _LognormalMomentMatching(asperity_mean, asperity_stddev,
-                                       self._prefix + prefix + 'asperity', N)
-        avgsl = _normal(loglogavgslope_mean, loglogavgslope_stddev,
-                        self._prefix + prefix + 'loglogavgslope', N)
+        fluct = LognormalTransform(fluctuations_mean, fluctuations_stddev,
+                                   self._prefix + prefix + 'fluctuations', N)
+        flex = LognormalTransform(flexibility_mean, flexibility_stddev,
+                                  self._prefix + prefix + 'flexibility', N)
+        asp = LognormalTransform(asperity_mean, asperity_stddev,
+                                 self._prefix + prefix + 'asperity', N)
+        avgsl = NormalTransform(loglogavgslope_mean, loglogavgslope_stddev,
+                                self._prefix + prefix + 'loglogavgslope', N)
+
         amp = _Amplitude(PowerSpace(harmonic_partner), fluct, flex, asp, avgsl,
                          self._azm, target_subdomain[-1].total_volume,
                          self._prefix + prefix + 'spectrum', dofdex)
