@@ -36,6 +36,7 @@ from .multi_field import MultiField
 from .operators.operator import Operator
 from .operators.simple_linear_operators import NullOperator
 from .operators.scaling_operator import ScalingOperator
+from .linearization import Linearization
 
 
 def assertIsinstance(t1, t2):
@@ -135,10 +136,16 @@ class DiffTensor(_DiffTensorImpl):
 
     def __add__(self, other):
         assertIsinstance(other, _DiffTensorImpl)
-        return DiffTensor(SumTensor((self, other)))
+        return DiffTensor(SumTensor((self, other), (True,True)))
 
-#     @staticmethod
-#     def makeSum
+    def __sub__(self, other):
+        assertIsinstance(other, _DiffTensorImpl)
+        return DiffTensor(SumTensor((self, other), (True,False)))
+
+    def __rsub__(self, other):
+        assertIsinstance(other, _DiffTensorImpl)
+        return DiffTensor(SumTensor((self, other), (False,True)))
+
 
     @property
     def domain(self):
@@ -235,6 +242,9 @@ class Taylor(Operator):
         """int: the maximum approximation order, i.e. one less than the number of stored tensors"""
         return len(self._tensors)-1
 
+    def __neg__(self):
+        return self.new_from_lin(ScalingOperator(self.target,-1.)).prepend(self)
+
     def __len__(self):
         return len(self._tensors)
 
@@ -242,8 +252,64 @@ class Taylor(Operator):
         return self._tensors[i]
 
     def __add__(self, other):
-        assertIsinstance(other, Taylor)
-        return self.new(tuple(aa+bb for aa,bb in zip(self.tensors,other.tensors)))
+        if isinstance(other, Taylor):
+            return self.new(tuple(aa+bb for aa,bb in zip(self.tensors,other.tensors)))
+        if isinstance(other, Linearization):
+            raise ValueError
+        vn = (DiffTensor.makeVec(self.val+other, self.domain),)
+        return self.new(vn+self.tensors[1:])
+        
+
+    def __radd__(self, other):
+        if isinstance(other, Taylor):
+            return self.new(tuple(aa+bb for aa,bb in zip(self.tensors,other.tensors)))
+        if isinstance(other, Linearization):
+            raise ValueError
+        vn = (DiffTensor.makeVec(self.val+other, self.domain),)
+        return self.new(vn+self.tensors[1:])
+
+    def __sub__(self, other):
+        if isinstance(other, Taylor):
+            return self.new(tuple(aa-bb for aa,bb in zip(self.tensors,other.tensors)))
+        if isinstance(other, Linearization):
+            raise ValueError
+        vn = (DiffTensor.makeVec(self.val-other, self.domain),)
+        return self.new(vn+self.tensors[1:])
+
+    def __rsub__(self, other):
+        if isinstance(other, Taylor):
+            return self.new(tuple(bb-aa for aa,bb in zip(self.tensors,other.tensors)))
+        if isinstance(other, Linearization):
+            raise ValueError
+        return self.new_from_lin(ScalingOperator(self.target,-1.)).prepend(self)+other
+
+    def __truediv__(self, other):
+        if np.isscalar(other):
+            return self.__mul__(1/other)
+        return self.__mul__(other.ptw("reciprocal"))
+
+    def __rtruediv__(self, other):
+        return self.ptw("reciprocal").__mul__(other)
+
+    def __pow__(self, power):
+        if not np.isscalar(power):
+            return NotImplemented
+        return self.ptw('power', power)
+
+    def __mul__(self, other):
+        if np.isscalar(other):
+            return self.new_from_lin(ScalingOperator(self.target,other)).prepend(self)
+        elif isinstance(other, Taylor):
+            return self.new_from_prod(other)
+        elif isinstance(other, Field) or isinstance(other, MultiField):
+            if other.domain != self.target:
+                raise ValueError
+            return self._new_from_lin(makeOp(other)).prepend(self)
+        else:
+            raise TypeError
+
+    def __rmul__(self, other):
+        return self.__mul__(other)
 
     def trivial_derivatives(self):
         return self.make_var(self.val, self.maxorder)
@@ -268,10 +334,10 @@ class Taylor(Operator):
         return Taylor(tensors)
 
     def ptw(self, op, *args, **kwargs):
-        tmp = self.val.ptw_with_derivs(op, self.maxorder)
+        tmp = self.val.ptw_with_derivs(op, self.maxorder, *args, **kwargs)
         tensors = (DiffTensor.makeVec(tmp[0],domain=self.domain), )
         tensors += tuple(DiffTensor.makeDiagonal(tm, i+2) for i,tm in enumerate(tmp[1:]))
-        return self.new(tensors)
+        return self.new(tensors).prepend(self)
 
     @staticmethod
     def make_var(val, maxorder):
@@ -279,37 +345,13 @@ class Taylor(Operator):
         # Will be unified in the future
         if maxorder < 2:
             raise ValueError
-        tensors = (DiffTensor.makeVec(val),
-                   DiffTensor.makeLinear(ScalingOperator(val.domain, 1.)))
-        tensors += tuple(DiffTensor.makeNull(val.domain, val.domain, i+1)
-                    for i in range(2,maxorder+1))
+        tensors = (DiffTensor.makeVec(val),)
+        if maxorder>0:
+            tensors += (DiffTensor.makeLinear(ScalingOperator(val.domain, 1.)), )
+            tensors += tuple(DiffTensor.makeNull(val.domain, val.domain, i+1)
+                        for i in range(2,maxorder+1))
         return Taylor(tensors)
 
-# class DiffTensorRank1(DiffTensor):
-#     def __init__(self, vec):
-#         super(DiffTensorRank1, self).__init__(vec.domain, vec.domain, 1)
-#         self._vec = vec
-#
-#     @property
-#     def vec(self):
-#         return self._vec
-#
-#     def _contract(self, x):
-#         # must not arrive here
-#         raise ValueError
-#
-#
-# class DiffTensorRank2(DiffTensor):
-#     def __init__(self, op):
-#         super(DiffTensorRank2, self).__init__(op.domain, op.target, 2)
-#         self._op = op
-#
-#     @property
-#     def linop(self):
-#         return self._op
-#
-#     def _contract(self,x):
-#         return DiffTensorRank1(self._op(x[0]))
 
 class VecTensor(_DiffTensorImpl):
     def __init__(self, vec, domain=None):
@@ -322,6 +364,7 @@ class VecTensor(_DiffTensorImpl):
         if len(x) != 0:
             raise ValueError
         return self._vec
+
 
 class LinearTensor(_DiffTensorImpl):
     def __init__(self, op):
@@ -337,6 +380,7 @@ class LinearTensor(_DiffTensorImpl):
         if len(x) != 1:
             raise ValueError
         return self._op(x[0])
+
 
 class DiagonalTensor(_DiffTensorImpl):
     def __init__(self, vec, rank):
@@ -357,6 +401,7 @@ class DiagonalTensor(_DiffTensorImpl):
     def getVec(self, x=()):
         return self._helper(x, 1)
 
+
 class NullTensor(_DiffTensorImpl):
     def __init__(self, domain, target, rank):
         super(NullTensor, self).__init__(domain, target, rank)
@@ -369,7 +414,7 @@ class NullTensor(_DiffTensorImpl):
 
 
 class SumTensor(_DiffTensorImpl):
-    def __init__(self, tlist):
+    def __init__(self, tlist, sign):
         from .sugar import domain_union
         for ts in tlist:
             assert isinstance(ts, _DiffTensorImpl)
@@ -378,26 +423,27 @@ class SumTensor(_DiffTensorImpl):
         dom = domain_union([t.domain for t in tlist])
         super(SumTensor, self).__init__(dom, tlist[0].target, tlist[0].rank)
         self._tlist = tlist
+        self._sign = sign
 
     def getVec(self, x=()):
         if self._rank-len(x) != 1:
             raise ValueError
         res = 0.
-        for tli in self._tlist:
-            res = res + tli.getVec(tuple(xj.extract(tli.domain) for xj in x))
+        for tli, sign in zip(self._tlist, self._sign):
+            tm = tli.getVec(tuple(xj.extract(tli.domain) for xj in x))
+            res = res + tm if sign else res - tm
         return res
 
     def getLinop(self, x=()):
         if self._rank-len(x) != 2:
             raise ValueError
         res = None
-        for tli in self._tlist:
+        for tli, sign in zip(self._tlist, self._sign):
             tmp = tli.getLinop(tuple(xj.extract(tli.domain) for xj in x))
+            tmp = tmp if sign else -tmp
             res = tmp if res is None else res + tmp
         return res
 
-
-# unfinished code from here on ...
 
 class GenLeibnizTensor(_DiffTensorImpl):
     def __init__(self, t1, t2, order_derivative):
@@ -457,6 +503,7 @@ class GenLeibnizTensor(_DiffTensorImpl):
             return NullOperator(self.domain, self.target)
         return res
 
+
 def _partition(collection):
     if len(collection) == 1:
         yield [ collection ]
@@ -475,6 +522,7 @@ def _all_partitions(n):
 
 def _mysum(a,b):
     return tuple(aa+bb for aa,bb in zip(a,b))
+
 
 class ComposedTensor(_DiffTensorImpl):
     """Implements a generalization of the chain rule for higher derivatives.
@@ -505,7 +553,6 @@ class ComposedTensor(_DiffTensorImpl):
             raise ValueError
         res = None
         for p in self._partitions:
-            #rr = (self._old[len(b)].getVec(tuple(x[ind] for ind in b)) for b in p)
             rr = ()
             for b in p:
                 if self._rank-2 not in b:

@@ -22,29 +22,6 @@ from numpy.testing import assert_allclose#, assert_equal, assert_raises
 import nifty6 as ift
 #from .common import setup_function, teardown_function
 
-
-def test_simple():
-    a = ift.Field.full(ift.RGSpace(10),3.)
-    c = ift.Field.full(ift.RGSpace(10),2.)
-    b = ift.Field.full(ift.RGSpace(11),3.)
-    t3 = ift.DiffTensor.makeDiagonal(a, 3)
-    t2 = t3.contract((a,))
-    ts = t2 + t2
-    print(t2)
-    print(t2.linop(a).val)
-    t1 = t2.contract((a,))
-    print(t1._arg, t1.rank)
-    print(t1.vec)
-    x = ift.diff_tensor.Taylor.make_var(a,3)
-    bla = ift.diff_tensor.GenLeibnizTensor(x,x,1)
-    print(type(bla.getVec((c,))))
-    #print(type(bla.getLinop((a,a))))
-    foo = ift.diff_tensor.ComposedTensor(x,x,2)
-    print(type(foo.getVec((a,a))))
-    print(type(foo.getLinop((a,))))
-
-    print(bla.getVec((c,)).val)
-
 def test_leibnitz_simple():
     dom = ift.RGSpace(10)
     a = ift.from_random(dom)
@@ -73,7 +50,7 @@ def test_tensors():
     y = op(x)
     assert_allclose(y.val.val, op(a).val)
 
-    ht = ift.ScalingOperator(dom,3.)#ift.HarmonicTransformOperator(dom.get_default_codomain())
+    ht = ift.HarmonicTransformOperator(dom.get_default_codomain())
     op = ht.ducktape("hi")
     op = op.exp()
     a = ift.from_random(op.domain)
@@ -82,7 +59,6 @@ def test_tensors():
 
     bs = tuple(ift.from_random(op.domain) for _ in range(6))
     for i in range(6):
-        print(i)
         res1 = y[i].getVec(bs[:i])
         rr = y[i].getVec(bs[:i][::-1])
         assert_allclose(res1.val,rr.val)
@@ -97,28 +73,27 @@ def test_tensors():
         assert_allclose(res1.val,res2.val)
 
     op2 = ift.ScalingOperator(dom, 1.).ducktape('ho')
-    #r = (op+op2).reciprocal()
-    r = op2.exp().reciprocal()
+    r = (op+op2).reciprocal()
+    r2 = op2.exp().reciprocal()
     a = ift.from_random(r.domain)
-    x = ift.diff_tensor.Taylor.make_var(a, 5)
-    z = r(x)
+    z = r(ift.diff_tensor.Taylor.make_var(a, 4))
+    a2 = ift.from_random(r2.domain)
+    z2 = r2(ift.diff_tensor.Taylor.make_var(a2, 4))
 
-    bs = tuple(ift.from_random(r.domain) for _ in range(6))
-    for i in range(6):
-        print(i)
+    bs = tuple(ift.from_random(r.domain) for _ in range(5))
+    bs2 = tuple(ift.from_random(r2.domain) for _ in range(5))
+    for i in range(5):
         res = z[i].getVec(bs[:i])
         rr = z[i].getVec(bs[:i][::-1])
         assert_allclose(res.val,rr.val)
         if i>0:
             res2 = z[i].getLinop(bs[:i-1])(bs[i-1])
-            #assert_allclose(res.val,res2.val)
+            assert_allclose(res.val,res2.val)
         tm = 1.
-        for bb in bs[:i]:
+        for bb in bs2[:i]:
             tm = tm*bb
-        re = (1.-2.*(i%2))*(-a).exp()*tm
-        print(res.val)
-        print(re['ho'].val)
-        #assert_allclose(re['ho'].val,res.val)
+        re = (1.-2.*(i%2))*(-a2).exp()*tm
+        assert_allclose(re['ho'].val,z2[i].getVec(bs2[:i]).val)
 
 def test_comp():
     dom = ift.RGSpace(10)
@@ -142,7 +117,50 @@ def test_comp():
     r2 = y[1].getLinop()(b1)
     assert_allclose(r1.val,r2.val)
 
+
+
+def test_cf():
+    sp = ift.RGSpace(128)
+    cf = ift.CorrelatedFieldMaker.make(0.,1.,1.,'pre')
+    fluctuations_dict = {
+        # Amplitude of field fluctuations
+        'fluctuations_mean':   2.0,  # 1.0
+        'fluctuations_stddev': 1.0,  # 1e-2
+
+        # Exponent of power law power spectrum component
+        'loglogavgslope_mean': -2.0,  # -3.0
+        'loglogavgslope_stddev': 0.5,  #  0.5
+
+        # Amplitude of integrated Wiener process power spectrum component
+        'flexibility_mean':   2.5,  # 1.0
+        'flexibility_stddev': 1.0,  # 0.5
+
+        # How ragged the integrated Wiener process component is
+        'asperity_mean':   0.5,  # 0.1
+        'asperity_stddev': 0.5  # 0.5
+    }
+    cf.add_fluctuations(sp, **fluctuations_dict)
+    correlated_field = cf.finalize(prior_info=0)
+
+    x = ift.from_random(correlated_field.domain)
+    t = ift.diff_tensor.Taylor.make_var(x, 2)
+    y = correlated_field(t)
+
+    assert_allclose(y.val.val,correlated_field(x).val)
+    bs = (ift.from_random(y.domain), ift.from_random(y.domain))
+    dd = y[2].getLinop(bs[:1])
+    assert_allclose(y[2].getVec(bs).val, dd(bs[1]).val)
+
+    rl = correlated_field(ift.Linearization.make_var(x))
+    assert_allclose(y.jac(bs[0]).val,rl.jac(bs[0]).val)
+    c = ift.from_random(y.jac.target)
+    r1 = y.jac.adjoint(c)
+    r2 = rl.jac.adjoint(c)
+    for k in r1.domain.keys():
+        assert_allclose(r1[k].val,r2[k].val)
+
+    
 test_comp()
 test_leibnitz_simple()
 test_tensors()
-
+test_cf()

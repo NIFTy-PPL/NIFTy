@@ -65,9 +65,13 @@ def _sign_helper(v):
     return (np.sign(v), np.where(v == 0, np.nan, 0))
 
 
-def _power_helper(v, expo):
-    return (np.power(v, expo), expo*np.power(v, expo-1))
-
+def _power_helper(v, maxorder, expo):
+    res = ()
+    fac = 1.
+    for i in range(maxorder+1):
+        res += (fac*np.power(v,expo-i),)
+        fac *= expo-i
+    return res
 
 def _clip_helper(v, a_min, a_max):
     if np.issubdtype(v.dtype, np.complexfloating):
@@ -86,13 +90,13 @@ def _sc_helper(v, maxorder, sin):
         
 
 ptw_dict = {
-    "sqrt": (np.sqrt, _sqrt_helper),
+    "sqrt": (np.sqrt, _sqrt_helper, lambda v,maxorder: _power_helper(v,maxorder,0.5)),
     "sin": (np.sin, lambda v: (np.sin(v), np.cos(v)), lambda v,m: _sc_helper(v,m,True)),
     "cos": (np.cos, lambda v: (np.cos(v), -np.sin(v)), lambda v,m: _sc_helper(v,m,False)),
     "tan": (np.tan, lambda v: (np.tan(v), 1./np.cos(v)**2), None),
     "sinc": (np.sinc, _sinc_helper, None),
     "exp": (np.exp, lambda v: (2*(np.exp(v),)), lambda v,m: (m+1)*(np.exp(v), )),
-    "expm1": (np.expm1, lambda v: _expm1_helper(v,1), lambda v,m: _expm1_helper(v,m)),
+    "expm1": (np.expm1, lambda v: _expm1_helper(v,1), _expm1_helper),
     "log": (np.log, lambda v: (np.log(v), 1./v)),
     "log10": (np.log10, lambda v: (np.log10(v), (1./np.log(10.))/v)),
     "log1p": (np.log1p, lambda v: (np.log1p(v), 1./(1.+v))),
@@ -100,10 +104,10 @@ ptw_dict = {
     "cosh": (np.cosh, lambda v: (np.cosh(v), np.sinh(v))),
     "tanh": (np.tanh, _tanh_helper),
     "sigmoid": (lambda v: 0.5+(0.5*np.tanh(v)), _sigmoid_helper),
-    "reciprocal": (lambda v: 1./v, lambda v:_reciprocal_helper(v,1), lambda v,m:_reciprocal_helper(v,m)),
+    "reciprocal": (lambda v: 1./v, lambda v:_reciprocal_helper(v,1), _reciprocal_helper),
     "abs": (np.abs, _abs_helper),
     "absolute": (np.abs, _abs_helper),
     "sign": (np.sign, _sign_helper),
-    "power": (np.power, _power_helper),
+    "power": (np.power, lambda v,expo: _power_helper(v,1,expo), _power_helper),
     "clip": (np.clip, _clip_helper),
     }
