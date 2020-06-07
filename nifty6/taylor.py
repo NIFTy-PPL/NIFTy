@@ -93,31 +93,45 @@ class Taylor(Operator):
             return self.new(tuple(aa+bb for aa,bb in zip(self.tensors,other.tensors)))
         if isinstance(other, Linearization):
             raise ValueError
+        if isinstance(other, Field) or isinstance(other, MultiField):
+            assertEqual(self.target, other.domain)
         vn = (DiffTensor.makeVec(self.val+other, self.domain),)
         return self.new(vn+self.tensors[1:])
         
 
     def __radd__(self, other):
         if isinstance(other, Taylor):
+            assertEqual(self.maxorder, other.maxorder)
+            assertEqual(self.target, other.target)
             return self.new(tuple(aa+bb for aa,bb in zip(self.tensors,other.tensors)))
         if isinstance(other, Linearization):
             raise ValueError
+        if isinstance(other, Field) or isinstance(other, MultiField):
+            assertEqual(self.target, other.domain)
         vn = (DiffTensor.makeVec(self.val+other, self.domain),)
         return self.new(vn+self.tensors[1:])
 
     def __sub__(self, other):
         if isinstance(other, Taylor):
+            assertEqual(self.maxorder, other.maxorder)
+            assertEqual(self.target, other.target)
             return self.new(tuple(aa-bb for aa,bb in zip(self.tensors,other.tensors)))
         if isinstance(other, Linearization):
             raise ValueError
+        if isinstance(other, Field) or isinstance(other, MultiField):
+            assertEqual(self.target, other.domain)
         vn = (DiffTensor.makeVec(self.val-other, self.domain),)
         return self.new(vn+self.tensors[1:])
 
     def __rsub__(self, other):
         if isinstance(other, Taylor):
+            assertEqual(self.maxorder, other.maxorder)
+            assertEqual(self.target, other.target)
             return self.new(tuple(bb-aa for aa,bb in zip(self.tensors,other.tensors)))
         if isinstance(other, Linearization):
             raise ValueError
+        if isinstance(other, Field) or isinstance(other, MultiField):
+            assertEqual(self.target, other.domain)
         return self.new_from_lin(ScalingOperator(self.target,-1.)).prepend(self)+other
 
     def __truediv__(self, other):
@@ -130,17 +144,18 @@ class Taylor(Operator):
 
     def __pow__(self, power):
         if not np.isscalar(power):
-            return NotImplemented
+            raise NotImplementedError
         return self.ptw('power', power)
 
     def __mul__(self, other):
         if np.isscalar(other):
             return self.new_from_lin(ScalingOperator(self.target,other)).prepend(self)
         elif isinstance(other, Taylor):
+            assertEqual(self.maxorder, other.maxorder)
+            assertEqual(self.target, other.target)
             return self.new_from_prod(other)
         elif isinstance(other, Field) or isinstance(other, MultiField):
-            if other.domain != self.target:
-                raise ValueError
+            assertEqual(self.target, other.domain)
             return self._new_from_lin(makeOp(other)).prepend(self)
         else:
             raise TypeError
