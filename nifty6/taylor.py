@@ -73,6 +73,35 @@ class Taylor(Operator):
         return self._tensors
 
     @property
+    def istrivial(self):
+        triv = False
+        if self._tensors[1].isLinearTensor:
+            if isinstance(self._tensors[1]._impl._op, ScalingOperator):
+                if self._tensors[1]._impl._op._factor == 1:
+                    triv = True
+        for t in self._tensors[2:]:
+            triv = triv and t.isNullTensor
+        return triv
+
+    @property
+    def isDiagonal(self):
+        if self.maxorder ==0:
+            return False
+        diag = True
+        for t in self._tensors[1:]:
+            diag = diag and (t.isDiagonalTensor or t.isNullTensor)
+        return diag
+
+    @property
+    def isComposed(self):
+        if self.maxorder ==0:
+            return False
+        comp = True
+        for t in self._tensors[1:]:
+            comp = comp and t.isComposedTensor
+        return comp
+
+    @property
     def maxorder(self):
         """int: the maximum approximation order, i.e. one less than the number of stored tensors"""
         return len(self._tensors)-1
@@ -179,6 +208,16 @@ class Taylor(Operator):
 
     def prepend(self, old):
         tensors = (DiffTensor.makeVec(self.val, domain=old.domain), )
+        if self.isDiagonal and old.isComposed:
+            from .diff_tensor import ComposedTensor
+            if old[-1]._impl._new[0].isDiagonalTensor:
+                tmp = tuple(ComposedTensor.simplify_for_diagonal(
+                        self[1:], old[-1]._impl._new, i+1)
+                        for i in range(self.maxorder))
+                tensors += tuple(DiffTensor(ComposedTensor(
+                        tmp[:i], old[i]._impl._old, i, _internal_call=True))
+                        for i in range(1,self.maxorder+1))
+                return self.new(tensors)
         tensors += tuple(DiffTensor.makeComposed(self, old, i) for i in range(1,self.maxorder+1))
         return self.new(tensors)
 

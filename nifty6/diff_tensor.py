@@ -118,6 +118,18 @@ class DiffTensor(_DiffTensorImpl):
     def isNullTensor(self):
         return isinstance(self._impl, NullTensor)
 
+    @property
+    def isLinearTensor(self):
+        return isinstance(self._impl, LinearTensor)
+
+    @property
+    def isDiagonalTensor(self):
+        return isinstance(self._impl, DiagonalTensor)
+
+    @property
+    def isComposedTensor(self):
+        return isinstance(self._impl, ComposedTensor)
+
     @staticmethod
     def makeDiagonal(vec, rank):
         return DiffTensor(DiagonalTensor(vec, rank))
@@ -139,6 +151,13 @@ class DiffTensor(_DiffTensorImpl):
     def makeComposed(new, old, order_derivative):
         if order_derivative < 1:
             raise ValueError
+        if old.istrivial:
+            return new[order_derivative]
+        if new.isDiagonal:
+            if old.isDiagonal:
+                return ComposedTensor.simplify_for_diagonal(new[1:order_derivative+1],
+                                                            old[1:order_derivative+1],
+                                                            order_derivative)
         return DiffTensor(ComposedTensor(new, old, order_derivative))
 
     @staticmethod
@@ -243,7 +262,9 @@ class DiagonalTensor(_DiffTensorImpl):
     def _helper(self, x, rnk):
         if self._rank-len(x) != rnk:
             raise ValueError
-        res = reduce(lambda a,b:a*b, x, 1.)*self._vec
+        res = self._vec
+        if len(x) != 0:
+            res = reduce(lambda a,b:a*b, x)*res
         return res if rnk == 1 else makeOp(res)
 
     def getLinop(self, x=()):
@@ -370,7 +391,7 @@ def _all_partitions_nontrivial(n, new):
     pps = list(_partition(list(np.arange(n))))
     i,nm = 0,len(pps)
     while i<nm:
-        if new[len(pps[i])].isNullTensor:
+        if new[len(pps[i])-1].isNullTensor:
             del pps[i]
             nm -=1
         else:
@@ -381,16 +402,21 @@ def _all_partitions_nontrivial(n, new):
 class ComposedTensor(_DiffTensorImpl):
     """Implements a generalization of the chain rule for higher derivatives.
     """
-    def __init__(self, new, old, order_derivative):
-        from .taylor import Taylor
-        assertIsinstance(old, Taylor)
-        assertIsinstance(new, Taylor)
-        assertTrue(old.maxorder >= order_derivative)
-        assertTrue(new.maxorder >= order_derivative)
-        assertIdentical(old.target, new.domain)
-        super(ComposedTensor, self).__init__(old.domain, new.target, order_derivative+1)
-        self._old = old
-        self._new = new
+    def __init__(self, new, old, order_derivative, _internal_call=False):
+        if _internal_call:
+            assertEqual(len(old), order_derivative)
+            assertEqual(len(new), order_derivative)
+            self._old, self._new = old, new
+        else:
+            from .taylor import Taylor
+            assertIsinstance(old, Taylor)
+            assertIsinstance(new, Taylor)
+            assertTrue(old.maxorder >= order_derivative)
+            assertTrue(new.maxorder >= order_derivative)
+            assertIdentical(old.target, new.domain)
+            self._old = old[1:order_derivative+1]
+            self._new = new[1:order_derivative+1]
+        super(ComposedTensor, self).__init__(old[0].domain, new[0].target, order_derivative+1)
         self._partitions = _all_partitions_nontrivial(order_derivative, self._new)
 
     def getVec(self, x):
@@ -398,8 +424,8 @@ class ComposedTensor(_DiffTensorImpl):
             raise ValueError
         res = None
         for p in self._partitions:
-            rr = (self._old[len(b)].getVec((x[ind] for ind in b)) for b in p)
-            res = self._new[len(p)].getVec(rr) if res is None else res + self._new[len(p)].getVec(rr)
+            rr = (self._old[len(b)-1].getVec((x[ind] for ind in b)) for b in p)
+            res = self._new[len(p)-1].getVec(rr) if res is None else res + self._new[len(p)-1].getVec(rr)
         return res if res is not None else full(self.target, 0.)
 
     def getLinop(self, x):
@@ -410,9 +436,19 @@ class ComposedTensor(_DiffTensorImpl):
             rr = ()
             for b in p:
                 if self._rank-2 not in b:
-                    rr += (self._old[len(b)].getVec((x[ind] for ind in b)), )
+                    rr += (self._old[len(b)-1].getVec((x[ind] for ind in b)), )
                 else:
-                    tm = self._old[len(b)].getLinop((x[ind] for ind in b if ind != self._rank-2))
-            r = self._new[len(p)].getLinop(rr)@tm
+                    tm = self._old[len(b)-1].getLinop((x[ind] for ind in b if ind != self._rank-2))
+            r = self._new[len(p)-1].getLinop(rr)@tm
             res = r if res is None else res+r
         return res if res is not None else NullOperator(self.domain, self.target)
+
+    @staticmethod
+    def simplify_for_diagonal(new, old, n):
+        pps = _all_partitions_nontrivial(n, new)
+        re = 0.
+        for p in pps:
+            rr = reduce(lambda x,y: x*y, [old[len(b)-1]._impl._vec for b in p])
+            re = re + new[len(p)-1]._impl._vec*rr
+        return DiffTensor.makeDiagonal(re, n+1)
+            

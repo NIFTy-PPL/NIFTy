@@ -122,7 +122,7 @@ def test_comp():
 
 
 def test_cf():
-    sp = ift.RGSpace(128)
+    sp = ift.RGSpace((128,128,))
     cf = ift.CorrelatedFieldMaker.make(0.,1.,1.,'pre')
     fluctuations_dict = {
         # Amplitude of field fluctuations
@@ -160,8 +160,60 @@ def test_cf():
     r2 = rl.jac.adjoint(c)
     for k in r1.domain.keys():
         assert_allclose(r1[k].val,r2[k].val)
-
     
+    import timeit
+    t0 = timeit.default_timer()
+    jj = y.jac
+    t1 = timeit.default_timer()
+    print(t1-t0)
+    t0 = timeit.default_timer()
+    res = rl.jac(bs[0])
+    t1 = timeit.default_timer()
+    res = jj(bs[0])
+    t2 = timeit.default_timer()
+    res = y.jac(bs[0])
+    t3 = timeit.default_timer()
+    res = y[2].getLinop(bs[:1])
+    t4 = timeit.default_timer()
+    print(t1-t0)
+    print(t2-t1)
+    print(t3-t2)
+    print(t4-t3)
+
+def test_perf():
+    sp = ift.RGSpace((1000,1000,4))
+    f = ift.FieldAdapter(sp,'hi')
+    f = f.exp().reciprocal()
+    
+    x = ift.from_random(f.domain)
+    l = ift.Linearization.make_var(x)
+    t = ift.Taylor.make_var(x, 2)
+
+    rl = f(l)
+    y = f(t)
+    bs = (ift.from_random(y.domain), ift.from_random(y.domain))
+
+    import timeit
+    t0 = timeit.default_timer()
+    jj = y.jac
+    t1 = timeit.default_timer()
+    print(t1-t0)
+    t0 = timeit.default_timer()
+    res = rl.jac(bs[0])
+    t1 = timeit.default_timer()
+    res = jj(bs[0])
+    t2 = timeit.default_timer()
+    res = y.jac(bs[0])
+    t3 = timeit.default_timer()
+    res = y[2].getLinop(bs[:1])
+    t4 = timeit.default_timer()
+    print(t1-t0)
+    print(t2-t1)
+    print(t3-t2)
+    print(t4-t3)
+    print("---")
+
+test_perf()
 test_comp()
 test_leibnitz_simple()
 test_tensors()
