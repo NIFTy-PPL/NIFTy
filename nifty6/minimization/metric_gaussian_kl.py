@@ -126,14 +126,9 @@ class MetricGaussianKL(Energy):
         self._hamiltonian = hamiltonian
 
         self._n_samples = int(n_samples)
-        if comm is not None:
-            self._comm = comm
-            ntask = self._comm.Get_size()
-            rank = self._comm.Get_rank()
-            self._lo, self._hi = utilities.shareRange(self._n_samples, ntask, rank)
-        else:
-            self._comm = None
-            self._lo, self._hi = 0, self._n_samples
+        self._comm = comm
+        ntask, rank, _ = utilities.get_MPI_params_from_comm(self._comm)
+        self._lo, self._hi = utilities.shareRange(self._n_samples, ntask, rank)
 
         self._mirror_samples = bool(mirror_samples)
         self._n_eff_samples = self._n_samples
@@ -202,14 +197,13 @@ class MetricGaussianKL(Energy):
 
     @property
     def samples(self):
-        if self._comm is None:
+        ntask, rank, _ = utilities.get_MPI_params_from_comm(self._comm)
+        if ntask == 1:
             for s in self._local_samples:
                 yield s
                 if self._mirror_samples:
                     yield -s
         else:
-            ntask = self._comm.Get_size()
-            rank = self._comm.Get_rank()
             rank_lo_hi = [utilities.shareRange(self._n_samples, ntask, i) for i in range(ntask)]
             for itask, (l, h) in enumerate(rank_lo_hi):
                 for i in range(l, h):
