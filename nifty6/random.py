@@ -77,19 +77,20 @@ objects, generate new ones via :func:`spawn_sseq()`.
 
 import numpy as np
 
-# Stack of SeedSequence objects. Will always start out with a well-defined
-# default. Users can change the "random seed" used by a calculation by pushing
-# a different SeedSequence before invoking any other nifty6.random calls
-_sseq = [np.random.SeedSequence(42)]
-# Stack of random number generators associated with _sseq.
-_rng = [np.random.default_rng(_sseq[-1])]
-
 
 # fix for numpy issue #16539
 def _fix_seed(seed):
     if isinstance(seed, int):
         return (seed, 0, 0, 0)
     raise TypeError("random seed shold have integer type")
+
+
+# Stack of SeedSequence objects. Will always start out with a well-defined
+# default. Users can change the "random seed" used by a calculation by pushing
+# a different SeedSequence before invoking any other nifty6.random calls
+_sseq = [np.random.SeedSequence(_fix_seed(42))]
+# Stack of random number generators associated with _sseq.
+_rng = [np.random.default_rng(_sseq[-1])]
 
 
 def getState():
