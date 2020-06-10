@@ -470,12 +470,22 @@ class CorrelatedFieldMaker:
         prefix = str(prefix)
         # assert isinstance(target_subdomain[space], (RGSpace, HPSpace, GLSpace)
 
-        fluct = LognormalTransform(fluctuations_mean, fluctuations_stddev,
-                                   self._prefix + prefix + 'fluctuations', N)
-        flex = LognormalTransform(flexibility_mean, flexibility_stddev,
-                                  self._prefix + prefix + 'flexibility', N)
-        asp = LognormalTransform(asperity_mean, asperity_stddev,
-                                 self._prefix + prefix + 'asperity', N)
+        ve = "{0}_mean and {0}_stddev must be strictly positive"
+        if fluctuations_mean > 0. and fluctuations_stddev > 0.:
+            fluct = LognormalTransform(fluctuations_mean, fluctuations_stddev,
+                                       self._prefix + prefix + 'fluctuations', N)
+        else:
+            raise ValueError(ve.format("fluctuations"))
+        if flexibility_mean > 0. and flexibility_stddev > 0.:
+            flex = LognormalTransform(flexibility_mean, flexibility_stddev,
+                                      self._prefix + prefix + 'flexibility', N)
+        else:
+            raise ValueError(ve.format("flexibility"))
+        if asperity_mean > 0. and asperity_stddev > 0.:
+            asp = LognormalTransform(asperity_mean, asperity_stddev,
+                                     self._prefix + prefix + 'asperity', N)
+        else:
+            raise ValueError(ve.format("asperity"))
         avgsl = NormalTransform(loglogavgslope_mean, loglogavgslope_stddev,
                                 self._prefix + prefix + 'loglogavgslope', N)
 
