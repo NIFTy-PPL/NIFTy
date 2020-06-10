@@ -82,7 +82,7 @@ import numpy as np
 def _fix_seed(seed):
     if isinstance(seed, int):
         return (seed, 0, 0, 0)
-    raise TypeError("random seed shold have integer type")
+    raise TypeError("random seed should have integer type")
 
 
 # Stack of SeedSequence objects. Will always start out with a well-defined
