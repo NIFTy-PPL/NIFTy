@@ -89,7 +89,7 @@ _rng = [np.random.default_rng(_sseq[-1])]
 def _fix_seed(seed):
     if isinstance(seed, int):
         return (seed, 0, 0, 0)
-    raise TypeError("random seed shold have integer type")
+    raise TypeError("random seed should have integer type")
 
 
 def getState():
