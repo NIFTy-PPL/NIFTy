@@ -13,7 +13,7 @@ stages:
 build_docker_from_scratch:
   only:
     - schedules
-  image: docker:stable
+  image: docker:19.03.8
   stage: build_docker
   before_script:
     - ls
@@ -25,7 +25,7 @@ build_docker_from_scratch:
 build_docker_from_cache:
   except:
     - schedules
-  image: docker:stable
+  image: docker:19.03.8
   stage: build_docker
   before_script:
     - ls
@@ -43,6 +43,13 @@ test_serial:
     - >
       grep TOTAL coverage.txt | awk '{ print "TOTAL: "$4; }'
 
+test_mpi:
+  stage: test
+  variables:
+    OMPI_MCA_btl_vader_single_copy_mechanism: none
+  script:
+    - mpiexec -n 2 --bind-to none pytest-3 -q test/test_mpi
+
 pages:
   stage: release
   script:
@@ -52,16 +59,21 @@ pages:
     paths:
     - public
   only:
-  - NIFTy_5
+  - NIFTy_6
 
 
 before_script:
   - python3 setup.py install --user -f
 
-run_ipynb:
+run_ipynb0:
   stage: demo_runs
   script:
-    - jupyter nbconvert --execute --ExecutePreprocessor.timeout=None demos/Wiener_Filter.ipynb
+    - jupyter nbconvert --execute --ExecutePreprocessor.timeout=None demos/getting_started_0.ipynb
+
+run_ipynb1:
+  stage: demo_runs
+  script:
+    - jupyter nbconvert --execute --ExecutePreprocessor.timeout=None demos/getting_started_4_CorrelatedFields.ipynb
 
 run_getting_started_1:
   stage: demo_runs
@@ -92,7 +104,7 @@ run_getting_started_3:
 run_getting_started_mf:
   stage: demo_runs
   script:
-    - python3 demos/getting_started_mf.py
+    - python3 demos/getting_started_5_mf.py
   artifacts:
     paths:
       - '*.png'
@@ -112,3 +124,8 @@ run_curve_fitting:
   artifacts:
     paths:
       - '*.png'
+
+run_visual_mgvi:
+  stage: demo_runs
+  script:
+    - python3 demos/mgvi_visualized.py

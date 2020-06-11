@@ -22,18 +22,27 @@ from .utilities import frozendict, indent
 class MultiDomain(object):
     """A tuple of domains corresponding to a direct sum.
 
-    This class is the domain of the direct sum of fields defined
-    on (possibly different) domains. To make an instance
-    of this class, call `MultiDomain.make(inp)`.
+    This class is the domain of the direct sum of fields defined on (possibly
+    different) domains. To make an instance of this class, call
+    `MultiDomain.make(inp)`.
+
+    Notes
+    -----
+    For consistency and to be independent of the order of insertion, the keys
+    within a multi-domain are sorted. Hence, renaming a domain may result in it
+    being placed at a different index within a multi-domain. This is especially
+    important if a sequence of, e.g., random numbers is distributed sequentially
+    over a multi-domain. In this example, ordering keys differently will change
+    the resulting :class:`MultiField`.
     """
     _domainCache = {}
 
-    def __init__(self, dict, _callingfrommake=False):
+    def __init__(self, dct, _callingfrommake=False):
         if not _callingfrommake:
             raise NotImplementedError(
                 'To create a MultiDomain call `MultiDomain.make()`.')
-        self._keys = tuple(sorted(dict.keys()))
-        self._domains = tuple(dict[key] for key in self._keys)
+        self._keys = tuple(sorted(dct.keys()))
+        self._domains = tuple(dct[key] for key in self._keys)
         self._idx = frozendict({key: i for i, key in enumerate(self._keys)})
 
     @staticmethod

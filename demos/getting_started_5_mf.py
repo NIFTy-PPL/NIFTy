@@ -97,8 +97,8 @@ if __name__ == '__main__':
     N = ift.ScalingOperator(data_space, noise)
 
     # Generate mock signal and data
-    mock_position = ift.from_random('normal', signal_response.domain)
-    data = signal_response(mock_position) + N.draw_sample()
+    mock_position = ift.from_random(signal_response.domain, 'normal')
+    data = signal_response(mock_position) + N.draw_sample_with_dtype(dtype=np.float64)
 
     plot = ift.Plot()
     plot.add(signal(mock_position), title='Ground Truth')
@@ -114,7 +114,9 @@ if __name__ == '__main__':
     ic_newton = ift.AbsDeltaEnergyController(name='Newton',
                                              deltaE=0.01,
                                              iteration_limit=35)
-    minimizer = ift.NewtonCG(ic_newton)
+    ic_sampling.enable_logging()
+    ic_newton.enable_logging()
+    minimizer = ift.NewtonCG(ic_newton, enable_logging=True)
 
     ## number of samples used to estimate the KL
     N_samples = 20
@@ -143,10 +145,15 @@ if __name__ == '__main__':
         plot.add([A2.force(KL.position),
                   A2.force(mock_position)],
                  title="power2")
-        plot.output(nx=2,
+        plot.add((ic_newton.history, ic_sampling.history,
+                  minimizer.inversion_history),
+                 label=['KL', 'Sampling', 'Newton inversion'],
+                 title='Cumulative energies', s=[None, None, 1],
+                 alpha=[None, 0.2, None])
+        plot.output(nx=3,
                     ny=2,
                     ysize=10,
-                    xsize=10,
+                    xsize=15,
                     name=filename.format("loop_{:02d}".format(i)))
 
     # Done, draw posterior samples

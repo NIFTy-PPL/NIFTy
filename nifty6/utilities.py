@@ -24,7 +24,8 @@ import numpy as np
 __all__ = ["get_slice_list", "safe_cast", "parse_spaces", "infer_space",
            "memo", "NiftyMeta", "my_sum", "my_lincomb_simple",
            "my_lincomb", "indent",
-           "my_product", "frozendict", "special_add_at", "iscomplextype"]
+           "my_product", "frozendict", "special_add_at", "iscomplextype",
+           "value_reshaper", "lognormal_moments"]
 
 
 def my_sum(iterable):
@@ -248,3 +249,159 @@ def iscomplextype(dtype):
 
 def indent(inp):
     return "\n".join((("  "+s).rstrip() for s in inp.splitlines()))
+
+
+def shareRange(nwork, nshares, myshare):
+    """Divides a number of work items as fairly as possible into a given number
+    of shares.
+
+    Parameters
+    ----------
+    nwork: int
+        number of work items
+    nshares: int
+        number of shares among which the work should be distributed
+    myshare: int
+        the share for which the range of work items is requested
+
+
+    Returns
+    -------
+    lo, hi: int
+        index range of work items for this share
+    """
+
+    nbase = nwork//nshares
+    additional = nwork % nshares
+    lo = myshare*nbase + min(myshare, additional)
+    hi = lo + nbase + int(myshare < additional)
+    return lo, hi
+
+
+
+def get_MPI_params_from_comm(comm):
+    if comm is None:
+        return 1, 0, True
+    size = comm.Get_size()
+    rank = comm.Get_rank()
+    return size, rank, rank == 0
+
+
+
+def get_MPI_params():
+    """Returns basic information about the MPI setup of the running script.
+
+    Returns
+    -------
+    comm: MPI communicator or None
+        if MPI is detected _and_ more than one task is active, returns
+        the world communicator, else returns None
+    size: int
+        the number of tasks running in total
+    rank: int
+        the rank of this task
+    master: bool
+        True if rank == 0, else False
+    """
+
+    try:
+        from mpi4py import MPI
+        comm = MPI.COMM_WORLD
+        size = comm.Get_size()
+        if size == 1:
+            return None, 1, 0, True
+        rank = comm.Get_rank()
+        return comm, size, rank, rank == 0
+    except ImportError:
+        return None, 1, 0, True
+
+
+def allreduce_sum(obj, comm):
+    """ This is a deterministic implementation of MPI allreduce
+
+    Numeric addition is not associative due to rounding errors.
+    Therefore we provide our own implementation that is consistent
+    no matter if MPI is used and how many tasks there are.
+
+    At the beginning, a list `who` is constructed, that states which obj can
+    be found on which MPI task.
+    Then elements are added pairwise, with increasing pair distance.
+    In the first round, the distance between pair members is 1:
+      v[0] := v[0] + v[1]
+      v[2] := v[2] + v[3]
+      v[4] := v[4] + v[5]
+    Entries whose summation partner lies beyond the end of the array
+    stay unchanged.
+    When both summation partners are not located on the same MPI task,
+    the second summand is sent to the task holding the first summand and
+    the operation is carried out there.
+    For the next round, the distance is doubled:
+      v[0] := v[0] + v[2]
+      v[4] := v[4] + v[6]
+      v[8] := v[8] + v[10]
+    This is repeated until the distance exceeds the length of the array.
+    At this point v[0] contains the sum of all entries, which is then
+    broadcast to all tasks.
+    """
+    vals = list(obj)
+    if comm is None:
+        nobj = len(vals)
+        who = np.zeros(nobj, dtype=np.int32)
+        rank = 0
+    else:
+        ntask = comm.Get_size()
+        rank = comm.Get_rank()
+        nobj_list = comm.allgather(len(vals))
+        all_hi = list(np.cumsum(nobj_list))
+        all_lo = [0] + all_hi[:-1]
+        nobj = all_hi[-1]
+        rank_lo_hi = [(l, h) for l, h in zip(all_lo, all_hi)]
+        lo, hi = rank_lo_hi[rank]
+        vals = [None]*lo + vals + [None]*(nobj-hi)
+        who = [t for t, (l, h) in enumerate(rank_lo_hi) for cnt in range(h-l)]
+
+    step = 1
+    while step < nobj:
+        for j in range(0, nobj, 2*step):
+            if j+step < nobj:  # summation partner found
+                if rank == who[j]:
+                    if who[j] == who[j+step]:  # no communication required
+                        vals[j] = vals[j] + vals[j+step]
+                        vals[j+step] = None
+                    else:
+                        vals[j] = vals[j] + comm.recv(source=who[j+step])
+                elif rank == who[j+step]:
+                    comm.send(vals[j+step], dest=who[j])
+                    vals[j+step] = None
+        step *= 2
+    if comm is None:
+        return vals[0]
+    return comm.bcast(vals[0], root=who[0])
+
+
+def value_reshaper(x, N):
+    """Produce arrays of shape `(N,)`.
+    If `x` is a scalar or array of length one, fill the target array with it.
+    If `x` is an array, check if it has the right shape."""
+    x = np.asfarray(x)
+    if x.shape in [(), (1, )]:
+        return np.full(N, x) if N != 0 else x.reshape(())
+    elif x.shape == (N, ):
+        return x
+    raise TypeError("x and N are incompatible")
+
+
+def lognormal_moments(mean, sigma, N=0):
+    """Calculates the parameters for a normal distribution `n(x)`
+    such that `exp(n)(x)` has the mean and standard deviation given.
+
+    Used in :func:`~nifty6.normal_operators.LognormalTransform`."""
+    mean, sigma = (value_reshaper(param, N) for param in (mean, sigma))
+    if not np.all(mean > 0):
+        raise ValueError("mean must be greater 0; got {!r}".format(mean))
+    if not np.all(sigma > 0):
+        raise ValueError("sig must be greater 0; got {!r}".format(sigma))
+
+    logsigma = np.sqrt(np.log1p((sigma / mean)**2))
+    logmean = np.log(mean) - logsigma**2 / 2
+    return logmean, logsigma

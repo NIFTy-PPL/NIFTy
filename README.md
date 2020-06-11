@@ -1,7 +1,7 @@
 NIFTy - Numerical Information Field Theory
 ==========================================
-[![build status](https://gitlab.mpcdf.mpg.de/ift/NIFTy/badges/NIFTy_6/build.svg)](https://gitlab.mpcdf.mpg.de/ift/NIFTy/commits/NIFTy_6)
-[![coverage report](https://gitlab.mpcdf.mpg.de/ift/NIFTy/badges/NIFTy_6/coverage.svg)](https://gitlab.mpcdf.mpg.de/ift/NIFTy/commits/NIFTy_6)
+[![pipeline status](https://gitlab.mpcdf.mpg.de/ift/nifty/badges/NIFTy_6/pipeline.svg)](https://gitlab.mpcdf.mpg.de/ift/nifty/-/commits/NIFTy_6)
+[![coverage report](https://gitlab.mpcdf.mpg.de/ift/nifty/badges/NIFTy_6/coverage.svg)](https://gitlab.mpcdf.mpg.de/ift/nifty/-/commits/NIFTy_6)
 
 **NIFTy** project homepage:
 [http://ift.pages.mpcdf.de/nifty](http://ift.pages.mpcdf.de/nifty)
@@ -45,7 +45,7 @@ Installation
 
 ### Requirements
 
-- [Python 3](https://www.python.org/) (3.5.x or later)
+- [Python 3](https://www.python.org/) (3.6.x or later)
 - [SciPy](https://www.scipy.org/)
 
 Optional dependencies:
@@ -91,6 +91,7 @@ MPI support is added via:
     sudo apt-get install python3-mpi4py
 
 Pypocketfft is added via:
+
     pip3 install --user git+https://gitlab.mpcdf.mpg.de/mtr/pypocketfft
 
 If this library is present, NIFTy will detect it automatically and prefer
@@ -142,3 +143,85 @@ and a citation to one of the [publications](http://ift.pages.mpcdf.de/nifty/cita
 The NIFTy package is licensed under the terms of the
 [GPLv3](https://www.gnu.org/licenses/gpl.html) and is distributed
 *without any warranty*.
+
+
+Contributors
+------------
+
+### NIFTy6
+
+- Andrija Kostic
+- Gordian Edenhofer
+- Jakob Knollmüller
+- Lukas Platz
+- Martin Reinecke
+- [Philipp Arras](https://wwwmpa.mpa-garching.mpg.de/~parras/)
+- Philipp Frank
+- Philipp Haim
+- [Reimar Heinrich Leike](https://wwwmpa.mpa-garching.mpg.de/~reimar/)
+- Rouven Lemmerz
+- [Torsten Enßlin](https://wwwmpa.mpa-garching.mpg.de/~ensslin/)
+- Vincent Eberle
+
+
+### NIFTy5
+
+- Christoph Lienhard
+- Gordian Edenhofer
+- Jakob Knollmüller
+- Julia Stadler
+- Julian Rüstig
+- Lukas Platz
+- Martin Reinecke
+- Max-Niklas Newrzella
+- Natalia
+- [Philipp Arras](https://wwwmpa.mpa-garching.mpg.de/~parras/)
+- Philipp Frank
+- Philipp Haim
+- Reimar Heinrich Leike
+- Sebastian Hutschenreuter
+- Silvan Streit
+- [Torsten Enßlin](https://wwwmpa.mpa-garching.mpg.de/~ensslin/)
+
+
+### NIFTy4
+
+- Christoph Lienhard
+- Jakob Knollmüller
+- Lukas Platz
+- Martin Reinecke
+- Mihai Baltac
+- [Philipp Arras](https://wwwmpa.mpa-garching.mpg.de/~parras/)
+- Philipp Frank
+- Reimar Heinrich Leike
+- Silvan Streit
+- [Torsten Enßlin](https://wwwmpa.mpa-garching.mpg.de/~ensslin/)
+
+
+### NIFTy3
+
+- Daniel Pumpe
+- Jait Dixit
+- Jakob Knollmüller
+- Martin Reinecke
+- Mihai Baltac
+- Natalia
+- [Philipp Arras](https://wwwmpa.mpa-garching.mpg.de/~parras/)
+- Philipp Frank
+- Reimar Heinrich Leike
+- Matevz Sraml
+- Theo Steininger
+- csongor
+
+### NIFTy2
+
+- Jait Dixit
+- Theo Steininger
+- csongor
+
+
+### NIFTy1
+
+- Johannes Buchner
+- Marco Selig
+- Theo Steininger

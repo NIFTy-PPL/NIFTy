@@ -11,16 +11,14 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
-# Copyright(C) 2013-2019 Max-Planck-Society
+# Copyright(C) 2013-2020 Max-Planck-Society
 #
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
-
-import numpy as np
 
 from ..multi_domain import MultiDomain
 from ..multi_field import MultiField
 from .endomorphic_operator import EndomorphicOperator
-
+from .linear_operator import LinearOperator
 
 class BlockDiagonalOperator(EndomorphicOperator):
     """
@@ -40,7 +38,13 @@ class BlockDiagonalOperator(EndomorphicOperator):
         self._capability = self._all_ops
         for op in self._ops:
             if op is not None:
-                self._capability &= op.capability
+                if isinstance(op, LinearOperator):
+                    if op.target is not op.domain:
+                        raise TypeError("domain and target mismatch")
+                    self._capability &= op.capability
+                else:
+                    raise TypeError("LinearOperator expected")
+
 
     def apply(self, x, mode):
         self._check_input(x, mode)
@@ -48,12 +52,16 @@ class BlockDiagonalOperator(EndomorphicOperator):
                     for op, v in zip(self._ops, x.values()))
         return MultiField(self._domain, val)
 
-    def draw_sample(self, from_inverse=False, dtype=np.float64):
+    def draw_sample(self, from_inverse=False):
+        val = tuple(op.draw_sample(from_inverse) for op in self._ops)
+        return MultiField(self._domain, val)
+
+    def draw_sample_with_dtype(self, dtype, from_inverse=False):
         from ..sugar import from_random
         val = tuple(
-            op.draw_sample(from_inverse, dtype)
+            op.draw_sample_with_dtype(dtype[key], from_inverse)
             if op is not None
-            else from_random('normal', self._domain[key], dtype=dtype)
+            else from_random(self._domain[key], 'normal', dtype=dtype)
             for op, key in zip(self._ops, self._domain.keys()))
         return MultiField(self._domain, val)
 

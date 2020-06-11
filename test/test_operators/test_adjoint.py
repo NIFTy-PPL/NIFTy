@@ -11,7 +11,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
-# Copyright(C) 2013-2019 Max-Planck-Society
+# Copyright(C) 2013-2020 Max-Planck-Society
 #
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
 
@@ -22,21 +22,14 @@ import nifty6 as ift
 
 from ..common import list2fixture, setup_function, teardown_function
 
-_h_RG_spaces = [
-    ift.RGSpace(7, distances=0.2, harmonic=True),
-    ift.RGSpace((12, 46), distances=(.2, .3), harmonic=True)
-]
+_h_RG_spaces = [ift.RGSpace(7, distances=0.2, harmonic=True),
+                ift.RGSpace((12, 46), distances=(.2, .3), harmonic=True)]
 _h_spaces = _h_RG_spaces + [ift.LMSpace(17)]
-_p_RG_spaces = [
-    ift.RGSpace(19, distances=0.7),
-    ift.RGSpace((1, 2, 3, 6), distances=(0.2, 0.25, 0.34, .8))
-]
+_p_RG_spaces = [ift.RGSpace(19, distances=0.7),
+                ift.RGSpace((1, 2, 3, 6), distances=(0.2, 0.25, 0.34, .8))]
 _p_spaces = _p_RG_spaces + [ift.HPSpace(17), ift.GLSpace(8, 13)]
-_pow_spaces = [
-    ift.PowerSpace(ift.RGSpace((17, 38), (0.99, 1340), harmonic=True)),
-    ift.PowerSpace(ift.LMSpace(18),
-                   ift.PowerSpace.useful_binbounds(ift.LMSpace(18), False))
-]
+_pow_spaces = [ift.PowerSpace(ift.RGSpace((17, 38), (0.99, 1340), harmonic=True)),
+               ift.PowerSpace(ift.LMSpace(18), ift.PowerSpace.useful_binbounds(ift.LMSpace(18), False))]
 
 pmp = pytest.mark.parametrize
 dtype = list2fixture([np.float64, np.complex128])
@@ -54,8 +47,8 @@ def testLOSResponse(sp, dtype):
 
 @pmp('sp', _h_spaces + _p_spaces + _pow_spaces)
 def testOperatorCombinations(sp, dtype):
-    a = ift.DiagonalOperator(ift.Field.from_random("normal", sp, dtype=dtype))
-    b = ift.DiagonalOperator(ift.Field.from_random("normal", sp, dtype=dtype))
+    a = ift.DiagonalOperator(ift.Field.from_random(sp, "normal", dtype=dtype))
+    b = ift.DiagonalOperator(ift.Field.from_random(sp, "normal", dtype=dtype))
     op = ift.SandwichOperator.make(a, b)
     ift.extra.consistency_check(op, dtype, dtype)
     op = a(b)
@@ -83,6 +76,15 @@ def testRealizer(sp):
 
 
 @pmp('sp', _h_spaces + _p_spaces + _pow_spaces)
+def testImaginizer(sp):
+    op = ift.Imaginizer(sp)
+    ift.extra.consistency_check(op, np.complex128, np.float64,
+                                only_r_linear=True)
+    loc = ift.from_random(op.domain, dtype=np.complex128)
+    ift.extra.check_jacobian_consistency(op, loc)
+
+
+@pmp('sp', _h_spaces + _p_spaces + _pow_spaces)
 def testConjugationOperator(sp):
     op = ift.ConjugationOperator(sp)
     ift.extra.consistency_check(op, np.complex128, np.complex128,
@@ -91,7 +93,7 @@ def testConjugationOperator(sp):
 
 @pmp('sp', _h_spaces + _p_spaces + _pow_spaces)
 def testOperatorAdaptor(sp, dtype):
-    op = ift.DiagonalOperator(ift.Field.from_random("normal", sp, dtype=dtype))
+    op = ift.DiagonalOperator(ift.Field.from_random(sp, "normal", dtype=dtype))
     ift.extra.consistency_check(op.adjoint, dtype, dtype)
     ift.extra.consistency_check(op.inverse, dtype, dtype)
     ift.extra.consistency_check(op.inverse.adjoint, dtype, dtype)
@@ -168,19 +170,17 @@ def testHarmonic(sp, dtype):
 
 @pmp('sp', _p_spaces)
 def testMask(sp, dtype):
-    # Create mask
-    f = ift.from_random('normal', sp).val
+    f = ift.from_random(sp).val
     mask = np.zeros_like(f)
     mask[f > 0] = 1
     mask = ift.Field.from_raw(sp, mask)
-    # Test MaskOperator
     op = ift.MaskOperator(mask)
     ift.extra.consistency_check(op, dtype, dtype)
 
 
 @pmp('sp', _h_spaces + _p_spaces)
 def testDiagonal(sp, dtype):
-    op = ift.DiagonalOperator(ift.Field.from_random("normal", sp, dtype=dtype))
+    op = ift.DiagonalOperator(ift.Field.from_random(sp, dtype=dtype))
     ift.extra.consistency_check(op, dtype, dtype)
 
 
@@ -193,7 +193,7 @@ def testGeometryRemover(sp, dtype):
 @pmp('spaces', [0, 1, 2, 3, (0, 1), (0, 2), (0, 1, 2), (0, 2, 3), (1, 3)])
 @pmp('wgt', [0, 1, 2, -1])
 def testContractionOperator(spaces, wgt, dtype):
-    dom = (ift.RGSpace(10), ift.RGSpace(13), ift.GLSpace(5), ift.HPSpace(4))
+    dom = (ift.RGSpace(1), ift.RGSpace(2), ift.GLSpace(3), ift.HPSpace(2))
     op = ift.ContractionOperator(dom, spaces, wgt)
     ift.extra.consistency_check(op, dtype, dtype)
 
@@ -210,38 +210,29 @@ def testDomainTupleFieldInserter():
 @pmp('factor', [1, 2, 2.7])
 @pmp('central', [False, True])
 def testZeroPadder(space, factor, dtype, central):
-    dom = (ift.RGSpace(10), ift.UnstructuredDomain(13), ift.RGSpace(7, 12),
-           ift.HPSpace(4))
-    newshape = [int(factor*l) for l in dom[space].shape]
+    dom = (ift.RGSpace(4), ift.UnstructuredDomain(5), ift.RGSpace(3, 4),
+           ift.HPSpace(2))
+    newshape = [int(factor*ll) for ll in dom[space].shape]
     op = ift.FieldZeroPadder(dom, newshape, space, central)
     ift.extra.consistency_check(op, dtype, dtype)
 
 
-@pmp('args', [[ift.RGSpace(
-    (13, 52, 40)), (4, 6, 25), None], [ift.RGSpace(
-        (128, 128)), (45, 48), 0], [ift.RGSpace(13), (7,), None], [
-            (ift.HPSpace(3), ift.RGSpace((12, 24), distances=0.3)), (12, 12), 1
-        ]])
+@pmp('args', [[ift.RGSpace((13, 52, 40)), (4, 6, 25), None],
+              [ift.RGSpace((128, 128)), (45, 48), 0],
+              [ift.RGSpace(13), (7,), None],
+              [(ift.HPSpace(3), ift.RGSpace((12, 24), distances=0.3)), (12, 12), 1]])
 def testRegridding(args):
     op = ift.RegriddingOperator(*args)
     ift.extra.consistency_check(op)
 
 
-@pmp(
-    'fdomain',
-    [
-        ift.DomainTuple.make((ift.RGSpace(
-            (3, 5, 4)), ift.RGSpace((16,), distances=(7.,))),),
-        ift.DomainTuple.make(ift.HPSpace(12),)
-    ],
-)
-@pmp('domain', [
-    ift.DomainTuple.make((ift.RGSpace((2,)), ift.GLSpace(10)),),
-    ift.DomainTuple.make(ift.RGSpace((10, 12), distances=(0.1, 1.)),)
-])
+@pmp('fdomain', [(ift.RGSpace((2, 3, 2)), ift.RGSpace((4,), distances=(7.,))),
+                 ift.HPSpace(3)])
+@pmp('domain', [(ift.RGSpace(2), ift.GLSpace(10)),
+                ift.RGSpace((4, 3), distances=(0.1, 1.))])
 def testOuter(fdomain, domain):
-    f = ift.from_random('normal', fdomain)
-    op = ift.OuterProduct(f, domain)
+    f = ift.from_random(ift.makeDomain(fdomain), 'normal')
+    op = ift.OuterProduct(domain, f)
     ift.extra.consistency_check(op)
 
 
@@ -276,6 +267,15 @@ def testSpecialSum(sp):
     op = ift.library.correlated_fields._SpecialSum(sp)
     ift.extra.consistency_check(op)
 
+
+@pmp('dofdex', [(0,), (1,), (0, 1), (1, 0)])
+def testCorFldDistr(dofdex):
+    tgt = ift.UnstructuredDomain(len(dofdex))
+    dom = ift.UnstructuredDomain(2)
+    op = ift.library.correlated_fields._Distributor(dofdex, dom, tgt)
+    ift.extra.consistency_check(op)
+
+
 def metatestMatrixProductOperator(sp, mat_shape, seed, **kwargs):
     with ift.random.Context(seed):
         mat = ift.random.current_rng().standard_normal(mat_shape)
@@ -285,12 +285,14 @@ def metatestMatrixProductOperator(sp, mat_shape, seed, **kwargs):
         op = ift.MatrixProductOperator(sp, mat, **kwargs)
         ift.extra.consistency_check(op)
 
+
 @pmp('sp', [ift.RGSpace(10)])
 @pmp('spaces', [None, (0,)])
 @pmp('seed', [12, 3])
 def testMatrixProductOperator_1d(sp, spaces, seed):
     mat_shape = sp.shape * 2
     metatestMatrixProductOperator(sp, mat_shape, seed, spaces=spaces)
+
 
 @pmp('sp', [ift.DomainTuple.make((ift.RGSpace((2)), ift.RGSpace((10))))])
 @pmp('spaces', [(0,), (1,), (0, 1)])
@@ -303,12 +305,14 @@ def testMatrixProductOperator_2d_spaces(sp, spaces, seed):
     mat_shape = appl_shape * 2
     metatestMatrixProductOperator(sp, mat_shape, seed, spaces=spaces)
 
+
 @pmp('sp', [ift.RGSpace((2, 10))])
 @pmp('seed', [12, 3])
 def testMatrixProductOperator_2d_flatten(sp, seed):
     appl_shape = (ift.utilities.my_product(sp.shape),)
     mat_shape = appl_shape * 2
     metatestMatrixProductOperator(sp, mat_shape, seed, flatten=True)
+
 
 @pmp('seed', [12, 3])
 def testPartialExtractor(seed):
@@ -320,6 +324,7 @@ def testPartialExtractor(seed):
         tgt = ift.MultiDomain.make(tgt)
         op = ift.PartialExtractor(dom, tgt)
         ift.extra.consistency_check(op)
+
 
 @pmp('seed', [12, 3])
 def testSlowFieldAdapter(seed):

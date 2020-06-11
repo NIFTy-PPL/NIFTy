@@ -28,35 +28,6 @@ from ..sugar import full, makeOp
 from .energy import Energy
 
 
-def _shareRange(nwork, nshares, myshare):
-    nbase = nwork//nshares
-    additional = nwork % nshares
-    lo = myshare*nbase + min(myshare, additional)
-    hi = lo + nbase + int(myshare < additional)
-    return lo, hi
-
-
-def _np_allreduce_sum(comm, arr):
-    if comm is None:
-        return arr
-    from mpi4py import MPI
-    arr = np.array(arr)
-    res = np.empty_like(arr)
-    comm.Allreduce(arr, res, MPI.SUM)
-    return res
-
-
-def _allreduce_sum_field(comm, fld):
-    if comm is None:
-        return fld
-    if isinstance(fld, Field):
-        return Field(fld.domain, _np_allreduce_sum(fld.val))
-    res = tuple(
-        Field(f.domain, _np_allreduce_sum(comm, f.val))
-        for f in fld.values())
-    return MultiField(fld.domain, res)
-
-
 class _KLMetric(EndomorphicOperator):
     def __init__(self, KL):
         self._KL = KL
@@ -67,8 +38,8 @@ class _KLMetric(EndomorphicOperator):
         self._check_input(x, mode)
         return self._KL.apply_metric(x)
 
-    def draw_sample(self, from_inverse=False, dtype=np.float64):
-        return self._KL._metric_sample(from_inverse, dtype)
+    def draw_sample(self, from_inverse=False):
+        return self._KL._metric_sample(from_inverse)
 
 
 class MetricGaussianKL(Energy):
@@ -114,13 +85,11 @@ class MetricGaussianKL(Energy):
         If not None, samples will be distributed as evenly as possible
         across this communicator. If `mirror_samples` is set, then a sample and
         its mirror image will always reside on the same task.
-    lh_sampling_dtype : type
-        Determines which dtype in data space shall be used for drawing samples
-        from the metric. If the inference is based on complex data,
-        lh_sampling_dtype shall be set to complex accordingly. The reason for
-        the presence of this parameter is that metric of the likelihood energy
-        is just an `Operator` which does not know anything about the dtype of
-        the fields on which it acts. Default is float64.
+    nanisinf : bool
+        If true, nan energies which can happen due to overflows in the forward
+        model are interpreted as inf. Thereby, the code does not crash on
+        these occaisions but rather the minimizer is told that the position it
+        has tried is not sensible.
     _local_samples : None
         Only a parameter for internal uses. Typically not to be set by users.
 
@@ -139,7 +108,7 @@ class MetricGaussianKL(Energy):
     def __init__(self, mean, hamiltonian, n_samples, constants=[],
                  point_estimates=[], mirror_samples=False,
                  napprox=0, comm=None, _local_samples=None,
-                 lh_sampling_dtype=np.float64):
+                 nanisinf=False):
         super(MetricGaussianKL, self).__init__(mean)
 
         if not isinstance(hamiltonian, StandardHamiltonian):
@@ -150,20 +119,16 @@ class MetricGaussianKL(Energy):
             raise TypeError
         self._constants = tuple(constants)
         self._point_estimates = tuple(point_estimates)
+        self._mitigate_nans = nanisinf
         if not isinstance(mirror_samples, bool):
             raise TypeError
 
         self._hamiltonian = hamiltonian
 
         self._n_samples = int(n_samples)
-        if comm is not None:
-            self._comm = comm
-            ntask = self._comm.Get_size()
-            rank = self._comm.Get_rank()
-            self._lo, self._hi = _shareRange(self._n_samples, ntask, rank)
-        else:
-            self._comm = None
-            self._lo, self._hi = 0, self._n_samples
+        self._comm = comm
+        ntask, rank, _ = utilities.get_MPI_params_from_comm(self._comm)
+        self._lo, self._hi = utilities.shareRange(self._n_samples, ntask, rank)
 
         self._mirror_samples = bool(mirror_samples)
         self._n_eff_samples = self._n_samples
@@ -179,40 +144,34 @@ class MetricGaussianKL(Energy):
             sseq = random.spawn_sseq(self._n_samples)
             for i in range(self._lo, self._hi):
                 with random.Context(sseq[i]):
-                    _local_samples.append(met.draw_sample(
-                        from_inverse=True, dtype=lh_sampling_dtype))
+                    _local_samples.append(met.draw_sample(from_inverse=True))
             _local_samples = tuple(_local_samples)
         else:
             if len(_local_samples) != self._hi-self._lo:
                 raise ValueError("# of samples mismatch")
         self._local_samples = _local_samples
         self._lin = Linearization.make_partial_var(mean, self._constants)
-        v, g = None, None
-        if len(self._local_samples) == 0:  # hack if there are too many MPI tasks
-            tmp = self._hamiltonian(self._lin)
-            v = 0. * tmp.val.val
-            g = 0. * tmp.gradient
-        else:
-            for s in self._local_samples:
-                tmp = self._hamiltonian(self._lin+s)
-                if self._mirror_samples:
-                    tmp = tmp + self._hamiltonian(self._lin-s)
-                if v is None:
-                    v = tmp.val.val_rw()
-                    g = tmp.gradient
-                else:
-                    v += tmp.val.val
-                    g = g + tmp.gradient
-        self._val = _np_allreduce_sum(self._comm, v)[()] / self._n_eff_samples
-        self._grad = _allreduce_sum_field(self._comm, g) / self._n_eff_samples
-        self._metric = None
-        self._sampdt = lh_sampling_dtype
+        v, g = [], []
+        for s in self._local_samples:
+            tmp = self._hamiltonian(self._lin+s)
+            tv = tmp.val.val
+            tg = tmp.gradient
+            if self._mirror_samples:
+                tmp = self._hamiltonian(self._lin-s)
+                tv = tv + tmp.val.val
+                tg = tg + tmp.gradient
+            v.append(tv)
+            g.append(tg)
+        self._val = utilities.allreduce_sum(v, self._comm)[()]/self._n_eff_samples
+        if np.isnan(self._val) and self._mitigate_nans:
+            self._val = np.inf
+        self._grad = utilities.allreduce_sum(g, self._comm)/self._n_eff_samples
 
     def at(self, position):
         return MetricGaussianKL(
             position, self._hamiltonian, self._n_samples, self._constants,
             self._point_estimates, self._mirror_samples, comm=self._comm,
-            _local_samples=self._local_samples, lh_sampling_dtype=self._sampdt)
+            _local_samples=self._local_samples, nanisinf=self._mitigate_nans)
 
     @property
     def value(self):
@@ -222,24 +181,15 @@ class MetricGaussianKL(Energy):
     def gradient(self):
         return self._grad
 
-    def _get_metric(self):
-        lin = self._lin.with_want_metric()
-        if self._metric is None:
-            if len(self._local_samples) == 0:  # hack if there are too many MPI tasks
-                self._metric = self._hamiltonian(lin).metric.scale(0.)
-            else:
-                mymap = map(lambda v: self._hamiltonian(lin+v).metric,
-                            self._local_samples)
-                unscaled_metric = utilities.my_sum(mymap)
-                if self._mirror_samples:
-                    mymap = map(lambda v: self._hamiltonian(lin-v).metric,
-                            self._local_samples)
-                    unscaled_metric = unscaled_metric + utilities.my_sum(mymap)
-                self._metric = unscaled_metric.scale(1./self._n_eff_samples)
-
     def apply_metric(self, x):
-        self._get_metric()
-        return _allreduce_sum_field(self._comm, self._metric(x))
+        lin = self._lin.with_want_metric()
+        res = []
+        for s in self._local_samples:
+            tmp = self._hamiltonian(lin+s).metric(x)
+            if self._mirror_samples:
+                tmp = tmp + self._hamiltonian(lin-s).metric(x)
+            res.append(tmp)
+        return utilities.allreduce_sum(res, self._comm)/self._n_eff_samples
 
     @property
     def metric(self):
@@ -247,15 +197,14 @@ class MetricGaussianKL(Energy):
 
     @property
     def samples(self):
-        if self._comm is None:
+        ntask, rank, _ = utilities.get_MPI_params_from_comm(self._comm)
+        if ntask == 1:
             for s in self._local_samples:
                 yield s
                 if self._mirror_samples:
                     yield -s
         else:
-            ntask = self._comm.Get_size()
-            rank = self._comm.Get_rank()
-            rank_lo_hi = [_shareRange(self._n_samples, ntask, i) for i in range(ntask)]
+            rank_lo_hi = [utilities.shareRange(self._n_samples, ntask, i) for i in range(ntask)]
             for itask, (l, h) in enumerate(rank_lo_hi):
                 for i in range(l, h):
                     data = self._local_samples[i-self._lo] if rank == itask else None
@@ -264,15 +213,16 @@ class MetricGaussianKL(Energy):
                     if self._mirror_samples:
                         yield -s
 
-    def _metric_sample(self, from_inverse=False, dtype=np.float64):
+    def _metric_sample(self, from_inverse=False):
         if from_inverse:
             raise NotImplementedError()
         lin = self._lin.with_want_metric()
-        samp = full(self._hamiltonian.domain, 0.)
+        samp = []
         sseq = random.spawn_sseq(self._n_samples)
         for i, v in enumerate(self._local_samples):
             with random.Context(sseq[self._lo+i]):
-                samp = samp + self._hamiltonian(lin+v).metric.draw_sample(from_inverse=False, dtype=dtype)
+                tmp = self._hamiltonian(lin+v).metric.draw_sample(from_inverse=False)
                 if self._mirror_samples:
-                    samp = samp + self._hamiltonian(lin-v).metric.draw_sample(from_inverse=False, dtype=dtype)
-        return _allreduce_sum_field(self._comm, samp)/self._n_eff_samples
+                    tmp = tmp + self._hamiltonian(lin-v).metric.draw_sample(from_inverse=False)
+                samp.append(tmp)
+        return utilities.allreduce_sum(samp, self._comm)/self._n_eff_samples

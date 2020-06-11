@@ -11,12 +11,10 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
-# Copyright(C) 2013-2019 Max-Planck-Society
+# Copyright(C) 2013-2020 Max-Planck-Society
 #
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
 
-from ..field import Field
-from ..multi_field import MultiField
 from .operator import Operator
 
 
@@ -170,7 +168,6 @@ class LinearOperator(Operator):
 
     def __call__(self, x):
         """Same as :meth:`times`"""
-        from ..linearization import Linearization
         if x.jac is not None:
             return x.new(self(x._val), self).prepend_jac(x.jac)
         if x.val is not None:

@@ -45,8 +45,8 @@ def test_property(space, sigma):
 
 def test_adjoint_times(space, sigma):
     op = ift.HarmonicSmoothingOperator(space, sigma=sigma)
-    rand1 = ift.Field.from_random('normal', domain=space)
-    rand2 = ift.Field.from_random('normal', domain=space)
+    rand1 = ift.Field.from_random(domain=space, random_type='normal')
+    rand2 = ift.Field.from_random(domain=space, random_type='normal')
     tt1 = rand1.s_vdot(op.times(rand2))
     tt2 = rand2.s_vdot(op.adjoint_times(rand1))
     assert_allclose(tt1, tt2)
@@ -67,8 +67,7 @@ def test_smooth_regular1(sz, d, sigma, tp):
     tol = _get_rtol(tp)
     sp = ift.RGSpace(sz, distances=d)
     smo = ift.HarmonicSmoothingOperator(sp, sigma=sigma)
-    inp = ift.Field.from_random(
-        domain=sp, random_type='normal', std=1, mean=4, dtype=tp)
+    inp = ift.Field.from_random(domain=sp, random_type='normal', dtype=tp, std=1, mean=4)
     out = smo(inp)
     assert_allclose(inp.s_sum(), out.s_sum(), rtol=tol, atol=tol)
 
@@ -81,7 +80,6 @@ def test_smooth_regular2(sz1, sz2, d1, d2, sigma, tp):
     tol = _get_rtol(tp)
     sp = ift.RGSpace([sz1, sz2], distances=[d1, d2])
     smo = ift.HarmonicSmoothingOperator(sp, sigma=sigma)
-    inp = ift.Field.from_random(
-        domain=sp, random_type='normal', std=1, mean=4, dtype=tp)
+    inp = ift.Field.from_random(domain=sp, random_type='normal', dtype=tp, std=1, mean=4)
     out = smo(inp)
     assert_allclose(inp.s_sum(), out.s_sum(), rtol=tol, atol=tol)

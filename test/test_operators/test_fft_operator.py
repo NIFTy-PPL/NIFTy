@@ -44,16 +44,14 @@ def test_fft1D(d, dtype, op):
     b = ift.RGSpace(dim1, distances=1./(dim1*d), harmonic=True)
 
     fft = op(domain=a, target=b)
-    inp = ift.Field.from_random(
-        domain=a, random_type='normal', std=7, mean=3, dtype=dtype)
+    inp = ift.Field.from_random(domain=a, random_type='normal', dtype=dtype, std=7, mean=3)
     out = fft.inverse_times(fft.times(inp))
     assert_allclose(inp.val, out.val, rtol=tol, atol=tol)
 
     a, b = b, a
 
     fft = ift.FFTOperator(domain=a, target=b)
-    inp = ift.Field.from_random(
-        domain=a, random_type='normal', std=7, mean=3, dtype=dtype)
+    inp = ift.Field.from_random(domain=a, random_type='normal', dtype=dtype, std=7, mean=3)
     out = fft.inverse_times(fft.times(inp))
     assert_allclose(inp.val, out.val, rtol=tol, atol=tol)
 
@@ -72,16 +70,14 @@ def test_fft2D(dim1, dim2, d1, d2, dtype, op, nthreads):
         [dim1, dim2], distances=[1./(dim1*d1), 1./(dim2*d2)], harmonic=True)
 
     fft = op(domain=a, target=b)
-    inp = ift.Field.from_random(
-        domain=a, random_type='normal', std=7, mean=3, dtype=dtype)
+    inp = ift.Field.from_random(domain=a, random_type='normal', dtype=dtype, std=7, mean=3)
     out = fft.inverse_times(fft.times(inp))
     assert_allclose(inp.val, out.val, rtol=tol, atol=tol)
 
     a, b = b, a
 
     fft = ift.FFTOperator(domain=a, target=b)
-    inp = ift.Field.from_random(
-        domain=a, random_type='normal', std=7, mean=3, dtype=dtype)
+    inp = ift.Field.from_random(domain=a, random_type='normal', dtype=dtype, std=7, mean=3)
     out = fft.inverse_times(fft.times(inp))
     assert_allclose(inp.val, out.val, rtol=tol, atol=tol)
     ift.fft.set_nthreads(1)
@@ -96,8 +92,7 @@ def test_composed_fft(index, dtype, op):
                 ift.RGSpace((5, 6))]
     fft = op(domain=a, space=index)
 
-    inp = ift.Field.from_random(
-        domain=(a1, a2, a3), random_type='normal', std=7, mean=3, dtype=dtype)
+    inp = ift.Field.from_random(domain=(a1, a2, a3), random_type='normal', dtype=dtype, std=7, mean=3)
     out = fft.inverse_times(fft.times(inp))
     assert_allclose(inp.val, out.val, rtol=tol, atol=tol)
 
@@ -111,8 +106,7 @@ def test_normalisation(space, dtype, op):
     tol = 10*_get_rtol(dtype)
     cospace = space.get_default_codomain()
     fft = op(space, cospace)
-    inp = ift.Field.from_random(
-        domain=space, random_type='normal', std=1, mean=2, dtype=dtype)
+    inp = ift.Field.from_random(domain=space, random_type='normal', dtype=dtype, std=1, mean=2)
     out = fft.times(inp)
     fft2 = op(cospace, space)
     out2 = fft2.inverse_times(inp)

@@ -11,7 +11,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
-# Copyright(C) 2013-2019 Max-Planck-Society
+# Copyright(C) 2013-2020 Max-Planck-Society
 #
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
 
@@ -27,15 +27,15 @@ class OuterProduct(LinearOperator):
 
     Parameters
     ---------
-    field: Field,
     domain: DomainTuple, the domain of the input field
+    field: Field
     ---------
     """
-    def __init__(self, field, domain):
-        self._domain = domain
+    def __init__(self, domain, field):
+        self._domain = DomainTuple.make(domain)
         self._field = field
         self._target = DomainTuple.make(
-            tuple(sub_d for sub_d in field.domain._dom + domain._dom))
+            tuple(sub_d for sub_d in field.domain._dom + self._domain._dom))
         self._capability = self.TIMES | self.ADJOINT_TIMES
 
     def apply(self, x, mode):

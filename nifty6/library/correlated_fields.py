@@ -11,7 +11,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
-# Copyright(C) 2013-2019 Max-Planck-Society
+# Copyright(C) 2013-2020 Max-Planck-Society
 # Authors: Philipp Frank, Philipp Arras, Philipp Haim
 #
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
@@ -25,7 +25,6 @@ from ..domain_tuple import DomainTuple
 from ..domains.power_space import PowerSpace
 from ..domains.unstructured_domain import UnstructuredDomain
 from ..field import Field
-from ..linearization import Linearization
 from ..logger import logger
 from ..multi_field import MultiField
 from ..operators.adder import Adder
@@ -37,46 +36,10 @@ from ..operators.harmonic_operators import HarmonicTransformOperator
 from ..operators.linear_operator import LinearOperator
 from ..operators.operator import Operator
 from ..operators.simple_linear_operators import ducktape
+from ..operators.normal_operators import NormalTransform, LognormalTransform
 from ..probing import StatCalculator
 from ..sugar import full, makeDomain, makeField, makeOp
-
-
-def _reshaper(x, N):
-    x = np.asfarray(x)
-    if x.shape in [(), (1,)]:
-        return np.full(N, x) if N != 0 else x.reshape(())
-    elif x.shape == (N,):
-        return x
-    else:
-        raise TypeError("Shape of parameters cannot be interpreted")
-
-
-def _lognormal_moments(mean, sig, N=0):
-    if N == 0:
-        mean, sig = np.asfarray(mean), np.asfarray(sig)
-    else:
-        mean, sig = (_reshaper(param, N) for param in (mean, sig))
-    if not np.all(mean > 0):
-        raise ValueError("mean must be greater 0; got {!r}".format(mean))
-    if not np.all(sig > 0):
-        raise ValueError("sig must be greater 0; got {!r}".format(sig))
-
-    logsig = np.sqrt(np.log((sig/mean)**2 + 1))
-    logmean = np.log(mean) - logsig**2/2
-    return logmean, logsig
-
-
-def _normal(mean, sig, key, N=0):
-    if N == 0:
-        domain = DomainTuple.scalar_domain()
-        mean, sig = np.asfarray(mean), np.asfarray(sig)
-        return Adder(makeField(domain, mean)) @ (
-            sig * ducktape(domain, None, key))
-
-    domain = UnstructuredDomain(N)
-    mean, sig = (_reshaper(param, N) for param in (mean, sig))
-    return Adder(makeField(domain, mean)) @ (DiagonalOperator(
-        makeField(domain, sig)) @ ducktape(domain, None, key))
+from .. import utilities
 
 
 def _log_k_lengths(pspace):
@@ -118,25 +81,6 @@ def _total_fluctuation_realized(samples):
         res = res + (s - co.adjoint(co(s)/size))**2
     res = res.mean(spaces)/len(samples)
     return np.sqrt(res if np.isscalar(res) else res.val)
-
-
-class _LognormalMomentMatching(Operator):
-    def __init__(self, mean, sig, key, N_copies):
-        key = str(key)
-        logmean, logsig = _lognormal_moments(mean, sig, N_copies)
-        self._mean = mean
-        self._sig = sig
-        op = _normal(logmean, logsig, key, N_copies).ptw("exp")
-        self._domain, self._target = op.domain, op.target
-        self.apply = op.apply
-
-    @property
-    def mean(self):
-        return self._mean
-
-    @property
-    def std(self):
-        return self._sig
 
 
 class _SlopeRemover(EndomorphicOperator):
@@ -243,12 +187,10 @@ class _SpecialSum(EndomorphicOperator):
 
 
 class _Distributor(LinearOperator):
-    def __init__(self, dofdex, domain, target, space=0):
-        self._dofdex = dofdex
-
-        self._target = makeDomain(target)
-        self._domain = makeDomain(domain)
-        self._sl = (slice(None),)*space
+    def __init__(self, dofdex, domain, target):
+        self._dofdex = np.array(dofdex)
+        self._target = DomainTuple.make(target)
+        self._domain = DomainTuple.make(domain)
         self._capability = self.TIMES | self.ADJOINT_TIMES
 
     def apply(self, x, mode):
@@ -257,8 +199,8 @@ class _Distributor(LinearOperator):
         if mode == self.TIMES:
             res = x[self._dofdex]
         else:
-            res = np.empty(self._tgt(mode).shape)
-            res[self._dofdex] = x
+            res = np.zeros(self._tgt(mode).shape, dtype=x.dtype)
+            res = utilities.special_add_at(res, 0, self._dofdex, x)
         return makeField(self._tgt(mode), res)
 
 
@@ -282,7 +224,7 @@ class _Amplitude(Operator):
             distributed_tgt = makeDomain((UnstructuredDomain(len(dofdex)),
                                           target))
             target = makeDomain((UnstructuredDomain(N_copies), target))
-            Distributor = _Distributor(dofdex, target, distributed_tgt, 0)
+            Distributor = _Distributor(dofdex, target, distributed_tgt)
         else:
             N_copies = 0
             space = 0
@@ -348,18 +290,56 @@ class _Amplitude(Operator):
         self.apply = op.apply
         self._domain, self._target = op.domain, op.target
         self._space = space
+        self._repr_str = "_Amplitude: " + op.__repr__()
 
     @property
     def fluctuation_amplitude(self):
         return self._fluc
 
+    def __repr__(self):
+        return self._repr_str
+
 
 class CorrelatedFieldMaker:
+    """Constrution helper for hirarchical correlated field models.
+
+    The correlated field models are parametrized by creating
+    power spectrum operators ("amplitudes") via calls to
+    :func:`add_fluctuations` that act on the targeted field subdomains.
+    During creation of the :class:`CorrelatedFieldMaker` via
+    :func:`make`, a global offset from zero of the field model
+    can be defined and an operator applying fluctuations
+    around this offset is parametrized.
+
+    The resulting correlated field model operator has a
+    :class:`~nifty6.multi_domain.MultiDomain` as its domain and
+    expects its input values to be univariately gaussian.
+
+    The target of the constructed operator will be a
+    :class:`~nifty6.domain_tuple.DomainTuple` containing the
+    `target_subdomains` of the added fluctuations in the order of
+    the `add_fluctuations` calls.
+
+    Creation of the model operator is completed by calling the method
+    :func:`finalize`, which returns the configured operator.
+
+    An operator representing an array of correlated field models
+    can be constructed by setting the `total_N` parameter of
+    :func:`make`. It will have an
+    :class:`~nifty.domains.unstructucture_domain.UnstructureDomain`
+    of shape `(total_N,)` prepended to its target domain and represent
+    `total_N` correlated fields simulataneously.
+    The degree of information sharing between the correlated field
+    models can be configured via the `dofdex` parameters
+    of :func:`make` and :func:`add_fluctuations`.
+
+    See the methods :func:`make`, :func:`add_fluctuations`
+    and :func:`finalize` for further usage information."""
     def __init__(self, offset_mean, offset_fluctuations_op, prefix, total_N):
         if not isinstance(offset_fluctuations_op, Operator):
             raise TypeError("offset_fluctuations_op needs to be an operator")
         self._a = []
-        self._position_spaces = []
+        self._target_subdomains = []
 
         self._offset_mean = offset_mean
         self._azm = offset_fluctuations_op
@@ -367,8 +347,7 @@ class CorrelatedFieldMaker:
         self._total_N = total_N
 
     @staticmethod
-    def make(offset_mean, offset_std_mean, offset_std_std, prefix,
-             total_N=0,
+    def make(offset_mean, offset_std_mean, offset_std_std, prefix, total_N=0,
              dofdex=None):
         """Returns a CorrelatedFieldMaker object.
 
@@ -377,31 +356,39 @@ class CorrelatedFieldMaker:
         offset_mean : float
             Mean offset from zero of the correlated field to be made.
         offset_std_mean : float
-            Mean standard deviation of the offset value.
+            Mean standard deviation of the offset.
         offset_std_std : float
-            Standard deviation of the stddev of the offset value.
+            Standard deviation of the stddev of the offset.
         prefix : string
             Prefix to the names of the domains of the cf operator to be made.
-        total_N : integer
-            ?
-        dofdex : np.array
-            ?
+            This determines the names of the operator domain.
+        total_N : integer, optional
+            Number of field models to create.
+            If not 0, the first entry of the operators target will be an
+            :class:`~nifty.domains.unstructured_domain.UnstructuredDomain`
+            with length `total_N`.
+        dofdex : np.array of integers, optional
+            An integer array specifying the zero mode models used if
+            total_N > 1. It needs to have length of total_N. If total_N=3 and
+            dofdex=[0,0,1], that means that two models for the zero mode are
+            instanciated; the first one is used for the first and second
+            field model and the second is used for the third field model.
+            *If not specified*, use the same zero mode model for all
+            constructed field models.
         """
         if dofdex is None:
             dofdex = np.full(total_N, 0)
         elif len(dofdex) != total_N:
             raise ValueError("length of dofdex needs to match total_N")
         N = max(dofdex) + 1 if total_N > 0 else 0
-        zm = _LognormalMomentMatching(offset_std_mean,
-                                      offset_std_std,
-                                      prefix + 'zeromode',
-                                      N)
+        zm = LognormalTransform(offset_std_mean, offset_std_std,
+                                prefix + 'zeromode', N)
         if total_N > 0:
             zm = _Distributor(dofdex, zm.target, UnstructuredDomain(total_N)) @ zm
         return CorrelatedFieldMaker(offset_mean, zm, prefix, total_N)
 
     def add_fluctuations(self,
-                         position_space,
+                         target_subdomain,
                          fluctuations_mean,
                          fluctuations_stddev,
                          flexibility_mean,
@@ -414,11 +401,60 @@ class CorrelatedFieldMaker:
                          index=None,
                          dofdex=None,
                          harmonic_partner=None):
+        """Function to add correlation structures to the field to be made.
+
+        Correlations are described by their power spectrum and the subdomain
+        on which they apply.
+
+        The parameters `fluctuations`, `flexibility`, `asperity` and
+        `loglogavgslope` configure the power spectrum model ("amplitude")
+        used on the target field subdomain `target_subdomain`.
+        It is assembled as the sum of a power law component
+        (linear slope in log-log power-frequency-space),
+        a smooth varying component (integrated wiener process) and
+        a ragged componenent (unintegrated wiener process).
+
+        Multiple calls to `add_fluctuations` are possible, in which case
+        the constructed field will have the outer product of the individual
+        power spectra as its global power spectrum.
+
+        Parameters
+        ----------
+        target_subdomain : :class:`~nifty6.domain.Domain`, \
+                           :class:`~nifty6.domain_tuple.DomainTuple`
+            Target subdomain on which the correlation structure defined
+            in this call should hold.
+        fluctuations_{mean,stddev} : float
+            Total spectral energy -> Amplitude of the fluctuations
+        flexibility_{mean,stddev} : float
+            Amplitude of the non-power-law power spectrum component
+        asperity_{mean,stddev} : float
+            Roughness of the non-power-law power spectrum component
+            Used to accomodate single frequency peaks
+        loglogavgslope_{mean,stddev} : float
+            Power law component exponent
+        prefix : string
+            prefix of the power spectrum parameter domain names
+        index : int
+            Position target_subdomain in the final total domain of the
+            correlated field operator.
+        dofdex : np.array, optional
+            An integer array specifying the power spectrum models used if
+            total_N > 1. It needs to have length of total_N. If total_N=3 and
+            dofdex=[0,0,1], that means that two power spectrum models are
+            instanciated; the first one is used for the first and second
+            field model and the second one is used for the third field model.
+            *If not given*, use the same power spectrum model for all
+            constructed field models.
+        harmonic_partner : :class:`~nifty6.domain.Domain`, \
+                           :class:`~nifty6.domain_tuple.DomainTuple`
+            In which harmonic space to define the power spectrum
+        """
         if harmonic_partner is None:
-            harmonic_partner = position_space.get_default_codomain()
+            harmonic_partner = target_subdomain.get_default_codomain()
         else:
-            position_space.check_codomain(harmonic_partner)
-            harmonic_partner.check_codomain(position_space)
+            target_subdomain.check_codomain(harmonic_partner)
+            harmonic_partner.check_codomain(target_subdomain)
 
         if dofdex is None:
             dofdex = np.full(self._total_N, 0)
@@ -427,36 +463,43 @@ class CorrelatedFieldMaker:
 
         if self._total_N > 0:
             N = max(dofdex) + 1
-            position_space = makeDomain((UnstructuredDomain(N), position_space))
+            target_subdomain = makeDomain((UnstructuredDomain(N), target_subdomain))
         else:
             N = 0
-            position_space = makeDomain(position_space)
+            target_subdomain = makeDomain(target_subdomain)
         prefix = str(prefix)
-        # assert isinstance(position_space[space], (RGSpace, HPSpace, GLSpace)
+        # assert isinstance(target_subdomain[space], (RGSpace, HPSpace, GLSpace)
 
-        fluct = _LognormalMomentMatching(fluctuations_mean,
-                                         fluctuations_stddev,
-                                         self._prefix + prefix + 'fluctuations',
-                                         N)
-        flex = _LognormalMomentMatching(flexibility_mean, flexibility_stddev,
-                                        self._prefix + prefix + 'flexibility',
-                                        N)
-        asp = _LognormalMomentMatching(asperity_mean, asperity_stddev,
-                                       self._prefix + prefix + 'asperity', N)
-        avgsl = _normal(loglogavgslope_mean, loglogavgslope_stddev,
-                        self._prefix + prefix + 'loglogavgslope', N)
+        fluct = LognormalTransform(fluctuations_mean, fluctuations_stddev,
+                                   self._prefix + prefix + 'fluctuations', N)
+        flex = LognormalTransform(flexibility_mean, flexibility_stddev,
+                                  self._prefix + prefix + 'flexibility', N)
+        asp = LognormalTransform(asperity_mean, asperity_stddev,
+                                 self._prefix + prefix + 'asperity', N)
+        avgsl = NormalTransform(loglogavgslope_mean, loglogavgslope_stddev,
+                                self._prefix + prefix + 'loglogavgslope', N)
+
         amp = _Amplitude(PowerSpace(harmonic_partner), fluct, flex, asp, avgsl,
-                         self._azm, position_space[-1].total_volume,
+                         self._azm, target_subdomain[-1].total_volume,
                          self._prefix + prefix + 'spectrum', dofdex)
 
         if index is not None:
             self._a.insert(index, amp)
-            self._position_spaces.insert(index, position_space)
+            self._target_subdomains.insert(index, target_subdomain)
         else:
             self._a.append(amp)
-            self._position_spaces.append(position_space)
+            self._target_subdomains.append(target_subdomain)
 
-    def _finalize_from_op(self):
+    def finalize(self, prior_info=100):
+        """Finishes model construction process and returns the constructed
+        operator.
+
+        Parameters
+        ----------
+        prior_info : integer
+            How many prior samples to draw for property verification statistics
+            If zero, skips calculating and displaying statistics.
+        """
         n_amplitudes = len(self._a)
         if self._total_N > 0:
             hspace = makeDomain(
@@ -474,11 +517,11 @@ class CorrelatedFieldMaker:
         azm = expander @ self._azm
 
         ht = HarmonicTransformOperator(hspace,
-                                       self._position_spaces[0][amp_space],
+                                       self._target_subdomains[0][amp_space],
                                        space=spaces[0])
         for i in range(1, n_amplitudes):
             ht = HarmonicTransformOperator(ht.target,
-                                           self._position_spaces[i][amp_space],
+                                           self._target_subdomains[i][amp_space],
                                            space=spaces[i]) @ ht
         a = []
         for ii in range(n_amplitudes):
@@ -487,13 +530,8 @@ class CorrelatedFieldMaker:
             pd = PowerDistributor(co.target, pp, amp_space)
             a.append(co.adjoint @ pd @ self._a[ii])
         corr = reduce(mul, a)
-        return ht(azm*corr*ducktape(hspace, None, self._prefix + 'xi'))
+        op = ht(azm*corr*ducktape(hspace, None, self._prefix + 'xi'))
 
-    def finalize(self, prior_info=100):
-        """
-        offset vs zeromode: volume factor
-        """
-        op = self._finalize_from_op()
         if self._offset_mean is not None:
             offset = self._offset_mean
             # Deviations from this offset must not be considered here as they
@@ -525,7 +563,7 @@ class CorrelatedFieldMaker:
         for kk, op in lst:
             sc = StatCalculator()
             for _ in range(prior_info):
-                sc.add(op(from_random('normal', op.domain)))
+                sc.add(op(from_random(op.domain, 'normal')))
             mean = sc.mean.val
             stddev = sc.var.ptw("sqrt").val
             for m, s in zip(mean.flatten(), stddev.flatten()):
@@ -540,13 +578,14 @@ class CorrelatedFieldMaker:
         scm = 1.
         for a in self._a:
             op = a.fluctuation_amplitude*self._azm.ptw("reciprocal")
-            res = np.array([op(from_random('normal', op.domain)).val
+            res = np.array([op(from_random(op.domain, 'normal')).val
                             for _ in range(nsamples)])
             scm *= res**2 + 1.
         return fluctuations_slice_mean/np.mean(np.sqrt(scm))
 
     @property
     def normalized_amplitudes(self):
+        """Returns the power spectrum operators used in the model"""
         return self._a
 
     @property
