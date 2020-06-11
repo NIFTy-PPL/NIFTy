@@ -19,8 +19,8 @@
 import numpy as np
 from numpy.testing import assert_, assert_allclose
 
-import nifty6 as ift
-from nifty6.extra import check_jacobian_consistency, consistency_check
+import nifty7 as ift
+from nifty7.extra import check_jacobian_consistency, consistency_check
 
 from ..common import list2fixture, setup_function, teardown_function
 

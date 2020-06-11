@@ -11,7 +11,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
-# Copyright(C) 2013-2019 Max-Planck-Society
+# Copyright(C) 2013-2020 Max-Planck-Society
 #
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
 
@@ -25,7 +25,7 @@ import sys
 
 import numpy as np
 
-import nifty6 as ift
+import nifty7 as ift
 
 
 def make_checkerboard_mask(position_space):
@@ -38,14 +38,14 @@ def make_checkerboard_mask(position_space):
     return mask
 
 
-def make_random_mask():
+def make_random_mask(domain):
     # Random mask for spherical mode
-    mask = ift.from_random(position_space, 'pm1')
+    mask = ift.from_random(domain, 'pm1')
     mask = (mask + 1)/2
     return mask.val
 
 
-if __name__ == '__main__':
+def main():
     # Choose space on which the signal field is defined
     if len(sys.argv) == 2:
         mode = int(sys.argv[1])
@@ -63,7 +63,7 @@ if __name__ == '__main__':
     else:
         # Sphere with half of its pixels randomly masked
         position_space = ift.HPSpace(128)
-        mask = make_random_mask()
+        mask = make_random_mask(position_space)
 
     # Specify harmonic space corresponding to signal
     harmonic_space = position_space.get_default_codomain()
@@ -148,3 +148,7 @@ if __name__ == '__main__':
                  title='Residuals')
         plot.output(nx=2, ny=2, xsize=10, ysize=10, name=filename)
     print("Saved results as '{}'.".format(filename))
+
+
+if __name__ == '__main__':
+    main()

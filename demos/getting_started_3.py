@@ -11,7 +11,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
-# Copyright(C) 2013-2019 Max-Planck-Society
+# Copyright(C) 2013-2020 Max-Planck-Society
 #
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
 
@@ -29,7 +29,7 @@ import sys
 
 import numpy as np
 
-import nifty6 as ift
+import nifty7 as ift
 
 
 def random_los(n_los):
@@ -44,7 +44,7 @@ def radial_los(n_los):
     return starts, ends
 
 
-if __name__ == '__main__':
+def main():
     # Choose between random line-of-sight response (mode=0) and radial lines
     # of sight (mode=1)
     if len(sys.argv) == 2:
@@ -60,10 +60,10 @@ if __name__ == '__main__':
     #  see 'getting_started_4_CorrelatedFields.ipynb'.
 
     cfmaker = ift.CorrelatedFieldMaker.make(
-        offset_mean =      0.0,  # 0.
-        offset_std_mean = 1e-3,  # 1e-3
-        offset_std_std =  1e-6,  # 1e-6
-        prefix = '')
+        offset_mean=      0.0,
+        offset_std_mean= 1e-3,
+        offset_std_std=  1e-6,
+        prefix='')
 
     fluctuations_dict = {
         # Amplitude of field fluctuations
@@ -72,7 +72,7 @@ if __name__ == '__main__':
 
         # Exponent of power law power spectrum component
         'loglogavgslope_mean': -2.0,  # -3.0
-        'loglogavgslope_stddev': 0.5,  #  0.5
+        'loglogavgslope_stddev': 0.5,  # 0.5
 
         # Amplitude of integrated Wiener process power spectrum component
         'flexibility_mean':   2.5,  # 1.0
@@ -163,3 +163,7 @@ if __name__ == '__main__':
         linewidth=[1.]*len(powers) + [3., 3.])
     plot.output(ny=1, nx=3, xsize=24, ysize=6, name=filename_res)
     print("Saved results as '{}'.".format(filename_res))
+
+
+if __name__ == '__main__':
+    main()

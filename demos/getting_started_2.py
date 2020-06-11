@@ -11,7 +11,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
-# Copyright(C) 2013-2019 Max-Planck-Society
+# Copyright(C) 2013-2020 Max-Planck-Society
 #
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
 
@@ -25,25 +25,23 @@ import sys
 
 import numpy as np
 
-import nifty6 as ift
+import nifty7 as ift
 
 
-def exposure_2d():
+def exposure_2d(domain):
     # Structured exposure for 2D mode
-    x_shape, y_shape = position_space.shape
-
-    exposure = np.ones(position_space.shape)
+    x_shape, y_shape = domain.shape
+    exposure = np.ones(domain.shape)
     exposure[x_shape//3:x_shape//2, :] *= 2.
     exposure[x_shape*4//5:x_shape, :] *= .1
     exposure[x_shape//2:x_shape*3//2, :] *= 3.
     exposure[:, x_shape//3:x_shape//2] *= 2.
     exposure[:, x_shape*4//5:x_shape] *= .1
     exposure[:, x_shape//2:x_shape*3//2] *= 3.
+    return ift.Field.from_raw(domain, exposure)
 
-    return ift.Field.from_raw(position_space, exposure)
 
-
-if __name__ == '__main__':
+def main():
     # Choose space on which the signal field is defined
     if len(sys.argv) == 2:
         mode = int(sys.argv[1])
@@ -57,7 +55,7 @@ if __name__ == '__main__':
     elif mode == 1:
         # Two-dimensional regular grid with inhomogeneous exposure
         position_space = ift.RGSpace([512, 512])
-        exposure = exposure_2d()
+        exposure = exposure_2d(position_space)
     else:
         # Sphere with uniform exposure of 100
         position_space = ift.HPSpace(128)
@@ -118,3 +116,7 @@ if __name__ == '__main__':
     plot.add(reconst - signal, title='Residuals')
     plot.output(xsize=12, ysize=10, name=filename)
     print("Saved results as '{}'.".format(filename))
+
+
+if __name__ == '__main__':
+    main()
