@@ -48,9 +48,11 @@ operator then has the same capabilities as usual Linear operators.
 
 import numpy as np
 from functools import reduce
-from .sugar import makeOp, domain_union, full
+from .sugar import makeOp, domain_union, full, makeField
 from .field import Field
 from .multi_field import MultiField
+from .operators.scaling_operator import ScalingOperator
+from .operators.diagonal_operator import DiagonalOperator
 from .operators.simple_linear_operators import NullOperator
 
 
@@ -153,11 +155,21 @@ class DiffTensor(_DiffTensorImpl):
             raise ValueError
         if old.istrivial:
             return new[order_derivative]
-        if new.isDiagonal:
-            if old.isDiagonal:
+        if new.isDiagonal and old.isDiagonal:
+            return ComposedTensor.simplify_for_diagonal(new[1:order_derivative+1],
+                                                        old[1:order_derivative+1],
+                                                        order_derivative)
+        if new.isLinear and old.isDiagonal:
+            if isinstance(new[1]._impl._op, DiagonalOperator):
                 return ComposedTensor.simplify_for_diagonal(new[1:order_derivative+1],
                                                             old[1:order_derivative+1],
-                                                            order_derivative)
+                                                            order_derivative,
+                                                            diag = True)
+            if isinstance(new[1]._impl._op, ScalingOperator):
+                return ComposedTensor.simplify_for_diagonal(new[1:order_derivative+1],
+                                                            old[1:order_derivative+1],
+                                                            order_derivative,
+                                                            scaling = True)
         return DiffTensor(ComposedTensor(new, old, order_derivative))
 
     @staticmethod
@@ -444,11 +456,15 @@ class ComposedTensor(_DiffTensorImpl):
         return res if res is not None else NullOperator(self.domain, self.target)
 
     @staticmethod
-    def simplify_for_diagonal(new, old, n):
+    def simplify_for_diagonal(new, old, n, diag=False, scaling=False):
         pps = _all_partitions_nontrivial(n, new)
         re = 0.
         for p in pps:
             rr = reduce(lambda x,y: x*y, [old[len(b)-1]._impl._vec for b in p])
-            re = re + new[len(p)-1]._impl._vec*rr
+            if diag:
+                re = re + makeField(rr.domain,new[len(p)-1]._impl._op._ldiag)*rr
+            elif scaling:
+                re = re + new[len(p)-1]._impl._op._factor*rr
+            else:
+                re = re + new[len(p)-1]._impl._vec*rr
         return DiffTensor.makeDiagonal(re, n+1)
-            

@@ -18,6 +18,7 @@
 import numpy as np
 from .linearization import Linearization
 from .operators.scaling_operator import ScalingOperator
+from .operators.diagonal_operator import DiagonalOperator
 from .operators.operator import Operator
 from .diff_tensor import (DiffTensor, assertIsinstance, assertEqual,
                           assertTrue, assertIdentical)
@@ -99,6 +100,15 @@ class Taylor(Operator):
         comp = True
         for t in self._tensors[1:]:
             comp = comp and t.isComposedTensor
+        return comp
+
+    @property
+    def isLinear(self):
+        if self.maxorder == 0:
+            return False
+        comp = self.tensors[1].isLinearTensor
+        for t in self.tensors[2:]:
+            comp = comp and t.isNullTensor
         return comp
 
     @property
@@ -208,9 +218,9 @@ class Taylor(Operator):
 
     def prepend(self, old):
         tensors = (DiffTensor.makeVec(self.val, domain=old.domain), )
-        if self.isDiagonal and old.isComposed:
+        if old.isComposed:
             from .diff_tensor import ComposedTensor
-            if old[-1]._impl._new[0].isDiagonalTensor:
+            if self.isDiagonal and old[-1]._impl._new[0].isDiagonalTensor:
                 tmp = tuple(ComposedTensor.simplify_for_diagonal(
                         self[1:], old[-1]._impl._new, i+1)
                         for i in range(self.maxorder))
@@ -218,6 +228,23 @@ class Taylor(Operator):
                         tmp[:i], old[i]._impl._old, i, _internal_call=True))
                         for i in range(1,self.maxorder+1))
                 return self.new(tensors)
+            if self.isLinear and old[-1]._impl._new[0].isDiagonalTensor:
+                if isinstance(self[1]._impl._op, DiagonalOperator):
+                    tmp = tuple(ComposedTensor.simplify_for_diagonal(
+                            self[1:], old[-1]._impl._new, i+1, diag=True)
+                            for i in range(self.maxorder))
+                    tensors += tuple(DiffTensor(ComposedTensor(
+                        tmp[:i], old[i]._impl._old, i, _internal_call=True))
+                        for i in range(1,self.maxorder+1))
+                    return self.new(tensors)
+                if isinstance(self[1]._impl._op, ScalingOperator):
+                    tmp = tuple(ComposedTensor.simplify_for_diagonal(
+                            self[1:], old[-1]._impl._new, i+1, scaling=True)
+                            for i in range(self.maxorder))
+                    tensors += tuple(DiffTensor(ComposedTensor(
+                        tmp[:i], old[i]._impl._old, i, _internal_call=True))
+                        for i in range(1,self.maxorder+1))
+                    return self.new(tensors)
         tensors += tuple(DiffTensor.makeComposed(self, old, i) for i in range(1,self.maxorder+1))
         return self.new(tensors)
 
@@ -237,9 +264,8 @@ class Taylor(Operator):
         # Will be unified in the future
         if maxorder < 1:
             raise ValueError
-        tensors = (DiffTensor.makeVec(val),)
-        if maxorder>0:
-            tensors += (DiffTensor.makeLinear(ScalingOperator(val.domain, 1.)), )
-            tensors += tuple(DiffTensor.makeNull(val.domain, val.domain, i+1)
-                        for i in range(2,maxorder+1))
+        tensors = (DiffTensor.makeVec(val),
+                   DiffTensor.makeLinear(ScalingOperator(val.domain, 1.)))
+        tensors += tuple(DiffTensor.makeNull(val.domain, val.domain, i+1)
+                         for i in range(2,maxorder+1))
         return Taylor(tensors)
