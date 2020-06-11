@@ -11,7 +11,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
-# Copyright(C) 2019 Max-Planck-Society
+# Copyright(C) 2019-2020 Max-Planck-Society
 # Author: Martin Reinecke
 #
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
@@ -21,70 +21,75 @@ from time import time
 import matplotlib.pyplot as plt
 import numpy as np
 
-import nifty6 as ift
+import nifty7 as ift
 
-N0s, a0s, b0s, c0s = [], [], [], []
 
-for ii in range(10, 26):
-    nu = 1024
-    nv = 1024
-    N = int(2**ii)
-    print('N = {}'.format(N))
+def main():
+    N0s, a0s, b0s, c0s = [], [], [], []
 
-    rng = ift.random.current_rng()
-    uv = rng.uniform(-.5, .5, (N,2))
-    vis = rng.normal(0., 1., N) + 1j*rng.normal(0., 1., N)
+    for ii in range(10, 26):
+        nu = 1024
+        nv = 1024
+        N = int(2**ii)
+        print('N = {}'.format(N))
 
-    uvspace = ift.RGSpace((nu, nv))
+        rng = ift.random.current_rng()
+        uv = rng.uniform(-.5, .5, (N, 2))
+        vis = rng.normal(0., 1., N) + 1j*rng.normal(0., 1., N)
 
-    visspace = ift.UnstructuredDomain(N)
+        uvspace = ift.RGSpace((nu, nv))
 
-    img = rng.standard_normal((nu, nv))
-    img = ift.makeField(uvspace, img)
+        visspace = ift.UnstructuredDomain(N)
 
-    t0 = time()
-    GM = ift.GridderMaker(uvspace, eps=1e-7, uv=uv)
-    vis = ift.makeField(visspace, vis)
-    op = GM.getFull().adjoint
-    t1 = time()
-    op(img).val
-    t2 = time()
-    op.adjoint(vis).val
-    t3 = time()
-    print(t2-t1, t3-t2)
-    N0s.append(N)
-    a0s.append(t1 - t0)
-    b0s.append(t2 - t1)
-    c0s.append(t3 - t2)
+        img = rng.standard_normal((nu, nv))
+        img = ift.makeField(uvspace, img)
 
-print('Measure rest operator')
-sc = ift.StatCalculator()
-op = GM.getRest().adjoint
-for _ in range(10):
-    t0 = time()
-    res = op(img)
-    sc.add(time() - t0)
-t_fft = sc.mean
-print('FFT shape', res.shape)
+        t0 = time()
+        GM = ift.GridderMaker(uvspace, eps=1e-7, uv=uv)
+        vis = ift.makeField(visspace, vis)
+        op = GM.getFull().adjoint
+        t1 = time()
+        op(img).val
+        t2 = time()
+        op.adjoint(vis).val
+        t3 = time()
+        print(t2-t1, t3-t2)
+        N0s.append(N)
+        a0s.append(t1 - t0)
+        b0s.append(t2 - t1)
+        c0s.append(t3 - t2)
 
-plt.scatter(N0s, a0s, label='Gridder mr')
-plt.legend()
-# no idea why this is necessary, but if it is omitted, the range is wrong
-plt.ylim(min(a0s), max(a0s))
-plt.ylabel('time [s]')
-plt.title('Initialization')
-plt.loglog()
-plt.savefig('bench0.png')
-plt.close()
+    print('Measure rest operator')
+    sc = ift.StatCalculator()
+    op = GM.getRest().adjoint
+    for _ in range(10):
+        t0 = time()
+        res = op(img)
+        sc.add(time() - t0)
+    print('FFT shape', res.shape)
 
-plt.scatter(N0s, b0s, color='k', marker='^', label='Gridder mr times')
-plt.scatter(N0s, c0s, color='k', label='Gridder mr adjoint times')
-plt.axhline(sc.mean, label='FFT')
-plt.axhline(sc.mean + np.sqrt(sc.var))
-plt.axhline(sc.mean - np.sqrt(sc.var))
-plt.legend()
-plt.ylabel('time [s]')
-plt.title('Apply')
-plt.loglog()
-plt.savefig('bench1.png')
-plt.close()
+    plt.scatter(N0s, a0s, label='Gridder mr')
+    plt.legend()
+    # no idea why this is necessary, but if it is omitted, the range is wrong
+    plt.ylim(min(a0s), max(a0s))
+    plt.ylabel('time [s]')
+    plt.title('Initialization')
+    plt.loglog()
+    plt.savefig('bench0.png')
+    plt.close()
+
+    plt.scatter(N0s, b0s, color='k', marker='^', label='Gridder mr times')
+    plt.scatter(N0s, c0s, color='k', label='Gridder mr adjoint times')
+    plt.axhline(sc.mean, label='FFT')
+    plt.axhline(sc.mean + np.sqrt(sc.var))
+    plt.axhline(sc.mean - np.sqrt(sc.var))
+    plt.legend()
+    plt.ylabel('time [s]')
+    plt.title('Apply')
+    plt.loglog()
+    plt.savefig('bench1.png')
+    plt.close()
+
+
+if __name__ == '__main__':
+    main()

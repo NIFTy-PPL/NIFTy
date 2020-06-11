@@ -1,7 +1,7 @@
 NIFTy - Numerical Information Field Theory
 ==========================================
-[![pipeline status](https://gitlab.mpcdf.mpg.de/ift/nifty/badges/NIFTy_6/pipeline.svg)](https://gitlab.mpcdf.mpg.de/ift/nifty/-/commits/NIFTy_6)
-[![coverage report](https://gitlab.mpcdf.mpg.de/ift/nifty/badges/NIFTy_6/coverage.svg)](https://gitlab.mpcdf.mpg.de/ift/nifty/-/commits/NIFTy_6)
+[![pipeline status](https://gitlab.mpcdf.mpg.de/ift/nifty/badges/NIFTy_7/pipeline.svg)](https://gitlab.mpcdf.mpg.de/ift/nifty/-/commits/NIFTy_7)
+[![coverage report](https://gitlab.mpcdf.mpg.de/ift/nifty/badges/NIFTy_7/coverage.svg)](https://gitlab.mpcdf.mpg.de/ift/nifty/-/commits/NIFTy_7)
 
 **NIFTy** project homepage:
 [http://ift.pages.mpcdf.de/nifty](http://ift.pages.mpcdf.de/nifty)
@@ -59,8 +59,8 @@ Optional dependencies:
 
 ### Sources
 
-The current version of NIFTy6 can be obtained by cloning the repository and
-switching to the NIFTy_6 branch:
+The current version of NIFTy7 can be obtained by cloning the repository and
+switching to the NIFTy_7 branch:
 
     git clone https://gitlab.mpcdf.mpg.de/ift/nifty.git
 
@@ -69,10 +69,10 @@ switching to the NIFTy_6 branch:
 In the following, we assume a Debian-based distribution. For other
 distributions, the "apt" lines will need slight changes.
 
-NIFTy6 and its mandatory dependencies can be installed via:
+NIFTy7 and its mandatory dependencies can be installed via:
 
     sudo apt-get install git python3 python3-pip python3-dev
-    pip3 install --user git+https://gitlab.mpcdf.mpg.de/ift/nifty.git@NIFTy_6
+    pip3 install --user git+https://gitlab.mpcdf.mpg.de/ift/nifty.git@NIFTy_7
 
 Plotting support is added via:
 
@@ -108,7 +108,7 @@ To run the tests, additional packages are required:
 Afterwards the tests (including a coverage report) can be run using the
 following command in the repository root:
 
-    pytest-3 --cov=nifty6 test
+    pytest-3 --cov=nifty7 test
 
 ### First Steps
 

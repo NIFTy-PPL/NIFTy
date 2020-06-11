@@ -32,9 +32,9 @@ import numpy as np
 import pylab as plt
 from matplotlib.colors import LogNorm
 
-import nifty6 as ift
+import nifty7 as ift
 
-if __name__ == '__main__':
+def main():
     dom = ift.UnstructuredDomain(1)
     scale = 10
 
@@ -119,3 +119,7 @@ if __name__ == '__main__':
     ift.logger.info('Finished')
     # Uncomment the following line in order to leave the plots open
     # plt.show()
+
+
+if __name__ == '__main__':
+    main()

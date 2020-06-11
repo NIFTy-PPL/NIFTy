@@ -18,9 +18,9 @@
 import numpy as np
 import pytest
 from mpi4py import MPI
-from numpy.testing import assert_, assert_equal
+from numpy.testing import assert_, assert_equal, assert_raises
 
-import nifty6 as ift
+import nifty7 as ift
 
 from ..common import setup_function, teardown_function
 
@@ -58,6 +58,10 @@ def test_kl(constants, point_estimates, mirror_samples, mode, mf):
             'n_samples': 2,
             'mean': mean0,
             'hamiltonian': h}
+    if isinstance(mean0, ift.MultiField) and set(point_estimates) == set(mean0.keys()):
+        with assert_raises(RuntimeError):
+            ift.MetricGaussianKL(**args, comm=comm)
+        return
     if mode == 0:
         kl0 = ift.MetricGaussianKL(**args, comm=comm)
         locsamp = kl0._local_samples

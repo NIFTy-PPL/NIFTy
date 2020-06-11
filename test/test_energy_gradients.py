@@ -18,7 +18,7 @@
 import numpy as np
 import pytest
 
-import nifty6 as ift
+import nifty7 as ift
 
 from .common import list2fixture, setup_function, teardown_function
 
@@ -86,6 +86,15 @@ def test_variablecovariancegaussian(field):
     energy = ift.VariableCovarianceGaussianEnergy(field.domain, 'a', 'b', np.float64)
     ift.extra.check_jacobian_consistency(energy, mf, tol=1e-6, ntries=ntries)
     energy(ift.Linearization.make_var(mf, want_metric=True)).metric.draw_sample()
+
+
+def test_specialgamma(field):
+    if isinstance(field.domain, ift.MultiDomain):
+        return
+    energy = ift.operators.energy_operators._SpecialGammaEnergy(field)
+    loc = ift.from_random(energy.domain).exp()
+    ift.extra.check_jacobian_consistency(energy, loc, tol=1e-6, ntries=ntries)
+    energy(ift.Linearization.make_var(loc, want_metric=True)).metric.draw_sample()
 
 
 def test_inverse_gamma(field):
