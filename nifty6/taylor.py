@@ -232,9 +232,10 @@ class Taylor(Operator):
 
     @staticmethod
     def make_var(val, maxorder):
-        # Currently maxorder 0 and 1 are defined via Field and Linearization
+        # Currently maxorder 0 is defined via Field
+        # Taylor objects are strictly incopatible with Linearizations
         # Will be unified in the future
-        if maxorder < 2:
+        if maxorder < 1:
             raise ValueError
         tensors = (DiffTensor.makeVec(val),)
         if maxorder>0:

@@ -175,10 +175,14 @@ def test_cf():
     t3 = timeit.default_timer()
     res = y[2].getLinop(bs[:1])
     t4 = timeit.default_timer()
+    res = res(bs[1])
+    t5 = timeit.default_timer()
     print(t1-t0)
     print(t2-t1)
     print(t3-t2)
     print(t4-t3)
+    print(t5-t4)
+    print("---")
 
 def test_perf():
     sp = ift.RGSpace((1000,1000,4))
@@ -207,10 +211,13 @@ def test_perf():
     t3 = timeit.default_timer()
     res = y[2].getLinop(bs[:1])
     t4 = timeit.default_timer()
+    res = res(bs[1])
+    t5 = timeit.default_timer()
     print(t1-t0)
     print(t2-t1)
     print(t3-t2)
     print(t4-t3)
+    print(t5-t4)
     print("---")
 
 test_perf()
