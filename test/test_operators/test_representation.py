@@ -172,7 +172,7 @@ def testDomainTupleFieldInserter():
 
 @pmp('space', [0, 2])
 @pmp('factor', [1, 2, 2.7])
-@pmp('padding_position', [None, 'front', 'center', 'back'])
+@pmp('padding_position', [None, 'start', 'center', 'end'])
 def testZeroPadder(space, factor, dtype, padding_position):
     dom = (ift.RGSpace(10), ift.UnstructuredDomain(13), ift.RGSpace(7, 12),
            ift.HPSpace(4))
