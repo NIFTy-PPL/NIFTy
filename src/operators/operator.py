@@ -288,7 +288,8 @@ class Operator(metaclass=NiftyMeta):
                 op = ConstantEnergyOperator(self.domain, self(c_inp))
             else:
                 op = ConstantOperator(self.domain, self(c_inp))
-            op = ConstantOperator(self.domain, self(c_inp))
+# MR FIXME something is redundant here
+#            op = ConstantOperator(self.domain, self(c_inp))
             return op(c_inp), op
         if not isinstance(c_inp.domain, MultiDomain):
             raise RuntimeError

@@ -85,6 +85,7 @@ def check_linear_operator(op, domain_dtype=np.float64, target_dtype=np.float64,
                          rtol, only_r_linear)
 
 
+# MR FIXME the default tolerance is extremely small, especially for Jacobian tests
 def check_operator(op, loc, tol=1e-8, ntries=100, perf_check=True,
                    only_r_differentiable=True, metric_sampling=True):
     """
@@ -332,15 +333,17 @@ def _check_nontrivial_constant(op, loc, tol, ntries, only_r_differentiable,
             val0 = op(loc)
             _, op0 = op.simplify_for_constant_input(cstloc)
             val1 = op0(loc)
-            val2 = op0(loc.unite(cstloc))
-            assert_equal(val1, val2)
+            # MR FIXME: This tests something we don't promise!
+#            val2 = op0(loc.unite(cstloc))
+#            assert_equal(val1, val2)
             assert_equal(val0, val1)
 
             lin = Linearization.make_var(loc, want_metric=True)
             oplin = op0(lin)
             if isinstance(op, EnergyOperator):
                 _allzero(oplin.gradient.extract(cstdom))
-            _allzero(oplin.jac(from_random(cstdom).unite(full(vardom, 0))))
+            # MR FIXME: This tests something we don't promise!
+#            _allzero(oplin.jac(from_random(cstdom).unite(full(vardom, 0))))
 
             if isinstance(op, EnergyOperator) and metric_sampling:
                 samp0 = oplin.metric.draw_sample()
