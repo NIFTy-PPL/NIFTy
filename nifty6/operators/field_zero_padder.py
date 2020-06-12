@@ -26,7 +26,10 @@ from .linear_operator import LinearOperator
 
 class FieldZeroPadder(LinearOperator):
     """Operator which applies zero-padding to one of the subdomains of its
-    input field
+    input field.
+
+    If no indication is given as to where the operator should pad, the
+    padding is added to the end of the subdomain chosen by `space`.
 
     Parameters
     ----------
@@ -40,32 +43,27 @@ class FieldZeroPadder(LinearOperator):
         The index of the subdomain to be zero-padded. If None, it is set to 0
         if domain contains exactly one space. domain[space] must be an RGSpace.
     padding_position : string, optional
-        Where to add the padding. Valid values are 'front', 'center' and 'back'
-        correponding to padding at the beginning of the domain axes, in the
-        middle and at the end of them.
+        Where to add the padding. Valid values are 'start', 'center' and 'end'.
     central : bool, optional, DEPRECATED
-        `True` is equivalent to ``padding_position = 'center'``.
-        If `False` and `padding_position` is not given, padding is performed
-        at the end of the domain axes.
+        `True` is equivalent to ``padding_position = 'middle'``.
 
     Notes
     -----
     When doing central padding on an axis with an even length, the "central"
     entry should in principle be split up; this is currently not done.
     """
-    def __init__(self, domain, new_shape, space=0, padding_position=None, central=None):
+    def __init__(self, domain, new_shape, space=0, padding_position=None,
+                 central=None):
         self._domain = DomainTuple.make(domain)
         self._space = utilities.infer_space(self._domain, space)
-        if padding_position not in ['front', 'center', 'back', None]:
-            raise ValueError("Invalid `padding_position` value given")
-        if central is not None:
-            if padding_position is not None and \
-               ((central is True and padding_position != 'center') or \
-                (central is False and padding_position != 'back')):
-                raise ValueError("Incompatible `central` and `padding_position` values")
-            self._position = 'center' if central else 'back'
-        else:
-            self._position = padding_position if padding_position is not None else 'back'
+        self._position = 'end'
+        if padding_position is not None:
+            if central is not None: raise ValueError()
+            if padding_position not in ['start', 'center', 'end']:
+                raise ValueError("Invalid 'padding_position' value given")
+            self._position = padding_position
+        elif central:
+            self._position = 'center'
         dom = self._domain[self._space]
         if not isinstance(dom, RGSpace):
             raise TypeError("RGSpace required")
@@ -105,7 +103,7 @@ class FieldZeroPadder(LinearOperator):
 #                         xnew[i1] *= 0.5
 #                         i1 = idx+(-Nyquist,)
 #                         xnew[i1] *= 0.5
-                elif self._position == 'back':
+                elif self._position == 'end':
                     xnew[idx + (slice(0, v.shape[d]),)] = v
                 else:
                     d_len = tgtshp[d]
@@ -123,7 +121,7 @@ class FieldZeroPadder(LinearOperator):
 #                     if (xnew.shape[d] & 1) == 0:  # even number of pixels
 #                         i1 = idx+(Nyquist,)
 #                         xnew[i1] *= 0.5
-                elif self._position == 'back':
+                elif self._position == 'end':
                     xnew = v[idx + (slice(0, tgtshp[d]),)]
                 else:
                     d_len = v.shape[d]
