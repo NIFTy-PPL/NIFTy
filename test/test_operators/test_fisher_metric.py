@@ -30,6 +30,7 @@ field = list2fixture([ift.from_random(sp, 'normal') for sp in spaces] +
         [ift.from_random(sp, 'normal', dtype=np.complex128) for sp in spaces])
 
 Nsamp = 2000
+np.random.seed(42)
 
 def _to_array(d):
     if isinstance(d, np.ndarray):
