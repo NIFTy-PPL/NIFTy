@@ -29,7 +29,7 @@ pmp = pytest.mark.parametrize
 field = list2fixture([ift.from_random(sp, 'normal') for sp in spaces] +
         [ift.from_random(sp, 'normal', dtype=np.complex128) for sp in spaces])
 
-Nsamp = 1000
+Nsamp = 2000
 
 def _to_array(d):
     if isinstance(d, np.ndarray):
@@ -52,7 +52,7 @@ def energy_tester(pos, get_noisy_data, energy_initializer):
     energy = energy_initializer(data)
     lin = ift.Linearization.make_var(pos, want_metric=True)
     res2 = _to_array(energy(lin).metric(test_vec).val)
-    np.testing.assert_allclose(res/std, res2/std, atol=5)
+    np.testing.assert_allclose(res/std, res2/std, atol=6)
 
 def test_GaussianEnergy(field):
     dtype = field.dtype
@@ -71,7 +71,7 @@ def test_PoissonEnergy(field):
         return
     def get_noisy_data(mean):
         return ift.makeField(mean.domain, np.random.poisson(mean.val))
-    lam = field**2 # make rate positive
+    lam = 5*field**2 # make rate positive
     E_init = lambda mean : ift.PoissonianEnergy(mean)
     energy_tester(lam, get_noisy_data, E_init)
 
