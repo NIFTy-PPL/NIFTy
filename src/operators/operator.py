@@ -248,9 +248,8 @@ class Operator(metaclass=NiftyMeta):
         if not (isinstance(x, Operator) and x.val is not None):
             raise TypeError
         if x.tensors is not None:
-            for tt in x.tensors[2:]:
-                if not tt.isNullTensor:
-                    raise ValueError
+            if not x.isTrivial:
+                raise ValueError
         if x.jac is not None:
             if not isinstance(x.jac, ScalingOperator):
                 raise ValueError

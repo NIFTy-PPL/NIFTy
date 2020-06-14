@@ -74,7 +74,7 @@ class Taylor(Operator):
         return self._tensors
 
     @property
-    def istrivial(self):
+    def isTrivial(self):
         triv = False
         if self._tensors[1].isLinearTensor:
             if isinstance(self._tensors[1]._impl._op, ScalingOperator):

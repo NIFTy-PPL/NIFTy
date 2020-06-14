@@ -153,7 +153,7 @@ class DiffTensor(_DiffTensorImpl):
     def makeComposed(new, old, order_derivative):
         if order_derivative < 1:
             raise ValueError
-        if old.istrivial:
+        if old.isTrivial:
             return new[order_derivative]
         if new.isDiagonal and old.isDiagonal:
             return ComposedTensor.simplify_for_diagonal(new[1:order_derivative+1],
