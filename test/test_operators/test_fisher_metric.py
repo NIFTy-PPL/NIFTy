@@ -59,7 +59,7 @@ def test_GaussianEnergy(field):
     dtype = field.dtype
     icov = ift.from_random(field.domain, 'normal')**2
     icov = ift.makeOp(icov)
-    get_noisy_data = lambda mean : mean+icov.draw_sample_with_dtype(
+    get_noisy_data = lambda mean : mean + icov.draw_sample_with_dtype(
             from_inverse=True, dtype=dtype)
     E_init = lambda mean : ift.GaussianEnergy(mean=mean,
             inverse_covariance=icov)
@@ -72,7 +72,7 @@ def test_PoissonEnergy(field):
         return
     def get_noisy_data(mean):
         return ift.makeField(mean.domain, np.random.poisson(mean.val))
-    lam = 5*field**2 # make rate positive
+    lam = 10*(field**2).clip(0.1,None) # make rate positive and high enough to avoid bad statistic
     E_init = lambda mean : ift.PoissonianEnergy(mean)
     energy_tester(lam, get_noisy_data, E_init)
 
