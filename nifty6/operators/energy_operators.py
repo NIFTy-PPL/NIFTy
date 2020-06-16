@@ -27,7 +27,7 @@ from .linear_operator import LinearOperator
 from .operator import Operator
 from .sampling_enabler import SamplingDtypeSetter, SamplingEnabler
 from .scaling_operator import ScalingOperator
-from .simple_linear_operators import VdotOperator
+from .simple_linear_operators import VdotOperator, FieldAdapter
 
 
 def _check_sampling_dtype(domain, dtypes):
@@ -167,6 +167,15 @@ class VariableCovarianceGaussianEnergy(EnergyOperator):
         return res.add_metric(SamplingDtypeSetter(met, self._sampling_dtype))
 
 
+def _build_MultiScalingOperator(domain, scales):
+    op = None
+    for k, dom in domain.items():
+        o = ScalingOperator(dom, scales[k])
+        FA = FieldAdapter(dom, k)
+        o = FA.adjoint @ o @ FA
+        op = o if op is None else op + o
+    return op
+
 class GaussianEnergy(EnergyOperator):
     """Computes a negative-log Gaussian.
 
@@ -235,7 +244,18 @@ class GaussianEnergy(EnergyOperator):
             self._met = inverse_covariance
         if sampling_dtype is not None:
             self._met = SamplingDtypeSetter(self._met, sampling_dtype)
-
+            if isinstance(sampling_dtype, dict):
+                from .sandwich_operator import SandwichOperator
+                scale = {k:np.sqrt(2.) if np.issubdtype(v, np.complexfloating)
+                        else 1. for k,v in sampling_dtype.items()}
+                scale = _build_MultiScalingOperator(self._domain, scale)
+                self._met = SandwichOperator.make(scale, self._met)
+            else:
+                if np.issubdtype(sampling_dtype, np.complexfloating):
+                    from .sandwich_operator import SandwichOperator
+                    scale = ScalingOperator(self._met.domain,np.sqrt(2))
+                    self._met = SandwichOperator.make(scale, self._met)
+    
     def _checkEquivalence(self, newdom):
         newdom = makeDomain(newdom)
         if self._domain is None:
