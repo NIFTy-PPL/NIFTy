@@ -244,18 +244,7 @@ class GaussianEnergy(EnergyOperator):
             self._met = inverse_covariance
         if sampling_dtype is not None:
             self._met = SamplingDtypeSetter(self._met, sampling_dtype)
-            if isinstance(sampling_dtype, dict):
-                from .sandwich_operator import SandwichOperator
-                scale = {k:np.sqrt(2.) if np.issubdtype(v, np.complexfloating)
-                        else 1. for k,v in sampling_dtype.items()}
-                scale = _build_MultiScalingOperator(self._domain, scale)
-                self._met = SandwichOperator.make(scale, self._met)
-            else:
-                if np.issubdtype(sampling_dtype, np.complexfloating):
-                    from .sandwich_operator import SandwichOperator
-                    scale = ScalingOperator(self._met.domain,np.sqrt(2))
-                    self._met = SandwichOperator.make(scale, self._met)
-    
+
     def _checkEquivalence(self, newdom):
         newdom = makeDomain(newdom)
         if self._domain is None:
