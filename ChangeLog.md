@@ -1,7 +1,11 @@
 Changes since NIFTy 6
 =====================
 
-*None.*
+MetricGaussianKL interface
+--------------------------
+
+Users do not instanciate `MetricGaussianKL` by its constructor anymore. Rather
+`MetricGaussianKL.make()` shall be used.
 
 
 Changes since NIFTy 5
