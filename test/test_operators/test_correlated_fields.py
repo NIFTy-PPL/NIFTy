@@ -43,7 +43,7 @@ def testDistributor(dofdex, seed):
         target = ift.makeDomain((ift.UnstructuredDomain(N_copies), dom))
         op = ift.library.correlated_fields._Distributor(
             dofdex, target, distributed_target)
-        ift.extra.consistency_check(op)
+        ift.extra.check_linear_operator(op)
 
 
 @pmp('sspace', [
@@ -108,9 +108,5 @@ def testAmplitudesInvariants(sspace, N):
     assert_(op.target[-1] == fsspace)
 
     for ampl in fa.normalized_amplitudes:
-        ift.extra.check_jacobian_consistency(ampl,
-                                             ift.from_random(ampl.domain),
-                                             ntries=10)
-    ift.extra.check_jacobian_consistency(op,
-                                         ift.from_random(op.domain),
-                                         ntries=10)
+        ift.extra.check_operator(ampl, ift.from_random(ampl.domain), ntries=10)
+    ift.extra.check_operator(op, ift.from_random(op.domain), ntries=10)

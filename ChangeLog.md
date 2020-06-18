@@ -1,7 +1,12 @@
 Changes since NIFTy 6
 =====================
 
-*None.*
+Naming of operator tests
+------------------------
+
+The implementation tests for nonlinear operators are now available in
+`ift.extra.check_operator()` and for linear operators
+`ift.extra.check_linear_operator()`.
 
 
 Changes since NIFTy 5

@@ -97,7 +97,7 @@ def main():
     p_space = ift.UnstructuredDomain(N_params)
     params = ift.full(p_space, 0.)
     R = PolynomialResponse(p_space, x)
-    ift.extra.consistency_check(R)
+    ift.extra.check_linear_operator(R)
 
     d_space = R.target
     d = ift.makeField(d_space, y)

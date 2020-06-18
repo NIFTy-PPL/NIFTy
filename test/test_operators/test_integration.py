@@ -49,7 +49,7 @@ def test_integration_operator():
     assert_allclose(res7.val, res8.val)
     assert_allclose(res7.val, res9)
     for op in [op1, op2, op3]:
-        ift.extra.consistency_check(op, domain_dtype=np.float64,
-                                    target_dtype=np.float64)
-        ift.extra.consistency_check(op, domain_dtype=np.complex128,
-                                    target_dtype=np.complex128)
+        ift.extra.check_linear_operator(op, domain_dtype=np.float64,
+                                        target_dtype=np.float64)
+        ift.extra.check_linear_operator(op, domain_dtype=np.complex128,
+                                        target_dtype=np.complex128)
