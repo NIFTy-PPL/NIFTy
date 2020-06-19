@@ -60,10 +60,10 @@ class ConstCollector(object):
 
 
 class ConstantOperator(Operator):
-    def __init__(self, dom, output):
+    def __init__(self, output):
         from ..sugar import makeDomain
-        self._domain = makeDomain(dom)
-        self._target = output.domain
+        self._domain = makeDomain({})
+        self._target = makeDomain(output.domain)
         self._output = output
 
     def apply(self, x):
@@ -74,20 +74,17 @@ class ConstantOperator(Operator):
         return self._output
 
     def __repr__(self):
-        dom = self.domain.keys() if isinstance(self.domain, MultiDomain) else '()'
         tgt = self.target.keys() if isinstance(self.target, MultiDomain) else '()'
-        return f'{tgt} <- ConstantOperator <- {dom}'
+        return f'{tgt} <- ConstantOperator'
 
 
 class ConstantEnergyOperator(EnergyOperator):
-    def __init__(self, dom, output):
+    def __init__(self, output):
         from ..sugar import makeDomain
         from ..field import Field
-        self._domain = makeDomain(dom)
+        self._domain = makeDomain({})
         if not isinstance(output, Field):
             output = Field.scalar(float(output))
-        if self.target is not output.domain:
-            raise TypeError
         self._output = output
 
     def apply(self, x):
@@ -95,12 +92,10 @@ class ConstantEnergyOperator(EnergyOperator):
         if x.jac is not None:
             val = self._output
             jac = NullOperator(self._domain, self._target)
+            # FIXME Do we need a metric here?
             met = NullOperator(self._domain, self._domain) if x.want_metric else None
             return x.new(val, jac, met)
         return self._output
-
-    def __repr__(self):
-        return 'ConstantEnergyOperator <- {}'.format(self.domain.keys())
 
 
 class InsertionOperator(Operator):

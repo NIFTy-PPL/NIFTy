@@ -274,6 +274,7 @@ class Operator(metaclass=NiftyMeta):
         from .energy_operators import EnergyOperator
         from .simplify_for_const import ConstantEnergyOperator, ConstantOperator
         from ..multi_field import MultiField
+        from ..domain_tuple import DomainTuple
         if c_inp is None or (isinstance(c_inp, MultiField) and len(c_inp.keys()) == 0):
             return None, self
         dom = c_inp.domain
@@ -288,11 +289,13 @@ class Operator(metaclass=NiftyMeta):
                 raise ValueError
 
         if dom is self.domain:
+            if isinstance(self, DomainTuple):
+                raise RuntimeError
             if isinstance(self, EnergyOperator):
-                op = ConstantEnergyOperator(self.domain, self(c_inp))
+                op = ConstantEnergyOperator(self(c_inp))
             else:
-                op = ConstantOperator(self.domain, self(c_inp))
-            return op(c_inp), op
+                op = ConstantOperator(self(c_inp))
+            return None, op
         if not isinstance(dom, MultiDomain):
             raise RuntimeError
         return self._simplify_for_constant_input_nontrivial(c_inp)
