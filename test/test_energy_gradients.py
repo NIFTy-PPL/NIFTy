@@ -61,10 +61,10 @@ def test_studentt(field):
     if isinstance(field.domain, ift.MultiDomain):
         return
     energy = ift.StudentTEnergy(domain=field.domain, theta=.5)
-    ift.extra.check_operator(energy, field, tol=1e-6)
+    ift.extra.check_operator(energy, field)
     theta = ift.from_random(field.domain, 'normal').exp()
     energy = ift.StudentTEnergy(domain=field.domain, theta=theta)
-    ift.extra.check_operator(energy, field, tol=1e-6, ntries=ntries)
+    ift.extra.check_operator(energy, field, ntries=ntries)
 
 
 def test_hamiltonian_and_KL(field):
@@ -84,7 +84,7 @@ def test_variablecovariancegaussian(field):
     dc = {'a': field, 'b': field.ptw("exp")}
     mf = ift.MultiField.from_dict(dc)
     energy = ift.VariableCovarianceGaussianEnergy(field.domain, 'a', 'b', np.float64)
-    ift.extra.check_operator(energy, mf, tol=1e-6, ntries=ntries)
+    ift.extra.check_operator(energy, mf, ntries=ntries)
     energy(ift.Linearization.make_var(mf, want_metric=True)).metric.draw_sample()
 
 
@@ -93,7 +93,7 @@ def test_specialgamma(field):
         return
     energy = ift.operators.energy_operators._SpecialGammaEnergy(field)
     loc = ift.from_random(energy.domain).exp()
-    ift.extra.check_operator(energy, loc, tol=1e-6, ntries=ntries)
+    ift.extra.check_operator(energy, loc, ntries=ntries)
     energy(ift.Linearization.make_var(loc, want_metric=True)).metric.draw_sample()
 
 
@@ -105,7 +105,7 @@ def test_inverse_gamma(field):
     d = ift.random.current_rng().normal(10, size=space.shape)**2
     d = ift.Field(space, d)
     energy = ift.InverseGammaLikelihood(d)
-    ift.extra.check_operator(energy, field, tol=1e-5)
+    ift.extra.check_operator(energy, field, tol=1e-10)
 
 
 def testPoissonian(field):
@@ -116,7 +116,7 @@ def testPoissonian(field):
     d = ift.random.current_rng().poisson(120, size=space.shape)
     d = ift.Field(space, d)
     energy = ift.PoissonianEnergy(d)
-    ift.extra.check_operator(energy, field, tol=1e-6)
+    ift.extra.check_operator(energy, field)
 
 
 def test_bernoulli(field):
@@ -127,4 +127,4 @@ def test_bernoulli(field):
     d = ift.random.current_rng().binomial(1, 0.1, size=space.shape)
     d = ift.Field(space, d)
     energy = ift.BernoulliEnergy(d)
-    ift.extra.check_operator(energy, field, tol=1e-5)
+    ift.extra.check_operator(energy, field, tol=1e-10)

@@ -125,7 +125,7 @@ def testDynamicModel(target, causal, minimum_phase, seed):
                'minimum_phase': minimum_phase}
         model, _ = ift.dynamic_operator(**dct)
         pos = ift.from_random(model.domain, 'normal')
-        ift.extra.check_operator(model, pos, tol=1e-7, ntries=ntries)
+        ift.extra.check_operator(model, pos, ntries=ntries)
         if len(target.shape) > 1:
             dct = {
                 'target': target,
@@ -144,7 +144,7 @@ def testDynamicModel(target, causal, minimum_phase, seed):
             dct['quant'] = 5
             model, _ = ift.dynamic_lightcone_operator(**dct)
             pos = ift.from_random(model.domain, 'normal')
-            ift.extra.check_operator(model, pos, tol=1e-7, ntries=ntries)
+            ift.extra.check_operator(model, pos, ntries=ntries)
 
 
 @pmp('h_space', _h_spaces)
