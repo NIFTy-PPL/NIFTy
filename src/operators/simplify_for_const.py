@@ -25,25 +25,10 @@ from .simple_linear_operators import NullOperator
 
 class ConstCollector(object):
     def __init__(self):
-        self._const = None
-        self._nc = set()
+        self._const = None  # MultiField on the part of the MultiDomain that could be constant
+        self._nc = set()  # NoConstant - set of keys that we know cannot be constant
 
     def mult(self, const, fulldom):
-        if const is None:
-            self._nc |= set(fulldom)
-        else:
-            self._nc |= set(fulldom) - set(const)
-            if self._const is None:
-                from ..multi_field import MultiField
-                self._const = MultiField.from_dict(
-                    {key: const[key] for key in const if key not in self._nc})
-            else:
-                from ..multi_field import MultiField
-                self._const = MultiField.from_dict(
-                    {key: self._const[key]*const[key]
-                     for key in const if key not in self._nc})
-
-    def add(self, const, fulldom):
         if const is None:
             self._nc |= set(fulldom.keys())
         else:
@@ -53,11 +38,21 @@ class ConstCollector(object):
                 self._const = MultiField.from_dict(
                     {key: const[key]
                      for key in const.keys() if key not in self._nc})
-            else:
-                self._const = self._const.unite(const)
+            else:  # we know that the domains are identical for products
                 self._const = MultiField.from_dict(
-                    {key: self._const[key]
-                     for key in self._const if key not in self._nc})
+                    {key: self._const[key]*const[key]
+                     for key in const.keys() if key not in self._nc})
+
+    def add(self, const, fulldom):
+        if const is None:
+            self._nc |= set(fulldom.keys())
+        else:
+            from ..multi_field import MultiField
+            self._nc |= set(fulldom.keys()) - set(const.keys())
+            self._const = const if self._const is None else self._const.unite(const)
+            self._const = MultiField.from_dict(
+                {key: const[key]
+                 for key in const.keys() if key not in self._nc})
 
     @property
     def constfield(self):

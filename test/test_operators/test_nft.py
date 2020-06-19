@@ -104,7 +104,7 @@ def test_build(nu, nv, N, eps):
     # Consistency checks
     flt = np.float64
     cmplx = np.complex128
-    ift.extra.consistency_check(R0, cmplx, flt, only_r_linear=True)
-    ift.extra.consistency_check(R1, flt, flt)
-    ift.extra.consistency_check(R, cmplx, flt, only_r_linear=True)
-    ift.extra.consistency_check(RF, cmplx, flt, only_r_linear=True)
+    ift.extra.check_linear_operator(R0, cmplx, flt, only_r_linear=True)
+    ift.extra.check_linear_operator(R1, flt, flt)
+    ift.extra.check_linear_operator(R, cmplx, flt, only_r_linear=True)
+    ift.extra.check_linear_operator(RF, cmplx, flt, only_r_linear=True)

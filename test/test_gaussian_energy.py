@@ -70,7 +70,7 @@ def test_gaussian_energy(space, nonlinearity, noise, seed):
             N = None
 
         energy = ift.GaussianEnergy(d, N) @ d_model()
-        ift.extra.check_jacobian_consistency(
+        ift.extra.check_operator(
             energy, xi0, ntries=ntries, tol=1e-6)
 
 
@@ -99,9 +99,9 @@ def testgaussianenergy_compatibility(cplx):
     np.testing.assert_equal(val0, val1)
     np.testing.assert_equal(val1, val2)
 
-    ift.extra.check_jacobian_consistency(e, loc, ntries=ntries)
-    ift.extra.check_jacobian_consistency(e0, loc, ntries=ntries)
-    ift.extra.check_jacobian_consistency(e1, loc, ntries=ntries)
+    ift.extra.check_operator(e, loc, ntries=ntries)
+    ift.extra.check_operator(e0, loc, ntries=ntries, tol=1e-7)
+    ift.extra.check_operator(e1, loc, ntries=ntries)
 
     # Test jacobian is zero
     lin = ift.Linearization.make_var(loc, want_metric=True)

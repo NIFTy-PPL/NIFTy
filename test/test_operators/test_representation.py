@@ -83,7 +83,7 @@ def testOperatorAdaptor(sp, dtype):
 @pmp('sp2', _h_spaces + _p_spaces + _pow_spaces)
 def testNullOperator(sp1, sp2, dtype):
     op = ift.NullOperator(sp1, sp2)
-    ift.extra.consistency_check(op, dtype, dtype)
+    ift.extra.check_linear_operator(op, dtype, dtype)
     mdom1 = ift.MultiDomain.make({'a': sp1})
     mdom2 = ift.MultiDomain.make({'b': sp2})
     _check_repr(ift.NullOperator(mdom1, mdom2))
