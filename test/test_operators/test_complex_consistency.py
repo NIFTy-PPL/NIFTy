@@ -16,16 +16,12 @@
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
 
 import numpy as np
-import pytest
 
 import nifty7 as ift
 
-from ..common import list2fixture, setup_function, teardown_function
-from scipy.stats import norm
-
-
 Nsamp = 20000
 np.random.seed(42)
+
 
 def _to_array(d):
     if isinstance(d, np.ndarray):
@@ -40,8 +36,8 @@ def test_GaussianEnergy():
     samp = S.draw_sample_with_dtype(dtype=np.complex128)
     real_std = np.std(samp.val.real)
     imag_std = np.std(samp.val.imag)
-    np.testing.assert_allclose(real_std, imag_std, 
-            atol=5./np.sqrt(Nsamp))
+    np.testing.assert_allclose(real_std, imag_std,
+                               atol=5./np.sqrt(Nsamp))
     sp1 = ift.UnstructuredDomain(1)
     mean = ift.full(sp1, 0.)
     real_icov = ift.ScalingOperator(sp1, real_std**(-2))
@@ -68,10 +64,12 @@ def test_WienerFilter():
     d = R(s)+N.draw_sample_with_dtype(dtype=np.complex128)
     j = R.adjoint_times(N.inverse_times(d))
     m = D(j)
-    sr = s.real
+    # FIXME Redundant lines below
+    # sr = s.real
     jr = j.real
     mr = D(jr)
-    si = s.imag
+    # FIXME Redundant lines below
+    # si = s.imag
     ji = j.imag
     mi = D(ji)
     np.testing.assert_allclose((mr+mi*1.j).val, m.val, rtol=1e-7)
