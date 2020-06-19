@@ -139,8 +139,6 @@ class MetricGaussianKL(Energy):
             model are interpreted as inf. Thereby, the code does not crash on
             these occaisions but rather the minimizer is told that the position it
             has tried is not sensible.
-        _local_samples : None
-            Only a parameter for internal uses. Typically not to be set by users.
 
         Note
         ----
