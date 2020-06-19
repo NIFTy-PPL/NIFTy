@@ -8,6 +8,12 @@ The implementation tests for nonlinear operators are now available in
 `ift.extra.check_operator()` and for linear operators
 `ift.extra.check_linear_operator()`.
 
+MetricGaussianKL interface
+--------------------------
+
+Users do not instanciate `MetricGaussianKL` by its constructor anymore. Rather
+`MetricGaussianKL.make()` shall be used.
+
 
 Changes since NIFTy 5
 =====================

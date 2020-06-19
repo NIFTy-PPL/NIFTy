@@ -248,6 +248,10 @@ class MultiField(Operator):
         return MultiField(subset,
                           tuple(self[key] for key in subset.keys()))
 
+    def extract_by_keys(self, keys):
+        dom = MultiDomain.make({kk: vv for kk, vv in self.domain.items() if kk in keys})
+        return self.extract(dom)
+
     def extract_part(self, subset):
         if subset is self._domain:
             return self

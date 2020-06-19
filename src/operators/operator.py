@@ -275,21 +275,24 @@ class Operator(metaclass=NiftyMeta):
         from .simplify_for_const import ConstantEnergyOperator, ConstantOperator
         if c_inp is None:
             return None, self
+        dom = c_inp.domain
+        if isinstance(dom, MultiDomain) and len(dom) == 0:
+            return None, self
 
         # Convention: If c_inp is MultiField, it needs to be defined on a
         # subdomain of self._domain
         if isinstance(self.domain, MultiDomain):
-            assert isinstance(c_inp.domain, MultiDomain)
+            assert isinstance(dom, MultiDomain)
             if set(c_inp.keys()) > set(self.domain.keys()):
                 raise ValueError
 
-        if c_inp.domain is self.domain:
+        if dom is self.domain:
             if isinstance(self, EnergyOperator):
                 op = ConstantEnergyOperator(self.domain, self(c_inp))
             else:
                 op = ConstantOperator(self.domain, self(c_inp))
             return op(c_inp), op
-        if not isinstance(c_inp.domain, MultiDomain):
+        if not isinstance(dom, MultiDomain):
             raise RuntimeError
         return self._simplify_for_constant_input_nontrivial(c_inp)
 

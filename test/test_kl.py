@@ -52,9 +52,9 @@ def test_kl(constants, point_estimates, mirror_samples, mf):
             'hamiltonian': h}
     if isinstance(mean0, ift.MultiField) and set(point_estimates) == set(mean0.keys()):
         with assert_raises(RuntimeError):
-            ift.MetricGaussianKL(**args)
+            ift.MetricGaussianKL.make(**args)
         return
-    kl = ift.MetricGaussianKL(**args)
+    kl = ift.MetricGaussianKL.make(**args)
     assert_(len(ic.history) > 0)
     assert_(len(ic.history) == len(ic.history.time_stamps))
     assert_(len(ic.history) == len(ic.history.energy_values))
@@ -64,13 +64,11 @@ def test_kl(constants, point_estimates, mirror_samples, mf):
     assert_(len(ic.history) == len(ic.history.energy_values))
 
     locsamp = kl._local_samples
-    klpure = ift.MetricGaussianKL(mean0,
-                                  h,
-                                  nsamps,
-                                  mirror_samples=mirror_samples,
-                                  constants=constants,
-                                  point_estimates=point_estimates,
-                                  _local_samples=locsamp)
+    if isinstance(mean0, ift.MultiField):
+        _, tmph = h.simplify_for_constant_input(mean0.extract_by_keys(constants))
+    else:
+        tmph = h
+    klpure = ift.MetricGaussianKL(mean0, tmph, nsamps, mirror_samples, None, locsamp, False, True)
 
     # Test number of samples
     expected_nsamps = 2*nsamps if mirror_samples else nsamps

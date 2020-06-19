@@ -131,7 +131,7 @@ def main():
     # Draw new samples to approximate the KL five times
     for i in range(5):
         # Draw new samples and minimize KL
-        KL = ift.MetricGaussianKL(mean, H, N_samples)
+        KL = ift.MetricGaussianKL.make(mean, H, N_samples)
         KL, convergence = minimizer(KL)
         mean = KL.position
 
@@ -144,7 +144,7 @@ def main():
                     name=filename.format("loop_{:02d}".format(i)))
 
     # Draw posterior samples
-    KL = ift.MetricGaussianKL(mean, H, N_samples)
+    KL = ift.MetricGaussianKL.make(mean, H, N_samples)
     sc = ift.StatCalculator()
     for sample in KL.samples:
         sc.add(signal(sample + KL.position))
