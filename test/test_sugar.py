@@ -16,10 +16,14 @@
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
 
 import numpy as np
+import pytest
 from numpy.testing import assert_equal
 
 import nifty7 as ift
+
 from .common import setup_function, teardown_function
+
+pmp = pytest.mark.parametrize
 
 
 def test_get_signal_variance():
@@ -45,15 +49,13 @@ def test_exec_time():
     lh = ift.GaussianEnergy(domain=op.target, sampling_dtype=np.float64) @ op1
     ic = ift.GradientNormController(iteration_limit=2)
     ham = ift.StandardHamiltonian(lh, ic_samp=ic)
-    kl = ift.MetricGaussianKL(ift.full(ham.domain, 0.), ham, 1)
+    kl = ift.MetricGaussianKL.make(ift.full(ham.domain, 0.), ham, 1)
     ops = [op, op1, lh, ham, kl]
     for oo in ops:
         for wm in [True, False]:
             ift.exec_time(oo, wm)
 
 
-import pytest
-pmp = pytest.mark.parametrize
 @pmp('mf', [False, True])
 @pmp('cplx', [False, True])
 def test_calc_pos(mf, cplx):

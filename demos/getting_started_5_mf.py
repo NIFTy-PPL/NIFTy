@@ -131,7 +131,7 @@ def main():
 
     for i in range(10):
         # Draw new samples and minimize KL
-        KL = ift.MetricGaussianKL(mean, H, N_samples)
+        KL = ift.MetricGaussianKL.make(mean, H, N_samples)
         KL, convergence = minimizer(KL)
         mean = KL.position
 
@@ -157,7 +157,7 @@ def main():
                     name=filename.format("loop_{:02d}".format(i)))
 
     # Done, draw posterior samples
-    KL = ift.MetricGaussianKL(mean, H, N_samples)
+    KL = ift.MetricGaussianKL.make(mean, H, N_samples)
     sc = ift.StatCalculator()
     scA1 = ift.StatCalculator()
     scA2 = ift.StatCalculator()
