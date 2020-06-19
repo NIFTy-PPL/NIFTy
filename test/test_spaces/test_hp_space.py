@@ -20,7 +20,7 @@ import pytest
 from numpy.testing import (assert_, assert_almost_equal, assert_equal,
                            assert_raises)
 
-from nifty6 import HPSpace
+from nifty7 import HPSpace
 from ..common import setup_function, teardown_function
 
 pmp = pytest.mark.parametrize

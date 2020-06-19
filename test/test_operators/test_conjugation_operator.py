@@ -18,7 +18,7 @@
 import numpy as np
 from numpy.testing import assert_allclose
 
-import nifty6 as ift
+import nifty7 as ift
 
 from ..common import setup_function, teardown_function
 
@@ -34,7 +34,7 @@ def test_conjugation_operator():
     res3 = arr.conjugate()
     assert_allclose(res1.val, res2.val)
     assert_allclose(res1.val, res3)
-    ift.extra.consistency_check(op, domain_dtype=np.float64,
-                                target_dtype=np.float64)
-    ift.extra.consistency_check(op, domain_dtype=np.complex128,
-                                target_dtype=np.complex128, only_r_linear=True)
+    ift.extra.check_linear_operator(op, domain_dtype=np.float64,
+                                    target_dtype=np.float64)
+    ift.extra.check_linear_operator(op, domain_dtype=np.complex128,
+                                    target_dtype=np.complex128, only_r_linear=True)

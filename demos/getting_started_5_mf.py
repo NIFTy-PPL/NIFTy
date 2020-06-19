@@ -11,7 +11,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
-# Copyright(C) 2013-2019 Max-Planck-Society
+# Copyright(C) 2013-2020 Max-Planck-Society
 #
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
 
@@ -29,7 +29,7 @@ import sys
 
 import numpy as np
 
-import nifty6 as ift
+import nifty7 as ift
 
 
 class SingleDomain(ift.LinearOperator):
@@ -55,7 +55,7 @@ def radial_los(n_los):
     return starts, ends
 
 
-if __name__ == '__main__':
+def main():
     # Choose between random line-of-sight response (mode=0) and radial lines
     # of sight (mode=1)
     if len(sys.argv) == 2:
@@ -83,7 +83,7 @@ if __name__ == '__main__':
     A2 = cfmaker.normalized_amplitudes[1]
     DC = SingleDomain(correlated_field.target, position_space)
 
-    ## Apply a nonlinearity
+    # Apply a nonlinearity
     signal = DC @ ift.sigmoid(correlated_field)
 
     # Build the line-of-sight response and define signal response
@@ -118,7 +118,7 @@ if __name__ == '__main__':
     ic_newton.enable_logging()
     minimizer = ift.NewtonCG(ic_newton, enable_logging=True)
 
-    ## number of samples used to estimate the KL
+    # number of samples used to estimate the KL
     N_samples = 20
 
     # Set up likelihood and information Hamiltonian
@@ -131,7 +131,7 @@ if __name__ == '__main__':
 
     for i in range(10):
         # Draw new samples and minimize KL
-        KL = ift.MetricGaussianKL(mean, H, N_samples)
+        KL = ift.MetricGaussianKL.make(mean, H, N_samples)
         KL, convergence = minimizer(KL)
         mean = KL.position
 
@@ -157,8 +157,7 @@ if __name__ == '__main__':
                     name=filename.format("loop_{:02d}".format(i)))
 
     # Done, draw posterior samples
-    Nsamples = 20
-    KL = ift.MetricGaussianKL(mean, H, N_samples)
+    KL = ift.MetricGaussianKL.make(mean, H, N_samples)
     sc = ift.StatCalculator()
     scA1 = ift.StatCalculator()
     scA2 = ift.StatCalculator()
@@ -189,3 +188,7 @@ if __name__ == '__main__':
              linewidth=[1.]*len(powers2) + [3., 3.])
     plot.output(ny=2, nx=2, xsize=15, ysize=15, name=filename_res)
     print("Saved results as '{}'.".format(filename_res))
+
+
+if __name__ == '__main__':
+    main()

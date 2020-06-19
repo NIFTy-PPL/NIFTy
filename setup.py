@@ -23,20 +23,20 @@ def write_version():
     p = subprocess.Popen(["git", "describe", "--dirty", "--tags", "--always"],
                          stdout=subprocess.PIPE)
     res = p.communicate()[0].strip().decode('utf-8')
-    with open("nifty6/git_version.py", "w") as file:
+    with open("nifty7/git_version.py", "w") as file:
         file.write('gitversion = "{}"\n'.format(res))
 
 
 write_version()
-exec(open('nifty6/version.py').read())
+exec(open('nifty7/version.py').read())
 
-setup(name="nifty6",
+setup(name="nifty7",
       version=__version__,
       author="Theo Steininger, Martin Reinecke",
       author_email="martin@mpa-garching.mpg.de",
       description="Numerical Information Field Theory",
       url="http://www.mpa-garching.mpg.de/ift/nifty/",
-      packages=find_packages(include=["nifty6", "nifty6.*"]),
+      packages=find_packages(include=["nifty7", "nifty7.*"]),
       zip_safe=True,
       license="GPLv3",
       setup_requires=['scipy>=1.4.1', 'numpy>=1.17'],

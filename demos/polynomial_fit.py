@@ -11,14 +11,15 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
-# Copyright(C) 2013-2019 Max-Planck-Society
+# Copyright(C) 2013-2020 Max-Planck-Society
+# Author: Philipp Arras
 #
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
 
 import matplotlib.pyplot as plt
 import numpy as np
 
-import nifty6 as ift
+import nifty7 as ift
 
 
 def polynomial(coefficients, sampling_points):
@@ -56,7 +57,7 @@ class PolynomialResponse(ift.LinearOperator):
 
     def __init__(self, domain, sampling_points):
         if not (isinstance(domain, ift.UnstructuredDomain)
-                and isinstance(x, np.ndarray)):
+                and isinstance(sampling_points, np.ndarray)):
             raise TypeError
         self._domain = ift.DomainTuple.make(domain)
         tgt = ift.UnstructuredDomain(sampling_points.shape)
@@ -80,7 +81,7 @@ class PolynomialResponse(ift.LinearOperator):
         return ift.makeField(self._tgt(mode), out)
 
 
-if __name__ == '__main__':
+def main():
     # Generate some mock data
     N_params = 10
     N_samples = 100
@@ -96,7 +97,7 @@ if __name__ == '__main__':
     p_space = ift.UnstructuredDomain(N_params)
     params = ift.full(p_space, 0.)
     R = PolynomialResponse(p_space, x)
-    ift.extra.consistency_check(R)
+    ift.extra.check_linear_operator(R)
 
     d_space = R.target
     d = ift.makeField(d_space, y)
@@ -140,3 +141,7 @@ if __name__ == '__main__':
     sigma = np.sqrt(sc.var.val)
     for ii in range(len(mean)):
         print('Coefficient x**{}: {:.2E} +/- {:.2E}'.format(ii, mean[ii], sigma[ii]))
+
+
+if __name__ == '__main__':
+    main()

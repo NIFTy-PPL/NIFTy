@@ -19,8 +19,8 @@
 import numpy as np
 from numpy.testing import assert_, assert_allclose
 
-import nifty6 as ift
-from nifty6.extra import check_jacobian_consistency, consistency_check
+import nifty7 as ift
+from nifty7.extra import check_operator, check_linear_operator
 
 from ..common import list2fixture, setup_function, teardown_function
 
@@ -42,7 +42,7 @@ def test_linear_einsum_outer(space1, space2, dtype, n_invocations=10):
     ss = "i,ij,j->ij"
     key_order = ("dom01", "dom02")
     le = ift.LinearEinsum(space2, mf, ss, key_order=key_order)
-    assert_(consistency_check(le, domain_dtype=dtype, target_dtype=dtype) is None)
+    assert_(check_linear_operator(le, domain_dtype=dtype, target_dtype=dtype) is None)
 
     le_ift = ift.DiagonalOperator(mf["dom01"], domain=mf_dom["dom02"], spaces=0) @ ift.DiagonalOperator(mf["dom02"])
     le_ift = le_ift @ ift.OuterProduct(ift.DomainTuple.make(mf_dom["dom02"][1]),
@@ -63,7 +63,7 @@ def test_linear_einsum_contraction(space1, space2, dtype, n_invocations=10):
     ss = "i,ij,j->i"
     key_order = ("dom01", "dom02")
     le = ift.LinearEinsum(space2, mf, ss, key_order=key_order)
-    assert_(consistency_check(le, domain_dtype=dtype, target_dtype=dtype) is None)
+    assert_(check_linear_operator(le, domain_dtype=dtype, target_dtype=dtype) is None)
 
     le_ift = ift.ContractionOperator(mf_dom["dom02"], 1)
     le_ift = le_ift @ ift.DiagonalOperator(mf["dom01"], domain=mf_dom["dom02"], spaces=0)
@@ -116,7 +116,7 @@ def test_linear_einsum_transpose(space1, space2, dtype, n_invocations=10):
     mf = ift.MultiField.from_dict({})
     ss = "ij->ji"
     le = ift.LinearEinsum(dom, mf, ss)
-    assert_(consistency_check(le, domain_dtype=dtype, target_dtype=dtype) is None)
+    assert_(check_linear_operator(le, domain_dtype=dtype, target_dtype=dtype) is None)
 
     # SwitchSpacesOperator is equivalent to LinearEinsum with "ij->ji"
     le_ift = _SwitchSpacesOperator(dom, 1)
@@ -138,7 +138,7 @@ def test_multi_linear_einsum_outer(space1, space2, dtype):
     ss = "i,ij,j->ij"
     key_order = ("dom01", "dom02", "dom03")
     mle = ift.MultiLinearEinsum(mf_dom, ss, key_order=key_order)
-    check_jacobian_consistency(mle, ift.from_random(mle.domain, "normal", dtype=dtype), ntries=ntries)
+    check_operator(mle, ift.from_random(mle.domain, "normal", dtype=dtype), ntries=ntries)
 
     outer_i = ift.OuterProduct(
         ift.DomainTuple.make(mf_dom["dom02"][0]), ift.full(mf_dom["dom03"], 1.)

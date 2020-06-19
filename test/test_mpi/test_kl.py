@@ -18,9 +18,9 @@
 import numpy as np
 import pytest
 from mpi4py import MPI
-from numpy.testing import assert_, assert_equal
+from numpy.testing import assert_, assert_equal, assert_raises
 
-import nifty6 as ift
+import nifty7 as ift
 
 from ..common import setup_function, teardown_function
 
@@ -58,17 +58,29 @@ def test_kl(constants, point_estimates, mirror_samples, mode, mf):
             'n_samples': 2,
             'mean': mean0,
             'hamiltonian': h}
+    if isinstance(mean0, ift.MultiField) and set(point_estimates) == set(mean0.keys()):
+        with assert_raises(RuntimeError):
+            ift.MetricGaussianKL.make(**args, comm=comm)
+        return
     if mode == 0:
-        kl0 = ift.MetricGaussianKL(**args, comm=comm)
+        kl0 = ift.MetricGaussianKL.make(**args, comm=comm)
         locsamp = kl0._local_samples
-        kl1 = ift.MetricGaussianKL(**args, comm=comm, _local_samples=locsamp)
+        if isinstance(mean0, ift.MultiField):
+            _, tmph = h.simplify_for_constant_input(mean0.extract_by_keys(constants))
+        else:
+            tmph = h
+        kl1 = ift.MetricGaussianKL(mean0, tmph, 2, mirror_samples, comm, locsamp, False, True)
     elif mode == 1:
-        kl0 = ift.MetricGaussianKL(**args)
+        kl0 = ift.MetricGaussianKL.make(**args)
         samples = kl0._local_samples
         ii = len(samples)//2
         slc = slice(None, ii) if rank == 0 else slice(ii, None)
         locsamp = samples[slc]
-        kl1 = ift.MetricGaussianKL(**args, comm=comm, _local_samples=locsamp)
+        if isinstance(mean0, ift.MultiField):
+            _, tmph = h.simplify_for_constant_input(mean0.extract_by_keys(constants))
+        else:
+            tmph = h
+        kl1 = ift.MetricGaussianKL(mean0, tmph, 2, mirror_samples, comm, locsamp, False, True)
 
     # Test number of samples
     expected_nsamps = 2*nsamps if mirror_samples else nsamps

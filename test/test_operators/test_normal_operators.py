@@ -18,11 +18,12 @@
 import pytest
 from numpy.testing import assert_allclose
 
-import nifty6 as ift
+import nifty7 as ift
 
 from ..common import setup_function, teardown_function
 
 pmp = pytest.mark.parametrize
+
 
 @pmp('mean', [3., -2])
 @pmp('std', [1.5, 0.1])
@@ -39,7 +40,8 @@ def test_normal_transform(mean, std, seed):
         assert_allclose(res.val.std(), std, rtol=0.1)
 
         loc = ift.from_random(op.domain)
-        ift.extra.check_jacobian_consistency(op, loc)
+        ift.extra.check_operator(op, loc)
+
 
 @pmp('mean', [0.01, 10.])
 @pmp('std_fct', [0.01, 0.1])
@@ -54,4 +56,4 @@ def test_lognormal_transform(mean, std_fct, seed):
         assert_allclose(res.val.std(), std, rtol=0.1)
 
         loc = ift.from_random(op.domain)
-        ift.extra.check_jacobian_consistency(op, loc)
+        ift.extra.check_operator(op, loc)

@@ -16,12 +16,13 @@
 #
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
 
+import numpy as np
 import pytest
 from numpy.testing import assert_allclose, assert_array_equal
-from nifty6.extra import consistency_check
 
-import numpy as np
-import nifty6 as ift
+import nifty7 as ift
+from nifty7.extra import check_linear_operator
+
 from ..common import list2fixture, setup_function, teardown_function
 
 pmp = pytest.mark.parametrize
@@ -50,7 +51,7 @@ def test_split_operator_first_axes_without_intersections(
         dom, {f"{i:06d}": (si, )
               for i, si in enumerate(split_idx)}
     )
-    assert consistency_check(split) is None
+    assert check_linear_operator(split) is None
 
     r = ift.from_random(dom, "normal")
     split_r = split(r)
@@ -79,7 +80,7 @@ def test_split_operator_first_axes_with_intersections(
               for i, si in enumerate(split_idx)}
     )
     print(split_idx)
-    assert consistency_check(split) is None
+    assert check_linear_operator(split) is None
 
     r = ift.from_random(dom, "normal")
     split_r = split(r)

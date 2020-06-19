@@ -19,7 +19,7 @@
 from numpy.testing import assert_, assert_allclose
 import numpy as np
 from copy import deepcopy
-import nifty6 as ift
+import nifty7 as ift
 
 
 class CountingOp(ift.Operator):

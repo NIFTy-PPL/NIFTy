@@ -17,7 +17,7 @@
 
 from numpy.testing import assert_allclose
 
-import nifty6 as ift
+import nifty7 as ift
 
 from ..common import list2fixture, setup_function, teardown_function
 
