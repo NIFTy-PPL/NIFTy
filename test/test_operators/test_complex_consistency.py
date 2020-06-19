@@ -52,24 +52,3 @@ def test_GaussianEnergy():
         val2 = complex_energy(fld).val
         np.testing.assert_allclose(val1, val2, atol=10./np.sqrt(Nsamp))
 
-
-def test_WienerFilter():
-    sp = ift.UnstructuredDomain(30)
-    S = ift.ScalingOperator(sp, 1.)
-    R = ift.ContractionOperator(sp, None)
-    N = ift.ScalingOperator(R.target, 1/5**2)
-    IC = ift.GradientNormController(iteration_limit=10, tol_abs_gradnorm=1e-7)
-    D = ift.WienerFilterCurvature(R, N, S, IC, IC).inverse
-    s = S.draw_sample_with_dtype(dtype=np.complex128)
-    d = R(s)+N.draw_sample_with_dtype(dtype=np.complex128)
-    j = R.adjoint_times(N.inverse_times(d))
-    m = D(j)
-    # FIXME Redundant lines below
-    # sr = s.real
-    jr = j.real
-    mr = D(jr)
-    # FIXME Redundant lines below
-    # si = s.imag
-    ji = j.imag
-    mi = D(ji)
-    np.testing.assert_allclose((mr+mi*1.j).val, m.val, rtol=1e-7)
