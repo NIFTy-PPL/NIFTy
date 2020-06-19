@@ -167,15 +167,6 @@ class VariableCovarianceGaussianEnergy(EnergyOperator):
         return res.add_metric(SamplingDtypeSetter(met, self._sampling_dtype))
 
 
-def _build_MultiScalingOperator(domain, scales):
-    op = None
-    for k, dom in domain.items():
-        o = ScalingOperator(dom, scales[k])
-        FA = FieldAdapter(dom, k)
-        o = FA.adjoint @ o @ FA
-        op = o if op is None else op + o
-    return op
-
 class GaussianEnergy(EnergyOperator):
     """Computes a negative-log Gaussian.
 
@@ -197,7 +188,7 @@ class GaussianEnergy(EnergyOperator):
         Operator domain. By default it is inferred from `mean` or
         `covariance` if specified
     sampling_dtype : type
-        Here one can specify whether the distribution is a compelx Gaussian or
+        Here one can specify whether the distribution is a complex Gaussian or
         not. Note that for a complex Gaussian the inverse_covariance is
         .. math ::
         (<ff^dagger>)^{-1}_P(f)/2,
