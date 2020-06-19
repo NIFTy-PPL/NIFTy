@@ -313,43 +313,43 @@ def _linearization_value_consistency(op, loc):
 
 def _check_nontrivial_constant(op, loc, tol, ntries, only_r_differentiable,
                                metric_sampling):
-    return  # FIXME
-    # Assumes that the operator is not constant
     if isinstance(op.domain, DomainTuple):
-        return
+        return  # FIXME ?
     keys = op.domain.keys()
     for ll in range(0, len(keys)):
         for cstkeys in combinations(keys, ll):
-            cstdom, vardom = {}, {}
-            for kk, dd in op.domain.items():
-                if kk in cstkeys:
-                    cstdom[kk] = dd
-                else:
-                    vardom[kk] = dd
-            cstdom, vardom = makeDomain(cstdom), makeDomain(vardom)
-            cstloc = loc.extract(cstdom)
+            varkeys = set(keys) - set(cstkeys)
+            print(f'Constant: {set(cstkeys)}, Variable: {varkeys}')
+            cstloc = loc.extract_by_keys(cstkeys)
+            varloc = loc.extract_by_keys(varkeys)
 
             val0 = op(loc)
             _, op0 = op.simplify_for_constant_input(cstloc)
-            val1 = op0(loc)
-            # MR FIXME: This tests something we don't promise!
-#            val2 = op0(loc.unite(cstloc))
-#            assert_equal(val1, val2)
+            assert op0.domain is varloc.domain
+            val1 = op0(varloc)
             assert_equal(val0, val1)
 
-            lin = Linearization.make_var(loc, want_metric=True)
-            oplin = op0(lin)
-            if isinstance(op, EnergyOperator):
-                _allzero(oplin.gradient.extract(cstdom))
-            # MR FIXME: This tests something we don't promise!
-#            _allzero(oplin.jac(from_random(cstdom).unite(full(vardom, 0))))
+            lin = Linearization.make_partial_var(loc, cstkeys, want_metric=True)
+            lin0 = Linearization.make_var(varloc, want_metric=True)
+            oplin0 = op0(lin0)
+            oplin = op(lin)
 
-            if isinstance(op, EnergyOperator) and metric_sampling:
-                samp0 = oplin.metric.draw_sample()
-                _allzero(samp0.extract(cstdom))
-                _nozero(samp0.extract(vardom))
+            assert oplin.jac.target is oplin0.jac.target
+            rndinp = from_random(oplin.jac.target)
+            assert_equal(oplin.jac.adjoint(rndinp).extract(varloc.domain), oplin0.jac.adjoint(rndinp))
+            foo = oplin.jac.adjoint(rndinp).extract(cstloc.domain)
+            assert_equal(foo, 0*foo)
 
-            _jac_vs_finite_differences(op0, loc, np.sqrt(tol), ntries, only_r_differentiable)
+            # FIXME
+            # if isinstance(op, EnergyOperator):
+            #     _allzero(oplin.gradient.extract(cstdom))
+            # if isinstance(op, EnergyOperator) and metric_sampling:
+            #     samp0 = oplin.metric.draw_sample()
+            #     _allzero(samp0.extract(cstdom))
+            #     _nozero(samp0.extract(vardom))
+
+            assert op0.domain is varloc.domain
+            _jac_vs_finite_differences(op0, varloc, np.sqrt(tol), ntries, only_r_differentiable)
 
 
 def _jac_vs_finite_differences(op, loc, tol, ntries, only_r_differentiable):

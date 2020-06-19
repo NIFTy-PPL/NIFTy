@@ -207,28 +207,28 @@ class SumOperator(LinearOperator):
         subs = "\n".join(sub.__repr__() for sub in self._ops)
         return "SumOperator:\n"+indent(subs)
 
-    def _simplify_for_constant_input_nontrivial(self, c_inp):
-        f = []
-        o = []
-        for op in self._ops:
-            tf, to = op.simplify_for_constant_input(
-                c_inp.extract_part(op.domain))
-            f.append(tf)
-            o.append(to)
+    # def _simplify_for_constant_input_nontrivial(self, c_inp):
+    #     f = []
+    #     o = []
+    #     for op in self._ops:
+    #         tf, to = op.simplify_for_constant_input(
+    #             c_inp.extract_part(op.domain))
+    #         f.append(tf)
+    #         o.append(to)
 
-        from ..multi_domain import MultiDomain
-        if not isinstance(self._target, MultiDomain):
-            fullop = None
-            for to, n in zip(o, self._neg):
-                op = to if not n else -to
-                fullop = op if fullop is None else fullop + op
-            return None, fullop
+    #     from ..multi_domain import MultiDomain
+    #     if not isinstance(self._target, MultiDomain):
+    #         fullop = None
+    #         for to, n in zip(o, self._neg):
+    #             op = to if not n else -to
+    #             fullop = op if fullop is None else fullop + op
+    #         return None, fullop
 
-        from .simplify_for_const import ConstCollector
-        cc = ConstCollector()
-        fullop = None
-        for tf, to, n in zip(f, o, self._neg):
-            cc.add(tf, to.target)
-            op = to if not n else -to
-            fullop = op if fullop is None else fullop + op
-        return cc.constfield, fullop
+    #     from .simplify_for_const import ConstCollector
+    #     cc = ConstCollector()
+    #     fullop = None
+    #     for tf, to, n in zip(f, o, self._neg):
+    #         cc.add(tf, to.target)
+    #         op = to if not n else -to
+    #         fullop = op if fullop is None else fullop + op
+    #     return cc.constfield, fullop

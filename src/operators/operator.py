@@ -273,7 +273,8 @@ class Operator(metaclass=NiftyMeta):
     def simplify_for_constant_input(self, c_inp):
         from .energy_operators import EnergyOperator
         from .simplify_for_const import ConstantEnergyOperator, ConstantOperator
-        if c_inp is None:
+        from ..multi_field import MultiField
+        if c_inp is None or (isinstance(c_inp, MultiField) and len(c_inp.keys()) == 0):
             return None, self
         dom = c_inp.domain
         if isinstance(dom, MultiDomain) and len(dom) == 0:
@@ -297,13 +298,13 @@ class Operator(metaclass=NiftyMeta):
         return self._simplify_for_constant_input_nontrivial(c_inp)
 
     def _simplify_for_constant_input_nontrivial(self, c_inp):
-        from .simplify_for_const import SlowPartialConstantOperator
+        from .simplify_for_const import InsertionOperator
         s = ('SlowPartialConstantOperator used. You might want to consider'
              ' implementing `_simplify_for_constant_input_nontrivial()` for'
              ' this operator:')
         logger.warning(s)
         logger.warning(self.__repr__())
-        return None, self @ SlowPartialConstantOperator(self.domain, c_inp.keys())
+        return None, self @ InsertionOperator(self.domain, c_inp)
 
     def ptw(self, op, *args, **kwargs):
         return _OpChain.make((_FunctionApplier(self.target, op, *args, **kwargs), self))
@@ -371,16 +372,16 @@ class _OpChain(_CombinedOperator):
             x = op(x)
         return x
 
-    def _simplify_for_constant_input_nontrivial(self, c_inp):
-        from ..multi_domain import MultiDomain
-        if not isinstance(self._domain, MultiDomain):
-            return None, self
+    # def _simplify_for_constant_input_nontrivial(self, c_inp):
+    #     from ..multi_domain import MultiDomain
+    #     if not isinstance(self._domain, MultiDomain):
+    #         return None, self
 
-        newop = None
-        for op in reversed(self._ops):
-            c_inp, t_op = op.simplify_for_constant_input(c_inp)
-            newop = t_op if newop is None else op(newop)
-        return c_inp, newop
+    #     newop = None
+    #     for op in reversed(self._ops):
+    #         c_inp, t_op = op.simplify_for_constant_input(c_inp)
+    #         newop = t_op if newop is None else op(newop)
+    #     return c_inp, newop
 
     def __repr__(self):
         subs = "\n".join(sub.__repr__() for sub in self._ops)
@@ -413,20 +414,20 @@ class _OpProd(Operator):
         jac = (makeOp(lin1._val)(lin2._jac))._myadd(makeOp(lin2._val)(lin1._jac), False)
         return lin1.new(lin1._val*lin2._val, jac)
 
-    def _simplify_for_constant_input_nontrivial(self, c_inp):
-        from ..multi_domain import MultiDomain
-        from .simplify_for_const import ConstCollector
+    # def _simplify_for_constant_input_nontrivial(self, c_inp):
+    #     from ..multi_domain import MultiDomain
+    #     from .simplify_for_const import ConstCollector
 
-        f1, o1 = self._op1.simplify_for_constant_input(
-            c_inp.extract_part(self._op1.domain))
-        f2, o2 = self._op2.simplify_for_constant_input(
-            c_inp.extract_part(self._op2.domain))
-        if not isinstance(self._target, MultiDomain):
-            return None, _OpProd(o1, o2)
-        cc = ConstCollector()
-        cc.mult(f1, o1.target)
-        cc.mult(f2, o2.target)
-        return cc.constfield, _OpProd(o1, o2)
+    #     f1, o1 = self._op1.simplify_for_constant_input(
+    #         c_inp.extract_part(self._op1.domain))
+    #     f2, o2 = self._op2.simplify_for_constant_input(
+    #         c_inp.extract_part(self._op2.domain))
+    #     if not isinstance(self._target, MultiDomain):
+    #         return None, _OpProd(o1, o2)
+    #     cc = ConstCollector()
+    #     cc.mult(f1, o1.target)
+    #     cc.mult(f2, o2.target)
+    #     return cc.constfield, _OpProd(o1, o2)
 
     def __repr__(self):
         subs = "\n".join(sub.__repr__() for sub in (self._op1, self._op2))
@@ -459,20 +460,20 @@ class _OpSum(Operator):
             res = res.add_metric(lin1._metric._myadd(lin2._metric, False))
         return res
 
-    def _simplify_for_constant_input_nontrivial(self, c_inp):
-        from ..multi_domain import MultiDomain
-        from .simplify_for_const import ConstCollector
+    # def _simplify_for_constant_input_nontrivial(self, c_inp):
+    #     from ..multi_domain import MultiDomain
+    #     from .simplify_for_const import ConstCollector
 
-        f1, o1 = self._op1.simplify_for_constant_input(
-            c_inp.extract_part(self._op1.domain))
-        f2, o2 = self._op2.simplify_for_constant_input(
-            c_inp.extract_part(self._op2.domain))
-        if not isinstance(self._target, MultiDomain):
-            return None, _OpSum(o1, o2)
-        cc = ConstCollector()
-        cc.add(f1, o1.target)
-        cc.add(f2, o2.target)
-        return cc.constfield, _OpSum(o1, o2)
+    #     f1, o1 = self._op1.simplify_for_constant_input(
+    #         c_inp.extract_part(self._op1.domain))
+    #     f2, o2 = self._op2.simplify_for_constant_input(
+    #         c_inp.extract_part(self._op2.domain))
+    #     if not isinstance(self._target, MultiDomain):
+    #         return None, _OpSum(o1, o2)
+    #     cc = ConstCollector()
+    #     cc.add(f1, o1.target)
+    #     cc.add(f2, o2.target)
+    #     return cc.constfield, _OpSum(o1, o2)
 
     def __repr__(self):
         subs = "\n".join(sub.__repr__() for sub in (self._op1, self._op2))

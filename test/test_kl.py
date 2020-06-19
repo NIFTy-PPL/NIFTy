@@ -66,9 +66,11 @@ def test_kl(constants, point_estimates, mirror_samples, mf):
     locsamp = kl._local_samples
     if isinstance(mean0, ift.MultiField):
         _, tmph = h.simplify_for_constant_input(mean0.extract_by_keys(constants))
+        tmpmean = mean0.extract(tmph.domain)
     else:
         tmph = h
-    klpure = ift.MetricGaussianKL(mean0, tmph, nsamps, mirror_samples, None, locsamp, False, True)
+        tmpmean = mean0
+    klpure = ift.MetricGaussianKL(tmpmean, tmph, nsamps, mirror_samples, None, locsamp, False, True)
 
     # Test number of samples
     expected_nsamps = 2*nsamps if mirror_samples else nsamps
@@ -82,25 +84,10 @@ def test_kl(constants, point_estimates, mirror_samples, mf):
         ift.extra.assert_allclose(kl.gradient, klpure.gradient, 0, 1e-14)
         return
 
-    for kk in h.domain.keys():
-        res0 = klpure.gradient[kk].val
-        if kk in constants:
-            res0 = 0*res0
+    for kk in kl.position.domain.keys():
         res1 = kl.gradient[kk].val
+        if kk in constants:
+            res0 = 0*res1
+        else:
+            res0 = klpure.gradient[kk].val
         assert_allclose(res0, res1)
-
-    # Test point_estimates (after drawing samples)
-    for kk in point_estimates:
-        for ss in kl.samples:
-            ss = ss[kk].val
-            assert_allclose(ss, 0*ss)
-
-    # Test constants (after some minimization)
-    cg = ift.GradientNormController(iteration_limit=5)
-    minimizer = ift.NewtonCG(cg, enable_logging=True)
-    kl, _ = minimizer(kl)
-    if len(constants) != 2:
-        assert_(len(minimizer.inversion_history) > 0)
-    diff = (mean0 - kl.position).to_dict()
-    for kk in constants:
-        assert_allclose(diff[kk].val, 0*diff[kk].val)

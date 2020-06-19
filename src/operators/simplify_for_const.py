@@ -79,28 +79,6 @@ class ConstantOperator(Operator):
         return f'{tgt} <- ConstantOperator <- {dom}'
 
 
-class SlowPartialConstantOperator(Operator):
-    def __init__(self, domain, constant_keys):
-        from ..sugar import makeDomain
-        if not isinstance(domain, MultiDomain):
-            raise TypeError
-        if set(constant_keys) > set(domain.keys()) or len(constant_keys) == 0:
-            raise ValueError
-        self._keys = set(constant_keys) & set(domain.keys())
-        self._domain = self._target = makeDomain(domain)
-
-    def apply(self, x):
-        self._check_input(x)
-        if x.jac is None:
-            return x
-        jac = {kk: ScalingOperator(dd, 0 if kk in self._keys else 1)
-               for kk, dd in self._domain.items()}
-        return x.prepend_jac(BlockDiagonalOperator(x.jac.domain, jac))
-
-    def __repr__(self):
-        return f'SlowPartialConstantOperator ({self._keys})'
-
-
 class ConstantEnergyOperator(EnergyOperator):
     def __init__(self, dom, output):
         from ..sugar import makeDomain
@@ -123,3 +101,34 @@ class ConstantEnergyOperator(EnergyOperator):
 
     def __repr__(self):
         return 'ConstantEnergyOperator <- {}'.format(self.domain.keys())
+
+
+class InsertionOperator(Operator):
+    def __init__(self, target, cst_field):
+        from ..multi_field import MultiField
+        from ..sugar import makeDomain
+        if not isinstance(target, MultiDomain):
+            raise TypeError
+        if not isinstance(cst_field, MultiField):
+            raise TypeError
+        self._target = MultiDomain.make(target)
+        cstdom = cst_field.domain
+        vardom = makeDomain({kk: vv for kk, vv in self._target.items()
+                             if kk not in cst_field.keys()})
+        self._domain = vardom
+        self._cst = cst_field
+        jac = {kk: ScalingOperator(vv, 1.) for kk, vv in self._domain.items()}
+        self._jac = BlockDiagonalOperator(self._domain, jac) + NullOperator(makeDomain({}), cstdom)
+
+    def apply(self, x):
+        assert len(set(self._cst.keys()) & set(x.domain.keys())) == 0
+        val = x if x.jac is None else x.val
+        val = val.unite(self._cst)
+        if x.jac is None:
+            return val
+        return x.new(val, self._jac)
+
+    def __repr__(self):
+        from ..utilities import indent
+        subs = f'Constant: {self._cst.keys()}\nVariable: {self._domain.keys()}'
+        return 'InsertionOperator\n'+indent(subs)

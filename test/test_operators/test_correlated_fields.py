@@ -46,6 +46,7 @@ def testDistributor(dofdex, seed):
         ift.extra.check_linear_operator(op)
 
 
+@pytest.mark.skip()
 @pmp('sspace', [
     ift.RGSpace(4),
     ift.RGSpace((4, 4), (0.123, 0.4)),

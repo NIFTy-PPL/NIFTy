@@ -47,6 +47,22 @@ def _get_lo_hi(comm, n_samples):
     return utilities.shareRange(n_samples, ntask, rank)
 
 
+def _modify_sample_domain(sample, domain):
+    """Takes only keys from sample which are also in domain and inserts zeros
+    in sample if key is not in domain."""
+    from ..multi_domain import MultiDomain
+    if not isinstance(sample, MultiField):
+        assert sample.domain is domain
+        return sample
+    assert isinstance(domain, MultiDomain)
+    if sample.domain is domain:
+        return sample
+    out = {kk: vv for kk, vv in sample.items() if kk in domain.keys()}
+    out = MultiField.from_dict(out, domain)
+    assert domain is out.domain
+    return out
+
+
 class MetricGaussianKL(Energy):
     """Provides the sampled Kullback-Leibler divergence between a distribution
     and a Metric Gaussian.
@@ -78,6 +94,7 @@ class MetricGaussianKL(Energy):
         if not _callingfrommake:
             raise NotImplementedError
         super(MetricGaussianKL, self).__init__(mean)
+        assert mean.domain is hamiltonian.domain
         self._hamiltonian = hamiltonian
         self._n_samples = int(n_samples)
         self._mirror_samples = bool(mirror_samples)
@@ -88,6 +105,7 @@ class MetricGaussianKL(Energy):
         lin = Linearization.make_var(mean)
         v, g = [], []
         for s in self._local_samples:
+            s = _modify_sample_domain(s, mean.domain)
             tmp = hamiltonian(lin+s)
             tv = tmp.val.val
             tg = tmp.gradient
@@ -166,7 +184,7 @@ class MetricGaussianKL(Energy):
             _, ham_sampling = hamiltonian.simplify_for_constant_input(cstpos)
         else:
             ham_sampling = hamiltonian
-        met = ham_sampling(Linearization.make_var(mean, True)).metric
+        met = ham_sampling(Linearization.make_var(mean.extract(ham_sampling.domain), True)).metric
         if napprox >= 1:
             met._approximation = makeOp(approximation2endo(met, napprox))
         local_samples = []
@@ -178,6 +196,7 @@ class MetricGaussianKL(Energy):
 
         if isinstance(mean, MultiField):
             _, hamiltonian = hamiltonian.simplify_for_constant_input(mean.extract_by_keys(constants))
+            mean = mean.extract_by_keys(set(mean.keys()) - set(constants))
         return MetricGaussianKL(
             mean, hamiltonian, n_samples, mirror_samples, comm, local_samples,
             nanisinf, _callingfrommake=True)
@@ -199,6 +218,7 @@ class MetricGaussianKL(Energy):
         lin = Linearization.make_var(self.position, want_metric=True)
         res = []
         for s in self._local_samples:
+            s = _modify_sample_domain(s, self._hamiltonian.domain)
             tmp = self._hamiltonian(lin+s).metric(x)
             if self._mirror_samples:
                 tmp = tmp + self._hamiltonian(lin-s).metric(x)
@@ -244,10 +264,11 @@ class MetricGaussianKL(Energy):
         lin = Linearization.make_var(self.position, True)
         samp = []
         sseq = random.spawn_sseq(self._n_samples)
-        for i, v in enumerate(self._local_samples):
+        for i, s in enumerate(self._local_samples):
+            s = _modify_sample_domain(s, self._hamiltonian.domain)
             with random.Context(sseq[self._lo+i]):
-                tmp = self._hamiltonian(lin+v).metric.draw_sample(from_inverse=False)
+                tmp = self._hamiltonian(lin+s).metric.draw_sample(from_inverse=False)
                 if self._mirror_samples:
-                    tmp = tmp + self._hamiltonian(lin-v).metric.draw_sample(from_inverse=False)
+                    tmp = tmp + self._hamiltonian(lin-s).metric.draw_sample(from_inverse=False)
                 samp.append(tmp)
         return utilities.allreduce_sum(samp, self._comm)/self.n_eff_samples

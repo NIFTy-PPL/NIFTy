@@ -175,26 +175,26 @@ class VariableCovarianceGaussianEnergy(EnergyOperator):
         met = MultiField.from_dict({self._kr: i.val, self._ki: met**(-2)})
         return res.add_metric(SamplingDtypeSetter(makeOp(met), self._dt))
 
-    def _simplify_for_constant_input_nontrivial(self, c_inp):
-        from .simplify_for_const import ConstantEnergyOperator
-        assert len(c_inp.keys()) == 1
-        key = c_inp.keys()[0]
-        assert key in self._domain.keys()
-        cst = c_inp[key]
-        if key == self._kr:
-            res = _SpecialGammaEnergy(cst).ducktape(self._ki)
-        else:
-            dt = self._dt[self._kr]
-            res = GaussianEnergy(inverse_covariance=makeOp(cst),
-                                 sampling_dtype=dt).ducktape(self._kr)
-            trlog = cst.log().sum().val_rw()
-            if not _iscomplex(dt):
-                trlog /= 2
-            res = res + ConstantEnergyOperator(res.domain, -trlog)
-        res = res + ConstantEnergyOperator(self._domain, 0.)
-        assert res.domain is self.domain
-        assert res.target is self.target
-        return None, res
+    # def _simplify_for_constant_input_nontrivial(self, c_inp):
+    #     from .simplify_for_const import ConstantEnergyOperator
+    #     assert len(c_inp.keys()) == 1
+    #     key = c_inp.keys()[0]
+    #     assert key in self._domain.keys()
+    #     cst = c_inp[key]
+    #     if key == self._kr:
+    #         res = _SpecialGammaEnergy(cst).ducktape(self._ki)
+    #     else:
+    #         dt = self._dt[self._kr]
+    #         res = GaussianEnergy(inverse_covariance=makeOp(cst),
+    #                              sampling_dtype=dt).ducktape(self._kr)
+    #         trlog = cst.log().sum().val_rw()
+    #         if not _iscomplex(dt):
+    #             trlog /= 2
+    #         res = res + ConstantEnergyOperator(res.domain, -trlog)
+    #     res = res + ConstantEnergyOperator(self._domain, 0.)
+    #     assert res.domain is self.domain
+    #     assert res.target is self.target
+    #     return None, res
 
 
 class _SpecialGammaEnergy(EnergyOperator):
@@ -504,9 +504,9 @@ class StandardHamiltonian(EnergyOperator):
         subs += '\nPrior:\n{}'.format(self._prior)
         return 'StandardHamiltonian:\n' + utilities.indent(subs)
 
-    def _simplify_for_constant_input_nontrivial(self, c_inp):
-        out, lh1 = self._lh.simplify_for_constant_input(c_inp)
-        return out, StandardHamiltonian(lh1, self._ic_samp, _c_inp=c_inp)
+    # def _simplify_for_constant_input_nontrivial(self, c_inp):
+    #     out, lh1 = self._lh.simplify_for_constant_input(c_inp)
+    #     return out, StandardHamiltonian(lh1, self._ic_samp, _c_inp=c_inp)
 
 
 class AveragedEnergy(EnergyOperator):
