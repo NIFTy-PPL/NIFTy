@@ -51,4 +51,3 @@ def test_GaussianEnergy():
         val1 = (real_energy(fld.real) + imag_energy(fld.imag)).val
         val2 = complex_energy(fld).val
         np.testing.assert_allclose(val1, val2, atol=10./np.sqrt(Nsamp))
-
