@@ -266,6 +266,8 @@ def from_random(domain, random_type='normal', dtype=np.float64, **kwargs):
             The random distribution to use.
     dtype : type
         data type of the output field (e.g. numpy.float64)
+        If the datatype is complex, each real an imaginary part have
+        variance 1.
     **kwargs : additional parameters for the random distribution
         ('mean' and 'std' for 'normal', 'low' and 'high' for 'uniform')
 
