@@ -58,6 +58,19 @@ print(met)
 print(met.draw_sample())
 ```
 
+New approach for sampling complex numbers
+=========================================
+
+When calling draw_sample_with_dtype with a complex dtype,
+the variance is now used for the imaginary part and real part separately.
+This is done in order to be consistent with the Hamiltonian.
+Note that by this, 
+```
+np.std(ift.from_random(domain, 'normal', dtype=np.complex128).val)
+```` 
+does not give 1, but sqrt(2) as a result.
+
+
 MPI parallelisation over samples in MetricGaussianKL
 ====================================================
 
@@ -72,6 +85,7 @@ production of random numbers (introduced in numpy 1.17. This greatly simplifies
 the generation of reproducible random numbers in the presence of MPI parallelism
 and leads to cleaner code overall. Please see the documentation of
 `nifty6.random` for details.
+
 
 Interface Change for from_random and OuterProduct
 =================================================
