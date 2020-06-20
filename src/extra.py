@@ -318,7 +318,7 @@ def _linearization_value_consistency(op, loc):
 def _check_nontrivial_constant(op, loc, tol, ntries, only_r_differentiable,
                                metric_sampling, max_combinations=np.inf):
     if isinstance(op.domain, DomainTuple):
-        return  # FIXME ?
+        return
     keys = op.domain.keys()
     combis = []
     for ll in range(1, len(keys)):
