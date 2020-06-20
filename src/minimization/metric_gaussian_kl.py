@@ -184,7 +184,8 @@ class MetricGaussianKL(Energy):
             _, ham_sampling = hamiltonian.simplify_for_constant_input(cstpos)
         else:
             ham_sampling = hamiltonian
-        met = ham_sampling(Linearization.make_var(mean.extract(ham_sampling.domain), True)).metric
+        lin = Linearization.make_var(mean.extract(ham_sampling.domain), True)
+        met = ham_sampling(lin).metric
         if napprox >= 1:
             met._approximation = makeOp(approximation2endo(met, napprox))
         local_samples = []

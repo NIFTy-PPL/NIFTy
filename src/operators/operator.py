@@ -285,7 +285,7 @@ class Operator(metaclass=NiftyMeta):
         # subdomain of self._domain
         if isinstance(self.domain, MultiDomain):
             assert isinstance(dom, MultiDomain)
-            if set(c_inp.keys()) > set(self.domain.keys()):
+            if not set(c_inp.keys()) <= set(self.domain.keys()):
                 raise ValueError
 
         if dom is self.domain:
