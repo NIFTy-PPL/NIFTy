@@ -58,7 +58,14 @@ class ChainOperator(LinearOperator):
         fct = 1.
         opsnew = []
         lastdom = ops[-1].domain
+        dtype = None
         for op in ops:
+            from .sampling_enabler import SamplingDtypeSetter
+            if isinstance(op, SamplingDtypeSetter) and isinstance(op._op, ScalingOperator):
+                if dtype is not None:
+                    raise NotImplementedError
+                dtype = op._dtype
+                op = op._op
             if (isinstance(op, ScalingOperator) and op._factor.imag == 0):
                 fct *= op._factor.real
             else:
@@ -72,7 +79,10 @@ class ChainOperator(LinearOperator):
                     break
         if fct != 1 or len(opsnew) == 0:
             # have to add the scaling operator at the end
-            opsnew.append(ScalingOperator(lastdom, fct))
+            op = ScalingOperator(lastdom, fct)
+            if dtype is not None:
+                op = SamplingDtypeSetter(op, dtype)
+            opsnew.append(op)
         ops = opsnew
         # combine DiagonalOperators where possible
         opsnew = []

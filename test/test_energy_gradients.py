@@ -35,7 +35,6 @@ def test_gaussian(field):
     ift.extra.check_operator(energy, field)
 
 
-@pytest.mark.skip()
 def test_ScaledEnergy(field):
     icov = ift.ScalingOperator(field.domain, 1.2)
     energy = ift.GaussianEnergy(inverse_covariance=icov, sampling_dtype=np.float64)
@@ -48,6 +47,7 @@ def test_ScaledEnergy(field):
     res2 = met2(field)/0.3
     ift.extra.assert_allclose(res1, res2, 0, 1e-12)
     met1.draw_sample()
+    print(met2)
     met2.draw_sample()
 
 
