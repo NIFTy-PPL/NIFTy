@@ -371,16 +371,15 @@ class _OpChain(_CombinedOperator):
             x = op(x)
         return x
 
-    # def _simplify_for_constant_input_nontrivial(self, c_inp):
-    #     from ..multi_domain import MultiDomain
-    #     if not isinstance(self._domain, MultiDomain):
-    #         return None, self
-
-    #     newop = None
-    #     for op in reversed(self._ops):
-    #         c_inp, t_op = op.simplify_for_constant_input(c_inp)
-    #         newop = t_op if newop is None else op(newop)
-    #     return c_inp, newop
+    def _simplify_for_constant_input_nontrivial(self, c_inp):
+        from ..multi_domain import MultiDomain
+        if not isinstance(self._domain, MultiDomain):
+            return None, self
+        newop = None
+        for op in reversed(self._ops):
+            c_inp, t_op = op.simplify_for_constant_input(c_inp)
+            newop = t_op if newop is None else op(newop)
+        return c_inp, newop
 
     def __repr__(self):
         subs = "\n".join(sub.__repr__() for sub in self._ops)
@@ -413,20 +412,19 @@ class _OpProd(Operator):
         jac = (makeOp(lin1._val)(lin2._jac))._myadd(makeOp(lin2._val)(lin1._jac), False)
         return lin1.new(lin1._val*lin2._val, jac)
 
-    # def _simplify_for_constant_input_nontrivial(self, c_inp):
-    #     from ..multi_domain import MultiDomain
-    #     from .simplify_for_const import ConstCollector
-
-    #     f1, o1 = self._op1.simplify_for_constant_input(
-    #         c_inp.extract_part(self._op1.domain))
-    #     f2, o2 = self._op2.simplify_for_constant_input(
-    #         c_inp.extract_part(self._op2.domain))
-    #     if not isinstance(self._target, MultiDomain):
-    #         return None, _OpProd(o1, o2)
-    #     cc = ConstCollector()
-    #     cc.mult(f1, o1.target)
-    #     cc.mult(f2, o2.target)
-    #     return cc.constfield, _OpProd(o1, o2)
+    def _simplify_for_constant_input_nontrivial(self, c_inp):
+        from ..multi_domain import MultiDomain
+        from .simplify_for_const import ConstCollector
+        f1, o1 = self._op1.simplify_for_constant_input(
+            c_inp.extract_part(self._op1.domain))
+        f2, o2 = self._op2.simplify_for_constant_input(
+            c_inp.extract_part(self._op2.domain))
+        if not isinstance(self._target, MultiDomain):
+            return None, _OpProd(o1, o2)
+        cc = ConstCollector()
+        cc.mult(f1, o1.target)
+        cc.mult(f2, o2.target)
+        return cc.constfield, _OpProd(o1, o2)
 
     def __repr__(self):
         subs = "\n".join(sub.__repr__() for sub in (self._op1, self._op2))
@@ -459,20 +457,19 @@ class _OpSum(Operator):
             res = res.add_metric(lin1._metric._myadd(lin2._metric, False))
         return res
 
-    # def _simplify_for_constant_input_nontrivial(self, c_inp):
-    #     from ..multi_domain import MultiDomain
-    #     from .simplify_for_const import ConstCollector
-
-    #     f1, o1 = self._op1.simplify_for_constant_input(
-    #         c_inp.extract_part(self._op1.domain))
-    #     f2, o2 = self._op2.simplify_for_constant_input(
-    #         c_inp.extract_part(self._op2.domain))
-    #     if not isinstance(self._target, MultiDomain):
-    #         return None, _OpSum(o1, o2)
-    #     cc = ConstCollector()
-    #     cc.add(f1, o1.target)
-    #     cc.add(f2, o2.target)
-    #     return cc.constfield, _OpSum(o1, o2)
+    def _simplify_for_constant_input_nontrivial(self, c_inp):
+        from ..multi_domain import MultiDomain
+        from .simplify_for_const import ConstCollector
+        f1, o1 = self._op1.simplify_for_constant_input(
+            c_inp.extract_part(self._op1.domain))
+        f2, o2 = self._op2.simplify_for_constant_input(
+            c_inp.extract_part(self._op2.domain))
+        if not isinstance(self._target, MultiDomain):
+            return None, _OpSum(o1, o2)
+        cc = ConstCollector()
+        cc.add(f1, o1.target)
+        cc.add(f2, o2.target)
+        return cc.constfield, _OpSum(o1, o2)
 
     def __repr__(self):
         subs = "\n".join(sub.__repr__() for sub in (self._op1, self._op2))

@@ -344,7 +344,8 @@ def _check_nontrivial_constant(op, loc, tol, ntries, only_r_differentiable,
 
         assert oplin.jac.target is oplin0.jac.target
         rndinp = from_random(oplin.jac.target)
-        assert_equal(oplin.jac.adjoint(rndinp).extract(varloc.domain), oplin0.jac.adjoint(rndinp))
+        assert_allclose(oplin.jac.adjoint(rndinp).extract(varloc.domain),
+                        oplin0.jac.adjoint(rndinp), 1e-13, 1e-13)
         foo = oplin.jac.adjoint(rndinp).extract(cstloc.domain)
         assert_equal(foo, 0*foo)
 
@@ -352,7 +353,8 @@ def _check_nontrivial_constant(op, loc, tol, ntries, only_r_differentiable,
             oplin.metric.draw_sample()
 
         assert op0.domain is varloc.domain
-        _jac_vs_finite_differences(op0, varloc, np.sqrt(tol), ntries, only_r_differentiable)
+        _jac_vs_finite_differences(op0, varloc, np.sqrt(tol), ntries,
+                                   only_r_differentiable)
 
 
 def _jac_vs_finite_differences(op, loc, tol, ntries, only_r_differentiable):
