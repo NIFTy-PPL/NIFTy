@@ -69,7 +69,7 @@ def test_kl(constants, point_estimates, mirror_samples, mode, mf):
             _, tmph = h.simplify_for_constant_input(mean0.extract_by_keys(constants))
         else:
             tmph = h
-        kl1 = ift.MetricGaussianKL(mean0, tmph, 2, mirror_samples, comm, locsamp, False, True)
+        kl1 = ift.MetricGaussianKL(mean0.extract(tmph.domain), tmph, 2, mirror_samples, comm, locsamp, False, True)
     elif mode == 1:
         kl0 = ift.MetricGaussianKL.make(**args)
         samples = kl0._local_samples
@@ -80,7 +80,7 @@ def test_kl(constants, point_estimates, mirror_samples, mode, mf):
             _, tmph = h.simplify_for_constant_input(mean0.extract_by_keys(constants))
         else:
             tmph = h
-        kl1 = ift.MetricGaussianKL(mean0, tmph, 2, mirror_samples, comm, locsamp, False, True)
+        kl1 = ift.MetricGaussianKL(mean0.extract(tmph.domain), tmph, 2, mirror_samples, comm, locsamp, False, True)
 
     # Test number of samples
     expected_nsamps = 2*nsamps if mirror_samples else nsamps
@@ -92,31 +92,9 @@ def test_kl(constants, point_estimates, mirror_samples, mode, mf):
 
     # Test gradient
     if mf:
-        for kk in h.domain.keys():
+        for kk in kl0.gradient.domain.keys():
             res0 = kl0.gradient[kk].val
-            if kk in constants:
-                res0 = 0*res0
             res1 = kl1.gradient[kk].val
             assert_equal(res0, res1)
     else:
         assert_equal(kl0.gradient.val, kl1.gradient.val)
-
-    # Test point_estimates (after drawing samples)
-    if mf:
-        for kk in point_estimates:
-            for ss in kl0.samples:
-                ss = ss[kk].val
-                assert_equal(ss, 0*ss)
-            for ss in kl1.samples:
-                ss = ss[kk].val
-                assert_equal(ss, 0*ss)
-
-    # Test constants (after some minimization)
-    if mf:
-        cg = ift.GradientNormController(iteration_limit=5)
-        minimizer = ift.NewtonCG(cg)
-        for e in [kl0, kl1]:
-            e, _ = minimizer(e)
-            diff = (mean0 - e.position).to_dict()
-            for kk in constants:
-                assert_equal(diff[kk].val, 0*diff[kk].val)

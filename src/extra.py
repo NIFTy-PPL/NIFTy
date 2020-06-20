@@ -26,6 +26,7 @@ from .field import Field
 from .linearization import Linearization
 from .multi_domain import MultiDomain
 from .multi_field import MultiField
+from .operators.energy_operators import EnergyOperator
 from .operators.linear_operator import LinearOperator
 from .operators.operator import Operator
 from .sugar import from_random
@@ -320,14 +321,13 @@ def _check_nontrivial_constant(op, loc, tol, ntries, only_r_differentiable,
         return  # FIXME ?
     keys = op.domain.keys()
     combis = []
-    for ll in range(0, len(keys)):
+    for ll in range(1, len(keys)):
         combis.extend(list(combinations(keys, ll)))
     if len(combis) > max_combinations:
         random.seed(42)
         combis = random.sample(combis, int(max_combinations))
     for cstkeys in combis:
         varkeys = set(keys) - set(cstkeys)
-        print(f'Constant: {set(cstkeys)}, Variable: {varkeys}')
         cstloc = loc.extract_by_keys(cstkeys)
         varloc = loc.extract_by_keys(varkeys)
 
@@ -348,13 +348,8 @@ def _check_nontrivial_constant(op, loc, tol, ntries, only_r_differentiable,
         foo = oplin.jac.adjoint(rndinp).extract(cstloc.domain)
         assert_equal(foo, 0*foo)
 
-        # FIXME
-        # if isinstance(op, EnergyOperator):
-        #     _allzero(oplin.gradient.extract(cstdom))
-        # if isinstance(op, EnergyOperator) and metric_sampling:
-        #     samp0 = oplin.metric.draw_sample()
-        #     _allzero(samp0.extract(cstdom))
-        #     _nozero(samp0.extract(vardom))
+        if isinstance(op, EnergyOperator) and metric_sampling:
+            oplin.metric.draw_sample()
 
         assert op0.domain is varloc.domain
         _jac_vs_finite_differences(op0, varloc, np.sqrt(tol), ntries, only_r_differentiable)
