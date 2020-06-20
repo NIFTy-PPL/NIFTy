@@ -27,7 +27,7 @@ from .linear_operator import LinearOperator
 from .operator import Operator
 from .sampling_enabler import SamplingDtypeSetter, SamplingEnabler
 from .scaling_operator import ScalingOperator
-from .simple_linear_operators import VdotOperator, FieldAdapter
+from .simple_linear_operators import VdotOperator
 
 
 def _check_sampling_dtype(domain, dtypes):
@@ -156,6 +156,10 @@ class VariableCovarianceGaussianEnergy(EnergyOperator):
         self._domain = MultiDomain.make({self._r: dom, self._icov: dom})
         self._sampling_dtype = sampling_dtype
         _check_sampling_dtype(self._domain, sampling_dtype)
+        if np.issubdtype(self._sampling_dtype, np.complexfloating):
+            raise NotImplementedError(
+                ('Complex sampling not implemented in NIFTy_6. ',
+                 'Switch to NIFTy_7 for this feature.'))
 
     def apply(self, x):
         self._check_input(x)
