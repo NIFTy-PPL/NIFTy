@@ -313,7 +313,8 @@ class Operator(metaclass=NiftyMeta):
 
     def _simplify_for_constant_input_nontrivial(self, c_inp):
         from .simplify_for_const import InsertionOperator
-        logger.warning('SlowPartialConstantOperator used.')
+        logger.warning('SlowPartialConstantOperator used for:')
+        logger.warning(self.__repr__())
         return None, self @ InsertionOperator(self.domain, c_inp)
 
     def ptw(self, op, *args, **kwargs):
