@@ -46,7 +46,6 @@ def testDistributor(dofdex, seed):
         ift.extra.check_linear_operator(op)
 
 
-@pytest.mark.skip()
 @pmp('sspace', [
     ift.RGSpace(4),
     ift.RGSpace((4, 4), (0.123, 0.4)),
@@ -110,4 +109,4 @@ def testAmplitudesInvariants(sspace, N):
 
     for ampl in fa.normalized_amplitudes:
         ift.extra.check_operator(ampl, ift.from_random(ampl.domain), ntries=10)
-    ift.extra.check_operator(op, ift.from_random(op.domain), ntries=10)
+    ift.extra.check_operator(op, ift.from_random(op.domain), ntries=10, max_combinations=3)

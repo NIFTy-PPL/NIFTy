@@ -18,6 +18,7 @@
 from .diagonal_operator import DiagonalOperator
 from .endomorphic_operator import EndomorphicOperator
 from .linear_operator import LinearOperator
+from .sampling_enabler import SamplingDtypeSetter
 from .scaling_operator import ScalingOperator
 
 
@@ -58,7 +59,7 @@ class SandwichOperator(EndomorphicOperator):
         if not isinstance(bun, LinearOperator):
             raise TypeError("bun must be a linear operator")
         if isinstance(bun, ScalingOperator):
-            return cheese.scale(bun._factor**2)
+            return cheese.scale(abs(bun._factor)**2)
         if cheese is not None and not isinstance(cheese, LinearOperator):
             raise TypeError("cheese must be a linear operator or None")
         if cheese is None:
