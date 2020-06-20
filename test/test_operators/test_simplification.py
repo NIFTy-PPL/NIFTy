@@ -22,12 +22,6 @@ from nifty7.operators.simplify_for_const import ConstantOperator
 
 
 def test_simplification():
-    # f1 = ift.Field.full(ift.RGSpace(10), 2.)
-    # op = ift.FFTOperator(f1.domain)
-    # _, op2 = op.simplify_for_constant_input(f1)
-    # assert_(isinstance(op2, ConstantOperator))
-    # assert_allclose(op(f1).val, op2.force(f1).val)
-
     dom = {"a": ift.RGSpace(10)}
     f1 = ift.full(dom, 2.)
     op = ift.FFTOperator(f1.domain["a"]).ducktape("a")
@@ -46,3 +40,4 @@ def test_simplification():
     _, op2 = op.simplify_for_constant_input(f2)
     assert_allclose(op(f1)["a"].val, op2.force(f1)["a"].val)
     assert_allclose(op(f1)["b"].val, op2.force(f1)["b"].val)
+    # FIXME Add test for ChainOperator._simplify_for_constant_input_nontrivial()
