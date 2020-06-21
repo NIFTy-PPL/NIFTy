@@ -15,12 +15,12 @@
 #
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
 
-import random
 from itertools import combinations
 
 import numpy as np
 from numpy.testing import assert_
 
+from . import random
 from .domain_tuple import DomainTuple
 from .field import Field
 from .linearization import Linearization
@@ -326,8 +326,8 @@ def _check_nontrivial_constant(op, loc, tol, ntries, only_r_differentiable,
     for ll in range(1, len(keys)):
         combis.extend(list(combinations(keys, ll)))
     if len(combis) > max_combinations:
-        random.seed(42)
-        combis = random.sample(combis, int(max_combinations))
+        combis = random.current_rng().choice(combis, int(max_combinations),
+                                             replace=False)
     for cstkeys in combis:
         varkeys = set(keys) - set(cstkeys)
         cstloc = loc.extract_by_keys(cstkeys)
