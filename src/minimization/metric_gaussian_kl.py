@@ -51,16 +51,21 @@ def _modify_sample_domain(sample, domain):
     """Takes only keys from sample which are also in domain and inserts zeros
     in sample if key is not in domain."""
     from ..multi_domain import MultiDomain
-    if not isinstance(sample, MultiField):
-        assert sample.domain is domain
+    from ..field import Field
+    from ..domain_tuple import DomainTuple
+    from ..sugar import makeDomain
+    domain = makeDomain(domain)
+    if isinstance(domain, DomainTuple) and isinstance(sample, Field):
+        if sample.domain is not domain:
+            raise TypeError
         return sample
-    assert isinstance(domain, MultiDomain)
-    if sample.domain is domain:
-        return sample
-    out = {kk: vv for kk, vv in sample.items() if kk in domain.keys()}
-    out = MultiField.from_dict(out, domain)
-    assert domain is out.domain
-    return out
+    elif isinstance(domain, MultiDomain) and isinstance(sample, MultiField):
+        if sample.domain is domain:
+            return sample
+        out = {kk: vv for kk, vv in sample.items() if kk in domain.keys()}
+        out = MultiField.from_dict(out, domain)
+        return out
+    raise TypeError
 
 
 class MetricGaussianKL(Energy):
