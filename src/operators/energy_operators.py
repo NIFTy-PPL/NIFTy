@@ -236,6 +236,13 @@ class GaussianEnergy(EnergyOperator):
     domain : Domain, DomainTuple, tuple of Domain or MultiDomain
         Operator domain. By default it is inferred from `mean` or
         `covariance` if specified
+    sampling_dtype : type
+        Here one can specify whether the distribution is a complex Gaussian or
+        not. Note that for a complex Gaussian the inverse_covariance is
+        .. math ::
+        (<ff^dagger>)^{-1}_P(f)/2,
+        where the additional factor of 2 is necessary because the 
+        domain of s has double as many dimensions as in the real case.
 
     Note
     ----
