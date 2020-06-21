@@ -47,7 +47,6 @@ def test_ScaledEnergy(field):
     res2 = met2(field)/0.3
     ift.extra.assert_allclose(res1, res2, 0, 1e-12)
     met1.draw_sample()
-    print(met2)
     met2.draw_sample()
 
 
