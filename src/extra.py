@@ -323,8 +323,14 @@ def _check_nontrivial_constant(op, loc, tol, ntries, only_r_differentiable,
         return
     keys = op.domain.keys()
     combis = []
-    for ll in range(1, len(keys)):
-        combis.extend(list(combinations(keys, ll)))
+    if len(keys) > 15:
+        from .logger import logger
+        logger.warning('Operator domain has more than 15 keys.')
+        logger.warning('Check derivatives only with one constant key at a time.')
+        combis = list(keys)
+    else:
+        for ll in range(1, len(keys)):
+            combis.extend(list(combinations(keys, ll)))
     if len(combis) > max_combinations:
         combis = random.current_rng().choice(combis, int(max_combinations),
                                              replace=False)
