@@ -214,3 +214,21 @@ def testValueInserter(sp, seed):
             else:
                 ind.append(int(ift.random.current_rng().integers(0, ss - 1)))
         _check_repr(ift.ValueInserter(sp, ind))
+
+
+@pmp('dom', _h_spaces + _p_spaces)
+def testGaussianEnergy(dom):
+    _check_repr(ift.GaussianEnergy(domain=dom))
+
+
+@pmp('dom', _h_spaces + _p_spaces)
+def testHamiltonian(dom):
+    lh = ift.GaussianEnergy(domain=dom)
+    _check_repr(ift.StandardHamiltonian(lh))
+
+
+@pmp('dom', _h_RG_spaces + _p_RG_spaces)
+def testSumOperator(dom):
+    op0 = ift.FFTOperator(dom)
+    op1 = op0.scale(2)
+    _check_repr(op0+op1)

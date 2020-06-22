@@ -85,41 +85,4 @@ def testgaussianenergy_compatibility(cplx):
     loc0 = ift.MultiField.from_dict({'resi': resi})
     loc1 = ift.MultiField.from_dict({'icov': ift.from_random(dom).exp()})
     loc = loc0.unite(loc1)
-    val0 = e(loc).val
-
-    _, e0 = e.simplify_for_constant_input(loc0)
-    val1 = e0(loc).val
-    val2 = e0(loc.unite(loc0)).val
-    np.testing.assert_equal(val1, val2)
-    np.testing.assert_equal(val0, val1)
-
-    _, e1 = e.simplify_for_constant_input(loc1)
-    val1 = e1(loc).val
-    val2 = e1(loc.unite(loc1)).val
-    np.testing.assert_equal(val0, val1)
-    np.testing.assert_equal(val1, val2)
-
-    ift.extra.check_operator(e, loc, ntries=ntries)
-    ift.extra.check_operator(e0, loc, ntries=ntries, tol=1e-7)
-    ift.extra.check_operator(e1, loc, ntries=ntries)
-
-    # Test jacobian is zero
-    lin = ift.Linearization.make_var(loc, want_metric=True)
-    grad = e(lin).gradient.val
-    grad0 = e0(lin).gradient.val
-    grad1 = e1(lin).gradient.val
-    samp = e(lin).metric.draw_sample().val
-    samp0 = e0(lin).metric.draw_sample().val
-    samp1 = e1(lin).metric.draw_sample().val
-    np.testing.assert_equal(samp0['resi'], 0.)
-    np.testing.assert_equal(samp1['icov'], 0.)
-    np.testing.assert_equal(grad0['resi'], 0.)
-    np.testing.assert_equal(grad1['icov'], 0.)
-    np.testing.assert_(all(samp['resi'] != 0))
-    np.testing.assert_(all(samp['icov'] != 0))
-    np.testing.assert_(all(samp0['icov'] != 0))
-    np.testing.assert_(all(samp1['resi'] != 0))
-    np.testing.assert_(all(grad['resi'] != 0))
-    np.testing.assert_(all(grad['icov'] != 0))
-    np.testing.assert_(all(grad0['icov'] != 0))
-    np.testing.assert_(all(grad1['resi'] != 0))
+    ift.extra.check_operator(e, loc, ntries=20)

@@ -190,9 +190,8 @@ class VariableCovarianceGaussianEnergy(EnergyOperator):
             trlog = cst.log().sum().val_rw()
             if not _iscomplex(dt):
                 trlog /= 2
-            res = res + ConstantEnergyOperator(res.domain, -trlog)
-        res = res + ConstantEnergyOperator(self._domain, 0.)
-        assert res.domain is self.domain
+            res = res + ConstantEnergyOperator(-trlog)
+        res = res + ConstantEnergyOperator(0.)
         assert res.target is self.target
         return None, res
 
@@ -491,11 +490,9 @@ class StandardHamiltonian(EnergyOperator):
     `<https://arxiv.org/abs/1812.04403>`_
     """
 
-    def __init__(self, lh, ic_samp=None, _c_inp=None, prior_dtype=np.float64):
+    def __init__(self, lh, ic_samp=None, prior_dtype=np.float64):
         self._lh = lh
         self._prior = GaussianEnergy(domain=lh.domain, sampling_dtype=prior_dtype)
-        if _c_inp is not None:
-            _, self._prior = self._prior.simplify_for_constant_input(_c_inp)
         self._ic_samp = ic_samp
         self._domain = lh.domain
 
@@ -513,7 +510,7 @@ class StandardHamiltonian(EnergyOperator):
 
     def _simplify_for_constant_input_nontrivial(self, c_inp):
         out, lh1 = self._lh.simplify_for_constant_input(c_inp)
-        return out, StandardHamiltonian(lh1, self._ic_samp, _c_inp=c_inp)
+        return out, StandardHamiltonian(lh1, self._ic_samp)
 
 
 class AveragedEnergy(EnergyOperator):

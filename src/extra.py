@@ -20,6 +20,7 @@ from itertools import combinations
 import numpy as np
 from numpy.testing import assert_
 
+from . import random
 from .domain_tuple import DomainTuple
 from .field import Field
 from .linearization import Linearization
@@ -28,7 +29,7 @@ from .multi_field import MultiField
 from .operators.energy_operators import EnergyOperator
 from .operators.linear_operator import LinearOperator
 from .operators.operator import Operator
-from .sugar import from_random, makeDomain
+from .sugar import from_random
 
 __all__ = ["check_linear_operator", "check_operator",
            "assert_allclose"]
@@ -117,7 +118,8 @@ def check_operator(op, loc, tol=1e-12, ntries=100, perf_check=True,
     _domain_check_nonlinear(op, loc)
     _performance_check(op, loc, bool(perf_check))
     _linearization_value_consistency(op, loc)
-    _jac_vs_finite_differences(op, loc, np.sqrt(tol), ntries, only_r_differentiable)
+    _jac_vs_finite_differences(op, loc, np.sqrt(tol), ntries,
+                               only_r_differentiable)
     _check_nontrivial_constant(op, loc, tol, ntries, only_r_differentiable,
                                metric_sampling)
 
@@ -313,43 +315,46 @@ def _linearization_value_consistency(op, loc):
 
 def _check_nontrivial_constant(op, loc, tol, ntries, only_r_differentiable,
                                metric_sampling):
-    return  # FIXME
-    # Assumes that the operator is not constant
     if isinstance(op.domain, DomainTuple):
         return
     keys = op.domain.keys()
-    for ll in range(0, len(keys)):
-        for cstkeys in combinations(keys, ll):
-            cstdom, vardom = {}, {}
-            for kk, dd in op.domain.items():
-                if kk in cstkeys:
-                    cstdom[kk] = dd
-                else:
-                    vardom[kk] = dd
-            cstdom, vardom = makeDomain(cstdom), makeDomain(vardom)
-            cstloc = loc.extract(cstdom)
+    combis = []
+    if len(keys) > 4:
+        from .logger import logger
+        logger.warning('Operator domain has more than 4 keys.')
+        logger.warning('Check derivatives only with one constant key at a time.')
+        combis = [[kk] for kk in keys]
+    else:
+        for ll in range(1, len(keys)):
+            combis.extend(list(combinations(keys, ll)))
+    for cstkeys in combis:
+        varkeys = set(keys) - set(cstkeys)
+        cstloc = loc.extract_by_keys(cstkeys)
+        varloc = loc.extract_by_keys(varkeys)
 
-            val0 = op(loc)
-            _, op0 = op.simplify_for_constant_input(cstloc)
-            val1 = op0(loc)
-            # MR FIXME: This tests something we don't promise!
-#            val2 = op0(loc.unite(cstloc))
-#            assert_equal(val1, val2)
-            assert_equal(val0, val1)
+        val0 = op(loc)
+        _, op0 = op.simplify_for_constant_input(cstloc)
+        assert op0.domain is varloc.domain
+        val1 = op0(varloc)
+        assert_equal(val0, val1)
 
-            lin = Linearization.make_var(loc, want_metric=True)
-            oplin = op0(lin)
-            if isinstance(op, EnergyOperator):
-                _allzero(oplin.gradient.extract(cstdom))
-            # MR FIXME: This tests something we don't promise!
-#            _allzero(oplin.jac(from_random(cstdom).unite(full(vardom, 0))))
+        lin = Linearization.make_partial_var(loc, cstkeys, want_metric=True)
+        lin0 = Linearization.make_var(varloc, want_metric=True)
+        oplin0 = op0(lin0)
+        oplin = op(lin)
 
-            if isinstance(op, EnergyOperator) and metric_sampling:
-                samp0 = oplin.metric.draw_sample()
-                _allzero(samp0.extract(cstdom))
-                _nozero(samp0.extract(vardom))
+        assert oplin.jac.target is oplin0.jac.target
+        rndinp = from_random(oplin.jac.target)
+        assert_allclose(oplin.jac.adjoint(rndinp).extract(varloc.domain),
+                        oplin0.jac.adjoint(rndinp), 1e-13, 1e-13)
+        foo = oplin.jac.adjoint(rndinp).extract(cstloc.domain)
+        assert_equal(foo, 0*foo)
 
-            _jac_vs_finite_differences(op0, loc, np.sqrt(tol), ntries, only_r_differentiable)
+        if isinstance(op, EnergyOperator) and metric_sampling:
+            oplin.metric.draw_sample()
+
+        # _jac_vs_finite_differences(op0, varloc, np.sqrt(tol), ntries,
+        #                            only_r_differentiable)
 
 
 def _jac_vs_finite_differences(op, loc, tol, ntries, only_r_differentiable):
@@ -379,4 +384,5 @@ def _jac_vs_finite_differences(op, loc, tol, ntries, only_r_differentiable):
         loc = locnext
         check_linear_operator(linmid.jac, domain_dtype=loc.dtype,
                               target_dtype=dirder.dtype,
-                              only_r_linear=only_r_differentiable)
+                              only_r_linear=only_r_differentiable,
+                              atol=tol**2, rtol=tol**2)

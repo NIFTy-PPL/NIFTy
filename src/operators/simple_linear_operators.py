@@ -334,9 +334,9 @@ class NullOperator(LinearOperator):
     @staticmethod
     def _nullfield(dom):
         if isinstance(dom, DomainTuple):
-            return Field(dom, 0)
+            return Field(dom, 0.)
         else:
-            return MultiField.full(dom, 0)
+            return MultiField.full(dom, 0.)
 
     def apply(self, x, mode):
         self._check_input(x, mode)
