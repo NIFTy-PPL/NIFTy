@@ -318,7 +318,7 @@ class _Amplitude(Operator):
 
 
 class CorrelatedFieldMaker:
-    """Constrution helper for hirarchical correlated field models.
+    """Construction helper for hierarchical correlated field models.
 
     The correlated field models are parametrized by creating
     power spectrum operators ("amplitudes") via calls to
@@ -388,7 +388,7 @@ class CorrelatedFieldMaker:
             An integer array specifying the zero mode models used if
             total_N > 1. It needs to have length of total_N. If total_N=3 and
             dofdex=[0,0,1], that means that two models for the zero mode are
-            instanciated; the first one is used for the first and second
+            instantiated; the first one is used for the first and second
             field model and the second is used for the third field model.
             *If not specified*, use the same zero mode model for all
             constructed field models.
@@ -429,7 +429,7 @@ class CorrelatedFieldMaker:
         It is assembled as the sum of a power law component
         (linear slope in log-log power-frequency-space),
         a smooth varying component (integrated wiener process) and
-        a ragged componenent (unintegrated wiener process).
+        a ragged component (un-integrated wiener process).
 
         Multiple calls to `add_fluctuations` are possible, in which case
         the constructed field will have the outer product of the individual
@@ -459,7 +459,7 @@ class CorrelatedFieldMaker:
             An integer array specifying the power spectrum models used if
             total_N > 1. It needs to have length of total_N. If total_N=3 and
             dofdex=[0,0,1], that means that two power spectrum models are
-            instanciated; the first one is used for the first and second
+            instantiated; the first one is used for the first and second
             field model and the second one is used for the third field model.
             *If not given*, use the same power spectrum model for all
             constructed field models.
