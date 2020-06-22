@@ -49,7 +49,7 @@ def _get_lo_hi(comm, n_samples):
 
 def _modify_sample_domain(sample, domain):
     """Takes only keys from sample which are also in domain and inserts zeros
-    in sample if key is not in domain."""
+    for keys which are not in sample.domain."""
     from ..multi_domain import MultiDomain
     from ..field import Field
     from ..domain_tuple import DomainTuple
