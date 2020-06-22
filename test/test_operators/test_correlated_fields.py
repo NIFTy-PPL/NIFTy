@@ -108,7 +108,5 @@ def testAmplitudesInvariants(sspace, N):
     assert_(op.target[-1] == fsspace)
 
     for ampl in fa.normalized_amplitudes:
-        ift.extra.check_operator(ampl, 0.1*ift.from_random(ampl.domain),
-                                 ntries=10, max_combinations=3)
-    ift.extra.check_operator(op, 0.1*ift.from_random(op.domain),
-                             ntries=10, max_combinations=5)
+        ift.extra.check_operator(ampl, 0.1*ift.from_random(ampl.domain), ntries=10)
+    ift.extra.check_operator(op, 0.1*ift.from_random(op.domain), ntries=10)
