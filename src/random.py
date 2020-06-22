@@ -77,10 +77,18 @@ objects, generate new ones via :func:`spawn_sseq()`.
 
 import numpy as np
 
+
+# fix for numpy issue #16539
+def _fix_seed(seed):
+    if isinstance(seed, int):
+        return (seed, 0, 0, 0)
+    raise TypeError("random seed should have integer type")
+
+
 # Stack of SeedSequence objects. Will always start out with a well-defined
 # default. Users can change the "random seed" used by a calculation by pushing
 # a different SeedSequence before invoking any other nifty7.random calls
-_sseq = [np.random.SeedSequence(42)]
+_sseq = [np.random.SeedSequence(_fix_seed(42))]
 # Stack of random number generators associated with _sseq.
 _rng = [np.random.default_rng(_sseq[-1])]
 
@@ -196,7 +204,7 @@ def push_sseq_from_seed(seed):
     In all other situations, it is highly recommended to use the
     :class:`Context` class for managing the RNG state.
     """
-    _sseq.append(np.random.SeedSequence(seed))
+    _sseq.append(np.random.SeedSequence(_fix_seed(seed)))
     _rng.append(np.random.default_rng(_sseq[-1]))
 
 
@@ -230,8 +238,8 @@ class Random(object):
             raise TypeError("mean must not be complex for a real result field")
         if np.issubdtype(dtype, np.complexfloating):
             x = np.empty(shape, dtype=dtype)
-            x.real = _rng[-1].normal(mean.real, std*np.sqrt(0.5), shape)
-            x.imag = _rng[-1].normal(mean.imag, std*np.sqrt(0.5), shape)
+            x.real = _rng[-1].normal(mean.real, std, shape)
+            x.imag = _rng[-1].normal(mean.imag, std, shape)
         else:
             x = _rng[-1].normal(mean, std, shape).astype(dtype, copy=False)
         return x
@@ -276,7 +284,7 @@ class Context(object):
 
     def __init__(self, inp):
         if not isinstance(inp, np.random.SeedSequence):
-            inp = np.random.SeedSequence(inp)
+            inp = np.random.SeedSequence(_fix_seed(inp))
         self._sseq = inp
 
     def __enter__(self):

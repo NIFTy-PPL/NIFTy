@@ -102,10 +102,8 @@ class SliceOperator(LinearOperator):
         return Field.from_raw(self.domain, res)
 
     def __str__(self):
-        ss = (
-            f"{self.__class__.__name__}"
-            f"({self.domain.shape} -> {self.target.shape})"
-        )
+        ss = (f"{self.__class__.__name__}"
+              f"({self.domain.shape} -> {self.target.shape})")
         return ss
 
 

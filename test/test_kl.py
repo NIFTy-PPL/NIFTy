@@ -11,10 +11,11 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
-# Copyright(C) 2013-2019 Max-Planck-Society
+# Copyright(C) 2013-2020 Max-Planck-Society
 #
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
 
+import numpy as np
 import pytest
 from numpy.testing import assert_, assert_allclose, assert_raises
 
@@ -36,7 +37,6 @@ def test_kl(constants, point_estimates, mirror_samples, mf):
     op = ift.HarmonicSmoothingOperator(dom, 3)
     if mf:
         op = ift.ducktape(dom, None, 'a')*(op.ducktape('b'))
-    import numpy as np
     lh = ift.GaussianEnergy(domain=op.target, sampling_dtype=np.float64) @ op
     ic = ift.GradientNormController(iteration_limit=5)
     ic.enable_logging()
@@ -52,9 +52,9 @@ def test_kl(constants, point_estimates, mirror_samples, mf):
             'hamiltonian': h}
     if isinstance(mean0, ift.MultiField) and set(point_estimates) == set(mean0.keys()):
         with assert_raises(RuntimeError):
-            ift.MetricGaussianKL(**args)
+            ift.MetricGaussianKL.make(**args)
         return
-    kl = ift.MetricGaussianKL(**args)
+    kl = ift.MetricGaussianKL.make(**args)
     assert_(len(ic.history) > 0)
     assert_(len(ic.history) == len(ic.history.time_stamps))
     assert_(len(ic.history) == len(ic.history.energy_values))
@@ -64,13 +64,13 @@ def test_kl(constants, point_estimates, mirror_samples, mf):
     assert_(len(ic.history) == len(ic.history.energy_values))
 
     locsamp = kl._local_samples
-    klpure = ift.MetricGaussianKL(mean0,
-                                  h,
-                                  nsamps,
-                                  mirror_samples=mirror_samples,
-                                  constants=constants,
-                                  point_estimates=point_estimates,
-                                  _local_samples=locsamp)
+    if isinstance(mean0, ift.MultiField):
+        _, tmph = h.simplify_for_constant_input(mean0.extract_by_keys(constants))
+        tmpmean = mean0.extract(tmph.domain)
+    else:
+        tmph = h
+        tmpmean = mean0
+    klpure = ift.MetricGaussianKL(tmpmean, tmph, nsamps, mirror_samples, None, locsamp, False, True)
 
     # Test number of samples
     expected_nsamps = 2*nsamps if mirror_samples else nsamps
@@ -84,25 +84,10 @@ def test_kl(constants, point_estimates, mirror_samples, mf):
         ift.extra.assert_allclose(kl.gradient, klpure.gradient, 0, 1e-14)
         return
 
-    for kk in h.domain.keys():
-        res0 = klpure.gradient[kk].val
-        if kk in constants:
-            res0 = 0*res0
+    for kk in kl.position.domain.keys():
         res1 = kl.gradient[kk].val
+        if kk in constants:
+            res0 = 0*res1
+        else:
+            res0 = klpure.gradient[kk].val
         assert_allclose(res0, res1)
-
-    # Test point_estimates (after drawing samples)
-    for kk in point_estimates:
-        for ss in kl.samples:
-            ss = ss[kk].val
-            assert_allclose(ss, 0*ss)
-
-    # Test constants (after some minimization)
-    cg = ift.GradientNormController(iteration_limit=5)
-    minimizer = ift.NewtonCG(cg, enable_logging=True)
-    kl, _ = minimizer(kl)
-    if len(constants) != 2:
-        assert_(len(minimizer.inversion_history) > 0)
-    diff = (mean0 - kl.position).to_dict()
-    for kk in constants:
-        assert_allclose(diff[kk].val, 0*diff[kk].val)

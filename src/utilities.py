@@ -24,7 +24,8 @@ import numpy as np
 __all__ = ["get_slice_list", "safe_cast", "parse_spaces", "infer_space",
            "memo", "NiftyMeta", "my_sum", "my_lincomb_simple",
            "my_lincomb", "indent",
-           "my_product", "frozendict", "special_add_at", "iscomplextype"]
+           "my_product", "frozendict", "special_add_at", "iscomplextype",
+           "value_reshaper", "lognormal_moments"]
 
 
 def my_sum(iterable):
@@ -277,6 +278,16 @@ def shareRange(nwork, nshares, myshare):
     return lo, hi
 
 
+
+def get_MPI_params_from_comm(comm):
+    if comm is None:
+        return 1, 0, True
+    size = comm.Get_size()
+    rank = comm.Get_rank()
+    return size, rank, rank == 0
+
+
+
 def get_MPI_params():
     """Returns basic information about the MPI setup of the running script.
 
@@ -366,3 +377,31 @@ def allreduce_sum(obj, comm):
     if comm is None:
         return vals[0]
     return comm.bcast(vals[0], root=who[0])
+
+
+def value_reshaper(x, N):
+    """Produce arrays of shape `(N,)`.
+    If `x` is a scalar or array of length one, fill the target array with it.
+    If `x` is an array, check if it has the right shape."""
+    x = np.asfarray(x)
+    if x.shape in [(), (1, )]:
+        return np.full(N, x) if N != 0 else x.reshape(())
+    elif x.shape == (N, ):
+        return x
+    raise TypeError("x and N are incompatible")
+
+
+def lognormal_moments(mean, sigma, N=0):
+    """Calculates the parameters for a normal distribution `n(x)`
+    such that `exp(n)(x)` has the mean and standard deviation given.
+
+    Used in :func:`~nifty7.normal_operators.LognormalTransform`."""
+    mean, sigma = (value_reshaper(param, N) for param in (mean, sigma))
+    if not np.all(mean > 0):
+        raise ValueError("mean must be greater 0; got {!r}".format(mean))
+    if not np.all(sigma > 0):
+        raise ValueError("sig must be greater 0; got {!r}".format(sigma))
+
+    logsigma = np.sqrt(np.log1p((sigma / mean)**2))
+    logmean = np.log(mean) - logsigma**2 / 2
+    return logmean, logsigma

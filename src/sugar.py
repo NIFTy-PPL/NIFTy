@@ -266,6 +266,8 @@ def from_random(domain, random_type='normal', dtype=np.float64, **kwargs):
             The random distribution to use.
     dtype : type
         data type of the output field (e.g. numpy.float64)
+        If the datatype is complex, each real an imaginary part have
+        variance 1.
     **kwargs : additional parameters for the random distribution
         ('mean' and 'std' for 'normal', 'low' and 'high' for 'uniform')
 
@@ -520,7 +522,7 @@ def calculate_position(operator, output):
     minimizer = NewtonCG(GradientNormController(iteration_limit=10, name='findpos'))
     for ii in range(3):
         logger.info(f'Start iteration {ii+1}/3')
-        kl = MetricGaussianKL(pos, H, 3, mirror_samples=True)
+        kl = MetricGaussianKL.make(pos, H, 3, mirror_samples=True)
         kl, _ = minimizer(kl)
         pos = kl.position
     return pos
