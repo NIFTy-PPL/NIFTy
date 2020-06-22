@@ -209,13 +209,13 @@ class _Amplitude(Operator):
                  loglogavgslope, azm, totvol, key, dofdex):
         """
         fluctuations > 0
-        flexibility > 0
-        asperity > 0
+        flexibility > 0 or None
+        asperity > 0 or None
         loglogavgslope probably negative
         """
         assert isinstance(fluctuations, Operator)
-        assert isinstance(flexibility, Operator)
-        assert isinstance(asperity, Operator)
+        assert isinstance(flexibility, Operator) or flexibility is None
+        assert isinstance(asperity, Operator) or asperity is None
         assert isinstance(loglogavgslope, Operator)
 
         if len(dofdex) > 0:
@@ -268,15 +268,32 @@ class _Amplitude(Operator):
         # End prepare constant fields
 
         slope = vslope @ ps_expander @ loglogavgslope
-        sig_flex = vflex @ expander @ flexibility
-        sig_asp = vasp @ expander @ asperity
+        sig_flex = vflex @ expander @ flexibility if flexibility is not None else None
+        sig_asp = vasp @ expander @ asperity if asperity is not None else None
         sig_fluc = vol1 @ ps_expander @ fluctuations
         sig_fluc = vol1 @ ps_expander @ fluctuations
 
-        xi = ducktape(dom, None, key)
-        sigma = sig_flex*(Adder(shift) @ sig_asp).ptw("sqrt")
-        smooth = _SlopeRemover(target, space) @ twolog @ (sigma*xi)
-        op = _Normalization(target, space) @ (slope + smooth)
+        if sig_asp is None and sig_flex is None:
+            op = _Normalization(target, space) @ slope
+        elif sig_flex is None:
+            xi = ducktape(dom, None, key)
+            # TODO: this is wrong; but I know how to correct it as
+            # `sigma = sig_flex * ([...] @ sig_asp)` should always be zero
+            # for a `sig_flex` of zero
+            sigma = (Adder(shift) @ sig_asp).ptw("sqrt")
+            smooth = _SlopeRemover(target, space) @ twolog @ (sigma * xi)
+            op = _Normalization(target, space) @ (slope + smooth)
+        elif sig_asp is None:
+            xi = ducktape(dom, None, key)
+            sigma = DiagonalOperator(shift.ptw("sqrt"), dom, space) @ sig_flex
+            smooth = _SlopeRemover(target, space) @ twolog @ (sigma * xi)
+            op = _Normalization(target, space) @ (slope + smooth)
+        else:
+            xi = ducktape(dom, None, key)
+            sigma = sig_flex * (Adder(shift) @ sig_asp).ptw("sqrt")
+            smooth = _SlopeRemover(target, space) @ twolog @ (sigma * xi)
+            op = _Normalization(target, space) @ (slope + smooth)
+
         if N_copies > 0:
             op = Distributor @ op
             sig_fluc = Distributor @ sig_fluc
@@ -426,11 +443,11 @@ class CorrelatedFieldMaker:
             in this call should hold.
         fluctuations_{mean,stddev} : float
             Total spectral energy -> Amplitude of the fluctuations
-        flexibility_{mean,stddev} : float
+        flexibility_{mean,stddev} : float or None
             Amplitude of the non-power-law power spectrum component
-        asperity_{mean,stddev} : float
+        asperity_{mean,stddev} : float or None
             Roughness of the non-power-law power spectrum component
-            Used to accomodate single frequency peaks
+            Used to accommodate single frequency peaks
         loglogavgslope_{mean,stddev} : float
             Power law component exponent
         prefix : string
@@ -470,18 +487,22 @@ class CorrelatedFieldMaker:
         prefix = str(prefix)
         # assert isinstance(target_subdomain[space], (RGSpace, HPSpace, GLSpace)
 
-        ve = "{0}_mean and {0}_stddev must be strictly positive"
+        ve = "{0}_mean and {0}_stddev must be strictly positive (or both None)"
         if fluctuations_mean > 0. and fluctuations_stddev > 0.:
             fluct = LognormalTransform(fluctuations_mean, fluctuations_stddev,
                                        self._prefix + prefix + 'fluctuations', N)
         else:
             raise ValueError(ve.format("fluctuations"))
-        if flexibility_mean > 0. and flexibility_stddev > 0.:
+        if flexibility_mean is None and flexibility_stddev is None:
+            flex = None
+        elif flexibility_mean > 0. and flexibility_stddev > 0.:
             flex = LognormalTransform(flexibility_mean, flexibility_stddev,
                                       self._prefix + prefix + 'flexibility', N)
         else:
             raise ValueError(ve.format("flexibility"))
-        if asperity_mean > 0. and asperity_stddev > 0.:
+        if asperity_mean is None and asperity_stddev is None:
+            asp = None
+        elif asperity_mean > 0. and asperity_stddev > 0.:
             asp = LognormalTransform(asperity_mean, asperity_stddev,
                                      self._prefix + prefix + 'asperity', N)
         else:
