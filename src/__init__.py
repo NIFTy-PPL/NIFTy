@@ -52,6 +52,7 @@ from .operators.energy_operators import (
     BernoulliEnergy, StandardHamiltonian, AveragedEnergy, QuadraticFormOperator,
     Squared2NormOperator, StudentTEnergy, VariableCovarianceGaussianEnergy)
 from .operators.convolution_operators import FuncConvolutionOperator
+from .operators.normal_operators import NormalTransform, LognormalTransform
 
 from .probing import probe_with_posterior_samples, probe_diagonal, \
     StatCalculator, approximation2endo

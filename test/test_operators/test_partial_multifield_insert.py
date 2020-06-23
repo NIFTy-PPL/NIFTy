@@ -39,7 +39,7 @@ def test_part_mf_insert():
     b = op4 + op5
     op = a.partial_insert(b)
     fld = ift.from_random(op.domain, 'normal')
-    ift.extra.check_jacobian_consistency(op, fld, ntries=ntries)
+    ift.extra.check_operator(op, fld, ntries=ntries)
     assert_(op.domain is ift.MultiDomain.union(
         [op1.domain, op2.domain, op4.domain, op5.domain]))
     assert_(op.target is ift.MultiDomain.union(

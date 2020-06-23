@@ -15,19 +15,113 @@
 #
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
 
+from itertools import combinations
+
 import numpy as np
 from numpy.testing import assert_
 
+from . import random
 from .domain_tuple import DomainTuple
 from .field import Field
 from .linearization import Linearization
 from .multi_domain import MultiDomain
 from .multi_field import MultiField
+from .operators.energy_operators import EnergyOperator
 from .operators.linear_operator import LinearOperator
+from .operators.operator import Operator
 from .sugar import from_random
 
-__all__ = ["consistency_check", "check_jacobian_consistency",
+__all__ = ["check_linear_operator", "check_operator",
            "assert_allclose"]
+
+
+def check_linear_operator(op, domain_dtype=np.float64, target_dtype=np.float64,
+                          atol=1e-12, rtol=1e-12, only_r_linear=False):
+    """
+    Checks an operator for algebraic consistency of its capabilities.
+
+    Checks whether times(), adjoint_times(), inverse_times() and
+    adjoint_inverse_times() (if in capability list) is implemented
+    consistently. Additionally, it checks whether the operator is linear.
+
+    Parameters
+    ----------
+    op : LinearOperator
+        Operator which shall be checked.
+    domain_dtype : dtype
+        The data type of the random vectors in the operator's domain. Default
+        is `np.float64`.
+    target_dtype : dtype
+        The data type of the random vectors in the operator's target. Default
+        is `np.float64`.
+    atol : float
+        Absolute tolerance for the check. If rtol is specified,
+        then satisfying any tolerance will let the check pass.
+        Default: 0.
+    rtol : float
+        Relative tolerance for the check. If atol is specified,
+        then satisfying any tolerance will let the check pass.
+        Default: 0.
+    only_r_linear: bool
+        set to True if the operator is only R-linear, not C-linear.
+        This will relax the adjointness test accordingly.
+    """
+    if not isinstance(op, LinearOperator):
+        raise TypeError('This test tests only linear operators.')
+    _domain_check_linear(op, domain_dtype)
+    _domain_check_linear(op.adjoint, target_dtype)
+    _domain_check_linear(op.inverse, target_dtype)
+    _domain_check_linear(op.adjoint.inverse, domain_dtype)
+    _check_linearity(op, domain_dtype, atol, rtol)
+    _check_linearity(op.adjoint, target_dtype, atol, rtol)
+    _check_linearity(op.inverse, target_dtype, atol, rtol)
+    _check_linearity(op.adjoint.inverse, domain_dtype, atol, rtol)
+    _full_implementation(op, domain_dtype, target_dtype, atol, rtol,
+                         only_r_linear)
+    _full_implementation(op.adjoint, target_dtype, domain_dtype, atol, rtol,
+                         only_r_linear)
+    _full_implementation(op.inverse, target_dtype, domain_dtype, atol, rtol,
+                         only_r_linear)
+    _full_implementation(op.adjoint.inverse, domain_dtype, target_dtype, atol,
+                         rtol, only_r_linear)
+
+
+def check_operator(op, loc, tol=1e-12, ntries=100, perf_check=True,
+                   only_r_differentiable=True, metric_sampling=True):
+    """
+    Performs various checks of the implementation of linear and nonlinear
+    operators.
+
+    Computes the Jacobian with finite differences and compares it to the
+    implemented Jacobian.
+
+    Parameters
+    ----------
+    op : Operator
+        Operator which shall be checked.
+    loc : Field or MultiField
+        An Field or MultiField instance which has the same domain
+        as op. The location at which the gradient is checked
+    tol : float
+        Tolerance for the check.
+    perf_check : Boolean
+        Do performance check. May be disabled for very unimportant operators.
+    only_r_differentiable : Boolean
+        Jacobians of C-differentiable operators need to be C-linear.
+        Default: True
+    metric_sampling: Boolean
+        If op is an EnergyOperator, metric_sampling determines whether the
+        test shall try to sample from the metric or not.
+    """
+    if not isinstance(op, Operator):
+        raise TypeError('This test tests only linear operators.')
+    _domain_check_nonlinear(op, loc)
+    _performance_check(op, loc, bool(perf_check))
+    _linearization_value_consistency(op, loc)
+    _jac_vs_finite_differences(op, loc, np.sqrt(tol), ntries,
+                               only_r_differentiable)
+    _check_nontrivial_constant(op, loc, tol, ntries, only_r_differentiable,
+                               metric_sampling)
 
 
 def assert_allclose(f1, f2, atol, rtol):
@@ -35,6 +129,27 @@ def assert_allclose(f1, f2, atol, rtol):
         return np.testing.assert_allclose(f1.val, f2.val, atol=atol, rtol=rtol)
     for key, val in f1.items():
         assert_allclose(val, f2[key], atol=atol, rtol=rtol)
+
+
+def assert_equal(f1, f2):
+    if isinstance(f1, Field):
+        return np.testing.assert_equal(f1.val, f2.val)
+    for key, val in f1.items():
+        assert_equal(val, f2[key])
+
+
+def _nozero(fld):
+    if isinstance(fld, Field):
+        return np.testing.assert_((fld != 0).s_all())
+    for val in fld.values():
+        _nozero(val)
+
+
+def _allzero(fld):
+    if isinstance(fld, Field):
+        return np.testing.assert_((fld == 0.).s_all())
+    for val in fld.values():
+        _allzero(val)
 
 
 def _adjoint_implementation(op, domain_dtype, target_dtype, atol, rtol,
@@ -83,7 +198,8 @@ def _check_linearity(op, domain_dtype, atol, rtol):
     assert_allclose(val1, val2, atol=atol, rtol=rtol)
 
 
-def _actual_domain_check_linear(op, domain_dtype=None, inp=None):
+def _domain_check_linear(op, domain_dtype=None, inp=None):
+    _domain_check(op)
     needed_cap = op.TIMES
     if (op.capability & needed_cap) != needed_cap:
         return
@@ -95,8 +211,9 @@ def _actual_domain_check_linear(op, domain_dtype=None, inp=None):
     assert_(op(inp).domain is op.target)
 
 
-def _actual_domain_check_nonlinear(op, loc):
-    assert isinstance(loc, (Field, MultiField))
+def _domain_check_nonlinear(op, loc):
+    _domain_check(op)
+    assert_(isinstance(loc, (Field, MultiField)))
     assert_(loc.domain is op.domain)
     for wm in [False, True]:
         lin = Linearization.make_var(loc, wm)
@@ -111,8 +228,8 @@ def _actual_domain_check_nonlinear(op, loc):
         assert_(reslin.jac.domain is reslin.domain)
         assert_(reslin.jac.target is reslin.target)
         assert_(lin.want_metric == reslin.want_metric)
-        _actual_domain_check_linear(reslin.jac, inp=loc)
-        _actual_domain_check_linear(reslin.jac.adjoint, inp=reslin.jac(loc))
+        _domain_check_linear(reslin.jac, inp=loc)
+        _domain_check_linear(reslin.jac.adjoint, inp=reslin.jac(loc))
         if reslin.metric is not None:
             assert_(reslin.metric.domain is reslin.metric.target)
             assert_(reslin.metric.domain is op.domain)
@@ -164,58 +281,6 @@ def _performance_check(op, pos, raise_on_fail):
                 raise RuntimeError(s)
 
 
-def consistency_check(op, domain_dtype=np.float64, target_dtype=np.float64,
-                      atol=0, rtol=1e-7, only_r_linear=False):
-    """
-    Checks an operator for algebraic consistency of its capabilities.
-
-    Checks whether times(), adjoint_times(), inverse_times() and
-    adjoint_inverse_times() (if in capability list) is implemented
-    consistently. Additionally, it checks whether the operator is linear.
-
-    Parameters
-    ----------
-    op : LinearOperator
-        Operator which shall be checked.
-    domain_dtype : dtype
-        The data type of the random vectors in the operator's domain. Default
-        is `np.float64`.
-    target_dtype : dtype
-        The data type of the random vectors in the operator's target. Default
-        is `np.float64`.
-    atol : float
-        Absolute tolerance for the check. If rtol is specified,
-        then satisfying any tolerance will let the check pass.
-        Default: 0.
-    rtol : float
-        Relative tolerance for the check. If atol is specified,
-        then satisfying any tolerance will let the check pass.
-        Default: 0.
-    only_r_linear: bool
-        set to True if the operator is only R-linear, not C-linear.
-        This will relax the adjointness test accordingly.
-    """
-    if not isinstance(op, LinearOperator):
-        raise TypeError('This test tests only linear operators.')
-    _domain_check(op)
-    _actual_domain_check_linear(op, domain_dtype)
-    _actual_domain_check_linear(op.adjoint, target_dtype)
-    _actual_domain_check_linear(op.inverse, target_dtype)
-    _actual_domain_check_linear(op.adjoint.inverse, domain_dtype)
-    _check_linearity(op, domain_dtype, atol, rtol)
-    _check_linearity(op.adjoint, target_dtype, atol, rtol)
-    _check_linearity(op.inverse, target_dtype, atol, rtol)
-    _check_linearity(op.adjoint.inverse, domain_dtype, atol, rtol)
-    _full_implementation(op, domain_dtype, target_dtype, atol, rtol,
-                         only_r_linear)
-    _full_implementation(op.adjoint, target_dtype, domain_dtype, atol, rtol,
-                         only_r_linear)
-    _full_implementation(op.inverse, target_dtype, domain_dtype, atol, rtol,
-                         only_r_linear)
-    _full_implementation(op.adjoint.inverse, domain_dtype, target_dtype, atol,
-                         rtol, only_r_linear)
-
-
 def _get_acceptable_location(op, loc, lin):
     if not np.isfinite(lin.val.s_sum()):
         raise ValueError('Initial value must be finite')
@@ -248,34 +313,51 @@ def _linearization_value_consistency(op, loc):
         assert_allclose(fld0, fld1, 0, 1e-7)
 
 
-def check_jacobian_consistency(op, loc, tol=1e-8, ntries=100, perf_check=True,
-        only_r_differentiable=True):
-    """
-    Checks the Jacobian of an operator against its finite difference
-    approximation.
+def _check_nontrivial_constant(op, loc, tol, ntries, only_r_differentiable,
+                               metric_sampling):
+    if isinstance(op.domain, DomainTuple):
+        return
+    keys = op.domain.keys()
+    combis = []
+    if len(keys) > 4:
+        from .logger import logger
+        logger.warning('Operator domain has more than 4 keys.')
+        logger.warning('Check derivatives only with one constant key at a time.')
+        combis = [[kk] for kk in keys]
+    else:
+        for ll in range(1, len(keys)):
+            combis.extend(list(combinations(keys, ll)))
+    for cstkeys in combis:
+        varkeys = set(keys) - set(cstkeys)
+        cstloc = loc.extract_by_keys(cstkeys)
+        varloc = loc.extract_by_keys(varkeys)
 
-    Computes the Jacobian with finite differences and compares it to the
-    implemented Jacobian.
+        val0 = op(loc)
+        _, op0 = op.simplify_for_constant_input(cstloc)
+        assert op0.domain is varloc.domain
+        val1 = op0(varloc)
+        assert_equal(val0, val1)
 
-    Parameters
-    ----------
-    op : Operator
-        Operator which shall be checked.
-    loc : Field or MultiField
-        An Field or MultiField instance which has the same domain
-        as op. The location at which the gradient is checked
-    tol : float
-        Tolerance for the check.
-    perf_check : Boolean
-        Do performance check. May be disabled for very unimportant operators.
-    only_r_differentiable : Boolean
-        Jacobians of C-differentiable operators need to be C-linear. 
-        Default: True
-    """
-    _domain_check(op)
-    _actual_domain_check_nonlinear(op, loc)
-    _performance_check(op, loc, bool(perf_check))
-    _linearization_value_consistency(op, loc)
+        lin = Linearization.make_partial_var(loc, cstkeys, want_metric=True)
+        lin0 = Linearization.make_var(varloc, want_metric=True)
+        oplin0 = op0(lin0)
+        oplin = op(lin)
+
+        assert oplin.jac.target is oplin0.jac.target
+        rndinp = from_random(oplin.jac.target)
+        assert_allclose(oplin.jac.adjoint(rndinp).extract(varloc.domain),
+                        oplin0.jac.adjoint(rndinp), 1e-13, 1e-13)
+        foo = oplin.jac.adjoint(rndinp).extract(cstloc.domain)
+        assert_equal(foo, 0*foo)
+
+        if isinstance(op, EnergyOperator) and metric_sampling:
+            oplin.metric.draw_sample()
+
+        # _jac_vs_finite_differences(op0, varloc, np.sqrt(tol), ntries,
+        #                            only_r_differentiable)
+
+
+def _jac_vs_finite_differences(op, loc, tol, ntries, only_r_differentiable):
     for _ in range(ntries):
         lin = op(Linearization.make_var(loc))
         loc2, lin2 = _get_acceptable_location(op, loc, lin)
@@ -300,8 +382,7 @@ def check_jacobian_consistency(op, loc, tol=1e-8, ntries=100, perf_check=True,
             print(hist)
             raise ValueError("gradient and value seem inconsistent")
         loc = locnext
-
-        ddtype = loc.values()[0].dtype if isinstance(loc, MultiField) else loc.dtype
-        tdtype = dirder.values()[0].dtype if isinstance(dirder, MultiField) else dirder.dtype
-        consistency_check(linmid.jac, domain_dtype=ddtype, target_dtype=tdtype,
-                          only_r_linear=only_r_differentiable)
+        check_linear_operator(linmid.jac, domain_dtype=loc.dtype,
+                              target_dtype=dirder.dtype,
+                              only_r_linear=only_r_differentiable,
+                              atol=tol**2, rtol=tol**2)

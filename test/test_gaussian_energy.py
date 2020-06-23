@@ -28,6 +28,7 @@ def _flat_PS(k):
 
 
 pmp = pytest.mark.parametrize
+ntries = 10
 
 
 @pmp('space', [ift.GLSpace(5),
@@ -69,5 +70,19 @@ def test_gaussian_energy(space, nonlinearity, noise, seed):
             N = None
 
         energy = ift.GaussianEnergy(d, N) @ d_model()
-        ift.extra.check_jacobian_consistency(
-            energy, xi0, ntries=10, tol=1e-6)
+        ift.extra.check_operator(
+            energy, xi0, ntries=ntries, tol=1e-6)
+
+
+@pmp('cplx', [True, False])
+def testgaussianenergy_compatibility(cplx):
+    dt = np.complex128 if cplx else np.float64
+    dom = ift.UnstructuredDomain(3)
+    e = ift.VariableCovarianceGaussianEnergy(dom, 'resi', 'icov', dt)
+    resi = ift.from_random(dom)
+    if cplx:
+        resi = resi + 1j*ift.from_random(dom)
+    loc0 = ift.MultiField.from_dict({'resi': resi})
+    loc1 = ift.MultiField.from_dict({'icov': ift.from_random(dom).exp()})
+    loc = loc0.unite(loc1)
+    ift.extra.check_operator(e, loc, ntries=20)
