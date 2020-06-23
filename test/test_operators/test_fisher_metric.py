@@ -102,6 +102,9 @@ def _actual_energy_tester(pos, get_noisy_data, energy_initializer):
     lin = ift.Linearization.make_var(pos, want_metric=True)
     res2 = _to_array(energy(lin).metric(test_vec).val)
     np.testing.assert_allclose(res/std, res2/std, atol=6)
+    for factor in [0.5, 2]:
+        with pytest.raises(AssertionError):
+            np.testing.assert_allclose(res/std, factor*res2/std, atol=6)
 
 
 def test_GaussianEnergy(field):
