@@ -46,10 +46,9 @@ def test_gridding(nu, nv, N, eps):
     dstx, dsty = dom.distances
     uv[:, 0] = uv[:, 0]/dstx
     uv[:, 1] = uv[:, 1]/dsty
-    GM = ift.GridderMaker(dom, uv=uv, eps=eps)
+    Op = ift.Gridder(dom, uv=uv, eps=eps)
     vis2 = ift.makeField(ift.UnstructuredDomain(vis.shape), vis)
 
-    Op = GM.getFull()
     pynu = Op(vis2).val
     # DFT
     x, y = np.meshgrid(
@@ -72,8 +71,7 @@ def test_cartesian():
     tmp = np.vstack([uu[None, :], vv[None, :]])
     uv = np.transpose(tmp, (2, 1, 0)).reshape(-1, 2)
 
-    GM = ift.GridderMaker(dom, uv=uv)
-    op = GM.getFull().adjoint
+    op = ift.Gridder(dom, uv=uv).adjoint
 
     fld = ift.from_random(dom, 'normal')
     arr = fld.val
@@ -95,16 +93,9 @@ def test_cartesian():
 def test_build(nu, nv, N, eps):
     dom = ift.RGSpace([nu, nv])
     uv = ift.random.current_rng().random((N, 2)) - 0.5
-    GM = ift.GridderMaker(dom, uv=uv, eps=eps)
-    R0 = GM.getGridder()
-    R1 = GM.getRest()
-    R = R1@R0
-    RF = GM.getFull()
+    RF = ift.Gridder(dom, uv=uv, eps=eps)
 
     # Consistency checks
     flt = np.float64
     cmplx = np.complex128
-    ift.extra.check_linear_operator(R0, cmplx, flt, only_r_linear=True)
-    ift.extra.check_linear_operator(R1, flt, flt)
-    ift.extra.check_linear_operator(R, cmplx, flt, only_r_linear=True)
     ift.extra.check_linear_operator(RF, cmplx, flt, only_r_linear=True)

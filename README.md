@@ -50,9 +50,7 @@ Installation
 
 Optional dependencies:
 - [DUCC0](https://gitlab.mpcdf.mpg.de/mtr/ducc) for faster FFTs, spherical
-    harmonic transforms, and non-uniform Fourier transforms
-- [nifty_gridder](https://gitlab.mpcdf.mpg.de/ift/nifty_gridder) (for radio
-    interferometry responses)
+    harmonic transforms, and radio interferometry gridding support
 - [mpi4py](https://mpi4py.scipy.org) (for MPI-parallel execution)
 - [matplotlib](https://matplotlib.org/) (for field plotting)
 
@@ -85,10 +83,6 @@ If this library is present, NIFTy will detect it automatically and prefer
 `ducc0.fft` over SciPy's FFT. The underlying code is actually the same, but
 DUCC's FFT is compiled with optimizations for the host CPU and can provide
 significantly faster transforms.
-
-Support for the radio interferometry gridder is added via:
-
-    pip3 install --user git+https://gitlab.mpcdf.mpg.de/ift/nifty_gridder.git
 
 MPI support is added via:
 
