@@ -173,7 +173,7 @@ class VariableCovarianceGaussianEnergy(EnergyOperator):
             return res
         met = i.val if self._cplx else 0.5*i.val
         # FIXME DO NOT MERGE THAT
-        met = MultiField.from_dict({self._kr: i.val, self._ki: 100*met**(-2)})
+        met = MultiField.from_dict({self._kr: i.val, self._ki: 2*met**(-2)})
         return res.add_metric(SamplingDtypeSetter(makeOp(met), self._dt))
 
     def _simplify_for_constant_input_nontrivial(self, c_inp):
