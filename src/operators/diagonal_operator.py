@@ -147,7 +147,9 @@ class DiagonalOperator(EndomorphicOperator):
         if self._complex and (trafo & self.ADJOINT_BIT):
             xdiag = xdiag.conj()
         if trafo & self.INVERSE_BIT:
-            xdiag = 1./xdiag
+            # dividing by zero is OK here, we can deal with infinities
+            with np.errstate(divide='ignore'):
+                xdiag = 1./xdiag
         return self._from_ldiag((), xdiag)
 
     def process_sample(self, samp, from_inverse):
