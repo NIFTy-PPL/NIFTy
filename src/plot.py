@@ -423,7 +423,7 @@ def _plot2D(f, ax, **kwargs):
         _limit_xy(**kwargs)
         return
     elif isinstance(dom, (HPSpace, GLSpace)):
-        from ducc_0_1.healpix import Healpix_Base
+        from ducc0.healpix import Healpix_Base
         xsize = 800
         res, mask, theta, phi = _mollweide_helper(xsize)
         if have_rgb:
@@ -440,7 +440,7 @@ def _plot2D(f, ax, **kwargs):
             else:
                 res[mask] = f.val[base.ang2pix(ptg)]
         else:
-            from ducc_0_1.misc import GL_thetas
+            from ducc0.misc import GL_thetas
             ra = np.linspace(0, 2*np.pi, dom.nlon+1)
             dec = GL_thetas(dom.nlat)
             ilat = _find_closest(dec, theta)

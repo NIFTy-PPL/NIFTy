@@ -117,7 +117,7 @@ class LMSpace(StructuredDomain):
         e.g. only dependant on theta in radians"""
         from .gl_space import GLSpace
         from ..operators.harmonic_operators import HarmonicTransformOperator
-        from ducc_0_1.misc import GL_thetas
+        from ducc0.misc import GL_thetas
         # define azimuthally symmetric spaces for kernel transform
         gl = GLSpace(self.lmax + 1, 1)
         lm0 = gl.get_default_codomain()

@@ -73,7 +73,7 @@ class GLSpace(StructuredDomain):
     #           blown up by a factor of self.nlon
     @property
     def dvol(self):
-        from ducc_0_1.misc import GL_weights
+        from ducc0.misc import GL_weights
         if self._dvol is None:
             self._dvol = GL_weights(self.nlat, self.nlon)
         return np.repeat(self._dvol, self.nlon)

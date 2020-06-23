@@ -29,7 +29,7 @@ def set_nthreads(nthr):
 
 
 try:
-    import ducc_0_1.fft as my_fft
+    import ducc0.fft as my_fft
 
 
     def fftn(a, axes=None):

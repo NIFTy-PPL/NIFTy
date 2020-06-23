@@ -202,7 +202,7 @@ class SHTOperator(LinearOperator):
         hspc.check_codomain(target)
         target.check_codomain(hspc)
 
-        from ducc_0_1.sht import sharpjob_d
+        from ducc0.sht import sharpjob_d
         self.lmax = hspc.lmax
         self.mmax = hspc.mmax
         self.sjob = sharpjob_d()

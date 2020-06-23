@@ -49,7 +49,7 @@ Installation
 - [SciPy](https://www.scipy.org/)
 
 Optional dependencies:
-- [DUCC](https://gitlab.mpcdf.mpg.de/mtr/ducc) for faster FFTs, spherical
+- [DUCC0](https://gitlab.mpcdf.mpg.de/mtr/ducc) for faster FFTs, spherical
     harmonic transforms, and non-uniform Fourier transforms
 - [nifty_gridder](https://gitlab.mpcdf.mpg.de/ift/nifty_gridder) (for radio
     interferometry responses)
@@ -77,12 +77,12 @@ Plotting support is added via:
 
     sudo apt-get install python3-matplotlib
 
-The DUCC 0.1 package is installed via:
+The DUCC0 package is installed via:
 
-    pip3 install --user git+https://gitlab.mpcdf.mpg.de/mtr/ducc.git@ducc_0_1
+    pip3 install ducc0
 
 If this library is present, NIFTy will detect it automatically and prefer
-`ducc_0_1.fft` over SciPy's FFT. The underlying code is actually the same, but
+`ducc0.fft` over SciPy's FFT. The underlying code is actually the same, but
 DUCC's FFT is compiled with optimizations for the host CPU and can provide
 significantly faster transforms.
 
