@@ -86,7 +86,7 @@ from .library.light_cone_operator import LightConeOperator
 from .library.wiener_filter_curvature import WienerFilterCurvature
 from .library.adjust_variances import (make_adjust_variances_hamiltonian,
                                        do_adjust_variances)
-from .library.gridder import GridderMaker
+from .library.gridder import Gridder
 from .library.correlated_fields import CorrelatedFieldMaker
 
 from . import extra

@@ -45,9 +45,8 @@ def main():
         img = ift.makeField(uvspace, img)
 
         t0 = time()
-        GM = ift.GridderMaker(uvspace, eps=1e-7, uv=uv)
+        op = ift.Gridder(uvspace, eps=1e-7, uv=uv).adjoint
         vis = ift.makeField(visspace, vis)
-        op = GM.getFull().adjoint
         t1 = time()
         op(img).val
         t2 = time()
@@ -58,15 +57,6 @@ def main():
         a0s.append(t1 - t0)
         b0s.append(t2 - t1)
         c0s.append(t3 - t2)
-
-    print('Measure rest operator')
-    sc = ift.StatCalculator()
-    op = GM.getRest().adjoint
-    for _ in range(10):
-        t0 = time()
-        res = op(img)
-        sc.add(time() - t0)
-    print('FFT shape', res.shape)
 
     plt.scatter(N0s, a0s, label='Gridder mr')
     plt.legend()
@@ -80,9 +70,6 @@ def main():
 
     plt.scatter(N0s, b0s, color='k', marker='^', label='Gridder mr times')
     plt.scatter(N0s, c0s, color='k', label='Gridder mr adjoint times')
-    plt.axhline(sc.mean, label='FFT')
-    plt.axhline(sc.mean + np.sqrt(sc.var))
-    plt.axhline(sc.mean - np.sqrt(sc.var))
     plt.legend()
     plt.ylabel('time [s]')
     plt.title('Apply')

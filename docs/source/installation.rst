@@ -23,10 +23,6 @@ If this library is present, NIFTy will detect it automatically and prefer
 DUCC's FFT is compiled with optimizations for the host CPU and can provide
 significantly faster transforms.
 
-Support for the radio interferometry gridder is added via::
-
-    pip3 install --user git+https://gitlab.mpcdf.mpg.de/ift/nifty_gridder.git
-
 MPI support is added via::
 
     sudo apt-get install python3-mpi4py
