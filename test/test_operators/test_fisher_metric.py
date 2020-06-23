@@ -128,12 +128,16 @@ def test_PoissonEnergy(field):
     E_init = lambda data: ift.PoissonianEnergy(data)
     energy_tester(lam, get_noisy_data, E_init)
 
-def test_VariableCovarianceGaussianEnergy(dtype):
+
+@pytest.mark.parametrize('factor', [0.01, 0.5, 1, 2, 100])
+def test_VariableCovarianceGaussianEnergy(dtype, factor):
+    if np.issubdtype(dtype, np.complexfloating):
+        pytest.skip()
     dom = ift.UnstructuredDomain(3)
     res = ift.from_random(dom, 'normal', dtype=dtype)
     ivar = ift.from_random(dom, 'normal')**2+4.
     mf = ift.MultiField.from_dict({'res':res, 'ivar':ivar})
-    energy = ift.VariableCovarianceGaussianEnergy(dom, 'res', 'ivar', dtype)
+    energy = ift.VariableCovarianceGaussianEnergy(dom, 'res', 'ivar', dtype, _debugging_factor=factor)
     def get_noisy_data(mean):
         samp = ift.from_random(dom, 'normal', dtype)
         samp = samp/mean['ivar'].sqrt()
@@ -141,4 +145,8 @@ def test_VariableCovarianceGaussianEnergy(dtype):
     def E_init(data):
         adder = ift.Adder(ift.MultiField.from_dict({'res':data}), neg=True)
         return energy.partial_insert(adder)
-    energy_tester(mf, get_noisy_data, E_init)
+    if factor != 1.:
+        with pytest.raises(AssertionError):
+            energy_tester(mf, get_noisy_data, E_init)
+    else:
+        energy_tester(mf, get_noisy_data, E_init)
