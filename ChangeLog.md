@@ -1,12 +1,21 @@
 Changes since NIFTy 6
 =====================
 
+Change in external dependencies
+-------------------------------
+
+Instead of the optional external packages `pypocketfft` and `pyHealpix`, NIFTy
+now uses the DUCC package (<https://gitlab.mpcdf.mpg.de/mtr/ducc)>,
+which is their successor.
+
+
 Naming of operator tests
 ------------------------
 
 The implementation tests for nonlinear operators are now available in
 `ift.extra.check_operator()` and for linear operators
 `ift.extra.check_linear_operator()`.
+
 
 MetricGaussianKL interface
 --------------------------

@@ -14,9 +14,14 @@ Plotting support is added via::
 
     sudo apt-get install python3-matplotlib
 
-Support for spherical harmonic transforms is added via::
+The DUCC0 package is installed via::
 
-    pip3 install --user git+https://gitlab.mpcdf.mpg.de/ift/pyHealpix.git
+    pip3 install --user ducc0
+
+If this library is present, NIFTy will detect it automatically and prefer
+`ducc0.fft` over SciPy's FFT. The underlying code is actually the same, but
+DUCC's FFT is compiled with optimizations for the host CPU and can provide
+significantly faster transforms.
 
 Support for the radio interferometry gridder is added via::
 
@@ -25,14 +30,6 @@ Support for the radio interferometry gridder is added via::
 MPI support is added via::
 
     sudo apt-get install python3-mpi4py
-
-Pypocketfft is added via:
-    pip3 install --user git+https://gitlab.mpcdf.mpg.de/mtr/pypocketfft
-
-If this library is present, NIFTy will detect it automatically and prefer
-it over SciPy's FFT. The underlying code is actually the same, but
-pypocketfft is compiled with optimizations for the host CPU and can provide
-significantly faster transforms.
 
 NIFTy documentation is provided by Sphinx. To build the documentation::
 

@@ -202,15 +202,15 @@ class SHTOperator(LinearOperator):
         hspc.check_codomain(target)
         target.check_codomain(hspc)
 
-        from pyHealpix import sharpjob_d
+        from ducc0.sht import sharpjob_d
         self.lmax = hspc.lmax
         self.mmax = hspc.mmax
         self.sjob = sharpjob_d()
         self.sjob.set_triangular_alm_info(self.lmax, self.mmax)
         if isinstance(target, GLSpace):
-            self.sjob.set_Gauss_geometry(target.nlat, target.nlon)
+            self.sjob.set_gauss_geometry(target.nlat, target.nlon)
         else:
-            self.sjob.set_Healpix_geometry(target.nside)
+            self.sjob.set_healpix_geometry(target.nside)
 
     def __reduce__(self):
         return (_unpickleSHTOperator,
