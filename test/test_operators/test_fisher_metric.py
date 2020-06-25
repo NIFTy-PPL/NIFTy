@@ -69,7 +69,7 @@ def energy_tester(pos, get_noisy_data, energy_initializer):
             op = ift.ScalingOperator(pos.domain, 1.)
     else:
         ops = []
-        for k,dom in pos.domain.items():
+        for k, dom in pos.domain.items():
             if np.issubdtype(pos[k].dtype, np.complexfloating):
                 ops.append(_complex2real(dom).ducktape(k).ducktape_left(k))
             else:
@@ -79,26 +79,20 @@ def energy_tester(pos, get_noisy_data, energy_initializer):
         from nifty7.operator_spectrum import _DomRemover
         flattener = _DomRemover(realizer.target)
         op = flattener @ realizer
+    pos = op(pos)
 
-    npos = op(pos)
-    nget_noisy_data = lambda mean: get_noisy_data(op.adjoint_times(mean))
-    nenergy_initializer = lambda mean: energy_initializer(mean) @ op.adjoint
-    _actual_energy_tester(npos, nget_noisy_data, nenergy_initializer)
-
-
-def _actual_energy_tester(pos, get_noisy_data, energy_initializer):
     domain = pos.domain
     test_vec = ift.from_random(domain, 'normal')
     results = []
     lin = ift.Linearization.make_var(pos)
     for i in range(Nsamp):
-        data = get_noisy_data(pos)
-        energy = energy_initializer(data)
+        data = get_noisy_data(op.adjoint_times(pos))
+        energy = energy_initializer(data) @ op.adjoint
         grad = energy(lin).gradient
         results.append(_to_array((grad*grad.s_vdot(test_vec)).val))
     res = np.mean(np.array(results), axis=0)
     std = np.std(np.array(results), axis=0)/np.sqrt(Nsamp)
-    energy = energy_initializer(data)
+    energy = energy_initializer(data) @ op.adjoint
     lin = ift.Linearization.make_var(pos, want_metric=True)
     res2 = _to_array(energy(lin).metric(test_vec).val)
     np.testing.assert_allclose(res/std, res2/std, atol=6)
