@@ -153,7 +153,7 @@ class VariableCovarianceGaussianEnergy(EnergyOperator):
         Data type of the samples. Usually either 'np.float*' or 'np.complex*'
     """
 
-    def __init__(self, domain, residual_key, inverse_covariance_key, sampling_dtype, _debugging_factor=1.):
+    def __init__(self, domain, residual_key, inverse_covariance_key, sampling_dtype):
         self._kr = str(residual_key)
         self._ki = str(inverse_covariance_key)
         dom = DomainTuple.make(domain)
@@ -161,7 +161,6 @@ class VariableCovarianceGaussianEnergy(EnergyOperator):
         self._dt = {self._kr: sampling_dtype, self._ki: np.float64}
         _check_sampling_dtype(self._domain, self._dt)
         self._cplx = _iscomplex(sampling_dtype)
-        self._factor = float(_debugging_factor)
 
     def apply(self, x):
         self._check_input(x)
@@ -173,8 +172,7 @@ class VariableCovarianceGaussianEnergy(EnergyOperator):
         if not x.want_metric:
             return res
         met = i.val if self._cplx else 0.5*i.val
-        # FIXME DO NOT MERGE THAT
-        met = MultiField.from_dict({self._kr: i.val, self._ki: self._factor*met**(-2)})
+        met = MultiField.from_dict({self._kr: i.val, self._ki: met**(-2)})
         return res.add_metric(SamplingDtypeSetter(makeOp(met), self._dt))
 
     def _simplify_for_constant_input_nontrivial(self, c_inp):
