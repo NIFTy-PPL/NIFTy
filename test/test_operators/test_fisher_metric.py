@@ -125,8 +125,6 @@ def test_PoissonEnergy(field):
 
 @pytest.mark.parametrize('factor', [0.01, 0.5, 1, 2, 100])
 def test_VariableCovarianceGaussianEnergy(dtype, factor):
-    if np.issubdtype(dtype, np.complexfloating):
-        pytest.skip()
     dom = ift.UnstructuredDomain(3)
     res = ift.from_random(dom, 'normal', dtype=dtype)
     ivar = ift.from_random(dom, 'normal')**2+4.
