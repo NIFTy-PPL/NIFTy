@@ -36,8 +36,7 @@ def _mean(fld, dom):
     for key in fld.keys():
         mean = fld[key].val.mean(axis=-1)
         result[key[:-2]] = makeField(dom[key[:-2]], mean)
-    result = MultiField.from_dict(result, dom)
-    return result
+    return MultiField.from_dict(result, dom)
 
 
 def _var(fld, dom):
@@ -45,8 +44,7 @@ def _var(fld, dom):
     for key in fld.keys():
         var = fld[key].val.var(axis=-1)
         result[key[:-2]] = makeField(dom[key[:-2]], var)
-    result = MultiField.from_dict(result, dom)
-    return result
+    return MultiField.from_dict(result, dom)
 
 
 def _standardized_sample_field(samples):
@@ -276,24 +274,21 @@ class HMC_chain:
             The effective sample size of all model parameters of the chain.
         """
         sample_field = _standardized_sample_field(self.samples)
-        autocorrelations = {}
-        for key in sample_field.keys():
-            AFC = ACF_Selector(sample_field[key].domain, len(self.samples))
-            FFT = FFTOperator(sample_field[key].domain,
-                              space=len(sample_field[key].domain._dom) - 1)
-            h = FFT(sample_field[key])
-            hch = h.conjugate()*h
-            autocorr = FFT.inverse(hch)
-            autocorrelations[key] = AFC(autocorr).real
-
         result = {}
-        for key, fld in autocorrelations.items():
+        for key, sf in sample_field.items():
+            AFC = ACF_Selector(sf.domain, len(self.samples))
+            FFT = FFTOperator(sf.domain, space=len(sf.domain._dom) - 1)
+            h = FFT(sf)
+            autocorr = AFC(FFT.inverse(h.conjugate()*h)).real
+
             addaxis = False
-            if len(fld.shape) == 1:  # FIXME ?
-                fld = fld.val.reshape((1,) + fld.shape)
+            if len(autocorr.shape) == 1:  # FIXME ?
+                autocorr = autocorr.val.reshape((1,) + autocorr.shape)
                 addaxis = True
-            cum_field = np.cumsum(fld.val, axis=-1)
-            correlation_length = np.argmax(fld.val < 0, axis=-1)
+            else:
+                autocorr = autocorr.val
+            cum_field = np.cumsum(autocorr, axis=-1)
+            correlation_length = np.argmax(autocorr < 0, axis=-1)
             indices = np.where(np.ones(cum_field[..., 0].shape))
             indices += (correlation_length.flatten() - 1,)
             integr_corr = cum_field[indices] - 1
@@ -313,23 +308,7 @@ class HMC_chain:
         mean: Field or MultiField
             The mean over all samples of the chain.
         """
-        return self._mean(self._sample_field())
-
-    def _mean(self, fld):
-        result = {}
-        dom = self._position.domain
-        for key in fld.keys():
-            mean = fld[key].val.mean(axis=-1)
-            result[key[:-2]] = Field.make(dom[key[:-2]], mean)
-        return MultiField.from_dict(result, self._position.domain)
-
-    def _var(self, fld):
-        result = {}
-        dom = self._position.domain
-        for key in fld.keys():
-            var = fld[key].val.var(axis=-1)
-            result[key[:-2]] = Field.make(dom[key[:-2]], var)
-        return MultiField.from_dict(result, self._position.domain)
+        return _mean(self._sample_field(), self._position.domain)
 
 
 class HMC_Sampler:

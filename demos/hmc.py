@@ -83,13 +83,6 @@ if __name__ == '__main__':
     data = signal_response(mock_position) + M(
         N.draw_sample_with_dtype(dtype=np.float64))
 
-    if master:
-        plt.cla()
-        plt.figure('result')
-        plt.plot(data.val, 'kx', label='data')
-        plt.plot(signal(mock_position).val, 'r-', label='ground truth')
-        plt.pause(0.01)
-
     # Set up likelihood and information Hamiltonian
     likelihood = (ift.GaussianEnergy(mean=data, inverse_covariance=N.inverse)
                   @ signal_response)
