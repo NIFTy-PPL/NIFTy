@@ -216,7 +216,8 @@ class LineSearch(metaclass=NiftyMeta):
                 alpha1 = (alpha0+alpha1)/2
                 continue  # next iteration
 
-            if np.isinf(phi_alpha1) or np.isnan(phi_alpha1):  # also backtrack
+            if (np.isinf(phi_alpha1) or np.isnan(phi_alpha1)
+                or np.abs(phi_alpha1) > 1e100):  # also backtrack
                 alpha1 = (alpha0+alpha1)/2
                 continue  # next iteration
 
