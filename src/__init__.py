@@ -97,6 +97,8 @@ from .logger import logger
 
 from .linearization import Linearization
 
+from .minimization.hmc import HMC_chain, HMC_Sampler
+
 from .operator_spectrum import operator_spectrum
 
 from .operator_tree_optimiser import optimise_operator
