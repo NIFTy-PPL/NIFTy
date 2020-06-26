@@ -104,6 +104,8 @@ if __name__ == '__main__':
 
     ESS_mean = []
     R_hat_mean = []
+    if master:
+        fig, axes = plt.subplots(2, 2, num='results', figsize=(12, 8))
     for i in range(50):
         HMC.sample(10)
 
@@ -119,8 +121,8 @@ if __name__ == '__main__':
         if not master:
             continue
 
-        plt.clf()
-        fig, axes = plt.subplots(2, 2, num='results', figsize=(12, 8))
+        for axx in axes.ravel():
+            axx.clear()
         axes[0, 0].plot(data.val, 'kx', label='data')
         axes[0, 0].plot(signal(mock_position).val, 'r-', label='ground truth')
         axes[0, 0].plot(mean_result.val, 'k-', label='sample mean')
