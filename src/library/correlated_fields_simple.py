@@ -69,8 +69,8 @@ class SimpleCorrelatedField(Operator):
         twolog = _TwoLogIntegrations(pspace)
         dom = twolog.domain[0]
         vflex = np.zeros(dom.shape)
-        vasp = np.zeros(dom.shape, dtype=np.float64)
-        shift = np.ones(dom.shape, dtype=np.float64)
+        vasp = np.zeros(dom.shape)
+        shift = np.ones(dom.shape)
         vflex[0] = vflex[1] = np.sqrt(_log_vol(pspace))
         vasp[0] = 1
         shift[0] = _log_vol(pspace)**2/12.
