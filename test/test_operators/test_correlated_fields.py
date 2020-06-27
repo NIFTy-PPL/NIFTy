@@ -139,20 +139,20 @@ def test_complicated_vs_simple(seed, domain):
         loglogavgslope_stddev = _posrand()
         prefix = 'foobar'
         hspace = domain.get_default_codomain()
-        cfm_simple = ift.SimpleCorrelatedFieldMaker(domain,
-                                                    offset_mean,
-                                                    offset_std_mean,
-                                                    offset_std_std,
-                                                    fluctuations_mean,
-                                                    fluctuations_stddev,
-                                                    flexibility_mean,
-                                                    flexibility_stddev,
-                                                    asperity_mean,
-                                                    asperity_stddev,
-                                                    loglogavgslope_mean,
-                                                    loglogavgslope_stddev,
-                                                    prefix=prefix,
-                                                    harmonic_partner=hspace)
+        op0 = ift.SimpleCorrelatedField(domain,
+                                        offset_mean,
+                                        offset_std_mean,
+                                        offset_std_std,
+                                        fluctuations_mean,
+                                        fluctuations_stddev,
+                                        flexibility_mean,
+                                        flexibility_stddev,
+                                        asperity_mean,
+                                        asperity_stddev,
+                                        loglogavgslope_mean,
+                                        loglogavgslope_stddev,
+                                        prefix=prefix,
+                                        harmonic_partner=hspace)
         cfm = ift.CorrelatedFieldMaker.make(offset_mean, offset_std_mean,
                                             offset_std_std, prefix)
         cfm.add_fluctuations(domain,
@@ -167,7 +167,6 @@ def test_complicated_vs_simple(seed, domain):
                              prefix='',
                              harmonic_partner=hspace)
         op1 = cfm.finalize()
-        op0 = cfm_simple.finalize()
         assert_(op0.domain is op1.domain)
         inp = ift.from_random(op0.domain)
         ift.extra.assert_allclose(op0(inp), op1(inp))

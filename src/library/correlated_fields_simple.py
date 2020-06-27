@@ -16,31 +16,21 @@
 #
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
 
-from functools import reduce
-from operator import mul
 
 import numpy as np
 
-from .. import utilities
-from ..domain_tuple import DomainTuple
 from ..domains.power_space import PowerSpace
 from ..domains.unstructured_domain import UnstructuredDomain
-from ..field import Field
-from ..logger import logger
-from ..multi_field import MultiField
 from ..operators.adder import Adder
 from ..operators.contraction_operator import ContractionOperator
-from ..operators.diagonal_operator import DiagonalOperator
 from ..operators.distributors import PowerDistributor
-from ..operators.endomorphic_operator import EndomorphicOperator
 from ..operators.harmonic_operators import HarmonicTransformOperator
 from ..operators.linear_operator import LinearOperator
 from ..operators.normal_operators import LognormalTransform, NormalTransform
 from ..operators.operator import Operator
 from ..operators.simple_linear_operators import ducktape
-from ..probing import StatCalculator
 from ..sugar import full, makeDomain, makeField, makeOp
-from .correlated_fields import (_Distributor, _log_vol, _Normalization,
+from .correlated_fields import (_log_vol, _Normalization,
                                 _relative_log_k_lengths, _SlopeRemover)
 
 
@@ -78,73 +68,7 @@ class _SimpleTwoLogIntegrations(LinearOperator):
         return makeField(self._tgt(mode), res)
 
 
-class _SimpleAmplitude(Operator):
-    def __init__(self, target, fluctuations, flexibility, asperity,
-                 loglogavgslope, azm, totvol, key):
-        assert isinstance(fluctuations, Operator)
-        assert isinstance(flexibility, Operator)
-        assert isinstance(asperity, Operator)
-        assert isinstance(loglogavgslope, Operator)
-
-        distributed_tgt = target = makeDomain(target)
-        azm_expander = ContractionOperator(distributed_tgt, spaces=0).adjoint
-        assert isinstance(target[0], PowerSpace)
-
-        twolog = _SimpleTwoLogIntegrations(target)
-        dom = twolog.domain
-
-        shp = dom[0].shape
-        expander = ContractionOperator(dom, spaces=0).adjoint
-        ps_expander = ContractionOperator(twolog.target, spaces=0).adjoint
-
-        # Prepare constant fields
-        foo = np.zeros(shp)
-        foo[0] = foo[1] = np.sqrt(_log_vol(target[0]))
-        vflex = DiagonalOperator(makeField(dom[0], foo), dom, 0)
-
-        foo = np.zeros(shp, dtype=np.float64)
-        foo[0] += 1
-        vasp = DiagonalOperator(makeField(dom[0], foo), dom, 0)
-
-        foo = np.ones(shp)
-        foo[0] = _log_vol(target[0])**2/12.
-        shift = DiagonalOperator(makeField(dom[0], foo), dom, 0)
-
-        vslope = DiagonalOperator(
-            makeField(target[0], _relative_log_k_lengths(target[0])), target,
-            0)
-
-        foo, bar = [np.zeros(target[0].shape) for _ in range(2)]
-        bar[1:] = foo[0] = totvol
-        vol0, vol1 = [
-            DiagonalOperator(makeField(target[0], aa), target, 0)
-            for aa in (foo, bar)
-        ]
-
-        # Prepare fields for Adder
-        shift, vol0 = [op(full(op.domain, 1)) for op in (shift, vol0)]
-        # End prepare constant fields
-
-        slope = vslope @ ps_expander @ loglogavgslope
-        sig_flex = vflex @ expander @ flexibility
-        sig_asp = vasp @ expander @ asperity
-        sig_fluc = vol1 @ ps_expander @ fluctuations
-        sig_fluc = vol1 @ ps_expander @ fluctuations
-
-        xi = ducktape(dom, None, key)
-        sigma = sig_flex*(Adder(shift) @ sig_asp).ptw("sqrt")
-        smooth = _SlopeRemover(target, 0) @ twolog @ (sigma*xi)
-        op = _Normalization(target, 0) @ (slope + smooth)
-        op = Adder(vol0) @ (sig_fluc*(azm_expander @ azm.ptw("reciprocal"))*op)
-        self.apply = op.apply
-        self._domain, self._target = op.domain, op.target
-        self._op = op
-
-    def __repr__(self):
-        return self._op.__repr__
-
-
-class SimpleCorrelatedFieldMaker:
+class SimpleCorrelatedField(Operator):
     def __init__(self,
                  target,
                  offset_mean,
@@ -175,18 +99,47 @@ class SimpleCorrelatedFieldMaker:
                                 prefix + 'loglogavgslope', 0)
         zm = LognormalTransform(offset_std_mean, offset_std_std,
                                 prefix + 'zeromode', 0)
-        amp = _SimpleAmplitude(PowerSpace(harmonic_partner), fluct, flex, asp,
-                               avgsl, zm, target.total_volume,
-                               prefix + 'spectrum')
+
+        tgt = PowerSpace(harmonic_partner)
+        azm_expander = ContractionOperator(tgt, 0).adjoint
+        twolog = _SimpleTwoLogIntegrations(tgt)
+        dom = twolog.domain[0]
+        vflex = np.zeros(dom.shape)
+        vasp = np.zeros(dom.shape, dtype=np.float64)
+        shift = np.ones(dom.shape, dtype=np.float64)
+        vol0 = np.zeros(tgt.shape, dtype=np.float64)
+        vol1 = np.zeros(tgt.shape, dtype=np.float64)
+        vflex[0] = vflex[1] = np.sqrt(_log_vol(tgt))
+        vasp[0] = 1
+        shift[0] = _log_vol(tgt)**2/12.
+        vol1[1:] = vol0[0] = target.total_volume
+        vflex = makeOp(makeField(dom, vflex))
+        vasp = makeOp(makeField(dom, vasp))
+        shift = makeOp(makeField(dom, shift))
+        vol0 = makeField(tgt, vol0)
+        vol1 = makeOp(makeField(tgt, vol1))
+        vslope = makeOp(makeField(tgt, _relative_log_k_lengths(tgt)))
+        shift = shift(full(shift.domain, 1))
+        expander = ContractionOperator(twolog.domain, spaces=0).adjoint
+        ps_expander = ContractionOperator(twolog.target, spaces=0).adjoint
+        slope = vslope @ ps_expander @ avgsl
+        sig_flex = vflex @ expander @ flex
+        sig_asp = vasp @ expander @ asp
+        sig_fluc = vol1 @ ps_expander @ fluct
+        sig_fluc = vol1 @ ps_expander @ fluct
+        xi = ducktape(dom, None, prefix + 'spectrum')
+        sigma = sig_flex*(Adder(shift) @ sig_asp).ptw("sqrt")
+        smooth = _SlopeRemover(tgt, 0) @ twolog @ (sigma*xi)
+        op = _Normalization(tgt, 0) @ (slope + smooth)
+        amp = Adder(vol0) @ (sig_fluc*(azm_expander @ zm.ptw("reciprocal"))*op)
+
         ht = HarmonicTransformOperator(harmonic_partner, target)
         pd = PowerDistributor(harmonic_partner, amp.target[0])
         expander = ContractionOperator(harmonic_partner, spaces=0).adjoint
-        self._op = ht(
-            expander(zm)*pd(amp)*
-            ducktape(harmonic_partner, None, prefix + 'xi'))
+        xi = ducktape(harmonic_partner, None, prefix + 'xi')
+        op = ht(expander(zm)*pd(amp)*xi)
         if offset_mean is not None:
-            self._op = Adder(full(self._op.target,
-                                  float(offset_mean))) @ self._op
-
-    def finalize(self):
-        return self._op
+            op = Adder(full(op.target, float(offset_mean))) @ op
+        self.apply = op.apply
+        self._domain = op.domain
+        self._target = op.target
