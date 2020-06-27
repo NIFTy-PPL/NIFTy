@@ -105,33 +105,31 @@ class SimpleCorrelatedField(Operator):
         vflex = np.zeros(dom.shape)
         vasp = np.zeros(dom.shape, dtype=np.float64)
         shift = np.ones(dom.shape, dtype=np.float64)
-        vol0 = np.zeros(tgt.shape, dtype=np.float64)
-        vol1 = np.zeros(tgt.shape, dtype=np.float64)
         vflex[0] = vflex[1] = np.sqrt(_log_vol(tgt))
         vasp[0] = 1
         shift[0] = _log_vol(tgt)**2/12.
-        vol1[1:] = vol0[0] = target.total_volume
         vflex = makeOp(makeField(dom, vflex))
         vasp = makeOp(makeField(dom, vasp))
-        shift = makeOp(makeField(dom, shift))
-        vol0 = makeField(tgt, vol0)
-        vol1 = makeOp(makeField(tgt, vol1))
+        shift = makeField(dom, shift)
         vslope = makeOp(makeField(tgt, _relative_log_k_lengths(tgt)))
-        shift = shift(full(shift.domain, 1))
 
-        azm_expander = ContractionOperator(tgt, 0).adjoint
         expander = ContractionOperator(twolog.domain, 0).adjoint
-        ps_expander = ContractionOperator(twolog.target, 0).adjoint
+        ps_expander = ContractionOperator(tgt, 0).adjoint
         h_expander = ContractionOperator(harmonic_partner, 0).adjoint
         slope = vslope @ ps_expander @ avgsl
         sig_flex = vflex @ expander @ flex
         sig_asp = vasp @ expander @ asp
-        sig_fluc = vol1 @ ps_expander @ fluct
         xi = ducktape(dom, None, prefix + 'spectrum')
         smooth = xi*sig_flex*(Adder(shift) @ sig_asp).ptw("sqrt")
         smooth = _SlopeRemover(tgt, 0) @ twolog @ smooth
         op = _Normalization(tgt, 0) @ (slope + smooth)
-        amp = Adder(vol0) @ (sig_fluc*(azm_expander @ zm.ptw("reciprocal"))*op)
+
+        vol0 = np.zeros(tgt.shape, dtype=np.float64)
+        vol1 = np.zeros(tgt.shape, dtype=np.float64)
+        vol1[1:] = vol0[0] = target.total_volume
+        vol = Adder(makeField(tgt, vol0)) @ makeOp(makeField(tgt, vol1))
+
+        amp = vol @ ((ps_expander @ (zm.ptw("reciprocal")*fluct))*op)
         self._a = amp
 
         ht = HarmonicTransformOperator(harmonic_partner, target)
