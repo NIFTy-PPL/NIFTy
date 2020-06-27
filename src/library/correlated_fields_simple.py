@@ -35,11 +35,113 @@ from ..operators.distributors import PowerDistributor
 from ..operators.endomorphic_operator import EndomorphicOperator
 from ..operators.harmonic_operators import HarmonicTransformOperator
 from ..operators.linear_operator import LinearOperator
+from ..operators.normal_operators import LognormalTransform, NormalTransform
 from ..operators.operator import Operator
 from ..operators.simple_linear_operators import ducktape
-from ..operators.normal_operators import NormalTransform, LognormalTransform
 from ..probing import StatCalculator
 from ..sugar import full, makeDomain, makeField, makeOp
+from .correlated_fields import (_Distributor, _log_vol, _Normalization,
+                                _relative_log_k_lengths, _SlopeRemover)
+
+
+class _SimpleTwoLogIntegrations(LinearOperator):
+    def __init__(self, target):
+        self._target = makeDomain(target)
+        assert len(self._target) == 1
+        tgt = self._target[0]
+        assert isinstance(tgt, PowerSpace)
+        self._domain = makeDomain(UnstructuredDomain((2, tgt.shape[0] - 2)))
+        self._log_vol = _log_vol(tgt)
+        self._capability = self.TIMES | self.ADJOINT_TIMES
+
+    def apply(self, x, mode):
+        self._check_input(x, mode)
+        from_third = slice(2, None)
+        no_border = slice(1, -1)
+        reverse = slice(None, None, -1)
+        if mode == self.TIMES:
+            x = x.val
+            res = np.empty(self._target.shape)
+            res[0] = res[1] = 0
+            res[from_third] = np.cumsum(x[1])
+            res[from_third] = (res[from_third] +
+                               res[no_border])/2*self._log_vol + x[0]
+            res[from_third] = np.cumsum(res[from_third])
+        else:
+            x = x.val_rw()
+            res = np.zeros(self._domain.shape)
+            x[from_third] = np.cumsum(x[from_third][reverse])[reverse]
+            res[0] += x[from_third]
+            x[from_third] *= self._log_vol/2.
+            x[no_border] += x[from_third]
+            res[1] += np.cumsum(x[from_third][reverse])[reverse]
+        return makeField(self._tgt(mode), res)
+
+
+class _SimpleAmplitude(Operator):
+    def __init__(self, target, fluctuations, flexibility, asperity,
+                 loglogavgslope, azm, totvol, key):
+        assert isinstance(fluctuations, Operator)
+        assert isinstance(flexibility, Operator)
+        assert isinstance(asperity, Operator)
+        assert isinstance(loglogavgslope, Operator)
+
+        distributed_tgt = target = makeDomain(target)
+        azm_expander = ContractionOperator(distributed_tgt, spaces=0).adjoint
+        assert isinstance(target[0], PowerSpace)
+
+        twolog = _SimpleTwoLogIntegrations(target)
+        dom = twolog.domain
+
+        shp = dom[0].shape
+        expander = ContractionOperator(dom, spaces=0).adjoint
+        ps_expander = ContractionOperator(twolog.target, spaces=0).adjoint
+
+        # Prepare constant fields
+        foo = np.zeros(shp)
+        foo[0] = foo[1] = np.sqrt(_log_vol(target[0]))
+        vflex = DiagonalOperator(makeField(dom[0], foo), dom, 0)
+
+        foo = np.zeros(shp, dtype=np.float64)
+        foo[0] += 1
+        vasp = DiagonalOperator(makeField(dom[0], foo), dom, 0)
+
+        foo = np.ones(shp)
+        foo[0] = _log_vol(target[0])**2/12.
+        shift = DiagonalOperator(makeField(dom[0], foo), dom, 0)
+
+        vslope = DiagonalOperator(
+            makeField(target[0], _relative_log_k_lengths(target[0])), target,
+            0)
+
+        foo, bar = [np.zeros(target[0].shape) for _ in range(2)]
+        bar[1:] = foo[0] = totvol
+        vol0, vol1 = [
+            DiagonalOperator(makeField(target[0], aa), target, 0)
+            for aa in (foo, bar)
+        ]
+
+        # Prepare fields for Adder
+        shift, vol0 = [op(full(op.domain, 1)) for op in (shift, vol0)]
+        # End prepare constant fields
+
+        slope = vslope @ ps_expander @ loglogavgslope
+        sig_flex = vflex @ expander @ flexibility
+        sig_asp = vasp @ expander @ asperity
+        sig_fluc = vol1 @ ps_expander @ fluctuations
+        sig_fluc = vol1 @ ps_expander @ fluctuations
+
+        xi = ducktape(dom, None, key)
+        sigma = sig_flex*(Adder(shift) @ sig_asp).ptw("sqrt")
+        smooth = _SlopeRemover(target, 0) @ twolog @ (sigma*xi)
+        op = _Normalization(target, 0) @ (slope + smooth)
+        op = Adder(vol0) @ (sig_fluc*(azm_expander @ azm.ptw("reciprocal"))*op)
+        self.apply = op.apply
+        self._domain, self._target = op.domain, op.target
+        self._op = op
+
+    def __repr__(self):
+        return self._op.__repr__
 
 
 class SimpleCorrelatedFieldMaker:
@@ -58,7 +160,6 @@ class SimpleCorrelatedFieldMaker:
                  loglogavgslope_stddev,
                  prefix='',
                  harmonic_partner=None):
-        from .correlated_fields import _Amplitude
         if harmonic_partner is None:
             harmonic_partner = target.get_default_codomain()
         else:
@@ -74,8 +175,9 @@ class SimpleCorrelatedFieldMaker:
                                 prefix + 'loglogavgslope', 0)
         zm = LognormalTransform(offset_std_mean, offset_std_std,
                                 prefix + 'zeromode', 0)
-        amp = _Amplitude(PowerSpace(harmonic_partner), fluct, flex, asp, avgsl,
-                         zm, target.total_volume, prefix + 'spectrum', [])
+        amp = _SimpleAmplitude(PowerSpace(harmonic_partner), fluct, flex, asp,
+                               avgsl, zm, target.total_volume,
+                               prefix + 'spectrum')
         ht = HarmonicTransformOperator(harmonic_partner, target)
         pd = PowerDistributor(harmonic_partner, amp.target[0])
         expander = ContractionOperator(harmonic_partner, spaces=0).adjoint
