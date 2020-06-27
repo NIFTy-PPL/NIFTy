@@ -172,7 +172,7 @@ def test_complicated_vs_simple(seed, domain):
         ift.extra.assert_allclose(scf(inp), op1(inp))
         ift.extra.check_operator(scf, inp, ntries=10)
 
-        # op1 = cfm.amplitude
-        # op0 = scf.amplitude
-        # assert_(op0.domain is op1.domain)
-        # ift.extra.assert_allclose(op0.force(inp), op1.force(inp))
+        op1 = cfm.amplitude
+        op0 = scf.amplitude
+        assert_(op0.domain is op1.domain)
+        ift.extra.assert_allclose(op0.force(inp), op1.force(inp))

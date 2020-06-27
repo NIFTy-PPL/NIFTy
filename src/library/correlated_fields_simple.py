@@ -105,3 +105,7 @@ class SimpleCorrelatedField(Operator):
         self.apply = op.apply
         self._domain = op.domain
         self._target = op.target
+
+    @property
+    def amplitude(self):
+        return self._a
