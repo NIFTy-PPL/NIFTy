@@ -20,7 +20,6 @@ from itertools import combinations
 import numpy as np
 from numpy.testing import assert_
 
-from . import random
 from .domain_tuple import DomainTuple
 from .field import Field
 from .linearization import Linearization
@@ -124,7 +123,7 @@ def check_operator(op, loc, tol=1e-12, ntries=100, perf_check=True,
                                metric_sampling)
 
 
-def assert_allclose(f1, f2, atol, rtol):
+def assert_allclose(f1, f2, atol=0, rtol=1e-7):
     if isinstance(f1, Field):
         return np.testing.assert_allclose(f1.val, f2.val, atol=atol, rtol=rtol)
     for key, val in f1.items():
