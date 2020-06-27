@@ -65,39 +65,39 @@ class SimpleCorrelatedField(Operator):
         zm = LognormalTransform(offset_std_mean, offset_std_std,
                                 prefix + 'zeromode', 0)
 
-        tgt = PowerSpace(harmonic_partner)
-        twolog = _TwoLogIntegrations(tgt)
+        pspace = PowerSpace(harmonic_partner)
+        twolog = _TwoLogIntegrations(pspace)
         dom = twolog.domain[0]
         vflex = np.zeros(dom.shape)
         vasp = np.zeros(dom.shape, dtype=np.float64)
         shift = np.ones(dom.shape, dtype=np.float64)
-        vflex[0] = vflex[1] = np.sqrt(_log_vol(tgt))
+        vflex[0] = vflex[1] = np.sqrt(_log_vol(pspace))
         vasp[0] = 1
-        shift[0] = _log_vol(tgt)**2/12.
+        shift[0] = _log_vol(pspace)**2/12.
         vflex = makeOp(makeField(dom, vflex))
         vasp = makeOp(makeField(dom, vasp))
         shift = makeField(dom, shift)
-        vslope = makeOp(makeField(tgt, _relative_log_k_lengths(tgt)))
+        vslope = makeOp(makeField(pspace, _relative_log_k_lengths(pspace)))
 
         expander = ContractionOperator(twolog.domain, 0).adjoint
-        ps_expander = ContractionOperator(tgt, 0).adjoint
+        ps_expander = ContractionOperator(pspace, 0).adjoint
         slope = vslope @ ps_expander @ avgsl
         sig_flex = vflex @ expander @ flex
         sig_asp = vasp @ expander @ asp
         xi = ducktape(dom, None, prefix + 'spectrum')
         smooth = xi*sig_flex*(Adder(shift) @ sig_asp).ptw("sqrt")
-        smooth = _SlopeRemover(tgt, 0) @ twolog @ smooth
-        op = _Normalization(tgt, 0) @ (slope + smooth)
+        smooth = _SlopeRemover(pspace, 0) @ twolog @ smooth
+        op = _Normalization(pspace, 0) @ (slope + smooth)
 
-        maskzm = np.ones(tgt.shape)
+        maskzm = np.ones(pspace.shape)
         maskzm[0] = 0
-        maskzm = makeOp(makeField(tgt, maskzm))
-        insert = ValueInserter(tgt, (0,))
+        maskzm = makeOp(makeField(pspace, maskzm))
+        insert = ValueInserter(pspace, (0,))
         a = (maskzm @ ((ps_expander @ fluct)*op)) + insert(zm)
         self._a = a.scale(target.total_volume)
 
         ht = HarmonicTransformOperator(harmonic_partner, target)
-        pd = PowerDistributor(harmonic_partner, tgt)
+        pd = PowerDistributor(harmonic_partner, pspace)
         xi = ducktape(harmonic_partner, None, prefix + 'xi')
         op = ht(pd(self._a)*xi)
         if offset_mean is not None:
