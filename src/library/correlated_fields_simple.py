@@ -87,13 +87,13 @@ class SimpleCorrelatedField(Operator):
         xi = ducktape(dom, None, prefix + 'spectrum')
         smooth = xi*sig_flex*(Adder(shift) @ sig_asp).ptw("sqrt")
         smooth = _SlopeRemover(pspace, 0) @ twolog @ smooth
-        op = _Normalization(pspace, 0) @ (slope + smooth)
+        a = _Normalization(pspace, 0) @ (slope + smooth)
 
         maskzm = np.ones(pspace.shape)
         maskzm[0] = 0
         maskzm = makeOp(makeField(pspace, maskzm))
         insert = ValueInserter(pspace, (0,))
-        a = (maskzm @ ((ps_expander @ fluct)*op)) + insert(zm)
+        a = (maskzm @ ((ps_expander @ fluct)*a)) + insert(zm)
         self._a = a.scale(target.total_volume)
 
         ht = HarmonicTransformOperator(harmonic_partner, target)
