@@ -12,7 +12,7 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
 # Copyright(C) 2013-2020 Max-Planck-Society
-# Authors: Philipp Arras
+# Author: Philipp Arras
 #
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
 
@@ -34,20 +34,10 @@ from .correlated_fields import (_log_vol, _Normalization,
 
 
 class SimpleCorrelatedField(Operator):
-    def __init__(self,
-                 target,
-                 offset_mean,
-                 offset_std_mean,
-                 offset_std_std,
-                 fluctuations_mean,
-                 fluctuations_stddev,
-                 flexibility_mean,
-                 flexibility_stddev,
-                 asperity_mean,
-                 asperity_stddev,
-                 loglogavgslope_mean,
-                 loglogavgslope_stddev,
-                 prefix='',
+    def __init__(self, target, offset_mean, offset_std_mean, offset_std_std,
+                 fluctuations_mean, fluctuations_stddev, flexibility_mean,
+                 flexibility_stddev, asperity_mean, asperity_stddev,
+                 loglogavgslope_mean, loglogavgslope_stddev, prefix='',
                  harmonic_partner=None):
         if harmonic_partner is None:
             harmonic_partner = target.get_default_codomain()
