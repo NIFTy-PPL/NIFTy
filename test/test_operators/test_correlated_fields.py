@@ -139,7 +139,7 @@ def test_complicated_vs_simple(seed, domain):
         loglogavgslope_stddev = _posrand()
         prefix = 'foobar'
         hspace = domain.get_default_codomain()
-        op0 = ift.SimpleCorrelatedField(domain,
+        scf = ift.SimpleCorrelatedField(domain,
                                         offset_mean,
                                         offset_std_mean,
                                         offset_std_std,
@@ -166,7 +166,18 @@ def test_complicated_vs_simple(seed, domain):
                              loglogavgslope_stddev,
                              prefix='',
                              harmonic_partner=hspace)
+        inp = ift.from_random(scf.domain)
         op1 = cfm.finalize()
+        assert_(scf.domain is op1.domain)
+        ift.extra.assert_allclose(scf(inp), op1(inp))
+        ift.extra.check_operator(scf, inp, ntries=10)
+
+        op1 = cfm.normalized_amplitudes[0]
+        op0 = scf.normalized_amplitudes[0]
         assert_(op0.domain is op1.domain)
-        inp = ift.from_random(op0.domain)
-        ift.extra.assert_allclose(op0(inp), op1(inp))
+        ift.extra.assert_allclose(op0.force(inp), op1.force(inp))
+
+        # op1 = cfm.amplitude
+        # op0 = scf.amplitude
+        # assert_(op0.domain is op1.domain)
+        # ift.extra.assert_allclose(op0.force(inp), op1.force(inp))

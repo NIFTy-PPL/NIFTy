@@ -16,7 +16,6 @@
 #
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
 
-
 import numpy as np
 
 from ..domains.power_space import PowerSpace
@@ -101,7 +100,6 @@ class SimpleCorrelatedField(Operator):
                                 prefix + 'zeromode', 0)
 
         tgt = PowerSpace(harmonic_partner)
-        azm_expander = ContractionOperator(tgt, 0).adjoint
         twolog = _SimpleTwoLogIntegrations(tgt)
         dom = twolog.domain[0]
         vflex = np.zeros(dom.shape)
@@ -120,26 +118,32 @@ class SimpleCorrelatedField(Operator):
         vol1 = makeOp(makeField(tgt, vol1))
         vslope = makeOp(makeField(tgt, _relative_log_k_lengths(tgt)))
         shift = shift(full(shift.domain, 1))
-        expander = ContractionOperator(twolog.domain, spaces=0).adjoint
-        ps_expander = ContractionOperator(twolog.target, spaces=0).adjoint
+
+        azm_expander = ContractionOperator(tgt, 0).adjoint
+        expander = ContractionOperator(twolog.domain, 0).adjoint
+        ps_expander = ContractionOperator(twolog.target, 0).adjoint
+        h_expander = ContractionOperator(harmonic_partner, 0).adjoint
         slope = vslope @ ps_expander @ avgsl
         sig_flex = vflex @ expander @ flex
         sig_asp = vasp @ expander @ asp
         sig_fluc = vol1 @ ps_expander @ fluct
-        sig_fluc = vol1 @ ps_expander @ fluct
         xi = ducktape(dom, None, prefix + 'spectrum')
-        sigma = sig_flex*(Adder(shift) @ sig_asp).ptw("sqrt")
-        smooth = _SlopeRemover(tgt, 0) @ twolog @ (sigma*xi)
+        smooth = xi*sig_flex*(Adder(shift) @ sig_asp).ptw("sqrt")
+        smooth = _SlopeRemover(tgt, 0) @ twolog @ smooth
         op = _Normalization(tgt, 0) @ (slope + smooth)
         amp = Adder(vol0) @ (sig_fluc*(azm_expander @ zm.ptw("reciprocal"))*op)
+        self._a = amp
 
         ht = HarmonicTransformOperator(harmonic_partner, target)
         pd = PowerDistributor(harmonic_partner, amp.target[0])
-        expander = ContractionOperator(harmonic_partner, spaces=0).adjoint
         xi = ducktape(harmonic_partner, None, prefix + 'xi')
-        op = ht(expander(zm)*pd(amp)*xi)
+        op = ht(h_expander(zm)*pd(amp)*xi*(1))
         if offset_mean is not None:
             op = Adder(full(op.target, float(offset_mean))) @ op
         self.apply = op.apply
         self._domain = op.domain
         self._target = op.target
+
+    @property
+    def normalized_amplitudes(self):
+        return [self._a]
