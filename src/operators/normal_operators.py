@@ -16,22 +16,22 @@
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
 
 import numpy as np
+
 from ..domain_tuple import DomainTuple
 from ..domains.unstructured_domain import UnstructuredDomain
-from ..operators.operator import Operator
 from ..operators.adder import Adder
-from ..operators.simple_linear_operators import ducktape
 from ..operators.diagonal_operator import DiagonalOperator
+from ..operators.simple_linear_operators import ducktape
 from ..sugar import makeField
-from ..utilities import value_reshaper, lognormal_moments
+from ..utilities import lognormal_moments, value_reshaper
 
 
 def NormalTransform(mean, sigma, key, N_copies=0):
     """Opchain that transforms standard normally distributed values to
     normally distributed values with given mean an standard deviation.
 
-    Parameters:
-    -----------
+    Parameters
+    ----------
     mean : float
         Mean of the field
     sigma : float
@@ -60,8 +60,8 @@ def LognormalTransform(mean, sigma, key, N_copies):
     """Opchain that transforms standard normally distributed values to
     log-normally distributed values with given mean an standard deviation.
 
-    Parameters:
-    -----------
+    Parameters
+    ----------
     mean : float
         Mean of the field
     sigma : float
