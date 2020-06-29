@@ -34,6 +34,12 @@ from .correlated_fields import (_log_vol, _Normalization,
 
 
 class SimpleCorrelatedField(Operator):
+    """Simplified version of :class:`~nifty7.library.correlated_fields.CorrelatedFieldMaker`.
+
+    Assumes `total_N = 0`, `dofdex = None` and the presence of only one power
+    spectrum, i.e. only one call of
+    :func:`~nifty7.library.correlated_fields.CorrelatedFieldMaker.add_fluctuations`.
+    """
     def __init__(self, target, offset_mean, offset_std_mean, offset_std_std,
                  fluctuations_mean, fluctuations_stddev, flexibility_mean,
                  flexibility_stddev, asperity_mean, asperity_stddev,
@@ -98,4 +104,5 @@ class SimpleCorrelatedField(Operator):
 
     @property
     def amplitude(self):
+        """Analoguous to :func:`~nifty7.library.correlated_fields.CorrelatedFieldMaker.amplitude`."""
         return self._a
