@@ -52,20 +52,17 @@ def main():
     else:
         mode = 0
     filename = "getting_started_3_mode_{}_".format(mode) + "{}.png"
-
     position_space = ift.RGSpace([128, 128])
 
     #  For a detailed showcase of the effects the parameters
     #  of the CorrelatedField model have on the generated fields,
     #  see 'getting_started_4_CorrelatedFields.ipynb'.
 
-    cfmaker = ift.CorrelatedFieldMaker.make(
-        offset_mean=      0.0,
-        offset_std_mean= 1e-3,
-        offset_std_std=  1e-6,
-        prefix='')
+    args = {
+        'offset_mean': 0,
+        'offset_std_mean': 1e-3,
+        'offset_std_std': 1e-6,
 
-    fluctuations_dict = {
         # Amplitude of field fluctuations
         'fluctuations_mean':   2.0,  # 1.0
         'fluctuations_stddev': 1.0,  # 1e-2
@@ -82,10 +79,9 @@ def main():
         'asperity_mean':   0.5,  # 0.1
         'asperity_stddev': 0.5  # 0.5
     }
-    cfmaker.add_fluctuations(position_space, **fluctuations_dict)
 
-    correlated_field = cfmaker.finalize()
-    A = cfmaker.amplitude
+    correlated_field = ift.SimpleCorrelatedField(position_space, **args)
+    A = correlated_field.amplitude
 
     # Apply a nonlinearity
     signal = ift.sigmoid(correlated_field)
@@ -143,8 +139,6 @@ def main():
         plot.output(ny=1, ysize=6, xsize=16,
                     name=filename.format("loop_{:02d}".format(i)))
 
-    # Draw posterior samples
-    KL = ift.MetricGaussianKL.make(mean, H, N_samples)
     sc = ift.StatCalculator()
     for sample in KL.samples:
         sc.add(signal(sample + KL.position))
@@ -156,11 +150,15 @@ def main():
     plot.add(ift.sqrt(sc.var), title="Posterior Standard Deviation")
 
     powers = [A.force(s + KL.position) for s in KL.samples]
+    sc = ift.StatCalculator()
+    for pp in powers:
+        sc.add(pp)
     plot.add(
         powers + [A.force(mock_position),
-                  A.force(KL.position)],
+                  A.force(KL.position), sc.mean],
         title="Sampled Posterior Power Spectrum",
-        linewidth=[1.]*len(powers) + [3., 3.])
+        linewidth=[1.]*len(powers) + [3., 3., 3.],
+        label=[None]*len(powers) + ['Ground truth', 'Posterior latent mean', 'Posterior mean'])
     plot.output(ny=1, nx=3, xsize=24, ysize=6, name=filename_res)
     print("Saved results as '{}'.".format(filename_res))
 

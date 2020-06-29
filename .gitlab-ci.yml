@@ -53,6 +53,7 @@ test_mpi:
 pages:
   stage: release
   script:
+    - rm -rf docs/build docs/source/mod
     - sh docs/generate.sh
     - mv docs/build/ public/
   artifacts:

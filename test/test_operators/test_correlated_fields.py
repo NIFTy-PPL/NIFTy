@@ -15,6 +15,7 @@
 #
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
 
+import numpy as np
 import pytest
 from numpy.testing import assert_, assert_allclose
 
@@ -23,6 +24,12 @@ import nifty7 as ift
 from ..common import setup_function, teardown_function
 
 pmp = pytest.mark.parametrize
+spaces = [
+    ift.RGSpace(4),
+    ift.RGSpace((4, 4), (0.123, 0.4)),
+    ift.HPSpace(8),
+    ift.GLSpace(4)
+]
 
 
 def _stats(op, samples):
@@ -30,6 +37,14 @@ def _stats(op, samples):
     for s in samples:
         sc.add(op(s.extract(op.domain)))
     return sc.mean.val, sc.var.ptw("sqrt").val
+
+
+def _rand():
+    return ift.random.current_rng().normal()
+
+
+def _posrand():
+    return np.exp(_rand())
 
 
 @pmp('dofdex', [[0, 0], [0, 1]])
@@ -46,12 +61,7 @@ def testDistributor(dofdex, seed):
         ift.extra.check_linear_operator(op)
 
 
-@pmp('sspace', [
-    ift.RGSpace(4),
-    ift.RGSpace((4, 4), (0.123, 0.4)),
-    ift.HPSpace(8),
-    ift.GLSpace(4)
-])
+@pmp('sspace', spaces)
 @pmp('N', [0, 2])
 def testAmplitudesInvariants(sspace, N):
     fsspace = ift.RGSpace((12,), (0.4,))
@@ -110,3 +120,59 @@ def testAmplitudesInvariants(sspace, N):
     for ampl in fa.normalized_amplitudes:
         ift.extra.check_operator(ampl, 0.1*ift.from_random(ampl.domain), ntries=10)
     ift.extra.check_operator(op, 0.1*ift.from_random(op.domain), ntries=10)
+
+
+@pmp('seed', [42, 31])
+@pmp('domain', spaces)
+def test_complicated_vs_simple(seed, domain):
+    with ift.random.Context(seed):
+        offset_mean = _rand()
+        offset_std_mean = _posrand()
+        offset_std_std = _posrand()
+        fluctuations_mean = _posrand()
+        fluctuations_stddev = _posrand()
+        flexibility_mean = _posrand()
+        flexibility_stddev = _posrand()
+        asperity_mean = _posrand()
+        asperity_stddev = _posrand()
+        loglogavgslope_mean = _posrand()
+        loglogavgslope_stddev = _posrand()
+        prefix = 'foobar'
+        hspace = domain.get_default_codomain()
+        scf = ift.SimpleCorrelatedField(domain,
+                                        offset_mean,
+                                        offset_std_mean,
+                                        offset_std_std,
+                                        fluctuations_mean,
+                                        fluctuations_stddev,
+                                        flexibility_mean,
+                                        flexibility_stddev,
+                                        asperity_mean,
+                                        asperity_stddev,
+                                        loglogavgslope_mean,
+                                        loglogavgslope_stddev,
+                                        prefix=prefix,
+                                        harmonic_partner=hspace)
+        cfm = ift.CorrelatedFieldMaker.make(offset_mean, offset_std_mean,
+                                            offset_std_std, prefix)
+        cfm.add_fluctuations(domain,
+                             fluctuations_mean,
+                             fluctuations_stddev,
+                             flexibility_mean,
+                             flexibility_stddev,
+                             asperity_mean,
+                             asperity_stddev,
+                             loglogavgslope_mean,
+                             loglogavgslope_stddev,
+                             prefix='',
+                             harmonic_partner=hspace)
+        inp = ift.from_random(scf.domain)
+        op1 = cfm.finalize()
+        assert_(scf.domain is op1.domain)
+        ift.extra.assert_allclose(scf(inp), op1(inp))
+        ift.extra.check_operator(scf, inp, ntries=10)
+
+        op1 = cfm.amplitude
+        op0 = scf.amplitude
+        assert_(op0.domain is op1.domain)
+        ift.extra.assert_allclose(op0.force(inp), op1.force(inp))
