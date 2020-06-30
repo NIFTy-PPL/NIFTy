@@ -124,39 +124,51 @@ def testAmplitudesInvariants(sspace, N):
 
 @pmp('seed', [42, 31])
 @pmp('domain', spaces)
-def test_complicated_vs_simple(seed, domain):
+@pmp('without', (('asperity', ), ('flexibility', ), ('flexibility', 'asperity')))
+def test_complicated_vs_simple(seed, domain, without):
     with ift.random.Context(seed):
         offset_mean = _rand()
-        offset_std_mean = _posrand()
-        offset_std_std = _posrand()
-        fluctuations_mean = _posrand()
-        fluctuations_stddev = _posrand()
-        flexibility_mean = _posrand()
-        flexibility_stddev = _posrand()
-        asperity_mean = _posrand()
-        asperity_stddev = _posrand()
-        loglogavgslope_mean = _posrand()
-        loglogavgslope_stddev = _posrand()
+        offset_std = _posrand(), _posrand()
+        fluctuations = _posrand(), _posrand()
+        if "flexibility" in without:
+            flexibility = None
+        else:
+            flexibility = _posrand(), _posrand()
+        if "asperity" in without:
+            asperity = None
+        else:
+            asperity = _posrand(), _posrand()
+        loglogavgslope = _posrand(), _posrand()
         prefix = 'foobar'
         hspace = domain.get_default_codomain()
-        scf = ift.SimpleCorrelatedField(
+        scf_args = (
             domain,
-            offset_mean, (offset_std_mean, offset_std_std),
-            (fluctuations_mean, fluctuations_stddev),
-            (flexibility_mean, flexibility_stddev),
-            (asperity_mean, asperity_stddev),
-            (loglogavgslope_mean, loglogavgslope_stddev),
-            prefix=prefix,
-            harmonic_partner=hspace)
-        cfm = ift.CorrelatedFieldMaker.make(offset_mean,
-                                            (offset_std_mean, offset_std_std),
-                                            prefix)
-        cfm.add_fluctuations(domain,
-                             (fluctuations_mean, fluctuations_stddev),
-                             (flexibility_mean, flexibility_stddev),
-                             (asperity_mean, asperity_stddev),
-                             (loglogavgslope_mean, loglogavgslope_stddev),
-                             prefix='',
+            offset_mean,
+            offset_std,
+            fluctuations,
+            flexibility,
+            asperity,
+            loglogavgslope
+        )
+        add_fluct_args = (
+            domain,
+            fluctuations,
+            flexibility,
+            asperity,
+            loglogavgslope
+        )
+        cfm = ift.CorrelatedFieldMaker.make(offset_mean, offset_std, prefix)
+        if asperity is not None and flexibility is None:
+            with pytest.raises(ValueError):
+                scf = ift.SimpleCorrelatedField(*scf_args, prefix=prefix,
+                                                harmonic_partner=hspace)
+            with pytest.raises(ValueError):
+                cfm.add_fluctuations(*add_fluct_args, prefix='',
+                                     harmonic_partner=hspace)
+            return
+        scf = ift.SimpleCorrelatedField(*scf_args, prefix=prefix,
+                                        harmonic_partner=hspace)
+        cfm.add_fluctuations(*add_fluct_args, prefix='',
                              harmonic_partner=hspace)
         inp = ift.from_random(scf.domain)
         op1 = cfm.finalize()
