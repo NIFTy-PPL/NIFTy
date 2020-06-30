@@ -171,3 +171,27 @@ def test_complicated_vs_simple(seed, domain):
         op0 = scf.amplitude
         assert_(op0.domain is op1.domain)
         ift.extra.assert_allclose(op0.force(inp), op1.force(inp))
+
+
+@pmp('asperity', [None, (_posrand(), _posrand())])
+@pmp('flexibility', [None, (_posrand(), _posrand())])
+def test_simple_without_asp_fluct(asperity, flexibility):
+    domain = ift.RGSpace((4, 4), (0.123, 0.4))
+    offset_mean = _rand()
+    offset_std = _posrand(), _posrand()
+    fluctuations = _posrand(), _posrand()
+    loglogavgslope = _posrand(), _posrand()
+    prefix = 'foobar'
+    hspace = domain.get_default_codomain()
+    args = (domain, offset_mean, offset_std, fluctuations, flexibility,
+            asperity, loglogavgslope, prefix, hspace)
+    if asperity is not None and flexibility is None:
+        with pytest.raises(ValueError):
+            scf = ift.SimpleCorrelatedField(*args)
+    elif asperity is None and flexibility is not None:
+        with pytest.raises(NotImplementedError):
+            scf = ift.SimpleCorrelatedField(*args)
+    else:
+        scf = ift.SimpleCorrelatedField(*args)
+        inp = ift.from_random(scf.domain)
+        ift.extra.check_operator(scf, inp, ntries=10)

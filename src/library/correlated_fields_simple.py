@@ -52,40 +52,45 @@ class SimpleCorrelatedField(Operator):
             if len(kk) != 2:
                 raise TypeError
         for kk in [flexibility, asperity]:
-            if kk is None or len(kk) != 2:
+            if not (kk is None or len(kk) == 2):
                 raise TypeError
         if flexibility is None and asperity is not None:
             raise ValueError
         fluct = LognormalTransform(*fluctuations, prefix + 'fluctuations', 0)
-        flex = LognormalTransform(*flexibility, prefix + 'flexibility', 0)
-        asp = LognormalTransform(*asperity, prefix + 'asperity', 0)
         avgsl = NormalTransform(*loglogavgslope, prefix + 'loglogavgslope', 0)
         zm = LognormalTransform(*offset_std, prefix + 'zeromode', 0)
 
         pspace = PowerSpace(harmonic_partner)
         twolog = _TwoLogIntegrations(pspace)
-        dom = twolog.domain[0]
-        vflex = np.zeros(dom.shape)
-        vasp = np.zeros(dom.shape)
-        shift = np.ones(dom.shape)
-        vflex[0] = vflex[1] = np.sqrt(_log_vol(pspace))
-        vasp[0] = 1
-        shift[0] = _log_vol(pspace)**2/12.
-        vflex = makeOp(makeField(dom, vflex))
-        vasp = makeOp(makeField(dom, vasp))
-        shift = makeField(dom, shift)
-        vslope = makeOp(makeField(pspace, _relative_log_k_lengths(pspace)))
-
         expander = ContractionOperator(twolog.domain, 0).adjoint
         ps_expander = ContractionOperator(pspace, 0).adjoint
+        vslope = makeOp(makeField(pspace, _relative_log_k_lengths(pspace)))
         slope = vslope @ ps_expander @ avgsl
-        sig_flex = vflex @ expander @ flex
-        sig_asp = vasp @ expander @ asp
-        xi = ducktape(dom, None, prefix + 'spectrum')
-        smooth = xi*sig_flex*(Adder(shift) @ sig_asp).ptw("sqrt")
-        smooth = _SlopeRemover(pspace, 0) @ twolog @ smooth
-        a = _Normalization(pspace, 0) @ (slope + smooth)
+        a = slope
 
+        if flexibility is not None:
+            flex = LognormalTransform(*flexibility, prefix + 'flexibility', 0)
+            dom = twolog.domain[0]
+            vflex = np.zeros(dom.shape)
+            vflex[0] = vflex[1] = np.sqrt(_log_vol(pspace))
+            vflex = makeOp(makeField(dom, vflex))
+            sig_flex = vflex @ expander @ flex
+            xi = ducktape(dom, None, prefix + 'spectrum')
+
+            if asperity is None:
+                raise NotImplementedError
+            asp = LognormalTransform(*asperity, prefix + 'asperity', 0)
+            vasp = np.zeros(dom.shape)
+            vasp[0] = 1
+            vasp = makeOp(makeField(dom, vasp))
+            sig_asp = vasp @ expander @ asp
+            shift = np.ones(dom.shape)
+            shift[0] = _log_vol(pspace)**2/12.
+            shift = makeField(dom, shift)
+            asp = (Adder(shift) @ sig_asp).ptw("sqrt")
+
+            a = a + _SlopeRemover(pspace, 0) @ twolog @ (xi*sig_flex*asp)
+        a = _Normalization(pspace, 0) @ a
         maskzm = np.ones(pspace.shape)
         maskzm[0] = 0
         maskzm = makeOp(makeField(pspace, maskzm))
