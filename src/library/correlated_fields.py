@@ -275,19 +275,13 @@ class _Amplitude(Operator):
 
         if sig_asp is None and sig_flex is None:
             op = _Normalization(target, space) @ slope
-        elif sig_flex is None:
-            xi = ducktape(dom, None, key)
-            # TODO: this is wrong; but I know how to correct it as
-            # `sigma = sig_flex * ([...] @ sig_asp)` should always be zero
-            # for a `sig_flex` of zero
-            sigma = (Adder(shift) @ sig_asp).ptw("sqrt")
-            smooth = _SlopeRemover(target, space) @ twolog @ (sigma * xi)
-            op = _Normalization(target, space) @ (slope + smooth)
         elif sig_asp is None:
             xi = ducktape(dom, None, key)
             sigma = DiagonalOperator(shift.ptw("sqrt"), dom, space) @ sig_flex
             smooth = _SlopeRemover(target, space) @ twolog @ (sigma * xi)
             op = _Normalization(target, space) @ (slope + smooth)
+        elif sig_flex is None:
+            raise ValueError("flexibility may not be disabled on its own")
         else:
             xi = ducktape(dom, None, key)
             sigma = sig_flex * (Adder(shift) @ sig_asp).ptw("sqrt")
@@ -494,6 +488,8 @@ class CorrelatedFieldMaker:
         else:
             raise ValueError(ve.format("fluctuations"))
         if flexibility_mean == 0. and flexibility_stddev == 0.:
+            if asperity_mean != 0. or asperity_stddev != 0.:
+                raise ValueError("flexibility may not be disabled on its own")
             flex = None
         elif flexibility_mean > 0. and flexibility_stddev > 0.:
             flex = LognormalTransform(flexibility_mean, flexibility_stddev,
