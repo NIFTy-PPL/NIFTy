@@ -81,16 +81,15 @@ class SimpleCorrelatedField(Operator):
             shift[0] = _log_vol(pspace)**2/12.
             shift = makeField(dom, shift)
             if asperity is None:
-                asp = makeOp(shift.ptw("sqrt"))
-                a = a + _SlopeRemover(pspace, 0) @ twolog @ asp @ (xi*sig_flex)
+                asp = makeOp(shift.ptw("sqrt")) @ (xi*sig_flex)
             else:
                 asp = LognormalTransform(*asperity, prefix + 'asperity', 0)
                 vasp = np.zeros(dom.shape)
                 vasp[0] = 1
                 vasp = makeOp(makeField(dom, vasp))
                 sig_asp = vasp @ expander @ asp
-                asp = (Adder(shift) @ sig_asp).ptw("sqrt")
-                a = a + _SlopeRemover(pspace, 0) @ twolog @ (xi*sig_flex*asp)
+                asp = xi*sig_flex*(Adder(shift) @ sig_asp).ptw("sqrt")
+            a = a + _SlopeRemover(pspace, 0) @ twolog @ asp
         a = _Normalization(pspace, 0) @ a
         maskzm = np.ones(pspace.shape)
         maskzm[0] = 0
