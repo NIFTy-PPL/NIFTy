@@ -73,10 +73,10 @@ def main():
     sp2 = ift.RGSpace(npix2)
 
     # Set up signal model
-    cfmaker = ift.CorrelatedFieldMaker.make(0., 1e-2, 1e-6, '')
-    cfmaker.add_fluctuations(sp1, 0.1, 1e-2, 1, .1, .01, .5, -2, 1., 'amp1')
-    cfmaker.add_fluctuations(sp2, 0.1, 1e-2, 1, .1, .01, .5,
-                             -1.5, .5, 'amp2')
+    cfmaker = ift.CorrelatedFieldMaker.make(0., (1e-2, 1e-6), '')
+    cfmaker.add_fluctuations(sp1, (0.1, 1e-2), (1, .1), (.01, .5), (-2, 1.), 'amp1')
+    cfmaker.add_fluctuations(sp2, (0.1, 1e-2), (1, .1), (.01, .5),
+                             (-1.5, .5), 'amp2')
     correlated_field = cfmaker.finalize()
 
     A1 = cfmaker.normalized_amplitudes[0]

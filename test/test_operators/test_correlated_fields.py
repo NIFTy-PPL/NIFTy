@@ -71,11 +71,11 @@ def testAmplitudesInvariants(sspace, N):
 
     astds = 0.2, 1.2
     offset_std_mean = 1.3
-    fa = ift.CorrelatedFieldMaker.make(1.2, offset_std_mean, 1e-2, '', N,
+    fa = ift.CorrelatedFieldMaker.make(1.2, (offset_std_mean, 1e-2), '', N,
                                        dofdex1)
-    fa.add_fluctuations(sspace, astds[0], 1e-2, 1.1, 2., 2.1, .5, -2, 1.,
+    fa.add_fluctuations(sspace, (astds[0], 1e-2), (1.1, 2.), (2.1, .5), (-2, 1.),
                         'spatial', dofdex=dofdex2)
-    fa.add_fluctuations(fsspace, astds[1], 1e-2, 3.1, 1., .5, .1, -4, 1.,
+    fa.add_fluctuations(fsspace, (astds[1], 1e-2), (3.1, 1.), (.5, .1), (-4, 1.),
                         'freq', dofdex=dofdex3)
     op = fa.finalize()
 
@@ -103,12 +103,12 @@ def testAmplitudesInvariants(sspace, N):
     assert_allclose(slice_fluct_std0, sl_fluct_space, rtol=0.5)
     assert_allclose(slice_fluct_std1, sl_fluct_freq, rtol=0.5)
 
-    fa = ift.CorrelatedFieldMaker.make(0., offset_std_mean, .1, '', N, dofdex1)
-    fa.add_fluctuations(fsspace, astds[1], 1., 3.1, 1., .5, .1, -4, 1., 'freq',
+    fa = ift.CorrelatedFieldMaker.make(0., (offset_std_mean, .1), '', N, dofdex1)
+    fa.add_fluctuations(fsspace, (astds[1], 1.), (3.1, 1.), (.5, .1), (-4, 1.), 'freq',
                         dofdex=dofdex3)
     m = 3.
     x = fa.moment_slice_to_average(m)
-    fa.add_fluctuations(sspace, x, 1.5, 1.1, 2., 2.1, .5, -2, 1., 'spatial', 0,
+    fa.add_fluctuations(sspace, (x, 1.5), (1.1, 2.), (2.1, .5), (-2, 1.), 'spatial', 0,
                         dofdex=dofdex2)
     op = fa.finalize()
     em, estd = _stats(fa.slice_fluctuation(0), samples)
@@ -148,17 +148,14 @@ def test_complicated_vs_simple(seed, domain):
             (loglogavgslope_mean, loglogavgslope_stddev),
             prefix=prefix,
             harmonic_partner=hspace)
-        cfm = ift.CorrelatedFieldMaker.make(offset_mean, offset_std_mean,
-                                            offset_std_std, prefix)
+        cfm = ift.CorrelatedFieldMaker.make(offset_mean,
+                                            (offset_std_mean, offset_std_std),
+                                            prefix)
         cfm.add_fluctuations(domain,
-                             fluctuations_mean,
-                             fluctuations_stddev,
-                             flexibility_mean,
-                             flexibility_stddev,
-                             asperity_mean,
-                             asperity_stddev,
-                             loglogavgslope_mean,
-                             loglogavgslope_stddev,
+                             (fluctuations_mean, fluctuations_stddev),
+                             (flexibility_mean, flexibility_stddev),
+                             (asperity_mean, asperity_stddev),
+                             (loglogavgslope_mean, loglogavgslope_stddev),
                              prefix='',
                              harmonic_partner=hspace)
         inp = ift.from_random(scf.domain)

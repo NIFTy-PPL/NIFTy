@@ -358,18 +358,16 @@ class CorrelatedFieldMaker:
         self._total_N = total_N
 
     @staticmethod
-    def make(offset_mean, offset_std_mean, offset_std_std, prefix, total_N=0,
-             dofdex=None):
+    def make(offset_mean, offset_std, prefix, total_N=0, dofdex=None):
         """Returns a CorrelatedFieldMaker object.
 
         Parameters
         ----------
         offset_mean : float
             Mean offset from zero of the correlated field to be made.
-        offset_std_mean : float
-            Mean standard deviation of the offset.
-        offset_std_std : float
-            Standard deviation of the stddev of the offset.
+        offset_std : tuple of float
+            Mean standard deviation and standard deviation of the standard
+            deviation of the offset. No, this is not a word duplication.
         prefix : string
             Prefix to the names of the domains of the cf operator to be made.
             This determines the names of the operator domain.
@@ -392,22 +390,19 @@ class CorrelatedFieldMaker:
         elif len(dofdex) != total_N:
             raise ValueError("length of dofdex needs to match total_N")
         N = max(dofdex) + 1 if total_N > 0 else 0
-        zm = LognormalTransform(offset_std_mean, offset_std_std,
-                                prefix + 'zeromode', N)
+        if len(offset_std) != 2:
+            raise TypeError
+        zm = LognormalTransform(*offset_std, prefix + 'zeromode', N)
         if total_N > 0:
             zm = _Distributor(dofdex, zm.target, UnstructuredDomain(total_N)) @ zm
         return CorrelatedFieldMaker(offset_mean, zm, prefix, total_N)
 
     def add_fluctuations(self,
                          target_subdomain,
-                         fluctuations_mean,
-                         fluctuations_stddev,
-                         flexibility_mean,
-                         flexibility_stddev,
-                         asperity_mean,
-                         asperity_stddev,
-                         loglogavgslope_mean,
-                         loglogavgslope_stddev,
+                         fluctuations,
+                         flexibility,
+                         asperity,
+                         loglogavgslope,
                          prefix='',
                          index=None,
                          dofdex=None,
@@ -435,14 +430,14 @@ class CorrelatedFieldMaker:
                            :class:`~nifty7.domain_tuple.DomainTuple`
             Target subdomain on which the correlation structure defined
             in this call should hold.
-        fluctuations_{mean,stddev} : float
+        fluctuations : tuple of float
             Total spectral energy -> Amplitude of the fluctuations
-        flexibility_{mean,stddev} : float
+        flexibility : tuple of float or None
             Amplitude of the non-power-law power spectrum component
-        asperity_{mean,stddev} : float
+        asperity : tuple of float or None
             Roughness of the non-power-law power spectrum component
             Used to accommodate single frequency peaks
-        loglogavgslope_{mean,stddev} : float
+        loglogavgslope : tuple of float
             Power law component exponent
         prefix : string
             prefix of the power spectrum parameter domain names
@@ -478,37 +473,37 @@ class CorrelatedFieldMaker:
         else:
             N = 0
             target_subdomain = makeDomain(target_subdomain)
-        prefix = str(prefix)
-        # assert isinstance(target_subdomain[space], (RGSpace, HPSpace, GLSpace)
+        # assert isinstance(target_subdomain[space], (RGSpace, HPSpace, GLSpace))
 
-        ve = "{0}_mean and {0}_stddev must be strictly positive (or both zero to disable {0})"
-        if fluctuations_mean > 0. and fluctuations_stddev > 0.:
-            fluct = LognormalTransform(fluctuations_mean, fluctuations_stddev,
-                                       self._prefix + prefix + 'fluctuations', N)
+        for arg in [fluctuations, loglogavgslope]:
+            if len(arg) != 2:
+                raise TypeError
+        for kw, arg in [("flexibility", flexibility), ("asperity", asperity)]:
+            if arg is None:
+                continue
+            if len(arg) != 2:
+                raise TypeError
+            if len(arg) == 2 and (arg[0] <= 0. or arg[1] <= 0.):
+                ve = "{0} must be strictly positive (or None)"
+                raise ValueError(ve.format(kw))
+        if flexibility is None and asperity is not None:
+            raise ValueError("flexibility may not be disabled on its own")
+
+        pre = self._prefix + str(prefix)
+        fluct = LognormalTransform(*fluctuations, pre + 'fluctuations', N)
+        if flexibility is not None:
+            flex = LognormalTransform(*flexibility, pre + 'flexibility', N)
         else:
-            raise ValueError(ve.format("fluctuations"))
-        if flexibility_mean == 0. and flexibility_stddev == 0.:
-            if asperity_mean != 0. or asperity_stddev != 0.:
-                raise ValueError("flexibility may not be disabled on its own")
             flex = None
-        elif flexibility_mean > 0. and flexibility_stddev > 0.:
-            flex = LognormalTransform(flexibility_mean, flexibility_stddev,
-                                      self._prefix + prefix + 'flexibility', N)
+        if asperity is not None:
+            asp = LognormalTransform(*asperity, pre + 'asperity', N)
         else:
-            raise ValueError(ve.format("flexibility"))
-        if asperity_mean == 0. and asperity_stddev == 0.:
             asp = None
-        elif asperity_mean > 0. and asperity_stddev > 0.:
-            asp = LognormalTransform(asperity_mean, asperity_stddev,
-                                     self._prefix + prefix + 'asperity', N)
-        else:
-            raise ValueError(ve.format("asperity"))
-        avgsl = NormalTransform(loglogavgslope_mean, loglogavgslope_stddev,
-                                self._prefix + prefix + 'loglogavgslope', N)
+        avgsl = NormalTransform(*loglogavgslope, pre + 'loglogavgslope', N)
 
         amp = _Amplitude(PowerSpace(harmonic_partner), fluct, flex, asp, avgsl,
                          self._azm, target_subdomain[-1].total_volume,
-                         self._prefix + prefix + 'spectrum', dofdex)
+                         pre + 'spectrum', dofdex)
 
         if index is not None:
             self._a.insert(index, amp)
