@@ -139,20 +139,15 @@ def test_complicated_vs_simple(seed, domain):
         loglogavgslope_stddev = _posrand()
         prefix = 'foobar'
         hspace = domain.get_default_codomain()
-        scf = ift.SimpleCorrelatedField(domain,
-                                        offset_mean,
-                                        offset_std_mean,
-                                        offset_std_std,
-                                        fluctuations_mean,
-                                        fluctuations_stddev,
-                                        flexibility_mean,
-                                        flexibility_stddev,
-                                        asperity_mean,
-                                        asperity_stddev,
-                                        loglogavgslope_mean,
-                                        loglogavgslope_stddev,
-                                        prefix=prefix,
-                                        harmonic_partner=hspace)
+        scf = ift.SimpleCorrelatedField(
+            domain,
+            offset_mean, (offset_std_mean, offset_std_std),
+            (fluctuations_mean, fluctuations_stddev),
+            (flexibility_mean, flexibility_stddev),
+            (asperity_mean, asperity_stddev),
+            (loglogavgslope_mean, loglogavgslope_stddev),
+            prefix=prefix,
+            harmonic_partner=hspace)
         cfm = ift.CorrelatedFieldMaker.make(offset_mean, offset_std_mean,
                                             offset_std_std, prefix)
         cfm.add_fluctuations(domain,
@@ -176,3 +171,24 @@ def test_complicated_vs_simple(seed, domain):
         op0 = scf.amplitude
         assert_(op0.domain is op1.domain)
         ift.extra.assert_allclose(op0.force(inp), op1.force(inp))
+
+
+@pmp('asperity', [None, (_posrand(), _posrand())])
+@pmp('flexibility', [None, (_posrand(), _posrand())])
+def test_simple_without_asp_fluct(asperity, flexibility):
+    domain = ift.RGSpace((4, 4), (0.123, 0.4))
+    offset_mean = _rand()
+    offset_std = _posrand(), _posrand()
+    fluctuations = _posrand(), _posrand()
+    loglogavgslope = _posrand(), _posrand()
+    prefix = 'foobar'
+    hspace = domain.get_default_codomain()
+    args = (domain, offset_mean, offset_std, fluctuations, flexibility,
+            asperity, loglogavgslope, prefix, hspace)
+    if asperity is not None and flexibility is None:
+        with pytest.raises(ValueError):
+            scf = ift.SimpleCorrelatedField(*args)
+    else:
+        scf = ift.SimpleCorrelatedField(*args)
+        inp = ift.from_random(scf.domain)
+        ift.extra.check_operator(scf, inp, ntries=10)

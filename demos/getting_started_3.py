@@ -60,24 +60,19 @@ def main():
 
     args = {
         'offset_mean': 0,
-        'offset_std_mean': 1e-3,
-        'offset_std_std': 1e-6,
+        'offset_std': (1e-3, 1e-6),
 
         # Amplitude of field fluctuations
-        'fluctuations_mean':   2.0,  # 1.0
-        'fluctuations_stddev': 1.0,  # 1e-2
+        'fluctuations': (2., 1.), # 1.0, 1e-2
 
         # Exponent of power law power spectrum component
-        'loglogavgslope_mean': -2.0,  # -3.0
-        'loglogavgslope_stddev': 0.5,  # 0.5
+        'loglogavgslope': (-2., 0.5),  # -3.0, 0.5
 
         # Amplitude of integrated Wiener process power spectrum component
-        'flexibility_mean':   2.5,  # 1.0
-        'flexibility_stddev': 1.0,  # 0.5
+        'flexibility': (2.5, 1.),  # 1.0, 0.5
 
         # How ragged the integrated Wiener process component is
-        'asperity_mean':   0.5,  # 0.1
-        'asperity_stddev': 0.5  # 0.5
+        'asperity': (0.5, 0.5)  # 0.1, 0.5
     }
 
     correlated_field = ift.SimpleCorrelatedField(position_space, **args)
