@@ -139,20 +139,15 @@ def test_complicated_vs_simple(seed, domain):
         loglogavgslope_stddev = _posrand()
         prefix = 'foobar'
         hspace = domain.get_default_codomain()
-        scf = ift.SimpleCorrelatedField(domain,
-                                        offset_mean,
-                                        offset_std_mean,
-                                        offset_std_std,
-                                        fluctuations_mean,
-                                        fluctuations_stddev,
-                                        flexibility_mean,
-                                        flexibility_stddev,
-                                        asperity_mean,
-                                        asperity_stddev,
-                                        loglogavgslope_mean,
-                                        loglogavgslope_stddev,
-                                        prefix=prefix,
-                                        harmonic_partner=hspace)
+        scf = ift.SimpleCorrelatedField(
+            domain,
+            offset_mean, (offset_std_mean, offset_std_std),
+            (fluctuations_mean, fluctuations_stddev),
+            (flexibility_mean, flexibility_stddev),
+            (asperity_mean, asperity_stddev),
+            (loglogavgslope_mean, loglogavgslope_stddev),
+            prefix=prefix,
+            harmonic_partner=hspace)
         cfm = ift.CorrelatedFieldMaker.make(offset_mean, offset_std_mean,
                                             offset_std_std, prefix)
         cfm.add_fluctuations(domain,

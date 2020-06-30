@@ -40,26 +40,27 @@ class SimpleCorrelatedField(Operator):
     spectrum, i.e. only one call of
     :func:`~nifty7.library.correlated_fields.CorrelatedFieldMaker.add_fluctuations`.
     """
-    def __init__(self, target, offset_mean, offset_std_mean, offset_std_std,
-                 fluctuations_mean, fluctuations_stddev, flexibility_mean,
-                 flexibility_stddev, asperity_mean, asperity_stddev,
-                 loglogavgslope_mean, loglogavgslope_stddev, prefix='',
+    def __init__(self, target, offset_mean, offset_std, fluctuations,
+                 flexibility, asperity, loglogavgslope, prefix='',
                  harmonic_partner=None):
         if harmonic_partner is None:
             harmonic_partner = target.get_default_codomain()
         else:
             target.check_codomain(harmonic_partner)
             harmonic_partner.check_codomain(target)
-        fluct = LognormalTransform(fluctuations_mean, fluctuations_stddev,
-                                   prefix + 'fluctuations', 0)
-        flex = LognormalTransform(flexibility_mean, flexibility_stddev,
-                                  prefix + 'flexibility', 0)
-        asp = LognormalTransform(asperity_mean, asperity_stddev,
-                                 prefix + 'asperity', 0)
-        avgsl = NormalTransform(loglogavgslope_mean, loglogavgslope_stddev,
-                                prefix + 'loglogavgslope', 0)
-        zm = LognormalTransform(offset_std_mean, offset_std_std,
-                                prefix + 'zeromode', 0)
+        for kk in [offset_std, fluctuations, loglogavgslope]:
+            if len(kk) != 2:
+                raise TypeError
+        for kk in [flexibility, asperity]:
+            if kk is None or len(kk) != 2:
+                raise TypeError
+        if flexibility is None and asperity is not None:
+            raise ValueError
+        fluct = LognormalTransform(*fluctuations, prefix + 'fluctuations', 0)
+        flex = LognormalTransform(*flexibility, prefix + 'flexibility', 0)
+        asp = LognormalTransform(*asperity, prefix + 'asperity', 0)
+        avgsl = NormalTransform(*loglogavgslope, prefix + 'loglogavgslope', 0)
+        zm = LognormalTransform(*offset_std, prefix + 'zeromode', 0)
 
         pspace = PowerSpace(harmonic_partner)
         twolog = _TwoLogIntegrations(pspace)
