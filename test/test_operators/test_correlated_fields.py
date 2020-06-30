@@ -188,9 +188,6 @@ def test_simple_without_asp_fluct(asperity, flexibility):
     if asperity is not None and flexibility is None:
         with pytest.raises(ValueError):
             scf = ift.SimpleCorrelatedField(*args)
-    elif asperity is None and flexibility is not None:
-        with pytest.raises(NotImplementedError):
-            scf = ift.SimpleCorrelatedField(*args)
     else:
         scf = ift.SimpleCorrelatedField(*args)
         inp = ift.from_random(scf.domain)
