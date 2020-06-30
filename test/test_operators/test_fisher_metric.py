@@ -129,7 +129,8 @@ def test_VariableCovarianceGaussianEnergy(dtype, factor):
     res = ift.from_random(dom, 'normal', dtype=dtype)
     ivar = ift.from_random(dom, 'normal')**2+4.
     mf = ift.MultiField.from_dict({'res':res, 'ivar':ivar})
-    energy = ift.VariableCovarianceGaussianEnergy(dom, 'res', 'ivar', dtype, _debugging_factor=factor)
+    energy = ift.VariableCovarianceGaussianEnergy(dom, 'res', 'ivar', dtype,
+                                                  _debugging_factor=factor)
     def get_noisy_data(mean):
         samp = ift.from_random(dom, 'normal', dtype)
         samp = samp/mean['ivar'].sqrt()
