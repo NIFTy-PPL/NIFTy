@@ -17,7 +17,7 @@
 
 import numpy as np
 import pytest
-from numpy.testing import assert_, assert_allclose
+from numpy.testing import assert_allclose
 
 import nifty7 as ift
 
@@ -114,8 +114,8 @@ def testAmplitudesInvariants(sspace, N):
     em, estd = _stats(fa.slice_fluctuation(0), samples)
 
     assert_allclose(m, em, rtol=0.5)
-    assert_(op.target[-2] == sspace)
-    assert_(op.target[-1] == fsspace)
+    assert op.target[-2] == sspace
+    assert op.target[-1] == fsspace
 
     for ampl in fa.normalized_amplitudes:
         ift.extra.check_operator(ampl, 0.1*ift.from_random(ampl.domain), ntries=10)
@@ -160,32 +160,41 @@ def test_complicated_vs_simple(seed, domain):
                              harmonic_partner=hspace)
         inp = ift.from_random(scf.domain)
         op1 = cfm.finalize()
-        assert_(scf.domain is op1.domain)
+        assert scf.domain is op1.domain
         ift.extra.assert_allclose(scf(inp), op1(inp))
         ift.extra.check_operator(scf, inp, ntries=10)
 
         op1 = cfm.amplitude
         op0 = scf.amplitude
-        assert_(op0.domain is op1.domain)
+        assert op0.domain is op1.domain
         ift.extra.assert_allclose(op0.force(inp), op1.force(inp))
 
 
-@pmp('asperity', [None, (_posrand(), _posrand())])
-@pmp('flexibility', [None, (_posrand(), _posrand())])
-def test_simple_without_asp_fluct(asperity, flexibility):
-    domain = ift.RGSpace((4, 4), (0.123, 0.4))
-    offset_mean = _rand()
-    offset_std = _posrand(), _posrand()
-    fluctuations = _posrand(), _posrand()
-    loglogavgslope = _posrand(), _posrand()
-    prefix = 'foobar'
-    hspace = domain.get_default_codomain()
-    args = (domain, offset_mean, offset_std, fluctuations, flexibility,
-            asperity, loglogavgslope, prefix, hspace)
-    if asperity is not None and flexibility is None:
-        with pytest.raises(ValueError):
+@pmp('seed', [42, 31])
+@pmp('without', (('asperity', ), ('flexibility', ), ('flexibility', 'asperity')))
+def test_simple_without_asp_fluct(seed, without):
+    with ift.random.Context(seed):
+        domain = ift.RGSpace((4, 4), (0.123, 0.4))
+        offset_mean = _rand()
+        offset_std = _posrand(), _posrand()
+        if "flexibility" in without:
+            flexibility = None
+        else:
+            flexibility = _posrand(), _posrand()
+        if "asperity" in without:
+            asperity = None
+        else:
+            asperity = _posrand(), _posrand()
+        fluctuations = _posrand(), _posrand()
+        loglogavgslope = _posrand(), _posrand()
+        prefix = 'foobar'
+        hspace = domain.get_default_codomain()
+        args = (domain, offset_mean, offset_std, fluctuations, flexibility,
+                asperity, loglogavgslope, prefix, hspace)
+        if asperity is not None and flexibility is None:
+            with pytest.raises(ValueError):
+                scf = ift.SimpleCorrelatedField(*args)
+        else:
             scf = ift.SimpleCorrelatedField(*args)
-    else:
-        scf = ift.SimpleCorrelatedField(*args)
-        inp = ift.from_random(scf.domain)
-        ift.extra.check_operator(scf, inp, ntries=10)
+            inp = ift.from_random(scf.domain)
+            ift.extra.check_operator(scf, inp, ntries=10)
