@@ -192,7 +192,7 @@ def test_variablecovenergy_fast(dtype):
     metric00std = np.std(metric00, axis=0)
     metric11std = np.std(metric11, axis=0)
     np.testing.assert_allclose(metric00ref/metric00std, metric00/metric00std, atol=0.1)
-    # np.testing.assert_allclose(metric11ref/metric11std, metric11/metric11std, atol=0.1)
+    np.testing.assert_allclose(metric11ref/metric11std, metric11/metric11std, atol=0.1)
     for factor in [0.01, 0.5, 2, 100]:
         with pytest.raises(AssertionError):
             np.testing.assert_allclose(metric00ref/metric00std, factor*metric00/metric00std, atol=0.1)
