@@ -240,31 +240,30 @@ class _Amplitude(Operator):
         ps_expander = ContractionOperator(twolog.target, spaces=space).adjoint
 
         # Prepare constant fields
-        foo = np.zeros(shp)
-        foo[0] = foo[1] = np.sqrt(_log_vol(target[space]))
-        vflex = DiagonalOperator(makeField(dom[space], foo), dom, space)
+        vflex = np.zeros(shp)
+        vflex[0] = vflex[1] = np.sqrt(_log_vol(target[space]))
+        vflex = DiagonalOperator(makeField(dom[space], vflex), dom, space)
 
-        foo = np.zeros(shp, dtype=np.float64)
-        foo[0] += 1
-        vasp = DiagonalOperator(makeField(dom[space], foo), dom, space)
+        vasp = np.zeros(shp, dtype=np.float64)
+        vasp[0] += 1
+        vasp = DiagonalOperator(makeField(dom[space], vasp), dom, space)
 
-        foo = np.ones(shp)
-        foo[0] = _log_vol(target[space])**2/12.
-        shift = DiagonalOperator(makeField(dom[space], foo), dom, space)
+        shift = np.ones(shp)
+        shift[0] = _log_vol(target[space])**2 / 12.
+        shift = DiagonalOperator(makeField(dom[space], shift), dom, space)
+        shift = shift(full(shift.domain, 1))
 
         vslope = DiagonalOperator(
             makeField(target[space], _relative_log_k_lengths(target[space])),
             target, space)
 
-        foo, bar = [np.zeros(target[space].shape) for _ in range(2)]
-        bar[1:] = foo[0] = totvol
+        vol0, vol1 = [np.zeros(target[space].shape) for _ in range(2)]
+        vol1[1:] = vol0[0] = totvol
         vol0, vol1 = [
             DiagonalOperator(makeField(target[space], aa), target, space)
-            for aa in (foo, bar)
+            for aa in (vol0, vol1)
         ]
-
-        # Prepare fields for Adder
-        shift, vol0 = [op(full(op.domain, 1)) for op in (shift, vol0)]
+        vol0 = vol0(full(vol0.domain, 1))
         # End prepare constant fields
 
         slope = vslope @ ps_expander @ loglogavgslope
