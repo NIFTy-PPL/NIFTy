@@ -9,6 +9,10 @@ The interface of `ift.CorrelatedFieldMaker.make` and
 and the standard deviation of their various parameters not as separate
 arguments but as tuple.
 
+Furthermore, it is now possible to disable the asperity and the flexibility
+together with the asperity in the correlated field model. Note, disabling only
+the flexibility is not possible.
+
 SimpleCorrelatedField
 ---------------------
 
