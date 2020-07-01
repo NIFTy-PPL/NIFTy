@@ -180,33 +180,3 @@ def test_complicated_vs_simple(seed, domain, without):
         op0 = scf.amplitude
         assert op0.domain is op1.domain
         ift.extra.assert_allclose(op0.force(inp), op1.force(inp))
-
-
-@pmp('seed', [42, 31])
-@pmp('without', (('asperity', ), ('flexibility', ), ('flexibility', 'asperity')))
-def test_simple_without_asp_fluct(seed, without):
-    with ift.random.Context(seed):
-        domain = ift.RGSpace((4, 4), (0.123, 0.4))
-        offset_mean = _rand()
-        offset_std = _posrand(), _posrand()
-        if "flexibility" in without:
-            flexibility = None
-        else:
-            flexibility = _posrand(), _posrand()
-        if "asperity" in without:
-            asperity = None
-        else:
-            asperity = _posrand(), _posrand()
-        fluctuations = _posrand(), _posrand()
-        loglogavgslope = _posrand(), _posrand()
-        prefix = 'foobar'
-        hspace = domain.get_default_codomain()
-        args = (domain, offset_mean, offset_std, fluctuations, flexibility,
-                asperity, loglogavgslope, prefix, hspace)
-        if asperity is not None and flexibility is None:
-            with pytest.raises(ValueError):
-                scf = ift.SimpleCorrelatedField(*args)
-        else:
-            scf = ift.SimpleCorrelatedField(*args)
-            inp = ift.from_random(scf.domain)
-            ift.extra.check_operator(scf, inp, ntries=10)
