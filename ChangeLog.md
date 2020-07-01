@@ -1,6 +1,25 @@
 Changes since NIFTy 6
 =====================
 
+CorrelatedFieldMaker interface change
+-------------------------------------
+
+The interface of `ift.CorrelatedFieldMaker.make` and
+`ift.CorrelatedFieldMaker.add_fluctuations` changed and now expects the mean
+and the standard deviation of their various parameters not as separate
+arguments but as tuple.
+
+SimpleCorrelatedField
+---------------------
+
+Introduce a simplified version of the correlated field model that does not
+allow for multiple power spectra, the presence of a degree of freedom parameter
+`dofdex` or `total_N` larger than zero. Except for the above mentioned
+limitations, it is equivalent to `ift.CorrelatedFieldMaker`. Hence, if one
+wants to understand the implementation idea behind the model, it is easier to
+grasp it from reading `ift.SimpleCorrelatedField` than from going through
+`ift.CorrelatedFieldMaker`.
+
 Change in external dependencies
 -------------------------------
 
@@ -20,7 +39,7 @@ The implementation tests for nonlinear operators are now available in
 MetricGaussianKL interface
 --------------------------
 
-Users do not instanciate `MetricGaussianKL` by its constructor anymore. Rather
+Users do not instantiate `MetricGaussianKL` by its constructor anymore. Rather
 `MetricGaussianKL.make()` shall be used.
 
 
@@ -91,10 +110,10 @@ New approach for sampling complex numbers
 When calling draw_sample_with_dtype with a complex dtype,
 the variance is now used for the imaginary part and real part separately.
 This is done in order to be consistent with the Hamiltonian.
-Note that by this, 
+Note that by this,
 ```
 np.std(ift.from_random(domain, 'normal', dtype=np.complex128).val)
-```` 
+````
 does not give 1, but sqrt(2) as a result.
 
 
