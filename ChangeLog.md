@@ -5,23 +5,23 @@ CorrelatedFieldMaker interface change
 -------------------------------------
 
 The interface of `ift.CorrelatedFieldMaker.make` and
-`ift.CorrelatedFieldMaker.add_fluctuations` changed and now expects the mean
+`ift.CorrelatedFieldMaker.add_fluctuations` changed; it now expects the mean
 and the standard deviation of their various parameters not as separate
-arguments but as tuple.
+arguments but as a tuple.
 
 Furthermore, it is now possible to disable the asperity and the flexibility
-together with the asperity in the correlated field model. Note, disabling only
-the flexibility is not possible.
+together with the asperity in the correlated field model. Note that disabling
+only the flexibility is not possible.
 
 SimpleCorrelatedField
 ---------------------
 
-Introduce a simplified version of the correlated field model that does not
+A simplified version of the correlated field model was introduced which does not
 allow for multiple power spectra, the presence of a degree of freedom parameter
-`dofdex` or `total_N` larger than zero. Except for the above mentioned
+`dofdex`, or `total_N` larger than zero. Except for the above mentioned
 limitations, it is equivalent to `ift.CorrelatedFieldMaker`. Hence, if one
 wants to understand the implementation idea behind the model, it is easier to
-grasp it from reading `ift.SimpleCorrelatedField` than from going through
+grasp from reading `ift.SimpleCorrelatedField` than from going through
 `ift.CorrelatedFieldMaker`.
 
 Change in external dependencies

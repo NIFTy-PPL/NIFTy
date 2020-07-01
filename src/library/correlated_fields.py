@@ -416,8 +416,8 @@ class CorrelatedFieldMaker:
         used on the target field subdomain `target_subdomain`.
         It is assembled as the sum of a power law component
         (linear slope in log-log power-frequency-space),
-        a smooth varying component (integrated wiener process) and
-        a ragged component (un-integrated wiener process).
+        a smooth varying component (integrated Wiener process) and
+        a ragged component (un-integrated Wiener process).
 
         Multiple calls to `add_fluctuations` are possible, in which case
         the constructed field will have the outer product of the individual
