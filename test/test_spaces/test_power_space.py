@@ -19,9 +19,10 @@ from itertools import chain, product
 
 import numpy as np
 import pytest
-from numpy.testing import assert_, assert_allclose, assert_equal, assert_raises
+from numpy.testing import assert_allclose, assert_equal, assert_raises
 
 import nifty7 as ift
+
 from ..common import setup_function, teardown_function
 
 pmp = pytest.mark.parametrize
@@ -104,7 +105,7 @@ def k_lengths_configs():
 def test_property_ret_type(attribute, expected_type):
     r = ift.RGSpace((4, 4), harmonic=True)
     p = ift.PowerSpace(r)
-    assert_(isinstance(getattr(p, attribute), expected_type))
+    ift.myassert(isinstance(getattr(p, attribute), expected_type))
 
 
 @pmp('harmonic_partner, binbounds, nbin, logarithmic', CONSISTENCY_CONFIGS)

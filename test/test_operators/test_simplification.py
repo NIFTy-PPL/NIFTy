@@ -15,7 +15,7 @@
 #
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
 
-from numpy.testing import assert_, assert_allclose, assert_raises
+from numpy.testing import assert_allclose, assert_raises
 
 import nifty7 as ift
 from nifty7.operators.simplify_for_const import ConstantOperator
@@ -26,7 +26,7 @@ def test_simplification():
     f1 = ift.full(dom, 2.)
     op = ift.FFTOperator(f1.domain["a"]).ducktape("a")
     _, op2 = op.simplify_for_constant_input(f1)
-    assert_(isinstance(op2, ConstantOperator))
+    ift.myassert(isinstance(op2, ConstantOperator))
     assert_allclose(op(f1).val, op2.force(f1).val)
 
     dom = {"a": ift.RGSpace(10), "b": ift.RGSpace(5)}
