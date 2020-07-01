@@ -17,9 +17,10 @@
 
 import numpy as np
 import pytest
-from numpy.testing import assert_, assert_allclose, assert_equal
+from numpy.testing import assert_allclose, assert_equal
 
 import nifty7 as ift
+
 from ..common import setup_function, teardown_function
 
 pmp = pytest.mark.parametrize
@@ -77,7 +78,7 @@ def get_dvol_configs():
 @pmp('attribute, expected_type', [['distances', tuple]])
 def test_property_ret_type(attribute, expected_type):
     x = ift.RGSpace(1)
-    assert_(isinstance(getattr(x, attribute), expected_type))
+    ift.myassert(isinstance(getattr(x, attribute), expected_type))
 
 
 @pmp('shape, distances, harmonic, expected', CONSTRUCTOR_CONFIGS)

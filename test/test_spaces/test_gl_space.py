@@ -19,10 +19,10 @@ import itertools
 
 import numpy as np
 import pytest
-from numpy.testing import (assert_, assert_almost_equal, assert_equal,
-                           assert_raises)
+from numpy.testing import assert_almost_equal, assert_equal, assert_raises
 
-from nifty7 import GLSpace
+from nifty7 import GLSpace, myassert
+
 from ..common import setup_function, teardown_function
 
 pmp = pytest.mark.parametrize
@@ -56,7 +56,7 @@ def get_dvol_configs():
 @pmp('attribute', ['nlat', 'nlon'])
 def test_property_ret_type(attribute):
     g = GLSpace(2)
-    assert_(isinstance(getattr(g, attribute), int))
+    myassert(isinstance(getattr(g, attribute), int))
 
 
 @pmp('nlat, nlon, expected', CONSTRUCTOR_CONFIGS)

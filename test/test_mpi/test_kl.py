@@ -18,7 +18,7 @@
 import numpy as np
 import pytest
 from mpi4py import MPI
-from numpy.testing import assert_, assert_equal, assert_raises
+from numpy.testing import assert_equal, assert_raises
 
 import nifty7 as ift
 
@@ -84,8 +84,8 @@ def test_kl(constants, point_estimates, mirror_samples, mode, mf):
 
     # Test number of samples
     expected_nsamps = 2*nsamps if mirror_samples else nsamps
-    assert_(len(tuple(kl0.samples)) == expected_nsamps)
-    assert_(len(tuple(kl1.samples)) == expected_nsamps)
+    ift.myassert(len(tuple(kl0.samples)) == expected_nsamps)
+    ift.myassert(len(tuple(kl1.samples)) == expected_nsamps)
 
     # Test value
     assert_equal(kl0.value, kl1.value)

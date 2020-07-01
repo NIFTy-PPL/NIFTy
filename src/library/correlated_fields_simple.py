@@ -78,7 +78,7 @@ class SimpleCorrelatedField(Operator):
             xi = ducktape(dom, None, prefix + 'spectrum')
 
             shift = np.ones(dom.shape)
-            shift[0] = _log_vol(pspace)**2/12.
+            shift[0] = _log_vol(pspace)**2 / 12.
             shift = makeField(dom, shift)
             if asperity is None:
                 asp = makeOp(shift.ptw("sqrt")) @ (xi*sig_flex)

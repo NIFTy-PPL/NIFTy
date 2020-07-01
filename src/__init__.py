@@ -92,7 +92,7 @@ from .library.correlated_fields_simple import SimpleCorrelatedField
 
 from . import extra
 
-from .utilities import memo, frozendict
+from .utilities import memo, frozendict, myassert
 
 from .logger import logger
 

@@ -17,9 +17,9 @@
 
 import numpy as np
 import pytest
-from numpy.testing import assert_
 
 import nifty7 as ift
+
 from ..common import setup_function, teardown_function
 
 pmp = pytest.mark.parametrize
@@ -57,7 +57,7 @@ def test_gridding(nu, nv, N, eps):
     for i in range(N):
         dft += (
             vis[i]*np.exp(2j*np.pi*(x*uv[i, 0]*dstx + y*uv[i, 1]*dsty))).real
-    assert_(_l2error(dft, pynu) < eps)
+    ift.myassert(_l2error(dft, pynu) < eps)
 
 
 def test_cartesian():

@@ -17,9 +17,9 @@
 
 import numpy as np
 import pytest
-from numpy.testing import assert_
 
 import nifty7 as ift
+
 from ..common import setup_function, teardown_function
 
 
@@ -38,5 +38,5 @@ def test_value_inserter(sp, seed):
         f = ift.from_random(op.domain, 'normal')
     inp = f.val
     ret = op(f).val
-    assert_(ret[ind] == inp)
-    assert_(np.sum(ret) == inp)
+    ift.myassert(ret[ind] == inp)
+    ift.myassert(np.sum(ret) == inp)

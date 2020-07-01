@@ -405,3 +405,10 @@ def lognormal_moments(mean, sigma, N=0):
     logsigma = np.sqrt(np.log1p((sigma / mean)**2))
     logmean = np.log(mean) - logsigma**2 / 2
     return logmean, logsigma
+
+
+def myassert(val):
+    """Safe alternative to python's assert statement which is active even if
+    `__debug__` is False."""
+    if not val:
+        raise AssertionError

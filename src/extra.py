@@ -18,7 +18,6 @@
 from itertools import combinations
 
 import numpy as np
-from numpy.testing import assert_
 
 from .domain_tuple import DomainTuple
 from .field import Field
@@ -29,6 +28,7 @@ from .operators.energy_operators import EnergyOperator
 from .operators.linear_operator import LinearOperator
 from .operators.operator import Operator
 from .sugar import from_random
+from .utilities import myassert
 
 __all__ = ["check_linear_operator", "check_operator",
            "assert_allclose"]
@@ -137,20 +137,6 @@ def assert_equal(f1, f2):
         assert_equal(val, f2[key])
 
 
-def _nozero(fld):
-    if isinstance(fld, Field):
-        return np.testing.assert_((fld != 0).s_all())
-    for val in fld.values():
-        _nozero(val)
-
-
-def _allzero(fld):
-    if isinstance(fld, Field):
-        return np.testing.assert_((fld == 0.).s_all())
-    for val in fld.values():
-        _allzero(val)
-
-
 def _adjoint_implementation(op, domain_dtype, target_dtype, atol, rtol,
                             only_r_linear):
     needed_cap = op.TIMES | op.ADJOINT_TIMES
@@ -206,32 +192,32 @@ def _domain_check_linear(op, domain_dtype=None, inp=None):
         inp = from_random(op.domain, "normal", dtype=domain_dtype)
     elif inp is None:
         raise ValueError('Need to specify either dtype or inp')
-    assert_(inp.domain is op.domain)
-    assert_(op(inp).domain is op.target)
+    myassert(inp.domain is op.domain)
+    myassert(op(inp).domain is op.target)
 
 
 def _domain_check_nonlinear(op, loc):
     _domain_check(op)
-    assert_(isinstance(loc, (Field, MultiField)))
-    assert_(loc.domain is op.domain)
+    myassert(isinstance(loc, (Field, MultiField)))
+    myassert(loc.domain is op.domain)
     for wm in [False, True]:
         lin = Linearization.make_var(loc, wm)
         reslin = op(lin)
-        assert_(lin.domain is op.domain)
-        assert_(lin.target is op.domain)
-        assert_(lin.val.domain is lin.domain)
-        assert_(reslin.domain is op.domain)
-        assert_(reslin.target is op.target)
-        assert_(reslin.val.domain is reslin.target)
-        assert_(reslin.target is op.target)
-        assert_(reslin.jac.domain is reslin.domain)
-        assert_(reslin.jac.target is reslin.target)
-        assert_(lin.want_metric == reslin.want_metric)
+        myassert(lin.domain is op.domain)
+        myassert(lin.target is op.domain)
+        myassert(lin.val.domain is lin.domain)
+        myassert(reslin.domain is op.domain)
+        myassert(reslin.target is op.target)
+        myassert(reslin.val.domain is reslin.target)
+        myassert(reslin.target is op.target)
+        myassert(reslin.jac.domain is reslin.domain)
+        myassert(reslin.jac.target is reslin.target)
+        myassert(lin.want_metric == reslin.want_metric)
         _domain_check_linear(reslin.jac, inp=loc)
         _domain_check_linear(reslin.jac.adjoint, inp=reslin.jac(loc))
         if reslin.metric is not None:
-            assert_(reslin.metric.domain is reslin.metric.target)
-            assert_(reslin.metric.domain is op.domain)
+            myassert(reslin.metric.domain is reslin.metric.target)
+            myassert(reslin.metric.domain is op.domain)
 
 
 def _domain_check(op):
