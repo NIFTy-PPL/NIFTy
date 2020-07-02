@@ -209,8 +209,16 @@ class LineSearch(metaclass=NiftyMeta):
             if alpha1 == 0:
                 return le_0.energy, False
 
-            le_alpha1 = le_0.at(alpha1)
-            phi_alpha1 = le_alpha1.value
+            try:
+                le_alpha1 = le_0.at(alpha1)
+                phi_alpha1 = le_alpha1.value
+            except FloatingPointError:  # backtrack
+                alpha1 = (alpha0+alpha1)/2
+                continue  # next iteration
+
+            if np.isnan(phi_alpha1) or np.abs(phi_alpha1) > 1e100:  # also backtrack
+                alpha1 = (alpha0+alpha1)/2
+                continue  # next iteration
 
             if (phi_alpha1 > phi_0 + self.c1*alpha1*phiprime_0) or \
                ((phi_alpha1 >= phi_alpha0) and (iteration_number > 1)):
