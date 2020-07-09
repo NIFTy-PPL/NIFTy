@@ -163,8 +163,8 @@ class _Normalization(Operator):
         mode_multiplicity = pd.adjoint(full(pd.target, 1.)).val_rw()
         zero_mode = (slice(None),)*self._domain.axes[space][0] + (0,)
         mode_multiplicity[zero_mode] = 0
-        self._mode_multiplicity = makeOp(makeField(self._domain, mode_multiplicity))
-        self._specsum = _SpecialSum(self._domain, space)
+        multipl = makeOp(makeField(self._domain, mode_multiplicity))
+        self._specsum = _SpecialSum(self._domain, space) @ multipl
 
     def apply(self, x):
         self._check_input(x)
@@ -172,7 +172,7 @@ class _Normalization(Operator):
         spec = amp**2
         # FIXME This normalizes also the zeromode which is supposed to be left
         # untouched by this operator
-        return self._specsum(self._mode_multiplicity(spec))**(-0.5)*amp
+        return self._specsum(spec)**(-0.5)*amp
 
 
 class _SpecialSum(EndomorphicOperator):
