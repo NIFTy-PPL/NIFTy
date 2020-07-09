@@ -88,23 +88,23 @@ class _SlopeRemover(EndomorphicOperator):
         self._domain = makeDomain(domain)
         assert isinstance(self._domain[space], PowerSpace)
         logkl = _relative_log_k_lengths(self._domain[space])
-        self._sc = logkl/float(logkl[-1])
+        sc = logkl/float(logkl[-1])
 
         self._space = space
         axis = self._domain.axes[space][0]
         self._last = (slice(None),)*axis + (-1,) + (None,)
-        self._extender = (None,)*(axis) + (slice(None),) + (None,)*(self._domain.axes[-1][-1]-axis)
+        extender = (None,)*(axis) + (slice(None),) + (None,)*(self._domain.axes[-1][-1]-axis)
+        self._sc = sc[extender]
         self._capability = self.TIMES | self.ADJOINT_TIMES
 
     def apply(self, x, mode):
         self._check_input(x, mode)
-        x = x.val
         if mode == self.TIMES:
-            res = x - x[self._last]*self._sc[self._extender]
+            x = x.val
+            res = x - x[self._last]*self._sc
         else:
-            res = x.copy()
-            res[self._last] -= (x*self._sc[self._extender]).sum(
-                axis=self._space, keepdims=True)
+            res = x.val_rw()
+            res[self._last] -= (x*self._sc).sum(axis=self._space, keepdims=True)
         return makeField(self._tgt(mode), res)
 
 
