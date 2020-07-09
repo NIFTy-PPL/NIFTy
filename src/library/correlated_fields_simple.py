@@ -71,21 +71,23 @@ class SimpleCorrelatedField(Operator):
         if flexibility is not None:
             flex = LognormalTransform(*flexibility, prefix + 'flexibility', 0)
             dom = twolog.domain[0]
-            vflex = np.zeros(dom.shape)
+            vflex = np.empty(dom.shape)
             vflex[0] = vflex[1] = np.sqrt(_log_vol(pspace))
             vflex = makeOp(makeField(dom, vflex))
             sig_flex = vflex @ expander @ flex
             xi = ducktape(dom, None, prefix + 'spectrum')
 
-            shift = np.ones(dom.shape)
+            shift = np.empty(dom.shape)
             shift[0] = _log_vol(pspace)**2 / 12.
+            shift[1] = 1
             shift = makeField(dom, shift)
             if asperity is None:
                 asp = makeOp(shift.ptw("sqrt")) @ (xi*sig_flex)
             else:
                 asp = LognormalTransform(*asperity, prefix + 'asperity', 0)
-                vasp = np.zeros(dom.shape)
+                vasp = np.empty(dom.shape)
                 vasp[0] = 1
+                vasp[1] = 0
                 vasp = makeOp(makeField(dom, vasp))
                 sig_asp = vasp @ expander @ asp
                 asp = xi*sig_flex*(Adder(shift) @ sig_asp).ptw("sqrt")
