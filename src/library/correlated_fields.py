@@ -104,7 +104,7 @@ class _SlopeRemover(EndomorphicOperator):
             res = x - x[self._last]*self._sc
         else:
             res = x.val_rw()
-            res[self._last] -= (x*self._sc).sum(axis=self._space, keepdims=True)
+            res[self._last] -= (res*self._sc).sum(axis=self._space, keepdims=True)
         return makeField(self._tgt(mode), res)
 
 
