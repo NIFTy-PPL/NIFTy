@@ -13,6 +13,12 @@ Furthermore, it is now possible to disable the asperity and the flexibility
 together with the asperity in the correlated field model. Note that disabling
 only the flexibility is not possible.
 
+Additionally, the parameters `flexibility`, `asperity` and most importantly
+`loglogavgslope` refer to the power spectrum instead of the amplitude now.
+For existing codes that means that both values in the tuple `loglogavgslope`
+and `flexibility` need to be doubled. The transformation of the `asperity`
+parameter is nontrivial.
+
 SimpleCorrelatedField
 ---------------------
 

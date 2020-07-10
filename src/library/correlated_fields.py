@@ -168,11 +168,10 @@ class _Normalization(Operator):
 
     def apply(self, x):
         self._check_input(x)
-        amp = x.ptw("exp")
-        spec = amp**2
+        spec = x.ptw("exp")
         # FIXME This normalizes also the zeromode which is supposed to be left
         # untouched by this operator
-        return self._specsum(spec)**(-0.5)*amp
+        return (self._specsum(spec).reciprocal()*spec).sqrt()
 
 
 class _SpecialSum(EndomorphicOperator):
@@ -412,12 +411,11 @@ class CorrelatedFieldMaker:
         on which they apply.
 
         The parameters `fluctuations`, `flexibility`, `asperity` and
-        `loglogavgslope` configure the power spectrum model ("amplitude")
-        used on the target field subdomain `target_subdomain`.
-        It is assembled as the sum of a power law component
-        (linear slope in log-log power-frequency-space),
-        a smooth varying component (integrated Wiener process) and
-        a ragged component (un-integrated Wiener process).
+        `loglogavgslope` configure the power spectrum model used on the target
+        field subdomain `target_subdomain`. It is assembled as the sum of a
+        power law component (linear slope in log-log power-frequency-space), a
+        smooth varying component (integrated Wiener process) and a ragged
+        component (un-integrated Wiener process).
 
         Multiple calls to `add_fluctuations` are possible, in which case
         the constructed field will have the outer product of the individual
@@ -606,7 +604,7 @@ class CorrelatedFieldMaker:
 
     @property
     def normalized_amplitudes(self):
-        """Returns the power spectrum operators used in the model"""
+        """Returns the amplitude operators used in the model"""
         return self._a
 
     @property
@@ -619,6 +617,10 @@ class CorrelatedFieldMaker:
         dom = self._a[0].target
         expand = ContractionOperator(dom, len(dom)-1).adjoint
         return self._a[0]*(expand @ self.amplitude_total_offset)
+
+    @property
+    def power_spectrum(self):
+        return self.amplitude**2
 
     @property
     def amplitude_total_offset(self):

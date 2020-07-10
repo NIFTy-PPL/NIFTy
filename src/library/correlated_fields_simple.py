@@ -114,3 +114,8 @@ class SimpleCorrelatedField(Operator):
     def amplitude(self):
         """Analoguous to :func:`~nifty7.library.correlated_fields.CorrelatedFieldMaker.amplitude`."""
         return self._a
+
+    @property
+    def power_spectrum(self):
+        """Analoguous to :func:`~nifty7.library.correlated_fields.CorrelatedFieldMaker.power_spectrum`."""
+        return self.amplitude**2
