@@ -96,8 +96,6 @@ def _actual_energy_tester(pos, get_noisy_data, energy_initializer):
         energy = energy_initializer(data)
         grad = energy(lin).jac.adjoint(ift.full(energy.target, 1.))
         results.append(_to_array((grad*grad.s_vdot(test_vec)).val))
-    print(energy)
-    print(grad)
     res = np.mean(np.array(results), axis=0)
     std = np.std(np.array(results), axis=0)/np.sqrt(Nsamp)
     energy = energy_initializer(data)
