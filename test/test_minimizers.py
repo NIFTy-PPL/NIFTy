@@ -15,13 +15,12 @@
 #
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
 
-from unittest import SkipTest
-
 import numpy as np
 import pytest
 from numpy.testing import assert_allclose, assert_equal
 
 import nifty7 as ift
+
 from .common import setup_function, teardown_function
 
 pmp = pytest.mark.parametrize
@@ -64,7 +63,7 @@ def test_quadratic_minimization(minimizer, space):
 
         (energy, convergence) = minimizer(energy)
     except NotImplementedError:
-        raise SkipTest
+        pytest.skip()
 
     assert_equal(convergence, IC.CONVERGED)
     assert_allclose(
@@ -123,7 +122,7 @@ def test_rosenbrock(minimizer):
     try:
         from scipy.optimize import rosen, rosen_der, rosen_hess_prod
     except ImportError:
-        raise SkipTest
+        pytest.skip()
     space = ift.DomainTuple.make(ift.UnstructuredDomain((2,)))
     starting_point = ift.Field.from_random(domain=space, random_type='normal') * 10
 
@@ -171,7 +170,7 @@ def test_rosenbrock(minimizer):
 
         (energy, convergence) = minimizer(energy)
     except NotImplementedError:
-        raise SkipTest
+        pytest.skip()
 
     assert_equal(convergence, IC.CONVERGED)
     assert_allclose(energy.position.val, 1., rtol=1e-3, atol=1e-3)
@@ -208,7 +207,7 @@ def test_gauss(minimizer):
 
         (energy, convergence) = minimizer(energy)
     except NotImplementedError:
-        raise SkipTest
+        pytest.skip()
 
     assert_equal(convergence, IC.CONVERGED)
     assert_allclose(energy.position.val, 0., atol=1e-3)
@@ -252,7 +251,7 @@ def test_cosh(minimizer):
 
         (energy, convergence) = minimizer(energy)
     except NotImplementedError:
-        raise SkipTest
+        pytest.skip()
 
     assert_equal(convergence, IC.CONVERGED)
     assert_allclose(energy.position.val, 0., atol=1e-3)
