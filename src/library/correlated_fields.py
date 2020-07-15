@@ -429,14 +429,14 @@ class CorrelatedFieldMaker:
                            :class:`~nifty7.domain_tuple.DomainTuple`
             Target subdomain on which the correlation structure defined
             in this call should hold.
-        fluctuations : tuple of float
+        fluctuations : tuple of float (mean, std)
             Total spectral energy -> Amplitude of the fluctuations
-        flexibility : tuple of float or None
+        flexibility : tuple of float (mean, std) or None
             Amplitude of the non-power-law power spectrum component
-        asperity : tuple of float or None
+        asperity : tuple of float (mean, std) or None
             Roughness of the non-power-law power spectrum component
             Used to accommodate single frequency peaks
-        loglogavgslope : tuple of float
+        loglogavgslope : tuple of float (mean, std)
             Power law component exponent
         prefix : string
             prefix of the power spectrum parameter domain names
