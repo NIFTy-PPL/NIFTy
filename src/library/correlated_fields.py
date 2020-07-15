@@ -431,13 +431,17 @@ class CorrelatedFieldMaker:
             in this call should hold.
         fluctuations : tuple of float (mean, std)
             Total spectral energy -> Amplitude of the fluctuations
+            LogNormal distribution
         flexibility : tuple of float (mean, std) or None
             Amplitude of the non-power-law power spectrum component
+            LogNormal distribution
         asperity : tuple of float (mean, std) or None
             Roughness of the non-power-law power spectrum component
             Used to accommodate single frequency peaks
+            LogNormal distribution
         loglogavgslope : tuple of float (mean, std)
             Power law component exponent
+            Normal distribution
         prefix : string
             prefix of the power spectrum parameter domain names
         index : int
