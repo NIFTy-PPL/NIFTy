@@ -50,12 +50,13 @@ class EnergyAdapter(Energy):
 
     def __init__(self, position, op, constants=[], want_metric=False,
                  nanisinf=False):
+        if len(constants) > 0:
+            cstpos = position.extract_by_keys(constants)
+            _, op = op.simplify_for_constant_input(cstpos)
+            varkeys = set(op.domain.keys()) - set(constants)
+            position = position.extract_by_keys(varkeys)
         super(EnergyAdapter, self).__init__(position)
         self._op = op
-        if len(constants) > 0:
-            dom = makeDomain({kk: vv for kk, vv in position.domain.items()
-                              if kk in constants})
-            _, self._op = op.simplify_for_constant_input(position.extract(dom))
         self._want_metric = want_metric
         lin = Linearization.make_var(position, want_metric)
         tmp = self._op(lin)
