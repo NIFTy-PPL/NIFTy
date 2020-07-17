@@ -88,23 +88,23 @@ class _SlopeRemover(EndomorphicOperator):
         self._domain = makeDomain(domain)
         assert isinstance(self._domain[space], PowerSpace)
         logkl = _relative_log_k_lengths(self._domain[space])
-        self._sc = logkl/float(logkl[-1])
+        sc = logkl/float(logkl[-1])
 
         self._space = space
         axis = self._domain.axes[space][0]
         self._last = (slice(None),)*axis + (-1,) + (None,)
-        self._extender = (None,)*(axis) + (slice(None),) + (None,)*(self._domain.axes[-1][-1]-axis)
+        extender = (None,)*(axis) + (slice(None),) + (None,)*(self._domain.axes[-1][-1]-axis)
+        self._sc = sc[extender]
         self._capability = self.TIMES | self.ADJOINT_TIMES
 
     def apply(self, x, mode):
         self._check_input(x, mode)
-        x = x.val
         if mode == self.TIMES:
-            res = x - x[self._last]*self._sc[self._extender]
+            x = x.val
+            res = x - x[self._last]*self._sc
         else:
-            res = x.copy()
-            res[self._last] -= (x*self._sc[self._extender]).sum(
-                axis=self._space, keepdims=True)
+            res = x.val_rw()
+            res[self._last] -= (res*self._sc).sum(axis=self._space, keepdims=True)
         return makeField(self._tgt(mode), res)
 
 
@@ -163,16 +163,15 @@ class _Normalization(Operator):
         mode_multiplicity = pd.adjoint(full(pd.target, 1.)).val_rw()
         zero_mode = (slice(None),)*self._domain.axes[space][0] + (0,)
         mode_multiplicity[zero_mode] = 0
-        self._mode_multiplicity = makeOp(makeField(self._domain, mode_multiplicity))
-        self._specsum = _SpecialSum(self._domain, space)
+        multipl = makeOp(makeField(self._domain, mode_multiplicity))
+        self._specsum = _SpecialSum(self._domain, space) @ multipl
 
     def apply(self, x):
         self._check_input(x)
-        amp = x.ptw("exp")
-        spec = amp**2
+        spec = x.ptw("exp")
         # FIXME This normalizes also the zeromode which is supposed to be left
         # untouched by this operator
-        return self._specsum(self._mode_multiplicity(spec))**(-0.5)*amp
+        return (self._specsum(spec).reciprocal()*spec).sqrt()
 
 
 class _SpecialSum(EndomorphicOperator):
@@ -412,12 +411,11 @@ class CorrelatedFieldMaker:
         on which they apply.
 
         The parameters `fluctuations`, `flexibility`, `asperity` and
-        `loglogavgslope` configure the power spectrum model ("amplitude")
-        used on the target field subdomain `target_subdomain`.
-        It is assembled as the sum of a power law component
-        (linear slope in log-log power-frequency-space),
-        a smooth varying component (integrated Wiener process) and
-        a ragged component (un-integrated Wiener process).
+        `loglogavgslope` configure the power spectrum model used on the target
+        field subdomain `target_subdomain`. It is assembled as the sum of a
+        power law component (linear slope in log-log power-frequency-space), a
+        smooth varying component (integrated Wiener process) and a ragged
+        component (un-integrated Wiener process).
 
         Multiple calls to `add_fluctuations` are possible, in which case
         the constructed field will have the outer product of the individual
@@ -610,7 +608,7 @@ class CorrelatedFieldMaker:
 
     @property
     def normalized_amplitudes(self):
-        """Returns the power spectrum operators used in the model"""
+        """Returns the amplitude operators used in the model"""
         return self._a
 
     @property
@@ -623,6 +621,10 @@ class CorrelatedFieldMaker:
         dom = self._a[0].target
         expand = ContractionOperator(dom, len(dom)-1).adjoint
         return self._a[0]*(expand @ self.amplitude_total_offset)
+
+    @property
+    def power_spectrum(self):
+        return self.amplitude**2
 
     @property
     def amplitude_total_offset(self):
