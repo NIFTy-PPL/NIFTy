@@ -137,6 +137,15 @@ The NIFTy package is licensed under the terms of the
 Contributors
 ------------
 
+### NIFTy7
+
+- Gordian Edenhofer
+- Lukas Platz
+- Martin Reinecke
+- [Philipp Arras](https://wwwmpa.mpa-garching.mpg.de/~parras/)
+- Philipp Frank
+- [Reimar Heinrich Leike](https://wwwmpa.mpa-garching.mpg.de/~reimar/)
+
 ### NIFTy6
 
 - Andrija Kostic
