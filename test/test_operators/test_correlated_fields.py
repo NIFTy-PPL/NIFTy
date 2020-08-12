@@ -61,6 +61,21 @@ def testDistributor(dofdex, seed):
         ift.extra.check_linear_operator(op)
 
 
+@pmp('total_N', [0, 1, 2])
+@pmp('asperity', [None, (1, 1)])
+@pmp('flexibility', [None, (1, 1)])
+@pmp('ind', [None, 1])
+def test_init(total_N, asperity, flexibility, ind):
+    if flexibility is None and asperity is not None:
+        pytest.skip()
+    cfg = 1, 1
+    for dofdex in ([None], [None, [0]], [None, [0, 0], [0, 1], [1, 1]])[total_N]:
+        cfm = ift.CorrelatedFieldMaker.make(0, cfg, '', total_N, dofdex)
+        cfm.add_fluctuations(ift.RGSpace(4), cfg, flexibility, asperity, (-2, 0.1))
+        cfm.add_fluctuations(ift.RGSpace(4), *(4*[cfg]), index=ind)
+        cfm.finalize(0)
+
+
 @pmp('sspace', spaces)
 @pmp('N', [0, 2])
 def testAmplitudesInvariants(sspace, N):

@@ -275,7 +275,7 @@ class _Amplitude(Operator):
             op = _Normalization(target, space) @ slope
         elif sig_asp is None:
             xi = ducktape(dom, None, key)
-            sigma = DiagonalOperator(shift.ptw("sqrt"), dom, space) @ sig_flex
+            sigma = DiagonalOperator(shift.ptw("sqrt"), dom) @ sig_flex
             smooth = _SlopeRemover(target, space) @ twolog @ (sigma * xi)
             op = _Normalization(target, space) @ (slope + smooth)
         elif sig_flex is None:
