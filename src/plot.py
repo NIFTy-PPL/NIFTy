@@ -19,7 +19,6 @@ import os
 from datetime import datetime as dt
 
 import numpy as np
-from matplotlib.dates import DateFormatter, date2num
 
 from .domains.gl_space import GLSpace
 from .domains.hp_space import HPSpace
@@ -266,6 +265,7 @@ def _register_cmaps():
 
 def _plot_history(f, ax, **kwargs):
     import matplotlib.pyplot as plt
+    from matplotlib.dates import DateFormatter, date2num
     for i, fld in enumerate(f):
         if not isinstance(fld, EnergyHistory):
             raise TypeError
