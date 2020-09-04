@@ -110,6 +110,13 @@ def testAdder(space, seed, neg):
         ift.extra.check_operator(op, f, ntries=ntries)
 
 
+def testAbs(space, seed):
+    with ift.random.Context(seed):
+        f = ift.from_random(space, 'normal')
+        op = abs(ift.ScalingOperator(space, 1.))
+        ift.extra.check_operator(op, f, ntries=ntries)
+
+
 @pmp('target', [ift.RGSpace(64, distances=.789, harmonic=True),
                 ift.RGSpace([10, 10], distances=.789, harmonic=True)])
 @pmp('causal', [True, False])
