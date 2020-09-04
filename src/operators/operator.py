@@ -218,6 +218,9 @@ class Operator(metaclass=NiftyMeta):
             return NotImplemented
         return _OpSum(self, -x)
 
+    def __abs__(self):
+        return self.ptw("abs")
+
     def __pow__(self, power):
         if not (np.isscalar(power) or power.jac is None):
             return NotImplemented
