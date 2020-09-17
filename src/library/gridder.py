@@ -51,15 +51,14 @@ class Gridder(LinearOperator):
         freq = np.array([speedOfLight])
         x = x.val
         nxdirty, nydirty = self._target[0].shape
-        nu, nv = max(2*nxdirty, 16), max(2*nydirty, 16)
         dstx, dsty = self._target[0].distances
         from ducc0.wgridder import ms2dirty, dirty2ms
         if mode == self.TIMES:
             res = ms2dirty(self._uvw, freq, x.reshape((-1,1)), None, nxdirty,
-                           nydirty, dstx, dsty, nu, nv,
+                           nydirty, dstx, dsty, 0, 0,
                            self._eps, False, self._nthreads, 0)
         else:
-            res = dirty2ms(self._uvw, freq, x, None, dstx, dsty, nu, nv,
+            res = dirty2ms(self._uvw, freq, x, None, dstx, dsty, 0, 0,
                            self._eps, False, self._nthreads, 0)
             res = res.reshape((-1,))
         return makeField(self._tgt(mode), res)
