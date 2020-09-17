@@ -112,6 +112,8 @@ def check_operator(op, loc, tol=1e-12, ntries=100, perf_check=True,
         If op is an EnergyOperator, metric_sampling determines whether the
         test shall try to sample from the metric or not.
     """
+    if not isinstance(op, Operator):
+        raise TypeError('This test tests only (nonlinear) operators.')
     _domain_check_nonlinear(op, loc)
     _performance_check(op, loc, bool(perf_check))
     _linearization_value_consistency(op, loc)
