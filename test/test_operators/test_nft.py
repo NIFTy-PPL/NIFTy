@@ -90,7 +90,7 @@ def test_cartesian():
 @pmp('nxdirty', [32, 128])
 @pmp('nydirty', [32, 48, 128])
 @pmp('N', [1, 10, 100])
-def xtest_build(nxdirty, nydirty, N, eps):
+def test_build(nxdirty, nydirty, N, eps):
     dom = ift.RGSpace([nxdirty, nydirty])
     uv = ift.random.current_rng().random((N, 2)) - 0.5
     RF = ift.Gridder(dom, uv=uv, eps=eps)
