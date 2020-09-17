@@ -98,4 +98,6 @@ def xtest_build(nxdirty, nydirty, N, eps):
     # Consistency checks
     flt = np.float64
     cmplx = np.complex128
+    # We set rtol=eps here, because the gridder operator only guarantees
+    # adjointness to this accuracy.
     ift.extra.check_linear_operator(RF, cmplx, flt, only_r_linear=True, rtol=eps)
