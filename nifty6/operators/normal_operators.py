@@ -30,8 +30,8 @@ def NormalTransform(mean, sigma, key, N_copies=0):
     """Opchain that transforms standard normally distributed values to
     normally distributed values with given mean an standard deviation.
 
-    Parameters:
-    -----------
+    Parameters
+    ----------
     mean : float
         Mean of the field
     sigma : float
@@ -60,8 +60,8 @@ def LognormalTransform(mean, sigma, key, N_copies):
     """Opchain that transforms standard normally distributed values to
     log-normally distributed values with given mean an standard deviation.
 
-    Parameters:
-    -----------
+    Parameters
+    ----------
     mean : float
         Mean of the field
     sigma : float
