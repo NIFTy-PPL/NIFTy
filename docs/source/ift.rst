@@ -224,7 +224,7 @@ Thus, only the gradient of the KL is needed with respect to this, which can be e
 
 We stochastically estimate the KL-divergence and gradients with a set of samples drawn from the approximate posterior distribution.
 The particular structure of the covariance allows us to draw independent samples solving a certain system of equations.
-This KL-divergence for MGVI is implemented in the class :class:`~minimization.metric_gaussian_kl.MetricGaussianKL` within NIFTy6.
+This KL-divergence for MGVI is implemented in the class :class:`~nifty6.minimization.metric_gaussian_kl.MetricGaussianKL` within NIFTy6.
 
 
 The demo `getting_started_3.py` for example not only infers a field this way, but also the power spectrum of the process that has generated the field.
