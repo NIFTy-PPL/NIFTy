@@ -74,6 +74,9 @@ class DomainTuple(object):
         """
         if isinstance(domain, DomainTuple):
             return domain
+        from .multi_domain import MultiDomain
+        if isinstance(domain, MultiDomain):
+            raise TypeError("Cannot create DomainTuple from MultiDomain")
         domain = DomainTuple._parse_domain(domain)
         obj = DomainTuple._tupleCache.get(domain)
         if obj is not None:
