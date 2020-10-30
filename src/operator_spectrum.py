@@ -117,32 +117,17 @@ def operator_spectrum(A, k, hermitian, which='LM', tol=0, return_eigenvectors=Fa
         The default value of 0 implies machine precision.
 
     return_eigenvectors: bool, optional
-        Return eigenvectors (True) in addition to eigenvalues.
-        This value determines the order in which eigenvalues are sorted.
-        The sort order is also dependent on the `which` variable.
-
-        For which = 'LM' or 'SA':
-            If `return_eigenvectors` is True, eigenvalues are sorted by
-            algebraic value.
-
-            If `return_eigenvectors` is False, eigenvalues are sorted by
-            absolute value.
-
-        For which = 'BE' or 'LA':
-            eigenvalues are always sorted by algebraic value.
-
-        For which = 'SM':
-            If `return_eigenvectors` is True, eigenvalues are sorted by
-            algebraic value.
-
-            If `return_eigenvectors` is False, eigenvalues are sorted by
-            decreasing absolute value.
+        Return eigenvectors (True) in addition to eigenvalues
  
 
     Returns
     -------
     w : ndarray
         Array of k eigenvalues.
+
+    v : ndarray
+        An array representing the k eigenvectors. The column v[:, i] is the
+        eigenvector corresponding to the eigenvalue w[i].
 
     Raises
     ------
@@ -163,4 +148,9 @@ def operator_spectrum(A, k, hermitian, which='LM', tol=0, return_eigenvectors=Fa
         matvec=lambda x: Ar(makeField(Ar.domain, x)).val)
     f = ssl.eigsh if hermitian else ssl.eigs
     eigs = f(M, k=k, tol=tol, return_eigenvectors=return_eigenvectors, which=which)
-    return np.flip(np.sort(eigs), axis=0)
+    if return_eigenvectors:
+        eigval, eigvec = eigs
+        inds = np.argsort(eigval)
+        return np.flip(eigval[inds]), np.flip(eigvec[:,inds],axis = 1)
+    else:
+        return np.flip(np.sort(eigs))
