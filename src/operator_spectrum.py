@@ -118,7 +118,7 @@ def operator_spectrum(A, k, hermitian, which='LM', tol=0, return_eigenvectors=Fa
 
     return_eigenvectors: bool, optional
         Return eigenvectors (True) in addition to eigenvalues
- 
+
 
     Returns
     -------
