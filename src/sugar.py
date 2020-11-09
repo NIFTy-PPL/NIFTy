@@ -106,11 +106,12 @@ def power_analyze(field, spaces=None, binbounds=None,
                   keep_phase_information=False):
     """Computes the power spectrum for a subspace of `field`.
 
-    Creates a PowerSpace for the space addressed by `spaces` with the given
-    binning and computes the power spectrum as a :class:`Field` over this
-    PowerSpace. This can only be done if the subspace to  be analyzed is a
-    harmonic space. The resulting field has the same units as the square of the
-    initial field.
+    Creates a PowerSpace for the space addressed by `spaces` with the
+    given binning and computes the power spectrum as a
+    :class:`~nifty7.field.Field` over this PowerSpace. This can only
+    be done if the subspace to be analyzed is a harmonic space. The
+    resulting field has the same units as the square of the initial
+    field.
 
     Parameters
     ----------
