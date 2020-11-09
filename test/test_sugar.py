@@ -77,7 +77,7 @@ def test_isinstance_helpers():
     fld = ift.full(dom, 0.)
     lin = ift.Linearization.make_var(fld)
     assert not ift.is_fieldlike(op)
-    assert not ift.is_fieldlike(lin)
+    assert ift.is_fieldlike(lin)
     assert ift.is_fieldlike(fld)
     assert not ift.is_linearization(op)
     assert ift.is_linearization(lin)
