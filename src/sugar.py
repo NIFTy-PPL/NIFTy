@@ -38,6 +38,7 @@ from .plot import Plot
 __all__ = ['PS_field', 'power_analyze', 'create_power_operator',
            'create_harmonic_smoothing_operator', 'from_random',
            'full', 'makeField',
+           'is_fieldlike', 'is_linearization', 'is_operator',
            'makeDomain', 'get_signal_variance', 'makeOp', 'domain_union',
            'get_default_codomain', 'single_plot', 'exec_time',
            'calculate_position'] + list(pointwise.ptw_dict.keys())
@@ -105,11 +106,12 @@ def power_analyze(field, spaces=None, binbounds=None,
                   keep_phase_information=False):
     """Computes the power spectrum for a subspace of `field`.
 
-    Creates a PowerSpace for the space addressed by `spaces` with the given
-    binning and computes the power spectrum as a :class:`Field` over this
-    PowerSpace. This can only be done if the subspace to  be analyzed is a
-    harmonic space. The resulting field has the same units as the square of the
-    initial field.
+    Creates a PowerSpace for the space addressed by `spaces` with the
+    given binning and computes the power spectrum as a
+    :class:`~nifty7.field.Field` over this PowerSpace. This can only
+    be done if the subspace to be analyzed is a harmonic space. The
+    resulting field has the same units as the square of the initial
+    field.
 
     Parameters
     ----------
@@ -526,3 +528,33 @@ def calculate_position(operator, output):
         kl, _ = minimizer(kl)
         pos = kl.position
     return pos
+
+
+def is_operator(obj):
+    """Checks if object is operator-like.
+
+    Note
+    ----
+    A simple `isinstance(obj, ift.Operator)` does give the expected
+    result because, e.g., :class:`~nifty7.field.Field` inherits from
+    :class:`~nifty7.operators.operator.Operator`.
+    """
+    return isinstance(obj, Operator) and obj.val is None and obj.jac is None
+
+
+def is_linearization(obj):
+    """Checks if object is linearization-like."""
+    return isinstance(obj, Operator) and obj.val is not None and obj.jac is not None
+
+
+def is_fieldlike(obj):
+    """Checks if object is field-like.
+
+    Note
+    ----
+    A simple `isinstance(obj, ift.Field)` does give the expected
+    result because users might have implemented another class which
+    behaves field-like but is not an instance of
+    :class:`~nifty7.field.Field`.
+    """
+    return isinstance(obj, Operator) and obj.val is not None and obj.jac is None

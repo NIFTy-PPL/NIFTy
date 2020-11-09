@@ -69,3 +69,19 @@ def test_calc_pos(mf, cplx):
     fld = op(0.1 * ift.from_random(op.domain, 'normal'))
     pos = ift.calculate_position(op, fld)
     ift.extra.assert_allclose(op(pos), fld, 1e-1, 1e-1)
+
+
+def test_isinstance_helpers():
+    dom = ift.RGSpace(12, harmonic=True)
+    op = ift.ScalingOperator(dom, 12.)
+    fld = ift.full(dom, 0.)
+    lin = ift.Linearization.make_var(fld)
+    assert not ift.is_fieldlike(op)
+    assert not ift.is_fieldlike(lin)
+    assert ift.is_fieldlike(fld)
+    assert not ift.is_linearization(op)
+    assert ift.is_linearization(lin)
+    assert not ift.is_linearization(fld)
+    assert ift.is_operator(op)
+    assert not ift.is_operator(lin)
+    assert not ift.is_operator(fld)
