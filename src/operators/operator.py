@@ -282,35 +282,49 @@ class Operator(metaclass=NiftyMeta):
     def simplify_for_constant_input(self, c_inp):
         from .energy_operators import EnergyOperator
         from .simplify_for_const import ConstantEnergyOperator, ConstantOperator
-        if c_inp is None:
+        from ..multi_field import MultiField
+        from ..domain_tuple import DomainTuple
+        from ..sugar import makeDomain
+        if c_inp is None or (isinstance(c_inp, MultiField) and len(c_inp.keys()) == 0):
+            return None, self
+        dom = c_inp.domain
+        if isinstance(dom, MultiDomain) and len(dom) == 0:
             return None, self
 
         # Convention: If c_inp is MultiField, it needs to be defined on a
         # subdomain of self._domain
         if isinstance(self.domain, MultiDomain):
-            assert isinstance(c_inp.domain, MultiDomain)
-            if set(c_inp.keys()) > set(self.domain.keys()):
+            assert isinstance(dom, MultiDomain)
+            if not set(c_inp.keys()) <= set(self.domain.keys()):
                 raise ValueError
 
-        if c_inp.domain is self.domain:
+        if dom is self.domain:
+            if isinstance(self, DomainTuple):
+                raise RuntimeError
             if isinstance(self, EnergyOperator):
-                op = ConstantEnergyOperator(self.domain, self(c_inp))
+                op = ConstantEnergyOperator(self(c_inp))
             else:
-                op = ConstantOperator(self.domain, self(c_inp))
-            op = ConstantOperator(self.domain, self(c_inp))
-            return op(c_inp), op
-        if not isinstance(c_inp.domain, MultiDomain):
+                op = ConstantOperator(self(c_inp))
+            return None, op
+        if not isinstance(dom, MultiDomain):
             raise RuntimeError
-        return self._simplify_for_constant_input_nontrivial(c_inp)
+        c_out, op = self._simplify_for_constant_input_nontrivial(c_inp)
+        vardom = makeDomain({kk: vv for kk, vv in self.domain.items()
+                             if kk not in c_inp.keys()})
+        assert op.domain is vardom
+        assert op.target is self.target
+        assert isinstance(op, Operator)
+        if c_out is not None:
+            assert isinstance(c_out, MultiField)
+            assert len(set(c_out.keys()) & self.domain.keys()) == 0
+            assert set(c_out.keys()) <= set(c_inp.keys())
+        return c_out, op
 
     def _simplify_for_constant_input_nontrivial(self, c_inp):
-        from .simplify_for_const import SlowPartialConstantOperator
-        s = ('SlowPartialConstantOperator used. You might want to consider'
-             ' implementing `_simplify_for_constant_input_nontrivial()` for'
-             ' this operator:')
-        logger.warning(s)
+        from .simplify_for_const import InsertionOperator
+        logger.warning('SlowPartialConstantOperator used for:')
         logger.warning(self.__repr__())
-        return None, self @ SlowPartialConstantOperator(self.domain, c_inp.keys())
+        return None, self @ InsertionOperator(self.domain, c_inp)
 
     def ptw(self, op, *args, **kwargs):
         return _OpChain.make((_FunctionApplier(self.target, op, *args, **kwargs), self))
@@ -382,7 +396,6 @@ class _OpChain(_CombinedOperator):
         from ..multi_domain import MultiDomain
         if not isinstance(self._domain, MultiDomain):
             return None, self
-
         newop = None
         for op in reversed(self._ops):
             c_inp, t_op = op.simplify_for_constant_input(c_inp)
@@ -430,7 +443,6 @@ class _OpProd(Operator):
     def _simplify_for_constant_input_nontrivial(self, c_inp):
         from ..multi_domain import MultiDomain
         from .simplify_for_const import ConstCollector
-
         f1, o1 = self._op1.simplify_for_constant_input(
             c_inp.extract_part(self._op1.domain))
         f2, o2 = self._op2.simplify_for_constant_input(
@@ -483,7 +495,6 @@ class _OpSum(Operator):
     def _simplify_for_constant_input_nontrivial(self, c_inp):
         from ..multi_domain import MultiDomain
         from .simplify_for_const import ConstCollector
-
         f1, o1 = self._op1.simplify_for_constant_input(
             c_inp.extract_part(self._op1.domain))
         f2, o2 = self._op2.simplify_for_constant_input(

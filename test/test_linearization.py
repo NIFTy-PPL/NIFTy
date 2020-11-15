@@ -17,7 +17,7 @@
 
 import numpy as np
 import pytest
-from numpy.testing import assert_, assert_allclose
+from numpy.testing import assert_allclose
 
 import nifty7 as ift
 from .common import setup_function, teardown_function
@@ -44,7 +44,7 @@ def test_special_gradients():
 
     assert_allclose(
         _lin2grad(ift.Linearization.make_var(0*f).ptw("sinc")), np.zeros(s.shape))
-    assert_(np.isnan(_lin2grad(ift.Linearization.make_var(0*f).ptw("abs"))))
+    ift.myassert(np.isnan(_lin2grad(ift.Linearization.make_var(0*f).ptw("abs"))))
     assert_allclose(
         _lin2grad(ift.Linearization.make_var(0*f + 10).ptw("abs")),
         np.ones(s.shape))
@@ -55,7 +55,7 @@ def test_special_gradients():
 
 @pmp('f', [
     'log', 'exp', 'sqrt', 'sin', 'cos', 'tan', 'sinc', 'sinh', 'cosh', 'tanh',
-    'absolute', 'reciprocal', 'sigmoid', 'log10', 'log1p', "expm1"
+    'absolute', 'reciprocal', 'sigmoid', 'log10', 'log1p', 'expm1', 'softplus'
 ])
 @pmp('cplxpos', [True, False])
 @pmp('cplxdir', [True, False])

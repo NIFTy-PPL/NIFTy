@@ -32,13 +32,13 @@ ntries = 10
 
 def test_gaussian(field):
     energy = ift.GaussianEnergy(domain=field.domain)
-    ift.extra.check_jacobian_consistency(energy, field)
+    ift.extra.check_operator(energy, field)
 
 
 def test_ScaledEnergy(field):
     icov = ift.ScalingOperator(field.domain, 1.2)
     energy = ift.GaussianEnergy(inverse_covariance=icov, sampling_dtype=np.float64)
-    ift.extra.check_jacobian_consistency(energy.scale(0.3), field)
+    ift.extra.check_operator(energy.scale(0.3), field)
 
     lin = ift.Linearization.make_var(field, want_metric=True)
     met1 = energy(lin).metric
@@ -54,17 +54,17 @@ def test_QuadraticFormOperator(field):
     op = ift.ScalingOperator(field.domain, 1.2)
     endo = ift.makeOp(op.draw_sample_with_dtype(dtype=np.float64))
     energy = ift.QuadraticFormOperator(endo)
-    ift.extra.check_jacobian_consistency(energy, field)
+    ift.extra.check_operator(energy, field)
 
 
 def test_studentt(field):
     if isinstance(field.domain, ift.MultiDomain):
         return
     energy = ift.StudentTEnergy(domain=field.domain, theta=.5)
-    ift.extra.check_jacobian_consistency(energy, field, tol=1e-6)
+    ift.extra.check_operator(energy, field)
     theta = ift.from_random(field.domain, 'normal').exp()
     energy = ift.StudentTEnergy(domain=field.domain, theta=theta)
-    ift.extra.check_jacobian_consistency(energy, field, tol=1e-6, ntries=ntries)
+    ift.extra.check_operator(energy, field, ntries=ntries)
 
 
 def test_hamiltonian_and_KL(field):
@@ -72,10 +72,10 @@ def test_hamiltonian_and_KL(field):
     space = field.domain
     lh = ift.GaussianEnergy(domain=space)
     hamiltonian = ift.StandardHamiltonian(lh)
-    ift.extra.check_jacobian_consistency(hamiltonian, field, ntries=ntries)
+    ift.extra.check_operator(hamiltonian, field, ntries=ntries)
     samps = [ift.from_random(space, 'normal') for i in range(2)]
     kl = ift.AveragedEnergy(hamiltonian, samps)
-    ift.extra.check_jacobian_consistency(kl, field, ntries=ntries)
+    ift.extra.check_operator(kl, field, ntries=ntries)
 
 
 def test_variablecovariancegaussian(field):
@@ -84,7 +84,7 @@ def test_variablecovariancegaussian(field):
     dc = {'a': field, 'b': field.ptw("exp")}
     mf = ift.MultiField.from_dict(dc)
     energy = ift.VariableCovarianceGaussianEnergy(field.domain, 'a', 'b', np.float64)
-    ift.extra.check_jacobian_consistency(energy, mf, tol=1e-6, ntries=ntries)
+    ift.extra.check_operator(energy, mf, ntries=ntries)
     energy(ift.Linearization.make_var(mf, want_metric=True)).metric.draw_sample()
 
 
@@ -93,7 +93,7 @@ def test_specialgamma(field):
         return
     energy = ift.operators.energy_operators._SpecialGammaEnergy(field)
     loc = ift.from_random(energy.domain).exp()
-    ift.extra.check_jacobian_consistency(energy, loc, tol=1e-6, ntries=ntries)
+    ift.extra.check_operator(energy, loc, ntries=ntries)
     energy(ift.Linearization.make_var(loc, want_metric=True)).metric.draw_sample()
 
 
@@ -105,7 +105,7 @@ def test_inverse_gamma(field):
     d = ift.random.current_rng().normal(10, size=space.shape)**2
     d = ift.Field(space, d)
     energy = ift.InverseGammaLikelihood(d)
-    ift.extra.check_jacobian_consistency(energy, field, tol=1e-5)
+    ift.extra.check_operator(energy, field, tol=1e-10)
 
 
 def testPoissonian(field):
@@ -116,7 +116,7 @@ def testPoissonian(field):
     d = ift.random.current_rng().poisson(120, size=space.shape)
     d = ift.Field(space, d)
     energy = ift.PoissonianEnergy(d)
-    ift.extra.check_jacobian_consistency(energy, field, tol=1e-6)
+    ift.extra.check_operator(energy, field)
 
 
 def test_bernoulli(field):
@@ -127,4 +127,4 @@ def test_bernoulli(field):
     d = ift.random.current_rng().binomial(1, 0.1, size=space.shape)
     d = ift.Field(space, d)
     energy = ift.BernoulliEnergy(d)
-    ift.extra.check_jacobian_consistency(energy, field, tol=1e-5)
+    ift.extra.check_operator(energy, field, tol=1e-10)

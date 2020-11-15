@@ -74,6 +74,9 @@ class DomainTuple(object):
         """
         if isinstance(domain, DomainTuple):
             return domain
+        from .multi_domain import MultiDomain
+        if isinstance(domain, MultiDomain):
+            raise TypeError("Cannot create DomainTuple from MultiDomain")
         domain = DomainTuple._parse_domain(domain)
         obj = DomainTuple._tupleCache.get(domain)
         if obj is not None:
@@ -188,8 +191,10 @@ class DomainTuple(object):
         return not self.__eq__(x)
 
     def __str__(self):
+        if len(self) == 0:
+            return "DomainTuple, len: 0"
         return ("DomainTuple, len: {}\n".format(len(self)) +
-                "\n".join(str(i) for i in self))
+                "\n".join("* " + str(i) for i in self))
 
     def __reduce__(self):
         return (_unpickleDomainTuple, (self._dom,))

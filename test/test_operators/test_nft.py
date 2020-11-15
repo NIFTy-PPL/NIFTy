@@ -17,9 +17,9 @@
 
 import numpy as np
 import pytest
-from numpy.testing import assert_
 
 import nifty7 as ift
+
 from ..common import setup_function, teardown_function
 
 pmp = pytest.mark.parametrize
@@ -30,10 +30,10 @@ def _l2error(a, b):
 
 
 @pmp('eps', [1e-2, 1e-4, 1e-7, 1e-10, 1e-11, 1e-12, 2e-13])
-@pmp('nu', [12, 128])
-@pmp('nv', [4, 12, 128])
+@pmp('nxdirty', [32, 128])
+@pmp('nydirty', [32, 48, 128])
 @pmp('N', [1, 10, 100])
-def test_gridding(nu, nv, N, eps):
+def test_gridding(nxdirty, nydirty, N, eps):
     uv = ift.random.current_rng().random((N, 2)) - 0.5
     vis = (ift.random.current_rng().standard_normal(N)
            + 1j*ift.random.current_rng().standard_normal(N))
@@ -42,27 +42,26 @@ def test_gridding(nu, nv, N, eps):
         uv[-1] = 0
         uv[-2] = 1e-5
     # Nifty
-    dom = ift.RGSpace((nu, nv), distances=(0.2, 1.12))
+    dom = ift.RGSpace((nxdirty, nydirty), distances=(0.2, 1.12))
     dstx, dsty = dom.distances
     uv[:, 0] = uv[:, 0]/dstx
     uv[:, 1] = uv[:, 1]/dsty
-    GM = ift.GridderMaker(dom, uv=uv, eps=eps)
+    Op = ift.Gridder(dom, uv=uv, eps=eps)
     vis2 = ift.makeField(ift.UnstructuredDomain(vis.shape), vis)
 
-    Op = GM.getFull()
     pynu = Op(vis2).val
     # DFT
     x, y = np.meshgrid(
-        *[-ss/2 + np.arange(ss) for ss in [nu, nv]], indexing='ij')
+        *[-ss/2 + np.arange(ss) for ss in [nxdirty, nydirty]], indexing='ij')
     dft = pynu*0.
     for i in range(N):
         dft += (
             vis[i]*np.exp(2j*np.pi*(x*uv[i, 0]*dstx + y*uv[i, 1]*dsty))).real
-    assert_(_l2error(dft, pynu) < eps)
+    ift.myassert(_l2error(dft, pynu) < eps)
 
 
 def test_cartesian():
-    nx, ny = 2, 6
+    nx, ny = 32, 42
     dstx, dsty = 0.3, 0.2
     dom = ift.RGSpace((nx, ny), (dstx, dsty))
 
@@ -72,8 +71,7 @@ def test_cartesian():
     tmp = np.vstack([uu[None, :], vv[None, :]])
     uv = np.transpose(tmp, (2, 1, 0)).reshape(-1, 2)
 
-    GM = ift.GridderMaker(dom, uv=uv)
-    op = GM.getFull().adjoint
+    op = ift.Gridder(dom, uv=uv).adjoint
 
     fld = ift.from_random(dom, 'normal')
     arr = fld.val
@@ -89,22 +87,17 @@ def test_cartesian():
 
 
 @pmp('eps', [1e-2, 1e-6, 2e-13])
-@pmp('nu', [12, 128])
-@pmp('nv', [4, 12, 128])
+@pmp('nxdirty', [32, 128])
+@pmp('nydirty', [32, 48, 128])
 @pmp('N', [1, 10, 100])
-def test_build(nu, nv, N, eps):
-    dom = ift.RGSpace([nu, nv])
+def test_build(nxdirty, nydirty, N, eps):
+    dom = ift.RGSpace([nxdirty, nydirty])
     uv = ift.random.current_rng().random((N, 2)) - 0.5
-    GM = ift.GridderMaker(dom, uv=uv, eps=eps)
-    R0 = GM.getGridder()
-    R1 = GM.getRest()
-    R = R1@R0
-    RF = GM.getFull()
+    RF = ift.Gridder(dom, uv=uv, eps=eps)
 
     # Consistency checks
     flt = np.float64
     cmplx = np.complex128
-    ift.extra.consistency_check(R0, cmplx, flt, only_r_linear=True)
-    ift.extra.consistency_check(R1, flt, flt)
-    ift.extra.consistency_check(R, cmplx, flt, only_r_linear=True)
-    ift.extra.consistency_check(RF, cmplx, flt, only_r_linear=True)
+    # We set rtol=eps here, because the gridder operator only guarantees
+    # adjointness to this accuracy.
+    ift.extra.check_linear_operator(RF, cmplx, flt, only_r_linear=True, rtol=eps)

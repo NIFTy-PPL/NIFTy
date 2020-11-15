@@ -61,7 +61,7 @@ def test_blockdiagonal():
     op = ift.BlockDiagonalOperator(
         dom, {"d1": ift.ScalingOperator(dom["d1"], 20.)})
     op2 = op(op)
-    ift.extra.consistency_check(op2)
+    ift.extra.check_linear_operator(op2)
     assert_equal(type(op2), ift.BlockDiagonalOperator)
     f1 = op2(ift.full(dom, 1))
     for val in f1.values():

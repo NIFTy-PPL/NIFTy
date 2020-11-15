@@ -36,4 +36,4 @@ def test_vdot_operator():
     res3 = np.vdot(arr1, arr2)
     assert_allclose(res1.val, res2.val)
     assert_allclose(res1.val, res3)
-    ift.extra.check_jacobian_consistency(op1, f)
+    ift.extra.check_operator(op1, f)

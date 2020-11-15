@@ -17,9 +17,10 @@
 
 import numpy as np
 import pytest
-from numpy.testing import assert_, assert_allclose, assert_equal, assert_raises
+from numpy.testing import assert_allclose, assert_equal, assert_raises
 
 import nifty7 as ift
+
 from ..common import setup_function, teardown_function
 
 pmp = pytest.mark.parametrize
@@ -67,7 +68,7 @@ def get_k_length_array_configs():
 
 @pmp('attribute', ['lmax', 'mmax', 'size'])
 def test_property_ret_type(attribute):
-    assert_(isinstance(getattr(ift.LMSpace(7, 5), attribute), int))
+    ift.myassert(isinstance(getattr(ift.LMSpace(7, 5), attribute), int))
 
 
 @pmp('lmax, mmax, expected', CONSTRUCTOR_CONFIGS)

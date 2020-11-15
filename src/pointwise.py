@@ -89,6 +89,33 @@ def _sc_helper(v, maxorder, sin):
     return tuple(s if i%2 ^ sin else c for i in range(maxorder+1))
         
 
+def softplus(v):
+    fv = np.empty(v.shape, dtype=np.float64 if np.isrealobj(v) else np.complex128)
+    selp = v > 33
+    selm = v < -33
+    sel0 = ~np.logical_or(selp, selm)
+    fv[selp] = v[selp]
+    fv[sel0] = np.log(1+np.exp(v[sel0]))
+    fv[selm] = 0
+    return fv
+
+
+def _softplus_helper(v):
+    dtype = np.float64 if np.isrealobj(v) else np.complex128
+    fv = np.empty(v.shape, dtype=dtype)
+    dfv = np.empty(v.shape, dtype=dtype)
+    selp = 33 < v
+    selm = v < -33
+    sel0 = ~np.logical_or(selp, selm)
+    fv[selp] = v[selp]
+    fv[sel0] = np.log(1+np.exp(v[sel0]))
+    fv[selm] = 0
+    dfv[selp] = 1
+    dfv[sel0] = 1/(1+np.exp(-v[sel0]))
+    dfv[selm] = 0
+    return fv, dfv
+
+
 ptw_dict = {
     "sqrt": (np.sqrt, _sqrt_helper, lambda v,maxorder: _power_helper(v,maxorder,0.5)),
     "sin": (np.sin, lambda v: (np.sin(v), np.cos(v)), lambda v,m: _sc_helper(v,m,True)),
@@ -110,4 +137,5 @@ ptw_dict = {
     "sign": (np.sign, _sign_helper),
     "power": (np.power, lambda v,expo: _power_helper(v,1,expo), _power_helper),
     "clip": (np.clip, _clip_helper),
+    "softplus": (softplus, _softplus_helper)
     }

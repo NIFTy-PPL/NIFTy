@@ -238,8 +238,8 @@ class Random(object):
             raise TypeError("mean must not be complex for a real result field")
         if np.issubdtype(dtype, np.complexfloating):
             x = np.empty(shape, dtype=dtype)
-            x.real = _rng[-1].normal(mean.real, std*np.sqrt(0.5), shape)
-            x.imag = _rng[-1].normal(mean.imag, std*np.sqrt(0.5), shape)
+            x.real = _rng[-1].normal(mean.real, std, shape)
+            x.imag = _rng[-1].normal(mean.imag, std, shape)
         else:
             x = _rng[-1].normal(mean, std, shape).astype(dtype, copy=False)
         return x

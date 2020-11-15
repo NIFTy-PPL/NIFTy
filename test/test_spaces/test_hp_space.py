@@ -17,10 +17,10 @@
 
 import numpy as np
 import pytest
-from numpy.testing import (assert_, assert_almost_equal, assert_equal,
-                           assert_raises)
+from numpy.testing import assert_almost_equal, assert_equal, assert_raises
 
-from nifty7 import HPSpace
+from nifty7 import HPSpace, myassert
+
 from ..common import setup_function, teardown_function
 
 pmp = pytest.mark.parametrize
@@ -49,7 +49,7 @@ CONSTRUCTOR_CONFIGS = [[
 
 def test_property_ret_type():
     x = HPSpace(2)
-    assert_(isinstance(getattr(x, 'nside'), int))
+    myassert(isinstance(getattr(x, 'nside'), int))
 
 
 @pmp('nside, expected', CONSTRUCTOR_CONFIGS)

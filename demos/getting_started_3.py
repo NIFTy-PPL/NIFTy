@@ -52,40 +52,31 @@ def main():
     else:
         mode = 0
     filename = "getting_started_3_mode_{}_".format(mode) + "{}.png"
-
     position_space = ift.RGSpace([128, 128])
 
     #  For a detailed showcase of the effects the parameters
     #  of the CorrelatedField model have on the generated fields,
     #  see 'getting_started_4_CorrelatedFields.ipynb'.
 
-    cfmaker = ift.CorrelatedFieldMaker.make(
-        offset_mean=      0.0,
-        offset_std_mean= 1e-3,
-        offset_std_std=  1e-6,
-        prefix='')
+    args = {
+        'offset_mean': 0,
+        'offset_std': (1e-3, 1e-6),
 
-    fluctuations_dict = {
         # Amplitude of field fluctuations
-        'fluctuations_mean':   2.0,  # 1.0
-        'fluctuations_stddev': 1.0,  # 1e-2
+        'fluctuations': (2., 1.),  # 1.0, 1e-2
 
         # Exponent of power law power spectrum component
-        'loglogavgslope_mean': -2.0,  # -3.0
-        'loglogavgslope_stddev': 0.5,  # 0.5
+        'loglogavgslope': (-4., 1),  # -6.0, 1
 
         # Amplitude of integrated Wiener process power spectrum component
-        'flexibility_mean':   2.5,  # 1.0
-        'flexibility_stddev': 1.0,  # 0.5
+        'flexibility': (5, 2.),  # 2.0, 1.0
 
         # How ragged the integrated Wiener process component is
-        'asperity_mean':   0.5,  # 0.1
-        'asperity_stddev': 0.5  # 0.5
+        'asperity': (0.5, 0.5)  # 0.1, 0.5
     }
-    cfmaker.add_fluctuations(position_space, **fluctuations_dict)
 
-    correlated_field = cfmaker.finalize()
-    A = cfmaker.amplitude
+    correlated_field = ift.SimpleCorrelatedField(position_space, **args)
+    pspec = correlated_field.power_spectrum
 
     # Apply a nonlinearity
     signal = ift.sigmoid(correlated_field)
@@ -122,7 +113,7 @@ def main():
     plot = ift.Plot()
     plot.add(signal(mock_position), title='Ground Truth')
     plot.add(R.adjoint_times(data), title='Data')
-    plot.add([A.force(mock_position)], title='Power Spectrum')
+    plot.add([pspec.force(mock_position)], title='Power Spectrum')
     plot.output(ny=1, nx=3, xsize=24, ysize=6, name=filename.format("setup"))
 
     # number of samples used to estimate the KL
@@ -131,20 +122,18 @@ def main():
     # Draw new samples to approximate the KL five times
     for i in range(5):
         # Draw new samples and minimize KL
-        KL = ift.MetricGaussianKL(mean, H, N_samples)
+        KL = ift.MetricGaussianKL.make(mean, H, N_samples)
         KL, convergence = minimizer(KL)
         mean = KL.position
 
         # Plot current reconstruction
         plot = ift.Plot()
         plot.add(signal(KL.position), title="Latent mean")
-        plot.add([A.force(KL.position + ss) for ss in KL.samples],
+        plot.add([pspec.force(KL.position + ss) for ss in KL.samples],
                  title="Samples power spectrum")
         plot.output(ny=1, ysize=6, xsize=16,
                     name=filename.format("loop_{:02d}".format(i)))
 
-    # Draw posterior samples
-    KL = ift.MetricGaussianKL(mean, H, N_samples)
     sc = ift.StatCalculator()
     for sample in KL.samples:
         sc.add(signal(sample + KL.position))
@@ -155,12 +144,16 @@ def main():
     plot.add(sc.mean, title="Posterior Mean")
     plot.add(ift.sqrt(sc.var), title="Posterior Standard Deviation")
 
-    powers = [A.force(s + KL.position) for s in KL.samples]
+    powers = [pspec.force(s + KL.position) for s in KL.samples]
+    sc = ift.StatCalculator()
+    for pp in powers:
+        sc.add(pp)
     plot.add(
-        powers + [A.force(mock_position),
-                  A.force(KL.position)],
+        powers + [pspec.force(mock_position),
+                  pspec.force(KL.position), sc.mean],
         title="Sampled Posterior Power Spectrum",
-        linewidth=[1.]*len(powers) + [3., 3.])
+        linewidth=[1.]*len(powers) + [3., 3., 3.],
+        label=[None]*len(powers) + ['Ground truth', 'Posterior latent mean', 'Posterior mean'])
     plot.output(ny=1, nx=3, xsize=24, ysize=6, name=filename_res)
     print("Saved results as '{}'.".format(filename_res))
 

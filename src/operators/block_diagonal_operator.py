@@ -17,6 +17,7 @@
 
 from ..multi_domain import MultiDomain
 from ..multi_field import MultiField
+from ..utilities import indent
 from .endomorphic_operator import EndomorphicOperator
 from .linear_operator import LinearOperator
 
@@ -79,3 +80,7 @@ class BlockDiagonalOperator(EndomorphicOperator):
         res = {key: SumOperator.make([v1, v2], [selfneg, opneg])
                for key, v1, v2 in zip(self._domain.keys(), self._ops, op._ops)}
         return BlockDiagonalOperator(self._domain, res)
+
+    def __repr__(self):
+        s = "\n".join(f'{kk}: {self._ops[ii]}' for ii, kk in enumerate(self.domain.keys()))
+        return 'BlockDiagonalOperator:\n' + indent(s)

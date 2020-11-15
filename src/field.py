@@ -136,6 +136,8 @@ class Field(Operator):
             The domain of the output random Field.
         dtype : type
             The datatype of the output random Field.
+            If the datatype is complex, each real and imaginary part
+            have variance 1
 
         Returns
         -------
