@@ -89,6 +89,7 @@ def main():
     # Specify noise
     data_space = R.target
     noise = .001
+    sig = ift.ScalingOperator(data_space, np.sqrt(noise))
     N = ift.ScalingOperator(data_space, noise)
 
     # Generate mock signal and data
@@ -97,7 +98,7 @@ def main():
 
     # Minimization parameters
     ic_sampling = ift.AbsDeltaEnergyController(
-        name='Sampling', deltaE=0.05, iteration_limit=100)
+        deltaE=0.05, iteration_limit=100)
     ic_newton = ift.AbsDeltaEnergyController(
         name='Newton', deltaE=0.5, iteration_limit=35)
     minimizer = ift.NewtonCG(ic_newton)
@@ -125,6 +126,7 @@ def main():
         KL = ift.MetricGaussianKL.make(mean, H, N_samples)
         KL, convergence = minimizer(KL)
         mean = KL.position
+        ift.extra.minisanity(KL, data, sig.inverse, signal_response)
 
         # Plot current reconstruction
         plot = ift.Plot()
