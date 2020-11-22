@@ -65,19 +65,19 @@ class DiagonalTensor(_TensorPrimitive):
         super(DiagonalTensor, self).__init__(vec.domain, vec.domain, order)
         self._vec = vec
 
-    def _helper(self, x, rnk):
-        if self._rank-len(x) != rnk:
+    def _helper(self, x, order):
+        if self.order-len(x) != order:
             raise ValueError
         res = self._vec
         if len(x) != 0:
             res = reduce(lambda a,b:a*b, x)*res
-        return res if rnk == 1 else makeOp(res)
+        return res if order == 0 else makeOp(res)
 
     def getLinop(self, x=()):
-        return self._helper(x, 2)
+        return self._helper(x, 1)
 
     def getVec(self, x=()):
-        return self._helper(x, 1)
+        return self._helper(x, 0)
 
 
 class NullTensor(_TensorPrimitive):

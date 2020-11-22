@@ -50,7 +50,27 @@ import numpy as np
 from scipy.special import binom
 from .diff_tensor_primitive import LinearTensor, NullTensor, DiagonalTensor
 from .operators.scaling_operator import ScalingOperator
+from .sugar import full
 
+def assertIsinstance(t1, t2):
+    if not isinstance(t1, t2):
+        print("Error: {} is not an instance of {}".format(t1, t2))
+        raise TypeError("type mismatch")
+
+
+def assertIdentical(t1, t2):
+    if t1 is not t2:
+        raise ValueError("objects are not identical")
+
+
+def assertEqual(t1, t2):
+    if t1 != t2:
+        print("Error: {} is not equal to {}".format(t1, t2))
+        raise ValueError("objects are not equal")
+
+def assertTrue(t1):
+    if not t1:
+        raise ValueError("assertion failed")
 
 class TaylorTensors(object):
     @property
@@ -66,7 +86,9 @@ class TaylorTensors(object):
         return self._maxorder
 
     def __add__(self, other):
-        #TODO checks
+        assertEqual(self.target, other.target)
+        assertEqual(self.maxorder, other.maxorder)
+        assertIsinstance(other, TaylorTensors)
         if isinstance(self, TensorsSum):
             if isinstance(other, TensorsSum):
                 return self.join(other, True)
@@ -79,6 +101,9 @@ class TaylorTensors(object):
         return self.__add__(other)
 
     def __sub__(self, other):
+        assertEqual(self.target, other.target)
+        assertEqual(self.maxorder, other.maxorder)
+        assertIsinstance(other, TaylorTensors)
         if isinstance(self, TensorsSum):
             if isinstance(other, TensorsSum):
                 return self.join(other, False)
@@ -88,6 +113,9 @@ class TaylorTensors(object):
         return TensorsSum((self, other), (True, False))
 
     def __rsub__(self, other):
+        assertEqual(self.target, other.target)
+        assertEqual(self.maxorder, other.maxorder)
+        assertIsinstance(other, TaylorTensors)
         if isinstance(self, TensorsSum):
             if isinstance(other, TensorsSum):
                 return other.join(self, False)
@@ -97,29 +125,70 @@ class TaylorTensors(object):
         return TensorsSum((self, other), (False, True))
 
     def _check_input(self, x):
-        if x.domain != self.domain:
-            raise ValueError
+        for xx in x:
+            if xx.domain != self.domain:
+                raise ValueError
 
     def getVecs(self, x):
-        self._check_input(x)
-        return self._getVecs(x)
+        r = (x,)+(full(self.domain,0.),)*(self.maxorder-1)
+        return self.contract(r)
 
     def getLin(self, x):
+        raise NotImplementedError
+
+    def contract(self, x):
         self._check_input(x)
-        return self._getLin(x)
+        return self._contract(x)
 
-    def _getVecs(self, x):
+    def _contract(self, x):
         raise NotImplementedError
 
-    def _getLin(self, x):
-        raise NotImplementedError
+
+    @property
+    def isTrivial(self):
+        if not isinstance(self, TensorsLayer):
+            return False
+        if not isinstance(self.tensors[0], LinearTensor):
+            return False
+        if not isinstance(self.tensors[0]._op, ScalingOperator):
+            return False
+        if not self.tensors[0]._op._factor == 1:
+            return False
+        for t in self.tensors[1:]:
+            if not isinstance(t, NullTensor):
+                return False
+        return True
+
+def _partition(collection):
+    if len(collection) == 1:
+        yield [ collection ]
+        return
+
+    first = collection[0]
+    for smaller in _partition(collection[1:]):
+        for n, subset in enumerate(smaller):
+            yield smaller[:n] + [[ first ] + subset]  + smaller[n+1:]
+        yield [ [ first ] ] + smaller
+
+def _all_partitions_nontrivial(n, new):
+    pps = list(_partition(list(np.arange(n))))
+    i,nm = 0,len(pps)
+    while i<nm:
+        if isinstance(new[len(pps[i])-1], NullTensor):
+            del pps[i]
+            nm -=1
+        else:
+            i+=1
+    return pps
 
 
 class TensorsLayer(TaylorTensors):
     def __init__(self, tensors):
-        #TODO checks
         self._domain = tensors[0].domain
         self._target = tensors[0].target
+        for tt in tensors[1:]:
+            assertEqual(self.target, tt.target)
+            assertEqual(self.domain, tt.domain)
         self._maxorder = len(tensors)
         self._tensors = tensors
 
@@ -127,11 +196,16 @@ class TensorsLayer(TaylorTensors):
     def tensors(self):
         return self._tensors
 
-    def _getVecs(self, x):
-        return tuple((tt.getVec(x=(x,)*(i+1)) for i,tt in enumerate(self._tensors)))
-
-    def _getLin(self, x):
-        return tuple((tt.getLinOp(x=(x,)*i) for i,tt in enumerate(self._tensors)))
+    def _contract(self, inp):
+        res = ()
+        for i in range(self.maxorder):
+            partitions = _all_partitions_nontrivial(i+1, self.tensors)
+            rest = 0.
+            for p in partitions:
+                v = tuple(inp[len(b)-1] for b in p)
+                rest = rest + self.tensors[len(p)-1].getVec(v)
+            res += (rest, )
+        return res
 
     @staticmethod
     def make_trivial(domain, maxorder):
@@ -151,28 +225,36 @@ class TensorsLayer(TaylorTensors):
 
 class TensorsSum(TaylorTensors):
     def __init__(self, ttlist, signs):
-        #TODO checks
-        from .sugar import domain_union
-        self._domain = domain_union((t.domain for t in ttlist))
         self._target = ttlist[0].target
+        for tt in ttlist:
+            if not isinstance(tt, TaylorTensors):
+                raise ValueError
+            if isinstance(tt, TensorsSum):
+                raise ValueError
+            assertEqual(self._target, tt.target)
+        from .sugar import domain_union
+        self._domain = domain_union([t.domain for t in ttlist])
         self._maxorder = ttlist[0].maxorder
         self._ttlist = ttlist
         self._signs = signs
 
-    def _getVecs(self, x):
-        res = (0.,)*len(self.maxorder)
+    def _contract(self, x):
+        res = [0.,]*self.maxorder
         for tt,sign in zip(self._ttlist, self._signs):
-            t = tt.getVecs(x)
-            for r,ti in zip(res,t):
-                r = r + ti if sign else r - ti
-        return res
+            v = tuple(xx.extract(tt.domain) for xx in x)
+            t = tt.contract(v)
+            for i, ti in enumerate(t):
+                res[i] = res[i] + ti if sign else res[i] - ti
+        return tuple(res)
 
     def append(self, other, sign):
-        #TODO checks
+        assertIsinstance(other, TensorsLayer)
+        assertEqual(self._target, other.target)
         return TensorsSum(self._ttlist+(other,), self._signs+(sign,))
 
     def join(self, other, sign):
-        #TODO checks
+        assertIsinstance(other, TensorsSum)
+        assertEqual(self._target, other.target)
         sgn = tuple(s if sign else not s for s in other._signs)
         return TensorsSum(self._ttlist+other._ttlist, self._signs+sgn)
 
@@ -181,7 +263,11 @@ class TensorsSum(TaylorTensors):
 
 class TensorsProd(TaylorTensors):
     def __init__(self, val1, val2, tt1, tt2):
-        #TODO checks
+        assertIsinstance(tt1, TaylorTensors)
+        assertIsinstance(tt2, TaylorTensors)
+        assertEqual(tt1.target, tt2.target)
+        assertEqual(val1.domain, tt2.target)
+        assertEqual(val2.domain, tt2.target)
         from .sugar import domain_union
         self._domain = domain_union((tt1.domain, tt2.domain))
         self._target = val1.domain
@@ -189,106 +275,44 @@ class TensorsProd(TaylorTensors):
         self._tt1, self._tt2 = tt1, tt2
         self._val1, self._val2 = val1, val2
 
-    def _getVecs(self, x):
-        v1 = self._tt1.getVecs(x.extract(self._tt1.domain))
-        v2 = self._tt2.getVecs(x.extract(self._tt2.domain))
-        v1 = (self._val1,)+v1
-        v2 = (self._val2,)+v2
+    def _contract(self, x):
+        v1 = tuple(xx.extract(self._tt1.domain) for xx in x)
+        v2 = tuple(xx.extract(self._tt2.domain) for xx in x)
+        v1 = (self._val1,) + self._tt1.contract(v1)
+        v2 = (self._val2,) + self._tt2.contract(v2)
         res = ()
-        for n in range(1,self.maxorder):
+        for n in range(1,self.maxorder+1):
             rr = 0.
             for k in range(n+1):
                 rr = rr + binom(n,k)*v1[n-k]*v2[k]
             res += (rr,)
         return res
 
-def _partition(collection):
-    if len(collection) == 1:
-        yield [ collection ]
-        return
-
-    first = collection[0]
-    for smaller in _partition(collection[1:]):
-        # insert `first` in each of the subpartition's subsets
-        for n, subset in enumerate(smaller):
-            yield smaller[:n] + [[ first ] + subset]  + smaller[n+1:]
-        # put `first` in its own subset 
-        yield [ [ first ] ] + smaller
-
-def _all_partitions_nontrivial(n, new):
-    pps = list(_partition(list(np.arange(n))))
-    i,nm = 0,len(pps)
-    while i<nm:
-        if new[len(pps[i])-1].isNullTensor:
-            del pps[i]
-            nm -=1
-        else:
-            i+=1
-    return pps
-
-def _contract(layer, inp):
-    res = ()
-    for i in range(layer.maxorder):
-        partitions = _all_partitions_nontrivial(i+1, layer.tensors)
-        rest = 0.
-        for p in partitions:
-            rest = rest + layer.tensors[len(p)-1].getVec((inp[len(b)-1] for b in p))
-        res += (rest, )
-    return res
 
 class TensorsChain(TaylorTensors):
     def __init__(self, layers):
-        #TODO checks
-        self._domain = layers[0].domain
-        self._target = layers[-1].target
-        self._maxorder = layers[0].maxorder
-        self._layers = layers
+        mylayers = []
+        for l in layers:
+            if not isinstance(l, TaylorTensors):
+                raise ValueError
+            if isinstance(l, TensorsChain):
+                raise ValueError
+            if not l.isTrivial:
+                mylayers.append(l)
+        self._domain = mylayers[0].domain
+        self._target = mylayers[-1].target
+        self._maxorder = mylayers[0].maxorder
+        self._layers = tuple(mylayers)
 
     def append(self, tensors):
-        #TODO checks
+        assertEqual(self.target, tensors.domain)
+        if isinstance(tensors, TensorsChain):
+            return TensorsChain(self._layers + tensors._layers)
+        elif not isinstance(tensors, TaylorTensors):
+            raise ValueError
         return TensorsChain(self._layers + (tensors,))
 
-    def _getVecs(self, x):
-        r = self._layers[0].getVecs(x)
-        for ll in self._layers[1:]:
-            r = _contract(ll, r)
-        return r
-
-if __name__ == '__main__':
-    import nifty7 as ift
-    import timeit
-    sp = ift.RGSpace(32)
-    n=3
-    derivs = tuple(ift.from_random(sp) for i in range(n))
-    tts = tuple(ift.DiffTensor.makeDiagonal(derivs[i], i+2) for i in range(n))
-    derivs2 = tuple(ift.from_random(sp) for i in range(n))
-    tts2 = tuple(ift.DiffTensor.makeDiagonal(derivs2[i], i+2) for i in range(n))
-    t1 = TensorsLayer.make_diagonal(tts)
-    t2 = TensorsLayer(tts2)
-    linop = ift.HarmonicTransformOperator(sp.get_default_codomain()).adjoint
-    tts3 = (ift.DiffTensor.makeLinear(linop),) + tuple(ift.DiffTensor.makeNull(linop.domain,linop.target,i+3) for i in range(n-1))
-    t3 = TensorsLayer(tts3)
-    
-    tv1 = ift.DiffTensor.makeVec(ift.from_random(t1.target))
-    tl1 = ift.Taylor((tv1,)+tts)
-    tv2 = ift.DiffTensor.makeVec(ift.from_random(t2.target))
-    tl2 = ift.Taylor((tv2,)+tts2)
-    tv3 = ift.DiffTensor.makeVec(ift.from_random(t3.target))
-    tl3 = ift.Taylor((tv3,)+tts3)
-    
-
-    ch = TensorsChain([t1,t2,t3])
-    
-    x = ift.from_random(ch.domain)
-    t0 = timeit.default_timer()
-    res = ch.getVecs(x)
-    t1 = timeit.default_timer()
-    print(t1-t0)
-
-    d1 = linop(derivs2[0]*derivs[0]*x)
-    ift.extra.assert_allclose(d1,res[0])
-    d2 = linop(derivs2[1]*(derivs[0]*x)**2 + derivs2[0]*derivs[1]*x**2)
-    ift.extra.assert_allclose(d2,res[1])
-    d3 = linop(derivs2[2]*(derivs[0]*x)**3+derivs2[1]*(3.*derivs[1]*x**2*derivs[0]*x)+derivs2[0]*derivs[2]*x**3)
-    ift.extra.assert_allclose(d3,res[2])
-    
+    def _contract(self, x):
+        for ll in self._layers:
+            x = ll.contract(x)
+        return x

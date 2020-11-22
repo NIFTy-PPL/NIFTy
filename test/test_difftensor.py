@@ -22,7 +22,8 @@ from numpy.testing import assert_allclose, assert_equal, assert_raises
 import nifty7 as ift
 from .common import setup_function, teardown_function
 
-
+#TODO Write new tests
+"""
 def test_leibnitz_simple():
     dom = ift.RGSpace(10)
     a = ift.from_random(dom)
@@ -34,6 +35,7 @@ def test_leibnitz_simple():
     y = ift.Taylor.make_var(b, 4)
     assert y[0].vec is b
     ops = x.new_from_prod(y)
+    
     assert_allclose(ops[0].vec.val, (a*b).val)
 
     assert_allclose(ops[2].getVec((c,c)).val,(2.*c*c).val)
@@ -221,3 +223,4 @@ test_comp()
 test_leibnitz_simple()
 test_tensors()
 test_cf()
+"""
