@@ -18,7 +18,6 @@ from .multi_domain import MultiDomain
 from .field import Field
 from .multi_field import MultiField
 from .taylor import Taylor
-from .diff_tensor import DiffTensor
 
 
 from .operators.operator import Operator
