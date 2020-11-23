@@ -191,21 +191,22 @@ class TensorsLayer(TaylorTensors):
             assertEqual(self.domain, tt.domain)
         self._maxorder = len(tensors)
         self._tensors = tensors
+        self._ppts = tuple(_all_partitions_nontrivial(i+1, self.tensors)
+                            for i in range(self.maxorder))
 
     @property
     def tensors(self):
         return self._tensors
 
     def _contract(self, inp):
-        res = ()
-        for i in range(self.maxorder):
-            partitions = _all_partitions_nontrivial(i+1, self.tensors)
+        res = []
+        for partitions in self._ppts:
             rest = 0.
             for p in partitions:
                 v = tuple(inp[len(b)-1] for b in p)
                 rest = rest + self.tensors[len(p)-1].getVec(v)
-            res += (rest, )
-        return res
+            res.append(rest)
+        return tuple(res)
 
     @staticmethod
     def make_trivial(domain, maxorder):
