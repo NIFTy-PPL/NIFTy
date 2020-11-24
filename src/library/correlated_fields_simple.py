@@ -18,19 +18,20 @@
 
 import numpy as np
 
+from ..domain_tuple import DomainTuple
 from ..domains.power_space import PowerSpace
 from ..operators.adder import Adder
 from ..operators.contraction_operator import ContractionOperator
 from ..operators.distributors import PowerDistributor
 from ..operators.harmonic_operators import HarmonicTransformOperator
 from ..operators.normal_operators import LognormalTransform, NormalTransform
-from .correlated_fields import _TwoLogIntegrations
 from ..operators.operator import Operator
 from ..operators.simple_linear_operators import ducktape
 from ..operators.value_inserter import ValueInserter
 from ..sugar import full, makeField, makeOp
 from .correlated_fields import (_log_vol, _Normalization,
-                                _relative_log_k_lengths, _SlopeRemover)
+                                _relative_log_k_lengths, _SlopeRemover,
+                                _TwoLogIntegrations)
 
 
 class SimpleCorrelatedField(Operator):
@@ -43,6 +44,10 @@ class SimpleCorrelatedField(Operator):
     def __init__(self, target, offset_mean, offset_std, fluctuations,
                  flexibility, asperity, loglogavgslope, prefix='',
                  harmonic_partner=None):
+        target = DomainTuple.make(target)
+        if len(target) != 1:
+            raise ValueError
+        target = target[0]
         if harmonic_partner is None:
             harmonic_partner = target.get_default_codomain()
         else:
