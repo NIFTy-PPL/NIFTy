@@ -16,8 +16,6 @@
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
 
 from functools import reduce
-from .sugar import makeOp, full
-from .operators.simple_linear_operators import NullOperator
 
 class _TensorPrimitive(object):
     def __init__(self, domain, target, order):
@@ -44,49 +42,16 @@ class _TensorPrimitive(object):
         raise NotImplementedError
 
 
-class DiagonalTensor(_TensorPrimitive):
+class DiagonalTensorPrimitive(_TensorPrimitive):
     def __init__(self, vec, order):
-        super(DiagonalTensor, self).__init__(vec.domain, vec.domain, order)
+        super(DiagonalTensorPrimitive, self).__init__(vec.domain, vec.domain, order)
         self._vec = vec
 
-    def _helper(self, x, order):
-        if self.order-len(x) != order:
-            raise ValueError
-        res = self._vec if order == 0 else self._vec.conjugate()
+    def getVecAdjoint(self, y, x):
+        res = self._vec
         if len(x) != 0:
             res = reduce(lambda a,b:a*b, x)*res
-        return res
-
-    def getVecAdjoint(self, y, x):
-        return self._helper(x, 1)*y
+        return res.conjugate()*y
 
     def getVec(self, x):
-        return self._helper(x, 0)
-
-
-class LinearTensor(_TensorPrimitive):
-    def __init__(self, op):
-        super(LinearTensor, self).__init__(op.domain, op.target, 1)
-        self._op = op
-
-    #def getLinop(self, x=()):
-    #    if len(x) != 0:
-    #        raise ValueError
-    #    return self._op
-
-    def getVec(self, x):
-        if len(x) != 1:
-            raise ValueError
-        return self._op(x[0])
-
-
-class NullTensor(_TensorPrimitive):
-    def __init__(self, domain, target, order):
-        super(NullTensor, self).__init__(domain, target, order)
-        self._op, self._vec = NullOperator(self.domain, self.target), full(self.target, 0.)
-
-    #def getLinop(self, x):
-    #    return self._op
-
-    def getVec(self, x):
-        return self._vec
+        return reduce(lambda a,b:a*b, x)*self._vec

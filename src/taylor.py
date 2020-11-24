@@ -18,9 +18,10 @@
 import numpy as np
 from .operators.operator import Operator
 from .operators.scaling_operator import ScalingOperator
-from .taylor_tensors import (TensorsLayer, TensorsChain, TensorsProd,
-                             TensorsLinear, TensorsTrivial,
-                             TaylorTensors)
+from .tensors.tensor import Tensor, TensorChain, TrivialTensor
+from .tensors.linear_tensor import LinearTensor
+from .tensors.tensor_layer import TensorLayer
+from .tensors.tensor_prod import TensorProd
 from .sugar import makeOp
 from .field import Field
 from .multi_field import MultiField
@@ -45,7 +46,7 @@ class Taylor(Operator):
     def __init__(self, val, tensors):
         if not (isinstance(val, Field) or isinstance(val, MultiField)):
             raise ValueError
-        if not isinstance(tensors, TaylorTensors):
+        if not isinstance(tensors, Tensor):
             raise ValueError
         assertEqual(val.domain, tensors.target)
         self._val = val
@@ -53,7 +54,7 @@ class Taylor(Operator):
 
     @property
     def isTrivial(self):
-        return isinstance(self.tensors, TensorsTrivial)
+        return isinstance(self.tensors, TrivialTensor)
 
     @property
     def domain(self):
@@ -143,31 +144,31 @@ class Taylor(Operator):
 
     def new_from_lin(self, op):
         val = op(self.val)
-        return self.new(val, TensorsLinear(op, self.maxorder))
+        return self.new(val, LinearTensor(op, self.maxorder))
 
     def new_from_prod(self, t2):
-        tensors = TensorsProd(self.val, t2.val, self.tensors, t2.tensors)
+        tensors = TensorProd(self.val, t2.val, self.tensors, t2.tensors)
         return self.new(self.val*t2.val, tensors)
 
     def prepend(self, old):
-        if isinstance(old.tensors, TensorsTrivial):
+        if isinstance(old.tensors, TrivialTensor):
             tensors = self.tensors
-        elif isinstance(old.tensors, TensorsChain):
+        elif isinstance(old.tensors, TensorChain):
             tensors = old.tensors.append(self.tensors)
-        elif isinstance(self.tensors, TensorsChain):
-            tensors = TensorsChain((old.tensors,)+self.tensors._layers)
+        elif isinstance(self.tensors, TensorChain):
+            tensors = TensorChain((old.tensors,)+self.tensors._layers)
         else:
-            tensors = TensorsChain((old.tensors, self.tensors))
+            tensors = TensorChain((old.tensors, self.tensors))
         return self.new(self.val, tensors)
 
     def new(self, val, tensors):
-        if not isinstance(tensors, TaylorTensors):
+        if not isinstance(tensors, Tensor):
             raise ValueError
         return Taylor(val, tensors)
 
     def ptw(self, op, *args, **kwargs):
         tmp = self.val.ptw_with_derivs(op, self.maxorder, *args, **kwargs)
-        tensors = TensorsLayer.make_diagonal(tmp[1:])
+        tensors = TensorLayer.make_diagonal(tmp[1:])
         return self.new(tmp[0], tensors).prepend(self)
 
     def trivial_derivatives(self):
@@ -175,9 +176,6 @@ class Taylor(Operator):
 
     @staticmethod
     def make_var(val, maxorder):
-        # Currently maxorder 0 is defined via Field
-        # Taylor objects are strictly incopatible with Linearizations
-        # Will be unified in the future
         if maxorder<1:
             raise ValueError
-        return Taylor(val, TensorsTrivial(val.domain, maxorder))
+        return Taylor(val, TrivialTensor(val.domain, maxorder))
