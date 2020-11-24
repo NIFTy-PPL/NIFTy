@@ -411,9 +411,9 @@ def minisanity(energy, data, sqrtmetric, modeldata_operator):
     """
     if not (
         isinstance(energy, Energy)
-        or isinstance(sqrtmetric, LinearOperator)
-        or is_operator(modeldata_operator)
-        or is_fieldlike(data)
+        and isinstance(sqrtmetric, LinearOperator)
+        and is_operator(modeldata_operator)
+        and is_fieldlike(data)
     ):
         raise TypeError
     normresi = sqrtmetric @ Adder(data, neg=True) @ modeldata_operator
