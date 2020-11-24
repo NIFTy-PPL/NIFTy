@@ -37,27 +37,11 @@ class _TensorPrimitive(object):
     def order(self):
         return self._order
 
-    def getVec(self, x=()):
+    def getVec(self, x):
         raise NotImplementedError
 
-    def getLinop(self, x=()):
+    def getVecAdjoint(self, y, x):
         raise NotImplementedError
-
-
-class LinearTensor(_TensorPrimitive):
-    def __init__(self, op):
-        super(LinearTensor, self).__init__(op.domain, op.target, 1)
-        self._op = op
-
-    def getLinop(self, x=()):
-        if len(x) != 0:
-            raise ValueError
-        return self._op
-
-    def getVec(self, x=()):
-        if len(x) != 1:
-            raise ValueError
-        return self._op(x[0])
 
 
 class DiagonalTensor(_TensorPrimitive):
@@ -68,16 +52,32 @@ class DiagonalTensor(_TensorPrimitive):
     def _helper(self, x, order):
         if self.order-len(x) != order:
             raise ValueError
-        res = self._vec
+        res = self._vec if order == 0 else self._vec.conjugate()
         if len(x) != 0:
             res = reduce(lambda a,b:a*b, x)*res
-        return res if order == 0 else makeOp(res)
+        return res
 
-    def getLinop(self, x=()):
-        return self._helper(x, 1)
+    def getVecAdjoint(self, y, x):
+        return self._helper(x, 1)*y
 
-    def getVec(self, x=()):
+    def getVec(self, x):
         return self._helper(x, 0)
+
+
+class LinearTensor(_TensorPrimitive):
+    def __init__(self, op):
+        super(LinearTensor, self).__init__(op.domain, op.target, 1)
+        self._op = op
+
+    #def getLinop(self, x=()):
+    #    if len(x) != 0:
+    #        raise ValueError
+    #    return self._op
+
+    def getVec(self, x):
+        if len(x) != 1:
+            raise ValueError
+        return self._op(x[0])
 
 
 class NullTensor(_TensorPrimitive):
@@ -85,8 +85,8 @@ class NullTensor(_TensorPrimitive):
         super(NullTensor, self).__init__(domain, target, order)
         self._op, self._vec = NullOperator(self.domain, self.target), full(self.target, 0.)
 
-    def getLinop(self, x=()):
-        return self._op
+    #def getLinop(self, x):
+    #    return self._op
 
-    def getVec(self, x=()):
+    def getVec(self, x):
         return self._vec

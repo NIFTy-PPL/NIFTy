@@ -48,29 +48,13 @@ operator then has the same capabilities as usual Linear operators.
 """
 import numpy as np
 from scipy.special import binom
-from .diff_tensor_primitive import LinearTensor, NullTensor, DiagonalTensor
-from .operators.scaling_operator import ScalingOperator
-from .sugar import full
+from .diff_tensor_primitive import NullTensor, DiagonalTensor
+from .sugar import full, domain_union
+from .taylor_tensors_lin import (TensorsLinObject, TensorsTrivialLin,
+                                 TensorsLinearLin, TensorsLayerLin,
+                                 TensorsSumLin, TensorsProdLin)
+from .utilities import assertEqual, assertIsinstance
 
-def assertIsinstance(t1, t2):
-    if not isinstance(t1, t2):
-        print("Error: {} is not an instance of {}".format(t1, t2))
-        raise TypeError("type mismatch")
-
-
-def assertIdentical(t1, t2):
-    if t1 is not t2:
-        raise ValueError("objects are not identical")
-
-
-def assertEqual(t1, t2):
-    if t1 != t2:
-        print("Error: {} is not equal to {}".format(t1, t2))
-        raise ValueError("objects are not equal")
-
-def assertTrue(t1):
-    if not t1:
-        raise ValueError("assertion failed")
 
 class TaylorTensors(object):
     @property
@@ -125,16 +109,21 @@ class TaylorTensors(object):
         return TensorsSum((self, other), (False, True))
 
     def _check_input(self, x):
-        for xx in x:
-            if xx.domain != self.domain:
-                raise ValueError
+        if isinstance(x, TensorsLinObject):
+            assertEqual(x.domain, self.domain)
+        else:
+            for xx in x:
+                if xx.domain != self.domain:
+                    raise ValueError
 
     def getVecs(self, x):
         r = (x,)+(full(self.domain,0.),)*(self.maxorder-1)
         return self.contract(r)
 
-    def getLin(self, x):
-        raise NotImplementedError
+    def getLins(self, x):
+        r = (x,)+(full(self.domain,0.),)*(self.maxorder-1)
+        r = TensorsLinObject.make_trivial(r, self.maxorder)
+        return self.contract(r)
 
     def contract(self, x):
         self._check_input(x)
@@ -144,26 +133,37 @@ class TaylorTensors(object):
         raise NotImplementedError
 
 
-    @property
-    def isTrivial(self):
-        if not isinstance(self, TensorsLayer):
-            return False
-        if not isinstance(self.tensors[0], LinearTensor):
-            return False
-        if not isinstance(self.tensors[0]._op, ScalingOperator):
-            return False
-        if not self.tensors[0]._op._factor == 1:
-            return False
-        for t in self.tensors[1:]:
-            if not isinstance(t, NullTensor):
-                return False
-        return True
+class TensorsLinear(TaylorTensors):
+    def __init__(self, op, maxorder):
+        self._domain = op.domain
+        self._target = op.target
+        self._op = op
+        self._maxorder = maxorder
+
+    def _contract(self, inp):
+        islin = isinstance(inp, TensorsLinObject)
+        r = inp.val if islin else inp
+        r = tuple(self._op(ii) for ii in r)
+        if not islin:
+            return r
+        return inp.new_chain(r, TensorsLinearLin(self._op, self.maxorder))
+
+
+class TensorsTrivial(TaylorTensors):
+    def __init__(self, domain, maxorder):
+        self._domain = self._target = domain
+        self._maxorder = maxorder
+
+    def _contract(self, inp):
+        if not isinstance(inp, TensorsLinObject):
+            return inp
+        return inp.new_chain(inp.val, TensorsTrivialLin(self.domain, self.maxorder))
+
 
 def _partition(collection):
     if len(collection) == 1:
         yield [ collection ]
         return
-
     first = collection[0]
     for smaller in _partition(collection[1:]):
         for n, subset in enumerate(smaller):
@@ -191,62 +191,64 @@ class TensorsLayer(TaylorTensors):
             assertEqual(self.domain, tt.domain)
         self._maxorder = len(tensors)
         self._tensors = tensors
-        self._ppts = tuple(_all_partitions_nontrivial(i+1, self.tensors)
+        self._ppts = tuple(_all_partitions_nontrivial(i+1, tensors)
                             for i in range(self.maxorder))
 
-    @property
-    def tensors(self):
-        return self._tensors
-
     def _contract(self, inp):
+        islin = isinstance(inp, TensorsLinObject)
+        inpv = inp.val if islin else inp
         res = []
         for partitions in self._ppts:
             rest = 0.
             for p in partitions:
-                v = tuple(inp[len(b)-1] for b in p)
-                rest = rest + self.tensors[len(p)-1].getVec(v)
+                v = tuple(inpv[len(b)-1] for b in p)
+                rest = rest + self._tensors[len(p)-1].getVec(v)
             res.append(rest)
-        return tuple(res)
-
-    @staticmethod
-    def make_trivial(domain, maxorder):
-        return TensorsLayer.make_linear(ScalingOperator(domain,1.), maxorder)
+        res = tuple(res)
+        if not islin:
+            return res
+        return inp.new_chain(res, TensorsLayerLin(self._tensors, inpv, self._ppts))
 
     @staticmethod
     def make_diagonal(vecs):
         tensors = tuple(DiagonalTensor(vec,i+1) for i,vec in enumerate(vecs))
-        return TensorsLayer(tensors)
-
-    @staticmethod
-    def make_linear(op, maxorder):
-        tensors = (LinearTensor(op),)
-        tensors += tuple(NullTensor(op.domain,op.target,o) for o in range(2,maxorder+1))
         return TensorsLayer(tensors)
         
 
 class TensorsSum(TaylorTensors):
     def __init__(self, ttlist, signs):
         self._target = ttlist[0].target
+        self._maxorder = ttlist[0].maxorder
         for tt in ttlist:
             if not isinstance(tt, TaylorTensors):
                 raise ValueError
             if isinstance(tt, TensorsSum):
                 raise ValueError
             assertEqual(self._target, tt.target)
+            assertEqual(self.maxorder, tt.maxorder)
         from .sugar import domain_union
         self._domain = domain_union([t.domain for t in ttlist])
-        self._maxorder = ttlist[0].maxorder
         self._ttlist = ttlist
         self._signs = signs
 
     def _contract(self, x):
+        islin = isinstance(x, TensorsLinObject)
+        xv = x.val if islin else x
         res = [0.,]*self.maxorder
+        lins = []
         for tt,sign in zip(self._ttlist, self._signs):
-            v = tuple(xx.extract(tt.domain) for xx in x)
-            t = tt.contract(v)
+            v = tuple(xx.extract(tt.domain) for xx in xv)
+            v = TensorsLinObject.make_trivial(v, self.maxorder) if islin else v
+            tl = tt.contract(v)
+            t = tl.val if islin else tl
             for i, ti in enumerate(t):
                 res[i] = res[i] + ti if sign else res[i] - ti
-        return tuple(res)
+            if islin:
+                lins.append(tl.lin)
+        res = tuple(res)
+        if not islin:
+            return res
+        return x.new_chain(res, TensorsSumLin(lins, self._signs))
 
     def append(self, other, sign):
         assertIsinstance(other, TensorsLayer)
@@ -269,7 +271,7 @@ class TensorsProd(TaylorTensors):
         assertEqual(tt1.target, tt2.target)
         assertEqual(val1.domain, tt2.target)
         assertEqual(val2.domain, tt2.target)
-        from .sugar import domain_union
+        assertEqual(tt1.maxorder, tt2.maxorder)
         self._domain = domain_union((tt1.domain, tt2.domain))
         self._target = val1.domain
         self._maxorder = tt1.maxorder
@@ -277,17 +279,27 @@ class TensorsProd(TaylorTensors):
         self._val1, self._val2 = val1, val2
 
     def _contract(self, x):
-        v1 = tuple(xx.extract(self._tt1.domain) for xx in x)
-        v2 = tuple(xx.extract(self._tt2.domain) for xx in x)
-        v1 = (self._val1,) + self._tt1.contract(v1)
-        v2 = (self._val2,) + self._tt2.contract(v2)
+        islin = isinstance(x, TensorsLinObject)
+        xv = x.val if islin else x
+        v1 = tuple(xx.extract(self._tt1.domain) for xx in xv)
+        v2 = tuple(xx.extract(self._tt2.domain) for xx in xv)
+        v1 = TensorsLinObject.make_trivial(v1, self.maxorder) if islin else v1
+        v2 = TensorsLinObject.make_trivial(v2, self.maxorder) if islin else v2
+        v1l = self._tt1.contract(v1)
+        v2l = self._tt2.contract(v2)
+        v1 = v1l.val if islin else v1l
+        v2 = v2l.val if islin else v2l
+        v1 = (self._val1,) + v1
+        v2 = (self._val2,) + v2
         res = ()
         for n in range(1,self.maxorder+1):
             rr = 0.
             for k in range(n+1):
                 rr = rr + binom(n,k)*v1[n-k]*v2[k]
             res += (rr,)
-        return res
+        if not islin:
+            return res
+        return x.new_chain(res, TensorsProdLin(v1, v2, v1l.lin, v2l.lin))
 
 
 class TensorsChain(TaylorTensors):
@@ -298,7 +310,7 @@ class TensorsChain(TaylorTensors):
                 raise ValueError
             if isinstance(l, TensorsChain):
                 raise ValueError
-            if not l.isTrivial:
+            if not isinstance(l, TensorsTrivial):
                 mylayers.append(l)
         self._domain = mylayers[0].domain
         self._target = mylayers[-1].target

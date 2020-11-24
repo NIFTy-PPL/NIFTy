@@ -19,11 +19,12 @@ import numpy as np
 from .operators.operator import Operator
 from .operators.scaling_operator import ScalingOperator
 from .taylor_tensors import (TensorsLayer, TensorsChain, TensorsProd,
-                             TaylorTensors, assertEqual)
+                             TensorsLinear, TensorsTrivial,
+                             TaylorTensors)
 from .sugar import makeOp
 from .field import Field
 from .multi_field import MultiField
-
+from .utilities import assertEqual
 
 class Taylor(Operator):
     """Class describing a Taylor approximation up to a given order
@@ -52,7 +53,7 @@ class Taylor(Operator):
 
     @property
     def isTrivial(self):
-        return self.tensors.isTrivial
+        return isinstance(self.tensors, TensorsTrivial)
 
     @property
     def domain(self):
@@ -142,14 +143,14 @@ class Taylor(Operator):
 
     def new_from_lin(self, op):
         val = op(self.val)
-        return self.new(val, TensorsLayer.make_linear(op, self.maxorder))
+        return self.new(val, TensorsLinear(op, self.maxorder))
 
     def new_from_prod(self, t2):
         tensors = TensorsProd(self.val, t2.val, self.tensors, t2.tensors)
         return self.new(self.val*t2.val, tensors)
 
     def prepend(self, old):
-        if old.tensors.isTrivial:
+        if isinstance(old.tensors, TensorsTrivial):
             tensors = self.tensors
         elif isinstance(old.tensors, TensorsChain):
             tensors = old.tensors.append(self.tensors)
@@ -179,4 +180,4 @@ class Taylor(Operator):
         # Will be unified in the future
         if maxorder<1:
             raise ValueError
-        return Taylor(val, TensorsLayer.make_trivial(val.domain, maxorder))
+        return Taylor(val, TensorsTrivial(val.domain, maxorder))
