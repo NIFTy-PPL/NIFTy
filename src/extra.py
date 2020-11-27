@@ -460,7 +460,7 @@ def _comp_chisq(op, energy, keylen):
     mean = {kk: StatCalculator() for kk in keys}
     ndof = {}
     for ii, ss in enumerate(s):
-        rr = op(p + ss)
+        rr = op.force(p.unite(ss))
         for kk in keys:
             redchisq[kk].add(np.nansum(abs(rr[kk].val) ** 2) / rr[kk].size)
             mean[kk].add(np.nanmean(rr[kk].val))
