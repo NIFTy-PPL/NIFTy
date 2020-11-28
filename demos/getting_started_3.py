@@ -127,7 +127,7 @@ def main():
         KL, convergence = minimizer(KL)
         mean = KL.position
         ift.extra.minisanity(data, lambda x: N.inverse, signal_response,
-                             KL.position, list(KL.samples))
+                             KL.position, KL.samples)
 
         # Plot current reconstruction
         plot = ift.Plot()
