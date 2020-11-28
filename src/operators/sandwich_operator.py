@@ -93,6 +93,11 @@ class SandwichOperator(EndomorphicOperator):
         return self._bun.adjoint_times(
             self._cheese.draw_sample(from_inverse))
 
+    def get_sqrt(self):
+        if self._cheese is None:
+            return self._bun
+        return self._cheese.get_sqrt() @ self._bun
+
     def __repr__(self):
         from ..utilities import indent
         return "\n".join((

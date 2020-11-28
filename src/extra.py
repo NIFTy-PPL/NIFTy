@@ -85,6 +85,10 @@ def check_linear_operator(op, domain_dtype=np.float64, target_dtype=np.float64,
                          only_r_linear)
     _full_implementation(op.adjoint.inverse, domain_dtype, target_dtype, atol,
                          rtol, only_r_linear)
+    _check_sqrt(op, domain_dtype)
+    _check_sqrt(op.adjoint, target_dtype)
+    _check_sqrt(op.inverse, target_dtype)
+    _check_sqrt(op.adjoint.inverse, domain_dtype)
 
 
 def check_operator(op, loc, tol=1e-12, ntries=100, perf_check=True,
@@ -195,6 +199,23 @@ def _domain_check_linear(op, domain_dtype=None, inp=None):
         raise ValueError('Need to specify either dtype or inp')
     myassert(inp.domain is op.domain)
     myassert(op(inp).domain is op.target)
+
+
+def _check_sqrt(op, domain_dtype):
+    if not is_endo(op):
+        try:
+            op.get_sqrt()
+            raise RuntimeError("Operator implements get_sqrt() although it is not an endomorphic operator.")
+        except AttributeError:
+            return
+    try:
+        sqop = op.get_sqrt()
+    except (NotImplementedError, AttributeError):
+        return
+    fld = from_random(op.domain, dtype=domain_dtype)
+    a = op(fld)
+    b = (sqop.adjoint @ sqop)(fld)
+    return assert_allclose(a, b, rtol=1e-15)
 
 
 def _domain_check_nonlinear(op, loc):

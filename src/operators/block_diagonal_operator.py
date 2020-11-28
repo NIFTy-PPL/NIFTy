@@ -48,7 +48,14 @@ class BlockDiagonalOperator(EndomorphicOperator):
                     raise TypeError("LinearOperator expected")
 
     def get_sqrt(self):
-        ops = {kk: vv.sqrt() for kk, vv in self._ops.items() if vv is not None}
+        ops = {}
+        for ii, kk in enumerate(self._domain.keys()):
+            if self._ops[ii] is None:
+                continue
+            try:
+                ops[kk] = self._ops[ii].get_sqrt()
+            except AttributeError:
+                raise NotImplementedError
         return BlockDiagonalOperator(self._domain, ops)
 
     def apply(self, x, mode):
