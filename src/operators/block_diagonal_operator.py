@@ -36,7 +36,7 @@ class BlockDiagonalOperator(EndomorphicOperator):
         if not isinstance(domain, MultiDomain):
             raise TypeError("MultiDomain expected")
         self._domain = domain
-        self._ops = tuple(operators[key] for key in domain.keys())
+        self._ops = tuple(operators[key] if key in operators else None for key in domain.keys())
         self._capability = self._all_ops
         for op in self._ops:
             if op is not None:
@@ -46,6 +46,10 @@ class BlockDiagonalOperator(EndomorphicOperator):
                     self._capability &= op.capability
                 else:
                     raise TypeError("LinearOperator expected")
+
+    def get_sqrt(self):
+        ops = {kk: vv.sqrt() for kk, vv in self._ops.items() if vv is not None}
+        return BlockDiagonalOperator(self._domain, ops)
 
     def apply(self, x, mode):
         self._check_input(x, mode)
