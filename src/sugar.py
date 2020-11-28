@@ -38,7 +38,7 @@ from .plot import Plot
 __all__ = ['PS_field', 'power_analyze', 'create_power_operator',
            'create_harmonic_smoothing_operator', 'from_random',
            'full', 'makeField',
-           'is_fieldlike', 'is_linearization', 'is_operator',
+           'is_fieldlike', 'is_linearization', 'is_operator', 'is_endo',
            'makeDomain', 'get_signal_variance', 'makeOp', 'domain_union',
            'get_default_codomain', 'single_plot', 'exec_time',
            'calculate_position'] + list(pointwise.ptw_dict.keys())
@@ -559,3 +559,22 @@ def is_fieldlike(obj):
     :class:`~nifty7.linearization.Linearization` behave field-like.
     """
     return isinstance(obj, Operator) and obj.val is not None
+
+
+def is_endo(obj):
+    """Check if object is an endomorphic (linear) operator.
+
+    Note
+    ----
+    A simple `isinstance(obj, ift.EndomorphicOperator)` does not cover all
+    cases. One counter example would be an `ChainOperator` where the domain of
+    the first sub operator and target of the last sub operator coincide.
+    """
+    from .operators.endomorphic_operator import EndomorphicOperator
+    from .operators.linear_operator import LinearOperator
+
+    return isinstance(obj, EndomorphicOperator) or (
+        is_operator(obj)
+        and isinstance(obj, LinearOperator)
+        and obj.domain == obj.target
+    )
