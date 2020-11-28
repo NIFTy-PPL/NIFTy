@@ -50,7 +50,8 @@ MetricGaussianKL interface
 --------------------------
 
 Users do not instantiate `MetricGaussianKL` by its constructor anymore. Rather
-`MetricGaussianKL.make()` shall be used.
+`MetricGaussianKL.make()` shall be used. Additionally, `mirror_samples` is not
+set by default anymore.
 
 
 Changes since NIFTy 5
