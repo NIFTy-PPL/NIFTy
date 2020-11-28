@@ -460,7 +460,7 @@ def _comp_chisq(op, energy, keylen):
     mean = {kk: StatCalculator() for kk in keys}
     ndof = {}
     for ii, ss in enumerate(s):
-        rr = op(p + ss)
+        rr = op.force(p.unite(ss))
         for kk in keys:
             redchisq[kk].add(np.nansum(abs(rr[kk].val) ** 2) / rr[kk].size)
             mean[kk].add(np.nanmean(rr[kk].val))
@@ -476,9 +476,9 @@ def _comp_chisq(op, energy, keylen):
             foo += f" ± {np.sqrt(redchisq[kk].var):.1f}"
         except RuntimeError:
             pass
-        if redchisq[kk].mean > 5:
+        if redchisq[kk].mean > 5 or redchisq[kk].mean < 1/5:
             out += _bcolors.FAIL + _bcolors.BOLD + f"{foo:>11}" + _bcolors.ENDC
-        elif redchisq[kk].mean > 2:
+        elif redchisq[kk].mean > 2 or redchisq[kk].mean < 1/2:
             out += _bcolors.WARNING + _bcolors.BOLD + f"{foo:>11}" + _bcolors.ENDC
         else:
             out += f"{foo:>11}"
