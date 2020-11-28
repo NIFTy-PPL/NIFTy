@@ -129,9 +129,9 @@ def main():
     initial_mean = ift.MultiField.full(H.domain, 0.)
     mean = initial_mean
 
-    for i in range(10):
+    for i in range(5):
         # Draw new samples and minimize KL
-        KL = ift.MetricGaussianKL.make(mean, H, N_samples)
+        KL = ift.MetricGaussianKL.make(mean, H, N_samples, True)
         KL, convergence = minimizer(KL)
         mean = KL.position
 
@@ -157,7 +157,6 @@ def main():
                     name=filename.format("loop_{:02d}".format(i)))
 
     # Done, draw posterior samples
-    KL = ift.MetricGaussianKL.make(mean, H, N_samples)
     sc = ift.StatCalculator()
     scA1 = ift.StatCalculator()
     scA2 = ift.StatCalculator()
