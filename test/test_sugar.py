@@ -85,16 +85,3 @@ def test_isinstance_helpers():
     assert ift.is_operator(op)
     assert not ift.is_operator(lin)
     assert not ift.is_operator(fld)
-    assert ift.is_endo(op)
-    assert not ift.is_endo(lin)
-    assert not ift.is_endo(fld)
-
-
-def test_isendo():
-    dom = ift.RGSpace(12, harmonic=True)
-    op = ift.FFTOperator(dom)
-    assert not ift.is_endo(op)
-    assert not ift.is_endo(op.inverse)
-    assert not ift.is_endo(op.adjoint)
-    assert ift.is_endo(op @ op.adjoint)
-    assert ift.is_endo(op @ op.inverse)

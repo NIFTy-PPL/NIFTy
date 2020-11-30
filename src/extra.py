@@ -31,7 +31,7 @@ from .operators.linear_operator import LinearOperator
 from .operators.operator import Operator
 from .operators.scaling_operator import ScalingOperator
 from .probing import StatCalculator
-from .sugar import from_random, full, is_endo, is_fieldlike, is_operator
+from .sugar import from_random, full, is_fieldlike, is_operator
 from .utilities import myassert
 
 __all__ = ["check_linear_operator", "check_operator", "assert_allclose", "minisanity"]
