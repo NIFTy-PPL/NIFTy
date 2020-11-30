@@ -52,10 +52,7 @@ class BlockDiagonalOperator(EndomorphicOperator):
         for ii, kk in enumerate(self._domain.keys()):
             if self._ops[ii] is None:
                 continue
-            try:
-                ops[kk] = self._ops[ii].get_sqrt()
-            except AttributeError:
-                raise NotImplementedError
+            ops[kk] = self._ops[ii].get_sqrt()
         return BlockDiagonalOperator(self._domain, ops)
 
     def apply(self, x, mode):

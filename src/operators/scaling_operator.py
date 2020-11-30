@@ -98,7 +98,7 @@ class ScalingOperator(EndomorphicOperator):
     def get_sqrt(self):
         fct = self._get_fct(False)
         if np.iscomplexobj(fct) or fct < 0:
-            raise NotImplementedError
+            raise ValueError("get_sqrt() works only for positive definite operators.")
         return ScalingOperator(self._domain, fct)
 
     def __call__(self, other):

@@ -25,6 +25,7 @@ from .linearization import Linearization
 from .multi_domain import MultiDomain
 from .multi_field import MultiField
 from .operators.adder import Adder
+from .operators.endomorphic_operator import EndomorphicOperator
 from .operators.energy_operators import EnergyOperator
 from .operators.linear_operator import LinearOperator
 from .operators.operator import Operator
@@ -201,7 +202,7 @@ def _domain_check_linear(op, domain_dtype=None, inp=None):
 
 
 def _check_sqrt(op, domain_dtype):
-    if not is_endo(op):
+    if not isinstance(op, EndomorphicOperator):
         try:
             op.get_sqrt()
             raise RuntimeError("Operator implements get_sqrt() although it is not an endomorphic operator.")
@@ -209,7 +210,7 @@ def _check_sqrt(op, domain_dtype):
             return
     try:
         sqop = op.get_sqrt()
-    except (NotImplementedError, AttributeError):
+    except NotImplementedError:
         return
     fld = from_random(op.domain, dtype=domain_dtype)
     a = op(fld)
