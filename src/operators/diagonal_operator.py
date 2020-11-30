@@ -169,7 +169,7 @@ class DiagonalOperator(EndomorphicOperator):
     def get_sqrt(self):
         if not np.iscomplexobj(self._ldiag) or (self._ldiag < 0).any():
             raise NotImplementedError
-        return self._from_ldiag(None, np.sqrt(self._ldiag))
+        return self._from_ldiag((), np.sqrt(self._ldiag))
 
     def __repr__(self):
         return "DiagonalOperator"
