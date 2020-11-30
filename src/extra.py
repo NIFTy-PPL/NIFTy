@@ -210,7 +210,7 @@ def _check_sqrt(op, domain_dtype):
             return
     try:
         sqop = op.get_sqrt()
-    except NotImplementedError:
+    except (NotImplementedError, ValueError):
         return
     fld = from_random(op.domain, dtype=domain_dtype)
     a = op(fld)
