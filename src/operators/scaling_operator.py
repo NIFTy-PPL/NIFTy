@@ -95,6 +95,12 @@ class ScalingOperator(EndomorphicOperator):
         from ..sugar import from_random
         return from_random(domain=self._domain, random_type="normal", dtype=dtype, std=self._get_fct(from_inverse))
 
+    def get_sqrt(self):
+        fct = self._get_fct(False)
+        if np.iscomplexobj(fct) or fct < 0:
+            raise ValueError("get_sqrt() works only for positive definite operators.")
+        return ScalingOperator(self._domain, fct)
+
     def __call__(self, other):
         res = EndomorphicOperator.__call__(self, other)
         if np.isreal(self._factor) and self._factor >= 0:

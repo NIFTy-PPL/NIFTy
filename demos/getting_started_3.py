@@ -126,7 +126,8 @@ def main():
         KL = ift.MetricGaussianKL.make(mean, H, N_samples, True)
         KL, convergence = minimizer(KL)
         mean = KL.position
-        ift.extra.minisanity(KL, data, sig.inverse, signal_response)
+        ift.extra.minisanity(data, lambda x: N.inverse, signal_response,
+                             KL.position, KL.samples)
 
         # Plot current reconstruction
         plot = ift.Plot()

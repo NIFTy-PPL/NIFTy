@@ -71,3 +71,13 @@ def test_blockdiagonal():
     f1 = op2(ift.full(dom, 1))
     for val in f1.values():
         assert_equal((val == 40).s_all(), True)
+
+
+def test_blockdiagonal_nontrivial():
+    dom = ift.makeDomain({"d1": ift.RGSpace(10), "d2": ift.UnstructuredDomain(2)})
+    op = ift.BlockDiagonalOperator(dom, {"d1": ift.ScalingOperator(dom["d1"], 2)})
+    ift.extra.check_linear_operator(op)
+    assert op.domain == dom
+    fld = ift.from_random(dom)
+    ift.extra.assert_equal(op(fld)["d1"], 2*fld["d1"])
+    ift.extra.assert_equal(op(fld)["d2"], fld["d2"])

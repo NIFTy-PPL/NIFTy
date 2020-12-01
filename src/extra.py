@@ -22,10 +22,10 @@ import numpy as np
 from .domain_tuple import DomainTuple
 from .field import Field
 from .linearization import Linearization
-from .minimization.energy import Energy
 from .multi_domain import MultiDomain
 from .multi_field import MultiField
 from .operators.adder import Adder
+from .operators.endomorphic_operator import EndomorphicOperator
 from .operators.energy_operators import EnergyOperator
 from .operators.linear_operator import LinearOperator
 from .operators.operator import Operator
@@ -85,6 +85,10 @@ def check_linear_operator(op, domain_dtype=np.float64, target_dtype=np.float64,
                          only_r_linear)
     _full_implementation(op.adjoint.inverse, domain_dtype, target_dtype, atol,
                          rtol, only_r_linear)
+    _check_sqrt(op, domain_dtype)
+    _check_sqrt(op.adjoint, target_dtype)
+    _check_sqrt(op.inverse, target_dtype)
+    _check_sqrt(op.adjoint.inverse, domain_dtype)
 
 
 def check_operator(op, loc, tol=1e-12, ntries=100, perf_check=True,
@@ -195,6 +199,23 @@ def _domain_check_linear(op, domain_dtype=None, inp=None):
         raise ValueError('Need to specify either dtype or inp')
     myassert(inp.domain is op.domain)
     myassert(op(inp).domain is op.target)
+
+
+def _check_sqrt(op, domain_dtype):
+    if not isinstance(op, EndomorphicOperator):
+        try:
+            op.get_sqrt()
+            raise RuntimeError("Operator implements get_sqrt() although it is not an endomorphic operator.")
+        except AttributeError:
+            return
+    try:
+        sqop = op.get_sqrt()
+    except (NotImplementedError, ValueError):
+        return
+    fld = from_random(op.domain, dtype=domain_dtype)
+    a = op(fld)
+    b = (sqop.adjoint @ sqop)(fld)
+    return assert_allclose(a, b, rtol=1e-15)
 
 
 def _domain_check_nonlinear(op, loc):
@@ -374,7 +395,7 @@ def _jac_vs_finite_differences(op, loc, tol, ntries, only_r_differentiable):
                               atol=tol**2, rtol=tol**2)
 
 
-def minisanity(energy, data, sqrtmetric, modeldata_operator):
+def minisanity(data, metric_at_pos, modeldata_operator, mean, samples=None):
     """Log information about the current fit quality and prior compatibility.
 
     Log a table with fitting information for the likelihood and the prior.
@@ -395,36 +416,65 @@ def minisanity(energy, data, sqrtmetric, modeldata_operator):
 
     Parameters
     ----------
-    energy : Energy
-        Energy object which contains current mean and potentially samples.
-
     data : Field or MultiField
         Data which is subtracted from the output of `model_data`.
 
-    sqrtmetric : LinearOperator
-        Linear operator which applies the inverse of the square root of the
-        noise covariance.
+    metric_at_pos : function
+        Function which takes a `Field` or `MultiField` in the domain of `mean`
+        and returns an endomorphic operator which applies the inverse of the
+        noise covariance in the domain of `data`.
 
     model_data : Operator
-        Operator which generates
+        Operator which generates model data.
+
+    mean : Field or MultiField
+        Mean of input of `model_data`.
+
+    samples : iterable of Field or MultiField, optional
+        Residual samples around `mean`. Default: no samples.
+
+    Note
+    ----
+    For computing the reduced chi^2 values and the normalized residuals, the
+    metric at `mean` is used.
 
     """
+    from .logger import logger
     if not (
-        isinstance(energy, Energy)
-        and isinstance(sqrtmetric, LinearOperator)
-        and is_operator(modeldata_operator)
+        is_operator(modeldata_operator)
         and is_fieldlike(data)
+        and is_fieldlike(mean)
     ):
         raise TypeError
-    normresi = sqrtmetric @ Adder(data, neg=True) @ modeldata_operator
     keylen = 18
-    for dom in [normresi.target, energy.position.domain]:
+    for dom in [data.domain, mean.domain]:
         if isinstance(dom, MultiDomain):
             keylen = max([max(map(len, dom.keys())), keylen])
     keylen = min([keylen, 42])
-    s0 = _comp_chisq(normresi, energy, keylen)
-    s1 = _comp_chisq(ScalingOperator(energy.position.domain, 1), energy, keylen)
-    from .logger import logger
+    op0 = metric_at_pos(mean).get_sqrt() @ Adder(data, neg=True) @ modeldata_operator
+    op1 = ScalingOperator(mean.domain, 1)
+    if not isinstance(op0.target, MultiDomain):
+        op0 = op0.ducktape_left("<None>")
+    if not isinstance(op1.target, MultiDomain):
+        op1 = op1.ducktape_left("<None>")
+    s = [full(mean.domain, 0.0)] if samples is None else samples
+    xop = op0, op1
+    xkeys = op0.target.keys(), op1.target.keys()
+    xredchisq, xscmean, xndof = 2*[None], 2*[None], 2*[None]
+    for aa in [0, 1]:
+        xredchisq[aa] = {kk: StatCalculator() for kk in xkeys[aa]}
+        xscmean[aa] = {kk: StatCalculator() for kk in xkeys[aa]}
+        xndof[aa] = {}
+    for ii, ss in enumerate(s):
+        for aa in [0, 1]:
+            rr = xop[aa].force(mean.unite(ss))
+            for kk in xkeys[aa]:
+                xredchisq[aa][kk].add(np.nansum(abs(rr[kk].val) ** 2) / rr[kk].size)
+                xscmean[aa][kk].add(np.nanmean(rr[kk].val))
+                xndof[aa][kk] = rr[kk].size - np.sum(np.isnan(rr[kk].val))
+
+    s0 = _tableentries(xredchisq[0], xscmean[0], xndof[0], keylen)
+    s1 = _tableentries(xredchisq[1], xscmean[1], xndof[1], keylen)
 
     f = logger.info
     n = 38 + keylen
@@ -448,23 +498,7 @@ class _bcolors:
     BOLD = "\033[1m"
 
 
-def _comp_chisq(op, energy, keylen):
-    p = energy.position
-    hass = hasattr(energy, "samples")
-    s = energy.samples if hass else [full(energy.domain, 0.0)]
-    mf = isinstance(op.target, MultiDomain)
-    if not mf:
-        op = op.ducktape_left("<None>")
-    keys = op.target.keys()
-    redchisq = {kk: StatCalculator() for kk in keys}
-    mean = {kk: StatCalculator() for kk in keys}
-    ndof = {}
-    for ii, ss in enumerate(s):
-        rr = op.force(p.unite(ss))
-        for kk in keys:
-            redchisq[kk].add(np.nansum(abs(rr[kk].val) ** 2) / rr[kk].size)
-            mean[kk].add(np.nanmean(rr[kk].val))
-            ndof[kk] = rr[kk].size - np.sum(np.isnan(rr[kk].val))
+def _tableentries(redchisq, scmean, ndof, keylen):
     out = ""
     for kk in redchisq.keys():
         if len(kk) > keylen:
@@ -483,9 +517,9 @@ def _comp_chisq(op, energy, keylen):
         else:
             out += f"{foo:>11}"
 
-        foo = f"{mean[kk].mean:.1f}"
+        foo = f"{scmean[kk].mean:.1f}"
         try:
-            foo += f" ± {np.sqrt(mean[kk].var):.1f}"
+            foo += f" ± {np.sqrt(scmean[kk].var):.1f}"
         except RuntimeError:
             pass
         out += f"{foo:>14}"
