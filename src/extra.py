@@ -430,7 +430,7 @@ def minisanity(data, metric_at_pos, modeldata_operator, mean, samples=None):
     mean : Field or MultiField
         Mean of input of `model_data`.
 
-    samples : list or tuple of Field or MultiField, optional
+    samples : iterable of Field or MultiField, optional
         Residual samples around `mean`. Default: no samples.
 
     Note
