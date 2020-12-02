@@ -167,7 +167,7 @@ class DiagonalOperator(EndomorphicOperator):
         return self.process_sample(res, from_inverse)
 
     def get_sqrt(self):
-        if not np.iscomplexobj(self._ldiag) or (self._ldiag < 0).any():
+        if np.iscomplexobj(self._ldiag) or (self._ldiag < 0).any():
             raise ValueError("get_sqrt() works only for positive definite operators.")
         return self._from_ldiag((), np.sqrt(self._ldiag))
 
