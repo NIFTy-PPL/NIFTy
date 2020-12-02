@@ -59,6 +59,8 @@ class SandwichOperator(EndomorphicOperator):
         if not isinstance(bun, LinearOperator):
             raise TypeError("bun must be a linear operator")
         if isinstance(bun, ScalingOperator):
+            if cheese is None:
+                return bun @ bun
             return cheese.scale(abs(bun._factor)**2)
         if cheese is not None and not isinstance(cheese, LinearOperator):
             raise TypeError("cheese must be a linear operator or None")
