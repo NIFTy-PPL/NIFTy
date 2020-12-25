@@ -18,104 +18,105 @@
 
 import numpy as np
 
+from ..domain_tuple import DomainTuple
 from ..domains.power_space import PowerSpace
 from ..operators.adder import Adder
 from ..operators.contraction_operator import ContractionOperator
 from ..operators.distributors import PowerDistributor
 from ..operators.harmonic_operators import HarmonicTransformOperator
 from ..operators.normal_operators import LognormalTransform, NormalTransform
-from .correlated_fields import _TwoLogIntegrations
-from ..operators.operator import Operator
 from ..operators.simple_linear_operators import ducktape
 from ..operators.value_inserter import ValueInserter
 from ..sugar import full, makeField, makeOp
 from .correlated_fields import (_log_vol, _Normalization,
-                                _relative_log_k_lengths, _SlopeRemover)
+                                _relative_log_k_lengths, _SlopeRemover,
+                                _TwoLogIntegrations)
 
 
-class SimpleCorrelatedField(Operator):
+def SimpleCorrelatedField(
+    target,
+    offset_mean,
+    offset_std,
+    fluctuations,
+    flexibility,
+    asperity,
+    loglogavgslope,
+    prefix="",
+    harmonic_partner=None,
+):
     """Simplified version of :class:`~nifty7.library.correlated_fields.CorrelatedFieldMaker`.
 
     Assumes `total_N = 0`, `dofdex = None` and the presence of only one power
     spectrum, i.e. only one call of
     :func:`~nifty7.library.correlated_fields.CorrelatedFieldMaker.add_fluctuations`.
     """
-    def __init__(self, target, offset_mean, offset_std, fluctuations,
-                 flexibility, asperity, loglogavgslope, prefix='',
-                 harmonic_partner=None):
-        if harmonic_partner is None:
-            harmonic_partner = target.get_default_codomain()
+    target = DomainTuple.make(target)
+    if len(target) != 1:
+        raise ValueError
+    target = target[0]
+    if harmonic_partner is None:
+        harmonic_partner = target.get_default_codomain()
+    else:
+        target.check_codomain(harmonic_partner)
+        harmonic_partner.check_codomain(target)
+    for kk in [offset_std, fluctuations, loglogavgslope]:
+        if len(kk) != 2:
+            raise TypeError
+    for kk in [flexibility, asperity]:
+        if not (kk is None or len(kk) == 2):
+            raise TypeError
+    if flexibility is None and asperity is not None:
+        raise ValueError
+    fluct = LognormalTransform(*fluctuations, prefix + 'fluctuations', 0)
+    avgsl = NormalTransform(*loglogavgslope, prefix + 'loglogavgslope', 0)
+    zm = LognormalTransform(*offset_std, prefix + 'zeromode', 0)
+
+    pspace = PowerSpace(harmonic_partner)
+    twolog = _TwoLogIntegrations(pspace)
+    expander = ContractionOperator(twolog.domain, 0).adjoint
+    ps_expander = ContractionOperator(pspace, 0).adjoint
+    vslope = makeOp(makeField(pspace, _relative_log_k_lengths(pspace)))
+    slope = vslope @ ps_expander @ avgsl
+    a = slope
+
+    if flexibility is not None:
+        flex = LognormalTransform(*flexibility, prefix + 'flexibility', 0)
+        dom = twolog.domain[0]
+        vflex = np.empty(dom.shape)
+        vflex[0] = vflex[1] = np.sqrt(_log_vol(pspace))
+        vflex = makeOp(makeField(dom, vflex))
+        sig_flex = vflex @ expander @ flex
+        xi = ducktape(dom, None, prefix + 'spectrum')
+
+        shift = np.empty(dom.shape)
+        shift[0] = _log_vol(pspace)**2 / 12.
+        shift[1] = 1
+        shift = makeField(dom, shift)
+        if asperity is None:
+            asp = makeOp(shift.ptw("sqrt")) @ (xi*sig_flex)
         else:
-            target.check_codomain(harmonic_partner)
-            harmonic_partner.check_codomain(target)
-        for kk in [offset_std, fluctuations, loglogavgslope]:
-            if len(kk) != 2:
-                raise TypeError
-        for kk in [flexibility, asperity]:
-            if not (kk is None or len(kk) == 2):
-                raise TypeError
-        if flexibility is None and asperity is not None:
-            raise ValueError
-        fluct = LognormalTransform(*fluctuations, prefix + 'fluctuations', 0)
-        avgsl = NormalTransform(*loglogavgslope, prefix + 'loglogavgslope', 0)
-        zm = LognormalTransform(*offset_std, prefix + 'zeromode', 0)
+            asp = LognormalTransform(*asperity, prefix + 'asperity', 0)
+            vasp = np.empty(dom.shape)
+            vasp[0] = 1
+            vasp[1] = 0
+            vasp = makeOp(makeField(dom, vasp))
+            sig_asp = vasp @ expander @ asp
+            asp = xi*sig_flex*(Adder(shift) @ sig_asp).ptw("sqrt")
+        a = a + _SlopeRemover(pspace, 0) @ twolog @ asp
+    a = _Normalization(pspace, 0) @ a
+    maskzm = np.ones(pspace.shape)
+    maskzm[0] = 0
+    maskzm = makeOp(makeField(pspace, maskzm))
+    insert = ValueInserter(pspace, (0,))
+    a = (maskzm @ ((ps_expander @ fluct)*a)) + insert(zm)
+    a = a.scale(target.total_volume)
 
-        pspace = PowerSpace(harmonic_partner)
-        twolog = _TwoLogIntegrations(pspace)
-        expander = ContractionOperator(twolog.domain, 0).adjoint
-        ps_expander = ContractionOperator(pspace, 0).adjoint
-        vslope = makeOp(makeField(pspace, _relative_log_k_lengths(pspace)))
-        slope = vslope @ ps_expander @ avgsl
-        a = slope
-
-        if flexibility is not None:
-            flex = LognormalTransform(*flexibility, prefix + 'flexibility', 0)
-            dom = twolog.domain[0]
-            vflex = np.empty(dom.shape)
-            vflex[0] = vflex[1] = np.sqrt(_log_vol(pspace))
-            vflex = makeOp(makeField(dom, vflex))
-            sig_flex = vflex @ expander @ flex
-            xi = ducktape(dom, None, prefix + 'spectrum')
-
-            shift = np.empty(dom.shape)
-            shift[0] = _log_vol(pspace)**2 / 12.
-            shift[1] = 1
-            shift = makeField(dom, shift)
-            if asperity is None:
-                asp = makeOp(shift.ptw("sqrt")) @ (xi*sig_flex)
-            else:
-                asp = LognormalTransform(*asperity, prefix + 'asperity', 0)
-                vasp = np.empty(dom.shape)
-                vasp[0] = 1
-                vasp[1] = 0
-                vasp = makeOp(makeField(dom, vasp))
-                sig_asp = vasp @ expander @ asp
-                asp = xi*sig_flex*(Adder(shift) @ sig_asp).ptw("sqrt")
-            a = a + _SlopeRemover(pspace, 0) @ twolog @ asp
-        a = _Normalization(pspace, 0) @ a
-        maskzm = np.ones(pspace.shape)
-        maskzm[0] = 0
-        maskzm = makeOp(makeField(pspace, maskzm))
-        insert = ValueInserter(pspace, (0,))
-        a = (maskzm @ ((ps_expander @ fluct)*a)) + insert(zm)
-        self._a = a.scale(target.total_volume)
-
-        ht = HarmonicTransformOperator(harmonic_partner, target)
-        pd = PowerDistributor(harmonic_partner, pspace)
-        xi = ducktape(harmonic_partner, None, prefix + 'xi')
-        op = ht(pd(self._a)*xi)
-        if offset_mean is not None:
-            op = Adder(full(op.target, float(offset_mean))) @ op
-        self.apply = op.apply
-        self._domain = op.domain
-        self._target = op.target
-
-    @property
-    def amplitude(self):
-        """Analoguous to :func:`~nifty7.library.correlated_fields.CorrelatedFieldMaker.amplitude`."""
-        return self._a
-
-    @property
-    def power_spectrum(self):
-        """Analoguous to :func:`~nifty7.library.correlated_fields.CorrelatedFieldMaker.power_spectrum`."""
-        return self.amplitude**2
+    ht = HarmonicTransformOperator(harmonic_partner, target)
+    pd = PowerDistributor(harmonic_partner, pspace)
+    xi = ducktape(harmonic_partner, None, prefix + 'xi')
+    op = ht(pd(a)*xi)
+    if offset_mean is not None:
+        op = Adder(full(op.target, float(offset_mean))) @ op
+    op.amplitude = a
+    op.power_spectrum = a**2
+    return op

@@ -75,6 +75,20 @@ class EndomorphicOperator(LinearOperator):
         """
         raise NotImplementedError
 
+    def get_sqrt(self):
+        """Return operator op which obeys `self == op.adjoint @ op`.
+
+        Note that this function is only implemented for operators with real
+        spectrum.
+
+        Returns
+        -------
+        EndomorphicOperator
+            Operator which is the square root of `self`
+
+        """
+        raise NotImplementedError
+
     def _dom(self, mode):
         return self._domain
 

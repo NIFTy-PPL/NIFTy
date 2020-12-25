@@ -79,7 +79,7 @@ def _reciprocal_helper(v, maxorder):
 
 def _abs_helper(v):
     if np.issubdtype(v.dtype, np.complexfloating):
-        raise TypeError("Argument must not be complex")
+        raise TypeError("Argument must not be complex because abs(z) is not holomorphic")
     return (np.abs(v), np.where(v == 0, np.nan, np.sign(v)))
 
 

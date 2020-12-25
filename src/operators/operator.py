@@ -222,6 +222,9 @@ class Operator(metaclass=NiftyMeta):
             return NotImplemented
         return _OpSum(self, -x)
 
+    def __abs__(self):
+        return self.ptw("abs")
+
     def __pow__(self, power):
         if not (np.isscalar(power) or power.jac is None):
             return NotImplemented
@@ -269,12 +272,19 @@ class Operator(metaclass=NiftyMeta):
         return self @ x
 
     def ducktape(self, name):
+        from ..sugar import is_operator
         from .simple_linear_operators import ducktape
+        if not is_operator(self):
+            raise RuntimeError("ducktape works only on operators")
         return self @ ducktape(self, None, name)
 
     def ducktape_left(self, name):
         from .simple_linear_operators import ducktape
-        return ducktape(None, self, name) @ self
+        from ..sugar import is_operator, is_fieldlike, is_linearization
+        if is_operator(self):
+            return ducktape(None, self, name) @ self
+        if is_fieldlike(self) or is_linearization(self):
+            return ducktape(None, self.domain, name)(self)
 
     def __repr__(self):
         return self.__class__.__name__

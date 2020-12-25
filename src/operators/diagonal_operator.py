@@ -166,5 +166,10 @@ class DiagonalOperator(EndomorphicOperator):
         res = Field.from_random(domain=self._domain, random_type="normal", dtype=dtype)
         return self.process_sample(res, from_inverse)
 
+    def get_sqrt(self):
+        if np.iscomplexobj(self._ldiag) or (self._ldiag < 0).any():
+            raise ValueError("get_sqrt() works only for positive definite operators.")
+        return self._from_ldiag((), np.sqrt(self._ldiag))
+
     def __repr__(self):
         return "DiagonalOperator"

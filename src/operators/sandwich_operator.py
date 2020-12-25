@@ -59,6 +59,8 @@ class SandwichOperator(EndomorphicOperator):
         if not isinstance(bun, LinearOperator):
             raise TypeError("bun must be a linear operator")
         if isinstance(bun, ScalingOperator):
+            if cheese is None:
+                return bun @ bun
             return cheese.scale(abs(bun._factor)**2)
         if cheese is not None and not isinstance(cheese, LinearOperator):
             raise TypeError("cheese must be a linear operator or None")
@@ -92,6 +94,11 @@ class SandwichOperator(EndomorphicOperator):
         # Samples from general sandwiches
         return self._bun.adjoint_times(
             self._cheese.draw_sample(from_inverse))
+
+    def get_sqrt(self):
+        if self._cheese is None:
+            return self._bun
+        return self._cheese.get_sqrt() @ self._bun
 
     def __repr__(self):
         from ..utilities import indent
