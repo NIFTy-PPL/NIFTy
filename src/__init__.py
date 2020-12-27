@@ -18,7 +18,6 @@ from .multi_domain import MultiDomain
 from .field import Field
 from .multi_field import MultiField
 from .taylor import Taylor
-from .diff_tensor import DiffTensor
 
 
 from .operators.operator import Operator
@@ -56,6 +55,7 @@ from .operators.energy_operators import (
     Squared2NormOperator, StudentTEnergy, VariableCovarianceGaussianEnergy)
 from .operators.convolution_operators import FuncConvolutionOperator
 from .operators.normal_operators import NormalTransform, LognormalTransform
+from .operators.operator import _OpChain
 
 from .probing import probe_with_posterior_samples, probe_diagonal, \
     StatCalculator, approximation2endo

@@ -91,7 +91,7 @@ def main():
     plt.figure(figsize=[12, 8])
     for ii in range(15):
         if ii % 3 == 0:
-            mgkl = ift.MetricGaussianKL.make(pos, ham, 40)
+            mgkl = ift.MetricGaussianKL.make(pos, ham, 40, False)
 
         plt.cla()
         plt.imshow(z.T, origin='lower', norm=LogNorm(), vmin=1e-3,

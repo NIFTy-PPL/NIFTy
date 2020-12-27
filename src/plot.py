@@ -574,9 +574,9 @@ class Plot(object):
         if nx == ny == 0:
             nx = ny = int(np.ceil(np.sqrt(nplot)))
         elif nx == 0:
-            nx = np.ceil(nplot/ny)
+            nx = int(np.ceil(nplot/ny))
         elif ny == 0:
-            ny = np.ceil(nplot/nx)
+            ny = int(np.ceil(nplot/nx))
         if nx*ny < nplot:
             raise ValueError(
                 'Figure dimensions not sufficient for number of plots. '

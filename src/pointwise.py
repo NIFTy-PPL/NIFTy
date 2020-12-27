@@ -44,10 +44,34 @@ def _tanh_helper(v):
     return (tmp, 1.-tmp**2)
 
 
-def _sigmoid_helper(v):
-    tmp = np.tanh(v)
-    tmp2 = 0.5+(0.5*tmp)
-    return (tmp2, 0.5-0.5*tmp**2)
+def _sigmoid_helper(v, n):
+    t = np.tanh(v)
+    tp = 1.-t**2
+    res = (0.5*(1.+t), 0.5*tp)
+    if n == 1:
+        return res
+    tpp = -2.*t*tp
+    res = res + (0.5*tpp,)
+    if n == 2:
+        return res
+    tppp = -2.*(t*tpp+tp**2)
+    res = res + (0.5*tppp,)
+    if n == 3:
+        return res
+    tpppp = -2.*(t*tppp + 3.*tp*tpp)
+    res = res + (0.5*tpppp,)
+    if n == 4:
+        return res
+    tp5 = -2.*(t*tpppp + 4.*tp*tppp + 3.*tpp**2)
+    res = res + (0.5*tp5,)
+    if n == 5:
+        return res
+    tp6 = -2.*(t*tp5 + 5.*tp*tpppp + 10.*tpp*tppp)
+    res = res + (0.5*tp6,)
+    if n == 6:
+        return res
+    raise NotImplementedError
+
 
 def _reciprocal_helper(v, maxorder):
     tmp = 1./v
@@ -55,7 +79,7 @@ def _reciprocal_helper(v, maxorder):
 
 def _abs_helper(v):
     if np.issubdtype(v.dtype, np.complexfloating):
-        raise TypeError("Argument must not be complex")
+        raise TypeError("Argument must not be complex because abs(z) is not holomorphic")
     return (np.abs(v), np.where(v == 0, np.nan, np.sign(v)))
 
 
@@ -130,7 +154,8 @@ ptw_dict = {
     "sinh": (np.sinh, lambda v: (np.sinh(v), np.cosh(v))),
     "cosh": (np.cosh, lambda v: (np.cosh(v), np.sinh(v))),
     "tanh": (np.tanh, _tanh_helper),
-    "sigmoid": (lambda v: 0.5+(0.5*np.tanh(v)), _sigmoid_helper),
+    "sigmoid": (lambda v: 0.5+(0.5*np.tanh(v)), lambda v: _sigmoid_helper(v,1),
+                lambda v,m: _sigmoid_helper(v,m)),
     "reciprocal": (lambda v: 1./v, lambda v:_reciprocal_helper(v,1), _reciprocal_helper),
     "abs": (np.abs, _abs_helper),
     "absolute": (np.abs, _abs_helper),

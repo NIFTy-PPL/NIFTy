@@ -406,6 +406,23 @@ def lognormal_moments(mean, sigma, N=0):
     logmean = np.log(mean) - logsigma**2 / 2
     return logmean, logsigma
 
+def assertIsinstance(t1, t2):
+    if not isinstance(t1, t2):
+        print("Error: {} is not an instance of {}".format(t1, t2))
+        raise TypeError("type mismatch")
+
+def assertIdentical(t1, t2):
+    if t1 is not t2:
+        raise ValueError("objects are not identical")
+
+def assertEqual(t1, t2):
+    if t1 != t2:
+        print("Error: {} is not equal to {}".format(t1, t2))
+        raise ValueError("objects are not equal")
+
+def assertTrue(t1):
+    if not t1:
+        raise ValueError("assertion failed")
 
 def myassert(val):
     """Safe alternative to python's assert statement which is active even if

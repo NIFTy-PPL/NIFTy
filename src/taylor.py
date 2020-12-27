@@ -16,16 +16,16 @@
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
 
 import numpy as np
-from .linearization import Linearization
-from .operators.scaling_operator import ScalingOperator
-from .operators.diagonal_operator import DiagonalOperator
 from .operators.operator import Operator
-from .diff_tensor import (DiffTensor, assertIsinstance, assertEqual,
-                          assertTrue, assertIdentical)
+from .operators.scaling_operator import ScalingOperator
+from .tensors.tensor import Tensor, TensorChain, TrivialTensor
+from .tensors.linear_tensor import LinearTensor
+from .tensors.tensor_layer import TensorLayer
+from .tensors.tensor_prod import TensorProd
 from .sugar import makeOp
 from .field import Field
 from .multi_field import MultiField
-
+from .utilities import assertEqual
 
 class Taylor(Operator):
     """Class describing a Taylor approximation up to a given order
@@ -38,140 +38,80 @@ class Taylor(Operator):
 
     Parameters
     ----------
-    tensors: tuple of DiffTensors
-        The approximations at different orders
-        - tensors[i].rank must be i+1
-        - the domain of all tensors must be identical
-        - the target of all tensors must be identical
+    val: Field or MultiField
+        The value of the zeroth order approximation
+    tensors: TaylorTensors
+        The tensors for higher order approximations.
     """
-    def __init__(self, tensors):
-        assertTrue(len(tensors)>=1)
-        for i, t in enumerate(tensors):
-            assertIsinstance(t, DiffTensor)
-            assertEqual(i+1, t.rank)
-            assertIdentical(t.domain, tensors[0].domain)
-            assertIdentical(t.target, tensors[0].target)
+    def __init__(self, val, tensors):
+        if not (isinstance(val, Field) or isinstance(val, MultiField)):
+            raise ValueError
+        if not isinstance(tensors, Tensor):
+            raise ValueError
+        assertEqual(val.domain, tensors.target)
+        self._val = val
         self._tensors = tensors
 
     @property
+    def isTrivial(self):
+        return isinstance(self.tensors, TrivialTensor)
+
+    @property
     def domain(self):
-        return self._tensors[0].domain
+        return self._tensors.domain
 
     @property
     def target(self):
-        return self._tensors[0].target
+        return self._tensors.target
 
     @property
     def val(self):
-        return self._tensors[0].vec
-
-    @property
-    def jac(self):
-        return self._tensors[1].linop
+        return self._val
 
     @property
     def tensors(self):
         return self._tensors
 
     @property
-    def isTrivial(self):
-        triv = False
-        if self._tensors[1].isLinearTensor:
-            if isinstance(self._tensors[1]._impl._op, ScalingOperator):
-                if self._tensors[1]._impl._op._factor == 1:
-                    triv = True
-        for t in self._tensors[2:]:
-            triv = triv and t.isNullTensor
-        return triv
-
-    @property
-    def isDiagonal(self):
-        if self.maxorder ==0:
-            return False
-        diag = True
-        for t in self._tensors[1:]:
-            diag = diag and (t.isDiagonalTensor or t.isNullTensor)
-        return diag
-
-    @property
-    def isComposed(self):
-        if self.maxorder ==0:
-            return False
-        comp = True
-        for t in self._tensors[1:]:
-            comp = comp and t.isComposedTensor
-        return comp
-
-    @property
-    def isLinear(self):
-        if self.maxorder == 0:
-            return False
-        comp = self.tensors[1].isLinearTensor
-        for t in self.tensors[2:]:
-            comp = comp and t.isNullTensor
-        return comp
-
-    @property
     def maxorder(self):
-        """int: the maximum approximation order, i.e. one less than the number of stored tensors"""
-        return len(self._tensors)-1
+        return self._tensors.maxorder
 
     def __neg__(self):
         return self.new_from_lin(ScalingOperator(self.target,-1.)).prepend(self)
-
-    def __len__(self):
-        return len(self._tensors)
-
-    def __getitem__(self, i):
-        return self._tensors[i]
 
     def __add__(self, other):
         if isinstance(other, Taylor):
             assertEqual(self.maxorder, other.maxorder)
             assertEqual(self.target, other.target)
-            return self.new(tuple(aa+bb for aa,bb in zip(self.tensors,other.tensors)))
-        if isinstance(other, Linearization):
-            raise ValueError
+            return self.new(self.val+other.val, self.tensors + other.tensors)
         if isinstance(other, Field) or isinstance(other, MultiField):
             assertEqual(self.target, other.domain)
-        vn = (DiffTensor.makeVec(self.val+other, self.domain),)
-        return self.new(vn+self.tensors[1:])
-        
+            return self.new(self.val+other, self.tensors)
+        raise TypeError
 
     def __radd__(self, other):
-        if isinstance(other, Taylor):
-            assertEqual(self.maxorder, other.maxorder)
-            assertEqual(self.target, other.target)
-            return self.new(tuple(aa+bb for aa,bb in zip(self.tensors,other.tensors)))
-        if isinstance(other, Linearization):
-            raise ValueError
-        if isinstance(other, Field) or isinstance(other, MultiField):
-            assertEqual(self.target, other.domain)
-        vn = (DiffTensor.makeVec(self.val+other, self.domain),)
-        return self.new(vn+self.tensors[1:])
+        return self.__add__(other)
 
     def __sub__(self, other):
         if isinstance(other, Taylor):
             assertEqual(self.maxorder, other.maxorder)
             assertEqual(self.target, other.target)
-            return self.new(tuple(aa-bb for aa,bb in zip(self.tensors,other.tensors)))
-        if isinstance(other, Linearization):
-            raise ValueError
+            return self.new(self.val-other.val, self.tensors - other.tensors)
         if isinstance(other, Field) or isinstance(other, MultiField):
             assertEqual(self.target, other.domain)
-        vn = (DiffTensor.makeVec(self.val-other, self.domain),)
-        return self.new(vn+self.tensors[1:])
+            return self.new(self.val-other, self.tensors)
+        raise TypeError
 
     def __rsub__(self, other):
         if isinstance(other, Taylor):
             assertEqual(self.maxorder, other.maxorder)
             assertEqual(self.target, other.target)
-            return self.new(tuple(bb-aa for aa,bb in zip(self.tensors,other.tensors)))
-        if isinstance(other, Linearization):
-            raise ValueError
+            return self.new(other.val-self.val, other.tensors-self.tensors)
         if isinstance(other, Field) or isinstance(other, MultiField):
             assertEqual(self.target, other.domain)
-        return self.new_from_lin(ScalingOperator(self.target,-1.)).prepend(self)+other
+            t = self.__neg__()
+            return t.new(t.val+other.val, t.tensors)
+        raise TypeError
 
     def __truediv__(self, other):
         if np.isscalar(other):
@@ -195,77 +135,47 @@ class Taylor(Operator):
             return self.new_from_prod(other)
         elif isinstance(other, Field) or isinstance(other, MultiField):
             assertEqual(self.target, other.domain)
-            return self._new_from_lin(makeOp(other)).prepend(self)
+            return self.new_from_lin(makeOp(other)).prepend(self)
         else:
             raise TypeError
 
     def __rmul__(self, other):
         return self.__mul__(other)
 
-    def trivial_derivatives(self):
-        return self.make_var(self.val, self.maxorder)
-
     def new_from_lin(self, op):
-        tensors = (DiffTensor.makeVec(op(self.val), domain=op.domain),
-                   DiffTensor.makeLinear(op))
-        tensors += tuple(DiffTensor.makeNull(op.domain,op.target,i+1)
-                    for i in range(2,self.maxorder+1))
-        return self.new(tensors)
+        val = op(self.val)
+        return self.new(val, LinearTensor(op, self.maxorder))
 
     def new_from_prod(self, t2):
-        assertTrue(self.maxorder == t2.maxorder)
-        return self.new(tuple(DiffTensor.makeGenLeibniz(self, t2, i) for i in range(self.maxorder+1)))
+        tensors = TensorProd(self.val, t2.val, self.tensors, t2.tensors)
+        return self.new(self.val*t2.val, tensors)
 
     def prepend(self, old):
-        tensors = (DiffTensor.makeVec(self.val, domain=old.domain), )
-        if old.isComposed:
-            from .diff_tensor import ComposedTensor
-            if self.isDiagonal and old[-1]._impl._new[0].isDiagonalTensor:
-                tmp = tuple(ComposedTensor.simplify_for_diagonal(
-                        self[1:], old[-1]._impl._new, i+1)
-                        for i in range(self.maxorder))
-                tensors += tuple(DiffTensor(ComposedTensor(
-                        tmp[:i], old[i]._impl._old, i, _internal_call=True))
-                        for i in range(1,self.maxorder+1))
-                return self.new(tensors)
-            if self.isLinear and old[-1]._impl._new[0].isDiagonalTensor:
-                if isinstance(self[1]._impl._op, DiagonalOperator):
-                    tmp = tuple(ComposedTensor.simplify_for_diagonal(
-                            self[1:], old[-1]._impl._new, i+1, diag=True)
-                            for i in range(self.maxorder))
-                    tensors += tuple(DiffTensor(ComposedTensor(
-                        tmp[:i], old[i]._impl._old, i, _internal_call=True))
-                        for i in range(1,self.maxorder+1))
-                    return self.new(tensors)
-                if isinstance(self[1]._impl._op, ScalingOperator):
-                    tmp = tuple(ComposedTensor.simplify_for_diagonal(
-                            self[1:], old[-1]._impl._new, i+1, scaling=True)
-                            for i in range(self.maxorder))
-                    tensors += tuple(DiffTensor(ComposedTensor(
-                        tmp[:i], old[i]._impl._old, i, _internal_call=True))
-                        for i in range(1,self.maxorder+1))
-                    return self.new(tensors)
-        tensors += tuple(DiffTensor.makeComposed(self, old, i) for i in range(1,self.maxorder+1))
-        return self.new(tensors)
+        if isinstance(old.tensors, TrivialTensor):
+            tensors = self.tensors
+        elif isinstance(old.tensors, TensorChain):
+            tensors = old.tensors.append(self.tensors)
+        elif isinstance(self.tensors, TensorChain):
+            tensors = TensorChain((old.tensors,)+self.tensors._layers)
+        else:
+            tensors = TensorChain((old.tensors, self.tensors))
+        return self.new(self.val, tensors)
 
-    def new(self, tensors):
-        return Taylor(tensors)
+    def new(self, val, tensors):
+        if not isinstance(tensors, Tensor):
+            raise ValueError
+        return Taylor(val, tensors)
 
     def ptw(self, op, *args, **kwargs):
         tmp = self.val.ptw_with_derivs(op, self.maxorder, *args, **kwargs)
-        tensors = (DiffTensor.makeVec(tmp[0],domain=self.domain), )
-        tensors += tuple(DiffTensor.makeDiagonal(tm, i+2) for i,tm in enumerate(tmp[1:]))
-        return self.new(tensors).prepend(self)
+        tensors = TensorLayer.make_diagonal(tmp[1:])
+        return self.new(tmp[0], tensors).prepend(self)
+
+    def trivial_derivatives(self):
+        return Taylor.make_var(self.val, self.maxorder)
 
     @staticmethod
     def make_var(val, maxorder):
-        # Currently maxorder 0 is defined via Field
-        # Taylor objects are strictly incopatible with Linearizations
-        # Will be unified in the future
-        if maxorder < 1:
+        if maxorder<1:
             raise ValueError
-        tensors = (DiffTensor.makeVec(val),
-                   DiffTensor.makeLinear(ScalingOperator(val.domain, 1.)))
-        tensors += tuple(DiffTensor.makeNull(val.domain, val.domain, i+1)
-                         for i in range(2,maxorder+1))
-        return Taylor(tensors)
+        return Taylor(val, TrivialTensor(val.domain, maxorder))

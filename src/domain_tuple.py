@@ -185,7 +185,7 @@ class DomainTuple(object):
         return self._dom.__hash__()
 
     def __eq__(self, x):
-        return (self is x) or (self._dom == x._dom)
+        return (self is x) or (isinstance(x, DomainTuple) and self._dom == x._dom)
 
     def __ne__(self, x):
         return not self.__eq__(x)
