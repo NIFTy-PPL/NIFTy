@@ -103,7 +103,7 @@ class MultiDomain(object):
     def __eq__(self, x):
         if self is x:
             return True
-        return list(self.items()) == list(x.items())
+        return isinstance(x, MultiDomain) and list(self.items()) == list(x.items())
 
     def __ne__(self, x):
         return not self.__eq__(x)
@@ -113,9 +113,10 @@ class MultiDomain(object):
         return sum(dom.size for dom in self._domains)
 
     def __str__(self):
-        res = "MultiDomain:\n"
+        res = "MultiDomain:"
         for key, dom in zip(self._keys, self._domains):
-            res += key+": "+str(dom)+"\n"
+            for ll in f"{key}: {dom}".splitlines():
+                res += f"\n  {ll}"
         return res
 
     @staticmethod

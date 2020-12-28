@@ -284,8 +284,8 @@ class GradInfNormController(IterationController):
 
 
 class DeltaEnergyController(IterationController):
-    """An iteration controller checking (mainly) the energy change from one
-    iteration to the next.
+    """An iteration controller checking (mainly) the relative energy change
+    from one iteration to the next.
 
     Parameters
     ----------

@@ -19,21 +19,30 @@ import numpy as np
 from numpy.testing import assert_allclose
 
 import nifty7 as ift
+import pytest
 
 from ..common import setup_function, teardown_function
 
 
-def test_vdot_operator():
-    dom = ift.makeDomain(ift.RGSpace(8))
-    fa_1 = ift.FieldAdapter(dom, 'f1')
-    fa_2 = ift.FieldAdapter(dom, 'f2')
-    op1 = fa_1.vdot(fa_2)
-    f = ift.from_random(op1.domain, dtype=np.float64)
-    arr1 = f['f1'].val
-    arr2 = f['f2'].val
-    res1 = f['f1'].vdot(f['f2'])
-    res2 = op1(f)
-    res3 = np.vdot(arr1, arr2)
-    assert_allclose(res1.val, res2.val)
-    assert_allclose(res1.val, res3)
-    ift.extra.check_operator(op1, f)
+def test_ducktape():
+    dom = ift.RGSpace(10)
+    op = ift.FFTOperator(dom)
+    fld = ift.full(dom, 2.)
+    lin = ift.Linearization.make_var(fld)
+    a = "foo"
+    op1 = op.ducktape(a)
+    mdom = ift.MultiDomain.make({a: dom})
+    assert op1.domain == mdom
+    assert op1.target == op.target
+    op1 = op.ducktape_left(a)
+    assert op1.target == ift.MultiDomain.make({a: op.target})
+    assert op1.domain == op.domain
+    with pytest.raises(RuntimeError):
+        fld.ducktape(a)
+    with pytest.raises(RuntimeError):
+        lin.ducktape(a)
+    fld0 = fld.ducktape_left(a)
+    assert fld0.domain == mdom
+    lin0 = lin.ducktape_left(a)
+    assert lin0.domain == lin.domain
+    assert lin0.target == mdom

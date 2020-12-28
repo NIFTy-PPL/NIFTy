@@ -88,23 +88,23 @@ class _SlopeRemover(EndomorphicOperator):
         self._domain = makeDomain(domain)
         assert isinstance(self._domain[space], PowerSpace)
         logkl = _relative_log_k_lengths(self._domain[space])
-        self._sc = logkl/float(logkl[-1])
+        sc = logkl/float(logkl[-1])
 
         self._space = space
         axis = self._domain.axes[space][0]
         self._last = (slice(None),)*axis + (-1,) + (None,)
-        self._extender = (None,)*(axis) + (slice(None),) + (None,)*(self._domain.axes[-1][-1]-axis)
+        extender = (None,)*(axis) + (slice(None),) + (None,)*(self._domain.axes[-1][-1]-axis)
+        self._sc = sc[extender]
         self._capability = self.TIMES | self.ADJOINT_TIMES
 
     def apply(self, x, mode):
         self._check_input(x, mode)
-        x = x.val
         if mode == self.TIMES:
-            res = x - x[self._last]*self._sc[self._extender]
+            x = x.val
+            res = x - x[self._last]*self._sc
         else:
-            res = x.copy()
-            res[self._last] -= (x*self._sc[self._extender]).sum(
-                axis=self._space, keepdims=True)
+            res = x.val_rw()
+            res[self._last] -= (res*self._sc).sum(axis=self._space, keepdims=True)
         return makeField(self._tgt(mode), res)
 
 
@@ -163,16 +163,15 @@ class _Normalization(Operator):
         mode_multiplicity = pd.adjoint(full(pd.target, 1.)).val_rw()
         zero_mode = (slice(None),)*self._domain.axes[space][0] + (0,)
         mode_multiplicity[zero_mode] = 0
-        self._mode_multiplicity = makeOp(makeField(self._domain, mode_multiplicity))
-        self._specsum = _SpecialSum(self._domain, space)
+        multipl = makeOp(makeField(self._domain, mode_multiplicity))
+        self._specsum = _SpecialSum(self._domain, space) @ multipl
 
     def apply(self, x):
         self._check_input(x)
-        amp = x.ptw("exp")
-        spec = amp**2
+        spec = x.ptw("exp")
         # FIXME This normalizes also the zeromode which is supposed to be left
         # untouched by this operator
-        return self._specsum(self._mode_multiplicity(spec))**(-0.5)*amp
+        return (self._specsum(spec).reciprocal()*spec).sqrt()
 
 
 class _SpecialSum(EndomorphicOperator):
@@ -209,13 +208,13 @@ class _Amplitude(Operator):
                  loglogavgslope, azm, totvol, key, dofdex):
         """
         fluctuations > 0
-        flexibility > 0
-        asperity > 0
+        flexibility > 0 or None
+        asperity > 0 or None
         loglogavgslope probably negative
         """
         assert isinstance(fluctuations, Operator)
-        assert isinstance(flexibility, Operator)
-        assert isinstance(asperity, Operator)
+        assert isinstance(flexibility, Operator) or flexibility is None
+        assert isinstance(asperity, Operator) or asperity is None
         assert isinstance(loglogavgslope, Operator)
 
         if len(dofdex) > 0:
@@ -240,43 +239,53 @@ class _Amplitude(Operator):
         ps_expander = ContractionOperator(twolog.target, spaces=space).adjoint
 
         # Prepare constant fields
-        foo = np.zeros(shp)
-        foo[0] = foo[1] = np.sqrt(_log_vol(target[space]))
-        vflex = DiagonalOperator(makeField(dom[space], foo), dom, space)
+        vflex = np.zeros(shp)
+        vflex[0] = vflex[1] = np.sqrt(_log_vol(target[space]))
+        vflex = DiagonalOperator(makeField(dom[space], vflex), dom, space)
 
-        foo = np.zeros(shp, dtype=np.float64)
-        foo[0] += 1
-        vasp = DiagonalOperator(makeField(dom[space], foo), dom, space)
+        vasp = np.zeros(shp, dtype=np.float64)
+        vasp[0] += 1
+        vasp = DiagonalOperator(makeField(dom[space], vasp), dom, space)
 
-        foo = np.ones(shp)
-        foo[0] = _log_vol(target[space])**2/12.
-        shift = DiagonalOperator(makeField(dom[space], foo), dom, space)
+        shift = np.ones(shp)
+        shift[0] = _log_vol(target[space])**2 / 12.
+        shift = DiagonalOperator(makeField(dom[space], shift), dom, space)
+        shift = shift(full(shift.domain, 1))
 
         vslope = DiagonalOperator(
             makeField(target[space], _relative_log_k_lengths(target[space])),
             target, space)
 
-        foo, bar = [np.zeros(target[space].shape) for _ in range(2)]
-        bar[1:] = foo[0] = totvol
+        vol0, vol1 = [np.zeros(target[space].shape) for _ in range(2)]
+        vol1[1:] = vol0[0] = totvol
         vol0, vol1 = [
             DiagonalOperator(makeField(target[space], aa), target, space)
-            for aa in (foo, bar)
+            for aa in (vol0, vol1)
         ]
-
-        # Prepare fields for Adder
-        shift, vol0 = [op(full(op.domain, 1)) for op in (shift, vol0)]
+        vol0 = vol0(full(vol0.domain, 1))
         # End prepare constant fields
 
         slope = vslope @ ps_expander @ loglogavgslope
-        sig_flex = vflex @ expander @ flexibility
-        sig_asp = vasp @ expander @ asperity
+        sig_flex = vflex @ expander @ flexibility if flexibility is not None else None
+        sig_asp = vasp @ expander @ asperity if asperity is not None else None
         sig_fluc = vol1 @ ps_expander @ fluctuations
         sig_fluc = vol1 @ ps_expander @ fluctuations
 
-        xi = ducktape(dom, None, key)
-        sigma = sig_flex*(Adder(shift) @ sig_asp).ptw("sqrt")
-        smooth = _SlopeRemover(target, space) @ twolog @ (sigma*xi)
-        op = _Normalization(target, space) @ (slope + smooth)
+        if sig_asp is None and sig_flex is None:
+            op = _Normalization(target, space) @ slope
+        elif sig_asp is None:
+            xi = ducktape(dom, None, key)
+            sigma = DiagonalOperator(shift.ptw("sqrt"), dom) @ sig_flex
+            smooth = _SlopeRemover(target, space) @ twolog @ (sigma * xi)
+            op = _Normalization(target, space) @ (slope + smooth)
+        elif sig_flex is None:
+            raise ValueError("flexibility may not be disabled on its own")
+        else:
+            xi = ducktape(dom, None, key)
+            sigma = sig_flex * (Adder(shift) @ sig_asp).ptw("sqrt")
+            smooth = _SlopeRemover(target, space) @ twolog @ (sigma * xi)
+            op = _Normalization(target, space) @ (slope + smooth)
+
         if N_copies > 0:
             op = Distributor @ op
             sig_fluc = Distributor @ sig_fluc
@@ -301,7 +310,7 @@ class _Amplitude(Operator):
 
 
 class CorrelatedFieldMaker:
-    """Constrution helper for hirarchical correlated field models.
+    """Construction helper for hierarchical correlated field models.
 
     The correlated field models are parametrized by creating
     power spectrum operators ("amplitudes") via calls to
@@ -347,18 +356,16 @@ class CorrelatedFieldMaker:
         self._total_N = total_N
 
     @staticmethod
-    def make(offset_mean, offset_std_mean, offset_std_std, prefix, total_N=0,
-             dofdex=None):
+    def make(offset_mean, offset_std, prefix, total_N=0, dofdex=None):
         """Returns a CorrelatedFieldMaker object.
 
         Parameters
         ----------
         offset_mean : float
             Mean offset from zero of the correlated field to be made.
-        offset_std_mean : float
-            Mean standard deviation of the offset.
-        offset_std_std : float
-            Standard deviation of the stddev of the offset.
+        offset_std : tuple of float
+            Mean standard deviation and standard deviation of the standard
+            deviation of the offset. No, this is not a word duplication.
         prefix : string
             Prefix to the names of the domains of the cf operator to be made.
             This determines the names of the operator domain.
@@ -371,7 +378,7 @@ class CorrelatedFieldMaker:
             An integer array specifying the zero mode models used if
             total_N > 1. It needs to have length of total_N. If total_N=3 and
             dofdex=[0,0,1], that means that two models for the zero mode are
-            instanciated; the first one is used for the first and second
+            instantiated; the first one is used for the first and second
             field model and the second is used for the third field model.
             *If not specified*, use the same zero mode model for all
             constructed field models.
@@ -381,22 +388,19 @@ class CorrelatedFieldMaker:
         elif len(dofdex) != total_N:
             raise ValueError("length of dofdex needs to match total_N")
         N = max(dofdex) + 1 if total_N > 0 else 0
-        zm = LognormalTransform(offset_std_mean, offset_std_std,
-                                prefix + 'zeromode', N)
+        if len(offset_std) != 2:
+            raise TypeError
+        zm = LognormalTransform(*offset_std, prefix + 'zeromode', N)
         if total_N > 0:
             zm = _Distributor(dofdex, zm.target, UnstructuredDomain(total_N)) @ zm
         return CorrelatedFieldMaker(offset_mean, zm, prefix, total_N)
 
     def add_fluctuations(self,
                          target_subdomain,
-                         fluctuations_mean,
-                         fluctuations_stddev,
-                         flexibility_mean,
-                         flexibility_stddev,
-                         asperity_mean,
-                         asperity_stddev,
-                         loglogavgslope_mean,
-                         loglogavgslope_stddev,
+                         fluctuations,
+                         flexibility,
+                         asperity,
+                         loglogavgslope,
                          prefix='',
                          index=None,
                          dofdex=None,
@@ -407,12 +411,11 @@ class CorrelatedFieldMaker:
         on which they apply.
 
         The parameters `fluctuations`, `flexibility`, `asperity` and
-        `loglogavgslope` configure the power spectrum model ("amplitude")
-        used on the target field subdomain `target_subdomain`.
-        It is assembled as the sum of a power law component
-        (linear slope in log-log power-frequency-space),
-        a smooth varying component (integrated wiener process) and
-        a ragged componenent (unintegrated wiener process).
+        `loglogavgslope` configure the power spectrum model used on the target
+        field subdomain `target_subdomain`. It is assembled as the sum of a
+        power law component (linear slope in log-log power-frequency-space), a
+        smooth varying component (integrated Wiener process) and a ragged
+        component (un-integrated Wiener process).
 
         Multiple calls to `add_fluctuations` are possible, in which case
         the constructed field will have the outer product of the individual
@@ -424,15 +427,19 @@ class CorrelatedFieldMaker:
                            :class:`~nifty7.domain_tuple.DomainTuple`
             Target subdomain on which the correlation structure defined
             in this call should hold.
-        fluctuations_{mean,stddev} : float
+        fluctuations : tuple of float (mean, std)
             Total spectral energy -> Amplitude of the fluctuations
-        flexibility_{mean,stddev} : float
+            LogNormal distribution
+        flexibility : tuple of float (mean, std) or None
             Amplitude of the non-power-law power spectrum component
-        asperity_{mean,stddev} : float
+            LogNormal distribution
+        asperity : tuple of float (mean, std) or None
             Roughness of the non-power-law power spectrum component
-            Used to accomodate single frequency peaks
-        loglogavgslope_{mean,stddev} : float
+            Used to accommodate single frequency peaks
+            LogNormal distribution
+        loglogavgslope : tuple of float (mean, std)
             Power law component exponent
+            Normal distribution
         prefix : string
             prefix of the power spectrum parameter domain names
         index : int
@@ -442,7 +449,7 @@ class CorrelatedFieldMaker:
             An integer array specifying the power spectrum models used if
             total_N > 1. It needs to have length of total_N. If total_N=3 and
             dofdex=[0,0,1], that means that two power spectrum models are
-            instanciated; the first one is used for the first and second
+            instantiated; the first one is used for the first and second
             field model and the second one is used for the third field model.
             *If not given*, use the same power spectrum model for all
             constructed field models.
@@ -467,21 +474,37 @@ class CorrelatedFieldMaker:
         else:
             N = 0
             target_subdomain = makeDomain(target_subdomain)
-        prefix = str(prefix)
-        # assert isinstance(target_subdomain[space], (RGSpace, HPSpace, GLSpace)
+        # assert isinstance(target_subdomain[space], (RGSpace, HPSpace, GLSpace))
 
-        fluct = LognormalTransform(fluctuations_mean, fluctuations_stddev,
-                                   self._prefix + prefix + 'fluctuations', N)
-        flex = LognormalTransform(flexibility_mean, flexibility_stddev,
-                                  self._prefix + prefix + 'flexibility', N)
-        asp = LognormalTransform(asperity_mean, asperity_stddev,
-                                 self._prefix + prefix + 'asperity', N)
-        avgsl = NormalTransform(loglogavgslope_mean, loglogavgslope_stddev,
-                                self._prefix + prefix + 'loglogavgslope', N)
+        for arg in [fluctuations, loglogavgslope]:
+            if len(arg) != 2:
+                raise TypeError
+        for kw, arg in [("flexibility", flexibility), ("asperity", asperity)]:
+            if arg is None:
+                continue
+            if len(arg) != 2:
+                raise TypeError
+            if len(arg) == 2 and (arg[0] <= 0. or arg[1] <= 0.):
+                ve = "{0} must be strictly positive (or None)"
+                raise ValueError(ve.format(kw))
+        if flexibility is None and asperity is not None:
+            raise ValueError("flexibility may not be disabled on its own")
+
+        pre = self._prefix + str(prefix)
+        fluct = LognormalTransform(*fluctuations, pre + 'fluctuations', N)
+        if flexibility is not None:
+            flex = LognormalTransform(*flexibility, pre + 'flexibility', N)
+        else:
+            flex = None
+        if asperity is not None:
+            asp = LognormalTransform(*asperity, pre + 'asperity', N)
+        else:
+            asp = None
+        avgsl = NormalTransform(*loglogavgslope, pre + 'loglogavgslope', N)
 
         amp = _Amplitude(PowerSpace(harmonic_partner), fluct, flex, asp, avgsl,
                          self._azm, target_subdomain[-1].total_volume,
-                         self._prefix + prefix + 'spectrum', dofdex)
+                         pre + 'spectrum', dofdex)
 
         if index is not None:
             self._a.insert(index, amp)
@@ -585,7 +608,7 @@ class CorrelatedFieldMaker:
 
     @property
     def normalized_amplitudes(self):
-        """Returns the power spectrum operators used in the model"""
+        """Returns the amplitude operators used in the model"""
         return self._a
 
     @property
@@ -598,6 +621,10 @@ class CorrelatedFieldMaker:
         dom = self._a[0].target
         expand = ContractionOperator(dom, len(dom)-1).adjoint
         return self._a[0]*(expand @ self.amplitude_total_offset)
+
+    @property
+    def power_spectrum(self):
+        return self.amplitude**2
 
     @property
     def amplitude_total_offset(self):

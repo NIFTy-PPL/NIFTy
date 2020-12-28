@@ -147,7 +147,9 @@ class DiagonalOperator(EndomorphicOperator):
         if self._complex and (trafo & self.ADJOINT_BIT):
             xdiag = xdiag.conj()
         if trafo & self.INVERSE_BIT:
-            xdiag = 1./xdiag
+            # dividing by zero is OK here, we can deal with infinities
+            with np.errstate(divide='ignore'):
+                xdiag = 1./xdiag
         return self._from_ldiag((), xdiag)
 
     def process_sample(self, samp, from_inverse):
@@ -163,6 +165,11 @@ class DiagonalOperator(EndomorphicOperator):
     def draw_sample_with_dtype(self, dtype, from_inverse=False):
         res = Field.from_random(domain=self._domain, random_type="normal", dtype=dtype)
         return self.process_sample(res, from_inverse)
+
+    def get_sqrt(self):
+        if np.iscomplexobj(self._ldiag) or (self._ldiag < 0).any():
+            raise ValueError("get_sqrt() works only for positive definite operators.")
+        return self._from_ldiag((), np.sqrt(self._ldiag))
 
     def __repr__(self):
         return "DiagonalOperator"

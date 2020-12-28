@@ -15,11 +15,10 @@
 #
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
 
-import numpy as np
-
 from .diagonal_operator import DiagonalOperator
 from .endomorphic_operator import EndomorphicOperator
 from .linear_operator import LinearOperator
+from .sampling_enabler import SamplingDtypeSetter
 from .scaling_operator import ScalingOperator
 
 
@@ -56,11 +55,17 @@ class SandwichOperator(EndomorphicOperator):
             old_cheese = cheese
             cheese = old_cheese._cheese
             bun = old_cheese._bun @ bun
+
         if not isinstance(bun, LinearOperator):
             raise TypeError("bun must be a linear operator")
+        if isinstance(bun, ScalingOperator):
+            if cheese is None:
+                return bun @ bun
+            return cheese.scale(abs(bun._factor)**2)
         if cheese is not None and not isinstance(cheese, LinearOperator):
             raise TypeError("cheese must be a linear operator or None")
         if cheese is None:
+            # FIXME Sampling dtype not clear in this case
             cheese = ScalingOperator(bun.target, 1.)
             op = bun.adjoint(bun)
         else:
@@ -89,6 +94,11 @@ class SandwichOperator(EndomorphicOperator):
         # Samples from general sandwiches
         return self._bun.adjoint_times(
             self._cheese.draw_sample(from_inverse))
+
+    def get_sqrt(self):
+        if self._cheese is None:
+            return self._bun
+        return self._cheese.get_sqrt() @ self._bun
 
     def __repr__(self):
         from ..utilities import indent

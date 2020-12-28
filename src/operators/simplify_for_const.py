@@ -25,25 +25,10 @@ from .simple_linear_operators import NullOperator
 
 class ConstCollector(object):
     def __init__(self):
-        self._const = None
-        self._nc = set()
+        self._const = None  # MultiField on the part of the MultiDomain that could be constant
+        self._nc = set()  # NoConstant - set of keys that we know cannot be constant
 
     def mult(self, const, fulldom):
-        if const is None:
-            self._nc |= set(fulldom)
-        else:
-            self._nc |= set(fulldom) - set(const)
-            if self._const is None:
-                from ..multi_field import MultiField
-                self._const = MultiField.from_dict(
-                    {key: const[key] for key in const if key not in self._nc})
-            else:
-                from ..multi_field import MultiField
-                self._const = MultiField.from_dict(
-                    {key: self._const[key]*const[key]
-                     for key in const if key not in self._nc})
-
-    def add(self, const, fulldom):
         if const is None:
             self._nc |= set(fulldom.keys())
         else:
@@ -53,11 +38,21 @@ class ConstCollector(object):
                 self._const = MultiField.from_dict(
                     {key: const[key]
                      for key in const.keys() if key not in self._nc})
-            else:
-                self._const = self._const.unite(const)
+            else:  # we know that the domains are identical for products
                 self._const = MultiField.from_dict(
-                    {key: self._const[key]
-                     for key in self._const if key not in self._nc})
+                    {key: self._const[key]*const[key]
+                     for key in const.keys() if key not in self._nc})
+
+    def add(self, const, fulldom):
+        if const is None:
+            self._nc |= set(fulldom.keys())
+        else:
+            from ..multi_field import MultiField
+            self._nc |= set(fulldom.keys()) - set(const.keys())
+            self._const = const if self._const is None else self._const.unite(const)
+            self._const = MultiField.from_dict(
+                {key: const[key]
+                 for key in const.keys() if key not in self._nc})
 
     @property
     def constfield(self):
@@ -65,10 +60,10 @@ class ConstCollector(object):
 
 
 class ConstantOperator(Operator):
-    def __init__(self, dom, output):
+    def __init__(self, output):
         from ..sugar import makeDomain
-        self._domain = makeDomain(dom)
-        self._target = output.domain
+        self._domain = makeDomain({})
+        self._target = makeDomain(output.domain)
         self._output = output
 
     def apply(self, x):
@@ -79,42 +74,17 @@ class ConstantOperator(Operator):
         return self._output
 
     def __repr__(self):
-        dom = self.domain.keys() if isinstance(self.domain, MultiDomain) else '()'
         tgt = self.target.keys() if isinstance(self.target, MultiDomain) else '()'
-        return f'{tgt} <- ConstantOperator <- {dom}'
-
-
-class SlowPartialConstantOperator(Operator):
-    def __init__(self, domain, constant_keys):
-        from ..sugar import makeDomain
-        if not isinstance(domain, MultiDomain):
-            raise TypeError
-        if set(constant_keys) > set(domain.keys()) or len(constant_keys) == 0:
-            raise ValueError
-        self._keys = set(constant_keys) & set(domain.keys())
-        self._domain = self._target = makeDomain(domain)
-
-    def apply(self, x):
-        self._check_input(x)
-        if x.jac is None:
-            return x
-        jac = {kk: ScalingOperator(dd, 0 if kk in self._keys else 1)
-               for kk, dd in self._domain.items()}
-        return x.prepend_jac(BlockDiagonalOperator(x.jac.domain, jac))
-
-    def __repr__(self):
-        return f'SlowPartialConstantOperator ({self._keys})'
+        return f'{tgt} <- ConstantOperator'
 
 
 class ConstantEnergyOperator(EnergyOperator):
-    def __init__(self, dom, output):
+    def __init__(self, output):
         from ..sugar import makeDomain
         from ..field import Field
-        self._domain = makeDomain(dom)
+        self._domain = makeDomain({})
         if not isinstance(output, Field):
             output = Field.scalar(float(output))
-        if self.target is not output.domain:
-            raise TypeError
         self._output = output
 
     def apply(self, x):
@@ -122,9 +92,38 @@ class ConstantEnergyOperator(EnergyOperator):
         if x.jac is not None:
             val = self._output
             jac = NullOperator(self._domain, self._target)
+            # FIXME Do we need a metric here?
             met = NullOperator(self._domain, self._domain) if x.want_metric else None
             return x.new(val, jac, met)
         return self._output
 
+
+class InsertionOperator(Operator):
+    def __init__(self, target, cst_field):
+        from ..multi_field import MultiField
+        from ..sugar import makeDomain
+        if not isinstance(target, MultiDomain):
+            raise TypeError
+        if not isinstance(cst_field, MultiField):
+            raise TypeError
+        self._target = MultiDomain.make(target)
+        cstdom = cst_field.domain
+        vardom = makeDomain({kk: vv for kk, vv in self._target.items()
+                             if kk not in cst_field.keys()})
+        self._domain = vardom
+        self._cst = cst_field
+        jac = {kk: ScalingOperator(vv, 1.) for kk, vv in self._domain.items()}
+        self._jac = BlockDiagonalOperator(self._domain, jac) + NullOperator(makeDomain({}), cstdom)
+
+    def apply(self, x):
+        assert len(set(self._cst.keys()) & set(x.domain.keys())) == 0
+        val = x if x.jac is None else x.val
+        val = val.unite(self._cst)
+        if x.jac is None:
+            return val
+        return x.new(val, self._jac)
+
     def __repr__(self):
-        return 'ConstantEnergyOperator <- {}'.format(self.domain.keys())
+        from ..utilities import indent
+        subs = f'Constant: {self._cst.keys()}\nVariable: {self._domain.keys()}'
+        return 'InsertionOperator\n'+indent(subs)

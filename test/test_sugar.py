@@ -16,10 +16,14 @@
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
 
 import numpy as np
+import pytest
 from numpy.testing import assert_equal
 
 import nifty7 as ift
+
 from .common import setup_function, teardown_function
+
+pmp = pytest.mark.parametrize
 
 
 def test_get_signal_variance():
@@ -45,15 +49,13 @@ def test_exec_time():
     lh = ift.GaussianEnergy(domain=op.target, sampling_dtype=np.float64) @ op1
     ic = ift.GradientNormController(iteration_limit=2)
     ham = ift.StandardHamiltonian(lh, ic_samp=ic)
-    kl = ift.MetricGaussianKL(ift.full(ham.domain, 0.), ham, 1)
+    kl = ift.MetricGaussianKL.make(ift.full(ham.domain, 0.), ham, 1, False)
     ops = [op, op1, lh, ham, kl]
     for oo in ops:
         for wm in [True, False]:
             ift.exec_time(oo, wm)
 
 
-import pytest
-pmp = pytest.mark.parametrize
 @pmp('mf', [False, True])
 @pmp('cplx', [False, True])
 def test_calc_pos(mf, cplx):
@@ -67,3 +69,19 @@ def test_calc_pos(mf, cplx):
     fld = op(0.1 * ift.from_random(op.domain, 'normal'))
     pos = ift.calculate_position(op, fld)
     ift.extra.assert_allclose(op(pos), fld, 1e-1, 1e-1)
+
+
+def test_isinstance_helpers():
+    dom = ift.RGSpace(12, harmonic=True)
+    op = ift.ScalingOperator(dom, 12.)
+    fld = ift.full(dom, 0.)
+    lin = ift.Linearization.make_var(fld)
+    assert not ift.is_fieldlike(op)
+    assert ift.is_fieldlike(lin)
+    assert ift.is_fieldlike(fld)
+    assert not ift.is_linearization(op)
+    assert ift.is_linearization(lin)
+    assert not ift.is_linearization(fld)
+    assert ift.is_operator(op)
+    assert not ift.is_operator(lin)
+    assert not ift.is_operator(fld)

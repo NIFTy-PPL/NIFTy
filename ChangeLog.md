@@ -1,7 +1,57 @@
 Changes since NIFTy 6
 =====================
 
-*None.*
+CorrelatedFieldMaker interface change
+-------------------------------------
+
+The interface of `ift.CorrelatedFieldMaker.make` and
+`ift.CorrelatedFieldMaker.add_fluctuations` changed; it now expects the mean
+and the standard deviation of their various parameters not as separate
+arguments but as a tuple.
+
+Furthermore, it is now possible to disable the asperity and the flexibility
+together with the asperity in the correlated field model. Note that disabling
+only the flexibility is not possible.
+
+Additionally, the parameters `flexibility`, `asperity` and most importantly
+`loglogavgslope` refer to the power spectrum instead of the amplitude now.
+For existing codes that means that both values in the tuple `loglogavgslope`
+and `flexibility` need to be doubled. The transformation of the `asperity`
+parameter is nontrivial.
+
+SimpleCorrelatedField
+---------------------
+
+A simplified version of the correlated field model was introduced which does not
+allow for multiple power spectra, the presence of a degree of freedom parameter
+`dofdex`, or `total_N` larger than zero. Except for the above mentioned
+limitations, it is equivalent to `ift.CorrelatedFieldMaker`. Hence, if one
+wants to understand the implementation idea behind the model, it is easier to
+grasp from reading `ift.SimpleCorrelatedField` than from going through
+`ift.CorrelatedFieldMaker`.
+
+Change in external dependencies
+-------------------------------
+
+Instead of the optional external packages `pypocketfft` and `pyHealpix`, NIFTy
+now uses the DUCC package (<https://gitlab.mpcdf.mpg.de/mtr/ducc)>,
+which is their successor.
+
+
+Naming of operator tests
+------------------------
+
+The implementation tests for nonlinear operators are now available in
+`ift.extra.check_operator()` and for linear operators
+`ift.extra.check_linear_operator()`.
+
+
+MetricGaussianKL interface
+--------------------------
+
+Users do not instantiate `MetricGaussianKL` by its constructor anymore. Rather
+`MetricGaussianKL.make()` shall be used. Additionally, `mirror_samples` is not
+set by default anymore.
 
 
 Changes since NIFTy 5
@@ -65,6 +115,19 @@ print(met)
 print(met.draw_sample())
 ```
 
+New approach for sampling complex numbers
+=========================================
+
+When calling draw_sample_with_dtype with a complex dtype,
+the variance is now used for the imaginary part and real part separately.
+This is done in order to be consistent with the Hamiltonian.
+Note that by this,
+```
+np.std(ift.from_random(domain, 'normal', dtype=np.complex128).val)
+````
+does not give 1, but sqrt(2) as a result.
+
+
 MPI parallelisation over samples in MetricGaussianKL
 ----------------------------------------------------
 
@@ -79,6 +142,7 @@ production of random numbers (introduced in numpy 1.17. This greatly simplifies
 the generation of reproducible random numbers in the presence of MPI parallelism
 and leads to cleaner code overall. Please see the documentation of
 `nifty7.random` for details.
+
 
 Interface Change for from_random and OuterProduct
 -------------------------------------------------

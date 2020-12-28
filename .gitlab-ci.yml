@@ -13,7 +13,7 @@ stages:
 build_docker_from_scratch:
   only:
     - schedules
-  image: docker:19.03.8
+  image: docker
   stage: build_docker
   before_script:
     - ls
@@ -25,7 +25,7 @@ build_docker_from_scratch:
 build_docker_from_cache:
   except:
     - schedules
-  image: docker:19.03.8
+  image: docker
   stage: build_docker
   before_script:
     - ls
@@ -53,6 +53,7 @@ test_mpi:
 pages:
   stage: release
   script:
+    - rm -rf docs/build docs/source/mod
     - sh docs/generate.sh
     - mv docs/build/ public/
   artifacts:

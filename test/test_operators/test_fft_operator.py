@@ -17,7 +17,7 @@
 
 import numpy as np
 import pytest
-from numpy.testing import assert_, assert_allclose
+from numpy.testing import assert_allclose
 
 import nifty7 as ift
 
@@ -63,7 +63,7 @@ def test_fft1D(d, dtype, op):
 @pmp('nthreads', [-1, 1, 2, 3, 4])
 def test_fft2D(dim1, dim2, d1, d2, dtype, op, nthreads):
     ift.fft.set_nthreads(nthreads)
-    assert_(ift.fft.nthreads() == nthreads)
+    ift.myassert(ift.fft.nthreads() == nthreads)
     tol = _get_rtol(dtype)
     a = ift.RGSpace([dim1, dim2], distances=[d1, d2])
     b = ift.RGSpace(

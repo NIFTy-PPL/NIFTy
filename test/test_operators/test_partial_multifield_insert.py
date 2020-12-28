@@ -17,7 +17,7 @@
 
 import numpy as np
 import pytest
-from numpy.testing import assert_, assert_allclose
+from numpy.testing import assert_allclose
 
 import nifty7 as ift
 
@@ -39,10 +39,10 @@ def test_part_mf_insert():
     b = op4 + op5
     op = a.partial_insert(b)
     fld = ift.from_random(op.domain, 'normal')
-    ift.extra.check_jacobian_consistency(op, fld, ntries=ntries)
-    assert_(op.domain is ift.MultiDomain.union(
+    ift.extra.check_operator(op, fld, ntries=ntries)
+    ift.myassert(op.domain is ift.MultiDomain.union(
         [op1.domain, op2.domain, op4.domain, op5.domain]))
-    assert_(op.target is ift.MultiDomain.union(
+    ift.myassert(op.target is ift.MultiDomain.union(
         [op1.target, op2.target, op3.target, op5.target]))
     x, y = fld.val, op(fld).val
     assert_allclose(y['a1'], x['a']*1.32)

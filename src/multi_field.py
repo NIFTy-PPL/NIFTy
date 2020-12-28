@@ -112,6 +112,8 @@ class MultiField(Operator):
             The domain of the output random Field.
         dtype : type
             The datatype of the output random Field.
+            If the datatype is complex, each real an imaginary part have
+            variance 1.
 
         Returns
         -------
@@ -247,6 +249,10 @@ class MultiField(Operator):
             return self
         return MultiField(subset,
                           tuple(self[key] for key in subset.keys()))
+
+    def extract_by_keys(self, keys):
+        dom = MultiDomain.make({kk: vv for kk, vv in self.domain.items() if kk in keys})
+        return self.extract(dom)
 
     def extract_part(self, subset):
         if subset is self._domain:
