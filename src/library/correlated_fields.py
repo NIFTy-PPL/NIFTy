@@ -556,7 +556,7 @@ class CorrelatedFieldMaker:
         expander = VdotOperator(full(psp,1.)).adjoint
         k_squared = makeField(psp, psp.k_lengths**2)
 
-        a = expander @ pref.log() # FIX ME: look for nicer implementation, if any
+        a = expander @ pref.log() # FIXME: look for nicer implementation, if any
         b = VdotOperator(k_squared).adjoint @ modpref.power(-2.)
         c = expander @ loglogsqslope
 
@@ -619,7 +619,7 @@ class CorrelatedFieldMaker:
                 offset = float(offset)
                 op = Adder(full(op.target, offset)) @ op
         #FIXME why does prior_info no longer works???
-        #self.statistics_summary(prior_info)
+        self.statistics_summary(prior_info)
         return op
 
     def statistics_summary(self, prior_info):
