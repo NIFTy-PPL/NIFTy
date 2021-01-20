@@ -12,7 +12,8 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
 # Copyright(C) 2013-2020 Max-Planck-Society
-# Authors: Philipp Frank, Philipp Arras, Philipp Haim
+# Authors: Philipp Frank, Philipp Arras, Philipp Haim;
+#          Matern Kernel by Matteo Guardiani, Jakob Roth
 #
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
 
@@ -36,7 +37,7 @@ from ..operators.endomorphic_operator import EndomorphicOperator
 from ..operators.harmonic_operators import HarmonicTransformOperator
 from ..operators.linear_operator import LinearOperator
 from ..operators.operator import Operator
-from ..operators.simple_linear_operators import ducktape
+from ..operators.simple_linear_operators import ducktape, VdotOperator
 from ..operators.normal_operators import NormalTransform, LognormalTransform
 from ..probing import StatCalculator
 from ..sugar import full, makeDomain, makeField, makeOp
@@ -512,6 +513,59 @@ class CorrelatedFieldMaker:
         else:
             self._a.append(amp)
             self._target_subdomains.append(target_subdomain)
+    
+    def add_fluctuations_matern(self,
+                                target_subdomain,
+                                scale,
+                                cutoff,
+                                halfslope,
+                                prefix=''):
+        """Function to add matern kernels to the field to be made.
+
+        The matern kernel amplitude is parametrized in the following way:
+        .. math ::
+            E(f) = \\frac{a}{\\left(1 + \\left(\\frac{k}{b}\\right)^2\\right)^c}
+            
+        With a being the scale, b the cutoff and c half the slope of the
+        power law
+        
+        Parameters
+        ----------
+        target_subdomain : :class:`~nifty7.domain.Domain`, \
+                           :class:`~nifty7.domain_tuple.DomainTuple`
+            Target subdomain on which the correlation structure defined
+            in this call should hold.
+        scale : tuple of float (mean, std)
+
+        cutoff : tuple of float (mean, std)
+
+        halfslope: tuple of float (mean, std)
+
+        """
+        harmonic_partner = target_subdomain.get_default_codomain()
+        psp = PowerSpace(harmonic_partner)
+        target_subdomain = makeDomain(target_subdomain)
+        
+        pref = LognormalTransform(*scale,
+                                   self._prefix + prefix + 'scale', 0)
+        modpref = LognormalTransform(*cutoff,
+                                 self._prefix + prefix + 'cutoff', 0)
+        loglogsqslope = NormalTransform(*halfslope,
+                                self._prefix + prefix + 'halfslope', 0)
+        
+        expander = VdotOperator(full(psp,1.)).adjoint
+        k_squared = makeField(psp, psp.k_lengths**2)
+
+        a = expander @ pref.log() # FIX ME: look for nicer implementation, if any
+        b = VdotOperator(k_squared).adjoint @ modpref.power(-2.)
+        c = expander @ loglogsqslope
+
+        ker = Adder(full(psp, 1.)) @ b
+        ker = c * ker.log() + a
+        amp = ker.exp()
+
+        self._a.append(amp)
+        self._target_subdomains.append(target_subdomain)
 
     def finalize(self, prior_info=100):
         """Finishes model construction process and returns the constructed
@@ -564,7 +618,8 @@ class CorrelatedFieldMaker:
             else:
                 offset = float(offset)
                 op = Adder(full(op.target, offset)) @ op
-        self.statistics_summary(prior_info)
+        #FIXME why does prior_info no longer works???
+        #self.statistics_summary(prior_info)
         return op
 
     def statistics_summary(self, prior_info):
