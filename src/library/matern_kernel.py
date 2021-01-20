@@ -98,8 +98,9 @@ class MaternKernelMaker:
 
         The matern kernel amplitude is parametrized in the following way:
         .. math ::
-            E(f) = \\frac{a}{\\left(1 + \\left(\\frac{k}{b}\\right)^2\\right)^c}
-            
+
+            E(f) = \frac{a}{\left(1 + \left(\frac{k}{b}\right)^2\right)^c}
+
         With a being the scale, b the cutoff and c half the slope of the
         power law
         
