@@ -101,8 +101,8 @@ class MaternKernelMaker:
 
             E(f) = \frac{a}{\left(1 + \left(\frac{k}{b}\right)^2\right)^c}
 
-        With a being the scale, b the cutoff and c half the slope of the
-        power law
+        with 'a' being the scale, 'b' the cutoff, and 'c' half the slope of the
+        power law.
         
         Parameters
         ----------
