@@ -89,6 +89,7 @@ from .library.adjust_variances import (make_adjust_variances_hamiltonian,
 from .library.gridder import Gridder
 from .library.correlated_fields import CorrelatedFieldMaker
 from .library.correlated_fields_simple import SimpleCorrelatedField
+from .library.matern_kernel import MaternKernelMaker
 
 from . import extra
 
