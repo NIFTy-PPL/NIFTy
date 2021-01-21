@@ -620,7 +620,7 @@ class CorrelatedFieldMaker:
                 offset = float(offset)
                 op = Adder(full(op.target, offset)) @ op
         #FIXME why does prior_info no longer works???
-        self.statistics_summary(prior_info)
+        #self.statistics_summary(prior_info)
         return op
 
     def statistics_summary(self, prior_info):
