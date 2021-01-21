@@ -524,10 +524,11 @@ class CorrelatedFieldMaker:
 
         The matern kernel amplitude is parametrized in the following way:
         .. math ::
-            E(f) = \\frac{a}{\\left(1 + \\left(\\frac{k}{b}\\right)^2\\right)^c}
-            
-        With a being the scale, b the cutoff and c half the slope of the
-        power law
+
+            E(f) = \frac{a}{\left(1 + \left(\frac{k}{b}\right)^2\right)^c}
+
+        with 'a' being the scale, 'b' the cutoff, and 'c' half the slope of the
+        power law.
         
         Parameters
         ----------
@@ -553,12 +554,12 @@ class CorrelatedFieldMaker:
         loglogsqslope = NormalTransform(*halfslope,
                                 self._prefix + prefix + 'halfslope', 0)
         
-        expander = VdotOperator(full(psp,1.)).adjoint
+        expander = VdotOperator(full(psp, 1.)).adjoint
         k_squared = makeField(psp, psp.k_lengths**2)
 
         a = expander @ pref.log() # FIXME: look for nicer implementation, if any
         b = VdotOperator(k_squared).adjoint @ modpref.power(-2.)
-        c = expander @ loglogsqslope
+        c = expander.scale(-1) @ loglogsqslope
 
         ker = Adder(full(psp, 1.)) @ b
         ker = c * ker.log() + a
