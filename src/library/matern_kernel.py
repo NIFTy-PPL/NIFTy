@@ -128,12 +128,12 @@ class MaternKernelMaker:
         loglogsqslope = NormalTransform(*c,
                                 self._prefix + prefix + 'halfslope', 0)
         
-        expander = VdotOperator(full(psp,1.)).adjoint
+        expander = VdotOperator(full(psp, 1.)).adjoint
         k_squared = makeField(psp, psp.k_lengths**2)
 
-        a = expander @ pref.log() # FIX ME: look for nicer implementation, if any
+        a = expander @ pref.log()  # FIXME: look for nicer implementation
         b = VdotOperator(k_squared).adjoint @ modpref.power(-2.)
-        c = expander @ loglogsqslope
+        c = expander.scale(-1) @ loglogsqslope
 
         ker = Adder(full(psp, 1.)) @ b
         ker = c * ker.log() + a
