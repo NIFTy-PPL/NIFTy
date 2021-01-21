@@ -55,7 +55,7 @@ def test_special_gradients():
 
 @pmp('f', [
     'log', 'exp', 'sqrt', 'sin', 'cos', 'tan', 'sinc', 'sinh', 'cosh', 'tanh',
-    'absolute', 'reciprocal', 'sigmoid', 'log10', 'log1p', 'expm1', 'softplus'
+    'absolute', 'reciprocal', 'sigmoid', 'log10', 'log1p', 'expm1', 'softplus', 'exponentiate'
 ])
 @pmp('cplxpos', [True, False])
 @pmp('cplxdir', [True, False])
