@@ -110,6 +110,14 @@ def _softplus_helper(v):
     return fv, dfv
 
 
+def exponentiate(v, base):
+    return np.power(base, v)
+
+
+def _exponentiate_helper(v, base):
+    return (np.power(base, v), np.log(base) * np.power(base, v))
+
+
 ptw_dict = {
     "sqrt": (np.sqrt, _sqrt_helper),
     "sin": (np.sin, lambda v: (np.sin(v), np.cos(v))),
@@ -131,5 +139,6 @@ ptw_dict = {
     "sign": (np.sign, _sign_helper),
     "power": (np.power, _power_helper),
     "clip": (np.clip, _clip_helper),
-    "softplus": (softplus, _softplus_helper)
+    "softplus": (softplus, _softplus_helper),
+    "exponentiate": (exponentiate, _exponentiate_helper)
     }
