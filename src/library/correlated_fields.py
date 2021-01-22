@@ -203,6 +203,26 @@ class _Distributor(LinearOperator):
             res = utilities.special_add_at(res, 0, self._dofdex, x)
         return makeField(self._tgt(mode), res)
 
+class _Amplitude_Matern(Operator):
+    def __init__(self, psp, a, b, c):
+        ker = Adder(full(psp, 1.)) @ b
+        ker = c * ker.log() + a
+        op = ker.exp()
+
+        self.apply = op.apply
+        self._domain, self._target = op.domain, op.target
+        self._repr_str = "_Amplitude: " + op.__repr__()
+        # std = sqrt of integral of power spectrum
+        self._fluc = op.power(2).integrate().sqrt()
+
+    @property
+    def fluctuation_amplitude(self):
+        return self._fluc
+
+    def __repr__(self):
+        return self._repr_str
+
+
 
 class _Amplitude(Operator):
     def __init__(self, target, fluctuations, flexibility, asperity,
@@ -560,10 +580,8 @@ class CorrelatedFieldMaker:
         a = expander @ pref.log() # FIXME: look for nicer implementation, if any
         b = VdotOperator(k_squared).adjoint @ modpref.power(-2.)
         c = expander.scale(-1) @ loglogsqslope
-
-        ker = Adder(full(psp, 1.)) @ b
-        ker = c * ker.log() + a
-        amp = ker.exp()
+        
+        amp = _Amplitude_Matern(psp, a, b, c)
 
         self._a.append(amp)
         self._target_subdomains.append(target_subdomain)
@@ -620,7 +638,7 @@ class CorrelatedFieldMaker:
                 offset = float(offset)
                 op = Adder(full(op.target, offset)) @ op
         #FIXME why does prior_info no longer works???
-        #self.statistics_summary(prior_info)
+        self.statistics_summary(prior_info)
         return op
 
     def statistics_summary(self, prior_info):
