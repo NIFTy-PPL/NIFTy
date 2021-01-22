@@ -78,13 +78,10 @@ def test_actual_gradients(f, cplxpos, cplxdir, holomorphic):
         eps *= (1+0.78j)
     var0 = ift.Linearization.make_var(fld)
     var1 = ift.Linearization.make_var(fld + eps)
-    if isinstance(f, tuple):
-        f0 = var0.ptw(*f).val.val
-        f1 = var1.ptw(*f).val.val
-        df1 = _lin2grad(var0.ptw(*f))
-    else:
-        f0 = var0.ptw(f).val.val
-        f1 = var1.ptw(f).val.val
-        df1 = _lin2grad(var0.ptw(f))
+    if not isinstance(f, tuple):
+        f = (f,)
+    f0 = var0.ptw(*f).val.val
+    f1 = var1.ptw(*f).val.val
+    df1 = _lin2grad(var0.ptw(*f))
     df0 = (f1 - f0)/eps
     assert_allclose(df0, df1, rtol=100*np.abs(eps))
