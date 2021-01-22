@@ -115,7 +115,8 @@ def exponentiate(v, base):
 
 
 def _exponentiate_helper(v, base):
-    return (np.power(base, v), np.log(base) * np.power(base, v))
+    tmp = np.power(base, v)
+    return (tmp , np.log(base) * tmp)
 
 
 ptw_dict = {
