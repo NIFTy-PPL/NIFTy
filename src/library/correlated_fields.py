@@ -205,8 +205,15 @@ class _Distributor(LinearOperator):
 
 
 class _AmplitudeMatern(Operator):
-    def __init__(self, psp, a, b, c, totvol):
-        ker = Adder(full(psp, 1.)) @ b
+    def __init__(self, pow_spc, scale, cutoff, logloghalfslope, totvol):
+        expander = VdotOperator(full(pow_spc, 1.)).adjoint
+        k_squared = makeField(pow_spc, pow_spc.k_lengths**2)
+
+        a = expander @ scale.log()  # FIXME: look for nicer implementation
+        b = VdotOperator(k_squared).adjoint @ cutoff.power(-2.)
+        c = expander.scale(-1) @ logloghalfslope
+
+        ker = Adder(full(pow_spc, 1.)) @ b
         ker = c * ker.log() + a
         op = ker.exp()
         # Account for the volume of the position space (dvol in harmonic space
@@ -543,7 +550,7 @@ class CorrelatedFieldMaker:
                                 target_subdomain,
                                 scale,
                                 cutoff,
-                                halfslope,
+                                logloghalfslope,
                                 adjust_for_volume=True,
                                 prefix=''):
         """Function to add matern kernels to the field to be made.
@@ -567,7 +574,7 @@ class CorrelatedFieldMaker:
         cutoff : tuple of float (mean, std)
             Frequency at which the power spectrum should transition into
             a spectra following a power-law.
-        halfslope: tuple of float (mean, std)
+        logloghalfslope: tuple of float (mean, std)
             Half of the slope of the amplitude spectrum.
 
         Notes
@@ -579,27 +586,19 @@ class CorrelatedFieldMaker:
         :class:`~nifty7.CorrelatedFieldMaker.add_fluctuations`.
         """
         harmonic_partner = target_subdomain.get_default_codomain()
-        psp = PowerSpace(harmonic_partner)
         target_subdomain = makeDomain(target_subdomain)
 
-        pref = LognormalTransform(*scale,
-                                   self._prefix + prefix + 'scale', 0)
-        modpref = LognormalTransform(*cutoff,
-                                 self._prefix + prefix + 'cutoff', 0)
-        loglogsqslope = NormalTransform(*halfslope,
-                                self._prefix + prefix + 'halfslope', 0)
-
-        expander = VdotOperator(full(psp, 1.)).adjoint
-        k_squared = makeField(psp, psp.k_lengths**2)
-
-        a = expander @ pref.log() # FIXME: look for nicer implementation, if any
-        b = VdotOperator(k_squared).adjoint @ modpref.power(-2.)
-        c = expander.scale(-1) @ loglogsqslope
+        scale = LognormalTransform(*scale, self._prefix + prefix + 'scale', 0)
+        prfx = self._prefix + prefix + 'cutoff'
+        cutoff = LognormalTransform(*cutoff, prfx, 0)
+        prfx = self._prefix + prefix + 'logloghalfslope'
+        logloghalfslope = NormalTransform(*logloghalfslope, prfx, 0)
 
         totvol = 1.
         if adjust_for_volume:
             totvol = target_subdomain[-1].total_volume
-        amp = _AmplitudeMatern(psp, a, b, c, totvol)
+        pow_spc = PowerSpace(harmonic_partner)
+        amp = _AmplitudeMatern(pow_spc, scale, cutoff, logloghalfslope, totvol)
 
         self._a.append(amp)
         self._target_subdomains.append(target_subdomain)
