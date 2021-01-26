@@ -203,11 +203,17 @@ class _Distributor(LinearOperator):
             res = utilities.special_add_at(res, 0, self._dofdex, x)
         return makeField(self._tgt(mode), res)
 
-class _Amplitude_Matern(Operator):
-    def __init__(self, psp, a, b, c):
+
+class _AmplitudeMatern(Operator):
+    def __init__(self, psp, a, b, c, totvol):
         ker = Adder(full(psp, 1.)) @ b
         ker = c * ker.log() + a
         op = ker.exp()
+        # Account for the volume of the position space (dvol in harmonic space
+        # is 1/volume-of-position-space) in the definition of the amplitude as
+        # to make the parametric model agnostic to changes in the volume of the
+        # position space
+        op = totvol**0.5 * op
 
         self.apply = op.apply
         self._domain, self._target = op.domain, op.target
@@ -221,7 +227,6 @@ class _Amplitude_Matern(Operator):
 
     def __repr__(self):
         return self._repr_str
-
 
 
 class _Amplitude(Operator):
@@ -539,6 +544,7 @@ class CorrelatedFieldMaker:
                                 scale,
                                 cutoff,
                                 halfslope,
+                                adjust_for_volume=True,
                                 prefix=''):
         """Function to add matern kernels to the field to be made.
 
@@ -557,31 +563,43 @@ class CorrelatedFieldMaker:
             Target subdomain on which the correlation structure defined
             in this call should hold.
         scale : tuple of float (mean, std)
-
+            Overall scale of the fluctuations in the target subdomain.
         cutoff : tuple of float (mean, std)
-
+            Frequency at which the power spectrum should transition into
+            a spectra following a power-law.
         halfslope: tuple of float (mean, std)
+            Half of the slope of the amplitude spectrum.
 
+        Notes
+        -----
+        The parameters of the amplitude model are assumed to be relative to a
+        unit-less power spectrum, i.e. the parameters are assumed to be
+        agnostic to changes in the volume of the target subdomain. This is in
+        steep contrast to the non-parametric amplitude operator in
+        :class:`~nifty7.CorrelatedFieldMaker.add_fluctuations`.
         """
         harmonic_partner = target_subdomain.get_default_codomain()
         psp = PowerSpace(harmonic_partner)
         target_subdomain = makeDomain(target_subdomain)
-        
+
         pref = LognormalTransform(*scale,
                                    self._prefix + prefix + 'scale', 0)
         modpref = LognormalTransform(*cutoff,
                                  self._prefix + prefix + 'cutoff', 0)
         loglogsqslope = NormalTransform(*halfslope,
                                 self._prefix + prefix + 'halfslope', 0)
-        
+
         expander = VdotOperator(full(psp, 1.)).adjoint
         k_squared = makeField(psp, psp.k_lengths**2)
 
         a = expander @ pref.log() # FIXME: look for nicer implementation, if any
         b = VdotOperator(k_squared).adjoint @ modpref.power(-2.)
         c = expander.scale(-1) @ loglogsqslope
-        
-        amp = _Amplitude_Matern(psp, a, b, c)
+
+        totvol = 1.
+        if adjust_for_volume:
+            totvol = target_subdomain[-1].total_volume
+        amp = _AmplitudeMatern(psp, a, b, c, totvol)
 
         self._a.append(amp)
         self._target_subdomains.append(target_subdomain)
