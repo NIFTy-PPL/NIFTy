@@ -226,7 +226,7 @@ class _AmplitudeMatern(Operator):
         self._fluc = op.power(2).integrate().sqrt()
         self.apply = op.apply
         self._domain, self._target = op.domain, op.target
-        self._repr_str = "_Amplitude: " + op.__repr__()
+        self._repr_str = "_AmplitudeMatern: " + op.__repr__()
 
     @property
     def fluctuation_amplitude(self):
@@ -552,7 +552,8 @@ class CorrelatedFieldMaker:
                                 cutoff,
                                 logloghalfslope,
                                 adjust_for_volume=True,
-                                prefix=''):
+                                prefix='',
+                                harmonic_partner=None):
         """Function to add matern kernels to the field to be made.
 
         The matern kernel amplitude is parametrized in the following way:
@@ -585,7 +586,11 @@ class CorrelatedFieldMaker:
         steep contrast to the non-parametric amplitude operator in
         :class:`~nifty7.CorrelatedFieldMaker.add_fluctuations`.
         """
-        harmonic_partner = target_subdomain.get_default_codomain()
+        if harmonic_partner is None:
+            harmonic_partner = target_subdomain.get_default_codomain()
+        else:
+            target_subdomain.check_codomain(harmonic_partner)
+            harmonic_partner.check_codomain(target_subdomain)
         target_subdomain = makeDomain(target_subdomain)
 
         scale = LognormalTransform(*scale, self._prefix + prefix + 'scale', 0)
