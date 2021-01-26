@@ -215,11 +215,11 @@ class _AmplitudeMatern(Operator):
         # position space
         op = totvol**0.5 * op
 
+        # std = sqrt of integral of power spectrum
+        self._fluc = op.power(2).integrate().sqrt()
         self.apply = op.apply
         self._domain, self._target = op.domain, op.target
         self._repr_str = "_Amplitude: " + op.__repr__()
-        # std = sqrt of integral of power spectrum
-        self._fluc = op.power(2).integrate().sqrt()
 
     @property
     def fluctuation_amplitude(self):
@@ -538,7 +538,7 @@ class CorrelatedFieldMaker:
         else:
             self._a.append(amp)
             self._target_subdomains.append(target_subdomain)
-    
+
     def add_fluctuations_matern(self,
                                 target_subdomain,
                                 scale,
@@ -549,13 +549,13 @@ class CorrelatedFieldMaker:
         """Function to add matern kernels to the field to be made.
 
         The matern kernel amplitude is parametrized in the following way:
-        .. math ::
 
-            A(|k|) = \frac{a}{\left(1 + \left(\frac{|k|}{b}\right)^2\right)^c}
+        .. math ::
+            A(|k|) = \\frac{a}{\\left(1 + \\left(\\frac{|k|}{b}\\right)^2\\right)^c}
 
         with 'a' being the scale, 'b' the cutoff, and 'c' half the slope of the
         power law.
-        
+
         Parameters
         ----------
         target_subdomain : :class:`~nifty7.domain.Domain`, \
