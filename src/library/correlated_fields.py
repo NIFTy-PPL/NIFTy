@@ -551,8 +551,8 @@ class CorrelatedFieldMaker:
                                 scale,
                                 cutoff,
                                 logloghalfslope,
-                                adjust_for_volume=True,
                                 prefix='',
+                                adjust_for_volume=True,
                                 harmonic_partner=None):
         """Function to add matern kernels to the field to be made.
 
@@ -575,8 +575,17 @@ class CorrelatedFieldMaker:
         cutoff : tuple of float (mean, std)
             Frequency at which the power spectrum should transition into
             a spectra following a power-law.
-        logloghalfslope: tuple of float (mean, std)
+        logloghalfslope : tuple of float (mean, std)
             Half of the slope of the amplitude spectrum.
+        prefix : string
+            Prefix of the power spectrum parameter domain names.
+        adjust_for_volume : bool, optional
+            Whether to implicitly adjust the parameters of the Matern kernel
+            for the volume in the target subdomain or assume them to be
+            adjusted already.
+        harmonic_partner : :class:`~nifty7.domain.Domain`, \
+                           :class:`~nifty7.domain_tuple.DomainTuple`
+            Harmonic space in which to define the power spectrum.
 
         Notes
         -----
