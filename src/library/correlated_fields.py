@@ -559,10 +559,12 @@ class CorrelatedFieldMaker:
         The matern kernel amplitude is parametrized in the following way:
 
         .. math ::
-            A(|k|) = \\frac{a}{\\left(1 + \\left(\\frac{|k|}{b}\\right)^2\\right)^c}
+            A(|k|) = \\sqrt{V} \cdot \\frac{a}{\\left(1 + { \
+                \\left(\\frac{|k|}{b}\\right) \
+            }^2\\right)^c}
 
-        with 'a' being the scale, 'b' the cutoff, and 'c' half the slope of the
-        power law.
+        with 'a' being the scale, 'b' the cutoff, 'c' half the slope of the
+        power law and 'V' the volume in position space.
 
         Parameters
         ----------
