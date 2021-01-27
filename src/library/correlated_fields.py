@@ -297,17 +297,14 @@ class _Amplitude(Operator):
 
         vol0, vol1 = [np.zeros(target[space].shape) for _ in range(2)]
         vol1[1:] = vol0[0] = totvol
-        vol0, vol1 = [
-            DiagonalOperator(makeField(target[space], aa), target, space)
-            for aa in (vol0, vol1)
-        ]
+        vol0 = DiagonalOperator(makeField(target[space], vol0), target, space)
         vol0 = vol0(full(vol0.domain, 1))
+        vol1 = DiagonalOperator(makeField(target[space], vol1), target, space)
         # End prepare constant fields
 
         slope = vslope @ ps_expander @ loglogavgslope
         sig_flex = vflex @ expander @ flexibility if flexibility is not None else None
         sig_asp = vasp @ expander @ asperity if asperity is not None else None
-        sig_fluc = vol1 @ ps_expander @ fluctuations
         sig_fluc = vol1 @ ps_expander @ fluctuations
 
         if sig_asp is None and sig_flex is None:
