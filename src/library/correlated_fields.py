@@ -205,8 +205,8 @@ class _Distributor(LinearOperator):
 
 
 class _AmplitudeMatern(Operator):
-    def __init__(self, pow_spc, scale, cutoff, logloghalfslope, totvol):
-        expander = VdotOperator(full(pow_spc, 1.)).adjoint
+    def __init__(self, pow_spc, scale, cutoff, logloghalfslope, azm, totvol):
+        expander = ContractionOperator(pow_spc, spaces=None).adjoint
         k_squared = makeField(pow_spc, pow_spc.k_lengths**2)
 
         a = expander @ scale.log()  # TODO: look for nicer implementation
@@ -216,11 +216,17 @@ class _AmplitudeMatern(Operator):
         ker = Adder(full(pow_spc, 1.)) @ b
         ker = c * ker.log() + a
         op = ker.exp()
+
         # Account for the volume of the position space (dvol in harmonic space
         # is 1/volume-of-position-space) in the definition of the amplitude as
         # to make the parametric model agnostic to changes in the volume of the
         # position space
-        op = totvol**0.5 * op
+        vol0, vol1 = [np.zeros(pow_spc.shape) for _ in range(2)]
+        vol0[0] = totvol
+        vol1[1:] = totvol**0.5
+        vol0 = Adder(makeField(pow_spc, vol0))
+        vol1 = DiagonalOperator(makeField(pow_spc, vol1))
+        op = vol0 @ (vol1 @ (expander @ azm.ptw("reciprocal")) * op)
 
         # std = sqrt of integral of power spectrum
         self._fluc = op.power(2).integrate().sqrt()
@@ -582,9 +588,9 @@ class CorrelatedFieldMaker:
         prefix : string
             Prefix of the power spectrum parameter domain names.
         adjust_for_volume : bool, optional
-            Whether to implicitly adjust the parameters of the Matern kernel
-            for the volume in the target subdomain or assume them to be
-            adjusted already.
+            Whether to implicitly adjust the scale parameter of the Matern
+            kernel and the zero-mode of the overall model for the volume in the
+            target subdomain or assume them to be adjusted already.
         harmonic_partner : :class:`~nifty7.domain.Domain`, \
                            :class:`~nifty7.domain_tuple.DomainTuple`
             Harmonic space in which to define the power spectrum.
@@ -614,7 +620,8 @@ class CorrelatedFieldMaker:
         if adjust_for_volume:
             totvol = target_subdomain[-1].total_volume
         pow_spc = PowerSpace(harmonic_partner)
-        amp = _AmplitudeMatern(pow_spc, scale, cutoff, logloghalfslope, totvol)
+        amp = _AmplitudeMatern(pow_spc, scale, cutoff, logloghalfslope,
+                               self._azm, totvol)
 
         self._a.append(amp)
         self._target_subdomains.append(target_subdomain)
