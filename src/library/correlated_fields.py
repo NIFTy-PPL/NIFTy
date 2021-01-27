@@ -170,7 +170,7 @@ class _Normalization(Operator):
     def apply(self, x):
         self._check_input(x)
         spec = x.ptw("exp")
-        # FIXME This normalizes also the zeromode which is supposed to be left
+        # NOTE, this normalizes also the zeromode which is supposed to be left
         # untouched by this operator
         return (self._specsum(spec).reciprocal()*spec).sqrt()
 
@@ -209,7 +209,7 @@ class _AmplitudeMatern(Operator):
         expander = VdotOperator(full(pow_spc, 1.)).adjoint
         k_squared = makeField(pow_spc, pow_spc.k_lengths**2)
 
-        a = expander @ scale.log()  # FIXME: look for nicer implementation
+        a = expander @ scale.log()  # TODO: look for nicer implementation
         b = VdotOperator(k_squared).adjoint @ cutoff.power(-2.)
         c = expander.scale(-1) @ logloghalfslope
 
@@ -670,7 +670,6 @@ class CorrelatedFieldMaker:
             else:
                 offset = float(offset)
                 op = Adder(full(op.target, offset)) @ op
-        #FIXME why does prior_info no longer works???
         self.statistics_summary(prior_info)
         return op
 
