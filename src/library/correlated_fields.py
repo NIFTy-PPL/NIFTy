@@ -222,7 +222,11 @@ class _AmplitudeMatern(Operator):
         # to make the parametric model agnostic to changes in the volume of the
         # position space
         vol0, vol1 = [np.zeros(pow_spc.shape) for _ in range(2)]
+        # The zero-mode scales linearly with the volume in position space
         vol0[0] = totvol
+        # The integral of the squared field in position spaces scales linearly
+        # with the volume. Thus, using Parseval's theorem, the squared modes in
+        # harmonic space need to scale linearly with the volume too.
         vol1[1:] = totvol**0.5
         vol0 = Adder(makeField(pow_spc, vol0))
         vol1 = DiagonalOperator(makeField(pow_spc, vol1))
