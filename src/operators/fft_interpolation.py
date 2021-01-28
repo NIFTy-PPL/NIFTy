@@ -29,13 +29,14 @@ class FFTInterpolator(LinearOperator):
     domain : RGSpace
     sampling_points : numpy.ndarray
         Positions at which to interpolate, shape (dim, ndata)
-
+    eps :
+    nthreads :
     Notes
     ----
-    #TODO Text from Philipp
+    #FIXME Documentation from Philipp
     """
 
-    def __init__(self, domain, pos):
+    def __init__(self, domain, pos, eps=2e-10, nthreads=1):
         self._domain = makeDomain(domain)
         assert isinstance(pos, np.ndarray)
         assert pos.ndim == 2
@@ -43,7 +44,7 @@ class FFTInterpolator(LinearOperator):
         dist = [list(dom.distances) for dom in self.domain]
         dist = np.array(dist).reshape(-1,1)
         pos = pos / dist
-        self._gridder = Gridder(self._domain, pos.T)
+        self._gridder = Gridder(self._domain, pos.T, eps, nthreads)
         self._ht = HartleyOperator(self._domain)
         self._capability = self.TIMES | self.ADJOINT_TIMES
         self._target = self._gridder.domain
