@@ -51,7 +51,7 @@ class _InterpolationOperator(Operator):
     xmax : float
         The largest value for which func will be evaluated.
     delta : float
-        Distance between sampling points for linear interpolation.
+        Distance between sampling points for spline interpolation.
     table_func : function
         Non-linear function applied to table in order to transform the table
         to a more linear space. Assumed to act on `Linearization`s, optional.
@@ -103,7 +103,7 @@ def InverseGammaOperator(domain, alpha, q, delta=1e-2):
     The mean of the pdf is at :math:`q / (\\alpha - 1)` if :math:`\\alpha > 1`.
     The mode is :math:`q / (\\alpha + 1)`.
 
-    This transformation is implemented as a linear interpolation which maps a
+    This transformation is implemented as a spline interpolation which maps a
     Gaussian onto an inverse gamma distribution.
 
     Parameters
@@ -116,7 +116,7 @@ def InverseGammaOperator(domain, alpha, q, delta=1e-2):
     q : float or Field
         The q-parameter of the inverse-gamma distribution.
     delta : float
-        Distance between sampling points for linear interpolation.
+        Distance between sampling points for spline interpolation.
     """
     op = _InterpolationOperator(domain, lambda x: invgamma.ppf(norm._cdf(x), float(alpha)),
                                 -8.2, 8.2, delta, lambda x: x.ptw("log"), lambda x: x.ptw("exp"))
