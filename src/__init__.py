@@ -77,7 +77,8 @@ from .sugar import *
 
 from .plot import Plot
 
-from .library.special_distributions import InverseGammaOperator, UniformOperator
+from .library.special_distributions import (InverseGammaOperator, UniformOperator,
+                                            LaplaceOperator)
 from .library.los_response import LOSResponse
 from .library.dynamic_operator import (dynamic_operator,
                                        dynamic_lightcone_operator)

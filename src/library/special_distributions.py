@@ -17,7 +17,7 @@
 
 import numpy as np
 from scipy.interpolate import CubicSpline
-from scipy.stats import invgamma, norm
+from scipy.stats import invgamma, norm, laplace
 
 from .. import random
 from ..domain_tuple import DomainTuple
@@ -158,3 +158,29 @@ class UniformOperator(Operator):
     def inverse(self, field):
         res = norm._ppf(field.val/self._scale - self._loc)
         return Field(field.domain, res)
+
+
+def LaplaceOperator(domain, alpha, delta=1e-2):
+    """Transforms a Gaussian with unit covariance and zero mean into a
+    Laplacian distribution.
+
+    The pdf of the laplace distribution is defined as follows:
+
+    .. math::
+        \\frac{\\alpha}{2} \\exp \\left(-\\alpha |x| \\right)
+
+    This transformation is implemented as a spline interpolation which maps a
+    Gaussian onto a Laplace distribution.
+
+    Parameters
+    ----------
+    domain : Domain, tuple of Domain or DomainTuple
+        The domain on which the field shall be defined. This is at the same
+        time the domain and the target of the operator.
+    alpha : float
+        The alpha-parameter of the Laplace distribution.
+    delta : float
+        Distance between sampling points for spline interpolation.
+    """
+    return _InterpolationOperator(domain, lambda x: laplace.ppf(norm._cdf(x), float(alpha)),
+                                  -8.2, 8.2, delta)
