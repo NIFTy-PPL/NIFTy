@@ -36,7 +36,9 @@ class FFTInterpolator(LinearOperator):
     ----
     #FIXME Documentation from Philipp
     """
-
+#FIXME Raise Error instead of assert
+#FIXME even number of samples
+#FIXME np.fft.fftshift instead of roller
     def __init__(self, domain, pos, eps=2e-10, nthreads=1):
         self._domain = makeDomain(domain)
         assert isinstance(pos, np.ndarray)
