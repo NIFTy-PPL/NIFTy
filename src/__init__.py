@@ -28,6 +28,7 @@ from .operators.domain_tuple_field_inserter import DomainTupleFieldInserter
 from .operators.einsum import LinearEinsum, MultiLinearEinsum
 from .operators.contraction_operator import ContractionOperator, IntegrationOperator
 from .operators.linear_interpolation import LinearInterpolator
+from .operators.fft_interpolation import FFTInterpolator
 from .operators.endomorphic_operator import EndomorphicOperator
 from .operators.harmonic_operators import (
     FFTOperator, HartleyOperator, SHTOperator, HarmonicTransformOperator,

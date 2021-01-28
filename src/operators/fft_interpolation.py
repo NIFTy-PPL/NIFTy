@@ -1,0 +1,64 @@
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+#
+# Copyright(C) 2013-2021 Max-Planck-Society
+#
+# NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
+
+import numpy as np
+from .harmonic_operators import HartleyOperator
+from ..sugar import makeDomain, makeField
+from .linear_operator import LinearOperator
+from ..library.gridder import Gridder
+
+class FFTInterpolator(LinearOperator):
+    """ FFT Interpolation using Gridder and HartleyOperator
+
+    Parameters
+    ---------
+    domain : RGSpace
+    sampling_points : numpy.ndarray
+        Positions at which to interpolate, shape (dim, ndata)
+
+    Notes
+    ----
+    #TODO Text from Philipp
+    """
+
+    def __init__(self, domain, pos):
+        self._domain = makeDomain(domain)
+        assert isinstance(pos, np.ndarray)
+        assert pos.ndim == 2
+        assert pos.shape[0] == 2
+        dist = [list(dom.distances) for dom in self.domain]
+        dist = np.array(dist).reshape(-1,1)
+        pos = pos / dist
+        self._gridder = Gridder(self._domain, pos.T)
+        self._ht = HartleyOperator(self._domain)
+        self._capability = self.TIMES | self.ADJOINT_TIMES
+        self._target = self._gridder.domain
+
+    def apply(self, x, mode):
+        self._check_input(x, mode)
+        ht = self._ht
+        gridder = self._gridder
+        nx, ny = ht.target.shape
+        if mode == self.TIMES:
+            x = ht(x)
+            x = makeField(gridder.target, np.roll(x.val, (nx//2, ny//2), axis=(0, 1)))
+            x = gridder.adjoint(x)
+            return x.real + x.imag
+        else:
+            x = gridder(x + 1j*x)
+            x = makeField(ht.target, np.roll(x.val, (-nx//2, -ny//2), axis=(0, 1)))
+            return ht.adjoint(x)
