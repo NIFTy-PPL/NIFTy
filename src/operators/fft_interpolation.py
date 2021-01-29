@@ -47,7 +47,7 @@ class FFTInterpolator(LinearOperator):
         if pos.shape[0] != 2:
             raise ValueError("first dimension of sampling_points must have length 2")
         for ii in [0, 1]:
-            if domain.shape[ii] %2 != 0:
+            if domain.shape[ii] % 2 != 0:
                 raise ValueError("even number of samples is required for gridding operation")
         dist = [list(dom.distances) for dom in self.domain]
         dist = np.array(dist).reshape(-1,1)
