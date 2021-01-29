@@ -152,6 +152,23 @@ class _TwoLogIntegrations(LinearOperator):
 
 
 class _Normalization(Operator):
+    """Exponentiate the logarithmic power spectrum, normalize by the sum over
+    all modes and return the square root of the "normalized" power spectrum.
+
+    Notes
+    -----
+    The operator does not perform a proper normalization as it does not account
+    for changes in position space volume. This leads to an additional factor of
+    `1 / \\sqrt{totvol}` being introduced into the result with `totvol`
+    referring to the total volume in position space. The exact value of the
+    additional factor stems from the fact that the volume in harmonic space is
+    solely dependent on the distances in position space. Thus, if the position
+    spaces is enlarged without changing its distances, the volume in harmonic
+    space is kept constant. Doubling the number of pixels though also doubles
+    the number of harmonic modes with each then occupy a smaller volume. This
+    linear decrease in per pixel volume in harmonic space is no captured by
+    just summing up the modes.
+    """
     def __init__(self, domain, space=0):
         self._domain = self._target = DomainTuple.make(domain)
         assert isinstance(self._domain[space], PowerSpace)
@@ -170,8 +187,10 @@ class _Normalization(Operator):
     def apply(self, x):
         self._check_input(x)
         spec = x.ptw("exp")
-        # NOTE, this normalizes also the zeromode which is supposed to be left
-        # untouched by this operator
+        # NOTE, this "normalizes" also the zero-mode which is supposed to be
+        # left untouched by this operator
+        # NOTE, see the note in the doc-string on why this is not a proper
+        # normalization!
         return (self._specsum(spec).reciprocal()*spec).sqrt()
 
 
@@ -224,9 +243,10 @@ class _AmplitudeMatern(Operator):
         vol0, vol1 = [np.zeros(pow_spc.shape) for _ in range(2)]
         # The zero-mode scales linearly with the volume in position space
         vol0[0] = totvol
-        # The integral of the squared field in position spaces scales linearly
-        # with the volume. Thus, using Parseval's theorem, the squared modes in
-        # harmonic space need to scale linearly with the volume too.
+        # Variances decrease linearly with the volume in position space after a
+        # harmonic transformation (var{HT(randn)} \propto 1/\sqrt{totvol} for
+        # randn standard normally distributed variables).  This needs to be
+        # accounted for in the amplitude model.
         vol1[1:] = totvol**0.5
         vol0 = Adder(makeField(pow_spc, vol0))
         vol1 = DiagonalOperator(makeField(pow_spc, vol1))
@@ -300,6 +320,13 @@ class _Amplitude(Operator):
             target, space)
 
         vol0, vol1 = [np.zeros(target[space].shape) for _ in range(2)]
+        # In the harmonic transform convention used here, the zero-mode scales
+        # linearly with the volume while all other modes scale with the square
+        # root of the volume.  However, as the `_Normalization` operator
+        # introduces an additional factor of `1 / \sqrt{totvol}` for all modes
+        # but the zero-mode, the modes here all apparently have the same
+        # scaling factor. See the respective note in `_Normalization` for
+        # details.
         vol1[1:] = vol0[0] = totvol
         vol0 = DiagonalOperator(makeField(target[space], vol0), target, space)
         vol0 = vol0(full(vol0.domain, 1))
