@@ -34,16 +34,21 @@ class FFTInterpolator(LinearOperator):
     nthreads :
     Notes
     ----
-    #FIXME Documentation from Philipp
+    #FIXME Documentation from Philipp ? PBCs? / Torus?
     """
-#FIXME Raise Error instead of assert
-#FIXME even number of samples
+
 #FIXME np.fft.fftshift instead of roller
     def __init__(self, domain, pos, eps=2e-10, nthreads=1):
         self._domain = makeDomain(domain)
-        assert isinstance(pos, np.ndarray)
-        assert pos.ndim == 2
-        assert pos.shape[0] == 2
+        if not isinstance(pos, np.ndarray):
+            raise TypeError("sampling_points need to be a numpy.ndarray")
+        if pos.ndim != 2:
+            raise ValueError("sampling_points must be a 2D array")
+        if pos.shape[0] != 2:
+            raise ValueError("first dimension of sampling_points must have length 2")
+        #FIXME @ Philipp, like that?
+        # if pos.shape[1] %2 != 0:
+        #     raise ValueError("even number of samples is required for gridding operation")
         dist = [list(dom.distances) for dom in self.domain]
         dist = np.array(dist).reshape(-1,1)
         pos = pos / dist
