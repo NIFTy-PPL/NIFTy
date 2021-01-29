@@ -167,7 +167,7 @@ class _Normalization(Operator):
     spaces is enlarged without changing its distances, the volume in harmonic
     space is kept constant. Doubling the number of pixels though also doubles
     the number of harmonic modes with each then occupy a smaller volume. This
-    linear decrease in per pixel volume in harmonic space is no captured by
+    linear decrease in per pixel volume in harmonic space is not captured by
     just summing up the modes.
     """
     def __init__(self, domain, space=0):
@@ -189,7 +189,9 @@ class _Normalization(Operator):
         self._check_input(x)
         spec = x.ptw("exp")
         # NOTE, this "normalizes" also the zero-mode which is supposed to be
-        # left untouched by this operator
+        # left untouched by this operator. This is not a problem since this
+        # zero mode is multiplied with zero later on in the model and modelled
+        # differently.
         # NOTE, see the note in the doc-string on why this is not a proper
         # normalization!
         return (self._specsum(spec).reciprocal()*spec).sqrt()
@@ -229,7 +231,7 @@ class _AmplitudeMatern(Operator):
         expander = ContractionOperator(pow_spc, spaces=None).adjoint
         k_squared = makeField(pow_spc, pow_spc.k_lengths**2)
 
-        a = expander @ scale.log()  # TODO: look for nicer implementation
+        a = expander @ scale.log()
         b = VdotOperator(k_squared).adjoint @ cutoff.power(-2.)
         c = expander.scale(-1) @ logloghalfslope
 
@@ -381,7 +383,7 @@ class CorrelatedFieldMaker:
     """Construction helper for hierarchical correlated field models.
 
     The correlated field models are parametrized by creating
-    power spectrum operators ("amplitudes") via calls to
+    square roots of power spectrum operators ("amplitudes") via calls to
     :func:`add_fluctuations` that act on the targeted field subdomains.
     During creation of the :class:`CorrelatedFieldMaker` via
     :func:`make`, a global offset from zero of the field model
@@ -403,7 +405,7 @@ class CorrelatedFieldMaker:
     An operator representing an array of correlated field models
     can be constructed by setting the `total_N` parameter of
     :func:`make`. It will have an
-    :class:`~nifty.domains.unstructucture_domain.UnstructureDomain`
+    :class:`~nifty7.domains.unstructured_domain.UnstructuredDomain`
     of shape `(total_N,)` prepended to its target domain and represent
     `total_N` correlated fields simulataneously.
     The degree of information sharing between the correlated field
@@ -598,12 +600,12 @@ class CorrelatedFieldMaker:
                 \\left(\\frac{|k|}{b}\\right) \
             }^2\\right)^c}
 
-        with 'a' being the scale, 'b' the cutoff and 'c' half the slope of the
-        power law.
+        where :math:`a` is the scale, :math:`b` the cutoff and :math:`c` half
+        the slope of the power law.
 
         Parameters
         ----------
-        target_subdomain : :class:`~nifty7.domain.Domain`, \
+        target_subdomain : :class:`~nifty7.domains.domain.Domain`, \
                            :class:`~nifty7.domain_tuple.DomainTuple`
             Target subdomain on which the correlation structure defined
             in this call should hold.
@@ -620,7 +622,7 @@ class CorrelatedFieldMaker:
             Whether to implicitly adjust the scale parameter of the Matern
             kernel and the zero-mode of the overall model for the volume in the
             target subdomain or assume them to be adjusted already.
-        harmonic_partner : :class:`~nifty7.domain.Domain`, \
+        harmonic_partner : :class:`~nifty7.domains.domain.Domain`, \
                            :class:`~nifty7.domain_tuple.DomainTuple`
             Harmonic space in which to define the power spectrum.
 
@@ -630,7 +632,7 @@ class CorrelatedFieldMaker:
         unit-less power spectrum, i.e. the parameters are assumed to be
         agnostic to changes in the volume of the target subdomain. This is in
         steep contrast to the non-parametric amplitude operator in
-        :class:`~nifty7.CorrelatedFieldMaker.add_fluctuations`.
+        :class:`~nifty7.library.correlated_fields.CorrelatedFieldMaker.add_fluctuations`.
         """
         if harmonic_partner is None:
             harmonic_partner = target_subdomain.get_default_codomain()
