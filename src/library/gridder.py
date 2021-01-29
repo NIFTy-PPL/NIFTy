@@ -28,6 +28,9 @@ class Gridder(LinearOperator):
     def __init__(self, target, uv, eps=2e-10, nthreads=1):
         self._capability = self.TIMES | self.ADJOINT_TIMES
         self._target = makeDomain(target)
+        for ii in [0, 1]:
+            if target.shape[ii] % 2 != 0:
+                raise ValueError("even number of samples is required for gridding operation")
         if (len(self._target) != 1 or not isinstance(self._target[0], RGSpace)
                 or not len(self._target.shape) == 2):
             raise ValueError("need target with exactly one 2D RGSpace")
