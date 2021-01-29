@@ -37,7 +37,7 @@ class FFTInterpolator(LinearOperator):
     #FIXME Documentation from Philipp ? PBCs? / Torus?
     """
 
-#FIXME np.fft.fftshift instead of roller
+
     def __init__(self, domain, pos, eps=2e-10, nthreads=1):
         self._domain = makeDomain(domain)
         if not isinstance(pos, np.ndarray):
@@ -64,10 +64,13 @@ class FFTInterpolator(LinearOperator):
         nx, ny = ht.target.shape
         if mode == self.TIMES:
             x = ht(x)
-            x = makeField(gridder.target, np.roll(x.val, (nx//2, ny//2), axis=(0, 1)))
+            #FIXME np.fft.fftshift instead of roller // This way?
+            x = makeField(gridder.target, np.fft.fftshift(x.val))
+            # x = makeField(gridder.target, np.roll(x.val, (nx//2, ny//2), axis=(0, 1)))
             x = gridder.adjoint(x)
             return x.real + x.imag
         else:
             x = gridder(x + 1j*x)
-            x = makeField(ht.target, np.roll(x.val, (-nx//2, -ny//2), axis=(0, 1)))
+            x = makeField(ht.target, np.fft.fftshift(x.val))
+            # x = makeField(ht.target, np.roll(x.val, (-nx//2, -ny//2), axis=(0, 1)))
             return ht.adjoint(x)
