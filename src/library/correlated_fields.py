@@ -594,7 +594,7 @@ class CorrelatedFieldMaker:
         The matern kernel amplitude is parametrized in the following way:
 
         .. math ::
-            A(|k|) = \\cdot \\frac{a}{\\left(1 + { \
+            A(|k|) = \\frac{a}{\\left(1 + { \
                 \\left(\\frac{|k|}{b}\\right) \
             }^2\\right)^c}
 
