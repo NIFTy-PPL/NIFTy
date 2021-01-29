@@ -13,7 +13,8 @@
 #
 # Copyright(C) 2013-2020 Max-Planck-Society
 # Authors: Philipp Frank, Philipp Arras, Philipp Haim;
-#          Matern Kernel by Matteo Guardiani, Jakob Roth
+#          Matern Kernel by Matteo Guardiani, Jakob Roth and
+#          Gordian Edenhofer
 #
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
 
