@@ -37,9 +37,9 @@ from ..operators.distributors import PowerDistributor
 from ..operators.endomorphic_operator import EndomorphicOperator
 from ..operators.harmonic_operators import HarmonicTransformOperator
 from ..operators.linear_operator import LinearOperator
+from ..operators.normal_operators import LognormalTransform, NormalTransform
 from ..operators.operator import Operator
-from ..operators.simple_linear_operators import ducktape, VdotOperator
-from ..operators.normal_operators import NormalTransform, LognormalTransform
+from ..operators.simple_linear_operators import VdotOperator, ducktape
 from ..probing import StatCalculator
 from ..sugar import full, makeDomain, makeField, makeOp
 
