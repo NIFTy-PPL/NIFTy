@@ -65,6 +65,7 @@ def testDistributor(dofdex, seed):
 @pmp('asperity', [None, (1, 1)])
 @pmp('flexibility', [None, (1, 1)])
 @pmp('ind', [None, 1])
+@pmp('matern', [True, False])
 def test_init(total_N, asperity, flexibility, ind):
     if flexibility is None and asperity is not None:
         pytest.skip()
@@ -72,7 +73,10 @@ def test_init(total_N, asperity, flexibility, ind):
     for dofdex in ([None], [None, [0]], [None, [0, 0], [0, 1], [1, 1]])[total_N]:
         cfm = ift.CorrelatedFieldMaker.make(0, cfg, '', total_N, dofdex)
         cfm.add_fluctuations(ift.RGSpace(4), cfg, flexibility, asperity, (-2, 0.1))
-        cfm.add_fluctuations(ift.RGSpace(4), *(4*[cfg]), index=ind)
+        if matern:
+            cfm.add_fluctuations_matern(ift.RGSpace(4), *(3*[cfg]))
+        else:
+            cfm.add_fluctuations(ift.RGSpace(4), *(4*[cfg]), index=ind)
         cfm.finalize(0)
 
 
