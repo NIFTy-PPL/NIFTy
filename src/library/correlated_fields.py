@@ -633,7 +633,11 @@ class CorrelatedFieldMaker:
         agnostic to changes in the volume of the target subdomain. This is in
         steep contrast to the non-parametric amplitude operator in
         :class:`~nifty7.library.correlated_fields.CorrelatedFieldMaker.add_fluctuations`.
+
+        Up to the Matern amplitude only works for `total_N == 0`.
         """
+        if self._total_N > 0:
+            raise NotImplementedError()
         if harmonic_partner is None:
             harmonic_partner = target_subdomain.get_default_codomain()
         else:
