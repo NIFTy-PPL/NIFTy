@@ -100,7 +100,7 @@ def _power_helper(v, maxorder, expo):
         fac *= expo-i
     return res
 
-def _clip_helper(v, a_min, a_max):
+def _clip_helper(v, maxorder, a_min, a_max):
     if np.issubdtype(v.dtype, np.complexfloating):
         raise TypeError("Argument must not be complex")
     tmp = np.clip(v, a_min, a_max)
@@ -109,7 +109,7 @@ def _clip_helper(v, a_min, a_max):
         tmp2 = np.where(tmp == a_min, 0., tmp2)
     if a_max is not None:
         tmp2 = np.where(tmp == a_max, 0., tmp2)
-    return (tmp, tmp2)
+    return (tmp, tmp2) + (np.zeros(v.shape),)*(maxorder-1)
 
 def _sc_helper(v, maxorder, sin):
     s,c = np.sin(v), np.cos(v)
@@ -173,7 +173,7 @@ ptw_dict = {
     "absolute": (np.abs, _abs_helper),
     "sign": (np.sign, _sign_helper),
     "power": (np.power, lambda v,expo: _power_helper(v,1,expo), _power_helper),
-    "clip": (np.clip, _clip_helper),
+    "clip": (np.clip, lambda v, a_min, a_max: _clip_helper(v,1,a_min,a_max), _clip_helper),
     "softplus": (softplus, _softplus_helper),
     "exponentiate": (exponentiate, _exponentiate_helper)
     }
