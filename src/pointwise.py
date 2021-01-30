@@ -77,6 +77,9 @@ def _reciprocal_helper(v, maxorder):
     tmp = 1./v
     return (tmp, ) + tuple(tmp**(m+1)*np.math.factorial(m)*(1.-2.*(m%2)) for m in range(1,maxorder+1))
 
+def _log_helper(v, maxorder):
+    return (np.log(v), ) + _reciprocal_helper(v, maxorder-1)
+
 def _abs_helper(v):
     if np.issubdtype(v.dtype, np.complexfloating):
         raise TypeError("Argument must not be complex because abs(z) is not holomorphic")
@@ -148,7 +151,7 @@ ptw_dict = {
     "sinc": (np.sinc, _sinc_helper, None),
     "exp": (np.exp, lambda v: (2*(np.exp(v),)), lambda v,m: (m+1)*(np.exp(v), )),
     "expm1": (np.expm1, lambda v: _expm1_helper(v,1), _expm1_helper),
-    "log": (np.log, lambda v: (np.log(v), 1./v)),
+    "log": (np.log, lambda v: (np.log(v), 1./v), _log_helper),
     "log10": (np.log10, lambda v: (np.log10(v), (1./np.log(10.))/v)),
     "log1p": (np.log1p, lambda v: (np.log1p(v), 1./(1.+v))),
     "sinh": (np.sinh, lambda v: (np.sinh(v), np.cosh(v))),
