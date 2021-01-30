@@ -18,14 +18,38 @@
 import numpy as np
 from .operators.operator import Operator
 from .operators.scaling_operator import ScalingOperator
+from .operators.linear_operator import LinearOperator
 from .tensors.tensor import Tensor, TensorChain, TrivialTensor
 from .tensors.linear_tensor import LinearTensor
 from .tensors.tensor_layer import TensorLayer
 from .tensors.tensor_prod import TensorProd
-from .sugar import makeOp
+from .sugar import makeOp, makeDomain, full
 from .field import Field
 from .multi_field import MultiField
-from .utilities import assertEqual
+from .multi_domain import MultiDomain
+from .utilities import assertEqual, assertIsinstance
+
+#FIXME: Dirty trick!!!
+class _MultiFieldInserter(LinearOperator):
+    def __init__(self, target, keys):
+        dom = {k:target[k] for k in keys}
+        self._domain = makeDomain(MultiDomain.make(dom))
+        self._target = makeDomain(target)
+        self._keys = keys
+        self._capability = self.TIMES | self.ADJOINT_TIMES
+
+    def apply(self, x, mode):
+        self._check_input(x, mode)
+        if mode == self.TIMES:
+            res = {}
+            for k in self._target.keys():
+                res[k] = x[k] if k in self._keys else full(self._target[k], 0.)
+            res = MultiField.from_dict(res, domain=self._target)
+        else:
+            res = {x[k] for k in self._keys}
+            res = MultiField.from_dict(res, domain=self._domain)
+        return res
+
 
 class Taylor(Operator):
     """Class describing a Taylor approximation up to a given order
@@ -82,8 +106,19 @@ class Taylor(Operator):
     def __add__(self, other):
         if isinstance(other, Taylor):
             assertEqual(self.maxorder, other.maxorder)
-            assertEqual(self.target, other.target)
-            return self.new(self.val+other.val, self.tensors + other.tensors)
+            if self.target == other.target:
+                return self.new(self.val+other.val, self.tensors + other.tensors)
+            else:
+                assertIsinstance(self.target, MultiDomain)
+                assertIsinstance(other.target, MultiDomain)
+                new_target = MultiDomain.union((self.target, other.target))
+                t1 = self.new_from_lin(
+                        _MultiFieldInserter(new_target, self.target.keys())
+                                      ).prepend(self)
+                t2 = other.new_from_lin(
+                        _MultiFieldInserter(new_target, other.target.keys())
+                                       ).prepend(other)
+                return t1 + t2
         if isinstance(other, Field) or isinstance(other, MultiField):
             assertEqual(self.target, other.domain)
             return self.new(self.val+other, self.tensors)
@@ -97,6 +132,19 @@ class Taylor(Operator):
             assertEqual(self.maxorder, other.maxorder)
             assertEqual(self.target, other.target)
             return self.new(self.val-other.val, self.tensors - other.tensors)
+            if self.target == other.target:
+                return self.new(self.val-other.val, self.tensors - other.tensors)
+            else:
+                assertIsinstance(self.target, MultiDomain)
+                assertIsinstance(other.target, MultiDomain)
+                new_target = MultiDomain.union((self.target, other.target))
+                t1 = self.new_from_lin(
+                        _MultiFieldInserter(new_target, self.target.keys())
+                                      ).prepend(self)
+                t2 = other.new_from_lin(
+                        _MultiFieldInserter(new_target, other.target.keys())
+                                       ).prepend(other)
+                return t1 - t2
         if isinstance(other, Field) or isinstance(other, MultiField):
             assertEqual(self.target, other.domain)
             return self.new(self.val-other, self.tensors)
@@ -104,9 +152,7 @@ class Taylor(Operator):
 
     def __rsub__(self, other):
         if isinstance(other, Taylor):
-            assertEqual(self.maxorder, other.maxorder)
-            assertEqual(self.target, other.target)
-            return self.new(other.val-self.val, other.tensors-self.tensors)
+            return other.__sub__(self)
         if isinstance(other, Field) or isinstance(other, MultiField):
             assertEqual(self.target, other.domain)
             t = self.__neg__()
