@@ -54,7 +54,8 @@ class FFTInterpolator(LinearOperator):
         dist = [list(dom.distances) for dom in self.domain]
         dist = np.array(dist).reshape(-1, 1)
         pos = pos / dist
-        self._gridder = Gridder(self._domain, pos.T, eps, nthreads)
+        gridderdom = RGSpace(self.domain.shape)
+        self._gridder = Gridder(gridderdom, pos.T, eps, nthreads)
         self._ht = HartleyOperator(self._domain)
         self._capability = self.TIMES | self.ADJOINT_TIMES
         self._target = self._gridder.domain
@@ -68,8 +69,9 @@ class FFTInterpolator(LinearOperator):
             x = ht(x)
             x = makeField(gridder.target, np.fft.fftshift(x.val))
             x = gridder.adjoint(x)
-            return x.real + x.imag
+            x = x.real + x.imag
         else:
             x = gridder(x + 1j*x)
             x = makeField(ht.target, np.fft.fftshift(x.val))
-            return ht.adjoint(x)
+            x = ht.adjoint(x)
+        return x/self.domain.total_volume()
