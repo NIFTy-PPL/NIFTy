@@ -17,13 +17,16 @@
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
 
 import numpy as np
-from .harmonic_operators import HartleyOperator
-from ..sugar import makeDomain, makeField
-from .linear_operator import LinearOperator
+
 from ..library.gridder import Gridder
+from ..sugar import makeDomain, makeField
+from .harmonic_operators import HartleyOperator
+from ..domains.rg_space import RGSpace
+from .linear_operator import LinearOperator
+
 
 class FFTInterpolator(LinearOperator):
-    """ FFT Interpolation using Gridder and HartleyOperator
+    """FFT Interpolation using Gridder and HartleyOperator
 
     Parameters
     ---------
@@ -32,12 +35,11 @@ class FFTInterpolator(LinearOperator):
         Positions at which to interpolate, shape (dim, ndata)
     eps :
     nthreads :
+
     Notes
     ----
     #FIXME Documentation from Philipp ? PBCs? / Torus?
     """
-
-
     def __init__(self, domain, pos, eps=2e-10, nthreads=1):
         self._domain = makeDomain(domain)
         if not isinstance(pos, np.ndarray):
@@ -50,7 +52,7 @@ class FFTInterpolator(LinearOperator):
             if domain.shape[ii] % 2 != 0:
                 raise ValueError("even number of samples is required for gridding operation")
         dist = [list(dom.distances) for dom in self.domain]
-        dist = np.array(dist).reshape(-1,1)
+        dist = np.array(dist).reshape(-1, 1)
         pos = pos / dist
         self._gridder = Gridder(self._domain, pos.T, eps, nthreads)
         self._ht = HartleyOperator(self._domain)
@@ -64,13 +66,10 @@ class FFTInterpolator(LinearOperator):
         nx, ny = ht.target.shape
         if mode == self.TIMES:
             x = ht(x)
-            #FIXME np.fft.fftshift instead of roller // This way?
             x = makeField(gridder.target, np.fft.fftshift(x.val))
-            # x = makeField(gridder.target, np.roll(x.val, (nx//2, ny//2), axis=(0, 1)))
             x = gridder.adjoint(x)
             return x.real + x.imag
         else:
             x = gridder(x + 1j*x)
             x = makeField(ht.target, np.fft.fftshift(x.val))
-            # x = makeField(ht.target, np.roll(x.val, (-nx//2, -ny//2), axis=(0, 1)))
             return ht.adjoint(x)
