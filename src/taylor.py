@@ -41,14 +41,10 @@ class _MultiFieldInserter(LinearOperator):
     def apply(self, x, mode):
         self._check_input(x, mode)
         if mode == self.TIMES:
-            res = {}
-            for k in self._target.keys():
-                res[k] = x[k] if k in self._keys else full(self._target[k], 0.)
-            res = MultiField.from_dict(res, domain=self._target)
+            res = {k:x[k] if k in self._keys else full(self._target[k], 0.) for k in self._target.keys()}
         else:
-            res = {x[k] for k in self._keys}
-            res = MultiField.from_dict(res, domain=self._domain)
-        return res
+            res = {k:x[k] for k in self._keys}
+        return MultiField.from_dict(res, domain=self._tgt(mode))
 
 
 class Taylor(Operator):
