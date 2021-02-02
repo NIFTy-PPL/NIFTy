@@ -242,7 +242,7 @@ class GaussianEnergy(EnergyOperator):
         not. Note that for a complex Gaussian the inverse_covariance is
         .. math ::
         (<ff^dagger>)^{-1}_P(f)/2,
-        where the additional factor of 2 is necessary because the 
+        where the additional factor of 2 is necessary because the
         domain of s has double as many dimensions as in the real case.
 
     Note
