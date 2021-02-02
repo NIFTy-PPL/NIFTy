@@ -224,6 +224,23 @@ def testZeroPadder(space, factor, dtype, central):
     ift.extra.check_linear_operator(op, dtype, dtype)
 
 
+@pmp('space', [0, 2])
+@pmp('factor', [1, 2, 2.7])
+@pmp('offset', [False, True])
+def testOffsetZeroPadder(space, factor, offset, dtype):
+    dom = (ift.RGSpace(4), ift.UnstructuredDomain(5), ift.RGSpace(3, 4),
+           ift.HPSpace(2))
+    newshape = [int(factor*ll) for ll in dom[space].shape]
+
+    if offset and factor > 1:
+        offset_val = (1,) * len(dom[space].shape)
+    else:
+        offset_val = None
+
+    op = ift.OffsetFieldZeroPadder(dom, newshape, space, offset_val)
+    ift.extra.check_linear_operator(op, dtype, dtype)
+
+
 @pmp('args', [[ift.RGSpace((13, 52, 40)), (4, 6, 25), None],
               [ift.RGSpace((128, 128)), (45, 48), 0],
               [ift.RGSpace(13), (7,), None],
