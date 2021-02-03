@@ -39,6 +39,7 @@ class FFTInterpolator(LinearOperator):
     Notes
     ----
     #FIXME Documentation from Philipp ? PBCs? / Torus?
+    #NOTE implement Switch for PhiNuFFT?
     """
     def __init__(self, domain, pos, eps=2e-10, nthreads=1):
         self._domain = makeDomain(domain)
