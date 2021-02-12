@@ -65,3 +65,47 @@ class Gridder(LinearOperator):
                            self._eps, False, self._nthreads, 0)
             res = res.reshape((-1,))
         return makeField(self._tgt(mode), res)
+
+
+class FinuFFT(LinearOperator):
+    """
+    Operator computing nonuniformian FFTs using finufft package
+
+    Parameters
+    ----------
+    target:
+    pos:
+    eps:
+
+    """
+    def __init__(self, target, pos, eps=2e-10):
+        self._capability = self.TIMES | self.ADJOINT_TIMES
+        self._target = makeDomain(target)
+        self._domain = DomainTuple.make(
+            UnstructuredDomain((pos.shape[0])))
+        pos = (pos*self._target[0].distances)  * 2*np.pi % (2*np.pi)
+        if pos.ndim > 1:
+            self._pos = [pos[:, k] for k in range(pos.shape[1])]
+            self._method_strings = ('nufft' + str(pos.shape[1]) + 'd1',
+                                    'nufft' + str(pos.shape[1]) + 'd2')
+        else:
+            self._pos = pos
+            self._method_strings = ('nufft1d1' , 'nufft1d2')
+        self._eps = float(eps/10) # @ TODO Philipp, how do you know?
+
+    def apply(self, x, mode):
+        self._check_input(x,mode)
+        x = x.val
+        import finufft
+        if mode == self.TIMES:
+            x = np.copy(x)
+            res = getattr(finufft, self._method_strings[0])(*self._pos,
+                                                            c=x,
+                                                            n_modes=self._target[0].shape,
+                                                            eps= self._eps).real
+        #TODO is this .real needed?
+        if mode == self.ADJOINT_TIMES:
+            res = getattr(finufft, self._method_strings[1])(*self._pos,
+                                                            f=x,
+                                                            eps= self._eps)
+        return makeField(self._tgt(mode), res)

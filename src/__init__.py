@@ -88,6 +88,7 @@ from .library.wiener_filter_curvature import WienerFilterCurvature
 from .library.adjust_variances import (make_adjust_variances_hamiltonian,
                                        do_adjust_variances)
 from .library.gridder import Gridder
+from .library.gridder import FinuFFT
 from .library.correlated_fields import CorrelatedFieldMaker
 from .library.correlated_fields_simple import SimpleCorrelatedField
 
