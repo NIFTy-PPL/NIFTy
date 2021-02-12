@@ -38,8 +38,7 @@ class Gridder(LinearOperator):
             raise ValueError("uv must be a 2D array")
         if uv.shape[1] != 2:
             raise ValueError("second dimension of uv must have length 2")
-        self._domain = DomainTuple.make(
-            UnstructuredDomain((uv.shape[0])))
+        self._domain = DomainTuple.make(UnstructuredDomain((uv.shape[0])))
         # wasteful hack to adjust to shape required by ducc0.wgridder
         self._uvw = np.empty((uv.shape[0], 3), dtype=np.float64)
         self._uvw[:, 0:2] = uv
@@ -81,9 +80,9 @@ class FinuFFT(LinearOperator):
     def __init__(self, target, pos, eps=2e-10):
         self._capability = self.TIMES | self.ADJOINT_TIMES
         self._target = makeDomain(target)
-        self._domain = DomainTuple.make(
-            UnstructuredDomain((pos.shape[0])))
+        self._domain = DomainTuple.make(UnstructuredDomain((pos.shape[0])))
         pos = (pos*self._target[0].distances)  * 2*np.pi % (2*np.pi)
+        self._eps = float(eps/10) # @ TODO Philipp, how do you know?
         if pos.ndim > 1:
             self._pos = [pos[:, k] for k in range(pos.shape[1])]
             self._method_strings = ('nufft' + str(pos.shape[1]) + 'd1',
@@ -91,7 +90,6 @@ class FinuFFT(LinearOperator):
         else:
             self._pos = pos
             self._method_strings = ('nufft1d1' , 'nufft1d2')
-        self._eps = float(eps/10) # @ TODO Philipp, how do you know?
 
     def apply(self, x, mode):
         self._check_input(x,mode)
