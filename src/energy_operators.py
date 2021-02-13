@@ -14,7 +14,7 @@ class StandardHamiltonian(Likelihood):
         self._nll = likelihood
 
         def joined_hamiltonian(primals):
-            return self._nll(primals) + makeField(primals).norm()
+            return self._nll(primals) + makeField(primals).norm()/2
 
         def joined_metric(primals, tangents):
             return just_add(self._nll.metric(primals, tangents), tangents)
