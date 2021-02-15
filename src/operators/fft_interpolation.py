@@ -18,7 +18,7 @@
 
 import numpy as np
 
-from ..library.gridder import FinuFFT
+from ..library.nft import FinuFFT
 from ..sugar import makeDomain, makeField
 from .harmonic_operators import HartleyOperator
 from ..domains.rg_space import RGSpace
