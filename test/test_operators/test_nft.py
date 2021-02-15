@@ -60,6 +60,7 @@ def test_gridding(nxdirty, nydirty, N, eps):
     ift.myassert(_l2error(dft, pynu) < eps)
 
 
+
 def test_cartesian():
     nx, ny = 32, 42
     dstx, dsty = 0.3, 0.2
@@ -101,3 +102,120 @@ def test_build(nxdirty, nydirty, N, eps):
     # We set rtol=eps here, because the gridder operator only guarantees
     # adjointness to this accuracy.
     ift.extra.check_linear_operator(RF, cmplx, flt, only_r_linear=True, rtol=eps)
+
+@pmp('eps', [1e-2, 1e-4, 1e-7, 1e-10, 1e-11, 1e-12, 2e-13])
+@pmp('nxdirty', [32, 128])
+@pmp('N', [1, 10 , 100])
+def test_finu1d(nxdirty, N, eps):
+    pos = ift.random.current_rng().random((N)) - 0.5
+    vis = (ift.random.current_rng().standard_normal(N)
+           + 1j*ift.random.current_rng().standard_normal(N))
+
+    if N > 2:
+        pos[-1] = 0
+        pos[-2] = 1e-5
+    # Nifty
+    dom = ift.RGSpace((nxdirty), distances=0.2)
+    dstx = dom.distances
+    pos = pos /dstx
+    Op = ift.FinuFFT(dom, pos=pos, eps=eps)
+    vis2 = ift.makeField(ift.UnstructuredDomain(vis.shape), vis)
+    pynu = Op(vis2).val
+    # DFT
+    x = -nxdirty/2 + np.arange(nxdirty)
+
+    dft = pynu*0
+    print(x)
+    print(dstx)
+    for i in range(N):
+        dft += (
+            vis[i]*np.exp(2j*np.pi*(x*pos[i]*dstx))).real
+    ift.myassert(_l2error(dft, pynu) < eps)
+
+@pmp('eps', [1e-2, 1e-4, 1e-7, 1e-10, 1e-11, 1e-12, 2e-13])
+@pmp('nxdirty', [32, 128])
+@pmp('nydirty', [32, 48, 128])
+@pmp('N', [1, 10, 100])
+def test_finu2d(nxdirty, nydirty, N, eps):
+    uv = ift.random.current_rng().random((N, 2)) - 0.5
+    vis = (ift.random.current_rng().standard_normal(N)
+           + 1j*ift.random.current_rng().standard_normal(N))
+
+    if N > 2:
+        uv[-1] = 0
+        uv[-2] = 1e-5
+    # Nifty
+    dom = ift.RGSpace((nxdirty, nydirty), distances=(0.2, 1.12))
+    dstx, dsty = dom.distances
+    uv[:, 0] = uv[:, 0]/dstx
+    uv[:, 1] = uv[:, 1]/dsty
+    Op = ift.FinuFFT(dom, pos=uv, eps=eps)
+    vis2 = ift.makeField(ift.UnstructuredDomain(vis.shape), vis)
+
+    pynu = Op(vis2).val
+    # DFT
+    x, y = np.meshgrid(
+        *[-ss/2 + np.arange(ss) for ss in [nxdirty, nydirty]], indexing='ij')
+    dft = pynu*0.
+    for i in range(N):
+        dft += (
+            vis[i]*np.exp(2j*np.pi*(x*uv[i, 0]*dstx + y*uv[i, 1]*dsty))).real
+    ift.myassert(_l2error(dft, pynu) < eps)
+
+
+# @pmp('eps', [1e-2, 1e-4, 1e-7, 1e-10, 1e-11, 2e-13])
+# @pmp('nxdirty', [32, 128])
+# @pmp('nydirty', [32, 48, 128])
+# @pmp('nzdirty', [32, 54]) #FIXME crashes with 55
+# @pmp('N', [1, 10, 100])
+# def test_finu3d(nxdirty, nydirty, nzdirty, N, eps):
+#     pos = ift.random.current_rng().random((N, 3)) - 0.5
+#     vis = (ift.random.current_rng().standard_normal(N)
+#            + 1j*ift.random.current_rng().standard_normal(N))
+
+#     # if N > 2:
+#     #     pos[-1] = 0
+#     #     pos[-2] = 1e-5
+#     # Nifty
+#     dom = ift.RGSpace((nxdirty, nydirty, nzdirty), distances=(0.2, 1.12, 0.7))
+#     dstx, dsty, dstz = dom.distances
+#     pos[:, 0] = pos[:, 0]/dstx
+#     pos[:, 1] = pos[:, 1]/dsty
+#     pos[:, 2] = pos[:, 2]/dstz
+#     Op = ift.FinuFFT(dom, pos=pos, eps=eps)
+#     vis2 = ift.makeField(ift.UnstructuredDomain(vis.shape), vis)
+
+#     pynu = Op(vis2).val
+#     # DFT
+#     x, y, z= np.meshgrid(
+#         *[-ss/2 + np.arange(ss) for ss in [nxdirty, nydirty, nzdirty]], indexing='ij')
+#     dft = pynu*0.
+#     for i in range(N):
+#         dft += (
+#             vis[i]*np.exp(2j*np.pi*(x*pos[i, 0]*dstx + y*pos[i, 1]*dsty + z*pos[i, 2]*dstz))).real
+#     ift.myassert(_l2error(dft, pynu) < eps)
+
+#NOTE Could we switch to FFT here?
+#NOTE simplify to one test
+#NOTE test cartesian
+
+
+@pmp('eps', [1e-2, 1e-6, 2e-13])
+@pmp('space', [ift.RGSpace(128),
+               ift.RGSpace(32, 64),
+               ift.RGSpace([4, 27, 32])])
+@pmp('N', [ 10, 100])
+def test_build_finufft(space, N, eps):
+    # if len(space.shape) > 1:
+    pos = ift.random.current_rng().random((N, len(space.shape))) - 0.5
+    # else:
+    #     pos = ift.random.current_rng().random(N) - 0.5
+    RF = ift.FinuFFT(space, pos=pos, eps=eps)
+    # Consistency checks
+    flt = np.float64
+    cmplx = np.complex128
+    # We set rtol=eps here, because the gridder operator only guarantees
+    # adjointness to this accuracy.
+    ift.extra.check_linear_operator(RF, cmplx, flt, only_r_linear=True, rtol=eps)
+
+#FIXME somethings wrong with N = 1

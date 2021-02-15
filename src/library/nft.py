@@ -81,8 +81,6 @@ class FinuFFT(LinearOperator):
         self._capability = self.TIMES | self.ADJOINT_TIMES
         self._target = makeDomain(target)
         self._domain = DomainTuple.make(UnstructuredDomain((pos.shape[0])))
-        if pos.ndim != 2:
-            raise ValueError("sampling_points must be a 2D array")
         pos = (pos*self._target[0].distances)  * 2*np.pi % (2*np.pi)
         self._eps = float(eps/10) # @ TODO Philipp, how do you know?
         if pos.ndim > 1:
@@ -90,7 +88,7 @@ class FinuFFT(LinearOperator):
             self._method_strings = ('nufft' + str(pos.shape[1]) + 'd1',
                                     'nufft' + str(pos.shape[1]) + 'd2')
         else:
-            self._pos = pos
+            self._pos = [pos]
             self._method_strings = ('nufft1d1' , 'nufft1d2')
 
     def apply(self, x, mode):
