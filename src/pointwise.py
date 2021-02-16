@@ -141,5 +141,8 @@ ptw_dict = {
     "power": (np.power, _power_helper),
     "clip": (np.clip, _clip_helper),
     "softplus": (softplus, _softplus_helper),
-    "exponentiate": (exponentiate, _exponentiate_helper)
+    "exponentiate": (exponentiate, _exponentiate_helper),
+    "arcsin": (np.arcsin, lambda v: (np.arcsin(v), 1./np.sqrt(1.-v**2))),
+    "arccos": (np.arccos, lambda v: (np.arccos(v), -1./np.sqrt(1.-v**2))),
+    "arctan": (np.arctan, lambda v: (np.arctan(v), 1./(1.+v**2)))
     }
