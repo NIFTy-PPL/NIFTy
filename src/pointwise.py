@@ -82,6 +82,14 @@ def _clip_helper(v, a_min, a_max):
         tmp2 = np.where(tmp == a_max, 0., tmp2)
     return (tmp, tmp2)
 
+def _step_helper(v, grad):
+    if np.issubdtype(v.dtype, np.complexfloating):
+        raise TypeError("Argument must not be complex")
+    r = np.zeros(v.shape)
+    r[v>=0.] = 1.
+    if grad:
+        return (r, np.zeros(v.shape))
+    return r
 
 def softplus(v):
     fv = np.empty(v.shape, dtype=np.float64 if np.isrealobj(v) else np.complex128)
@@ -144,5 +152,6 @@ ptw_dict = {
     "exponentiate": (exponentiate, _exponentiate_helper),
     "arcsin": (np.arcsin, lambda v: (np.arcsin(v), 1./np.sqrt(1.-v**2))),
     "arccos": (np.arccos, lambda v: (np.arccos(v), -1./np.sqrt(1.-v**2))),
-    "arctan": (np.arctan, lambda v: (np.arctan(v), 1./(1.+v**2)))
+    "arctan": (np.arctan, lambda v: (np.arctan(v), 1./(1.+v**2))),
+    "unitstep": (lambda v: _step_helper(v, False), lambda v: _step_helper(v, True))
     }
