@@ -163,7 +163,7 @@ class LaplaceOperator(Operator):
     """
     Transforms a Gaussian with uni covariance and zero mean to a Laplace distribution
     via a uniform distribution.
-
+# VE TODO implement sigma
     """
     def __init__(self, domain):
         self._target = self._domain = DomainTuple.make(domain)
