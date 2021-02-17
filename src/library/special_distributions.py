@@ -17,7 +17,7 @@
 
 import numpy as np
 from scipy.interpolate import CubicSpline
-from scipy.stats import invgamma, norm
+from scipy.stats import invgamma, norm, laplace
 
 from .. import random
 from ..domain_tuple import DomainTuple
@@ -158,3 +158,30 @@ class UniformOperator(Operator):
     def inverse(self, field):
         res = norm._ppf(field.val/self._scale - self._loc)
         return Field(field.domain, res)
+
+class LaplaceOperator(Operator):
+    """
+    Transforms a Gaussian with uni covariance and zero mean to a Laplace distribution
+    via a uniform distribution.
+
+    """
+    def __init__(self, domain):
+        self._target = self._domain = DomainTuple.make(domain)
+
+    def apply(self, x):
+        self._check_input(x)
+        lin = x.jac is not None
+        xval = x.val.val if lin else x.val
+        res = Field(self._target, laplace._ppf(norm._cdf(xval)))
+        if not lin:
+            return res
+        jac = makeOp(Field(self.domain, self._jac_func(norm._cdf(xval))*norm._pdf(xval)))
+        return x.new(res, jac)
+
+    def inverse(self, x):
+        res = laplace._cdf(x.val)
+        return Field(x.domain, res)
+
+    def _jac_func(self, x):
+        res = np.where(x > 0.5, (1/(1-x)), (1/x))
+        return res
