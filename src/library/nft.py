@@ -84,8 +84,8 @@ class FinuFFT(LinearOperator):
         self._eps = float(eps)
         dst = np.array(self._target[0].distances)
         pos = (2*np.pi*pos*dst) % (2*np.pi)
-        self._eps = float(eps/10)
-        if pos.ndim > 1:
+        self._eps = float(eps)
+        if pos.shape[0] > 1:
             self._pos = [pos[:, k] for k in range(pos.shape[1])]
             s = 'nufft' + str(pos.shape[1]) + 'd'
         else:
@@ -99,7 +99,6 @@ class FinuFFT(LinearOperator):
         if mode == self.TIMES:
             res = self._f(*self._pos, c=x.val_rw(),
                           n_modes=self._target[0].shape, eps=self._eps).real
-        # TODO is this .real needed?
-        if mode == self.ADJOINT_TIMES:
+        else:
             res = self._fadj(*self._pos, f=x.val, eps=self._eps)
         return makeField(self._tgt(mode), res)
