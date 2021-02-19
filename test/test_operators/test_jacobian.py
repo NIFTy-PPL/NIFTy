@@ -97,6 +97,8 @@ def testSpecialDistributionOps(space, seed):
         ift.extra.check_operator(model, pos, ntries=20)
         model = ift.UniformOperator(space, alpha, q)
         ift.extra.check_operator(model, pos, ntries=20)
+        model = ift.LaplaceOperator(space, alpha, q)
+        ift.extra.check_operator(model, pos, ntries=20)
 
 
 @pmp('neg', [True, False])
