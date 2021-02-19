@@ -59,6 +59,7 @@ def test_gridding(nxdirty, nydirty, N, eps):
             vis[i]*np.exp(2j*np.pi*(x*uv[i, 0]*dstx + y*uv[i, 1]*dsty))).real
     ift.myassert(_l2error(dft, pynu) < eps)
 
+
 def test_cartesian():
     nx, ny = 32, 42
     dstx, dsty = 0.3, 0.2
@@ -84,6 +85,7 @@ def test_cartesian():
 
     np.testing.assert_allclose(res, res1*vol)
 
+
 @pmp('eps', [1e-2, 1e-6, 2e-13])
 @pmp('nxdirty', [32, 128])
 @pmp('nydirty', [32, 48, 128])
@@ -99,6 +101,7 @@ def test_build(nxdirty, nydirty, N, eps):
     # We set rtol=eps here, because the gridder operator only guarantees
     # adjointness to this accuracy.
     ift.extra.check_linear_operator(RF, cmplx, flt, only_r_linear=True, rtol=eps)
+
 
 @pmp('eps', [1e-2, 1e-4, 1e-7, 1e-10, 1e-11, 1e-12, 2e-13])
 @pmp('nxdirty', [32, 128])
@@ -125,6 +128,7 @@ def test_finu1d(nxdirty, N, eps):
     for i in range(N):
         dft += (vis[i]*np.exp(2j*np.pi*(x*pos[i]*dstx))).real
     ift.myassert(_l2error(dft, pynu) < eps*10)
+
 
 @pmp('eps', [1e-2, 1e-4, 1e-7, 1e-10, 1e-11, 1e-12, 2e-13])
 @pmp('nxdirty', [32, 128])
