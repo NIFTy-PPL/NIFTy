@@ -40,7 +40,7 @@ class FFTInterpolator(LinearOperator):
     ----
     #FIXME Documentation from Philipp
     """
-    def __init__(self, domain, pos, eps=2e-10):
+    def __init__(self, domain, pos, eps=2e-12):
         self._domain = makeDomain(domain)
         if not isinstance(pos, np.ndarray):
             raise TypeError("sampling_points need to be a numpy.ndarray")

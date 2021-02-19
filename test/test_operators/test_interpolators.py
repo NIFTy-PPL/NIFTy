@@ -41,7 +41,7 @@ def test_grid_points(interpolator):
     ift.extra.check_linear_operator(R, atol=1e-7, rtol=1e-7)
     inp = ift.from_random(R.domain)
     out = R(inp).val
-    np.testing.assert_allclose(out, inp.val.reshape(-1), rtol=1e-5) #Fails otherwise....
+    np.testing.assert_allclose(out, inp.val.reshape(-1), rtol=1e-7) #Fails otherwise....
 
 # sampling_points = np.array([[0.25], [0.]])
 # R = ift.FFTInterpolator(sp, sampling_points)
