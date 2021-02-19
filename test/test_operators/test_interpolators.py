@@ -23,13 +23,12 @@ import nifty7 as ift
 pmp = pytest.mark.parametrize
 
 
-
-@pmp('interpolator', ["FFTInterpolator", "LinearInterpolator"])
+@pmp("interpolator", ["FFTInterpolator", "LinearInterpolator"])
 def test_grid_points(interpolator):
     res = 64
     vol = 2
-    sp = ift.RGSpace([res, res], [vol/res, vol/res])
-    mg = np.mgrid[(slice(0, res),)*2]
+    sp = ift.RGSpace([res, res], [vol / res, vol / res])
+    mg = np.mgrid[(slice(0, res),) * 2]
     mg = np.array(list(map(np.ravel, mg)))
 
     dist = [list(sp.distances)]

@@ -59,7 +59,6 @@ class FFTInterpolator(LinearOperator):
         self._check_input(x, mode)
         ht = self._ht
         finu = self._finu
-        nx, ny = ht.target.shape
         if mode == self.TIMES:
             x = ht(x)
             x = makeField(finu.target, np.fft.fftshift(x.val))
