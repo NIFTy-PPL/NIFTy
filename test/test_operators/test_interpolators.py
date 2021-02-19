@@ -29,7 +29,7 @@ def test_grid_points(interpolator):
     res = 64
     vol = 2
     sp = ift.RGSpace([res, res], [vol/res, vol/res])
-    mg = np.mgrid[(slice(0,res),)*2]
+    mg = np.mgrid[(slice(0, res),)*2]
     mg = np.array(list(map(np.ravel, mg)))
 
     dist = [list(sp.distances)]
@@ -41,18 +41,7 @@ def test_grid_points(interpolator):
     ift.extra.check_linear_operator(R, atol=1e-7, rtol=1e-7)
     inp = ift.from_random(R.domain)
     out = R(inp).val
-    np.testing.assert_allclose(out, inp.val.reshape(-1), rtol=1e-7) #Fails otherwise....
-
-# sampling_points = np.array([[0.25], [0.]])
-# R = ift.FFTInterpolator(sp, sampling_points)
-# R1 = ift.LinearInterpolator(sp, sampling_points)
-
-# p = ift.Plot()
-# p.add(R.adjoint(ift.full(R.target, 1)), title="FFT")
-# p.add(R1.adjoint(ift.full(R.target, 1)), title="Linear")
-# p.output(name="debug.png", ny=1, xsize=12)
-
+    np.testing.assert_allclose(out, inp.val.reshape(-1), rtol=1e-7)
 
 
 #TODO Generate one Fourriermode, read out between gridpoints, check if right value
-#FIXME unfortunately this fails with relative tol of 1e-6
