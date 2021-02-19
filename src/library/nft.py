@@ -71,7 +71,7 @@ class FinuFFT(LinearOperator):
 
     Parameters
     ----------
-    target:
+    target: must be RGSpace?
     pos:
     eps:
 
@@ -85,11 +85,11 @@ class FinuFFT(LinearOperator):
         dst = np.array(self._target[0].distances)
         pos = (2*np.pi*pos*dst) % (2*np.pi)
         self._eps = float(eps)
-        if pos.shape[0] > 1:
+        if len(target.shape) > 1:
             self._pos = [pos[:, k] for k in range(pos.shape[1])]
             s = 'nufft' + str(pos.shape[1]) + 'd'
         else:
-            self._pos = [pos]
+            self._pos = [pos.ravel()]
             s = 'nufft1d'
         self._f = getattr(finufft, s+'1')
         self._fadj = getattr(finufft, s+'2')
@@ -101,4 +101,6 @@ class FinuFFT(LinearOperator):
                           n_modes=self._target[0].shape, eps=self._eps).real
         else:
             res = self._fadj(*self._pos, f=x.val, eps=self._eps)
+            if res.ndim == 0:
+                res = np.array([res])
         return makeField(self._tgt(mode), res)
