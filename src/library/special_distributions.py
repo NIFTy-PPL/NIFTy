@@ -163,16 +163,25 @@ class LaplaceOperator(Operator):
     """
     Transforms a Gaussian with uni covariance and zero mean to a Laplace distribution
     via a uniform distribution.
-# VE TODO implement sigma
+
+    Parameters
+    -----------
+    domain : Domain, tuple of Domain or DomainTuple
+        The domain on which the field shall be defined. This is at the same
+        time the domain and the target of the operator.
+    loc : float
+    scale : float
     """
-    def __init__(self, domain):
+    def __init__(self, domain, loc=0, scale=1):
         self._target = self._domain = DomainTuple.make(domain)
+        self._loc = float(loc)
+        self._scale = float(scale)
 
     def apply(self, x):
         self._check_input(x)
         lin = x.jac is not None
         xval = x.val.val if lin else x.val
-        res = Field(self._target, laplace._ppf(norm._cdf(xval)))
+        res = Field(self._target, laplace.ppf(norm._cdf(xval), self._loc, self._scale))
         if not lin:
             return res
         jac = makeOp(Field(self.domain, self._jac_func(norm._cdf(xval))*norm._pdf(xval)))
@@ -183,5 +192,5 @@ class LaplaceOperator(Operator):
         return Field(x.domain, res)
 
     def _jac_func(self, x):
-        res = np.where(x > 0.5, (1/(1-x)), (1/x))
+        res = self._scale*np.where(x > 0.5, (1/(1-x)), (1/x))
         return res
