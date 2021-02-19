@@ -23,7 +23,7 @@ import nifty7 as ift
 pmp = pytest.mark.parametrize
 
 
-@pmp("interpolator", ["FFTInterpolator", "LinearInterpolator"])
+@pmp("interpolator", "LinearInterpolator")
 def test_grid_points(interpolator):
     res = 64
     vol = 2
@@ -41,6 +41,3 @@ def test_grid_points(interpolator):
     inp = ift.from_random(R.domain)
     out = R(inp).val
     np.testing.assert_allclose(out, inp.val.reshape(-1), rtol=1e-7)
-
-
-#TODO Generate one Fourriermode, read out between gridpoints, check if right value
