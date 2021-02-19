@@ -23,8 +23,7 @@ import nifty7 as ift
 pmp = pytest.mark.parametrize
 
 
-@pmp("interpolator", "LinearInterpolator")
-def test_grid_points(interpolator):
+def test_grid_points():
     res = 64
     vol = 2
     sp = ift.RGSpace([res, res], [vol / res, vol / res])
@@ -35,7 +34,7 @@ def test_grid_points(interpolator):
     dist = np.array(dist).reshape(-1, 1)
 
     sampling_points = dist * mg
-    R = getattr(ift, interpolator)(sp, sampling_points)
+    R = ift.LinearInterpolator(sp, sampling_points)
 
     ift.extra.check_linear_operator(R, atol=1e-7, rtol=1e-7)
     inp = ift.from_random(R.domain)
