@@ -43,4 +43,26 @@ def test_grid_points(interpolator):
     np.testing.assert_allclose(out, inp.val.reshape(-1), rtol=1e-7)
 
 
-#TODO Generate one Fourriermode, read out between gridpoints, check if right value
+@pmp("npix", [37, 100])
+@pmp("vol", [1., 4.23])
+@pmp("phi", [0., 180., 31.2])
+@pmp("k", [0.32, 1.0, 1.32, 10.0])
+def test_fourier_interpolation(npix, vol, phi, k):
+    sp = ift.RGSpace(npix, vol / npix)
+
+    f = lambda x: np.sin(k * x / npix * 2 * np.pi + phi * np.pi / 180)
+    xs = np.mgrid[0:npix]*vol/npix
+    ys = ift.makeField(sp, f(xs))
+
+    pos = ift.random.Random.uniform(np.float, (1, 5)) * vol
+
+    pos = (np.arange(2*npix)/2/npix*vol)[None]
+    op = ift.FFTInterpolator(sp, pos)
+    res0 = op(ys)
+    res1 = f(ift.makeField(op.target, pos[0]))
+    tol = 1e-4
+    # import pylab as plt
+    # plt.plot(res0.val)
+    # plt.plot(res1.val)
+    # plt.show()
+    ift.extra.assert_allclose(res0, res1, rtol=tol, atol=tol)
