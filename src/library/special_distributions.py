@@ -136,7 +136,6 @@ class UniformOperator(Operator):
         The domain on which the field shall be defined. This is at the same
         time the domain and the target of the operator.
     loc: float
-
     scale: float
 
     """
