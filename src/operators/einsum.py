@@ -51,6 +51,9 @@ class MultiLinearEinsum(Operator):
 
     Notes
     -----
+    The indices of the tensors run along spaces, not the axes of the spaces.
+    For example, a matrix requires a product of two spaces, not one space with the combined shapes. 
+
     By convention :class:`MultiLinearEinsum` only performs operations with
     lower indices. Therefore no complex conjugation is performed on complex
     inputs. To achieve operations with upper/lower indices use
@@ -184,6 +187,9 @@ class LinearEinsum(LinearOperator):
 
     Notes
     -----
+    The indices of the tensors run along spaces, not the axes of the spaces.
+    For example, a matrix requires a product of two spaces, not one space with the combined shapes.
+
     By convention :class:`LinearEinsum` only performs operations with
     lower indices. Therefore no complex conjugation is performed on complex
     inputs or mf. To achieve operations with upper/lower indices use
