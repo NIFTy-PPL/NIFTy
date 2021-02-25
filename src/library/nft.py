@@ -26,6 +26,17 @@ from ..sugar import makeDomain, makeField
 
 
 class Gridder(LinearOperator):
+    """
+    Operator computing non-uniform 2D FFTs using ducc0 package.
+
+    Parameters
+    ----------
+    target : Domain, tuple of domains or DomainTuple. This must be a 2D RGSpace.
+    uv : coordinates of the data-points. This is supposed to be a 2D numpy.array
+    eps : requested precision
+    nthreads: @Parras, please fill this
+
+    """
     def __init__(self, target, uv, eps=2e-10, nthreads=1):
         self._capability = self.TIMES | self.ADJOINT_TIMES
         self._target = makeDomain(target)
@@ -67,19 +78,24 @@ class Gridder(LinearOperator):
 
 class FinuFFT(LinearOperator):
     """
-    Operator computing non-uniform FFTs using finufft package
+    Operator computing non-uniform 1D,2D and 3D FFTs using finufft package.
 
     Parameters
     ----------
-    target: must be RGSpace?
-    pos:
-    eps:
+    target : Domain, tuple of domains or DomainTuple.
+        This must be an RGSpace with 1 to 3 dimensions.
+    pos : coordinates of the data-points
+    eps: requested precision
 
     """
     def __init__(self, target, pos, eps=2e-10):
         import finufft
         self._capability = self.TIMES | self.ADJOINT_TIMES
         self._target = makeDomain(target)
+        if not isinstance(self._target[0], RGSpace):
+            raise TypeError("target needs to be an RGSpace")
+        if len(self._target.shape) > 3:
+            raise ValueError("Only 1D, 2D and 3D FFTs are supported by finufft")
         self._domain = DomainTuple.make(UnstructuredDomain((pos.shape[0])))
         self._eps = float(eps)
         dst = np.array(self._target[0].distances)
