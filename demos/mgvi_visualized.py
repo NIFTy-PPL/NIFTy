@@ -61,26 +61,27 @@ def main():
         return lh + prior
 
     z = np.exp(-1*np_ham(xx, yy))
-    plt.plot(y, np.sum(z, axis=0))
-    plt.xlabel('y')
-    plt.ylabel('unnormalized pdf')
-    plt.title('Marginal density')
-    plt.pause(2.0)
-    plt.close()
-    plt.plot(x*scale, np.sum(z, axis=1))
-    plt.xlabel('x')
-    plt.ylabel('unnormalized pdf')
-    plt.title('Marginal density')
-    plt.pause(2.0)
-    plt.close()
+    # plt.plot(y, np.sum(z, axis=0))
+    # plt.xlabel('y')
+    # plt.ylabel('unnormalized pdf')
+    # plt.title('Marginal density')
+    # plt.pause(2.0)
+    # plt.close()
+    # plt.plot(x*scale, np.sum(z, axis=1))
+    # plt.xlabel('x')
+    # plt.ylabel('unnormalized pdf')
+    # plt.title('Marginal density')
+    # plt.pause(2.0)
+    # plt.close()
 
     pos = ift.from_random(ham.domain, 'normal')
     MAP = ift.EnergyAdapter(pos, ham, want_metric=True)
     minimizer = ift.NewtonCG(
         ift.GradientNormController(iteration_limit=20, name='Mini'))
+    minimizer_mf = ift.ADVIOptimizer(10)
     MAP, _ = minimizer(MAP)
     map_xs, map_ys = [], []
-    for ii in range(10):
+    for ii in range(20):
         samp = (MAP.metric.draw_sample(from_inverse=True) + MAP.position).val
         map_xs.append(samp['a'])
         map_ys.append(samp['b'])
@@ -88,11 +89,14 @@ def main():
     minimizer = ift.NewtonCG(
         ift.GradientNormController(iteration_limit=2, name='Mini'))
     pos = ift.from_random(ham.domain, 'normal')
-    plt.figure(figsize=[12, 8])
-    for ii in range(15):
-        if ii % 3 == 0:
-            mgkl = ift.MetricGaussianKL.make(pos, ham, 40, False)
+    mf_model = ift.MeanfieldModel(ham.domain)
+    pos_mf = mf_model.get_initial_pos(initial_mean=pos)
+    mfkl = ift.ParametricGaussianKL.make(pos_mf,ham,mf_model,20,True)
 
+    plt.figure(figsize=[12, 8])
+    for ii in range(300):
+        if ii % 1 == 0:
+            mgkl = ift.MetricGaussianKL.make(pos, ham, 20, True)
         plt.cla()
         plt.imshow(z.T, origin='lower', norm=LogNorm(), vmin=1e-3,
                    vmax=np.max(z), cmap='gist_earth_r',
@@ -105,17 +109,27 @@ def main():
             samp = (samp + pos).val
             xs.append(samp['a'])
             ys.append(samp['b'])
+        xxs, yys = [], []
+        for samp in mfkl.samples:
+            samp = mf_model.generator((samp + mfkl.position)).val
+            xxs.append(samp['a'])
+            yys.append(samp['b'])
         plt.scatter(np.array(xs)*scale, np.array(ys), label='MGVI samples')
+        plt.scatter(np.array(xxs)*scale, np.array(yys), label='MFVI samples')
+
         plt.scatter(pos.val['a']*scale, pos.val['b'], label='MGVI latent mean')
         plt.scatter(np.array(map_xs)*scale, np.array(map_ys),
                     label='Laplace samples')
         plt.scatter(MAP.position.val['a']*scale, MAP.position.val['b'],
                     label='Maximum a posterior solution')
         plt.legend()
+        plt.ylim(-4,4)
+        plt.xlim(-8,8)
         plt.draw()
-        plt.pause(1.0)
+        plt.pause(0.01)
 
         mgkl, _ = minimizer(mgkl)
+        mfkl, _ = minimizer_mf(mfkl)
         pos = mgkl.position
     ift.logger.info('Finished')
     # Uncomment the following line in order to leave the plots open
