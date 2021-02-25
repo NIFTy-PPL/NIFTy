@@ -11,33 +11,35 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
-# Copyright(C) 2019 Max-Planck-Society
+# Copyright(C) 2019-2021 Max-Planck-Society
 #
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
 
 import numpy as np
 from scipy.constants import speed_of_light
+from ducc0.wgridder import ms2dirty, dirty2ms
 
 from ..domain_tuple import DomainTuple
 from ..domains.rg_space import RGSpace
 from ..domains.unstructured_domain import UnstructuredDomain
 from ..operators.linear_operator import LinearOperator
 from ..sugar import makeDomain, makeField
+from ..fft import nthreads
 
 
 class Gridder(LinearOperator):
-    """
-    Operator computing non-uniform 2D FFTs using ducc0 package.
+    """Compute non-uniform 2D FFT with ducc.
 
     Parameters
     ----------
-    target : Domain, tuple of domains or DomainTuple. This must be a 2D RGSpace.
-    uv : coordinates of the data-points. This is supposed to be a 2D numpy.array
-    eps : requested precision
-    nthreads: @Parras, please fill this
-
+    target : Domain, tuple of domains or DomainTuple.
+        Target domain, must be a single two-dimensional RGSpace.
+    uv : np.ndarray
+        Coordinates of the data-points, shape (n, 2).
+    eps : float
+        Requested precision, defaults to 2e-10.
     """
-    def __init__(self, target, uv, eps=2e-10, nthreads=1):
+    def __init__(self, target, uv, eps=2e-10):
         self._capability = self.TIMES | self.ADJOINT_TIMES
         self._target = makeDomain(target)
         for ii in [0, 1]:
@@ -56,7 +58,6 @@ class Gridder(LinearOperator):
         self._uvw[:, 0:2] = uv
         self._uvw[:, 2] = 0.
         self._eps = float(eps)
-        self._nthreads = int(nthreads)
 
     def apply(self, x, mode):
         self._check_input(x, mode)
@@ -64,29 +65,28 @@ class Gridder(LinearOperator):
         x = x.val
         nxdirty, nydirty = self._target[0].shape
         dstx, dsty = self._target[0].distances
-        from ducc0.wgridder import ms2dirty, dirty2ms
         if mode == self.TIMES:
             res = ms2dirty(self._uvw, freq, x.reshape((-1,1)), None, nxdirty,
                            nydirty, dstx, dsty, 0, 0,
-                           self._eps, False, self._nthreads, 0)
+                           self._eps, False, nthreads(), 0)
         else:
             res = dirty2ms(self._uvw, freq, x, None, dstx, dsty, 0, 0,
-                           self._eps, False, self._nthreads, 0)
+                           self._eps, False, nthreads(), 0)
             res = res.reshape((-1,))
         return makeField(self._tgt(mode), res)
 
 
 class FinuFFT(LinearOperator):
-    """
-    Operator computing non-uniform 1D,2D and 3D FFTs using finufft package.
+    """Compute non-uniform 1D, 2D and 3D FFTs with finufft.
 
     Parameters
     ----------
     target : Domain, tuple of domains or DomainTuple.
-        This must be an RGSpace with 1 to 3 dimensions.
-    pos : coordinates of the data-points
-    eps: requested precision
-
+        Target domain, must be an RGSpace with one to three dimensions.
+    pos : np.ndarray
+        Coordinates of the data-points, shape (n, ndim).
+    eps: float
+        Requested precision, defaults to 2e-10.
     """
     def __init__(self, target, pos, eps=2e-10):
         import finufft
