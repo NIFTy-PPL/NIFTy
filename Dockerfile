@@ -13,6 +13,7 @@ RUN apt-get update && apt-get install -y \
     python3-mpi4py python3-matplotlib \
   # more optional NIFTy dependencies
   && pip3 install ducc0 \
+  && pip3 install finufft \
   && pip3 install jupyter \
   && rm -rf /var/lib/apt/lists/*
 
