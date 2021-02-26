@@ -1,7 +1,5 @@
 import nifty7 as ift
-from parametric_KL import ParametricGaussianKL, MeanfieldModel
 from matplotlib import pyplot as plt
-from advi_optimizer import ADVIOptimizer
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation, either version 3 of the License, or
@@ -116,16 +114,16 @@ if __name__ == '__main__':
     ic_newton = ift.DeltaEnergyController(
         name='Newton', iteration_limit=1, tol_rel_deltaE=1e-8)
     # minimizer = ift.L_BFGS(ic_newton)
-    minimizer = ADVIOptimizer(steps=10)
+    minimizer = ift.ADVIOptimizer(steps=10)
 
     # Compute MAP solution by minimizing the information Hamiltonian
     H = ift.StandardHamiltonian(likelihood)
     initial_position = ift.from_random(domain, 'normal')
 
-    meanfield_model = MeanfieldModel(H.domain)
+    meanfield_model = ift.MeanfieldModel(H.domain)
     initial_position = meanfield_model.get_initial_pos()
     position = initial_position
-    KL = ParametricGaussianKL.make(initial_position,H,meanfield_model,3,False)
+    KL = ift.ParametricGaussianKL.make(initial_position,H,meanfield_model,3,False)
     plt.figure('data')
     plt.imshow(sky(mock_position).val)
     plt.pause(0.001)
