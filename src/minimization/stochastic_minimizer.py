@@ -15,7 +15,7 @@ class ADVIOptimizer(Minimizer):
 
     def _step(self, position, gradient):
         self.s = self.alpha * gradient**2 + (1-self.alpha)*self.s
-        self.rho = self.eta * self.counter**(-0.5+ self.epsilon) / (self.tau + sqrt(self.s))
+        self.rho = self.eta * self.counter**(-0.5+ self.epsilon) / (self.tau + (self.s).sqrt())
         new_position = position - self.rho * gradient
         self.counter += 1
         return new_position
