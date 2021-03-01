@@ -114,7 +114,7 @@ class DiagonalSelector(LinearOperator):
     def apply(self, x, mode):
         self._check_mode(mode)
         if mode == self.TIMES:
-            result = np.diag(x.val[0])
+            result = np.diag(x.val)
             return makeField(self._target,result)
         return makeField(self._domain,np.diag(x.val).reshape(self._domain.shape))
 
