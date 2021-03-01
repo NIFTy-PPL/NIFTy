@@ -55,7 +55,7 @@ class FullCovarianceModel():
         co_part = PartialExtractor(matmul_setup_dom, co.domain)
         lat_part = PartialExtractor(matmul_setup_dom, lat.domain)
         matmul_setup = lat_part.adjoint @ lat.adjoint @ lat + co_part.adjoint @ co.adjoint @ cov
-
+        breakpoint()
         MatMult = MultiLinearEinsum(matmul_setup.domain,'ij,ki->jk', key_order=('co','latent'))
 
         Resp = Respacer(MatMult.target, mean.target)

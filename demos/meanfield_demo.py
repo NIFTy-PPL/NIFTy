@@ -58,24 +58,10 @@ def main():
 
 
 if __name__ == '__main__':
-        # Choose space on which the signal field is defined
-    if len(sys.argv) == 2:
-        mode = int(sys.argv[1])
-    else:
-        mode = 1
 
-    if mode == 0:
-        # One-dimensional regular grid with uniform exposure of 10
-        position_space = ift.RGSpace(1024)
-        exposure = ift.Field.full(position_space, 10.)
-    elif mode == 1:
-        # Two-dimensional regular grid with inhomogeneous exposure
-        position_space = ift.RGSpace([512, 512])
-        exposure = exposure_2d(position_space)
-    else:
-        # Sphere with uniform exposure of 100
-        position_space = ift.HPSpace(128)
-        exposure = ift.Field.full(position_space, 100.)
+    # Two-dimensional regular grid with inhomogeneous exposure
+    position_space = ift.RGSpace([10, 10])
+    exposure = exposure_2d(position_space)
 
     # Define harmonic space and harmonic transform
     harmonic_space = position_space.get_default_codomain()
@@ -120,10 +106,11 @@ if __name__ == '__main__':
     H = ift.StandardHamiltonian(likelihood)
     initial_position = ift.from_random(domain, 'normal')
 
-    meanfield_model = ift.MeanfieldModel(H.domain)
-    initial_position = meanfield_model.get_initial_pos()
+    # meanfield_model = ift.MeanfieldModel(H.domain)
+    fullcov_model = ift.FullCovarianceModel(H.domain)
+    initial_position = fullcov_model.get_initial_pos()
     position = initial_position
-    KL = ift.ParametricGaussianKL.make(initial_position,H,meanfield_model,3,False)
+    KL = ift.ParametricGaussianKL.make(initial_position,H,fullcov_model,3,False)
     plt.figure('data')
     plt.imshow(sky(mock_position).val)
     plt.pause(0.001)
@@ -133,5 +120,5 @@ if __name__ == '__main__':
         position = KL.position
         plt.figure('result')
         plt.cla()
-        plt.imshow(sky(meanfield_model.generator(KL.position)).val)
+        plt.imshow(sky(fullcov_model.generator(KL.position)).val)
         plt.pause(0.001)
