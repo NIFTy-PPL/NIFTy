@@ -66,7 +66,7 @@ class FullCovarianceModel():
 
     def get_initial_pos(self, initial_mean = None):
         initial_pos = from_random(self.generator.domain).to_dict()
-        initial_pos['latent'] = full(self.latent_domain.domain['latent'], 0.)
+        initial_pos['latent'] = full(self.latent_domain['latent'], 0.)
         diag_tri = np.diag(np.ones(self.latent_domain.shape[0]))[np.tril_indices(self.latent_domain.shape[0])]
         initial_pos['cov'] = makeField(self.generator.domain['cov'], diag_tri)
         if initial_mean is None:
