@@ -95,8 +95,8 @@ if __name__ == '__main__':
     fullcov_model = ift.FullCovarianceModel(H.domain)
     meanfield_model = ift.MeanfieldModel(H.domain)
 
-    position_fc = fullcov_model.get_initial_pos(initial_sig=0.1)
-    position_mf = meanfield_model.get_initial_pos(initial_sig=0.1)
+    position_fc = fullcov_model.get_initial_pos(initial_sig=0.01)
+    position_mf = meanfield_model.get_initial_pos(initial_sig=0.01)
     KL_fc = ift.ParametricGaussianKL.make(position_fc,H,fullcov_model,3,True)
     KL_mf = ift.ParametricGaussianKL.make(position_mf,H,meanfield_model,3,True)
 
@@ -117,6 +117,7 @@ if __name__ == '__main__':
         for samp in KL_mf.samples:   
             plt.plot(sky(meanfield_model.generator(KL_mf.position + samp)).val,'r-',alpha=0.3)
         plt.plot(data.val,'kx')
+        plt.plot(sky(mock_position).val,'k-',label='true')
         plt.legend()
         plt.ylim(0,data.val.max()+10)
         plt.pause(0.001)
