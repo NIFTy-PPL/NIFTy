@@ -39,15 +39,15 @@ class FullCovarianceModel():
         self.domain = domain
         self.Flat = MultifieldFlattener(self.domain)
         one_space = UnstructuredDomain(1)
-        self.latent_domain = self.Flat.target[0]
-        N_tri = self.latent_domain.shape[0]*(self.latent_domain.shape[0]+1)//2
+        self.flat_domain = self.Flat.target[0]
+        N_tri = self.flat_domain.shape[0]*(self.flat_domain.shape[0]+1)//2
         triangular_space = DomainTuple.make(UnstructuredDomain(N_tri))
         tri = FieldAdapter(triangular_space, 'cov')
-        mat_space = DomainTuple.make((self.latent_domain,self.latent_domain))
-        lat_mat_space = DomainTuple.make((one_space,self.latent_domain))
+        mat_space = DomainTuple.make((self.flat_domain,self.flat_domain))
+        lat_mat_space = DomainTuple.make((one_space,self.flat_domain))
         lat = FieldAdapter(lat_mat_space,'latent')
         LT = LowerTriangularProjector(triangular_space,mat_space)
-        mean = FieldAdapter(self.latent_domain,'mean')
+        mean = FieldAdapter(self.flat_domain,'mean')
         cov = LT @ tri
         co = FieldAdapter(cov.target, 'co')
 
@@ -66,8 +66,8 @@ class FullCovarianceModel():
 
     def get_initial_pos(self, initial_mean = None):
         initial_pos = from_random(self.generator.domain).to_dict()
-        initial_pos['latent'] = full(self.latent_domain['latent'], 0.)
-        diag_tri = np.diag(np.ones(self.latent_domain.shape[0]))[np.tril_indices(self.latent_domain.shape[0])]
+        initial_pos['latent'] = full(self.generator.domain['latent'], 0.)
+        diag_tri = np.diag(np.ones(self.flat_domain.shape[0]))[np.tril_indices(self.flat_domain.shape[0])]
         initial_pos['cov'] = makeField(self.generator.domain['cov'], diag_tri)
         if initial_mean is None:
             initial_mean = 0.1*from_random(self.generator.target)
