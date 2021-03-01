@@ -23,10 +23,10 @@ class MeanfieldModel():
         self.generator = self.Flat.adjoint(self.mean + self.std * self.latent)
         self.entropy = GaussianEntropy(self.std.target) @ self.std
 
-    def get_initial_pos(self, initial_mean=None):
+    def get_initial_pos(self, initial_mean=None,initial_sig = 1):
         initial_pos = from_random(self.generator.domain).to_dict()
         initial_pos['latent'] = full(self.generator.domain['latent'], 0.)
-        initial_pos['var'] = full(self.generator.domain['var'], 1.)
+        initial_pos['var'] = full(self.generator.domain['var'], initial_sig)
 
         if initial_mean is None:
             initial_mean = 0.1*from_random(self.generator.target)
@@ -64,10 +64,10 @@ class FullCovarianceModel():
         diag_cov = Diag(cov).absolute()
         self.entropy = GaussianEntropy(diag_cov.target) @ diag_cov
 
-    def get_initial_pos(self, initial_mean = None):
+    def get_initial_pos(self, initial_mean = None, initial_sig = 1):
         initial_pos = from_random(self.generator.domain).to_dict()
         initial_pos['latent'] = full(self.generator.domain['latent'], 0.)
-        diag_tri = np.diag(np.ones(self.flat_domain.shape[0]))[np.tril_indices(self.flat_domain.shape[0])]
+        diag_tri = np.diag(np.full(self.flat_domain.shape[0]), initial_sig)[np.tril_indices(self.flat_domain.shape[0])]
         initial_pos['cov'] = makeField(self.generator.domain['cov'], diag_tri)
         if initial_mean is None:
             initial_mean = 0.1*from_random(self.generator.target)

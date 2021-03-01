@@ -55,7 +55,7 @@ if __name__ == '__main__':
 
     # Define amplitude (square root of power spectrum)
     def sqrtpspec(k):
-        return 1./(20. + k**2)
+        return 1./(1. + k**2)
 
     p_space = ift.PowerSpace(harmonic_space)
     pd = ift.PowerDistributor(harmonic_space, p_space)
@@ -63,7 +63,7 @@ if __name__ == '__main__':
     A = pd(a)
 
     # Define sky operator
-    sky = ift.exp(HT(ift.makeOp(A))).ducktape('xi')
+    sky = 10*ift.exp(HT(ift.makeOp(A))).ducktape('xi')
 
     # M = ift.DiagonalOperator(exposure)
     GR = ift.GeometryRemover(position_space)
@@ -84,28 +84,39 @@ if __name__ == '__main__':
     ic_newton = ift.DeltaEnergyController(
         name='Newton', iteration_limit=1, tol_rel_deltaE=1e-8)
     # minimizer = ift.L_BFGS(ic_newton)
-    minimizer = ift.ADVIOptimizer(steps=10)
+    minimizer_fc = ift.ADVIOptimizer(steps=10)
+    minimizer_mf = ift.ADVIOptimizer(steps=10)
 
     # Compute MAP solution by minimizing the information Hamiltonian
     H = ift.StandardHamiltonian(likelihood)
-    initial_position = ift.from_random(domain, 'normal')
+    # initial_position = ift.from_random(domain, 'normal')
 
     # meanfield_model = ift.MeanfieldModel(H.domain)
     fullcov_model = ift.FullCovarianceModel(H.domain)
-    initial_position = fullcov_model.get_initial_pos()
-    position = initial_position
-    KL = ift.ParametricGaussianKL.make(initial_position,H,fullcov_model,3,False)
-    plt.figure('data')
-    plt.imshow(sky(mock_position).val)
+    meanfield_model = ift.MeanfieldModel(H.domain)
+
+    position_fc = fullcov_model.get_initial_pos()
+    position_mf = meanfield_model.get_initial_pos()
+    KL_fc = ift.ParametricGaussianKL.make(position_fc,H,fullcov_model,3,True)
+    KL_mf = ift.ParametricGaussianKL.make(position_mf,H,meanfield_model,3,True)
+
+    # plt.figure('data')
+    # plt.imshow(sky(mock_position).val)
     plt.pause(0.001)
-    for i in range(300):
+    for i in range(3000):
         # KL = ParametricGaussianKL.make(position,H,meanfield_model,3,True)
-        KL, _ = minimizer(KL)
-        position = KL.position
+        KL_fc, _ = minimizer_fc(KL_fc)
+        KL_mf, _ = minimizer_mf(KL_mf)
+
         plt.figure('result')
         plt.cla()
-        plt.plot(sky(fullcov_model.generator(KL.position)).val)
-        for samp in KL.samples:
-            plt.plot(sky(fullcov_model.generator(KL.position + samp)).val)
+        plt.plot(sky(fullcov_model.generator(KL_fc.position)).val,'b-',label='fc')
+        plt.plot(sky(meanfield_model.generator(KL_mf.position)).val,'r-',label='mf')
+        for samp in KL_fc.samples:
+            plt.plot(sky(fullcov_model.generator(KL_fc.position + samp)).val,'b-',alpha=0.3)
+        for samp in KL_mf.samples:   
+            plt.plot(sky(meanfield_model.generator(KL_mf.position + samp)).val,'r-',alpha=0.3)
         plt.plot(data.val,'kx')
+        plt.legend()
+        plt.ylim(0,data.val.max()+10)
         plt.pause(0.001)
