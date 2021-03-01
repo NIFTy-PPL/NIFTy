@@ -103,7 +103,7 @@ class LowerTriangularProjector(LinearOperator):
             mat = np.zeros(self._target.shape)
             mat[self._indices] = x.val
             return makeField(self._target,mat)
-        return makeField(self._domain, x.val[0][self._indices].reshape(self._domain.shape))
+        return makeField(self._domain, x.val[self._indices].reshape(self._domain.shape))
 
 class DiagonalSelector(LinearOperator):
     def __init__(self, domain, target):
