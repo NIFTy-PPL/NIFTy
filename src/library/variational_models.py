@@ -94,15 +94,15 @@ class LowerTriangularProjector(LinearOperator):
     def __init__(self, domain, target):
         self._domain = domain
         self._target = target
-        self._indices=np.tril_indices(target.shape[1])
+        self._indices=np.tril_indices(target.shape[0])
         self._capability = self.TIMES | self.ADJOINT_TIMES
 
     def apply(self, x, mode):
         self._check_mode(mode)
         if mode == self.TIMES:
-            mat = np.zeros(self._target.shape[1:])
+            mat = np.zeros(self._target.shape)
             mat[self._indices] = x.val
-            return makeField(self._target,mat.reshape((1,)+mat.shape))
+            return makeField(self._target,mat)
         return makeField(self._domain, x.val[0][self._indices].reshape(self._domain.shape))
 
 class DiagonalSelector(LinearOperator):
