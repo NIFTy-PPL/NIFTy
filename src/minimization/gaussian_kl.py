@@ -415,3 +415,22 @@ class ParametricGaussianKL(Energy):
     @property
     def gradient(self):
         return self._grad
+
+    @property
+    def samples(self):
+        ntask, rank, _ = utilities.get_MPI_params_from_comm(self._comm)
+        if ntask == 1:
+            for s in self._local_samples:
+                yield s
+                if self._mirror_samples:
+                    yield -s
+        else:
+            rank_lo_hi = [utilities.shareRange(self._n_samples, ntask, i) for i in range(ntask)]
+            lo, _ = _get_lo_hi(self._comm, self._n_samples)
+            for itask, (l, h) in enumerate(rank_lo_hi):
+                for i in range(l, h):
+                    data = self._local_samples[i-lo] if rank == itask else None
+                    s = self._comm.bcast(data, root=itask)
+                    yield s
+                    if self._mirror_samples:
+                        yield -s

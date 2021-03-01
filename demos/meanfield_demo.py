@@ -28,40 +28,23 @@ import sys
 import numpy as np
 
 
-def exposure_2d(domain):
-    # Structured exposure for 2D mode
-    x_shape, y_shape = domain.shape
-    exposure = np.ones(domain.shape)
-    exposure[x_shape//3:x_shape//2, :] *= 2.
-    exposure[x_shape*4//5:x_shape, :] *= .1
-    exposure[x_shape//2:x_shape*3//2, :] *= 3.
-    exposure[:, x_shape//3:x_shape//2] *= 2.
-    exposure[:, x_shape*4//5:x_shape] *= .1
-    exposure[:, x_shape//2:x_shape*3//2] *= 3.
-    return ift.Field.from_raw(domain, exposure)
-
-
-def main():
-
-
-    # Plotting
-    signal = sky(mock_position)
-    reconst = sky(H.position)
-    filename = "getting_started_2_mode_{}.png".format(mode)
-    plot = ift.Plot()
-    plot.add(signal, title='Signal')
-    plot.add(GR.adjoint(data), title='Data')
-    plot.add(reconst, title='Reconstruction')
-    plot.add(reconst - signal, title='Residuals')
-    plot.output(xsize=12, ysize=10, name=filename)
-    print("Saved results as '{}'.".format(filename))
+# def exposure_2d(domain):
+#     # Structured exposure for 2D mode
+#     x_shape, y_shape = domain.shape
+#     exposure = np.ones(domain.shape)
+#     exposure[x_shape//3:x_shape//2, :] *= 2.
+#     exposure[x_shape*4//5:x_shape, :] *= .1
+#     exposure[x_shape//2:x_shape*3//2, :] *= 3.
+#     exposure[:, x_shape//3:x_shape//2] *= 2.
+#     exposure[:, x_shape*4//5:x_shape] *= .1
+#     exposure[:, x_shape//2:x_shape*3//2] *= 3.
+#     return ift.Field.from_raw(domain, exposure)
 
 
 if __name__ == '__main__':
 
     # Two-dimensional regular grid with inhomogeneous exposure
-    position_space = ift.RGSpace([10, 10])
-    exposure = exposure_2d(position_space)
+    position_space = ift.RGSpace([100])
 
     # Define harmonic space and harmonic transform
     harmonic_space = position_space.get_default_codomain()
@@ -82,10 +65,11 @@ if __name__ == '__main__':
     # Define sky operator
     sky = ift.exp(HT(ift.makeOp(A))).ducktape('xi')
 
-    M = ift.DiagonalOperator(exposure)
+    # M = ift.DiagonalOperator(exposure)
     GR = ift.GeometryRemover(position_space)
     # Define instrumental response
-    R = GR(M)
+    # R = GR(M)
+    R = GR
 
     # Generate mock data and define likelihood operator
     d_space = R.target[0]
@@ -120,5 +104,8 @@ if __name__ == '__main__':
         position = KL.position
         plt.figure('result')
         plt.cla()
-        plt.imshow(sky(fullcov_model.generator(KL.position)).val)
+        plt.plot(sky(fullcov_model.generator(KL.position)).val)
+        for samp in KL.samples:
+            plt.plot(sky(fullcov_model.generator(KL.position + samp)).val)
+        plt.plot(data.val,'kx')
         plt.pause(0.001)
