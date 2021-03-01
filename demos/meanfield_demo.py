@@ -95,8 +95,8 @@ if __name__ == '__main__':
     fullcov_model = ift.FullCovarianceModel(H.domain)
     meanfield_model = ift.MeanfieldModel(H.domain)
 
-    position_fc = fullcov_model.get_initial_pos()
-    position_mf = meanfield_model.get_initial_pos()
+    position_fc = fullcov_model.get_initial_pos(initial_sig=0.1)
+    position_mf = meanfield_model.get_initial_pos(initial_sig=0.1)
     KL_fc = ift.ParametricGaussianKL.make(position_fc,H,fullcov_model,3,True)
     KL_mf = ift.ParametricGaussianKL.make(position_mf,H,meanfield_model,3,True)
 
