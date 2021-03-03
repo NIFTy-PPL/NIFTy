@@ -51,3 +51,7 @@ class UnstructuredDomain(Domain):
     @property
     def size(self):
         return reduce(lambda x, y: x*y, self.shape)
+
+    @property
+    def scalar_dvol(self):
+        return None
