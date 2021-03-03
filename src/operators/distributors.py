@@ -73,10 +73,14 @@ class DOFDistributor(LinearOperator):
         if partner.scalar_dvol is not None:
             wgt = np.bincount(dofdex.val.ravel(), minlength=nbin)
             wgt = wgt*partner.scalar_dvol
-        else:
+        elif partner.dvol is not None:
             dvol = Field.from_raw(partner, partner.dvol).val
             wgt = np.bincount(dofdex.val.ravel(),
                               minlength=nbin, weights=dvol)
+        else:
+            wgt = np.bincount(dofdex.val.ravel(), minlength=nbin)
+            # for UnstructuredDomain
+            
         # The explicit conversion to float64 is necessary because bincount
         # sometimes returns its result as an integer array, even when
         # floating-point weights are present ...
