@@ -55,3 +55,7 @@ class UnstructuredDomain(Domain):
     @property
     def scalar_dvol(self):
         return None
+    
+    @property
+    def dvol(self):
+        return None
