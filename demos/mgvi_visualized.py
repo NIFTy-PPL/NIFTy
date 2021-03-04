@@ -75,7 +75,7 @@ def main():
     # plt.close()
 
     pos = ift.from_random(ham.domain, 'normal')
-    MAP = ift.EnergyAdapter(pos, ham, want_metric=True)
+    MAP = ift.PointKL(pos, ham, want_metric=True)
     minimizer = ift.NewtonCG(
         ift.GradientNormController(iteration_limit=20, name='Mini'))
     minimizer_mf = ift.ADVIOptimizer(10)

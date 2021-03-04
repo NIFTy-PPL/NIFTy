@@ -102,7 +102,7 @@ def main():
     # Compute MAP solution by minimizing the information Hamiltonian
     H = ift.StandardHamiltonian(likelihood)
     initial_position = ift.from_random(domain, 'normal')
-    H = ift.EnergyAdapter(initial_position, H, want_metric=True)
+    H = ift.PointKL(initial_position, H, want_metric=True)
     H, convergence = minimizer(H)
 
     # Plotting

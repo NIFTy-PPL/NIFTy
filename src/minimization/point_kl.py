@@ -22,7 +22,7 @@ from ..minimization.energy import Energy
 from ..sugar import makeDomain
 
 
-class EnergyAdapter(Energy):
+class PointKL(Energy):
     """Helper class which provides the traditional Nifty Energy interface to
     Nifty operators with a scalar target domain.
 
