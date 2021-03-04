@@ -15,7 +15,7 @@
 #
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
 
-from ..minimization.energy_adapter import EnergyAdapter
+from ..minimization.point_kl import PointKL
 from ..multi_field import MultiField
 from ..operators.energy_operators import (InverseGammaLikelihood,
                                           StandardHamiltonian)
@@ -114,7 +114,7 @@ def do_adjust_variances(position, A, minimizer, xi_key='xi', samples=[]):
     ham = make_adjust_variances_hamiltonian(A, xi, position, samples=samples)
 
     # Minimize
-    e = EnergyAdapter(
+    e = PointKL(
         position.extract(A.domain), ham, constants=[], want_metric=True)
     e, _ = minimizer(e)
 
