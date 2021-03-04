@@ -85,6 +85,21 @@ def _total_fluctuation_realized(samples):
     return np.sqrt(res if np.isscalar(res) else res.val)
 
 
+def moment_slice_to_average(amp, zm, fluctuations_slice_mean, nsamples=1000):
+    fluctuations_slice_mean = float(fluctuations_slice_mean)
+    if not fluctuations_slice_mean > 0:
+        msg = "fluctuations_slice_mean must be greater zero; got {!r}"
+        raise ValueError(msg.format(fluctuations_slice_mean))
+    from ..sugar import from_random
+    scm = 1.
+    for a in amp:
+        op = a.fluctuation_amplitude*zm.ptw("reciprocal")
+        res = np.array([op(from_random(op.domain, 'normal')).val
+                        for _ in range(nsamples)])
+        scm *= res**2 + 1.
+    return fluctuations_slice_mean/np.mean(np.sqrt(scm))
+
+
 class _SlopeRemover(EndomorphicOperator):
     def __init__(self, domain, space=0):
         self._domain = makeDomain(domain)
@@ -413,19 +428,17 @@ class CorrelatedFieldMaker:
 
     See the methods :func:`make`, :func:`add_fluctuations`
     and :func:`finalize` for further usage information."""
-    def __init__(self, offset_mean, offset_fluctuations_op, prefix, total_N):
-        if not isinstance(offset_fluctuations_op, Operator):
-            raise TypeError("offset_fluctuations_op needs to be an operator")
+    def __init__(self, prefix, total_N):
+        self._azm = None
+        self._offset_mean = None
         self._a = []
         self._target_subdomains = []
 
-        self._offset_mean = offset_mean
-        self._azm = offset_fluctuations_op
         self._prefix = prefix
         self._total_N = total_N
 
     @staticmethod
-    def make(offset_mean, offset_std, prefix, total_N=0, dofdex=None):
+    def make(prefix, total_N=0):
         """Returns a CorrelatedFieldMaker object.
 
         Parameters
@@ -452,17 +465,7 @@ class CorrelatedFieldMaker:
             *If not specified*, use the same zero mode model for all
             constructed field models.
         """
-        if dofdex is None:
-            dofdex = np.full(total_N, 0)
-        elif len(dofdex) != total_N:
-            raise ValueError("length of dofdex needs to match total_N")
-        N = max(dofdex) + 1 if total_N > 0 else 0
-        if len(offset_std) != 2:
-            raise TypeError
-        zm = LognormalTransform(*offset_std, prefix + 'zeromode', N)
-        if total_N > 0:
-            zm = _Distributor(dofdex, zm.target, UnstructuredDomain(total_N)) @ zm
-        return CorrelatedFieldMaker(offset_mean, zm, prefix, total_N)
+        return CorrelatedFieldMaker(prefix, total_N)
 
     def add_fluctuations(self,
                          target_subdomain,
@@ -664,7 +667,7 @@ class CorrelatedFieldMaker:
         self._a.append(amp)
         self._target_subdomains.append(target_subdomain)
 
-    def finalize(self, prior_info=100):
+    def finalize(self, offset_mean, offset_std, dofdex=None, prior_info=100):
         """Finishes model construction process and returns the constructed
         operator.
 
@@ -674,6 +677,20 @@ class CorrelatedFieldMaker:
             How many prior samples to draw for property verification statistics
             If zero, skips calculating and displaying statistics.
         """
+        if dofdex is None:
+            dofdex = np.full(self._total_N, 0)
+        elif len(dofdex) != self._total_N:
+            raise ValueError("length of dofdex needs to match total_N")
+        N = max(dofdex) + 1 if self._total_N > 0 else 0
+        # TODO: Allow for `offset_std` being an arbitrary operator
+        if len(offset_std) != 2:
+            raise TypeError
+        zm = LognormalTransform(*offset_std, self._prefix + 'zeromode', N)
+        if self._total_N > 0:
+            zm = _Distributor(dofdex, zm.target, UnstructuredDomain(self._total_N)) @ zm
+        self._azm = zm
+        self._offset_mean = offset_mean
+
         n_amplitudes = len(self._a)
         if self._total_N > 0:
             hspace = makeDomain(
@@ -757,22 +774,9 @@ class CorrelatedFieldMaker:
             for m, s in zip(mean.flatten(), stddev.flatten()):
                 logger.info('{}: {:.02E} ± {:.02E}'.format(kk, m, s))
 
-    def moment_slice_to_average(self, fluctuations_slice_mean, nsamples=1000):
-        fluctuations_slice_mean = float(fluctuations_slice_mean)
-        if not fluctuations_slice_mean > 0:
-            msg = "fluctuations_slice_mean must be greater zero; got {!r}"
-            raise ValueError(msg.format(fluctuations_slice_mean))
-        from ..sugar import from_random
-        scm = 1.
-        for a in self._a:
-            op = a.fluctuation_amplitude*self._azm.ptw("reciprocal")
-            res = np.array([op(from_random(op.domain, 'normal')).val
-                            for _ in range(nsamples)])
-            scm *= res**2 + 1.
-        return fluctuations_slice_mean/np.mean(np.sqrt(scm))
-
     @property
     def normalized_amplitudes(self):
+        # TODO: rename
         """Returns the amplitude operators used in the model"""
         return self._a
 
