@@ -55,7 +55,7 @@ class PointKL(Energy):
             _, op = op.simplify_for_constant_input(cstpos)
             varkeys = set(op.domain.keys()) - set(constants)
             position = position.extract_by_keys(varkeys)
-        super(EnergyAdapter, self).__init__(position)
+        super(PointKL, self).__init__(position)
         self._op = op
         self._want_metric = want_metric
         lin = Linearization.make_var(position, want_metric)
