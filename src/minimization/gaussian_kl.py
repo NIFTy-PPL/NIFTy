@@ -24,7 +24,7 @@ from ..multi_field import MultiField
 from ..operators.endomorphic_operator import EndomorphicOperator
 from ..operators.energy_operators import StandardHamiltonian
 from ..operators.multifield_flattener import MultifieldFlattener
-from ..probing import approximation2endo
+from ..probing import approximation2endo, StatCalculator
 from ..sugar import makeOp, full, from_random
 from .energy import Energy
 
@@ -262,6 +262,24 @@ class MetricGaussianKL(Energy):
                     yield s
                     if self._mirror_samples:
                         yield -s
+    @property
+    def distribution_samples(self):
+        dist_samps = []
+        for sample in self.samples:
+            dist_samps.append(self.position + sample)
+        return dist_samps
+
+    def estimate_quantity(self, op, averaged=False):    # Maybe have StatCalculator also store 
+        result = []                                     # samples and always return ?
+        for sample in self.distribution_samples:
+            result.append(op.force(sample))
+        if averaged:
+            sc = StatCalculator()
+            for samp in result:
+                sc.add(samp)
+            return sc
+        return result
+
 
     def _metric_sample(self, from_inverse=False):
         if from_inverse:
@@ -434,3 +452,21 @@ class ParametricGaussianKL(Energy):
                     yield s
                     if self._mirror_samples:
                         yield -s
+
+    @property
+    def distribution_samples(self):
+        dist_samps = []
+        for sample in self.samples:
+            dist_samps.append(self._variational_model.generator(self.position + sample))
+        return dist_samps
+
+    def estimate_quantity(self, op, averaged=False):    
+        result = []                                     
+        for sample in self.distribution_samples:
+            result.append(op.force(sample))
+        if averaged:
+            sc = StatCalculator()
+            for samp in result:
+                sc.add(samp)
+            return sc
+        return result
