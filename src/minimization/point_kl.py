@@ -68,7 +68,7 @@ class PointKL(Energy):
             self._val = np.inf
 
     def at(self, position):
-        return EnergyAdapter(position, self._op, want_metric=self._want_metric,
+        return PointKL(position, self._op, want_metric=self._want_metric,
                              nanisinf=self._nanisinf)
 
     @property
