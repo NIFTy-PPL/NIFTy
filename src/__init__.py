@@ -53,7 +53,8 @@ from .operators.energy_operators import (
     Squared2NormOperator, StudentTEnergy, VariableCovarianceGaussianEnergy)
 from .operators.convolution_operators import FuncConvolutionOperator
 from .operators.normal_operators import NormalTransform, LognormalTransform
-from .operators.multifield_flattener import MultifieldFlattener
+from .operators.multifield2vector import Multifield2Vector
+
 from .probing import probe_with_posterior_samples, probe_diagonal, \
     StatCalculator, approximation2endo
 
@@ -72,7 +73,7 @@ from .minimization.scipy_minimizer import L_BFGS_B
 from .minimization.energy import Energy
 from .minimization.quadratic_energy import QuadraticEnergy
 from .minimization.energy_adapter import EnergyAdapter
-from .minimization.gaussian_kl import MetricGaussianKL, ParametricGaussianKL
+from .minimization.metric_gaussian_kl import MetricGaussianKL, ParametricGaussianKL
 
 from .sugar import *
 

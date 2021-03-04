@@ -147,3 +147,8 @@ run_visual_mgvi:
   stage: demo_runs
   script:
     - python3 demos/mgvi_visualized.py
+
+run_meanfield:
+  stage: demo_runs
+  script:
+    - python3 demos/meanfield_inference.py
