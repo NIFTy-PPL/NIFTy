@@ -227,7 +227,7 @@ class _Distributor(LinearOperator):
 
 
 class _AmplitudeMatern(Operator):
-    def __init__(self, pow_spc, scale, cutoff, loglogslope, azm, totvol):
+    def __init__(self, pow_spc, scale, cutoff, loglogslope, totvol):
         expander = ContractionOperator(pow_spc, spaces=None).adjoint
         k_squared = makeField(pow_spc, pow_spc.k_lengths**2)
 
@@ -253,7 +253,7 @@ class _AmplitudeMatern(Operator):
         vol1[1:] = totvol**0.5
         vol0 = Adder(makeField(pow_spc, vol0))
         vol1 = DiagonalOperator(makeField(pow_spc, vol1))
-        op = vol0 @ (vol1 @ (expander @ azm.ptw("reciprocal")) * op)
+        op = vol0 @ (vol1 @ op)
 
         # std = sqrt of integral of power spectrum
         self._fluc = op.power(2).integrate().sqrt()
@@ -271,7 +271,7 @@ class _AmplitudeMatern(Operator):
 
 class _Amplitude(Operator):
     def __init__(self, target, fluctuations, flexibility, asperity,
-                 loglogavgslope, azm, totvol, key, dofdex):
+                 loglogavgslope, totvol, key, dofdex):
         """
         fluctuations > 0
         flexibility > 0 or None
@@ -294,7 +294,6 @@ class _Amplitude(Operator):
             N_copies = 0
             space = 0
             distributed_tgt = target = makeDomain(target)
-        azm_expander = ContractionOperator(distributed_tgt, spaces=space).adjoint
         assert isinstance(target[space], PowerSpace)
 
         twolog = _TwoLogIntegrations(target, space)
@@ -359,11 +358,11 @@ class _Amplitude(Operator):
         if N_copies > 0:
             op = Distributor @ op
             sig_fluc = Distributor @ sig_fluc
-            op = Adder(Distributor(vol0)) @ (sig_fluc*(azm_expander @ azm.ptw("reciprocal"))*op)
+            op = Adder(Distributor(vol0)) @ (sig_fluc * op)
             self._fluc = (_Distributor(dofdex, fluctuations.target,
                                        distributed_tgt[0]) @ fluctuations)
         else:
-            op = Adder(vol0) @ (sig_fluc*(azm_expander @ azm.ptw("reciprocal"))*op)
+            op = Adder(vol0) @ (sig_fluc * op)
             self._fluc = fluctuations
 
         self.apply = op.apply
@@ -573,7 +572,7 @@ class CorrelatedFieldMaker:
         avgsl = NormalTransform(*loglogavgslope, pre + 'loglogavgslope', N)
 
         amp = _Amplitude(PowerSpace(harmonic_partner), fluct, flex, asp, avgsl,
-                         self._azm, target_subdomain[-1].total_volume,
+                         target_subdomain[-1].total_volume,
                          pre + 'spectrum', dofdex)
 
         if index is not None:
@@ -660,7 +659,7 @@ class CorrelatedFieldMaker:
             totvol = target_subdomain[-1].total_volume
         pow_spc = PowerSpace(harmonic_partner)
         amp = _AmplitudeMatern(pow_spc, scale, cutoff, loglogslope,
-                               self._azm, totvol)
+                               totvol)
 
         self._a.append(amp)
         self._target_subdomains.append(target_subdomain)
@@ -700,10 +699,24 @@ class CorrelatedFieldMaker:
                                            space=spaces[i]) @ ht
         a = []
         for ii in range(n_amplitudes):
+            a_target = self._a[ii].target
+            a_space = 0 if not hasattr(self._a[ii], "_space") else self._a[ii]._space
+            a_pp = self._a[ii].target[a_space]
+            assert isinstance(a_pp, PowerSpace)
+
+            azm_expander = ContractionOperator(a_target, spaces=a_space).adjoint
+            zm_unmask, zm_mask = [np.zeros(a_pp.shape) for _ in range(2)]
+            zm_mask[1:] = zm_unmask[0] = 1.
+            zm_mask = DiagonalOperator(makeField(a_pp, zm_mask), a_target, a_space)
+            zm_unmask = DiagonalOperator(makeField(a_pp, zm_unmask), a_target, a_space)
+            zm_unmask = Adder(zm_unmask(full(zm_unmask.domain, 1)))
+
+            zm_normalization = zm_unmask @ (zm_mask @ azm_expander(self._azm.ptw("reciprocal")))
+
             co = ContractionOperator(hspace, spaces[:ii] + spaces[ii + 1:])
             pp = self._a[ii].target[amp_space]
             pd = PowerDistributor(co.target, pp, amp_space)
-            a.append(co.adjoint @ pd @ self._a[ii])
+            a.append(co.adjoint @ pd @ (zm_normalization * self._a[ii]))
         corr = reduce(mul, a)
         op = ht(azm*corr*ducktape(hspace, None, self._prefix + 'xi'))
 
@@ -770,9 +783,22 @@ class CorrelatedFieldMaker:
                  ' no unique set of amplitudes exist because only the',
                  ' relative scale is determined.')
             raise NotImplementedError(s)
-        dom = self._a[0].target
-        expand = ContractionOperator(dom, len(dom)-1).adjoint
-        return self._a[0]*(expand @ self.amplitude_total_offset)
+        a_target = self._a[0].target
+        a_space = 0 if not hasattr(self._a[0], "_space") else self._a[0]._space
+        a_pp = self._a[0].target[a_space]
+        assert isinstance(a_pp, PowerSpace)
+
+        azm_expander = ContractionOperator(a_target, spaces=a_space).adjoint
+        zm_unmask, zm_mask = [np.zeros(a_pp.shape) for _ in range(2)]
+        zm_mask[1:] = zm_unmask[0] = 1.
+        zm_mask = DiagonalOperator(makeField(a_pp, zm_mask), a_target, a_space)
+        zm_unmask = DiagonalOperator(makeField(a_pp, zm_unmask), a_target, a_space)
+        zm_unmask = Adder(zm_unmask(full(zm_unmask.domain, 1)))
+
+        zm_normalization = zm_unmask @ (zm_mask @ azm_expander(self._azm.ptw("reciprocal")))
+
+        expand = ContractionOperator(a_target, len(a_target) - 1).adjoint
+        return (zm_normalization * self._a[0]) * (expand @ self.amplitude_total_offset)
 
     @property
     def power_spectrum(self):
