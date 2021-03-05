@@ -756,7 +756,7 @@ class CorrelatedFieldMaker:
     @property
     def fluctuations(self):
         """Returns the added fluctuations operators used in the model"""
-        return self._a
+        return tuple(self._a)
 
     def get_normalized_amplitudes(self):
         """Returns the normalized amplitude operators used in the final model
