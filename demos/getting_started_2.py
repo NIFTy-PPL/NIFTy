@@ -105,6 +105,9 @@ def main():
     H = ift.EnergyAdapter(initial_position, H, want_metric=True)
     H, convergence = minimizer(H)
 
+    ift.extra.minisanity(data, lambda x: ift.makeOp(1/lamb(x)), lamb,
+                         H.position)
+
     # Plotting
     signal = sky(mock_position)
     reconst = sky(H.position)
