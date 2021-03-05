@@ -88,7 +88,6 @@ from .library.adjust_variances import (make_adjust_variances_hamiltonian,
                                        do_adjust_variances)
 from .library.nft import Gridder, FinuFFT
 from .library.correlated_fields import CorrelatedFieldMaker
-from .library.correlated_fields import moment_slice_to_average
 from .library.correlated_fields_simple import SimpleCorrelatedField
 
 from . import extra

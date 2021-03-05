@@ -24,6 +24,7 @@ from operator import mul
 import numpy as np
 
 from .. import utilities
+from ..logger import logger
 from ..domain_tuple import DomainTuple
 from ..domains.power_space import PowerSpace
 from ..domains.unstructured_domain import UnstructuredDomain
@@ -83,21 +84,6 @@ def _total_fluctuation_realized(samples):
         res = res + (s - co.adjoint(co(s)/size))**2
     res = res.mean(spaces)/len(samples)
     return np.sqrt(res if np.isscalar(res) else res.val)
-
-
-def moment_slice_to_average(amp, zm, fluctuations_slice_mean, nsamples=1000):
-    fluctuations_slice_mean = float(fluctuations_slice_mean)
-    if not fluctuations_slice_mean > 0:
-        msg = "fluctuations_slice_mean must be greater zero; got {!r}"
-        raise ValueError(msg.format(fluctuations_slice_mean))
-    from ..sugar import from_random
-    scm = 1.
-    for a in amp:
-        op = a.fluctuation_amplitude*zm.ptw("reciprocal")
-        res = np.array([op(from_random(op.domain, 'normal')).val
-                        for _ in range(nsamples)])
-        scm *= res**2 + 1.
-    return fluctuations_slice_mean/np.mean(np.sqrt(scm))
 
 
 class _SlopeRemover(EndomorphicOperator):
@@ -428,26 +414,11 @@ class CorrelatedFieldMaker:
 
     See the methods :func:`make`, :func:`add_fluctuations`
     and :func:`finalize` for further usage information."""
-    def __init__(self, prefix, total_N):
-        self._azm = None
-        self._offset_mean = None
-        self._a = []
-        self._target_subdomains = []
-
-        self._prefix = prefix
-        self._total_N = total_N
-
-    @staticmethod
-    def make(prefix, total_N=0):
-        """Returns a CorrelatedFieldMaker object.
+    def __init__(self, prefix, total_N=0):
+        """Instantiate a CorrelatedFieldMaker object.
 
         Parameters
         ----------
-        offset_mean : float
-            Mean offset from zero of the correlated field to be made.
-        offset_std : tuple of float
-            Mean standard deviation and standard deviation of the standard
-            deviation of the offset. No, this is not a word duplication.
         prefix : string
             Prefix to the names of the domains of the cf operator to be made.
             This determines the names of the operator domain.
@@ -456,16 +427,14 @@ class CorrelatedFieldMaker:
             If not 0, the first entry of the operators target will be an
             :class:`~nifty.domains.unstructured_domain.UnstructuredDomain`
             with length `total_N`.
-        dofdex : np.array of integers, optional
-            An integer array specifying the zero mode models used if
-            total_N > 1. It needs to have length of total_N. If total_N=3 and
-            dofdex=[0,0,1], that means that two models for the zero mode are
-            instantiated; the first one is used for the first and second
-            field model and the second is used for the third field model.
-            *If not specified*, use the same zero mode model for all
-            constructed field models.
         """
-        return CorrelatedFieldMaker(prefix, total_N)
+        self._azm = None
+        self._offset_mean = None
+        self._a = []
+        self._target_subdomains = []
+
+        self._prefix = prefix
+        self._total_N = total_N
 
     def add_fluctuations(self,
                          target_subdomain,
@@ -667,7 +636,45 @@ class CorrelatedFieldMaker:
         self._a.append(amp)
         self._target_subdomains.append(target_subdomain)
 
-    def finalize(self, offset_mean, offset_std, dofdex=None, prior_info=100):
+    def set_amplitude_total_offset(self, offset_mean, offset_std, dofdex=None):
+        """Sets the zero-mode for the combined amplitude operator
+
+        Parameters
+        ----------
+        offset_mean : float
+            Mean offset from zero of the correlated field to be made.
+        offset_std : tuple of float
+            Mean standard deviation and standard deviation of the standard
+            deviation of the offset. No, this is not a word duplication.
+        dofdex : np.array of integers, optional
+            An integer array specifying the zero mode models used if
+            total_N > 1. It needs to have length of total_N. If total_N=3 and
+            dofdex=[0,0,1], that means that two models for the zero mode are
+            instantiated; the first one is used for the first and second
+            field model and the second is used for the third field model.
+            *If not specified*, use the same zero mode model for all
+            constructed field models.
+        """
+        if self._offset_mean is not None and self._azm is not None:
+            logger.warning("Overwriting the previous mean offset and zero-mode")
+
+        self._offset_mean = offset_mean
+        if isinstance(offset_std, Operator):
+            self._azm = offset_std
+        else:
+            if dofdex is None:
+                dofdex = np.full(self._total_N, 0)
+            elif len(dofdex) != self._total_N:
+                raise ValueError("length of dofdex needs to match total_N")
+            N = max(dofdex) + 1 if self._total_N > 0 else 0
+            if len(offset_std) != 2:
+                raise TypeError
+            zm = LognormalTransform(*offset_std, self._prefix + 'zeromode', N)
+            if self._total_N > 0:
+                zm = _Distributor(dofdex, zm.target, UnstructuredDomain(self._total_N)) @ zm
+            self._azm = zm
+
+    def finalize(self, prior_info=100):
         """Finishes model construction process and returns the constructed
         operator.
 
@@ -677,20 +684,6 @@ class CorrelatedFieldMaker:
             How many prior samples to draw for property verification statistics
             If zero, skips calculating and displaying statistics.
         """
-        if dofdex is None:
-            dofdex = np.full(self._total_N, 0)
-        elif len(dofdex) != self._total_N:
-            raise ValueError("length of dofdex needs to match total_N")
-        N = max(dofdex) + 1 if self._total_N > 0 else 0
-        # TODO: Allow for `offset_std` being an arbitrary operator
-        if len(offset_std) != 2:
-            raise TypeError
-        zm = LognormalTransform(*offset_std, self._prefix + 'zeromode', N)
-        if self._total_N > 0:
-            zm = _Distributor(dofdex, zm.target, UnstructuredDomain(self._total_N)) @ zm
-        self._azm = zm
-        self._offset_mean = offset_mean
-
         n_amplitudes = len(self._a)
         if self._total_N > 0:
             hspace = makeDomain(
@@ -705,7 +698,7 @@ class CorrelatedFieldMaker:
             amp_space = 0
 
         expander = ContractionOperator(hspace, spaces=spaces).adjoint
-        azm = expander @ self._azm
+        azm = expander @ self.azm
 
         ht = HarmonicTransformOperator(hspace,
                                        self._target_subdomains[0][amp_space],
@@ -714,26 +707,12 @@ class CorrelatedFieldMaker:
             ht = HarmonicTransformOperator(ht.target,
                                            self._target_subdomains[i][amp_space],
                                            space=spaces[i]) @ ht
-        a = []
+        a = list(self.normalized_amplitudes())
         for ii in range(n_amplitudes):
-            a_target = self._a[ii].target
-            a_space = 0 if not hasattr(self._a[ii], "_space") else self._a[ii]._space
-            a_pp = self._a[ii].target[a_space]
-            assert isinstance(a_pp, PowerSpace)
-
-            azm_expander = ContractionOperator(a_target, spaces=a_space).adjoint
-            zm_unmask, zm_mask = [np.zeros(a_pp.shape) for _ in range(2)]
-            zm_mask[1:] = zm_unmask[0] = 1.
-            zm_mask = DiagonalOperator(makeField(a_pp, zm_mask), a_target, a_space)
-            zm_unmask = DiagonalOperator(makeField(a_pp, zm_unmask), a_target, a_space)
-            zm_unmask = Adder(zm_unmask(full(zm_unmask.domain, 1)))
-
-            zm_normalization = zm_unmask @ (zm_mask @ azm_expander(self._azm.ptw("reciprocal")))
-
             co = ContractionOperator(hspace, spaces[:ii] + spaces[ii + 1:])
-            pp = self._a[ii].target[amp_space]
+            pp = a[ii].target[amp_space]
             pd = PowerDistributor(co.target, pp, amp_space)
-            a.append(co.adjoint @ pd @ (zm_normalization * self._a[ii]))
+            a[ii] = co.adjoint @ pd @ a[ii]
         corr = reduce(mul, a)
         op = ht(azm*corr*ducktape(hspace, None, self._prefix + 'xi'))
 
@@ -775,10 +754,42 @@ class CorrelatedFieldMaker:
                 logger.info('{}: {:.02E} ± {:.02E}'.format(kk, m, s))
 
     @property
-    def normalized_amplitudes(self):
-        # TODO: rename
-        """Returns the amplitude operators used in the model"""
+    def fluctuations(self):
+        """Returns the added fluctuations operators used in the model"""
         return self._a
+
+    def normalized_amplitudes(self):
+        """Returns the normalized amplitude operators used in the final model
+
+        The amplitude operators are corrected for the otherwise degenerate
+        zero-mode. Their scales are only meaningful relative to one another.
+        Their absolute scale bares no information.
+        """
+        normal_amp = []
+        for amp in self._a:
+            a_target = amp.target
+            a_space = 0 if not hasattr(amp, "_space") else amp._space
+            a_pp = amp.target[a_space]
+            assert isinstance(a_pp, PowerSpace)
+
+            azm_expander = ContractionOperator(
+                a_target, spaces=a_space
+            ).adjoint
+            zm_unmask, zm_mask = [np.zeros(a_pp.shape) for _ in range(2)]
+            zm_mask[1:] = zm_unmask[0] = 1.
+            zm_mask = DiagonalOperator(
+                makeField(a_pp, zm_mask), a_target, a_space
+            )
+            zm_unmask = DiagonalOperator(
+                makeField(a_pp, zm_unmask), a_target, a_space
+            )
+            zm_unmask = Adder(zm_unmask(full(zm_unmask.domain, 1)))
+
+            zm_normalization = zm_unmask @ (
+                zm_mask @ azm_expander(self.azm.ptw("reciprocal"))
+            )
+            normal_amp.append(zm_normalization * amp)
+        return tuple(normal_amp)
 
     @property
     def amplitude(self):
@@ -787,22 +798,12 @@ class CorrelatedFieldMaker:
                  ' no unique set of amplitudes exist because only the',
                  ' relative scale is determined.')
             raise NotImplementedError(s)
-        a_target = self._a[0].target
-        a_space = 0 if not hasattr(self._a[0], "_space") else self._a[0]._space
-        a_pp = self._a[0].target[a_space]
-        assert isinstance(a_pp, PowerSpace)
+        normal_amp = self.normalized_amplitudes()[0]
 
-        azm_expander = ContractionOperator(a_target, spaces=a_space).adjoint
-        zm_unmask, zm_mask = [np.zeros(a_pp.shape) for _ in range(2)]
-        zm_mask[1:] = zm_unmask[0] = 1.
-        zm_mask = DiagonalOperator(makeField(a_pp, zm_mask), a_target, a_space)
-        zm_unmask = DiagonalOperator(makeField(a_pp, zm_unmask), a_target, a_space)
-        zm_unmask = Adder(zm_unmask(full(zm_unmask.domain, 1)))
-
-        zm_normalization = zm_unmask @ (zm_mask @ azm_expander(self._azm.ptw("reciprocal")))
-
-        expand = ContractionOperator(a_target, len(a_target) - 1).adjoint
-        return (zm_normalization * self._a[0]) * (expand @ self.amplitude_total_offset)
+        expand = ContractionOperator(
+            normal_amp.target, len(normal_amp.target) - 1
+        ).adjoint
+        return normal_amp * (expand @ self.azm)
 
     @property
     def power_spectrum(self):
@@ -810,7 +811,30 @@ class CorrelatedFieldMaker:
 
     @property
     def amplitude_total_offset(self):
+        """Returns the total offset of the amplitudes"""
+        if self._azm is None:
+            nie = "You need to set the `amplitude_total_offset` first"
+            raise NotImplementedError(nie)
         return self._azm
+
+    @property
+    def azm(self):
+        """Alias for `amplitude_total_offset`"""
+        return self.amplitude_total_offset
+
+    def moment_slice_to_average(self, fluctuations_slice_mean, nsamples=1000):
+        fluctuations_slice_mean = float(fluctuations_slice_mean)
+        if not fluctuations_slice_mean > 0:
+            msg = "fluctuations_slice_mean must be greater zero; got {!r}"
+            raise ValueError(msg.format(fluctuations_slice_mean))
+        from ..sugar import from_random
+        scm = 1.
+        for a in self._a:
+            op = a.fluctuation_amplitude * self.azm.ptw("reciprocal")
+            res = np.array([op(from_random(op.domain, 'normal')).val
+                            for _ in range(nsamples)])
+            scm *= res**2 + 1.
+        return fluctuations_slice_mean / np.mean(np.sqrt(scm))
 
     @property
     def total_fluctuation(self):
@@ -821,9 +845,9 @@ class CorrelatedFieldMaker:
             return self.average_fluctuation(0)
         q = 1.
         for a in self._a:
-            fl = a.fluctuation_amplitude*self._azm.ptw("reciprocal")
+            fl = a.fluctuation_amplitude*self.azm.ptw("reciprocal")
             q = q*(Adder(full(fl.target, 1.)) @ fl**2)
-        return (Adder(full(q.target, -1.)) @ q).ptw("sqrt")*self._azm
+        return (Adder(full(q.target, -1.)) @ q).ptw("sqrt")*self.azm
 
     def slice_fluctuation(self, space):
         """Returns operator which acts on prior or posterior samples"""
@@ -835,12 +859,12 @@ class CorrelatedFieldMaker:
             return self.average_fluctuation(0)
         q = 1.
         for j in range(len(self._a)):
-            fl = self._a[j].fluctuation_amplitude*self._azm.ptw("reciprocal")
+            fl = self._a[j].fluctuation_amplitude*self.azm.ptw("reciprocal")
             if j == space:
                 q = q*fl**2
             else:
                 q = q*(Adder(full(fl.target, 1.)) @ fl**2)
-        return q.ptw("sqrt")*self._azm
+        return q.ptw("sqrt")*self.azm
 
     def average_fluctuation(self, space):
         """Returns operator which acts on prior or posterior samples"""
