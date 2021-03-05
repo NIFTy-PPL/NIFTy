@@ -674,7 +674,7 @@ class CorrelatedFieldMaker:
                 zm = _Distributor(dofdex, zm.target, UnstructuredDomain(self._total_N)) @ zm
             self._azm = zm
 
-    def finalize(self, prior_info=100):
+    def finalize(self, prior_info=100, normalize=True):
         """Finishes model construction process and returns the constructed
         operator.
 
@@ -697,9 +697,6 @@ class CorrelatedFieldMaker:
             spaces = tuple(range(n_amplitudes))
             amp_space = 0
 
-        expander = ContractionOperator(hspace, spaces=spaces).adjoint
-        azm = expander @ self.azm
-
         ht = HarmonicTransformOperator(hspace,
                                        self._target_subdomains[0][amp_space],
                                        space=spaces[0])
@@ -707,14 +704,24 @@ class CorrelatedFieldMaker:
             ht = HarmonicTransformOperator(ht.target,
                                            self._target_subdomains[i][amp_space],
                                            space=spaces[i]) @ ht
-        a = list(self.get_normalized_amplitudes())
+
+        if normalize:
+            expander = ContractionOperator(hspace, spaces=spaces).adjoint
+            azm = expander @ self.azm
+
+            a = list(self.get_normalized_amplitudes())
+        else:
+            a = list(self.fluctuations)
         for ii in range(n_amplitudes):
             co = ContractionOperator(hspace, spaces[:ii] + spaces[ii + 1:])
             pp = a[ii].target[amp_space]
             pd = PowerDistributor(co.target, pp, amp_space)
             a[ii] = co.adjoint @ pd @ a[ii]
         corr = reduce(mul, a)
-        op = ht(azm*corr*ducktape(hspace, None, self._prefix + 'xi'))
+        if normalize:
+            op = ht(azm*corr*ducktape(hspace, None, self._prefix + 'xi'))
+        else:
+            op = ht(corr*ducktape(hspace, None, self._prefix + 'xi'))
 
         if self._offset_mean is not None:
             offset = self._offset_mean
@@ -734,15 +741,22 @@ class CorrelatedFieldMaker:
         if prior_info == 0:
             return
 
-        lst = [('Offset amplitude', self.amplitude_total_offset),
-               ('Total fluctuation amplitude', self.total_fluctuation)]
+        lst = []
+        try:
+            lst.append(('Offset amplitude', self.amplitude_total_offset))
+        except NotImplementedError:  # AZM mustn't be set to get stats
+            pass
+        lst.append(('Total fluctuation amplitude', self.total_fluctuation))
         namps = len(self._a)
         if namps > 1:
             for ii in range(namps):
-                lst.append(('Slice fluctuation (space {})'.format(ii),
-                            self.slice_fluctuation(ii)))
                 lst.append(('Average fluctuation (space {})'.format(ii),
                             self.average_fluctuation(ii)))
+                try:
+                    lst.append(('Slice fluctuation (space {})'.format(ii),
+                                self.slice_fluctuation(ii)))
+                except NotImplementedError:  # AZM mustn't be set to get stats
+                    pass
 
         for kk, op in lst:
             sc = StatCalculator()
