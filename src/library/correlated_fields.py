@@ -227,16 +227,16 @@ class _Distributor(LinearOperator):
 
 
 class _AmplitudeMatern(Operator):
-    def __init__(self, pow_spc, scale, cutoff, logloghalfslope, azm, totvol):
+    def __init__(self, pow_spc, scale, cutoff, loglogslope, azm, totvol):
         expander = ContractionOperator(pow_spc, spaces=None).adjoint
         k_squared = makeField(pow_spc, pow_spc.k_lengths**2)
 
-        a = expander @ scale.log()
-        b = VdotOperator(k_squared).adjoint @ cutoff.power(-2.)
-        c = expander.scale(-1) @ logloghalfslope
+        scale = expander @ scale.log()
+        cutoff = VdotOperator(k_squared).adjoint @ cutoff.power(-2.)
+        spectral_idx = expander.scale(0.25) @ loglogslope
 
-        ker = Adder(full(pow_spc, 1.)) @ b
-        ker = c * ker.log() + a
+        ker = Adder(full(pow_spc, 1.)) @ cutoff
+        ker = spectral_idx * ker.log() + scale
         op = ker.exp()
 
         # Account for the volume of the position space (dvol in harmonic space
@@ -587,7 +587,7 @@ class CorrelatedFieldMaker:
                                 target_subdomain,
                                 scale,
                                 cutoff,
-                                logloghalfslope,
+                                loglogslope,
                                 prefix='',
                                 adjust_for_volume=True,
                                 harmonic_partner=None):
@@ -596,12 +596,12 @@ class CorrelatedFieldMaker:
         The matern kernel amplitude is parametrized in the following way:
 
         .. math ::
-            A(|k|) = \\frac{a}{\\left(1 + { \
+            A(k) = \\frac{a}{\\left(1 + { \
                 \\left(\\frac{|k|}{b}\\right) \
-            }^2\\right)^c}
+            }^2\\right)^{-c/4}}
 
-        where :math:`a` is the scale, :math:`b` the cutoff and :math:`c` half
-        the slope of the power law.
+        where :math:`a` is the scale, :math:`b` the cutoff and :math:`c` the
+        spectral index of the power spectrum.
 
         Parameters
         ----------
@@ -611,11 +611,15 @@ class CorrelatedFieldMaker:
             in this call should hold.
         scale : tuple of float (mean, std)
             Overall scale of the fluctuations in the target subdomain.
+            The parameter is a-priori lognormal distribution.
         cutoff : tuple of float (mean, std)
             Frequency at which the power spectrum should transition into
             a spectra following a power-law.
-        logloghalfslope : tuple of float (mean, std)
-            Half of the slope of the amplitude spectrum.
+            The parameter is a-priori lognormal distribution.
+        loglogslope : tuple of float (mean, std)
+            The slope of the power-spectrum spectrum on double logarithmic
+            scales, i.e. the spectral index.
+            The parameter is a-priori normal distribution.
         prefix : string
             Prefix of the power spectrum parameter domain names.
         adjust_for_volume : bool, optional
@@ -648,14 +652,14 @@ class CorrelatedFieldMaker:
         scale = LognormalTransform(*scale, self._prefix + prefix + 'scale', 0)
         prfx = self._prefix + prefix + 'cutoff'
         cutoff = LognormalTransform(*cutoff, prfx, 0)
-        prfx = self._prefix + prefix + 'logloghalfslope'
-        logloghalfslope = NormalTransform(*logloghalfslope, prfx, 0)
+        prfx = self._prefix + prefix + 'loglogslope'
+        loglogslope = NormalTransform(*loglogslope, prfx, 0)
 
         totvol = 1.
         if adjust_for_volume:
             totvol = target_subdomain[-1].total_volume
         pow_spc = PowerSpace(harmonic_partner)
-        amp = _AmplitudeMatern(pow_spc, scale, cutoff, logloghalfslope,
+        amp = _AmplitudeMatern(pow_spc, scale, cutoff, loglogslope,
                                self._azm, totvol)
 
         self._a.append(amp)
