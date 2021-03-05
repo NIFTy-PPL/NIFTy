@@ -707,7 +707,7 @@ class CorrelatedFieldMaker:
             ht = HarmonicTransformOperator(ht.target,
                                            self._target_subdomains[i][amp_space],
                                            space=spaces[i]) @ ht
-        a = list(self.normalized_amplitudes())
+        a = list(self.get_normalized_amplitudes())
         for ii in range(n_amplitudes):
             co = ContractionOperator(hspace, spaces[:ii] + spaces[ii + 1:])
             pp = a[ii].target[amp_space]
@@ -758,7 +758,7 @@ class CorrelatedFieldMaker:
         """Returns the added fluctuations operators used in the model"""
         return self._a
 
-    def normalized_amplitudes(self):
+    def get_normalized_amplitudes(self):
         """Returns the normalized amplitude operators used in the final model
 
         The amplitude operators are corrected for the otherwise degenerate
@@ -798,7 +798,7 @@ class CorrelatedFieldMaker:
                  ' no unique set of amplitudes exist because only the',
                  ' relative scale is determined.')
             raise NotImplementedError(s)
-        normal_amp = self.normalized_amplitudes()[0]
+        normal_amp = self.get_normalized_amplitudes()[0]
 
         expand = ContractionOperator(
             normal_amp.target, len(normal_amp.target) - 1

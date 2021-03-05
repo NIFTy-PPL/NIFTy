@@ -81,7 +81,7 @@ def main():
     cfmaker.set_amplitude_total_offset(0., (1e-2, 1e-6))
     correlated_field = cfmaker.finalize()
 
-    normalized_amp = cfmaker.normalized_amplitudes()
+    normalized_amp = cfmaker.get_normalized_amplitudes()
     pspec1 = normalized_amp[0]**2
     pspec2 = normalized_amp[1]**2
     DC = SingleDomain(correlated_field.target, position_space)
