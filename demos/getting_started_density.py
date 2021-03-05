@@ -69,18 +69,6 @@ def density_estimator(
     # cfmaker.set_amplitude_total_offset(0., (1e-2, 1e-6))
     correlated_field = cfmaker.finalize(0, normalize=False)
 
-    # HACK: Mask the zero-th entry of the to-be-learned parameters
-    mask_xi0_stack = []
-    for k, d in correlated_field.domain.items():
-        sel = ift.FieldAdapter(d, k)
-        if k == prefix + "xi":
-            m = np.zeros(d.shape, dtype=bool)
-            m.flat[0] = True
-            sel = ift.MaskOperator(ift.Field.from_raw(d, m)) @ sel
-        mask_xi0_stack.append(sel.adjoint @ sel)
-    mask_xi0 = reduce(lambda x, y: x + y, mask_xi0_stack)
-    correlated_field = correlated_field @ mask_xi0
-
     domain_shape = tuple(d.shape for d in domain)
     slc = ift.SliceOperator(correlated_field.target, domain_shape)
 

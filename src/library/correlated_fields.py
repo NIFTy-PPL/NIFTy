@@ -38,6 +38,7 @@ from ..operators.distributors import PowerDistributor
 from ..operators.endomorphic_operator import EndomorphicOperator
 from ..operators.harmonic_operators import HarmonicTransformOperator
 from ..operators.linear_operator import LinearOperator
+from ..operators.mask_operator import MaskOperator
 from ..operators.normal_operators import LognormalTransform, NormalTransform
 from ..operators.operator import Operator
 from ..operators.simple_linear_operators import VdotOperator, ducktape
@@ -719,9 +720,22 @@ class CorrelatedFieldMaker:
             a[ii] = co.adjoint @ pd @ a[ii]
         corr = reduce(mul, a)
         if normalize:
-            op = ht(azm*corr*ducktape(hspace, None, self._prefix + 'xi'))
+            xi = ducktape(hspace, None, self._prefix + 'xi')
+            op = ht(azm * corr * xi)
         else:
-            op = ht(corr*ducktape(hspace, None, self._prefix + 'xi'))
+            if self._total_N > 0:
+                re = (
+                    "initializing a correlated field without an amplitude total"
+                    " offset with `total_N` larger than zero is not supported"
+                )
+                raise RuntimeError(re)
+            m = np.zeros(hspace.shape, dtype=bool)
+            m.flat[0] = True
+            mask_zm = MaskOperator(Field(hspace, m))
+
+            xi = ducktape(mask_zm.adjoint.domain, None, self._prefix + "xi")
+            xi = mask_zm.adjoint @ xi
+            op = ht(corr * xi)
 
         if self._offset_mean is not None:
             offset = self._offset_mean
