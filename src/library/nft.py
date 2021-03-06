@@ -17,7 +17,6 @@
 
 import numpy as np
 from scipy.constants import speed_of_light
-from ducc0.wgridder import ms2dirty, dirty2ms
 
 from ..domain_tuple import DomainTuple
 from ..domains.rg_space import RGSpace
@@ -60,6 +59,7 @@ class Gridder(LinearOperator):
         self._eps = float(eps)
 
     def apply(self, x, mode):
+        from ducc0.wgridder import ms2dirty, dirty2ms
         self._check_input(x, mode)
         freq = np.array([speed_of_light])
         x = x.val
