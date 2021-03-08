@@ -84,13 +84,12 @@ def density_estimator(
     # Honor the difference in measurement time
     if not isinstance(exposure, ift.Operator):
         exposure = ift.ScalingOperator(signal.target, exposure)
-    response = ift.GeometryRemover(signal.target) @ exposure
-    signal_response = response @ signal
+    signal_response = exposure @ signal
 
     model_operators = {
         "signal": signal,
         "correlated_field": correlated_field,
-        "response": response,
+        "exposure": exposure,
         "select_subset": slc,
         "normalization": norm @ signal_cache
     }
@@ -109,7 +108,7 @@ if __name__ == "__main__":
     signal_response, ops = density_estimator(position_space, exposure=10.)
     signal = ops["signal"]
     correlated_field = ops["correlated_field"]
-    response = ops["response"]
+    response = ops["exposure"]
     normalization = ops["normalization"]  # TODO: remove
     # Specify noise
     data_space = response.target
