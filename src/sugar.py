@@ -1,15 +1,15 @@
-from jax import numpy as np
+from jax.numpy import isscalar, array
 from jax.tree_util import tree_flatten
 
 def makeField(obj):
-    if np.isscalar(obj):
+    if isscalar(obj):
         return obj
     val, domain = tree_flatten(obj)
     from .field import Field
-    return Field(domain, val)
+    return Field(domain, [array(v) for v in val])
 
 def fromField(f):
-    if np.isscalar(f):
+    if isscalar(f):
         return f
     return f.to_tree()
 

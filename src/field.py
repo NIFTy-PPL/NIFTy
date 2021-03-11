@@ -11,9 +11,22 @@ class Field():
     def to_tree(self):
         return tree_unflatten(self.domain, self.val)
 
-    def norm(self):
+    def dot(self, other):
+        if not isinstance(other, Field):
+            raise TypeError("Can only perform dot product between fields")
+        if other.domain != self.domain:
+            raise ValueError("domains are incompatible.")
+        res = [np.sum(v*w) for v,w in zip(self.val, other.val)]
+        return np.sum(np.array(res))
+
+    def squared_norm(self):
         res = [np.sum(v**2) for v in self.val]
         return np.sum(np.array(res))
+
+    def norm(self, ord):
+        res = [np.linalg.norm(v, ord=ord) for v in self.val]
+        return np.linalg.norm(np.array(res), ord=ord)
+
 
     def _binary_op(self, other, op):
         if isinstance(other, Field):
@@ -22,6 +35,7 @@ class Field():
                 raise ValueError("domains are incompatible.")
             it = iter(other.val)
         elif np.isscalar(other):
+            from itertools import repeat
             it = repeat(other, len(self.val))
         else:
             raise ValueError("Invalid binary op for Field and {}".format(type(other)))
