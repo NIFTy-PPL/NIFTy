@@ -190,12 +190,13 @@ class _Normalization(Operator):
     def apply(self, x):
         self._check_input(x)
         spec = x.ptw("exp")
-        # NOTE, this "normalizes" also the zero-mode which is supposed to be
-        # left untouched by this operator. This is not a problem since this
-        # zero mode is multiplied with zero later on in the model and modelled
-        # differently.
         # NOTE, see the note in the doc-string on why this is not a proper
         # normalization!
+        # FIXME, this "normalizes" also the zero-mode which is supposed to be
+        # left untouched by this operator. Besides setting the zero-mode in the
+        # output, it also uses it in the norm. The former is not a problem
+        # because the zeroth element is later reset in the model. However, the
+        # latter should not happen.
         return (self._specsum(spec).reciprocal()*spec).sqrt()
 
 
