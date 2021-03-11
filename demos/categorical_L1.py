@@ -11,7 +11,8 @@ from jax.nn import softmax
 import jifty1 as jft
 
 def build_model(predictors, targets, sh, alpha=1):
-    matrix = lambda x: jft.laplace_prior(alpha)(x).reshape(sh)
+    my_laplace_prior = jft.interpolate()(jft.laplace_prior(alpha))
+    matrix = lambda x: my_laplace_prior(x).reshape(sh)
     model = lambda x: np.matmul(predictors, matrix(x))
     lh = jft.Categorical(targets, axis=1)
     return {"lh":lh @ model, "logits": model, "matrix": matrix}

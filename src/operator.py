@@ -99,3 +99,32 @@ def laplace_prior(alpha):
                 - (x>0)*(norm.logcdf(-x) + log(2))
     return lambda x: res(x)*alpha
 
+def interpolate(xmin=-7., xmax=7., N=14000):
+    """
+    Replaces a local nonlinearity such as np.exp with a linear interpolation.
+
+    Interpolating functions speeds up code and increases numerical stability in
+    some cases, but at a cost of precision and range.
+    
+    Parameters
+    ----------
+
+    xmin: float
+    minimal interpolation value. Default: -7.
+
+    xmax: float
+    maximal interpolation value. Default: 7.
+
+    N: int
+    How many points are used for the interpolation. Default: 14000
+    """
+    def decorator(f):
+        from jax.numpy import interp, linspace
+        x = linspace(xmin, xmax, N)
+        y = f(x)
+        from functools import wraps
+        @wraps(f)
+        def wrapper(t):
+            return interp(t,x,y)
+        return wrapper
+    return decorator
