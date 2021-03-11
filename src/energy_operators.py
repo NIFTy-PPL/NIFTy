@@ -106,4 +106,41 @@ def Gaussian(
 
     return Likelihood(energy, metric, draw_sample)
 
+def Categorical(data, axis=-1):
+    """
+    Provides a categorical likelihood of the data, equivalent to cross entropy
+
+    Parameters
+    ----------
+    data: np.array(int)
+    An array stating which of the categories is the realized in the data
+    Must agree with the input shape except for the shape[axis]
+
+    axis: int
+    axis over which the categories are formed
+    """
+
+    def energy(primals):
+        from jax.nn import log_softmax
+        logits = log_softmax(primals, axis=axis)
+        return -np.sum(np.take_along_axis(logits, data, axis))
+
+    def metric(primals, tangents):
+        from jax.nn import softmax
+        preds = softmax(primals, axis=axis)
+        norm_term = np.sum(preds*tangents, axis=axis, keepdims=True)
+        return preds*tangents - preds*norm_term
+
+    def draw_sample(primals, key):
+        from jax.nn import softmax
+        from jax import random
+
+        sqrtp = np.sqrt(softmax(primals, axis=axis))
+        key, subkey = random.split(key)
+        tangents = random.normal(shape=data.shape, key=subkey)
+        norm_term = np.sum(sqrtp*tangents, axis=axis, keepdims=True)
+        return sqrtp*(tangents - sqrtp*norm_term), key
+
+    return Likelihood(energy, metric, draw_sample)
+
 

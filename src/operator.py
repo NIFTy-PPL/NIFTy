@@ -88,3 +88,14 @@ class Likelihood():
         else:
             return self._draw_metric_sample(primals, key=key, **kwargs)
 
+def laplace_prior(alpha):
+    """
+    Takes random normal samples and outputs samples distributed according to
+    P(x|a) = exp(-|x|/a)/a/2
+    """
+    from jax.scipy.stats import norm
+    from jax.numpy import log
+    res = lambda x: (x<0)*(norm.logcdf(x) + log(2))\
+                - (x>0)*(norm.logcdf(-x) + log(2))
+    return lambda x: res(x)*alpha
+
