@@ -676,7 +676,7 @@ class CorrelatedFieldMaker:
                 zm = _Distributor(dofdex, zm.target, UnstructuredDomain(self._total_N)) @ zm
             self._azm = zm
 
-    def finalize(self, prior_info=100, normalize=True):
+    def finalize(self, prior_info=100):
         """Finishes model construction process and returns the constructed
         operator.
 
@@ -707,36 +707,18 @@ class CorrelatedFieldMaker:
                                            self._target_subdomains[i][amp_space],
                                            space=spaces[i]) @ ht
 
-        if normalize:
-            expander = ContractionOperator(hspace, spaces=spaces).adjoint
-            azm = expander @ self.azm
+        expander = ContractionOperator(hspace, spaces=spaces).adjoint
+        azm = expander @ self.azm
 
-            a = list(self.get_normalized_amplitudes())
-        else:
-            a = list(self.fluctuations)
+        a = list(self.get_normalized_amplitudes())
         for ii in range(n_amplitudes):
             co = ContractionOperator(hspace, spaces[:ii] + spaces[ii + 1:])
             pp = a[ii].target[amp_space]
             pd = PowerDistributor(co.target, pp, amp_space)
             a[ii] = co.adjoint @ pd @ a[ii]
         corr = reduce(mul, a)
-        if normalize:
-            xi = ducktape(hspace, None, self._prefix + 'xi')
-            op = ht(azm * corr * xi)
-        else:
-            if self._total_N > 0:
-                re = (
-                    "initializing a correlated field without an amplitude total"
-                    " offset with `total_N` larger than zero is not supported"
-                )
-                raise RuntimeError(re)
-            m = np.zeros(hspace.shape, dtype=bool)
-            m.flat[0] = True
-            mask_zm = MaskOperator(Field(hspace, m))
-
-            xi = ducktape(mask_zm.adjoint.domain, None, self._prefix + "xi")
-            xi = mask_zm.adjoint @ xi
-            op = ht(corr * xi)
+        xi = ducktape(hspace, None, self._prefix + 'xi')
+        op = ht(azm * corr * xi)
 
         if self._offset_mean is not None:
             offset = self._offset_mean

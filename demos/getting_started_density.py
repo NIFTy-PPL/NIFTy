@@ -32,18 +32,21 @@ import nifty7 as ift
 
 
 def density_estimator(
-        domain, exposure=1., pad=1., cf_fluctuations_sane_defaults=None
+        domain, exposure=1., pad=1., cf_fluctuations=None, cf_azm=None
     ):
-    from functools import reduce
+    cf_azm_sane_default = (0., (1e-2, 1e-6))
+    cf_fluctuations_sane_default = {
+        "scale": (1.0, 0.5),
+        "cutoff": (10.0, 5.0),
+        "loglogslope": (-12.0, 6.0)
+    }
 
     domain = ift.DomainTuple.make(domain)
     dom_scaling = 1. + np.broadcast_to(pad, (len(domain.axes), ))
-    if cf_fluctuations_sane_defaults is None:
-        cf_fluctuations_sane_defaults = {
-          "scale": (1.0, 0.5),
-          "cutoff": (10.0, 5.0),
-          "loglogslope": (-12.0, 6.0)
-        }
+    if cf_fluctuations is None:
+        cf_fluctuations = cf_fluctuations_sane_default
+    if cf_azm is None:
+        cf_azm = cf_azm_sane_default
 
     domain_padded = []
     for d_scl, d in zip(dom_scaling, domain):
@@ -63,11 +66,13 @@ def density_estimator(
     prefix = "de"  # density estimator
     cfmaker = ift.CorrelatedFieldMaker(prefix)
     for i, d in enumerate(domain_padded):
-        cfmaker.add_fluctuations_matern(
-            d, **cf_fluctuations_sane_defaults, prefix=f"ax{i}"
-        )
-    # cfmaker.set_amplitude_total_offset(0., (1e-2, 1e-6))
-    correlated_field = cfmaker.finalize(0, normalize=False)
+        if isinstance(cf_fluctuations, (list, tuple)):
+            cf_fl = cf_fluctuations[i]
+        else:
+            cf_fl = cf_fluctuations
+        cfmaker.add_fluctuations_matern(d, **cf_fl, prefix=f"ax{i}")
+    cfmaker.set_amplitude_total_offset(*cf_azm)
+    correlated_field = cfmaker.finalize(0)
 
     domain_shape = tuple(d.shape for d in domain)
     slc = ift.SliceOperator(correlated_field.target, domain_shape)
