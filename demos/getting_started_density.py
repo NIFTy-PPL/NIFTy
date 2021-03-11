@@ -36,9 +36,9 @@ def density_estimator(
     ):
     cf_azm_sane_default = (0., (1e-2, 1e-6))
     cf_fluctuations_sane_default = {
-        "scale": (1.0, 0.5),
-        "cutoff": (10.0, 5.0),
-        "loglogslope": (-12.0, 6.0)
+        "scale": (0.5, 0.3),
+        "cutoff": (7.0, 3.0),
+        "loglogslope": (6.0, 3.0)
     }
 
     domain = ift.DomainTuple.make(domain)
