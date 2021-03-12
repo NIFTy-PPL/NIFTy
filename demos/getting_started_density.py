@@ -32,9 +32,8 @@ import nifty7 as ift
 
 
 def density_estimator(
-        domain, exposure=1., pad=1., cf_fluctuations=None, cf_azm=None
+        domain, exposure=1., pad=1., cf_fluctuations=None
     ):
-    cf_azm_sane_default = (0., (1e-2, 1e-6))
     cf_fluctuations_sane_default = {
         "scale": (0.5, 0.3),
         "cutoff": (7.0, 3.0),
@@ -45,8 +44,6 @@ def density_estimator(
     dom_scaling = 1. + np.broadcast_to(pad, (len(domain.axes), ))
     if cf_fluctuations is None:
         cf_fluctuations = cf_fluctuations_sane_default
-    if cf_azm is None:
-        cf_azm = cf_azm_sane_default
 
     domain_padded = []
     for d_scl, d in zip(dom_scaling, domain):
@@ -71,7 +68,10 @@ def density_estimator(
         else:
             cf_fl = cf_fluctuations
         cfmaker.add_fluctuations_matern(d, **cf_fl, prefix=f"ax{i}")
-    cfmaker.set_amplitude_total_offset(*cf_azm)
+    scalar_domain = ift.DomainTuple.scalar_domain()
+    uniform = ift.UniformOperator(scalar_domain, loc=0., scale=20.)
+    zm = uniform.ducktape("zeromode") # defines the zeromode operator with unifrom prior
+    cfmaker.set_amplitude_total_offset(0., zm)
     correlated_field = cfmaker.finalize(0)
 
     domain_shape = tuple(d.shape for d in domain)
