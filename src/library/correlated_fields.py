@@ -645,7 +645,7 @@ class CorrelatedFieldMaker:
         ----------
         offset_mean : float
             Mean offset from zero of the correlated field to be made.
-        offset_std : tuple of float
+        offset_std : tuple of float or instance of :class:`~nifty7.operators.operator.Operator` acting on scalar domain
             Mean standard deviation and standard deviation of the standard
             deviation of the offset. No, this is not a word duplication.
         dofdex : np.array of integers, optional

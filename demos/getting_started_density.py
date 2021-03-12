@@ -38,7 +38,7 @@ def density_estimator(
     cf_fluctuations_sane_default = {
         "scale": (0.5, 0.3),
         "cutoff": (7.0, 3.0),
-        "loglogslope": (6.0, 3.0)
+        "loglogslope": (-6.0, 3.0)
     }
 
     domain = ift.DomainTuple.make(domain)
