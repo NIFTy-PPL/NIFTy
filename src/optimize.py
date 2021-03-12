@@ -75,6 +75,8 @@ def cg(mat, j, max_iterations=200, absdelta=1., resnorm=None, norm_ord=2, name=N
     r = 0.-j
     d = r
     previous_gamma = float(r.dot(d))
+    if previous_gamma==0:
+        return pos
     Eval = 0.
     for i in range(max_iterations):
         if name is not None:

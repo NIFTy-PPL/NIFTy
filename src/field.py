@@ -1,4 +1,5 @@
-from jax import numpy as np
+from jax.numpy import sum, isscalar, array, abs
+from jax.numpy.linalg import norm
 from jax.tree_util import tree_unflatten
 
 class Field():
@@ -16,16 +17,17 @@ class Field():
             raise TypeError("Can only perform dot product between fields")
         if other.domain != self.domain:
             raise ValueError("domains are incompatible.")
-        res = [np.sum(v*w) for v,w in zip(self.val, other.val)]
-        return np.sum(np.array(res))
+        res = [sum(v*w) for v,w in zip(self.val, other.val)]
+        return sum(array(res))
 
     def squared_norm(self):
-        res = [np.sum(v**2) for v in self.val]
-        return np.sum(np.array(res))
+        res = [sum(v**2) for v in self.val]
+        return sum(array(res))
 
     def norm(self, ord):
-        res = [np.linalg.norm(v, ord=ord) for v in self.val]
-        return np.linalg.norm(np.array(res), ord=ord)
+        my_norm = lambda x: abs(x) if (isscalar(x) or len(x.shape)==0) else norm(x, ord=ord)
+        res = [my_norm(v) for v in self.val]
+        return norm(array(res), ord=ord)
 
 
     def _binary_op(self, other, op):
@@ -34,7 +36,7 @@ class Field():
             if other.domain != self.domain:
                 raise ValueError("domains are incompatible.")
             it = iter(other.val)
-        elif np.isscalar(other):
+        elif isscalar(other):
             from itertools import repeat
             it = repeat(other, len(self.val))
         else:
