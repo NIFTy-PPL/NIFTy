@@ -32,7 +32,7 @@ import nifty7 as ift
 
 
 def density_estimator(
-        domain, exposure=1., pad=1., cf_fluctuations=None, cf_azm_uniform=None
+        domain, pad=1., cf_fluctuations=None, cf_azm_uniform=None
     ):
     cf_azm_uniform_sane_default = (0., 20.)
     cf_fluctuations_sane_default = {
@@ -73,37 +73,24 @@ def density_estimator(
         cfmaker.add_fluctuations_matern(d, **cf_fl, prefix=f"ax{i}")
     scalar_domain = ift.DomainTuple.scalar_domain()
     uniform = ift.UniformOperator(scalar_domain, *cf_azm_uni)
-    zm = uniform.ducktape("zeromode")
-    zm_offset_mean = 0.  # The zero-mode should be inferred only from the data
-    cfmaker.set_amplitude_total_offset(zm_offset_mean, zm)
+    azm = uniform.ducktape("zeromode")
+    azm_offset_mean = 0.  # The zero-mode should be inferred only from the data
+    cfmaker.set_amplitude_total_offset(azm_offset_mean, azm)
     correlated_field = cfmaker.finalize(0)
+    normalized_amplitudes = cfmaker.get_normalized_amplitudes()
 
     domain_shape = tuple(d.shape for d in domain)
     slc = ift.SliceOperator(correlated_field.target, domain_shape)
-
     signal = ift.exp(slc @ correlated_field)
-    # Cache the result of the correlated field to use it several times
-    signal_cache = signal.ducktape_left("signal_cache")
-    signal_plchr = ift.FieldAdapter(signal.target, "signal_cache")
-    expander = ift.ContractionOperator(slc.target, spaces=None).adjoint
-    norm = signal_plchr.integrate().reciprocal()
-    signal = (expander @ norm) * signal_plchr
-    signal = signal @ signal_cache
-
-    # Honor the difference in measurement time
-    if not isinstance(exposure, ift.Operator):
-        exposure = ift.ScalingOperator(signal.target, exposure)
-    signal_response = exposure @ signal
 
     model_operators = {
-        "signal": signal,
         "correlated_field": correlated_field,
-        "exposure": exposure,
         "select_subset": slc,
-        "normalization": norm @ signal_cache
+        "amplitude_total_offset": azm,
+        "normalized_amplitudes": normalized_amplitudes
     }
 
-    return signal_response, model_operators
+    return signal, model_operators
 
 
 if __name__ == "__main__":
@@ -114,24 +101,20 @@ if __name__ == "__main__":
     npix1 = 128
     position_space = ift.RGSpace(npix1)
 
-    signal_response, ops = density_estimator(position_space, exposure=10.)
-    signal = ops["signal"]
+    signal, ops = density_estimator(position_space)
     correlated_field = ops["correlated_field"]
-    response = ops["exposure"]
-    normalization = ops["normalization"]  # TODO: remove
-    # Specify noise
-    data_space = response.target
 
+    data_space = signal.target
     # Generate mock signal and data
     rng = ift.random.current_rng()
     rng.standard_normal(1000)
-    mock_position = ift.from_random(signal_response.domain, 'normal')
-    data = ift.Field.from_raw(data_space, rng.poisson(signal_response(mock_position).val))
+    mock_position = ift.from_random(signal.domain, 'normal')
+    data = ift.Field.from_raw(data_space, rng.poisson(signal(mock_position).val))
 
     plot = ift.Plot()
     plot.add(ift.exp(correlated_field(mock_position)), title='Pre-Slicing Truth')
     plot.add(signal(mock_position), title='Ground Truth')
-    plot.add(response.adjoint_times(data), title='Data')
+    plot.add(data, title='Data')
     plot.output(ny=1, nx=3, xsize=10, ysize=10, name=filename.format("setup"))
 
     # Minimization parameters
@@ -149,7 +132,7 @@ if __name__ == "__main__":
     n_samples = 5
 
     # Set up likelihood and information Hamiltonian
-    likelihood = ift.PoissonianEnergy(data) @ signal_response
+    likelihood = ift.PoissonianEnergy(data) @ signal
     ham = ift.StandardHamiltonian(likelihood, ic_sampling)
 
     # Begin minimization
