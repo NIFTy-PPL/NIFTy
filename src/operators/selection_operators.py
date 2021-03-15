@@ -65,9 +65,11 @@ class SliceOperator(LinearOperator):
         tgt = []
         slc_by_ax = []
         for i, d in enumerate(self._domain):
-            if new_shape[i] is None or self._domain.shape[i] == new_shape[i]:
+            if new_shape[i] is None or np.all(
+                np.array(self._domain.shape[i]) == np.array(new_shape[i])
+            ):
                 tgt += [d]
-            elif np.all(np.array(new_shape[i]) < np.array(d.shape)):
+            elif np.all(np.array(new_shape[i]) <= np.array(d.shape)):
                 dom_kw = dict()
                 if isinstance(d, RGSpace):
                     if preserve_dist:
