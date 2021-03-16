@@ -1,120 +1,168 @@
 from jax import numpy as np
-import numpy as onp
+import sys
 import time
 
 
-def NCG(pos, Egv, met, *args, compiles=False, **kwargs):
+def NCG(pos, energy_vag, met, *args, compiles=False, **kwargs):
     from .field import Field
     from .sugar import makeField
     if isinstance(pos, Field):
-        return field_NCG(pos, Egv, met, *args, **kwargs)
-    def my_Egv(field_x):
+        return field_NCG(pos, energy_vag, met, *args, **kwargs)
+
+    def e_vag(field_x):
         x = field_x.to_tree()
-        v,g = Egv(x)
+        v, g = energy_vag(x)
         return v, makeField(g)
 
-    def my_met(field_x, field_tan):
+    def m(field_x, field_tan):
         x = field_x.to_tree()
         tan = field_tan.to_tree()
         return makeField(met(x, tan))
 
     fld = makeField(pos)
-    return field_NCG(fld, my_Egv, my_met, *args, **kwargs).to_tree()
+    return field_NCG(fld, e_vag, m, *args, **kwargs).to_tree()
 
 
-def field_NCG(pos, Egv, met, iterations, absdelta=1., name=None, time_threshold=None):
-    Ediff = 0.
-    Eval,  g = Egv(pos)
-    if np.isnan(Eval):
+def field_NCG(
+    pos,
+    energy_vag,
+    met,
+    iterations,
+    absdelta=1.,
+    name=None,
+    time_threshold=None
+):
+    energy_diff = 0.
+    energy, g = energy_vag(pos)
+    if np.isnan(energy):
         raise ValueError("energy is Nan")
     for i in range(iterations):
-        CGname = name+"CG" if name is not None else None
-        Dg = cg(lambda x: met(pos,x), g,
-                absdelta=absdelta/100,
-                resnorm=g.norm(ord=1)/2,
-                norm_ord=1,
-                name=CGname,
-                time_threshold=time_threshold)
-        dd = Dg
-        npos = pos - dd
-        nEval, ng = Egv(npos)
+        cg_name = name + "CG" if name is not None else None
+        nat_g, _ = cg(
+            lambda x: met(pos, x),
+            g,
+            absdelta=absdelta / 100,
+            resnorm=g.norm(ord=1) / 2,
+            norm_ord=1,
+            name=cg_name,
+            time_threshold=time_threshold
+        )
+        dd = nat_g
+        new_pos = pos - dd
+        new_energy, new_g = energy_vag(new_pos)
         for j in range(6):
-            if nEval <= Eval:
+            if new_energy <= energy:
                 break
-            dd = dd/2 
-            npos = pos - dd
-            nEval, ng = Egv(npos)
+            dd = dd / 2
+            new_pos = pos - dd
+            new_energy, new_g = energy_vag(new_pos)
             if j == 3:
                 if name is not None:
-                    print("{}: long line search, resetting".format(name))
+                    msg = f"{name}: long line search, resetting"
+                    print(msg, file=sys.stderr)
                 gam = float(g.squared_norm())
-                curv = float(g.dot(met(pos,g)))
-                dd = -(gam/curv)*g
+                curv = float(g.dot(met(pos, g)))
+                dd = -gam / curv * g
         else:
-            npos = pos - Dg
-            nEval, ng = Egv(npos)
-            print("Warning: Energy increased")
-        Ediff = Eval - nEval
+            new_pos = pos - nat_g
+            new_energy, new_g = energy_vag(new_pos)
+            print("Warning: Energy increased", file=sys.stderr)
+        energy_diff = energy - new_energy
         if name is not None:
-            print("{}: Iteration {} Energy {:.6e} diff {:.6e}".format(name, i+1, nEval, Ediff))
-        if Ediff < absdelta and j<2:
-            return npos
-        Eval = nEval
-        pos = npos
-        g = ng
+            msg = f"{name}: Iteration {i+1} Energy {new_energy:.6e} diff {energy_diff:.6e}"
+            print(msg, file=sys.stderr)
+        if energy_diff < absdelta and j < 2:
+            return new_pos
+        energy = new_energy
+        pos = new_pos
+        g = new_g
         if time_threshold is not None:
-            if time.time()>time_threshold:
+            if time.time() > time_threshold:
                 break
     return pos
 
-nreset = 20
+
+N_RESET = 20
+
+
 # Taken from nifty
-def cg(mat, j, max_iterations=200, absdelta=1., resnorm=None, norm_ord=2, name=None, time_threshold=None, min_iterations=5):
-    pos = j*0.
-    # energy = .5xT M x - xT j
-    r = 0.-j
-    d = r
-    previous_gamma = float(r.dot(d))
-    if previous_gamma==0:
-        return pos
-    Eval = 0.
-    for i in range(max_iterations):
+def cg(
+    mat,
+    j,
+    x0=None,
+    maxiter=None,
+    absdelta=1.,
+    resnorm=None,
+    norm_ord=2,
+    name=None,
+    time_threshold=None,
+    miniter=5
+):
+    maxiter = 200 if maxiter is None else maxiter
+
+    if x0 is None:
+        pos = 0. * j
+        r = -j
+        d = r
+        # energy = .5xT M x - xT j
+        energy = 0.
+    else:
+        pos = x0
+        r = mat(pos) - j
+        d = r
+        energy = float(((r - j) / 2).dot(pos))
+    previous_gamma = float(r.squared_norm())
+    if previous_gamma == 0:
+        info = 0
+        return pos, info
+
+    info = -1
+    for i in range(maxiter):
         if name is not None:
-            print("{}: Iteration {} Energy {:.6e}".format(name, i, Eval))
+            print(f"{name}: Iteration {i} Energy {energy:.6e}", file=sys.stderr)
         q = mat(d)
         curv = float(d.dot(q))
         if curv == 0.:
-            raise ValueError("CG: zero curvature")
-        alpha = previous_gamma/curv
+            raise ValueError("zero curvature in conjugate gradient")
+        alpha = previous_gamma / curv
         if alpha < 0:
-            raise ValueError("CG: alpha < 0")
-        pos = pos-alpha*d
-        if i % nreset == nreset-1:
-            r = mat(pos)-j
+            raise ValueError("implausible gradient scaling `alpha < 0`")
+        pos = pos - alpha * d
+        if i % N_RESET == N_RESET - 1:
+            r = mat(pos) - j
         else:
-            r = r - q*alpha
+            r = r - q * alpha
         gamma = float(r.squared_norm())
         if time_threshold is not None:
-            if time.time()>time_threshold:
-                return pos
+            if time.time() > time_threshold:
+                info = i
+                return pos, info
         if gamma == 0:
-            print("gamma=0, converged!")
-            return pos
+            nm = "CG" if name is None else name
+            print(f"{nm}: gamma=0, converged!", file=sys.stderr)
+            info = 0
+            return pos, info
         if resnorm is not None:
             norm = float(r.norm(ord=norm_ord))
             if name is not None:
-                print("gradnorm {:.6e} tgt {:.6e}".format(norm, resnorm))
-            if norm < resnorm and i > min_iterations:
-                return pos
-        new_Eval = float(pos.dot((r-j)/2))
+                msg = f"{name}: gradnorm {norm:.6e} tgt {resnorm:.6e}"
+                print(msg, file=sys.stderr)
+            if norm < resnorm and i > miniter:
+                info = 0
+                return pos, info
+        new_energy = float(((r - j) / 2).dot(pos))
         if absdelta is not None:
             if name is not None:
-                print("DeltaEnergy {:.6e} tgt {:.6e}".format(Eval-new_Eval, absdelta))
-            if Eval - new_Eval < absdelta and i > min_iterations:
-                return pos
-        Eval = new_Eval
-        d = d*max(0,gamma/previous_gamma)+r
+                msg = f"{name}: ΔEnergy {energy-new_energy:.6e} tgt {absdelta:.6e}"
+                print(msg, file=sys.stderr)
+            if energy - new_energy < absdelta and i > miniter:
+                info = 0
+                return pos, info
+        energy = new_energy
+        d = d * max(0, gamma / previous_gamma) + r
         previous_gamma = gamma
     else:
-        print("Iteration Limit Reached")
-    return pos
+        nm = "CG" if name is None else name
+        print(f"{nm}: Iteration Limit Reached", file=sys.stderr)
+        info = i
+    return pos, info
