@@ -29,6 +29,14 @@ class Field():
         res = [my_norm(v) for v in self.val]
         return norm(array(res), ord=ord)
 
+    def __neg__(self):
+        return self.new([-v for v in self.val])
+
+    def __pos__(self):
+        return self
+
+    def __abs__(self):
+        return self.new([abs(v) for v in self.val])
 
     def _binary_op(self, other, op):
         if isinstance(other, Field):
