@@ -82,11 +82,28 @@ def field_NCG(
     return pos
 
 
+def cg(mat, j, x0=None, *args, **kwargs):
+    from .field import Field
+    from .sugar import makeField
+
+    if isinstance(j, Field):
+        return field_cg(mat, j, x0, *args, **kwargs)
+
+    def m_f(field_x):
+        x = field_x.to_tree()
+        return makeField(mat(x))
+
+    j_f = makeField(j)
+    x0_f = makeField(x0) if x0 is not None else x0
+    x, info = field_cg(m_f, j_f, x0_f, *args, **kwargs)
+    return x.to_tree(), info
+
+
 N_RESET = 20
 
 
 # Taken from nifty
-def cg(
+def field_cg(
     mat,
     j,
     x0=None,

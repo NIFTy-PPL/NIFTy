@@ -1,6 +1,6 @@
 from jax import numpy as np
-from jax.scipy.sparse.linalg import cg #TODO: replace
 from .operator import Likelihood
+from .optimize import cg
 from .sugar import makeField, just_add
 
 class StandardHamiltonian(Likelihood):
@@ -51,12 +51,19 @@ class StandardHamiltonian(Likelihood):
             # TODO: investigate the impact of sampling the prior and likelihood
             # antithetically.
             met_smpl = just_add(nll_smpl, prr_smpl)
-            signal_smpl = cg(
+            # TODO: Set sensible convergence criteria
+            """
+            lambda x: met(pos, x),
+            absdelta=1. / 100,
+            resnorm=np.linalg.norm(met_smpl, ord=1) / 2,
+            norm_ord=1
+            """
+            signal_smpl, _ = cg(
                 lambda t, primals=primals: self._metric(primals, t),
                 met_smpl,
                 x0=prr_inv_metric_smpl if x0 is None else x0,
                 maxiter=maxiter
-            )[0]
+            )
             return signal_smpl, key
         else:
             nll_smpl, _ = self._nll.draw_sample(primals, key=subkey_nll, **kwargs)
