@@ -5,7 +5,7 @@ from .sugar import makeField, just_add
 
 class StandardHamiltonian(Likelihood):
     def __init__(
-        self, likelihood
+        self, likelihood, compiled=False
     ):
         """
         Adds a standard normal prior to a likelihood and flattens any data structures
@@ -19,9 +19,16 @@ class StandardHamiltonian(Likelihood):
         def joined_metric(primals, tangents):
             return just_add(self._nll.metric(primals, tangents), tangents)
 
+        if compiled:
+            from jax import jit
+            joined_hamiltonian = jit(joined_hamiltonian)
+            joined_metric = jit(joined_metric)
         self._hamiltonian = joined_hamiltonian
         self._metric = joined_metric
-        self._draw_metric_sample = None
+        self._draw_metric_sample = None #FIXME: This breaks the class strucutre
+
+    def jit(self):
+        return StandardHamiltonian(self._nll.jit(), compiled=True)
 
     def draw_sample(
         self,

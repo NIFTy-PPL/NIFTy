@@ -65,7 +65,7 @@ if __name__ == "__main__":
     data = signal_response_truth + noise_truth
 
     nll = jft.Gaussian(data, noise_cov_inv) @ signal_response
-    ham = jft.StandardHamiltonian(likelihood=nll)
+    ham = jft.StandardHamiltonian(likelihood=nll).jit()
 
     key, subkey = random.split(key)
     pos_init = random.normal(shape=dims, key=subkey)

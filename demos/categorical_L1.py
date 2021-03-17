@@ -49,7 +49,7 @@ if __name__ == "__main__":
 
     model = build_model(mock_predictors, mock_targets,
         (N_predictors, N_categories))
-    ham = jft.StandardHamiltonian(likelihood=model["lh"])
+    ham = jft.StandardHamiltonian(likelihood=model["lh"]).jit()
 
     pos_init = .1*random.normal(shape=(N_predictors*N_categories,),
             key=subkey)

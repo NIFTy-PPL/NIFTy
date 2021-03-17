@@ -20,6 +20,11 @@ class Likelihood():
     def __call__(self, primals):
         return self._hamiltonian(primals)
 
+    def jit(self):
+        from jax import jit
+        return Likelihood(jit(self._hamiltonian), jit(self._metric),
+                jit(self._draw_metric_sample))
+
     def __matmul__(self, f):
         nham = lambda x: self.energy(f(x))
         def met(primals, tangents):
