@@ -1,4 +1,7 @@
 from jax import numpy as np
+from jax.ops import index_update
+from .operator import normal_prior, lognormal_prior
+
 
 class Amplitude():
     def __init__(
@@ -11,9 +14,9 @@ class Amplitude():
         harmonic_domain_type,
     ):
         self._shape = tuple(shape)
-        self._zm_m, self._zm_std = zeromode  # TODO: moment-match
-        self._fl_m, self._fl_std = fluctuations  # TODO: moment-match
-        self._slope_m, self._slope_std = loglogavgslope
+        self._zm = lognormal_prior(*zeromode)
+        self._fl = lognormal_prior(*fluctuations)
+        self._slope = normal_prior(*loglogavgslope)
         self._prefix = prefix
         self._harmonic_dom_type = harmonic_domain_type.lower()
 
@@ -31,15 +34,23 @@ class Amplitude():
             ve = f"invalid `harmonic_domain_type` {harmonic_domain_type!r}"
             raise ValueError(ve)
 
+        # Poor man's domain
+        self.tree_shape = {
+            self._prefix + "_xizeromode": (),
+            self._prefix + "_xifluctuations": (),
+            self._prefix + "_xiloglogavgslope": (),
+            self._prefix + "_xiexcitations": self._shape
+        }
+
     def __call__(self, primals):
         xi_zm = primals.get(self._prefix + "_xizeromode")
         xi_fl = primals.get(self._prefix + "_xifluctuations")
-        xi_slope = primals.get(self._prefix + "_xiloglogslope")
+        xi_slope = primals.get(self._prefix + "_xiloglogavgslope")
         xi_excitation = primals.get(self._prefix + "_xiexcitations")
 
-        zm = self._zm_m + self._zm_std * xi_zm  # TODO: moment-match
-        fl = self._fl_m + self._fl_std * xi_fl  # TODO: moment-match
-        slope = self._slope_m + self._slope_std * xi_slope
+        zm = self._zm(xi_zm)
+        fl = self._fl(xi_fl)
+        slope = self._slope(xi_slope)
         amplitude = np.exp(slope * self._rel_log_modes[-1])
         if self._harmonic_dom_type == "fourier":
             # Take the sqrt of the integral of the slope w/o fluctuations and
@@ -56,5 +67,3 @@ class Amplitude():
                 (amplitude, amplitude[-2:0:-1])
             )
         return harmonic_sqrt_power * xi_excitation
-
-

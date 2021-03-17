@@ -1,7 +1,7 @@
 from jax import numpy as np
 from .operator import Likelihood
 from .optimize import cg
-from .sugar import makeField, just_add
+from .sugar import makeField, just_add, random_like
 
 class StandardHamiltonian(Likelihood):
     def __init__(
@@ -43,8 +43,7 @@ class StandardHamiltonian(Likelihood):
         key, subkey_nll, subkey_prr = random.split(key, 3)
         if from_inverse:
             nll_smpl, _ = self._nll.draw_sample(primals, key=subkey_nll, **kwargs)
-            prr_inv_metric_smpl = random.normal(shape=primals.shape,
-                    key=subkey_prr)
+            prr_inv_metric_smpl = random_like(primals, key=subkey_prr)
             # Shorthand for retrieving the sample from an inverse sample
             prr_smpl = prr_inv_metric_smpl
 
@@ -74,8 +73,7 @@ class StandardHamiltonian(Likelihood):
             return signal_smpl, key
         else:
             nll_smpl, _ = self._nll.draw_sample(primals, key=subkey_nll, **kwargs)
-            prr_inv_metric_smpl = random.normal(shape=primals.shape,
-                    key=subkey_prr)
+            prr_inv_metric_smpl = random_like(primals, key=subkey_prr)
             return just_add(nll_smpl,prr_smpl), key
 
 
@@ -115,7 +113,7 @@ def Gaussian(
         from jax import random
 
         key, subkey = random.split(key)
-        tangents = random.normal(shape=data.shape, key=subkey)
+        tangents = random_like(data, key=subkey)
         return noise_std_inv(tangents), key
 
     return Likelihood(energy, metric, draw_sample)
@@ -151,7 +149,7 @@ def Categorical(data, axis=-1):
 
         sqrtp = np.sqrt(softmax(primals, axis=axis))
         key, subkey = random.split(key)
-        tangents = random.normal(shape=data.shape, key=subkey)
+        tangents = random_like(data, key=subkey)
         norm_term = np.sum(sqrtp*tangents, axis=axis, keepdims=True)
         return sqrtp*(tangents - sqrtp*norm_term), key
 

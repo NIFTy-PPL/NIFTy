@@ -1,9 +1,7 @@
+from jax import numpy as np
 from jax import jvp, vjp
-from jax.scipy.sparse.linalg import cg #TODO: replace
-from itertools import repeat
 
-
-from .sugar import just_add, makeField
+from .sugar import just_add
 
 
 class Likelihood():
@@ -61,7 +59,7 @@ class Likelihood():
             smpl_other, _ = ham.draw_sample(primals, key=subkeys[1], **kwargs)
 
             return just_add(smpl_self, smpl_other), key
-        
+
         return Likelihood(
             energy=lambda p: self(p) + ham(p),
             metric=lambda p, t: just_add(self.metric(p, t), ham.metric(p, t)),
@@ -93,16 +91,60 @@ class Likelihood():
         else:
             return self._draw_metric_sample(primals, key=key, **kwargs)
 
+
 def laplace_prior(alpha):
     """
     Takes random normal samples and outputs samples distributed according to
     P(x|a) = exp(-|x|/a)/a/2
     """
     from jax.scipy.stats import norm
-    from jax.numpy import log
-    res = lambda x: (x<0)*(norm.logcdf(x) + log(2))\
-                - (x>0)*(norm.logcdf(-x) + log(2))
+    res = lambda x: (x<0)*(norm.logcdf(x) + np.log(2))\
+                - (x>0)*(norm.logcdf(-x) + np.log(2))
     return lambda x: res(x)*alpha
+
+
+def normal_prior(mean, std):
+    """Match standard normally distributed random variables to non-standard
+    variables.
+    """
+    def standard_to_normal(xi):
+        return mean + std * xi
+
+    return standard_to_normal
+
+
+def lognormal_moments(mean, std):
+    """Compute the cumulants a log-normal process would have to comply with the
+    provided mean and standard-deviation `std`
+    """
+
+    if np.any(mean <= 0.):
+        raise ValueError(f"`mean` must be greater zero; got {mean!r}")
+    if np.any(std <= 0.):
+        raise ValueError(f"`std` must be greater zero; got {std!r}")
+    logstd = np.sqrt(np.log1p((std / mean)**2))
+    logmean = np.log(mean) - 0.5 * logstd**2
+    return logmean, logstd
+
+
+def lognormal_prior(mean, std):
+    """Moment-match standard normally distributed random variables to log-space
+
+    Takes random normal samples and outputs samples distributed according to
+
+    .. math::
+        P(xi|mu,sigma) \\propto exp(mu + sigma * xi)
+
+    such that the mean and standard deviation of the distribution matches the
+    specified values.
+    """
+    standard_to_normal = normal_prior(*lognormal_moments(mean, std))
+
+    def standard_to_lognormal(xi):
+        return np.exp(standard_to_normal(xi))
+
+    return standard_to_lognormal
+
 
 def interpolate(xmin=-7., xmax=7., N=14000):
     """
@@ -110,7 +152,7 @@ def interpolate(xmin=-7., xmax=7., N=14000):
 
     Interpolating functions speeds up code and increases numerical stability in
     some cases, but at a cost of precision and range.
-    
+
     Parameters
     ----------
 
@@ -124,12 +166,13 @@ def interpolate(xmin=-7., xmax=7., N=14000):
     How many points are used for the interpolation. Default: 14000
     """
     def decorator(f):
-        from jax.numpy import interp, linspace
-        x = linspace(xmin, xmax, N)
-        y = f(x)
         from functools import wraps
+
+        x = np.linspace(xmin, xmax, N)
+        y = f(x)
+
         @wraps(f)
         def wrapper(t):
-            return interp(t,x,y)
+            return np.interp(t, x, y)
         return wrapper
     return decorator
