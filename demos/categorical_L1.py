@@ -10,6 +10,7 @@ from jax.nn import softmax
 
 import jifty1 as jft
 
+
 def build_model(predictors, targets, sh, alpha=1):
     my_laplace_prior = jft.interpolate()(jft.laplace_prior(alpha))
     matrix = lambda x: my_laplace_prior(x).reshape(sh)
@@ -57,28 +58,30 @@ if __name__ == "__main__":
 
     diff_to_truth = np.linalg.norm(model["matrix"](pos) - matrix_truth)
     print(f"Initial diff to truth {diff_to_truth}", file=sys.stderr)
+
+    def energy(p, samps):
+        return np.mean(np.array([ham(p+s) for s in samps]), axis=0)
+    energy_vag = jit(value_and_grad(energy))
+        
+    @jit
+    def metric(p, t, samps):
+        results = [ham.metric(p+s, t) for s in samps]
+        return np.mean(np.array(results), axis=0)
     # Preform MGVI loop
     for i in range(n_mgvi_iterations):
         print(f"MGVI Iteration {i}", file=sys.stderr)
         key, *subkeys = random.split(key, 1 + n_samples)
         samples = []
         draw = lambda k: ham.draw_sample(pos, key=k, from_inverse=True)[0]
-        draw = jit(draw)
         samples = [draw(k) for k in subkeys]
-        def energy(p):
-            return np.mean(
-                    np.array([ham(p+s) for s in samples]), axis=0)
-        def metric(p, t):
-            results = [ham.metric(p+s, t) for s in samples]
-            return np.mean(np.array(results), axis=0)
 
-        energy_vg = jit(value_and_grad(energy))
-        met = jit(metric)
-        pos = jft.NCG(pos, energy_vg, met, n_newton_iterations)
+        Evag = lambda p: energy_vag(p, samples)
+        met = lambda p,t: metric(p, t, samples)
+        pos = jft.NCG(pos, Evag, met, n_newton_iterations)
         diff_to_truth = np.linalg.norm(model["matrix"](pos) - matrix_truth)
         print(
             (
-                f"Post MGVI Iteration {i}: Energy {energy(pos):2.4e}"
+                f"Post MGVI Iteration {i}: Energy {Evag(pos)[0]:2.4e}"
                 f"; diff to truth {diff_to_truth}"
             ),
             file=sys.stderr

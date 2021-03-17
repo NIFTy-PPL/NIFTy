@@ -77,7 +77,6 @@ if __name__ == "__main__":
         key, *subkeys = random.split(key, 1 + n_samples)
         samples = []
         draw = lambda k: ham.draw_sample(pos, key=k, from_inverse=True)[0]
-        #draw = jit(draw)
         samples = [draw(k) for k in subkeys]
         energy = lambda p: np.mean(
             np.array([ham(p + s) for s in samples]), axis=0
