@@ -31,14 +31,8 @@ class Field():
         res = [my_norm(v) for v in self.val]
         return norm(array(res), ord=ord)
 
-    def __neg__(self):
-        return self.new([-v for v in self.val])
-
-    def __pos__(self):
-        return self
-
-    def __abs__(self):
-        return self.new([abs(v) for v in self.val])
+    def _unary_op(self, op):
+        return self.new([getattr(v, op)() for v in self.val])
 
     def _binary_op(self, other, op):
         if isinstance(other, Field):
@@ -55,6 +49,14 @@ class Field():
             )
         return self.new([getattr(v, op)(o) for v, o in zip(self.val, it)])
 
+for op in ["__neg__", "__pos__", "__abs__"]:
+    def func(op):
+        def func2(self):
+            return self._unary_op(op)
+
+        return func2
+
+    setattr(Field, op, func(op))
 
 for op in [
     "__add__", "__radd__", "__sub__", "__rsub__", "__mul__", "__rmul__",
