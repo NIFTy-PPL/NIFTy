@@ -2,7 +2,9 @@ from typing import Callable
 from collections.abc import Iterable
 from jax.numpy import isscalar, array
 from jax import random
-from jax.tree_util import tree_structure, tree_flatten, tree_unflatten, tree_multimap
+from jax.tree_util import (
+    tree_structure, tree_flatten, tree_unflatten, tree_multimap
+)
 
 
 def makeField(obj):
@@ -11,6 +13,13 @@ def makeField(obj):
     val, domain = tree_flatten(obj)
     from .field import Field
     return Field(domain, [array(v) for v in val])
+
+
+def ducktape(call, key):
+    def named_call(p):
+        return call(p.get(key))
+
+    return named_call
 
 
 def fromField(f):

@@ -8,17 +8,8 @@ from collections.abc import Iterable
 from jax import numpy as np
 from jax import random
 from jax import jvp, vjp, value_and_grad, jit
-from jax.ops import index_update
 
 import jifty1 as jft
-
-
-@jit
-def hartley(p, axes=None):
-    from jax.numpy import fft
-
-    tmp = fft.fftn(p, axes)
-    return tmp.real + tmp.imag
 
 
 if __name__ == "__main__":
@@ -34,25 +25,26 @@ if __name__ == "__main__":
     mirror_samples = True
     n_newton_iterations = 10
 
-    cf_kw = {
-        "zeromode": (1e-3, 1e-4),
+    cf_zm = {"offset_mean": 0., "offset_std": (1e-3, 1e-4)}
+    cf_fl = {
         "fluctuations": (1e-1, 5e-3),
         "loglogavgslope": (-1., 1e-2),
         "flexibility": (1e+0, 5e-1),
         "asperity": (5e-1, 1e-1),
         "harmonic_domain_type": "Fourier"
     }
-    amp = jft.Amplitude(dims, prefix="", **cf_kw)
+    cfm = jft.CorrelatedFieldMaker("cf")
+    cfm.set_amplitude_total_offset(**cf_zm)
+    cfm.add_fluctuations(dims, **cf_fl, prefix="")
+    correlated_field, ptree = cfm.finalize()
 
-    # Specify the model
-    correlated_field = lambda x: hartley(amp(x))
     signal_response = lambda x: np.exp(correlated_field(x))
     noise_cov = lambda x: 0.1**2 * x
     noise_cov_inv = lambda x: 0.1**-2 * x
 
     # Create synthetic data
     key, subkey = random.split(key)
-    pos_truth = jft.random_with_tree_shape(amp.tree_shape, key=subkey)
+    pos_truth = jft.random_with_tree_shape(ptree, key=subkey)
     signal_response_truth = signal_response(pos_truth)
     key, subkey = random.split(key)
     noise_truth = np.sqrt(noise_cov(np.ones(dims))
@@ -60,10 +52,10 @@ if __name__ == "__main__":
     data = signal_response_truth + noise_truth
 
     nll = jft.Gaussian(data, noise_cov_inv) @ signal_response
-    ham = jft.StandardHamiltonian(likelihood=nll)
+    ham = jft.StandardHamiltonian(likelihood=nll).jit()
 
     key, subkey = random.split(key)
-    pos_init = jft.random_with_tree_shape(amp.tree_shape, key=subkey)
+    pos_init = jft.random_with_tree_shape(ptree, key=subkey)
     pos = pos_init.copy()
 
     # Minimize the potential
@@ -102,8 +94,7 @@ if __name__ == "__main__":
     axs[0].plot(data, alpha=0.7, label="Data")
     axs[0].plot(signal_response(pos), alpha=0.7, label="Reconstruction")
     axs[0].legend()
-    amp_nzm_modes = np.exp(amp._rel_log_modes[-1][1:])
-    axs[1].loglog(amp_nzm_modes, amp.amplitude(pos_truth)[1:], alpha=0.7, label="Signal")
-    axs[1].loglog(amp_nzm_modes, amp.amplitude(pos)[1:], alpha=0.7, label="Reconstruction")
+    axs[1].loglog(cfm.get_amplitude()(pos_truth)[1:], alpha=0.7, label="Signal")
+    axs[1].loglog(cfm.get_amplitude()(pos)[1:], alpha=0.7, label="Reconstruction")
     fig.tight_layout()
     plt.show()
