@@ -32,12 +32,14 @@ if __name__ == "__main__":
     n_mgvi_iterations = 3
     n_samples = 4
     mirror_samples = True
-    n_newton_iterations = 5
+    n_newton_iterations = 10
 
     cf_kw = {
         "zeromode": (1e-3, 1e-4),
         "fluctuations": (1e-1, 5e-3),
-        "loglogavgslope": (-1., 0.5),
+        "loglogavgslope": (-1., 1e-2),
+        "flexibility": (1e+0, 5e-1),
+        "asperity": (5e-1, 1e-1),
         "harmonic_domain_type": "Fourier"
     }
     amp = jft.Amplitude(dims, prefix="", **cf_kw)
@@ -94,11 +96,14 @@ if __name__ == "__main__":
             file=sys.stderr
         )
 
-    fig, ax = plt.subplots()
-    ax.plot(signal_response_truth, alpha=0.7, label="Signal")
-    ax.plot(noise_truth, alpha=0.7, label="Noise")
-    ax.plot(data, alpha=0.7, label="Data")
-    ax.plot(signal_response(pos), alpha=0.7, label="Reconstruction")
-    ax.legend()
+    fig, axs = plt.subplots(1, 2)
+    axs[0].plot(signal_response_truth, alpha=0.7, label="Signal")
+    axs[0].plot(noise_truth, alpha=0.7, label="Noise")
+    axs[0].plot(data, alpha=0.7, label="Data")
+    axs[0].plot(signal_response(pos), alpha=0.7, label="Reconstruction")
+    axs[0].legend()
+    amp_nzm_modes = np.exp(amp._rel_log_modes[-1][1:])
+    axs[1].loglog(amp_nzm_modes, amp.amplitude(pos_truth)[1:], alpha=0.7, label="Signal")
+    axs[1].loglog(amp_nzm_modes, amp.amplitude(pos)[1:], alpha=0.7, label="Reconstruction")
     fig.tight_layout()
     plt.show()
