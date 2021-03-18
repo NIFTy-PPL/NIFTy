@@ -144,9 +144,11 @@ class Amplitude():
 
         amplitude = self.amplitude(primals)
         if self._harmonic_dom_type == "fourier":
-            # Every mode appears exactly two times, first ascending then descending
-            # Save a little on the computational side by mirroring the ascending part
-            # NOTE, it would be possible to operatify this and use index_mul
+            # Every mode appears exactly two times, first ascending then
+            # descending Save a little on the computational side by mirroring
+            # the ascending part
+            # NOTE, it would be possible to put this into an operator and use
+            # index_mul
             harmonic_sqrt_power = np.concatenate(
                 (amplitude, amplitude[-2:0:-1])
             )
