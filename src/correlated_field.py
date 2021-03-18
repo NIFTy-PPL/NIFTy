@@ -277,7 +277,8 @@ class CorrelatedFieldMaker():
             normal_amp.append(normalized_amplitude)
         return tuple(normal_amp)
 
-    def get_amplitude(self):
+    @property
+    def amplitude(self):
         if len(self._fluctuations) > 1:
             s = (
                 'If more than one spectrum is present in the model,',
@@ -316,7 +317,7 @@ class CorrelatedFieldMaker():
             # the ascending part
             # NOTE, it would be possible to put this into an operator and use
             # index_mul
-            amp = self.get_amplitude()
+            amp = self.amplitude
 
             def correlated_field(p):
                 amp_at_p = amp(p)
