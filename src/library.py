@@ -2,6 +2,26 @@ from jax import numpy as np
 from .operator import normal_prior, lognormal_prior
 
 
+def _twolog_integrate(log_vol, x):
+    # Map the space to the one for the relative log-modes, i.e. pad the space
+    # of the log volume
+    twolog = np.empty((2 + log_vol.shape[0], ))
+    twolog = twolog.at[0].set(0.)
+    twolog = twolog.at[1].set(0.)
+
+    twolog = twolog.at[2:].set(np.cumsum(x[1], axis=0))
+    twolog = twolog.at[2:].set(
+        (twolog[2:] + twolog[1:-1]) / 2. * log_vol + x[0]
+    )
+    twolog = twolog.at[2:].set(np.cumsum(twolog[2:], axis=0))
+    return twolog
+
+
+def _remove_slope(rel_log_modes, x):
+    sc = rel_log_modes / rel_log_modes[-1]
+    return x - x[-1] * sc
+
+
 class Amplitude():
     def __init__(
         self,
@@ -105,24 +125,9 @@ class Amplitude():
                 sig_asp = np.broadcast_to(np.array([[asp], [0.]]), shift.shape)
                 asp = np.sqrt(shift + sig_asp) * sig_flx * xi_spc
 
-            # TODO: Put into function
-            x = asp  # twolog argument
-            twolog = np.empty(self._rel_log_modes[-1].shape)
-            twolog = twolog.at[0].set(0.)
-            twolog = twolog.at[1].set(0.)
-            twolog = twolog.at[2:].set(np.cumsum(x[1], axis=0))
-            twolog = twolog.at[2:].set(
-                (twolog[2:] + twolog[1:-1]) / 2. * self._log_vol[-1] + x[0]
-            )
-            twolog = twolog.at[2:].set(np.cumsum(twolog[2:], axis=0))
-
-            # TODO: Put into function
-            x = twolog  # remove_slope argument
-            sc = self._rel_log_modes[-1] / self._rel_log_modes[-1][-1]
-            remove_slope = x - x[-1] * sc
-
-            # TODO slope_remover and twolog
-            ln_amplitude += remove_slope  # (twolog(asp))
+            twolog = _twolog_integrate(self._log_vol[-1], asp)
+            wo_slope = _remove_slope(self._rel_log_modes[-1], twolog)
+            ln_amplitude += wo_slope
 
         # Exponentiate and norm the power spectrum
         amplitude = np.exp(ln_amplitude)
