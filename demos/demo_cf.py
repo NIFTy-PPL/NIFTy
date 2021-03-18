@@ -87,8 +87,8 @@ if __name__ == "__main__":
             )
             return (1. / len(samples) * rdc).to_tree()
 
-        energy_vg = jit(value_and_grad(energy))
-        met = jit(met)
+        energy_vg = value_and_grad(energy)
+        met = met
 
         pos = jft.NCG(pos, energy_vg, met, n_newton_iterations)
         print(
