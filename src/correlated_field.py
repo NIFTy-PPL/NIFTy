@@ -7,11 +7,10 @@ from .sugar import ducktape
 from .operator import normal_prior, lognormal_prior
 
 
-@jit
 def hartley(p, axes=None):
     from jax.numpy import fft
 
-    tmp = fft.fftn(p, axes)
+    tmp = fft.fftn(p, axes=axes)
     return tmp.real + tmp.imag
 
 
@@ -272,14 +271,13 @@ class CorrelatedFieldMaker():
         zero-mode. Their scales are only meaningful relative to one another.
         Their absolute scale bares no information.
         """
-        normal_amp = []
-        for amp in self._fluctuations:
-
-            def normalized_amplitude(p):
+        def _mk_normed_amp(amp):  # Avoid late binding
+            def normed_amplitude(p):
                 return amp(p).at[1:].mul(1. / self.azm(p))
 
-            normal_amp.append(normalized_amplitude)
-        return tuple(normal_amp)
+            return normed_amplitude
+
+        return tuple(_mk_normed_amp(amp) for amp in self._fluctuations)
 
     @property
     def amplitude(self):
@@ -307,30 +305,59 @@ class CorrelatedFieldMaker():
             How many prior samples to draw for property verification statistics
             If zero, skips calculating and displaying statistics.
         """
-        if len(self._fluctuations) != 1:
-            ve = "Factorizing amplitudes not implemented (yet)"
-            raise ValueError(ve)
+        harmonic_transforms = []
+        excitation_shape = ()
+        for sub_dom in self._target_subdomains:
+            sub_shp = None
+            if sub_dom["harmonic_domain_type"].lower() == "fourier":
+                sub_shp = sub_dom["position_space_shape"]
+            excitation_shape += sub_shp
+            n = len(excitation_shape)
+            axes = tuple(range(n - len(sub_shp), n))
 
-        h_dom_type = self._target_subdomains[0]["harmonic_domain_type"].lower()
-        shp = self._target_subdomains[0]["position_space_shape"]
-        if h_dom_type == "fourier":
-            # Register the parameters for the excitations in harmonic space
-            self._parameter_tree[self._prefix + "_excitations"] = shp
+            # TODO: Generalize to complex; Add dtype to parameter_tree?
+            def ht_axs(p, axes=axes):  # Avoid late binding
+                return hartley(p, axes=axes)
 
-        # TODO: Generalize to complex; Add dtype to parameter_tree?
-        ht = hartley
-        if h_dom_type == "fourier":
-            # Every mode appears exactly two times, first ascending then
-            # descending Save a little on the computational side by mirroring
-            # the ascending part
-            # NOTE, it would be possible to put this into an operator and use
-            # index_mul
-            amp = self.amplitude
+            harmonic_transforms.append(ht_axs)
+        # Register the parameters for the excitations in harmonic space
+        self._parameter_tree[self._prefix + "_excitations"] = excitation_shape
 
-            def correlated_field(p):
-                amp_at_p = amp(p)
-                ea = np.concatenate((amp_at_p, amp_at_p[-2:0:-1]))
-                cf_h = ea * p.get(self._prefix + "_excitations")
-                return self._offset_mean + ht(cf_h)
+        def outer_harmonic_transform(p):
+            outer = harmonic_transforms[0](p)
+            for ht in harmonic_transforms[1:]:
+                outer = ht(outer)
+            return outer
+
+        def _mk_expanded_amp(amp, harmonic_domain_type):  # Avoid late binding
+            if harmonic_domain_type == "fourier":
+                # TODO: Properly distributed the power for arbitrary domains
+                def expanded_amp(p):
+                    amp_at_p = amp(p)
+                    # Every mode appears exactly two times, first ascending
+                    # then descending.
+                    return np.concatenate((amp_at_p, amp_at_p[-2:0:-1]))
+            return expanded_amp
+
+        expanded_amplitudes = []
+        for amp, sub_dom in zip(
+            self.get_normalized_amplitudes(), self._target_subdomains
+        ):
+            h_dom_type = sub_dom["harmonic_domain_type"].lower()
+            expanded_amplitudes.append(_mk_expanded_amp(amp, h_dom_type))
+
+        def outer_amplitude(p):
+            outer = expanded_amplitudes[0](p)
+            for amp in expanded_amplitudes[1:]:
+                # NOTE, the order is important here and must match with the
+                # excitations
+                # TODO, use functions instead and utilize numpy's casting
+                outer = np.tensordot(outer, amp(p), axes=0)
+            return outer
+
+        def correlated_field(p):
+            ea = outer_amplitude(p)
+            cf_h = self.azm(p) * ea * p.get(self._prefix + "_excitations")
+            return self._offset_mean + outer_harmonic_transform(cf_h)
 
         return correlated_field, self._parameter_tree.copy()
