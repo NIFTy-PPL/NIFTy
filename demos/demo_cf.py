@@ -18,7 +18,7 @@ if __name__ == "__main__":
     seed = 42
     key = random.PRNGKey(seed)
 
-    dims = (1024, )
+    dims = (256, 256)
 
     n_mgvi_iterations = 3
     n_samples = 4
@@ -89,13 +89,27 @@ if __name__ == "__main__":
         msg = f"Post MGVI Iteration {i}: Energy {energy_vg(pos)[0]:2.4e}"
         print(msg, file=sys.stderr)
 
-    fig, axs = plt.subplots(1, 2)
-    axs[0].plot(signal_response_truth, alpha=0.7, label="Signal")
-    axs[0].plot(noise_truth, alpha=0.7, label="Noise")
-    axs[0].plot(data, alpha=0.7, label="Data")
-    axs[0].plot(signal_response(pos), alpha=0.7, label="Reconstruction")
-    axs[0].legend()
-    axs[1].loglog(cfm.amplitude(pos_truth)[1:], alpha=0.7, label="Signal")
-    axs[1].loglog(cfm.amplitude(pos)[1:], alpha=0.7, label="Reconstruction")
+    namps = cfm.get_normalized_amplitudes()
+    to_plot = [
+        ("Signal", signal_response_truth, "im"),
+        ("Noise", noise_truth, "im"),
+        ("Data", data, "im"),
+        ("Reconstruction", signal_response(pos), "im"),
+        (
+            "Ax1", (cfm.amplitude(pos_truth)[1:], cfm.amplitude(pos)[1:]),
+            "loglog"
+        ),
+    ]
+    fig, axs = plt.subplots(2, 3, figsize=(16, 9))
+    for ax, (title, field, tp) in zip(axs.flat, to_plot):
+        ax.set_title(title)
+        if tp == "im":
+            im = ax.imshow(field, cmap="inferno")
+            plt.colorbar(im, ax=ax, orientation="horizontal")
+        else:
+            ax_plot = ax.loglog if tp == "loglog" else ax.plot
+            field = field if isinstance(field, (tuple, list)) else (field, )
+            for f in field:
+                ax_plot(f, alpha=0.7)
     fig.tight_layout()
     plt.show()
