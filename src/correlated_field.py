@@ -298,12 +298,6 @@ class CorrelatedFieldMaker():
     def finalize(self):
         """Finishes model construction process and returns the constructed
         operator.
-
-        Parameters
-        ----------
-        prior_info : integer
-            How many prior samples to draw for property verification statistics
-            If zero, skips calculating and displaying statistics.
         """
         harmonic_transforms = []
         excitation_shape = ()
