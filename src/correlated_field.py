@@ -67,7 +67,6 @@ def non_parametric_amplitude(
     else:
         asperity = None
 
-    @jit
     def correlate(primals: Mapping) -> np.ndarray:
         flu = fluctuations(primals)
         slope = loglogavgslope(primals)
