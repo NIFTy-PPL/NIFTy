@@ -197,13 +197,13 @@ class CorrelatedFieldMaker():
         flx = flexibility
         if isinstance(flx, (tuple, list)):
             flx = lognormal_prior(*flx)
-        elif flx is not None or not callable(flx):
+        elif flx is not None and not callable(flx):
             te = f"invalid `flexibility` specified; got '{type(flexibility)}'"
             raise TypeError(te)
         asp = asperity
         if isinstance(asp, (tuple, list)):
             asp = lognormal_prior(*asp)
-        elif asp is not None or not callable(asp):
+        elif asp is not None and not callable(asp):
             te = f"invalid `asperity` specified; got '{type(asperity)}'"
             raise TypeError(te)
 
