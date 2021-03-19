@@ -57,8 +57,8 @@ def non_parametric_amplitude(
         flexibility = ducktape(flexibility, prefix + "_flexibility")
         ptree[prefix + "_flexibility"] = ()
         # Register the parameters for the spectrum
-        assert rel_log_mode_len.ndim == 1
-        ptree[prefix + "_spectrum"] = (2, rel_log_mode_len.shape[0] - 2)
+        assert rel_log_mode_len.ndim == log_vol.ndim == 1
+        ptree[prefix + "_spectrum"] = (2, ) + log_vol.shape
     else:
         flexibility = None
     if asperity is not None:
