@@ -46,7 +46,7 @@ def non_parametric_amplitude(
     totvol = domain.get("position_space_total_volume", 1.)
     harmonic_dom_type = domain["harmonic_domain_type"].lower()
     rel_log_mode_len = domain["relative_log_mode_lengths"]
-    log_vol = domain["log_volume"]
+    log_vol = domain.get("log_volume")
 
     ptree = {}
     fluctuations = ducktape(fluctuations, prefix + "_fluctuations")
