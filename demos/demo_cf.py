@@ -35,7 +35,7 @@ if __name__ == "__main__":
     }
     cfm = jft.CorrelatedFieldMaker("cf")
     cfm.set_amplitude_total_offset(**cf_zm)
-    cfm.add_fluctuations(dims, **cf_fl, prefix="")
+    cfm.add_fluctuations(dims, distances=1. / dims[0], **cf_fl, prefix="ax1")
     correlated_field, ptree = cfm.finalize()
 
     signal_response = lambda x: np.exp(correlated_field(x))
