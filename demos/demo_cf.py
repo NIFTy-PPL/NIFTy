@@ -53,6 +53,7 @@ if __name__ == "__main__":
 
     nll = jft.Gaussian(data, noise_cov_inv) @ signal_response
     ham = jft.StandardHamiltonian(likelihood=nll).jit()
+    ham_energy_vg = jit(value_and_grad(ham))
 
     key, subkey = random.split(key)
     pos_init = jft.random_with_tree_shape(ptree, key=subkey)
@@ -67,10 +68,15 @@ if __name__ == "__main__":
         samples = [jft.makeField(draw(k)) for k in subkeys]
         samples += [-s for s in samples]
 
-        def energy(p):
+        def energy_vg(p):
             p = jft.makeField(p)
-            rdc = sum(ham((p + s).to_tree()) for s in samples)
-            return 1. / len(samples) * rdc
+            e_rdc, g_rdc = None, None
+            for e, g in (ham_energy_vg((p + s).to_tree()) for s in samples):
+                g = jft.makeField(g)
+                e_rdc = e if e_rdc is None else e_rdc + e
+                g_rdc = g if g_rdc is None else g_rdc + g
+            norm = 1. / len(samples)
+            return norm * e_rdc, (norm * g_rdc).to_tree()
 
         def met(p, t):
             p = jft.makeField(p)
@@ -79,14 +85,9 @@ if __name__ == "__main__":
             )
             return (1. / len(samples) * rdc).to_tree()
 
-        energy_vg = value_and_grad(energy)
-        met = met
-
         pos = jft.NCG(pos, energy_vg, met, n_newton_iterations)
-        print(
-            f"Post MGVI Iteration {i}: Energy {energy(pos):2.4e}",
-            file=sys.stderr
-        )
+        msg = f"Post MGVI Iteration {i}: Energy {energy_vg(pos)[0]:2.4e}"
+        print(msg, file=sys.stderr)
 
     fig, axs = plt.subplots(1, 2)
     axs[0].plot(signal_response_truth, alpha=0.7, label="Signal")
