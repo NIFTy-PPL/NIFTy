@@ -43,8 +43,8 @@ def non_parametric_amplitude(
     prefix=""
 ):
     totvol = domain.get("position_space_total_volume", 1.)
-    harmonic_dom_type = domain["harmonic_domain_type"].lower()
     rel_log_mode_len = domain["relative_log_mode_lengths"]
+    mode_multiplicity = domain["mode_multiplicity"]
     log_vol = domain.get("log_volume")
 
     ptree = {}
@@ -97,12 +97,10 @@ def non_parametric_amplitude(
 
         # Exponentiate and norm the power spectrum
         amplitude = np.exp(ln_amplitude)
-        if harmonic_dom_type == "fourier":
-            # TODO: Properly distributed the power for arbitrary domains
-            # Take the sqrt of the integral of the slope w/o fluctuations and
-            # zero-mode while taking into account the multiplicity of each mode
-            norm = np.sqrt(2 * np.sum(amplitude[1:]**2) - amplitude[-1]**2)
-            norm /= np.sqrt(totvol)  # Due to integral in harmonic space
+        # Take the sqrt of the integral of the slope w/o fluctuations and
+        # zero-mode while taking into account the multiplicity of each mode
+        norm = np.sqrt(np.sum(mode_multiplicity[1:] * amplitude[1:]**2))
+        norm /= np.sqrt(totvol)  # Due to integral in harmonic space
         amplitude *= flu * (np.sqrt(totvol) / norm)
         amplitude = amplitude.at[0].set(totvol)
         return amplitude
@@ -154,14 +152,11 @@ class CorrelatedFieldMaker():
         harmonic_domain_type="fourier",
     ):
         shape = tuple(shape)
+        distances = tuple(np.broadcast_to(distances, np.shape(shape)))
         totvol = np.prod(np.array(shape) * np.array(distances))
-        if len(shape) > 1:
-            ve = "Multi-dimensional amplitude operator not implemented (yet)"
-            raise ValueError(ve)
 
         # Pre-compute lengths of modes and indices for distributing power
         # TODO: cache results such that only references are used afterwards
-        # TODO: compute indices for distributing power
         domain = {
             "position_space_shape": shape,
             "position_space_total_volume": totvol,
@@ -169,19 +164,8 @@ class CorrelatedFieldMaker():
             "harmonic_domain_type": harmonic_domain_type.lower()
         }
         if harmonic_domain_type.lower() == "fourier":
-            if len(shape) != 1:
-                nie = f"Unsupported length of `shape`: {len(shape)}"
-                raise ValueError(nie)
-            lm = np.arange(shape[0] / 2 + 1., dtype=float)
-            lm = lm.at[1:].set(np.log(lm[1:]))
-            lm = lm.at[1:].add(-lm[1])
-            # NOTE, the volume doesn't matter for either
-            # `relative_log_mode_lengths` nor `log_volume` as relative logarithmic
-            # quantities are volume-free
-            domain["relative_log_mode_lengths"] = lm
-            if flexibility is not None:
-                domain["log_volume"] = lm[2:] - lm[1:-1]
-                assert lm.shape[0] - 2 == domain["log_volume"].shape[0]
+            # TODO: Move to function
+            domain["harmonic_space_shape"] = shape
 
             # Compute length of modes
             ksp_dist = 1. / (np.array(shape) * np.array(distances))
@@ -197,15 +181,22 @@ class CorrelatedFieldMaker():
                 k_length = np.sqrt(k_length)
 
             # Construct an array of unique mode lengths
-            u_k_length = np.unique(k_length)
-            tol = 1e-12 * u_k_length[-1]
-            u_k_length = u_k_length[
-                np.diff(np.r_[u_k_length, 2 * u_k_length[-1]]) > tol]
-
-            # Group modes based on their length and store the result
-            binbounds = 0.5 * (u_k_length[:-1] + u_k_length[1:])
+            lm = np.unique(k_length.round(decimals=12))
+            # Group modes based on their length and store the result as power
+            # distributor
+            binbounds = 0.5 * (lm[:-1] + lm[1:])
             k_array_index = np.searchsorted(binbounds, k_length)
-            domain['power_distributor'] = k_array_index
+            domain["power_distributor"] = k_array_index
+            domain["mode_multiplicity"] = np.bincount(k_array_index.ravel())
+            assert lm.shape == domain["mode_multiplicity"].shape
+            # Transform the unique modes to log-space for the amplitude model
+            # and store the result
+            lm = lm.at[1:].set(np.log(lm[1:]))
+            lm = lm.at[1:].add(-lm[1])
+            domain["relative_log_mode_lengths"] = lm
+            if flexibility is not None:
+                domain["log_volume"] = lm[2:] - lm[1:-1]
+                assert lm.shape[0] - 2 == domain["log_volume"].shape[0]
         else:
             ve = f"invalid `harmonic_domain_type` {harmonic_domain_type!r}"
             raise ValueError(ve)
@@ -329,8 +320,7 @@ class CorrelatedFieldMaker():
         excitation_shape = ()
         for sub_dom in self._target_subdomains:
             sub_shp = None
-            if sub_dom["harmonic_domain_type"].lower() == "fourier":
-                sub_shp = sub_dom["position_space_shape"]
+            sub_shp = sub_dom["harmonic_space_shape"]
             excitation_shape += sub_shp
             n = len(excitation_shape)
             axes = tuple(range(n - len(sub_shp), n))
@@ -349,23 +339,16 @@ class CorrelatedFieldMaker():
                 outer = ht(outer)
             return outer
 
-        def _mk_expanded_amp(amp, harmonic_domain_type):  # Avoid late binding
-            if harmonic_domain_type == "fourier":
-                # TODO: Properly distributed the power for arbitrary domains
-                def expanded_amp(p):
-                    amp_at_p = amp(p)
-                    # Every mode appears exactly two times, first ascending
-                    # then descending.
-                    return np.concatenate((amp_at_p, amp_at_p[-2:0:-1]))
+        def _mk_expanded_amp(amp, sub_dom):  # Avoid late binding
+            def expanded_amp(p):
+                return amp(p)[sub_dom["power_distributor"]]
 
             return expanded_amp
 
         expanded_amplitudes = []
-        for amp, sub_dom in zip(
-            self.get_normalized_amplitudes(), self._target_subdomains
-        ):
-            h_dom_type = sub_dom["harmonic_domain_type"].lower()
-            expanded_amplitudes.append(_mk_expanded_amp(amp, h_dom_type))
+        namps = self.get_normalized_amplitudes()
+        for amp, sub_dom in zip(namps, self._target_subdomains):
+            expanded_amplitudes.append(_mk_expanded_amp(amp, sub_dom))
 
         def outer_amplitude(p):
             outer = expanded_amplitudes[0](p)
