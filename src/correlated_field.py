@@ -145,15 +145,16 @@ class CorrelatedFieldMaker():
     def add_fluctuations(
         self,
         shape,
+        distances,
         fluctuations,
         loglogavgslope,
         flexibility=None,
         asperity=None,
         prefix="",
-        totvol=1.,
         harmonic_domain_type="fourier",
     ):
         shape = tuple(shape)
+        totvol = np.prod(np.array(shape) * np.array(distances))
         if len(shape) > 1:
             ve = "Multi-dimensional amplitude operator not implemented (yet)"
             raise ValueError(ve)
@@ -164,6 +165,7 @@ class CorrelatedFieldMaker():
         domain = {
             "position_space_shape": shape,
             "position_space_total_volume": totvol,
+            "position_space_distances": distances,
             "harmonic_domain_type": harmonic_domain_type.lower()
         }
         if harmonic_domain_type.lower() == "fourier":
@@ -180,6 +182,30 @@ class CorrelatedFieldMaker():
             if flexibility is not None:
                 domain["log_volume"] = lm[2:] - lm[1:-1]
                 assert lm.shape[0] - 2 == domain["log_volume"].shape[0]
+
+            # Compute length of modes
+            ksp_dist = 1. / (np.array(shape) * np.array(distances))
+            k_length = np.arange(shape[0], dtype=np.float64)
+            k_length = np.minimum(k_length, shape[0] - k_length) * distances[0]
+            if len(shape) != 1:
+                k_length *= k_length
+                for i in range(1, len(shape)):
+                    tmp = np.arange(shape[i], dtype=np.float64)
+                    tmp = np.minimum(tmp, shape[i] - tmp) * distances[i]
+                    tmp *= tmp
+                    k_length = np.expand_dims(k_length, axis=-1) + tmp
+                k_length = np.sqrt(k_length)
+
+            # Construct an array of unique mode lengths
+            u_k_length = np.unique(k_length)
+            tol = 1e-12 * u_k_length[-1]
+            u_k_length = u_k_length[
+                np.diff(np.r_[u_k_length, 2 * u_k_length[-1]]) > tol]
+
+            # Group modes based on their length and store the result
+            binbounds = 0.5 * (u_k_length[:-1] + u_k_length[1:])
+            k_array_index = np.searchsorted(binbounds, k_length)
+            domain['power_distributor'] = k_array_index
         else:
             ve = f"invalid `harmonic_domain_type` {harmonic_domain_type!r}"
             raise ValueError(ve)
@@ -331,6 +357,7 @@ class CorrelatedFieldMaker():
                     # Every mode appears exactly two times, first ascending
                     # then descending.
                     return np.concatenate((amp_at_p, amp_at_p[-2:0:-1]))
+
             return expanded_amp
 
         expanded_amplitudes = []
