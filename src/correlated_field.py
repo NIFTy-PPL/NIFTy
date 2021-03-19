@@ -99,6 +99,7 @@ def non_parametric_amplitude(
         # Exponentiate and norm the power spectrum
         amplitude = np.exp(ln_amplitude)
         if harmonic_dom_type == "fourier":
+            # TODO: Properly distributed the power for arbitrary domains
             # Take the sqrt of the integral of the slope w/o fluctuations and
             # zero-mode while taking into account the multiplicity of each mode
             norm = np.sqrt(2 * np.sum(amplitude[1:]**2) - amplitude[-1]**2)
@@ -153,14 +154,18 @@ class CorrelatedFieldMaker():
         totvol=1.,
         harmonic_domain_type="fourier",
     ):
+        shape = tuple(shape)
         if len(shape) > 1:
             ve = "Multi-dimensional amplitude operator not implemented (yet)"
             raise ValueError(ve)
 
+        # Pre-compute lengths of modes and indices for distributing power
+        # TODO: cache results such that only references are used afterwards
+        # TODO: compute indices for distributing power
         domain = {
             "position_space_shape": shape,
             "position_space_total_volume": totvol,
-            "harmonic_domain_type": harmonic_domain_type
+            "harmonic_domain_type": harmonic_domain_type.lower()
         }
         if harmonic_domain_type.lower() == "fourier":
             if len(shape) != 1:
@@ -212,11 +217,11 @@ class CorrelatedFieldMaker():
             loglogavgslope=slp,
             flexibility=flx,
             asperity=asp,
-            prefix=self._prefix + prefix
+            prefix=self._prefix + "_" + prefix
         )
         self._fluctuations.append(npa)
-        self._parameter_tree.update(ptree)
         self._target_subdomains.append(domain)
+        self._parameter_tree.update(ptree)
 
     def set_amplitude_total_offset(self, offset_mean, offset_std):
         """Sets the zero-mode for the combined amplitude operator
@@ -280,8 +285,8 @@ class CorrelatedFieldMaker():
     def amplitude(self):
         if len(self._fluctuations) > 1:
             s = (
-                'If more than one spectrum is present in the model,',
-                ' no unique set of amplitudes exist because only the',
+                'If more than one spectrum is present in the model,'
+                ' no unique set of amplitudes exist because only the'
                 ' relative scale is determined.'
             )
             raise NotImplementedError(s)
