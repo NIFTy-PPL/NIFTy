@@ -325,4 +325,4 @@ class CorrelatedFieldMaker():
                 cf_h = ea * p.get(self._prefix + "_excitations")
                 return self._offset_mean + ht(cf_h)
 
-        return correlated_field, self._parameter_tree
+        return correlated_field, self._parameter_tree.copy()
