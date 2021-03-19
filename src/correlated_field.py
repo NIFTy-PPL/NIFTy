@@ -291,7 +291,11 @@ class CorrelatedFieldMaker():
             )
             raise NotImplementedError(s)
         amp = self._fluctuations[0]
-        return lambda p: amp(p).at[0].mul(self.azm(p))
+
+        def ampliude_w_zm(p):
+            return amp(p).at[0].mul(self.azm(p))
+
+        return ampliude_w_zm
 
     def finalize(self):
         """Finishes model construction process and returns the constructed
