@@ -14,6 +14,61 @@ def hartley(p, axes=None):
     return tmp.real + tmp.imag
 
 
+def get_fourier_mode_distributor(
+    shape, distances
+) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+    """Get the unique lengths of the Fourier modes, a mapping from a mode to
+    its length index and the multiplicity of each unique Fourier mode length.
+
+    Parameters
+    ----------
+    shape : tuple of int or int
+        Position-space shape.
+    distances : tuple of float or float
+        Position-space distances.
+
+    Returns
+    -------
+    mode_length_idx : np.ndarray
+        Index in power-space for every mode in harmonic-space. Can be used to
+        distribute power from a power-space to the full harmonic domain.
+    unique_mode_length : np.ndarray
+        Unique length of Fourier modes.
+    mode_multiplicity : np.ndarray
+        Multiplicity for each unique Fourier mode length.
+    """
+    shape = tuple(shape)
+    distances = tuple(np.broadcast_to(distances, np.shape(shape)))
+
+    # Compute length of modes
+    ksp_dist = 1. / (np.array(shape) * np.array(distances))
+    m_length = np.arange(shape[0], dtype=np.float64)
+    m_length = np.minimum(m_length, shape[0] - m_length) * distances[0]
+    if len(shape) != 1:
+        m_length *= m_length
+        for i in range(1, len(shape)):
+            tmp = np.arange(shape[i], dtype=np.float64)
+            tmp = np.minimum(tmp, shape[i] - tmp) * distances[i]
+            tmp *= tmp
+            m_length = np.expand_dims(m_length, axis=-1) + tmp
+        m_length = np.sqrt(m_length)
+
+    # Construct an array of unique mode lengths
+    uniqueness_rtol = 1e-12
+    um = np.unique(m_length)
+    tol = uniqueness_rtol * um[-1]
+    um = um[np.diff(np.append(um, 2 * um[-1])) > tol]
+    # Group modes based on their length and store the result as power
+    # distributor
+    binbounds = 0.5 * (um[:-1] + um[1:])
+    m_length_idx = np.searchsorted(binbounds, m_length)
+    m_count = np.bincount(m_length_idx.ravel(), minlength=um.size)
+    if np.any(m_count == 0) or um.shape != m_count.shape:
+        raise RuntimeError("invalid harmonic mode(s) encountered")
+
+    return m_length_idx, um, m_count
+
+
 def _twolog_integrate(log_vol, x):
     # Map the space to the one for the relative log-modes, i.e. pad the space
     # of the log volume
@@ -164,44 +219,21 @@ class CorrelatedFieldMaker():
             "harmonic_domain_type": harmonic_domain_type.lower()
         }
         if harmonic_domain_type.lower() == "fourier":
-            # TODO: Move to function
             domain["harmonic_space_shape"] = shape
+            m_length_idx, um, m_count = get_fourier_mode_distributor(
+                shape, distances
+            )
+            domain["power_distributor"] = m_length_idx
+            domain["mode_multiplicity"] = m_count
 
-            # Compute length of modes
-            ksp_dist = 1. / (np.array(shape) * np.array(distances))
-            k_length = np.arange(shape[0], dtype=np.float64)
-            k_length = np.minimum(k_length, shape[0] - k_length) * distances[0]
-            if len(shape) != 1:
-                k_length *= k_length
-                for i in range(1, len(shape)):
-                    tmp = np.arange(shape[i], dtype=np.float64)
-                    tmp = np.minimum(tmp, shape[i] - tmp) * distances[i]
-                    tmp *= tmp
-                    k_length = np.expand_dims(k_length, axis=-1) + tmp
-                k_length = np.sqrt(k_length)
-
-            # Construct an array of unique mode lengths
-            uniqueness_rtol = 1e-12
-            lm = np.unique(k_length)
-            tol = uniqueness_rtol * lm[-1]
-            lm = lm[np.diff(np.append(lm, 2 * lm[-1])) > tol]
-            # Group modes based on their length and store the result as power
-            # distributor
-            binbounds = 0.5 * (lm[:-1] + lm[1:])
-            k_array_index = np.searchsorted(binbounds, k_length)
-            domain["power_distributor"] = k_array_index
-            mode_count = np.bincount(k_array_index.ravel(), minlength=lm.size)
-            if np.any(mode_count == 0) or lm.shape != mode_count.shape:
-                raise RuntimeError("invalid harmonic mode(s) encountered")
-            domain["mode_multiplicity"] = mode_count
             # Transform the unique modes to log-space for the amplitude model
-            # and store the result
-            lm = lm.at[1:].set(np.log(lm[1:]))
-            lm = lm.at[1:].add(-lm[1])
-            domain["relative_log_mode_lengths"] = lm
-            if flexibility is not None:
-                domain["log_volume"] = lm[2:] - lm[1:-1]
-                assert lm.shape[0] - 2 == domain["log_volume"].shape[0]
+            um = um.at[1:].set(np.log(um[1:]))
+            um = um.at[1:].add(-um[1])
+            assert um[0] == 0.
+            domain["relative_log_mode_lengths"] = um
+            log_vol = um[2:] - um[1:-1]
+            assert um.shape[0] - 2 == log_vol.shape[0]
+            domain["log_volume"] = log_vol
         else:
             ve = f"invalid `harmonic_domain_type` {harmonic_domain_type!r}"
             raise ValueError(ve)
