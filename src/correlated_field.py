@@ -181,14 +181,19 @@ class CorrelatedFieldMaker():
                 k_length = np.sqrt(k_length)
 
             # Construct an array of unique mode lengths
-            lm = np.unique(k_length.round(decimals=12))
+            uniqueness_rtol = 1e-12
+            lm = np.unique(k_length)
+            tol = uniqueness_rtol * lm[-1]
+            lm = lm[np.diff(np.append(lm, 2 * lm[-1])) > tol]
             # Group modes based on their length and store the result as power
             # distributor
             binbounds = 0.5 * (lm[:-1] + lm[1:])
             k_array_index = np.searchsorted(binbounds, k_length)
             domain["power_distributor"] = k_array_index
-            domain["mode_multiplicity"] = np.bincount(k_array_index.ravel())
-            assert lm.shape == domain["mode_multiplicity"].shape
+            mode_count = np.bincount(k_array_index.ravel(), minlength=lm.size)
+            if np.any(mode_count == 0) or lm.shape != mode_count.shape:
+                raise RuntimeError("invalid harmonic mode(s) encountered")
+            domain["mode_multiplicity"] = mode_count
             # Transform the unique modes to log-space for the amplitude model
             # and store the result
             lm = lm.at[1:].set(np.log(lm[1:]))
