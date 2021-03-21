@@ -18,6 +18,7 @@ def build_model(predictors, targets, sh, alpha=1):
     lh = jft.Categorical(targets, axis=1)
     return {"lh":lh @ model, "logits": model, "matrix": matrix}
 
+
 if __name__ == "__main__":
     seed = 42
     key = random.PRNGKey(seed)
@@ -62,7 +63,7 @@ if __name__ == "__main__":
     def energy(p, samps):
         return np.mean(np.array([ham(p+s) for s in samps]), axis=0)
     energy_vag = jit(value_and_grad(energy))
-        
+
     @jit
     def metric(p, t, samps):
         results = [ham.metric(p+s, t) for s in samps]
@@ -77,7 +78,7 @@ if __name__ == "__main__":
 
         Evag = lambda p: energy_vag(p, samples)
         met = lambda p,t: metric(p, t, samples)
-        pos = jft.NCG(pos, Evag, met, n_newton_iterations)
+        pos = jft.newton_cg(pos, Evag, met, n_newton_iterations)
         diff_to_truth = np.linalg.norm(model["matrix"](pos) - matrix_truth)
         print(
             (
@@ -95,7 +96,7 @@ if __name__ == "__main__":
     xx = np.linspace(-3.5, 3.5, 2)
     plt.plot(xx, xx)
     plt.errorbar(matrix_truth.reshape(-1),
-            matrix_mean.reshape(-1), 
+            matrix_mean.reshape(-1),
             yerr=matrix_std.reshape(-1),
             fmt='o',
             color="black")
@@ -103,5 +104,3 @@ if __name__ == "__main__":
     plt.ylabel("inferred value")
     plt.savefig("matrix_fit.png", dpi=400)
     plt.close()
-
-

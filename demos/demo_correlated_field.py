@@ -8,6 +8,7 @@ from collections.abc import Iterable
 from jax import numpy as np
 from jax import random
 from jax import jvp, vjp, value_and_grad, jit
+from jax.tree_util import tree_leaves
 
 import jifty1 as jft
 
@@ -22,7 +23,6 @@ if __name__ == "__main__":
 
     n_mgvi_iterations = 3
     n_samples = 4
-    mirror_samples = True
     n_newton_iterations = 10
 
     cf_zm = {"offset_mean": 0., "offset_std": (1e-3, 1e-4)}
@@ -57,7 +57,7 @@ if __name__ == "__main__":
 
     key, subkey = random.split(key)
     pos_init = jft.random_with_tree_shape(ptree, key=subkey)
-    pos = pos_init.copy()
+    pos = jft.Field(pos_init.copy())
 
     # Minimize the potential
     for i in range(n_mgvi_iterations):
@@ -65,27 +65,22 @@ if __name__ == "__main__":
         key, *subkeys = random.split(key, 1 + n_samples)
         samples = []
         draw = lambda k: ham.draw_sample(pos, key=k, from_inverse=True)[0]
-        samples = [jft.makeField(draw(k)) for k in subkeys]
+        samples = [draw(k) for k in subkeys]
         samples += [-s for s in samples]
 
         def energy_vg(p):
-            p = jft.makeField(p)
             e_rdc, g_rdc = None, None
-            for e, g in (ham_energy_vg((p + s).to_tree()) for s in samples):
-                g = jft.makeField(g)
+            for e, g in (ham_energy_vg(p + s) for s in samples):
                 e_rdc = e if e_rdc is None else e_rdc + e
                 g_rdc = g if g_rdc is None else g_rdc + g
             norm = 1. / len(samples)
-            return norm * e_rdc, (norm * g_rdc).to_tree()
+            return norm * e_rdc, norm * g_rdc
 
         def met(p, t):
-            p = jft.makeField(p)
-            rdc = sum(
-                jft.makeField(ham.metric((p + s).to_tree(), t)) for s in samples
-            )
-            return (1. / len(samples) * rdc).to_tree()
+            rdc = sum(ham.metric(p + s, t) for s in samples)
+            return 1. / len(samples) * rdc
 
-        pos = jft.NCG(pos, energy_vg, met, n_newton_iterations)
+        pos = jft.newton_cg(pos, energy_vg, met, n_newton_iterations)
         msg = f"Post MGVI Iteration {i}: Energy {energy_vg(pos)[0]:2.4e}"
         print(msg, file=sys.stderr)
 

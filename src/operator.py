@@ -1,8 +1,6 @@
 from jax import numpy as np
 from jax import jvp, vjp
 
-from .sugar import just_add
-
 
 class Likelihood():
     def __init__(
@@ -58,11 +56,11 @@ class Likelihood():
             smpl_self, _ = self.draw_sample(primals, key=subkeys[0], **kwargs)
             smpl_other, _ = ham.draw_sample(primals, key=subkeys[1], **kwargs)
 
-            return just_add(smpl_self, smpl_other), key
+            return smpl_self + smpl_other, key
 
         return Likelihood(
             energy=lambda p: self(p) + ham(p),
-            metric=lambda p, t: just_add(self.metric(p, t), ham.metric(p, t)),
+            metric=lambda p, t: self.metric(p, t) + ham.metric(p, t),
             draw_metric_sample=draw_metric_sample
         )
 

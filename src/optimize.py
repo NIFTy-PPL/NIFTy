@@ -2,28 +2,11 @@ from jax import numpy as np
 import sys
 import time
 
-
-def NCG(pos, energy_vag, met, *args, compiles=False, **kwargs):
-    from .field import Field
-    from .sugar import makeField
-    if isinstance(pos, Field):
-        return field_NCG(pos, energy_vag, met, *args, **kwargs)
-
-    def e_vag(field_x):
-        x = field_x.to_tree()
-        v, g = energy_vag(x)
-        return v, makeField(g)
-
-    def m(field_x, field_tan):
-        x = field_x.to_tree()
-        tan = field_tan.to_tree()
-        return makeField(met(x, tan))
-
-    fld = makeField(pos)
-    return field_NCG(fld, e_vag, m, *args, **kwargs).to_tree()
+from .sugar import sum_of_squares
+from .sugar import norm as jft_norm
 
 
-def field_NCG(
+def newton_cg(
     pos,
     energy_vag,
     met,
@@ -42,7 +25,7 @@ def field_NCG(
             lambda x: met(pos, x),
             g,
             absdelta=absdelta / 100,
-            resnorm=g.norm(ord=1) / 2,
+            resnorm=jft_norm(g, ord=1) / 2,
             norm_ord=1,
             name=cg_name,
             time_threshold=time_threshold
@@ -60,7 +43,7 @@ def field_NCG(
                 if name is not None:
                     msg = f"{name}: long line search, resetting"
                     print(msg, file=sys.stderr)
-                gam = float(g.squared_norm())
+                gam = float(sum_of_squares(g))
                 curv = float(g.dot(met(pos, g)))
                 dd = -gam / curv * g
         else:
@@ -82,28 +65,11 @@ def field_NCG(
     return pos
 
 
-def cg(mat, j, x0=None, *args, **kwargs):
-    from .field import Field
-    from .sugar import makeField
-
-    if isinstance(j, Field):
-        return field_cg(mat, j, x0, *args, **kwargs)
-
-    def m_f(field_x):
-        x = field_x.to_tree()
-        return makeField(mat(x))
-
-    j_f = makeField(j)
-    x0_f = makeField(x0) if x0 is not None else x0
-    x, info = field_cg(m_f, j_f, x0_f, *args, **kwargs)
-    return x.to_tree(), info
-
-
 N_RESET = 20
 
 
 # Taken from nifty
-def field_cg(
+def cg(
     mat,
     j,
     x0=None,
@@ -128,7 +94,7 @@ def field_cg(
         r = mat(pos) - j
         d = r
         energy = float(((r - j) / 2).dot(pos))
-    previous_gamma = float(r.squared_norm())
+    previous_gamma = float(sum_of_squares(r))
     if previous_gamma == 0:
         info = 0
         return pos, info
@@ -150,7 +116,7 @@ def field_cg(
             r = mat(pos) - j
         else:
             r = r - q * alpha
-        gamma = float(r.squared_norm())
+        gamma = float(sum_of_squares(r))
         if time_threshold is not None:
             if time.time() > time_threshold:
                 info = i
@@ -161,7 +127,7 @@ def field_cg(
             info = 0
             return pos, info
         if resnorm is not None:
-            norm = float(r.norm(ord=norm_ord))
+            norm = float(jft_norm(r, ord=norm_ord))
             if name is not None:
                 msg = f"{name}: gradnorm {norm:.6e} tgt {resnorm:.6e}"
                 print(msg, file=sys.stderr)

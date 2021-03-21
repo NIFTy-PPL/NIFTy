@@ -36,7 +36,6 @@ if __name__ == "__main__":
 
     n_mgvi_iterations = 3
     n_samples = 4
-    mirror_samples = True
     n_newton_iterations = 5
 
     cf = {"loglogavgslope": 2.}
@@ -50,14 +49,14 @@ if __name__ == "__main__":
     harmonic_power = np.concatenate((harmonic_power, harmonic_power[-2:0:-1]))
 
     # Specify the model
-    correlated_field = lambda x: hartley(harmonic_power * x)
+    correlated_field = lambda x: hartley(harmonic_power * x.val)
     signal_response = lambda x: np.exp(1. + correlated_field(x))
     noise_cov = lambda x: 0.1**2 * x
     noise_cov_inv = lambda x: 0.1**-2 * x
 
     # Create synthetic data
     key, subkey = random.split(key)
-    pos_truth = random.normal(shape=dims, key=key)
+    pos_truth = jft.Field(random.normal(shape=dims, key=key))
     signal_response_truth = signal_response(pos_truth)
     key, subkey = random.split(key)
     noise_truth = np.sqrt(noise_cov(np.ones(dims))
@@ -66,10 +65,11 @@ if __name__ == "__main__":
 
     nll = jft.Gaussian(data, noise_cov_inv) @ signal_response
     ham = jft.StandardHamiltonian(likelihood=nll).jit()
+    ham_energy_vg = jit(value_and_grad(ham))
 
     key, subkey = random.split(key)
     pos_init = random.normal(shape=dims, key=subkey)
-    pos = pos_init.copy()
+    pos = jft.Field(pos_init)
 
     # Minimize the potential
     for i in range(n_mgvi_iterations):
@@ -78,20 +78,27 @@ if __name__ == "__main__":
         samples = []
         draw = lambda k: ham.draw_sample(pos, key=k, from_inverse=True)[0]
         samples = [draw(k) for k in subkeys]
-        energy = lambda p: np.mean(
-            np.array([ham(p + s) for s in samples]), axis=0
-        )
-        met = lambda p, t: np.mean(
-            np.array([ham.metric(p + s, t) for s in samples]), axis=0
-        )
-        energy_vg = jit(value_and_grad(energy))
-        met = jit(met)
-        pos = jft.NCG(pos, energy_vg, met, n_newton_iterations)
+        samples += [-s for s in samples]
+
+        def energy_vg(p):
+            e_rdc, g_rdc = None, None
+            for e, g in (ham_energy_vg(p + s) for s in samples):
+                e_rdc = e if e_rdc is None else e_rdc + e
+                g_rdc = g if g_rdc is None else g_rdc + g
+            norm = 1. / len(samples)
+            return norm * e_rdc, norm * g_rdc
+
+        def met(p, t):
+            rdc = sum(ham.metric(p + s, t) for s in samples)
+            return 1. / len(samples) * rdc
+
+        # TODO: Re-introduce a simplified version that works without fields
+        pos = jft.newton_cg(pos, energy_vg, met, n_newton_iterations)
         print(
             (
-                f"Post MGVI Iteration {i}: Energy {energy(pos):2.4e}"
-                f"; Cos-Sim {cosine_similarity(pos, pos_truth):2.3%}"
-                f"; #NaNs {np.isnan(pos).sum()}"
+                f"Post MGVI Iteration {i}: Energy {energy_vg(pos)[0]:2.4e}"
+                f"; Cos-Sim {cosine_similarity(pos.val, pos_truth.val):2.3%}"
+                f"; #NaNs {np.isnan(pos.val).sum()}"
             ),
             file=sys.stderr
         )

@@ -1,18 +1,13 @@
 from typing import Callable
 from collections.abc import Iterable
-from jax.numpy import isscalar, array
+
 from jax import random
 from jax.tree_util import (
-    tree_structure, tree_flatten, tree_unflatten, tree_multimap
+    tree_structure, tree_leaves, tree_unflatten, tree_map, tree_multimap,
+    tree_reduce
 )
 
-
-def makeField(obj):
-    if isscalar(obj):
-        return obj
-    val, domain = tree_flatten(obj)
-    from .field import Field
-    return Field(domain, [array(v) for v in val])
+from .field import Field
 
 
 def ducktape(call, key):
@@ -22,14 +17,24 @@ def ducktape(call, key):
     return named_call
 
 
-def fromField(f):
-    if isscalar(f):
-        return f
-    return f.to_tree()
-
-
 def just_add(a, b):
-    return fromField(makeField(a) + makeField(b))
+    from jax.tree_util import tree_leaves
+
+    return tree_leaves(Field(a) + Field(b))
+
+
+def sum_of_squares(tree):
+    from jax.numpy import add, sum
+
+    return tree_reduce(add, tree_map(lambda x: sum(x**2), tree), 0.)
+
+
+def norm(tree, ord):
+    from jax.numpy import ndim, abs
+    from jax.numpy.linalg import norm
+
+    enorm = lambda x: abs(x) if ndim(x) == 0 else norm(x, ord=ord)
+    return norm(tree_leaves(tree_map(enorm, tree)), ord=ord)
 
 
 def random_with_tree_shape(

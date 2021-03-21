@@ -1,7 +1,8 @@
 from jax import numpy as np
 from .operator import Likelihood
 from .optimize import cg
-from .sugar import makeField, just_add, random_like
+from .field import Field
+from .sugar import random_like, sum_of_squares
 
 class StandardHamiltonian(Likelihood):
     def __init__(
@@ -14,10 +15,10 @@ class StandardHamiltonian(Likelihood):
         self._nll = likelihood
 
         def joined_hamiltonian(primals):
-            return self._nll(primals) + makeField(primals).squared_norm()/2
+            return self._nll(primals) + 0.5 * sum_of_squares(primals)
 
         def joined_metric(primals, tangents):
-            return just_add(self._nll.metric(primals, tangents), tangents)
+            return self._nll.metric(primals, tangents) + tangents
 
         if compiled:
             from jax import jit
@@ -56,7 +57,7 @@ class StandardHamiltonian(Likelihood):
             # impact on stability is still unknown.
             # TODO: investigate the impact of sampling the prior and likelihood
             # antithetically.
-            met_smpl = just_add(nll_smpl, prr_smpl)
+            met_smpl = nll_smpl + prr_smpl
             # TODO: Set sensible convergence criteria
             """
             lambda x: met(pos, x),
@@ -74,7 +75,7 @@ class StandardHamiltonian(Likelihood):
         else:
             nll_smpl, _ = self._nll.draw_sample(primals, key=subkey_nll, **kwargs)
             prr_inv_metric_smpl = random_like(primals, key=subkey_prr)
-            return just_add(nll_smpl,prr_smpl), key
+            return nll_smpl + prr_smpl, key
 
 
 def Gaussian(

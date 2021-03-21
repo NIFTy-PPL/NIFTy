@@ -20,7 +20,6 @@ if __name__ == "__main__":
 
     n_mgvi_iterations = 3
     n_samples = 4
-    mirror_samples = True
     n_newton_iterations = 10
 
     dims_ax1 = (128, )
@@ -61,7 +60,7 @@ if __name__ == "__main__":
 
     key, subkey = random.split(key)
     pos_init = jft.random_with_tree_shape(ptree, key=subkey)
-    pos = pos_init.copy()
+    pos = jft.Field(pos_init.copy())
 
     # Minimize the potential
     for i in range(n_mgvi_iterations):
@@ -70,28 +69,23 @@ if __name__ == "__main__":
         samples = []
         draw = lambda k: ham.draw_sample(pos, key=k, from_inverse=True)[0]
         print("Sampling...", file=sys.stderr)
-        samples = [jft.makeField(draw(k)) for k in subkeys]
+        samples = [draw(k) for k in subkeys]
         samples += [-s for s in samples]
 
         def energy_vg(p):
-            p = jft.makeField(p)
             e_rdc, g_rdc = None, None
-            for e, g in (ham_energy_vg((p + s).to_tree()) for s in samples):
-                g = jft.makeField(g)
+            for e, g in (ham_energy_vg(p + s) for s in samples):
                 e_rdc = e if e_rdc is None else e_rdc + e
                 g_rdc = g if g_rdc is None else g_rdc + g
             norm = 1. / len(samples)
-            return norm * e_rdc, (norm * g_rdc).to_tree()
+            return norm * e_rdc, norm * g_rdc
 
         def met(p, t):
-            p = jft.makeField(p)
-            rdc = sum(
-                jft.makeField(ham.metric((p + s).to_tree(), t)) for s in samples
-            )
-            return (1. / len(samples) * rdc).to_tree()
+            rdc = sum(ham.metric(p + s, t) for s in samples)
+            return 1. / len(samples) * rdc
 
         print("Minimizing...", file=sys.stderr)
-        pos = jft.NCG(pos, energy_vg, met, n_newton_iterations)
+        pos = jft.newton_cg(pos, energy_vg, met, n_newton_iterations)
         msg = f"Post MGVI Iteration {i}: Energy {energy_vg(pos)[0]:2.4e}"
         print(msg, file=sys.stderr)
 
