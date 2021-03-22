@@ -38,17 +38,16 @@ def get_fourier_mode_distributor(
         Multiplicity for each unique Fourier mode length.
     """
     shape = tuple(shape)
-    distances = tuple(np.broadcast_to(distances, np.shape(shape)))
 
     # Compute length of modes
-    ksp_dist = 1. / (np.array(shape) * np.array(distances))
+    mspc_distances = 1. / (np.array(shape) * np.array(distances))
     m_length = np.arange(shape[0], dtype=np.float64)
-    m_length = np.minimum(m_length, shape[0] - m_length) * distances[0]
+    m_length = np.minimum(m_length, shape[0] - m_length) * mspc_distances[0]
     if len(shape) != 1:
         m_length *= m_length
         for i in range(1, len(shape)):
             tmp = np.arange(shape[i], dtype=np.float64)
-            tmp = np.minimum(tmp, shape[i] - tmp) * distances[i]
+            tmp = np.minimum(tmp, shape[i] - tmp) * mspc_distances[i]
             tmp *= tmp
             m_length = np.expand_dims(m_length, axis=-1) + tmp
         m_length = np.sqrt(m_length)
