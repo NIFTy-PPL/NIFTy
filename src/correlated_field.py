@@ -16,7 +16,7 @@ def hartley(p, axes=None):
 
 def get_fourier_mode_distributor(
     shape, distances
-) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+    ):
     """Get the unique lengths of the Fourier modes, a mapping from a mode to
     its length index and the multiplicity of each unique Fourier mode length.
 
