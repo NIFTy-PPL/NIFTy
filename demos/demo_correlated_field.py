@@ -1,4 +1,5 @@
 from jax.config import config
+
 config.update("jax_enable_x64", True)
 
 import sys
@@ -11,7 +12,6 @@ from jax import jvp, vjp, value_and_grad, jit
 from jax.tree_util import tree_leaves
 
 import jifty1 as jft
-
 
 if __name__ == "__main__":
     import matplotlib.pyplot as plt
@@ -53,6 +53,7 @@ if __name__ == "__main__":
 
     nll = jft.Gaussian(data, noise_cov_inv) @ signal_response
     ham = jft.StandardHamiltonian(likelihood=nll).jit()
+    draw = lambda p, k: ham.draw_sample(p, key=k, from_inverse=True)[0]
     ham_energy_vg = jit(value_and_grad(ham))
 
     key, subkey = random.split(key)
@@ -63,9 +64,9 @@ if __name__ == "__main__":
     for i in range(n_mgvi_iterations):
         print(f"MGVI Iteration {i}", file=sys.stderr)
         key, *subkeys = random.split(key, 1 + n_samples)
+        print("Sampling...", file=sys.stderr)
         samples = []
-        draw = lambda k: ham.draw_sample(pos, key=k, from_inverse=True)[0]
-        samples = [draw(k) for k in subkeys]
+        samples = [draw(pos, k) for k in subkeys]
         samples += [-s for s in samples]
 
         def energy_vg(p):
@@ -80,6 +81,7 @@ if __name__ == "__main__":
             rdc = sum(ham.metric(p + s, t) for s in samples)
             return 1. / len(samples) * rdc
 
+        print("Minimizing...", file=sys.stderr)
         pos = jft.newton_cg(pos, energy_vg, met, n_newton_iterations)
         msg = f"Post MGVI Iteration {i}: Energy {energy_vg(pos)[0]:2.4e}"
         print(msg, file=sys.stderr)

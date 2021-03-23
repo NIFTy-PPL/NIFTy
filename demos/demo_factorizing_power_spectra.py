@@ -56,6 +56,7 @@ if __name__ == "__main__":
 
     nll = jft.Gaussian(data, noise_cov_inv) @ signal_response
     ham = jft.StandardHamiltonian(likelihood=nll).jit()
+    draw = lambda p, k: ham.draw_sample(p, key=k, from_inverse=True)[0]
     ham_energy_vg = jit(value_and_grad(ham))
 
     key, subkey = random.split(key)
@@ -66,10 +67,9 @@ if __name__ == "__main__":
     for i in range(n_mgvi_iterations):
         print(f"MGVI Iteration {i}", file=sys.stderr)
         key, *subkeys = random.split(key, 1 + n_samples)
-        samples = []
-        draw = lambda k: ham.draw_sample(pos, key=k, from_inverse=True)[0]
         print("Sampling...", file=sys.stderr)
-        samples = [draw(k) for k in subkeys]
+        samples = []
+        samples = [draw(pos, k) for k in subkeys]
         samples += [-s for s in samples]
 
         def energy_vg(p):
