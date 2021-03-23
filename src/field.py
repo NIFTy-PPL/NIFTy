@@ -93,7 +93,7 @@ class Field():
         return s
 
     def norm(self, ord):
-        from .sugar import jft_norm
+        from .sugar import norm as jft_norm
         return jft_norm(self, ord=ord)
 
     def _val_op(self, op, *args, **kwargs):
