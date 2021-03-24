@@ -38,9 +38,6 @@ class _KLMetric(EndomorphicOperator):
         self._check_input(x, mode)
         return self._KL.apply_metric(x)
 
-    def draw_sample(self, from_inverse=False):
-        return self._KL._metric_sample(from_inverse)
-
 
 def _get_lo_hi(comm, n_samples):
     ntask, rank, _ = utilities.get_MPI_params_from_comm(comm)
@@ -260,22 +257,3 @@ class MetricGaussianKL(Energy):
                     yield s
                     if self._mirror_samples:
                         yield -s
-
-    def _metric_sample(self, from_inverse=False):
-        if from_inverse:
-            raise NotImplementedError()
-        s = ('This draws from the Hamiltonian used for evaluation and does '
-             ' not take point_estimates into accout. Make sure that this '
-             'is your intended use.')
-        logger.warning(s)
-        lin = Linearization.make_var(self.position, True)
-        samp = []
-        sseq = random.spawn_sseq(self._n_samples)
-        for i, s in enumerate(self._local_samples):
-            s = _modify_sample_domain(s, self._hamiltonian.domain)
-            with random.Context(sseq[self._lo+i]):
-                tmp = self._hamiltonian(lin+s).metric.draw_sample(from_inverse=False)
-                if self._mirror_samples:
-                    tmp = tmp + self._hamiltonian(lin-s).metric.draw_sample(from_inverse=False)
-                samp.append(tmp)
-        return utilities.allreduce_sum(samp, self._comm)/self.n_eff_samples
