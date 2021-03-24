@@ -88,16 +88,22 @@ def testBinary(type1, type2, space, seed):
             ift.extra.check_operator(model, pos, ntries=ntries)
 
 
-def testSpecialDistributionOps(space, seed):
+def testInverseGamma(space, seed):
     with ift.random.Context(seed):
         pos = ift.from_random(space, 'normal')
         alpha = 1.5
         q = 0.73
         model = ift.InverseGammaOperator(space, alpha, q)
         ift.extra.check_operator(model, pos, ntries=20)
-        model = ift.UniformOperator(space, alpha, q)
-        ift.extra.check_operator(model, pos, ntries=20)
-        model = ift.LaplaceOperator(space, alpha, q)
+
+
+@pmp("loc", [0, 13.2])
+@pmp("scale", [1, 551.09])
+@pmp("op", [ift.UniformOperator, ift.LaplaceOperator])
+def testSpecialDistributionOps(space, seed, loc, scale, op):
+    with ift.random.Context(seed):
+        pos = ift.from_random(space, 'normal')
+        model = op(space, loc, scale)
         ift.extra.check_operator(model, pos, ntries=20)
 
 
