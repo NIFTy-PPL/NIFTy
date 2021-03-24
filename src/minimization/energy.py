@@ -119,18 +119,18 @@ class Energy(metaclass=NiftyMeta):
         """
         raise NotImplementedError
 
-    def longest_step(self, dir):
-        """Returns the longest allowed step size along `dir`
+    def longest_step(self, direction):
+        """Returns the longest allowed step size along `direction`
 
         Parameters
         ----------
-        dir : Field
+        direction : Field
             the search direction
 
         Returns
         -------
         float or None
             the longest allowed step when starting from `self.position` along
-            `dir`. If None, the step size is not limited.
+            `direction`. If None, the step size is not limited.
         """
         return None

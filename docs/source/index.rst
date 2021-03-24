@@ -19,6 +19,8 @@ References
 
 .. [2] Steininger et al., "NIFTy 3 - Numerical Information Field Theory - A Python framework for multicomponent signal inference on HPC clusters", 2017, accepted by Annalen der Physik; `[arXiv:1708.01073] <https://arxiv.org/abs/1708.01073>`_
 
+.. [3] Arras et al., "NIFTy5: Numerical Information Field Theory v5", 2019, Astrophysics Source Code Library; `[ascl:1903.008] <http://ascl.net/1903.008>`_
+
 Contents
 ........
 

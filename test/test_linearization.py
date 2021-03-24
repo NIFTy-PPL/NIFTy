@@ -20,6 +20,7 @@ import pytest
 from numpy.testing import assert_allclose
 
 import nifty7 as ift
+
 from .common import setup_function, teardown_function
 
 pmp = pytest.mark.parametrize
@@ -55,7 +56,8 @@ def test_special_gradients():
 
 @pmp('f', [
     'log', 'exp', 'sqrt', 'sin', 'cos', 'tan', 'sinc', 'sinh', 'cosh', 'tanh',
-    'absolute', 'reciprocal', 'sigmoid', 'log10', 'log1p', 'expm1', 'softplus'
+    'absolute', 'reciprocal', 'sigmoid', 'log10', 'log1p', 'expm1', 'softplus',
+    ('power', 2.), ('exponentiate', 1.1)
 ])
 @pmp('cplxpos', [True, False])
 @pmp('cplxdir', [True, False])
@@ -77,8 +79,10 @@ def test_actual_gradients(f, cplxpos, cplxdir, holomorphic):
         eps *= (1+0.78j)
     var0 = ift.Linearization.make_var(fld)
     var1 = ift.Linearization.make_var(fld + eps)
-    f0 = var0.ptw(f).val.val
-    f1 = var1.ptw(f).val.val
+    if not isinstance(f, tuple):
+        f = (f,)
+    f0 = var0.ptw(*f).val.val
+    f1 = var1.ptw(*f).val.val
+    df1 = _lin2grad(var0.ptw(*f))
     df0 = (f1 - f0)/eps
-    df1 = _lin2grad(var0.ptw(f))
     assert_allclose(df0, df1, rtol=100*np.abs(eps))

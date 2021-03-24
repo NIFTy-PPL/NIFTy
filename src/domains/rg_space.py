@@ -153,15 +153,16 @@ class RGSpace(StructuredDomain):
     def get_conv_kernel_from_func(self, func):
         """Creates a convolution kernel defined by a function.
 
+        Assumes the function to be radially symmetric, e.g. only dependant on
+        distance.
+
         Parameters
         ----------
         func: function
             This function needs to take exactly one argument, which is
             distance from center (in the same units as the RGSpace distances),
             and return the kernel amplitude at that distance.
-
-        Assumes the function to be radially symmetric,
-        e.g. only dependant on distance"""
+        """
         from ..operators.harmonic_operators import HarmonicTransformOperator
         if (not self.harmonic):
             raise NotImplementedError

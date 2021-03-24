@@ -79,7 +79,7 @@ from .sugar import *
 
 from .plot import Plot
 
-from .library.special_distributions import InverseGammaOperator, UniformOperator
+from .library.special_distributions import InverseGammaOperator, UniformOperator, LaplaceOperator
 from .library.los_response import LOSResponse
 from .library.dynamic_operator import (dynamic_operator,
                                        dynamic_lightcone_operator)
@@ -88,7 +88,7 @@ from .library.light_cone_operator import LightConeOperator
 from .library.wiener_filter_curvature import WienerFilterCurvature
 from .library.adjust_variances import (make_adjust_variances_hamiltonian,
                                        do_adjust_variances)
-from .library.gridder import Gridder
+from .library.nft import Gridder, FinuFFT
 from .library.correlated_fields import CorrelatedFieldMaker
 from .library.correlated_fields_simple import SimpleCorrelatedField
 

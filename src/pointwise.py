@@ -82,6 +82,14 @@ def _clip_helper(v, a_min, a_max):
         tmp2 = np.where(tmp == a_max, 0., tmp2)
     return (tmp, tmp2)
 
+def _step_helper(v, grad):
+    if np.issubdtype(v.dtype, np.complexfloating):
+        raise TypeError("Argument must not be complex")
+    r = np.zeros(v.shape)
+    r[v>=0.] = 1.
+    if grad:
+        return (r, np.zeros(v.shape))
+    return r
 
 def softplus(v):
     fv = np.empty(v.shape, dtype=np.float64 if np.isrealobj(v) else np.complex128)
@@ -110,6 +118,15 @@ def _softplus_helper(v):
     return fv, dfv
 
 
+def exponentiate(v, base):
+    return np.power(base, v)
+
+
+def _exponentiate_helper(v, base):
+    tmp = np.power(base, v)
+    return (tmp , np.log(base) * tmp)
+
+
 ptw_dict = {
     "sqrt": (np.sqrt, _sqrt_helper),
     "sin": (np.sin, lambda v: (np.sin(v), np.cos(v))),
@@ -131,5 +148,8 @@ ptw_dict = {
     "sign": (np.sign, _sign_helper),
     "power": (np.power, _power_helper),
     "clip": (np.clip, _clip_helper),
-    "softplus": (softplus, _softplus_helper)
+    "softplus": (softplus, _softplus_helper),
+    "exponentiate": (exponentiate, _exponentiate_helper),
+    "arctan": (np.arctan, lambda v: (np.arctan(v), 1./(1.+v**2))),
+    "unitstep": (lambda v: _step_helper(v, False), lambda v: _step_helper(v, True))
     }
