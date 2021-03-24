@@ -12,7 +12,9 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
 # Copyright(C) 2013-2020 Max-Planck-Society
-# Authors: Philipp Frank, Philipp Arras, Philipp Haim
+# Authors: Philipp Frank, Philipp Arras, Philipp Haim;
+#          Matern Kernel by Matteo Guardiani, Jakob Roth and
+#          Gordian Edenhofer
 #
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
 
@@ -35,9 +37,9 @@ from ..operators.distributors import PowerDistributor
 from ..operators.endomorphic_operator import EndomorphicOperator
 from ..operators.harmonic_operators import HarmonicTransformOperator
 from ..operators.linear_operator import LinearOperator
+from ..operators.normal_operators import LognormalTransform, NormalTransform
 from ..operators.operator import Operator
-from ..operators.simple_linear_operators import ducktape
-from ..operators.normal_operators import NormalTransform, LognormalTransform
+from ..operators.simple_linear_operators import VdotOperator, ducktape
 from ..probing import StatCalculator
 from ..sugar import full, makeDomain, makeField, makeOp
 
@@ -151,6 +153,23 @@ class _TwoLogIntegrations(LinearOperator):
 
 
 class _Normalization(Operator):
+    """Exponentiate the logarithmic power spectrum, normalize by the sum over
+    all modes and return the square root of the "normalized" power spectrum.
+
+    Notes
+    -----
+    The operator does not perform a proper normalization as it does not account
+    for changes in position space volume. This leads to an additional factor of
+    `1 / \\sqrt{totvol}` being introduced into the result with `totvol`
+    referring to the total volume in position space. The exact value of the
+    additional factor stems from the fact that the volume in harmonic space is
+    solely dependent on the distances in position space. Thus, if the position
+    spaces is enlarged without changing its distances, the volume in harmonic
+    space is kept constant. Doubling the number of pixels though also doubles
+    the number of harmonic modes with each then occupy a smaller volume. This
+    linear decrease in per pixel volume in harmonic space is not captured by
+    just summing up the modes.
+    """
     def __init__(self, domain, space=0):
         self._domain = self._target = DomainTuple.make(domain)
         assert isinstance(self._domain[space], PowerSpace)
@@ -169,8 +188,12 @@ class _Normalization(Operator):
     def apply(self, x):
         self._check_input(x)
         spec = x.ptw("exp")
-        # FIXME This normalizes also the zeromode which is supposed to be left
-        # untouched by this operator
+        # NOTE, this "normalizes" also the zero-mode which is supposed to be
+        # left untouched by this operator. This is not a problem since this
+        # zero mode is multiplied with zero later on in the model and modelled
+        # differently.
+        # NOTE, see the note in the doc-string on why this is not a proper
+        # normalization!
         return (self._specsum(spec).reciprocal()*spec).sqrt()
 
 
@@ -201,6 +224,49 @@ class _Distributor(LinearOperator):
             res = np.zeros(self._tgt(mode).shape, dtype=x.dtype)
             res = utilities.special_add_at(res, 0, self._dofdex, x)
         return makeField(self._tgt(mode), res)
+
+
+class _AmplitudeMatern(Operator):
+    def __init__(self, pow_spc, scale, cutoff, loglogslope, azm, totvol):
+        expander = ContractionOperator(pow_spc, spaces=None).adjoint
+        k_squared = makeField(pow_spc, pow_spc.k_lengths**2)
+
+        scale = expander @ scale.log()
+        cutoff = VdotOperator(k_squared).adjoint @ cutoff.power(-2.)
+        spectral_idx = expander.scale(0.25) @ loglogslope
+
+        ker = Adder(full(pow_spc, 1.)) @ cutoff
+        ker = spectral_idx * ker.log() + scale
+        op = ker.exp()
+
+        # Account for the volume of the position space (dvol in harmonic space
+        # is 1/volume-of-position-space) in the definition of the amplitude as
+        # to make the parametric model agnostic to changes in the volume of the
+        # position space
+        vol0, vol1 = [np.zeros(pow_spc.shape) for _ in range(2)]
+        # The zero-mode scales linearly with the volume in position space
+        vol0[0] = totvol
+        # Variances decrease linearly with the volume in position space after a
+        # harmonic transformation (var{HT(randn)} \propto 1/\sqrt{totvol} for
+        # randn standard normally distributed variables).  This needs to be
+        # accounted for in the amplitude model.
+        vol1[1:] = totvol**0.5
+        vol0 = Adder(makeField(pow_spc, vol0))
+        vol1 = DiagonalOperator(makeField(pow_spc, vol1))
+        op = vol0 @ (vol1 @ (expander @ azm.ptw("reciprocal")) * op)
+
+        # std = sqrt of integral of power spectrum
+        self._fluc = op.power(2).integrate().sqrt()
+        self.apply = op.apply
+        self._domain, self._target = op.domain, op.target
+        self._repr_str = "_AmplitudeMatern: " + op.__repr__()
+
+    @property
+    def fluctuation_amplitude(self):
+        return self._fluc
+
+    def __repr__(self):
+        return self._repr_str
 
 
 class _Amplitude(Operator):
@@ -257,18 +323,22 @@ class _Amplitude(Operator):
             target, space)
 
         vol0, vol1 = [np.zeros(target[space].shape) for _ in range(2)]
+        # In the harmonic transform convention used here, the zero-mode scales
+        # linearly with the volume while all other modes scale with the square
+        # root of the volume.  However, as the `_Normalization` operator
+        # introduces an additional factor of `1 / \sqrt{totvol}` for all modes
+        # but the zero-mode, the modes here all apparently have the same
+        # scaling factor. See the respective note in `_Normalization` for
+        # details.
         vol1[1:] = vol0[0] = totvol
-        vol0, vol1 = [
-            DiagonalOperator(makeField(target[space], aa), target, space)
-            for aa in (vol0, vol1)
-        ]
+        vol0 = DiagonalOperator(makeField(target[space], vol0), target, space)
         vol0 = vol0(full(vol0.domain, 1))
+        vol1 = DiagonalOperator(makeField(target[space], vol1), target, space)
         # End prepare constant fields
 
         slope = vslope @ ps_expander @ loglogavgslope
         sig_flex = vflex @ expander @ flexibility if flexibility is not None else None
         sig_asp = vasp @ expander @ asperity if asperity is not None else None
-        sig_fluc = vol1 @ ps_expander @ fluctuations
         sig_fluc = vol1 @ ps_expander @ fluctuations
 
         if sig_asp is None and sig_flex is None:
@@ -313,7 +383,7 @@ class CorrelatedFieldMaker:
     """Construction helper for hierarchical correlated field models.
 
     The correlated field models are parametrized by creating
-    power spectrum operators ("amplitudes") via calls to
+    square roots of power spectrum operators ("amplitudes") via calls to
     :func:`add_fluctuations` that act on the targeted field subdomains.
     During creation of the :class:`CorrelatedFieldMaker` via
     :func:`make`, a global offset from zero of the field model
@@ -335,7 +405,7 @@ class CorrelatedFieldMaker:
     An operator representing an array of correlated field models
     can be constructed by setting the `total_N` parameter of
     :func:`make`. It will have an
-    :class:`~nifty.domains.unstructucture_domain.UnstructureDomain`
+    :class:`~nifty7.domains.unstructured_domain.UnstructuredDomain`
     of shape `(total_N,)` prepended to its target domain and represent
     `total_N` correlated fields simulataneously.
     The degree of information sharing between the correlated field
@@ -512,6 +582,88 @@ class CorrelatedFieldMaker:
         else:
             self._a.append(amp)
             self._target_subdomains.append(target_subdomain)
+
+    def add_fluctuations_matern(self,
+                                target_subdomain,
+                                scale,
+                                cutoff,
+                                loglogslope,
+                                prefix='',
+                                adjust_for_volume=True,
+                                harmonic_partner=None):
+        """Function to add matern kernels to the field to be made.
+
+        The matern kernel amplitude is parametrized in the following way:
+
+        .. math ::
+            A(k) = \\frac{a}{\\left(1 + { \
+                \\left(\\frac{|k|}{b}\\right) \
+            }^2\\right)^{-c/4}}
+
+        where :math:`a` is the scale, :math:`b` the cutoff and :math:`c` the
+        spectral index of the power spectrum.
+
+        Parameters
+        ----------
+        target_subdomain : :class:`~nifty7.domains.domain.Domain`, \
+                           :class:`~nifty7.domain_tuple.DomainTuple`
+            Target subdomain on which the correlation structure defined
+            in this call should hold.
+        scale : tuple of float (mean, std)
+            Overall scale of the fluctuations in the target subdomain.
+            The parameter is a-priori lognormal distribution.
+        cutoff : tuple of float (mean, std)
+            Frequency at which the power spectrum should transition into
+            a spectra following a power-law.
+            The parameter is a-priori lognormal distribution.
+        loglogslope : tuple of float (mean, std)
+            The slope of the power-spectrum spectrum on double logarithmic
+            scales, i.e. the spectral index.
+            The parameter is a-priori normal distribution.
+        prefix : string
+            Prefix of the power spectrum parameter domain names.
+        adjust_for_volume : bool, optional
+            Whether to implicitly adjust the scale parameter of the Matern
+            kernel and the zero-mode of the overall model for the volume in the
+            target subdomain or assume them to be adjusted already.
+        harmonic_partner : :class:`~nifty7.domains.domain.Domain`, \
+                           :class:`~nifty7.domain_tuple.DomainTuple`
+            Harmonic space in which to define the power spectrum.
+
+        Notes
+        -----
+        The parameters of the amplitude model are assumed to be relative to a
+        unit-less power spectrum, i.e. the parameters are assumed to be
+        agnostic to changes in the volume of the target subdomain. This is in
+        steep contrast to the non-parametric amplitude operator in
+        :class:`~nifty7.library.correlated_fields.CorrelatedFieldMaker.add_fluctuations`.
+
+        Up to the Matern amplitude only works for `total_N == 0`.
+        """
+        if self._total_N > 0:
+            raise NotImplementedError()
+        if harmonic_partner is None:
+            harmonic_partner = target_subdomain.get_default_codomain()
+        else:
+            target_subdomain.check_codomain(harmonic_partner)
+            harmonic_partner.check_codomain(target_subdomain)
+        target_subdomain = makeDomain(target_subdomain)
+
+        scale = LognormalTransform(*scale, self._prefix + prefix + 'scale', 0)
+        prfx = self._prefix + prefix + 'cutoff'
+        cutoff = LognormalTransform(*cutoff, prfx, 0)
+        prfx = self._prefix + prefix + 'loglogslope'
+        loglogslope = NormalTransform(*loglogslope, prfx, 0)
+
+        totvol = 1.
+        if adjust_for_volume:
+            totvol = target_subdomain[-1].total_volume
+        pow_spc = PowerSpace(harmonic_partner)
+        amp = _AmplitudeMatern(pow_spc, scale, cutoff, loglogslope,
+                               self._azm, totvol)
+
+        self._a.append(amp)
+        self._target_subdomains.append(target_subdomain)
 
     def finalize(self, prior_info=100):
         """Finishes model construction process and returns the constructed

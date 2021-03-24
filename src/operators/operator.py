@@ -339,6 +339,9 @@ class Operator(metaclass=NiftyMeta):
     def ptw(self, op, *args, **kwargs):
         return _OpChain.make((_FunctionApplier(self.target, op, *args, **kwargs), self))
 
+    def ptw_pre(self, op, *args, **kwargs):
+        return _OpChain.make((self, _FunctionApplier(self.domain, op, *args, **kwargs)))
+
 
 for f in pointwise.ptw_dict.keys():
     def func(f):
@@ -346,6 +349,11 @@ for f in pointwise.ptw_dict.keys():
             return self.ptw(f, *args, **kwargs)
         return func2
     setattr(Operator, f, func(f))
+    def func(f):
+        def func2(self, *args, **kwargs):
+            return self.ptw_pre(f, *args, **kwargs)
+        return func2
+    setattr(Operator, f + "_pre", func(f))
 
 
 class _FunctionApplier(Operator):

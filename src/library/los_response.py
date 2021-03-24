@@ -42,11 +42,11 @@ def _comp_traverse(start, end, shp, dist, lo, mid, hi, sig, erf):
 
     out = [None]*nlos
     for i in range(nlos):
-        dir = end[:, i]-start[:, i]
-        dirx = np.where(dir == 0., 1e-12, dir)
-        d0 = np.where(dir == 0., ((start[:, i] > 0)-0.5)*1e12,
+        direction = end[:, i]-start[:, i]
+        dirx = np.where(direction == 0., 1e-12, direction)
+        d0 = np.where(direction == 0., ((start[:, i] > 0)-0.5)*1e12,
                       -start[:, i]/dirx)
-        d1 = np.where(dir == 0., ((start[:, i] < pmax)-0.5)*-1e12,
+        d1 = np.where(direction == 0., ((start[:, i] < pmax)-0.5)*-1e12,
                       (pmax-start[:, i])/dirx)
         (dmin, dmax) = (np.minimum(d0, d1), np.maximum(d0, d1))
         dmin = dmin.max()
@@ -61,18 +61,18 @@ def _comp_traverse(start, end, shp, dist, lo, mid, hi, sig, erf):
             out[i] = (np.full(0, 0, dtype=np.int64), np.full(0, 0.))
             continue
         # determine coordinates of first cell crossing
-        c_first = np.ceil(start[:, i]+dir*dmin)
-        c_first = np.where(dir > 0., c_first, c_first-1.)
+        c_first = np.ceil(start[:, i]+direction*dmin)
+        c_first = np.where(direction > 0., c_first, c_first-1.)
         c_first = (c_first-start[:, i])/dirx
-        pos1 = np.asarray((start[:, i]+dmin*dir), dtype=np.int)
+        pos1 = np.asarray((start[:, i]+dmin*direction), dtype=np.int)
         pos1 = np.sum(pos1*inc)
         cdist = np.empty(0, dtype=np.float64)
         add = np.empty(0, dtype=np.int)
         for j in range(ndim):
-            if dir[j] != 0:
-                step = inc[j] if dir[j] > 0 else -inc[j]
+            if direction[j] != 0:
+                step = inc[j] if direction[j] > 0 else -inc[j]
                 tmp = np.arange(start=c_first[j], stop=dmax,
-                                step=abs(1./dir[j]))
+                                step=abs(1./direction[j]))
                 cdist = np.append(cdist, tmp)
                 add = np.append(add, np.full(len(tmp), step, dtype=np.int64))
         idx = np.argsort(cdist)
@@ -80,7 +80,7 @@ def _comp_traverse(start, end, shp, dist, lo, mid, hi, sig, erf):
         add = add[idx]
         cdist = np.append(np.full(1, dmin), cdist)
         cdist = np.append(cdist, np.full(1, dmax))
-        corfac = np.linalg.norm(dir*dist)
+        corfac = np.linalg.norm(direction*dist)
         cdist *= corfac
         wgt = np.diff(cdist)
         mdist = 0.5*(cdist[:-1]+cdist[1:])

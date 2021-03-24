@@ -11,7 +11,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
-# Copyright(C) 2013-2020 Max-Planck-Society
+# Copyright(C) 2013-2021 Max-Planck-Society
 #
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
 
@@ -88,14 +88,22 @@ def testBinary(type1, type2, space, seed):
             ift.extra.check_operator(model, pos, ntries=ntries)
 
 
-def testSpecialDistributionOps(space, seed):
+def testInverseGamma(space, seed):
     with ift.random.Context(seed):
         pos = ift.from_random(space, 'normal')
         alpha = 1.5
         q = 0.73
         model = ift.InverseGammaOperator(space, alpha, q)
         ift.extra.check_operator(model, pos, ntries=20)
-        model = ift.UniformOperator(space, alpha, q)
+
+
+@pmp("loc", [0, 13.2])
+@pmp("scale", [1, 551.09])
+@pmp("op", [ift.UniformOperator, ift.LaplaceOperator])
+def testSpecialDistributionOps(space, seed, loc, scale, op):
+    with ift.random.Context(seed):
+        pos = ift.from_random(space, 'normal')
+        model = op(space, loc, scale)
         ift.extra.check_operator(model, pos, ntries=20)
 
 
