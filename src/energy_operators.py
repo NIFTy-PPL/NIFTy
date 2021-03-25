@@ -1,17 +1,15 @@
 from jax import numpy as np
+from jax.tree_util import tree_map
+
 from .operator import Likelihood
 from .optimize import cg
-from .field import Field
 from .sugar import random_like, sum_of_squares
+
 
 class StandardHamiltonian(Likelihood):
     def __init__(
-        self, likelihood, compiled=False
+        self, likelihood, _compile_joined=False
     ):
-        """
-        Adds a standard normal prior to a likelihood and flattens any data structures
-        TODO: actually flatten the pytree
-        """
         self._nll = likelihood
 
         def joined_hamiltonian(primals):
@@ -20,7 +18,7 @@ class StandardHamiltonian(Likelihood):
         def joined_metric(primals, tangents):
             return self._nll.metric(primals, tangents) + tangents
 
-        if compiled:
+        if _compile_joined:
             from jax import jit
             joined_hamiltonian = jit(joined_hamiltonian)
             joined_metric = jit(joined_metric)
@@ -29,7 +27,7 @@ class StandardHamiltonian(Likelihood):
         self._draw_metric_sample = None #FIXME: This breaks the class strucutre
 
     def jit(self):
-        return StandardHamiltonian(self._nll.jit(), compiled=True)
+        return StandardHamiltonian(self._nll.jit(), _compile_joined=True)
 
     def draw_sample(
         self,
@@ -45,7 +43,8 @@ class StandardHamiltonian(Likelihood):
         if from_inverse:
             nll_smpl, _ = self._nll.draw_sample(primals, key=subkey_nll, **kwargs)
             prr_inv_metric_smpl = random_like(primals, key=subkey_prr)
-            # Shorthand for retrieving the sample from an inverse sample
+            # One may transform any metric sample to a sample of the inverse
+            # metric by simply applying the inverse metric to it
             prr_smpl = prr_inv_metric_smpl
 
             # Note, we can sample antithetically by swapping the global sign of
