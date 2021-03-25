@@ -73,7 +73,7 @@ if __name__ == "__main__":
         print(f"MGVI Iteration {i}", file=sys.stderr)
         key, *subkeys = random.split(key, 1 + n_samples)
         samples = []
-        draw = lambda k: ham.draw_sample(pos, key=k, from_inverse=True)[0]
+        draw = lambda k: ham.draw_sample(pos, key=k, from_inverse=True)
         samples = [draw(k) for k in subkeys]
 
         Evag = lambda p: energy_vag(p, samples)

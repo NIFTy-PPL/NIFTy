@@ -2,12 +2,21 @@ from typing import Callable
 from collections.abc import Iterable
 
 from jax import random
+from jax import numpy as np
 from jax.tree_util import (
     tree_structure, tree_leaves, tree_unflatten, tree_map, tree_multimap,
     tree_reduce
 )
 
 from .field import Field
+
+
+def is1d(ls, object_type=(int, np.unsignedinteger)):
+    if isinstance(ls, np.ndarray):
+        ndim = np.ndim(ls)
+        dtp_match = any(np.issubdtype(ls.dtype, dtp) for dtp in object_type)
+        return (ndim == 1) & dtp_match
+    return all(isinstance(e, object_type) for e in ls)
 
 
 def ducktape(call, key):
@@ -46,8 +55,16 @@ def random_with_tree_shape(
         for (k, v), sk in zip(tree_shape.items(), subkeys):
             rvs[k] = random_with_tree_shape(v, sk, rng=rng)
         return rvs
-    elif isinstance(tree_shape, (list, tuple)):
-        return rng(shape=tuple(tree_shape), key=key)
+    is0d = isinstance(tree_shape, (int, np.unsignedinteger))
+    if not is0d and not is1d(tree_shape):
+        subkeys = random.split(key, len(tree_shape))
+        return type(tree_shape)(
+            random_with_tree_shape(el, sk, rng=rng)
+            for el, sk in zip(tree_shape, subkeys)
+        )
+
+    if isinstance(tree_shape, (list, tuple, np.ndarray)):
+        return rng(shape=tree_shape, key=key)
     raise TypeError(f"invalid type of `tree_shape` {type(tree_shape)!r}")
 
 

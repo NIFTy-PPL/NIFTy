@@ -53,7 +53,7 @@ if __name__ == "__main__":
 
     nll = jft.Gaussian(data, noise_cov_inv) @ signal_response
     ham = jft.StandardHamiltonian(likelihood=nll).jit()
-    draw = lambda p, k: ham.draw_sample(p, key=k, from_inverse=True)[0]
+    draw = lambda p, k: ham.draw_sample(p, key=k, from_inverse=True)
     ham_energy_vg = jit(value_and_grad(ham))
 
     key, subkey = random.split(key)

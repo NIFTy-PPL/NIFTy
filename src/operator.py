@@ -1,93 +1,135 @@
+import sys
 from jax import numpy as np
 from jax import jvp, vjp
+from jax.tree_util import register_pytree_node_class, Partial
+
+from .optimize import cg
+from .sugar import random_with_tree_shape
 
 
 class Likelihood():
     def __init__(
         self,
         energy,
-        metric,
-        draw_metric_sample=None,
+        metric=None,
+        left_sqrt_metric=None,
+        lsm_tangents_shape=None
     ):
         self._hamiltonian = energy
         self._metric = metric
-        self._draw_metric_sample = draw_metric_sample
+        self._left_sqrt_metric = left_sqrt_metric
+        self._lsm_tan_shp = lsm_tangents_shape
 
     def __call__(self, primals):
         return self._hamiltonian(primals)
-
-    def jit(self):
-        from jax import jit
-        return Likelihood(jit(self._hamiltonian), jit(self._metric),
-                jit(self._draw_metric_sample))
-
-    def __matmul__(self, f):
-        nham = lambda x: self.energy(f(x))
-        def met(primals, tangents):
-            y, t = jvp(f, (primals,), (tangents,))
-            r = self.metric(y, t)
-            _, bwd = vjp(f, primals)
-            res = bwd(r)
-            return res[0]
-
-        def draw_sample(primals, key):
-            y, bwd = vjp(f, primals)
-            samp, nkey = self.draw_sample(y, key)
-            return bwd(samp)[0], nkey
-
-        return Likelihood(nham, met, draw_sample)
-
-    def __add__(self, ham):
-        if not isinstance(ham, Likelihood):
-            te = (
-                "object which to add to this instance is of invalid type"
-                f" {type(ham)!r}"
-            )
-            raise TypeError(te)
-
-        def draw_metric_sample(primals, key, **kwargs):
-            # Ensure that samples are not inverted in any of the recursive calls
-            assert "from_inverse" not in kwargs
-            # Ensure there is no prior for the CG algorithm in recursive calls
-            # as the prior is sensible only for the top-level likelihood
-            assert "x0" not in kwargs
-
-            key, subkeys = random.split(key, 2)
-            smpl_self, _ = self.draw_sample(primals, key=subkeys[0], **kwargs)
-            smpl_other, _ = ham.draw_sample(primals, key=subkeys[1], **kwargs)
-
-            return smpl_self + smpl_other, key
-
-        return Likelihood(
-            energy=lambda p: self(p) + ham(p),
-            metric=lambda p, t: self.metric(p, t) + ham.metric(p, t),
-            draw_metric_sample=draw_metric_sample
-        )
 
     def energy(self, primals):
         return self._hamiltonian(primals)
 
     def metric(self, primals, tangents):
+        if self._metric is None:
+            nie = "`metric` is not implemented"
+            raise NotImplementedError(nie)
         return self._metric(primals, tangents)
 
-    def draw_sample(
-        self,
-        primals,
-        key,
-        from_inverse = False,
-        x0 = None,
-        maxiter = None,
-        **kwargs
-    ):
-        if not self._draw_metric_sample:
-            nie = "`draw_sample` is not implemented"
+    def left_sqrt_metric(self, primals, tangents):
+        if self._left_sqrt_metric is None:
+            nie = "`left_sqrt_metric` is not implemented"
+            raise NotImplementedError(nie)
+        return self._left_sqrt_metric(primals, tangents)
+
+    def inv_metric(self, primals, tangents, cg=cg, **cg_kwargs):
+        res, _ = cg(Partial(self.metric, primals), tangents, **cg_kwargs)
+        return res
+
+    def draw_sample(self, primals, key, from_inverse=False, cg=cg, **cg_kwargs):
+        if self._lsm_tan_shp is None:
+            nie = "Cannot draw sample without knowing the shape of the data"
             raise NotImplementedError(nie)
 
         if from_inverse:
             nie = "Cannot draw from the inverse of this operator"
             raise NotImplementedError(nie)
         else:
-            return self._draw_metric_sample(primals, key=key, **kwargs)
+            white_sample = random_with_tree_shape(self._lsm_tan_shp, key=key)
+            return self.left_sqrt_metric(primals, white_sample)
+
+    @property
+    def left_sqrt_metric_tangents_shape(self):
+        return self._lsm_tan_shp
+
+    def new(self, energy, metric, left_sqrt_metric):
+        return Likelihood(
+            energy,
+            metric=metric,
+            left_sqrt_metric=left_sqrt_metric,
+            lsm_tangents_shape=self._lsm_tan_shp
+        )
+
+    def jit(self):
+        from jax import jit
+
+        if self._left_sqrt_metric is not None:
+            j_lsm = jit(self._left_sqrt_metric)
+        else:
+            j_lsm = None
+        j_m = jit(self._metric) if self._metric is not None else None
+        return self.new(
+            jit(self._hamiltonian), metric=j_m, left_sqrt_metric=j_lsm
+        )
+
+    def __matmul__(self, f):
+        def energy_at_f(primals):
+            return self.energy(f(primals))
+
+        def metric_at_f(primals, tangents):
+            y, t = jvp(f, (primals, ), (tangents, ))
+            r = self.metric(y, t)
+            _, bwd = vjp(f, primals)
+            res = bwd(r)
+            return res[0]
+
+        def left_sqrt_metric_at_f(primals, tangents):
+            y, bwd = vjp(f, primals)
+            left_at_fp = self.left_sqrt_metric(y, tangents)
+            return bwd(left_at_fp)[0]
+
+        return self.new(
+            energy_at_f,
+            metric=metric_at_f,
+            left_sqrt_metric=left_sqrt_metric_at_f
+        )
+
+    def __add__(self, other):
+        if not isinstance(other, Likelihood):
+            te = (
+                "object which to add to this instance is of invalid type"
+                f" {type(other)!r}"
+            )
+            raise TypeError(te)
+
+        def joined_hamiltonian(p):
+            return self.energy(p) + other.energy(p)
+
+        def joined_metric(p, t):
+            return self.metric(p, t) + other.metric(p, t)
+
+        joined_tangents_shape = {
+            "lh_left": self._lsm_tan_shp,
+            "lh_right": other._lsm_tan_shp
+        }
+
+        def joined_left_sqrt_metric(p, t):
+            return self.left_sqrt_metric(
+                p, t["lh_left"]
+            ) + other.left_sqrt_metric(p, t["lh_right"])
+
+        return Likelihood(
+            joined_hamiltonian,
+            metric=joined_metric,
+            left_sqrt_metric=joined_left_sqrt_metric,
+            lsm_tangents_shape=joined_tangents_shape
+        )
 
 
 def laplace_prior(alpha):
@@ -98,7 +140,7 @@ def laplace_prior(alpha):
     from jax.scipy.stats import norm
     res = lambda x: (x<0)*(norm.logcdf(x) + np.log(2))\
                 - (x>0)*(norm.logcdf(-x) + np.log(2))
-    return lambda x: res(x)*alpha
+    return lambda x: res(x) * alpha
 
 
 def normal_prior(mean, std):
@@ -172,5 +214,7 @@ def interpolate(xmin=-7., xmax=7., N=14000):
         @wraps(f)
         def wrapper(t):
             return np.interp(t, x, y)
+
         return wrapper
+
     return decorator

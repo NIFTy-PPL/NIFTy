@@ -24,7 +24,9 @@ class StandardHamiltonian(Likelihood):
             joined_metric = jit(joined_metric)
         self._hamiltonian = joined_hamiltonian
         self._metric = joined_metric
-        self._draw_metric_sample = None #FIXME: This breaks the class strucutre
+        # We do not know the shape of the tangent space of the left_sqrt_metric
+        self._left_sqrt_metric = None
+        self._lsm_tan_shp = None
 
     def jit(self):
         return StandardHamiltonian(self._nll.jit(), _compile_joined=True)
@@ -33,15 +35,14 @@ class StandardHamiltonian(Likelihood):
         self,
         primals,
         key,
-        from_inverse = False,
-        x0 = None,
-        maxiter = None,
-        **kwargs
+        from_inverse=False,
+        cg=cg,
+        **cg_kwargs
     ):
         from jax import random
-        key, subkey_nll, subkey_prr = random.split(key, 3)
+        subkey_nll, subkey_prr = random.split(key, 2)
         if from_inverse:
-            nll_smpl, _ = self._nll.draw_sample(primals, key=subkey_nll, **kwargs)
+            nll_smpl = self._nll.draw_sample(primals, key=subkey_nll)
             prr_inv_metric_smpl = random_like(primals, key=subkey_prr)
             # One may transform any metric sample to a sample of the inverse
             # metric by simply applying the inverse metric to it
@@ -64,15 +65,16 @@ class StandardHamiltonian(Likelihood):
             resnorm=np.linalg.norm(met_smpl, ord=1) / 2,
             norm_ord=1
             """
-            signal_smpl, _ = cg(
-                lambda t, primals=primals: self._metric(primals, t),
+            signal_smpl = self.inv_metric(
+                primals,
                 met_smpl,
-                x0=prr_inv_metric_smpl if x0 is None else x0,
-                maxiter=maxiter
+                cg=cg,
+                x0=prr_inv_metric_smpl,
+                **cg_kwargs
             )
-            return signal_smpl, key
+            return signal_smpl
         else:
-            nll_smpl, _ = self._nll.draw_sample(primals, key=subkey_nll, **kwargs)
+            nll_smpl = self._nll.draw_sample(primals, key=subkey_nll)
             prr_inv_metric_smpl = random_like(primals, key=subkey_prr)
             return nll_smpl + prr_smpl, key
 
@@ -102,21 +104,25 @@ def Gaussian(
         def noise_std_inv(tangents):
             return noise_cov_inv_sqrt * tangents
 
-    def energy(primals):
+    def hamiltonian(primals):
         p_res = primals - data
         return 0.5 * np.sum(p_res * noise_cov_inv(p_res))
 
     def metric(primals, tangents):
         return noise_cov_inv(tangents)
 
-    def draw_sample(primals, key):
-        from jax import random
+    def left_sqrt_metric(primals, tangents):
+        return noise_std_inv(tangents)
 
-        key, subkey = random.split(key)
-        tangents = random_like(data, key=subkey)
-        return noise_std_inv(tangents), key
+    lsm_tangents_shape = tree_map(np.shape, data)
 
-    return Likelihood(energy, metric, draw_sample)
+    return Likelihood(
+        hamiltonian,
+        metric=metric,
+        left_sqrt_metric=left_sqrt_metric,
+        lsm_tangents_shape=lsm_tangents_shape
+    )
+
 
 def Categorical(data, axis=-1):
     """
@@ -132,27 +138,30 @@ def Categorical(data, axis=-1):
     axis over which the categories are formed
     """
 
-    def energy(primals):
+    def hamiltonian(primals):
         from jax.nn import log_softmax
         logits = log_softmax(primals, axis=axis)
         return -np.sum(np.take_along_axis(logits, data, axis))
 
     def metric(primals, tangents):
         from jax.nn import softmax
-        preds = softmax(primals, axis=axis)
-        norm_term = np.sum(preds*tangents, axis=axis, keepdims=True)
-        return preds*tangents - preds*norm_term
 
-    def draw_sample(primals, key):
+        preds = softmax(primals, axis=axis)
+        norm_term = np.sum(preds * tangents, axis=axis, keepdims=True)
+        return preds * tangents - preds * norm_term
+
+    def left_sqrt_metric(primals, tangents):
         from jax.nn import softmax
-        from jax import random
 
         sqrtp = np.sqrt(softmax(primals, axis=axis))
-        key, subkey = random.split(key)
-        tangents = random_like(data, key=subkey)
-        norm_term = np.sum(sqrtp*tangents, axis=axis, keepdims=True)
-        return sqrtp*(tangents - sqrtp*norm_term), key
+        norm_term = np.sum(sqrtp * tangents, axis=axis, keepdims=True)
+        return sqrtp * (tangents - sqrtp * norm_term)
 
-    return Likelihood(energy, metric, draw_sample)
+    lsm_tangents_shape = tree_map(np.shape, data)
 
-
+    return Likelihood(
+        hamiltonian,
+        metric=metric,
+        left_sqrt_metric=left_sqrt_metric,
+        lsm_tangents_shape=lsm_tangents_shape
+    )
