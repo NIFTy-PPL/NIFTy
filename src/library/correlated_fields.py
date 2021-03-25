@@ -386,11 +386,10 @@ class CorrelatedFieldMaker:
 
     The correlated field models are parametrized by creating
     square roots of power spectrum operators ("amplitudes") via calls to
-    :func:`add_fluctuations` that act on the targeted field subdomains.
-    During creation of the :class:`CorrelatedFieldMaker` via
-    :func:`make`, a global offset from zero of the field model
-    can be defined and an operator applying fluctuations
-    around this offset is parametrized.
+    :func:`add_fluctuations*` that act on the targeted field subdomains.
+    During creation of the :class:`CorrelatedFieldMaker`, a global
+    offset from zero of the field model can be defined and an operator
+    applying fluctuations around this offset is parametrized.
 
     The resulting correlated field model operator has a
     :class:`~nifty7.multi_domain.MultiDomain` as its domain and
@@ -405,17 +404,16 @@ class CorrelatedFieldMaker:
     :func:`finalize`, which returns the configured operator.
 
     An operator representing an array of correlated field models
-    can be constructed by setting the `total_N` parameter of
-    :func:`make`. It will have an
-    :class:`~nifty7.domains.unstructured_domain.UnstructuredDomain`
+    can be constructed by setting the `total_N` parameter of. It will
+    have an :class:`~nifty7.domains.unstructured_domain.UnstructuredDomain`
     of shape `(total_N,)` prepended to its target domain and represent
     `total_N` correlated fields simulataneously.
     The degree of information sharing between the correlated field
-    models can be configured via the `dofdex` parameters
-    of :func:`make` and :func:`add_fluctuations`.
+    models can be configured via the `dofdex` parameter of
+    :func:`add_fluctuations`.
 
-    See the methods :func:`make`, :func:`add_fluctuations`
-    and :func:`finalize` for further usage information."""
+    See the methods :func:`add_fluctuations*` and :func:`finalize` for
+    further usage information."""
     def __init__(self, prefix, total_N=0):
         """Instantiate a CorrelatedFieldMaker object.
 
