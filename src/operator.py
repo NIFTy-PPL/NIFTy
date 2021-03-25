@@ -1,10 +1,41 @@
-import sys
 from jax import numpy as np
 from jax import jvp, vjp
-from jax.tree_util import register_pytree_node_class, Partial
+from jax.tree_util import Partial, tree_leaves, all_leaves
 
 from .optimize import cg
-from .sugar import random_with_tree_shape
+from .sugar import is1d, random_like_shapewdtype
+
+
+class ShapeWithDtype():
+    def __init__(self, shape, dtype=None):
+        if not is1d(shape):
+            ve = f"invalid shape; got {shape!r}"
+            return ValueError(ve)
+
+        self._shape = shape
+        self._dtype = np.float64 if dtype is None else dtype
+
+    @classmethod
+    def from_leave(cls, element):
+        # Usage: `tree_map(ShapeWithDtype.from_leave, tree)`
+        import numpy as onp
+
+        if not all_leaves((element, )):
+            ve = "tree is not flat and still contains leaves"
+            raise ValueError(ve)
+        return cls(np.shape(element), onp.common_type(element))
+
+    @property
+    def shape(self):
+        return self._shape
+
+    @property
+    def dtype(self):
+        return self._dtype
+
+    def __repr__(self):
+        nm = self.__class__.__name__
+        return f"{nm}(shape={self.shape}, dtype={self.dtype})"
 
 
 class Likelihood():
@@ -18,6 +49,15 @@ class Likelihood():
         self._hamiltonian = energy
         self._metric = metric
         self._left_sqrt_metric = left_sqrt_metric
+
+        if lsm_tangents_shape is not None:
+            if is1d(lsm_tangents_shape):
+                lsm_tangents_shape = ShapeWithDtype(lsm_tangents_shape)
+            else:
+                leaves = tree_leaves(lsm_tangents_shape)
+                if not all(isinstance(e, ShapeWithDtype) for e in leaves):
+                    te = "objects of invalid type in tangent shapes"
+                    raise TypeError(te)
         self._lsm_tan_shp = lsm_tangents_shape
 
     def __call__(self, primals):
@@ -51,7 +91,7 @@ class Likelihood():
             nie = "Cannot draw from the inverse of this operator"
             raise NotImplementedError(nie)
         else:
-            white_sample = random_with_tree_shape(self._lsm_tan_shp, key=key)
+            white_sample = random_like_shapewdtype(self._lsm_tan_shp, key=key)
             return self.left_sqrt_metric(primals, white_sample)
 
     @property

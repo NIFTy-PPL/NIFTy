@@ -11,11 +11,22 @@ from jax.tree_util import (
 from .field import Field
 
 
+def isiterable(candidate):
+    try:
+        iter(candidate)
+        return True
+    except TypeError:
+        return False
+
+
 def is1d(ls, object_type=(int, np.unsignedinteger)):
     if isinstance(ls, np.ndarray):
         ndim = np.ndim(ls)
         dtp_match = any(np.issubdtype(ls.dtype, dtp) for dtp in object_type)
         return (ndim == 1) & dtp_match
+
+    if not isiterable(ls):
+        return False
     return all(isinstance(e, object_type) for e in ls)
 
 
@@ -75,26 +86,17 @@ def mean_and_std(forest, correct_bias=True):
         return m.val, std.val
 
 
-def random_with_tree_shape(
-    tree_shape: Iterable, key: Iterable, rng: Callable = random.normal
+def random_like_shapewdtype(
+    tree_of_shapes: Iterable, key: Iterable, rng: Callable = random.normal
 ):
-    if isinstance(tree_shape, dict):
-        rvs = {}
-        subkeys = random.split(key, len(tree_shape))
-        for (k, v), sk in zip(tree_shape.items(), subkeys):
-            rvs[k] = random_with_tree_shape(v, sk, rng=rng)
-        return rvs
-    is0d = isinstance(tree_shape, (int, np.unsignedinteger))
-    if not is0d and not is1d(tree_shape):
-        subkeys = random.split(key, len(tree_shape))
-        return type(tree_shape)(
-            random_with_tree_shape(el, sk, rng=rng)
-            for el, sk in zip(tree_shape, subkeys)
-        )
+    struct = tree_structure(tree_of_shapes)
+    # Cast the subkeys to the structure of `primals`
+    subkeys = tree_unflatten(struct, random.split(key, struct.num_leaves))
 
-    if isinstance(tree_shape, (list, tuple, np.ndarray)):
-        return rng(shape=tree_shape, key=key)
-    raise TypeError(f"invalid type of `tree_shape` {type(tree_shape)!r}")
+    def draw(swd, key):
+        return rng(key=key, shape=swd.shape, dtype=swd.dtype)
+
+    return tree_multimap(draw, tree_of_shapes, subkeys)
 
 
 def random_like(

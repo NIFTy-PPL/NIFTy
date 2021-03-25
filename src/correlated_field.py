@@ -4,7 +4,7 @@ import sys
 from jax import numpy as np
 from jax import jit
 from .sugar import ducktape
-from .operator import normal_prior, lognormal_prior
+from .operator import ShapeWithDtype, normal_prior, lognormal_prior
 
 
 def hartley(p, axes=None):
@@ -14,9 +14,7 @@ def hartley(p, axes=None):
     return tmp.real + tmp.imag
 
 
-def get_fourier_mode_distributor(
-    shape, distances
-    ):
+def get_fourier_mode_distributor(shape, distances):
     """Get the unique lengths of the Fourier modes, a mapping from a mode to
     its length index and the multiplicity of each unique Fourier mode length.
 
@@ -103,20 +101,20 @@ def non_parametric_amplitude(
 
     ptree = {}
     fluctuations = ducktape(fluctuations, prefix + "_fluctuations")
-    ptree[prefix + "_fluctuations"] = ()
+    ptree[prefix + "_fluctuations"] = ShapeWithDtype(())
     loglogavgslope = ducktape(loglogavgslope, prefix + "_loglogavgslope")
-    ptree[prefix + "_loglogavgslope"] = ()
+    ptree[prefix + "_loglogavgslope"] = ShapeWithDtype(())
     if flexibility is not None:
         flexibility = ducktape(flexibility, prefix + "_flexibility")
-        ptree[prefix + "_flexibility"] = ()
+        ptree[prefix + "_flexibility"] = ShapeWithDtype(())
         # Register the parameters for the spectrum
         assert rel_log_mode_len.ndim == log_vol.ndim == 1
-        ptree[prefix + "_spectrum"] = (2, ) + log_vol.shape
+        ptree[prefix + "_spectrum"] = ShapeWithDtype((2, ) + log_vol.shape)
     else:
         flexibility = None
     if asperity is not None:
         asperity = ducktape(asperity, prefix + "_asperity")
-        ptree[prefix + "_asperity"] = ()
+        ptree[prefix + "_asperity"] = ShapeWithDtype(())
     else:
         asperity = None
 
@@ -298,7 +296,7 @@ class CorrelatedFieldMaker():
             zm = lognormal_prior(*offset_std)
 
         self._azm = ducktape(zm, self._prefix + "_zeromode")
-        self._parameter_tree[self._prefix + "_zeromode"] = ()
+        self._parameter_tree[self._prefix + "_zeromode"] = ShapeWithDtype(())
 
     @property
     def amplitude_total_offset(self):
@@ -367,7 +365,9 @@ class CorrelatedFieldMaker():
 
             harmonic_transforms.append(ht_axs)
         # Register the parameters for the excitations in harmonic space
-        self._parameter_tree[self._prefix + "_excitations"] = excitation_shape
+        # TODO: actually account for the dtype here
+        pfx = self._prefix + "_excitations"
+        self._parameter_tree[pfx] = ShapeWithDtype(excitation_shape)
 
         def outer_harmonic_transform(p):
             outer = harmonic_transforms[0](p)
