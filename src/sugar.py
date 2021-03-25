@@ -46,6 +46,35 @@ def norm(tree, ord):
     return norm(tree_leaves(tree_map(enorm, tree)), ord=ord)
 
 
+def mean(forest):
+    from functools import reduce
+
+    norm = 1. / len(forest)
+    if isinstance(forest[0], Field):
+        m = norm * reduce(Field.__add__, forest)
+        return m
+    else:
+        m = norm * reduce(Field.__add__, (Field(t) for t in forest))
+        return m.val
+
+
+def mean_and_std(forest, correct_bias=True):
+    if isinstance(forest[0], Field):
+        m = mean(forest)
+        mean_of_sq = mean(tuple(t**2 for t in forest))
+    else:
+        m = Field(mean(forest))
+        mean_of_sq = Field(mean(tuple(Field(t)**2 for t in forest)))
+
+    n = len(forest)
+    scl = np.sqrt(n / (n - 1)) if correct_bias else 1.
+    std = scl * tree_map(np.sqrt, mean_of_sq - m**2)
+    if isinstance(forest[0], Field):
+        return m, std
+    else:
+        return m.val, std.val
+
+
 def random_with_tree_shape(
     tree_shape: Iterable, key: Iterable, rng: Callable = random.normal
 ):

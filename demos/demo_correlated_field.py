@@ -70,16 +70,10 @@ if __name__ == "__main__":
         samples += [-s for s in samples]
 
         def energy_vg(p):
-            e_rdc, g_rdc = None, None
-            for e, g in (ham_energy_vg(p + s) for s in samples):
-                e_rdc = e if e_rdc is None else e_rdc + e
-                g_rdc = g if g_rdc is None else g_rdc + g
-            norm = 1. / len(samples)
-            return norm * e_rdc, norm * g_rdc
+            return jft.mean(tuple(ham_energy_vg(p + s) for s in samples))
 
         def met(p, t):
-            rdc = sum(ham.metric(p + s, t) for s in samples)
-            return 1. / len(samples) * rdc
+            return jft.mean(tuple(ham.metric(p + s, t) for s in samples))
 
         print("Minimizing...", file=sys.stderr)
         pos = jft.newton_cg(pos, energy_vg, met, n_newton_iterations)
@@ -87,15 +81,14 @@ if __name__ == "__main__":
         print(msg, file=sys.stderr)
 
     namps = cfm.get_normalized_amplitudes()
+    post_sr_mean = jft.mean(tuple(signal_response(pos + s) for s in samples))
+    post_a_mean = jft.mean(tuple(cfm.amplitude(pos + s)[1:] for s in samples))
     to_plot = [
         ("Signal", signal_response_truth, "im"),
         ("Noise", noise_truth, "im"),
         ("Data", data, "im"),
-        ("Reconstruction", signal_response(pos), "im"),
-        (
-            "Ax1", (cfm.amplitude(pos_truth)[1:], cfm.amplitude(pos)[1:]),
-            "loglog"
-        ),
+        ("Reconstruction", post_sr_mean, "im"),
+        ("Ax1", (cfm.amplitude(pos_truth)[1:], post_a_mean), "loglog"),
     ]
     fig, axs = plt.subplots(2, 3, figsize=(16, 9))
     for ax, (title, field, tp) in zip(axs.flat, to_plot):

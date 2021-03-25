@@ -82,16 +82,10 @@ if __name__ == "__main__":
         samples += [-s for s in samples]
 
         def energy_vg(p):
-            e_rdc, g_rdc = None, None
-            for e, g in (ham_energy_vg(p + s) for s in samples):
-                e_rdc = e if e_rdc is None else e_rdc + e
-                g_rdc = g if g_rdc is None else g_rdc + g
-            norm = 1. / len(samples)
-            return norm * e_rdc, norm * g_rdc
+            return jft.mean(tuple(ham_energy_vg(p + s) for s in samples))
 
         def met(p, t):
-            rdc = sum(ham.metric(p + s, t) for s in samples)
-            return 1. / len(samples) * rdc
+            return jft.mean(tuple(ham.metric(p + s, t) for s in samples))
 
         print("Minimizing...", file=sys.stderr)
         # TODO: Re-introduce a simplified version that works without fields
@@ -105,11 +99,12 @@ if __name__ == "__main__":
             file=sys.stderr
         )
 
+    post_sr_mean = jft.mean(tuple(signal_response(pos + s) for s in samples))
     fig, ax = plt.subplots()
     ax.plot(signal_response_truth, alpha=0.7, label="Signal")
     ax.plot(noise_truth, alpha=0.7, label="Noise")
     ax.plot(data, alpha=0.7, label="Data")
-    ax.plot(signal_response(pos), alpha=0.7, label="Reconstruction")
+    ax.plot(post_sr_mean, alpha=0.7, label="Reconstruction")
     ax.legend()
     fig.tight_layout()
     plt.show()
