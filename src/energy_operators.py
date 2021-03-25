@@ -7,9 +7,7 @@ from .sugar import random_like, sum_of_squares
 
 
 class StandardHamiltonian(Likelihood):
-    def __init__(
-        self, likelihood, _compile_joined=False
-    ):
+    def __init__(self, likelihood, _compile_joined=False):
         self._nll = likelihood
 
         def joined_hamiltonian(primals):
@@ -31,14 +29,7 @@ class StandardHamiltonian(Likelihood):
     def jit(self):
         return StandardHamiltonian(self._nll.jit(), _compile_joined=True)
 
-    def draw_sample(
-        self,
-        primals,
-        key,
-        from_inverse=False,
-        cg=cg,
-        **cg_kwargs
-    ):
+    def draw_sample(self, primals, key, from_inverse=False, cg=cg, **cg_kwargs):
         from jax import random
         subkey_nll, subkey_prr = random.split(key, 2)
         if from_inverse:
@@ -66,11 +57,7 @@ class StandardHamiltonian(Likelihood):
             norm_ord=1
             """
             signal_smpl = self.inv_metric(
-                primals,
-                met_smpl,
-                cg=cg,
-                x0=prr_inv_metric_smpl,
-                **cg_kwargs
+                primals, met_smpl, cg=cg, x0=prr_inv_metric_smpl, **cg_kwargs
             )
             return signal_smpl
         else:
@@ -79,10 +66,7 @@ class StandardHamiltonian(Likelihood):
             return nll_smpl + prr_smpl, key
 
 
-def Gaussian(
-    data,
-    noise_cov_inv = None,
-    noise_std_inv = None):
+def Gaussian(data, noise_cov_inv=None, noise_std_inv=None):
 
     if not noise_cov_inv and not noise_std_inv:
 
@@ -99,7 +83,9 @@ def Gaussian(
         )
         import sys
         print(wm, file=sys.stderr)
-        noise_cov_inv_sqrt = np.sqrt(noise_cov_inv(tree_map(np.ones_like, data)))
+        noise_cov_inv_sqrt = np.sqrt(
+            noise_cov_inv(tree_map(np.ones_like, data))
+        )
 
         def noise_std_inv(tangents):
             return noise_cov_inv_sqrt * tangents
@@ -137,7 +123,6 @@ def Categorical(data, axis=-1):
     axis: int
     axis over which the categories are formed
     """
-
     def hamiltonian(primals):
         from jax.nn import log_softmax
         logits = log_softmax(primals, axis=axis)
