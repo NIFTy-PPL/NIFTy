@@ -1,6 +1,15 @@
 Changes since NIFTy 6
 =====================
 
+New parametric amplitude model
+------------------------------
+
+The `ift.CorrelatedFieldMaker` now features two amplitude models. In addition
+to the non-parametric one, one may choose to use a Matern kernel instead. The
+method is aptly named `add_fluctuations_matern`. The major advantage of the
+parametric model is its more intuitive scaling with the size of the position
+space.
+
 CorrelatedFieldMaker interface change
 -------------------------------------
 
