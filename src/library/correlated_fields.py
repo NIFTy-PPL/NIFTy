@@ -192,11 +192,11 @@ class _Normalization(Operator):
         spec = x.ptw("exp")
         # NOTE, see the note in the doc-string on why this is not a proper
         # normalization!
-        # FIXME, this "normalizes" also the zero-mode which is supposed to be
-        # left untouched by this operator. Besides setting the zero-mode in the
-        # output, it also uses it in the norm. The former is not a problem
-        # because the zeroth element is later reset in the model. However, the
-        # latter should not happen.
+        # NOTE, this "normalizes" also the zero-mode which is supposed to be
+        # left untouched by this operator. Since the multiplicity of the
+        # zero-mode is set to 0, the norm does not contain traces of it.
+        # However, it wrongly sets the zeroth entry of the result. Luckily,
+        # in subsequent calls, the zeroth entry is not used in the CF model.
         return (self._specsum(spec).reciprocal()*spec).sqrt()
 
 
