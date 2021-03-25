@@ -97,7 +97,7 @@ def Gaussian(
         )
         import sys
         print(wm, file=sys.stderr)
-        noise_cov_inv_sqrt = np.sqrt(noise_cov_inv(np.ones_like(data)))
+        noise_cov_inv_sqrt = np.sqrt(noise_cov_inv(tree_map(np.ones_like, data)))
 
         def noise_std_inv(tangents):
             return noise_cov_inv_sqrt * tangents
