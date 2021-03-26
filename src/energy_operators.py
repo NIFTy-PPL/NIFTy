@@ -1,7 +1,7 @@
 from jax import numpy as np
 from jax.tree_util import tree_map
 
-from .operator import Likelihood
+from .operator import Likelihood, ShapeWithDtype
 from .optimize import cg
 from .sugar import random_like, sum_of_squares
 
@@ -100,7 +100,7 @@ def Gaussian(data, noise_cov_inv=None, noise_std_inv=None):
     def left_sqrt_metric(primals, tangents):
         return noise_std_inv(tangents)
 
-    lsm_tangents_shape = tree_map(np.shape, data)
+    lsm_tangents_shape = tree_map(ShapeWithDtype.from_leave, data)
 
     return Likelihood(
         hamiltonian,
@@ -142,7 +142,7 @@ def Categorical(data, axis=-1):
         norm_term = np.sum(sqrtp * tangents, axis=axis, keepdims=True)
         return sqrtp * (tangents - sqrtp * norm_term)
 
-    lsm_tangents_shape = tree_map(np.shape, data)
+    lsm_tangents_shape = tree_map(ShapeWithDtype.from_leave, data)
 
     return Likelihood(
         hamiltonian,
