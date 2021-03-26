@@ -23,7 +23,7 @@ class Field():
         if isinstance(flags, (tuple, set)):
             self._flags = set(flags)
         elif isinstance(flags, str):
-            self._flags = set(("flags", ))
+            self._flags = set((flags, ))
         else:
             self._flags = set()
 
@@ -82,6 +82,15 @@ class Field():
     def sum_of_squares(self):
         from .sugar import sum_of_squares
         return sum_of_squares(self)
+
+    def __str__(self):
+        s = "Field:\n"
+        if self._domain != {}:
+            s += "domain: "+ self._domain.__str__() + "\n"
+        if self._flags != set():
+            s += "flags: "+ self._flags.__str__() + "\n"
+        s += self._val.__str__()
+        return s
 
     def norm(self, ord):
         from .sugar import jft_norm
