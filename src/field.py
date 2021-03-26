@@ -85,11 +85,11 @@ class Field():
 
     def __str__(self):
         s = "Field:\n"
-        if self._domain != {}:
-            s += "domain: "+ self._domain.__str__() + "\n"
-        if self._flags != set():
-            s += "flags: "+ self._flags.__str__() + "\n"
-        s += self._val.__str__()
+        if self._domain:
+            s += "domain: " + str(self._domain) + "\n"
+        if self._flags:
+            s += "flags: "+ str(self._flags) + "\n"
+        s += str(self._val)
         return s
 
     def norm(self, ord):
@@ -106,6 +106,8 @@ class Field():
         if isinstance(other, Field):
             if other.domain != self.domain:
                 raise ValueError("domains are incompatible.")
+            if other.flags != self.flags:
+                raise ValueError("flags are incompatible.")
         elif ndim(other) == 0:
             from jax.tree_util import tree_structure
             from itertools import repeat
