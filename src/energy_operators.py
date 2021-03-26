@@ -104,8 +104,8 @@ def Gaussian(data, noise_cov_inv=None, noise_std_inv=None):
 
     return Likelihood(
         hamiltonian,
-        metric=metric,
         left_sqrt_metric=left_sqrt_metric,
+        metric=metric,
         lsm_tangents_shape=lsm_tangents_shape
     )
 
@@ -146,7 +146,7 @@ def Categorical(data, axis=-1):
 
     return Likelihood(
         hamiltonian,
-        metric=metric,
         left_sqrt_metric=left_sqrt_metric,
+        metric=metric,
         lsm_tangents_shape=lsm_tangents_shape
     )

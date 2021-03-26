@@ -1,6 +1,6 @@
 from jax import numpy as np
 from jax import jvp, vjp
-from jax.tree_util import Partial, tree_leaves, all_leaves
+from jax.tree_util import Partial, tree_leaves, all_leaves, tree_map
 
 from .optimize import cg
 from .sugar import is1d, random_like_shapewdtype
@@ -42,13 +42,13 @@ class Likelihood():
     def __init__(
         self,
         energy,
-        metric=None,
         left_sqrt_metric=None,
+        metric=None,
         lsm_tangents_shape=None
     ):
         self._hamiltonian = energy
-        self._metric = metric
         self._left_sqrt_metric = left_sqrt_metric
+        self._metric = metric
 
         if lsm_tangents_shape is not None:
             if is1d(lsm_tangents_shape):
@@ -68,8 +68,17 @@ class Likelihood():
 
     def metric(self, primals, tangents):
         if self._metric is None:
-            nie = "`metric` is not implemented"
-            raise NotImplementedError(nie)
+            # `left_sqrt_metric` is linear at any given position and thus the
+            # position at which the derivative of this linear operator is taken
+            # does not matter
+            lsm_at_p = Partial(self.left_sqrt_metric, primals)
+            arbitrary_lsm_tan_pos = tree_map(
+                lambda x: np.ones(x.shape, dtype=x.dtype),
+                self.left_sqrt_metric_tangents_shape
+            )
+            _, rsm_at_p = vjp(lsm_at_p, arbitrary_lsm_tan_pos)
+            res = lsm_at_p(rsm_at_p(tangents)[0])
+            return res
         return self._metric(primals, tangents)
 
     def left_sqrt_metric(self, primals, tangents):
@@ -98,11 +107,11 @@ class Likelihood():
     def left_sqrt_metric_tangents_shape(self):
         return self._lsm_tan_shp
 
-    def new(self, energy, metric, left_sqrt_metric):
+    def new(self, energy, left_sqrt_metric, metric):
         return Likelihood(
             energy,
-            metric=metric,
             left_sqrt_metric=left_sqrt_metric,
+            metric=metric,
             lsm_tangents_shape=self._lsm_tan_shp
         )
 
@@ -111,11 +120,12 @@ class Likelihood():
 
         if self._left_sqrt_metric is not None:
             j_lsm = jit(self._left_sqrt_metric)
+            j_m = jit(self.metric)
         else:
             j_lsm = None
-        j_m = jit(self._metric) if self._metric is not None else None
+            j_m = None
         return self.new(
-            jit(self._hamiltonian), metric=j_m, left_sqrt_metric=j_lsm
+            jit(self._hamiltonian), left_sqrt_metric=j_lsm, metric=j_m
         )
 
     def __matmul__(self, f):
@@ -136,8 +146,8 @@ class Likelihood():
 
         return self.new(
             energy_at_f,
-            metric=metric_at_f,
-            left_sqrt_metric=left_sqrt_metric_at_f
+            left_sqrt_metric=left_sqrt_metric_at_f,
+            metric=metric_at_f
         )
 
     def __add__(self, other):
@@ -166,8 +176,8 @@ class Likelihood():
 
         return Likelihood(
             joined_hamiltonian,
-            metric=joined_metric,
             left_sqrt_metric=joined_left_sqrt_metric,
+            metric=joined_metric,
             lsm_tangents_shape=joined_tangents_shape
         )
 
