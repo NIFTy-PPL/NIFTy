@@ -95,6 +95,8 @@ def testInverseGamma(space, seed):
         q = 0.73
         model = ift.InverseGammaOperator(space, alpha, q)
         ift.extra.check_operator(model, pos, ntries=20)
+        model = ift.LogInverseGammaOperator(space, alpha, q)
+        ift.extra.check_operator(model, pos, ntries=20)
 
 
 @pmp("loc", [0, 13.2])
