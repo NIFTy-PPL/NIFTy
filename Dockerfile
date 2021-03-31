@@ -8,5 +8,7 @@ RUN apt-get update && apt-get install -qq \
       python3-scipy \
       # Documentation build dependencies
       dvipng texlive-latex-base texlive-latex-extra \
+      # Testing dependencies
+      python3-pytest-cov \
       && rm -rf /var/lib/apt/lists/*
 RUN pip install sphinx pydata-sphinx-theme jax jaxlib

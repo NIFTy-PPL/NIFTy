@@ -5,7 +5,7 @@ variables:
 
 stages:
   - build_docker
-#  - testing
+  - testing
   - release
 
 build_docker:
@@ -16,6 +16,13 @@ build_docker:
     - docker build -t $CONTAINER_TEST_IMAGE .
     - docker push $CONTAINER_TEST_IMAGE
 
+tests:
+  stage: testing
+  script:
+    - pip3 install .
+    - pytest-3 -q --cov=jifty1 test
+  coverage: '/^TOTAL.+?(\d+\%)$/'
+
 pages:
   stage: release
   script:
@@ -25,5 +32,5 @@ pages:
   artifacts:
     paths:
     - public
- only:
-   - main
+  only:
+    - main
