@@ -1,0 +1,36 @@
+image: $CONTAINER_TEST_IMAGE
+
+variables:
+  CONTAINER_TEST_IMAGE: gitlab-registry.mpcdf.mpg.de/$CI_PROJECT_PATH:$CI_BUILD_REF_NAME
+
+stages:
+  - build_docker
+  - testing
+  - release
+
+build_docker:
+  image: docker
+  stage: build_docker
+  script:
+    - docker login -u gitlab-ci-token -p $CI_BUILD_TOKEN gitlab-registry.mpcdf.mpg.de
+    - docker build -t $CONTAINER_TEST_IMAGE .
+    - docker push $CONTAINER_TEST_IMAGE
+
+tests:
+  stage: testing
+  script:
+    - pip3 install .
+    - pytest-3 -q --cov=jifty1 test
+  coverage: '/^TOTAL.+?(\d+\%)$/'
+
+pages:
+  stage: release
+  script:
+    - pip3 install .
+    - sh doc/generate.sh
+    - mv doc/build public
+  artifacts:
+    paths:
+    - public
+  only:
+    - main
