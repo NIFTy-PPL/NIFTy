@@ -7,8 +7,6 @@ Contents
 ........
 
 .. toctree::
-   :maxdepth: 2
+   :maxdepth: 4
 
-   Package Documentation <mod/jifty1>
-
-   Package Documentation <mod/modules>
+   mod/modules
