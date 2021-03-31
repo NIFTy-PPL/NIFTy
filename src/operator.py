@@ -185,7 +185,10 @@ class Likelihood():
 def laplace_prior(alpha):
     """
     Takes random normal samples and outputs samples distributed according to
-    P(x|a) = exp(-|x|/a)/a/2
+
+    .. math::
+        P(x|a) = exp(-|x|/a)/a/2
+
     """
     from jax.scipy.stats import norm
     res = lambda x: (x<0)*(norm.logcdf(x) + np.log(2))\
