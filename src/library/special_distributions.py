@@ -124,6 +124,20 @@ def InverseGammaOperator(domain, alpha, q, delta=1e-2):
     return makeOp(q) @ op
 
 
+def LogInverseGammaOperator(domain, alpha, q, delta=1e-2):
+    """Transform a standard normal into the log of an inverse gamma distribution.
+
+    See also
+    --------
+    :class:`InverseGammaOperator`
+    """
+    op = _InterpolationOperator(domain, lambda x: np.log(invgamma.ppf(norm._cdf(x), float(alpha))),
+                                -8.2, 8.2, delta)
+    if np.isscalar(q):
+        return op.scale(q)
+    return makeOp(q) @ op
+
+
 class UniformOperator(Operator):
     """Transform a standard normal into a uniform distribution.
 
