@@ -3,9 +3,10 @@ from collections.abc import Mapping
 
 import sys
 from jax import numpy as np
-from jax import jit
+
 from .sugar import ducktape
-from .operator import ShapeWithDtype, normal_prior, lognormal_prior
+from .likelihood import ShapeWithDtype
+from .stats_distributions import normal_prior, lognormal_prior
 
 
 def hartley(p, axes=None):
