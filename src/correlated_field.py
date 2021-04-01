@@ -206,6 +206,47 @@ class CorrelatedFieldMaker():
         prefix: str = "",
         harmonic_domain_type: str = "fourier",
     ):
+        """Adds a correlation structure to the to-be-made field.
+
+        Correlations are described by their power spectrum and the subdomain on
+        which they apply.
+
+        The parameters `fluctuations`, `flexibility`, `asperity` and
+        `loglogavgslope` configure the amplitude spectrum model used on the
+        target field subdomain of type `harmonic_domain_type`. It is assembled
+        as the sum of a power law component (linear slope in log-log
+        amplitude-frequency-space), a smooth varying component (integrated
+        Wiener process) and a ragged component (un-integrated Wiener process).
+
+        Multiple calls to `add_fluctuations` are possible, in which case
+        the constructed field will have the outer product of the individual
+        power spectra as its global power spectrum.
+
+        Parameters
+        ----------
+        shape : tuple of int
+            Shape of the position space domain
+        distances : tuple of float or float
+            Distances in the position space domain
+        fluctuations : tuple of float (mean, std) or callable
+            Total spectral energy, i.e. amplitude of the fluctuations
+            (by default a priori log-normal distributed)
+        loglogavgslope : tuple of float (mean, std) or callable
+            Power law component exponent
+            (by default a priori normal distributed)
+        flexibility : tuple of float (mean, std) or callable or None
+            Amplitude of the non-power-law power spectrum component
+            (by default a priori log-normal distributed)
+        asperity : tuple of float (mean, std) or callable or None
+            Roughness of the non-power-law power spectrum component; use it to
+            accommodate single frequency peak
+            (by default a priori log-normal distributed)
+        prefix : str
+            Prefix of the power spectrum parameter domain names
+        harmonic_domain_type : str
+            Description of the harmonic partner domain in which the amplitude
+            lives
+        """
         shape = tuple(shape)
         distances = tuple(np.broadcast_to(distances, np.shape(shape)))
         totvol = np.prod(np.array(shape) * np.array(distances))
@@ -288,6 +329,7 @@ class CorrelatedFieldMaker():
         offset_std : tuple of float or callable
             Mean standard deviation and standard deviation of the standard
             deviation of the offset. No, this is not a word duplication.
+            (By default a priori log-normal distributed)
         """
         if self._offset_mean is not None and self._azm is not None:
             msg = "Overwriting the previous mean offset and zero-mode"
@@ -318,6 +360,11 @@ class CorrelatedFieldMaker():
 
     @property
     def fluctuations(self):
+        """Returns the added fluctuations, i.e. un-normalized amplitudes
+
+        Their scales are only meaningful relative to one another. Their
+        absolute scale bares no information.
+        """
         return tuple(self._fluctuations)
 
     def get_normalized_amplitudes(self):
@@ -337,6 +384,7 @@ class CorrelatedFieldMaker():
 
     @property
     def amplitude(self):
+        """Returns the added fluctuation, i.e. un-normalized amplitude"""
         if len(self._fluctuations) > 1:
             s = (
                 'If more than one spectrum is present in the model,'
@@ -352,8 +400,8 @@ class CorrelatedFieldMaker():
         return ampliude_w_zm
 
     def finalize(self):
-        """Finishes model construction process and returns the constructed
-        operator.
+        """Finishes off the model construction process and returns the
+        constructed operator.
         """
         harmonic_transforms = []
         excitation_shape = ()
