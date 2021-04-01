@@ -150,6 +150,10 @@ n_newton_iterations = 5
 
 draw = lambda p, k: ham.draw_sample(p, key=k, from_inverse=True)
 
+key, subkey = random.split(key)
+pos_init = jft.Field(random.normal(shape=dims, key=subkey))
+pos = jft.Field(pos_init.val)
+
 # Minimize the potential
 for i in range(n_mgvi_iterations):
     print(f"MGVI Iteration {i}", file=sys.stderr)
