@@ -107,4 +107,5 @@ if __name__ == "__main__":
     ax.plot(post_sr_mean, alpha=0.7, label="Reconstruction")
     ax.legend()
     fig.tight_layout()
-    plt.show()
+    fig.savefig("cf_w_known_spectrum.png", dpi=400)
+    plt.close()

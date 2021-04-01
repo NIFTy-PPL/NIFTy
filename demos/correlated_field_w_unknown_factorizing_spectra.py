@@ -107,4 +107,5 @@ if __name__ == "__main__":
             for f in field:
                 ax_plot(f, alpha=0.7)
     fig.tight_layout()
-    plt.show()
+    fig.savefig("cf_w_unknown_factorizing_spectra.png", dpi=400)
+    plt.close()
