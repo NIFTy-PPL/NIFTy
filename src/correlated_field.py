@@ -1,3 +1,4 @@
+from typing import Union, Optional
 from collections.abc import Mapping
 
 import sys
@@ -14,7 +15,9 @@ def hartley(p, axes=None):
     return tmp.real + tmp.imag
 
 
-def get_fourier_mode_distributor(shape, distances):
+def get_fourier_mode_distributor(
+    shape: Union[tuple, int], distances: Union[tuple, float]
+):
     """Get the unique lengths of the Fourier modes, a mapping from a mode to
     its length index and the multiplicity of each unique Fourier mode length.
 
@@ -87,12 +90,12 @@ def _remove_slope(rel_log_mode_dist, x):
 
 
 def non_parametric_amplitude(
-    domain,
-    fluctuations,
-    loglogavgslope,
-    flexibility=None,
-    asperity=None,
-    prefix=""
+    domain: Mapping,
+    fluctuations: callable,
+    loglogavgslope: callable,
+    flexibility: Optional[callable] = None,
+    asperity: Optional[callable] = None,
+    prefix: str = ""
 ):
     totvol = domain.get("position_space_total_volume", 1.)
     rel_log_mode_len = domain["relative_log_mode_lengths"]
@@ -175,7 +178,7 @@ class CorrelatedFieldMaker():
 
     See the methods initialization, :func:`add_fluctuations` and
     :func:`finalize` for further usage information."""
-    def __init__(self, prefix):
+    def __init__(self, prefix: str):
         """Instantiate a CorrelatedFieldMaker object.
 
         Parameters
@@ -194,14 +197,14 @@ class CorrelatedFieldMaker():
 
     def add_fluctuations(
         self,
-        shape,
-        distances,
-        fluctuations,
-        loglogavgslope,
-        flexibility=None,
-        asperity=None,
-        prefix="",
-        harmonic_domain_type="fourier",
+        shape: Union[tuple, int],
+        distances: Union[tuple, float],
+        fluctuations: Union[tuple, callable],
+        loglogavgslope: Union[tuple, callable],
+        flexibility: Union[tuple, callable, None] = None,
+        asperity: Union[tuple, callable, None] = None,
+        prefix: str = "",
+        harmonic_domain_type: str = "fourier",
     ):
         shape = tuple(shape)
         distances = tuple(np.broadcast_to(distances, np.shape(shape)))
@@ -273,7 +276,9 @@ class CorrelatedFieldMaker():
         self._target_subdomains.append(domain)
         self._parameter_tree.update(ptree)
 
-    def set_amplitude_total_offset(self, offset_mean, offset_std):
+    def set_amplitude_total_offset(
+        self, offset_mean: float, offset_std: Union[tuple, callable]
+    ):
         """Sets the zero-mode for the combined amplitude operator
 
         Parameters
