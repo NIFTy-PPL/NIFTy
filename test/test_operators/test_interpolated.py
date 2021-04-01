@@ -11,7 +11,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
-# Copyright(C) 2013-2019 Max-Planck-Society
+# Copyright(C) 2013-2021 Max-Planck-Society
 #
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
 
@@ -41,6 +41,9 @@ def testInterpolationAccuracy(space, seed):
         if not np.isscalar(q):
             qfld = ift.makeField(space, q)
         op = ift.InverseGammaOperator(space, alpha, qfld)
+        op1 = ift.LogInverseGammaOperator(space, alpha, qfld).exp()
         arr1 = op(pos).val
+        arr2 = op1(pos).val
         arr0 = invgamma.ppf(norm.cdf(pos.val), alpha, scale=q)
         assert_allclose(arr0, arr1)
+        assert_allclose(arr0, arr2)
