@@ -6,6 +6,8 @@ RUN apt-get update && apt-get install -qq \
       && apt-get install -qq \
       # jifty dependencies
       python3-scipy \
+      # Optional dependency to run the demos
+      python3-matplotlib \
       # Documentation build dependencies
       dvipng texlive-latex-base texlive-latex-extra \
       # Testing dependencies

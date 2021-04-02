@@ -6,6 +6,7 @@ variables:
 stages:
   - build_docker
   - testing
+  - demo
   - release
 
 before_script:
@@ -37,3 +38,43 @@ pages:
     - public
   only:
     - main
+
+run_demo_categorical_L1:
+  stage: demo
+  script:
+    - python3 demos/categorical_L1.py
+  artifacts:
+    paths:
+      - '*.png'
+
+run_demo_cf_w_known_spectrum:
+  stage: demo
+  script:
+    - python3 demos/correlated_field_w_known_spectrum.py
+  artifacts:
+    paths:
+      - '*.png'
+
+run_demo_cf_w_unknown_spectrum:
+  stage: demo
+  script:
+    - python3 demos/correlated_field_w_unknown_spectrum.py
+  artifacts:
+    paths:
+      - '*.png'
+
+run_demo_cf_w_unknown_factorizing_spectra:
+  stage: demo
+  script:
+    - python3 demos/correlated_field_w_unknown_factorizing_spectra.py
+  artifacts:
+    paths:
+      - '*.png'
+
+run_demo_nifty_to_jifty:
+  stage: demo
+  script:
+    - python3 demos/nifty_to_jifty.py
+  artifacts:
+    paths:
+      - '*.png'
