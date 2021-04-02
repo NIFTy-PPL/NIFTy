@@ -115,3 +115,33 @@ def random_like(
         return rng(key=key, shape=shp, dtype=dtp)
 
     return tree_multimap(draw, primals, subkeys)
+
+
+def interpolate(xmin=-7., xmax=7., N=14000):
+    """Replaces a local nonlinearity such as np.exp with a linear interpolation
+
+    Interpolating functions speeds up code and increases numerical stability in
+    some cases, but at a cost of precision and range.
+
+    Parameters
+    ----------
+    xmin : float
+        Minimal interpolation value. Default: -7.
+    xmax : float
+        Maximal interpolation value. Default: 7.
+    N : int
+        Number of points used for the interpolation. Default: 14000
+    """
+    def decorator(f):
+        from functools import wraps
+
+        x = np.linspace(xmin, xmax, N)
+        y = f(x)
+
+        @wraps(f)
+        def wrapper(t):
+            return np.interp(t, x, y)
+
+        return wrapper
+
+    return decorator
