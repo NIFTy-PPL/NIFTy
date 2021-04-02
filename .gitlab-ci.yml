@@ -5,7 +5,7 @@ variables:
 
 stages:
   - build_docker
-  - testing
+  - test
   - demo
   - release
 
@@ -23,7 +23,7 @@ build_docker:
     - docker push $CONTAINER_TEST_IMAGE
 
 tests:
-  stage: testing
+  stage: test
   script:
     - pytest-3 -q --cov=jifty1 test
   coverage: '/^TOTAL.+?(\d+\%)$/'
