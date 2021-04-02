@@ -105,7 +105,8 @@ ax.plot(data, alpha=0.7, label="Data")
 ax.plot(signal_response(pos), alpha=0.7, label="Reconstruction")
 ax.legend()
 fig.tight_layout()
-plt.show()
+fig.savefig("n2f_known_spectrum_MAP.png", dpi=400)
+plt.close()
 
 # ## Sampling
 #
@@ -149,6 +150,10 @@ n_newton_iterations = 5
 
 draw = lambda p, k: ham.draw_sample(p, key=k, from_inverse=True)
 
+key, subkey = random.split(key)
+pos_init = jft.Field(random.normal(shape=dims, key=subkey))
+pos = jft.Field(pos_init.val)
+
 # Minimize the potential
 for i in range(n_mgvi_iterations):
     print(f"MGVI Iteration {i}", file=sys.stderr)
@@ -181,7 +186,8 @@ for s in samples:
     label = None
 ax.legend()
 fig.tight_layout()
-plt.show()
+fig.savefig("n2f_known_spectrum_MGVI.png", dpi=400)
+plt.close()
 
 # ## Correlated field
 #
@@ -298,4 +304,5 @@ for ax, (title, field, tp) in zip(axs.flat, to_plot):
         for f in field:
             ax_plot(f, alpha=0.7)
 fig.tight_layout()
-plt.show()
+fig.savefig("n2f_unknown_factorizing_spectra.png", dpi=400)
+plt.close()

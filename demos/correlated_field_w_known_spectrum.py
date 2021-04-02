@@ -9,9 +9,22 @@ from collections.abc import Iterable
 from jax import numpy as np
 from jax import random
 from jax import jvp, vjp, value_and_grad, jit
-from jax.tree_util import tree_leaves
+from jax.ops import index_update
 
 import jifty1 as jft
+
+
+@jit
+def cosine_similarity(x, y):
+    return np.dot(x, y) / (np.linalg.norm(x) * np.linalg.norm(y))
+
+
+def hartley(p, axes=None):
+    from jax.numpy import fft
+
+    tmp = fft.fftn(p, axes)
+    return tmp.real + tmp.imag
+
 
 if __name__ == "__main__":
     import matplotlib.pyplot as plt
@@ -19,32 +32,31 @@ if __name__ == "__main__":
     seed = 42
     key = random.PRNGKey(seed)
 
-    dims = (256, 256)
+    dims = (1024, )
 
     n_mgvi_iterations = 3
     n_samples = 4
-    n_newton_iterations = 10
+    n_newton_iterations = 5
 
-    cf_zm = {"offset_mean": 0., "offset_std": (1e-3, 1e-4)}
-    cf_fl = {
-        "fluctuations": (1e-1, 5e-3),
-        "loglogavgslope": (-1., 1e-2),
-        "flexibility": (1e+0, 5e-1),
-        "asperity": (5e-1, 1e-1),
-        "harmonic_domain_type": "Fourier"
-    }
-    cfm = jft.CorrelatedFieldMaker("cf")
-    cfm.set_amplitude_total_offset(**cf_zm)
-    cfm.add_fluctuations(dims, distances=1. / dims[0], **cf_fl, prefix="ax1")
-    correlated_field, ptree = cfm.finalize()
+    cf = {"loglogavgslope": 2.}
+    loglogslope = cf["loglogavgslope"]
+    power_spectrum = lambda k: 1. / (k**loglogslope + 1.)
 
-    signal_response = lambda x: np.exp(correlated_field(x))
+    modes = np.arange((dims[0] / 2) + 1., dtype=float)
+    harmonic_power = power_spectrum(modes)
+    # Every mode appears exactly two times, first ascending then descending
+    # Save a little on the computational side by mirroring the ascending part
+    harmonic_power = np.concatenate((harmonic_power, harmonic_power[-2:0:-1]))
+
+    # Specify the model
+    correlated_field = lambda x: hartley(harmonic_power * x.val)
+    signal_response = lambda x: np.exp(1. + correlated_field(x))
     noise_cov = lambda x: 0.1**2 * x
     noise_cov_inv = lambda x: 0.1**-2 * x
 
     # Create synthetic data
     key, subkey = random.split(key)
-    pos_truth = jft.random_like_shapewdtype(ptree, key=subkey)
+    pos_truth = jft.Field(random.normal(shape=dims, key=key))
     signal_response_truth = signal_response(pos_truth)
     key, subkey = random.split(key)
     noise_truth = np.sqrt(noise_cov(np.ones(dims))
@@ -57,8 +69,8 @@ if __name__ == "__main__":
     ham_energy_vg = jit(value_and_grad(ham))
 
     key, subkey = random.split(key)
-    pos_init = jft.random_like_shapewdtype(ptree, key=subkey)
-    pos = jft.Field(pos_init.copy())
+    pos_init = random.normal(shape=dims, key=subkey)
+    pos = jft.Field(pos_init)
 
     # Minimize the potential
     for i in range(n_mgvi_iterations):
@@ -76,30 +88,24 @@ if __name__ == "__main__":
             return jft.mean(tuple(ham.metric(p + s, t) for s in samples))
 
         print("Minimizing...", file=sys.stderr)
+        # TODO: Re-introduce a simplified version that works without fields
         pos = jft.newton_cg(pos, energy_vg, met, n_newton_iterations)
-        msg = f"Post MGVI Iteration {i}: Energy {energy_vg(pos)[0]:2.4e}"
-        print(msg, file=sys.stderr)
+        print(
+            (
+                f"Post MGVI Iteration {i}: Energy {energy_vg(pos)[0]:2.4e}"
+                f"; Cos-Sim {cosine_similarity(pos.val, pos_truth.val):2.3%}"
+                f"; #NaNs {np.isnan(pos.val).sum()}"
+            ),
+            file=sys.stderr
+        )
 
-    namps = cfm.get_normalized_amplitudes()
     post_sr_mean = jft.mean(tuple(signal_response(pos + s) for s in samples))
-    post_a_mean = jft.mean(tuple(cfm.amplitude(pos + s)[1:] for s in samples))
-    to_plot = [
-        ("Signal", signal_response_truth, "im"),
-        ("Noise", noise_truth, "im"),
-        ("Data", data, "im"),
-        ("Reconstruction", post_sr_mean, "im"),
-        ("Ax1", (cfm.amplitude(pos_truth)[1:], post_a_mean), "loglog"),
-    ]
-    fig, axs = plt.subplots(2, 3, figsize=(16, 9))
-    for ax, (title, field, tp) in zip(axs.flat, to_plot):
-        ax.set_title(title)
-        if tp == "im":
-            im = ax.imshow(field, cmap="inferno")
-            plt.colorbar(im, ax=ax, orientation="horizontal")
-        else:
-            ax_plot = ax.loglog if tp == "loglog" else ax.plot
-            field = field if isinstance(field, (tuple, list)) else (field, )
-            for f in field:
-                ax_plot(f, alpha=0.7)
+    fig, ax = plt.subplots()
+    ax.plot(signal_response_truth, alpha=0.7, label="Signal")
+    ax.plot(noise_truth, alpha=0.7, label="Noise")
+    ax.plot(data, alpha=0.7, label="Data")
+    ax.plot(post_sr_mean, alpha=0.7, label="Reconstruction")
+    ax.legend()
     fig.tight_layout()
-    plt.show()
+    fig.savefig("cf_w_known_spectrum.png", dpi=400)
+    plt.close()
