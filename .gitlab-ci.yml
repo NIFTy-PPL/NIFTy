@@ -8,9 +8,14 @@ stages:
   - testing
   - release
 
+before_script:
+  - python3 setup.py install --user -f
+
 build_docker:
   image: docker
   stage: build_docker
+  before_script:
+    - ls  # Overwrite the global `before_script` directive
   script:
     - docker login -u gitlab-ci-token -p $CI_BUILD_TOKEN gitlab-registry.mpcdf.mpg.de
     - docker build -t $CONTAINER_TEST_IMAGE .
@@ -19,14 +24,12 @@ build_docker:
 tests:
   stage: testing
   script:
-    - pip3 install .
     - pytest-3 -q --cov=jifty1 test
   coverage: '/^TOTAL.+?(\d+\%)$/'
 
 pages:
   stage: release
   script:
-    - pip3 install .
     - sh doc/generate.sh
     - mv doc/build public
   artifacts:
