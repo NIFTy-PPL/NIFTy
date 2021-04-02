@@ -111,17 +111,15 @@ def Gaussian(data, noise_cov_inv=None, noise_std_inv=None):
 
 
 def Categorical(data, axis=-1):
-    """
-    Provides a categorical likelihood of the data, equivalent to cross entropy
+    """Categorical likelihood of the data, equivalent to cross entropy
 
     Parameters
     ----------
-    data: np.array(int)
-    An array stating which of the categories is the realized in the data
-    Must agree with the input shape except for the shape[axis]
-
+    data: sequence of int
+        An array stating which of the categories is the realized in the data.
+        Must agree with the input shape except for the shape[axis]
     axis: int
-    axis over which the categories are formed
+        Axis over which the categories are formed
     """
     def hamiltonian(primals):
         from jax.nn import log_softmax
