@@ -34,7 +34,7 @@ import nifty7 as ift
 def density_estimator(
     domain, pad=1., cf_fluctuations=None, cf_azm_uniform=None
 ):
-    cf_azm_uniform_sane_default = (0., 20.)
+    cf_azm_uniform_sane_default = (0.01, 1.0)
     cf_fluctuations_sane_default = {
         "scale": (0.5, 0.3),
         "cutoff": (7.0, 3.0),
@@ -74,7 +74,7 @@ def density_estimator(
     uniform = ift.UniformOperator(scalar_domain, *cf_azm_uni)
     azm = uniform.ducktape("zeromode")
     cfmaker.set_amplitude_total_offset(azm_offset_mean, azm)
-    correlated_field = cfmaker.finalize(0)
+    correlated_field = cfmaker.finalize(0).clip(-10., 10.)
     normalized_amplitudes = cfmaker.get_normalized_amplitudes()
 
     domain_shape = tuple(d.shape for d in domain)
@@ -95,9 +95,15 @@ if __name__ == "__main__":
     # Preparing the filename string for store results
     filename = "getting_started_density_{}.png"
 
+    # Set the random seed
+    ift.random.push_sseq_from_seed(42)
+
     # Set up signal domain
     npix1 = 128
-    position_space = ift.RGSpace(npix1)
+    npix2 = 128
+    sp1 = ift.RGSpace(npix1)
+    sp2 = ift.RGSpace(npix2)
+    position_space = ift.DomainTuple.make((sp1, sp2))
 
     signal, ops = density_estimator(position_space)
     correlated_field = ops["correlated_field"]
@@ -105,19 +111,33 @@ if __name__ == "__main__":
     data_space = signal.target
     # Generate mock signal and data
     rng = ift.random.current_rng()
-    rng.standard_normal(1000)
     mock_position = ift.from_random(signal.domain, 'normal')
     data = ift.Field.from_raw(
         data_space, rng.poisson(signal(mock_position).val)
     )
 
+    # Rejoining domains for ift plotting routine
+    plotting_domain = ift.DomainTuple.make(ift.RGSpace((npix1, npix2)))
+    plotting_domain_expanded = ift.DomainTuple.make(
+        ift.RGSpace((2 * npix1, 2 * npix2))
+    )
+
     plot = ift.Plot()
     plot.add(
-        ift.exp(correlated_field(mock_position)), title='Pre-Slicing Truth'
+        ift.Field.from_raw(
+            plotting_domain_expanded,
+            ift.exp(correlated_field(mock_position)).val
+        ),
+        title='Pre-Slicing Truth'
     )
-    plot.add(signal(mock_position), title='Ground Truth')
-    plot.add(data, title='Data')
+    plot.add(
+        ift.Field.from_raw(plotting_domain,
+                           signal(mock_position).val),
+        title='Ground Truth'
+    )
+    plot.add(ift.Field.from_raw(plotting_domain, data.val), title='Data')
     plot.output(ny=1, nx=3, xsize=10, ysize=10, name=filename.format("setup"))
+    print("Setup saved as", filename.format("setup"))
 
     # Minimization parameters
     ic_sampling = ift.AbsDeltaEnergyController(
@@ -149,9 +169,23 @@ if __name__ == "__main__":
 
         # Plot current reconstruction
         plot = ift.Plot()
-        plot.add(ift.exp(correlated_field(mock_position)), title="ground truth")
-        plot.add(signal(mock_position), title="ground truth")
-        plot.add(signal(kl.position), title="reconstruction")
+        plot.add(
+            ift.Field.from_raw(
+                plotting_domain_expanded,
+                ift.exp(correlated_field(mock_position)).val
+            ),
+            title="Ground truth"
+        )
+        plot.add(
+            ift.Field.from_raw(plotting_domain,
+                               signal(mock_position).val),
+            title="Ground truth"
+        )
+        plot.add(
+            ift.Field.from_raw(plotting_domain,
+                               signal(kl.position).val),
+            title="Reconstruction"
+        )
         plot.add(
             (
                 ic_newton.history, ic_sampling.history,
@@ -180,11 +214,24 @@ if __name__ == "__main__":
     # Plotting
     filename_res = filename.format("results")
     plot = ift.Plot()
-    plot.add(sc.mean, title="Posterior Mean")
-    plot.add(ift.sqrt(sc.var), title="Posterior Standard Deviation")
-    plot.add(sc_unsliced.mean, title="Posterior Unsliced Mean")
     plot.add(
-        ift.sqrt(sc_unsliced.var),
+        ift.Field.from_raw(plotting_domain, sc.mean.val),
+        title="Posterior Mean"
+    )
+    plot.add(
+        ift.Field.from_raw(plotting_domain,
+                           ift.sqrt(sc.var).val),
+        title="Posterior Standard Deviation"
+    )
+    plot.add(
+        ift.Field.from_raw(plotting_domain_expanded, sc_unsliced.mean.val),
+        title="Posterior Unsliced Mean"
+    )
+    plot.add(
+        ift.Field.from_raw(
+            plotting_domain_expanded,
+            ift.sqrt(sc_unsliced.var).val
+        ),
         title="Posterior Unsliced Standard Deviation"
     )
 
