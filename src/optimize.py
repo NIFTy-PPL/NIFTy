@@ -5,69 +5,6 @@ import time
 from .sugar import sum_of_squares
 from .sugar import norm as jft_norm
 
-
-def newton_cg(
-    pos,
-    energy_vag,
-    met,
-    iterations,
-    absdelta=1.,
-    name=None,
-    time_threshold=None,
-    **cg_params
-):
-    cg_params = {k[2:]:v for k,v in cg_params.items()}
-    energy_diff = 0.
-    energy, g = energy_vag(pos)
-    if np.isnan(energy):
-        raise ValueError("energy is Nan")
-    for i in range(iterations):
-        cg_name = name + "CG" if name is not None else None
-        nat_g, _ = cg(
-            lambda x: met(pos, x),
-            g,
-            absdelta=absdelta / 100,
-            resnorm=jft_norm(g, ord=1) / 2,
-            norm_ord=1,
-            name=cg_name,
-            time_threshold=time_threshold,
-            **cg_params
-        )
-        dd = nat_g
-        new_pos = pos - dd
-        new_energy, new_g = energy_vag(new_pos)
-        for j in range(6):
-            if new_energy <= energy:
-                break
-            dd = dd / 2
-            new_pos = pos - dd
-            new_energy, new_g = energy_vag(new_pos)
-            if j == 3:
-                if name is not None:
-                    msg = f"{name}: long line search, resetting"
-                    print(msg, file=sys.stderr)
-                gam = float(sum_of_squares(g))
-                curv = float(g.dot(met(pos, g)))
-                dd = -gam / curv * g
-        else:
-            new_pos = pos - nat_g
-            new_energy, new_g = energy_vag(new_pos)
-            print("Warning: Energy increased", file=sys.stderr)
-        energy_diff = energy - new_energy
-        if name is not None:
-            msg = f"{name}: Iteration {i+1} Energy {new_energy:.6e} diff {energy_diff:.6e}"
-            print(msg, file=sys.stderr)
-        if energy_diff < absdelta and j < 2:
-            return new_pos
-        energy = new_energy
-        pos = new_pos
-        g = new_g
-        if time_threshold is not None:
-            if time.time() > time_threshold:
-                break
-    return pos
-
-
 N_RESET = 20
 
 
@@ -140,7 +77,10 @@ def cg(
         new_energy = float(((r - j) / 2).dot(pos))
         if absdelta is not None:
             if name is not None:
-                msg = f"{name}: ΔEnergy {energy-new_energy:.6e} tgt {absdelta:.6e}"
+                msg = (
+                    f"{name}: ΔEnergy {energy-new_energy:.6e}"
+                    " tgt {absdelta:.6e}"
+                )
                 print(msg, file=sys.stderr)
             if energy - new_energy < absdelta and i > miniter:
                 info = 0
@@ -153,3 +93,69 @@ def cg(
         print(f"{nm}: Iteration Limit Reached", file=sys.stderr)
         info = i
     return pos, info
+
+
+def newton_cg(
+    pos,
+    energy_vag,
+    met,
+    iterations,
+    absdelta=1.,
+    name=None,
+    time_threshold=None,
+    cg=cg,
+    cg_kwargs=None
+):
+    cg_kwargs = {} if cg_kwargs is None else cg_kwargs
+    energy_diff = 0.
+    energy, g = energy_vag(pos)
+    if np.isnan(energy):
+        raise ValueError("energy is Nan")
+    for i in range(iterations):
+        cg_name = name + "CG" if name is not None else None
+        nat_g, _ = cg(
+            lambda x: met(pos, x),
+            g,
+            absdelta=absdelta / 100,
+            resnorm=jft_norm(g, ord=1) / 2,
+            norm_ord=1,
+            name=cg_name,
+            time_threshold=time_threshold,
+            **cg_kwargs
+        )
+        dd = nat_g
+        new_pos = pos - dd
+        new_energy, new_g = energy_vag(new_pos)
+        for j in range(6):
+            if new_energy <= energy:
+                break
+            dd = dd / 2
+            new_pos = pos - dd
+            new_energy, new_g = energy_vag(new_pos)
+            if j == 3:
+                if name is not None:
+                    msg = f"{name}: long line search, resetting"
+                    print(msg, file=sys.stderr)
+                gam = float(sum_of_squares(g))
+                curv = float(g.dot(met(pos, g)))
+                dd = -gam / curv * g
+        else:
+            new_pos = pos - nat_g
+            new_energy, new_g = energy_vag(new_pos)
+            print("Warning: Energy increased", file=sys.stderr)
+        energy_diff = energy - new_energy
+        if name is not None:
+            msg = (
+                f"{name}: Iteration {i+1} Energy {new_energy:.6e}"
+                f" diff {energy_diff:.6e}"
+            )
+            print(msg, file=sys.stderr)
+        if energy_diff < absdelta and j < 2:
+            return new_pos
+        energy = new_energy
+        pos = new_pos
+        g = new_g
+        if time_threshold is not None:
+            if time.time() > time_threshold:
+                break
+    return pos
