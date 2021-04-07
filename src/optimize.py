@@ -13,14 +13,16 @@ def cg(
     mat,
     j,
     x0=None,
-    maxiter=None,
     absdelta=1.,
     resnorm=None,
-    norm_ord=2,
+    norm_ord=None,
+    miniter=None,
+    maxiter=None,
     name=None,
-    time_threshold=None,
-    miniter=5
+    time_threshold=None
 ):
+    norm_ord = 2 if norm_ord is None else norm_ord
+    miniter = 5 if miniter is None else miniter
     maxiter = 200 if maxiter is None else maxiter
 
     if x0 is None:
