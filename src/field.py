@@ -6,10 +6,11 @@ from jax.tree_util import (
 
 @register_pytree_node_class
 class Field():
+    """Value storage for arbitrary objects with added numerics."""
     supported_flags = {"strict_domain_checking"}
 
     def __init__(self, val, domain=None, flags=None):
-        """Value storage for arbitrary objects with added numerics.
+        """Instantiates a field.
 
         Parameters
         ----------
@@ -64,17 +65,32 @@ class Field():
 
     @property
     def val(self):
+        """Retrieves a **view** of the field's values."""
         return self._val
 
     @property
     def domain(self):
+        """Retrieves a **copy** of the field's domain."""
         return self._domain.copy()
 
     @property
     def flags(self):
+        """Retrieves a **copy** of the field's flags."""
         return self._flags.copy()
 
     def new(self, val, domain=None, flags=None):
+        """Instantiates a new field with the same domain and flags as this
+        instance of a field.
+
+        Parameters
+        ----------
+        val : object
+            Arbitrary, flatten-able objects.
+        domain : dict or None, optional
+            Domain of the field, e.g. with description of modes and volume.
+        flags : set, str or None, optional
+            Capabilities and constraints of the field.
+        """
         return Field(
             val,
             domain=self.domain if domain is None else domain,
@@ -82,6 +98,19 @@ class Field():
         )
 
     def dot(self, other):
+        """Returns the dot product of this field with another flatten-able
+        object.
+
+        Parameters
+        ----------
+        other : object
+            Arbitrary, flatten-able objects.
+
+        Returns
+        -------
+        out : float
+            Dot product of fields.
+        """
         from jax.numpy import add, dot
 
         if isinstance(other, Field):
