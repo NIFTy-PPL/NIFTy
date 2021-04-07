@@ -13,8 +13,10 @@ def newton_cg(
     iterations,
     absdelta=1.,
     name=None,
-    time_threshold=None
+    time_threshold=None,
+    **cg_params
 ):
+    cg_params = {k[2:]:v for k,v in cg_params.items()}
     energy_diff = 0.
     energy, g = energy_vag(pos)
     if np.isnan(energy):
@@ -28,7 +30,8 @@ def newton_cg(
             resnorm=jft_norm(g, ord=1) / 2,
             norm_ord=1,
             name=cg_name,
-            time_threshold=time_threshold
+            time_threshold=time_threshold,
+            **cg_params
         )
         dd = nat_g
         new_pos = pos - dd
