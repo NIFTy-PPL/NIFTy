@@ -127,12 +127,21 @@ class Field():
         return sum_of_squares(self)
 
     def __str__(self):
-        s = "Field:\n"
+        s = f"Field(\n{self._val}"
         if self._domain:
-            s += "domain: " + str(self._domain) + "\n"
+            s += f",\ndomain={self._domain}"
         if self._flags:
-            s += "flags: "+ str(self._flags) + "\n"
-        s += str(self._val)
+            s += f",\nflags={self._flags}"
+        s += ")"
+        return s
+
+    def __repr__(self):
+        s = f"Field(\n{self._val!r}"
+        if self._domain:
+            s += f",\ndomain={self._domain!r}"
+        if self._flags:
+            s += f",\nflags={self._flags!r}"
+        s += ")"
         return s
 
     def norm(self, ord):
