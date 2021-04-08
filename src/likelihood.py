@@ -291,6 +291,11 @@ class Likelihood():
         """
         return self._lsm_tan_shp
 
+    @property
+    def lsm_tangents_shape(self):
+        """Alias for `left_sqrt_metric_tangents_shape`."""
+        return self.left_sqrt_metric_tangents_shape
+
     def new(
         self, energy: callable, left_sqrt_metric: callable, metric: callable
     ):
