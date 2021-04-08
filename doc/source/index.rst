@@ -1,10 +1,7 @@
-JIFTy
-=====
-
-TODO
+.. include:: ../../README.rst
 
 Contents
-........
+--------
 
 .. toctree::
    :maxdepth: 4
