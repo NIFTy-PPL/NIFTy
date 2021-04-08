@@ -61,7 +61,7 @@ def test_complex2real():
     assert np.all((f == op(op.adjoint_times(f))).val)
 
 
-def energy_tester(pos, get_noisy_data, energy_initializer):
+def energy_tester(pos, get_noisy_data, energy_initializer, assume_diagonal=None):
     if isinstance(pos, ift.Field):
         if np.issubdtype(pos.dtype, np.complexfloating):
             op = _complex2real(pos.domain)
@@ -89,9 +89,16 @@ def energy_tester(pos, get_noisy_data, energy_initializer):
         data = get_noisy_data(op.adjoint_times(pos))
         energy = energy_initializer(data) @ op.adjoint
         grad = energy(lin).gradient
-        results.append(_to_array((grad*grad.s_vdot(test_vec)).val))
-    res = np.mean(np.array(results), axis=0)
-    std = np.std(np.array(results), axis=0)/np.sqrt(Nsamp)
+        if assume_diagonal:
+            results.append(_to_array((grad*grad.conjugate()).val))
+        else:
+            results.append(_to_array((grad*grad.s_vdot(test_vec)).val))
+    if assume_diagonal:
+        res = np.mean(np.array(results), axis=0)*_to_array(test_vec.val)
+        std = np.std(np.array(results), axis=0)/np.sqrt(Nsamp)*np.abs(_to_array(test_vec.val))
+    else:
+        res = np.mean(np.array(results), axis=0)
+        std = np.std(np.array(results), axis=0)/np.sqrt(Nsamp)
     energy = energy_initializer(data) @ op.adjoint
     lin = ift.Linearization.make_var(pos, want_metric=True)
     res2 = _to_array(energy(lin).metric(test_vec).val)
@@ -137,7 +144,7 @@ def test_VariableCovarianceGaussianEnergy(dtype):
     def E_init(data):
         adder = ift.Adder(ift.MultiField.from_dict({'res':data}), neg=True)
         return energy.partial_insert(adder)
-    energy_tester(mf, get_noisy_data, E_init)
+    energy_tester(mf, get_noisy_data, E_init, assume_diagonal=True)
 
 
 def normal(dtype, shape):
