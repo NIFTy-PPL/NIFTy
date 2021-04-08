@@ -106,15 +106,16 @@ class LMSpace(StructuredDomain):
     def get_conv_kernel_from_func(self, func):
         """Creates a convolution kernel defined by a function.
 
+        Assumes the function to be radially symmetric, e.g. only dependant on
+        theta in radians.
+
         Parameters
         ----------
         func: function
             This function needs to take exactly one argument, which is
             colatitude in radians, and return the kernel amplitude at that
             colatitude.
-
-        Assumes the function to be radially symmetric,
-        e.g. only dependant on theta in radians"""
+        """
         from .gl_space import GLSpace
         from ..operators.harmonic_operators import HarmonicTransformOperator
         from ducc0.misc import GL_thetas

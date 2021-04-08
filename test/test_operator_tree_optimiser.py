@@ -16,14 +16,16 @@
 #
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
 
-from numpy.testing import assert_, assert_allclose
-import numpy as np
 from copy import deepcopy
+
+import numpy as np
+from numpy.testing import assert_allclose
+
 import nifty7 as ift
 
 
 class CountingOp(ift.Operator):
-    #FIXME: Not a LinearOperator since ChainOps not supported yet
+    # FIXME: Not a LinearOperator since ChainOps not supported yet
     def __init__(self, domain):
         self._domain = self._target = ift.sugar.makeDomain(domain)
         self._count = 0
@@ -56,6 +58,6 @@ def test_operator_tree_optimiser():
     op_orig = deepcopy(op)
     op = ift.operator_tree_optimiser._optimise_operator(op)
     assert_allclose(op(fld).val, op_orig(fld).val, rtol=np.finfo(np.float64).eps)
-    assert_(1 == ( (cop4.count-1) * cop3.count * cop2.count * cop1.count))
+    ift.myassert(1 == ((cop4.count-1) * cop3.count * cop2.count * cop1.count))
     # test testing
     ift.optimise_operator(op_orig)

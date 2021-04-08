@@ -11,32 +11,31 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
-# Copyright(C) 2013-2019 Max-Planck-Society
+# Copyright(C) 2021 Max-Planck-Society
 #
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
 
-import numpy as np
 import pytest
 
 import nifty7 as ift
 
 from ..common import setup_function, teardown_function
 
+pmp = pytest.mark.parametrize
 
-@pytest.mark.parametrize('sp', [
-    ift.RGSpace(4),
-    ift.PowerSpace(ift.RGSpace((4, 4), harmonic=True)),
-    ift.LMSpace(5),
-    ift.HPSpace(4),
-    ift.GLSpace(4)
+
+@pmp('f', [
+    'log', 'exp', 'sqrt', 'sin', 'cos', 'tan', 'sinc', 'sinh', 'cosh', 'tanh',
+    'absolute', 'reciprocal', 'sigmoid', 'log10', 'log1p', 'expm1', 'softplus',
+    ('power', 2.), ('exponentiate', 1.1)
 ])
-@pytest.mark.parametrize('seed', [13, 2])
-def test_value_inserter(sp, seed):
-    with ift.random.Context(seed):
-        ind = tuple([int(ift.random.current_rng().integers(0, ss - 1)) for ss in sp.shape])
-        op = ift.ValueInserter(sp, ind)
-        f = ift.from_random(op.domain, 'normal')
-    inp = f.val
-    ret = op(f).val
-    ift.myassert(ret[ind] == inp)
-    ift.myassert(np.sum(ret) == inp)
+def test_ptw_pre(f):
+    if not isinstance(f, tuple):
+        f = (f,)
+    op = ift.FFTOperator(ift.RGSpace(10))
+    op0 = op @ ift.ScalingOperator(op.domain, 1.).ptw(*f)
+    op1 = op.ptw_pre(*f)
+    pos = ift.from_random(op0.domain)
+    if f[0] in ['log', 'sqrt', 'log10', 'log1p']:
+        pos = pos.exp()
+    ift.extra.assert_equal(op0(pos), op1(pos))

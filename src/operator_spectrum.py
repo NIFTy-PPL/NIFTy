@@ -83,7 +83,7 @@ class _DomRemover(LinearOperator):
                 raise TypeError('Operator supports only floating point dtypes')
 
 
-def operator_spectrum(A, k, hermitian, which='LM', tol=0):
+def operator_spectrum(A, k, hermitian, which='LM', tol=0, return_eigenvectors=False):
     '''
     Find k eigenvalues and eigenvectors of the endomorphism A.
 
@@ -116,10 +116,18 @@ def operator_spectrum(A, k, hermitian, which='LM', tol=0):
         Relative accuracy for eigenvalues (stopping criterion)
         The default value of 0 implies machine precision.
 
+    return_eigenvectors: bool, optional
+        Return eigenvectors (True) in addition to eigenvalues
+
+
     Returns
     -------
     w : ndarray
         Array of k eigenvalues.
+
+    v : ndarray
+        An array representing the k eigenvectors. The column v[:, i] is the
+        eigenvector corresponding to the eigenvalue w[i].
 
     Raises
     ------
@@ -139,5 +147,10 @@ def operator_spectrum(A, k, hermitian, which='LM', tol=0):
         shape=2*(size,),
         matvec=lambda x: Ar(makeField(Ar.domain, x)).val)
     f = ssl.eigsh if hermitian else ssl.eigs
-    eigs = f(M, k=k, tol=tol, return_eigenvectors=False, which=which)
-    return np.flip(np.sort(eigs), axis=0)
+    eigs = f(M, k=k, tol=tol, return_eigenvectors=return_eigenvectors, which=which)
+    if return_eigenvectors:
+        eigval, eigvec = eigs
+        inds = np.argsort(eigval)
+        return np.flip(eigval[inds]), np.flip(eigvec[:,inds],axis = 1)
+    else:
+        return np.flip(np.sort(eigs))

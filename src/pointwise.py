@@ -11,7 +11,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
-# Copyright(C) 2020 Max-Planck-Society
+# Copyright(C) 2020-2021 Max-Planck-Society
 # Author: Martin Reinecke
 #
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
@@ -57,7 +57,7 @@ def _reciprocal_helper(v):
 
 def _abs_helper(v):
     if np.issubdtype(v.dtype, np.complexfloating):
-        raise TypeError("Argument must not be complex")
+        raise TypeError("Argument must not be complex because abs(z) is not holomorphic")
     return (np.abs(v), np.where(v == 0, np.nan, np.sign(v)))
 
 
@@ -82,6 +82,50 @@ def _clip_helper(v, a_min, a_max):
         tmp2 = np.where(tmp == a_max, 0., tmp2)
     return (tmp, tmp2)
 
+def _step_helper(v, grad):
+    if np.issubdtype(v.dtype, np.complexfloating):
+        raise TypeError("Argument must not be complex")
+    r = np.zeros(v.shape)
+    r[v>=0.] = 1.
+    if grad:
+        return (r, np.zeros(v.shape))
+    return r
+
+def softplus(v):
+    fv = np.empty(v.shape, dtype=np.float64 if np.isrealobj(v) else np.complex128)
+    selp = v > 33
+    selm = v < -33
+    sel0 = ~np.logical_or(selp, selm)
+    fv[selp] = v[selp]
+    fv[sel0] = np.log(1+np.exp(v[sel0]))
+    fv[selm] = 0
+    return fv
+
+
+def _softplus_helper(v):
+    dtype = np.float64 if np.isrealobj(v) else np.complex128
+    fv = np.empty(v.shape, dtype=dtype)
+    dfv = np.empty(v.shape, dtype=dtype)
+    selp = 33 < v
+    selm = v < -33
+    sel0 = ~np.logical_or(selp, selm)
+    fv[selp] = v[selp]
+    fv[sel0] = np.log(1+np.exp(v[sel0]))
+    fv[selm] = 0
+    dfv[selp] = 1
+    dfv[sel0] = 1/(1+np.exp(-v[sel0]))
+    dfv[selm] = 0
+    return fv, dfv
+
+
+def exponentiate(v, base):
+    return np.power(base, v)
+
+
+def _exponentiate_helper(v, base):
+    tmp = np.power(base, v)
+    return (tmp, np.log(base) * tmp)
+
 
 ptw_dict = {
     "sqrt": (np.sqrt, _sqrt_helper),
@@ -104,4 +148,8 @@ ptw_dict = {
     "sign": (np.sign, _sign_helper),
     "power": (np.power, _power_helper),
     "clip": (np.clip, _clip_helper),
+    "softplus": (softplus, _softplus_helper),
+    "exponentiate": (exponentiate, _exponentiate_helper),
+    "arctan": (np.arctan, lambda v: (np.arctan(v), 1./(1.+v**2))),
+    "unitstep": (lambda v: _step_helper(v, False), lambda v: _step_helper(v, True))
     }

@@ -17,9 +17,10 @@
 
 import numpy as np
 import pytest
-from numpy.testing import assert_, assert_allclose, assert_raises
+from numpy.testing import assert_allclose, assert_raises
 
 import nifty7 as ift
+from nifty7 import myassert
 
 from .common import setup_function, teardown_function
 
@@ -55,13 +56,13 @@ def test_kl(constants, point_estimates, mirror_samples, mf):
             ift.MetricGaussianKL.make(**args)
         return
     kl = ift.MetricGaussianKL.make(**args)
-    assert_(len(ic.history) > 0)
-    assert_(len(ic.history) == len(ic.history.time_stamps))
-    assert_(len(ic.history) == len(ic.history.energy_values))
+    myassert(len(ic.history) > 0)
+    myassert(len(ic.history) == len(ic.history.time_stamps))
+    myassert(len(ic.history) == len(ic.history.energy_values))
     ic.history.reset()
-    assert_(len(ic.history) == 0)
-    assert_(len(ic.history) == len(ic.history.time_stamps))
-    assert_(len(ic.history) == len(ic.history.energy_values))
+    myassert(len(ic.history) == 0)
+    myassert(len(ic.history) == len(ic.history.time_stamps))
+    myassert(len(ic.history) == len(ic.history.energy_values))
 
     locsamp = kl._local_samples
     if isinstance(mean0, ift.MultiField):
@@ -74,7 +75,7 @@ def test_kl(constants, point_estimates, mirror_samples, mf):
 
     # Test number of samples
     expected_nsamps = 2*nsamps if mirror_samples else nsamps
-    assert_(len(tuple(kl.samples)) == expected_nsamps)
+    myassert(len(tuple(kl.samples)) == expected_nsamps)
 
     # Test value
     assert_allclose(kl.value, klpure.value)

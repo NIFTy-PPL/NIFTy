@@ -95,10 +95,10 @@ def energy_tester(pos, get_noisy_data, energy_initializer):
     energy = energy_initializer(data) @ op.adjoint
     lin = ift.Linearization.make_var(pos, want_metric=True)
     res2 = _to_array(energy(lin).metric(test_vec).val)
-    np.testing.assert_allclose(res/std, res2/std, atol=6)
+    np.testing.assert_allclose(res/std, res2/std, atol=5)
     for factor in [0.01, 0.5, 2, 100]:
         with pytest.raises(AssertionError):
-            np.testing.assert_allclose(res/std, factor*res2/std, atol=6)
+            np.testing.assert_allclose(res/std, factor*res2/std, atol=5)
 
 
 def test_GaussianEnergy(field):
@@ -123,14 +123,12 @@ def test_PoissonEnergy(field):
     energy_tester(lam, get_noisy_data, E_init)
 
 
-@pytest.mark.parametrize('factor', [0.01, 0.5, 1, 2, 100])
-def test_VariableCovarianceGaussianEnergy(dtype, factor):
+def test_VariableCovarianceGaussianEnergy(dtype):
     dom = ift.UnstructuredDomain(3)
     res = ift.from_random(dom, 'normal', dtype=dtype)
     ivar = ift.from_random(dom, 'normal')**2+4.
     mf = ift.MultiField.from_dict({'res':res, 'ivar':ivar})
-    energy = ift.VariableCovarianceGaussianEnergy(dom, 'res', 'ivar', dtype,
-                                                  _debugging_factor=factor)
+    energy = ift.VariableCovarianceGaussianEnergy(dom, 'res', 'ivar', dtype)
     def get_noisy_data(mean):
         samp = ift.from_random(dom, 'normal', dtype)
         samp = samp/mean['ivar'].sqrt()
@@ -138,63 +136,9 @@ def test_VariableCovarianceGaussianEnergy(dtype, factor):
     def E_init(data):
         adder = ift.Adder(ift.MultiField.from_dict({'res':data}), neg=True)
         return energy.partial_insert(adder)
-    if factor != 1.:
-        with pytest.raises(AssertionError):
-            energy_tester(mf, get_noisy_data, E_init)
-    else:
-        energy_tester(mf, get_noisy_data, E_init)
+    energy_tester(mf, get_noisy_data, E_init)
 
 
 def normal(dtype, shape):
     return ift.random.Random.normal(dtype, shape)
 
-
-def test_variablecovenergy_fast(dtype):
-    dtype = np.float64  # FIXME
-    npix = 2
-    shp = (npix,)
-    ntries = 200000
-
-    dom = ift.UnstructuredDomain(shp)
-    e = ift.VariableCovarianceGaussianEnergy(dom, 'resi', 'icov', dtype)
-
-    # Positions
-    resi = normal(dtype, shp)
-    icov = normal(np.float64, shp)**2 + 4.
-    sig = np.sqrt(1/icov)
-    pos = ift.makeField(e.domain, {'resi': resi, 'icov': icov})
-
-    sampled_data = normal(dtype, (ntries, npix))*sig+resi
-    grad0 = (pos['resi'].val-sampled_data)*icov
-    fac = 0.5
-    if np.issubdtype(dtype, np.complexfloating):
-        fac = 1
-    grad1 = 0.5*np.abs(pos['resi'].val-sampled_data)**2 - fac/pos['icov'].val
-
-    # Test correctness of gradient
-    etest = e.partial_insert(ift.Adder(ift.makeField(dom, -sampled_data[0])).ducktape('resi').ducktape_left('resi'))
-    eresult = etest(ift.Linearization.make_var(pos))
-    grad0ref = eresult.gradient.val['resi']
-    grad1ref = eresult.gradient.val['icov']
-    np.testing.assert_allclose(grad0[0], grad0ref)
-    np.testing.assert_allclose(grad1[0], grad1ref)
-
-    # Apply test vector
-    test_vec_resi = normal(dtype, shp)
-    test_vec_icov = normal(np.float64, shp)
-    metric00 = np.sum(grad0*test_vec_resi, axis=1)[:, None] * grad0.conjugate()
-    metric00 = np.mean(metric00, axis=0)
-    metric11 = np.sum(grad1*test_vec_icov, axis=1)[:, None] * grad1.conjugate()
-    metric11 = np.mean(grad1, axis=0)
-
-    metric00ref = icov*test_vec_resi
-    metric11ref = (1/(icov)**2)*test_vec_icov
-    metric00std = np.std(metric00, axis=0)
-    metric11std = np.std(metric11, axis=0)
-    np.testing.assert_allclose(metric00ref/metric00std, metric00/metric00std, atol=0.1)
-    np.testing.assert_allclose(metric11ref/metric11std, metric11/metric11std, atol=0.1)
-    for factor in [0.01, 0.5, 2, 100]:
-        with pytest.raises(AssertionError):
-            np.testing.assert_allclose(metric00ref/metric00std, factor*metric00/metric00std, atol=0.1)
-        with pytest.raises(AssertionError):
-            np.testing.assert_allclose(metric11ref/metric11std, metric11/metric11std, atol=0.1)

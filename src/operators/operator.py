@@ -218,6 +218,9 @@ class Operator(metaclass=NiftyMeta):
             return NotImplemented
         return _OpSum(self, -x)
 
+    def __abs__(self):
+        return self.ptw("abs")
+
     def __pow__(self, power):
         if not (np.isscalar(power) or power.jac is None):
             return NotImplemented
@@ -260,12 +263,19 @@ class Operator(metaclass=NiftyMeta):
         return self @ x
 
     def ducktape(self, name):
+        from ..sugar import is_operator
         from .simple_linear_operators import ducktape
+        if not is_operator(self):
+            raise RuntimeError("ducktape works only on operators")
         return self @ ducktape(self, None, name)
 
     def ducktape_left(self, name):
         from .simple_linear_operators import ducktape
-        return ducktape(None, self, name) @ self
+        from ..sugar import is_operator, is_fieldlike, is_linearization
+        if is_operator(self):
+            return ducktape(None, self, name) @ self
+        if is_fieldlike(self) or is_linearization(self):
+            return ducktape(None, self.domain, name)(self)
 
     def __repr__(self):
         return self.__class__.__name__
@@ -320,6 +330,9 @@ class Operator(metaclass=NiftyMeta):
     def ptw(self, op, *args, **kwargs):
         return _OpChain.make((_FunctionApplier(self.target, op, *args, **kwargs), self))
 
+    def ptw_pre(self, op, *args, **kwargs):
+        return _OpChain.make((self, _FunctionApplier(self.domain, op, *args, **kwargs)))
+
 
 for f in pointwise.ptw_dict.keys():
     def func(f):
@@ -327,6 +340,11 @@ for f in pointwise.ptw_dict.keys():
             return self.ptw(f, *args, **kwargs)
         return func2
     setattr(Operator, f, func(f))
+    def func(f):
+        def func2(self, *args, **kwargs):
+            return self.ptw_pre(f, *args, **kwargs)
+        return func2
+    setattr(Operator, f + "_pre", func(f))
 
 
 class _FunctionApplier(Operator):

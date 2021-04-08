@@ -18,9 +18,9 @@
 from types import LambdaType
 
 import pytest
-from numpy.testing import assert_
 
 import nifty7 as ift
+
 from ..common import setup_function, teardown_function
 
 pmp = pytest.mark.parametrize
@@ -36,7 +36,7 @@ pmp = pytest.mark.parametrize
     ift.GLSpace(4)
 ])
 def test_property_ret_type(space, attr_expected_type):
-    assert_(
+    ift.myassert(
         isinstance(
             getattr(space, attr_expected_type[0]), attr_expected_type[1]))
 
@@ -46,7 +46,7 @@ def test_property_ret_type(space, attr_expected_type):
       ['get_fft_smoothing_kernel_function', 2.0, LambdaType]])
 @pmp('space', [ift.RGSpace(4, harmonic=True), ift.LMSpace(5)])
 def test_method_ret_type(space, method_expected_type):
-    assert_(
+    ift.myassert(
         type(
             getattr(space, method_expected_type[0])
             (*method_expected_type[1:-1])) is method_expected_type[-1])

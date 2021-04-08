@@ -49,7 +49,7 @@ def test_exec_time():
     lh = ift.GaussianEnergy(domain=op.target, sampling_dtype=np.float64) @ op1
     ic = ift.GradientNormController(iteration_limit=2)
     ham = ift.StandardHamiltonian(lh, ic_samp=ic)
-    kl = ift.MetricGaussianKL.make(ift.full(ham.domain, 0.), ham, 1)
+    kl = ift.MetricGaussianKL.make(ift.full(ham.domain, 0.), ham, 1, False)
     ops = [op, op1, lh, ham, kl]
     for oo in ops:
         for wm in [True, False]:
@@ -69,3 +69,19 @@ def test_calc_pos(mf, cplx):
     fld = op(0.1 * ift.from_random(op.domain, 'normal'))
     pos = ift.calculate_position(op, fld)
     ift.extra.assert_allclose(op(pos), fld, 1e-1, 1e-1)
+
+
+def test_isinstance_helpers():
+    dom = ift.RGSpace(12, harmonic=True)
+    op = ift.ScalingOperator(dom, 12.)
+    fld = ift.full(dom, 0.)
+    lin = ift.Linearization.make_var(fld)
+    assert not ift.is_fieldlike(op)
+    assert ift.is_fieldlike(lin)
+    assert ift.is_fieldlike(fld)
+    assert not ift.is_linearization(op)
+    assert ift.is_linearization(lin)
+    assert not ift.is_linearization(fld)
+    assert ift.is_operator(op)
+    assert not ift.is_operator(lin)
+    assert not ift.is_operator(fld)

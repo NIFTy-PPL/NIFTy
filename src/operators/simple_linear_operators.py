@@ -141,7 +141,7 @@ class FieldAdapter(LinearOperator):
 
     Parameters
     ----------
-    tgt : Domain, tuple of Domain, DomainTuple, dict or MultiDomain:
+    tgt : Domain, tuple of domains, DomainTuple, dict or MultiDomain:
         If this is a Domain, tuple of Domain or DomainTuple, this will be the
         operator's target, and its domain will be a MultiDomain consisting of
         its domain with the supplied `name`

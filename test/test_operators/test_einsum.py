@@ -17,10 +17,10 @@
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
 
 import numpy as np
-from numpy.testing import assert_, assert_allclose
+from numpy.testing import assert_allclose
 
 import nifty7 as ift
-from nifty7.extra import check_operator, check_linear_operator
+from nifty7.extra import check_linear_operator, check_operator
 
 from ..common import list2fixture, setup_function, teardown_function
 
@@ -42,7 +42,7 @@ def test_linear_einsum_outer(space1, space2, dtype, n_invocations=10):
     ss = "i,ij,j->ij"
     key_order = ("dom01", "dom02")
     le = ift.LinearEinsum(space2, mf, ss, key_order=key_order)
-    assert_(check_linear_operator(le, domain_dtype=dtype, target_dtype=dtype) is None)
+    ift.myassert(check_linear_operator(le, domain_dtype=dtype, target_dtype=dtype) is None)
 
     le_ift = ift.DiagonalOperator(mf["dom01"], domain=mf_dom["dom02"], spaces=0) @ ift.DiagonalOperator(mf["dom02"])
     le_ift = le_ift @ ift.OuterProduct(ift.DomainTuple.make(mf_dom["dom02"][1]),
@@ -63,7 +63,7 @@ def test_linear_einsum_contraction(space1, space2, dtype, n_invocations=10):
     ss = "i,ij,j->i"
     key_order = ("dom01", "dom02")
     le = ift.LinearEinsum(space2, mf, ss, key_order=key_order)
-    assert_(check_linear_operator(le, domain_dtype=dtype, target_dtype=dtype) is None)
+    ift.myassert(check_linear_operator(le, domain_dtype=dtype, target_dtype=dtype) is None)
 
     le_ift = ift.ContractionOperator(mf_dom["dom02"], 1)
     le_ift = le_ift @ ift.DiagonalOperator(mf["dom01"], domain=mf_dom["dom02"], spaces=0)
@@ -116,7 +116,7 @@ def test_linear_einsum_transpose(space1, space2, dtype, n_invocations=10):
     mf = ift.MultiField.from_dict({})
     ss = "ij->ji"
     le = ift.LinearEinsum(dom, mf, ss)
-    assert_(check_linear_operator(le, domain_dtype=dtype, target_dtype=dtype) is None)
+    ift.myassert(check_linear_operator(le, domain_dtype=dtype, target_dtype=dtype) is None)
 
     # SwitchSpacesOperator is equivalent to LinearEinsum with "ij->ji"
     le_ift = _SwitchSpacesOperator(dom, 1)

@@ -11,7 +11,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
-# Copyright(C) 2013-2019 Max-Planck-Society
+# Copyright(C) 2013-2021 Max-Planck-Society
 #
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
 
@@ -20,23 +20,23 @@ import pytest
 
 import nifty7 as ift
 
-from ..common import setup_function, teardown_function
+pmp = pytest.mark.parametrize
 
 
-@pytest.mark.parametrize('sp', [
-    ift.RGSpace(4),
-    ift.PowerSpace(ift.RGSpace((4, 4), harmonic=True)),
-    ift.LMSpace(5),
-    ift.HPSpace(4),
-    ift.GLSpace(4)
-])
-@pytest.mark.parametrize('seed', [13, 2])
-def test_value_inserter(sp, seed):
-    with ift.random.Context(seed):
-        ind = tuple([int(ift.random.current_rng().integers(0, ss - 1)) for ss in sp.shape])
-        op = ift.ValueInserter(sp, ind)
-        f = ift.from_random(op.domain, 'normal')
-    inp = f.val
-    ret = op(f).val
-    ift.myassert(ret[ind] == inp)
-    ift.myassert(np.sum(ret) == inp)
+def test_grid_points():
+    res = 64
+    vol = 2
+    sp = ift.RGSpace([res, res], [vol / res, vol / res])
+    mg = np.mgrid[(slice(0, res),) * 2]
+    mg = np.array(list(map(np.ravel, mg)))
+
+    dist = [list(sp.distances)]
+    dist = np.array(dist).reshape(-1, 1)
+
+    sampling_points = dist * mg
+    R = ift.LinearInterpolator(sp, sampling_points)
+
+    ift.extra.check_linear_operator(R, atol=1e-7, rtol=1e-7)
+    inp = ift.from_random(R.domain)
+    out = R(inp).val
+    np.testing.assert_allclose(out, inp.val.reshape(-1), rtol=1e-7)

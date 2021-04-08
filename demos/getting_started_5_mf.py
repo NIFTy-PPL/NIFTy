@@ -73,14 +73,14 @@ def main():
     sp2 = ift.RGSpace(npix2)
 
     # Set up signal model
-    cfmaker = ift.CorrelatedFieldMaker.make(0., 1e-2, 1e-6, '')
-    cfmaker.add_fluctuations(sp1, 0.1, 1e-2, 1, .1, .01, .5, -2, 1., 'amp1')
-    cfmaker.add_fluctuations(sp2, 0.1, 1e-2, 1, .1, .01, .5,
-                             -1.5, .5, 'amp2')
+    cfmaker = ift.CorrelatedFieldMaker.make(0., (1e-2, 1e-6), '')
+    cfmaker.add_fluctuations(sp1, (0.1, 1e-2), (2, .2), (.01, .5), (-4, 2.), 'amp1')
+    cfmaker.add_fluctuations(sp2, (0.1, 1e-2), (2, .2), (.01, .5),
+                             (-3, 1), 'amp2')
     correlated_field = cfmaker.finalize()
 
-    A1 = cfmaker.normalized_amplitudes[0]
-    A2 = cfmaker.normalized_amplitudes[1]
+    pspec1 = cfmaker.normalized_amplitudes[0]**2
+    pspec2 = cfmaker.normalized_amplitudes[1]**2
     DC = SingleDomain(correlated_field.target, position_space)
 
     # Apply a nonlinearity
@@ -103,8 +103,8 @@ def main():
     plot = ift.Plot()
     plot.add(signal(mock_position), title='Ground Truth')
     plot.add(R.adjoint_times(data), title='Data')
-    plot.add([A1.force(mock_position)], title='Power Spectrum 1')
-    plot.add([A2.force(mock_position)], title='Power Spectrum 2')
+    plot.add([pspec1.force(mock_position)], title='Power Spectrum 1')
+    plot.add([pspec2.force(mock_position)], title='Power Spectrum 2')
     plot.output(ny=2, nx=2, xsize=10, ysize=10, name=filename.format("setup"))
 
     # Minimization parameters
@@ -129,9 +129,9 @@ def main():
     initial_mean = ift.MultiField.full(H.domain, 0.)
     mean = initial_mean
 
-    for i in range(10):
+    for i in range(5):
         # Draw new samples and minimize KL
-        KL = ift.MetricGaussianKL.make(mean, H, N_samples)
+        KL = ift.MetricGaussianKL.make(mean, H, N_samples, True)
         KL, convergence = minimizer(KL)
         mean = KL.position
 
@@ -139,11 +139,11 @@ def main():
         plot = ift.Plot()
         plot.add(signal(mock_position), title="ground truth")
         plot.add(signal(KL.position), title="reconstruction")
-        plot.add([A1.force(KL.position),
-                  A1.force(mock_position)],
+        plot.add([pspec1.force(KL.position),
+                  pspec1.force(mock_position)],
                  title="power1")
-        plot.add([A2.force(KL.position),
-                  A2.force(mock_position)],
+        plot.add([pspec2.force(KL.position),
+                  pspec2.force(mock_position)],
                  title="power2")
         plot.add((ic_newton.history, ic_sampling.history,
                   minimizer.inversion_history),
@@ -157,7 +157,6 @@ def main():
                     name=filename.format("loop_{:02d}".format(i)))
 
     # Done, draw posterior samples
-    KL = ift.MetricGaussianKL.make(mean, H, N_samples)
     sc = ift.StatCalculator()
     scA1 = ift.StatCalculator()
     scA2 = ift.StatCalculator()
@@ -165,8 +164,8 @@ def main():
     powers2 = []
     for sample in KL.samples:
         sc.add(signal(sample + KL.position))
-        p1 = A1.force(sample + KL.position)
-        p2 = A2.force(sample + KL.position)
+        p1 = pspec1.force(sample + KL.position)
+        p2 = pspec2.force(sample + KL.position)
         scA1.add(p1)
         powers1.append(p1)
         scA2.add(p2)
@@ -178,12 +177,12 @@ def main():
     plot.add(sc.mean, title="Posterior Mean")
     plot.add(ift.sqrt(sc.var), title="Posterior Standard Deviation")
 
-    powers1 = [A1.force(s + KL.position) for s in KL.samples]
-    powers2 = [A2.force(s + KL.position) for s in KL.samples]
-    plot.add(powers1 + [scA1.mean, A1.force(mock_position)],
+    powers1 = [pspec1.force(s + KL.position) for s in KL.samples]
+    powers2 = [pspec2.force(s + KL.position) for s in KL.samples]
+    plot.add(powers1 + [scA1.mean, pspec1.force(mock_position)],
              title="Sampled Posterior Power Spectrum 1",
              linewidth=[1.]*len(powers1) + [3., 3.])
-    plot.add(powers2 + [scA2.mean, A2.force(mock_position)],
+    plot.add(powers2 + [scA2.mean, pspec2.force(mock_position)],
              title="Sampled Posterior Power Spectrum 2",
              linewidth=[1.]*len(powers2) + [3., 3.])
     plot.output(ny=2, nx=2, xsize=15, ysize=15, name=filename_res)

@@ -38,9 +38,6 @@ class _KLMetric(EndomorphicOperator):
         self._check_input(x, mode)
         return self._KL.apply_metric(x)
 
-    def draw_sample(self, from_inverse=False):
-        return self._KL._metric_sample(from_inverse)
-
 
 def _get_lo_hi(comm, n_samples):
     ntask, rank, _ = utilities.get_MPI_params_from_comm(comm)
@@ -126,8 +123,8 @@ class MetricGaussianKL(Energy):
         self._grad = utilities.allreduce_sum(g, self._comm)/self.n_eff_samples
 
     @staticmethod
-    def make(mean, hamiltonian, n_samples, constants=[], point_estimates=[],
-             mirror_samples=False, napprox=0, comm=None, nanisinf=False):
+    def make(mean, hamiltonian, n_samples, mirror_samples, constants=[],
+             point_estimates=[], napprox=0, comm=None, nanisinf=False):
         """Return instance of :class:`MetricGaussianKL`.
 
         Parameters
@@ -138,6 +135,12 @@ class MetricGaussianKL(Energy):
             Hamiltonian of the approximated probability distribution.
         n_samples : integer
             Number of samples used to stochastically estimate the KL.
+        mirror_samples : boolean
+            Whether the negative of the drawn samples are also used, as they are
+            equally legitimate samples. If true, the number of used samples
+            doubles. Mirroring samples stabilizes the KL estimate as extreme
+            sample variation is counterbalanced. Since it improves stability in
+            many cases, it is recommended to set `mirror_samples` to `True`.
         constants : list
             List of parameter keys that are kept constant during optimization.
             Default is no constants.
@@ -145,11 +148,6 @@ class MetricGaussianKL(Energy):
             List of parameter keys for which no samples are drawn, but that are
             (possibly) optimized for, corresponding to point estimates of these.
             Default is to draw samples for the complete domain.
-        mirror_samples : boolean
-            Whether the negative of the drawn samples are also used,
-            as they are equally legitimate samples. If true, the number of used
-            samples doubles. Mirroring samples stabilizes the KL estimate as
-            extreme sample variation is counterbalanced. Default is False.
         napprox : int
             Number of samples for computing preconditioner for sampling. No
             preconditioning is done by default.
@@ -259,22 +257,3 @@ class MetricGaussianKL(Energy):
                     yield s
                     if self._mirror_samples:
                         yield -s
-
-    def _metric_sample(self, from_inverse=False):
-        if from_inverse:
-            raise NotImplementedError()
-        s = ('This draws from the Hamiltonian used for evaluation and does '
-             ' not take point_estimates into accout. Make sure that this '
-             'is your intended use.')
-        logger.warning(s)
-        lin = Linearization.make_var(self.position, True)
-        samp = []
-        sseq = random.spawn_sseq(self._n_samples)
-        for i, s in enumerate(self._local_samples):
-            s = _modify_sample_domain(s, self._hamiltonian.domain)
-            with random.Context(sseq[self._lo+i]):
-                tmp = self._hamiltonian(lin+s).metric.draw_sample(from_inverse=False)
-                if self._mirror_samples:
-                    tmp = tmp + self._hamiltonian(lin-s).metric.draw_sample(from_inverse=False)
-                samp.append(tmp)
-        return utilities.allreduce_sum(samp, self._comm)/self.n_eff_samples

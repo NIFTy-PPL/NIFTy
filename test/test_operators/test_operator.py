@@ -11,32 +11,38 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
-# Copyright(C) 2013-2019 Max-Planck-Society
+# Copyright(C) 2020 Max-Planck-Society
 #
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
 
 import numpy as np
 import pytest
+from numpy.testing import assert_allclose
 
 import nifty7 as ift
 
 from ..common import setup_function, teardown_function
 
 
-@pytest.mark.parametrize('sp', [
-    ift.RGSpace(4),
-    ift.PowerSpace(ift.RGSpace((4, 4), harmonic=True)),
-    ift.LMSpace(5),
-    ift.HPSpace(4),
-    ift.GLSpace(4)
-])
-@pytest.mark.parametrize('seed', [13, 2])
-def test_value_inserter(sp, seed):
-    with ift.random.Context(seed):
-        ind = tuple([int(ift.random.current_rng().integers(0, ss - 1)) for ss in sp.shape])
-        op = ift.ValueInserter(sp, ind)
-        f = ift.from_random(op.domain, 'normal')
-    inp = f.val
-    ret = op(f).val
-    ift.myassert(ret[ind] == inp)
-    ift.myassert(np.sum(ret) == inp)
+def test_ducktape():
+    dom = ift.RGSpace(10)
+    op = ift.FFTOperator(dom)
+    fld = ift.full(dom, 2.)
+    lin = ift.Linearization.make_var(fld)
+    a = "foo"
+    op1 = op.ducktape(a)
+    mdom = ift.MultiDomain.make({a: dom})
+    assert op1.domain == mdom
+    assert op1.target == op.target
+    op1 = op.ducktape_left(a)
+    assert op1.target == ift.MultiDomain.make({a: op.target})
+    assert op1.domain == op.domain
+    with pytest.raises(RuntimeError):
+        fld.ducktape(a)
+    with pytest.raises(RuntimeError):
+        lin.ducktape(a)
+    fld0 = fld.ducktape_left(a)
+    assert fld0.domain == mdom
+    lin0 = lin.ducktape_left(a)
+    assert lin0.domain == lin.domain
+    assert lin0.target == mdom

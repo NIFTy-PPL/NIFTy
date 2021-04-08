@@ -18,27 +18,28 @@
 from itertools import combinations
 
 import numpy as np
-from numpy.testing import assert_
 
-from . import random
 from .domain_tuple import DomainTuple
 from .field import Field
 from .linearization import Linearization
 from .multi_domain import MultiDomain
 from .multi_field import MultiField
+from .operators.adder import Adder
+from .operators.endomorphic_operator import EndomorphicOperator
 from .operators.energy_operators import EnergyOperator
 from .operators.linear_operator import LinearOperator
 from .operators.operator import Operator
-from .sugar import from_random
+from .operators.scaling_operator import ScalingOperator
+from .probing import StatCalculator
+from .sugar import from_random, full, is_fieldlike, is_operator
+from .utilities import myassert
 
-__all__ = ["check_linear_operator", "check_operator",
-           "assert_allclose"]
+__all__ = ["check_linear_operator", "check_operator", "assert_allclose", "minisanity"]
 
 
 def check_linear_operator(op, domain_dtype=np.float64, target_dtype=np.float64,
                           atol=1e-12, rtol=1e-12, only_r_linear=False):
-    """
-    Checks an operator for algebraic consistency of its capabilities.
+    """Checks an operator for algebraic consistency of its capabilities.
 
     Checks whether times(), adjoint_times(), inverse_times() and
     adjoint_inverse_times() (if in capability list) is implemented
@@ -84,12 +85,15 @@ def check_linear_operator(op, domain_dtype=np.float64, target_dtype=np.float64,
                          only_r_linear)
     _full_implementation(op.adjoint.inverse, domain_dtype, target_dtype, atol,
                          rtol, only_r_linear)
+    _check_sqrt(op, domain_dtype)
+    _check_sqrt(op.adjoint, target_dtype)
+    _check_sqrt(op.inverse, target_dtype)
+    _check_sqrt(op.adjoint.inverse, domain_dtype)
 
 
 def check_operator(op, loc, tol=1e-12, ntries=100, perf_check=True,
                    only_r_differentiable=True, metric_sampling=True):
-    """
-    Performs various checks of the implementation of linear and nonlinear
+    """Performs various checks of the implementation of linear and nonlinear
     operators.
 
     Computes the Jacobian with finite differences and compares it to the
@@ -114,7 +118,7 @@ def check_operator(op, loc, tol=1e-12, ntries=100, perf_check=True,
         test shall try to sample from the metric or not.
     """
     if not isinstance(op, Operator):
-        raise TypeError('This test tests only linear operators.')
+        raise TypeError('This test tests only (nonlinear) operators.')
     _domain_check_nonlinear(op, loc)
     _performance_check(op, loc, bool(perf_check))
     _linearization_value_consistency(op, loc)
@@ -124,7 +128,7 @@ def check_operator(op, loc, tol=1e-12, ntries=100, perf_check=True,
                                metric_sampling)
 
 
-def assert_allclose(f1, f2, atol, rtol):
+def assert_allclose(f1, f2, atol=0, rtol=1e-7):
     if isinstance(f1, Field):
         return np.testing.assert_allclose(f1.val, f2.val, atol=atol, rtol=rtol)
     for key, val in f1.items():
@@ -136,20 +140,6 @@ def assert_equal(f1, f2):
         return np.testing.assert_equal(f1.val, f2.val)
     for key, val in f1.items():
         assert_equal(val, f2[key])
-
-
-def _nozero(fld):
-    if isinstance(fld, Field):
-        return np.testing.assert_((fld != 0).s_all())
-    for val in fld.values():
-        _nozero(val)
-
-
-def _allzero(fld):
-    if isinstance(fld, Field):
-        return np.testing.assert_((fld == 0.).s_all())
-    for val in fld.values():
-        _allzero(val)
 
 
 def _adjoint_implementation(op, domain_dtype, target_dtype, atol, rtol,
@@ -207,32 +197,49 @@ def _domain_check_linear(op, domain_dtype=None, inp=None):
         inp = from_random(op.domain, "normal", dtype=domain_dtype)
     elif inp is None:
         raise ValueError('Need to specify either dtype or inp')
-    assert_(inp.domain is op.domain)
-    assert_(op(inp).domain is op.target)
+    myassert(inp.domain is op.domain)
+    myassert(op(inp).domain is op.target)
+
+
+def _check_sqrt(op, domain_dtype):
+    if not isinstance(op, EndomorphicOperator):
+        try:
+            op.get_sqrt()
+            raise RuntimeError("Operator implements get_sqrt() although it is not an endomorphic operator.")
+        except AttributeError:
+            return
+    try:
+        sqop = op.get_sqrt()
+    except (NotImplementedError, ValueError):
+        return
+    fld = from_random(op.domain, dtype=domain_dtype)
+    a = op(fld)
+    b = (sqop.adjoint @ sqop)(fld)
+    return assert_allclose(a, b, rtol=1e-15)
 
 
 def _domain_check_nonlinear(op, loc):
     _domain_check(op)
-    assert_(isinstance(loc, (Field, MultiField)))
-    assert_(loc.domain is op.domain)
+    myassert(isinstance(loc, (Field, MultiField)))
+    myassert(loc.domain is op.domain)
     for wm in [False, True]:
         lin = Linearization.make_var(loc, wm)
         reslin = op(lin)
-        assert_(lin.domain is op.domain)
-        assert_(lin.target is op.domain)
-        assert_(lin.val.domain is lin.domain)
-        assert_(reslin.domain is op.domain)
-        assert_(reslin.target is op.target)
-        assert_(reslin.val.domain is reslin.target)
-        assert_(reslin.target is op.target)
-        assert_(reslin.jac.domain is reslin.domain)
-        assert_(reslin.jac.target is reslin.target)
-        assert_(lin.want_metric == reslin.want_metric)
+        myassert(lin.domain is op.domain)
+        myassert(lin.target is op.domain)
+        myassert(lin.val.domain is lin.domain)
+        myassert(reslin.domain is op.domain)
+        myassert(reslin.target is op.target)
+        myassert(reslin.val.domain is reslin.target)
+        myassert(reslin.target is op.target)
+        myassert(reslin.jac.domain is reslin.domain)
+        myassert(reslin.jac.target is reslin.target)
+        myassert(lin.want_metric == reslin.want_metric)
         _domain_check_linear(reslin.jac, inp=loc)
         _domain_check_linear(reslin.jac.adjoint, inp=reslin.jac(loc))
         if reslin.metric is not None:
-            assert_(reslin.metric.domain is reslin.metric.target)
-            assert_(reslin.metric.domain is op.domain)
+            myassert(reslin.metric.domain is reslin.metric.target)
+            myassert(reslin.metric.domain is op.domain)
 
 
 def _domain_check(op):
@@ -284,22 +291,22 @@ def _performance_check(op, pos, raise_on_fail):
 def _get_acceptable_location(op, loc, lin):
     if not np.isfinite(lin.val.s_sum()):
         raise ValueError('Initial value must be finite')
-    dir = from_random(loc.domain, dtype=loc.dtype)
-    dirder = lin.jac(dir)
+    direction = from_random(loc.domain, dtype=loc.dtype)
+    dirder = lin.jac(direction)
     if dirder.norm() == 0:
-        dir = dir * (lin.val.norm()*1e-5)
+        direction = direction * (lin.val.norm() * 1e-5)
     else:
-        dir = dir * (lin.val.norm()*1e-5/dirder.norm())
+        direction = direction * (lin.val.norm() * 1e-5 / dirder.norm())
     # Find a step length that leads to a "reasonable" location
     for i in range(50):
         try:
-            loc2 = loc+dir
+            loc2 = loc + direction
             lin2 = op(Linearization.make_var(loc2, lin.want_metric))
             if np.isfinite(lin2.val.s_sum()) and abs(lin2.val.s_sum()) < 1e20:
                 break
         except FloatingPointError:
             pass
-        dir = dir*0.5
+        direction = direction * 0.5
     else:
         raise ValueError("could not find a reasonable initial step")
     return loc2, lin2
@@ -361,21 +368,21 @@ def _jac_vs_finite_differences(op, loc, tol, ntries, only_r_differentiable):
     for _ in range(ntries):
         lin = op(Linearization.make_var(loc))
         loc2, lin2 = _get_acceptable_location(op, loc, lin)
-        dir = loc2-loc
+        direction = loc2 - loc
         locnext = loc2
-        dirnorm = dir.norm()
+        dirnorm = direction.norm()
         hist = []
         for i in range(50):
-            locmid = loc + 0.5*dir
+            locmid = loc + 0.5 * direction
             linmid = op(Linearization.make_var(locmid))
-            dirder = linmid.jac(dir)
-            numgrad = (lin2.val-lin.val)
+            dirder = linmid.jac(direction)
+            numgrad = (lin2.val - lin.val)
             xtol = tol * dirder.norm() / np.sqrt(dirder.size)
-            hist.append((numgrad-dirder).norm())
-#            print(len(hist),hist[-1])
-            if (abs(numgrad-dirder) <= xtol).s_all():
+            hist.append((numgrad - dirder).norm())
+            # print(len(hist),hist[-1])
+            if (abs(numgrad - dirder) <= xtol).s_all():
                 break
-            dir = dir*0.5
+            direction = direction * 0.5
             dirnorm *= 0.5
             loc2, lin2 = locmid, linmid
         else:
@@ -386,3 +393,136 @@ def _jac_vs_finite_differences(op, loc, tol, ntries, only_r_differentiable):
                               target_dtype=dirder.dtype,
                               only_r_linear=only_r_differentiable,
                               atol=tol**2, rtol=tol**2)
+
+
+def minisanity(data, metric_at_pos, modeldata_operator, mean, samples=None):
+    """Log information about the current fit quality and prior compatibility.
+
+    Log a table with fitting information for the likelihood and the prior.
+    Assume that the variables in `energy.position.domain` are standard-normal
+    distributed a priori. The table contains the reduced chi^2 value, the mean
+    and the number of degrees of freedom for every key of a `MultiDomain`. If
+    the domain is a `DomainTuple`, the displayed key is `<None>`.
+
+    If everything is consistent the reduced chi^2 values should be close to one
+    and the mean of the data residuals close to zero. If the reduced chi^2 value
+    in latent space is significantly bigger than one and only one degree of
+    freedom is present, the mean column gives an indication in which direction
+    to change the respective hyper parameters.
+
+    Ignore all NaN entries in the target of `modeldata_operator` and in `data`.
+    Print reduced chi-square values above 2 and 5 in orange and red,
+    respectively.
+
+    Parameters
+    ----------
+    data : Field or MultiField
+        Data which is subtracted from the output of `model_data`.
+
+    metric_at_pos : function
+        Function which takes a `Field` or `MultiField` in the domain of `mean`
+        and returns an endomorphic operator which applies the inverse of the
+        noise covariance in the domain of `data`.
+
+    model_data : Operator
+        Operator which generates model data.
+
+    mean : Field or MultiField
+        Mean of input of `model_data`.
+
+    samples : iterable of Field or MultiField, optional
+        Residual samples around `mean`. Default: no samples.
+
+    Note
+    ----
+    For computing the reduced chi^2 values and the normalized residuals, the
+    metric at `mean` is used.
+
+    """
+    from .logger import logger
+    if not (
+        is_operator(modeldata_operator)
+        and is_fieldlike(data)
+        and is_fieldlike(mean)
+    ):
+        raise TypeError
+    keylen = 18
+    for dom in [data.domain, mean.domain]:
+        if isinstance(dom, MultiDomain):
+            keylen = max([max(map(len, dom.keys())), keylen])
+    keylen = min([keylen, 42])
+    op0 = metric_at_pos(mean).get_sqrt() @ Adder(data, neg=True) @ modeldata_operator
+    op1 = ScalingOperator(mean.domain, 1)
+    if not isinstance(op0.target, MultiDomain):
+        op0 = op0.ducktape_left("<None>")
+    if not isinstance(op1.target, MultiDomain):
+        op1 = op1.ducktape_left("<None>")
+    s = [full(mean.domain, 0.0)] if samples is None else samples
+    xop = op0, op1
+    xkeys = op0.target.keys(), op1.target.keys()
+    xredchisq, xscmean, xndof = 2*[None], 2*[None], 2*[None]
+    for aa in [0, 1]:
+        xredchisq[aa] = {kk: StatCalculator() for kk in xkeys[aa]}
+        xscmean[aa] = {kk: StatCalculator() for kk in xkeys[aa]}
+        xndof[aa] = {}
+    for ii, ss in enumerate(s):
+        for aa in [0, 1]:
+            rr = xop[aa].force(mean.unite(ss))
+            for kk in xkeys[aa]:
+                xredchisq[aa][kk].add(np.nansum(abs(rr[kk].val) ** 2) / rr[kk].size)
+                xscmean[aa][kk].add(np.nanmean(rr[kk].val))
+                xndof[aa][kk] = rr[kk].size - np.sum(np.isnan(rr[kk].val))
+
+    s0 = _tableentries(xredchisq[0], xscmean[0], xndof[0], keylen)
+    s1 = _tableentries(xredchisq[1], xscmean[1], xndof[1], keylen)
+
+    f = logger.info
+    n = 38 + keylen
+    f(n * "=")
+    f(
+        (keylen + 2) * " "
+        + "{:>11}".format("reduced χ²")
+        + "{:>14}".format("mean")
+        + "{:>11}".format("# dof")
+    )
+    f(n * "-")
+    f("Data residuals\n" + s0)
+    f("Latent space\n" + s1)
+    f(n * "=")
+
+
+class _bcolors:
+    WARNING = "\033[33m"
+    FAIL = "\033[31m"
+    ENDC = "\033[0m"
+    BOLD = "\033[1m"
+
+
+def _tableentries(redchisq, scmean, ndof, keylen):
+    out = ""
+    for kk in redchisq.keys():
+        if len(kk) > keylen:
+            out += "  " + kk[: keylen - 1] + "…"
+        else:
+            out += "  " + kk.ljust(keylen)
+        foo = f"{redchisq[kk].mean:.1f}"
+        try:
+            foo += f" ± {np.sqrt(redchisq[kk].var):.1f}"
+        except RuntimeError:
+            pass
+        if redchisq[kk].mean > 5 or redchisq[kk].mean < 1/5:
+            out += _bcolors.FAIL + _bcolors.BOLD + f"{foo:>11}" + _bcolors.ENDC
+        elif redchisq[kk].mean > 2 or redchisq[kk].mean < 1/2:
+            out += _bcolors.WARNING + _bcolors.BOLD + f"{foo:>11}" + _bcolors.ENDC
+        else:
+            out += f"{foo:>11}"
+
+        foo = f"{scmean[kk].mean:.1f}"
+        try:
+            foo += f" ± {np.sqrt(scmean[kk].var):.1f}"
+        except RuntimeError:
+            pass
+        out += f"{foo:>14}"
+        out += f"{ndof[kk]:>11}"
+        out += "\n"
+    return out[:-1]

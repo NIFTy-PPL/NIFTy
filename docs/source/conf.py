@@ -16,7 +16,7 @@ napoleon_use_admonition_for_references = True
 napoleon_include_special_with_doc = True
 
 project = u'NIFTy7'
-copyright = u'2013-2019, Max-Planck-Society'
+copyright = u'2013-2021, Max-Planck-Society'
 author = u'Martin Reinecke'
 
 release = nifty7.version.__version__

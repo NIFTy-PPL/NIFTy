@@ -11,13 +11,13 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
-# Copyright(C) 2013-2019 Max-Planck-Society
+# Copyright(C) 2013-2021 Max-Planck-Society
 #
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
 
 import numpy as np
 from scipy.interpolate import CubicSpline
-from scipy.stats import invgamma, norm
+from scipy.stats import invgamma, laplace, norm
 
 from .. import random
 from ..domain_tuple import DomainTuple
@@ -90,8 +90,7 @@ class _InterpolationOperator(Operator):
 
 
 def InverseGammaOperator(domain, alpha, q, delta=1e-2):
-    """Transforms a Gaussian with unit covariance and zero mean into an
-    inverse gamma distribution.
+    """Transform a standard normal into an inverse gamma distribution.
 
     The pdf of the inverse gamma distribution is defined as follows:
 
@@ -125,10 +124,24 @@ def InverseGammaOperator(domain, alpha, q, delta=1e-2):
     return makeOp(q) @ op
 
 
-class UniformOperator(Operator):
+def LogInverseGammaOperator(domain, alpha, q, delta=1e-2):
+    """Transform a standard normal into the log of an inverse gamma distribution.
+
+    See also
+    --------
+    :class:`InverseGammaOperator`
     """
-    Transforms a Gaussian with unit covariance and zero mean into a uniform
-    distribution. The uniform distribution's support is ``[loc, loc + scale]``.
+    op = _InterpolationOperator(domain, lambda x: np.log(invgamma.ppf(norm._cdf(x), float(alpha))),
+                                -8.2, 8.2, delta)
+    if np.isscalar(q):
+        return op.scale(q)
+    return makeOp(q) @ op
+
+
+class UniformOperator(Operator):
+    """Transform a standard normal into a uniform distribution.
+
+    The uniform distribution's support is ``[loc, loc + scale]``.
 
     Parameters
     ----------
@@ -136,7 +149,6 @@ class UniformOperator(Operator):
         The domain on which the field shall be defined. This is at the same
         time the domain and the target of the operator.
     loc: float
-
     scale: float
 
     """
@@ -158,3 +170,37 @@ class UniformOperator(Operator):
     def inverse(self, field):
         res = norm._ppf(field.val/self._scale - self._loc)
         return Field(field.domain, res)
+
+
+class LaplaceOperator(Operator):
+    """Transform a standard normal to a Laplace distribution.
+
+    Parameters
+    -----------
+    domain : Domain, tuple of Domain or DomainTuple
+        The domain on which the field shall be defined. This is at the same
+        time the domain and the target of the operator.
+    loc : float
+
+    scale : float
+    """
+    def __init__(self, domain, loc=0, scale=1):
+        self._target = self._domain = DomainTuple.make(domain)
+        self._loc = float(loc)
+        self._scale = float(scale)
+
+    def apply(self, x):
+        self._check_input(x)
+        lin = x.jac is not None
+        xval = x.val.val if lin else x.val
+        res = Field(self._target, laplace.ppf(norm._cdf(xval), self._loc, self._scale))
+        if not lin:
+            return res
+        y = norm._cdf(xval)
+        y = self._scale * np.where(y > 0.5, 1/(1-y), 1/y)
+        jac = makeOp(Field(self.domain, y*norm._pdf(xval)))
+        return x.new(res, jac)
+
+    def inverse(self, x):
+        res = laplace._cdf(x.val)
+        return Field(x.domain, res)
