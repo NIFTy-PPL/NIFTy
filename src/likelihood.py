@@ -1,3 +1,5 @@
+from typing import Union, Optional
+
 from jax import jvp, vjp
 from jax import numpy as np
 from jax.tree_util import Partial, tree_leaves, all_leaves, tree_map
@@ -7,7 +9,7 @@ from .sugar import is1d, random_like, random_like_shapewdtype, sum_of_squares
 
 
 class ShapeWithDtype():
-    def __init__(self, shape, dtype=None):
+    def __init__(self, shape: Union[tuple, list], dtype=None):
         if not is1d(shape):
             ve = f"invalid shape; got {shape!r}"
             return ValueError(ve)
@@ -41,9 +43,9 @@ class ShapeWithDtype():
 class Likelihood():
     def __init__(
         self,
-        energy,
-        left_sqrt_metric=None,
-        metric=None,
+        energy: callable,
+        left_sqrt_metric: Optional[callable] = None,
+        metric: Optional[callable] = None,
         lsm_tangents_shape=None
     ):
         self._hamiltonian = energy
@@ -91,7 +93,14 @@ class Likelihood():
         res, _ = cg(Partial(self.metric, primals), tangents, **cg_kwargs)
         return res
 
-    def draw_sample(self, primals, key, from_inverse=False, cg=cg, **cg_kwargs):
+    def draw_sample(
+        self,
+        primals,
+        key,
+        from_inverse: bool = False,
+        cg: callable = cg,
+        **cg_kwargs
+    ):
         if self._lsm_tan_shp is None:
             nie = "Cannot draw sample without knowing the shape of the data"
             raise NotImplementedError(nie)
@@ -107,7 +116,9 @@ class Likelihood():
     def left_sqrt_metric_tangents_shape(self):
         return self._lsm_tan_shp
 
-    def new(self, energy, left_sqrt_metric, metric):
+    def new(
+        self, energy: callable, left_sqrt_metric: callable, metric: callable
+    ):
         return Likelihood(
             energy,
             left_sqrt_metric=left_sqrt_metric,
@@ -183,7 +194,7 @@ class Likelihood():
 
 
 class StandardHamiltonian(Likelihood):
-    def __init__(self, likelihood, _compile_joined=False):
+    def __init__(self, likelihood: Likelihood, _compile_joined: bool = False):
         self._nll = likelihood
 
         def joined_hamiltonian(primals):
