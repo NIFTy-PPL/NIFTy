@@ -24,7 +24,6 @@ from operator import mul
 import numpy as np
 
 from .. import utilities
-from ..logger import logger
 from ..domain_tuple import DomainTuple
 from ..domains.power_space import PowerSpace
 from ..domains.unstructured_domain import UnstructuredDomain
@@ -256,7 +255,7 @@ class _AmplitudeMatern(Operator):
         vol1[1:] = totvol**0.5
         vol0 = Adder(makeField(pow_spc, vol0))
         vol1 = DiagonalOperator(makeField(pow_spc, vol1))
-        op = vol0 @ (vol1 @ op)
+        op = vol0 @ vol1 @ op
 
         # std = sqrt of integral of power spectrum
         self._fluc = op.power(2).integrate().sqrt()

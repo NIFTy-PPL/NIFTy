@@ -26,8 +26,8 @@
 # Demo takes a while to compute
 #############################################################
 
-import sys
 import numpy as np
+
 import nifty7 as ift
 
 

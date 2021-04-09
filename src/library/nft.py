@@ -21,9 +21,9 @@ from scipy.constants import speed_of_light
 from ..domain_tuple import DomainTuple
 from ..domains.rg_space import RGSpace
 from ..domains.unstructured_domain import UnstructuredDomain
+from ..fft import nthreads
 from ..operators.linear_operator import LinearOperator
 from ..sugar import makeDomain, makeField
-from ..fft import nthreads
 
 
 class Gridder(LinearOperator):
