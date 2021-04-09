@@ -110,6 +110,14 @@ run_getting_started_mf:
     paths:
       - '*.png'
 
+run_getting_density:
+  stage: demo_runs
+  script:
+    - python3 demos/getting_started_density.py
+  artifacts:
+    paths:
+      - '*.png'
+
 run_bernoulli:
   stage: demo_runs
   script:
