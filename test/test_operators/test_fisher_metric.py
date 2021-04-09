@@ -61,7 +61,7 @@ def test_complex2real():
     assert np.all((f == op(op.adjoint_times(f))).val)
 
 
-def energy_tester(pos, get_noisy_data, energy_initializer, assume_diagonal=None):
+def energy_tester(pos, get_noisy_data, energy_initializer, assume_diagonal=False):
     if isinstance(pos, ift.Field):
         if np.issubdtype(pos.dtype, np.complexfloating):
             op = _complex2real(pos.domain)
