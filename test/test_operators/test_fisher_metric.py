@@ -135,18 +135,17 @@ def test_VariableCovarianceGaussianEnergy(dtype):
     dom = ift.UnstructuredDomain(3)
     res = ift.from_random(dom, 'normal', dtype=dtype)
     ivar = ift.from_random(dom, 'normal')**2+4.
-    mf = ift.MultiField.from_dict({'res':res, 'ivar':ivar})
+    mf = ift.MultiField.from_dict({'res': res, 'ivar': ivar})
     energy = ift.VariableCovarianceGaussianEnergy(dom, 'res', 'ivar', dtype)
     def get_noisy_data(mean):
         samp = ift.from_random(dom, 'normal', dtype)
         samp = samp/mean['ivar'].sqrt()
         return samp + mean['res']
     def E_init(data):
-        adder = ift.Adder(ift.MultiField.from_dict({'res':data}), neg=True)
+        adder = ift.Adder(ift.MultiField.from_dict({'res': data}), neg=True)
         return energy.partial_insert(adder)
     energy_tester(mf, get_noisy_data, E_init, assume_diagonal=True)
 
 
 def normal(dtype, shape):
     return ift.random.Random.normal(dtype, shape)
-
