@@ -92,10 +92,7 @@ def density_estimator(
 
 
 if __name__ == "__main__":
-    # Preparing the filename string for store results
     filename = "getting_started_density_{}.png"
-
-    # Set the random seed
     ift.random.push_sseq_from_seed(42)
 
     # Set up signal domain
@@ -109,6 +106,7 @@ if __name__ == "__main__":
     correlated_field = ops["correlated_field"]
 
     data_space = signal.target
+
     # Generate mock signal and data
     rng = ift.random.current_rng()
     mock_position = ift.from_random(signal.domain, 'normal')
@@ -116,7 +114,7 @@ if __name__ == "__main__":
         data_space, rng.poisson(signal(mock_position).val)
     )
 
-    # Rejoining domains for ift plotting routine
+    # Rejoin domains for plotting
     plotting_domain = ift.DomainTuple.make(ift.RGSpace((npix1, npix2)))
     plotting_domain_expanded = ift.DomainTuple.make(
         ift.RGSpace((2 * npix1, 2 * npix2))
@@ -150,14 +148,14 @@ if __name__ == "__main__":
     ic_newton.enable_logging()
     minimizer = ift.NewtonCG(ic_newton, enable_logging=True)
 
-    # number of samples used to estimate the KL
+    # Number of samples used to estimate the KL
     n_samples = 5
 
     # Set up likelihood and information Hamiltonian
     likelihood = ift.PoissonianEnergy(data) @ signal
     ham = ift.StandardHamiltonian(likelihood, ic_sampling)
 
-    # Begin minimization
+    # Start minimization
     initial_mean = ift.MultiField.full(ham.domain, 0.)
     mean = initial_mean
 
@@ -212,7 +210,6 @@ if __name__ == "__main__":
         sc_unsliced.add(ift.exp(correlated_field(sample + kl.position)))
 
     # Plotting
-    filename_res = filename.format("results")
     plot = ift.Plot()
     plot.add(
         ift.Field.from_raw(plotting_domain, sc.mean.val),
@@ -234,6 +231,6 @@ if __name__ == "__main__":
         ),
         title="Posterior Unsliced Standard Deviation"
     )
-
+    filename_res = filename.format("results")
     plot.output(ny=2, nx=2, xsize=15, ysize=15, name=filename_res)
     print("Saved results as '{}'.".format(filename_res))
