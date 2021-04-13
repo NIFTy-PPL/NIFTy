@@ -1,13 +1,32 @@
 Changes since NIFTy 6
 =====================
 
+New parametric amplitude model
+------------------------------
+
+The `ift.CorrelatedFieldMaker` now features two amplitude models. In addition
+to the non-parametric one, one may choose to use a Matern kernel instead. The
+method is aptly named `add_fluctuations_matern`. The major advantage of the
+parametric model is its more intuitive scaling with the size of the position
+space.
+
 CorrelatedFieldMaker interface change
 -------------------------------------
 
-The interface of `ift.CorrelatedFieldMaker.make` and
-`ift.CorrelatedFieldMaker.add_fluctuations` changed; it now expects the mean
-and the standard deviation of their various parameters not as separate
-arguments but as a tuple.
+The interface of `ift.CorrelatedFieldMaker` changed and instances of it may now
+be instantiated directly without the previously required `make` method. Upon
+initialization, no zero-mode must be specified as the normalization for the
+different axes of the power respectively amplitude spectrum now only happens
+once in the `finalize` method. There is now a new call named
+`set_amplitude_total_offset` to set the zero-mode. The method accepts either an
+instance of `ift.Operator` or a tuple parameterizing a log-normal parameter.
+Methods which require the zero-mode to be set raise a `NotImplementedError` if
+invoked prior to having specified a zero-mode.
+
+Furthermore, the interface of `ift.CorrelatedFieldMaker.add_fluctuations`
+changed; it now expects the mean and the standard deviation of their various
+parameters not as separate arguments but as a tuple. The same applies to all
+new and renamed methods of the `CorrelatedFieldMaker` class.
 
 Furthermore, it is now possible to disable the asperity and the flexibility
 together with the asperity in the correlated field model. Note that disabling
