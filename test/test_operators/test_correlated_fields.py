@@ -11,7 +11,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
-# Copyright(C) 2013-2020 Max-Planck-Society
+# Copyright(C) 2013-2021 Max-Planck-Society
 #
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
 
@@ -71,7 +71,7 @@ def test_init(total_N, asperity, flexibility, ind, matern):
         pytest.skip()
     cfg = 1, 1
     for dofdex in ([None], [None, [0]], [None, [0, 0], [0, 1], [1, 1]])[total_N]:
-        cfm = ift.CorrelatedFieldMaker.make(0, cfg, '', total_N, dofdex)
+        cfm = ift.CorrelatedFieldMaker('', total_N)
         cfm.add_fluctuations(ift.RGSpace(4), cfg, flexibility, asperity, (-2, 0.1))
         if matern:
             if total_N == 0:
@@ -81,7 +81,8 @@ def test_init(total_N, asperity, flexibility, ind, matern):
                     cfm.add_fluctuations_matern(ift.RGSpace(4), *(3*[cfg]))
         else:
             cfm.add_fluctuations(ift.RGSpace(4), *(4*[cfg]), index=ind)
-        cfm.finalize(0)
+        cfm.set_amplitude_total_offset(0, cfg, dofdex=dofdex)
+        cfm.finalize(prior_info=0)
 
 
 @pmp('sspace', spaces)
@@ -94,13 +95,13 @@ def testAmplitudesInvariants(sspace, N):
 
     astds = 0.2, 1.2
     offset_std_mean = 1.3
-    fa = ift.CorrelatedFieldMaker.make(1.2, (offset_std_mean, 1e-2), '', N,
-                                       dofdex1)
+    fa = ift.CorrelatedFieldMaker('', N)
     fa.add_fluctuations(sspace, (astds[0], 1e-2), (1.1, 2.), (2.1, .5), (-2, 1.),
                         'spatial', dofdex=dofdex2)
     fa.add_fluctuations(fsspace, (astds[1], 1e-2), (3.1, 1.), (.5, .1), (-4, 1.),
                         'freq', dofdex=dofdex3)
-    op = fa.finalize()
+    fa.set_amplitude_total_offset(1.2, (offset_std_mean, 1e-2), dofdex=dofdex1)
+    op = fa.finalize(prior_info=0)
 
     samples = [ift.from_random(op.domain) for _ in range(100)]
     tot_flm, _ = _stats(fa.total_fluctuation, samples)
@@ -126,21 +127,22 @@ def testAmplitudesInvariants(sspace, N):
     assert_allclose(slice_fluct_std0, sl_fluct_space, rtol=0.5)
     assert_allclose(slice_fluct_std1, sl_fluct_freq, rtol=0.5)
 
-    fa = ift.CorrelatedFieldMaker.make(0., (offset_std_mean, .1), '', N, dofdex1)
+    fa = ift.CorrelatedFieldMaker('', N)
+    fa.set_amplitude_total_offset(0., (offset_std_mean, .1), dofdex=dofdex1)
     fa.add_fluctuations(fsspace, (astds[1], 1.), (3.1, 1.), (.5, .1), (-4, 1.), 'freq',
                         dofdex=dofdex3)
     m = 3.
     x = fa.moment_slice_to_average(m)
     fa.add_fluctuations(sspace, (x, 1.5), (1.1, 2.), (2.1, .5), (-2, 1.), 'spatial', 0,
                         dofdex=dofdex2)
-    op = fa.finalize()
+    op = fa.finalize(prior_info=0)
     em, estd = _stats(fa.slice_fluctuation(0), samples)
 
     assert_allclose(m, em, rtol=0.5)
     assert op.target[-2] == sspace
     assert op.target[-1] == fsspace
 
-    for ampl in fa.normalized_amplitudes:
+    for ampl in fa.get_normalized_amplitudes():
         ift.extra.check_operator(ampl, 0.1*ift.from_random(ampl.domain), ntries=10)
     ift.extra.check_operator(op, 0.1*ift.from_random(op.domain), ntries=10)
 
@@ -180,7 +182,7 @@ def test_complicated_vs_simple(seed, domain, without):
             asperity,
             loglogavgslope
         )
-        cfm = ift.CorrelatedFieldMaker.make(offset_mean, offset_std, prefix)
+        cfm = ift.CorrelatedFieldMaker(prefix)
         if asperity is not None and flexibility is None:
             with pytest.raises(ValueError):
                 scf = ift.SimpleCorrelatedField(*scf_args, prefix=prefix,
@@ -193,8 +195,9 @@ def test_complicated_vs_simple(seed, domain, without):
                                         harmonic_partner=hspace)
         cfm.add_fluctuations(*add_fluct_args, prefix='',
                              harmonic_partner=hspace)
+        cfm.set_amplitude_total_offset(offset_mean, offset_std)
         inp = ift.from_random(scf.domain)
-        op1 = cfm.finalize()
+        op1 = cfm.finalize(prior_info=0)
         assert scf.domain is op1.domain
         ift.extra.assert_allclose(scf(inp), op1(inp))
         ift.extra.check_operator(scf, inp, ntries=10)

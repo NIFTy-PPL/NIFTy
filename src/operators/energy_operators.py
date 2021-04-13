@@ -171,7 +171,7 @@ class VariableCovarianceGaussianEnergy(EnergyOperator):
             res = 0.5*(r.vdot(r*i) - i.ptw("log").sum())
         if not x.want_metric:
             return res
-        met = 1. if self._cplx else 0.5
+        met = 1. if self._cplx else .5
         met = MultiField.from_dict({self._kr: i.val, self._ki: met*i.val**(-2)},
                                     domain=self._domain)
         return res.add_metric(SamplingDtypeSetter(makeOp(met), self._dt))

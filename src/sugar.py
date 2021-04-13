@@ -479,7 +479,7 @@ def exec_time(obj, want_metric=True):
         res = obj(lin)
         logger.info('Operator call with linearization: {}'.format(time() - t0))
 
-        if isinstance(obj, EnergyOperator):
+        if obj.target is DomainTuple.scalar_domain():
             t0 = time()
             res.gradient
             logger.info('Gradient evaluation: {}'.format(time() - t0))

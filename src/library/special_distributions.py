@@ -23,6 +23,7 @@ from .. import random
 from ..domain_tuple import DomainTuple
 from ..domains.unstructured_domain import UnstructuredDomain
 from ..field import Field
+from ..operators.adder import Adder
 from ..operators.operator import Operator
 from ..sugar import makeOp
 
@@ -122,6 +123,19 @@ def InverseGammaOperator(domain, alpha, q, delta=1e-2):
     if np.isscalar(q):
         return op.scale(q)
     return makeOp(q) @ op
+
+
+def LogInverseGammaOperator(domain, alpha, q, delta=1e-2):
+    """Transform a standard normal into the log of an inverse gamma distribution.
+
+    See also
+    --------
+    :class:`InverseGammaOperator`
+    """
+    op = _InterpolationOperator(domain, lambda x: np.log(invgamma.ppf(norm._cdf(x), float(alpha))),
+                                -8.2, 8.2, delta)
+    q = np.log(q) if np.isscalar(q) else q.log()
+    return Adder(q, domain=op.target) @ op
 
 
 class UniformOperator(Operator):

@@ -11,7 +11,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
-# Copyright(C) 2020 Max-Planck-Society
+# Copyright(C) 2020-2021 Max-Planck-Society
 # Author: Martin Reinecke
 #
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
@@ -157,7 +157,7 @@ def exponentiate(v, base):
 
 def _exponentiate_helper(v, base):
     tmp = np.power(base, v)
-    return (tmp , np.log(base) * tmp)
+    return (tmp, np.log(base) * tmp)
 
 
 ptw_dict = {
