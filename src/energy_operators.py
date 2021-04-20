@@ -6,6 +6,13 @@ from jax.tree_util import tree_map
 from .likelihood import Likelihood, ShapeWithDtype
 
 
+def _shape_w_fixed_dtype(dtype):
+    def shp_w_dtp(e):
+        return ShapeWithDtype(np.shape(e), dtype)
+
+    return shp_w_dtp
+
+
 def Gaussian(
     data,
     noise_cov_inv: Optional[callable] = None,
@@ -71,7 +78,7 @@ def Gaussian(
     )
 
 
-def Categorical(data, axis=-1):
+def Categorical(data, axis=-1, sampling_dtype=float):
     """Categorical likelihood of the data, equivalent to cross entropy
 
     Parameters
@@ -81,6 +88,8 @@ def Categorical(data, axis=-1):
         Must agree with the input shape except for the shape[axis]
     axis: int
         Axis over which the categories are formed
+    sampling_dtype : dtype, optional
+        Data-type for sampling.
     """
     def hamiltonian(primals):
         from jax.nn import log_softmax
@@ -101,7 +110,7 @@ def Categorical(data, axis=-1):
         norm_term = np.sum(sqrtp * tangents, axis=axis, keepdims=True)
         return sqrtp * (tangents - sqrtp * norm_term)
 
-    lsm_tangents_shape = tree_map(ShapeWithDtype.from_leave, data)
+    lsm_tangents_shape = tree_map(_shape_w_fixed_dtype(sampling_dtype), data)
 
     return Likelihood(
         hamiltonian,
