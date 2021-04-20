@@ -78,6 +78,55 @@ def Gaussian(
     )
 
 
+def Poissonian(data, sampling_dtype=float):
+    """Computes the negative log-likelihood, i.e. the Hamiltonians of an
+    expected count field constrained by Poissonian count data.
+
+    Represents up to an f-independent term :math:`log(d!)`:
+
+    .. math ::
+        E(f) = -\\log \\text{Poisson}(d|f) = \\sum f - d^\\dagger \\log(f),
+
+    where f is a field in data space of the expectation values for the counts.
+
+    Parameters
+    ----------
+    data : ndarray of uint
+        Data field with counts. Needs to have integer dtype and all values need
+        to be non-negative.
+    sampling_dtype : dtype, optional
+        Data-type for sampling.
+    """
+    import numpy as onp
+
+    if isinstance(data, (np.ndarray, onp.ndarray)):
+        dtp = data.dtype
+    else:
+        dtp = onp.common_type(data)
+    if not np.issubdtype(dtp, np.integer):
+        raise TypeError("`data` of invalid type")
+    if np.any(data < 0):
+        raise ValueError("`data` may not be negative")
+
+    def hamiltonian(primals):
+        return np.sum(primals) - np.vdot(np.log(primals), data)
+
+    def metric(primals, tangents):
+        return tangents / primals
+
+    def left_sqrt_metric(primals, tangents):
+        return tangents / np.sqrt(primals)
+
+    lsm_tangents_shape = tree_map(_shape_w_fixed_dtype(sampling_dtype), data)
+
+    return Likelihood(
+        hamiltonian,
+        left_sqrt_metric=left_sqrt_metric,
+        metric=metric,
+        lsm_tangents_shape=lsm_tangents_shape
+    )
+
+
 def Categorical(data, axis=-1, sampling_dtype=float):
     """Categorical likelihood of the data, equivalent to cross entropy
 
