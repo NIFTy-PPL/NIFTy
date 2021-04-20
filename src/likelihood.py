@@ -114,7 +114,7 @@ class Likelihood():
             else:
                 leaves = tree_leaves(lsm_tangents_shape)
                 if not all(isinstance(e, ShapeWithDtype) for e in leaves):
-                    te = "objects of invalid type in tangent shapes"
+                    te = "`lsm_tangent_shapes` of invalid type"
                     raise TypeError(te)
         self._lsm_tan_shp = lsm_tangents_shape
 
