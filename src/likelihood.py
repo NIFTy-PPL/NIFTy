@@ -132,7 +132,7 @@ class Likelihood():
         return self.energy(primals)
 
     def energy(self, primals):
-        """Applies the metric at `primals` to `tangents`.
+        """Applies the energy to `primals`.
 
         Parameters
         ----------

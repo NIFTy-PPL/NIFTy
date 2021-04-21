@@ -249,10 +249,10 @@ def Categorical(data, axis=-1, sampling_dtype=float):
 
     Parameters
     ----------
-    data: sequence of int
+    data : sequence of int
         An array stating which of the categories is the realized in the data.
         Must agree with the input shape except for the shape[axis]
-    axis: int
+    axis : int
         Axis over which the categories are formed
     sampling_dtype : dtype, optional
         Data-type for sampling.
