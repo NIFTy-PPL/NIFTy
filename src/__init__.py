@@ -3,6 +3,7 @@ from .energy_operators import (
     Gaussian, Poissonian, VariableCovarianceGaussian,
     VariableCovarianceStudentT, Categorical
 )
+from .kl import MetricKL
 from .field import Field
 from .optimize import newton_cg, cg, static_cg
 from .correlated_field import CorrelatedFieldMaker, non_parametric_amplitude

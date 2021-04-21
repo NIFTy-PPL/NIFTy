@@ -65,8 +65,7 @@ if __name__ == "__main__":
 
     nll = jft.Gaussian(data, noise_cov_inv) @ signal_response
     ham = jft.StandardHamiltonian(likelihood=nll).jit()
-    draw = lambda p, k: ham.draw_sample(p, key=k, from_inverse=True)
-    ham_energy_vg = jit(value_and_grad(ham))
+    ham_vg = jit(value_and_grad(ham))
 
     key, subkey = random.split(key)
     pos_init = random.normal(shape=dims, key=subkey)
@@ -75,31 +74,34 @@ if __name__ == "__main__":
     # Minimize the potential
     for i in range(n_mgvi_iterations):
         print(f"MGVI Iteration {i}", file=sys.stderr)
-        key, *subkeys = random.split(key, 1 + n_samples)
         print("Sampling...", file=sys.stderr)
-        samples = []
-        samples = [draw(pos, k) for k in subkeys]
-        samples += [-s for s in samples]
-
-        def energy_vg(p):
-            return jft.mean(tuple(ham_energy_vg(p + s) for s in samples))
-
-        def met(p, t):
-            return jft.mean(tuple(ham.metric(p + s, t) for s in samples))
+        key, subkey = random.split(key, 2)
+        mkl = jft.MetricKL(
+            ham,
+            pos,
+            n_samples=n_samples,
+            key=subkey,
+            mirror_samples=True,
+            hamiltonian_and_gradient=ham_vg
+        )
 
         print("Minimizing...", file=sys.stderr)
         # TODO: Re-introduce a simplified version that works without fields
-        pos = jft.newton_cg(pos, energy_vg, met, n_newton_iterations)
+        pos = jft.newton_cg(
+            pos, mkl.energy_and_gradient, mkl.metric, n_newton_iterations
+        )
         print(
             (
-                f"Post MGVI Iteration {i}: Energy {energy_vg(pos)[0]:2.4e}"
+                f"Post MGVI Iteration {i}: Energy {mkl(pos):2.4e}"
                 f"; Cos-Sim {cosine_similarity(pos.val, pos_truth.val):2.3%}"
                 f"; #NaNs {np.isnan(pos.val).sum()}"
             ),
             file=sys.stderr
         )
 
-    post_sr_mean = jft.mean(tuple(signal_response(pos + s) for s in samples))
+    post_sr_mean = jft.mean(
+        tuple(signal_response(pos + s) for s in mkl.samples)
+    )
     fig, ax = plt.subplots()
     ax.plot(signal_response_truth, alpha=0.7, label="Signal")
     ax.plot(noise_truth, alpha=0.7, label="Noise")

@@ -53,8 +53,7 @@ if __name__ == "__main__":
 
     nll = jft.Gaussian(data, noise_cov_inv) @ signal_response
     ham = jft.StandardHamiltonian(likelihood=nll).jit()
-    draw = lambda p, k: ham.draw_sample(p, key=k, from_inverse=True)
-    ham_energy_vg = jit(value_and_grad(ham))
+    ham_vg = jit(value_and_grad(ham))
 
     key, subkey = random.split(key)
     pos_init = jft.random_like_shapewdtype(ptree, key=subkey)
@@ -63,26 +62,28 @@ if __name__ == "__main__":
     # Minimize the potential
     for i in range(n_mgvi_iterations):
         print(f"MGVI Iteration {i}", file=sys.stderr)
-        key, *subkeys = random.split(key, 1 + n_samples)
         print("Sampling...", file=sys.stderr)
-        samples = []
-        samples = [draw(pos, k) for k in subkeys]
-        samples += [-s for s in samples]
-
-        def energy_vg(p):
-            return jft.mean(tuple(ham_energy_vg(p + s) for s in samples))
-
-        def met(p, t):
-            return jft.mean(tuple(ham.metric(p + s, t) for s in samples))
+        key, subkey = random.split(key, 2)
+        mkl = jft.MetricKL(
+            ham,
+            pos,
+            n_samples=n_samples,
+            key=subkey,
+            mirror_samples=True,
+            hamiltonian_and_gradient=ham_vg
+        )
 
         print("Minimizing...", file=sys.stderr)
-        pos = jft.newton_cg(pos, energy_vg, met, n_newton_iterations)
-        msg = f"Post MGVI Iteration {i}: Energy {energy_vg(pos)[0]:2.4e}"
+        pos = jft.newton_cg(
+            pos, mkl.energy_and_gradient, mkl.metric, n_newton_iterations
+        )
+        msg = f"Post MGVI Iteration {i}: Energy {mkl(pos):2.4e}"
         print(msg, file=sys.stderr)
 
     namps = cfm.get_normalized_amplitudes()
-    post_sr_mean = jft.mean(tuple(signal_response(pos + s) for s in samples))
-    post_a_mean = jft.mean(tuple(cfm.amplitude(pos + s)[1:] for s in samples))
+    smpls = mkl.samples
+    post_sr_mean = jft.mean(tuple(signal_response(pos + s) for s in smpls))
+    post_a_mean = jft.mean(tuple(cfm.amplitude(pos + s)[1:] for s in smpls))
     to_plot = [
         ("Signal", signal_response_truth, "im"),
         ("Noise", noise_truth, "im"),
