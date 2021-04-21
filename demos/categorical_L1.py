@@ -1,4 +1,5 @@
 from jax.config import config
+
 config.update("jax_enable_x64", True)
 
 import sys
@@ -16,7 +17,7 @@ def build_model(predictors, targets, sh, alpha=1):
     matrix = lambda x: my_laplace_prior(x).reshape(sh)
     model = lambda x: np.matmul(predictors, matrix(x))
     lh = jft.Categorical(targets, axis=1)
-    return {"lh":lh @ model, "logits": model, "matrix": matrix}
+    return {"lh": lh @ model, "logits": model, "matrix": matrix}
 
 
 if __name__ == "__main__":
@@ -35,11 +36,13 @@ if __name__ == "__main__":
     # Create synthetic data
     mock_predictors = random.normal(shape=(N_data, N_predictors), key=key)
     key, subkey = random.split(key)
-    model = build_model(mock_predictors,
-            np.zeros((N_data, 1), dtype=np.int32),
-            (N_predictors, N_categories))
-    latent_truth = random.normal(shape=(N_predictors*N_categories,),
-            key=subkey)
+    model = build_model(
+        mock_predictors, np.zeros((N_data, 1), dtype=np.int32),
+        (N_predictors, N_categories)
+    )
+    latent_truth = random.normal(
+        shape=(N_predictors * N_categories, ), key=subkey
+    )
     key, subkey = random.split(key)
     matrix_truth = model["matrix"](latent_truth)
     logits_truth = model["logits"](latent_truth)
@@ -48,12 +51,14 @@ if __name__ == "__main__":
     key, subkey = random.split(key)
     mock_targets = mock_targets.reshape(N_data, 1)
 
-    model = build_model(mock_predictors, mock_targets,
-        (N_predictors, N_categories))
+    model = build_model(
+        mock_predictors, mock_targets, (N_predictors, N_categories)
+    )
     ham = jft.StandardHamiltonian(likelihood=model["lh"]).jit()
 
-    pos_init = .1*random.normal(shape=(N_predictors*N_categories,),
-            key=subkey)
+    pos_init = .1 * random.normal(
+        shape=(N_predictors * N_categories, ), key=subkey
+    )
     key, subkey = random.split(key)
     pos = pos_init.copy()
 
@@ -61,12 +66,13 @@ if __name__ == "__main__":
     print(f"Initial diff to truth {diff_to_truth}", file=sys.stderr)
 
     def energy(p, samps):
-        return np.mean(np.array([ham(p+s) for s in samps]), axis=0)
+        return np.mean(np.array([ham(p + s) for s in samps]), axis=0)
+
     energy_vag = jit(value_and_grad(energy))
 
     @jit
     def metric(p, t, samps):
-        results = [ham.metric(p+s, t) for s in samps]
+        results = [ham.metric(p + s, t) for s in samps]
         return np.mean(np.array(results), axis=0)
     # Preform MGVI loop
     for i in range(n_mgvi_iterations):
@@ -77,7 +83,7 @@ if __name__ == "__main__":
         samples = [draw(k) for k in subkeys]
 
         Evag = lambda p: energy_vag(p, samples)
-        met = lambda p,t: metric(p, t, samples)
+        met = lambda p, t: metric(p, t, samples)
         pos = jft.newton_cg(pos, Evag, met, n_newton_iterations)
         diff_to_truth = np.linalg.norm(model["matrix"](pos) - matrix_truth)
         print(
@@ -88,18 +94,20 @@ if __name__ == "__main__":
             file=sys.stderr
         )
 
-    posterior_samps = [s+pos for s in samples]
+    posterior_samps = [s + pos for s in samples]
     import matplotlib.pyplot as plt
     matrix_samps = np.array([model["matrix"](s) for s in posterior_samps])
     matrix_mean = np.mean(matrix_samps, axis=0)
     matrix_std = np.std(matrix_samps, axis=0)
     xx = np.linspace(-3.5, 3.5, 2)
     plt.plot(xx, xx)
-    plt.errorbar(matrix_truth.reshape(-1),
-            matrix_mean.reshape(-1),
-            yerr=matrix_std.reshape(-1),
-            fmt='o',
-            color="black")
+    plt.errorbar(
+        matrix_truth.reshape(-1),
+        matrix_mean.reshape(-1),
+        yerr=matrix_std.reshape(-1),
+        fmt='o',
+        color="black"
+    )
     plt.xlabel("truth")
     plt.ylabel("inferred value")
     plt.savefig("matrix_fit.png", dpi=400)
