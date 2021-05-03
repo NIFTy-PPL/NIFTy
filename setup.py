@@ -20,9 +20,13 @@ from setuptools import find_packages, setup
 
 def write_version():
     import subprocess
-    p = subprocess.Popen(["git", "describe", "--dirty", "--tags", "--always"],
-                         stdout=subprocess.PIPE)
-    res = p.communicate()[0].strip().decode('utf-8')
+    try:
+        p = subprocess.Popen(["git", "describe", "--dirty", "--tags", "--always"],
+                             stdout=subprocess.PIPE)
+        res = p.communicate()[0].strip().decode('utf-8')
+    except FileNotFoundError:
+        print("Could not determine version string from git history")
+        res = "unknown"
     with open("nifty7/git_version.py", "w") as file:
         file.write('gitversion = "{}"\n'.format(res))
 
