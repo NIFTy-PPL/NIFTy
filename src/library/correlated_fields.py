@@ -675,7 +675,11 @@ class CorrelatedFieldMaker:
                 raise ValueError("length of dofdex needs to match total_N")
             N = max(dofdex) + 1 if self._total_N > 0 else 0
             if len(offset_std) != 2:
-                raise TypeError
+                te = (
+                    "`offset_std` of invalid type and/or shape"
+                    f"; expected a 2D tuple of floats; got '{offset_std!r}'"
+                )
+                raise TypeError(te)
             zm = LognormalTransform(*offset_std, self._prefix + 'zeromode', N)
             if self._total_N > 0:
                 zm = _Distributor(dofdex, zm.target, UnstructuredDomain(self._total_N)) @ zm
