@@ -59,12 +59,10 @@ def SimpleCorrelatedField(
     else:
         target.check_codomain(harmonic_partner)
         harmonic_partner.check_codomain(target)
-    for kk in [offset_std, fluctuations, loglogavgslope]:
+    for kk in (fluctuations, loglogavgslope):
         if len(kk) != 2:
             raise TypeError
-    if not (offset_std is None or len(offset_std) == 2):
-        raise TypeError
-    for kk in [flexibility, asperity]:
+    for kk in (offset_std, flexibility, asperity):
         if not (kk is None or len(kk) == 2):
             raise TypeError
     if flexibility is None and asperity is not None:
