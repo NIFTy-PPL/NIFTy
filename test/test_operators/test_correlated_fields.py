@@ -87,6 +87,35 @@ def test_init(total_N, offset_std, asperity, flexibility, ind, matern):
 
 
 @pmp('sspace', spaces)
+@pmp('asperity', [None, (1, 1)])
+@pmp('flexibility', [None, (1, 1)])
+@pmp('matern', [True, False])
+def test_constant_zero_mode(sspace, asperity, flexibility, matern):
+    if flexibility is None and asperity is not None:
+        pytest.skip()
+    cfg = 1, 1
+    cfm = ift.CorrelatedFieldMaker('')
+    if matern:
+        cfm.add_fluctuations_matern(sspace, *(3 * [cfg]))
+    else:
+        cfm.add_fluctuations(sspace, *(4 * [cfg]))
+    cfm.set_amplitude_total_offset(0, None)
+    cf = cfm.finalize(prior_info=0)
+
+    r = ift.from_random(cf.domain).to_dict()
+    r_xi = np.copy(r["xi"].val)
+    r_xi[0] = 1.
+    r["xi"] = ift.Field(r["xi"].domain, r_xi)
+    r = ift.MultiField.from_dict(r)
+
+    cf_r = cf(r)
+    rtol = 1e-7
+    if isinstance(sspace, (ift.HPSpace, ift.GLSpace)):
+        rtol = 1e-2
+    assert_allclose(cf_r.s_integrate(), sspace.total_volume, rtol=rtol)
+
+
+@pmp('sspace', spaces)
 @pmp('N', [0, 2])
 def testAmplitudesInvariants(sspace, N):
     fsspace = ift.RGSpace((12,), (0.4,))
