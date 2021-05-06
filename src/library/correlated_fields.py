@@ -642,9 +642,15 @@ class CorrelatedFieldMaker:
         ----------
         offset_mean : float
             Mean offset from zero of the correlated field to be made.
-        offset_std : tuple of float or instance of :class:`~nifty7.operators.operator.Operator` acting on scalar domain
+        offset_std : tuple of float, instance of \
+                :class:`~nifty7.operators.operator.Operator` acting on scalar \
+                domain, scalar or None
             Mean standard deviation and standard deviation of the standard
             deviation of the offset. No, this is not a word duplication.
+            The option to specify `None` or equivalently a scalar value of `1.`
+            only really makes sense for one dimensional amplitude spectral.
+            Take special care if using this option for multi-dimensional
+            amplitude spectra that this is really what you want.
         dofdex : np.array of integers, optional
             An integer array specifying the zero mode models used if
             total_N > 1. It needs to have length of total_N. If total_N=3 and
@@ -658,7 +664,9 @@ class CorrelatedFieldMaker:
             logger.warning("Overwriting the previous mean offset and zero-mode")
 
         self._offset_mean = offset_mean
-        if isinstance(offset_std, Operator):
+        if offset_std is None or (np.isscalar(offset_std) and offset_std == 1.):
+            self._azm = 1.
+        elif isinstance(offset_std, Operator):
             self._azm = offset_std
         else:
             if dofdex is None:
@@ -704,10 +712,10 @@ class CorrelatedFieldMaker:
                                            self._target_subdomains[i][amp_space],
                                            space=spaces[i]) @ ht
 
-        expander = ContractionOperator(hspace, spaces=spaces).adjoint
-        azm = expander @ self.azm
-
-        a = list(self.get_normalized_amplitudes())
+        if np.isscalar(self.azm):
+            a = list(self.fluctuations)
+        else:
+            a = list(self.get_normalized_amplitudes())
         for ii in range(n_amplitudes):
             co = ContractionOperator(hspace, spaces[:ii] + spaces[ii + 1:])
             pp = a[ii].target[amp_space]
@@ -715,7 +723,12 @@ class CorrelatedFieldMaker:
             a[ii] = co.adjoint @ pd @ a[ii]
         corr = reduce(mul, a)
         xi = ducktape(hspace, None, self._prefix + 'xi')
-        op = ht(azm * corr * xi)
+        if np.isscalar(self.azm):
+            op = ht(corr * xi)
+        else:
+            expander = ContractionOperator(hspace, spaces=spaces).adjoint
+            azm = expander @ self.azm
+            op = ht(azm * corr * xi)
 
         if self._offset_mean is not None:
             offset = self._offset_mean
@@ -772,7 +785,15 @@ class CorrelatedFieldMaker:
         The amplitude operators are corrected for the otherwise degenerate
         zero-mode. Their scales are only meaningful relative to one another.
         Their absolute scale bares no information.
+
+        Notes
+        -----
+        In the case of no zero-mode, i.e. an assumed zero-mode of unity, this
+        call is equivalent to the `fluctuations` property.
         """
+        if np.isscalar(self.azm):
+            return self.fluctuations
+
         normal_amp = []
         for amp in self._a:
             a_target = amp.target
@@ -808,10 +829,13 @@ class CorrelatedFieldMaker:
             raise NotImplementedError(s)
         normal_amp = self.get_normalized_amplitudes()[0]
 
-        expand = ContractionOperator(
-            normal_amp.target, len(normal_amp.target) - 1
-        ).adjoint
-        return normal_amp * (expand @ self.azm)
+        if np.isscalar(self.azm):
+            return normal_amp
+        else:
+            expand = ContractionOperator(
+                normal_amp.target, len(normal_amp.target) - 1
+            ).adjoint
+            return normal_amp * (expand @ self.azm)
 
     @property
     def power_spectrum(self):
