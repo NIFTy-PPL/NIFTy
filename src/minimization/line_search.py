@@ -138,8 +138,8 @@ class LineSearch(metaclass=NiftyMeta):
                  max_zoom_iterations=100):
 
         self.preferred_initial_step_size = preferred_initial_step_size
-        self.c1 = np.float(c1)
-        self.c2 = np.float(c2)
+        self.c1 = float(c1)
+        self.c2 = float(c2)
         self.max_step_size = max_step_size
         self.max_iterations = int(max_iterations)
         self.max_zoom_iterations = int(max_zoom_iterations)

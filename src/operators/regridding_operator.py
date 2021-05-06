@@ -66,7 +66,7 @@ class RegriddingOperator(LinearOperator):
         self._frac = [None] * ndim
         for d in range(ndim):
             tmp = np.arange(new_shape[d])*(newdist[d]/dom.distances[d])
-            self._bindex[d] = np.minimum(dom.shape[d]-2, tmp.astype(np.int))
+            self._bindex[d] = np.minimum(dom.shape[d]-2, tmp.astype(int))
             self._frac[d] = tmp-self._bindex[d]
 
     def apply(self, x, mode):
