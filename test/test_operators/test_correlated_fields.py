@@ -62,11 +62,12 @@ def testDistributor(dofdex, seed):
 
 
 @pmp('total_N', [0, 1, 2])
+@pmp('offset_std', [None, (1, 1)])
 @pmp('asperity', [None, (1, 1)])
 @pmp('flexibility', [None, (1, 1)])
 @pmp('ind', [None, 1])
 @pmp('matern', [True, False])
-def test_init(total_N, asperity, flexibility, ind, matern):
+def test_init(total_N, offset_std, asperity, flexibility, ind, matern):
     if flexibility is None and asperity is not None:
         pytest.skip()
     cfg = 1, 1
@@ -81,7 +82,7 @@ def test_init(total_N, asperity, flexibility, ind, matern):
                     cfm.add_fluctuations_matern(ift.RGSpace(4), *(3*[cfg]))
         else:
             cfm.add_fluctuations(ift.RGSpace(4), *(4*[cfg]), index=ind)
-        cfm.set_amplitude_total_offset(0, cfg, dofdex=dofdex)
+        cfm.set_amplitude_total_offset(0, offset_std, dofdex=dofdex)
         cfm.finalize(prior_info=0)
 
 
@@ -149,7 +150,7 @@ def testAmplitudesInvariants(sspace, N):
 
 @pmp('seed', [42, 31])
 @pmp('domain', spaces)
-@pmp('without', (('asperity', ), ('flexibility', ), ('flexibility', 'asperity')))
+@pmp('without', (('offset_std', ), ('asperity', ), ('flexibility', ), ('flexibility', 'asperity')))
 def test_complicated_vs_simple(seed, domain, without):
     with ift.random.Context(seed):
         offset_mean = _rand()
