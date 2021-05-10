@@ -1,11 +1,34 @@
+from typing import Optional
+
 from jax import numpy as np
 from jax.tree_util import tree_map
 
 from .likelihood import Likelihood, ShapeWithDtype
 
 
-def Gaussian(data, noise_cov_inv=None, noise_std_inv=None):
+def Gaussian(
+    data,
+    noise_cov_inv: Optional[callable] = None,
+    noise_std_inv: Optional[callable] = None
+):
+    """Gaussian likelihood of the data
 
+    Parameters
+    ----------
+    data : tree-like structure of np.ndarray and float
+        Data with additive noise following a Gaussian distribution.
+    noise_cov_inv : callable acting on type of data
+        Function applying the inverse noise covariance of the Gaussian.
+    noise_std_inv : callable acting on type of data
+        Function applying the square root of the inverse noise covariance.
+
+    Notes
+    -----
+    If `noise_std_inv` is `None` it is inferred by assuming a diagonal noise
+    covariance, i.e. by applying it to a vector of ones and taking the square
+    root. If both `noise_cov_inv` and `noise_std_inv` are `None`, a unit
+    covariance is assumed.
+    """
     if not noise_cov_inv and not noise_std_inv:
 
         def noise_cov_inv(tangents):

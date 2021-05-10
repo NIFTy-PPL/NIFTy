@@ -1,3 +1,5 @@
+from typing import Union, Optional
+
 from jax import jvp, vjp
 from jax import numpy as np
 from jax.tree_util import Partial, tree_leaves, all_leaves, tree_map
@@ -7,7 +9,24 @@ from .sugar import is1d, random_like, random_like_shapewdtype, sum_of_squares
 
 
 class ShapeWithDtype():
-    def __init__(self, shape, dtype=None):
+    """Minimal helper class storing the shape and dtype of an object.
+
+    Notes
+    -----
+    This class may not be transparent to JAX as it shall not be flattened
+    itself. If used in a tree-like structure. It should only be used as leave.
+    """
+    def __init__(self, shape: Union[tuple, list], dtype=None):
+        """Instantiates a storage unit for shape and dtype.
+
+        Parameters
+        ----------
+        shape : tuple or list of int
+            One-dimensional sequence of integers denoting the length of the
+            object along each of the object's axis.
+        dtype : dtype
+            Data-type of the to-be-described object.
+        """
         if not is1d(shape):
             ve = f"invalid shape; got {shape!r}"
             return ValueError(ve)
@@ -17,7 +36,24 @@ class ShapeWithDtype():
 
     @classmethod
     def from_leave(cls, element):
-        # Usage: `tree_map(ShapeWithDtype.from_leave, tree)`
+        """Convenience method for creating an instance of `ShapeWithDtype` from
+        an object.
+
+        To map a whole tree-like structure to a its shape and dtype use JAX's
+        `tree_map` method like so:
+
+            tree_map(ShapeWithDtype.from_leave, tree)
+
+        Parameters
+        ----------
+        element : tree-like structure
+            Object from which to take the shape and data-type.
+
+        Returns
+        -------
+        swd : instance of ShapeWithDtype
+            Instance storing the shape and data-type of `element`.
+        """
         import numpy as onp
 
         if not all_leaves((element, )):
@@ -27,10 +63,12 @@ class ShapeWithDtype():
 
     @property
     def shape(self):
+        """Retrieves the shape."""
         return self._shape
 
     @property
     def dtype(self):
+        """Retrieves the data-type."""
         return self._dtype
 
     def __repr__(self):
@@ -39,13 +77,29 @@ class ShapeWithDtype():
 
 
 class Likelihood():
+    """Storage class for keeping track of the energy, the associated
+    left-square-root of the metric and the metric.
+    """
     def __init__(
         self,
-        energy,
-        left_sqrt_metric=None,
-        metric=None,
+        energy: callable,
+        left_sqrt_metric: Optional[callable] = None,
+        metric: Optional[callable] = None,
         lsm_tangents_shape=None
     ):
+        """Instantiates a new likelihood.
+
+        Parameters
+        ----------
+        energy : callable
+            Function evaluating the negative log-likelihood.
+        left_sqrt_metric : callable, optional
+            Function applying the left-square-root of the metric.
+        metric : callable, optional
+            Function applying the metric.
+        lsm_tangents_shape : tree-like structure of ShapeWithDtype, optional
+            Structure of the data space.
+        """
         self._hamiltonian = energy
         self._left_sqrt_metric = left_sqrt_metric
         self._metric = metric
@@ -61,12 +115,41 @@ class Likelihood():
         self._lsm_tan_shp = lsm_tangents_shape
 
     def __call__(self, primals):
+        """Convenience method to access the `energy` method of this instance.
+        """
         return self._hamiltonian(primals)
 
     def energy(self, primals):
+        """Applies the metric at `primals` to `tangents`.
+
+        Parameters
+        ----------
+        primals : tree-like structure
+            Position at which to evaluate the energy.
+
+        Returns
+        -------
+        energy : float
+            Energy at the position `primals`.
+        """
         return self._hamiltonian(primals)
 
     def metric(self, primals, tangents):
+        """Applies the metric at `primals` to `tangents`.
+
+        Parameters
+        ----------
+        primals : tree-like structure
+            Position at which to evaluate the metric.
+        tangents : tree-like structure
+            Instance to which to apply the metric.
+
+        Returns
+        -------
+        naturally_curved : tree-like structure
+            Tree-like structure of the same type as primals to which the metric
+            has been applied to.
+        """
         if self._metric is None:
             # `left_sqrt_metric` is linear at any given position and thus the
             # position at which the derivative of this linear operator is taken
@@ -82,16 +165,114 @@ class Likelihood():
         return self._metric(primals, tangents)
 
     def left_sqrt_metric(self, primals, tangents):
+        """Applies the left-square-root of the metric at `primals` to
+        `tangents`.
+
+        Parameters
+        ----------
+        primals : tree-like structure
+            Position at which to evaluate the metric.
+        tangents : tree-like structure
+            Instance to which to apply the metric.
+
+        Returns
+        -------
+        metric_sample : tree-like structure
+            Tree-like structure of the same type as primals to which the
+            left-square-root of the metric has been applied to.
+        """
         if self._left_sqrt_metric is None:
             nie = "`left_sqrt_metric` is not implemented"
             raise NotImplementedError(nie)
         return self._left_sqrt_metric(primals, tangents)
 
     def inv_metric(self, primals, tangents, cg=cg, **cg_kwargs):
+        """Applies the inverse metric at `primals` to `tangents`.
+
+        Parameters
+        ----------
+        primals : tree-like structure
+            Position at which to evaluate the metric.
+        tangents : tree-like structure
+            Instance to which to apply the metric.
+        cg : callable
+            Implementation of the conjugate gradient algorithm and used to
+            apply the inverse of the metric.
+        cg_kwargs : dict
+            Additional keyword arguments passed on to `cg`.
+
+        Returns
+        -------
+        inv_naturally_curved : tree-like structure
+            Tree-like structure of the same type as primals to which the
+            inverse metric has been applied to.
+        """
         res, _ = cg(Partial(self.metric, primals), tangents, **cg_kwargs)
         return res
 
-    def draw_sample(self, primals, key, from_inverse=False, cg=cg, **cg_kwargs):
+    def draw_sample(
+        self,
+        primals,
+        key,
+        from_inverse: bool = False,
+        cg: callable = cg,
+        **cg_kwargs
+    ):
+        r"""Draws a sample of which the covariance is the metric
+        (`from_inverse=False`) or the inverse metric (`from_inverse=True`).
+
+        To sample from the inverse metric, we need to be able to draw samples
+        which have the metric as covariance structure and we need to be able to
+        apply the inverse metric. The first part is trivial since we can use
+        the left square root of the metric :math:`L` associated with every
+        likelihood:
+
+        .. math::
+            :nowrap:
+
+            \begin{gather*}
+                \tilde{d} \leftarrow \mathcal{G}(0,\mathbb{1}) \\
+                t = L \tilde{d}
+            \end{gather*}
+
+        with :math:`t` now having a covariance structure of
+
+        .. math::
+            <t t^\dagger> = L <\tilde{d} \tilde{d}^\dagger> L^\dagger = M .
+
+        We now need to apply the inverse metric in order to transform the
+        sample to an inverse sample. We can do so using the conjugate gradient
+        algorithm which yields the solution to $M s = t$, i.e. applies the
+        inverse of $M$ to $t$:
+
+        .. math::
+            :nowrap:
+
+            \begin{gather*}
+                M s =  t \\
+                s = M^{-1} t = cg(M, t) .
+            \end{gather*}
+
+        Parameters
+        ----------
+        primals : tree-like structure
+            Position at which to draw samples.
+        key : tuple, list or np.ndarray of uint32 of length two
+            Random key with which to generate random variables in data domain.
+        from_inverse : bool
+            Whether to draw samples from the metric or the inverse metric.
+        cg : callable
+            Implementation of the conjugate gradient algorithm and used to
+            apply the inverse of the metric.
+        cg_kwargs : dict
+            Additional keyword arguments passed on to `cg`.
+
+        Returns
+        -------
+        sample : tree-like structure
+            Sample of which the covariance is the metric (`from_inverse=False`)
+            or the inverse metric (`from_inverse=True`).
+        """
         if self._lsm_tan_shp is None:
             nie = "Cannot draw sample without knowing the shape of the data"
             raise NotImplementedError(nie)
@@ -105,9 +286,30 @@ class Likelihood():
 
     @property
     def left_sqrt_metric_tangents_shape(self):
+        """Retrieves the shape of the tangent domain of the
+        left-square-root of the metric.
+        """
         return self._lsm_tan_shp
 
-    def new(self, energy, left_sqrt_metric, metric):
+    @property
+    def lsm_tangents_shape(self):
+        """Alias for `left_sqrt_metric_tangents_shape`."""
+        return self.left_sqrt_metric_tangents_shape
+
+    def new(
+        self, energy: callable, left_sqrt_metric: callable, metric: callable
+    ):
+        """Instantiates a new likelihood with the same `lsm_tangents_shape`.
+
+        Parameters
+        ----------
+        energy : callable
+            Function evaluating the negative log-likelihood.
+        left_sqrt_metric : callable, optional
+            Function applying the left-square-root of the metric.
+        metric : callable, optional
+            Function applying the metric.
+        """
         return Likelihood(
             energy,
             left_sqrt_metric=left_sqrt_metric,
@@ -116,6 +318,9 @@ class Likelihood():
         )
 
     def jit(self):
+        """Returns a new likelihood with jit-compiled energy, left-square-root
+        of metric and metric.
+        """
         from jax import jit
 
         if self._left_sqrt_metric is not None:
@@ -183,7 +388,18 @@ class Likelihood():
 
 
 class StandardHamiltonian(Likelihood):
-    def __init__(self, likelihood, _compile_joined=False):
+    """Joined object storage composed of a user-defined likelihood and a
+    standard normal likelihood as prior.
+    """
+    def __init__(self, likelihood: Likelihood, _compile_joined: bool = False):
+        """Instantiates a new standardized Hamiltonian, i.e. a likelihood
+        joined with a standard normal prior.
+
+        Parameters
+        ----------
+        likelihood : Likelihood
+            Energy, left-square-root of metric and metric of the likelihood.
+        """
         self._nll = likelihood
 
         def joined_hamiltonian(primals):

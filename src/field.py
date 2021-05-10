@@ -1,13 +1,16 @@
-from jax.numpy import add, ndim, dot
 from jax.tree_util import (
-    register_pytree_node_class, tree_map, tree_multimap, tree_reduce
+    register_pytree_node_class, tree_map, tree_multimap, tree_reduce,
+    tree_structure
 )
 
 
 @register_pytree_node_class
 class Field():
+    """Value storage for arbitrary objects with added numerics."""
+    supported_flags = {"strict_domain_checking"}
+
     def __init__(self, val, domain=None, flags=None):
-        """Value storage for arbitrary objects with added numerics.
+        """Instantiates a field.
 
         Parameters
         ----------
@@ -16,16 +19,20 @@ class Field():
         domain : dict or None, optional
             Domain of the field, e.g. with description of modes and volume.
         flags : set, str or None, optional
-            Capabilities or constraints of the field.
+            Capabilities and constraints of the field.
         """
         self._val = val
         self._domain = {} if domain is None else dict(domain)
-        if isinstance(flags, (tuple, set)):
-            self._flags = set(flags)
-        elif isinstance(flags, str):
-            self._flags = set((flags, ))
-        else:
-            self._flags = set()
+
+        flags = (flags, ) if isinstance(flags, str) else flags
+        flags = set() if flags is None else set(flags)
+        if not flags.issubset(Field.supported_flags):
+            ve = (
+                f"specified flags ({flags!r}) are not a subset of the"
+                f" supported flags ({Field.supported_flags!r})"
+            )
+            raise ValueError(ve)
+        self._flags = flags
 
     def tree_flatten(self):
         """Recipe for flattening fields.
@@ -58,22 +65,58 @@ class Field():
 
     @property
     def val(self):
+        """Retrieves a **view** of the field's values."""
         return self._val
 
     @property
     def domain(self):
+        """Retrieves a **copy** of the field's domain."""
         return self._domain.copy()
 
     @property
     def flags(self):
+        """Retrieves a **copy** of the field's flags."""
         return self._flags.copy()
 
-    def new(self, val):
-        return Field(val, domain=self.domain, flags=self.flags)
+    def new(self, val, domain=None, flags=None):
+        """Instantiates a new field with the same domain and flags as this
+        instance of a field.
+
+        Parameters
+        ----------
+        val : object
+            Arbitrary, flatten-able objects.
+        domain : dict or None, optional
+            Domain of the field, e.g. with description of modes and volume.
+        flags : set, str or None, optional
+            Capabilities and constraints of the field.
+        """
+        return Field(
+            val,
+            domain=self.domain if domain is None else domain,
+            flags=self.flags if flags is None else flags
+        )
 
     def dot(self, other):
-        if other.domain != self.domain:
-            raise ValueError("domains are incompatible.")
+        """Returns the dot product of this field with another flatten-able
+        object.
+
+        Parameters
+        ----------
+        other : object
+            Arbitrary, flatten-able objects.
+
+        Returns
+        -------
+        out : float
+            Dot product of fields.
+        """
+        from jax.numpy import add, dot
+
+        if isinstance(other, Field):
+            if "strict_domain_checking" in self.flags | other.flags:
+                if other.domain != self.domain:
+                    raise ValueError("domains are incompatible.")
         tree_dot = tree_multimap(
             lambda x, y: dot(x.ravel(), y.ravel()), self._val, other._val
         )
@@ -84,12 +127,21 @@ class Field():
         return sum_of_squares(self)
 
     def __str__(self):
-        s = "Field:\n"
+        s = f"Field(\n{self._val}"
         if self._domain:
-            s += "domain: " + str(self._domain) + "\n"
+            s += f",\ndomain={self._domain}"
         if self._flags:
-            s += "flags: "+ str(self._flags) + "\n"
-        s += str(self._val)
+            s += f",\nflags={self._flags}"
+        s += ")"
+        return s
+
+    def __repr__(self):
+        s = f"Field(\n{self._val!r}"
+        if self._domain:
+            s += f",\ndomain={self._domain!r}"
+        if self._flags:
+            s += f",\nflags={self._flags!r}"
+        s += ")"
         return s
 
     def norm(self, ord):
@@ -103,13 +155,15 @@ class Field():
         return self.new(tree_map(lambda c: getattr(c, op)(), self._val))
 
     def _binary_op(self, other, op):
+        from jax.numpy import ndim
+
+        flags = None
         if isinstance(other, Field):
-            if other.domain != self.domain:
-                raise ValueError("domains are incompatible.")
-            if other.flags != self.flags:
-                raise ValueError("flags are incompatible.")
+            flags = self.flags | other.flags
+            if "strict_domain_checking" in flags:
+                if other.domain != self.domain:
+                    raise ValueError("domains are incompatible.")
         elif ndim(other) == 0:
-            from jax.tree_util import tree_structure
             from itertools import repeat
 
             ts = tree_structure(self)
@@ -120,7 +174,8 @@ class Field():
         return self.new(
             tree_multimap(
                 lambda s, o: getattr(s, op)(o), self._val, other._val
-            )
+            ),
+            flags=flags
         )
 
 
