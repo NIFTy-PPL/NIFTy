@@ -1,6 +1,7 @@
 from .likelihood import ShapeWithDtype, Likelihood, StandardHamiltonian
 from .energy_operators import (
-    Gaussian, Poissonian, VariableCovarianceGaussian, Categorical
+    Gaussian, Poissonian, VariableCovarianceGaussian,
+    VariableCovarianceStudentT, Categorical
 )
 from .field import Field
 from .optimize import newton_cg, cg, static_cg

@@ -178,6 +178,61 @@ def VariableCovarianceGaussian(data):
     )
 
 
+def VariableCovarianceStudentT(data, dof):
+    """Student's t likelihood of the data with a variable covariance
+
+    Parameters
+    ----------
+    data : tree-like structure of np.ndarray and float
+        Data with additive noise following a Gaussian distribution.
+    dof : tree-like structure of np.ndarray and float
+        Degree-of-freedom parameter of Student's t distribution.
+
+    Notes
+    -----
+    The likelihood acts on a tuple of (mean, std).
+    """
+    def standard_t(nwr, dof):
+        return np.sum(np.log1p(nwr**2 / dof) * (dof + 1)) / 2
+
+    def hamiltonian(primals):
+        """
+        primals : pair of (mean, std)
+        """
+        t = standard_t((data - primals[0]) / primals[1], dof)
+        t += np.sum(np.log(primals[1]))
+        return t
+
+    def metric(primals, tangent):
+        """
+        primals, tangent : pair of (mean, std)
+        """
+        return (
+            tangent[0] * (dof + 1) / (dof + 3) / primals[1]**2,
+            tangent[1] * 2 * dof / (dof + 3) / primals[1]**2
+        )
+
+    def left_sqrt_metric(primals, tangents):
+        """
+        primals, tangents : pair of (mean, std)
+        """
+        cov = (
+            (dof + 1) / (dof + 3) / primals[1]**2,
+            2 * dof / (dof + 3) / primals[1]**2
+        )
+        res = (np.sqrt(cov[0]) * tangents[0], np.sqrt(cov[1]) * tangents[1])
+        return res
+
+    lsm_tangents_shape = tree_map(ShapeWithDtype.from_leave, (data, data))
+
+    return Likelihood(
+        hamiltonian,
+        left_sqrt_metric=left_sqrt_metric,
+        metric=metric,
+        lsm_tangents_shape=lsm_tangents_shape
+    )
+
+
 def Categorical(data, axis=-1, sampling_dtype=float):
     """Categorical likelihood of the data, equivalent to cross entropy
 
