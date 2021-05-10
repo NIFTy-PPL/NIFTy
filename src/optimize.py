@@ -68,7 +68,7 @@ def cg(
             info = 0
             return pos, info
         if resnorm is not None:
-            norm = float(jft_norm(r, ord=norm_ord))
+            norm = float(jft_norm(r, ord=norm_ord, ravel=True))
             if name is not None:
                 msg = f"{name}: gradnorm {norm:.6e} tgt {resnorm:.6e}"
                 print(msg, file=sys.stderr)
@@ -150,7 +150,7 @@ def static_cg(
 
         info = np.where(gamma == 0., 0, info)
         if resnorm is not None:
-            norm = jft_norm(r, ord=norm_ord)
+            norm = jft_norm(r, ord=norm_ord, ravel=True)
             if name is not None:
                 msg = f"{name}: gradnorm {norm!r} tgt {resnorm!r}"
                 print(msg, file=sys.stderr)
@@ -241,7 +241,7 @@ def newton_cg(
             lambda x: met(pos, x),
             g,
             absdelta=absdelta / 100,
-            resnorm=jft_norm(g, ord=1) / 2,
+            resnorm=jft_norm(g, ord=1, ravel=True) / 2,
             norm_ord=1,
             name=cg_name,
             time_threshold=time_threshold,

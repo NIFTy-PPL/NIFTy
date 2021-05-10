@@ -49,12 +49,18 @@ def sum_of_squares(tree):
     return tree_reduce(add, tree_map(lambda x: sum(x**2), tree), 0.)
 
 
-def norm(tree, ord):
+def norm(tree, ord, ravel=False):
     from jax.numpy import ndim, abs
     from jax.numpy.linalg import norm
 
-    enorm = lambda x: abs(x) if ndim(x) == 0 else norm(x, ord=ord)
-    return norm(tree_leaves(tree_map(enorm, tree)), ord=ord)
+    if ravel:
+        def el_norm(x):
+            return abs(x) if ndim(x) == 0 else norm(x.ravel(), ord=ord)
+    else:
+        def el_norm(x):
+            return abs(x) if ndim(x) == 0 else norm(x, ord=ord)
+
+    return norm(tree_leaves(tree_map(el_norm, tree)), ord=ord)
 
 
 def mean(forest):
