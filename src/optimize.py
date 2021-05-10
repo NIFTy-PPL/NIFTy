@@ -1,6 +1,6 @@
-from jax import numpy as np
 import sys
-import time
+from datetime import datetime
+from jax import numpy as np
 
 from .sugar import sum_of_squares
 from .sugar import norm as jft_norm
@@ -59,10 +59,9 @@ def cg(
         else:
             r = r - q * alpha
         gamma = float(sum_of_squares(r))
-        if time_threshold is not None:
-            if time.time() > time_threshold:
-                info = i
-                return pos, info
+        if time_threshold is not None and datetime.now() > time_threshold:
+            info = i
+            return pos, info
         if gamma == 0:
             nm = "CG" if name is None else name
             print(f"{nm}: gamma=0, converged!", file=sys.stderr)
@@ -280,7 +279,6 @@ def newton_cg(
         energy = new_energy
         pos = new_pos
         g = new_g
-        if time_threshold is not None:
-            if time.time() > time_threshold:
-                break
+        if time_threshold is not None and datetime.now() > time_threshold:
+            break
     return pos
