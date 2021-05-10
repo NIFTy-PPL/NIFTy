@@ -127,6 +127,57 @@ def Poissonian(data, sampling_dtype=float):
     )
 
 
+def VariableCovarianceGaussian(data):
+    """Gaussian likelihood of the data with a variable covariance
+
+    Parameters
+    ----------
+    data : tree-like structure of np.ndarray and float
+        Data with additive noise following a Gaussian distribution.
+
+    Notes
+    -----
+    The likelihood acts on a tuple of (mean, std_inv).
+    """
+    from .sugar import sum_of_squares
+
+    def hamiltonian(primals):
+        """
+        primals : pair of (mean, std_inv)
+        """
+        res = (primals[0] - data) * primals[1]
+        return 0.5 * sum_of_squares(res) - np.sum(np.log(primals[1]))
+
+    def metric(primals, tangents):
+        """
+        primals, tangent : pair of (mean, std_inv)
+        """
+        prim_std_inv_sq = primals[1]**2
+        res = (
+            prim_std_inv_sq * tangents[0] ,
+            2 * tangents[1] / prim_std_inv_sq
+        )
+        return type(primals)(res)
+
+    def left_sqrt_metric(primals, tangents):
+        """
+        primals, tangent : pair of (mean, std_inv)
+        """
+        res = (
+            primals[1] * tangents[0], np.sqrt(2) * tangents[1] / primals[1]
+        )
+        return type(primals)(res)
+
+    lsm_tangents_shape = tree_map(ShapeWithDtype.from_leave, (data, data))
+
+    return Likelihood(
+        hamiltonian,
+        left_sqrt_metric=left_sqrt_metric,
+        metric=metric,
+        lsm_tangents_shape=lsm_tangents_shape
+    )
+
+
 def Categorical(data, axis=-1, sampling_dtype=float):
     """Categorical likelihood of the data, equivalent to cross entropy
 
