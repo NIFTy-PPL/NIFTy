@@ -1,5 +1,6 @@
 from typing import Optional
 
+import sys
 from jax import numpy as np
 from jax.tree_util import tree_map
 
@@ -43,13 +44,23 @@ def Gaussian(
 
         def noise_std_inv(tangents):
             return tangents
+    elif not noise_cov_inv:
+        wm = (
+            "assuming a diagonal covariance matrix"
+            ";\nsetting `noise_cov_inv` to"
+            " `noise_std_inv(np.ones_like(data))**2`"
+        )
+        print(wm, file=sys.stderr)
+        noise_std_inv_sq = noise_std_inv(tree_map(np.ones_like, data))**2
+
+        def noise_cov_inv(tangents):
+            return noise_std_inv_sq * tangents
     elif not noise_std_inv:
         wm = (
             "assuming a diagonal covariance matrix"
             ";\nsetting `noise_std_inv` to"
             " `noise_cov_inv(np.ones_like(data))**0.5`"
         )
-        import sys
         print(wm, file=sys.stderr)
         noise_cov_inv_sqrt = np.sqrt(
             noise_cov_inv(tree_map(np.ones_like, data))
