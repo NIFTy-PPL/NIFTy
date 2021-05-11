@@ -1,12 +1,14 @@
+#!/usr/bin/env python3
+
+import jax.numpy as np
 import jifty1 as jft
 from jax import value_and_grad
-import jax.numpy as np
 from numpy import testing
 
 
 def test_ncg():
     pos = jft.Field([np.array(0.), (np.array(3.), ), {"a": np.array(5.)}])
-    getters = [lambda x: x[0], lambda x: x[1][0], lambda x: x[2]["a"]]
+    getters = (lambda x: x[0], lambda x: x[1][0], lambda x: x[2]["a"])
     tgt = [-10., 1., 2.]
     met = [10., 40., 2]
 
