@@ -31,7 +31,7 @@ SPACE_COMBINATIONS = [(), SPACES[0], SPACES[1], SPACES]
 @pmp('domain', SPACE_COMBINATIONS)
 @pmp('attribute_desired_type',
      [['domain', ift.DomainTuple], ['val', np.ndarray],
-      ['shape', tuple], ['size', (np.int, np.int64)]])
+      ['shape', tuple], ['size', (int, np.int32, np.int64)]])
 def test_return_types(domain, attribute_desired_type):
     attribute = attribute_desired_type[0]
     desired_type = attribute_desired_type[1]
@@ -286,7 +286,7 @@ def test_stdfunc():
     f = ift.Field.full(s, 27)
     assert_equal(f.val, 27)
     assert_equal(f.shape, (200,))
-    assert_equal(f.dtype, np.int)
+    assert_equal(f.dtype, np.int64)
     fx = ift.full(f.domain, 0)
     assert_equal(f.dtype, fx.dtype)
     assert_equal(f.shape, fx.shape)

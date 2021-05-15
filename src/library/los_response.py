@@ -64,10 +64,10 @@ def _comp_traverse(start, end, shp, dist, lo, mid, hi, sig, erf):
         c_first = np.ceil(start[:, i]+direction*dmin)
         c_first = np.where(direction > 0., c_first, c_first-1.)
         c_first = (c_first-start[:, i])/dirx
-        pos1 = np.asarray((start[:, i]+dmin*direction), dtype=np.int)
+        pos1 = np.asarray((start[:, i]+dmin*direction), dtype=np.int64)
         pos1 = np.sum(pos1*inc)
         cdist = np.empty(0, dtype=np.float64)
-        add = np.empty(0, dtype=np.int)
+        add = np.empty(0, dtype=np.int64)
         for j in range(ndim):
             if direction[j] != 0:
                 step = inc[j] if direction[j] > 0 else -inc[j]

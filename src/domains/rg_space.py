@@ -122,7 +122,7 @@ class RGSpace(StructuredDomain):
         if np.all(self.distances == self.distances[0]):  # shortcut
             maxdist = np.asarray(self.shape)//2
             tmp = np.sum(maxdist*maxdist)
-            tmp = np.zeros(tmp+1, dtype=np.bool)
+            tmp = np.zeros(tmp+1, dtype=bool)
             t2 = np.arange(maxdist[0]+1, dtype=np.int64)
             t2 *= t2
             for i in range(1, dimensions):
