@@ -30,62 +30,6 @@ import numpy as np
 
 import nifty7 as ift
 
-
-def density_estimator(domain, pad=1.0, cf_fluctuations=None, cf_azm_uniform=None):
-    cf_azm_uniform_sane_default = (1e-4, 1.0)
-    cf_fluctuations_sane_default = {
-        "scale": (0.5, 0.3),
-        "cutoff": (4.0, 3.0),
-        "loglogslope": (-6.0, 3.0)
-    }
-
-    domain = ift.DomainTuple.make(domain)
-    dom_scaling = 1. + np.broadcast_to(pad, (len(domain.axes), ))
-    if cf_fluctuations is None:
-        cf_fluctuations = cf_fluctuations_sane_default
-    if cf_azm_uniform is None:
-        cf_azm_uniform = cf_azm_uniform_sane_default
-
-    domain_padded = []
-    for d_scl, d in zip(dom_scaling, domain):
-        if not isinstance(d, ift.RGSpace) or d.harmonic:
-            te = [f"unexpected domain encountered in `domain`: {domain}"]
-            te += "expected a non-harmonic `ift.RGSpace`"
-            raise TypeError("\n".join(te))
-        shape_padded = tuple((d_scl * np.array(d.shape)).astype(int))
-        domain_padded.append(ift.RGSpace(shape_padded, distances=d.distances))
-    domain_padded = ift.DomainTuple.make(domain_padded)
-
-    # Set up the signal model
-    azm_offset_mean = 0.0  # The zero-mode should be inferred only from the data
-    cfmaker = ift.CorrelatedFieldMaker("")
-    for i, d in enumerate(domain_padded):
-        if isinstance(cf_fluctuations, (list, tuple)):
-            cf_fl = cf_fluctuations[i]
-        else:
-            cf_fl = cf_fluctuations
-        cfmaker.add_fluctuations_matern(d, **cf_fl, prefix=f"ax{i}")
-    scalar_domain = ift.DomainTuple.scalar_domain()
-    uniform = ift.UniformOperator(scalar_domain, *cf_azm_uniform)
-    azm = uniform.ducktape("zeromode")
-    cfmaker.set_amplitude_total_offset(azm_offset_mean, azm)
-    correlated_field = cfmaker.finalize(0).clip(-10., 10.)
-    normalized_amplitudes = cfmaker.get_normalized_amplitudes()
-
-    domain_shape = tuple(d.shape for d in domain)
-    slc = ift.SliceOperator(correlated_field.target, domain_shape)
-    signal = ift.exp(slc @ correlated_field)
-
-    model_operators = {
-        "correlated_field": correlated_field,
-        "select_subset": slc,
-        "amplitude_total_offset": azm,
-        "normalized_amplitudes": normalized_amplitudes
-    }
-
-    return signal, model_operators
-
-
 if __name__ == "__main__":
     filename = "getting_started_density_{}.png"
     ift.random.push_sseq_from_seed(42)
@@ -97,7 +41,7 @@ if __name__ == "__main__":
     sp2 = ift.RGSpace(npix2)
     position_space = ift.DomainTuple.make((sp1, sp2))
 
-    signal, ops = density_estimator(position_space)
+    signal, ops = ift.density_estimator(position_space)
     correlated_field = ops["correlated_field"]
 
     data_space = signal.target
