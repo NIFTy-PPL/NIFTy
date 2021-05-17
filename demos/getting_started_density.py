@@ -44,7 +44,7 @@ def density_estimator(domain, pad=1.0, cf_fluctuations=None, cf_azm_uniform=None
     if cf_fluctuations is None:
         cf_fluctuations = cf_fluctuations_sane_default
     if cf_azm_uniform is None:
-        cf_azm_uni = cf_azm_uniform_sane_default
+        cf_azm_uniform = cf_azm_uniform_sane_default
 
     domain_padded = []
     for d_scl, d in zip(dom_scaling, domain):
@@ -66,7 +66,7 @@ def density_estimator(domain, pad=1.0, cf_fluctuations=None, cf_azm_uniform=None
             cf_fl = cf_fluctuations
         cfmaker.add_fluctuations_matern(d, **cf_fl, prefix=f"ax{i}")
     scalar_domain = ift.DomainTuple.scalar_domain()
-    uniform = ift.UniformOperator(scalar_domain, *cf_azm_uni)
+    uniform = ift.UniformOperator(scalar_domain, *cf_azm_uniform)
     azm = uniform.ducktape("zeromode")
     cfmaker.set_amplitude_total_offset(azm_offset_mean, azm)
     correlated_field = cfmaker.finalize(0).clip(-10., 10.)
