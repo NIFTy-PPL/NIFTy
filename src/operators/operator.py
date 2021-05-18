@@ -11,7 +11,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
-# Copyright(C) 2013-2020 Max-Planck-Society
+# Copyright(C) 2013-2021 Max-Planck-Society
 #
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
 
@@ -20,7 +20,7 @@ import numpy as np
 from .. import pointwise
 from ..logger import logger
 from ..multi_domain import MultiDomain
-from ..utilities import NiftyMeta, indent
+from ..utilities import NiftyMeta, indent, myassert
 
 
 class Operator(metaclass=NiftyMeta):
@@ -270,8 +270,8 @@ class Operator(metaclass=NiftyMeta):
         return self @ ducktape(self, None, name)
 
     def ducktape_left(self, name):
+        from ..sugar import is_fieldlike, is_linearization, is_operator
         from .simple_linear_operators import ducktape
-        from ..sugar import is_operator, is_fieldlike, is_linearization
         if is_operator(self):
             return ducktape(None, self, name) @ self
         if is_fieldlike(self) or is_linearization(self):
@@ -281,11 +281,12 @@ class Operator(metaclass=NiftyMeta):
         return self.__class__.__name__
 
     def simplify_for_constant_input(self, c_inp):
-        from .energy_operators import EnergyOperator
-        from .simplify_for_const import ConstantEnergyOperator, ConstantOperator
-        from ..multi_field import MultiField
         from ..domain_tuple import DomainTuple
+        from ..multi_field import MultiField
         from ..sugar import makeDomain
+        from .energy_operators import EnergyOperator
+        from .simplify_for_const import (ConstantEnergyOperator,
+                                         ConstantOperator)
         if c_inp is None or (isinstance(c_inp, MultiField) and len(c_inp.keys()) == 0):
             return None, self
         dom = c_inp.domain
@@ -295,7 +296,7 @@ class Operator(metaclass=NiftyMeta):
         # Convention: If c_inp is MultiField, it needs to be defined on a
         # subdomain of self._domain
         if isinstance(self.domain, MultiDomain):
-            assert isinstance(dom, MultiDomain)
+            myassert(isinstance(dom, MultiDomain))
             if not set(c_inp.keys()) <= set(self.domain.keys()):
                 raise ValueError
 
@@ -312,13 +313,13 @@ class Operator(metaclass=NiftyMeta):
         c_out, op = self._simplify_for_constant_input_nontrivial(c_inp)
         vardom = makeDomain({kk: vv for kk, vv in self.domain.items()
                              if kk not in c_inp.keys()})
-        assert op.domain is vardom
-        assert op.target is self.target
-        assert isinstance(op, Operator)
+        myassert(op.domain is vardom)
+        myassert(op.target is self.target)
+        myassert(isinstance(op, Operator))
         if c_out is not None:
-            assert isinstance(c_out, MultiField)
-            assert len(set(c_out.keys()) & self.domain.keys()) == 0
-            assert set(c_out.keys()) <= set(c_inp.keys())
+            myassert(isinstance(c_out, MultiField))
+            myassert(len(set(c_out.keys()) & self.domain.keys()) == 0)
+            myassert(set(c_out.keys()) <= set(c_inp.keys()))
         return c_out, op
 
     def _simplify_for_constant_input_nontrivial(self, c_inp):

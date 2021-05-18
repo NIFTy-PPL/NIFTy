@@ -11,7 +11,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
-# Copyright(C) 2013-2019 Max-Planck-Society
+# Copyright(C) 2013-2019, 2021 Max-Planck-Society
 #
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
 
@@ -294,8 +294,8 @@ class LineSearch(metaclass=NiftyMeta):
         if phiprime_lo*(alpha_hi-alpha_lo) >= 0.:
             raise ValueError("inconsistent data")
         for i in range(self.max_zoom_iterations):
-            # assert phi_lo <= phi_0 + self.c1*alpha_lo*phiprime_0
-            # assert phiprime_lo*(alpha_hi-alpha_lo)<0.
+            # myassert(phi_lo <= phi_0 + self.c1*alpha_lo*phiprime_0)
+            # myassert(phiprime_lo*(alpha_hi-alpha_lo)<0.)
             delta_alpha = alpha_hi - alpha_lo
             a, b = min(alpha_lo, alpha_hi), max(alpha_lo, alpha_hi)
 

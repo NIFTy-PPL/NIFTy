@@ -11,7 +11,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
-# Copyright(C) 2013-2020 Max-Planck-Society
+# Copyright(C) 2013-2021 Max-Planck-Society
 #
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
 
@@ -25,6 +25,7 @@ from ..operators.endomorphic_operator import EndomorphicOperator
 from ..operators.energy_operators import StandardHamiltonian
 from ..probing import approximation2endo
 from ..sugar import makeOp
+from ..utilities import myassert
 from .energy import Energy
 
 
@@ -47,9 +48,9 @@ def _get_lo_hi(comm, n_samples):
 def _modify_sample_domain(sample, domain):
     """Takes only keys from sample which are also in domain and inserts zeros
     for keys which are not in sample.domain."""
-    from ..multi_domain import MultiDomain
-    from ..field import Field
     from ..domain_tuple import DomainTuple
+    from ..field import Field
+    from ..multi_domain import MultiDomain
     from ..sugar import makeDomain
     domain = makeDomain(domain)
     if isinstance(domain, DomainTuple) and isinstance(sample, Field):
@@ -96,7 +97,7 @@ class MetricGaussianKL(Energy):
         if not _callingfrommake:
             raise NotImplementedError
         super(MetricGaussianKL, self).__init__(mean)
-        assert mean.domain is hamiltonian.domain
+        myassert(mean.domain is hamiltonian.domain)
         self._hamiltonian = hamiltonian
         self._n_samples = int(n_samples)
         self._mirror_samples = bool(mirror_samples)
