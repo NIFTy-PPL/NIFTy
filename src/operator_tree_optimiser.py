@@ -11,7 +11,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
-# Copyright(C) 2013-2020 Max-Planck-Society
+# Copyright(C) 2013-2021 Max-Planck-Society
 #
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
 
@@ -23,6 +23,7 @@ from .multi_field import MultiField
 from .operators.operator import _OpChain, _OpProd, _OpSum
 from .operators.simple_linear_operators import FieldAdapter
 from .sugar import domain_union, from_random
+from .utilities import myassert
 
 
 def _optimise_operator(op):
@@ -312,7 +313,7 @@ def optimise_operator(op):
     test_field = from_random(op.domain)
     if isinstance(op(test_field), MultiField):
         for key in op(test_field).keys():
-            assert allclose(op(test_field).val[key], op_optimised(test_field).val[key], 1e-10)
+            myassert(allclose(op(test_field).val[key], op_optimised(test_field).val[key], 1e-10))
     else:
-        assert allclose(op(test_field).val, op_optimised(test_field).val, 1e-10)
+        myassert(allclose(op(test_field).val, op_optimised(test_field).val, 1e-10))
     return op_optimised
