@@ -31,7 +31,7 @@ SPACE_COMBINATIONS = [(), SPACES[0], SPACES[1], SPACES]
 @pmp('domain', SPACE_COMBINATIONS)
 @pmp('attribute_desired_type',
      [['domain', ift.DomainTuple], ['val', np.ndarray],
-      ['shape', tuple], ['size', (int, np.int32, np.int64)]])
+      ['shape', tuple], ['size', (int, np.int64)]])
 def test_return_types(domain, attribute_desired_type):
     attribute = attribute_desired_type[0]
     desired_type = attribute_desired_type[1]

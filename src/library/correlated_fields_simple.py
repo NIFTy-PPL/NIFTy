@@ -59,17 +59,16 @@ def SimpleCorrelatedField(
     else:
         target.check_codomain(harmonic_partner)
         harmonic_partner.check_codomain(target)
-    for kk in [offset_std, fluctuations, loglogavgslope]:
+    for kk in (fluctuations, loglogavgslope):
         if len(kk) != 2:
             raise TypeError
-    for kk in [flexibility, asperity]:
+    for kk in (offset_std, flexibility, asperity):
         if not (kk is None or len(kk) == 2):
             raise TypeError
     if flexibility is None and asperity is not None:
         raise ValueError
     fluct = LognormalTransform(*fluctuations, prefix + 'fluctuations', 0)
     avgsl = NormalTransform(*loglogavgslope, prefix + 'loglogavgslope', 0)
-    zm = LognormalTransform(*offset_std, prefix + 'zeromode', 0)
 
     pspace = PowerSpace(harmonic_partner)
     twolog = _TwoLogIntegrations(pspace)
@@ -107,8 +106,11 @@ def SimpleCorrelatedField(
     maskzm = np.ones(pspace.shape)
     maskzm[0] = 0
     maskzm = makeOp(makeField(pspace, maskzm))
-    insert = ValueInserter(pspace, (0,))
-    a = (maskzm @ ((ps_expander @ fluct)*a)) + insert(zm)
+    a = (maskzm @ ((ps_expander @ fluct)*a))
+    if offset_std is not None:
+        zm = LognormalTransform(*offset_std, prefix + 'zeromode', 0)
+        insert = ValueInserter(pspace, (0,))
+        a = a + insert(zm)
     a = a.scale(target.total_volume)
 
     ht = HarmonicTransformOperator(harmonic_partner, target)
