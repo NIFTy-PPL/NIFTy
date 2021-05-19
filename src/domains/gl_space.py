@@ -59,11 +59,11 @@ class GLSpace(StructuredDomain):
 
     @property
     def shape(self):
-        return (int((self.nlat * self.nlon)),)
+        return (int(self.nlat * self.nlon),)
 
     @property
     def size(self):
-        return int((self.nlat * self.nlon))
+        return int(self.nlat * self.nlon)
 
     @property
     def scalar_dvol(self):

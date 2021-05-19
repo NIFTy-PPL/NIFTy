@@ -51,26 +51,27 @@ slow_minimizers = ['ift.SteepestDescent(IC)']
      slow_minimizers)
 @pmp('space', spaces)
 def test_quadratic_minimization(minimizer, space):
-    starting_point = ift.Field.from_random(domain=space, random_type='normal') * 10
-    covariance_diagonal = ift.Field.from_random(domain=space, random_type='uniform') + 0.5
-    covariance = ift.DiagonalOperator(covariance_diagonal)
-    required_result = ift.full(space, 1.)
-
-    try:
-        minimizer = eval(minimizer)
-        energy = ift.QuadraticEnergy(
-            A=covariance, b=required_result, position=starting_point)
-
-        (energy, convergence) = minimizer(energy)
-    except NotImplementedError:
-        pytest.skip()
-
-    assert_equal(convergence, IC.CONVERGED)
-    assert_allclose(
-        energy.position.val,
-        1./covariance_diagonal.val,
-        rtol=1e-3,
-        atol=1e-3)
+    with ift.random.Context(98765):
+        starting_point = ift.Field.from_random(domain=space, random_type='normal') * 10
+        covariance_diagonal = ift.Field.from_random(domain=space, random_type='uniform') + 0.5
+        covariance = ift.DiagonalOperator(covariance_diagonal)
+        required_result = ift.full(space, 1.)
+    
+        try:
+            minimizer = eval(minimizer)
+            energy = ift.QuadraticEnergy(
+                A=covariance, b=required_result, position=starting_point)
+    
+            (energy, convergence) = minimizer(energy)
+        except NotImplementedError:
+            pytest.skip()
+    
+        assert_equal(convergence, IC.CONVERGED)
+        assert_allclose(
+            energy.position.val,
+            1./covariance_diagonal.val,
+            rtol=1e-3,
+            atol=1e-3)
 
 
 @pmp('space', spaces)

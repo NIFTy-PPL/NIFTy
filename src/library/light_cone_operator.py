@@ -68,9 +68,9 @@ class _LightConeDerivative(LinearOperator):
 
 def _cone_arrays(c, domain, sigx, want_gradient):
     x = _make_coords(domain)
-    a = np.zeros(domain.shape, dtype=np.complex)
+    a = np.zeros(domain.shape, dtype=np.complex128)
     if want_gradient:
-        derivs = np.zeros((c.size,) + domain.shape, dtype=np.complex)
+        derivs = np.zeros((c.size,) + domain.shape, dtype=np.complex128)
     else:
         derivs = None
     a -= (x[0]/(sigx*domain[0].distances[0]))**2

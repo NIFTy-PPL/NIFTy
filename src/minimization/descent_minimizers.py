@@ -393,7 +393,7 @@ class _InformationStore(object):
         m = self.history_length
         mmax = self.max_history_length
         k = self.k
-        result = np.empty((2*m+1, 2*m+1), dtype=np.float)
+        result = np.empty((2*m+1, 2*m+1), dtype=np.float64)
 
         # update the stores
         k1 = (k-1) % mmax
@@ -435,10 +435,10 @@ class _InformationStore(object):
         m = self.history_length
         b_dot_b = self.b_dot_b
 
-        delta = np.zeros(2*m+1, dtype=np.float)
+        delta = np.zeros(2*m+1, dtype=np.float64)
         delta[2*m] = -1
 
-        alpha = np.empty(m, dtype=np.float)
+        alpha = np.empty(m, dtype=np.float64)
 
         for j in range(m-1, -1, -1):
             delta_b_b = sum([delta[l] * b_dot_b[l, j] for l in range(2*m+1)])
