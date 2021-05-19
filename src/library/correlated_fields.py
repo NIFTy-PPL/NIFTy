@@ -43,6 +43,7 @@ from ..operators.operator import Operator
 from ..operators.simple_linear_operators import VdotOperator, ducktape
 from ..probing import StatCalculator
 from ..sugar import full, makeDomain, makeField, makeOp
+from ..utilities import myassert
 
 
 def _log_k_lengths(pspace):
@@ -54,17 +55,17 @@ def _relative_log_k_lengths(power_space):
     """Log-distance to first bin
     logkl.shape==power_space.shape, logkl[0]=logkl[1]=0"""
     power_space = DomainTuple.make(power_space)
-    assert isinstance(power_space[0], PowerSpace)
-    assert len(power_space) == 1
+    myassert(isinstance(power_space[0], PowerSpace))
+    myassert(len(power_space) == 1)
     logkl = _log_k_lengths(power_space[0])
-    assert logkl.shape[0] == power_space[0].shape[0] - 1
+    myassert(logkl.shape[0] == power_space[0].shape[0] - 1)
     logkl -= logkl[0]
     return np.insert(logkl, 0, 0)
 
 
 def _log_vol(power_space):
     power_space = makeDomain(power_space)
-    assert isinstance(power_space[0], PowerSpace)
+    myassert(isinstance(power_space[0], PowerSpace))
     logk_lengths = _log_k_lengths(power_space[0])
     return logk_lengths[1:] - logk_lengths[:-1]
 
@@ -89,7 +90,7 @@ def _total_fluctuation_realized(samples):
 class _SlopeRemover(EndomorphicOperator):
     def __init__(self, domain, space=0):
         self._domain = makeDomain(domain)
-        assert isinstance(self._domain[space], PowerSpace)
+        myassert(isinstance(self._domain[space], PowerSpace))
         logkl = _relative_log_k_lengths(self._domain[space])
         sc = logkl/float(logkl[-1])
 
@@ -114,7 +115,7 @@ class _SlopeRemover(EndomorphicOperator):
 class _TwoLogIntegrations(LinearOperator):
     def __init__(self, target, space=0):
         self._target = makeDomain(target)
-        assert isinstance(self.target[space], PowerSpace)
+        myassert(isinstance(self.target[space], PowerSpace))
         dom = list(self._target)
         dom[space] = UnstructuredDomain((2, self.target[space].shape[0]-2))
         self._domain = makeDomain(dom)
@@ -173,7 +174,7 @@ class _Normalization(Operator):
     """
     def __init__(self, domain, space=0):
         self._domain = self._target = DomainTuple.make(domain)
-        assert isinstance(self._domain[space], PowerSpace)
+        myassert(isinstance(self._domain[space], PowerSpace))
         hspace = list(self._domain)
         hspace[space] = hspace[space].harmonic_partner
         hspace = makeDomain(hspace)
@@ -280,10 +281,10 @@ class _Amplitude(Operator):
         asperity > 0 or None
         loglogavgslope probably negative
         """
-        assert isinstance(fluctuations, Operator)
-        assert isinstance(flexibility, Operator) or flexibility is None
-        assert isinstance(asperity, Operator) or asperity is None
-        assert isinstance(loglogavgslope, Operator)
+        myassert(isinstance(fluctuations, Operator))
+        myassert(isinstance(flexibility, Operator) or flexibility is None)
+        myassert(isinstance(asperity, Operator) or asperity is None)
+        myassert(isinstance(loglogavgslope, Operator))
 
         if len(dofdex) > 0:
             N_copies = max(dofdex) + 1
@@ -296,7 +297,7 @@ class _Amplitude(Operator):
             N_copies = 0
             space = 0
             distributed_tgt = target = makeDomain(target)
-        assert isinstance(target[space], PowerSpace)
+        myassert(isinstance(target[space], PowerSpace))
 
         twolog = _TwoLogIntegrations(target, space)
         dom = twolog.domain
@@ -514,7 +515,7 @@ class CorrelatedFieldMaker:
         else:
             N = 0
             target_subdomain = makeDomain(target_subdomain)
-        # assert isinstance(target_subdomain[space], (RGSpace, HPSpace, GLSpace))
+        # myassert(isinstance(target_subdomain[space], (RGSpace, HPSpace, GLSpace)))
 
         for arg in [fluctuations, loglogavgslope]:
             if len(arg) != 2:
@@ -642,9 +643,15 @@ class CorrelatedFieldMaker:
         ----------
         offset_mean : float
             Mean offset from zero of the correlated field to be made.
-        offset_std : tuple of float or instance of :class:`~nifty7.operators.operator.Operator` acting on scalar domain
+        offset_std : tuple of float, instance of \
+                :class:`~nifty7.operators.operator.Operator` acting on scalar \
+                domain, scalar or None
             Mean standard deviation and standard deviation of the standard
             deviation of the offset. No, this is not a word duplication.
+            The option to specify `None` or equivalently a scalar value of `1.`
+            only really makes sense for one dimensional amplitude spectral.
+            Take special care if using this option for multi-dimensional
+            amplitude spectra that this is really what you want.
         dofdex : np.array of integers, optional
             An integer array specifying the zero mode models used if
             total_N > 1. It needs to have length of total_N. If total_N=3 and
@@ -658,7 +665,9 @@ class CorrelatedFieldMaker:
             logger.warning("Overwriting the previous mean offset and zero-mode")
 
         self._offset_mean = offset_mean
-        if isinstance(offset_std, Operator):
+        if offset_std is None or (np.isscalar(offset_std) and offset_std == 1.):
+            self._azm = 1.
+        elif isinstance(offset_std, Operator):
             self._azm = offset_std
         else:
             if dofdex is None:
@@ -667,7 +676,11 @@ class CorrelatedFieldMaker:
                 raise ValueError("length of dofdex needs to match total_N")
             N = max(dofdex) + 1 if self._total_N > 0 else 0
             if len(offset_std) != 2:
-                raise TypeError
+                te = (
+                    "`offset_std` of invalid type and/or shape"
+                    f"; expected a 2D tuple of floats; got '{offset_std!r}'"
+                )
+                raise TypeError(te)
             zm = LognormalTransform(*offset_std, self._prefix + 'zeromode', N)
             if self._total_N > 0:
                 zm = _Distributor(dofdex, zm.target, UnstructuredDomain(self._total_N)) @ zm
@@ -704,10 +717,10 @@ class CorrelatedFieldMaker:
                                            self._target_subdomains[i][amp_space],
                                            space=spaces[i]) @ ht
 
-        expander = ContractionOperator(hspace, spaces=spaces).adjoint
-        azm = expander @ self.azm
-
-        a = list(self.get_normalized_amplitudes())
+        if np.isscalar(self.azm):
+            a = list(self.fluctuations)
+        else:
+            a = list(self.get_normalized_amplitudes())
         for ii in range(n_amplitudes):
             co = ContractionOperator(hspace, spaces[:ii] + spaces[ii + 1:])
             pp = a[ii].target[amp_space]
@@ -715,7 +728,12 @@ class CorrelatedFieldMaker:
             a[ii] = co.adjoint @ pd @ a[ii]
         corr = reduce(mul, a)
         xi = ducktape(hspace, None, self._prefix + 'xi')
-        op = ht(azm * corr * xi)
+        if np.isscalar(self.azm):
+            op = ht(corr * xi)
+        else:
+            expander = ContractionOperator(hspace, spaces=spaces).adjoint
+            azm = expander @ self.azm
+            op = ht(azm * corr * xi)
 
         if self._offset_mean is not None:
             offset = self._offset_mean
@@ -772,13 +790,21 @@ class CorrelatedFieldMaker:
         The amplitude operators are corrected for the otherwise degenerate
         zero-mode. Their scales are only meaningful relative to one another.
         Their absolute scale bares no information.
+
+        Notes
+        -----
+        In the case of no zero-mode, i.e. an assumed zero-mode of unity, this
+        call is equivalent to the `fluctuations` property.
         """
+        if np.isscalar(self.azm):
+            return self.fluctuations
+
         normal_amp = []
         for amp in self._a:
             a_target = amp.target
             a_space = 0 if not hasattr(amp, "_space") else amp._space
             a_pp = amp.target[a_space]
-            assert isinstance(a_pp, PowerSpace)
+            myassert(isinstance(a_pp, PowerSpace))
 
             azm_expander = ContractionOperator(
                 a_target, spaces=a_space
@@ -808,10 +834,13 @@ class CorrelatedFieldMaker:
             raise NotImplementedError(s)
         normal_amp = self.get_normalized_amplitudes()[0]
 
-        expand = ContractionOperator(
-            normal_amp.target, len(normal_amp.target) - 1
-        ).adjoint
-        return normal_amp * (expand @ self.azm)
+        if np.isscalar(self.azm):
+            return normal_amp
+        else:
+            expand = ContractionOperator(
+                normal_amp.target, len(normal_amp.target) - 1
+            ).adjoint
+            return normal_amp * (expand @ self.azm)
 
     @property
     def power_spectrum(self):

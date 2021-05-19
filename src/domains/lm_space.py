@@ -131,7 +131,7 @@ class LMSpace(StructuredDomain):
         op = HarmonicTransformOperator(lm0, gl)
         kernel_lm = op.adjoint_times(kernel_sphere.weight(1)).val
         # evaluate the k lengths of the harmonic space
-        k_lengths = self.get_k_length_array().val.astype(np.int)
+        k_lengths = self.get_k_length_array().val.astype(int)
         return Field.from_raw(self, kernel_lm[k_lengths])
 
     @property

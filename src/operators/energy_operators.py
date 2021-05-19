@@ -11,7 +11,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
-# Copyright(C) 2013-2020 Max-Planck-Society
+# Copyright(C) 2013-2021 Max-Planck-Society
 #
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
 
@@ -23,6 +23,7 @@ from ..field import Field
 from ..multi_domain import MultiDomain
 from ..multi_field import MultiField
 from ..sugar import makeDomain, makeOp
+from ..utilities import myassert
 from .linear_operator import LinearOperator
 from .operator import Operator
 from .sampling_enabler import SamplingDtypeSetter, SamplingEnabler
@@ -178,9 +179,9 @@ class VariableCovarianceGaussianEnergy(EnergyOperator):
 
     def _simplify_for_constant_input_nontrivial(self, c_inp):
         from .simplify_for_const import ConstantEnergyOperator
-        assert len(c_inp.keys()) == 1
+        myassert(len(c_inp.keys()) == 1)
         key = c_inp.keys()[0]
-        assert key in self._domain.keys()
+        myassert(key in self._domain.keys())
         cst = c_inp[key]
         if key == self._kr:
             res = _SpecialGammaEnergy(cst).ducktape(self._ki)
@@ -193,7 +194,7 @@ class VariableCovarianceGaussianEnergy(EnergyOperator):
                 trlog /= 2
             res = res + ConstantEnergyOperator(-trlog)
         res = res + ConstantEnergyOperator(0.)
-        assert res.target is self.target
+        myassert(res.target is self.target)
         return None, res
 
 

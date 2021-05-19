@@ -32,14 +32,15 @@ from .operators.diagonal_operator import DiagonalOperator
 from .operators.distributors import PowerDistributor
 from .operators.operator import Operator
 from .operators.sampling_enabler import SamplingDtypeSetter
+from .operators.selection_operators import SliceOperator
 from .operators.scaling_operator import ScalingOperator
 from .plot import Plot
 
 __all__ = ['PS_field', 'power_analyze', 'create_power_operator',
-           'create_harmonic_smoothing_operator', 'from_random',
-           'full', 'makeField',
-           'is_fieldlike', 'is_linearization', 'is_operator',
-           'makeDomain', 'get_signal_variance', 'makeOp', 'domain_union',
+           'density_estimator', 'create_harmonic_smoothing_operator',
+           'from_random', 'full', 'makeField', 'is_fieldlike',
+           'is_linearization', 'is_operator', 'makeDomain',
+           'get_signal_variance', 'makeOp', 'domain_union',
            'get_default_codomain', 'single_plot', 'exec_time',
            'calculate_position'] + list(pointwise.ptw_dict.keys())
 
@@ -212,6 +213,66 @@ def create_power_operator(domain, power_spectrum, space=None):
     space = utilities.infer_space(domain, space)
     field = _create_power_field(domain[space], power_spectrum)
     return DiagonalOperator(field, domain, space)
+
+
+def density_estimator(domain, pad=1.0, cf_fluctuations=None,
+                      cf_azm_uniform=None):
+    from .domains.rg_space import RGSpace
+    from .library.correlated_fields import CorrelatedFieldMaker
+    from .library.special_distributions import UniformOperator
+
+    cf_azm_uniform_sane_default = (1e-4, 1.0)
+    cf_fluctuations_sane_default = {
+        "scale": (0.5, 0.3),
+        "cutoff": (4.0, 3.0),
+        "loglogslope": (-6.0, 3.0)
+    }
+
+    domain = DomainTuple.make(domain)
+    dom_scaling = 1. + np.broadcast_to(pad, (len(domain.axes), ))
+    if cf_fluctuations is None:
+        cf_fluctuations = cf_fluctuations_sane_default
+    if cf_azm_uniform is None:
+        cf_azm_uniform = cf_azm_uniform_sane_default
+
+    domain_padded = []
+    for d_scl, d in zip(dom_scaling, domain):
+        if not isinstance(d, RGSpace) or d.harmonic:
+            te = [f"unexpected domain encountered in `domain`: {domain}"]
+            te += "expected a non-harmonic `RGSpace`"
+            raise TypeError("\n".join(te))
+        shape_padded = tuple((d_scl * np.array(d.shape)).astype(int))
+        domain_padded.append(RGSpace(shape_padded, distances=d.distances))
+    domain_padded = DomainTuple.make(domain_padded)
+
+    # Set up the signal model
+    azm_offset_mean = 0.0  # The zero-mode should be inferred only from the data
+    cfmaker = CorrelatedFieldMaker("")
+    for i, d in enumerate(domain_padded):
+        if isinstance(cf_fluctuations, (list, tuple)):
+            cf_fl = cf_fluctuations[i]
+        else:
+            cf_fl = cf_fluctuations
+        cfmaker.add_fluctuations_matern(d, **cf_fl, prefix=f"ax{i}")
+    scalar_domain = DomainTuple.scalar_domain()
+    uniform = UniformOperator(scalar_domain, *cf_azm_uniform)
+    azm = uniform.ducktape("zeromode")
+    cfmaker.set_amplitude_total_offset(azm_offset_mean, azm)
+    correlated_field = cfmaker.finalize(0).clip(-10., 10.)
+    normalized_amplitudes = cfmaker.get_normalized_amplitudes()
+
+    domain_shape = tuple(d.shape for d in domain)
+    slc = SliceOperator(correlated_field.target, domain_shape)
+    signal = (slc @ correlated_field).exp()
+
+    model_operators = {
+        "correlated_field": correlated_field,
+        "select_subset": slc,
+        "amplitude_total_offset": azm,
+        "normalized_amplitudes": normalized_amplitudes
+    }
+
+    return signal, model_operators
 
 
 def create_harmonic_smoothing_operator(domain, space, sigma):

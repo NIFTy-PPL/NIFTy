@@ -97,8 +97,8 @@ class DOFDistributor(LinearOperator):
         firstaxis = self._target.axes[self._space][0]
         lastaxis = self._target.axes[self._space][-1]
         arrshape = self._target.shape
-        presize = np.prod(arrshape[0:firstaxis], dtype=np.int)
-        postsize = np.prod(arrshape[lastaxis+1:], dtype=np.int)
+        presize = np.prod(arrshape[0:firstaxis], dtype=int)
+        postsize = np.prod(arrshape[lastaxis+1:], dtype=int)
         self._hshape = (presize, self._domain[self._space].shape[0], postsize)
         self._pshape = (presize, self._dofdex.size, postsize)
 

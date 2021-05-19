@@ -53,7 +53,7 @@ class HPSpace(StructuredDomain):
 
     @property
     def size(self):
-        return np.int(12 * self.nside * self.nside)
+        return int(12 * self.nside * self.nside)
 
     @property
     def scalar_dvol(self):

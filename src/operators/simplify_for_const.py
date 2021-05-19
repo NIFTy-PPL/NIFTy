@@ -11,11 +11,12 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
-# Copyright(C) 2013-2020 Max-Planck-Society
+# Copyright(C) 2013-201 Max-Planck-Society
 #
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
 
 from ..multi_domain import MultiDomain
+from ..utilities import myassert
 from .block_diagonal_operator import BlockDiagonalOperator
 from .energy_operators import EnergyOperator
 from .operator import Operator
@@ -80,8 +81,8 @@ class ConstantOperator(Operator):
 
 class ConstantEnergyOperator(EnergyOperator):
     def __init__(self, output):
-        from ..sugar import makeDomain
         from ..field import Field
+        from ..sugar import makeDomain
         self._domain = makeDomain({})
         if not isinstance(output, Field):
             output = Field.scalar(float(output))
@@ -116,7 +117,7 @@ class InsertionOperator(Operator):
         self._jac = BlockDiagonalOperator(self._domain, jac) + NullOperator(makeDomain({}), cstdom)
 
     def apply(self, x):
-        assert len(set(self._cst.keys()) & set(x.domain.keys())) == 0
+        myassert(len(set(self._cst.keys()) & set(x.domain.keys())) == 0)
         val = x if x.jac is None else x.val
         val = val.unite(self._cst)
         if x.jac is None:
