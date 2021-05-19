@@ -286,7 +286,7 @@ def test_stdfunc():
     f = ift.Field.full(s, 27)
     assert_equal(f.val, 27)
     assert_equal(f.shape, (200,))
-    assert_equal(f.dtype, int)
+    assert_equal(f.dtype, np.int64)
     fx = ift.full(f.domain, 0)
     assert_equal(f.dtype, fx.dtype)
     assert_equal(f.shape, fx.shape)
