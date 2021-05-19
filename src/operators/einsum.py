@@ -11,7 +11,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
-# Copyright(C) 2013-2020 Max-Planck-Society
+# Copyright(C) 2013-2021 Max-Planck-Society
 # Authors: Gordian Edenhofer, Philipp Frank
 #
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
@@ -25,6 +25,7 @@ from ..field import Field
 from ..linearization import Linearization
 from ..multi_domain import MultiDomain
 from ..multi_field import MultiField
+from ..utilities import myassert
 from .linear_operator import LinearOperator
 from .operator import Operator
 
@@ -248,7 +249,7 @@ class LinearEinsum(LinearOperator):
                 if k_hit in _key_order:
                     tgt += [self._mf.domain[k_hit][dom_k_idx]]
                 else:
-                    assert k_hit == id(self)
+                    myassert(k_hit == id(self))
                     tgt += [self._domain[dom_k_idx]]
                 numpy_subscripts += "".join(subscriptmap[o])
             _target = DomainTuple.make(tgt)

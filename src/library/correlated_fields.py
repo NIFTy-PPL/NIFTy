@@ -43,6 +43,7 @@ from ..operators.operator import Operator
 from ..operators.simple_linear_operators import VdotOperator, ducktape
 from ..probing import StatCalculator
 from ..sugar import full, makeDomain, makeField, makeOp
+from ..utilities import myassert
 
 
 def _log_k_lengths(pspace):
@@ -54,17 +55,17 @@ def _relative_log_k_lengths(power_space):
     """Log-distance to first bin
     logkl.shape==power_space.shape, logkl[0]=logkl[1]=0"""
     power_space = DomainTuple.make(power_space)
-    assert isinstance(power_space[0], PowerSpace)
-    assert len(power_space) == 1
+    myassert(isinstance(power_space[0], PowerSpace))
+    myassert(len(power_space) == 1)
     logkl = _log_k_lengths(power_space[0])
-    assert logkl.shape[0] == power_space[0].shape[0] - 1
+    myassert(logkl.shape[0] == power_space[0].shape[0] - 1)
     logkl -= logkl[0]
     return np.insert(logkl, 0, 0)
 
 
 def _log_vol(power_space):
     power_space = makeDomain(power_space)
-    assert isinstance(power_space[0], PowerSpace)
+    myassert(isinstance(power_space[0], PowerSpace))
     logk_lengths = _log_k_lengths(power_space[0])
     return logk_lengths[1:] - logk_lengths[:-1]
 
@@ -89,7 +90,7 @@ def _total_fluctuation_realized(samples):
 class _SlopeRemover(EndomorphicOperator):
     def __init__(self, domain, space=0):
         self._domain = makeDomain(domain)
-        assert isinstance(self._domain[space], PowerSpace)
+        myassert(isinstance(self._domain[space], PowerSpace))
         logkl = _relative_log_k_lengths(self._domain[space])
         sc = logkl/float(logkl[-1])
 
@@ -114,7 +115,7 @@ class _SlopeRemover(EndomorphicOperator):
 class _TwoLogIntegrations(LinearOperator):
     def __init__(self, target, space=0):
         self._target = makeDomain(target)
-        assert isinstance(self.target[space], PowerSpace)
+        myassert(isinstance(self.target[space], PowerSpace))
         dom = list(self._target)
         dom[space] = UnstructuredDomain((2, self.target[space].shape[0]-2))
         self._domain = makeDomain(dom)
@@ -173,7 +174,7 @@ class _Normalization(Operator):
     """
     def __init__(self, domain, space=0):
         self._domain = self._target = DomainTuple.make(domain)
-        assert isinstance(self._domain[space], PowerSpace)
+        myassert(isinstance(self._domain[space], PowerSpace))
         hspace = list(self._domain)
         hspace[space] = hspace[space].harmonic_partner
         hspace = makeDomain(hspace)
@@ -280,10 +281,10 @@ class _Amplitude(Operator):
         asperity > 0 or None
         loglogavgslope probably negative
         """
-        assert isinstance(fluctuations, Operator)
-        assert isinstance(flexibility, Operator) or flexibility is None
-        assert isinstance(asperity, Operator) or asperity is None
-        assert isinstance(loglogavgslope, Operator)
+        myassert(isinstance(fluctuations, Operator))
+        myassert(isinstance(flexibility, Operator) or flexibility is None)
+        myassert(isinstance(asperity, Operator) or asperity is None)
+        myassert(isinstance(loglogavgslope, Operator))
 
         if len(dofdex) > 0:
             N_copies = max(dofdex) + 1
@@ -296,7 +297,7 @@ class _Amplitude(Operator):
             N_copies = 0
             space = 0
             distributed_tgt = target = makeDomain(target)
-        assert isinstance(target[space], PowerSpace)
+        myassert(isinstance(target[space], PowerSpace))
 
         twolog = _TwoLogIntegrations(target, space)
         dom = twolog.domain
@@ -514,7 +515,7 @@ class CorrelatedFieldMaker:
         else:
             N = 0
             target_subdomain = makeDomain(target_subdomain)
-        # assert isinstance(target_subdomain[space], (RGSpace, HPSpace, GLSpace))
+        # myassert(isinstance(target_subdomain[space], (RGSpace, HPSpace, GLSpace)))
 
         for arg in [fluctuations, loglogavgslope]:
             if len(arg) != 2:
@@ -803,7 +804,7 @@ class CorrelatedFieldMaker:
             a_target = amp.target
             a_space = 0 if not hasattr(amp, "_space") else amp._space
             a_pp = amp.target[a_space]
-            assert isinstance(a_pp, PowerSpace)
+            myassert(isinstance(a_pp, PowerSpace))
 
             azm_expander = ContractionOperator(
                 a_target, spaces=a_space

@@ -11,7 +11,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
-# Copyright(C) 2013-2020 Max-Planck-Society
+# Copyright(C) 2013-2021 Max-Planck-Society
 #
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
 
@@ -341,7 +341,7 @@ def _check_nontrivial_constant(op, loc, tol, ntries, only_r_differentiable,
 
         val0 = op(loc)
         _, op0 = op.simplify_for_constant_input(cstloc)
-        assert op0.domain is varloc.domain
+        myassert(op0.domain is varloc.domain)
         val1 = op0(varloc)
         assert_equal(val0, val1)
 
@@ -350,7 +350,7 @@ def _check_nontrivial_constant(op, loc, tol, ntries, only_r_differentiable,
         oplin0 = op0(lin0)
         oplin = op(lin)
 
-        assert oplin.jac.target is oplin0.jac.target
+        myassert(oplin.jac.target is oplin0.jac.target)
         rndinp = from_random(oplin.jac.target)
         assert_allclose(oplin.jac.adjoint(rndinp).extract(varloc.domain),
                         oplin0.jac.adjoint(rndinp), 1e-13, 1e-13)
