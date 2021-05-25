@@ -221,9 +221,9 @@ def density_estimator(domain, pad=1.0, cf_fluctuations=None,
     from .library.correlated_fields import CorrelatedFieldMaker
     from .library.special_distributions import UniformOperator
 
-    cf_azm_uniform_sane_default = (1e-4, 1.0)
+    cf_azm_uniform_sane_default = (1e-15, 5.0)
     cf_fluctuations_sane_default = {
-        "scale": (0.5, 0.3),
+        "scale": (0.3, 0.2),
         "cutoff": (4.0, 3.0),
         "loglogslope": (-6.0, 3.0)
     }
