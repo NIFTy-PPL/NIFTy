@@ -64,6 +64,25 @@ def _field_to_dtype(field):
     return dt
 
 
+class _KeyModifier(LinearOperator):
+    def __init__(self, domain, pre):
+        if not isinstance(domain, MultiDomain):
+            raise ValueError
+        self._domain = makeDomain(domain)
+        self._pre = str(pre)
+        target = {self._pre+k: domain[k] for k in domain.keys()}
+        self._target = makeDomain(MultiDomain.make(target))
+        self._capability = self.TIMES | self.ADJOINT_TIMES
+
+    def apply(self, x, mode):
+        self._check_input(x, mode)
+        if mode == self.TIMES:
+            res = {self._pre+k:x[k] for k in self._domain.keys()}
+        else:
+            res = {k:x[self._pre+k] for k in self._domain.keys()}
+        return MultiField.from_dict(res, domain=self._tgt(mode))
+
+
 class EnergyOperator(_OperatorBase):
     """Operator which has a scalar domain as target domain.
 
@@ -92,16 +111,23 @@ class EnergyOperator(_OperatorBase):
             return self.add(x)
         if isinstance(x, _SumEnergy):
             return x.add(self)
-        if isinstance(self, LikelihoodOperator):
+        if isinstance(self, LikelihoodOperator) and isinstance(x, LikelihoodOperator):
             return _SumLikelihood((self, x))
         return _SumEnergy((self, x))
 
 class LikelihoodOperator(EnergyOperator):
     """EnergyOperator representing a likelihood. The input to the Operator are
-    the parameters of the likelihood.
+    the parameters of the likelihood. Unlike a general EnergyOperator, the
+    metric of a LikelihoodOperator is the Fisher Information metric of the
+    likelihood.
     """
 
     def get_transformation(self):
+        """Constructs an Operator that transforms from the input coordinate
+        system of the likelihood into a coordinate system where the metric is
+        the Euclidean metric. Returns the dtype in the target coordinate frame
+        in addition to the Operator.
+        """
         raise NotImplementedError
 
 
@@ -123,7 +149,8 @@ class _PrependedEnergy(EnergyOperator):
 
 class _PrependedLikelihood(_PrependedEnergy, LikelihoodOperator):
     def get_transformation(self):
-        return self._energy.get_transformation()@self._inp
+        dtp, trafo = self._energy.get_transformation()
+        return dtp, trafo@self._inp
 
 
 class _SumEnergy(EnergyOperator):
@@ -174,7 +201,18 @@ class _SumEnergy(EnergyOperator):
 
 class _SumLikelihood(_SumEnergy, LikelihoodOperator):
     def get_transformation(self):
-        return NotImplemented
+        dtype, trafo = {}, None
+        for i, lh in enumerate(self._energies):
+            mydtype, mytrafo = lh.get_transformation()
+            if isinstance(mytrafo.target, MultiDomain):
+                dtype.update({str(i)+d:mydtype[d] for d in mydtype.keys()})
+                mytrafo = _KeyModifier(mytrafo.target, str(i))@mytrafo
+                trafo = mytrafo if trafo is None else trafo+mytrafo
+            else:
+                dtype[str(i)] = mydtype
+                mytrafo = mytrafo.ducktape_left(str(i))
+                trafo = mytrafo if trafo is None else trafo + mytrafo
+        return dtype, trafo
 
 
 class Squared2NormOperator(EnergyOperator):
