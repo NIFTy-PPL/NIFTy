@@ -115,8 +115,9 @@ class _OperatorBase(metaclass=NiftyMeta):
         from ..domain_tuple import DomainTuple
         from ..multi_field import MultiField
         from ..sugar import makeDomain
-        from .energy_operators import EnergyOperator
+        from .energy_operators import EnergyOperator, LikelihoodOperator
         from .simplify_for_const import (ConstantEnergyOperator,
+                                         ConstantLikelihoodOperator,
                                          ConstantOperator)
         if c_inp is None or (isinstance(c_inp, MultiField) and len(c_inp.keys()) == 0):
             return None, self
@@ -134,7 +135,9 @@ class _OperatorBase(metaclass=NiftyMeta):
         if dom is self.domain:
             if isinstance(self, DomainTuple):
                 raise RuntimeError
-            if isinstance(self, EnergyOperator):
+            if isinstance(self, LikelihoodOperator):
+                op = ConstantLikelihoodOperator(self(c_inp))
+            elif isinstance(self, EnergyOperator):
                 op = ConstantEnergyOperator(self(c_inp))
             else:
                 op = ConstantOperator(self(c_inp))
