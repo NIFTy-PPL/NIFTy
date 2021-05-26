@@ -22,10 +22,9 @@ from ..logger import logger
 from ..multi_domain import MultiDomain
 from ..utilities import NiftyMeta, indent, myassert
 
-
-class Operator(metaclass=NiftyMeta):
+class _OperatorBase(metaclass=NiftyMeta):
     """Transforms values defined on one domain into values defined on another
-    domain, and can also provide the Jacobian.
+    domain.
     """
 
     @property
@@ -47,6 +46,123 @@ class Operator(metaclass=NiftyMeta):
         target : DomainTuple or MultiDomain
         """
         return self._target
+
+    @staticmethod
+    def _check_domain_equality(dom_op, dom_field):
+        if dom_op != dom_field:
+            s = "The operator's and field's domains don't match."
+            from ..domain_tuple import DomainTuple
+            from ..multi_domain import MultiDomain
+            if not isinstance(dom_op, (DomainTuple, MultiDomain,)):
+                s += " Your operator's domain is neither a `DomainTuple`" \
+                     " nor a `MultiDomain`."
+            raise ValueError(s)
+
+    def __add__(self, x):
+        raise NotImplementedError
+
+    def apply(self, x):
+        """Applies the operator to a Field or MultiField.
+
+        Parameters
+        ----------
+        x : Field or MultiField
+            Input on which the operator shall act. Needs to be defined on
+            :attr:`domain`.
+        """
+        raise NotImplementedError
+
+    def force(self, x):
+        """Extract subset of domain of x according to `self.domain` and apply
+        operator."""
+        return self.apply(x.extract(self.domain))
+
+    def _check_input(self, x):
+        from .scaling_operator import ScalingOperator
+        if not (isinstance(x, Operator) and x.val is not None):
+            raise TypeError
+        if x.jac is not None:
+            if not isinstance(x.jac, ScalingOperator):
+                raise ValueError
+            if x.jac._factor != 1:
+                raise ValueError
+        self._check_domain_equality(self._domain, x.domain)
+
+    def __call__(self, x):
+        if not isinstance(x, Operator):
+            raise TypeError
+        if x.jac is not None:
+            return self.apply(x.trivial_jac()).prepend_jac(x.jac)
+        elif x.val is not None:
+            return self.apply(x)
+        return self @ x
+
+    def ducktape(self, name):
+        from ..sugar import is_operator
+        from .simple_linear_operators import ducktape
+        from .energy_operators import EnergyOperator
+        if not (is_operator(self) or isinstance(self, EnergyOperator)):
+            raise RuntimeError("ducktape works only on operators or energy operators")
+        return self @ ducktape(self, None, name)
+
+    def __repr__(self):
+        return self.__class__.__name__
+
+    def simplify_for_constant_input(self, c_inp):
+        from ..domain_tuple import DomainTuple
+        from ..multi_field import MultiField
+        from ..sugar import makeDomain
+        from .energy_operators import EnergyOperator
+        from .simplify_for_const import (ConstantEnergyOperator,
+                                         ConstantOperator)
+        if c_inp is None or (isinstance(c_inp, MultiField) and len(c_inp.keys()) == 0):
+            return None, self
+        dom = c_inp.domain
+        if isinstance(dom, MultiDomain) and len(dom) == 0:
+            return None, self
+
+        # Convention: If c_inp is MultiField, it needs to be defined on a
+        # subdomain of self._domain
+        if isinstance(self.domain, MultiDomain):
+            myassert(isinstance(dom, MultiDomain))
+            if not set(c_inp.keys()) <= set(self.domain.keys()):
+                raise ValueError
+
+        if dom is self.domain:
+            if isinstance(self, DomainTuple):
+                raise RuntimeError
+            if isinstance(self, EnergyOperator):
+                op = ConstantEnergyOperator(self(c_inp))
+            else:
+                op = ConstantOperator(self(c_inp))
+            return None, op
+        if not isinstance(dom, MultiDomain):
+            raise RuntimeError
+        c_out, op = self._simplify_for_constant_input_nontrivial(c_inp)
+        vardom = makeDomain({kk: vv for kk, vv in self.domain.items()
+                             if kk not in c_inp.keys()})
+        myassert(op.domain is vardom)
+        myassert(op.target is self.target)
+        myassert(isinstance(op, Operator))
+        if c_out is not None:
+            myassert(isinstance(c_out, MultiField))
+            myassert(len(set(c_out.keys()) & self.domain.keys()) == 0)
+            myassert(set(c_out.keys()) <= set(c_inp.keys()))
+        return c_out, op
+
+    def _simplify_for_constant_input_nontrivial(self, c_inp):
+        from .simplify_for_const import InsertionOperator
+        logger.warning('SlowPartialConstantOperator used for:')
+        logger.warning(self.__repr__())
+        return None, self @ InsertionOperator(self.domain, c_inp)
+
+    def partial_insert(self, x):
+        raise NotImplementedError
+
+class Operator(_OperatorBase):
+    """Transforms values defined on one domain into values defined on another
+    domain, and can also provide the Jacobian.
+    """
 
     @property
     def val(self):
@@ -106,17 +222,6 @@ class Operator(metaclass=NiftyMeta):
         None or LinearOperator : the metric
         """
         return None
-
-    @staticmethod
-    def _check_domain_equality(dom_op, dom_field):
-        if dom_op != dom_field:
-            s = "The operator's and field's domains don't match."
-            from ..domain_tuple import DomainTuple
-            from ..multi_domain import MultiDomain
-            if not isinstance(dom_op, (DomainTuple, MultiDomain,)):
-                s += " Your operator's domain is neither a `DomainTuple`" \
-                     " nor a `MultiDomain`."
-            raise ValueError(s)
 
     def scale(self, factor):
         if factor == 1:
@@ -226,49 +331,6 @@ class Operator(metaclass=NiftyMeta):
             return NotImplemented
         return self.ptw("power", power)
 
-    def apply(self, x):
-        """Applies the operator to a Field or MultiField.
-
-        Parameters
-        ----------
-        x : Field or MultiField
-            Input on which the operator shall act. Needs to be defined on
-            :attr:`domain`.
-        """
-        raise NotImplementedError
-
-    def force(self, x):
-        """Extract subset of domain of x according to `self.domain` and apply
-        operator."""
-        return self.apply(x.extract(self.domain))
-
-    def _check_input(self, x):
-        from .scaling_operator import ScalingOperator
-        if not (isinstance(x, Operator) and x.val is not None):
-            raise TypeError
-        if x.jac is not None:
-            if not isinstance(x.jac, ScalingOperator):
-                raise ValueError
-            if x.jac._factor != 1:
-                raise ValueError
-        self._check_domain_equality(self._domain, x.domain)
-
-    def __call__(self, x):
-        if not isinstance(x, Operator):
-            raise TypeError
-        if x.jac is not None:
-            return self.apply(x.trivial_jac()).prepend_jac(x.jac)
-        elif x.val is not None:
-            return self.apply(x)
-        return self @ x
-
-    def ducktape(self, name):
-        from ..sugar import is_operator
-        from .simple_linear_operators import ducktape
-        if not is_operator(self):
-            raise RuntimeError("ducktape works only on operators")
-        return self @ ducktape(self, None, name)
-
     def ducktape_left(self, name):
         from ..sugar import is_fieldlike, is_linearization, is_operator
         from .simple_linear_operators import ducktape
@@ -276,57 +338,6 @@ class Operator(metaclass=NiftyMeta):
             return ducktape(None, self, name) @ self
         if is_fieldlike(self) or is_linearization(self):
             return ducktape(None, self.domain, name)(self)
-
-    def __repr__(self):
-        return self.__class__.__name__
-
-    def simplify_for_constant_input(self, c_inp):
-        from ..domain_tuple import DomainTuple
-        from ..multi_field import MultiField
-        from ..sugar import makeDomain
-        from .energy_operators import EnergyOperator
-        from .simplify_for_const import (ConstantEnergyOperator,
-                                         ConstantOperator)
-        if c_inp is None or (isinstance(c_inp, MultiField) and len(c_inp.keys()) == 0):
-            return None, self
-        dom = c_inp.domain
-        if isinstance(dom, MultiDomain) and len(dom) == 0:
-            return None, self
-
-        # Convention: If c_inp is MultiField, it needs to be defined on a
-        # subdomain of self._domain
-        if isinstance(self.domain, MultiDomain):
-            myassert(isinstance(dom, MultiDomain))
-            if not set(c_inp.keys()) <= set(self.domain.keys()):
-                raise ValueError
-
-        if dom is self.domain:
-            if isinstance(self, DomainTuple):
-                raise RuntimeError
-            if isinstance(self, EnergyOperator):
-                op = ConstantEnergyOperator(self(c_inp))
-            else:
-                op = ConstantOperator(self(c_inp))
-            return None, op
-        if not isinstance(dom, MultiDomain):
-            raise RuntimeError
-        c_out, op = self._simplify_for_constant_input_nontrivial(c_inp)
-        vardom = makeDomain({kk: vv for kk, vv in self.domain.items()
-                             if kk not in c_inp.keys()})
-        myassert(op.domain is vardom)
-        myassert(op.target is self.target)
-        myassert(isinstance(op, Operator))
-        if c_out is not None:
-            myassert(isinstance(c_out, MultiField))
-            myassert(len(set(c_out.keys()) & self.domain.keys()) == 0)
-            myassert(set(c_out.keys()) <= set(c_inp.keys()))
-        return c_out, op
-
-    def _simplify_for_constant_input_nontrivial(self, c_inp):
-        from .simplify_for_const import InsertionOperator
-        logger.warning('SlowPartialConstantOperator used for:')
-        logger.warning(self.__repr__())
-        return None, self @ InsertionOperator(self.domain, c_inp)
 
     def ptw(self, op, *args, **kwargs):
         return _OpChain.make((_FunctionApplier(self.target, op, *args, **kwargs), self))
