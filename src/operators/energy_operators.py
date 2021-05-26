@@ -101,19 +101,19 @@ class EnergyOperator(_OperatorBase):
         if not isinstance(x, Operator):
             return NotImplemented
         if isinstance(self, LikelihoodOperator):
-            return _PrependedLikelihood(self, x)
-        return _PrependedEnergy(self, x)
+            return _LikelihoodPrep(self, x)
+        return _EnergyPrep(self, x)
 
     def __add__(self, x):
         if not isinstance(x, EnergyOperator):
             return NotImplemented
-        if isinstance(self, _SumEnergy):
+        if isinstance(self, _EnergySum):
             return self.add(x)
-        if isinstance(x, _SumEnergy):
+        if isinstance(x, _EnergySum):
             return x.add(self)
         if isinstance(self, LikelihoodOperator) and isinstance(x, LikelihoodOperator):
-            return _SumLikelihood((self, x))
-        return _SumEnergy((self, x))
+            return _LikelihoodSum((self, x))
+        return _EnergySum((self, x))
 
 class LikelihoodOperator(EnergyOperator):
     """EnergyOperator representing a likelihood. The input to the Operator are
@@ -131,11 +131,11 @@ class LikelihoodOperator(EnergyOperator):
         raise NotImplementedError
 
 
-class _PrependedEnergy(EnergyOperator):
+class _EnergyPrep(EnergyOperator):
     def __init__(self, energy, inp):
         if energy.domain != inp.target:
             raise ValueError("domain mismatch")
-        isprep = isinstance(energy, _PrependedEnergy)
+        isprep = isinstance(energy, _EnergyPrep)
         self._energy = energy._energy if isprep else energy
         self._inp = energy._inp@inp if isprep else inp
         self._domain = self._inp.domain
@@ -145,15 +145,15 @@ class _PrependedEnergy(EnergyOperator):
 
     def __repr__(self):
         subs = "\n".join(sub.__repr__() for sub in (self._energy, self._inp))
-        return "_PrependedEnergy:\n" + indent(subs)
+        return "_EnergyPrep:\n" + indent(subs)
 
-class _PrependedLikelihood(_PrependedEnergy, LikelihoodOperator):
+class _LikelihoodPrep(_EnergyPrep, LikelihoodOperator):
     def get_transformation(self):
         dtp, trafo = self._energy.get_transformation()
         return dtp, trafo@self._inp
 
 
-class _SumEnergy(EnergyOperator):
+class _EnergySum(EnergyOperator):
     def __init__(self, energies):
         from ..sugar import domain_union
         self._domain = domain_union(tuple(en.domain for en in energies))
@@ -161,11 +161,11 @@ class _SumEnergy(EnergyOperator):
 
     def add(self, x):
         ens = self._energies
-        ens += x._energies if isinstance(x, _SumEnergy) else (x,)
+        ens += x._energies if isinstance(x, _EnergySum) else (x,)
         if (isinstance(self, LikelihoodOperator) and 
             isinstance(x, LikelihoodOperator)):
-            return _SumLikelihood(ens)
-        return _SumEnergy(ens)
+            return _LikelihoodSum(ens)
+        return _EnergySum(ens)
 
     def apply(self, x):
         from ..linearization import Linearization
@@ -197,9 +197,9 @@ class _SumEnergy(EnergyOperator):
 
     def __repr__(self):
         subs = "\n".join(sub.__repr__() for sub in self._energies)
-        return "_SumEnergy:\n"+indent(subs)
+        return "_EnergySum:\n"+indent(subs)
 
-class _SumLikelihood(_SumEnergy, LikelihoodOperator):
+class _LikelihoodSum(_EnergySum, LikelihoodOperator):
     def get_transformation(self):
         dtype, trafo = {}, None
         for i, lh in enumerate(self._energies):
