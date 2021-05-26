@@ -143,6 +143,15 @@ class _EnergyPrep(EnergyOperator):
     def apply(self, x):
         return self._energy(self._inp(x))
 
+    def _simplify_for_constant_input_nontrivial(self, c_inp):
+        from ..multi_domain import MultiDomain
+        if not isinstance(self._domain, MultiDomain):
+            return None, self
+        c_inp, t_op = self._inp.simplify_for_constant_input(c_inp)
+        #FIXME
+        _, res = self._energy.simplify_for_constant_input(c_inp)
+        return None, res@t_op
+
     def __repr__(self):
         subs = "\n".join(sub.__repr__() for sub in (self._energy, self._inp))
         return "_EnergyPrep:\n" + indent(subs)
@@ -194,6 +203,13 @@ class _EnergySum(EnergyOperator):
         if not wm:
             return res
         return res.add_metric(met)
+
+    def _simplify_for_constant_input_nontrivial(self, c_inp):
+        res = tuple(en.simplify_for_constant_input(
+                c_inp.extract_part(en.domain))[1] for en in self._energies)
+        res = (_LikelihoodSum(res) if isinstance(self, _LikelihoodSum) 
+                else _EnergySum(res))
+        return None, res
 
     def __repr__(self):
         subs = "\n".join(sub.__repr__() for sub in self._energies)
