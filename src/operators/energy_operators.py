@@ -25,7 +25,7 @@ from ..multi_field import MultiField
 from ..sugar import makeDomain, makeOp
 from ..utilities import myassert
 from .linear_operator import LinearOperator
-from .operator import Operator
+from .operator import Operator, _OperatorBase
 from .sampling_enabler import SamplingDtypeSetter, SamplingEnabler
 from .scaling_operator import ScalingOperator
 from .simple_linear_operators import VdotOperator
@@ -64,7 +64,7 @@ def _field_to_dtype(field):
     return dt
 
 
-class EnergyOperator(Operator):
+class EnergyOperator(_OperatorBase):
     """Operator which has a scalar domain as target domain.
 
     It is intended as an objective function for field inference.
@@ -76,6 +76,40 @@ class EnergyOperator(Operator):
        divergence.
     """
     _target = DomainTuple.scalar_domain()
+
+
+    def __matmul__(self, x):
+        if not isinstance(x, Operator):
+            return NotImplemented
+        if isinstance(self, LikelihoodOperator):
+            return _PrependedLikelihood(self, x)
+        return _PrependedEnergy(self, x)
+
+
+class LikelihoodOperator(EnergyOperator):
+    """EnergyOperator representing a likelihood. The input to the Operator are
+    the parameters of the likelihood.
+    """
+
+    def get_transformation(self):
+        raise NotImplementedError
+
+
+class _PrependedEnergy(EnergyOperator):
+    def __init__(self, energy, inp):
+        if energy.domain != inp.target:
+            raise ValueError("domain mismatch")
+        isprep = isinstance(energy, _PrependedEnergy)
+        self._energy = energy._energy if isprep else energy
+        self._inp = energy._inp@inp if isprep else inp
+        self._domain = self._inp.domain
+
+    def apply(self, x):
+        return self._energy(self._inp(x))
+
+class _PrependedLikelihood(_PrependedEnergy, LikelihoodOperator):
+    def get_transformation(self):
+        return self._energy.get_transformation()@self._inp
 
 
 class Squared2NormOperator(EnergyOperator):
@@ -126,7 +160,7 @@ class QuadraticFormOperator(EnergyOperator):
         return x.new(res, VdotOperator(self._op(x.val)))
 
 
-class VariableCovarianceGaussianEnergy(EnergyOperator):
+class VariableCovarianceGaussianEnergy(LikelihoodOperator):
     """Computes the negative log pdf of a Gaussian with unknown covariance.
 
     The covariance is assumed to be diagonal.
@@ -198,7 +232,7 @@ class VariableCovarianceGaussianEnergy(EnergyOperator):
         return None, res
 
 
-class _SpecialGammaEnergy(EnergyOperator):
+class _SpecialGammaEnergy(LikelihoodOperator):
     def __init__(self, residual):
         self._domain = DomainTuple.make(residual.domain)
         self._resi = residual
@@ -218,7 +252,7 @@ class _SpecialGammaEnergy(EnergyOperator):
         return res.add_metric(SamplingDtypeSetter(met, self._resi.dtype))
 
 
-class GaussianEnergy(EnergyOperator):
+class GaussianEnergy(LikelihoodOperator):
     """Computes a negative-log Gaussian.
 
     Represents up to constants in :math:`m`:
@@ -309,7 +343,7 @@ class GaussianEnergy(EnergyOperator):
         return f'GaussianEnergy {dom}'
 
 
-class PoissonianEnergy(EnergyOperator):
+class PoissonianEnergy(LikelihoodOperator):
     """Computes likelihood Hamiltonians of expected count field constrained by
     Poissonian count data.
 
@@ -344,7 +378,7 @@ class PoissonianEnergy(EnergyOperator):
         return res.add_metric(SamplingDtypeSetter(makeOp(1./x.val), np.float64))
 
 
-class InverseGammaLikelihood(EnergyOperator):
+class InverseGammaLikelihood(LikelihoodOperator):
     """Computes the negative log-likelihood of the inverse gamma distribution.
 
     It negative log-pdf(x) is given by
@@ -391,7 +425,7 @@ class InverseGammaLikelihood(EnergyOperator):
         return res.add_metric(met)
 
 
-class StudentTEnergy(EnergyOperator):
+class StudentTEnergy(LikelihoodOperator):
     """Computes likelihood energy corresponding to Student's t-distribution.
 
     .. math ::
@@ -422,7 +456,7 @@ class StudentTEnergy(EnergyOperator):
         return res.add_metric(SamplingDtypeSetter(met, np.float64))
 
 
-class BernoulliEnergy(EnergyOperator):
+class BernoulliEnergy(LikelihoodOperator):
     """Computes likelihood energy of expected event frequency constrained by
     event data.
 
@@ -477,7 +511,7 @@ class StandardHamiltonian(EnergyOperator):
 
     Parameters
     ----------
-    lh : EnergyOperator
+    lh : LikelihoodOperator
         The likelihood energy.
     ic_samp : IterationController
         Tells an internal :class:`SamplingEnabler` which convergence criterion
@@ -493,6 +527,8 @@ class StandardHamiltonian(EnergyOperator):
     """
 
     def __init__(self, lh, ic_samp=None, prior_dtype=np.float64):
+        if not isinstance(lh, LikelihoodOperator):
+            raise ValueError
         self._lh = lh
         self._prior = GaussianEnergy(domain=lh.domain, sampling_dtype=prior_dtype)
         self._ic_samp = ic_samp
