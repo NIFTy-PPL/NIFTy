@@ -163,7 +163,29 @@ class _OperatorBase(metaclass=NiftyMeta):
         return None, self @ InsertionOperator(self.domain, c_inp)
 
     def partial_insert(self, x):
-        raise NotImplementedError
+        from .energy_operators import EnergyOperator
+        from ..multi_domain import MultiDomain
+        if not isinstance(x, Operator):
+            raise TypeError
+        if not isinstance(self.domain, MultiDomain):
+            raise TypeError
+        if not isinstance(x.target, MultiDomain):
+            raise TypeError
+        bigdom = MultiDomain.union([self.domain, x.target])
+        k1, k2 = set(self.domain.keys()), set(x.target.keys())
+        le, ri = k2 - k1, k1 - k2
+        leop, riop = self, x
+        if len(ri) > 0:
+            riop = riop + self.identity_operator(
+                MultiDomain.make({kk: bigdom[kk]
+                                  for kk in ri}))
+        if len(le) > 0:
+            if isinstance(self, EnergyOperator):
+                raise ValueError
+            leop = leop + self.identity_operator(
+                MultiDomain.make({kk: bigdom[kk]
+                                  for kk in le}))
+        return leop @ riop
 
 class Operator(_OperatorBase):
     """Transforms values defined on one domain into values defined on another
@@ -279,28 +301,6 @@ class Operator(_OperatorBase):
         if not isinstance(x, Operator):
             return NotImplemented
         return _OpChain.make((x, self))
-
-    def partial_insert(self, x):
-        from ..multi_domain import MultiDomain
-        if not isinstance(x, Operator):
-            raise TypeError
-        if not isinstance(self.domain, MultiDomain):
-            raise TypeError
-        if not isinstance(x.target, MultiDomain):
-            raise TypeError
-        bigdom = MultiDomain.union([self.domain, x.target])
-        k1, k2 = set(self.domain.keys()), set(x.target.keys())
-        le, ri = k2 - k1, k1 - k2
-        leop, riop = self, x
-        if len(ri) > 0:
-            riop = riop + self.identity_operator(
-                MultiDomain.make({kk: bigdom[kk]
-                                  for kk in ri}))
-        if len(le) > 0:
-            leop = leop + self.identity_operator(
-                MultiDomain.make({kk: bigdom[kk]
-                                  for kk in le}))
-        return leop @ riop
 
     @staticmethod
     def identity_operator(dom):
