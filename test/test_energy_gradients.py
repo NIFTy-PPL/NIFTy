@@ -35,21 +35,6 @@ def test_gaussian(field):
     ift.extra.check_operator(energy, field)
 
 
-def test_ScaledEnergy(field):
-    icov = ift.ScalingOperator(field.domain, 1.2)
-    energy = ift.GaussianEnergy(inverse_covariance=icov, sampling_dtype=np.float64)
-    ift.extra.check_operator(energy.scale(0.3), field)
-
-    lin = ift.Linearization.make_var(field, want_metric=True)
-    met1 = energy(lin).metric
-    met2 = energy.scale(0.3)(lin).metric
-    res1 = met1(field)
-    res2 = met2(field)/0.3
-    ift.extra.assert_allclose(res1, res2, 0, 1e-12)
-    met1.draw_sample()
-    met2.draw_sample()
-
-
 def test_QuadraticFormOperator(field):
     op = ift.ScalingOperator(field.domain, 1.2)
     endo = ift.makeOp(op.draw_sample_with_dtype(dtype=np.float64))
