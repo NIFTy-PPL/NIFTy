@@ -85,6 +85,16 @@ class EnergyOperator(_OperatorBase):
             return _PrependedLikelihood(self, x)
         return _PrependedEnergy(self, x)
 
+    def __add__(self, x):
+        if not isinstance(x, EnergyOperator):
+            return NotImplemented
+        if isinstance(self, _SumEnergy):
+            return self.add(x)
+        if isinstance(x, _SumEnergy):
+            return x.add(self)
+        if isinstance(self, LikelihoodOperator):
+            return _SumLikelihood((self, x))
+        return _SumEnergy((self, x))
 
 class LikelihoodOperator(EnergyOperator):
     """EnergyOperator representing a likelihood. The input to the Operator are
@@ -110,6 +120,51 @@ class _PrependedEnergy(EnergyOperator):
 class _PrependedLikelihood(_PrependedEnergy, LikelihoodOperator):
     def get_transformation(self):
         return self._energy.get_transformation()@self._inp
+
+
+class _SumEnergy(EnergyOperator):
+    def __init__(self, energies):
+        from ..sugar import domain_union
+        self._domain = domain_union((en.domain for en in energies))
+        self._energies = energies
+
+    def add(self, x):
+        ens = self._energies
+        ens += x._energies if isinstance(x, _SumEnergy) else (x,)
+        if (isinstance(self, LikelihoodOperator) and 
+            isinstance(x, LikelihoodOperator)):
+            return _SumLikelihood(ens)
+        return _SumEnergy(ens)
+
+    def apply(self, x):
+        from ..linearization import Linearization
+        self._check_input(x)
+        islin = isinstance(x, Linearization)
+        wm = x.want_metric
+        val = x.val if islin else x
+        res = None
+        if islin:
+            jac = None
+        if wm:
+            met = None
+        for en in self._energies:
+            v = val.extract(en.domain)
+            myres = self._op1(Linearization.make_var(v, wm) if islin else v)
+            res = res if res is None else res + myres 
+            if islin:
+                jac = myres._jac if jac is None else jac._myadd(myres._jac, False)
+            if wm:
+                met = myres._metric if met is None else met._myadd(myres._metric, False)
+        if not islin:
+            return res
+        res = myres.new(res, jac)
+        if not wm:
+            return res
+        return res.add_metric(met)
+
+class _SumLikelihood(_SumEnergy, LikelihoodOperator):
+    def get_transformation(self):
+        return NotImplemented
 
 
 class Squared2NormOperator(EnergyOperator):

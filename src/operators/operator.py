@@ -61,6 +61,9 @@ class _OperatorBase(metaclass=NiftyMeta):
     def __add__(self, x):
         raise NotImplementedError
 
+    def __matmul__(self, x):
+        raise NotImplementedError
+
     def apply(self, x):
         """Applies the operator to a Field or MultiField.
 
@@ -495,8 +498,6 @@ class _OpSum(Operator):
         lin2 = self._op2(Linearization.make_var(v2, wm))
         op = lin1._jac._myadd(lin2._jac, False)
         res = lin1.new(lin1._val.unite(lin2._val), op)
-        if lin1._metric is not None and lin2._metric is not None:
-            res = res.add_metric(lin1._metric._myadd(lin2._metric, False))
         return res
 
     def _simplify_for_constant_input_nontrivial(self, c_inp):
