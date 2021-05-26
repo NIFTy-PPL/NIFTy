@@ -149,7 +149,7 @@ class _OperatorBase(metaclass=NiftyMeta):
                              if kk not in c_inp.keys()})
         myassert(op.domain is vardom)
         myassert(op.target is self.target)
-        myassert(isinstance(op, Operator))
+        myassert(isinstance(op, _OperatorBase))
         if c_out is not None:
             myassert(isinstance(c_out, MultiField))
             myassert(len(set(c_out.keys()) & self.domain.keys()) == 0)
@@ -176,13 +176,13 @@ class _OperatorBase(metaclass=NiftyMeta):
         le, ri = k2 - k1, k1 - k2
         leop, riop = self, x
         if len(ri) > 0:
-            riop = riop + self.identity_operator(
+            riop = riop + Operator.identity_operator(
                 MultiDomain.make({kk: bigdom[kk]
                                   for kk in ri}))
         if len(le) > 0:
             if isinstance(self, EnergyOperator):
                 raise ValueError
-            leop = leop + self.identity_operator(
+            leop = leop + Operator.identity_operator(
                 MultiDomain.make({kk: bigdom[kk]
                                   for kk in le}))
         return leop @ riop

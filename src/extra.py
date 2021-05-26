@@ -28,7 +28,7 @@ from .operators.adder import Adder
 from .operators.endomorphic_operator import EndomorphicOperator
 from .operators.energy_operators import EnergyOperator
 from .operators.linear_operator import LinearOperator
-from .operators.operator import Operator
+from .operators.operator import _OperatorBase
 from .operators.scaling_operator import ScalingOperator
 from .probing import StatCalculator
 from .sugar import from_random, full, is_fieldlike, is_operator
@@ -117,7 +117,7 @@ def check_operator(op, loc, tol=1e-12, ntries=100, perf_check=True,
         If op is an EnergyOperator, metric_sampling determines whether the
         test shall try to sample from the metric or not.
     """
-    if not isinstance(op, Operator):
+    if not isinstance(op, _OperatorBase):
         raise TypeError('This test tests only (nonlinear) operators.')
     _domain_check_nonlinear(op, loc)
     _performance_check(op, loc, bool(perf_check))

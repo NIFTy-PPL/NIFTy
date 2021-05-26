@@ -23,7 +23,7 @@ from ..field import Field
 from ..multi_domain import MultiDomain
 from ..multi_field import MultiField
 from ..sugar import makeDomain, makeOp
-from ..utilities import myassert
+from ..utilities import myassert, indent
 from .linear_operator import LinearOperator
 from .operator import Operator, _OperatorBase
 from .sampling_enabler import SamplingDtypeSetter, SamplingEnabler
@@ -117,6 +117,10 @@ class _PrependedEnergy(EnergyOperator):
     def apply(self, x):
         return self._energy(self._inp(x))
 
+    def __repr__(self):
+        subs = "\n".join(sub.__repr__() for sub in (self._energy, self._inp))
+        return "_PrependedEnergy:\n" + indent(subs)
+
 class _PrependedLikelihood(_PrependedEnergy, LikelihoodOperator):
     def get_transformation(self):
         return self._energy.get_transformation()@self._inp
@@ -125,8 +129,8 @@ class _PrependedLikelihood(_PrependedEnergy, LikelihoodOperator):
 class _SumEnergy(EnergyOperator):
     def __init__(self, energies):
         from ..sugar import domain_union
-        self._domain = domain_union((en.domain for en in energies))
-        self._energies = energies
+        self._domain = domain_union(tuple(en.domain for en in energies))
+        self._energies = tuple(energies)
 
     def add(self, x):
         ens = self._energies
@@ -149,10 +153,12 @@ class _SumEnergy(EnergyOperator):
             met = None
         for en in self._energies:
             v = val.extract(en.domain)
-            myres = self._op1(Linearization.make_var(v, wm) if islin else v)
-            res = res if res is None else res + myres 
+            myres = en(Linearization.make_var(v, wm) if islin else v)
             if islin:
+                res = myres.val if res is None else res + myres.val
                 jac = myres._jac if jac is None else jac._myadd(myres._jac, False)
+            else:
+                res = myres if res is None else res + myres
             if wm:
                 met = myres._metric if met is None else met._myadd(myres._metric, False)
         if not islin:
@@ -161,6 +167,10 @@ class _SumEnergy(EnergyOperator):
         if not wm:
             return res
         return res.add_metric(met)
+
+    def __repr__(self):
+        subs = "\n".join(sub.__repr__() for sub in self._energies)
+        return "_SumEnergy:\n"+indent(subs)
 
 class _SumLikelihood(_SumEnergy, LikelihoodOperator):
     def get_transformation(self):
@@ -182,9 +192,9 @@ class Squared2NormOperator(EnergyOperator):
     def apply(self, x):
         self._check_input(x)
         if x.jac is None:
-            return x.vdot(x)
-        res = x.val.vdot(x.val)
-        return x.new(res, VdotOperator(2*x.val))
+            return 0.5*x.vdot(x)
+        res = 0.5*x.val.vdot(x.val)
+        return x.new(res, VdotOperator(x.val))
 
 
 class QuadraticFormOperator(EnergyOperator):
@@ -369,7 +379,7 @@ class GaussianEnergy(LikelihoodOperator):
 
         self._icov = inverse_covariance
         if inverse_covariance is None:
-            self._op = Squared2NormOperator(self._domain).scale(0.5)
+            self._op = Squared2NormOperator(self._domain)
             self._met = ScalingOperator(self._domain, 1)
         else:
             self._op = QuadraticFormOperator(inverse_covariance)

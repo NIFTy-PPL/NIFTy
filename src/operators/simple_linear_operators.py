@@ -218,7 +218,7 @@ def ducktape(left, right, name):
 
     Parameters
     ----------
-    left : None, Operator, or Domainoid
+    left : None, _OperatorBase, or Domainoid
         Something describing the new operator's target domain.
         If `left` is an `Operator`, its domain is used as `left`.
 
@@ -244,12 +244,12 @@ def ducktape(left, right, name):
         partially inferred) domains.
     """
     from ..sugar import makeDomain
-    from .operator import Operator
+    from .operator import Operator, _OperatorBase
     if isinstance(right, Operator):
         right = right.target
     elif right is not None:
         right = makeDomain(right)
-    if isinstance(left, Operator):
+    if isinstance(left, _OperatorBase):
         left = left.domain
     elif left is not None:
         left = makeDomain(left)

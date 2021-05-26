@@ -30,7 +30,7 @@ from .multi_field import MultiField
 from .operators.block_diagonal_operator import BlockDiagonalOperator
 from .operators.diagonal_operator import DiagonalOperator
 from .operators.distributors import PowerDistributor
-from .operators.operator import Operator
+from .operators.operator import Operator, _OperatorBase
 from .operators.sampling_enabler import SamplingDtypeSetter
 from .operators.selection_operators import SliceOperator
 from .operators.scaling_operator import ScalingOperator
@@ -505,7 +505,6 @@ def exec_time(obj, want_metric=True):
     """Times the execution time of an operator or an energy."""
     from .linearization import Linearization
     from .minimization.energy import Energy
-    from .operators.energy_operators import EnergyOperator
     if isinstance(obj, Energy):
         t0 = time()
         obj.at(0.99*obj.position)
@@ -528,7 +527,7 @@ def exec_time(obj, want_metric=True):
         t0 = time()
         obj.metric(obj.position)
         logger.info('Energy.metric(position): {}'.format(time() - t0))
-    elif isinstance(obj, Operator):
+    elif isinstance(obj, _OperatorBase):
         want_metric = bool(want_metric)
         pos = from_random(obj.domain, 'normal')
         t0 = time()
