@@ -592,11 +592,11 @@ def calculate_position(operator, output):
 
 
 def is_operator(obj):
-    """Checks if object is operator-like.
+    """Check if object is operator-like.
 
     Note
     ----
-    A simple `isinstance(obj, ift.Operator)` does give the expected
+    A simple `isinstance(obj, ift.Operator)` does not give the expected
     result because, e.g., :class:`~nifty7.field.Field` inherits from
     :class:`~nifty7.operators.operator.Operator`.
     """
@@ -604,19 +604,20 @@ def is_operator(obj):
 
 
 def is_linearization(obj):
-    """Checks if object is linearization-like."""
+    """Check if object is linearization-like."""
     return isinstance(obj, Operator) and obj.jac is not None
 
 
 def is_fieldlike(obj):
-    """Checks if object is field-like.
+    """Check if object is field-like.
 
     Note
     ----
-    A simple `isinstance(obj, ift.Field)` does give the expected
+    A simple `isinstance(obj, ift.Field)` does not give the expected
     result because users might have implemented another class which
     behaves field-like but is not an instance of
-    :class:`~nifty7.field.Field`. Also not that instances of
-    :class:`~nifty7.linearization.Linearization` behave field-like.
+    :class:`~nifty7.field.Field`. Instances of
+    :class:`~nifty7.linearization.Linearization` are considered to be
+    field-like.
     """
     return isinstance(obj, Operator) and obj.val is not None
