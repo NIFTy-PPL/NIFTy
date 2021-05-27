@@ -56,6 +56,13 @@ Instead of the optional external packages `pypocketfft` and `pyHealpix`, NIFTy
 now uses the DUCC package (<https://gitlab.mpcdf.mpg.de/mtr/ducc)>,
 which is their successor.
 
+Rescaling of `ift.Squared2NormOperator`
+---------------------------------------
+
+The result of applying a `ift.Squared2NormOperator` gets rescaled with 0.5 by 
+default. This ensures a consistent behaviour with `ift.QuadraticFormOperator`
+and `ift.GaussianEnergy`.
+
 
 Naming of operator tests
 ------------------------
