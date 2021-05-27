@@ -116,10 +116,10 @@ class EnergyOperator(_OperatorBase):
         return _EnergySum((self, x))
 
 class LikelihoodOperator(EnergyOperator):
-    """EnergyOperator representing a likelihood. The input to the Operator are
-    the parameters of the likelihood. Unlike a general EnergyOperator, the
-    metric of a LikelihoodOperator is the Fisher Information metric of the
-    likelihood.
+    """`EnergyOperator` representing a likelihood. The input to the Operator
+    are the parameters of the likelihood. Unlike a general `EnergyOperator`,
+    the metric of a `LikelihoodOperator` is the Fisher information metric of
+    the likelihood.
     """
 
     def get_transformation(self):
