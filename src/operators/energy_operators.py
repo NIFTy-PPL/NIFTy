@@ -22,7 +22,7 @@ from ..domain_tuple import DomainTuple
 from ..field import Field
 from ..multi_domain import MultiDomain
 from ..multi_field import MultiField
-from ..sugar import makeDomain, makeOp
+from ..sugar import makeDomain, makeOp, is_operator
 from ..utilities import myassert, indent
 from .linear_operator import LinearOperator
 from .operator import Operator, _OperatorBase
@@ -98,7 +98,7 @@ class EnergyOperator(_OperatorBase):
 
 
     def __matmul__(self, x):
-        if not isinstance(x, Operator):
+        if not is_operator(x):
             return NotImplemented
         if isinstance(self, LikelihoodOperator):
             return _LikelihoodPrep(self, x)
