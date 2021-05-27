@@ -180,29 +180,26 @@ class _EnergySum(EnergyOperator):
         from ..linearization import Linearization
         self._check_input(x)
         islin = isinstance(x, Linearization)
-        wm = x.want_metric
         val = x.val if islin else x
-        res = None
-        if islin:
-            jac = None
+        
+        if not islin:
+            res = None
+            for en in self._energies:
+                rr = en(val.extract(en.domain))
+                res = rr if res is None else res + rr
+            return res
+        wm = x.want_metric
+        jac = None
         if wm:
             met = None
         for en in self._energies:
-            v = val.extract(en.domain)
-            myres = en(Linearization.make_var(v, wm) if islin else v)
-            if islin:
-                res = myres.val if res is None else res + myres.val
-                jac = myres._jac if jac is None else jac._myadd(myres._jac, False)
-            else:
-                res = myres if res is None else res + myres
+            rr = en(Linearization.make_var(val.extract(en.domain), wm))
+            res = rr.val if res is None else res + rr.val
+            jac = rr._jac if jac is None else jac._myadd(rr._jac, False)
             if wm:
-                met = myres._metric if met is None else met._myadd(myres._metric, False)
-        if not islin:
-            return res
-        res = myres.new(res, jac)
-        if not wm:
-            return res
-        return res.add_metric(met)
+                met = rr._metric if met is None else met._myadd(rr._metric, False)
+        res = x.new(res, jac)
+        return res.add_metric(met) if wm else res
 
     def _simplify_for_constant_input_nontrivial(self, c_inp):
         res = tuple(en.simplify_for_constant_input(
@@ -214,6 +211,7 @@ class _EnergySum(EnergyOperator):
     def __repr__(self):
         subs = "\n".join(sub.__repr__() for sub in self._energies)
         return "_EnergySum:\n"+indent(subs)
+
 
 class _LikelihoodSum(_EnergySum, LikelihoodOperator):
     def get_transformation(self):
