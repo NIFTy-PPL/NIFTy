@@ -123,7 +123,7 @@ class LikelihoodOperator(EnergyOperator):
     """
 
     def get_transformation(self):
-        """Constructs an Operator that transforms from the input coordinate
+        """Construct an Operator that transforms from the input coordinate
         system of the likelihood into a coordinate system where the metric is
         the Euclidean metric. Returns the dtype in the target coordinate frame
         in addition to the Operator.
@@ -181,9 +181,9 @@ class _EnergySum(EnergyOperator):
         self._check_input(x)
         islin = isinstance(x, Linearization)
         val = x.val if islin else x
-        
+
+        res = None
         if not islin:
-            res = None
             for en in self._energies:
                 rr = en(val.extract(en.domain))
                 res = rr if res is None else res + rr
