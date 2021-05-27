@@ -30,7 +30,7 @@ from .multi_field import MultiField
 from .operators.block_diagonal_operator import BlockDiagonalOperator
 from .operators.diagonal_operator import DiagonalOperator
 from .operators.distributors import PowerDistributor
-from .operators.operator import Operator, _OperatorBase
+from .operators.operator import Operator, OperatorBase
 from .operators.sampling_enabler import SamplingDtypeSetter
 from .operators.selection_operators import SliceOperator
 from .operators.scaling_operator import ScalingOperator
@@ -527,7 +527,7 @@ def exec_time(obj, want_metric=True):
         t0 = time()
         obj.metric(obj.position)
         logger.info('Energy.metric(position): {}'.format(time() - t0))
-    elif isinstance(obj, _OperatorBase):
+    elif isinstance(obj, OperatorBase):
         want_metric = bool(want_metric)
         pos = from_random(obj.domain, 'normal')
         t0 = time()

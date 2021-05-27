@@ -25,7 +25,7 @@ from ..multi_field import MultiField
 from ..sugar import makeDomain, makeOp, is_operator
 from ..utilities import myassert, indent
 from .linear_operator import LinearOperator
-from .operator import Operator, _OperatorBase
+from .operator import OperatorBase
 from .sampling_enabler import SamplingDtypeSetter, SamplingEnabler
 from .scaling_operator import ScalingOperator
 from .simple_linear_operators import VdotOperator
@@ -83,7 +83,7 @@ class _KeyModifier(LinearOperator):
         return MultiField.from_dict(res, domain=self._tgt(mode))
 
 
-class EnergyOperator(_OperatorBase):
+class EnergyOperator(OperatorBase):
     """Operator which has a scalar domain as target domain.
 
     It is intended as an objective function for field inference.
@@ -137,7 +137,7 @@ class _EnergyPrep(EnergyOperator):
             raise ValueError("domain mismatch")
         isprep = isinstance(energy, _EnergyPrep)
         self._energy = energy._energy if isprep else energy
-        self._inp = energy._inp@inp if isprep else inp
+        self._inp = energy._inp @ inp if isprep else inp
         self._domain = self._inp.domain
 
     def apply(self, x):
@@ -150,7 +150,7 @@ class _EnergyPrep(EnergyOperator):
         c_inp, t_op = self._inp.simplify_for_constant_input(c_inp)
         #FIXME
         _, res = self._energy.simplify_for_constant_input(c_inp)
-        return None, res@t_op
+        return None, res @ t_op
 
     def __repr__(self):
         subs = "\n".join(sub.__repr__() for sub in (self._energy, self._inp))
@@ -159,7 +159,7 @@ class _EnergyPrep(EnergyOperator):
 class _LikelihoodPrep(_EnergyPrep, LikelihoodOperator):
     def get_transformation(self):
         dtp, trafo = self._energy.get_transformation()
-        return dtp, trafo@self._inp
+        return dtp, trafo @ self._inp
 
 
 class _EnergySum(EnergyOperator):
@@ -220,7 +220,7 @@ class _LikelihoodSum(_EnergySum, LikelihoodOperator):
             mydtype, mytrafo = lh.get_transformation()
             if isinstance(mytrafo.target, MultiDomain):
                 dtype.update({str(i)+d:mydtype[d] for d in mydtype.keys()})
-                mytrafo = _KeyModifier(mytrafo.target, str(i))@mytrafo
+                mytrafo = _KeyModifier(mytrafo.target, str(i)) @ mytrafo
                 trafo = mytrafo if trafo is None else trafo+mytrafo
             else:
                 dtype[str(i)] = mydtype

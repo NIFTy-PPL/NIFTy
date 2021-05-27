@@ -22,7 +22,7 @@ from ..logger import logger
 from ..multi_domain import MultiDomain
 from ..utilities import NiftyMeta, indent, myassert
 
-class _OperatorBase(metaclass=NiftyMeta):
+class OperatorBase(metaclass=NiftyMeta):
     """Transforms values defined on one domain into values defined on another
     domain.
     """
@@ -149,7 +149,7 @@ class _OperatorBase(metaclass=NiftyMeta):
                              if kk not in c_inp.keys()})
         myassert(op.domain is vardom)
         myassert(op.target is self.target)
-        myassert(isinstance(op, _OperatorBase))
+        myassert(isinstance(op, OperatorBase))
         if c_out is not None:
             myassert(isinstance(c_out, MultiField))
             myassert(len(set(c_out.keys()) & self.domain.keys()) == 0)
@@ -187,7 +187,7 @@ class _OperatorBase(metaclass=NiftyMeta):
                                   for kk in le}))
         return leop @ riop
 
-class Operator(_OperatorBase):
+class Operator(OperatorBase):
     """Transforms values defined on one domain into values defined on another
     domain, and can also provide the Jacobian.
     """
