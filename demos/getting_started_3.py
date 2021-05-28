@@ -31,6 +31,7 @@ import numpy as np
 
 import nifty7 as ift
 
+ift.random.push_sseq_from_seed(27)
 
 def random_los(n_los):
     starts = list(ift.random.current_rng().random((n_los, 2)).T)
@@ -63,16 +64,16 @@ def main():
         'offset_std': (1e-3, 1e-6),
 
         # Amplitude of field fluctuations
-        'fluctuations': (2., 1.),  # 1.0, 1e-2
+        'fluctuations': (1., 0.8),  # 1.0, 1e-2
 
         # Exponent of power law power spectrum component
-        'loglogavgslope': (-4., 1),  # -6.0, 1
+        'loglogavgslope': (-3., 1),  # -6.0, 1
 
         # Amplitude of integrated Wiener process power spectrum component
-        'flexibility': (5, 2.),  # 2.0, 1.0
+        'flexibility': (2, 1.),  # 1.0, 0.5
 
         # How ragged the integrated Wiener process component is
-        'asperity': (0.5, 0.5)  # 0.1, 0.5
+        'asperity': (0.5, 0.4)  # 0.1, 0.5
     }
 
     correlated_field = ift.SimpleCorrelatedField(position_space, **args)
@@ -89,7 +90,6 @@ def main():
     # Specify noise
     data_space = R.target
     noise = .001
-    sig = ift.ScalingOperator(data_space, np.sqrt(noise))
     N = ift.ScalingOperator(data_space, noise)
 
     # Generate mock signal and data
@@ -102,6 +102,9 @@ def main():
     ic_newton = ift.AbsDeltaEnergyController(
         name='Newton', deltaE=0.5, iteration_limit=35)
     minimizer = ift.NewtonCG(ic_newton)
+    ic_sampling_nl = ift.AbsDeltaEnergyController(
+        name='Sampling', deltaE=0.5, iteration_limit=15, convergence_level=2)
+    minimizer_sampling = ift.NewtonCG(ic_sampling_nl)
 
     # Set up likelihood and information Hamiltonian
     likelihood = (ift.GaussianEnergy(mean=data, inverse_covariance=N.inverse) @
@@ -112,18 +115,21 @@ def main():
     mean = initial_mean
 
     plot = ift.Plot()
-    plot.add(signal(mock_position), title='Ground Truth')
+    plot.add(signal(mock_position), title='Ground Truth', zmin = 0, zmax = 1)
     plot.add(R.adjoint_times(data), title='Data')
     plot.add([pspec.force(mock_position)], title='Power Spectrum')
     plot.output(ny=1, nx=3, xsize=24, ysize=6, name=filename.format("setup"))
 
     # number of samples used to estimate the KL
-    N_samples = 20
+    N_samples = 10
 
-    # Draw new samples to approximate the KL five times
-    for i in range(5):
+    # Draw new samples to approximate the KL six times
+    for i in range(6):
+        if i==5:
+            # Double the number of samples in the last step for better statistics
+            N_samples = 2*N_samples
         # Draw new samples and minimize KL
-        KL = ift.MetricGaussianKL(mean, H, N_samples, True)
+        KL = ift.GeoMetricKL(mean, H, N_samples, minimizer_sampling, True)
         KL, convergence = minimizer(KL)
         mean = KL.position
         ift.extra.minisanity(data, lambda x: N.inverse, signal_response,
@@ -131,7 +137,7 @@ def main():
 
         # Plot current reconstruction
         plot = ift.Plot()
-        plot.add(signal(KL.position), title="Latent mean")
+        plot.add(signal(KL.position), title="Latent mean", zmin = 0, zmax = 1)
         plot.add([pspec.force(KL.position + ss) for ss in KL.samples],
                  title="Samples power spectrum")
         plot.output(ny=1, ysize=6, xsize=16,
@@ -144,16 +150,16 @@ def main():
     # Plotting
     filename_res = filename.format("results")
     plot = ift.Plot()
-    plot.add(sc.mean, title="Posterior Mean")
+    plot.add(sc.mean, title="Posterior Mean", zmin = 0, zmax = 1)
     plot.add(ift.sqrt(sc.var), title="Posterior Standard Deviation")
 
     powers = [pspec.force(s + KL.position) for s in KL.samples]
     sc = ift.StatCalculator()
     for pp in powers:
-        sc.add(pp)
+        sc.add(pp.log())
     plot.add(
         powers + [pspec.force(mock_position),
-                  pspec.force(KL.position), sc.mean],
+                  pspec.force(KL.position), sc.mean.exp()],
         title="Sampled Posterior Power Spectrum",
         linewidth=[1.]*len(powers) + [3., 3., 3.],
         label=[None]*len(powers) + ['Ground truth', 'Posterior latent mean', 'Posterior mean'])
