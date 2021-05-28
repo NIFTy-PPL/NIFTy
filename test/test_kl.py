@@ -31,7 +31,8 @@ pmp = pytest.mark.parametrize
 @pmp('point_estimates', ([], ['a'], ['b'], ['a', 'b']))
 @pmp('mirror_samples', (True, False))
 @pmp('mf', (True, False))
-def test_kl(constants, point_estimates, mirror_samples, mf):
+@pmp('geo', (True, False))
+def test_kl(constants, point_estimates, mirror_samples, mf, geo):
     if not mf and (len(point_estimates) != 0 or len(constants) != 0):
         return
     dom = ift.RGSpace((12,), (2.12))
@@ -51,11 +52,19 @@ def test_kl(constants, point_estimates, mirror_samples, mf):
             'n_samples': nsamps,
             'mean': mean0,
             'hamiltonian': h}
+    if geo:
+        args['minimizer_samp'] = ift.NewtonCG(ic)
     if isinstance(mean0, ift.MultiField) and set(point_estimates) == set(mean0.keys()):
         with assert_raises(RuntimeError):
-            ift.MetricGaussianKL.make(**args)
+            if geo:
+                ift.GeoMetricKL(**args)
+            else:
+                ift.MetricGaussianKL(**args)
         return
-    kl = ift.MetricGaussianKL.make(**args)
+    if geo:
+        kl = ift.GeoMetricKL(**args)
+    else:
+        kl = ift.MetricGaussianKL(**args)
     myassert(len(ic.history) > 0)
     myassert(len(ic.history) == len(ic.history.time_stamps))
     myassert(len(ic.history) == len(ic.history.energy_values))
@@ -71,8 +80,10 @@ def test_kl(constants, point_estimates, mirror_samples, mf):
     else:
         tmph = h
         tmpmean = mean0
-    klpure = ift.MetricGaussianKL(tmpmean, tmph, nsamps, mirror_samples, None, locsamp, False, True)
-
+    if geo and mirror_samples:
+        klpure = ift.minimization.kl_energies._SampledKLEnergy(tmpmean, tmph, 2*nsamps, False, None, locsamp, False)
+    else:
+        klpure = ift.minimization.kl_energies._SampledKLEnergy(tmpmean, tmph, nsamps, mirror_samples, None, locsamp, False)
     # Test number of samples
     expected_nsamps = 2*nsamps if mirror_samples else nsamps
     myassert(len(tuple(kl.samples)) == expected_nsamps)

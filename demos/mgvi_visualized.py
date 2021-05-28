@@ -36,6 +36,8 @@ import nifty7 as ift
 
 
 def main():
+    use_geo = False
+    name = 'GEO' if use_geo else 'MGVI'
     dom = ift.UnstructuredDomain(1)
     scale = 10
 
@@ -91,12 +93,16 @@ def main():
     plt.figure(figsize=[12, 8])
     for ii in range(15):
         if ii % 3 == 0:
-            mgkl = ift.MetricGaussianKL.make(pos, ham, 40, False)
+            if use_geo:
+                mini_samp = ift.NewtonCG(
+                        ift.GradientNormController(iteration_limit=5))
+                mgkl = ift.GeoMetricKL(pos, ham, 100, mini_samp, False)
+            else:
+                mgkl = ift.MetricGaussianKL(pos, ham, 100, False)
 
         plt.cla()
-        plt.imshow(z.T, origin='lower', norm=LogNorm(), vmin=1e-3,
-                   vmax=np.max(z), cmap='gist_earth_r',
-                   extent=x_limits_scaled + y_limits)
+        plt.imshow(z.T, origin='lower', norm=LogNorm(vmin=1e-3, vmax=np.max(z)),
+                   cmap='gist_earth_r', extent=x_limits_scaled + y_limits)
         if ii == 0:
             cbar = plt.colorbar()
         cbar.ax.set_ylabel('pdf')
@@ -105,12 +111,14 @@ def main():
             samp = (samp + pos).val
             xs.append(samp['a'])
             ys.append(samp['b'])
-        plt.scatter(np.array(xs)*scale, np.array(ys), label='MGVI samples')
-        plt.scatter(pos.val['a']*scale, pos.val['b'], label='MGVI latent mean')
         plt.scatter(np.array(map_xs)*scale, np.array(map_ys),
                     label='Laplace samples')
+        plt.scatter(np.array(xs)*scale, np.array(ys), label=name+' samples')
+        plt.scatter(pos.val['a']*scale, pos.val['b'], label=name+' latent mean')
         plt.scatter(MAP.position.val['a']*scale, MAP.position.val['b'],
                     label='Maximum a posterior solution')
+        plt.xlim(x_limits_scaled)
+        plt.ylim(y_limits)
         plt.legend()
         plt.draw()
         plt.pause(1.0)

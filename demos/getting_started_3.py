@@ -123,7 +123,7 @@ def main():
     # Draw new samples to approximate the KL five times
     for i in range(5):
         # Draw new samples and minimize KL
-        KL = ift.MetricGaussianKL.make(mean, H, N_samples, True)
+        KL = ift.MetricGaussianKL(mean, H, N_samples, True)
         KL, convergence = minimizer(KL)
         mean = KL.position
         ift.extra.minisanity(data, lambda x: N.inverse, signal_response,

@@ -40,7 +40,8 @@ pms = pytest.mark.skipif
 @pmp('mirror_samples', (False, True))
 @pmp('mode', (0, 1))
 @pmp('mf', (False, True))
-def test_kl(constants, point_estimates, mirror_samples, mode, mf):
+@pmp('geo', (False, True))
+def test_kl(constants, point_estimates, mirror_samples, mode, mf, geo):
     if not mf and (len(point_estimates) != 0 or len(constants) != 0):
         return
     dom = ift.RGSpace((12,), (2.12))
@@ -55,23 +56,35 @@ def test_kl(constants, point_estimates, mirror_samples, mode, mf):
     args = {'constants': constants,
             'point_estimates': point_estimates,
             'mirror_samples': mirror_samples,
-            'n_samples': 2,
+            'n_samples': nsamps,
             'mean': mean0,
             'hamiltonian': h}
     if isinstance(mean0, ift.MultiField) and set(point_estimates) == set(mean0.keys()):
         with assert_raises(RuntimeError):
-            ift.MetricGaussianKL.make(**args, comm=comm)
+            if geo:
+                ift.GeoMetricKL(**args, minimizer_samp=ift.NewtonCG(ic), comm=comm)
+            else:
+                ift.MetricGaussianKL(**args, comm=comm)
         return
     if mode == 0:
-        kl0 = ift.MetricGaussianKL.make(**args, comm=comm)
+        if geo:
+            kl0 = ift.GeoMetricKL(**args, minimizer_samp=ift.NewtonCG(ic), comm=comm)
+        else:
+            kl0 = ift.MetricGaussianKL(**args, comm=comm)
         locsamp = kl0._local_samples
         if isinstance(mean0, ift.MultiField):
             _, tmph = h.simplify_for_constant_input(mean0.extract_by_keys(constants))
         else:
             tmph = h
-        kl1 = ift.MetricGaussianKL(mean0.extract(tmph.domain), tmph, 2, mirror_samples, comm, locsamp, False, True)
+        if geo and mirror_samples:
+            kl1 = ift.minimization.kl_energies._SampledKLEnergy(mean0.extract(tmph.domain), tmph, 2*nsamps, False, comm, locsamp, False)
+        else:
+            kl1 = ift.minimization.kl_energies._SampledKLEnergy(mean0.extract(tmph.domain), tmph, nsamps, mirror_samples, comm, locsamp, False)
     elif mode == 1:
-        kl0 = ift.MetricGaussianKL.make(**args)
+        if geo:
+            kl0 = ift.GeoMetricKL(**args, minimizer_samp=ift.NewtonCG(ic))
+        else:
+            kl0 = ift.MetricGaussianKL(**args)
         samples = kl0._local_samples
         ii = len(samples)//2
         slc = slice(None, ii) if rank == 0 else slice(ii, None)
@@ -80,7 +93,10 @@ def test_kl(constants, point_estimates, mirror_samples, mode, mf):
             _, tmph = h.simplify_for_constant_input(mean0.extract_by_keys(constants))
         else:
             tmph = h
-        kl1 = ift.MetricGaussianKL(mean0.extract(tmph.domain), tmph, 2, mirror_samples, comm, locsamp, False, True)
+        if geo and mirror_samples:
+            kl1 = ift.minimization.kl_energies._SampledKLEnergy(mean0.extract(tmph.domain), tmph, 2*nsamps, False, comm, locsamp, False)
+        else:
+            kl1 = ift.minimization.kl_energies._SampledKLEnergy(mean0.extract(tmph.domain), tmph, nsamps, mirror_samples, comm, locsamp, False)
 
     # Test number of samples
     expected_nsamps = 2*nsamps if mirror_samples else nsamps
