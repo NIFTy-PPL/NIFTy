@@ -11,7 +11,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
-# Copyright(C) 2013-2020 Max-Planck-Society
+# Copyright(C) 2013-2021 Max-Planck-Society
 # Authors: Philipp Frank
 #
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
@@ -21,6 +21,7 @@ from functools import reduce
 
 from .. import random
 from .. import utilities
+from ..domain_tuple import DomainTuple
 from ..linearization import Linearization
 from ..multi_field import MultiField
 from ..operators.inversion_enabler import InversionEnabler
@@ -37,17 +38,6 @@ from ..operators.adder import Adder
 from ..utilities import myassert
 from .energy import Energy
 from .descent_minimizers import DescentMinimizer, ConjugateGradient
-
-def _is_prior_dtype_float(H):
-    real = True
-    dts = H._prior._met._dtype
-    if isinstance(dts, dict):
-        for k in dts.keys():
-            if not np.issubdtype(dts[k], np.float):
-                real = False
-    else:
-        real = np.issubdtype(dts, np.float)
-    return real
 
 
 def _get_lo_hi(comm, n_samples):
@@ -109,7 +99,7 @@ class _SampledKLEnergy(Energy):
         self._comm = comm
         self._local_samples = local_samples
         self._nanisinf = bool(nanisinf)
-        
+
         lin = Linearization.make_var(mean)
         v, g = [], []
         for s in self._local_samples:
@@ -183,12 +173,21 @@ class _SampledKLEnergy(Energy):
 
 
 class _GeoMetricSampler:
-    def __init__(self, position, H, minimizer, start_from_lin, 
+    def __init__(self, position, H, minimizer, start_from_lin,
                  n_samples, mirror_samples, napprox=0, want_error=False):
         if not isinstance(H, StandardHamiltonian):
             raise NotImplementedError
-        if not _is_prior_dtype_float(H):
+
+        # Check domain dtype
+        dts = H._prior._met._dtype
+        if isinstance(H.domain, DomainTuple):
+            real = np.issubdtype(dts, np.float)
+        else:
+            real = all([np.issubdtype(dts[kk], np.float) for kk in dts.keys()])
+        if not real:
             raise ValueError("_GeoMetricSampler only supports real valued latent DOFs.")
+        # /Check domain dtype
+
         if isinstance(position, MultiField):
             self._position = position.extract(H.domain)
         else:
@@ -199,19 +198,18 @@ class _GeoMetricSampler:
         dtype, f_lh = tr
         scale = ScalingOperator(f_lh.target, 1.)
         if isinstance(dtype, dict):
-            sampling = reduce((lambda a,b: a*b), 
+            sampling = reduce((lambda a,b: a*b),
                               [dtype[k] is not None for k in dtype.keys()])
         else:
             sampling = dtype is not None
         scale = SamplingDtypeSetter(scale, dtype) if sampling else scale
-        
+
         fl = f_lh(Linearization.make_var(self._position))
-        self._g = (Adder(-self._position) + 
-                   fl.jac.adjoint@Adder(-fl.val)@f_lh)
+        self._g = (Adder(-self._position) + fl.jac.adjoint@Adder(-fl.val)@f_lh)
         self._likelihood = SandwichOperator.make(fl.jac, scale)
         self._prior = SamplingDtypeSetter(ScalingOperator(fl.domain,1.), np.float64)
         self._met = self._likelihood + self._prior
-        if napprox >=1:
+        if napprox >= 1:
             self._approximation = makeOp(approximation2endo(self._met, napprox)).inverse
         else:
             self._approximation = None
@@ -378,7 +376,7 @@ def MetricGaussianKL(mean, hamiltonian, n_samples, mirror_samples, constants=[],
                             local_samples, nanisinf)
 
 
-def GeoMetricKL(mean, hamiltonian, n_samples, minimizer_samp, mirror_samples, 
+def GeoMetricKL(mean, hamiltonian, n_samples, minimizer_samp, mirror_samples,
                 start_from_lin = True, constants=[], point_estimates=[],
                 napprox=0, comm=None, nanisinf=True):
     """Provides the sampled Kullback-Leibler used in geometric Variational
@@ -386,7 +384,7 @@ def GeoMetricKL(mean, hamiltonian, n_samples, minimizer_samp, mirror_samples,
 
     In geoVI a probability distribution is approximated with a standard normal
     distribution in the canonical coordinate system of the Riemannian manifold
-    associated with the metric of the other distribution. The coordinate 
+    associated with the metric of the other distribution. The coordinate
     transformation is approximated by expanding around a point. In order to
     infer the expansion point, a stochastic estimate of the Kullback-Leibler
     divergence is minimized. This estimate is obtained by sampling from the
@@ -414,7 +412,7 @@ def GeoMetricKL(mean, hamiltonian, n_samples, minimizer_samp, mirror_samples,
         sample variation is counterbalanced.
     start_from_lin : boolean
         Whether the non-linear sampling should start using the inverse
-        linearized transformation (i.E. the corresponding MGVI sample). 
+        linearized transformation (i.E. the corresponding MGVI sample).
         If False, the minimization starts from the prior sample.
         Default is True.
     constants : list
@@ -425,7 +423,7 @@ def GeoMetricKL(mean, hamiltonian, n_samples, minimizer_samp, mirror_samples,
         (possibly) optimized for, corresponding to point estimates of these.
         Default is to draw samples for the complete domain.
     napprox : int
-        Number of samples for computing preconditioner for linear sampling. 
+        Number of samples for computing preconditioner for linear sampling.
         No preconditioning is done by default.
     comm : MPI communicator or None
         If not None, samples will be distributed as evenly as possible
@@ -444,7 +442,7 @@ def GeoMetricKL(mean, hamiltonian, n_samples, minimizer_samp, mirror_samples,
     during minimization and vice versa.
     DomainTuples should never be created using the constructor, but rather
     via the factory function :attr:`make`!
-    
+
     Note on MPI and mirror_samples:
     As in MGVI, mirroreing samples can help to stabilize the latent mean as it
     reduces sampling noise. But unlike MGVI a mirrored sample involves an

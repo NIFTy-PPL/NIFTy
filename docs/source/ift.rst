@@ -224,7 +224,7 @@ Thus, only the gradient of the KL is needed with respect to this, which can be e
 
 We stochastically estimate the KL-divergence and gradients with a set of samples drawn from the approximate posterior distribution.
 The particular structure of the covariance allows us to draw independent samples solving a certain system of equations.
-This KL-divergence for MGVI is implemented by 
+This KL-divergence for MGVI is implemented by
 :func:`~nifty7.minimization.kl_energies.MetricGaussianKL` within NIFTy7.
 
 It should be noted that MGVI can typically only provide a lower bound on the variance.
@@ -246,7 +246,7 @@ In general, such a transformation can only be constructed locally, i.E. in a nei
 .. math::
 
     \mathcal{Q}_{\bar{\xi}}(\xi) = \left(g_{\bar{\xi}}^{-1} * \mathcal{Q}\right)(\xi) = \int \delta\left(\xi - g_{\bar{\xi}}^{-1}(y)\right) \ \mathcal{G}(y, 1) \ \mathcal{D}y \ ,
-    
+
 where :math:`\delta` denotes the kronecker-delta.
 
 The remaining task in geoVI is to obtain the optimal expansion point :math:`\bar{\xi}` suth that :math:`\mathcal{Q}_{\bar{\xi}}` matches the posterior as good as possible. Analogous to the MGVI algorithm, :math:`\bar{\xi}` is obtained by minimization of the KL-divergenge between :math:`\mathcal{P}` and :math:`\mathcal{Q}_{\bar{\xi}}` w.r.t. :math:`\bar{\xi}`. Furthermore the KL is represented as a stochastic estimate using a set of samples drawn from :math:`\mathcal{Q}_{\bar{\xi}}` which is implemented in NIFTy7 via :func:`~nifty7.minimization.kl_energies.GeoMetricKL`.

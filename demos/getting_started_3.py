@@ -11,7 +11,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
-# Copyright(C) 2013-2020 Max-Planck-Society
+# Copyright(C) 2013-2021 Max-Planck-Society
 #
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
 
@@ -97,13 +97,13 @@ def main():
     data = signal_response(mock_position) + N.draw_sample_with_dtype(dtype=np.float64)
 
     # Minimization parameters
-    ic_sampling = ift.AbsDeltaEnergyController(
-        deltaE=0.05, iteration_limit=100)
-    ic_newton = ift.AbsDeltaEnergyController(
-        name='Newton', deltaE=0.5, iteration_limit=35)
+    ic_sampling = ift.AbsDeltaEnergyController(name="Sampling (linear)",
+            deltaE=0.05, iteration_limit=100)
+    ic_newton = ift.AbsDeltaEnergyController(name='Newton', deltaE=0.5,
+            convergence_level=2, iteration_limit=35)
     minimizer = ift.NewtonCG(ic_newton)
-    ic_sampling_nl = ift.AbsDeltaEnergyController(
-        name='Sampling', deltaE=0.5, iteration_limit=15, convergence_level=2)
+    ic_sampling_nl = ift.AbsDeltaEnergyController(name='Sampling (nonlin)',
+            deltaE=0.5, iteration_limit=15, convergence_level=2)
     minimizer_sampling = ift.NewtonCG(ic_sampling_nl)
 
     # Set up likelihood and information Hamiltonian

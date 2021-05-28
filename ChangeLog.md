@@ -84,7 +84,7 @@ LikelihoodOperator
 
 A new subclass of `EnergyOperator` was introduced and all `EnergyOperator`s
 that are likelihoods are now `LikelihoodOperator`s. A `LikelihoodOperator`
-has to implement the function `get_transformation`, which returns a 
+has to implement the function `get_transformation`, which returns a
 coordinate transformation in which the Fisher metric of the likelihood becomes
 the identity matrix.
 

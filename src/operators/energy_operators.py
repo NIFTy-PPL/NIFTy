@@ -93,10 +93,11 @@ class LikelihoodOperator(EnergyOperator):
         :func:`~nifty7.operators.operator.Operator.get_transformation`.
         """
         dtp, f = self.get_transformation()
-        ch = ScalingOperator(f.target, 1.)
+        ch = None
         if dtp is not None:
-            ch = SamplingDtypeSetter(ch, dtp)
-        return SandwichOperator.make(f(Linearization.make_var(x)).jac, ch)
+            ch = SamplingDtypeSetter(ScalingOperator(f.target, 1.), dtp)
+        bun = f(Linearization.make_var(x)).jac
+        return SandwichOperator.make(bun, ch)
 
 
 class Squared2NormOperator(EnergyOperator):
@@ -176,13 +177,13 @@ class VariableCovarianceGaussianEnergy(LikelihoodOperator):
 
     use_full_fisher: boolean
         Whether or not the proper Fisher information metric should be used as
-        a `metric`. If False the same approximation used in 
+        a `metric`. If False the same approximation used in
         `get_transformation` is used instead.
         Default is True
     """
 
-    def __init__(self, domain, residual_key, inverse_covariance_key, sampling_dtype,
-                 use_full_fisher = True):
+    def __init__(self, domain, residual_key, inverse_covariance_key,
+                 sampling_dtype, use_full_fisher=True):
         self._kr = str(residual_key)
         self._ki = str(inverse_covariance_key)
         dom = DomainTuple.make(domain)
@@ -190,7 +191,7 @@ class VariableCovarianceGaussianEnergy(LikelihoodOperator):
         self._dt = {self._kr: sampling_dtype, self._ki: np.float64}
         _check_sampling_dtype(self._domain, self._dt)
         self._cplx = _iscomplex(sampling_dtype)
-        self._use_fisher = use_full_fisher
+        self._use_full_fisher = use_full_fisher
 
     def apply(self, x):
         self._check_input(x)
@@ -201,7 +202,7 @@ class VariableCovarianceGaussianEnergy(LikelihoodOperator):
             res = 0.5*(r.vdot(r*i) - i.ptw("log").sum())
         if not x.want_metric:
             return res
-        if self._use_fisher:
+        if self._use_full_fisher:
             met = 1. if self._cplx else 0.5
             met = MultiField.from_dict({self._kr: i.val, self._ki: met*i.val**(-2)},
                                         domain=self._domain)
@@ -231,7 +232,7 @@ class VariableCovarianceGaussianEnergy(LikelihoodOperator):
         return None, res
 
     def get_transformation(self):
-        """Note that for the metric of a `VariableCovarianceGaussianEnergy` no 
+        """Note that for the metric of a `VariableCovarianceGaussianEnergy` no
         global transformation to Euclidean space exists. A local approximation
         ivoking the resudual is used instead.
         """
@@ -616,6 +617,3 @@ class AveragedEnergy(EnergyOperator):
         dtp, trafo = self._h.get_transformation()
         mymap = map(lambda v: trafo@Adder(v), self._res_samples)
         return dtp, utilities.my_sum(mymap)/np.sqrt(len(self._res_samples))
-        
-        
-        
