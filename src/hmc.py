@@ -182,3 +182,63 @@ def generate_next_sample(*,
             + np.sum(qp.momentum**2 / diagonal_momentum_covariance)
         )
     ), momentum
+
+
+def _impl_build_tree_recursive(initial_qp, eps, depth, direction, stepper):
+    """Build tree of given depth starting from given initial position.
+    
+    Parameters
+    ----------
+    depth: int
+        The depth of the tree to be built. Depth is defined as the longest path
+        from the root node to any other node. The depth can be expressed as
+        log_2(trajectory_length).
+        """
+    if depth == 0:
+        # build a depth 0 tree by leapfrog stepping into the given direction
+        left_and_right_qp = stepper(initial_qp, eps, direction)
+        # the trajectory contains only a single point, so the left and right endpoints are identical
+        return left_and_right_qp, left_and_right_qp
+    else:
+        # 
+        current_left, current_right = _impl_build_tree_recursive(initial_qp, eps, depth - 1, direction, stepper)
+        if direction == -1:
+            left_subtree_left, _left_subtree_right = _impl_build_tree_recursive(current_left, eps, depth - 1, direction, stepper)
+            return left_subtree_left, current_right
+        elif direction == 1:
+            _right_subtree_left, right_subtree_right = _impl_build_tree_recursive(current_right, eps, depth - 1, direction, stepper)
+            return current_left, right_subtree_right
+        else:
+            raise RuntimeError
+
+def build_tree_recursive(initial_qp, key, eps, depth, stepper):
+    left_endpoint, right_endpoint = initial_qp, initial_qp
+    for j in range(depth):
+        print(left_endpoint, right_endpoint)
+        key, subkey = random.split(key)
+        direction = random.choice(subkey, np.array([-1, 1]))
+        print(f"going in direction {int(direction)}")
+        if direction == 1:
+            _, right_endpoint = _impl_build_tree_recursive(right_endpoint, eps, j, direction, stepper)
+        elif direction == -1:
+            left_endpoint, _ = _impl_build_tree_recursive(left_endpoint, eps, j, direction, stepper)
+        else:
+            raise RuntimeError
+    return left_endpoint, right_endpoint
+
+
+def build_tree_iterative(initial_qp, key, eps, depth, stepper):
+    left_endpoint, right_endpoint = initial_qp, initial_qp
+    for j in range(depth):
+        print(left_endpoint, right_endpoint)
+        key, subkey = random.split(key)
+        direction = random.choice(subkey, np.array([-1, 1]))
+        print(f"going in direction {int(direction)}")
+        for _ in range(2**j):
+            if direction == 1:
+                right_endpoint = stepper(right_endpoint, eps, direction)
+            elif direction == -1:
+                left_endpoint = stepper(left_endpoint, eps, direction)
+            else:
+                raise RuntimeError
+    return left_endpoint, right_endpoint
