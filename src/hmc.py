@@ -242,3 +242,10 @@ def build_tree_iterative(initial_qp, key, eps, depth, stepper):
             else:
                 raise RuntimeError
     return left_endpoint, right_endpoint
+
+
+def is_euclidean_uturn(qp_left, qp_right):
+    return (
+        np.dot(qp_right.momentum, (qp_right.position - qp_left.position)) < 0
+        and np.dot(qp_left.momentum, (qp_left.position - qp_right.position)) < 0
+    )
