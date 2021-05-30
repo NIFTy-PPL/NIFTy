@@ -134,6 +134,15 @@ The NIFTy package is licensed under the terms of the
 *without any warranty*.
 
 
+Contributing
+------------
+
+Please note our convention not to use pure Python `assert` statements in
+production code. They are not guaranteed to by executed by Python and can be
+turned off by the user (`python -O` in cPython). As an alternative use
+`ift.myassert`.
+
+
 Contributors
 ------------
 
