@@ -219,7 +219,7 @@ def build_tree_recursive(initial_qp, key, eps, maxdepth, stepper):
     chosen = []
     j = 0
     while not stop and j <= maxdepth:
-        print(left_endpoint, right_endpoint)
+        #print(left_endpoint, right_endpoint)
         key, subkey = random.split(key)
         direction = random.choice(subkey, np.array([-1, 1]))
         print(f"going in direction {int(direction)}")
@@ -239,7 +239,7 @@ def build_tree_recursive(initial_qp, key, eps, maxdepth, stepper):
 def build_tree_iterative(initial_qp, key, eps, depth, stepper):
     left_endpoint, right_endpoint = initial_qp, initial_qp
     for j in range(depth):
-        print(left_endpoint, right_endpoint)
+        #print(left_endpoint, right_endpoint)
         key, subkey = random.split(key)
         direction = random.choice(subkey, np.array([-1, 1]))
         print(f"going in direction {int(direction)}")
@@ -271,10 +271,27 @@ def test_run_build_tree_rec():
     key = random.PRNGKey(42)
     key, subkey1, subkey2 = random.split(key, 3)
     initial_qp = QP(position=random.uniform(subkey1, dims), momentum=random.uniform(subkey2, dims))
-    left_endpoint, right_endpoint, chosen = build_tree_recursive(initial_qp, key, 0.05194, 5, stepper)
-    chosen = np.array(chosen)
-    print(chosen.shape)
-    plt.plot(initial_qp.position[0], initial_qp.position[1], 'rx', label='initial position')
-    plt.scatter(chosen[:,0,0], chosen[:,0,1], label='chosen states', alpha=0.5)
-    plt.legend()
-    plt.show()
+    current_qp = initial_qp
+    for loop_idx in range(10):
+        key, subkey = random.split(key)
+        left_endpoint, right_endpoint, chosen = build_tree_recursive(current_qp, subkey, 0.01194, 6, stepper)
+        key, subkey = random.split(key)
+        proposed_qp = chosen[random.choice(subkey, np.array(len(chosen)))]
+        chosen = np.array(chosen)
+        acceptance_probability = np.exp(
+            potential_energy(current_qp.position) + kinetic_energy(current_qp.momentum)
+            - potential_energy(proposed_qp.position) - kinetic_energy(proposed_qp.momentum)
+        )
+        print("acceptance probability:", acceptance_probability)
+        key, subkey = random.split(key)
+        acceptance_threshold = random.uniform(subkey)
+        if acceptance_threshold < acceptance_probability:
+            current_qp = proposed_qp
+            print("accepted")
+        else:
+            print("rejected")
+        if True or loop_idx == 2:
+            plt.plot(current_qp.position[0], current_qp.position[1], 'rx', label='initial position')
+            plt.scatter(chosen[:,0,0], chosen[:,0,1], label='chosen states', alpha=0.5)
+        key, subkey = random.split(key)
+        current_qp = QP(position=current_qp.position, momentum=random.uniform(subkey, shape=dims))
