@@ -139,12 +139,18 @@ Contributors
 
 ### NIFTy7
 
+- Andrija Kostic
 - Gordian Edenhofer
+- Jakob Knollmüller
+- Jakob Roth
 - Lukas Platz
+- Matteo Guardiani
 - Martin Reinecke
-- [Philipp Arras](https://wwwmpa.mpa-garching.mpg.de/~parras/)
+- [Philipp Arras](https://philipp-arras.de)
 - Philipp Frank
 - [Reimar Heinrich Leike](https://wwwmpa.mpa-garching.mpg.de/~reimar/)
+- Simon Ding
+- Vincent Eberle
 
 ### NIFTy6
 
