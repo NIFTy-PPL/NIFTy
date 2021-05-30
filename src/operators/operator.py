@@ -110,17 +110,15 @@ class Operator(metaclass=NiftyMeta):
     def get_transformation(self):
         """The coordinate transformation that maps into a coordinate system
         where the metric of a likelihood is the Euclidean metric.
-        This is `None`, except when the object is considered a likelihood i.E. 
-        for an instance of `EnergyOperator` with its metric being a proper
-        Fisher information metric, or a sum or nested sum thereof.
+        This is `None`, except when the object an instance of 
+        :class:`~nifty7.operators.energy_operators.LikelihoodOperator` or a
+        (nested) sum thereof.
         
-        Retruns
+        Returns
         -------
-        np.dtype, or dict of np.dtype : The dtype(s) of the target space of the
-        transformation.
+        np.dtype, or dict of np.dtype : The dtype(s) of the target space of the transformation.
         
-        Operator : The transformation that maps from `domain` into the
-        Euclidean target space.
+        Operator : The transformation that maps from `domain` into the Euclidean target space.
         """
         return None
 

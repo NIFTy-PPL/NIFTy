@@ -90,7 +90,7 @@ class LikelihoodOperator(EnergyOperator):
     def get_metric_at(self, x):
         """Computes the Fisher information metric for a `LikelihoodOperator`
         at `x` using the Jacobian of the coordinate transformation given by
-        `get_transformation`.
+        :func:`~nifty7.operators.operator.Operator.get_transformation`.
         """
         dtp, f = self.get_transformation()
         ch = ScalingOperator(f.target, 1.)
