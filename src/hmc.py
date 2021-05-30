@@ -28,7 +28,7 @@ def sample_momentum_from_diagonal(*, key, diagonal_momentum_covariance):
 # TODO: pass gradient instead of calculating gradient in function
 # TODO: how to randomize step size (neal sect. 3.2)
 # WARNING: requires jaxlib '0.1.66', keyword argument passing doesn't work with alternative static_argnums, which is supported in earlier jax versions
-@partial(jit, static_argnames=('potential_energy_gradient',))
+# @partial(jit, static_argnames=('potential_energy_gradient',))
 def leapfrog_step(
         potential_energy_gradient,
         qp: QP,
@@ -119,7 +119,7 @@ def accept_or_deny(*,
 
 
 # WARNING: requires jaxlib '0.1.66', keyword argument passing doesn't work with alternative static_argnums, which is supported in earlier jax versions
-@partial(jit, static_argnames=('potential_energy', 'potential_energy_gradient'))
+# @partial(jit, static_argnames=('potential_energy', 'potential_energy_gradient'))
 def generate_next_sample(*,
         key,
         position,
@@ -198,33 +198,42 @@ def _impl_build_tree_recursive(initial_qp, eps, depth, direction, stepper):
         # build a depth 0 tree by leapfrog stepping into the given direction
         left_and_right_qp = stepper(initial_qp, eps, direction)
         # the trajectory contains only a single point, so the left and right endpoints are identical
-        return left_and_right_qp, left_and_right_qp
+        return left_and_right_qp, left_and_right_qp, [left_and_right_qp], False
     else:
         # 
-        current_left, current_right = _impl_build_tree_recursive(initial_qp, eps, depth - 1, direction, stepper)
+        left, right, current_chosen, current_stop = _impl_build_tree_recursive(initial_qp, eps, depth - 1, direction, stepper)
         if direction == -1:
-            left_subtree_left, _left_subtree_right = _impl_build_tree_recursive(current_left, eps, depth - 1, direction, stepper)
-            return left_subtree_left, current_right
+            left, _, new_chosen, new_stop = _impl_build_tree_recursive(left, eps, depth - 1, direction, stepper)
+            
         elif direction == 1:
-            _right_subtree_left, right_subtree_right = _impl_build_tree_recursive(current_right, eps, depth - 1, direction, stepper)
-            return current_left, right_subtree_right
+            _, right, new_chosen, new_stop = _impl_build_tree_recursive(right, eps, depth - 1, direction, stepper)
         else:
             raise RuntimeError
+        stop = current_stop or new_stop or is_euclidean_uturn(left, right)
+        chosen = current_chosen + new_chosen
+        return left, right, chosen, stop
 
-def build_tree_recursive(initial_qp, key, eps, depth, stepper):
+def build_tree_recursive(initial_qp, key, eps, maxdepth, stepper):
     left_endpoint, right_endpoint = initial_qp, initial_qp
-    for j in range(depth):
+    stop = False
+    chosen = []
+    j = 0
+    while not stop and j <= maxdepth:
         print(left_endpoint, right_endpoint)
         key, subkey = random.split(key)
         direction = random.choice(subkey, np.array([-1, 1]))
         print(f"going in direction {int(direction)}")
         if direction == 1:
-            _, right_endpoint = _impl_build_tree_recursive(right_endpoint, eps, j, direction, stepper)
+            _, right_endpoint, new_chosen, new_stop = _impl_build_tree_recursive(right_endpoint, eps, j, direction, stepper)
         elif direction == -1:
-            left_endpoint, _ = _impl_build_tree_recursive(left_endpoint, eps, j, direction, stepper)
+            left_endpoint, _, new_chosen, new_stop = _impl_build_tree_recursive(left_endpoint, eps, j, direction, stepper)
         else:
             raise RuntimeError
-    return left_endpoint, right_endpoint
+        if not stop:
+            chosen = chosen + new_chosen
+        stop = new_stop or is_euclidean_uturn(left_endpoint, right_endpoint)
+        j = j + 1
+    return left_endpoint, right_endpoint, chosen
 
 
 def build_tree_iterative(initial_qp, key, eps, depth, stepper):
@@ -249,3 +258,23 @@ def is_euclidean_uturn(qp_left, qp_right):
         np.dot(qp_right.momentum, (qp_right.position - qp_left.position)) < 0
         and np.dot(qp_left.momentum, (qp_left.position - qp_right.position)) < 0
     )
+
+
+def test_run_build_tree_rec():
+    from jax import grad
+    import matplotlib.pyplot as plt
+    dims = (2,)
+    potential_energy = lambda q: 0.5 * np.sum(q**2) + 0.5 * np.sum(((q - np.ones(shape=dims)) / np.array([0.3, 3]))**2)
+    kinetic_energy = potential_energy
+    potential_energy_gradient = grad(potential_energy)
+    stepper = lambda qp, eps, direction: leapfrog_step(potential_energy_gradient, qp, eps*direction)[0]
+    key = random.PRNGKey(42)
+    key, subkey1, subkey2 = random.split(key, 3)
+    initial_qp = QP(position=random.uniform(subkey1, dims), momentum=random.uniform(subkey2, dims))
+    left_endpoint, right_endpoint, chosen = build_tree_recursive(initial_qp, key, 0.05194, 5, stepper)
+    chosen = np.array(chosen)
+    print(chosen.shape)
+    plt.plot(initial_qp.position[0], initial_qp.position[1], 'rx', label='initial position')
+    plt.scatter(chosen[:,0,0], chosen[:,0,1], label='chosen states', alpha=0.5)
+    plt.legend()
+    plt.show()
