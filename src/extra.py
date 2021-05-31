@@ -526,22 +526,3 @@ def _tableentries(redchisq, scmean, ndof, keylen):
         out += f"{ndof[kk]:>11}"
         out += "\n"
     return out[:-1]
-
-class _KeyModifier(LinearOperator):
-    def __init__(self, domain, pre):
-        if not isinstance(domain, MultiDomain):
-            raise ValueError
-        from .sugar import makeDomain
-        self._domain = makeDomain(domain)
-        self._pre = str(pre)
-        target = {self._pre+k: domain[k] for k in domain.keys()}
-        self._target = makeDomain(MultiDomain.make(target))
-        self._capability = self.TIMES | self.ADJOINT_TIMES
-
-    def apply(self, x, mode):
-        self._check_input(x, mode)
-        if mode == self.TIMES:
-            res = {self._pre+k:x[k] for k in self._domain.keys()}
-        else:
-            res = {k:x[self._pre+k] for k in self._domain.keys()}
-        return MultiField.from_dict(res, domain=self._tgt(mode))

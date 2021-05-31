@@ -380,3 +380,30 @@ class PartialExtractor(LinearOperator):
 
     def __repr__(self):
         return f'{self.target.keys()} <- {self.domain.keys()}'
+
+
+class PrependKey(LinearOperator):
+    """Prepend a string to all keys of a MultiDomain.
+
+    Parameters
+    ----------
+    domain : MultiDomain
+    pre : str
+    """
+    def __init__(self, domain, pre):
+        if not isinstance(domain, MultiDomain):
+            raise ValueError
+        from ..sugar import makeDomain
+        self._domain = makeDomain(domain)
+        self._pre = str(pre)
+        target = {self._pre+k: domain[k] for k in domain.keys()}
+        self._target = makeDomain(MultiDomain.make(target))
+        self._capability = self.TIMES | self.ADJOINT_TIMES
+
+    def apply(self, x, mode):
+        self._check_input(x, mode)
+        if mode == self.TIMES:
+            res = {self._pre+k:x[k] for k in self._domain.keys()}
+        else:
+            res = {k:x[self._pre+k] for k in self._domain.keys()}
+        return MultiField.from_dict(res, domain=self._tgt(mode))

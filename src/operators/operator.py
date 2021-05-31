@@ -519,17 +519,17 @@ class _OpSum(Operator):
         return res
 
     def get_transformation(self):
+        from .simple_linear_operators import PrependKey
         tr1 = self._op1.get_transformation()
         tr2 = self._op2.get_transformation()
         if tr1 is None or tr2 is None:
             return None
-        from ..extra import _KeyModifier
         dtype, trafo = {}, None
         for i, lh in enumerate([self._op1, self._op2]):
             dtp, tr = lh.get_transformation()
             if isinstance(tr.target, MultiDomain):
-                dtype.update({str(i)+d:dtp[d] for d in dtp.keys()})
-                tr = _KeyModifier(tr.target, str(i)) @ tr
+                dtype.update({str(i)+d: dtp[d] for d in dtp.keys()})
+                tr = PrependKey(tr.target, str(i)) @ tr
                 trafo = tr if trafo is None else trafo+tr
             else:
                 dtype[str(i)] = dtp
