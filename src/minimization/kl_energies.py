@@ -97,15 +97,16 @@ def _reduce_by_keys(field, operator, keys):
     return field, operator
 
 
-class _KLMetric(EndomorphicOperator):
-    def __init__(self, KL):
-        self._KL = KL
+class _SelfAdjointOperatorWrapper(EndomorphicOperator):
+    def __init__(self, domain, func):
+        from ..sugar import makeDomain
+        self._func = func
         self._capability = self.TIMES | self.ADJOINT_TIMES
-        self._domain = KL.position.domain
+        self._domain = makeDomain(domain)
 
     def apply(self, x, mode):
         self._check_input(x, mode)
-        return self._KL.apply_metric(x)
+        return self._func(x)
 
 
 class _SampledKLEnergy(Energy):
@@ -175,7 +176,8 @@ class _SampledKLEnergy(Energy):
 
     @property
     def metric(self):
-        return _KLMetric(self)
+        return _SelfAdjointOperatorWrapper(self.position.domain,
+                                           self.apply_metric)
 
     @property
     def samples(self):
