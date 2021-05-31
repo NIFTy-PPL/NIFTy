@@ -240,7 +240,7 @@ class VariableCovarianceGaussianEnergy(LikelihoodOperator):
         invoking the residual is used instead.
         """
         r = FieldAdapter(self._domain[self._kr], self._kr)
-        ivar = FieldAdapter(self._domain[self._kr], self._ki)
+        ivar = FieldAdapter(self._domain[self._kr], self._ki).real
         sc = 1. if self._cplx else 0.5
         return self._dt, r.adjoint@(ivar.ptw('sqrt')*r) + ivar.adjoint@(sc*ivar.ptw('log'))
 
