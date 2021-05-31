@@ -369,11 +369,10 @@ tackling new IFT problems. An example of concrete energy classes delivered with
 NIFTy7 is :class:`~minimization.quadratic_energy.QuadraticEnergy` (with
 position-independent metric, mainly used with conjugate gradient minimization).
 
-For MGVI and GeoVI, NIFTy provides the constructors
-:func:`~minimization.kl_energies.MetricGaussianKL` and
-:func:`~minimization.kl_energies.GeoMetricKL`, respectively, which instantiate an
-object containing the sampled estimate of the KL divergence, its gradient and the
-Fisher metric. Thes constructors require an instance
+For MGVI and GeoVI, NIFTy provides :func:`~minimization.kl_energies.MetricGaussianKL`
+and :func:`~minimization.kl_energies.GeoMetricKL` that instantiate objects
+containing the sampled estimate of the KL divergence, its gradient and the
+Fisher metric. These constructors require an instance
 of :class:`~operators.energy_operators.StandardHamiltonian`, an operator to
 compute the negative log-likelihood of the problem in standardized coordinates
 at a given position in parameter space.

@@ -70,7 +70,9 @@ def _field_to_dtype(field):
 class EnergyOperator(Operator):
     """Operator which has a scalar domain as target domain.
 
-    It is intended as an objective function for field inference.
+    It is intended as an objective function for field inference.  It can
+    implement a positive definite, symmetric form (called `metric`) that is
+    used as curvature for second-order minimizations.
 
     Examples
     --------
@@ -82,11 +84,13 @@ class EnergyOperator(Operator):
 
 
 class LikelihoodOperator(EnergyOperator):
-    """`EnergyOperator` representing a likelihood. The input to the Operator
-    are the parameters of the likelihood. Unlike a general `EnergyOperator`,
-    the metric of a `LikelihoodOperator` is the Fisher information metric of
-    the likelihood.
+    """Represent a log-likelihood.
+
+    The input to the Operator are the parameters of the likelihood. Unlike a
+    general `EnergyOperator`, the metric of a `LikelihoodOperator` is the
+    Fisher information metric of the likelihood.
     """
+
     def get_metric_at(self, x):
         """Computes the Fisher information metric for a `LikelihoodOperator`
         at `x` using the Jacobian of the coordinate transformation given by
@@ -176,10 +180,9 @@ class VariableCovarianceGaussianEnergy(LikelihoodOperator):
         Data type of the samples. Usually either 'np.float*' or 'np.complex*'
 
     use_full_fisher: boolean
-        Whether or not the proper Fisher information metric should be used as
-        a `metric`. If False the same approximation used in
-        `get_transformation` is used instead.
-        Default is True
+        Determines if the proper Fisher information metric should be used as
+        `metric`. If False, the same approximation as in `get_transformation`
+        is used. Default is True.
     """
 
     def __init__(self, domain, residual_key, inverse_covariance_key,
@@ -234,7 +237,7 @@ class VariableCovarianceGaussianEnergy(LikelihoodOperator):
     def get_transformation(self):
         """Note that for the metric of a `VariableCovarianceGaussianEnergy` no
         global transformation to Euclidean space exists. A local approximation
-        ivoking the resudual is used instead.
+        invoking the residual is used instead.
         """
         r = FieldAdapter(self._domain[self._kr], self._kr)
         ivar = FieldAdapter(self._domain[self._kr], self._ki)

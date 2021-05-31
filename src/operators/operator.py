@@ -108,17 +108,26 @@ class Operator(metaclass=NiftyMeta):
         return None
 
     def get_transformation(self):
-        """The coordinate transformation that maps into a coordinate system
-        where the metric of a likelihood is the Euclidean metric.
-        This is `None`, except when the object an instance of
-        :class:`~nifty7.operators.energy_operators.LikelihoodOperator` or a
-        (nested) sum thereof.
+        """The coordinate transformation that maps into a coordinate system in
+        which the metric of a likelihood is the Euclidean metric. It is `None`,
+        except for instances of
+        :class:`~nifty7.operators.energy_operators.LikelihoodOperator` or
+        (nested) sums thereof.
 
         Returns
         -------
-        np.dtype, or dict of np.dtype : The dtype(s) of the target space of the transformation.
+        np.dtype, or dict of np.dtype : The dtype(s) of the target space of the
+        transformation.
 
-        Operator : The transformation that maps from `domain` into the Euclidean target space.
+        Operator : The transformation that maps from `domain` into the
+        Euclidean target space.
+
+        Note
+        ----
+        This Euclidean target space is the disjoint union of the Euclidean
+        target spaces of all summands. Therefore, the keys of `MultiDomains`
+        are prefixed with an index and `DomainTuples` are converted to
+        `MultiDomains` with the index as the key.
         """
         return None
 

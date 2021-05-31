@@ -66,12 +66,35 @@ def _modify_sample_domain(sample, domain):
     raise TypeError
 
 
-def _reduce_by_keys(mean, hamiltonian, keys):
-    if isinstance(mean, MultiField):
-        _, new_ham = hamiltonian.simplify_for_constant_input(mean.extract_by_keys(keys))
-        new_mean =  mean.extract_by_keys(set(mean.keys()) - set(keys))
-        return new_mean, new_ham
-    return mean, hamiltonian
+def _reduce_by_keys(field, operator, keys):
+    """Partially insert a field into an operator
+
+    If the domain of the operator is an instance of `DomainTuple`
+
+    Parameters
+    ----------
+    field : Field or MultiField
+        Potentially partially constant input field.
+    operator : Operator
+        Operator into which `field` is partially inserted.
+    keys : list
+        List of constant `MultiDomain` entries.
+
+    Returns
+    -------
+    list
+        The variable part of the field and the contracted operator.
+    """
+    from ..sugar import is_fieldlike, is_operator
+    myassert(is_fieldlike(field))
+    myassert(is_operator(operator))
+    if isinstance(field, MultiField):
+        cst_field = field.extract_by_keys(keys)
+        var_field = field.extract_by_keys(set(field.keys()) - set(keys))
+        _, new_ham = operator.simplify_for_constant_input(cst_field)
+        return var_field, new_ham
+    myassert(len(keys) == 0)
+    return field, operator
 
 
 class _KLMetric(EndomorphicOperator):
@@ -86,9 +109,11 @@ class _KLMetric(EndomorphicOperator):
 
 
 class _SampledKLEnergy(Energy):
-    """Base class for Energies representing a sampled Kullback-Leibler divergence
-    for the variational approximation of a distribution with another distribution.
-    """
+    """Base class for Energies representing a sampled Kullback-Leibler
+    divergence for the variational approximation of a distribution with another
+    distribution.
+
+    Supports the samples to be distributed across MPI tasks."""
     def __init__(self, mean, hamiltonian, n_samples, mirror_samples, comm,
                  local_samples, nanisinf):
         super(_SampledKLEnergy, self).__init__(mean)
@@ -331,7 +356,7 @@ def MetricGaussianKL(mean, hamiltonian, n_samples, mirror_samples, constants=[],
     nanisinf : bool
         If true, nan energies which can happen due to overflows in the forward
         model are interpreted as inf. Thereby, the code does not crash on
-        these occaisions but rather the minimizer is told that the position it
+        these occasions but rather the minimizer is told that the position it
         has tried is not sensible.
 
     Notes
@@ -412,7 +437,7 @@ def GeoMetricKL(mean, hamiltonian, n_samples, minimizer_samp, mirror_samples,
         sample variation is counterbalanced.
     start_from_lin : boolean
         Whether the non-linear sampling should start using the inverse
-        linearized transformation (i.E. the corresponding MGVI sample).
+        linearized transformation (i.e. the corresponding MGVI sample).
         If False, the minimization starts from the prior sample.
         Default is True.
     constants : list
@@ -428,11 +453,11 @@ def GeoMetricKL(mean, hamiltonian, n_samples, minimizer_samp, mirror_samples,
     comm : MPI communicator or None
         If not None, samples will be distributed as evenly as possible
         across this communicator. If `mirror_samples` is set, then a sample and
-        its mirror image will preferably reside on the same task if neccessary.
+        its mirror image will preferably reside on the same task if necessary.
     nanisinf : bool
         If true, nan energies which can happen due to overflows in the forward
         model are interpreted as inf. Thereby, the code does not crash on
-        these occaisions but rather the minimizer is told that the position it
+        these occasions but rather the minimizer is told that the position it
         has tried is not sensible.
 
     Notes
@@ -444,13 +469,14 @@ def GeoMetricKL(mean, hamiltonian, n_samples, minimizer_samp, mirror_samples,
     via the factory function :attr:`make`!
 
     Note on MPI and mirror_samples:
-    As in MGVI, mirroreing samples can help to stabilize the latent mean as it
+    As in MGVI, mirroring samples can help to stabilize the latent mean as it
     reduces sampling noise. But unlike MGVI a mirrored sample involves an
     additional solve of the non-linear transformation. Therefore, when using
     MPI, the mirrored samples also get distributed if enough tasks are available.
     If there are more total samples than tasks, the mirrored counterparts
     try to reside on the same task as their non mirrored partners. This ensures
     that at least the starting position can be re-used.
+
     See also
     --------
     `Geometric Variational Inference`, Philipp Frank, Reimar Leike,
@@ -467,8 +493,9 @@ def GeoMetricKL(mean, hamiltonian, n_samples, minimizer_samp, mirror_samples,
     if not isinstance(minimizer_samp, DescentMinimizer):
         raise TypeError
     if isinstance(mean, MultiField) and set(point_estimates) == set(mean.keys()):
-        raise RuntimeError(
-            'Point estimates for whole domain. Use EnergyAdapter instead.')
+        s = 'Point estimates for whole domain. Use EnergyAdapter instead.'
+        raise RuntimeError(s)
+
     n_samples = int(n_samples)
     mirror_samples = bool(mirror_samples)
 
