@@ -235,14 +235,18 @@ class VariableCovarianceGaussianEnergy(LikelihoodOperator):
         return None, res
 
     def get_transformation(self):
-        """Note that for the metric of a `VariableCovarianceGaussianEnergy` no
-        global transformation to Euclidean space exists. A local approximation
-        invoking the residual is used instead.
+        """
+        Note
+        ----
+        For `VariableCovarianceGaussianEnergy`, a global transformation to
+        Euclidean space does not exist. A local approximation invoking the
+        residual is used instead.
         """
         r = FieldAdapter(self._domain[self._kr], self._kr)
         ivar = FieldAdapter(self._domain[self._kr], self._ki).real
         sc = 1. if self._cplx else 0.5
-        return self._dt, r.adjoint@(ivar.ptw('sqrt')*r) + ivar.adjoint@(sc*ivar.ptw('log'))
+        f = r.adjoint @ (ivar.sqrt()*r) + ivar.adjoint @ (sc*ivar.log())
+        return self._dt, f
 
 
 class _SpecialGammaEnergy(LikelihoodOperator):
@@ -266,6 +270,7 @@ class _SpecialGammaEnergy(LikelihoodOperator):
     def get_transformation(self):
         sc = 1. if self._cplx else np.sqrt(0.5)
         return self._dt, sc*ScalingOperator(self._domain, 1.).ptw('log')
+
 
 class GaussianEnergy(LikelihoodOperator):
     """Computes a negative-log Gaussian.
@@ -400,7 +405,8 @@ class PoissonianEnergy(LikelihoodOperator):
         return res.add_metric(self.get_metric_at(x.val))
 
     def get_transformation(self):
-        return np.float64, 2.*ScalingOperator(self._domain,1.).sqrt()
+        return np.float64, 2.*ScalingOperator(self._domain, 1.).sqrt()
+
 
 class InverseGammaLikelihood(LikelihoodOperator):
     """Computes the negative log-likelihood of the inverse gamma distribution.
@@ -450,6 +456,7 @@ class InverseGammaLikelihood(LikelihoodOperator):
         res = makeOp(fact)@ScalingOperator(self._domain,1.).ptw('log')
         return self._sampling_dtype, res
 
+
 class StudentTEnergy(LikelihoodOperator):
     """Computes likelihood energy corresponding to Student's t-distribution.
 
@@ -486,6 +493,7 @@ class StudentTEnergy(LikelihoodOperator):
             from ..extra import full
             th = full(self._domain, self._theta)
         return np.float64, makeOp(((th+1)/(th+3)).ptw('sqrt'))
+
 
 class BernoulliEnergy(LikelihoodOperator):
     """Computes likelihood energy of expected event frequency constrained by
@@ -524,6 +532,7 @@ class BernoulliEnergy(LikelihoodOperator):
         res = Adder(full(self._domain,1.))@ScalingOperator(self._domain,-1)
         res = res * ScalingOperator(self._domain,1).ptw('reciprocal')
         return np.float64, -2.*res.ptw('sqrt').ptw('arctan')
+
 
 class StandardHamiltonian(EnergyOperator):
     """Computes an information Hamiltonian in its standard form, i.e. with the
@@ -572,7 +581,8 @@ class StandardHamiltonian(EnergyOperator):
         if not x.want_metric or self._ic_samp is None:
             return (self._lh + self._prior)(x)
         lhx, prx = self._lh(x), self._prior(x)
-        return (lhx+prx).add_metric(SamplingEnabler(lhx.metric, prx.metric, self._ic_samp))
+        met = SamplingEnabler(lhx.metric, prx.metric, self._ic_samp)
+        return (lhx+prx).add_metric(met)
 
     def __repr__(self):
         subs = 'Likelihood:\n{}'.format(utilities.indent(self._lh.__repr__()))
