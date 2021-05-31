@@ -71,7 +71,7 @@ from .minimization.scipy_minimizer import L_BFGS_B
 from .minimization.energy import Energy
 from .minimization.quadratic_energy import QuadraticEnergy
 from .minimization.energy_adapter import EnergyAdapter
-from .minimization.metric_gaussian_kl import MetricGaussianKL
+from .minimization.kl_energies import MetricGaussianKL, GeoMetricKL
 
 from .sugar import *
 

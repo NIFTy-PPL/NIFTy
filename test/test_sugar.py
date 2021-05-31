@@ -49,7 +49,7 @@ def test_exec_time():
     lh = ift.GaussianEnergy(domain=op.target, sampling_dtype=np.float64) @ op1
     ic = ift.GradientNormController(iteration_limit=2)
     ham = ift.StandardHamiltonian(lh, ic_samp=ic)
-    kl = ift.MetricGaussianKL.make(ift.full(ham.domain, 0.), ham, 1, False)
+    kl = ift.MetricGaussianKL(ift.full(ham.domain, 0.), ham, 1, False)
     ops = [op, op1, lh, ham, kl]
     for oo in ops:
         for wm in [True, False]:

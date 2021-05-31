@@ -39,7 +39,7 @@ from .plot import Plot
 __all__ = ['PS_field', 'power_analyze', 'create_power_operator',
            'density_estimator', 'create_harmonic_smoothing_operator',
            'from_random', 'full', 'makeField', 'is_fieldlike',
-           'is_linearization', 'is_operator', 'makeDomain',
+           'is_linearization', 'is_operator', 'makeDomain', 'is_likelihood',
            'get_signal_variance', 'makeOp', 'domain_union',
            'get_default_codomain', 'single_plot', 'exec_time',
            'calculate_position'] + list(pointwise.ptw_dict.keys())
@@ -221,9 +221,9 @@ def density_estimator(domain, pad=1.0, cf_fluctuations=None,
     from .library.correlated_fields import CorrelatedFieldMaker
     from .library.special_distributions import UniformOperator
 
-    cf_azm_uniform_sane_default = (1e-15, 5.0)
+    cf_azm_uniform_sane_default = (1e-4, 1.0)
     cf_fluctuations_sane_default = {
-        "scale": (0.3, 0.2),
+        "scale": (0.5, 0.3),
         "cutoff": (4.0, 3.0),
         "loglogslope": (-6.0, 3.0)
     }
@@ -557,7 +557,7 @@ def calculate_position(operator, output):
     """Finds approximate preimage of an operator for a given output."""
     from .minimization.descent_minimizers import NewtonCG
     from .minimization.iteration_controllers import GradientNormController
-    from .minimization.metric_gaussian_kl import MetricGaussianKL
+    from .minimization.kl_energies import MetricGaussianKL
     from .operators.scaling_operator import ScalingOperator
     from .operators.energy_operators import GaussianEnergy, StandardHamiltonian
     if not isinstance(operator, Operator):
@@ -585,18 +585,24 @@ def calculate_position(operator, output):
     minimizer = NewtonCG(GradientNormController(iteration_limit=10, name='findpos'))
     for ii in range(3):
         logger.info(f'Start iteration {ii+1}/3')
-        kl = MetricGaussianKL.make(pos, H, 3, True)
+        kl = MetricGaussianKL(pos, H, 3, True)
         kl, _ = minimizer(kl)
         pos = kl.position
     return pos
 
 
+def is_likelihood(obj):
+    """Checks if object is likelihood-like.
+    """
+    return isinstance(obj, Operator) and obj.get_transformation() is not None
+
+
 def is_operator(obj):
-    """Check if object is operator-like.
+    """Checks if object is operator-like.
 
     Note
     ----
-    A simple `isinstance(obj, ift.Operator)` does not give the expected
+    A simple `isinstance(obj, ift.Operator)` does give the expected
     result because, e.g., :class:`~nifty7.field.Field` inherits from
     :class:`~nifty7.operators.operator.Operator`.
     """
@@ -604,20 +610,19 @@ def is_operator(obj):
 
 
 def is_linearization(obj):
-    """Check if object is linearization-like."""
+    """Checks if object is linearization-like."""
     return isinstance(obj, Operator) and obj.jac is not None
 
 
 def is_fieldlike(obj):
-    """Check if object is field-like.
+    """Checks if object is field-like.
 
     Note
     ----
-    A simple `isinstance(obj, ift.Field)` does not give the expected
+    A simple `isinstance(obj, ift.Field)` does give the expected
     result because users might have implemented another class which
     behaves field-like but is not an instance of
-    :class:`~nifty7.field.Field`. Instances of
-    :class:`~nifty7.linearization.Linearization` are considered to be
-    field-like.
+    :class:`~nifty7.field.Field`. Also not that instances of
+    :class:`~nifty7.linearization.Linearization` behave field-like.
     """
     return isinstance(obj, Operator) and obj.val is not None

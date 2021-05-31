@@ -143,7 +143,7 @@ run_curve_fitting:
     paths:
       - '*.png'
 
-run_visual_mgvi:
+run_visual_vi:
   stage: demo_runs
   script:
-    - python3 demos/mgvi_visualized.py
+    - python3 demos/variational_inference_visualized.py

@@ -94,7 +94,7 @@ if __name__ == "__main__":
 
     for i in range(5):
         # Draw new samples and minimize KL
-        kl = ift.MetricGaussianKL.make(mean, ham, n_samples, True)
+        kl = ift.MetricGaussianKL(mean, ham, n_samples, True)
         kl, convergence = minimizer(kl)
         mean = kl.position
 

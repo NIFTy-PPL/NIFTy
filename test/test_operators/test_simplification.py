@@ -44,7 +44,7 @@ def test_simplification():
 
 
 def test_modify_sample_domain():
-    func = ift.minimization.metric_gaussian_kl._modify_sample_domain
+    func = ift.minimization.kl_energies._modify_sample_domain
     dom0 = ift.RGSpace(1)
     dom1 = ift.RGSpace(2)
     field = ift.full(dom0, 1.)
