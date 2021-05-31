@@ -132,7 +132,7 @@ NIFTy takes advantage of this formulation in several ways:
 
 3) The response can be non-linear, e.g. :math:`{R'(s)=R \exp(A\,\xi)}`, see `demos/getting_started_2.py`.
 
-4) The amplitude operator may depend on further parameters, e.g. :math:`A=A(\tau)=e^{2\tau}` represents an amplitude operator with a positive definite, unknown spectrum.
+4) The amplitude operator may depend on further parameters, e.g. :math:`A=A(\tau)=F\, \widehat{e^\tau}` represents an amplitude operator with a positive definite, unknown spectrum.
    The log-amplitude field :math:`{\tau}` is modelled with the help of an integrated Wiener process in order to impose some (user-defined degree of) spectral smoothness.
 
 5) NIFTy calculates the gradient of the information Hamiltonian and the Fisher information metric with respect to all unknown parameters, here :math:`{\xi}` and :math:`{\tau}`, by automatic differentiation.

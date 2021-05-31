@@ -78,8 +78,8 @@ A new posterior approximation scheme, called geometric Variational Inference
 that it uses (non-linear) geoVI samples instead of (linear) MGVI samples.
 `GeoMetricKL` can be configured such that it reduces to `MetricGaussianKL`.
 `GeoMetricKL` is now used in `demos/getting_started_3.py` and a visual
-comparison to MGVI can be found in `demos/vi_visualized.py`. For further details
-see (<https://arxiv.org/abs/2105.10470>).
+comparison to MGVI can be found in `demos/variational_inference_visualized.py`.
+For further details see (<https://arxiv.org/abs/2105.10470>).
 
 
 LikelihoodOperator
