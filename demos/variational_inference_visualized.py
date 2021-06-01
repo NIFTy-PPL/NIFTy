@@ -11,21 +11,21 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
-# Copyright(C) 2013-2020 Max-Planck-Society
-# Authors: Reimar Leike, Philipp Arras
+# Copyright(C) 2013-2021 Max-Planck-Society
+# Authors: Reimar Leike, Philipp Arras, Philipp Frank
 #
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
 
 ###############################################################################
-# Metric Gaussian Variational Inference (MGVI)
+# Variational Inference (VI)
 #
-# This script demonstrates how MGVI works for an inference problem with only
-# two real quantities of interest. This enables us to plot the posterior
-# probability density as two-dimensional plot. The posterior samples generated
-# by MGVI are contrasted with the maximum-a-posterior (MAP) solution together
-# with samples drawn with the Laplace method. This method uses the local
-# curvature at the MAP solution as inverse covariance of a Gaussian probability
-# density.
+# This script demonstrates how MGVI and GeoVI work for an inference problem
+# with only two real quantities of interest. This enables us to plot the
+# posterior probability density as two-dimensional plot. The approximate
+# posterior samples are contrasted with the maximum-a-posterior (MAP) solution
+# together with samples drawn with the Laplace method. This method uses the
+# local curvature at the MAP solution as inverse covariance of a Gaussian
+# probability density.
 ###############################################################################
 
 import numpy as np
@@ -89,56 +89,58 @@ def main():
     minimizer = ift.NewtonCG(
         ift.GradientNormController(iteration_limit=2, name='Mini'))
     pos = ift.from_random(ham.domain, 'normal')
-    mf_model = ift.MeanfieldModel(ham.domain)
-    pos_mf = mf_model.get_initial_pos(initial_mean=pos)
-    mfkl = ift.ParametricGaussianKL.make(pos_mf, ham, mf_model, 20, True)
-
-    plt.figure(figsize=[12, 8])
+    # FIXME mf_model = ift.MeanfieldModel(ham.domain)
+    # FIXME pos_mf = mf_model.get_initial_pos(initial_mean=pos)
+    # FIXME mfkl = ift.ParametricGaussianKL.make(pos_mf, ham, mf_model, 20, True)
+        # FIXME for samp in mfkl.samples:
+            # FIXME samp = mf_model.generator((samp + mfkl.position)).val
+    pos = pos1 = ift.from_random(ham.domain, 'normal')
+    fig, axs = plt.subplots(2, 1, figsize=[12, 8])
     for ii in range(15):
         if ii % 3 == 0:
-            mgkl = ift.MetricGaussianKL.make(pos, ham, 40, False)
+            # Resample
+            mgkl = ift.MetricGaussianKL(pos, ham, 100, False)
+            mini_samp = ift.NewtonCG(ift.GradientNormController(iteration_limit=5))
+            geokl = ift.GeoMetricKL(pos1, ham, 100, mini_samp, False)
 
-        plt.cla()
-        plt.imshow(
-            z.T,
-            origin="lower",
-            norm=LogNorm(vmin=1e-3, vmax=np.max(z)),
-            cmap="gist_earth_r",
-            extent=x_limits_scaled + y_limits,
-        )
-        if ii == 0:
-            cbar = plt.colorbar()
-        cbar.ax.set_ylabel('pdf')
+        for axx in axs:
+            axx.clear()
+            im = axx.imshow(z.T, origin='lower', norm=LogNorm(vmin=1e-3, vmax=np.max(z)),
+                               cmap='gist_earth_r', extent=x_limits_scaled + y_limits)
+            if ii == 0:
+                cbar = plt.colorbar(im, ax=axx)
+                cbar.ax.set_ylabel('pdf')
 
-        plt.scatter(np.array(map_xs)*scale, np.array(map_ys),
-                    label='Laplace samples')
-        plt.scatter(MAP.position.val['a']*scale, MAP.position.val['b'],
-                    label='Maximum a posterior solution')
+        for jj, nn, kl, pp in ((0, "MGVI", mgkl, pos), (1, "GeoVI", geokl, pos1)):
+            xs, ys = [], []
+            for samp in kl.samples:
+                samp = (samp + pp).val
+                xs.append(samp['a'])
+                ys.append(samp['b'])
+            axs[jj].scatter(np.array(xs)*scale, np.array(ys), label=f'{nn} samples')
+            axs[jj].scatter(pp.val['a']*scale, pp.val['b'], label=f'{nn} latent mean')
+            axs[jj].set_title(nn)
 
-        xs, ys = [], []
-        for samp in mgkl.samples:
-            samp = (samp + pos).val
-            xs.append(samp['a'])
-            ys.append(samp['b'])
-        plt.scatter(np.array(xs)*scale, np.array(ys), label='MGVI samples')
-        plt.scatter(pos.val['a']*scale, pos.val['b'], marker="x", label='MGVI latent mean')
-
-        xs, ys = [], []
-        for samp in mfkl.samples:
-            samp = mf_model.generator((samp + mfkl.position)).val
-            xs.append(samp['a'])
-            ys.append(samp['b'])
-        plt.scatter(np.array(xs)*scale, np.array(ys), label='MFVI samples')
-
-        plt.legend(loc="upper right")
-        plt.xlim(-8, 8)
-        plt.ylim(-4, 4)
+        for axx in axs:
+            axx.scatter(np.array(map_xs)*scale, np.array(map_ys),
+                        label='Laplace samples')
+            axx.scatter(MAP.position.val['a']*scale, MAP.position.val['b'],
+                        label='Maximum a posterior solution')
+            axx.set_xlim(x_limits_scaled)
+            axx.set_ylim(y_limits)
+            axx.set_ylabel('y')
+            axx.legend(loc='lower right')
+        axs[0].xaxis.set_visible(False)
+        axs[1].set_xlabel('x')
+        plt.tight_layout()
         plt.draw()
         plt.pause(1.0)
 
         mgkl, _ = minimizer(mgkl)
-        mfkl, _ = minimizer_mf(mfkl)
+        # FIXME mfkl, _ = minimizer_mf(mfkl)
+        geokl, _ = minimizer(geokl)
         pos = mgkl.position
+        pos1 = geokl.position
     ift.logger.info('Finished')
     # Uncomment the following line in order to leave the plots open
     # plt.show()

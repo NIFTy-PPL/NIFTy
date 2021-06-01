@@ -64,13 +64,32 @@ The implementation tests for nonlinear operators are now available in
 `ift.extra.check_operator()` and for linear operators
 `ift.extra.check_linear_operator()`.
 
-
 MetricGaussianKL interface
 --------------------------
 
-Users do not instantiate `MetricGaussianKL` by its constructor anymore. Rather
-`MetricGaussianKL.make()` shall be used. Additionally, `mirror_samples` is not
-set by default anymore.
+`mirror_samples` is not set by default anymore.
+
+
+GeoMetricKL
+-----------
+
+A new posterior approximation scheme, called geometric Variational Inference
+(geoVI) was introduced. `GeoMetricKL` extends `MetricGaussianKL` in the sense
+that it uses (non-linear) geoVI samples instead of (linear) MGVI samples.
+`GeoMetricKL` can be configured such that it reduces to `MetricGaussianKL`.
+`GeoMetricKL` is now used in `demos/getting_started_3.py` and a visual
+comparison to MGVI can be found in `demos/variational_inference_visualized.py`.
+For further details see (<https://arxiv.org/abs/2105.10470>).
+
+
+LikelihoodOperator
+------------------
+
+A new subclass of `EnergyOperator` was introduced and all `EnergyOperator`s
+that are likelihoods are now `LikelihoodOperator`s. A `LikelihoodOperator`
+has to implement the function `get_transformation`, which returns a
+coordinate transformation in which the Fisher metric of the likelihood becomes
+the identity matrix. This is needed for the `GeoMetricKL` algorithm.
 
 
 Changes since NIFTy 5

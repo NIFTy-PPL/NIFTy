@@ -134,17 +134,32 @@ The NIFTy package is licensed under the terms of the
 *without any warranty*.
 
 
+Contributing
+------------
+
+Please note our convention not to use pure Python `assert` statements in
+production code. They are not guaranteed to by executed by Python and can be
+turned off by the user (`python -O` in cPython). As an alternative use
+`ift.myassert`.
+
+
 Contributors
 ------------
 
 ### NIFTy7
 
+- Andrija Kostic
 - Gordian Edenhofer
+- Jakob Knollmüller
+- Jakob Roth
 - Lukas Platz
+- Matteo Guardiani
 - Martin Reinecke
-- [Philipp Arras](https://wwwmpa.mpa-garching.mpg.de/~parras/)
+- [Philipp Arras](https://philipp-arras.de)
 - Philipp Frank
 - [Reimar Heinrich Leike](https://wwwmpa.mpa-garching.mpg.de/~reimar/)
+- Simon Ding
+- Vincent Eberle
 
 ### NIFTy6
 

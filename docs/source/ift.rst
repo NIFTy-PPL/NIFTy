@@ -19,17 +19,16 @@ Also, there were certainly previous works in a similar spirit.
 Anyhow, in many cases IFT provides novel rigorous ways to extract information from data.
 NIFTy comes with reimplemented MAP and VI estimators.
 
-.. tip:: *In-a-nutshell introductions to information field theory* can be found in [2]_, [3]_, [4]_, and [5]_, with the latter probably being the most didactical.
+.. tip:: A didactical introduction to *information field theory* can be found in [2]_. Other resources include the `Wikipedia entry <https://en.wikipedia.org/wiki/Information_field_theory>`_, [3]_ and [4]_.
 
 .. [1] T.A. Enßlin et al. (2009), "Information field theory for cosmological perturbation reconstruction and nonlinear signal analysis", PhysRevD.80.105005, 09/2009; `[arXiv:0806.3474] <https://www.arxiv.org/abs/0806.3474>`_
 
-.. [2] T.A. Enßlin (2013), "Information field theory", proceedings of MaxEnt 2012 -- the 32nd International Workshop on Bayesian Inference and Maximum Entropy Methods in Science and Engineering; AIP Conference Proceedings, Volume 1553, Issue 1, p.184; `[arXiv:1301.2556] <https://arxiv.org/abs/1301.2556>`_
+.. [2] T.A. Enßlin (2019), "Information theory for fields", Annalen der Physik; `[DOI] <https://doi.org/10.1002/andp.201800127>`_, `[arXiv:1804.03350] <https://arxiv.org/abs/1804.03350>`_
 
-.. [3] T.A. Enßlin (2014), "Astrophysical data analysis with information field theory", AIP Conference Proceedings, Volume 1636, Issue 1, p.49; `[arXiv:1405.7701] <https://arxiv.org/abs/1405.7701>`_
+.. [3] T.A. Enßlin (2013), "Information field theory", proceedings of MaxEnt 2012 -- the 32nd International Workshop on Bayesian Inference and Maximum Entropy Methods in Science and Engineering; AIP Conference Proceedings, Volume 1553, Issue 1, p.184; `[arXiv:1301.2556] <https://arxiv.org/abs/1301.2556>`_
 
-.. [4] Wikipedia contributors (2018), `"Information field theory" <https://en.wikipedia.org/w/index.php?title=Information_field_theory&oldid=876731720>`_, Wikipedia, The Free Encyclopedia.
+.. [4] T.A. Enßlin (2014), "Astrophysical data analysis with information field theory", AIP Conference Proceedings, Volume 1636, Issue 1, p.49; `[arXiv:1405.7701] <https://arxiv.org/abs/1405.7701>`_
 
-.. [5] T.A. Enßlin (2019), "Information theory for fields", accepted by Annalen der Physik; `[DOI] <https://doi.org/10.1002/andp.201800127>`_, `[arXiv:1804.03350] <https://arxiv.org/abs/1804.03350>`_
 
 
 
@@ -133,8 +132,8 @@ NIFTy takes advantage of this formulation in several ways:
 
 3) The response can be non-linear, e.g. :math:`{R'(s)=R \exp(A\,\xi)}`, see `demos/getting_started_2.py`.
 
-4) The amplitude operator may depend on further parameters, e.g. :math:`A=A(\tau)= F\, \widehat{e^\tau}` represents an amplitude operator with a positive definite, unknown spectrum defined in the Fourier domain.
-   The amplitude field :math:`{\tau}` would get its own amplitude operator, with a cepstrum (spectrum of a log spectrum) defined in quefrency space (harmonic space of a logarithmically binned harmonic space) to regularize its degrees of freedom by imposing some (user-defined degree of) spectral smoothness.
+4) The amplitude operator may depend on further parameters, e.g. :math:`A=A(\tau)=F\, \widehat{e^\tau}` represents an amplitude operator with a positive definite, unknown spectrum.
+   The log-amplitude field :math:`{\tau}` is modelled with the help of an integrated Wiener process in order to impose some (user-defined degree of) spectral smoothness.
 
 5) NIFTy calculates the gradient of the information Hamiltonian and the Fisher information metric with respect to all unknown parameters, here :math:`{\xi}` and :math:`{\tau}`, by automatic differentiation.
    The gradients are used for MAP estimates, and the Fisher matrix is required in addition to the gradient by Metric Gaussian Variational Inference (MGVI), which is available in NIFTy as well.
@@ -176,7 +175,7 @@ It only requires minimizing the information Hamiltonian, e.g. by a gradient desc
 
 NIFTy7 automatically calculates the necessary gradient from a generative model of the signal and the data and uses this to minimize the Hamiltonian.
 
-However, MAP often provides unsatisfactory results in cases of deep hirachical Bayesian networks.
+However, MAP often provides unsatisfactory results in cases of deep hierarchical Bayesian networks.
 The reason for this is that MAP ignores the volume factors in parameter space, which are not to be neglected in deciding whether a solution is reasonable or not.
 In the high dimensional setting of field inference these volume factors can differ by large ratios.
 A MAP estimate, which is only representative for a tiny fraction of the parameter space, might be a poorer choice (with respect to an error norm) compared to a slightly worse location with slightly lower posterior probability, which, however, is associated with a much larger volume (of nearby locations with similar probability).
@@ -184,8 +183,8 @@ A MAP estimate, which is only representative for a tiny fraction of the paramete
 This causes MAP signal estimates to be more prone to overfitting the noise as well as to perception thresholds than methods that take volume effects into account.
 
 
-Variational Inference
----------------------
+Metric Gaussian Variational Inference
+-------------------------------------
 
 One method that takes volume effects into account is Variational Inference (VI).
 In VI, the posterior :math:`\mathcal{P}(\xi|d)` is approximated by a simpler, parametrized distribution, often a Gaussian :math:`\mathcal{Q}(\xi)=\mathcal{G}(\xi-m,D)`.
@@ -214,7 +213,7 @@ The only term within the KL-divergence that explicitly depends on it is the Hami
     \mathrm{KL}(m|d) \;\widehat{=}\;
     \left\langle  \mathcal{H}(\xi,d)    \right\rangle_{\mathcal{Q}(\xi)},
 
-where :math:`\widehat{=}` expresses equality up to irrelvant (here not :math:`m`-dependent) terms.
+where :math:`\widehat{=}` expresses equality up to irrelevant (here not :math:`m`-dependent) terms.
 
 Thus, only the gradient of the KL is needed with respect to this, which can be expressed as
 
@@ -224,11 +223,39 @@ Thus, only the gradient of the KL is needed with respect to this, which can be e
 
 We stochastically estimate the KL-divergence and gradients with a set of samples drawn from the approximate posterior distribution.
 The particular structure of the covariance allows us to draw independent samples solving a certain system of equations.
-This KL-divergence for MGVI is implemented in the class :class:`~nifty.7minimization.metric_gaussian_kl.MetricGaussianKL` within NIFTy7.
+This KL-divergence for MGVI is implemented by
+:func:`~nifty7.minimization.kl_energies.MetricGaussianKL` within NIFTy7.
 
+Note that MGVI typically provides only a lower bound on the variance.
 
-The demo `getting_started_3.py` for example not only infers a field this way, but also the power spectrum of the process that has generated the field.
-The cross-correlation of field and power spectrum is taken care of in this process.
-Posterior samples can be obtained to study this cross-correlation.
+Geometric Variational Inference
+-------------------------------
 
-It should be noted that MGVI, as any VI method, can typically only provide a lower bound on the variance.
+For non-linear posterior distributions :math:`\mathcal{P}(\xi|d)` an approximation with a Gaussian :math:`\mathcal{Q}(\xi)` in the coordinates :math:`\xi` is sub-optimal, as higher order interactions are ignored.
+A better approximation can be achieved by constructing a coordinate system :math:`y = g\left(\xi\right)` in which the posterior is close to a Gaussian, and perform VI with a Gaussian :math:`\mathcal{Q}(y)` in these coordinates.
+This approach is called Geometric Variation Inference (geoVI).
+It is discussed in detail in [6]_.
+
+One useful coordinate system is obtained in case the metric :math:`M` of the posterior can be expressed as the pullback of the Euclidean metric by :math:`g`:
+
+.. math::
+
+    M = \left(\frac{\partial g}{\partial \xi}\right)^T \frac{\partial g}{\partial \xi} \ .
+
+In general, such a transformation exists only locally, i.e. in a neighbourhood of some expansion point :math:`\bar{\xi}`, denoted as :math:`g_{\bar{\xi}}\left(\xi\right)`.
+Using :math:`g_{\bar{\xi}}`, the GeoVI scheme uses a zero mean, unit Gaussian :math:`\mathcal{Q}(y) = \mathcal{G}(y, 1)` approximation.
+It can be expressed in :math:`\xi` coordinates via the pushforward by the inverse transformation :math:`\xi = g_{\bar{\xi}}^{-1}(y)`:
+
+.. math::
+
+    \mathcal{Q}_{\bar{\xi}}(\xi) = \left(g_{\bar{\xi}}^{-1} * \mathcal{Q}\right)(\xi) = \int \delta\left(\xi - g_{\bar{\xi}}^{-1}(y)\right) \ \mathcal{G}(y, 1) \ \mathcal{D}y \ ,
+
+where :math:`\delta` denotes the Kronecker-delta.
+
+GeoVI obtains the optimal expansion point :math:`\bar{\xi}` such that :math:`\mathcal{Q}_{\bar{\xi}}` matches the posterior as good as possible.
+Analogous to the MGVI algorithm, :math:`\bar{\xi}` is obtained by minimization of the KL-divergence between :math:`\mathcal{P}` and :math:`\mathcal{Q}_{\bar{\xi}}` w.r.t. :math:`\bar{\xi}`.
+Furthermore the KL is represented as a stochastic estimate using a set of samples drawn from :math:`\mathcal{Q}_{\bar{\xi}}` which is implemented in NIFTy7 via :func:`~nifty7.minimization.kl_energies.GeoMetricKL`.
+
+A visual comparison of the MGVI and GeoVI algorithm can be found in `variational_inference_visualized.py <https://gitlab.mpcdf.mpg.de/ift/nifty/-/blob/NIFTy_7/demos/variational_inference_visualized.py>`_.
+
+.. [6] P. Frank, R. Leike, and T.A. Enßlin (2021), "Geometric Variational Inference"; `[arXiv:2105.10470] <https://arxiv.org/abs/2105.10470>`_
