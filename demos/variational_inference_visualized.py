@@ -78,7 +78,6 @@ def main():
     MAP = ift.EnergyAdapter(pos, ham, want_metric=True)
     minimizer = ift.NewtonCG(
         ift.GradientNormController(iteration_limit=20, name='Mini'))
-    minimizer_mf = ift.ADVIOptimizer(10)
     MAP, _ = minimizer(MAP)
     map_xs, map_ys = [], []
     for ii in range(10):
@@ -88,12 +87,6 @@ def main():
 
     minimizer = ift.NewtonCG(
         ift.GradientNormController(iteration_limit=2, name='Mini'))
-    pos = ift.from_random(ham.domain, 'normal')
-    # FIXME mf_model = ift.MeanfieldModel(ham.domain)
-    # FIXME pos_mf = mf_model.get_initial_pos(initial_mean=pos)
-    # FIXME mfkl = ift.ParametricGaussianKL.make(pos_mf, ham, mf_model, 20, True)
-        # FIXME for samp in mfkl.samples:
-            # FIXME samp = mf_model.generator((samp + mfkl.position)).val
     pos = pos1 = ift.from_random(ham.domain, 'normal')
     fig, axs = plt.subplots(2, 1, figsize=[12, 8])
     for ii in range(15):
@@ -137,7 +130,6 @@ def main():
         plt.pause(1.0)
 
         mgkl, _ = minimizer(mgkl)
-        # FIXME mfkl, _ = minimizer_mf(mfkl)
         geokl, _ = minimizer(geokl)
         pos = mgkl.position
         pos1 = geokl.position
