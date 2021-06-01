@@ -70,8 +70,6 @@ if __name__ == "__main__":
     ic_newton = ift.DeltaEnergyController(
         name="Newton", iteration_limit=1, tol_rel_deltaE=1e-8
     )
-    minimizer_fc = ift.ADVIOptimizer(steps=10)
-    minimizer_mf = ift.ADVIOptimizer(steps=10)
 
     H = ift.StandardHamiltonian(likelihood)
     fullcov_model = ift.FullCovarianceModel(H.domain)
@@ -79,8 +77,13 @@ if __name__ == "__main__":
 
     position_fc = fullcov_model.get_initial_pos(initial_sig=0.01)
     position_mf = meanfield_model.get_initial_pos(initial_sig=0.01)
-    KL_fc = ift.ParametricGaussianKL(position_fc, H, fullcov_model, 3, True)
-    KL_mf = ift.ParametricGaussianKL(position_mf, H, meanfield_model, 3, True)
+
+    f_KL_fc = lambda x: ift.ParametricGaussianKL(x, H, fullcov_model, 3, True)
+    KL_fc = f_KL_fc(position_fc)
+    f_KL_mf = lambda x: ift.ParametricGaussianKL(x, H, meanfield_model, 3, True)
+    KL_mf = f_KL_mf(position_mf)
+    minimizer_fc = ift.ADVIOptimizer(10, f_KL_fc)
+    minimizer_mf = ift.ADVIOptimizer(10, f_KL_mf)
 
     plt.pause(0.001)
     for i in range(25):

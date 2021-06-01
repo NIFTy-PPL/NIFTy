@@ -540,11 +540,7 @@ def ParametricGaussianKL(variational_parameters, hamiltonian,
         raise TypeError
 
     from ..sugar import full, from_random
-    assert variational_model.generator.target is hamiltonian.domain
-    # FIXME self._variational_model = variational_model
-    # FIXME self._full_model = (
-    #     hamiltonian(variational_model.generator) + variational_model.entropy
-    # )
+    full_model = hamiltonian(variational_model.generator) + variational_model.entropy
 
     local_samples = []
     sseq = random.spawn_sseq(n_samples)
@@ -556,11 +552,9 @@ def ParametricGaussianKL(variational_parameters, hamiltonian,
     DirtyMask = MultiField.from_dict(DirtyMaskDict)
     for i in range(*_get_lo_hi(comm, n_samples)):
         with random.Context(sseq[i]):
-            local_samples.append(
-                DirtyMask * from_random(variational_model.generator.domain)
-            )
+            s = DirtyMask * from_random(variational_model.generator.domain)
+            local_samples.append(s)
     local_samples = tuple(local_samples)
 
-    # FIXME What about variational_model?
-    return _SampledKLEnergy(variational_parameters, hamiltonian, n_samples, mirror_samples, comm,
-                            local_samples, nanisinf)
+    return _SampledKLEnergy(variational_parameters, full_model, n_samples,
+            mirror_samples, comm, local_samples, nanisinf)

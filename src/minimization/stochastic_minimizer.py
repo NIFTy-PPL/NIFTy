@@ -37,13 +37,14 @@ class ADVIOptimizer(Minimizer):
         A small value guarantees Robbins and Monro conditions.
     """
 
-    def __init__(self, steps, eta=1, alpha=0.1, tau=1, epsilon=1e-16):
+    def __init__(self, steps, resample_energy, eta=1, alpha=0.1, tau=1, epsilon=1e-16):
         self.alpha = alpha
         self.eta = eta
         self.tau = tau
         self.epsilon = epsilon
         self.counter = 1
         self.steps = steps
+        self._resample = resample_energy
         self.s = None
 
     def _step(self, position, gradient):
@@ -58,18 +59,14 @@ class ADVIOptimizer(Minimizer):
         return new_position
 
     def __call__(self, E):
-        from ..minimization.parametric_gaussian_kl import ParametricGaussianKL
+        from ..minimization.kl_energies import ParametricGaussianKL
         if self.s is None:
             self.s = E.gradient ** 2
         # FIXME come up with somthing how to determine convergence
         convergence = 0
         for i in range(self.steps):
             x = self._step(E.position, E.gradient)
-            # FIXME maybe some KL function for resample? Should make it more generic.
-            E = ParametricGaussianKL.make(
-                x, E._hamiltonian, E._variational_model, E._n_samples, E._mirror_samples
-            )
-
+            E = self._resample(x)
         return E, convergence
 
     def reset(self):
