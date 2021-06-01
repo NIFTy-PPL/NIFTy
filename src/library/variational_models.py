@@ -33,14 +33,15 @@ from ..sugar import domain_union, from_random, full, makeField
 
 
 class MeanfieldModel():
-    '''
-    Collects the operators required for Gaussian mean-field variational inference.
+    """Collect the operators required for Gaussian mean-field variational
+    inference.
 
     Parameters
     ----------
     domain: MultiDomain
-    The domain of the model parameters.
-    '''
+        The domain of the model parameters.
+    """
+
     def __init__(self, domain):
         self.domain = MultiDomain.make(domain)
         self.Flat = Multifield2Vector(self.domain)
@@ -52,17 +53,18 @@ class MeanfieldModel():
         self.entropy = GaussianEntropy(self.std.target) @ self.std
 
     def get_initial_pos(self, initial_mean=None, initial_sig = 1):
-        '''
-        Provides an initial position for a given mean parameter vector and an initial standard deviation.
+        """Provide an initial position for a given mean parameter vector and an
+        initial standard deviation.
 
         Parameters
         ----------
         initial_mean: MultiField
-        The initial mean of the variational approximation. If not None, a Gaussian sample with mean zero and standard deviation of 0.1 is used.
-        Default: None
+            The initial mean of the variational approximation. If not None, a
+            Gaussian sample with mean zero and standard deviation of 0.1 is
+            used. Default: None
         initial_sig: positive float
-        The initial standard deviation shared by all parameters. Default: 1
-        '''
+            The initial standard deviation shared by all parameters. Default: 1
+        """
 
         initial_pos = from_random(self.generator.domain).to_dict()
         initial_pos['latent'] = full(self.generator.domain['latent'], 0.)
@@ -76,14 +78,15 @@ class MeanfieldModel():
 
 
 class FullCovarianceModel():
-    '''
-    Collects the operators required for Gaussian full-covariance variational inference.
+    """Collect the operators required for Gaussian full-covariance variational
+    inference.
 
     Parameters
     ----------
     domain: MultiDomain
-    The domain of the model parameters.
-    '''
+        The domain of the model parameters.
+    """
+
     def __init__(self, domain):
         self.domain = MultiDomain.make(domain)
         self.Flat = Multifield2Vector(self.domain)
@@ -108,23 +111,24 @@ class FullCovarianceModel():
 
         Resp = Respacer(MatMult.target, mean.target)
         self.generator = self.Flat.adjoint @ (mean + Resp @ MatMult @ matmul_setup)
-        
+
         Diag = DiagonalSelector(cov.target, self.Flat.target)
         diag_cov = Diag(cov).absolute()
         self.entropy = GaussianEntropy(diag_cov.target) @ diag_cov
 
     def get_initial_pos(self, initial_mean=None, initial_sig=1):
-        '''
-        Provides an initial position for a given mean parameter vector and a diagonal covariance with an initial standard deviation. 
+        """Provide an initial position for a given mean parameter vector and a
+        diagonal covariance with an initial standard deviation.
 
         Parameters
         ----------
         initial_mean: MultiField
-        The initial mean of the variational approximation. If not None, a Gaussian sample with mean zero and standard deviation of 0.1 is used.
-        Default: None
+            The initial mean of the variational approximation. If not None, a
+            Gaussian sample with mean zero and standard deviation of 0.1 is
+            used. Default: None
         initial_sig: positive float
-        The initial standard deviation shared by all parameters. Default: 1
-        '''
+            The initial standard deviation shared by all parameters. Default: 1
+        """
         initial_pos = from_random(self.generator.domain).to_dict()
         initial_pos['latent'] = full(self.generator.domain['latent'], 0.)
         diag_tri = np.diag(np.full(self.flat_domain.shape[0], initial_sig))[np.tril_indices(self.flat_domain.shape[0])]
@@ -136,14 +140,15 @@ class FullCovarianceModel():
 
 
 class GaussianEntropy(EnergyOperator):
-    '''
-    Calculates the entropy of a Gaussian distribution given the diagonal of a triangular decomposition of the covariance.
+    """Calculate the entropy of a Gaussian distribution given the diagonal of a
+    triangular decomposition of the covariance.
 
     Parameters
     ----------
     domain: Domain
-    The domain of the diagonal.
-    '''    
+        The domain of the diagonal.
+    """
+
     def __init__(self, domain):
         self._domain = domain
 
@@ -159,16 +164,17 @@ class GaussianEntropy(EnergyOperator):
 
 
 class LowerTriangularProjector(LinearOperator):
-    '''
-    Projects the DOFs of a triangular matrix into the matrix form. 
-    
+    """Project the DOFs of a triangular matrix into the matrix form.
+
     Parameters
     ----------
     domain: Domain
-    A one-dimensional domain containing N(N+1)/2 DOFs of a triangular matrix.
+        A one-dimensional domain containing N(N+1)/2 DOFs of a triangular
+        matrix.
     target: Domain
-    A two-dimensional domain with NxN entries.
-    '''    
+        A two-dimensional domain with NxN entries.
+    """
+
     def __init__(self, domain, target):
         self._domain = DomainTuple.make(domain)
         self._target = DomainTuple.make(target)
@@ -187,16 +193,17 @@ class LowerTriangularProjector(LinearOperator):
 
 
 class DiagonalSelector(LinearOperator):
-    '''
-    Extracts the diagonal of a two-dimensional field.
+    """Extract the diagonal of a two-dimensional field.
 
     Parameters
     ----------
     domain: Domain
-    The two-dimensional domain of the input field
+        The two-dimensional domain of the input field
     target: Domain
-    A one-dimensional domain in which the diagonal of the input field lives.
-    '''  
+        The one-dimensional domain on which the diagonal of the input field is
+        defined.
+    """
+
     def __init__(self, domain, target):
         self._domain = DomainTuple.make(domain)
         self._target = DomainTuple.make(target)
@@ -211,16 +218,16 @@ class DiagonalSelector(LinearOperator):
 
 
 class Respacer(LinearOperator):
-    '''
-    Re-maps a field from one domain to another one with the same amounts of DOFs. Wrapps the numpy.reshape method.
+    """Re-map a field from one domain to another one with the same amounts of
+    DOFs. Wrapps the numpy.reshape method.
 
     Parameters
     ----------
     domain: Domain
-    The domain of the input field.
+        The domain of the input field.
     target: Domain
-    The domain of the output field.
-    '''  
+        The domain of the output field.
+    """
 
     def __init__(self, domain, target):
         self._domain = DomainTuple.make(domain)

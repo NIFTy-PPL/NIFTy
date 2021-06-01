@@ -19,26 +19,25 @@ from .minimizer import Minimizer
 
 
 class ADVIOptimizer(Minimizer):
-    '''
-    Provides an implementation of an adaptive step-size sequence optimizer, following https://arxiv.org/abs/1603.00788.
+    """Provide an implementation of an adaptive step-size sequence optimizer,
+    following https://arxiv.org/abs/1603.00788.
 
     Parameters
     ----------
     steps: int
         The number of concecutive steps during one call of the optimizer.
     eta: positive float
-        The scale of the step-size sequence. It might have to be adapted to the application to increase performance. Default: 1.
+        The scale of the step-size sequence. It might have to be adapted to the
+        application to increase performance. Default: 1.
     alpha: float between 0 and 1
-        The fraction of how much the current gradient impacts the momentum. 
+        The fraction of how much the current gradient impacts the momentum.
     tau: positive float
         This quantity prevents division by zero.
     epsilon: positive float
         A small value guarantees Robbins and Monro conditions.
-    
-    '''
+    """
 
     def __init__(self, steps, eta=1, alpha=0.1, tau=1, epsilon=1e-16):
-
         self.alpha = alpha
         self.eta = eta
         self.tau = tau
@@ -59,15 +58,6 @@ class ADVIOptimizer(Minimizer):
         return new_position
 
     def __call__(self, E):
-        '''
-        Performs the optimization.
-
-        Parameters
-        ----------
-        E: EnergyOperator
-        The target function.
-
-        '''
         from ..minimization.parametric_gaussian_kl import ParametricGaussianKL
         if self.s is None:
             self.s = E.gradient ** 2
