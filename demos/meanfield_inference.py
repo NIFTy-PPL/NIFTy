@@ -79,8 +79,8 @@ if __name__ == "__main__":
 
     position_fc = fullcov_model.get_initial_pos(initial_sig=0.01)
     position_mf = meanfield_model.get_initial_pos(initial_sig=0.01)
-    KL_fc = ift.ParametricGaussianKL.make(position_fc, H, fullcov_model, 3, True)
-    KL_mf = ift.ParametricGaussianKL.make(position_mf, H, meanfield_model, 3, True)
+    KL_fc = ift.ParametricGaussianKL(position_fc, H, fullcov_model, 3, True)
+    KL_mf = ift.ParametricGaussianKL(position_mf, H, meanfield_model, 3, True)
 
     plt.pause(0.001)
     for i in range(25):

@@ -522,8 +522,9 @@ def GeoMetricKL(mean, hamiltonian, n_samples, minimizer_samp, mirror_samples,
     return _SampledKLEnergy(mean, hamiltonian, sampler.n_eff_samples, False,
                             comm, local_samples, nanisinf)
 
-
- def ParametricGaussianKL(variational_parameters, hamiltonian, variational_model, n_samples, mirror_samples, comm=None, nanisinf=False):
+def ParametricGaussianKL(variational_parameters, hamiltonian,
+        variational_model, n_samples, mirror_samples, comm=None,
+        nanisinf=False):
     """Provide the sampled Kullback-Leibler divergence between a distribution
     and a Parametric Gaussian.
 
@@ -538,6 +539,7 @@ def GeoMetricKL(mean, hamiltonian, n_samples, minimizer_samp, mirror_samples,
     if not isinstance(mirror_samples, bool):
         raise TypeError
 
+    from ..sugar import full, from_random
     assert variational_model.generator.target is hamiltonian.domain
     # FIXME self._variational_model = variational_model
     # FIXME self._full_model = (
