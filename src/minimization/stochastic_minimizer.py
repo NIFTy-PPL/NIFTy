@@ -72,7 +72,7 @@ class ADVIOptimizer(Minimizer):
             x = self._step(E.position, E.gradient)
             E = self._resample(x)
             myassert(isinstance(E, Energy))
-            myassert(x.domain, E.position.domain)
+            myassert(x.domain is E.position.domain)
         return E, convergence
 
     def reset(self):
