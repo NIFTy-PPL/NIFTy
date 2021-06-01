@@ -16,6 +16,7 @@
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
 
 from .minimizer import Minimizer
+from .energy import Energy
 
 
 class ADVIOptimizer(Minimizer):
@@ -26,6 +27,9 @@ class ADVIOptimizer(Minimizer):
     ----------
     steps: int
         The number of concecutive steps during one call of the optimizer.
+    resample_energy : function
+        Function that returns an `Energy` object at a given position. It is
+        called after every step of the optimizer.
     eta: positive float
         The scale of the step-size sequence. It might have to be adapted to the
         application to increase performance. Default: 1.
@@ -59,7 +63,7 @@ class ADVIOptimizer(Minimizer):
         return new_position
 
     def __call__(self, E):
-        from ..minimization.kl_energies import ParametricGaussianKL
+        from ..utilities import myassert
         if self.s is None:
             self.s = E.gradient ** 2
         # FIXME come up with somthing how to determine convergence
@@ -67,6 +71,8 @@ class ADVIOptimizer(Minimizer):
         for i in range(self.steps):
             x = self._step(E.position, E.gradient)
             E = self._resample(x)
+            myassert(isinstance(E, Energy))
+            myassert(x.domain, E.position.domain)
         return E, convergence
 
     def reset(self):
