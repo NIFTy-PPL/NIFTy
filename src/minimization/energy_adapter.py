@@ -90,6 +90,14 @@ class EnergyAdapter(Energy):
 
 
 class StochasticEnergyAdapter(Energy):
+    """A variant of `EnergyAdapter` that provides the energy interface for an
+    operator with a scalar target where parts of the imput are averaged
+    instead of optmized. Specifically, for the input corresponding to `keys`
+    a set of standart normal distributed samples are drawn and each gets
+    partially inserted into `bigop`. The results are averaged and represent a
+    stochastic average of an energy with the remaining subdomain being the DOFs
+    that are considered to be optimization parameters.
+    """
     def __init__(self, position, bigop, keys, local_ops, n_samples, comm, nanisinf,
                  _callingfrommake=False):
         if not _callingfrommake:
