@@ -73,11 +73,11 @@ if __name__ == "__main__":
 
     H = ift.StandardHamiltonian(likelihood)
     position_fc = ift.from_random(H.domain)*0.1
-    position_mf = ift.from_random(H.domain)*0.
+    position_mf = ift.from_random(H.domain)*0.1
 
     fc = ift.FullCovarianceVI(position_fc, H, 3, True, initial_sig=0.01)
-    mf = ift.MeanFieldVI(position_mf, H, 3, True, initial_sig=0.0001)
-    minimizer_fc = ift.ADVIOptimizer(10)
+    mf = ift.MeanFieldVI(position_mf, H, 3, True, initial_sig=0.01)
+    minimizer_fc = ift.ADVIOptimizer(20, eta = 0.1)
     minimizer_mf = ift.ADVIOptimizer(10)
 
     plt.pause(0.001)
@@ -89,7 +89,7 @@ if __name__ == "__main__":
         plt.figure("result")
         plt.cla()
         plt.plot(
-            sky(fc.position).val,
+            sky(fc.mean).val,
             "b-",
             label="Full covariance",
         )
@@ -98,14 +98,11 @@ if __name__ == "__main__":
         )
         for i in range(5):
             plt.plot(
-                sky(mf.draw_sample()).val, "b-", alpha=0.3
+                sky(fc.draw_sample()).val, "b-", alpha=0.3
             )
-        #for samp in KL_mf.samples:
-        #    plt.plot(
-        #        sky(meanfield_model.generator(KL_mf.position + samp)).val,
-        #        "r-",
-        #        alpha=0.3,
-        #    )
+            plt.plot(
+                sky(mf.draw_sample()).val, "r-", alpha=0.3
+            )
         plt.plot(data.val, "kx")
         plt.plot(sky(mock_position).val, "k-", label="Ground truth")
         plt.legend()
