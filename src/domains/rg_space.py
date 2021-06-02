@@ -11,7 +11,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
-# Copyright(C) 2013-2020 Max-Planck-Society
+# Copyright(C) 2013-2021 Max-Planck-Society
 #
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
 
@@ -77,6 +77,8 @@ class RGSpace(StructuredDomain):
                 if self._harmonic:
                     temp = 1. / (np.array(self._shape) * temp)
                 self._rdistances = tuple(temp)
+        self._hdistances = tuple(
+            1. / (np.array(self.shape)*np.array(self._rdistances)))
         if min(self._rdistances) <= 0:
             raise ValueError('Non-positive distances encountered')
 
@@ -220,7 +222,4 @@ class RGSpace(StructuredDomain):
         The n-th entry of the tuple is the distance between neighboring
         grid points along the n-th dimension.
         """
-        if self._harmonic:
-            return tuple(1. / (np.array(self.shape)*np.array(self._rdistances)))
-        else:
-            return self._rdistances
+        return self._hdistances if self._harmonic else self._rdistances
