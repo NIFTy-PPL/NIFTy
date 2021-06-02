@@ -21,7 +21,6 @@ from ..domain_tuple import DomainTuple
 from ..domains.unstructured_domain import UnstructuredDomain
 from ..field import Field
 from ..linearization import Linearization
-from ..multi_domain import MultiDomain
 from ..multi_field import MultiField
 from ..operators.einsum import MultiLinearEinsum
 from ..operators.energy_operators import EnergyOperator
@@ -29,114 +28,86 @@ from ..operators.linear_operator import LinearOperator
 from ..operators.multifield2vector import Multifield2Vector
 from ..operators.sandwich_operator import SandwichOperator
 from ..operators.simple_linear_operators import FieldAdapter, PartialExtractor
-from ..sugar import domain_union, from_random, full, makeField
+from ..sugar import domain_union, full, makeField, is_fieldlike
+from ..minimization.stochastic_minimizer import PartialSampledEnergy
 
 
-class MeanfieldModel():
-    """Collect the operators required for Gaussian mean-field variational
-    inference.
-
-    Parameters
-    ----------
-    domain: MultiDomain
-        The domain of the model parameters.
-    """
-
-    def __init__(self, domain):
-        self.domain = MultiDomain.make(domain)
-        self.Flat = Multifield2Vector(self.domain)
-
-        self.std = FieldAdapter(self.Flat.target,'var').absolute()
-        self.latent = FieldAdapter(self.Flat.target,'latent')
-        self.mean = FieldAdapter(self.Flat.target,'mean')
-        self.generator = self.Flat.adjoint(self.mean + self.std * self.latent)
-        self.entropy = GaussianEntropy(self.std.target) @ self.std
-
-    def get_initial_pos(self, initial_mean=None, initial_sig = 1):
-        """Provide an initial position for a given mean parameter vector and an
-        initial standard deviation.
-
-        Parameters
-        ----------
-        initial_mean: MultiField
-            The initial mean of the variational approximation. If not None, a
-            Gaussian sample with mean zero and standard deviation of 0.1 is
-            used. Default: None
-        initial_sig: positive float
-            The initial standard deviation shared by all parameters. Default: 1
+class MeanField:
+    def __init__(self, position, hamiltonian, n_samples, mirror_samples,
+                 initial_sig=1, comm=None, nanisinf=False, names = ['mean', 'var']):
+        """Collect the operators required for Gaussian mean-field variational
+        inference.
         """
+        Flat = Multifield2Vector(position.domain)
+        std = FieldAdapter(Flat.target, names[1]).absolute()
+        latent = FieldAdapter(Flat.target,'latent')
+        mean = FieldAdapter(Flat.target, names[0])
+        generator = Flat.adjoint(mean + std * latent)
+        entropy = GaussianEntropy(std.target) @ std
+        pos = {names[0]: Flat(position)}
+        if is_fieldlike(initial_sig):
+            pos[names[1]] = Flat(initial_sig)
+        else:
+            pos[names[1]] = full(Flat.target, initial_sig)
+        pos = MultiField.from_dict(pos)
+        op = hamiltonian(generator) + entropy
+        self._names = names
+        self._KL = PartialSampledEnergy.make(pos, op, ['latent',], n_samples, mirror_samples, nanisinf=nanisinf, comm=comm)
+        self._Flat = Flat
 
-        initial_pos = from_random(self.generator.domain).to_dict()
-        initial_pos['latent'] = full(self.generator.domain['latent'], 0.)
-        initial_pos['var'] = full(self.generator.domain['var'], initial_sig)
+    @property
+    def position(self):
+        return self._Flat.adjoint(self._KL.position[self._names[0]])
 
-        if initial_mean is None:
-            initial_mean = 0.1*from_random(self.generator.target)
-
-        initial_pos['mean'] = self.Flat(initial_mean)
-        return MultiField.from_dict(initial_pos)
+    def minimize(self, minimizer):
+        self._KL, _ = minimizer(self._KL)
 
 
-class FullCovarianceModel():
-    """Collect the operators required for Gaussian full-covariance variational
-    inference.
-
-    Parameters
-    ----------
-    domain: MultiDomain
-        The domain of the model parameters.
-    """
-
-    def __init__(self, domain):
-        self.domain = MultiDomain.make(domain)
-        self.Flat = Multifield2Vector(self.domain)
+class FullCovariance:
+    def __init__(self, position, hamiltonian, n_samples, mirror_samples,
+                initial_sig=1, comm=None, nanisinf=False, names = ['mean', 'cov']):
+        """Collect the operators required for Gaussian full-covariance variational
+        inference.
+        """
+        Flat = Multifield2Vector(position.domain)
         one_space = UnstructuredDomain(1)
-        self.flat_domain = self.Flat.target[0]
-        N_tri = self.flat_domain.shape[0]*(self.flat_domain.shape[0]+1)//2
+        flat_domain = Flat.target[0]
+        N_tri = flat_domain.shape[0]*(flat_domain.shape[0]+1)//2
         triangular_space = DomainTuple.make(UnstructuredDomain(N_tri))
-        tri = FieldAdapter(triangular_space, 'cov')
-        mat_space = DomainTuple.make((self.flat_domain,self.flat_domain))
-        lat_mat_space = DomainTuple.make((one_space,self.flat_domain))
+        tri = FieldAdapter(triangular_space, names[1])
+        mat_space = DomainTuple.make((flat_domain,flat_domain))
+        lat_mat_space = DomainTuple.make((one_space,flat_domain))
         lat = FieldAdapter(lat_mat_space,'latent')
         LT = LowerTriangularProjector(triangular_space,mat_space)
-        mean = FieldAdapter(self.flat_domain,'mean')
+        mean = FieldAdapter(flat_domain,names[0])
         cov = LT @ tri
         co = FieldAdapter(cov.target, 'co')
-
+    
         matmul_setup_dom = domain_union((co.domain,lat.domain))
         co_part = PartialExtractor(matmul_setup_dom, co.domain)
         lat_part = PartialExtractor(matmul_setup_dom, lat.domain)
         matmul_setup = lat_part.adjoint @ lat.adjoint @ lat + co_part.adjoint @ co.adjoint @ cov
         MatMult = MultiLinearEinsum(matmul_setup.target,'ij,ki->jk', key_order=('co','latent'))
-
+    
         Resp = Respacer(MatMult.target, mean.target)
-        self.generator = self.Flat.adjoint @ (mean + Resp @ MatMult @ matmul_setup)
-
-        Diag = DiagonalSelector(cov.target, self.Flat.target)
+        generator = Flat.adjoint @ (mean + Resp @ MatMult @ matmul_setup)
+    
+        Diag = DiagonalSelector(cov.target, Flat.target)
         diag_cov = Diag(cov).absolute()
-        self.entropy = GaussianEntropy(diag_cov.target) @ diag_cov
+        entropy = GaussianEntropy(diag_cov.target) @ diag_cov
+        diag_tri = np.diag(np.full(flat_domain.shape[0], initial_sig))[np.tril_indices(flat_domain.shape[0])]
+        pos = MultiField.from_dict({names[0]:Flat(position),names[1]:makeField(generator.domain[names[1]], diag_tri)})
+        op = hamiltonian(generator) + entropy
+        self._names = names
+        self._KL = PartialSampledEnergy.make(pos, op, ['latent',], n_samples, mirror_samples, nanisinf=nanisinf, comm=comm)
+        self._Flat = Flat
 
-    def get_initial_pos(self, initial_mean=None, initial_sig=1):
-        """Provide an initial position for a given mean parameter vector and a
-        diagonal covariance with an initial standard deviation.
+    @property
+    def position(self):
+        return self._Flat.adjoint(self._KL.position[self._names[0]])
 
-        Parameters
-        ----------
-        initial_mean: MultiField
-            The initial mean of the variational approximation. If not None, a
-            Gaussian sample with mean zero and standard deviation of 0.1 is
-            used. Default: None
-        initial_sig: positive float
-            The initial standard deviation shared by all parameters. Default: 1
-        """
-        initial_pos = from_random(self.generator.domain).to_dict()
-        initial_pos['latent'] = full(self.generator.domain['latent'], 0.)
-        diag_tri = np.diag(np.full(self.flat_domain.shape[0], initial_sig))[np.tril_indices(self.flat_domain.shape[0])]
-        initial_pos['cov'] = makeField(self.generator.domain['cov'], diag_tri)
-        if initial_mean is None:
-            initial_mean = 0.1*from_random(self.generator.target)
-        initial_pos['mean'] = self.Flat(initial_mean)
-        return MultiField.from_dict(initial_pos)
+    def minimize(self, minimizer):
+        self._KL, _ = minimizer(self._KL)
 
 
 class GaussianEntropy(EnergyOperator):

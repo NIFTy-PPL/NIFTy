@@ -73,7 +73,7 @@ from .minimization.scipy_minimizer import L_BFGS_B
 from .minimization.energy import Energy
 from .minimization.quadratic_energy import QuadraticEnergy
 from .minimization.energy_adapter import EnergyAdapter
-from .minimization.kl_energies import MetricGaussianKL, GeoMetricKL, ParametricGaussianKL
+from .minimization.kl_energies import MetricGaussianKL, GeoMetricKL
 
 from .sugar import *
 
@@ -92,7 +92,7 @@ from .library.adjust_variances import (make_adjust_variances_hamiltonian,
 from .library.nft import Gridder, FinuFFT
 from .library.correlated_fields import CorrelatedFieldMaker
 from .library.correlated_fields_simple import SimpleCorrelatedField
-from .library.variational_models import MeanfieldModel, FullCovarianceModel
+from .library.variational_models import MeanField, FullCovariance
 
 from . import extra
 

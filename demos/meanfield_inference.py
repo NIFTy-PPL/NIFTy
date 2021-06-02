@@ -72,44 +72,40 @@ if __name__ == "__main__":
     )
 
     H = ift.StandardHamiltonian(likelihood)
-    fullcov_model = ift.FullCovarianceModel(H.domain)
-    meanfield_model = ift.MeanfieldModel(H.domain)
+    position_fc = ift.from_random(H.domain)*0.1
+    position_mf = ift.from_random(H.domain)*0.
 
-    position_fc = fullcov_model.get_initial_pos(initial_sig=0.01)
-    position_mf = meanfield_model.get_initial_pos(initial_sig=0.01)
-
-    f_KL_fc = lambda x: ift.ParametricGaussianKL(x, H, fullcov_model, 3, True)
-    KL_fc = f_KL_fc(position_fc)
-    f_KL_mf = lambda x: ift.ParametricGaussianKL(x, H, meanfield_model, 3, True)
-    KL_mf = f_KL_mf(position_mf)
-    minimizer_fc = ift.ADVIOptimizer(10, f_KL_fc)
-    minimizer_mf = ift.ADVIOptimizer(10, f_KL_mf)
+    fc = ift.FullCovariance(position_fc, H, 3, True, initial_sig=0.01)
+    mf = ift.MeanField(position_mf, H, 3, True, initial_sig=0.0001)
+    minimizer_fc = ift.ADVIOptimizer(10)
+    minimizer_mf = ift.ADVIOptimizer(10)
 
     plt.pause(0.001)
     for i in range(25):
-        KL_fc, _ = minimizer_fc(KL_fc)
-        KL_mf, _ = minimizer_mf(KL_mf)
+        if i != 0:
+            fc.minimize(minimizer_fc)
+            mf.minimize(minimizer_mf)
 
         plt.figure("result")
         plt.cla()
         plt.plot(
-            sky(fullcov_model.generator(KL_fc.position)).val,
+            sky(fc.position).val,
             "b-",
             label="Full covariance",
         )
         plt.plot(
-            sky(meanfield_model.generator(KL_mf.position)).val, "r-", label="Mean field"
+            sky(mf.position).val, "r-", label="Mean field"
         )
-        for samp in KL_fc.samples:
-            plt.plot(
-                sky(fullcov_model.generator(KL_fc.position + samp)).val, "b-", alpha=0.3
-            )
-        for samp in KL_mf.samples:
-            plt.plot(
-                sky(meanfield_model.generator(KL_mf.position + samp)).val,
-                "r-",
-                alpha=0.3,
-            )
+        #for samp in KL_fc.samples:
+        #    plt.plot(
+        #        sky(fullcov_model.generator(KL_fc.position + samp)).val, "b-", alpha=0.3
+        #    )
+        #for samp in KL_mf.samples:
+        #    plt.plot(
+        #        sky(meanfield_model.generator(KL_mf.position + samp)).val,
+        #        "r-",
+        #        alpha=0.3,
+        #    )
         plt.plot(data.val, "kx")
         plt.plot(sky(mock_position).val, "k-", label="Ground truth")
         plt.legend()
