@@ -28,42 +28,57 @@ from ..operators.linear_operator import LinearOperator
 from ..operators.multifield2vector import Multifield2Vector
 from ..operators.sandwich_operator import SandwichOperator
 from ..operators.simple_linear_operators import FieldAdapter, PartialExtractor
-from ..sugar import domain_union, full, makeField, is_fieldlike
-from ..minimization.stochastic_minimizer import PartialSampledEnergy
+from ..sugar import domain_union, full, makeField, from_random, is_fieldlike
+from ..minimization.energy_adapter import StochasticEnergyAdapter
 
 
-class MeanField:
-    def __init__(self, position, hamiltonian, n_samples, mirror_samples,
-                 initial_sig=1, comm=None, nanisinf=False, names = ['mean', 'var']):
+class MeanFieldVI:
+    def __init__(self, initial_position, hamiltonian, n_samples, mirror_samples,
+                 initial_sig=1, comm=None, nanisinf=False):
         """Collect the operators required for Gaussian mean-field variational
         inference.
         """
-        Flat = Multifield2Vector(position.domain)
-        std = FieldAdapter(Flat.target, names[1]).absolute()
+        Flat = Multifield2Vector(initial_position.domain)
+        self._std = FieldAdapter(Flat.target, 'std').absolute()
         latent = FieldAdapter(Flat.target,'latent')
-        mean = FieldAdapter(Flat.target, names[0])
-        generator = Flat.adjoint(mean + std * latent)
-        entropy = GaussianEntropy(std.target) @ std
-        pos = {names[0]: Flat(position)}
+        self._mean = FieldAdapter(Flat.target, 'mean')
+        self._generator = Flat.adjoint(self._mean + self._std * latent)
+        self._entropy = GaussianEntropy(self._std.target) @ self._std
+        self._mean = Flat.adjoint @ self._mean
+        self._std = Flat.adjoint @ self._std
+        pos = {'mean': Flat(initial_position)}
         if is_fieldlike(initial_sig):
-            pos[names[1]] = Flat(initial_sig)
+            pos['std'] = Flat(initial_sig)
         else:
-            pos[names[1]] = full(Flat.target, initial_sig)
+            pos['std'] = full(Flat.target, initial_sig)
         pos = MultiField.from_dict(pos)
-        op = hamiltonian(generator) + entropy
-        self._names = names
-        self._KL = PartialSampledEnergy.make(pos, op, ['latent',], n_samples, mirror_samples, nanisinf=nanisinf, comm=comm)
-        self._Flat = Flat
+        op = hamiltonian(self._generator) + self._entropy
+        self._KL = StochasticEnergyAdapter.make(pos, op, ['latent',], n_samples,
+                                    mirror_samples, nanisinf=nanisinf, comm=comm)
+        self._samdom = latent.domain
 
     @property
-    def position(self):
-        return self._Flat.adjoint(self._KL.position[self._names[0]])
+    def mean(self):
+        return self._mean.force(self._KL.position)
+
+    @property
+    def std(self):
+        return self._std.force(self._KL.position)
+
+    @property
+    def entropy(self):
+        return self._entropy.force(self._KL.position)
+
+    def draw_sample(self):
+        _, op = self._generator.simplify_for_constant_input(
+                from_random(self._samdom))
+        return op(self._KL.position)
 
     def minimize(self, minimizer):
         self._KL, _ = minimizer(self._KL)
 
 
-class FullCovariance:
+class FullCovarianceVI:
     def __init__(self, position, hamiltonian, n_samples, mirror_samples,
                 initial_sig=1, comm=None, nanisinf=False, names = ['mean', 'cov']):
         """Collect the operators required for Gaussian full-covariance variational
@@ -99,7 +114,7 @@ class FullCovariance:
         pos = MultiField.from_dict({names[0]:Flat(position),names[1]:makeField(generator.domain[names[1]], diag_tri)})
         op = hamiltonian(generator) + entropy
         self._names = names
-        self._KL = PartialSampledEnergy.make(pos, op, ['latent',], n_samples, mirror_samples, nanisinf=nanisinf, comm=comm)
+        self._KL = StochasticEnergyAdapter.make(pos, op, ['latent',], n_samples, mirror_samples, nanisinf=nanisinf, comm=comm)
         self._Flat = Flat
 
     @property

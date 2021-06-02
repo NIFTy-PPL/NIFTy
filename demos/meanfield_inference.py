@@ -75,8 +75,8 @@ if __name__ == "__main__":
     position_fc = ift.from_random(H.domain)*0.1
     position_mf = ift.from_random(H.domain)*0.
 
-    fc = ift.FullCovariance(position_fc, H, 3, True, initial_sig=0.01)
-    mf = ift.MeanField(position_mf, H, 3, True, initial_sig=0.0001)
+    fc = ift.FullCovarianceVI(position_fc, H, 3, True, initial_sig=0.01)
+    mf = ift.MeanFieldVI(position_mf, H, 3, True, initial_sig=0.0001)
     minimizer_fc = ift.ADVIOptimizer(10)
     minimizer_mf = ift.ADVIOptimizer(10)
 
@@ -94,12 +94,12 @@ if __name__ == "__main__":
             label="Full covariance",
         )
         plt.plot(
-            sky(mf.position).val, "r-", label="Mean field"
+            sky(mf.mean).val, "r-", label="Mean field"
         )
-        #for samp in KL_fc.samples:
-        #    plt.plot(
-        #        sky(fullcov_model.generator(KL_fc.position + samp)).val, "b-", alpha=0.3
-        #    )
+        for i in range(5):
+            plt.plot(
+                sky(mf.draw_sample()).val, "b-", alpha=0.3
+            )
         #for samp in KL_mf.samples:
         #    plt.plot(
         #        sky(meanfield_model.generator(KL_mf.position + samp)).val,

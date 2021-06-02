@@ -23,7 +23,6 @@ from ..minimization.energy import Energy
 from ..utilities import myassert, allreduce_sum
 from ..multi_domain import MultiDomain
 from ..sugar import from_random
-from .kl_energies import _SelfAdjointOperatorWrapper, _get_lo_hi
 
 class EnergyAdapter(Energy):
     """Helper class which provides the traditional Nifty Energy interface to
@@ -91,7 +90,7 @@ class EnergyAdapter(Energy):
 
 
 class StochasticEnergyAdapter(Energy):
-    def __init__(self, position, op, keys, local_ops, n_samples, comm, nanisinf,
+    def __init__(self, position, bigop, keys, local_ops, n_samples, comm, nanisinf,
                  _callingfrommake=False):
         if not _callingfrommake:
             raise NotImplementedError
@@ -112,7 +111,7 @@ class StochasticEnergyAdapter(Energy):
             self._val = np.inf
         self._grad = allreduce_sum(g, self._comm)/self._n_samples
 
-        self._op = op
+        self._op = bigop
         self._keys = keys
 
     @property
@@ -136,6 +135,7 @@ class StochasticEnergyAdapter(Energy):
 
     @property
     def metric(self):
+        from .kl_energies import _SelfAdjointOperatorWrapper
         return _SelfAdjointOperatorWrapper(self.position.domain,
                                            self.apply_metric)
 
@@ -158,6 +158,7 @@ class StochasticEnergyAdapter(Energy):
         samdom = MultiDomain.make(samdom)
         local_ops = []
         sseq = random.spawn_sseq(n_samples)
+        from .kl_energies import _get_lo_hi
         for i in range(*_get_lo_hi(comm, n_samples)):
             with random.Context(sseq[i]):
                 rnd = from_random(samdom)

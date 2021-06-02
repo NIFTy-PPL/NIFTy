@@ -92,7 +92,7 @@ from .library.adjust_variances import (make_adjust_variances_hamiltonian,
 from .library.nft import Gridder, FinuFFT
 from .library.correlated_fields import CorrelatedFieldMaker
 from .library.correlated_fields_simple import SimpleCorrelatedField
-from .library.variational_models import MeanField, FullCovariance
+from .library.variational_models import MeanFieldVI, FullCovarianceVI
 
 from . import extra
 
