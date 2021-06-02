@@ -149,15 +149,15 @@ class StochasticEnergyAdapter(Energy):
     @staticmethod
     def make(position, op, sampling_keys, n_samples, mirror_samples,
              comm=None, nanisinf = False):
-        """A variant of `EnergyAdapter` that provides the energy interface for an
-        operator with a scalar target where parts of the imput are averaged
+        """A variant of `EnergyAdapter` that provides the energy interface for
+        an operator with a scalar target where parts of the imput are averaged
         instead of optmized.
     
         Specifically, a set of standart normal distributed
         samples are drawn for the input corresponding to `keys` and each sample
-        gets partially inserted into `op`. The resulting operators are averaged and
-        represent a stochastic average of an energy with the remaining subdomain
-        being the DOFs that are considered to be optimization parameters.
+        gets partially inserted into `op`. The resulting operators are averaged
+        and represent a stochastic average of an energy with the remaining
+        subdomain being the DOFs that are considered to be optimization parameters.
     
         Parameters
         ----------
