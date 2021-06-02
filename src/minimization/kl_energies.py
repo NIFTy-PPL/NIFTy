@@ -206,7 +206,7 @@ class _MetricGaussianSampler:
         lin = Linearization.make_var(position.extract(H.domain), True)
         self._met = H(lin).metric
         if napprox >= 1:
-            self._met._approximation = makeOp(approximation2endo(met, napprox))
+            self._met._approximation = makeOp(approximation2endo(self._met, napprox))
         self._n = int(n_samples)
 
     def draw_samples(self, comm):
