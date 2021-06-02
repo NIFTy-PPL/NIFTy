@@ -98,3 +98,9 @@ def test_k_length_array(shape, distances, expected):
 def test_dvol(shape, distances, harmonic, power):
     r = ift.RGSpace(shape=shape, distances=distances, harmonic=harmonic)
     assert_allclose(r.dvol, np.prod(r.distances)**power)
+
+
+def test_codomain():
+    for i in range(1, 1000):
+        r = ift.RGSpace(shape=(i,), distances=(1.,), harmonic=False)
+        assert_equal(r.get_default_codomain().get_default_codomain(), r)
