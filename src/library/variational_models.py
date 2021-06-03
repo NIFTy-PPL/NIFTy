@@ -33,10 +33,6 @@ from ..minimization.energy_adapter import StochasticEnergyAdapter
 from ..utilities import myassert
 
 
-def _eval(op, position):
-    return op(position.extract(op.domain))
-
-
 class MeanFieldVI:
     def __init__(self, initial_position, hamiltonian, n_samples, mirror_samples,
                  initial_sig=1, comm=None, nanisinf=False):
@@ -64,15 +60,15 @@ class MeanFieldVI:
 
     @property
     def mean(self):
-        return _eval(self._mean,self._KL.position)
+        return self._mean.force(self._KL.position)
 
     @property
     def std(self):
-        return _eval(self._std,self._KL.position)
+        return self._std.force(self._KL.position)
 
     @property
     def entropy(self):
-        return _eval(self._entropy,self._KL.position)
+        return self._entropy.force(self._KL.position)
 
     def draw_sample(self):
         _, op = self._generator.simplify_for_constant_input(
@@ -116,11 +112,11 @@ class FullCovarianceVI:
 
     @property
     def mean(self):
-        return _eval(self._mean,self._KL.position)
+        return self._mean.force(self._KL.position)
 
     @property
     def entropy(self):
-        return _eval(self._entropy,self._KL.position)
+        return self._entropy.force(self._KL.position)
 
     def draw_sample(self):
         _, op = self._generator.simplify_for_constant_input(
