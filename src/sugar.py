@@ -602,8 +602,8 @@ def is_operator(obj):
 
     Note
     ----
-    A simple `isinstance(obj, ift.Operator)` does give the expected
-    result because, e.g., :class:`~nifty7.field.Field` inherits from
+    A simple `isinstance(obj, ift.Operator)` does not give the expected result
+    because, e.g., :class:`~nifty7.field.Field` inherits from
     :class:`~nifty7.operators.operator.Operator`.
     """
     return isinstance(obj, Operator) and obj.val is None
@@ -619,10 +619,10 @@ def is_fieldlike(obj):
 
     Note
     ----
-    A simple `isinstance(obj, ift.Field)` does give the expected
-    result because users might have implemented another class which
-    behaves field-like but is not an instance of
-    :class:`~nifty7.field.Field`. Also not that instances of
-    :class:`~nifty7.linearization.Linearization` behave field-like.
+    A simple `isinstance(obj, ift.Field)` does not give the expected result
+    because users might have implemented another class which behaves field-like
+    but is not an instance of :class:`~nifty7.field.Field`. Also note that
+    instances of :class:`~nifty7.linearization.Linearization` behave
+    field-like.
     """
     return isinstance(obj, Operator) and obj.val is not None
