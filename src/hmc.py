@@ -2,6 +2,12 @@ from jax import numpy as np
 from jax import random, jit, partial, lax
 from collections import namedtuple
 
+
+###
+### COMMON FUNCTIONALITY
+###
+
+# A datatype for (q, p) = (position, momentum) pairs
 QP = namedtuple('QP', ['position', 'momentum'])
 
 def flip_momentum(qp: QP) -> QP:
@@ -118,6 +124,10 @@ def accept_or_deny(*,
     return ((old_qp, proposed_qp), acceptance_level < acceptance_threshold)
 
 
+###
+### SIMPLE HMC
+###
+
 # WARNING: requires jaxlib '0.1.66', keyword argument passing doesn't work with alternative static_argnums, which is supported in earlier jax versions
 # @partial(jit, static_argnames=('potential_energy', 'potential_energy_gradient'))
 def generate_next_sample(*,
@@ -183,6 +193,10 @@ def generate_next_sample(*,
         )
     ), momentum
 
+
+###
+### NUTS
+###
 
 def _impl_build_tree_recursive(initial_qp, eps, depth, direction, stepper):
     """Build tree of given depth starting from given initial position.
