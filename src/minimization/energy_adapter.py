@@ -92,6 +92,20 @@ class EnergyAdapter(Energy):
 
 
 class StochasticEnergyAdapter(Energy):
+    """Provide the energy interface for an energy operator where parts of the
+    input are averaged instead of optimized.
+
+    Specifically, a set of standard normal distributed samples are drawn for
+    the input corresponding to `keys` and each sample is inserted partially
+    into `op`. The resulting operators are then averaged.  The subdomain that
+    is not sampled is left a stochastic average of an energy with the remaining
+    subdomain being the DOFs that are considered to be optimization parameters.
+
+    Notes
+    -----
+    `StochasticEnergyAdapter` should never be created using the constructor,
+    but rather via the factory function :attr:`make`.
+    """
     def __init__(self, position, op, keys, local_ops, n_samples, comm, nanisinf,
                  _callingfrommake=False):
         if not _callingfrommake:
@@ -148,17 +162,9 @@ class StochasticEnergyAdapter(Energy):
 
     @staticmethod
     def make(position, op, sampling_keys, n_samples, mirror_samples,
-             comm=None, nanisinf = False):
-        """A variant of `EnergyAdapter` that provides the energy interface for
-        an operator with a scalar target where parts of the imput are averaged
-        instead of optmized.
-    
-        Specifically, a set of standart normal distributed
-        samples are drawn for the input corresponding to `keys` and each sample
-        gets partially inserted into `op`. The resulting operators are averaged
-        and represent a stochastic average of an energy with the remaining
-        subdomain being the DOFs that are considered to be optimization parameters.
-    
+             comm=None, nanisinf=False):
+        """Factory function for StochasticEnergyAdapter.
+
         Parameters
         ----------
         position : MultiField
@@ -181,10 +187,9 @@ class StochasticEnergyAdapter(Energy):
             across this communicator. If `mirror_samples` is set, then a sample
             and its mirror image will always reside on the same task.
         nanisinf : bool
-            If true, nan energies which can happen due to overflows in the
-            forward model are interpreted as inf. Thereby, the code does not
-            crash on these occasions but rather the minimizer is told that the
-            position it has tried is not sensible.
+            If true, nan energies, which can occur due to overflows in the
+            forward model, are interpreted as inf which can be interpreted by
+            optimizers.
         """
         myassert(op.target == DomainTuple.scalar_domain())
         samdom = {}

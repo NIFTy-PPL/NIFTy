@@ -18,6 +18,7 @@
 from .minimizer import Minimizer
 from .energy import Energy
 
+
 class ADVIOptimizer(Minimizer):
     """Provide an implementation of an adaptive step-size sequence optimizer,
     following https://arxiv.org/abs/1603.00788.
@@ -48,11 +49,8 @@ class ADVIOptimizer(Minimizer):
 
     def _step(self, position, gradient):
         self.s = self.alpha * gradient ** 2 + (1 - self.alpha) * self.s
-        self.rho = (
-            self.eta
-            * self.counter ** (-0.5 + self.epsilon)
-            / (self.tau + (self.s).sqrt())
-        )
+        self.rho = self.eta * self.counter ** (-0.5 + self.epsilon) \
+                / (self.tau + (self.s).sqrt())
         new_position = position - self.rho * gradient
         self.counter += 1
         return new_position
