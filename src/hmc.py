@@ -198,6 +198,14 @@ def generate_next_sample(*,
 ### NUTS
 ###
 
+# A datatype carrying tree metadata
+# left, right: endpoints of the trees path
+# weight: sum over all exp(-H(q, p)) in the trees path
+# proposal_candidate: random sample from the trees path, distributed as exp(-H(q, p))
+# turning: TODO: whole tree or also subtrees??
+Tree = namedtuple('Tree', ['left', 'right', 'weight', 'proposal_candidate', 'turning'])
+
+
 def _impl_build_tree_recursive(initial_qp, eps, depth, direction, stepper):
     """Build tree of given depth starting from given initial position.
     
