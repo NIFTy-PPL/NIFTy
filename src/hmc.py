@@ -253,6 +253,58 @@ def build_tree_iterative(initial_qp, key, eps, depth, stepper):
     return left_endpoint, right_endpoint
 
 
+# taken from https://arxiv.org/pdf/1912.11554.pdf
+def _impl_build_tree_iterative(initial_qp, depth, eps, direction, stepper):
+    z = initial_qp
+    S = np.empty(shape=(depth,) + initial_qp.shape)
+    for n in range(2**depth):
+        z = stepper(z, eps, direction)
+        if n % 2 == 0:
+            S[bitcount(n)] = z
+        else:
+            # gets the number of candidate nodes
+            l = count_trailing_ones(n)
+            i_max = bitcount(n-1)
+            i_min = i_max - l
+            for k in range(i_max, i_min, -1):
+                if is_euclidean_uturn(S[k], z):
+                    return S[0], z, True
+    return S[0], z, False
+
+
+def bitcount(n):
+    """Count the number of ones in the binary representation of n.
+    
+    Examples
+    --------
+    >>> print(bin(23), bitcount(23))
+    0b10111 4
+    """
+    # TODO: python 3.10 has int.bit_count()
+    return bin(n)[2:].count('1')
+
+
+def count_trailing_ones(n):
+    """Count the number of trailing, consecutive ones in the binary representation of n.
+
+    Examples
+    --------
+    >>> print(bin(23), count_trailing_one_bits(23))
+    0b10111 3
+    """
+    bits_backwards = bin(n)[2:][::-1]
+    count = 0
+    # now count leading ones
+    for b in bits_backwards:
+        if b == '1':
+            count += 1
+        elif b == '0':
+            break
+        else:
+            raise RuntimeError(f"encountered invalid bit \"{b}\" in binary representation of: {n}")
+    return count
+            
+
 def is_euclidean_uturn(qp_left, qp_right):
     return (
         np.dot(qp_right.momentum, (qp_right.position - qp_left.position)) < 0
