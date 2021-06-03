@@ -24,7 +24,7 @@ from .linear_operator import LinearOperator
 
 
 class Multifield2Vector(LinearOperator):
-    """Flatten a MultiField and return a Field with unstructred domain and the
+    """Flatten a MultiField and return a Field with unstructured domain and the
     same number of degrees of freedom.
 
     FIXME
