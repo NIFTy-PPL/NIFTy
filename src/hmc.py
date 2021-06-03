@@ -236,30 +236,44 @@ def build_tree_recursive(initial_qp, key, eps, maxdepth, stepper):
     return left_endpoint, right_endpoint, chosen
 
 
-def build_tree_iterative(initial_qp, key, eps, depth, stepper):
+def build_tree_iterative(initial_qp, key, eps, maxdepth, stepper):
     left_endpoint, right_endpoint = initial_qp, initial_qp
-    for j in range(depth):
+    stop = False
+    chosen = []
+    j = 0
+    while not stop and j <= maxdepth:
         #print(left_endpoint, right_endpoint)
         key, subkey = random.split(key)
         direction = random.choice(subkey, np.array([-1, 1]))
         print(f"going in direction {int(direction)}")
-        for _ in range(2**j):
-            if direction == 1:
-                right_endpoint = stepper(right_endpoint, eps, direction)
-            elif direction == -1:
-                left_endpoint = stepper(left_endpoint, eps, direction)
-            else:
-                raise RuntimeError
-    return left_endpoint, right_endpoint
+        if direction == 1:
+            other_left_endpoint, other_right_endpoint, other_turning, other_chosen = _impl_build_tree_iterative(right_endpoint, j, eps, direction, stepper)
+            if not other_turning:
+                right_endpoint = other_right_endpoint
+                chosen = chosen + other_chosen
+        elif direction == -1:
+            other_left_endpoint, other_right_endpoint, other_turning, other_chosen = _impl_build_tree_iterative(left_endpoint, j, eps, direction, stepper)
+            if not other_turning:
+                left_endpoint = other_left_endpoint
+                chosen = chosen + other_chosen
+        else:
+            raise RuntimeError(f"invalid direction: {direction}")
+        stop = other_turning or is_euclidean_uturn(left_endpoint, right_endpoint)
+        j = j + 1
+    return left_endpoint, right_endpoint, chosen
 
 
 # taken from https://arxiv.org/pdf/1912.11554.pdf
 def _impl_build_tree_iterative(initial_qp, depth, eps, direction, stepper):
+    chosen = []
     z = initial_qp
-    S = np.empty(shape=(depth,) + initial_qp.shape)
+    S = [initial_qp for _ in range(depth+1)]
+    #S = np.empty(shape=(depth,) + initial_qp.shape)
     for n in range(2**depth):
         z = stepper(z, eps, direction)
+        chosen.append(z)
         if n % 2 == 0:
+            #print(n, bitcount(n))
             S[bitcount(n)] = z
         else:
             # gets the number of candidate nodes
@@ -268,8 +282,8 @@ def _impl_build_tree_iterative(initial_qp, depth, eps, direction, stepper):
             i_min = i_max - l
             for k in range(i_max, i_min, -1):
                 if is_euclidean_uturn(S[k], z):
-                    return S[0], z, True
-    return S[0], z, False
+                    return S[0], z, True, chosen
+    return S[0], z, False, chosen
 
 
 def bitcount(n):
@@ -326,7 +340,7 @@ def test_run_build_tree_rec():
     current_qp = initial_qp
     for loop_idx in range(10):
         key, subkey = random.split(key)
-        left_endpoint, right_endpoint, chosen = build_tree_recursive(current_qp, subkey, 0.01194, 6, stepper)
+        left_endpoint, right_endpoint, chosen = build_tree_iterative(current_qp, subkey, 0.01194, 6, stepper)
         key, subkey = random.split(key)
         proposed_qp = chosen[random.choice(subkey, np.array(len(chosen)))]
         chosen = np.array(chosen)
