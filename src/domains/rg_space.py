@@ -11,7 +11,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
-# Copyright(C) 2013-2020 Max-Planck-Society
+# Copyright(C) 2013-2021 Max-Planck-Society
 #
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
 
@@ -47,9 +47,9 @@ class RGSpace(StructuredDomain):
     Topologically, a n-dimensional RGSpace is a n-Torus, i.e. it has periodic
     boundary conditions.
     """
-    _needed_for_hash = ["_distances", "_shape", "_harmonic"]
+    _needed_for_hash = ["_rdistances", "_shape", "_harmonic"]
 
-    def __init__(self, shape, distances=None, harmonic=False):
+    def __init__(self, shape, distances=None, harmonic=False, _realdistances=None):
         self._harmonic = bool(harmonic)
         if np.isscalar(shape):
             shape = (shape,)
@@ -57,21 +57,29 @@ class RGSpace(StructuredDomain):
         if min(self._shape) < 0:
             raise ValueError('Negative number of pixels encountered')
 
-        if distances is None:
-            if self.harmonic:
-                self._distances = (1.,) * len(self._shape)
-            else:
-                self._distances = tuple(1./s for s in self._shape)
-        elif np.isscalar(distances):
-            self._distances = (float(distances),) * len(self._shape)
+        if _realdistances is not None:
+            self._rdistances = _realdistances
         else:
-            temp = np.empty(len(self.shape), dtype=np.float64)
-            temp[:] = distances
-            self._distances = tuple(temp)
-        if min(self._distances) <= 0:
+            if distances is None:
+                self._rdistances = tuple(1. / (np.array(self._shape)))
+            elif np.isscalar(distances):
+                if self.harmonic:
+                    self._rdistances = tuple(
+                        1. / (np.array(self._shape) * float(distances)))
+                else:
+                    self._rdistances = (float(distances),) * len(self._shape)
+            else:
+                temp = np.empty(len(self.shape), dtype=np.float64)
+                temp[:] = distances
+                if self._harmonic:
+                    temp = 1. / (np.array(self._shape) * temp)
+                self._rdistances = tuple(temp)
+        self._hdistances = tuple(
+            1. / (np.array(self.shape)*np.array(self._rdistances)))
+        if min(self._rdistances) <= 0:
             raise ValueError('Non-positive distances encountered')
 
-        self._dvol = float(reduce(lambda x, y: x*y, self._distances))
+        self._dvol = float(reduce(lambda x, y: x*y, self.distances))
         self._size = int(reduce(lambda x, y: x*y, self._shape))
 
     def __repr__(self):
@@ -181,8 +189,7 @@ class RGSpace(StructuredDomain):
         RGSpace
             The partner domain
         """
-        distances = 1. / (np.array(self.shape)*np.array(self.distances))
-        return RGSpace(self.shape, distances, not self.harmonic)
+        return RGSpace(self.shape, None, not self.harmonic, self._rdistances)
 
     def check_codomain(self, codomain):
         """Raises `TypeError` if `codomain` is not a matching partner domain
@@ -212,4 +219,4 @@ class RGSpace(StructuredDomain):
         The n-th entry of the tuple is the distance between neighboring
         grid points along the n-th dimension.
         """
-        return self._distances
+        return self._hdistances if self._harmonic else self._rdistances
