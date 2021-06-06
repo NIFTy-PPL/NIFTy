@@ -270,7 +270,7 @@ def _performance_check(op, pos, raise_on_fail):
         myop = op @ cop
         myop(pos)
         cond = [cop.count != 1]
-        lin = myop(2*Linearization.make_var(pos, wm))
+        lin = myop(Linearization.make_var(pos, wm))
         cond.append(cop.count != 2)
         lin.jac(pos)
         cond.append(cop.count != 3)
