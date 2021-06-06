@@ -61,10 +61,7 @@ class RGSpace(StructuredDomain):
             self._rdistances = _realdistances
         else:
             if distances is None:
-                if self._harmonic:
-                    self._rdistances = tuple(1. / (np.array(self._shape)))
-                else:
-                    self._rdistances = tuple(1./s for s in self._shape)
+                self._rdistances = tuple(1. / (np.array(self._shape)))
             elif np.isscalar(distances):
                 if self.harmonic:
                     self._rdistances = tuple(
