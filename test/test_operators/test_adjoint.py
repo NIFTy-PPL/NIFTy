@@ -349,5 +349,6 @@ def testLowerTriangularInserter(seed):
 @pmp('seed', [12, 3])
 def test_Multifield2Vector(seed):
     dom = {'a': ift.RGSpace(1), 'b': ift.RGSpace(2)}
+    dom = ift.MultiDomain.make(dom)
     op = ift.Multifield2Vector(dom)
     ift.extra.check_linear_operator(op)
