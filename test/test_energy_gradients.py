@@ -128,3 +128,11 @@ def test_bernoulli(field):
     d = ift.Field(space, d)
     energy = ift.BernoulliEnergy(d)
     ift.extra.check_operator(energy, field, tol=1e-10)
+
+def test_gaussian_entropy(field):
+    if isinstance(field.domain, ift.MultiDomain):
+        return
+    field = field.ptw("sigmoid")
+    energy = ift.library.variational_models.GaussianEntropy(field.domain)
+
+    ift.extra.check_operator(energy, field)
