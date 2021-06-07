@@ -20,7 +20,7 @@ from numpy.testing import assert_allclose
 
 import nifty7 as ift
 
-from ...nifty7.library.variational_models import DiagonalSelector
+from nifty7.library.variational_models import DiagonalSelector
 
 
 def test_diagonal_selector():

@@ -20,7 +20,7 @@ from numpy.testing import assert_allclose
 
 import nifty7 as ift
 
-from ...nifty7.library.variational_models import LowerTriangularInserter
+from nifty7.library.variational_models import LowerTriangularInserter
 
 
 def test_lower_triangular_inserter():
