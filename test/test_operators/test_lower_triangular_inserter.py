@@ -33,8 +33,6 @@ def test_lower_triangular_inserter():
     myField = ift.from_random(flat_space)
     myMatrix = myInserter(myField)
 
-    assert_allclose(np_selected, selected)
-
     upper_i = []
     upper_j = []
     for i in range(0,N):

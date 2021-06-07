@@ -331,3 +331,23 @@ def testSlowFieldAdapter(seed):
     dom = {'a': ift.RGSpace(1), 'b': ift.RGSpace(2)}
     op = ift.operators.simple_linear_operators._SlowFieldAdapter(dom, 'a')
     ift.extra.check_linear_operator(op)
+
+@pmp('seed', [12, 3])
+def testDiagonalExtractor(seed):
+    N = 42
+    square_space = ift.RGSpace([N,N])
+    op = ift.library.variational_models.DiagonalSelector(square_space)
+    ift.extra.check_linear_operator(op)
+
+@pmp('seed', [12, 3])
+def testLowerTriangularInserter(seed):
+    N = 42
+    square_space = ift.RGSpace([N,N])
+    op = ift.library.variational_models.LowerTriangularInserter(square_space)
+    ift.extra.check_linear_operator(op)
+
+@pmp('seed', [12, 3])
+def test_Multifield2Vector(seed):
+    dom = {'a': ift.RGSpace(1), 'b': ift.RGSpace(2)}
+    op = ift.Multifield2Vector(dom)
+    ift.extra.check_linear_operator(op)
