@@ -53,6 +53,7 @@ Optional dependencies:
     harmonic transforms, and radio interferometry gridding support
 - [mpi4py](https://mpi4py.scipy.org) (for MPI-parallel execution)
 - [matplotlib](https://matplotlib.org/) (for field plotting)
+- [jax](https://github.com/google/jax) (for implementing operators with jax)
 
 ### Sources
 
@@ -78,6 +79,8 @@ Plotting support is added via:
 The DUCC0 package is installed via:
 
     pip3 install ducc0
+
+For installing jax refer to [google/jax:README#Installation](https://github.com/google/jax#installation).
 
 If this library is present, NIFTy will detect it automatically and prefer
 `ducc0.fft` over SciPy's FFT. The underlying code is actually the same, but
