@@ -43,7 +43,7 @@ class JaxOperator(Operator):
     target : DomainTuple or MultiDomain
         Target of the operator.
 
-    func : callable 
+    func : callable
         The jax function that is evaluated by the operator. It has to be
         implemented in terms of `jax.numpy` calls. If `domain` is a
         `DomainTuple`, `func` takes a `dict` as argument and like-wise for the
@@ -54,12 +54,13 @@ class JaxOperator(Operator):
         self._domain = makeDomain(domain)
         self._target = makeDomain(target)
         self._func = jax.jit(func)
+        self._vjp = jax.jit(lambda x: jax.vjp(func, x))
 
     def apply(self, x):
         from ..sugar import is_linearization, makeField
         self._check_input(x)
         if is_linearization(x):
-            res, bwd = jax.vjp(self._func, x.val.val)
+            res, bwd = self._vjp(x.val.val)
             fwd = lambda y: jax.jvp(self._func, (x.val.val,), (y,))[1]
             jac = _JaxJacobian(self._domain, self._target, fwd, bwd)
             return x.new(makeField(self._target, _jax2np(res)), jac)

@@ -60,3 +60,25 @@ def test_mf_jax():
     for kk in dom.keys():
         np.testing.assert_allclose(np.array(func(loc.val)[kk]), op(loc)[kk].val)
     ift.extra.check_operator(op, loc)
+
+
+def test_cf():
+    dom = ift.RGSpace([13, 14], distances=(0.89, 0.9))
+    args = {
+        'offset_mean': 0,
+        'offset_std': None,
+        'fluctuations': (2.1, 0.8),
+        'loglogavgslope': (-2., 1.2),
+        'flexibility': None,
+        'asperity': None,
+    }
+
+    correlated_field = ift.SimpleCorrelatedField(dom, **args)
+    correlated_field_1 = ift.SimpleCorrelatedField(dom, **args, jax=True)
+
+    loc = ift.from_random(correlated_field.domain)
+    ift.extra.assert_allclose(correlated_field(loc), correlated_field_1(loc))
+
+    pspec = correlated_field.power_spectrum
+    pspec_1 = correlated_field_1.power_spectrum
+    ift.extra.assert_allclose(pspec.force(loc), pspec_1.force(loc))
