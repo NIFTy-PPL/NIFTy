@@ -179,7 +179,7 @@ class GaussianEntropy(EnergyOperator):
         self._check_input(x)
         res = -0.5*(2*np.pi*np.e*x**2).log().sum()
         if not isinstance(x, Linearization):
-            return Field.scalar(res)
+            return res
         if not x.want_metric:
             return res
         # FIXME not sure about metric
