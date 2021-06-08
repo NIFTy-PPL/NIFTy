@@ -11,24 +11,26 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
-# Copyright(C) 2013-2020 Max-Planck-Society
+# Copyright(C) 2013-2021 Max-Planck-Society
 #
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
 
+import nifty7 as ift
 import numpy as np
+import pytest
+from nifty7.library.variational_models import GaussianEntropy
 from numpy.testing import assert_allclose
 
-import nifty7 as ift
+from ..common import list2fixture, setup_function, teardown_function
 
-from nifty7.library.variational_models import GaussianEntropy
+pmp = pytest.mark.parametrize
 
 
-def test_gaussian_entropy():
-    N = 42
+@pmp("N", [17, 32])
+def test_gaussian_entropy(N):
     linear_space = ift.RGSpace(N)
-    myField = ift.from_random(linear_space, 'uniform')
-    vals = myField.val
-    entropy = - 0.5 * np.sum(np.log(2 * vals**2 * np.pi * np.e)) # minus due to subtraction in KL
-    myEntropy = GaussianEntropy(myField.domain)
-    assert_allclose(entropy, myEntropy(myField).val)
-    
+    fld = ift.from_random(linear_space, 'uniform')
+    # minus due to subtraction in KL
+    entropy = -0.5*np.sum(np.log(2*fld.val*fld.val*np.pi*np.e))
+    myEntropy = GaussianEntropy(fld.domain)
+    assert_allclose(entropy, myEntropy(fld).val)

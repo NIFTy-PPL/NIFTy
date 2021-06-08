@@ -21,6 +21,7 @@ from ..domain_tuple import DomainTuple
 from ..domains.unstructured_domain import UnstructuredDomain
 from ..field import Field
 from ..linearization import Linearization
+from ..minimization.energy_adapter import StochasticEnergyAdapter
 from ..multi_field import MultiField
 from ..operators.einsum import MultiLinearEinsum
 from ..operators.energy_operators import EnergyOperator
@@ -28,8 +29,7 @@ from ..operators.linear_operator import LinearOperator
 from ..operators.multifield2vector import Multifield2Vector
 from ..operators.sandwich_operator import SandwichOperator
 from ..operators.simple_linear_operators import FieldAdapter
-from ..sugar import full, makeField, makeDomain, from_random, is_fieldlike
-from ..minimization.energy_adapter import StochasticEnergyAdapter
+from ..sugar import from_random, full, is_fieldlike, makeDomain, makeField
 from ..utilities import myassert
 
 
@@ -168,16 +168,16 @@ class GaussianEntropy(EnergyOperator):
 
     Parameters
     ----------
-    domain: Domain
+    domain: Domain FIXME
         The domain of the diagonal.
     """
 
     def __init__(self, domain):
-        self._domain = domain
+        self._domain = DomainTuple.make(domain)
 
     def apply(self, x):
         self._check_input(x)
-        res = -0.5*(2*np.pi*np.e*x**2).log().sum()
+        res = (x*x).scale(2*np.pi*np.e).log().sum().scale(-0.5)
         if not isinstance(x, Linearization):
             return res
         if not x.want_metric:
@@ -191,7 +191,7 @@ class LowerTriangularInserter(LinearOperator):
 
     Parameters
     ----------
-    target: Domain
+    target: Domain FIXME
         A two-dimensional domain with NxN entries.
     """
 
@@ -220,7 +220,7 @@ class DiagonalSelector(LinearOperator):
 
     Parameters
     ----------
-    domain: Domain
+    domain: Domain FIXME
         The two-dimensional domain of the input field. Must be of shape NxN.
     """
 

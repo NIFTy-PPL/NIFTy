@@ -11,39 +11,30 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
-# Copyright(C) 2013-2020 Max-Planck-Society
+# Copyright(C) 2013-2021 Max-Planck-Society
 #
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
 
+import nifty7 as ift
 import numpy as np
+import pytest
+from nifty7.library.variational_models import LowerTriangularInserter
 from numpy.testing import assert_allclose
 
-import nifty7 as ift
+from ..common import list2fixture, setup_function, teardown_function
 
-from nifty7.library.variational_models import LowerTriangularInserter
+pmp = pytest.mark.parametrize
 
 
-def test_lower_triangular_inserter():
-    N = 42
-    square_space = ift.RGSpace([N,N])
-    myInserter = LowerTriangularInserter(square_space)
-    flat_space = myInserter.domain
-    assert_allclose(flat_space.size, N*(N+1)//2)
+@pmp("N", [17, 32])
+def test_lower_triangular_inserter(N):
+    square_space = ift.RGSpace([N, N])
+    op = LowerTriangularInserter(square_space)
+    flat_space = op.domain
+    assert_allclose(flat_space.shape, (N*(N+1)//2,))
 
-    myField = ift.from_random(flat_space)
-    myMatrix = myInserter(myField)
-
-    upper_i = []
-    upper_j = []
+    mat = op(ift.from_random(flat_space))
     for i in range(0,N):
-        for j in range(i+1,N):
-            upper_i.append(i)
-            upper_j.append(j)
-    zeros = myMatrix.val[(upper_i,upper_j)]
-
-    assert_allclose(zeros, np.zeros((N-1)*N//2))
-    assert_allclose((myMatrix==0).val.sum(), (N-1)*N//2)
-
-
-
-    
+        for j in range(i+1, N):
+            assert mat.val[i, j] == 0.
+    assert_allclose((mat.val == 0).sum(), (N-1)*N//2)
