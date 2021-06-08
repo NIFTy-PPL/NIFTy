@@ -73,6 +73,10 @@ def check_linear_operator(op, domain_dtype=np.float64, target_dtype=np.float64,
     _domain_check_linear(op.adjoint, target_dtype)
     _domain_check_linear(op.inverse, target_dtype)
     _domain_check_linear(op.adjoint.inverse, domain_dtype)
+    _purity_check(op, from_random(op.domain, dtype=domain_dtype))
+    _purity_check(op.adjoint.inverse, from_random(op.domain, dtype=domain_dtype))
+    _purity_check(op.adjoint, from_random(op.target, dtype=target_dtype))
+    _purity_check(op.inverse, from_random(op.target, dtype=target_dtype))
     _check_linearity(op, domain_dtype, atol, rtol)
     _check_linearity(op.adjoint, target_dtype, atol, rtol)
     _check_linearity(op.inverse, target_dtype, atol, rtol)
@@ -120,6 +124,7 @@ def check_operator(op, loc, tol=1e-12, ntries=100, perf_check=True,
     if not isinstance(op, Operator):
         raise TypeError('This test tests only (nonlinear) operators.')
     _domain_check_nonlinear(op, loc)
+    _purity_check(op, loc)
     _performance_check(op, loc, bool(perf_check))
     _linearization_value_consistency(op, loc)
     _jac_vs_finite_differences(op, loc, np.sqrt(tol), ntries,
@@ -286,6 +291,14 @@ def _performance_check(op, pos, raise_on_fail):
             logger.info(cond)
             if raise_on_fail:
                 raise RuntimeError(s)
+
+
+def _purity_check(op, pos):
+    if isinstance(op, LinearOperator) and (op.capability & op.TIMES) != op.TIMES:
+        return
+    res0 = op(pos)
+    res1 = op(pos)
+    assert_equal(res0, res1)
 
 
 def _get_acceptable_location(op, loc, lin):
