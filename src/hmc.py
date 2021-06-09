@@ -259,14 +259,13 @@ def build_tree_recursive(initial_qp, key, eps, maxdepth, stepper):
     return left_endpoint, right_endpoint, chosen
 
 
-def calc_total_energy_of_qp(qp, potential_energy, kinetic_energy):
+def total_energy_of_qp(qp, potential_energy, kinetic_energy):
     qparr = np.array(qp)
     return potential_energy(qparr[0,:]) + kinetic_energy(qparr[1,:])
 
 def build_tree_iterative(initial_qp, key, eps, maxdepth, stepper, potential_energy, kinetic_energy):
-    current_tree = Tree(left=initial_qp, right=initial_qp, weight=np.exp(-calc_total_energy_of_qp(initial_qp, potential_energy, kinetic_energy)), proposal_candidate=initial_qp, turning=False)
+    current_tree = Tree(left=initial_qp, right=initial_qp, weight=np.exp(-total_energy_of_qp(initial_qp, potential_energy, kinetic_energy)), proposal_candidate=initial_qp, turning=False)
     stop = False
-    chosen = []
     j = 0
     while not stop and j <= maxdepth:
         #print(left_endpoint, right_endpoint)
@@ -315,7 +314,7 @@ def extend_tree_iterative(key, initial_tree, depth, eps, direction, stepper, pot
     # 3. random.choice with probability weights to get sample
     chosen_array = np.array(chosen)
     #new_subtree_energies = lax.map(potential_energy, chosen_array[:,0,:]) + lax.map(kinetic_energy, chosen_array[:,1,:])
-    new_subtree_energies = lax.map(partial(calc_total_energy_of_qp, potential_energy=potential_energy, kinetic_energy=kinetic_energy), chosen_array)
+    new_subtree_energies = lax.map(partial(total_energy_of_qp, potential_energy=potential_energy, kinetic_energy=kinetic_energy), chosen_array)
     print(f"new_subtree_energies.shape: {new_subtree_energies.shape}")
     # proportianal to the joint probabilities:
     new_subtree_weights = np.exp(-new_subtree_energies)
