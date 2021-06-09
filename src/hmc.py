@@ -316,6 +316,7 @@ def extend_tree_iterative(key, initial_tree, depth, eps, direction, stepper, pot
     return merge_trees(key, initial_tree, new_subtree, direction, False)
 
 def make_tree_from_list(key, qp_list, direction, potential_energy, kinetic_energy, turning_hint):
+    # WARNING: only to be called from extend_tree_iterative, with turning_hint logic correct
     # 3. random.choice with probability weights to get sample
     qp_arr = np.array(qp_list)
     #new_subtree_energies = lax.map(potential_energy, chosen_array[:,0,:]) + lax.map(kinetic_energy, chosen_array[:,1,:])
@@ -338,6 +339,7 @@ def make_tree_from_list(key, qp_list, direction, potential_energy, kinetic_energ
 
 def merge_trees(key, current_subtree, new_subtree, direction, turning_hint):
     """Merges two trees, propagating the proposal_candidate"""
+    # WARNING: only to be called from extend_tree_iterative, with turning_hint logic correct
     # 5. decide which sample to take based on total weights (merge trees)
     key, subkey = random.split(key)
     print(f"prob of choosing new sample: {new_subtree.weight / (new_subtree.weight + current_subtree.weight)}")
