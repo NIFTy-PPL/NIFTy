@@ -311,40 +311,52 @@ def extend_tree_iterative(key, initial_tree, depth, eps, direction, stepper, pot
                 if is_euclidean_uturn(S[k], z):
                     # TODO: what to return here? old tree or new tree but with turning set?
                     return initial_tree
+    key, subkey = random.split(key)
+    new_subtree = make_tree_from_list(subkey, chosen, direction, potential_energy, kinetic_energy, False)
+    return merge_trees(key, initial_tree, new_subtree, direction, False)
+
+def make_tree_from_list(key, qp_list, direction, potential_energy, kinetic_energy, turning_hint):
     # 3. random.choice with probability weights to get sample
-    chosen_array = np.array(chosen)
+    qp_arr = np.array(qp_list)
     #new_subtree_energies = lax.map(potential_energy, chosen_array[:,0,:]) + lax.map(kinetic_energy, chosen_array[:,1,:])
-    new_subtree_energies = lax.map(partial(total_energy_of_qp, potential_energy=potential_energy, kinetic_energy=kinetic_energy), chosen_array)
+    new_subtree_energies = lax.map(partial(total_energy_of_qp, potential_energy=potential_energy, kinetic_energy=kinetic_energy), qp_arr)
     print(f"new_subtree_energies.shape: {new_subtree_energies.shape}")
     # proportianal to the joint probabilities:
     new_subtree_weights = np.exp(-new_subtree_energies)
-    key, subkey = random.split(key)
-    print(chosen_array.shape)
-    # unfortunately choice only works with 1d arrays so we need to use indexing
-    random_idx = random.choice(subkey, chosen_array.shape[0], p=new_subtree_weights)
-    new_subtree_sample = chosen_array[random_idx]
+    print(qp_arr.shape)
+    # unfortunately choice only works with 1d arrays so we need to use indexing TODO: factor out?
+    random_idx = random.choice(key, qp_arr.shape[0], p=new_subtree_weights)
+    new_subtree_sample = qp_list[random_idx]
     print(f"chose sample n° {random_idx}")
     # 4. calculate total weight
     new_subtree_total_weight = np.sum(new_subtree_weights)
+    if direction == 1:
+        left, right = qp_list[0], qp_list[-1]
+    elif direction == -1:
+        left, right = qp_list[-1], qp_list[0]
+    return Tree(left=left, right=right, weight=new_subtree_total_weight, proposal_candidate=new_subtree_sample, turning=turning_hint)
+
+def merge_trees(key, current_subtree, new_subtree, direction, turning_hint):
+    """Merges two trees, propagating the proposal_candidate"""
     # 5. decide which sample to take based on total weights (merge trees)
     key, subkey = random.split(key)
-    print(f"prob of choosing new sample: {new_subtree_total_weight / (new_subtree_total_weight + initial_tree.weight)}")
-    if random.bernoulli(subkey, new_subtree_total_weight / (new_subtree_total_weight + initial_tree.weight)):
+    print(f"prob of choosing new sample: {new_subtree.weight / (new_subtree.weight + current_subtree.weight)}")
+    if random.bernoulli(subkey, new_subtree.weight / (new_subtree.weight + current_subtree.weight)):
         # choose the new sample
-        new_sample = QP(position=new_subtree_sample[0,:], momentum=new_subtree_sample[1,:])
+        new_sample = new_subtree.proposal_candidate
         print("chose new sample")
     else:
         # choose the old sample
-        new_sample = initial_tree.proposal_candidate
+        new_sample = current_subtree.proposal_candidate
         print("chose old sample")
     # 6. define new tree
     if direction == 1:
-        new_tree = Tree(left=initial_tree.left, right=chosen[-1], weight=new_subtree_total_weight + initial_tree.weight, proposal_candidate=new_sample, turning=False)
+        merged_tree = Tree(left=current_subtree.left, right=new_subtree.right, weight=new_subtree.weight + current_subtree.weight, proposal_candidate=new_sample, turning=turning_hint)
     elif direction == -1:
-        new_tree = Tree(left=chosen[-1], right=initial_tree.right, weight=new_subtree_total_weight + initial_tree.weight, proposal_candidate=new_sample, turning=False)
+        merged_tree = Tree(left=new_subtree.left, right=current_subtree.right, weight=new_subtree.weight + current_subtree.weight, proposal_candidate=new_sample, turning=turning_hint)
     else:
         raise RuntimeError(f"invalid direction: {direction}")
-    return new_tree
+    return merged_tree
 
 
 def bitcount(n):
