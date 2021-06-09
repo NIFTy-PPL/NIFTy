@@ -44,7 +44,7 @@ quadratic_only_minimizers = [
     'ift.ConjugateGradient(IC)',
     'ift.minimization.scipy_minimizer._ScipyCG(tol=1e-5, maxiter=300)'
 ]
-slow_minimizers = ['ift.SteepestDescent(IC)']
+slow_minimizers = ['ift.SteepestDescent(IC)', 'ift.ADVIOptimizer(10, resample=False)']
 
 
 @pmp('minimizer', minimizers + newton_minimizers + quadratic_only_minimizers +

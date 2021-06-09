@@ -36,16 +36,21 @@ class ADVIOptimizer(Minimizer):
         This quantity prevents division by zero.
     epsilon: positive float
         A small value guarantees Robbins and Monro conditions.
+    resample: bool
+        Whether the loss function is resampled for the next iteration. 
+        Stochastic losses require resampleing, deterministic ones not.
     """
 
-    def __init__(self, steps, eta=1, alpha=0.1, tau=1, epsilon=1e-16):
+    def __init__(self, controller, eta=1, alpha=0.1, tau=1, epsilon=1e-16, resample=True):
         self.alpha = alpha
         self.eta = eta
         self.tau = tau
         self.epsilon = epsilon
         self.counter = 1
-        self.steps = steps
+        self._controller = controller
+        # self.steps = steps
         self.s = None
+        self.resample = resample
 
     def _step(self, position, gradient):
         self.s = self.alpha * gradient ** 2 + (1 - self.alpha) * self.s
@@ -57,15 +62,30 @@ class ADVIOptimizer(Minimizer):
 
     def __call__(self, E):
         from ..utilities import myassert
+
+        controller = self._controller
+        status = controller.start(energy)
+        if status != controller.CONTINUE:
+            return energy, status
+
         if self.s is None:
             self.s = E.gradient ** 2
-        # FIXME come up with somthing how to determine convergence
-        convergence = 0
-        for i in range(self.steps):
+        while True:
+            # check if position is at a flat point
+            if energy.gradient_norm == 0:
+                return energy, controller.CONVERGED
+
             x = self._step(E.position, E.gradient)
-            E = E.resample_at(x)
+            if self.resample:
+                E = E.resample_at(x)
             myassert(isinstance(E, Energy))
             myassert(x.domain is E.position.domain)
+
+            energy = new_energy
+            status = self._controller.check(energy)
+            if status != controller.CONTINUE:
+                return energy, status
+
         return E, convergence
 
     def reset(self):
