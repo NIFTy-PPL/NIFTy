@@ -259,8 +259,12 @@ def build_tree_recursive(initial_qp, key, eps, maxdepth, stepper):
     return left_endpoint, right_endpoint, chosen
 
 
-def build_tree_iterative(initial_qp, key, eps, maxdepth, stepper):
-    left_endpoint, right_endpoint = initial_qp, initial_qp
+def calc_total_energy_of_qp(qp, potential_energy, kinetic_energy):
+    qparr = np.array(qp)
+    return potential_energy(qparr[0,:]) + kinetic_energy(qparr[1,:])
+
+def build_tree_iterative(initial_qp, key, eps, maxdepth, stepper, potential_energy, kinetic_energy):
+    current_tree = Tree(left=initial_qp, right=initial_qp, weight=np.exp(-calc_total_energy_of_qp(initial_qp, potential_energy, kinetic_energy)), proposal_candidate=initial_qp, turning=False)
     stop = False
     chosen = []
     j = 0
@@ -269,26 +273,26 @@ def build_tree_iterative(initial_qp, key, eps, maxdepth, stepper):
         key, subkey = random.split(key)
         direction = random.choice(subkey, np.array([-1, 1]))
         print(f"going in direction {int(direction)}")
-        if direction == 1:
-            other_left_endpoint, other_right_endpoint, other_turning, other_chosen = _impl_build_tree_iterative(right_endpoint, j, eps, direction, stepper)
-            if not other_turning:
-                right_endpoint = other_right_endpoint
-                chosen = chosen + other_chosen
-        elif direction == -1:
-            other_left_endpoint, other_right_endpoint, other_turning, other_chosen = _impl_build_tree_iterative(left_endpoint, j, eps, direction, stepper)
-            if not other_turning:
-                left_endpoint = other_left_endpoint
-                chosen = chosen + other_chosen
-        else:
-            raise RuntimeError(f"invalid direction: {direction}")
-        print(f"{len(chosen)} chosen states")
-        stop = other_turning or is_euclidean_uturn(left_endpoint, right_endpoint)
+        # new_tree = current_tree extended (i.e. doubled) in direction
+        new_tree = extend_tree_iterative(key, current_tree, j, eps, direction, stepper, potential_energy, kinetic_energy)
+        stop = new_tree.turning or is_euclidean_uturn(new_tree.left, new_tree.right)
         j = j + 1
-    return left_endpoint, right_endpoint, chosen
+        # TODO: I think this needs to be conditional on stop somehow but not sure
+        if not stop:
+            current_tree = new_tree
+    return current_tree
 
 
 # taken from https://arxiv.org/pdf/1912.11554.pdf
-def _impl_build_tree_iterative(initial_qp, depth, eps, direction, stepper):
+def extend_tree_iterative(key, initial_tree, depth, eps, direction, stepper, potential_energy, kinetic_energy):
+    # 1. choose start point of integration
+    if direction == 1:
+        initial_qp = initial_tree.right
+    elif direction == -1:
+        initial_qp = initial_tree.left
+    else:
+        raise RuntimeError(f"invalid direction: {direction}")
+    # 2. build / collect chosen states
     chosen = []
     z = initial_qp
     S = [initial_qp for _ in range(depth+1)]
@@ -306,8 +310,42 @@ def _impl_build_tree_iterative(initial_qp, depth, eps, direction, stepper):
             i_min = i_max - l
             for k in range(i_max, i_min, -1):
                 if is_euclidean_uturn(S[k], z):
-                    return S[0], z, True, chosen
-    return S[0], z, False, chosen
+                    # TODO: what to return here? old tree or new tree but with turning set?
+                    return initial_tree
+    # 3. random.choice with probability weights to get sample
+    chosen_array = np.array(chosen)
+    #new_subtree_energies = lax.map(potential_energy, chosen_array[:,0,:]) + lax.map(kinetic_energy, chosen_array[:,1,:])
+    new_subtree_energies = lax.map(partial(calc_total_energy_of_qp, potential_energy=potential_energy, kinetic_energy=kinetic_energy), chosen_array)
+    print(f"new_subtree_energies.shape: {new_subtree_energies.shape}")
+    # proportianal to the joint probabilities:
+    new_subtree_weights = np.exp(-new_subtree_energies)
+    key, subkey = random.split(key)
+    print(chosen_array.shape)
+    # unfortunately choice only works with 1d arrays so we need to use indexing
+    random_idx = random.choice(subkey, chosen_array.shape[0], p=new_subtree_weights)
+    new_subtree_sample = chosen_array[random_idx]
+    print(f"chose sample n° {random_idx}")
+    # 4. calculate total weight
+    new_subtree_total_weight = np.sum(new_subtree_weights)
+    # 5. decide which sample to take based on total weights (merge trees)
+    key, subkey = random.split(key)
+    print(f"prob of choosing new sample: {new_subtree_total_weight / (new_subtree_total_weight + initial_tree.weight)}")
+    if random.bernoulli(subkey, new_subtree_total_weight / (new_subtree_total_weight + initial_tree.weight)):
+        # choose the new sample
+        new_sample = QP(position=new_subtree_sample[0,:], momentum=new_subtree_sample[1,:])
+        print("chose new sample")
+    else:
+        # choose the old sample
+        new_sample = initial_tree.proposal_candidate
+        print("chose old sample")
+    # 6. define new tree
+    if direction == 1:
+        new_tree = Tree(left=initial_tree.left, right=chosen[-1], weight=new_subtree_total_weight + initial_tree.weight, proposal_candidate=new_sample, turning=False)
+    elif direction == -1:
+        new_tree = Tree(left=chosen[-1], right=initial_tree.right, weight=new_subtree_total_weight + initial_tree.weight, proposal_candidate=new_sample, turning=False)
+    else:
+        raise RuntimeError(f"invalid direction: {direction}")
+    return new_tree
 
 
 def bitcount(n):
@@ -362,7 +400,6 @@ def test_run_build_tree_rec():
     key, subkey1, subkey2 = random.split(key, 3)
     initial_qp = QP(position=random.normal(subkey1, dims), momentum=random.normal(subkey2, dims))
     current_qp = initial_qp
-    chosen_states = []
     proposed_states = []
     acceptance_probabilities = []
     acceptance_bools = []
@@ -371,22 +408,19 @@ def test_run_build_tree_rec():
     for loop_idx in range(50):
         plt.arrow(current_qp.position[0], current_qp.position[1], 0.1*current_qp.momentum[0], 0.1*current_qp.momentum[1])
         key, subkey = random.split(key)
-        left_endpoint, right_endpoint, chosen = build_tree_iterative(current_qp, subkey, 0.01194, 6, stepper)
+        tree = build_tree_iterative(current_qp, subkey, 0.01194, 6, stepper, potential_energy, kinetic_energy)
         key, subkey = random.split(key)
-        proposed_qp = chosen[random.choice(subkey, np.array(len(chosen)))]
-        proposed_states.append(proposed_qp)
-        chosen = np.array(chosen)
-        chosen_states.append(chosen)
+        proposed_states.append(tree.proposal_candidate)
         acceptance_probability = np.exp(
             potential_energy(current_qp.position) + kinetic_energy(current_qp.momentum)
-            - potential_energy(proposed_qp.position) - kinetic_energy(proposed_qp.momentum)
+            - potential_energy(tree.proposal_candidate.position) - kinetic_energy(tree.proposal_candidate.momentum)
         )
         acceptance_probabilities.append(acceptance_probability)
         print("acceptance probability:", acceptance_probability)
         key, subkey = random.split(key)
         acceptance_threshold = random.uniform(subkey)
         if acceptance_threshold < acceptance_probability:
-            current_qp = proposed_qp
+            current_qp = tree.proposal_candidate
             acceptance_bools.append(True)
             print("accepted")
         else:
@@ -395,7 +429,7 @@ def test_run_build_tree_rec():
         if True or loop_idx == 2:
             plt.plot(current_qp.position[0], current_qp.position[1], 'rx')
             plt.arrow(current_qp.position[0], current_qp.position[1], 0.1*current_qp.momentum[0], 0.1*current_qp.momentum[1], alpha=0.2)
-            plt.scatter(chosen[:,0,0], chosen[:,0,1], s=0.2, label='chosen states', alpha=0.9)
         key, subkey = random.split(key)
+        # resample momentum
         current_qp = QP(position=current_qp.position, momentum=random.normal(subkey, shape=dims))
-    return initial_qp, chosen_states, proposed_states, acceptance_probabilities, acceptance_bools
+    return initial_qp, proposed_states, acceptance_probabilities, acceptance_bools
