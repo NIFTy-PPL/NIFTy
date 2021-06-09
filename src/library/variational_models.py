@@ -70,8 +70,8 @@ class MeanFieldVI:
         else:
             pos['std'] = full(Flat.target, initial_sig)
         pos = MultiField.from_dict(pos)
-        op = hamiltonian(self._generator) + self._entropy
-        self._KL = StochasticEnergyAdapter.make(pos, op, ['latent',], n_samples,
+        self._op = hamiltonian(self._generator) + self._entropy
+        self._KL = StochasticEnergyAdapter.make(pos, self._op, ['latent',], n_samples,
                                     mirror_samples, nanisinf=nanisinf, comm=comm)
         self._samdom = latent.domain
 
@@ -139,8 +139,8 @@ class FullCovarianceVI:
         pos = MultiField.from_dict(
                 {'mean': Flat(position),
                  'cov': LT.adjoint(makeField(mat_space, diag_tri))})
-        op = hamiltonian(self._generator) + self._entropy
-        self._KL = StochasticEnergyAdapter.make(pos, op, ['latent',], n_samples,
+        self._op = hamiltonian(self._generator) + self._entropy
+        self._KL = StochasticEnergyAdapter.make(pos, self._op, ['latent',], n_samples,
                                     mirror_samples, nanisinf=nanisinf, comm=comm)
         self._mean = Flat.adjoint @ mean
         self._samdom = lat.domain
