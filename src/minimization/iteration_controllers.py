@@ -422,8 +422,9 @@ class AbsDeltaEnergyController(IterationController):
 
         return self.CONTINUE
 
+
 class StochasticAbsDeltaEnergyController(IterationController):
-    """An iteration controller checking the standard deviation over a 
+    """An iteration controller checking the standard deviation over a
      period of iterations. Convergence is reported once this quantity
      falls below the given threshold
 

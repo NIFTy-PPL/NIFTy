@@ -56,7 +56,8 @@ if __name__ == "__main__":
 
     fc = ift.FullCovarianceVI(position_fc, H, 3, True, initial_sig=0.01)
     mf = ift.MeanFieldVI(position_mf, H, 3, True, initial_sig=0.01)
-    IC = ift.StochasticAbsDeltaEnergyController(10,iteration_limit=1000, name='optimizer')
+    IC = ift.StochasticAbsDeltaEnergyController(10, iteration_limit=1000,
+                                                name='advi')
     minimizer_fc = ift.ADVIOptimizer(IC, eta=0.1)
     minimizer_mf = ift.ADVIOptimizer(IC)
 

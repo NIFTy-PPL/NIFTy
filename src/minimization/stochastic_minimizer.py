@@ -48,7 +48,6 @@ class ADVIOptimizer(Minimizer):
         self.epsilon = epsilon
         self.counter = 1
         self._controller = controller
-        # self.steps = steps
         self.s = None
         self.resample = resample
 
