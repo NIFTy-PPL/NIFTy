@@ -424,9 +424,9 @@ class AbsDeltaEnergyController(IterationController):
 
 
 class StochasticAbsDeltaEnergyController(IterationController):
-    """An iteration controller checking the standard deviation over a
-     period of iterations. Convergence is reported once this quantity
-     falls below the given threshold
+    """Check the standard deviation over a period of iterations.
+
+    Convergence is reported once this quantity falls below the given threshold.
 
 
     Parameters
@@ -434,16 +434,17 @@ class StochasticAbsDeltaEnergyController(IterationController):
     deltaE : float
         If the standard deviation of the last energies is below this
         value, the convergence counter will be increased in this iteration.
-    convergence_level : int, default=1
+    convergence_level : int, optional
         The number which the convergence counter must reach before the
-        iteration is considered to be converged
+        iteration is considered to be converged. Defaults to 1.
     iteration_limit : int, optional
         The maximum number of iterations that will be carried out.
     name : str, optional
         If supplied, this string and some diagnostic information will be
         printed after every iteration.
-    memory_length : int, default=10
-        The number of last energies considered for determining convergence.
+    memory_length : int, optional
+        The number of last energies considered for determining convergence,
+        defaults to 10.
     """
 
     def __init__(self, deltaE, convergence_level=1, iteration_limit=None,
@@ -469,7 +470,7 @@ class StochasticAbsDeltaEnergyController(IterationController):
         inclvl = False
         Eval = energy.value
         self._memory.append(Eval)
-        if len(self._memory)>self.memory_length:
+        if len(self._memory) > self.memory_length:
             self._memory = self._memory[1:]
         diff = np.std(self._memory)
         if self._itcount > 0:

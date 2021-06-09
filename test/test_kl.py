@@ -11,7 +11,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
-# Copyright(C) 2013-2020 Max-Planck-Society
+# Copyright(C) 2013-2021 Max-Planck-Society
 #
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
 
@@ -116,14 +116,11 @@ def test_ParametricVI(mirror_samples, fc):
     h = ift.StandardHamiltonian(lh, ic_samp=ic)
     initial_mean = ift.from_random(h.domain, 'normal')
     nsamps = 1000
-    if fc:
-        model = ift.library.variational_models.FullCovarianceVI(initial_mean, h, nsamps, mirror_samples, initial_sig=0.01)
-    else:
-        model = ift.library.variational_models.MeanFieldVI(initial_mean, h, nsamps, mirror_samples, initial_sig=0.01)
+    args = initial_mean, h, nsamps, mirror_samples, 0.01
+    model = (ift.FullCovarianceVI if fc else ift.MeanFieldVI)(*args)
     kl = model._KL
     expected_nsamps = 2*nsamps if mirror_samples else nsamps
     myassert(len(tuple(kl._local_ops)) == expected_nsamps)
-
 
     true_val = []
     for i in range(expected_nsamps):
