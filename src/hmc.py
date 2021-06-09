@@ -281,6 +281,7 @@ def build_tree_iterative(initial_qp, key, eps, maxdepth, stepper):
                 chosen = chosen + other_chosen
         else:
             raise RuntimeError(f"invalid direction: {direction}")
+        print(f"{len(chosen)} chosen states")
         stop = other_turning or is_euclidean_uturn(left_endpoint, right_endpoint)
         j = j + 1
     return left_endpoint, right_endpoint, chosen
