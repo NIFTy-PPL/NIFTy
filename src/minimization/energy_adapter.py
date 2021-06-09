@@ -116,6 +116,7 @@ class StochasticEnergyAdapter(Energy):
         self._comm = comm
         self._local_ops = local_ops
         self._n_samples = n_samples
+        self._nanisinf = nanisinf
         lin = Linearization.make_var(position)
         v, g = [], []
         for lop in self._local_ops:

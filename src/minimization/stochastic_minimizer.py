@@ -60,7 +60,7 @@ class ADVIOptimizer(Minimizer):
         self.counter += 1
         return new_position
 
-    def __call__(self, E):
+    def __call__(self, energy):
         from ..utilities import myassert
 
         controller = self._controller
@@ -69,24 +69,22 @@ class ADVIOptimizer(Minimizer):
             return energy, status
 
         if self.s is None:
-            self.s = E.gradient ** 2
+            self.s = energy.gradient ** 2
         while True:
             # check if position is at a flat point
             if energy.gradient_norm == 0:
                 return energy, controller.CONVERGED
 
-            x = self._step(E.position, E.gradient)
+            x = self._step(energy.position, energy.gradient)
             if self.resample:
-                E = E.resample_at(x)
-            myassert(isinstance(E, Energy))
-            myassert(x.domain is E.position.domain)
+                energy = energy.resample_at(x)
+            myassert(isinstance(energy, Energy))
+            myassert(x.domain is energy.position.domain)
 
-            energy = new_energy
+            energy = energy.at(x)
             status = self._controller.check(energy)
             if status != controller.CONTINUE:
                 return energy, status
-
-        return E, convergence
 
     def reset(self):
         self.counter = 1

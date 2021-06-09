@@ -56,8 +56,9 @@ if __name__ == "__main__":
 
     fc = ift.library.variational_models.FullCovarianceVI(position_fc, H, 3, True, initial_sig=0.01)
     mf = ift.library.variational_models.MeanFieldVI(position_mf, H, 3, True, initial_sig=0.01)
-    minimizer_fc = ift.ADVIOptimizer(20, eta=0.1)
-    minimizer_mf = ift.ADVIOptimizer(10)
+    IC = ift.StochasticAbsDeltaEnergyController(10,iteration_limit=1000, name='optimizer')
+    minimizer_fc = ift.ADVIOptimizer(IC, eta=0.1)
+    minimizer_mf = ift.ADVIOptimizer(IC)
 
     niter = 25
     for ii in range(niter):

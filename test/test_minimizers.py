@@ -25,7 +25,7 @@ from .common import setup_function, teardown_function
 
 pmp = pytest.mark.parametrize
 IC = ift.GradientNormController(tol_abs_gradnorm=1e-5, iteration_limit=1000)
-
+SIC = ift.StochasticAbsDeltaEnergyController(1e-8, iteration_limit=100000)
 spaces = [ift.RGSpace([1024], distances=0.123), ift.HPSpace(32)]
 
 minimizers = [
@@ -44,7 +44,7 @@ quadratic_only_minimizers = [
     'ift.ConjugateGradient(IC)',
     'ift.minimization.scipy_minimizer._ScipyCG(tol=1e-5, maxiter=300)'
 ]
-slow_minimizers = ['ift.SteepestDescent(IC)', 'ift.ADVIOptimizer(10, resample=False)']
+slow_minimizers = ['ift.SteepestDescent(IC)', 'ift.ADVIOptimizer(SIC, resample=False)']
 
 
 @pmp('minimizer', minimizers + newton_minimizers + quadratic_only_minimizers +

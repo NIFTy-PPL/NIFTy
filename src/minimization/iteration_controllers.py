@@ -447,7 +447,7 @@ class StochasticAbsDeltaEnergyController(IterationController):
 
     def __init__(self, deltaE, convergence_level=1, iteration_limit=None,
                  name=None, memory_length=10):
-        super(AbsDeltaEnergyController, self).__init__()
+        super(StochasticAbsDeltaEnergyController, self).__init__()
         self._deltaE = deltaE
         self._convergence_level = convergence_level
         self._iteration_limit = iteration_limit
@@ -468,7 +468,7 @@ class StochasticAbsDeltaEnergyController(IterationController):
         inclvl = False
         Eval = energy.value
         self._memory.append(Eval)
-        if len(self._memory>self.memory_length):
+        if len(self._memory)>self.memory_length:
             self._memory = self._memory[1:]
         diff = np.std(self._memory)
         if self._itcount > 0:
