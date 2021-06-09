@@ -127,15 +127,10 @@ def test_ParametricVI(mirror_samples, fc):
 
     true_val = []
     for i in range(expected_nsamps):
-        lat_rnd = ift.from_random(model._op.domain['latent'])
+        lat_rnd = ift.from_random(model._KL._op.domain['latent'])
         samp = kl.position.to_dict()
         samp['latent'] = lat_rnd
         samp = ift.MultiField.from_dict(samp)
-        true_val.append(model._op(samp))
+        true_val.append(model._KL._op(samp))
     true_val = sum(true_val)/expected_nsamps
     assert_allclose(true_val.val, kl.value, rtol=0.1)
-
-
-
-
-
