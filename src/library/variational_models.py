@@ -40,12 +40,13 @@ class MeanFieldVI:
     Gaussian meanfield variational inference approximates some target
     distribution with a Gaussian distribution with a diagonal covariance
     matrix. The parameters of the approximation, in this case the mean and
-    standard deviation, are obtained by minimizing a stochastic estimate 
-    of the  Kullback-Leibler divergence between the target and the approximation.
-    In order to obtain gradients w.r.t the parameters, the reparametrization
-    trick is employed, which separates the stochastic part of the approximation
-    from a deterministic function, the generator. Samples from the approximation
-    are drawn by processing samples from a standard Gaussian through this generator.
+    standard deviation, are obtained by minimizing a stochastic estimate of the
+    Kullback-Leibler divergence between the target and the approximation.  In
+    order to obtain gradients w.r.t the parameters, the reparametrization trick
+    is employed, which separates the stochastic part of the approximation from
+    a deterministic function, the generator. Samples from the approximation are
+    drawn by processing samples from a standard Gaussian through this
+    generator.
 
     Parameters
     ----------
@@ -58,20 +59,20 @@ class MeanFieldVI:
     mirror_samples : bool
         Whether the negative of the drawn samples are also used, as they are
         equally legitimate samples. If true, the number of used samples
-        doubles. Mirroring samples stabilizes the KL estimate as extreme
-        sample variation is counterbalanced. Since it improves stability in
-        many cases, it is recommended to set `mirror_samples` to `True`. 
+        doubles. Mirroring samples stabilizes the KL estimate as extreme sample
+        variation is counterbalanced. Since it improves stability in many
+        cases, it is recommended to set `mirror_samples` to `True`.
     initial_sig : positive Field or positive float
         The initial estimate of the standard deviation.
     comm : MPI communicator or None
-        If not None, samples will be distributed as evenly as possible
-        across this communicator. If `mirror_samples` is set, then a sample and
-        its mirror image will always reside on the same task.
+        If not None, samples will be distributed as evenly as possible across
+        this communicator. If `mirror_samples` is set, then a sample and its
+        mirror image will always reside on the same task.
     nanisinf : bool
         If true, nan energies which can happen due to overflows in the forward
-        model are interpreted as inf. Thereby, the code does not crash on
-        these occasions but rather the minimizer is told that the position it
-        has tried is not sensible.
+        model are interpreted as inf. Thereby, the code does not crash on these
+        occasions but rather the minimizer is told that the position it has
+        tried is not sensible.
     """
     def __init__(self, position, hamiltonian, n_samples, mirror_samples,
                  initial_sig=1, comm=None, nanisinf=False):
@@ -120,17 +121,18 @@ class FullCovarianceVI:
 
     Gaussian meanfield variational inference approximates some target
     distribution with a Gaussian distribution with a diagonal covariance
-    matrix. The parameters of the approximation, in this case the mean and
-    a lower triangular matrix corresponding to a Cholesky decomposition of the covariance,
-    are obtained by minimizing a stochastic estimate of the  Kullback-Leibler divergence 
-    between the target and the approximation.
-    In order to obtain gradients w.r.t the parameters, the reparametrization
-    trick is employed, which separates the stochastic part of the approximation
-    from a deterministic function, the generator. Samples from the approximation
-    are drawn by processing samples from a standard Gaussian through this generator.
+    matrix. The parameters of the approximation, in this case the mean and a
+    lower triangular matrix corresponding to a Cholesky decomposition of the
+    covariance, are obtained by minimizing a stochastic estimate of the
+    Kullback-Leibler divergence between the target and the approximation.  In
+    order to obtain gradients w.r.t the parameters, the reparametrization trick
+    is employed, which separates the stochastic part of the approximation from
+    a deterministic function, the generator. Samples from the approximation are
+    drawn by processing samples from a standard Gaussian through this
+    generator.
 
-    Note that the size of the covariance scales quadratically with the number of model
-    parameters.
+    Note that the size of the covariance scales quadratically with the number
+    of model parameters.
 
     Parameters
     ----------
@@ -143,21 +145,21 @@ class FullCovarianceVI:
     mirror_samples : bool
         Whether the negative of the drawn samples are also used, as they are
         equally legitimate samples. If true, the number of used samples
-        doubles. Mirroring samples stabilizes the KL estimate as extreme
-        sample variation is counterbalanced. Since it improves stability in
-        many cases, it is recommended to set `mirror_samples` to `True`. 
+        doubles. Mirroring samples stabilizes the KL estimate as extreme sample
+        variation is counterbalanced. Since it improves stability in many
+        cases, it is recommended to set `mirror_samples` to `True`.
     initial_sig : positive float
-        The initial estimate for the standard deviation. Initially no correlation
-        between the parameters is assumed. 
+        The initial estimate for the standard deviation. Initially no
+        correlation between the parameters is assumed.
     comm : MPI communicator or None
-        If not None, samples will be distributed as evenly as possible
-        across this communicator. If `mirror_samples` is set, then a sample and
-        its mirror image will always reside on the same task.
+        If not None, samples will be distributed as evenly as possible across
+        this communicator. If `mirror_samples` is set, then a sample and its
+        mirror image will always reside on the same task.
     nanisinf : bool
         If true, nan energies which can happen due to overflows in the forward
-        model are interpreted as inf. Thereby, the code does not crash on
-        these occasions but rather the minimizer is told that the position it
-        has tried is not sensible.
+        model are interpreted as inf. Thereby, the code does not crash on these
+        occasions but rather the minimizer is told that the position it has
+        tried is not sensible.
     """
     def __init__(self, position, hamiltonian, n_samples, mirror_samples,
                 initial_sig=1, comm=None, nanisinf=False):
