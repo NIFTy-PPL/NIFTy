@@ -210,6 +210,9 @@ class GaussianEntropy(EnergyOperator):
     """Entropy of a Gaussian distribution given the diagonal of a triangular
     decomposition of the covariance.
 
+    As metric a `SandwichOperator` of the Jacobian is used. This is not a
+    proper Fisher metric but may be useful for second order minimization.
+
     Parameters
     ----------
     domain: Domain FIXME
@@ -226,7 +229,6 @@ class GaussianEntropy(EnergyOperator):
             return res
         if not x.want_metric:
             return res
-        # FIXME not sure about metric
         return res.add_metric(SandwichOperator.make(res.jac))
 
 
