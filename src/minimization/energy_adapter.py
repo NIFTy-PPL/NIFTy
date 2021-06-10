@@ -107,7 +107,7 @@ class StochasticEnergyAdapter(Energy):
     but rather via the factory function :attr:`make`.
     """
     def __init__(self, position, op, keys, local_ops, n_samples, comm, nanisinf,
-                 _callingfrommake=False):
+                 sampling_context, _callingfrommake=False):
         if not _callingfrommake:
             raise NotImplementedError
         super(StochasticEnergyAdapter, self).__init__(position)
@@ -130,6 +130,7 @@ class StochasticEnergyAdapter(Energy):
 
         self._op = op
         self._keys = keys
+        self._context = sampling_context
 
     @property
     def value(self):
@@ -142,7 +143,7 @@ class StochasticEnergyAdapter(Energy):
     def at(self, position):
         return StochasticEnergyAdapter(position, self._op, self._keys,
                     self._local_ops, self._n_samples, self._comm, self._nanisinf,
-                    _callingfrommake=True)
+                    self._context, _callingfrommake=True)
 
     def apply_metric(self, x):
         lin = Linearization.make_var(self.position, want_metric=True)
@@ -161,8 +162,8 @@ class StochasticEnergyAdapter(Energy):
         return StochasticEnergyAdapter.make(position, self._op, self._keys,
                                             self._n_samples, self._comm)
 
-    @staticmethod
-    def make(position, op, sampling_keys, n_samples, mirror_samples,
+    @classmethod
+    def make(cls, position, op, sampling_keys, n_samples, mirror_samples,
              comm=None, nanisinf=False):
         """Factory function for StochasticEnergyAdapter.
 
@@ -201,17 +202,26 @@ class StochasticEnergyAdapter(Energy):
                 raise ValueError
             samdom[k] = op.domain[k]
         samdom = MultiDomain.make(samdom)
-        local_ops = []
         sseq = random.spawn_sseq(n_samples)
-        from .kl_energies import _get_lo_hi
-        for i in range(*_get_lo_hi(comm, n_samples)):
-            with random.Context(sseq[i]):
-                rnd = from_random(samdom)
-                _, tmp = op.simplify_for_constant_input(rnd)
-                myassert(tmp.domain == position.domain)
-                local_ops.append(tmp)
-                if mirror_samples:
-                    local_ops.append(op.simplify_for_constant_input(-rnd)[1])
+        context = op, position, sseq, comm, n_samples, mirror_samples, samdom
+        noise = cls._draw_noise(*context)
+        local_ops = [op.simplify_for_constant_input(nn)[1] for nn in noise]
         n_samples = 2*n_samples if mirror_samples else n_samples
         return StochasticEnergyAdapter(position, op, sampling_keys, local_ops,
-                              n_samples, comm, nanisinf, _callingfrommake=True)
+                     n_samples, comm, nanisinf, context, _callingfrommake=True)
+
+    @staticmethod
+    def _draw_noise(op, position, sseq, comm, n_samples, mirror_samples, sample_domain):
+        from .kl_energies import _get_lo_hi
+        noise = []
+        for i in range(*_get_lo_hi(comm, n_samples)):
+            with random.Context(sseq[i]):
+                rnd = from_random(sample_domain)
+                noise.append(rnd)
+                if mirror_samples:
+                    noise.append(-rnd)
+        return noise
+
+    def samples(self):
+        """Standard-normal samples that have been inserted into `op`"""
+        return self._draw_noise(*self._context)
