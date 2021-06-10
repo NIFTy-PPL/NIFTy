@@ -27,7 +27,9 @@ class Multifield2Vector(LinearOperator):
     """Flatten a MultiField and return a Field with unstructured domain and the
     same number of degrees of freedom.
 
-    FIXME
+    Notes
+    -----
+    Currently only works with fields that are real-valued
     """
 
     def __init__(self, domain):
@@ -43,10 +45,14 @@ class Multifield2Vector(LinearOperator):
         if mode == self.TIMES:
             res = np.empty(self.target.shape)
             for key in self.domain.keys():
+                if not (np.issubdtype(x[key].dtype, np.floating)):
+                    raise NotImplementedError("only real fields are allowed")
                 arr = x[key].flatten()
                 res[ii:ii + arr.size] = arr
                 ii += arr.size
         else:
+            if not (np.issubdtype(x.dtype, np.floating)):
+                raise NotImplementedError("only real fields are allowed")
             res = {}
             for key in self.domain.keys():
                 n = self.domain[key].size
