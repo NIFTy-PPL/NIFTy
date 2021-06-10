@@ -81,7 +81,7 @@ def main():
 
     n_samples = 100
     minimizer = ift.NewtonCG(
-        ift.GradientNormController(iteration_limit=2, name='Mini'))
+        ift.GradientNormController(iteration_limit=3, name='Mini'))
     IC = ift.StochasticAbsDeltaEnergyController(0.1, iteration_limit=20,
                                                 name='advi')
     stochastic_minimizer_mf = ift.ADVIOptimizer(IC, eta = 0.5)
@@ -132,7 +132,7 @@ def main():
         plt.draw()
         plt.pause(2.0)
     
-    for ii in range(15):
+    for ii in range(20):
         if ii % 2 == 0:
             # Resample
             mgkl = ift.MetricGaussianKL(posmg, ham, n_samples, False)
