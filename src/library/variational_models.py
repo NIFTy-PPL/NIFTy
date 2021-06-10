@@ -67,7 +67,7 @@ class MeanFieldVI:
         If not None, samples will be distributed as evenly as possible
         across this communicator. If `mirror_samples` is set, then a sample and
         its mirror image will always reside on the same task.
-    nanisinf :
+    nanisinf : bool
         If true, nan energies which can happen due to overflows in the forward
         model are interpreted as inf. Thereby, the code does not crash on
         these occasions but rather the minimizer is told that the position it
@@ -128,7 +128,7 @@ class FullCovarianceVI:
     trick is employed, which separates the stochastic part of the approximation
     from a deterministic function, the generator. Samples from the approximation
     are drawn by processing samples from a standard Gaussian through this generator.
-    
+
     Note that the size of the covariance scales quadratically with the number of model
     parameters.
 
@@ -153,7 +153,7 @@ class FullCovarianceVI:
         If not None, samples will be distributed as evenly as possible
         across this communicator. If `mirror_samples` is set, then a sample and
         its mirror image will always reside on the same task.
-    nanisinf :
+    nanisinf : bool
         If true, nan energies which can happen due to overflows in the forward
         model are interpreted as inf. Thereby, the code does not crash on
         these occasions but rather the minimizer is told that the position it
