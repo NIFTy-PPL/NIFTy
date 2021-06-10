@@ -270,10 +270,11 @@ def build_tree_iterative(initial_qp, key, eps, maxdepth, stepper, potential_ener
     while not stop and j <= maxdepth:
         #print(left_endpoint, right_endpoint)
         key, subkey = random.split(key)
-        direction = random.choice(subkey, np.array([-1, 1]))
-        print(f"going in direction {int(direction)}")
+        # random.bernoulli is fine, this is just for rng consistency across commits TODO: use random.bernoulli
+        go_right = random.choice(subkey, np.array([False, True]))
+        print(f"going in direction {1 if go_right else -1}")
         # new_tree = current_tree extended (i.e. doubled) in direction
-        new_tree = extend_tree_iterative(key, current_tree, j, eps, direction, stepper, potential_energy, kinetic_energy)
+        new_tree = extend_tree_iterative(key, current_tree, j, eps, go_right, stepper, potential_energy, kinetic_energy)
         stop = new_tree.turning or is_euclidean_uturn(new_tree.left, new_tree.right)
         j = j + 1
         # TODO: I think this needs to be conditional on stop somehow but not sure
@@ -283,21 +284,19 @@ def build_tree_iterative(initial_qp, key, eps, maxdepth, stepper, potential_ener
 
 
 # taken from https://arxiv.org/pdf/1912.11554.pdf
-def extend_tree_iterative(key, initial_tree, depth, eps, direction, stepper, potential_energy, kinetic_energy):
+def extend_tree_iterative(key, initial_tree, depth, eps, go_right, stepper, potential_energy, kinetic_energy):
     # 1. choose start point of integration
-    if direction == 1:
+    if go_right:
         initial_qp = initial_tree.right
-    elif direction == -1:
-        initial_qp = initial_tree.left
     else:
-        raise RuntimeError(f"invalid direction: {direction}")
+        initial_qp = initial_tree.left
     # 2. build / collect chosen states
     chosen = []
     z = initial_qp
     S = [initial_qp for _ in range(depth+1)]
     #S = np.empty(shape=(depth,) + initial_qp.shape)
     for n in range(2**depth):
-        z = stepper(z, eps, direction)
+        z = stepper(z, eps, 1 if go_right else -1)
         chosen.append(z)
         if n % 2 == 0:
             #print(n, bitcount(n))
@@ -312,10 +311,10 @@ def extend_tree_iterative(key, initial_tree, depth, eps, direction, stepper, pot
                     # TODO: what to return here? old tree or new tree but with turning set?
                     return initial_tree
     key, subkey = random.split(key)
-    new_subtree = make_tree_from_list(subkey, chosen, direction, potential_energy, kinetic_energy, False)
-    return merge_trees(key, initial_tree, new_subtree, direction, False)
+    new_subtree = make_tree_from_list(subkey, chosen, go_right, potential_energy, kinetic_energy, False)
+    return merge_trees(key, initial_tree, new_subtree, go_right, False)
 
-def make_tree_from_list(key, qp_list, direction, potential_energy, kinetic_energy, turning_hint):
+def make_tree_from_list(key, qp_list, go_right, potential_energy, kinetic_energy, turning_hint):
     # WARNING: only to be called from extend_tree_iterative, with turning_hint logic correct
     # 3. random.choice with probability weights to get sample
     qp_arr = np.array(qp_list)
@@ -331,13 +330,13 @@ def make_tree_from_list(key, qp_list, direction, potential_energy, kinetic_energ
     print(f"chose sample n° {random_idx}")
     # 4. calculate total weight
     new_subtree_total_weight = np.sum(new_subtree_weights)
-    if direction == 1:
+    if go_right:
         left, right = qp_list[0], qp_list[-1]
-    elif direction == -1:
+    else:
         left, right = qp_list[-1], qp_list[0]
     return Tree(left=left, right=right, weight=new_subtree_total_weight, proposal_candidate=new_subtree_sample, turning=turning_hint)
 
-def merge_trees(key, current_subtree, new_subtree, direction, turning_hint):
+def merge_trees(key, current_subtree, new_subtree, go_right, turning_hint):
     """Merges two trees, propagating the proposal_candidate"""
     # WARNING: only to be called from extend_tree_iterative, with turning_hint logic correct
     # 5. decide which sample to take based on total weights (merge trees)
@@ -352,12 +351,10 @@ def merge_trees(key, current_subtree, new_subtree, direction, turning_hint):
         new_sample = current_subtree.proposal_candidate
         print("chose old sample")
     # 6. define new tree
-    if direction == 1:
+    if go_right:
         merged_tree = Tree(left=current_subtree.left, right=new_subtree.right, weight=new_subtree.weight + current_subtree.weight, proposal_candidate=new_sample, turning=turning_hint)
-    elif direction == -1:
-        merged_tree = Tree(left=new_subtree.left, right=current_subtree.right, weight=new_subtree.weight + current_subtree.weight, proposal_candidate=new_sample, turning=turning_hint)
     else:
-        raise RuntimeError(f"invalid direction: {direction}")
+        merged_tree = Tree(left=new_subtree.left, right=current_subtree.right, weight=new_subtree.weight + current_subtree.weight, proposal_candidate=new_sample, turning=turning_hint)
     return merged_tree
 
 
