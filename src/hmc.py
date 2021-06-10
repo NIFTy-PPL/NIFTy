@@ -306,7 +306,15 @@ def build_tree_iterative(initial_qp, key, eps, maxdepth, stepper, potential_ener
     current_tree = Tree(left=initial_qp, right=initial_qp, weight=np.exp(-total_energy_of_qp(initial_qp, potential_energy, kinetic_energy)), proposal_candidate=initial_qp, turning=False)
     stop = False
     j = 0
-    while not stop and j <= maxdepth:
+
+    loop_state = (current_tree, j, stop)
+
+    def _cond_fn(loop_state):
+        _, j, stop = loop_state
+        return not stop and j <= maxdepth
+
+    def _body_fun(loop_state):
+        current_tree, j, stop = loop_state
         #print(left_endpoint, right_endpoint)
         key, subkey = random.split(key)
         # random.bernoulli is fine, this is just for rng consistency across commits TODO: use random.bernoulli
@@ -322,7 +330,9 @@ def build_tree_iterative(initial_qp, key, eps, maxdepth, stepper, potential_ener
         # TODO: move call to is_euclidean_uturn_pytree into merge_trees from above, remove the turning hint and just check current_tree.turning here
         stop = new_subtree.turning or is_euclidean_uturn_pytree(current_tree.left, current_tree.right)
         j = j + 1
-        # TODO: I think this needs to be conditional on stop somehow but not sure
+        return (current_tree, j, stop)
+
+    current_tree, j, stop = lax.while_loop(_cond_fn, _body_fun, loop_state)
     return current_tree
 
 
