@@ -22,10 +22,6 @@
 # This script demonstrates how MGVI, GeoVI, MeanfieldVI and FullCovarianceVI
 # work for an inference problem with only two real quantities of interest. This
 # enables us to plot the posterior probability density as two-dimensional plot.
-# The approximate posterior samples are contrasted with the maximum-a-posterior
-# (MAP) solution together with samples drawn with the Laplace method. This
-# method uses the local curvature at the MAP solution as inverse covariance of
-# a Gaussian probability density.
 ###############################################################################
 
 import numpy as np
