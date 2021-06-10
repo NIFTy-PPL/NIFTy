@@ -330,10 +330,12 @@ def make_tree_from_list(key, qp_list, go_right, potential_energy, kinetic_energy
     print(f"chose sample n° {random_idx}")
     # 4. calculate total weight
     new_subtree_total_weight = np.sum(new_subtree_weights)
-    if go_right:
-        left, right = qp_list[0], qp_list[-1]
-    else:
-        left, right = qp_list[-1], qp_list[0]
+    left, right = lax.cond(
+        pred = go_right,
+        true_fun = lambda _qp_list: (_qp_list[0], _qp_list[-1]),
+        false_fun = lambda _qp_list: (_qp_list[-1], _qp_list[0]),
+        operand = qp_list
+    )
     return Tree(left=left, right=right, weight=new_subtree_total_weight, proposal_candidate=new_subtree_sample, turning=turning_hint)
 
 def merge_trees(key, current_subtree, new_subtree, go_right, turning_hint):
