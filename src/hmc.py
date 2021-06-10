@@ -344,14 +344,14 @@ def merge_trees(key, current_subtree, new_subtree, go_right, turning_hint):
     # 5. decide which sample to take based on total weights (merge trees)
     key, subkey = random.split(key)
     print(f"prob of choosing new sample: {new_subtree.weight / (new_subtree.weight + current_subtree.weight)}")
-    if random.bernoulli(subkey, new_subtree.weight / (new_subtree.weight + current_subtree.weight)):
+    new_sample = lax.cond(
+        pred = random.bernoulli(subkey, new_subtree.weight / (new_subtree.weight + current_subtree.weight)),
         # choose the new sample
-        new_sample = new_subtree.proposal_candidate
-        print("chose new sample")
-    else:
+        true_fun = lambda current_and_new_tup: current_and_new_tup[1],
         # choose the old sample
-        new_sample = current_subtree.proposal_candidate
-        print("chose old sample")
+        false_fun = lambda current_and_new_tup: current_and_new_tup[0],
+        operand = (current_subtree.proposal_candidate, new_subtree.proposal_candidate)
+    )
     # 6. define new tree
     if go_right:
         merged_tree = Tree(left=current_subtree.left, right=new_subtree.right, weight=new_subtree.weight + current_subtree.weight, proposal_candidate=new_sample, turning=turning_hint)
