@@ -353,10 +353,13 @@ def merge_trees(key, current_subtree, new_subtree, go_right, turning_hint):
         operand = (current_subtree.proposal_candidate, new_subtree.proposal_candidate)
     )
     # 6. define new tree
-    if go_right:
-        merged_tree = Tree(left=current_subtree.left, right=new_subtree.right, weight=new_subtree.weight + current_subtree.weight, proposal_candidate=new_sample, turning=turning_hint)
-    else:
-        merged_tree = Tree(left=new_subtree.left, right=current_subtree.right, weight=new_subtree.weight + current_subtree.weight, proposal_candidate=new_sample, turning=turning_hint)
+    left, right = lax.cond(
+        pred = go_right,
+        true_fun = lambda op: (op['current_subtree'].left, op['new_subtree'].right),
+        false_fun = lambda op: (op['new_subtree'].left, op['current_subtree'].right),
+        operand = {'current_subtree': current_subtree, 'new_subtree': new_subtree}
+    )
+    merged_tree = Tree(left=left, right=right, weight=new_subtree.weight + current_subtree.weight, proposal_candidate=new_sample, turning=turning_hint)
     return merged_tree
 
 
