@@ -57,12 +57,12 @@ if __name__ == "__main__":
     d_space = R.target[0]
     lamb = R(sky)
 
-    # Generate simulated signal and data and build likelihood.
+    # Generate simulated signal and data and build log-likelihood
     mock_position = ift.from_random(sky.domain, "normal")
     data = ift.random.current_rng().poisson(lamb(mock_position).val)
     data = ift.makeField(d_space, data)
-    likelihood = ift.PoissonianEnergy(data) @ lamb
-    H = ift.StandardHamiltonian(likelihood)
+    loglikelihood = ift.PoissonianEnergy(data) @ lamb
+    H = ift.StandardHamiltonian(loglikelihood)
 
     # Settings for minimization
     IC = ift.StochasticAbsDeltaEnergyController(5, iteration_limit=200,
