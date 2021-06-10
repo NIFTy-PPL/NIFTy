@@ -215,7 +215,7 @@ class GaussianEntropy(EnergyOperator):
 
     Parameters
     ----------
-    domain: Domain FIXME
+    domain: Domain, DomainTuple, list of Domain
         The domain of the diagonal.
     """
 
@@ -237,7 +237,7 @@ class LowerTriangularInserter(LinearOperator):
 
     Parameters
     ----------
-    target: Domain FIXME
+    target: Domain, DomainTuple, list of Domain
         A two-dimensional domain with NxN entries.
     """
 
@@ -266,7 +266,7 @@ class DiagonalSelector(LinearOperator):
 
     Parameters
     ----------
-    domain: Domain FIXME
+    domain: Domain, DomainTuple, list of Domain
         The two-dimensional domain of the input field. Must be of shape NxN.
     """
 

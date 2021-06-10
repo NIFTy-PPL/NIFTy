@@ -27,7 +27,10 @@ class Multifield2Vector(LinearOperator):
     """Flatten a MultiField and return a Field with unstructured domain and the
     same number of degrees of freedom.
 
-    FIXME
+    Parameters
+    ----------
+    domain: MultiDomain
+        Domain of the operator
     """
 
     def __init__(self, domain):
