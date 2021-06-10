@@ -151,4 +151,4 @@ run_visual_vi:
 run_meanfield:
   stage: demo_runs
   script:
-    - python3 demos/meanfield_inference.py
+    - python3 demos/parametric_variational_inference.py
