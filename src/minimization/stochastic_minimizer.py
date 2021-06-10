@@ -23,6 +23,11 @@ class ADVIOptimizer(Minimizer):
     """Provide an implementation of an adaptive step-size sequence optimizer,
     following https://arxiv.org/abs/1603.00788.
 
+    This stochastic optimizer keeps track of the evolution of the gradient over 
+    the last steps to adaptively determine the step-size of the next update. 
+    It is a variation of the Adam optimizer for Gaussian variational inference
+    and it allows to optimizer stochastic loss functions.
+
     Parameters
     ----------
     steps: int
@@ -32,6 +37,7 @@ class ADVIOptimizer(Minimizer):
         application to increase performance. Default: 1.
     alpha: float between 0 and 1
         The fraction of how much the current gradient impacts the momentum.
+        Lower values correspond to a longer memory.
     tau: positive float
         This quantity prevents division by zero.
     epsilon: positive float
