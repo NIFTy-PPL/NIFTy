@@ -11,7 +11,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
-# Copyright(C) 2013-2020 Max-Planck-Society
+# Copyright(C) 2013-2021 Max-Planck-Society
 # Author: Philipp Arras
 #
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
@@ -104,8 +104,8 @@ def main():
     N = ift.DiagonalOperator(ift.makeField(d_space, var))
 
     IC = ift.DeltaEnergyController(tol_rel_deltaE=1e-12, iteration_limit=200)
-    likelihood = ift.GaussianEnergy(d, N) @ R
-    Ham = ift.StandardHamiltonian(likelihood, IC)
+    likelihood_energy = ift.GaussianEnergy(d, N) @ R
+    Ham = ift.StandardHamiltonian(likelihood_energy, IC)
     H = ift.EnergyAdapter(params, Ham, want_metric=True)
 
     # Minimize

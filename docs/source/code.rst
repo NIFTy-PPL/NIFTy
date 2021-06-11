@@ -378,11 +378,11 @@ compute the negative log-likelihood of the problem in standardized coordinates
 at a given position in parameter space.
 Finally, the :class:`~operators.energy_operators.StandardHamiltonian`
 can be constructed from the likelihood, represented by a
-:class:`~operators.energy_operators.LikelihoodOperator` instance.
+:class:`~operators.energy_operators.LikelihoodEnergyOperator` instance.
 Several commonly used forms of the likelihoods are already provided in
 NIFTy, such as :class:`~operators.energy_operators.GaussianEnergy`,
 :class:`~operators.energy_operators.PoissonianEnergy`,
-:class:`~operators.energy_operators.InverseGammaLikelihood` or
+:class:`~operators.energy_operators.InverseGammaEnergy` or
 :class:`~operators.energy_operators.BernoulliEnergy`, but the user
 is free to implement any likelihood customized to the problem at hand.
 The demo code `demos/getting_started_3.py` illustrates how to set up an energy

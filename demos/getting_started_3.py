@@ -106,10 +106,10 @@ def main():
             deltaE=0.5, iteration_limit=15, convergence_level=2)
     minimizer_sampling = ift.NewtonCG(ic_sampling_nl)
 
-    # Set up likelihood and information Hamiltonian
-    likelihood = (ift.GaussianEnergy(mean=data, inverse_covariance=N.inverse) @
-                  signal_response)
-    H = ift.StandardHamiltonian(likelihood, ic_sampling)
+    # Set up likelihood energy and information Hamiltonian
+    likelihood_energy = (ift.GaussianEnergy(mean=data, inverse_covariance=N.inverse) @
+                         signal_response)
+    H = ift.StandardHamiltonian(likelihood_energy, ic_sampling)
 
     initial_mean = ift.MultiField.full(H.domain, 0.)
     mean = initial_mean

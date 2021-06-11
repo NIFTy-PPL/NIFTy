@@ -111,7 +111,7 @@ class Operator(metaclass=NiftyMeta):
         """The coordinate transformation that maps into a coordinate system in
         which the metric of a likelihood is the Euclidean metric. It is `None`,
         except for instances of
-        :class:`~nifty7.operators.energy_operators.LikelihoodOperator` or
+        :class:`~nifty7.operators.energy_operators.LikelihoodEnergyOperator` or
         (nested) sums thereof.
 
         Returns

@@ -124,9 +124,9 @@ def main():
     # number of samples used to estimate the KL
     N_samples = 20
 
-    # Set up likelihood and information Hamiltonian
-    likelihood = ift.GaussianEnergy(mean=data, inverse_covariance=N.inverse) @ signal_response
-    H = ift.StandardHamiltonian(likelihood, ic_sampling)
+    # Set up likelihood energy and information Hamiltonian
+    likelihood_energy = ift.GaussianEnergy(mean=data, inverse_covariance=N.inverse) @ signal_response
+    H = ift.StandardHamiltonian(likelihood_energy, ic_sampling)
 
     # Begin minimization
     initial_mean = ift.MultiField.full(H.domain, 0.)

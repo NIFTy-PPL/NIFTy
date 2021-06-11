@@ -103,7 +103,7 @@ def test_inverse_gamma(field):
     space = field.domain
     d = ift.random.current_rng().normal(10, size=space.shape)**2
     d = ift.Field(space, d)
-    energy = ift.InverseGammaLikelihood(d)
+    energy = ift.InverseGammaEnergy(d)
     ift.extra.check_operator(energy, field, tol=1e-10)
 
 
