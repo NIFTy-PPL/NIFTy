@@ -1,3 +1,8 @@
+Changes since NIFTy 7
+=====================
+
+None.
+
 Changes since NIFTy 6
 =====================
 
