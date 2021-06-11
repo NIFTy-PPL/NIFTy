@@ -59,7 +59,7 @@ class Gridder(LinearOperator):
         self._eps = float(eps)
 
     def apply(self, x, mode):
-        from ducc0.wgridder import ms2dirty, dirty2ms
+        from ducc0.wgridder import dirty2ms, ms2dirty
         self._check_input(x, mode)
         freq = np.array([speed_of_light])
         x = x.val

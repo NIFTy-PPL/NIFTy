@@ -14,8 +14,9 @@
 # Copyright(C) 2021 Max-Planck-Society
 # Author: Philipp Arras
 
-import nifty7 as ift
 import numpy as np
+
+import nifty7 as ift
 
 # In NIFTy, users can add hand-crafted point-wise nonlinearities that are then
 # available for `Field`, `MultiField`, `Linearization` and `Operator`. This

@@ -18,12 +18,12 @@
 import numpy as np
 
 from .. import random
+from ..domain_tuple import DomainTuple
 from ..linearization import Linearization
 from ..minimization.energy import Energy
-from ..utilities import myassert, allreduce_sum
 from ..multi_domain import MultiDomain
 from ..sugar import from_random
-from ..domain_tuple import DomainTuple
+from ..utilities import allreduce_sum, myassert
 
 
 class EnergyAdapter(Energy):

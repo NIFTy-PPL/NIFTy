@@ -15,8 +15,8 @@
 #
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
 
-from .minimizer import Minimizer
 from .energy import Energy
+from .minimizer import Minimizer
 
 
 class ADVIOptimizer(Minimizer):

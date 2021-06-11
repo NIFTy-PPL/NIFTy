@@ -25,13 +25,13 @@ from ..multi_domain import MultiDomain
 from ..multi_field import MultiField
 from ..sugar import makeDomain, makeOp
 from ..utilities import myassert
+from .adder import Adder
 from .linear_operator import LinearOperator
 from .operator import Operator
-from .adder import Adder
 from .sampling_enabler import SamplingDtypeSetter, SamplingEnabler
-from .scaling_operator import ScalingOperator
 from .sandwich_operator import SandwichOperator
-from .simple_linear_operators import VdotOperator, FieldAdapter
+from .scaling_operator import ScalingOperator
+from .simple_linear_operators import FieldAdapter, VdotOperator
 
 
 def _check_sampling_dtype(domain, dtypes):

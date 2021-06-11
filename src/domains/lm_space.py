@@ -116,9 +116,11 @@ class LMSpace(StructuredDomain):
             colatitude in radians, and return the kernel amplitude at that
             colatitude.
         """
-        from .gl_space import GLSpace
-        from ..operators.harmonic_operators import HarmonicTransformOperator
         from ducc0.misc import GL_thetas
+
+        from ..operators.harmonic_operators import HarmonicTransformOperator
+        from .gl_space import GLSpace
+
         # define azimuthally symmetric spaces for kernel transform
         gl = GLSpace(self.lmax + 1, 1)
         lm0 = gl.get_default_codomain()

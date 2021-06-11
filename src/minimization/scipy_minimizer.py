@@ -155,7 +155,9 @@ class _ScipyCG(Minimizer):
         self._maxiter = maxiter
 
     def __call__(self, energy, preconditioner=None):
-        from scipy.sparse.linalg import LinearOperator as scipy_linop, cg
+        from scipy.sparse.linalg import LinearOperator as scipy_linop
+        from scipy.sparse.linalg import cg
+
         from .quadratic_energy import QuadraticEnergy
         if not isinstance(energy, QuadraticEnergy):
             raise ValueError("need a quadratic energy for CG")
