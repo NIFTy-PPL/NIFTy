@@ -1,3 +1,3 @@
-EXCLUDE="nifty7/logger.py nifty7/git_version.py"
-sphinx-apidoc -e -o docs/source/mod nifty7 ${EXCLUDE}
+EXCLUDE="nifty8/logger.py nifty8/git_version.py"
+sphinx-apidoc -e -o docs/source/mod nifty8 ${EXCLUDE}
 sphinx-build -b html docs/source/ docs/build/

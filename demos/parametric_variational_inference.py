@@ -31,7 +31,7 @@
 import numpy as np
 from matplotlib import pyplot as plt
 
-import nifty7 as ift
+import nifty8 as ift
 
 ift.random.push_sseq_from_seed(27)
 

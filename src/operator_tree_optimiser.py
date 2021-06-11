@@ -293,7 +293,7 @@ def optimise_operator(op):
     -----
     Operators are compared only by id, so best results are achieved when the following code
 
-    >>> from nifty7 import UniformOperator, DomainTuple
+    >>> from nifty8 import UniformOperator, DomainTuple
     >>> uni1 = UniformOperator(DomainTuple.scalar_domain()
     >>> uni2 = UniformOperator(DomainTuple.scalar_domain()
     >>> op = (uni1 + uni2)*(uni1 + uni2)

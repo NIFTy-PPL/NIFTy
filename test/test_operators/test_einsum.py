@@ -19,8 +19,8 @@
 import numpy as np
 from numpy.testing import assert_allclose
 
-import nifty7 as ift
-from nifty7.extra import check_linear_operator, check_operator
+import nifty8 as ift
+from nifty8.extra import check_linear_operator, check_operator
 
 from ..common import list2fixture, setup_function, teardown_function
 

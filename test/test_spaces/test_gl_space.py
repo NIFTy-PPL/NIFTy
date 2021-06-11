@@ -21,7 +21,7 @@ import numpy as np
 import pytest
 from numpy.testing import assert_almost_equal, assert_equal, assert_raises
 
-from nifty7 import GLSpace, myassert
+from nifty8 import GLSpace, myassert
 
 from ..common import setup_function, teardown_function
 

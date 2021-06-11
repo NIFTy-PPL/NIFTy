@@ -18,7 +18,7 @@
 import numpy as np
 import pytest
 
-import nifty7 as ift
+import nifty8 as ift
 
 from ..common import list2fixture, setup_function, teardown_function
 
@@ -76,7 +76,7 @@ def energy_tester(pos, get_noisy_data, energy_initializer, assume_diagonal=False
                 FA = ift.FieldAdapter(dom, k)
                 ops.append(FA.adjoint @ FA)
         realizer = ift.utilities.my_sum(ops)
-        from nifty7.operator_spectrum import _DomRemover
+        from nifty8.operator_spectrum import _DomRemover
         flattener = _DomRemover(realizer.target)
         op = flattener @ realizer
     pos = op(pos)

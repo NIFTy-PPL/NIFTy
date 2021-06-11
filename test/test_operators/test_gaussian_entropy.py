@@ -19,8 +19,8 @@ import numpy as np
 import pytest
 from numpy.testing import assert_allclose
 
-import nifty7 as ift
-from nifty7.library.variational_models import GaussianEntropy
+import nifty8 as ift
+from nifty8.library.variational_models import GaussianEntropy
 
 from ..common import list2fixture, setup_function, teardown_function
 

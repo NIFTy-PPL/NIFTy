@@ -28,7 +28,7 @@
 
 import numpy as np
 
-import nifty7 as ift
+import nifty8 as ift
 
 if __name__ == "__main__":
     filename = "getting_started_density_{}.png"

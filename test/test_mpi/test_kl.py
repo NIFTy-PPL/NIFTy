@@ -20,7 +20,7 @@ import pytest
 from mpi4py import MPI
 from numpy.testing import assert_equal, assert_raises
 
-import nifty7 as ift
+import nifty8 as ift
 
 from ..common import setup_function, teardown_function
 

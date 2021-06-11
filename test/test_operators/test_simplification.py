@@ -17,8 +17,8 @@
 
 from numpy.testing import assert_allclose, assert_raises
 
-import nifty7 as ift
-from nifty7.operators.simplify_for_const import ConstantOperator
+import nifty8 as ift
+from nifty8.operators.simplify_for_const import ConstantOperator
 
 
 def test_simplification():

@@ -395,7 +395,7 @@ def lognormal_moments(mean, sigma, N=0):
     """Calculates the parameters for a normal distribution `n(x)`
     such that `exp(n)(x)` has the mean and standard deviation given.
 
-    Used in :func:`~nifty7.normal_operators.LognormalTransform`."""
+    Used in :func:`~nifty8.normal_operators.LognormalTransform`."""
     mean, sigma = (value_reshaper(param, N) for param in (mean, sigma))
     if not np.all(mean > 0):
         raise ValueError("mean must be greater 0; got {!r}".format(mean))

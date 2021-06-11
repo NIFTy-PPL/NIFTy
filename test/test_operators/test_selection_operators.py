@@ -20,8 +20,8 @@ import numpy as np
 import pytest
 from numpy.testing import assert_allclose, assert_array_equal
 
-import nifty7 as ift
-from nifty7.extra import check_linear_operator
+import nifty8 as ift
+from nifty8.extra import check_linear_operator
 
 from ..common import list2fixture, setup_function, teardown_function
 

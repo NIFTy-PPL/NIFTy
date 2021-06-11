@@ -24,7 +24,7 @@ class HPSpace(StructuredDomain):
     """Represents 2-sphere with HEALPix discretization.
 
     Its harmonic partner domain is the
-    :class:`~nifty7.domains.lm_space.LMSpace`.
+    :class:`~nifty8.domains.lm_space.LMSpace`.
 
     Parameters
     ----------

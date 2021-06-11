@@ -97,7 +97,7 @@ To run the tests, additional packages are required:
 Afterwards the tests (including a coverage report) can be run using the
 following command in the repository root:
 
-    pytest-3 --cov=nifty7 test
+    pytest-3 --cov=nifty8 test
 
 ### First Steps
 

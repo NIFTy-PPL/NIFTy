@@ -18,7 +18,7 @@
 import numpy as np
 import pytest
 
-import nifty7 as ift
+import nifty8 as ift
 
 pmp = pytest.mark.parametrize
 

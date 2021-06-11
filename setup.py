@@ -27,20 +27,20 @@ def write_version():
     except FileNotFoundError:
         print("Could not determine version string from git history")
         res = "unknown"
-    with open("nifty7/git_version.py", "w") as file:
+    with open("nifty8/git_version.py", "w") as file:
         file.write('gitversion = "{}"\n'.format(res))
 
 
 write_version()
-exec(open('nifty7/version.py').read())
+exec(open('nifty8/version.py').read())
 
-setup(name="nifty7",
+setup(name="nifty8",
       version=__version__,
       author="Theo Steininger, Martin Reinecke",
       author_email="martin@mpa-garching.mpg.de",
       description="Numerical Information Field Theory",
       url="http://www.mpa-garching.mpg.de/ift/nifty/",
-      packages=find_packages(include=["nifty7", "nifty7.*"]),
+      packages=find_packages(include=["nifty8", "nifty8.*"]),
       zip_safe=True,
       license="GPLv3",
       setup_requires=['scipy>=1.4.1', 'numpy>=1.17'],

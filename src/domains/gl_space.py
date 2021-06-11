@@ -24,7 +24,7 @@ class GLSpace(StructuredDomain):
     """Represents a 2-sphere with Gauss-Legendre pixelization.
 
     Its harmonic partner domain is the
-    :class:`~nifty7.domains.lm_space.LMSpace`.
+    :class:`~nifty8.domains.lm_space.LMSpace`.
 
     Parameters
     ----------

@@ -107,4 +107,4 @@ from .operator_spectrum import operator_spectrum
 from .operator_tree_optimiser import optimise_operator
 
 # We deliberately don't set __all__ here, because we don't want people to do a
-# "from nifty7 import *"; that would swamp the global namespace.
+# "from nifty8 import *"; that would swamp the global namespace.

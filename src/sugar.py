@@ -109,7 +109,7 @@ def power_analyze(field, spaces=None, binbounds=None,
 
     Creates a PowerSpace for the space addressed by `spaces` with the
     given binning and computes the power spectrum as a
-    :class:`~nifty7.field.Field` over this PowerSpace. This can only
+    :class:`~nifty8.field.Field` over this PowerSpace. This can only
     be done if the subspace to be analyzed is a harmonic space. The
     resulting field has the same units as the square of the initial
     field.
@@ -603,8 +603,8 @@ def is_operator(obj):
     Note
     ----
     A simple `isinstance(obj, ift.Operator)` does not give the expected result
-    because, e.g., :class:`~nifty7.field.Field` inherits from
-    :class:`~nifty7.operators.operator.Operator`.
+    because, e.g., :class:`~nifty8.field.Field` inherits from
+    :class:`~nifty8.operators.operator.Operator`.
     """
     return isinstance(obj, Operator) and obj.val is None
 
@@ -621,8 +621,8 @@ def is_fieldlike(obj):
     ----
     A simple `isinstance(obj, ift.Field)` does not give the expected result
     because users might have implemented another class which behaves field-like
-    but is not an instance of :class:`~nifty7.field.Field`. Also note that
-    instances of :class:`~nifty7.linearization.Linearization` behave
+    but is not an instance of :class:`~nifty8.field.Field`. Also note that
+    instances of :class:`~nifty8.linearization.Linearization` behave
     field-like.
     """
     return isinstance(obj, Operator) and obj.val is not None

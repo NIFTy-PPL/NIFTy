@@ -21,7 +21,7 @@ from .domain import Domain
 
 
 class UnstructuredDomain(Domain):
-    """A :class:`~nifty7.domains.domain.Domain` subclass for spaces with no
+    """A :class:`~nifty8.domains.domain.Domain` subclass for spaces with no
     associated geometry.
 
     Typically used for data spaces.

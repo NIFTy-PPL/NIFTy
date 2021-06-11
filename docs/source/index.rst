@@ -33,4 +33,4 @@ Contents
    installation
    code
    citations
-   Package Documentation <mod/nifty7>
+   Package Documentation <mod/nifty8>

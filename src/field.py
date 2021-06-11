@@ -662,10 +662,10 @@ class Field(Operator):
         return np.sqrt(self.s_var())
 
     def __repr__(self):
-        return "<nifty7.Field>"
+        return "<nifty8.Field>"
 
     def __str__(self):
-        return "nifty7.Field instance\n- domain      = " + \
+        return "nifty8.Field instance\n- domain      = " + \
                self._domain.__str__() + \
                "\n- val         = " + repr(self._val)
 

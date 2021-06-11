@@ -44,11 +44,11 @@ def SimpleCorrelatedField(
     prefix="",
     harmonic_partner=None,
 ):
-    """Simplified version of :class:`~nifty7.library.correlated_fields.CorrelatedFieldMaker`.
+    """Simplified version of :class:`~nifty8.library.correlated_fields.CorrelatedFieldMaker`.
 
     Assumes `total_N = 0`, `dofdex = None` and the presence of only one power
     spectrum, i.e. only one call of
-    :func:`~nifty7.library.correlated_fields.CorrelatedFieldMaker.add_fluctuations`.
+    :func:`~nifty8.library.correlated_fields.CorrelatedFieldMaker.add_fluctuations`.
     """
     target = DomainTuple.make(target)
     if len(target) != 1:

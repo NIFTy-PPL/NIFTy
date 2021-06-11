@@ -95,7 +95,7 @@ class LikelihoodEnergyOperator(EnergyOperator):
     def get_metric_at(self, x):
         """Compute the Fisher information metric for a `LikelihoodEnergyOperator`
         at `x` using the Jacobian of the coordinate transformation given by
-        :func:`~nifty7.operators.operator.Operator.get_transformation`. """
+        :func:`~nifty8.operators.operator.Operator.get_transformation`. """
         dtp, f = self.get_transformation()
         ch = None
         if dtp is not None:

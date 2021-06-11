@@ -21,7 +21,7 @@ from copy import deepcopy
 import numpy as np
 from numpy.testing import assert_allclose
 
-import nifty7 as ift
+import nifty8 as ift
 
 
 class CountingOp(ift.Operator):

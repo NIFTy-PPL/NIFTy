@@ -36,7 +36,7 @@ Domains
 Abstract base class
 -------------------
 
-.. currentmodule:: nifty7.domains.domain
+.. currentmodule:: nifty8.domains.domain
 
 One of the fundamental building blocks of the NIFTy7 framework is the *domain*.
 Its required capabilities are expressed by the abstract :py:class:`Domain` class.
@@ -52,7 +52,7 @@ A domain must be able to answer the following queries:
 Unstructured domains
 --------------------
 
-.. currentmodule:: nifty7.domains.unstructured_domain
+.. currentmodule:: nifty8.domains.unstructured_domain
 
 Domains can be either *structured* (i.e. there is geometrical information
 associated with them, like position in space and volume factors),
@@ -65,7 +65,7 @@ Unstructured domains can be described by instances of NIFTy's
 Structured domains
 ------------------
 
-.. currentmodule:: nifty7.domains.structured_domain
+.. currentmodule:: nifty8.domains.structured_domain
 
 In contrast to unstructured domains, these domains have an assigned geometry.
 NIFTy requires them to provide the volume elements of their grid cells.
@@ -86,7 +86,7 @@ The additional methods are specified in the abstract class
 
 NIFTy comes with several concrete subclasses of :class:`StructuredDomain`:
 
-.. currentmodule:: nifty7.domains
+.. currentmodule:: nifty8.domains
 
 - :class:`~rg_space.RGSpace` represents a regular Cartesian grid with an arbitrary
   number of dimensions, which is supposed to be periodic in each dimension.
@@ -123,7 +123,7 @@ Some examples are:
   (on a harmonic domain) and a few inferred model parameters (e.g. on an
   unstructured grid).
 
-.. currentmodule:: nifty7
+.. currentmodule:: nifty8
 
 Consequently, NIFTy defines a class called :class:`~domain_tuple.DomainTuple`
 holding a sequence of :class:`~domains.domain.Domain` objects. The full domain is
@@ -228,7 +228,7 @@ Advanced operators
 NIFTy provides a library of commonly employed operators which can be used for
 specific inference problems. Currently these are:
 
-.. currentmodule:: nifty7.library
+.. currentmodule:: nifty8.library
 
 - :class:`~smooth_linear_amplitude.SLAmplitude`, which returns a smooth power spectrum.
 - :class:`~inverse_gamma_operator.InverseGammaOperator`, which models point sources which are
@@ -240,7 +240,7 @@ specific inference problems. Currently these are:
 Linear Operators
 ================
 
-.. currentmodule:: nifty7.operators
+.. currentmodule:: nifty8.operators
 
 A linear operator (represented by NIFTy7's abstract
 :class:`~linear_operator.LinearOperator` class) is derived from
@@ -282,7 +282,7 @@ This functionality is provided by NIFTy's
 :class:`~inversion_enabler.InversionEnabler` class, which is itself a linear
 operator.
 
-.. currentmodule:: nifty7.operators.operator
+.. currentmodule:: nifty8.operators.operator
 
 Direct multiplication and adjoint inverse multiplication transform a field
 defined on the operator's :attr:`~Operator.domain` to one defined on the
@@ -290,7 +290,7 @@ operator's :attr:`~Operator.target`, whereas adjoint multiplication and inverse
 multiplication transform from :attr:`~Operator.target` to
 :attr:`~Operator.domain`.
 
-.. currentmodule:: nifty7.operators
+.. currentmodule:: nifty8.operators
 
 Operators with identical domain and target can be derived from
 :class:`~endomorphic_operator.EndomorphicOperator`. Typical examples for this
@@ -299,7 +299,7 @@ multiplies its input by a scalar value, and
 :class:`~diagonal_operator.DiagonalOperator`, which multiplies every value of
 its input field with potentially different values.
 
-.. currentmodule:: nifty7
+.. currentmodule:: nifty8
 
 Further operator classes provided by NIFTy are
 
@@ -325,7 +325,7 @@ and ``f1`` and ``f2`` are of type :class:`~field.Field`, writing::
     X = A(B.inverse(A.adjoint)) + C
     f2 = X(f1)
 
-.. currentmodule:: nifty7.operators.linear_operator
+.. currentmodule:: nifty8.operators.linear_operator
 
 will perform the operation suggested intuitively by the notation, checking
 domain compatibility while building the composed operator.
@@ -349,7 +349,7 @@ Minimization
 Most problems in IFT are solved by (possibly nested) minimizations of
 high-dimensional functions, which are often nonlinear.
 
-.. currentmodule:: nifty7.minimization
+.. currentmodule:: nifty8.minimization
 
 Energy functionals
 ------------------
@@ -362,7 +362,7 @@ function's :attr:`~energy.Energy.value`, :attr:`~energy.Energy.gradient` and
 floating-point scalars, gradients have the form of fields defined on the energy's
 position domain, and metrics are represented by linear operator objects.
 
-.. currentmodule:: nifty7
+.. currentmodule:: nifty8
 
 Energies are classes that typically have to be provided by the user when
 tackling new IFT problems. An example of concrete energy classes delivered with
@@ -393,7 +393,7 @@ functional for MGVI and minimize it.
 Iteration control
 -----------------
 
-.. currentmodule:: nifty7.minimization.iteration_controllers
+.. currentmodule:: nifty8.minimization.iteration_controllers
 
 Iterative minimization of an energy requires some means of
 checking the quality of the current solution estimate and stopping once
@@ -417,7 +417,7 @@ in NIFTy can be found below, but users have complete freedom to implement custom
 Minimization algorithms
 -----------------------
 
-.. currentmodule:: nifty7.minimization
+.. currentmodule:: nifty8.minimization
 
 All minimization algorithms in NIFTy inherit from the abstract
 :class:`~minimizer.Minimizer` class, which presents a minimalistic interface
@@ -458,7 +458,7 @@ available under the names :class:`~scipy_minimizer.ScipyCG` and
 Application to operator inversion
 ---------------------------------
 
-.. currentmodule:: nifty7
+.. currentmodule:: nifty8
 
 The machinery presented here cannot only be used for minimizing functionals
 derived from IFT, but also for the numerical inversion of linear operators, if

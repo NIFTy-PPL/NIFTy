@@ -1,4 +1,4 @@
-import nifty7
+import nifty8
 
 extensions = [
     'sphinx.ext.napoleon',  # Support for NumPy and Google style docstrings
@@ -19,7 +19,7 @@ project = u'NIFTy7'
 copyright = u'2013-2021, Max-Planck-Society'
 author = u'Martin Reinecke'
 
-release = nifty7.version.__version__
+release = nifty8.version.__version__
 version = release[:-2]
 
 language = None
@@ -30,5 +30,5 @@ html_theme = "sphinx_rtd_theme"
 html_logo = 'nifty_logo_black.png'
 
 exclude_patterns = [
-    'mod/modules.rst', 'mod/nifty7.git_version.rst', 'mod/nifty7.logger.rst'
+    'mod/modules.rst', 'mod/nifty8.git_version.rst', 'mod/nifty8.logger.rst'
 ]

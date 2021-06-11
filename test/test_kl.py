@@ -19,8 +19,8 @@ import numpy as np
 import pytest
 from numpy.testing import assert_allclose, assert_raises
 
-import nifty7 as ift
-from nifty7 import myassert
+import nifty8 as ift
+from nifty8 import myassert
 
 from .common import setup_function, teardown_function
 

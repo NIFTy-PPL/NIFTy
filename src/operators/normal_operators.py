@@ -41,7 +41,7 @@ def NormalTransform(mean, sigma, key, N_copies=0):
     N_copies : integer
         If == 0, target will be a scalar field.
         If >= 1, target will be an
-        :class:`~nifty7.domains.unstructured_domain.UnstructuredDomain`.
+        :class:`~nifty8.domains.unstructured_domain.UnstructuredDomain`.
     """
     if N_copies == 0:
         domain = DomainTuple.scalar_domain()
@@ -71,7 +71,7 @@ def LognormalTransform(mean, sigma, key, N_copies):
     N_copies : integer
         If == 0, target will be a scalar field.
         If >= 1, target will be an
-        :class:`~nifty7.domains.unstructured_domain.UnstructuredDomain`.
+        :class:`~nifty8.domains.unstructured_domain.UnstructuredDomain`.
     """
     logmean, logsigma = lognormal_moments(mean, sigma, N_copies)
     return NormalTransform(logmean, logsigma, key, N_copies).ptw("exp")

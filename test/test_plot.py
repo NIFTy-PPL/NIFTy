@@ -19,7 +19,7 @@ from itertools import count
 
 import numpy as np
 
-import nifty7 as ift
+import nifty8 as ift
 
 from .common import setup_function, teardown_function
 

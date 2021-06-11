@@ -224,7 +224,7 @@ Thus, only the gradient of the KL is needed with respect to this, which can be e
 We stochastically estimate the KL-divergence and gradients with a set of samples drawn from the approximate posterior distribution.
 The particular structure of the covariance allows us to draw independent samples solving a certain system of equations.
 This KL-divergence for MGVI is implemented by
-:func:`~nifty7.minimization.kl_energies.MetricGaussianKL` within NIFTy7.
+:func:`~nifty8.minimization.kl_energies.MetricGaussianKL` within NIFTy7.
 
 Note that MGVI typically provides only a lower bound on the variance.
 
@@ -254,7 +254,7 @@ where :math:`\delta` denotes the Kronecker-delta.
 
 GeoVI obtains the optimal expansion point :math:`\bar{\xi}` such that :math:`\mathcal{Q}_{\bar{\xi}}` matches the posterior as good as possible.
 Analogous to the MGVI algorithm, :math:`\bar{\xi}` is obtained by minimization of the KL-divergence between :math:`\mathcal{P}` and :math:`\mathcal{Q}_{\bar{\xi}}` w.r.t. :math:`\bar{\xi}`.
-Furthermore the KL is represented as a stochastic estimate using a set of samples drawn from :math:`\mathcal{Q}_{\bar{\xi}}` which is implemented in NIFTy7 via :func:`~nifty7.minimization.kl_energies.GeoMetricKL`.
+Furthermore the KL is represented as a stochastic estimate using a set of samples drawn from :math:`\mathcal{Q}_{\bar{\xi}}` which is implemented in NIFTy7 via :func:`~nifty8.minimization.kl_energies.GeoMetricKL`.
 
 A visual comparison of the MGVI and GeoVI algorithm can be found in `variational_inference_visualized.py <https://gitlab.mpcdf.mpg.de/ift/nifty/-/blob/NIFTy_7/demos/variational_inference_visualized.py>`_.
 
