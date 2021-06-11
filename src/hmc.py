@@ -304,9 +304,9 @@ def extend_tree_iterative(key, initial_tree, depth, eps, go_right, stepper, pote
         else:
             # gets the number of candidate nodes
             l = count_trailing_ones(n)
-            i_max = bitcount(n-1)
-            i_min = i_max - l
-            for k in range(i_max, i_min, -1):
+            i_max_incl = bitcount(n-1)
+            i_min_incl = i_max_incl - l + 1
+            for k in range(i_max_incl, i_min_incl - 1 , -1):
                 if is_euclidean_uturn(S[k], z):
                     # TODO: what to return here? old tree or new tree but with turning set?
                     return initial_tree
