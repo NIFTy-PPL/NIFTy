@@ -256,6 +256,6 @@ GeoVI obtains the optimal expansion point :math:`\bar{\xi}` such that :math:`\ma
 Analogous to the MGVI algorithm, :math:`\bar{\xi}` is obtained by minimization of the KL-divergence between :math:`\mathcal{P}` and :math:`\mathcal{Q}_{\bar{\xi}}` w.r.t. :math:`\bar{\xi}`.
 Furthermore the KL is represented as a stochastic estimate using a set of samples drawn from :math:`\mathcal{Q}_{\bar{\xi}}` which is implemented in NIFTy7 via :func:`~nifty8.minimization.kl_energies.GeoMetricKL`.
 
-A visual comparison of the MGVI and GeoVI algorithm can be found in `variational_inference_visualized.py <https://gitlab.mpcdf.mpg.de/ift/nifty/-/blob/NIFTy_7/demos/variational_inference_visualized.py>`_.
+A visual comparison of the MGVI and GeoVI algorithm can be found in `variational_inference_visualized.py <https://gitlab.mpcdf.mpg.de/ift/nifty/-/blob/NIFTy_8/demos/variational_inference_visualized.py>`_.
 
 .. [6] P. Frank, R. Leike, and T.A. Enßlin (2021), "Geometric Variational Inference"; `[arXiv:2105.10470] <https://arxiv.org/abs/2105.10470>`_

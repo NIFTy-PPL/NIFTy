@@ -1,7 +1,7 @@
 NIFTy - Numerical Information Field Theory
 ==========================================
-[![pipeline status](https://gitlab.mpcdf.mpg.de/ift/nifty/badges/NIFTy_7/pipeline.svg)](https://gitlab.mpcdf.mpg.de/ift/nifty/-/commits/NIFTy_7)
-[![coverage report](https://gitlab.mpcdf.mpg.de/ift/nifty/badges/NIFTy_7/coverage.svg)](https://gitlab.mpcdf.mpg.de/ift/nifty/-/commits/NIFTy_7)
+[![pipeline status](https://gitlab.mpcdf.mpg.de/ift/nifty/badges/NIFTy_8/pipeline.svg)](https://gitlab.mpcdf.mpg.de/ift/nifty/-/commits/NIFTy_8)
+[![coverage report](https://gitlab.mpcdf.mpg.de/ift/nifty/badges/NIFTy_8/coverage.svg)](https://gitlab.mpcdf.mpg.de/ift/nifty/-/commits/NIFTy_8)
 
 **NIFTy** project homepage:
 [http://ift.pages.mpcdf.de/nifty](http://ift.pages.mpcdf.de/nifty)
@@ -56,10 +56,10 @@ Optional dependencies:
 
 ### Sources
 
-The current version of NIFTy7 can be obtained by cloning the repository and
-switching to the NIFTy_7 branch:
+The current version of NIFTy8 can be obtained by cloning the repository and
+switching to the NIFTy_8 branch:
 
-    git clone https://gitlab.mpcdf.mpg.de/ift/nifty.git
+    git clone -b NIFTy_8 https://gitlab.mpcdf.mpg.de/ift/nifty.git
 
 ### Installation
 
@@ -69,7 +69,7 @@ distributions, the "apt" lines will need slight changes.
 NIFTy7 and its mandatory dependencies can be installed via:
 
     sudo apt-get install git python3 python3-pip python3-dev
-    pip3 install --user git+https://gitlab.mpcdf.mpg.de/ift/nifty.git@NIFTy_7
+    pip3 install --user git+https://gitlab.mpcdf.mpg.de/ift/nifty.git@NIFTy_8
 
 Plotting support is added via:
 
