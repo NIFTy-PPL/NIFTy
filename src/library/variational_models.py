@@ -107,6 +107,10 @@ class MeanFieldVI:
     def entropy(self):
         return self._entropy.force(self._KL.position)
 
+    @property
+    def KL(self):
+        return self._KL
+
     def draw_sample(self):
         _, op = self._generator.simplify_for_constant_input(
                 from_random(self._samdom))
@@ -196,6 +200,10 @@ class FullCovarianceVI:
     @property
     def entropy(self):
         return self._entropy.force(self._KL.position)
+
+    @property
+    def KL(self):
+        return self._KL
 
     def draw_sample(self):
         _, op = self._generator.simplify_for_constant_input(

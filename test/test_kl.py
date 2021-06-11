@@ -115,19 +115,25 @@ def test_ParametricVI(mirror_samples, fc):
     ic.enable_logging()
     h = ift.StandardHamiltonian(lh, ic_samp=ic)
     initial_mean = ift.from_random(h.domain, 'normal')
-    nsamps = 1000
+    nsamps = 10
     args = initial_mean, h, nsamps, mirror_samples, 0.01
     model = (ift.FullCovarianceVI if fc else ift.MeanFieldVI)(*args)
-    kl = model._KL
+    kl = model.KL
     expected_nsamps = 2*nsamps if mirror_samples else nsamps
     myassert(len(tuple(kl._local_ops)) == expected_nsamps)
 
     true_val = []
     for i in range(expected_nsamps):
-        lat_rnd = ift.from_random(model._KL._op.domain['latent'])
+        lat_rnd = ift.from_random(model.KL._op.domain['latent'])
         samp = kl.position.to_dict()
         samp['latent'] = lat_rnd
         samp = ift.MultiField.from_dict(samp)
-        true_val.append(model._KL._op(samp))
+        true_val.append(model.KL._op(samp))
     true_val = sum(true_val)/expected_nsamps
     assert_allclose(true_val.val, kl.value, rtol=0.1)
+
+    samples = model.KL.samples()
+    ift.random.current_rng().integers(0, 100)
+    samples1 = model.KL.samples()
+    for aa, bb in zip(samples, samples1):
+        ift.extra.assert_allclose(aa, bb)
