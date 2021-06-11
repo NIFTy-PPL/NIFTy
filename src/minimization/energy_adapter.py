@@ -202,8 +202,8 @@ class StochasticEnergyAdapter(Energy):
                 raise ValueError
             samdom[k] = op.domain[k]
         samdom = MultiDomain.make(samdom)
-        sseq = random.spawn_sseq(n_samples)
-        context = op, position, sseq, comm, n_samples, mirror_samples, samdom
+        seed = int(random.current_rng().integers(0, 1000000))
+        context = op, position, seed, comm, n_samples, mirror_samples, samdom
         noise = cls._draw_noise(*context)
         local_ops = [op.simplify_for_constant_input(nn)[1] for nn in noise]
         n_samples = 2*n_samples if mirror_samples else n_samples
@@ -211,8 +211,10 @@ class StochasticEnergyAdapter(Energy):
                      n_samples, comm, nanisinf, context, _callingfrommake=True)
 
     @staticmethod
-    def _draw_noise(op, position, sseq, comm, n_samples, mirror_samples, sample_domain):
+    def _draw_noise(op, position, seed, comm, n_samples, mirror_samples, sample_domain):
         from .kl_energies import _get_lo_hi
+        with random.Context(seed):
+            sseq = random.spawn_sseq(n_samples)
         noise = []
         for i in range(*_get_lo_hi(comm, n_samples)):
             with random.Context(sseq[i]):
@@ -220,6 +222,7 @@ class StochasticEnergyAdapter(Energy):
                 noise.append(rnd)
                 if mirror_samples:
                     noise.append(-rnd)
+
         return noise
 
     def samples(self):
