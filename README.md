@@ -146,6 +146,9 @@ turned off by the user (`python -O` in cPython). As an alternative use
 Contributors
 ------------
 
+### NIFTy8
+
+
 ### NIFTy7
 
 - Andrija Kostic
