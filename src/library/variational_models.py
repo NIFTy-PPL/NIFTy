@@ -225,11 +225,11 @@ class GaussianEntropy(EnergyOperator):
     def apply(self, x):
         self._check_input(x)
         if isinstance(x, Field):
-             if not (np.issubdtype(x.dtype, np.floating)):
+             if not np.issubdtype(x.dtype, np.floating):
                  raise NotImplementedError("only real fields are allowed")
         if isinstance(x, MultiField):
              for key in x.keys():
-                 if not (np.issubdtype(x[key].dtype, np.floating)):
+                 if not np.issubdtype(x[key].dtype, np.floating):
                      raise NotImplementedError("only real fields are allowed")
         res = (x*x).scale(2*np.pi*np.e).log().sum().scale(-0.5)
         if not isinstance(x, Linearization):
