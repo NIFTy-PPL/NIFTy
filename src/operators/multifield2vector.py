@@ -17,6 +17,7 @@
 
 import numpy as np
 
+from ..multi_domain import MultiDomain
 from ..domain_tuple import DomainTuple
 from ..domains.unstructured_domain import UnstructuredDomain
 from ..sugar import makeField
@@ -38,6 +39,8 @@ class Multifield2Vector(LinearOperator):
     """
 
     def __init__(self, domain):
+        if not isinstance(domain, MultiDomain):
+            raise NotImplementedError("This operator only works on MultiDomains")
         self._dof = domain.size
         self._domain = domain
         self._target = DomainTuple.make(UnstructuredDomain(self._dof))
@@ -50,13 +53,13 @@ class Multifield2Vector(LinearOperator):
         if mode == self.TIMES:
             res = np.empty(self.target.shape)
             for key in self.domain.keys():
-                if not (np.issubdtype(x[key].dtype, np.floating)):
+                if not np.issubdtype(x[key].dtype, np.floating):
                     raise NotImplementedError("only real fields are allowed")
                 arr = x[key].flatten()
                 res[ii:ii + arr.size] = arr
                 ii += arr.size
         else:
-            if not (np.issubdtype(x.dtype, np.floating)):
+            if not np.issubdtype(x.dtype, np.floating):
                 raise NotImplementedError("only real fields are allowed")
             res = {}
             for key in self.domain.keys():
