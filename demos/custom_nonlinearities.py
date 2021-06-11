@@ -19,15 +19,15 @@ import numpy as np
 
 # In NIFTy, users can add hand-crafted point-wise nonlinearities that are then
 # available for `Field`, `MultiField`, `Linearization` and `Operator`. This
-# guide shows an example how this is done.
+# guide illustrates how this is done.
 
-# Suppose, we would like to use the function f(x) = x*exp(x) point-wise in an
-# operator chain. This function is called "myptw" in the following. We
+# Suppose that we would like to use the point-wise function f(x) = x*exp(x) in
+# an operator chain. This function is called "myptw" in the following. We
 # introduce this function to NIFTy by implementing two functions.
 
 # First, one that takes a `numpy.ndarray` as an input, applies the point-wise
-# mapping and returns the result as a `numpy.ndarray` (of the same shape).
-# Second, a function that takes an `numpy.ndarray` as an input and returns two
+# mapping and returns the result as a `numpy.ndarray` of the same shape.
+# Second, a function that takes a `numpy.ndarray` as an input and returns two
 # `numpy.ndarray`s: the application of the nonlinearity (same as before) and
 # the derivative.
 
