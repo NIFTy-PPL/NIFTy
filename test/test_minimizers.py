@@ -11,7 +11,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
-# Copyright(C) 2013-2019 Max-Planck-Society
+# Copyright(C) 2013-2021 Max-Planck-Society
 #
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
 
@@ -25,7 +25,7 @@ from .common import setup_function, teardown_function
 
 pmp = pytest.mark.parametrize
 IC = ift.GradientNormController(tol_abs_gradnorm=1e-5, iteration_limit=1000)
-
+SIC = ift.StochasticAbsDeltaEnergyController(1e-8, iteration_limit=100000)
 spaces = [ift.RGSpace([1024], distances=0.123), ift.HPSpace(32)]
 
 minimizers = [
@@ -44,7 +44,7 @@ quadratic_only_minimizers = [
     'ift.ConjugateGradient(IC)',
     'ift.minimization.scipy_minimizer._ScipyCG(tol=1e-5, maxiter=300)'
 ]
-slow_minimizers = ['ift.SteepestDescent(IC)']
+slow_minimizers = ['ift.SteepestDescent(IC)', 'ift.ADVIOptimizer(SIC, resample=False)']
 
 
 @pmp('minimizer', minimizers + newton_minimizers + quadratic_only_minimizers +

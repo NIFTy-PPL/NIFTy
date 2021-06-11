@@ -53,6 +53,7 @@ from .operators.energy_operators import (
     Squared2NormOperator, StudentTEnergy, VariableCovarianceGaussianEnergy)
 from .operators.convolution_operators import FuncConvolutionOperator
 from .operators.normal_operators import NormalTransform, LognormalTransform
+from .operators.multifield2vector import Multifield2Vector
 
 from .probing import probe_with_posterior_samples, probe_diagonal, \
     StatCalculator, approximation2endo
@@ -60,17 +61,18 @@ from .probing import probe_with_posterior_samples, probe_diagonal, \
 from .minimization.line_search import LineSearch
 from .minimization.iteration_controllers import (
     IterationController, GradientNormController, DeltaEnergyController,
-    GradInfNormController, AbsDeltaEnergyController)
+    GradInfNormController, AbsDeltaEnergyController, StochasticAbsDeltaEnergyController)
 from .minimization.minimizer import Minimizer
 from .minimization.conjugate_gradient import ConjugateGradient
 from .minimization.nonlinear_cg import NonlinearCG
 from .minimization.descent_minimizers import (
     DescentMinimizer, SteepestDescent, VL_BFGS, L_BFGS, RelaxedNewton,
     NewtonCG)
+from .minimization.stochastic_minimizer import ADVIOptimizer
 from .minimization.scipy_minimizer import L_BFGS_B
 from .minimization.energy import Energy
 from .minimization.quadratic_energy import QuadraticEnergy
-from .minimization.energy_adapter import EnergyAdapter
+from .minimization.energy_adapter import EnergyAdapter, StochasticEnergyAdapter
 from .minimization.kl_energies import MetricGaussianKL, GeoMetricKL
 
 from .sugar import *
@@ -90,6 +92,7 @@ from .library.adjust_variances import (make_adjust_variances_hamiltonian,
 from .library.nft import Gridder, FinuFFT
 from .library.correlated_fields import CorrelatedFieldMaker
 from .library.correlated_fields_simple import SimpleCorrelatedField
+from .library.variational_models import MeanFieldVI, FullCovarianceVI
 
 from . import extra
 

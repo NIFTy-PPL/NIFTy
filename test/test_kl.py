@@ -11,7 +11,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
-# Copyright(C) 2013-2020 Max-Planck-Society
+# Copyright(C) 2013-2021 Max-Planck-Society
 #
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
 
@@ -103,3 +103,37 @@ def test_kl(constants, point_estimates, mirror_samples, mf, geo):
         else:
             res0 = klpure.gradient[kk].val
         assert_allclose(res0, res1)
+
+@pmp('mirror_samples', (True, False))
+@pmp('fc',(True, False))
+def test_ParametricVI(mirror_samples, fc):
+    dom = ift.RGSpace((12,), (2.12))
+    op = ift.HarmonicSmoothingOperator(dom, 3)
+    op = ift.ducktape(dom, None, 'a')*(op.ducktape('b'))
+    lh = ift.GaussianEnergy(domain=op.target, sampling_dtype=np.float64) @ op
+    ic = ift.GradientNormController(iteration_limit=5)
+    ic.enable_logging()
+    h = ift.StandardHamiltonian(lh, ic_samp=ic)
+    initial_mean = ift.from_random(h.domain, 'normal')
+    nsamps = 10
+    args = initial_mean, h, nsamps, mirror_samples, 0.01
+    model = (ift.FullCovarianceVI if fc else ift.MeanFieldVI)(*args)
+    kl = model.KL
+    expected_nsamps = 2*nsamps if mirror_samples else nsamps
+    myassert(len(tuple(kl._local_ops)) == expected_nsamps)
+
+    true_val = []
+    for i in range(expected_nsamps):
+        lat_rnd = ift.from_random(model.KL._op.domain['latent'])
+        samp = kl.position.to_dict()
+        samp['latent'] = lat_rnd
+        samp = ift.MultiField.from_dict(samp)
+        true_val.append(model.KL._op(samp))
+    true_val = sum(true_val)/expected_nsamps
+    assert_allclose(true_val.val, kl.value, rtol=0.1)
+
+    samples = model.KL.samples()
+    ift.random.current_rng().integers(0, 100)
+    samples1 = model.KL.samples()
+    for aa, bb in zip(samples, samples1):
+        ift.extra.assert_allclose(aa, bb)

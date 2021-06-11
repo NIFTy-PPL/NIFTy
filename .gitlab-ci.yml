@@ -148,6 +148,11 @@ run_visual_vi:
   script:
     - python3 demos/variational_inference_visualized.py
 
+run_meanfield:
+  stage: demo_runs
+  script:
+    - python3 demos/parametric_variational_inference.py
+
 run_nonlinearity_guide:
   stage: demo_runs
   script:

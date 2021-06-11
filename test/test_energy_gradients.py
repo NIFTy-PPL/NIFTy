@@ -11,14 +11,13 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
-# Copyright(C) 2013-2020 Max-Planck-Society
+# Copyright(C) 2013-2021 Max-Planck-Society
 #
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
 
+import nifty7 as ift
 import numpy as np
 import pytest
-
-import nifty7 as ift
 
 from .common import list2fixture, setup_function, teardown_function
 
@@ -59,7 +58,7 @@ def test_QuadraticFormOperator(field):
 
 def test_studentt(field):
     if isinstance(field.domain, ift.MultiDomain):
-        return
+        pytest.skip()
     energy = ift.StudentTEnergy(domain=field.domain, theta=.5)
     ift.extra.check_operator(energy, field)
     theta = ift.from_random(field.domain, 'normal').exp()
@@ -80,7 +79,7 @@ def test_hamiltonian_and_KL(field):
 
 def test_variablecovariancegaussian(field):
     if isinstance(field.domain, ift.MultiDomain):
-        return
+        pytest.skip()
     dc = {'a': field, 'b': field.ptw("exp")}
     mf = ift.MultiField.from_dict(dc)
     energy = ift.VariableCovarianceGaussianEnergy(field.domain, 'a', 'b', np.float64)
@@ -90,7 +89,7 @@ def test_variablecovariancegaussian(field):
 
 def test_specialgamma(field):
     if isinstance(field.domain, ift.MultiDomain):
-        return
+        pytest.skip()
     energy = ift.operators.energy_operators._SpecialGammaEnergy(field)
     loc = ift.from_random(energy.domain).exp()
     ift.extra.check_operator(energy, loc, ntries=ntries)
@@ -99,7 +98,7 @@ def test_specialgamma(field):
 
 def test_inverse_gamma(field):
     if isinstance(field.domain, ift.MultiDomain):
-        return
+        pytest.skip()
     field = field.ptw("exp")
     space = field.domain
     d = ift.random.current_rng().normal(10, size=space.shape)**2
@@ -110,7 +109,7 @@ def test_inverse_gamma(field):
 
 def testPoissonian(field):
     if isinstance(field.domain, ift.MultiDomain):
-        return
+        pytest.skip()
     field = field.ptw("exp")
     space = field.domain
     d = ift.random.current_rng().poisson(120, size=space.shape)
@@ -121,10 +120,18 @@ def testPoissonian(field):
 
 def test_bernoulli(field):
     if isinstance(field.domain, ift.MultiDomain):
-        return
+        pytest.skip()
     field = field.ptw("sigmoid")
     space = field.domain
     d = ift.random.current_rng().binomial(1, 0.1, size=space.shape)
     d = ift.Field(space, d)
     energy = ift.BernoulliEnergy(d)
     ift.extra.check_operator(energy, field, tol=1e-10)
+
+
+def test_gaussian_entropy(field):
+    if isinstance(field.domain, ift.MultiDomain):
+        pytest.skip()
+    field = field.ptw("sigmoid")
+    energy = ift.library.variational_models.GaussianEntropy(field.domain)
+    ift.extra.check_operator(energy, field)

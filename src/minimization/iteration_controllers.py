@@ -11,7 +11,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
-# Copyright(C) 2013-2020 Max-Planck-Society
+# Copyright(C) 2013-2021 Max-Planck-Society
 #
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
 
@@ -398,6 +398,84 @@ class AbsDeltaEnergyController(IterationController):
             if diff < self._deltaE:
                 inclvl = True
         self._Eold = Eval
+        if inclvl:
+            self._ccount += 1
+        else:
+            self._ccount = max(0, self._ccount-1)
+
+        # report
+        if self._name is not None:
+            logger.info(
+                "{}: Iteration #{} energy={:.6E} diff={:.6E} crit={:.1E} clvl={}"
+                .format(self._name, self._itcount, Eval, diff, self._deltaE,
+                        self._ccount))
+
+        # Are we done?
+        if self._iteration_limit is not None:
+            if self._itcount >= self._iteration_limit:
+                logger.warning(
+                    "{} Iteration limit reached. Assuming convergence"
+                    .format("" if self._name is None else self._name+": "))
+                return self.CONVERGED
+        if self._ccount >= self._convergence_level:
+            return self.CONVERGED
+
+        return self.CONTINUE
+
+
+class StochasticAbsDeltaEnergyController(IterationController):
+    """Check the standard deviation over a period of iterations.
+
+    Convergence is reported once this quantity falls below the given threshold.
+
+
+    Parameters
+    ----------
+    deltaE : float
+        If the standard deviation of the last energies is below this
+        value, the convergence counter will be increased in this iteration.
+    convergence_level : int, optional
+        The number which the convergence counter must reach before the
+        iteration is considered to be converged. Defaults to 1.
+    iteration_limit : int, optional
+        The maximum number of iterations that will be carried out.
+    name : str, optional
+        If supplied, this string and some diagnostic information will be
+        printed after every iteration.
+    memory_length : int, optional
+        The number of last energies considered for determining convergence,
+        defaults to 10.
+    """
+
+    def __init__(self, deltaE, convergence_level=1, iteration_limit=None,
+                 name=None, memory_length=10):
+        super(StochasticAbsDeltaEnergyController, self).__init__()
+        self._deltaE = deltaE
+        self._convergence_level = convergence_level
+        self._iteration_limit = iteration_limit
+        self._name = name
+        self.memory_length = memory_length
+
+    @append_history
+    def start(self, energy):
+        self._itcount = -1
+        self._ccount = 0
+        self._memory = []
+        return self.check(energy)
+
+    @append_history
+    def check(self, energy):
+        self._itcount += 1
+
+        inclvl = False
+        Eval = energy.value
+        self._memory.append(Eval)
+        if len(self._memory) > self.memory_length:
+            self._memory = self._memory[1:]
+        diff = np.std(self._memory)
+        if self._itcount > 0:
+            if diff < self._deltaE:
+                inclvl = True
         if inclvl:
             self._ccount += 1
         else:

@@ -405,6 +405,11 @@ class Field(Operator):
 
             return Field(DomainTuple.make(return_domain), data)
 
+    def scale(self, factor):
+        if factor == 1:
+            return self
+        return factor*self
+
     def sum(self, spaces=None):
         """Sums up over the sub-domains given by `spaces`.
 
