@@ -15,11 +15,12 @@
 #
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
 
-import nifty7 as ift
 import numpy as np
 import pytest
-from nifty7.library.variational_models import GaussianEntropy
 from numpy.testing import assert_allclose
+
+import nifty7 as ift
+from nifty7.library.variational_models import GaussianEntropy
 
 from ..common import list2fixture, setup_function, teardown_function
 

@@ -356,8 +356,8 @@ class Linearization(Operator):
         The Jacobian has an empty input domain, i.e. its matrix representation
         has 0 columns.
         """
-        from .operators.simple_linear_operators import NullOperator
         from .multi_domain import MultiDomain
+        from .operators.simple_linear_operators import NullOperator
         return Linearization(
             field, NullOperator(MultiDomain.make({}), field.domain),
             want_metric=want_metric)
@@ -387,8 +387,8 @@ class Linearization(Operator):
         -----
         The Jacobian is square.
         """
-        from .operators.scaling_operator import ScalingOperator
         from .operators.block_diagonal_operator import BlockDiagonalOperator
+        from .operators.scaling_operator import ScalingOperator
         if len(constants) == 0:
             return Linearization.make_var(field, want_metric)
         else:

@@ -14,14 +14,14 @@
 # Copyright(C) 2021 Max-Planck-Society
 # Author: Philipp Arras
 
+from time import time
+
 import numpy as np
 import pytest
 
 import nifty7 as ift
-from time import time
 
 from .common import list2fixture, setup_function, teardown_function
-
 
 pmp = pytest.mark.parametrize
 

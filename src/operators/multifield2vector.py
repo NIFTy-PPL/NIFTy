@@ -17,9 +17,9 @@
 
 import numpy as np
 
-from ..multi_domain import MultiDomain
 from ..domain_tuple import DomainTuple
 from ..domains.unstructured_domain import UnstructuredDomain
+from ..multi_domain import MultiDomain
 from ..sugar import makeField
 from .linear_operator import LinearOperator
 

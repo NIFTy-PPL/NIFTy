@@ -29,9 +29,9 @@
 ###############################################################################
 
 import numpy as np
+from matplotlib import pyplot as plt
 
 import nifty7 as ift
-from matplotlib import pyplot as plt
 
 ift.random.push_sseq_from_seed(27)
 

@@ -46,8 +46,8 @@ class SumOperator(LinearOperator):
 
     @staticmethod
     def simplify(ops, neg):
-        from .scaling_operator import ScalingOperator
         from .diagonal_operator import DiagonalOperator
+        from .scaling_operator import ScalingOperator
 
         # unpack SumOperators
         opsnew = []

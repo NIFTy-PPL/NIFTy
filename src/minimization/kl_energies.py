@@ -16,28 +16,28 @@
 #
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
 
-import numpy as np
 from functools import reduce
 
-from .. import random
-from .. import utilities
+import numpy as np
+
+from .. import random, utilities
 from ..domain_tuple import DomainTuple
 from ..linearization import Linearization
 from ..multi_field import MultiField
-from ..operators.inversion_enabler import InversionEnabler
+from ..operators.adder import Adder
 from ..operators.endomorphic_operator import EndomorphicOperator
-from ..operators.energy_operators import StandardHamiltonian, GaussianEnergy
-from ..operators.sandwich_operator import SandwichOperator
+from ..operators.energy_operators import GaussianEnergy, StandardHamiltonian
+from ..operators.inversion_enabler import InversionEnabler
 from ..operators.sampling_enabler import SamplingDtypeSetter
+from ..operators.sandwich_operator import SandwichOperator
 from ..operators.scaling_operator import ScalingOperator
-from .energy_adapter import EnergyAdapter
-from .quadratic_energy import QuadraticEnergy
 from ..probing import approximation2endo
 from ..sugar import makeOp
-from ..operators.adder import Adder
 from ..utilities import myassert
+from .descent_minimizers import ConjugateGradient, DescentMinimizer
 from .energy import Energy
-from .descent_minimizers import DescentMinimizer, ConjugateGradient
+from .energy_adapter import EnergyAdapter
+from .quadratic_energy import QuadraticEnergy
 
 
 def _get_lo_hi(comm, n_samples):
@@ -48,9 +48,9 @@ def _get_lo_hi(comm, n_samples):
 def _modify_sample_domain(sample, domain):
     """Takes only keys from sample which are also in domain and inserts zeros
     for keys which are not in sample.domain."""
-    from ..multi_domain import MultiDomain
-    from ..field import Field
     from ..domain_tuple import DomainTuple
+    from ..field import Field
+    from ..multi_domain import MultiDomain
     from ..sugar import makeDomain
     domain = makeDomain(domain)
     if isinstance(domain, DomainTuple) and isinstance(sample, Field):

@@ -206,8 +206,8 @@ def _register_cmaps():
     except AttributeError:
         _register_cmaps._cmaps_registered = True
 
-    from matplotlib.colors import LinearSegmentedColormap
     import matplotlib.pyplot as plt
+    from matplotlib.colors import LinearSegmentedColormap
     planckcmap = {'red':   ((0., 0., 0.), (.4, 0., 0.), (.5, 1., 1.),
                             (.7, 1., 1.), (.8, .83, .83), (.9, .67, .67),
                             (1., .5, .5)),

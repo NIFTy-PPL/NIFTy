@@ -32,8 +32,8 @@ from .operators.diagonal_operator import DiagonalOperator
 from .operators.distributors import PowerDistributor
 from .operators.operator import Operator
 from .operators.sampling_enabler import SamplingDtypeSetter
-from .operators.selection_operators import SliceOperator
 from .operators.scaling_operator import ScalingOperator
+from .operators.selection_operators import SliceOperator
 from .plot import Plot
 
 __all__ = ['PS_field', 'power_analyze', 'create_power_operator',
@@ -473,10 +473,10 @@ def get_default_codomain(domainoid, space=None):
         Optional index of the subdomain to be replaced by its default
         codomain. `domain[space]` must be of class `RGSpace`.
     """
-    from .domains.rg_space import RGSpace
-    from .domains.hp_space import HPSpace
     from .domains.gl_space import GLSpace
+    from .domains.hp_space import HPSpace
     from .domains.lm_space import LMSpace
+    from .domains.rg_space import RGSpace
     if isinstance(domainoid, RGSpace):
         return domainoid.get_default_codomain()
     if not isinstance(domainoid, DomainTuple):
@@ -558,8 +558,8 @@ def calculate_position(operator, output):
     from .minimization.descent_minimizers import NewtonCG
     from .minimization.iteration_controllers import GradientNormController
     from .minimization.kl_energies import MetricGaussianKL
-    from .operators.scaling_operator import ScalingOperator
     from .operators.energy_operators import GaussianEnergy, StandardHamiltonian
+    from .operators.scaling_operator import ScalingOperator
     if not isinstance(operator, Operator):
         raise TypeError
     if output.domain != operator.target:
