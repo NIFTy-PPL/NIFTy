@@ -308,10 +308,10 @@ def extend_tree_iterative(key, initial_tree, depth, eps, go_right, stepper, pote
             i_min_incl = i_max_incl - l + 1
             ks_to_check_against = np.arange(i_min_incl, i_max_incl + 1)[::-1]
             assert(len(ks_to_check_against) == l)
-            for k in ks_to_check_against:
-                if is_euclidean_uturn(S[k], z):
-                    # TODO: what to return here? old tree or new tree but with turning set?
-                    return initial_tree
+            contains_uturn = lax.map(lambda k: is_euclidean_uturn(S[k], z), ks_to_check_against)
+            if contains_uturn.any():
+                # TODO: what to return here? old tree or new tree but with turning set?
+                return initial_tree
     key, subkey = random.split(key)
     new_subtree = make_tree_from_list(subkey, chosen, go_right, potential_energy, kinetic_energy, False)
     return merge_trees(key, initial_tree, new_subtree, go_right, False)
