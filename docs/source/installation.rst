@@ -5,7 +5,7 @@ Installation
 In the following, we assume a Debian-based Linux distribution. For other
 distributions, the "apt" lines will need slight changes.
 
-NIFTy7 and its mandatory dependencies can be installed via::
+NIFTy8 and its mandatory dependencies can be installed via::
 
     sudo apt-get install git python3 python3-pip python3-dev
     pip3 install --user git+https://gitlab.mpcdf.mpg.de/ift/nifty.git@NIFTy_8
