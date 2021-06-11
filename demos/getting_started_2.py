@@ -11,7 +11,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
-# Copyright(C) 2013-2020 Max-Planck-Society
+# Copyright(C) 2013-2021 Max-Planck-Society
 #
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
 
@@ -85,14 +85,14 @@ def main():
     # Define instrumental response
     R = GR(M)
 
-    # Generate mock data and define likelihood operator
+    # Generate mock data and define likelihood energy operator
     d_space = R.target[0]
     lamb = R(sky)
     mock_position = ift.from_random(domain, 'normal')
     data = lamb(mock_position)
     data = ift.random.current_rng().poisson(data.val.astype(np.float64))
     data = ift.Field.from_raw(d_space, data)
-    likelihood = ift.PoissonianEnergy(data) @ lamb
+    likelihood_energy = ift.PoissonianEnergy(data) @ lamb
 
     # Settings for minimization
     ic_newton = ift.DeltaEnergyController(
@@ -100,7 +100,7 @@ def main():
     minimizer = ift.NewtonCG(ic_newton)
 
     # Compute MAP solution by minimizing the information Hamiltonian
-    H = ift.StandardHamiltonian(likelihood)
+    H = ift.StandardHamiltonian(likelihood_energy)
     initial_position = ift.from_random(domain, 'normal')
     H = ift.EnergyAdapter(initial_position, H, want_metric=True)
     H, convergence = minimizer(H)

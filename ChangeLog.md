@@ -82,14 +82,15 @@ comparison to MGVI can be found in `demos/variational_inference_visualized.py`.
 For further details see (<https://arxiv.org/abs/2105.10470>).
 
 
-LikelihoodOperator
-------------------
+LikelihoodEnergyOperator
+------------------------
 
-A new subclass of `EnergyOperator` was introduced and all `EnergyOperator`s
-that are likelihoods are now `LikelihoodOperator`s. A `LikelihoodOperator`
-has to implement the function `get_transformation`, which returns a
-coordinate transformation in which the Fisher metric of the likelihood becomes
-the identity matrix. This is needed for the `GeoMetricKL` algorithm.
+A new subclass of `EnergyOperator` was introduced and all `EnergyOperator`s that
+are likelihoods are now `LikelihoodEnergyOperator`s. A
+`LikelihoodEnergyOperator` has to implement the function `get_transformation`,
+which returns a coordinate transformation in which the Fisher metric of the
+likelihood becomes the identity matrix. This is needed for the `GeoMetricKL`
+algorithm.
 
 
 Changes since NIFTy 5

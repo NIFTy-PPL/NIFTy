@@ -11,7 +11,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
-# Copyright(C) 2013-2020 Max-Planck-Society
+# Copyright(C) 2013-2021 Max-Planck-Society
 #
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
 
@@ -64,16 +64,16 @@ def main():
     data = ift.random.current_rng().binomial(1, tmp)
     data = ift.Field.from_raw(R.target, data)
 
-    # Compute likelihood and Hamiltonian
+    # Compute likelihood energy and Hamiltonian
     position = ift.from_random(harmonic_space, 'normal')
-    likelihood = ift.BernoulliEnergy(data) @ p
+    likelihood_energy = ift.BernoulliEnergy(data) @ p
     ic_newton = ift.DeltaEnergyController(
         name='Newton', iteration_limit=100, tol_rel_deltaE=1e-8)
     minimizer = ift.NewtonCG(ic_newton)
     ic_sampling = ift.GradientNormController(iteration_limit=100)
 
     # Minimize the Hamiltonian
-    H = ift.StandardHamiltonian(likelihood, ic_sampling)
+    H = ift.StandardHamiltonian(likelihood_energy, ic_sampling)
     H = ift.EnergyAdapter(position, H, want_metric=True)
     # minimizer = ift.L_BFGS(ic_newton)
     H, convergence = minimizer(H)

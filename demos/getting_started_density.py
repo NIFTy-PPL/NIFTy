@@ -84,9 +84,9 @@ if __name__ == "__main__":
     # Number of samples used to estimate the KL
     n_samples = 5
 
-    # Set up likelihood and information Hamiltonian
-    likelihood = ift.PoissonianEnergy(data) @ signal
-    ham = ift.StandardHamiltonian(likelihood, ic_sampling)
+    # Set up likelihood energy and information Hamiltonian
+    likelihood_energy = ift.PoissonianEnergy(data) @ signal
+    ham = ift.StandardHamiltonian(likelihood_energy, ic_sampling)
 
     # Start minimization
     initial_mean = ift.MultiField.full(ham.domain, 0.)

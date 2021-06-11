@@ -11,13 +11,13 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
-# Copyright(C) 2013-2019 Max-Planck-Society
+# Copyright(C) 2013-2021 Max-Planck-Society
 #
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
 
 from ..minimization.energy_adapter import EnergyAdapter
 from ..multi_field import MultiField
-from ..operators.energy_operators import (InverseGammaLikelihood,
+from ..operators.energy_operators import (InverseGammaEnergy,
                                           StandardHamiltonian)
 from ..operators.scaling_operator import ScalingOperator
 from ..operators.simple_linear_operators import ducktape
@@ -74,7 +74,7 @@ def make_adjust_variances_hamiltonian(a,
     if scaling is not None:
         x = ScalingOperator(x.target, scaling)(x)
 
-    return StandardHamiltonian(InverseGammaLikelihood(d_eval/2.)(x),
+    return StandardHamiltonian(InverseGammaEnergy(d_eval/2.)(x),
                                ic_samp=ic_samp)
 
 

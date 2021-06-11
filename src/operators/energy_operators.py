@@ -83,19 +83,19 @@ class EnergyOperator(Operator):
     _target = DomainTuple.scalar_domain()
 
 
-class LikelihoodOperator(EnergyOperator):
-    """Represent a log-likelihood.
+class LikelihoodEnergyOperator(EnergyOperator):
+    """Represent a negative log-likelihood.
 
-    The input to the Operator are the parameters of the likelihood. Unlike a
-    general `EnergyOperator`, the metric of a `LikelihoodOperator` is the
-    Fisher information metric of the likelihood.
+    The input to the Operator are the parameters of the negative log-likelihood.
+    Unlike a general `EnergyOperator`, the metric of a
+    `LikelihoodEnergyOperator` is the Fisher information metric of the
+    likelihood.
     """
 
     def get_metric_at(self, x):
-        """Computes the Fisher information metric for a `LikelihoodOperator`
+        """Compute the Fisher information metric for a `LikelihoodEnergyOperator`
         at `x` using the Jacobian of the coordinate transformation given by
-        :func:`~nifty7.operators.operator.Operator.get_transformation`.
-        """
+        :func:`~nifty7.operators.operator.Operator.get_transformation`. """
         dtp, f = self.get_transformation()
         ch = None
         if dtp is not None:
@@ -152,7 +152,7 @@ class QuadraticFormOperator(EnergyOperator):
         return x.new(res, VdotOperator(self._op(x.val)))
 
 
-class VariableCovarianceGaussianEnergy(LikelihoodOperator):
+class VariableCovarianceGaussianEnergy(LikelihoodEnergyOperator):
     """Computes the negative log pdf of a Gaussian with unknown covariance.
 
     The covariance is assumed to be diagonal.
@@ -249,7 +249,7 @@ class VariableCovarianceGaussianEnergy(LikelihoodOperator):
         return self._dt, f
 
 
-class _SpecialGammaEnergy(LikelihoodOperator):
+class _SpecialGammaEnergy(LikelihoodEnergyOperator):
     def __init__(self, residual):
         self._domain = DomainTuple.make(residual.domain)
         self._resi = residual
@@ -272,7 +272,7 @@ class _SpecialGammaEnergy(LikelihoodOperator):
         return self._dt, sc*ScalingOperator(self._domain, 1.).log()
 
 
-class GaussianEnergy(LikelihoodOperator):
+class GaussianEnergy(LikelihoodEnergyOperator):
     """Computes a negative-log Gaussian.
 
     Represents up to constants in :math:`m`:
@@ -370,7 +370,7 @@ class GaussianEnergy(LikelihoodOperator):
         return f'GaussianEnergy {dom}'
 
 
-class PoissonianEnergy(LikelihoodOperator):
+class PoissonianEnergy(LikelihoodEnergyOperator):
     """Computes likelihood Hamiltonians of expected count field constrained by
     Poissonian count data.
 
@@ -408,7 +408,7 @@ class PoissonianEnergy(LikelihoodOperator):
         return np.float64, 2.*ScalingOperator(self._domain, 1.).sqrt()
 
 
-class InverseGammaLikelihood(LikelihoodOperator):
+class InverseGammaEnergy(LikelihoodEnergyOperator):
     """Computes the negative log-likelihood of the inverse gamma distribution.
 
     It negative log-pdf(x) is given by
@@ -457,7 +457,7 @@ class InverseGammaLikelihood(LikelihoodOperator):
         return self._sampling_dtype, res
 
 
-class StudentTEnergy(LikelihoodOperator):
+class StudentTEnergy(LikelihoodEnergyOperator):
     """Computes likelihood energy corresponding to Student's t-distribution.
 
     .. math ::
@@ -495,7 +495,7 @@ class StudentTEnergy(LikelihoodOperator):
         return np.float64, makeOp(((th+1)/(th+3)).sqrt())
 
 
-class BernoulliEnergy(LikelihoodOperator):
+class BernoulliEnergy(LikelihoodEnergyOperator):
     """Computes likelihood energy of expected event frequency constrained by
     event data.
 
@@ -585,8 +585,8 @@ class StandardHamiltonian(EnergyOperator):
         return (lhx+prx).add_metric(met)
 
     def __repr__(self):
-        subs = 'Likelihood:\n{}'.format(utilities.indent(self._lh.__repr__()))
-        subs += '\nPrior:\n{}'.format(self._prior)
+        subs = 'Likelihood energy:\n{}'.format(utilities.indent(self._lh.__repr__()))
+        subs += '\nPrior energy:\n{}'.format(self._prior)
         return 'StandardHamiltonian:\n' + utilities.indent(subs)
 
     def _simplify_for_constant_input_nontrivial(self, c_inp):

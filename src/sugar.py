@@ -39,7 +39,7 @@ from .plot import Plot
 __all__ = ['PS_field', 'power_analyze', 'create_power_operator',
            'density_estimator', 'create_harmonic_smoothing_operator',
            'from_random', 'full', 'makeField', 'is_fieldlike',
-           'is_linearization', 'is_operator', 'makeDomain', 'is_likelihood',
+           'is_linearization', 'is_operator', 'makeDomain', 'is_likelihood_energy',
            'get_signal_variance', 'makeOp', 'domain_union',
            'get_default_codomain', 'single_plot', 'exec_time',
            'calculate_position'] + list(pointwise.ptw_dict.keys())
@@ -591,8 +591,8 @@ def calculate_position(operator, output):
     return pos
 
 
-def is_likelihood(obj):
-    """Checks if object is likelihood-like.
+def is_likelihood_energy(obj):
+    """Checks if object behaves like a likelihood energy.
     """
     return isinstance(obj, Operator) and obj.get_transformation() is not None
 

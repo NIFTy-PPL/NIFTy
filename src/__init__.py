@@ -48,7 +48,7 @@ from .operators.simple_linear_operators import (
 from .operators.matrix_product_operator import MatrixProductOperator
 from .operators.value_inserter import ValueInserter
 from .operators.energy_operators import (
-    EnergyOperator, GaussianEnergy, PoissonianEnergy, InverseGammaLikelihood,
+    EnergyOperator, GaussianEnergy, PoissonianEnergy, InverseGammaEnergy,
     BernoulliEnergy, StandardHamiltonian, AveragedEnergy, QuadraticFormOperator,
     Squared2NormOperator, StudentTEnergy, VariableCovarianceGaussianEnergy)
 from .operators.convolution_operators import FuncConvolutionOperator
