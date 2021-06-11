@@ -227,9 +227,9 @@ class _GeoMetricSampler:
         # Check domain dtype
         dts = H._prior._met._dtype
         if isinstance(H.domain, DomainTuple):
-            real = np.issubdtype(dts, np.float)
+            real = np.issubdtype(dts, np.floating)
         else:
-            real = all([np.issubdtype(dts[kk], np.float) for kk in dts.keys()])
+            real = all([np.issubdtype(dts[kk], np.floating) for kk in dts.keys()])
         if not real:
             raise ValueError("_GeoMetricSampler only supports real valued latent DOFs.")
         # /Check domain dtype

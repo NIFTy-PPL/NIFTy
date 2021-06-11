@@ -11,7 +11,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
-# Copyright(C) 2013-2019 Max-Planck-Society
+# Copyright(C) 2013-2021 Max-Planck-Society
 #
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
 
@@ -98,3 +98,9 @@ def test_k_length_array(shape, distances, expected):
 def test_dvol(shape, distances, harmonic, power):
     r = ift.RGSpace(shape=shape, distances=distances, harmonic=harmonic)
     assert_allclose(r.dvol, np.prod(r.distances)**power)
+
+
+def test_codomain():
+    for i in range(1, 1000):
+        r = ift.RGSpace(shape=(i,), distances=(1.,), harmonic=False)
+        assert_equal(r.get_default_codomain().get_default_codomain(), r)
