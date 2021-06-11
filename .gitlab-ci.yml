@@ -147,3 +147,8 @@ run_visual_vi:
   stage: demo_runs
   script:
     - python3 demos/variational_inference_visualized.py
+
+run_nonlinearity_guide:
+  stage: demo_runs
+  script:
+    - python3 demos/custom_nonlinearities.py
