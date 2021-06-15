@@ -306,10 +306,10 @@ def extend_tree_iterative(key, initial_tree, depth, eps, go_right, stepper, pote
             l = count_trailing_ones(n)
             i_max_incl = bitcount(n-1)
             i_min_incl = i_max_incl - l + 1
-            ks_to_check_against = np.arange(i_min_incl, i_max_incl + 1)[::-1]
-            assert(len(ks_to_check_against) == l)
-            contains_uturn = lax.map(lambda k: is_euclidean_uturn(S[k], z), ks_to_check_against)
-            if contains_uturn.any():
+            S_to_check_against = np.array(S[i_min_incl:i_max_incl + 1][::-1])
+            assert len(S_to_check_against) == l
+            contains_uturn = lax.map(lambda s: is_euclidean_uturn_raw(s, z), S_to_check_against).any()
+            if contains_uturn:
                 # TODO: what to return here? old tree or new tree but with turning set?
                 return initial_tree
     key, subkey = random.split(key)
@@ -400,6 +400,12 @@ def count_trailing_ones(n):
 
 def is_euclidean_uturn(qp_left, qp_right):
     return (
-        np.dot(qp_right.momentum, (qp_right.position - qp_left.position)) < 0
-        and np.dot(qp_left.momentum, (qp_left.position - qp_right.position)) < 0
+        (np.dot(qp_right.momentum, (qp_right.position - qp_left.position)) < 0.)
+        & (np.dot(qp_left.momentum, (qp_left.position - qp_right.position)) < 0.)
     )
+
+
+def is_euclidean_uturn_raw(qp_left_raw, qp_right_raw):
+    qp_left = QP(qp_left_raw[0], qp_left_raw[1])
+    qp_right = QP(qp_right_raw[0], qp_right_raw[1])
+    return is_euclidean_uturn(qp_left, qp_right)
