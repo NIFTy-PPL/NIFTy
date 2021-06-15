@@ -299,10 +299,13 @@ def extend_tree_iterative(key, initial_tree, depth, eps, go_right, stepper, pote
     for n in range(2**depth):
         z = stepper(z, eps, 1 if go_right else -1)
         chosen.append(z)
-        if n % 2 == 0:
+
+        def _even_fun(n, S, _return_initial):
             #print(n, bitcount(n))
             S[bitcount(n)] = z
-        else:
+            return n, S, _return_initial
+
+        def _odd_fun(n, S, return_initial):
             # gets the number of candidate nodes
             l = count_trailing_ones(n)
             i_max_incl = bitcount(n-1)
@@ -314,9 +317,17 @@ def extend_tree_iterative(key, initial_tree, depth, eps, go_right, stepper, pote
                 S_to_check_against,
                 is_leaf=lambda qp: isinstance(qp, QP)
             ))
-            if contains_uturn:
-                # TODO: what to return here? old tree or new tree but with turning set?
-                return initial_tree
+            return n, S, contains_uturn
+
+        _n, S, return_initial = lax.cond(
+            pred = n % 2 == 0,
+            true_fun = _even_fun,
+            false_fun = _odd_fun,
+            operand = (n, S)
+        )
+        if return_initial:
+            return initial_tree
+
     key, subkey = random.split(key)
     new_subtree = make_tree_from_list(subkey, chosen, go_right, potential_energy, kinetic_energy, False)
     return merge_trees(key, initial_tree, new_subtree, go_right, False)
