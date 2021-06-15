@@ -1,4 +1,5 @@
 from jax import numpy as np
+import jax.tree_util as tree_util
 from jax import random, jit, partial, lax
 from collections import namedtuple
 
@@ -306,9 +307,13 @@ def extend_tree_iterative(key, initial_tree, depth, eps, go_right, stepper, pote
             l = count_trailing_ones(n)
             i_max_incl = bitcount(n-1)
             i_min_incl = i_max_incl - l + 1
-            S_to_check_against = np.array(S[i_min_incl:i_max_incl + 1][::-1])
+            S_to_check_against = S[i_min_incl:i_max_incl + 1][::-1]
             assert len(S_to_check_against) == l
-            contains_uturn = lax.map(lambda s: is_euclidean_uturn_raw(s, z), S_to_check_against).any()
+            contains_uturn = any(tree_util.tree_map(
+                lambda s: is_euclidean_uturn(s, z),
+                S_to_check_against,
+                is_leaf=lambda qp: isinstance(qp, QP)
+            ))
             if contains_uturn:
                 # TODO: what to return here? old tree or new tree but with turning set?
                 return initial_tree
@@ -403,9 +408,3 @@ def is_euclidean_uturn(qp_left, qp_right):
         (np.dot(qp_right.momentum, (qp_right.position - qp_left.position)) < 0.)
         & (np.dot(qp_left.momentum, (qp_left.position - qp_right.position)) < 0.)
     )
-
-
-def is_euclidean_uturn_raw(qp_left_raw, qp_right_raw):
-    qp_left = QP(qp_left_raw[0], qp_left_raw[1])
-    qp_right = QP(qp_right_raw[0], qp_right_raw[1])
-    return is_euclidean_uturn(qp_left, qp_right)
