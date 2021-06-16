@@ -383,6 +383,10 @@ def merge_trees(key, current_subtree, new_subtree, go_right, turning_hint):
 
 def bitcount(n):
     """Count the number of ones in the binary representation of n.
+
+    Warning
+    -------
+    n must be positive and strictly smaller than 2**64
     
     Examples
     --------
@@ -390,28 +394,37 @@ def bitcount(n):
     0b10111 4
     """
     # TODO: python 3.10 has int.bit_count()
-    return bin(n)[2:].count('1')
+    bits_reversed = np.unpackbits(np.array(n, dtype='uint64').view('uint8'), bitorder='little')
+    return np.sum(bits_reversed)
 
 
 def count_trailing_ones(n):
     """Count the number of trailing, consecutive ones in the binary representation of n.
+
+    Warning
+    -------
+    n must be positive and strictly smaller than 2**64
 
     Examples
     --------
     >>> print(bin(23), count_trailing_one_bits(23))
     0b10111 3
     """
-    bits_backwards = bin(n)[2:][::-1]
-    count = 0
-    # now count leading ones
-    for b in bits_backwards:
-        if b == '1':
-            count += 1
-        elif b == '0':
-            break
-        else:
-            raise RuntimeError(f"encountered invalid bit \"{b}\" in binary representation of: {n}")
-    return count
+    bits_reversed = np.unpackbits(np.array(n, dtype='uint64').view('uint8'), bitorder='little')
+    def _loop_body(carry, bit):
+        trailing_ones_count, encountered_zero = carry
+        return lax.cond(
+            pred=encountered_zero | (bit == 0),
+            true_fun=lambda op: ((trailing_ones_count, True), ()),
+            false_fun=lambda op: ((trailing_ones_count+1, False), ()),
+            operand=(encountered_zero, bit)
+        )
+    trailing_ones_count, _encountered_zero = lax.scan(
+        f=_loop_body,
+        init=(0, False),
+        xs=bits_reversed
+    )
+    return trailing_ones_count
             
 
 def is_euclidean_uturn(qp_left, qp_right):
