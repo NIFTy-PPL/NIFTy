@@ -419,7 +419,7 @@ def count_trailing_ones(n):
             false_fun=lambda op: ((trailing_ones_count+1, False), ()),
             operand=(encountered_zero, bit)
         )
-    trailing_ones_count, _encountered_zero = lax.scan(
+    (trailing_ones_count, _encountered_zero), _nones = lax.scan(
         f=_loop_body,
         init=(0, False),
         xs=bits_reversed
