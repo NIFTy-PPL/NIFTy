@@ -284,6 +284,10 @@ def build_tree_iterative(initial_qp, key, eps, maxdepth, stepper, potential_ener
     return current_tree
 
 
+def qp_from_arr(arr):
+    return QP(position=arr[0], momentum=arr[1])
+
+
 # taken from https://arxiv.org/pdf/1912.11554.pdf
 def extend_tree_iterative(key, initial_tree, depth, eps, go_right, stepper, potential_energy, kinetic_energy):
     # 1. choose start point of integration
@@ -294,29 +298,32 @@ def extend_tree_iterative(key, initial_tree, depth, eps, go_right, stepper, pote
     # 2. build / collect chosen states
     chosen = []
     z = initial_qp
-    S = [initial_qp for _ in range(depth+1)]
+    S = np.empty(shape=(depth+1, 2,) + initial_qp.position.shape)
+    S = S.at[0].set(initial_qp)
     #S = np.empty(shape=(depth,) + initial_qp.shape)
     for n in range(2**depth):
         z = stepper(z, eps, 1 if go_right else -1)
         chosen.append(z)
 
-        def _even_fun(n, S, _return_initial):
+        def _even_fun(n_and_S):
+            n, S = n_and_S
             #print(n, bitcount(n))
-            S[bitcount(n)] = z
-            return n, S, _return_initial
+            S = S.at[bitcount(n)].set(z)
+            return n, S, False
 
-        def _odd_fun(n, S, return_initial):
+        def _odd_fun(n_and_S):
+            n, S = n_and_S
             # gets the number of candidate nodes
             l = count_trailing_ones(n)
             i_max_incl = bitcount(n-1)
             i_min_incl = i_max_incl - l + 1
-            S_to_check_against = S[i_min_incl:i_max_incl + 1][::-1]
-            assert len(S_to_check_against) == l
-            contains_uturn = any(tree_util.tree_map(
-                lambda s: is_euclidean_uturn(s, z),
-                S_to_check_against,
-                is_leaf=lambda qp: isinstance(qp, QP)
-            ))
+            # TODO: this should traverse the range in reverse
+            contains_uturn = lax.fori_loop(
+                lower = i_min_incl,
+                upper = i_max_incl + 1,
+                body_fun = lambda k, contains_uturn: contains_uturn | is_euclidean_uturn(qp_from_arr(S[k]), z),
+                init_val = False
+            )
             return n, S, contains_uturn
 
         _n, S, return_initial = lax.cond(
