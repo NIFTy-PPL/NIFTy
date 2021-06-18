@@ -296,14 +296,15 @@ def extend_tree_iterative(key, initial_tree, depth, eps, go_right, stepper, pote
     else:
         initial_qp = initial_tree.left
     # 2. build / collect chosen states
-    chosen = []
+    # needs to be this big because we don't know how many chosen states there will be
+    chosen = np.empty((2**depth, 2,) + initial_qp.position.shape)
     z = initial_qp
     S = np.empty(shape=(depth+1, 2,) + initial_qp.position.shape)
     S = S.at[0].set(initial_qp)
     #S = np.empty(shape=(depth,) + initial_qp.shape)
     for n in range(2**depth):
         z = stepper(z, eps, 1 if go_right else -1)
-        chosen.append(z)
+        chosen = chosen.at[n].set(z)
 
         def _even_fun(n_and_S):
             n, S = n_and_S
@@ -339,10 +340,9 @@ def extend_tree_iterative(key, initial_tree, depth, eps, go_right, stepper, pote
     new_subtree = make_tree_from_list(subkey, chosen, go_right, potential_energy, kinetic_energy, False)
     return merge_trees(key, initial_tree, new_subtree, go_right, False)
 
-def make_tree_from_list(key, qp_list, go_right, potential_energy, kinetic_energy, turning_hint):
+def make_tree_from_list(key, qp_arr, go_right, potential_energy, kinetic_energy, turning_hint):
     # WARNING: only to be called from extend_tree_iterative, with turning_hint logic correct
     # 3. random.choice with probability weights to get sample
-    qp_arr = np.array(qp_list)
     #new_subtree_energies = lax.map(potential_energy, chosen_array[:,0,:]) + lax.map(kinetic_energy, chosen_array[:,1,:])
     new_subtree_energies = lax.map(partial(total_energy_of_qp, potential_energy=potential_energy, kinetic_energy=kinetic_energy), qp_arr)
     print(f"new_subtree_energies.shape: {new_subtree_energies.shape}")
@@ -351,16 +351,17 @@ def make_tree_from_list(key, qp_list, go_right, potential_energy, kinetic_energy
     print(qp_arr.shape)
     # unfortunately choice only works with 1d arrays so we need to use indexing TODO: factor out?
     random_idx = random.choice(key, qp_arr.shape[0], p=new_subtree_weights)
-    new_subtree_sample = qp_list[random_idx]
+    new_subtree_sample = qp_from_arr(qp_arr[random_idx])
     print(f"chose sample n° {random_idx}")
     # 4. calculate total weight
     new_subtree_total_weight = np.sum(new_subtree_weights)
     left, right = lax.cond(
         pred = go_right,
-        true_fun = lambda _qp_list: (_qp_list[0], _qp_list[-1]),
-        false_fun = lambda _qp_list: (_qp_list[-1], _qp_list[0]),
-        operand = qp_list
+        true_fun = lambda _qp_arr: (_qp_arr[0], _qp_arr[-1]),
+        false_fun = lambda _qp_arr: (_qp_arr[-1], _qp_arr[0]),
+        operand = qp_arr
     )
+    left, right = qp_from_arr(left), qp_from_arr(right)
     return Tree(left=left, right=right, weight=new_subtree_total_weight, proposal_candidate=new_subtree_sample, turning=turning_hint)
 
 def merge_trees(key, current_subtree, new_subtree, go_right, turning_hint):
