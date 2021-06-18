@@ -302,7 +302,10 @@ def extend_tree_iterative(key, initial_tree, depth, eps, go_right, stepper, pote
     S = np.empty(shape=(depth+1, 2,) + initial_qp.position.shape)
     S = S.at[0].set(initial_qp)
     #S = np.empty(shape=(depth,) + initial_qp.shape)
-    for n in range(2**depth):
+
+    def _loop_body(state):
+        n, _return_initial, chosen, z, S = state
+
         z = stepper(z, eps, 1 if go_right else -1)
         chosen = chosen.at[n].set(z)
 
@@ -333,8 +336,16 @@ def extend_tree_iterative(key, initial_tree, depth, eps, go_right, stepper, pote
             false_fun = _odd_fun,
             operand = (n, S)
         )
-        if return_initial:
-            return initial_tree
+        return (n+1, return_initial, chosen, z, S)
+
+    _final_n, return_initial, chosen, _z, _S = lax.while_loop(
+        cond_fun=lambda state: (state[0] < 2**depth) & (~state[1]),
+        body_fun=_loop_body,
+        init_val=(0, False, chosen, z, S)
+    )
+
+    if return_initial:
+        return initial_tree
 
     key, subkey = random.split(key)
     new_subtree = make_tree_from_list(subkey, chosen, go_right, potential_energy, kinetic_energy, False)
