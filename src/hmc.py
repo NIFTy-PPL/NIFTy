@@ -307,19 +307,19 @@ def build_tree_iterative(initial_qp, key, eps, maxdepth, stepper, potential_ener
     stop = False
     j = 0
 
-    loop_state = (current_tree, j, stop)
+    loop_state = (key, current_tree, j, stop)
 
     def _cond_fn(loop_state):
-        _, j, stop = loop_state
-        return not stop and j <= maxdepth
+        _key, _current_tree, j, stop = loop_state
+        return (~stop) & np.less_equal(j, maxdepth)
 
     def _body_fun(loop_state):
-        current_tree, j, stop = loop_state
+        key, current_tree, j, stop = loop_state
         #print(left_endpoint, right_endpoint)
         key, subkey = random.split(key)
         # random.bernoulli is fine, this is just for rng consistency across commits TODO: use random.bernoulli
         go_right = random.choice(subkey, np.array([False, True]))
-        print(f"going in direction {1 if go_right else -1}")
+        # print(f"going in direction {1 if go_right else -1}")
         # new_tree = current_tree extended (i.e. doubled) in direction
         new_subtree = iterative_build_tree(key, current_tree, j, eps, go_right, stepper, potential_energy, kinetic_energy, maxdepth)
         if not new_subtree.turning:
@@ -330,9 +330,9 @@ def build_tree_iterative(initial_qp, key, eps, maxdepth, stepper, potential_ener
         # TODO: move call to is_euclidean_uturn_pytree into merge_trees from above, remove the turning hint and just check current_tree.turning here
         stop = new_subtree.turning or is_euclidean_uturn_pytree(current_tree.left, current_tree.right)
         j = j + 1
-        return (current_tree, j, stop)
+        return (key, current_tree, j, stop)
 
-    current_tree, j, stop = lax.while_loop(_cond_fn, _body_fun, loop_state)
+    _key, current_tree, j, stop = lax.while_loop(_cond_fn, _body_fun, loop_state)
     return current_tree
 
 
@@ -344,10 +344,12 @@ def index_into_pytree_time_series(idx, ptree):
 def iterative_build_tree(key, initial_tree, depth, eps, go_right, stepper, potential_energy, kinetic_energy, maxdepth):
     # TODO: rename chosen to a more sensible name such as new_tree ...
     # 1. choose start point of integration
-    if go_right:
-        initial_qp = initial_tree.right
-    else:
-        initial_qp = initial_tree.left
+    initial_qp = lax.cond(
+        pred = go_right,
+        true_fun = lambda left_and_right: left_and_right[1],
+        false_fun = lambda left_and_right: left_and_right[0],
+        operand = (initial_tree.left, initial_tree.right)
+    )
     z = initial_qp
     # 2. build / collect chosen states
     # TODO: WARNING: this will be overwritten in the first iteration of the loop, the assignment to chosen is only temporary and we're using z since it's the only QP that's availible right now. This would also be solved by moving the first iteration outside of the loop.
