@@ -14,7 +14,7 @@
 # Copyright(C) 2021 Max-Planck-Society
 # Author: Philipp Arras
 
-import nifty7 as ift
+import nifty8 as ift
 import numpy as np
 import matplotlib.pyplot as plt
 import pytest
