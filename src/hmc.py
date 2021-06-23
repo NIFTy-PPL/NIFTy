@@ -299,8 +299,7 @@ def build_tree_recursive(initial_qp, key, eps, maxdepth, stepper):
 
 
 def total_energy_of_qp(qp, potential_energy, kinetic_energy):
-    qparr = np.array(qp)
-    return potential_energy(qparr[0,:]) + kinetic_energy(qparr[1,:])
+    return potential_energy(qp.position) + kinetic_energy(qp.momentum)
 
 def build_tree_iterative(initial_qp, key, eps, maxdepth, stepper, potential_energy, kinetic_energy):
     current_tree = Tree(left=initial_qp, right=initial_qp, weight=np.exp(-total_energy_of_qp(initial_qp, potential_energy, kinetic_energy)), proposal_candidate=initial_qp, turning=False)
