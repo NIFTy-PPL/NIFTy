@@ -83,6 +83,36 @@ def leapfrog_step(
     return qp_fullstep, step_length
 
 
+def leapfrog_step_pytree(
+    potential_energy_gradient,
+    qp: QP,
+    step_length
+    ):
+    position = qp.position
+    momentum = qp.momentum
+
+    momentum_halfstep = tree_util.tree_map(
+        lambda mom, potgrad: mom - (step_length / 2.) * potgrad,
+        momentum,
+        potential_energy_gradient(position)
+    )
+
+    position_fullstep = tree_util.tree_map(
+        lambda pos, mom_halfstep: pos + step_length * mom_halfstep,  # type: ignore
+        position,
+        momentum_halfstep
+    )
+
+    momentum_fullstep = tree_util.tree_map(
+        lambda mom_halfstep, potgrad: mom_halfstep - (step_length / 2.) * potgrad,
+        momentum_halfstep,
+        potential_energy_gradient(position_fullstep)
+    )
+
+    qp_fullstep = QP(position=position_fullstep, momentum=momentum_fullstep)
+    return qp_fullstep, step_length
+
+
 def unzip_qp_pytree(tree_of_qp):
     """Turn a tree containing QP pairs into a QP pair of trees"""
     return QP(
