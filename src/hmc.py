@@ -83,6 +83,14 @@ def leapfrog_step(
     return qp_fullstep, step_length
 
 
+def unzip_qp_pytree(tree_of_qp):
+    """Turn a tree containing QP pairs into a QP pair of trees"""
+    return QP(
+        position = tree_util.tree_map(lambda qp: qp.position, tree_of_qp, is_leaf=lambda qp: isinstance(qp, QP)),
+        momentum = tree_util.tree_map(lambda qp: qp.momentum, tree_of_qp, is_leaf=lambda qp: isinstance(qp, QP))
+    )
+
+
 def accept_or_deny(*,
         key,
         old_qp: QP,
