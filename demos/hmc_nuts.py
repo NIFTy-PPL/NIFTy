@@ -1,7 +1,7 @@
 # %%
 import jax.numpy as np
 from jax import random
-from jifty1.hmc import leapfrog_step, build_tree_iterative, QP
+from jifty1.hmc import leapfrog_step_pytree, build_tree_iterative, QP
 
 # %%
 def test_run_build_tree_rec():
@@ -11,7 +11,7 @@ def test_run_build_tree_rec():
     potential_energy = lambda q: 0 * 0.5 * np.sum((q - np.ones(shape=dims))**2) + 0.5 * np.sum(((q - np.ones(shape=dims)) / np.array([0.3, 3]))**2)
     kinetic_energy = lambda p: 0.5 * np.sum(p**2)
     potential_energy_gradient = grad(potential_energy)
-    stepper = lambda qp, eps, direction: leapfrog_step(potential_energy_gradient, qp, eps*direction)[0]
+    stepper = lambda qp, eps, direction: leapfrog_step_pytree(potential_energy_gradient, qp, eps*direction)[0]
     key = random.PRNGKey(42)
     key, subkey1, subkey2 = random.split(key, 3)
     initial_qp = QP(position=random.normal(subkey1, dims), momentum=random.normal(subkey2, dims))
