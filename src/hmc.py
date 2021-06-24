@@ -325,6 +325,10 @@ def qp_from_arr(arr):
     return QP(position=arr[0], momentum=arr[1])
 
 
+def index_into_pytree_time_series(idx, ptree):
+    return tree_util.tree_map(lambda arr: arr[idx], ptree)
+
+
 # taken from https://arxiv.org/pdf/1912.11554.pdf
 def extend_tree_iterative(key, initial_tree, depth, eps, go_right, stepper, potential_energy, kinetic_energy):
     # 1. choose start point of integration
@@ -334,7 +338,7 @@ def extend_tree_iterative(key, initial_tree, depth, eps, go_right, stepper, pote
         initial_qp = initial_tree.left
     # 2. build / collect chosen states
     # needs to be this big because we don't know how many chosen states there will be
-    chosen = np.empty((2**depth, 2,) + initial_qp.position.shape)
+    chosen = tree_util.tree_map(lambda initial_q_or_p_leaf: np.empty((2**depth,) + initial_q_or_p_leaf.shape), unzip_qp_pytree(initial_qp))
     z = initial_qp
     S = np.empty(shape=(depth+1, 2,) + initial_qp.position.shape)
     S = S.at[0].set(initial_qp)
@@ -344,7 +348,11 @@ def extend_tree_iterative(key, initial_tree, depth, eps, go_right, stepper, pote
         n, _return_initial, chosen, z, S = state
 
         z = stepper(z, eps, 1 if go_right else -1)
-        chosen = chosen.at[n].set(z)
+        # TODO: how to assign z.momentum to the momentum subtree and z.position to the position subtree? maybe vmap can help?
+        chosen = QP(
+            position=tree_util.tree_map(lambda arr: arr.at[n].set(z.position), chosen.position),
+            momentum=tree_util.tree_map(lambda arr: arr.at[n].set(z.momentum), chosen.momentum),
+        )
 
         def _even_fun(n_and_S):
             n, S = n_and_S
@@ -388,26 +396,36 @@ def extend_tree_iterative(key, initial_tree, depth, eps, go_right, stepper, pote
     new_subtree = make_tree_from_list(subkey, chosen, go_right, potential_energy, kinetic_energy, False)
     return merge_trees(key, initial_tree, new_subtree, go_right, False)
 
-def make_tree_from_list(key, qp_arr, go_right, potential_energy, kinetic_energy, turning_hint):
+def make_tree_from_list(key, qp_of_pytree_of_series, go_right, potential_energy, kinetic_energy, turning_hint):
     # WARNING: only to be called from extend_tree_iterative, with turning_hint logic correct
     # 3. random.choice with probability weights to get sample
     #new_subtree_energies = lax.map(potential_energy, chosen_array[:,0,:]) + lax.map(kinetic_energy, chosen_array[:,1,:])
-    new_subtree_energies = lax.map(partial(total_energy_of_qp, potential_energy=potential_energy, kinetic_energy=kinetic_energy), qp_arr)
+    new_subtree_energies = (
+        lax.map(potential_energy, qp_of_pytree_of_series.position)
+        + lax.map(kinetic_energy, qp_of_pytree_of_series.momentum)
+    )
     print(f"new_subtree_energies.shape: {new_subtree_energies.shape}")
     # proportianal to the joint probabilities:
     new_subtree_weights = np.exp(-new_subtree_energies)
-    print(qp_arr.shape)
     # unfortunately choice only works with 1d arrays so we need to use indexing TODO: factor out?
-    random_idx = random.choice(key, qp_arr.shape[0], p=new_subtree_weights)
-    new_subtree_sample = qp_from_arr(qp_arr[random_idx])
+    # complicated way of retrieving this value, maybe just pass it into the function as an argument
+    number_of_samples_in_trajectory = tree_util.tree_flatten(tree_util.tree_map(
+        lambda arr: arr.shape[0],
+        qp_of_pytree_of_series
+    ))[0][0]
+    random_idx = random.choice(key, number_of_samples_in_trajectory, p=new_subtree_weights)
+    new_subtree_sample = tree_util.tree_map(lambda arr: arr[random_idx], qp_of_pytree_of_series)
     print(f"chose sample n° {random_idx}")
     # 4. calculate total weight
     new_subtree_total_weight = np.sum(new_subtree_weights)
     left, right = lax.cond(
         pred = go_right,
-        true_fun = lambda _qp_arr: (_qp_arr[0], _qp_arr[-1]),
-        false_fun = lambda _qp_arr: (_qp_arr[-1], _qp_arr[0]),
-        operand = qp_arr
+        true_fun = lambda first_and_last: (first_and_last[0], first_and_last[1]),
+        false_fun = lambda first_and_last: (first_and_last[-1], first_and_last[1]),
+        operand = (
+            tree_util.tree_map(lambda arr: arr[0], qp_of_pytree_of_series),
+            tree_util.tree_map(lambda arr: arr[-1], qp_of_pytree_of_series)
+        )
     )
     left, right = qp_from_arr(left), qp_from_arr(right)
     return Tree(left=left, right=right, weight=new_subtree_total_weight, proposal_candidate=new_subtree_sample, turning=turning_hint)
