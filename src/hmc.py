@@ -423,8 +423,8 @@ def make_tree_from_list(key, qp_of_pytree_of_series, go_right, potential_energy,
         true_fun = lambda first_and_last: (first_and_last[0], first_and_last[1]),
         false_fun = lambda first_and_last: (first_and_last[-1], first_and_last[1]),
         operand = (
-            tree_util.tree_map(lambda arr: arr[0], qp_of_pytree_of_series),
-            tree_util.tree_map(lambda arr: arr[-1], qp_of_pytree_of_series)
+            index_into_pytree_time_series(0, qp_of_pytree_of_series),
+            index_into_pytree_time_series(-1, qp_of_pytree_of_series)
         )
     )
     left, right = qp_from_arr(left), qp_from_arr(right)
