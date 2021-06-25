@@ -321,10 +321,6 @@ def build_tree_iterative(initial_qp, key, eps, maxdepth, stepper, potential_ener
     return current_tree
 
 
-def qp_from_arr(arr):
-    return QP(position=arr[0], momentum=arr[1])
-
-
 def index_into_pytree_time_series(idx, ptree):
     return tree_util.tree_map(lambda arr: arr[idx], ptree)
 
