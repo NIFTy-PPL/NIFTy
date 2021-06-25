@@ -1,6 +1,6 @@
 from jax import numpy as np
 import jax.tree_util as tree_util
-from jax import random, jit, partial, lax
+from jax import random, jit, partial, lax, flatten_util
 from collections import namedtuple
 
 
@@ -506,3 +506,17 @@ def is_euclidean_uturn(qp_left, qp_right):
         (np.dot(qp_right.momentum, (qp_right.position - qp_left.position)) < 0.)
         & (np.dot(qp_left.momentum, (qp_left.position - qp_right.position)) < 0.)
     )
+
+
+def is_euclidean_uturn_pytree(qp_left, qp_right):
+    # TODO: Does this work with different dtypes for different field components?
+    # how does flatten_util.ravel_pytree behave in that case
+    qp_left = QP(
+        position=flatten_util.ravel_pytree(qp_left.position)[0],
+        momentum=flatten_util.ravel_pytree(qp_left.momentum)[0]
+    )
+    qp_right = QP(
+        position=flatten_util.ravel_pytree(qp_right.position)[0],
+        momentum=flatten_util.ravel_pytree(qp_right.momentum)[0]
+    )
+    return is_euclidean_uturn(qp_left, qp_right)
