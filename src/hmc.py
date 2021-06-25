@@ -313,7 +313,7 @@ def build_tree_iterative(initial_qp, key, eps, maxdepth, stepper, potential_ener
         print(f"going in direction {1 if go_right else -1}")
         # new_tree = current_tree extended (i.e. doubled) in direction
         new_tree = extend_tree_iterative(key, current_tree, j, eps, go_right, stepper, potential_energy, kinetic_energy)
-        stop = new_tree.turning or is_euclidean_uturn(new_tree.left, new_tree.right)
+        stop = new_tree.turning or is_euclidean_uturn_pytree(new_tree.left, new_tree.right)
         j = j + 1
         # TODO: I think this needs to be conditional on stop somehow but not sure
         if not stop:
@@ -336,8 +336,8 @@ def extend_tree_iterative(key, initial_tree, depth, eps, go_right, stepper, pote
     # needs to be this big because we don't know how many chosen states there will be
     chosen = tree_util.tree_map(lambda initial_q_or_p_leaf: np.empty((2**depth,) + initial_q_or_p_leaf.shape), unzip_qp_pytree(initial_qp))
     z = initial_qp
-    S = np.empty(shape=(depth+1, 2,) + initial_qp.position.shape)
-    S = S.at[0].set(initial_qp)
+    S = tree_util.tree_map(lambda initial_q_or_p_leaf: np.empty((depth + 1,) + initial_q_or_p_leaf.shape), unzip_qp_pytree(initial_qp))
+    S = tree_util.tree_map(lambda arr, val: arr.at[0].set(val), S, unzip_qp_pytree(initial_qp))
     #S = np.empty(shape=(depth,) + initial_qp.shape)
 
     def _loop_body(state):
@@ -345,15 +345,12 @@ def extend_tree_iterative(key, initial_tree, depth, eps, go_right, stepper, pote
 
         z = stepper(z, eps, 1 if go_right else -1)
         # TODO: how to assign z.momentum to the momentum subtree and z.position to the position subtree? maybe vmap can help?
-        chosen = QP(
-            position=tree_util.tree_map(lambda arr: arr.at[n].set(z.position), chosen.position),
-            momentum=tree_util.tree_map(lambda arr: arr.at[n].set(z.momentum), chosen.momentum),
-        )
+        chosen = tree_util.tree_map(lambda arr, val: arr.at[n].set(val), chosen, z)
 
         def _even_fun(n_and_S):
             n, S = n_and_S
             #print(n, bitcount(n))
-            S = S.at[bitcount(n)].set(z)
+            S = tree_util.tree_map(lambda arr, val: arr.at[bitcount(n)].set(val), S, z)
             return n, S, False
 
         def _odd_fun(n_and_S):
@@ -366,7 +363,7 @@ def extend_tree_iterative(key, initial_tree, depth, eps, go_right, stepper, pote
             contains_uturn = lax.fori_loop(
                 lower = i_min_incl,
                 upper = i_max_incl + 1,
-                body_fun = lambda k, contains_uturn: contains_uturn | is_euclidean_uturn(qp_from_arr(S[k]), z),
+                body_fun = lambda k, contains_uturn: contains_uturn | is_euclidean_uturn_pytree(index_into_pytree_time_series(k, S), z),
                 init_val = False
             )
             return n, S, contains_uturn
@@ -423,7 +420,6 @@ def make_tree_from_list(key, qp_of_pytree_of_series, go_right, potential_energy,
             index_into_pytree_time_series(-1, qp_of_pytree_of_series)
         )
     )
-    left, right = qp_from_arr(left), qp_from_arr(right)
     return Tree(left=left, right=right, weight=new_subtree_total_weight, proposal_candidate=new_subtree_sample, turning=turning_hint)
 
 def merge_trees(key, current_subtree, new_subtree, go_right, turning_hint):
