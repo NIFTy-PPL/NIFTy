@@ -23,7 +23,7 @@ from . import utilities
 from .domains.domain import Domain
 
 
-class DomainTuple(object):
+class DomainTuple:
     """Ordered sequence of Domain objects.
 
     This class holds a tuple of :class:`Domain` objects, which together form

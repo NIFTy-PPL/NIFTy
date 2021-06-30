@@ -21,7 +21,7 @@ from .operators.operator import Operator
 from .sugar import from_random, makeField
 
 
-class StatCalculator(object):
+class StatCalculator:
     """Helper class to compute mean and variance of a set of inputs.
 
     Notes

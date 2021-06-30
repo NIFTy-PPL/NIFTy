@@ -488,7 +488,7 @@ def _plot(f, ax, **kwargs):
     raise ValueError("Field type not(yet) supported")
 
 
-class Plot(object):
+class Plot:
     def __init__(self):
         self._plots = []
         self._kwargs = []

@@ -67,7 +67,7 @@ def _toField(arr, template):
     return MultiField(template.domain, tuple(res))
 
 
-class _MinHelper(object):
+class _MinHelper:
     def __init__(self, energy):
         self._energy = energy
         self._domain = energy.position.domain
@@ -162,7 +162,7 @@ class _ScipyCG(Minimizer):
         if not isinstance(energy, QuadraticEnergy):
             raise ValueError("need a quadratic energy for CG")
 
-        class mymatvec(object):
+        class mymatvec:
             def __init__(self, op):
                 self._op = op
 

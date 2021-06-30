@@ -214,7 +214,7 @@ def pop_sseq():
     _rng.pop()
 
 
-class Random(object):
+class Random:
     @staticmethod
     def pm1(dtype, shape):
         if np.issubdtype(dtype, np.complexfloating):
@@ -265,7 +265,7 @@ class Random(object):
         return x.astype(dtype, copy=False)
 
 
-class Context(object):
+class Context:
     """Convenience class for easy management of the RNG state.
     Usage: ::
 

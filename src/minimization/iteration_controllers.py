@@ -95,7 +95,7 @@ class IterationController(metaclass=NiftyMeta):
         return self._history
 
 
-class EnergyHistory(object):
+class EnergyHistory:
     def __init__(self):
         self._lst = []
 
