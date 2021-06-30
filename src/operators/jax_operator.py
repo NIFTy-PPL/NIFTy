@@ -127,6 +127,13 @@ class JaxLikelihoodEnergyOperator(LikelihoodEnergyOperator):
             return res
         return res.add_metric(self.get_metric_at(x.val))
 
+    def _simplify_for_constant_input_nontrivial(self, c_inp):
+        func2 = lambda x: self._func({**x, **c_inp.val})
+        dom = {kk: vv for kk, vv in self._domain.items()
+                if kk not in c_inp.keys()}
+        return None, JaxLikelihoodEnergyOperator(dom, func2,
+                                                 self._trafo, self._dt)
+
 
 class _JaxJacobian(LinearOperator):
     def __init__(self, domain, target, func, adjfunc):

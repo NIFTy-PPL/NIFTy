@@ -62,14 +62,23 @@ def test_mf_jax():
     ift.extra.check_operator(op, loc)
 
 
-def test_jax_energy():
+@pmp("dom", [ift.RGSpace((10, 8)),
+    {"a": ift.RGSpace(10), "b": ift.UnstructuredDomain(2)}])
+def test_jax_energy(dom):
     if _skip:
         pytest.skip()
-    dom = ift.UnstructuredDomain((10, 2))
+    dom = ift.makeDomain(dom)
     e0 = ift.GaussianEnergy(domain=dom)
     def func(x):
         return 0.5*jnp.vdot(x, x)
-    e = ift.JaxLikelihoodEnergyOperator(dom, func, transformation=ift.ScalingOperator(dom, 1.))
+    def funcmf(x):
+        res = 0
+        for kk, vv in x.items():
+            res += jnp.vdot(vv, vv)
+        return 0.5*res
+    e = ift.JaxLikelihoodEnergyOperator(dom,
+            funcmf if isinstance(dom, ift.MultiDomain) else func,
+            transformation=ift.ScalingOperator(dom, 1.))
     for wm in [False, True]:
         pos = ift.from_random(e.domain)
         lin = ift.Linearization.make_var(pos, wm)
