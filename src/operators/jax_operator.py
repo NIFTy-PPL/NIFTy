@@ -77,6 +77,26 @@ class JaxOperator(Operator):
 
 
 class JaxLikelihoodEnergyOperator(LikelihoodEnergyOperator):
+    """Wrap a jax function as nifty likelihood energy operator.
+
+    Parameters
+    ----------
+    domain : DomainTuple or MultiDomain
+        Domain of the operator.
+
+    func : callable
+        The jax function that is evaluated by the operator. It has to be
+        implemented in terms of `jax.numpy` calls. If `domain` is a
+        `DomainTuple`, `func` takes a `dict` as argument and like-wise for the
+        target. It needs to map to a scalar.
+
+    transformation : Operator, optional
+        Coordinate transformation to Euclidean space.
+
+    sampling_dtype : dtype, optional
+        The dtype that shall be used for drawing samples from the metric of the
+        likelihood.
+    """
     def __init__(self, domain, func, transformation=None, sampling_dtype=None):
         from ..sugar import makeDomain
         self._domain = makeDomain(domain)
