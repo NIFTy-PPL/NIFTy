@@ -62,6 +62,26 @@ def test_mf_jax():
     ift.extra.check_operator(op, loc)
 
 
+def test_jax_energy():
+    if _skip:
+        pytest.skip()
+    dom = ift.UnstructuredDomain((10, 2))
+    e0 = ift.GaussianEnergy(domain=dom)
+    def func(x):
+        return 0.5*jnp.vdot(x, x)
+    e = ift.JaxLikelihoodEnergyOperator(dom, func, transformation=ift.ScalingOperator(dom, 1.))
+    for wm in [False, True]:
+        pos = ift.from_random(e.domain)
+        lin = ift.Linearization.make_var(pos, wm)
+        ift.extra.assert_allclose(e0(pos), e(pos))
+        ift.extra.assert_allclose(e0(lin).val, e(lin).val)
+        ift.extra.assert_allclose(e0(lin).gradient, e(lin).gradient)
+        if not wm:
+            continue
+        pos1 = ift.from_random(e.domain)
+        ift.extra.assert_allclose(e0(lin).metric(pos1), e(lin).metric(pos1))
+
+
 def test_cf():
     dom = ift.RGSpace([13, 14], distances=(0.89, 0.9))
     args = {

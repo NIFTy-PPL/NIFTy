@@ -16,13 +16,15 @@
 
 import numpy as np
 from .operator import Operator
+from .energy_operators import EnergyOperator, LikelihoodEnergyOperator
 from .linear_operator import LinearOperator
+from .endomorphic_operator import EndomorphicOperator
 
 
 try:
     import jax
     jax.config.update("jax_enable_x64", True)
-    __all__ = ["JaxOperator"]
+    __all__ = ["JaxOperator", "JaxLikelihoodEnergyOperator"]
 except ImportError:
     __all__ = []
 
@@ -73,6 +75,37 @@ class JaxOperator(Operator):
                 if kk not in c_inp.keys()}
         return None, JaxOperator(dom, self._target, func2)
 
+
+class JaxLikelihoodEnergyOperator(LikelihoodEnergyOperator):
+    def __init__(self, domain, func, transformation=None, sampling_dtype=None):
+        from ..sugar import makeDomain
+        self._domain = makeDomain(domain)
+        self._func = jax.jit(func)
+        self._grad = jax.jit(jax.grad(func))
+        self._dt = sampling_dtype
+        self._trafo = transformation
+
+    def get_transformation(self):
+        if self._trafo is None:
+            s = self.__name__ + " was instantiated without `transformation`"
+            raise RuntimeError(s)
+        return self._dt, self._trafo
+
+    def apply(self, x):
+        from ..sugar import is_linearization, makeField
+        from .simple_linear_operators import VdotOperator
+        from ..linearization import Linearization
+        self._check_input(x)
+        lin = is_linearization(x)
+        val = x.val.val if lin else x.val
+        res = makeField(self._target, _jax2np(self._func(val)))
+        if not lin:
+            return res
+        jac = VdotOperator(makeField(self._domain, _jax2np(self._grad(val))))
+        res = Linearization(res, jac)
+        if not x.want_metric:
+            return res
+        return res.add_metric(self.get_metric_at(x.val))
 
 
 class _JaxJacobian(LinearOperator):
