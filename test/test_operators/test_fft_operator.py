@@ -62,8 +62,8 @@ def test_fft1D(d, dtype, op):
 @pmp('d2', [0.4, 1, 2.7])
 @pmp('nthreads', [-1, 1, 2, 3, 4])
 def test_fft2D(dim1, dim2, d1, d2, dtype, op, nthreads):
-    ift.fft.set_nthreads(nthreads)
-    ift.myassert(ift.fft.nthreads() == nthreads)
+    ift.set_nthreads(nthreads)
+    ift.myassert(ift.nthreads() == nthreads)
     tol = _get_rtol(dtype)
     a = ift.RGSpace([dim1, dim2], distances=[d1, d2])
     b = ift.RGSpace(
@@ -80,7 +80,7 @@ def test_fft2D(dim1, dim2, d1, d2, dtype, op, nthreads):
     inp = ift.Field.from_random(domain=a, random_type='normal', dtype=dtype, std=7, mean=3)
     out = fft.inverse_times(fft.times(inp))
     assert_allclose(inp.val, out.val, rtol=tol, atol=tol)
-    ift.fft.set_nthreads(1)
+    ift.set_nthreads(1)
 
 
 @pmp('index', [0, 1, 2])

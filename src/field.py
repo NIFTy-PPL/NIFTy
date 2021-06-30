@@ -22,6 +22,7 @@ import numpy as np
 from . import utilities
 from .domain_tuple import DomainTuple
 from .operators.operator import Operator
+from .ducc_dispatch import vdot
 
 
 class Field(Operator):
@@ -316,7 +317,7 @@ class Field(Operator):
         spaces = utilities.parse_spaces(spaces, ndom)
 
         if len(spaces) == ndom:
-            return Field.scalar(np.array(np.vdot(self._val, x._val)))
+            return Field.scalar(np.array(vdot(self._val, x._val)))
         # If we arrive here, we have to do a partial dot product.
         # For the moment, do this the explicit, non-optimized way
         return (self.conjugate()*x).sum(spaces=spaces)
@@ -341,7 +342,7 @@ class Field(Operator):
         if x._domain != self._domain:
             raise ValueError("Domain mismatch")
 
-        return np.vdot(self._val, x._val)
+        return vdot(self._val, x._val)
 
     def norm(self, ord=2):
         """Computes the L2-norm of the field values.
