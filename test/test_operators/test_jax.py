@@ -20,10 +20,8 @@ import matplotlib.pyplot as plt
 import pytest
 try:
     import jax.numpy as jnp
-    _skip = False
 except ImportError:
-    import numpy as np
-    _skip = True
+    pass
 
 from ..common import setup_function, teardown_function
 
@@ -34,8 +32,7 @@ pmp = pytest.mark.parametrize
 @pmp("func", [lambda x: x, lambda x: x**2, lambda x: x*x, lambda x: x*x[0, 0],
               lambda x: jnp.sin(x), lambda x: x*x.sum()])
 def test_jax(dom, func):
-    if _skip:
-        pytest.skip()
+    pytest.importorskip("jax")
     loc = ift.from_random(dom)
     res0 = np.array(func(loc.val))
     op = ift.JaxOperator(dom, dom, func)
@@ -44,8 +41,7 @@ def test_jax(dom, func):
 
 
 def test_mf_jax():
-    if _skip:
-        pytest.skip()
+    pytest.importorskip("jax")
     dom = ift.makeDomain({"a": ift.RGSpace(10), "b": ift.UnstructuredDomain(2)})
 
     func = lambda x: x["a"]*x["b"][0]
@@ -65,8 +61,7 @@ def test_mf_jax():
 @pmp("dom", [ift.RGSpace((10, 8)),
     {"a": ift.RGSpace(10), "b": ift.UnstructuredDomain(2)}])
 def test_jax_energy(dom):
-    if _skip:
-        pytest.skip()
+    pytest.importorskip("jax")
     dom = ift.makeDomain(dom)
     e0 = ift.GaussianEnergy(domain=dom)
     def func(x):

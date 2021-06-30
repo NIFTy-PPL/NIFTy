@@ -29,13 +29,6 @@ def _l2error(a, b):
     return np.sqrt(np.sum(np.abs(a-b)**2)/np.sum(np.abs(a)**2))
 
 
-def _finufft_available():
-    try:
-        import finufft
-    except ImportError:
-        pytest.skip()
-
-
 @pmp('eps', [1e-2, 1e-4, 1e-7, 1e-10, 1e-11, 1e-12, 2e-13])
 @pmp('nxdirty', [32, 128])
 @pmp('nydirty', [32, 48, 128])
@@ -114,7 +107,7 @@ def test_build(nxdirty, nydirty, N, eps):
 @pmp('nxdirty', [32, 128])
 @pmp('N', [1, 10, 100])
 def test_finu1d(nxdirty, N, eps):
-    _finufft_available()
+    pytest.importorskip("finufft")
     pos = ift.random.current_rng().random((N)) - 0.5
     vis = (ift.random.current_rng().standard_normal(N)
            + 1j*ift.random.current_rng().standard_normal(N))
@@ -143,7 +136,7 @@ def test_finu1d(nxdirty, N, eps):
 @pmp('nydirty', [32, 48, 128])
 @pmp('N', [1, 10, 100])
 def test_finu2d(nxdirty, nydirty, N, eps):
-    _finufft_available()
+    pytest.importorskip("finufft")
     uv = ift.random.current_rng().random((N, 2)) - 0.5
     vis = (ift.random.current_rng().standard_normal(N)
            + 1j*ift.random.current_rng().standard_normal(N))
@@ -176,7 +169,7 @@ def test_finu2d(nxdirty, nydirty, N, eps):
 @pmp('nzdirty', [32, 54])
 @pmp('N', [1, 10])
 def test_finu3d(nxdirty, nydirty, nzdirty, N, eps):
-    _finufft_available()
+    pytest.importorskip("finufft")
     pos = ift.random.current_rng().random((N, 3)) - 0.5
     vis = (ift.random.current_rng().standard_normal(N)
            + 1j*ift.random.current_rng().standard_normal(N))
@@ -206,7 +199,7 @@ def test_finu3d(nxdirty, nydirty, nzdirty, N, eps):
                ift.RGSpace([4, 27, 32])])
 @pmp('N', [1, 10, 100])
 def test_build_finufft(space, N, eps):
-    _finufft_available()
+    pytest.importorskip("finufft")
     pos = ift.random.current_rng().random((N, len(space.shape))) - 0.5
     RF = ift.FinuFFT(space, pos=pos, eps=eps)
     flt = np.float64
