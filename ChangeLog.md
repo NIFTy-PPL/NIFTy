@@ -7,6 +7,14 @@ Jax interface
 The interfaces `ift.JaxOperator` and `ift.JaxLikelihoodEnergyOperator` provide
 an interface to jax.
 
+Interface change for nthreads
+-----------------------------
+
+The number of threads, which are used for the FFTs and ducc in general, used to
+be set via `ift.fft.set_nthreads(n)`. This has been moved to
+`ift.set_nthreads(n)`. Similarly, `ift.fft.nthreads()` -> `ift.nthreads()`.
+
+
 
 Changes since NIFTy 6
 =====================
