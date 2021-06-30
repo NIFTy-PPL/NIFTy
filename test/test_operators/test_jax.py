@@ -78,7 +78,9 @@ def test_jax_energy(dom):
         return 0.5*res
     e = ift.JaxLikelihoodEnergyOperator(dom,
             funcmf if isinstance(dom, ift.MultiDomain) else func,
-            transformation=ift.ScalingOperator(dom, 1.))
+            transformation=ift.ScalingOperator(dom, 1.),
+            sampling_dtype=np.float64)
+    ift.extra.check_operator(e, ift.from_random(e.domain))
     for wm in [False, True]:
         pos = ift.from_random(e.domain)
         lin = ift.Linearization.make_var(pos, wm)

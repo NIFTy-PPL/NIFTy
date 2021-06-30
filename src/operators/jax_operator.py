@@ -122,7 +122,7 @@ class JaxLikelihoodEnergyOperator(LikelihoodEnergyOperator):
         if not lin:
             return res
         jac = VdotOperator(makeField(self._domain, _jax2np(self._grad(val))))
-        res = Linearization(res, jac)
+        res = x.new(res, jac)
         if not x.want_metric:
             return res
         return res.add_metric(self.get_metric_at(x.val))
@@ -131,8 +131,12 @@ class JaxLikelihoodEnergyOperator(LikelihoodEnergyOperator):
         func2 = lambda x: self._func({**x, **c_inp.val})
         dom = {kk: vv for kk, vv in self._domain.items()
                 if kk not in c_inp.keys()}
-        return None, JaxLikelihoodEnergyOperator(dom, func2,
-                                                 self._trafo, self._dt)
+        _, trafo = self._trafo.simplify_for_constant_input(c_inp)
+        if isinstance(self._dt, dict):
+            dt = {kk: self._dt[kk] for kk in dom.keys()}
+        else:
+            dt = self._dt
+        return None, JaxLikelihoodEnergyOperator(dom, func2, trafo, dt)
 
 
 class _JaxJacobian(LinearOperator):
