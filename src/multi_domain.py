@@ -19,7 +19,7 @@ from .domain_tuple import DomainTuple
 from .utilities import frozendict, indent
 
 
-class MultiDomain(object):
+class MultiDomain:
     """A tuple of domains corresponding to a direct sum.
 
     This class is the domain of the direct sum of fields defined on (possibly

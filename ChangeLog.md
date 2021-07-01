@@ -1,7 +1,12 @@
 Changes since NIFTy 7
 =====================
 
-None.
+Jax interface
+-------------
+
+The interfaces `ift.JaxOperator` and `ift.JaxLikelihoodEnergyOperator` provide
+an interface to jax.
+
 
 Changes since NIFTy 6
 =====================

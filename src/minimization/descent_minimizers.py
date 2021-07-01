@@ -303,7 +303,7 @@ class VL_BFGS(DescentMinimizer):
         return descent_direction
 
 
-class _InformationStore(object):
+class _InformationStore:
     """Class for storing a list of past updates.
 
     Parameters

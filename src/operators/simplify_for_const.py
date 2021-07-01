@@ -11,7 +11,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
-# Copyright(C) 2013-201 Max-Planck-Society
+# Copyright(C) 2013-2021 Max-Planck-Society
 #
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
 
@@ -24,7 +24,7 @@ from .scaling_operator import ScalingOperator
 from .simple_linear_operators import NullOperator
 
 
-class ConstCollector(object):
+class ConstCollector:
     def __init__(self):
         self._const = None  # MultiField on the part of the MultiDomain that could be constant
         self._nc = set()  # NoConstant - set of keys that we know cannot be constant
