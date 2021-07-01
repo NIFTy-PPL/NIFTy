@@ -47,19 +47,11 @@ try:
 
 
     def vdot(a, b):
-        # TEMPORARY
         import numpy as np
-        a = np.array(a)
-        b = np.array(b)
-        if a.ndim == 0:
-            a = np.array([a])
-        if b.ndim == 0:
-            b = np.array([b])
-        if a.dtype == np.int64:
+        if isinstance(a, np.ndarray) and a.dtype == np.int64:
             a = a.astype(np.float64)
-        if b.dtype == np.int64:
+        if isinstance(b, np.ndarray) and b.dtype == np.int64:
             b = b.astype(np.float64)
-        # /TEMPORARY
         return ducc0.misc.vdot(a, b)
 
 except ImportError:
