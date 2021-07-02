@@ -48,6 +48,7 @@ try:
 
     def vdot(a, b):
         import numpy as np
+
         if isinstance(a, np.ndarray) and a.dtype == np.int64:
             a = a.astype(np.float64)
         if isinstance(b, np.ndarray) and b.dtype == np.int64:
