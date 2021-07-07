@@ -28,7 +28,7 @@ def write_version():
     except FileNotFoundError:
         print("Could not determine version string from git history")
         res = "unknown"
-    with open(os.path.join("nifty7","git_version.py"), "w") as file:
+    with open(os.path.join("nifty7", "git_version.py"), "w") as file:
         file.write('gitversion = "{}"\n'.format(res))
 
 
