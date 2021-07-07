@@ -25,7 +25,6 @@ def _check(a, b):
     res0 = np.vdot(a, b)
     res1 = vdot(a, b)
     rel_error = np.abs((res0-res1)/(res0+res1)*2)
-    return
     assert rel_error < 1e-6
 
 
