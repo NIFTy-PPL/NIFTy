@@ -17,12 +17,13 @@
 
 import numpy as np
 
-from .. import fft, utilities
+from .. import utilities
 from ..domain_tuple import DomainTuple
 from ..domains.gl_space import GLSpace
 from ..domains.lm_space import LMSpace
 from ..domains.rg_space import RGSpace
 from ..field import Field
+from ..ducc_dispatch import fftn, ifftn, hartley
 from .diagonal_operator import DiagonalOperator
 from .linear_operator import LinearOperator
 from .scaling_operator import ScalingOperator
@@ -74,10 +75,10 @@ class FFTOperator(LinearOperator):
         self._check_input(x, mode)
         ncells = x.domain[self._space].size
         if x.domain[self._space].harmonic:  # harmonic -> position
-            func = fft.ifftn
+            func = ifftn
             fct = ncells
         else:
-            func = fft.fftn
+            func = fftn
             fct = 1.
         axes = x.domain.axes[self._space]
         tdom = self._tgt(mode)
@@ -148,7 +149,7 @@ class HartleyOperator(LinearOperator):
     def _apply_cartesian(self, x, mode):
         axes = x.domain.axes[self._space]
         tdom = self._tgt(mode)
-        tmp = fft.hartley(x.val, axes=axes)
+        tmp = hartley(x.val, axes=axes)
         Tval = Field(tdom, tmp)
         if mode & (LinearOperator.TIMES | LinearOperator.ADJOINT_TIMES):
             fct = self._domain[self._space].scalar_dvol

@@ -11,11 +11,12 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
-# Copyright(C) 2013-2019 Max-Planck-Society
+# Copyright(C) 2013-2021 Max-Planck-Society
 #
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
 
 
+import numpy as np
 _nthreads = 1
 
 
@@ -30,6 +31,7 @@ def set_nthreads(nthr):
 
 try:
     import ducc0.fft as my_fft
+    import ducc0.misc
 
 
     def fftn(a, axes=None):
@@ -43,6 +45,14 @@ try:
 
     def hartley(a, axes=None):
         return my_fft.genuine_hartley(a, axes=axes, nthreads=max(_nthreads, 0))
+
+
+    def vdot(a, b):
+        if isinstance(a, np.ndarray) and a.dtype == np.int64:
+            a = a.astype(np.float64)
+        if isinstance(b, np.ndarray) and b.dtype == np.int64:
+            b = b.astype(np.float64)
+        return ducc0.misc.vdot(a, b)
 
 except ImportError:
     import scipy.fft
@@ -59,3 +69,11 @@ except ImportError:
     def hartley(a, axes=None):
         tmp = scipy.fft.fftn(a, axes=axes, workers=_nthreads)
         return tmp.real+tmp.imag
+
+
+    def vdot(a, b):
+        from .logger import logger
+        if (isinstance(a, np.ndarray) and a.dtype == np.float32) or \
+           (isinstance(b, np.ndarray) and b.dtype == np.float32):
+            logger.warning("Calling np.vdot in single precision may lead to inaccurate results")
+        return np.vdot(a, b)
