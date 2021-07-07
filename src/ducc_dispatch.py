@@ -16,6 +16,7 @@
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
 
 
+import numpy as np
 _nthreads = 1
 
 
@@ -47,8 +48,6 @@ try:
 
 
     def vdot(a, b):
-        import numpy as np
-
         if isinstance(a, np.ndarray) and a.dtype == np.int64:
             a = a.astype(np.float64)
         if isinstance(b, np.ndarray) and b.dtype == np.int64:
@@ -57,7 +56,6 @@ try:
 
 except ImportError:
     import scipy.fft
-    import numpy
 
 
     def fftn(a, axes=None):
@@ -74,4 +72,8 @@ except ImportError:
 
 
     def vdot(a, b):
-        return numpy.vdot(a, b)
+        from .logger import logger
+        if (isinstance(a, np.ndarray) and a.dtype == np.float32) or \
+           (isinstance(b, np.ndarray) and b.dtype == np.float32):
+            logger.warning("Calling np.vdot in single precision may lead to inaccurate results")
+        return np.vdot(a, b)
