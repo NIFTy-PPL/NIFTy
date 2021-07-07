@@ -1,5 +1,5 @@
-Discretisation and Volume in NIFTy
-==================================
+Discretisation and Volume
+=========================
 
 .. note:: Some of this discussion is rather technical and may be skipped in a first read-through.
 

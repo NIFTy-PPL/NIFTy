@@ -1,5 +1,7 @@
 import nifty7
 
+needs_sphinx = '3.2.0'
+
 extensions = [
     'sphinx.ext.napoleon',  # Support for NumPy and Google style docstrings
     'sphinx.ext.imgmath',  # Render math as images
@@ -26,7 +28,7 @@ language = None
 exclude_patterns = []
 add_module_names = False
 
-html_theme = "sphinx_rtd_theme"
+html_theme = "pydata_sphinx_theme"
 html_logo = 'nifty_logo_black.png'
 
 exclude_patterns = [

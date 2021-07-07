@@ -1,5 +1,5 @@
-IFT -- Information Field Theory
-===============================
+Information Field Theory
+========================
 
 Theoretical Background
 ----------------------
