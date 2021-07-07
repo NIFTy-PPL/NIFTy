@@ -30,6 +30,16 @@ add_module_names = False
 
 html_theme = "pydata_sphinx_theme"
 html_logo = 'nifty_logo_black.png'
+html_theme_options = {
+    "icon_links": [
+        {
+            "name": "PyPI",
+            "url": "https://pypi.org/project/nifty7",
+            "icon": "fas fa-box",
+        }
+    ],
+    "gitlab_url": "https://gitlab.mpcdf.mpg.de/ift/nifty",
+}
 
 exclude_patterns = [
     'mod/modules.rst', 'mod/nifty7.git_version.rst', 'mod/nifty7.logger.rst'
