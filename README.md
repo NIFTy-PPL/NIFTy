@@ -107,6 +107,13 @@ dive into NIFTy by running one of the demonstrations, e.g.:
 
     python3 demos/getting_started_1.py
 
+### Building the documentation from source
+
+To build the documentation from source, install 
+[sphinx](https://www.sphinx-doc.org/en/master/index.html) and the [Pydata Sphinx Theme](https://github.com/pydata/pydata-sphinx-theme) on your system and run
+    
+    sh docs/generate.sh
+
 ### Acknowledgements
 
 Please consider acknowledging NIFTy in your publication(s) by using a phrase
