@@ -39,4 +39,3 @@ To view the documentation in firefox::
 
 (Note: Make sure that you reinstall nifty after each change since sphinx
 imports nifty from the Python path.)
-

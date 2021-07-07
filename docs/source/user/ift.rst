@@ -145,14 +145,14 @@ Here, the uncertainty of the field and the power spectrum of its generating proc
 +----------------------------------------------------+
 | **Output of tomography demo getting_started_3.py** |
 +----------------------------------------------------+
-| .. image:: images/getting_started_3_setup.png      |
+| .. image:: ../images/getting_started_3_setup.png   |
 |                                                    |
 +----------------------------------------------------+
 | Non-Gaussian signal field,                         |
 | data backprojected into the image domain, power    |
 | spectrum of underlying Gausssian process.          |
 +----------------------------------------------------+
-| .. image:: images/getting_started_3_results.png    |
+| .. image:: ../images/getting_started_3_results.png |
 |                                                    |
 +----------------------------------------------------+
 | Posterior mean field signal                        |

@@ -12,7 +12,7 @@ Fields are defined to be scalar functions on the manifold, living in the functio
 Unless we find ourselves in the lucky situation that we can solve for the posterior statistics of interest analytically, we need to apply numerical methods.
 This is where NIFTy comes into play.
 
-.. figure:: images/inference.png
+.. figure:: ../images/inference.png
     :width: 80%
     :align: center
 
@@ -138,7 +138,7 @@ NIFTy is implemented such that in order to change resolution, only the line of c
 It automatically takes care of dependent structures like volume factors, discretised operators and responses.
 A visualisation of this can be seen in figure 2, which displays the MAP inference of a signal at various resolutions.
 
-.. figure:: images/converging_discretization.png
+.. figure:: ../images/converging_discretization.png
     :scale: 80%
     :align: center
 
