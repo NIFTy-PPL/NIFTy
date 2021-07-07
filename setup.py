@@ -35,21 +35,28 @@ def write_version():
 write_version()
 exec(open('nifty7/version.py').read())
 
+with open("README.md") as f:
+    long_description = f.read()
+description = """NIFTy, Numerical Information Field Theory, is a versatile
+library designed to enable the development of signal inference algorithms that
+operate regardless of the underlying grids and their resolutions."""
+
 setup(name="nifty7",
       version=__version__,
-      author="Theo Steininger, Martin Reinecke",
+      author="Martin Reinecke",
       author_email="martin@mpa-garching.mpg.de",
-      description="Numerical Information Field Theory",
-      url="http://www.mpa-garching.mpg.de/ift/nifty/",
+      description=description,
+      long_description=long_description,
+      long_description_content_type="text/markdown",
+      url="https://ift.pages.mpcdf.de/nifty/",
+      project_urls={
+          "Bug Tracker": "https://gitlab.mpcdf.mpg.de/ift/nifty/issues",
+          "Documentation": "https://ift.pages.mpcdf.de/nifty/",
+          "Source Code": "https://gitlab.mpcdf.mpg.de/ift/nifty",
+      },
       packages=find_packages(include=["nifty7", "nifty7.*"]),
-      zip_safe=True,
       license="GPLv3",
       setup_requires=['scipy>=1.4.1', 'numpy>=1.17'],
       install_requires=['scipy>=1.4.1', 'numpy>=1.17'],
       python_requires='>=3.6',
-      classifiers=[
-        "Development Status :: 4 - Beta",
-        "Topic :: Utilities",
-        "License :: OSI Approved :: GNU General Public License v3 "
-        "or later (GPLv3+)"],
       )
