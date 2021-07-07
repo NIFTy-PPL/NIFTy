@@ -40,6 +40,7 @@ html_theme_options = {
     ],
     "gitlab_url": "https://gitlab.mpcdf.mpg.de/ift/nifty",
 }
+html_last_updated_fmt = '%b %d, %Y'
 
 exclude_patterns = [
     'mod/modules.rst', 'mod/nifty7.git_version.rst', 'mod/nifty7.logger.rst'
