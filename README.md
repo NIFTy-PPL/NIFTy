@@ -49,7 +49,7 @@ Installation
 - [SciPy](https://www.scipy.org/)
 
 Optional dependencies:
-- [DUCC0](https://gitlab.mpcdf.mpg.de/mtr/ducc) for faster FFTs, spherical
+- [ducc0](https://gitlab.mpcdf.mpg.de/mtr/ducc) for faster FFTs, spherical
     harmonic transforms, and radio interferometry gridding support
 - [mpi4py](https://mpi4py.scipy.org) (for MPI-parallel execution)
 - [matplotlib](https://matplotlib.org/) (for field plotting)

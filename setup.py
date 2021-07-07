@@ -11,7 +11,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
-# Copyright(C) 2013-2019 Max-Planck-Society
+# Copyright(C) 2013-2021 Max-Planck-Society
 #
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
 
@@ -28,8 +28,8 @@ def write_version():
     except FileNotFoundError:
         print("Could not determine version string from git history")
         res = "unknown"
-    with open(os.path.join("nifty7", "git_version.py"), "w") as file:
-        file.write('gitversion = "{}"\n'.format(res))
+    with open(os.path.join("nifty7", "git_version.py"), "w") as f:
+        f.write('gitversion = "{}"\n'.format(res))
 
 
 write_version()
