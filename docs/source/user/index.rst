@@ -3,7 +3,7 @@ NIFTy user guide
 ================
 
 This guide is an overview and explains the main idea behind nifty. More details
-are found in the `API reference <../mod/nifty7.html>`_.
+are found in the `API reference <../mod/nifty8.html>`_.
 
 
 .. toctree::

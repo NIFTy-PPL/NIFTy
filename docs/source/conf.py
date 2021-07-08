@@ -34,7 +34,7 @@ html_theme_options = {
     "icon_links": [
         {
             "name": "PyPI",
-            "url": "https://pypi.org/project/nifty7",
+            "url": "https://pypi.org/project/nifty8",
             "icon": "fas fa-box",
         }
     ],

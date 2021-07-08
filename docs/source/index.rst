@@ -7,5 +7,5 @@ Welcome to the nifty8 documentation!
    :maxdepth: 1
 
    User Guide <user/index>
-   API reference <mod/nifty7>
+   API reference <mod/nifty8>
    Development <dev/index>
