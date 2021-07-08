@@ -15,24 +15,15 @@
 #
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
 
-from setuptools import find_packages, setup
 import os
+import site
+import sys
 
+from setuptools import find_packages, setup
 
-def write_version():
-    import subprocess
-    try:
-        p = subprocess.Popen(["git", "describe", "--dirty", "--tags", "--always"],
-                             stdout=subprocess.PIPE)
-        res = p.communicate()[0].strip().decode('utf-8')
-    except FileNotFoundError:
-        print("Could not determine version string from git history")
-        res = "unknown"
-    with open(os.path.join("nifty7", "git_version.py"), "w") as f:
-        f.write('gitversion = "{}"\n'.format(res))
+# Workaround until https://github.com/pypa/pip/issues/7953 is fixed
+site.ENABLE_USER_SITE = "--user" in sys.argv[1:]
 
-
-write_version()
 exec(open('nifty7/version.py').read())
 
 with open("README.md") as f:
