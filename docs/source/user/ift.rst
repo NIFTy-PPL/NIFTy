@@ -258,4 +258,4 @@ Furthermore the KL is represented as a stochastic estimate using a set of sample
 
 A visual comparison of the MGVI and GeoVI algorithm can be found in `variational_inference_visualized.py <https://gitlab.mpcdf.mpg.de/ift/nifty/-/blob/NIFTy_7/demos/variational_inference_visualized.py>`_.
 
-.. [6] P. Frank, R. Leike, and T.A. Enßlin (2021), "Geometric Variational Inference"; `[arXiv:2105.10470] <https://arxiv.org/abs/2105.10470>`_
+.. [6] P. Frank, R. Leike, and T.A. Enßlin (2021), "Geometric Variational Inference"; `[arXiv:2105.10470] <https://arxiv.org/abs/2105.10470>`_ `[doi] <https://doi.org/10.3390/e23070853>`_

@@ -496,6 +496,7 @@ def GeoMetricKL(mean, hamiltonian, n_samples, minimizer_samp, mirror_samples,
     --------
     `Geometric Variational Inference`, Philipp Frank, Reimar Leike,
     Torsten A. Enßlin, `<https://arxiv.org/abs/2105.10470>`_
+    `<https://doi.org/10.3390/e23070853>`_
     """
     if not isinstance(hamiltonian, StandardHamiltonian):
         raise TypeError

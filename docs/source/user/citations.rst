@@ -48,3 +48,16 @@ NIFTy-related publications
       adsurl = {http://cdsads.u-strasbg.fr/abs/2017arXiv170801073S},
       adsnote = {Provided by the SAO/NASA Astrophysics Data System}
       }
+
+    @article{geovi,
+      author = {Frank, Philipp and Leike, Reimar and Enßlin, Torsten A.},
+      title = {Geometric Variational Inference},
+      journal = {Entropy},
+      volume = {23},
+      year = {2021},
+      number = {7},
+      article-number = {853},
+      url = {https://www.mdpi.com/1099-4300/23/7/853},
+      issn = {1099-4300},
+      doi = {10.3390/e23070853}
+    }
