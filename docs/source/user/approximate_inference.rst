@@ -56,7 +56,7 @@ Geometric Variational Inference (geoVI)
 
 For non-linear posterior distributions :math:`\mathcal{P}(\xi|d)` an approximation with a Gaussian :math:`\mathcal{Q}(\xi)` in the coordinates :math:`\xi` is sub-optimal, as higher order interactions are ignored.
 A better approximation can be achieved by constructing a coordinate system :math:`y = g\left(\xi\right)` in which the posterior is close to a Gaussian, and perform VI with a Gaussian :math:`\mathcal{Q}(y)` in these coordinates.
-This approach is called Geometric Variation Inference (geoVI).
+This approach is called Geometric Variational Inference (geoVI).
 It is discussed in detail in [2]_.
 
 One useful coordinate system is obtained in case the metric :math:`M` of the posterior can be expressed as the pullback of the Euclidean metric by :math:`g`:
