@@ -1,0 +1,4 @@
+include ChangeLog.md
+include demos/*.py
+graft tests
+global-exclude *.py[cod]

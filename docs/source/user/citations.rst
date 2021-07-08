@@ -1,7 +1,7 @@
 NIFTy-related publications
 ==========================
 
-::
+.. parsed-literal::
     @article{asclnifty5,
       title={NIFTy5: Numerical Information Field Theory v5},
       author={Arras, Philipp and Baltac, Mihai and Ensslin, Torsten A and Frank, Philipp and Hutschenreuter, Sebastian and Knollmueller, Jakob and Leike, Reimar and Newrzella, Max-Niklas and Platz, Lukas and Reinecke, Martin and others},
@@ -9,6 +9,7 @@ NIFTy-related publications
       year={2019}
       }
 
+.. parsed-literal::
     @software{nifty,
       author = {{Martin Reinecke, Theo Steininger, Marco Selig}},
       title = {NIFTy -- Numerical Information Field TheorY},
@@ -17,7 +18,8 @@ NIFTy-related publications
       date = {2018-04-05},
       }
 
-    @article{2013A&A...554A..26S,
+.. parsed-literal::
+    @article{nifty1,
       author = {{Selig}, M. and {Bell}, M.~R. and {Junklewitz}, H. and {Oppermann}, N. and {Reinecke}, M. and {Greiner}, M. and {Pachajoa}, C. and {En{\ss}lin}, T.~A.},
       title = "{NIFTY - Numerical Information Field Theory. A versatile PYTHON library for signal inference}",
       journal = {\aap},
@@ -35,7 +37,8 @@ NIFTy-related publications
       adsnote = {Provided by the SAO/NASA Astrophysics Data System}
       }
 
-    @article{2017arXiv170801073S,
+.. parsed-literal::
+    @article{nifty3,
       author = {{Steininger}, T. and {Dixit}, J. and {Frank}, P. and {Greiner}, M. and {Hutschenreuter}, S. and {Knollm{\"u}ller}, J. and {Leike}, R. and {Porqueres}, N. and {Pumpe}, D. and {Reinecke}, M. and {{\v S}raml}, M. and {Varady}, C. and {En{\ss}lin}, T.},
       title = "{NIFTy 3 - Numerical Information Field Theory - A Python framework for multicomponent signal inference on HPC clusters}",
       journal = {ArXiv e-prints},
@@ -48,3 +51,18 @@ NIFTy-related publications
       adsurl = {http://cdsads.u-strasbg.fr/abs/2017arXiv170801073S},
       adsnote = {Provided by the SAO/NASA Astrophysics Data System}
       }
+
+.. parsed-literal::
+    @article{geovi,
+      author = {Frank, Philipp and Leike, Reimar and Enßlin, Torsten A.},
+      title = {Geometric Variational Inference},
+      journal = {Entropy},
+      volume = {23},
+      year = {2021},
+      number = {7},
+      article-number = {853},
+      url = {https://www.mdpi.com/1099-4300/23/7/853},
+      issn = {1099-4300},
+      doi = {10.3390/e23070853}
+      }
+

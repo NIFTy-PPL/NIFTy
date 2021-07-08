@@ -11,44 +11,52 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
-# Copyright(C) 2013-2019 Max-Planck-Society
+# Copyright(C) 2013-2021 Max-Planck-Society
 #
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
 
+import os
+import site
+import sys
+
 from setuptools import find_packages, setup
 
+# Workaround until https://github.com/pypa/pip/issues/7953 is fixed
+site.ENABLE_USER_SITE = "--user" in sys.argv[1:]
 
-def write_version():
-    import subprocess
-    try:
-        p = subprocess.Popen(["git", "describe", "--dirty", "--tags", "--always"],
-                             stdout=subprocess.PIPE)
-        res = p.communicate()[0].strip().decode('utf-8')
-    except FileNotFoundError:
-        print("Could not determine version string from git history")
-        res = "unknown"
-    with open("nifty8/git_version.py", "w") as file:
-        file.write('gitversion = "{}"\n'.format(res))
-
-
-write_version()
 exec(open('nifty8/version.py').read())
+
+with open("README.md") as f:
+    long_description = f.read()
+description = """NIFTy, Numerical Information Field Theory, is a versatile
+library designed to enable the development of signal inference algorithms that
+operate regardless of the underlying grids and their resolutions."""
 
 setup(name="nifty8",
       version=__version__,
-      author="Theo Steininger, Martin Reinecke",
+      author="Martin Reinecke",
       author_email="martin@mpa-garching.mpg.de",
-      description="Numerical Information Field Theory",
-      url="http://www.mpa-garching.mpg.de/ift/nifty/",
+      description=description,
+      long_description=long_description,
+      long_description_content_type="text/markdown",
+      url="https://ift.pages.mpcdf.de/nifty/",
+      project_urls={
+          "Bug Tracker": "https://gitlab.mpcdf.mpg.de/ift/nifty/issues",
+          "Documentation": "https://ift.pages.mpcdf.de/nifty/",
+          "Source Code": "https://gitlab.mpcdf.mpg.de/ift/nifty",
+          "Changelog": "https://gitlab.mpcdf.mpg.de/ift/nifty/-/blob/NIFTy_8/ChangeLog",
+      },
       packages=find_packages(include=["nifty8", "nifty8.*"]),
-      zip_safe=True,
       license="GPLv3",
       setup_requires=['scipy>=1.4.1', 'numpy>=1.17'],
       install_requires=['scipy>=1.4.1', 'numpy>=1.17'],
       python_requires='>=3.6',
       classifiers=[
-        "Development Status :: 4 - Beta",
-        "Topic :: Utilities",
-        "License :: OSI Approved :: GNU General Public License v3 "
-        "or later (GPLv3+)"],
+          "Development Status :: 5 - Production/Stable",
+          "Topic :: Scientific/Engineering :: Mathematics",
+          "Topic :: Scientific/Engineering :: Physics",
+          "License :: OSI Approved :: GNU General Public License v3 (GPLv3)",
+          "Operating System :: OS Independent",
+          "Programming Language :: Python",
+          "Intended Audience :: Science/Research"],
       )

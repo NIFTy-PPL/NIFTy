@@ -4,7 +4,7 @@ NIFTy - Numerical Information Field Theory
 [![coverage report](https://gitlab.mpcdf.mpg.de/ift/nifty/badges/NIFTy_8/coverage.svg)](https://gitlab.mpcdf.mpg.de/ift/nifty/-/commits/NIFTy_8)
 
 **NIFTy** project homepage:
-[http://ift.pages.mpcdf.de/nifty](http://ift.pages.mpcdf.de/nifty)
+[https://ift.pages.mpcdf.de/nifty](https://ift.pages.mpcdf.de/nifty)
 
 Summary
 -------
@@ -49,7 +49,7 @@ Installation
 - [SciPy](https://www.scipy.org/)
 
 Optional dependencies:
-- [DUCC0](https://gitlab.mpcdf.mpg.de/mtr/ducc) for faster FFTs, spherical
+- [ducc0](https://gitlab.mpcdf.mpg.de/mtr/ducc) for faster FFTs, spherical
     harmonic transforms, and radio interferometry gridding support
 - [mpi4py](https://mpi4py.scipy.org) (for MPI-parallel execution)
 - [matplotlib](https://matplotlib.org/) (for field plotting)
@@ -91,7 +91,7 @@ MPI support is added via:
 
     sudo apt-get install python3-mpi4py
 
-### Running the tests
+### Run the tests
 
 To run the tests, additional packages are required:
 
@@ -105,29 +105,20 @@ following command in the repository root:
 ### First Steps
 
 For a quick start, you can browse through the [informal
-introduction](http://ift.pages.mpcdf.de/nifty/code.html) or
+introduction](https://ift.pages.mpcdf.de/nifty/code.html) or
 dive into NIFTy by running one of the demonstrations, e.g.:
 
     python3 demos/getting_started_1.py
 
-### Building the documentation from source
-
-To build the documentation from source, install
-[sphinx](https://www.sphinx-doc.org/en/stable/index.html) and the
-[Read The Docs Sphinx Theme](https://github.com/readthedocs/sphinx_rtd_theme)
-on your system and run
-
-    sh docs/generate.sh
-
 ### Acknowledgements
 
-Please acknowledge the use of NIFTy in your publication(s) by using a
-phrase such as the following:
+Please consider acknowledging NIFTy in your publication(s) by using a phrase
+such as the following:
 
 > "Some of the results in this publication have been derived using the
 > NIFTy package [(https://gitlab.mpcdf.mpg.de/ift/NIFTy)](https://gitlab.mpcdf.mpg.de/ift/NIFTy)"
 
-and a citation to one of the [publications](http://ift.pages.mpcdf.de/nifty/citations.html).
+and a citation to one of the [publications](https://ift.pages.mpcdf.de/nifty/citations.html).
 
 
 ### Licensing terms
@@ -135,15 +126,6 @@ and a citation to one of the [publications](http://ift.pages.mpcdf.de/nifty/cita
 The NIFTy package is licensed under the terms of the
 [GPLv3](https://www.gnu.org/licenses/gpl.html) and is distributed
 *without any warranty*.
-
-
-Contributing
-------------
-
-Please note our convention not to use pure Python `assert` statements in
-production code. They are not guaranteed to by executed by Python and can be
-turned off by the user (`python -O` in cPython). As an alternative use
-`ift.myassert`.
 
 
 Contributors
