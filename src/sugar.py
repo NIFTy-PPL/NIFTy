@@ -368,6 +368,8 @@ def makeField(domain, arr):
         The newly created random field
     """
     if isinstance(domain, (dict, MultiDomain)):
+        if not isinstance(arr, dict):
+            raise TypeError("If `domain` is an instance of `MultiDomain`, `arr` must be a dict of Numpy arrays.")
         return MultiField.from_raw(domain, arr)
     return Field.from_raw(domain, arr)
 
