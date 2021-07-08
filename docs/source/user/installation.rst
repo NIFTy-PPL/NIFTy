@@ -29,8 +29,8 @@ MPI support is added via::
 
 NIFTy documentation is provided by Sphinx. To build the documentation::
 
-    sudo apt-get install python3-sphinx dvipng
-    pip install --user pydata-sphinx-theme
+    sudo apt-get install dvipng texlive-latex-base texlive-latex-extra
+    pip3 install sphinx pydata-sphinx-theme
     cd <nifty_directory>
     sh docs/generate.sh
 
