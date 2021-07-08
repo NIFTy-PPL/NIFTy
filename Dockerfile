@@ -6,15 +6,13 @@ RUN apt-get update && apt-get install -y \
     # Packages needed for NIFTy
     python3-scipy \
     # Documentation build dependencies
-    python3-sphinx-rtd-theme dvipng texlive-latex-base texlive-latex-extra \
+    dvipng texlive-latex-base texlive-latex-extra \
     # Testing dependencies
     python3-pytest-cov jupyter \
     # Optional NIFTy dependencies
     python3-mpi4py python3-matplotlib \
   # more optional NIFTy dependencies
-  && pip3 install ducc0 \
-  && pip3 install finufft \
-  && pip3 install jupyter \
+  && pip3 install ducc0 finufft jupyter sphinx pydata-sphinx-theme \
   && rm -rf /var/lib/apt/lists/*
 
 # Set matplotlib backend

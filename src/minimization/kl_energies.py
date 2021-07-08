@@ -380,13 +380,12 @@ def MetricGaussianKL(mean, hamiltonian, n_samples, mirror_samples, constants=[],
         these occasions but rather the minimizer is told that the position it
         has tried is not sensible.
 
-    Notes
-    -----
+    Note
+    ----
     The two lists `constants` and `point_estimates` are independent from each
     other. It is possible to sample along domains which are kept constant
     during minimization and vice versa.
-    DomainTuples should never be created using the constructor, but rather
-    via the factory function :attr:`make`!
+
     See also
     --------
     `Metric Gaussian Variational Inference`, Jakob Knollmüller,
@@ -475,15 +474,16 @@ def GeoMetricKL(mean, hamiltonian, n_samples, minimizer_samp, mirror_samples,
         these occasions but rather the minimizer is told that the position it
         has tried is not sensible.
 
-    Notes
-    -----
+    Note
+    ----
     The two lists `constants` and `point_estimates` are independent from each
     other. It is possible to sample along domains which are kept constant
     during minimization and vice versa.
     DomainTuples should never be created using the constructor, but rather
     via the factory function :attr:`make`!
 
-    Note on MPI and mirror_samples:
+    Note
+    ----
     As in MGVI, mirroring samples can help to stabilize the latent mean as it
     reduces sampling noise. But unlike MGVI a mirrored sample involves an
     additional solve of the non-linear transformation. Therefore, when using
