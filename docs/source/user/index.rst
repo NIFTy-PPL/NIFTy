@@ -12,6 +12,7 @@ are found in the `API reference <../mod/nifty7.html>`_.
    whatisnifty
    installation
    ift
+   approximate_inference
    volume
    code
    citations

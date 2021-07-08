@@ -60,4 +60,5 @@ NIFTy-related publications
       url = {https://www.mdpi.com/1099-4300/23/7/853},
       issn = {1099-4300},
       doi = {10.3390/e23070853}
-    }
+      }
+
