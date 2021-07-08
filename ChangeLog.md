@@ -93,6 +93,13 @@ likelihood becomes the identity matrix. This is needed for the `GeoMetricKL`
 algorithm.
 
 
+Remove gitversion interface
+---------------------------
+
+Since we provide proper nifty releases on PyPI now, the gitversion interface is
+not supported any longer.
+
+
 Changes since NIFTy 5
 =====================
 
