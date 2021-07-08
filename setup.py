@@ -15,8 +15,14 @@
 #
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
 
-from setuptools import find_packages, setup
 import os
+import site
+import sys
+
+from setuptools import find_packages, setup
+
+# Workaround until https://github.com/pypa/pip/issues/7953 is fixed
+site.ENABLE_USER_SITE = "--user" in sys.argv[1:]
 
 exec(open('nifty7/version.py').read())
 
