@@ -370,6 +370,7 @@ def _plot1D(f, ax, **kwargs):
 
 def _plot2D(f, ax, **kwargs):
     import matplotlib.pyplot as plt
+    from mpl_toolkits.axes_grid1 import make_axes_locatable
 
     dom = f.domain
 
@@ -425,7 +426,8 @@ def _plot2D(f, ax, **kwargs):
                 f.val.T, extent=[0, nx*dx, 0, ny*dy],
                 vmin=kwargs.get("vmin"), vmax=kwargs.get("vmax"),
                 cmap=cmap, origin="lower", **norm, **aspect)
-            plt.colorbar(im)
+            cax = make_axes_locatable(ax).append_axes("right", size="5%", pad=0.05)
+            plt.colorbar(im, cax=cax)
         _limit_xy(**kwargs)
         return
     elif isinstance(dom, (HPSpace, GLSpace)):
