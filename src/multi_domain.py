@@ -16,7 +16,7 @@
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
 
 from .domain_tuple import DomainTuple
-from .utilities import frozendict, indent
+from .utilities import check_domain_equality, frozendict, indent
 
 
 class MultiDomain:
@@ -128,8 +128,7 @@ class MultiDomain:
         for dom in inp:
             for key, subdom in zip(dom._keys, dom._domains):
                 if key in res:
-                    if res[key] != subdom:
-                        raise ValueError("domain mismatch")
+                    check_domain_equality(res[key], subdom)
                 else:
                     res[key] = subdom
         return MultiDomain.make(res)

@@ -56,7 +56,7 @@ class Field(Operator):
             else:
                 raise TypeError("val must be of type numpy.ndarray")
         if domain.shape != val.shape:
-            raise ValueError("shape mismatch between val and domain")
+            raise ValueError(f"shape mismatch between val and domain\n{domain.shape}\n{val.shape}")
         self._domain = domain
         self._val = val
         self._val.flags.writeable = False
@@ -310,8 +310,7 @@ class Field(Operator):
             raise TypeError("The dot-partner must be an instance of " +
                             "the Field class")
 
-        if x._domain != self._domain:
-            raise ValueError("Domain mismatch")
+        utilities.check_domain_equality(x._domain, self._domain)
 
         ndom = len(self._domain)
         spaces = utilities.parse_spaces(spaces, ndom)
@@ -339,8 +338,7 @@ class Field(Operator):
             raise TypeError("The dot-partner must be an instance of " +
                             "the Field class")
 
-        if x._domain != self._domain:
-            raise ValueError("Domain mismatch")
+        utilities.check_domain_equality(x._domain, self._domain)
 
         return vdot(self._val, x._val)
 
@@ -671,13 +669,11 @@ class Field(Operator):
                "\n- val         = " + repr(self._val)
 
     def extract(self, dom):
-        if dom != self._domain:
-            raise ValueError("domain mismatch")
+        utilities.check_domain_equality(dom, self._domain)
         return self
 
     def extract_part(self, dom):
-        if dom != self._domain:
-            raise ValueError("domain mismatch")
+        utilities.check_domain_equality(dom, self._domain)
         return self
 
     def unite(self, other):
@@ -690,8 +686,7 @@ class Field(Operator):
         # if other is a field, make sure that the domains match
         f = getattr(self._val, op)
         if isinstance(other, Field):
-            if other._domain != self._domain:
-                raise ValueError("domains are incompatible.")
+            utilities.check_domain_equality(other._domain, self._domain)
             return Field(self._domain, f(other._val))
         if np.isscalar(other):
             return Field(self._domain, f(other))

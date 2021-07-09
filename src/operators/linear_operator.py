@@ -16,6 +16,7 @@
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
 
 from .operator import Operator
+from ..utilities import check_domain_equality
 
 
 class LinearOperator(Operator):
@@ -252,4 +253,4 @@ class LinearOperator(Operator):
 
     def _check_input(self, x, mode):
         self._check_mode(mode)
-        self._check_domain_equality(self._dom(mode), x.domain)
+        check_domain_equality(self._dom(mode), x.domain)

@@ -20,7 +20,7 @@ import numpy as np
 from .. import pointwise
 from ..logger import logger
 from ..multi_domain import MultiDomain
-from ..utilities import NiftyMeta, indent, myassert
+from ..utilities import NiftyMeta, check_domain_equality, indent, myassert
 
 
 class Operator(metaclass=NiftyMeta):
@@ -130,17 +130,6 @@ class Operator(metaclass=NiftyMeta):
         `MultiDomains` with the index as the key.
         """
         return None
-
-    @staticmethod
-    def _check_domain_equality(dom_op, dom_field):
-        if dom_op != dom_field:
-            s = "The operator's and field's domains don't match."
-            from ..domain_tuple import DomainTuple
-            from ..multi_domain import MultiDomain
-            if not isinstance(dom_op, (DomainTuple, MultiDomain,)):
-                s += " Your operator's domain is neither a `DomainTuple`" \
-                     " nor a `MultiDomain`."
-            raise ValueError(s)
 
     def scale(self, factor):
         if factor == 1:
@@ -275,7 +264,7 @@ class Operator(metaclass=NiftyMeta):
                 raise ValueError
             if x.jac._factor != 1:
                 raise ValueError
-        self._check_domain_equality(self._domain, x.domain)
+        check_domain_equality(self._domain, x.domain)
 
     def __call__(self, x):
         if not isinstance(x, Operator):
@@ -417,8 +406,7 @@ class _OpChain(_CombinedOperator):
         self._domain = self._ops[-1].domain
         self._target = self._ops[0].target
         for i in range(1, len(self._ops)):
-            if self._ops[i-1].domain != self._ops[i].target:
-                raise ValueError("domain mismatch")
+            check_domain_equality(self._ops[i-1].domain, self._ops[i].target)
 
     def apply(self, x):
         self._check_input(x)

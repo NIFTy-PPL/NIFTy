@@ -11,7 +11,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
-# Copyright(C) 2013-2019 Max-Planck-Society
+# Copyright(C) 2013-2021 Max-Planck-Society
 #
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
 
@@ -25,7 +25,7 @@ __all__ = ["get_slice_list", "safe_cast", "parse_spaces", "infer_space",
            "memo", "NiftyMeta", "my_sum", "my_lincomb_simple",
            "my_lincomb", "indent",
            "my_product", "frozendict", "special_add_at", "iscomplextype",
-           "value_reshaper", "lognormal_moments"]
+           "value_reshaper", "lognormal_moments", "check_domain_equality"]
 
 
 def my_sum(iterable):
@@ -412,3 +412,19 @@ def myassert(val):
     `__debug__` is False."""
     if not val:
         raise AssertionError
+
+
+def check_domain_equality(domain0, domain1):
+    """Check if two domains are equal and throw ValueError if not. Throw a
+    TypeError if one of the inputs is neither a DomainTuple nor a
+    MultiDomain.
+    """
+    from .domain_tuple import DomainTuple
+    from .multi_domain import MultiDomain
+    from .domains.domain import Domain
+    for dom in [domain0, domain1]:
+        if not isinstance(dom, (MultiDomain, DomainTuple, Domain)):
+            raise TypeError("The following domain is neither an instance of "
+                            f"ift.MultiDomain nor of ift.DomainTuple.\n{dom}")
+    if domain0 != domain1:
+        raise ValueError(f"Domain mismatch:\n{domain0}\n{domain1}")

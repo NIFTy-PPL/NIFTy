@@ -41,8 +41,7 @@ class MultiField(Operator):
             raise ValueError("length mismatch")
         for d, v in zip(domain._domains, val):
             if isinstance(v, Field):
-                if v._domain != d:
-                    raise ValueError("domain mismatch")
+                utilities.check_domain_equality(v._domain, d)
             else:
                 raise TypeError("bad entry in val (must be Field)")
         self._domain = domain
@@ -137,13 +136,9 @@ class MultiField(Operator):
                for kk in domain.keys()}
         return MultiField.from_dict(dct)
 
-    def _check_domain(self, other):
-        if other._domain != self._domain:
-            raise ValueError("domains are incompatible.")
-
     def s_vdot(self, x):
         result = 0.
-        self._check_domain(x)
+        utilities.check_domain_equality(x._domain, self._domain)
         for v1, v2 in zip(self._val, x._val):
             result += v1.s_vdot(v2)
         return result
@@ -369,8 +364,7 @@ class MultiField(Operator):
     def _binary_op(self, other, op):
         f = getattr(Field, op)
         if isinstance(other, MultiField):
-            if self._domain != other._domain:
-                raise ValueError("domain mismatch")
+            utilities.check_domain_equality(self._domain, other._domain)
             val = tuple(f(v1, v2)
                         for v1, v2 in zip(self._val, other._val))
         else:

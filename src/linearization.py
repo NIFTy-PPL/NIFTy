@@ -19,6 +19,7 @@ import numpy as np
 
 from .operators.operator import Operator
 from .sugar import makeOp
+from .utilities import check_domain_equality
 
 
 class Linearization(Operator):
@@ -41,8 +42,7 @@ class Linearization(Operator):
     def __init__(self, val, jac, metric=None, want_metric=False):
         self._val = val
         self._jac = jac
-        if self._val.domain != self._jac.target:
-            raise ValueError("domain mismatch")
+        check_domain_equality(self._val.domain, self._jac.target)
         self._want_metric = want_metric
         self._metric = metric
 
@@ -179,13 +179,10 @@ class Linearization(Operator):
                 return self
             met = None if self._metric is None else self._metric.scale(other)
             return self.new(self._val*other, self._jac.scale(other), met)
-        from .sugar import makeOp
         if other.jac is None:
-            if self.target != other.domain:
-                raise ValueError("domain mismatch")
+            check_domain_equality(self.target, other.domain)
             return self.new(self._val*other, makeOp(other)(self._jac))
-        if self.target != other.target:
-            raise ValueError("domain mismatch")
+        check_domain_equality(self.target, other.target)
         return self.new(
             self.val*other.val,
             (makeOp(other.val)(self.jac))._myadd(
