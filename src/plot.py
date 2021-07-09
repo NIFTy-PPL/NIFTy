@@ -415,11 +415,17 @@ def _plot2D(f, ax, **kwargs):
                 rgb, extent=[0, nx*dx, 0, ny*dy], origin="lower", **norm,
                 **aspect)
         else:
+            from mpl_toolkits.axes_grid1 import make_axes_locatable
+            
             im = ax.imshow(
                 f.val.T, extent=[0, nx*dx, 0, ny*dy],
                 vmin=kwargs.get("vmin"), vmax=kwargs.get("vmax"),
                 cmap=cmap, origin="lower", **norm, **aspect)
-            plt.colorbar(im)
+
+             divider = make_axes_locatable(ax)
+             cax = divider.append_axes("right", size="5%", pad=0.05)
+ 
+             plt.colorbar(im, cax=cax)
         _limit_xy(**kwargs)
         return
     elif isinstance(dom, (HPSpace, GLSpace)):
