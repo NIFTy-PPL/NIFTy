@@ -86,3 +86,21 @@ def test_jax_energy(dom):
             continue
         pos1 = ift.from_random(e.domain)
         ift.extra.assert_allclose(e0(lin).metric(pos1), e(lin).metric(pos1))
+
+
+def test_jax_errors():
+    dom = ift.UnstructuredDomain(2)
+    mdom = {"a": dom}
+    op = ift.JaxOperator(dom, dom, lambda x: {"a": x})
+    fld = ift.full(dom, 0.)
+    with pytest.raises(TypeError):
+        op(fld)
+    op = ift.JaxOperator(dom, mdom, lambda x: x)
+    with pytest.raises(TypeError):
+        op(fld)
+    op = ift.JaxOperator(dom, dom, lambda x: x[0])
+    with pytest.raises(ValueError):
+        op(fld)
+    op = ift.JaxOperator(dom, mdom, lambda x: {"a": x[0]})
+    with pytest.raises(ValueError):
+        op(fld)
