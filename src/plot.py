@@ -422,10 +422,10 @@ def _plot2D(f, ax, **kwargs):
                 vmin=kwargs.get("vmin"), vmax=kwargs.get("vmax"),
                 cmap=cmap, origin="lower", **norm, **aspect)
 
-             divider = make_axes_locatable(ax)
-             cax = divider.append_axes("right", size="5%", pad=0.05)
+            divider = make_axes_locatable(ax)
+            cax = divider.append_axes("right", size="5%", pad=0.05)
  
-             plt.colorbar(im, cax=cax)
+            plt.colorbar(im, cax=cax)
         _limit_xy(**kwargs)
         return
     elif isinstance(dom, (HPSpace, GLSpace)):
