@@ -329,6 +329,10 @@ def _plot1D(f, ax, **kwargs):
     if not isinstance(alpha, list):
         alpha = [alpha] * len(f)
 
+    color = kwargs.pop("color", None)
+    if not isinstance(color, list):
+        color = [color] * len(f)
+
     ax.set_title(kwargs.pop("title", ""))
     ax.set_xlabel(kwargs.pop("xlabel", ""))
     ax.set_ylabel(kwargs.pop("ylabel", ""))
@@ -341,7 +345,8 @@ def _plot1D(f, ax, **kwargs):
         for i, fld in enumerate(f):
             ycoord = fld.val
             plt.plot(xcoord, ycoord, label=label[i],
-                     linewidth=linewidth[i], alpha=alpha[i])
+                     linewidth=linewidth[i], alpha=alpha[i],
+                     color=color[i])
         _limit_xy(**kwargs)
         if label != ([None]*len(f)):
             plt.legend()
@@ -354,7 +359,8 @@ def _plot1D(f, ax, **kwargs):
             ycoord = fld.val_rw()
             ycoord[0] = ycoord[1]
             plt.plot(xcoord, ycoord, label=label[i],
-                     linewidth=linewidth[i], alpha=alpha[i])
+                     linewidth=linewidth[i], alpha=alpha[i],
+                     color=color[i])
         _limit_xy(**kwargs)
         if label != ([None]*len(f)):
             plt.legend()
