@@ -26,7 +26,7 @@ from .domains.power_space import PowerSpace
 from .domains.rg_space import RGSpace
 from .field import Field
 from .minimization.iteration_controllers import EnergyHistory
-from .utilities import check_domain_equality
+from .utilities import check_domain_equality, myassert
 
 # relevant properties:
 # - x/y size
@@ -578,7 +578,9 @@ class Plot:
         nx = kwargs.pop("nx", 0)
         ny = kwargs.pop("ny", 0)
         if nx == ny == 0:
-            nx = ny = int(np.ceil(np.sqrt(nplot)))
+            ny = int(np.ceil(np.sqrt(nplot)))
+            nx = int(np.ceil(nplot/ny))
+            myassert(nx*ny >= nplot)
         elif nx == 0:
             nx = int(np.ceil(nplot/ny))
         elif ny == 0:
