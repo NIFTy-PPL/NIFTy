@@ -104,3 +104,41 @@ def test_jax_errors():
     op = ift.JaxOperator(dom, mdom, lambda x: {"a": x[0]})
     with pytest.raises(ValueError):
         op(fld)
+
+
+def test_jax_complex():
+    dom = ift.UnstructuredDomain(1)
+    a = ift.ducktape(dom, None, "a")
+    b = ift.ducktape(dom, None, "b")
+    op = a.real+1j*b.real
+    op1 = ift.JaxOperator(op.domain, op.target, lambda x: x["a"] + 1j*x["b"])
+    _op_equal(op, op1, ift.from_random(op.domain))
+    ift.extra.check_operator(op, ift.from_random(op.domain), ntries=10)
+    ift.extra.check_operator(op1, ift.from_random(op.domain), ntries=10)
+
+    op = op.imag
+    op1 = op1.imag
+    _op_equal(op, op1, ift.from_random(op.domain))
+    ift.extra.check_operator(op, ift.from_random(op.domain), ntries=10)
+    ift.extra.check_operator(op1, ift.from_random(op.domain), ntries=10)
+
+    lin = ift.Linearization.make_var(ift.from_random(op.domain))
+    test_vec = ift.full(op.target, 1.)
+    grad = op(lin).jac.adjoint(test_vec)
+    grad1 = op1(lin).jac.adjoint(test_vec)
+    ift.extra.assert_equal(grad, grad1)
+    ift.extra.assert_equal(grad, ift.makeField(grad.domain, {"a": 0., "b": 1.}))
+
+
+def _op_equal(op0, op1, loc):
+    assert op0.domain is op1.domain
+    assert op0.target is op1.target
+    ift.extra.assert_allclose(op0(loc), op1(loc))
+    lin = ift.Linearization.make_var(loc)
+    res = op0(lin)
+    res1 = op1(lin)
+    ift.extra.assert_allclose(res.val, res1.val)
+    fld = ift.from_random(op0.domain, dtype=loc.dtype)
+    ift.extra.assert_allclose(res.jac(fld), res1.jac(fld))
+    fld = ift.from_random(op0.target, dtype=res.val.dtype)
+    ift.extra.assert_allclose(res.jac.adjoint(fld), res1.jac.adjoint(fld))

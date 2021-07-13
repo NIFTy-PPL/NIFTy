@@ -364,7 +364,7 @@ def _check_nontrivial_constant(op, loc, tol, ntries, only_r_differentiable,
         oplin = op(lin)
 
         myassert(oplin.jac.target is oplin0.jac.target)
-        rndinp = from_random(oplin.jac.target)
+        rndinp = from_random(oplin.jac.target, dtype=oplin.val.dtype)
         assert_allclose(oplin.jac.adjoint(rndinp).extract(varloc.domain),
                         oplin0.jac.adjoint(rndinp), 1e-13, 1e-13)
         foo = oplin.jac.adjoint(rndinp).extract(cstloc.domain)

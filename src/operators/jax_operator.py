@@ -165,12 +165,12 @@ class JaxLikelihoodEnergyOperator(LikelihoodEnergyOperator):
 
 
 class _JaxJacobian(LinearOperator):
-    def __init__(self, domain, target, func, adjfunc):
+    def __init__(self, domain, target, func, func_transposed):
         from ..sugar import makeDomain
         self._domain = makeDomain(domain)
         self._target = makeDomain(target)
         self._func = func
-        self._adjfunc = adjfunc
+        self._func_transposed = func_transposed
         self._capability = self.TIMES | self.ADJOINT_TIMES
 
     def apply(self, x, mode):
@@ -178,6 +178,6 @@ class _JaxJacobian(LinearOperator):
         self._check_input(x, mode)
         if mode == self.TIMES:
             fx = self._func(x.val)
-        else:
-            fx = self._adjfunc(x.val)[0]
-        return makeField(self._tgt(mode), _jax2np(fx))
+            return makeField(self._tgt(mode), _jax2np(fx))
+        fx = self._func_transposed(x.conjugate().val)[0]
+        return makeField(self._tgt(mode), _jax2np(fx)).conjugate()
