@@ -71,7 +71,7 @@ class JaxOperator(Operator):
         res = _jax2np(self._func(x.val))
         if isinstance(res, dict):
             if not isinstance(self._target, MultiDomain):
-                raise TypeError(("Jax function return a dictionary although the "
+                raise TypeError(("Jax function returns a dictionary although the "
                                  "target of the operator is a DomainTuple."))
             if set(res.keys()) != set(self._target.keys()):
                 raise ValueError(("Keys do not match:\n"
