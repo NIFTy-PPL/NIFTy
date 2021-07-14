@@ -420,8 +420,7 @@ def makeOp(input, dom=None):
             raise TypeError("need proper `dom` argument")
         return ScalingOperator(dom, input)
     if dom is not None:
-        if not dom == input.domain:
-            raise ValueError("domain mismatch")
+        utilities.check_domain_equality(dom, input.domain)
     if input.domain is DomainTuple.scalar_domain():
         return ScalingOperator(input.domain, input.val[()])
     if isinstance(input, Field):
@@ -442,8 +441,8 @@ def domain_union(domains):
         - if MultiDomain, there must not be any conflicting components
     """
     if isinstance(domains[0], DomainTuple):
-        if any(dom != domains[0] for dom in domains[1:]):
-            raise ValueError("domain mismatch")
+        for dom in domains[1:]:
+            utilities.check_domain_equality(dom, domains[0])
         return domains[0]
     return MultiDomain.union(domains)
 

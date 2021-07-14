@@ -26,6 +26,7 @@ from .domains.power_space import PowerSpace
 from .domains.rg_space import RGSpace
 from .field import Field
 from .minimization.iteration_controllers import EnergyHistory
+from .utilities import check_domain_equality, myassert
 
 # relevant properties:
 # - x/y size
@@ -313,8 +314,7 @@ def _plot1D(f, ax, **kwargs):
             if (len(dom) != 1):
                 raise ValueError("input field must have exactly one domain")
         else:
-            if fld.domain != dom:
-                raise ValueError("domain mismatch")
+            check_domain_equality(fld.domain, dom)
     dom = dom[0]
 
     label = kwargs.pop("label", None)
@@ -329,6 +329,10 @@ def _plot1D(f, ax, **kwargs):
     if not isinstance(alpha, list):
         alpha = [alpha] * len(f)
 
+    color = kwargs.pop("color", None)
+    if not isinstance(color, list):
+        color = [color] * len(f)
+
     ax.set_title(kwargs.pop("title", ""))
     ax.set_xlabel(kwargs.pop("xlabel", ""))
     ax.set_ylabel(kwargs.pop("ylabel", ""))
@@ -341,7 +345,8 @@ def _plot1D(f, ax, **kwargs):
         for i, fld in enumerate(f):
             ycoord = fld.val
             plt.plot(xcoord, ycoord, label=label[i],
-                     linewidth=linewidth[i], alpha=alpha[i])
+                     linewidth=linewidth[i], alpha=alpha[i],
+                     color=color[i])
         _limit_xy(**kwargs)
         if label != ([None]*len(f)):
             plt.legend()
@@ -354,7 +359,8 @@ def _plot1D(f, ax, **kwargs):
             ycoord = fld.val_rw()
             ycoord[0] = ycoord[1]
             plt.plot(xcoord, ycoord, label=label[i],
-                     linewidth=linewidth[i], alpha=alpha[i])
+                     linewidth=linewidth[i], alpha=alpha[i],
+                     color=color[i])
         _limit_xy(**kwargs)
         if label != ([None]*len(f)):
             plt.legend()
@@ -572,7 +578,9 @@ class Plot:
         nx = kwargs.pop("nx", 0)
         ny = kwargs.pop("ny", 0)
         if nx == ny == 0:
-            nx = ny = int(np.ceil(np.sqrt(nplot)))
+            ny = int(np.ceil(np.sqrt(nplot)))
+            nx = int(np.ceil(nplot/ny))
+            myassert(nx*ny >= nplot)
         elif nx == 0:
             nx = int(np.ceil(nplot/ny))
         elif ny == 0:

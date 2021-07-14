@@ -1,6 +1,12 @@
 Changes since NIFTy 7
 =====================
 
+Minisanity
+----------
+
+Terminal colors can be disabled in order to make the output of
+`ift.extra.minisanity` more readable when written to a file.
+
 Jax interface
 -------------
 

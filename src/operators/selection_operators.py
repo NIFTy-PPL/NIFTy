@@ -174,11 +174,10 @@ class SplitOperator(LinearOperator):
                 elif isinstance(slc[i],
                                 np.ndarray) and slc[i].dtype is np.dtype(bool):
                     if slc[i].size != d.size:
-                        ve = (
+                        raise ValueError(
                             "shape mismatch between desired slice {slc[i]}"
                             "and the shape of the domain {d.size}"
                         )
-                        raise ValueError(ve)
                     k_tgt += [UnstructuredDomain(slc[i].sum())]
                     k_slc_by_ax += [slc[i]]
                 elif isinstance(slc[i], (tuple, list, np.ndarray)):

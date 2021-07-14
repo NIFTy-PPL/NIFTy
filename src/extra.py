@@ -364,7 +364,7 @@ def _check_nontrivial_constant(op, loc, tol, ntries, only_r_differentiable,
         oplin = op(lin)
 
         myassert(oplin.jac.target is oplin0.jac.target)
-        rndinp = from_random(oplin.jac.target)
+        rndinp = from_random(oplin.jac.target, dtype=oplin.val.dtype)
         assert_allclose(oplin.jac.adjoint(rndinp).extract(varloc.domain),
                         oplin0.jac.adjoint(rndinp), 1e-13, 1e-13)
         foo = oplin.jac.adjoint(rndinp).extract(cstloc.domain)
@@ -408,7 +408,8 @@ def _jac_vs_finite_differences(op, loc, tol, ntries, only_r_differentiable):
                               atol=tol**2, rtol=tol**2)
 
 
-def minisanity(data, metric_at_pos, modeldata_operator, mean, samples=None):
+def minisanity(data, metric_at_pos, modeldata_operator, mean, samples=None,
+               terminal_colors=True):
     """Log information about the current fit quality and prior compatibility.
 
     Log a table with fitting information for the likelihood and the prior.
@@ -446,6 +447,10 @@ def minisanity(data, metric_at_pos, modeldata_operator, mean, samples=None):
     samples : iterable of Field or MultiField, optional
         Residual samples around `mean`. Default: no samples.
 
+    terminal_colors : bool, optional
+        Setting this to false disables terminal colors. This may be useful if
+        the output of minisanity is written to a file. Default: True
+
     Note
     ----
     For computing the reduced chi^2 values and the normalized residuals, the
@@ -459,6 +464,7 @@ def minisanity(data, metric_at_pos, modeldata_operator, mean, samples=None):
         and is_fieldlike(mean)
     ):
         raise TypeError
+    colors = bool(terminal_colors)
     keylen = 18
     for dom in [data.domain, mean.domain]:
         if isinstance(dom, MultiDomain):
@@ -486,8 +492,8 @@ def minisanity(data, metric_at_pos, modeldata_operator, mean, samples=None):
                 xscmean[aa][kk].add(np.nanmean(rr[kk].val))
                 xndof[aa][kk] = rr[kk].size - np.sum(np.isnan(rr[kk].val))
 
-    s0 = _tableentries(xredchisq[0], xscmean[0], xndof[0], keylen)
-    s1 = _tableentries(xredchisq[1], xscmean[1], xndof[1], keylen)
+    s0 = _tableentries(xredchisq[0], xscmean[0], xndof[0], keylen, colors)
+    s1 = _tableentries(xredchisq[1], xscmean[1], xndof[1], keylen, colors)
 
     f = logger.info
     n = 38 + keylen
@@ -504,14 +510,14 @@ def minisanity(data, metric_at_pos, modeldata_operator, mean, samples=None):
     f(n * "=")
 
 
-class _bcolors:
-    WARNING = "\033[33m"
-    FAIL = "\033[31m"
-    ENDC = "\033[0m"
-    BOLD = "\033[1m"
+def _tableentries(redchisq, scmean, ndof, keylen, colors):
 
+    class _bcolors:
+        WARNING = "\033[33m" if colors else ""
+        FAIL = "\033[31m" if colors else ""
+        ENDC = "\033[0m" if colors else ""
+        BOLD = "\033[1m" if colors else ""
 
-def _tableentries(redchisq, scmean, ndof, keylen):
     out = ""
     for kk in redchisq.keys():
         if len(kk) > keylen:
