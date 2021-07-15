@@ -25,7 +25,8 @@ __all__ = ["get_slice_list", "safe_cast", "parse_spaces", "infer_space",
            "memo", "NiftyMeta", "my_sum", "my_lincomb_simple",
            "my_lincomb", "indent",
            "my_product", "frozendict", "special_add_at", "iscomplextype",
-           "value_reshaper", "lognormal_moments", "check_domain_equality"]
+           "value_reshaper", "lognormal_moments", "check_domain_equality",
+           "check_MPI_equality", "check_MPI_synced_random_state"]
 
 
 def my_sum(iterable):
@@ -428,3 +429,80 @@ def check_domain_equality(domain0, domain1):
                             f"ift.MultiDomain nor of ift.DomainTuple.\n{dom}")
     if domain0 != domain1:
         raise ValueError(f"Domain mismatch:\n{domain0}\n{domain1}")
+
+
+def check_MPI_equality(obj, comm):
+    """Check that object is the same on all MPI tasks associated to a given
+    communicator.
+
+    Raises a RuntimeError if it differs.
+
+    Parameters
+    ----------
+    obj :
+        Any Python object that implements __eq__.
+    comm : MPI communicator or None
+        If comm is None, no check will be performed
+    """
+    # Special cases
+    if comm is None:
+        return
+    elif isinstance(obj, list):
+        _check_MPI_equality_lists(obj, comm)
+    elif isinstance(obj, np.random.SeedSequence):
+        _check_MPI_equality_sseq(obj, comm)
+    # /Special cases
+    else:
+        if not _MPI_unique(obj, comm):
+            raise RuntimeError("MPI tasks are not in sync")
+
+
+def _check_MPI_equality_lists(lst, comm):
+    if not isinstance(lst, list):
+        raise TypeError
+    if not _MPI_unique(len(lst), comm):
+        raise RuntimeError("MPI tasks are not in sync (lists have different lengths)")
+
+    is_sseq = comm.allgather(lst[0])
+    if is_sseq[0]:
+        if not all(is_sseq):
+            raise RuntimeError("First element in list is np.random.SeedSequence. The others (partly) not.")
+        for oo in lst:
+            check_MPI_equality(oo, comm)
+        return
+
+    for ii in range(len(lst)):
+        if not _MPI_unique(lst[ii], comm):
+            raise RuntimeError(f"MPI tasks are not in sync (list element #{ii} does not match)")
+
+
+def _MPI_unique(obj, comm):
+    return len(set(comm.allgather(obj))) == 1
+
+
+def _check_MPI_equality_sseq(sseq, comm):
+    from .random import Context, spawn_sseq, current_rng
+    if not isinstance(sseq, np.random.SeedSequence):
+        raise TypeError
+    with Context(spawn_sseq(1, parent=sseq)[0]):
+        random_number = current_rng().normal(10., 1.2, (1,))[0]
+    gath = comm.allgather(random_number)
+    if gath[1:] != gath[:-1]:
+        raise RuntimeError("SeedSequences are not equal")
+
+
+def check_MPI_synced_random_state(comm):
+    """Check that random state is the same on all MPI tasks associated to a
+    given communicator.
+
+    Raises a RuntimeError if it differs.
+
+    Parameters
+    ----------
+    comm : MPI communicator or None
+        If comm is None, no check will be performed
+    """
+    from .random import getState
+    if comm is None:
+        return
+    check_MPI_equality(getState(), comm)

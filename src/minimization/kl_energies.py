@@ -211,6 +211,7 @@ class _MetricGaussianSampler:
 
     def draw_samples(self, comm):
         local_samples = []
+        utilities.check_MPI_synced_random_state(comm)
         sseq = random.spawn_sseq(self._n)
         for i in range(*_get_lo_hi(comm, self._n)):
             with random.Context(sseq[i]):
@@ -315,6 +316,8 @@ class _GeoMetricSampler:
     def draw_samples(self, comm):
         local_samples = []
         prev = None
+        utilities.check_MPI_synced_random_state(comm)
+        utilities.check_MPI_equality(self._sseq, comm)
         for i in range(*_get_lo_hi(comm, self.n_eff_samples)):
             with random.Context(self._sseq[i]):
                 neg = self._neg[i]
@@ -407,7 +410,7 @@ def MetricGaussianKL(mean, hamiltonian, n_samples, mirror_samples, constants=[],
 
     _, ham_sampling = _reduce_by_keys(mean, hamiltonian, point_estimates)
     sampler = _MetricGaussianSampler(mean, ham_sampling, n_samples,
-                                     mirror_samples)
+                                     mirror_samples, napprox)
     local_samples = sampler.draw_samples(comm)
 
     mean, hamiltonian = _reduce_by_keys(mean, hamiltonian, constants)
@@ -416,7 +419,7 @@ def MetricGaussianKL(mean, hamiltonian, n_samples, mirror_samples, constants=[],
 
 
 def GeoMetricKL(mean, hamiltonian, n_samples, minimizer_samp, mirror_samples,
-                start_from_lin = True, constants=[], point_estimates=[],
+                start_from_lin=True, constants=[], point_estimates=[],
                 napprox=0, comm=None, nanisinf=True):
     """Provides the sampled Kullback-Leibler used in geometric Variational
     Inference (geoVI).
@@ -487,10 +490,10 @@ def GeoMetricKL(mean, hamiltonian, n_samples, minimizer_samp, mirror_samples,
     As in MGVI, mirroring samples can help to stabilize the latent mean as it
     reduces sampling noise. But unlike MGVI a mirrored sample involves an
     additional solve of the non-linear transformation. Therefore, when using
-    MPI, the mirrored samples also get distributed if enough tasks are available.
-    If there are more total samples than tasks, the mirrored counterparts
-    try to reside on the same task as their non mirrored partners. This ensures
-    that at least the starting position can be re-used.
+    MPI, the mirrored samples also get distributed if enough tasks are
+    available.  If there are more total samples than tasks, the mirrored
+    counterparts try to reside on the same task as their non mirrored partners.
+    This ensures that at least the starting position can be re-used.
 
     See also
     --------
@@ -517,7 +520,8 @@ def GeoMetricKL(mean, hamiltonian, n_samples, minimizer_samp, mirror_samples,
 
     _, ham_sampling = _reduce_by_keys(mean, hamiltonian, point_estimates)
     sampler = _GeoMetricSampler(mean, ham_sampling, minimizer_samp,
-                                start_from_lin, n_samples, mirror_samples)
+                                start_from_lin, n_samples, mirror_samples,
+                                napprox)
     local_samples = sampler.draw_samples(comm)
     mean, hamiltonian = _reduce_by_keys(mean, hamiltonian, constants)
     return _SampledKLEnergy(mean, hamiltonian, sampler.n_eff_samples, False,
