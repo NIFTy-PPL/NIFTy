@@ -407,7 +407,7 @@ def MetricGaussianKL(mean, hamiltonian, n_samples, mirror_samples, constants=[],
 
     _, ham_sampling = _reduce_by_keys(mean, hamiltonian, point_estimates)
     sampler = _MetricGaussianSampler(mean, ham_sampling, n_samples,
-                                     mirror_samples)
+                                     mirror_samples, napprox)
     local_samples = sampler.draw_samples(comm)
 
     mean, hamiltonian = _reduce_by_keys(mean, hamiltonian, constants)
@@ -517,7 +517,8 @@ def GeoMetricKL(mean, hamiltonian, n_samples, minimizer_samp, mirror_samples,
 
     _, ham_sampling = _reduce_by_keys(mean, hamiltonian, point_estimates)
     sampler = _GeoMetricSampler(mean, ham_sampling, minimizer_samp,
-                                start_from_lin, n_samples, mirror_samples)
+                                start_from_lin, n_samples, mirror_samples,
+                                napprox)
     local_samples = sampler.draw_samples(comm)
     mean, hamiltonian = _reduce_by_keys(mean, hamiltonian, constants)
     return _SampledKLEnergy(mean, hamiltonian, sampler.n_eff_samples, False,
