@@ -211,6 +211,7 @@ class _MetricGaussianSampler:
 
     def draw_samples(self, comm):
         local_samples = []
+        utilities.check_MPI_synced_random_state(comm)
         sseq = random.spawn_sseq(self._n)
         for i in range(*_get_lo_hi(comm, self._n)):
             with random.Context(sseq[i]):
@@ -315,6 +316,8 @@ class _GeoMetricSampler:
     def draw_samples(self, comm):
         local_samples = []
         prev = None
+        utilities.check_MPI_synced_random_state(comm)
+        utilities.check_MPI_equality(self._sseq, comm)
         for i in range(*_get_lo_hi(comm, self.n_eff_samples)):
             with random.Context(self._sseq[i]):
                 neg = self._neg[i]
