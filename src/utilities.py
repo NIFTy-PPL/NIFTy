@@ -18,6 +18,7 @@
 import collections
 from functools import reduce
 from itertools import product
+import pickle
 
 import numpy as np
 
@@ -451,12 +452,7 @@ def check_MPI_equality(obj, comm):
 
 
 def _MPI_unique(obj, comm):
-    from collections.abc import Hashable
-    import pickle
-    objects = comm.allgather(obj)
-    if not isinstance(objects[0], Hashable) or isinstance(objects[0], np.random.SeedSequence):
-        objects = [pickle.dumps(oo) for oo in objects]
-    return len(set(objects)) == 1
+    return len(set(comm.allgather(pickle.dumps(obj)))) == 1
 
 
 def check_MPI_synced_random_state(comm):
