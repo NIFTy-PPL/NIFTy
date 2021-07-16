@@ -444,51 +444,19 @@ def check_MPI_equality(obj, comm):
     comm : MPI communicator or None
         If comm is None, no check will be performed
     """
-    # Special cases
     if comm is None:
         return
-    elif isinstance(obj, list):
-        _check_MPI_equality_lists(obj, comm)
-    elif isinstance(obj, np.random.SeedSequence):
-        _check_MPI_equality_sseq(obj, comm)
-    # /Special cases
-    else:
-        if not _MPI_unique(obj, comm):
-            raise RuntimeError("MPI tasks are not in sync")
-
-
-def _check_MPI_equality_lists(lst, comm):
-    if not isinstance(lst, list):
-        raise TypeError
-    if not _MPI_unique(len(lst), comm):
-        raise RuntimeError("MPI tasks are not in sync (lists have different lengths)")
-
-    is_sseq = comm.allgather(lst[0])
-    if is_sseq[0]:
-        if not all(is_sseq):
-            raise RuntimeError("First element in list is np.random.SeedSequence. The others (partly) not.")
-        for oo in lst:
-            check_MPI_equality(oo, comm)
-        return
-
-    for ii in range(len(lst)):
-        if not _MPI_unique(lst[ii], comm):
-            raise RuntimeError(f"MPI tasks are not in sync (list element #{ii} does not match)")
+    if not _MPI_unique(obj, comm):
+        raise RuntimeError("MPI tasks are not in sync")
 
 
 def _MPI_unique(obj, comm):
-    return len(set(comm.allgather(obj))) == 1
-
-
-def _check_MPI_equality_sseq(sseq, comm):
-    from .random import Context, spawn_sseq, current_rng
-    if not isinstance(sseq, np.random.SeedSequence):
-        raise TypeError
-    with Context(spawn_sseq(1, parent=sseq)[0]):
-        random_number = current_rng().normal(10., 1.2, (1,))[0]
-    gath = comm.allgather(random_number)
-    if gath[1:] != gath[:-1]:
-        raise RuntimeError("SeedSequences are not equal")
+    from collections.abc import Hashable
+    import pickle
+    objects = comm.allgather(obj)
+    if not isinstance(objects[0], Hashable) or isinstance(objects[0], np.random.SeedSequence):
+        objects = [pickle.dumps(oo) for oo in objects]
+    return len(set(objects)) == 1
 
 
 def check_MPI_synced_random_state(comm):
