@@ -15,4 +15,5 @@ are found in the `API reference <../mod/nifty8.html>`_.
    approximate_inference
    volume
    code
+   getting_started_0
    citations
