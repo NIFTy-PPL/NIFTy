@@ -152,8 +152,3 @@ run_meanfield:
   stage: demo_runs
   script:
     - python3 demos/parametric_variational_inference.py
-
-run_nonlinearity_guide:
-  stage: demo_runs
-  script:
-    - python3 demos/custom_nonlinearities.py
