@@ -1,6 +1,8 @@
 # never store the git version file
 git_version.py
 
+docs/source/user/getting_started_0.rst
+
 # custom
 *.txt
 setup.cfg
