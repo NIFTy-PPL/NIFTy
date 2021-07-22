@@ -3,11 +3,18 @@ import nifty8
 needs_sphinx = '3.2.0'
 
 extensions = [
-    'sphinx.ext.napoleon',  # Support for NumPy and Google style docstrings
-    'sphinx.ext.imgmath',  # Render math as images
-    'sphinx.ext.viewcode'  # Add links to highlighted source code
+    'sphinx.ext.napoleon',   # Support for NumPy and Google style docstrings
+    'sphinx.ext.imgmath',    # Render math as images
+    'sphinx.ext.viewcode',   # Add links to highlighted source code
+    'sphinx.ext.intersphinx' # Links to other sphinx docs (mostly numpy)
 ]
 master_doc = 'index'
+
+intersphinx_mapping = {"numpy": ("https://numpy.org/doc/stable/", None),
+                       #"matplotlib": ('https://matplotlib.org/stable/', None),
+                       "ducc0": ("https://mtr.pages.mpcdf.de/ducc/", None),
+                       "scipy": ('https://docs.scipy.org/doc/scipy/reference/', None),
+                       }
 
 napoleon_google_docstring = False
 napoleon_numpy_docstring = True
