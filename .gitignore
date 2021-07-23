@@ -3,6 +3,7 @@ git_version.py
 
 docs/source/user/getting_started_0.rst
 docs/source/user/custom_nonlinearities.rst
+docs/source/user/getting_started_4_CorrelatedFields.rst
 
 # custom
 *.txt

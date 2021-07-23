@@ -1,7 +1,7 @@
 set -e
 
 FOLDER=docs/source/user/
-for FILE in ${FOLDER}getting_started_0 ${FOLDER}custom_nonlinearities
+for FILE in ${FOLDER}getting_started_0 ${FOLDER}getting_started_4_CorrelatedFields ${FOLDER}custom_nonlinearities
 do
     if [ ! -f "${FILE}.rst" ] || [ ${FILE}.ipynb -nt ${FILE}.rst ]; then
         jupyter-nbconvert --to rst --execute --ExecutePreprocessor.timeout=None ${FILE}.ipynb

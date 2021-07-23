@@ -16,5 +16,6 @@ are found in the `API reference <../mod/nifty8.html>`_.
    volume
    code
    getting_started_0
+   getting_started_4_CorrelatedFields
    custom_nonlinearities
    citations
