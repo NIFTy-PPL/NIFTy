@@ -163,15 +163,12 @@ class Likelihood():
             has been applied to.
         """
         if self._metric is None:
-            # `left_sqrt_metric` is linear at any given position and thus the
-            # position at which the derivative of this linear operator is taken
-            # does not matter
+            from jax import linear_transpose
+
             lsm_at_p = Partial(self.left_sqrt_metric, primals)
-            arbitrary_lsm_tan_pos = tree_map(
-                lambda x: np.ones(x.shape, dtype=x.dtype),
-                self.left_sqrt_metric_tangents_shape
+            rsm_at_p = linear_transpose(
+                lsm_at_p, self.left_sqrt_metric_tangents_shape
             )
-            _, rsm_at_p = vjp(lsm_at_p, arbitrary_lsm_tan_pos)
             res = lsm_at_p(rsm_at_p(tangents)[0])
             return res
         return self._metric(primals, tangents)
@@ -276,6 +273,10 @@ class Likelihood():
             return self.energy(f(primals))
 
         def metric_at_f(primals, tangents):
+            # Note, if we were to evaluate the metric several times at the same
+            # position, it might make sense to use `jax.linearize` in favor of
+            # `jax.jvp` to avoid re-linearizing `f` at `primals` at the cost of
+            # having to store the linearization.
             y, t = jvp(f, (primals, ), (tangents, ))
             r = self.metric(y, t)
             _, bwd = vjp(f, primals)
