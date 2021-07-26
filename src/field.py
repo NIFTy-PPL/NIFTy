@@ -122,10 +122,6 @@ class Field():
         )
         return tree_reduce(add, tree_dot, 0.)
 
-    def sum_of_squares(self):
-        from .sugar import sum_of_squares
-        return sum_of_squares(self)
-
     def __str__(self):
         s = f"Field(\n{self._val}"
         if self._domain:

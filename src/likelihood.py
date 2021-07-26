@@ -59,7 +59,11 @@ class ShapeWithDtype():
         if not all_leaves((element, )):
             ve = "tree is not flat and still contains leaves"
             raise ValueError(ve)
-        return cls(np.shape(element), onp.common_type(element))
+        if isinstance(element, (np.ndarray, onp.ndarray)):
+            dtp = element.dtype
+        else:
+            dtp = onp.common_type(element)
+        return cls(np.shape(element), dtp)
 
     @property
     def shape(self):
@@ -110,7 +114,7 @@ class Likelihood():
             else:
                 leaves = tree_leaves(lsm_tangents_shape)
                 if not all(isinstance(e, ShapeWithDtype) for e in leaves):
-                    te = "objects of invalid type in tangent shapes"
+                    te = "`lsm_tangent_shapes` of invalid type"
                     raise TypeError(te)
         self._lsm_tan_shp = lsm_tangents_shape
 
