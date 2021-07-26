@@ -76,7 +76,7 @@ if __name__ == "__main__":
 
         print("Minimizing...", file=sys.stderr)
         pos = jft.newton_cg(
-            pos, mkl.energy_and_gradient, mkl.metric, n_newton_iterations
+            mkl.energy_and_gradient, pos, mkl.metric, n_newton_iterations
         )
         msg = f"Post MGVI Iteration {i}: Energy {mkl(pos):2.4e}"
         print(msg, file=sys.stderr)

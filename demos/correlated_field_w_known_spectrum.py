@@ -85,7 +85,7 @@ if __name__ == "__main__":
         print("Minimizing...", file=sys.stderr)
         # TODO: Re-introduce a simplified version that works without fields
         pos = jft.newton_cg(
-            pos, mkl.energy_and_gradient, mkl.metric, n_newton_iterations
+            mkl.energy_and_gradient, pos, mkl.metric, n_newton_iterations
         )
         print(
             (

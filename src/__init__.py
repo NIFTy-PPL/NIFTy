@@ -5,7 +5,7 @@ from .energy_operators import (
 )
 from .kl import MetricKL
 from .field import Field
-from .optimize import newton_cg, cg, static_cg
+from .optimize import minimize, newton_cg, cg, static_cg
 from .correlated_field import CorrelatedFieldMaker, non_parametric_amplitude
 from .stats_distributions import laplace_prior, normal_prior, lognormal_prior
 from .sugar import (

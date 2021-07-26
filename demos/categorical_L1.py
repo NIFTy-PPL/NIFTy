@@ -90,7 +90,7 @@ if __name__ == "__main__":
 
         Evag = lambda p: energy_vag(p, samples)
         met = lambda p, t: metric(p, t, samples)
-        pos = jft.newton_cg(pos, Evag, met, n_newton_iterations)
+        pos = jft.newton_cg(Evag, pos, met, n_newton_iterations)
         diff_to_truth = np.linalg.norm(model["matrix"](pos) - matrix_truth)
         print(
             (

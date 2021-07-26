@@ -95,7 +95,7 @@ pos = jft.Field(pos_init.val)
 
 n_newton_iterations = 10
 # Maximize the posterior using natural gradient scaling
-pos = jft.newton_cg(pos, ham_vg, met, n_newton_iterations)
+pos = jft.newton_cg(ham_vg, pos, met, n_newton_iterations)
 
 fig, ax = plt.subplots()
 ax.plot(signal_response_truth, alpha=0.7, label="Signal")
@@ -167,7 +167,7 @@ for i in range(n_mgvi_iterations):
 
     print("Minimizing...", file=sys.stderr)
     pos = jft.newton_cg(
-        pos, mkl.energy_and_gradient, mkl.metric, n_newton_iterations
+        mkl.energy_and_gradient, pos, mkl.metric, n_newton_iterations
     )
     msg = f"Post MGVI Iteration {i}: Energy {mkl(pos):2.4e}"
     print(msg, file=sys.stderr)
@@ -273,7 +273,7 @@ for i in range(n_mgvi_iterations):
 
     print("Minimizing...", file=sys.stderr)
     pos = jft.newton_cg(
-        pos, mkl.energy_and_gradient, mkl.metric, n_newton_iterations
+        mkl.energy_and_gradient, pos, mkl.metric, n_newton_iterations
     )
     msg = f"Post MGVI Iteration {i}: Energy {mkl(pos):2.4e}"
     print(msg, file=sys.stderr)

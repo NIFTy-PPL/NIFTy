@@ -2,10 +2,51 @@ import sys
 from datetime import datetime
 from jax import numpy as np
 
-from .sugar import sum_of_squares
+from typing import Any, Callable, Mapping, Optional, Tuple, Union, NamedTuple
+
 from .sugar import norm as jft_norm
+from .sugar import sum_of_squares
 
 N_RESET = 20
+
+
+class OptimizeResults(NamedTuple):
+    """Object holding optimization results inspired by JAX and scipy.
+
+    Attributes
+    ----------
+    x : ndarray
+        The solution of the optimization.
+    success : bool
+        Whether or not the optimizer exited successfully.
+    status : int
+        Termination status of the optimizer. Its value depends on the
+        underlying solver. NOTE, in contrast to scipy there is no `message` for
+        details since strings are not statically memory bound.
+    fun, jac, hess: ndarray
+        Values of objective function, its Jacobian and its Hessian (if
+        available). The Hessians may be approximations, see the documentation
+        of the function in question.
+    hess_inv : object
+        Inverse of the objective function's Hessian; may be an approximation.
+        Not available for all solvers.
+    nfev, njev, nhev : int
+        Number of evaluations of the objective functions and of its
+        Jacobian and Hessian.
+    nit : int
+        Number of iterations performed by the optimizer.
+    maxcv : float
+        The maximum constraint violation.
+    """
+    x: np.ndarray
+    success: Union[bool, np.ndarray]
+    status: Union[int, np.ndarray]
+    fun: np.ndarray
+    jac: np.ndarray
+    hess_inv: Optional[np.ndarray] = None
+    nfev: Union[None, int, np.ndarray] = None
+    njev: Union[None, int, np.ndarray] = None
+    nit: Union[None, int, np.ndarray] = None
 
 
 # Taken from nifty
@@ -80,7 +121,7 @@ def cg(
             if name is not None:
                 msg = (
                     f"{name}: ΔEnergy {energy-new_energy:.6e}"
-                    " tgt {absdelta:.6e}"
+                    f" tgt {absdelta:.6e}"
                 )
                 print(msg, file=sys.stderr)
             if energy - new_energy < absdelta and i > miniter:
@@ -108,7 +149,7 @@ def static_cg(
     name=None,
     **kwargs
 ):
-    from jax.lax import while_loop, cond
+    from jax.lax import cond, while_loop
 
     norm_ord = 2 if norm_ord is None else norm_ord
     miniter = 5 if miniter is None else miniter
@@ -219,11 +260,11 @@ def static_cg(
     return val["pos"], val["info"]
 
 
-def newton_cg(
-    pos,
+def _newton_cg(
     energy_vag,
-    met,
-    iterations,
+    pos,
+    fhess_p,
+    maxiter,
     absdelta=1.,
     name=None,
     time_threshold=None,
@@ -235,13 +276,16 @@ def newton_cg(
     energy, g = energy_vag(pos)
     if np.isnan(energy):
         raise ValueError("energy is Nan")
-    for i in range(iterations):
+    for i in range(maxiter):
         cg_name = name + "CG" if name is not None else None
+        cg_absdelta = absdelta / 100
+        mag_g = jft_norm(g, ord=1, ravel=True)
+        cg_resnorm = mag_g / 2
         nat_g, _ = cg(
-            lambda x: met(pos, x),
+            lambda x: fhess_p(pos, x),
             g,
-            absdelta=absdelta / 100,
-            resnorm=jft_norm(g, ord=1, ravel=True) / 2,
+            absdelta=cg_absdelta,
+            resnorm=cg_resnorm,
             norm_ord=1,
             name=cg_name,
             time_threshold=time_threshold,
@@ -261,7 +305,7 @@ def newton_cg(
                     msg = f"{name}: long line search, resetting"
                     print(msg, file=sys.stderr)
                 gam = float(sum_of_squares(g))
-                curv = float(g.dot(met(pos, g)))
+                curv = float(g.dot(fhess_p(pos, g)))
                 dd = -gam / curv * g
         else:
             new_pos = pos - nat_g
@@ -274,11 +318,53 @@ def newton_cg(
                 f" diff {energy_diff:.6e}"
             )
             print(msg, file=sys.stderr)
-        if energy_diff < absdelta and j < 2:
-            return new_pos
         energy = new_energy
         pos = new_pos
         g = new_g
+        if absdelta is not None and energy_diff < absdelta and j < 2:
+            break
         if time_threshold is not None and datetime.now() > time_threshold:
             break
-    return pos
+    return OptimizeResults(x=pos, success=True, status=0, fun=energy, jac=g)
+
+
+def newton_cg(*args, fun_is_with_gradient=True, **kwargs):
+    if not fun_is_with_gradient:
+        from jax import value_and_grad
+
+        if "energy_vag" in kwargs:
+            fun = kwargs.pop("energy_vag")
+        else:
+            args = list(args)
+            fun = args.pop(0)
+        fun = value_and_grad(fun)
+        return _newton_cg(fun, *args, **kwargs).x
+    else:
+        return _newton_cg(*args, **kwargs).x
+
+
+def minimize(
+    fun: Callable,
+    x0,
+    args: Tuple = (),
+    *,
+    method: str,
+    tol: Optional[float] = None,
+    options: Optional[Mapping[str, Any]] = None
+) -> OptimizeResults:
+    """Minimize fun.
+
+    NOTE, fun is assumed to actually compute fun and its gradient.
+    """
+    if options is None:
+        options = {}
+    if not isinstance(args, tuple):
+        te = f"args argument must be a tuple, got {type(args)!r}"
+        raise TypeError(te)
+
+    fun_with_args = lambda x: fun(x, *args)
+
+    if method.lower() in ('newton-cg', 'newtoncg'):
+        return _newton_cg(fun_with_args, x0, **options)
+
+    raise ValueError(f"method {method} not recognized")
