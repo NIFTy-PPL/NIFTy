@@ -3,12 +3,10 @@ from jax.config import config
 config.update("jax_enable_x64", True)
 
 import sys
-from typing import Union, Callable
-from collections.abc import Iterable
 
 from jax import numpy as np
 from jax import random
-from jax import jvp, vjp, value_and_grad, jit
+from jax import value_and_grad, jit
 
 import jifty1 as jft
 

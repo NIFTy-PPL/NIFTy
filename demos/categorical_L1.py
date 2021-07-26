@@ -6,8 +6,7 @@ import sys
 
 from jax import numpy as np
 from jax import random
-from jax import jvp, vjp, value_and_grad, jit
-from jax.nn import softmax
+from jax import value_and_grad, jit
 
 import jifty1 as jft
 

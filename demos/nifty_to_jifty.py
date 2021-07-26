@@ -7,7 +7,6 @@ import sys
 from jax import numpy as np
 from jax import random
 from jax import value_and_grad, jit
-from jax.tree_util import tree_map
 import matplotlib.pyplot as plt
 
 import jifty1 as jft
