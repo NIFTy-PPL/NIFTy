@@ -66,7 +66,7 @@ if __name__ == "__main__":
 
     key, subkey = random.split(key)
     pos_init = random.normal(shape=dims, key=subkey)
-    pos = jft.Field(pos_init)
+    pos = 1e-2 * jft.Field(pos_init)
 
     # Minimize the potential
     for i in range(n_mgvi_iterations):

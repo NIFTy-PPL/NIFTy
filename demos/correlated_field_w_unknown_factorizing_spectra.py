@@ -58,7 +58,7 @@ if __name__ == "__main__":
 
     key, subkey = random.split(key)
     pos_init = jft.random_like_shapewdtype(ptree, key=subkey)
-    pos = jft.Field(pos_init.copy())
+    pos = 1e-2 * jft.Field(pos_init)
 
     # Minimize the potential
     for i in range(n_mgvi_iterations):

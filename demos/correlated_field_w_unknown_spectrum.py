@@ -27,7 +27,7 @@ if __name__ == "__main__":
         "fluctuations": (1e-1, 5e-3),
         "loglogavgslope": (-1., 1e-2),
         "flexibility": (1e+0, 5e-1),
-        "asperity": (5e-1, 1e-1),
+        "asperity": (5e-1, 5e-2),
         "harmonic_domain_type": "Fourier"
     }
     cfm = jft.CorrelatedFieldMaker("cf")
@@ -54,7 +54,7 @@ if __name__ == "__main__":
 
     key, subkey = random.split(key)
     pos_init = jft.random_like_shapewdtype(ptree, key=subkey)
-    pos = jft.Field(pos_init.copy())
+    pos = 1e-2 * jft.Field(pos_init.copy())
 
     # Minimize the potential
     for i in range(n_mgvi_iterations):
