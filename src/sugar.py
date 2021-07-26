@@ -4,8 +4,7 @@ from collections.abc import Iterable
 from jax import random
 from jax import numpy as np
 from jax.tree_util import (
-    tree_structure, tree_leaves, tree_unflatten, tree_map, tree_multimap,
-    tree_reduce
+    tree_structure, tree_leaves, tree_unflatten, tree_map, tree_reduce
 )
 
 from .field import Field
@@ -54,9 +53,11 @@ def norm(tree, ord, ravel=False):
     from jax.numpy.linalg import norm
 
     if ravel:
+
         def el_norm(x):
             return abs(x) if ndim(x) == 0 else norm(x.ravel(), ord=ord)
     else:
+
         def el_norm(x):
             return abs(x) if ndim(x) == 0 else norm(x, ord=ord)
 
@@ -102,7 +103,7 @@ def random_like_shapewdtype(
     def draw(swd, key):
         return rng(key=key, shape=swd.shape, dtype=swd.dtype)
 
-    return tree_multimap(draw, tree_of_shapes, subkeys)
+    return tree_map(draw, tree_of_shapes, subkeys)
 
 
 def random_like(
@@ -120,7 +121,7 @@ def random_like(
         dtp = onp.common_type(x)
         return rng(key=key, shape=shp, dtype=dtp)
 
-    return tree_multimap(draw, primals, subkeys)
+    return tree_map(draw, primals, subkeys)
 
 
 def interpolate(xmin=-7., xmax=7., N=14000):

@@ -1,6 +1,5 @@
 from jax.tree_util import (
-    register_pytree_node_class, tree_map, tree_multimap, tree_reduce,
-    tree_structure
+    register_pytree_node_class, tree_map, tree_reduce, tree_structure
 )
 
 
@@ -117,7 +116,7 @@ class Field():
             if "strict_domain_checking" in self.flags | other.flags:
                 if other.domain != self.domain:
                     raise ValueError("domains are incompatible.")
-        tree_dot = tree_multimap(
+        tree_dot = tree_map(
             lambda x, y: dot(x.ravel(), y.ravel()), self._val, other._val
         )
         return tree_reduce(add, tree_dot, 0.)
@@ -168,9 +167,7 @@ class Field():
             te = "Invalid binary op for Field and {}".format(type(other))
             raise TypeError(te)
         return self.new(
-            tree_multimap(
-                lambda s, o: getattr(s, op)(o), self._val, other._val
-            ),
+            tree_map(lambda s, o: getattr(s, op)(o), self._val, other._val),
             flags=flags
         )
 
