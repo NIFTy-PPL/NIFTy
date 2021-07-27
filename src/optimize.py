@@ -156,7 +156,7 @@ def static_cg(
     maxiter = 200 if maxiter is None else maxiter
 
     def continue_condition(v):
-        return np.less(v["info"], -1)
+        return v["info"] < -1
 
     def cg_single_step(v):
         info = v["info"]
@@ -195,9 +195,7 @@ def static_cg(
             if name is not None:
                 msg = f"{name}: gradnorm {norm!r} tgt {resnorm!r}"
                 print(msg, file=sys.stderr)
-            info = np.where(
-                np.less(norm, resnorm) & np.greater(i, miniter), 0, info
-            )
+            info = np.where((norm < resnorm) & (i > miniter), 0, info)
         # Do not compute the energy if we do not check `absdelta`
         if absdelta is not None or name is not None:
             energy = ((r - j) / 2).dot(pos)
@@ -208,8 +206,7 @@ def static_cg(
                 msg = f"{name}: ΔEnergy {previous_energy-energy!r} tgt {absdelta!r}"
                 print(msg, file=sys.stderr)
             info = np.where(
-                np.less(previous_energy - energy, absdelta) &
-                np.greater(i, miniter), 0, info
+                (previous_energy - energy < absdelta) & (i > miniter), 0, info
             )
         info = np.where(i >= maxiter, i, info)
 
