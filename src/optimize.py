@@ -284,7 +284,7 @@ def _newton_cg(
         # SciPy scales its CG resnorm with `min(0.5, sqrt(mag_g))`
         # cg_resnorm = mag_g * np.sqrt(mag_g).clip(None, 0.5)
         cg_resnorm = mag_g / 2
-        nat_g, _ = cg(
+        nat_g, info = cg(
             lambda x: fhess_p(pos, x),
             g,
             absdelta=cg_absdelta,
@@ -294,6 +294,8 @@ def _newton_cg(
             time_threshold=time_threshold,
             **cg_kwargs
         )
+        if info is not None and info < 0:
+            raise ValueError("conjugate gradient failed")
         dd = nat_g
         new_pos = pos - dd
         new_energy, new_g = energy_vag(new_pos)
