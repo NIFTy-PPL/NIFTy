@@ -1,4 +1,4 @@
-from typing import Union, Optional
+from typing import Callable, Optional, Tuple, Union
 from collections.abc import Mapping
 
 import sys
@@ -92,10 +92,10 @@ def _remove_slope(rel_log_mode_dist, x):
 
 def non_parametric_amplitude(
     domain: Mapping,
-    fluctuations: callable,
-    loglogavgslope: callable,
-    flexibility: Optional[callable] = None,
-    asperity: Optional[callable] = None,
+    fluctuations: Callable,
+    loglogavgslope: Callable,
+    flexibility: Optional[Callable] = None,
+    asperity: Optional[Callable] = None,
     prefix: str = ""
 ):
     totvol = domain.get("position_space_total_volume", 1.)
@@ -200,10 +200,10 @@ class CorrelatedFieldMaker():
         self,
         shape: Union[tuple, int],
         distances: Union[tuple, float],
-        fluctuations: Union[tuple, callable],
-        loglogavgslope: Union[tuple, callable],
-        flexibility: Union[tuple, callable, None] = None,
-        asperity: Union[tuple, callable, None] = None,
+        fluctuations: Union[tuple, Callable],
+        loglogavgslope: Union[tuple, Callable],
+        flexibility: Union[tuple, Callable, None] = None,
+        asperity: Union[tuple, Callable, None] = None,
         prefix: str = "",
         harmonic_domain_type: str = "fourier",
     ):
@@ -319,7 +319,7 @@ class CorrelatedFieldMaker():
         self._parameter_tree.update(ptree)
 
     def set_amplitude_total_offset(
-        self, offset_mean: float, offset_std: Union[tuple, callable]
+        self, offset_mean: float, offset_std: Union[Tuple, Callable]
     ):
         """Sets the zero-mode for the combined amplitude operator
 

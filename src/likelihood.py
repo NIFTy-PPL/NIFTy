@@ -1,4 +1,4 @@
-from typing import Union, Optional
+from typing import Callable, Union, Optional
 
 from jax import jvp, vjp
 from jax import numpy as np
@@ -94,9 +94,9 @@ class Likelihood():
     """
     def __init__(
         self,
-        energy: callable,
-        left_sqrt_metric: Optional[callable] = None,
-        metric: Optional[callable] = None,
+        energy: Callable,
+        left_sqrt_metric: Optional[Callable] = None,
+        metric: Optional[Callable] = None,
         lsm_tangents_shape=None
     ):
         """Instantiates a new likelihood.
@@ -232,7 +232,7 @@ class Likelihood():
         return self.left_sqrt_metric_tangents_shape
 
     def new(
-        self, energy: callable, left_sqrt_metric: callable, metric: callable
+        self, energy: Callable, left_sqrt_metric: Callable, metric: Callable
     ):
         """Instantiates a new likelihood with the same `lsm_tangents_shape`.
 

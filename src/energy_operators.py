@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import Callable, Optional
 
 import sys
 from jax import numpy as np
@@ -16,8 +16,8 @@ def _shape_w_fixed_dtype(dtype):
 
 def Gaussian(
     data,
-    noise_cov_inv: Optional[callable] = None,
-    noise_std_inv: Optional[callable] = None
+    noise_cov_inv: Optional[Callable] = None,
+    noise_std_inv: Optional[Callable] = None
 ):
     """Gaussian likelihood of the data
 

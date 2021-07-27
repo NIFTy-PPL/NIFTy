@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import Callable, Optional
 
 from jax import random
 from jax.tree_util import Partial
@@ -20,7 +20,7 @@ def sample_standard_hamiltonian(
     primals,
     key,
     from_inverse: bool = False,
-    cg: callable = cg,
+    cg: Callable = cg,
     **cg_kwargs
 ):
     r"""Draws a sample of which the covariance is the metric
@@ -128,9 +128,9 @@ class MetricKL():
         n_samples,
         key,
         mirror_samples: bool = True,
-        cg: callable = cg,
+        cg: Callable = cg,
         cg_kwargs: Optional[dict] = None,
-        hamiltonian_and_gradient: Optional[callable] = None,
+        hamiltonian_and_gradient: Optional[Callable] = None,
         _samples: Optional[tuple] = None
     ):
         if not isinstance(hamiltonian, StandardHamiltonian):
