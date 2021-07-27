@@ -2,7 +2,7 @@ from typing import Callable, Union, Optional
 
 from jax import jvp, vjp
 from jax import numpy as np
-from jax.tree_util import Partial, tree_leaves, all_leaves, tree_map
+from jax.tree_util import Partial, tree_leaves, all_leaves
 
 from .optimize import cg
 from .sugar import is1d, sum_of_squares
@@ -37,7 +37,7 @@ class ShapeWithDtype():
         """
         if not is1d(shape):
             ve = f"invalid shape; got {shape!r}"
-            return ValueError(ve)
+            raise ValueError(ve)
 
         self._shape = shape
         self._dtype = np.float64 if dtype is None else dtype
