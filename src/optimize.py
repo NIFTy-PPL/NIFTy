@@ -262,12 +262,16 @@ def _newton_cg(
     pos,
     fhess_p,
     maxiter,
-    absdelta=1.,
+    energy_reduction_factor=0.1,
+    old_fval=None,
+    absdelta=None,
     name=None,
     time_threshold=None,
     cg=cg,
     cg_kwargs=None
 ):
+    if old_fval is None:
+        old_fval = np.inf if absdelta is None else absdelta / 100.
     cg_kwargs = {} if cg_kwargs is None else cg_kwargs
     energy_diff = 0.
     energy, g = energy_vag(pos)
@@ -275,8 +279,10 @@ def _newton_cg(
         raise ValueError("energy is Nan")
     for i in range(maxiter):
         cg_name = name + "CG" if name is not None else None
-        cg_absdelta = absdelta / 100
+        cg_absdelta = energy_reduction_factor * (old_fval - energy)
         mag_g = jft_norm(g, ord=1, ravel=True)
+        # SciPy scales its CG resnorm with `min(0.5, sqrt(mag_g))`
+        # cg_resnorm = mag_g * np.sqrt(mag_g).clip(None, 0.5)
         cg_resnorm = mag_g / 2
         nat_g, _ = cg(
             lambda x: fhess_p(pos, x),
@@ -315,6 +321,7 @@ def _newton_cg(
                 f" diff {energy_diff:.6e}"
             )
             print(msg, file=sys.stderr)
+        old_fval = energy
         energy = new_energy
         pos = new_pos
         g = new_g
