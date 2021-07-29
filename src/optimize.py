@@ -101,7 +101,7 @@ def cg(
             r = r - q * alpha
         gamma = float(sum_of_squares(r))
         if time_threshold is not None and datetime.now() > time_threshold:
-            info = i
+            info = i + 1
             return pos, info
         if gamma == 0:
             nm = "CG" if name is None else name
@@ -133,7 +133,7 @@ def cg(
     else:
         nm = "CG" if name is None else name
         print(f"{nm}: Iteration Limit Reached", file=sys.stderr)
-        info = i
+        info = i + 1
     return pos, info
 
 
