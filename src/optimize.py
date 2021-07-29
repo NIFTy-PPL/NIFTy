@@ -316,17 +316,20 @@ def _newton_cg(
             new_pos = pos - nat_g
             new_energy, new_g = energy_vag(new_pos)
             print("Warning: Energy increased", file=sys.stderr)
+        if np.isnan(new_energy):
+            raise ValueError("energy is Nan")
         energy_diff = energy - new_energy
-        if name is not None:
-            msg = (
-                f"{name}: Iteration {i+1} Energy {new_energy:.6e}"
-                f" diff {energy_diff:.6e}"
-            )
-            print(msg, file=sys.stderr)
         old_fval = energy
         energy = new_energy
         pos = new_pos
         g = new_g
+
+        if name is not None:
+            msg = (
+                f"{name}: Iteration {i+1} Energy {energy:.6e}"
+                f" diff {energy_diff:.6e}"
+            )
+            print(msg, file=sys.stderr)
         if absdelta is not None and energy_diff < absdelta and j < 2:
             break
         if time_threshold is not None and datetime.now() > time_threshold:
