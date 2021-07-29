@@ -16,6 +16,7 @@
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
 
 import numpy as np
+import scipy.sparse
 
 from .. import utilities
 from ..domain_tuple import DomainTuple
@@ -45,10 +46,10 @@ class MatrixProductOperator(EndomorphicOperator):
 
     Parameters
     ----------
-    domain: :class:`Domain` or :class:`DomainTuple`
+    domain: Domain or DomainTuple
         Domain of the operator.
         If :class:`DomainTuple` it is assumed to have only one entry.
-    matrix: scipy.sparse matrix or numpy array
+    matrix: scipy.sparse.spmatrix or numpy.ndarray
         Quadratic matrix of shape `(domain.shape, domain.shape)`
         (if `not flatten`) that supports `matrix.transpose()`.
         If it is not a numpy array, needs to be applicable to the val
