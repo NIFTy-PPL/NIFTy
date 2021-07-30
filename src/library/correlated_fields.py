@@ -799,6 +799,14 @@ class CorrelatedFieldMaker:
         if np.isscalar(self.azm):
             return self.fluctuations
 
+        n_amplitudes = len(self._a)
+        if n_amplitudes == 1:
+            weighted_azm = self.azm
+        elif n_amplitudes == 2:
+            weighted_azm = self.azm.sqrt()
+        elif n_amplitudes > 2:
+            weighted_azm = self.azm.power(1 / n_amplitudes)
+
         normal_amp = []
         for amp in self._a:
             a_target = amp.target
@@ -820,7 +828,7 @@ class CorrelatedFieldMaker:
             zm_unmask = Adder(zm_unmask(full(zm_unmask.domain, 1)))
 
             zm_normalization = zm_unmask @ (
-                zm_mask @ azm_expander(self.azm.ptw("reciprocal"))
+                zm_mask @ azm_expander(weighted_azm.ptw("reciprocal"))
             )
             normal_amp.append(zm_normalization * amp)
         return tuple(normal_amp)
