@@ -1,6 +1,7 @@
 import sys
 from datetime import datetime
 from jax import numpy as np
+from jax.tree_util import Partial
 
 from typing import Any, Callable, Mapping, Optional, Tuple, Union, NamedTuple
 
@@ -286,7 +287,7 @@ def _newton_cg(
         # cg_resnorm = mag_g * np.sqrt(mag_g).clip(None, 0.5)
         cg_resnorm = mag_g / 2
         nat_g, info = cg(
-            lambda x: fhess_p(pos, x),
+            Partial(fhess_p, pos),
             g,
             absdelta=cg_absdelta,
             resnorm=cg_resnorm,
@@ -297,28 +298,36 @@ def _newton_cg(
         )
         if info is not None and info < 0:
             raise ValueError("conjugate gradient failed")
-        dd = nat_g
-        new_pos = pos - dd
+
+        naive_ls_it = 0
+        dd = nat_g  # negative descent direction
+        grad_scaling = 1.
+        new_pos = pos - grad_scaling * dd
         new_energy, new_g = energy_vag(new_pos)
-        for j in range(6):
+        for naive_ls_it in range(6):
             if new_energy <= energy:
                 break
-            dd = dd / 2
-            new_pos = pos - dd
+            grad_scaling /= 2
+            new_pos = pos - grad_scaling * dd
             new_energy, new_g = energy_vag(new_pos)
-            if j == 3:
+            if naive_ls_it == 3:
                 if name is not None:
                     msg = f"{name}: long line search, resetting"
                     print(msg, file=sys.stderr)
                 gam = float(sum_of_squares(g))
                 curv = float(g.dot(fhess_p(pos, g)))
+                grad_scaling = 1.
                 dd = -gam / curv * g
         else:
+            grad_scaling = 1.
             new_pos = pos - nat_g
             new_energy, new_g = energy_vag(new_pos)
             print("Warning: Energy increased", file=sys.stderr)
+        if name is not None:
+            print(f"{name}: line search: {grad_scaling}")
+
         if np.isnan(new_energy):
-            raise ValueError("energy is Nan")
+            raise ValueError("energy is NaN")
         energy_diff = energy - new_energy
         old_fval = energy
         energy = new_energy
@@ -331,7 +340,7 @@ def _newton_cg(
                 f" diff {energy_diff:.6e}"
             )
             print(msg, file=sys.stderr)
-        if absdelta is not None and energy_diff < absdelta and j < 2:
+        if absdelta is not None and 0. <= energy_diff < absdelta and naive_ls_it < 2:
             break
         if time_threshold is not None and datetime.now() > time_threshold:
             break
