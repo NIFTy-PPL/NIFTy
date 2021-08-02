@@ -2,6 +2,7 @@ from typing import Callable, Optional, Tuple, Union
 from collections.abc import Mapping
 
 import sys
+from functools import partial
 from jax import numpy as np
 
 from .sugar import ducktape
@@ -114,13 +115,9 @@ def non_parametric_amplitude(
         # Register the parameters for the spectrum
         assert rel_log_mode_len.ndim == log_vol.ndim == 1
         ptree[prefix + "_spectrum"] = ShapeWithDtype((2, ) + log_vol.shape)
-    else:
-        flexibility = None
     if asperity is not None:
         asperity = ducktape(asperity, prefix + "_asperity")
         ptree[prefix + "_asperity"] = ShapeWithDtype(())
-    else:
-        asperity = None
 
     def correlate(primals: Mapping) -> np.ndarray:
         flu = fluctuations(primals)
@@ -413,11 +410,8 @@ class CorrelatedFieldMaker():
             n = len(excitation_shape)
             axes = tuple(range(n - len(sub_shp), n))
 
-            # TODO: Generalize to complex; Add dtype to parameter_tree?
-            def ht_axs(p, axes=axes):  # Avoid late binding
-                return hartley(p, axes=axes)
-
-            harmonic_transforms.append(ht_axs)
+            # TODO: Generalize to complex
+            harmonic_transforms.append(partial(hartley, axes=axes))
         # Register the parameters for the excitations in harmonic space
         # TODO: actually account for the dtype here
         pfx = self._prefix + "_excitations"
