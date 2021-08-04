@@ -77,10 +77,60 @@ def _clip_helper(v, a_min, a_max):
     tmp = np.clip(v, a_min, a_max)
     tmp2 = np.ones(v.shape)
     if a_min is not None:
-        tmp2 = np.where(tmp == a_min, 0., tmp2)
+        tmp2 = np.where(tmp == a_min, np.nan, tmp2)
     if a_max is not None:
-        tmp2 = np.where(tmp == a_max, 0., tmp2)
+        tmp2 = np.where(tmp == a_max, np.nan, tmp2)
     return (tmp, tmp2)
+
+
+def _leakyclip_field(v, a_min, a_max, lower_slope=0.01, upper_slope=0.01):
+    if np.issubdtype(v.dtype, np.complexfloating):
+        raise TypeError("Argument must not be complex")
+    if a_min is not None:
+        v = np.where(v > a_min, v, a_min + (v - a_min) * lower_slope)
+    if a_max is not None:
+        v = np.where(v < a_min, v, a_max + (v - a_max) * upper_slope)
+    return v
+
+
+def _leakyclip_linearization(v,
+                              a_min,
+                              a_max,
+                              lower_slope=0.01,
+                              upper_slope=0.01):
+    if np.issubdtype(v.dtype, np.complexfloating):
+        raise TypeError("Argument must not be complex")
+    grad = np.ones(v.shape)
+    if a_min is not None:
+        cond = v > a_min
+        v = np.where(cond, v, a_min + (v - a_min) * lower_slope)
+        grad = np.where(cond, grad, lower_slope)
+    if a_max is not None:
+        cond = v < a_max
+        v = np.where(cond, v, a_max + (v - a_max) * upper_slope)
+        grad = np.where(cond, grad, upper_slope)
+    return (v, grad)
+
+
+def softclip(v, a_min, a_max):
+    if np.issubdtype(v.dtype, np.complexfloating):
+        raise TypeError("Argument must not be complex")
+    delta_a = np.array(a_max - a_min)
+    c = delta_a / softplus(delta_a)
+    return a_max - c * softplus(delta_a - softplus(v - a_min))
+
+
+def _softclip_helper(v, a_min, a_max):
+    if np.issubdtype(v.dtype, np.complexfloating):
+        raise TypeError("Argument must not be complex")
+    delta_a = np.array(a_max - a_min)
+    c = delta_a / softplus(delta_a)
+    f1, df1 = _softplus_helper(v - a_min)
+    f2, df2 = _softplus_helper(delta_a - f1)
+    val = a_max - c * f2
+    grad = c * df2 * df1  # minus signs cancel
+    return val, grad
+
 
 def _step_helper(v, grad):
     if np.issubdtype(v.dtype, np.complexfloating):
@@ -88,7 +138,7 @@ def _step_helper(v, grad):
     r = np.zeros(v.shape)
     r[v>=0.] = 1.
     if grad:
-        return (r, np.zeros(v.shape))
+        return (r, np.where(v == 0., np.nan, np.zeros(v.shape)))
     return r
 
 def softplus(v):
@@ -148,6 +198,8 @@ ptw_dict = {
     "sign": (np.sign, _sign_helper),
     "power": (np.power, _power_helper),
     "clip": (np.clip, _clip_helper),
+    "softclip": (softclip, _softclip_helper),
+    "leakyclip": (_leakyclip_field, _leakyclip_linearization),
     "softplus": (softplus, _softplus_helper),
     "exponentiate": (exponentiate, _exponentiate_helper),
     "arctan": (np.arctan, lambda v: (np.arctan(v), 1./(1.+v**2))),
