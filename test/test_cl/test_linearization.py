@@ -23,6 +23,7 @@ from numpy.testing import assert_allclose
 from .common import list2fixture, setup_function, teardown_function
 
 pmp = pytest.mark.parametrize
+no_complex_vals = ['absolute', 'softclip', 'leakyclip']
 
 device_id = list2fixture([-1, 0] if ift.device_available() else [-1])
 
@@ -42,11 +43,10 @@ def test_special_gradients():
     s = f.asnumpy()
 
     jt(var.clip(0, 10), np.ones_like(s))
-    jt(var.clip(-1, 0), np.zeros_like(s))
+    jt(var.clip(-1, 0), np.full(s.shape, np.nan))
 
     assert_allclose(
         _lin2grad(ift.Linearization.make_var(0*f).ptw("sinc")), np.zeros(s.shape))
-    ift.myassert(np.isnan(_lin2grad(ift.Linearization.make_var(0*f).ptw("abs"))))
     assert_allclose(
         _lin2grad(ift.Linearization.make_var(0*f + 10).ptw("abs")),
         np.ones(s.shape))
@@ -58,15 +58,18 @@ def test_special_gradients():
 @pmp('f', [
     'log', 'exp', 'sqrt', 'sin', 'cos', 'tan', 'sinc', 'sinh', 'cosh', 'tanh',
     'absolute', 'reciprocal', 'sigmoid', 'log10', 'log1p', 'expm1', 'softplus',
-    ('power', 2.), ('exponentiate', 1.1)
+    ('power', 2.), ('exponentiate', 1.1), ('softclip', -0.5, 0.5),
+    ('leakyclip', -0.5, 0.5)
 ])
 @pmp('cplxpos', [True, False])
 @pmp('cplxdir', [True, False])
 @pmp('holomorphic', [True, False])
 def test_actual_gradients(f, cplxpos, cplxdir, holomorphic, device_id):
-    if (cplxpos or cplxdir) and f in ['absolute']:
+    if not isinstance(f, tuple):
+        f = (f,)
+    if (cplxpos or cplxdir) and f[0] in no_complex_vals:
         return
-    if holomorphic and f in ['absolute']:
+    if holomorphic and f[0] in no_complex_vals:
         # These function are not holomorphic
         return
     dom = ift.UnstructuredDomain((1,))
@@ -80,8 +83,6 @@ def test_actual_gradients(f, cplxpos, cplxdir, holomorphic, device_id):
         eps *= (1+0.78j)
     var0 = ift.Linearization.make_var(fld)
     var1 = ift.Linearization.make_var(fld + eps)
-    if not isinstance(f, tuple):
-        f = (f,)
     f0 = var0.ptw(*f).val.asnumpy()
     f1 = var1.ptw(*f).val.asnumpy()
     df1 = _lin2grad(var0.ptw(*f))
