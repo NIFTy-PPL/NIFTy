@@ -29,7 +29,11 @@ def test_ncg_for_pytree():
         return jft.Field(m)
 
     res = jft.newton_cg(
-        value_and_grad(model), pos, metric, maxiter=10, absdelta=1e-6
+        fun_and_grad=value_and_grad(model),
+        x0=pos,
+        hessp=metric,
+        maxiter=10,
+        absdelta=1e-6
     )
     for i, get in enumerate(getters):
         assert_allclose(get(res), tgt[i], atol=1e-6, rtol=1e-5)
@@ -45,7 +49,14 @@ def test_ncg(seed):
         np.sum(y**2 / diag) / 2 - np.dot(x, y), y / diag - x
     )
 
-    res = jft.newton_cg(val_and_grad, x, met, 20, absdelta=1e-6, name='N')
+    res = jft.newton_cg(
+        fun_and_grad=val_and_grad,
+        x0=x,
+        hessp=met,
+        maxiter=20,
+        absdelta=1e-6,
+        name='N'
+    )
     assert_allclose(res, diag * x, rtol=1e-4, atol=1e-4)
 
 

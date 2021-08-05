@@ -36,17 +36,17 @@ class OptimizeResults(NamedTuple):
         Jacobian and Hessian.
     nit : int
         Number of iterations performed by the optimizer.
-    maxcv : float
-        The maximum constraint violation.
     """
     x: np.ndarray
     success: Union[bool, np.ndarray]
     status: Union[int, np.ndarray]
     fun: np.ndarray
     jac: np.ndarray
+    hess: Optional[np.ndarray] = None
     hess_inv: Optional[np.ndarray] = None
     nfev: Union[None, int, np.ndarray] = None
     njev: Union[None, int, np.ndarray] = None
+    nhev: Union[None, int, np.ndarray] = None
     nit: Union[None, int, np.ndarray] = None
 
 
@@ -259,25 +259,37 @@ def static_cg(
 
 
 def _newton_cg(
-    energy_vag,
-    pos,
-    fhess_p,
-    maxiter,
+    fun=None,
+    x0=None,
+    hessp=None,
+    maxiter=None,
+    *,
     energy_reduction_factor=0.1,
     old_fval=None,
     absdelta=None,
+    fun_and_grad=None,
+    cg=cg,
     name=None,
     time_threshold=None,
-    cg=cg,
     cg_kwargs=None
 ):
+    pos = x0
+    if fun_and_grad is None:
+        from jax import value_and_grad
+
+        fun_and_grad = value_and_grad(fun)
     cg_kwargs = {} if cg_kwargs is None else cg_kwargs
 
-    energy, g = energy_vag(pos)
+    energy, g = fun_and_grad(pos)
     if np.isnan(energy):
         raise ValueError("energy is Nan")
     for i in range(maxiter):
         cg_name = name + "CG" if name is not None else None
+        # Newton approximates the potential up to second order. The CG energy
+        # (`0.5 * x.T @ A @ x - x.T @ b`) and the approximation to the true
+        # potential in Newton thus live on comparable energy scales. Hence, the
+        # energy in a Newton minimization can be used to set the CG energy
+        # convergence criterion.
         if old_fval is not None:
             cg_absdelta = energy_reduction_factor * (old_fval - energy)
         else:
@@ -287,7 +299,7 @@ def _newton_cg(
         # cg_resnorm = mag_g * np.sqrt(mag_g).clip(None, 0.5)
         cg_resnorm = mag_g / 2
         nat_g, info = cg(
-            Partial(fhess_p, pos),
+            Partial(hessp, pos),
             g,
             absdelta=cg_absdelta,
             resnorm=cg_resnorm,
@@ -303,25 +315,25 @@ def _newton_cg(
         dd = nat_g  # negative descent direction
         grad_scaling = 1.
         new_pos = pos - grad_scaling * dd
-        new_energy, new_g = energy_vag(new_pos)
+        new_energy, new_g = fun_and_grad(new_pos)
         for naive_ls_it in range(6):
             if new_energy <= energy:
                 break
             grad_scaling /= 2
             new_pos = pos - grad_scaling * dd
-            new_energy, new_g = energy_vag(new_pos)
+            new_energy, new_g = fun_and_grad(new_pos)
             if naive_ls_it == 3:
                 if name is not None:
                     msg = f"{name}: long line search, resetting"
                     print(msg, file=sys.stderr)
                 gam = float(sum_of_squares(g))
-                curv = float(g.dot(fhess_p(pos, g)))
+                curv = float(g.dot(hessp(pos, g)))
                 grad_scaling = 1.
                 dd = -gam / curv * g
         else:
             grad_scaling = 1.
             new_pos = pos - nat_g
-            new_energy, new_g = energy_vag(new_pos)
+            new_energy, new_g = fun_and_grad(new_pos)
             print("Warning: Energy increased", file=sys.stderr)
         if name is not None:
             print(f"{name}: line search: {grad_scaling}")
@@ -347,19 +359,8 @@ def _newton_cg(
     return OptimizeResults(x=pos, success=True, status=0, fun=energy, jac=g)
 
 
-def newton_cg(*args, fun_is_with_gradient=True, **kwargs):
-    if not fun_is_with_gradient:
-        from jax import value_and_grad
-
-        if "energy_vag" in kwargs:
-            fun = kwargs.pop("energy_vag")
-        else:
-            args = list(args)
-            fun = args.pop(0)
-        fun = value_and_grad(fun)
-        return _newton_cg(fun, *args, **kwargs).x
-    else:
-        return _newton_cg(*args, **kwargs).x
+def newton_cg(*args, **kwargs):
+    return _newton_cg(*args, **kwargs).x
 
 
 def minimize(
@@ -381,9 +382,14 @@ def minimize(
         te = f"args argument must be a tuple, got {type(args)!r}"
         raise TypeError(te)
 
-    fun_with_args = lambda x: fun(x, *args)
+    fun_with_args = fun
+    if args:
+        fun_with_args = lambda x: fun(x, *args)
 
-    if method.lower() in ('newton-cg', 'newtoncg'):
+    if tol is not None:
+        raise ValueError("use solver-specific options")
+
+    if method.lower() in ('newton-cg', 'newtoncg', 'ncg'):
         return _newton_cg(fun_with_args, x0, **options)
 
     raise ValueError(f"method {method} not recognized")

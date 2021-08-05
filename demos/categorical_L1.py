@@ -90,7 +90,17 @@ if __name__ == "__main__":
 
         Evag = lambda p: energy_vag(p, samples)
         met = lambda p, t: metric(p, t, samples)
-        pos = jft.newton_cg(Evag, pos, met, n_newton_iterations)
+        opt_state = jft.minimize(
+            None,
+            x0=pos,
+            method="newton-cg",
+            options={
+                "fun_and_grad": Evag,
+                "hessp": met,
+                "maxiter": n_newton_iterations
+            }
+        )
+        pos = opt_state.x
         diff_to_truth = np.linalg.norm(model["matrix"](pos) - matrix_truth)
         print(
             (
