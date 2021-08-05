@@ -258,7 +258,7 @@ def density_estimator(domain, pad=1.0, cf_fluctuations=None,
     uniform = UniformOperator(scalar_domain, *cf_azm_uniform)
     azm = uniform.ducktape("zeromode")
     cfmaker.set_amplitude_total_offset(azm_offset_mean, azm)
-    correlated_field = cfmaker.finalize(0).clip(-10., 10.)
+    correlated_field = cfmaker.finalize(0).softclip(-10., 10.)
     normalized_amplitudes = cfmaker.get_normalized_amplitudes()
 
     domain_shape = tuple(d.shape for d in domain)
