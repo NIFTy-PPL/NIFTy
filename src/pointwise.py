@@ -115,6 +115,7 @@ def _leakyclip_linearization(v,
 def softclip(v, a_min, a_max):
     if np.issubdtype(v.dtype, np.complexfloating):
         raise TypeError("Argument must not be complex")
+    # implemented based on the TensorFlow `tfp` module documentation
     delta_a = np.array(a_max - a_min)
     c = delta_a / softplus(delta_a)
     return a_max - c * softplus(delta_a - softplus(v - a_min))
