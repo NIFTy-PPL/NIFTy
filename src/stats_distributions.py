@@ -1,3 +1,5 @@
+from typing import Callable
+
 from jax import numpy as np
 
 
@@ -15,7 +17,7 @@ def laplace_prior(alpha):
     return lambda x: res(x) * alpha
 
 
-def normal_prior(mean, std):
+def normal_prior(mean, std) -> Callable:
     """Match standard normally distributed random variables to non-standard
     variables.
     """
@@ -39,7 +41,7 @@ def lognormal_moments(mean, std):
     return logmean, logstd
 
 
-def lognormal_prior(mean, std):
+def lognormal_prior(mean, std) -> Callable:
     """Moment-match standard normally distributed random variables to log-space
 
     Takes random normal samples and outputs samples distributed according to

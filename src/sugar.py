@@ -1,4 +1,4 @@
-from typing import Callable
+from typing import Callable, Hashable
 from collections.abc import Iterable
 
 from jax import random
@@ -29,7 +29,7 @@ def is1d(ls, object_type=(int, np.unsignedinteger)):
     return all(isinstance(e, object_type) for e in ls)
 
 
-def ducktape(call, key):
+def ducktape(call: Callable, key: Hashable):
     def named_call(p):
         return call(p.get(key))
 

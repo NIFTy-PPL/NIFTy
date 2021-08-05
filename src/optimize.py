@@ -364,7 +364,7 @@ def newton_cg(*args, **kwargs):
 
 
 def minimize(
-    fun: Callable,
+    fun: Optional[Callable[...,float]],
     x0,
     args: Tuple = (),
     *,
