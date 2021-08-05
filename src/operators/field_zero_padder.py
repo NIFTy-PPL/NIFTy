@@ -24,9 +24,9 @@ from ..field import Field
 from .linear_operator import LinearOperator
 
 
-class FieldZeroPadder(LinearOperator):
-    """Operator which applies zero-padding to one of the subdomains of its
-    input field
+class CentralFieldZeroPadder(LinearOperator):
+    """Operator which applies central zero-padding to one of the subdomains
+    of its input field
 
     Parameters
     ----------
@@ -39,19 +39,15 @@ class FieldZeroPadder(LinearOperator):
     space : int
         The index of the subdomain to be zero-padded. If None, it is set to 0
         if domain contains exactly one space. domain[space] must be an RGSpace.
-    central : bool
-        If `False`, padding is performed at the end of the domain axes,
-        otherwise in the middle.
-
-    Notes
-    -----
-    When doing central padding on an axis with an even length, the "central"
-    entry should in principle be split up; this is currently not done.
+    split_even : boolean
+        When set to True and padding on an axis with even length, the
+        "central" entry will be split up. This is useful for padding in
+        harmonic spaces.
     """
-    def __init__(self, domain, new_shape, space=0, central=False):
+    def __init__(self, domain, new_shape, space=0, split_even=False):
         self._domain = DomainTuple.make(domain)
         self._space = utilities.infer_space(self._domain, space)
-        self._central = central
+        self._split_even = split_even
         dom = self._domain[self._space]
         if not isinstance(dom, RGSpace):
             raise TypeError("RGSpace required")
@@ -80,41 +76,40 @@ class FieldZeroPadder(LinearOperator):
                 shp = list(v.shape)
                 shp[d] = tgtshp[d]
                 xnew = np.zeros(shp, dtype=v.dtype)
-                if self._central:
-                    Nyquist = v.shape[d]//2
-                    i1 = idx + (slice(0, Nyquist+1),)
-                    xnew[i1] = v[i1]
-                    i1 = idx + (slice(None, -(Nyquist+1), -1),)
-                    xnew[i1] = v[i1]
-#                     if (v.shape[d] & 1) == 0:  # even number of pixels
-#                         i1 = idx+(Nyquist,)
-#                         xnew[i1] *= 0.5
-#                         i1 = idx+(-Nyquist,)
-#                         xnew[i1] *= 0.5
-                else:
-                    xnew[idx + (slice(0, v.shape[d]),)] = v
+                Nyquist = v.shape[d]//2
+                i1 = idx + (slice(0, Nyquist+1),)
+                xnew[i1] = v[i1]
+                i1 = idx + (slice(None, -(Nyquist+1), -1),)
+                xnew[i1] = v[i1]
+
+                if self._split_even and (v.shape[d] & 1) == 0:
+                    # even number of pixels
+                    i1 = idx+(Nyquist,)
+                    xnew[i1] *= 0.5
+                    i1 = idx+(-Nyquist,)
+                    xnew[i1] *= 0.5
+
             else:  # ADJOINT_TIMES
-                if self._central:
-                    shp = list(v.shape)
-                    shp[d] = tgtshp[d]
-                    xnew = np.zeros(shp, dtype=v.dtype)
-                    Nyquist = xnew.shape[d]//2
-                    i1 = idx + (slice(0, Nyquist+1),)
-                    xnew[i1] = v[i1]
-                    i1 = idx + (slice(None, -(Nyquist+1), -1),)
-                    xnew[i1] += v[i1]
-#                     if (xnew.shape[d] & 1) == 0:  # even number of pixels
-#                         i1 = idx+(Nyquist,)
-#                         xnew[i1] *= 0.5
-                else:
-                    xnew = v[idx + (slice(0, tgtshp[d]),)]
+                shp = list(v.shape)
+                shp[d] = tgtshp[d]
+                xnew = np.zeros(shp, dtype=v.dtype)
+                Nyquist = xnew.shape[d]//2
+                i1 = idx + (slice(0, Nyquist+1),)
+                xnew[i1] = v[i1]
+                i1 = idx + (slice(None, -(Nyquist+1), -1),)
+                xnew[i1] += v[i1]
+
+                if self._split_even and (xnew.shape[d] & 1) == 0:
+                    # even number of pixels
+                    i1 = idx+(Nyquist,)
+                    xnew[i1] *= 0.5
 
             curshp[d] = xnew.shape[d]
             v = xnew
         return Field(self._tgt(mode), v)
 
 
-class OffsetFieldZeroPadder(LinearOperator):
+class FieldZeroPadder(LinearOperator):
     """FieldZeroPadder with choosable offset
 
     Parameters

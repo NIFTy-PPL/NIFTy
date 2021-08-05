@@ -24,7 +24,7 @@ from .operators.endomorphic_operator import EndomorphicOperator
 from .operators.harmonic_operators import (
     FFTOperator, HartleyOperator, SHTOperator, HarmonicTransformOperator,
     HarmonicSmoothingOperator)
-from .operators.field_zero_padder import FieldZeroPadder, OffsetFieldZeroPadder
+from .operators.field_zero_padder import FieldZeroPadder, CentralFieldZeroPadder
 from .operators.inversion_enabler import InversionEnabler
 from .operators.mask_operator import MaskOperator
 from .operators.regridding_operator import RegriddingOperator

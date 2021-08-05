@@ -215,19 +215,19 @@ def testDomainTupleFieldInserter():
 
 @pmp('space', [0, 2])
 @pmp('factor', [1, 2, 2.7])
-@pmp('central', [False, True])
-def testZeroPadder(space, factor, dtype, central):
+@pmp('split_even', [False, True])
+def testCentralZeroPadder(space, factor, dtype, split_even):
     dom = (ift.RGSpace(4), ift.UnstructuredDomain(5), ift.RGSpace(3, 4),
            ift.HPSpace(2))
     newshape = [int(factor*ll) for ll in dom[space].shape]
-    op = ift.FieldZeroPadder(dom, newshape, space, central)
+    op = ift.CentralFieldZeroPadder(dom, newshape, space, split_even)
     ift.extra.check_linear_operator(op, dtype, dtype)
 
 
 @pmp('space', [0, 2])
 @pmp('factor', [1, 2, 2.7])
 @pmp('offset', [False, True])
-def testOffsetZeroPadder(space, factor, offset, dtype):
+def testZeroPadder(space, factor, offset, dtype):
     dom = (ift.RGSpace(4), ift.UnstructuredDomain(5), ift.RGSpace(3, 4),
            ift.HPSpace(2))
     newshape = [int(factor*ll) for ll in dom[space].shape]
@@ -237,7 +237,7 @@ def testOffsetZeroPadder(space, factor, offset, dtype):
     else:
         offset_val = None
 
-    op = ift.OffsetFieldZeroPadder(dom, newshape, space, offset_val)
+    op = ift.FieldZeroPadder(dom, newshape, space, offset_val)
     ift.extra.check_linear_operator(op, dtype, dtype)
 
 
