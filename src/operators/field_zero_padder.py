@@ -39,27 +39,36 @@ class CentralFieldZeroPadder(LinearOperator):
     space : int
         The index of the subdomain to be zero-padded. If None, it is set to 0
         if domain contains exactly one space. domain[space] must be an RGSpace.
-    split_even : boolean
-        When set to True and padding on an axis with even length, the
-        "central" entry will be split up. This is useful for padding in
-        harmonic spaces.
+    split_even : None or boolean
+        When doing central padding on an axis with an even length, the "central"
+        entry will get distributed to two locations. When padding harmonic fields,
+        only half of the value should be written to each of the target locations
+        to preserve the total power.
+        If True or False, the splitting is or is not performed regardless of
+        input. If set to None (default), splitting will be enabled for harmonic
+        spaces and disabled otherwise.
     """
-    def __init__(self, domain, new_shape, space=0, split_even=False):
+    def __init__(self, domain, new_shape, space=0, split_even=None):
         self._domain = DomainTuple.make(domain)
         self._space = utilities.infer_space(self._domain, space)
-        self._split_even = split_even
         dom = self._domain[self._space]
+
         if not isinstance(dom, RGSpace):
             raise TypeError("RGSpace required")
         if len(new_shape) != len(dom.shape):
             raise ValueError("Shape mismatch")
         if any([a < b for a, b in zip(new_shape, dom.shape)]):
             raise ValueError("New shape must not be smaller than old shape")
+
         self._target = list(self._domain)
         self._target[self._space] = RGSpace(new_shape, dom.distances,
                                             dom.harmonic)
         self._target = DomainTuple.make(self._target)
         self._capability = self.TIMES | self.ADJOINT_TIMES
+
+        if split_even is None:
+            split_even = True if dom.harmonic else False
+        self._split_even = split_even
 
     def apply(self, x, mode):
         self._check_input(x, mode)
