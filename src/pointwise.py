@@ -89,7 +89,7 @@ def _leakyclip_field(v, a_min, a_max, lower_slope=0.01, upper_slope=0.01):
     if a_min is not None:
         v = np.where(v > a_min, v, a_min + (v - a_min) * lower_slope)
     if a_max is not None:
-        v = np.where(v < a_min, v, a_max + (v - a_max) * upper_slope)
+        v = np.where(v < a_max, v, a_max + (v - a_max) * upper_slope)
     return v
 
 

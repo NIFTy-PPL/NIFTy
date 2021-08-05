@@ -33,3 +33,11 @@ def test_softclip():
 
     idx = np.logical_and(x > -0.01, x < 0.01)
     assert_allclose(res[idx], x[idx], rtol=0.02)
+
+
+def test_leakyclip():
+    res = ift.pointwise._leakyclip_field(np.array(2.), None, 1.0, upper_slope=0.1)
+    assert_allclose(res, np.array(1.1))
+
+    res = ift.pointwise._leakyclip_field(np.array(-3.), -1.0, None, lower_slope=0.01)
+    assert_allclose(res, np.array(-1.02))
