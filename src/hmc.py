@@ -312,12 +312,16 @@ def build_tree_iterative(initial_qp, key, eps, maxdepth, stepper, potential_ener
         go_right = random.choice(subkey, np.array([False, True]))
         print(f"going in direction {1 if go_right else -1}")
         # new_tree = current_tree extended (i.e. doubled) in direction
-        new_tree = extend_tree_iterative(key, current_tree, j, eps, go_right, stepper, potential_energy, kinetic_energy)
-        stop = new_tree.turning or is_euclidean_uturn_pytree(new_tree.left, new_tree.right)
+        new_subtree = iterative_build_tree(key, current_tree, j, eps, go_right, stepper, potential_energy, kinetic_energy)
+        if not new_subtree.turning:
+            # TODO: turning_hint
+            current_tree = merge_trees(key, current_tree, new_subtree, go_right, False)
+        # stop if new subtree was turning -> we sample from the old one and don't expand further
+        # stop if new total tree is turning -> we sample from the combined trajectory and don't expand further
+        # TODO: move call to is_euclidean_uturn_pytree into merge_trees from above, remove the turning hint and just check current_tree.turning here
+        stop = new_subtree.turning or is_euclidean_uturn_pytree(current_tree.left, current_tree.right)
         j = j + 1
         # TODO: I think this needs to be conditional on stop somehow but not sure
-        if not stop:
-            current_tree = new_tree
     return current_tree
 
 
@@ -326,7 +330,7 @@ def index_into_pytree_time_series(idx, ptree):
 
 
 # taken from https://arxiv.org/pdf/1912.11554.pdf
-def extend_tree_iterative(key, initial_tree, depth, eps, go_right, stepper, potential_energy, kinetic_energy):
+def iterative_build_tree(key, initial_tree, depth, eps, go_right, stepper, potential_energy, kinetic_energy):
     # 1. choose start point of integration
     if go_right:
         initial_qp = initial_tree.right
@@ -341,7 +345,7 @@ def extend_tree_iterative(key, initial_tree, depth, eps, go_right, stepper, pote
     #S = np.empty(shape=(depth,) + initial_qp.shape)
 
     def _loop_body(state):
-        n, _return_initial, chosen, z, S = state
+        n, _turning, chosen, z, S = state
 
         z = stepper(z, eps, 1 if go_right else -1)
         # TODO: how to assign z.momentum to the momentum subtree and z.position to the position subtree? maybe vmap can help?
@@ -363,31 +367,29 @@ def extend_tree_iterative(key, initial_tree, depth, eps, go_right, stepper, pote
             contains_uturn = lax.fori_loop(
                 lower = i_min_incl,
                 upper = i_max_incl + 1,
+                # TODO: conditional for early termination
                 body_fun = lambda k, contains_uturn: contains_uturn | is_euclidean_uturn_pytree(index_into_pytree_time_series(k, S), z),
                 init_val = False
             )
             return n, S, contains_uturn
 
-        _n, S, return_initial = lax.cond(
+        _n, S, turning = lax.cond(
             pred = n % 2 == 0,
             true_fun = _even_fun,
             false_fun = _odd_fun,
             operand = (n, S)
         )
-        return (n+1, return_initial, chosen, z, S)
+        return (n+1, turning, chosen, z, S)
 
-    _final_n, return_initial, chosen, _z, _S = lax.while_loop(
+    _final_n, turning, chosen, _z, _S = lax.while_loop(
         cond_fun=lambda state: (state[0] < 2**depth) & (~state[1]),
         body_fun=_loop_body,
         init_val=(0, False, chosen, z, S)
     )
 
-    if return_initial:
-        return initial_tree
-
     key, subkey = random.split(key)
-    new_subtree = make_tree_from_list(subkey, chosen, go_right, potential_energy, kinetic_energy, False)
-    return merge_trees(key, initial_tree, new_subtree, go_right, False)
+    return make_tree_from_list(subkey, chosen, go_right, potential_energy, kinetic_energy, turning)
+
 
 def make_tree_from_list(key, qp_of_pytree_of_series, go_right, potential_energy, kinetic_energy, turning_hint):
     # WARNING: only to be called from extend_tree_iterative, with turning_hint logic correct
