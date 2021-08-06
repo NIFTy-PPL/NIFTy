@@ -1,6 +1,7 @@
 # %%
 import jax.numpy as np
 from jax import random
+from jax import jit
 from jifty1.hmc import leapfrog_step_pytree, build_tree_iterative, QP
 
 # %%
@@ -25,10 +26,11 @@ def test_run_build_tree_rec():
     acceptance_bools = []
     plt.plot(to_arr(current_qp.position)[0], to_arr(current_qp.position)[1], 'rx', label='initial position')
     plt.arrow(to_arr(current_qp.position)[0], to_arr(current_qp.position)[1], 0.1*to_arr(current_qp.momentum)[0], 0.1*to_arr(current_qp.momentum)[1])
+    build_tree_iterative_jitted = jit(build_tree_iterative, static_argnames=['maxdepth', 'stepper', 'potential_energy', 'kinetic_energy'])
     for loop_idx in range(10):
         plt.arrow(to_arr(current_qp.position)[0], to_arr(current_qp.position)[1], 0.1*to_arr(current_qp.momentum)[0], 0.1*to_arr(current_qp.momentum)[1])
         key, subkey = random.split(key)
-        tree = build_tree_iterative(current_qp, subkey, 0.01194, 6, stepper, potential_energy, kinetic_energy)
+        tree = build_tree_iterative_jitted(current_qp, subkey, 0.01194, 6, stepper, potential_energy, kinetic_energy)
         key, subkey = random.split(key)
         proposed_states.append(tree.proposal_candidate)
         acceptance_probability = np.exp(
