@@ -312,7 +312,7 @@ def build_tree_iterative(initial_qp, key, eps, maxdepth, stepper, potential_ener
         go_right = random.choice(subkey, np.array([False, True]))
         print(f"going in direction {1 if go_right else -1}")
         # new_tree = current_tree extended (i.e. doubled) in direction
-        new_subtree = iterative_build_tree(key, current_tree, j, eps, go_right, stepper, potential_energy, kinetic_energy)
+        new_subtree = iterative_build_tree(key, current_tree, j, eps, go_right, stepper, potential_energy, kinetic_energy, maxdepth)
         if not new_subtree.turning:
             # TODO: turning_hint
             current_tree = merge_trees(key, current_tree, new_subtree, go_right, False)
@@ -330,7 +330,7 @@ def index_into_pytree_time_series(idx, ptree):
 
 
 # taken from https://arxiv.org/pdf/1912.11554.pdf
-def iterative_build_tree(key, initial_tree, depth, eps, go_right, stepper, potential_energy, kinetic_energy):
+def iterative_build_tree(key, initial_tree, depth, eps, go_right, stepper, potential_energy, kinetic_energy, maxdepth):
     # 1. choose start point of integration
     if go_right:
         initial_qp = initial_tree.right
@@ -340,7 +340,7 @@ def iterative_build_tree(key, initial_tree, depth, eps, go_right, stepper, poten
     # needs to be this big because we don't know how many chosen states there will be
     chosen = tree_util.tree_map(lambda initial_q_or_p_leaf: np.empty((2**depth,) + initial_q_or_p_leaf.shape), unzip_qp_pytree(initial_qp))
     z = initial_qp
-    S = tree_util.tree_map(lambda initial_q_or_p_leaf: np.empty((depth + 1,) + initial_q_or_p_leaf.shape), unzip_qp_pytree(initial_qp))
+    S = tree_util.tree_map(lambda initial_q_or_p_leaf: np.empty((maxdepth + 1,) + initial_q_or_p_leaf.shape), unzip_qp_pytree(initial_qp))
     #S = np.empty(shape=(depth,) + initial_qp.shape)
 
     def _loop_body(state):
@@ -391,7 +391,9 @@ def iterative_build_tree(key, initial_tree, depth, eps, go_right, stepper, poten
 
 
 def add_single_qp_to_tree(key, tree, qp, go_right, potential_energy, kinetic_energy):
-    """Helper function for progressive sampling. Takes a tree with a sample, and a new endpoint, propagates sample."""
+    """Helper function for progressive sampling. Takes a tree with a sample, and
+    a new endpoint, propagates sample. It's functional, i.e. does not modify
+    arguments."""
     if go_right:
         left, right = tree.left, qp
     else:
