@@ -47,7 +47,7 @@ class JaxOperator(Operator):
     func : callable
         The jax function that is evaluated by the operator. It has to be
         implemented in terms of `jax.numpy` calls. If `domain` is a
-        `DomainTuple`, `func` takes a `dict` as argument and like-wise for the
+        `MultiDomain`, `func` takes a `dict` as argument and like-wise for the
         target.
     """
     def __init__(self, domain, target, func):
@@ -114,7 +114,7 @@ def JaxLinearOperator(domain, target, func, domain_dtype):
     func : callable
         The jax function that is evaluated by the operator. It has to be
         implemented in terms of `jax.numpy` calls. If `domain` is a
-        `DomainTuple`, `func` takes a `dict` as argument and like-wise for the
+        `MultiDomain`, `func` takes a `dict` as argument and like-wise for the
         target.
 
     domain_dtype:
@@ -148,7 +148,7 @@ class JaxLikelihoodEnergyOperator(LikelihoodEnergyOperator):
     func : callable
         The jax function that is evaluated by the operator. It has to be
         implemented in terms of `jax.numpy` calls. If `domain` is a
-        `DomainTuple`, `func` takes a `dict` as argument and like-wise for the
+        `MultiDomain`, `func` takes a `dict` as argument and like-wise for the
         target. It needs to map to a scalar.
 
     transformation : Operator, optional
