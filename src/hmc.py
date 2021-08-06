@@ -390,6 +390,22 @@ def iterative_build_tree(key, initial_tree, depth, eps, go_right, stepper, poten
     return make_tree_from_list(subkey, chosen, go_right, potential_energy, kinetic_energy, turning)
 
 
+def add_single_qp_to_tree(key, tree, qp, go_right, potential_energy, kinetic_energy):
+    """Helper function for progressive sampling. Takes a tree with a sample, and a new endpoint, propagates sample."""
+    if go_right:
+        left, right = tree.left, qp
+    else:
+        left, right = qp, tree.right
+    key, subkey = random.split(key)
+    total_weight = tree.weight + np.exp(-kinetic_energy(qp)-potential_energy(qp))
+    prob_of_keeping_old = tree.weight / total_weight
+    if random.bernoulli(subkey, prob_of_keeping_old):
+        proposal_candidate = tree.proposal_candidate
+    else:
+        proposal_candidate = qp
+    return Tree(left, right, total_weight, proposal_candidate, tree.turning)
+
+
 def make_tree_from_list(key, qp_of_pytree_of_series, go_right, potential_energy, kinetic_energy, turning_hint):
     # WARNING: only to be called from extend_tree_iterative, with turning_hint logic correct
     # 3. random.choice with probability weights to get sample
