@@ -130,10 +130,10 @@ def JaxLinearOperator(domain, target, func, domain_dtype):
     from ..sugar import makeDomain
     domain = makeDomain(domain)
     if isinstance(domain, DomainTuple):
-        inp = np.ones(domain.shape, domain_dtype)
+        inp = np.empty(domain.shape, domain_dtype)
     else:
-        inp = {kk: np.ones(domain[kk].shape, domain_dtype[kk]) for kk in domain.keys()}
-    func_transposed = jax.jit(jax.vjp(func, inp)[1])
+        inp = {kk: np.empty(domain[kk].shape, domain_dtype[kk]) for kk in domain.keys()}
+    func_transposed = jax.jit(jax.linear_transpose(func, inp))
     return _JaxLinearOperator(domain, target, func, func_transposed)
 
 

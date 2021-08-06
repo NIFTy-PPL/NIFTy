@@ -46,7 +46,7 @@ def test_jax(dom, func):
     if linear:
         ift.extra.check_linear_operator(op)
     else:
-        with pytest.raises(AssertionError):
+        with pytest.raises(Exception):
             ift.extra.check_linear_operator(op)
 
 
