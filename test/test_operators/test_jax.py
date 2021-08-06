@@ -16,7 +16,6 @@
 
 import nifty8 as ift
 import numpy as np
-import matplotlib.pyplot as plt
 import pytest
 try:
     import jax.numpy as jnp
