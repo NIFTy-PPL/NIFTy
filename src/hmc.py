@@ -243,6 +243,7 @@ def generate_next_sample(*,
 # weight: sum over all exp(-H(q, p)) in the trees path
 # proposal_candidate: random sample from the trees path, distributed as exp(-H(q, p))
 # turning: TODO: whole tree or also subtrees??
+# turning currently means either the left, right endpoint are a uturn or any subtree is a uturn, see TODO above
 Tree = namedtuple('Tree', ['left', 'right', 'weight', 'proposal_candidate', 'turning'])
 
 
@@ -331,24 +332,35 @@ def index_into_pytree_time_series(idx, ptree):
 
 # taken from https://arxiv.org/pdf/1912.11554.pdf
 def iterative_build_tree(key, initial_tree, depth, eps, go_right, stepper, potential_energy, kinetic_energy, maxdepth):
+    # TODO: rename chosen to a more sensible name such as new_tree ...
     # 1. choose start point of integration
     if go_right:
         initial_qp = initial_tree.right
     else:
         initial_qp = initial_tree.left
-    # 2. build / collect chosen states
-    # needs to be this big because we don't know how many chosen states there will be
-    chosen = tree_util.tree_map(lambda initial_q_or_p_leaf: np.empty((2**depth,) + initial_q_or_p_leaf.shape), unzip_qp_pytree(initial_qp))
     z = initial_qp
+    # 2. build / collect chosen states
+    # TODO: WARNING: this will be overwritten in the first iteration of the loop, the assignment to chosen is only temporary and we're using z since it's the only QP that's availible right now. This would also be solved by moving the first iteration outside of the loop.
+    chosen = Tree(z,z,0.,z,turning=False)
     S = tree_util.tree_map(lambda initial_q_or_p_leaf: np.empty((maxdepth + 1,) + initial_q_or_p_leaf.shape), unzip_qp_pytree(initial_qp))
     #S = np.empty(shape=(depth,) + initial_qp.shape)
 
     def _loop_body(state):
-        n, _turning, chosen, z, S = state
+        n, _turning, chosen, z, S, key = state
 
         z = stepper(z, eps, 1 if go_right else -1)
-        # TODO: how to assign z.momentum to the momentum subtree and z.position to the position subtree? maybe vmap can help?
-        chosen = tree_util.tree_map(lambda arr, val: arr.at[n].set(val), chosen, z)
+
+        # TODO: maybe just move the first iteration outside of the loop?
+        chosen = lax.cond(
+            pred = n == 0,
+            true_fun = lambda c_and_z: Tree(left=z, right=z, weight=np.exp(-total_energy_of_qp(z, potential_energy, kinetic_energy)), proposal_candidate=z, turning=False),
+            false_fun = lambda c_and_z: chosen,
+            operand = (chosen, z)
+        )
+
+        key, subkey = random.split(key)
+        # TODO: this is okay on the first iteration (n==0) becaues chosen.proposal_candidate == z. But it is also unnecessary.
+        chosen = add_single_qp_to_tree(subkey, chosen, z, go_right, potential_energy, kinetic_energy)
 
         def _even_fun(n_and_S):
             n, S = n_and_S
@@ -378,16 +390,22 @@ def iterative_build_tree(key, initial_tree, depth, eps, go_right, stepper, poten
             false_fun = _odd_fun,
             operand = (n, S)
         )
-        return (n+1, turning, chosen, z, S)
+        return (n+1, turning, chosen, z, S, key)
 
-    _final_n, turning, chosen, _z, _S = lax.while_loop(
+    _final_n, turning, chosen, _z, _S, _key = lax.while_loop(
         cond_fun=lambda state: (state[0] < 2**depth) & (~state[1]),
         body_fun=_loop_body,
-        init_val=(0, False, chosen, z, S)
+        init_val=(0, False, chosen, z, S, key)
     )
 
-    key, subkey = random.split(key)
-    return make_tree_from_list(subkey, chosen, go_right, potential_energy, kinetic_energy, turning)
+    # TODO: remove this and set chosen.turning inside the loop, or: make loop state essentially just (n, chosen)
+    return Tree(
+        left = chosen.left,
+        right = chosen.right,
+        weight = chosen.weight,
+        proposal_candidate = chosen.proposal_candidate,
+        turning = turning
+    )
 
 
 def add_single_qp_to_tree(key, tree, qp, go_right, potential_energy, kinetic_energy):
@@ -399,15 +417,18 @@ def add_single_qp_to_tree(key, tree, qp, go_right, potential_energy, kinetic_ene
     else:
         left, right = qp, tree.right
     key, subkey = random.split(key)
-    total_weight = tree.weight + np.exp(-kinetic_energy(qp)-potential_energy(qp))
+    total_weight = tree.weight + np.exp(-total_energy_of_qp(qp, potential_energy, kinetic_energy))
     prob_of_keeping_old = tree.weight / total_weight
-    if random.bernoulli(subkey, prob_of_keeping_old):
-        proposal_candidate = tree.proposal_candidate
-    else:
-        proposal_candidate = qp
+    proposal_candidate = lax.cond(
+        pred = random.bernoulli(subkey, prob_of_keeping_old),
+        true_fun = lambda old_and_new: old_and_new[0],
+        false_fun = lambda old_and_new: old_and_new[1],
+        operand = (tree.proposal_candidate, qp)
+    )
     return Tree(left, right, total_weight, proposal_candidate, tree.turning)
 
 
+# TOOD: remove or mark legacy
 def make_tree_from_list(key, qp_of_pytree_of_series, go_right, potential_energy, kinetic_energy, turning_hint):
     # WARNING: only to be called from extend_tree_iterative, with turning_hint logic correct
     # 3. random.choice with probability weights to get sample
