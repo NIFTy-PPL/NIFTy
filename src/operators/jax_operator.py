@@ -23,7 +23,7 @@ from .operator import Operator
 try:
     import jax
     jax.config.update("jax_enable_x64", True)
-    __all__ = ["JaxOperator", "JaxLikelihoodEnergyOperator"]
+    __all__ = ["JaxOperator", "JaxLikelihoodEnergyOperator", "JaxLinearOperator"]
 except ImportError:
     __all__ = []
 
@@ -65,7 +65,7 @@ class JaxOperator(Operator):
         if is_linearization(x):
             res, bwd = self._vjp(x.val.val)
             fwd = lambda y: self._fwd(x.val.val, y)
-            jac = _JaxJacobian(self._domain, self._target, fwd, bwd)
+            jac = _JaxLinearOperator(self._domain, self._target, fwd, bwd)
             return x.new(makeField(self._target, _jax2np(res)), jac)
         res = _jax2np(self._func(x.val))
         if isinstance(res, dict):
@@ -98,6 +98,43 @@ class JaxOperator(Operator):
         dom = {kk: vv for kk, vv in self._domain.items()
                 if kk not in c_inp.keys()}
         return None, JaxOperator(dom, self._target, func2)
+
+
+def JaxLinearOperator(domain, target, func, domain_dtype):
+    """Wrap a jax function as nifty linear operator.
+
+    Parameters
+    ----------
+    domain : DomainTuple or MultiDomain
+        Domain of the operator.
+
+    target : DomainTuple or MultiDomain
+        Target of the operator.
+
+    func : callable
+        The jax function that is evaluated by the operator. It has to be
+        implemented in terms of `jax.numpy` calls. If `domain` is a
+        `DomainTuple`, `func` takes a `dict` as argument and like-wise for the
+        target.
+
+    domain_dtype:
+        Dtype of the domain. If `domain` is a `MultiDomain`, `domain_dtype` is
+        supposed to be a dictionary.
+
+    Note
+    ----
+    It is the user's responsibility that func is actually a linear function. The
+    user can double check this with the help of `nifty8.extra.check_linear_operator`.
+    """
+    from ..domain_tuple import DomainTuple
+    from ..sugar import makeDomain
+    domain = makeDomain(domain)
+    if isinstance(domain, DomainTuple):
+        inp = np.ones(domain.shape, domain_dtype)
+    else:
+        inp = {kk: np.ones(domain[kk].shape, domain_dtype[kk]) for kk in domain.keys()}
+    func_transposed = jax.jit(jax.vjp(func, inp)[1])
+    return _JaxLinearOperator(domain, target, func, func_transposed)
 
 
 class JaxLikelihoodEnergyOperator(LikelihoodEnergyOperator):
@@ -163,7 +200,7 @@ class JaxLikelihoodEnergyOperator(LikelihoodEnergyOperator):
         return None, JaxLikelihoodEnergyOperator(dom, func2, trafo, dt)
 
 
-class _JaxJacobian(LinearOperator):
+class _JaxLinearOperator(LinearOperator):
     def __init__(self, domain, target, func, func_transposed):
         from ..sugar import makeDomain
         self._domain = makeDomain(domain)
