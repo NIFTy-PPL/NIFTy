@@ -322,13 +322,17 @@ def build_tree_iterative(initial_qp, key, eps, maxdepth, stepper, potential_ener
         # print(f"going in direction {1 if go_right else -1}")
         # new_tree = current_tree extended (i.e. doubled) in direction
         new_subtree = iterative_build_tree(key, current_tree, j, eps, go_right, stepper, potential_energy, kinetic_energy, maxdepth)
-        if not new_subtree.turning:
+        current_tree = lax.cond(
+            pred = new_subtree.turning,
+            true_fun = lambda old_and_new: old_and_new[0],
             # TODO: turning_hint
-            current_tree = merge_trees(key, current_tree, new_subtree, go_right, False)
+            false_fun = lambda old_and_new: merge_trees(key, old_and_new[0], old_and_new[1], go_right, False),
+            operand = (current_tree, new_subtree),
+        )
         # stop if new subtree was turning -> we sample from the old one and don't expand further
         # stop if new total tree is turning -> we sample from the combined trajectory and don't expand further
         # TODO: move call to is_euclidean_uturn_pytree into merge_trees from above, remove the turning hint and just check current_tree.turning here
-        stop = new_subtree.turning or is_euclidean_uturn_pytree(current_tree.left, current_tree.right)
+        stop = new_subtree.turning | is_euclidean_uturn_pytree(current_tree.left, current_tree.right)
         j = j + 1
         return (key, current_tree, j, stop)
 
@@ -360,7 +364,7 @@ def iterative_build_tree(key, initial_tree, depth, eps, go_right, stepper, poten
     def _loop_body(state):
         n, _turning, chosen, z, S, key = state
 
-        z = stepper(z, eps, 1 if go_right else -1)
+        z = stepper(z, eps, np.where(go_right, x=1, y=-1))
 
         # TODO: maybe just move the first iteration outside of the loop?
         chosen = lax.cond(
@@ -424,10 +428,12 @@ def add_single_qp_to_tree(key, tree, qp, go_right, potential_energy, kinetic_ene
     """Helper function for progressive sampling. Takes a tree with a sample, and
     a new endpoint, propagates sample. It's functional, i.e. does not modify
     arguments."""
-    if go_right:
-        left, right = tree.left, qp
-    else:
-        left, right = qp, tree.right
+    left, right = lax.cond(
+        pred = go_right,
+        true_fun = lambda tree_and_qp: (tree_and_qp[0].left, tree_and_qp[1]),
+        false_fun = lambda tree_and_qp: (tree_and_qp[1], tree_and_qp[0].right),
+        operand = (tree, qp)
+    )
     key, subkey = random.split(key)
     total_weight = tree.weight + np.exp(-total_energy_of_qp(qp, potential_energy, kinetic_energy))
     prob_of_keeping_old = tree.weight / total_weight
