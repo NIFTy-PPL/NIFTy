@@ -341,7 +341,6 @@ def iterative_build_tree(key, initial_tree, depth, eps, go_right, stepper, poten
     chosen = tree_util.tree_map(lambda initial_q_or_p_leaf: np.empty((2**depth,) + initial_q_or_p_leaf.shape), unzip_qp_pytree(initial_qp))
     z = initial_qp
     S = tree_util.tree_map(lambda initial_q_or_p_leaf: np.empty((depth + 1,) + initial_q_or_p_leaf.shape), unzip_qp_pytree(initial_qp))
-    S = tree_util.tree_map(lambda arr, val: arr.at[0].set(val), S, unzip_qp_pytree(initial_qp))
     #S = np.empty(shape=(depth,) + initial_qp.shape)
 
     def _loop_body(state):
