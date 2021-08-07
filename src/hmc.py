@@ -170,7 +170,7 @@ def accept_or_deny(*,
 
 # WARNING: requires jaxlib '0.1.66', keyword argument passing doesn't work with alternative static_argnums, which is supported in earlier jax versions
 # @partial(jit, static_argnames=('potential_energy', 'potential_energy_gradient'))
-def generate_next_sample(*,
+def generate_hmc_sample(*,
         key,
         position,
         potential_energy,
@@ -302,7 +302,7 @@ def build_tree_recursive(initial_qp, key, eps, maxdepth, stepper):
 def total_energy_of_qp(qp, potential_energy, kinetic_energy):
     return potential_energy(qp.position) + kinetic_energy(qp.momentum)
 
-def build_tree_iterative(initial_qp, key, eps, maxdepth, stepper, potential_energy, kinetic_energy):
+def generate_nuts_sample(initial_qp, key, eps, maxdepth, stepper, potential_energy, kinetic_energy):
     current_tree = Tree(left=initial_qp, right=initial_qp, weight=np.exp(-total_energy_of_qp(initial_qp, potential_energy, kinetic_energy)), proposal_candidate=initial_qp, turning=False)
     stop = False
     j = 0
@@ -344,7 +344,7 @@ def index_into_pytree_time_series(idx, ptree):
     return tree_util.tree_map(lambda arr: arr[idx], ptree)
 
 
-# taken from https://arxiv.org/pdf/1912.11554.pdf
+# Essentially algorithm 2 from https://arxiv.org/pdf/1912.11554.pdf
 def iterative_build_tree(key, initial_tree, depth, eps, go_right, stepper, potential_energy, kinetic_energy, maxdepth):
     # TODO: rename chosen to a more sensible name such as new_tree ...
     # 1. choose start point of integration

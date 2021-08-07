@@ -218,7 +218,7 @@ def accept_or_deny(*,
 
 # WARNING: requires jaxlib '0.1.66', keyword argument passing doesn't work with alternative static_argnums, which is supported in earlier jax versions
 @partial(jit, static_argnames=('potential_energy', 'potential_energy_gradient'))
-def generate_next_sample(*,
+def generate_hmc_sample(*,
         key,
         position,
         potential_energy,
@@ -300,7 +300,7 @@ accepted = [True]
 #%%
 for _ in range(10000):
     key, subkey = random.split(key)
-    (qp_old_and_proposed_sample, was_accepted), unintegrated_momentum = generate_next_sample(
+    (qp_old_and_proposed_sample, was_accepted), unintegrated_momentum = generate_hmc_sample(
         key = subkey,
         position = position_samples[-1],
         potential_energy = ham,
