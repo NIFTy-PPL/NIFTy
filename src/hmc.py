@@ -11,8 +11,10 @@ from collections import namedtuple
 # A datatype for (q, p) = (position, momentum) pairs
 QP = namedtuple('QP', ['position', 'momentum'])
 
+
 def flip_momentum(qp: QP) -> QP:
     return QP(position=qp.position, momentum=-qp.momentum)
+
 
 # TODO: depend on current qs, sample from some kind of kinetic energy object
 # TODO: don't depend on current qs, make this a oneliner (i.e. delete this function) using random.normal or something
@@ -160,7 +162,7 @@ def accept_or_deny(*,
 
     #print(f"level: {acceptance_level:3.4e}, thresh: {acceptance_threshold:3.4e}")
 
-    # TODO: define namedtuple with rejected and accepted and 
+    # TODO: define namedtuple with rejected and accepted and
     return ((old_qp, proposed_qp), acceptance_level < acceptance_threshold)
 
 
@@ -203,7 +205,7 @@ def generate_hmc_sample(*,
         diagonal_momentum_covariance = diagonal_momentum_covariance
     )
     qp = QP(position=position, momentum=momentum)
-    
+
     loop_body = partial(leapfrog_step, potential_energy_gradient)
     idx_ignoring_loop_body = lambda idx, args: loop_body(*args)
 
@@ -263,11 +265,11 @@ def _impl_build_tree_recursive(initial_qp, eps, depth, direction, stepper):
         # the trajectory contains only a single point, so the left and right endpoints are identical
         return left_and_right_qp, left_and_right_qp, [left_and_right_qp], False
     else:
-        # 
+        #
         left, right, current_chosen, current_stop = _impl_build_tree_recursive(initial_qp, eps, depth - 1, direction, stepper)
         if direction == -1:
             left, _, new_chosen, new_stop = _impl_build_tree_recursive(left, eps, depth - 1, direction, stepper)
-            
+
         elif direction == 1:
             _, right, new_chosen, new_stop = _impl_build_tree_recursive(right, eps, depth - 1, direction, stepper)
         else:
@@ -275,6 +277,7 @@ def _impl_build_tree_recursive(initial_qp, eps, depth, direction, stepper):
         stop = current_stop or new_stop or is_euclidean_uturn(left, right)
         chosen = current_chosen + new_chosen
         return left, right, chosen, stop
+
 
 def build_tree_recursive(initial_qp, key, eps, maxdepth, stepper):
     left_endpoint, right_endpoint = initial_qp, initial_qp
@@ -302,7 +305,53 @@ def build_tree_recursive(initial_qp, key, eps, maxdepth, stepper):
 def total_energy_of_qp(qp, potential_energy, kinetic_energy):
     return potential_energy(qp.position) + kinetic_energy(qp.momentum)
 
+
 def generate_nuts_sample(initial_qp, key, eps, maxdepth, stepper, potential_energy, kinetic_energy):
+    """
+    Warning
+    -------
+    Momentum must be resampled from conditional distribution BEFORE passing into this function!
+    This is different from `generate_hmc_sample`!
+
+    Generate a sample given the initial position.
+
+    An implementation of the No-Uturn-Sampler
+
+    Parameters
+    ----------
+    initial_qp: QP
+        starting (position, momentum) pair
+        WARNING: momentum must be resampled from conditional distribution BEFORE passing into this function!
+    key: ndarray
+        a PRNGKey used as the random key
+    eps: float
+        The step size (usually called epsilon) for the leapfrog integrator.
+    maxdepth: int
+        The maximum depth of the trajectory tree before expansion is terminated
+        and value is sampled even if the U-turn condition is not met.
+        The maximum number of points (/integration steps) per trajectory is
+            N = 2**maxdepth
+        Memory requirements of this function are linear in maxdepth, i.e. logarithmic in trajectory length.
+        JIT: static argument
+    stepper: Callable[[QP, float, int(1 / -1)] QP]
+        The function that performs (Leapfrog) steps. Takes as arguments (in order)
+            starting point: QP
+            step size: float
+            direction: int (but only 1 or -1!)
+        JIT: static argument
+    potential_energy: Callable[[pytree], float]
+        The potential energy, of the distribution to be sampled from.
+        Takes only the position part (QP.position) as argument
+    kinetic_energy: Callable[[pytree], float]
+        The kinetic energy, of the distribution to be sampled from.
+        Takes only the momentum part (QP.momentum) as argument
+
+    See Also
+    --------
+    No-U-Turn Sampler original paper (2011): https://arxiv.org/abs/1111.4246
+    NumPyro Iterative NUTS paper: https://arxiv.org/abs/1912.11554
+    Combination of samples from two trees, Sampling from trajectories according to target distribution in this paper's Appendix: https://arxiv.org/abs/1701.02434
+    """
     current_tree = Tree(left=initial_qp, right=initial_qp, weight=np.exp(-total_energy_of_qp(initial_qp, potential_energy, kinetic_energy)), proposal_candidate=initial_qp, turning=False)
     stop = False
     j = 0
@@ -480,6 +529,7 @@ def make_tree_from_list(key, qp_of_pytree_of_series, go_right, potential_energy,
     )
     return Tree(left=left, right=right, weight=new_subtree_total_weight, proposal_candidate=new_subtree_sample, turning=turning_hint)
 
+
 def merge_trees(key, current_subtree, new_subtree, go_right, turning_hint):
     """Merges two trees, propagating the proposal_candidate"""
     # WARNING: only to be called from extend_tree_iterative, with turning_hint logic correct
@@ -549,7 +599,7 @@ def count_trailing_ones(n):
         xs=bits_reversed
     )
     return trailing_ones_count
-            
+
 
 def is_euclidean_uturn(qp_left, qp_right):
     return (
