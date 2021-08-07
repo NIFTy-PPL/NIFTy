@@ -246,6 +246,7 @@ def generate_hmc_sample(*,
 # proposal_candidate: random sample from the trees path, distributed as exp(-H(q, p))
 # turning: TODO: whole tree or also subtrees??
 # turning currently means either the left, right endpoint are a uturn or any subtree is a uturn, see TODO above
+# TODO: rename proposal_candidate, taking into account that NUTS is not Metropolis-Hastings.
 Tree = namedtuple('Tree', ['left', 'right', 'weight', 'proposal_candidate', 'turning'])
 
 
@@ -352,25 +353,31 @@ def generate_nuts_sample(initial_qp, key, eps, maxdepth, stepper, potential_ener
     NumPyro Iterative NUTS paper: https://arxiv.org/abs/1912.11554
     Combination of samples from two trees, Sampling from trajectories according to target distribution in this paper's Appendix: https://arxiv.org/abs/1701.02434
     """
+    # initialize depth 0 tree, containing 2**0 = 1 points
     current_tree = Tree(left=initial_qp, right=initial_qp, weight=np.exp(-total_energy_of_qp(initial_qp, potential_energy, kinetic_energy)), proposal_candidate=initial_qp, turning=False)
+
+    # loop stopping condition
     stop = False
+    # loop tree depth, increases each iteration
     j = 0
 
     loop_state = (key, current_tree, j, stop)
 
     def _cond_fn(loop_state):
         _key, _current_tree, j, stop = loop_state
+        # while (not stop) and j <= maxdepth
         return (~stop) & np.less_equal(j, maxdepth)
 
     def _body_fun(loop_state):
         key, current_tree, j, stop = loop_state
-        #print(left_endpoint, right_endpoint)
         key, subkey = random.split(key)
         # random.bernoulli is fine, this is just for rng consistency across commits TODO: use random.bernoulli
         go_right = random.choice(subkey, np.array([False, True]))
-        # print(f"going in direction {1 if go_right else -1}")
-        # new_tree = current_tree extended (i.e. doubled) in direction
+
+        # build tree of depth j, adjacent to current_tree
         new_subtree = iterative_build_tree(key, current_tree, j, eps, go_right, stepper, potential_energy, kinetic_energy, maxdepth)
+
+        # combine current_tree and new_subtree into a depth j+1 tree only if new_subtree has no turning subtrees (including itself)
         current_tree = lax.cond(
             pred = new_subtree.turning,
             true_fun = lambda old_and_new: old_and_new[0],
@@ -385,7 +392,7 @@ def generate_nuts_sample(initial_qp, key, eps, maxdepth, stepper, potential_ener
         j = j + 1
         return (key, current_tree, j, stop)
 
-    _key, current_tree, j, stop = lax.while_loop(_cond_fn, _body_fun, loop_state)
+    _key, current_tree, _j, _stop = lax.while_loop(_cond_fn, _body_fun, loop_state)
     return current_tree
 
 
@@ -395,7 +402,34 @@ def index_into_pytree_time_series(idx, ptree):
 
 # Essentially algorithm 2 from https://arxiv.org/pdf/1912.11554.pdf
 def iterative_build_tree(key, initial_tree, depth, eps, go_right, stepper, potential_energy, kinetic_energy, maxdepth):
-    # TODO: rename chosen to a more sensible name such as new_tree ...
+    """
+    Starting from either the left or right endpoint of a given tree, builds a new adjacent tree of the same size.
+
+    Parameters
+    ----------
+    initial_tree: Tree
+        Tree to be extended (doubled) on the left or right.
+    depth:
+        Depth of the new tree to be built.
+    eps: float
+        The step size (usually called epsilon) for the leapfrog integrator.
+    go_right: bool
+        If go_right start at the right end, going right else start at the left end, going left.
+    stepper: Callable[[QP, float, int(1 / -1)] QP]
+        The function that performs (Leapfrog) steps. Takes as arguments (in order)
+            starting point: QP
+            step size: float
+            direction: int (but only 1 or -1!)
+    potential_energy: Callable[[pytree], float]
+        The potential energy, of the distribution to be sampled from.
+        Takes only the position part (QP.position) as argument
+    kinetic_energy: Callable[[pytree], float]
+        The kinetic energy, of the distribution to be sampled from.
+        Takes only the momentum part (QP.momentum) as argument
+    maxdepth: int
+        An upper bound on the 'depth' argument, but has no effect on the functions behaviour.
+        It's only required to statically set the size of the `S` array (actually pytree of arrays).
+    """
     # 1. choose start point of integration
     initial_qp = lax.cond(
         pred = go_right,
@@ -405,10 +439,11 @@ def iterative_build_tree(key, initial_tree, depth, eps, go_right, stepper, poten
     )
     z = initial_qp
     # 2. build / collect chosen states
+    # TODO: rename chosen to a more sensible name such as new_tree ...
     # TODO: WARNING: this will be overwritten in the first iteration of the loop, the assignment to chosen is only temporary and we're using z since it's the only QP that's availible right now. This would also be solved by moving the first iteration outside of the loop.
     chosen = Tree(z,z,0.,z,turning=False)
+    # Storage for left endpoints of subtrees. Size is determined statically by the `maxdepth` parameter.
     S = tree_util.tree_map(lambda initial_q_or_p_leaf: np.empty((maxdepth + 1,) + initial_q_or_p_leaf.shape), unzip_qp_pytree(initial_qp))
-    #S = np.empty(shape=(depth,) + initial_qp.shape)
 
     def _loop_body(state):
         n, _turning, chosen, z, S, key = state
@@ -429,14 +464,23 @@ def iterative_build_tree(key, initial_tree, depth, eps, go_right, stepper, poten
 
         def _even_fun(n_and_S):
             n, S = n_and_S
-            #print(n, bitcount(n))
+            # TODO: does z have to be passed in or is this okay? Why?
+            # n is even, the current z is w.l.o.g. a left endpoint of some
+            # subtrees. Register the current z to be used in turning condition
+            # checks later, when the right endpoints of it's subtrees are
+            # generated.
             S = tree_util.tree_map(lambda arr, val: arr.at[bitcount(n)].set(val), S, z)
             return n, S, False
 
         def _odd_fun(n_and_S):
             n, S = n_and_S
-            # gets the number of candidate nodes
+            # n is odd, the current z is w.l.o.g a right endpoint of some
+            # subtrees.  Check turning condition against all left endpoints of
+            # subtrees that have the current z (/n) as their right endpoint.
+
+            # l = nubmer of subtrees that have current z as their right endpoint.
             l = count_trailing_ones(n)
+            # inclusive indices into S referring to the left endpoints of the l subtrees.
             i_max_incl = bitcount(n-1)
             i_min_incl = i_max_incl - l + 1
             # TODO: this should traverse the range in reverse
@@ -458,6 +502,7 @@ def iterative_build_tree(key, initial_tree, depth, eps, go_right, stepper, poten
         return (n+1, turning, chosen, z, S, key)
 
     _final_n, turning, chosen, _z, _S, _key = lax.while_loop(
+        # while n < 2**depth and not stop
         cond_fun=lambda state: (state[0] < 2**depth) & (~state[1]),
         body_fun=_loop_body,
         init_val=(0, False, chosen, z, S, key)
@@ -477,6 +522,9 @@ def add_single_qp_to_tree(key, tree, qp, go_right, potential_energy, kinetic_ene
     """Helper function for progressive sampling. Takes a tree with a sample, and
     a new endpoint, propagates sample. It's functional, i.e. does not modify
     arguments."""
+    # This is technically just a special case of merge_trees with one of the
+    # trees being a singleton, depth 0 tree.
+    # TODO: just construct the singleton tree and call merge_trees
     left, right = lax.cond(
         pred = go_right,
         true_fun = lambda tree_and_qp: (tree_and_qp[0].left, tree_and_qp[1]),
@@ -602,6 +650,11 @@ def count_trailing_ones(n):
 
 
 def is_euclidean_uturn(qp_left, qp_right):
+    """
+    See Also
+    --------
+    Betancourt - A conceptual introduction to Hamiltonian Monte Carlo
+    """
     return (
         (np.dot(qp_right.momentum, (qp_right.position - qp_left.position)) < 0.)
         & (np.dot(qp_left.momentum, (qp_left.position - qp_right.position)) < 0.)
@@ -609,6 +662,11 @@ def is_euclidean_uturn(qp_left, qp_right):
 
 
 def is_euclidean_uturn_pytree(qp_left, qp_right):
+    """
+    See Also
+    --------
+    Betancourt - A conceptual introduction to Hamiltonian Monte Carlo
+    """
     # TODO: Does this work with different dtypes for different field components?
     # how does flatten_util.ravel_pytree behave in that case
     qp_left = QP(
