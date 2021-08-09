@@ -1,6 +1,7 @@
 from jax import numpy as np
 import jax.tree_util as tree_util
-from jax import random, jit, partial, lax, flatten_util
+from jax import random, jit, partial, lax, flatten_util, grad
+from .disable_jax_loops import fori_loop
 from collections import namedtuple
 
 
@@ -698,3 +699,66 @@ def make_kinetic_energy_fn_from_diag_mass_matrix(mass_matrix):
 def sample_momentum_from_diag_mass_matrix(key, diag_mass_matrix):
     key, subkey = random.split(key)
     return tree_util.tree_map(lambda m: np.sqrt(m)*random.normal(subkey, m.shape), diag_mass_matrix)
+
+
+class NUTSChain:
+    def __init__(self, initial_position, potential_energy, diag_mass_matrix, eps, maxdepth, rngseed):
+        self.position = initial_position
+
+        # TODO: typechecks?
+        self.potential_energy = potential_energy
+
+        if isinstance(diag_mass_matrix, float):
+            self.diag_mass_matrix = tree_util.tree_map(lambda arr: np.full(arr.shape, diag_mass_matrix), initial_position)
+        elif tree_util.tree_structure(diag_mass_matrix) == tree_util.tree_structure(initial_position):
+            shape_match_tree = tree_util.tree_map(lambda a1, a2: a1.shape == a2.shape, diag_mass_matrix, initial_position)
+            shape_and_structure_match = all(tree_util.tree_flatten(shape_match_tree))
+            if shape_and_structure_match:
+                self.diag_mass_matrix = diag_mass_matrix
+            else:
+                raise ValueError("diag_mass_matrix has same tree_structe as initial_position but shapes don't match up")
+        else:
+            raise ValueError('diag_mass_matrix must either be float or have same tree structure as initial_position')
+
+        if isinstance(eps, float):
+            self.eps = eps
+        else:
+            raise ValueError('eps must be a float')
+
+        if isinstance(maxdepth, int):
+            self.maxdepth = maxdepth
+        else:
+            raise ValueError('maxdepth must be an int')
+        
+        self.key = random.PRNGKey(rngseed)
+
+
+    def generate_n_samples(self, n):
+        potential_energy_gradient = grad(self.potential_energy)
+        stepper = lambda qp, eps, direction: leapfrog_step_pytree(potential_energy_gradient, qp, eps*direction)[0]
+
+        samples = tree_util.tree_map(lambda arr: np.ones((n,) + arr.shape), self.position)
+
+        def _body_fun(idx, state):
+            prev_position, key, samples = state
+            key, subkey = random.split(key)
+            resampled_momentum = sample_momentum_from_diag_mass_matrix(subkey, self.diag_mass_matrix)
+
+            qp = QP(position=prev_position, momentum=resampled_momentum)
+
+            key, subkey = random.split(key)
+            tree = generate_nuts_sample(
+                initial_qp = qp,
+                key = subkey,
+                eps = self.eps,
+                maxdepth = self.maxdepth,
+                stepper = stepper,
+                potential_energy = self.potential_energy,
+                kinetic_energy = make_kinetic_energy_fn_from_diag_mass_matrix(self.diag_mass_matrix)
+            )
+            print("current sample", tree.proposal_candidate)
+            samples = tree_util.tree_map(lambda ts, val: ts.at[idx].set(val), samples, tree.proposal_candidate.position)
+            return (tree.proposal_candidate.position, key, samples)
+        
+        jitted = jit(lambda : fori_loop(lower=0, upper=n, body_fun=_body_fun, init_val=(self.position, self.key, samples)))
+        return jitted()
