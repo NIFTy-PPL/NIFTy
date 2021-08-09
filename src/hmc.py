@@ -346,6 +346,11 @@ def generate_nuts_sample(initial_qp, key, eps, maxdepth, stepper, potential_ener
     kinetic_energy: Callable[[pytree], float]
         The kinetic energy, of the distribution to be sampled from.
         Takes only the momentum part (QP.momentum) as argument
+    
+    Returns
+    -------
+    current_tree: Tree
+        The final tree, carrying a sample from the target distribution.
 
     See Also
     --------
@@ -678,3 +683,18 @@ def is_euclidean_uturn_pytree(qp_left, qp_right):
         momentum=flatten_util.ravel_pytree(qp_right.momentum)[0]
     )
     return is_euclidean_uturn(qp_left, qp_right)
+
+
+def make_kinetic_energy_fn_from_diag_mass_matrix(mass_matrix):
+    def _kin_energy(momentum):
+        # calculate kinetic energies for every array (leaf) in the pytree
+        kin_energies = tree_util.tree_map(lambda p, m: np.sum(p**2 / (2 * m)), momentum, mass_matrix)
+        # sum everything up
+        total_kin_energy = tree_util.tree_reduce(lambda acc, leaf_kin_e: acc + leaf_kin_e, kin_energies, 0.)
+        return total_kin_energy
+    return _kin_energy
+
+
+def sample_momentum_from_diag_mass_matrix(key, diag_mass_matrix):
+    key, subkey = random.split(key)
+    return tree_util.tree_map(lambda m: np.sqrt(m)*random.normal(subkey, m.shape), diag_mass_matrix)
