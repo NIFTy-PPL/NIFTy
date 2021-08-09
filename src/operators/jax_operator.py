@@ -14,6 +14,8 @@
 # Copyright(C) 2021 Max-Planck-Society
 # Author: Philipp Arras
 
+from types import SimpleNamespace
+
 import numpy as np
 
 from .energy_operators import LikelihoodEnergyOperator
@@ -139,9 +141,10 @@ class JaxLinearOperator(LinearOperator):
         domain = makeDomain(domain)
         if domain_dtype is not None and func_T is None:
             if isinstance(domain, DomainTuple):
-                inp = np.empty(domain.shape, domain_dtype)
+                inp = SimpleNamespace(shape=domain.shape, dtype=domain_dtype)
             else:
-                inp = {kk: np.empty(domain[kk].shape, domain_dtype[kk]) for kk in domain.keys()}
+                inp = {kk: SimpleNameSpace(shape=domain[kk].shape, dtype=domain_dtype[kk])
+                       for kk in domain.keys()}
             func_T = jax.jit(jax.linear_transpose(func, inp))
         elif domain_dtype is None and func_T is not None:
             pass
