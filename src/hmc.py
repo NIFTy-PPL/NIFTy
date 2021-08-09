@@ -692,11 +692,14 @@ def sample_momentum_from_diag_mass_matrix(key, diag_mass_matrix):
 
 
 class NUTSChain:
-    def __init__(self, initial_position, potential_energy, diag_mass_matrix, eps, maxdepth, rngseed):
+    def __init__(self, initial_position, potential_energy, diag_mass_matrix, eps, maxdepth, rngseed, compile=True, dbg_info=False):
         self.position = initial_position
 
         # TODO: typechecks?
         self.potential_energy = potential_energy
+
+        potential_energy_gradient = grad(self.potential_energy)
+        self.stepper = lambda qp, eps, direction: leapfrog_step_pytree(potential_energy_gradient, qp, eps*direction)[0]
 
         if isinstance(diag_mass_matrix, float):
             self.diag_mass_matrix = tree_util.tree_map(lambda arr: np.full(arr.shape, diag_mass_matrix), initial_position)
@@ -721,16 +724,26 @@ class NUTSChain:
             raise ValueError('maxdepth must be an int')
         
         self.key = random.PRNGKey(rngseed)
+    
+        self.compile = compile
+
+        self.dbg_info = dbg_info
 
 
     def generate_n_samples(self, n):
-        potential_energy_gradient = grad(self.potential_energy)
-        stepper = lambda qp, eps, direction: leapfrog_step_pytree(potential_energy_gradient, qp, eps*direction)[0]
 
         samples = tree_util.tree_map(lambda arr: np.ones((n,) + arr.shape), self.position)
 
+        if self.dbg_info:
+            momenta_before = tree_util.tree_map(lambda arr: np.ones((n,) + arr.shape), self.position)
+            momenta_after = tree_util.tree_map(lambda arr: np.ones((n,) + arr.shape), self.position)
+
         def _body_fun(idx, state):
-            prev_position, key, samples = state
+            if self.dbg_info:
+                prev_position, key, samples, momenta_before, momenta_after = state
+            else:
+                prev_position, key, samples = state
+
             key, subkey = random.split(key)
             resampled_momentum = sample_momentum_from_diag_mass_matrix(subkey, self.diag_mass_matrix)
 
@@ -742,13 +755,29 @@ class NUTSChain:
                 key = subkey,
                 eps = self.eps,
                 maxdepth = self.maxdepth,
-                stepper = stepper,
+                stepper = self.stepper,
                 potential_energy = self.potential_energy,
                 kinetic_energy = make_kinetic_energy_fn_from_diag_mass_matrix(self.diag_mass_matrix)
             )
-            print("current sample", tree.proposal_candidate)
+            #print("current sample", tree.proposal_candidate)
             samples = tree_util.tree_map(lambda ts, val: ts.at[idx].set(val), samples, tree.proposal_candidate.position)
-            return (tree.proposal_candidate.position, key, samples)
+            if self.dbg_info:
+                momenta_before = tree_util.tree_map(lambda ts, val: ts.at[idx].set(val), momenta_before, resampled_momentum)
+                momenta_after = tree_util.tree_map(lambda ts, val: ts.at[idx].set(val), momenta_after, tree.proposal_candidate.momentum)
+
+            updated_state = (tree.proposal_candidate.position, key, samples)
+
+            if self.dbg_info:
+                updated_state = updated_state + (momenta_before, momenta_after,)
+
+            return updated_state
+
+        loop_initial_state = (self.position, self.key, samples)
+        if self.dbg_info:
+            loop_initial_state = loop_initial_state + (momenta_before, momenta_after,)
         
-        jitted = jit(lambda : fori_loop(lower=0, upper=n, body_fun=_body_fun, init_val=(self.position, self.key, samples)))
-        return jitted()
+        return_fn = lambda: fori_loop(lower=0, upper=n, body_fun=_body_fun, init_val=loop_initial_state)
+        if self.compile:
+            return jit(return_fn)()
+        else:
+            return return_fn()
