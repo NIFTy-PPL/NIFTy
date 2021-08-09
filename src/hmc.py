@@ -1,7 +1,7 @@
 from jax import numpy as np
 import jax.tree_util as tree_util
-from jax import random, jit, partial, lax, flatten_util, grad
-from .disable_jax_loops import fori_loop
+from jax import lax, random, jit, partial, flatten_util, grad
+from .disable_jax_control_flow import cond, while_loop, fori_loop
 from collections import namedtuple
 
 
@@ -211,7 +211,7 @@ def generate_hmc_sample(*,
     idx_ignoring_loop_body = lambda idx, args: loop_body(*args)
 
     # todo: write in python (maybe?)
-    new_qp, _step_length = lax.fori_loop(
+    new_qp, _step_length = fori_loop(
         lower = 0,
         upper = number_of_integration_steps,
         body_fun = idx_ignoring_loop_body,
@@ -384,7 +384,7 @@ def generate_nuts_sample(initial_qp, key, eps, maxdepth, stepper, potential_ener
         new_subtree = iterative_build_tree(key, current_tree, j, eps, go_right, stepper, potential_energy, kinetic_energy, maxdepth)
 
         # combine current_tree and new_subtree into a depth j+1 tree only if new_subtree has no turning subtrees (including itself)
-        current_tree = lax.cond(
+        current_tree = cond(
             pred = new_subtree.turning,
             true_fun = lambda old_and_new: old_and_new[0],
             # TODO: turning_hint
@@ -398,7 +398,7 @@ def generate_nuts_sample(initial_qp, key, eps, maxdepth, stepper, potential_ener
         j = j + 1
         return (key, current_tree, j, stop)
 
-    _key, current_tree, _j, _stop = lax.while_loop(_cond_fn, _body_fun, loop_state)
+    _key, current_tree, _j, _stop = while_loop(_cond_fn, _body_fun, loop_state)
     return current_tree
 
 
@@ -437,7 +437,7 @@ def iterative_build_tree(key, initial_tree, depth, eps, go_right, stepper, poten
         It's only required to statically set the size of the `S` array (actually pytree of arrays).
     """
     # 1. choose start point of integration
-    initial_qp = lax.cond(
+    initial_qp = cond(
         pred = go_right,
         true_fun = lambda left_and_right: left_and_right[1],
         false_fun = lambda left_and_right: left_and_right[0],
@@ -457,7 +457,7 @@ def iterative_build_tree(key, initial_tree, depth, eps, go_right, stepper, poten
         z = stepper(z, eps, np.where(go_right, x=1, y=-1))
 
         # TODO: maybe just move the first iteration outside of the loop?
-        chosen = lax.cond(
+        chosen = cond(
             pred = n == 0,
             true_fun = lambda c_and_z: Tree(left=z, right=z, weight=np.exp(-total_energy_of_qp(z, potential_energy, kinetic_energy)), proposal_candidate=z, turning=False),
             false_fun = lambda c_and_z: chosen,
@@ -490,7 +490,7 @@ def iterative_build_tree(key, initial_tree, depth, eps, go_right, stepper, poten
             i_max_incl = bitcount(n-1)
             i_min_incl = i_max_incl - l + 1
             # TODO: this should traverse the range in reverse
-            contains_uturn = lax.fori_loop(
+            contains_uturn = fori_loop(
                 lower = i_min_incl,
                 upper = i_max_incl + 1,
                 # TODO: conditional for early termination
@@ -499,7 +499,7 @@ def iterative_build_tree(key, initial_tree, depth, eps, go_right, stepper, poten
             )
             return n, S, contains_uturn
 
-        _n, S, turning = lax.cond(
+        _n, S, turning = cond(
             pred = n % 2 == 0,
             true_fun = _even_fun,
             false_fun = _odd_fun,
@@ -507,7 +507,7 @@ def iterative_build_tree(key, initial_tree, depth, eps, go_right, stepper, poten
         )
         return (n+1, turning, chosen, z, S, key)
 
-    _final_n, turning, chosen, _z, _S, _key = lax.while_loop(
+    _final_n, turning, chosen, _z, _S, _key = while_loop(
         # while n < 2**depth and not stop
         cond_fun=lambda state: (state[0] < 2**depth) & (~state[1]),
         body_fun=_loop_body,
@@ -531,7 +531,7 @@ def add_single_qp_to_tree(key, tree, qp, go_right, potential_energy, kinetic_ene
     # This is technically just a special case of merge_trees with one of the
     # trees being a singleton, depth 0 tree.
     # TODO: just construct the singleton tree and call merge_trees
-    left, right = lax.cond(
+    left, right = cond(
         pred = go_right,
         true_fun = lambda tree_and_qp: (tree_and_qp[0].left, tree_and_qp[1]),
         false_fun = lambda tree_and_qp: (tree_and_qp[1], tree_and_qp[0].right),
@@ -540,7 +540,7 @@ def add_single_qp_to_tree(key, tree, qp, go_right, potential_energy, kinetic_ene
     key, subkey = random.split(key)
     total_weight = tree.weight + np.exp(-total_energy_of_qp(qp, potential_energy, kinetic_energy))
     prob_of_keeping_old = tree.weight / total_weight
-    proposal_candidate = lax.cond(
+    proposal_candidate = cond(
         pred = random.bernoulli(subkey, prob_of_keeping_old),
         true_fun = lambda old_and_new: old_and_new[0],
         false_fun = lambda old_and_new: old_and_new[1],
@@ -572,7 +572,7 @@ def make_tree_from_list(key, qp_of_pytree_of_series, go_right, potential_energy,
     print(f"chose sample n° {random_idx}")
     # 4. calculate total weight
     new_subtree_total_weight = np.sum(new_subtree_weights)
-    left, right = lax.cond(
+    left, right = cond(
         pred = go_right,
         true_fun = lambda first_and_last: (first_and_last[0], first_and_last[1]),
         false_fun = lambda first_and_last: (first_and_last[-1], first_and_last[1]),
@@ -590,7 +590,7 @@ def merge_trees(key, current_subtree, new_subtree, go_right, turning_hint):
     # 5. decide which sample to take based on total weights (merge trees)
     key, subkey = random.split(key)
     print(f"prob of choosing new sample: {new_subtree.weight / (new_subtree.weight + current_subtree.weight)}")
-    new_sample = lax.cond(
+    new_sample = cond(
         pred = random.bernoulli(subkey, new_subtree.weight / (new_subtree.weight + current_subtree.weight)),
         # choose the new sample
         true_fun = lambda current_and_new_tup: current_and_new_tup[1],
@@ -599,7 +599,7 @@ def merge_trees(key, current_subtree, new_subtree, go_right, turning_hint):
         operand = (current_subtree.proposal_candidate, new_subtree.proposal_candidate)
     )
     # 6. define new tree
-    left, right = lax.cond(
+    left, right = cond(
         pred = go_right,
         true_fun = lambda op: (op['current_subtree'].left, op['new_subtree'].right),
         false_fun = lambda op: (op['new_subtree'].left, op['current_subtree'].right),
@@ -638,19 +638,9 @@ def count_trailing_ones(n):
     >>> print(bin(23), count_trailing_one_bits(23))
     0b10111 3
     """
-    bits_reversed = np.unpackbits(np.array(n, dtype='uint64').view('uint8'), bitorder='little')
-    def _loop_body(carry, bit):
-        trailing_ones_count, encountered_zero = carry
-        return lax.cond(
-            pred=encountered_zero | (bit == 0),
-            true_fun=lambda op: ((trailing_ones_count, True), ()),
-            false_fun=lambda op: ((trailing_ones_count+1, False), ()),
-            operand=(encountered_zero, bit)
-        )
-    (trailing_ones_count, _encountered_zero), _nones = lax.scan(
-        f=_loop_body,
-        init=(0, False),
-        xs=bits_reversed
+    # taken from http://num.pyro.ai/en/stable/_modules/numpyro/infer/hmc_util.html
+    _, trailing_ones_count = while_loop(
+        lambda nc: (nc[0] & 1) != 0, lambda nc: (nc[0] >> 1, nc[1] + 1), (n, 0)
     )
     return trailing_ones_count
 
