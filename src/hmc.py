@@ -447,6 +447,7 @@ def iterative_build_tree(key, initial_tree, depth, eps, go_right, stepper, poten
     # 2. build / collect chosen states
     # TODO: rename chosen to a more sensible name such as new_tree ...
     # TODO: WARNING: this will be overwritten in the first iteration of the loop, the assignment to chosen is only temporary and we're using z since it's the only QP that's availible right now. This would also be solved by moving the first iteration outside of the loop.
+    # TODO: maybe chosen = None works? Or maybe it's not required at all?
     chosen = Tree(z,z,0.,z,turning=False)
     # Storage for left endpoints of subtrees. Size is determined statically by the `maxdepth` parameter.
     S = tree_util.tree_map(lambda initial_q_or_p_leaf: np.empty((maxdepth + 1,) + initial_q_or_p_leaf.shape), unzip_qp_pytree(initial_qp))
@@ -456,17 +457,16 @@ def iterative_build_tree(key, initial_tree, depth, eps, go_right, stepper, poten
 
         z = stepper(z, eps, np.where(go_right, x=1, y=-1))
 
+        key, subkey = random.split(key)
         # TODO: maybe just move the first iteration outside of the loop?
         chosen = cond(
             pred = n == 0,
+            # first iteration: create the depth 0 tree
             true_fun = lambda c_and_z: Tree(left=z, right=z, weight=np.exp(-total_energy_of_qp(z, potential_energy, kinetic_energy)), proposal_candidate=z, turning=False),
-            false_fun = lambda c_and_z: chosen,
+            # all later iterations: add new point to `chosen` tree
+            false_fun = lambda c_and_z: add_single_qp_to_tree(subkey, chosen, z, go_right, potential_energy, kinetic_energy),
             operand = (chosen, z)
         )
-
-        key, subkey = random.split(key)
-        # TODO: this is okay on the first iteration (n==0) becaues chosen.proposal_candidate == z. But it is also unnecessary.
-        chosen = add_single_qp_to_tree(subkey, chosen, z, go_right, potential_energy, kinetic_energy)
 
         def _even_fun(n_and_S):
             n, S = n_and_S
