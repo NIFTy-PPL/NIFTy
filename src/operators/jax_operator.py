@@ -158,9 +158,9 @@ class JaxLinearOperator(LinearOperator):
         self._check_input(x, mode)
         if mode == self.TIMES:
             fx = self._func(x.val)
-            return makeField(self._domain, _jax2np(fx))
+            return makeField(self._target, _jax2np(fx))
         fx = self._func_T(x.conjugate().val)[0]
-        return makeField(self._target, _jax2np(fx)).conjugate()
+        return makeField(self._domain, _jax2np(fx)).conjugate()
 
 
 class JaxLikelihoodEnergyOperator(LikelihoodEnergyOperator):
