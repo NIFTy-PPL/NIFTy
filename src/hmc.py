@@ -753,3 +753,103 @@ class NUTSChain:
             return jit(return_fn)()
         else:
             return return_fn()
+
+
+class HMCChain:
+    def __init__(self, initial_position, potential_energy, diag_mass_matrix, eps, n_of_integration_steps, rngseed, compile=True, dbg_info=False):
+        self.position = initial_position
+
+        # TODO: typechecks?
+        self.potential_energy = potential_energy
+
+        potential_energy_gradient = grad(self.potential_energy)
+        self.stepper = lambda qp, eps, direction: leapfrog_step_pytree(potential_energy_gradient, qp, eps*direction)[0]
+
+        if not diag_mass_matrix == 1.:
+            raise NotImplementedError("Leapfrog integrator doesn't support custom mass matrix yet.")
+
+        if isinstance(diag_mass_matrix, float):
+            self.diag_mass_matrix = tree_util.tree_map(lambda arr: np.full(arr.shape, diag_mass_matrix), initial_position)
+        elif tree_util.tree_structure(diag_mass_matrix) == tree_util.tree_structure(initial_position):
+            shape_match_tree = tree_util.tree_map(lambda a1, a2: a1.shape == a2.shape, diag_mass_matrix, initial_position)
+            shape_and_structure_match = all(tree_util.tree_flatten(shape_match_tree))
+            if shape_and_structure_match:
+                self.diag_mass_matrix = diag_mass_matrix
+            else:
+                raise ValueError("diag_mass_matrix has same tree_structe as initial_position but shapes don't match up")
+        else:
+            raise ValueError('diag_mass_matrix must either be float or have same tree structure as initial_position')
+
+        if isinstance(eps, float):
+            self.eps = eps
+        else:
+            raise ValueError('eps must be a float')
+
+        if isinstance(n_of_integration_steps, int):
+            self.n_of_integration_steps = n_of_integration_steps
+        else:
+            raise ValueError('n_of_integration_steps must be an int')
+
+        self.key = random.PRNGKey(rngseed)
+    
+        self.compile = compile
+
+        self.dbg_info = dbg_info
+
+    def generate_n_samples(self, n):
+
+        samples = tree_util.tree_map(lambda arr: np.ones((n,) + arr.shape), self.position)
+        acceptance = np.empty(n, dtype=bool)
+
+        if self.dbg_info:
+            momenta_before = tree_util.tree_map(lambda arr: np.ones((n,) + arr.shape), self.position)
+            momenta_after = tree_util.tree_map(lambda arr: np.ones((n,) + arr.shape), self.position)
+
+        def _body_fun(idx, state):
+            if self.dbg_info:
+                prev_position, key, samples, acceptance, momenta_before, momenta_after = state
+            else:
+                prev_position, key, samples, acceptance = state
+
+            key, subkey = random.split(key)
+
+            (qp_old_and_proposed_sample, was_accepted), unintegrated_momentum = generate_hmc_sample(
+                key = subkey,
+                position = prev_position,
+                potential_energy = self.potential_energy,
+                potential_energy_gradient = grad(self.potential_energy),
+                diagonal_momentum_covariance = self.diag_mass_matrix,
+                number_of_integration_steps = self.n_of_integration_steps,
+                step_length = self.eps
+            )
+
+            # TODO: what to do with the other one (it's rejected or just the previous sample in case the new one was accepted)
+            next_qp = cond(
+                pred = was_accepted,
+                true_fun = lambda tup: tup[1],
+                false_fun = lambda tup: tup[0],
+                operand = qp_old_and_proposed_sample
+            )
+
+            samples = tree_util.tree_map(lambda ts, val: ts.at[idx].set(val), samples, next_qp.position)
+            acceptance = acceptance.at[idx].set(was_accepted)
+            if self.dbg_info:
+                momenta_before = tree_util.tree_map(lambda ts, val: ts.at[idx].set(val), momenta_before, unintegrated_momentum)
+                momenta_after = tree_util.tree_map(lambda ts, val: ts.at[idx].set(val), momenta_after, next_qp.momentum)
+
+            updated_state = (next_qp.position, key, samples, acceptance)
+
+            if self.dbg_info:
+                updated_state = updated_state + (momenta_before, momenta_after)
+
+            return updated_state
+
+        loop_initial_state = (self.position, self.key, samples, acceptance)
+        if self.dbg_info:
+            loop_initial_state = loop_initial_state + (momenta_before, momenta_after)
+        
+        return_fn = lambda: fori_loop(lower=0, upper=n, body_fun=_body_fun, init_val=loop_initial_state)
+        if self.compile:
+            return jit(return_fn)()
+        else:
+            return return_fn()

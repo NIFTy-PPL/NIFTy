@@ -101,8 +101,10 @@ rejected_position_samples = [None]
 rejected_momentum_samples = [None]
 accepted = [True]
 
-#%%
-for _ in range(10000):
+#%% [markdown]
+# # HMC with Metropolist-Hastings
+key = random.PRNGKey(42)
+for _ in range(100):
     key, subkey = random.split(key)
     (qp_old_and_proposed_sample, was_accepted), unintegrated_momentum = hmc.generate_hmc_sample(
         key = subkey,
@@ -128,6 +130,38 @@ accepted = np.array(accepted[1:])
 unintegrated_momenta = np.array(unintegrated_momenta[1:])
 
 print(f"acceptance ratio: {np.sum(accepted)/len(accepted)}")
+
+# %% [markdown]
+# # HMC with Metropolist Hastings (OO wrapper)
+sampler = hmc.HMCChain(
+    initial_position = initial_position,
+    potential_energy = ham,
+    diag_mass_matrix = 1.,
+    eps = 0.0001723,
+    n_of_integration_steps = 187,
+    rngseed = 42,
+    compile = True,
+    dbg_info = True
+)
+
+_last_pos, _key, position_samples, acceptance, unintegrated_momenta, momentum_samples = sampler.generate_n_samples(100)
+print(f"acceptance ratio: {np.sum(acceptance)/len(acceptance)}")
+
+# %% [markdown]
+# # NUTS
+sampler = hmc.NUTSChain(
+    initial_position = initial_position,
+    potential_energy = ham,
+    diag_mass_matrix = 1.,
+    eps = 1.2193,
+    maxdepth = 10,
+    rngseed = 42,
+    compile = True,
+    dbg_info = True
+)
+
+_last_pos, _key, position_samples, unintegrated_momenta, momentum_samples, depths = sampler.generate_n_samples(10000)
+plt.hist(depths, bins=np.arange(sampler.maxdepth + 2))
 
 # %% [markdown]
 # # Position samples
@@ -161,14 +195,14 @@ plt.legend()
 # # energy time series
 potential_energies = lax.map(ham, position_samples)
 kinetic_energies = np.sum(momentum_samples**2, axis=1)
-rejected_potential_energies = lax.map(ham, rejected_position_samples)
-rejected_kinetic_energies = np.sum(rejected_momentum_samples**2, axis=1)
+#rejected_potential_energies = lax.map(ham, rejected_position_samples)
+#rejected_kinetic_energies = np.sum(rejected_momentum_samples**2, axis=1)
 plt.plot(potential_energies , label='pot')
 plt.plot(kinetic_energies , label='kin', linewidth=1)
 plt.plot(kinetic_energies + potential_energies, label='total', linewidth=1)
-plt.plot(rejected_potential_energies , label='rejected_pot')
-plt.plot(rejected_kinetic_energies , label='rejected_kin', linewidth=2)
-plt.plot(rejected_kinetic_energies + rejected_potential_energies, label='rejected_total', linewidth=0.2)
+#plt.plot(rejected_potential_energies , label='rejected_pot')
+#plt.plot(rejected_kinetic_energies , label='rejected_kin', linewidth=2)
+#plt.plot(rejected_kinetic_energies + rejected_potential_energies, label='rejected_total', linewidth=0.2)
 plt.xlabel('time')
 plt.ylabel('energy')
 plt.yscale('log')
