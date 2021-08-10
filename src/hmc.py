@@ -86,6 +86,7 @@ def leapfrog_step(
     return qp_fullstep, step_length
 
 
+# TODO: implement mass matrix
 def leapfrog_step_pytree(
     potential_energy_gradient,
     qp: QP,
@@ -666,6 +667,9 @@ class NUTSChain:
 
         potential_energy_gradient = grad(self.potential_energy)
         self.stepper = lambda qp, eps, direction: leapfrog_step_pytree(potential_energy_gradient, qp, eps*direction)[0]
+
+        if not diag_mass_matrix == 1.:
+            raise NotImplementedError("Leapfrog integrator doesn't support custom mass matrix yet.")
 
         if isinstance(diag_mass_matrix, float):
             self.diag_mass_matrix = tree_util.tree_map(lambda arr: np.full(arr.shape, diag_mass_matrix), initial_position)
