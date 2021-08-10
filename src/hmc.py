@@ -703,10 +703,11 @@ class NUTSChain:
         if self.dbg_info:
             momenta_before = tree_util.tree_map(lambda arr: np.ones((n,) + arr.shape), self.position)
             momenta_after = tree_util.tree_map(lambda arr: np.ones((n,) + arr.shape), self.position)
+            depths = np.empty(n, dtype=np.int8)
 
         def _body_fun(idx, state):
             if self.dbg_info:
-                prev_position, key, samples, momenta_before, momenta_after = state
+                prev_position, key, samples, momenta_before, momenta_after, depths = state
             else:
                 prev_position, key, samples = state
 
@@ -730,17 +731,18 @@ class NUTSChain:
             if self.dbg_info:
                 momenta_before = tree_util.tree_map(lambda ts, val: ts.at[idx].set(val), momenta_before, resampled_momentum)
                 momenta_after = tree_util.tree_map(lambda ts, val: ts.at[idx].set(val), momenta_after, tree.proposal_candidate.momentum)
+                depths = depths.at[idx].set(tree.depth)
 
             updated_state = (tree.proposal_candidate.position, key, samples)
 
             if self.dbg_info:
-                updated_state = updated_state + (momenta_before, momenta_after,)
+                updated_state = updated_state + (momenta_before, momenta_after, depths)
 
             return updated_state
 
         loop_initial_state = (self.position, self.key, samples)
         if self.dbg_info:
-            loop_initial_state = loop_initial_state + (momenta_before, momenta_after,)
+            loop_initial_state = loop_initial_state + (momenta_before, momenta_after, depths)
         
         return_fn = lambda: fori_loop(lower=0, upper=n, body_fun=_body_fun, init_val=loop_initial_state)
         if self.compile:
