@@ -248,7 +248,7 @@ def generate_hmc_sample(*,
 # turning: TODO: whole tree or also subtrees??
 # turning currently means either the left, right endpoint are a uturn or any subtree is a uturn, see TODO above
 # TODO: rename proposal_candidate, taking into account that NUTS is not Metropolis-Hastings.
-Tree = namedtuple('Tree', ['left', 'right', 'weight', 'proposal_candidate', 'turning'])
+Tree = namedtuple('Tree', ['left', 'right', 'weight', 'proposal_candidate', 'turning', 'depth'])
 
 
 def _impl_build_tree_recursive(initial_qp, eps, depth, direction, stepper):
@@ -360,7 +360,7 @@ def generate_nuts_sample(initial_qp, key, eps, maxdepth, stepper, potential_ener
     Combination of samples from two trees, Sampling from trajectories according to target distribution in this paper's Appendix: https://arxiv.org/abs/1701.02434
     """
     # initialize depth 0 tree, containing 2**0 = 1 points
-    current_tree = Tree(left=initial_qp, right=initial_qp, weight=np.exp(-total_energy_of_qp(initial_qp, potential_energy, kinetic_energy)), proposal_candidate=initial_qp, turning=False)
+    current_tree = Tree(left=initial_qp, right=initial_qp, weight=np.exp(-total_energy_of_qp(initial_qp, potential_energy, kinetic_energy)), proposal_candidate=initial_qp, turning=False, depth=0)
 
     # loop stopping condition
     stop = False
@@ -448,7 +448,7 @@ def iterative_build_tree(key, initial_tree, depth, eps, go_right, stepper, poten
     # TODO: rename chosen to a more sensible name such as new_tree ...
     # TODO: WARNING: this will be overwritten in the first iteration of the loop, the assignment to chosen is only temporary and we're using z since it's the only QP that's availible right now. This would also be solved by moving the first iteration outside of the loop.
     # TODO: maybe chosen = None works? Or maybe it's not required at all?
-    chosen = Tree(z,z,0.,z,turning=False)
+    chosen = Tree(z,z,0.,z,turning=False,depth=depth)
     # Storage for left endpoints of subtrees. Size is determined statically by the `maxdepth` parameter.
     S = tree_util.tree_map(lambda initial_q_or_p_leaf: np.empty((maxdepth + 1,) + initial_q_or_p_leaf.shape), unzip_qp_pytree(initial_qp))
 
@@ -462,7 +462,7 @@ def iterative_build_tree(key, initial_tree, depth, eps, go_right, stepper, poten
         chosen = cond(
             pred = n == 0,
             # first iteration: create the depth 0 tree
-            true_fun = lambda c_and_z: Tree(left=z, right=z, weight=np.exp(-total_energy_of_qp(z, potential_energy, kinetic_energy)), proposal_candidate=z, turning=False),
+            true_fun = lambda c_and_z: Tree(left=z, right=z, weight=np.exp(-total_energy_of_qp(z, potential_energy, kinetic_energy)), proposal_candidate=z, turning=False, depth=depth),
             # all later iterations: add new point to `chosen` tree
             false_fun = lambda c_and_z: add_single_qp_to_tree(subkey, chosen, z, go_right, potential_energy, kinetic_energy),
             operand = (chosen, z)
@@ -520,7 +520,8 @@ def iterative_build_tree(key, initial_tree, depth, eps, go_right, stepper, poten
         right = chosen.right,
         weight = chosen.weight,
         proposal_candidate = chosen.proposal_candidate,
-        turning = turning
+        turning = turning,
+        depth = chosen.depth
     )
 
 
@@ -546,42 +547,7 @@ def add_single_qp_to_tree(key, tree, qp, go_right, potential_energy, kinetic_ene
         false_fun = lambda old_and_new: old_and_new[1],
         operand = (tree.proposal_candidate, qp)
     )
-    return Tree(left, right, total_weight, proposal_candidate, tree.turning)
-
-
-# TOOD: remove or mark legacy
-def make_tree_from_list(key, qp_of_pytree_of_series, go_right, potential_energy, kinetic_energy, turning_hint):
-    # WARNING: only to be called from extend_tree_iterative, with turning_hint logic correct
-    # 3. random.choice with probability weights to get sample
-    #new_subtree_energies = lax.map(potential_energy, chosen_array[:,0,:]) + lax.map(kinetic_energy, chosen_array[:,1,:])
-    new_subtree_energies = (
-        lax.map(potential_energy, qp_of_pytree_of_series.position)
-        + lax.map(kinetic_energy, qp_of_pytree_of_series.momentum)
-    )
-    print(f"new_subtree_energies.shape: {new_subtree_energies.shape}")
-    # proportianal to the joint probabilities:
-    new_subtree_weights = np.exp(-new_subtree_energies)
-    # unfortunately choice only works with 1d arrays so we need to use indexing TODO: factor out?
-    # complicated way of retrieving this value, maybe just pass it into the function as an argument
-    number_of_samples_in_trajectory = tree_util.tree_flatten(tree_util.tree_map(
-        lambda arr: arr.shape[0],
-        qp_of_pytree_of_series
-    ))[0][0]
-    random_idx = random.choice(key, number_of_samples_in_trajectory, p=new_subtree_weights)
-    new_subtree_sample = tree_util.tree_map(lambda arr: arr[random_idx], qp_of_pytree_of_series)
-    print(f"chose sample n° {random_idx}")
-    # 4. calculate total weight
-    new_subtree_total_weight = np.sum(new_subtree_weights)
-    left, right = cond(
-        pred = go_right,
-        true_fun = lambda first_and_last: (first_and_last[0], first_and_last[1]),
-        false_fun = lambda first_and_last: (first_and_last[-1], first_and_last[1]),
-        operand = (
-            index_into_pytree_time_series(0, qp_of_pytree_of_series),
-            index_into_pytree_time_series(-1, qp_of_pytree_of_series)
-        )
-    )
-    return Tree(left=left, right=right, weight=new_subtree_total_weight, proposal_candidate=new_subtree_sample, turning=turning_hint)
+    return Tree(left, right, total_weight, proposal_candidate, tree.turning, tree.depth)
 
 
 def merge_trees(key, current_subtree, new_subtree, go_right, turning_hint):
@@ -605,7 +571,7 @@ def merge_trees(key, current_subtree, new_subtree, go_right, turning_hint):
         false_fun = lambda op: (op['new_subtree'].left, op['current_subtree'].right),
         operand = {'current_subtree': current_subtree, 'new_subtree': new_subtree}
     )
-    merged_tree = Tree(left=left, right=right, weight=new_subtree.weight + current_subtree.weight, proposal_candidate=new_sample, turning=turning_hint)
+    merged_tree = Tree(left=left, right=right, weight=new_subtree.weight + current_subtree.weight, proposal_candidate=new_sample, turning=turning_hint, depth=current_subtree.depth + 1)
     return merged_tree
 
 
