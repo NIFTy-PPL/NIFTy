@@ -16,7 +16,6 @@
 
 import nifty8 as ift
 import numpy as np
-import matplotlib.pyplot as plt
 import pytest
 try:
     import jax.numpy as jnp
@@ -29,15 +28,25 @@ pmp = pytest.mark.parametrize
 
 
 @pmp("dom", [ift.RGSpace((10, 8)), (ift.RGSpace(10), ift.RGSpace(8))])
-@pmp("func", [lambda x: x, lambda x: x**2, lambda x: x*x, lambda x: x*x[0, 0],
-              lambda x: jnp.sin(x), lambda x: x*x.sum()])
+@pmp("func", [(lambda x: x, True), (lambda x: x**2, False), (lambda x: x*x, False),
+              (lambda x: x*x[0, 0], False), (lambda x: x+x[0, 0], True),
+              (lambda x: jnp.sin(x), False), (lambda x: x*x.sum(), False),
+              (lambda x: x+x.sum(), True)])
 def test_jax(dom, func):
     pytest.importorskip("jax")
     loc = ift.from_random(dom)
-    res0 = np.array(func(loc.val))
-    op = ift.JaxOperator(dom, dom, func)
+    f, linear = func
+    res0 = np.array(f(loc.val))
+    op = ift.JaxOperator(dom, dom, f)
     np.testing.assert_allclose(res0, op(loc).val)
     ift.extra.check_operator(op, ift.from_random(op.domain))
+
+    op = ift.JaxLinearOperator(dom, dom, f, np.float64)
+    if linear:
+        ift.extra.check_linear_operator(op)
+    else:
+        with pytest.raises(Exception):
+            ift.extra.check_linear_operator(op)
 
 
 def test_mf_jax():
