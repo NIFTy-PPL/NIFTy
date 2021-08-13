@@ -89,7 +89,7 @@ def cg(
     # TODO(Gordian): Use `lax.while_loop`?
     for i in range(maxiter):
         if name is not None:
-            print(f"{name}: Iteration {i} Energy {energy:.6e}", file=sys.stderr)
+            print(f"{name}: Iteration {i} ⛰:{energy:.6e}", file=sys.stderr)
         q = mat(d)
         curv = float(d.dot(q))
         if curv == 0.:
@@ -114,7 +114,7 @@ def cg(
         if resnorm is not None:
             norm = float(jft_norm(r, ord=norm_ord, ravel=True))
             if name is not None:
-                msg = f"{name}: gradnorm {norm:.6e} tgt {resnorm:.6e}"
+                msg = f"{name}: |∇|:{norm:.6e} 🞋:{resnorm:.6e}"
                 print(msg, file=sys.stderr)
             if norm < resnorm and i > miniter:
                 info = 0
@@ -123,10 +123,7 @@ def cg(
         if absdelta is not None:
             energy_diff = energy - new_energy
             if name is not None:
-                msg = (
-                    f"{name}: ΔEnergy {energy-new_energy:.6e}"
-                    f" tgt {absdelta:.6e}"
-                )
+                msg = f"{name}: Δ⛰:{energy_diff:.6e} 🞋:{absdelta:.6e}"
                 print(msg, file=sys.stderr)
             if energy_diff < -eps:
                 nm = "CG" if name is None else name
@@ -174,7 +171,7 @@ def static_cg(
         i += 1
 
         if name is not None:
-            msg = f"{name}: Iteration {v['iteration']!r} Energy {previous_energy!r}"
+            msg = f"{name}: Iteration {v['iteration']!r} ⛰:{previous_energy!r}"
             print(msg, file=sys.stderr)
 
         q = mat(d)
@@ -201,7 +198,7 @@ def static_cg(
         if resnorm is not None:
             norm = jft_norm(r, ord=norm_ord, ravel=True)
             if name is not None:
-                msg = f"{name}: gradnorm {norm!r} tgt {resnorm!r}"
+                msg = f"{name}: |∇|:{norm!r} 🞋:{resnorm!r}"
                 print(msg, file=sys.stderr)
             info = np.where((norm < resnorm) & (i > miniter), 0, info)
         # Do not compute the energy if we do not check `absdelta`
@@ -211,7 +208,7 @@ def static_cg(
             energy = previous_energy
         if absdelta is not None:
             if name is not None:
-                msg = f"{name}: ΔEnergy {previous_energy-energy!r} tgt {absdelta!r}"
+                msg = f"{name}: Δ⛰:{previous_energy-energy!r} 🞋:{absdelta!r}"
                 print(msg, file=sys.stderr)
             info = np.where(
                 (previous_energy - energy < absdelta) & (i > miniter), 0, info
@@ -355,10 +352,8 @@ def _newton_cg(
         g = new_g
 
         if name is not None:
-            msg = (
-                f"{name}: Iteration {i+1} Energy {energy:.6e}"
-                f" diff {energy_diff:.6e}"
-            )
+            msg = f"{name}: Iteration {i+1} ⛰:{energy:.6e} Δ⛰:{energy_diff:.6e}"
+            msg += f" 🞋:{absdelta:.6e}" if absdelta is not None else ""
             print(msg, file=sys.stderr)
         if absdelta is not None and 0. <= energy_diff < absdelta and naive_ls_it < 2:
             break
@@ -375,7 +370,7 @@ def newton_cg(*args, **kwargs):
 
 
 def minimize(
-    fun: Optional[Callable[...,float]],
+    fun: Optional[Callable[..., float]],
     x0,
     args: Tuple = (),
     *,
