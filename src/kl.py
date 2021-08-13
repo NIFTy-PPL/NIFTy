@@ -90,11 +90,10 @@ def sample_standard_hamiltonian(
         hamiltonian.likelihood, primals, key=subkey_nll
     )
     prr_inv_metric_smpl = random_like(primals, key=subkey_prr)
+    # One may transform any metric sample to a sample of the inverse
+    # metric by simply applying the inverse metric to it
+    prr_smpl = prr_inv_metric_smpl
     if from_inverse:
-        # One may transform any metric sample to a sample of the inverse
-        # metric by simply applying the inverse metric to it
-        prr_smpl = prr_inv_metric_smpl
-
         # Note, we can sample antithetically by swapping the global sign of
         # the metric sample below (which corresponds to mirroring the final
         # sample) and additionally by swapping the relative sign between
