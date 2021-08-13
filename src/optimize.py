@@ -1,7 +1,8 @@
 import sys
 from datetime import datetime
 from jax import numpy as np
-from jax.tree_util import Partial
+from jax.tree_util import Partial, tree_leaves
+from numpy import find_common_type
 
 from typing import Any, Callable, Mapping, Optional, Tuple, Union, NamedTuple
 
@@ -50,6 +51,13 @@ class OptimizeResults(NamedTuple):
     nit: Union[None, int, np.ndarray] = None
 
 
+def get_dtype(v):
+    if hasattr(v, "dtype"):
+        return v.dtype
+    else:
+        return type(v)
+
+
 # Taken from nifty
 def cg(
     mat,
@@ -67,7 +75,10 @@ def cg(
     miniter = 5 if miniter is None else miniter
     maxiter = 200 if maxiter is None else maxiter
 
-    eps = 2 * np.finfo(float).eps
+    common_dtp = find_common_type(
+        tuple(get_dtype(v) for v in tree_leaves(x0)) + (np.float32, ), ()
+    )
+    eps = 2. * np.finfo(common_dtp).eps
 
     if x0 is None:
         pos = 0. * j
@@ -125,11 +136,12 @@ def cg(
             if name is not None:
                 msg = f"{name}: Δ⛰:{energy_diff:.6e} 🞋:{absdelta:.6e}"
                 print(msg, file=sys.stderr)
-            if energy_diff < -eps:
+            basically_zero = -eps * np.abs(new_energy)
+            if energy_diff < basically_zero:
                 nm = "CG" if name is None else name
                 print(f"{nm}: WARNING: Energy increased", file=sys.stderr)
                 return pos, -1
-            if 0. < energy_diff < absdelta and i > miniter:
+            if basically_zero <= energy_diff < absdelta and i > miniter:
                 info = 0
                 return pos, info
         energy = new_energy
@@ -159,6 +171,11 @@ def static_cg(
     norm_ord = 2 if norm_ord is None else norm_ord
     miniter = 5 if miniter is None else miniter
     maxiter = 200 if maxiter is None else maxiter
+
+    common_dtp = find_common_type(
+        tuple(get_dtype(v) for v in tree_leaves(x0)) + (np.float32, ), ()
+    )
+    eps = 2. * np.finfo(common_dtp).eps
 
     def continue_condition(v):
         return v["info"] < -1
@@ -194,26 +211,33 @@ def static_cg(
         )
         gamma = sum_of_squares(r)
 
-        info = np.where(gamma == 0., 0, info)
+        info = np.where((gamma == 0.) & (info != -1), 0, info)
         if resnorm is not None:
             norm = jft_norm(r, ord=norm_ord, ravel=True)
             if name is not None:
                 msg = f"{name}: |∇|:{norm!r} 🞋:{resnorm!r}"
                 print(msg, file=sys.stderr)
-            info = np.where((norm < resnorm) & (i > miniter), 0, info)
+            info = np.where(
+                (norm < resnorm) & (i > miniter) & (info != -1), 0, info
+            )
         # Do not compute the energy if we do not check `absdelta`
         if absdelta is not None or name is not None:
             energy = ((r - j) / 2).dot(pos)
         else:
             energy = previous_energy
         if absdelta is not None:
+            energy_diff = previous_energy - energy
             if name is not None:
-                msg = f"{name}: Δ⛰:{previous_energy-energy!r} 🞋:{absdelta!r}"
+                msg = f"{name}: Δ⛰:{energy_diff!r} 🞋:{absdelta!r}"
                 print(msg, file=sys.stderr)
+            basically_zero = -eps * np.abs(energy)
+            # print(f"{nm}: WARNING: Energy increased", file=sys.stderr)
+            info = np.where(energy_diff < basically_zero, -1, info)
             info = np.where(
-                (previous_energy - energy < absdelta) & (i > miniter), 0, info
+                (energy_diff >= basically_zero) & (energy_diff < absdelta) &
+                (i > miniter) & (info != -1), 0, info
             )
-        info = np.where(i >= maxiter, i, info)
+        info = np.where((i >= maxiter) & (info != -1), i, info)
 
         d = d * np.maximum(0, gamma / previous_gamma) + r
 
