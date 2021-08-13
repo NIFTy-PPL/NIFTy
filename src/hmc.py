@@ -624,6 +624,8 @@ def is_euclidean_uturn(qp_left, qp_right):
     )
 
 
+# TODO: implement directly in is_euclidean_uturn, don't use ravel_pytree but tree_map.
+# Use np.dot but make sure to ravel arrays to avoid matrix multiplication
 def is_euclidean_uturn_pytree(qp_left, qp_right):
     """
     See Also
