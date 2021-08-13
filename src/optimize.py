@@ -67,6 +67,8 @@ def cg(
     miniter = 5 if miniter is None else miniter
     maxiter = 200 if maxiter is None else maxiter
 
+    eps = 2 * np.finfo(float).eps
+
     if x0 is None:
         pos = 0. * j
         r = -j
@@ -119,13 +121,18 @@ def cg(
                 return pos, info
         new_energy = float(((r - j) / 2).dot(pos))
         if absdelta is not None:
+            energy_diff = energy - new_energy
             if name is not None:
                 msg = (
                     f"{name}: ΔEnergy {energy-new_energy:.6e}"
                     f" tgt {absdelta:.6e}"
                 )
                 print(msg, file=sys.stderr)
-            if energy - new_energy < absdelta and i > miniter:
+            if energy_diff < -eps:
+                nm = "CG" if name is None else name
+                print(f"{nm}: WARNING: Energy increased", file=sys.stderr)
+                return pos, -1
+            if 0. < energy_diff < absdelta and i > miniter:
                 info = 0
                 return pos, info
         energy = new_energy
@@ -334,9 +341,10 @@ def _newton_cg(
             grad_scaling = 1.
             new_pos = pos - nat_g
             new_energy, new_g = fun_and_grad(new_pos)
-            print("Warning: Energy increased", file=sys.stderr)
+            nm = "N" if name is None else name
+            print(f"{nm}: WARNING: Energy increased", file=sys.stderr)
         if name is not None:
-            print(f"{name}: line search: {grad_scaling}")
+            print(f"{name}: line search: {grad_scaling}", file=sys.stderr)
 
         if np.isnan(new_energy):
             raise ValueError("energy is NaN")
@@ -356,6 +364,9 @@ def _newton_cg(
             break
         if time_threshold is not None and datetime.now() > time_threshold:
             break
+    else:
+        nm = "N" if name is None else name
+        print(f"{nm}: Iteration Limit Reached", file=sys.stderr)
     return OptimizeResults(x=pos, success=True, status=0, fun=energy, jac=g)
 
 
