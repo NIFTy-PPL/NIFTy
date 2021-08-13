@@ -34,6 +34,7 @@ if __name__ == "__main__":
     n_mgvi_iterations = 3
     n_samples = 4
     n_newton_iterations = 5
+    absdelta = 1e-4 * np.prod(np.array(dims))
 
     cf = {"loglogavgslope": 2.}
     loglogslope = cf["loglogavgslope"]
@@ -79,7 +80,8 @@ if __name__ == "__main__":
             n_samples=n_samples,
             key=subkey,
             mirror_samples=True,
-            hamiltonian_and_gradient=ham_vg
+            hamiltonian_and_gradient=ham_vg,
+            cg_kwargs={"absdelta": absdelta / 10.}
         )
 
         print("Minimizing...", file=sys.stderr)
@@ -91,6 +93,7 @@ if __name__ == "__main__":
             options={
                 "fun_and_grad": mkl.energy_and_gradient,
                 "hessp": mkl.metric,
+                "absdelta": absdelta,
                 "maxiter": n_newton_iterations
             }
         )

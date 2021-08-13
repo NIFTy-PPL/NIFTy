@@ -16,12 +16,14 @@ if __name__ == "__main__":
     seed = 42
     key = random.PRNGKey(seed)
 
+    dims_ax1 = (128, )
+    dims_ax2 = (256, )
+
     n_mgvi_iterations = 3
     n_samples = 4
     n_newton_iterations = 10
+    absdelta = 1e-4 * np.prod(np.array(dims_ax1 + dims_ax2))
 
-    dims_ax1 = (128, )
-    dims_ax2 = (256, )
     cf_zm = {"offset_mean": 0., "offset_std": (1e-3, 1e-4)}
     cf_fl = {
         "fluctuations": (1e-1, 5e-3),
@@ -71,7 +73,8 @@ if __name__ == "__main__":
             n_samples=n_samples,
             key=subkey,
             mirror_samples=True,
-            hamiltonian_and_gradient=ham_vg
+            hamiltonian_and_gradient=ham_vg,
+            cg_kwargs={"absdelta": absdelta / 10.}
         )
 
         print("Minimizing...", file=sys.stderr)
@@ -82,6 +85,7 @@ if __name__ == "__main__":
             options={
                 "fun_and_grad": mkl.energy_and_gradient,
                 "hessp": mkl.metric,
+                "absdelta": absdelta,
                 "maxiter": n_newton_iterations
             }
         )
