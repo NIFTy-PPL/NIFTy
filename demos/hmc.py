@@ -281,3 +281,34 @@ plt.xlabel('time')
 plt.ylabel('energy')
 plt.legend()
 # %%
+
+plt.plot(data)
+
+# %% [markdown]
+# # Wiener Filter
+
+# jax.linear_transpose for R^\dagger
+# square noise_sqrt_inv ... for N^-1
+# S is unit due to StandardHamiltonian
+# jax.scipy.sparse.linalg.cg for D
+
+# signal_response(s) is only needed for shape of data space
+_impl_signal_response_dagger = jax.linear_transpose(signal_response, pos_truth)
+signal_response_dagger = lambda d: _impl_signal_response_dagger(d)[0]
+# noise_cov_inv_sqrt is diagonal
+noise_cov_inv = lambda d: noise_cov_inv_sqrt(noise_cov_inv_sqrt(d))
+
+# signal prior covariance S is assumed to be unit (see StandardHamiltonian)
+# the tranposed function wierdly returns a (1,)-tuple which we unpack right here
+D_inv = lambda s: s + signal_response_dagger(noise_cov_inv(signal_response(s)))
+
+j = signal_response_dagger(noise_cov_inv(data))
+
+m, _info = jax.scipy.sparse.linalg.cg(D_inv, j)
+
+# %%
+
+plt.plot(signal_response(m))
+plt.plot(signal_response_truth)
+
+# %%
