@@ -39,8 +39,8 @@ def WienerFilterCurvature(R, N, S, iteration_controller=None,
         The response operator of the Wiener filter measurement.
     N : EndomorphicOperator
         The noise covariance.
-    S : DiagonalOperator
-        The prior signal covariance
+    S : EndomorphicOperator
+        The prior signal covariance.
     iteration_controller : IterationController
         The iteration controller to use during numerical inversion via
         ConjugateGradient.
@@ -59,12 +59,11 @@ def WienerFilterCurvature(R, N, S, iteration_controller=None,
     if data_sampling_dtype is not None:
         Ninv = SamplingDtypeSetter(Ninv, data_sampling_dtype)
     if prior_sampling_dtype is not None:
-        Sinv = SamplingDtypeSetter(Sinv, data_sampling_dtype)
+        Sinv = SamplingDtypeSetter(Sinv, prior_sampling_dtype)
     M = SandwichOperator.make(R, Ninv)
     if iteration_controller_sampling is not None:
         op = SamplingEnabler(M, Sinv, iteration_controller_sampling,
                              Sinv)
     else:
         op = M + Sinv
-    op = InversionEnabler(op, iteration_controller, Sinv)
-    return op
+    return InversionEnabler(op, iteration_controller, Sinv)
