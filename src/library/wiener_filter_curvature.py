@@ -57,7 +57,7 @@ def WienerFilterCurvature(R, N, S, iteration_controller=None,
     Note
     ----
     It must be possible to set the sampling dtype of `N` and `S` with the help
-    of an `SamplingDtypeSetter`. In practise this means that
+    of an `SamplingDtypeSetter`. In practice this means that
     `data_sampling_dtype` is not `None`, `N` must be a `ScalingOperator`, a
     `DiagonalOperator`, or something similar.
     """
