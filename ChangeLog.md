@@ -1,6 +1,14 @@
 Changes since NIFTy 7
 =====================
 
+WienerFilterCurvature interface change
+--------------------------------------
+
+`ift.WienerFilterCurvature` does not expect sampling dtypes for the likelihood
+and the prior anymore. These have to be set with an `ift.SamplingDtypeSetter`
+beforehand.
+
+
 Minisanity
 ----------
 

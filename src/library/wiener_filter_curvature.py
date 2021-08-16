@@ -11,21 +11,18 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
-# Copyright(C) 2013-2020 Max-Planck-Society
+# Copyright(C) 2013-2021 Max-Planck-Society
 #
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
 
-import numpy as np
-
+from ..operators.endomorphic_operator import EndomorphicOperator
 from ..operators.inversion_enabler import InversionEnabler
-from ..operators.sampling_enabler import SamplingDtypeSetter, SamplingEnabler
+from ..operators.sampling_enabler import SamplingEnabler
 from ..operators.sandwich_operator import SandwichOperator
 
 
 def WienerFilterCurvature(R, N, S, iteration_controller=None,
-                          iteration_controller_sampling=None,
-                          data_sampling_dtype=np.float64,
-                          prior_sampling_dtype=np.float64):
+                          iteration_controller_sampling=None):
     """The curvature of the WienerFilterEnergy.
 
     This operator implements the second derivative of the
@@ -39,32 +36,27 @@ def WienerFilterCurvature(R, N, S, iteration_controller=None,
         The response operator of the Wiener filter measurement.
     N : EndomorphicOperator
         The noise covariance.
-    S : DiagonalOperator
-        The prior signal covariance
+    S : EndomorphicOperator
+        The prior signal covariance.
     iteration_controller : IterationController
         The iteration controller to use during numerical inversion via
         ConjugateGradient.
     iteration_controller_sampling : IterationController
         The iteration controller to use for sampling.
-    data_sampling_dtype : numpy.dtype or dict of numpy.dtype
-        Data type used for sampling from likelihood. Conincides with the data
-        type of the data used in the inference problem. Default is float64.
-    prior_sampling_dtype : numpy.dtype or dict of numpy.dtype
-        Data type used for sampling from likelihood. Coincides with the data
-        type of the parameters of the forward model used for the inference
-        problem. Default is float64.
+
+    Note
+    ----
+    If samples shall be drawn from this operator, `N` and `S` have to implement
+    `draw_sample()`.
     """
-    Ninv = N.inverse
+    if not isinstance(N, EndomorphicOperator):
+        raise TypeError
+    if not isinstance(S, EndomorphicOperator):
+        raise TypeError
+    M = SandwichOperator.make(R, N.inverse)
     Sinv = S.inverse
-    if data_sampling_dtype is not None:
-        Ninv = SamplingDtypeSetter(Ninv, data_sampling_dtype)
-    if prior_sampling_dtype is not None:
-        Sinv = SamplingDtypeSetter(Sinv, data_sampling_dtype)
-    M = SandwichOperator.make(R, Ninv)
     if iteration_controller_sampling is not None:
-        op = SamplingEnabler(M, Sinv, iteration_controller_sampling,
-                             Sinv)
+        op = SamplingEnabler(M, Sinv, iteration_controller_sampling, Sinv)
     else:
         op = M + Sinv
-    op = InversionEnabler(op, iteration_controller, Sinv)
-    return op
+    return InversionEnabler(op, iteration_controller, Sinv)

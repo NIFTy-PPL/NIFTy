@@ -79,16 +79,14 @@ def test_WF_curvature(space):
     required_result = ift.full(space, 1.)
 
     s = ift.Field.from_random(domain=space, random_type='uniform') + 0.5
-    S = ift.DiagonalOperator(s)
+    S = ift.SamplingDtypeSetter(ift.DiagonalOperator(s), np.float64)
     r = ift.Field.from_random(domain=space, random_type='uniform')
     R = ift.DiagonalOperator(r)
     n = ift.Field.from_random(domain=space, random_type='uniform') + 0.5
-    N = ift.DiagonalOperator(n)
+    N = ift.SamplingDtypeSetter(ift.DiagonalOperator(n), np.float64)
     all_diag = 1./s + r**2/n
     curv = ift.WienerFilterCurvature(R, N, S, iteration_controller=IC,
-                                     iteration_controller_sampling=IC,
-                                     data_sampling_dtype=np.float64,
-                                     prior_sampling_dtype=np.float64)
+                                     iteration_controller_sampling=IC)
     m = curv.inverse(required_result)
     assert_allclose(
         m.val,
@@ -101,13 +99,11 @@ def test_WF_curvature(space):
     if len(space.shape) == 1:
         R = ift.ValueInserter(space, [0])
         n = ift.from_random(R.domain, 'uniform') + 0.5
-        N = ift.DiagonalOperator(n)
+        N = ift.SamplingDtypeSetter(ift.DiagonalOperator(n), np.float64)
         all_diag = 1./s + R(1/n)
         curv = ift.WienerFilterCurvature(R.adjoint, N, S,
                                          iteration_controller=IC,
-                                         iteration_controller_sampling=IC,
-                                         data_sampling_dtype=np.float64,
-                                         prior_sampling_dtype=np.float64)
+                                         iteration_controller_sampling=IC)
         m = curv.inverse(required_result)
         assert_allclose(
             m.val,
