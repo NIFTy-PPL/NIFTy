@@ -114,25 +114,38 @@ def _leakyclip_linearization(v,
     return (v, grad)
 
 
-def softclip(v, a_min, a_max):
+def softclip(v, a_min, a_max, hardness=1.):
     if np.issubdtype(v.dtype, np.complexfloating):
         raise TypeError("Argument must not be complex")
     # implemented based on the TensorFlow `tfp` module documentation
+    scale = 20. / (a_max - a_min) * hardness
+    v = v * scale
+    a_min = a_min * scale
+    a_max = a_max * scale
+
     delta_a = np.array(a_max - a_min)
     c = delta_a / softplus(delta_a)
-    return a_max - c * softplus(delta_a - softplus(v - a_min))
+    res = a_max - c * softplus(delta_a - softplus(v - a_min))
+
+    return res / scale
 
 
-def _softclip_helper(v, a_min, a_max):
+def _softclip_helper(v, a_min, a_max, hardness=1.):
     if np.issubdtype(v.dtype, np.complexfloating):
         raise TypeError("Argument must not be complex")
+    scale = 20. / (a_max - a_min) * hardness
+    v = v * scale
+    a_min = a_min * scale
+    a_max = a_max * scale
+
     delta_a = np.array(a_max - a_min)
     c = delta_a / softplus(delta_a)
     f1, df1 = _softplus_helper(v - a_min)
     f2, df2 = _softplus_helper(delta_a - f1)
     val = a_max - c * f2
     grad = c * df2 * df1  # minus signs cancel
-    return val, grad
+
+    return val / scale, grad
 
 
 def _step_helper(v, grad):
