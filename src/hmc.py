@@ -4,6 +4,16 @@ from jax import lax, random, jit, partial, flatten_util, grad
 from .disable_jax_control_flow import cond, while_loop, fori_loop
 from collections import namedtuple
 
+_DEBUG_FLAG = False
+
+if _DEBUG_FLAG:
+    from jax.experimental import host_callback
+
+    _DEBUG_STORE = []
+
+    def _DEBUG_ADD_QP(qp):
+        global _DEBUG_STORE
+        _DEBUG_STORE.append(qp)
 
 ###
 ### COMMON FUNCTIONALITY
@@ -114,6 +124,12 @@ def leapfrog_step_pytree(
     )
 
     qp_fullstep = QP(position=position_fullstep, momentum=momentum_fullstep)
+    
+    global _DEBUG_FLAG
+    if _DEBUG_FLAG:
+        # append result to global list variable
+        host_callback.call(_DEBUG_ADD_QP, qp_fullstep)
+
     return qp_fullstep, step_length
 
 
