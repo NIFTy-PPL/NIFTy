@@ -53,6 +53,7 @@ def leapfrog_step(
         potential_energy_gradient,
         qp: QP,
         step_length,
+        mass_matrix,
     ):
     """
     Perform one iteration of the leapfrog integrator forwards in time.
@@ -79,7 +80,7 @@ def leapfrog_step(
     )
     #print("momentum_halfstep:", momentum_halfstep)
 
-    position_fullstep = position + step_length * momentum_halfstep  # type: ignore
+    position_fullstep = position + step_length * momentum_halfstep / mass_matrix # type: ignore
     #print("position_fullstep:", position_fullstep)
 
     momentum_fullstep = (
@@ -100,7 +101,8 @@ def leapfrog_step(
 def leapfrog_step_pytree(
     potential_energy_gradient,
     qp: QP,
-    step_length
+    step_length,
+    mass_matrix
     ):
     position = qp.position
     momentum = qp.momentum
@@ -112,9 +114,10 @@ def leapfrog_step_pytree(
     )
 
     position_fullstep = tree_util.tree_map(
-        lambda pos, mom_halfstep: pos + step_length * mom_halfstep,  # type: ignore
+        lambda pos, mom_halfstep, mass: pos + step_length * mom_halfstep / mass,  # type: ignore
         position,
-        momentum_halfstep
+        momentum_halfstep,
+        mass_matrix
     )
 
     momentum_fullstep = tree_util.tree_map(
@@ -683,9 +686,6 @@ class NUTSChain:
         # TODO: typechecks?
         self.potential_energy = potential_energy
 
-        potential_energy_gradient = grad(self.potential_energy)
-        self.stepper = lambda qp, eps, direction: leapfrog_step_pytree(potential_energy_gradient, qp, eps*direction)[0]
-
         if not diag_mass_matrix == 1.:
             raise NotImplementedError("Leapfrog integrator doesn't support custom mass matrix yet.")
 
@@ -705,6 +705,9 @@ class NUTSChain:
             self.eps = eps
         else:
             raise ValueError('eps must be a float')
+
+        potential_energy_gradient = grad(self.potential_energy)
+        self.stepper = lambda qp, eps, direction: leapfrog_step_pytree(potential_energy_gradient, qp, eps*direction, self.diag_mass_matrix)[0]
 
         if isinstance(maxdepth, int):
             self.maxdepth = maxdepth
@@ -726,10 +729,19 @@ class NUTSChain:
             momenta_before = tree_util.tree_map(lambda arr: np.ones((n,) + arr.shape), self.position)
             momenta_after = tree_util.tree_map(lambda arr: np.ones((n,) + arr.shape), self.position)
             depths = np.empty(n, dtype=np.int8)
+            # just a prototype qp
+            _qp_proto = QP(self.position, self.position)
+            # just a prototype tree
+            _tree_proto = Tree(_qp_proto, _qp_proto, 0., _qp_proto, True, 0)
+            trees = tree_util.tree_map(
+                lambda leaf: np.empty_like(leaf, shape=(n,)+np.array(leaf).shape),
+                _tree_proto
+                
+            )
 
         def _body_fun(idx, state):
             if self.dbg_info:
-                prev_position, key, samples, momenta_before, momenta_after, depths = state
+                prev_position, key, samples, momenta_before, momenta_after, depths, trees = state
             else:
                 prev_position, key, samples = state
 
@@ -754,17 +766,18 @@ class NUTSChain:
                 momenta_before = tree_util.tree_map(lambda ts, val: ts.at[idx].set(val), momenta_before, resampled_momentum)
                 momenta_after = tree_util.tree_map(lambda ts, val: ts.at[idx].set(val), momenta_after, tree.proposal_candidate.momentum)
                 depths = depths.at[idx].set(tree.depth)
+                trees = tree_util.tree_map(lambda ts, val: ts.at[idx].set(val), trees, tree)
 
             updated_state = (tree.proposal_candidate.position, key, samples)
 
             if self.dbg_info:
-                updated_state = updated_state + (momenta_before, momenta_after, depths)
+                updated_state = updated_state + (momenta_before, momenta_after, depths, trees)
 
             return updated_state
 
         loop_initial_state = (self.position, self.key, samples)
         if self.dbg_info:
-            loop_initial_state = loop_initial_state + (momenta_before, momenta_after, depths)
+            loop_initial_state = loop_initial_state + (momenta_before, momenta_after, depths, trees)
         
         return_fn = lambda: fori_loop(lower=0, upper=n, body_fun=_body_fun, init_val=loop_initial_state)
         if self.compile:
@@ -779,9 +792,6 @@ class HMCChain:
 
         # TODO: typechecks?
         self.potential_energy = potential_energy
-
-        potential_energy_gradient = grad(self.potential_energy)
-        self.stepper = lambda qp, eps, direction: leapfrog_step_pytree(potential_energy_gradient, qp, eps*direction)[0]
 
         if not diag_mass_matrix == 1.:
             raise NotImplementedError("Leapfrog integrator doesn't support custom mass matrix yet.")
