@@ -3,7 +3,10 @@ from .energy_operators import (
     Gaussian, Poissonian, VariableCovarianceGaussian,
     VariableCovarianceStudentT, Categorical
 )
-from .kl import MetricKL
+from .kl import (
+    MetricKL, GeoMetricKL, sample_standard_hamiltonian,
+    geometrically_sample_standard_hamiltonian
+)
 from .field import Field
 from .optimize import minimize, newton_cg, cg, static_cg
 from .correlated_field import CorrelatedFieldMaker, non_parametric_amplitude
