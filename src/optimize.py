@@ -2,7 +2,6 @@ import sys
 from datetime import datetime
 from jax import numpy as np
 from jax.tree_util import Partial, tree_leaves
-from numpy import find_common_type
 
 from typing import Any, Callable, Mapping, Optional, Tuple, Union, NamedTuple
 
@@ -58,6 +57,18 @@ def get_dtype(v):
         return type(v)
 
 
+def common_type(*trees):
+    from numpy import find_common_type
+
+    common_dtp = find_common_type(
+        tuple(
+            find_common_type(tuple(get_dtype(v) for v in tree_leaves(tr)), ())
+            for tr in trees
+        ), ()
+    )
+    return common_dtp
+
+
 # Taken from nifty
 def cg(
     mat,
@@ -75,9 +86,7 @@ def cg(
     miniter = 5 if miniter is None else miniter
     maxiter = 200 if maxiter is None else maxiter
 
-    common_dtp = find_common_type(
-        tuple(get_dtype(v) for v in tree_leaves(x0)) + (np.float32, ), ()
-    )
+    common_dtp = common_type(j)
     eps = 2. * np.finfo(common_dtp).eps
 
     if x0 is None:
@@ -172,9 +181,7 @@ def static_cg(
     miniter = 5 if miniter is None else miniter
     maxiter = 200 if maxiter is None else maxiter
 
-    common_dtp = find_common_type(
-        tuple(get_dtype(v) for v in tree_leaves(x0)) + (np.float32, ), ()
-    )
+    common_dtp = common_type(j)
     eps = 2. * np.finfo(common_dtp).eps
 
     def continue_condition(v):
