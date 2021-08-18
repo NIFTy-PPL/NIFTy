@@ -211,6 +211,20 @@ def geometrically_sample_standard_hamiltonian(
 
 
 class MetricKL():
+    """Provides the sampled Kullback-Leibler divergence between a distribution
+    and a Metric Gaussian.
+
+    A Metric Gaussian is used to approximate another probability distribution.
+    It is a Gaussian distribution that uses the Fisher information metric of
+    the other distribution at the location of its mean to approximate the
+    variance. In order to infer the mean, a stochastic estimate of the
+    Kullback-Leibler divergence is minimized. This estimate is obtained by
+    sampling the Metric Gaussian at the current mean. During minimization these
+    samples are kept constant and only the mean is updated. Due to the
+    typically nonlinear structure of the true distribution these samples have
+    to be updated eventually by re-instantiating the Metric Gaussian again. For
+    the true probability distribution the standard parametrization is assumed.
+    """
     def __init__(
         self,
         hamiltonian,
@@ -280,6 +294,22 @@ class MetricKL():
 
 
 class GeoMetricKL(MetricKL):
+    """Provides the sampled Kullback-Leibler used in geometric Variational
+    Inference (geoVI).
+
+    In geoVI a probability distribution is approximated with a standard normal
+    distribution in the canonical coordinate system of the Riemannian manifold
+    associated with the metric of the other distribution. The coordinate
+    transformation is approximated by expanding around a point. In order to
+    infer the expansion point, a stochastic estimate of the Kullback-Leibler
+    divergence is minimized. This estimate is obtained by sampling from the
+    approximation using the current expansion point. During minimization these
+    samples are kept constant and only the expansion point is updated. Due to
+    the typically nonlinear structure of the true distribution these samples
+    have to be updated eventually by re-instantiating the geometric Gaussian
+    again. For the true probability distribution the standard parametrization
+    is assumed.
+    """
     def __init__(
         self,
         hamiltonian: StandardHamiltonian,
