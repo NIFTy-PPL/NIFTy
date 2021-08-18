@@ -79,10 +79,14 @@ def Gaussian(
     def left_sqrt_metric(primals, tangents):
         return noise_std_inv(tangents)
 
+    def transformation(primals):
+        return noise_std_inv(primals)
+
     lsm_tangents_shape = tree_map(ShapeWithDtype.from_leave, data)
 
     return Likelihood(
         hamiltonian,
+        transformation=transformation,
         left_sqrt_metric=left_sqrt_metric,
         metric=metric,
         lsm_tangents_shape=lsm_tangents_shape
@@ -128,10 +132,14 @@ def Poissonian(data, sampling_dtype=float):
     def left_sqrt_metric(primals, tangents):
         return tangents / np.sqrt(primals)
 
+    def transformation(primals):
+        return np.sqrt(primals) / 2.
+
     lsm_tangents_shape = tree_map(_shape_w_fixed_dtype(sampling_dtype), data)
 
     return Likelihood(
         hamiltonian,
+        transformation=transformation,
         left_sqrt_metric=left_sqrt_metric,
         metric=metric,
         lsm_tangents_shape=lsm_tangents_shape

@@ -116,6 +116,100 @@ def sample_standard_hamiltonian(*args, **kwargs):
     )
     return inv_met_smpl
 
+
+def geometrically_sample_standard_hamiltonian(
+    hamiltonian: StandardHamiltonian,
+    primals,
+    key,
+    mirror_linear_sample: bool,
+    linear_sampling_cg: Callable = cg,
+    linear_sampling_kwargs: Optional[dict] = None,
+    non_linear_sampling_kwargs: Optional[dict] = None
+):
+    r"""Draws a sample which follows a standard normal distribution in the
+    canonical coordinate system of the Riemannian manifold associated with the
+    metric of the other distribution. The coordinate transformation is
+    approximated by expanding around a given point `primals`.
+
+    Parameters
+    ----------
+    hamiltonian: StandardHamiltonian
+        Hamiltonian with standard prior from which to draw samples.
+    primals : tree-like structure
+        Position at which to draw samples.
+    key : tuple, list or np.ndarray of uint32 of length two
+        Random key with which to generate random variables in data domain.
+    linear_sampling_cg : callable
+        Implementation of the conjugate gradient algorithm and used to
+        apply the inverse of the metric.
+    linear_sampling_kwargs : dict
+        Additional keyword arguments passed on to `cg`.
+    non_linear_sampling_kwargs : dict
+        Additional keyword arguments passed on to the minimzer of the
+        non-linear potential.
+
+    Returns
+    -------
+    sample : tree-like structure
+        Sample of which the covariance is the inverse metric.
+    """
+    if not isinstance(hamiltonian, StandardHamiltonian):
+        te = f"`hamiltonian` of invalid type; got '{type(hamiltonian)}'"
+        raise TypeError(te)
+    from . import minimize
+
+    # TODO: @PhilippF Does it make sense to not start from a MGVI sample?
+    inv_met_smpl, met_smpl = _sample_standard_hamiltonian(
+        hamiltonian,
+        primals,
+        key=key,
+        from_inverse=True,
+        cg=linear_sampling_cg,
+        cg_kwargs=linear_sampling_kwargs
+    )
+
+    nls_kwargs = non_linear_sampling_kwargs
+    nls_kwargs = nls_kwargs if nls_kwargs is not None else {}
+    # Abort early if non-linear sampling is effectively disabled
+    if nls_kwargs.get("maxiter") == 0:
+        if mirror_linear_sample:
+            return (inv_met_smpl, -inv_met_smpl)
+        return (inv_met_smpl, )
+
+    def draw_non_linear_sample(lh, met_smpl, inv_met_smpl):
+        x0 = primals + inv_met_smpl
+
+        def fun(x):
+            g = x - primals + lh.left_sqrt_metric(
+                primals,
+                lh.transformation(x) - lh.transformation(primals)
+            )
+            r = met_smpl - g
+            return r.dot(r) / 2.
+
+        core_nls_kwargs = {
+            # TODO: @PhilippF Is this really the correct metric?
+            "hessp": hamiltonian.metric,
+            # TODO: set sensible default convergence criteria
+        }
+
+        opt_state = minimize(
+            fun, x0=x0, method="NewtonCG", options=core_nls_kwargs | nls_kwargs
+        )
+
+        return opt_state
+
+    opt_state_smpl1 = draw_non_linear_sample(
+        hamiltonian.likelihood, met_smpl, inv_met_smpl
+    )
+    if not mirror_linear_sample:
+        return (opt_state_smpl1.x - primals, )
+    opt_state_smpl2 = draw_non_linear_sample(
+        hamiltonian.likelihood, -met_smpl, -inv_met_smpl
+    )
+    return (opt_state_smpl1.x - primals, opt_state_smpl2.x - primals)
+
+
 class MetricKL():
     def __init__(
         self,
@@ -183,3 +277,44 @@ class MetricKL():
     @property
     def samples(self):
         return tuple(self._samples)
+
+
+class GeoMetricKL(MetricKL):
+    def __init__(
+        self,
+        hamiltonian: StandardHamiltonian,
+        primals,
+        n_samples,
+        key,
+        mirror_samples: bool = True,
+        linear_sampling_cg: Callable = cg,
+        linear_sampling_kwargs: Optional[dict] = None,
+        non_linear_sampling_kwargs: Optional[dict] = None,
+        hamiltonian_and_gradient: Optional[Callable] = None,
+        _samples: Optional[tuple] = None
+    ):
+        if not isinstance(hamiltonian, StandardHamiltonian):
+            te = f"`hamiltonian` of invalid type; got '{type(hamiltonian)}'"
+            raise TypeError(te)
+        self._ham = hamiltonian
+        self._pos = primals
+        self._n_samples = n_samples
+
+        if _samples is None:
+            draw = Partial(
+                geometrically_sample_standard_hamiltonian,
+                hamiltonian=hamiltonian,
+                primals=primals,
+                mirror_linear_sample=mirror_samples,
+                linear_sampling_cg=linear_sampling_cg,
+                linear_sampling_kwargs=linear_sampling_kwargs,
+                non_linear_sampling_kwargs=non_linear_sampling_kwargs
+            )
+            subkeys = random.split(key, n_samples)
+            _samples = tuple(
+                s for smpl_tuple in (draw(key=k) for k in subkeys)
+                for s in smpl_tuple
+            )
+        self._samples = tuple(_samples)
+
+        self._ham_vg = hamiltonian_and_gradient
