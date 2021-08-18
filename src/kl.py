@@ -1,3 +1,4 @@
+from collections.abc import Sequence
 from typing import Callable, Optional
 
 from jax import random
@@ -210,53 +211,20 @@ def geometrically_sample_standard_hamiltonian(
     return (opt_state_smpl1.x - primals, opt_state_smpl2.x - primals)
 
 
-class MetricKL():
-    """Provides the sampled Kullback-Leibler divergence between a distribution
-    and a Metric Gaussian.
-
-    A Metric Gaussian is used to approximate another probability distribution.
-    It is a Gaussian distribution that uses the Fisher information metric of
-    the other distribution at the location of its mean to approximate the
-    variance. In order to infer the mean, a stochastic estimate of the
-    Kullback-Leibler divergence is minimized. This estimate is obtained by
-    sampling the Metric Gaussian at the current mean. During minimization these
-    samples are kept constant and only the mean is updated. Due to the
-    typically nonlinear structure of the true distribution these samples have
-    to be updated eventually by re-instantiating the Metric Gaussian again. For
-    the true probability distribution the standard parametrization is assumed.
-    """
+class SampledKL():
     def __init__(
         self,
         hamiltonian,
         primals,
-        n_samples,
-        key,
-        mirror_samples: bool = True,
-        cg: Callable = cg,
-        cg_kwargs: Optional[dict] = None,
-        hamiltonian_and_gradient: Optional[Callable] = None,
-        _samples: Optional[tuple] = None
+        samples: Sequence,
+        linearly_mirror_samples: bool,
+        hamiltonian_and_gradient: Optional[Callable] = None
     ):
-        if not isinstance(hamiltonian, StandardHamiltonian):
-            te = f"`hamiltonian` of invalid type; got '{type(hamiltonian)}'"
-            raise TypeError(te)
         self._ham = hamiltonian
         self._pos = primals
-        self._n_samples = n_samples
-
-        if _samples is None:
-            _samples = []
-            draw = Partial(
-                sample_standard_hamiltonian,
-                hamiltonian=hamiltonian,
-                primals=primals,
-                cg=cg,
-                cg_kwargs=cg_kwargs
-            )
-            subkeys = random.split(key, n_samples)
-            _samples = [draw(key=k) for k in subkeys]
-            _samples += [-s for s in _samples] if mirror_samples else []
-        self._samples = tuple(_samples)
+        self._samples = tuple(samples)
+        self._linearly_mirror_samples = linearly_mirror_samples
+        self._n_samples = len(self._samples)
 
         self._ham_vg = hamiltonian_and_gradient
 
@@ -285,15 +253,82 @@ class MetricKL():
         return self._pos
 
     @property
-    def n_samples(self):
-        return self.n_samples
+    def n_eff_samples(self):
+        if self._linearly_mirror_samples:
+            return 2 * self._n_samples
+        return self._n_samples
 
     @property
     def samples(self):
-        return tuple(self._samples)
+        for s in self._samples:
+            yield s
+            if self._linearly_mirror_samples:
+                yield -s
 
 
-class GeoMetricKL(MetricKL):
+def MetricKL(
+    hamiltonian: StandardHamiltonian,
+    primals,
+    n_samples: int,
+    key,
+    mirror_samples: bool = True,
+    cg: Callable = cg,
+    cg_kwargs: Optional[dict] = None,
+    hamiltonian_and_gradient: Optional[Callable] = None,
+    _samples: Optional[tuple] = None
+):
+    """Provides the sampled Kullback-Leibler divergence between a distribution
+    and a Metric Gaussian.
+
+    A Metric Gaussian is used to approximate another probability distribution.
+    It is a Gaussian distribution that uses the Fisher information metric of
+    the other distribution at the location of its mean to approximate the
+    variance. In order to infer the mean, a stochastic estimate of the
+    Kullback-Leibler divergence is minimized. This estimate is obtained by
+    sampling the Metric Gaussian at the current mean. During minimization these
+    samples are kept constant and only the mean is updated. Due to the
+    typically nonlinear structure of the true distribution these samples have
+    to be updated eventually by re-instantiating the Metric Gaussian again. For
+    the true probability distribution the standard parametrization is assumed.
+    """
+    if not isinstance(hamiltonian, StandardHamiltonian):
+        te = f"`hamiltonian` of invalid type; got '{type(hamiltonian)}'"
+        raise TypeError(te)
+
+    if _samples is None:
+        draw = Partial(
+            sample_standard_hamiltonian,
+            hamiltonian=hamiltonian,
+            primals=primals,
+            cg=cg,
+            cg_kwargs=cg_kwargs
+        )
+        subkeys = random.split(key, n_samples)
+        samples = tuple(draw(key=k) for k in subkeys)
+    else:
+        samples = tuple(_samples)
+
+    return SampledKL(
+        hamiltonian=hamiltonian,
+        primals=primals,
+        samples=samples,
+        linearly_mirror_samples=mirror_samples,
+        hamiltonian_and_gradient=hamiltonian_and_gradient
+    )
+
+
+def GeoMetricKL(
+    hamiltonian: StandardHamiltonian,
+    primals,
+    n_samples: int,
+    key,
+    mirror_samples: bool = True,
+    linear_sampling_cg: Callable = cg,
+    linear_sampling_kwargs: Optional[dict] = None,
+    non_linear_sampling_kwargs: Optional[dict] = None,
+    hamiltonian_and_gradient: Optional[Callable] = None,
+    _samples: Optional[tuple] = None
+):
     """Provides the sampled Kullback-Leibler used in geometric Variational
     Inference (geoVI).
 
@@ -310,41 +345,32 @@ class GeoMetricKL(MetricKL):
     again. For the true probability distribution the standard parametrization
     is assumed.
     """
-    def __init__(
-        self,
-        hamiltonian: StandardHamiltonian,
-        primals,
-        n_samples,
-        key,
-        mirror_samples: bool = True,
-        linear_sampling_cg: Callable = cg,
-        linear_sampling_kwargs: Optional[dict] = None,
-        non_linear_sampling_kwargs: Optional[dict] = None,
-        hamiltonian_and_gradient: Optional[Callable] = None,
-        _samples: Optional[tuple] = None
-    ):
-        if not isinstance(hamiltonian, StandardHamiltonian):
-            te = f"`hamiltonian` of invalid type; got '{type(hamiltonian)}'"
-            raise TypeError(te)
-        self._ham = hamiltonian
-        self._pos = primals
-        self._n_samples = n_samples
+    if not isinstance(hamiltonian, StandardHamiltonian):
+        te = f"`hamiltonian` of invalid type; got '{type(hamiltonian)}'"
+        raise TypeError(te)
 
-        if _samples is None:
-            draw = Partial(
-                geometrically_sample_standard_hamiltonian,
-                hamiltonian=hamiltonian,
-                primals=primals,
-                mirror_linear_sample=mirror_samples,
-                linear_sampling_cg=linear_sampling_cg,
-                linear_sampling_kwargs=linear_sampling_kwargs,
-                non_linear_sampling_kwargs=non_linear_sampling_kwargs
-            )
-            subkeys = random.split(key, n_samples)
-            _samples = tuple(
-                s for smpl_tuple in (draw(key=k) for k in subkeys)
-                for s in smpl_tuple
-            )
-        self._samples = tuple(_samples)
+    if _samples is None:
+        draw = Partial(
+            geometrically_sample_standard_hamiltonian,
+            hamiltonian=hamiltonian,
+            primals=primals,
+            mirror_linear_sample=mirror_samples,
+            linear_sampling_cg=linear_sampling_cg,
+            linear_sampling_kwargs=linear_sampling_kwargs,
+            non_linear_sampling_kwargs=non_linear_sampling_kwargs
+        )
+        subkeys = random.split(key, n_samples)
+        samples = tuple(
+            s for smpl_tuple in (draw(key=k) for k in subkeys)
+            for s in smpl_tuple
+        )
+    else:
+        samples = tuple(_samples)
 
-        self._ham_vg = hamiltonian_and_gradient
+    return SampledKL(
+        hamiltonian=hamiltonian,
+        primals=primals,
+        samples=samples,
+        linearly_mirror_samples=False,
+        hamiltonian_and_gradient=hamiltonian_and_gradient
+    )
