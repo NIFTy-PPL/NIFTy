@@ -1,7 +1,7 @@
 import sys
 from datetime import datetime
 from jax import numpy as np
-from jax.tree_util import Partial, tree_leaves
+from jax.tree_util import Partial, tree_leaves, tree_map, tree_reduce
 
 from typing import Any, Callable, Mapping, Optional, Tuple, Union, NamedTuple
 
@@ -69,6 +69,13 @@ def common_type(*trees):
     return common_dtp
 
 
+def size(tree, axis: Optional[int] = None):
+    if axis is not None:
+        raise TypeError("axis of an arbitrary tree is ill defined")
+    sizes = tree_map(np.size, tree)
+    return tree_reduce(np.add, sizes)
+
+
 # Taken from nifty
 def cg(
     mat,
@@ -83,8 +90,9 @@ def cg(
     time_threshold=None
 ):
     norm_ord = 2 if norm_ord is None else norm_ord
-    miniter = 5 if miniter is None else miniter
-    maxiter = 200 if maxiter is None else maxiter
+    maxiter_fallback = 20 * size(j)  # Inspired by SciPy's NewtonCG minimzer
+    maxiter = min((200, maxiter_fallback)) if maxiter is None else maxiter
+    miniter = min((5, maxiter)) if miniter is None else miniter
 
     common_dtp = common_type(j)
     eps = 2. * np.finfo(common_dtp).eps
@@ -178,8 +186,9 @@ def static_cg(
     from jax.lax import cond, while_loop
 
     norm_ord = 2 if norm_ord is None else norm_ord
-    miniter = 5 if miniter is None else miniter
-    maxiter = 200 if maxiter is None else maxiter
+    maxiter_fallback = 20 * size(j)  # Inspired by SciPy's NewtonCG minimzer
+    maxiter = min((200, maxiter_fallback)) if maxiter is None else maxiter
+    miniter = min((5, maxiter)) if miniter is None else miniter
 
     common_dtp = common_type(j)
     eps = 2. * np.finfo(common_dtp).eps
