@@ -87,16 +87,16 @@ def sample_nonstandard_hamiltonian(
 
 
 def NonStandardMetricKL(
-        likelihood,
-        primals,
-        n_samples,
-        key,
-        mirror_samples: bool = True,
-        cg=jft.cg,
-        cg_kwargs=None,
-        hamiltonian_and_gradient=None,
-        _samples=None
-    ):
+    likelihood,
+    primals,
+    n_samples,
+    key,
+    mirror_samples: bool = True,
+    cg=jft.cg,
+    cg_kwargs=None,
+    hamiltonian_and_gradient=None,
+    _samples=None
+):
     from jax.tree_util import Partial
 
     if isinstance(likelihood, jft.StandardHamiltonian):
@@ -124,6 +124,7 @@ def NonStandardMetricKL(
         linearly_mirror_samples=mirror_samples,
         hamiltonian_and_gradient=hamiltonian_and_gradient
     )
+
 
 # %%
 b = 0.1
@@ -172,9 +173,7 @@ for i in range(n_mgvi_iterations):
         key=subkey,
         mirror_samples=True,
         hamiltonian_and_gradient=nll_vg,
-        cg_kwargs={
-            "absdelta": absdelta / 10.
-        }
+        cg_kwargs={"absdelta": absdelta / 10.}
     )
 
     print("Minimizing...", file=sys.stderr)
@@ -225,9 +224,7 @@ for i in range(n_geovi_iterations):
         n_samples[i],
         key,
         mirror_samples=True,
-        linear_sampling_kwargs={
-            "absdelta": absdelta / 10.
-        },
+        linear_sampling_kwargs={"absdelta": absdelta / 10.},
         non_linear_sampling_kwargs={"maxiter": 20},
         hamiltonian_and_gradient=ham_vg
     )
@@ -264,7 +261,7 @@ fig, ax = plt.subplots()
 contour = ax.contour(X, Y, es)
 ax.clabel(contour, inline=True, fontsize=10)
 ax.scatter(b_space_smpls[:, 0], b_space_smpls[:, 1])
-ax.plot(*mkl_pos, 'rx')
+ax.plot(*mkl_pos, "rx")
 plt.show()
 
 # %%
@@ -282,5 +279,5 @@ fig, ax = plt.subplots()
 contour = ax.contour(X, Y, es)
 ax.clabel(contour, inline=True, fontsize=10)
 ax.scatter(b_space_smpls[:, 0], b_space_smpls[:, 1])
-ax.plot(*gkl_pos, 'rx')
+ax.plot(*gkl_pos, "rx")
 plt.show()
