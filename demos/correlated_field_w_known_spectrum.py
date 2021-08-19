@@ -63,11 +63,19 @@ if __name__ == "__main__":
 
     nll = jft.Gaussian(data, noise_cov_inv) @ signal_response
     ham = jft.StandardHamiltonian(likelihood=nll).jit()
-    ham_vg = jit(value_and_grad(ham))
 
     key, subkey = random.split(key)
     pos_init = random.normal(shape=dims, key=subkey)
     pos = 1e-2 * jft.Field(pos_init)
+
+    kl_energy = jft.vmap_forest_mean(
+        lambda p, s: ham.energy(p + s), in_axes=(None, 0)
+    )
+    kl_vag = jit(value_and_grad(kl_energy))
+    kl_metric = jit(jft.vmap_forest_mean(
+        lambda p, s, t: ham.metric(p + s, t),
+        in_axes=(None, 0, None)
+    ))
 
     # Minimize the potential
     for i in range(n_mgvi_iterations):
@@ -80,9 +88,10 @@ if __name__ == "__main__":
             n_samples=n_samples,
             key=subkey,
             mirror_samples=True,
-            hamiltonian_and_gradient=ham_vg,
             cg_kwargs={"absdelta": absdelta / 10.}
         )
+        kl_vag_at_p = lambda p: kl_vag(p, tuple(mkl.samples))
+        kl_metric_at = lambda p, t: kl_metric(p, tuple(mkl.samples), t)
 
         print("Minimizing...", file=sys.stderr)
         # TODO: Re-introduce a simplified version that works without fields
@@ -91,8 +100,8 @@ if __name__ == "__main__":
             x0=pos,
             method="newton-cg",
             options={
-                "fun_and_grad": mkl.energy_and_gradient,
-                "hessp": mkl.metric,
+                "fun_and_grad": kl_vag_at_p,
+                "hessp": kl_metric_at,
                 "absdelta": absdelta,
                 "maxiter": n_newton_iterations
             }

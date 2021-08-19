@@ -5,7 +5,7 @@ from .energy_operators import (
 )
 from .kl import (
     MetricKL, GeoMetricKL, sample_standard_hamiltonian,
-    geometrically_sample_standard_hamiltonian
+    geometrically_sample_standard_hamiltonian, vmap_forest, vmap_forest_mean
 )
 from .field import Field
 from .optimize import minimize, newton_cg, cg, static_cg

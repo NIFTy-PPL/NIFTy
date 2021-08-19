@@ -11,18 +11,39 @@ from .sugar import random_like, random_like_shapewdtype
 from .likelihood import Likelihood, StandardHamiltonian
 
 
-def tree_vmap(f, *args, tree_transpose_output=True, **kwargs):
+def vmap_forest(f, in_axes=0, out_axes=0, tree_transpose_output=True, **kwargs):
     from functools import partial
     from jax import vmap
     from jax import tree_util
 
-    def apply(x):
-        outer_type = type(x)
-        element_count = len(x)
-        x_T = tree_map(lambda *el: np.stack(el), *x)
-        del x
+    if out_axes != 0:
+        raise TypeError("`out_axis` not yet supported")
+    in_axes = in_axes if isinstance(in_axes, tuple) else (in_axes, )
+    i = None
+    for idx, el in enumerate(in_axes):
+        if el is not None and i is None:
+            i = idx
+        elif el is not None and i is not None:
+            ve = "mapping over more than one axis is not yet supported"
+            raise ValueError(ve)
+    if i is None:
+        raise ValueError("must map over at least one axis")
+    if not isinstance(i, int):
+        te = "mapping over a non integer axis is not yet supported"
+        raise TypeError(te)
 
-        out_T = vmap(f, *args, **kwargs)(x_T)
+    f_map = vmap(f, in_axes=in_axes, out_axes=out_axes, **kwargs)
+
+    def apply(*xs):
+        if not isinstance(xs[i], (list, tuple)):
+            te = f"expected mapped axes to be a tuple; got {type(xs[i])}"
+            raise TypeError(te)
+        element_count = len(xs[i])
+        x_T = tree_map(lambda *el: np.stack(el), *xs[i])
+
+        out_T = f_map(*xs[:i], x_T, *xs[i + 1:])
+        # Since `out_axes` is forced to be `0`, we don't need to worry about
+        # transposing only part of the output
         if not tree_transpose_output:
             return out_T
 
@@ -31,12 +52,23 @@ def tree_vmap(f, *args, tree_transpose_output=True, **kwargs):
         split = partial(np.split, indices_or_sections=element_count)
         out = tree_util.tree_transpose(
             tree_util.tree_structure(out_T),
-            tree_util.tree_structure(outer_type((0., ) * element_count)),
+            tree_util.tree_structure((0., ) * element_count),
             tree_map(split, out_T)
         )
         return tree_map(partial(np.squeeze, axis=0), out)
 
     return apply
+
+
+def vmap_forest_mean(method, *args, **kwargs):
+    method_map = vmap_forest(
+        method, *args, tree_transpose_output=False, **kwargs
+    )
+
+    def sampled_kl(*xs, **xs_kw):
+        return tree_map(partial(np.mean, axis=0), method_map(*xs, **xs_kw))
+
+    return sampled_kl
 
 
 def sample_likelihood(likelihood: Likelihood, primals, key):
@@ -259,35 +291,35 @@ class SampledKL():
 
         self._ham_vg = hamiltonian_and_gradient
 
+        self._energy = vmap_forest_mean(
+            lambda p, s: self._ham(p + s), in_axes=(None, 0)
+        )
+        # gradient of mean is the mean of the gradients
+        self._energy_vg = vmap_forest_mean(
+            lambda p, s: self._ham_vg(p + s), in_axes=(None, 0)
+        )
+        self._metric = vmap_forest_mean(
+            lambda p, s, t: self._ham.metric(p + s, t), in_axes=(None, 0, None)
+        )
+
     def __call__(self, primals):
         return self.energy(primals)
 
     def energy(self, primals):
-        energy_map = tree_vmap(
-            lambda s: self._ham(primals + s), tree_transpose_output=False
-        )
-        return tree_map(
-            partial(np.mean, axis=0), energy_map(tuple(self.samples))
-        )
+        return self._energy(primals, tuple(self.samples))
 
     def energy_and_gradient(self, primals):
         if self._ham_vg is None:
             nie = "need to set `hamiltonian_and_gradient` first"
             raise NotImplementedError(nie)
-        # gradient of mean is the mean of the gradients
-        vg_map = tree_vmap(
-            lambda s: self._ham_vg(primals + s), tree_transpose_output=False
-        )
-        return tree_map(partial(np.mean, axis=0), vg_map(tuple(self.samples)))
+        return self._energy_vg(primals, tuple(self.samples))
 
     def metric(self, primals, tangents):
-        metric_map = tree_vmap(
-            lambda s: self._ham.metric(primals + s, tangents),
-            tree_transpose_output=False
-        )
-        return tree_map(
-            partial(np.mean, axis=0), metric_map(tuple(self.samples))
-        )
+        return self._metric(primals, tuple(self.samples), tangents)
+
+    @property
+    def hamiltonian(self):
+        return self._ham
 
     @property
     def position(self):
