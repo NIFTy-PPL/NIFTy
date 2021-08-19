@@ -231,15 +231,27 @@ class _Distributor(LinearOperator):
 
 
 class _AmplitudeMatern(Operator):
-    def __init__(self, pow_spc, scale, cutoff, loglogslope, totvol):
-        expander = ContractionOperator(pow_spc, spaces=None).adjoint
+    def __init__(self, pow_spc, scale, cutoff, loglogslope, totvol, dofdex):
+        if len(dofdex) > 0:
+            N_copies = max(dofdex) + 1
+            space = 1
+            distributed_tgt = makeDomain((UnstructuredDomain(len(dofdex)),
+                                          target))
+            target = makeDomain((UnstructuredDomain(N_copies, target)))
+            Distributor = _Distributor(dofdex, target, distributed_tgt)
+        else:
+            N_copies = 0
+            space = 0
+            distributed_tgt = target = makeDomain(target)
+
+        expander = ContractionOperator(pow_spc, spaces=space).adjoint
         k_squared = makeField(pow_spc, pow_spc.k_lengths**2)
 
         scale = expander @ scale.log()
-        cutoff = VdotOperator(k_squared).adjoint @ cutoff.power(-2.)
+        cutoff = VdotOperator(k_squared, spaces=space).adjoint @ cutoff.power(-2.)
         spectral_idx = expander.scale(0.25) @ loglogslope
 
-        ker = Adder(full(pow_spc, 1.)) @ cutoff
+        ker = Adder(full(pow_spc, 1.), spaces=space) @ cutoff
         ker = spectral_idx * ker.log() + scale
         op = ker.exp()
 
@@ -255,12 +267,12 @@ class _AmplitudeMatern(Operator):
         # randn standard normally distributed variables).  This needs to be
         # accounted for in the amplitude model.
         vol1[1:] = totvol**0.5
-        vol0 = Adder(makeField(pow_spc, vol0))
-        vol1 = DiagonalOperator(makeField(pow_spc, vol1))
+        vol0 = Adder(makeField(pow_spc, vol0), spaces=space)
+        vol1 = DiagonalOperator(makeField(pow_spc, vol1), spaces=space)
         op = vol0 @ vol1 @ op
 
         # std = sqrt of integral of power spectrum
-        self._fluc = op.power(2).integrate().sqrt()
+        self._fluc = op.power(2).integrate(spaces=space).sqrt()
         self.apply = op.apply
         self._domain, self._target = op.domain, op.target
         self._repr_str = "_AmplitudeMatern: " + op.__repr__()
