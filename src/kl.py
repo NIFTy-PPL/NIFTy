@@ -2,12 +2,41 @@ from collections.abc import Sequence
 from typing import Callable, Optional
 
 from functools import partial
+from jax import numpy as np
 from jax import random
-from jax.tree_util import Partial
+from jax.tree_util import Partial, tree_map
 
 from .optimize import cg
-from .sugar import random_like, random_like_shapewdtype, mean
+from .sugar import random_like, random_like_shapewdtype
 from .likelihood import Likelihood, StandardHamiltonian
+
+
+def tree_vmap(f, *args, tree_transpose_output=True, **kwargs):
+    from functools import partial
+    from jax import vmap
+    from jax import tree_util
+
+    def apply(x):
+        outer_type = type(x)
+        element_count = len(x)
+        x_T = tree_map(lambda *el: np.stack(el), *x)
+        del x
+
+        out_T = vmap(f, *args, **kwargs)(x_T)
+        if not tree_transpose_output:
+            return out_T
+
+        # TODO: Report?: Looping over or casting a DeviceArray tensor to a
+        # tuple, yields NumPy arrays
+        split = partial(np.split, indices_or_sections=element_count)
+        out = tree_util.tree_transpose(
+            tree_util.tree_structure(out_T),
+            tree_util.tree_structure(outer_type((0., ) * element_count)),
+            tree_map(split, out_T)
+        )
+        return tree_map(partial(np.squeeze, axis=0), out)
+
+    return apply
 
 
 def sample_likelihood(likelihood: Likelihood, primals, key):
@@ -234,20 +263,30 @@ class SampledKL():
         return self.energy(primals)
 
     def energy(self, primals):
-        return mean(tuple(self._ham(primals + s) for s in self.samples))
+        energy_map = tree_vmap(
+            lambda s: self._ham(primals + s), tree_transpose_output=False
+        )
+        return tree_map(
+            partial(np.mean, axis=0), energy_map(tuple(self.samples))
+        )
 
     def energy_and_gradient(self, primals):
         if self._ham_vg is None:
             nie = "need to set `hamiltonian_and_gradient` first"
             raise NotImplementedError(nie)
         # gradient of mean is the mean of the gradients
-        return mean(tuple(self._ham_vg(primals + s) for s in self.samples))
+        vg_map = tree_vmap(
+            lambda s: self._ham_vg(primals + s), tree_transpose_output=False
+        )
+        return tree_map(partial(np.mean, axis=0), vg_map(tuple(self.samples)))
 
     def metric(self, primals, tangents):
-        return mean(
-            tuple(
-                self._ham.metric(primals + s, tangents) for s in self.samples
-            )
+        metric_map = tree_vmap(
+            lambda s: self._ham.metric(primals + s, tangents),
+            tree_transpose_output=False
+        )
+        return tree_map(
+            partial(np.mean, axis=0), metric_map(tuple(self.samples))
         )
 
     @property
