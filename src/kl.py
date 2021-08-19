@@ -1,6 +1,7 @@
 from collections.abc import Sequence
 from typing import Callable, Optional
 
+from functools import partial
 from jax import random
 from jax.tree_util import Partial
 
@@ -49,9 +50,10 @@ def _sample_standard_hamiltonian(
     met_smpl = nll_smpl + prr_smpl
     if from_inverse:
         # TODO: Set sensible convergence criteria
-        signal_smpl = hamiltonian.inv_metric(
-            primals, met_smpl, cg=cg, x0=prr_inv_metric_smpl, **cg_kwargs
+        inv_metric_at_p = partial(
+            cg, Partial(hamiltonian.metric, primals), **cg_kwargs
         )
+        signal_smpl = inv_metric_at_p(met_smpl, x0=prr_inv_metric_smpl)[0]
         return signal_smpl, met_smpl
     else:
         return None, met_smpl

@@ -66,23 +66,23 @@ def make_banana_density(b):
 
 # %%
 def sample_nonstandard_hamiltonian(
-    likelihood,
-    primals,
-    key,
-    cg=jft.cg,
-    **cg_kwargs
+    likelihood, primals, key, cg=jft.cg, cg_kwargs=None
 ):
     if isinstance(likelihood, jft.StandardHamiltonian):
         te = f"`likelihood` of invalid type; got '{type(likelihood)}'"
         raise TypeError(te)
+    from jax.tree_util import Partial
+
+    cg_kwargs = cg_kwargs if cg_kwargs is not None else {}
 
     white_sample = jft.random_like_shapewdtype(
         likelihood.left_sqrt_metric_tangents_shape, key=key
     )
     met_smpl = likelihood.left_sqrt_metric(primals, white_sample)
-    signal_smpl = likelihood.inv_metric(
-        primals, met_smpl, cg=cg, **cg_kwargs
+    inv_metric_at_p = partial(
+        cg, Partial(likelihood.metric, primals), **cg_kwargs
     )
+    signal_smpl = inv_metric_at_p(met_smpl)[0]
     return signal_smpl
 
 
@@ -103,7 +103,6 @@ def NonStandardMetricKL(
         te = f"`likelihood` of invalid type; got '{type(likelihood)}'"
         raise TypeError(te)
 
-    cg_kwargs = {} if cg_kwargs is None else cg_kwargs
     if _samples is None:
         _samples = []
         draw = Partial(
@@ -111,7 +110,7 @@ def NonStandardMetricKL(
             likelihood=likelihood,
             primals=primals,
             cg=cg,
-            **cg_kwargs
+            cg_kwargs=cg_kwargs
         )
         subkeys = random.split(key, n_samples)
         samples = tuple(draw(key=k) for k in subkeys)

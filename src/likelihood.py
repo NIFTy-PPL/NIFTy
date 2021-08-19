@@ -4,7 +4,6 @@ from jax import jvp, vjp
 from jax import numpy as np
 from jax.tree_util import Partial, tree_leaves, all_leaves
 
-from .optimize import cg
 from .sugar import is1d, sum_of_squares
 
 
@@ -219,30 +218,6 @@ class Likelihood():
             raise NotImplementedError(nie)
         return self._transformation(primals)
 
-    def inv_metric(self, primals, tangents, cg=cg, **cg_kwargs):
-        """Applies the inverse metric at `primals` to `tangents`.
-
-        Parameters
-        ----------
-        primals : tree-like structure
-            Position at which to evaluate the metric.
-        tangents : tree-like structure
-            Instance to which to apply the metric.
-        cg : callable
-            Implementation of the conjugate gradient algorithm and used to
-            apply the inverse of the metric.
-        cg_kwargs : dict
-            Additional keyword arguments passed on to `cg`.
-
-        Returns
-        -------
-        inv_naturally_curved : tree-like structure
-            Tree-like structure of the same type as primals to which the
-            inverse metric has been applied to.
-        """
-        res, _ = cg(Partial(self.metric, primals), tangents, **cg_kwargs)
-        return res
-
     @property
     def left_sqrt_metric_tangents_shape(self):
         """Retrieves the shape of the tangent domain of the
@@ -411,11 +386,6 @@ class StandardHamiltonian():
     @doc_from(Likelihood.metric)
     def metric(self, primals, tangents):
         return self._metric(primals, tangents)
-
-    @doc_from(Likelihood.inv_metric)
-    def inv_metric(self, primals, tangents, cg=cg, **cg_kwargs):
-        res, _ = cg(Partial(self.metric, primals), tangents, **cg_kwargs)
-        return res
 
     @property
     def likelihood(self):
