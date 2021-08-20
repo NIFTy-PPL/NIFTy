@@ -133,6 +133,7 @@ signal_response = partial(banana_helper_phi_b, b)
 nll = jft.Gaussian(
     np.zeros(2), lambda x: x / np.sqrt(np.array([100., 1.]))
 ) @ signal_response
+nll = nll.jit()
 nll_vg = jit(value_and_grad(nll))
 
 # %%
@@ -202,7 +203,7 @@ for i in range(n_mgvi_iterations):
 mkl_pos = pos
 
 # %%
-n_geovi_iterations = 20
+n_geovi_iterations = 15
 n_samples = [1] * (n_geovi_iterations - 10) + [2] * 5 + [3, 3, 5, 5, 100]
 n_newton_iterations = [7] * (n_geovi_iterations - 10) + [10] * 6 + [25] * 4
 absdelta = 1e-10
@@ -212,7 +213,8 @@ pos = 1e-2 * jft.Field(initial_position)
 
 # %%
 ham = jft.StandardHamiltonian(nll)
-ham_vg = value_and_grad(ham)
+ham = ham.jit()
+ham_vg = jit(value_and_grad(ham))
 
 for i in range(n_geovi_iterations):
     print(f"GeoVI Iteration {i}", file=sys.stderr)
@@ -260,7 +262,7 @@ es = np.exp(-lax.map(nll, xy)).reshape(XY.shape[:2]).T
 fig, ax = plt.subplots()
 contour = ax.contour(X, Y, es)
 ax.clabel(contour, inline=True, fontsize=10)
-ax.scatter(b_space_smpls[:, 0], b_space_smpls[:, 1])
+ax.scatter(*b_space_smpls.T)
 ax.plot(*mkl_pos, "rx")
 plt.show()
 
@@ -278,6 +280,6 @@ es = np.exp(-lax.map(ham, xy)).reshape(XY.shape[:2]).T
 fig, ax = plt.subplots()
 contour = ax.contour(X, Y, es)
 ax.clabel(contour, inline=True, fontsize=10)
-ax.scatter(b_space_smpls[:, 0], b_space_smpls[:, 1])
+ax.scatter(*b_space_smpls.T)
 ax.plot(*gkl_pos, "rx")
 plt.show()
