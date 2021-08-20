@@ -194,8 +194,9 @@ class Likelihood():
             left-square-root of the metric has been applied to.
         """
         if self._left_sqrt_metric is None:
-            nie = "`left_sqrt_metric` is not implemented"
-            raise NotImplementedError(nie)
+            _, bwd = vjp(self.transformation, primals)
+            res = bwd(tangents)
+            return res[0]
         return self._left_sqrt_metric(primals, tangents)
 
     def transformation(self, primals):
@@ -263,16 +264,18 @@ class Likelihood():
         from jax import jit
 
         if self._transformation is not None:
-            j_trafo = jit(self._transformation)
-        else:
+            j_trafo = jit(self.transformation)
+            j_lsm = jit(self.left_sqrt_metric)
+            j_m = jit(self.metric)
+        elif self._left_sqrt_metric is not None:
             j_trafo = None
-
-        if self._left_sqrt_metric is not None:
-            j_lsm = jit(self._left_sqrt_metric)
+            j_lsm = jit(self.left_sqrt_metric)
+            j_m = jit(self.metric)
+        elif self._metric is not None:
+            j_trafo, j_lsm = None, None
             j_m = jit(self.metric)
         else:
-            j_lsm = None
-            j_m = None
+            j_trafo, j_lsm, j_m = None, None, None
 
         return self.new(
             jit(self._hamiltonian),
