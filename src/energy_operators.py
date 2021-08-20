@@ -133,7 +133,7 @@ def Poissonian(data, sampling_dtype=float):
         return tangents / np.sqrt(primals)
 
     def transformation(primals):
-        return np.sqrt(primals) / 2.
+        return np.sqrt(primals) * 2.
 
     lsm_tangents_shape = tree_map(_shape_w_fixed_dtype(sampling_dtype), data)
 
