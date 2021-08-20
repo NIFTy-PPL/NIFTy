@@ -353,8 +353,8 @@ def MetricKL(
     n_samples: int,
     key,
     mirror_samples: bool = True,
-    cg: Callable = cg,
-    cg_kwargs: Optional[dict] = None,
+    linear_sampling_cg: Callable = cg,
+    linear_sampling_kwargs: Optional[dict] = None,
     hamiltonian_and_gradient: Optional[Callable] = None,
     _samples: Optional[tuple] = None
 ):
@@ -381,8 +381,8 @@ def MetricKL(
             sample_standard_hamiltonian,
             hamiltonian=hamiltonian,
             primals=primals,
-            cg=cg,
-            cg_kwargs=cg_kwargs
+            cg=linear_sampling_cg,
+            cg_kwargs=linear_sampling_kwargs
         )
         subkeys = random.split(key, n_samples)
         samples = tuple(draw(key=k) for k in subkeys)

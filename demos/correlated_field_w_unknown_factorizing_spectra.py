@@ -74,7 +74,7 @@ if __name__ == "__main__":
             key=subkey,
             mirror_samples=True,
             hamiltonian_and_gradient=ham_vg,
-            cg_kwargs={"absdelta": absdelta / 10.}
+            linear_sampling_kwargs={"absdelta": absdelta / 10.}
         )
 
         print("Minimizing...", file=sys.stderr)

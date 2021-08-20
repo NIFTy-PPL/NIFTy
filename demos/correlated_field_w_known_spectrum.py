@@ -88,7 +88,7 @@ if __name__ == "__main__":
             n_samples=n_samples,
             key=subkey,
             mirror_samples=True,
-            cg_kwargs={"absdelta": absdelta / 10.}
+            linear_sampling_kwargs={"absdelta": absdelta / 10.}
         )
         kl_vag_at_p = lambda p: kl_vag(p, tuple(mkl.samples))
         kl_metric_at = lambda p, t: kl_metric(p, tuple(mkl.samples), t)
