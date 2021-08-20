@@ -29,7 +29,7 @@ def flip_momentum(qp: QP) -> QP:
 
 # TODO: depend on current qs, sample from some kind of kinetic energy object
 # TODO: don't depend on current qs, make this a oneliner (i.e. delete this function) using random.normal or something
-def sample_momentum_from_diagonal(*, key, diagonal_momentum_covariance):
+def sample_momentum_from_diagonal(*, key, mass_matrix):
     """
     Draw a momentum sample from the kinetic energy of the hamiltonian.
 
@@ -41,8 +41,8 @@ def sample_momentum_from_diagonal(*, key, diagonal_momentum_covariance):
         the momentum covariance (also: mass matrix) to use for sampling.
         Diagonal matrix stored as an ndarray vector containing the entries of the diagonal.
     """
-    unit_normal_vector = random.normal(key, diagonal_momentum_covariance.shape)
-    return np.sqrt(1 / diagonal_momentum_covariance) * unit_normal_vector
+    unit_normal_vector = random.normal(key, mass_matrix.shape)
+    return np.sqrt(1 / mass_matrix) * unit_normal_vector
 
 
 # TODO: pass gradient instead of calculating gradient in function
@@ -94,7 +94,7 @@ def leapfrog_step(
     # TODO: apply last two args partially?
     #return potential_energy, momentum_fullstep, position_fullstep, step_length
     # TODO: delete step_length
-    return qp_fullstep, step_length
+    return qp_fullstep, step_length, mass_matrix
 
 
 # TODO: implement mass matrix
@@ -198,7 +198,7 @@ def generate_hmc_sample(*,
         position,
         potential_energy,
         potential_energy_gradient,
-        diagonal_momentum_covariance,
+        mass_matrix,
         number_of_integration_steps,
         step_length
     ):
@@ -213,7 +213,7 @@ def generate_hmc_sample(*,
         The the starting position of this step of the markov chain.
     potential_energy: Callable[[ndarray], float]
         The potential energy, which is the distribution to be sampled from.
-    diagonal_momentum_covariance: ndarray
+    mass_matrix: ndarray
         The mass matrix used in the kinetic energy
     number_of_integration_steps: int
         The number of steps the leapfrog integrator should perform.
@@ -221,9 +221,10 @@ def generate_hmc_sample(*,
         The step size (usually epsilon) for the leapfrog integrator.
     """
     key, subkey = random.split(key)
+    # TODO: danger: fix, covariance / mass_matrix relation
     momentum = sample_momentum_from_diagonal(
         key = subkey,
-        diagonal_momentum_covariance = diagonal_momentum_covariance
+        mass_matrix = mass_matrix
     )
     qp = QP(position=position, momentum=momentum)
 
@@ -231,13 +232,14 @@ def generate_hmc_sample(*,
     idx_ignoring_loop_body = lambda idx, args: loop_body(*args)
 
     # todo: write in python (maybe?)
-    new_qp, _step_length = fori_loop(
+    new_qp, _step_length, _mass_matrix = fori_loop(
         lower = 0,
         upper = number_of_integration_steps,
         body_fun = idx_ignoring_loop_body,
         init_val = (
             qp,
             step_length,
+            mass_matrix
         )
     )
 
@@ -252,7 +254,7 @@ def generate_hmc_sample(*,
         proposed_qp = proposed_qp,
         total_energy = lambda qp: (
             potential_energy(qp.position)
-            + np.sum(qp.momentum**2 / diagonal_momentum_covariance)
+            + np.sum(qp.momentum**2 / (2. * mass_matrix))
         )
     ), momentum
 
@@ -676,7 +678,7 @@ def make_kinetic_energy_fn_from_diag_mass_matrix(mass_matrix):
 
 def sample_momentum_from_diag_mass_matrix(key, diag_mass_matrix):
     key, subkey = random.split(key)
-    return tree_util.tree_map(lambda m: np.sqrt(m)*random.normal(subkey, m.shape), diag_mass_matrix)
+    return tree_util.tree_map(lambda m: random.normal(subkey, m.shape) / np.sqrt(m), diag_mass_matrix)
 
 
 class NUTSChain:
@@ -794,6 +796,7 @@ class HMCChain:
         self.potential_energy = potential_energy
 
         if not diag_mass_matrix == 1.:
+            # TODO: check diagonal_momentum_covariance name and implementaiton in accetpance and such
             raise NotImplementedError("Leapfrog integrator doesn't support custom mass matrix yet.")
 
         if isinstance(diag_mass_matrix, float):
