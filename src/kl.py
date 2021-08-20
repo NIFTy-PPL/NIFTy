@@ -219,9 +219,9 @@ def geometrically_sample_standard_hamiltonian(
     if not isinstance(hamiltonian, StandardHamiltonian):
         te = f"`hamiltonian` of invalid type; got '{type(hamiltonian)}'"
         raise TypeError(te)
-    from . import minimize
+    from .energy_operators import Gaussian
+    from .optimize import minimize
 
-    # TODO: @PhilippF Does it make sense to not start from a MGVI sample?
     inv_met_smpl, met_smpl = _sample_standard_hamiltonian(
         hamiltonian,
         primals,
@@ -231,46 +231,55 @@ def geometrically_sample_standard_hamiltonian(
         cg_kwargs=linear_sampling_kwargs
     )
 
-    nls_kwargs = non_linear_sampling_kwargs
-    nls_kwargs = nls_kwargs if nls_kwargs is not None else {}
+    if isinstance(non_linear_sampling_kwargs, dict):
+        nls_kwargs = non_linear_sampling_kwargs
+    elif non_linear_sampling_kwargs is None:
+        nls_kwargs = {}
+    else:
+        te = (
+            "`non_linear_sampling_kwargs` of invalid type"
+            "{type(non_linear_sampling_kwargs)}"
+        )
+        raise TypeError(te)
+    if "hessp" in nls_kwargs:
+        ve = "setting the hessian for an unknown function is invalid"
+        raise ValueError(ve)
     # Abort early if non-linear sampling is effectively disabled
     if nls_kwargs.get("maxiter") == 0:
         if mirror_linear_sample:
             return (inv_met_smpl, -inv_met_smpl)
         return (inv_met_smpl, )
 
+    lh_trafo_at_p = hamiltonian.likelihood.transformation(primals)
+
     def draw_non_linear_sample(lh, met_smpl, inv_met_smpl):
         x0 = primals + inv_met_smpl
 
-        def fun(x):
-            g = x - primals + lh.left_sqrt_metric(
+        def g(x):
+            return x - primals + lh.left_sqrt_metric(
                 primals,
-                lh.transformation(x) - lh.transformation(primals)
+                lh.transformation(x) - lh_trafo_at_p
             )
-            r = met_smpl - g
-            return r.dot(r) / 2.
 
-        core_nls_kwargs = {
-            # TODO: @PhilippF Is this really the correct metric?
-            "hessp": hamiltonian.metric,
-            # TODO: set sensible default convergence criteria
-        }
+        r2_half = Gaussian(met_smpl) @ g  # (g - met_smpl)**2 / 2
 
-        opt_state = minimize(
-            fun, x0=x0, method="NewtonCG", options=core_nls_kwargs | nls_kwargs
-        )
+        options = nls_kwargs.copy()
+        options["hessp"] = r2_half.metric
+        # TODO: set sensible default convergence criteria
 
-        return opt_state
+        opt_state = minimize(r2_half, x0=x0, method="NewtonCG", options=options)
 
-    opt_state_smpl1 = draw_non_linear_sample(
+        return opt_state.x
+
+    smpl1 = draw_non_linear_sample(
         hamiltonian.likelihood, met_smpl, inv_met_smpl
     )
     if not mirror_linear_sample:
-        return (opt_state_smpl1.x - primals, )
-    opt_state_smpl2 = draw_non_linear_sample(
+        return (smpl1 - primals, )
+    smpl2 = draw_non_linear_sample(
         hamiltonian.likelihood, -met_smpl, -inv_met_smpl
     )
-    return (opt_state_smpl1.x - primals, opt_state_smpl2.x - primals)
+    return (smpl1 - primals, smpl2 - primals)
 
 
 class SampledKL():
