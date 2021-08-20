@@ -71,7 +71,7 @@ def Gaussian(
 
     def hamiltonian(primals):
         p_res = primals - data
-        return 0.5 * np.sum(p_res * noise_cov_inv(p_res))
+        return 0.5 * p_res.ravel().dot(noise_cov_inv(p_res).ravel())
 
     def metric(primals, tangents):
         return noise_cov_inv(tangents)
