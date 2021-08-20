@@ -110,7 +110,6 @@ def _sample_standard_hamiltonian(
     # antithetically.
     met_smpl = nll_smpl + prr_smpl
     if from_inverse:
-        # TODO: Set sensible convergence criteria
         inv_metric_at_p = partial(
             cg, Partial(hamiltonian.metric, primals), **cg_kwargs
         )

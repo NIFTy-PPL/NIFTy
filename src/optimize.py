@@ -5,6 +5,7 @@ from jax.tree_util import Partial, tree_leaves, tree_map, tree_reduce
 
 from typing import Any, Callable, Mapping, Optional, Tuple, Union, NamedTuple
 
+from .likelihood import doc_from
 from .sugar import norm as jft_norm
 from .sugar import sum_of_squares
 
@@ -81,21 +82,35 @@ def cg(
     mat,
     j,
     x0=None,
+    *,
     absdelta=None,
     resnorm=None,
     norm_ord=None,
+    tol=1e-5,  # taken from SciPy's linalg.cg
+    atol=0.,
     miniter=None,
     maxiter=None,
     name=None,
     time_threshold=None
 ):
+    """Solve `mat(x) = j` using Conjugate Gradient. `mat` must be callable and
+    represent a hermitian, positive definite matrix.
+
+    Notes
+    -----
+    If set, the parameters `absdelta` and `resnorm` always take precedence over
+    `tol` and `atol`.
+    """
     norm_ord = 2 if norm_ord is None else norm_ord
-    maxiter_fallback = 20 * size(j)  # Inspired by SciPy's NewtonCG minimzer
-    maxiter = min((200, maxiter_fallback)) if maxiter is None else maxiter
-    miniter = min((5, maxiter)) if miniter is None else miniter
+    maxiter_fallback = 20 * size(j)  # taken from SciPy's NewtonCG minimzer
+    miniter = min((5, maxiter if maxiter is not None else maxiter_fallback)) if miniter is None else miniter
+    maxiter = max((min((200, maxiter_fallback)), miniter)) if maxiter is None else maxiter
+
+    if absdelta is None and resnorm is None:  # fallback convergence criterion
+        resnorm = np.maximum(tol * jft_norm(j, ord=norm_ord, ravel=True), atol)
 
     common_dtp = common_type(j)
-    eps = 2. * np.finfo(common_dtp).eps
+    eps = 3. * np.finfo(common_dtp).eps  # taken from SciPy's NewtonCG minimzer
 
     if x0 is None:
         pos = 0. * j
@@ -171,13 +186,17 @@ def cg(
     return pos, info
 
 
+@doc_from(cg)
 def static_cg(
     mat,
     j,
     x0=None,
+    *,
     absdelta=None,
     resnorm=None,
     norm_ord=None,
+    tol=1e-5,  # taken from SciPy's linalg.cg
+    atol=0.,
     miniter=None,
     maxiter=None,
     name=None,
@@ -186,12 +205,15 @@ def static_cg(
     from jax.lax import cond, while_loop
 
     norm_ord = 2 if norm_ord is None else norm_ord
-    maxiter_fallback = 20 * size(j)  # Inspired by SciPy's NewtonCG minimzer
-    maxiter = min((200, maxiter_fallback)) if maxiter is None else maxiter
-    miniter = min((5, maxiter)) if miniter is None else miniter
+    maxiter_fallback = 20 * size(j)  # taken from SciPy's NewtonCG minimzer
+    miniter = min((5, maxiter if maxiter is not None else maxiter_fallback)) if miniter is None else miniter
+    maxiter = max((min((200, maxiter_fallback)), miniter)) if maxiter is None else maxiter
+
+    if absdelta is None and resnorm is None:  # fallback convergence criterion
+        resnorm = np.maximum(tol * jft_norm(j, ord=norm_ord, ravel=True), atol)
 
     common_dtp = common_type(j)
-    eps = 2. * np.finfo(common_dtp).eps
+    eps = 3. * np.finfo(common_dtp).eps  # Inspired by SciPy's NewtonCG minimzer
 
     def continue_condition(v):
         return v["info"] < -1
@@ -337,7 +359,7 @@ def _newton_cg(
         if old_fval is not None:
             cg_absdelta = energy_reduction_factor * (old_fval - energy)
         else:
-            cg_absdelta = np.inf if absdelta is None else absdelta / 100.
+            cg_absdelta = None if absdelta is None else absdelta / 100.
         mag_g = jft_norm(g, ord=1, ravel=True)
         # SciPy scales its CG resnorm with `min(0.5, sqrt(mag_g))`
         # cg_resnorm = mag_g * np.sqrt(mag_g).clip(None, 0.5)
