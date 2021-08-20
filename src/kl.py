@@ -377,7 +377,7 @@ def MetricKL(
         raise TypeError(te)
 
     if _samples is None:
-        draw = Partial(
+        draw = partial(
             sample_standard_hamiltonian,
             hamiltonian=hamiltonian,
             primals=primals,
@@ -431,7 +431,7 @@ def GeoMetricKL(
         raise TypeError(te)
 
     if _samples is None:
-        draw = Partial(
+        draw = partial(
             geometrically_sample_standard_hamiltonian,
             hamiltonian=hamiltonian,
             primals=primals,

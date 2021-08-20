@@ -231,8 +231,8 @@ class Likelihood():
         return self.left_sqrt_metric_tangents_shape
 
     def new(
-        self, energy: Callable, transformation: Callable,
-        left_sqrt_metric: Callable, metric: Callable
+        self, energy: Callable, transformation: Optional[Callable],
+        left_sqrt_metric: Optional[Callable], metric: Optional[Callable]
     ):
         """Instantiates a new likelihood with the same `lsm_tangents_shape`.
 
