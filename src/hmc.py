@@ -835,10 +835,12 @@ class HMCChain:
         if self.dbg_info:
             momenta_before = tree_util.tree_map(lambda arr: np.ones((n,) + arr.shape), self.position)
             momenta_after = tree_util.tree_map(lambda arr: np.ones((n,) + arr.shape), self.position)
+            rejected_position_samples = tree_util.tree_map(lambda arr: np.ones((n,) + arr.shape), self.position)
+            rejected_momenta = tree_util.tree_map(lambda arr: np.ones((n,) + arr.shape), self.position)
 
         def _body_fun(idx, state):
             if self.dbg_info:
-                prev_position, key, samples, acceptance, momenta_before, momenta_after = state
+                prev_position, key, samples, acceptance, momenta_before, momenta_after, rejected_position_samples, rejected_momenta = state
             else:
                 prev_position, key, samples, acceptance = state
 
@@ -849,16 +851,16 @@ class HMCChain:
                 position = prev_position,
                 potential_energy = self.potential_energy,
                 potential_energy_gradient = grad(self.potential_energy),
-                diagonal_momentum_covariance = self.diag_mass_matrix,
+                mass_matrix = self.diag_mass_matrix,
                 number_of_integration_steps = self.n_of_integration_steps,
                 step_length = self.eps
             )
 
             # TODO: what to do with the other one (it's rejected or just the previous sample in case the new one was accepted)
-            next_qp = cond(
+            next_qp, rejected_qp = cond(
                 pred = was_accepted,
-                true_fun = lambda tup: tup[1],
-                false_fun = lambda tup: tup[0],
+                true_fun = lambda tup: (tup[1], tup[0]),
+                false_fun = lambda tup: (tup[0], tup[1]),
                 operand = qp_old_and_proposed_sample
             )
 
@@ -867,17 +869,19 @@ class HMCChain:
             if self.dbg_info:
                 momenta_before = tree_util.tree_map(lambda ts, val: ts.at[idx].set(val), momenta_before, unintegrated_momentum)
                 momenta_after = tree_util.tree_map(lambda ts, val: ts.at[idx].set(val), momenta_after, next_qp.momentum)
+                rejected_position_samples = tree_util.tree_map(lambda ts, val: ts.at[idx].set(val), rejected_position_samples, rejected_qp.position)
+                rejected_momenta = tree_util.tree_map(lambda ts, val: ts.at[idx].set(val), rejected_position_samples, rejected_qp.momentum)
 
             updated_state = (next_qp.position, key, samples, acceptance)
 
             if self.dbg_info:
-                updated_state = updated_state + (momenta_before, momenta_after)
+                updated_state = updated_state + (momenta_before, momenta_after, rejected_position_samples, rejected_momenta)
 
             return updated_state
 
         loop_initial_state = (self.position, self.key, samples, acceptance)
         if self.dbg_info:
-            loop_initial_state = loop_initial_state + (momenta_before, momenta_after)
+            loop_initial_state = loop_initial_state + (momenta_before, momenta_after, rejected_position_samples, rejected_momenta)
         
         return_fn = lambda: fori_loop(lower=0, upper=n, body_fun=_body_fun, init_val=loop_initial_state)
         if self.compile:
