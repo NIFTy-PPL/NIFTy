@@ -3,6 +3,7 @@ import jax.tree_util as tree_util
 from jax import lax, random, jit, partial, flatten_util, grad
 from .disable_jax_control_flow import cond, while_loop, fori_loop
 from collections import namedtuple
+from jax.scipy.special import expit
 
 _DEBUG_FLAG = False
 
@@ -265,12 +266,12 @@ def generate_hmc_sample(*,
 
 # A datatype carrying tree metadata
 # left, right: endpoints of the trees path
-# weight: sum over all exp(-H(q, p)) in the trees path
+# logweight: sum over all -H(q, p) in the trees path
 # proposal_candidate: random sample from the trees path, distributed as exp(-H(q, p))
 # turning: TODO: whole tree or also subtrees??
 # turning currently means either the left, right endpoint are a uturn or any subtree is a uturn, see TODO above
 # TODO: rename proposal_candidate, taking into account that NUTS is not Metropolis-Hastings.
-Tree = namedtuple('Tree', ['left', 'right', 'weight', 'proposal_candidate', 'turning', 'depth'])
+Tree = namedtuple('Tree', ['left', 'right', 'logweight', 'proposal_candidate', 'turning', 'depth'])
 
 
 def _impl_build_tree_recursive(initial_qp, eps, depth, direction, stepper):
@@ -382,7 +383,7 @@ def generate_nuts_sample(initial_qp, key, eps, maxdepth, stepper, potential_ener
     Combination of samples from two trees, Sampling from trajectories according to target distribution in this paper's Appendix: https://arxiv.org/abs/1701.02434
     """
     # initialize depth 0 tree, containing 2**0 = 1 points
-    current_tree = Tree(left=initial_qp, right=initial_qp, weight=np.exp(-total_energy_of_qp(initial_qp, potential_energy, kinetic_energy)), proposal_candidate=initial_qp, turning=False, depth=0)
+    current_tree = Tree(left=initial_qp, right=initial_qp, logweight=-total_energy_of_qp(initial_qp, potential_energy, kinetic_energy), proposal_candidate=initial_qp, turning=False, depth=0)
 
     # loop stopping condition
     stop = False
@@ -484,7 +485,7 @@ def iterative_build_tree(key, initial_tree, depth, eps, go_right, stepper, poten
         chosen = cond(
             pred = n == 0,
             # first iteration: create the depth 0 tree
-            true_fun = lambda c_and_z: Tree(left=z, right=z, weight=np.exp(-total_energy_of_qp(z, potential_energy, kinetic_energy)), proposal_candidate=z, turning=False, depth=depth),
+            true_fun = lambda c_and_z: Tree(left=z, right=z, logweight=-total_energy_of_qp(z, potential_energy, kinetic_energy), proposal_candidate=z, turning=False, depth=depth),
             # all later iterations: add new point to `chosen` tree
             false_fun = lambda c_and_z: add_single_qp_to_tree(subkey, chosen, z, go_right, potential_energy, kinetic_energy),
             operand = (chosen, z)
@@ -540,7 +541,7 @@ def iterative_build_tree(key, initial_tree, depth, eps, go_right, stepper, poten
     return Tree(
         left = chosen.left,
         right = chosen.right,
-        weight = chosen.weight,
+        logweight = chosen.logweight,
         proposal_candidate = chosen.proposal_candidate,
         turning = turning,
         depth = chosen.depth
@@ -561,15 +562,17 @@ def add_single_qp_to_tree(key, tree, qp, go_right, potential_energy, kinetic_ene
         operand = (tree, qp)
     )
     key, subkey = random.split(key)
-    total_weight = tree.weight + np.exp(-total_energy_of_qp(qp, potential_energy, kinetic_energy))
-    prob_of_keeping_old = tree.weight / total_weight
+    qp_logweight = -total_energy_of_qp(qp, potential_energy, kinetic_energy)
+    total_logweight = np.logaddexp(tree.logweight, qp_logweight)
+    # expit(x-y) := 1 / (1 + e^(-(x-y))) = 1 / (1 + e^(y-x)) = e^x / (e^y + e^x)
+    prob_of_keeping_old = expit(tree.logweight - qp_logweight)
     proposal_candidate = cond(
         pred = random.bernoulli(subkey, prob_of_keeping_old),
         true_fun = lambda old_and_new: old_and_new[0],
         false_fun = lambda old_and_new: old_and_new[1],
         operand = (tree.proposal_candidate, qp)
     )
-    return Tree(left, right, total_weight, proposal_candidate, tree.turning, tree.depth)
+    return Tree(left, right, total_logweight, proposal_candidate, tree.turning, tree.depth)
 
 
 def merge_trees(key, current_subtree, new_subtree, go_right, turning_hint):
@@ -577,9 +580,11 @@ def merge_trees(key, current_subtree, new_subtree, go_right, turning_hint):
     # WARNING: only to be called from extend_tree_iterative, with turning_hint logic correct
     # 5. decide which sample to take based on total weights (merge trees)
     key, subkey = random.split(key)
-    print(f"prob of choosing new sample: {new_subtree.weight / (new_subtree.weight + current_subtree.weight)}")
+    # expit(x-y) := 1 / (1 + e^(-(x-y))) = 1 / (1 + e^(y-x)) = e^x / (e^y + e^x)
+    prob_of_choosing_new = expit(new_subtree.logweight - current_subtree.logweight)
+    print(f"prob of choosing new sample: {prob_of_choosing_new}")
     new_sample = cond(
-        pred = random.bernoulli(subkey, new_subtree.weight / (new_subtree.weight + current_subtree.weight)),
+        pred = random.bernoulli(subkey, prob_of_choosing_new),
         # choose the new sample
         true_fun = lambda current_and_new_tup: current_and_new_tup[1],
         # choose the old sample
@@ -593,7 +598,7 @@ def merge_trees(key, current_subtree, new_subtree, go_right, turning_hint):
         false_fun = lambda op: (op['new_subtree'].left, op['current_subtree'].right),
         operand = {'current_subtree': current_subtree, 'new_subtree': new_subtree}
     )
-    merged_tree = Tree(left=left, right=right, weight=new_subtree.weight + current_subtree.weight, proposal_candidate=new_sample, turning=turning_hint, depth=current_subtree.depth + 1)
+    merged_tree = Tree(left=left, right=right, logweight=np.logaddexp(new_subtree.logweight, current_subtree.logweight), proposal_candidate=new_sample, turning=turning_hint, depth=current_subtree.depth + 1)
     return merged_tree
 
 
