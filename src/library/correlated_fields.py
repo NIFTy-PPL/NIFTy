@@ -861,8 +861,8 @@ class CorrelatedFieldMaker:
 
     def moment_slice_to_average(self, fluctuations_slice_mean, nsamples=1000):
         """Translates the slice fluctuations into average flucutations to
-        use single space results in multi-space setups. 
-        
+        use single space results in multi-space setups.
+
         This method allows to use single-space reconstruction results to set
         the hyperparameters in multi-space settings. Given the results of a
         reconstruction in a single space setting (say for example an image at a
@@ -906,7 +906,7 @@ class CorrelatedFieldMaker:
         >>> cf.add_fluctuations(**freq_params) # An optional second space (time)
         >>> cf.set_amplitude_total_offset(...) # Set zero mode of the spectrum
         >>> avg_fluct = cf.moment_slice_to_average(slice_fluct)
-        >>> cf.add_fluctuations(fluctuations=(avg_fluct, ...), ...) 
+        >>> cf.add_fluctuations(fluctuations=(avg_fluct, ...), ...)
         >>> cf.finalize()
         """
         fluctuations_slice_mean = float(fluctuations_slice_mean)
