@@ -29,6 +29,7 @@ try:
 except ImportError:
     __all__ = []
 
+
 def _jax2np(obj):
     if isinstance(obj, dict):
         return {kk: np.array(vv) for kk, vv in obj.items()}
@@ -92,13 +93,12 @@ class JaxOperator(Operator):
     def _check_shape(shp_tgt, shp_jax):
         if shp_tgt != shp_jax:
             raise ValueError(("Output shapes do not match:\n"
-                             f"Target shape is\t\t{shp_tgt}\n"
-                             f"Jax function returns\t{shp_jax}"))
+                              f"Target shape is\t\t{shp_tgt}\n"
+                              f"Jax function returns\t{shp_jax}"))
 
     def _simplify_for_constant_input_nontrivial(self, c_inp):
         func2 = lambda x: self._func({**x, **c_inp.val})
-        dom = {kk: vv for kk, vv in self._domain.items()
-                if kk not in c_inp.keys()}
+        dom = {kk: vv for kk, vv in self._domain.items() if kk not in c_inp.keys()}
         return None, JaxOperator(dom, self._target, func2)
 
 
@@ -143,7 +143,7 @@ class JaxLinearOperator(LinearOperator):
             if isinstance(domain, DomainTuple):
                 inp = SimpleNamespace(shape=domain.shape, dtype=domain_dtype)
             else:
-                inp = {kk: SimpleNameSpace(shape=domain[kk].shape, dtype=domain_dtype[kk])
+                inp = {kk: SimpleNamespace(shape=domain[kk].shape, dtype=domain_dtype[kk])
                        for kk in domain.keys()}
             func_T = jax.jit(jax.linear_transpose(func, inp))
         elif domain_dtype is None and func_T is not None:
@@ -202,7 +202,6 @@ class JaxLikelihoodEnergyOperator(LikelihoodEnergyOperator):
         return self._dt, self._trafo
 
     def apply(self, x):
-        from ..linearization import Linearization
         from ..sugar import is_linearization, makeField
         from .simple_linear_operators import VdotOperator
         self._check_input(x)
@@ -219,8 +218,7 @@ class JaxLikelihoodEnergyOperator(LikelihoodEnergyOperator):
 
     def _simplify_for_constant_input_nontrivial(self, c_inp):
         func2 = lambda x: self._func({**x, **c_inp.val})
-        dom = {kk: vv for kk, vv in self._domain.items()
-                if kk not in c_inp.keys()}
+        dom = {kk: vv for kk, vv in self._domain.items() if kk not in c_inp.keys()}
         _, trafo = self._trafo.simplify_for_constant_input(c_inp)
         if isinstance(self._dt, dict):
             dt = {kk: self._dt[kk] for kk in dom.keys()}
