@@ -860,6 +860,55 @@ class CorrelatedFieldMaker:
         return self.amplitude_total_offset
 
     def moment_slice_to_average(self, fluctuations_slice_mean, nsamples=1000):
+        """Translates the slice fluctuations into average flucutations to
+        use single space results in multi-space setups. 
+        
+        This method allows to use single-space reconstruction results to set
+        the hyperparameters in multi-space settings. Given the results of a
+        reconstruction in a single space setting (say for example an image at a
+        specific frequency or a specific moment in time), it is possible to use
+        the fluctuations of these results to determine the fluctuations of this
+        (sub-)space in a multi-space setup (e.g. when reconstructing a
+        collection of images over a frequency range or in a time interval). To
+        do so, the single-space fluctuations have to be translated to match
+        their multi-space counterparts, since the single-space results represent
+        a slice of the multi-space setting. The fluctuations in the multi-space
+        setting represent average fluctuations (i.E. the variability that
+        remains when integrating over all other spaces) and therefore the slice
+        fluctuations have to be rescaled. After all new sub-spaces (say time
+        and/or frequency) have been added to the model, this method can be used
+        to obtain the mean of `fluctuations` of the last sub-space from the
+        fluctuations given from the single space result. Note that to properly
+        use this method it should be called only after all other sub-spaces
+        (time/frequency) as well as the `amplitude_total_offset` have been set
+        in the `CorrelatedFieldMaker` (see example below).
+
+        Parameters
+        ----------
+        fluctuations_slice_mean : float
+            Mean fluctuations of the single space reconstruction that is a slice
+            of this multi-space setting.
+        nsamples : int, optional
+            Number of samples used internally to estimate the rescaling of the
+            fluctuations. Default is 1000.
+
+        Returns
+        -------
+        out : float
+            Mean of the average fluctuations that can be used as an input to add
+            the final sub-space matching the space used for the slice case.
+
+        Examples
+        --------
+        >>> slice_fluct = ... # Fluctuations obtained from the single-space run
+        >>> cf = ift.CorrelatedFieldMaker(...) # The cf of the multi-space case
+        >>> cf.add_fluctuations(...) # Add a sub-space (e.g. frequency)
+        >>> cf.add_fluctuations(**freq_params) # An optional second space (time)
+        >>> cf.set_amplitude_total_offset(...) # Set zero mode of the spectrum
+        >>> avg_fluct = cf.moment_slice_to_average(slice_fluct)
+        >>> cf.add_fluctuations(fluctuations=(avg_fluct, ...), ...) 
+        >>> cf.finalize()
+        """
         fluctuations_slice_mean = float(fluctuations_slice_mean)
         if not fluctuations_slice_mean > 0:
             msg = "fluctuations_slice_mean must be greater zero; got {!r}"
