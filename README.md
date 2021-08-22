@@ -144,7 +144,7 @@ Contributors
 - Matteo Guardiani
 - Martin Reinecke
 - [Philipp Arras](https://philipp-arras.de)
-- Philipp Frank
+- [Philipp Frank](http://www.ph-frank.de)
 - [Reimar Heinrich Leike](https://wwwmpa.mpa-garching.mpg.de/~reimar/)
 - Simon Ding
 - Vincent Eberle
@@ -157,7 +157,7 @@ Contributors
 - Lukas Platz
 - Martin Reinecke
 - [Philipp Arras](https://wwwmpa.mpa-garching.mpg.de/~parras/)
-- Philipp Frank
+- [Philipp Frank](http://www.ph-frank.de)
 - Philipp Haim
 - [Reimar Heinrich Leike](https://wwwmpa.mpa-garching.mpg.de/~reimar/)
 - Rouven Lemmerz
@@ -177,7 +177,7 @@ Contributors
 - Max-Niklas Newrzella
 - Natalia
 - [Philipp Arras](https://wwwmpa.mpa-garching.mpg.de/~parras/)
-- Philipp Frank
+- [Philipp Frank](http://www.ph-frank.de)
 - Philipp Haim
 - Reimar Heinrich Leike
 - Sebastian Hutschenreuter
@@ -193,7 +193,7 @@ Contributors
 - Martin Reinecke
 - Mihai Baltac
 - [Philipp Arras](https://wwwmpa.mpa-garching.mpg.de/~parras/)
-- Philipp Frank
+- [Philipp Frank](http://www.ph-frank.de)
 - Reimar Heinrich Leike
 - Silvan Streit
 - [Torsten Enßlin](https://wwwmpa.mpa-garching.mpg.de/~ensslin/)
@@ -208,7 +208,7 @@ Contributors
 - Mihai Baltac
 - Natalia
 - [Philipp Arras](https://wwwmpa.mpa-garching.mpg.de/~parras/)
-- Philipp Frank
+- [Philipp Frank](http://www.ph-frank.de)
 - Reimar Heinrich Leike
 - Matevz Sraml
 - Theo Steininger
