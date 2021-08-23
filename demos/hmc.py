@@ -308,7 +308,44 @@ m, _info = jax.scipy.sparse.linalg.cg(D_inv, j)
 
 # %%
 
+# TODO fix labels
+plt.plot(signal_response(m), label='signal response of mean')
+plt.plot(signal_response_truth, label='true signal response')
+plt.legend()
+plt.title('Wiener Filter')
+
+# %%
+def sample_from_d_inv(key):
+    s_inv_key, rnr_key = random.split(key)
+    s_inv_smpl = random.normal(s_inv_key, pos_truth.shape)
+    # random.normal sample from dataspace and then R^\dagger \sqrt{N^{-1}}
+    # jax.eval_shape(signal_response, pos_truth)
+    rnr_smpl = signal_response_dagger(noise_cov_inv_sqrt(random.normal(rnr_key, signal_response_truth.shape)))
+    return s_inv_smpl + rnr_smpl
+
+def sample_from_d(key):
+    d_inv_smpl = sample_from_d_inv(key)
+    # TODO: what to do here?
+    return jft.cg(D_inv, d_inv_smpl, maxiter=32)[0]
+
+wiener_samples = np.array(list(map(
+    lambda key: signal_response(sample_from_d(key) + m),
+    random.split(key, 20)
+)))
+
+# %%
+wiener_sample_mean = np.mean(wiener_samples, axis=0)
+wiener_sample_std = np.std(wiener_samples, axis=0)
+
+plt.plot(wiener_sample_mean)
 plt.plot(signal_response(m))
-plt.plot(signal_response_truth)
+for wsmpl in wiener_samples:
+    pass
+    plt.plot(wsmpl, color='r', linewidth=0.1)
+
+plt.fill_between(np.arange(len(wiener_sample_mean)), y1=wiener_sample_mean - wiener_sample_std, y2=wiener_sample_mean + wiener_sample_std, color='grey', alpha=0.5)
+
+plt.plot(np.mean(wiener_samples, axis=0), label='signal response of mean of posterior samples')
+plt.legend()
 
 # %%
