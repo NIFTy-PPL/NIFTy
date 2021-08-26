@@ -184,12 +184,12 @@ gkl_pos = pos
 b_space_smpls = np.array([(mkl_pos + smpl).val for smpl in mkl.samples])
 
 delta = .1
-x = np.arange(-15.0, 15.0, delta)
-y = np.arange(0.0, 15.0, delta)
+x = np.arange(-4.0, 4.0, delta)
+y = np.arange(-4.0, 4.0, delta)
 X, Y = np.meshgrid(x, y)
 XY = np.array([X, Y]).T
 xy = XY.reshape((XY.shape[0] * XY.shape[1], 2))
-es = np.exp(-lax.map(nll, xy)).reshape(XY.shape[:2]).T
+es = np.exp(-lax.map(ham, xy)).reshape(XY.shape[:2]).T
 
 fig, ax = plt.subplots()
 contour = ax.contour(X, Y, es)
@@ -200,14 +200,6 @@ plt.show()
 
 # %%
 b_space_smpls = np.array([(gkl_pos + smpl).val for smpl in gkl.samples])
-
-delta = .1
-x = np.arange(-4.0, 4.0, delta)
-y = np.arange(4.0, 4.0, delta)
-X, Y = np.meshgrid(x, y)
-XY = np.array([X, Y]).T
-xy = XY.reshape((XY.shape[0] * XY.shape[1], 2))
-es = np.exp(-lax.map(ham, xy)).reshape(XY.shape[:2]).T
 
 fig, ax = plt.subplots()
 contour = ax.contour(X, Y, es)
