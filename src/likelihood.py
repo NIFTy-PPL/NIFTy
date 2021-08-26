@@ -61,16 +61,12 @@ class ShapeWithDtype():
         swd : instance of ShapeWithDtype
             Instance storing the shape and data-type of `element`.
         """
-        import numpy as onp
+        from .optimize import get_dtype
 
         if not all_leaves((element, )):
             ve = "tree is not flat and still contains leaves"
             raise ValueError(ve)
-        if isinstance(element, (np.ndarray, onp.ndarray)):
-            dtp = element.dtype
-        else:
-            dtp = onp.common_type(element)
-        return cls(np.shape(element), dtp)
+        return cls(np.shape(element), get_dtype(element))
 
     @property
     def shape(self):
