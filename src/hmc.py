@@ -43,7 +43,7 @@ def sample_momentum_from_diagonal(*, key, mass_matrix):
         Diagonal matrix stored as an ndarray vector containing the entries of the diagonal.
     """
     unit_normal_vector = random.normal(key, mass_matrix.shape)
-    return np.sqrt(1 / mass_matrix) * unit_normal_vector
+    return np.sqrt(mass_matrix) * unit_normal_vector
 
 
 # TODO: pass gradient instead of calculating gradient in function
@@ -683,7 +683,7 @@ def make_kinetic_energy_fn_from_diag_mass_matrix(mass_matrix):
 
 def sample_momentum_from_diag_mass_matrix(key, diag_mass_matrix):
     key, subkey = random.split(key)
-    return tree_util.tree_map(lambda m: random.normal(subkey, m.shape) / np.sqrt(m), diag_mass_matrix)
+    return tree_util.tree_map(lambda m: np.sqrt(m) * random.normal(subkey, m.shape), diag_mass_matrix)
 
 
 class NUTSChain:
