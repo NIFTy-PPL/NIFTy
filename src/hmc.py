@@ -583,6 +583,7 @@ def add_single_qp_to_tree(key, tree, qp, go_right, potential_energy, kinetic_ene
     )
     key, subkey = random.split(key)
     qp_logweight = -total_energy_of_qp(qp, potential_energy, kinetic_energy)
+    # ln(e^-H_1 + e^-H_2)
     total_logweight = np.logaddexp(tree.logweight, qp_logweight)
     # expit(x-y) := 1 / (1 + e^(-(x-y))) = 1 / (1 + e^(y-x)) = e^x / (e^y + e^x)
     prob_of_keeping_old = expit(tree.logweight - qp_logweight)
@@ -707,14 +708,14 @@ def sample_momentum_from_diag_mass_matrix(key, diag_mass_matrix):
 
 
 class NUTSChain:
-    def __init__(self, initial_position, potential_energy, diag_mass_matrix, eps, maxdepth, rngseed, compile=True, dbg_info=False):
+    def __init__(self, initial_position, potential_energy, diag_mass_matrix, eps, maxdepth, rngseed, compile=True, dbg_info=False, signal_response=lambda x: x):
         self.position = initial_position
 
         # TODO: typechecks?
         self.potential_energy = potential_energy
 
-        if not diag_mass_matrix == 1.:
-            raise NotImplementedError("Leapfrog integrator doesn't support custom mass matrix yet.")
+        #if not diag_mass_matrix == 1.:
+        #    raise NotImplementedError("Leapfrog integrator doesn't support custom mass matrix yet.")
 
         if isinstance(diag_mass_matrix, float):
             self.diag_mass_matrix = tree_util.tree_map(lambda arr: np.full(arr.shape, diag_mass_matrix), initial_position)
@@ -746,6 +747,8 @@ class NUTSChain:
         self.compile = compile
 
         self.dbg_info = dbg_info
+
+        self.signal_response = signal_response
 
 
     def generate_n_samples(self, n):
@@ -807,10 +810,75 @@ class NUTSChain:
             loop_initial_state = loop_initial_state + (momenta_before, momenta_after, depths, trees)
         
         return_fn = lambda: fori_loop(lower=0, upper=n, body_fun=_body_fun, init_val=loop_initial_state)
+
         if self.compile:
-            return jit(return_fn)()
+            results = jit(return_fn)()
         else:
-            return return_fn()
+            results = return_fn()
+        
+        names = ('position', 'key', 'samples')
+        if self.dbg_info:
+            names = names + ('momenta_before', 'momenta_after', 'depths', 'trees')
+
+        self.results = {k: v for (k, v) in zip(names, results)}
+        self.results['response'] = lax.map(self.signal_response, self.results['samples'])
+
+        return results
+
+
+    def plot_1d_sample_mean(self, ax, **kwargs):
+        response = self.results['response']
+        kwargs['label'] = kwargs.get('label', 'mean of signal response of samples')
+        if len(response.shape) == 2:
+            resp_mean = np.mean(response, axis=0)
+            ax.plot(resp_mean, **kwargs)
+        else:
+            raise NotImplementedError
+
+
+    def plot_response_ts(self, ax, **kwargs):
+        response = self.results['response']
+        if len(response.shape) == 1:
+            ax.plot(response, **kwargs)
+        else:
+            raise NotImplementedError
+
+
+    def plot_1d_hist(self, ax, **kwargs):
+        response = self.results['response']
+        if len(response.shape) != 1:
+            raise NotImplementedError
+        plot_prob = kwargs.pop('plot_prob', False)
+        _, bins, _ = ax.hist(response, density=kwargs.pop('density', plot_prob), **kwargs)
+        if plot_prob:
+            y = np.exp(-self.potential_energy(bins))
+            Z = np.trapz(y, bins)
+            if not np.isfinite(Z):
+                raise RuntimeError
+            y = y / Z
+            ax.plot(bins, y, label='probability density')
+            ax.legend()
+
+
+    def plot_ham_ts(self, ax, **kwargs):
+        xlabel = kwargs.pop('xlabel', 'iteration number')
+        title = kwargs.pop('title', 'potential energy time series')
+        samples = self.results['samples']
+        ham_ts = lax.map(self.potential_energy, samples)
+        ax.plot(ham_ts, **kwargs)
+        ax.set_xlabel(xlabel)
+        ax.set_title(title)
+
+
+    def plot_depth_hist(self, ax, **kwargs):
+        xlabel = kwargs.pop('xlabel', 'depth')
+        title = kwargs.pop('title', 'tree depth histogram')
+        depths = self.results['depths']
+        bins = np.arange(1, depths.max() + 1.5) - 0.5
+        ax.hist(depths, bins, **kwargs)
+        ax.set_xticks(bins+0.5)
+        ax.set_xlabel(xlabel)
+        ax.set_title(title)
 
 
 class HMCChain:
