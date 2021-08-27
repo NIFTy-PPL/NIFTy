@@ -10,11 +10,22 @@ _DEBUG_FLAG = False
 if _DEBUG_FLAG:
     from jax.experimental import host_callback
 
+    _DEBUG_TREE_END_IDXS = []
+    _DEBUG_SUBTREE_END_IDXS = []
     _DEBUG_STORE = []
 
     def _DEBUG_ADD_QP(qp):
         global _DEBUG_STORE
         _DEBUG_STORE.append(qp)
+    
+    def _DEBUG_FINISH_TREE(dummy_arg):
+        global _DEBUG_TREE_END_IDXS
+        _DEBUG_TREE_END_IDXS.append(len(_DEBUG_STORE))
+
+    def _DEBUG_FINISH_SUBTREE(dummy_arg):
+        global _DEBUG_SUBTREE_END_IDXS
+        _DEBUG_SUBTREE_END_IDXS.append(len(_DEBUG_STORE))
+
 
 ###
 ### COMMON FUNCTIONALITY
@@ -422,6 +433,11 @@ def generate_nuts_sample(initial_qp, key, eps, maxdepth, stepper, potential_ener
         return (key, current_tree, j, stop)
 
     _key, current_tree, _j, _stop = while_loop(_cond_fn, _body_fun, loop_state)
+
+    global _DEBUG_FLAG
+    if _DEBUG_FLAG:
+        host_callback.call(_DEBUG_FINISH_TREE, None)
+
     return current_tree
 
 
@@ -536,6 +552,10 @@ def iterative_build_tree(key, initial_tree, depth, eps, go_right, stepper, poten
         body_fun=_loop_body,
         init_val=(0, False, chosen, z, S, key)
     )
+
+    global _DEBUG_FLAG
+    if _DEBUG_FLAG:
+        host_callback.call(_DEBUG_FINISH_SUBTREE, None)
 
     # TODO: remove this and set chosen.turning inside the loop, or: make loop state essentially just (n, chosen)
     return Tree(
