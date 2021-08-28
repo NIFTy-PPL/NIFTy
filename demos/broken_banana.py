@@ -70,22 +70,21 @@ b = 0.1
 
 SCALE = 10.
 
-signal_response = lambda s: banana_helper_phi_b(b, SCALE*s)
+signal_response = lambda s: banana_helper_phi_b(b, SCALE * s)
 nll = jft.Gaussian(
     np.zeros(2), lambda x: x / np.array([100., 1.])
 ) @ signal_response
 nll = nll.jit()
 nll_vg = jit(value_and_grad(nll))
 
-# %%
 ham = jft.StandardHamiltonian(nll)
 ham = ham.jit()
 ham_vg = jit(value_and_grad(ham))
 
 # %%
 n_pix_sqrt = 1000
-x = np.linspace(-30/SCALE, 30/SCALE, n_pix_sqrt)
-y = np.linspace(-65/SCALE, 15/SCALE, n_pix_sqrt)
+x = np.linspace(-30 / SCALE, 30 / SCALE, n_pix_sqrt)
+y = np.linspace(-65 / SCALE, 15 / SCALE, n_pix_sqrt)
 xx = cartesian_product((x, y))
 ham_everywhere = np.vectorize(ham, signature="(2)->()")(xx).reshape(
     n_pix_sqrt, n_pix_sqrt
@@ -98,22 +97,15 @@ plt.imshow(
 plt.colorbar()
 plt.show()
 
-# %%
-
-#
-# MGVI
-#
-
-# %%
+# %%  # MGVI
 n_mgvi_iterations = 30
-n_samples = [1] * (n_mgvi_iterations - 10) + [2] * 5 + [3, 3, 10, 10, 100]
+n_samples = [1] * (n_mgvi_iterations - 1) + [2]
 n_newton_iterations = [7] * (n_mgvi_iterations - 10) + [10] * 6 + 4 * [25]
 absdelta = 1e-10
 
 initial_position = np.array([1., 1.])
 pos = 1e-2 * jft.Field(initial_position)
 
-# %%
 # Minimize the potential
 for i in range(n_mgvi_iterations):
     print(f"MGVI Iteration {i}", file=sys.stderr)
@@ -158,8 +150,8 @@ mkl_pos = pos
 b_space_smpls = np.array([(mkl_pos + smpl).val for smpl in mkl.samples])
 
 delta = .1
-x = np.linspace(-30/SCALE, 30/SCALE, n_pix_sqrt)
-y = np.linspace(-65/SCALE, 15/SCALE, n_pix_sqrt)
+x = np.linspace(-30 / SCALE, 30 / SCALE, n_pix_sqrt)
+y = np.linspace(-65 / SCALE, 15 / SCALE, n_pix_sqrt)
 X, Y = np.meshgrid(x, y)
 XY = np.array([X, Y]).T
 xy = XY.reshape((XY.shape[0] * XY.shape[1], 2))
@@ -172,25 +164,14 @@ ax.scatter(*b_space_smpls.T)
 ax.plot(*mkl_pos, "rx")
 plt.show()
 
-
-# %%
-
-#
-# geoVI
-#
-
+# %%  # geoVI
 n_geovi_iterations = 15
-n_samples = [1] * (n_geovi_iterations - 10) + [2] * 5 + [3, 3, 5, 5, 100]
+n_samples = [1] * (n_geovi_iterations - 1) + [2]
 n_newton_iterations = [7] * (n_geovi_iterations - 10) + [10] * 6 + [25] * 4
 absdelta = 1e-10
 
 initial_position = np.array([1., 1.])
 pos = 1e-2 * jft.Field(initial_position)
-
-# %%
-ham = jft.StandardHamiltonian(nll)
-ham = ham.jit()
-ham_vg = jit(value_and_grad(ham))
 
 for i in range(n_geovi_iterations):
     print(f"GeoVI Iteration {i}", file=sys.stderr)
@@ -200,10 +181,16 @@ for i in range(n_geovi_iterations):
         ham,
         pos,
         n_samples[i],
-        key,
+        key=subkey,
         mirror_samples=True,
         linear_sampling_kwargs={"absdelta": absdelta / 10.},
-        non_linear_sampling_kwargs={"maxiter": 20},
+        non_linear_sampling_kwargs={
+            "cg_kwargs": {
+                "miniter": 0
+            },
+            "maxiter": 20,
+            "name": "SCG"
+        },
         hamiltonian_and_gradient=ham_vg
     )
 
@@ -228,8 +215,8 @@ gkl_pos = pos
 b_space_smpls = np.array([(gkl_pos + smpl).val for smpl in gkl.samples])
 
 delta = .1
-x = np.linspace(-30/SCALE, 30/SCALE, n_pix_sqrt)
-y = np.linspace(-65/SCALE, 15/SCALE, n_pix_sqrt)
+x = np.linspace(-30 / SCALE, 30 / SCALE, n_pix_sqrt)
+y = np.linspace(-65 / SCALE, 15 / SCALE, n_pix_sqrt)
 X, Y = np.meshgrid(x, y)
 XY = np.array([X, Y]).T
 xy = XY.reshape((XY.shape[0] * XY.shape[1], 2))
