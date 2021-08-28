@@ -78,7 +78,7 @@ for i in range(n_mgvi_iterations):
         ham,
         mkl_pos,
         n_samples[i],
-        key,
+        key=subkey,
         mirror_samples=True,
         linear_sampling_kwargs={"absdelta": absdelta / 10.},
         hamiltonian_and_gradient=ham_vg
@@ -119,7 +119,7 @@ for i in range(n_geovi_iterations):
         ham,
         gkl_pos,
         n_samples[i],
-        key,
+        key=subkey,
         mirror_samples=True,
         linear_sampling_kwargs={"absdelta": absdelta / 10.},
         non_linear_sampling_kwargs={"maxiter": 20},
