@@ -1,3 +1,5 @@
+import sys
+
 from collections.abc import Sequence
 from typing import Callable, Optional
 
@@ -113,7 +115,9 @@ def _sample_standard_hamiltonian(
         inv_metric_at_p = partial(
             cg, Partial(hamiltonian.metric, primals), **cg_kwargs
         )
-        signal_smpl = inv_metric_at_p(met_smpl, x0=prr_inv_metric_smpl)[0]
+        signal_smpl, info = inv_metric_at_p(met_smpl, x0=prr_inv_metric_smpl)
+        if info is not None and info < 0:
+            raise ValueError("conjugate gradient failed")
         return signal_smpl, met_smpl
     else:
         return None, met_smpl
@@ -269,16 +273,42 @@ def geometrically_sample_standard_hamiltonian(
 
         opt_state = minimize(r2_half, x0=x0, method="NewtonCG", options=options)
 
-        return opt_state.x
+        return opt_state.x, opt_state.status
 
-    smpl1 = draw_non_linear_sample(
+    smpl1, smpl1_status = draw_non_linear_sample(
         hamiltonian.likelihood, met_smpl, inv_met_smpl
     )
+    if smpl1_status is not None and smpl1_status < 0:
+        msg = "S: failed to invert map; trying with new sample..."
+        print(msg, file=sys.stderr)
+        new_key = random.split(key, 1)[0]
+        return geometrically_sample_standard_hamiltonian(
+            hamiltonian,
+            primals,
+            new_key,
+            mirror_linear_sample=mirror_linear_sample,
+            linear_sampling_cg=cg,
+            linear_sampling_kwargs=linear_sampling_kwargs,
+            non_linear_sampling_kwargs=non_linear_sampling_kwargs
+        )
     if not mirror_linear_sample:
         return (smpl1 - primals, )
-    smpl2 = draw_non_linear_sample(
+    smpl2, smpl2_status = draw_non_linear_sample(
         hamiltonian.likelihood, -met_smpl, -inv_met_smpl
     )
+    if smpl2_status is not None and smpl2_status < 0:
+        msg = "S: failed to invert map; trying with new sample..."
+        print(msg, file=sys.stderr)
+        new_key = random.split(key, 1)[0]
+        return geometrically_sample_standard_hamiltonian(
+            hamiltonian,
+            primals,
+            new_key,
+            mirror_linear_sample=mirror_linear_sample,
+            linear_sampling_cg=cg,
+            linear_sampling_kwargs=linear_sampling_kwargs,
+            non_linear_sampling_kwargs=non_linear_sampling_kwargs
+        )
     return (smpl1 - primals, smpl2 - primals)
 
 
