@@ -104,7 +104,7 @@ n_newton_iterations = [7] * (n_mgvi_iterations - 10) + [10] * 6 + 4 * [25]
 absdelta = 1e-10
 
 initial_position = np.array([1., 1.])
-pos = 1e-2 * jft.Field(initial_position)
+mkl_pos = 1e-2 * jft.Field(initial_position)
 
 # Minimize the potential
 for i in range(n_mgvi_iterations):
@@ -113,43 +113,91 @@ for i in range(n_mgvi_iterations):
     key, subkey = random.split(key, 2)
     mkl = jft.MetricKL(
         ham,
-        pos,
+        mkl_pos,
         n_samples=n_samples[i],
         key=subkey,
         mirror_samples=True,
         hamiltonian_and_gradient=ham_vg,
-        #cg_kwargs={"absdelta": absdelta / 10.}
+        linear_sampling_kwargs={"miniter": 0}
     )
 
     print("Minimizing...", file=sys.stderr)
     # TODO: Re-introduce a simplified version that works without fields
     opt_state = jft.minimize(
         None,
-        x0=pos,
+        x0=mkl_pos,
         method="newton-cg",
         options={
             "fun_and_grad": mkl.energy_and_gradient,
             "hessp": mkl.metric,
             "absdelta": absdelta,
             "maxiter": n_newton_iterations[i],
-            "name": "N",
+            "cg_kwargs": {"name": None},
+            "name": "N"
         }
     )
-    pos = opt_state.x
+    mkl_pos = opt_state.x
     print(
         (
-            f"Post MGVI Iteration {i}: Energy {ham(pos):2.4e}"
-            f"; #NaNs {np.isnan(pos.val).sum()}"
+            f"Post MGVI Iteration {i}: Energy {ham(mkl_pos):2.4e}"
+            f"; #NaNs {np.isnan(mkl_pos.val).sum()}"
         ),
         file=sys.stderr
     )
 
-mkl_pos = pos
+# %%  # geoVI
+n_geovi_iterations = 15
+n_samples = [1] * (n_geovi_iterations - 2) + [2] + [100]
+n_newton_iterations = [7] * (n_geovi_iterations - 10) + [10] * 6 + [25] * 4
+absdelta = 1e-10
+
+initial_position = np.array([1., 1.])
+gkl_pos = 1e-2 * jft.Field(initial_position)
+
+for i in range(n_geovi_iterations):
+    print(f"GeoVI Iteration {i}", file=sys.stderr)
+    print("Sampling...", file=sys.stderr)
+    key, subkey = random.split(key, 2)
+    gkl = jft.GeoMetricKL(
+        ham,
+        gkl_pos,
+        n_samples[i],
+        key=subkey,
+        mirror_samples=True,
+        linear_sampling_kwargs={"miniter": 0},
+        non_linear_sampling_kwargs={
+            "cg_kwargs": {
+                "miniter": 0,
+                "name": None
+            },
+            "maxiter": 20,
+            "name": None
+        },
+        hamiltonian_and_gradient=ham_vg
+    )
+
+    print("Minimizing...", file=sys.stderr)
+    opt_state = jft.minimize(
+        None,
+        x0=gkl_pos,
+        method="newton-cg",
+        options={
+            "cg_kwargs": {
+                "miniter": 0,
+                "name": None
+            },
+            "fun_and_grad": gkl.energy_and_gradient,
+            "hessp": gkl.metric,
+            "absdelta": absdelta,
+            "maxiter": n_newton_iterations[i],
+            "name": "N",
+        }
+    )
+    gkl_pos = opt_state.x
 
 # %%
 b_space_smpls = np.array([(mkl_pos + smpl).val for smpl in mkl.samples])
 
-delta = .1
 x = np.linspace(-30 / SCALE, 30 / SCALE, n_pix_sqrt)
 y = np.linspace(-65 / SCALE, 15 / SCALE, n_pix_sqrt)
 X, Y = np.meshgrid(x, y)
@@ -164,67 +212,12 @@ ax.scatter(*b_space_smpls.T)
 ax.plot(*mkl_pos, "rx")
 plt.show()
 
-# %%  # geoVI
-n_geovi_iterations = 15
-n_samples = [1] * (n_geovi_iterations - 1) + [2]
-n_newton_iterations = [7] * (n_geovi_iterations - 10) + [10] * 6 + [25] * 4
-absdelta = 1e-10
-
-initial_position = np.array([1., 1.])
-pos = 1e-2 * jft.Field(initial_position)
-
-for i in range(n_geovi_iterations):
-    print(f"GeoVI Iteration {i}", file=sys.stderr)
-    print("Sampling...", file=sys.stderr)
-    key, subkey = random.split(key, 2)
-    gkl = jft.GeoMetricKL(
-        ham,
-        pos,
-        n_samples[i],
-        key=subkey,
-        mirror_samples=True,
-        linear_sampling_kwargs={"absdelta": absdelta / 10.},
-        non_linear_sampling_kwargs={
-            "cg_kwargs": {
-                "miniter": 0
-            },
-            "maxiter": 20,
-            "name": "SCG"
-        },
-        hamiltonian_and_gradient=ham_vg
-    )
-
-    print("Minimizing...", file=sys.stderr)
-    opt_state = jft.minimize(
-        None,
-        x0=pos,
-        method="newton-cg",
-        options={
-            "fun_and_grad": gkl.energy_and_gradient,
-            "hessp": gkl.metric,
-            "absdelta": absdelta,
-            "maxiter": n_newton_iterations[i],
-            "name": "N",
-        }
-    )
-    pos = opt_state.x
-
-gkl_pos = pos
-
 # %%
 b_space_smpls = np.array([(gkl_pos + smpl).val for smpl in gkl.samples])
-
-delta = .1
-x = np.linspace(-30 / SCALE, 30 / SCALE, n_pix_sqrt)
-y = np.linspace(-65 / SCALE, 15 / SCALE, n_pix_sqrt)
-X, Y = np.meshgrid(x, y)
-XY = np.array([X, Y]).T
-xy = XY.reshape((XY.shape[0] * XY.shape[1], 2))
-es = np.exp(-lax.map(ham, xy)).reshape(XY.shape[:2]).T
 
 fig, ax = plt.subplots()
 contour = ax.contour(X, Y, es)
 ax.clabel(contour, inline=True, fontsize=10)
-ax.scatter(*b_space_smpls.T)
+ax.scatter(*b_space_smpls.T, c=np.arange(b_space_smpls.shape[0]))
 ax.plot(*gkl_pos, "rx")
 plt.show()

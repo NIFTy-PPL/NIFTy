@@ -95,7 +95,8 @@ for i in range(n_mgvi_iterations):
             "hessp": mkl.metric,
             "absdelta": absdelta,
             "maxiter": n_newton_iterations[i],
-            "name": "N",
+            "cg_kwargs": {"name": None},
+            "name": "N"
         }
     )
     mkl_pos = opt_state.x
@@ -124,7 +125,8 @@ for i in range(n_geovi_iterations):
         linear_sampling_kwargs={"absdelta": absdelta / 10.},
         non_linear_sampling_kwargs={
             "cg_kwargs": {
-                "miniter": 0
+                "miniter": 0,
+                "name": None
             },
             "maxiter": 20
         },
@@ -144,7 +146,8 @@ for i in range(n_geovi_iterations):
             "hessp": gkl.metric,
             "absdelta": absdelta,
             "maxiter": n_newton_iterations[i],
-            "name": "N",
+            "cg_kwargs": {"name": None},
+            "name": "N"
         }
     )
     gkl_pos = opt_state.x
