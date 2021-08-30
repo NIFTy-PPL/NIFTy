@@ -1,3 +1,4 @@
+# %%
 from jax.config import config
 
 config.update("jax_enable_x64", True)
@@ -155,9 +156,7 @@ for i in range(n_geovi_iterations):
     print(msg, file=sys.stderr)
 
 # %%
-b_space_smpls = np.array([(mkl_pos + smpl).val for smpl in mkl.samples])
-
-n_pix_sqrt = 200
+n_pix_sqrt = 300
 x = np.linspace(-4.0, 4.0, n_pix_sqrt, endpoint=True)
 y = np.linspace(-4.0, 4.0, n_pix_sqrt, endpoint=True)
 X, Y = np.meshgrid(x, y)
@@ -165,19 +164,82 @@ XY = np.array([X, Y]).T
 xy = XY.reshape((XY.shape[0] * XY.shape[1], 2))
 es = np.exp(-lax.map(ham, xy)).reshape(XY.shape[:2]).T
 
+# %%
+mkl_b_space_smpls = np.array([(mkl_pos + smpl).val for smpl in mkl.samples])
+
 fig, ax = plt.subplots()
 contour = ax.contour(X, Y, es)
 ax.clabel(contour, inline=True, fontsize=10)
-ax.scatter(*b_space_smpls.T)
+ax.scatter(*mkl_b_space_smpls.T)
 ax.plot(*mkl_pos, "rx")
 plt.show()
 
 # %%
-b_space_smpls = np.array([(gkl_pos + smpl).val for smpl in gkl.samples])
+gkl_b_space_smpls = np.array([(gkl_pos + smpl).val for smpl in gkl.samples])
 
 fig, ax = plt.subplots()
 contour = ax.contour(X, Y, es)
 ax.clabel(contour, inline=True, fontsize=10)
-ax.scatter(*b_space_smpls.T)
+ax.scatter(*gkl_b_space_smpls.T)
 ax.plot(*gkl_pos, "rx")
 plt.show()
+
+# %%
+subplots = (3,2)
+fig_width_pt = 426 # pt (a4paper, and such)
+# fig_width_pt = 360 # pt
+inches_per_pt = 1 / 72.27
+fig_width_in = fig_width_pt * inches_per_pt
+fig_height_in = fig_width_in * 1. * (subplots[0] / subplots[1])
+fig_dims = (fig_width_in, fig_height_in)
+
+fig, ((ax1, ax4), (ax2, ax5), (ax3, ax6)) = plt.subplots(subplots[0], subplots[1], figsize=fig_dims, sharex=True, sharey=True)
+
+ax1.set_title(r'$P(d=0|\xi_1, \xi_2) \cdot P(\xi_1, \xi_2)$')
+xx = cartesian_product((x, y))
+ham_everywhere = np.vectorize(ham, signature="(2)->()")(xx).reshape(
+    n_pix_sqrt, n_pix_sqrt
+)
+ax1.imshow(
+    np.exp(-ham_everywhere.T),
+    extent=(x.min(), x.max(), y.min(), y.max()),
+    origin="lower",
+    #aspect='auto'
+)
+#ax1.colorbar()
+
+ax1.set_ylim([-4., 4.])
+#ax1.autoscale(enable=True, axis='y', tight=True) 
+asp = float(np.diff(np.array(ax1.get_xlim()))[0] / np.diff(np.array(ax1.get_ylim()))[0])
+
+smplmarkersize = 1.
+
+linewidths = 0.5
+fontsize = 5
+potlabels = False
+
+ax2.set_title('MGVI')
+mkl_b_space_smpls = np.array([(mkl_pos + smpl).val for smpl in mkl.samples])
+contour = ax2.contour(X, Y, es, linewidths=linewidths)
+ax2.clabel(contour, inline=True, fontsize=fontsize)
+ax2.scatter(*mkl_b_space_smpls.T, s=smplmarkersize)
+ax2.plot(*mkl_pos, "rx")
+#ax2.set_aspect(asp)
+
+ax3.set_title('geoVI')
+gkl_b_space_smpls = np.array([(gkl_pos + smpl).val for smpl in gkl.samples])
+contour = ax3.contour(X, Y, es, linewidths=linewidths)
+ax3.clabel(contour, inline=True, fontsize=fontsize)
+ax3.scatter(*gkl_b_space_smpls.T, s=smplmarkersize)
+ax3.plot(*gkl_pos, "rx")
+#ax3.set_aspect(asp)
+
+for i in range(3):
+    eval('ax' + str(i + 1)).set_ylabel(r'$\xi_2$')
+ax3.set_xlabel(r'$\xi_1$')
+ax6.set_xlabel(r'$\xi_1$')
+
+fig.tight_layout()
+fig.savefig("pinch.pdf", bbox_inches='tight')
+
+# %%
