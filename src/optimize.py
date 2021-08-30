@@ -38,11 +38,11 @@ class OptimizeResults(NamedTuple):
     nit : int
         Number of iterations performed by the optimizer.
     """
-    x: np.ndarray
+    x: Any
     success: Union[bool, np.ndarray]
     status: Union[int, np.ndarray]
-    fun: np.ndarray
-    jac: np.ndarray
+    fun: Any
+    jac: Any
     hess: Optional[np.ndarray] = None
     hess_inv: Optional[np.ndarray] = None
     nfev: Union[None, int, np.ndarray] = None
@@ -349,6 +349,7 @@ def _newton_cg(
     energy, g = fun_and_grad(pos)
     if np.isnan(energy):
         raise ValueError("energy is Nan")
+    status = -1
     for i in range(maxiter):
         cg_name = name + "CG" if name is not None else None
         # Newton approximates the potential up to second order. The CG energy
@@ -397,11 +398,11 @@ def _newton_cg(
                 grad_scaling = 1.
                 dd = -gam / curv * g
         else:
-            grad_scaling = 1.
-            new_pos = pos - nat_g
-            new_energy, new_g = fun_and_grad(new_pos)
+            grad_scaling = 0.
             nm = "N" if name is None else name
-            print(f"{nm}: WARNING: Energy increased", file=sys.stderr)
+            print(f"{nm}: WARNING: Energy would increase; aborting", file=sys.stderr)
+            status = -1
+            break
         if name is not None:
             print(f"{name}: line search: {grad_scaling}", file=sys.stderr)
 
@@ -418,13 +419,16 @@ def _newton_cg(
             msg += f" 🞋:{absdelta:.6e}" if absdelta is not None else ""
             print(msg, file=sys.stderr)
         if absdelta is not None and 0. <= energy_diff < absdelta and naive_ls_it < 2:
+            status = 0
             break
         if time_threshold is not None and datetime.now() > time_threshold:
+            status = i + 1
             break
     else:
+        status = i + 1
         nm = "N" if name is None else name
         print(f"{nm}: Iteration Limit Reached", file=sys.stderr)
-    return OptimizeResults(x=pos, success=True, status=0, fun=energy, jac=g)
+    return OptimizeResults(x=pos, success=True, status=status, fun=energy, jac=g)
 
 
 def newton_cg(*args, **kwargs):
