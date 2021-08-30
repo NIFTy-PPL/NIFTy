@@ -197,6 +197,8 @@ class NewtonCG(DescentMinimizer):
         e, conv = ConjugateGradient(ic, nreset=self._nreset)(e, p)
         if self._history is not None:
             self._history += ic.history
+        if conv == ic.ERROR:
+            raise ValueError("Cannot find descent direction")
         return -e.position
 
     @property
