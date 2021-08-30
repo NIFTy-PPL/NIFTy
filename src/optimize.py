@@ -103,8 +103,12 @@ def cg(
     """
     norm_ord = 2 if norm_ord is None else norm_ord
     maxiter_fallback = 20 * size(j)  # taken from SciPy's NewtonCG minimzer
-    miniter = min((5, maxiter if maxiter is not None else maxiter_fallback)) if miniter is None else miniter
-    maxiter = max((min((200, maxiter_fallback)), miniter)) if maxiter is None else maxiter
+    miniter = min(
+        (6, maxiter if maxiter is not None else maxiter_fallback)
+    ) if miniter is None else miniter
+    maxiter = max(
+        (min((200, maxiter_fallback)), miniter)
+    ) if maxiter is None else maxiter
 
     if absdelta is None and resnorm is None:  # fallback convergence criterion
         resnorm = np.maximum(tol * jft_norm(j, ord=norm_ord, ravel=True), atol)
@@ -159,7 +163,7 @@ def cg(
             if name is not None:
                 msg = f"{name}: |∇|:{norm:.6e} 🞋:{resnorm:.6e}"
                 print(msg, file=sys.stderr)
-            if norm < resnorm and i > miniter:
+            if norm < resnorm and i >= miniter:
                 info = 0
                 return pos, info
         new_energy = float(((r - j) / 2).dot(pos))
@@ -173,7 +177,7 @@ def cg(
                 nm = "CG" if name is None else name
                 print(f"{nm}: WARNING: Energy increased", file=sys.stderr)
                 return pos, -1
-            if basically_zero <= energy_diff < absdelta and i > miniter:
+            if basically_zero <= energy_diff < absdelta and i >= miniter:
                 info = 0
                 return pos, info
         energy = new_energy
@@ -206,8 +210,12 @@ def static_cg(
 
     norm_ord = 2 if norm_ord is None else norm_ord
     maxiter_fallback = 20 * size(j)  # taken from SciPy's NewtonCG minimzer
-    miniter = min((5, maxiter if maxiter is not None else maxiter_fallback)) if miniter is None else miniter
-    maxiter = max((min((200, maxiter_fallback)), miniter)) if maxiter is None else maxiter
+    miniter = min(
+        (6, maxiter if maxiter is not None else maxiter_fallback)
+    ) if miniter is None else miniter
+    maxiter = max(
+        (min((200, maxiter_fallback)), miniter)
+    ) if maxiter is None else maxiter
 
     if absdelta is None and resnorm is None:  # fallback convergence criterion
         resnorm = np.maximum(tol * jft_norm(j, ord=norm_ord, ravel=True), atol)
@@ -256,7 +264,7 @@ def static_cg(
                 msg = f"{name}: |∇|:{norm!r} 🞋:{resnorm!r}"
                 print(msg, file=sys.stderr)
             info = np.where(
-                (norm < resnorm) & (i > miniter) & (info != -1), 0, info
+                (norm < resnorm) & (i >= miniter) & (info != -1), 0, info
             )
         # Do not compute the energy if we do not check `absdelta`
         if absdelta is not None or name is not None:
@@ -273,7 +281,7 @@ def static_cg(
             info = np.where(energy_diff < basically_zero, -1, info)
             info = np.where(
                 (energy_diff >= basically_zero) & (energy_diff < absdelta) &
-                (i > miniter) & (info != -1), 0, info
+                (i >= miniter) & (info != -1), 0, info
             )
         info = np.where((i >= maxiter) & (info != -1), i, info)
 
