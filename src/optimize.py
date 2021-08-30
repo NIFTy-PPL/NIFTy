@@ -114,7 +114,7 @@ def cg(
         resnorm = np.maximum(tol * jft_norm(j, ord=norm_ord, ravel=True), atol)
 
     common_dtp = common_type(j)
-    eps = 3. * np.finfo(common_dtp).eps  # taken from SciPy's NewtonCG minimzer
+    eps = 6. * np.finfo(common_dtp).eps  # taken from SciPy's NewtonCG minimzer
 
     if x0 is None:
         pos = 0. * j
@@ -221,7 +221,7 @@ def static_cg(
         resnorm = np.maximum(tol * jft_norm(j, ord=norm_ord, ravel=True), atol)
 
     common_dtp = common_type(j)
-    eps = 3. * np.finfo(common_dtp).eps  # Inspired by SciPy's NewtonCG minimzer
+    eps = 6. * np.finfo(common_dtp).eps  # Inspired by SciPy's NewtonCG minimzer
 
     def continue_condition(v):
         return v["info"] < -1
