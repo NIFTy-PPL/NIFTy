@@ -387,7 +387,7 @@ def MetricKL(
     linear_sampling_kwargs: Optional[dict] = None,
     hamiltonian_and_gradient: Optional[Callable] = None,
     _samples: Optional[tuple] = None
-):
+) -> SampledKL:
     """Provides the sampled Kullback-Leibler divergence between a distribution
     and a Metric Gaussian.
 
@@ -439,7 +439,7 @@ def GeoMetricKL(
     non_linear_sampling_kwargs: Optional[dict] = None,
     hamiltonian_and_gradient: Optional[Callable] = None,
     _samples: Optional[tuple] = None
-):
+) -> SampledKL:
     """Provides the sampled Kullback-Leibler used in geometric Variational
     Inference (geoVI).
 

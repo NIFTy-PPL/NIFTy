@@ -133,10 +133,9 @@ def cg(
         return pos, info
 
     info = -1
-    # TODO(Gordian): Use `lax.while_loop`?
     for i in range(maxiter):
         if name is not None:
-            print(f"{name}: Iteration {i} ⛰:{energy:.6e}", file=sys.stderr)
+            print(f"{name}: Iteration {i} ⛰:{energy:+.6e}", file=sys.stderr)
         q = mat(d)
         curv = float(d.dot(q))
         if curv == 0.:
