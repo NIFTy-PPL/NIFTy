@@ -122,7 +122,12 @@ for i in range(n_geovi_iterations):
         key=subkey,
         mirror_samples=True,
         linear_sampling_kwargs={"absdelta": absdelta / 10.},
-        non_linear_sampling_kwargs={"maxiter": 20},
+        non_linear_sampling_kwargs={
+            "cg_kwargs": {
+                "miniter": 0
+            },
+            "maxiter": 20
+        },
         hamiltonian_and_gradient=ham_vg
     )
 
@@ -132,6 +137,9 @@ for i in range(n_geovi_iterations):
         x0=gkl_pos,
         method="newton-cg",
         options={
+            "cg_kwargs": {
+                "miniter": 0
+            },
             "fun_and_grad": gkl.energy_and_gradient,
             "hessp": gkl.metric,
             "absdelta": absdelta,
