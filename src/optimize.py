@@ -368,20 +368,18 @@ def _newton_cg(
             cg_absdelta = energy_reduction_factor * (old_fval - energy)
         else:
             cg_absdelta = None if absdelta is None else absdelta / 100.
-        mag_g = jft_norm(g, ord=1, ravel=True)
+        mag_g = jft_norm(g, ord=cg_kwargs.get("norm_ord", 1), ravel=True)
         # SciPy scales its CG resnorm with `min(0.5, sqrt(mag_g))`
         # cg_resnorm = mag_g * np.sqrt(mag_g).clip(None, 0.5)
         cg_resnorm = mag_g / 2
-        nat_g, info = cg(
-            Partial(hessp, pos),
-            g,
-            absdelta=cg_absdelta,
-            resnorm=cg_resnorm,
-            norm_ord=1,
-            name=cg_name,
-            time_threshold=time_threshold,
-            **cg_kwargs
-        )
+        default_kwargs = {
+            "absdelta": cg_absdelta,
+            "resnorm": cg_resnorm,
+            "norm_ord": 1,
+            "name": cg_name,
+            "time_threshold": time_threshold
+        }
+        nat_g, info = cg(Partial(hessp, pos), g, **(default_kwargs | cg_kwargs))
         if info is not None and info < 0:
             raise ValueError("conjugate gradient failed")
 
