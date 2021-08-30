@@ -132,7 +132,9 @@ for i in range(n_mgvi_iterations):
             "hessp": mkl.metric,
             "absdelta": absdelta,
             "maxiter": n_newton_iterations[i],
-            "cg_kwargs": {"name": None},
+            "cg_kwargs": {
+                "name": None
+            },
             "name": "N"
         }
     )
@@ -196,6 +198,43 @@ for i in range(n_geovi_iterations):
     gkl_pos = opt_state.x
 
 # %%
+absdelta = 1e-10
+opt_state = jft.minimize(
+    None,
+    x0=np.array([1., 1.]),
+    method="newton-cg",
+    options={
+        "fun_and_grad": ham_vg,
+        "hessp": ham.metric,
+        "absdelta": absdelta,
+        "maxiter": 100,
+        "cg_kwargs": {
+            "name": None
+        },
+        "name": "MAP"
+    }
+)
+map_pos = opt_state.x
+key, subkey = random.split(key, 2)
+map_gkl = jft.GeoMetricKL(
+    ham,
+    map_pos,
+    100,
+    key=subkey,
+    mirror_samples=True,
+    linear_sampling_kwargs={"miniter": 0},
+    non_linear_sampling_kwargs={
+        "cg_kwargs": {
+            "miniter": 0,
+            "name": None
+        },
+        "maxiter": 20,
+        "name": None
+    },
+    hamiltonian_and_gradient=ham_vg
+)
+
+# %%
 b_space_smpls = np.array([(mkl_pos + smpl).val for smpl in mkl.samples])
 
 x = np.linspace(-30 / SCALE, 30 / SCALE, n_pix_sqrt)
@@ -218,6 +257,16 @@ b_space_smpls = np.array([(gkl_pos + smpl).val for smpl in gkl.samples])
 fig, ax = plt.subplots()
 contour = ax.contour(X, Y, es)
 ax.clabel(contour, inline=True, fontsize=10)
-ax.scatter(*b_space_smpls.T, c=np.arange(b_space_smpls.shape[0]))
+ax.scatter(*b_space_smpls.T, alpha=0.1)
 ax.plot(*gkl_pos, "rx")
+plt.show()
+
+# %%
+b_space_smpls = np.array([map_pos + smpl for smpl in map_gkl.samples])
+
+fig, ax = plt.subplots()
+contour = ax.contour(X, Y, es)
+ax.clabel(contour, inline=True, fontsize=10)
+ax.scatter(*b_space_smpls.T, alpha=0.7)
+ax.plot(*map_pos, "rx")
 plt.show()
