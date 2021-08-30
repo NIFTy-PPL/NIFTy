@@ -388,13 +388,13 @@ def _newton_cg(
         grad_scaling = 1.
         new_pos = pos - grad_scaling * dd
         new_energy, new_g = fun_and_grad(new_pos)
-        for naive_ls_it in range(6):
+        for naive_ls_it in range(12):
             if new_energy <= energy:
                 break
             grad_scaling /= 2
             new_pos = pos - grad_scaling * dd
             new_energy, new_g = fun_and_grad(new_pos)
-            if naive_ls_it == 3:
+            if naive_ls_it == 6:
                 if name is not None:
                     msg = f"{name}: long line search, resetting"
                     print(msg, file=sys.stderr)
