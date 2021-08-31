@@ -15,6 +15,7 @@
 #
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
 
+import numpy as np
 from ..logger import logger
 from .minimizer import Minimizer
 
@@ -71,6 +72,9 @@ class ConjugateGradient(Minimizer):
         d = r if preconditioner is None else preconditioner(r)
 
         previous_gamma = r.s_vdot(d).real
+        if np.isnan(previous_gamma):
+            logger.error("Error: ConjugateGradient: previous_gamma==NaN")
+            return energy, controller.ERROR
         if previous_gamma == 0:
             return energy, controller.CONVERGED
 
@@ -78,6 +82,9 @@ class ConjugateGradient(Minimizer):
         while True:
             q = energy.apply_metric(d)
             curv = d.s_vdot(q).real
+            if np.isnan(curv):
+                logger.error("Error: ConjugateGradient: curv==NaN")
+                return energy, controller.ERROR
             if curv == 0.:
                 logger.error("Error: ConjugateGradient: curv==0.")
                 return energy, controller.ERROR
@@ -99,6 +106,9 @@ class ConjugateGradient(Minimizer):
             s = r if preconditioner is None else preconditioner(r)
 
             gamma = r.s_vdot(s).real
+            if np.isnan(gamma):
+                logger.error("Error: ConjugateGradient: gamma==NaN")
+                return energy, controller.ERROR
             if gamma < 0:
                 logger.error(
                     "Positive definiteness of preconditioner violated!")
