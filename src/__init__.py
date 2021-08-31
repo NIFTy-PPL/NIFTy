@@ -1,6 +1,6 @@
 from .likelihood import ShapeWithDtype, Likelihood, StandardHamiltonian
 from .energy_operators import (
-    Gaussian, Poissonian, VariableCovarianceGaussian,
+    Gaussian, StudentT, Poissonian, VariableCovarianceGaussian,
     VariableCovarianceStudentT, Categorical
 )
 from .kl import (

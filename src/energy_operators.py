@@ -1,4 +1,4 @@
-from typing import Callable, Optional
+from typing import Callable, Optional, Tuple
 
 import sys
 from jax import numpy as np
@@ -7,11 +7,56 @@ from jax.tree_util import tree_map
 from .likelihood import Likelihood, ShapeWithDtype
 
 
+def standard_t(nwr, dof):
+    return np.sum(np.log1p(nwr**2 / dof) * (dof + 1)) / 2
+
+
 def _shape_w_fixed_dtype(dtype):
     def shp_w_dtp(e):
         return ShapeWithDtype(np.shape(e), dtype)
 
     return shp_w_dtp
+
+
+def _get_cov_inv_and_std_inv(
+    cov_inv: Optional[Callable],
+    std_inv: Optional[Callable],
+    primals=None
+) -> Tuple[Callable, Callable]:
+    if not cov_inv and not std_inv:
+
+        def cov_inv(tangents):
+            return tangents
+
+        def std_inv(tangents):
+            return tangents
+
+    elif not cov_inv:
+        wm = (
+            "assuming a diagonal covariance matrix"
+            ";\nsetting `cov_inv` to `std_inv(np.ones_like(data))**2`"
+        )
+        print(wm, file=sys.stderr)
+        noise_std_inv_sq = std_inv(tree_map(np.ones_like, primals))**2
+
+        def cov_inv(tangents):
+            return noise_std_inv_sq * tangents
+
+    elif not std_inv:
+        wm = (
+            "assuming a diagonal covariance matrix"
+            ";\nsetting `std_inv` to `cov_inv(np.ones_like(data))**0.5`"
+        )
+        print(wm, file=sys.stderr)
+        noise_cov_inv_sqrt = tree_map(
+            np.sqrt, cov_inv(tree_map(np.ones_like, primals))
+        )
+
+        def std_inv(tangents):
+            return noise_cov_inv_sqrt * tangents
+
+    assert callable(cov_inv) and callable(std_inv)
+    return cov_inv, std_inv
 
 
 def Gaussian(
@@ -37,37 +82,9 @@ def Gaussian(
     root. If both `noise_cov_inv` and `noise_std_inv` are `None`, a unit
     covariance is assumed.
     """
-    if not noise_cov_inv and not noise_std_inv:
-
-        def noise_cov_inv(tangents):
-            return tangents
-
-        def noise_std_inv(tangents):
-            return tangents
-    elif not noise_cov_inv:
-        wm = (
-            "assuming a diagonal covariance matrix"
-            ";\nsetting `noise_cov_inv` to"
-            " `noise_std_inv(np.ones_like(data))**2`"
-        )
-        print(wm, file=sys.stderr)
-        noise_std_inv_sq = noise_std_inv(tree_map(np.ones_like, data))**2
-
-        def noise_cov_inv(tangents):
-            return noise_std_inv_sq * tangents
-    elif not noise_std_inv:
-        wm = (
-            "assuming a diagonal covariance matrix"
-            ";\nsetting `noise_std_inv` to"
-            " `noise_cov_inv(np.ones_like(data))**0.5`"
-        )
-        print(wm, file=sys.stderr)
-        noise_cov_inv_sqrt = np.sqrt(
-            noise_cov_inv(tree_map(np.ones_like, data))
-        )
-
-        def noise_std_inv(tangents):
-            return noise_cov_inv_sqrt * tangents
+    noise_cov_inv, noise_std_inv = _get_cov_inv_and_std_inv(
+        noise_cov_inv, noise_std_inv, data
+    )
 
     def hamiltonian(primals):
         p_res = primals - data
@@ -81,6 +98,71 @@ def Gaussian(
 
     def transformation(primals):
         return noise_std_inv(primals)
+
+    lsm_tangents_shape = tree_map(ShapeWithDtype.from_leave, data)
+
+    return Likelihood(
+        hamiltonian,
+        transformation=transformation,
+        left_sqrt_metric=left_sqrt_metric,
+        metric=metric,
+        lsm_tangents_shape=lsm_tangents_shape
+    )
+
+
+def StudentT(
+    data,
+    dof,
+    noise_cov_inv: Optional[Callable] = None,
+    noise_std_inv: Optional[Callable] = None
+):
+    """Student's t likelihood of the data
+
+    Parameters
+    ----------
+    data : tree-like structure of np.ndarray and float
+        Data with additive noise following a Gaussian distribution.
+    dof : tree-like structure of np.ndarray and float
+        Degree-of-freedom parameter of Student's t distribution.
+    noise_cov_inv : callable acting on type of data
+        Function applying the inverse noise covariance of the Gaussian.
+    noise_std_inv : callable acting on type of data
+        Function applying the square root of the inverse noise covariance.
+
+    Notes
+    -----
+    If `noise_std_inv` is `None` it is inferred by assuming a diagonal noise
+    covariance, i.e. by applying it to a vector of ones and taking the square
+    root. If both `noise_cov_inv` and `noise_std_inv` are `None`, a unit
+    covariance is assumed.
+    """
+    noise_cov_inv, noise_std_inv = _get_cov_inv_and_std_inv(
+        noise_cov_inv, noise_std_inv, data
+    )
+
+    def hamiltonian(primals):
+        """
+        primals : mean
+        """
+        return standard_t(noise_std_inv(data - primals), dof)
+
+    def metric(primals, tangents):
+        """
+        primals, tangent : mean
+        """
+        return noise_cov_inv((dof + 1) / (dof + 3) * tangents)
+
+    def left_sqrt_metric(primals, tangents):
+        """
+        primals, tangents : mean
+        """
+        return noise_std_inv(np.sqrt((dof + 1) / (dof + 3)) * tangents)
+
+    def transformation(primals):
+        """
+        primals : mean
+        """
+        return noise_std_inv(np.sqrt((dof + 1) / (dof + 3)) * primals)
 
     lsm_tangents_shape = tree_map(ShapeWithDtype.from_leave, data)
 
@@ -211,9 +293,6 @@ def VariableCovarianceStudentT(data, dof):
     -----
     The likelihood acts on a tuple of (mean, std).
     """
-    def standard_t(nwr, dof):
-        return np.sum(np.log1p(nwr**2 / dof) * (dof + 1)) / 2
-
     def hamiltonian(primals):
         """
         primals : pair of (mean, std)
