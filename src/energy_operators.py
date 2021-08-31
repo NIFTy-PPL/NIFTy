@@ -261,10 +261,23 @@ def VariableCovarianceGaussian(data):
         res = (primals[1] * tangents[0], np.sqrt(2) * tangents[1] / primals[1])
         return type(primals)(res)
 
+    def transformation(primals):
+        """
+        pirmals : pair of (mean, std_inv)
+
+        Notes
+        -----
+        A global transformation to Euclidean space does not exist. A local
+        approximation invoking the residual is used instead.
+        """
+        res = (primals[1] * (primals[0] - data), tree_map(np.log, primals[1]))
+        return type(primals)(res)
+
     lsm_tangents_shape = tree_map(ShapeWithDtype.from_leave, (data, data))
 
     return Likelihood(
         hamiltonian,
+        transformation=transformation,
         left_sqrt_metric=left_sqrt_metric,
         metric=metric,
         lsm_tangents_shape=lsm_tangents_shape
