@@ -194,12 +194,9 @@ def Poissonian(data, sampling_dtype=float):
     sampling_dtype : dtype, optional
         Data-type for sampling.
     """
-    import numpy as onp
+    from .optimize import get_dtype
 
-    if isinstance(data, (np.ndarray, onp.ndarray)):
-        dtp = data.dtype
-    else:
-        dtp = onp.common_type(data)
+    dtp = get_dtype(data)
     if not np.issubdtype(dtp, np.integer):
         raise TypeError("`data` of invalid type")
     if np.any(data < 0):
@@ -254,19 +251,14 @@ def VariableCovarianceGaussian(data):
         primals, tangent : pair of (mean, std_inv)
         """
         prim_std_inv_sq = primals[1]**2
-        res = (
-            prim_std_inv_sq * tangents[0] ,
-            2 * tangents[1] / prim_std_inv_sq
-        )
+        res = (prim_std_inv_sq * tangents[0], 2 * tangents[1] / prim_std_inv_sq)
         return type(primals)(res)
 
     def left_sqrt_metric(primals, tangents):
         """
         primals, tangent : pair of (mean, std_inv)
         """
-        res = (
-            primals[1] * tangents[0], np.sqrt(2) * tangents[1] / primals[1]
-        )
+        res = (primals[1] * tangents[0], np.sqrt(2) * tangents[1] / primals[1])
         return type(primals)(res)
 
     lsm_tangents_shape = tree_map(ShapeWithDtype.from_leave, (data, data))
