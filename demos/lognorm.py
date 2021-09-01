@@ -11,6 +11,7 @@ from jax import lax, random
 from jax import value_and_grad, jit
 
 import jifty1 as jft
+from jifty1 import hmc
 
 seed = 42
 key = random.PRNGKey(seed)
@@ -63,12 +64,14 @@ plt.show()
 
 # %%
 n_mgvi_iterations = 30
-n_samples = [1] * (n_mgvi_iterations - 10) + [2] * 5 + [3, 3, 10, 10, 100]
+n_samples = [2] * (n_mgvi_iterations - 10) + [2] * 5 + [10, 10, 10, 10, 100]
 n_newton_iterations = [7] * (n_mgvi_iterations - 10) + [10] * 6 + 4 * [25]
-absdelta = 1e-10
+absdelta = 1e-13
 
 initial_position = np.array([1., 1.])
 mkl_pos = 1e-2 * jft.Field(initial_position)
+
+mgvi_positions = []
 
 # Minimize the potential
 for i in range(n_mgvi_iterations):
@@ -103,10 +106,13 @@ for i in range(n_mgvi_iterations):
     mkl_pos = opt_state.x
     msg = f"Post MGVI Iteration {i}: Energy {ham(mkl_pos):2.4e}"
     print(msg, file=sys.stderr)
+    mgvi_positions.append(mkl_pos)
 
 # %%
+plt.plot(lax.map(ham, np.array(mgvi_positions)))
+# %%
 n_geovi_iterations = 15
-n_samples = [1] * (n_geovi_iterations - 10) + [2] * 5 + [3, 3, 5, 5, 100]
+n_samples = [1] * (n_geovi_iterations - 10) + [2] * 5 + [10, 10, 10, 10, 100]
 n_newton_iterations = [7] * (n_geovi_iterations - 10) + [10] * 6 + [25] * 4
 absdelta = 1e-10
 
@@ -156,7 +162,7 @@ for i in range(n_geovi_iterations):
     print(msg, file=sys.stderr)
 
 # %%
-n_pix_sqrt = 300
+n_pix_sqrt = 200
 x = np.linspace(-4.0, 4.0, n_pix_sqrt, endpoint=True)
 y = np.linspace(-4.0, 4.0, n_pix_sqrt, endpoint=True)
 X, Y = np.meshgrid(x, y)
@@ -185,6 +191,71 @@ ax.plot(*gkl_pos, "rx")
 plt.show()
 
 # %%
+initial_position = np.array([1., 1.])
+
+hmc_sampler = hmc.HMCChain(
+    initial_position = 1e-2 * initial_position,
+    potential_energy = ham,
+    diag_mass_matrix = 1.,
+    eps = 0.2,
+    n_of_integration_steps = 64,
+    rngseed = 42,
+    compile = True,
+    dbg_info = True,
+)
+
+(_last_pos, _key, hmc_samples, hmc_acceptance, hmc_unintegrated_momenta,
+ hmc_momentum_samples, hmc_rejected_position_samples,
+ hmc_rejected_momenta) = (hmc_sampler.generate_n_samples(100))
+
+print(f"acceptance rate: {np.sum(hmc_acceptance)/len(hmc_acceptance)}")
+
+# %%
+b_space_smpls = hmc_samples
+ax.scatter(*b_space_smpls.T)
+#ax.plot(*gkl_pos, "rx")
+plt.show()
+
+# %%
+initial_position = np.array([1., 1.])
+
+hmc._DEBUG_TREE_END_IDXS = []
+hmc._DEBUG_SUBTREE_END_IDXS = []
+hmc._DEBUG_STORE = []
+
+nuts_sampler = hmc.NUTSChain(
+    initial_position = 1e-2 * initial_position,
+    potential_energy = ham,
+    diag_mass_matrix = 2.,
+    eps = 0.2,
+    maxdepth = 10,
+    rngseed = 43,
+    compile = True,
+    dbg_info = True,
+)
+
+nuts_n_samples = []
+ns_samples = [200, 1000, 1000000]
+for n_samples in ns_samples:
+    (_pos, _key, nuts_samples, nuts_momenta_before, nuts_momenta_after, nuts_depths,
+     nuts_trees) = nuts_sampler.generate_n_samples(n_samples)
+    nuts_n_samples.append(nuts_samples)
+
+# %%
+b_space_smpls = nuts_samples
+
+fig, ax = plt.subplots()
+contour = ax.contour(X, Y, es)
+ax.clabel(contour, inline=True, fontsize=10)
+ax.scatter(*b_space_smpls.T, s=2.)
+#ax.plot(*gkl_pos, "rx")
+plt.show()
+
+# %%
+plt.hist2d(*b_space_smpls.T, bins=[x,y], range=[[x.min(), x.max()], [y.min(), y.max()]])
+plt.colorbar()
+
+# %%
 subplots = (3,2)
 fig_width_pt = 426 # pt (a4paper, and such)
 # fig_width_pt = 360 # pt
@@ -209,10 +280,12 @@ ax1.imshow(
 #ax1.colorbar()
 
 ax1.set_ylim([-4., 4.])
+ax1.set_xlim([-4., 4.])
 #ax1.autoscale(enable=True, axis='y', tight=True) 
 asp = float(np.diff(np.array(ax1.get_xlim()))[0] / np.diff(np.array(ax1.get_ylim()))[0])
 
-smplmarkersize = 1.
+smplmarkersize = .3
+smplmarkercolor = 'k'
 
 linewidths = 0.5
 fontsize = 5
@@ -222,7 +295,7 @@ ax2.set_title('MGVI')
 mkl_b_space_smpls = np.array([(mkl_pos + smpl).val for smpl in mkl.samples])
 contour = ax2.contour(X, Y, es, linewidths=linewidths)
 ax2.clabel(contour, inline=True, fontsize=fontsize)
-ax2.scatter(*mkl_b_space_smpls.T, s=smplmarkersize)
+ax2.scatter(*mkl_b_space_smpls.T, s=smplmarkersize, c=smplmarkercolor)
 ax2.plot(*mkl_pos, "rx")
 #ax2.set_aspect(asp)
 
@@ -230,7 +303,7 @@ ax3.set_title('geoVI')
 gkl_b_space_smpls = np.array([(gkl_pos + smpl).val for smpl in gkl.samples])
 contour = ax3.contour(X, Y, es, linewidths=linewidths)
 ax3.clabel(contour, inline=True, fontsize=fontsize)
-ax3.scatter(*gkl_b_space_smpls.T, s=smplmarkersize)
+ax3.scatter(*gkl_b_space_smpls.T, s=smplmarkersize, c=smplmarkercolor)
 ax3.plot(*gkl_pos, "rx")
 #ax3.set_aspect(asp)
 
@@ -239,7 +312,28 @@ for i in range(3):
 ax3.set_xlabel(r'$\xi_1$')
 ax6.set_xlabel(r'$\xi_1$')
 
+for N, samples, ax in list(zip(ns_samples, nuts_n_samples, [ax4, ax5, ax6]))[:2]:
+    ax.set_title(f"NUTS {N=}")
+    contour = ax.contour(X, Y, es, linewidths=linewidths)
+    #ax.clabel(contour, inline=True, fontsize=fontsize)
+    ax.scatter(*samples.T, s=smplmarkersize, c=smplmarkercolor)
+
 fig.tight_layout()
 fig.savefig("pinch.pdf", bbox_inches='tight')
 
-# %%
+#
+# NUTS HISTOGRAM
+#
+
+_h, _xedges, _yedges = np.histogram2d(*nuts_samples.T, bins=[x,y], range=[[x.min(), x.max()], [y.min(), y.max()]])
+
+ax6.imshow(
+    _h.T,
+    extent=(x.min(), x.max(), y.min(), y.max()),
+    origin="lower"
+)
+
+ax6.set_title(f'NUTS, {len(nuts_samples):.0E} samples')
+
+fig.tight_layout()
+fig.savefig("pinch.pdf", bbox_inches='tight')
