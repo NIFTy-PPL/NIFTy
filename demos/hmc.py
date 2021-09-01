@@ -35,11 +35,11 @@ correlated_field = lambda x: jft.correlated_field.hartley(
 
 # %% [markdown]
 # signal_response = lambda x: np.exp(1. + correlated_field(x))
-signal_response = lambda x: (1. + correlated_field(x))
+signal_response = lambda x: correlated_field(x)
 # The signal response is $ \vec{d} = \begin{pmatrix} 1 \\ 1 \\ 1 \\ 1 \end{pmatrix} \cdot s + \vec{n} $ where $s \in \mathbb{R}$ and $\vec{n} \sim \mathcal{G}(0, N)$
 # signal_response = lambda x: np.ones(shape=datadims) * x
 # ???
-noise_cov_inv_sqrt = lambda x: 10**-1 * x
+noise_cov_inv_sqrt = lambda x: 1.**-1 * x
 
 #%%
 # create synthetic data
@@ -57,7 +57,7 @@ data = signal_response_truth + noise_truth
 #%%
 plt.plot(signal_response_truth, label='signal response')
 #plt.plot(noise_truth, label='noise', linewidth=0.5)
-plt.plot(data, label='noisy data', linewidth=1)
+plt.plot(data, 'k.', label='noisy data', markersize=4.)
 plt.xlabel('real space domain')
 plt.ylabel('field value')
 plt.legend()
@@ -82,8 +82,7 @@ def Gaussian(data, noise_cov_inv_sqrt):
 nll = Gaussian(data, noise_cov_inv_sqrt) @ signal_response
 
 #%%
-ham = jft.StandardHamiltonian(likelihood=nll).jit()
-ham = nll
+ham = jft.StandardHamiltonian(likelihood=nll)
 ham_gradient = jax.grad(ham)
 
 #%%
@@ -132,54 +131,101 @@ unintegrated_momenta = np.array(unintegrated_momenta[1:])
 print(f"acceptance ratio: {np.sum(accepted)/len(accepted)}")
 
 # %% [markdown]
-# # HMC with Metropolist Hastings (OO wrapper)
+# # HMC with Metropolis Hastings (OO wrapper)
 sampler = hmc.HMCChain(
     initial_position = initial_position,
     potential_energy = ham,
     diag_mass_matrix = 1.,
-    eps = 0.0001723,
-    n_of_integration_steps = 187,
+    eps = 0.05,
+    n_of_integration_steps = 128,
     rngseed = 42,
     compile = True,
     dbg_info = True
 )
 
-_last_pos, _key, position_samples, acceptance, unintegrated_momenta, momentum_samples = sampler.generate_n_samples(100)
+_last_pos, _key, position_samples, acceptance, unintegrated_momenta, momentum_samples, rejected_position_samples, rejected_momenta = sampler.generate_n_samples(30)
 print(f"acceptance ratio: {np.sum(acceptance)/len(acceptance)}")
 
 # %% [markdown]
 # # NUTS
+hmc._DEBUG_STORE = []
+
 sampler = hmc.NUTSChain(
     initial_position = initial_position,
     potential_energy = ham,
     diag_mass_matrix = 1.,
-    eps = 1.2193,
-    maxdepth = 10,
+    # 0.9193 # integrates to ~3-7, very smooth sample mean
+    # 0.8193 # integrates to depth ~22, very noisy sample mean
+    eps = 0.05,
+    maxdepth = 17,
     rngseed = 42,
     compile = True,
-    dbg_info = True
+    dbg_info = True,
+    signal_response = signal_response
 )
 
-_last_pos, _key, position_samples, unintegrated_momenta, momentum_samples, depths = sampler.generate_n_samples(10000)
+_last_pos, _key, position_samples, unintegrated_momenta, momentum_samples, depths, trees = sampler.generate_n_samples(30)
 plt.hist(depths, bins=np.arange(sampler.maxdepth + 2))
 
 # %% [markdown]
 # # Position samples
-signal_response_of_samples = lax.map(signal_response, position_samples)
-mean_of_signal_response = np.mean(signal_response_of_samples, axis=0)
-std_dev_of_signal_response = np.std(signal_response_of_samples, axis=0)
-plt.plot(signal_response(pos_truth), label="truth")
-#plt.plot(data, label="data")
-#for idx, s in enumerate(position_samples[::200]):
-    #plt.plot(signal_response(s), label=str(idx))
-plt.plot(mean_of_signal_response, label='sample mean of signal response')
-plt.fill_between(np.arange(len(mean_of_signal_response)), y1=mean_of_signal_response - std_dev_of_signal_response, y2=mean_of_signal_response + std_dev_of_signal_response, color='grey', alpha=0.5)
-plt.title('position samples')
-plt.xlabel('position')
-plt.ylabel('signal response')
-plt.legend(loc='upper right')
+def plot_mean_and_stddev(ax, samples, mean_of_r=None, truth=False, **kwargs):
+    signal_response_of_samples = lax.map(signal_response, samples)
+    if mean_of_r == None:
+        mean_of_signal_response = np.mean(signal_response_of_samples, axis=0)
+    else:
+        mean_of_signal_response = mean_of_r
+    mean_label = kwargs.pop('mean_label', 'sample mean of signal response')
+    ax.plot(mean_of_signal_response, label=mean_label)
+    std_dev_of_signal_response = np.std(signal_response_of_samples, axis=0)
+    if truth:
+        ax.plot(signal_response_truth, label="truth")
+    ax.fill_between(np.arange(len(mean_of_signal_response)), y1=mean_of_signal_response - std_dev_of_signal_response, y2=mean_of_signal_response + std_dev_of_signal_response, color='grey', alpha=0.5)
+    title = kwargs.pop('title', 'position samples')
+    if title is not None:
+        ax.set_title(title)
+    xlabel = kwargs.pop('xlabel', 'position')
+    if xlabel is not None:
+        ax.set_xlabel(xlabel)
+    ylabel = kwargs.pop('ylabel', 'signal response')
+    if ylabel is not None:
+        ax.set_ylabel(ylabel)
+    ax.legend(loc='lower right', fontsize=8)
 
-# %% [markdown]
+plot_mean_and_stddev(plt.gca(), position_samples, truth=True)
+
+# %%
+debug_pos = np.array(hmc._DEBUG_STORE)[:,0,:]
+
+# %%
+for idx, dbgp in enumerate(debug_pos):
+    plt.plot(signal_response(dbgp), label=f'{idx}', alpha=0.1)
+#plt.legend()
+
+# %%
+debug_resp = lax.map(signal_response, np.array(hmc._DEBUG_STORE)[:,0,:])
+debug_resp_idcs = np.tile(np.arange(debug_resp.shape[1]), debug_resp.shape[0])
+debug_resp_vals = np.ravel(debug_resp)
+plt.hist2d(debug_resp_idcs, debug_resp_vals, bins=(np.arange(debug_resp.shape[1]), 100))
+plt.plot(signal_response(pos_truth), color='r', label='truth')
+plt.plot(mean_of_signal_response, color='orange', label='signal response of sample mean')
+plt.legend()
+
+# %%
+debug_pos_x = np.array(hmc._DEBUG_STORE)[:,0,0]
+debug_pos_y = np.array(hmc._DEBUG_STORE)[:,0,1]
+for idx, dbgp in enumerate(debug_pos):
+    plt.scatter(debug_pos_x, debug_pos_y, s=0.1, color='k')
+#plt.legend()
+
+# %%
+#plt.plot(lax.map(ham, position_samples), label='pot energies')
+#plt.plot(lax.map(np.linalg.norm, position_samples), label='norms')
+#plt.axhline(np.linalg.norm(np.mean(position_samples, axis=0)))
+plt.plot(depths, color='r', label='depths')
+plt.legend()
+
+# %%[markdown]
 # # 1D position and momentum time series
 if position_samples[0].shape != (1,):
     raise ValueError("time series only availible for 1d data")
@@ -223,16 +269,16 @@ def check_leapfrog_energy_conservation():
     positions = [position]
     momenta = [momentum]
     for _ in range(25):
-        new_qp, _ = leapfrog_step(
+        new_qp, _ = hmc.leapfrog_step(
             potential_energy_gradient=potential_energy_gradient,
-            qp = QP(position=positions[-1], momentum=momenta[-1]),
+            qp = hmc.QP(position=positions[-1], momentum=momenta[-1]),
             step_length=0.25
         )
         positions.append(new_qp.position)
         momenta.append(new_qp.momentum)
     positions = np.array(positions)
     momenta = np.array(momenta)
-    old_pot_energy = potential_energy(position) 
+    old_pot_energy = potential_energy(position)
     new_pot_energy = potential_energy(new_qp.position)
     g = jax.grad(potential_energy)
     print("intial gradient:", g(position))
@@ -329,8 +375,8 @@ def sample_from_d(key):
     return jft.cg(D_inv, d_inv_smpl, maxiter=32)[0]
 
 wiener_samples = np.array(list(map(
-    lambda key: signal_response(sample_from_d(key) + m),
-    random.split(key, 20)
+    lambda key: sample_from_d(key) + m,
+    random.split(key, 30)
 )))
 
 # %%
@@ -341,11 +387,46 @@ plt.plot(wiener_sample_mean)
 plt.plot(signal_response(m))
 for wsmpl in wiener_samples:
     pass
-    plt.plot(wsmpl, color='r', linewidth=0.1)
+    #plt.plot(wsmpl, color='r', linewidth=0.1)
 
 plt.fill_between(np.arange(len(wiener_sample_mean)), y1=wiener_sample_mean - wiener_sample_std, y2=wiener_sample_mean + wiener_sample_std, color='grey', alpha=0.5)
 
-plt.plot(np.mean(wiener_samples, axis=0), label='signal response of mean of posterior samples')
+#plt.plot(np.mean(wiener_samples, axis=0), label='signal response of mean of posterior samples')
 plt.legend()
+
+# %%
+subplots = (3,1)
+fig_height_pt = 541 # pt
+#fig_width_pt = 360 # pt
+inches_per_pt = 1 / 72.27
+fig_height_in = 1. * fig_height_pt * inches_per_pt
+fig_width_in = fig_height_in / 0.618 * (subplots[1]/ subplots[0])
+fig_dims = (fig_width_in, fig_height_in)
+
+fig, (ax_raw, ax_nuts, ax_wiener) = plt.subplots(subplots[0], subplots[1], sharex=True, sharey=False, figsize=fig_dims)
+
+ax_raw.plot(signal_response_truth, label='true signal response')
+ax_raw.plot(data, 'k.', label='noisy data', markersize=2.)
+#ax_raw.set_xlabel('position')
+ax_raw.set_ylabel('signal response')
+ax_raw.set_title("signal and data")
+ax_raw.legend(fontsize=8)
+
+plot_mean_and_stddev(ax_nuts,
+                     position_samples,
+                     truth=True,
+                     title="NUTS",
+                     xlabel=None,
+                     mean_label='sample mean')
+plot_mean_and_stddev(ax_wiener,
+                     wiener_samples,
+                     mean_of_r=signal_response(m),
+                     truth=True,
+                     title="Wiener Filter",
+                     mean_label='exact posterior mean')
+
+fig.tight_layout()
+
+plt.savefig('wiener.pdf', bbox_inches='tight')
 
 # %%
