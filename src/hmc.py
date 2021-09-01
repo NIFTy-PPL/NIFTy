@@ -7,24 +7,23 @@ from jax.scipy.special import expit
 
 _DEBUG_FLAG = False
 
-if _DEBUG_FLAG:
-    from jax.experimental import host_callback
+from jax.experimental import host_callback
 
-    _DEBUG_TREE_END_IDXS = []
-    _DEBUG_SUBTREE_END_IDXS = []
-    _DEBUG_STORE = []
+_DEBUG_TREE_END_IDXS = []
+_DEBUG_SUBTREE_END_IDXS = []
+_DEBUG_STORE = []
 
-    def _DEBUG_ADD_QP(qp):
-        global _DEBUG_STORE
-        _DEBUG_STORE.append(qp)
-    
-    def _DEBUG_FINISH_TREE(dummy_arg):
-        global _DEBUG_TREE_END_IDXS
-        _DEBUG_TREE_END_IDXS.append(len(_DEBUG_STORE))
+def _DEBUG_ADD_QP(qp):
+    global _DEBUG_STORE
+    _DEBUG_STORE.append(qp)
 
-    def _DEBUG_FINISH_SUBTREE(dummy_arg):
-        global _DEBUG_SUBTREE_END_IDXS
-        _DEBUG_SUBTREE_END_IDXS.append(len(_DEBUG_STORE))
+def _DEBUG_FINISH_TREE(dummy_arg):
+    global _DEBUG_TREE_END_IDXS
+    _DEBUG_TREE_END_IDXS.append(len(_DEBUG_STORE))
+
+def _DEBUG_FINISH_SUBTREE(dummy_arg):
+    global _DEBUG_SUBTREE_END_IDXS
+    _DEBUG_SUBTREE_END_IDXS.append(len(_DEBUG_STORE))
 
 
 ###
