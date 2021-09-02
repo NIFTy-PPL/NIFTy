@@ -101,7 +101,7 @@ def cg(
     If set, the parameters `absdelta` and `resnorm` always take precedence over
     `tol` and `atol`.
     """
-    norm_ord = 2 if norm_ord is None else norm_ord
+    norm_ord = 2 if norm_ord is None else norm_ord  # TODO: change to 1
     maxiter_fallback = 20 * size(j)  # taken from SciPy's NewtonCG minimzer
     miniter = min(
         (6, maxiter if maxiter is not None else maxiter_fallback)
@@ -207,7 +207,7 @@ def static_cg(
 ):
     from jax.lax import cond, while_loop
 
-    norm_ord = 2 if norm_ord is None else norm_ord
+    norm_ord = 2 if norm_ord is None else norm_ord  # TODO: change to 1
     maxiter_fallback = 20 * size(j)  # taken from SciPy's NewtonCG minimzer
     miniter = min(
         (6, maxiter if maxiter is not None else maxiter_fallback)
@@ -340,12 +340,18 @@ def _newton_cg(
     energy_reduction_factor=0.1,
     old_fval=None,
     absdelta=None,
+    norm_ord=None,
+    xtol=1e-5,
     fun_and_grad=None,
     cg=cg,
     name=None,
     time_threshold=None,
     cg_kwargs=None
 ):
+    norm_ord = 1 if norm_ord is None else norm_ord
+    maxiter = 200 if maxiter is None else maxiter
+    xtol = xtol * size(x0)
+
     pos = x0
     if fun_and_grad is None:
         from jax import value_and_grad
@@ -404,7 +410,8 @@ def _newton_cg(
         else:
             grad_scaling = 0.
             nm = "N" if name is None else name
-            print(f"{nm}: WARNING: Energy would increase; aborting", file=sys.stderr)
+            msg = f"{nm}: WARNING: Energy would increase; aborting"
+            print(msg, file=sys.stderr)
             status = -1
             break
         if name is not None:
@@ -425,6 +432,9 @@ def _newton_cg(
         if absdelta is not None and 0. <= energy_diff < absdelta and naive_ls_it < 2:
             status = 0
             break
+        if grad_scaling * jft_norm(dd, ord=norm_ord, ravel=True) <= xtol:
+            status = 0
+            break
         if time_threshold is not None and datetime.now() > time_threshold:
             status = i + 1
             break
@@ -432,7 +442,9 @@ def _newton_cg(
         status = i + 1
         nm = "N" if name is None else name
         print(f"{nm}: Iteration Limit Reached", file=sys.stderr)
-    return OptimizeResults(x=pos, success=True, status=status, fun=energy, jac=g)
+    return OptimizeResults(
+        x=pos, success=True, status=status, fun=energy, jac=g
+    )
 
 
 def newton_cg(*args, **kwargs):

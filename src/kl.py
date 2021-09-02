@@ -269,7 +269,6 @@ def geometrically_sample_standard_hamiltonian(
 
         options = nls_kwargs.copy()
         options["hessp"] = r2_half.metric
-        # TODO: set sensible default convergence criteria
 
         opt_state = minimize(r2_half, x0=x0, method="NewtonCG", options=options)
 
