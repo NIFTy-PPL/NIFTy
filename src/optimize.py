@@ -401,7 +401,7 @@ def _newton_cg(
                 gam = float(sum_of_squares(g))
                 curv = float(g.dot(hessp(pos, g)))
                 grad_scaling = 1.
-                dd = -gam / curv * g
+                dd = gam / curv * g
         else:
             grad_scaling = 0.
             nm = "N" if name is None else name
