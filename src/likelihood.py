@@ -4,7 +4,7 @@ from jax import jvp, vjp
 from jax import numpy as np
 from jax.tree_util import Partial, tree_leaves, all_leaves
 
-from .sugar import is1d, sum_of_squares
+from .sugar import is1d, isiterable, sum_of_squares
 
 
 def doc_from(original):
@@ -38,7 +38,7 @@ class ShapeWithDtype():
             shape = (shape, )
         if not is1d(shape):
             ve = f"invalid shape; got {shape!r}"
-            raise ValueError(ve)
+            raise TypeError(ve)
 
         self._shape = shape
         self._dtype = np.float64 if dtype is None else dtype
@@ -118,11 +118,14 @@ class Likelihood():
         self._metric = metric
 
         if lsm_tangents_shape is not None:
-            if is1d(lsm_tangents_shape):
-                lsm_tangents_shape = ShapeWithDtype(lsm_tangents_shape)
-            else:
-                leaves = tree_leaves(lsm_tangents_shape)
-                if not all(isinstance(e, ShapeWithDtype) for e in leaves):
+            leaves = tree_leaves(lsm_tangents_shape)
+            if not all(
+                hasattr(e, "shape") and hasattr(e, "dtype") for e in leaves
+            ):
+                if is1d(lsm_tangents_shape
+                       ) or not isiterable(lsm_tangents_shape):
+                    lsm_tangents_shape = ShapeWithDtype(lsm_tangents_shape)
+                else:
                     te = "`lsm_tangent_shapes` of invalid type"
                     raise TypeError(te)
         self._lsm_tan_shp = lsm_tangents_shape

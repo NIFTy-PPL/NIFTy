@@ -1,4 +1,4 @@
-from typing import Callable, Hashable
+from typing import Any, Callable, Hashable
 from collections.abc import Iterable
 
 from jax import random
@@ -18,15 +18,17 @@ def isiterable(candidate):
         return False
 
 
-def is1d(ls, object_type=(int, np.unsignedinteger)):
-    if isinstance(ls, np.ndarray):
-        ndim = np.ndim(ls)
-        dtp_match = any(np.issubdtype(ls.dtype, dtp) for dtp in object_type)
-        return (ndim == 1) & dtp_match
+def is1d(ls: Any) -> bool:
+    """Indicates whether the input is one dimensional.
 
+    An object is considered one dimensional if it is an iterable of
+    non-iterable items.
+    """
+    if hasattr(ls, "ndim"):
+        return ls.ndim == 1
     if not isiterable(ls):
         return False
-    return all(isinstance(e, object_type) for e in ls)
+    return all(not isiterable(e) for e in ls)
 
 
 def ducktape(call: Callable, key: Hashable):
