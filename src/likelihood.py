@@ -23,7 +23,7 @@ class ShapeWithDtype():
     This class may not be transparent to JAX as it shall not be flattened
     itself. If used in a tree-like structure. It should only be used as leave.
     """
-    def __init__(self, shape: Union[tuple, list], dtype=None):
+    def __init__(self, shape: Union[tuple, list, int], dtype=None):
         """Instantiates a storage unit for shape and dtype.
 
         Parameters
@@ -34,6 +34,8 @@ class ShapeWithDtype():
         dtype : dtype
             Data-type of the to-be-described object.
         """
+        if isinstance(shape, int):
+            shape = (shape, )
         if not is1d(shape):
             ve = f"invalid shape; got {shape!r}"
             raise ValueError(ve)
