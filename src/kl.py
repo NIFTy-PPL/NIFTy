@@ -75,7 +75,7 @@ def vmap_forest_mean(method, *args, **kwargs):
 
 def sample_likelihood(likelihood: Likelihood, primals, key):
     white_sample = random_like_shapewdtype(
-        likelihood.left_sqrt_metric_tangents_shape, key=key
+        key, likelihood.left_sqrt_metric_tangents_shape
     )
     return likelihood.left_sqrt_metric(primals, white_sample)
 

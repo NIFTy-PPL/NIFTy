@@ -242,7 +242,7 @@ noise_cov_inv = lambda x: 5**-2 * x
 
 # Create synthetic data
 key, subkey = random.split(key)
-pos_truth = jft.random_like_shapewdtype(ptree, key=subkey)
+pos_truth = jft.random_like_shapewdtype(subkey, ptree)
 signal_response_truth = signal_response(pos_truth)
 key, subkey = random.split(key)
 noise_truth = np.sqrt(
@@ -255,7 +255,7 @@ ham = jft.StandardHamiltonian(likelihood=nll).jit()
 ham_vg = jit(value_and_grad(ham))
 
 key, subkey = random.split(key)
-pos_init = jft.Field(jft.random_like_shapewdtype(ptree, key=subkey))
+pos_init = jft.Field(jft.random_like_shapewdtype(subkey, ptree))
 pos = jft.Field(pos_init.val)
 
 n_mgvi_iterations = 3

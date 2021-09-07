@@ -96,7 +96,7 @@ def mean_and_std(forest, correct_bias=True):
 
 
 def random_like_shapewdtype(
-    tree_of_shapes: Iterable, key: Iterable, rng: Callable = random.normal
+    key: Iterable, tree_of_shapes: Iterable, rng: Callable = random.normal
 ):
     struct = tree_structure(tree_of_shapes)
     # Cast the subkeys to the structure of `primals`
