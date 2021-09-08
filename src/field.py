@@ -139,10 +139,6 @@ class Field():
         s += ")"
         return s
 
-    def norm(self, ord):
-        from .sugar import norm as jft_norm
-        return jft_norm(self, ord=ord)
-
     def ravel(self):
         from jax.numpy import ravel
         return self.new(tree_map(ravel, self.val))
@@ -266,7 +262,7 @@ for op in ["__lt__", "__le__", "__gt__", "__ge__", "__eq__", "__ne__"]:
 
     setattr(Field, op, func(op))
 
-for op in ["get", "__getitem__", "__contains__", "__iter__", "__len__"]:
+for op in ["__getitem__", "__contains__", "__iter__", "__len__"]:
 
     def func(op):
         def func2(self, *args, **kwargs):
