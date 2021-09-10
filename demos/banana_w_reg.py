@@ -35,36 +35,6 @@ def banana_helper_phi_b(b, x):
     return np.array([x[0], x[1] + b * x[0]**2 - 100 * b])
 
 
-def make_kinetic_energy_fn_from_diag_mass_matrix(mass_matrix):
-    from jax import tree_util
-
-    def _kin_energy(momentum):
-        # calculate kinetic energies for every array (leaf) in the pytree
-        kin_energies = tree_util.tree_map(
-            lambda p, m: np.sum(p**2 / (2 * m)), momentum, mass_matrix
-        )
-        # sum everything up
-        total_kin_energy = tree_util.tree_reduce(
-            lambda acc, leaf_kin_e: acc + leaf_kin_e, kin_energies, 0.
-        )
-        return total_kin_energy
-
-    return _kin_energy
-
-
-def make_banana_density(b):
-    # https://link.springer.com/article/10.1007/s001800050022
-    # b = 0.03 (moderately twisted)
-    # b = 0.1 (strongly twisted)
-    # kinetic energy is abuse of notation, but gives me a gaussian
-    f = make_kinetic_energy_fn_from_diag_mass_matrix(np.array([100, 1]))
-
-    def banana_potential(x):
-        return f(banana_helper_phi_b(b, x))
-
-    return banana_potential
-
-
 # %%
 b = 0.1
 
@@ -81,30 +51,15 @@ ham = jft.StandardHamiltonian(nll)
 ham = ham.jit()
 ham_vg = jit(value_and_grad(ham))
 
-# %%
-n_pix_sqrt = 1000
-x = np.linspace(-30 / SCALE, 30 / SCALE, n_pix_sqrt)
-y = np.linspace(-65 / SCALE, 15 / SCALE, n_pix_sqrt)
-xx = cartesian_product((x, y))
-ham_everywhere = np.vectorize(ham, signature="(2)->()")(xx).reshape(
-    n_pix_sqrt, n_pix_sqrt
-)
-plt.imshow(
-    np.exp(-ham_everywhere.T),
-    extent=(x.min(), x.max(), y.min(), y.max()),
-    origin="lower"
-)
-plt.colorbar()
-plt.show()
 
 # %%  # MGVI
 n_mgvi_iterations = 30
-n_samples = [1] * (n_mgvi_iterations - 1) + [2]
+n_samples = [1] * (n_mgvi_iterations - 2) + [2] + [100]
 n_newton_iterations = [7] * (n_mgvi_iterations - 10) + [10] * 6 + 4 * [25]
 absdelta = 1e-10
 
 initial_position = np.array([1., 1.])
-mkl_pos = 1e-2 * jft.Field(initial_position)
+mkl_pos = 1e-2 * initial_position
 
 # Minimize the potential
 for i in range(n_mgvi_iterations):
@@ -122,7 +77,6 @@ for i in range(n_mgvi_iterations):
     )
 
     print("Minimizing...", file=sys.stderr)
-    # TODO: Re-introduce a simplified version that works without fields
     opt_state = jft.minimize(
         None,
         x0=mkl_pos,
@@ -130,9 +84,11 @@ for i in range(n_mgvi_iterations):
         options={
             "fun_and_grad": mkl.energy_and_gradient,
             "hessp": mkl.metric,
+            "energy_reduction_factor": None,
             "absdelta": absdelta,
             "maxiter": n_newton_iterations[i],
             "cg_kwargs": {
+                "miniter": 0,
                 "name": None
             },
             "name": "N"
@@ -142,7 +98,7 @@ for i in range(n_mgvi_iterations):
     print(
         (
             f"Post MGVI Iteration {i}: Energy {ham(mkl_pos):2.4e}"
-            f"; #NaNs {np.isnan(mkl_pos.val).sum()}"
+            f"; #NaNs {np.isnan(mkl_pos).sum()}"
         ),
         file=sys.stderr
     )
@@ -154,7 +110,7 @@ n_newton_iterations = [7] * (n_geovi_iterations - 10) + [10] * 6 + [25] * 4
 absdelta = 1e-10
 
 initial_position = np.array([1., 1.])
-gkl_pos = 1e-2 * jft.Field(initial_position)
+gkl_pos = 1e-2 * initial_position
 
 for i in range(n_geovi_iterations):
     print(f"GeoVI Iteration {i}", file=sys.stderr)
@@ -170,6 +126,7 @@ for i in range(n_geovi_iterations):
         non_linear_sampling_kwargs={
             "cg_kwargs": {
                 "miniter": 0,
+                "absdelta": None,
                 "name": None
             },
             "maxiter": 20,
@@ -184,14 +141,15 @@ for i in range(n_geovi_iterations):
         x0=gkl_pos,
         method="newton-cg",
         options={
+            "fun_and_grad": gkl.energy_and_gradient,
+            "hessp": gkl.metric,
+            "energy_reduction_factor": None,
+            "absdelta": absdelta,
+            "maxiter": n_newton_iterations[i],
             "cg_kwargs": {
                 "miniter": 0,
                 "name": None
             },
-            "fun_and_grad": gkl.energy_and_gradient,
-            "hessp": gkl.metric,
-            "absdelta": absdelta,
-            "maxiter": n_newton_iterations[i],
             "name": "N",
         }
     )
@@ -206,9 +164,11 @@ opt_state = jft.minimize(
     options={
         "fun_and_grad": ham_vg,
         "hessp": ham.metric,
+        "energy_reduction_factor": None,
         "absdelta": absdelta,
         "maxiter": 100,
         "cg_kwargs": {
+            "miniter": 0,
             "name": None
         },
         "name": "MAP"
@@ -235,38 +195,38 @@ map_gkl = jft.GeoMetricKL(
 )
 
 # %%
-b_space_smpls = np.array([(mkl_pos + smpl).val for smpl in mkl.samples])
 
+n_pix_sqrt = 1000
 x = np.linspace(-30 / SCALE, 30 / SCALE, n_pix_sqrt)
-y = np.linspace(-65 / SCALE, 15 / SCALE, n_pix_sqrt)
+y = np.linspace(-15 / SCALE, 15 / SCALE, n_pix_sqrt)
 X, Y = np.meshgrid(x, y)
 XY = np.array([X, Y]).T
 xy = XY.reshape((XY.shape[0] * XY.shape[1], 2))
 es = np.exp(-lax.map(ham, xy)).reshape(XY.shape[:2]).T
 
-fig, ax = plt.subplots()
-contour = ax.contour(X, Y, es)
-ax.clabel(contour, inline=True, fontsize=10)
-ax.scatter(*b_space_smpls.T)
-ax.plot(*mkl_pos, "rx")
-plt.show()
+fig, axs = plt.subplots(1, 3, figsize=(16, 9))
 
-# %%
-b_space_smpls = np.array([(gkl_pos + smpl).val for smpl in gkl.samples])
+b_space_smpls = np.array([mkl_pos + smpl for smpl in mkl.samples])
+contour = axs[0].contour(X, Y, es)
+axs[0].clabel(contour, inline=True, fontsize=10)
+axs[0].scatter(*b_space_smpls.T)
+axs[0].plot(*mkl_pos, "rx")
+axs[0].set_title("MGVI")
 
-fig, ax = plt.subplots()
-contour = ax.contour(X, Y, es)
-ax.clabel(contour, inline=True, fontsize=10)
-ax.scatter(*b_space_smpls.T, alpha=0.1)
-ax.plot(*gkl_pos, "rx")
-plt.show()
+b_space_smpls = np.array([gkl_pos + smpl for smpl in gkl.samples])
+contour = axs[1].contour(X, Y, es)
+axs[1].clabel(contour, inline=True, fontsize=10)
+axs[1].scatter(*b_space_smpls.T, alpha=0.7)
+axs[1].plot(*gkl_pos, "rx")
+axs[1].set_title("GeoVI")
 
-# %%
 b_space_smpls = np.array([map_pos + smpl for smpl in map_gkl.samples])
+contour = axs[2].contour(X, Y, es)
+axs[2].clabel(contour, inline=True, fontsize=10)
+axs[2].scatter(*b_space_smpls.T, alpha=0.7)
+axs[2].plot(*map_pos, "rx")
+axs[2].set_title("MAP + GeoVI Samples")
 
-fig, ax = plt.subplots()
-contour = ax.contour(X, Y, es)
-ax.clabel(contour, inline=True, fontsize=10)
-ax.scatter(*b_space_smpls.T, alpha=0.7)
-ax.plot(*map_pos, "rx")
-plt.show()
+fig.tight_layout()
+fig.savefig("banana_vi_w_regularization.png", dpi=400)
+plt.close()
