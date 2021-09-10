@@ -61,7 +61,8 @@ def test_ncg(seed):
 
 
 @pmp("seed", (3637, 12, 42))
-def test_cg(seed):
+@pmp("cg", (jft.cg, jft.static_cg))
+def test_cg(seed, cg):
     key = random.PRNGKey(seed)
     sk = random.split(key, 2)
     x = random.normal(sk[0], shape=(3, ))
@@ -69,7 +70,7 @@ def test_cg(seed):
     diag = 6. + random.normal(sk[1], shape=(3, ))
     mat = lambda x: x / diag
 
-    res, _ = jft.cg(mat, x, resnorm=1e-5, absdelta=1e-5)
+    res, _ = cg(mat, x, resnorm=1e-5, absdelta=1e-5)
     assert_allclose(res, diag * x, rtol=1e-4, atol=1e-4)
 
 
