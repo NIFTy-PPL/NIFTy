@@ -40,7 +40,7 @@ def get_fourier_mode_distributor(
     mode_multiplicity : np.ndarray
         Multiplicity for each unique Fourier mode length.
     """
-    shape = tuple(shape)
+    shape = (shape, ) if isinstance(shape, int) else tuple(shape)
 
     # Compute length of modes
     mspc_distances = 1. / (np.array(shape) * np.array(distances))
@@ -113,6 +113,7 @@ def non_parametric_amplitude(
         flexibility = ducktape(flexibility, prefix + "_flexibility")
         ptree[prefix + "_flexibility"] = ShapeWithDtype(())
         # Register the parameters for the spectrum
+        assert log_vol is not None
         assert rel_log_mode_len.ndim == log_vol.ndim == 1
         ptree[prefix + "_spectrum"] = ShapeWithDtype((2, ) + log_vol.shape)
     if asperity is not None:
@@ -126,6 +127,7 @@ def non_parametric_amplitude(
         ln_amplitude = slope
 
         if flexibility is not None:
+            assert log_vol is not None
             xi_spc = primals[prefix + "_spectrum"]
             flx = flexibility(primals)
             sig_flx = flx * np.sqrt(log_vol)
@@ -245,7 +247,7 @@ class CorrelatedFieldMaker():
             Description of the harmonic partner domain in which the amplitude
             lives
         """
-        shape = tuple(shape)
+        shape = (shape, ) if isinstance(shape, int) else tuple(shape)
         distances = tuple(np.broadcast_to(distances, np.shape(shape)))
         totvol = np.prod(np.array(shape) * np.array(distances))
 
