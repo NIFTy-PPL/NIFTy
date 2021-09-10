@@ -4,7 +4,7 @@ from functools import partial
 from jax import numpy as np
 from jax import lax
 
-from typing import Callable, NamedTuple, Optional, Tuple, Union
+from typing import Any, Callable, NamedTuple, Optional, Tuple, Union
 
 from .forest_util import common_type, size, where, zeros_like
 from .forest_util import norm as jft_norm
@@ -15,8 +15,35 @@ HessVP = Callable[[np.ndarray], np.ndarray]
 N_RESET = 20
 
 
+class CGResults(NamedTuple):
+    x: np.ndarray
+    nit: Union[int, np.ndarray]
+    nfev: Union[int, np.ndarray]  # number of matrix-evaluations
+    info: Union[int, np.ndarray]
+    success: Union[bool, np.ndarray]
+
+
+def cg(*args, **kwargs) -> Tuple[Any, Union[int, np.ndarray]]:
+    """Solve `mat(x) = j` using Conjugate Gradient. `mat` must be callable and
+    represent a hermitian, positive definite matrix.
+
+    Notes
+    -----
+    If set, the parameters `absdelta` and `resnorm` always take precedence over
+    `tol` and `atol`.
+    """
+    cg_res = _cg(*args, **kwargs)
+    return cg_res.x, cg_res.info
+
+
+@doc_from(cg)
+def static_cg(*args, **kwargs):
+    cg_res = _static_cg(*args, **kwargs)
+    return cg_res.x, cg_res.info
+
+
 # Taken from nifty
-def cg(
+def _cg(
     mat,
     j,
     x0=None,
@@ -30,15 +57,7 @@ def cg(
     maxiter=None,
     name=None,
     time_threshold=None
-):
-    """Solve `mat(x) = j` using Conjugate Gradient. `mat` must be callable and
-    represent a hermitian, positive definite matrix.
-
-    Notes
-    -----
-    If set, the parameters `absdelta` and `resnorm` always take precedence over
-    `tol` and `atol`.
-    """
+) -> CGResults:
     norm_ord = 2 if norm_ord is None else norm_ord  # TODO: change to 1
     maxiter_fallback = 20 * size(j)  # taken from SciPy's NewtonCG minimzer
     miniter = min(
@@ -60,15 +79,17 @@ def cg(
         d = r
         # energy = .5xT M x - xT j
         energy = 0.
+        nfev = 0
     else:
         pos = x0
         r = mat(pos) - j
         d = r
         energy = float(((r - j) / 2).dot(pos))
+        nfev = 1
     previous_gamma = float(sum_of_squares(r))
     if previous_gamma == 0:
         info = 0
-        return pos, info
+        return CGResults(x=pos, info=info, nit=0, nfev=nfev, success=True)
 
     info = -1
     i = 0
@@ -76,6 +97,8 @@ def cg(
         if name is not None:
             print(f"{name}: Iteration {i} ⛰:{energy:+.6e}", file=sys.stderr)
         q = mat(d)
+        nfev += 1
+
         curv = float(d.dot(q))
         if curv == 0.:
             nm = "CG" if name is None else name
@@ -87,25 +110,24 @@ def cg(
         pos = pos - alpha * d
         if i % N_RESET == 0:
             r = mat(pos) - j
+            nfev += 1
         else:
             r = r - q * alpha
         gamma = float(sum_of_squares(r))
         if time_threshold is not None and datetime.now() > time_threshold:
             info = i
-            return pos, info
+            return CGResults(x=pos, info=info, nit=i, nfev=nfev, success=False)
         if gamma == 0:
             nm = "CG" if name is None else name
             print(f"{nm}: gamma=0, converged!", file=sys.stderr)
-            info = 0
-            return pos, info
+            return CGResults(x=pos, info=0, nit=i, nfev=nfev, success=True)
         if resnorm is not None:
             norm = float(jft_norm(r, ord=norm_ord, ravel=True))
             if name is not None:
                 msg = f"{name}: |∇|:{norm:.6e} 🞋:{resnorm:.6e}"
                 print(msg, file=sys.stderr)
             if norm < resnorm and i >= miniter:
-                info = 0
-                return pos, info
+                return CGResults(x=pos, info=0, nit=i, nfev=nfev, success=True)
         new_energy = float(((r - j) / 2).dot(pos))
         if absdelta is not None:
             energy_diff = energy - new_energy
@@ -117,8 +139,7 @@ def cg(
                 nm = "CG" if name is None else name
                 raise ValueError(f"{nm}: WARNING: energy increased")
             if basically_zero <= energy_diff < absdelta and i >= miniter:
-                info = 0
-                return pos, info
+                return CGResults(x=pos, info=0, nit=i, nfev=nfev, success=True)
         energy = new_energy
         d = d * max(0, gamma / previous_gamma) + r
         previous_gamma = gamma
@@ -126,11 +147,10 @@ def cg(
         nm = "CG" if name is None else name
         print(f"{nm}: Iteration Limit Reached", file=sys.stderr)
         info = i
-    return pos, info
+    return CGResults(x=pos, info=info, nit=i, nfev=nfev, success=info == 0)
 
 
-@doc_from(cg)
-def static_cg(
+def _static_cg(
     mat,
     j,
     x0=None,
@@ -144,7 +164,7 @@ def static_cg(
     maxiter=None,
     name=None,
     **kwargs
-):
+) -> CGResults:
     from jax.lax import cond, while_loop
 
     norm_ord = 2 if norm_ord is None else norm_ord  # TODO: change to 1
@@ -241,10 +261,12 @@ def static_cg(
         pos = zeros_like(j)
         r = -j
         d = r
+        nfev = 0
     else:
         pos = x0
         r = mat(pos) - j
         d = r
+        nfev = 1
     energy = None
     if absdelta is not None or name is not None:
         if x0 is None:
@@ -268,7 +290,12 @@ def static_cg(
 
     val = while_loop(continue_condition, cg_single_step, val)
 
-    return val["pos"], val["info"]
+    i = val["iteration"]
+    info = val["info"]
+    nfev += i + i // N_RESET
+    return CGResults(
+        x=val["pos"], info=info, nit=i, nfev=nfev, success=info == 0
+    )
 
 
 # The following is code adapted from Nicholas Mancuso to work with pytrees

@@ -68,7 +68,7 @@ def _newton_cg(
     xtol=1e-5,
     fun_and_grad=None,
     hessp=None,
-    cg=conjugate_gradient.cg,
+    cg=conjugate_gradient._cg,
     name=None,
     time_threshold=None,
     cg_kwargs=None
@@ -85,6 +85,7 @@ def _newton_cg(
     cg_kwargs = {} if cg_kwargs is None else cg_kwargs
 
     energy, g = fun_and_grad(pos)
+    nfev, njev, nhev = 1, 1, 0
     if np.isnan(energy):
         raise ValueError("energy is Nan")
     status = -1
@@ -109,7 +110,9 @@ def _newton_cg(
             "name": cg_name,
             "time_threshold": time_threshold
         }
-        nat_g, info = cg(Partial(hessp, pos), g, **(default_kwargs | cg_kwargs))
+        cg_res = cg(Partial(hessp, pos), g, **(default_kwargs | cg_kwargs))
+        nat_g, info = cg_res.x, cg_res.info
+        nhev += cg_res.nfev
         if info is not None and info < 0:
             raise ValueError("conjugate gradient failed")
 
@@ -119,6 +122,7 @@ def _newton_cg(
         for naive_ls_it in range(9):
             new_pos = pos - grad_scaling * dd
             new_energy, new_g = fun_and_grad(new_pos)
+            nfev, njev = nfev + 1, njev + 1
             if new_energy <= energy:
                 break
 
@@ -129,6 +133,7 @@ def _newton_cg(
                     print(msg, file=sys.stderr)
                 gam = float(sum_of_squares(g))
                 curv = float(g.dot(hessp(pos, g)))
+                nhev += 1
                 grad_scaling = 1.
                 dd = gam / curv * g
         else:
@@ -167,7 +172,15 @@ def _newton_cg(
         nm = "N" if name is None else name
         print(f"{nm}: Iteration Limit Reached", file=sys.stderr)
     return OptimizeResults(
-        x=pos, success=True, status=status, fun=energy, jac=g, nit=i
+        x=pos,
+        success=True,
+        status=status,
+        fun=energy,
+        jac=g,
+        nit=i,
+        nfev=nfev,
+        njev=njev,
+        nhev=nhev
     )
 
 
