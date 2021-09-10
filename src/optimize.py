@@ -70,11 +70,15 @@ def common_type(*trees):
     return common_dtp
 
 
-def size(tree, axis: Optional[int] = None):
+def size(tree, axis: Optional[int] = None) -> Union[int, np.ndarray]:
     if axis is not None:
         raise TypeError("axis of an arbitrary tree is ill defined")
     sizes = tree_map(np.size, tree)
     return tree_reduce(np.add, sizes)
+
+
+def zeros_like(a, dtype=None, shape=None):
+    return tree_map(partial(np.zeros_like, dtype=dtype, shape=shape), a)
 
 
 # Taken from nifty
@@ -117,7 +121,7 @@ def cg(
     eps = 6. * np.finfo(common_dtp).eps  # taken from SciPy's NewtonCG minimzer
 
     if x0 is None:
-        pos = 0. * j
+        pos = zeros_like(j)
         r = -j
         d = r
         # energy = .5xT M x - xT j
@@ -298,7 +302,7 @@ def static_cg(
         return ret
 
     if x0 is None:
-        pos = 0. * j
+        pos = zeros_like(j)
         r = -j
         d = r
     else:
@@ -334,15 +338,15 @@ def static_cg(
 def _newton_cg(
     fun=None,
     x0=None,
-    hessp=None,
-    maxiter=None,
     *,
+    maxiter=None,
     energy_reduction_factor=0.1,
     old_fval=None,
     absdelta=None,
     norm_ord=None,
     xtol=1e-5,
     fun_and_grad=None,
+    hessp=None,
     cg=cg,
     name=None,
     time_threshold=None,
@@ -363,6 +367,7 @@ def _newton_cg(
     if np.isnan(energy):
         raise ValueError("energy is Nan")
     status = -1
+    i = 0
     for i in range(maxiter):
         cg_name = name + "CG" if name is not None else None
         # Newton approximates the potential up to second order. The CG energy
@@ -443,7 +448,7 @@ def _newton_cg(
         nm = "N" if name is None else name
         print(f"{nm}: Iteration Limit Reached", file=sys.stderr)
     return OptimizeResults(
-        x=pos, success=True, status=status, fun=energy, jac=g
+        x=pos, success=True, status=status, fun=energy, jac=g, nit=i + 1
     )
 
 
@@ -460,10 +465,7 @@ def minimize(
     tol: Optional[float] = None,
     options: Optional[Mapping[str, Any]] = None
 ) -> OptimizeResults:
-    """Minimize fun.
-
-    NOTE, fun is assumed to actually compute fun and its gradient.
-    """
+    """Minimize fun."""
     if options is None:
         options = {}
     if not isinstance(args, tuple):
