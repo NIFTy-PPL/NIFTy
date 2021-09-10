@@ -78,3 +78,19 @@ run_demo_nifty_to_jifty:
   artifacts:
     paths:
       - '*.png'
+
+run_demo_banana:
+  stage: demo
+  script:
+    - python3 demos/banana.py
+  artifacts:
+    paths:
+      - '*.png'
+
+run_demo_banana_w_reg:
+  stage: demo
+  script:
+    - python3 demos/banana_w_reg.py
+  artifacts:
+    paths:
+      - '*.png'
