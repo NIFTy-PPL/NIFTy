@@ -380,9 +380,7 @@ def _newton_cg(
         else:
             cg_absdelta = None if absdelta is None else absdelta / 100.
         mag_g = jft_norm(g, ord=cg_kwargs.get("norm_ord", 1), ravel=True)
-        # SciPy scales its CG resnorm with `min(0.5, sqrt(mag_g))`
-        # cg_resnorm = mag_g * np.sqrt(mag_g).clip(None, 0.5)
-        cg_resnorm = mag_g / 2
+        cg_resnorm = np.minimum(0.5, np.sqrt(mag_g)) * mag_g  # taken from SciPy
         default_kwargs = {
             "absdelta": cg_absdelta,
             "resnorm": cg_resnorm,
