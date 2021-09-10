@@ -71,7 +71,8 @@ def cg(
         return pos, info
 
     info = -1
-    for i in range(maxiter):
+    i = 0
+    for i in range(1, maxiter + 1):
         if name is not None:
             print(f"{name}: Iteration {i} ⛰:{energy:+.6e}", file=sys.stderr)
         q = mat(d)
@@ -82,13 +83,13 @@ def cg(
         if alpha < 0:
             raise ValueError("implausible gradient scaling `alpha < 0`")
         pos = pos - alpha * d
-        if i % N_RESET == N_RESET - 1:
+        if i % N_RESET == 0:
             r = mat(pos) - j
         else:
             r = r - q * alpha
         gamma = float(sum_of_squares(r))
         if time_threshold is not None and datetime.now() > time_threshold:
-            info = i + 1
+            info = i
             return pos, info
         if gamma == 0:
             nm = "CG" if name is None else name
@@ -123,7 +124,7 @@ def cg(
     else:
         nm = "CG" if name is None else name
         print(f"{nm}: Iteration Limit Reached", file=sys.stderr)
-        info = i + 1
+        info = i
     return pos, info
 
 
@@ -183,7 +184,7 @@ def static_cg(
         info = np.where(alpha < 0., -1, info)
         pos = pos - alpha * d
         r = cond(
-            i % N_RESET == N_RESET - 1, lambda x: mat(x["pos"]) - x["j"],
+            i % N_RESET == 0, lambda x: mat(x["pos"]) - x["j"],
             lambda x: x["r"] - x["q"] * x["alpha"], {
                 "pos": pos,
                 "j": j,
