@@ -89,7 +89,7 @@ def _newton_cg(
         raise ValueError("energy is Nan")
     status = -1
     i = 0
-    for i in range(maxiter):
+    for i in range(1, maxiter + 1):
         cg_name = name + "CG" if name is not None else None
         # Newton approximates the potential up to second order. The CG energy
         # (`0.5 * x.T @ A @ x - x.T @ b`) and the approximation to the true
@@ -150,7 +150,7 @@ def _newton_cg(
         g = new_g
 
         if name is not None:
-            msg = f"{name}: Iteration {i+1} ⛰:{energy:.6e} Δ⛰:{energy_diff:.6e}"
+            msg = f"{name}: Iteration {i} ⛰:{energy:.6e} Δ⛰:{energy_diff:.6e}"
             msg += f" 🞋:{absdelta:.6e}" if absdelta is not None else ""
             print(msg, file=sys.stderr)
         if absdelta is not None and 0. <= energy_diff < absdelta and naive_ls_it < 2:
@@ -160,14 +160,14 @@ def _newton_cg(
             status = 0
             break
         if time_threshold is not None and datetime.now() > time_threshold:
-            status = i + 1
+            status = i
             break
     else:
-        status = i + 1
+        status = i
         nm = "N" if name is None else name
         print(f"{nm}: Iteration Limit Reached", file=sys.stderr)
     return OptimizeResults(
-        x=pos, success=True, status=status, fun=energy, jac=g, nit=i + 1
+        x=pos, success=True, status=status, fun=energy, jac=g, nit=i
     )
 
 
