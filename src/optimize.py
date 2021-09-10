@@ -370,7 +370,7 @@ def _newton_cg(
         # potential in Newton thus live on comparable energy scales. Hence, the
         # energy in a Newton minimization can be used to set the CG energy
         # convergence criterion.
-        if old_fval is not None:
+        if old_fval and energy_reduction_factor:
             cg_absdelta = energy_reduction_factor * (old_fval - energy)
         else:
             cg_absdelta = None if absdelta is None else absdelta / 100.
