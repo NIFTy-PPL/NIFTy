@@ -78,10 +78,12 @@ def cg(
         q = mat(d)
         curv = float(d.dot(q))
         if curv == 0.:
-            raise ValueError("zero curvature in conjugate gradient")
+            nm = "CG" if name is None else name
+            raise ValueError(f"{nm}: zero curvature in conjugate gradient")
         alpha = previous_gamma / curv
         if alpha < 0:
-            raise ValueError("implausible gradient scaling `alpha < 0`")
+            nm = "CG" if name is None else name
+            raise ValueError(f"{nm}: implausible gradient scaling `alpha < 0`")
         pos = pos - alpha * d
         if i % N_RESET == 0:
             r = mat(pos) - j
@@ -113,8 +115,7 @@ def cg(
             basically_zero = -eps * np.abs(new_energy)
             if energy_diff < basically_zero:
                 nm = "CG" if name is None else name
-                print(f"{nm}: WARNING: Energy increased", file=sys.stderr)
-                return pos, -1
+                raise ValueError(f"{nm}: WARNING: energy increased")
             if basically_zero <= energy_diff < absdelta and i >= miniter:
                 info = 0
                 return pos, info
@@ -215,7 +216,7 @@ def static_cg(
                 msg = f"{name}: Δ⛰:{energy_diff!r} 🞋:{absdelta!r}"
                 print(msg, file=sys.stderr)
             basically_zero = -eps * np.abs(energy)
-            # print(f"{nm}: WARNING: Energy increased", file=sys.stderr)
+            # print(f"energy increased", file=sys.stderr)
             info = np.where(energy_diff < basically_zero, -1, info)
             info = np.where(
                 (energy_diff >= basically_zero) & (energy_diff < absdelta) &
