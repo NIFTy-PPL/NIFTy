@@ -107,7 +107,7 @@ def test_cg(seed, cg):
 
 
 @pmp("seed", (3637, 12, 42))
-def test_cg_steighaus(seed):
+def test_cg_steihaug(seed):
     key = random.PRNGKey(seed)
     sk = random.split(key, 2)
     x = random.normal(sk[0], shape=(3, ))
@@ -117,7 +117,7 @@ def test_cg_steighaus(seed):
 
     # Note, the solution to the subproblem with infinite trust radius is the CG
     # but with the opposite sign
-    res = jft.optimize.CGSteihaugSubproblem(
+    res = jft.conjugate_gradient._cg_steihaug_subproblem(
         np.nan, -x, mat, resnorm=1e-6, trust_radius=np.inf
     )
     assert_allclose(res.step, diag * x, rtol=1e-4, atol=1e-4)

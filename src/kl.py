@@ -7,9 +7,9 @@ from functools import partial
 from jax import random
 from jax.tree_util import Partial
 
+from . import conjugate_gradient
 from .forest_util import vmap_forest_mean
 from .likelihood import Likelihood, StandardHamiltonian
-from .optimize import cg
 from .sugar import random_like, random_like_shapewdtype
 
 
@@ -25,7 +25,7 @@ def _sample_standard_hamiltonian(
     primals,
     key,
     from_inverse: bool,
-    cg: Callable = cg,
+    cg: Callable = conjugate_gradient.cg,
     cg_kwargs: Optional[dict] = None
 ):
     if not isinstance(hamiltonian, StandardHamiltonian):
@@ -129,7 +129,7 @@ def geometrically_sample_standard_hamiltonian(
     primals,
     key,
     mirror_linear_sample: bool,
-    linear_sampling_cg: Callable = cg,
+    linear_sampling_cg: Callable = conjugate_gradient.cg,
     linear_sampling_kwargs: Optional[dict] = None,
     non_linear_sampling_kwargs: Optional[dict] = None
 ):
@@ -322,7 +322,7 @@ def MetricKL(
     n_samples: int,
     key,
     mirror_samples: bool = True,
-    linear_sampling_cg: Callable = cg,
+    linear_sampling_cg: Callable = conjugate_gradient.cg,
     linear_sampling_kwargs: Optional[dict] = None,
     hamiltonian_and_gradient: Optional[Callable] = None,
     _samples: Optional[tuple] = None
@@ -373,7 +373,7 @@ def GeoMetricKL(
     n_samples: int,
     key,
     mirror_samples: bool = True,
-    linear_sampling_cg: Callable = cg,
+    linear_sampling_cg: Callable = conjugate_gradient.cg,
     linear_sampling_kwargs: Optional[dict] = None,
     non_linear_sampling_kwargs: Optional[dict] = None,
     hamiltonian_and_gradient: Optional[Callable] = None,

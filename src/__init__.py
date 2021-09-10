@@ -1,3 +1,4 @@
+from .conjugate_gradient import cg, static_cg
 from .likelihood import Likelihood, StandardHamiltonian
 from .energy_operators import (
     Gaussian, StudentT, Poissonian, VariableCovarianceGaussian,
@@ -9,7 +10,7 @@ from .kl import (
 )
 from .field import Field
 from .forest_util import norm, ShapeWithDtype, vmap_forest, vmap_forest_mean
-from .optimize import minimize, newton_cg, trust_ncg, cg, static_cg
+from .optimize import minimize, newton_cg, trust_ncg
 from .correlated_field import CorrelatedFieldMaker, non_parametric_amplitude
 from .stats_distributions import laplace_prior, normal_prior, lognormal_prior
 from .sugar import (
