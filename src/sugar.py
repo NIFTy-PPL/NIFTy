@@ -33,7 +33,7 @@ def is1d(ls: Any) -> bool:
 
 def ducktape(call: Callable, key: Hashable):
     def named_call(p):
-        return call(p.get(key))
+        return call(p[key])
 
     return named_call
 

@@ -126,7 +126,7 @@ def non_parametric_amplitude(
         ln_amplitude = slope
 
         if flexibility is not None:
-            xi_spc = primals.get(prefix + "_spectrum")
+            xi_spc = primals[prefix + "_spectrum"]
             flx = flexibility(primals)
             sig_flx = flx * np.sqrt(log_vol)
             sig_flx = np.broadcast_to(sig_flx, (2, ) + log_vol.shape)
@@ -445,7 +445,7 @@ class CorrelatedFieldMaker():
 
         def correlated_field(p):
             ea = outer_amplitude(p)
-            cf_h = self.azm(p) * ea * p.get(self._prefix + "_excitations")
+            cf_h = self.azm(p) * ea * p[self._prefix + "_excitations"]
             return self._offset_mean + outer_harmonic_transform(cf_h)
 
         return correlated_field, self._parameter_tree.copy()
