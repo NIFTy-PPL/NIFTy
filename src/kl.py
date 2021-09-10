@@ -4,73 +4,13 @@ from collections.abc import Sequence
 from typing import Callable, Optional
 
 from functools import partial
-from jax import numpy as np
 from jax import random
-from jax.tree_util import Partial, tree_map
+from jax.tree_util import Partial
 
+from .forest_util import vmap_forest_mean
+from .likelihood import Likelihood, StandardHamiltonian
 from .optimize import cg
 from .sugar import random_like, random_like_shapewdtype
-from .likelihood import Likelihood, StandardHamiltonian
-
-
-def vmap_forest(f, in_axes=0, out_axes=0, tree_transpose_output=True, **kwargs):
-    from functools import partial
-    from jax import vmap
-    from jax import tree_util
-
-    if out_axes != 0:
-        raise TypeError("`out_axis` not yet supported")
-    in_axes = in_axes if isinstance(in_axes, tuple) else (in_axes, )
-    i = None
-    for idx, el in enumerate(in_axes):
-        if el is not None and i is None:
-            i = idx
-        elif el is not None and i is not None:
-            ve = "mapping over more than one axis is not yet supported"
-            raise ValueError(ve)
-    if i is None:
-        raise ValueError("must map over at least one axis")
-    if not isinstance(i, int):
-        te = "mapping over a non integer axis is not yet supported"
-        raise TypeError(te)
-
-    f_map = vmap(f, in_axes=in_axes, out_axes=out_axes, **kwargs)
-
-    def apply(*xs):
-        if not isinstance(xs[i], (list, tuple)):
-            te = f"expected mapped axes to be a tuple; got {type(xs[i])}"
-            raise TypeError(te)
-        element_count = len(xs[i])
-        x_T = tree_map(lambda *el: np.stack(el), *xs[i])
-
-        out_T = f_map(*xs[:i], x_T, *xs[i + 1:])
-        # Since `out_axes` is forced to be `0`, we don't need to worry about
-        # transposing only part of the output
-        if not tree_transpose_output:
-            return out_T
-
-        # TODO: Report?: Looping over or casting a DeviceArray tensor to a
-        # tuple, yields NumPy arrays
-        split = partial(np.split, indices_or_sections=element_count)
-        out = tree_util.tree_transpose(
-            tree_util.tree_structure(out_T),
-            tree_util.tree_structure((0., ) * element_count),
-            tree_map(split, out_T)
-        )
-        return tree_map(partial(np.squeeze, axis=0), out)
-
-    return apply
-
-
-def vmap_forest_mean(method, *args, **kwargs):
-    method_map = vmap_forest(
-        method, *args, tree_transpose_output=False, **kwargs
-    )
-
-    def sampled_kl(*xs, **xs_kw):
-        return tree_map(partial(np.mean, axis=0), method_map(*xs, **xs_kw))
-
-    return sampled_kl
 
 
 def sample_likelihood(likelihood: Likelihood, primals, key):

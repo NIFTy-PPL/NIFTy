@@ -3,9 +3,7 @@ from collections.abc import Iterable
 
 from jax import random
 from jax import numpy as np
-from jax.tree_util import (
-    tree_structure, tree_leaves, tree_unflatten, tree_map, tree_reduce
-)
+from jax.tree_util import tree_structure, tree_unflatten, tree_map, tree_reduce
 
 from .field import Field
 
@@ -31,6 +29,14 @@ def is1d(ls: Any) -> bool:
     return all(not isiterable(e) for e in ls)
 
 
+def doc_from(original):
+    def wrapper(target):
+        target.__doc__ = original.__doc__
+        return target
+
+    return wrapper
+
+
 def ducktape(call: Callable, key: Hashable):
     def named_call(p):
         return call(p[key])
@@ -38,32 +44,10 @@ def ducktape(call: Callable, key: Hashable):
     return named_call
 
 
-def just_add(a, b):
-    from jax.tree_util import tree_leaves
-
-    return tree_leaves(Field(a) + Field(b))
-
-
 def sum_of_squares(tree):
     from jax.numpy import add, sum
 
     return tree_reduce(add, tree_map(lambda x: sum(x**2), tree), 0.)
-
-
-def norm(tree, ord, ravel=False):
-    from jax.numpy import ndim, abs
-    from jax.numpy.linalg import norm
-
-    if ravel:
-
-        def el_norm(x):
-            return abs(x) if ndim(x) == 0 else norm(x.ravel(), ord=ord)
-    else:
-
-        def el_norm(x):
-            return abs(x) if ndim(x) == 0 else norm(x, ord=ord)
-
-    return norm(tree_leaves(tree_map(el_norm, tree)), ord=ord)
 
 
 def mean(forest):

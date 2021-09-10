@@ -3,15 +3,13 @@ from datetime import datetime
 from functools import partial
 from jax import lax
 from jax import numpy as np
-from jax.tree_util import (
-    Partial, tree_leaves, tree_map, tree_structure, tree_reduce
-)
+from jax.tree_util import Partial
 
 from typing import Any, Callable, NamedTuple, Mapping, Optional, Tuple, Union
 
-from .likelihood import doc_from
-from .sugar import norm as jft_norm
-from .sugar import sum_of_squares
+from .forest_util import common_type, size, where, zeros_like
+from .forest_util import norm as jft_norm
+from .sugar import sum_of_squares, doc_from
 
 N_RESET = 20
 
@@ -57,63 +55,6 @@ class OptimizeResults(NamedTuple):
     trust_radius: Union[None, float, np.ndarray] = None
     jac_magnitude: Union[None, float, np.ndarray] = None
     good_approximation: Union[None, bool, np.ndarray] = None
-
-
-def get_dtype(v):
-    if hasattr(v, "dtype"):
-        return v.dtype
-    else:
-        return type(v)
-
-
-def common_type(*trees):
-    from numpy import find_common_type
-
-    common_dtp = find_common_type(
-        tuple(
-            find_common_type(tuple(get_dtype(v) for v in tree_leaves(tr)), ())
-            for tr in trees
-        ), ()
-    )
-    return common_dtp
-
-
-def size(tree, axis: Optional[int] = None) -> Union[int, np.ndarray]:
-    if axis is not None:
-        raise TypeError("axis of an arbitrary tree is ill defined")
-    sizes = tree_map(np.size, tree)
-    return tree_reduce(np.add, sizes)
-
-
-def zeros_like(a, dtype=None, shape=None):
-    return tree_map(partial(np.zeros_like, dtype=dtype, shape=shape), a)
-
-
-def where(condition, x, y):
-    import numpy as onp
-    from itertools import repeat
-
-    ts_c = tree_structure(condition)
-    ts_x = tree_structure(x)
-    ts_y = tree_structure(y)
-    ts_max = (ts_c, ts_x, ts_y)[onp.argmax(
-        [ts_c.num_nodes, ts_x.num_nodes, ts_y.num_nodes]
-    )]
-
-    if ts_c.num_nodes < ts_max.num_nodes:
-        if ts_c.num_nodes > 1:
-            raise ValueError("can not broadcast condition")
-        condition = ts_max.unflatten(repeat(condition, ts_max.num_leaves))
-    if ts_x.num_nodes < ts_max.num_nodes:
-        if ts_x.num_nodes > 1:
-            raise ValueError("can not broadcast LHS")
-        x = ts_max.unflatten(repeat(x, ts_max.num_leaves))
-    if ts_y.num_nodes < ts_max.num_nodes:
-        if ts_y.num_nodes > 1:
-            raise ValueError("can not broadcast RHS")
-        y = ts_max.unflatten(repeat(y, ts_max.num_leaves))
-
-    return tree_map(np.where, condition, x, y)
 
 
 # Taken from nifty

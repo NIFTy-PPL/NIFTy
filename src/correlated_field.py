@@ -5,9 +5,9 @@ import sys
 from functools import partial
 from jax import numpy as np
 
-from .sugar import ducktape
-from .likelihood import ShapeWithDtype
+from .forest_util import ShapeWithDtype
 from .stats_distributions import normal_prior, lognormal_prior
+from .sugar import ducktape
 
 
 def hartley(p, axes=None):

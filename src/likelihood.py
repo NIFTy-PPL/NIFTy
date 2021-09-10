@@ -1,88 +1,10 @@
-from typing import Callable, Union, Optional
+from typing import Callable, Optional
 
 from jax import jvp, vjp
-from jax import numpy as np
-from jax.tree_util import Partial, tree_leaves, all_leaves
+from jax.tree_util import Partial, tree_leaves
 
-from .sugar import is1d, isiterable, sum_of_squares
-
-
-def doc_from(original):
-    def wrapper(target):
-        target.__doc__ = original.__doc__
-        return target
-
-    return wrapper
-
-
-class ShapeWithDtype():
-    """Minimal helper class storing the shape and dtype of an object.
-
-    Notes
-    -----
-    This class may not be transparent to JAX as it shall not be flattened
-    itself. If used in a tree-like structure. It should only be used as leave.
-    """
-    def __init__(self, shape: Union[tuple, list, int], dtype=None):
-        """Instantiates a storage unit for shape and dtype.
-
-        Parameters
-        ----------
-        shape : tuple or list of int
-            One-dimensional sequence of integers denoting the length of the
-            object along each of the object's axis.
-        dtype : dtype
-            Data-type of the to-be-described object.
-        """
-        if isinstance(shape, int):
-            shape = (shape, )
-        if not is1d(shape):
-            ve = f"invalid shape; got {shape!r}"
-            raise TypeError(ve)
-
-        self._shape = shape
-        self._dtype = np.float64 if dtype is None else dtype
-
-    @classmethod
-    def from_leave(cls, element):
-        """Convenience method for creating an instance of `ShapeWithDtype` from
-        an object.
-
-        To map a whole tree-like structure to a its shape and dtype use JAX's
-        `tree_map` method like so:
-
-            tree_map(ShapeWithDtype.from_leave, tree)
-
-        Parameters
-        ----------
-        element : tree-like structure
-            Object from which to take the shape and data-type.
-
-        Returns
-        -------
-        swd : instance of ShapeWithDtype
-            Instance storing the shape and data-type of `element`.
-        """
-        from .optimize import get_dtype
-
-        if not all_leaves((element, )):
-            ve = "tree is not flat and still contains leaves"
-            raise ValueError(ve)
-        return cls(np.shape(element), get_dtype(element))
-
-    @property
-    def shape(self):
-        """Retrieves the shape."""
-        return self._shape
-
-    @property
-    def dtype(self):
-        """Retrieves the data-type."""
-        return self._dtype
-
-    def __repr__(self):
-        nm = self.__class__.__name__
-        return f"{nm}(shape={self.shape}, dtype={self.dtype})"
+from .forest_util import ShapeWithDtype
+from .sugar import is1d, isiterable, sum_of_squares, doc_from
 
 
 class Likelihood():
