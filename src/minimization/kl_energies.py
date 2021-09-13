@@ -285,11 +285,9 @@ class _GeoMetricSampler:
     def position(self):
         return self._position
 
-    def _draw_lin(self, neg):
+    def _draw_lin(self):
         s = self._prior.draw_sample(from_inverse=True)
-        s = -s if neg else s
         nj = self._likelihood.draw_sample()
-        nj = -nj if neg else nj
         y = self._prior(s) + nj
         if self._start_from_lin:
             energy = QuadraticEnergy(s, self._met, y,
@@ -322,11 +320,10 @@ class _GeoMetricSampler:
             with random.Context(self._sseq[i]):
                 neg = self._neg[i]
                 if (prev is None) or not self._mirror_samples:
-                    y, yi = self._draw_lin(neg)
-                    if not neg:
-                        prev = (-y, -yi)
+                    y, yi = self._draw_lin()
+                    prev = (-y, -yi)
                 else:
-                    (y, yi) = prev
+                    y, yi = prev
                     prev = None
                 local_samples.append(self._draw_nonlin(y, yi))
         return tuple(local_samples)
