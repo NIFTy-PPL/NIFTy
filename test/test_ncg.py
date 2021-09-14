@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 
+import sys
 import jax.numpy as np
 import jifty1 as jft
 import pytest
@@ -140,6 +141,31 @@ def test_cg_steihaug(seed):
         np.nan, -x, mat, resnorm=1e-6, trust_radius=np.inf
     )
     assert_allclose(res.step, diag * x, rtol=1e-4, atol=1e-4)
+
+
+@pmp("seed", (3637, 12, 42))
+@pmp("size", (5, 9, 14))
+def test_cg_steihaug_vs_cg_consistency(seed, size):
+    key = random.PRNGKey(seed)
+    sk = random.split(key, 2)
+
+    x = random.normal(sk[0], shape=(size, ))
+    # Avoid poorly conditioned matrices by shifting the elements from zero
+    mat_val = 6. + random.normal(sk[1], shape=(size, size))
+    mat_val = mat_val @ mat_val.T  # Construct a symmetric matrix
+    mat = lambda x: mat_val @ x
+
+    # Note, the solution to the subproblem with infinite trust radius is the CG
+    # but with the opposite sign
+    for i in range(4):
+        print(f"Iteratoin {i:02d}", file=sys.stderr)
+        res_cgs = jft.conjugate_gradient._cg_steihaug_subproblem(
+            np.nan, -x, mat, resnorm=1e-6, trust_radius=np.inf, miniter=i, maxiter=i
+        )
+        res_cg_plain, _ = jft.conjugate_gradient.cg(
+            mat, x, resnorm=1e-6, miniter=i, maxiter=i
+        )
+        assert_allclose(res_cgs.step, res_cg_plain, rtol=1e-4, atol=1e-5)
 
 
 @pmp(
