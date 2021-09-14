@@ -128,12 +128,15 @@ def _cg(
                 print(msg, file=sys.stderr)
             if norm < resnorm and i >= miniter:
                 return CGResults(x=pos, info=0, nit=i, nfev=nfev, success=True)
-        new_energy = float(((r - j) / 2).dot(pos))
-        if absdelta is not None:
+        if absdelta is not None or name is not None:
+            new_energy = float(((r - j) / 2).dot(pos))
             energy_diff = energy - new_energy
             if name is not None:
                 msg = f"{name}: Δ⛰:{energy_diff:.6e} 🞋:{absdelta:.6e}"
                 print(msg, file=sys.stderr)
+        else:
+            new_energy = energy
+        if absdelta is not None:
             basically_zero = -eps * np.abs(new_energy)
             if energy_diff < basically_zero:
                 nm = "CG" if name is None else name
@@ -228,13 +231,13 @@ def _static_cg(
         # Do not compute the energy if we do not check `absdelta`
         if absdelta is not None or name is not None:
             energy = ((r - j) / 2).dot(pos)
-        else:
-            energy = previous_energy
-        if absdelta is not None:
             energy_diff = previous_energy - energy
             if name is not None:
                 msg = f"{name}: Δ⛰:{energy_diff!r} 🞋:{absdelta!r}"
                 print(msg, file=sys.stderr)
+        else:
+            energy = previous_energy
+        if absdelta is not None:
             basically_zero = -eps * np.abs(energy)
             # print(f"energy increased", file=sys.stderr)
             info = np.where(energy_diff < basically_zero, -1, info)
