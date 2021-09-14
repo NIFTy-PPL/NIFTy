@@ -4,6 +4,7 @@ config.update("jax_enable_x64", True)
 
 import sys
 
+from functools import partial
 from jax import numpy as np
 from jax import random
 from jax import value_and_grad, jit
@@ -74,19 +75,14 @@ if __name__ == "__main__":
         results = [ham.metric(p + s, t) for s in samps]
         return np.mean(np.array(results), axis=0)
 
-    def draw(p, k):
-        from jifty1.kl import sample_standard_hamiltonian
-
-        return sample_standard_hamiltonian(
-            hamiltonian=ham, primals=p, key=k, from_inverse=True
-        )
+    draw = partial(jft.kl.sample_standard_hamiltonian, hamiltonian=ham)
 
     # Preform MGVI loop
     for i in range(n_mgvi_iterations):
         print(f"MGVI Iteration {i}", file=sys.stderr)
         key, *subkeys = random.split(key, 1 + n_samples)
         samples = []
-        samples = [draw(pos, k) for k in subkeys]
+        samples = [draw(primals=pos, key=k) for k in subkeys]
 
         Evag = lambda p: energy_vag(p, samples)
         met = lambda p, t: metric(p, t, samples)

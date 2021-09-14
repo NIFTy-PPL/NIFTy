@@ -4,7 +4,6 @@ from jax import jvp, vjp
 from jax import numpy as np
 from jax.tree_util import Partial, tree_leaves, all_leaves
 
-from .optimize import cg
 from .sugar import is1d, sum_of_squares
 
 
@@ -62,16 +61,12 @@ class ShapeWithDtype():
         swd : instance of ShapeWithDtype
             Instance storing the shape and data-type of `element`.
         """
-        import numpy as onp
+        from .optimize import get_dtype
 
         if not all_leaves((element, )):
             ve = "tree is not flat and still contains leaves"
             raise ValueError(ve)
-        if isinstance(element, (np.ndarray, onp.ndarray)):
-            dtp = element.dtype
-        else:
-            dtp = onp.common_type(element)
-        return cls(np.shape(element), dtp)
+        return cls(np.shape(element), get_dtype(element))
 
     @property
     def shape(self):
@@ -95,6 +90,7 @@ class Likelihood():
     def __init__(
         self,
         energy: Callable,
+        transformation: Optional[Callable] = None,
         left_sqrt_metric: Optional[Callable] = None,
         metric: Optional[Callable] = None,
         lsm_tangents_shape=None
@@ -105,6 +101,8 @@ class Likelihood():
         ----------
         energy : callable
             Function evaluating the negative log-likelihood.
+        transformation : callable, optional
+            Function evaluating the geometric transformation of the likelihood.
         left_sqrt_metric : callable, optional
             Function applying the left-square-root of the metric.
         metric : callable, optional
@@ -113,6 +111,7 @@ class Likelihood():
             Structure of the data space.
         """
         self._hamiltonian = energy
+        self._transformation = transformation
         self._left_sqrt_metric = left_sqrt_metric
         self._metric = metric
 
@@ -191,33 +190,30 @@ class Likelihood():
             left-square-root of the metric has been applied to.
         """
         if self._left_sqrt_metric is None:
-            nie = "`left_sqrt_metric` is not implemented"
-            raise NotImplementedError(nie)
+            _, bwd = vjp(self.transformation, primals)
+            res = bwd(tangents)
+            return res[0]
         return self._left_sqrt_metric(primals, tangents)
 
-    def inv_metric(self, primals, tangents, cg=cg, **cg_kwargs):
-        """Applies the inverse metric at `primals` to `tangents`.
+    def transformation(self, primals):
+        """Applies the coordinate transformation that maps into a coordinate
+        system in which the metric of the likelihood is the Euclidean metric.
 
         Parameters
         ----------
         primals : tree-like structure
-            Position at which to evaluate the metric.
-        tangents : tree-like structure
-            Instance to which to apply the metric.
-        cg : callable
-            Implementation of the conjugate gradient algorithm and used to
-            apply the inverse of the metric.
-        cg_kwargs : dict
-            Additional keyword arguments passed on to `cg`.
+            Position at which to transform.
 
         Returns
         -------
-        inv_naturally_curved : tree-like structure
-            Tree-like structure of the same type as primals to which the
-            inverse metric has been applied to.
+        transformed_sample : tree-like structure
+            Structure of the same type as primals to which the geometric
+            transformation has been applied to.
         """
-        res, _ = cg(Partial(self.metric, primals), tangents, **cg_kwargs)
-        return res
+        if self._transformation is None:
+            nie = "`transformation` is not implemented"
+            raise NotImplementedError(nie)
+        return self._transformation(primals)
 
     @property
     def left_sqrt_metric_tangents_shape(self):
@@ -232,7 +228,8 @@ class Likelihood():
         return self.left_sqrt_metric_tangents_shape
 
     def new(
-        self, energy: Callable, left_sqrt_metric: Callable, metric: Callable
+        self, energy: Callable, transformation: Optional[Callable],
+        left_sqrt_metric: Optional[Callable], metric: Optional[Callable]
     ):
         """Instantiates a new likelihood with the same `lsm_tangents_shape`.
 
@@ -240,6 +237,9 @@ class Likelihood():
         ----------
         energy : callable
             Function evaluating the negative log-likelihood.
+        transformation : callable, optional
+            Function evaluating the geometric transformation of the
+            log-likelihood.
         left_sqrt_metric : callable, optional
             Function applying the left-square-root of the metric.
         metric : callable, optional
@@ -247,6 +247,7 @@ class Likelihood():
         """
         return Likelihood(
             energy,
+            transformation=transformation,
             left_sqrt_metric=left_sqrt_metric,
             metric=metric,
             lsm_tangents_shape=self._lsm_tan_shp
@@ -258,19 +259,33 @@ class Likelihood():
         """
         from jax import jit
 
-        if self._left_sqrt_metric is not None:
-            j_lsm = jit(self._left_sqrt_metric)
+        if self._transformation is not None:
+            j_trafo = jit(self.transformation)
+            j_lsm = jit(self.left_sqrt_metric)
+            j_m = jit(self.metric)
+        elif self._left_sqrt_metric is not None:
+            j_trafo = None
+            j_lsm = jit(self.left_sqrt_metric)
+            j_m = jit(self.metric)
+        elif self._metric is not None:
+            j_trafo, j_lsm = None, None
             j_m = jit(self.metric)
         else:
-            j_lsm = None
-            j_m = None
+            j_trafo, j_lsm, j_m = None, None, None
+
         return self.new(
-            jit(self._hamiltonian), left_sqrt_metric=j_lsm, metric=j_m
+            jit(self._hamiltonian),
+            transformation=j_trafo,
+            left_sqrt_metric=j_lsm,
+            metric=j_m
         )
 
     def __matmul__(self, f):
         def energy_at_f(primals):
             return self.energy(f(primals))
+
+        def transformation_at_f(primals):
+            return self.transformation(f(primals))
 
         def metric_at_f(primals, tangents):
             # Note, if we were to evaluate the metric several times at the same
@@ -290,6 +305,7 @@ class Likelihood():
 
         return self.new(
             energy_at_f,
+            transformation=transformation_at_f,
             left_sqrt_metric=left_sqrt_metric_at_f,
             metric=metric_at_f
         )
@@ -313,6 +329,9 @@ class Likelihood():
             "lh_right": other._lsm_tan_shp
         }
 
+        def joined_transformation(p):
+            return self.transformation(p) + other.transformation(p)
+
         def joined_left_sqrt_metric(p, t):
             return self.left_sqrt_metric(
                 p, t["lh_left"]
@@ -320,6 +339,7 @@ class Likelihood():
 
         return Likelihood(
             joined_hamiltonian,
+            transformation=joined_transformation,
             left_sqrt_metric=joined_left_sqrt_metric,
             metric=joined_metric,
             lsm_tangents_shape=joined_tangents_shape
@@ -365,11 +385,6 @@ class StandardHamiltonian():
     @doc_from(Likelihood.metric)
     def metric(self, primals, tangents):
         return self._metric(primals, tangents)
-
-    @doc_from(Likelihood.inv_metric)
-    def inv_metric(self, primals, tangents, cg=cg, **cg_kwargs):
-        res, _ = cg(Partial(self.metric, primals), tangents, **cg_kwargs)
-        return res
 
     @property
     def likelihood(self):

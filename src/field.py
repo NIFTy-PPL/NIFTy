@@ -143,6 +143,10 @@ class Field():
         from .sugar import norm as jft_norm
         return jft_norm(self, ord=ord)
 
+    def ravel(self):
+        from jax.numpy import ravel
+        return self.new(tree_map(ravel, self.val))
+
     def _val_op(self, op, *args, **kwargs):
         return getattr(self._val, op)(*args, **kwargs)
 

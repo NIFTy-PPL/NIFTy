@@ -1,11 +1,11 @@
 import sys
 from datetime import datetime
 from jax import numpy as np
-from jax.tree_util import Partial, tree_leaves
-from numpy import find_common_type
+from jax.tree_util import Partial, tree_leaves, tree_map, tree_reduce
 
 from typing import Any, Callable, Mapping, Optional, Tuple, Union, NamedTuple
 
+from .likelihood import doc_from
 from .sugar import norm as jft_norm
 from .sugar import sum_of_squares
 
@@ -38,11 +38,11 @@ class OptimizeResults(NamedTuple):
     nit : int
         Number of iterations performed by the optimizer.
     """
-    x: np.ndarray
+    x: Any
     success: Union[bool, np.ndarray]
     status: Union[int, np.ndarray]
-    fun: np.ndarray
-    jac: np.ndarray
+    fun: Any
+    jac: Any
     hess: Optional[np.ndarray] = None
     hess_inv: Optional[np.ndarray] = None
     nfev: Union[None, int, np.ndarray] = None
@@ -58,27 +58,63 @@ def get_dtype(v):
         return type(v)
 
 
+def common_type(*trees):
+    from numpy import find_common_type
+
+    common_dtp = find_common_type(
+        tuple(
+            find_common_type(tuple(get_dtype(v) for v in tree_leaves(tr)), ())
+            for tr in trees
+        ), ()
+    )
+    return common_dtp
+
+
+def size(tree, axis: Optional[int] = None):
+    if axis is not None:
+        raise TypeError("axis of an arbitrary tree is ill defined")
+    sizes = tree_map(np.size, tree)
+    return tree_reduce(np.add, sizes)
+
+
 # Taken from nifty
 def cg(
     mat,
     j,
     x0=None,
+    *,
     absdelta=None,
     resnorm=None,
     norm_ord=None,
+    tol=1e-5,  # taken from SciPy's linalg.cg
+    atol=0.,
     miniter=None,
     maxiter=None,
     name=None,
     time_threshold=None
 ):
-    norm_ord = 2 if norm_ord is None else norm_ord
-    miniter = 5 if miniter is None else miniter
-    maxiter = 200 if maxiter is None else maxiter
+    """Solve `mat(x) = j` using Conjugate Gradient. `mat` must be callable and
+    represent a hermitian, positive definite matrix.
 
-    common_dtp = find_common_type(
-        tuple(get_dtype(v) for v in tree_leaves(x0)) + (np.float32, ), ()
-    )
-    eps = 2. * np.finfo(common_dtp).eps
+    Notes
+    -----
+    If set, the parameters `absdelta` and `resnorm` always take precedence over
+    `tol` and `atol`.
+    """
+    norm_ord = 2 if norm_ord is None else norm_ord
+    maxiter_fallback = 20 * size(j)  # taken from SciPy's NewtonCG minimzer
+    miniter = min(
+        (6, maxiter if maxiter is not None else maxiter_fallback)
+    ) if miniter is None else miniter
+    maxiter = max(
+        (min((200, maxiter_fallback)), miniter)
+    ) if maxiter is None else maxiter
+
+    if absdelta is None and resnorm is None:  # fallback convergence criterion
+        resnorm = np.maximum(tol * jft_norm(j, ord=norm_ord, ravel=True), atol)
+
+    common_dtp = common_type(j)
+    eps = 6. * np.finfo(common_dtp).eps  # taken from SciPy's NewtonCG minimzer
 
     if x0 is None:
         pos = 0. * j
@@ -97,10 +133,9 @@ def cg(
         return pos, info
 
     info = -1
-    # TODO(Gordian): Use `lax.while_loop`?
     for i in range(maxiter):
         if name is not None:
-            print(f"{name}: Iteration {i} ⛰:{energy:.6e}", file=sys.stderr)
+            print(f"{name}: Iteration {i} ⛰:{energy:+.6e}", file=sys.stderr)
         q = mat(d)
         curv = float(d.dot(q))
         if curv == 0.:
@@ -127,7 +162,7 @@ def cg(
             if name is not None:
                 msg = f"{name}: |∇|:{norm:.6e} 🞋:{resnorm:.6e}"
                 print(msg, file=sys.stderr)
-            if norm < resnorm and i > miniter:
+            if norm < resnorm and i >= miniter:
                 info = 0
                 return pos, info
         new_energy = float(((r - j) / 2).dot(pos))
@@ -141,7 +176,7 @@ def cg(
                 nm = "CG" if name is None else name
                 print(f"{nm}: WARNING: Energy increased", file=sys.stderr)
                 return pos, -1
-            if basically_zero <= energy_diff < absdelta and i > miniter:
+            if basically_zero <= energy_diff < absdelta and i >= miniter:
                 info = 0
                 return pos, info
         energy = new_energy
@@ -154,13 +189,17 @@ def cg(
     return pos, info
 
 
+@doc_from(cg)
 def static_cg(
     mat,
     j,
     x0=None,
+    *,
     absdelta=None,
     resnorm=None,
     norm_ord=None,
+    tol=1e-5,  # taken from SciPy's linalg.cg
+    atol=0.,
     miniter=None,
     maxiter=None,
     name=None,
@@ -169,13 +208,19 @@ def static_cg(
     from jax.lax import cond, while_loop
 
     norm_ord = 2 if norm_ord is None else norm_ord
-    miniter = 5 if miniter is None else miniter
-    maxiter = 200 if maxiter is None else maxiter
+    maxiter_fallback = 20 * size(j)  # taken from SciPy's NewtonCG minimzer
+    miniter = min(
+        (6, maxiter if maxiter is not None else maxiter_fallback)
+    ) if miniter is None else miniter
+    maxiter = max(
+        (min((200, maxiter_fallback)), miniter)
+    ) if maxiter is None else maxiter
 
-    common_dtp = find_common_type(
-        tuple(get_dtype(v) for v in tree_leaves(x0)) + (np.float32, ), ()
-    )
-    eps = 2. * np.finfo(common_dtp).eps
+    if absdelta is None and resnorm is None:  # fallback convergence criterion
+        resnorm = np.maximum(tol * jft_norm(j, ord=norm_ord, ravel=True), atol)
+
+    common_dtp = common_type(j)
+    eps = 6. * np.finfo(common_dtp).eps  # Inspired by SciPy's NewtonCG minimzer
 
     def continue_condition(v):
         return v["info"] < -1
@@ -218,7 +263,7 @@ def static_cg(
                 msg = f"{name}: |∇|:{norm!r} 🞋:{resnorm!r}"
                 print(msg, file=sys.stderr)
             info = np.where(
-                (norm < resnorm) & (i > miniter) & (info != -1), 0, info
+                (norm < resnorm) & (i >= miniter) & (info != -1), 0, info
             )
         # Do not compute the energy if we do not check `absdelta`
         if absdelta is not None or name is not None:
@@ -235,7 +280,7 @@ def static_cg(
             info = np.where(energy_diff < basically_zero, -1, info)
             info = np.where(
                 (energy_diff >= basically_zero) & (energy_diff < absdelta) &
-                (i > miniter) & (info != -1), 0, info
+                (i >= miniter) & (info != -1), 0, info
             )
         info = np.where((i >= maxiter) & (info != -1), i, info)
 
@@ -311,6 +356,7 @@ def _newton_cg(
     energy, g = fun_and_grad(pos)
     if np.isnan(energy):
         raise ValueError("energy is Nan")
+    status = -1
     for i in range(maxiter):
         cg_name = name + "CG" if name is not None else None
         # Newton approximates the potential up to second order. The CG energy
@@ -321,21 +367,19 @@ def _newton_cg(
         if old_fval is not None:
             cg_absdelta = energy_reduction_factor * (old_fval - energy)
         else:
-            cg_absdelta = np.inf if absdelta is None else absdelta / 100.
-        mag_g = jft_norm(g, ord=1, ravel=True)
+            cg_absdelta = None if absdelta is None else absdelta / 100.
+        mag_g = jft_norm(g, ord=cg_kwargs.get("norm_ord", 1), ravel=True)
         # SciPy scales its CG resnorm with `min(0.5, sqrt(mag_g))`
         # cg_resnorm = mag_g * np.sqrt(mag_g).clip(None, 0.5)
         cg_resnorm = mag_g / 2
-        nat_g, info = cg(
-            Partial(hessp, pos),
-            g,
-            absdelta=cg_absdelta,
-            resnorm=cg_resnorm,
-            norm_ord=1,
-            name=cg_name,
-            time_threshold=time_threshold,
-            **cg_kwargs
-        )
+        default_kwargs = {
+            "absdelta": cg_absdelta,
+            "resnorm": cg_resnorm,
+            "norm_ord": 1,
+            "name": cg_name,
+            "time_threshold": time_threshold
+        }
+        nat_g, info = cg(Partial(hessp, pos), g, **(default_kwargs | cg_kwargs))
         if info is not None and info < 0:
             raise ValueError("conjugate gradient failed")
 
@@ -344,13 +388,13 @@ def _newton_cg(
         grad_scaling = 1.
         new_pos = pos - grad_scaling * dd
         new_energy, new_g = fun_and_grad(new_pos)
-        for naive_ls_it in range(6):
+        for naive_ls_it in range(12):
             if new_energy <= energy:
                 break
             grad_scaling /= 2
             new_pos = pos - grad_scaling * dd
             new_energy, new_g = fun_and_grad(new_pos)
-            if naive_ls_it == 3:
+            if naive_ls_it == 6:
                 if name is not None:
                     msg = f"{name}: long line search, resetting"
                     print(msg, file=sys.stderr)
@@ -359,11 +403,11 @@ def _newton_cg(
                 grad_scaling = 1.
                 dd = -gam / curv * g
         else:
-            grad_scaling = 1.
-            new_pos = pos - nat_g
-            new_energy, new_g = fun_and_grad(new_pos)
+            grad_scaling = 0.
             nm = "N" if name is None else name
-            print(f"{nm}: WARNING: Energy increased", file=sys.stderr)
+            print(f"{nm}: WARNING: Energy would increase; aborting", file=sys.stderr)
+            status = -1
+            break
         if name is not None:
             print(f"{name}: line search: {grad_scaling}", file=sys.stderr)
 
@@ -380,13 +424,16 @@ def _newton_cg(
             msg += f" 🞋:{absdelta:.6e}" if absdelta is not None else ""
             print(msg, file=sys.stderr)
         if absdelta is not None and 0. <= energy_diff < absdelta and naive_ls_it < 2:
+            status = 0
             break
         if time_threshold is not None and datetime.now() > time_threshold:
+            status = i + 1
             break
     else:
+        status = i + 1
         nm = "N" if name is None else name
         print(f"{nm}: Iteration Limit Reached", file=sys.stderr)
-    return OptimizeResults(x=pos, success=True, status=0, fun=energy, jac=g)
+    return OptimizeResults(x=pos, success=True, status=status, fun=energy, jac=g)
 
 
 def newton_cg(*args, **kwargs):

@@ -14,7 +14,7 @@ def isiterable(candidate):
     try:
         iter(candidate)
         return True
-    except TypeError:
+    except (TypeError, AttributeError):
         return False
 
 
