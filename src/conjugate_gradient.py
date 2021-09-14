@@ -485,11 +485,10 @@ def _cg_steihaug_subproblem(
 
     # Search for the min of the approximation of the objective function.
     def body_f(iterp: _CGSteihaugState) -> _CGSteihaugState:
-        z, r, d, nhev = iterp.z, iterp.r, iterp.d, iterp.nhev
+        z, r, d = iterp.z, iterp.r, iterp.d
         energy, nit = iterp.energy, iterp.nit
 
         nit += 1
-        nhev += 1
 
         Bd = hessp_at_xk(d)
         dBd = d.dot(Bd)
@@ -526,20 +525,17 @@ def _cg_steihaug_subproblem(
                 ]
             )
         )
-        result = lax.switch(index, [noop, step1, step2, step3], (iterp, z_next))
+        iterp = lax.switch(index, [noop, step1, step2, step3], (iterp, z_next))
 
-        state = _CGSteihaugState(
+        iterp = iterp._replace(
             z=z_next,
             r=r_next,
             d=d_next,
-            step=result.step,
             energy=energy_next,
-            hits_boundary=result.hits_boundary,
-            done=result.done,
-            nhev=nhev + result.nhev,
+            nhev=iterp.nhev + 1,
             nit=nit
         )
-        return state
+        return iterp
 
     def cond_f(iterp: _CGSteihaugState) -> bool:
         return np.logical_not(iterp.done)
