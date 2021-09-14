@@ -1,11 +1,9 @@
-from typing import Callable, Hashable
+from typing import Any, Callable, Hashable
 from collections.abc import Iterable
 
 from jax import random
 from jax import numpy as np
-from jax.tree_util import (
-    tree_structure, tree_leaves, tree_unflatten, tree_map, tree_reduce
-)
+from jax.tree_util import tree_structure, tree_unflatten, tree_map, tree_reduce
 
 from .field import Field
 
@@ -18,50 +16,38 @@ def isiterable(candidate):
         return False
 
 
-def is1d(ls, object_type=(int, np.unsignedinteger)):
-    if isinstance(ls, np.ndarray):
-        ndim = np.ndim(ls)
-        dtp_match = any(np.issubdtype(ls.dtype, dtp) for dtp in object_type)
-        return (ndim == 1) & dtp_match
+def is1d(ls: Any) -> bool:
+    """Indicates whether the input is one dimensional.
 
+    An object is considered one dimensional if it is an iterable of
+    non-iterable items.
+    """
+    if hasattr(ls, "ndim"):
+        return ls.ndim == 1
     if not isiterable(ls):
         return False
-    return all(isinstance(e, object_type) for e in ls)
+    return all(not isiterable(e) for e in ls)
+
+
+def doc_from(original):
+    def wrapper(target):
+        target.__doc__ = original.__doc__
+        return target
+
+    return wrapper
 
 
 def ducktape(call: Callable, key: Hashable):
     def named_call(p):
-        return call(p.get(key))
+        return call(p[key])
 
     return named_call
-
-
-def just_add(a, b):
-    from jax.tree_util import tree_leaves
-
-    return tree_leaves(Field(a) + Field(b))
 
 
 def sum_of_squares(tree):
     from jax.numpy import add, sum
 
     return tree_reduce(add, tree_map(lambda x: sum(x**2), tree), 0.)
-
-
-def norm(tree, ord, ravel=False):
-    from jax.numpy import ndim, abs
-    from jax.numpy.linalg import norm
-
-    if ravel:
-
-        def el_norm(x):
-            return abs(x) if ndim(x) == 0 else norm(x.ravel(), ord=ord)
-    else:
-
-        def el_norm(x):
-            return abs(x) if ndim(x) == 0 else norm(x, ord=ord)
-
-    return norm(tree_leaves(tree_map(el_norm, tree)), ord=ord)
 
 
 def mean(forest):
@@ -94,7 +80,7 @@ def mean_and_std(forest, correct_bias=True):
 
 
 def random_like_shapewdtype(
-    tree_of_shapes: Iterable, key: Iterable, rng: Callable = random.normal
+    key: Iterable, tree_of_shapes: Iterable, rng: Callable = random.normal
 ):
     struct = tree_structure(tree_of_shapes)
     # Cast the subkeys to the structure of `primals`

@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 
+import sys
 import jax.numpy as np
 import jifty1 as jft
 import pytest
@@ -7,6 +8,38 @@ from jax import value_and_grad, random
 from numpy.testing import assert_allclose
 
 pmp = pytest.mark.parametrize
+
+
+def rosenbrock(np):
+    def func(x):
+        return np.sum(100. * np.diff(x)**2 + (1. - x[:-1])**2)
+
+    return func
+
+
+def himmelblau(np):
+    def func(p):
+        x, y = p
+        return (x**2 + y - 11.)**2 + (x + y**2 - 7.)**2
+
+    return func
+
+
+def matyas(np):
+    def func(p):
+        x, y = p
+        return 0.26 * (x**2 + y**2) - 0.48 * x * y
+
+    return func
+
+
+def eggholder(np):
+    def func(p):
+        x, y = p
+        return -(y + 47) * np.sin(np.sqrt(np.abs(x / 2. + y + 47.))
+                                 ) - x * np.sin(np.sqrt(np.abs(x - (y + 47.))))
+
+    return func
 
 
 def test_ncg_for_pytree():
@@ -61,7 +94,8 @@ def test_ncg(seed):
 
 
 @pmp("seed", (3637, 12, 42))
-def test_cg(seed):
+@pmp("cg", (jft.cg, jft.static_cg))
+def test_cg(seed, cg):
     key = random.PRNGKey(seed)
     sk = random.split(key, 2)
     x = random.normal(sk[0], shape=(3, ))
@@ -69,8 +103,110 @@ def test_cg(seed):
     diag = 6. + random.normal(sk[1], shape=(3, ))
     mat = lambda x: x / diag
 
-    res, _ = jft.cg(mat, x, resnorm=1e-5, absdelta=1e-5)
+    res, _ = cg(mat, x, resnorm=1e-5, absdelta=1e-5)
     assert_allclose(res, diag * x, rtol=1e-4, atol=1e-4)
+
+
+@pmp("seed", (3637, 12, 42))
+@pmp("cg", (jft.cg, jft.static_cg))
+def test_cg_non_pos_def_failure(seed, cg):
+    key = random.PRNGKey(seed)
+    sk = random.split(key, 2)
+
+    x = random.normal(sk[0], shape=(4, ))
+    # Purposely produce a non-positive definite matrix
+    diag = np.concatenate(
+        (np.array([-1]), 6. + random.normal(sk[1], shape=(3, )))
+    )
+    mat = lambda x: x / diag
+
+    with pytest.raises(ValueError):
+        _, info = cg(mat, x, resnorm=1e-5, absdelta=1e-5)
+        if info < 0:
+            raise ValueError()
+
+
+@pmp("seed", (3637, 12, 42))
+def test_cg_steihaug(seed):
+    key = random.PRNGKey(seed)
+    sk = random.split(key, 2)
+    x = random.normal(sk[0], shape=(3, ))
+    # Avoid poorly conditioned matrices by shifting the elements from zero
+    diag = 6. + random.normal(sk[1], shape=(3, ))
+    mat = lambda x: x / diag
+
+    # Note, the solution to the subproblem with infinite trust radius is the CG
+    # but with the opposite sign
+    res = jft.conjugate_gradient._cg_steihaug_subproblem(
+        np.nan, -x, mat, resnorm=1e-6, trust_radius=np.inf
+    )
+    assert_allclose(res.step, diag * x, rtol=1e-4, atol=1e-4)
+
+
+@pmp("seed", (3637, 12, 42))
+@pmp("size", (5, 9, 14))
+def test_cg_steihaug_vs_cg_consistency(seed, size):
+    key = random.PRNGKey(seed)
+    sk = random.split(key, 2)
+
+    x = random.normal(sk[0], shape=(size, ))
+    # Avoid poorly conditioned matrices by shifting the elements from zero
+    mat_val = 6. + random.normal(sk[1], shape=(size, size))
+    mat_val = mat_val @ mat_val.T  # Construct a symmetric matrix
+    mat = lambda x: mat_val @ x
+
+    # Note, the solution to the subproblem with infinite trust radius is the CG
+    # but with the opposite sign
+    for i in range(4):
+        print(f"Iteratoin {i:02d}", file=sys.stderr)
+        res_cgs = jft.conjugate_gradient._cg_steihaug_subproblem(
+            np.nan, -x, mat, resnorm=1e-6, trust_radius=np.inf, miniter=i, maxiter=i
+        )
+        res_cg_plain, _ = jft.conjugate_gradient.cg(
+            mat, x, resnorm=1e-6, miniter=i, maxiter=i
+        )
+        assert_allclose(res_cgs.step, res_cg_plain, rtol=1e-4, atol=1e-5)
+
+
+@pmp(
+    "fun_and_init", (
+        (rosenbrock, np.zeros(2)), (himmelblau, np.zeros(2)),
+        (matyas, np.ones(2) * 6.), (eggholder, np.ones(2) * 100.)
+    )
+)
+@pmp("maxiter", (np.inf, None))
+def test_minimize(fun_and_init, maxiter):
+    from scipy.optimize import minimize as opt_minimize
+    from jax import grad, hessian
+
+    func, x0 = fun_and_init
+
+    def jft_minimize(x0):
+        result = jft.minimize(
+            func(np),
+            x0,
+            method='trust-ncg',
+            options=dict(
+                maxiter=maxiter,
+                energy_reduction_factor=None,
+                gtol=1e-6,
+                initial_trust_radius=1.,
+                max_trust_radius=1000.
+            ),
+        )
+        return result.x
+
+    def scp_minimize(x0):
+        # Use JAX primitives to take derivates
+        fun = func(np)
+        result = opt_minimize(
+            fun, x0, jac=grad(fun), hess=hessian(fun), method='trust-ncg'
+        )
+        return result.x
+
+    jax_res = jft_minimize(x0)
+    scipy_res = scp_minimize(x0)
+    assert_allclose(scipy_res, jax_res, rtol=2e-6, atol=2e-5)
 
 
 if __name__ == "__main__":

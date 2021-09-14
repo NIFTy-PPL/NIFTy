@@ -42,7 +42,7 @@ if __name__ == "__main__":
 
     # Create synthetic data
     key, subkey = random.split(key)
-    pos_truth = jft.random_like_shapewdtype(ptree, key=subkey)
+    pos_truth = jft.random_like_shapewdtype(subkey, ptree)
     signal_response_truth = signal_response(pos_truth)
     key, subkey = random.split(key)
     noise_truth = np.sqrt(noise_cov(np.ones(dims))
@@ -54,7 +54,7 @@ if __name__ == "__main__":
     ham_vg = jit(value_and_grad(ham))
 
     key, subkey = random.split(key)
-    pos_init = jft.random_like_shapewdtype(ptree, key=subkey)
+    pos_init = jft.random_like_shapewdtype(subkey, ptree)
     pos = 1e-2 * jft.Field(pos_init.copy())
 
     # Minimize the potential

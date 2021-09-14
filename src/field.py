@@ -139,10 +139,6 @@ class Field():
         s += ")"
         return s
 
-    def norm(self, ord):
-        from .sugar import norm as jft_norm
-        return jft_norm(self, ord=ord)
-
     def ravel(self):
         from jax.numpy import ravel
         return self.new(tree_map(ravel, self.val))
@@ -153,7 +149,7 @@ class Field():
     def _unary_op(self, op):
         return self.new(tree_map(lambda c: getattr(c, op)(), self._val))
 
-    def _binary_op(self, other, op):
+    def _type_check_and_broadcast(self, other):
         from jax.numpy import ndim
 
         flags = None
@@ -161,22 +157,92 @@ class Field():
             flags = self.flags | other.flags
             if "strict_domain_checking" in flags:
                 if other.domain != self.domain:
-                    raise ValueError("domains are incompatible.")
+                    raise ValueError("domains are incompatible")
         elif ndim(other) == 0:
             from itertools import repeat
 
             ts = tree_structure(self)
             other = ts.unflatten(repeat(other, ts.num_leaves))
         else:
-            te = "Invalid binary op for Field and {}".format(type(other))
+            te = f"invalid binary operation for Field and {type(other)}"
             raise TypeError(te)
+
+        return other
+
+    def _binary_op(self, other, op):
+        other = self._type_check_and_broadcast(other)
         return self.new(
             tree_map(lambda s, o: getattr(s, op)(o), self._val, other._val),
             flags=flags
         )
 
+    def __bool__(self):
+        return bool(self.val)
 
-for op in ["__neg__", "__pos__", "__abs__"]:
+    # NOTE, this highly redundant code could be abstracted away using
+    # `setattr`. However, a naive implementation would mask python's operation
+    # reversal if `NotImplemented` is returned. A more elusive implementation
+    # would necessarily need to re-implement this logic and incur a performance
+    # penalty.
+
+    def __add__(self, other):
+        other = self._type_check_and_broadcast(other)
+        return self.new(tree_map(lambda a, b: a + b, self.val, other.val))
+
+    def __radd__(self, other):
+        other = self._type_check_and_broadcast(other)
+        return self.new(tree_map(lambda a, b: b + a, self.val, other.val))
+
+    def __sub__(self, other):
+        other = self._type_check_and_broadcast(other)
+        return self.new(tree_map(lambda a, b: a - b, self.val, other.val))
+
+    def __rsub__(self, other):
+        other = self._type_check_and_broadcast(other)
+        return self.new(tree_map(lambda a, b: b - a, self.val, other.val))
+
+    def __mul__(self, other):
+        other = self._type_check_and_broadcast(other)
+        return self.new(tree_map(lambda a, b: a * b, self.val, other.val))
+
+    def __rmul__(self, other):
+        other = self._type_check_and_broadcast(other)
+        return self.new(tree_map(lambda a, b: b * a, self.val, other.val))
+
+    def __or__(self, other):
+        other = self._type_check_and_broadcast(other)
+        return self.new(tree_map(lambda a, b: a | b, self.val, other.val))
+
+    def __ror__(self, other):
+        other = self._type_check_and_broadcast(other)
+        return self.new(tree_map(lambda a, b: b | a, self.val, other.val))
+
+    def __truediv__(self, other):
+        other = self._type_check_and_broadcast(other)
+        return self.new(tree_map(lambda a, b: a / b, self.val, other.val))
+
+    def __rtruediv__(self, other):
+        other = self._type_check_and_broadcast(other)
+        return self.new(tree_map(lambda a, b: b / a, self.val, other.val))
+
+    def __floordiv__(self, other):
+        other = self._type_check_and_broadcast(other)
+        return self.new(tree_map(lambda a, b: a // b, self.val, other.val))
+
+    def __rfloordiv__(self, other):
+        other = self._type_check_and_broadcast(other)
+        return self.new(tree_map(lambda a, b: b // a, self.val, other.val))
+
+    def __pow__(self, other):
+        other = self._type_check_and_broadcast(other)
+        return self.new(tree_map(lambda a, b: a**b, self.val, other.val))
+
+    def __rpow__(self, other):
+        other = self._type_check_and_broadcast(other)
+        return self.new(tree_map(lambda a, b: b**a, self.val, other.val))
+
+
+for op in ["__neg__", "__pos__", "__abs__", "__invert__"]:
 
     def func(op):
         def func2(self):
@@ -186,11 +252,7 @@ for op in ["__neg__", "__pos__", "__abs__"]:
 
     setattr(Field, op, func(op))
 
-for op in [
-    "__add__", "__radd__", "__sub__", "__rsub__", "__mul__", "__rmul__",
-    "__truediv__", "__rtruediv__", "__floordiv__", "__rfloordiv__", "__pow__",
-    "__rpow__", "__lt__", "__le__", "__gt__", "__ge__", "__eq__", "__ne__"
-]:
+for op in ["__lt__", "__le__", "__gt__", "__ge__", "__eq__", "__ne__"]:
 
     def func(op):
         def func2(self, other):
@@ -200,7 +262,7 @@ for op in [
 
     setattr(Field, op, func(op))
 
-for op in ["get", "__getitem__", "__contains__", "__iter__", "__len__"]:
+for op in ["__getitem__", "__contains__", "__iter__", "__len__"]:
 
     def func(op):
         def func2(self, *args, **kwargs):

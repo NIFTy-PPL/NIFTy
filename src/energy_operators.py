@@ -4,7 +4,8 @@ import sys
 from jax import numpy as np
 from jax.tree_util import tree_map
 
-from .likelihood import Likelihood, ShapeWithDtype
+from .forest_util import ShapeWithDtype
+from .likelihood import Likelihood
 
 
 def standard_t(nwr, dof):
@@ -194,9 +195,9 @@ def Poissonian(data, sampling_dtype=float):
     sampling_dtype : dtype, optional
         Data-type for sampling.
     """
-    from .optimize import get_dtype
+    from .forest_util import common_type
 
-    dtp = get_dtype(data)
+    dtp = common_type(data)
     if not np.issubdtype(dtp, np.integer):
         raise TypeError("`data` of invalid type")
     if np.any(data < 0):
