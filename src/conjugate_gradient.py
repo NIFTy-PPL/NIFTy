@@ -479,7 +479,7 @@ def _cg_steihaug_subproblem(
         step=p_origin,
         energy=energy,
         hits_boundary=False,
-        done=False,
+        done=maxiter == 0,
         nit=0,
         nhev=0
     )
