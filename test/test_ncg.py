@@ -107,6 +107,25 @@ def test_cg(seed, cg):
 
 
 @pmp("seed", (3637, 12, 42))
+@pmp("cg", (jft.cg, jft.static_cg))
+def test_cg_non_pos_def_failure(seed, cg):
+    key = random.PRNGKey(seed)
+    sk = random.split(key, 2)
+
+    x = random.normal(sk[0], shape=(4, ))
+    # Purposely produce a non-positive definite matrix
+    diag = np.concatenate(
+        (np.array([-1]), 6. + random.normal(sk[1], shape=(3, )))
+    )
+    mat = lambda x: x / diag
+
+    with pytest.raises(ValueError):
+        _, info = cg(mat, x, resnorm=1e-5, absdelta=1e-5)
+        if info < 0:
+            raise ValueError()
+
+
+@pmp("seed", (3637, 12, 42))
 def test_cg_steihaug(seed):
     key = random.PRNGKey(seed)
     sk = random.split(key, 2)
