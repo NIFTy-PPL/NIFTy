@@ -375,6 +375,7 @@ def _cg_steihaug_subproblem(
     norm_ord: Union[None, int, float, np.ndarray] = None,
     miniter: Union[None, int] = None,
     maxiter: Union[None, int] = None,
+    name=None
 ) -> _QuadSubproblemResult:
     """
     Solve the subproblem using a conjugate gradient method.
@@ -471,7 +472,7 @@ def _cg_steihaug_subproblem(
     z = p_origin
     r = g
     d = -r
-    energy = None if absdelta is None else 0.
+    energy = 0. if absdelta is not None or name is not None else None
     init_param = _CGSteihaugState(
         z=z,
         r=r,
@@ -510,7 +511,7 @@ def _cg_steihaug_subproblem(
         else:
             r_next_norm = jft_norm(r_next, ord=norm_ord, ravel=True)
         accept_z_next |= r_next_norm < resnorm
-        if absdelta is not None:
+        if absdelta is not None or name is not None:
             # Relative to a plain CG, `z_next` is negative
             energy_next = ((r_next + g) / 2).dot(z_next)
             energy_diff = energy - energy_next
@@ -539,6 +540,34 @@ def _cg_steihaug_subproblem(
             nhev=iterp.nhev + 1,
             nit=nit
         )
+        if name is not None:
+            from jax.experimental.host_callback import call
+
+            def pp(arg):
+                msg = (
+                    "{name}: |∇|:{r_norm:.6e} 🞋:{resnorm:.6e} ↗:{tr:.6e}"
+                    " ☞:{case:1d} #∇²:{nhev:02d}"
+                    "\n{name}: Iteration {i} ⛰:{energy:+.6e} Δ⛰:{energy_diff:.6e}"
+                    " 🞋:{absdelta:.6e}" if arg["absdelta"] is not None else ""
+                    "\n{name}: Iteration Limit Reached"
+                    if arg["i"] == arg["maxiter"] else ""
+                )
+                print(msg.format(name=name, **arg), file=sys.stderr)
+
+            printable_state = {
+                "i": nit,
+                "energy": iterp.energy,
+                "energy_diff": energy_diff,
+                "absdelta": absdelta,
+                "tr": trust_radius,
+                "r_norm": r_next_norm,
+                "resnorm": resnorm,
+                "nhev": iterp.nhev,
+                "case": index,
+                "maxiter": maxiter
+            }
+            call(pp, printable_state, result_shape=None)
+
         return iterp
 
     def cond_f(iterp: _CGSteihaugState) -> bool:
