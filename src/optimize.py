@@ -83,6 +83,7 @@ def _newton_cg(
 
         fun_and_grad = value_and_grad(fun)
     cg_kwargs = {} if cg_kwargs is None else cg_kwargs
+    cg_name = name + "CG" if name is not None else None
 
     energy, g = fun_and_grad(pos)
     nfev, njev, nhev = 1, 1, 0
@@ -91,7 +92,6 @@ def _newton_cg(
     status = -1
     i = 0
     for i in range(1, maxiter + 1):
-        cg_name = name + "CG" if name is not None else None
         # Newton approximates the potential up to second order. The CG energy
         # (`0.5 * x.T @ A @ x - x.T @ b`) and the approximation to the true
         # potential in Newton thus live on comparable energy scales. Hence, the
@@ -119,6 +119,7 @@ def _newton_cg(
         naive_ls_it = 0
         dd = nat_g  # negative descent direction
         grad_scaling = 1.
+        ls_reset = False
         for naive_ls_it in range(9):
             new_pos = pos - grad_scaling * dd
             new_energy, new_g = fun_and_grad(new_pos)
@@ -128,9 +129,7 @@ def _newton_cg(
 
             grad_scaling /= 2
             if naive_ls_it == 5:
-                if name is not None:
-                    msg = f"{name}: long line search, resetting"
-                    print(msg, file=sys.stderr)
+                ls_reset = True
                 gam = float(sum_of_squares(g))
                 curv = float(g.dot(hessp(pos, g)))
                 nhev += 1
@@ -143,11 +142,7 @@ def _newton_cg(
             print(msg, file=sys.stderr)
             status = -1
             break
-        if name is not None:
-            print(f"{name}: line search: {grad_scaling}", file=sys.stderr)
 
-        if np.isnan(new_energy):
-            raise ValueError("energy is NaN")
         energy_diff = energy - new_energy
         old_fval = energy
         energy = new_energy
@@ -155,9 +150,14 @@ def _newton_cg(
         g = new_g
 
         if name is not None:
-            msg = f"{name}: Iteration {i} ⛰:{energy:.6e} Δ⛰:{energy_diff:.6e}"
-            msg += f" 🞋:{absdelta:.6e}" if absdelta is not None else ""
+            msg = (
+                f"{name}: →:{grad_scaling} ↺:{ls_reset} #∇²:{nhev:02d}"
+                f"\n{name}: Iteration {i} ⛰:{energy:+.6e} Δ⛰:{energy_diff:.6e}"
+                f" 🞋:{absdelta:.6e}" if absdelta is not None else ""
+            )
             print(msg, file=sys.stderr)
+        if np.isnan(new_energy):
+            raise ValueError("energy is NaN")
         if absdelta is not None and 0. <= energy_diff < absdelta and naive_ls_it < 2:
             status = 0
             break
