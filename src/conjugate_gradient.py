@@ -369,12 +369,12 @@ def _cg_steihaug_subproblem(
     hessp_at_xk: HessVP,
     *,
     trust_radius: Union[float, np.ndarray],
+    tr_norm_ord: Union[None, int, float, np.ndarray] = None,
     resnorm: Optional[float],
     absdelta: Optional[float] = None,
     norm_ord: Union[None, int, float, np.ndarray] = None,
     miniter: Union[None, int] = None,
     maxiter: Union[None, int] = None,
-    _mag_g: Union[None, float, np.ndarray] = None,
 ) -> _QuadSubproblemResult:
     """
     Solve the subproblem using a conjugate gradient method.
@@ -390,10 +390,10 @@ def _cg_steihaug_subproblem(
       Hessian-vector product.
     trust_radius : float
       Upper bound on how large a step proposal can be.
+    tr_norm_ord : {non-zero int, inf, -inf, ‘fro’, ‘nuc’}, optional
+      Order of the norm for computing the length of the next step.
     norm_ord : {non-zero int, inf, -inf, ‘fro’, ‘nuc’}, optional
-      Order of the norm. inf means jax.numpy’s inf object. The default is 2.
-    _mag_g : Union[float, np.ndarray]
-      The magnitude of the gradient `g` using norm_ord=`norm_ord`.
+      Order of the norm for testing convergence.
 
     Returns
     -------
@@ -408,7 +408,8 @@ def _cg_steihaug_subproblem(
     The Hessian itself is not required, and the Hessian does
     not need to be positive semidefinite.
     """
-    norm_ord = 2 if norm_ord is None else norm_ord  # taken from SciPy
+    tr_norm_ord = np.inf if tr_norm_ord is None else tr_norm_ord  # taken from JAX
+    norm_ord = 2 if norm_ord is None else norm_ord  # TODO: change to 1
     maxiter_fallback = 20 * size(g)  # taken from SciPy's NewtonCG minimzer
     miniter = min(
         (6, maxiter if maxiter is not None else maxiter_fallback)
@@ -416,10 +417,6 @@ def _cg_steihaug_subproblem(
     maxiter = max(
         (min((200, maxiter_fallback)), miniter)
     ) if maxiter is None else maxiter
-
-    if resnorm is None:
-        mag_g = jft_norm(g, ord=norm_ord) if _mag_g is None else _mag_g
-        resnorm = np.minimum(0.5, np.sqrt(mag_g)) * mag_g
 
     common_dtp = common_type(g)
     eps = 6. * np.finfo(common_dtp).eps  # Inspired by SciPy's NewtonCG minimzer
@@ -508,25 +505,28 @@ def _cg_steihaug_subproblem(
         d_next = -r_next + beta_next * d
 
         accept_z_next = nit >= maxiter
-        accept_z_next |= np.sqrt(r_next_squared) < resnorm
-        if absdelta is None:
-            energy_next = energy
+        if norm_ord == 2:
+            r_next_norm = np.sqrt(r_next_squared)
         else:
+            r_next_norm = jft_norm(r_next, ord=norm_ord, ravel=True)
+        accept_z_next |= r_next_norm < resnorm
+        if absdelta is not None:
             # Relative to a plain CG, `z_next` is negative
             energy_next = ((r_next + g) / 2).dot(z_next)
             energy_diff = energy - energy_next
+        else:
+            energy_next = energy
+            energy_diff = np.nan
+        if absdelta is not None:
             basically_zero = -eps * np.abs(energy)
             accept_z_next |= (energy_diff >= basically_zero
                              ) & (energy_diff < absdelta) & (nit >= miniter)
 
         # include a junk switch to catch the case where none should be executed
+        z_next_norm = jft_norm(z_next, ord=tr_norm_ord)
         index = np.argmax(
             np.array(
-                [
-                    False, dBd <= 0,
-                    jft_norm(z_next, ord=norm_ord) >= trust_radius,
-                    accept_z_next
-                ]
+                [False, dBd <= 0, z_next_norm >= trust_radius, accept_z_next]
             )
         )
         iterp = lax.switch(index, [noop, step1, step2, step3], (iterp, z_next))
