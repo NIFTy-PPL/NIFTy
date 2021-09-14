@@ -42,11 +42,11 @@ def test_MPI_equality():
     with pytest.raises(RuntimeError):
         ift.utilities.check_MPI_equality(obj, comm)
 
-    sseqs = ift.random.spawn_sseq(2)
+    sseqs = ift.random.spawn_sseq(ntask)
     for obj in [12., None, (29, 30), [1, 2, 3], sseqs[0], sseqs]:
         ift.utilities.check_MPI_equality(obj, comm)
 
-    obj = ift.random.spawn_sseq(2, parent=sseqs[comm.rank])
+    obj = ift.random.spawn_sseq(ntask, parent=sseqs[comm.rank])
     with pytest.raises(RuntimeError):
         ift.utilities.check_MPI_equality(obj, comm)
 
