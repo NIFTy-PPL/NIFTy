@@ -273,7 +273,6 @@ class _GeoMetricSampler:
         else:
             mysseq = sseq
         self._sseq = mysseq
-        self._neg = (False, True)*n_samples if mirror_samples else (False, )*n_samples
         self._n_samples = n_samples
         self._mirror_samples = mirror_samples
 
@@ -316,19 +315,14 @@ class _GeoMetricSampler:
         prev = None
         utilities.check_MPI_synced_random_state(comm)
         utilities.check_MPI_equality(self._sseq, comm)
+        y, yi = None, None
         for i in range(*_get_lo_hi(comm, self.n_eff_samples)):
             with random.Context(self._sseq[i]):
-                neg = self._neg[i]
-                if (prev is None) or not self._mirror_samples:
+                neg = self._mirror_samples and (i%2 != 0)
+                if not neg or y is None:  # we really need to draw a sample
                     y, yi = self._draw_lin()
-                    if neg:
-                        y, yi = (-y, -yi)
-                    else:
-                        prev = (-y, -yi)
-                else:
-                    y, yi = prev
-                    prev = None
-                local_samples.append(self._draw_nonlin(y, yi))
+                samp = self._draw_nonlin(-y, -yi) if neg else self._draw_nonlin(y, yi)
+                local_samples.append(samp)
         return tuple(local_samples)
 
 
