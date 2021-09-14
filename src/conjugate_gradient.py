@@ -306,6 +306,7 @@ class _QuadSubproblemResult(NamedTuple):
     step: np.ndarray
     hits_boundary: Union[bool, np.ndarray]
     pred_f: Union[float, np.ndarray]
+    nit: Union[int, np.ndarray]
     nfev: Union[int, np.ndarray]
     njev: Union[int, np.ndarray]
     nhev: Union[int, np.ndarray]
@@ -552,6 +553,7 @@ def _cg_steihaug_subproblem(
         step=result.step,
         hits_boundary=result.hits_boundary,
         pred_f=pred_f,
+        nit=result.nit,
         nfev=0,
         njev=0,
         nhev=result.nhev + 1,
