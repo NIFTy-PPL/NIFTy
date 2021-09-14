@@ -217,6 +217,7 @@ def _minimize_trust_ncg(
     hessp: Optional[Callable] = None,
     fun_and_grad: Optional[Callable] = None,
     subproblem_kwargs: Optional[dict[str, Any]] = None,
+    name: Optional[str] = None
 ) -> OptimizeResults:
     maxiter = 200 if maxiter is None else maxiter
 
@@ -245,6 +246,7 @@ def _minimize_trust_ncg(
             return jvp(jac, (primals, ), (tangents, ))[1]
 
     subproblem_kwargs = {} if subproblem_kwargs is None else subproblem_kwargs
+    cg_name = name + "SP" if name is not None else None
 
     f_0, g_0 = fun_and_grad(x0)
     g_0_mag = jft_norm(g_0, ord=subproblem_kwargs.get("norm_ord", 1), ravel=True)
@@ -282,7 +284,8 @@ def _minimize_trust_ncg(
             "absdelta": cg_absdelta,
             "resnorm": cg_resnorm,
             "trust_radius": tr,
-            "norm_ord": 1
+            "norm_ord": 1,
+            "name": cg_name
         }
         sub_result = subproblem(
             f_k, g_k, partial(hessp, x_k),
@@ -333,6 +336,30 @@ def _minimize_trust_ncg(
             status=params.status,
             old_fval=f_k
         )
+        if name is not None:
+            from jax.experimental.host_callback import call
+
+            def pp(arg):
+                msg = (
+                    "{name}: ↗:{tr:.6e} ⬤:{hit} ∝:{rho:.2e} #∇²:{nhev:02d}"
+                    "\n{name}: Iteration {i} ⛰:{energy:+.6e} Δ⛰:{energy_diff:.6e}"
+                    " 🞋:{absdelta:.6e}" if absdelta is not None else ""
+                    "\n{name}: Iteration Limit Reached" if i == maxiter else ""
+                )
+                print(msg.format(name=name, **arg), file=sys.stderr)
+
+            printable_state = {
+                "i": i,
+                "energy": params.fun,
+                "energy_diff": energy_diff,
+                "maxiter": maxiter,
+                "absdelta": absdelta,
+                "tr": params.trust_radius,
+                "rho": rho,
+                "nhev": params.nhev,
+                "hit": sub_result.hits_boundary
+            }
+            call(pp, printable_state, result_shape=None)
         return params
 
     def _trust_region_cond_f(params: _TrustRegionState) -> bool:
