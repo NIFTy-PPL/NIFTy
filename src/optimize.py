@@ -208,7 +208,6 @@ def _minimize_trust_ncg(
     energy_reduction_factor=0.1,
     old_fval=np.nan,
     absdelta=None,
-    norm_ord=None,
     gtol: float = 1e-4,
     max_trust_radius: Union[float, np.ndarray] = 1000.,
     initial_trust_radius: Union[float, np.ndarray] = 1.0,
@@ -216,9 +215,9 @@ def _minimize_trust_ncg(
     subproblem=conjugate_gradient._cg_steihaug_subproblem,
     jac: Optional[Callable] = None,
     hessp: Optional[Callable] = None,
-    fun_and_grad: Optional[Callable] = None
+    fun_and_grad: Optional[Callable] = None,
+    subproblem_kwargs: Optional[dict[str, Any]] = None,
 ) -> OptimizeResults:
-    norm_ord = 2 if norm_ord is None else norm_ord
     maxiter = 200 if maxiter is None else maxiter
 
     if not (0 <= eta < 0.25):
@@ -245,17 +244,19 @@ def _minimize_trust_ncg(
         def hessp(primals, tangents):
             return jvp(jac, (primals, ), (tangents, ))[1]
 
-    f_0, g_0 = fun_and_grad(x0)
+    subproblem_kwargs = {} if subproblem_kwargs is None else subproblem_kwargs
 
+    f_0, g_0 = fun_and_grad(x0)
+    g_0_mag = jft_norm(g_0, ord=subproblem_kwargs.get("norm_ord", 1), ravel=True)
     init_params = _TrustRegionState(
         converged=False,
         status=0,
-        good_approximation=np.isfinite(jft_norm(g_0, ord=norm_ord)),
-        nit=1,
+        good_approximation=np.isfinite(g_0_mag),
+        nit=0,
         x=x0,
         fun=f_0,
         jac=g_0,
-        jac_magnitude=jft_norm(g_0, ord=norm_ord),
+        jac_magnitude=g_0_mag,
         nfev=1,
         njev=1,
         nhev=0,
@@ -265,28 +266,31 @@ def _minimize_trust_ncg(
 
     def _trust_region_body_f(params: _TrustRegionState) -> _TrustRegionState:
         x_k, g_k, g_k_mag = params.x, params.jac, params.jac_magnitude
-        f_k, old_fval = params.fun, params.old_fval
+        i, f_k, old_fval = params.nit, params.fun, params.old_fval
         tr = params.trust_radius
+
+        i += 1
 
         if energy_reduction_factor:
             cg_absdelta = energy_reduction_factor * (old_fval - f_k)
         else:
             cg_absdelta = None if absdelta is None else absdelta / 100.
         cg_resnorm = np.minimum(0.5, np.sqrt(g_k_mag)) * g_k_mag
-        # TODO: add a internal success check for future subproblem approaches
+        # TODO: add an internal success check for future subproblem approaches
         # that might not be solvable
-        result = subproblem(
-            f_k,
-            g_k,
-            partial(hessp, x_k),
-            absdelta=cg_absdelta,
-            resnorm=cg_resnorm,
-            trust_radius=tr,
-            norm_ord=norm_ord
+        default_kwargs = {
+            "absdelta": cg_absdelta,
+            "resnorm": cg_resnorm,
+            "trust_radius": tr,
+            "norm_ord": 1
+        }
+        sub_result = subproblem(
+            f_k, g_k, partial(hessp, x_k),
+            **(default_kwargs | subproblem_kwargs)
         )
 
-        pred_f_kp1 = result.pred_f
-        x_kp1 = x_k + result.step
+        pred_f_kp1 = sub_result.pred_f
+        x_kp1 = x_k + sub_result.step
         f_kp1, g_kp1 = fun_and_grad(x_kp1)
 
         delta = f_k - f_kp1
@@ -294,14 +298,14 @@ def _minimize_trust_ncg(
 
         # update the trust radius according to the actual/predicted ratio
         rho = delta / pred_delta
-        cur_tradius = np.where(rho < 0.25, tr * 0.25, tr)
-        cur_tradius = np.where(
-            (rho > 0.75) & result.hits_boundary,
-            np.minimum(2. * tr, max_trust_radius), cur_tradius
+        tr_kp1 = np.where(rho < 0.25, tr * 0.25, tr)
+        tr_kp1 = np.where(
+            (rho > 0.75) & sub_result.hits_boundary,
+            np.minimum(2. * tr, max_trust_radius), tr_kp1
         )
 
         # compute norm to check for convergence
-        g_kp1_mag = jft_norm(g_kp1, ord=norm_ord, ravel=True)
+        g_kp1_mag = jft_norm(g_kp1, ord=subproblem_kwargs.get("norm_ord", 1), ravel=True)
 
         # if the ratio is high enough then accept the proposed step
         f_kp1, x_kp1, g_kp1, g_kp1_mag = where(
@@ -309,28 +313,27 @@ def _minimize_trust_ncg(
             (f_k, x_k, g_k, g_k_mag)
         )
         converged = g_kp1_mag < gtol
+        energy_diff = f_k - f_kp1
         if absdelta:
-            energy_diff = f_kp1 - f_k
             converged |= (rho > eta) & (energy_diff >
                                         0.) & (energy_diff < absdelta)
 
-        iter_params = _TrustRegionState(
+        params = _TrustRegionState(
             converged=converged,
             good_approximation=pred_delta > 0,
-            nit=params.nit + 1,
+            nit=i,
             x=x_kp1,
             fun=f_kp1,
             jac=g_kp1,
             jac_magnitude=g_kp1_mag,
-            nfev=params.nfev + result.nfev + 1,
-            njev=params.njev + result.njev + 1,
-            nhev=params.nhev + result.nhev,
-            trust_radius=cur_tradius,
+            nfev=params.nfev + sub_result.nfev + 1,
+            njev=params.njev + sub_result.njev + 1,
+            nhev=params.nhev + sub_result.nhev,
+            trust_radius=tr_kp1,
             status=params.status,
             old_fval=f_k
         )
-
-        return iter_params
+        return params
 
     def _trust_region_cond_f(params: _TrustRegionState) -> bool:
         return (
