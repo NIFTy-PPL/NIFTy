@@ -94,8 +94,6 @@ def _cg(
     info = -1
     i = 0
     for i in range(1, maxiter + 1):
-        if name is not None:
-            print(f"{name}: Iteration {i} ⛰:{energy:+.6e}", file=sys.stderr)
         q = mat(d)
         nfev += 1
 
@@ -132,7 +130,10 @@ def _cg(
             new_energy = float(((r - j) / 2).dot(pos))
             energy_diff = energy - new_energy
             if name is not None:
-                msg = f"{name}: Δ⛰:{energy_diff:.6e} 🞋:{absdelta:.6e}"
+                msg = (
+                    f"{name}: Iteration {i} ⛰:{new_energy:+.6e} Δ⛰:{energy_diff:.6e}"
+                    f" 🞋:{absdelta:.6e}" if absdelta is not None else ""
+                )
                 print(msg, file=sys.stderr)
         else:
             new_energy = energy
@@ -195,10 +196,6 @@ def _static_cg(
 
         i += 1
 
-        if name is not None:
-            msg = f"{name}: Iteration {v['iteration']!r} ⛰:{previous_energy!r}"
-            print(msg, file=sys.stderr)
-
         q = mat(d)
         curv = d.dot(q)
         # ValueError("zero curvature in conjugate gradient")
@@ -233,7 +230,10 @@ def _static_cg(
             energy = ((r - j) / 2).dot(pos)
             energy_diff = previous_energy - energy
             if name is not None:
-                msg = f"{name}: Δ⛰:{energy_diff!r} 🞋:{absdelta!r}"
+                msg = (
+                    f"{name}: Iteration {i!r} ⛰:{energy!r}"
+                    f" 🞋:{absdelta!r}" if absdelta is not None else ""
+                )
                 print(msg, file=sys.stderr)
         else:
             energy = previous_energy
