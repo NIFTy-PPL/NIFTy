@@ -1,7 +1,8 @@
-from typing import Union, Optional
+from typing import Callable, Optional, Tuple, Union
 from collections.abc import Mapping
 
 import sys
+from functools import partial
 from jax import numpy as np
 
 from .sugar import ducktape
@@ -92,10 +93,10 @@ def _remove_slope(rel_log_mode_dist, x):
 
 def non_parametric_amplitude(
     domain: Mapping,
-    fluctuations: callable,
-    loglogavgslope: callable,
-    flexibility: Optional[callable] = None,
-    asperity: Optional[callable] = None,
+    fluctuations: Callable,
+    loglogavgslope: Callable,
+    flexibility: Optional[Callable] = None,
+    asperity: Optional[Callable] = None,
     prefix: str = ""
 ):
     totvol = domain.get("position_space_total_volume", 1.)
@@ -114,13 +115,9 @@ def non_parametric_amplitude(
         # Register the parameters for the spectrum
         assert rel_log_mode_len.ndim == log_vol.ndim == 1
         ptree[prefix + "_spectrum"] = ShapeWithDtype((2, ) + log_vol.shape)
-    else:
-        flexibility = None
     if asperity is not None:
         asperity = ducktape(asperity, prefix + "_asperity")
         ptree[prefix + "_asperity"] = ShapeWithDtype(())
-    else:
-        asperity = None
 
     def correlate(primals: Mapping) -> np.ndarray:
         flu = fluctuations(primals)
@@ -200,10 +197,10 @@ class CorrelatedFieldMaker():
         self,
         shape: Union[tuple, int],
         distances: Union[tuple, float],
-        fluctuations: Union[tuple, callable],
-        loglogavgslope: Union[tuple, callable],
-        flexibility: Union[tuple, callable, None] = None,
-        asperity: Union[tuple, callable, None] = None,
+        fluctuations: Union[tuple, Callable],
+        loglogavgslope: Union[tuple, Callable],
+        flexibility: Union[tuple, Callable, None] = None,
+        asperity: Union[tuple, Callable, None] = None,
         prefix: str = "",
         harmonic_domain_type: str = "fourier",
     ):
@@ -319,7 +316,7 @@ class CorrelatedFieldMaker():
         self._parameter_tree.update(ptree)
 
     def set_amplitude_total_offset(
-        self, offset_mean: float, offset_std: Union[tuple, callable]
+        self, offset_mean: float, offset_std: Union[Tuple, Callable]
     ):
         """Sets the zero-mode for the combined amplitude operator
 
@@ -413,11 +410,8 @@ class CorrelatedFieldMaker():
             n = len(excitation_shape)
             axes = tuple(range(n - len(sub_shp), n))
 
-            # TODO: Generalize to complex; Add dtype to parameter_tree?
-            def ht_axs(p, axes=axes):  # Avoid late binding
-                return hartley(p, axes=axes)
-
-            harmonic_transforms.append(ht_axs)
+            # TODO: Generalize to complex
+            harmonic_transforms.append(partial(hartley, axes=axes))
         # Register the parameters for the excitations in harmonic space
         # TODO: actually account for the dtype here
         pfx = self._prefix + "_excitations"

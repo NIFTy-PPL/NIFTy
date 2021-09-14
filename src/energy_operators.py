@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import Callable, Optional
 
 import sys
 from jax import numpy as np
@@ -16,8 +16,8 @@ def _shape_w_fixed_dtype(dtype):
 
 def Gaussian(
     data,
-    noise_cov_inv: Optional[callable] = None,
-    noise_std_inv: Optional[callable] = None
+    noise_cov_inv: Optional[Callable] = None,
+    noise_std_inv: Optional[Callable] = None
 ):
     """Gaussian likelihood of the data
 
@@ -249,10 +249,10 @@ def Categorical(data, axis=-1, sampling_dtype=float):
 
     Parameters
     ----------
-    data: sequence of int
+    data : sequence of int
         An array stating which of the categories is the realized in the data.
         Must agree with the input shape except for the shape[axis]
-    axis: int
+    axis : int
         Axis over which the categories are formed
     sampling_dtype : dtype, optional
         Data-type for sampling.

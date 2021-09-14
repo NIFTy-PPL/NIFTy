@@ -28,6 +28,13 @@ the model.  JIFTy is a purely Bayesian inference framework. The workhorse for
 the inference of parameters from data is MGVI (\ **M**\ etric **G**\ aussian
 **V**\ ariational **I**\ nference).
 
+Nice To Know
+^^^^^^^^^^^^
+
+* ``jax.linear_transpose(fun, *primals)`` -- Transpose a function that is promised to be linear.
+* ``jax.linearize(fun, *primals)`` -- Produces a linear approximation to fun using jvp() and partial eval.
+* ``jax.eval_shape(fun, *args, **kwargs)`` -- Compute the shape/dtype of fun without any FLOPs.
+
 Installation
 ------------
 

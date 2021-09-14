@@ -1,11 +1,10 @@
-from typing import Callable
+from typing import Callable, Hashable
 from collections.abc import Iterable
 
 from jax import random
 from jax import numpy as np
 from jax.tree_util import (
-    tree_structure, tree_leaves, tree_unflatten, tree_map, tree_multimap,
-    tree_reduce
+    tree_structure, tree_leaves, tree_unflatten, tree_map, tree_reduce
 )
 
 from .field import Field
@@ -30,7 +29,7 @@ def is1d(ls, object_type=(int, np.unsignedinteger)):
     return all(isinstance(e, object_type) for e in ls)
 
 
-def ducktape(call, key):
+def ducktape(call: Callable, key: Hashable):
     def named_call(p):
         return call(p.get(key))
 
@@ -49,12 +48,20 @@ def sum_of_squares(tree):
     return tree_reduce(add, tree_map(lambda x: sum(x**2), tree), 0.)
 
 
-def norm(tree, ord):
+def norm(tree, ord, ravel=False):
     from jax.numpy import ndim, abs
     from jax.numpy.linalg import norm
 
-    enorm = lambda x: abs(x) if ndim(x) == 0 else norm(x, ord=ord)
-    return norm(tree_leaves(tree_map(enorm, tree)), ord=ord)
+    if ravel:
+
+        def el_norm(x):
+            return abs(x) if ndim(x) == 0 else norm(x.ravel(), ord=ord)
+    else:
+
+        def el_norm(x):
+            return abs(x) if ndim(x) == 0 else norm(x, ord=ord)
+
+    return norm(tree_leaves(tree_map(el_norm, tree)), ord=ord)
 
 
 def mean(forest):
@@ -96,7 +103,7 @@ def random_like_shapewdtype(
     def draw(swd, key):
         return rng(key=key, shape=swd.shape, dtype=swd.dtype)
 
-    return tree_multimap(draw, tree_of_shapes, subkeys)
+    return tree_map(draw, tree_of_shapes, subkeys)
 
 
 def random_like(
@@ -114,7 +121,7 @@ def random_like(
         dtp = onp.common_type(x)
         return rng(key=key, shape=shp, dtype=dtp)
 
-    return tree_multimap(draw, primals, subkeys)
+    return tree_map(draw, primals, subkeys)
 
 
 def interpolate(xmin=-7., xmax=7., N=14000):
