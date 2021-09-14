@@ -7,6 +7,7 @@ docs/source/user/getting_started_4_CorrelatedFields.rst
 
 # custom
 *.txt
+*.pickle
 setup.cfg
 .idea
 .DS_Store

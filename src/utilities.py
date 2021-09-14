@@ -351,7 +351,6 @@ def allreduce_sum(obj, comm):
         who = np.zeros(nobj, dtype=np.int32)
         rank = 0
     else:
-        ntask = comm.Get_size()
         rank = comm.Get_rank()
         nobj_list = comm.allgather(len(vals))
         all_hi = list(np.cumsum(nobj_list))
