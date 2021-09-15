@@ -114,3 +114,20 @@ def test_kl(constants, point_estimates, mirror_samples, mode, mf, geo):
             assert_equal(res0, res1)
     else:
         assert_equal(kl0.gradient.val, kl1.gradient.val)
+
+@pmp('seed', (42, 123))
+@pmp('n_samples', (1, 2, 5, 6))
+def test_geo_mirror(n_samples, seed):
+    ift.random.push_sseq_from_seed(seed)
+    a = ift.FieldAdapter(ift.UnstructuredDomain(2), 'a').exp()
+    lh = ift.GaussianEnergy(domain = a.target, sampling_dtype=np.float) @ a
+    H = ift.StandardHamiltonian(lh, 
+            ic_samp=ift.AbsDeltaEnergyController(1E-10, iteration_limit=2))
+
+    mini = ift.NewtonCG(ift.AbsDeltaEnergyController(1E-10,
+                                                    iteration_limit=0,))
+    KL = ift.GeoMetricKL(ift.from_random(H.domain), H, n_samples, mini,
+                        True, comm=comm)
+    sams = list(KL.samples)
+    for i in range(len(sams)//2):
+        ift.extra.assert_allclose(sams[2*i],-sams[2*i+1])
