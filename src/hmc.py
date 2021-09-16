@@ -108,7 +108,6 @@ def leapfrog_step(
     return qp_fullstep, step_length, mass_matrix
 
 
-# TODO: implement mass matrix
 def leapfrog_step_pytree(
     potential_energy_gradient,
     qp: QP,
@@ -209,7 +208,9 @@ def generate_hmc_sample(*,
         position,
         potential_energy,
         potential_energy_gradient,
+        # TODO remove this parameter, instead rework this to take a `stepper` function just like `generate_nuts_sample` and have the mass matrix there.
         mass_matrix,
+        kinetic_energy,
         number_of_integration_steps,
         step_length
     ):
@@ -263,10 +264,7 @@ def generate_hmc_sample(*,
         key = key,
         old_qp = qp,
         proposed_qp = proposed_qp,
-        total_energy = lambda qp: (
-            potential_energy(qp.position)
-            + np.sum(qp.momentum**2 / (2. * mass_matrix))
-        )
+        total_energy = lambda qp: total_energy_of_qp(qp, potential_energy, kinetic_energy)
     ), momentum
 
 
@@ -889,6 +887,7 @@ class HMCChain:
                 potential_energy = self.potential_energy,
                 potential_energy_gradient = grad(self.potential_energy),
                 mass_matrix = self.diag_mass_matrix,
+                kinetic_energy = make_kinetic_energy_fn_from_diag_mass_matrix(self.diag_mass_matrix),
                 number_of_integration_steps = self.n_of_integration_steps,
                 step_length = self.eps
             )
