@@ -1,6 +1,6 @@
 from typing import Callable, Optional
 
-from jax import jvp, vjp
+from jax import linear_transpose, linearize, vjp
 from jax.tree_util import Partial, tree_leaves
 
 from .forest_util import ShapeWithDtype
@@ -215,15 +215,12 @@ class Likelihood():
             return self.transformation(f(primals))
 
         def metric_at_f(primals, tangents):
-            # Note, if we were to evaluate the metric several times at the same
-            # position, it might make sense to use `jax.linearize` in favor of
-            # `jax.jvp` to avoid re-linearizing `f` at `primals` at the cost of
-            # having to store the linearization.
-            y, t = jvp(f, (primals, ), (tangents, ))
-            r = self.metric(y, t)
-            _, bwd = vjp(f, primals)
-            res = bwd(r)
-            return res[0]
+            # Note, judging by a simple benchmark on a large problem,
+            # transposing the JVP seems faster than computing the VJP again. On
+            # small problems there seems to be no measurable difference.
+            y, fwd = linearize(f, primals)
+            bwd = linear_transpose(fwd, primals)
+            return bwd(self.metric(y, fwd(tangents)))[0]
 
         def left_sqrt_metric_at_f(primals, tangents):
             y, bwd = vjp(f, primals)
