@@ -1,4 +1,11 @@
 # %%
+#
+# WARNING: This code does not behave deterministically when compiled.
+# this is probably due to an issue with host_callback
+# concretely it just stops adding points to the debug list after some random number of leapfrog steps
+# (currently not able to reproduce the issue but it did occur previously)
+#
+
 from functools import partial
 import jax.numpy as np
 import matplotlib
@@ -36,15 +43,10 @@ hmc._DEBUG_SUBTREE_END_IDXS = []
  depths, trees) = (sampler.generate_n_samples(5))
 
 #plt.hist(depths)
-# %%
-#plt.scatter(pos[:,0], pos[:,1])
 
 # %%
 debug_pos = np.array([qp.position for qp in hmc._DEBUG_STORE])
 print(len(debug_pos))
-
-# %%
-#plt.scatter(debug_pos[:,0], debug_pos[:,1], s=2.)
 
 # %%
 prop_cycle = plt.rcParams['axes.prop_cycle']
