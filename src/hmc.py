@@ -284,59 +284,6 @@ def generate_hmc_sample(*,
 Tree = namedtuple('Tree', ['left', 'right', 'logweight', 'proposal_candidate', 'turning', 'depth'])
 
 
-def _impl_build_tree_recursive(initial_qp, eps, depth, direction, stepper):
-    """Build tree of given depth starting from given initial position.
-    
-    Parameters
-    ----------
-    depth: int
-        The depth of the tree to be built. Depth is defined as the longest path
-        from the root node to any other node. The depth can be expressed as
-        log_2(trajectory_length).
-        """
-    if depth == 0:
-        # build a depth 0 tree by leapfrog stepping into the given direction
-        left_and_right_qp = stepper(initial_qp, eps, direction)
-        # the trajectory contains only a single point, so the left and right endpoints are identical
-        return left_and_right_qp, left_and_right_qp, [left_and_right_qp], False
-    else:
-        #
-        left, right, current_chosen, current_stop = _impl_build_tree_recursive(initial_qp, eps, depth - 1, direction, stepper)
-        if direction == -1:
-            left, _, new_chosen, new_stop = _impl_build_tree_recursive(left, eps, depth - 1, direction, stepper)
-
-        elif direction == 1:
-            _, right, new_chosen, new_stop = _impl_build_tree_recursive(right, eps, depth - 1, direction, stepper)
-        else:
-            raise RuntimeError
-        stop = current_stop or new_stop or is_euclidean_uturn(left, right)
-        chosen = current_chosen + new_chosen
-        return left, right, chosen, stop
-
-
-def build_tree_recursive(initial_qp, key, eps, maxdepth, stepper):
-    left_endpoint, right_endpoint = initial_qp, initial_qp
-    stop = False
-    chosen = []
-    j = 0
-    while not stop and j <= maxdepth:
-        #print(left_endpoint, right_endpoint)
-        key, subkey = random.split(key)
-        direction = random.choice(subkey, np.array([-1, 1]))
-        print(f"going in direction {int(direction)}")
-        if direction == 1:
-            _, right_endpoint, new_chosen, new_stop = _impl_build_tree_recursive(right_endpoint, eps, j, direction, stepper)
-        elif direction == -1:
-            left_endpoint, _, new_chosen, new_stop = _impl_build_tree_recursive(left_endpoint, eps, j, direction, stepper)
-        else:
-            raise RuntimeError
-        if not stop:
-            chosen = chosen + new_chosen
-        stop = new_stop or is_euclidean_uturn(left_endpoint, right_endpoint)
-        j = j + 1
-    return left_endpoint, right_endpoint, chosen
-
-
 def total_energy_of_qp(qp, potential_energy, kinetic_energy):
     return potential_energy(qp.position) + kinetic_energy(qp.momentum)
 
