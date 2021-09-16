@@ -196,7 +196,6 @@ class _TrustRegionState(NamedTuple):
     nit: Union[int, np.ndarray]
     trust_radius: Union[float, np.ndarray]
     jac_magnitude: Union[float, np.ndarray]
-    good_approximation: Union[bool, np.ndarray]
     old_fval: Union[float, np.ndarray]
 
 
@@ -220,6 +219,8 @@ def _minimize_trust_ncg(
     name: Optional[str] = None
 ) -> OptimizeResults:
     maxiter = 200 if maxiter is None else maxiter
+
+    status = np.where(maxiter == 0, 1, 0)
 
     if not (0 <= eta < 0.25):
         raise Exception("invalid acceptance stringency")
@@ -250,10 +251,10 @@ def _minimize_trust_ncg(
 
     f_0, g_0 = fun_and_grad(x0)
     g_0_mag = jft_norm(g_0, ord=subproblem_kwargs.get("norm_ord", 1), ravel=True)
+    status = np.where(np.isfinite(g_0_mag), status, 2)
     init_params = _TrustRegionState(
         converged=False,
-        status=0,
-        good_approximation=np.isfinite(g_0_mag),
+        status=status,
         nit=0,
         x=x0,
         fun=f_0,
@@ -296,11 +297,11 @@ def _minimize_trust_ncg(
         x_kp1 = x_k + sub_result.step
         f_kp1, g_kp1 = fun_and_grad(x_kp1)
 
-        delta = f_k - f_kp1
-        pred_delta = f_k - pred_f_kp1
+        actual_reduction = f_k - f_kp1
+        pred_reduction = f_k - pred_f_kp1
 
         # update the trust radius according to the actual/predicted ratio
-        rho = delta / pred_delta
+        rho = actual_reduction / pred_reduction
         tr_kp1 = np.where(rho < 0.25, tr * 0.25, tr)
         tr_kp1 = np.where(
             (rho > 0.75) & sub_result.hits_boundary,
@@ -321,9 +322,11 @@ def _minimize_trust_ncg(
             converged |= (rho > eta) & (energy_diff >
                                         0.) & (energy_diff < absdelta)
 
+        status = np.where(converged, 0, params.status)
+        status = np.where(i >= maxiter, 1, status)
+        status = np.where(pred_reduction <= 0, 2, status)
         params = _TrustRegionState(
             converged=converged,
-            good_approximation=pred_delta > 0,
             nit=i,
             x=x_kp1,
             fun=f_kp1,
@@ -333,7 +336,7 @@ def _minimize_trust_ncg(
             njev=params.njev + sub_result.njev + 1,
             nhev=params.nhev + sub_result.nhev,
             trust_radius=tr_kp1,
-            status=params.status,
+            status=status,
             old_fval=f_k
         )
         if name is not None:
@@ -363,31 +366,14 @@ def _minimize_trust_ncg(
         return params
 
     def _trust_region_cond_f(params: _TrustRegionState) -> bool:
-        return (
-            np.logical_not(params.converged) & (params.nit < maxiter) &
-            params.good_approximation
-        )
+        return np.logical_not(params.converged) & (params.status == 0)
 
     state = lax.while_loop(
         _trust_region_cond_f, _trust_region_body_f, init_params
     )
-    status = np.where(
-        state.converged,
-        0,  # converged
-        np.where(
-            state.nit == maxiter,
-            1,  # max iters reached
-            np.where(
-                state.good_approximation,
-                -1,  # undefined
-                2,  # poor approx
-            )
-        )
-    )
-    state = state._replace(status=status)
 
     return OptimizeResults(
-        success=state.converged & state.good_approximation,
+        success=state.converged & (state.status == 0),
         nit=state.nit,
         x=state.x,
         fun=state.fun,
@@ -397,8 +383,7 @@ def _minimize_trust_ncg(
         nhev=state.nhev,
         jac_magnitude=state.jac_magnitude,
         trust_radius=state.trust_radius,
-        status=state.status,
-        good_approximation=state.good_approximation
+        status=state.status
     )
 
 
