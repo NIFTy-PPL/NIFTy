@@ -224,15 +224,14 @@ def _minimize_trust_ncg(
 
     if not (0 <= eta < 0.25):
         raise Exception("invalid acceptance stringency")
-    if gtol < 0.:
-        raise Exception("gradient tolerance must be positive")
-    if max_trust_radius <= 0:
-        raise Exception("max trust radius must be positive")
-    if initial_trust_radius <= 0:
-        raise ValueError("initial trust radius must be positive")
-    if initial_trust_radius >= max_trust_radius:
-        ve = "initial trust radius must be less than the max trust radius"
-        raise ValueError(ve)
+    # Exception("gradient tolerance must be positive")
+    status = np.where(gtol < 0., -1, status)
+    # Exception("max trust radius must be positive")
+    status = np.where(max_trust_radius <= 0, -1, status)
+    # ValueError("initial trust radius must be positive")
+    status = np.where(initial_trust_radius <= 0, -1, status)
+    # ValueError("initial trust radius must be less than the max trust radius")
+    status = np.where(initial_trust_radius >= max_trust_radius, -1, status)
 
     if fun_and_grad is None:
         from jax import value_and_grad
