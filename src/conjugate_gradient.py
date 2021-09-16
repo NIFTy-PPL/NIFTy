@@ -173,11 +173,11 @@ def _static_cg(
 
     norm_ord = 2 if norm_ord is None else norm_ord  # TODO: change to 1
     maxiter_fallback = 20 * size(j)  # taken from SciPy's NewtonCG minimzer
-    miniter = min(
-        (6, maxiter if maxiter is not None else maxiter_fallback)
+    miniter = np.minimum(
+        6, maxiter if maxiter is not None else maxiter_fallback
     ) if miniter is None else miniter
-    maxiter = max(
-        (min((200, maxiter_fallback)), miniter)
+    maxiter = np.maximum(
+        np.minimum(200, maxiter_fallback), miniter
     ) if maxiter is None else maxiter
 
     if absdelta is None and resnorm is None:  # fallback convergence criterion
@@ -412,11 +412,11 @@ def _cg_steihaug_subproblem(
     tr_norm_ord = np.inf if tr_norm_ord is None else tr_norm_ord  # taken from JAX
     norm_ord = 2 if norm_ord is None else norm_ord  # TODO: change to 1
     maxiter_fallback = 20 * size(g)  # taken from SciPy's NewtonCG minimzer
-    miniter = min(
-        (6, maxiter if maxiter is not None else maxiter_fallback)
+    miniter = np.minimum(
+        6, maxiter if maxiter is not None else maxiter_fallback
     ) if miniter is None else miniter
-    maxiter = max(
-        (min((200, maxiter_fallback)), miniter)
+    maxiter = np.maximum(
+        np.minimum(200, maxiter_fallback), miniter
     ) if maxiter is None else maxiter
 
     common_dtp = common_type(g)
