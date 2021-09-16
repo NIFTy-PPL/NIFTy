@@ -524,7 +524,7 @@ def _cg_steihaug_subproblem(
                              ) & (energy_diff < absdelta) & (nit >= miniter)
 
         # include a junk switch to catch the case where none should be executed
-        z_next_norm = jft_norm(z_next, ord=tr_norm_ord)
+        z_next_norm = jft_norm(z_next, ord=tr_norm_ord, ravel=True)
         index = np.argmax(
             np.array(
                 [False, dBd <= 0, z_next_norm >= trust_radius, accept_z_next]
