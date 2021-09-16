@@ -40,7 +40,7 @@ def flip_momentum(qp: QP) -> QP:
 
 # TODO: depend on current qs, sample from some kind of kinetic energy object
 # TODO: don't depend on current qs, make this a oneliner (i.e. delete this function) using random.normal or something
-def sample_momentum_from_diagonal(*, key, mass_matrix):
+def sample_momentum_from_diagonal(*, key, diag_mass_matrix):
     """
     Draw a momentum sample from the kinetic energy of the hamiltonian.
 
@@ -48,12 +48,12 @@ def sample_momentum_from_diagonal(*, key, mass_matrix):
     ----------
     key: ndarray
         a PRNGKey used as the random key.
-    diagonal_momentum_covariance: ndarray
-        the momentum covariance (also: mass matrix) to use for sampling.
-        Diagonal matrix stored as an ndarray vector containing the entries of the diagonal.
+    diag_mass_matrix: ndarray
+        The mass matrix (i.e. inverse diagonal covariance) to use for sampling.
+        Diagonal matrix represented as (possibly pytree of) ndarray vector
+        containing the entries of the diagonal.
     """
-    unit_normal_vector = random.normal(key, mass_matrix.shape)
-    return np.sqrt(mass_matrix) * unit_normal_vector
+    return tree_util.tree_map(lambda m: np.sqrt(m) * random.normal(key, m.shape), diag_mass_matrix)
 
 
 # TODO: pass gradient instead of calculating gradient in function
@@ -138,7 +138,7 @@ def leapfrog_step_pytree(
     )
 
     qp_fullstep = QP(position=position_fullstep, momentum=momentum_fullstep)
-    
+
     global _DEBUG_FLAG
     if _DEBUG_FLAG:
         # append result to global list variable
@@ -235,7 +235,7 @@ def generate_hmc_sample(*,
     # TODO: danger: fix, covariance / mass_matrix relation
     momentum = sample_momentum_from_diagonal(
         key = subkey,
-        mass_matrix = mass_matrix
+        diag_mass_matrix = mass_matrix
     )
     qp = QP(position=position, momentum=momentum)
 
@@ -648,11 +648,6 @@ def make_kinetic_energy_fn_from_diag_mass_matrix(mass_matrix):
     return _kin_energy
 
 
-def sample_momentum_from_diag_mass_matrix(key, diag_mass_matrix):
-    key, subkey = random.split(key)
-    return tree_util.tree_map(lambda m: np.sqrt(m) * random.normal(subkey, m.shape), diag_mass_matrix)
-
-
 class NUTSChain:
     def __init__(self, initial_position, potential_energy, diag_mass_matrix, eps, maxdepth, rngseed, compile=True, dbg_info=False, signal_response=lambda x: x):
         self.position = initial_position
@@ -687,9 +682,9 @@ class NUTSChain:
             self.maxdepth = maxdepth
         else:
             raise ValueError('maxdepth must be an int')
-        
+
         self.key = random.PRNGKey(rngseed)
-    
+
         self.compile = compile
 
         self.dbg_info = dbg_info
@@ -712,7 +707,7 @@ class NUTSChain:
             trees = tree_util.tree_map(
                 lambda leaf: np.empty_like(leaf, shape=(n,)+np.array(leaf).shape),
                 _tree_proto
-                
+
             )
 
         def _body_fun(idx, state):
@@ -722,7 +717,10 @@ class NUTSChain:
                 prev_position, key, samples = state
 
             key, subkey = random.split(key)
-            resampled_momentum = sample_momentum_from_diag_mass_matrix(subkey, self.diag_mass_matrix)
+            resampled_momentum = sample_momentum_from_diagonal(
+                key=random.split(subkey)[1],
+                diag_mass_matrix=self.diag_mass_matrix
+            )
 
             qp = QP(position=prev_position, momentum=resampled_momentum)
 
@@ -754,14 +752,14 @@ class NUTSChain:
         loop_initial_state = (self.position, self.key, samples)
         if self.dbg_info:
             loop_initial_state = loop_initial_state + (momenta_before, momenta_after, depths, trees)
-        
+
         return_fn = lambda: fori_loop(lower=0, upper=n, body_fun=_body_fun, init_val=loop_initial_state)
 
         if self.compile:
             results = jit(return_fn)()
         else:
             results = return_fn()
-        
+
         names = ('position', 'key', 'samples')
         if self.dbg_info:
             names = names + ('momenta_before', 'momenta_after', 'depths', 'trees')
@@ -861,7 +859,7 @@ class HMCChain:
             raise ValueError('n_of_integration_steps must be an int')
 
         self.key = random.PRNGKey(rngseed)
-    
+
         self.compile = compile
 
         self.dbg_info = dbg_info
@@ -921,7 +919,7 @@ class HMCChain:
         loop_initial_state = (self.position, self.key, samples, acceptance)
         if self.dbg_info:
             loop_initial_state = loop_initial_state + (momenta_before, momenta_after, rejected_position_samples, rejected_momenta)
-        
+
         return_fn = lambda: fori_loop(lower=0, upper=n, body_fun=_body_fun, init_val=loop_initial_state)
         if self.compile:
             return jit(return_fn)()
