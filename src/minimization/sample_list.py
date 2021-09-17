@@ -16,6 +16,8 @@
 
 import pickle
 
+from ..utilities import myassert
+
 
 class SampleList:
     def __init__(self, comm, domain):
@@ -78,7 +80,7 @@ class SampleList:
             raise NotImplementedError
         with open(file_name_base + ".pickle", "rb") as f:
             obj = pickle.load(f)
-        assert isinstance(obj, SampleList)
+        myassert(isinstance(obj, SampleList))
         return obj
 
 
