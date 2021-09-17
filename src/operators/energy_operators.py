@@ -28,7 +28,7 @@ from ..utilities import myassert
 from .adder import Adder
 from .linear_operator import LinearOperator
 from .operator import Operator
-from .sampling_enabler import SamplingDtypeSetter, SamplingEnabler
+from .sampling_enabler import SamplingEnabler
 from .sandwich_operator import SandwichOperator
 from .scaling_operator import ScalingOperator
 from .simple_linear_operators import FieldAdapter, VdotOperator
@@ -99,7 +99,7 @@ class LikelihoodEnergyOperator(EnergyOperator):
         dtp, f = self.get_transformation()
         ch = None
         if dtp is not None:
-            ch = SamplingDtypeSetter(ScalingOperator(f.target, 1.), dtp)
+            ch = ScalingOperator(f.target, 1.)
         bun = f(Linearization.make_var(x)).jac
         return SandwichOperator.make(bun, ch)
 
@@ -209,7 +209,8 @@ class VariableCovarianceGaussianEnergy(LikelihoodEnergyOperator):
             met = 1. if self._cplx else 0.5
             met = MultiField.from_dict({self._kr: i.val, self._ki: met*i.val**(-2)},
                                         domain=self._domain)
-            met = SamplingDtypeSetter(makeOp(met), self._dt)
+            met = makeOp(met)
+            met.dtype = self._dt
         else:
             met = self.get_metric_at(x.val)
         return res.add_metric(met)
@@ -339,8 +340,6 @@ class GaussianEnergy(LikelihoodEnergyOperator):
         else:
             self._op = QuadraticFormOperator(inverse_covariance)
             self._met = inverse_covariance
-        if sampling_dtype is not None:
-            self._met = SamplingDtypeSetter(self._met, sampling_dtype)
 
     def _checkEquivalence(self, newdom):
         newdom = makeDomain(newdom)
@@ -358,11 +357,8 @@ class GaussianEnergy(LikelihoodEnergyOperator):
         return res
 
     def get_transformation(self):
-        icov, dtp = self._met, None
-        if isinstance(icov, SamplingDtypeSetter):
-            dtp = icov._dtype
-            icov = icov._op
-        return dtp, icov.get_sqrt()
+        icov = self._met
+        return icov.dtype, icov.get_sqrt()
 
     def __repr__(self):
         dom = '()' if isinstance(self.domain, DomainTuple) else self.domain.keys()

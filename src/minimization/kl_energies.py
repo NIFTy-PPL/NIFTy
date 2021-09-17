@@ -28,7 +28,6 @@ from ..operators.adder import Adder
 from ..operators.endomorphic_operator import EndomorphicOperator
 from ..operators.energy_operators import GaussianEnergy, StandardHamiltonian
 from ..operators.inversion_enabler import InversionEnabler
-from ..operators.sampling_enabler import SamplingDtypeSetter
 from ..operators.sandwich_operator import SandwichOperator
 from ..operators.scaling_operator import ScalingOperator
 from ..probing import approximation2endo
@@ -249,12 +248,11 @@ class _GeoMetricSampler:
                               [dtype[k] is not None for k in dtype.keys()])
         else:
             sampling = dtype is not None
-        scale = SamplingDtypeSetter(scale, dtype) if sampling else scale
 
         fl = f_lh(Linearization.make_var(self._position))
         self._g = (Adder(-self._position) + fl.jac.adjoint@Adder(-fl.val)@f_lh)
         self._likelihood = SandwichOperator.make(fl.jac, scale)
-        self._prior = SamplingDtypeSetter(ScalingOperator(fl.domain,1.), np.float64)
+        self._prior = ScalingOperator(fl.domain, 1.)
         self._met = self._likelihood + self._prior
         if napprox >= 1:
             self._approximation = makeOp(approximation2endo(self._met, napprox)).inverse

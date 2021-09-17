@@ -31,7 +31,6 @@ from .operators.block_diagonal_operator import BlockDiagonalOperator
 from .operators.diagonal_operator import DiagonalOperator
 from .operators.distributors import PowerDistributor
 from .operators.operator import Operator
-from .operators.sampling_enabler import SamplingDtypeSetter
 from .operators.scaling_operator import ScalingOperator
 from .operators.selection_operators import SliceOperator
 from .plot import Plot
@@ -576,8 +575,6 @@ def calculate_position(operator, output):
         cov = 1e-3*np.max(np.abs(output.val))**2
         dtype = output.dtype
     invcov = ScalingOperator(output.domain, cov).inverse
-    invcov = SamplingDtypeSetter(invcov, output.dtype)
-    invcov = SamplingDtypeSetter(invcov, output.dtype)
     d = output + invcov.draw_sample(from_inverse=True)
     lh = GaussianEnergy(d, invcov) @ operator
     H = StandardHamiltonian(

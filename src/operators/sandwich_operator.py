@@ -18,7 +18,6 @@
 from .diagonal_operator import DiagonalOperator
 from .endomorphic_operator import EndomorphicOperator
 from .linear_operator import LinearOperator
-from .sampling_enabler import SamplingDtypeSetter
 from .scaling_operator import ScalingOperator
 
 
@@ -73,9 +72,6 @@ class SandwichOperator(EndomorphicOperator):
 
         # If our sandwich is diagonal, we can return immediately
         if isinstance(op, (ScalingOperator, DiagonalOperator)):
-            if isinstance(cheese, SamplingDtypeSetter):
-                #FIXME
-                return SamplingDtypeSetter(op, cheese._dtype)
             return op
         return SandwichOperator(bun, cheese, op, _callingfrommake=True)
 
