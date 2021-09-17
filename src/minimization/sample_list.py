@@ -27,9 +27,6 @@ class SampleList:
         self._domain = makeDomain(domain)
         check_MPI_equality(self._domain, comm)
 
-    # def __iter__(self):
-    #     raise NotImplementedError
-
     @property
     def comm(self):
         return self._comm
@@ -50,7 +47,6 @@ class SampleList:
 
     def global_sample_stat(self, op):
         from ..probing import StatCalculator
-        from ..operators.scaling_operator import ScalingOperator
 
         op = _none_to_id(op)
 
