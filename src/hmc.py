@@ -176,15 +176,13 @@ def accept_or_deny(*,
     # how to handle this case?
     #print(f"old_e {total_energy(old_qp):3.4e}")
     #print(f"new_e {total_energy(proposed_qp):3.4e}")
-    acceptance_threshold = np.min(np.array(
-        [
-            1,
+    acceptance_threshold = np.minimum(
+            1.,
             np.exp(
                 total_energy(old_qp)
                 - total_energy(proposed_qp)
             )
-        ]
-    ))
+        )
 
     acceptance_level = random.uniform(key)
 
@@ -345,7 +343,7 @@ def generate_nuts_sample(initial_qp, key, eps, maxdepth, stepper, potential_ener
     def _cond_fn(loop_state):
         _key, _current_tree, j, stop = loop_state
         # while (not stop) and j <= maxdepth
-        return (~stop) & np.less_equal(j, maxdepth)
+        return (~stop) & (j <= maxdepth)
 
     def _body_fun(loop_state):
         key, current_tree, j, stop = loop_state
