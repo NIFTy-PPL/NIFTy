@@ -8,7 +8,7 @@ from jax.tree_util import Partial
 from typing import Any, Callable, NamedTuple, Mapping, Optional, Tuple, Union
 
 from . import conjugate_gradient
-from .forest_util import size, where
+from .forest_util import common_type, size, where
 from .forest_util import norm as jft_norm
 from .sugar import sum_of_squares
 
@@ -233,6 +233,9 @@ def _minimize_trust_ncg(
     # ValueError("initial trust radius must be less than the max trust radius")
     status = np.where(initial_trust_radius >= max_trust_radius, -1, status)
 
+    common_dtp = common_type(g)
+    eps = 6. * np.finfo(common_dtp).eps  # Inspired by SciPy's NewtonCG minimzer
+
     if fun_and_grad is None:
         from jax import value_and_grad
 
@@ -315,11 +318,16 @@ def _minimize_trust_ncg(
             rho > eta, (f_kp1, x_kp1, g_kp1, g_kp1_mag),
             (f_k, x_k, g_k, g_k_mag)
         )
-        converged = g_kp1_mag < gtol
-        energy_diff = f_k - f_kp1
+
+        # Check whether we arrived at the float precision
+        energy_eps = eps * np.abs(f_kp1)
+        converged = (actual_reduction <=
+                     energy_eps) & (actual_reduction > -energy_eps)
+
+        converged |= g_kp1_mag < gtol
         if absdelta:
-            converged |= (rho > eta) & (energy_diff >
-                                        0.) & (energy_diff < absdelta)
+            converged |= (rho > eta) & (actual_reduction >
+                                        0.) & (actual_reduction < absdelta)
 
         status = np.where(converged, 0, params.status)
         status = np.where(i >= maxiter, 1, status)
@@ -353,7 +361,7 @@ def _minimize_trust_ncg(
             printable_state = {
                 "i": i,
                 "energy": params.fun,
-                "energy_diff": energy_diff,
+                "energy_diff": actual_reduction,
                 "maxiter": maxiter,
                 "absdelta": absdelta,
                 "tr": params.trust_radius,
