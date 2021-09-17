@@ -14,14 +14,17 @@ _DEBUG_SUBTREE_END_IDXS = []
 _DEBUG_STORE = []
 
 def _DEBUG_ADD_QP(qp):
+    """Stores **all** results of leapfrog integration"""
     global _DEBUG_STORE
     _DEBUG_STORE.append(qp)
 
 def _DEBUG_FINISH_TREE(dummy_arg):
+    """Signal the position of a finished tree in `_DEBUG_STORE`"""
     global _DEBUG_TREE_END_IDXS
     _DEBUG_TREE_END_IDXS.append(len(_DEBUG_STORE))
 
 def _DEBUG_FINISH_SUBTREE(dummy_arg):
+    """Signal the position of a finished sub-tree in `_DEBUG_STORE`"""
     global _DEBUG_SUBTREE_END_IDXS
     _DEBUG_SUBTREE_END_IDXS.append(len(_DEBUG_STORE))
 
@@ -38,8 +41,6 @@ def flip_momentum(qp: QP) -> QP:
     return QP(position=qp.position, momentum=-qp.momentum)
 
 
-# TODO: depend on current qs, sample from some kind of kinetic energy object
-# TODO: don't depend on current qs, make this a oneliner (i.e. delete this function) using random.normal or something
 def sample_momentum_from_diagonal(*, key, diag_mass_matrix):
     """
     Draw a momentum sample from the kinetic energy of the hamiltonian.
@@ -53,10 +54,10 @@ def sample_momentum_from_diagonal(*, key, diag_mass_matrix):
         Diagonal matrix represented as (possibly pytree of) ndarray vector
         containing the entries of the diagonal.
     """
+    # TODO: duplicate keys
     return tree_util.tree_map(lambda m: np.sqrt(m) * random.normal(key, m.shape), diag_mass_matrix)
 
 
-# TODO: pass gradient instead of calculating gradient in function
 # TODO: how to randomize step size (neal sect. 3.2)
 # WARNING: requires jaxlib '0.1.66', keyword argument passing doesn't work with alternative static_argnums, which is supported in earlier jax versions
 # @partial(jit, static_argnames=('potential_energy_gradient',))
@@ -71,14 +72,10 @@ def leapfrog_step(
 
     Parameters
     ----------
-    momentum: ndarray
-        Point in momentum space from which to start integration.
-        Same shape as `position`.
-    position: ndarray
-        Point in position space from which to start integration.
-        Same shape as `momentum`.
-    potential_energy: Callable[[ndarray], float]
-        Potential energy part of the hamiltonian (V). Depends on position only.
+    potential_energy_gradient: Callable[[ndarray], float]
+        Potential energy gradient part of the hamiltonian (V). Depends on position only.
+    qp: QP
+        Point in position and momentum space from which to start integration.
     step_length: float
         Step length (usually called epsilon) of the leapfrog integrator.
     """
@@ -161,7 +158,7 @@ def accept_or_deny(*,
         total_energy
     ):
     """Perform acceptance step.
-    
+
     Returning the new or the old (p, q) pairs depending on wether the new ones
     were accepted or not.
 
@@ -233,7 +230,6 @@ def generate_hmc_sample(*,
         The step size (usually epsilon) for the leapfrog integrator.
     """
     key, subkey = random.split(key)
-    # TODO: danger: fix, covariance / mass_matrix relation
     momentum = sample_momentum_from_diagonal(
         key = subkey,
         diag_mass_matrix = mass_matrix
@@ -278,7 +274,6 @@ def generate_hmc_sample(*,
 # proposal_candidate: random sample from the trees path, distributed as exp(-H(q, p))
 # turning: TODO: whole tree or also subtrees??
 # turning currently means either the left, right endpoint are a uturn or any subtree is a uturn, see TODO above
-# TODO: rename proposal_candidate, taking into account that NUTS is not Metropolis-Hastings.
 Tree = namedtuple('Tree', ['left', 'right', 'logweight', 'proposal_candidate', 'turning', 'depth'])
 
 
@@ -325,7 +320,7 @@ def generate_nuts_sample(initial_qp, key, eps, maxdepth, stepper, potential_ener
     kinetic_energy: Callable[[pytree], float]
         The kinetic energy, of the distribution to be sampled from.
         Takes only the momentum part (QP.momentum) as argument
-    
+
     Returns
     -------
     current_tree: Tree
@@ -359,6 +354,7 @@ def generate_nuts_sample(initial_qp, key, eps, maxdepth, stepper, potential_ener
         go_right = random.choice(subkey, np.array([False, True]))
 
         # build tree of depth j, adjacent to current_tree
+        # TODO: consume key
         new_subtree = iterative_build_tree(key, current_tree, j, eps, go_right, stepper, potential_energy, kinetic_energy, maxdepth)
 
         # combine current_tree and new_subtree into a depth j+1 tree only if new_subtree has no turning subtrees (including itself)
@@ -366,12 +362,14 @@ def generate_nuts_sample(initial_qp, key, eps, maxdepth, stepper, potential_ener
             pred = new_subtree.turning,
             true_fun = lambda old_and_new: old_and_new[0],
             # TODO: turning_hint
+            # TODO: consume key
             false_fun = lambda old_and_new: merge_trees(key, old_and_new[0], old_and_new[1], go_right, False),
             operand = (current_tree, new_subtree),
         )
         # stop if new subtree was turning -> we sample from the old one and don't expand further
         # stop if new total tree is turning -> we sample from the combined trajectory and don't expand further
         # TODO: move call to is_euclidean_uturn_pytree into merge_trees from above, remove the turning hint and just check current_tree.turning here
+        # TODO: is turning is branched twice if current_treey is old_tree
         stop = new_subtree.turning | is_euclidean_uturn_pytree(current_tree.left, current_tree.right)
         j = j + 1
         return (key, current_tree, j, stop)
@@ -548,6 +546,8 @@ def merge_trees(key, current_subtree, new_subtree, go_right, turning_hint):
     # expit(x-y) := 1 / (1 + e^(-(x-y))) = 1 / (1 + e^(y-x)) = e^x / (e^y + e^x)
     prob_of_choosing_new = expit(new_subtree.logweight - current_subtree.logweight)
     print(f"prob of choosing new sample: {prob_of_choosing_new}")
+    # NOTE, here it is possible to bias the transition towards the new subtree
+    # Betancourt cenceptual intro (and Numpyro)
     new_sample = cond(
         pred = random.bernoulli(subkey, prob_of_choosing_new),
         # choose the new sample
@@ -563,6 +563,7 @@ def merge_trees(key, current_subtree, new_subtree, go_right, turning_hint):
         false_fun = lambda op: (op['new_subtree'].left, op['current_subtree'].right),
         operand = {'current_subtree': current_subtree, 'new_subtree': new_subtree}
     )
+    # TODO: Turning hint is imply set here without any turning check; i.e. in general it is wrong!
     merged_tree = Tree(left=left, right=right, logweight=np.logaddexp(new_subtree.logweight, current_subtree.logweight), proposal_candidate=new_sample, turning=turning_hint, depth=current_subtree.depth + 1)
     return merged_tree
 
@@ -573,7 +574,7 @@ def bitcount(n):
     Warning
     -------
     n must be positive and strictly smaller than 2**64
-    
+
     Examples
     --------
     >>> print(bin(23), bitcount(23))
