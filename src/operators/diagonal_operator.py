@@ -122,14 +122,16 @@ class DiagonalOperator(EndomorphicOperator):
     def _combine_prod(self, op):
         if not isinstance(op, DiagonalOperator):
             raise TypeError("DiagonalOperator required")
-        return self._from_ldiag(op._spaces, self._ldiag*op._ldiag, self._dtype)
+        dtype = self._dtype if self._dtype == op._dtype else None
+        return self._from_ldiag(op._spaces, self._ldiag*op._ldiag, dtype)
 
     def _combine_sum(self, op, selfneg, opneg):
         if not isinstance(op, DiagonalOperator):
             raise TypeError("DiagonalOperator required")
         tdiag = (self._ldiag * (-1 if selfneg else 1) +
                  op._ldiag * (-1 if opneg else 1))
-        return self._from_ldiag(op._spaces, tdiag, self._dtype)
+        dtype = self._dtype if self._dtype == op._dtype else None
+        return self._from_ldiag(op._spaces, tdiag, dtype)
 
     def apply(self, x, mode):
         self._check_input(x, mode)
@@ -169,8 +171,9 @@ class DiagonalOperator(EndomorphicOperator):
 
     def draw_sample(self, from_inverse=False):
         if self._dtype is None:
-            raise RuntimeError("Need to specify dtype to be able to sample "
-                               "from this operator.")
+            s = "Need to specify dtype to be able to sample from this operator:\n"
+            s += self.__repr__()
+            raise RuntimeError(s)
         res = Field.from_random(domain=self._domain, random_type="normal",
                                 dtype=self._dtype)
         return self.process_sample(res, from_inverse)
@@ -181,7 +184,13 @@ class DiagonalOperator(EndomorphicOperator):
         return self._from_ldiag((), np.sqrt(self._ldiag), self._dtype)
 
     def __repr__(self):
-        s = "DiagonalOperator"
+        from ..multi_domain import MultiDomain
+        s = "DiagonalOperator (domain/target "
+        if isinstance(self.domain, MultiDomain):
+            s += f"keys: {self._domain.keys()}"
+        else:
+            s += f"shape: {self._domain.shape}"
         if self._dtype is not None:
-            s += f" (sampling dtype {self._dtype})"
+            s += f", sampling dtype {self._dtype}"
+        s += ")"
         return s

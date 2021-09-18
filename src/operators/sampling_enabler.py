@@ -15,11 +15,8 @@
 #
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
 
-import numpy as np
-
 from ..minimization.conjugate_gradient import ConjugateGradient
 from ..minimization.quadratic_energy import QuadraticEnergy
-from ..multi_domain import MultiDomain
 from .endomorphic_operator import EndomorphicOperator
 from .operator import Operator
 
@@ -66,7 +63,9 @@ class SamplingEnabler(EndomorphicOperator):
 
     def draw_sample(self, from_inverse=False):
         try:
-            return self._op.draw_sample(from_inverse)
+            p = self._prior.draw_sample(from_inverse)
+            l = self._likelihood.draw_sample(from_inverse)
+            return p + l
         except NotImplementedError:
             if not from_inverse:
                 raise ValueError("from_inverse must be True here")
@@ -86,9 +85,6 @@ class SamplingEnabler(EndomorphicOperator):
             else:
                 energy, convergence = inverter(energy)
             return energy.position
-
-    def draw_sample_with_dtype(self, dtype, from_inverse=False):
-        return self._op.draw_sample_with_dtype(dtype, from_inverse)
 
     def __repr__(self):
         from ..utilities import indent

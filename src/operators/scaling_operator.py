@@ -88,7 +88,7 @@ class ScalingOperator(EndomorphicOperator):
             fct = np.conj(fct)
         if trafo & self.INVERSE_BIT:
             fct = 1./fct
-        return ScalingOperator(self._domain, fct)
+        return ScalingOperator(self._domain, fct, self._dtype)
 
     def _get_fct(self, from_inverse):
         fct = self._factor
@@ -126,6 +126,6 @@ class ScalingOperator(EndomorphicOperator):
     def __repr__(self):
         s = f"ScalingOperator ({self._factor}"
         if self._dtype is not None:
-            s += ", sampling dtype {self._dtype}"
+            s += f", sampling dtype {self._dtype}"
         s += ")"
         return s

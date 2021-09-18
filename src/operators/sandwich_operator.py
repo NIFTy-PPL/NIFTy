@@ -68,12 +68,9 @@ class SandwichOperator(EndomorphicOperator):
         if cheese is None:
             cheese = ScalingOperator(bun.target, 1., sampling_dtype)
         if isinstance(bun, ScalingOperator):
-            return cheese.scale(abs(bun._factor)**2)
-        op = bun.adjoint @ cheese @ bun
-
-        # If our sandwich is diagonal, we can return immediately
-        if isinstance(op, (ScalingOperator, DiagonalOperator)):
-            return op
+            op = cheese.scale(abs(bun._factor)**2)
+        else:
+            op = bun.adjoint @ cheese @ bun
         return SandwichOperator(bun, cheese, op, _callingfrommake=True)
 
     def apply(self, x, mode):

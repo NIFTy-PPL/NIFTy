@@ -391,7 +391,7 @@ def makeDomain(domain):
     return DomainTuple.make(domain)
 
 
-def makeOp(inp, dom=None):
+def makeOp(inp, dom=None, sampling_dtype=None):
     """Converts a Field or MultiField to a diagonal operator.
 
     Parameters
@@ -408,6 +408,12 @@ def makeOp(inp, dom=None):
     dom : DomainTuple or MultiDomain
         if `inp` is a scalar, this is used as the operator's domain
 
+    sampling_dtype : dtype or dict of dtypes
+        If `inp` shall represent the diagonal covariance of a Gaussian
+        probabilty distribution, `sampling_dtype` specifies if it is real or
+        complex Gaussian. If `sampling_dtype` is `None`, the operator cannot be
+        used as a covariance, i.e. no samples can be drawn. Default: None.
+
     Notes
     -----
     No volume factors are applied.
@@ -417,16 +423,17 @@ def makeOp(inp, dom=None):
     if np.isscalar(inp):
         if not isinstance(dom, (DomainTuple, MultiDomain)):
             raise TypeError("need proper `dom` argument")
-        return ScalingOperator(dom, inp)
+        return ScalingOperator(dom, inp, sampling_dtype=sampling_dtype)
     if dom is not None:
         utilities.check_domain_equality(dom, inp.domain)
     if inp.domain is DomainTuple.scalar_domain():
-        return ScalingOperator(inp.domain, inp.val[()])
+        return ScalingOperator(inp.domain, inp.val[()], sampling_dtype=sampling_dtype)
     if isinstance(inp, Field):
-        return DiagonalOperator(inp)
+        return DiagonalOperator(inp, sampling_dtype=sampling_dtype)
     if isinstance(inp, MultiField):
-        return BlockDiagonalOperator(
-            inp.domain, {key: makeOp(val) for key, val in inp.items()})
+        return BlockDiagonalOperator(inp.domain,
+                                     {key: makeOp(val) for key, val in inp.items()},
+                                     sampling_dtype=sampling_dtype)
     raise NotImplementedError
 
 
