@@ -224,15 +224,18 @@ class _GeoMetricSampler:
         if not isinstance(H, StandardHamiltonian):
             raise NotImplementedError
 
-        # Check domain dtype
-        dts = H._prior._met._dtype
-        if isinstance(H.domain, DomainTuple):
-            real = np.issubdtype(dts, np.floating)
-        else:
-            real = all([np.issubdtype(dts[kk], np.floating) for kk in dts.keys()])
-        if not real:
-            raise ValueError("_GeoMetricSampler only supports real valued latent DOFs.")
-        # /Check domain dtype
+        # # Check domain dtype
+        # FIXME
+        # dts = H.prior_energy.metric.dtype
+        # if dts is None:
+        #     raise RuntimeError("Sampling dtype of prior needs to be set.")
+        # if isinstance(H.domain, DomainTuple):
+        #     real = np.issubdtype(dts, np.floating)
+        # else:
+        #     real = all([np.issubdtype(dts[kk], np.floating) for kk in dts.keys()])
+        # if not real:
+        #     raise ValueError("_GeoMetricSampler only supports real valued latent DOFs.")
+        # # /Check domain dtype
 
         if isinstance(position, MultiField):
             self._position = position.extract(H.domain)
@@ -243,11 +246,6 @@ class _GeoMetricSampler:
             raise ValueError("_GeoMetricSampler only works for likelihoods")
         dtype, f_lh = tr
         scale = ScalingOperator(f_lh.target, 1.)
-        if isinstance(dtype, dict):
-            sampling = reduce((lambda a,b: a*b),
-                              [dtype[k] is not None for k in dtype.keys()])
-        else:
-            sampling = dtype is not None
 
         fl = f_lh(Linearization.make_var(self._position))
         self._g = (Adder(-self._position) + fl.jac.adjoint@Adder(-fl.val)@f_lh)

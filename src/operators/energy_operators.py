@@ -358,7 +358,8 @@ class GaussianEnergy(LikelihoodEnergyOperator):
 
     def get_transformation(self):
         icov = self._met
-        return icov.dtype, icov.get_sqrt()
+        dtp = icov.dtype if hasattr(icov, "dtype") else None
+        return dtp, icov.get_sqrt()
 
     def __repr__(self):
         dom = '()' if isinstance(self.domain, DomainTuple) else self.domain.keys()
@@ -578,6 +579,14 @@ class StandardHamiltonian(EnergyOperator):
         lhx, prx = self._lh(x), self._prior(x)
         met = SamplingEnabler(lhx.metric, prx.metric, self._ic_samp)
         return (lhx+prx).add_metric(met)
+
+    @property
+    def prior_energy(self):
+        return self._prior
+
+    @property
+    def likelihood_energy(self):
+        return self._likelihood
 
     def __repr__(self):
         subs = 'Likelihood energy:\n{}'.format(utilities.indent(self._lh.__repr__()))
