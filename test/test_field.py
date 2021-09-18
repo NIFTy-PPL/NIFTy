@@ -55,8 +55,8 @@ def test_power_synthesize_analyze(space1, space2):
     fp1 = ift.PS_field(p1, _spec1)
     p2 = ift.PowerSpace(space2)
     fp2 = ift.PS_field(p2, _spec2)
-    op1 = ift.create_power_operator((space1, space2), _spec1, 0)
-    op2 = ift.create_power_operator((space1, space2), _spec2, 1)
+    op1 = ift.create_power_operator((space1, space2), _spec1, 0, float)
+    op2 = ift.create_power_operator((space1, space2), _spec2, 1, float)
     opfull = op2 @ op1
 
     samples = 120
@@ -80,8 +80,8 @@ def test_DiagonalOperator_power_analyze2(space1, space2):
     fp1 = ift.PS_field(ift.PowerSpace(space1), _spec1)
     fp2 = ift.PS_field(ift.PowerSpace(space2), _spec2)
 
-    S_1 = ift.create_power_operator((space1, space2), _spec1, 0)
-    S_2 = ift.create_power_operator((space1, space2), _spec2, 1)
+    S_1 = ift.create_power_operator((space1, space2), _spec1, 0, float)
+    S_2 = ift.create_power_operator((space1, space2), _spec2, 1, float)
     S_full = S_2 @ S_1
 
     samples = 500

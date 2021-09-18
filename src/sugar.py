@@ -11,7 +11,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
-# Copyright(C) 2013-2020 Max-Planck-Society
+# Copyright(C) 2013-2021 Max-Planck-Society
 #
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
 
@@ -189,7 +189,8 @@ def _create_power_field(domain, power_spectrum):
     return PowerDistributor(domain, power_domain)(fp)
 
 
-def create_power_operator(domain, power_spectrum, space=None):
+def create_power_operator(domain, power_spectrum, space=None,
+                          sampling_dtype=None):
     """Creates a diagonal operator with the given power spectrum.
 
     Constructs a diagonal operator that is defined on the specified domain.
@@ -202,6 +203,10 @@ def create_power_operator(domain, power_spectrum, space=None):
         An object that contains the power spectrum as a function of k.
     space : int
         the domain index on which the power operator will work
+    sampling_dtype : dtype or dict of dtype
+        Specifies the dtype of the underlying Gaussian distribution.  Gaussian.
+        If `sampling_dtype` is `None`, the operator cannot be used as a
+        covariance, i.e. no samples can be drawn. Default: None.
 
     Returns
     -------
@@ -211,7 +216,7 @@ def create_power_operator(domain, power_spectrum, space=None):
     domain = DomainTuple.make(domain)
     space = utilities.infer_space(domain, space)
     field = _create_power_field(domain[space], power_spectrum)
-    return DiagonalOperator(field, domain, space)
+    return DiagonalOperator(field, domain, space, sampling_dtype)
 
 
 def density_estimator(domain, pad=1.0, cf_fluctuations=None,
@@ -431,9 +436,14 @@ def makeOp(inp, dom=None, sampling_dtype=None):
     if isinstance(inp, Field):
         return DiagonalOperator(inp, sampling_dtype=sampling_dtype)
     if isinstance(inp, MultiField):
-        return BlockDiagonalOperator(inp.domain,
-                                     {key: makeOp(val) for key, val in inp.items()},
-                                     sampling_dtype=sampling_dtype)
+        dct = {}
+        for key, val in inp.items():
+            if isinstance(sampling_dtype, dict):
+                sdt = sampling_dtype[key]
+            else:
+                sdt = sampling_dtype
+            dct[key] = makeOp(val, sampling_dtype=sdt)
+        return BlockDiagonalOperator(inp.domain, dct)
     raise NotImplementedError
 
 
@@ -581,7 +591,7 @@ def calculate_position(operator, output):
     else:
         cov = 1e-3*np.max(np.abs(output.val))**2
         dtype = output.dtype
-    invcov = ScalingOperator(output.domain, cov).inverse
+    invcov = ScalingOperator(output.domain, cov, output.dtype).inverse
     d = output + invcov.draw_sample(from_inverse=True)
     lh = GaussianEnergy(d, invcov) @ operator
     H = StandardHamiltonian(

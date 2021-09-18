@@ -18,6 +18,7 @@
 import numpy as np
 
 from .endomorphic_operator import EndomorphicOperator
+from ..utilities import check_dtype_or_none
 
 
 class ScalingOperator(EndomorphicOperator):
@@ -62,6 +63,7 @@ class ScalingOperator(EndomorphicOperator):
         self._domain = makeDomain(domain)
         self._factor = factor
         self._capability = self._all_ops
+        check_dtype_or_none(sampling_dtype, self._domain)
         self._dtype = sampling_dtype
 
     def apply(self, x, mode):

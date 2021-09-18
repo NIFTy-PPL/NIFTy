@@ -31,7 +31,7 @@ ntries = 10
 
 
 def test_gaussian(field):
-    energy = ift.GaussianEnergy(domain=field.domain)
+    energy = ift.GaussianEnergy(domain=field.domain, sampling_dtype=float)
     ift.extra.check_operator(energy, field)
 
 
@@ -70,7 +70,7 @@ def test_studentt(field):
 def test_hamiltonian_and_KL(field):
     field = field.ptw("exp")
     space = field.domain
-    lh = ift.GaussianEnergy(domain=space)
+    lh = ift.GaussianEnergy(domain=space, sampling_dtype=float)
     hamiltonian = ift.StandardHamiltonian(lh)
     ift.extra.check_operator(hamiltonian, field, ntries=ntries)
     samps = [ift.from_random(space, 'normal') for i in range(2)]

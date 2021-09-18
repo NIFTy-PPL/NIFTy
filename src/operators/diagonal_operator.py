@@ -60,6 +60,7 @@ class DiagonalOperator(EndomorphicOperator):
     def __init__(self, diagonal, domain=None, spaces=None, sampling_dtype=None):
         if not isinstance(diagonal, Field):
             raise TypeError("Field object required")
+        utilities.check_dtype_or_none(sampling_dtype)
         self._dtype = sampling_dtype
         if domain is None:
             self._domain = diagonal.domain

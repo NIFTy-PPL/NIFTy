@@ -69,7 +69,7 @@ def test_gaussian_energy(space, nonlinearity, noise, seed):
         if noise == 1:
             N = None
 
-        energy = ift.GaussianEnergy(d, N) @ d_model()
+        energy = ift.GaussianEnergy(d, N, sampling_dtype=float) @ d_model()
         ift.extra.check_operator(
             energy, xi0, ntries=ntries, tol=1e-6)
 

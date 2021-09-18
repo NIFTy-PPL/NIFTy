@@ -470,3 +470,21 @@ def check_MPI_synced_random_state(comm):
     if comm is None:
         return
     check_MPI_equality(getState(), comm)
+
+
+def check_dtype_or_none(obj, domain=None):
+    from .sugar import makeDomain
+    from .multi_domain import MultiDomain
+    if domain is not None:
+        domain = makeDomain(domain)
+        if isinstance(domain, MultiDomain) and isinstance(obj, dict):
+            for kk in domain.keys():
+                check_dtype_or_none(obj[kk])
+            return
+    check = obj in [np.float32, np.float64, float,
+                    np.complex64, np.complex128, complex,
+                    None]
+    if not check:
+        s = "Need to pass dtype (e.g. np.float64, complex) or `None` to this function.\n"
+        s += f"Have recieved:\n{obj}"
+        raise TypeError(s)

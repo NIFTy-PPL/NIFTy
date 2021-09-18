@@ -219,9 +219,8 @@ class VariableCovarianceGaussianEnergy(LikelihoodEnergyOperator):
         if key == self._kr:
             res = _SpecialGammaEnergy(cst).ducktape(self._ki)
         else:
-            dt = self._dt[self._kr]
-            res = GaussianEnergy(inverse_covariance=makeOp(cst),
-                                 sampling_dtype=dt).ducktape(self._kr)
+            icov = makeOp(cst, sampling_dtype=self._dt[self._kr])
+            res = GaussianEnergy(inverse_covariance=icov).ducktape(self._kr)
             trlog = cst.log().sum().val_rw()
             if not self._cplx:
                 trlog /= 2
@@ -282,7 +281,8 @@ class GaussianEnergy(LikelihoodEnergyOperator):
     Parameters
     ----------
     mean : Field
-        Mean of the Gaussian. Default is 0.
+        Mean of the Gaussian. If `inverse_covariance` is `None`, the
+        `sampling_dtype` of `mean` is used for sampling. Default is 0.
     inverse_covariance : LinearOperator
         Inverse covariance of the Gaussian. Default is the identity operator.
     domain : Domain, DomainTuple, tuple of Domain or MultiDomain
@@ -290,8 +290,8 @@ class GaussianEnergy(LikelihoodEnergyOperator):
         `covariance` if specified
     sampling_dtype : dtype or dict of dtype
         Type used for sampling from the inverse covariance if
-        `inverse_covariance` is `None`. Otherwise, this parameter does not have
-        an effect. Default: None.
+        `inverse_covariance` and `mean` is `None`. Otherwise, this parameter
+        does not have an effect. Default: None.
 
     Note
     ----
@@ -317,10 +317,18 @@ class GaussianEnergy(LikelihoodEnergyOperator):
         self._icov = inverse_covariance
         if inverse_covariance is None:
             self._op = Squared2NormOperator(self._domain).scale(0.5)
-            self._icov = ScalingOperator(self._domain, 1, sampling_dtype)
+            dt = sampling_dtype if mean is None else mean.dtype
+            self._icov = ScalingOperator(self._domain, 1., dt)
         else:
             self._op = QuadraticFormOperator(inverse_covariance)
             self._icov = inverse_covariance
+
+        icovdtype = self._icov.sampling_dtype
+        if icovdtype is not None and mean is not None and icovdtype != mean.dtype:
+            s = "Sampling dtype of inverse covariance does not match dtype of mean.\n"
+            s += f"icov.sampling_dtype: {icovdtype}\n"
+            s += f"mean.dtype: {mean.dtype}"
+            raise RuntimeError(s)
 
     def _checkEquivalence(self, newdom):
         newdom = makeDomain(newdom)

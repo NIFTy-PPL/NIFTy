@@ -296,7 +296,8 @@ class _GeoMetricSampler:
         return y, yi
 
     def _draw_nonlin(self, y, yi):
-        en = EnergyAdapter(self._position+yi, GaussianEnergy(mean=y)@self._g,
+        # FIXME @pfrank: sampling_dtype
+        en = EnergyAdapter(self._position+yi, GaussianEnergy(mean=y, sampling_dtype=float) @ self._g,
                            nanisinf=True, want_metric=True)
         en, _ = self._minimizer(en)
         sam = en.position - self._position
