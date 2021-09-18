@@ -100,8 +100,9 @@ class ScalingOperator(EndomorphicOperator):
     def draw_sample(self, from_inverse=False):
         from ..sugar import from_random
         if self._dtype is None:
-            raise RuntimeError("Need to specify dtype to be able to sample "
-                               "from this operator.")
+            s = "Need to specify dtype to be able to sample from this operator:\n"
+            s += self.__repr__()
+            raise RuntimeError(s)
         return from_random(domain=self._domain, random_type="normal",
                            dtype=self._dtype, std=self._get_fct(from_inverse))
 

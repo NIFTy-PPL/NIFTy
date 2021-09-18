@@ -97,11 +97,8 @@ class LikelihoodEnergyOperator(EnergyOperator):
         at `x` using the Jacobian of the coordinate transformation given by
         :func:`~nifty8.operators.operator.Operator.get_transformation`. """
         dtp, f = self.get_transformation()
-        ch = None
-        if dtp is not None:
-            ch = ScalingOperator(f.target, 1.)
         bun = f(Linearization.make_var(x)).jac
-        return SandwichOperator.make(bun, ch)
+        return SandwichOperator.make(bun, sampling_dtype=dtp)
 
 
 class Squared2NormOperator(EnergyOperator):
@@ -293,13 +290,10 @@ class GaussianEnergy(LikelihoodEnergyOperator):
     domain : Domain, DomainTuple, tuple of Domain or MultiDomain
         Operator domain. By default it is inferred from `mean` or
         `covariance` if specified
-    sampling_dtype : type
-        Here one can specify whether the distribution is a complex Gaussian or
-        not. Note that for a complex Gaussian the inverse_covariance is
-        .. math ::
-        (<ff^dagger>)^{-1}_P(f)/2,
-        where the additional factor of 2 is necessary because the
-        domain of s has double as many dimensions as in the real case.
+    sampling_dtype : dtype or dict of dtype
+        Type used for sampling from the inverse covariance if
+        `inverse_covariance` is `None`. Otherwise, this parameter does not have
+        an effect. Default: None.
 
     Note
     ----
@@ -311,7 +305,6 @@ class GaussianEnergy(LikelihoodEnergyOperator):
             raise TypeError
         if inverse_covariance is not None and not isinstance(inverse_covariance, LinearOperator):
             raise TypeError
-
         self._domain = None
         if mean is not None:
             self._checkEquivalence(mean.domain)
@@ -323,23 +316,13 @@ class GaussianEnergy(LikelihoodEnergyOperator):
             raise ValueError("no domain given")
         self._mean = mean
 
-        # Infer sampling dtype
-        if self._mean is None:
-            _check_sampling_dtype(self._domain, sampling_dtype)
-        else:
-            if sampling_dtype is None:
-                sampling_dtype = _field_to_dtype(self._mean)
-            else:
-                if sampling_dtype != _field_to_dtype(self._mean):
-                    raise ValueError("Sampling dtype and mean not compatible")
-
         self._icov = inverse_covariance
         if inverse_covariance is None:
             self._op = Squared2NormOperator(self._domain).scale(0.5)
-            self._met = ScalingOperator(self._domain, 1)
+            self._icov = ScalingOperator(self._domain, 1, sampling_dtype)
         else:
             self._op = QuadraticFormOperator(inverse_covariance)
-            self._met = inverse_covariance
+            self._icov = inverse_covariance
 
     def _checkEquivalence(self, newdom):
         newdom = makeDomain(newdom)
@@ -357,9 +340,7 @@ class GaussianEnergy(LikelihoodEnergyOperator):
         return res
 
     def get_transformation(self):
-        icov = self._met
-        dtp = icov.dtype if hasattr(icov, "dtype") else None
-        return dtp, icov.get_sqrt()
+        return self._icov.sampling_dtype, self._icov.get_sqrt()
 
     def __repr__(self):
         dom = '()' if isinstance(self.domain, DomainTuple) else self.domain.keys()

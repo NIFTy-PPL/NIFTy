@@ -48,6 +48,13 @@ class EndomorphicOperator(LinearOperator):
         """
         raise NotImplementedError
 
+    @property
+    def sampling_dtype(self):
+        """Sampling dtype if operator is used as covariance operator."""
+        if hasattr(self, "_dtype"):
+            return self._dtype
+        return None
+
     def get_sqrt(self):
         """Return operator op which obeys `self == op.adjoint @ op`.
 

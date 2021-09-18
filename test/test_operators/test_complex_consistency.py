@@ -32,8 +32,8 @@ def _to_array(d):
 
 def test_GaussianEnergy():
     sp = ift.UnstructuredDomain(Nsamp)
-    S = ift.ScalingOperator(sp, 1.)
-    samp = S.draw_sample_with_dtype(dtype=np.complex128)
+    S = ift.ScalingOperator(sp, 1., complex)
+    samp = S.draw_sample()
     real_std = np.std(samp.val.real)
     imag_std = np.std(samp.val.imag)
     np.testing.assert_allclose(real_std, imag_std,

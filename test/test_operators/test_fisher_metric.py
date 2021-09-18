@@ -110,11 +110,9 @@ def energy_tester(pos, get_noisy_data, energy_initializer, assume_diagonal=False
 
 
 def test_GaussianEnergy(field):
-    dtype = field.dtype
     icov = ift.from_random(field.domain, 'normal')**2
-    icov = ift.makeOp(icov)
-    get_noisy_data = lambda mean: mean + icov.draw_sample_with_dtype(
-        from_inverse=True, dtype=dtype)
+    icov = ift.makeOp(icov, field.dtype)
+    get_noisy_data = lambda mean: mean + icov.draw_sample(from_inverse=True)
     E_init = lambda data: ift.GaussianEnergy(mean=data, inverse_covariance=icov)
     energy_tester(field, get_noisy_data, E_init)
 

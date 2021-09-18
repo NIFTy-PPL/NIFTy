@@ -86,7 +86,7 @@ def main():
     prior_correlation_structure = PD(ift.PS_field(power_space, power_spectrum))
 
     # Insert the result into the diagonal of an harmonic space operator
-    S = ift.DiagonalOperator(prior_correlation_structure)
+    S = ift.DiagonalOperator(prior_correlation_structure, float)
     # S is the prior field covariance
 
     # Build instrument response consisting of a discretization, mask
@@ -111,11 +111,11 @@ def main():
 
     # Set the noise covariance N
     noise = 5.
-    N = ift.ScalingOperator(data_space, noise)
+    N = ift.ScalingOperator(data_space, noise, float)
 
     # Create mock data
-    MOCK_SIGNAL = S.draw_sample_with_dtype(dtype=np.float64)
-    MOCK_NOISE = N.draw_sample_with_dtype(dtype=np.float64)
+    MOCK_SIGNAL = S.draw_sample()
+    MOCK_NOISE = N.draw_sample()
     data = R(MOCK_SIGNAL) + MOCK_NOISE
 
     # Build inverse propagator D and information source j
