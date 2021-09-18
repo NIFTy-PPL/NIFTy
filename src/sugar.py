@@ -391,12 +391,12 @@ def makeDomain(domain):
     return DomainTuple.make(domain)
 
 
-def makeOp(input, dom=None):
+def makeOp(inp, dom=None):
     """Converts a Field or MultiField to a diagonal operator.
 
     Parameters
     ----------
-    input : None, Field or MultiField
+    inp : None, Field or MultiField
         - if None, None is returned.
         - if Field on scalar-domain, a ScalingOperator with the coefficient
             given by the Field is returned.
@@ -406,27 +406,27 @@ def makeOp(input, dom=None):
             MultiField is returned.
 
     dom : DomainTuple or MultiDomain
-        if `input` is a scalar, this is used as the operator's domain
+        if `inp` is a scalar, this is used as the operator's domain
 
     Notes
     -----
     No volume factors are applied.
     """
-    if input is None:
+    if inp is None:
         return None
-    if np.isscalar(input):
+    if np.isscalar(inp):
         if not isinstance(dom, (DomainTuple, MultiDomain)):
             raise TypeError("need proper `dom` argument")
-        return ScalingOperator(dom, input)
+        return ScalingOperator(dom, inp)
     if dom is not None:
-        utilities.check_domain_equality(dom, input.domain)
-    if input.domain is DomainTuple.scalar_domain():
-        return ScalingOperator(input.domain, input.val[()])
-    if isinstance(input, Field):
-        return DiagonalOperator(input)
-    if isinstance(input, MultiField):
+        utilities.check_domain_equality(dom, inp.domain)
+    if inp.domain is DomainTuple.scalar_domain():
+        return ScalingOperator(inp.domain, inp.val[()])
+    if isinstance(inp, Field):
+        return DiagonalOperator(inp)
+    if isinstance(inp, MultiField):
         return BlockDiagonalOperator(
-            input.domain, {key: makeOp(val) for key, val in input.items()})
+            inp.domain, {key: makeOp(val) for key, val in inp.items()})
     raise NotImplementedError
 
 
