@@ -114,13 +114,12 @@ class ScalingOperator(EndomorphicOperator):
     def __call__(self, other):
         res = EndomorphicOperator.__call__(self, other)
         if np.isreal(self._factor) and self._factor >= 0:
-            if other.jac is not None:
-                if other.metric is not None:
-                    from .sandwich_operator import SandwichOperator
-                    sqrt_fac = np.sqrt(self._factor)
-                    newop = ScalingOperator(other.metric.domain, sqrt_fac)
-                    met = SandwichOperator.make(newop, other.metric)
-                    res = res.add_metric(met)
+            if other.jac is not None and other.metric is not None:
+                from .sandwich_operator import SandwichOperator
+                sqrt_fac = np.sqrt(self._factor)
+                newop = ScalingOperator(other.metric.domain, sqrt_fac, self._dtype)
+                met = SandwichOperator.make(newop, other.metric)
+                res = res.add_metric(met)
         return res
 
     def __repr__(self):
