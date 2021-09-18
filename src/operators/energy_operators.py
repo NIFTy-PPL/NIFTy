@@ -202,14 +202,12 @@ class VariableCovarianceGaussianEnergy(LikelihoodEnergyOperator):
             res = 0.5*(r.vdot(r*i) - i.log().sum())
         if not x.want_metric:
             return res
-        if self._use_full_fisher:
-            met = 1. if self._cplx else 0.5
-            met = MultiField.from_dict({self._kr: i.val, self._ki: met*i.val**(-2)},
-                                        domain=self._domain)
-            met = makeOp(met)
-            met.dtype = self._dt
-        else:
-            met = self.get_metric_at(x.val)
+        if not self._use_full_fisher:
+            return res.add_metric(self.get_metric_at(x.val))
+        fct = 1. if self._cplx else 0.5
+        met = {self._kr: i.val, self._ki: fct*i.val**(-2)}
+        met = MultiField.from_dict(met, domain=self._domain)
+        met = makeOp(met, sampling_dtype=self._dt)
         return res.add_metric(met)
 
     def _simplify_for_constant_input_nontrivial(self, c_inp):
@@ -267,7 +265,7 @@ class _SpecialGammaEnergy(LikelihoodEnergyOperator):
 
     def get_transformation(self):
         sc = 1. if self._cplx else np.sqrt(0.5)
-        return self._dt, sc*ScalingOperator(self._domain, 1.).log()
+        return self._dt, ScalingOperator(self._domain, 1.).log().scale(sc)
 
 
 class GaussianEnergy(LikelihoodEnergyOperator):
