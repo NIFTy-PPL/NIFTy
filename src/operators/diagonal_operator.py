@@ -11,7 +11,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
-# Copyright(C) 2013-2020 Max-Planck-Society
+# Copyright(C) 2013-2021 Max-Planck-Society
 #
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
 
@@ -40,6 +40,11 @@ class DiagonalOperator(EndomorphicOperator):
     spaces : int or tuple of int, optional
         The elements of "domain" on which the operator acts.
         If None, it acts on all elements.
+    sampling_dtype :
+        If this operator represents the covariance of a Gaussian probabilty
+        distribution, `sampling_dtype` specifies if it is real or complex
+        Gaussian. If `sampling_dtype` is `None`, the operator cannot be used as
+        a covariance, i.e. no samples can be drawn. Default: None.
 
     Notes
     -----
@@ -52,9 +57,10 @@ class DiagonalOperator(EndomorphicOperator):
     This shortcoming will hopefully be fixed in the future.
     """
 
-    def __init__(self, diagonal, domain=None, spaces=None):
+    def __init__(self, diagonal, domain=None, spaces=None, sampling_dtype=None):
         if not isinstance(diagonal, Field):
             raise TypeError("Field object required")
+        self._dtype = sampling_dtype
         if domain is None:
             self._domain = diagonal.domain
         else:
@@ -91,8 +97,9 @@ class DiagonalOperator(EndomorphicOperator):
         if not self._complex:
             self._diagmin = self._ldiag.min()
 
-    def _from_ldiag(self, spc, ldiag):
+    def _from_ldiag(self, spc, ldiag, sampling_dtype):
         res = DiagonalOperator.__new__(DiagonalOperator)
+        res._dtype = sampling_dtype
         res._domain = self._domain
         if self._spaces is None or spc is None:
             res._spaces = None
@@ -105,24 +112,24 @@ class DiagonalOperator(EndomorphicOperator):
     def _scale(self, fct):
         if not np.isscalar(fct):
             raise TypeError("scalar value required")
-        return self._from_ldiag((), self._ldiag*fct)
+        return self._from_ldiag((), self._ldiag*fct, self._dtype)
 
-    def _add(self, sum):
-        if not np.isscalar(sum):
+    def _add(self, sum_):
+        if not np.isscalar(sum_):
             raise TypeError("scalar value required")
-        return self._from_ldiag((), self._ldiag+sum)
+        return self._from_ldiag((), self._ldiag+sum_, self._dtype)
 
     def _combine_prod(self, op):
         if not isinstance(op, DiagonalOperator):
             raise TypeError("DiagonalOperator required")
-        return self._from_ldiag(op._spaces, self._ldiag*op._ldiag)
+        return self._from_ldiag(op._spaces, self._ldiag*op._ldiag, self._dtype)
 
     def _combine_sum(self, op, selfneg, opneg):
         if not isinstance(op, DiagonalOperator):
             raise TypeError("DiagonalOperator required")
         tdiag = (self._ldiag * (-1 if selfneg else 1) +
                  op._ldiag * (-1 if opneg else 1))
-        return self._from_ldiag(op._spaces, tdiag)
+        return self._from_ldiag(op._spaces, tdiag, self._dtype)
 
     def apply(self, x, mode):
         self._check_input(x, mode)
@@ -148,7 +155,7 @@ class DiagonalOperator(EndomorphicOperator):
             # dividing by zero is OK here, we can deal with infinities
             with np.errstate(divide='ignore'):
                 xdiag = 1./xdiag
-        return self._from_ldiag((), xdiag)
+        return self._from_ldiag((), xdiag, self._dtype)
 
     def process_sample(self, samp, from_inverse):
         if (self._complex or (self._diagmin < 0.) or
@@ -160,14 +167,21 @@ class DiagonalOperator(EndomorphicOperator):
             res = samp.val*np.sqrt(self._ldiag)
         return Field(self._domain, res)
 
-    def draw_sample_with_dtype(self, dtype, from_inverse=False):
-        res = Field.from_random(domain=self._domain, random_type="normal", dtype=dtype)
+    def draw_sample(self, from_inverse=False):
+        if self._dtype is None:
+            raise RuntimeError("Need to specify dtype to be able to sample "
+                               "from this operator.")
+        res = Field.from_random(domain=self._domain, random_type="normal",
+                                dtype=self._dtype)
         return self.process_sample(res, from_inverse)
 
     def get_sqrt(self):
         if np.iscomplexobj(self._ldiag) or (self._ldiag < 0).any():
             raise ValueError("get_sqrt() works only for positive definite operators.")
-        return self._from_ldiag((), np.sqrt(self._ldiag))
+        return self._from_ldiag((), np.sqrt(self._ldiag), self._dtype)
 
     def __repr__(self):
-        return "DiagonalOperator"
+        s = "DiagonalOperator"
+        if self._dtype is not None:
+            s += f" (sampling dtype {self._dtype})"
+        return s

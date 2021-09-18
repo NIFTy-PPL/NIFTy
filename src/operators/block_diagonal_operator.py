@@ -31,8 +31,15 @@ class BlockDiagonalOperator(EndomorphicOperator):
     operators : dict
         Dictionary with subdomain names as keys and :class:`LinearOperator` s
         as items. Any missing item will be treated as unity operator.
+    sampling_dtype : dict
+        If this operator represents the covariance of a Gaussian probabilty
+        distribution, `sampling_dtype` specifies if it is real or complex
+        Gaussian. If `sampling_dtype` is `None`, the operator cannot be used as
+        a covariance, i.e. no samples can be drawn. This property has to be
+        specified only for the operators that are missing and are going to be
+        interpreted as identity. Default: None.
     """
-    def __init__(self, domain, operators):
+    def __init__(self, domain, operators, sampling_dtype=None):
         if not isinstance(domain, MultiDomain):
             raise TypeError("MultiDomain expected")
         self._domain = domain
@@ -53,7 +60,7 @@ class BlockDiagonalOperator(EndomorphicOperator):
             if self._ops[ii] is None:
                 continue
             ops[kk] = self._ops[ii].get_sqrt()
-        return BlockDiagonalOperator(self._domain, ops)
+        return BlockDiagonalOperator(self._domain, ops, self._dtype)
 
     def apply(self, x, mode):
         self._check_input(x, mode)
@@ -62,17 +69,18 @@ class BlockDiagonalOperator(EndomorphicOperator):
         return MultiField(self._domain, val)
 
     def draw_sample(self, from_inverse=False):
-        val = tuple(op.draw_sample(from_inverse) for op in self._ops)
-        return MultiField(self._domain, val)
-
-    def draw_sample_with_dtype(self, dtype, from_inverse=False):
         from ..sugar import from_random
-        val = tuple(
-            op.draw_sample_with_dtype(dtype[key], from_inverse)
-            if op is not None
-            else from_random(self._domain[key], 'normal', dtype=dtype)
-            for op, key in zip(self._ops, self._domain.keys()))
-        return MultiField(self._domain, val)
+        val = []
+        for op, key in zip(self._ops, self._domain.keys()):
+            if op is None:
+                if self._dtype is None or key not in self._dtype:
+                    raise RuntimeError("Need to specify dtype for all operators "
+                                       f"that are set to None (key: {key}).")
+                a = from_random(self._domain[key], 'normal', dtype=self._dtype[key])
+            else:
+                a = op.draw_sample(from_inverse)
+            val.append(a)
+        return MultiField(self._domain, tuple(val))
 
     def _combine_chain(self, op):
         check_domain_equality(self._domain, op._domain)
@@ -88,5 +96,14 @@ class BlockDiagonalOperator(EndomorphicOperator):
         return BlockDiagonalOperator(self._domain, res)
 
     def __repr__(self):
-        s = "\n".join(f'{kk}: {self._ops[ii]}' for ii, kk in enumerate(self.domain.keys()))
+        s = []
+        for ii, kk in enumerate(self.domain.keys()):
+            if self._ops[ii] is None:
+                s = f"{kk}: id"
+                if self._dtype is not None and kk in self._dtype:
+                    s += f" (sampling dtype: {self._dtype[kk]})"
+                s.append(ss)
+            else:
+                s.append(f'{kk}: {self._ops[ii]}')
+        s = "\n".join(s)
         return 'BlockDiagonalOperator:\n' + indent(s)

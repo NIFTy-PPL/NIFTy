@@ -245,12 +245,11 @@ class _GeoMetricSampler:
         if tr is None:
             raise ValueError("_GeoMetricSampler only works for likelihoods")
         dtype, f_lh = tr
-        scale = ScalingOperator(f_lh.target, 1.)
 
         fl = f_lh(Linearization.make_var(self._position))
         self._g = (Adder(-self._position) + fl.jac.adjoint@Adder(-fl.val)@f_lh)
-        self._likelihood = SandwichOperator.make(fl.jac, scale)
-        self._prior = ScalingOperator(fl.domain, 1.)
+        self._likelihood = SandwichOperator.make(fl.jac, sampling_dtype=np.float64)
+        self._prior = ScalingOperator(fl.domain, 1., np.float64)
         self._met = self._likelihood + self._prior
         if napprox >= 1:
             self._approximation = makeOp(approximation2endo(self._met, napprox)).inverse
