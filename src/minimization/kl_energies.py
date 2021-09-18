@@ -247,7 +247,8 @@ class _GeoMetricSampler:
         dtype, f_lh = tr
 
         fl = f_lh(Linearization.make_var(self._position))
-        self._g = (Adder(-self._position) + fl.jac.adjoint@Adder(-fl.val)@f_lh)
+        self._g = (Adder(self._position, neg=True)
+                   + fl.jac.adjoint @ Adder(fl.val, neg=True) @ f_lh)
         self._likelihood = SandwichOperator.make(fl.jac, sampling_dtype=np.float64)
         self._prior = ScalingOperator(fl.domain, 1., np.float64)
         self._met = self._likelihood + self._prior
