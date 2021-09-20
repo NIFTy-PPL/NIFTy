@@ -40,32 +40,6 @@ from .energy_adapter import EnergyAdapter
 from .quadratic_energy import QuadraticEnergy
 
 
-def _get_lo_hi(comm, n_samples):
-    ntask, rank, _ = utilities.get_MPI_params_from_comm(comm)
-    return utilities.shareRange(n_samples, ntask, rank)
-
-
-def _modify_sample_domain(sample, domain):
-    """Takes only keys from sample which are also in domain and inserts zeros
-    for keys which are not in sample.domain."""
-    from ..domain_tuple import DomainTuple
-    from ..field import Field
-    from ..multi_domain import MultiDomain
-    from ..sugar import makeDomain
-    domain = makeDomain(domain)
-    if isinstance(domain, DomainTuple) and isinstance(sample, Field):
-        if sample.domain is not domain:
-            raise TypeError
-        return sample
-    elif isinstance(domain, MultiDomain) and isinstance(sample, MultiField):
-        if sample.domain is domain:
-            return sample
-        out = {kk: vv for kk, vv in sample.items() if kk in domain.keys()}
-        out = MultiField.from_dict(out, domain)
-        return out
-    raise TypeError
-
-
 def _reduce_by_keys(field, operator, keys):
     """Partially insert a field into an operator
 
@@ -126,23 +100,13 @@ class _SampledKLEnergy(Energy):
         self._local_samples = local_samples
         self._nanisinf = bool(nanisinf)
 
-        lin = Linearization.make_var(mean)
-        v, g = [], []
-        for s in self._local_samples:
-            s = _modify_sample_domain(s, mean.domain)
-            tmp = hamiltonian(lin+s)
-            tv = tmp.val.val
-            tg = tmp.gradient
-            if mirror_samples:
-                tmp = hamiltonian(lin-s)
-                tv = tv + tmp.val.val
-                tg = tg + tmp.gradient
-            v.append(tv)
-            g.append(tg)
-        self._val = utilities.allreduce_sum(v, self._comm)[()]/self.n_eff_samples
+        def _func(inp):
+            tmp = hamiltonian(Linearization.make_var(inp))
+            return tmp.val.val[()], tmp.gradient
+
+        self._val, self._grad = sample_list.global_average(_func)
         if np.isnan(self._val) and self._nanisinf:
             self._val = np.inf
-        self._grad = utilities.allreduce_sum(g, self._comm)/self.n_eff_samples
 
     @property
     def value(self):
@@ -158,21 +122,10 @@ class _SampledKLEnergy(Energy):
             self._comm, self._local_samples, self._nanisinf)
 
     def apply_metric(self, x):
-        lin = Linearization.make_var(self.position, want_metric=True)
-        res = []
-        for s in self._local_samples:
-            s = _modify_sample_domain(s, self._hamiltonian.domain)
-            tmp = self._hamiltonian(lin+s).metric(x)
-            if self._mirror_samples:
-                tmp = tmp + self._hamiltonian(lin-s).metric(x)
-            res.append(tmp)
-        return utilities.allreduce_sum(res, self._comm)/self.n_eff_samples
-
-    @property
-    def n_eff_samples(self):
-        if self._mirror_samples:
-            return 2*self._n_samples
-        return self._n_samples
+        def _func(inp):
+            tmp = hamiltonian(Linearization.make_var(inp, want_metric=True))
+            return tmp.metric(x)
+        return sample_list.global_average(_func)
 
     @property
     def metric(self):
@@ -181,22 +134,8 @@ class _SampledKLEnergy(Energy):
 
     @property
     def samples(self):
-        ntask, rank, _ = utilities.get_MPI_params_from_comm(self._comm)
-        if ntask == 1:
-            for s in self._local_samples:
-                yield s
-                if self._mirror_samples:
-                    yield -s
-        else:
-            rank_lo_hi = [utilities.shareRange(self._n_samples, ntask, i) for i in range(ntask)]
-            lo, _ = _get_lo_hi(self._comm, self._n_samples)
-            for itask, (l, h) in enumerate(rank_lo_hi):
-                for i in range(l, h):
-                    data = self._local_samples[i-lo] if rank == itask else None
-                    s = self._comm.bcast(data, root=itask)
-                    yield s
-                    if self._mirror_samples:
-                        yield -s
+        return self._sample_list
+
 
 
 class _MetricGaussianSampler:
