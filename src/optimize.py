@@ -233,7 +233,7 @@ def _minimize_trust_ncg(
     # ValueError("initial trust radius must be less than the max trust radius")
     status = np.where(initial_trust_radius >= max_trust_radius, -1, status)
 
-    common_dtp = common_type(g)
+    common_dtp = common_type(x0)
     eps = 6. * np.finfo(common_dtp).eps  # Inspired by SciPy's NewtonCG minimzer
 
     if fun_and_grad is None:
