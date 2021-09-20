@@ -17,7 +17,6 @@
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
 
 from functools import reduce
-from src.minimization.sample_list import ResidualSampleList
 
 import numpy as np
 
@@ -25,20 +24,22 @@ from .. import random, utilities
 from ..domain_tuple import DomainTuple
 from ..linearization import Linearization
 from ..multi_field import MultiField
+from ..multi_domain import MultiDomain
 from ..operators.adder import Adder
 from ..operators.endomorphic_operator import EndomorphicOperator
 from ..operators.energy_operators import GaussianEnergy, StandardHamiltonian
 from ..operators.inversion_enabler import InversionEnabler
-from ..operators.sampling_enabler import SamplingDtypeSetter
+from ..operators.sampling_enabler import SamplingDtypeSetter, SamplingEnabler
 from ..operators.sandwich_operator import SandwichOperator
 from ..operators.scaling_operator import ScalingOperator
 from ..probing import approximation2endo
-from ..sugar import makeOp
+from ..sugar import is_fieldlike, makeOp
 from ..utilities import myassert
 from .descent_minimizers import ConjugateGradient, DescentMinimizer
 from .energy import Energy
 from .energy_adapter import EnergyAdapter
 from .quadratic_energy import QuadraticEnergy
+from .sample_list import ResidualSampleList, SampleList
 
 
 def _reduce_by_keys(field, operator, keys):
@@ -72,6 +73,34 @@ def _reduce_by_keys(field, operator, keys):
     return field, operator
 
 
+def _partial_replace(original, replace):
+    """Replace (parts of) the original (Multi)Field with the values in replace.
+    
+    Parameters
+    ----------
+    original : Field or MultiField
+        Original Field that gets replaced.
+    replace : Field or MultiField
+        Field that replaces (parts of) the original.
+    """
+    myassert(is_fieldlike(original))
+    myassert(is_fieldlike(replace))
+    if isinstance(original, MultiField):
+        domain = original.domain
+        myassert(isinstance(replace, MultiField))
+        myassert(all([replace.domain[k] == domain[k] for k in replace.domain.keys()]))
+        original = original.to_dict()
+        for k in replace.domain.keys():
+            original[k] = replace[k]
+        return MultiField.from_dict(original, domain=domain)
+    myassert(original.domain == replace.domain)
+    return replace
+
+def _build_neg(keys, lin_keys):
+    myassert(all(kk in keys for kk in lin_keys))
+    neg = {kk : kk in lin_keys for kk in keys}
+    return neg
+
 class _SelfAdjointOperatorWrapper(EndomorphicOperator):
     def __init__(self, domain, func):
         from ..sugar import makeDomain
@@ -84,16 +113,92 @@ class _SelfAdjointOperatorWrapper(EndomorphicOperator):
         return self._func(x)
 
 
-class _SampledKLEnergy(Energy):
+def draw_samples(position, H, minimizer, n_samples, mirror_samples, linear_keys,
+                napprox=0, want_error=False, comm=None):
+    if not isinstance(H, StandardHamiltonian):
+            raise NotImplementedError
+    if isinstance(position, MultiField):
+        sam_position = position.extract(H.domain)
+    else:
+        sam_position = position
+
+    # Check domain dtype
+    dts = H._prior._met._dtype
+    if isinstance(H.domain, DomainTuple):
+        real = np.issubdtype(dts, np.floating)
+    else:
+        real = all([np.issubdtype(dts[kk], np.floating) for kk in dts.keys()])
+    if not real:
+        raise ValueError("_GeoMetricSampler only supports real valued latent DOFs.")
+    # /Check domain dtype
+
+    # Construct transformation
+    tr = H._lh.get_transformation()
+    if tr is None:
+        raise ValueError("_GeoMetricSampler only works for likelihoods")
+    dtype, f_lh = tr
+    if isinstance(dtype, dict):
+        myassert(all([dtype[k] is not None for k in dtype.keys()]))
+    else:
+        myassert(dtype is not None)
+    scale = SamplingDtypeSetter(ScalingOperator(f_lh.target, 1.), dtype)
+
+    fl = f_lh(Linearization.make_var(sam_position))
+    transformation = ScalingOperator(sam_position.domain, 1.) + fl.jac.adjoint@f_lh
+    transformation_mean = sam_position + fl.jac.adjoint(fl.val)
+    # /Construct transformation
+
+    # Draw samples
+    sseq = random.spawn_sseq(n_samples)
+    if mirror_samples:
+        sseq = reduce((lambda a,b: a+b), [[ss, ss] for ss in sseq])
+
+    met = SamplingEnabler(SandwichOperator.make(fl.jac, scale),
+        SamplingDtypeSetter(ScalingOperator(fl.domain,1.), np.float64),
+        H._ic_samp)
+    if napprox >= 1:
+        met._approximation = makeOp(approximation2endo(met, napprox)).inverse
+
+    local_samples = []
+    local_neg = []
+    utilities.check_MPI_synced_random_state(comm)
+    utilities.check_MPI_equality(sseq, comm)
+    y, yi = None, None
+    for i in SampleList.indices_from_comm(len(sseq), comm):
+        with random.Context(sseq[i]):
+            neg = mirror_samples and (i%2 != 0)
+            if not neg or y is None:  # we really need to draw a sample
+                y, yi = met.draw_sample(True, True)
+            
+            if minimizer is not None:
+                m = transformation_mean - y if neg else transformation_mean + y
+                en = GaussianEnergy(mean=m)@transformation
+                pos = sam_position - yi if neg else sam_position + yi
+                pos, en = _reduce_by_keys(pos, en, linear_keys)
+                en = EnergyAdapter(pos, en, nanisinf=True, want_metric=True)
+                en, _ = minimizer(en)
+                local_samples.append(_partial_replace(yi, en.position - sam_position))
+                local_neg.append(False if (not neg or len(linear_keys) == 0)
+                    else {kk : kk in linear_keys for kk in yi.domain.keys()})
+            else:
+                local_samples.append(yi)
+                local_neg.append(neg)
+    return ResidualSampleList(position, local_samples, local_neg, comm)
+
+
+class SampledKLEnergy(Energy):
     """Base class for Energies representing a sampled Kullback-Leibler
     divergence for the variational approximation of a distribution with another
     distribution.
 
     Supports the samples to be distributed across MPI tasks."""
-    def __init__(self, sample_list, hamiltonian, nanisinf):
+    def __init__(self, sample_list, hamiltonian, nanisinf,
+        _callingfrommake = False):
+        if not _callingfrommake:
+            raise NotImplementedError
         myassert(isinstance(sample_list, ResidualSampleList))
         self._sample_list = sample_list
-        super(_SampledKLEnergy, self).__init__(self._sample_list.mean)
+        super(SampledKLEnergy, self).__init__(self._sample_list.mean)
         myassert(self._sample_list.domain is hamiltonian.domain)
         self._hamiltonian = hamiltonian
         self._nanisinf = bool(nanisinf)
@@ -115,8 +220,8 @@ class _SampledKLEnergy(Energy):
         return self._grad
 
     def at(self, position):
-        return _SampledKLEnergy(self._sample_list.at(position),
-            self._hamiltonian, self._nanisinf)
+        return SampledKLEnergy(self._sample_list.at(position),
+            self._hamiltonian, self._nanisinf, _callingfrommake = True)
 
     def apply_metric(self, x):
         def _func(inp):
@@ -134,322 +239,47 @@ class _SampledKLEnergy(Energy):
     def samples(self):
         return self._sample_list
 
+    @staticmethod
+    def make(position, hamiltonian, n_samples, minimizer_sampling, mirror_samples,
+    sampling_types='geometric', napprox=0, comm=None, nanisinf=True):
+        """
+        Supported sampling (sub-)types: 'geometric', 'linear', 'point'
+        """
+        if not isinstance(hamiltonian, StandardHamiltonian):
+            raise TypeError
+        if hamiltonian.domain is not position.domain:
+            raise ValueError
+        if not isinstance(n_samples, int):
+            raise TypeError
+        if not isinstance(mirror_samples, bool):
+            raise TypeError
+        if not (minimizer_sampling is None or
+            isinstance(minimizer_sampling, DescentMinimizer)):
+            raise TypeError
 
-
-class _MetricGaussianSampler:
-    def __init__(self, position, H, n_samples, mirror_samples, napprox=0):
-        if not isinstance(H, StandardHamiltonian):
-            raise NotImplementedError
-        lin = Linearization.make_var(position.extract(H.domain), True)
-        self._met = H(lin).metric
-        if napprox >= 1:
-            self._met._approximation = makeOp(approximation2endo(self._met, napprox))
-        self._n = int(n_samples)
-
-    def draw_samples(self, comm):
-        local_samples = []
-        utilities.check_MPI_synced_random_state(comm)
-        sseq = random.spawn_sseq(self._n)
-        for i in range(*_get_lo_hi(comm, self._n)):
-            with random.Context(sseq[i]):
-                local_samples.append(self._met.draw_sample(from_inverse=True))
-        return tuple(local_samples)
-
-
-class _GeoMetricSampler:
-    def __init__(self, position, H, minimizer, n_samples, mirror_samples, 
-                lin_keys = [], napprox=0, want_error=False):
-        if not isinstance(H, StandardHamiltonian):
-            raise NotImplementedError
-
-        # Check domain dtype
-        dts = H._prior._met._dtype
-        if isinstance(H.domain, DomainTuple):
-            real = np.issubdtype(dts, np.floating)
-        else:
-            real = all([np.issubdtype(dts[kk], np.floating) for kk in dts.keys()])
-        if not real:
-            raise ValueError("_GeoMetricSampler only supports real valued latent DOFs.")
-        # /Check domain dtype
-
+        types = ['geometric', 'linear', 'point']
+        lists = {tt : [] for tt in types}
         if isinstance(position, MultiField):
-            self._position = position.extract(H.domain)
-        else:
-            self._position = position
-        tr = H._lh.get_transformation()
-        if tr is None:
-            raise ValueError("_GeoMetricSampler only works for likelihoods")
-        dtype, f_lh = tr
-        scale = ScalingOperator(f_lh.target, 1.)
-        if isinstance(dtype, dict):
-            sampling = reduce((lambda a,b: a*b),
-                              [dtype[k] is not None for k in dtype.keys()])
-        else:
-            sampling = dtype is not None
-        scale = SamplingDtypeSetter(scale, dtype) if sampling else scale
+            if isinstance(sampling_types, str):
+                sampling = {k:sampling_types for k in position.domain.keys()}
+                sampling_types = sampling
+            else:
+                myassert(set(position.domain.keys()) == set(sampling_types.keys()))
+            for k in sampling_types.keys():
+                tt = sampling_types[k]
+                if tt not in types:
+                    raise ValueError(f'Sampling type {tt} for key {k} not understood')
+                lists[tt].append(k)
+        if len(lists['geometric']) != 0 and minimizer_sampling is None:
+            raise ValueError("Cannot draw geometric samples without a Minimizer")
+        elif len(lists['geometric']) == 0:
+            minimizer_sampling = None
 
-        fl = f_lh(Linearization.make_var(self._position))
-        self._g = (Adder(-self._position) + fl.jac.adjoint@Adder(-fl.val)@f_lh)
-        self._likelihood = SandwichOperator.make(fl.jac, scale)
-        self._prior = SamplingDtypeSetter(ScalingOperator(fl.domain,1.), np.float64)
-        self._met = self._likelihood + self._prior
-        if napprox >= 1:
-            self._approximation = makeOp(approximation2endo(self._met, napprox)).inverse
-        else:
-            self._approximation = None
-        self._ic = H._ic_samp
-        self._minimizer = minimizer
-        self._want_error = want_error
-        self._lin_keys = lin_keys
+        n_samples = int(n_samples)
+        mirror_samples = bool(mirror_samples)
+        _, ham_sampling = _reduce_by_keys(position, hamiltonian, lists['point'])
+        sample_list = draw_samples(position, ham_sampling, minimizer_sampling,
+            n_samples, mirror_samples, lists['linear'], napprox=napprox, comm=comm)
 
-        sseq = random.spawn_sseq(n_samples)
-        if mirror_samples:
-            mysseq = []
-            for seq in sseq:
-                mysseq += [seq, seq]
-        else:
-            mysseq = sseq
-        self._sseq = mysseq
-        self._n_samples = n_samples
-        self._mirror_samples = mirror_samples
-
-    @property
-    def position(self):
-        return self._position
-
-    def _draw_lin(self):
-        s = self._prior.draw_sample(from_inverse=True)
-        nj = self._likelihood.draw_sample()
-        y = self._prior(s) + nj
-        if self._start_from_lin:
-            energy = QuadraticEnergy(s, self._met, y,
-                                     _grad=self._likelihood(s) - nj)
-            inverter = ConjugateGradient(self._ic)
-            energy, convergence = inverter(energy,
-                                           preconditioner=self._approximation)
-            yi = energy.position
-        else:
-            yi = s
-        return y, yi
-
-    def _draw_nonlin(self, y, yi):
-        en = EnergyAdapter(self._position+yi, GaussianEnergy(mean=y)@self._g,
-                           nanisinf=True, want_metric=True)
-        en, _ = self._minimizer(en)
-        sam = en.position - self._position
-        if self._want_error:
-            er = y - self._g(sam)
-            er = er.s_vdot(InversionEnabler(self._met, self._ic).inverse(er))
-            return sam, er
-        return sam
-
-    def draw_samples(self, comm):
-        local_samples = []
-        prev = None
-        utilities.check_MPI_synced_random_state(comm)
-        utilities.check_MPI_equality(self._sseq, comm)
-        y, yi = None, None
-        for i in range(*_get_lo_hi(comm, self.n_eff_samples)):
-            with random.Context(self._sseq[i]):
-                neg = self._mirror_samples and (i%2 != 0)
-                if not neg or y is None:  # we really need to draw a sample
-                    y, yi = self._draw_lin()
-                samp = self._draw_nonlin(-y, -yi) if neg else self._draw_nonlin(y, yi)
-                local_samples.append(samp)
-        return tuple(local_samples)
-
-
-def MetricGaussianKL(mean, hamiltonian, n_samples, mirror_samples, constants=[],
-                     point_estimates=[], napprox=0, comm=None, nanisinf=False):
-    """Provides the sampled Kullback-Leibler divergence between a distribution
-    and a Metric Gaussian.
-
-    A Metric Gaussian is used to approximate another probability distribution.
-    It is a Gaussian distribution that uses the Fisher information metric of
-    the other distribution at the location of its mean to approximate the
-    variance. In order to infer the mean, a stochastic estimate of the
-    Kullback-Leibler divergence is minimized. This estimate is obtained by
-    sampling the Metric Gaussian at the current mean. During minimization
-    these samples are kept constant; only the mean is updated. Due to the
-    typically nonlinear structure of the true distribution these samples have
-    to be updated eventually by intantiating `MetricGaussianKL` again. For the
-    true probability distribution the standard parametrization is assumed.
-    The samples of this class can be distributed among MPI tasks.
-
-    Parameters
-    ----------
-    mean : Field
-        Mean of the Gaussian probability distribution.
-    hamiltonian : StandardHamiltonian
-        Hamiltonian of the approximated probability distribution.
-    n_samples : integer
-        Number of samples used to stochastically estimate the KL.
-    mirror_samples : boolean
-        Whether the negative of the drawn samples are also used, as they are
-        equally legitimate samples. If true, the number of used samples
-        doubles. Mirroring samples stabilizes the KL estimate as extreme
-        sample variation is counterbalanced. Since it improves stability in
-        many cases, it is recommended to set `mirror_samples` to `True`.
-    constants : list
-        List of parameter keys that are kept constant during optimization.
-        Default is no constants.
-    point_estimates : list
-        List of parameter keys for which no samples are drawn, but that are
-        (possibly) optimized for, corresponding to point estimates of these.
-        Default is to draw samples for the complete domain.
-    napprox : int
-        Number of samples for computing preconditioner for sampling. No
-        preconditioning is done by default.
-    comm : MPI communicator or None
-        If not None, samples will be distributed as evenly as possible
-        across this communicator. If `mirror_samples` is set, then a sample and
-        its mirror image will always reside on the same task.
-    nanisinf : bool
-        If true, nan energies which can happen due to overflows in the forward
-        model are interpreted as inf. Thereby, the code does not crash on
-        these occasions but rather the minimizer is told that the position it
-        has tried is not sensible.
-
-    Note
-    ----
-    The two lists `constants` and `point_estimates` are independent from each
-    other. It is possible to sample along domains which are kept constant
-    during minimization and vice versa.
-
-    See also
-    --------
-    `Metric Gaussian Variational Inference`, Jakob Knollmüller,
-    Torsten A. Enßlin, `<https://arxiv.org/abs/1901.11033>`_
-    """
-    if not isinstance(hamiltonian, StandardHamiltonian):
-        raise TypeError
-    if hamiltonian.domain is not mean.domain:
-        raise ValueError
-    if not isinstance(n_samples, int):
-        raise TypeError
-    if not isinstance(mirror_samples, bool):
-        raise TypeError
-    if isinstance(mean, MultiField) and set(point_estimates) == set(mean.keys()):
-        raise RuntimeError(
-            'Point estimates for whole domain. Use EnergyAdapter instead.')
-    n_samples = int(n_samples)
-    mirror_samples = bool(mirror_samples)
-
-    _, ham_sampling = _reduce_by_keys(mean, hamiltonian, point_estimates)
-    sampler = _MetricGaussianSampler(mean, ham_sampling, n_samples,
-                                     mirror_samples, napprox)
-    local_samples = sampler.draw_samples(comm)
-
-    mean, hamiltonian = _reduce_by_keys(mean, hamiltonian, constants)
-    return _SampledKLEnergy(mean, hamiltonian, n_samples, mirror_samples, comm,
-                            local_samples, nanisinf)
-
-
-def GeoMetricKL(mean, hamiltonian, n_samples, minimizer_samp, mirror_samples,
-                start_from_lin=True, constants=[], point_estimates=[],
-                napprox=0, comm=None, nanisinf=True):
-    """Provides the sampled Kullback-Leibler used in geometric Variational
-    Inference (geoVI).
-
-    In geoVI a probability distribution is approximated with a standard normal
-    distribution in the canonical coordinate system of the Riemannian manifold
-    associated with the metric of the other distribution. The coordinate
-    transformation is approximated by expanding around a point. In order to
-    infer the expansion point, a stochastic estimate of the Kullback-Leibler
-    divergence is minimized. This estimate is obtained by sampling from the
-    approximation using the current expansion point. During minimization these
-    samples are kept constant; only the expansion point is updated. Due to the
-    typically nonlinear structure of the true distribution these samples have
-    to be updated eventually by instantiating `GeoMetricKL` again. For the true
-    probability distribution the standard parametrization is assumed.
-    The samples of this class can be distributed among MPI tasks.
-
-    Parameters
-    ----------
-    mean : Field
-        Expansion point of the coordinate transformation.
-    hamiltonian : StandardHamiltonian
-        Hamiltonian of the approximated probability distribution.
-    n_samples : integer
-        Number of samples used to stochastically estimate the KL.
-    minimizer_samp : DescentMinimizer
-        Minimizer used to draw samples.
-    mirror_samples : boolean
-        Whether the mirrored version of the drawn samples are also used.
-        If true, the number of used samples doubles.
-        Mirroring samples stabilizes the KL estimate as extreme
-        sample variation is counterbalanced.
-    start_from_lin : boolean
-        Whether the non-linear sampling should start using the inverse
-        linearized transformation (i.e. the corresponding MGVI sample).
-        If False, the minimization starts from the prior sample.
-        Default is True.
-    constants : list
-        List of parameter keys that are kept constant during optimization.
-        Default is no constants.
-    point_estimates : list
-        List of parameter keys for which no samples are drawn, but that are
-        (possibly) optimized for, corresponding to point estimates of these.
-        Default is to draw samples for the complete domain.
-    napprox : int
-        Number of samples for computing preconditioner for linear sampling.
-        No preconditioning is done by default.
-    comm : MPI communicator or None
-        If not None, samples will be distributed as evenly as possible
-        across this communicator. If `mirror_samples` is set, then a sample and
-        its mirror image will preferably reside on the same task if necessary.
-    nanisinf : bool
-        If true, nan energies which can happen due to overflows in the forward
-        model are interpreted as inf. Thereby, the code does not crash on
-        these occasions but rather the minimizer is told that the position it
-        has tried is not sensible.
-
-    Note
-    ----
-    The two lists `constants` and `point_estimates` are independent from each
-    other. It is possible to sample along domains which are kept constant
-    during minimization and vice versa.
-    DomainTuples should never be created using the constructor, but rather
-    via the factory function :attr:`make`!
-
-    Note
-    ----
-    As in MGVI, mirroring samples can help to stabilize the latent mean as it
-    reduces sampling noise. But unlike MGVI a mirrored sample involves an
-    additional solve of the non-linear transformation. Therefore, when using
-    MPI, the mirrored samples also get distributed if enough tasks are
-    available.  If there are more total samples than tasks, the mirrored
-    counterparts try to reside on the same task as their non mirrored partners.
-    This ensures that at least the starting position can be re-used.
-
-    See also
-    --------
-    `Geometric Variational Inference`, Philipp Frank, Reimar Leike,
-    Torsten A. Enßlin, `<https://arxiv.org/abs/2105.10470>`_
-    `<https://doi.org/10.3390/e23070853>`_
-    """
-    if not isinstance(hamiltonian, StandardHamiltonian):
-        raise TypeError
-    if hamiltonian.domain is not mean.domain:
-        raise ValueError
-    if not isinstance(n_samples, int):
-        raise TypeError
-    if not isinstance(mirror_samples, bool):
-        raise TypeError
-    if not isinstance(minimizer_samp, DescentMinimizer):
-        raise TypeError
-    if isinstance(mean, MultiField) and set(point_estimates) == set(mean.keys()):
-        s = 'Point estimates for whole domain. Use EnergyAdapter instead.'
-        raise RuntimeError(s)
-
-    n_samples = int(n_samples)
-    mirror_samples = bool(mirror_samples)
-
-    _, ham_sampling = _reduce_by_keys(mean, hamiltonian, point_estimates)
-    sampler = _GeoMetricSampler(mean, ham_sampling, minimizer_samp,
-                                start_from_lin, n_samples, mirror_samples,
-                                napprox)
-    local_samples = sampler.draw_samples(comm)
-    mean, hamiltonian = _reduce_by_keys(mean, hamiltonian, constants)
-    return _SampledKLEnergy(mean, hamiltonian, sampler.n_eff_samples, False,
-                            comm, local_samples, nanisinf)
+        return SampledKLEnergy(sample_list, hamiltonian, nanisinf,
+                            _callingfrommake = True)

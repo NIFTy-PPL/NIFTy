@@ -29,9 +29,9 @@ class SampleList:
         utilities.check_MPI_equality(self._domain, comm)
 
     @staticmethod
-    def all_indices(n_samples, comm):
+    def indices_from_comm(n_samples, comm):
         ntask, rank, _ = utilities.get_MPI_params_from_comm(comm)
-        return [range(*utilities.shareRange(n_samples, ntask, i)) for i in range(ntask)]
+        return range(*utilities.shareRange(n_samples, ntask, rank))
 
     @property
     def comm(self):
@@ -111,10 +111,12 @@ class ResidualSampleList(SampleList):
         assert isinstance(r_dom, MultiDomain)
         assert all(rr.domain is r_dom for rr in self._r)
         assert all(k in self._m.domain.keys() for k in r_dom.keys())
-        n_keys = self._n[0].keys()
-        assert all(elem.keys() == n_keys for elem in neg)
-        assert n_keys == r_dom.keys()
-        assert all(isinstance(xx, bool) for elem in neg for xx in elem)  # FIXME is this the correct order?
+        for nn in self._n:
+            if isinstance(nn, dict):
+                assert nn.keys() == r_dom.keys()
+                assert all(isinstance(xx, bool) for xx in nn)
+            else:
+                assert isinstance(nn, bool)
 
     @property
     def mean(self):
