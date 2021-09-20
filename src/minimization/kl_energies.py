@@ -33,7 +33,7 @@ from ..operators.sampling_enabler import SamplingDtypeSetter, SamplingEnabler
 from ..operators.sandwich_operator import SandwichOperator
 from ..operators.scaling_operator import ScalingOperator
 from ..probing import approximation2endo
-from ..sugar import is_fieldlike, makeOp
+from ..sugar import domain_union, is_fieldlike, makeOp
 from ..utilities import myassert
 from .descent_minimizers import ConjugateGradient, DescentMinimizer
 from .energy import Energy
@@ -73,28 +73,32 @@ def _reduce_by_keys(field, operator, keys):
     return field, operator
 
 
-def _partial_replace(original, replace):
-    """Replace (parts of) the original (Multi)Field with the values in replace.
+def _insert_missing(field, insert):
+    """Inserts the parts of `insert` that are not part of `field` into field.
     
     Parameters
     ----------
-    original : Field or MultiField
-        Original Field that gets replaced.
-    replace : Field or MultiField
-        Field that replaces (parts of) the original.
+    field : Field or MultiField
+        The original (smaller) field.
+    insert : Field or MultiField
+        The field which yields the remaining values not in `field`.
     """
-    myassert(is_fieldlike(original))
-    myassert(is_fieldlike(replace))
-    if isinstance(original, MultiField):
-        domain = original.domain
-        myassert(isinstance(replace, MultiField))
-        myassert(all([replace.domain[k] == domain[k] for k in replace.domain.keys()]))
-        original = original.to_dict()
-        for k in replace.domain.keys():
-            original[k] = replace[k]
-        return MultiField.from_dict(original, domain=domain)
-    myassert(original.domain == replace.domain)
-    return replace
+    myassert(is_fieldlike(field))
+    myassert(is_fieldlike(insert))
+    domain = domain_union((field.domain, insert.domain))
+    if domain == field.domain:
+        return field
+    myassert(isinstance(field, MultiField))
+    myassert(isinstance(insert, MultiField))
+    subkeys = []
+    for k in insert.domain.keys():
+        if k not in field.domain.keys():
+            subkeys.append(k)
+    field = field.to_dict()
+    for k in subkeys:
+        field[k] = insert[k]
+    return MultiField.from_dict(field, domain=domain)
+
 
 def _build_neg(keys, lin_keys):
     myassert(all(kk in keys for kk in lin_keys))
@@ -151,13 +155,13 @@ def draw_samples(position, H, minimizer, n_samples, mirror_samples, linear_keys,
     # Draw samples
     sseq = random.spawn_sseq(n_samples)
     if mirror_samples:
-        sseq = reduce((lambda a,b: a+b), [[ss, ss] for ss in sseq])
+        sseq = reduce((lambda a,b: a+b), [[ss, ]*2 for ss in sseq])
 
     met = SamplingEnabler(SandwichOperator.make(fl.jac, scale),
         SamplingDtypeSetter(ScalingOperator(fl.domain,1.), np.float64),
         H._ic_samp)
     if napprox >= 1:
-        met._approximation = makeOp(approximation2endo(met, napprox)).inverse
+        met._approximation = makeOp(approximation2endo(met, napprox))
 
     local_samples = []
     local_neg = []
@@ -169,6 +173,7 @@ def draw_samples(position, H, minimizer, n_samples, mirror_samples, linear_keys,
             neg = mirror_samples and (i%2 != 0)
             if not neg or y is None:  # we really need to draw a sample
                 y, yi = met.draw_sample(True, True)
+
             
             if minimizer is not None:
                 m = transformation_mean - y if neg else transformation_mean + y
@@ -177,7 +182,7 @@ def draw_samples(position, H, minimizer, n_samples, mirror_samples, linear_keys,
                 pos, en = _reduce_by_keys(pos, en, linear_keys)
                 en = EnergyAdapter(pos, en, nanisinf=True, want_metric=True)
                 en, _ = minimizer(en)
-                local_samples.append(_partial_replace(yi, en.position - sam_position))
+                local_samples.append(_insert_missing(en.position - sam_position, yi))
                 local_neg.append(False if (not neg or len(linear_keys) == 0)
                     else {kk : kk in linear_keys for kk in yi.domain.keys()})
             else:
