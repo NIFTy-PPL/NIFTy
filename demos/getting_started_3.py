@@ -129,7 +129,7 @@ def main():
             # Double the number of samples in the last step for better statistics
             N_samples = 2*N_samples
         # Draw new samples and minimize KL
-        KL = ift.GeoMetricKL(mean, H, N_samples, minimizer_sampling, True)
+        KL = ift.SampledKLEnergy.make(mean, H, N_samples, minimizer_sampling, True)
         KL, convergence = minimizer(KL)
         mean = KL.position
         ift.extra.minisanity(data, lambda x: N.inverse, signal_response,
