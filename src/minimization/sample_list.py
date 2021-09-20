@@ -47,15 +47,9 @@ class SampleList:
 
     def global_sample_stat(self, op):
         from ..probing import StatCalculator
-
-        op = _none_to_id(op)
-
-        if self.comm is not None:
-            raise NotImplementedError
-
         sc = StatCalculator()
-        for ss in self:
-            sc.add(op(ss))
+        for ss in self.global_sample_iterator(op):
+            sc.add(ss)
         return sc.mean, sc.var
 
     def global_mean(self, op=None):
