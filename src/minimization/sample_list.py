@@ -16,24 +16,22 @@
 
 import pickle
 
-from ..utilities import myassert
+from .. import utilities
+
+from ..multi_domain import MultiDomain
 
 
 class SampleList:
     def __init__(self, comm, domain):
         from ..sugar import makeDomain
-        from ..utilities import check_MPI_equality
         self._comm = comm
         self._domain = makeDomain(domain)
-        check_MPI_equality(self._domain, comm)
+        utilities.check_MPI_equality(self._domain, comm)
 
     @staticmethod
     def all_indices(n_samples, comm):
         ntask, rank, _ = utilities.get_MPI_params_from_comm(comm)
-        res = [range(*utilities.shareRange(n_samples, ntask, i)) for i in range(ntask)]
-        if comm is None:
-            assert res == [range(len(self))]  # FIXME Temporary
-        return res
+        return [range(*utilities.shareRange(n_samples, ntask, i)) for i in range(ntask)]
 
     @property
     def comm(self):
@@ -46,7 +44,7 @@ class SampleList:
     def global_sample_iterator(self, op=None):
         op = _none_to_id(op)
         if self.comm is not None:
-            for itask in range(nask):
+            for itask in range(self.comm.get_Size()):
                 for i in range(_bcast(len(self), self._comm, itask)):
                     ss = _bcast(self[i], self._comm, itask)
                     yield op(ss)
@@ -58,13 +56,12 @@ class SampleList:
         res = [op(ss) for ss in self]
         n = self.global_n_samples()
         if not isinstance(res[0], tuple):
-            return allreduce_sum(res, self.comm) / n
+            return utilities.allreduce_sum(res, self.comm) / n
         res = [[elem[ii] for elem in res] for ii in range(len(res[0]))]
-        return tuple(allreduce_sum(rr, self.comm)/n for rr in res)
+        return tuple(utilities.allreduce_sum(rr, self.comm)/n for rr in res)
 
     def global_n_samples(self):
-        from ..utilities import allreduce_sum
-        return allreduce_sum([len(self)], self.comm)
+        return utilities.allreduce_sum([len(self)], self.comm)
 
     def __len__(self):
         """Local length"""
@@ -95,7 +92,7 @@ class SampleList:
             raise NotImplementedError
         with open(file_name_base + ".pickle", "rb") as f:
             obj = pickle.load(f)
-        myassert(isinstance(obj, SampleList))
+        utilities.myassert(isinstance(obj, SampleList))
         return obj
 
 
@@ -119,6 +116,10 @@ class ResidualSampleList(SampleList):
         assert n_keys == r_dom.keys()
         assert all(isinstance(xx, bool) for elem in neg for xx in elem)  # FIXME is this the correct order?
 
+    @property
+    def mean(self):
+        return self._m
+
     def at(self, mean):
         return ResidualSampleList(mean, self._r, self._n, self.comm)
 
@@ -137,4 +138,4 @@ def _none_to_id(obj):
 
 def _bcast(obj, comm, root):
     data = obj if comm.Get_rank() == root else None
-    return self._comm.bcast(data, root=root)
+    return comm.bcast(data, root=root)

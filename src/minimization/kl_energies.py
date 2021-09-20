@@ -17,6 +17,7 @@
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
 
 from functools import reduce
+from src.minimization.sample_list import ResidualSampleList
 
 import numpy as np
 
@@ -89,15 +90,12 @@ class _SampledKLEnergy(Energy):
     distribution.
 
     Supports the samples to be distributed across MPI tasks."""
-    def __init__(self, mean, hamiltonian, n_samples, mirror_samples, comm,
-                 local_samples, nanisinf):
-        super(_SampledKLEnergy, self).__init__(mean)
-        myassert(mean.domain is hamiltonian.domain)
+    def __init__(self, sample_list, hamiltonian, nanisinf):
+        myassert(isinstance(sample_list, ResidualSampleList))
+        self._sample_list = sample_list
+        super(_SampledKLEnergy, self).__init__(self._sample_list.mean)
+        myassert(self._sample_list.domain is hamiltonian.domain)
         self._hamiltonian = hamiltonian
-        self._n_samples = int(n_samples)
-        self._mirror_samples = bool(mirror_samples)
-        self._comm = comm
-        self._local_samples = local_samples
         self._nanisinf = bool(nanisinf)
 
         def _func(inp):
@@ -117,15 +115,15 @@ class _SampledKLEnergy(Energy):
         return self._grad
 
     def at(self, position):
-        return _SampledKLEnergy(
-            position, self._hamiltonian, self._n_samples, self._mirror_samples,
-            self._comm, self._local_samples, self._nanisinf)
+        return _SampledKLEnergy(self._sample_list.at(position),
+            self._hamiltonian, self._nanisinf)
 
     def apply_metric(self, x):
         def _func(inp):
-            tmp = hamiltonian(Linearization.make_var(inp, want_metric=True))
+            tmp = self._hamiltonian(
+                Linearization.make_var(inp, want_metric=True))
             return tmp.metric(x)
-        return sample_list.global_average(_func)
+        return self._sample_list.global_average(_func)
 
     @property
     def metric(self):
@@ -159,8 +157,8 @@ class _MetricGaussianSampler:
 
 
 class _GeoMetricSampler:
-    def __init__(self, position, H, minimizer, start_from_lin,
-                 n_samples, mirror_samples, napprox=0, want_error=False):
+    def __init__(self, position, H, minimizer, n_samples, mirror_samples, 
+                lin_keys = [], napprox=0, want_error=False):
         if not isinstance(H, StandardHamiltonian):
             raise NotImplementedError
 
@@ -201,8 +199,8 @@ class _GeoMetricSampler:
             self._approximation = None
         self._ic = H._ic_samp
         self._minimizer = minimizer
-        self._start_from_lin = start_from_lin
         self._want_error = want_error
+        self._lin_keys = lin_keys
 
         sseq = random.spawn_sseq(n_samples)
         if mirror_samples:
@@ -214,10 +212,6 @@ class _GeoMetricSampler:
         self._sseq = mysseq
         self._n_samples = n_samples
         self._mirror_samples = mirror_samples
-
-    @property
-    def n_eff_samples(self):
-        return 2*self._n_samples if self._mirror_samples else self._n_samples
 
     @property
     def position(self):
