@@ -12,7 +12,7 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
 # Copyright(C) 2013-2021 Max-Planck-Society
-# Authors: Philipp Frank, Philipp Arras
+# Authors: Philipp Arras, Philipp Frank
 #
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
 
@@ -24,21 +24,17 @@ from .. import random, utilities
 from ..domain_tuple import DomainTuple
 from ..linearization import Linearization
 from ..multi_field import MultiField
-from ..multi_domain import MultiDomain
-from ..operators.adder import Adder
 from ..operators.endomorphic_operator import EndomorphicOperator
 from ..operators.energy_operators import GaussianEnergy, StandardHamiltonian
-from ..operators.inversion_enabler import InversionEnabler
 from ..operators.sampling_enabler import SamplingDtypeSetter, SamplingEnabler
 from ..operators.sandwich_operator import SandwichOperator
 from ..operators.scaling_operator import ScalingOperator
 from ..probing import approximation2endo
 from ..sugar import domain_union, is_fieldlike, makeOp
 from ..utilities import myassert
-from .descent_minimizers import ConjugateGradient, DescentMinimizer
+from .descent_minimizers import DescentMinimizer
 from .energy import Energy
 from .energy_adapter import EnergyAdapter
-from .quadratic_energy import QuadraticEnergy
 from .sample_list import ResidualSampleList, SampleList
 
 
@@ -247,8 +243,85 @@ class SampledKLEnergy(Energy):
     @staticmethod
     def make(position, hamiltonian, n_samples, minimizer_sampling, mirror_samples,
     sampling_types='geometric', napprox=0, comm=None, nanisinf=True):
-        """
-        Supported sampling (sub-)types: 'geometric', 'linear', 'point'
+        """Provides the sampled Kullback-Leibler used for Variational Inference,
+        specifically for geometric Variational Inference (geoVI) and Metric 
+        Gaussian VI (MGVI).
+
+        In geoVI a probability distribution is approximated with a standard
+        normal distribution in the canonical coordinate system of the Riemannian
+        manifold associated with the metric of the other distribution. The
+        coordinate transformation is approximated by expanding around a point.
+        The MGVI simplification occurs in case this transformation can be
+        approximated using a linear expansion. In order to infer the optimal 
+        expansion point, a stochastic estimate of the Kullback-Leibler
+        divergence is minimized. This estimate is obtained by sampling from the
+        approximation using the current expansion point. During minimization
+        these samples are kept constant; only the expansion point is updated.
+        Due to the typically nonlinear structure of the true distribution these
+        samples have to be updated eventually by instantiating a 
+        `SampledKLEnergy` again. For the true probability distribution the
+        standard parametrization is assumed. The samples of this class can be
+        distributed among MPI tasks.
+
+        Parameters
+        ----------
+        position : Field
+            Expansion point of the coordinate transformation.
+        hamiltonian : StandardHamiltonian
+            Hamiltonian of the approximated probability distribution.
+        n_samples : integer
+            Number of samples used to stochastically estimate the KL.
+        minimizer_samp : DescentMinimizer or None
+            Minimizer used to draw samples. Can only be None in case no
+            `geometric` samples are drawn.
+        mirror_samples : boolean
+            Whether the mirrored version of the drawn samples are also used.
+            If true, the number of used samples doubles.
+            Mirroring samples stabilizes the KL estimate as extreme
+            sample variation is counterbalanced.
+        sampling_types : String or dict(String)
+            The type of sampling used to perform variational approximation.
+            There are three supported modes: `point`; A point (aka maximum a 
+            posterior) estimate. No sampling is performed. `linear`; Linear
+            (MGVI) sample assuming that the linear approximation of the
+            transformation is sufficiently accurate. `geometric`; Full (geoVI)
+            sample. Internally, first a `linear` sample is drawn and then
+            further optimized non-linearly. Also supports different sampling
+            types for different parts of the domain. In this case `sampling_type`
+            must be a dict that contains one of the three sampling types for
+            each key of the domain.
+        napprox : int
+            Number of samples for computing preconditioner for linear sampling.
+            No preconditioning is done by default.
+        comm : MPI communicator or None
+            If not None, samples will be distributed as evenly as possible
+            across this communicator. If `mirror_samples` is set, then a sample and
+            its mirror image will preferably reside on the same task if necessary.
+        nanisinf : bool
+            If true, nan energies which can happen due to overflows in the forward
+            model are interpreted as inf. Thereby, the code does not crash on
+            these occasions but rather the minimizer is told that the position it
+            has tried is not sensible.
+
+        Note
+        ----
+        Mirroring samples can help to stabilize the latent mean as it
+        reduces sampling noise. But a mirrored sample involves an additional
+        solve of the non-linear part of the transformation. When using MPI, the
+        samples get distributed as evenly as possible over all tasks. If the
+        number of tasks is smaller then the total number of samples (including
+        mirrored ones), the mirrored pairs try to reside on the same task as
+        their non mirrored partners. This ensures that at least the linear part
+        of the sampling is re-used.
+
+        See also
+        --------
+        `Geometric Variational Inference`, Philipp Frank, Reimar Leike,
+        Torsten A. Enßlin, `<https://arxiv.org/abs/2105.10470>`_
+        `<https://doi.org/10.3390/e23070853>`_
+
+        `Metric Gaussian Variational Inference`, Jakob Knollmüller,
+        Torsten A. Enßlin, `<https://arxiv.org/abs/1901.11033>`_
         """
         if not isinstance(hamiltonian, StandardHamiltonian):
             raise TypeError
