@@ -138,14 +138,14 @@ def main():
         # Plot current reconstruction
         plot = ift.Plot()
         plot.add(signal(KL.position), title="Latent mean", zmin = 0, zmax = 1)
-        plot.add([pspec.force(KL.position + ss) for ss in KL.samples],
+        plot.add([pspec.force(ss) for ss in KL.samples],
                  title="Samples power spectrum")
         plot.output(ny=1, ysize=6, xsize=16,
                     name=filename.format("loop_{:02d}".format(i)))
 
     sc = ift.StatCalculator()
     for sample in KL.samples:
-        sc.add(signal(sample + KL.position))
+        sc.add(signal(sample))
 
     # Plotting
     filename_res = filename.format("results")
@@ -153,7 +153,7 @@ def main():
     plot.add(sc.mean, title="Posterior Mean", zmin = 0, zmax = 1)
     plot.add(ift.sqrt(sc.var), title="Posterior Standard Deviation")
 
-    powers = [pspec.force(s + KL.position) for s in KL.samples]
+    powers = [pspec.force(s) for s in KL.samples]
     sc = ift.StatCalculator()
     for pp in powers:
         sc.add(pp.log())
