@@ -1,12 +1,29 @@
 Changes since NIFTy 7
 =====================
 
+Sampling dtypes
+---------------
+
+We address the general issue of sampling dtypes of covariance operators.
+Instances of `EndomorphicOperator` can implement a `draw_sample()` method that
+returns a sample from the zero-centered Gaussian distribution with covariance
+being the endomorphic operator. If we consider a `DiagonalOperator` as
+covariance operator, it must have real positive values on its diagonal
+irrespective whether it is associated with a real or a complex Gaussian
+distribution. Therefore, this additional piece of information needs to be passed
+to the operator. In NIFTy\_6 and NIFTy\_7, this was done with the help of an
+operator wrapper, the `SamplingDtypeSetter`. This rather artificial construct
+disappears in NIFTy\_8. Now, the sampling dtype needs to be passed to the
+constructor of `ScalingOperator`, `DiagonalOperator` or functions like `makeOp`.
+For `MultiDomains` either a dict of dtypes can be passed or a single dtype that
+applies to all subdomains.
+
 WienerFilterCurvature interface change
 --------------------------------------
 
 `ift.WienerFilterCurvature` does not expect sampling dtypes for the likelihood
-and the prior anymore. These have to be set with an `ift.SamplingDtypeSetter`
-beforehand.
+and the prior anymore. These have to be set during the construction of the
+covariance operators.
 
 
 Minisanity

@@ -225,8 +225,8 @@ class _GeoMetricSampler:
             raise NotImplementedError
 
         # # Check domain dtype
-        # FIXME
-        # dts = H.prior_energy.metric.dtype
+        # # FIXME pfrank, I think this needs to be moved somewhere else.
+        # dts = H.prior_energy.metric.sampling_dtype
         # if dts is None:
         #     raise RuntimeError("Sampling dtype of prior needs to be set.")
         # if isinstance(H.domain, DomainTuple):

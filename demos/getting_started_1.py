@@ -86,7 +86,7 @@ def main():
     prior_correlation_structure = PD(ift.PS_field(power_space, power_spectrum))
 
     # Insert the result into the diagonal of an harmonic space operator
-    S = ift.DiagonalOperator(prior_correlation_structure, float)
+    S = ift.makeOp(prior_correlation_structure, sampling_dtype=float)
     # S is the prior field covariance
 
     # Build instrument response consisting of a discretization, mask

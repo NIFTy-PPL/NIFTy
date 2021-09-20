@@ -473,6 +473,23 @@ def check_MPI_synced_random_state(comm):
 
 
 def check_dtype_or_none(obj, domain=None):
+    """Check that dtype is compatible with a given domain.
+
+    If domain is None or a DomainTuple, the obj is checked to be either a
+    floating dtype or None. If domain is a MultiDomain, obj can still be a
+    single quantity and is treated like in the previous case. Or it can be a
+    dictionary; then all its entries need to satisfy the previous condition to
+    pass the test.
+
+    Raises a TypeError if any incompatibility is detected.
+
+    Parameters
+    ----------
+    obj : object
+        The object to be checked.
+    domain : DomainTuple or MultiDomain
+        If it is a MultiDomain,
+    """
     from .sugar import makeDomain
     from .multi_domain import MultiDomain
     if domain is not None:
@@ -485,6 +502,6 @@ def check_dtype_or_none(obj, domain=None):
                     np.complex64, np.complex128, complex,
                     None]
     if not check:
-        s = "Need to pass dtype (e.g. np.float64, complex) or `None` to this function.\n"
-        s += f"Have recieved:\n{obj}"
+        s = "Need to pass floating dtype (e.g. np.float64, complex) "
+        s += f"or `None` to this function.\nHave recieved:\n{obj}"
         raise TypeError(s)
