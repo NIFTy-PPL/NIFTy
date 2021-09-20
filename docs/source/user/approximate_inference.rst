@@ -83,7 +83,7 @@ Furthermore the KL is represented as a stochastic estimate using a set of sample
 Publications
 ------------
 
-If you use MGVI or geoVI, the authors of the respective papers [1]_ [2]_ would greatly appreciate a citation.
+If you use MGVI or geoVI, the authors of the respective papers would greatly appreciate a citation.
 
 .. [1] J. Knollmüller, T.A. Enßlin, "Metric Gaussian Variational Inference"; `[arXiv:1901.11033] <https://arxiv.org/abs/1901.11033>`_
 
