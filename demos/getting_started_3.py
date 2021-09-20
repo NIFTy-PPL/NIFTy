@@ -114,12 +114,6 @@ def main():
     initial_mean = ift.MultiField.full(H.domain, 0.)
     mean = initial_mean
 
-    plot = ift.Plot()
-    plot.add(signal(mock_position), title='Ground Truth', zmin = 0, zmax = 1)
-    plot.add(R.adjoint_times(data), title='Data')
-    plot.add([pspec.force(mock_position)], title='Power Spectrum')
-    plot.output(ny=1, nx=3, xsize=24, ysize=6, name=filename.format("setup"))
-
     # number of samples used to estimate the KL
     N_samples = 10
 
@@ -129,11 +123,13 @@ def main():
             # Double the number of samples in the last step for better statistics
             N_samples = 2*N_samples
         # Draw new samples and minimize KL
-        KL = ift.SampledKLEnergy.make(mean, H, N_samples, minimizer_sampling, True)
+        spl = {k: 'linear' if k=='xi' else 'geometric' for k in mean.domain.keys()}
+        KL = ift.SampledKLEnergy.make(mean, H, N_samples, minimizer_sampling, True,
+        sampling_types=spl)
         KL, convergence = minimizer(KL)
         mean = KL.position
         ift.extra.minisanity(data, lambda x: N.inverse, signal_response,
-                             KL.position, KL.samples)
+                             KL.position, [s-KL.position for s in KL.samples])
 
         # Plot current reconstruction
         plot = ift.Plot()

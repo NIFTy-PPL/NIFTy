@@ -113,8 +113,8 @@ class ResidualSampleList(SampleList):
         assert all(k in self._m.domain.keys() for k in r_dom.keys())
         for nn in self._n:
             if isinstance(nn, dict):
-                assert nn.keys() == r_dom.keys()
-                assert all(isinstance(xx, bool) for xx in nn)
+                assert set(nn.keys()) == set(r_dom.keys())
+                assert all(isinstance(nn[kk], bool) for kk in nn.keys())
             else:
                 assert isinstance(nn, bool)
 

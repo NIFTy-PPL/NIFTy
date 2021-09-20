@@ -178,7 +178,8 @@ def draw_samples(position, H, minimizer, n_samples, mirror_samples, linear_keys,
                 pos, en = _reduce_by_keys(pos, en, linear_keys)
                 en = EnergyAdapter(pos, en, nanisinf=True, want_metric=True)
                 en, _ = minimizer(en)
-                local_samples.append(_insert_missing(en.position - sam_position, yi))
+                local_samples.append(
+                    _insert_missing(en.position, yi) - sam_position)
                 local_neg.append(False if (not neg or len(linear_keys) == 0)
                     else {kk : kk in linear_keys for kk in yi.domain.keys()})
             else:
