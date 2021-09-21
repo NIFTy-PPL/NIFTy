@@ -96,11 +96,6 @@ def _insert_missing(field, insert):
     return MultiField.from_dict(field, domain=domain)
 
 
-def _build_neg(keys, lin_keys):
-    myassert(all(kk in keys for kk in lin_keys))
-    neg = {kk : kk in lin_keys for kk in keys}
-    return neg
-
 class _SelfAdjointOperatorWrapper(EndomorphicOperator):
     def __init__(self, domain, func):
         from ..sugar import makeDomain
@@ -129,36 +124,38 @@ def draw_samples(position, H, minimizer, n_samples, mirror_samples, linear_keys,
     else:
         real = all([np.issubdtype(dts[kk], np.floating) for kk in dts.keys()])
     if not real:
-        raise ValueError("_GeoMetricSampler only supports real valued latent DOFs.")
+        raise ValueError("Sampling only supports real valued latent DOFs.")
     # /Check domain dtype
 
     # Construct transformation
-    tr = H._lh.get_transformation()
-    if tr is None:
-        raise ValueError("_GeoMetricSampler only works for likelihoods")
-    dtype, f_lh = tr
-    if isinstance(dtype, dict):
-        myassert(all([dtype[k] is not None for k in dtype.keys()]))
-    else:
-        myassert(dtype is not None)
-    scale = SamplingDtypeSetter(ScalingOperator(f_lh.target, 1.), dtype)
+    if minimizer is not None:
+        tr = H._lh.get_transformation()
+        if tr is None:
+            raise ValueError("GeoMetric sampling only works for likelihoods")
+        dtype, f_lh = tr
+        if isinstance(dtype, dict):
+            myassert(all([dtype[k] is not None for k in dtype.keys()]))
+        else:
+            myassert(dtype is not None)
+        scale = SamplingDtypeSetter(ScalingOperator(f_lh.target, 1.), dtype)
+        fl = f_lh(Linearization.make_var(sam_position))
 
-    fl = f_lh(Linearization.make_var(sam_position))
-    transformation = ScalingOperator(sam_position.domain, 1.) + fl.jac.adjoint@f_lh
-    transformation_mean = sam_position + fl.jac.adjoint(fl.val)
+        transformation = ScalingOperator(f_lh.domain,1.) + fl.jac.adjoint@f_lh
+        transformation_mean = sam_position + fl.jac.adjoint(fl.val)
+        met = SamplingEnabler(SandwichOperator.make(fl.jac, scale),
+            SamplingDtypeSetter(ScalingOperator(fl.domain,1.), np.float64),
+            H._ic_samp)
+    else:
+        met = H(Linearization.make_var(sam_position, want_metric=True)).metric
+
+    if napprox >= 1:
+        met._approximation = makeOp(approximation2endo(met, napprox))
     # /Construct transformation
 
     # Draw samples
     sseq = random.spawn_sseq(n_samples)
     if mirror_samples:
         sseq = reduce((lambda a,b: a+b), [[ss, ]*2 for ss in sseq])
-
-    met = SamplingEnabler(SandwichOperator.make(fl.jac, scale),
-        SamplingDtypeSetter(ScalingOperator(fl.domain,1.), np.float64),
-        H._ic_samp)
-    if napprox >= 1:
-        met._approximation = makeOp(approximation2endo(met, napprox))
-
     local_samples = []
     local_neg = []
     utilities.check_MPI_synced_random_state(comm)
@@ -170,18 +167,16 @@ def draw_samples(position, H, minimizer, n_samples, mirror_samples, linear_keys,
             if not neg or y is None:  # we really need to draw a sample
                 y, yi = met.draw_sample(True, True)
 
-            
             if minimizer is not None:
                 m = transformation_mean - y if neg else transformation_mean + y
-                en = GaussianEnergy(mean=m)@transformation
                 pos = sam_position - yi if neg else sam_position + yi
+                en = GaussianEnergy(mean=m)@transformation
                 pos, en = _reduce_by_keys(pos, en, linear_keys)
                 en = EnergyAdapter(pos, en, nanisinf=True, want_metric=True)
                 en, _ = minimizer(en)
-                local_samples.append(
-                    _insert_missing(en.position, yi) - sam_position)
+                local_samples.append(_insert_missing(en.position, yi) - sam_position)
                 local_neg.append(False if (not neg or len(linear_keys) == 0)
-                    else {kk : kk in linear_keys for kk in yi.domain.keys()})
+                    else {kk : (kk in linear_keys) for kk in yi.domain.keys()})
             else:
                 local_samples.append(yi)
                 local_neg.append(neg)
