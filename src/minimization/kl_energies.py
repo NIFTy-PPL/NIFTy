@@ -69,33 +69,6 @@ def _reduce_by_keys(field, operator, keys):
     return field, operator
 
 
-def _insert_missing(field, insert):
-    """Inserts the parts of `insert` that are not part of `field` into field.
-    
-    Parameters
-    ----------
-    field : Field or MultiField
-        The original (smaller) field.
-    insert : Field or MultiField
-        The field which yields the remaining values not in `field`.
-    """
-    myassert(is_fieldlike(field))
-    myassert(is_fieldlike(insert))
-    domain = domain_union((field.domain, insert.domain))
-    if domain == field.domain:
-        return field
-    myassert(isinstance(field, MultiField))
-    myassert(isinstance(insert, MultiField))
-    subkeys = []
-    for k in insert.domain.keys():
-        if k not in field.domain.keys():
-            subkeys.append(k)
-    field = field.to_dict()
-    for k in subkeys:
-        field[k] = insert[k]
-    return MultiField.from_dict(field, domain=domain)
-
-
 class _SelfAdjointOperatorWrapper(EndomorphicOperator):
     def __init__(self, domain, func):
         from ..sugar import makeDomain
@@ -173,7 +146,7 @@ def draw_samples(position, H, minimizer, n_samples, mirror_samples, napprox=0,
                 en = GaussianEnergy(mean=m)@transformation
                 en = EnergyAdapter(pos, en, nanisinf=True, want_metric=True)
                 en, _ = minimizer(en)
-                local_samples.append(_insert_missing(en.position, yi) - sam_position)
+                local_samples.append(en.position - sam_position)
                 local_neg.append(False)
             else:
                 local_samples.append(yi)
