@@ -61,13 +61,13 @@ def main():
     plt.xlabel('y')
     plt.ylabel('unnormalized pdf')
     plt.title('Marginal density')
-    plt.pause(.2)
+    plt.pause(2.)
     plt.close()
     plt.plot(x*scale, np.sum(z, axis=1))
     plt.xlabel('x')
     plt.ylabel('unnormalized pdf')
     plt.title('Marginal density')
-    plt.pause(.2)
+    plt.pause(2.)
     plt.close()
 
     mapx = xx[z==np.max(z)]
@@ -128,17 +128,15 @@ def main():
         axs[3].set_xlabel('x')
         plt.tight_layout()
         plt.draw()
-        plt.pause(.5)
+        plt.pause(2.)
 
     for ii in range(20):
         if ii % 2 == 0:
             # Resample GeoVI and MGVI
-            mgkl = ift.SampledKLEnergy.make(posmg, ham, n_samples, None, False,
-                                            sampling_types='linear')
+            mgkl = ift.SampledKLEnergy.make(posmg, ham, n_samples, None, False)
             mini_samp = ift.NewtonCG(
                     ift.AbsDeltaEnergyController(1E-8, iteration_limit=5))
-            geokl = ift.SampledKLEnergy.make(posgeo, ham, n_samples, mini_samp,
-                                            False)
+            geokl = ift.SampledKLEnergy.make(posgeo, ham, n_samples, mini_samp, False)
 
             runs = (("MGVI", mgkl, posmg, True),
                     ("GeoVI", geokl, posgeo, True),

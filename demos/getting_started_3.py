@@ -123,9 +123,8 @@ def main():
             # Double the number of samples in the last step for better statistics
             N_samples = 2*N_samples
         # Draw new samples and minimize KL
-        spl = {k: 'linear' if k=='xi' else 'geometric' for k in mean.domain.keys()}
-        KL = ift.SampledKLEnergy.make(mean, H, N_samples, minimizer_sampling, True,
-        sampling_types=spl)
+        print(mean.domain.keys())
+        KL = ift.SampledKLEnergy.make(mean, H, N_samples, minimizer_sampling, True)
         KL, convergence = minimizer(KL)
         mean = KL.position
         ift.extra.minisanity(data, lambda x: N.inverse, signal_response,

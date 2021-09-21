@@ -108,8 +108,8 @@ class _SelfAdjointOperatorWrapper(EndomorphicOperator):
         return self._func(x)
 
 
-def draw_samples(position, H, minimizer, n_samples, mirror_samples, linear_keys,
-                napprox=0, want_error=False, comm=None):
+def draw_samples(position, H, minimizer, n_samples, mirror_samples, napprox=0,
+                want_error=False, comm=None):
     if not isinstance(H, StandardHamiltonian):
             raise NotImplementedError
     if isinstance(position, MultiField):
@@ -171,12 +171,10 @@ def draw_samples(position, H, minimizer, n_samples, mirror_samples, linear_keys,
                 m = transformation_mean - y if neg else transformation_mean + y
                 pos = sam_position - yi if neg else sam_position + yi
                 en = GaussianEnergy(mean=m)@transformation
-                pos, en = _reduce_by_keys(pos, en, linear_keys)
                 en = EnergyAdapter(pos, en, nanisinf=True, want_metric=True)
                 en, _ = minimizer(en)
                 local_samples.append(_insert_missing(en.position, yi) - sam_position)
-                local_neg.append(False if (not neg or len(linear_keys) == 0)
-                    else {kk : (kk in linear_keys) for kk in yi.domain.keys()})
+                local_neg.append(False)
             else:
                 local_samples.append(yi)
                 local_neg.append(neg)
@@ -238,7 +236,7 @@ class SampledKLEnergy(Energy):
 
     @staticmethod
     def make(position, hamiltonian, n_samples, minimizer_sampling, mirror_samples,
-    sampling_types='geometric', napprox=0, comm=None, nanisinf=True):
+            point_estimates=[], napprox=0, comm=None, nanisinf=True):
         """Provides the sampled Kullback-Leibler used for Variational Inference,
         specifically for geometric Variational Inference (geoVI) and Metric 
         Gaussian VI (MGVI).
@@ -268,36 +266,31 @@ class SampledKLEnergy(Energy):
         n_samples : integer
             Number of samples used to stochastically estimate the KL.
         minimizer_samp : DescentMinimizer or None
-            Minimizer used to draw samples. Can only be None in case no
-            `geometric` samples are drawn.
+            Minimizer used to perform the non-linear part of geoVI sampling. If
+            it is None, only the linear (MGVI) approximation for sampling is
+            used and no further non-linear steps are performed.
         mirror_samples : boolean
             Whether the mirrored version of the drawn samples are also used.
             If true, the number of used samples doubles.
             Mirroring samples stabilizes the KL estimate as extreme
             sample variation is counterbalanced.
-        sampling_types : String or dict(String)
-            The type of sampling used to perform variational approximation.
-            There are three supported modes: `point`; A point (aka maximum a 
-            posterior) estimate. No sampling is performed. `linear`; Linear
-            (MGVI) sample assuming that the linear approximation of the
-            transformation is sufficiently accurate. `geometric`; Full (geoVI)
-            sample. Internally, first a `linear` sample is drawn and then
-            further optimized non-linearly. Also supports different sampling
-            types for different parts of the domain. In this case `sampling_type`
-            must be a dict that contains one of the three sampling types for
-            each key of the domain.
+        point_estimates : list
+            List of parameter keys for which no samples are drawn, but that are
+            (possibly) optimized for, corresponding to point estimates of these.
+            Default is to draw samples for the complete domain.
         napprox : int
             Number of samples for computing preconditioner for linear sampling.
             No preconditioning is done by default.
         comm : MPI communicator or None
             If not None, samples will be distributed as evenly as possible
-            across this communicator. If `mirror_samples` is set, then a sample and
-            its mirror image will preferably reside on the same task if necessary.
+            across this communicator. If `mirror_samples` is set, then a sample
+            and its mirror image will preferably reside on the same task if
+            necessary.
         nanisinf : bool
-            If true, nan energies which can happen due to overflows in the forward
-            model are interpreted as inf. Thereby, the code does not crash on
-            these occasions but rather the minimizer is told that the position it
-            has tried is not sensible.
+            If true, nan energies which can happen due to overflows in the
+            forward model are interpreted as inf. Thereby, the code does not
+            crash on these occasions but rather the minimizer is told that the
+            position it has tried is not sensible.
 
         Note
         ----
@@ -330,30 +323,15 @@ class SampledKLEnergy(Energy):
         if not (minimizer_sampling is None or
             isinstance(minimizer_sampling, DescentMinimizer)):
             raise TypeError
-
-        types = ['geometric', 'linear', 'point']
-        lists = {tt : [] for tt in types}
-        if isinstance(position, MultiField):
-            if isinstance(sampling_types, str):
-                sampling = {k:sampling_types for k in position.domain.keys()}
-                sampling_types = sampling
-            else:
-                myassert(set(position.domain.keys()) == set(sampling_types.keys()))
-            for k in sampling_types.keys():
-                tt = sampling_types[k]
-                if tt not in types:
-                    raise ValueError(f'Sampling type {tt} for key {k} not understood')
-                lists[tt].append(k)
-        if len(lists['geometric']) != 0 and minimizer_sampling is None:
-            raise ValueError("Cannot draw geometric samples without a Minimizer")
-        elif len(lists['geometric']) == 0:
-            minimizer_sampling = None
+        if (isinstance(position, MultiField) and
+            set(point_estimates) == set(position.keys())):
+            raise RuntimeError(
+                'Point estimates for whole domain. Use EnergyAdapter instead.')
 
         n_samples = int(n_samples)
         mirror_samples = bool(mirror_samples)
-        _, ham_sampling = _reduce_by_keys(position, hamiltonian, lists['point'])
+        _, ham_sampling = _reduce_by_keys(position, hamiltonian, point_estimates)
         sample_list = draw_samples(position, ham_sampling, minimizer_sampling,
-            n_samples, mirror_samples, lists['linear'], napprox=napprox, comm=comm)
-
+            n_samples, mirror_samples, napprox=napprox, comm=comm)
         return SampledKLEnergy(sample_list, hamiltonian, nanisinf,
                             _callingfrommake = True)
