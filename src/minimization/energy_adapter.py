@@ -204,8 +204,8 @@ class StochasticEnergyAdapter(Energy):
         samdom = MultiDomain.make(samdom)
         noise = []
         sseq = random.spawn_sseq(n_samples)
-        from .kl_energies import _get_lo_hi
-        for i in range(*_get_lo_hi(comm, n_samples)):
+        from .sample_list import SampleList
+        for i in SampleList.indices_from_comm(n_samples, comm):
             with random.Context(sseq[i]):
                 rnd = from_random(samdom)
                 noise.append(rnd)
