@@ -15,10 +15,8 @@
 #
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
 
-from .diagonal_operator import DiagonalOperator
 from .endomorphic_operator import EndomorphicOperator
 from .linear_operator import LinearOperator
-from .sampling_enabler import SamplingDtypeSetter
 from .scaling_operator import ScalingOperator
 
 
@@ -41,7 +39,7 @@ class SandwichOperator(EndomorphicOperator):
         self._capability = op._capability
 
     @staticmethod
-    def make(bun, cheese=None):
+    def make(bun, cheese=None, sampling_dtype=None):
         """Build a SandwichOperator (or something simpler if possible)
 
         Parameters
@@ -50,6 +48,12 @@ class SandwichOperator(EndomorphicOperator):
             the bun part
         cheese: EndomorphicOperator
             the cheese part
+        sampling_dtype :
+            If this operator represents the covariance of a Gaussian probabilty
+            distribution and cheese is `None`, `sampling_dtype` specifies if it
+            is real or complex Gaussian. If `sampling_dtype` and `cheese` are
+            `None`, the operator cannot be used as a covariance, i.e. no samples
+            can be drawn. Default: None.
         """
         if isinstance(cheese, SandwichOperator):
             old_cheese = cheese
@@ -58,25 +62,18 @@ class SandwichOperator(EndomorphicOperator):
 
         if not isinstance(bun, LinearOperator):
             raise TypeError("bun must be a linear operator")
-        if isinstance(bun, ScalingOperator):
-            if cheese is None:
-                return bun @ bun
-            return cheese.scale(abs(bun._factor)**2)
         if cheese is not None and not isinstance(cheese, LinearOperator):
             raise TypeError("cheese must be a linear operator or None")
         if cheese is None:
-            # FIXME Sampling dtype not clear in this case
-            cheese = ScalingOperator(bun.target, 1.)
-            op = bun.adjoint(bun)
+            cheese = ScalingOperator(bun.target, 1., sampling_dtype)
+        if isinstance(bun, ScalingOperator):
+            fct = abs(bun._factor)**2
+            # if fct == 1.:
+            # FIXME Can be enabled after bug has been found
+            #     return cheese
+            op = cheese.scale(fct)
         else:
-            op = bun.adjoint(cheese(bun))
-
-        # If our sandwich is diagonal, we can return immediately
-        if isinstance(op, (ScalingOperator, DiagonalOperator)):
-            if isinstance(cheese, SamplingDtypeSetter):
-                #FIXME
-                return SamplingDtypeSetter(op, cheese._dtype)
-            return op
+            op = bun.adjoint @ cheese @ bun
         return SandwichOperator(bun, cheese, op, _callingfrommake=True)
 
     def apply(self, x, mode):

@@ -503,7 +503,7 @@ class _OpSum(Operator):
         op = lin1._jac._myadd(lin2._jac, False)
         res = lin1.new(lin1._val.unite(lin2._val), op)
         if lin1._metric is not None and lin2._metric is not None:
-            res = res.add_metric(lin1._metric._myadd(lin2._metric, False))
+            res = res.add_metric(lin1._metric + lin2._metric)
         return res
 
     def get_transformation(self):

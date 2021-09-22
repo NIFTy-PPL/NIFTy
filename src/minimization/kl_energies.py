@@ -28,7 +28,6 @@ from ..operators.adder import Adder
 from ..operators.endomorphic_operator import EndomorphicOperator
 from ..operators.energy_operators import GaussianEnergy, StandardHamiltonian
 from ..operators.inversion_enabler import InversionEnabler
-from ..operators.sampling_enabler import SamplingDtypeSetter
 from ..operators.sandwich_operator import SandwichOperator
 from ..operators.scaling_operator import ScalingOperator
 from ..probing import approximation2endo
@@ -225,15 +224,18 @@ class _GeoMetricSampler:
         if not isinstance(H, StandardHamiltonian):
             raise NotImplementedError
 
-        # Check domain dtype
-        dts = H._prior._met._dtype
-        if isinstance(H.domain, DomainTuple):
-            real = np.issubdtype(dts, np.floating)
-        else:
-            real = all([np.issubdtype(dts[kk], np.floating) for kk in dts.keys()])
-        if not real:
-            raise ValueError("_GeoMetricSampler only supports real valued latent DOFs.")
-        # /Check domain dtype
+        # # Check domain dtype
+        # # FIXME pfrank, I think this needs to be moved somewhere else.
+        # dts = H.prior_energy.metric.sampling_dtype
+        # if dts is None:
+        #     raise RuntimeError("Sampling dtype of prior needs to be set.")
+        # if isinstance(H.domain, DomainTuple):
+        #     real = np.issubdtype(dts, np.floating)
+        # else:
+        #     real = all([np.issubdtype(dts[kk], np.floating) for kk in dts.keys()])
+        # if not real:
+        #     raise ValueError("_GeoMetricSampler only supports real valued latent DOFs.")
+        # # /Check domain dtype
 
         if isinstance(position, MultiField):
             self._position = position.extract(H.domain)
@@ -243,18 +245,12 @@ class _GeoMetricSampler:
         if tr is None:
             raise ValueError("_GeoMetricSampler only works for likelihoods")
         dtype, f_lh = tr
-        scale = ScalingOperator(f_lh.target, 1.)
-        if isinstance(dtype, dict):
-            sampling = reduce((lambda a,b: a*b),
-                              [dtype[k] is not None for k in dtype.keys()])
-        else:
-            sampling = dtype is not None
-        scale = SamplingDtypeSetter(scale, dtype) if sampling else scale
 
         fl = f_lh(Linearization.make_var(self._position))
-        self._g = (Adder(-self._position) + fl.jac.adjoint@Adder(-fl.val)@f_lh)
-        self._likelihood = SandwichOperator.make(fl.jac, scale)
-        self._prior = SamplingDtypeSetter(ScalingOperator(fl.domain,1.), np.float64)
+        self._g = (Adder(self._position, neg=True)
+                   + fl.jac.adjoint @ Adder(fl.val, neg=True) @ f_lh)
+        self._likelihood = SandwichOperator.make(fl.jac, sampling_dtype=np.float64)
+        self._prior = ScalingOperator(fl.domain, 1., np.float64)
         self._met = self._likelihood + self._prior
         if napprox >= 1:
             self._approximation = makeOp(approximation2endo(self._met, napprox)).inverse
@@ -300,7 +296,8 @@ class _GeoMetricSampler:
         return y, yi
 
     def _draw_nonlin(self, y, yi):
-        en = EnergyAdapter(self._position+yi, GaussianEnergy(mean=y)@self._g,
+        # FIXME @pfrank: sampling_dtype
+        en = EnergyAdapter(self._position+yi, GaussianEnergy(mean=y, sampling_dtype=float) @ self._g,
                            nanisinf=True, want_metric=True)
         en, _ = self._minimizer(en)
         sam = en.position - self._position

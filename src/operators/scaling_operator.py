@@ -11,13 +11,14 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
-# Copyright(C) 2013-2020 Max-Planck-Society
+# Copyright(C) 2013-2021 Max-Planck-Society
 #
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
 
 import numpy as np
 
 from .endomorphic_operator import EndomorphicOperator
+from ..utilities import check_dtype_or_none
 
 
 class ScalingOperator(EndomorphicOperator):
@@ -29,6 +30,11 @@ class ScalingOperator(EndomorphicOperator):
         The domain on which the Operator's input Field is defined.
     factor : scalar
         The multiplication factor
+    sampling_dtype :
+        If this operator represents the covariance of a Gaussian probabilty
+        distribution, `sampling_dtype` specifies if it is real or complex
+        Gaussian. If `sampling_dtype` is `None`, the operator cannot be used as
+        a covariance, i.e. no samples can be drawn. Default: None.
 
     Notes
     -----
@@ -49,7 +55,7 @@ class ScalingOperator(EndomorphicOperator):
     somewhere else.
     """
 
-    def __init__(self, domain, factor):
+    def __init__(self, domain, factor, sampling_dtype=None):
         from ..sugar import makeDomain
 
         if not np.isscalar(factor):
@@ -57,6 +63,8 @@ class ScalingOperator(EndomorphicOperator):
         self._domain = makeDomain(domain)
         self._factor = factor
         self._capability = self._all_ops
+        check_dtype_or_none(sampling_dtype, self._domain)
+        self._dtype = sampling_dtype
 
     def apply(self, x, mode):
         from ..sugar import full
@@ -82,7 +90,7 @@ class ScalingOperator(EndomorphicOperator):
             fct = np.conj(fct)
         if trafo & self.INVERSE_BIT:
             fct = 1./fct
-        return ScalingOperator(self._domain, fct)
+        return ScalingOperator(self._domain, fct, self._dtype)
 
     def _get_fct(self, from_inverse):
         fct = self._factor
@@ -91,9 +99,14 @@ class ScalingOperator(EndomorphicOperator):
             raise ValueError("operator not positive definite")
         return 1./np.sqrt(fct) if from_inverse else np.sqrt(fct)
 
-    def draw_sample_with_dtype(self, dtype, from_inverse=False):
+    def draw_sample(self, from_inverse=False):
         from ..sugar import from_random
-        return from_random(domain=self._domain, random_type="normal", dtype=dtype, std=self._get_fct(from_inverse))
+        if self._dtype is None:
+            s = "Need to specify dtype to be able to sample from this operator:\n"
+            s += self.__repr__()
+            raise RuntimeError(s)
+        return from_random(domain=self._domain, random_type="normal",
+                           dtype=self._dtype, std=self._get_fct(from_inverse))
 
     def get_sqrt(self):
         fct = self._get_fct(False)
@@ -104,14 +117,17 @@ class ScalingOperator(EndomorphicOperator):
     def __call__(self, other):
         res = EndomorphicOperator.__call__(self, other)
         if np.isreal(self._factor) and self._factor >= 0:
-            if other.jac is not None:
-                if other.metric is not None:
-                    from .sandwich_operator import SandwichOperator
-                    sqrt_fac = np.sqrt(self._factor)
-                    newop = ScalingOperator(other.metric.domain, sqrt_fac)
-                    met = SandwichOperator.make(newop, other.metric)
-                    res = res.add_metric(met)
+            if other.jac is not None and other.metric is not None:
+                from .sandwich_operator import SandwichOperator
+                sqrt_fac = np.sqrt(self._factor)
+                newop = ScalingOperator(other.metric.domain, sqrt_fac, self._dtype)
+                met = SandwichOperator.make(newop, other.metric)
+                res = res.add_metric(met)
         return res
 
     def __repr__(self):
-        return "ScalingOperator ({})".format(self._factor)
+        s = f"ScalingOperator ({self._factor}"
+        if self._dtype is not None:
+            s += f", sampling dtype {self._dtype}"
+        s += ")"
+        return s

@@ -11,7 +11,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
-# Copyright(C) 2013-2020 Max-Planck-Society
+# Copyright(C) 2013-2021 Max-Planck-Society
 #
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
 
@@ -31,7 +31,6 @@ from .operators.block_diagonal_operator import BlockDiagonalOperator
 from .operators.diagonal_operator import DiagonalOperator
 from .operators.distributors import PowerDistributor
 from .operators.operator import Operator
-from .operators.sampling_enabler import SamplingDtypeSetter
 from .operators.scaling_operator import ScalingOperator
 from .operators.selection_operators import SliceOperator
 from .plot import Plot
@@ -190,7 +189,8 @@ def _create_power_field(domain, power_spectrum):
     return PowerDistributor(domain, power_domain)(fp)
 
 
-def create_power_operator(domain, power_spectrum, space=None):
+def create_power_operator(domain, power_spectrum, space=None,
+                          sampling_dtype=None):
     """Creates a diagonal operator with the given power spectrum.
 
     Constructs a diagonal operator that is defined on the specified domain.
@@ -203,6 +203,10 @@ def create_power_operator(domain, power_spectrum, space=None):
         An object that contains the power spectrum as a function of k.
     space : int
         the domain index on which the power operator will work
+    sampling_dtype : dtype or dict of dtype
+        Specifies the dtype of the underlying Gaussian distribution.  Gaussian.
+        If `sampling_dtype` is `None`, the operator cannot be used as a
+        covariance, i.e. no samples can be drawn. Default: None.
 
     Returns
     -------
@@ -212,7 +216,7 @@ def create_power_operator(domain, power_spectrum, space=None):
     domain = DomainTuple.make(domain)
     space = utilities.infer_space(domain, space)
     field = _create_power_field(domain[space], power_spectrum)
-    return DiagonalOperator(field, domain, space)
+    return DiagonalOperator(field, domain, space, sampling_dtype)
 
 
 def density_estimator(domain, pad=1.0, cf_fluctuations=None,
@@ -392,12 +396,12 @@ def makeDomain(domain):
     return DomainTuple.make(domain)
 
 
-def makeOp(input, dom=None):
+def makeOp(inp, dom=None, sampling_dtype=None):
     """Converts a Field or MultiField to a diagonal operator.
 
     Parameters
     ----------
-    input : None, Field or MultiField
+    inp : None, Field or MultiField
         - if None, None is returned.
         - if Field on scalar-domain, a ScalingOperator with the coefficient
             given by the Field is returned.
@@ -407,27 +411,39 @@ def makeOp(input, dom=None):
             MultiField is returned.
 
     dom : DomainTuple or MultiDomain
-        if `input` is a scalar, this is used as the operator's domain
+        if `inp` is a scalar, this is used as the operator's domain
+
+    sampling_dtype : dtype or dict of dtypes
+        If `inp` shall represent the diagonal covariance of a Gaussian
+        probabilty distribution, `sampling_dtype` specifies if it is real or
+        complex Gaussian. If `sampling_dtype` is `None`, the operator cannot be
+        used as a covariance, i.e. no samples can be drawn. Default: None.
 
     Notes
     -----
     No volume factors are applied.
     """
-    if input is None:
+    if inp is None:
         return None
-    if np.isscalar(input):
+    if np.isscalar(inp):
         if not isinstance(dom, (DomainTuple, MultiDomain)):
             raise TypeError("need proper `dom` argument")
-        return ScalingOperator(dom, input)
+        return ScalingOperator(dom, inp, sampling_dtype=sampling_dtype)
     if dom is not None:
-        utilities.check_domain_equality(dom, input.domain)
-    if input.domain is DomainTuple.scalar_domain():
-        return ScalingOperator(input.domain, input.val[()])
-    if isinstance(input, Field):
-        return DiagonalOperator(input)
-    if isinstance(input, MultiField):
-        return BlockDiagonalOperator(
-            input.domain, {key: makeOp(val) for key, val in input.items()})
+        utilities.check_domain_equality(dom, inp.domain)
+    if inp.domain is DomainTuple.scalar_domain():
+        return ScalingOperator(inp.domain, inp.val[()], sampling_dtype=sampling_dtype)
+    if isinstance(inp, Field):
+        return DiagonalOperator(inp, sampling_dtype=sampling_dtype)
+    if isinstance(inp, MultiField):
+        dct = {}
+        for key, val in inp.items():
+            if isinstance(sampling_dtype, dict):
+                sdt = sampling_dtype[key]
+            else:
+                sdt = sampling_dtype
+            dct[key] = makeOp(val, sampling_dtype=sdt)
+        return BlockDiagonalOperator(inp.domain, dct)
     raise NotImplementedError
 
 
@@ -575,9 +591,7 @@ def calculate_position(operator, output):
     else:
         cov = 1e-3*np.max(np.abs(output.val))**2
         dtype = output.dtype
-    invcov = ScalingOperator(output.domain, cov).inverse
-    invcov = SamplingDtypeSetter(invcov, output.dtype)
-    invcov = SamplingDtypeSetter(invcov, output.dtype)
+    invcov = ScalingOperator(output.domain, cov, output.dtype).inverse
     d = output + invcov.draw_sample(from_inverse=True)
     lh = GaussianEnergy(d, invcov) @ operator
     H = StandardHamiltonian(
