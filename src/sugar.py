@@ -216,7 +216,7 @@ def create_power_operator(domain, power_spectrum, space=None):
 
 
 def density_estimator(domain, pad=1.0, cf_fluctuations=None,
-                      cf_azm_uniform=None):
+                      cf_azm_uniform=None, prefix=""):
     from .domains.rg_space import RGSpace
     from .library.correlated_fields import CorrelatedFieldMaker
     from .library.special_distributions import UniformOperator
@@ -247,7 +247,7 @@ def density_estimator(domain, pad=1.0, cf_fluctuations=None,
 
     # Set up the signal model
     azm_offset_mean = 0.0  # The zero-mode should be inferred only from the data
-    cfmaker = CorrelatedFieldMaker("")
+    cfmaker = CorrelatedFieldMaker(prefix)
     for i, d in enumerate(domain_padded):
         if isinstance(cf_fluctuations, (list, tuple)):
             cf_fl = cf_fluctuations[i]
