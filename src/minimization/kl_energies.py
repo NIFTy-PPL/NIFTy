@@ -30,13 +30,18 @@ from ..operators.sampling_enabler import SamplingDtypeSetter, SamplingEnabler
 from ..operators.sandwich_operator import SandwichOperator
 from ..operators.scaling_operator import ScalingOperator
 from ..probing import approximation2endo
-from ..sugar import domain_union, is_fieldlike, makeOp
+from ..sugar import makeOp
 from ..utilities import myassert
 from .descent_minimizers import DescentMinimizer
 from .energy import Energy
 from .energy_adapter import EnergyAdapter
 from .sample_list import ResidualSampleList, SampleList
 
+
+def _reduce_field(field, keys):
+    if isinstance(field, MultiField) and len(keys)>0:
+        return field.extract_by_keys(set(field.keys()) - set(keys))
+    return field
 
 def _reduce_by_keys(field, operator, keys):
     """Partially insert a field into an operator
@@ -63,8 +68,8 @@ def _reduce_by_keys(field, operator, keys):
     if isinstance(field, MultiField):
         cst_field = field.extract_by_keys(keys)
         var_field = field.extract_by_keys(set(field.keys()) - set(keys))
-        _, new_ham = operator.simplify_for_constant_input(cst_field)
-        return var_field, new_ham
+        _, operator = operator.simplify_for_constant_input(cst_field)
+        return var_field, operator
     myassert(len(keys) == 0)
     return field, operator
 
@@ -160,19 +165,22 @@ class SampledKLEnergy(Energy):
     distribution.
 
     Supports the samples to be distributed across MPI tasks."""
-    def __init__(self, sample_list, hamiltonian, nanisinf,
-        _callingfrommake = False):
+    def __init__(self, sample_list, hamiltonian, nanisinf, constants,
+                _callingfrommake = False):
         if not _callingfrommake:
             raise NotImplementedError
         myassert(isinstance(sample_list, ResidualSampleList))
         self._sample_list = sample_list
-        super(SampledKLEnergy, self).__init__(self._sample_list.mean)
+        super(SampledKLEnergy, self).__init__(
+            _reduce_field(self._sample_list._m, constants))
         myassert(self._sample_list.domain is hamiltonian.domain)
         self._hamiltonian = hamiltonian
         self._nanisinf = bool(nanisinf)
+        self._constants = constants
 
         def _func(inp):
-            tmp = hamiltonian(Linearization.make_var(inp))
+            inp, tmp = _reduce_by_keys(inp, hamiltonian, constants)
+            tmp = tmp(Linearization.make_var(inp))
             return tmp.val.val[()], tmp.gradient
 
         self._val, self._grad = sample_list.global_average(_func)
@@ -188,13 +196,14 @@ class SampledKLEnergy(Energy):
         return self._grad
 
     def at(self, position):
-        return SampledKLEnergy(self._sample_list.at(position),
-            self._hamiltonian, self._nanisinf, _callingfrommake = True)
+        return SampledKLEnergy(self._sample_list.update(position),
+            self._hamiltonian, self._nanisinf, self._constants,
+            _callingfrommake = True)
 
     def apply_metric(self, x):
         def _func(inp):
-            tmp = self._hamiltonian(
-                Linearization.make_var(inp, want_metric=True))
+            inp, tmp = _reduce_by_keys(inp, self._hamiltonian, self._constants)
+            tmp = tmp(Linearization.make_var(inp, want_metric=True))
             return tmp.metric(x)
         return self._sample_list.global_average(_func)
 
@@ -208,8 +217,9 @@ class SampledKLEnergy(Energy):
         return self._sample_list
 
     @staticmethod
-    def make(position, hamiltonian, n_samples, minimizer_sampling, mirror_samples,
-            point_estimates=[], napprox=0, comm=None, nanisinf=True):
+    def make(position, hamiltonian, n_samples, minimizer_sampling,
+            mirror_samples = True, constants=[], point_estimates=[], napprox=0,
+            comm=None, nanisinf=True):
         """Provides the sampled Kullback-Leibler used for Variational Inference,
         specifically for geometric Variational Inference (geoVI) and Metric 
         Gaussian VI (MGVI).
@@ -247,6 +257,10 @@ class SampledKLEnergy(Energy):
             If true, the number of used samples doubles.
             Mirroring samples stabilizes the KL estimate as extreme
             sample variation is counterbalanced.
+            Default is True.
+        constants : list
+            List of parameter keys that are kept constant during optimization.
+            Default is no constants.
         point_estimates : list
             List of parameter keys for which no samples are drawn, but that are
             (possibly) optimized for, corresponding to point estimates of these.
@@ -264,6 +278,13 @@ class SampledKLEnergy(Energy):
             forward model are interpreted as inf. Thereby, the code does not
             crash on these occasions but rather the minimizer is told that the
             position it has tried is not sensible.
+
+        Note
+        ----
+        The two lists `constants` and `point_estimates` are independent from
+        each other. It is possible to sample along domains which are kept
+        constant during minimization and vice versa. If a key is in both lists,
+        it will be inserted into the hamiltonian and removed from the KL.
 
         Note
         ----
@@ -301,10 +322,14 @@ class SampledKLEnergy(Energy):
             raise RuntimeError(
                 'Point estimates for whole domain. Use EnergyAdapter instead.')
 
+        # If a key is in both lists `constants` and `point_estimates` remove it.
+        invariant = list(set(constants).intersection(point_estimates))
+        position, hamiltonian = _reduce_by_keys(position, hamiltonian, invariant)
+
         n_samples = int(n_samples)
         mirror_samples = bool(mirror_samples)
         _, ham_sampling = _reduce_by_keys(position, hamiltonian, point_estimates)
         sample_list = draw_samples(position, ham_sampling, minimizer_sampling,
             n_samples, mirror_samples, napprox=napprox, comm=comm)
-        return SampledKLEnergy(sample_list, hamiltonian, nanisinf,
+        return SampledKLEnergy(sample_list, hamiltonian, nanisinf, constants,
                             _callingfrommake = True)

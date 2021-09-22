@@ -123,16 +123,15 @@ def main():
             # Double the number of samples in the last step for better statistics
             N_samples = 2*N_samples
         # Draw new samples and minimize KL
-        print(mean.domain.keys())
-        KL = ift.SampledKLEnergy.make(mean, H, N_samples, minimizer_sampling, True)
+        KL = ift.SampledKLEnergy.make(mean, H, N_samples, minimizer_sampling)
         KL, convergence = minimizer(KL)
         mean = KL.position
         ift.extra.minisanity(data, lambda x: N.inverse, signal_response,
-                             KL.position, [s-KL.position for s in KL.samples])
+                             mean, [s-mean for s in KL.samples])
 
         # Plot current reconstruction
         plot = ift.Plot()
-        plot.add(signal(KL.position), title="Latent mean", zmin = 0, zmax = 1)
+        plot.add(signal(mean), title="Latent mean", zmin = 0, zmax = 1)
         plot.add([pspec.force(ss) for ss in KL.samples],
                  title="Samples power spectrum")
         plot.output(ny=1, ysize=6, xsize=16,

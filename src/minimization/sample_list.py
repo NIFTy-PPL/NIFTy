@@ -17,8 +17,8 @@
 import pickle
 
 from .. import utilities
-
 from ..multi_domain import MultiDomain
+from ..multi_field import MultiField
 
 
 class SampleList:
@@ -108,9 +108,9 @@ class ResidualSampleList(SampleList):
 
         assert len(self._r) == len(self._n)
         r_dom = self._r[0].domain
-        assert isinstance(r_dom, MultiDomain)
         assert all(rr.domain is r_dom for rr in self._r)
-        assert all(k in self._m.domain.keys() for k in r_dom.keys())
+        if isinstance(r_dom, MultiDomain):
+            assert all(k in self._m.domain.keys() for k in r_dom.keys())
         for nn in self._n:
             if isinstance(nn, dict):
                 assert set(nn.keys()) == set(r_dom.keys())
@@ -118,12 +118,20 @@ class ResidualSampleList(SampleList):
             else:
                 assert isinstance(nn, bool)
 
-    @property
-    def mean(self):
-        return self._m
-
     def at(self, mean):
+        """Creates a new instance of `ResidualSampleList` where only the mean
+        has changed. The residuals remain the same for the new list.
+        """
         return ResidualSampleList(mean, self._r, self._n, self.comm)
+
+    def update(self, field):
+        """Updates (parts of) the mean with the new field values. A new instance
+        of `ResidualSampleList` is created and the residuals remain the same for
+        the new list.
+        """
+        if isinstance(self._m, MultiField) and self.domain != field.domain:
+            return self.at(self._m.union([self._m, field]))
+        return self.at(field)
 
     def __getitem__(self, i):
         return self._m.flexible_addsub(self._r[i], self._n[i])
