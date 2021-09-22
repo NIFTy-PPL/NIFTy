@@ -48,7 +48,8 @@ class SampleList:
                 for i in range(_bcast(len(self), self._comm, itask)):
                     ss = _bcast(self[i], self._comm, itask)
                     yield op(ss)
-        return (op(ss) for ss in self)
+        for ss in self:
+            yield op(ss)
 
     def global_average(self, op=None):
         """if op returns tuple, then individual averages are computed and returned individually."""
