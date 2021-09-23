@@ -41,28 +41,3 @@ def test_simplification():
     assert_allclose(op(f1)["a"].val, op2.force(f1)["a"].val)
     assert_allclose(op(f1)["b"].val, op2.force(f1)["b"].val)
     # FIXME Add test for ChainOperator._simplify_for_constant_input_nontrivial()
-
-
-def test_modify_sample_domain():
-    func = ift.minimization.kl_energies._modify_sample_domain
-    dom0 = ift.RGSpace(1)
-    dom1 = ift.RGSpace(2)
-    field = ift.full(dom0, 1.)
-    ift.extra.assert_equal(func(field, dom0), field)
-
-    mdom0 = ift.makeDomain({'a': dom0, 'b': dom1})
-    mdom1 = ift.makeDomain({'a': dom0})
-    mfield0 = ift.full(mdom0, 1.)
-    mfield1 = ift.full(mdom1, 1.)
-    mfield01 = ift.MultiField.from_dict({'a': ift.full(dom0, 1.),
-                                         'b': ift.full(dom1, 0.)})
-
-    ift.extra.assert_equal(func(mfield0, mdom0), mfield0)
-    ift.extra.assert_equal(func(mfield0, mdom1), mfield1)
-    ift.extra.assert_equal(func(mfield1, mdom0), mfield01)
-    ift.extra.assert_equal(func(mfield1, mdom1), mfield1)
-
-    with assert_raises(TypeError):
-        func(mfield0, dom0)
-    with assert_raises(TypeError):
-        func(field, dom1)
