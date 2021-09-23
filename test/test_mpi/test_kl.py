@@ -11,7 +11,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
-# Copyright(C) 2013-2020 Max-Planck-Society
+# Copyright(C) 2013-2021 Max-Planck-Society
 #
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
 
@@ -63,10 +63,10 @@ def test_kl(constants, point_estimates, mirror_samples, mode, mf, geo):
             'minimizer_sampling': ift.NewtonCG(ic2) if geo else None}
     if isinstance(mean0, ift.MultiField) and set(point_estimates) == set(mean0.keys()):
         with assert_raises(RuntimeError):
-            ift.SampledKLEnergy(**args, comm = comm)
+            ift.SampledKLEnergy(**args, comm=comm)
         return
-    
-    kl0 = ift.SampledKLEnergy(**args, comm = comm if mode==0 else None)
+
+    kl0 = ift.SampledKLEnergy(**args, comm=comm if mode == 0 else None)
     if isinstance(mean0, ift.MultiField):
         invariant = list(set(constants).intersection(point_estimates))
         _, tmph = h.simplify_for_constant_input(mean0.extract_by_keys(invariant))
@@ -81,8 +81,6 @@ def test_kl(constants, point_estimates, mirror_samples, mode, mf, geo):
     if mode == 1:
         samples = tuple(s for s in samp._r)
         ii = len(samples)//2
-        print(rank)
-        print(ii)
         slc = slice(None, ii) if rank == 0 else slice(ii, None)
         locsamp = samples[slc]
         if mirror_samples:
@@ -92,7 +90,7 @@ def test_kl(constants, point_estimates, mirror_samples, mode, mf, geo):
         locneg = neg[slc]
         samp = ift.minimization.sample_list.ResidualSampleList(
                     tmpmean, locsamp, locneg, comm)
-    kl1 = ift.SampledKLEnergy(samp, tmph, constants, invariant, False, True)
+    kl1 = ift.SampledKLEnergy._init2(None, samp, tmph, constants, invariant, False)
 
     # Test number of samples
     expected_nsamps = 2*nsamps if mirror_samples else nsamps
@@ -111,22 +109,20 @@ def test_kl(constants, point_estimates, mirror_samples, mode, mf, geo):
     else:
         assert_equal(kl0.gradient.val, kl1.gradient.val)
 
+
 @pmp('seed', (42, 123))
 @pmp('n_samples', (1, 2, 5, 6))
-@pmp('mode', (0,1))
-def test_geo_mirror(n_samples, seed, mode):
+@pmp('geo', (False, True))
+def test_mirror(n_samples, seed, geo):
     ift.random.push_sseq_from_seed(seed)
     a = ift.FieldAdapter(ift.UnstructuredDomain(2), 'a').exp()
-    lh = ift.GaussianEnergy(domain = a.target, sampling_dtype=np.float) @ a
-    H = ift.StandardHamiltonian(lh, 
-            ic_samp=ift.AbsDeltaEnergyController(1E-10, iteration_limit=2))
-    if mode == 0:
-        mini = ift.NewtonCG(ift.AbsDeltaEnergyController(1E-10,
-                                                        iteration_limit=0,))
-    else:
-        mini = None
+    lh = ift.GaussianEnergy(domain=a.target, sampling_dtype=float) @ a
+    H = ift.StandardHamiltonian(lh, ic_samp=ift.AbsDeltaEnergyController(1E-10, iteration_limit=2))
+    mini = None
+    if geo:
+        mini = ift.NewtonCG(ift.AbsDeltaEnergyController(1E-10, iteration_limit=0))
     KL = ift.SampledKLEnergy(ift.from_random(H.domain), H, n_samples, mini,
-                                    mirror_samples=True, comm=comm)
+                             mirror_samples=True, comm=comm)
     sams = list([s-KL.position for s in KL.samples.global_sample_iterator()])
     for i in range(len(sams)//2):
-        ift.extra.assert_allclose(sams[2*i],-sams[2*i+1])
+        ift.extra.assert_allclose(sams[2*i], -sams[2*i+1])

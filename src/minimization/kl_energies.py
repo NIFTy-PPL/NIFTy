@@ -133,8 +133,11 @@ def draw_samples(position, H, minimizer, n_samples, mirror_samples, napprox=0,
         sseq = reduce((lambda a,b: a+b), [[ss, ]*2 for ss in sseq])
     local_samples = []
     local_neg = []
+    print("Beofre")
     utilities.check_MPI_synced_random_state(comm)
+    print("after")
     utilities.check_MPI_equality(sseq, comm)
+    print("after2")
     y = None
     for i in SampleList.indices_from_comm(len(sseq), comm):
         with random.Context(sseq[i]):

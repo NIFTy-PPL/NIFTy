@@ -74,7 +74,7 @@ def test_MPI_synced_random_state_kl_energies(geo, mirror, n_samples):
             mini = None
             if geo:
                 mini = ift.NewtonCG(ift.AbsDeltaEnergyController(0.1, iteration_limit=2))
-            ift.SampledKLEnergy(mean, ham, n_samples, mini)
+            ift.SampledKLEnergy(mean, ham, n_samples, mini, comm=comm)
 
 
 @pms(not mpi, reason="requires at least two mpi tasks")
