@@ -136,7 +136,7 @@ def check_operator(op, loc, tol=1e-12, ntries=100, perf_check=True,
 def assert_allclose(f1, f2, atol=0, rtol=1e-7):
     if isinstance(f1, Field):
         return np.testing.assert_allclose(f1.val, f2.val, atol=atol, rtol=rtol)
-    if f1.domain != f2.domain:
+    if f1.domain is not f2.domain:
         raise AssertionError
     for key, val in f1.items():
         assert_allclose(val, f2[key], atol=atol, rtol=rtol)
@@ -145,7 +145,7 @@ def assert_allclose(f1, f2, atol=0, rtol=1e-7):
 def assert_equal(f1, f2):
     if isinstance(f1, Field):
         return np.testing.assert_equal(f1.val, f2.val)
-    if f1.domain != f2.domain:
+    if f1.domain is not f2.domain:
         raise AssertionError
     for key, val in f1.items():
         assert_equal(val, f2[key])
