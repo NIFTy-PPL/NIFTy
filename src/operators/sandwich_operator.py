@@ -68,9 +68,8 @@ class SandwichOperator(EndomorphicOperator):
             cheese = ScalingOperator(bun.target, 1., sampling_dtype)
         if isinstance(bun, ScalingOperator):
             fct = abs(bun._factor)**2
-            # if fct == 1.:
-            # FIXME Can be enabled after bug has been found
-            #     return cheese
+            if fct == 1.:
+                return cheese
             op = cheese.scale(fct)
         else:
             op = bun.adjoint @ cheese @ bun

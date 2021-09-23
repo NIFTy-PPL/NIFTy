@@ -90,25 +90,16 @@ class _SelfAdjointOperatorWrapper(EndomorphicOperator):
 def draw_samples(position, H, minimizer, n_samples, mirror_samples, napprox=0,
                 want_error=False, comm=None):
     if not isinstance(H, StandardHamiltonian):
-            raise NotImplementedError
+        raise TypeError
     if isinstance(position, MultiField):
         sam_position = position.extract(H.domain)
     else:
         sam_position = position
 
-    # Check domain dtype
-    dts = H._prior._met._dtype
-    if isinstance(H.domain, DomainTuple):
-        real = np.issubdtype(dts, np.floating)
-    else:
-        real = all([np.issubdtype(dts[kk], np.floating) for kk in dts.keys()])
-    if not real:
-        raise ValueError("Sampling only supports real valued latent DOFs.")
-    # /Check domain dtype
-
     # Construct transformation
-    if minimizer is not None:
-        tr = H._lh.get_transformation()
+    geometric = minimizer is not None
+    if geometric:
+        tr = H.likelihood_energy.get_transformation()
         if tr is None:
             raise ValueError("GeoMetric sampling only works for likelihoods")
         dtype, f_lh = tr
@@ -116,17 +107,18 @@ def draw_samples(position, H, minimizer, n_samples, mirror_samples, napprox=0,
             myassert(all([dtype[k] is not None for k in dtype.keys()]))
         else:
             myassert(dtype is not None)
-        scale = SamplingDtypeSetter(ScalingOperator(f_lh.target, 1.), dtype)
+        scale = ScalingOperator(f_lh.target, 1., dtype)
         fl = f_lh(Linearization.make_var(sam_position))
 
         transformation = ScalingOperator(f_lh.domain,1.) + fl.jac.adjoint@f_lh
         transformation_mean = sam_position + fl.jac.adjoint(fl.val)
+        # Note: This metric is equivalent to H.metric, except for the case of a
+        # `VariableCovarianceGaussianEnergy` with `use_full_fisher = True`.
         met = SamplingEnabler(SandwichOperator.make(fl.jac, scale),
-            SamplingDtypeSetter(ScalingOperator(fl.domain,1.), np.float64),
+            ScalingOperator(fl.domain,1. , np.float64),
             H._ic_samp)
     else:
         met = H(Linearization.make_var(sam_position, want_metric=True)).metric
-
     if napprox >= 1:
         met._approximation = makeOp(approximation2endo(met, napprox))
     # /Construct transformation
@@ -139,14 +131,14 @@ def draw_samples(position, H, minimizer, n_samples, mirror_samples, napprox=0,
     local_neg = []
     utilities.check_MPI_synced_random_state(comm)
     utilities.check_MPI_equality(sseq, comm)
-    y, yi = None, None
+    y = None
     for i in SampleList.indices_from_comm(len(sseq), comm):
         with random.Context(sseq[i]):
             neg = mirror_samples and (i%2 != 0)
             if not neg or y is None:  # we really need to draw a sample
-                y, yi = met.draw_sample(True, True)
+                y, yi = met.special_draw_sample(True)
 
-            if minimizer is not None:
+            if geometric:
                 m = transformation_mean - y if neg else transformation_mean + y
                 pos = sam_position - yi if neg else sam_position + yi
                 en = GaussianEnergy(mean=m)@transformation

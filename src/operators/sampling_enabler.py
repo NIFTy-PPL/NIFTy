@@ -61,12 +61,10 @@ class SamplingEnabler(EndomorphicOperator):
         self._capability = self._op.capability
         self.apply = self._op.apply
 
-    def draw_sample(self, from_inverse=False, want_inverse=False):
+    def special_draw_sample(self, from_inverse=False):
         try:
             res = self._op.draw_sample(from_inverse)
-            if from_inverse and want_inverse:
-                return self._op(res), res
-            return res
+            return self._op(res), res
         except NotImplementedError:
             if not from_inverse:
                 raise ValueError("from_inverse must be True here")
@@ -85,9 +83,10 @@ class SamplingEnabler(EndomorphicOperator):
                     energy, preconditioner=self._approximation.inverse)
             else:
                 energy, convergence = inverter(energy)
-            if want_inverse:
-                return b, energy.position
-            return energy.position
+            return b, energy.position
+
+    def draw_sample(self, from_inverse=False):
+        return self.special_draw_sample(from_inverse=from_inverse)[1]
 
     def __repr__(self):
         from ..utilities import indent
