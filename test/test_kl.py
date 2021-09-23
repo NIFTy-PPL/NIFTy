@@ -55,9 +55,9 @@ def test_kl(constants, point_estimates, mirror_samples, mf, geo):
             'minimizer_sampling': ift.NewtonCG(ic) if geo else None}
     if isinstance(mean0, ift.MultiField) and set(point_estimates) == set(mean0.keys()):
         with assert_raises(RuntimeError):
-            ift.SampledKLEnergy.make(**args)
+            ift.SampledKLEnergy(**args)
         return
-    kl = ift.SampledKLEnergy.make(**args)
+    kl = ift.SampledKLEnergy(**args)
     myassert(len(ic.history) > 0)
     myassert(len(ic.history) == len(ic.history.time_stamps))
     myassert(len(ic.history) == len(ic.history.energy_values))
@@ -77,7 +77,7 @@ def test_kl(constants, point_estimates, mirror_samples, mf, geo):
         tmpmean = mean0
         invariant = None
     ift.extra.assert_equal(samp._m, tmpmean)
-    klpure = ift.SampledKLEnergy(samp, tmph, constants, invariant, False, True)
+    klpure = ift.SampledKLEnergy._init2(None, samp, tmph, constants, invariant, False)
     # Test number of samples
     expected_nsamps = 2*nsamps if mirror_samples else nsamps
     myassert(len(kl.samples) == expected_nsamps)

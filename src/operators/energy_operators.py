@@ -573,6 +573,10 @@ class StandardHamiltonian(EnergyOperator):
     def likelihood_energy(self):
         return self._lh
 
+    @property
+    def iteration_controller(self):
+        return self._ic_samp
+
     def __repr__(self):
         subs = 'Likelihood energy:\n{}'.format(utilities.indent(self._lh.__repr__()))
         subs += '\nPrior energy:\n{}'.format(self._prior)

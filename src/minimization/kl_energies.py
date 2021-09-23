@@ -161,29 +161,32 @@ class SampledKLEnergy(Energy):
     divergence for the variational approximation of a distribution with another
     distribution.
 
-    Supports the samples to be distributed across MPI tasks."""
-    def __init__(self, sample_list, hamiltonian, constants, invariants, nanisinf,
-                _callingfrommake = False):
-        if not _callingfrommake:
-            raise NotImplementedError
+    Supports the samples to be distributed across MPI tasks.
+    """
+    @staticmethod
+    def _init2(obj, sample_list, hamiltonian, constants, invariants, nanisinf):
         myassert(isinstance(sample_list, ResidualSampleList))
-        self._sample_list = sample_list
-        super(SampledKLEnergy, self).__init__(
-            _reduce_field(self._sample_list._m, constants))
-        myassert(self._sample_list.domain is hamiltonian.domain)
-        self._hamiltonian = hamiltonian
-        self._nanisinf = bool(nanisinf)
-        self._constants = constants
-        self._invariants = invariants
+        myassert(sample_list.domain is hamiltonian.domain)
+
+        if obj is None:
+            obj = SampledKLEnergy.__new__(SampledKLEnergy)
+        super(SampledKLEnergy, obj).__init__(_reduce_field(sample_list._m, constants))
+
+        obj._sample_list = sample_list
+        obj._hamiltonian = hamiltonian
+        obj._nanisinf = bool(nanisinf)
+        obj._constants = constants
+        obj._invariants = invariants
 
         def _func(inp):
             inp, tmp = _reduce_by_keys(inp, hamiltonian, constants)
             tmp = tmp(Linearization.make_var(inp))
             return tmp.val.val[()], tmp.gradient
 
-        self._val, self._grad = sample_list.global_average(_func)
-        if np.isnan(self._val) and self._nanisinf:
-            self._val = np.inf
+        obj._val, obj._grad = sample_list.global_average(_func)
+        if np.isnan(obj._val) and obj._nanisinf:
+            obj._val = np.inf
+        return obj
 
     @property
     def value(self):
@@ -194,9 +197,8 @@ class SampledKLEnergy(Energy):
         return self._grad
 
     def at(self, position):
-        return SampledKLEnergy(self._sample_list.update(position),
-            self._hamiltonian, self._constants, self._invariants, self._nanisinf,
-            _callingfrommake = True)
+        return SampledKLEnergy._init2(None, self._sample_list.update(position),
+            self._hamiltonian, self._constants, self._invariants, self._nanisinf)
 
     def apply_metric(self, x):
         def _func(inp):
@@ -216,10 +218,9 @@ class SampledKLEnergy(Energy):
             return self._sample_list
         return self._sample_list.update(self._invariants)
 
-    @staticmethod
-    def make(position, hamiltonian, n_samples, minimizer_sampling,
-            mirror_samples = True, constants=[], point_estimates=[], napprox=0,
-            comm=None, nanisinf=True):
+    def __init__(self, position, hamiltonian, n_samples, minimizer_sampling,
+                 mirror_samples=True, constants=[], point_estimates=[], napprox=0,
+                 comm=None, nanisinf=True):
         """Provides the sampled Kullback-Leibler used for Variational Inference,
         specifically for geometric Variational Inference (geoVI) and Metric 
         Gaussian VI (MGVI).
@@ -327,10 +328,7 @@ class SampledKLEnergy(Energy):
             inv_pos = None
         position, hamiltonian = _reduce_by_keys(position, hamiltonian, invariant)
 
-        n_samples = int(n_samples)
-        mirror_samples = bool(mirror_samples)
         _, ham_sampling = _reduce_by_keys(position, hamiltonian, point_estimates)
-        sample_list = draw_samples(position, ham_sampling, minimizer_sampling,
-            n_samples, mirror_samples, napprox=napprox, comm=comm)
-        return SampledKLEnergy(sample_list, hamiltonian, constants, inv_pos,
-                            nanisinf, _callingfrommake = True)
+        sample_list = draw_samples(position, ham_sampling, minimizer_sampling, n_samples,
+                                   mirror_samples, napprox=napprox, comm=comm)
+        SampledKLEnergy._init2(self, sample_list, hamiltonian, constants, inv_pos, nanisinf)

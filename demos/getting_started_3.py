@@ -119,11 +119,11 @@ def main():
 
     # Draw new samples to approximate the KL six times
     for i in range(6):
-        if i==5:
+        if i == 5:
             # Double the number of samples in the last step for better statistics
             N_samples = 2*N_samples
         # Draw new samples and minimize KL
-        KL = ift.SampledKLEnergy.make(mean, H, N_samples, minimizer_sampling)
+        KL = ift.SampledKLEnergy(mean, H, N_samples, minimizer_sampling)
         KL, convergence = minimizer(KL)
         mean = KL.position
         ift.extra.minisanity(data, lambda x: N.inverse, signal_response,
