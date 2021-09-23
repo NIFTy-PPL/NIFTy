@@ -558,7 +558,7 @@ def calculate_position(operator, output):
     """Finds approximate preimage of an operator for a given output."""
     from .minimization.descent_minimizers import NewtonCG
     from .minimization.iteration_controllers import GradientNormController
-    from .minimization.kl_energies import MetricGaussianKL
+    from .minimization.kl_energies import SampledKLEnergy
     from .operators.energy_operators import GaussianEnergy, StandardHamiltonian
     from .operators.scaling_operator import ScalingOperator
     if not isinstance(operator, Operator):
@@ -586,7 +586,7 @@ def calculate_position(operator, output):
     minimizer = NewtonCG(GradientNormController(iteration_limit=10, name='findpos'))
     for ii in range(3):
         logger.info(f'Start iteration {ii+1}/3')
-        kl = MetricGaussianKL(pos, H, 3, True)
+        kl = SampledKLEnergy.make(pos, H, 3, None)
         kl, _ = minimizer(kl)
         pos = kl.position
     return pos
