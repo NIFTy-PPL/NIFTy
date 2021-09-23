@@ -90,11 +90,11 @@ def main():
     # Specify noise
     data_space = R.target
     noise = .001
-    N = ift.ScalingOperator(data_space, noise)
+    N = ift.ScalingOperator(data_space, noise, np.float64)
 
     # Generate mock signal and data
     mock_position = ift.from_random(signal_response.domain, 'normal')
-    data = signal_response(mock_position) + N.draw_sample_with_dtype(dtype=np.float64)
+    data = signal_response(mock_position) + N.draw_sample()
 
     # Minimization parameters
     ic_sampling = ift.AbsDeltaEnergyController(name="Sampling (linear)",

@@ -101,7 +101,7 @@ def main():
 
     d_space = R.target
     d = ift.makeField(d_space, y)
-    N = ift.DiagonalOperator(ift.makeField(d_space, var))
+    N = ift.makeOp(ift.makeField(d_space, var), sampling_dtype=float)
 
     IC = ift.DeltaEnergyController(tol_rel_deltaE=1e-12, iteration_limit=200)
     likelihood_energy = ift.GaussianEnergy(d, N) @ R

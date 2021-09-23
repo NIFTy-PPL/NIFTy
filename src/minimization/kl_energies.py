@@ -26,7 +26,8 @@ from ..linearization import Linearization
 from ..multi_field import MultiField
 from ..operators.endomorphic_operator import EndomorphicOperator
 from ..operators.energy_operators import GaussianEnergy, StandardHamiltonian
-from ..operators.sampling_enabler import SamplingDtypeSetter, SamplingEnabler
+from ..operators.sampling_enabler import SamplingEnabler
+from ..operators.inversion_enabler import InversionEnabler
 from ..operators.sandwich_operator import SandwichOperator
 from ..operators.scaling_operator import ScalingOperator
 from ..probing import approximation2endo
