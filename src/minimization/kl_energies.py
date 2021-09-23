@@ -88,7 +88,11 @@ class _SelfAdjointOperatorWrapper(EndomorphicOperator):
 
 
 def draw_samples(position, H, minimizer, n_samples, mirror_samples, napprox=0,
-                want_error=False, comm=None):
+                 want_error=False, comm=None):
+    if not isinstance(n_samples, int):
+        raise TypeError
+    if not isinstance(mirror_samples, bool):
+        raise TypeError
     if not isinstance(H, StandardHamiltonian):
         raise TypeError
     if isinstance(position, MultiField):
@@ -110,13 +114,13 @@ def draw_samples(position, H, minimizer, n_samples, mirror_samples, napprox=0,
         scale = ScalingOperator(f_lh.target, 1., dtype)
         fl = f_lh(Linearization.make_var(sam_position))
 
-        transformation = ScalingOperator(f_lh.domain,1.) + fl.jac.adjoint@f_lh
+        transformation = ScalingOperator(f_lh.domain, 1.) + fl.jac.adjoint @ f_lh
         transformation_mean = sam_position + fl.jac.adjoint(fl.val)
         # Note: This metric is equivalent to H.metric, except for the case of a
         # `VariableCovarianceGaussianEnergy` with `use_full_fisher = True`.
         met = SamplingEnabler(SandwichOperator.make(fl.jac, scale),
-            ScalingOperator(fl.domain,1. , np.float64),
-            H._ic_samp)
+                              ScalingOperator(fl.domain, 1., float),
+                              H.iteration_controller)
     else:
         met = H(Linearization.make_var(sam_position, want_metric=True)).metric
     if napprox >= 1:
@@ -134,14 +138,14 @@ def draw_samples(position, H, minimizer, n_samples, mirror_samples, napprox=0,
     y = None
     for i in SampleList.indices_from_comm(len(sseq), comm):
         with random.Context(sseq[i]):
-            neg = mirror_samples and (i%2 != 0)
+            neg = mirror_samples and (i % 2 != 0)
             if not neg or y is None:  # we really need to draw a sample
                 y, yi = met.special_draw_sample(True)
 
             if geometric:
                 m = transformation_mean - y if neg else transformation_mean + y
                 pos = sam_position - yi if neg else sam_position + yi
-                en = GaussianEnergy(mean=m)@transformation
+                en = GaussianEnergy(mean=m) @ transformation
                 en = EnergyAdapter(pos, en, nanisinf=True, want_metric=True)
                 en, _ = minimizer(en)
                 local_samples.append(en.position - sam_position)
@@ -310,13 +314,10 @@ class SampledKLEnergy(Energy):
             raise TypeError
         if not isinstance(mirror_samples, bool):
             raise TypeError
-        if not (minimizer_sampling is None or
-            isinstance(minimizer_sampling, DescentMinimizer)):
+        if not (minimizer_sampling is None or isinstance(minimizer_sampling, DescentMinimizer)):
             raise TypeError
-        if (isinstance(position, MultiField) and
-            set(point_estimates) == set(position.keys())):
-            raise RuntimeError(
-                'Point estimates for whole domain. Use EnergyAdapter instead.')
+        if (isinstance(position, MultiField) and set(point_estimates) == set(position.keys())):
+            raise RuntimeError('Point estimates for whole domain. Use EnergyAdapter instead.')
 
         # If a key is in both lists `constants` and `point_estimates` remove it.
         invariant = list(set(constants).intersection(point_estimates))
