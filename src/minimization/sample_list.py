@@ -108,17 +108,20 @@ class ResidualSampleList(SampleList):
         self._r = tuple(residuals)
         self._n = tuple(neg)
 
-        assert len(self._r) == len(self._n)
+        if len(self._r) != len(self._n):
+            raise ValueError("Residuals and neg need to have the same length.")
+
         r_dom = self._r[0].domain
-        assert all(rr.domain is r_dom for rr in self._r)
+        if not all(rr.domain is r_dom for rr in self._r):
+            raise ValueError("All residuals must have the same domain.")
         if isinstance(r_dom, MultiDomain):
-            assert all(k in self._m.domain.keys() for k in r_dom.keys())
-        for nn in self._n:
-            if isinstance(nn, dict):
-                assert set(nn.keys()) == set(r_dom.keys())
-                assert all(isinstance(nn[kk], bool) for kk in nn.keys())
-            else:
-                assert isinstance(nn, bool)
+            try:
+                self._m.extract(r_dom)
+            except:
+                raise ValueError("`residual.domain` must be a subdomain of `mean.domain`.")
+
+        if not all(isinstance(nn, bool) for nn in neg):
+            raise TypeError("All entries in neg need to be bool.")
 
     def at(self, mean):
         """Creates a new instance of `ResidualSampleList` where only the mean
