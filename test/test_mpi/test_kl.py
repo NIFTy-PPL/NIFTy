@@ -63,10 +63,10 @@ def test_kl(constants, point_estimates, mirror_samples, mode, mf, geo):
             'minimizer_sampling': ift.NewtonCG(ic2) if geo else None}
     if isinstance(mean0, ift.MultiField) and set(point_estimates) == set(mean0.keys()):
         with assert_raises(RuntimeError):
-            ift.SampledKLEnergy.make(**args, comm = comm)
+            ift.SampledKLEnergy(**args, comm = comm)
         return
     
-    kl0 = ift.SampledKLEnergy.make(**args, comm = comm if mode==0 else None)
+    kl0 = ift.SampledKLEnergy(**args, comm = comm if mode==0 else None)
     if isinstance(mean0, ift.MultiField):
         invariant = list(set(constants).intersection(point_estimates))
         _, tmph = h.simplify_for_constant_input(mean0.extract_by_keys(invariant))
@@ -125,7 +125,7 @@ def test_geo_mirror(n_samples, seed, mode):
                                                         iteration_limit=0,))
     else:
         mini = None
-    KL = ift.SampledKLEnergy.make(ift.from_random(H.domain), H, n_samples, mini,
+    KL = ift.SampledKLEnergy(ift.from_random(H.domain), H, n_samples, mini,
                                     mirror_samples=True, comm=comm)
     sams = list([s-KL.position for s in KL.samples.global_sample_iterator()])
     for i in range(len(sams)//2):

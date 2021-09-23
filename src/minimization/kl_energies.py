@@ -105,7 +105,7 @@ def draw_samples(position, H, minimizer, n_samples, mirror_samples, napprox=0,
     if geometric:
         tr = H.likelihood_energy.get_transformation()
         if tr is None:
-            raise ValueError("GeoMetric sampling only works for likelihoods")
+            raise ValueError("Geometric sampling only works for likelihoods")
         dtype, f_lh = tr
         if isinstance(dtype, dict):
             myassert(all([dtype[k] is not None for k in dtype.keys()]))

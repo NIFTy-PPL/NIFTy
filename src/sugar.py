@@ -600,7 +600,7 @@ def calculate_position(operator, output):
     minimizer = NewtonCG(GradientNormController(iteration_limit=10, name='findpos'))
     for ii in range(3):
         logger.info(f'Start iteration {ii+1}/3')
-        kl = SampledKLEnergy.make(pos, H, 3, None)
+        kl = SampledKLEnergy(pos, H, 3, None)
         kl, _ = minimizer(kl)
         pos = kl.position
     return pos

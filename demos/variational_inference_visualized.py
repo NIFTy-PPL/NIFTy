@@ -133,10 +133,10 @@ def main():
     for ii in range(20):
         if ii % 2 == 0:
             # Resample GeoVI and MGVI
-            mgkl = ift.SampledKLEnergy.make(posmg, ham, n_samples, None, False)
+            mgkl = ift.SampledKLEnergy(posmg, ham, n_samples, None, False)
             mini_samp = ift.NewtonCG(
                     ift.AbsDeltaEnergyController(1E-8, iteration_limit=5))
-            geokl = ift.SampledKLEnergy.make(posgeo, ham, n_samples, mini_samp, False)
+            geokl = ift.SampledKLEnergy(posgeo, ham, n_samples, mini_samp, False)
 
             runs = (("MGVI", mgkl, posmg, True),
                     ("GeoVI", geokl, posgeo, True),

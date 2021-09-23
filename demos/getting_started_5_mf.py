@@ -134,7 +134,7 @@ def main():
 
     for i in range(5):
         # Draw new samples and minimize KL
-        KL = ift.MetricGaussianKL(mean, H, N_samples, True)
+        KL = ift.SampledKLEnergy(mean, H, N_samples, None)
         KL, convergence = minimizer(KL)
         mean = KL.position
 
