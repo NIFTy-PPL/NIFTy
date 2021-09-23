@@ -44,12 +44,13 @@ class SampleList:
     def global_sample_iterator(self, op=None):
         op = _none_to_id(op)
         if self.comm is not None:
-            for itask in range(self.comm.get_Size()):
+            for itask in range(self.comm.Get_size()):
                 for i in range(_bcast(len(self), self._comm, itask)):
-                    ss = _bcast(self[i], self._comm, itask)
-                    yield op(ss)
-        for ss in self:
-            yield op(ss)
+                    ss = self[i] if itask == self._comm.Get_rank() else None
+                    yield op(_bcast(ss, self._comm, itask))
+        else:
+            for ss in self:
+                yield op(ss)
 
     def global_average(self, op=None):
         """if op returns tuple, then individual averages are computed and returned individually."""
@@ -59,7 +60,7 @@ class SampleList:
         if not isinstance(res[0], tuple):
             return utilities.allreduce_sum(res, self.comm) / n
         res = [[elem[ii] for elem in res] for ii in range(len(res[0]))]
-        return tuple(utilities.allreduce_sum(rr, self.comm)/n for rr in res)
+        return tuple(utilities.allreduce_sum(rr, self.comm) / n for rr in res)
 
     def global_n_samples(self):
         return utilities.allreduce_sum([len(self)], self.comm)

@@ -50,6 +50,7 @@ def test_kl(constants, point_estimates, mirror_samples, mode, mf, geo):
         op = ift.ducktape(dom, None, 'a')*(op.ducktape('b'))
     lh = ift.GaussianEnergy(domain=op.target, sampling_dtype=np.float64) @ op
     ic = ift.GradientNormController(iteration_limit=5)
+    ic2 = ift.GradientNormController(iteration_limit=5)
     h = ift.StandardHamiltonian(lh, ic_samp=ic)
     mean0 = ift.from_random(h.domain, 'normal')
     nsamps = 2
@@ -57,51 +58,46 @@ def test_kl(constants, point_estimates, mirror_samples, mode, mf, geo):
             'point_estimates': point_estimates,
             'mirror_samples': mirror_samples,
             'n_samples': nsamps,
-            'mean': mean0,
-            'hamiltonian': h}
+            'position': mean0,
+            'hamiltonian': h,
+            'minimizer_sampling': ift.NewtonCG(ic2) if geo else None}
     if isinstance(mean0, ift.MultiField) and set(point_estimates) == set(mean0.keys()):
         with assert_raises(RuntimeError):
-            if geo:
-                ift.GeoMetricKL(**args, minimizer_samp=ift.NewtonCG(ic), comm=comm)
-            else:
-                ift.MetricGaussianKL(**args, comm=comm)
+            ift.SampledKLEnergy.make(**args, comm = comm)
         return
-    if mode == 0:
-        if geo:
-            kl0 = ift.GeoMetricKL(**args, minimizer_samp=ift.NewtonCG(ic), comm=comm)
-        else:
-            kl0 = ift.MetricGaussianKL(**args, comm=comm)
-        locsamp = kl0._local_samples
-        if isinstance(mean0, ift.MultiField):
-            _, tmph = h.simplify_for_constant_input(mean0.extract_by_keys(constants))
-        else:
-            tmph = h
-        if geo and mirror_samples:
-            kl1 = ift.minimization.kl_energies._SampledKLEnergy(mean0.extract(tmph.domain), tmph, 2*nsamps, False, comm, locsamp, False)
-        else:
-            kl1 = ift.minimization.kl_energies._SampledKLEnergy(mean0.extract(tmph.domain), tmph, nsamps, mirror_samples, comm, locsamp, False)
-    elif mode == 1:
-        if geo:
-            kl0 = ift.GeoMetricKL(**args, minimizer_samp=ift.NewtonCG(ic))
-        else:
-            kl0 = ift.MetricGaussianKL(**args)
-        samples = kl0._local_samples
+    
+    kl0 = ift.SampledKLEnergy.make(**args, comm = comm if mode==0 else None)
+    if isinstance(mean0, ift.MultiField):
+        invariant = list(set(constants).intersection(point_estimates))
+        _, tmph = h.simplify_for_constant_input(mean0.extract_by_keys(invariant))
+        tmpmean = mean0.extract(tmph.domain)
+        invariant = mean0.extract_by_keys(invariant)
+    else:
+        tmph = h
+        tmpmean = mean0
+        invariant = None
+    samp = kl0._sample_list
+    ift.extra.assert_allclose(tmpmean, samp._m)
+    if mode == 1:
+        samples = tuple(s for s in samp._r)
         ii = len(samples)//2
+        print(rank)
+        print(ii)
         slc = slice(None, ii) if rank == 0 else slice(ii, None)
         locsamp = samples[slc]
-        if isinstance(mean0, ift.MultiField):
-            _, tmph = h.simplify_for_constant_input(mean0.extract_by_keys(constants))
+        if mirror_samples:
+            neg = [False, ]*2*nsamps if geo else [False, True]*nsamps
         else:
-            tmph = h
-        if geo and mirror_samples:
-            kl1 = ift.minimization.kl_energies._SampledKLEnergy(mean0.extract(tmph.domain), tmph, 2*nsamps, False, comm, locsamp, False)
-        else:
-            kl1 = ift.minimization.kl_energies._SampledKLEnergy(mean0.extract(tmph.domain), tmph, nsamps, mirror_samples, comm, locsamp, False)
+            neg = [False, ]*nsamps
+        locneg = neg[slc]
+        samp = ift.minimization.sample_list.ResidualSampleList(
+                    tmpmean, locsamp, locneg, comm)
+    kl1 = ift.SampledKLEnergy(samp, tmph, constants, invariant, False, True)
 
     # Test number of samples
     expected_nsamps = 2*nsamps if mirror_samples else nsamps
-    ift.myassert(len(tuple(kl0.samples)) == expected_nsamps)
-    ift.myassert(len(tuple(kl1.samples)) == expected_nsamps)
+    ift.myassert(kl0.samples.global_n_samples() == expected_nsamps)
+    ift.myassert(kl1.samples.global_n_samples() == expected_nsamps)
 
     # Test value
     assert_equal(kl0.value, kl1.value)
@@ -117,17 +113,20 @@ def test_kl(constants, point_estimates, mirror_samples, mode, mf, geo):
 
 @pmp('seed', (42, 123))
 @pmp('n_samples', (1, 2, 5, 6))
-def test_geo_mirror(n_samples, seed):
+@pmp('mode', (0,1))
+def test_geo_mirror(n_samples, seed, mode):
     ift.random.push_sseq_from_seed(seed)
     a = ift.FieldAdapter(ift.UnstructuredDomain(2), 'a').exp()
     lh = ift.GaussianEnergy(domain = a.target, sampling_dtype=np.float) @ a
     H = ift.StandardHamiltonian(lh, 
             ic_samp=ift.AbsDeltaEnergyController(1E-10, iteration_limit=2))
-
-    mini = ift.NewtonCG(ift.AbsDeltaEnergyController(1E-10,
-                                                    iteration_limit=0,))
-    KL = ift.GeoMetricKL(ift.from_random(H.domain), H, n_samples, mini,
-                        True, comm=comm)
-    sams = list(KL.samples)
+    if mode == 0:
+        mini = ift.NewtonCG(ift.AbsDeltaEnergyController(1E-10,
+                                                        iteration_limit=0,))
+    else:
+        mini = None
+    KL = ift.SampledKLEnergy.make(ift.from_random(H.domain), H, n_samples, mini,
+                                    mirror_samples=True, comm=comm)
+    sams = list([s-KL.position for s in KL.samples.global_sample_iterator()])
     for i in range(len(sams)//2):
         ift.extra.assert_allclose(sams[2*i],-sams[2*i+1])

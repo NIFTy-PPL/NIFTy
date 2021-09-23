@@ -165,7 +165,7 @@ class SampledKLEnergy(Energy):
     distribution.
 
     Supports the samples to be distributed across MPI tasks."""
-    def __init__(self, sample_list, hamiltonian, nanisinf, constants,
+    def __init__(self, sample_list, hamiltonian, constants, invariants, nanisinf,
                 _callingfrommake = False):
         if not _callingfrommake:
             raise NotImplementedError
@@ -177,6 +177,7 @@ class SampledKLEnergy(Energy):
         self._hamiltonian = hamiltonian
         self._nanisinf = bool(nanisinf)
         self._constants = constants
+        self._invariants = invariants
 
         def _func(inp):
             inp, tmp = _reduce_by_keys(inp, hamiltonian, constants)
@@ -197,7 +198,7 @@ class SampledKLEnergy(Energy):
 
     def at(self, position):
         return SampledKLEnergy(self._sample_list.update(position),
-            self._hamiltonian, self._nanisinf, self._constants,
+            self._hamiltonian, self._constants, self._invariants, self._nanisinf,
             _callingfrommake = True)
 
     def apply_metric(self, x):
@@ -214,7 +215,9 @@ class SampledKLEnergy(Energy):
 
     @property
     def samples(self):
-        return self._sample_list
+        if self._invariants is None:
+            return self._sample_list
+        return self._sample_list.update(self._invariants)
 
     @staticmethod
     def make(position, hamiltonian, n_samples, minimizer_sampling,
@@ -324,6 +327,10 @@ class SampledKLEnergy(Energy):
 
         # If a key is in both lists `constants` and `point_estimates` remove it.
         invariant = list(set(constants).intersection(point_estimates))
+        if isinstance(position, MultiField) and len(invariant)>0:
+            inv_pos = position.extract_by_keys(invariant)
+        else:
+            inv_pos = None
         position, hamiltonian = _reduce_by_keys(position, hamiltonian, invariant)
 
         n_samples = int(n_samples)
@@ -331,5 +338,5 @@ class SampledKLEnergy(Energy):
         _, ham_sampling = _reduce_by_keys(position, hamiltonian, point_estimates)
         sample_list = draw_samples(position, ham_sampling, minimizer_sampling,
             n_samples, mirror_samples, napprox=napprox, comm=comm)
-        return SampledKLEnergy(sample_list, hamiltonian, nanisinf, constants,
-                            _callingfrommake = True)
+        return SampledKLEnergy(sample_list, hamiltonian, constants, inv_pos,
+                            nanisinf, _callingfrommake = True)

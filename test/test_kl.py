@@ -66,16 +66,18 @@ def test_kl(constants, point_estimates, mirror_samples, mf, geo):
     myassert(len(ic.history) == len(ic.history.time_stamps))
     myassert(len(ic.history) == len(ic.history.energy_values))
 
-    samp = kl.samples
+    samp = kl._sample_list
     if isinstance(mean0, ift.MultiField):
         invariant = list(set(constants).intersection(point_estimates))
         _, tmph = h.simplify_for_constant_input(mean0.extract_by_keys(invariant))
         tmpmean = mean0.extract(tmph.domain)
+        invariant = mean0.extract_by_keys(invariant)
     else:
         tmph = h
         tmpmean = mean0
-    ift.extra.assert_equal(tmpmean, samp._m)
-    klpure = ift.SampledKLEnergy(samp, tmph, False, constants, True)
+        invariant = None
+    ift.extra.assert_equal(samp._m, tmpmean)
+    klpure = ift.SampledKLEnergy(samp, tmph, constants, invariant, False, True)
     # Test number of samples
     expected_nsamps = 2*nsamps if mirror_samples else nsamps
     myassert(len(kl.samples) == expected_nsamps)
