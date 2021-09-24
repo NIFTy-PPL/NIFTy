@@ -126,13 +126,12 @@ def main():
         KL = ift.SampledKLEnergy(position, H, N_samples, minimizer_sampling)
         KL, convergence = minimizer(KL)
         position = KL.position
-        ift.extra.minisanity(data, lambda x: N.inverse, signal_response,
-                             position, [s-position for s in KL.samples])
+        ift.extra.minisanity(data, lambda x: N.inverse, signal_response, KL.samples)
 
         # Plot current reconstruction
         plot = ift.Plot()
         plot.add(KL.samples.global_mean(signal), title="Posterior mean",
-                 zmin = 0, zmax = 1)
+                 zmin=0, zmax=1)
         plot.add(KL.samples.global_iterator(pspec.force),
                  title="Samples power spectrum")
         plot.output(ny=1, ysize=6, xsize=16,
