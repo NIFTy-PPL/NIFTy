@@ -111,8 +111,8 @@ def main():
                          signal_response)
     H = ift.StandardHamiltonian(likelihood_energy, ic_sampling)
 
-    initial_mean = ift.MultiField.full(H.domain, 0.)
-    mean = initial_mean
+    initial_position = ift.MultiField.full(H.domain, 0.)
+    position = initial_position
 
     # number of samples used to estimate the KL
     N_samples = 10
@@ -123,40 +123,35 @@ def main():
             # Double the number of samples in the last step for better statistics
             N_samples = 2*N_samples
         # Draw new samples and minimize KL
-        KL = ift.SampledKLEnergy(mean, H, N_samples, minimizer_sampling)
+        KL = ift.SampledKLEnergy(position, H, N_samples, minimizer_sampling)
         KL, convergence = minimizer(KL)
-        mean = KL.position
+        position = KL.position
         ift.extra.minisanity(data, lambda x: N.inverse, signal_response,
-                             mean, [s-mean for s in KL.samples])
+                             position, [s-position for s in KL.samples])
 
         # Plot current reconstruction
         plot = ift.Plot()
-        plot.add(signal(mean), title="Latent mean", zmin = 0, zmax = 1)
-        plot.add([pspec.force(ss) for ss in KL.samples],
+        plot.add(KL.samples.global_mean(signal), title="Posterior mean",
+                 zmin = 0, zmax = 1)
+        plot.add(KL.samples.global_sample_iterator(pspec.force),
                  title="Samples power spectrum")
         plot.output(ny=1, ysize=6, xsize=16,
                     name=filename.format("loop_{:02d}".format(i)))
 
-    sc = ift.StatCalculator()
-    for sample in KL.samples:
-        sc.add(signal(sample))
-
     # Plotting
     filename_res = filename.format("results")
     plot = ift.Plot()
-    plot.add(sc.mean, title="Posterior Mean", zmin = 0, zmax = 1)
-    plot.add(ift.sqrt(sc.var), title="Posterior Standard Deviation")
+    mean, var = KL.samples.global_sample_stat(signal)
+    plot.add(mean, title="Posterior Mean", zmin = 0, zmax = 1)
+    plot.add(var.sqrt(), title="Posterior Standard Deviation")
 
-    powers = [pspec.force(s) for s in KL.samples]
-    sc = ift.StatCalculator()
-    for pp in powers:
-        sc.add(pp.log())
-    plot.add(
-        powers + [pspec.force(mock_position),
-                  pspec.force(KL.position), sc.mean.exp()],
-        title="Sampled Posterior Power Spectrum",
-        linewidth=[1.]*len(powers) + [3., 3., 3.],
-        label=[None]*len(powers) + ['Ground truth', 'Posterior latent mean', 'Posterior mean'])
+    nsamples = KL.samples.global_n_samples()
+    logspec = pspec.log().force
+    plot.add(list(KL.samples.global_sample_iterator(pspec.force)) + 
+             [pspec.force(mock_position), KL.samples.global_mean(logspec).exp()],
+             title="Sampled Posterior Power Spectrum",
+             linewidth=[1.]*nsamples+ [3., 3.],
+             label=[None]*nsamples + ['Ground truth', 'Posterior mean'])
     plot.output(ny=1, nx=3, xsize=24, ysize=6, name=filename_res)
     print("Saved results as '{}'.".format(filename_res))
 

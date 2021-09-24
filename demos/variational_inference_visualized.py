@@ -90,14 +90,14 @@ def main():
     axs = axs.flatten()
 
     def update_plot(runs):
-        for axx, (nn, kl, pp, sam) in zip(axs,runs):
+        for axx, (nn, kl) in zip(axs,runs):
             axx.clear()
             axx.imshow(z.T, origin='lower',  cmap='gist_earth_r',
                        norm=LogNorm(vmin=1e-3, vmax=np.max(z)),
                        extent=x_limits_scaled + y_limits)
             xs, ys = [], []
-            if sam:
-                samples = (samp + pp for samp in kl.samples)
+            if isinstance(kl, ift.SampledKLEnergy):
+                samples = kl.samples
             else:
                 samples = (kl.draw_sample() for _ in range(n_samples))
             mx, my = 0., 0.
@@ -138,10 +138,8 @@ def main():
                     ift.AbsDeltaEnergyController(1E-8, iteration_limit=5))
             geokl = ift.SampledKLEnergy(posgeo, ham, n_samples, mini_samp, False)
 
-            runs = (("MGVI", mgkl, posmg, True),
-                    ("GeoVI", geokl, posgeo, True),
-                    ("MeanfieldVI", mf, posmf, False),
-                    ("FullCovarianceVI", fc, posfc, False))
+            runs = (("MGVI", mgkl), ("GeoVI", geokl),
+                    ("MeanfieldVI", mf), ("FullCovarianceVI", fc))
             update_plot(runs)
 
         mgkl, _ = minimizer(mgkl)
@@ -150,12 +148,8 @@ def main():
         fc.minimize(stochastic_minimizer_fc)
         posmg = mgkl.position
         posgeo = geokl.position
-        posmf = mf.mean
-        posfc = fc.mean
-        runs = (("MGVI", mgkl, posmg, True),
-                ("GeoVI", geokl, posgeo, True),
-                ("MeanfieldVI", mf, posmf, False),
-                ("FullCovarianceVI", fc, posfc, False))
+        runs = (("MGVI", mgkl), ("GeoVI", geokl),
+                ("MeanfieldVI", mf), ("FullCovarianceVI", fc))
         update_plot(runs)
     ift.logger.info('Finished')
     # Uncomment the following line in order to leave the plots open
