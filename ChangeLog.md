@@ -1,6 +1,44 @@
 Changes since NIFTy 7
 =====================
 
+Unify MetricGaussianKL and GeoMetricKL
+--------------------------------------
+
+The constructor methods `MetricGaussianKL` and `GeoMetricKL` have been unified
+into the constructor of `SampledKLEnergy` as both associated variational
+inference methods MGVI and geoVI only differ in an additional non-linear
+sampling step for geoVI. In NIFTy\_7, the `MetricGaussianKL` and `GeoMetricKL`
+methods initialized an instance of the internal `_SampledKLEnergy` class, which
+has now been externalized in NIFTy\_8 and can be used to construct a
+`SampledKLEnergy` to perform variational inference.
+
+Whether linear (MGVI) or non-linear (geoVI) samples should be used is determined
+via the `minimizer_sampling` attribute passed on during initialization. If
+`minimizer_sampling` is `None`, the sampling step terminates after the linear
+part, and the linear (MGVI) samples are used to construct the `SampledKLEnergy`.
+In case `minimizer_sampling` is a `ift.DescentMinimizer`, this minimizer is used
+to continue the sampling step with the non-liear part necessary to generate
+geoVI samples, which are then used in the `SampledKLEnergy`.
+
+`SampledKLEnergy.samples` now returns a `ResidualSampleList` rather than a
+generator of samples. Also the samples in a `ResidualSampleList` has the
+position now added to the samples already, as opposed to the samples returned by
+the generator used in NIFTy\_7.
+
+SampleList and ResidualSampleList
+---------------------------------
+
+New data-structure for a list of fields that represents a collection of samples
+from a probability distribution. A `SampleList` is an MPI object capable of
+handling a distributed set of samples and allows for a global access of those
+samples via the `global_sample_iterator` method. It also implements the basic
+functionality to compute sample averages via the `global_mean` and
+`global_sample_stat` methods.
+
+The `ResidualSampleList` is a sub-class of `SampleList` which handles samples
+via a shared postition and residual deviations thereof internally. This
+distinction is a required structire for defining the `SampledKLEnergy`.
+
 Sampling dtypes
 ---------------
 
