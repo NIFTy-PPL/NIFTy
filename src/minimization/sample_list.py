@@ -41,7 +41,7 @@ class SampleList:
     def domain(self):
         return self._domain
 
-    def global_sample_iterator(self, op=None):
+    def global_iterator(self, op=None):
         op = _none_to_id(op)
         if self.comm is not None:
             for itask in range(self.comm.Get_size()):
@@ -72,7 +72,7 @@ class SampleList:
     def global_sample_stat(self, op):
         from ..probing import StatCalculator
         sc = StatCalculator()
-        for ss in self.global_sample_iterator(op):
+        for ss in self.global_iterator(op):
             sc.add(ss)
         return sc.mean, sc.var
 

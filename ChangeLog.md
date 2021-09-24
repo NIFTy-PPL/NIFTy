@@ -31,7 +31,7 @@ SampleList and ResidualSampleList
 New data-structure for a list of fields that represents a collection of samples
 from a probability distribution. A `SampleList` is an MPI object capable of
 handling a distributed set of samples and allows for a global access of those
-samples via the `global_sample_iterator` method. It also implements the basic
+samples via the `global_iterator` method. It also implements the basic
 functionality to compute sample averages via the `global_mean` and
 `global_sample_stat` methods.
 

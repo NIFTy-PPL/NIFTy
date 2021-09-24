@@ -133,7 +133,7 @@ def main():
         plot = ift.Plot()
         plot.add(KL.samples.global_mean(signal), title="Posterior mean",
                  zmin = 0, zmax = 1)
-        plot.add(KL.samples.global_sample_iterator(pspec.force),
+        plot.add(KL.samples.global_iterator(pspec.force),
                  title="Samples power spectrum")
         plot.output(ny=1, ysize=6, xsize=16,
                     name=filename.format("loop_{:02d}".format(i)))
@@ -147,7 +147,7 @@ def main():
 
     nsamples = KL.samples.global_n_samples()
     logspec = pspec.log().force
-    plot.add(list(KL.samples.global_sample_iterator(pspec.force)) + 
+    plot.add(list(KL.samples.global_iterator(pspec.force)) +
              [pspec.force(mock_position), KL.samples.global_mean(logspec).exp()],
              title="Sampled Posterior Power Spectrum",
              linewidth=[1.]*nsamples+ [3., 3.],

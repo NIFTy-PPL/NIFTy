@@ -72,7 +72,7 @@ def test_sample_list():
         if op is not None:
             samples = [op(ss) for ss in samples]
 
-        for s0, s1 in zip(samples, sl.global_sample_iterator(op)):
+        for s0, s1 in zip(samples, sl.global_iterator(op)):
             ift.extra.assert_equal(s0, s1)
         assert len(samples) == sl.global_n_samples()
 

@@ -169,12 +169,12 @@ def main():
     plot.add(ift.sqrt(var), title="Posterior Standard Deviation")
 
     n_samples = KL.samples.global_n_samples()
-    plot.add(list(KL.samples.global_sample_iterator(pspec1.force)) + 
+    plot.add(list(KL.samples.global_iterator(pspec1.force)) +
              [KL.samples.global_mean(pspec1.log().force).exp(),
               pspec1.force(mock_position)],
              title="Sampled Posterior Power Spectrum 1",
              linewidth=[1.]*n_samples + [3., 3.])
-    plot.add(list(KL.samples.global_sample_iterator(pspec2.force)) + 
+    plot.add(list(KL.samples.global_iterator(pspec2.force)) +
              [KL.samples.global_mean(pspec2.log().force).exp(),
               pspec2.force(mock_position)],
              title="Sampled Posterior Power Spectrum 2",

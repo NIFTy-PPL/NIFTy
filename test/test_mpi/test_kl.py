@@ -123,6 +123,6 @@ def test_mirror(n_samples, seed, geo):
         mini = ift.NewtonCG(ift.AbsDeltaEnergyController(1E-10, iteration_limit=0))
     KL = ift.SampledKLEnergy(ift.from_random(H.domain), H, n_samples, mini,
                              mirror_samples=True, comm=comm)
-    sams = list([s-KL.position for s in KL.samples.global_sample_iterator()])
+    sams = list([s-KL.position for s in KL.samples.global_iterator()])
     for i in range(len(sams)//2):
         ift.extra.assert_allclose(sams[2*i], -sams[2*i+1])
