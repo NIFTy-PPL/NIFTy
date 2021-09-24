@@ -145,6 +145,18 @@ class ResidualSampleList(SampleList):
         return len(self._r)
 
 
+class MinimalSampleList(SampleList):
+    def __init__(self, samples, comm=None):
+        super(MinimalSampleList, self).__init__(comm, samples[0].domain)
+        self._s = samples
+
+    def __getitem__(self, x):
+        return self._s[x]
+
+    def __len__(self):
+        return len(self._s)
+
+
 def _none_to_id(obj):
     if obj is None:
         return lambda x: x

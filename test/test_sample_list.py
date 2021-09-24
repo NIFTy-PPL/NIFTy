@@ -24,22 +24,10 @@ from .common import list2fixture, setup_function, teardown_function
 
 
 
-class MinimalSampleList(ift.SampleList):
-    def __init__(self, samples, comm):
-        super(MinimalSampleList, self).__init__(comm, samples[0].domain)
-        self._s = samples
-
-    def __getitem__(self, x):
-        return self._s[x]
-
-    def __len__(self):
-        return len(self._s)
-
-
 def _get_sample_list(comm):
     dom = ift.makeDomain({"a": ift.UnstructuredDomain(2), "b": ift.RGSpace(12)})
     samples = [ift.from_random(dom) for _ in range(3)]
-    return MinimalSampleList(samples, comm), samples
+    return ift.MinimalSampleList(samples, comm), samples
 
 
 def test_sample_list():
