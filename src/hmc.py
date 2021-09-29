@@ -1,6 +1,6 @@
 from jax import numpy as np
 from jax import tree_util
-from jax import lax, random, jit, partial, flatten_util, grad
+from jax import lax, random, jit, partial, grad
 from jax.scipy.special import expit
 
 from typing import NamedTuple, TypeVar, Union
@@ -111,38 +111,6 @@ def leapfrog_step(
         - (step_length / 2.) * potential_energy_gradient(position_fullstep)  # type: ignore
     )
     #print("momentum_fullstep:", momentum_fullstep)
-
-    qp_fullstep = QP(position=position_fullstep, momentum=momentum_fullstep)
-    return qp_fullstep
-
-
-def leapfrog_step_pytree(
-    qp: QP,
-    potential_energy_gradient,
-    step_length,
-    mass_matrix
-    ) -> QP:
-    position = qp.position
-    momentum = qp.momentum
-
-    momentum_halfstep = tree_util.tree_map(
-        lambda mom, potgrad: mom - (step_length / 2.) * potgrad,
-        momentum,
-        potential_energy_gradient(position)
-    )
-
-    position_fullstep = tree_util.tree_map(
-        lambda pos, mom_halfstep, mass: pos + step_length * mom_halfstep / mass,  # type: ignore
-        position,
-        momentum_halfstep,
-        mass_matrix
-    )
-
-    momentum_fullstep = tree_util.tree_map(
-        lambda mom_halfstep, potgrad: mom_halfstep - (step_length / 2.) * potgrad,
-        momentum_halfstep,
-        potential_energy_gradient(position_fullstep)
-    )
 
     qp_fullstep = QP(position=position_fullstep, momentum=momentum_fullstep)
 
@@ -477,7 +445,7 @@ def iterative_build_tree(key, initial_tree, eps, go_right, stepper, potential_en
                 lower = i_min_incl,
                 upper = i_max_incl + 1,
                 # TODO: conditional for early termination
-                body_fun = lambda k, turning: turning | is_euclidean_uturn_pytree(index_into_pytree_time_series(k, S), z),
+                body_fun = lambda k, turning: turning | is_euclidean_uturn(index_into_pytree_time_series(k, S), z),
                 init_val = False
             )
             return S, turning
@@ -551,7 +519,7 @@ def merge_trees(key, current_subtree, new_subtree, go_right):
         (current_subtree.left, new_subtree.right),
         (new_subtree.left, current_subtree.right),
     )
-    turning = is_euclidean_uturn_pytree(left, right)
+    turning = is_euclidean_uturn(left, right)
     merged_tree = Tree(left=left, right=right, logweight=np.logaddexp(new_subtree.logweight, current_subtree.logweight), proposal_candidate=new_sample, turning=turning, depth=current_subtree.depth + 1)
     return merged_tree
 
@@ -599,30 +567,9 @@ def is_euclidean_uturn(qp_left, qp_right):
     Betancourt - A conceptual introduction to Hamiltonian Monte Carlo
     """
     return (
-        (np.dot(qp_right.momentum, (qp_right.position - qp_left.position)) < 0.)
-        & (np.dot(qp_left.momentum, (qp_left.position - qp_right.position)) < 0.)
+        (qp_right.momentum.dot(qp_right.position - qp_left.position) < 0.)
+        & (qp_left.momentum.dot(qp_left.position - qp_right.position) < 0.)
     )
-
-
-# TODO: implement directly in is_euclidean_uturn, don't use ravel_pytree but tree_map.
-# Use np.dot but make sure to ravel arrays to avoid matrix multiplication
-def is_euclidean_uturn_pytree(qp_left, qp_right):
-    """
-    See Also
-    --------
-    Betancourt - A conceptual introduction to Hamiltonian Monte Carlo
-    """
-    # TODO: Does this work with different dtypes for different field components?
-    # how does flatten_util.ravel_pytree behave in that case
-    qp_left = QP(
-        position=flatten_util.ravel_pytree(qp_left.position)[0],
-        momentum=flatten_util.ravel_pytree(qp_left.momentum)[0]
-    )
-    qp_right = QP(
-        position=flatten_util.ravel_pytree(qp_right.position)[0],
-        momentum=flatten_util.ravel_pytree(qp_right.momentum)[0]
-    )
-    return is_euclidean_uturn(qp_left, qp_right)
 
 
 def make_kinetic_energy_fn_from_diag_mass_matrix(mass_matrix):
@@ -663,7 +610,7 @@ class NUTSChain:
             raise ValueError('eps must be a float')
 
         potential_energy_gradient = grad(self.potential_energy)
-        self.stepper = lambda qp, eps, direction: leapfrog_step_pytree(qp, potential_energy_gradient, eps*direction, self.diag_mass_matrix)
+        self.stepper = lambda qp, eps, direction: leapfrog_step(qp, potential_energy_gradient, eps*direction, self.diag_mass_matrix)
 
         if isinstance(maxdepth, int):
             self.maxdepth = maxdepth
