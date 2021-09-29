@@ -502,14 +502,13 @@ def add_single_qp_to_tree(key, tree, qp, go_right, potential_energy, kinetic_ene
 def merge_trees(key, current_subtree, new_subtree, go_right):
     """Merges two trees, propagating the proposal_candidate"""
     # 5. decide which sample to take based on total weights (merge trees)
-    key, subkey = random.split(key)
     # expit(x-y) := 1 / (1 + e^(-(x-y))) = 1 / (1 + e^(y-x)) = e^x / (e^y + e^x)
     prob_of_choosing_new = expit(new_subtree.logweight - current_subtree.logweight)
     # print(f"prob of choosing new sample: {prob_of_choosing_new}")
     # NOTE, here it is possible to bias the transition towards the new subtree
     # Betancourt cenceptual intro (and Numpyro)
     new_sample = select(
-        random.bernoulli(subkey, prob_of_choosing_new),
+        random.bernoulli(key, prob_of_choosing_new),
         new_subtree.proposal_candidate,
         current_subtree.proposal_candidate
     )
