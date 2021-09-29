@@ -1,8 +1,9 @@
-from collections import namedtuple
 from jax import numpy as np
 from jax import tree_util
 from jax import lax, random, jit, partial, flatten_util, grad
 from jax.scipy.special import expit
+
+from typing import NamedTuple, TypeVar, Union
 
 from .disable_jax_control_flow import cond, while_loop, fori_loop
 from .sugar import random_like
@@ -35,8 +36,20 @@ def _DEBUG_FINISH_SUBTREE(dummy_arg):
 ### COMMON FUNCTIONALITY
 ###
 
-# A datatype for (q, p) = (position, momentum) pairs
-QP = namedtuple('QP', ['position', 'momentum'])
+P = TypeVar("P")
+
+class QP(NamedTuple):
+    """Object holding a pair of position and momentum.
+
+    Attributes
+    ----------
+    position : P
+        Position.
+    momentum : P
+        Momentum.
+    """
+    position: P
+    momentum: P
 
 
 def flip_momentum(qp: QP) -> QP:
@@ -255,14 +268,29 @@ def generate_hmc_sample(*,
 ###
 ### NUTS
 ###
+class Tree(NamedTuple):
+    """Object carrying tree metadata.
 
-# A datatype carrying tree metadata
-# left, right: endpoints of the trees path
-# logweight: sum over all -H(q, p) in the trees path
-# proposal_candidate: random sample from the trees path, distributed as exp(-H(q, p))
-# turning: TODO: whole tree or also subtrees??
-# turning currently means either the left, right endpoint are a uturn or any subtree is a uturn, see TODO above
-Tree = namedtuple('Tree', ['left', 'right', 'logweight', 'proposal_candidate', 'turning', 'depth'])
+    Attributes
+    ----------
+    left, right : QP
+        Respective endpoints of the trees path.
+    logweight: Union[np.ndarray, float]
+        Sum over all -H(q, p) in the tree's path.
+    proposal_candidate: QP
+        Sample from the trees path, distributed as exp(-H(q, p)).
+    turning: Union[np.ndarray, bool]
+        Indicator for either the left or right endpoint are a uturn or any
+        subtree is a uturn.
+    depth: Union[np.ndarray, int]
+        Levels of the tree.
+    """
+    left: QP
+    right: QP
+    logweight: Union[np.ndarray, float]
+    proposal_candidate: QP
+    turning: Union[np.ndarray, bool]
+    depth: Union[np.ndarray, int]
 
 
 def total_energy_of_qp(qp, potential_energy, kinetic_energy):
