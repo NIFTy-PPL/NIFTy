@@ -5,6 +5,7 @@ from jax import lax, random, jit, partial, flatten_util, grad
 from jax.scipy.special import expit
 
 from .disable_jax_control_flow import cond, while_loop, fori_loop
+from .sugar import random_like
 
 _DEBUG_FLAG = False
 
@@ -55,8 +56,8 @@ def sample_momentum_from_diagonal(*, key, diag_mass_matrix):
         Diagonal matrix represented as (possibly pytree of) ndarray vector
         containing the entries of the diagonal.
     """
-    # TODO: duplicate keys
-    return tree_util.tree_map(lambda m: np.sqrt(m) * random.normal(key, m.shape), diag_mass_matrix)
+    normal = random_like(diag_mass_matrix, key=key, rng=random.normal)
+    return tree_util.tree_map(lambda m, nrm: np.sqrt(m) * nrm, diag_mass_matrix, normal)
 
 
 # TODO: how to randomize step size (neal sect. 3.2)
@@ -348,21 +349,20 @@ def generate_nuts_sample(initial_qp, key, eps, maxdepth, stepper, potential_ener
 
     def _body_fun(loop_state):
         key, current_tree, j, stop = loop_state
-        key, subkey = random.split(key)
+        key, key_dir, key_subtree, key_merge = random.split(key, 4)
+
         # random.bernoulli is fine, this is just for rng consistency across commits TODO: use random.bernoulli
-        go_right = random.choice(subkey, np.array([False, True]))
+        go_right = random.choice(key_dir, np.array([False, True]))
 
         # build tree of depth j, adjacent to current_tree
-        # TODO: consume key
-        new_subtree = iterative_build_tree(key, current_tree, j, eps, go_right, stepper, potential_energy, kinetic_energy, maxdepth)
+        new_subtree = iterative_build_tree(key_subtree, current_tree, j, eps, go_right, stepper, potential_energy, kinetic_energy, maxdepth)
 
         # combine current_tree and new_subtree into a depth j+1 tree only if new_subtree has no turning subtrees (including itself)
         current_tree = cond(
             pred = new_subtree.turning,
             true_fun = lambda old_and_new: old_and_new[0],
             # TODO: turning_hint
-            # TODO: consume key
-            false_fun = lambda old_and_new: merge_trees(key, old_and_new[0], old_and_new[1], go_right, False),
+            false_fun = lambda old_and_new: merge_trees(key_merge, old_and_new[0], old_and_new[1], go_right, False),
             operand = (current_tree, new_subtree),
         )
         # stop if new subtree was turning -> we sample from the old one and don't expand further
@@ -522,14 +522,13 @@ def add_single_qp_to_tree(key, tree, qp, go_right, potential_energy, kinetic_ene
         false_fun = lambda tree_and_qp: (tree_and_qp[1], tree_and_qp[0].right),
         operand = (tree, qp)
     )
-    key, subkey = random.split(key)
     qp_logweight = -total_energy_of_qp(qp, potential_energy, kinetic_energy)
     # ln(e^-H_1 + e^-H_2)
     total_logweight = np.logaddexp(tree.logweight, qp_logweight)
     # expit(x-y) := 1 / (1 + e^(-(x-y))) = 1 / (1 + e^(y-x)) = e^x / (e^y + e^x)
     prob_of_keeping_old = expit(tree.logweight - qp_logweight)
     proposal_candidate = cond(
-        pred = random.bernoulli(subkey, prob_of_keeping_old),
+        pred = random.bernoulli(key, prob_of_keeping_old),
         true_fun = lambda old_and_new: old_and_new[0],
         false_fun = lambda old_and_new: old_and_new[1],
         operand = (tree.proposal_candidate, qp)
@@ -713,19 +712,18 @@ class NUTSChain:
                 prev_position, key, samples, momenta_before, momenta_after, depths, trees = state
             else:
                 prev_position, key, samples = state
+            key, key_momentum, key_nuts = random.split(key, 3)
 
-            key, subkey = random.split(key)
             resampled_momentum = sample_momentum_from_diagonal(
-                key=random.split(subkey)[1],
+                key=key_momentum,
                 diag_mass_matrix=self.diag_mass_matrix
             )
 
             qp = QP(position=prev_position, momentum=resampled_momentum)
 
-            key, subkey = random.split(key)
             tree = generate_nuts_sample(
                 initial_qp = qp,
-                key = subkey,
+                key = key_nuts,
                 eps = self.eps,
                 maxdepth = self.maxdepth,
                 stepper = self.stepper,
@@ -878,11 +876,10 @@ class HMCChain:
                 prev_position, key, samples, acceptance, momenta_before, momenta_after, rejected_position_samples, rejected_momenta = state
             else:
                 prev_position, key, samples, acceptance = state
-
-            key, subkey = random.split(key)
+            key, key_hmc = random.split(key)
 
             (qp_old_and_proposed_sample, was_accepted), unintegrated_momentum = generate_hmc_sample(
-                key = subkey,
+                key = key_hmc,
                 position = prev_position,
                 potential_energy = self.potential_energy,
                 potential_energy_gradient = grad(self.potential_energy),
