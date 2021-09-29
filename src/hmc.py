@@ -421,7 +421,6 @@ def iterative_build_tree(key, initial_tree, eps, go_right, stepper, potential_en
     S = tree_util.tree_map(lambda initial_q_or_p_leaf: np.empty((maxdepth, ) + initial_q_or_p_leaf.shape), unzip_qp_pytree(z))
 
     z = stepper(z, eps, np.where(go_right, x=1, y=-1))
-    key, subkey = random.split(key)  # unnecessary but preserves randomness; TODO: remove
     incomplete_tree = Tree(left=z, right=z, logweight=-total_energy_of_qp(z, potential_energy, kinetic_energy), proposal_candidate=z, turning=False, depth=-1)
     S = tree_index_update(S, 0, z)
 

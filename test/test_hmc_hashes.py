@@ -45,7 +45,7 @@ def test_nuts_hash():
     results = sampler.generate_n_samples(1000)
     results_hash = hashit(results, n_chars=20)
     print(f"full hash: {results_hash}", file=sys.stderr)
-    old_hash = "de1f73aa40f3873d8023"
+    old_hash = "10423f9754bb3ebe4978"
     assert results_hash == old_hash
 
 
