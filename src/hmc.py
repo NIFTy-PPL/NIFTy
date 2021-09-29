@@ -7,6 +7,7 @@ from typing import NamedTuple, TypeVar, Union
 
 from .disable_jax_control_flow import cond, while_loop, fori_loop
 from .sugar import random_like
+from .forest_util import select
 
 _DEBUG_FLAG = False
 
@@ -432,13 +433,7 @@ def iterative_build_tree(key, initial_tree, eps, go_right, stepper, potential_en
         It's only required to statically set the size of the `S` array (pytree).
     """
     # 1. choose start point of integration
-    # TODO: Use pytree-enabled select
-    z = cond(
-        pred = go_right,
-        true_fun = lambda left_and_right: left_and_right[1],
-        false_fun = lambda left_and_right: left_and_right[0],
-        operand = (initial_tree.left, initial_tree.right)
-    )
+    z = select(go_right, initial_tree.right, initial_tree.left)
     depth = initial_tree.depth
     # 2. build / collect new states
     # Create a storage for left endpoints of subtrees. Size is determined
@@ -521,24 +516,16 @@ def add_single_qp_to_tree(key, tree, qp, go_right, potential_energy, kinetic_ene
     # This is technically just a special case of merge_trees with one of the
     # trees being a singleton, depth 0 tree.
     # TODO: just construct the singleton tree and call merge_trees
-    # TODO: Use pytree-enabled select
-    left, right = cond(
-        pred = go_right,
-        true_fun = lambda tree_and_qp: (tree_and_qp[0].left, tree_and_qp[1]),
-        false_fun = lambda tree_and_qp: (tree_and_qp[1], tree_and_qp[0].right),
-        operand = (tree, qp)
-    )
+    left, right = select(go_right, (tree.left, qp), (qp, tree.right))
     qp_logweight = -total_energy_of_qp(qp, potential_energy, kinetic_energy)
     # ln(e^-H_1 + e^-H_2)
     total_logweight = np.logaddexp(tree.logweight, qp_logweight)
     # expit(x-y) := 1 / (1 + e^(-(x-y))) = 1 / (1 + e^(y-x)) = e^x / (e^y + e^x)
     prob_of_keeping_old = expit(tree.logweight - qp_logweight)
-    # TODO: Use pytree-enabled select
-    proposal_candidate = cond(
-        pred = random.bernoulli(key, prob_of_keeping_old),
-        true_fun = lambda old_and_new: old_and_new[0],
-        false_fun = lambda old_and_new: old_and_new[1],
-        operand = (tree.proposal_candidate, qp)
+    proposal_candidate = select(
+        random.bernoulli(key, prob_of_keeping_old),
+        tree.proposal_candidate,
+        qp
     )
     # NOTE, set an invalid depth as to indicate that adding a single QP to a
     # perfect binary tree does not yield another perfect binary tree
@@ -550,25 +537,19 @@ def merge_trees(key, current_subtree, new_subtree, go_right):
     key, subkey = random.split(key)
     # expit(x-y) := 1 / (1 + e^(-(x-y))) = 1 / (1 + e^(y-x)) = e^x / (e^y + e^x)
     prob_of_choosing_new = expit(new_subtree.logweight - current_subtree.logweight)
-    print(f"prob of choosing new sample: {prob_of_choosing_new}")
+    # print(f"prob of choosing new sample: {prob_of_choosing_new}")
     # NOTE, here it is possible to bias the transition towards the new subtree
     # Betancourt cenceptual intro (and Numpyro)
-    # TODO: Use pytree-enabled select
-    new_sample = cond(
-        pred = random.bernoulli(subkey, prob_of_choosing_new),
-        # choose the new sample
-        true_fun = lambda current_and_new_tup: current_and_new_tup[1],
-        # choose the old sample
-        false_fun = lambda current_and_new_tup: current_and_new_tup[0],
-        operand = (current_subtree.proposal_candidate, new_subtree.proposal_candidate)
+    new_sample = select(
+        random.bernoulli(subkey, prob_of_choosing_new),
+        new_subtree.proposal_candidate,
+        current_subtree.proposal_candidate
     )
     # 6. define new tree
-    # TODO: Use pytree-enabled select
-    left, right = cond(
-        pred = go_right,
-        true_fun = lambda op: (op['current_subtree'].left, op['new_subtree'].right),
-        false_fun = lambda op: (op['new_subtree'].left, op['current_subtree'].right),
-        operand = {'current_subtree': current_subtree, 'new_subtree': new_subtree}
+    left, right = select(
+        go_right,
+        (current_subtree.left, new_subtree.right),
+        (new_subtree.left, current_subtree.right),
     )
     turning = is_euclidean_uturn_pytree(left, right)
     merged_tree = Tree(left=left, right=right, logweight=np.logaddexp(new_subtree.logweight, current_subtree.logweight), proposal_candidate=new_sample, turning=turning, depth=current_subtree.depth + 1)
@@ -887,7 +868,7 @@ class HMCChain:
                 prev_position, key, samples, acceptance = state
             key, key_hmc = random.split(key)
 
-            (qp_old_and_proposed_sample, was_accepted), unintegrated_momentum = generate_hmc_sample(
+            (qp_acc_rej, was_accepted), unintegrated_momentum = generate_hmc_sample(
                 key = key_hmc,
                 position = prev_position,
                 potential_energy = self.potential_energy,
@@ -899,12 +880,10 @@ class HMCChain:
             )
 
             # TODO: what to do with the other one (it's rejected or just the previous sample in case the new one was accepted)
-            # TODO: Use pytree-enabled select
-            next_qp, rejected_qp = cond(
-                pred = was_accepted,
-                true_fun = lambda tup: (tup[1], tup[0]),
-                false_fun = lambda tup: (tup[0], tup[1]),
-                operand = qp_old_and_proposed_sample
+            next_qp, rejected_qp = select(
+                was_accepted,
+                (qp_acc_rej[1], qp_acc_rej[0]),
+                (qp_acc_rej[0], qp_acc_rej[1]),
             )
 
             samples = tree_util.tree_map(lambda ts, val: ts.at[idx].set(val), samples, next_qp.position)

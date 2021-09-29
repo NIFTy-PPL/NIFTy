@@ -1,4 +1,5 @@
 from functools import partial
+from jax import lax
 from jax import numpy as np
 from jax.tree_util import (
     all_leaves, tree_leaves, tree_map, tree_structure, tree_reduce
@@ -121,6 +122,10 @@ def norm(tree, ord, *, ravel: bool):
             return abs(x) if ndim(x) == 0 else norm(x, ord=ord)
 
     return norm(tree_leaves(tree_map(el_norm, tree)), ord=ord)
+
+
+def select(pred, on_true, on_false):
+    return tree_map(partial(lax.select, pred), on_true, on_false)
 
 
 def where(condition, x, y):
