@@ -366,6 +366,13 @@ def index_into_pytree_time_series(idx, ptree):
     return tree_util.tree_map(lambda arr: arr[idx], ptree)
 
 
+def tree_index_update(x, idx, y):
+    from jax.tree_util import tree_map
+    from jax.ops import index_update
+
+    return tree_map(lambda x_el, y_el: index_update(x_el, idx, y_el), x, y)
+
+
 # Essentially algorithm 2 from https://arxiv.org/pdf/1912.11554.pdf
 def iterative_build_tree(key, initial_tree, eps, go_right, stepper, potential_energy, kinetic_energy, maxdepth):
     """
@@ -398,52 +405,44 @@ def iterative_build_tree(key, initial_tree, eps, go_right, stepper, potential_en
     """
     # 1. choose start point of integration
     # TODO: Use pytree-enabled select
-    initial_qp = cond(
+    z = cond(
         pred = go_right,
         true_fun = lambda left_and_right: left_and_right[1],
         false_fun = lambda left_and_right: left_and_right[0],
         operand = (initial_tree.left, initial_tree.right)
     )
-    z = initial_qp
     depth = initial_tree.depth
-    # 2. build / collect chosen states
-    # TODO: rename chosen to a more sensible name such as new_tree ...
-    # TODO: WARNING: this will be overwritten in the first iteration of the loop, the assignment to chosen is only temporary and we're using z since it's the only QP that's availible right now. This would also be solved by moving the first iteration outside of the loop.
-    # TODO: maybe chosen = None works? Or maybe it's not required at all?
-    chosen = Tree(z,z,0.,z,turning=False,depth=depth)
-    # Storage for left endpoints of subtrees. Size is determined statically by the `maxdepth` parameter.
+    # 2. build / collect new states
+    # Create a storage for left endpoints of subtrees. Size is determined
+    # statically by the `maxdepth` parameter.
     # NOTE, let's hope this does not break anything but in principle we only
     # need `maxdepth` element even though the tree can be of length `maxdepth +
-    # 1` since we will never access the last element...
-    S = tree_util.tree_map(lambda initial_q_or_p_leaf: np.empty((maxdepth, ) + initial_q_or_p_leaf.shape), unzip_qp_pytree(initial_qp))
+    # 1`. This is because we will never access the last element.
+    S = tree_util.tree_map(lambda initial_q_or_p_leaf: np.empty((maxdepth, ) + initial_q_or_p_leaf.shape), unzip_qp_pytree(z))
 
-    def _loop_body(state):
-        n, _turning, chosen, z, S, key = state
+    z = stepper(z, eps, np.where(go_right, x=1, y=-1))
+    key, subkey = random.split(key)  # unnecessary but preserves randomness; TODO: remove
+    incomplete_tree = Tree(left=z, right=z, logweight=-total_energy_of_qp(z, potential_energy, kinetic_energy), proposal_candidate=z, turning=False, depth=-1)
+    S = tree_index_update(S, 0, z)
 
+    def amend_incomplete_tree(state):
+        n, incomplete_tree, z, S, key = state
+
+        key, key_choose_candidate = random.split(key)
         z = stepper(z, eps, np.where(go_right, x=1, y=-1))
-
-        key, subkey = random.split(key)
-        # TODO: maybe just move the first iteration outside of the loop?
-        chosen = cond(
-            pred = n == 0,
-            # first iteration: create the depth 0 tree
-            true_fun = lambda c_and_z: Tree(left=z, right=z, logweight=-total_energy_of_qp(z, potential_energy, kinetic_energy), proposal_candidate=z, turning=False, depth=depth),
-            # all later iterations: add new point to `chosen` tree
-            false_fun = lambda c_and_z: add_single_qp_to_tree(subkey, chosen, z, go_right, potential_energy, kinetic_energy),
-            operand = (chosen, z)
-        )
+        incomplete_tree = add_single_qp_to_tree(key_choose_candidate, incomplete_tree, z, go_right, potential_energy, kinetic_energy)
 
         def _even_fun(S):
             # n is even, the current z is w.l.o.g. a left endpoint of some
             # subtrees. Register the current z to be used in turning condition
             # checks later, when the right endpoints of it's subtrees are
             # generated.
-            S = tree_util.tree_map(lambda arr, val: arr.at[bitcount(n)].set(val), S, z)
+            S = tree_index_update(S, bitcount(n), z)
             return S, False
 
         def _odd_fun(S):
             # n is odd, the current z is w.l.o.g a right endpoint of some
-            # subtrees.  Check turning condition against all left endpoints of
+            # subtrees. Check turning condition against all left endpoints of
             # subtrees that have the current z (/n) as their right endpoint.
 
             # l = nubmer of subtrees that have current z as their right endpoint.
@@ -452,14 +451,14 @@ def iterative_build_tree(key, initial_tree, eps, go_right, stepper, potential_en
             i_max_incl = bitcount(n-1)
             i_min_incl = i_max_incl - l + 1
             # TODO: this should traverse the range in reverse
-            contains_uturn = fori_loop(
+            turning = fori_loop(
                 lower = i_min_incl,
                 upper = i_max_incl + 1,
                 # TODO: conditional for early termination
-                body_fun = lambda k, contains_uturn: contains_uturn | is_euclidean_uturn_pytree(index_into_pytree_time_series(k, S), z),
+                body_fun = lambda k, turning: turning | is_euclidean_uturn_pytree(index_into_pytree_time_series(k, S), z),
                 init_val = False
             )
-            return S, contains_uturn
+            return S, turning
 
         S, turning = cond(
             pred = n % 2 == 0,
@@ -467,34 +466,31 @@ def iterative_build_tree(key, initial_tree, eps, go_right, stepper, potential_en
             false_fun = _odd_fun,
             operand = S
         )
-        return (n+1, turning, chosen, z, S, key)
+        incomplete_tree = incomplete_tree._replace(turning=turning)
+        return (n+1, incomplete_tree, z, S, key)
 
-    _final_n, turning, chosen, _z, _S, _key = while_loop(
+    def _cont_cond(state):
+        n, incomplete_tree, *_ = state
+        return (n < 2**depth) & (~incomplete_tree.turning)
+
+    _final_n, incomplete_tree, _z, _S, _key = while_loop(
         # while n < 2**depth and not stop
-        cond_fun=lambda state: (state[0] < 2**depth) & (~state[1]),
-        body_fun=_loop_body,
-        init_val=(0, False, chosen, z, S, key)
+        cond_fun=_cont_cond,
+        body_fun=amend_incomplete_tree,
+        init_val=(1, incomplete_tree, z, S, key)
     )
 
     global _DEBUG_FLAG
     if _DEBUG_FLAG:
         host_callback.call(_DEBUG_FINISH_SUBTREE, None)
 
-    # TODO: remove this and set chosen.turning inside the loop, or: make loop state essentially just (n, chosen)
-    return Tree(
-        left = chosen.left,
-        right = chosen.right,
-        logweight = chosen.logweight,
-        proposal_candidate = chosen.proposal_candidate,
-        turning = turning,
-        depth = chosen.depth
-    )
+    return incomplete_tree._replace(depth=depth)
 
 
 def add_single_qp_to_tree(key, tree, qp, go_right, potential_energy, kinetic_energy):
     """Helper function for progressive sampling. Takes a tree with a sample, and
-    a new endpoint, propagates sample. It's functional, i.e. does not modify
-    arguments."""
+    a new endpoint, propagates sample.
+    """
     # This is technically just a special case of merge_trees with one of the
     # trees being a singleton, depth 0 tree.
     # TODO: just construct the singleton tree and call merge_trees
@@ -517,8 +513,9 @@ def add_single_qp_to_tree(key, tree, qp, go_right, potential_energy, kinetic_ene
         false_fun = lambda old_and_new: old_and_new[1],
         operand = (tree.proposal_candidate, qp)
     )
-    return Tree(left, right, total_logweight, proposal_candidate, tree.turning, tree.depth)
-
+    # NOTE, set an invalid depth as to indicate that adding a single QP to a
+    # perfect binary tree does not yield another perfect binary tree
+    return Tree(left, right, total_logweight, proposal_candidate, tree.turning, -1)
 
 def merge_trees(key, current_subtree, new_subtree, go_right):
     """Merges two trees, propagating the proposal_candidate"""
