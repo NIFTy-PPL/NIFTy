@@ -325,26 +325,23 @@ def generate_nuts_sample(initial_qp, key, eps, maxdepth, stepper, potential_ener
 
     # loop stopping condition
     stop = False
-    # loop tree depth, increases each iteration
-    j = 0
 
-    loop_state = (key, current_tree, j, stop)
+    loop_state = (key, current_tree, stop)
 
-    def _cond_fn(loop_state):
-        _key, _current_tree, j, stop = loop_state
-        # while (not stop) and j <= maxdepth
-        return (~stop) & (j <= maxdepth)
+    def _cont_cond(loop_state):
+        _, current_tree, stop = loop_state
+        return (~stop) & (current_tree.depth <= maxdepth)
 
-    def _body_fun(loop_state):
-        key, current_tree, j, stop = loop_state
+    def cond_tree_doubling(loop_state):
+        key, current_tree, _ = loop_state
         key, key_dir, key_subtree, key_merge = random.split(key, 4)
 
         go_right = random.bernoulli(key_dir, 0.5)
 
-        # build tree of depth j, adjacent to current_tree
+        # build tree adjacent to current_tree
         new_subtree = iterative_build_tree(key_subtree, current_tree, eps, go_right, stepper, potential_energy, kinetic_energy, maxdepth)
 
-        # combine current_tree and new_subtree into a depth j+1 tree only if new_subtree has no turning subtrees (including itself)
+        # combine current_tree and new_subtree into a tree which is one layer deeper only if new_subtree has no turning subtrees (including itself)
         current_tree = cond(
             pred = new_subtree.turning,
             true_fun = lambda old_and_new: old_and_new[0],
@@ -354,10 +351,9 @@ def generate_nuts_sample(initial_qp, key, eps, maxdepth, stepper, potential_ener
         # stop if new subtree was turning -> we sample from the old one and don't expand further
         # stop if new total tree is turning -> we sample from the combined trajectory and don't expand further
         stop = new_subtree.turning | current_tree.turning
-        j = j + 1
-        return (key, current_tree, j, stop)
+        return (key, current_tree, stop)
 
-    _key, current_tree, _j, _stop = while_loop(_cond_fn, _body_fun, loop_state)
+    _, current_tree, _ = while_loop(_cont_cond, cond_tree_doubling, loop_state)
 
     global _DEBUG_FLAG
     if _DEBUG_FLAG:
