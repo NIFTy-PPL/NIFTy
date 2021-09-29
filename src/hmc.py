@@ -524,11 +524,11 @@ def merge_trees(key, current_subtree, new_subtree, go_right):
 
 
 def bitcount(n):
-    """Count the number of ones in the binary representation of n.
+    """Count the number of ones in the binary representation of `n`.
 
     Warning
     -------
-    n must be positive and strictly smaller than 2**64
+    `n` must be positive and strictly smaller than `2**64`
 
     Examples
     --------
@@ -541,11 +541,12 @@ def bitcount(n):
 
 
 def count_trailing_ones(n):
-    """Count the number of trailing, consecutive ones in the binary representation of n.
+    """Count the number of trailing, consecutive ones in the binary
+    representation of `n`.
 
     Warning
     -------
-    n must be positive and strictly smaller than 2**64
+    `n` must be positive and strictly smaller than 2**64
 
     Examples
     --------
