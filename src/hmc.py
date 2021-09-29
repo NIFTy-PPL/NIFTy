@@ -236,6 +236,7 @@ def generate_hmc_sample(*,
     )
     qp = QP(position=position, momentum=momentum)
 
+    # TODO: pass static arguments to leapfrog from fori_loop
     loop_body = partial(leapfrog_step, potential_energy_gradient)
     idx_ignoring_loop_body = lambda idx, args: loop_body(*args)
 
@@ -246,8 +247,8 @@ def generate_hmc_sample(*,
         body_fun = idx_ignoring_loop_body,
         init_val = (
             qp,
-            step_length,
-            mass_matrix
+            step_length,  # TODO: see above
+            mass_matrix  # TODO: see above
         )
     )
 
@@ -417,6 +418,7 @@ def iterative_build_tree(key, initial_tree, depth, eps, go_right, stepper, poten
         It's only required to statically set the size of the `S` array (actually pytree of arrays).
     """
     # 1. choose start point of integration
+    # TODO: Use pytree-enabled select
     initial_qp = cond(
         pred = go_right,
         true_fun = lambda left_and_right: left_and_right[1],
@@ -516,6 +518,7 @@ def add_single_qp_to_tree(key, tree, qp, go_right, potential_energy, kinetic_ene
     # This is technically just a special case of merge_trees with one of the
     # trees being a singleton, depth 0 tree.
     # TODO: just construct the singleton tree and call merge_trees
+    # TODO: Use pytree-enabled select
     left, right = cond(
         pred = go_right,
         true_fun = lambda tree_and_qp: (tree_and_qp[0].left, tree_and_qp[1]),
@@ -527,6 +530,7 @@ def add_single_qp_to_tree(key, tree, qp, go_right, potential_energy, kinetic_ene
     total_logweight = np.logaddexp(tree.logweight, qp_logweight)
     # expit(x-y) := 1 / (1 + e^(-(x-y))) = 1 / (1 + e^(y-x)) = e^x / (e^y + e^x)
     prob_of_keeping_old = expit(tree.logweight - qp_logweight)
+    # TODO: Use pytree-enabled select
     proposal_candidate = cond(
         pred = random.bernoulli(key, prob_of_keeping_old),
         true_fun = lambda old_and_new: old_and_new[0],
@@ -546,6 +550,7 @@ def merge_trees(key, current_subtree, new_subtree, go_right, turning_hint):
     print(f"prob of choosing new sample: {prob_of_choosing_new}")
     # NOTE, here it is possible to bias the transition towards the new subtree
     # Betancourt cenceptual intro (and Numpyro)
+    # TODO: Use pytree-enabled select
     new_sample = cond(
         pred = random.bernoulli(subkey, prob_of_choosing_new),
         # choose the new sample
@@ -555,6 +560,7 @@ def merge_trees(key, current_subtree, new_subtree, go_right, turning_hint):
         operand = (current_subtree.proposal_candidate, new_subtree.proposal_candidate)
     )
     # 6. define new tree
+    # TODO: Use pytree-enabled select
     left, right = cond(
         pred = go_right,
         true_fun = lambda op: (op['current_subtree'].left, op['new_subtree'].right),
@@ -890,6 +896,7 @@ class HMCChain:
             )
 
             # TODO: what to do with the other one (it's rejected or just the previous sample in case the new one was accepted)
+            # TODO: Use pytree-enabled select
             next_qp, rejected_qp = cond(
                 pred = was_accepted,
                 true_fun = lambda tup: (tup[1], tup[0]),
