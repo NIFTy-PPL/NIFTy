@@ -352,8 +352,7 @@ def generate_nuts_sample(initial_qp, key, eps, maxdepth, stepper, potential_ener
         key, current_tree, j, stop = loop_state
         key, key_dir, key_subtree, key_merge = random.split(key, 4)
 
-        # random.bernoulli is fine, this is just for rng consistency across commits TODO: use random.bernoulli
-        go_right = random.choice(key_dir, np.array([False, True]))
+        go_right = random.bernoulli(key_dir, 0.5)
 
         # build tree of depth j, adjacent to current_tree
         new_subtree = iterative_build_tree(key_subtree, current_tree, j, eps, go_right, stepper, potential_energy, kinetic_energy, maxdepth)
