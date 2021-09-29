@@ -61,11 +61,10 @@ def sample_momentum_from_diagonal(*, key, diag_mass_matrix):
 
 
 # TODO: how to randomize step size (neal sect. 3.2)
-# WARNING: requires jaxlib '0.1.66', keyword argument passing doesn't work with alternative static_argnums, which is supported in earlier jax versions
 # @partial(jit, static_argnames=('potential_energy_gradient',))
 def leapfrog_step(
-        potential_energy_gradient,
         qp: QP,
+        potential_energy_gradient,
         step_length,
         mass_matrix,
     ):
@@ -100,19 +99,15 @@ def leapfrog_step(
     #print("momentum_fullstep:", momentum_fullstep)
 
     qp_fullstep = QP(position=position_fullstep, momentum=momentum_fullstep)
-    # return the last two paramters unchanged for iteration in lax.fori_loop
-    # TODO: apply last two args partially?
-    #return potential_energy, momentum_fullstep, position_fullstep, step_length
-    # TODO: delete step_length
-    return qp_fullstep, step_length, mass_matrix
+    return qp_fullstep
 
 
 def leapfrog_step_pytree(
-    potential_energy_gradient,
     qp: QP,
+    potential_energy_gradient,
     step_length,
     mass_matrix
-    ):
+    ) -> QP:
     position = qp.position
     momentum = qp.momentum
 
@@ -142,7 +137,7 @@ def leapfrog_step_pytree(
         # append result to global list variable
         host_callback.call(_DEBUG_ADD_QP, qp_fullstep)
 
-    return qp_fullstep, step_length
+    return qp_fullstep
 
 
 def unzip_qp_pytree(tree_of_qp):
@@ -236,20 +231,12 @@ def generate_hmc_sample(*,
     )
     qp = QP(position=position, momentum=momentum)
 
-    # TODO: pass static arguments to leapfrog from fori_loop
-    loop_body = partial(leapfrog_step, potential_energy_gradient)
-    idx_ignoring_loop_body = lambda idx, args: loop_body(*args)
-
-    # todo: write in python (maybe?)
-    new_qp, _step_length, _mass_matrix = fori_loop(
+    loop_body = partial(leapfrog_step, potential_energy_gradient=potential_energy_gradient, step_length=step_length, mass_matrix=mass_matrix)
+    new_qp = fori_loop(
         lower = 0,
         upper = number_of_integration_steps,
-        body_fun = idx_ignoring_loop_body,
-        init_val = (
-            qp,
-            step_length,  # TODO: see above
-            mass_matrix  # TODO: see above
-        )
+        body_fun = lambda _, args: loop_body(args),
+        init_val = qp
     )
 
     # this flipping is needed to make the proposal distribution symmetric
@@ -675,7 +662,7 @@ class NUTSChain:
             raise ValueError('eps must be a float')
 
         potential_energy_gradient = grad(self.potential_energy)
-        self.stepper = lambda qp, eps, direction: leapfrog_step_pytree(potential_energy_gradient, qp, eps*direction, self.diag_mass_matrix)[0]
+        self.stepper = lambda qp, eps, direction: leapfrog_step_pytree(qp, potential_energy_gradient, eps*direction, self.diag_mass_matrix)
 
         if isinstance(maxdepth, int):
             self.maxdepth = maxdepth
