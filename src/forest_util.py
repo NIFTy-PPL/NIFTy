@@ -107,7 +107,7 @@ def zeros_like(a, dtype=None, shape=None):
     return tree_map(partial(np.zeros_like, dtype=dtype, shape=shape), a)
 
 
-def norm(tree, ord, ravel: bool = False):
+def norm(tree, ord, *, ravel: bool):
     from jax.numpy import ndim, abs
     from jax.numpy.linalg import norm
 
