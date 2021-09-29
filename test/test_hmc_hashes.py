@@ -61,6 +61,7 @@ def test_nuts_hash():
         maxdepth=10,
         rngseed=42,
         dbg_info=False,
+        bias_transition=False,
         compile=True
     )
     results = sampler.generate_n_samples(1000)

@@ -267,7 +267,7 @@ def total_energy_of_qp(qp, potential_energy, kinetic_energy):
     return potential_energy(qp.position) + kinetic_energy(qp.momentum)
 
 
-def generate_nuts_sample(initial_qp, key, eps, maxdepth, stepper, potential_energy, kinetic_energy):
+def generate_nuts_sample(initial_qp, key, eps, maxdepth, stepper, potential_energy, kinetic_energy, bias_transition=True):
     """
     Warning
     -------
@@ -343,7 +343,7 @@ def generate_nuts_sample(initial_qp, key, eps, maxdepth, stepper, potential_ener
         current_tree = cond(
             pred = new_subtree.turning,
             true_fun = lambda old_and_new: old_and_new[0],
-            false_fun = lambda old_and_new: merge_trees(key_merge, old_and_new[0], old_and_new[1], go_right),
+            false_fun = lambda old_and_new: merge_trees(key_merge, old_and_new[0], old_and_new[1], go_right, bias_transition=bias_transition),
             operand = (current_tree, new_subtree),
         )
         # stop if new subtree was turning -> we sample from the old one and don't expand further
@@ -500,16 +500,25 @@ def add_single_qp_to_tree(key, tree, qp, go_right, potential_energy, kinetic_ene
     # perfect binary tree does not yield another perfect binary tree
     return Tree(left, right, total_logweight, proposal_candidate, tree.turning, -1)
 
-def merge_trees(key, current_subtree, new_subtree, go_right):
+def merge_trees(key, current_subtree, new_subtree, go_right, bias_transition):
     """Merges two trees, propagating the proposal_candidate"""
     # 5. decide which sample to take based on total weights (merge trees)
-    # expit(x-y) := 1 / (1 + e^(-(x-y))) = 1 / (1 + e^(y-x)) = e^x / (e^y + e^x)
-    prob_of_choosing_new = expit(new_subtree.logweight - current_subtree.logweight)
-    # print(f"prob of choosing new sample: {prob_of_choosing_new}")
-    # NOTE, here it is possible to bias the transition towards the new subtree
-    # Betancourt cenceptual intro (and Numpyro)
+    if bias_transition:
+        # Bias the transition towards the new subtree (see Betancourt
+        # conceptual intro (and Numpyro))
+        transition_probability = np.minimum(1., np.exp(new_subtree.logweight - current_subtree.logweight))
+        # If new tree is turning or diverging, do not transition
+        # TODO: check for divergence since this bias might be really bad then
+        diverging = False
+        transition_probability = np.where(
+            new_subtree.turning | diverging, 0., transition_probability
+        )
+    else:
+        # expit(x-y) := 1 / (1 + e^(-(x-y))) = 1 / (1 + e^(y-x)) = e^x / (e^y + e^x)
+        transition_probability = expit(new_subtree.logweight - current_subtree.logweight)
+    # print(f"prob of choosing new sample: {transition_probability}")
     new_sample = select(
-        random.bernoulli(key, prob_of_choosing_new),
+        random.bernoulli(key, transition_probability),
         new_subtree.proposal_candidate,
         current_subtree.proposal_candidate
     )
@@ -584,7 +593,7 @@ def make_kinetic_energy_fn_from_diag_mass_matrix(mass_matrix):
 
 
 class NUTSChain:
-    def __init__(self, initial_position, potential_energy, diag_mass_matrix, eps, maxdepth, rngseed, compile=True, dbg_info=False, signal_response=lambda x: x):
+    def __init__(self, initial_position, potential_energy, diag_mass_matrix, eps, maxdepth, rngseed, compile=True, dbg_info=False, signal_response=lambda x: x, bias_transition=True):
         self.position = initial_position
 
         # TODO: typechecks?
@@ -626,6 +635,8 @@ class NUTSChain:
 
         self.signal_response = signal_response
 
+        self.bias_transition = bias_transition
+
 
     def generate_n_samples(self, n):
 
@@ -666,7 +677,8 @@ class NUTSChain:
                 maxdepth = self.maxdepth,
                 stepper = self.stepper,
                 potential_energy = self.potential_energy,
-                kinetic_energy = make_kinetic_energy_fn_from_diag_mass_matrix(self.diag_mass_matrix)
+                kinetic_energy = make_kinetic_energy_fn_from_diag_mass_matrix(self.diag_mass_matrix),
+                bias_transition=self.bias_transition
             )
             #print("current sample", tree.proposal_candidate)
             samples = tree_util.tree_map(lambda ts, val: ts.at[idx].set(val), samples, tree.proposal_candidate.position)
