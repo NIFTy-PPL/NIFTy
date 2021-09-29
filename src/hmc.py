@@ -1,6 +1,7 @@
+from functools import partial
 from jax import numpy as np
 from jax import tree_util
-from jax import lax, random, jit, partial, grad
+from jax import lax, random, jit, grad
 from jax.scipy.special import expit
 
 from typing import NamedTuple, TypeVar, Union
