@@ -124,6 +124,13 @@ def norm(tree, ord, ravel: bool = False):
 
 
 def where(condition, x, y):
+    """Selects a pytree based on the condition which can be a pytree itself.
+
+    Notes
+    -----
+    If `condition` is not a pytree, then a partially evaluated selection is
+    simply mapped over `x` and `y` without actually broadcasting `condition`.
+    """
     import numpy as onp
     from itertools import repeat
 
@@ -134,10 +141,6 @@ def where(condition, x, y):
         [ts_c.num_nodes, ts_x.num_nodes, ts_y.num_nodes]
     )]
 
-    if ts_c.num_nodes < ts_max.num_nodes:
-        if ts_c.num_nodes > 1:
-            raise ValueError("can not broadcast condition")
-        condition = ts_max.unflatten(repeat(condition, ts_max.num_leaves))
     if ts_x.num_nodes < ts_max.num_nodes:
         if ts_x.num_nodes > 1:
             raise ValueError("can not broadcast LHS")
@@ -147,6 +150,10 @@ def where(condition, x, y):
             raise ValueError("can not broadcast RHS")
         y = ts_max.unflatten(repeat(y, ts_max.num_leaves))
 
+    if ts_c.num_nodes < ts_max.num_nodes:
+        if ts_c.num_nodes > 1:
+            raise ValueError("can not map condition")
+        return tree_map(partial(np.where, condition), x, y)
     return tree_map(np.where, condition, x, y)
 
 
