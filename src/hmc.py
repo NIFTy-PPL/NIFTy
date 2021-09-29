@@ -362,15 +362,12 @@ def generate_nuts_sample(initial_qp, key, eps, maxdepth, stepper, potential_ener
         current_tree = cond(
             pred = new_subtree.turning,
             true_fun = lambda old_and_new: old_and_new[0],
-            # TODO: turning_hint
-            false_fun = lambda old_and_new: merge_trees(key_merge, old_and_new[0], old_and_new[1], go_right, False),
+            false_fun = lambda old_and_new: merge_trees(key_merge, old_and_new[0], old_and_new[1], go_right),
             operand = (current_tree, new_subtree),
         )
         # stop if new subtree was turning -> we sample from the old one and don't expand further
         # stop if new total tree is turning -> we sample from the combined trajectory and don't expand further
-        # TODO: move call to is_euclidean_uturn_pytree into merge_trees from above, remove the turning hint and just check current_tree.turning here
-        # TODO: is turning is branched twice if current_treey is old_tree
-        stop = new_subtree.turning | is_euclidean_uturn_pytree(current_tree.left, current_tree.right)
+        stop = new_subtree.turning | current_tree.turning
         j = j + 1
         return (key, current_tree, j, stop)
 
@@ -540,9 +537,8 @@ def add_single_qp_to_tree(key, tree, qp, go_right, potential_energy, kinetic_ene
     return Tree(left, right, total_logweight, proposal_candidate, tree.turning, tree.depth)
 
 
-def merge_trees(key, current_subtree, new_subtree, go_right, turning_hint):
+def merge_trees(key, current_subtree, new_subtree, go_right):
     """Merges two trees, propagating the proposal_candidate"""
-    # WARNING: only to be called from extend_tree_iterative, with turning_hint logic correct
     # 5. decide which sample to take based on total weights (merge trees)
     key, subkey = random.split(key)
     # expit(x-y) := 1 / (1 + e^(-(x-y))) = 1 / (1 + e^(y-x)) = e^x / (e^y + e^x)
@@ -567,8 +563,8 @@ def merge_trees(key, current_subtree, new_subtree, go_right, turning_hint):
         false_fun = lambda op: (op['new_subtree'].left, op['current_subtree'].right),
         operand = {'current_subtree': current_subtree, 'new_subtree': new_subtree}
     )
-    # TODO: Turning hint is imply set here without any turning check; i.e. in general it is wrong!
-    merged_tree = Tree(left=left, right=right, logweight=np.logaddexp(new_subtree.logweight, current_subtree.logweight), proposal_candidate=new_sample, turning=turning_hint, depth=current_subtree.depth + 1)
+    turning = is_euclidean_uturn_pytree(left, right)
+    merged_tree = Tree(left=left, right=right, logweight=np.logaddexp(new_subtree.logweight, current_subtree.logweight), proposal_candidate=new_sample, turning=turning, depth=current_subtree.depth + 1)
     return merged_tree
 
 
