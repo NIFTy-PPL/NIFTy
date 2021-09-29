@@ -355,7 +355,7 @@ def generate_nuts_sample(initial_qp, key, eps, maxdepth, stepper, potential_ener
         go_right = random.bernoulli(key_dir, 0.5)
 
         # build tree of depth j, adjacent to current_tree
-        new_subtree = iterative_build_tree(key_subtree, current_tree, j, eps, go_right, stepper, potential_energy, kinetic_energy, maxdepth)
+        new_subtree = iterative_build_tree(key_subtree, current_tree, eps, go_right, stepper, potential_energy, kinetic_energy, maxdepth)
 
         # combine current_tree and new_subtree into a depth j+1 tree only if new_subtree has no turning subtrees (including itself)
         current_tree = cond(
@@ -384,16 +384,16 @@ def index_into_pytree_time_series(idx, ptree):
 
 
 # Essentially algorithm 2 from https://arxiv.org/pdf/1912.11554.pdf
-def iterative_build_tree(key, initial_tree, depth, eps, go_right, stepper, potential_energy, kinetic_energy, maxdepth):
+def iterative_build_tree(key, initial_tree, eps, go_right, stepper, potential_energy, kinetic_energy, maxdepth):
     """
     Starting from either the left or right endpoint of a given tree, builds a new adjacent tree of the same size.
 
     Parameters
     ----------
+    key: ndarray
+        randomness uses to choose a sample when adding QPs to the tree
     initial_tree: Tree
         Tree to be extended (doubled) on the left or right.
-    depth:
-        Depth of the new tree to be built.
     eps: float
         The step size (usually called epsilon) for the leapfrog integrator.
     go_right: bool
@@ -411,7 +411,7 @@ def iterative_build_tree(key, initial_tree, depth, eps, go_right, stepper, poten
         Takes only the momentum part (QP.momentum) as argument
     maxdepth: int
         An upper bound on the 'depth' argument, but has no effect on the functions behaviour.
-        It's only required to statically set the size of the `S` array (actually pytree of arrays).
+        It's only required to statically set the size of the `S` array (pytree).
     """
     # 1. choose start point of integration
     # TODO: Use pytree-enabled select
@@ -422,6 +422,7 @@ def iterative_build_tree(key, initial_tree, depth, eps, go_right, stepper, poten
         operand = (initial_tree.left, initial_tree.right)
     )
     z = initial_qp
+    depth = initial_tree.depth
     # 2. build / collect chosen states
     # TODO: rename chosen to a more sensible name such as new_tree ...
     # TODO: WARNING: this will be overwritten in the first iteration of the loop, the assignment to chosen is only temporary and we're using z since it's the only QP that's availible right now. This would also be solved by moving the first iteration outside of the loop.
