@@ -429,7 +429,10 @@ def iterative_build_tree(key, initial_tree, depth, eps, go_right, stepper, poten
     # TODO: maybe chosen = None works? Or maybe it's not required at all?
     chosen = Tree(z,z,0.,z,turning=False,depth=depth)
     # Storage for left endpoints of subtrees. Size is determined statically by the `maxdepth` parameter.
-    S = tree_util.tree_map(lambda initial_q_or_p_leaf: np.empty((maxdepth + 1,) + initial_q_or_p_leaf.shape), unzip_qp_pytree(initial_qp))
+    # NOTE, let's hope this does not break anything but in principle we only
+    # need `maxdepth` element even though the tree can be of length `maxdepth +
+    # 1` since we will never access the last element...
+    S = tree_util.tree_map(lambda initial_q_or_p_leaf: np.empty((maxdepth, ) + initial_q_or_p_leaf.shape), unzip_qp_pytree(initial_qp))
 
     def _loop_body(state):
         n, _turning, chosen, z, S, key = state
@@ -447,18 +450,15 @@ def iterative_build_tree(key, initial_tree, depth, eps, go_right, stepper, poten
             operand = (chosen, z)
         )
 
-        def _even_fun(n_and_S):
-            n, S = n_and_S
-            # TODO: does z have to be passed in or is this okay? Why?
+        def _even_fun(S):
             # n is even, the current z is w.l.o.g. a left endpoint of some
             # subtrees. Register the current z to be used in turning condition
             # checks later, when the right endpoints of it's subtrees are
             # generated.
             S = tree_util.tree_map(lambda arr, val: arr.at[bitcount(n)].set(val), S, z)
-            return n, S, False
+            return S, False
 
-        def _odd_fun(n_and_S):
-            n, S = n_and_S
+        def _odd_fun(S):
             # n is odd, the current z is w.l.o.g a right endpoint of some
             # subtrees.  Check turning condition against all left endpoints of
             # subtrees that have the current z (/n) as their right endpoint.
@@ -476,13 +476,13 @@ def iterative_build_tree(key, initial_tree, depth, eps, go_right, stepper, poten
                 body_fun = lambda k, contains_uturn: contains_uturn | is_euclidean_uturn_pytree(index_into_pytree_time_series(k, S), z),
                 init_val = False
             )
-            return n, S, contains_uturn
+            return S, contains_uturn
 
-        _n, S, turning = cond(
+        S, turning = cond(
             pred = n % 2 == 0,
             true_fun = _even_fun,
             false_fun = _odd_fun,
-            operand = (n, S)
+            operand = S
         )
         return (n+1, turning, chosen, z, S, key)
 
