@@ -1,14 +1,35 @@
 import sys
+from numpy import ndarray
 from jax import numpy as np
 
 from jifty1 import hmc
+
+NDARRAY_TYPE = [ndarray]
+
+try:
+    from jax.numpy import ndarray as jndarray
+
+    NDARRAY_TYPE.append(jndarray)
+except ImportError:
+    pass
+
+NDARRAY_TYPE = tuple(NDARRAY_TYPE)
+
+
+def _json_serialize(obj):
+    if isinstance(obj, NDARRAY_TYPE):
+        return obj.tolist()
+    raise TypeError(f"unknown type {type(obj)}")
 
 
 def hashit(obj, n_chars=8) -> str:
     """Get first `n_chars` characters of Blake2B hash of `obj`."""
     import hashlib
+    import json
 
-    return hashlib.blake2b(bytes(str(obj), "utf-8")).hexdigest()[:n_chars]
+    return hashlib.blake2b(
+        bytes(json.dumps(obj, default=_json_serialize), "utf-8")
+    ).hexdigest()[:n_chars]
 
 
 def test_hmc_hash():
@@ -26,7 +47,7 @@ def test_hmc_hash():
     results = sampler.generate_n_samples(1000)
     results_hash = hashit(results, n_chars=20)
     print(f"full hash: {results_hash}", file=sys.stderr)
-    old_hash = "c44e34125a942c54c785"
+    old_hash = "27e5222bf6efc8dc760e"
     assert results_hash == old_hash
 
 
@@ -45,7 +66,7 @@ def test_nuts_hash():
     results = sampler.generate_n_samples(1000)
     results_hash = hashit(results, n_chars=20)
     print(f"full hash: {results_hash}", file=sys.stderr)
-    old_hash = "10423f9754bb3ebe4978"
+    old_hash = "3cf8c5df26726033acd8"
     assert results_hash == old_hash
 
 
