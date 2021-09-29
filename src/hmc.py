@@ -1,9 +1,10 @@
-from jax import numpy as np
-import jax.tree_util as tree_util
-from jax import lax, random, jit, partial, flatten_util, grad
-from .disable_jax_control_flow import cond, while_loop, fori_loop
 from collections import namedtuple
+from jax import numpy as np
+from jax import tree_util
+from jax import lax, random, jit, partial, flatten_util, grad
 from jax.scipy.special import expit
+
+from .disable_jax_control_flow import cond, while_loop, fori_loop
 
 _DEBUG_FLAG = False
 
