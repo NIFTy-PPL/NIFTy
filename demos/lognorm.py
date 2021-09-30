@@ -60,6 +60,7 @@ plt.imshow(
     origin="lower"
 )
 plt.colorbar()
+plt.title("target distribution")
 plt.show()
 
 # %%
@@ -108,8 +109,6 @@ for i in range(n_mgvi_iterations):
     print(msg, file=sys.stderr)
     mgvi_positions.append(mkl_pos)
 
-# %%
-plt.plot(lax.map(ham, np.array(mgvi_positions)))
 # %%
 n_geovi_iterations = 15
 n_samples = [1] * (n_geovi_iterations - 10) + [2] * 5 + [10, 10, 10, 10, 100]
@@ -178,6 +177,7 @@ contour = ax.contour(X, Y, es)
 ax.clabel(contour, inline=True, fontsize=10)
 ax.scatter(*mkl_b_space_smpls.T)
 ax.plot(*mkl_pos, "rx")
+plt.title("MGVI")
 plt.show()
 
 # %%
@@ -188,6 +188,7 @@ contour = ax.contour(X, Y, es)
 ax.clabel(contour, inline=True, fontsize=10)
 ax.scatter(*gkl_b_space_smpls.T)
 ax.plot(*gkl_pos, "rx")
+plt.title("GeoVI")
 plt.show()
 
 # %%
@@ -214,6 +215,7 @@ print(f"acceptance rate: {np.sum(hmc_acceptance)/len(hmc_acceptance)}")
 b_space_smpls = hmc_samples
 ax.scatter(*b_space_smpls.T)
 #ax.plot(*gkl_pos, "rx")
+plt.title("HMC (Metroplis-Hastings) samples")
 plt.show()
 
 # %%
@@ -337,3 +339,5 @@ ax6.set_title(f'NUTS, {len(nuts_samples):.0E} samples')
 
 fig.tight_layout()
 fig.savefig("pinch.pdf", bbox_inches='tight')
+
+print("final plot saved as pinch.pdf")
