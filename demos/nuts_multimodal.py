@@ -87,3 +87,5 @@ ax4.set_ylabel('position')
 fig.tight_layout()
 
 fig.savefig("multimodal.pdf", bbox_inches='tight')
+
+print("final figure saved as multimodal.pdf")
