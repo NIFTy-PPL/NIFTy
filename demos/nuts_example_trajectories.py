@@ -1,9 +1,11 @@
 # %%
 #
-# WARNING: This code does not behave deterministically when compiled.
-# this is probably due to an issue with host_callback
-# concretely it just stops adding points to the debug list after some random number of leapfrog steps
-# (currently not able to reproduce the issue but it did occur previously)
+# WARNING: This code does not behave deterministically. It works fine when
+# executing cell by cell using vscodes notebook functionality but when running
+# from the command line with either python3 or ipython3 the following happens:
+# This is probably due to an issue with host_callback.
+# Concretely it just stops adding points to the debug list after some random
+# number of leapfrog steps.
 #
 
 from functools import partial
