@@ -321,11 +321,6 @@ def generate_nuts_sample(initial_qp, key, eps, maxdepth, stepper, potential_ener
     # initialize depth 0 tree, containing 2**0 = 1 points
     current_tree = Tree(left=initial_qp, right=initial_qp, logweight=-total_energy_of_qp(initial_qp, potential_energy, kinetic_energy), proposal_candidate=initial_qp, turning=False, depth=0)
 
-    # loop stopping condition
-    stop = False
-
-    loop_state = (key, current_tree, stop)
-
     def _cont_cond(loop_state):
         _, current_tree, stop = loop_state
         return (~stop) & (current_tree.depth <= maxdepth)
@@ -351,6 +346,7 @@ def generate_nuts_sample(initial_qp, key, eps, maxdepth, stepper, potential_ener
         stop = new_subtree.turning | current_tree.turning
         return (key, current_tree, stop)
 
+    loop_state = (key, current_tree, False)
     _, current_tree, _ = while_loop(_cont_cond, cond_tree_doubling, loop_state)
 
     global _DEBUG_FLAG
@@ -464,7 +460,7 @@ def iterative_build_tree(key, initial_tree, eps, go_right, stepper, potential_en
         n, incomplete_tree, *_ = state
         return (n < 2**depth) & (~incomplete_tree.turning)
 
-    _final_n, incomplete_tree, _z, _S, _key = while_loop(
+    _, incomplete_tree, *_ = while_loop(
         # while n < 2**depth and not stop
         cond_fun=_cont_cond,
         body_fun=amend_incomplete_tree,
