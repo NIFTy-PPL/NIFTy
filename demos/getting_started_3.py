@@ -118,7 +118,7 @@ def main():
                          signal_response)
     H = ift.StandardHamiltonian(likelihood_energy, ic_sampling)
 
-    initial_position = ift.MultiField.full(H.domain, 0.)
+    initial_position = 1e-2 * ift.from_random(H.domain)
     position = initial_position
 
     # number of samples used to estimate the KL

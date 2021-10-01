@@ -129,7 +129,7 @@ def main():
     H = ift.StandardHamiltonian(likelihood_energy, ic_sampling)
 
     # Begin minimization
-    initial_position = ift.MultiField.full(H.domain, 0.)
+    initial_position = 1e-2 * ift.from_random(H.domain)
     position = initial_position
 
     for i in range(5):

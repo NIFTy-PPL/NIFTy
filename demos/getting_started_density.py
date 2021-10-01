@@ -87,7 +87,7 @@ if __name__ == "__main__":
     ham = ift.StandardHamiltonian(likelihood_energy, ic_sampling)
 
     # Start minimization
-    initial_mean = ift.MultiField.full(ham.domain, 0.)
+    initial_mean = 1e-2 * ift.from_random(ham.domain)
     mean = initial_mean
 
     for i in range(5):
