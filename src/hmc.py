@@ -577,7 +577,6 @@ class NUTSChain:
     def __init__(self, initial_position, potential_energy, diag_mass_matrix, step_size, maxdepth, rngseed, compile=True, dbg_info=False, signal_response=lambda x: x, bias_transition=True, max_energy_difference=np.inf):
         self.position = initial_position
 
-        # TODO: typechecks?
         self.potential_energy = potential_energy
 
         #if not diag_mass_matrix == 1.:
@@ -640,7 +639,7 @@ class NUTSChain:
             # just a prototype tree
             _tree_proto = Tree(_qp_proto, _qp_proto, 0., _qp_proto, True, True, 0)
             trees = tree_util.tree_map(
-                lambda leaf: np.empty_like(leaf, shape=(n,)+np.array(leaf).shape),
+                lambda leaf: np.empty_like(leaf, shape=(n,)+np.shape(leaf)),
                 _tree_proto
 
             )
@@ -671,12 +670,12 @@ class NUTSChain:
                 max_energy_difference=self.max_energy_difference
             )
             #print("current sample", tree.proposal_candidate)
-            samples = tree_util.tree_map(lambda ts, val: ts.at[idx].set(val), samples, tree.proposal_candidate.position)
+            samples = tree_index_update(samples, idx, tree.proposal_candidate.position)
             if self.dbg_info:
-                momenta_before = tree_util.tree_map(lambda ts, val: ts.at[idx].set(val), momenta_before, resampled_momentum)
-                momenta_after = tree_util.tree_map(lambda ts, val: ts.at[idx].set(val), momenta_after, tree.proposal_candidate.momentum)
+                momenta_before = tree_index_update(momenta_before, idx, resampled_momentum)
+                momenta_after = tree_index_update(momenta_after, idx, tree.proposal_candidate.momentum)
                 depths = depths.at[idx].set(tree.depth)
-                trees = tree_util.tree_map(lambda ts, val: ts.at[idx].set(val), trees, tree)
+                trees = tree_index_update(trees, idx, tree)
 
             updated_state = (tree.proposal_candidate.position, key, samples)
 
@@ -765,7 +764,6 @@ class HMCChain:
     def __init__(self, initial_position, potential_energy, diag_mass_matrix, step_size, n_of_integration_steps, rngseed, compile=True, dbg_info=False):
         self.position = initial_position
 
-        # TODO: typechecks?
         self.potential_energy = potential_energy
 
         if not diag_mass_matrix == 1.:
@@ -851,16 +849,15 @@ class HMCChain:
                 (qp_acc_rej[0], qp_acc_rej[1]),
             )
 
-            samples = tree_util.tree_map(lambda ts, val: ts.at[idx].set(val), samples, next_qp.position)
+            samples = tree_index_update(samples, idx, next_qp.position)
             acceptance = acceptance.at[idx].set(was_accepted)
             if self.dbg_info:
-                momenta_before = tree_util.tree_map(lambda ts, val: ts.at[idx].set(val), momenta_before, resampled_momentum)
-                momenta_after = tree_util.tree_map(lambda ts, val: ts.at[idx].set(val), momenta_after, next_qp.momentum)
-                rejected_position_samples = tree_util.tree_map(lambda ts, val: ts.at[idx].set(val), rejected_position_samples, rejected_qp.position)
-                rejected_momenta = tree_util.tree_map(lambda ts, val: ts.at[idx].set(val), rejected_position_samples, rejected_qp.momentum)
+                momenta_before = tree_index_update(momenta_before, idx, resampled_momentum)
+                momenta_after = tree_index_update(momenta_after, idx, next_qp.momentum)
+                rejected_position_samples = tree_index_update(rejected_position_samples, idx, rejected_qp.position)
+                rejected_momenta = tree_index_update(rejected_momenta, idx, rejected_qp.momentum)
 
             updated_state = (next_qp.position, key, samples, acceptance)
-
             if self.dbg_info:
                 updated_state = updated_state + (momenta_before, momenta_after, rejected_position_samples, rejected_momenta)
 
