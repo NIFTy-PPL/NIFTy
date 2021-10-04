@@ -825,11 +825,10 @@ class HMCChain:
                 prev_position, key, samples, acceptance, momenta_before, momenta_after, rejected_position_samples, rejected_momenta = state
             else:
                 prev_position, key, samples, acceptance = state
-            key, key_hmc = random.split(key)
+            key, key_choose, key_momentum_resample = random.split(key, 3)
 
-            key_choose, key_momentum = random.split(key_hmc)
             resampled_momentum = sample_momentum_from_diagonal(
-                key=key_momentum,
+                key=key_momentum_resample,
                 diag_mass_matrix=self.diag_mass_matrix
             )
             qp = QP(position=prev_position, momentum=resampled_momentum)
