@@ -584,16 +584,6 @@ def is_euclidean_uturn(qp_left, qp_right):
     )
 
 
-def make_kinetic_energy_fn_from_diag_mass_matrix(mass_matrix):
-    def _kin_energy(momentum):
-        # calculate kinetic energies for every array (leaf) in the pytree
-        kin_energies = tree_util.tree_map(lambda p, m: np.sum(p**2 / (2 * m)), momentum, mass_matrix)
-        # sum everything up
-        total_kin_energy = tree_util.tree_reduce(lambda acc, leaf_kin_e: acc + leaf_kin_e, kin_energies, 0.)
-        return total_kin_energy
-    return _kin_energy
-
-
 class NUTSChain:
     def __init__(self, initial_position, potential_energy, diag_mass_matrix, step_size, maxdepth, rngseed, compile=True, dbg_info=False, signal_response=lambda x: x, bias_transition=True, max_energy_difference=np.inf):
         self.position = initial_position
