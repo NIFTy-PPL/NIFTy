@@ -82,6 +82,7 @@ def sample_momentum_from_diagonal(*, key, diag_mass_matrix):
 # @partial(jit, static_argnames=('potential_energy_gradient',))
 def leapfrog_step(
         potential_energy_gradient,
+        kinetic_energy_gradient,
         step_size,
         inverse_mass_matrix,
         qp: QP,
@@ -98,24 +99,20 @@ def leapfrog_step(
     step_size: float
         Step length (usually called epsilon) of the leapfrog integrator.
     """
-    # TODO, for now only a simple Gaussian kinetic energy is assumed
     position = qp.position
     momentum = qp.momentum
 
     momentum_halfstep = (
         momentum
-        - (step_size / 2.) * potential_energy_gradient(position)  # type: ignore
+        - (step_size / 2.) * potential_energy_gradient(position)
     )
-    #print("momentum_halfstep:", momentum_halfstep)
 
-    position_fullstep = position + step_size * inverse_mass_matrix * momentum_halfstep
-    #print("position_fullstep:", position_fullstep)
+    position_fullstep = position + step_size * kinetic_energy_gradient(inverse_mass_matrix, momentum_halfstep)
 
     momentum_fullstep = (
         momentum_halfstep
-        - (step_size / 2.) * potential_energy_gradient(position_fullstep)  # type: ignore
+        - (step_size / 2.) * potential_energy_gradient(position_fullstep)
     )
-    #print("momentum_fullstep:", momentum_fullstep)
 
     qp_fullstep = QP(position=position_fullstep, momentum=momentum_fullstep)
 
@@ -219,7 +216,8 @@ def generate_hmc_sample(*,
     )
     qp = QP(position=position, momentum=momentum)
 
-    loop_body = partial(leapfrog_step, potential_energy_gradient, step_size, inverse_mass_matrix)
+    kinetic_energy_gradient = lambda inv_m, mom: inv_m * mom
+    loop_body = partial(leapfrog_step, potential_energy_gradient, kinetic_energy_gradient, step_size, inverse_mass_matrix)
     new_qp = fori_loop(
         lower = 0,
         upper = number_of_integration_steps,
@@ -624,7 +622,15 @@ class NUTSChain:
             raise ValueError('step_size must be a float')
 
         potential_energy_gradient = grad(self.potential_energy)
-        self.stepper = lambda qp, step_size, direction: leapfrog_step(potential_energy_gradient, step_size*direction, 1. / self.diag_mass_matrix, qp)
+
+        def kinetic_energy(inverse_mass_matrix, momentum):
+            # NOTE, assume a diagonal mass-matrix
+            return inverse_mass_matrix.dot(momentum**2) / 2.
+
+        self.kinetic_energy = kinetic_energy
+        kinetic_energy_gradient = lambda inv_m, mom: inv_m * mom
+
+        self.stepper = lambda qp, step_size, direction: leapfrog_step(potential_energy_gradient, kinetic_energy_gradient, step_size*direction, 1. / self.diag_mass_matrix, qp)
 
         if isinstance(maxdepth, int):
             self.maxdepth = maxdepth
@@ -662,10 +668,6 @@ class NUTSChain:
 
             )
 
-        def kinetic_energy(inverse_mass_matrix, momentum):
-            # NOTE, assume a diagonal mass-matrix
-            return inverse_mass_matrix.dot(momentum**2) / 2.
-
         def _body_fun(idx, state):
             if self.dbg_info:
                 prev_position, key, samples, momenta_before, momenta_after, depths, trees = state
@@ -687,7 +689,7 @@ class NUTSChain:
                 maxdepth = self.maxdepth,
                 stepper = self.stepper,
                 potential_energy = self.potential_energy,
-                kinetic_energy = kinetic_energy,
+                kinetic_energy = self.kinetic_energy,
                 inverse_mass_matrix=1. / self.diag_mass_matrix,
                 bias_transition=self.bias_transition,
                 max_energy_difference=self.max_energy_difference
