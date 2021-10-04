@@ -80,7 +80,7 @@ def sample_momentum_from_diagonal(*, key, diag_mass_matrix):
 def leapfrog_step(
         qp: QP,
         potential_energy_gradient,
-        step_length,
+        step_size,
         mass_matrix,
     ):
     """
@@ -92,7 +92,7 @@ def leapfrog_step(
         Potential energy gradient part of the hamiltonian (V). Depends on position only.
     qp: QP
         Point in position and momentum space from which to start integration.
-    step_length: float
+    step_size: float
         Step length (usually called epsilon) of the leapfrog integrator.
     """
     position = qp.position
@@ -100,16 +100,16 @@ def leapfrog_step(
 
     momentum_halfstep = (
         momentum
-        - (step_length / 2.) * potential_energy_gradient(position)  # type: ignore
+        - (step_size / 2.) * potential_energy_gradient(position)  # type: ignore
     )
     #print("momentum_halfstep:", momentum_halfstep)
 
-    position_fullstep = position + step_length * momentum_halfstep / mass_matrix # type: ignore
+    position_fullstep = position + step_size * momentum_halfstep / mass_matrix # type: ignore
     #print("position_fullstep:", position_fullstep)
 
     momentum_fullstep = (
         momentum_halfstep
-        - (step_length / 2.) * potential_energy_gradient(position_fullstep)  # type: ignore
+        - (step_size / 2.) * potential_energy_gradient(position_fullstep)  # type: ignore
     )
     #print("momentum_fullstep:", momentum_fullstep)
 
@@ -187,7 +187,7 @@ def generate_hmc_sample(*,
         mass_matrix,
         kinetic_energy,
         number_of_integration_steps,
-        step_length
+        step_size
     ):
     """
     Generate a sample given the initial position.
@@ -204,7 +204,7 @@ def generate_hmc_sample(*,
         The mass matrix used in the kinetic energy
     number_of_integration_steps: int
         The number of steps the leapfrog integrator should perform.
-    step_length: float
+    step_size: float
         The step size (usually epsilon) for the leapfrog integrator.
     """
     key, subkey = random.split(key)
@@ -214,7 +214,7 @@ def generate_hmc_sample(*,
     )
     qp = QP(position=position, momentum=momentum)
 
-    loop_body = partial(leapfrog_step, potential_energy_gradient=potential_energy_gradient, step_length=step_length, mass_matrix=mass_matrix)
+    loop_body = partial(leapfrog_step, potential_energy_gradient=potential_energy_gradient, step_size=step_size, mass_matrix=mass_matrix)
     new_qp = fori_loop(
         lower = 0,
         upper = number_of_integration_steps,
@@ -270,7 +270,7 @@ def total_energy_of_qp(qp, potential_energy, kinetic_energy):
     return potential_energy(qp.position) + kinetic_energy(qp.momentum)
 
 
-def generate_nuts_sample(initial_qp, key, eps, maxdepth, stepper, potential_energy, kinetic_energy, bias_transition=True, max_energy_difference=np.inf):
+def generate_nuts_sample(initial_qp, key, step_size, maxdepth, stepper, potential_energy, kinetic_energy, bias_transition=True, max_energy_difference=np.inf):
     """
     Warning
     -------
@@ -288,7 +288,7 @@ def generate_nuts_sample(initial_qp, key, eps, maxdepth, stepper, potential_ener
         WARNING: momentum must be resampled from conditional distribution BEFORE passing into this function!
     key: ndarray
         a PRNGKey used as the random key
-    eps: float
+    step_size: float
         The step size (usually called epsilon) for the leapfrog integrator.
     maxdepth: int
         The maximum depth of the trajectory tree before expansion is terminated
@@ -336,7 +336,7 @@ def generate_nuts_sample(initial_qp, key, eps, maxdepth, stepper, potential_ener
         go_right = random.bernoulli(key_dir, 0.5)
 
         # build tree adjacent to current_tree
-        new_subtree = iterative_build_tree(key_subtree, current_tree, eps, go_right, stepper, potential_energy, kinetic_energy, maxdepth, initial_neg_energy=initial_neg_energy, max_energy_difference=max_energy_difference)
+        new_subtree = iterative_build_tree(key_subtree, current_tree, step_size, go_right, stepper, potential_energy, kinetic_energy, maxdepth, initial_neg_energy=initial_neg_energy, max_energy_difference=max_energy_difference)
 
         # combine current_tree and new_subtree into a tree which is one layer deeper only if new_subtree has no turning subtrees (including itself)
         current_tree = cond(
@@ -374,7 +374,7 @@ def tree_index_update(x, idx, y):
 
 
 # Essentially algorithm 2 from https://arxiv.org/pdf/1912.11554.pdf
-def iterative_build_tree(key, initial_tree, eps, go_right, stepper, potential_energy, kinetic_energy, maxdepth, initial_neg_energy, max_energy_difference):
+def iterative_build_tree(key, initial_tree, step_size, go_right, stepper, potential_energy, kinetic_energy, maxdepth, initial_neg_energy, max_energy_difference):
     """
     Starting from either the left or right endpoint of a given tree, builds a new adjacent tree of the same size.
 
@@ -384,7 +384,7 @@ def iterative_build_tree(key, initial_tree, eps, go_right, stepper, potential_en
         randomness uses to choose a sample when adding QPs to the tree
     initial_tree: Tree
         Tree to be extended (doubled) on the left or right.
-    eps: float
+    step_size: float
         The step size (usually called epsilon) for the leapfrog integrator.
     go_right: bool
         If go_right start at the right end, going right else start at the left end, going left.
@@ -414,7 +414,7 @@ def iterative_build_tree(key, initial_tree, eps, go_right, stepper, potential_en
     # 1`. This is because we will never access the last element.
     S = tree_util.tree_map(lambda initial_q_or_p_leaf: np.empty((maxdepth, ) + initial_q_or_p_leaf.shape), unzip_qp_pytree(z))
 
-    z = stepper(z, eps, np.where(go_right, x=1, y=-1))
+    z = stepper(z, step_size, np.where(go_right, x=1, y=-1))
     neg_energy = -total_energy_of_qp(z, potential_energy, kinetic_energy)
     diverging = np.abs(neg_energy - initial_neg_energy) > max_energy_difference
     incomplete_tree = Tree(left=z, right=z, logweight=neg_energy, proposal_candidate=z, turning=False, diverging=diverging, depth=-1)
@@ -424,7 +424,7 @@ def iterative_build_tree(key, initial_tree, eps, go_right, stepper, potential_en
         n, incomplete_tree, z, S, key = state
 
         key, key_choose_candidate = random.split(key)
-        z = stepper(z, eps, np.where(go_right, x=1, y=-1))
+        z = stepper(z, step_size, np.where(go_right, x=1, y=-1))
         incomplete_tree = add_single_qp_to_tree(key_choose_candidate, incomplete_tree, z, go_right, potential_energy, kinetic_energy, initial_neg_energy=initial_neg_energy, max_energy_difference=max_energy_difference)
 
         def _even_fun(S):
@@ -592,7 +592,7 @@ def make_kinetic_energy_fn_from_diag_mass_matrix(mass_matrix):
 
 
 class NUTSChain:
-    def __init__(self, initial_position, potential_energy, diag_mass_matrix, eps, maxdepth, rngseed, compile=True, dbg_info=False, signal_response=lambda x: x, bias_transition=True, max_energy_difference=np.inf):
+    def __init__(self, initial_position, potential_energy, diag_mass_matrix, step_size, maxdepth, rngseed, compile=True, dbg_info=False, signal_response=lambda x: x, bias_transition=True, max_energy_difference=np.inf):
         self.position = initial_position
 
         # TODO: typechecks?
@@ -613,13 +613,13 @@ class NUTSChain:
         else:
             raise ValueError('diag_mass_matrix must either be float or have same tree structure as initial_position')
 
-        if isinstance(eps, float):
-            self.eps = eps
+        if isinstance(step_size, float):
+            self.step_size = step_size
         else:
-            raise ValueError('eps must be a float')
+            raise ValueError('step_size must be a float')
 
         potential_energy_gradient = grad(self.potential_energy)
-        self.stepper = lambda qp, eps, direction: leapfrog_step(qp, potential_energy_gradient, eps*direction, self.diag_mass_matrix)
+        self.stepper = lambda qp, step_size, direction: leapfrog_step(qp, potential_energy_gradient, step_size*direction, self.diag_mass_matrix)
 
         if isinstance(maxdepth, int):
             self.maxdepth = maxdepth
@@ -674,7 +674,7 @@ class NUTSChain:
             tree = generate_nuts_sample(
                 initial_qp = qp,
                 key = key_nuts,
-                eps = self.eps,
+                step_size = self.step_size,
                 maxdepth = self.maxdepth,
                 stepper = self.stepper,
                 potential_energy = self.potential_energy,
@@ -774,7 +774,7 @@ class NUTSChain:
 
 
 class HMCChain:
-    def __init__(self, initial_position, potential_energy, diag_mass_matrix, eps, n_of_integration_steps, rngseed, compile=True, dbg_info=False):
+    def __init__(self, initial_position, potential_energy, diag_mass_matrix, step_size, n_of_integration_steps, rngseed, compile=True, dbg_info=False):
         self.position = initial_position
 
         # TODO: typechecks?
@@ -796,10 +796,10 @@ class HMCChain:
         else:
             raise ValueError('diag_mass_matrix must either be float or have same tree structure as initial_position')
 
-        if isinstance(eps, float):
-            self.eps = eps
+        if isinstance(step_size, float):
+            self.step_size = step_size
         else:
-            raise ValueError('eps must be a float')
+            raise ValueError('step_size must be a float')
 
         if isinstance(n_of_integration_steps, int):
             self.n_of_integration_steps = n_of_integration_steps
@@ -838,7 +838,7 @@ class HMCChain:
                 mass_matrix = self.diag_mass_matrix,
                 kinetic_energy = make_kinetic_energy_fn_from_diag_mass_matrix(self.diag_mass_matrix),
                 number_of_integration_steps = self.n_of_integration_steps,
-                step_length = self.eps
+                step_size = self.step_size
             )
 
             # TODO: what to do with the other one (it's rejected or just the previous sample in case the new one was accepted)
