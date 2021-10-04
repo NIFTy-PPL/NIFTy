@@ -252,6 +252,8 @@ class Tree(NamedTuple):
     turning: Union[np.ndarray, bool]
         Indicator for either the left or right endpoint are a uturn or any
         subtree is a uturn.
+    diverging: Union[np.ndarray, bool]
+        Indicator for a large increase in energy.
     depth: Union[np.ndarray, int]
         Levels of the tree.
     """
@@ -260,6 +262,7 @@ class Tree(NamedTuple):
     logweight: Union[np.ndarray, float]
     proposal_candidate: QP
     turning: Union[np.ndarray, bool]
+    diverging: Union[np.ndarray, bool]
     depth: Union[np.ndarray, int]
 
 
@@ -267,7 +270,7 @@ def total_energy_of_qp(qp, potential_energy, kinetic_energy):
     return potential_energy(qp.position) + kinetic_energy(qp.momentum)
 
 
-def generate_nuts_sample(initial_qp, key, eps, maxdepth, stepper, potential_energy, kinetic_energy, bias_transition=True):
+def generate_nuts_sample(initial_qp, key, eps, maxdepth, stepper, potential_energy, kinetic_energy, bias_transition=True, max_energy_difference=np.inf):
     """
     Warning
     -------
@@ -319,7 +322,8 @@ def generate_nuts_sample(initial_qp, key, eps, maxdepth, stepper, potential_ener
     Combination of samples from two trees, Sampling from trajectories according to target distribution in this paper's Appendix: https://arxiv.org/abs/1701.02434
     """
     # initialize depth 0 tree, containing 2**0 = 1 points
-    current_tree = Tree(left=initial_qp, right=initial_qp, logweight=-total_energy_of_qp(initial_qp, potential_energy, kinetic_energy), proposal_candidate=initial_qp, turning=False, depth=0)
+    initial_neg_energy = -total_energy_of_qp(initial_qp, potential_energy, kinetic_energy)
+    current_tree = Tree(left=initial_qp, right=initial_qp, logweight=initial_neg_energy, proposal_candidate=initial_qp, turning=False, diverging=False, depth=0)
 
     def _cont_cond(loop_state):
         _, current_tree, stop = loop_state
@@ -332,11 +336,12 @@ def generate_nuts_sample(initial_qp, key, eps, maxdepth, stepper, potential_ener
         go_right = random.bernoulli(key_dir, 0.5)
 
         # build tree adjacent to current_tree
-        new_subtree = iterative_build_tree(key_subtree, current_tree, eps, go_right, stepper, potential_energy, kinetic_energy, maxdepth)
+        new_subtree = iterative_build_tree(key_subtree, current_tree, eps, go_right, stepper, potential_energy, kinetic_energy, maxdepth, initial_neg_energy=initial_neg_energy, max_energy_difference=max_energy_difference)
 
         # combine current_tree and new_subtree into a tree which is one layer deeper only if new_subtree has no turning subtrees (including itself)
         current_tree = cond(
-            pred = new_subtree.turning,
+            # If new tree is turning or diverging, do not merge
+            pred = new_subtree.turning | new_subtree.diverging,
             true_fun = lambda old_and_new: old_and_new[0],
             false_fun = lambda old_and_new: merge_trees(key_merge, old_and_new[0], old_and_new[1], go_right, bias_transition=bias_transition),
             operand = (current_tree, new_subtree),
@@ -344,6 +349,7 @@ def generate_nuts_sample(initial_qp, key, eps, maxdepth, stepper, potential_ener
         # stop if new subtree was turning -> we sample from the old one and don't expand further
         # stop if new total tree is turning -> we sample from the combined trajectory and don't expand further
         stop = new_subtree.turning | current_tree.turning
+        stop |= new_subtree.diverging
         return (key, current_tree, stop)
 
     loop_state = (key, current_tree, False)
@@ -368,7 +374,7 @@ def tree_index_update(x, idx, y):
 
 
 # Essentially algorithm 2 from https://arxiv.org/pdf/1912.11554.pdf
-def iterative_build_tree(key, initial_tree, eps, go_right, stepper, potential_energy, kinetic_energy, maxdepth):
+def iterative_build_tree(key, initial_tree, eps, go_right, stepper, potential_energy, kinetic_energy, maxdepth, initial_neg_energy, max_energy_difference):
     """
     Starting from either the left or right endpoint of a given tree, builds a new adjacent tree of the same size.
 
@@ -409,7 +415,9 @@ def iterative_build_tree(key, initial_tree, eps, go_right, stepper, potential_en
     S = tree_util.tree_map(lambda initial_q_or_p_leaf: np.empty((maxdepth, ) + initial_q_or_p_leaf.shape), unzip_qp_pytree(z))
 
     z = stepper(z, eps, np.where(go_right, x=1, y=-1))
-    incomplete_tree = Tree(left=z, right=z, logweight=-total_energy_of_qp(z, potential_energy, kinetic_energy), proposal_candidate=z, turning=False, depth=-1)
+    neg_energy = -total_energy_of_qp(z, potential_energy, kinetic_energy)
+    diverging = np.abs(neg_energy - initial_neg_energy) > max_energy_difference
+    incomplete_tree = Tree(left=z, right=z, logweight=neg_energy, proposal_candidate=z, turning=False, diverging=diverging, depth=-1)
     S = tree_index_update(S, 0, z)
 
     def amend_incomplete_tree(state):
@@ -417,7 +425,7 @@ def iterative_build_tree(key, initial_tree, eps, go_right, stepper, potential_en
 
         key, key_choose_candidate = random.split(key)
         z = stepper(z, eps, np.where(go_right, x=1, y=-1))
-        incomplete_tree = add_single_qp_to_tree(key_choose_candidate, incomplete_tree, z, go_right, potential_energy, kinetic_energy)
+        incomplete_tree = add_single_qp_to_tree(key_choose_candidate, incomplete_tree, z, go_right, potential_energy, kinetic_energy, initial_neg_energy=initial_neg_energy, max_energy_difference=max_energy_difference)
 
         def _even_fun(S):
             # n is even, the current z is w.l.o.g. a left endpoint of some
@@ -458,7 +466,7 @@ def iterative_build_tree(key, initial_tree, eps, go_right, stepper, potential_en
 
     def _cont_cond(state):
         n, incomplete_tree, *_ = state
-        return (n < 2**depth) & (~incomplete_tree.turning)
+        return (n < 2**depth) & (~incomplete_tree.turning) & (~incomplete_tree.diverging)
 
     _, incomplete_tree, *_ = while_loop(
         # while n < 2**depth and not stop
@@ -474,27 +482,26 @@ def iterative_build_tree(key, initial_tree, eps, go_right, stepper, potential_en
     return incomplete_tree._replace(depth=depth)
 
 
-def add_single_qp_to_tree(key, tree, qp, go_right, potential_energy, kinetic_energy):
+def add_single_qp_to_tree(key, tree, qp, go_right, potential_energy, kinetic_energy, initial_neg_energy, max_energy_difference):
     """Helper function for progressive sampling. Takes a tree with a sample, and
     a new endpoint, propagates sample.
     """
     # This is technically just a special case of merge_trees with one of the
-    # trees being a singleton, depth 0 tree.
-    # TODO: just construct the singleton tree and call merge_trees
+    # trees being a singleton, depth 0 tree. However, no turning check is
+    # required and it is not possible to bias the transition.
     left, right = select(go_right, (tree.left, qp), (qp, tree.right))
-    qp_logweight = -total_energy_of_qp(qp, potential_energy, kinetic_energy)
+
+    neg_energy = -total_energy_of_qp(qp, potential_energy, kinetic_energy)
+    diverging = np.abs(neg_energy - initial_neg_energy) > max_energy_difference
     # ln(e^-H_1 + e^-H_2)
-    total_logweight = np.logaddexp(tree.logweight, qp_logweight)
+    total_logweight = np.logaddexp(tree.logweight, neg_energy)
     # expit(x-y) := 1 / (1 + e^(-(x-y))) = 1 / (1 + e^(y-x)) = e^x / (e^y + e^x)
-    prob_of_keeping_old = expit(tree.logweight - qp_logweight)
-    proposal_candidate = select(
-        random.bernoulli(key, prob_of_keeping_old),
-        tree.proposal_candidate,
-        qp
-    )
+    prob_of_keeping_old = expit(tree.logweight - neg_energy)
+    remain = random.bernoulli(key, prob_of_keeping_old)
+    proposal_candidate = select(remain, tree.proposal_candidate, qp)
     # NOTE, set an invalid depth as to indicate that adding a single QP to a
     # perfect binary tree does not yield another perfect binary tree
-    return Tree(left, right, total_logweight, proposal_candidate, tree.turning, -1)
+    return Tree(left, right, total_logweight, proposal_candidate, turning=tree.turning, diverging=diverging, depth=-1)
 
 def merge_trees(key, current_subtree, new_subtree, go_right, bias_transition):
     """Merges two trees, propagating the proposal_candidate"""
@@ -503,12 +510,6 @@ def merge_trees(key, current_subtree, new_subtree, go_right, bias_transition):
         # Bias the transition towards the new subtree (see Betancourt
         # conceptual intro (and Numpyro))
         transition_probability = np.minimum(1., np.exp(new_subtree.logweight - current_subtree.logweight))
-        # If new tree is turning or diverging, do not transition
-        # TODO: check for divergence since this bias might be really bad then
-        diverging = False
-        transition_probability = np.where(
-            new_subtree.turning | diverging, 0., transition_probability
-        )
     else:
         # expit(x-y) := 1 / (1 + e^(-(x-y))) = 1 / (1 + e^(y-x)) = e^x / (e^y + e^x)
         transition_probability = expit(new_subtree.logweight - current_subtree.logweight)
@@ -525,7 +526,9 @@ def merge_trees(key, current_subtree, new_subtree, go_right, bias_transition):
         (new_subtree.left, current_subtree.right),
     )
     turning = is_euclidean_uturn(left, right)
-    merged_tree = Tree(left=left, right=right, logweight=np.logaddexp(new_subtree.logweight, current_subtree.logweight), proposal_candidate=new_sample, turning=turning, depth=current_subtree.depth + 1)
+    diverging = current_subtree.diverging | new_subtree.diverging
+    neg_energy = np.logaddexp(new_subtree.logweight, current_subtree.logweight)
+    merged_tree = Tree(left=left, right=right, logweight=neg_energy, proposal_candidate=new_sample, turning=turning, diverging=diverging, depth=current_subtree.depth + 1)
     return merged_tree
 
 
@@ -589,7 +592,7 @@ def make_kinetic_energy_fn_from_diag_mass_matrix(mass_matrix):
 
 
 class NUTSChain:
-    def __init__(self, initial_position, potential_energy, diag_mass_matrix, eps, maxdepth, rngseed, compile=True, dbg_info=False, signal_response=lambda x: x, bias_transition=True):
+    def __init__(self, initial_position, potential_energy, diag_mass_matrix, eps, maxdepth, rngseed, compile=True, dbg_info=False, signal_response=lambda x: x, bias_transition=True, max_energy_difference=np.inf):
         self.position = initial_position
 
         # TODO: typechecks?
@@ -633,6 +636,8 @@ class NUTSChain:
 
         self.bias_transition = bias_transition
 
+        self.max_energy_difference = max_energy_difference
+
 
     def generate_n_samples(self, n):
 
@@ -645,7 +650,7 @@ class NUTSChain:
             # just a prototype qp
             _qp_proto = QP(self.position, self.position)
             # just a prototype tree
-            _tree_proto = Tree(_qp_proto, _qp_proto, 0., _qp_proto, True, 0)
+            _tree_proto = Tree(_qp_proto, _qp_proto, 0., _qp_proto, True, True, 0)
             trees = tree_util.tree_map(
                 lambda leaf: np.empty_like(leaf, shape=(n,)+np.array(leaf).shape),
                 _tree_proto
@@ -674,7 +679,8 @@ class NUTSChain:
                 stepper = self.stepper,
                 potential_energy = self.potential_energy,
                 kinetic_energy = make_kinetic_energy_fn_from_diag_mass_matrix(self.diag_mass_matrix),
-                bias_transition=self.bias_transition
+                bias_transition=self.bias_transition,
+                max_energy_difference=self.max_energy_difference
             )
             #print("current sample", tree.proposal_candidate)
             samples = tree_util.tree_map(lambda ts, val: ts.at[idx].set(val), samples, tree.proposal_candidate.position)
