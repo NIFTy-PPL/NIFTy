@@ -4,11 +4,14 @@ from jax import tree_util
 from jax import lax, random, jit, grad
 from jax.scipy.special import expit
 
-from typing import NamedTuple, TypeVar, Union
+from typing import Any, Callable, NamedTuple, TypeVar, Union
 
 from .disable_jax_control_flow import cond, while_loop, fori_loop
 from .sugar import random_like
 from .forest_util import select
+
+
+pytree = Any
 
 _DEBUG_FLAG = False
 
@@ -183,9 +186,10 @@ def generate_hmc_sample(*,
         position,
         potential_energy,
         potential_energy_gradient,
-        # TODO remove this parameter, instead rework this to take a `stepper` function just like `generate_nuts_sample` and have the mass matrix there.
+        # TODO remove this parameter, instead rework this to take a `stepper` function just like `_generate_nuts_tree` and have the mass matrix there.
         mass_matrix,
         kinetic_energy,
+        inverse_mass_matrix,
         number_of_integration_steps,
         step_size
     ):
@@ -231,7 +235,7 @@ def generate_hmc_sample(*,
         key = key,
         old_qp = qp,
         proposed_qp = proposed_qp,
-        total_energy = lambda qp: total_energy_of_qp(qp, potential_energy, kinetic_energy)
+        total_energy = lambda qp: total_energy_of_qp(qp, potential_energy, partial(kinetic_energy, inverse_mass_matrix))
     ), momentum
 
 
@@ -266,11 +270,11 @@ class Tree(NamedTuple):
     depth: Union[np.ndarray, int]
 
 
-def total_energy_of_qp(qp, potential_energy, kinetic_energy):
-    return potential_energy(qp.position) + kinetic_energy(qp.momentum)
+def total_energy_of_qp(qp, potential_energy, kinetic_energy_w_inv_mass):
+    return potential_energy(qp.position) + kinetic_energy_w_inv_mass(qp.momentum)
 
 
-def generate_nuts_sample(initial_qp, key, step_size, maxdepth, stepper, potential_energy, kinetic_energy, bias_transition=True, max_energy_difference=np.inf):
+def _generate_nuts_tree(initial_qp, key, step_size, maxdepth, stepper, potential_energy, kinetic_energy: Callable[[pytree, pytree], float], inverse_mass_matrix: pytree, bias_transition: bool=True, max_energy_difference: Union[np.ndarray, float]=np.inf):
     """
     Warning
     -------
@@ -306,9 +310,9 @@ def generate_nuts_sample(initial_qp, key, step_size, maxdepth, stepper, potentia
     potential_energy: Callable[[pytree], float]
         The potential energy, of the distribution to be sampled from.
         Takes only the position part (QP.position) as argument
-    kinetic_energy: Callable[[pytree], float]
-        The kinetic energy, of the distribution to be sampled from.
-        Takes only the momentum part (QP.momentum) as argument
+    kinetic_energy: Callable[[pytree, pytree], float], optional
+        Mapping of the momentum to its corresponding kinetic energy. As
+        argument the function takes the inverse mass matrix and the momentum.
 
     Returns
     -------
@@ -322,7 +326,7 @@ def generate_nuts_sample(initial_qp, key, step_size, maxdepth, stepper, potentia
     Combination of samples from two trees, Sampling from trajectories according to target distribution in this paper's Appendix: https://arxiv.org/abs/1701.02434
     """
     # initialize depth 0 tree, containing 2**0 = 1 points
-    initial_neg_energy = -total_energy_of_qp(initial_qp, potential_energy, kinetic_energy)
+    initial_neg_energy = -total_energy_of_qp(initial_qp, potential_energy, partial(kinetic_energy, inverse_mass_matrix))
     current_tree = Tree(left=initial_qp, right=initial_qp, logweight=initial_neg_energy, proposal_candidate=initial_qp, turning=False, diverging=False, depth=0)
 
     def _cont_cond(loop_state):
@@ -336,7 +340,7 @@ def generate_nuts_sample(initial_qp, key, step_size, maxdepth, stepper, potentia
         go_right = random.bernoulli(key_dir, 0.5)
 
         # build tree adjacent to current_tree
-        new_subtree = iterative_build_tree(key_subtree, current_tree, step_size, go_right, stepper, potential_energy, kinetic_energy, maxdepth, initial_neg_energy=initial_neg_energy, max_energy_difference=max_energy_difference)
+        new_subtree = iterative_build_tree(key_subtree, current_tree, step_size, go_right, stepper, potential_energy, kinetic_energy, inverse_mass_matrix, maxdepth, initial_neg_energy=initial_neg_energy, max_energy_difference=max_energy_difference)
 
         # combine current_tree and new_subtree into a tree which is one layer deeper only if new_subtree has no turning subtrees (including itself)
         current_tree = cond(
@@ -374,7 +378,7 @@ def tree_index_update(x, idx, y):
 
 
 # Essentially algorithm 2 from https://arxiv.org/pdf/1912.11554.pdf
-def iterative_build_tree(key, initial_tree, step_size, go_right, stepper, potential_energy, kinetic_energy, maxdepth, initial_neg_energy, max_energy_difference):
+def iterative_build_tree(key, initial_tree, step_size, go_right, stepper, potential_energy, kinetic_energy, inverse_mass_matrix, maxdepth, initial_neg_energy, max_energy_difference):
     """
     Starting from either the left or right endpoint of a given tree, builds a new adjacent tree of the same size.
 
@@ -396,9 +400,9 @@ def iterative_build_tree(key, initial_tree, step_size, go_right, stepper, potent
     potential_energy: Callable[[pytree], float]
         The potential energy, of the distribution to be sampled from.
         Takes only the position part (QP.position) as argument
-    kinetic_energy: Callable[[pytree], float]
-        The kinetic energy, of the distribution to be sampled from.
-        Takes only the momentum part (QP.momentum) as argument
+    kinetic_energy: Callable[[pytree, pytree], float], optional
+        Mapping of the momentum to its corresponding kinetic energy. As
+        argument the function takes the inverse mass matrix and the momentum.
     maxdepth: int
         An upper bound on the 'depth' argument, but has no effect on the functions behaviour.
         It's only required to statically set the size of the `S` array (pytree).
@@ -415,7 +419,7 @@ def iterative_build_tree(key, initial_tree, step_size, go_right, stepper, potent
     S = tree_util.tree_map(lambda initial_q_or_p_leaf: np.empty((maxdepth, ) + initial_q_or_p_leaf.shape), unzip_qp_pytree(z))
 
     z = stepper(z, step_size, np.where(go_right, x=1, y=-1))
-    neg_energy = -total_energy_of_qp(z, potential_energy, kinetic_energy)
+    neg_energy = -total_energy_of_qp(z, potential_energy, partial(kinetic_energy, inverse_mass_matrix))
     diverging = np.abs(neg_energy - initial_neg_energy) > max_energy_difference
     incomplete_tree = Tree(left=z, right=z, logweight=neg_energy, proposal_candidate=z, turning=False, diverging=diverging, depth=-1)
     S = tree_index_update(S, 0, z)
@@ -425,7 +429,7 @@ def iterative_build_tree(key, initial_tree, step_size, go_right, stepper, potent
 
         key, key_choose_candidate = random.split(key)
         z = stepper(z, step_size, np.where(go_right, x=1, y=-1))
-        incomplete_tree = add_single_qp_to_tree(key_choose_candidate, incomplete_tree, z, go_right, potential_energy, kinetic_energy, initial_neg_energy=initial_neg_energy, max_energy_difference=max_energy_difference)
+        incomplete_tree = add_single_qp_to_tree(key_choose_candidate, incomplete_tree, z, go_right, potential_energy, kinetic_energy, inverse_mass_matrix, initial_neg_energy=initial_neg_energy, max_energy_difference=max_energy_difference)
 
         def _even_fun(S):
             # n is even, the current z is w.l.o.g. a left endpoint of some
@@ -482,7 +486,7 @@ def iterative_build_tree(key, initial_tree, step_size, go_right, stepper, potent
     return incomplete_tree._replace(depth=depth)
 
 
-def add_single_qp_to_tree(key, tree, qp, go_right, potential_energy, kinetic_energy, initial_neg_energy, max_energy_difference):
+def add_single_qp_to_tree(key, tree, qp, go_right, potential_energy, kinetic_energy, inverse_mass_matrix, initial_neg_energy, max_energy_difference):
     """Helper function for progressive sampling. Takes a tree with a sample, and
     a new endpoint, propagates sample.
     """
@@ -491,7 +495,7 @@ def add_single_qp_to_tree(key, tree, qp, go_right, potential_energy, kinetic_ene
     # required and it is not possible to bias the transition.
     left, right = select(go_right, (tree.left, qp), (qp, tree.right))
 
-    neg_energy = -total_energy_of_qp(qp, potential_energy, kinetic_energy)
+    neg_energy = -total_energy_of_qp(qp, potential_energy, partial(kinetic_energy, inverse_mass_matrix))
     diverging = np.abs(neg_energy - initial_neg_energy) > max_energy_difference
     # ln(e^-H_1 + e^-H_2)
     total_logweight = np.logaddexp(tree.logweight, neg_energy)
@@ -657,6 +661,10 @@ class NUTSChain:
 
             )
 
+        def kinetic_energy(inverse_mass_matrix, momentum):
+            # NOTE, assume a diagonal mass-matrix
+            return inverse_mass_matrix.dot(momentum**2) / 2.
+
         def _body_fun(idx, state):
             if self.dbg_info:
                 prev_position, key, samples, momenta_before, momenta_after, depths, trees = state
@@ -671,14 +679,15 @@ class NUTSChain:
 
             qp = QP(position=prev_position, momentum=resampled_momentum)
 
-            tree = generate_nuts_sample(
+            tree = _generate_nuts_tree(
                 initial_qp = qp,
                 key = key_nuts,
                 step_size = self.step_size,
                 maxdepth = self.maxdepth,
                 stepper = self.stepper,
                 potential_energy = self.potential_energy,
-                kinetic_energy = make_kinetic_energy_fn_from_diag_mass_matrix(self.diag_mass_matrix),
+                kinetic_energy = kinetic_energy,
+                inverse_mass_matrix=1. / self.diag_mass_matrix,
                 bias_transition=self.bias_transition,
                 max_energy_difference=self.max_energy_difference
             )
@@ -823,6 +832,10 @@ class HMCChain:
             rejected_position_samples = tree_util.tree_map(lambda arr: np.ones((n,) + arr.shape), self.position)
             rejected_momenta = tree_util.tree_map(lambda arr: np.ones((n,) + arr.shape), self.position)
 
+        def kinetic_energy(inverse_mass_matrix, momentum):
+            # NOTE, assume a diagonal mass-matrix
+            return inverse_mass_matrix.dot(momentum**2) / 2.
+
         def _body_fun(idx, state):
             if self.dbg_info:
                 prev_position, key, samples, acceptance, momenta_before, momenta_after, rejected_position_samples, rejected_momenta = state
@@ -836,7 +849,8 @@ class HMCChain:
                 potential_energy = self.potential_energy,
                 potential_energy_gradient = grad(self.potential_energy),
                 mass_matrix = self.diag_mass_matrix,
-                kinetic_energy = make_kinetic_energy_fn_from_diag_mass_matrix(self.diag_mass_matrix),
+                kinetic_energy = kinetic_energy,
+                inverse_mass_matrix=1./self.diag_mass_matrix,
                 number_of_integration_steps = self.n_of_integration_steps,
                 step_size = self.step_size
             )
