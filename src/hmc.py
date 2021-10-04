@@ -81,10 +81,10 @@ def sample_momentum_from_diagonal(*, key, diag_mass_matrix):
 # TODO: how to randomize step size (neal sect. 3.2)
 # @partial(jit, static_argnames=('potential_energy_gradient',))
 def leapfrog_step(
-        qp: QP,
         potential_energy_gradient,
         step_size,
-        mass_matrix,
+        inverse_mass_matrix,
+        qp: QP,
     ):
     """
     Perform one iteration of the leapfrog integrator forwards in time.
@@ -98,6 +98,7 @@ def leapfrog_step(
     step_size: float
         Step length (usually called epsilon) of the leapfrog integrator.
     """
+    # TODO, for now only a simple Gaussian kinetic energy is assumed
     position = qp.position
     momentum = qp.momentum
 
@@ -107,7 +108,7 @@ def leapfrog_step(
     )
     #print("momentum_halfstep:", momentum_halfstep)
 
-    position_fullstep = position + step_size * momentum_halfstep / mass_matrix # type: ignore
+    position_fullstep = position + step_size * inverse_mass_matrix * momentum_halfstep
     #print("position_fullstep:", position_fullstep)
 
     momentum_fullstep = (
@@ -218,7 +219,7 @@ def generate_hmc_sample(*,
     )
     qp = QP(position=position, momentum=momentum)
 
-    loop_body = partial(leapfrog_step, potential_energy_gradient=potential_energy_gradient, step_size=step_size, mass_matrix=mass_matrix)
+    loop_body = partial(leapfrog_step, potential_energy_gradient, step_size, inverse_mass_matrix)
     new_qp = fori_loop(
         lower = 0,
         upper = number_of_integration_steps,
@@ -623,7 +624,7 @@ class NUTSChain:
             raise ValueError('step_size must be a float')
 
         potential_energy_gradient = grad(self.potential_energy)
-        self.stepper = lambda qp, step_size, direction: leapfrog_step(qp, potential_energy_gradient, step_size*direction, self.diag_mass_matrix)
+        self.stepper = lambda qp, step_size, direction: leapfrog_step(potential_energy_gradient, step_size*direction, 1. / self.diag_mass_matrix, qp)
 
         if isinstance(maxdepth, int):
             self.maxdepth = maxdepth

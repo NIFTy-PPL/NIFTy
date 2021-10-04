@@ -47,7 +47,7 @@ def test_hmc_hash():
     results = sampler.generate_n_samples(1000)
     results_hash = hashit(results, n_chars=20)
     print(f"full hash: {results_hash}", file=sys.stderr)
-    old_hash = "27e5222bf6efc8dc760e"
+    old_hash = "dd15f689f20d16ff1480"
     assert results_hash == old_hash
 
 
@@ -67,7 +67,7 @@ def test_nuts_hash():
     results = sampler.generate_n_samples(1000)
     results_hash = hashit(results, n_chars=20)
     print(f"full hash: {results_hash}", file=sys.stderr)
-    old_hash = "b06bdd0a33e7e872cae3"
+    old_hash = "ba324b77e6d73afae514"
     assert results_hash == old_hash
 
 
