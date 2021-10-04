@@ -181,13 +181,11 @@ def accept_or_deny(*,
 # @partial(jit, static_argnames=('potential_energy', 'potential_energy_gradient'))
 def generate_hmc_sample(*,
         key,
-        position,
+        initial_qp,
         potential_energy,
-        potential_energy_gradient,
-        # TODO remove this parameter, instead rework this to take a `stepper` function just like `_generate_nuts_tree` and have the mass matrix there.
-        mass_matrix,
         kinetic_energy,
         inverse_mass_matrix,
+        stepper,
         number_of_integration_steps,
         step_size
     ):
@@ -209,20 +207,12 @@ def generate_hmc_sample(*,
     step_size: float
         The step size (usually epsilon) for the leapfrog integrator.
     """
-    key, subkey = random.split(key)
-    momentum = sample_momentum_from_diagonal(
-        key = subkey,
-        diag_mass_matrix = mass_matrix
-    )
-    qp = QP(position=position, momentum=momentum)
-
-    kinetic_energy_gradient = lambda inv_m, mom: inv_m * mom
-    loop_body = partial(leapfrog_step, potential_energy_gradient, kinetic_energy_gradient, step_size, inverse_mass_matrix)
+    loop_body = partial(stepper, step_size, inverse_mass_matrix)
     new_qp = fori_loop(
         lower = 0,
         upper = number_of_integration_steps,
         body_fun = lambda _, args: loop_body(args),
-        init_val = qp
+        init_val = initial_qp
     )
 
     # this flipping is needed to make the proposal distribution symmetric
@@ -232,10 +222,10 @@ def generate_hmc_sample(*,
 
     return accept_or_deny(
         key = key,
-        old_qp = qp,
+        old_qp = initial_qp,
         proposed_qp = proposed_qp,
         total_energy = lambda qp: total_energy_of_qp(qp, potential_energy, partial(kinetic_energy, inverse_mass_matrix))
-    ), momentum
+    )
 
 
 ###
@@ -273,7 +263,7 @@ def total_energy_of_qp(qp, potential_energy, kinetic_energy_w_inv_mass):
     return potential_energy(qp.position) + kinetic_energy_w_inv_mass(qp.momentum)
 
 
-def _generate_nuts_tree(initial_qp, key, step_size, maxdepth, stepper, potential_energy, kinetic_energy: Callable[[pytree, pytree], float], inverse_mass_matrix: pytree, bias_transition: bool=True, max_energy_difference: Union[np.ndarray, float]=np.inf):
+def _generate_nuts_tree(initial_qp, key, step_size, maxdepth, stepper: Callable[[Union[np.ndarray, float], pytree, QP], QP], potential_energy, kinetic_energy: Callable[[pytree, pytree], float], inverse_mass_matrix: pytree, bias_transition: bool=True, max_energy_difference: Union[np.ndarray, float]=np.inf):
     """
     Warning
     -------
@@ -300,12 +290,11 @@ def _generate_nuts_tree(initial_qp, key, step_size, maxdepth, stepper, potential
             N = 2**maxdepth
         Memory requirements of this function are linear in maxdepth, i.e. logarithmic in trajectory length.
         JIT: static argument
-    stepper: Callable[[QP, float, int(1 / -1)] QP]
+    stepper: Callable[[float, pytree, QP], QP]
         The function that performs (Leapfrog) steps. Takes as arguments (in order)
+            step size (containing the direction): float
+            inverse mass matrix: pytree
             starting point: QP
-            step size: float
-            direction: int (but only 1 or -1!)
-        JIT: static argument
     potential_energy: Callable[[pytree], float]
         The potential energy, of the distribution to be sampled from.
         Takes only the position part (QP.position) as argument
@@ -391,11 +380,11 @@ def iterative_build_tree(key, initial_tree, step_size, go_right, stepper, potent
         The step size (usually called epsilon) for the leapfrog integrator.
     go_right: bool
         If go_right start at the right end, going right else start at the left end, going left.
-    stepper: Callable[[QP, float, int(1 / -1)] QP]
+    stepper: Callable[[float, pytree, QP], QP]
         The function that performs (Leapfrog) steps. Takes as arguments (in order)
+            step size (containing the direction): float
+            inverse mass matrix: pytree
             starting point: QP
-            step size: float
-            direction: int (but only 1 or -1!)
     potential_energy: Callable[[pytree], float]
         The potential energy, of the distribution to be sampled from.
         Takes only the position part (QP.position) as argument
@@ -417,7 +406,7 @@ def iterative_build_tree(key, initial_tree, step_size, go_right, stepper, potent
     # 1`. This is because we will never access the last element.
     S = tree_util.tree_map(lambda initial_q_or_p_leaf: np.empty((maxdepth, ) + initial_q_or_p_leaf.shape), unzip_qp_pytree(z))
 
-    z = stepper(z, step_size, np.where(go_right, x=1, y=-1))
+    z = stepper(np.where(go_right, 1., -1.) * step_size, inverse_mass_matrix, z)
     neg_energy = -total_energy_of_qp(z, potential_energy, partial(kinetic_energy, inverse_mass_matrix))
     diverging = np.abs(neg_energy - initial_neg_energy) > max_energy_difference
     incomplete_tree = Tree(left=z, right=z, logweight=neg_energy, proposal_candidate=z, turning=False, diverging=diverging, depth=-1)
@@ -427,7 +416,7 @@ def iterative_build_tree(key, initial_tree, step_size, go_right, stepper, potent
         n, incomplete_tree, z, S, key = state
 
         key, key_choose_candidate = random.split(key)
-        z = stepper(z, step_size, np.where(go_right, x=1, y=-1))
+        z = stepper(np.where(go_right, 1., -1.) * step_size, inverse_mass_matrix, z)
         incomplete_tree = add_single_qp_to_tree(key_choose_candidate, incomplete_tree, z, go_right, potential_energy, kinetic_energy, inverse_mass_matrix, initial_neg_energy=initial_neg_energy, max_energy_difference=max_energy_difference)
 
         def _even_fun(S):
@@ -611,16 +600,14 @@ class NUTSChain:
         else:
             raise ValueError('step_size must be a float')
 
-        potential_energy_gradient = grad(self.potential_energy)
-
         def kinetic_energy(inverse_mass_matrix, momentum):
             # NOTE, assume a diagonal mass-matrix
             return inverse_mass_matrix.dot(momentum**2) / 2.
 
         self.kinetic_energy = kinetic_energy
+        potential_energy_gradient = grad(self.potential_energy)
         kinetic_energy_gradient = lambda inv_m, mom: inv_m * mom
-
-        self.stepper = lambda qp, step_size, direction: leapfrog_step(potential_energy_gradient, kinetic_energy_gradient, step_size*direction, 1. / self.diag_mass_matrix, qp)
+        self.stepper = partial(leapfrog_step, potential_energy_gradient, kinetic_energy_gradient)
 
         if isinstance(maxdepth, int):
             self.maxdepth = maxdepth
@@ -669,7 +656,6 @@ class NUTSChain:
                 key=key_momentum,
                 diag_mass_matrix=self.diag_mass_matrix
             )
-
             qp = QP(position=prev_position, momentum=resampled_momentum)
 
             tree = _generate_nuts_tree(
@@ -808,6 +794,15 @@ class HMCChain:
         else:
             raise ValueError('n_of_integration_steps must be an int')
 
+        def kinetic_energy(inverse_mass_matrix, momentum):
+            # NOTE, assume a diagonal mass-matrix
+            return inverse_mass_matrix.dot(momentum**2) / 2.
+
+        self.kinetic_energy = kinetic_energy
+        potential_energy_gradient = grad(self.potential_energy)
+        kinetic_energy_gradient = lambda inv_m, mom: inv_m * mom
+        self.stepper = partial(leapfrog_step, potential_energy_gradient, kinetic_energy_gradient)
+
         self.key = random.PRNGKey(rngseed)
 
         self.compile = compile
@@ -825,10 +820,6 @@ class HMCChain:
             rejected_position_samples = tree_util.tree_map(lambda arr: np.ones((n,) + arr.shape), self.position)
             rejected_momenta = tree_util.tree_map(lambda arr: np.ones((n,) + arr.shape), self.position)
 
-        def kinetic_energy(inverse_mass_matrix, momentum):
-            # NOTE, assume a diagonal mass-matrix
-            return inverse_mass_matrix.dot(momentum**2) / 2.
-
         def _body_fun(idx, state):
             if self.dbg_info:
                 prev_position, key, samples, acceptance, momenta_before, momenta_after, rejected_position_samples, rejected_momenta = state
@@ -836,14 +827,20 @@ class HMCChain:
                 prev_position, key, samples, acceptance = state
             key, key_hmc = random.split(key)
 
-            (qp_acc_rej, was_accepted), unintegrated_momentum = generate_hmc_sample(
-                key = key_hmc,
-                position = prev_position,
+            key_choose, key_momentum = random.split(key_hmc)
+            resampled_momentum = sample_momentum_from_diagonal(
+                key=key_momentum,
+                diag_mass_matrix=self.diag_mass_matrix
+            )
+            qp = QP(position=prev_position, momentum=resampled_momentum)
+
+            qp_acc_rej, was_accepted = generate_hmc_sample(
+                key = key_choose,
+                initial_qp = qp,
                 potential_energy = self.potential_energy,
-                potential_energy_gradient = grad(self.potential_energy),
-                mass_matrix = self.diag_mass_matrix,
-                kinetic_energy = kinetic_energy,
+                kinetic_energy = self.kinetic_energy,
                 inverse_mass_matrix=1./self.diag_mass_matrix,
+                stepper = self.stepper,
                 number_of_integration_steps = self.n_of_integration_steps,
                 step_size = self.step_size
             )
@@ -858,7 +855,7 @@ class HMCChain:
             samples = tree_util.tree_map(lambda ts, val: ts.at[idx].set(val), samples, next_qp.position)
             acceptance = acceptance.at[idx].set(was_accepted)
             if self.dbg_info:
-                momenta_before = tree_util.tree_map(lambda ts, val: ts.at[idx].set(val), momenta_before, unintegrated_momentum)
+                momenta_before = tree_util.tree_map(lambda ts, val: ts.at[idx].set(val), momenta_before, resampled_momentum)
                 momenta_after = tree_util.tree_map(lambda ts, val: ts.at[idx].set(val), momenta_after, next_qp.momentum)
                 rejected_position_samples = tree_util.tree_map(lambda ts, val: ts.at[idx].set(val), rejected_position_samples, rejected_qp.position)
                 rejected_momenta = tree_util.tree_map(lambda ts, val: ts.at[idx].set(val), rejected_position_samples, rejected_qp.momentum)
