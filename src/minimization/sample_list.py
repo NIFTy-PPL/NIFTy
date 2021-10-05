@@ -286,7 +286,7 @@ class ResidualSampleList(SampleList):
         """
         if isinstance(self._m, MultiField) and self.domain is not mean.domain:
             mean = MultiField.union([self._m, mean])
-        return self.at(mean)
+        return self.at_strict(mean)
 
     def __getitem__(self, i):
         return self._m.flexible_addsub(self._r[i], self._n[i])
