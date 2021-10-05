@@ -472,7 +472,7 @@ def minisanity(data, metric_at_pos, modeldata_operator, samples, terminal_colors
     keylen = min([keylen, 42])
 
     xdoms = [data.domain, samples.domain]
-    # TODO Simplify the following lines
+    # compute xops
     xops = []
     if isinstance(xdoms[0], MultiDomain):
         foo = lambda x: (metric_at_pos(x).get_sqrt() @ Adder(data, neg=True) @ modeldata_operator)(x)
@@ -488,7 +488,7 @@ def minisanity(data, metric_at_pos, modeldata_operator, samples, terminal_colors
         xdoms[1] = makeDomain({"<None>": xdoms[1]})
         foo = lambda x: x.ducktape_left("<None>")
         xops.append(foo)
-    # /Simplify
+    # /compute xops
 
     xredchisq, xscmean, xndof = [], [], []
     for dd in xdoms:
