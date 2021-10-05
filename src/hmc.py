@@ -3,6 +3,7 @@ from jax import numpy as np
 from jax import tree_util
 from jax import lax, random, jit, grad
 from jax.scipy.special import expit
+from jax.lax import population_count
 
 from typing import Any, Callable, NamedTuple, TypeVar, Union
 
@@ -424,7 +425,7 @@ def iterative_build_tree(key, initial_tree, step_size, go_right, stepper, potent
             # subtrees. Register the current z to be used in turning condition
             # checks later, when the right endpoints of it's subtrees are
             # generated.
-            S = tree_index_update(S, bitcount(n), z)
+            S = tree_index_update(S, population_count(n), z)
             return S, False
 
         def _odd_fun(S):
@@ -435,7 +436,7 @@ def iterative_build_tree(key, initial_tree, step_size, go_right, stepper, potent
             # l = nubmer of subtrees that have current z as their right endpoint.
             l = count_trailing_ones(n)
             # inclusive indices into S referring to the left endpoints of the l subtrees.
-            i_max_incl = bitcount(n-1)
+            i_max_incl = population_count(n-1)
             i_min_incl = i_max_incl - l + 1
             # TODO: this should traverse the range in reverse
             turning = fori_loop(
@@ -522,23 +523,6 @@ def merge_trees(key, current_subtree, new_subtree, go_right, bias_transition):
     neg_energy = np.logaddexp(new_subtree.logweight, current_subtree.logweight)
     merged_tree = Tree(left=left, right=right, logweight=neg_energy, proposal_candidate=new_sample, turning=turning, diverging=diverging, depth=current_subtree.depth + 1)
     return merged_tree
-
-
-def bitcount(n):
-    """Count the number of ones in the binary representation of `n`.
-
-    Warning
-    -------
-    `n` must be positive and strictly smaller than `2**64`
-
-    Examples
-    --------
-    >>> print(bin(23), bitcount(23))
-    0b10111 4
-    """
-    # TODO: python 3.10 has int.bit_count()
-    bits_reversed = np.unpackbits(np.array(n, dtype='uint64').view('uint8'), bitorder='little')
-    return np.sum(bits_reversed)
 
 
 def count_trailing_ones(n):
