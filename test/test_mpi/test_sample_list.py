@@ -20,7 +20,7 @@ import pytest
 
 import nifty8 as ift
 
-from .common import list2fixture, setup_function, teardown_function
+from ..common import list2fixture, setup_function, teardown_function
 
 
 
@@ -47,12 +47,9 @@ def test_sample_list():
         else:
             [sc.add(op(ss)) for ss in samples]
         mean, var = sl.global_sample_stat(op)
-        print(mean.domain)
-        print(sc.mean.domain)
-        print(sl.global_mean().domain)
-        print()
         ift.extra.assert_allclose(mean, sc.mean)
         ift.extra.assert_allclose(mean, sl.global_mean(op))
+        ift.extra.assert_allclose(mean, sl.global_average(op))
         ift.extra.assert_allclose(var, sc.var)
         ift.extra.assert_allclose(var, sl.global_sd(op)**2)
 
