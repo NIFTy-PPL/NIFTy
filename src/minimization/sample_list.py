@@ -316,17 +316,39 @@ class MinimalSampleList(SampleList):
 
 
 def _none_to_id(obj):
+    """If the input is None, replace it with identity map. Otherwise return
+    input.
+    """
     if obj is None:
         return lambda x: x
     return obj
 
 
 def _bcast(obj, comm, root):
+    """Broadcast python object from given root
+
+    Parameters
+    ----------
+    obj : object
+        The object to be broadcasted.
+    comm : MPI communicator
+        MPI communicator used for the broadcasting.
+    root : int
+        MPI task number from which the object shall be sent.
+    """
     data = obj if comm.Get_rank() == root else None
     return comm.bcast(data, root=root)
 
 
 def _mpi_file_extension(comm):
+    """Return string that can be used to uniquely determine the number of MPI
+    tasks for distributed saving of files.
+
+    Parameters
+    ----------
+    comm : MPI communicator or None
+        If None, an empty string is returned.
+    """
     if comm is None:
         return ""
     ntask, rank, _ = utilities.get_MPI_params_from_comm(comm)
