@@ -266,7 +266,7 @@ class ResidualSampleList(SampleList):
             raise ValueError("New and old mean have different domains:\n"
                              f"old: {self.domain}\n"
                              f"new: {mean.domain}\n")
-        return ResidualSampleList(mean, self._r, self._n, self.comm)
+        return self.at(mean)
 
     def at(self, mean):
         """Return a new instance of `ResidualSampleList` with new mean and the
@@ -286,7 +286,7 @@ class ResidualSampleList(SampleList):
         """
         if isinstance(self._m, MultiField) and self.domain is not mean.domain:
             mean = MultiField.union([self._m, mean])
-        return self.at_strict(mean)
+        return ResidualSampleList(mean, self._r, self._n, self.comm)
 
     def __getitem__(self, i):
         return self._m.flexible_addsub(self._r[i], self._n[i])

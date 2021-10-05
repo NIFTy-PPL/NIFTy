@@ -196,7 +196,7 @@ class SampledKLEnergy(Energy):
         return self._grad
 
     def at(self, position):
-        return SampledKLEnergy._init2(None, self._sample_list.at(position),
+        return SampledKLEnergy._init2(None, self._sample_list.at_strict(position),
                                       self._hamiltonian, self._constants,
                                       self._invariants, self._nanisinf)
 
