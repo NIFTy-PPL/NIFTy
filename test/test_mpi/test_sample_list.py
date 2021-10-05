@@ -48,10 +48,8 @@ def test_sample_list():
             [sc.add(op(ss)) for ss in samples]
         mean, var = sl.global_sample_stat(op)
         ift.extra.assert_allclose(mean, sc.mean)
-        ift.extra.assert_allclose(mean, sl.global_mean(op))
         ift.extra.assert_allclose(mean, sl.global_average(op))
         ift.extra.assert_allclose(var, sc.var)
-        ift.extra.assert_allclose(var, sl.global_sd(op)**2)
 
         samples = list(samples)
         if op is not None:

@@ -112,7 +112,7 @@ if __name__ == "__main__":
         )
         plot.add(
             ift.Field.from_raw(plotting_domain,
-                               kl.samples.global_mean(signal).val),
+                               kl.samples.global_average(signal).val),
             title="Reconstruction",
         )
         plot.add(

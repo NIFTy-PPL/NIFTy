@@ -146,12 +146,6 @@ class SampleList:
             sc.add(ss)
         return sc.mean, sc.var
 
-    def global_mean(self, op=None):
-        return self.global_sample_stat(op)[0]
-
-    def global_sd(self, op=None):
-        return self.global_sample_stat(op)[1].sqrt()
-
     def save(self, file_name_base):
         if self._comm is not None:
             raise NotImplementedError

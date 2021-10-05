@@ -130,7 +130,7 @@ def main():
 
         # Plot current reconstruction
         plot = ift.Plot()
-        plot.add(KL.samples.global_mean(signal), title="Posterior mean",
+        plot.add(KL.samples.global_average(signal), title="Posterior mean",
                  zmin=0, zmax=1)
         plot.add(KL.samples.global_iterator(pspec.force),
                  title="Samples power spectrum")
@@ -147,7 +147,7 @@ def main():
     nsamples = KL.samples.global_n_samples()
     logspec = pspec.log().force
     plot.add(list(KL.samples.global_iterator(pspec.force)) +
-             [pspec.force(mock_position), KL.samples.global_mean(logspec).exp()],
+             [pspec.force(mock_position), KL.samples.global_average(logspec).exp()],
              title="Sampled Posterior Power Spectrum",
              linewidth=[1.]*nsamples+ [3., 3.],
              label=[None]*nsamples + ['Ground truth', 'Posterior mean'])
