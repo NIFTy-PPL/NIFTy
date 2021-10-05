@@ -21,13 +21,11 @@ from functools import reduce
 import numpy as np
 
 from .. import random, utilities
-from ..domain_tuple import DomainTuple
 from ..linearization import Linearization
 from ..multi_field import MultiField
 from ..operators.endomorphic_operator import EndomorphicOperator
 from ..operators.energy_operators import GaussianEnergy, StandardHamiltonian
 from ..operators.sampling_enabler import SamplingEnabler
-from ..operators.inversion_enabler import InversionEnabler
 from ..operators.sandwich_operator import SandwichOperator
 from ..operators.scaling_operator import ScalingOperator
 from ..probing import approximation2endo
@@ -43,6 +41,7 @@ def _reduce_field(field, keys):
     if isinstance(field, MultiField) and len(keys)>0:
         return field.extract_by_keys(set(field.keys()) - set(keys))
     return field
+
 
 def _reduce_by_keys(field, operator, keys):
     """Partially insert a field into an operator
@@ -130,7 +129,7 @@ def draw_samples(position, H, minimizer, n_samples, mirror_samples, napprox=0,
     # Draw samples
     sseq = random.spawn_sseq(n_samples)
     if mirror_samples:
-        sseq = reduce((lambda a,b: a+b), [[ss, ]*2 for ss in sseq])
+        sseq = reduce(lambda a, b: a+b, [[ss]*2 for ss in sseq])
     local_samples = []
     local_neg = []
     utilities.check_MPI_synced_random_state(comm)
@@ -197,8 +196,9 @@ class SampledKLEnergy(Energy):
         return self._grad
 
     def at(self, position):
-        return SampledKLEnergy._init2(None, self._sample_list.update(position),
-            self._hamiltonian, self._constants, self._invariants, self._nanisinf)
+        return SampledKLEnergy._init2(None, self._sample_list.at(position),
+                                      self._hamiltonian, self._constants,
+                                      self._invariants, self._nanisinf)
 
     def apply_metric(self, x):
         def _func(inp):
