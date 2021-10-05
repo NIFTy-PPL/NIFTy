@@ -216,7 +216,7 @@ class SampledKLEnergy(Energy):
     def samples(self):
         if self._invariants is None:
             return self._sample_list
-        return self._sample_list.update(self._invariants)
+        return self._sample_list.at(self._invariants)
 
     def __init__(self, position, hamiltonian, n_samples, minimizer_sampling,
                  mirror_samples=True, constants=[], point_estimates=[], napprox=0,

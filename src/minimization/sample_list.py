@@ -126,6 +126,15 @@ class SampleList:
         Note
         ----
         Calling this function involves MPI communication if `comm != None`.
+
+        Note
+        ----
+        Calling this function involves allocating arrays for all samples and
+        averaging them afterwards. If the number of local samples is big and
+        `op` is not None, this leads to much temporary memory usage. If the
+        output of `op` is just a :class:`~nifty8.field.Field` or
+        :class:`~nifty8.multi_field.MultiField`, :attr:`global_sample_stat()`
+        can be used in order to compute the average memory efficiently.
         """
         op = _none_to_id(op)
         res = [op(ss) for ss in self]
@@ -137,9 +146,23 @@ class SampleList:
         return tuple(utilities.allreduce_sum(rr, self.comm) / n for rr in res)
 
     def global_n_samples(self):
+        """Return number of samples across all MPI tasks."""
         return utilities.allreduce_sum([len(self)], self.comm)
 
-    def global_sample_stat(self, op):
+    def global_sample_stat(self, op=None):
+        """Compute mean and variance of samples after applying `op`.
+
+        Parameters
+        ----------
+        op : callable or None
+            Callable that is applied to each item in the :class:`SampleList`
+            before it is used to compute mean and variance.
+
+        Returns
+        -------
+        tuple
+            A tuple with two items: the mean and the variance.
+        """
         from ..probing import StatCalculator
         sc = StatCalculator()
         for ss in self.global_iterator(op):
@@ -147,16 +170,49 @@ class SampleList:
         return sc.mean, sc.var
 
     def save(self, file_name_base):
-        if self._comm is not None:
-            raise NotImplementedError
-        with open(file_name_base + ".pickle", "wb") as f:
+        """Serialize SampleList and write it to disk.
+
+        Parameters
+        ----------
+        file_name_base : str
+            File name of the output file without extension. The actual file name
+            will have the extension ".pickle" and before that an identifier that
+            distunguishes between MPI tasks.
+
+        Note
+        ----
+        If the instance of :class:`SampleList` is distributed, each MPI task
+        writes its own file.
+        """
+        fname = str(file_name_base) + _mpi_file_extension(self.comm) + ".pickle"
+        with open(fname, "wb") as f:
             pickle.dump(self, f, pickle.HIGHEST_PROTOCOL)
 
     @staticmethod
     def load(file_name_base, comm=None):
-        if comm is not None:
-            raise NotImplementedError
-        with open(file_name_base + ".pickle", "rb") as f:
+        """Deserialize SampleList from files on disk.
+
+        Parameters
+        ----------
+        file_name_base : str
+            File name of the input file without extension. The actual file name
+            will have the extension ".pickle" and before that an identifier that
+            distunguishes between MPI tasks.
+        comm : MPI communicator or None
+            If not `None`, each MPI task reads its own input file.
+
+        Note
+        ----
+        `file_name_base` needs to be the same string that has been used for
+        saving the :class:`SampleList`.
+
+        Note
+        ----
+        The number of MPI tasks used for saving and loading the `SampleList`
+        need to be the same.
+        """
+        fname = str(file_name_base) + _mpi_file_extension(comm) + ".pickle"
+        with open(fname, "rb") as f:
             obj = pickle.load(f)
         utilities.myassert(isinstance(obj, SampleList))
         return obj
@@ -164,8 +220,16 @@ class SampleList:
 
 class ResidualSampleList(SampleList):
     def __init__(self, mean, residuals, neg, comm):
-        """
-        Entries in dict of residual can be missing -> no residual is added
+        """SampleList that stores samples in terms of a mean and a residual deviation thereof.
+
+
+        Parameters
+        ----------
+        mean :
+        residuals :
+            Entries in dict of residual can be missing -> no residual is added
+        neg :
+        comm :
         """
         super(ResidualSampleList, self).__init__(comm, mean.domain)
         self._m = mean
@@ -187,20 +251,42 @@ class ResidualSampleList(SampleList):
         if not all(isinstance(nn, bool) for nn in neg):
             raise TypeError("All entries in neg need to be bool.")
 
-    def at(self, mean):
-        """Creates a new instance of `ResidualSampleList` where only the mean
-        has changed. The residuals remain the same for the new list.
+    def at_strict(self, mean):
+        """Return a new instance of `ResidualSampleList` with new mean and the
+        same residuals as `self`.
+
+        The old and new mean need to be defined on the same domain.
+
+        Returns
+        -------
+        ResidualSampleList
+            Sample list with updated mean.
         """
+        if mean.domain is not self.domain:
+            raise ValueError("New and old mean have different domains:\n"
+                             f"old: {self.domain}\n"
+                             f"new: {mean.domain}\n")
         return ResidualSampleList(mean, self._r, self._n, self.comm)
 
-    def update(self, field):
-        """Updates (parts of) the mean with the new field values. A new instance
-        of `ResidualSampleList` is created and the residuals remain the same for
-        the new list.
+    def at(self, mean):
+        """Return a new instance of `ResidualSampleList` with new mean and the
+        same residuals as `self`.
+
+        Note
+        ----
+        If `self.domain` is a :class:`~nifty8.multi_domain.MultiDomain`, the old
+        and new mean are combined with
+        :attr:`~nifty8.multi_field.MultiField.union` beforehand. This means that
+        only the multi field entries present in `mean` are updated.
+
+        Returns
+        -------
+        ResidualSampleList
+            Sample list with updated mean.
         """
-        if isinstance(self._m, MultiField) and self.domain != field.domain:
-            return self.at(self._m.union([self._m, field]))
-        return self.at(field)
+        if isinstance(self._m, MultiField) and self.domain is not mean.domain:
+            mean = MultiField.union([self._m, mean])
+        return self.at(mean)
 
     def __getitem__(self, i):
         return self._m.flexible_addsub(self._r[i], self._n[i])
@@ -230,3 +316,10 @@ def _none_to_id(obj):
 def _bcast(obj, comm, root):
     data = obj if comm.Get_rank() == root else None
     return comm.bcast(data, root=root)
+
+
+def _mpi_file_extension(comm):
+    if comm is None:
+        return ""
+    ntask, rank, _ = utilities.get_MPI_params_from_comm(comm)
+    return f"{rank}/{ntask}"
