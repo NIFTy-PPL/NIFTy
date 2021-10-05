@@ -22,26 +22,87 @@ from ..multi_field import MultiField
 
 
 class SampleList:
+    """Base class for storing lists of fields representing samples.
+
+    This class suits as a base class for storing lists of in most cases
+    posterior samples. It is intended to be used to hold the minimization state
+    of an inference run and comes with a variety of convenience functions like
+    computing the mean or standard deviation of the output of a given operator
+    over the sample list.
+
+    Parameters
+    ----------
+    comm : MPI communicator or None
+        If not `None`, :class:`SampleList` can gather samples across multiple
+        MPI tasks. If `None`, :class:`SampleList` is not a distributed object.
+    domain : Domainoid (can be DomainTuple, MultiDomain, dict, Domain or list of Domains)
+        The domain on which the samples are defined.
+
+    Note
+    ----
+    A class inheriting from :class:`SampleList` needs to call the constructor of
+    `SampleList` and needs to implement :attr:`__len__()` and `__getitem__()`.
+    """
     def __init__(self, comm, domain):
         from ..sugar import makeDomain
         self._comm = comm
         self._domain = makeDomain(domain)
         utilities.check_MPI_equality(self._domain, comm)
 
-    @staticmethod
-    def indices_from_comm(n_samples, comm):
-        ntask, rank, _ = utilities.get_MPI_params_from_comm(comm)
-        return range(*utilities.shareRange(n_samples, ntask, rank))
+    def __len__(self):
+        """int: Number of local samples."""
+        raise NotImplementedError
+
+    def __getitem__(self, i):
+        raise NotImplementedError
 
     @property
     def comm(self):
+        """MPI communicator or None: The communicator used for the SampleList."""
         return self._comm
 
     @property
     def domain(self):
+        """DomainTuple or MultiDomain: the domain on which the samples are defined."""
         return self._domain
 
+    @staticmethod
+    def indices_from_comm(n_samples, comm):
+        """Return range of global sample indices for local task.
+
+        This method calls `utilities.shareRange`
+
+        Parameters
+        ----------
+        n_samples : int
+            Number of work items to be distributed.
+        comm : MPI communicator or None
+            The communicator used for the distribution.
+
+        Returns
+        -------
+        range
+            Range of relevant indices for the local task.
+        """
+        ntask, rank, _ = utilities.get_MPI_params_from_comm(comm)
+        return range(*utilities.shareRange(n_samples, ntask, rank))
+
     def global_iterator(self, op=None):
+        """Return iterator over all potentially distributed samples.
+
+        Parameters
+        ----------
+        op : callable or None
+            Callable that is applied to each item in the :class:`SampleList`
+            before it is returned. Can be an
+            :class:`~nifty8.operators.operator.Operator` or any other callable
+            that takes a :class:`~nifty8.field.Field` as an input. Default:
+            None.
+
+        Note
+        ----
+        Calling this function involves MPI communication if `comm != None`.
+        """
         op = _none_to_id(op)
         if self.comm is not None:
             for itask in range(self.comm.Get_size()):
@@ -53,21 +114,30 @@ class SampleList:
                 yield op(ss)
 
     def global_average(self, op=None):
-        """if op returns tuple, then individual averages are computed and returned individually."""
+        """Compute average over all potentially distributed samples.
+
+        Parameters
+        ----------
+        op : callable or None
+            Callable that is applied to each item in the :class:`SampleList`
+            before it is averaged. If `op` returns tuple, then individual
+            averages are computed and returned individually as tuple.
+
+        Note
+        ----
+        Calling this function involves MPI communication if `comm != None`.
+        """
         op = _none_to_id(op)
         res = [op(ss) for ss in self]
         n = self.global_n_samples()
         if not isinstance(res[0], tuple):
             return utilities.allreduce_sum(res, self.comm) / n
-        res = [[elem[ii] for elem in res] for ii in range(len(res[0]))]
+        n_output_elements = len(res[0])
+        res = [[elem[ii] for elem in res] for ii in range(n_output_elements)]
         return tuple(utilities.allreduce_sum(rr, self.comm) / n for rr in res)
 
     def global_n_samples(self):
         return utilities.allreduce_sum([len(self)], self.comm)
-
-    def __len__(self):
-        """Local length"""
-        raise NotImplementedError
 
     def global_sample_stat(self, op):
         from ..probing import StatCalculator
