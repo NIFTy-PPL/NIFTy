@@ -225,11 +225,19 @@ class ResidualSampleList(SampleList):
 
         Parameters
         ----------
-        mean :
-        residuals :
-            Entries in dict of residual can be missing -> no residual is added
-        neg :
-        comm :
+        mean : Field or MultiField
+            Mean of the sample list.
+        residuals : list of Field or list of MultiField
+            List of residuals from the mean. If it is a list of `MultiField`,
+            the domain of the residuals can be a subdomain of the domain of
+            mean. This results in adding just a zero in respective `MultiField`
+            entries.
+        neg: list of bool
+            This list has to have the same length as `residuals`. If an entry is
+            `True`, the respective residual is subtracted and not added.
+        comm : MPI communicator or None
+            If not `None`, samples can be gathered across multiple MPI tasks. If
+            `None`, :class:`ResidualSampleList` is not a distributed object.
         """
         super(ResidualSampleList, self).__init__(comm, mean.domain)
         self._m = mean
@@ -250,6 +258,12 @@ class ResidualSampleList(SampleList):
 
         if not all(isinstance(nn, bool) for nn in neg):
             raise TypeError("All entries in neg need to be bool.")
+
+    def __getitem__(self, i):
+        return self._m.flexible_addsub(self._r[i], self._n[i])
+
+    def __len__(self):
+        return len(self._r)
 
     def at_strict(self, mean):
         """Return a new instance of `ResidualSampleList` with new mean and the
@@ -287,12 +301,6 @@ class ResidualSampleList(SampleList):
         if isinstance(self._m, MultiField) and self.domain is not mean.domain:
             mean = MultiField.union([self._m, mean])
         return ResidualSampleList(mean, self._r, self._n, self.comm)
-
-    def __getitem__(self, i):
-        return self._m.flexible_addsub(self._r[i], self._n[i])
-
-    def __len__(self):
-        return len(self._r)
 
 
 class MinimalSampleList(SampleList):
