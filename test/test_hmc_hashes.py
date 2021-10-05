@@ -35,16 +35,19 @@ def hashit(obj, n_chars=8) -> str:
 def test_hmc_hash():
     """Test sapmler output against known hash from previous commits."""
     sampler = hmc.HMCChain(
-        initial_position=np.array([0.1, 1.223]),
         potential_energy=lambda x: np.sum(x**2),
-        diag_mass_matrix=1.,
+        inverse_mass_matrix=1.,
+        initial_position=np.array([0.1, 1.223]),
+        key=42,
         step_size=0.193,
-        n_of_integration_steps=100,
-        rngseed=42,
-        dbg_info=False,
+        num_steps=100,
+        dbg_info=True,
         compile=True
     )
-    results = sampler.generate_n_samples(1000)
+    chain = sampler.generate_n_samples(1000)
+    key, pos = sampler.last_state
+    accepted = chain.trees.accepted
+    results = (pos, key, chain.samples, accepted)
     results_hash = hashit(results, n_chars=20)
     print(f"full hash: {results_hash}", file=sys.stderr)
     old_hash = "a62bbc84432eb4f13ad6"
@@ -54,17 +57,19 @@ def test_hmc_hash():
 def test_nuts_hash():
     """Test sapmler output against known hash from previous commits."""
     sampler = hmc.NUTSChain(
-        initial_position=np.array([0.1, 1.223]),
         potential_energy=lambda x: np.sum(x**2),
-        diag_mass_matrix=1.,
+        inverse_mass_matrix=1.,
+        initial_position=np.array([0.1, 1.223]),
         step_size=0.193,
-        maxdepth=10,
-        rngseed=42,
+        max_tree_depth=10,
+        key=42,
         dbg_info=False,
         bias_transition=False,
         compile=True
     )
-    results = sampler.generate_n_samples(1000)
+    chain = sampler.generate_n_samples(1000)
+    key, pos = sampler.last_state
+    results = (pos, key, chain.samples)
     results_hash = hashit(results, n_chars=20)
     print(f"full hash: {results_hash}", file=sys.stderr)
     old_hash = "ba324b77e6d73afae514"

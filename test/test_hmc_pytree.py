@@ -15,10 +15,10 @@ def test_hmc_pytree():
     sampler_init = partial(
         hmc.HMCChain,
         potential_energy=jft.sum_of_squares,
-        diag_mass_matrix=1.,
+        inverse_mass_matrix=1.,
         step_size=0.193,
-        n_of_integration_steps=100,
-        rngseed=321,
+        num_steps=100,
+        key=321,
         dbg_info=False,
         compile=True
     )
@@ -44,10 +44,10 @@ def test_nuts_pytree():
     sampler_init = partial(
         hmc.NUTSChain,
         potential_energy=jft.sum_of_squares,
-        diag_mass_matrix=1.,
+        inverse_mass_matrix=1.,
         step_size=0.193,
-        maxdepth=10,
-        rngseed=323,
+        max_tree_depth=10,
+        key=323,
         dbg_info=False,
         compile=True
     )

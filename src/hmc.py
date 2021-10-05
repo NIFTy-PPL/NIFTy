@@ -5,7 +5,7 @@ from jax import lax, random, jit, grad
 from jax.scipy.special import expit
 from jax.lax import population_count
 
-from typing import Any, Callable, NamedTuple, TypeVar, Union
+from typing import Any, Callable, NamedTuple, Optional, TypeVar, Union
 
 from .disable_jax_control_flow import cond, while_loop, fori_loop
 from .sugar import random_like
@@ -42,27 +42,27 @@ def _DEBUG_FINISH_SUBTREE(dummy_arg):
 ### COMMON FUNCTIONALITY
 ###
 
-P = TypeVar("P")
+Q = TypeVar("Q")
 
 class QP(NamedTuple):
     """Object holding a pair of position and momentum.
 
     Attributes
     ----------
-    position : P
+    position : Q
         Position.
-    momentum : P
+    momentum : Q
         Momentum.
     """
-    position: P
-    momentum: P
+    position: Q
+    momentum: Q
 
 
 def flip_momentum(qp: QP) -> QP:
     return QP(position=qp.position, momentum=-qp.momentum)
 
 
-def sample_momentum_from_diagonal(*, key, diag_mass_matrix):
+def sample_momentum_from_diagonal(*, key, mass_matrix_sqrt):
     """
     Draw a momentum sample from the kinetic energy of the hamiltonian.
 
@@ -70,13 +70,14 @@ def sample_momentum_from_diagonal(*, key, diag_mass_matrix):
     ----------
     key: ndarray
         a PRNGKey used as the random key.
-    diag_mass_matrix: ndarray
-        The mass matrix (i.e. inverse diagonal covariance) to use for sampling.
-        Diagonal matrix represented as (possibly pytree of) ndarray vector
-        containing the entries of the diagonal.
+    mass_matrix_sqrt: ndarray
+        The left square-root mass matrix (i.e. square-root of the inverse
+        diagonal covariance) to use for sampling. Diagonal matrix represented
+        as (possibly pytree of) ndarray vector containing the entries of the
+        diagonal.
     """
-    normal = random_like(diag_mass_matrix, key=key, rng=random.normal)
-    return tree_util.tree_map(lambda m, nrm: np.sqrt(m) * nrm, diag_mass_matrix, normal)
+    normal = random_like(mass_matrix_sqrt, key=key, rng=random.normal)
+    return tree_util.tree_map(np.multiply, mass_matrix_sqrt, normal)
 
 
 # TODO: how to randomize step size (neal sect. 3.2)
@@ -133,6 +134,12 @@ def unzip_qp_pytree(tree_of_qp):
     )
 
 
+class AcceptedAndRejected(NamedTuple):
+    accepted_qp: QP
+    rejected_qp: QP
+    accepted: Union[np.ndarray, bool]
+
+
 def accept_or_deny(*,
         key,
         old_qp: QP,
@@ -156,8 +163,7 @@ def accept_or_deny(*,
     """
     # TODO: new energy quickly becomes NaN, can be fixed by keeping step size small (?)
     # how to handle this case?
-    #print(f"old_e {total_energy(old_qp):3.4e}")
-    #print(f"new_e {total_energy(proposed_qp):3.4e}")
+    # TODO: swap nan as energy difference with inf energy
     acceptance_threshold = np.minimum(
             1.,
             np.exp(
@@ -165,31 +171,33 @@ def accept_or_deny(*,
                 - total_energy(proposed_qp)
             )
         )
-
+    # TODO: Use bernoulli
     acceptance_level = random.uniform(key)
 
-    #print(f"level: {acceptance_level:3.4e}, thresh: {acceptance_threshold:3.4e}")
-
-    # TODO: define namedtuple with rejected and accepted and
-    return ((old_qp, proposed_qp), acceptance_level < acceptance_threshold)
+    accept = acceptance_level < acceptance_threshold
+    accepted_qp, rejected_qp = select(
+        accept,
+        (proposed_qp, old_qp),
+        (old_qp, proposed_qp),
+    )
+    return AcceptedAndRejected(accepted_qp, rejected_qp, accept)
 
 
 ###
 ### SIMPLE HMC
 ###
 
-# WARNING: requires jaxlib '0.1.66', keyword argument passing doesn't work with alternative static_argnums, which is supported in earlier jax versions
 # @partial(jit, static_argnames=('potential_energy', 'potential_energy_gradient'))
-def generate_hmc_sample(*,
+def _generate_hmc_acc_rej(*,
         key,
         initial_qp,
         potential_energy,
         kinetic_energy,
         inverse_mass_matrix,
         stepper,
-        number_of_integration_steps,
+        num_steps,
         step_size
-    ):
+    ) -> AcceptedAndRejected:
     """
     Generate a sample given the initial position.
 
@@ -203,7 +211,7 @@ def generate_hmc_sample(*,
         The potential energy, which is the distribution to be sampled from.
     mass_matrix: ndarray
         The mass matrix used in the kinetic energy
-    number_of_integration_steps: int
+    num_steps: int
         The number of steps the leapfrog integrator should perform.
     step_size: float
         The step size (usually epsilon) for the leapfrog integrator.
@@ -211,16 +219,16 @@ def generate_hmc_sample(*,
     loop_body = partial(stepper, step_size, inverse_mass_matrix)
     new_qp = fori_loop(
         lower = 0,
-        upper = number_of_integration_steps,
+        upper = num_steps,
         body_fun = lambda _, args: loop_body(args),
         init_val = initial_qp
     )
-
     # this flipping is needed to make the proposal distribution symmetric
     # doesn't have any effect on acceptance though because kinetic energy depends on momentum^2
     # might have an effect with other kinetic energies though
     proposed_qp = flip_momentum(new_qp)
 
+    # TODO: inline
     return accept_or_deny(
         key = key,
         old_qp = initial_qp,
@@ -259,21 +267,27 @@ class Tree(NamedTuple):
     diverging: Union[np.ndarray, bool]
     depth: Union[np.ndarray, int]
 
+class Chain(NamedTuple):
+    """Object carrying chain metadata; think: transposed Tree with new axis.
+    """
+    # Q but with one more dimension on the first axes of the leave tensors
+    samples: Q
+    depths: Optional[np.ndarray] = None
+    divergences: Optional[np.ndarray] = None
+    acceptance: Union[None,np.ndarray,float] = None
+    resampled_momenta: Optional[Q] = None
+    trees: Optional[Union[Tree,AcceptedAndRejected]] = None
+
+
 
 def total_energy_of_qp(qp, potential_energy, kinetic_energy_w_inv_mass):
     return potential_energy(qp.position) + kinetic_energy_w_inv_mass(qp.momentum)
 
 
-def _generate_nuts_tree(initial_qp, key, step_size, maxdepth, stepper: Callable[[Union[np.ndarray, float], pytree, QP], QP], potential_energy, kinetic_energy: Callable[[pytree, pytree], float], inverse_mass_matrix: pytree, bias_transition: bool=True, max_energy_difference: Union[np.ndarray, float]=np.inf):
-    """
-    Warning
-    -------
-    Momentum must be resampled from conditional distribution BEFORE passing into this function!
-    This is different from `generate_hmc_sample`!
+def _generate_nuts_tree(initial_qp, key, step_size, max_tree_depth, stepper: Callable[[Union[np.ndarray, float], pytree, QP], QP], potential_energy, kinetic_energy: Callable[[pytree, pytree], float], inverse_mass_matrix: pytree, bias_transition: bool=True, max_energy_difference: Union[np.ndarray, float]=np.inf) -> Tree:
+    """Generate a sample given the initial position.
 
-    Generate a sample given the initial position.
-
-    An implementation of the No-Uturn-Sampler
+    This call implements a No-U-Turn-Sampler.
 
     Parameters
     ----------
@@ -284,12 +298,12 @@ def _generate_nuts_tree(initial_qp, key, step_size, maxdepth, stepper: Callable[
         a PRNGKey used as the random key
     step_size: float
         The step size (usually called epsilon) for the leapfrog integrator.
-    maxdepth: int
+    max_tree_depth: int
         The maximum depth of the trajectory tree before expansion is terminated
         and value is sampled even if the U-turn condition is not met.
         The maximum number of points (/integration steps) per trajectory is
-            N = 2**maxdepth
-        Memory requirements of this function are linear in maxdepth, i.e. logarithmic in trajectory length.
+            N = 2**max_tree_depth
+        Memory requirements of this function are linear in max_tree_depth, i.e. logarithmic in trajectory length.
         JIT: static argument
     stepper: Callable[[float, pytree, QP], QP]
         The function that performs (Leapfrog) steps. Takes as arguments (in order)
@@ -320,7 +334,7 @@ def _generate_nuts_tree(initial_qp, key, step_size, maxdepth, stepper: Callable[
 
     def _cont_cond(loop_state):
         _, current_tree, stop = loop_state
-        return (~stop) & (current_tree.depth <= maxdepth)
+        return (~stop) & (current_tree.depth <= max_tree_depth)
 
     def cond_tree_doubling(loop_state):
         key, current_tree, _ = loop_state
@@ -329,7 +343,7 @@ def _generate_nuts_tree(initial_qp, key, step_size, maxdepth, stepper: Callable[
         go_right = random.bernoulli(key_dir, 0.5)
 
         # build tree adjacent to current_tree
-        new_subtree = iterative_build_tree(key_subtree, current_tree, step_size, go_right, stepper, potential_energy, kinetic_energy, inverse_mass_matrix, maxdepth, initial_neg_energy=initial_neg_energy, max_energy_difference=max_energy_difference)
+        new_subtree = iterative_build_tree(key_subtree, current_tree, step_size, go_right, stepper, potential_energy, kinetic_energy, inverse_mass_matrix, max_tree_depth, initial_neg_energy=initial_neg_energy, max_energy_difference=max_energy_difference)
 
         # combine current_tree and new_subtree into a tree which is one layer deeper only if new_subtree has no turning subtrees (including itself)
         current_tree = cond(
@@ -367,7 +381,7 @@ def tree_index_update(x, idx, y):
 
 
 # Essentially algorithm 2 from https://arxiv.org/pdf/1912.11554.pdf
-def iterative_build_tree(key, initial_tree, step_size, go_right, stepper, potential_energy, kinetic_energy, inverse_mass_matrix, maxdepth, initial_neg_energy, max_energy_difference):
+def iterative_build_tree(key, initial_tree, step_size, go_right, stepper, potential_energy, kinetic_energy, inverse_mass_matrix, max_tree_depth, initial_neg_energy, max_energy_difference):
     """
     Starting from either the left or right endpoint of a given tree, builds a new adjacent tree of the same size.
 
@@ -392,7 +406,7 @@ def iterative_build_tree(key, initial_tree, step_size, go_right, stepper, potent
     kinetic_energy: Callable[[pytree, pytree], float], optional
         Mapping of the momentum to its corresponding kinetic energy. As
         argument the function takes the inverse mass matrix and the momentum.
-    maxdepth: int
+    max_tree_depth: int
         An upper bound on the 'depth' argument, but has no effect on the functions behaviour.
         It's only required to statically set the size of the `S` array (pytree).
     """
@@ -401,11 +415,11 @@ def iterative_build_tree(key, initial_tree, step_size, go_right, stepper, potent
     depth = initial_tree.depth
     # 2. build / collect new states
     # Create a storage for left endpoints of subtrees. Size is determined
-    # statically by the `maxdepth` parameter.
+    # statically by the `max_tree_depth` parameter.
     # NOTE, let's hope this does not break anything but in principle we only
-    # need `maxdepth` element even though the tree can be of length `maxdepth +
+    # need `max_tree_depth` element even though the tree can be of length `max_tree_depth +
     # 1`. This is because we will never access the last element.
-    S = tree_util.tree_map(lambda initial_q_or_p_leaf: np.empty((maxdepth, ) + initial_q_or_p_leaf.shape), unzip_qp_pytree(z))
+    S = tree_util.tree_map(lambda initial_q_or_p_leaf: np.empty((max_tree_depth, ) + initial_q_or_p_leaf.shape), unzip_qp_pytree(z))
 
     z = stepper(np.where(go_right, 1., -1.) * step_size, inverse_mass_matrix, z)
     neg_energy = -total_energy_of_qp(z, potential_energy, partial(kinetic_energy, inverse_mass_matrix))
@@ -558,86 +572,80 @@ def is_euclidean_uturn(qp_left, qp_right):
 
 
 class NUTSChain:
-    def __init__(self, initial_position, potential_energy, diag_mass_matrix, step_size, maxdepth, rngseed, compile=True, dbg_info=False, signal_response=lambda x: x, bias_transition=True, max_energy_difference=np.inf):
-        self.position = initial_position
+    def __init__(self, potential_energy, inverse_mass_matrix, initial_position, key, step_size:float = 1.0, max_tree_depth:int = 10, compile:bool=True, dbg_info:bool=False, bias_transition:bool=True, max_energy_difference:float=np.inf):
+        if not callable(potential_energy):
+            raise TypeError()
+        if not isinstance(step_size, float):
+            raise TypeError()
+        if not isinstance(max_tree_depth, int):
+            raise TypeError()
+        if not isinstance(key, np.ndarray):
+            if isinstance(key, int):
+                key = random.PRNGKey(key)
+            else:
+                raise TypeError()
 
+        self.last_state = (key, initial_position)
         self.potential_energy = potential_energy
 
-        #if not diag_mass_matrix == 1.:
-        #    raise NotImplementedError("Leapfrog integrator doesn't support custom mass matrix yet.")
-
-        if isinstance(diag_mass_matrix, float):
-            self.diag_mass_matrix = tree_util.tree_map(lambda arr: np.full(arr.shape, diag_mass_matrix), initial_position)
-        elif tree_util.tree_structure(diag_mass_matrix) == tree_util.tree_structure(initial_position):
-            shape_match_tree = tree_util.tree_map(lambda a1, a2: a1.shape == a2.shape, diag_mass_matrix, initial_position)
+        if isinstance(inverse_mass_matrix, float):
+            self.inverse_mass_matrix = tree_util.tree_map(lambda arr: np.full(arr.shape, inverse_mass_matrix), initial_position)
+        elif tree_util.tree_structure(inverse_mass_matrix) == tree_util.tree_structure(initial_position):
+            shape_match_tree = tree_util.tree_map(lambda a1, a2: a1.shape == a2.shape, inverse_mass_matrix, initial_position)
             shape_and_structure_match = all(tree_util.tree_flatten(shape_match_tree))
             if shape_and_structure_match:
-                self.diag_mass_matrix = diag_mass_matrix
+                self.inverse_mass_matrix = inverse_mass_matrix
             else:
-                raise ValueError("diag_mass_matrix has same tree_structe as initial_position but shapes don't match up")
+                raise ValueError("inverse_mass_matrix has same tree_structe as initial_position but shapes don't match up")
         else:
-            raise ValueError('diag_mass_matrix must either be float or have same tree structure as initial_position')
+            te = 'inverse_mass_matrix must either be float or have same tree structure as initial_position'
+            raise TypeError(te)
+        self.mass_matrix_sqrt = self.inverse_mass_matrix**(-0.5)
 
-        if isinstance(step_size, float):
-            self.step_size = step_size
-        else:
-            raise ValueError('step_size must be a float')
+        self.step_size = step_size
 
         def kinetic_energy(inverse_mass_matrix, momentum):
             # NOTE, assume a diagonal mass-matrix
             return inverse_mass_matrix.dot(momentum**2) / 2.
 
         self.kinetic_energy = kinetic_energy
-        potential_energy_gradient = grad(self.potential_energy)
         kinetic_energy_gradient = lambda inv_m, mom: inv_m * mom
+        potential_energy_gradient = grad(self.potential_energy)
         self.stepper = partial(leapfrog_step, potential_energy_gradient, kinetic_energy_gradient)
 
-        if isinstance(maxdepth, int):
-            self.maxdepth = maxdepth
-        else:
-            raise ValueError('maxdepth must be an int')
-
-        self.key = random.PRNGKey(rngseed)
-
-        self.compile = compile
-
-        self.dbg_info = dbg_info
-
-        self.signal_response = signal_response
-
-        self.bias_transition = bias_transition
+        self.max_tree_depth = max_tree_depth
 
         self.max_energy_difference = max_energy_difference
+        self.bias_transition = bias_transition
 
+        self.compile = compile
+        self.dbg_info = dbg_info
 
-    def generate_n_samples(self, n):
+    def generate_n_samples(self, num_samples, _state: Optional[tuple[np.ndarray, Q]] = None) -> Chain:
+        _state = self.last_state if _state is None else _state
+        key, initial_position = self.last_state
 
-        samples = tree_util.tree_map(lambda arr: np.ones((n,) + arr.shape), self.position)
-
+        samples = tree_util.tree_map(lambda arr: np.empty_like(arr, shape=(num_samples,) + np.shape(arr)), initial_position)
+        depths = np.empty(num_samples, dtype=np.uint8)
+        divergences = np.empty(num_samples, dtype=bool)
+        chain = Chain(samples=samples, depths=depths, divergences=divergences)
         if self.dbg_info:
-            momenta_before = tree_util.tree_map(lambda arr: np.ones((n,) + arr.shape), self.position)
-            momenta_after = tree_util.tree_map(lambda arr: np.ones((n,) + arr.shape), self.position)
-            depths = np.empty(n, dtype=np.int8)
-            # just a prototype qp
-            _qp_proto = QP(self.position, self.position)
-            # just a prototype tree
+            resampled_momenta = tree_util.tree_map(lambda arr: np.empty_like(initial_position, shape=(num_samples,) + np.shape(arr)), initial_position)
+            _qp_proto = QP(initial_position, initial_position)
             _tree_proto = Tree(_qp_proto, _qp_proto, 0., _qp_proto, True, True, 0)
             trees = tree_util.tree_map(
-                lambda leaf: np.empty_like(leaf, shape=(n,)+np.shape(leaf)),
+                lambda leaf: np.empty_like(leaf, shape=(num_samples,)+np.shape(leaf)),
                 _tree_proto
-
             )
+            chain = chain._replace(resampled_momenta=resampled_momenta, trees=trees)
 
-        def _body_fun(idx, state):
-            if self.dbg_info:
-                prev_position, key, samples, momenta_before, momenta_after, depths, trees = state
-            else:
-                prev_position, key, samples = state
+        def amend_chain(idx, state):
+            key, prev_position, chain = state
             key, key_momentum, key_nuts = random.split(key, 3)
 
             resampled_momentum = sample_momentum_from_diagonal(
                 key=key_momentum,
-                diag_mass_matrix=self.diag_mass_matrix
+                mass_matrix_sqrt=self.mass_matrix_sqrt
             )
             qp = QP(position=prev_position, momentum=resampled_momentum)
 
@@ -645,214 +653,135 @@ class NUTSChain:
                 initial_qp = qp,
                 key = key_nuts,
                 step_size = self.step_size,
-                maxdepth = self.maxdepth,
+                max_tree_depth = self.max_tree_depth,
                 stepper = self.stepper,
                 potential_energy = self.potential_energy,
                 kinetic_energy = self.kinetic_energy,
-                inverse_mass_matrix=1. / self.diag_mass_matrix,
+                inverse_mass_matrix=self.inverse_mass_matrix,
                 bias_transition=self.bias_transition,
                 max_energy_difference=self.max_energy_difference
             )
-            #print("current sample", tree.proposal_candidate)
-            samples = tree_index_update(samples, idx, tree.proposal_candidate.position)
+
+            samples = tree_index_update(chain.samples, idx, tree.proposal_candidate.position)
+            depths = chain.depths.at[idx].set(tree.depth)
+            divergences = chain.divergences.at[idx].set(tree.diverging)
+            chain = chain._replace(samples=samples, depths=depths, divergences=divergences)
             if self.dbg_info:
-                momenta_before = tree_index_update(momenta_before, idx, resampled_momentum)
-                momenta_after = tree_index_update(momenta_after, idx, tree.proposal_candidate.momentum)
-                depths = depths.at[idx].set(tree.depth)
-                trees = tree_index_update(trees, idx, tree)
+                resampled_momenta = tree_index_update(chain.resampled_momenta, idx, resampled_momentum)
+                trees = tree_index_update(chain.trees, idx, tree)
+                chain = chain._replace(resampled_momenta=resampled_momenta, trees=trees)
 
-            updated_state = (tree.proposal_candidate.position, key, samples)
+            return (key, tree.proposal_candidate.position, chain)
 
-            if self.dbg_info:
-                updated_state = updated_state + (momenta_before, momenta_after, depths, trees)
-
-            return updated_state
-
-        loop_initial_state = (self.position, self.key, samples)
-        if self.dbg_info:
-            loop_initial_state = loop_initial_state + (momenta_before, momenta_after, depths, trees)
-
-        return_fn = lambda: fori_loop(lower=0, upper=n, body_fun=_body_fun, init_val=loop_initial_state)
+        # TODO: pass initial state as argument and donate to JIT
+        chain_assembly = lambda: fori_loop(lower=0, upper=num_samples, body_fun=amend_chain, init_val=(key, initial_position, chain))
 
         if self.compile:
-            results = jit(return_fn)()
+            final_state = jit(chain_assembly)()
         else:
-            results = return_fn()
-
-        names = ('position', 'key', 'samples')
-        if self.dbg_info:
-            names = names + ('momenta_before', 'momenta_after', 'depths', 'trees')
-
-        self.results = {k: v for (k, v) in zip(names, results)}
-        self.results['response'] = lax.map(self.signal_response, self.results['samples'])
-
-        return results
-
-
-    def plot_1d_sample_mean(self, ax, **kwargs):
-        response = self.results['response']
-        kwargs['label'] = kwargs.get('label', 'mean of signal response of samples')
-        if len(response.shape) == 2:
-            resp_mean = np.mean(response, axis=0)
-            ax.plot(resp_mean, **kwargs)
-        else:
-            raise NotImplementedError
-
-
-    def plot_response_ts(self, ax, **kwargs):
-        response = self.results['response']
-        if len(response.shape) == 1:
-            ax.plot(response, **kwargs)
-        else:
-            raise NotImplementedError
-
-
-    def plot_1d_hist(self, ax, **kwargs):
-        response = self.results['response']
-        if len(response.shape) != 1:
-            raise NotImplementedError
-        plot_prob = kwargs.pop('plot_prob', False)
-        _, bins, _ = ax.hist(response, density=kwargs.pop('density', plot_prob), **kwargs)
-        if plot_prob:
-            y = np.exp(-self.potential_energy(bins))
-            Z = np.trapz(y, bins)
-            if not np.isfinite(Z):
-                raise RuntimeError
-            y = y / Z
-            ax.plot(bins, y, label='probability density')
-            ax.legend()
-
-
-    def plot_ham_ts(self, ax, **kwargs):
-        xlabel = kwargs.pop('xlabel', 'iteration number')
-        title = kwargs.pop('title', 'potential energy time series')
-        samples = self.results['samples']
-        ham_ts = lax.map(self.potential_energy, samples)
-        ax.plot(ham_ts, **kwargs)
-        ax.set_xlabel(xlabel)
-        ax.set_title(title)
-
-
-    def plot_depth_hist(self, ax, **kwargs):
-        xlabel = kwargs.pop('xlabel', 'depth')
-        title = kwargs.pop('title', 'tree depth histogram')
-        depths = self.results['depths']
-        bins = np.arange(1, depths.max() + 1.5) - 0.5
-        ax.hist(depths, bins, **kwargs)
-        ax.set_xticks(bins+0.5)
-        ax.set_xlabel(xlabel)
-        ax.set_title(title)
+            final_state = chain_assembly()
+        self.last_state = final_state[:2]
+        return final_state[2]
 
 
 class HMCChain:
-    def __init__(self, initial_position, potential_energy, diag_mass_matrix, step_size, n_of_integration_steps, rngseed, compile=True, dbg_info=False):
-        self.position = initial_position
+    def __init__(self, potential_energy, inverse_mass_matrix, initial_position, key, num_steps, step_size: float = 1.0, compile=True, dbg_info=False):
+        if not callable(potential_energy):
+            raise TypeError()
+        if not isinstance(num_steps, int):
+            raise TypeError()
+        if not isinstance(step_size, float):
+            raise TypeError()
+        if not isinstance(key, np.ndarray):
+            if isinstance(key, int):
+                key = random.PRNGKey(key)
+            else:
+                raise TypeError()
 
+        self.last_state = (key, initial_position)
         self.potential_energy = potential_energy
 
-        if not diag_mass_matrix == 1.:
-            # TODO: check diagonal_momentum_covariance name and implementaiton in accetpance and such
-            raise NotImplementedError("Leapfrog integrator doesn't support custom mass matrix yet.")
-
-        if isinstance(diag_mass_matrix, float):
-            self.diag_mass_matrix = tree_util.tree_map(lambda arr: np.full(arr.shape, diag_mass_matrix), initial_position)
-        elif tree_util.tree_structure(diag_mass_matrix) == tree_util.tree_structure(initial_position):
-            shape_match_tree = tree_util.tree_map(lambda a1, a2: a1.shape == a2.shape, diag_mass_matrix, initial_position)
+        if isinstance(inverse_mass_matrix, float):
+            self.inverse_mass_matrix = tree_util.tree_map(lambda arr: np.full(arr.shape, inverse_mass_matrix), initial_position)
+        elif tree_util.tree_structure(inverse_mass_matrix) == tree_util.tree_structure(initial_position):
+            shape_match_tree = tree_util.tree_map(lambda a1, a2: a1.shape == a2.shape, inverse_mass_matrix, initial_position)
             shape_and_structure_match = all(tree_util.tree_flatten(shape_match_tree))
             if shape_and_structure_match:
-                self.diag_mass_matrix = diag_mass_matrix
+                self.inverse_mass_matrix = inverse_mass_matrix
             else:
-                raise ValueError("diag_mass_matrix has same tree_structe as initial_position but shapes don't match up")
+                raise ValueError("inverse_mass_matrix has same tree_structe as initial_position but shapes don't match up")
         else:
-            raise ValueError('diag_mass_matrix must either be float or have same tree structure as initial_position')
+            raise ValueError('inverse_mass_matrix must either be float or have same tree structure as initial_position')
+        self.mass_matrix_sqrt = self.inverse_mass_matrix**(-0.5)
 
-        if isinstance(step_size, float):
-            self.step_size = step_size
-        else:
-            raise ValueError('step_size must be a float')
-
-        if isinstance(n_of_integration_steps, int):
-            self.n_of_integration_steps = n_of_integration_steps
-        else:
-            raise ValueError('n_of_integration_steps must be an int')
+        self.num_steps = num_steps
+        self.step_size = step_size
 
         def kinetic_energy(inverse_mass_matrix, momentum):
             # NOTE, assume a diagonal mass-matrix
             return inverse_mass_matrix.dot(momentum**2) / 2.
 
         self.kinetic_energy = kinetic_energy
-        potential_energy_gradient = grad(self.potential_energy)
         kinetic_energy_gradient = lambda inv_m, mom: inv_m * mom
+        potential_energy_gradient = grad(self.potential_energy)
         self.stepper = partial(leapfrog_step, potential_energy_gradient, kinetic_energy_gradient)
 
-        self.key = random.PRNGKey(rngseed)
-
         self.compile = compile
-
         self.dbg_info = dbg_info
 
-    def generate_n_samples(self, n):
+    def generate_n_samples(self, num_samples, _state: Optional[tuple[np.ndarray, Q]] = None) -> Chain:
+        _state = self.last_state if _state is None else _state
+        key, initial_position = self.last_state
 
-        samples = tree_util.tree_map(lambda arr: np.ones((n,) + arr.shape), self.position)
-        acceptance = np.empty(n, dtype=bool)
-
+        samples = tree_util.tree_map(lambda arr: np.empty_like(arr, shape=(num_samples,) + np.shape(arr)), initial_position)
+        chain = Chain(samples=samples, acceptance=np.array(0.))
         if self.dbg_info:
-            momenta_before = tree_util.tree_map(lambda arr: np.ones((n,) + arr.shape), self.position)
-            momenta_after = tree_util.tree_map(lambda arr: np.ones((n,) + arr.shape), self.position)
-            rejected_position_samples = tree_util.tree_map(lambda arr: np.ones((n,) + arr.shape), self.position)
-            rejected_momenta = tree_util.tree_map(lambda arr: np.ones((n,) + arr.shape), self.position)
+            resampled_momenta = tree_util.tree_map(lambda arr: np.empty_like(initial_position, shape=(num_samples,) + np.shape(arr)), initial_position)
+            _qp_proto = QP(initial_position, initial_position)
+            _acc_rej_proto = AcceptedAndRejected(_qp_proto, _qp_proto, False)
+            trees = tree_util.tree_map(
+                lambda leaf: np.empty_like(leaf, shape=(num_samples,)+np.shape(leaf)),
+                _acc_rej_proto
+            )
+            chain = chain._replace(resampled_momenta=resampled_momenta, trees=trees)
 
-        def _body_fun(idx, state):
-            if self.dbg_info:
-                prev_position, key, samples, acceptance, momenta_before, momenta_after, rejected_position_samples, rejected_momenta = state
-            else:
-                prev_position, key, samples, acceptance = state
+        def amend_chain(idx, state):
+            key, prev_position, chain = state
             key, key_choose, key_momentum_resample = random.split(key, 3)
 
             resampled_momentum = sample_momentum_from_diagonal(
                 key=key_momentum_resample,
-                diag_mass_matrix=self.diag_mass_matrix
+                mass_matrix_sqrt=self.mass_matrix_sqrt
             )
             qp = QP(position=prev_position, momentum=resampled_momentum)
 
-            qp_acc_rej, was_accepted = generate_hmc_sample(
+            acc_rej = _generate_hmc_acc_rej(
                 key = key_choose,
                 initial_qp = qp,
                 potential_energy = self.potential_energy,
                 kinetic_energy = self.kinetic_energy,
-                inverse_mass_matrix=1./self.diag_mass_matrix,
+                inverse_mass_matrix=self.inverse_mass_matrix,
                 stepper = self.stepper,
-                number_of_integration_steps = self.n_of_integration_steps,
+                num_steps = self.num_steps,
                 step_size = self.step_size
             )
 
-            # TODO: what to do with the other one (it's rejected or just the previous sample in case the new one was accepted)
-            next_qp, rejected_qp = select(
-                was_accepted,
-                (qp_acc_rej[1], qp_acc_rej[0]),
-                (qp_acc_rej[0], qp_acc_rej[1]),
-            )
-
-            samples = tree_index_update(samples, idx, next_qp.position)
-            acceptance = acceptance.at[idx].set(was_accepted)
+            samples = tree_index_update(chain.samples, idx, acc_rej.accepted_qp.position)
+            acceptance = (chain.acceptance + (acc_rej.accepted - chain.acceptance) / (idx + 1))
+            chain = chain._replace(samples=samples, acceptance=acceptance)
             if self.dbg_info:
-                momenta_before = tree_index_update(momenta_before, idx, resampled_momentum)
-                momenta_after = tree_index_update(momenta_after, idx, next_qp.momentum)
-                rejected_position_samples = tree_index_update(rejected_position_samples, idx, rejected_qp.position)
-                rejected_momenta = tree_index_update(rejected_momenta, idx, rejected_qp.momentum)
+                resampled_momenta = tree_index_update(chain.resampled_momenta, idx, resampled_momentum)
+                trees = tree_index_update(chain.trees, idx, acc_rej)
+                chain = chain._replace(resampled_momenta=resampled_momenta, trees=trees)
 
-            updated_state = (next_qp.position, key, samples, acceptance)
-            if self.dbg_info:
-                updated_state = updated_state + (momenta_before, momenta_after, rejected_position_samples, rejected_momenta)
+            return (key, acc_rej.accepted_qp.position, chain)
 
-            return updated_state
+        # TODO: pass initial state as argument and donate to JIT
+        chain_assembly = lambda: fori_loop(lower=0, upper=num_samples, body_fun=amend_chain, init_val=(key, initial_position, chain))
 
-        loop_initial_state = (self.position, self.key, samples, acceptance)
-        if self.dbg_info:
-            loop_initial_state = loop_initial_state + (momenta_before, momenta_after, rejected_position_samples, rejected_momenta)
-
-        return_fn = lambda: fori_loop(lower=0, upper=n, body_fun=_body_fun, init_val=loop_initial_state)
         if self.compile:
-            return jit(return_fn)()
+            final_state = jit(chain_assembly)()
         else:
-            return return_fn()
+            final_state = chain_assembly()
+        self.last_state = final_state[:2]
+        return final_state[2]

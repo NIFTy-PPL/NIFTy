@@ -45,21 +45,20 @@ moments_tol = {1: (0., 2e-1), 2: (2e-1, 0.), 3: (4e-1, 8e-1), 4: (2., 0.)}
 def test_moment_consistency(distribution, plot=False):
     name = distribution.__name__.split('.')[-1]
 
-    maxdepth = 20
-
+    max_tree_depth = 20
     sampler = hmc.NUTSChain(
-        initial_position=np.array(1.03890),
         potential_energy=lambda x: -1 * distribution.logpdf(x),
-        diag_mass_matrix=1.,
+        inverse_mass_matrix=1.,
+        initial_position=np.array(1.03890),
         step_size=0.7193,
-        maxdepth=maxdepth,
-        rngseed=42,
+        max_tree_depth=max_tree_depth,
+        key=42,
         compile=True,
         dbg_info=True
     )
-    _, _, position_samples, _, _, depths, _ = sampler.generate_n_samples(1000)
+    chain = sampler.generate_n_samples(1000)
 
-    unique, counts = np.unique(depths, return_counts=True)
+    unique, counts = np.unique(chain.depths, return_counts=True)
     depths_frequencies = np.asarray((unique, counts)).T
 
     if plot is True:
@@ -71,23 +70,24 @@ def test_moment_consistency(distribution, plot=False):
         if distribution is stats.expon:
             bins = np.linspace(0, 10)
         axs.flat[0].hist(
-            position_samples, bins=bins, density=True, histtype="step"
+            chain.samples, bins=bins, density=True, histtype="step"
         )
         axs.flat[0].plot(bins, distribution.pdf(bins), color='r')
         axs.flat[0].set_title(f"{name} PDF")
 
         axs.flat[1].hist(
-            depths, bins=np.arange(maxdepth + 1), density=True, histtype="step"
+            chain.depths,
+            bins=np.arange(max_tree_depth + 1),
+            density=True,
+            histtype="step"
         )
         axs.flat[1].set_title(f"Tree-depth")
         fig.tight_layout()
         plt.show()
 
     # central moments; except for the first (i.e. mean)
-    sample_moms_central = scipy.stats.moment(
-        position_samples, [1, 2, 3, 4, 5, 6]
-    )
-    sample_moms_central[0] = np.mean(position_samples)
+    sample_moms_central = scipy.stats.moment(chain.samples, [1, 2, 3, 4, 5, 6])
+    sample_moms_central[0] = np.mean(chain.samples)
 
     scipy_dist = getattr(scipy.stats, name)
     dist_moms_non_central = np.array(
