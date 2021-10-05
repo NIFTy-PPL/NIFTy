@@ -280,14 +280,12 @@ def shareRange(nwork, nshares, myshare):
     return lo, hi
 
 
-
 def get_MPI_params_from_comm(comm):
     if comm is None:
         return 1, 0, True
     size = comm.Get_size()
     rank = comm.Get_rank()
     return size, rank, rank == 0
-
 
 
 def get_MPI_params():
