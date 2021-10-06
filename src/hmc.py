@@ -136,6 +136,7 @@ class AcceptedAndRejected(NamedTuple):
     accepted_qp: QP
     rejected_qp: QP
     accepted: Union[np.ndarray, bool]
+    diverging: Union[np.ndarray, bool]
 
 
 ###
@@ -150,7 +151,8 @@ def _generate_hmc_acc_rej(*,
         inverse_mass_matrix,
         stepper,
         num_steps,
-        step_size
+        step_size,
+        max_energy_difference
     ) -> AcceptedAndRejected:
     """
     Generate a sample given the initial position.
@@ -201,7 +203,8 @@ def _generate_hmc_acc_rej(*,
         (proposed_qp, initial_qp),
         (initial_qp, proposed_qp),
     )
-    return AcceptedAndRejected(accepted_qp, rejected_qp, accept)
+    diverging = np.abs(energy_diff) > max_energy_difference
+    return AcceptedAndRejected(accepted_qp, rejected_qp, accepted=accept, diverging=diverging)
 
 
 ###
@@ -239,8 +242,8 @@ class Chain(NamedTuple):
     """
     # Q but with one more dimension on the first axes of the leave tensors
     samples: Q
+    divergences: np.ndarray
     depths: Optional[np.ndarray] = None
-    divergences: Optional[np.ndarray] = None
     acceptance: Union[None,np.ndarray,float] = None
     resampled_momenta: Optional[Q] = None
     trees: Optional[Union[Tree,AcceptedAndRejected]] = None
@@ -595,7 +598,7 @@ class NUTSChain:
         samples = tree_util.tree_map(lambda arr: np.empty_like(arr, shape=(num_samples,) + np.shape(arr)), initial_position)
         depths = np.empty(num_samples, dtype=np.uint8)
         divergences = np.empty(num_samples, dtype=bool)
-        chain = Chain(samples=samples, depths=depths, divergences=divergences)
+        chain = Chain(samples=samples, divergences=divergences, depths=depths)
         if self.dbg_info:
             resampled_momenta = tree_util.tree_map(lambda arr: np.empty_like(initial_position, shape=(num_samples,) + np.shape(arr)), initial_position)
             _qp_proto = QP(initial_position, initial_position)
@@ -630,9 +633,9 @@ class NUTSChain:
             )
 
             samples = tree_index_update(chain.samples, idx, tree.proposal_candidate.position)
-            depths = chain.depths.at[idx].set(tree.depth)
             divergences = chain.divergences.at[idx].set(tree.diverging)
-            chain = chain._replace(samples=samples, depths=depths, divergences=divergences)
+            depths = chain.depths.at[idx].set(tree.depth)
+            chain = chain._replace(samples=samples, divergences=divergences, depths=depths)
             if self.dbg_info:
                 resampled_momenta = tree_index_update(chain.resampled_momenta, idx, resampled_momentum)
                 trees = tree_index_update(chain.trees, idx, tree)
@@ -652,7 +655,7 @@ class NUTSChain:
 
 
 class HMCChain:
-    def __init__(self, potential_energy, inverse_mass_matrix, initial_position, key, num_steps, step_size: float = 1.0, compile=True, dbg_info=False):
+    def __init__(self, potential_energy, inverse_mass_matrix, initial_position, key, num_steps, step_size: float = 1.0, compile=True, dbg_info=False, max_energy_difference:float=np.inf):
         if not callable(potential_energy):
             raise TypeError()
         if not isinstance(num_steps, int):
@@ -693,6 +696,8 @@ class HMCChain:
         potential_energy_gradient = grad(self.potential_energy)
         self.stepper = partial(leapfrog_step, potential_energy_gradient, kinetic_energy_gradient)
 
+        self.max_energy_difference = max_energy_difference
+
         self.compile = compile
         self.dbg_info = dbg_info
 
@@ -701,11 +706,12 @@ class HMCChain:
         key, initial_position = self.last_state
 
         samples = tree_util.tree_map(lambda arr: np.empty_like(arr, shape=(num_samples,) + np.shape(arr)), initial_position)
-        chain = Chain(samples=samples, acceptance=np.array(0.))
+        divergences = np.empty(num_samples, dtype=bool)
+        chain = Chain(samples=samples, divergences=divergences, acceptance=np.array(0.))
         if self.dbg_info:
             resampled_momenta = tree_util.tree_map(lambda arr: np.empty_like(initial_position, shape=(num_samples,) + np.shape(arr)), initial_position)
             _qp_proto = QP(initial_position, initial_position)
-            _acc_rej_proto = AcceptedAndRejected(_qp_proto, _qp_proto, False)
+            _acc_rej_proto = AcceptedAndRejected(_qp_proto, _qp_proto, True, True)
             trees = tree_util.tree_map(
                 lambda leaf: np.empty_like(leaf, shape=(num_samples,)+np.shape(leaf)),
                 _acc_rej_proto
@@ -730,12 +736,14 @@ class HMCChain:
                 inverse_mass_matrix=self.inverse_mass_matrix,
                 stepper = self.stepper,
                 num_steps = self.num_steps,
-                step_size = self.step_size
+                step_size = self.step_size,
+                max_energy_difference=self.max_energy_difference
             )
 
             samples = tree_index_update(chain.samples, idx, acc_rej.accepted_qp.position)
+            divergences = chain.divergences.at[idx].set(acc_rej.diverging)
             acceptance = (chain.acceptance + (acc_rej.accepted - chain.acceptance) / (idx + 1))
-            chain = chain._replace(samples=samples, acceptance=acceptance)
+            chain = chain._replace(samples=samples, divergences=divergences, acceptance=acceptance)
             if self.dbg_info:
                 resampled_momenta = tree_index_update(chain.resampled_momenta, idx, resampled_momentum)
                 trees = tree_index_update(chain.trees, idx, acc_rej)
