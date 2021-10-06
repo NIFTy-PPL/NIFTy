@@ -473,7 +473,7 @@ class StudentTEnergy(LikelihoodEnergyOperator):
         if isinstance(self._theta, Field) or isinstance(self._theta, MultiField):
             th = self._theta
         else:
-            from ..extra import full
+            from ..sugar import full
             th = full(self._domain, self._theta)
         return np.float64, makeOp(((th+1)/(th+3)).sqrt())
 
@@ -511,7 +511,7 @@ class BernoulliEnergy(LikelihoodEnergyOperator):
         return res.add_metric(self.get_metric_at(x.val))
 
     def get_transformation(self):
-        from ..extra import full
+        from ..sugar import full
         res = Adder(full(self._domain, 1.)) @ ScalingOperator(self._domain, -1)
         res = res * ScalingOperator(self._domain, 1).reciprocal()
         return np.float64, -2.*res.sqrt().arctan()
