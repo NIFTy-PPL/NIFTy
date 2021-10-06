@@ -24,11 +24,10 @@
 # enables us to plot the posterior probability density as two-dimensional plot.
 ###############################################################################
 
+import nifty8 as ift
 import numpy as np
 import pylab as plt
 from matplotlib.colors import LogNorm
-
-import nifty8 as ift
 
 
 def main():
@@ -70,8 +69,8 @@ def main():
     plt.pause(2.)
     plt.close()
 
-    mapx = xx[z==np.max(z)]
-    mapy = yy[z==np.max(z)]
+    mapx = xx[z == np.max(z)]
+    mapy = yy[z == np.max(z)]
     meanx = (xx*z).sum()/z.sum()
     meany = (yy*z).sum()/z.sum()
 
@@ -80,8 +79,8 @@ def main():
         ift.GradientNormController(iteration_limit=3, name='Mini'))
     IC = ift.StochasticAbsDeltaEnergyController(0.5, iteration_limit=20,
                                                 name='advi')
-    stochastic_minimizer_mf = ift.ADVIOptimizer(IC, eta = 0.3)
-    stochastic_minimizer_fc = ift.ADVIOptimizer(IC, eta = 0.3)
+    stochastic_minimizer_mf = ift.ADVIOptimizer(IC, eta=0.3)
+    stochastic_minimizer_fc = ift.ADVIOptimizer(IC, eta=0.3)
     posmg = posgeo = posmf = posfc = ift.from_random(ham.domain, 'normal')
     fc = ift.FullCovarianceVI(posfc, ham, 10, False, initial_sig=0.01)
     mf = ift.MeanFieldVI(posmf, ham, 10, False, initial_sig=0.01)
@@ -90,7 +89,7 @@ def main():
     axs = axs.flatten()
 
     def update_plot(runs):
-        for axx, (nn, kl) in zip(axs,runs):
+        for axx, (nn, kl) in zip(axs, runs):
             axx.clear()
             axx.imshow(z.T, origin='lower',  cmap='gist_earth_r',
                        norm=LogNorm(vmin=1e-3, vmax=np.max(z)),
