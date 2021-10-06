@@ -21,7 +21,7 @@ from ..multi_domain import MultiDomain
 from ..multi_field import MultiField
 
 
-class SampleList:
+class SampleListBase:
     """Base class for storing lists of fields representing samples.
 
     This class suits as a base class for storing lists of in most cases
@@ -33,15 +33,15 @@ class SampleList:
     Parameters
     ----------
     comm : MPI communicator or None
-        If not `None`, :class:`SampleList` can gather samples across multiple
-        MPI tasks. If `None`, :class:`SampleList` is not a distributed object.
+        If not `None`, :class:`SampleListBase` can gather samples across multiple
+        MPI tasks. If `None`, :class:`SampleListBase` is not a distributed object.
     domain : Domainoid (can be DomainTuple, MultiDomain, dict, Domain or list of Domains)
         The domain on which the samples are defined.
 
     Note
     ----
-    A class inheriting from :class:`SampleList` needs to call the constructor of
-    `SampleList` and needs to implement :attr:`__len__()` and `__getitem__()`.
+    A class inheriting from :class:`SampleListBase` needs to call the constructor of
+    `SampleListBase` and needs to implement :attr:`__len__()` and `__getitem__()`.
     """
     def __init__(self, comm, domain):
         from ..sugar import makeDomain
@@ -58,7 +58,7 @@ class SampleList:
 
     @property
     def comm(self):
-        """MPI communicator or None: The communicator used for the SampleList."""
+        """MPI communicator or None: The communicator used for the SampleListBase."""
         return self._comm
 
     @property
@@ -93,7 +93,7 @@ class SampleList:
         Parameters
         ----------
         op : callable or None
-            Callable that is applied to each item in the :class:`SampleList`
+            Callable that is applied to each item in the :class:`SampleListBase`
             before it is returned. Can be an
             :class:`~nifty8.operators.operator.Operator` or any other callable
             that takes a :class:`~nifty8.field.Field` as an input. Default:
@@ -119,7 +119,7 @@ class SampleList:
         Parameters
         ----------
         op : callable or None
-            Callable that is applied to each item in the :class:`SampleList`
+            Callable that is applied to each item in the :class:`SampleListBase`
             before it is averaged. If `op` returns tuple, then individual
             averages are computed and returned individually as tuple.
 
@@ -155,7 +155,7 @@ class SampleList:
         Parameters
         ----------
         op : callable or None
-            Callable that is applied to each item in the :class:`SampleList`
+            Callable that is applied to each item in the :class:`SampleListBase`
             before it is used to compute mean and variance.
 
         Returns
@@ -181,7 +181,7 @@ class SampleList:
 
         Note
         ----
-        If the instance of :class:`SampleList` is distributed, each MPI task
+        If the instance of :class:`SampleListBase` is distributed, each MPI task
         writes its own file.
         """
         raise NotImplementedError
@@ -216,7 +216,7 @@ class SampleList:
         Note
         ----
         `file_name_base` needs to be the same string that has been used for
-        saving the :class:`SampleList`.
+        saving the :class:`SampleListBase`.
 
         Note
         ----
@@ -226,7 +226,7 @@ class SampleList:
         raise NotImplementedError
 
 
-class ResidualSampleList(SampleList):
+class ResidualSampleList(SampleListBase):
     def __init__(self, mean, residuals, neg, comm):
         """Store samples in terms of a mean and a residual deviation thereof.
 
@@ -317,15 +317,15 @@ class ResidualSampleList(SampleList):
 
     @staticmethod
     def load(file_name_base, comm=None):
-        args = SampleList.load_helper(file_name_base, comm)
+        args = SampleListBase.load_helper(file_name_base, comm)
         return ResidualSampleList(*args, comm=comm)
 
 
-class MinimalSampleList(SampleList):
+class SampleList(SampleListBase):
     def __init__(self, samples, comm=None):
         """Store samples as a plain list.
 
-        This is a minimalist implementation of :class:`SampleList`. It just
+        This is a minimalist implementation of :class:`SampleListBase`. It just
         serves as a (potentially MPI-distributed) wrapper of a list of samples.
 
         Parameters
@@ -336,7 +336,7 @@ class MinimalSampleList(SampleList):
             If not `None`, samples can be gathered across multiple MPI tasks. If
             `None`, :class:`ResidualSampleList` is not a distributed object.
         """
-        super(MinimalSampleList, self).__init__(comm, samples[0].domain)
+        super(SampleList, self).__init__(comm, samples[0].domain)
         self._s = samples
 
     def __getitem__(self, x):
@@ -350,8 +350,8 @@ class MinimalSampleList(SampleList):
 
     @staticmethod
     def load(file_name_base, comm=None):
-        s = SampleList.load_helper(file_name_base, comm)
-        return MinimalSampleList(s, comm=comm)
+        s = SampleListBase.load_helper(file_name_base, comm)
+        return SampleList(s, comm=comm)
 
 
 def _none_to_id(obj):

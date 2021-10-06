@@ -443,7 +443,7 @@ def minisanity(data, metric_at_pos, modeldata_operator, samples, terminal_colors
     model_data : Operator
         Operator which generates model data.
 
-    samples : SampleList
+    samples : SampleListBase
         List of samples.
 
     terminal_colors : bool, optional
@@ -457,11 +457,11 @@ def minisanity(data, metric_at_pos, modeldata_operator, samples, terminal_colors
 
     """
     from .logger import logger
-    from .minimization.sample_list import SampleList
+    from .minimization.sample_list import SampleListBase
     from .sugar import makeDomain
     if not (is_operator(modeldata_operator) and is_fieldlike(data)):
         raise TypeError
-    if not isinstance(samples, SampleList):
+    if not isinstance(samples, SampleListBase):
         raise TypeError
     colors = bool(terminal_colors)
     keylen = 18

@@ -26,7 +26,7 @@ comm = list2fixture([MPI.COMM_WORLD, None])
 def _get_sample_list(communicator):
     dom = ift.makeDomain({"a": ift.UnstructuredDomain(2), "b": ift.RGSpace(12)})
     samples = [ift.from_random(dom) for _ in range(3)]
-    return ift.MinimalSampleList(samples, communicator), samples
+    return ift.SampleList(samples, communicator), samples
 
 
 def test_sample_list(comm):
@@ -66,7 +66,7 @@ def test_sample_list(comm):
 def test_load_and_save(comm):
     sl, _ = _get_sample_list(comm)
     sl.save("sample_list")
-    sl1 = ift.MinimalSampleList.load("sample_list", comm)
+    sl1 = ift.SampleList.load("sample_list", comm)
 
     for s0, s1 in zip(sl, sl1):
         ift.extra.assert_equal(s0, s1)
