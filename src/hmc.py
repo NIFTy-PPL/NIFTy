@@ -383,6 +383,7 @@ def iterative_build_tree(key, initial_tree, step_size, go_right, stepper, potent
     # 1. choose start point of integration
     z = select(go_right, initial_tree.right, initial_tree.left)
     depth = initial_tree.depth
+    max_num_proposals = 2**depth
     # 2. build / collect new states
     # Create a storage for left endpoints of subtrees. Size is determined
     # statically by the `max_tree_depth` parameter.
@@ -443,9 +444,9 @@ def iterative_build_tree(key, initial_tree, step_size, go_right, stepper, potent
 
     def _cont_cond(state):
         n, incomplete_tree, *_ = state
-        return (n < 2**depth) & (~incomplete_tree.turning) & (~incomplete_tree.diverging)
+        return (n < max_num_proposals) & (~incomplete_tree.turning) & (~incomplete_tree.diverging)
 
-    _, incomplete_tree, *_ = while_loop(
+    n, incomplete_tree, *_ = while_loop(
         # while n < 2**depth and not stop
         cond_fun=_cont_cond,
         body_fun=amend_incomplete_tree,
@@ -456,6 +457,8 @@ def iterative_build_tree(key, initial_tree, step_size, go_right, stepper, potent
     if _DEBUG_FLAG:
         host_callback.call(_DEBUG_FINISH_SUBTREE, None)
 
+    # The depth of a tree which was aborted early is possibly ill defined
+    depth = np.where(n == max_num_proposals, depth, -1)
     return incomplete_tree._replace(depth=depth)
 
 
