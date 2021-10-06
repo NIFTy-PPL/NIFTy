@@ -155,37 +155,149 @@ def draw_samples(position, H, minimizer, n_samples, mirror_samples, napprox=0,
     return ResidualSampleList(position, local_samples, local_neg, comm)
 
 
-class SampledKLEnergy(Energy):
+def SampledKLEnergy(position, hamiltonian, n_samples, minimizer_sampling,
+                    mirror_samples=True, constants=[], point_estimates=[],
+                    napprox=0, comm=None, nanisinf=True):
+    """Provides the sampled Kullback-Leibler used for Variational Inference,
+    specifically for geometric Variational Inference (geoVI) and Metric
+    Gaussian VI (MGVI).
+
+    In geoVI a probability distribution is approximated with a standard
+    normal distribution in the canonical coordinate system of the Riemannian
+    manifold associated with the metric of the other distribution. The
+    coordinate transformation is approximated by expanding around a point.
+    The MGVI simplification occurs in case this transformation can be
+    approximated using a linear expansion. In order to infer the optimal
+    expansion point, a stochastic estimate of the Kullback-Leibler
+    divergence is minimized. This estimate is obtained by sampling from the
+    approximation using the current expansion point. During minimization
+    these samples are kept constant; only the expansion point is updated.
+    Due to the typically nonlinear structure of the true distribution these
+    samples have to be updated eventually by instantiating a
+    `SampledKLEnergy` again. For the true probability distribution the
+    standard parametrization is assumed. The samples of this class can be
+    distributed among MPI tasks.
+
+    Parameters
+    ----------
+    position : Field
+        Expansion point of the coordinate transformation.
+    hamiltonian : StandardHamiltonian
+        Hamiltonian of the approximated probability distribution.
+    n_samples : integer
+        Number of samples used to stochastically estimate the KL.
+    minimizer_samp : DescentMinimizer or None
+        Minimizer used to perform the non-linear part of geoVI sampling. If
+        it is None, only the linear (MGVI) approximation for sampling is
+        used and no further non-linear steps are performed.
+    mirror_samples : boolean
+        Whether the mirrored version of the drawn samples are also used.
+        If true, the number of used samples doubles.
+        Mirroring samples stabilizes the KL estimate as extreme
+        sample variation is counterbalanced.
+        Default is True.
+    constants : list
+        List of parameter keys that are kept constant during optimization.
+        Default is no constants.
+    point_estimates : list
+        List of parameter keys for which no samples are drawn, but that are
+        (possibly) optimized for, corresponding to point estimates of these.
+        Default is to draw samples for the complete domain.
+    napprox : int
+        Number of samples for computing preconditioner for linear sampling.
+        No preconditioning is done by default.
+    comm : MPI communicator or None
+        If not None, samples will be distributed as evenly as possible
+        across this communicator. If `mirror_samples` is set, then a sample
+        and its mirror image will preferably reside on the same task if
+        necessary.
+    nanisinf : bool
+        If true, nan energies which can happen due to overflows in the
+        forward model are interpreted as inf. Thereby, the code does not
+        crash on these occasions but rather the minimizer is told that the
+        position it has tried is not sensible.
+
+    Note
+    ----
+    The two lists `constants` and `point_estimates` are independent from
+    each other. It is possible to sample along domains which are kept
+    constant during minimization and vice versa. If a key is in both lists,
+    it will be inserted into the hamiltonian and removed from the KL.
+
+    Note
+    ----
+    Mirroring samples can help to stabilize the latent mean as it
+    reduces sampling noise. But a mirrored sample involves an additional
+    solve of the non-linear part of the transformation. When using MPI, the
+    samples get distributed as evenly as possible over all tasks. If the
+    number of tasks is smaller then the total number of samples (including
+    mirrored ones), the mirrored pairs try to reside on the same task as
+    their non mirrored partners. This ensures that at least the linear part
+    of the sampling is re-used.
+
+    See also
+    --------
+    `Geometric Variational Inference`, Philipp Frank, Reimar Leike,
+    Torsten A. Enßlin, `<https://arxiv.org/abs/2105.10470>`_
+    `<https://doi.org/10.3390/e23070853>`_
+
+    `Metric Gaussian Variational Inference`, Jakob Knollmüller,
+    Torsten A. Enßlin, `<https://arxiv.org/abs/1901.11033>`_
+    """
+    if not isinstance(hamiltonian, StandardHamiltonian):
+        raise TypeError
+    if hamiltonian.domain is not position.domain:
+        raise ValueError
+    if not isinstance(n_samples, int):
+        raise TypeError
+    if not isinstance(mirror_samples, bool):
+        raise TypeError
+    if not (minimizer_sampling is None or isinstance(minimizer_sampling, DescentMinimizer)):
+        raise TypeError
+    if (isinstance(position, MultiField) and set(point_estimates) == set(position.keys())):
+        raise RuntimeError('Point estimates for whole domain. Use EnergyAdapter instead.')
+
+    # If a key is in both lists `constants` and `point_estimates` remove it.
+    invariant = list(set(constants).intersection(point_estimates))
+    if isinstance(position, MultiField) and len(invariant)>0:
+        inv_pos = position.extract_by_keys(invariant)
+    else:
+        inv_pos = None
+    position, hamiltonian = _reduce_by_keys(position, hamiltonian, invariant)
+
+    _, ham_sampling = _reduce_by_keys(position, hamiltonian, point_estimates)
+    sample_list = draw_samples(position, ham_sampling, minimizer_sampling, n_samples,
+                               mirror_samples, napprox=napprox, comm=comm)
+    return SampledKLEnergyClass(sample_list, hamiltonian, constants, inv_pos, nanisinf)
+
+
+class SampledKLEnergyClass(Energy):
     """Base class for Energies representing a sampled Kullback-Leibler
     divergence for the variational approximation of a distribution with another
     distribution.
 
     Supports the samples to be distributed across MPI tasks.
     """
-    @staticmethod
-    def _init2(obj, sample_list, hamiltonian, constants, invariants, nanisinf):
+    def __init__(self, sample_list, hamiltonian, constants, invariants, nanisinf):
         myassert(isinstance(sample_list, ResidualSampleList))
         myassert(sample_list.domain is hamiltonian.domain)
 
-        if obj is None:
-            obj = SampledKLEnergy.__new__(SampledKLEnergy)
-        super(SampledKLEnergy, obj).__init__(_reduce_field(sample_list._m, constants))
+        super(SampledKLEnergyClass, self).__init__(_reduce_field(sample_list._m, constants))
 
-        obj._sample_list = sample_list
-        obj._hamiltonian = hamiltonian
-        obj._nanisinf = bool(nanisinf)
-        obj._constants = constants
-        obj._invariants = invariants
+        self._sample_list = sample_list
+        self._hamiltonian = hamiltonian
+        self._nanisinf = bool(nanisinf)
+        self._constants = constants
+        self._invariants = invariants
 
         def _func(inp):
             inp, tmp = _reduce_by_keys(inp, hamiltonian, constants)
             tmp = tmp(Linearization.make_var(inp))
             return tmp.val.val[()], tmp.gradient
 
-        obj._val, obj._grad = sample_list.global_average(_func)
-        if np.isnan(obj._val) and obj._nanisinf:
-            obj._val = np.inf
-        return obj
+        self._val, self._grad = sample_list.global_average(_func)
+        if np.isnan(self._val) and self._nanisinf:
+            self._val = np.inf
 
     @property
     def value(self):
@@ -196,9 +308,9 @@ class SampledKLEnergy(Energy):
         return self._grad
 
     def at(self, position):
-        return SampledKLEnergy._init2(None, self._sample_list.at_strict(position),
-                                      self._hamiltonian, self._constants,
-                                      self._invariants, self._nanisinf)
+        return SampledKLEnergyClass(self._sample_list.at_strict(position),
+                                    self._hamiltonian, self._constants,
+                                    self._invariants, self._nanisinf)
 
     def apply_metric(self, x):
         def _func(inp):
@@ -218,117 +330,3 @@ class SampledKLEnergy(Energy):
             return self._sample_list
         return self._sample_list.at(self._invariants)
 
-    def __init__(self, position, hamiltonian, n_samples, minimizer_sampling,
-                 mirror_samples=True, constants=[], point_estimates=[], napprox=0,
-                 comm=None, nanisinf=True):
-        """Provides the sampled Kullback-Leibler used for Variational Inference,
-        specifically for geometric Variational Inference (geoVI) and Metric 
-        Gaussian VI (MGVI).
-
-        In geoVI a probability distribution is approximated with a standard
-        normal distribution in the canonical coordinate system of the Riemannian
-        manifold associated with the metric of the other distribution. The
-        coordinate transformation is approximated by expanding around a point.
-        The MGVI simplification occurs in case this transformation can be
-        approximated using a linear expansion. In order to infer the optimal 
-        expansion point, a stochastic estimate of the Kullback-Leibler
-        divergence is minimized. This estimate is obtained by sampling from the
-        approximation using the current expansion point. During minimization
-        these samples are kept constant; only the expansion point is updated.
-        Due to the typically nonlinear structure of the true distribution these
-        samples have to be updated eventually by instantiating a 
-        `SampledKLEnergy` again. For the true probability distribution the
-        standard parametrization is assumed. The samples of this class can be
-        distributed among MPI tasks.
-
-        Parameters
-        ----------
-        position : Field
-            Expansion point of the coordinate transformation.
-        hamiltonian : StandardHamiltonian
-            Hamiltonian of the approximated probability distribution.
-        n_samples : integer
-            Number of samples used to stochastically estimate the KL.
-        minimizer_samp : DescentMinimizer or None
-            Minimizer used to perform the non-linear part of geoVI sampling. If
-            it is None, only the linear (MGVI) approximation for sampling is
-            used and no further non-linear steps are performed.
-        mirror_samples : boolean
-            Whether the mirrored version of the drawn samples are also used.
-            If true, the number of used samples doubles.
-            Mirroring samples stabilizes the KL estimate as extreme
-            sample variation is counterbalanced.
-            Default is True.
-        constants : list
-            List of parameter keys that are kept constant during optimization.
-            Default is no constants.
-        point_estimates : list
-            List of parameter keys for which no samples are drawn, but that are
-            (possibly) optimized for, corresponding to point estimates of these.
-            Default is to draw samples for the complete domain.
-        napprox : int
-            Number of samples for computing preconditioner for linear sampling.
-            No preconditioning is done by default.
-        comm : MPI communicator or None
-            If not None, samples will be distributed as evenly as possible
-            across this communicator. If `mirror_samples` is set, then a sample
-            and its mirror image will preferably reside on the same task if
-            necessary.
-        nanisinf : bool
-            If true, nan energies which can happen due to overflows in the
-            forward model are interpreted as inf. Thereby, the code does not
-            crash on these occasions but rather the minimizer is told that the
-            position it has tried is not sensible.
-
-        Note
-        ----
-        The two lists `constants` and `point_estimates` are independent from
-        each other. It is possible to sample along domains which are kept
-        constant during minimization and vice versa. If a key is in both lists,
-        it will be inserted into the hamiltonian and removed from the KL.
-
-        Note
-        ----
-        Mirroring samples can help to stabilize the latent mean as it
-        reduces sampling noise. But a mirrored sample involves an additional
-        solve of the non-linear part of the transformation. When using MPI, the
-        samples get distributed as evenly as possible over all tasks. If the
-        number of tasks is smaller then the total number of samples (including
-        mirrored ones), the mirrored pairs try to reside on the same task as
-        their non mirrored partners. This ensures that at least the linear part
-        of the sampling is re-used.
-
-        See also
-        --------
-        `Geometric Variational Inference`, Philipp Frank, Reimar Leike,
-        Torsten A. Enßlin, `<https://arxiv.org/abs/2105.10470>`_
-        `<https://doi.org/10.3390/e23070853>`_
-
-        `Metric Gaussian Variational Inference`, Jakob Knollmüller,
-        Torsten A. Enßlin, `<https://arxiv.org/abs/1901.11033>`_
-        """
-        if not isinstance(hamiltonian, StandardHamiltonian):
-            raise TypeError
-        if hamiltonian.domain is not position.domain:
-            raise ValueError
-        if not isinstance(n_samples, int):
-            raise TypeError
-        if not isinstance(mirror_samples, bool):
-            raise TypeError
-        if not (minimizer_sampling is None or isinstance(minimizer_sampling, DescentMinimizer)):
-            raise TypeError
-        if (isinstance(position, MultiField) and set(point_estimates) == set(position.keys())):
-            raise RuntimeError('Point estimates for whole domain. Use EnergyAdapter instead.')
-
-        # If a key is in both lists `constants` and `point_estimates` remove it.
-        invariant = list(set(constants).intersection(point_estimates))
-        if isinstance(position, MultiField) and len(invariant)>0:
-            inv_pos = position.extract_by_keys(invariant)
-        else:
-            inv_pos = None
-        position, hamiltonian = _reduce_by_keys(position, hamiltonian, invariant)
-
-        _, ham_sampling = _reduce_by_keys(position, hamiltonian, point_estimates)
-        sample_list = draw_samples(position, ham_sampling, minimizer_sampling, n_samples,
-                                   mirror_samples, napprox=napprox, comm=comm)
-        SampledKLEnergy._init2(self, sample_list, hamiltonian, constants, inv_pos, nanisinf)
