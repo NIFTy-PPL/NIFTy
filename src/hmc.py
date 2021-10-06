@@ -124,14 +124,6 @@ def leapfrog_step(
     return qp_fullstep
 
 
-def unzip_qp_pytree(tree_of_qp):
-    """Turn a tree containing QP pairs into a QP pair of trees"""
-    return QP(
-        position = tree_util.tree_map(lambda qp: qp.position, tree_of_qp, is_leaf=lambda qp: isinstance(qp, QP)),
-        momentum = tree_util.tree_map(lambda qp: qp.momentum, tree_of_qp, is_leaf=lambda qp: isinstance(qp, QP))
-    )
-
-
 class AcceptedAndRejected(NamedTuple):
     accepted_qp: QP
     rejected_qp: QP
@@ -339,7 +331,7 @@ def _generate_nuts_tree(initial_qp, key, step_size, max_tree_depth, stepper: Cal
     return current_tree
 
 
-def index_into_pytree_time_series(idx, ptree):
+def tree_index_get(ptree, idx):
     return tree_util.tree_map(lambda arr: arr[idx], ptree)
 
 
@@ -390,7 +382,7 @@ def iterative_build_tree(key, initial_tree, step_size, go_right, stepper, potent
     # NOTE, let's hope this does not break anything but in principle we only
     # need `max_tree_depth` element even though the tree can be of length `max_tree_depth +
     # 1`. This is because we will never access the last element.
-    S = tree_util.tree_map(lambda initial_q_or_p_leaf: np.empty((max_tree_depth, ) + initial_q_or_p_leaf.shape), unzip_qp_pytree(z))
+    S = tree_util.tree_map(lambda proto: np.empty_like(proto, shape=(max_tree_depth, ) + np.shape(proto)), z)
 
     z = stepper(np.where(go_right, 1., -1.) * step_size, inverse_mass_matrix, z)
     neg_energy = -total_energy_of_qp(z, potential_energy, partial(kinetic_energy, inverse_mass_matrix))
@@ -428,7 +420,7 @@ def iterative_build_tree(key, initial_tree, step_size, go_right, stepper, potent
                 lower = i_min_incl,
                 upper = i_max_incl + 1,
                 # TODO: conditional for early termination
-                body_fun = lambda k, turning: turning | is_euclidean_uturn(index_into_pytree_time_series(k, S), z),
+                body_fun = lambda k, turning: turning | is_euclidean_uturn(tree_index_get(S, k), z),
                 init_val = False
             )
             return S, turning
