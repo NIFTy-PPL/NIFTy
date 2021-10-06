@@ -12,8 +12,6 @@ from .sugar import random_like
 from .forest_util import select
 
 
-pytree = Any
-
 _DEBUG_FLAG = False
 
 from jax.experimental import host_callback
@@ -253,7 +251,7 @@ def total_energy_of_qp(qp, potential_energy, kinetic_energy_w_inv_mass):
     return potential_energy(qp.position) + kinetic_energy_w_inv_mass(qp.momentum)
 
 
-def _generate_nuts_tree(initial_qp, key, step_size, max_tree_depth, stepper: Callable[[Union[np.ndarray, float], pytree, QP], QP], potential_energy, kinetic_energy: Callable[[pytree, pytree], float], inverse_mass_matrix: pytree, bias_transition: bool=True, max_energy_difference: Union[np.ndarray, float]=np.inf) -> Tree:
+def _generate_nuts_tree(initial_qp, key, step_size, max_tree_depth, stepper: Callable[[Union[np.ndarray, float], Q, QP], QP], potential_energy, kinetic_energy: Callable[[Q, Q], float], inverse_mass_matrix: Q, bias_transition: bool=True, max_energy_difference: Union[np.ndarray, float]=np.inf) -> Tree:
     """Generate a sample given the initial position.
 
     This call implements a No-U-Turn-Sampler.
@@ -274,15 +272,15 @@ def _generate_nuts_tree(initial_qp, key, step_size, max_tree_depth, stepper: Cal
             N = 2**max_tree_depth
         Memory requirements of this function are linear in max_tree_depth, i.e. logarithmic in trajectory length.
         JIT: static argument
-    stepper: Callable[[float, pytree, QP], QP]
+    stepper: Callable[[float, Q, QP], QP]
         The function that performs (Leapfrog) steps. Takes as arguments (in order)
             step size (containing the direction): float
-            inverse mass matrix: pytree
+            inverse mass matrix: Q
             starting point: QP
-    potential_energy: Callable[[pytree], float]
+    potential_energy: Callable[[Q], float]
         The potential energy, of the distribution to be sampled from.
         Takes only the position part (QP.position) as argument
-    kinetic_energy: Callable[[pytree, pytree], float], optional
+    kinetic_energy: Callable[[Q, Q], float], optional
         Mapping of the momentum to its corresponding kinetic energy. As
         argument the function takes the inverse mass matrix and the momentum.
 
@@ -364,20 +362,20 @@ def iterative_build_tree(key, initial_tree, step_size, go_right, stepper, potent
         The step size (usually called epsilon) for the leapfrog integrator.
     go_right: bool
         If go_right start at the right end, going right else start at the left end, going left.
-    stepper: Callable[[float, pytree, QP], QP]
+    stepper: Callable[[float, Q, QP], QP]
         The function that performs (Leapfrog) steps. Takes as arguments (in order)
             step size (containing the direction): float
-            inverse mass matrix: pytree
+            inverse mass matrix: Q
             starting point: QP
-    potential_energy: Callable[[pytree], float]
+    potential_energy: Callable[[Q], float]
         The potential energy, of the distribution to be sampled from.
         Takes only the position part (QP.position) as argument
-    kinetic_energy: Callable[[pytree, pytree], float], optional
+    kinetic_energy: Callable[[Q, Q], float], optional
         Mapping of the momentum to its corresponding kinetic energy. As
         argument the function takes the inverse mass matrix and the momentum.
     max_tree_depth: int
         An upper bound on the 'depth' argument, but has no effect on the functions behaviour.
-        It's only required to statically set the size of the `S` array (pytree).
+        It's only required to statically set the size of the `S` array (Q).
     """
     # 1. choose start point of integration
     z = select(go_right, initial_tree.right, initial_tree.left)
