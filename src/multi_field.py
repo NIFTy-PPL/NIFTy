@@ -273,12 +273,7 @@ class MultiField(Operator):
             If a field is not present, it is assumed to have an uniform value
             of zero.
         """
-        if self._domain is other._domain:
-            return self + other
-        res = self.to_dict()
-        for key, val in other.items():
-            res[key] = res[key]+val if key in res else val
-        return MultiField.from_dict(res)
+        return self.flexible_addsub(other, False)
 
     @staticmethod
     def union(fields, domain=None):
