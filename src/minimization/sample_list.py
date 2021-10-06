@@ -220,7 +220,7 @@ class SampleList:
 
 class ResidualSampleList(SampleList):
     def __init__(self, mean, residuals, neg, comm):
-        """SampleList that stores samples in terms of a mean and a residual deviation thereof.
+        """Store samples in terms of a mean and a residual deviation thereof.
 
 
         Parameters
@@ -266,10 +266,10 @@ class ResidualSampleList(SampleList):
         return len(self._r)
 
     def at_strict(self, mean):
-        """Return a new instance of `ResidualSampleList` with new mean and the
-        same residuals as `self`.
+        """Instantiate `ResidualSampleList` with the same residuals as `self`.
 
-        The old and new mean need to be defined on the same domain.
+        The mean is updated. The old and new mean need to be defined on the same
+        domain.
 
         Returns
         -------
@@ -283,8 +283,9 @@ class ResidualSampleList(SampleList):
         return self.at(mean)
 
     def at(self, mean):
-        """Return a new instance of `ResidualSampleList` with new mean and the
-        same residuals as `self`.
+        """Instantiate `ResidualSampleList` with the same residuals as `self`.
+
+        The mean is updated.
 
         Note
         ----
@@ -305,6 +306,19 @@ class ResidualSampleList(SampleList):
 
 class MinimalSampleList(SampleList):
     def __init__(self, samples, comm=None):
+        """Store samples as a plain list.
+
+        This is a minimalist implementation of :class:`SampleList`. It just
+        serves as a (potentially MPI-distributed) wrapper of a list of samples.
+
+        Parameters
+        ----------
+        samples : list of Field or list of MultiField
+            List of samples.
+        comm : MPI communicator or None
+            If not `None`, samples can be gathered across multiple MPI tasks. If
+            `None`, :class:`ResidualSampleList` is not a distributed object.
+        """
         super(MinimalSampleList, self).__init__(comm, samples[0].domain)
         self._s = samples
 
@@ -325,7 +339,7 @@ def _none_to_id(obj):
 
 
 def _bcast(obj, comm, root):
-    """Broadcast python object from given root
+    """Broadcast python object from given root.
 
     Parameters
     ----------
@@ -341,11 +355,13 @@ def _bcast(obj, comm, root):
 
 
 def _mpi_file_extension(comm):
-    """Return string that can be used to uniquely determine the number of MPI
-    tasks for distributed saving of files.
+    """Return MPI-configuration unique string.
+
+    This string that can be used to uniquely determine the number of MPI tasks
+    for distributed saving of files.
 
     Parameters
-    ----------
+
     comm : MPI communicator or None
         If None, an empty string is returned.
     """
