@@ -316,7 +316,7 @@ class ResidualSampleList(SampleList):
         self.save_helper(file_name_base, obj)
 
     @staticmethod
-    def load(self, file_name_base, comm=None):
+    def load(file_name_base, comm=None):
         args = SampleList.load_helper(file_name_base, comm)
         return ResidualSampleList(*args, comm=comm)
 

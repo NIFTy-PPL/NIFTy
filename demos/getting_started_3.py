@@ -138,17 +138,23 @@ def main():
         plot.output(ny=1, ysize=6, xsize=16,
                     name=filename.format("loop_{:02d}".format(i)))
 
+    # Write result to disk and load it immediatly afterwards
+    # May be useful for long inference runs, where inference and posterior
+    # analysis is split into two steps
+    KL.samples.save("result")
+    samples = ift.ResidualSampleList.load("result")
+
     # Plotting
     filename_res = filename.format("results")
     plot = ift.Plot()
-    mean, var = KL.samples.global_sample_stat(signal)
+    mean, var = samples.global_sample_stat(signal)
     plot.add(mean, title="Posterior Mean", zmin=0, zmax=1)
     plot.add(var.sqrt(), title="Posterior Standard Deviation")
 
-    nsamples = KL.samples.global_n_samples()
+    nsamples = samples.global_n_samples()
     logspec = pspec.log().force
-    plot.add(list(KL.samples.global_iterator(pspec.force)) +
-             [pspec.force(mock_position), KL.samples.global_average(logspec).exp()],
+    plot.add(list(samples.global_iterator(pspec.force)) +
+             [pspec.force(mock_position), samples.global_average(logspec).exp()],
              title="Sampled Posterior Power Spectrum",
              linewidth=[1.]*nsamples + [3., 3.],
              label=[None]*nsamples + ['Ground truth', 'Posterior mean'])
