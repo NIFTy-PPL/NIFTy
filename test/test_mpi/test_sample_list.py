@@ -15,23 +15,21 @@
 # Author: Philipp Arras
 
 
-import numpy as np
-import pytest
-
 import nifty8 as ift
+from mpi4py import MPI
 
 from ..common import list2fixture, setup_function, teardown_function
 
+comm = list2fixture([MPI.COMM_WORLD, None])
 
 
-def _get_sample_list(comm):
+def _get_sample_list(communicator):
     dom = ift.makeDomain({"a": ift.UnstructuredDomain(2), "b": ift.RGSpace(12)})
     samples = [ift.from_random(dom) for _ in range(3)]
-    return ift.MinimalSampleList(samples, comm), samples
+    return ift.MinimalSampleList(samples, communicator), samples
 
 
-def test_sample_list():
-    comm = None
+def test_sample_list(comm):
     sl, samples = _get_sample_list(comm)
     dom = sl.domain
 
@@ -60,12 +58,10 @@ def test_sample_list():
         assert len(samples) == sl.global_n_samples()
 
 
-def test_load_and_save():
-    comm = None
-
+def test_load_and_save(comm):
     sl, _ = _get_sample_list(comm)
     sl.save("sample_list")
-    sl1 = ift.SampleList.load("sample_list", comm)
+    sl1 = ift.MinimalSampleList.load("sample_list", comm)
 
     for s0, s1 in zip(sl, sl1):
         ift.extra.assert_equal(s0, s1)

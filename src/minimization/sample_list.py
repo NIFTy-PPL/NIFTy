@@ -184,9 +184,21 @@ class SampleList:
         If the instance of :class:`SampleList` is distributed, each MPI task
         writes its own file.
         """
+        raise NotImplementedError
+
+    def save_helper(self, file_name_base, obj):
+        # Helper functions necessary because MPI communicator cannot be pickled
         fname = str(file_name_base) + _mpi_file_extension(self.comm) + ".pickle"
         with open(fname, "wb") as f:
-            pickle.dump(self, f, pickle.HIGHEST_PROTOCOL)
+            pickle.dump(obj, f, pickle.HIGHEST_PROTOCOL)
+
+    @staticmethod
+    def load_helper(file_name_base, comm):
+        # Helper functions necessary because MPI communicator cannot be pickled
+        fname = str(file_name_base) + _mpi_file_extension(comm) + ".pickle"
+        with open(fname, "rb") as f:
+            obj = pickle.load(f)
+        return obj
 
     @staticmethod
     def load(file_name_base, comm=None):
@@ -211,11 +223,7 @@ class SampleList:
         The number of MPI tasks used for saving and loading the `SampleList`
         need to be the same.
         """
-        fname = str(file_name_base) + _mpi_file_extension(comm) + ".pickle"
-        with open(fname, "rb") as f:
-            obj = pickle.load(f)
-        utilities.myassert(isinstance(obj, SampleList))
-        return obj
+        raise NotImplementedError
 
 
 class ResidualSampleList(SampleList):
@@ -303,6 +311,15 @@ class ResidualSampleList(SampleList):
             mean = MultiField.union([self._m, mean])
         return ResidualSampleList(mean, self._r, self._n, self.comm)
 
+    def save(self, file_name_base):
+        obj = self._m, self._r, self._n
+        self.save_helper(file_name_base, obj)
+
+    @staticmethod
+    def load(self, file_name_base, comm=None):
+        args = SampleList.load_helper(file_name_base, comm)
+        return ResidualSampleList(*args, comm=comm)
+
 
 class MinimalSampleList(SampleList):
     def __init__(self, samples, comm=None):
@@ -327,6 +344,14 @@ class MinimalSampleList(SampleList):
 
     def __len__(self):
         return len(self._s)
+
+    def save(self, file_name_base):
+        self.save_helper(file_name_base, self._s)
+
+    @staticmethod
+    def load(file_name_base, comm=None):
+        s = SampleList.load_helper(file_name_base, comm)
+        return MinimalSampleList(s, comm=comm)
 
 
 def _none_to_id(obj):
@@ -368,4 +393,4 @@ def _mpi_file_extension(comm):
     if comm is None:
         return ""
     ntask, rank, _ = utilities.get_MPI_params_from_comm(comm)
-    return f"{rank}/{ntask}"
+    return f"{rank}.{ntask}"
