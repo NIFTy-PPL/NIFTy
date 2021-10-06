@@ -76,7 +76,7 @@ from .minimization.energy import Energy
 from .minimization.quadratic_energy import QuadraticEnergy
 from .minimization.sample_list import SampleList, SampleListBase, ResidualSampleList
 from .minimization.energy_adapter import EnergyAdapter, StochasticEnergyAdapter
-from .minimization.kl_energies import SampledKLEnergy
+from .minimization.kl_energies import SampledKLEnergy, SampledKLEnergyClass
 
 from .sugar import *
 

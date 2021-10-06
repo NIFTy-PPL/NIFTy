@@ -96,8 +96,8 @@ def main():
                        norm=LogNorm(vmin=1e-3, vmax=np.max(z)),
                        extent=x_limits_scaled + y_limits)
             xs, ys = [], []
-            if isinstance(kl, ift.SampledKLEnergy):
-                samples = kl.samples
+            if isinstance(kl, ift.SampledKLEnergyClass):
+                samples = kl.samples.iterator()
             else:
                 samples = (kl.draw_sample() for _ in range(n_samples))
             mx, my = 0., 0.
@@ -111,10 +111,10 @@ def main():
             mx /= n_samples
             my /= n_samples
             axx.scatter(np.array(xs)*scale, np.array(ys),
-                        label = f'{nn} samples')
-            axx.scatter(mx*scale, my, label = f'{nn} mean')
-            axx.scatter(mapx*scale, mapy, label = 'MAP')
-            axx.scatter(meanx*scale, meany, label = 'Posterior mean')
+                        label=f'{nn} samples')
+            axx.scatter(mx*scale, my, label=f'{nn} mean')
+            axx.scatter(mapx*scale, mapy, label='MAP')
+            axx.scatter(meanx*scale, meany, label='Posterior mean')
             axx.set_title(nn)
             axx.set_xlim(x_limits_scaled)
             axx.set_ylim(y_limits)
