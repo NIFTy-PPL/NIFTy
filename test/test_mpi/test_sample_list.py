@@ -45,9 +45,10 @@ def test_sample_list(comm):
         else:
             [sc.add(op(ss)) for ss in samples]
         mean, var = sl.global_sample_stat(op)
-        ift.extra.assert_allclose(mean, sc.mean)
         ift.extra.assert_allclose(mean, sl.global_average(op))
-        ift.extra.assert_allclose(var, sc.var)
+        ift.extra.assert_allclose(mean, sc.mean)  # FIXME Why does this not fail for comm != None?
+        if comm is None:
+            ift.extra.assert_allclose(var, sc.var)
 
         samples = list(samples)
         if op is not None:
@@ -55,7 +56,11 @@ def test_sample_list(comm):
 
         for s0, s1 in zip(samples, sl.global_iterator(op)):
             ift.extra.assert_equal(s0, s1)
-        assert len(samples) == sl.global_n_samples()
+
+        if comm is None:
+            assert len(samples) == sl.global_n_samples()
+        else:
+            assert len(samples) < sl.global_n_samples()
 
 
 def test_load_and_save(comm):
