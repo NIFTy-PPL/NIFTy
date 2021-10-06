@@ -295,7 +295,7 @@ class SampledKLEnergyClass(Energy):
             tmp = tmp(Linearization.make_var(inp))
             return tmp.val.val[()], tmp.gradient
 
-        self._val, self._grad = sample_list.global_average(_func)
+        self._val, self._grad = sample_list.average(_func)
         if np.isnan(self._val) and self._nanisinf:
             self._val = np.inf
 
@@ -317,7 +317,7 @@ class SampledKLEnergyClass(Energy):
             inp, tmp = _reduce_by_keys(inp, self._hamiltonian, self._constants)
             tmp = tmp(Linearization.make_var(inp, want_metric=True))
             return tmp.metric(x)
-        return self._sample_list.global_average(_func)
+        return self._sample_list.average(_func)
 
     @property
     def metric(self):

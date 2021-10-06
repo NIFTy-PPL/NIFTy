@@ -96,8 +96,8 @@ def test_kl(constants, point_estimates, mirror_samples, mode, mf, geo):
 
     # Test number of samples
     expected_nsamps = 2*nsamps if mirror_samples else nsamps
-    ift.myassert(kl0.samples.global_n_samples() == expected_nsamps)
-    ift.myassert(kl1.samples.global_n_samples() == expected_nsamps)
+    ift.myassert(kl0.samples.n_samples() == expected_nsamps)
+    ift.myassert(kl1.samples.n_samples() == expected_nsamps)
 
     # Test value
     assert_equal(kl0.value, kl1.value)
@@ -125,6 +125,6 @@ def test_mirror(n_samples, seed, geo):
         mini = ift.NewtonCG(ift.AbsDeltaEnergyController(1E-10, iteration_limit=0))
     KL = ift.SampledKLEnergy(ift.from_random(H.domain), H, n_samples, mini,
                              mirror_samples=True, comm=comm)
-    sams = list([s-KL.position for s in KL.samples.global_iterator()])
+    sams = list([s-KL.position for s in KL.samples.iterator()])
     for i in range(len(sams)//2):
         ift.extra.assert_allclose(sams[2*i], -sams[2*i+1])

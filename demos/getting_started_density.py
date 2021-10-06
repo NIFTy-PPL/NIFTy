@@ -26,8 +26,6 @@
 # Demo takes a while to compute
 #############################################################
 
-import numpy as np
-
 import nifty8 as ift
 
 if __name__ == "__main__":
@@ -111,8 +109,7 @@ if __name__ == "__main__":
             title="Ground truth",
         )
         plot.add(
-            ift.Field.from_raw(plotting_domain,
-                               kl.samples.global_average(signal).val),
+            ift.Field.from_raw(plotting_domain, kl.samples.average(signal).val),
             title="Reconstruction",
         )
         plot.add(
@@ -127,9 +124,8 @@ if __name__ == "__main__":
         )
 
     # Done, compute posterior statistics
-    mean, var = kl.samples.global_sample_stat(signal)
-    mean_unsliced, var_unsliced = kl.samples.global_sample_stat(
-                                    correlated_field.exp())
+    mean, var = kl.samples.sample_stat(signal)
+    mean_unsliced, var_unsliced = kl.samples.sample_stat(correlated_field.exp())
 
     # Plotting
     plot = ift.Plot()

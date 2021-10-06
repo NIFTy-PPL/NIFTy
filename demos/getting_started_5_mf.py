@@ -141,12 +141,12 @@ def main():
         # Plot current reconstruction
         plot = ift.Plot()
         plot.add(signal(mock_position), title='Ground truth')
-        plot.add(KL.samples.global_average(signal), title='Posterior mean')
-        plot.add([KL.samples.global_average(pspec1.log().force).exp(),
+        plot.add(KL.samples.average(signal), title='Posterior mean')
+        plot.add([KL.samples.average(pspec1.log().force).exp(),
                   pspec1.force(mock_position)],
                  label=['Posterior mean', 'Ground truth'],
                  title='Power spectrum 1')
-        plot.add([KL.samples.global_average(pspec2.log().force).exp(),
+        plot.add([KL.samples.average(pspec2.log().force).exp(),
                   pspec2.force(mock_position)],
                  label=['Posterior mean', 'Ground truth'],
                  title='Power spectrum 2')
@@ -164,18 +164,18 @@ def main():
     # Plotting
     filename_res = filename.format("results")
     plot = ift.Plot()
-    mean, var = KL.samples.global_sample_stat(signal)
+    mean, var = KL.samples.sample_stat(signal)
     plot.add(mean, title="Posterior Mean")
     plot.add(ift.sqrt(var), title="Posterior Standard Deviation")
 
-    n_samples = KL.samples.global_n_samples()
-    plot.add(list(KL.samples.global_iterator(pspec1.force)) +
-             [KL.samples.global_average(pspec1.log().force).exp(),
+    n_samples = KL.samples.n_samples()
+    plot.add(list(KL.samples.iterator(pspec1.force)) +
+             [KL.samples.average(pspec1.log().force).exp(),
               pspec1.force(mock_position)],
              title="Sampled Posterior Power Spectrum 1",
              linewidth=[1.]*n_samples + [3., 3.])
-    plot.add(list(KL.samples.global_iterator(pspec2.force)) +
-             [KL.samples.global_average(pspec2.log().force).exp(),
+    plot.add(list(KL.samples.iterator(pspec2.force)) +
+             [KL.samples.average(pspec2.log().force).exp(),
               pspec2.force(mock_position)],
              title="Sampled Posterior Power Spectrum 2",
              linewidth=[1.]*n_samples + [3., 3.])

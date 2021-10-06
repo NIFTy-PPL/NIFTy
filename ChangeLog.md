@@ -25,15 +25,14 @@ generator of samples. Also the samples in a `ResidualSampleList` have the
 position now added to the samples already, as opposed to the samples returned by
 the generator used in NIFTy\_7.
 
-SampleList and ResidualSampleList
----------------------------------
+SampleListBase, SampleList and ResidualSampleList
+-------------------------------------------------
 
 New data structure for a list of fields that represents a collection of samples
 from a probability distribution. A `SampleList` is an MPI object capable of
 handling a distributed set of samples and allows for a global access of those
-samples via the `global_iterator` method. It also implements the basic
-functionality to compute sample averages via the `global_mean` and
-`global_sample_stat` methods.
+samples via the `iterator` method. It also implements the basic
+functionality to compute sample averages via the `sample_stat` method.
 
 The `ResidualSampleList` is a sub-class of `SampleList` which handles samples
 via a shared position and residual deviations thereof internally. This

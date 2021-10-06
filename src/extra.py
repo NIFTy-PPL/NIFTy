@@ -495,7 +495,7 @@ def minisanity(data, metric_at_pos, modeldata_operator, samples, terminal_colors
         xscmean.append({kk: StatCalculator() for kk in dd.keys()})
         xndof.append({})
 
-    for ss1, ss2 in zip(samples.global_iterator(xops[0]), samples.global_iterator(xops[1])):
+    for ss1, ss2 in zip(samples.iterator(xops[0]), samples.iterator(xops[1])):
         for ii, ss in enumerate((ss1, ss2)):
             for kk in ss.domain.keys():
                 xredchisq[ii][kk].add(np.nansum(abs(ss[kk].val) ** 2) / ss[kk].size)

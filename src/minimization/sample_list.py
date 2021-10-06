@@ -41,7 +41,7 @@ class SampleListBase:
     Note
     ----
     A class inheriting from :class:`SampleListBase` needs to call the constructor of
-    `SampleListBase` and needs to implement :attr:`__len__()` and `__getitem__()`.
+    `SampleListBase` and needs to implement :attr:`n_local_samples` and :attr:`local_item()`.
     """
     def __init__(self, comm, domain):
         from ..sugar import makeDomain
@@ -49,12 +49,19 @@ class SampleListBase:
         self._domain = makeDomain(domain)
         utilities.check_MPI_equality(self._domain, comm)
 
-    def __len__(self):
+    @property
+    def n_local_samples(self):
         """int: Number of local samples."""
         raise NotImplementedError
 
-    def __getitem__(self, i):
+    def local_item(self, i):
+        """Return ith local sample."""
         raise NotImplementedError
+
+    def local_iterator(self):
+        """Return an iterator over all local samples."""
+        for i in range(self.n_local_samples):
+            yield self.local_item(i)
 
     @property
     def comm(self):
@@ -87,7 +94,7 @@ class SampleListBase:
         ntask, rank, _ = utilities.get_MPI_params_from_comm(comm)
         return range(*utilities.shareRange(n_samples, ntask, rank))
 
-    def global_iterator(self, op=None):
+    def iterator(self, op=None):
         """Return iterator over all potentially distributed samples.
 
         Parameters
@@ -106,14 +113,14 @@ class SampleListBase:
         op = _none_to_id(op)
         if self.comm is not None:
             for itask in range(self.comm.Get_size()):
-                for i in range(_bcast(len(self), self._comm, itask)):
-                    ss = self[i] if itask == self._comm.Get_rank() else None
+                for i in range(_bcast(self.n_local_samples, self._comm, itask)):
+                    ss = self.local_item(i) if itask == self._comm.Get_rank() else None
                     yield op(_bcast(ss, self._comm, itask))
         else:
-            for ss in self:
+            for ss in self.local_iterator():
                 yield op(ss)
 
-    def global_average(self, op=None):
+    def average(self, op=None):
         """Compute average over all potentially distributed samples.
 
         Parameters
@@ -133,23 +140,23 @@ class SampleListBase:
         averaging them afterwards. If the number of local samples is big and
         `op` is not None, this leads to much temporary memory usage. If the
         output of `op` is just a :class:`~nifty8.field.Field` or
-        :class:`~nifty8.multi_field.MultiField`, :attr:`global_sample_stat()`
+        :class:`~nifty8.multi_field.MultiField`, :attr:`sample_stat()`
         can be used in order to compute the average memory efficiently.
         """
         op = _none_to_id(op)
-        res = [op(ss) for ss in self]
-        n = self.global_n_samples()
+        res = [op(ss) for ss in self.local_iterator()]
+        n = self.n_samples()
         if not isinstance(res[0], tuple):
             return utilities.allreduce_sum(res, self.comm) / n
         n_output_elements = len(res[0])
         res = [[elem[ii] for elem in res] for ii in range(n_output_elements)]
         return tuple(utilities.allreduce_sum(rr, self.comm) / n for rr in res)
 
-    def global_n_samples(self):
+    def n_samples(self):
         """Return number of samples across all MPI tasks."""
-        return utilities.allreduce_sum([len(self)], self.comm)
+        return utilities.allreduce_sum([self.n_local_samples], self.comm)
 
-    def global_sample_stat(self, op=None):
+    def sample_stat(self, op=None):
         """Compute mean and variance of samples after applying `op`.
 
         Parameters
@@ -165,7 +172,7 @@ class SampleListBase:
         """
         from ..probing import StatCalculator
         sc = StatCalculator()
-        for ss in self.global_iterator(op):
+        for ss in self.iterator(op):
             sc.add(ss)
         return sc.mean, sc.var
 
@@ -267,10 +274,11 @@ class ResidualSampleList(SampleListBase):
         if not all(isinstance(nn, bool) for nn in neg):
             raise TypeError("All entries in neg need to be bool.")
 
-    def __getitem__(self, i):
+    def local_item(self, i):
         return self._m.flexible_addsub(self._r[i], self._n[i])
 
-    def __len__(self):
+    @property
+    def n_local_samples(self):
         return len(self._r)
 
     def at_strict(self, mean):
@@ -339,10 +347,11 @@ class SampleList(SampleListBase):
         super(SampleList, self).__init__(comm, samples[0].domain)
         self._s = samples
 
-    def __getitem__(self, x):
-        return self._s[x]
+    def local_item(self, i):
+        return self._s[i]
 
-    def __len__(self):
+    @property
+    def n_local_samples(self):
         return len(self._s)
 
     def save(self, file_name_base):
