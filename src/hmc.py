@@ -176,20 +176,16 @@ def _generate_hmc_acc_rej(*,
     # might have an effect with other kinetic energies though
     proposed_qp = flip_momentum(new_qp)
 
-    # TODO: new energy quickly becomes NaN, can be fixed by keeping step size small (?)
-    # how to handle this case?
-    # TODO: swap nan as energy difference with inf energy
     total_energy = partial(
         total_energy_of_qp,
         potential_energy=potential_energy,
         kinetic_energy_w_inv_mass=partial(kinetic_energy, inverse_mass_matrix)
     )
     energy_diff = total_energy(initial_qp) - total_energy(proposed_qp)
+    energy_diff = np.where(np.isnan(energy_diff), np.inf, energy_diff)
     transition_probability = np.minimum(1., np.exp(energy_diff))
-    # TODO: Use bernoulli
-    acceptance_level = random.uniform(key)
 
-    accept = acceptance_level < transition_probability
+    accept = random.bernoulli(key, transition_probability)
     accepted_qp, rejected_qp = select(
         accept,
         (proposed_qp, initial_qp),
