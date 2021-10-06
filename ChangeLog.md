@@ -21,14 +21,14 @@ to continue the sampling step with the non-liear part necessary to generate
 geoVI samples, which are then used in the `SampledKLEnergy`.
 
 `SampledKLEnergy.samples` now returns a `ResidualSampleList` rather than a
-generator of samples. Also the samples in a `ResidualSampleList` has the
+generator of samples. Also the samples in a `ResidualSampleList` have the
 position now added to the samples already, as opposed to the samples returned by
 the generator used in NIFTy\_7.
 
 SampleList and ResidualSampleList
 ---------------------------------
 
-New data-structure for a list of fields that represents a collection of samples
+New data structure for a list of fields that represents a collection of samples
 from a probability distribution. A `SampleList` is an MPI object capable of
 handling a distributed set of samples and allows for a global access of those
 samples via the `global_iterator` method. It also implements the basic
@@ -36,8 +36,8 @@ functionality to compute sample averages via the `global_mean` and
 `global_sample_stat` methods.
 
 The `ResidualSampleList` is a sub-class of `SampleList` which handles samples
-via a shared postition and residual deviations thereof internally. This
-distinction is a required structire for defining the `SampledKLEnergy`.
+via a shared position and residual deviations thereof internally. This
+distinction is a required structure for defining the `SampledKLEnergy`.
 
 Sampling dtypes
 ---------------
