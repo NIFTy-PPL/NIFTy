@@ -100,8 +100,9 @@ def test_kl(constants, point_estimates, mirror_samples, mf, geo):
             res0 = klpure.gradient[kk].val
         assert_allclose(res0, res1)
 
+
 @pmp('mirror_samples', (True, False))
-@pmp('fc',(True, False))
+@pmp('fc', (True, False))
 def test_ParametricVI(mirror_samples, fc):
     dom = ift.RGSpace((12,), (2.12))
     op = ift.HarmonicSmoothingOperator(dom, 3)
