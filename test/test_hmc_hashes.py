@@ -42,9 +42,11 @@ def test_hmc_hash():
         step_size=0.193,
         num_steps=100,
         dbg_info=True,
-        compile=True
+        compile=True,
+        max_energy_difference=1.
     )
     chain = sampler.generate_n_samples(1000)
+    assert chain.divergences.sum() == 0
     key, pos = sampler.last_state
     accepted = chain.trees.accepted
     results = (pos, key, chain.samples, accepted)
@@ -65,9 +67,11 @@ def test_nuts_hash():
         key=42,
         dbg_info=False,
         bias_transition=False,
-        compile=True
+        compile=True,
+        max_energy_difference=1.
     )
     chain = sampler.generate_n_samples(1000)
+    assert chain.divergences.sum() == 0
     key, pos = sampler.last_state
     results = (pos, key, chain.samples)
     results_hash = hashit(results, n_chars=20)
