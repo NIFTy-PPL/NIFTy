@@ -82,7 +82,7 @@ def test_kl(constants, point_estimates, mirror_samples, mf, geo):
     klpure = SampledKLEnergyClass(samp, tmph, constants, invariant, False)
     # Test number of samples
     expected_nsamps = 2*nsamps if mirror_samples else nsamps
-    myassert(len(kl.samples) == expected_nsamps)
+    myassert(kl.samples.n_samples() == expected_nsamps)
 
     # Test value
     assert_allclose(kl.value, klpure.value)
