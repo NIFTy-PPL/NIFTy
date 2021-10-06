@@ -33,6 +33,7 @@ import nifty8 as ift
 
 ift.random.push_sseq_from_seed(27)
 
+
 def random_los(n_los):
     starts = list(ift.random.current_rng().random((n_los, 2)).T)
     ends = list(ift.random.current_rng().random((n_los, 2)).T)
@@ -141,7 +142,7 @@ def main():
     filename_res = filename.format("results")
     plot = ift.Plot()
     mean, var = KL.samples.global_sample_stat(signal)
-    plot.add(mean, title="Posterior Mean", zmin = 0, zmax = 1)
+    plot.add(mean, title="Posterior Mean", zmin=0, zmax=1)
     plot.add(var.sqrt(), title="Posterior Standard Deviation")
 
     nsamples = KL.samples.global_n_samples()
@@ -149,7 +150,7 @@ def main():
     plot.add(list(KL.samples.global_iterator(pspec.force)) +
              [pspec.force(mock_position), KL.samples.global_average(logspec).exp()],
              title="Sampled Posterior Power Spectrum",
-             linewidth=[1.]*nsamples+ [3., 3.],
+             linewidth=[1.]*nsamples + [3., 3.],
              label=[None]*nsamples + ['Ground truth', 'Posterior mean'])
     plot.output(ny=1, nx=3, xsize=24, ysize=6, name=filename_res)
     print("Saved results as '{}'.".format(filename_res))
