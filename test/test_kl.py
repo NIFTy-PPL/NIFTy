@@ -77,7 +77,9 @@ def test_kl(constants, point_estimates, mirror_samples, mf, geo):
         tmpmean = mean0
         invariant = None
     ift.extra.assert_equal(samp._m, tmpmean)
-    klpure = ift.SampledKLEnergy._init2(None, samp, tmph, constants, invariant, False)
+
+    from nifty8.minimization.kl_energies import SampledKLEnergyClass
+    klpure = SampledKLEnergyClass(samp, tmph, constants, invariant, False)
     # Test number of samples
     expected_nsamps = 2*nsamps if mirror_samples else nsamps
     myassert(len(kl.samples) == expected_nsamps)

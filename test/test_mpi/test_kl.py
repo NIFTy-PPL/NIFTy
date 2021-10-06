@@ -90,7 +90,9 @@ def test_kl(constants, point_estimates, mirror_samples, mode, mf, geo):
         locneg = neg[slc]
         samp = ift.minimization.sample_list.ResidualSampleList(
                     tmpmean, locsamp, locneg, comm)
-    kl1 = ift.SampledKLEnergy._init2(None, samp, tmph, constants, invariant, False)
+
+    from nifty8.minimization.kl_energies import SampledKLEnergyClass
+    kl1 = SampledKLEnergyClass(samp, tmph, constants, invariant, False)
 
     # Test number of samples
     expected_nsamps = 2*nsamps if mirror_samples else nsamps
