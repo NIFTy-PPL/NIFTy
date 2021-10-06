@@ -140,53 +140,9 @@ class AcceptedAndRejected(NamedTuple):
     accepted: Union[np.ndarray, bool]
 
 
-def accept_or_deny(*,
-        key,
-        old_qp: QP,
-        proposed_qp: QP,
-        total_energy
-    ):
-    """Perform acceptance step.
-
-    Returning the new or the old (p, q) pairs depending on wether the new ones
-    were accepted or not.
-
-    Parameters
-    ----------
-    old_momentum: ndarray,
-    old_position: ndarray,
-    proposed_momentum: ndarray,
-    proposed_position: ndarray,
-    total_energy: Callable[[qp], float]
-        The sum of kinetic and potential energy as a function of position and
-        momentum.
-    """
-    # TODO: new energy quickly becomes NaN, can be fixed by keeping step size small (?)
-    # how to handle this case?
-    # TODO: swap nan as energy difference with inf energy
-    acceptance_threshold = np.minimum(
-            1.,
-            np.exp(
-                total_energy(old_qp)
-                - total_energy(proposed_qp)
-            )
-        )
-    # TODO: Use bernoulli
-    acceptance_level = random.uniform(key)
-
-    accept = acceptance_level < acceptance_threshold
-    accepted_qp, rejected_qp = select(
-        accept,
-        (proposed_qp, old_qp),
-        (old_qp, proposed_qp),
-    )
-    return AcceptedAndRejected(accepted_qp, rejected_qp, accept)
-
-
 ###
 ### SIMPLE HMC
 ###
-
 # @partial(jit, static_argnames=('potential_energy', 'potential_energy_gradient'))
 def _generate_hmc_acc_rej(*,
         key,
@@ -228,13 +184,26 @@ def _generate_hmc_acc_rej(*,
     # might have an effect with other kinetic energies though
     proposed_qp = flip_momentum(new_qp)
 
-    # TODO: inline
-    return accept_or_deny(
-        key = key,
-        old_qp = initial_qp,
-        proposed_qp = proposed_qp,
-        total_energy = lambda qp: total_energy_of_qp(qp, potential_energy, partial(kinetic_energy, inverse_mass_matrix))
+    # TODO: new energy quickly becomes NaN, can be fixed by keeping step size small (?)
+    # how to handle this case?
+    # TODO: swap nan as energy difference with inf energy
+    total_energy = partial(
+        total_energy_of_qp,
+        potential_energy=potential_energy,
+        kinetic_energy_w_inv_mass=partial(kinetic_energy, inverse_mass_matrix)
     )
+    energy_diff = total_energy(initial_qp) - total_energy(proposed_qp)
+    transition_probability = np.minimum(1., np.exp(energy_diff))
+    # TODO: Use bernoulli
+    acceptance_level = random.uniform(key)
+
+    accept = acceptance_level < transition_probability
+    accepted_qp, rejected_qp = select(
+        accept,
+        (proposed_qp, initial_qp),
+        (initial_qp, proposed_qp),
+    )
+    return AcceptedAndRejected(accepted_qp, rejected_qp, accept)
 
 
 ###
