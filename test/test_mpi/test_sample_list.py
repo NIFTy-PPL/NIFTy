@@ -60,7 +60,7 @@ def test_sample_list(comm):
         if comm is None:
             assert len(samples) == sl.global_n_samples()
         else:
-            assert len(samples) < sl.global_n_samples()
+            assert len(samples) <= sl.global_n_samples()
 
 
 def test_load_and_save(comm):
