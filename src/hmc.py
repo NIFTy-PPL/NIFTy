@@ -220,6 +220,10 @@ class Tree(NamedTuple):
         Indicator for a large increase in energy.
     depth: Union[np.ndarray, int]
         Levels of the tree.
+    cumulative_acceptance: Union[np.ndarray, float]
+        Sum of all acceptance probabilities relative to some initial energy
+        value. This value is distinct from `logweight` as its absolute value is
+        only well defined for the very final tree of NUTS.
     """
     left: QP
     right: QP
@@ -228,6 +232,8 @@ class Tree(NamedTuple):
     turning: Union[np.ndarray, bool]
     diverging: Union[np.ndarray, bool]
     depth: Union[np.ndarray, int]
+    cumulative_acceptance: Union[np.ndarray, float]
+
 
 class Chain(NamedTuple):
     """Object carrying chain metadata; think: transposed Tree with new axis.
@@ -235,8 +241,8 @@ class Chain(NamedTuple):
     # Q but with one more dimension on the first axes of the leave tensors
     samples: Q
     divergences: np.ndarray
+    acceptance: Union[np.ndarray,float]
     depths: Optional[np.ndarray] = None
-    acceptance: Union[None,np.ndarray,float] = None
     resampled_momenta: Optional[Q] = None
     trees: Optional[Union[Tree,AcceptedAndRejected]] = None
 
@@ -292,7 +298,7 @@ def _generate_nuts_tree(initial_qp, key, step_size, max_tree_depth, stepper: Cal
     """
     # initialize depth 0 tree, containing 2**0 = 1 points
     initial_neg_energy = -total_energy_of_qp(initial_qp, potential_energy, partial(kinetic_energy, inverse_mass_matrix))
-    current_tree = Tree(left=initial_qp, right=initial_qp, logweight=initial_neg_energy, proposal_candidate=initial_qp, turning=False, diverging=False, depth=0)
+    current_tree = Tree(left=initial_qp, right=initial_qp, logweight=initial_neg_energy, proposal_candidate=initial_qp, turning=False, diverging=False, depth=0, cumulative_acceptance=0.)
 
     def _cont_cond(loop_state):
         _, current_tree, stop = loop_state
@@ -387,7 +393,8 @@ def iterative_build_tree(key, initial_tree, step_size, go_right, stepper, potent
     z = stepper(np.where(go_right, 1., -1.) * step_size, inverse_mass_matrix, z)
     neg_energy = -total_energy_of_qp(z, potential_energy, partial(kinetic_energy, inverse_mass_matrix))
     diverging = np.abs(neg_energy - initial_neg_energy) > max_energy_difference
-    incomplete_tree = Tree(left=z, right=z, logweight=neg_energy, proposal_candidate=z, turning=False, diverging=diverging, depth=-1)
+    cum_acceptance = np.minimum(1., np.exp(initial_neg_energy - neg_energy))
+    incomplete_tree = Tree(left=z, right=z, logweight=neg_energy, proposal_candidate=z, turning=False, diverging=diverging, depth=-1, cumulative_acceptance=cum_acceptance)
     S = tree_index_update(S, 0, z)
 
     def amend_incomplete_tree(state):
@@ -473,7 +480,8 @@ def add_single_qp_to_tree(key, tree, qp, go_right, potential_energy, kinetic_ene
     proposal_candidate = select(remain, tree.proposal_candidate, qp)
     # NOTE, set an invalid depth as to indicate that adding a single QP to a
     # perfect binary tree does not yield another perfect binary tree
-    return Tree(left, right, total_logweight, proposal_candidate, turning=tree.turning, diverging=diverging, depth=-1)
+    cum_acceptance = tree.cumulative_acceptance + np.minimum(1., np.exp(initial_neg_energy - neg_energy))
+    return Tree(left, right, total_logweight, proposal_candidate, turning=tree.turning, diverging=diverging, depth=-1, cumulative_acceptance=cum_acceptance)
 
 def merge_trees(key, current_subtree, new_subtree, go_right, bias_transition):
     """Merges two trees, propagating the proposal_candidate"""
@@ -500,7 +508,8 @@ def merge_trees(key, current_subtree, new_subtree, go_right, bias_transition):
     turning = is_euclidean_uturn(left, right)
     diverging = current_subtree.diverging | new_subtree.diverging
     neg_energy = np.logaddexp(new_subtree.logweight, current_subtree.logweight)
-    merged_tree = Tree(left=left, right=right, logweight=neg_energy, proposal_candidate=new_sample, turning=turning, diverging=diverging, depth=current_subtree.depth + 1)
+    cum_acceptance = current_subtree.cumulative_acceptance + new_subtree.cumulative_acceptance
+    merged_tree = Tree(left=left, right=right, logweight=neg_energy, proposal_candidate=new_sample, turning=turning, diverging=diverging, depth=current_subtree.depth + 1, cumulative_acceptance=cum_acceptance)
     return merged_tree
 
 
@@ -593,11 +602,11 @@ class NUTSChain:
         samples = tree_util.tree_map(lambda arr: np.empty_like(arr, shape=(num_samples,) + np.shape(arr)), initial_position)
         depths = np.empty(num_samples, dtype=np.uint8)
         divergences = np.empty(num_samples, dtype=bool)
-        chain = Chain(samples=samples, divergences=divergences, depths=depths)
+        chain = Chain(samples=samples, divergences=divergences, acceptance=0., depths=depths)
         if self.dbg_info:
             resampled_momenta = tree_util.tree_map(lambda arr: np.empty_like(initial_position, shape=(num_samples,) + np.shape(arr)), initial_position)
             _qp_proto = QP(initial_position, initial_position)
-            _tree_proto = Tree(_qp_proto, _qp_proto, 0., _qp_proto, True, True, 0)
+            _tree_proto = Tree(_qp_proto, _qp_proto, 0., _qp_proto, turning=True, diverging=True, depth=0, cumulative_acceptance=0.)
             trees = tree_util.tree_map(
                 lambda leaf: np.empty_like(leaf, shape=(num_samples,)+np.shape(leaf)),
                 _tree_proto
@@ -626,11 +635,14 @@ class NUTSChain:
                 bias_transition=self.bias_transition,
                 max_energy_difference=self.max_energy_difference
             )
+            num_proposals = 2**tree.depth - 1
+            tree_acceptance = np.where(num_proposals > 0, tree.cumulative_acceptance / num_proposals, 0.)
 
             samples = tree_index_update(chain.samples, idx, tree.proposal_candidate.position)
             divergences = chain.divergences.at[idx].set(tree.diverging)
             depths = chain.depths.at[idx].set(tree.depth)
-            chain = chain._replace(samples=samples, divergences=divergences, depths=depths)
+            acceptance = (chain.acceptance + (tree_acceptance - chain.acceptance) / (idx + 1))
+            chain = chain._replace(samples=samples, divergences=divergences, acceptance=acceptance, depths=depths)
             if self.dbg_info:
                 resampled_momenta = tree_index_update(chain.resampled_momenta, idx, resampled_momentum)
                 trees = tree_index_update(chain.trees, idx, tree)
@@ -702,7 +714,7 @@ class HMCChain:
 
         samples = tree_util.tree_map(lambda arr: np.empty_like(arr, shape=(num_samples,) + np.shape(arr)), initial_position)
         divergences = np.empty(num_samples, dtype=bool)
-        chain = Chain(samples=samples, divergences=divergences, acceptance=np.array(0.))
+        chain = Chain(samples=samples, divergences=divergences, acceptance=0.)
         if self.dbg_info:
             resampled_momenta = tree_util.tree_map(lambda arr: np.empty_like(initial_position, shape=(num_samples,) + np.shape(arr)), initial_position)
             _qp_proto = QP(initial_position, initial_position)
