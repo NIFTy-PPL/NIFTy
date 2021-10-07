@@ -155,10 +155,7 @@ def main():
                  label=['KL', 'Sampling', 'Newton inversion'],
                  title='Cumulative energies', s=[None, None, 1],
                  alpha=[None, 0.2, None])
-        plot.output(nx=3,
-                    ny=2,
-                    ysize=10,
-                    xsize=15,
+        plot.output(nx=3, ny=2, ysize=10, xsize=15,
                     name=filename.format("loop_{:02d}".format(i)))
 
     # Plotting

@@ -24,10 +24,11 @@
 # enables us to plot the posterior probability density as two-dimensional plot.
 ###############################################################################
 
-import nifty8 as ift
 import numpy as np
 import pylab as plt
 from matplotlib.colors import LogNorm
+
+import nifty8 as ift
 
 
 def main():

@@ -131,12 +131,9 @@ def main():
 
         # Plot current reconstruction
         plot = ift.Plot()
-        plot.add(KL.samples.average(signal), title="Posterior mean",
-                 zmin=0, zmax=1)
-        plot.add(KL.samples.iterator(pspec.force),
-                 title="Samples power spectrum")
-        plot.output(ny=1, ysize=6, xsize=16,
-                    name=filename.format("loop_{:02d}".format(i)))
+        plot.add(KL.samples.average(signal), title="Posterior mean", zmin=0, zmax=1)
+        plot.add(KL.samples.iterator(pspec.force), title="Samples power spectrum")
+        plot.output(ny=1, ysize=6, xsize=16, name=filename.format("loop_{:02d}".format(i)))
 
     # Write result to disk and load it immediately afterwards
     # May be useful for long inference runs, where inference and posterior

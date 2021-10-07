@@ -21,8 +21,8 @@ import numpy as np
 
 from . import utilities
 from .domain_tuple import DomainTuple
-from .operators.operator import Operator
 from .ducc_dispatch import vdot
+from .operators.operator import Operator
 
 
 class Field(Operator):

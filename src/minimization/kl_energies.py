@@ -329,4 +329,3 @@ class SampledKLEnergyClass(Energy):
         if self._invariants is None:
             return self._sample_list
         return self._sample_list.at(self._invariants)
-

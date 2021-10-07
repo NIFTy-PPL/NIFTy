@@ -262,6 +262,7 @@ def _performance_check(op, pos, raise_on_fail):
     class CountingOp(LinearOperator):
         def __init__(self, domain):
             from .sugar import makeDomain
+
             self._domain = self._target = makeDomain(domain)
             self._capability = self.TIMES | self.ADJOINT_TIMES
             self._count = 0
@@ -459,10 +460,15 @@ def minisanity(data, metric_at_pos, modeldata_operator, samples, terminal_colors
     from .logger import logger
     from .minimization.sample_list import SampleListBase
     from .sugar import makeDomain
+
     if not (is_operator(modeldata_operator) and is_fieldlike(data)):
         raise TypeError
     if not isinstance(samples, SampleListBase):
-        raise TypeError
+        raise TypeError(
+            "Minisanity takes only SampleLists as input. If you happen to have "
+            "only one field (i.e. no samples), you may wrap it via "
+            "`ift.SampleList([field])` and pass it to minisanity."
+        )
     colors = bool(terminal_colors)
     keylen = 18
     for dom in [data.domain, samples.domain]:
@@ -474,19 +480,25 @@ def minisanity(data, metric_at_pos, modeldata_operator, samples, terminal_colors
     # compute xops
     xops = []
     if isinstance(xdoms[0], MultiDomain):
-        foo = lambda x: (metric_at_pos(x).get_sqrt() @ Adder(data, neg=True) @ modeldata_operator)(x)
-        xops.append(foo)
+        xops.append(
+            lambda x: (
+                metric_at_pos(x).get_sqrt() @ Adder(data, neg=True) @ modeldata_operator
+            )(x)
+        )
     else:
         xdoms[0] = makeDomain({"<None>": xdoms[0]})
-        foo = lambda x: (metric_at_pos(x).get_sqrt().ducktape_left("<None>") @ Adder(data, neg=True) @ modeldata_operator)(x)
-        xops.append(foo)
+        xops.append(
+            lambda x: (
+                metric_at_pos(x).get_sqrt().ducktape_left("<None>")
+                @ Adder(data, neg=True)
+                @ modeldata_operator
+            )(x)
+        )
     if isinstance(xdoms[1], MultiDomain):
-        foo = lambda x: x
-        xops.append(foo)
+        xops.append(lambda x: x)
     else:
         xdoms[1] = makeDomain({"<None>": xdoms[1]})
-        foo = lambda x: x.ducktape_left("<None>")
-        xops.append(foo)
+        xops.append(lambda x: x.ducktape_left("<None>"))
     # /compute xops
 
     xredchisq, xscmean, xndof = [], [], []
@@ -521,7 +533,6 @@ def minisanity(data, metric_at_pos, modeldata_operator, samples, terminal_colors
 
 
 def _tableentries(redchisq, scmean, ndof, keylen, colors):
-
     class _bcolors:
         WARNING = "\033[33m" if colors else ""
         FAIL = "\033[31m" if colors else ""

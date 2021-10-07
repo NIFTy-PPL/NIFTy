@@ -15,8 +15,9 @@
 # Author: Philipp Arras
 
 
-import nifty8 as ift
 from mpi4py import MPI
+
+import nifty8 as ift
 
 from ..common import list2fixture, setup_function, teardown_function
 
