@@ -16,9 +16,9 @@ Whether linear (MGVI) or non-linear (geoVI) samples should be used is determined
 via the `minimizer_sampling` attribute passed on during initialization. If
 `minimizer_sampling` is `None`, the sampling step terminates after the linear
 part, and the linear (MGVI) samples are used to construct the `SampledKLEnergy`.
-In case `minimizer_sampling` is a `ift.DescentMinimizer`, this minimizer is used
-to continue the sampling step with the non-liear part necessary to generate
-geoVI samples, which are then used in the `SampledKLEnergy`.
+In case `minimizer_sampling` is an `ift.DescentMinimizer`, this minimizer is
+used to continue the sampling step with the non-linear part necessary to
+generate geoVI samples, which are then used in the `SampledKLEnergy`.
 
 `SampledKLEnergy.samples` now returns a `ResidualSampleList` rather than a
 generator of samples. Also the samples in a `ResidualSampleList` have the
@@ -30,7 +30,7 @@ SampleListBase, SampleList and ResidualSampleList
 
 New data structure for a list of fields that represents a collection of samples
 from a probability distribution. A `SampleList` is an MPI object capable of
-handling a distributed set of samples and allows for a global access of those
+handling a distributed set of samples and allows for global access to those
 samples via the `iterator` method. It also implements the basic
 functionality to compute sample averages via the `sample_stat` method.
 
