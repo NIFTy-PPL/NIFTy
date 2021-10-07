@@ -222,7 +222,7 @@ def SampledKLEnergy(position, hamiltonian, n_samples, minimizer_sampling,
     The two lists `constants` and `point_estimates` are independent from
     each other. It is possible to sample along domains which are kept
     constant during minimization and vice versa. If a key is in both lists,
-    it will be inserted into the hamiltonian and removed from the KL.
+    it will be inserted into the Hamiltonian and removed from the KL.
 
     Note
     ----
