@@ -17,8 +17,8 @@
 
 import numpy as np
 
-from .endomorphic_operator import EndomorphicOperator
 from ..utilities import check_dtype_or_none
+from .endomorphic_operator import EndomorphicOperator
 
 
 class ScalingOperator(EndomorphicOperator):

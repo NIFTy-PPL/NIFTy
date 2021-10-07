@@ -26,8 +26,6 @@
 # Demo takes a while to compute
 #############################################################
 
-import numpy as np
-
 import nifty8 as ift
 
 if __name__ == "__main__":
@@ -94,7 +92,7 @@ if __name__ == "__main__":
 
     for i in range(5):
         # Draw new samples and minimize KL
-        kl = ift.MetricGaussianKL(mean, ham, n_samples, True)
+        kl = ift.SampledKLEnergy(mean, ham, n_samples, None)
         kl, convergence = minimizer(kl)
         mean = kl.position
 
@@ -111,7 +109,7 @@ if __name__ == "__main__":
             title="Ground truth",
         )
         plot.add(
-            ift.Field.from_raw(plotting_domain, signal(kl.position).val),
+            ift.Field.from_raw(plotting_domain, kl.samples.average(signal).val),
             title="Reconstruction",
         )
         plot.add(
@@ -125,26 +123,23 @@ if __name__ == "__main__":
             nx=3, ny=2, ysize=10, xsize=15, name=filename.format(f"loop_{i:02d}")
         )
 
-    # Done, draw posterior samples
-    sc = ift.StatCalculator()
-    sc_unsliced = ift.StatCalculator()
-    for sample in kl.samples:
-        sc.add(signal(sample + kl.position))
-        sc_unsliced.add(ift.exp(correlated_field(sample + kl.position)))
+    # Done, compute posterior statistics
+    mean, var = kl.samples.sample_stat(signal)
+    mean_unsliced, var_unsliced = kl.samples.sample_stat(correlated_field.exp())
 
     # Plotting
     plot = ift.Plot()
-    plot.add(ift.Field.from_raw(plotting_domain, sc.mean.val), title="Posterior Mean")
+    plot.add(ift.Field.from_raw(plotting_domain, mean.val), title="Posterior Mean")
     plot.add(
-        ift.Field.from_raw(plotting_domain, ift.sqrt(sc.var).val),
+        ift.Field.from_raw(plotting_domain, ift.sqrt(var).val),
         title="Posterior Standard Deviation",
     )
     plot.add(
-        ift.Field.from_raw(plotting_domain_expanded, sc_unsliced.mean.val),
+        ift.Field.from_raw(plotting_domain_expanded, mean_unsliced.val),
         title="Posterior Unsliced Mean",
     )
     plot.add(
-        ift.Field.from_raw(plotting_domain_expanded, ift.sqrt(sc_unsliced.var).val),
+        ift.Field.from_raw(plotting_domain_expanded, ift.sqrt(var_unsliced).val),
         title="Posterior Unsliced Standard Deviation",
     )
     plot.output(xsize=15, ysize=15, name=filename.format("results"))

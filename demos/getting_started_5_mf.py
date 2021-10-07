@@ -129,65 +129,53 @@ def main():
     H = ift.StandardHamiltonian(likelihood_energy, ic_sampling)
 
     # Begin minimization
-    initial_mean = ift.MultiField.full(H.domain, 0.)
-    mean = initial_mean
+    initial_position = ift.MultiField.full(H.domain, 0.)
+    position = initial_position
 
     for i in range(5):
         # Draw new samples and minimize KL
-        KL = ift.MetricGaussianKL(mean, H, N_samples, True)
+        KL = ift.SampledKLEnergy(position, H, N_samples, None)
         KL, convergence = minimizer(KL)
-        mean = KL.position
+        position = KL.position
 
         # Plot current reconstruction
         plot = ift.Plot()
-        plot.add(signal(mock_position), title="ground truth")
-        plot.add(signal(KL.position), title="reconstruction")
-        plot.add([pspec1.force(KL.position),
+        plot.add(signal(mock_position), title='Ground truth')
+        plot.add(KL.samples.average(signal), title='Posterior mean')
+        plot.add([KL.samples.average(pspec1.log().force).exp(),
                   pspec1.force(mock_position)],
-                 title="power1")
-        plot.add([pspec2.force(KL.position),
+                 label=['Posterior mean', 'Ground truth'],
+                 title='Power spectrum 1')
+        plot.add([KL.samples.average(pspec2.log().force).exp(),
                   pspec2.force(mock_position)],
-                 title="power2")
+                 label=['Posterior mean', 'Ground truth'],
+                 title='Power spectrum 2')
         plot.add((ic_newton.history, ic_sampling.history,
                   minimizer.inversion_history),
                  label=['KL', 'Sampling', 'Newton inversion'],
                  title='Cumulative energies', s=[None, None, 1],
                  alpha=[None, 0.2, None])
-        plot.output(nx=3,
-                    ny=2,
-                    ysize=10,
-                    xsize=15,
+        plot.output(nx=3, ny=2, ysize=10, xsize=15,
                     name=filename.format("loop_{:02d}".format(i)))
-
-    # Done, draw posterior samples
-    sc = ift.StatCalculator()
-    scA1 = ift.StatCalculator()
-    scA2 = ift.StatCalculator()
-    powers1 = []
-    powers2 = []
-    for sample in KL.samples:
-        sc.add(signal(sample + KL.position))
-        p1 = pspec1.force(sample + KL.position)
-        p2 = pspec2.force(sample + KL.position)
-        scA1.add(p1)
-        powers1.append(p1)
-        scA2.add(p2)
-        powers2.append(p2)
 
     # Plotting
     filename_res = filename.format("results")
     plot = ift.Plot()
-    plot.add(sc.mean, title="Posterior Mean")
-    plot.add(ift.sqrt(sc.var), title="Posterior Standard Deviation")
+    mean, var = KL.samples.sample_stat(signal)
+    plot.add(mean, title="Posterior Mean")
+    plot.add(ift.sqrt(var), title="Posterior Standard Deviation")
 
-    powers1 = [pspec1.force(s + KL.position) for s in KL.samples]
-    powers2 = [pspec2.force(s + KL.position) for s in KL.samples]
-    plot.add(powers1 + [scA1.mean, pspec1.force(mock_position)],
+    n_samples = KL.samples.n_samples()
+    plot.add(list(KL.samples.iterator(pspec1.force)) +
+             [KL.samples.average(pspec1.log().force).exp(),
+              pspec1.force(mock_position)],
              title="Sampled Posterior Power Spectrum 1",
-             linewidth=[1.]*len(powers1) + [3., 3.])
-    plot.add(powers2 + [scA2.mean, pspec2.force(mock_position)],
+             linewidth=[1.]*n_samples + [3., 3.])
+    plot.add(list(KL.samples.iterator(pspec2.force)) +
+             [KL.samples.average(pspec2.log().force).exp(),
+              pspec2.force(mock_position)],
              title="Sampled Posterior Power Spectrum 2",
-             linewidth=[1.]*len(powers2) + [3., 3.])
+             linewidth=[1.]*n_samples + [3., 3.])
     plot.output(ny=2, nx=2, xsize=15, ysize=15, name=filename_res)
     print("Saved results as '{}'.".format(filename_res))
 

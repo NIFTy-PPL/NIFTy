@@ -22,8 +22,8 @@ from ..domain_tuple import DomainTuple
 from ..domains.gl_space import GLSpace
 from ..domains.lm_space import LMSpace
 from ..domains.rg_space import RGSpace
+from ..ducc_dispatch import fftn, hartley, ifftn
 from ..field import Field
-from ..ducc_dispatch import fftn, ifftn, hartley
 from .diagonal_operator import DiagonalOperator
 from .linear_operator import LinearOperator
 from .scaling_operator import ScalingOperator

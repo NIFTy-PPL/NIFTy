@@ -16,9 +16,9 @@
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
 
 import collections
+import pickle
 from functools import reduce
 from itertools import product
-import pickle
 
 import numpy as np
 
@@ -280,14 +280,12 @@ def shareRange(nwork, nshares, myshare):
     return lo, hi
 
 
-
 def get_MPI_params_from_comm(comm):
     if comm is None:
         return 1, 0, True
     size = comm.Get_size()
     rank = comm.Get_rank()
     return size, rank, rank == 0
-
 
 
 def get_MPI_params():
@@ -351,7 +349,6 @@ def allreduce_sum(obj, comm):
         who = np.zeros(nobj, dtype=np.int32)
         rank = 0
     else:
-        ntask = comm.Get_size()
         rank = comm.Get_rank()
         nobj_list = comm.allgather(len(vals))
         all_hi = list(np.cumsum(nobj_list))
@@ -422,8 +419,8 @@ def check_domain_equality(domain0, domain1):
     MultiDomain.
     """
     from .domain_tuple import DomainTuple
-    from .multi_domain import MultiDomain
     from .domains.domain import Domain
+    from .multi_domain import MultiDomain
     for dom in [domain0, domain1]:
         if not isinstance(dom, (MultiDomain, DomainTuple, Domain)):
             raise TypeError("The following domain is neither an instance of "
@@ -490,8 +487,8 @@ def check_dtype_or_none(obj, domain=None):
     domain : DomainTuple or MultiDomain
         If it is a MultiDomain,
     """
-    from .sugar import makeDomain
     from .multi_domain import MultiDomain
+    from .sugar import makeDomain
     if domain is not None:
         domain = makeDomain(domain)
         if isinstance(domain, MultiDomain) and isinstance(obj, dict):

@@ -33,6 +33,7 @@ import nifty8 as ift
 
 ift.random.push_sseq_from_seed(27)
 
+
 def random_los(n_los):
     starts = list(ift.random.current_rng().random((n_los, 2)).T)
     ends = list(ift.random.current_rng().random((n_los, 2)).T)
@@ -96,6 +97,12 @@ def main():
     mock_position = ift.from_random(signal_response.domain, 'normal')
     data = signal_response(mock_position) + N.draw_sample()
 
+    plot = ift.Plot()
+    plot.add(signal(mock_position), title='Ground Truth', zmin=0, zmax=1)
+    plot.add(R.adjoint_times(data), title='Data')
+    plot.add([pspec.force(mock_position)], title='Power Spectrum')
+    plot.output(ny=1, nx=3, xsize=24, ysize=6, name=filename.format("setup"))
+
     # Minimization parameters
     ic_sampling = ift.AbsDeltaEnergyController(name="Sampling (linear)",
             deltaE=0.05, iteration_limit=100)
@@ -111,58 +118,49 @@ def main():
                          signal_response)
     H = ift.StandardHamiltonian(likelihood_energy, ic_sampling)
 
-    initial_mean = ift.MultiField.full(H.domain, 0.)
-    mean = initial_mean
-
-    plot = ift.Plot()
-    plot.add(signal(mock_position), title='Ground Truth', zmin = 0, zmax = 1)
-    plot.add(R.adjoint_times(data), title='Data')
-    plot.add([pspec.force(mock_position)], title='Power Spectrum')
-    plot.output(ny=1, nx=3, xsize=24, ysize=6, name=filename.format("setup"))
+    initial_position = ift.MultiField.full(H.domain, 0.)
+    position = initial_position
 
     # number of samples used to estimate the KL
     N_samples = 10
 
     # Draw new samples to approximate the KL six times
     for i in range(6):
-        if i==5:
+        if i == 5:
             # Double the number of samples in the last step for better statistics
             N_samples = 2*N_samples
         # Draw new samples and minimize KL
-        KL = ift.GeoMetricKL(mean, H, N_samples, minimizer_sampling, True)
+        KL = ift.SampledKLEnergy(position, H, N_samples, minimizer_sampling)
         KL, convergence = minimizer(KL)
-        mean = KL.position
-        ift.extra.minisanity(data, lambda x: N.inverse, signal_response,
-                             KL.position, KL.samples)
+        position = KL.position
+        ift.extra.minisanity(data, lambda x: N.inverse, signal_response, KL.samples)
 
         # Plot current reconstruction
         plot = ift.Plot()
-        plot.add(signal(KL.position), title="Latent mean", zmin = 0, zmax = 1)
-        plot.add([pspec.force(KL.position + ss) for ss in KL.samples],
-                 title="Samples power spectrum")
-        plot.output(ny=1, ysize=6, xsize=16,
-                    name=filename.format("loop_{:02d}".format(i)))
+        plot.add(KL.samples.average(signal), title="Posterior mean", zmin=0, zmax=1)
+        plot.add(KL.samples.iterator(pspec.force), title="Samples power spectrum")
+        plot.output(ny=1, ysize=6, xsize=16, name=filename.format("loop_{:02d}".format(i)))
 
-    sc = ift.StatCalculator()
-    for sample in KL.samples:
-        sc.add(signal(sample + KL.position))
+    # Write result to disk and load it immediately afterwards
+    # May be useful for long inference runs, where inference and posterior
+    # analysis are split into two steps
+    KL.samples.save("result")
+    samples = ift.ResidualSampleList.load("result")
 
     # Plotting
     filename_res = filename.format("results")
     plot = ift.Plot()
-    plot.add(sc.mean, title="Posterior Mean", zmin = 0, zmax = 1)
-    plot.add(ift.sqrt(sc.var), title="Posterior Standard Deviation")
+    mean, var = samples.sample_stat(signal)
+    plot.add(mean, title="Posterior Mean", zmin=0, zmax=1)
+    plot.add(var.sqrt(), title="Posterior Standard Deviation")
 
-    powers = [pspec.force(s + KL.position) for s in KL.samples]
-    sc = ift.StatCalculator()
-    for pp in powers:
-        sc.add(pp.log())
-    plot.add(
-        powers + [pspec.force(mock_position),
-                  pspec.force(KL.position), sc.mean.exp()],
-        title="Sampled Posterior Power Spectrum",
-        linewidth=[1.]*len(powers) + [3., 3., 3.],
-        label=[None]*len(powers) + ['Ground truth', 'Posterior latent mean', 'Posterior mean'])
+    nsamples = samples.n_samples()
+    logspec = pspec.log().force
+    plot.add(list(samples.iterator(pspec.force)) +
+             [pspec.force(mock_position), samples.average(logspec).exp()],
+             title="Sampled Posterior Power Spectrum",
+             linewidth=[1.]*nsamples + [3., 3.],
+             label=[None]*nsamples + ['Ground truth', 'Posterior mean'])
     plot.output(ny=1, nx=3, xsize=24, ysize=6, name=filename_res)
     print("Saved results as '{}'.".format(filename_res))
 

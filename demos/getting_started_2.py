@@ -106,7 +106,7 @@ def main():
     H, convergence = minimizer(H)
 
     ift.extra.minisanity(data, lambda x: ift.makeOp(1/lamb(x)), lamb,
-                         H.position)
+                         ift.SampleList([H.position]))
 
     # Plotting
     signal = sky(mock_position)

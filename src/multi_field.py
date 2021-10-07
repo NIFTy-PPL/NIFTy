@@ -11,7 +11,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
-# Copyright(C) 2013-2020 Max-Planck-Society
+# Copyright(C) 2013-2021 Max-Planck-Society
 #
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
 
@@ -310,7 +310,7 @@ class MultiField(Operator):
         ----------
         other : MultiField
             the partner Field
-        neg : bool
+        neg : bool or dict
             if True, the partner field is subtracted, otherwise added
 
         Returns
@@ -321,14 +321,19 @@ class MultiField(Operator):
             the fields in self and other. If a field is not present, it is
             assumed to have an uniform value of zero.
         """
-        if self._domain is other._domain:
+        if self._domain is other._domain and not isinstance(neg, dict):
             return self-other if neg else self+other
+
+        if isinstance(neg, dict):
+            fct = lambda k: neg[k]
+        else:
+            fct = lambda k: neg
         res = self.to_dict()
         for key, val in other.items():
             if key in res:
-                res[key] = res[key]-val if neg else res[key]+val
+                res[key] = res[key]-val if fct(key) else res[key]+val
             else:
-                res[key] = -val if neg else val
+                res[key] = -val if fct(key) else val
         return MultiField.from_dict(res)
 
     def _prep_args(self, args, kwargs, i):

@@ -50,23 +50,15 @@ def test_kl(constants, point_estimates, mirror_samples, mf, geo):
             'point_estimates': point_estimates,
             'mirror_samples': mirror_samples,
             'n_samples': nsamps,
-            'mean': mean0,
-            'hamiltonian': h}
-    if geo:
-        args['minimizer_samp'] = ift.NewtonCG(ic)
+            'position': mean0,
+            'hamiltonian': h,
+            'minimizer_sampling': ift.NewtonCG(ic) if geo else None}
     if isinstance(mean0, ift.MultiField) and set(point_estimates) == set(mean0.keys()):
         with assert_raises(RuntimeError):
-            if geo:
-                ift.GeoMetricKL(**args)
-            else:
-                ift.MetricGaussianKL(**args)
+            ift.SampledKLEnergy(**args)
         return
-    if geo:
-        kl = ift.GeoMetricKL(**args)
-    else:
-        kl = ift.MetricGaussianKL(**args)
-    if geo or mf:  # FIXME Why is the history not incremented?
-        myassert(len(ic.history) > 0)
+    kl = ift.SampledKLEnergy(**args)
+    myassert(len(ic.history) > 0)
     myassert(len(ic.history) == len(ic.history.time_stamps))
     myassert(len(ic.history) == len(ic.history.energy_values))
     ic.history.reset()
@@ -74,20 +66,23 @@ def test_kl(constants, point_estimates, mirror_samples, mf, geo):
     myassert(len(ic.history) == len(ic.history.time_stamps))
     myassert(len(ic.history) == len(ic.history.energy_values))
 
-    locsamp = kl._local_samples
+    samp = kl._sample_list
     if isinstance(mean0, ift.MultiField):
-        _, tmph = h.simplify_for_constant_input(mean0.extract_by_keys(constants))
+        invariant = list(set(constants).intersection(point_estimates))
+        _, tmph = h.simplify_for_constant_input(mean0.extract_by_keys(invariant))
         tmpmean = mean0.extract(tmph.domain)
+        invariant = mean0.extract_by_keys(invariant)
     else:
         tmph = h
         tmpmean = mean0
-    if geo and mirror_samples:
-        klpure = ift.minimization.kl_energies._SampledKLEnergy(tmpmean, tmph, 2*nsamps, False, None, locsamp, False)
-    else:
-        klpure = ift.minimization.kl_energies._SampledKLEnergy(tmpmean, tmph, nsamps, mirror_samples, None, locsamp, False)
+        invariant = None
+    ift.extra.assert_equal(samp._m, tmpmean)
+
+    from nifty8.minimization.kl_energies import SampledKLEnergyClass
+    klpure = SampledKLEnergyClass(samp, tmph, constants, invariant, False)
     # Test number of samples
     expected_nsamps = 2*nsamps if mirror_samples else nsamps
-    myassert(len(tuple(kl.samples)) == expected_nsamps)
+    myassert(kl.samples.n_samples() == expected_nsamps)
 
     # Test value
     assert_allclose(kl.value, klpure.value)
@@ -105,8 +100,9 @@ def test_kl(constants, point_estimates, mirror_samples, mf, geo):
             res0 = klpure.gradient[kk].val
         assert_allclose(res0, res1)
 
+
 @pmp('mirror_samples', (True, False))
-@pmp('fc',(True, False))
+@pmp('fc', (True, False))
 def test_ParametricVI(mirror_samples, fc):
     dom = ift.RGSpace((12,), (2.12))
     op = ift.HarmonicSmoothingOperator(dom, 3)

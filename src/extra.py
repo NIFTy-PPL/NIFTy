@@ -29,9 +29,8 @@ from .operators.endomorphic_operator import EndomorphicOperator
 from .operators.energy_operators import EnergyOperator
 from .operators.linear_operator import LinearOperator
 from .operators.operator import Operator
-from .operators.scaling_operator import ScalingOperator
 from .probing import StatCalculator
-from .sugar import from_random, full, is_fieldlike, is_operator
+from .sugar import from_random, is_fieldlike, is_operator
 from .utilities import myassert
 
 __all__ = ["check_linear_operator", "check_operator", "assert_allclose", "minisanity"]
@@ -263,6 +262,7 @@ def _performance_check(op, pos, raise_on_fail):
     class CountingOp(LinearOperator):
         def __init__(self, domain):
             from .sugar import makeDomain
+
             self._domain = self._target = makeDomain(domain)
             self._capability = self.TIMES | self.ADJOINT_TIMES
             self._count = 0
@@ -412,8 +412,7 @@ def _jac_vs_finite_differences(op, loc, tol, ntries, only_r_differentiable):
                               atol=tol**2, rtol=tol**2)
 
 
-def minisanity(data, metric_at_pos, modeldata_operator, mean, samples=None,
-               terminal_colors=True):
+def minisanity(data, metric_at_pos, modeldata_operator, samples, terminal_colors=True):
     """Log information about the current fit quality and prior compatibility.
 
     Log a table with fitting information for the likelihood and the prior.
@@ -445,11 +444,8 @@ def minisanity(data, metric_at_pos, modeldata_operator, mean, samples=None,
     model_data : Operator
         Operator which generates model data.
 
-    mean : Field or MultiField
-        Mean of input of `model_data`.
-
-    samples : iterable of Field or MultiField, optional
-        Residual samples around `mean`. Default: no samples.
+    samples : SampleListBase
+        List of samples.
 
     terminal_colors : bool, optional
         Setting this to false disables terminal colors. This may be useful if
@@ -462,39 +458,61 @@ def minisanity(data, metric_at_pos, modeldata_operator, mean, samples=None,
 
     """
     from .logger import logger
-    if not (
-        is_operator(modeldata_operator)
-        and is_fieldlike(data)
-        and is_fieldlike(mean)
-    ):
+    from .minimization.sample_list import SampleListBase
+    from .sugar import makeDomain
+
+    if not (is_operator(modeldata_operator) and is_fieldlike(data)):
         raise TypeError
+    if not isinstance(samples, SampleListBase):
+        raise TypeError(
+            "Minisanity takes only SampleLists as input. If you happen to have "
+            "only one field (i.e. no samples), you may wrap it via "
+            "`ift.SampleList([field])` and pass it to minisanity."
+        )
     colors = bool(terminal_colors)
     keylen = 18
-    for dom in [data.domain, mean.domain]:
+    for dom in [data.domain, samples.domain]:
         if isinstance(dom, MultiDomain):
             keylen = max([max(map(len, dom.keys())), keylen])
     keylen = min([keylen, 42])
-    op0 = metric_at_pos(mean).get_sqrt() @ Adder(data, neg=True) @ modeldata_operator
-    op1 = ScalingOperator(mean.domain, 1)
-    if not isinstance(op0.target, MultiDomain):
-        op0 = op0.ducktape_left("<None>")
-    if not isinstance(op1.target, MultiDomain):
-        op1 = op1.ducktape_left("<None>")
-    s = [full(mean.domain, 0.0)] if samples is None else samples
-    xop = op0, op1
-    xkeys = op0.target.keys(), op1.target.keys()
-    xredchisq, xscmean, xndof = 2*[None], 2*[None], 2*[None]
-    for aa in [0, 1]:
-        xredchisq[aa] = {kk: StatCalculator() for kk in xkeys[aa]}
-        xscmean[aa] = {kk: StatCalculator() for kk in xkeys[aa]}
-        xndof[aa] = {}
-    for ii, ss in enumerate(s):
-        for aa in [0, 1]:
-            rr = xop[aa].force(mean.unite(ss))
-            for kk in xkeys[aa]:
-                xredchisq[aa][kk].add(np.nansum(abs(rr[kk].val) ** 2) / rr[kk].size)
-                xscmean[aa][kk].add(np.nanmean(rr[kk].val))
-                xndof[aa][kk] = rr[kk].size - np.sum(np.isnan(rr[kk].val))
+
+    xdoms = [data.domain, samples.domain]
+    # compute xops
+    xops = []
+    if isinstance(xdoms[0], MultiDomain):
+        xops.append(
+            lambda x: (
+                metric_at_pos(x).get_sqrt() @ Adder(data, neg=True) @ modeldata_operator
+            )(x)
+        )
+    else:
+        xdoms[0] = makeDomain({"<None>": xdoms[0]})
+        xops.append(
+            lambda x: (
+                metric_at_pos(x).get_sqrt().ducktape_left("<None>")
+                @ Adder(data, neg=True)
+                @ modeldata_operator
+            )(x)
+        )
+    if isinstance(xdoms[1], MultiDomain):
+        xops.append(lambda x: x)
+    else:
+        xdoms[1] = makeDomain({"<None>": xdoms[1]})
+        xops.append(lambda x: x.ducktape_left("<None>"))
+    # /compute xops
+
+    xredchisq, xscmean, xndof = [], [], []
+    for dd in xdoms:
+        xredchisq.append({kk: StatCalculator() for kk in dd.keys()})
+        xscmean.append({kk: StatCalculator() for kk in dd.keys()})
+        xndof.append({})
+
+    for ss1, ss2 in zip(samples.iterator(xops[0]), samples.iterator(xops[1])):
+        for ii, ss in enumerate((ss1, ss2)):
+            for kk in ss.domain.keys():
+                xredchisq[ii][kk].add(np.nansum(abs(ss[kk].val) ** 2) / ss[kk].size)
+                xscmean[ii][kk].add(np.nanmean(ss[kk].val))
+                xndof[ii][kk] = ss[kk].size - np.sum(np.isnan(ss[kk].val))
 
     s0 = _tableentries(xredchisq[0], xscmean[0], xndof[0], keylen, colors)
     s1 = _tableentries(xredchisq[1], xscmean[1], xndof[1], keylen, colors)
@@ -515,7 +533,6 @@ def minisanity(data, metric_at_pos, modeldata_operator, mean, samples=None,
 
 
 def _tableentries(redchisq, scmean, ndof, keylen, colors):
-
     class _bcolors:
         WARNING = "\033[33m" if colors else ""
         FAIL = "\033[31m" if colors else ""

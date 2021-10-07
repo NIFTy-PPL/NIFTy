@@ -17,7 +17,7 @@
 
 from ..multi_domain import MultiDomain
 from ..multi_field import MultiField
-from ..utilities import check_domain_equality, indent, check_dtype_or_none
+from ..utilities import check_domain_equality, check_dtype_or_none, indent
 from .endomorphic_operator import EndomorphicOperator
 from .linear_operator import LinearOperator
 

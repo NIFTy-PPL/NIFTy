@@ -74,8 +74,9 @@ from .minimization.stochastic_minimizer import ADVIOptimizer
 from .minimization.scipy_minimizer import L_BFGS_B
 from .minimization.energy import Energy
 from .minimization.quadratic_energy import QuadraticEnergy
+from .minimization.sample_list import SampleList, SampleListBase, ResidualSampleList
 from .minimization.energy_adapter import EnergyAdapter, StochasticEnergyAdapter
-from .minimization.kl_energies import MetricGaussianKL, GeoMetricKL
+from .minimization.kl_energies import SampledKLEnergy, SampledKLEnergyClass
 
 from .sugar import *
 

@@ -11,7 +11,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
-# Copyright(C) 2013-2019 Max-Planck-Society
+# Copyright(C) 2013-2021 Max-Planck-Society
 #
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
 
@@ -68,9 +68,8 @@ class SandwichOperator(EndomorphicOperator):
             cheese = ScalingOperator(bun.target, 1., sampling_dtype)
         if isinstance(bun, ScalingOperator):
             fct = abs(bun._factor)**2
-            # if fct == 1.:
-            # FIXME Can be enabled after bug has been found
-            #     return cheese
+            if fct == 1.:
+                return cheese
             op = cheese.scale(fct)
         else:
             op = bun.adjoint @ cheese @ bun

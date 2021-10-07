@@ -473,7 +473,7 @@ class StudentTEnergy(LikelihoodEnergyOperator):
         if isinstance(self._theta, Field) or isinstance(self._theta, MultiField):
             th = self._theta
         else:
-            from ..extra import full
+            from ..sugar import full
             th = full(self._domain, self._theta)
         return np.float64, makeOp(((th+1)/(th+3)).sqrt())
 
@@ -511,7 +511,7 @@ class BernoulliEnergy(LikelihoodEnergyOperator):
         return res.add_metric(self.get_metric_at(x.val))
 
     def get_transformation(self):
-        from ..extra import full
+        from ..sugar import full
         res = Adder(full(self._domain, 1.)) @ ScalingOperator(self._domain, -1)
         res = res * ScalingOperator(self._domain, 1).reciprocal()
         return np.float64, -2.*res.sqrt().arctan()
@@ -519,7 +519,7 @@ class BernoulliEnergy(LikelihoodEnergyOperator):
 
 class StandardHamiltonian(EnergyOperator):
     """Computes an information Hamiltonian in its standard form, i.e. with the
-    prior being a Gaussian with unit covariance.
+    prior being a real-valued Gaussian with unit covariance.
 
     Let the likelihood energy be :math:`E_{lh}`. Then this operator computes:
 
@@ -543,8 +543,6 @@ class StandardHamiltonian(EnergyOperator):
     ic_samp : IterationController
         Tells an internal :class:`SamplingEnabler` which convergence criterion
         to use to draw Gaussian samples.
-    prior_dtype : numpy.dtype or dict of numpy.dtype, optional
-        Data type of prior used for sampling.
 
     See also
     --------
@@ -553,17 +551,17 @@ class StandardHamiltonian(EnergyOperator):
     `<https://arxiv.org/abs/1812.04403>`_
     """
 
-    def __init__(self, lh, ic_samp=None, prior_dtype=np.float64):
+    def __init__(self, lh, ic_samp=None):
         self._lh = lh
-        self._prior = GaussianEnergy(domain=lh.domain, sampling_dtype=prior_dtype)
+        self._prior = GaussianEnergy(domain=lh.domain, sampling_dtype=float)
         self._ic_samp = ic_samp
         self._domain = lh.domain
 
     def apply(self, x):
         self._check_input(x)
-        if not x.want_metric or self._ic_samp is None:
-            return (self._lh + self._prior)(x)
         lhx, prx = self._lh(x), self._prior(x)
+        if not x.want_metric or self._ic_samp is None:
+            return lhx + prx
         met = SamplingEnabler(lhx.metric, prx.metric, self._ic_samp)
         return (lhx+prx).add_metric(met)
 
@@ -573,7 +571,11 @@ class StandardHamiltonian(EnergyOperator):
 
     @property
     def likelihood_energy(self):
-        return self._likelihood
+        return self._lh
+
+    @property
+    def iteration_controller(self):
+        return self._ic_samp
 
     def __repr__(self):
         subs = 'Likelihood energy:\n{}'.format(utilities.indent(self._lh.__repr__()))

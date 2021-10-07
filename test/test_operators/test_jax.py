@@ -14,9 +14,11 @@
 # Copyright(C) 2021 Max-Planck-Society
 # Author: Philipp Arras
 
-import nifty8 as ift
 import numpy as np
 import pytest
+
+import nifty8 as ift
+
 try:
     import jax.numpy as jnp
 except ImportError:

@@ -11,7 +11,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
-# Copyright(C) 2013-2020 Max-Planck-Society
+# Copyright(C) 2013-2021 Max-Planck-Society
 #
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
 
@@ -61,11 +61,10 @@ class SamplingEnabler(EndomorphicOperator):
         self._capability = self._op.capability
         self.apply = self._op.apply
 
-    def draw_sample(self, from_inverse=False):
+    def special_draw_sample(self, from_inverse=False):
         try:
-            p = self._prior.draw_sample(from_inverse)
-            l = self._likelihood.draw_sample(from_inverse)
-            return p + l
+            res = self._op.draw_sample(from_inverse)
+            return self._op(res), res
         except NotImplementedError:
             if not from_inverse:
                 raise ValueError("from_inverse must be True here")
@@ -74,9 +73,9 @@ class SamplingEnabler(EndomorphicOperator):
                 energy = QuadraticEnergy(0*b, self._op, b)
             else:
                 s = self._prior.draw_sample(from_inverse=True)
-                sp = self._prior(s)
                 nj = self._likelihood.draw_sample()
-                energy = QuadraticEnergy(s, self._op, sp + nj,
+                b = self._prior(s) + nj
+                energy = QuadraticEnergy(s, self._op, b,
                                          _grad=self._likelihood(s) - nj)
             inverter = ConjugateGradient(self._ic)
             if self._approximation is not None:
@@ -84,7 +83,10 @@ class SamplingEnabler(EndomorphicOperator):
                     energy, preconditioner=self._approximation.inverse)
             else:
                 energy, convergence = inverter(energy)
-            return energy.position
+            return b, energy.position
+
+    def draw_sample(self, from_inverse=False):
+        return self.special_draw_sample(from_inverse=from_inverse)[1]
 
     def __repr__(self):
         from ..utilities import indent

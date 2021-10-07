@@ -11,7 +11,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
-# Copyright(C) 2013-2019 Max-Planck-Society
+# Copyright(C) 2013-2021 Max-Planck-Society
 #
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
 
@@ -49,7 +49,7 @@ def test_exec_time():
     lh = ift.GaussianEnergy(domain=op.target, sampling_dtype=np.float64) @ op1
     ic = ift.GradientNormController(iteration_limit=2)
     ham = ift.StandardHamiltonian(lh, ic_samp=ic)
-    kl = ift.MetricGaussianKL(ift.full(ham.domain, 0.), ham, 1, False)
+    kl = ift.SampledKLEnergy(ift.full(ham.domain, 0.), ham, 1, None, mirror_samples=False)
     ops = [op, op1, lh, ham, kl]
     for oo in ops:
         for wm in [True, False]:
