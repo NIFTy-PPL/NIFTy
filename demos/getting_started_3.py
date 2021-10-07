@@ -138,9 +138,9 @@ def main():
         plot.output(ny=1, ysize=6, xsize=16,
                     name=filename.format("loop_{:02d}".format(i)))
 
-    # Write result to disk and load it immediatly afterwards
+    # Write result to disk and load it immediately afterwards
     # May be useful for long inference runs, where inference and posterior
-    # analysis is split into two steps
+    # analysis are split into two steps
     KL.samples.save("result")
     samples = ift.ResidualSampleList.load("result")
 
