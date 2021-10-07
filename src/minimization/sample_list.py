@@ -194,21 +194,14 @@ class SampleListBase:
         raise NotImplementedError
 
     def save_helper(self, file_name_base, obj):
-        # Helper functions necessary because MPI communicator cannot be pickled
-        fname = str(file_name_base) + _mpi_file_extension(self.comm) + ".pickle"
-        with open(fname, "wb") as f:
-            pickle.dump(obj, f, pickle.HIGHEST_PROTOCOL)
+        if not isinstance(obj, list):
+            raise TypeError("save_helper takes the list of constructor arguments (except `comm`) "
+                            "as an input")
+        return _save_to_disk(_mpi_file_name(file_name_base, self.comm), obj)
 
-    @staticmethod
-    def load_helper(file_name_base, comm):
-        # Helper functions necessary because MPI communicator cannot be pickled
-        fname = str(file_name_base) + _mpi_file_extension(comm) + ".pickle"
-        with open(fname, "rb") as f:
-            obj = pickle.load(f)
-        return obj
 
-    @staticmethod
-    def load(file_name_base, comm=None):
+    @classmethod
+    def load(cls, file_name_base, comm=None):
         """Deserialize SampleList from files on disk.
 
         Parameters
@@ -230,7 +223,7 @@ class SampleListBase:
         The number of MPI tasks used for saving and loading the `SampleList`
         need to be the same.
         """
-        raise NotImplementedError
+        return cls(*_load_from_disk(_mpi_file_name(file_name_base, comm)), comm=comm)
 
 
 class ResidualSampleList(SampleListBase):
@@ -320,13 +313,7 @@ class ResidualSampleList(SampleListBase):
         return ResidualSampleList(mean, self._r, self._n, self.comm)
 
     def save(self, file_name_base):
-        obj = self._m, self._r, self._n
-        self.save_helper(file_name_base, obj)
-
-    @staticmethod
-    def load(file_name_base, comm=None):
-        args = SampleListBase.load_helper(file_name_base, comm)
-        return ResidualSampleList(*args, comm=comm)
+        self.save_helper(file_name_base, [self._m, self._r, self._n])
 
 
 class SampleList(SampleListBase):
@@ -355,12 +342,7 @@ class SampleList(SampleListBase):
         return len(self._s)
 
     def save(self, file_name_base):
-        self.save_helper(file_name_base, self._s)
-
-    @staticmethod
-    def load(file_name_base, comm=None):
-        s = SampleListBase.load_helper(file_name_base, comm)
-        return SampleList(s, comm=comm)
+        self.save_helper(file_name_base, [self._s])
 
 
 def _none_to_id(obj):
@@ -388,18 +370,34 @@ def _bcast(obj, comm, root):
     return comm.bcast(data, root=root)
 
 
-def _mpi_file_extension(comm):
-    """Return MPI-configuration unique string.
+def _mpi_file_name(file_name_base, comm):
+    """Return MPI-configuration unique file name.
 
-    This string that can be used to uniquely determine the number of MPI tasks
-    for distributed saving of files.
+    This file name that can be used to uniquely write files from all MPI tasks.
 
     Parameters
-
+    ----------
     comm : MPI communicator or None
         If None, an empty string is returned.
     """
-    if comm is None:
-        return ""
     ntask, rank, _ = utilities.get_MPI_params_from_comm(comm)
-    return f"{rank}.{ntask}"
+    return _mpi_file_name2(file_name_base, rank, ntask)
+
+
+def _mpi_file_name2(file_name_base, rank, ntask):
+    if rank >= ntask:
+        raise ValueError
+    if rank == 0 and ntask == 1:
+        return f"{file_name_base}.pickle"
+    return f"{file_name_base}.{rank}_{ntask}.pickle"
+
+
+def _load_from_disk(file_name):
+    with open(file_name, "rb") as f:
+        obj = pickle.load(f)
+    return obj
+
+
+def _save_to_disk(file_name, obj):
+    with open(file_name, "wb") as f:
+        pickle.dump(obj, f, pickle.HIGHEST_PROTOCOL)
