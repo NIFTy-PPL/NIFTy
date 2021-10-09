@@ -76,7 +76,7 @@ class SampleListBase:
         return self._domain
 
     @staticmethod
-    def indices_from_comm(n_samples, comm):
+    def indices_from_comm(n_samples, comm=None):
         """Return range of global sample indices for local task.
 
         This method calls `utilities.shareRange`
@@ -227,7 +227,7 @@ class SampleListBase:
             os.remove(ff)
 
     @classmethod
-    def load(cls, file_name_base, comm):
+    def load(cls, file_name_base, comm=None):
         """Deserialize SampleList from files on disk.
 
         Parameters
@@ -251,8 +251,12 @@ class SampleListBase:
         """
         raise NotImplementedError
 
+    def save_to_hdf5():
+        # FIXME
+        raise NotImplementedError
+
     @classmethod
-    def _list_local_sample_files(cls, file_name_base, comm):
+    def _list_local_sample_files(cls, file_name_base, comm=None):
         """List all sample files that are relevant for the local task.
 
         All sample files that correspond to `file_name_base` are searched and
@@ -286,7 +290,7 @@ class SampleListBase:
 
 
 class ResidualSampleList(SampleListBase):
-    def __init__(self, mean, residuals, neg, comm):
+    def __init__(self, mean, residuals, neg, comm=None):
         """Store samples in terms of a mean and a residual deviation thereof.
 
 
@@ -375,9 +379,8 @@ class ResidualSampleList(SampleListBase):
         self._check_mpi()
         nsample = self.n_samples()
         local_indices = self.indices_from_comm(nsample, self.comm)
-        lo = local_indices[0]
-        for isample in local_indices:
-            obj = [self._r[isample-lo], self._n[isample-lo]]
+        for ii, isample in enumerate(local_indices):
+            obj = [self._r[ii], self._n[ii]]
             fname = _sample_file_name(file_name_base, isample)
             _save_to_disk(fname, obj)
         if self.comm is None or self.comm.Get_rank() == 0:
@@ -388,7 +391,7 @@ class ResidualSampleList(SampleListBase):
         super(ResidualSampleList, self).delete(file_name_base, _additional=a)
 
     @classmethod
-    def load(cls, file_name_base, comm):
+    def load(cls, file_name_base, comm=None):
         files = cls._list_local_sample_files(file_name_base, comm)
         tmp = [_load_from_disk(ff) for ff in files]
         res = [aa[0] for aa in tmp]
@@ -398,7 +401,7 @@ class ResidualSampleList(SampleListBase):
 
 
 class SampleList(SampleListBase):
-    def __init__(self, samples, comm):
+    def __init__(self, samples, comm=None):
         """Store samples as a plain list.
 
         This is a minimalist implementation of :class:`SampleListBase`. It just
@@ -434,7 +437,7 @@ class SampleList(SampleListBase):
                 _save_to_disk(fname, obj)
 
     @classmethod
-    def load(cls, file_name_base, comm):
+    def load(cls, file_name_base, comm=None):
         files = cls._list_local_sample_files(file_name_base, comm)
         samples = [_load_from_disk(ff) for ff in files]
         return cls(samples, comm=comm)
