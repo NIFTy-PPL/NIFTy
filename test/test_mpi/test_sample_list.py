@@ -18,20 +18,28 @@
 from mpi4py import MPI
 
 import nifty8 as ift
+import pytest
 
 from ..common import list2fixture, setup_function, teardown_function
 
+pmp = pytest.mark.parametrize
 comm = list2fixture([MPI.COMM_WORLD, None])
 
 
-def _get_sample_list(communicator):
+def _get_sample_list(communicator, cls):
     dom = ift.makeDomain({"a": ift.UnstructuredDomain(2), "b": ift.RGSpace(12)})
     samples = [ift.from_random(dom) for _ in range(3)]
-    return ift.SampleList(samples, communicator), samples
+    if cls == "SampleList":
+        return ift.SampleList(samples, communicator), samples
+    elif cls == "ResidualSampleList":
+        mean = ift.from_random(dom)
+        neg = 3*[False]
+        return ift.ResidualSampleList(mean, samples, neg, communicator), [mean + ss for ss in samples]
+    raise NotImplementedError
 
 
 def test_sample_list(comm):
-    sl, samples = _get_sample_list(comm)
+    sl, samples = _get_sample_list(comm, "SampleList")
     dom = sl.domain
 
     assert comm == sl.comm
@@ -64,10 +72,18 @@ def test_sample_list(comm):
             assert len(samples) <= sl.n_samples()
 
 
-def test_load_and_save(comm):
-    sl, _ = _get_sample_list(comm)
-    sl.save("sample_list")
-    sl1 = ift.SampleList.load("sample_list", comm)
+@pmp("cls", ["ResidualSampleList", "SampleList"])
+def test_load_and_save(comm, cls):
+    sl, _ = _get_sample_list(comm, cls)
+
+    if comm is None and ift.utilities.get_MPI_params()[1] > 1:
+        with pytest.raises(RuntimeError):
+            sl.save("sl")
+        return
+
+    sl.save("sl")
+    sl1 = getattr(ift, cls).load("sl", comm)
+    sl.delete("sl")
 
     for s0, s1 in zip(sl.local_iterator(), sl1.local_iterator()):
         ift.extra.assert_equal(s0, s1)

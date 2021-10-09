@@ -14,6 +14,8 @@
 # Copyright(C) 2021 Max-Planck-Society
 # Author: Philipp Arras, Philipp Frank
 
+import os
+import re
 import pickle
 
 from .. import utilities
@@ -93,6 +95,16 @@ class SampleListBase:
         """
         ntask, rank, _ = utilities.get_MPI_params_from_comm(comm)
         return range(*utilities.shareRange(n_samples, ntask, rank))
+
+    def _check_mpi(self):
+        global_ntask = utilities.get_MPI_params()[1]
+        class_ntask = utilities.get_MPI_params_from_comm(self.comm)[0]
+        if global_ntask > class_ntask:
+            raise RuntimeError(f"You try to write a SampleList to disk while MPI is active but "
+                    "the SampleList has not been instantiated with MPI support. This is a problem "
+                    "because multiple tasks may write to the same file simultaneously. Please "
+                    "instatiate SampleList with MPI support. Thereby, the samples are "
+                    "distributed over the MPI tasks.")
 
     def iterator(self, op=None):
         """Return iterator over all potentially distributed samples.
@@ -193,15 +205,29 @@ class SampleListBase:
         """
         raise NotImplementedError
 
-    def save_helper(self, file_name_base, obj):
-        if not isinstance(obj, list):
-            raise TypeError("save_helper takes the list of constructor arguments (except `comm`) "
-                            "as an input")
-        return _save_to_disk(_mpi_file_name(file_name_base, self.comm), obj)
+    def delete(self, file_name_base, _additional=[]):
+        """Delete all sample files that would have been written by `self.save()`.
 
+        Raises a `FileNotFoundError` if a file does not exist.
+
+        Parameters
+        ----------
+        file_name_base : str
+            File name of the output file without extension. The actual file name
+            will have the extension ".pickle" and before that an identifier that
+            distunguishes between MPI tasks.
+        """
+        if self.comm is not None and self.comm.Get_rank() != 0:
+            return
+        if not isinstance(_additional, list):
+            raise TypeError
+        files = [_sample_file_name(file_name_base, ii) for ii in range(self.n_samples())]
+        files.extend(_additional)
+        for ff in files:
+            os.remove(ff)
 
     @classmethod
-    def load(cls, file_name_base, comm=None):
+    def load(cls, file_name_base, comm):
         """Deserialize SampleList from files on disk.
 
         Parameters
@@ -223,7 +249,40 @@ class SampleListBase:
         The number of MPI tasks used for saving and loading the `SampleList`
         need to be the same.
         """
-        return cls(*_load_from_disk(_mpi_file_name(file_name_base, comm)), comm=comm)
+        raise NotImplementedError
+
+    @classmethod
+    def _list_local_sample_files(cls, file_name_base, comm):
+        """List all sample files that are relevant for the local task.
+
+        All sample files that correspond to `file_name_base` are searched and
+        selected based on which rank the local task has.
+
+        Note
+        ----
+        This function makes sure that the all file numbers between 0 and the
+        maximal found number are present. If this is not the case, a
+        `RuntimeError` is raised.
+        """
+        base_dir = os.path.dirname(file_name_base)
+        if base_dir == "":
+            base_dir = "."
+        files = [ff for ff in os.listdir(base_dir)
+                 if re.match(f"{file_name_base}.[0-9]+.pickle", ff) ]
+        if len(files) == 0:
+            raise RuntimeError(f"No files matching `{file_name_base}.*.pickle`")
+        numbers = list(map(lambda x: int(x.split(".")[-2]), files))
+        n_samples = max(numbers) + 1
+        if min(numbers) != 0:
+            raise RuntimeError("Lowest sample number is not 0")
+        if n_samples != len(numbers):
+            raise RuntimeError("Not all samples found")
+        files = [f"{file_name_base}.{ii}.pickle" for ii in cls.indices_from_comm(n_samples, comm)]
+        # paranoia check
+        for ff in files:
+            if not os.path.isfile(ff):
+                raise RuntimeError(f"File {ff} not found")
+        return files
 
 
 class ResidualSampleList(SampleListBase):
@@ -313,11 +372,33 @@ class ResidualSampleList(SampleListBase):
         return ResidualSampleList(mean, self._r, self._n, self.comm)
 
     def save(self, file_name_base):
-        self.save_helper(file_name_base, [self._m, self._r, self._n])
+        self._check_mpi()
+        nsample = self.n_samples()
+        local_indices = self.indices_from_comm(nsample, self.comm)
+        lo = local_indices[0]
+        for isample in local_indices:
+            obj = [self._r[isample-lo], self._n[isample-lo]]
+            fname = _sample_file_name(file_name_base, isample)
+            _save_to_disk(fname, obj)
+        if self.comm is None or self.comm.Get_rank() == 0:
+            _save_to_disk(f"{file_name_base}.mean.pickle", self._m)
+
+    def delete(self, file_name_base):
+        a = [f"{file_name_base}.mean.pickle"]
+        super(ResidualSampleList, self).delete(file_name_base, _additional=a)
+
+    @classmethod
+    def load(cls, file_name_base, comm):
+        files = cls._list_local_sample_files(file_name_base, comm)
+        tmp = [_load_from_disk(ff) for ff in files]
+        res = [aa[0] for aa in tmp]
+        neg = [aa[1] for aa in tmp]
+        mean = _load_from_disk(f"{file_name_base}.mean.pickle")
+        return cls(mean, res, neg, comm=comm)
 
 
 class SampleList(SampleListBase):
-    def __init__(self, samples, comm=None):
+    def __init__(self, samples, comm):
         """Store samples as a plain list.
 
         This is a minimalist implementation of :class:`SampleListBase`. It just
@@ -342,7 +423,21 @@ class SampleList(SampleListBase):
         return len(self._s)
 
     def save(self, file_name_base):
-        self.save_helper(file_name_base, [self._s])
+        self._check_mpi()
+        nsample = self.n_samples()
+        local_indices = self.indices_from_comm(nsample, self.comm)
+        lo = local_indices[0]
+        for isample in range(nsample):
+            if isample in local_indices:
+                obj = self._s[isample-lo]
+                fname = _sample_file_name(file_name_base, isample)
+                _save_to_disk(fname, obj)
+
+    @classmethod
+    def load(cls, file_name_base, comm):
+        files = cls._list_local_sample_files(file_name_base, comm)
+        samples = [_load_from_disk(ff) for ff in files]
+        return cls(samples, comm=comm)
 
 
 def _none_to_id(obj):
@@ -370,26 +465,21 @@ def _bcast(obj, comm, root):
     return comm.bcast(data, root=root)
 
 
-def _mpi_file_name(file_name_base, comm):
-    """Return MPI-configuration unique file name.
+def _sample_file_name(file_name_base, isample):
+    """Return sample-unique file name.
 
-    This file name that can be used to uniquely write files from all MPI tasks.
+    This file name that can be used to uniquely write samples potentially from all MPI tasks.
 
     Parameters
     ----------
-    comm : MPI communicator or None
-        If None, an empty string is returned.
+    file_name_base : str
+        User-defined first part of file name.
+    isample : int
+        Number of sample
     """
-    ntask, rank, _ = utilities.get_MPI_params_from_comm(comm)
-    return _mpi_file_name2(file_name_base, rank, ntask)
-
-
-def _mpi_file_name2(file_name_base, rank, ntask):
-    if rank >= ntask:
-        raise ValueError
-    if rank == 0 and ntask == 1:
-        return f"{file_name_base}.pickle"
-    return f"{file_name_base}.{rank}_{ntask}.pickle"
+    if not isinstance(isample, int):
+        raise TypeError
+    return f"{file_name_base}.{isample}.pickle"
 
 
 def _load_from_disk(file_name):
