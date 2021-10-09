@@ -56,6 +56,10 @@ class SampleListBase:
         """int: Number of local samples."""
         raise NotImplementedError
 
+    def n_samples(self):
+        """Return number of samples across all MPI tasks."""
+        return utilities.allreduce_sum([self.n_local_samples], self.comm)
+
     def local_item(self, i):
         """Return ith local sample."""
         raise NotImplementedError
@@ -97,10 +101,18 @@ class SampleListBase:
         return range(*utilities.shareRange(n_samples, ntask, rank))
 
     def _check_mpi(self):
+        """Make sure that there are not more MPI tasks than tasks associated
+        with the SampleList.
+
+        If this is not the case, raise a RuntimeError.
+
+        This is helpful before writing files to disk to make sure that two tasks
+        do not try to write to the same file.
+        """
         global_ntask = utilities.get_MPI_params()[1]
         class_ntask = utilities.get_MPI_params_from_comm(self.comm)[0]
         if global_ntask > class_ntask:
-            raise RuntimeError(f"You try to write a SampleList to disk while MPI is active but "
+            raise RuntimeError("You try to write a SampleList to disk while MPI is active but "
                     "the SampleList has not been instantiated with MPI support. This is a problem "
                     "because multiple tasks may write to the same file simultaneously. Please "
                     "instatiate SampleList with MPI support. Thereby, the samples are "
@@ -163,10 +175,6 @@ class SampleListBase:
         n_output_elements = len(res[0])
         res = [[elem[ii] for elem in res] for ii in range(n_output_elements)]
         return tuple(utilities.allreduce_sum(rr, self.comm) / n for rr in res)
-
-    def n_samples(self):
-        """Return number of samples across all MPI tasks."""
-        return utilities.allreduce_sum([self.n_local_samples], self.comm)
 
     def sample_stat(self, op=None):
         """Compute mean and variance of samples after applying `op`.
