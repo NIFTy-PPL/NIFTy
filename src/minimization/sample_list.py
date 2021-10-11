@@ -308,21 +308,13 @@ class SampleListBase:
         maximal found number are present. If this is not the case, a
         `RuntimeError` is raised.
         """
-        base_dir = os.path.dirname(file_name_base)
-        if base_dir == "":
-            base_dir = "."
+        base_dir = os.path.abspath(os.path.dirname(file_name_base))
         files = [ff for ff in os.listdir(base_dir)
                  if re.match(f"{file_name_base}.[0-9]+.pickle", ff) ]
         if len(files) == 0:
             raise RuntimeError(f"No files matching `{file_name_base}.*.pickle`")
-        numbers = list(map(lambda x: int(x.split(".")[-2]), files))
-        n_samples = max(numbers) + 1
-        if min(numbers) != 0:
-            raise RuntimeError("Lowest sample number is not 0")
-        if n_samples != len(numbers):
-            raise RuntimeError("Not all samples found")
-        files = [f"{file_name_base}.{ii}.pickle" for ii in cls.indices_from_comm(n_samples, comm)]
-        # paranoia check
+        n_samples = max(list(map(lambda x: int(x.split(".")[-2]), files))) + 1
+        files = [f"{file_name_base}.{ii}.pickle" for ii in cls.local_indices(n_samples, comm)]
         for ff in files:
             if not os.path.isfile(ff):
                 raise RuntimeError(f"File {ff} not found")
