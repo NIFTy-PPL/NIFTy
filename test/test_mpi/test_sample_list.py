@@ -14,8 +14,6 @@
 # Copyright(C) 2021 Max-Planck-Society
 # Author: Philipp Arras
 
-import os
-
 import nifty8 as ift
 import pytest
 from mpi4py import MPI
@@ -98,8 +96,8 @@ def test_load_and_save(comm, cls):
 @pmp("std", [False, True])
 @pmp("samples", [False, True])
 def test_save_to_hdf5(comm, cls, mean, std, samples):
+    pytest.importorskip("h5py")
     sl, _ = _get_sample_list(comm, cls)
-    dom = sl.domain
     for op in _get_ops(sl):
         if comm is None and ift.utilities.get_MPI_params()[1] > 1:
             with pytest.raises(RuntimeError):
@@ -112,3 +110,6 @@ def test_save_to_hdf5(comm, cls, mean, std, samples):
             continue
 
         sl.save_to_hdf5("output.h5", op, mean=mean, std=std, samples=samples, overwrite=True)
+
+        if comm is not None:
+            comm.Barrier()
