@@ -29,6 +29,9 @@ def list2fixture(lst):
 def setup_function():
     import nifty8 as ift
     ift.random.push_sseq_from_seed(42)
+    comm = ift.utilities.get_MPI_params()[0]
+    if comm is not None:
+        comm.Barrier()
 
 
 def teardown_function():
