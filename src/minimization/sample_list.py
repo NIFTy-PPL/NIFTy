@@ -213,27 +213,6 @@ class SampleListBase:
         """
         raise NotImplementedError
 
-    def delete(self, file_name_base, _additional=[]):
-        """Delete all sample files that would have been written by `self.save()`.
-
-        Raises a `FileNotFoundError` if a file does not exist.
-
-        Parameters
-        ----------
-        file_name_base : str
-            File name of the output file without extension. The actual file name
-            will have the extension ".pickle" and before that an identifier that
-            distunguishes between MPI tasks.
-        """
-        if self.comm is not None and self.comm.Get_rank() != 0:
-            return
-        if not isinstance(_additional, list):
-            raise TypeError
-        files = [_sample_file_name(file_name_base, ii) for ii in range(self.n_samples())]
-        files.extend(_additional)
-        for ff in files:
-            os.remove(ff)
-
     @classmethod
     def load(cls, file_name_base, comm=None):
         """Deserialize SampleList from files on disk.
@@ -393,10 +372,6 @@ class ResidualSampleList(SampleListBase):
             _save_to_disk(fname, obj)
         if self.comm is None or self.comm.Get_rank() == 0:
             _save_to_disk(f"{file_name_base}.mean.pickle", self._m)
-
-    def delete(self, file_name_base):
-        a = [f"{file_name_base}.mean.pickle"]
-        super(ResidualSampleList, self).delete(file_name_base, _additional=a)
 
     @classmethod
     def load(cls, file_name_base, comm=None):

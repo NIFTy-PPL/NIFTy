@@ -15,10 +15,11 @@
 # Author: Philipp Arras
 
 
-from mpi4py import MPI
+import os
 
 import nifty8 as ift
 import pytest
+from mpi4py import MPI
 
 from ..common import list2fixture, setup_function, teardown_function
 
@@ -83,7 +84,6 @@ def test_load_and_save(comm, cls):
 
     sl.save("sl")
     sl1 = getattr(ift, cls).load("sl", comm)
-    sl.delete("sl")
 
     for s0, s1 in zip(sl.local_iterator(), sl1.local_iterator()):
         ift.extra.assert_equal(s0, s1)
