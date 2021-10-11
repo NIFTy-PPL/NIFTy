@@ -74,13 +74,10 @@ def test_sample_list(comm):
 
 @pmp("cls", ["ResidualSampleList", "SampleList"])
 def test_load_and_save(comm, cls):
-    sl, _ = _get_sample_list(comm, cls)
-
     if comm is None and ift.utilities.get_MPI_params()[1] > 1:
-        with pytest.raises(RuntimeError):
-            sl.save("sl")
-        return
+        pytest.skip()
 
+    sl, _ = _get_sample_list(comm, cls)
     sl.save("sl")
     sl1 = getattr(ift, cls).load("sl", comm)
 
@@ -97,19 +94,14 @@ def test_load_and_save(comm, cls):
 @pmp("samples", [False, True])
 def test_save_to_hdf5(comm, cls, mean, std, samples):
     pytest.importorskip("h5py")
+    if comm is None and ift.utilities.get_MPI_params()[1] > 1:
+        pytest.skip()
     sl, _ = _get_sample_list(comm, cls)
     for op in _get_ops(sl):
-        if comm is None and ift.utilities.get_MPI_params()[1] > 1:
-            with pytest.raises(RuntimeError):
-                sl.save_to_hdf5("output.h5", op, mean=mean, std=std, samples=samples)
-            continue
-
         if not mean and not std and not samples:
             with pytest.raises(ValueError):
                 sl.save_to_hdf5("output.h5", op, mean=mean, std=std, samples=samples)
             continue
-
         sl.save_to_hdf5("output.h5", op, mean=mean, std=std, samples=samples, overwrite=True)
-
         if comm is not None:
             comm.Barrier()

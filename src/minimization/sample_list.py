@@ -20,6 +20,7 @@ import re
 
 from .. import utilities
 from ..field import Field
+from ..logger import logger
 from ..multi_domain import MultiDomain
 from ..multi_field import MultiField
 
@@ -51,6 +52,13 @@ class SampleListBase:
         self._comm = comm
         self._domain = makeDomain(domain)
         utilities.check_MPI_equality(self._domain, comm)
+
+        global_ntask = utilities.get_MPI_params()[1]
+        class_ntask = utilities.get_MPI_params_from_comm(self.comm)[0]
+        if global_ntask > class_ntask:
+            logger.warn("There are {global_ntask} global MPI tasks and {class_ntask} MPI tasks "
+                        "associated with this object. This may lead to undefined behaviour when "
+                        "writing to disk.")
 
     @property
     def n_local_samples(self):
@@ -105,24 +113,6 @@ class SampleListBase:
         ntask, rank, _ = utilities.get_MPI_params_from_comm(comm)
         return range(*utilities.shareRange(n_samples, ntask, rank))
 
-    def _check_mpi(self):
-        """Make sure that there are not more MPI tasks than tasks associated
-        with the SampleList.
-
-        If this is not the case, raise a RuntimeError.
-
-        This is helpful before writing files to disk to make sure that two tasks
-        do not try to write to the same file.
-        """
-        global_ntask = utilities.get_MPI_params()[1]
-        class_ntask = utilities.get_MPI_params_from_comm(self.comm)[0]
-        if global_ntask > class_ntask:
-            raise RuntimeError("You try to write a SampleList to disk while MPI is active but "
-                    "the SampleList has not been instantiated with MPI support. This is a problem "
-                    "because multiple tasks may write to the same file simultaneously. Please "
-                    "instatiate SampleList with MPI support. Thereby, the samples are "
-                    "distributed over the MPI tasks.")
-
     def save_to_hdf5(self, file_name, op=None, samples=False, mean=False, std=False,
                      overwrite=False):
         """Write sample list to HDF5 file.
@@ -160,7 +150,6 @@ class SampleListBase:
         """
         import h5py
 
-        self._check_mpi()
         if os.path.isfile(file_name):
             if self.mpi_master and overwrite:
                 os.remove(file_name)
@@ -422,7 +411,6 @@ class ResidualSampleList(SampleListBase):
         return ResidualSampleList(mean, self._r, self._n, self.comm)
 
     def save(self, file_name_base):
-        self._check_mpi()
         nsample = self.n_samples()
         local_indices = self.local_indices(nsample, self.comm)
         for ii, isample in enumerate(local_indices):
@@ -470,7 +458,6 @@ class SampleList(SampleListBase):
         return len(self._s)
 
     def save(self, file_name_base):
-        self._check_mpi()
         nsample = self.n_samples()
         local_indices = self.local_indices(nsample, self.comm)
         lo = local_indices[0]
