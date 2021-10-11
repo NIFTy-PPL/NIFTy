@@ -371,6 +371,8 @@ class ResidualSampleList(SampleListBase):
 
     @classmethod
     def load(cls, file_name_base, comm=None):
+        if comm is not None:
+            comm.Barrier()
         files = cls._list_local_sample_files(file_name_base, comm)
         tmp = [_load_from_disk(ff) for ff in files]
         res = [aa[0] for aa in tmp]
@@ -417,6 +419,8 @@ class SampleList(SampleListBase):
 
     @classmethod
     def load(cls, file_name_base, comm=None):
+        if comm is not None:
+            comm.Barrier()
         files = cls._list_local_sample_files(file_name_base, comm)
         samples = [_load_from_disk(ff) for ff in files]
         return cls(samples, comm=comm)
