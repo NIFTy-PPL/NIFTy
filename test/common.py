@@ -33,7 +33,7 @@ def setup_function():
     ift.random.push_sseq_from_seed(42)
     comm, _, _, master = ift.utilities.get_MPI_params()
     if master:
-        for ff in glob("*.pickle") + glob("*.png"):
+        for ff in glob("*.pickle") + glob("*.png") + glob("*.h5"):
             remove(ff)
     if comm is not None:
         comm.Barrier()

@@ -15,10 +15,11 @@
 # Author: Philipp Arras, Philipp Frank
 
 import os
-import re
 import pickle
+import re
 
 from .. import utilities
+from ..field import Field
 from ..multi_domain import MultiDomain
 from ..multi_field import MultiField
 
@@ -75,6 +76,10 @@ class SampleListBase:
         return self._comm
 
     @property
+    def mpi_master(self):
+        return self.comm is None or self.comm.Get_rank() == 0
+
+    @property
     def domain(self):
         """DomainTuple or MultiDomain: the domain on which the samples are defined."""
         return self._domain
@@ -117,6 +122,58 @@ class SampleListBase:
                     "because multiple tasks may write to the same file simultaneously. Please "
                     "instatiate SampleList with MPI support. Thereby, the samples are "
                     "distributed over the MPI tasks.")
+
+    def save_to_hdf5(self, file_name, op=None, samples=False, mean=False, std=False,
+                     overwrite=False):
+        """
+
+        Parameters
+        ----------
+        file_name : str
+            File name of output hdf5 file.
+        op : callable or None
+            Callable that is applied to each item in the :class:`SampleListBase`
+            before it is returned. Can be an
+            :class:`~nifty8.operators.operator.Operator` or any other callable
+            that takes a :class:`~nifty8.field.Field` as an input. Default:
+            None.
+        samples : bool
+            If True, samples are written into hdf5 file.
+        mean : bool
+            If True, mean of samples is written into hdf5 file.
+        std : bool
+            If True, standard deviation of samples is written into hdf5 file.
+        """
+        import h5py
+
+        self._check_mpi()
+        if os.path.isfile(file_name):
+            if self.mpi_master and overwrite:
+                os.remove(file_name)
+            if not overwrite:
+                raise RuntimeError(f"File {file_name} already exists. Delete it or use "
+                                   "`overwrite=True`")
+        if not (samples or mean or std):
+            raise ValueError("Neither samples nor mean nor standard deviation shall be written.")
+
+        if self.mpi_master:
+            f = h5py.File(file_name, "w")
+        else:
+            f = utilities.Nop()
+
+        if samples:
+            grp = f.create_group("samples")
+            for ii, ss in enumerate(self.iterator(op)):
+                _field2hdf5(grp, ss, str(ii))
+        if mean or std:
+            grp = f.create_group("stats")
+            m, v = self.sample_stat(op)
+        if mean:
+            _field2hdf5(grp, m, "mean")
+        if std:
+            _field2hdf5(grp, v.sqrt(), "standard deviation")
+
+        f.close()
 
     def iterator(self, op=None):
         """Return iterator over all potentially distributed samples.
@@ -366,7 +423,7 @@ class ResidualSampleList(SampleListBase):
             obj = [self._r[ii], self._n[ii]]
             fname = _sample_file_name(file_name_base, isample)
             _save_to_disk(fname, obj)
-        if self.comm is None or self.comm.Get_rank() == 0:
+        if self.mpi_master:
             _save_to_disk(f"{file_name_base}.mean.pickle", self._m)
 
     @classmethod
@@ -477,3 +534,16 @@ def _load_from_disk(file_name):
 def _save_to_disk(file_name, obj):
     with open(file_name, "wb") as f:
         pickle.dump(obj, f, pickle.HIGHEST_PROTOCOL)
+
+
+def _field2hdf5(file_handle, obj, name):
+    if not isinstance(name, str):
+        raise TypeError
+    if isinstance(obj, MultiField):
+        grp = file_handle.create_group(name)
+        for kk, fld in obj.items():
+            _field2hdf5(grp, fld, kk)
+        return
+    if not isinstance(obj, Field):
+        raise TypeError
+    file_handle.create_dataset(name, data=obj.val)

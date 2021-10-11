@@ -502,3 +502,10 @@ def check_dtype_or_none(obj, domain=None):
         s = "Need to pass floating dtype (e.g. np.float64, complex) "
         s += f"or `None` to this function.\nHave recieved:\n{obj}"
         raise TypeError(s)
+
+
+class Nop:
+    def nop(*args, **kw):
+        return Nop()
+    def __getattr__(self, _):
+        return self.nop
