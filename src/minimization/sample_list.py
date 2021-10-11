@@ -85,7 +85,7 @@ class SampleListBase:
         return self._domain
 
     @staticmethod
-    def indices_from_comm(n_samples, comm=None):
+    def local_indices(n_samples, comm=None):
         """Return range of global sample indices for local task.
 
         This method calls `utilities.shareRange`
@@ -418,7 +418,7 @@ class ResidualSampleList(SampleListBase):
     def save(self, file_name_base):
         self._check_mpi()
         nsample = self.n_samples()
-        local_indices = self.indices_from_comm(nsample, self.comm)
+        local_indices = self.local_indices(nsample, self.comm)
         for ii, isample in enumerate(local_indices):
             obj = [self._r[ii], self._n[ii]]
             fname = _sample_file_name(file_name_base, isample)
@@ -466,7 +466,7 @@ class SampleList(SampleListBase):
     def save(self, file_name_base):
         self._check_mpi()
         nsample = self.n_samples()
-        local_indices = self.indices_from_comm(nsample, self.comm)
+        local_indices = self.local_indices(nsample, self.comm)
         lo = local_indices[0]
         for isample in range(nsample):
             if isample in local_indices:

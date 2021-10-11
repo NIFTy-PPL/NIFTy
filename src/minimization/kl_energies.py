@@ -135,7 +135,7 @@ def draw_samples(position, H, minimizer, n_samples, mirror_samples, napprox=0,
     utilities.check_MPI_synced_random_state(comm)
     utilities.check_MPI_equality(sseq, comm)
     y = None
-    for i in SampleListBase.indices_from_comm(len(sseq), comm):
+    for i in SampleListBase.local_indices(len(sseq), comm):
         with random.Context(sseq[i]):
             neg = mirror_samples and (i % 2 != 0)
             if not neg or y is None:  # we really need to draw a sample
