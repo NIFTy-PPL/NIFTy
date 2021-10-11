@@ -238,10 +238,6 @@ class SampleListBase:
         """
         raise NotImplementedError
 
-    def save_to_hdf5():
-        # FIXME
-        raise NotImplementedError
-
     @classmethod
     def _list_local_sample_files(cls, file_name_base, comm=None):
         """List all sample files that are relevant for the local task.
