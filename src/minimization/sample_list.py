@@ -125,7 +125,18 @@ class SampleListBase:
 
     def save_to_hdf5(self, file_name, op=None, samples=False, mean=False, std=False,
                      overwrite=False):
-        """
+        """Write sample list to HDF5 file.
+
+        This function writes sample lists to HDF5 files that contain two
+        groups: `samples` and `stats`. `samples` contain the sublabels `0`,
+        `1`, ... that number the labels and `stats` contains the sublabels
+        `mean` and `standard deviation`. If `self.domain` is an instance of
+        :class:`~nifty8.multi_domain.MultiDomain`, these sublabels refer
+        themselves to subgroups. For :class:`~nifty8.field.Field`, the sublabel
+        refers to an HDF5 data set.
+
+        If quanitities are not requested (e.g. by setting `mean=False`), the
+        respective sublabels are not present in the HDF5 file.
 
         Parameters
         ----------
@@ -143,6 +154,9 @@ class SampleListBase:
             If True, mean of samples is written into hdf5 file.
         std : bool
             If True, standard deviation of samples is written into hdf5 file.
+        overwrite : bool
+            If True, a potentially existing file with the same file name as
+            `file_name`, is overwritten.
         """
         import h5py
 
