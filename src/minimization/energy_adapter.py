@@ -205,7 +205,7 @@ class StochasticEnergyAdapter(Energy):
         noise = []
         sseq = random.spawn_sseq(n_samples)
         from .sample_list import SampleListBase
-        for i in SampleListBase.indices_from_comm(n_samples, comm):
+        for i in SampleListBase.local_indices(n_samples, comm):
             with random.Context(sseq[i]):
                 rnd = from_random(samdom)
                 noise.append(rnd)

@@ -14,32 +14,43 @@
 # Copyright(C) 2021 Max-Planck-Society
 # Author: Philipp Arras
 
-
-from mpi4py import MPI
-
 import nifty8 as ift
+import pytest
+from mpi4py import MPI
 
 from ..common import list2fixture, setup_function, teardown_function
 
-comm = list2fixture([MPI.COMM_WORLD, None])
+pmp = pytest.mark.parametrize
+comm = [MPI.COMM_WORLD]
+if MPI.COMM_WORLD.Get_size() == 1:
+    comm += [None]
+comm = list2fixture(comm)
 
 
-def _get_sample_list(communicator):
+def _get_sample_list(communicator, cls):
     dom = ift.makeDomain({"a": ift.UnstructuredDomain(2), "b": ift.RGSpace(12)})
     samples = [ift.from_random(dom) for _ in range(3)]
-    return ift.SampleList(samples, communicator), samples
+    if cls == "SampleList":
+        return ift.SampleList(samples, communicator), samples
+    elif cls == "ResidualSampleList":
+        mean = ift.from_random(dom)
+        neg = 3*[False]
+        return ift.ResidualSampleList(mean, samples, neg, communicator), [mean + ss for ss in samples]
+    raise NotImplementedError
+
+
+def _get_ops(sample_list):
+    dom = sample_list.domain
+    return [None,
+            ift.ScalingOperator(dom, 1.),
+            ift.ducktape(None, dom, "a") @ ift.ScalingOperator(dom, 1.).exp()]
 
 
 def test_sample_list(comm):
-    sl, samples = _get_sample_list(comm)
-    dom = sl.domain
-
+    sl, samples = _get_sample_list(comm, "SampleList")
     assert comm == sl.comm
 
-    ops = [None, ift.ScalingOperator(dom, 1.),
-           ift.ducktape(None, dom, "a") @ ift.ScalingOperator(dom, 1.).exp()]
-
-    for op in ops:
+    for op in _get_ops(sl):
         sc = ift.StatCalculator()
         if op is None:
             [sc.add(ss) for ss in samples]
@@ -64,13 +75,36 @@ def test_sample_list(comm):
             assert len(samples) <= sl.n_samples()
 
 
-def test_load_and_save(comm):
-    sl, _ = _get_sample_list(comm)
-    sl.save("sample_list")
-    sl1 = ift.SampleList.load("sample_list", comm)
+@pmp("cls", ["ResidualSampleList", "SampleList"])
+def test_load_and_save(comm, cls):
+    if comm is None and ift.utilities.get_MPI_params()[1] > 1:
+        pytest.skip()
+
+    sl, _ = _get_sample_list(comm, cls)
+    sl.save("sl")
+    sl1 = getattr(ift, cls).load("sl", comm)
 
     for s0, s1 in zip(sl.local_iterator(), sl1.local_iterator()):
         ift.extra.assert_equal(s0, s1)
 
     for s0, s1 in zip(sl.local_iterator(), sl1.local_iterator()):
         ift.extra.assert_equal(s0, s1)
+
+
+@pmp("cls", ["ResidualSampleList", "SampleList"])
+@pmp("mean", [False, True])
+@pmp("std", [False, True])
+@pmp("samples", [False, True])
+def test_save_to_hdf5(comm, cls, mean, std, samples):
+    pytest.importorskip("h5py")
+    if comm is None and ift.utilities.get_MPI_params()[1] > 1:
+        pytest.skip()
+    sl, _ = _get_sample_list(comm, cls)
+    for op in _get_ops(sl):
+        if not mean and not std and not samples:
+            with pytest.raises(ValueError):
+                sl.save_to_hdf5("output.h5", op, mean=mean, std=std, samples=samples)
+            continue
+        sl.save_to_hdf5("output.h5", op, mean=mean, std=std, samples=samples, overwrite=True)
+        if comm is not None:
+            comm.Barrier()

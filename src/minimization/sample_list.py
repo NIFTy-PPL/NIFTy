@@ -14,9 +14,13 @@
 # Copyright(C) 2021 Max-Planck-Society
 # Author: Philipp Arras, Philipp Frank
 
+import os
 import pickle
+import re
 
 from .. import utilities
+from ..field import Field
+from ..logger import logger
 from ..multi_domain import MultiDomain
 from ..multi_field import MultiField
 
@@ -48,11 +52,18 @@ class SampleListBase:
         self._comm = comm
         self._domain = makeDomain(domain)
         utilities.check_MPI_equality(self._domain, comm)
+        global_comm, size, _, _ = utilities.get_MPI_params()
+        if global_comm is not None and size > 1 and comm is None:
+            raise ValueError("MPI is present. Please pass an MPI communicator to `SampleList`.")
 
     @property
     def n_local_samples(self):
         """int: Number of local samples."""
         raise NotImplementedError
+
+    def n_samples(self):
+        """Return number of samples across all MPI tasks."""
+        return utilities.allreduce_sum([self.n_local_samples], self.comm)
 
     def local_item(self, i):
         """Return ith local sample."""
@@ -69,12 +80,16 @@ class SampleListBase:
         return self._comm
 
     @property
+    def mpi_master(self):
+        return self.comm is None or self.comm.Get_rank() == 0
+
+    @property
     def domain(self):
         """DomainTuple or MultiDomain: the domain on which the samples are defined."""
         return self._domain
 
     @staticmethod
-    def indices_from_comm(n_samples, comm):
+    def local_indices(n_samples, comm=None):
         """Return range of global sample indices for local task.
 
         This method calls `utilities.shareRange`
@@ -93,6 +108,71 @@ class SampleListBase:
         """
         ntask, rank, _ = utilities.get_MPI_params_from_comm(comm)
         return range(*utilities.shareRange(n_samples, ntask, rank))
+
+    def save_to_hdf5(self, file_name, op=None, samples=False, mean=False, std=False,
+                     overwrite=False):
+        """Write sample list to HDF5 file.
+
+        This function writes sample lists to HDF5 files that contain two
+        groups: `samples` and `stats`. `samples` contain the sublabels `0`,
+        `1`, ... that number the labels and `stats` contains the sublabels
+        `mean` and `standard deviation`. If `self.domain` is an instance of
+        :class:`~nifty8.multi_domain.MultiDomain`, these sublabels refer
+        themselves to subgroups. For :class:`~nifty8.field.Field`, the sublabel
+        refers to an HDF5 data set.
+
+        If quanitities are not requested (e.g. by setting `mean=False`), the
+        respective sublabels are not present in the HDF5 file.
+
+        Parameters
+        ----------
+        file_name : str
+            File name of output hdf5 file.
+        op : callable or None
+            Callable that is applied to each item in the :class:`SampleListBase`
+            before it is returned. Can be an
+            :class:`~nifty8.operators.operator.Operator` or any other callable
+            that takes a :class:`~nifty8.field.Field` as an input. Default:
+            None.
+        samples : bool
+            If True, samples are written into hdf5 file.
+        mean : bool
+            If True, mean of samples is written into hdf5 file.
+        std : bool
+            If True, standard deviation of samples is written into hdf5 file.
+        overwrite : bool
+            If True, a potentially existing file with the same file name as
+            `file_name`, is overwritten.
+        """
+        import h5py
+
+        if os.path.isfile(file_name):
+            if self.mpi_master and overwrite:
+                os.remove(file_name)
+            if not overwrite:
+                raise RuntimeError(f"File {file_name} already exists. Delete it or use "
+                                   "`overwrite=True`")
+        if not (samples or mean or std):
+            raise ValueError("Neither samples nor mean nor standard deviation shall be written.")
+
+        if self.mpi_master:
+            f = h5py.File(file_name, "w")
+        else:
+            f = utilities.Nop()
+
+        if samples:
+            grp = f.create_group("samples")
+            for ii, ss in enumerate(self.iterator(op)):
+                _field2hdf5(grp, ss, str(ii))
+        if mean or std:
+            grp = f.create_group("stats")
+            m, v = self.sample_stat(op)
+        if mean:
+            _field2hdf5(grp, m, "mean")
+        if std:
+            _field2hdf5(grp, v.sqrt(), "standard deviation")
+
+        f.close()
 
     def iterator(self, op=None):
         """Return iterator over all potentially distributed samples.
@@ -152,10 +232,6 @@ class SampleListBase:
         res = [[elem[ii] for elem in res] for ii in range(n_output_elements)]
         return tuple(utilities.allreduce_sum(rr, self.comm) / n for rr in res)
 
-    def n_samples(self):
-        """Return number of samples across all MPI tasks."""
-        return utilities.allreduce_sum([self.n_local_samples], self.comm)
-
     def sample_stat(self, op=None):
         """Compute mean and variance of samples after applying `op`.
 
@@ -193,22 +269,8 @@ class SampleListBase:
         """
         raise NotImplementedError
 
-    def save_helper(self, file_name_base, obj):
-        # Helper functions necessary because MPI communicator cannot be pickled
-        fname = str(file_name_base) + _mpi_file_extension(self.comm) + ".pickle"
-        with open(fname, "wb") as f:
-            pickle.dump(obj, f, pickle.HIGHEST_PROTOCOL)
-
-    @staticmethod
-    def load_helper(file_name_base, comm):
-        # Helper functions necessary because MPI communicator cannot be pickled
-        fname = str(file_name_base) + _mpi_file_extension(comm) + ".pickle"
-        with open(fname, "rb") as f:
-            obj = pickle.load(f)
-        return obj
-
-    @staticmethod
-    def load(file_name_base, comm=None):
+    @classmethod
+    def load(cls, file_name_base, comm=None):
         """Deserialize SampleList from files on disk.
 
         Parameters
@@ -232,9 +294,34 @@ class SampleListBase:
         """
         raise NotImplementedError
 
+    @classmethod
+    def _list_local_sample_files(cls, file_name_base, comm=None):
+        """List all sample files that are relevant for the local task.
+
+        All sample files that correspond to `file_name_base` are searched and
+        selected based on which rank the local task has.
+
+        Note
+        ----
+        This function makes sure that the all file numbers between 0 and the
+        maximal found number are present. If this is not the case, a
+        `RuntimeError` is raised.
+        """
+        base_dir = os.path.abspath(os.path.dirname(file_name_base))
+        files = [ff for ff in os.listdir(base_dir)
+                 if re.match(f"{file_name_base}.[0-9]+.pickle", ff) ]
+        if len(files) == 0:
+            raise RuntimeError(f"No files matching `{file_name_base}.*.pickle`")
+        n_samples = max(list(map(lambda x: int(x.split(".")[-2]), files))) + 1
+        files = [f"{file_name_base}.{ii}.pickle" for ii in cls.local_indices(n_samples, comm)]
+        for ff in files:
+            if not os.path.isfile(ff):
+                raise RuntimeError(f"File {ff} not found")
+        return files
+
 
 class ResidualSampleList(SampleListBase):
-    def __init__(self, mean, residuals, neg, comm):
+    def __init__(self, mean, residuals, neg, comm=None):
         """Store samples in terms of a mean and a residual deviation thereof.
 
 
@@ -320,13 +407,25 @@ class ResidualSampleList(SampleListBase):
         return ResidualSampleList(mean, self._r, self._n, self.comm)
 
     def save(self, file_name_base):
-        obj = self._m, self._r, self._n
-        self.save_helper(file_name_base, obj)
+        nsample = self.n_samples()
+        local_indices = self.local_indices(nsample, self.comm)
+        for ii, isample in enumerate(local_indices):
+            obj = [self._r[ii], self._n[ii]]
+            fname = _sample_file_name(file_name_base, isample)
+            _save_to_disk(fname, obj)
+        if self.mpi_master:
+            _save_to_disk(f"{file_name_base}.mean.pickle", self._m)
 
-    @staticmethod
-    def load(file_name_base, comm=None):
-        args = SampleListBase.load_helper(file_name_base, comm)
-        return ResidualSampleList(*args, comm=comm)
+    @classmethod
+    def load(cls, file_name_base, comm=None):
+        if comm is not None:
+            comm.Barrier()
+        files = cls._list_local_sample_files(file_name_base, comm)
+        tmp = [_load_from_disk(ff) for ff in files]
+        res = [aa[0] for aa in tmp]
+        neg = [aa[1] for aa in tmp]
+        mean = _load_from_disk(f"{file_name_base}.mean.pickle")
+        return cls(mean, res, neg, comm=comm)
 
 
 class SampleList(SampleListBase):
@@ -355,12 +454,22 @@ class SampleList(SampleListBase):
         return len(self._s)
 
     def save(self, file_name_base):
-        self.save_helper(file_name_base, self._s)
+        nsample = self.n_samples()
+        local_indices = self.local_indices(nsample, self.comm)
+        lo = local_indices[0]
+        for isample in range(nsample):
+            if isample in local_indices:
+                obj = self._s[isample-lo]
+                fname = _sample_file_name(file_name_base, isample)
+                _save_to_disk(fname, obj)
 
-    @staticmethod
-    def load(file_name_base, comm=None):
-        s = SampleListBase.load_helper(file_name_base, comm)
-        return SampleList(s, comm=comm)
+    @classmethod
+    def load(cls, file_name_base, comm=None):
+        if comm is not None:
+            comm.Barrier()
+        files = cls._list_local_sample_files(file_name_base, comm)
+        samples = [_load_from_disk(ff) for ff in files]
+        return cls(samples, comm=comm)
 
 
 def _none_to_id(obj):
@@ -388,18 +497,42 @@ def _bcast(obj, comm, root):
     return comm.bcast(data, root=root)
 
 
-def _mpi_file_extension(comm):
-    """Return MPI-configuration unique string.
+def _sample_file_name(file_name_base, isample):
+    """Return sample-unique file name.
 
-    This string that can be used to uniquely determine the number of MPI tasks
-    for distributed saving of files.
+    This file name that can be used to uniquely write samples potentially from all MPI tasks.
 
     Parameters
-
-    comm : MPI communicator or None
-        If None, an empty string is returned.
+    ----------
+    file_name_base : str
+        User-defined first part of file name.
+    isample : int
+        Number of sample
     """
-    if comm is None:
-        return ""
-    ntask, rank, _ = utilities.get_MPI_params_from_comm(comm)
-    return f"{rank}.{ntask}"
+    if not isinstance(isample, int):
+        raise TypeError
+    return f"{file_name_base}.{isample}.pickle"
+
+
+def _load_from_disk(file_name):
+    with open(file_name, "rb") as f:
+        obj = pickle.load(f)
+    return obj
+
+
+def _save_to_disk(file_name, obj):
+    with open(file_name, "wb") as f:
+        pickle.dump(obj, f, pickle.HIGHEST_PROTOCOL)
+
+
+def _field2hdf5(file_handle, obj, name):
+    if not isinstance(name, str):
+        raise TypeError
+    if isinstance(obj, MultiField):
+        grp = file_handle.create_group(name)
+        for kk, fld in obj.items():
+            _field2hdf5(grp, fld, kk)
+        return
+    if not isinstance(obj, Field):
+        raise TypeError
+    file_handle.create_dataset(name, data=obj.val)
