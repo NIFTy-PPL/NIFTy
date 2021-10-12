@@ -31,6 +31,14 @@ import numpy as np
 
 import nifty8 as ift
 
+try:
+    from mpi4py import MPI
+    comm = MPI.COMM_WORLD
+    master = comm.Get_rank() == 0
+except ImportError:
+    comm = None
+    master = True
+
 
 class SingleDomain(ift.LinearOperator):
     def __init__(self, domain, target):
@@ -134,7 +142,7 @@ def main():
 
     for i in range(5):
         # Draw new samples and minimize KL
-        KL = ift.SampledKLEnergy(position, H, N_samples, None)
+        KL = ift.SampledKLEnergy(position, H, N_samples, None, comm=comm)
         KL, convergence = minimizer(KL)
         position = KL.position
 
@@ -155,8 +163,9 @@ def main():
                  label=['KL', 'Sampling', 'Newton inversion'],
                  title='Cumulative energies', s=[None, None, 1],
                  alpha=[None, 0.2, None])
-        plot.output(nx=3, ny=2, ysize=10, xsize=15,
-                    name=filename.format("loop_{:02d}".format(i)))
+        if master:
+            plot.output(nx=3, ny=2, ysize=10, xsize=15,
+                        name=filename.format("loop_{:02d}".format(i)))
 
     # Plotting
     filename_res = filename.format("results")
@@ -176,7 +185,8 @@ def main():
               pspec2.force(mock_position)],
              title="Sampled Posterior Power Spectrum 2",
              linewidth=[1.]*n_samples + [3., 3.])
-    plot.output(ny=2, nx=2, xsize=15, ysize=15, name=filename_res)
+    if master:
+        plot.output(ny=2, nx=2, xsize=15, ysize=15, name=filename_res)
     print("Saved results as '{}'.".format(filename_res))
 
 

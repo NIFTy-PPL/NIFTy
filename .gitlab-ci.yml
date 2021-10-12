@@ -113,7 +113,7 @@ run_getting_started_3:
 run_getting_started_mf:
   stage: demo_runs
   script:
-    - python3 demos/getting_started_5_mf.py
+    - mpiexec -n 2 --bind-to none python3 demos/getting_started_5_mf.py
   artifacts:
     paths:
       - '*.png'
