@@ -52,13 +52,9 @@ class SampleListBase:
         self._comm = comm
         self._domain = makeDomain(domain)
         utilities.check_MPI_equality(self._domain, comm)
-
-        global_ntask = utilities.get_MPI_params()[1]
-        class_ntask = utilities.get_MPI_params_from_comm(self.comm)[0]
-        if global_ntask > class_ntask:
-            logger.warn("There are {global_ntask} global MPI tasks and {class_ntask} MPI tasks "
-                        "associated with this object. This may lead to undefined behaviour when "
-                        "writing to disk.")
+        global_comm, size, _, _ = utilities.get_MPI_params()
+        if global_comm is not None and size > 1 and comm is None:
+            raise ValueError("MPI is present. Please pass an MPI communicator to `SampleList`.")
 
     @property
     def n_local_samples(self):
