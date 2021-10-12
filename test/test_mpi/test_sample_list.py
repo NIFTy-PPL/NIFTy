@@ -21,7 +21,10 @@ from mpi4py import MPI
 from ..common import list2fixture, setup_function, teardown_function
 
 pmp = pytest.mark.parametrize
-comm = list2fixture([MPI.COMM_WORLD, None])
+comm = [MPI.COMM_WORLD]
+if MPI.COMM_WORLD.Get_size() == 1:
+    comm += [None]
+comm = list2fixture(comm)
 
 
 def _get_sample_list(communicator, cls):

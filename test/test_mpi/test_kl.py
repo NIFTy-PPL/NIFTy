@@ -30,6 +30,9 @@ rank = comm.Get_rank()
 master = (rank == 0)
 mpi = ntask > 1
 
+if not mpi:
+    comm = None
+
 pmp = pytest.mark.parametrize
 pms = pytest.mark.skipif
 
@@ -38,10 +41,9 @@ pms = pytest.mark.skipif
 @pmp('constants', ([], ['a'], ['b'], ['a', 'b']))
 @pmp('point_estimates', ([], ['a'], ['b'], ['a', 'b']))
 @pmp('mirror_samples', (False, True))
-@pmp('mode', (0, 1))
 @pmp('mf', (False, True))
 @pmp('geo', (False, True))
-def test_kl(constants, point_estimates, mirror_samples, mode, mf, geo):
+def test_kl(constants, point_estimates, mirror_samples, mf, geo):
     if not mf and (len(point_estimates) != 0 or len(constants) != 0):
         return
     dom = ift.RGSpace((12,), (2.12))
@@ -66,7 +68,7 @@ def test_kl(constants, point_estimates, mirror_samples, mode, mf, geo):
             ift.SampledKLEnergy(**args, comm=comm)
         return
 
-    kl0 = ift.SampledKLEnergy(**args, comm=comm if mode == 0 else None)
+    kl0 = ift.SampledKLEnergy(**args, comm=comm)
     if isinstance(mean0, ift.MultiField):
         invariant = list(set(constants).intersection(point_estimates))
         _, tmph = h.simplify_for_constant_input(mean0.extract_by_keys(invariant))
@@ -78,7 +80,8 @@ def test_kl(constants, point_estimates, mirror_samples, mode, mf, geo):
         invariant = None
     samp = kl0._sample_list
     ift.extra.assert_allclose(tmpmean, samp._m)
-    if mode == 1:
+
+    if not mpi:
         samples = tuple(s for s in samp._r)
         ii = len(samples)//2
         slc = slice(None, ii) if rank == 0 else slice(ii, None)
