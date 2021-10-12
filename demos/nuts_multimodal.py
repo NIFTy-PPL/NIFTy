@@ -1,16 +1,15 @@
 # %%
 from functools import partial
 import jax.numpy as np
-import matplotlib
 import matplotlib.pyplot as plt
-import jifty1 as jft
 from jifty1 import hmc
+
 
 def loggaussian(x, mu, sigma):
     return -0.5 * (x-mu)**2 / sigma
 
 def sum_of_gaussians(x, separation, sigma1, sigma2):
-    return - np.logaddexp(loggaussian(x, 0, sigma1), loggaussian(x, separation, sigma2))
+    return -np.logaddexp(loggaussian(x, 0, sigma1), loggaussian(x, separation, sigma2))
 
 ham = partial(sum_of_gaussians, separation = 10., sigma1 = 1., sigma2 = 1.)
 
@@ -28,48 +27,49 @@ fig_dims = (fig_width_in, fig_height_in*1.5)
 
 fig, ((ax1, ax2), (ax3, ax4)) = plt.subplots(subplots[0], subplots[1], sharex='col', figsize=fig_dims, gridspec_kw={'width_ratios': [1, 2]})
 
+# %%
 nuts_sampler = hmc.NUTSChain(
-    initial_position = np.array(3.),
     potential_energy = ham,
-    diag_mass_matrix = .2,
-    eps = EPS,
-    maxdepth = 15,
-    rngseed = SEED,
+    inverse_mass_matrix = 5.,
+    initial_position = np.array(3.),
+    step_size = EPS,
+    max_tree_depth = 15,
+    key = SEED,
     compile = True,
     dbg_info = True
 )
 
-(_last_pos, _key, nuts_pos, nuts_unintegrated_momenta, nuts_momentum_samples,
- nuts_depths, nuts_trees) = (nuts_sampler.generate_n_samples(N))
+chain = nuts_sampler.generate_n_samples(N)
+print(f"small mass matrix acceptance: {chain.acceptance}")
 
-nuts_sampler.plot_1d_hist(ax1, bins=30, density=True)
+ax1.hist(chain.samples, bins=30, density=True)
+ax2.plot(chain.samples, linewidth=0.5)
 
-nuts_sampler.plot_response_ts(ax2, linewidth=0.5)
+ax1.set_title(rf'$m={1. / nuts_sampler.inverse_mass_matrix:1.2f}$')
+ax2.set_title(rf'$m={1. / nuts_sampler.inverse_mass_matrix:1.2f}$')
 
-ax1.set_title(rf'$m={nuts_sampler.diag_mass_matrix:1.2f}$')
-ax2.set_title(rf'$m={nuts_sampler.diag_mass_matrix:1.2f}$')
-
+# %%
 nuts_sampler = hmc.NUTSChain(
-    initial_position = np.array(3.),
     potential_energy = ham,
-    diag_mass_matrix = .02,
-    eps = EPS,
-    maxdepth = 15,
-    rngseed = SEED,
+    inverse_mass_matrix = 50.,
+    initial_position = np.array(3.),
+    step_size = EPS,
+    max_tree_depth = 15,
+    key = SEED,
     compile = True,
     dbg_info = True
 )
 
-(_last_pos, _key, nuts_pos, nuts_unintegrated_momenta, nuts_momentum_samples,
- nuts_depths, nuts_trees) = (nuts_sampler.generate_n_samples(N))
+chain = nuts_sampler.generate_n_samples(N)
+print(f"large mass matrix acceptance: {chain.acceptance}")
 
-nuts_sampler.plot_1d_hist(ax3, bins=30, density=True)
+ax3.hist(chain.samples, bins=30, density=True)
+ax4.plot(chain.samples, linewidth=0.5)
 
-nuts_sampler.plot_response_ts(ax4, linewidth=0.5)
+ax3.set_title(rf'$m={1. / nuts_sampler.inverse_mass_matrix:1.2f}$')
+ax4.set_title(rf'$m={1. / nuts_sampler.inverse_mass_matrix:1.2f}$')
 
-ax3.set_title(rf'$m={nuts_sampler.diag_mass_matrix:1.2f}$')
-ax4.set_title(rf'$m={nuts_sampler.diag_mass_matrix:1.2f}$')
-
+# %%
 xs = np.linspace(-10, 20, num=500)
 Z = np.trapz(np.exp(-ham(xs)), xs)
 ax1.plot(xs, np.exp(-ham(xs)) / Z, linewidth=0.5, c='r')
@@ -85,7 +85,5 @@ ax4.set_ylabel('position')
 #fig.suptitle("sum of two Gaussians, with different choices of mass matrix")
 
 fig.tight_layout()
-
 fig.savefig("multimodal.pdf", bbox_inches='tight')
-
 print("final figure saved as multimodal.pdf")

@@ -90,7 +90,6 @@ for i in range(n_mgvi_iterations):
     )
 
     print("Minimizing...", file=sys.stderr)
-    # TODO: Re-introduce a simplified version that works without fields
     opt_state = jft.minimize(
         None,
         x0=mkl_pos,
@@ -100,7 +99,9 @@ for i in range(n_mgvi_iterations):
             "hessp": mkl.metric,
             "absdelta": absdelta,
             "maxiter": n_newton_iterations[i],
-            "cg_kwargs": {"name": None},
+            "cg_kwargs": {
+                "name": None
+            },
             "name": "N"
         }
     )
@@ -152,7 +153,9 @@ for i in range(n_geovi_iterations):
             "hessp": gkl.metric,
             "absdelta": absdelta,
             "maxiter": n_newton_iterations[i],
-            "cg_kwargs": {"name": None},
+            "cg_kwargs": {
+                "name": None
+            },
             "name": "N"
         }
     )
@@ -195,78 +198,74 @@ plt.show()
 initial_position = np.array([1., 1.])
 
 hmc_sampler = hmc.HMCChain(
-    initial_position = 1e-2 * initial_position,
-    potential_energy = ham,
-    diag_mass_matrix = 1.,
-    eps = 0.2,
-    n_of_integration_steps = 64,
-    rngseed = 42,
-    compile = True,
-    dbg_info = True,
+    potential_energy=ham,
+    inverse_mass_matrix=1.,
+    initial_position=1e-2 * initial_position,
+    step_size=0.1,
+    num_steps=64,
+    key=42,
+    compile=True,
+    dbg_info=True,
 )
 
-(_last_pos, _key, hmc_samples, hmc_acceptance, hmc_unintegrated_momenta,
- hmc_momentum_samples, hmc_rejected_position_samples,
- hmc_rejected_momenta) = (hmc_sampler.generate_n_samples(100))
-
-print(f"acceptance rate: {np.sum(hmc_acceptance)/len(hmc_acceptance)}")
+chain = hmc_sampler.generate_n_samples(100)
 
 # %%
-b_space_smpls = hmc_samples
+b_space_smpls = chain.samples
+fig, ax = plt.subplots()
 ax.scatter(*b_space_smpls.T)
-#ax.plot(*gkl_pos, "rx")
 plt.title("HMC (Metroplis-Hastings) samples")
 plt.show()
 
 # %%
 initial_position = np.array([1., 1.])
 
-hmc._DEBUG_TREE_END_IDXS = []
-hmc._DEBUG_SUBTREE_END_IDXS = []
-hmc._DEBUG_STORE = []
-
 nuts_sampler = hmc.NUTSChain(
-    initial_position = 1e-2 * initial_position,
-    potential_energy = ham,
-    diag_mass_matrix = 2.,
-    eps = 0.2,
-    maxdepth = 10,
-    rngseed = 43,
-    compile = True,
-    dbg_info = True,
+    potential_energy=ham,
+    inverse_mass_matrix=0.5,
+    initial_position=1e-2 * initial_position,
+    step_size=0.4,
+    max_tree_depth=10,
+    key=43,
+    compile=True,
+    dbg_info=True,
 )
 
 nuts_n_samples = []
 ns_samples = [200, 1000, 1000000]
 for n_samples in ns_samples:
-    (_pos, _key, nuts_samples, nuts_momenta_before, nuts_momenta_after, nuts_depths,
-     nuts_trees) = nuts_sampler.generate_n_samples(n_samples)
-    nuts_n_samples.append(nuts_samples)
+    chain = nuts_sampler.generate_n_samples(n_samples)
+    nuts_n_samples.append(chain.samples)
 
 # %%
-b_space_smpls = nuts_samples
+b_space_smpls = chain.samples
 
 fig, ax = plt.subplots()
 contour = ax.contour(X, Y, es)
 ax.clabel(contour, inline=True, fontsize=10)
 ax.scatter(*b_space_smpls.T, s=2.)
-#ax.plot(*gkl_pos, "rx")
 plt.show()
 
 # %%
-plt.hist2d(*b_space_smpls.T, bins=[x,y], range=[[x.min(), x.max()], [y.min(), y.max()]])
+plt.hist2d(
+    *b_space_smpls.T,
+    bins=[x, y],
+    range=[[x.min(), x.max()], [y.min(), y.max()]]
+)
 plt.colorbar()
+plt.show()
 
 # %%
-subplots = (3,2)
-fig_width_pt = 426 # pt (a4paper, and such)
-# fig_width_pt = 360 # pt
+subplots = (3, 2)
+
+fig_width_pt = 426  # pt (a4paper, and such)
 inches_per_pt = 1 / 72.27
 fig_width_in = fig_width_pt * inches_per_pt
 fig_height_in = fig_width_in * 1. * (subplots[0] / subplots[1])
 fig_dims = (fig_width_in, fig_height_in)
 
-fig, ((ax1, ax4), (ax2, ax5), (ax3, ax6)) = plt.subplots(subplots[0], subplots[1], figsize=fig_dims, sharex=True, sharey=True)
+fig, ((ax1, ax4), (ax2, ax5), (ax3, ax6)
+     ) = plt.subplots(*subplots, figsize=fig_dims, sharex=True, sharey=True)
 
 ax1.set_title(r'$P(d=0|\xi_1, \xi_2) \cdot P(\xi_1, \xi_2)$')
 xx = cartesian_product((x, y))
@@ -276,15 +275,16 @@ ham_everywhere = np.vectorize(ham, signature="(2)->()")(xx).reshape(
 ax1.imshow(
     np.exp(-ham_everywhere.T),
     extent=(x.min(), x.max(), y.min(), y.max()),
-    origin="lower",
-    #aspect='auto'
+    origin="lower"
 )
 #ax1.colorbar()
 
 ax1.set_ylim([-4., 4.])
 ax1.set_xlim([-4., 4.])
-#ax1.autoscale(enable=True, axis='y', tight=True) 
-asp = float(np.diff(np.array(ax1.get_xlim()))[0] / np.diff(np.array(ax1.get_ylim()))[0])
+#ax1.autoscale(enable=True, axis='y', tight=True)
+asp = float(
+    np.diff(np.array(ax1.get_xlim()))[0] / np.diff(np.array(ax1.get_ylim()))[0]
+)
 
 smplmarkersize = .3
 smplmarkercolor = 'k'
@@ -314,30 +314,20 @@ for i in range(3):
 ax3.set_xlabel(r'$\xi_1$')
 ax6.set_xlabel(r'$\xi_1$')
 
-for N, samples, ax in list(zip(ns_samples, nuts_n_samples, [ax4, ax5, ax6]))[:2]:
-    ax.set_title(f"NUTS {N=}")
+for n, samples, ax in zip(ns_samples[:2], nuts_n_samples[:2], [ax4, ax5]):
+    ax.set_title(f"NUTS N={n}")
     contour = ax.contour(X, Y, es, linewidths=linewidths)
     #ax.clabel(contour, inline=True, fontsize=fontsize)
     ax.scatter(*samples.T, s=smplmarkersize, c=smplmarkercolor)
 
-fig.tight_layout()
-fig.savefig("pinch.pdf", bbox_inches='tight')
-
-#
-# NUTS HISTOGRAM
-#
-
-_h, _xedges, _yedges = np.histogram2d(*nuts_samples.T, bins=[x,y], range=[[x.min(), x.max()], [y.min(), y.max()]])
-
-ax6.imshow(
-    _h.T,
-    extent=(x.min(), x.max(), y.min(), y.max()),
-    origin="lower"
+h, _, _ = np.histogram2d(
+    *nuts_n_samples[-1].T,
+    bins=[x, y],
+    range=[[x.min(), x.max()], [y.min(), y.max()]]
 )
-
-ax6.set_title(f'NUTS, {len(nuts_samples):.0E} samples')
+ax6.imshow(h.T, extent=(x.min(), x.max(), y.min(), y.max()), origin="lower")
+ax6.set_title(f'NUTS N={ns_samples[-1]:.0E}')
 
 fig.tight_layout()
 fig.savefig("pinch.pdf", bbox_inches='tight')
-
 print("final plot saved as pinch.pdf")

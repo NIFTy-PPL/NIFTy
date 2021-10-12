@@ -1,17 +1,18 @@
 #%%
-from jax.config import config
-config.update("jax_enable_x64", True)
 import sys
+from jax.config import config
+
+config.update("jax_enable_x64", True)
+
 from jax import numpy as np
-from jax import random, jit, partial, lax
+from jax import random, jit, lax
 import jax
 import matplotlib.pyplot as plt
 import jifty1 as jft
-from jifty1 import hmc
-from functools import partial
-from collections import namedtuple
-from jax.tree_util import register_pytree_node
 import matplotlib
+
+from jifty1 import hmc
+
 matplotlib.rcParams['figure.figsize'] = (10, 7)
 
 
@@ -113,24 +114,22 @@ def plot_mean_and_stddev(ax, samples, mean_of_r=None, truth=False, **kwargs):
 key, subkey = random.split(key)
 initial_position = random.uniform(key=subkey, shape=pos_truth.shape)
 
-# %% [markdown]
-# # HMC with Metropolis Hastings (OO wrapper)
 sampler = hmc.HMCChain(
-    initial_position = initial_position,
     potential_energy = ham,
-    diag_mass_matrix = 1.,
-    eps = 0.05,
-    n_of_integration_steps = 128,
-    rngseed = 42,
+    inverse_mass_matrix = 1.,
+    initial_position = initial_position,
+    step_size = 0.05,
+    num_steps = 128,
+    key = 42,
     compile = True,
     dbg_info = True
 )
 
-_last_pos, _key, position_samples, acceptance, unintegrated_momenta, momentum_samples, rejected_position_samples, rejected_momenta = sampler.generate_n_samples(30)
-print(f"acceptance ratio: {np.sum(acceptance)/len(acceptance)}")
+chain = sampler.generate_n_samples(30)
+print(f"acceptance ratio: {chain.acceptance}")
 
 # %%
-plot_mean_and_stddev(plt.gca(), position_samples, truth=True)
+plot_mean_and_stddev(plt.gca(), chain.samples, truth=True)
 plt.title("HMC position samples")
 plt.show()
 
@@ -141,26 +140,25 @@ hmc._DEBUG_STORE = []
 sampler = hmc.NUTSChain(
     initial_position = initial_position,
     potential_energy = ham,
-    diag_mass_matrix = 1.,
+    inverse_mass_matrix = 1.,
     # 0.9193 # integrates to ~3-7, very smooth sample mean
     # 0.8193 # integrates to depth ~22, very noisy sample mean
-    eps = 0.05,
-    maxdepth = 17,
-    rngseed = 42,
+    step_size = 0.05,
+    max_tree_depth = 17,
+    key = 42,
     compile = True,
-    dbg_info = True,
-    signal_response = signal_response
+    dbg_info = True
 )
 
-_last_pos, _key, position_samples, unintegrated_momenta, momentum_samples, depths, trees = sampler.generate_n_samples(30)
-plt.hist(depths, bins=np.arange(sampler.maxdepth + 2))
+chain = sampler.generate_n_samples(30)
+plt.hist(chain.depths, bins=np.arange(sampler.max_tree_depth + 2))
 plt.title('NUTS tree depth histogram')
 plt.xlabel('tree depth')
 plt.ylabel('count')
 plt.show()
 
 # %%
-plot_mean_and_stddev(plt.gca(), position_samples, truth=True)
+plot_mean_and_stddev(plt.gca(), chain.samples, truth=True)
 plt.title("NUTS position samples")
 plt.show()
 
@@ -168,25 +166,11 @@ plt.show()
 if hmc._DEBUG_FLAG:
     debug_pos = np.array(hmc._DEBUG_STORE)[:,0,:]
 
-# %%
-if hmc._DEBUG_FLAG:
     for idx, dbgp in enumerate(debug_pos):
         plt.plot(signal_response(dbgp), label=f'{idx}', alpha=0.1)
     #plt.legend()
 
-# %%
-if hmc._DEBUG_FLAG:
-    debug_resp = lax.map(signal_response, np.array(hmc._DEBUG_STORE)[:,0,:])
-    debug_resp_idcs = np.tile(np.arange(debug_resp.shape[1]), debug_resp.shape[0])
-    debug_resp_vals = np.ravel(debug_resp)
-    plt.hist2d(debug_resp_idcs, debug_resp_vals, bins=(np.arange(debug_resp.shape[1]), 100))
-    plt.plot(signal_response(pos_truth), color='r', label='truth')
-    plt.plot(mean_of_signal_response, color='orange', label='signal response of sample mean')
-    plt.legend()
-    plt.show()
-
-# %%
-if hmc._DEBUG_FLAG:
+    # %%
     debug_pos_x = np.array(hmc._DEBUG_STORE)[:,0,0]
     debug_pos_y = np.array(hmc._DEBUG_STORE)[:,0,1]
     for idx, dbgp in enumerate(debug_pos):
@@ -196,8 +180,8 @@ if hmc._DEBUG_FLAG:
 
 # %%[markdown]
 # # 1D position and momentum time series
-if position_samples[0].shape == (1,):
-    plt.plot(position_samples, label='position')
+if chain.samples[0].shape == (1,):
+    plt.plot(chain.samples, label='position')
     #plt.plot(momentum_samples, label='momentum', linewidth=0.2)
     #plt.plot(unintegrated_momenta, label='unintegrated momentum', linewidth=0.2)
     plt.title('position and momentum time series')
@@ -208,8 +192,8 @@ if position_samples[0].shape == (1,):
 
 # %% [markdown]
 # # energy time series
-potential_energies = lax.map(ham, position_samples)
-kinetic_energies = np.sum(momentum_samples**2, axis=1)
+potential_energies = lax.map(ham, chain.samples)
+kinetic_energies = np.sum(chain.trees.proposal_candidate.momentum**2, axis=1)
 #rejected_potential_energies = lax.map(ham, rejected_position_samples)
 #rejected_kinetic_energies = np.sum(rejected_momentum_samples**2, axis=1)
 plt.plot(potential_energies , label='pot')
@@ -245,7 +229,7 @@ D_inv = lambda s: s + signal_response_dagger(noise_cov_inv(signal_response(s)))
 
 j = signal_response_dagger(noise_cov_inv(data))
 
-m, _info = jax.scipy.sparse.linalg.cg(D_inv, j)
+m, _ = jax.scipy.sparse.linalg.cg(D_inv, j)
 
 # %%
 
@@ -268,7 +252,8 @@ def sample_from_d_inv(key):
 def sample_from_d(key):
     d_inv_smpl = sample_from_d_inv(key)
     # TODO: what to do here?
-    return jft.cg(D_inv, d_inv_smpl, maxiter=32)[0]
+    smpl, _ = jft.cg(D_inv, d_inv_smpl, maxiter=32)
+    return smpl
 
 wiener_samples = np.array(list(map(
     lambda key: sample_from_d(key) + m,
@@ -295,7 +280,7 @@ ax_raw.set_title("signal and data")
 ax_raw.legend(fontsize=8)
 
 plot_mean_and_stddev(ax_nuts,
-                     position_samples,
+                     chain.samples,
                      truth=True,
                      title="NUTS",
                      xlabel=None,
@@ -310,7 +295,4 @@ plot_mean_and_stddev(ax_wiener,
 fig.tight_layout()
 
 plt.savefig('wiener.pdf', bbox_inches='tight')
-
 print("final plot saved as wiener.pdf")
-
-# %%
