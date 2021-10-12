@@ -11,7 +11,6 @@ from jax import lax, random
 from jax import value_and_grad, jit
 
 import jifty1 as jft
-from jifty1 import hmc
 
 seed = 42
 key = random.PRNGKey(seed)
@@ -197,7 +196,7 @@ plt.show()
 # %%
 initial_position = np.array([1., 1.])
 
-hmc_sampler = hmc.HMCChain(
+hmc_sampler = jft.HMCChain(
     potential_energy=ham,
     inverse_mass_matrix=1.,
     initial_position=1e-2 * initial_position,
@@ -220,7 +219,7 @@ plt.show()
 # %%
 initial_position = np.array([1., 1.])
 
-nuts_sampler = hmc.NUTSChain(
+nuts_sampler = jft.NUTSChain(
     potential_energy=ham,
     inverse_mass_matrix=0.5,
     initial_position=1e-2 * initial_position,

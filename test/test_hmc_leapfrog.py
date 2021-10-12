@@ -1,10 +1,10 @@
-import numpy as onp
 import pytest
 import sys
 from jax import grad
 from jax import numpy as np
+from numpy.testing import assert_allclose
 
-from jifty1 import hmc
+import jifty1 as jft
 
 pmp = pytest.mark.parametrize
 
@@ -26,8 +26,8 @@ def test_leapfrog_energy_conservation(potential_energy, rtol):
     positions = [np.array([-1.5, -1.55])]
     momenta = [np.array([-1, 1])]
     for _ in range(25):
-        new_qp = hmc.leapfrog_step(
-            qp=hmc.QP(position=positions[-1], momentum=momenta[-1]),
+        new_qp = jft.hmc.leapfrog_step(
+            qp=jft.hmc.QP(position=positions[-1], momentum=momenta[-1]),
             potential_energy_gradient=potential_energy_gradient,
             kinetic_energy_gradient=lambda x, y: x * y,
             step_size=0.25,
@@ -51,7 +51,7 @@ def test_leapfrog_energy_conservation(potential_energy, rtol):
 
     old_energy_tot = potential_energies[0] + kinetic_energies[0]
     new_energy_tot = potential_energies[-1] + kinetic_energies[-1]
-    onp.testing.assert_allclose(old_energy_tot, new_energy_tot, rtol=rtol)
+    assert_allclose(old_energy_tot, new_energy_tot, rtol=rtol)
 
     return positions, momenta, kinetic_energies, potential_energies
 

@@ -6,7 +6,7 @@ from jax.scipy import stats
 from scipy.special import comb
 from numpy.testing import assert_allclose
 
-from jifty1 import hmc
+import jifty1 as jft
 
 pmp = pytest.mark.parametrize
 
@@ -46,7 +46,7 @@ def test_moment_consistency(distribution, plot=False):
     name = distribution.__name__.split('.')[-1]
 
     max_tree_depth = 20
-    sampler = hmc.NUTSChain(
+    sampler = jft.NUTSChain(
         potential_energy=lambda x: -1 * distribution.logpdf(x),
         inverse_mass_matrix=1.,
         initial_position=np.array(1.03890),

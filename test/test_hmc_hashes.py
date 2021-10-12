@@ -2,7 +2,7 @@ import sys
 from numpy import ndarray
 from jax import numpy as np
 
-from jifty1 import hmc
+import jifty1 as jft
 
 NDARRAY_TYPE = [ndarray]
 
@@ -34,7 +34,7 @@ def hashit(obj, n_chars=8) -> str:
 
 def test_hmc_hash():
     """Test sapmler output against known hash from previous commits."""
-    sampler = hmc.HMCChain(
+    sampler = jft.HMCChain(
         potential_energy=lambda x: np.sum(x**2),
         inverse_mass_matrix=1.,
         initial_position=np.array([0.1, 1.223]),
@@ -58,7 +58,7 @@ def test_hmc_hash():
 
 def test_nuts_hash():
     """Test sapmler output against known hash from previous commits."""
-    sampler = hmc.NUTSChain(
+    sampler = jft.NUTSChain(
         potential_energy=lambda x: np.sum(x**2),
         inverse_mass_matrix=1.,
         initial_position=np.array([0.1, 1.223]),

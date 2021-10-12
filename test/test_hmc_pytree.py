@@ -5,7 +5,6 @@ from jax import numpy as jnp
 from jax.tree_util import tree_leaves
 
 import jifty1 as jft
-from jifty1 import hmc
 
 
 def test_hmc_pytree():
@@ -13,7 +12,7 @@ def test_hmc_pytree():
     initial_position = jnp.array([0.31415, 2.71828])
 
     sampler_init = partial(
-        hmc.HMCChain,
+        jft.HMCChain,
         potential_energy=jft.sum_of_squares,
         inverse_mass_matrix=1.,
         step_size=0.193,
@@ -42,7 +41,7 @@ def test_nuts_pytree():
     initial_position = jnp.array([0.31415, 2.71828])
 
     sampler_init = partial(
-        hmc.NUTSChain,
+        jft.NUTSChain,
         potential_energy=jft.sum_of_squares,
         inverse_mass_matrix=1.,
         step_size=0.193,

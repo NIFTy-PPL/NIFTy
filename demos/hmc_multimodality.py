@@ -2,7 +2,8 @@
 from functools import partial
 import jax.numpy as np
 import matplotlib.pyplot as plt
-from jifty1 import hmc
+
+import jifty1 as jft
 
 
 def loggaussian(x, mu, sigma):
@@ -28,7 +29,7 @@ fig_dims = (fig_width_in, fig_height_in*1.5)
 fig, ((ax1, ax2), (ax3, ax4)) = plt.subplots(subplots[0], subplots[1], sharex='col', figsize=fig_dims, gridspec_kw={'width_ratios': [1, 2]})
 
 # %%
-nuts_sampler = hmc.NUTSChain(
+nuts_sampler = jft.NUTSChain(
     potential_energy = ham,
     inverse_mass_matrix = 5.,
     initial_position = np.array(3.),
@@ -49,7 +50,7 @@ ax1.set_title(rf'$m={1. / nuts_sampler.inverse_mass_matrix:1.2f}$')
 ax2.set_title(rf'$m={1. / nuts_sampler.inverse_mass_matrix:1.2f}$')
 
 # %%
-nuts_sampler = hmc.NUTSChain(
+nuts_sampler = jft.NUTSChain(
     potential_energy = ham,
     inverse_mass_matrix = 50.,
     initial_position = np.array(3.),

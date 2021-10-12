@@ -1,5 +1,4 @@
 #%%
-import sys
 from jax.config import config
 
 config.update("jax_enable_x64", True)
@@ -11,7 +10,7 @@ import matplotlib.pyplot as plt
 import jifty1 as jft
 import matplotlib
 
-from jifty1 import hmc
+import jifty1 as jft
 
 matplotlib.rcParams['figure.figsize'] = (10, 7)
 
@@ -114,7 +113,7 @@ def plot_mean_and_stddev(ax, samples, mean_of_r=None, truth=False, **kwargs):
 key, subkey = random.split(key)
 initial_position = random.uniform(key=subkey, shape=pos_truth.shape)
 
-sampler = hmc.HMCChain(
+sampler = jft.HMCChain(
     potential_energy = ham,
     inverse_mass_matrix = 1.,
     initial_position = initial_position,
@@ -135,9 +134,9 @@ plt.show()
 
 # %% [markdown]
 # # NUTS
-hmc._DEBUG_STORE = []
+jft.hmc._DEBUG_STORE = []
 
-sampler = hmc.NUTSChain(
+sampler = jft.NUTSChain(
     initial_position = initial_position,
     potential_energy = ham,
     inverse_mass_matrix = 1.,
@@ -163,16 +162,16 @@ plt.title("NUTS position samples")
 plt.show()
 
 # %%
-if hmc._DEBUG_FLAG:
-    debug_pos = np.array(hmc._DEBUG_STORE)[:,0,:]
+if jft.hmc._DEBUG_FLAG:
+    debug_pos = np.array(jft.hmc._DEBUG_STORE)[:,0,:]
 
     for idx, dbgp in enumerate(debug_pos):
         plt.plot(signal_response(dbgp), label=f'{idx}', alpha=0.1)
     #plt.legend()
 
     # %%
-    debug_pos_x = np.array(hmc._DEBUG_STORE)[:,0,0]
-    debug_pos_y = np.array(hmc._DEBUG_STORE)[:,0,1]
+    debug_pos_x = np.array(jft.hmc._DEBUG_STORE)[:,0,0]
+    debug_pos_y = np.array(jft.hmc._DEBUG_STORE)[:,0,1]
     for idx, dbgp in enumerate(debug_pos):
         plt.scatter(debug_pos_x, debug_pos_y, s=0.1, color='k')
     #plt.legend()

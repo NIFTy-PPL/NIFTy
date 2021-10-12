@@ -13,10 +13,9 @@ import jax.numpy as np
 import matplotlib
 import matplotlib.pyplot as plt
 import jifty1 as jft
-from jifty1 import hmc
 
 # %%
-hmc._DEBUG_FLAG = True
+jft.hmc._DEBUG_FLAG = True
 
 # %%
 cov = np.array([10., 1.])
@@ -25,7 +24,7 @@ potential_energy = lambda q: np.sum(0.5 * q**2 / cov)
 
 initial_position = np.array([1., 1.])
 
-sampler = hmc.NUTSChain(
+sampler = jft.NUTSChain(
         potential_energy = potential_energy,
         inverse_mass_matrix = 1.,
         initial_position = initial_position,
@@ -37,9 +36,9 @@ sampler = hmc.NUTSChain(
 )
 
 # %%
-hmc._DEBUG_STORE = []
-hmc._DEBUG_TREE_END_IDXS = []
-hmc._DEBUG_SUBTREE_END_IDXS = []
+jft.hmc._DEBUG_STORE = []
+jft.hmc._DEBUG_TREE_END_IDXS = []
+jft.hmc._DEBUG_SUBTREE_END_IDXS = []
 
 chain = sampler.generate_n_samples(5)
 
@@ -47,7 +46,7 @@ plt.hist(chain.depths)
 plt.show()
 
 # %%
-debug_pos = np.array([qp.position for qp in hmc._DEBUG_STORE])
+debug_pos = np.array([qp.position for qp in jft.hmc._DEBUG_STORE])
 print(len(debug_pos))
 
 # %%
@@ -60,11 +59,11 @@ ellipse = matplotlib.patches.Ellipse(xy=(0, 0), width=np.sqrt(cov[0]), height=np
 ax.add_patch(ellipse)
 
 color_idx = 0
-start_and_end_idxs = zip([0,] + hmc._DEBUG_SUBTREE_END_IDXS[:-1], hmc._DEBUG_SUBTREE_END_IDXS)
+start_and_end_idxs = zip([0,] + jft.hmc._DEBUG_SUBTREE_END_IDXS[:-1], jft.hmc._DEBUG_SUBTREE_END_IDXS)
 for start_idx, end_idx in start_and_end_idxs:
     slice = debug_pos[start_idx:end_idx]
     ax.plot(slice[:,0], slice[:,1], '-o', markersize=1, linewidth=0.5, color=colors[color_idx % len(colors)])
-    if end_idx in hmc._DEBUG_TREE_END_IDXS:
+    if end_idx in jft.hmc._DEBUG_TREE_END_IDXS:
         color_idx = (color_idx + 1) % len(colors)
 
 ax.scatter(chain.samples[:,0], chain.samples[:,1], marker='x', color='k', label='samples')
