@@ -37,7 +37,8 @@ nuts_sampler = jft.NUTSChain(
     max_tree_depth = 15,
     key = SEED,
     compile = True,
-    dbg_info = True
+    dbg_info = True,
+    max_energy_difference=1000.,
 )
 
 chain = nuts_sampler.generate_n_samples(N)
@@ -58,7 +59,8 @@ nuts_sampler = jft.NUTSChain(
     max_tree_depth = 15,
     key = SEED,
     compile = True,
-    dbg_info = True
+    dbg_info = True,
+    max_energy_difference=1000.,
 )
 
 chain = nuts_sampler.generate_n_samples(N)
