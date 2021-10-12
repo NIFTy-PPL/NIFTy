@@ -56,6 +56,37 @@ class OptimizeResults(NamedTuple):
     good_approximation: Union[None, bool, np.ndarray] = None
 
 
+def _prepare_vag_hessp(fun, jac, hessp, fun_and_grad) -> Tuple[Callable, Callable]:
+    """Returns a tuple of functions for computing the value-and-gradient and
+    the Hessian-Vector-Product.
+    """
+    from warnings import warn
+
+    if fun_and_grad is None:
+        if fun is not None and jac is not None:
+            uw = "computing the function together with its gradient would be faster"
+            warn(uw, UserWarning)
+
+            def fun_and_grad(x):
+                return (fun(x), jac(x))
+        elif fun is not None:
+            from jax import value_and_grad
+
+            fun_and_grad = value_and_grad(fun)
+        else:
+            ValueError("no function specified")
+
+    if hessp is None:
+        from jax import grad, jvp
+
+        jac = grad(fun) if jac is None else jac
+
+        def hessp(primals, tangents):
+            return jvp(jac, (primals, ), (tangents, ))[1]
+
+    return fun_and_grad, hessp
+
+
 def _newton_cg(
     fun=None,
     x0=None,
@@ -66,6 +97,7 @@ def _newton_cg(
     absdelta=None,
     norm_ord=None,
     xtol=1e-5,
+    jac: Optional[Callable] = None,
     fun_and_grad=None,
     hessp=None,
     cg=conjugate_gradient._cg,
@@ -78,10 +110,7 @@ def _newton_cg(
     xtol = xtol * size(x0)
 
     pos = x0
-    if fun_and_grad is None:
-        from jax import value_and_grad
-
-        fun_and_grad = value_and_grad(fun)
+    fun_and_grad, hessp = _prepare_vag_hessp(fun, jac, hessp, fun_and_grad=fun_and_grad)
     cg_kwargs = {} if cg_kwargs is None else cg_kwargs
     cg_name = name + "CG" if name is not None else None
 
@@ -236,18 +265,7 @@ def _minimize_trust_ncg(
     common_dtp = common_type(x0)
     eps = 6. * np.finfo(common_dtp).eps  # Inspired by SciPy's NewtonCG minimzer
 
-    if fun_and_grad is None:
-        from jax import value_and_grad
-
-        fun_and_grad = value_and_grad(fun)
-    if hessp is None:
-        from jax import grad, jvp
-
-        jac = grad(fun) if jac is None else jac
-
-        def hessp(primals, tangents):
-            return jvp(jac, (primals, ), (tangents, ))[1]
-
+    fun_and_grad, hessp = _prepare_vag_hessp(fun, jac, hessp, fun_and_grad=fun_and_grad)
     subproblem_kwargs = {} if subproblem_kwargs is None else subproblem_kwargs
     cg_name = name + "SP" if name is not None else None
 
