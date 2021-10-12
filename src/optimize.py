@@ -228,7 +228,7 @@ class _TrustRegionState(NamedTuple):
     old_fval: Union[float, np.ndarray]
 
 
-def _minimize_trust_ncg(
+def _trust_ncg(
     fun=None,
     x0: np.ndarray = None,
     *,
@@ -270,7 +270,9 @@ def _minimize_trust_ncg(
     cg_name = name + "SP" if name is not None else None
 
     f_0, g_0 = fun_and_grad(x0)
-    g_0_mag = jft_norm(g_0, ord=subproblem_kwargs.get("norm_ord", 1), ravel=True)
+    g_0_mag = jft_norm(
+        g_0, ord=subproblem_kwargs.get("norm_ord", 1), ravel=True
+    )
     status = np.where(np.isfinite(g_0_mag), status, 2)
     init_params = _TrustRegionState(
         converged=False,
@@ -329,7 +331,9 @@ def _minimize_trust_ncg(
         )
 
         # compute norm to check for convergence
-        g_kp1_mag = jft_norm(g_kp1, ord=subproblem_kwargs.get("norm_ord", 1), ravel=True)
+        g_kp1_mag = jft_norm(
+            g_kp1, ord=subproblem_kwargs.get("norm_ord", 1), ravel=True
+        )
 
         # if the ratio is high enough then accept the proposed step
         f_kp1, x_kp1, g_kp1, g_kp1_mag = where(
@@ -417,7 +421,7 @@ def newton_cg(*args, **kwargs):
 
 
 def trust_ncg(*args, **kwargs):
-    return _minimize_trust_ncg(*args, **kwargs).x
+    return _trust_ncg(*args, **kwargs).x
 
 
 def minimize(
@@ -446,6 +450,6 @@ def minimize(
     if method.lower() in ('newton-cg', 'newtoncg', 'ncg'):
         return _newton_cg(fun_with_args, x0, **options)
     elif method.lower() in ('trust-ncg', 'trustncg'):
-        return _minimize_trust_ncg(fun_with_args, x0, **options)
+        return _trust_ncg(fun_with_args, x0, **options)
 
     raise ValueError(f"method {method} not recognized")
