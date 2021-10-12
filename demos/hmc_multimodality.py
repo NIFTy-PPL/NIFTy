@@ -7,37 +7,47 @@ import jifty1 as jft
 
 
 def loggaussian(x, mu, sigma):
-    return -0.5 * (x-mu)**2 / sigma
+    return -0.5 * (x - mu)**2 / sigma
+
 
 def sum_of_gaussians(x, separation, sigma1, sigma2):
-    return -np.logaddexp(loggaussian(x, 0, sigma1), loggaussian(x, separation, sigma2))
+    return -np.logaddexp(
+        loggaussian(x, 0, sigma1), loggaussian(x, separation, sigma2)
+    )
 
-ham = partial(sum_of_gaussians, separation = 10., sigma1 = 1., sigma2 = 1.)
+
+ham = partial(sum_of_gaussians, separation=10., sigma1=1., sigma2=1.)
 
 N = 100000
 SEED = 43
 EPS = 0.3
 
-subplots = (2,2)
-fig_width_pt = 426 # pt (a4paper, and such)
+subplots = (2, 2)
+fig_width_pt = 426  # pt (a4paper, and such)
 # fig_width_pt = 360 # pt
 inches_per_pt = 1 / 72.27
 fig_width_in = 0.9 * fig_width_pt * inches_per_pt
 fig_height_in = fig_width_in * 0.618 * (subplots[0] / subplots[1])
-fig_dims = (fig_width_in, fig_height_in*1.5)
+fig_dims = (fig_width_in, fig_height_in * 1.5)
 
-fig, ((ax1, ax2), (ax3, ax4)) = plt.subplots(subplots[0], subplots[1], sharex='col', figsize=fig_dims, gridspec_kw={'width_ratios': [1, 2]})
+fig, ((ax1, ax2), (ax3, ax4)) = plt.subplots(
+    subplots[0],
+    subplots[1],
+    sharex='col',
+    figsize=fig_dims,
+    gridspec_kw={'width_ratios': [1, 2]}
+)
 
 # %%
 nuts_sampler = jft.NUTSChain(
-    potential_energy = ham,
-    inverse_mass_matrix = 5.,
-    initial_position = np.array(3.),
-    step_size = EPS,
-    max_tree_depth = 15,
-    key = SEED,
-    compile = True,
-    dbg_info = True,
+    potential_energy=ham,
+    inverse_mass_matrix=5.,
+    initial_position=np.array(3.),
+    step_size=EPS,
+    max_tree_depth=15,
+    key=SEED,
+    compile=True,
+    dbg_info=True,
     max_energy_difference=1000.,
 )
 
@@ -52,14 +62,14 @@ ax2.set_title(rf'$m={1. / nuts_sampler.inverse_mass_matrix:1.2f}$')
 
 # %%
 nuts_sampler = jft.NUTSChain(
-    potential_energy = ham,
-    inverse_mass_matrix = 50.,
-    initial_position = np.array(3.),
-    step_size = EPS,
-    max_tree_depth = 15,
-    key = SEED,
-    compile = True,
-    dbg_info = True,
+    potential_energy=ham,
+    inverse_mass_matrix=50.,
+    initial_position=np.array(3.),
+    step_size=EPS,
+    max_tree_depth=15,
+    key=SEED,
+    compile=True,
+    dbg_info=True,
     max_energy_difference=1000.,
 )
 
