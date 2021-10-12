@@ -133,7 +133,7 @@ class AcceptedAndRejected(NamedTuple):
 
 
 # @partial(jit, static_argnames=('potential_energy', 'potential_energy_gradient'))
-def _generate_hmc_acc_rej(
+def generate_hmc_acc_rej(
     *, key, initial_qp, potential_energy, kinetic_energy, inverse_mass_matrix,
     stepper, num_steps, step_size, max_energy_difference
 ) -> AcceptedAndRejected:
@@ -227,7 +227,7 @@ def total_energy_of_qp(qp, potential_energy, kinetic_energy_w_inv_mass):
                            ) + kinetic_energy_w_inv_mass(qp.momentum)
 
 
-def _generate_nuts_tree(
+def generate_nuts_tree(
     initial_qp,
     key,
     step_size,

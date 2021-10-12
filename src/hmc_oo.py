@@ -8,7 +8,7 @@ from typing import Callable, NamedTuple, Optional, Union
 from .disable_jax_control_flow import fori_loop
 from .hmc import Q, QP, Tree, AcceptedAndRejected
 from .hmc import (
-    _generate_hmc_acc_rej, _generate_nuts_tree, leapfrog_step,
+    generate_hmc_acc_rej, generate_nuts_tree, leapfrog_step,
     sample_momentum_from_diagonal, tree_index_update
 )
 
@@ -157,7 +157,7 @@ class NUTSChain:
             )
             qp = QP(position=prev_position, momentum=resampled_momentum)
 
-            tree = _generate_nuts_tree(
+            tree = generate_nuts_tree(
                 initial_qp=qp,
                 key=key_nuts,
                 step_size=self.step_size,
@@ -336,7 +336,7 @@ class HMCChain:
             )
             qp = QP(position=prev_position, momentum=resampled_momentum)
 
-            acc_rej = _generate_hmc_acc_rej(
+            acc_rej = generate_hmc_acc_rej(
                 key=key_choose,
                 initial_qp=qp,
                 potential_energy=self.potential_energy,

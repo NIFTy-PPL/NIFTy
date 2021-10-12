@@ -11,7 +11,7 @@ from .kl import (
 from .field import Field
 from .forest_util import norm, ShapeWithDtype, vmap_forest, vmap_forest_mean
 from .optimize import minimize, newton_cg, trust_ncg
-from .hmc import _generate_hmc_acc_rej, _generate_nuts_tree
+from .hmc import generate_hmc_acc_rej, generate_nuts_tree
 from .hmc_oo import HMCChain, NUTSChain
 from .correlated_field import CorrelatedFieldMaker, non_parametric_amplitude
 from .stats_distributions import (
