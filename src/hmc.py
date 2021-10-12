@@ -204,7 +204,7 @@ class Tree(NamedTuple):
         Indicator for either the left or right endpoint are a uturn or any
         subtree is a uturn.
     diverging: Union[np.ndarray, bool]
-        Indicator for a large increase in energy.
+        Indicator for a large increase in energy in the next larger tree.
     depth: Union[np.ndarray, int]
         Levels of the tree.
     cumulative_acceptance: Union[np.ndarray, float]
@@ -322,6 +322,8 @@ def generate_nuts_tree(
             initial_neg_energy=initial_neg_energy,
             max_energy_difference=max_energy_difference
         )
+        # Mark current tree as diverging if it diverges in the next step
+        current_tree = current_tree._replace(diverging=new_subtree.diverging)
 
         # combine current_tree and new_subtree into a tree which is one layer deeper only if new_subtree has no turning subtrees (including itself)
         current_tree = cond(
