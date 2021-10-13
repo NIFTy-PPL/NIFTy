@@ -179,9 +179,11 @@ def _newton_cg(
         pos = new_pos
         g = new_g
 
+        descent_norm = grad_scaling * jft_norm(dd, ord=norm_ord, ravel=True)
         if name is not None:
             msg = (
                 f"{name}: →:{grad_scaling} ↺:{ls_reset} #∇²:{nhev:02d}"
+                f" |↘|:{descent_norm:.6e} 🞋:{xtol:.6e}"
                 f"\n{name}: Iteration {i} ⛰:{energy:+.6e} Δ⛰:{energy_diff:.6e}"
                 f" 🞋:{absdelta:.6e}" if absdelta is not None else ""
             )
@@ -191,7 +193,7 @@ def _newton_cg(
         if absdelta is not None and 0. <= energy_diff < absdelta and naive_ls_it < 2:
             status = 0
             break
-        if grad_scaling * jft_norm(dd, ord=norm_ord, ravel=True) <= xtol:
+        if descent_norm <= xtol:
             status = 0
             break
         if time_threshold is not None and datetime.now() > time_threshold:
