@@ -87,10 +87,16 @@ def _prepare_vag_hessp(fun, jac, hessp, fun_and_grad) -> Tuple[Callable, Callabl
     return fun_and_grad, hessp
 
 
+def newton_cg(*args, **kwargs):
+    """Minimize a scalar-valued function using the Newton-CG algorithm."""
+    return _newton_cg(*args, **kwargs).x
+
+
 def _newton_cg(
     fun=None,
     x0=None,
     *,
+    miniter=None,
     maxiter=None,
     energy_reduction_factor=0.1,
     old_fval=None,
@@ -106,6 +112,7 @@ def _newton_cg(
     cg_kwargs=None
 ):
     norm_ord = 1 if norm_ord is None else norm_ord
+    miniter = 0 if miniter is None else miniter
     maxiter = 200 if maxiter is None else maxiter
     xtol = xtol * size(x0)
 
@@ -190,10 +197,11 @@ def _newton_cg(
             print(msg, file=sys.stderr)
         if np.isnan(new_energy):
             raise ValueError("energy is NaN")
-        if absdelta is not None and 0. <= energy_diff < absdelta and naive_ls_it < 2:
+        min_cond = naive_ls_it < 2 and i > miniter
+        if absdelta is not None and 0. <= energy_diff < absdelta and min_cond:
             status = 0
             break
-        if descent_norm <= xtol:
+        if descent_norm <= xtol and i > miniter:
             status = 0
             break
         if time_threshold is not None and datetime.now() > time_threshold:
@@ -417,10 +425,6 @@ def _trust_ncg(
         trust_radius=state.trust_radius,
         status=state.status
     )
-
-
-def newton_cg(*args, **kwargs):
-    return _newton_cg(*args, **kwargs).x
 
 
 def trust_ncg(*args, **kwargs):
