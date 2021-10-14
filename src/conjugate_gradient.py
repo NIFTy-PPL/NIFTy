@@ -145,7 +145,7 @@ def _cg(
             if name is not None:
                 msg = (
                     f"{name}: Iteration {i} ⛰:{new_energy:+.6e} Δ⛰:{energy_diff:.6e}"
-                    f" 🞋:{absdelta:.6e}" if absdelta is not None else ""
+                    + (f" 🞋:{absdelta:.6e}" if absdelta is not None else "")
                 )
                 print(msg, file=sys.stderr)
         else:
@@ -245,8 +245,8 @@ def _static_cg(
             energy_diff = previous_energy - energy
             if name is not None:
                 msg = (
-                    f"{name}: Iteration {i!r} ⛰:{energy!r}"
-                    f" 🞋:{absdelta!r}" if absdelta is not None else ""
+                    f"{name}: Iteration {i!r} ⛰:{energy!r}" +
+                    (f" 🞋:{absdelta!r}" if absdelta is not None else "")
                 )
                 print(msg, file=sys.stderr)
         else:
@@ -562,9 +562,13 @@ def _cg_steihaug_subproblem(
                     "{name}: |∇|:{r_norm:.6e} 🞋:{resnorm:.6e} ↗:{tr:.6e}"
                     " ☞:{case:1d} #∇²:{nhev:02d}"
                     "\n{name}: Iteration {i} ⛰:{energy:+.6e} Δ⛰:{energy_diff:.6e}"
-                    " 🞋:{absdelta:.6e}" if arg["absdelta"] is not None else ""
-                    "\n{name}: Iteration Limit Reached"
-                    if arg["i"] == arg["maxiter"] else ""
+                    + (
+                        " 🞋:{absdelta:.6e}"
+                        if arg["absdelta"] is not None else ""
+                    ) + (
+                        "\n{name}: Iteration Limit Reached"
+                        if arg["i"] == arg["maxiter"] else ""
+                    )
                 )
                 print(msg.format(name=name, **arg), file=sys.stderr)
 

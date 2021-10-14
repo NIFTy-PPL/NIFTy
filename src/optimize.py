@@ -184,8 +184,8 @@ def _newton_cg(
             msg = (
                 f"{name}: →:{grad_scaling} ↺:{ls_reset} #∇²:{nhev:02d}"
                 f" |↘|:{descent_norm:.6e} 🞋:{xtol:.6e}"
-                f"\n{name}: Iteration {i} ⛰:{energy:+.6e} Δ⛰:{energy_diff:.6e}"
-                f" 🞋:{absdelta:.6e}" if absdelta is not None else ""
+                f"\n{name}: Iteration {i} ⛰:{energy:+.6e} Δ⛰:{energy_diff:.6e}" +
+                (f" 🞋:{absdelta:.6e}" if absdelta is not None else "")
             )
             print(msg, file=sys.stderr)
         if np.isnan(new_energy):
@@ -378,8 +378,8 @@ def _trust_ncg(
                 msg = (
                     "{name}: ↗:{tr:.6e} ⬤:{hit} ∝:{rho:.2e} #∇²:{nhev:02d}"
                     "\n{name}: Iteration {i} ⛰:{energy:+.6e} Δ⛰:{energy_diff:.6e}"
-                    " 🞋:{absdelta:.6e}" if absdelta is not None else ""
-                    "\n{name}: Iteration Limit Reached" if i == maxiter else ""
+                    + (" 🞋:{absdelta:.6e}" if absdelta is not None else "") +
+                    ("\n{name}: Iteration Limit Reached" if i == maxiter else "")
                 )
                 print(msg.format(name=name, **arg), file=sys.stderr)
 
