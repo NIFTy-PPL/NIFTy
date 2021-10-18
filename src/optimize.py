@@ -383,11 +383,14 @@ def _trust_ncg(
             from jax.experimental.host_callback import call
 
             def pp(arg):
+                i = arg["i"]
                 msg = (
                     "{name}: ↗:{tr:.6e} ⬤:{hit} ∝:{rho:.2e} #∇²:{nhev:02d}"
                     "\n{name}: Iteration {i} ⛰:{energy:+.6e} Δ⛰:{energy_diff:.6e}"
-                    + (" 🞋:{absdelta:.6e}" if absdelta is not None else "") +
-                    ("\n{name}: Iteration Limit Reached" if i == maxiter else "")
+                    + (" 🞋:{absdelta:.6e}" if absdelta is not None else "") + (
+                        "\n{name}: Iteration Limit Reached"
+                        if i == maxiter else ""
+                    )
                 )
                 print(msg.format(name=name, **arg), file=sys.stderr)
 
