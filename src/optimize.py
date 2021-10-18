@@ -56,7 +56,8 @@ class OptimizeResults(NamedTuple):
     good_approximation: Union[None, bool, np.ndarray] = None
 
 
-def _prepare_vag_hessp(fun, jac, hessp, fun_and_grad) -> Tuple[Callable, Callable]:
+def _prepare_vag_hessp(fun, jac, hessp,
+                       fun_and_grad) -> Tuple[Callable, Callable]:
     """Returns a tuple of functions for computing the value-and-gradient and
     the Hessian-Vector-Product.
     """
@@ -117,7 +118,9 @@ def _newton_cg(
     xtol = xtol * size(x0)
 
     pos = x0
-    fun_and_grad, hessp = _prepare_vag_hessp(fun, jac, hessp, fun_and_grad=fun_and_grad)
+    fun_and_grad, hessp = _prepare_vag_hessp(
+        fun, jac, hessp, fun_and_grad=fun_and_grad
+    )
     cg_kwargs = {} if cg_kwargs is None else cg_kwargs
     cg_name = name + "CG" if name is not None else None
 
@@ -191,8 +194,8 @@ def _newton_cg(
             msg = (
                 f"{name}: →:{grad_scaling} ↺:{ls_reset} #∇²:{nhev:02d}"
                 f" |↘|:{descent_norm:.6e} 🞋:{xtol:.6e}"
-                f"\n{name}: Iteration {i} ⛰:{energy:+.6e} Δ⛰:{energy_diff:.6e}" +
-                (f" 🞋:{absdelta:.6e}" if absdelta is not None else "")
+                f"\n{name}: Iteration {i} ⛰:{energy:+.6e} Δ⛰:{energy_diff:.6e}"
+                + (f" 🞋:{absdelta:.6e}" if absdelta is not None else "")
             )
             print(msg, file=sys.stderr)
         if np.isnan(new_energy):
@@ -276,7 +279,9 @@ def _trust_ncg(
     common_dtp = common_type(x0)
     eps = 6. * np.finfo(common_dtp).eps  # Inspired by SciPy's NewtonCG minimzer
 
-    fun_and_grad, hessp = _prepare_vag_hessp(fun, jac, hessp, fun_and_grad=fun_and_grad)
+    fun_and_grad, hessp = _prepare_vag_hessp(
+        fun, jac, hessp, fun_and_grad=fun_and_grad
+    )
     subproblem_kwargs = {} if subproblem_kwargs is None else subproblem_kwargs
     cg_name = name + "SP" if name is not None else None
 
