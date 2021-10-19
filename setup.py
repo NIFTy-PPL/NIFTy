@@ -20,8 +20,10 @@ from setuptools import find_packages, setup
 
 def write_version():
     import subprocess
-    p = subprocess.Popen(["git", "describe", "--dirty", "--tags", "--always"],
-                         stdout=subprocess.PIPE)
+    p = subprocess.Popen(
+        ["git", "describe", "--dirty", "--tags", "--always"],
+        stdout=subprocess.PIPE
+    )
     res = p.communicate()[0].strip().decode('utf-8')
     with open("jifty1/git_version.py", "w") as file:
         file.write('gitversion = "{}"\n'.format(res))
@@ -30,20 +32,21 @@ def write_version():
 write_version()
 exec(open('jifty1/version.py').read())
 
-setup(name="jifty1",
-      version=__version__,
-      author="Reimar Leike, Gordian Edenhofer",
-      author_email="reimar@mpa-garching.mpg.de",
-      description="Numerical Information Field Theory with JAX",
-      packages=find_packages(include=["jifty1", "jifty1.*"]),
-      zip_safe=True,
-      license="GPLv3",
-      setup_requires=['scipy>=1.4.1', 'numpy>=1.17', 'jax>=0.2.1'],
-      install_requires=['scipy>=1.4.1', 'numpy>=1.17', 'jax>=0.2.1'],
-      python_requires='>=3.8',
-      classifiers=[
-        "Development Status :: 4 - Beta",
-        "Topic :: Utilities",
+setup(
+    name="jifty1",
+    version=__version__,
+    author="Reimar Leike, Gordian Edenhofer",
+    author_email="reimar@mpa-garching.mpg.de",
+    description="Numerical Information Field Theory with JAX",
+    packages=find_packages(include=["jifty1", "jifty1.*"]),
+    zip_safe=True,
+    license="GPLv3",
+    setup_requires=['scipy>=1.4.1', 'numpy>=1.17', 'jax>=0.2.1'],
+    install_requires=['scipy>=1.4.1', 'numpy>=1.17', 'jax>=0.2.1'],
+    python_requires='>=3.8',
+    classifiers=[
+        "Development Status :: 4 - Beta", "Topic :: Utilities",
         "License :: OSI Approved :: GNU General Public License v3 "
-        "or later (GPLv3+)"],
-      )
+        "or later (GPLv3+)"
+    ],
+)

@@ -1,5 +1,5 @@
 from functools import partial
-from jax import numpy as np
+from jax import numpy as jnp
 from jax import random, tree_util
 from jax import jit, grad
 
@@ -18,9 +18,9 @@ class Chain(NamedTuple):
     """
     # Q but with one more dimension on the first axes of the leave tensors
     samples: Q
-    divergences: np.ndarray
-    acceptance: Union[np.ndarray, float]
-    depths: Optional[np.ndarray] = None
+    divergences: jnp.ndarray
+    acceptance: Union[jnp.ndarray, float]
+    depths: Optional[jnp.ndarray] = None
     resampled_momenta: Optional[Q] = None
     trees: Optional[Union[Tree, AcceptedAndRejected]] = None
 
@@ -37,7 +37,7 @@ class NUTSChain:
         compile: bool = True,
         dbg_info: bool = False,
         bias_transition: bool = True,
-        max_energy_difference: float = np.inf
+        max_energy_difference: float = jnp.inf
     ):
         if not callable(potential_energy):
             raise TypeError()
@@ -45,7 +45,7 @@ class NUTSChain:
             raise TypeError()
         if not isinstance(max_tree_depth, int):
             raise TypeError()
-        if not isinstance(key, np.ndarray):
+        if not isinstance(key, jnp.ndarray):
             if isinstance(key, int):
                 key = random.PRNGKey(key)
             else:
@@ -56,7 +56,7 @@ class NUTSChain:
 
         if isinstance(inverse_mass_matrix, float):
             self.inverse_mass_matrix = tree_util.tree_map(
-                lambda arr: np.full(arr.shape, inverse_mass_matrix),
+                lambda arr: jnp.full(arr.shape, inverse_mass_matrix),
                 initial_position
             )
         elif tree_util.tree_structure(
@@ -104,18 +104,18 @@ class NUTSChain:
     def generate_n_samples(
         self,
         num_samples,
-        _state: Optional[tuple[np.ndarray, Q]] = None
+        _state: Optional[tuple[jnp.ndarray, Q]] = None
     ) -> Chain:
         _state = self.last_state if _state is None else _state
         key, initial_position = self.last_state
 
         samples = tree_util.tree_map(
-            lambda arr: np.
-            empty_like(arr, shape=(num_samples, ) + np.shape(arr)),
+            lambda arr: jnp.
+            empty_like(arr, shape=(num_samples, ) + jnp.shape(arr)),
             initial_position
         )
-        depths = np.empty(num_samples, dtype=np.uint8)
-        divergences = np.empty(num_samples, dtype=bool)
+        depths = jnp.empty(num_samples, dtype=jnp.uint8)
+        divergences = jnp.empty(num_samples, dtype=bool)
         chain = Chain(
             samples=samples,
             divergences=divergences,
@@ -124,8 +124,8 @@ class NUTSChain:
         )
         if self.dbg_info:
             resampled_momenta = tree_util.tree_map(
-                lambda arr: np.empty_like(
-                    initial_position, shape=(num_samples, ) + np.shape(arr)
+                lambda arr: jnp.empty_like(
+                    initial_position, shape=(num_samples, ) + jnp.shape(arr)
                 ), initial_position
             )
             _qp_proto = QP(initial_position, initial_position)
@@ -140,8 +140,8 @@ class NUTSChain:
                 cumulative_acceptance=0.
             )
             trees = tree_util.tree_map(
-                lambda leaf: np.
-                empty_like(leaf, shape=(num_samples, ) + np.shape(leaf)),
+                lambda leaf: jnp.
+                empty_like(leaf, shape=(num_samples, ) + jnp.shape(leaf)),
                 _tree_proto
             )
             chain = chain._replace(
@@ -170,7 +170,7 @@ class NUTSChain:
                 max_energy_difference=self.max_energy_difference
             )
             num_proposals = 2**tree.depth - 1
-            tree_acceptance = np.where(
+            tree_acceptance = jnp.where(
                 num_proposals > 0, tree.cumulative_acceptance / num_proposals,
                 0.
             )
@@ -228,7 +228,7 @@ class HMCChain:
         step_size: float = 1.0,
         compile=True,
         dbg_info=False,
-        max_energy_difference: float = np.inf
+        max_energy_difference: float = jnp.inf
     ):
         if not callable(potential_energy):
             raise TypeError()
@@ -236,7 +236,7 @@ class HMCChain:
             raise TypeError()
         if not isinstance(step_size, float):
             raise TypeError()
-        if not isinstance(key, np.ndarray):
+        if not isinstance(key, jnp.ndarray):
             if isinstance(key, int):
                 key = random.PRNGKey(key)
             else:
@@ -247,7 +247,7 @@ class HMCChain:
 
         if isinstance(inverse_mass_matrix, float):
             self.inverse_mass_matrix = tree_util.tree_map(
-                lambda arr: np.full(arr.shape, inverse_mass_matrix),
+                lambda arr: jnp.full(arr.shape, inverse_mass_matrix),
                 initial_position
             )
         elif tree_util.tree_structure(
@@ -295,22 +295,22 @@ class HMCChain:
     def generate_n_samples(
         self,
         num_samples,
-        _state: Optional[tuple[np.ndarray, Q]] = None
+        _state: Optional[tuple[jnp.ndarray, Q]] = None
     ) -> Chain:
         _state = self.last_state if _state is None else _state
         key, initial_position = self.last_state
 
         samples = tree_util.tree_map(
-            lambda arr: np.
-            empty_like(arr, shape=(num_samples, ) + np.shape(arr)),
+            lambda arr: jnp.
+            empty_like(arr, shape=(num_samples, ) + jnp.shape(arr)),
             initial_position
         )
-        divergences = np.empty(num_samples, dtype=bool)
+        divergences = jnp.empty(num_samples, dtype=bool)
         chain = Chain(samples=samples, divergences=divergences, acceptance=0.)
         if self.dbg_info:
             resampled_momenta = tree_util.tree_map(
-                lambda arr: np.empty_like(
-                    initial_position, shape=(num_samples, ) + np.shape(arr)
+                lambda arr: jnp.empty_like(
+                    initial_position, shape=(num_samples, ) + jnp.shape(arr)
                 ), initial_position
             )
             _qp_proto = QP(initial_position, initial_position)
@@ -318,8 +318,8 @@ class HMCChain:
                 _qp_proto, _qp_proto, True, True
             )
             trees = tree_util.tree_map(
-                lambda leaf: np.
-                empty_like(leaf, shape=(num_samples, ) + np.shape(leaf)),
+                lambda leaf: jnp.
+                empty_like(leaf, shape=(num_samples, ) + jnp.shape(leaf)),
                 _acc_rej_proto
             )
             chain = chain._replace(

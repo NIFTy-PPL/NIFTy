@@ -3,7 +3,7 @@ from collections.abc import Mapping
 
 import sys
 from functools import partial
-from jax import numpy as np
+from jax import numpy as jnp
 
 from .forest_util import ShapeWithDtype
 from .stats_distributions import normal_prior, lognormal_prior
@@ -32,40 +32,40 @@ def get_fourier_mode_distributor(
 
     Returns
     -------
-    mode_length_idx : np.ndarray
+    mode_length_idx : jnp.ndarray
         Index in power-space for every mode in harmonic-space. Can be used to
         distribute power from a power-space to the full harmonic domain.
-    unique_mode_length : np.ndarray
+    unique_mode_length : jnp.ndarray
         Unique length of Fourier modes.
-    mode_multiplicity : np.ndarray
+    mode_multiplicity : jnp.ndarray
         Multiplicity for each unique Fourier mode length.
     """
     shape = (shape, ) if isinstance(shape, int) else tuple(shape)
 
     # Compute length of modes
-    mspc_distances = 1. / (np.array(shape) * np.array(distances))
-    m_length = np.arange(shape[0], dtype=np.float64)
-    m_length = np.minimum(m_length, shape[0] - m_length) * mspc_distances[0]
+    mspc_distances = 1. / (jnp.array(shape) * jnp.array(distances))
+    m_length = jnp.arange(shape[0], dtype=jnp.float64)
+    m_length = jnp.minimum(m_length, shape[0] - m_length) * mspc_distances[0]
     if len(shape) != 1:
         m_length *= m_length
         for i in range(1, len(shape)):
-            tmp = np.arange(shape[i], dtype=np.float64)
-            tmp = np.minimum(tmp, shape[i] - tmp) * mspc_distances[i]
+            tmp = jnp.arange(shape[i], dtype=jnp.float64)
+            tmp = jnp.minimum(tmp, shape[i] - tmp) * mspc_distances[i]
             tmp *= tmp
-            m_length = np.expand_dims(m_length, axis=-1) + tmp
-        m_length = np.sqrt(m_length)
+            m_length = jnp.expand_dims(m_length, axis=-1) + tmp
+        m_length = jnp.sqrt(m_length)
 
     # Construct an array of unique mode lengths
     uniqueness_rtol = 1e-12
-    um = np.unique(m_length)
+    um = jnp.unique(m_length)
     tol = uniqueness_rtol * um[-1]
-    um = um[np.diff(np.append(um, 2 * um[-1])) > tol]
+    um = um[jnp.diff(jnp.append(um, 2 * um[-1])) > tol]
     # Group modes based on their length and store the result as power
     # distributor
     binbounds = 0.5 * (um[:-1] + um[1:])
-    m_length_idx = np.searchsorted(binbounds, m_length)
-    m_count = np.bincount(m_length_idx.ravel(), minlength=um.size)
-    if np.any(m_count == 0) or um.shape != m_count.shape:
+    m_length_idx = jnp.searchsorted(binbounds, m_length)
+    m_count = jnp.bincount(m_length_idx.ravel(), minlength=um.size)
+    if jnp.any(m_count == 0) or um.shape != m_count.shape:
         raise RuntimeError("invalid harmonic mode(s) encountered")
 
     return m_length_idx, um, m_count
@@ -74,15 +74,15 @@ def get_fourier_mode_distributor(
 def _twolog_integrate(log_vol, x):
     # Map the space to the one for the relative log-modes, i.e. pad the space
     # of the log volume
-    twolog = np.empty((2 + log_vol.shape[0], ))
+    twolog = jnp.empty((2 + log_vol.shape[0], ))
     twolog = twolog.at[0].set(0.)
     twolog = twolog.at[1].set(0.)
 
-    twolog = twolog.at[2:].set(np.cumsum(x[1], axis=0))
+    twolog = twolog.at[2:].set(jnp.cumsum(x[1], axis=0))
     twolog = twolog.at[2:].set(
         (twolog[2:] + twolog[1:-1]) / 2. * log_vol + x[0]
     )
-    twolog = twolog.at[2:].set(np.cumsum(twolog[2:], axis=0))
+    twolog = twolog.at[2:].set(jnp.cumsum(twolog[2:], axis=0))
     return twolog
 
 
@@ -120,7 +120,7 @@ def non_parametric_amplitude(
         asperity = ducktape(asperity, prefix + "_asperity")
         ptree[prefix + "_asperity"] = ShapeWithDtype(())
 
-    def correlate(primals: Mapping) -> np.ndarray:
+    def correlate(primals: Mapping) -> jnp.ndarray:
         flu = fluctuations(primals)
         slope = loglogavgslope(primals)
         slope *= rel_log_mode_len
@@ -130,33 +130,35 @@ def non_parametric_amplitude(
             assert log_vol is not None
             xi_spc = primals[prefix + "_spectrum"]
             flx = flexibility(primals)
-            sig_flx = flx * np.sqrt(log_vol)
-            sig_flx = np.broadcast_to(sig_flx, (2, ) + log_vol.shape)
+            sig_flx = flx * jnp.sqrt(log_vol)
+            sig_flx = jnp.broadcast_to(sig_flx, (2, ) + log_vol.shape)
 
             if asperity is None:
-                shift = np.stack(
-                    (log_vol / np.sqrt(12.), np.ones_like(log_vol)), axis=0
+                shift = jnp.stack(
+                    (log_vol / jnp.sqrt(12.), jnp.ones_like(log_vol)), axis=0
                 )
                 asp = shift * sig_flx * xi_spc
             else:
                 asp = asperity(primals)
-                shift = np.stack(
-                    (log_vol**2 / 12., np.ones_like(log_vol)), axis=0
+                shift = jnp.stack(
+                    (log_vol**2 / 12., jnp.ones_like(log_vol)), axis=0
                 )
-                sig_asp = np.broadcast_to(np.array([[asp], [0.]]), shift.shape)
-                asp = np.sqrt(shift + sig_asp) * sig_flx * xi_spc
+                sig_asp = jnp.broadcast_to(
+                    jnp.array([[asp], [0.]]), shift.shape
+                )
+                asp = jnp.sqrt(shift + sig_asp) * sig_flx * xi_spc
 
             twolog = _twolog_integrate(log_vol, asp)
             wo_slope = _remove_slope(rel_log_mode_len, twolog)
             ln_amplitude += wo_slope
 
         # Exponentiate and norm the power spectrum
-        amplitude = np.exp(ln_amplitude)
+        amplitude = jnp.exp(ln_amplitude)
         # Take the sqrt of the integral of the slope w/o fluctuations and
         # zero-mode while taking into account the multiplicity of each mode
-        norm = np.sqrt(np.sum(mode_multiplicity[1:] * amplitude[1:]**2))
-        norm /= np.sqrt(totvol)  # Due to integral in harmonic space
-        amplitude *= flu * (np.sqrt(totvol) / norm)
+        norm = jnp.sqrt(jnp.sum(mode_multiplicity[1:] * amplitude[1:]**2))
+        norm /= jnp.sqrt(totvol)  # Due to integral in harmonic space
+        amplitude *= flu * (jnp.sqrt(totvol) / norm)
         amplitude = amplitude.at[0].set(totvol)
         return amplitude
 
@@ -248,8 +250,8 @@ class CorrelatedFieldMaker():
             lives
         """
         shape = (shape, ) if isinstance(shape, int) else tuple(shape)
-        distances = tuple(np.broadcast_to(distances, np.shape(shape)))
-        totvol = np.prod(np.array(shape) * np.array(distances))
+        distances = tuple(jnp.broadcast_to(distances, jnp.shape(shape)))
+        totvol = jnp.prod(jnp.array(shape) * jnp.array(distances))
 
         # Pre-compute lengths of modes and indices for distributing power
         # TODO: cache results such that only references are used afterwards
@@ -268,7 +270,7 @@ class CorrelatedFieldMaker():
             domain["mode_multiplicity"] = m_count
 
             # Transform the unique modes to log-space for the amplitude model
-            um = um.at[1:].set(np.log(um[1:]))
+            um = um.at[1:].set(jnp.log(um[1:]))
             um = um.at[1:].add(-um[1])
             assert um[0] == 0.
             domain["relative_log_mode_lengths"] = um
@@ -442,7 +444,7 @@ class CorrelatedFieldMaker():
                 # NOTE, the order is important here and must match with the
                 # excitations
                 # TODO, use functions instead and utilize numpy's casting
-                outer = np.tensordot(outer, amp(p), axes=0)
+                outer = jnp.tensordot(outer, amp(p), axes=0)
             return outer
 
         def correlated_field(p):

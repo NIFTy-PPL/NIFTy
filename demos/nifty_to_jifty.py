@@ -4,7 +4,7 @@ from jax.config import config
 config.update("jax_enable_x64", True)
 
 import sys
-from jax import numpy as np
+from jax import numpy as jnp
 from jax import random
 from jax import value_and_grad, jit
 import matplotlib.pyplot as plt
@@ -42,12 +42,12 @@ def Gaussian(data, noise_cov_inv_sqrt):
     def hamiltonian(primals):
         p_res = primals - data
         l_res = noise_cov_inv_sqrt(p_res)
-        return 0.5 * np.sum(l_res**2)
+        return 0.5 * jnp.sum(l_res**2)
 
     def left_sqrt_metric(primals, tangents):
         return noise_cov_inv_sqrt(tangents)
 
-    lsm_tangents_shape = np.shape(data)
+    lsm_tangents_shape = jnp.shape(data)
     # Better: `tree_map(ShapeWithDtype.from_leave, data)`
 
     return jft.Likelihood(
@@ -64,15 +64,15 @@ dims = (1024, )
 
 loglogslope = 2.
 power_spectrum = lambda k: 1. / (k**loglogslope + 1.)
-modes = np.arange((dims[0] / 2) + 1., dtype=float)
+modes = jnp.arange((dims[0] / 2) + 1., dtype=float)
 harmonic_power = power_spectrum(modes)
-harmonic_power = np.concatenate((harmonic_power, harmonic_power[-2:0:-1]))
+harmonic_power = jnp.concatenate((harmonic_power, harmonic_power[-2:0:-1]))
 
 # Specify the model
 correlated_field = lambda x: jft.correlated_field.hartley(
     harmonic_power * x.val
 )
-signal_response = lambda x: np.exp(1. + correlated_field(x))
+signal_response = lambda x: jnp.exp(1. + correlated_field(x))
 noise_cov_inv_sqrt = lambda x: 0.1**-1 * x
 
 # Create synthetic data
@@ -80,7 +80,7 @@ key, subkey = random.split(key)
 pos_truth = jft.Field(random.normal(shape=dims, key=key))
 signal_response_truth = signal_response(pos_truth)
 key, subkey = random.split(key)
-noise_truth = 1. / noise_cov_inv_sqrt(np.ones(dims)
+noise_truth = 1. / noise_cov_inv_sqrt(jnp.ones(dims)
                                      ) * random.normal(shape=dims, key=key)
 data = signal_response_truth + noise_truth
 
@@ -245,8 +245,8 @@ key, subkey = random.split(key)
 pos_truth = jft.random_like_shapewdtype(subkey, ptree)
 signal_response_truth = signal_response(pos_truth)
 key, subkey = random.split(key)
-noise_truth = np.sqrt(
-    noise_cov(np.ones(signal_response_truth.shape))
+noise_truth = jnp.sqrt(
+    noise_cov(jnp.ones(signal_response_truth.shape))
 ) * random.normal(shape=signal_response_truth.shape, key=key)
 data = signal_response_truth + noise_truth
 

@@ -1,10 +1,10 @@
-from jax.config import config
+from jax.config import config as jax_config
 
-config.update("jax_enable_x64", True)
+jax_config.update("jax_enable_x64", True)
 
 import sys
 
-from jax import numpy as np
+from jax import numpy as jnp
 from jax import random
 from jax import value_and_grad, jit
 
@@ -22,7 +22,7 @@ if __name__ == "__main__":
     n_mgvi_iterations = 3
     n_samples = 4
     n_newton_iterations = 10
-    absdelta = 1e-4 * np.prod(np.array(dims_ax1 + dims_ax2))
+    absdelta = 1e-4 * jnp.prod(jnp.array(dims_ax1 + dims_ax2))
 
     cf_zm = {"offset_mean": 0., "offset_std": (1e-3, 1e-4)}
     cf_fl = {
@@ -49,8 +49,8 @@ if __name__ == "__main__":
     pos_truth = jft.random_like_shapewdtype(subkey, ptree)
     signal_response_truth = signal_response(pos_truth)
     key, subkey = random.split(key)
-    noise_truth = np.sqrt(
-        noise_cov(np.ones(signal_response_truth.shape))
+    noise_truth = jnp.sqrt(
+        noise_cov(jnp.ones(signal_response_truth.shape))
     ) * random.normal(shape=signal_response_truth.shape, key=key)
     data = signal_response_truth + noise_truth
 

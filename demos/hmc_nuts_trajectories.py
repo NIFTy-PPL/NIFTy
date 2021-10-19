@@ -8,8 +8,7 @@
 # number of leapfrog steps.
 #
 
-from functools import partial
-import jax.numpy as np
+import jax.numpy as jnp
 import matplotlib
 import matplotlib.pyplot as plt
 import jifty1 as jft
@@ -18,11 +17,11 @@ import jifty1 as jft
 jft.hmc._DEBUG_FLAG = True
 
 # %%
-cov = np.array([10., 1.])
+cov = jnp.array([10., 1.])
 
-potential_energy = lambda q: np.sum(0.5 * q**2 / cov)
+potential_energy = lambda q: jnp.sum(0.5 * q**2 / cov)
 
-initial_position = np.array([1., 1.])
+initial_position = jnp.array([1., 1.])
 
 sampler = jft.NUTSChain(
     potential_energy=potential_energy,
@@ -46,7 +45,7 @@ plt.hist(chain.depths)
 plt.show()
 
 # %%
-debug_pos = np.array([qp.position for qp in jft.hmc._DEBUG_STORE])
+debug_pos = jnp.array([qp.position for qp in jft.hmc._DEBUG_STORE])
 print(len(debug_pos))
 
 # %%
@@ -56,8 +55,8 @@ colors = prop_cycle.by_key()['color']
 ax = plt.gca()
 ellipse = matplotlib.patches.Ellipse(
     xy=(0, 0),
-    width=np.sqrt(cov[0]),
-    height=np.sqrt(cov[1]),
+    width=jnp.sqrt(cov[0]),
+    height=jnp.sqrt(cov[1]),
     edgecolor='k',
     fc='None',
     lw=1

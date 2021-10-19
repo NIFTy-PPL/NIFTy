@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-import jax.numpy as np
+import jax.numpy as jnp
 import pytest
 from functools import partial
 from jax import eval_shape, random
@@ -54,7 +54,7 @@ lh_init_approx = (
         jft.VariableCovarianceGaussian, {
             "data": random.normal
         }, lambda key, shape: (
-            random.normal(key, shape=shape), 1. / np.
+            random.normal(key, shape=shape), 1. / jnp.
             exp(random.normal(key, shape=shape))
         )
     ), (
@@ -63,15 +63,15 @@ lh_init_approx = (
             "dof": random.exponential
         }, lambda key, shape: (
             random.normal(key, shape=shape),
-            np.exp(1. + random.normal(key, shape=shape))
+            jnp.exp(1. + random.normal(key, shape=shape))
         )
     )
 )
 
 
 def test_gaussian_vs_vcgaussian_consistency(seed, shape):
-    rtol = 10 * np.finfo(np.zeros(0).dtype).eps
-    atol = 1 * np.finfo(np.zeros(0).dtype).eps
+    rtol = 10 * jnp.finfo(jnp.zeros(0).dtype).eps
+    atol = 1 * jnp.finfo(jnp.zeros(0).dtype).eps
 
     key = random.PRNGKey(seed)
     sk = list(random.split(key, 5))
@@ -79,7 +79,7 @@ def test_gaussian_vs_vcgaussian_consistency(seed, shape):
     m1 = random.normal(sk.pop(), shape=shape)
     m2 = random.normal(sk.pop(), shape=shape)
     t = random.normal(sk.pop(), shape=shape)
-    inv_std = 1. / np.exp(1. + random.normal(sk.pop(), shape=shape))
+    inv_std = 1. / jnp.exp(1. + random.normal(sk.pop(), shape=shape))
 
     gauss = jft.Gaussian(d, noise_std_inv=lambda x: inv_std * x)
     vcgauss = jft.VariableCovarianceGaussian(d)
@@ -94,8 +94,8 @@ def test_gaussian_vs_vcgaussian_consistency(seed, shape):
 
 
 def test_studt_vs_vcstudt_consistency(seed, shape):
-    rtol = 10 * np.finfo(np.zeros(0).dtype).eps
-    atol = 4 * np.finfo(np.zeros(0).dtype).eps
+    rtol = 10 * jnp.finfo(jnp.zeros(0).dtype).eps
+    atol = 4 * jnp.finfo(jnp.zeros(0).dtype).eps
 
     key = random.PRNGKey(seed)
     sk = list(random.split(key, 6))
@@ -104,7 +104,7 @@ def test_studt_vs_vcstudt_consistency(seed, shape):
     m1 = random.normal(sk.pop(), shape=shape)
     m2 = random.normal(sk.pop(), shape=shape)
     t = random.normal(sk.pop(), shape=shape)
-    inv_std = 1. / np.exp(1. + random.normal(sk.pop(), shape=shape))
+    inv_std = 1. / jnp.exp(1. + random.normal(sk.pop(), shape=shape))
 
     studt = jft.StudentT(d, dof, noise_std_inv=lambda x: inv_std * x)
     vcstudt = jft.VariableCovarianceStudentT(d, dof)
@@ -120,7 +120,7 @@ def test_studt_vs_vcstudt_consistency(seed, shape):
 
 @pmp("lh_init", lh_init_true + lh_init_approx)
 def test_left_sqrt_metric_vs_metric_consistency(seed, shape, lh_init):
-    rtol = 4 * np.finfo(np.zeros(0).dtype).eps
+    rtol = 4 * jnp.finfo(jnp.zeros(0).dtype).eps
     atol = 0.
     aallclose = partial(assert_allclose, rtol=rtol, atol=atol)
 
@@ -151,7 +151,7 @@ def test_left_sqrt_metric_vs_metric_consistency(seed, shape, lh_init):
 
 @pmp("lh_init", lh_init_true)
 def test_transformation_vs_left_sqrt_metric_consistency(seed, shape, lh_init):
-    rtol = 4 * np.finfo(np.zeros(0).dtype).eps
+    rtol = 4 * jnp.finfo(jnp.zeros(0).dtype).eps
     atol = 0.
 
     N_TRIES = 5

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 import sys
-import jax.numpy as np
+import jax.numpy as jnp
 import jifty1 as jft
 import pytest
 from jax import value_and_grad, random
@@ -12,7 +12,7 @@ pmp = pytest.mark.parametrize
 
 def rosenbrock(np):
     def func(x):
-        return np.sum(100. * np.diff(x)**2 + (1. - x[:-1])**2)
+        return jnp.sum(100. * jnp.diff(x)**2 + (1. - x[:-1])**2)
 
     return func
 
@@ -36,14 +36,15 @@ def matyas(np):
 def eggholder(np):
     def func(p):
         x, y = p
-        return -(y + 47) * np.sin(np.sqrt(np.abs(x / 2. + y + 47.))
-                                 ) - x * np.sin(np.sqrt(np.abs(x - (y + 47.))))
+        return -(y + 47) * jnp.sin(
+            jnp.sqrt(jnp.abs(x / 2. + y + 47.))
+        ) - x * jnp.sin(jnp.sqrt(jnp.abs(x - (y + 47.))))
 
     return func
 
 
 def test_ncg_for_pytree():
-    pos = jft.Field([np.array(0.), (np.array(3.), ), {"a": np.array(5.)}])
+    pos = jft.Field([jnp.array(0.), (jnp.array(3.), ), {"a": jnp.array(5.)}])
     getters = (lambda x: x[0], lambda x: x[1][0], lambda x: x[2]["a"])
     tgt = [-10., 1., 2.]
     met = [10., 40., 2]
@@ -52,7 +53,7 @@ def test_ncg_for_pytree():
         losses = []
         for i, get in enumerate(getters):
             losses.append((get(p) - tgt[i])**2 * met[i])
-        return np.sum(np.array(losses))
+        return jnp.sum(jnp.array(losses))
 
     def metric(p, tan):
         m = []
@@ -76,10 +77,10 @@ def test_ncg_for_pytree():
 def test_ncg(seed):
     key = random.PRNGKey(seed)
     x = random.normal(key, shape=(3, ))
-    diag = np.array([1., 2., 3.])
+    diag = jnp.array([1., 2., 3.])
     met = lambda y, t: t / diag
     val_and_grad = lambda y: (
-        np.sum(y**2 / diag) / 2 - np.dot(x, y), y / diag - x
+        jnp.sum(y**2 / diag) / 2 - jnp.dot(x, y), y / diag - x
     )
 
     res = jft.newton_cg(
@@ -115,8 +116,8 @@ def test_cg_non_pos_def_failure(seed, cg):
 
     x = random.normal(sk[0], shape=(4, ))
     # Purposely produce a non-positive definite matrix
-    diag = np.concatenate(
-        (np.array([-1]), 6. + random.normal(sk[1], shape=(3, )))
+    diag = jnp.concatenate(
+        (jnp.array([-1]), 6. + random.normal(sk[1], shape=(3, )))
     )
     mat = lambda x: x / diag
 
@@ -138,7 +139,7 @@ def test_cg_steihaug(seed):
     # Note, the solution to the subproblem with infinite trust radius is the CG
     # but with the opposite sign
     res = jft.conjugate_gradient._cg_steihaug_subproblem(
-        np.nan, -x, mat, resnorm=1e-6, trust_radius=np.inf
+        jnp.nan, -x, mat, resnorm=1e-6, trust_radius=jnp.inf
     )
     assert_allclose(res.step, diag * x, rtol=1e-4, atol=1e-4)
 
@@ -160,7 +161,13 @@ def test_cg_steihaug_vs_cg_consistency(seed, size):
     for i in range(4):
         print(f"Iteratoin {i:02d}", file=sys.stderr)
         res_cgs = jft.conjugate_gradient._cg_steihaug_subproblem(
-            np.nan, -x, mat, resnorm=1e-6, trust_radius=np.inf, miniter=i, maxiter=i
+            jnp.nan,
+            -x,
+            mat,
+            resnorm=1e-6,
+            trust_radius=jnp.inf,
+            miniter=i,
+            maxiter=i
         )
         res_cg_plain, _ = jft.conjugate_gradient.cg(
             mat, x, resnorm=1e-6, miniter=i, maxiter=i
@@ -170,11 +177,11 @@ def test_cg_steihaug_vs_cg_consistency(seed, size):
 
 @pmp(
     "fun_and_init", (
-        (rosenbrock, np.zeros(2)), (himmelblau, np.zeros(2)),
-        (matyas, np.ones(2) * 6.), (eggholder, np.ones(2) * 100.)
+        (rosenbrock, jnp.zeros(2)), (himmelblau, jnp.zeros(2)),
+        (matyas, jnp.ones(2) * 6.), (eggholder, jnp.ones(2) * 100.)
     )
 )
-@pmp("maxiter", (np.inf, None))
+@pmp("maxiter", (jnp.inf, None))
 def test_minimize(fun_and_init, maxiter):
     from scipy.optimize import minimize as opt_minimize
     from jax import grad, hessian
@@ -183,7 +190,7 @@ def test_minimize(fun_and_init, maxiter):
 
     def jft_minimize(x0):
         result = jft.minimize(
-            func(np),
+            func(jnp),
             x0,
             method='trust-ncg',
             options=dict(
@@ -198,7 +205,7 @@ def test_minimize(fun_and_init, maxiter):
 
     def scp_minimize(x0):
         # Use JAX primitives to take derivates
-        fun = func(np)
+        fun = func(jnp)
         result = opt_minimize(
             fun, x0, jac=grad(fun), hess=hessian(fun), method='trust-ncg'
         )
