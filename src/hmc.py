@@ -361,9 +361,8 @@ def tree_index_get(ptree, idx):
 
 def tree_index_update(x, idx, y):
     from jax.tree_util import tree_map
-    from jax.ops import index_update
 
-    return tree_map(lambda x_el, y_el: index_update(x_el, idx, y_el), x, y)
+    return tree_map(lambda x_el, y_el: x_el.at[idx].set(y_el), x, y)
 
 
 def count_trailing_ones(n):
