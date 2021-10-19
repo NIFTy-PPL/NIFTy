@@ -1,3 +1,4 @@
+import numpy as np
 from functools import partial
 from jax import numpy as jnp
 from jax import random, tree_util
@@ -45,7 +46,7 @@ class NUTSChain:
             raise TypeError()
         if not isinstance(max_tree_depth, int):
             raise TypeError()
-        if not isinstance(key, jnp.ndarray):
+        if not isinstance(key, (jnp.ndarray, np.ndarray)):
             if isinstance(key, int):
                 key = random.PRNGKey(key)
             else:
@@ -236,7 +237,7 @@ class HMCChain:
             raise TypeError()
         if not isinstance(step_size, float):
             raise TypeError()
-        if not isinstance(key, jnp.ndarray):
+        if not isinstance(key, (jnp.ndarray, np.ndarray)):
             if isinstance(key, int):
                 key = random.PRNGKey(key)
             else:
