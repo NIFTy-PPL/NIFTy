@@ -105,7 +105,7 @@ def sample_standard_hamiltonian(*args, **kwargs):
         Hamiltonian with standard prior from which to draw samples.
     primals : tree-like structure
         Position at which to draw samples.
-    key : tuple, list or np.ndarray of uint32 of length two
+    key : tuple, list or jnp.ndarray of uint32 of length two
         Random key with which to generate random variables in data domain.
     cg : callable, optional
         Implementation of the conjugate gradient algorithm and used to
@@ -144,7 +144,7 @@ def geometrically_sample_standard_hamiltonian(
         Hamiltonian with standard prior from which to draw samples.
     primals : tree-like structure
         Position at which to draw samples.
-    key : tuple, list or np.ndarray of uint32 of length two
+    key : tuple, list or jnp.ndarray of uint32 of length two
         Random key with which to generate random variables in data domain.
     linear_sampling_cg : callable
         Implementation of the conjugate gradient algorithm and used to

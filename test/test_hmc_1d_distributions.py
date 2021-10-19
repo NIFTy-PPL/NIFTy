@@ -1,7 +1,7 @@
 import pytest
 import scipy
 import sys
-from jax import numpy as np
+from jax import numpy as jnp
 from jax.scipy import stats
 from scipy.special import comb
 from numpy.testing import assert_allclose
@@ -30,7 +30,7 @@ def mnc2mc(mnc, wmean=True):
             mu[1] = mean
         return mu[1:]
 
-    res = np.apply_along_axis(_local_counts, 0, mnc)
+    res = jnp.apply_along_axis(_local_counts, 0, mnc)
     # for backward compatibility convert 1-dim output to list/tuple
     return res
 
@@ -49,7 +49,7 @@ def test_moment_consistency(distribution, plot=False):
     sampler = jft.NUTSChain(
         potential_energy=lambda x: -1 * distribution.logpdf(x),
         inverse_mass_matrix=1.,
-        initial_position=np.array(1.03890),
+        initial_position=jnp.array(1.03890),
         step_size=0.7193,
         max_tree_depth=max_tree_depth,
         key=42,
@@ -58,17 +58,17 @@ def test_moment_consistency(distribution, plot=False):
     )
     chain = sampler.generate_n_samples(1000)
 
-    unique, counts = np.unique(chain.depths, return_counts=True)
-    depths_frequencies = np.asarray((unique, counts)).T
+    unique, counts = jnp.unique(chain.depths, return_counts=True)
+    depths_frequencies = jnp.asarray((unique, counts)).T
 
     if plot is True:
         import matplotlib.pyplot as plt
 
         fig, axs = plt.subplots(1, 2)
 
-        bins = np.linspace(-10, 10)
+        bins = jnp.linspace(-10, 10)
         if distribution is stats.expon:
-            bins = np.linspace(0, 10)
+            bins = jnp.linspace(0, 10)
         axs.flat[0].hist(
             chain.samples, bins=bins, density=True, histtype="step"
         )
@@ -77,7 +77,7 @@ def test_moment_consistency(distribution, plot=False):
 
         axs.flat[1].hist(
             chain.depths,
-            bins=np.arange(max_tree_depth + 1),
+            bins=jnp.arange(max_tree_depth + 1),
             density=True,
             histtype="step"
         )
@@ -87,10 +87,10 @@ def test_moment_consistency(distribution, plot=False):
 
     # central moments; except for the first (i.e. mean)
     sample_moms_central = scipy.stats.moment(chain.samples, [1, 2, 3, 4, 5, 6])
-    sample_moms_central[0] = np.mean(chain.samples)
+    sample_moms_central[0] = jnp.mean(chain.samples)
 
     scipy_dist = getattr(scipy.stats, name)
-    dist_moms_non_central = np.array(
+    dist_moms_non_central = jnp.array(
         [scipy_dist.moment(i) for i in [1, 2, 3, 4, 5, 6]]
     )
     dist_moms_central = mnc2mc(dist_moms_non_central, wmean=True)
@@ -103,8 +103,8 @@ def test_moment_consistency(distribution, plot=False):
             f" true: {dist_mom:+.2e} tested: "
         )
         print(msg, end="", file=sys.stderr)
-        test = not np.isnan(dist_mom)
-        test &= not (np.allclose(dist_mom, 0.) and i > 1)
+        test = not jnp.isnan(dist_mom)
+        test &= not (jnp.allclose(dist_mom, 0.) and i > 1)
         if i in moments_tol and test:
             assert_allclose(
                 dist_mom, smpl_mom,

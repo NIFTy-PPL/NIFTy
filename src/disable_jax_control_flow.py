@@ -4,6 +4,7 @@ from jax import lax
 
 _DISABLE_CONTROL_FLOW_PRIM = False
 
+
 def cond(pred, true_fun, false_fun, operand):
     if _DISABLE_CONTROL_FLOW_PRIM:
         if pred:

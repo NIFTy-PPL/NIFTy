@@ -6,7 +6,7 @@ config.update("jax_enable_x64", True)
 import sys
 import matplotlib.pyplot as plt
 from functools import partial
-from jax import numpy as np
+from jax import numpy as jnp
 from jax import lax, random
 from jax import value_and_grad, jit
 
@@ -18,21 +18,21 @@ key = random.PRNGKey(seed)
 
 # %%
 def cartesian_product(arrays, out=None):
-    import numpy as onp
+    import numpy as np
 
     # Generalized N-dimensional products
-    arrays = [onp.asarray(x) for x in arrays]
+    arrays = [np.asarray(x) for x in arrays]
     la = len(arrays)
-    dtype = onp.find_common_type([a.dtype for a in arrays], [])
+    dtype = np.find_common_type([a.dtype for a in arrays], [])
     if out is None:
-        out = onp.empty([len(a) for a in arrays] + [la], dtype=dtype)
-    for i, a in enumerate(onp.ix_(*arrays)):
+        out = np.empty([len(a) for a in arrays] + [la], dtype=dtype)
+    for i, a in enumerate(np.ix_(*arrays)):
         out[..., i] = a
     return out.reshape(-1, la)
 
 
 def banana_helper_phi_b(b, x):
-    return np.array([x[0], x[1] + b * x[0]**2 - 100 * b])
+    return jnp.array([x[0], x[1] + b * x[0]**2 - 100 * b])
 
 
 # %%
@@ -42,7 +42,7 @@ SCALE = 10.
 
 signal_response = lambda s: banana_helper_phi_b(b, SCALE * s)
 nll = jft.Gaussian(
-    np.zeros(2), lambda x: x / np.array([100., 1.])
+    jnp.zeros(2), lambda x: x / jnp.array([100., 1.])
 ) @ signal_response
 nll = nll.jit()
 nll_vg = jit(value_and_grad(nll))
@@ -51,14 +51,13 @@ ham = jft.StandardHamiltonian(nll)
 ham = ham.jit()
 ham_vg = jit(value_and_grad(ham))
 
-
 # %%  # MGVI
 n_mgvi_iterations = 30
 n_samples = [1] * (n_mgvi_iterations - 2) + [2] + [100]
 n_newton_iterations = [7] * (n_mgvi_iterations - 10) + [10] * 6 + 4 * [25]
 absdelta = 1e-10
 
-initial_position = np.array([1., 1.])
+initial_position = jnp.array([1., 1.])
 mkl_pos = 1e-2 * initial_position
 
 # Minimize the potential
@@ -98,7 +97,7 @@ for i in range(n_mgvi_iterations):
     print(
         (
             f"Post MGVI Iteration {i}: Energy {ham(mkl_pos):2.4e}"
-            f"; #NaNs {np.isnan(mkl_pos).sum()}"
+            f"; #NaNs {jnp.isnan(mkl_pos).sum()}"
         ),
         file=sys.stderr
     )
@@ -109,7 +108,7 @@ n_samples = [1] * (n_geovi_iterations - 2) + [2] + [100]
 n_newton_iterations = [7] * (n_geovi_iterations - 10) + [10] * 6 + [25] * 4
 absdelta = 1e-10
 
-initial_position = np.array([1., 1.])
+initial_position = jnp.array([1., 1.])
 gkl_pos = 1e-2 * initial_position
 
 for i in range(n_geovi_iterations):
@@ -159,7 +158,7 @@ for i in range(n_geovi_iterations):
 absdelta = 1e-10
 opt_state = jft.minimize(
     None,
-    x0=np.array([1., 1.]),
+    x0=jnp.array([1., 1.]),
     method="newton-cg",
     options={
         "fun_and_grad": ham_vg,
@@ -197,30 +196,30 @@ map_gkl = jft.GeoMetricKL(
 # %%
 
 n_pix_sqrt = 1000
-x = np.linspace(-30 / SCALE, 30 / SCALE, n_pix_sqrt)
-y = np.linspace(-15 / SCALE, 15 / SCALE, n_pix_sqrt)
-X, Y = np.meshgrid(x, y)
-XY = np.array([X, Y]).T
+x = jnp.linspace(-30 / SCALE, 30 / SCALE, n_pix_sqrt)
+y = jnp.linspace(-15 / SCALE, 15 / SCALE, n_pix_sqrt)
+X, Y = jnp.meshgrid(x, y)
+XY = jnp.array([X, Y]).T
 xy = XY.reshape((XY.shape[0] * XY.shape[1], 2))
-es = np.exp(-lax.map(ham, xy)).reshape(XY.shape[:2]).T
+es = jnp.exp(-lax.map(ham, xy)).reshape(XY.shape[:2]).T
 
 fig, axs = plt.subplots(1, 3, figsize=(16, 9))
 
-b_space_smpls = np.array([mkl_pos + smpl for smpl in mkl.samples])
+b_space_smpls = jnp.array([mkl_pos + smpl for smpl in mkl.samples])
 contour = axs[0].contour(X, Y, es)
 axs[0].clabel(contour, inline=True, fontsize=10)
 axs[0].scatter(*b_space_smpls.T)
 axs[0].plot(*mkl_pos, "rx")
 axs[0].set_title("MGVI")
 
-b_space_smpls = np.array([gkl_pos + smpl for smpl in gkl.samples])
+b_space_smpls = jnp.array([gkl_pos + smpl for smpl in gkl.samples])
 contour = axs[1].contour(X, Y, es)
 axs[1].clabel(contour, inline=True, fontsize=10)
 axs[1].scatter(*b_space_smpls.T, alpha=0.7)
 axs[1].plot(*gkl_pos, "rx")
 axs[1].set_title("GeoVI")
 
-b_space_smpls = np.array([map_pos + smpl for smpl in map_gkl.samples])
+b_space_smpls = jnp.array([map_pos + smpl for smpl in map_gkl.samples])
 contour = axs[2].contour(X, Y, es)
 axs[2].clabel(contour, inline=True, fontsize=10)
 axs[2].scatter(*b_space_smpls.T, alpha=0.7)

@@ -1,7 +1,7 @@
 from typing import Callable, Optional, Tuple
 
 import sys
-from jax import numpy as np
+from jax import numpy as jnp
 from jax.tree_util import tree_map
 
 from .forest_util import ShapeWithDtype
@@ -9,12 +9,12 @@ from .likelihood import Likelihood
 
 
 def standard_t(nwr, dof):
-    return np.sum(np.log1p(nwr**2 / dof) * (dof + 1)) / 2
+    return jnp.sum(jnp.log1p(nwr**2 / dof) * (dof + 1)) / 2
 
 
 def _shape_w_fixed_dtype(dtype):
     def shp_w_dtp(e):
-        return ShapeWithDtype(np.shape(e), dtype)
+        return ShapeWithDtype(jnp.shape(e), dtype)
 
     return shp_w_dtp
 
@@ -35,10 +35,10 @@ def _get_cov_inv_and_std_inv(
     elif not cov_inv:
         wm = (
             "assuming a diagonal covariance matrix"
-            ";\nsetting `cov_inv` to `std_inv(np.ones_like(data))**2`"
+            ";\nsetting `cov_inv` to `std_inv(jnp.ones_like(data))**2`"
         )
         print(wm, file=sys.stderr)
-        noise_std_inv_sq = std_inv(tree_map(np.ones_like, primals))**2
+        noise_std_inv_sq = std_inv(tree_map(jnp.ones_like, primals))**2
 
         def cov_inv(tangents):
             return noise_std_inv_sq * tangents
@@ -46,11 +46,11 @@ def _get_cov_inv_and_std_inv(
     elif not std_inv:
         wm = (
             "assuming a diagonal covariance matrix"
-            ";\nsetting `std_inv` to `cov_inv(np.ones_like(data))**0.5`"
+            ";\nsetting `std_inv` to `cov_inv(jnp.ones_like(data))**0.5`"
         )
         print(wm, file=sys.stderr)
         noise_cov_inv_sqrt = tree_map(
-            np.sqrt, cov_inv(tree_map(np.ones_like, primals))
+            jnp.sqrt, cov_inv(tree_map(jnp.ones_like, primals))
         )
 
         def std_inv(tangents):
@@ -69,7 +69,7 @@ def Gaussian(
 
     Parameters
     ----------
-    data : tree-like structure of np.ndarray and float
+    data : tree-like structure of jnp.ndarray and float
         Data with additive noise following a Gaussian distribution.
     noise_cov_inv : callable acting on type of data
         Function applying the inverse noise covariance of the Gaussian.
@@ -121,9 +121,9 @@ def StudentT(
 
     Parameters
     ----------
-    data : tree-like structure of np.ndarray and float
+    data : tree-like structure of jnp.ndarray and float
         Data with additive noise following a Gaussian distribution.
-    dof : tree-like structure of np.ndarray and float
+    dof : tree-like structure of jnp.ndarray and float
         Degree-of-freedom parameter of Student's t distribution.
     noise_cov_inv : callable acting on type of data
         Function applying the inverse noise covariance of the Gaussian.
@@ -157,13 +157,13 @@ def StudentT(
         """
         primals, tangents : mean
         """
-        return noise_std_inv(np.sqrt((dof + 1) / (dof + 3)) * tangents)
+        return noise_std_inv(jnp.sqrt((dof + 1) / (dof + 3)) * tangents)
 
     def transformation(primals):
         """
         primals : mean
         """
-        return noise_std_inv(np.sqrt((dof + 1) / (dof + 3)) * primals)
+        return noise_std_inv(jnp.sqrt((dof + 1) / (dof + 3)) * primals)
 
     lsm_tangents_shape = tree_map(ShapeWithDtype.from_leave, data)
 
@@ -198,22 +198,22 @@ def Poissonian(data, sampling_dtype=float):
     from .forest_util import common_type
 
     dtp = common_type(data)
-    if not np.issubdtype(dtp, np.integer):
+    if not jnp.issubdtype(dtp, jnp.integer):
         raise TypeError("`data` of invalid type")
-    if np.any(data < 0):
+    if jnp.any(data < 0):
         raise ValueError("`data` may not be negative")
 
     def hamiltonian(primals):
-        return np.sum(primals) - np.vdot(np.log(primals), data)
+        return jnp.sum(primals) - jnp.vdot(jnp.log(primals), data)
 
     def metric(primals, tangents):
         return tangents / primals
 
     def left_sqrt_metric(primals, tangents):
-        return tangents / np.sqrt(primals)
+        return tangents / jnp.sqrt(primals)
 
     def transformation(primals):
-        return np.sqrt(primals) * 2.
+        return jnp.sqrt(primals) * 2.
 
     lsm_tangents_shape = tree_map(_shape_w_fixed_dtype(sampling_dtype), data)
 
@@ -231,7 +231,7 @@ def VariableCovarianceGaussian(data):
 
     Parameters
     ----------
-    data : tree-like structure of np.ndarray and float
+    data : tree-like structure of jnp.ndarray and float
         Data with additive noise following a Gaussian distribution.
 
     Notes
@@ -245,7 +245,7 @@ def VariableCovarianceGaussian(data):
         primals : pair of (mean, std_inv)
         """
         res = (primals[0] - data) * primals[1]
-        return 0.5 * sum_of_squares(res) - np.sum(np.log(primals[1]))
+        return 0.5 * sum_of_squares(res) - jnp.sum(jnp.log(primals[1]))
 
     def metric(primals, tangents):
         """
@@ -259,7 +259,7 @@ def VariableCovarianceGaussian(data):
         """
         primals, tangent : pair of (mean, std_inv)
         """
-        res = (primals[1] * tangents[0], np.sqrt(2) * tangents[1] / primals[1])
+        res = (primals[1] * tangents[0], jnp.sqrt(2) * tangents[1] / primals[1])
         return type(primals)(res)
 
     def transformation(primals):
@@ -271,7 +271,7 @@ def VariableCovarianceGaussian(data):
         A global transformation to Euclidean space does not exist. A local
         approximation invoking the residual is used instead.
         """
-        res = (primals[1] * (primals[0] - data), tree_map(np.log, primals[1]))
+        res = (primals[1] * (primals[0] - data), tree_map(jnp.log, primals[1]))
         return type(primals)(res)
 
     lsm_tangents_shape = tree_map(ShapeWithDtype.from_leave, (data, data))
@@ -290,9 +290,9 @@ def VariableCovarianceStudentT(data, dof):
 
     Parameters
     ----------
-    data : tree-like structure of np.ndarray and float
+    data : tree-like structure of jnp.ndarray and float
         Data with additive noise following a Gaussian distribution.
-    dof : tree-like structure of np.ndarray and float
+    dof : tree-like structure of jnp.ndarray and float
         Degree-of-freedom parameter of Student's t distribution.
 
     Notes
@@ -304,7 +304,7 @@ def VariableCovarianceStudentT(data, dof):
         primals : pair of (mean, std)
         """
         t = standard_t((data - primals[0]) / primals[1], dof)
-        t += np.sum(np.log(primals[1]))
+        t += jnp.sum(jnp.log(primals[1]))
         return t
 
     def metric(primals, tangent):
@@ -324,7 +324,7 @@ def VariableCovarianceStudentT(data, dof):
             (dof + 1) / (dof + 3) / primals[1]**2,
             2 * dof / (dof + 3) / primals[1]**2
         )
-        res = (np.sqrt(cov[0]) * tangents[0], np.sqrt(cov[1]) * tangents[1])
+        res = (jnp.sqrt(cov[0]) * tangents[0], jnp.sqrt(cov[1]) * tangents[1])
         return res
 
     lsm_tangents_shape = tree_map(ShapeWithDtype.from_leave, (data, data))
@@ -353,20 +353,20 @@ def Categorical(data, axis=-1, sampling_dtype=float):
     def hamiltonian(primals):
         from jax.nn import log_softmax
         logits = log_softmax(primals, axis=axis)
-        return -np.sum(np.take_along_axis(logits, data, axis))
+        return -jnp.sum(jnp.take_along_axis(logits, data, axis))
 
     def metric(primals, tangents):
         from jax.nn import softmax
 
         preds = softmax(primals, axis=axis)
-        norm_term = np.sum(preds * tangents, axis=axis, keepdims=True)
+        norm_term = jnp.sum(preds * tangents, axis=axis, keepdims=True)
         return preds * tangents - preds * norm_term
 
     def left_sqrt_metric(primals, tangents):
         from jax.nn import softmax
 
-        sqrtp = np.sqrt(softmax(primals, axis=axis))
-        norm_term = np.sum(sqrtp * tangents, axis=axis, keepdims=True)
+        sqrtp = jnp.sqrt(softmax(primals, axis=axis))
+        norm_term = jnp.sum(sqrtp * tangents, axis=axis, keepdims=True)
         return sqrtp * (tangents - sqrtp * norm_term)
 
     lsm_tangents_shape = tree_map(_shape_w_fixed_dtype(sampling_dtype), data)
