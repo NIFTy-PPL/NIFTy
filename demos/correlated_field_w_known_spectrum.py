@@ -95,7 +95,6 @@ if __name__ == "__main__":
         kl_metric_at = lambda p, t: kl_metric(p, tuple(mkl.samples), t)
 
         print("Minimizing...", file=sys.stderr)
-        # TODO: Re-introduce a simplified version that works without fields
         opt_state = jft.minimize(
             None,
             x0=pos,
