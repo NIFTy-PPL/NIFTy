@@ -50,22 +50,18 @@ class Chain(NamedTuple):
     trees: Optional[Union[Tree, AcceptedAndRejected]] = None
 
 
-class NUTSChain:
+class _Sampler:
     def __init__(
         self,
-        potential_energy: Callable[[Q], Union[float, jnp.ndarray]],
+        potential_energy: Callable[[Q], Union[jnp.ndarray, float]],
         inverse_mass_matrix,
         position_proto: Q,
-        step_size: float = 1.0,
-        max_tree_depth: int = 10,
-        bias_transition: bool = True,
-        max_energy_difference: float = jnp.inf
+        step_size: Union[jnp.ndarray, float] = 1.0,
+        max_energy_difference: Union[jnp.ndarray, float] = jnp.inf
     ):
         if not callable(potential_energy):
             raise TypeError()
         if not isinstance(step_size, (jnp.ndarray, float)):
-            raise TypeError()
-        if not isinstance(max_tree_depth, int):
             raise TypeError()
 
         self.potential_energy = potential_energy
@@ -89,6 +85,80 @@ class NUTSChain:
         )
 
         self.max_energy_difference = max_energy_difference
+
+        def sample_next_state(key,
+                              prev_position: Q) -> tuple[Any, tuple[Any, Q]]:
+            raise NotImplementedError()
+
+        self.sample_next_state = sample_next_state
+
+    @staticmethod
+    def init_chain(
+        num_samples: int, position_proto, save_intermediates: bool
+    ) -> Chain:
+        raise NotImplementedError()
+
+    @staticmethod
+    def update_chain(
+        chain: Chain, idx: Union[jnp.ndarray, int], tree: Tree
+    ) -> Chain:
+        raise NotImplementedError()
+
+    def generate_n_samples(
+        self,
+        key: Any,
+        initial_position: Q,
+        num_samples,
+        *,
+        save_intermediates: bool = False
+    ) -> tuple[Chain, tuple[Any, Q]]:
+        if not isinstance(key, (jnp.ndarray, np.ndarray)):
+            if isinstance(key, int):
+                key = random.PRNGKey(key)
+            else:
+                raise TypeError()
+
+        chain = self.init_chain(
+            num_samples, initial_position, save_intermediates
+        )
+
+        def amend_chain(idx, state):
+            chain, core_state = state
+            tree, core_state = self.sample_next_state(*core_state)
+            chain = self.update_chain(chain, idx, tree)
+            return chain, core_state
+
+        chain, core_state = fori_loop(
+            lower=0,
+            upper=num_samples,
+            body_fun=amend_chain,
+            init_val=(chain, (key, initial_position))
+        )
+
+        return chain, core_state
+
+
+class NUTSChain(_Sampler):
+    def __init__(
+        self,
+        potential_energy: Callable[[Q], Union[float, jnp.ndarray]],
+        inverse_mass_matrix,
+        position_proto: Q,
+        step_size: float = 1.0,
+        max_tree_depth: int = 10,
+        bias_transition: bool = True,
+        max_energy_difference: float = jnp.inf
+    ):
+        super().__init__(
+            potential_energy=potential_energy,
+            inverse_mass_matrix=inverse_mass_matrix,
+            position_proto=position_proto,
+            step_size=step_size,
+            max_energy_difference=max_energy_difference
+        )
+
+        if not isinstance(max_tree_depth, int):
+            raise TypeError()
         self.bias_transition = bias_transition
         self.max_tree_depth = max_tree_depth
 
@@ -184,41 +254,8 @@ class NUTSChain:
 
         return chain
 
-    def generate_n_samples(
-        self,
-        key: Any,
-        initial_position: Q,
-        num_samples,
-        *,
-        save_intermediates: bool = False
-    ) -> tuple[Chain, tuple[Any, Q]]:
-        if not isinstance(key, (jnp.ndarray, np.ndarray)):
-            if isinstance(key, int):
-                key = random.PRNGKey(key)
-            else:
-                raise TypeError()
 
-        chain = self.init_chain(
-            num_samples, initial_position, save_intermediates
-        )
-
-        def amend_chain(idx, state):
-            chain, core_state = state
-            tree, core_state = self.sample_next_state(*core_state)
-            chain = self.update_chain(chain, idx, tree)
-            return chain, core_state
-
-        chain, core_state = fori_loop(
-            lower=0,
-            upper=num_samples,
-            body_fun=amend_chain,
-            init_val=(chain, (key, initial_position))
-        )
-
-        return chain, core_state
-
-
-class HMCChain:
+class HMCChain(_Sampler):
     def __init__(
         self,
         potential_energy: Callable,
@@ -228,35 +265,17 @@ class HMCChain:
         step_size: float = 1.0,
         max_energy_difference: float = jnp.inf
     ):
-        if not callable(potential_energy):
-            raise TypeError()
+        super().__init__(
+            potential_energy=potential_energy,
+            inverse_mass_matrix=inverse_mass_matrix,
+            position_proto=position_proto,
+            step_size=step_size,
+            max_energy_difference=max_energy_difference
+        )
+
         if not isinstance(num_steps, (jnp.ndarray, int)):
             raise TypeError()
-        if not isinstance(step_size, (jnp.ndarray, float)):
-            raise TypeError()
-
-        self.potential_energy = potential_energy
-
-        self.inverse_mass_matrix = _parse_diag_mass_matrix(
-            inverse_mass_matrix, position_proto=position_proto
-        )
-        self.mass_matrix_sqrt = self.inverse_mass_matrix**(-0.5)
-
         self.num_steps = num_steps
-        self.step_size = step_size
-
-        def kinetic_energy(inverse_mass_matrix, momentum):
-            # NOTE, assume a diagonal mass-matrix
-            return inverse_mass_matrix.dot(momentum**2) / 2.
-
-        self.kinetic_energy = kinetic_energy
-        kinetic_energy_gradient = lambda inv_m, mom: inv_m * mom
-        potential_energy_gradient = grad(self.potential_energy)
-        self.stepper = partial(
-            leapfrog_step, potential_energy_gradient, kinetic_energy_gradient
-        )
-
-        self.max_energy_difference = max_energy_difference
 
         def sample_next_state(key,
                               prev_position: Q) -> tuple[Tree, tuple[Any, Q]]:
@@ -328,37 +347,3 @@ class HMCChain:
             chain = chain._replace(trees=trees)
 
         return chain
-
-    # TODO: merge NUTSChain and HMCChain into a joined method
-    def generate_n_samples(
-        self,
-        key,
-        initial_position: Q,
-        num_samples,
-        *,
-        save_intermediates: bool = False,
-    ) -> tuple[Chain, tuple[Any, Q]]:
-        if not isinstance(key, (jnp.ndarray, np.ndarray)):
-            if isinstance(key, int):
-                key = random.PRNGKey(key)
-            else:
-                raise TypeError()
-
-        chain = self.init_chain(
-            num_samples, initial_position, save_intermediates
-        )
-
-        def amend_chain(idx, state):
-            chain, core_state = state
-            tree, core_state = self.sample_next_state(*core_state)
-            chain = self.update_chain(chain, idx, tree)
-            return chain, core_state
-
-        chain, core_state = fori_loop(
-            lower=0,
-            upper=num_samples,
-            body_fun=amend_chain,
-            init_val=(chain, (key, initial_position))
-        )
-
-        return chain, core_state
