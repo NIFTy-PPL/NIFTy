@@ -22,7 +22,6 @@ class Chain(NamedTuple):
     divergences: jnp.ndarray
     acceptance: Union[jnp.ndarray, float]
     depths: Optional[jnp.ndarray] = None
-    resampled_momenta: Optional[Q] = None
     trees: Optional[Union[Tree, AcceptedAndRejected]] = None
 
 
@@ -102,55 +101,7 @@ class NUTSChain:
         self.compile = compile
         self.dbg_info = dbg_info
 
-    def generate_n_samples(
-        self,
-        num_samples,
-        _state: Optional[tuple[jnp.ndarray, Q]] = None
-    ) -> Chain:
-        _state = self.last_state if _state is None else _state
-        key, initial_position = self.last_state
-
-        samples = tree_util.tree_map(
-            lambda arr: jnp.
-            empty_like(arr, shape=(num_samples, ) + jnp.shape(arr)),
-            initial_position
-        )
-        depths = jnp.empty(num_samples, dtype=jnp.uint8)
-        divergences = jnp.empty(num_samples, dtype=bool)
-        chain = Chain(
-            samples=samples,
-            divergences=divergences,
-            acceptance=0.,
-            depths=depths
-        )
-        if self.dbg_info:
-            resampled_momenta = tree_util.tree_map(
-                lambda arr: jnp.empty_like(
-                    initial_position, shape=(num_samples, ) + jnp.shape(arr)
-                ), initial_position
-            )
-            _qp_proto = QP(initial_position, initial_position)
-            _tree_proto = Tree(
-                _qp_proto,
-                _qp_proto,
-                0.,
-                _qp_proto,
-                turning=True,
-                diverging=True,
-                depth=0,
-                cumulative_acceptance=0.
-            )
-            trees = tree_util.tree_map(
-                lambda leaf: jnp.
-                empty_like(leaf, shape=(num_samples, ) + jnp.shape(leaf)),
-                _tree_proto
-            )
-            chain = chain._replace(
-                resampled_momenta=resampled_momenta, trees=trees
-            )
-
-        def amend_chain(idx, state):
-            key, prev_position, chain = state
+        def sample_next_state(key, prev_position):
             key, key_momentum, key_nuts = random.split(key, 3)
 
             resampled_momentum = sample_momentum_from_diagonal(
@@ -170,6 +121,11 @@ class NUTSChain:
                 bias_transition=self.bias_transition,
                 max_energy_difference=self.max_energy_difference
             )
+            return tree, (key, tree.proposal_candidate.position)
+
+        self.sample_next_state = sample_next_state
+
+        def update_chain(chain, idx, tree):
             num_proposals = 2**tree.depth - 1
             tree_acceptance = jnp.where(
                 num_proposals > 0, tree.cumulative_acceptance / num_proposals,
@@ -192,30 +148,73 @@ class NUTSChain:
                 depths=depths
             )
             if self.dbg_info:
-                resampled_momenta = tree_index_update(
-                    chain.resampled_momenta, idx, resampled_momentum
-                )
                 trees = tree_index_update(chain.trees, idx, tree)
-                chain = chain._replace(
-                    resampled_momenta=resampled_momenta, trees=trees
-                )
+                chain = chain._replace(trees=trees)
 
-            return (key, tree.proposal_candidate.position, chain)
+            return chain
+
+        self.update_chain = update_chain
+
+    def generate_n_samples(
+        self,
+        num_samples,
+        _state: Optional[tuple[jnp.ndarray, Q]] = None
+    ) -> Chain:
+        _state = self.last_state if _state is None else _state
+        key, initial_position = self.last_state
+
+        samples = tree_util.tree_map(
+            lambda arr: jnp.
+            empty_like(arr, shape=(num_samples, ) + jnp.shape(arr)),
+            initial_position
+        )
+        depths = jnp.empty(num_samples, dtype=jnp.uint8)
+        divergences = jnp.empty(num_samples, dtype=bool)
+        chain = Chain(
+            samples=samples,
+            divergences=divergences,
+            acceptance=0.,
+            depths=depths
+        )
+        if self.dbg_info:
+            _qp_proto = QP(initial_position, initial_position)
+            _tree_proto = Tree(
+                _qp_proto,
+                _qp_proto,
+                0.,
+                _qp_proto,
+                turning=True,
+                diverging=True,
+                depth=0,
+                cumulative_acceptance=0.
+            )
+            trees = tree_util.tree_map(
+                lambda leaf: jnp.
+                empty_like(leaf, shape=(num_samples, ) + jnp.shape(leaf)),
+                _tree_proto
+            )
+            chain = chain._replace(trees=trees)
+
+        def amend_chain(idx, state):
+            core_state, chain = state
+            tree, core_state = self.sample_next_state(*core_state)
+            chain = self.update_chain(chain, idx, tree)
+            return core_state, chain
 
         # TODO: pass initial state as argument and donate to JIT
         chain_assembly = lambda: fori_loop(
             lower=0,
             upper=num_samples,
             body_fun=amend_chain,
-            init_val=(key, initial_position, chain)
+            init_val=((key, initial_position), chain)
         )
 
         if self.compile:
             final_state = jit(chain_assembly)()
         else:
             final_state = chain_assembly()
-        self.last_state = final_state[:2]
-        return final_state[2]
+        self.last_state, chain = final_state
+        return chain
 
 
 class HMCChain:
@@ -292,43 +291,7 @@ class HMCChain:
         self.compile = compile
         self.dbg_info = dbg_info
 
-    # TODO: merge NUTSChain and HMCChain into a joined method
-    def generate_n_samples(
-        self,
-        num_samples,
-        _state: Optional[tuple[jnp.ndarray, Q]] = None
-    ) -> Chain:
-        _state = self.last_state if _state is None else _state
-        key, initial_position = self.last_state
-
-        samples = tree_util.tree_map(
-            lambda arr: jnp.
-            empty_like(arr, shape=(num_samples, ) + jnp.shape(arr)),
-            initial_position
-        )
-        divergences = jnp.empty(num_samples, dtype=bool)
-        chain = Chain(samples=samples, divergences=divergences, acceptance=0.)
-        if self.dbg_info:
-            resampled_momenta = tree_util.tree_map(
-                lambda arr: jnp.empty_like(
-                    initial_position, shape=(num_samples, ) + jnp.shape(arr)
-                ), initial_position
-            )
-            _qp_proto = QP(initial_position, initial_position)
-            _acc_rej_proto = AcceptedAndRejected(
-                _qp_proto, _qp_proto, True, True
-            )
-            trees = tree_util.tree_map(
-                lambda leaf: jnp.
-                empty_like(leaf, shape=(num_samples, ) + jnp.shape(leaf)),
-                _acc_rej_proto
-            )
-            chain = chain._replace(
-                resampled_momenta=resampled_momenta, trees=trees
-            )
-
-        def amend_chain(idx, state):
-            key, prev_position, chain = state
+        def sample_next_state(key, prev_position):
             key, key_choose, key_momentum_resample = random.split(key, 3)
 
             resampled_momentum = sample_momentum_from_diagonal(
@@ -348,7 +311,11 @@ class HMCChain:
                 step_size=self.step_size,
                 max_energy_difference=self.max_energy_difference
             )
+            return acc_rej, (key, acc_rej.accepted_qp.position)
 
+        self.sample_next_state = sample_next_state
+
+        def update_chain(chain, idx, acc_rej):
             samples = tree_index_update(
                 chain.samples, idx, acc_rej.accepted_qp.position
             )
@@ -361,27 +328,57 @@ class HMCChain:
                 samples=samples, divergences=divergences, acceptance=acceptance
             )
             if self.dbg_info:
-                resampled_momenta = tree_index_update(
-                    chain.resampled_momenta, idx, resampled_momentum
-                )
                 trees = tree_index_update(chain.trees, idx, acc_rej)
-                chain = chain._replace(
-                    resampled_momenta=resampled_momenta, trees=trees
-                )
+                chain = chain._replace(trees=trees)
+            return chain
 
-            return (key, acc_rej.accepted_qp.position, chain)
+        self.update_chain = update_chain
+
+    # TODO: merge NUTSChain and HMCChain into a joined method
+    def generate_n_samples(
+        self,
+        num_samples,
+        _state: Optional[tuple[jnp.ndarray, Q]] = None
+    ) -> Chain:
+        _state = self.last_state if _state is None else _state
+        key, initial_position = self.last_state
+
+        samples = tree_util.tree_map(
+            lambda arr: jnp.
+            empty_like(arr, shape=(num_samples, ) + jnp.shape(arr)),
+            initial_position
+        )
+        divergences = jnp.empty(num_samples, dtype=bool)
+        chain = Chain(samples=samples, divergences=divergences, acceptance=0.)
+        if self.dbg_info:
+            _qp_proto = QP(initial_position, initial_position)
+            _acc_rej_proto = AcceptedAndRejected(
+                _qp_proto, _qp_proto, True, True
+            )
+            trees = tree_util.tree_map(
+                lambda leaf: jnp.
+                empty_like(leaf, shape=(num_samples, ) + jnp.shape(leaf)),
+                _acc_rej_proto
+            )
+            chain = chain._replace(trees=trees)
+
+        def amend_chain(idx, state):
+            core_state, chain = state
+            acc_rej, core_state = self.sample_next_state(*core_state)
+            chain = self.update_chain(chain, idx, acc_rej)
+            return core_state, chain
 
         # TODO: pass initial state as argument and donate to JIT
         chain_assembly = lambda: fori_loop(
             lower=0,
             upper=num_samples,
             body_fun=amend_chain,
-            init_val=(key, initial_position, chain)
+            init_val=((key, initial_position), chain)
         )
 
         if self.compile:
             final_state = jit(chain_assembly)()
         else:
             final_state = chain_assembly()
-        self.last_state = final_state[:2]
-        return final_state[2]
+        self.last_state, chain = final_state
+        return chain
