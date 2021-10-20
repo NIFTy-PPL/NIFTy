@@ -52,12 +52,12 @@ class Likelihood():
                     raise TypeError(te)
         self._lsm_tan_shp = lsm_tangents_shape
 
-    def __call__(self, primals):
+    def __call__(self, *primals, **primals_kw):
         """Convenience method to access the `energy` method of this instance.
         """
-        return self.energy(primals)
+        return self.energy(*primals, **primals_kw)
 
-    def energy(self, primals):
+    def energy(self, *primals, **primals_kw):
         """Applies the energy to `primals`.
 
         Parameters
@@ -70,7 +70,7 @@ class Likelihood():
         energy : float
             Energy at the position `primals`.
         """
-        return self._hamiltonian(primals)
+        return self._hamiltonian(*primals, **primals_kw)
 
     def metric(self, primals, tangents):
         """Applies the metric at `primals` to `tangents`.
@@ -95,7 +95,7 @@ class Likelihood():
             rsm_at_p = linear_transpose(
                 lsm_at_p, self.left_sqrt_metric_tangents_shape
             )
-            res = lsm_at_p(rsm_at_p(tangents)[0])
+            res = lsm_at_p(*rsm_at_p(tangents))
             return res
         return self._metric(primals, tangents)
 
@@ -140,7 +140,7 @@ class Likelihood():
         if self._transformation is None:
             nie = "`transformation` is not implemented"
             raise NotImplementedError(nie)
-        return self._transformation(primals)
+        return self._transformation(*primals, **primals_kw)
 
     @property
     def left_sqrt_metric_tangents_shape(self):
@@ -207,12 +207,12 @@ class Likelihood():
             metric=j_m
         )
 
-    def __matmul__(self, f):
-        def energy_at_f(primals):
-            return self.energy(f(primals))
+    def __matmul__(self, f: Callable):
+        def energy_at_f(*primals, **primals_kw):
+            return self.energy(f(*primals, **primals_kw))
 
-        def transformation_at_f(primals):
-            return self.transformation(f(primals))
+        def transformation_at_f(*primals, **primals_kw):
+            return self.transformation(f(*primals, **primals_kw))
 
         def metric_at_f(primals, tangents):
             # Note, judging by a simple benchmark on a large problem,
@@ -285,8 +285,10 @@ class StandardHamiltonian():
         """
         self._nll = likelihood
 
-        def joined_hamiltonian(primals):
-            return self._nll(primals) + 0.5 * sum_of_squares(primals)
+        def joined_hamiltonian(*primals, **primals_kw):
+            # Assume the first primals to be the parameters
+            return self._nll(*primals, **
+                             primals_kw) + 0.5 * sum_of_squares(primals[0])
 
         def joined_metric(primals, tangents):
             return self._nll.metric(primals, tangents) + tangents
@@ -299,12 +301,12 @@ class StandardHamiltonian():
         self._metric = joined_metric
 
     @doc_from(Likelihood.__call__)
-    def __call__(self, primals):
-        return self.energy(primals)
+    def __call__(self, *primals, **primals_kw):
+        return self.energy(*primals, **primals_kw)
 
     @doc_from(Likelihood.energy)
-    def energy(self, primals):
-        return self._hamiltonian(primals)
+    def energy(self, *primals, **primals_kw):
+        return self._hamiltonian(*primals, **primals_kw)
 
     @doc_from(Likelihood.metric)
     def metric(self, primals, tangents):
