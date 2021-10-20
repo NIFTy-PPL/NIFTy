@@ -17,19 +17,22 @@ def test_hmc_pytree():
         potential_energy=jft.sum_of_squares,
         inverse_mass_matrix=1.,
         step_size=0.193,
-        num_steps=100,
-        key=321,
-        dbg_info=False,
-        compile=True
+        num_steps=100
     )
 
-    smpl_w_pytree = sampler_init(
-        initial_position=jft.Field(({
-            "lvl0": initial_position
-        }, ))
-    ).generate_n_samples(1000)
-    smpl_wo_pytree = sampler_init(initial_position=initial_position
-                                 ).generate_n_samples(1000)
+    initial_position_py = jft.Field(({"lvl0": initial_position}, ))
+    smpl_w_pytree = sampler_init(position_proto=initial_position_py
+                                ).generate_n_samples(
+                                    key=321,
+                                    initial_position=initial_position_py,
+                                    num_samples=1000
+                                )
+    smpl_wo_pytree = sampler_init(position_proto=initial_position
+                                 ).generate_n_samples(
+                                     key=321,
+                                     initial_position=initial_position,
+                                     num_samples=1000
+                                 )
 
     ts_w, ts_wo = tree_leaves(smpl_w_pytree), tree_leaves(smpl_wo_pytree)
     assert len(ts_w) == len(ts_wo)
@@ -47,18 +50,21 @@ def test_nuts_pytree():
         inverse_mass_matrix=1.,
         step_size=0.193,
         max_tree_depth=10,
-        key=323,
-        dbg_info=False,
-        compile=True
     )
 
-    smpl_w_pytree = sampler_init(
-        initial_position=jft.Field(({
-            "lvl0": initial_position
-        }, ))
-    ).generate_n_samples(1000)
-    smpl_wo_pytree = sampler_init(initial_position=initial_position
-                                 ).generate_n_samples(1000)
+    initial_position_py = jft.Field(({"lvl0": initial_position}, ))
+    smpl_w_pytree = sampler_init(position_proto=initial_position_py
+                                ).generate_n_samples(
+                                    key=323,
+                                    initial_position=initial_position_py,
+                                    num_samples=1000
+                                )
+    smpl_wo_pytree = sampler_init(position_proto=initial_position
+                                 ).generate_n_samples(
+                                     key=323,
+                                     initial_position=initial_position,
+                                     num_samples=1000
+                                 )
 
     ts_w, ts_wo = tree_leaves(smpl_w_pytree), tree_leaves(smpl_wo_pytree)
     assert len(ts_w) == len(ts_wo)

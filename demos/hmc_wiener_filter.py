@@ -123,15 +123,14 @@ initial_position = random.uniform(key=subkey, shape=pos_truth.shape)
 sampler = jft.HMCChain(
     potential_energy=ham,
     inverse_mass_matrix=1.,
-    initial_position=initial_position,
+    position_proto=initial_position,
     step_size=0.05,
     num_steps=128,
-    key=42,
-    compile=True,
-    dbg_info=True
 )
 
-chain = sampler.generate_n_samples(30)
+chain, _ = sampler.generate_n_samples(
+    42, initial_position, num_samples=30, save_intermediates=True
+)
 print(f"acceptance ratio: {chain.acceptance}")
 
 # %%
@@ -144,19 +143,18 @@ plt.show()
 jft.hmc._DEBUG_STORE = []
 
 sampler = jft.NUTSChain(
-    initial_position=initial_position,
+    position_proto=initial_position,
     potential_energy=ham,
     inverse_mass_matrix=1.,
     # 0.9193 # integrates to ~3-7, very smooth sample mean
     # 0.8193 # integrates to depth ~22, very noisy sample mean
     step_size=0.05,
     max_tree_depth=17,
-    key=42,
-    compile=True,
-    dbg_info=True
 )
 
-chain = sampler.generate_n_samples(30)
+chain, _ = sampler.generate_n_samples(
+    42, initial_position, num_samples=30, save_intermediates=True
+)
 plt.hist(chain.depths, bins=jnp.arange(sampler.max_tree_depth + 2))
 plt.title('NUTS tree depth histogram')
 plt.xlabel('tree depth')

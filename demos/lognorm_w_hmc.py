@@ -199,15 +199,14 @@ initial_position = jnp.array([1., 1.])
 hmc_sampler = jft.HMCChain(
     potential_energy=ham,
     inverse_mass_matrix=1.,
-    initial_position=1e-2 * initial_position,
+    position_proto=initial_position,
     step_size=0.1,
     num_steps=64,
-    key=42,
-    compile=True,
-    dbg_info=True,
 )
 
-chain = hmc_sampler.generate_n_samples(100)
+chain, _ = hmc_sampler.generate_n_samples(
+    42, 1e-2 * initial_position, num_samples=100, save_intermediates=True
+)
 
 # %%
 b_space_smpls = chain.samples
@@ -222,18 +221,20 @@ initial_position = jnp.array([1., 1.])
 nuts_sampler = jft.NUTSChain(
     potential_energy=ham,
     inverse_mass_matrix=0.5,
-    initial_position=1e-2 * initial_position,
+    position_proto=initial_position,
     step_size=0.4,
     max_tree_depth=10,
-    key=43,
-    compile=True,
-    dbg_info=True,
 )
 
 nuts_n_samples = []
 ns_samples = [200, 1000, 1000000]
 for n_samples in ns_samples:
-    chain = nuts_sampler.generate_n_samples(n_samples)
+    chain, _ = nuts_sampler.generate_n_samples(
+        43 + n_samples,
+        1e-2 * initial_position,
+        num_samples=n_samples,
+        save_intermediates=True
+    )
     nuts_n_samples.append(chain.samples)
 
 # %%

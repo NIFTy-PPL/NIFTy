@@ -34,20 +34,19 @@ def hashit(obj, n_chars=8) -> str:
 
 def test_hmc_hash():
     """Test sapmler output against known hash from previous commits."""
+    x0 = jnp.array([0.1, 1.223])
     sampler = jft.HMCChain(
         potential_energy=lambda x: jnp.sum(x**2),
         inverse_mass_matrix=1.,
-        initial_position=jnp.array([0.1, 1.223]),
-        key=42,
+        position_proto=x0,
         step_size=0.193,
         num_steps=100,
-        dbg_info=True,
-        compile=True,
         max_energy_difference=1.
     )
-    chain = sampler.generate_n_samples(1000)
+    chain, (key, pos) = sampler.generate_n_samples(
+        key=42, initial_position=x0, num_samples=1000, save_intermediates=True
+    )
     assert chain.divergences.sum() == 0
-    key, pos = sampler.last_state
     accepted = chain.trees.accepted
     results = (pos, key, chain.samples, accepted)
     results_hash = hashit(results, n_chars=20)
@@ -58,21 +57,20 @@ def test_hmc_hash():
 
 def test_nuts_hash():
     """Test sapmler output against known hash from previous commits."""
+    x0 = jnp.array([0.1, 1.223])
     sampler = jft.NUTSChain(
         potential_energy=lambda x: jnp.sum(x**2),
         inverse_mass_matrix=1.,
-        initial_position=jnp.array([0.1, 1.223]),
+        position_proto=x0,
         step_size=0.193,
         max_tree_depth=10,
-        key=42,
-        dbg_info=False,
         bias_transition=False,
-        compile=True,
         max_energy_difference=1.
     )
-    chain = sampler.generate_n_samples(1000)
+    chain, (key, pos) = sampler.generate_n_samples(
+        key=42, initial_position=x0, num_samples=1000, save_intermediates=False
+    )
     assert chain.divergences.sum() == 0
-    key, pos = sampler.last_state
     results = (pos, key, chain.samples)
     results_hash = hashit(results, n_chars=20)
     print(f"full hash: {results_hash}", file=sys.stderr)
