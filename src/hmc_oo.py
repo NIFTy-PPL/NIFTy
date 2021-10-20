@@ -14,6 +14,29 @@ from .hmc import (
 )
 
 
+def _parse_diag_mass_matrix(mass_matrix, x0: Q) -> Q:
+    if isinstance(mass_matrix,
+                  (float, jnp.ndarray)) and jnp.size(mass_matrix) == 1:
+        mass_matrix = tree_util.tree_map(
+            partial(jnp.full_like, fill_value=mass_matrix), x0
+        )
+    elif tree_util.tree_structure(mass_matrix) == tree_util.tree_structure(x0):
+        shape_match_tree = tree_util.tree_map(
+            lambda a1, a2: jnp.shape(a1) == jnp.shape(a2), mass_matrix, x0
+        )
+        shape_and_structure_match = all(
+            tree_util.tree_flatten(shape_match_tree)
+        )
+        if not shape_and_structure_match:
+            ve = "matrix has same tree_structe as the position but shapes do not match up"
+            raise ValueError(ve)
+    else:
+        te = "matrix must either be float or have same tree structure as the position"
+        raise TypeError(te)
+
+    return mass_matrix
+
+
 class Chain(NamedTuple):
     """Object carrying chain metadata; think: transposed Tree with new axis.
     """
@@ -28,9 +51,9 @@ class Chain(NamedTuple):
 class NUTSChain:
     def __init__(
         self,
-        potential_energy: Callable,
+        potential_energy: Callable[[Q], Union[float, jnp.ndarray]],
         inverse_mass_matrix,
-        initial_position,
+        initial_position: Q,
         key,
         step_size: float = 1.0,
         max_tree_depth: int = 10,
@@ -54,30 +77,9 @@ class NUTSChain:
         self.last_state = (key, initial_position)
         self.potential_energy = potential_energy
 
-        if isinstance(inverse_mass_matrix, float):
-            self.inverse_mass_matrix = tree_util.tree_map(
-                lambda arr: jnp.full(arr.shape, inverse_mass_matrix),
-                initial_position
-            )
-        elif tree_util.tree_structure(
-            inverse_mass_matrix
-        ) == tree_util.tree_structure(initial_position):
-            shape_match_tree = tree_util.tree_map(
-                lambda a1, a2: a1.shape == a2.shape, inverse_mass_matrix,
-                initial_position
-            )
-            shape_and_structure_match = all(
-                tree_util.tree_flatten(shape_match_tree)
-            )
-            if shape_and_structure_match:
-                self.inverse_mass_matrix = inverse_mass_matrix
-            else:
-                raise ValueError(
-                    "inverse_mass_matrix has same tree_structe as initial_position but shapes don't match up"
-                )
-        else:
-            te = 'inverse_mass_matrix must either be float or have same tree structure as initial_position'
-            raise TypeError(te)
+        self.inverse_mass_matrix = _parse_diag_mass_matrix(
+            inverse_mass_matrix, x0=initial_position
+        )
         self.mass_matrix_sqrt = self.inverse_mass_matrix**(-0.5)
 
         self.step_size = step_size
@@ -101,7 +103,7 @@ class NUTSChain:
         self.compile = compile
         self.dbg_info = dbg_info
 
-        def sample_next_state(key, prev_position):
+        def sample_next_state(key, prev_position: Q):
             key, key_momentum, key_nuts = random.split(key, 3)
 
             resampled_momentum = sample_momentum_from_diagonal(
@@ -245,31 +247,9 @@ class HMCChain:
         self.last_state = (key, initial_position)
         self.potential_energy = potential_energy
 
-        if isinstance(inverse_mass_matrix, float):
-            self.inverse_mass_matrix = tree_util.tree_map(
-                lambda arr: jnp.full(arr.shape, inverse_mass_matrix),
-                initial_position
-            )
-        elif tree_util.tree_structure(
-            inverse_mass_matrix
-        ) == tree_util.tree_structure(initial_position):
-            shape_match_tree = tree_util.tree_map(
-                lambda a1, a2: a1.shape == a2.shape, inverse_mass_matrix,
-                initial_position
-            )
-            shape_and_structure_match = all(
-                tree_util.tree_flatten(shape_match_tree)
-            )
-            if shape_and_structure_match:
-                self.inverse_mass_matrix = inverse_mass_matrix
-            else:
-                raise ValueError(
-                    "inverse_mass_matrix has same tree_structe as initial_position but shapes don't match up"
-                )
-        else:
-            raise ValueError(
-                'inverse_mass_matrix must either be float or have same tree structure as initial_position'
-            )
+        self.inverse_mass_matrix = _parse_diag_mass_matrix(
+            inverse_mass_matrix, x0=initial_position
+        )
         self.mass_matrix_sqrt = self.inverse_mass_matrix**(-0.5)
 
         self.num_steps = num_steps
