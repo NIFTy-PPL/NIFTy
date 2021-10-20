@@ -26,12 +26,9 @@ initial_position = jnp.array([1., 1.])
 sampler = jft.NUTSChain(
     potential_energy=potential_energy,
     inverse_mass_matrix=1.,
-    initial_position=initial_position,
+    position_proto=initial_position,
     step_size=0.12,
     max_tree_depth=10,
-    key=48,
-    compile=True,
-    dbg_info=True
 )
 
 # %%
@@ -39,7 +36,9 @@ jft.hmc._DEBUG_STORE = []
 jft.hmc._DEBUG_TREE_END_IDXS = []
 jft.hmc._DEBUG_SUBTREE_END_IDXS = []
 
-chain = sampler.generate_n_samples(5)
+chain, _ = sampler.generate_n_samples(
+    48, initial_position, num_samples=5, save_intermediates=True
+)
 
 plt.hist(chain.depths)
 plt.show()

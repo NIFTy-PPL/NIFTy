@@ -49,14 +49,13 @@ def test_moment_consistency(distribution, plot=False):
     sampler = jft.NUTSChain(
         potential_energy=lambda x: -1 * distribution.logpdf(x),
         inverse_mass_matrix=1.,
-        initial_position=jnp.array(1.03890),
+        position_proto=jnp.array(0.),
         step_size=0.7193,
         max_tree_depth=max_tree_depth,
-        key=42,
-        compile=True,
-        dbg_info=True
     )
-    chain = sampler.generate_n_samples(1000)
+    chain, _ = sampler.generate_n_samples(
+        42, jnp.array(1.03890), num_samples=1000, save_intermediates=True
+    )
 
     unique, counts = jnp.unique(chain.depths, return_counts=True)
     depths_frequencies = jnp.asarray((unique, counts)).T

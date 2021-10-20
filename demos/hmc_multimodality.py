@@ -42,16 +42,15 @@ fig, ((ax1, ax2), (ax3, ax4)) = plt.subplots(
 nuts_sampler = jft.NUTSChain(
     potential_energy=ham,
     inverse_mass_matrix=5.,
-    initial_position=jnp.array(3.),
+    position_proto=jnp.array(0.),
     step_size=EPS,
     max_tree_depth=15,
-    key=SEED,
-    compile=True,
-    dbg_info=True,
     max_energy_difference=1000.,
 )
 
-chain = nuts_sampler.generate_n_samples(N)
+chain, _ = nuts_sampler.generate_n_samples(
+    SEED, jnp.array(3.), num_samples=N, save_intermediates=True
+)
 print(f"small mass matrix acceptance: {chain.acceptance}")
 
 ax1.hist(chain.samples, bins=30, density=True)
@@ -64,16 +63,15 @@ ax2.set_title(rf'$m={1. / nuts_sampler.inverse_mass_matrix:1.2f}$')
 nuts_sampler = jft.NUTSChain(
     potential_energy=ham,
     inverse_mass_matrix=50.,
-    initial_position=jnp.array(3.),
+    position_proto=jnp.array(0.),
     step_size=EPS,
     max_tree_depth=15,
-    key=SEED,
-    compile=True,
-    dbg_info=True,
     max_energy_difference=1000.,
 )
 
-chain = nuts_sampler.generate_n_samples(N)
+chain, _ = nuts_sampler.generate_n_samples(
+    SEED, jnp.array(3.), num_samples=N, save_intermediates=True
+)
 print(f"large mass matrix acceptance: {chain.acceptance}")
 
 ax3.hist(chain.samples, bins=30, density=True)
