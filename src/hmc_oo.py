@@ -66,7 +66,7 @@ class NUTSChain:
     ):
         if not callable(potential_energy):
             raise TypeError()
-        if not isinstance(step_size, float):
+        if not isinstance(step_size, (jnp.ndarray, float)):
             raise TypeError()
         if not isinstance(max_tree_depth, int):
             raise TypeError()
@@ -241,9 +241,9 @@ class HMCChain:
     ):
         if not callable(potential_energy):
             raise TypeError()
-        if not isinstance(num_steps, int):
+        if not isinstance(num_steps, (jnp.ndarray, int)):
             raise TypeError()
-        if not isinstance(step_size, float):
+        if not isinstance(step_size, (jnp.ndarray, float)):
             raise TypeError()
         if not isinstance(key, (jnp.ndarray, np.ndarray)):
             if isinstance(key, int):
