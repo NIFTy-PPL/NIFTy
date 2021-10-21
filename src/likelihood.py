@@ -254,7 +254,14 @@ class Likelihood():
         }
 
         def joined_transformation(p):
-            return self.transformation(p) + other.transformation(p)
+            from warnings import warn
+
+            # FIXME
+            warn("adding transformations is untested", UserWarning)
+            return {
+                "lh_left": self.transformation(p),
+                "lh_right": other.transformation(p)
+            }
 
         def joined_left_sqrt_metric(p, t):
             return self.left_sqrt_metric(
