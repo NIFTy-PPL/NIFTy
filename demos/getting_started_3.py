@@ -68,6 +68,7 @@ def main():
     #  of the CorrelatedField model have on the generated fields,
     #  see 'getting_started_4_CorrelatedFields.ipynb'.
 
+    # yapf: disable
     args = {
         'offset_mean': 0,
         'offset_std': (1e-3, 1e-6),
@@ -84,6 +85,7 @@ def main():
         # How ragged the integrated Wiener process component is
         'asperity': (0.5, 0.4)  # 0.1, 0.5
     }
+    # yapf: enable
 
     correlated_field = ift.SimpleCorrelatedField(position_space, **args)
     pspec = correlated_field.power_spectrum
