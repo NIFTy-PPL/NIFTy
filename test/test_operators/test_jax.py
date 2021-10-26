@@ -100,6 +100,7 @@ def test_jax_energy(dom):
 
 
 def test_jax_errors():
+    pytest.importorskip("jax")
     dom = ift.UnstructuredDomain(2)
     mdom = {"a": dom}
     op = ift.JaxOperator(dom, dom, lambda x: {"a": x})
@@ -118,6 +119,7 @@ def test_jax_errors():
 
 
 def test_jax_complex():
+    pytest.importorskip("jax")
     dom = ift.UnstructuredDomain(1)
     a = ift.ducktape(dom, None, "a")
     b = ift.ducktape(dom, None, "b")
