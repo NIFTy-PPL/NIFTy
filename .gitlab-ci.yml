@@ -5,11 +5,11 @@ variables:
   OMP_NUM_THREADS: 1
 
 stages:
-  - static_checks
   - build_docker
   - test
-  - release
+  - static_checks
   - demo_runs
+  - release
 
 check_no_asserts:
   image: debian:stable-slim
@@ -27,8 +27,6 @@ check_code_formatting:
   script:
     - apt-get update && apt-get install -y yapf3
     - yapf3 -d -r .
-  allow_failure: true
-
 
 build_docker_from_scratch:
   only:
