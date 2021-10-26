@@ -19,6 +19,17 @@ check_no_asserts:
   script:
     - if [ `grep -r "^[[:space:]]*assert[ (]" src demos | wc -l` -ne 0 ]; then echo "Have found assert statements. Don't use them! Use \`utilities.myassert\` instead." && exit 1; fi
 
+check_code_formatting:
+  image: debian:testing-slim
+  stage: static_checks
+  before_script:
+    - ls
+  script:
+    - apt-get update && apt-get install -y yapf3
+    - yapf3 -d -r .
+  allow_failure: true
+
+
 build_docker_from_scratch:
   only:
     - schedules
