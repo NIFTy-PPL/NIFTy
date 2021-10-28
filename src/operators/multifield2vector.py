@@ -35,7 +35,7 @@ class Multifield2Vector(LinearOperator):
 
     Notes
     -----
-    Currently only works with fields that are real-valued.
+    This operator works only on MultiFields that have the same dtype for all entries.
     """
 
     def __init__(self, domain):
@@ -51,16 +51,12 @@ class Multifield2Vector(LinearOperator):
         x = x.val
         ii = 0
         if mode == self.TIMES:
-            res = np.empty(self.target.shape)
+            res = np.empty(self.target.shape, _unique_dtype([vv.dtype for vv in x.values()]))
             for key in self.domain.keys():
-                if not np.issubdtype(x[key].dtype, np.floating):
-                    raise NotImplementedError("only real fields are allowed")
                 arr = x[key].flatten()
                 res[ii:ii + arr.size] = arr
                 ii += arr.size
         else:
-            if not np.issubdtype(x.dtype, np.floating):
-                raise NotImplementedError("only real fields are allowed")
             res = {}
             for key in self.domain.keys():
                 n = self.domain[key].size
@@ -68,3 +64,9 @@ class Multifield2Vector(LinearOperator):
                 res[key] = x[ii:ii + n].reshape(shp)
                 ii += n
         return makeField(self._tgt(mode), res)
+
+
+def _unique_dtype(lst):
+    if all(ll == lst[0] for ll in lst):
+        return lst[0]
+    raise RuntimeError("Dtype is not unique")
