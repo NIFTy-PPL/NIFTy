@@ -31,6 +31,7 @@ def test_plots():
     rg_space2 = ift.makeDomain(ift.RGSpace((8, 6), distances=1))
     hp_space = ift.makeDomain(ift.HPSpace(5))
     gl_space = ift.makeDomain(ift.GLSpace(10))
+    us_space = ift.makeDomain(ift.UnstructuredDomain(10))
 
     fft = ift.FFTOperator(rg_space2)
 
@@ -40,6 +41,7 @@ def test_plots():
     field_hp = ift.from_random(hp_space, 'normal')
     field_gl = ift.from_random(gl_space, 'normal')
     field_ps = ift.power_analyze(fft.times(field_rg2))
+    field_us = ift.from_random(us_space, 'normal')
 
     plot = ift.Plot()
     plot.add(field_rg1_1, title='Single plot')
@@ -51,6 +53,7 @@ def test_plots():
     plot.add(field_rg1_2, title='1d rg, xmin, ymin', xmin=0.5, ymin=0.,
              xlabel='xmin=0.5', ylabel='ymin=0')
     plot.output(title='Three plots', name=next(name))
+    field_us1 = ift.from_random(us_space, 'normal')
 
     plot = ift.Plot()
     plot.add(field_hp, title='HP planck-color', cmap='Planck-like')
@@ -58,7 +61,10 @@ def test_plots():
     plot.add(field_ps)
     plot.add(field_gl, title='GL')
     plot.add(field_rg2, title='2d rg')
-    plot.output(nx=2, ny=3, title='Five plots', name=next(name))
+    plot.add(field_us, title='Histogram')
+    plot.add([field_us, field_us1], label="ii", title='Two Histograms')
+    plot.output(title='Seven plots', name=next(name))
+
 
 
 def test_mf_plot():
