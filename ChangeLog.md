@@ -69,8 +69,10 @@ covariance operators.
 Minisanity
 ----------
 
-Terminal colors can be disabled in order to make the output of
-`ift.extra.minisanity` more readable when written to a file.
+`ift.extra.minisanity` does write its results to `ift.logger.info` anymore, but
+rather returns its output as a string. Additonally, terminal colors can be
+disabled in order to make the output of `ift.extra.minisanity` more readable
+when written to a file.
 
 Jax interface
 -------------

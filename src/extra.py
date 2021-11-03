@@ -457,7 +457,6 @@ def minisanity(data, metric_at_pos, modeldata_operator, samples, terminal_colors
     metric at `mean` is used.
 
     """
-    from .logger import logger
     from .minimization.sample_list import SampleListBase
     from .sugar import makeDomain
 
@@ -517,19 +516,15 @@ def minisanity(data, metric_at_pos, modeldata_operator, samples, terminal_colors
     s0 = _tableentries(xredchisq[0], xscmean[0], xndof[0], keylen, colors)
     s1 = _tableentries(xredchisq[1], xscmean[1], xndof[1], keylen, colors)
 
-    f = logger.info
     n = 38 + keylen
-    f(n * "=")
-    f(
-        (keylen + 2) * " "
-        + "{:>11}".format("reduced χ²")
-        + "{:>14}".format("mean")
-        + "{:>11}".format("# dof")
-    )
-    f(n * "-")
-    f("Data residuals\n" + s0)
-    f("Latent space\n" + s1)
-    f(n * "=")
+    s = [n * "=",
+         (keylen + 2) * " " + "{:>11}".format("reduced χ²")
+           + "{:>14}".format("mean") + "{:>11}".format("# dof"),
+         n * "-",
+         "Data residuals", s0,
+         "Latent space", s1,
+         n * "="]
+    return "\n".join(s)
 
 
 def _tableentries(redchisq, scmean, ndof, keylen, colors):

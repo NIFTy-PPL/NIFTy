@@ -133,7 +133,8 @@ def main():
         KL = ift.SampledKLEnergy(position, H, N_samples, minimizer_sampling)
         KL, convergence = minimizer(KL)
         position = KL.position
-        ift.extra.minisanity(data, lambda x: N.inverse, signal_response, KL.samples)
+        s = ift.extra.minisanity(data, lambda x: N.inverse, signal_response, KL.samples)
+        ift.logger.info(s)
 
         # Plot current reconstruction
         plot = ift.Plot()
