@@ -17,12 +17,13 @@
 import os
 import pickle
 import re
+import time
 
 from .. import utilities
 from ..field import Field
-from ..logger import logger
 from ..multi_domain import MultiDomain
 from ..multi_field import MultiField
+from ..operators.operator import Operator
 
 
 class SampleListBase:
@@ -80,8 +81,8 @@ class SampleListBase:
         return self._comm
 
     @property
-    def mpi_master(self):
-        return self.comm is None or self.comm.Get_rank() == 0
+    def MPI_master(self):
+        return utilities.get_MPI_params_from_comm(self.comm)[2]
 
     @property
     def domain(self):
@@ -147,7 +148,7 @@ class SampleListBase:
         import h5py
 
         if os.path.isfile(file_name):
-            if self.mpi_master and overwrite:
+            if self.MPI_master and overwrite:
                 os.remove(file_name)
             if not overwrite:
                 raise RuntimeError(f"File {file_name} already exists. Delete it or use "
@@ -155,11 +156,12 @@ class SampleListBase:
         if not (samples or mean or std):
             raise ValueError("Neither samples nor mean nor standard deviation shall be written.")
 
-        if self.mpi_master:
+        if self.MPI_master:
             f = h5py.File(file_name, "w")
         else:
             f = utilities.Nop()
 
+        # TODO Add some meta information (e.g. k_length for PowerSpace, distances for RGSpace)
         if samples:
             grp = f.create_group("samples")
             for ii, ss in enumerate(self.iterator(op)):
@@ -173,6 +175,66 @@ class SampleListBase:
             _field2hdf5(grp, v.sqrt(), "standard deviation")
 
         f.close()
+        _barrier(self.comm)
+
+    def save_to_fits(self, file_name_base, op=None, samples=False, mean=False, std=False,
+                     overwrite=False):
+        """Write sample list to FITS file.
+
+        This function writes properties of a sample list to a FITS file. This is
+        supported if and only if the target of `op` is a two-dimensional
+        RGSpace.
+
+        Parameters
+        ----------
+        file_name_base : str
+            File name base of output FITS file, i.e. without `.fits` extension.
+        op : callable or None
+            Callable that is applied to each item in the :class:`SampleListBase`
+            before it is returned. Can be an
+            :class:`~nifty8.operators.operator.Operator` or any other callable
+            that takes a :class:`~nifty8.field.Field` as an input. Default:
+            None.
+        samples : bool
+            If True, samples are written into hdf5 file.
+        mean : bool
+            If True, mean of samples is written into hdf5 file.
+        std : bool
+            If True, standard deviation of samples is written into hdf5 file.
+        overwrite : bool
+            If True, a potentially existing file with the same file name as
+            `file_name`, is overwritten.
+        """
+        # TODO Add support for 3d and 4d fields
+
+        if not (samples or mean or std):
+            raise ValueError("Neither samples nor mean nor standard deviation shall be written.")
+
+        if mean or std:
+            m, s = self.sample_stat(op)
+        if mean:
+            self._save_fits_2d(m, file_name_base + "_mean.fits", overwrite)
+        if std:
+            self._save_fits_2d(s, file_name_base + "_std.fits", overwrite)
+
+        if samples:
+            for ii, ss in enumerate(self.iterator(op)):
+                self._save_fits_2d(ss, file_name_base + f"_sample_{ii}.fits", overwrite)
+
+    def _save_fits_2d(self, fld, file_name, overwrite):
+        import astropy.io.fits as pyfits
+        from astropy.time import Time
+
+        dom = fld.domain
+        if len(dom) != 1 or len(dom[0].shape) != 2:
+            raise ValueError("FITS file export is only supported from 2d-fields. "
+                             f"Current domain:\n{dom}")
+        h = pyfits.Header()
+        h["DATE-MAP"] = Time(time.time(), format="unix").iso.split()[0]
+        hdu = pyfits.PrimaryHDU(fld.val[:, :].T, header=h)
+        hdulist = pyfits.HDUList([hdu])
+        if self.MPI_master:
+            hdulist.writeto(file_name, overwrite=overwrite)
 
     def iterator(self, op=None):
         """Return iterator over all potentially distributed samples.
@@ -252,7 +314,7 @@ class SampleListBase:
             sc.add(ss)
         return sc.mean, sc.var
 
-    def save(self, file_name_base):
+    def save(self, file_name_base, overwrite=False):
         """Serialize SampleList and write it to disk.
 
         Parameters
@@ -261,6 +323,8 @@ class SampleListBase:
             File name of the output file without extension. The actual file name
             will have the extension ".pickle" and before that an identifier that
             distunguishes between MPI tasks.
+        overwrite : bool
+            Existing files are overwritten.
 
         Note
         ----
@@ -307,9 +371,9 @@ class SampleListBase:
         maximal found number are present. If this is not the case, a
         `RuntimeError` is raised.
         """
-        base_dir = os.path.abspath(os.path.dirname(file_name_base))
+        base_dir, base_file = os.path.split(os.path.abspath(file_name_base))
         files = [ff for ff in os.listdir(base_dir)
-                 if re.match(f"{file_name_base}.[0-9]+.pickle", ff) ]
+                 if re.match(f"{base_file}.[0-9]+.pickle", ff) ]
         if len(files) == 0:
             raise RuntimeError(f"No files matching `{file_name_base}.*.pickle`")
         n_samples = max(list(map(lambda x: int(x.split(".")[-2]), files))) + 1
@@ -406,26 +470,30 @@ class ResidualSampleList(SampleListBase):
             mean = MultiField.union([self._m, mean])
         return ResidualSampleList(mean, self._r, self._n, self.comm)
 
-    def save(self, file_name_base):
+    def save(self, file_name_base, overwrite=False):
         nsample = self.n_samples()
         local_indices = self.local_indices(nsample, self.comm)
         for ii, isample in enumerate(local_indices):
             obj = [self._r[ii], self._n[ii]]
             fname = _sample_file_name(file_name_base, isample)
-            _save_to_disk(fname, obj)
-        if self.mpi_master:
-            _save_to_disk(f"{file_name_base}.mean.pickle", self._m)
+            _save_to_disk(fname, obj, overwrite)
+        if self.MPI_master:
+            _save_to_disk(f"{file_name_base}.mean.pickle", self._m, overwrite)
+        _barrier(self.comm)
 
     @classmethod
     def load(cls, file_name_base, comm=None):
-        if comm is not None:
-            comm.Barrier()
+        _barrier(comm)
         files = cls._list_local_sample_files(file_name_base, comm)
         tmp = [_load_from_disk(ff) for ff in files]
         res = [aa[0] for aa in tmp]
         neg = [aa[1] for aa in tmp]
         mean = _load_from_disk(f"{file_name_base}.mean.pickle")
         return cls(mean, res, neg, comm=comm)
+
+    @classmethod
+    def load_mean(cls, file_name_base):
+        return _load_from_disk(f"{file_name_base}.mean.pickle")
 
 
 class SampleList(SampleListBase):
@@ -453,7 +521,7 @@ class SampleList(SampleListBase):
     def n_local_samples(self):
         return len(self._s)
 
-    def save(self, file_name_base):
+    def save(self, file_name_base, overwrite=False):
         nsample = self.n_samples()
         local_indices = self.local_indices(nsample, self.comm)
         lo = local_indices[0]
@@ -461,23 +529,27 @@ class SampleList(SampleListBase):
             if isample in local_indices:
                 obj = self._s[isample-lo]
                 fname = _sample_file_name(file_name_base, isample)
-                _save_to_disk(fname, obj)
+                _save_to_disk(fname, obj, overwrite=True)
+        _barrier(self.comm)
 
     @classmethod
     def load(cls, file_name_base, comm=None):
-        if comm is not None:
-            comm.Barrier()
+        _barrier(comm)
         files = cls._list_local_sample_files(file_name_base, comm)
         samples = [_load_from_disk(ff) for ff in files]
         return cls(samples, comm=comm)
 
 
 def _none_to_id(obj):
-    """If the input is None, replace it with identity map. Otherwise return
+    """If the input is None, replace it with identity map. If input is
+    `Operator`, append `force` in order to make sure that the function is
+    evaluated if there is a chance that the domains match. Otherwise return
     input.
     """
     if obj is None:
         return lambda x: x
+    if isinstance(obj, Operator):
+        return lambda x: obj.force(x)
     return obj
 
 
@@ -520,7 +592,9 @@ def _load_from_disk(file_name):
     return obj
 
 
-def _save_to_disk(file_name, obj):
+def _save_to_disk(file_name, obj, overwrite=False):
+    if overwrite and os.path.isfile(file_name):
+        os.remove(file_name)
     with open(file_name, "wb") as f:
         pickle.dump(obj, f, pickle.HIGHEST_PROTOCOL)
 
@@ -536,3 +610,8 @@ def _field2hdf5(file_handle, obj, name):
     if not isinstance(obj, Field):
         raise TypeError
     file_handle.create_dataset(name, data=obj.val)
+
+
+def _barrier(comm):
+    if comm is not None:
+        comm.Barrier()
