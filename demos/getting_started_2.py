@@ -99,27 +99,13 @@ def main():
         name='Newton', iteration_limit=100, tol_rel_deltaE=1e-8)
     minimizer = ift.NewtonCG(ic_newton)
 
+    callback = lambda sl: ift.logger.info(ift.extra.minisanity(data, lambda x: ift.makeOp(1/lamb(x)), lamb, sl))
+
     # Compute MAP solution by minimizing the information Hamiltonian
-    H = ift.StandardHamiltonian(likelihood_energy)
-    initial_position = ift.from_random(domain, 'normal')
-    H = ift.EnergyAdapter(initial_position, H, want_metric=True)
-    H, convergence = minimizer(H)
+    sl = ift.optimize_kl(likelihood_energy, 1, 0, minimizer, None, None,
+                         output_directory="getting_started_2_results", overwrite=True,
+                         plottable_operators={"signal": sky}, callback=callback)
 
-    s = ift.extra.minisanity(data, lambda x: ift.makeOp(1/lamb(x)), lamb,
-                             ift.SampleList([H.position]))
-    ift.logger.info(s)
-
-    # Plotting
-    signal = sky(mock_position)
-    reconst = sky(H.position)
-    filename = "getting_started_2_mode_{}.png".format(mode)
-    plot = ift.Plot()
-    plot.add(signal, title='Signal')
-    plot.add(GR.adjoint(data), title='Data')
-    plot.add(reconst, title='Reconstruction')
-    plot.add(reconst - signal, title='Residuals')
-    plot.output(xsize=12, ysize=10, name=filename)
-    print("Saved results as '{}'.".format(filename))
 
 
 if __name__ == '__main__':
