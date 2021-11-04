@@ -22,6 +22,7 @@ import numpy as np
 
 from .. import random, utilities
 from ..linearization import Linearization
+from ..multi_domain import MultiDomain
 from ..multi_field import MultiField
 from ..operators.endomorphic_operator import EndomorphicOperator
 from ..operators.energy_operators import GaussianEnergy, StandardHamiltonian
@@ -254,8 +255,13 @@ def SampledKLEnergy(position, hamiltonian, n_samples, minimizer_sampling,
         raise TypeError
     if not (minimizer_sampling is None or isinstance(minimizer_sampling, DescentMinimizer)):
         raise TypeError
-    if (isinstance(position, MultiField) and set(point_estimates) == set(position.keys())):
-        raise RuntimeError('Point estimates for whole domain. Use EnergyAdapter instead.')
+    if isinstance(position, MultiField):
+        if not set(constants).issubset(set(position.keys())):
+            raise ValueError("Constants are not a subset of the keys of the latent space")
+        if not set(point_estimates).issubset(set(position.keys())):
+            raise ValueError("Point estimates are not a subset of the keys of the latent space")
+        if set(point_estimates) == set(position.keys()):
+            raise RuntimeError('Point estimates for whole domain. Use EnergyAdapter instead.')
 
     # If a key is in both lists `constants` and `point_estimates` remove it.
     invariant = list(set(constants).intersection(point_estimates))
@@ -281,6 +287,10 @@ class SampledKLEnergyClass(Energy):
     def __init__(self, sample_list, hamiltonian, constants, invariants, nanisinf):
         myassert(isinstance(sample_list, ResidualSampleList))
         myassert(sample_list.domain is hamiltonian.domain)
+
+        if isinstance(sample_list.domain, MultiDomain):
+            if not (invariants is None or isinstance(invariants, MultiField)):
+                raise TypeError
 
         super(SampledKLEnergyClass, self).__init__(_reduce_field(sample_list._m, constants))
 
