@@ -4,6 +4,12 @@ Changes since NIFTy 7
 Minimum Python version increased to 3.7
 ---------------------------------------
 
+Optimize KL
+-----------
+
+The utility function `optimize_kl` has been added. It provides a blueprint for a
+typical NIFTy optimization.
+
 Unify MetricGaussianKL and GeoMetricKL
 --------------------------------------
 

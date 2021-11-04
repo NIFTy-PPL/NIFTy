@@ -429,23 +429,6 @@ class ResidualSampleList(SampleListBase):
     def n_local_samples(self):
         return len(self._r)
 
-    def at_strict(self, mean):
-        """Instantiate `ResidualSampleList` with the same residuals as `self`.
-
-        The mean is updated. The old and new mean need to be defined on the same
-        domain.
-
-        Returns
-        -------
-        ResidualSampleList
-            Sample list with updated mean.
-        """
-        if mean.domain is not self.domain:
-            raise ValueError("New and old mean have different domains:\n"
-                             f"old: {self.domain}\n"
-                             f"new: {mean.domain}\n")
-        return self.at(mean)
-
     def at(self, mean):
         """Instantiate `ResidualSampleList` with the same residuals as `self`.
 
@@ -494,7 +477,7 @@ class ResidualSampleList(SampleListBase):
 
 
 class SampleList(SampleListBase):
-    def __init__(self, samples, comm=None):
+    def __init__(self, samples, comm=None, domain=None):
         """Store samples as a plain list.
 
         This is a minimalist implementation of :class:`SampleListBase`. It just
@@ -507,9 +490,24 @@ class SampleList(SampleListBase):
         comm : MPI communicator or None
             If not `None`, samples can be gathered across multiple MPI tasks. If
             `None`, :class:`ResidualSampleList` is not a distributed object.
+        domain : DomainTuple, MultiDomain or None
+            Sets the domain of the `SampleList`. If `samples` is non-empty and
+            `domain` is not None, `domain` has to coincide with the domain of
+            the samples. Default: None.
         """
-        super(SampleList, self).__init__(comm, samples[0].domain)
+        from ..sugar import makeDomain
+
+        if domain is None:
+            if len(samples) == 0:
+                raise ValueError("Need to pass `domain` to instantiate empty `SampleList`.")
+            else:
+                domain = samples[0].domain
+        else:
+            domain = makeDomain(domain)
+        super(SampleList, self).__init__(comm, domain)
         self._s = samples
+        for ss in self._s:
+            utilities.check_object_identity(ss.domain, self.domain)
 
     def local_item(self, i):
         return self._s[i]

@@ -257,15 +257,19 @@ def SampledKLEnergy(position, hamiltonian, n_samples, minimizer_sampling,
         raise TypeError
     if isinstance(position, MultiField):
         if not set(constants).issubset(set(position.keys())):
-            raise ValueError("Constants are not a subset of the keys of the latent space")
+            raise ValueError("Constants are not a subset of the keys of the latent space\n"
+                             f"Latent space keys: {position.keys()}\n"
+                             f"Constants keys: {constants}")
         if not set(point_estimates).issubset(set(position.keys())):
-            raise ValueError("Point estimates are not a subset of the keys of the latent space")
+            raise ValueError("Point estimates are not a subset of the keys of the latent space\n"
+                             f"Latent space keys: {position.keys()}\n"
+                             f"Point estimate keys: {point_estimates}")
         if set(point_estimates) == set(position.keys()):
             raise RuntimeError('Point estimates for whole domain. Use EnergyAdapter instead.')
 
     # If a key is in both lists `constants` and `point_estimates` remove it.
     invariant = list(set(constants).intersection(point_estimates))
-    if isinstance(position, MultiField) and len(invariant)>0:
+    if isinstance(position, MultiField) and len(invariant) > 0:
         inv_pos = position.extract_by_keys(invariant)
     else:
         inv_pos = None
@@ -318,7 +322,7 @@ class SampledKLEnergyClass(Energy):
         return self._grad
 
     def at(self, position):
-        return SampledKLEnergyClass(self._sample_list.at_strict(position),
+        return SampledKLEnergyClass(self._sample_list.at(position),
                                     self._hamiltonian, self._constants,
                                     self._invariants, self._nanisinf)
 

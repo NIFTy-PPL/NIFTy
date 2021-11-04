@@ -21,6 +21,7 @@ from datetime import datetime as dt
 import numpy as np
 
 from .domains.gl_space import GLSpace
+from .domain_tuple import DomainTuple
 from .domains.hp_space import HPSpace
 from .domains.power_space import PowerSpace
 from .domains.rg_space import RGSpace
@@ -309,7 +310,7 @@ def _plot_history(f, ax, **kwargs):
     ax.xaxis.set_major_formatter(xfmt)
     _limit_xy(**kwargs)
     if label != ([None]*len(f)):
-        plt.legend()
+        plt.legend(loc="upper right")
 
 
 def _plot1D(f, ax, **kwargs):
@@ -354,10 +355,12 @@ def _plot1D(f, ax, **kwargs):
 
     _limit_xy(**kwargs)
     if with_legend:
-        ax.legend()
+        ax.legend(loc="upper right")
 
 
 def plottable2D(fld, f_space=1):
+    if not isinstance(fld.domain, DomainTuple):
+        raise TypeError("cannot be MultiField")
     # check for multifrequency plotting
     have_rgb, rgb = False, None
     x_space = 0
@@ -479,7 +482,7 @@ def _plotHist(f, ax, **kwargs):
     for i, fld in enumerate(f):
         ax.hist(fld.val.ravel(), **add_kwargs[i], **add_kwargs2)
     if with_legend:
-        ax.legend()
+        ax.legend(loc="upper right")
 
 
 def _plot(f, ax, **kwargs):
