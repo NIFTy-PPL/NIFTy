@@ -226,7 +226,7 @@ def geometrically_sample_standard_hamiltonian(
             primals,
             new_key,
             mirror_linear_sample=mirror_linear_sample,
-            linear_sampling_cg=cg,
+            linear_sampling_cg=linear_sampling_cg,
             linear_sampling_kwargs=linear_sampling_kwargs,
             non_linear_sampling_kwargs=non_linear_sampling_kwargs
         )
@@ -244,7 +244,7 @@ def geometrically_sample_standard_hamiltonian(
             primals,
             new_key,
             mirror_linear_sample=mirror_linear_sample,
-            linear_sampling_cg=cg,
+            linear_sampling_cg=linear_sampling_cg,
             linear_sampling_kwargs=linear_sampling_kwargs,
             non_linear_sampling_kwargs=non_linear_sampling_kwargs
         )
