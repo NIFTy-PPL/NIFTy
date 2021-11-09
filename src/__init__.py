@@ -9,7 +9,7 @@ from .kl import (
     geometrically_sample_standard_hamiltonian
 )
 from .field import Field
-from .forest_util import norm, ShapeWithDtype, vmap_forest, vmap_forest_mean
+from .forest_util import norm, dot, ShapeWithDtype, vmap_forest, vmap_forest_mean
 from .optimize import minimize, newton_cg, trust_ncg
 from .hmc import generate_hmc_acc_rej, generate_nuts_tree
 from .hmc_oo import HMCChain, NUTSChain
