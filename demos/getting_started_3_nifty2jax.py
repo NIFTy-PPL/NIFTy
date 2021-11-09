@@ -107,24 +107,35 @@ def main():
     plot.add([pspec.force(mock_position)], title='Power Spectrum')
     plot.output(ny=1, nx=3, xsize=24, ysize=6, name=filename.format("setup"))
 
-    fwd, _ = ift.nifty2jax.convert(signal)
+    signal_j, _ = ift.nifty2jax.convert(signal)
     p, _ = ift.nifty2jax.convert(mock_position)
     d, _ = ift.nifty2jax.convert(data)
 
     # Verify that both models are equivalent
     fig, axs = plt.subplots(1, 3)
     axs.flat[0].imshow(signal(mock_position).val.T, origin="lower")
-    axs.flat[1].imshow(fwd(p).T, origin="lower")
-    axs.flat[2].imshow((fwd(p) - signal(mock_position).val).T, origin="lower")
+    axs.flat[1].imshow(signal_j(p).T, origin="lower")
+    axs.flat[2].imshow((signal_j(p) - signal(mock_position).val).T, origin="lower")
     fig.tight_layout()
     fig.savefig("nifty_and_jax.png")
 
+    fwd, _ = ift.nifty2jax.convert(signal_response)
     lh = jft.Gaussian(d.val, noise_cov_inv=lambda x: 1. / noise * x) @ fwd
     likelihood_energy = ift.JaxLikelihoodEnergyOperator(
         signal.domain,
         lh,
-        transformation=lh.transformation
+        transformation=ift.JaxOperator(signal.domain, data.domain, lh.transformation),
+        sampling_dtype=float
     )
+    # With JAX
+    # In [4]: %timeit likelihood_energy(mock_position).val
+    # 404 µs ± 2.61 µs per loop (mean ± std. dev. of 7 runs, 1000 loops each)
+
+    # likelihood_energy = (ift.GaussianEnergy(mean=data, inverse_covariance=N.inverse) @
+    #                      signal_response)
+    # Without JAX
+    # In [7]: %timeit likelihood_energy(mock_position).val
+    # 1.28 ms ± 21.6 µs per loop (mean ± std. dev. of 7 runs, 1000 loops each)
 
     # Minimization parameters
     ic_sampling = ift.AbsDeltaEnergyController(name="Sampling (linear)",
@@ -137,8 +148,6 @@ def main():
     minimizer_sampling = ift.NewtonCG(ic_sampling_nl)
 
     # Set up likelihood energy and information Hamiltonian
-    likelihood_energy = (ift.GaussianEnergy(mean=data, inverse_covariance=N.inverse) @
-                         signal_response)
     H = ift.StandardHamiltonian(likelihood_energy, ic_sampling)
 
     initial_position = ift.MultiField.full(H.domain, 0.)
