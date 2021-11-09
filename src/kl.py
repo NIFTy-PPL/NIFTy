@@ -141,6 +141,7 @@ def geometrically_sample_standard_hamiltonian(
     mirror_linear_sample: bool,
     linear_sampling_cg: Callable = conjugate_gradient.cg,
     linear_sampling_kwargs: Optional[dict] = None,
+    non_linear_sampling_method: str = "NewtonCG",
     non_linear_sampling_kwargs: Optional[dict] = None
 ):
     r"""Draws a sample which follows a standard normal distribution in the
@@ -220,7 +221,9 @@ def geometrically_sample_standard_hamiltonian(
         options = nls_kwargs.copy()
         options["hessp"] = r2_half.metric
 
-        opt_state = minimize(r2_half, x0=x0, method="NewtonCG", options=options)
+        opt_state = minimize(
+            r2_half, x0=x0, method=non_linear_sampling_method, options=options
+        )
 
         return opt_state.x, opt_state.status
 
@@ -367,6 +370,7 @@ def GeoMetricKL(
     mirror_samples: bool = True,
     linear_sampling_cg: Callable = conjugate_gradient.cg,
     linear_sampling_kwargs: Optional[dict] = None,
+    non_linear_sampling_method: str = "NewtonCG",
     non_linear_sampling_kwargs: Optional[dict] = None,
     hamiltonian_and_gradient: Optional[Callable] = None,
     _samples: Optional[tuple] = None
@@ -399,6 +403,7 @@ def GeoMetricKL(
             mirror_linear_sample=mirror_samples,
             linear_sampling_cg=linear_sampling_cg,
             linear_sampling_kwargs=linear_sampling_kwargs,
+            non_linear_sampling_method=non_linear_sampling_method,
             non_linear_sampling_kwargs=non_linear_sampling_kwargs
         )
         subkeys = random.split(key, n_samples)
