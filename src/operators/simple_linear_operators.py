@@ -41,6 +41,14 @@ class VdotOperator(LinearOperator):
         self._target = DomainTuple.scalar_domain()
         self._capability = self.TIMES | self.ADJOINT_TIMES
 
+        try:
+            from functools import partial
+            from jax import numpy as jnp
+
+            self._jax_expr = partial(jnp.vdot, field.val)
+        except ImportError:
+            self._jax_expr = None
+
     def apply(self, x, mode):
         self._check_mode(mode)
         if mode == self.TIMES:
@@ -60,6 +68,13 @@ class ConjugationOperator(EndomorphicOperator):
     def __init__(self, domain):
         self._domain = DomainTuple.make(domain)
         self._capability = self._all_ops
+
+        try:
+            from jax import numpy as jnp
+
+            self._jax_expr = jnp.conjugate
+        except ImportError:
+            self._jax_expr = None
 
     def apply(self, x, mode):
         self._check_input(x, mode)
@@ -108,6 +123,13 @@ class Realizer(EndomorphicOperator):
         self._domain = DomainTuple.make(domain)
         self._capability = self.TIMES | self.ADJOINT_TIMES
 
+        try:
+            from jax import numpy as jnp
+
+            self._jax_expr = jnp.real
+        except ImportError:
+            self._jax_expr = None
+
     def apply(self, x, mode):
         self._check_input(x, mode)
         return x.real
@@ -125,6 +147,13 @@ class Imaginizer(EndomorphicOperator):
     def __init__(self, domain):
         self._domain = DomainTuple.make(domain)
         self._capability = self.TIMES | self.ADJOINT_TIMES
+
+        try:
+            from jax import numpy as jnp
+
+            self._jax_expr = jnp.imag
+        except ImportError:
+            self._jax_expr = None
 
     def apply(self, x, mode):
         self._check_input(x, mode)
@@ -165,6 +194,22 @@ class FieldAdapter(LinearOperator):
             self._domain = tmp[name]
             self._target = MultiDomain.make({name: tmp[name]})
         self._capability = self.TIMES | self.ADJOINT_TIMES
+
+        try:
+            import jifty1 as jft
+
+            def wrap(x):
+                return jft.Field({name: x})
+
+            def unwrap(x):
+                return x[name]
+
+            if isinstance(tmp, DomainTuple):
+                self._jax_expr = unwrap
+            else:
+                self._jax_expr = wrap
+        except ImportError:
+            self._jax_expr = None
 
     def apply(self, x, mode):
         self._check_input(x, mode)

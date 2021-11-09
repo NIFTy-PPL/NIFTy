@@ -16,6 +16,7 @@
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
 
 import numpy as np
+from functools import partial
 
 from .. import utilities
 from ..domain_tuple import DomainTuple
@@ -92,6 +93,13 @@ class DiagonalOperator(EndomorphicOperator):
             self._ldiag = diagonal.val
         self._fill_rest()
 
+        try:
+            from jax import numpy as jnp
+
+            self._jax_expr = partial(jnp.multiply, jnp.array(self._ldiag))
+        except ImportError:
+            self._jax_expr = None
+
     def _fill_rest(self):
         self._ldiag.flags.writeable = False
         self._complex = utilities.iscomplextype(self._ldiag.dtype)
@@ -109,6 +117,14 @@ class DiagonalOperator(EndomorphicOperator):
             res._spaces = tuple(set(self._spaces) | set(spc))
         res._ldiag = np.array(ldiag)
         res._fill_rest()
+
+        try:
+            from jax import numpy as jnp
+
+            res._jax_expr = partial(jnp.multiply, jnp.array(ldiag))
+        except ImportError:
+            res._jax_expr = None
+
         return res
 
     def _scale(self, fct):

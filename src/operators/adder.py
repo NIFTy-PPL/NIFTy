@@ -16,6 +16,7 @@
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
 
 import numpy as np
+from functools import partial
 
 from ..field import Field
 from ..multi_field import MultiField
@@ -41,6 +42,17 @@ class Adder(Operator):
             raise TypeError
         self._domain = self._target = dom
         self._neg = bool(neg)
+
+        try:
+            from jax import numpy as jnp
+
+            a_j = a.val if hasattr(a, "val") else a
+            if neg:
+                self._jax_expr = partial(jnp.subtract, x2=jnp.array(a_j))
+            else:
+                self._jax_expr = partial(jnp.add, jnp.array(a_j))
+        except ImportError:
+            self._jax_expr = None
 
     def apply(self, x):
         self._check_input(x)
