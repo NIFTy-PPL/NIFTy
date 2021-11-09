@@ -106,20 +106,20 @@ def non_parametric_amplitude(
     log_vol = domain.get("log_volume")
 
     ptree = {}
-    fluctuations = ducktape(fluctuations, prefix + "_fluctuations")
-    ptree[prefix + "_fluctuations"] = ShapeWithDtype(())
-    loglogavgslope = ducktape(loglogavgslope, prefix + "_loglogavgslope")
-    ptree[prefix + "_loglogavgslope"] = ShapeWithDtype(())
+    fluctuations = ducktape(fluctuations, prefix + "fluctuations")
+    ptree[prefix + "fluctuations"] = ShapeWithDtype(())
+    loglogavgslope = ducktape(loglogavgslope, prefix + "loglogavgslope")
+    ptree[prefix + "loglogavgslope"] = ShapeWithDtype(())
     if flexibility is not None:
-        flexibility = ducktape(flexibility, prefix + "_flexibility")
-        ptree[prefix + "_flexibility"] = ShapeWithDtype(())
+        flexibility = ducktape(flexibility, prefix + "flexibility")
+        ptree[prefix + "flexibility"] = ShapeWithDtype(())
         # Register the parameters for the spectrum
         assert log_vol is not None
         assert rel_log_mode_len.ndim == log_vol.ndim == 1
-        ptree[prefix + "_spectrum"] = ShapeWithDtype((2, ) + log_vol.shape)
+        ptree[prefix + "spectrum"] = ShapeWithDtype((2, ) + log_vol.shape)
     if asperity is not None:
-        asperity = ducktape(asperity, prefix + "_asperity")
-        ptree[prefix + "_asperity"] = ShapeWithDtype(())
+        asperity = ducktape(asperity, prefix + "asperity")
+        ptree[prefix + "asperity"] = ShapeWithDtype(())
 
     def correlate(primals: Mapping) -> jnp.ndarray:
         flu = fluctuations(primals)
@@ -129,7 +129,7 @@ def non_parametric_amplitude(
 
         if flexibility is not None:
             assert log_vol is not None
-            xi_spc = primals[prefix + "_spectrum"]
+            xi_spc = primals[prefix + "spectrum"]
             flx = flexibility(primals)
             sig_flx = flx * jnp.sqrt(log_vol)
             sig_flx = jnp.broadcast_to(sig_flx, (2, ) + log_vol.shape)
@@ -324,7 +324,7 @@ class CorrelatedFieldMaker():
             loglogavgslope=slp,
             flexibility=flx,
             asperity=asp,
-            prefix=self._prefix + "_" + prefix,
+            prefix=self._prefix + prefix,
             kind=non_parametric_kind,
         )
         self._fluctuations.append(npa)
@@ -356,8 +356,8 @@ class CorrelatedFieldMaker():
                 raise TypeError
             zm = lognormal_prior(*offset_std)
 
-        self._azm = ducktape(zm, self._prefix + "_zeromode")
-        self._parameter_tree[self._prefix + "_zeromode"] = ShapeWithDtype(())
+        self._azm = ducktape(zm, self._prefix + "zeromode")
+        self._parameter_tree[self._prefix + "zeromode"] = ShapeWithDtype(())
 
     @property
     def amplitude_total_offset(self):
@@ -440,7 +440,7 @@ class CorrelatedFieldMaker():
             harmonic_transforms.append(partial(hartley, axes=axes))
         # Register the parameters for the excitations in harmonic space
         # TODO: actually account for the dtype here
-        pfx = self._prefix + "_excitations"
+        pfx = self._prefix + "xi"
         self._parameter_tree[pfx] = ShapeWithDtype(excitation_shape)
 
         def outer_harmonic_transform(p):
@@ -471,7 +471,7 @@ class CorrelatedFieldMaker():
 
         def correlated_field(p):
             ea = outer_amplitude(p)
-            cf_h = self.azm(p) * ea * p[self._prefix + "_excitations"]
+            cf_h = self.azm(p) * ea * p[self._prefix + "xi"]
             return self._offset_mean + outer_harmonic_transform(cf_h)
 
         return correlated_field, self._parameter_tree.copy()
