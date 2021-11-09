@@ -16,6 +16,7 @@
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
 
 import numpy as np
+from functools import partial
 
 from ..domain_tuple import DomainTuple
 from ..domains.unstructured_domain import UnstructuredDomain
@@ -42,10 +43,9 @@ class VdotOperator(LinearOperator):
         self._capability = self.TIMES | self.ADJOINT_TIMES
 
         try:
-            from functools import partial
-            from jax import numpy as jnp
+            from jifty1 import vdot
 
-            self._jax_expr = partial(jnp.vdot, field.val)
+            self._jax_expr = partial(vdot, field.val)
         except ImportError:
             self._jax_expr = None
 
@@ -71,8 +71,9 @@ class ConjugationOperator(EndomorphicOperator):
 
         try:
             from jax import numpy as jnp
+            from jax.tree_util import tree_map
 
-            self._jax_expr = jnp.conjugate
+            self._jax_expr = partial(tree_map, jnp.conjugate)
         except ImportError:
             self._jax_expr = None
 
@@ -125,8 +126,9 @@ class Realizer(EndomorphicOperator):
 
         try:
             from jax import numpy as jnp
+            from jax.tree_util import tree_map
 
-            self._jax_expr = jnp.real
+            self._jax_expr = partial(tree_map, jnp.real)
         except ImportError:
             self._jax_expr = None
 
@@ -150,8 +152,9 @@ class Imaginizer(EndomorphicOperator):
 
         try:
             from jax import numpy as jnp
+            from jax.tree_util import tree_map
 
-            self._jax_expr = jnp.imag
+            self._jax_expr = partial(tree_map, jnp.imag)
         except ImportError:
             self._jax_expr = None
 

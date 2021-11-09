@@ -45,12 +45,13 @@ class Adder(Operator):
 
         try:
             from jax import numpy as jnp
+            from jax.tree_util import tree_map
 
             a_j = a.val if hasattr(a, "val") else a
             if neg:
-                self._jax_expr = partial(jnp.subtract, x2=jnp.array(a_j))
+                self._jax_expr = partial(tree_map, lambda a, x: x - a, a_j)
             else:
-                self._jax_expr = partial(jnp.add, jnp.array(a_j))
+                self._jax_expr = partial(tree_map, jnp.add, a_j)
         except ImportError:
             self._jax_expr = None
 
