@@ -17,6 +17,7 @@
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
 
 import numpy as np
+from warnings import warn
 
 from ..domain_tuple import DomainTuple
 from ..domains.power_space import PowerSpace
@@ -126,16 +127,15 @@ def SimpleCorrelatedField(
         import jifty1 as jft
         from .. import RGSpace
 
-        if len(op.target) != 1 or not isinstance(op.target[0], RGSpace):
-            from warnings import warn
-
+        if not all(isinstance(dom, RGSpace) for dom in op.target):
             warn(f"unable to add JAX operator for {op.target!r}")
             raise ImportError("short-circuit JAX init")
 
+        dists = tuple(e for di in op.target for e in di.distances)
         cfm = jft.CorrelatedFieldMaker(prefix=prefix)
         cfm.add_fluctuations(
-            shape=op.target[0].shape,
-            distances=op.target[0].distances,
+            shape=op.target.shape,
+            distances=dists,
             fluctuations=fluctuations,
             loglogavgslope=loglogavgslope,
             flexibility=flexibility,
