@@ -97,7 +97,8 @@ def non_parametric_amplitude(
     loglogavgslope: Callable,
     flexibility: Optional[Callable] = None,
     asperity: Optional[Callable] = None,
-    prefix: str = ""
+    prefix: str = "",
+    kind: str = "amplitude",
 ):
     totvol = domain.get("position_space_total_volume", 1.)
     rel_log_mode_len = domain["relative_log_mode_lengths"]
@@ -124,7 +125,7 @@ def non_parametric_amplitude(
         flu = fluctuations(primals)
         slope = loglogavgslope(primals)
         slope *= rel_log_mode_len
-        ln_amplitude = slope
+        ln_spectrum = slope
 
         if flexibility is not None:
             assert log_vol is not None
@@ -150,15 +151,22 @@ def non_parametric_amplitude(
 
             twolog = _twolog_integrate(log_vol, asp)
             wo_slope = _remove_slope(rel_log_mode_len, twolog)
-            ln_amplitude += wo_slope
+            ln_spectrum += wo_slope
 
         # Exponentiate and norm the power spectrum
-        amplitude = jnp.exp(ln_amplitude)
+        spectrum = jnp.exp(ln_spectrum)
         # Take the sqrt of the integral of the slope w/o fluctuations and
         # zero-mode while taking into account the multiplicity of each mode
-        norm = jnp.sqrt(jnp.sum(mode_multiplicity[1:] * amplitude[1:]**2))
-        norm /= jnp.sqrt(totvol)  # Due to integral in harmonic space
-        amplitude *= flu * (jnp.sqrt(totvol) / norm)
+        if kind.lower() == "amplitude":
+            norm = jnp.sqrt(jnp.sum(mode_multiplicity[1:] * spectrum[1:]**2))
+            norm /= jnp.sqrt(totvol)  # Due to integral in harmonic space
+            amplitude = flu * (jnp.sqrt(totvol) / norm) * spectrum
+        elif kind.lower() == "power":
+            norm = jnp.sqrt(jnp.sum(mode_multiplicity[1:] * spectrum[1:]))
+            norm /= jnp.sqrt(totvol)  # Due to integral in harmonic space
+            amplitude = flu * (jnp.sqrt(totvol) / norm) * jnp.sqrt(spectrum)
+        else:
+            raise ValueError(f"invalid kind specified {kind!r}")
         amplitude = amplitude.at[0].set(totvol)
         return amplitude
 
@@ -207,6 +215,7 @@ class CorrelatedFieldMaker():
         asperity: Union[tuple, Callable, None] = None,
         prefix: str = "",
         harmonic_domain_type: str = "fourier",
+        non_parametric_kind: str = "amplitude",
     ):
         """Adds a correlation structure to the to-be-made field.
 
@@ -214,11 +223,13 @@ class CorrelatedFieldMaker():
         which they apply.
 
         The parameters `fluctuations`, `flexibility`, `asperity` and
-        `loglogavgslope` configure the amplitude spectrum model used on the
-        target field subdomain of type `harmonic_domain_type`. It is assembled
-        as the sum of a power law component (linear slope in log-log
-        amplitude-frequency-space), a smooth varying component (integrated
-        Wiener process) and a ragged component (un-integrated Wiener process).
+        `loglogavgslope` configure either the amplitude or the power
+        spectrum model used on the target field subdomain of type
+        `harmonic_domain_type`. It is assembled as the sum of a power
+        law component (linear slope in log-log
+        amplitude-frequency-space), a smooth varying component
+        (integrated Wiener process) and a ragged component
+        (un-integrated Wiener process).
 
         Multiple calls to `add_fluctuations` are possible, in which case
         the constructed field will have the outer product of the individual
@@ -313,7 +324,8 @@ class CorrelatedFieldMaker():
             loglogavgslope=slp,
             flexibility=flx,
             asperity=asp,
-            prefix=self._prefix + "_" + prefix
+            prefix=self._prefix + "_" + prefix,
+            kind=non_parametric_kind,
         )
         self._fluctuations.append(npa)
         self._target_subdomains.append(domain)
