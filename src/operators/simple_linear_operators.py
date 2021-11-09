@@ -310,6 +310,11 @@ class GeometryRemover(LinearOperator):
         self._target = DomainTuple.make(tgt)
         self._capability = self.TIMES | self.ADJOINT_TIMES
 
+        def identity(x):
+            return x
+
+        self._jax_expr = identity
+
     def apply(self, x, mode):
         self._check_input(x, mode)
         return x.cast_domain(self._tgt(mode))

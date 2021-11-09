@@ -61,6 +61,8 @@ class JaxOperator(Operator):
         self._vjp = jax.jit(lambda x: jax.vjp(func, x))
         self._fwd = jax.jit(lambda x, y: jax.jvp(self._func, (x,), (y,))[1])
 
+        self._jax_expr = func
+
     def apply(self, x):
         from ..multi_domain import MultiDomain
         from ..sugar import is_linearization, makeField
@@ -155,6 +157,8 @@ class JaxLinearOperator(LinearOperator):
         self._func = func
         self._func_T = func_T
         self._capability = self.TIMES | self.ADJOINT_TIMES
+
+        self._jax_expr = func
 
     def apply(self, x, mode):
         from ..sugar import makeField

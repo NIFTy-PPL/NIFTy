@@ -121,4 +121,38 @@ def SimpleCorrelatedField(
         op = Adder(full(op.target, float(offset_mean))) @ op
     op.amplitude = a
     op.power_spectrum = a**2
+
+    try:
+        import jifty1 as jft
+        from .. import RGSpace
+
+        if len(op.target) != 1 or not isinstance(op.target[0], RGSpace):
+            from warnings import warn
+
+            warn(f"unable to add JAX operator for {op.target!r}")
+            raise ImportError("short-circuit JAX init")
+
+        cfm = jft.CorrelatedFieldMaker(prefix=prefix)
+        cfm.add_fluctuations(
+            shape=op.target[0].shape,
+            distances=op.target[0].distances,
+            fluctuations=fluctuations,
+            loglogavgslope=loglogavgslope,
+            flexibility=flexibility,
+            asperity=asperity,
+            prefix="",
+            harmonic_domain_type="fourier",
+            non_parametric_kind="power",
+        )
+        cfm.set_amplitude_total_offset(
+            offset_mean=offset_mean, offset_std=offset_std
+        )
+        cf, _ = cfm.finalize()
+
+        op._jax_expr = cf
+        op.amplitude._jax_expr = cfm.amplitude
+        op.power_spectrum._jax_expr = cfm.power_spectrum
+    except ImportError:
+        pass
+
     return op

@@ -17,7 +17,10 @@
 
 import numpy as np
 
+from typing import Callable, Optional
+
 from .. import pointwise
+from ..domain_tuple import DomainTuple
 from ..logger import logger
 from ..multi_domain import MultiDomain
 from ..utilities import NiftyMeta, check_object_identity, indent, myassert
@@ -130,6 +133,11 @@ class Operator(metaclass=NiftyMeta):
         `MultiDomains` with the index as the key.
         """
         return None
+
+    @property
+    def jax_expr(self) -> Optional[Callable]:
+        """Equivalent representation of the operator in JAX."""
+        return getattr(self, "_jax_expr", None)
 
     def scale(self, factor):
         if factor == 1:
@@ -369,6 +377,34 @@ class _FunctionApplier(Operator):
         self._args = args
         self._kwargs = kwargs
 
+        try:
+            import jax.numpy as jnp
+            from jax import nn as jax_nn
+
+            if funcname in pointwise.ptw_nifty2jax_dict:
+                jax_expr = pointwise.ptw_nifty2jax_dict[funcname]
+            elif hasattr(jnp, funcname):
+                jax_expr = getattr(jnp, funcname)
+            elif hasattr(jax_nn, funcname):
+                jax_expr = getattr(jax_nn, funcname)
+            else:
+                import warnings as warn
+
+                warn(f"unable to add JAX call for {funcname!r}")
+                jax_expr = None
+
+            if isinstance(self.domain, MultiDomain):
+                from functools import partial
+                from jax.tree_util import tree_map
+
+                jax_expr = partial(tree_map, jax_expr)
+            else:
+                assert isinstance(self.domain, DomainTuple)
+                jax_expr = jax_expr
+            self._jax_expr = jax_expr
+        except ImportError:
+            self._jax_expr = None
+
     def apply(self, x):
         self._check_input(x)
         return x.ptw(self._funcname, *self._args, **self._kwargs)
@@ -378,10 +414,26 @@ class _FunctionApplier(Operator):
 
 
 class _CombinedOperator(Operator):
-    def __init__(self, ops, _callingfrommake=False):
+    def __init__(self, ops, jax_ops, _callingfrommake=False):
         if not _callingfrommake:
             raise NotImplementedError
         self._ops = tuple(ops)
+
+        if all(callable(jop) for jop in jax_ops):
+
+            def joined_jax_op(x):
+                for jop in reversed(jax_ops):
+                    x = jop(x)
+                return x
+
+            self._jax_expr = joined_jax_op
+        elif any(callable(jop) for jop in jax_ops):
+            from warnings import warn
+
+            warn("dropping JAX support because of missing operator support")
+            self._jax_expr = None
+        else:
+            self._jax_expr = None
 
     @classmethod
     def unpack(cls, ops, res):
@@ -397,12 +449,13 @@ class _CombinedOperator(Operator):
         res = cls.unpack(ops, [])
         if len(res) == 1:
             return res[0]
-        return cls(res, _callingfrommake=True)
+        jax_res = tuple(op.jax_expr for op in ops)
+        return cls(res, jax_res, _callingfrommake=True)
 
 
 class _OpChain(_CombinedOperator):
-    def __init__(self, ops, _callingfrommake=False):
-        super(_OpChain, self).__init__(ops, _callingfrommake)
+    def __init__(self, ops, jax_ops, _callingfrommake=False):
+        super(_OpChain, self).__init__(ops, jax_ops, _callingfrommake)
         self._domain = self._ops[-1].domain
         self._target = self._ops[0].target
         for i in range(1, len(self._ops)):
@@ -444,6 +497,25 @@ class _OpProd(Operator):
             raise ValueError("target mismatch")
         self._op1 = op1
         self._op2 = op2
+
+        lhs_has_jax = callable(self._op1.jax_expr)
+        rhs_has_jax = callable(self._op2.jax_expr)
+        if lhs_has_jax and rhs_has_jax:
+
+            def joined_jax_expr(x):
+                return self._op1(x) * self._op2(x)
+
+            self._jax_expr = joined_jax_expr
+        elif lhs_has_jax or rhs_has_jax:
+            from warnings import warn
+
+            warn_msg = "dropping JAX support because of the following operator:\n"
+            warn_msg += repr(self._op1) + "\n" if not lhs_has_jax else ""
+            warn_msg += repr(self._op2) + "\n" if not rhs_has_jax else ""
+            warn(warn_msg)
+            self._jax_expr = None
+        else:
+            self._jax_expr = None
 
     def apply(self, x):
         from ..linearization import Linearization
