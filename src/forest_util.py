@@ -123,6 +123,13 @@ def norm(tree, ord, *, ravel: bool):
     return norm(tree_leaves(tree_map(el_norm, tree)), ord=ord)
 
 
+def dot(a, b, *, precision=None):
+    tree_of_dots = tree_map(
+        lambda x, y: jnp.dot(x.ravel(), y.ravel(), precision=precision), a, b
+    )
+    return tree_reduce(jnp.add, tree_of_dots, 0.)
+
+
 def select(pred, on_true, on_false):
     return tree_map(partial(lax.select, pred), on_true, on_false)
 
