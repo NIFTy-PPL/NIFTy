@@ -560,6 +560,16 @@ class _OpSum(Operator):
         self._op1 = op1
         self._op2 = op2
 
+        try:
+            from ..nifty2jax import unite
+
+            def joined_jax_expr(x):
+                return unite(self._op1.jax_expr(x), self._op2.jax_expr(x))
+
+            self._jax_expr = joined_jax_expr
+        except ImportError:
+            self._jax_expr = None
+
     def apply(self, x):
         from ..linearization import Linearization
         self._check_input(x)

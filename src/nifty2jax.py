@@ -33,6 +33,23 @@ def translate_call(apply: Callable, from_to: Mapping):
     return translated_call
 
 
+def unite(x, y):
+    x = x.val if hasattr(x, "val") else x
+    y = y.val if hasattr(y, "val") else y
+    if not hasattr(x, "keys") and not hasattr(y, "keys"):
+        return x + y
+
+    out = {}
+    for k in x.keys() | y.keys():
+        if k in x and k in y:
+            out[k] = x[k] + y[k]
+        elif k in x:
+            out[k] = x[k]
+        else:
+            out[k] = y[k]
+    return jft.Field(out)
+
+
 def convert(op: Operator, dtype=float) -> Tuple[Any, Any]:
     if not isinstance(op, Operator):
         raise TypeError(f"invalid input type {type(op)!r}")
