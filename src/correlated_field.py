@@ -401,6 +401,16 @@ class CorrelatedFieldMaker():
 
         return ampliude_w_zm
 
+    @property
+    def power_spectrum(self):
+        """Returns the power spectrum"""
+        amp = self.amplitude
+
+        def power(p):
+            return amp(p)**2
+
+        return power
+
     def finalize(self):
         """Finishes off the model construction process and returns the
         constructed operator.
