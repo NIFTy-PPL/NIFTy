@@ -130,6 +130,13 @@ def dot(a, b, *, precision=None):
     return tree_reduce(jnp.add, tree_of_dots, 0.)
 
 
+def vdot(a, b, *, precision=None):
+    tree_of_vdots = tree_map(
+        lambda x, y: jnp.vdot(x.ravel(), y.ravel(), precision=precision), a, b
+    )
+    return tree_reduce(jnp.add, tree_of_vdots, 0.)
+
+
 def select(pred, on_true, on_false):
     return tree_map(partial(lax.select, pred), on_true, on_false)
 
