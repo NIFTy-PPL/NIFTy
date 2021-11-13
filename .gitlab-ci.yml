@@ -78,12 +78,12 @@ before_script:
 run_ipynb0:
   stage: demo_runs
   script:
-    - jupyter nbconvert --execute --ExecutePreprocessor.timeout=None demos/getting_started_0.ipynb
+    - jupyter nbconvert --execute --ExecutePreprocessor.timeout=None --to html demos/getting_started_0.ipynb
 
 run_ipynb1:
   stage: demo_runs
   script:
-    - jupyter nbconvert --execute --ExecutePreprocessor.timeout=None demos/getting_started_4_CorrelatedFields.ipynb
+    - jupyter nbconvert --execute --ExecutePreprocessor.timeout=None --to html demos/getting_started_4_CorrelatedFields.ipynb
 
 run_getting_started_1:
   stage: demo_runs
