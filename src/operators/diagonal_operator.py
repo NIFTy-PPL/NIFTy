@@ -74,7 +74,7 @@ class DiagonalOperator(EndomorphicOperator):
             if len(self._spaces) != len(diagonal.domain):
                 raise ValueError("spaces and domain must have the same length")
             for i, j in enumerate(self._spaces):
-                utilities.check_domain_equality(diagonal.domain[i], self._domain[j])
+                utilities.check_domain_equality(diagonal.domain[i], self._domain[j], eq=True)
             if self._spaces == tuple(range(len(self._domain))):
                 self._spaces = None  # shortcut
 

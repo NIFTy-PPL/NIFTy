@@ -413,19 +413,15 @@ def myassert(val):
         raise AssertionError
 
 
-def check_domain_equality(domain0, domain1):
+def check_domain_equality(domain0, domain1, eq=False):
     """Check if two domains are equal and throw ValueError if not. Throw a
     TypeError if one of the inputs is neither a DomainTuple nor a
     MultiDomain.
+
+    The equality check is performed via object comparison (`is`) and is suited
+    for `DomainTuple` and `MultiField`s. To check via `==`, set `eq` to True.
     """
-    from .domain_tuple import DomainTuple
-    from .domains.domain import Domain
-    from .multi_domain import MultiDomain
-    for dom in [domain0, domain1]:
-        if not isinstance(dom, (MultiDomain, DomainTuple, Domain)):
-            raise TypeError("The following domain is neither an instance of "
-                            f"ift.MultiDomain nor of ift.DomainTuple.\n{dom}")
-    if domain0 != domain1:
+    if domain0 != domain1 if eq else domain0 is not domain1:
         raise ValueError(f"Domain mismatch:\n{domain0}\n{domain1}")
 
 
