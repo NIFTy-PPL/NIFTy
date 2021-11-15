@@ -50,10 +50,7 @@ def unite(x, y):
     return jft.Field(out)
 
 
-def convert(op: Operator, dtype=float) -> Tuple[Any, Any]:
-    if not isinstance(op, Operator):
-        raise TypeError(f"invalid input type {type(op)!r}")
-
+def shapewithdtype_from_domain(domain, dtype):
     if isinstance(dtype, dict):
         dtp_fallback = float  # Fallback to `float` for unspecified keys
         k2dtp = dtype
@@ -61,17 +58,27 @@ def convert(op: Operator, dtype=float) -> Tuple[Any, Any]:
         dtp_fallback = dtype
         k2dtp = {}
 
-    if isinstance(op, (Field, MultiField)):
-        parameter_tree = tree_map(jft.ShapeWithDtype.from_leave, op.val)
-    if isinstance(op.domain, MultiDomain):
+    if isinstance(domain, MultiDomain):
         parameter_tree = {}
-        for k, dom in op.domain.items():
+        for k, dom in domain.items():
             parameter_tree[k] = jft.ShapeWithDtype(
                 dom.shape, k2dtp.get(k, dtp_fallback)
             )
+    elif isinstance(domain, DomainTuple):
+        parameter_tree = jft.ShapeWithDtype(domain.shape, dtype)
     else:
-        assert isinstance(op.domain, DomainTuple)
-        parameter_tree = jft.ShapeWithDtype(op.domain.shape, dtype)
+        raise TypeError(f"incompatible domain {domain!r}")
+    return parameter_tree
+
+
+def convert(op: Operator, dtype=float) -> Tuple[Any, Any]:
+    if not isinstance(op, Operator):
+        raise TypeError(f"invalid input type {type(op)!r}")
+
+    if isinstance(op, (Field, MultiField)):
+        parameter_tree = tree_map(jft.ShapeWithDtype.from_leave, op.val)
+    else:
+        parameter_tree = shapewithdtype_from_domain(op.domain, dtype)
     parameter_tree = jft.Field(parameter_tree)
 
     if isinstance(op, (Field, MultiField)):
