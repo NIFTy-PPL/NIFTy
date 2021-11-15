@@ -28,9 +28,7 @@ exec(open('nifty7/version.py').read())
 
 with open("README.md") as f:
     long_description = f.read()
-description = """NIFTy, Numerical Information Field Theory, is a versatile
-library designed to enable the development of signal inference algorithms that
-operate regardless of the underlying grids and their resolutions."""
+description = "Library for signal inference algorithms that operate regardless of the underlying grids and their resolutions."
 
 setup(name="nifty7",
       version=__version__,
