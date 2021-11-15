@@ -69,7 +69,7 @@ def _ConvolutionOperator(domain, kernel, space=None):
     lm = [d for d in domain]
     lm[space] = lm[space].get_default_codomain()
     lm = DomainTuple.make(lm)
-    utilities.check_domain_equality(lm[space], kernel.domain[0])
+    utilities.check_object_identity(lm[space], kernel.domain[0])
     HT = HarmonicTransformOperator(lm, domain[space], space)
     diag = DiagonalOperator(kernel*domain[space].total_volume, lm, (space,))
     wgt = WeightApplier(domain, space, 1)

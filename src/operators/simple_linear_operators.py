@@ -22,7 +22,7 @@ from ..domains.unstructured_domain import UnstructuredDomain
 from ..field import Field
 from ..multi_domain import MultiDomain
 from ..multi_field import MultiField
-from ..utilities import check_domain_equality
+from ..utilities import check_object_identity
 from .endomorphic_operator import EndomorphicOperator
 from .linear_operator import LinearOperator
 
@@ -358,7 +358,7 @@ class PartialExtractor(LinearOperator):
         self._domain = domain
         self._target = target
         for key in self._target.keys():
-            check_domain_equality(self._domain[key], self._target[key])
+            check_object_identity(self._domain[key], self._target[key])
         self._capability = self.TIMES | self.ADJOINT_TIMES
         self._compldomain = MultiDomain.make({kk: self._domain[kk]
                                               for kk in self._domain.keys()

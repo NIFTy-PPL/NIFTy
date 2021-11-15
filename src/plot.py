@@ -26,7 +26,7 @@ from .domains.power_space import PowerSpace
 from .domains.rg_space import RGSpace
 from .field import Field
 from .minimization.iteration_controllers import EnergyHistory
-from .utilities import check_domain_equality, myassert
+from .utilities import check_object_identity, myassert
 
 # relevant properties:
 # - x/y size
@@ -314,7 +314,7 @@ def _plot1D(f, ax, **kwargs):
             if (len(dom) != 1):
                 raise ValueError("input field must have exactly one domain")
         else:
-            check_domain_equality(fld.domain, dom)
+            check_object_identity(fld.domain, dom)
     dom = dom[0]
 
     label = kwargs.pop("label", None)

@@ -44,7 +44,7 @@ class ChainOperator(LinearOperator):
     def simplify(ops):
         # verify domains
         for i in range(len(ops) - 1):
-            utilities.check_domain_equality(ops[i + 1].target, ops[i].domain)
+            utilities.check_object_identity(ops[i + 1].target, ops[i].domain)
         # unpack ChainOperators
         opsnew = []
         for op in ops:

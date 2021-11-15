@@ -335,7 +335,7 @@ class GaussianEnergy(LikelihoodEnergyOperator):
         if self._domain is None:
             self._domain = newdom
         else:
-            utilities.check_domain_equality(self._domain, newdom)
+            utilities.check_object_identity(self._domain, newdom)
 
     def apply(self, x):
         self._check_input(x)
