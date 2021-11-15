@@ -53,9 +53,6 @@ class SampleListBase:
         self._comm = comm
         self._domain = makeDomain(domain)
         utilities.check_MPI_equality(self._domain, comm)
-        global_comm, size, _, _ = utilities.get_MPI_params()
-        if global_comm is not None and size > 1 and comm is None:
-            raise ValueError("MPI is present. Please pass an MPI communicator to `SampleList`.")
 
     @property
     def n_local_samples(self):
