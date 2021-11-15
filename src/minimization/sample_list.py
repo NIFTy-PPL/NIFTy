@@ -524,10 +524,9 @@ class SampleList(SampleListBase):
     def save(self, file_name_base, overwrite=False):
         nsample = self.n_samples()
         local_indices = self.local_indices(nsample, self.comm)
-        lo = local_indices[0]
         for isample in range(nsample):
             if isample in local_indices:
-                obj = self._s[isample-lo]
+                obj = self._s[isample-local_indices[0]]
                 fname = _sample_file_name(file_name_base, isample)
                 _save_to_disk(fname, obj, overwrite=True)
         _barrier(self.comm)
