@@ -20,7 +20,7 @@ import numpy as np
 from .. import pointwise
 from ..logger import logger
 from ..multi_domain import MultiDomain
-from ..utilities import NiftyMeta, check_domain_equality, indent, myassert
+from ..utilities import NiftyMeta, check_object_identity, indent, myassert
 
 
 class Operator(metaclass=NiftyMeta):
@@ -264,7 +264,7 @@ class Operator(metaclass=NiftyMeta):
                 raise ValueError
             if x.jac._factor != 1:
                 raise ValueError
-        check_domain_equality(self._domain, x.domain)
+        check_object_identity(self._domain, x.domain)
 
     def __call__(self, x):
         if not isinstance(x, Operator):
@@ -406,7 +406,7 @@ class _OpChain(_CombinedOperator):
         self._domain = self._ops[-1].domain
         self._target = self._ops[0].target
         for i in range(1, len(self._ops)):
-            check_domain_equality(self._ops[i-1].domain, self._ops[i].target)
+            check_object_identity(self._ops[i-1].domain, self._ops[i].target)
 
     def apply(self, x):
         self._check_input(x)

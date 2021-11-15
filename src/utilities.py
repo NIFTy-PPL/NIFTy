@@ -26,7 +26,7 @@ __all__ = ["get_slice_list", "safe_cast", "parse_spaces", "infer_space",
            "memo", "NiftyMeta", "my_sum", "my_lincomb_simple",
            "my_lincomb", "indent",
            "my_product", "frozendict", "special_add_at", "iscomplextype",
-           "value_reshaper", "lognormal_moments", "check_domain_equality",
+           "value_reshaper", "lognormal_moments", "check_object_identity",
            "check_MPI_equality", "check_MPI_synced_random_state"]
 
 
@@ -413,20 +413,10 @@ def myassert(val):
         raise AssertionError
 
 
-def check_domain_equality(domain0, domain1):
-    """Check if two domains are equal and throw ValueError if not. Throw a
-    TypeError if one of the inputs is neither a DomainTuple nor a
-    MultiDomain.
-    """
-    from .domain_tuple import DomainTuple
-    from .domains.domain import Domain
-    from .multi_domain import MultiDomain
-    for dom in [domain0, domain1]:
-        if not isinstance(dom, (MultiDomain, DomainTuple, Domain)):
-            raise TypeError("The following domain is neither an instance of "
-                            f"ift.MultiDomain nor of ift.DomainTuple.\n{dom}")
-    if domain0 != domain1:
-        raise ValueError(f"Domain mismatch:\n{domain0}\n{domain1}")
+def check_object_identity(obj0, obj1):
+    """Check if two objects are the same and throw ValueError if not."""
+    if obj0 is not obj1:
+        raise ValueError(f"Mismatch:\n{obj0}\n{obj1}")
 
 
 def check_MPI_equality(obj, comm):

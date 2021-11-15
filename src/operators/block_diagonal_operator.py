@@ -17,7 +17,7 @@
 
 from ..multi_domain import MultiDomain
 from ..multi_field import MultiField
-from ..utilities import check_domain_equality, check_dtype_or_none, indent
+from ..utilities import check_object_identity, check_dtype_or_none, indent
 from .endomorphic_operator import EndomorphicOperator
 from .linear_operator import LinearOperator
 
@@ -82,14 +82,14 @@ class BlockDiagonalOperator(EndomorphicOperator):
         return MultiField(self._domain, tuple(val))
 
     def _combine_chain(self, op):
-        check_domain_equality(self._domain, op._domain)
+        check_object_identity(self._domain, op._domain)
         res = {key: v1(v2)
                for key, v1, v2 in zip(self._domain.keys(), self._ops, op._ops)}
         return BlockDiagonalOperator(self._domain, res)
 
     def _combine_sum(self, op, selfneg, opneg):
         from ..operators.sum_operator import SumOperator
-        check_domain_equality(self._domain, op._domain)
+        check_object_identity(self._domain, op._domain)
         res = {key: SumOperator.make([v1, v2], [selfneg, opneg])
                for key, v1, v2 in zip(self._domain.keys(), self._ops, op._ops)}
         return BlockDiagonalOperator(self._domain, res)

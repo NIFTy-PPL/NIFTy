@@ -310,7 +310,7 @@ class Field(Operator):
             raise TypeError("The dot-partner must be an instance of " +
                             "the Field class")
 
-        utilities.check_domain_equality(x._domain, self._domain)
+        utilities.check_object_identity(x._domain, self._domain)
 
         ndom = len(self._domain)
         spaces = utilities.parse_spaces(spaces, ndom)
@@ -338,7 +338,7 @@ class Field(Operator):
             raise TypeError("The dot-partner must be an instance of " +
                             "the Field class")
 
-        utilities.check_domain_equality(x._domain, self._domain)
+        utilities.check_object_identity(x._domain, self._domain)
 
         return vdot(self._val, x._val)
 
@@ -669,11 +669,11 @@ class Field(Operator):
                "\n- val         = " + repr(self._val)
 
     def extract(self, dom):
-        utilities.check_domain_equality(dom, self._domain)
+        utilities.check_object_identity(dom, self._domain)
         return self
 
     def extract_part(self, dom):
-        utilities.check_domain_equality(dom, self._domain)
+        utilities.check_object_identity(dom, self._domain)
         return self
 
     def unite(self, other):
@@ -686,7 +686,7 @@ class Field(Operator):
         # if other is a field, make sure that the domains match
         f = getattr(self._val, op)
         if isinstance(other, Field):
-            utilities.check_domain_equality(other._domain, self._domain)
+            utilities.check_object_identity(other._domain, self._domain)
             return Field(self._domain, f(other._val))
         if np.isscalar(other):
             return Field(self._domain, f(other))

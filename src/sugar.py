@@ -430,7 +430,7 @@ def makeOp(inp, dom=None, sampling_dtype=None):
             raise TypeError("need proper `dom` argument")
         return ScalingOperator(dom, inp, sampling_dtype=sampling_dtype)
     if dom is not None:
-        utilities.check_domain_equality(dom, inp.domain)
+        utilities.check_object_identity(dom, inp.domain)
     if inp.domain is DomainTuple.scalar_domain():
         return ScalingOperator(inp.domain, inp.val[()], sampling_dtype=sampling_dtype)
     if isinstance(inp, Field):
@@ -458,7 +458,7 @@ def domain_union(domains):
     """
     if isinstance(domains[0], DomainTuple):
         for dom in domains[1:]:
-            utilities.check_domain_equality(dom, domains[0])
+            utilities.check_object_identity(dom, domains[0])
         return domains[0]
     return MultiDomain.union(domains)
 

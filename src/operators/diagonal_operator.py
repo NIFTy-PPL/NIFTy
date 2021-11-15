@@ -68,13 +68,14 @@ class DiagonalOperator(EndomorphicOperator):
             self._domain = DomainTuple.make(domain)
         if spaces is None:
             self._spaces = None
-            utilities.check_domain_equality(diagonal.domain, self._domain)
+            utilities.check_object_identity(diagonal.domain, self._domain)
         else:
             self._spaces = utilities.parse_spaces(spaces, len(self._domain))
             if len(self._spaces) != len(diagonal.domain):
                 raise ValueError("spaces and domain must have the same length")
             for i, j in enumerate(self._spaces):
-                utilities.check_domain_equality(diagonal.domain[i], self._domain[j])
+                if diagonal.domain[i] != self._domain[j]:
+                    raise ValueError("Mismatch:\n{diagonal.domain[i]}\n{self._domain[j]}")
             if self._spaces == tuple(range(len(self._domain))):
                 self._spaces = None  # shortcut
 
