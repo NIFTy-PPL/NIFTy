@@ -17,6 +17,7 @@
 from types import SimpleNamespace
 
 import numpy as np
+from functools import partial
 
 from .energy_operators import LikelihoodEnergyOperator
 from .linear_operator import LinearOperator
@@ -58,7 +59,7 @@ class JaxOperator(Operator):
         self._domain = makeDomain(domain)
         self._target = makeDomain(target)
         self._func = jax.jit(func)
-        self._vjp = jax.jit(lambda x: jax.vjp(func, x))
+        self._bwd = jax.jit(lambda x, y: jax.vjp(func, x)[1](y)[0])
         self._fwd = jax.jit(lambda x, y: jax.jvp(self._func, (x,), (y,))[1])
 
         self._jax_expr = func
@@ -68,9 +69,13 @@ class JaxOperator(Operator):
         from ..sugar import is_linearization, makeField
         self._check_input(x)
         if is_linearization(x):
-            res, bwd = self._vjp(x.val.val)
-            fwd = lambda y: self._fwd(x.val.val, y)
-            jac = JaxLinearOperator(self._domain, self._target, fwd, func_T=lambda x: bwd(x)[0])
+            # TODO: Adapt the Linearization class to handle value_and_grad
+            # calls. Computing the pass through the function thrice (once now
+            # and twice when differentiating) is redundant and inefficient.
+            res = self._func(x.val.val)
+            bwd = partial(self._bwd, x.val.val)
+            fwd = partial(self._fwd, x.val.val)
+            jac = JaxLinearOperator(self._domain, self._target, fwd, func_T=bwd)
             return x.new(makeField(self._target, _jax2np(res)), jac)
         res = _jax2np(self._func(x.val))
         if isinstance(res, dict):
