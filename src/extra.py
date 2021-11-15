@@ -479,20 +479,14 @@ def minisanity(data, metric_at_pos, modeldata_operator, samples, terminal_colors
     # compute xops
     xops = []
     if isinstance(xdoms[0], MultiDomain):
-        xops.append(
-            lambda x: (
-                metric_at_pos(x).get_sqrt() @ Adder(data, neg=True) @ modeldata_operator
-            )(x)
-        )
+        lam = lambda x: (metric_at_pos(x).get_sqrt() @
+                Adder(data, neg=True) @ modeldata_operator).force(x)
+        xops.append(foo.force)
     else:
         xdoms[0] = makeDomain({"<None>": xdoms[0]})
-        xops.append(
-            lambda x: (
-                metric_at_pos(x).get_sqrt().ducktape_left("<None>")
-                @ Adder(data, neg=True)
-                @ modeldata_operator
-            )(x)
-        )
+        lam = lambda x: (metric_at_pos(x).get_sqrt().ducktape_left("<None>") @
+                Adder(data, neg=True) @ modeldata_operator).force(x)
+        xops.append(lam)
     if isinstance(xdoms[1], MultiDomain):
         xops.append(lambda x: x)
     else:
