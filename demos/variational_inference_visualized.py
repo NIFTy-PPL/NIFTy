@@ -130,7 +130,7 @@ def main():
         plt.draw()
         plt.pause(2.)
 
-    for ii in range(20):
+    for ii in range(10):
         if ii % 2 == 0:
             # Resample GeoVI and MGVI
             mgkl = ift.SampledKLEnergy(posmg, ham, n_samples, None, False)
