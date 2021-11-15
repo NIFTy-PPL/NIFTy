@@ -90,7 +90,7 @@ if __name__ == "__main__":
     initial_mean = ift.MultiField.full(ham.domain, 0.)
     mean = initial_mean
 
-    for i in range(5):
+    for i in range(3):
         # Draw new samples and minimize KL
         kl = ift.SampledKLEnergy(mean, ham, n_samples, None)
         kl, convergence = minimizer(kl)
