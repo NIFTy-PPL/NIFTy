@@ -374,9 +374,11 @@ class PoissonianEnergy(LikelihoodEnergyOperator):
 
     def __init__(self, d):
         if not isinstance(d, Field) or not np.issubdtype(d.dtype, np.integer):
-            raise TypeError
+            te = "data is of invalid data-type; counts need to be integers"
+            raise TypeError(te)
         if np.any(d.val < 0):
-            raise ValueError
+            ve = "count data is negative and thus can not be Poissonian"
+            raise ValueError(ve)
         self._d = d
         self._domain = DomainTuple.make(d.domain)
 
