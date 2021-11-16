@@ -457,7 +457,6 @@ def minisanity(data, metric_at_pos, modeldata_operator, samples, terminal_colors
     metric at `mean` is used.
 
     """
-    from .logger import logger
     from .minimization.sample_list import SampleListBase
     from .sugar import makeDomain
 
@@ -480,20 +479,14 @@ def minisanity(data, metric_at_pos, modeldata_operator, samples, terminal_colors
     # compute xops
     xops = []
     if isinstance(xdoms[0], MultiDomain):
-        xops.append(
-            lambda x: (
-                metric_at_pos(x).get_sqrt() @ Adder(data, neg=True) @ modeldata_operator
-            )(x)
-        )
+        lam = lambda x: (metric_at_pos(x).get_sqrt() @
+                Adder(data, neg=True) @ modeldata_operator).force(x)
+        xops.append(foo.force)
     else:
         xdoms[0] = makeDomain({"<None>": xdoms[0]})
-        xops.append(
-            lambda x: (
-                metric_at_pos(x).get_sqrt().ducktape_left("<None>")
-                @ Adder(data, neg=True)
-                @ modeldata_operator
-            )(x)
-        )
+        lam = lambda x: (metric_at_pos(x).get_sqrt().ducktape_left("<None>") @
+                Adder(data, neg=True) @ modeldata_operator).force(x)
+        xops.append(lam)
     if isinstance(xdoms[1], MultiDomain):
         xops.append(lambda x: x)
     else:
@@ -517,19 +510,15 @@ def minisanity(data, metric_at_pos, modeldata_operator, samples, terminal_colors
     s0 = _tableentries(xredchisq[0], xscmean[0], xndof[0], keylen, colors)
     s1 = _tableentries(xredchisq[1], xscmean[1], xndof[1], keylen, colors)
 
-    f = logger.info
     n = 38 + keylen
-    f(n * "=")
-    f(
-        (keylen + 2) * " "
-        + "{:>11}".format("reduced χ²")
-        + "{:>14}".format("mean")
-        + "{:>11}".format("# dof")
-    )
-    f(n * "-")
-    f("Data residuals\n" + s0)
-    f("Latent space\n" + s1)
-    f(n * "=")
+    s = [n * "=",
+         (keylen + 2) * " " + "{:>11}".format("reduced χ²")
+           + "{:>14}".format("mean") + "{:>11}".format("# dof"),
+         n * "-",
+         "Data residuals", s0,
+         "Latent space", s1,
+         n * "="]
+    return "\n".join(s)
 
 
 def _tableentries(redchisq, scmean, ndof, keylen, colors):

@@ -119,69 +119,41 @@ def main():
     plot.output(ny=2, nx=2, xsize=10, ysize=10, name=filename.format("setup"))
 
     # Minimization parameters
-    ic_sampling = ift.AbsDeltaEnergyController(name='Sampling',
-                                               deltaE=0.01,
-                                               iteration_limit=100)
-    ic_newton = ift.AbsDeltaEnergyController(name='Newton',
-                                             deltaE=0.01,
-                                             iteration_limit=35)
-    ic_sampling.enable_logging()
-    ic_newton.enable_logging()
+    ic_sampling = ift.AbsDeltaEnergyController(name='Sampling', deltaE=0.01, iteration_limit=100)
+    ic_newton = ift.AbsDeltaEnergyController(name='Newton', deltaE=0.01, iteration_limit=35)
     minimizer = ift.NewtonCG(ic_newton, enable_logging=True)
-
-    # number of samples used to estimate the KL
-    N_samples = 20
 
     # Set up likelihood energy and information Hamiltonian
     likelihood_energy = ift.GaussianEnergy(mean=data, inverse_covariance=N.inverse) @ signal_response
-    H = ift.StandardHamiltonian(likelihood_energy, ic_sampling)
 
-    # Begin minimization
-    initial_position = 1e-2 * ift.from_random(H.domain)
-    position = initial_position
-
-    for i in range(5):
-        # Draw new samples and minimize KL
-        KL = ift.SampledKLEnergy(position, H, N_samples, None, comm=comm)
-        KL, convergence = minimizer(KL)
-        position = KL.position
-
-        # Plot current reconstruction
-        plot = ift.Plot()
-        plot.add(signal(mock_position), title='Ground truth')
-        plot.add(KL.samples.average(signal), title='Posterior mean')
-        plot.add([KL.samples.average(pspec1.log().force).exp(),
-                  pspec1.force(mock_position)],
-                 label=['Posterior mean', 'Ground truth'],
-                 title='Power spectrum 1')
-        plot.add([KL.samples.average(pspec2.log().force).exp(),
-                  pspec2.force(mock_position)],
-                 label=['Posterior mean', 'Ground truth'],
-                 title='Power spectrum 2')
-        plot.add((ic_newton.history, ic_sampling.history,
-                  minimizer.inversion_history),
-                 label=['KL', 'Sampling', 'Newton inversion'],
-                 title='Cumulative energies', s=[None, None, 1],
-                 alpha=[None, 0.2, None])
+    def callback(samples):
+        s = ift.extra.minisanity(data, lambda x: N.inverse, signal_response, samples)
         if master:
-            plot.output(nx=3, ny=2, ysize=10, xsize=15,
-                        name=filename.format("loop_{:02d}".format(i)))
+            ift.logger.info(s)
+
+    n_samples = 20
+    n_iterations = 5
+    samples = ift.optimize_kl(likelihood_energy, n_iterations, n_samples,
+                              minimizer, ic_sampling, None, overwrite=True, comm=comm,
+                              output_directory="getting_started_5_results",
+                              ground_truth_position=mock_position,
+                              plottable_operators={"signal": signal, "power spectrum 1": pspec1,
+                                                   "power spectrum 2": pspec2},
+                              callback=callback)
 
     # Plotting
     filename_res = filename.format("results")
     plot = ift.Plot()
-    mean, var = KL.samples.sample_stat(signal)
+    mean, var = samples.sample_stat(signal)
     plot.add(mean, title="Posterior Mean")
     plot.add(ift.sqrt(var), title="Posterior Standard Deviation")
 
-    n_samples = KL.samples.n_samples()
-    plot.add(list(KL.samples.iterator(pspec1.force)) +
-             [KL.samples.average(pspec1.log().force).exp(),
+    n_samples = samples.n_samples()
+    plot.add(list(samples.iterator(pspec1)) + [samples.average(pspec1.log()).exp(),
               pspec1.force(mock_position)],
              title="Sampled Posterior Power Spectrum 1",
              linewidth=[1.]*n_samples + [3., 3.])
-    plot.add(list(KL.samples.iterator(pspec2.force)) +
-             [KL.samples.average(pspec2.log().force).exp(),
+    plot.add(list(samples.iterator(pspec2)) + [samples.average(pspec2.log()).exp(),
               pspec2.force(mock_position)],
              title="Sampled Posterior Power Spectrum 2",
              linewidth=[1.]*n_samples + [3., 3.])

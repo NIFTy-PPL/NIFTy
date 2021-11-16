@@ -10,7 +10,7 @@ RUN apt-get update && apt-get install -y \
     # Testing dependencies
     python3-pytest-cov jupyter \
     # Optional NIFTy dependencies
-    python3-mpi4py python3-matplotlib python3-h5py \
+    python3-mpi4py python3-matplotlib python3-h5py python3-astropy \
   # more optional NIFTy dependencies
   && DUCC0_OPTIMIZATION=portable pip3 install ducc0 finufft jupyter jax jaxlib sphinx pydata-sphinx-theme \
   && rm -rf /var/lib/apt/lists/*

@@ -99,6 +99,7 @@ run_getting_started_2:
     - python3 demos/getting_started_2.py
   artifacts:
     paths:
+      - 'getting_started_2_results'
       - '*.png'
 
 run_getting_started_3:
@@ -107,6 +108,7 @@ run_getting_started_3:
     - python3 demos/getting_started_3.py
   artifacts:
     paths:
+      - 'getting_started_3_results'
       - '*.png'
 
 run_getting_started_mf:
@@ -115,6 +117,7 @@ run_getting_started_mf:
     - mpiexec -n 2 --bind-to none python3 demos/getting_started_5_mf.py
   artifacts:
     paths:
+      - 'getting_started_mf_results'
       - '*.png'
 
 run_getting_density:

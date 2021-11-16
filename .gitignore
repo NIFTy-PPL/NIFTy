@@ -6,6 +6,7 @@ docs/source/user/custom_nonlinearities.rst
 docs/source/user/getting_started_4_CorrelatedFields.rst
 
 # custom
+*_results
 *.h5
 *.hdf5
 *.txt
