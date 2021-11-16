@@ -48,7 +48,7 @@ setup(name="nifty8",
       license="GPLv3",
       setup_requires=['scipy>=1.4.1', 'numpy>=1.17'],
       install_requires=['scipy>=1.4.1', 'numpy>=1.17'],
-      python_requires='>=3.6',
+      python_requires='>=3.7',
       classifiers=[
           "Development Status :: 5 - Production/Stable",
           "Topic :: Scientific/Engineering :: Mathematics",

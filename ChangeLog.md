@@ -1,6 +1,9 @@
 Changes since NIFTy 7
 =====================
 
+Minimum Python version increased to 3.7
+---------------------------------------
+
 Unify MetricGaussianKL and GeoMetricKL
 --------------------------------------
 
