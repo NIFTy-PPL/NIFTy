@@ -1,0 +1,96 @@
+image: $CONTAINER_TEST_IMAGE
+
+variables:
+  CONTAINER_TEST_IMAGE: gitlab-registry.mpcdf.mpg.de/$CI_PROJECT_PATH:$CI_BUILD_REF_NAME
+
+stages:
+  - build_docker
+  - test
+  - demo
+  - release
+
+before_script:
+  - python3 setup.py install --user -f
+
+build_docker:
+  image: docker
+  stage: build_docker
+  before_script:
+    - ls  # Overwrite the global `before_script` directive
+  script:
+    - docker login -u gitlab-ci-token -p $CI_BUILD_TOKEN gitlab-registry.mpcdf.mpg.de
+    - docker build -t $CONTAINER_TEST_IMAGE .
+    - docker push $CONTAINER_TEST_IMAGE
+
+tests:
+  stage: test
+  script:
+    - pytest-3 -q --cov=jifty1 test
+  coverage: '/^TOTAL.+?(\d+\%)$/'
+
+pages:
+  stage: release
+  script:
+    - sh doc/generate.sh
+    - mv doc/build public
+  artifacts:
+    paths:
+    - public
+  only:
+    - main
+
+run_demo_categorical_L1:
+  stage: demo
+  script:
+    - python3 demos/categorical_L1.py
+  artifacts:
+    paths:
+      - '*.png'
+
+run_demo_cf_w_known_spectrum:
+  stage: demo
+  script:
+    - python3 demos/correlated_field_w_known_spectrum.py
+  artifacts:
+    paths:
+      - '*.png'
+
+run_demo_cf_w_unknown_spectrum:
+  stage: demo
+  script:
+    - python3 demos/correlated_field_w_unknown_spectrum.py
+  artifacts:
+    paths:
+      - '*.png'
+
+run_demo_cf_w_unknown_factorizing_spectra:
+  stage: demo
+  script:
+    - python3 demos/correlated_field_w_unknown_factorizing_spectra.py
+  artifacts:
+    paths:
+      - '*.png'
+
+run_demo_nifty_to_jifty:
+  stage: demo
+  script:
+    - python3 demos/nifty_to_jifty.py
+  artifacts:
+    paths:
+      - '*.png'
+
+run_demo_banana:
+  stage: demo
+  script:
+    - python3 demos/banana.py
+  artifacts:
+    paths:
+      - '*.png'
+
+run_demo_banana_w_reg:
+  stage: demo
+  script:
+    - python3 demos/banana_w_reg.py
+  artifacts:
+    paths:
+      - '*.png'
