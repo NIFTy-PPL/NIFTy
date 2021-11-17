@@ -1,4 +1,4 @@
-from typing import Callable, Optional, Tuple, Union
+from typing import Callable, Optional, Union
 from collections.abc import Mapping
 
 import sys
@@ -332,7 +332,7 @@ class CorrelatedFieldMaker():
         self._parameter_tree.update(ptree)
 
     def set_amplitude_total_offset(
-        self, offset_mean: float, offset_std: Union[Tuple, Callable]
+        self, offset_mean: float, offset_std: Union[tuple, Callable]
     ):
         """Sets the zero-mode for the combined amplitude operator
 
@@ -360,7 +360,7 @@ class CorrelatedFieldMaker():
         self._parameter_tree[self._prefix + "zeromode"] = ShapeWithDtype(())
 
     @property
-    def amplitude_total_offset(self):
+    def amplitude_total_offset(self) -> Callable:
         """Returns the total offset of the amplitudes"""
         if self._azm is None:
             nie = "You need to set the `amplitude_total_offset` first"
@@ -373,7 +373,7 @@ class CorrelatedFieldMaker():
         return self.amplitude_total_offset
 
     @property
-    def fluctuations(self):
+    def fluctuations(self) -> tuple[Callable, ...]:
         """Returns the added fluctuations, i.e. un-normalized amplitudes
 
         Their scales are only meaningful relative to one another. Their
@@ -381,7 +381,7 @@ class CorrelatedFieldMaker():
         """
         return tuple(self._fluctuations)
 
-    def get_normalized_amplitudes(self):
+    def get_normalized_amplitudes(self) -> tuple[Callable, ...]:
         """Returns the normalized amplitude operators used in the final model
 
         The amplitude operators are corrected for the otherwise degenerate
@@ -397,7 +397,7 @@ class CorrelatedFieldMaker():
         return tuple(_mk_normed_amp(amp) for amp in self._fluctuations)
 
     @property
-    def amplitude(self):
+    def amplitude(self) -> Callable:
         """Returns the added fluctuation, i.e. un-normalized amplitude"""
         if len(self._fluctuations) > 1:
             s = (
@@ -414,7 +414,7 @@ class CorrelatedFieldMaker():
         return ampliude_w_zm
 
     @property
-    def power_spectrum(self):
+    def power_spectrum(self) -> Callable:
         """Returns the power spectrum"""
         amp = self.amplitude
 
@@ -423,7 +423,7 @@ class CorrelatedFieldMaker():
 
         return power
 
-    def finalize(self):
+    def finalize(self) -> tuple[Callable, dict[str, ShapeWithDtype]]:
         """Finishes off the model construction process and returns the
         constructed operator.
         """
