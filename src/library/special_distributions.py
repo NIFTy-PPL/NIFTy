@@ -168,7 +168,7 @@ class UniformOperator(Operator):
         return x.new(res, jac)
 
     def inverse(self, field):
-        res = norm._ppf(field.val/self._scale - self._loc)
+        res = norm._ppf((field.val - self._loc) / self._scale)
         return Field(field.domain, res)
 
 
@@ -202,5 +202,6 @@ class LaplaceOperator(Operator):
         return x.new(res, jac)
 
     def inverse(self, x):
-        res = laplace._cdf(x.val)
+        res = laplace.cdf(x.val, self._loc, self._scale)
+        res = norm._ppf(res)
         return Field(x.domain, res)
