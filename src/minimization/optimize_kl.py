@@ -72,6 +72,19 @@ def optimize_kl(likelihood_energy,
     index of the global iteration as input and return the respective value that
     should be used for that iteration.
 
+    High-level pseudo code of the algorithm, that is implemented by `optimize_kl`:
+
+    .. code-block:: none
+
+        for ii in range(initial_index, initial_index+global_iterations):
+            samples = Draw `n_samples` approximate samples(position,
+                                                           likelihood_energy
+                                                           sampling_iteration_controller,
+                                                           nonlinear_sampling_minimizer,
+                                                           point_estimates)
+            position, samples = Optimize approximate KL(likelihood_energy, samples) with `kl_minimizer`(constants)
+            Save intermediate results(samples)
+
     Parameters
     ----------
     likelihood_energy : Operator or callable
