@@ -54,7 +54,7 @@ def optimize_kl(likelihood_energy,
                 constants=[],
                 point_estimates=[],
                 plottable_operators={},
-                output_directory="optimize_kl",
+                output_directory="nifty_optimize_kl_output",
                 initial_position=None,
                 initial_index=0,
                 ground_truth_position=None,
@@ -104,7 +104,7 @@ def optimize_kl(likelihood_energy,
         key contains a string that serves as identifier.
     output_directory : str or None
         Directory in which all output files are saved. If None, no output is
-        stored.  Default: "optimize_kl".
+        stored.  Default: "nifty_optimize_kl_output".
     initial_position : Field, MultiField or None
         Position in the definition space of `likelihood_energy` from which the
         optimization is started. If `None`, it starts at a random, normal
