@@ -122,6 +122,10 @@ class SampleListBase:
         If quanitities are not requested (e.g. by setting `mean=False`), the
         respective sublabels are not present in the HDF5 file.
 
+        If `op` is an :class:`~nifty8.operators.operator.Operator`, the operator
+        string representation, its domain and its target are written to the
+        attributes of the HDF5 file.
+
         Parameters
         ----------
         file_name : str
@@ -155,6 +159,10 @@ class SampleListBase:
 
         if self.MPI_master:
             f = h5py.File(file_name, "w")
+            if isinstance(op, Operator):
+                f.attrs["nifty operator string representation"] = str(op)
+                f.attrs["nifty operator domain"] = str(op.domain)
+                f.attrs["nifty operator target"] = str(op.target)
         else:
             f = utilities.Nop()
 
