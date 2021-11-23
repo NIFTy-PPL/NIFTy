@@ -61,12 +61,12 @@ ic = ift.GradientNormController(iteration_limit=5)
 
 @pmp("constants", [[], ["fluctuations"], cstfunc])
 @pmp("point_estimates", [[], ["fluctuations"], pefunc])
-@pmp("kl_convergence", [ift.SteepestDescent(ic),
-                        lambda n: ift.NewtonCG(ic) if n < 2 else ift.VL_BFGS(ic)])
-@pmp("sampling_convergence", [ic])
-@pmp("nonlinear_sampling_convergence", [None, ift.NewtonCG(ift.GradInfNormController(1e-3, iteration_limit=1))])
-def test_optimize_kl(constants, point_estimates, kl_convergence,
-                     sampling_convergence, nonlinear_sampling_convergence):
+@pmp("kl_minimizer", [ift.SteepestDescent(ic),
+                      lambda n: ift.NewtonCG(ic) if n < 2 else ift.VL_BFGS(ic)])
+@pmp("sampling_iteration_controller", [ic])
+@pmp("nonlinear_sampling_minimizer", [None, ift.NewtonCG(ift.GradInfNormController(1e-3, iteration_limit=1))])
+def test_optimize_kl(constants, point_estimates, kl_minimizer,
+                     sampling_iteration_controller, nonlinear_sampling_minimizer):
     n_samples = 2
     global_iterations = 5
     output_directory = "out"
@@ -82,7 +82,7 @@ def test_optimize_kl(constants, point_estimates, kl_convergence,
     callback = None
     plot_latent = False
     plottable_operators = {}
-    ift.optimize_kl(likelihood_energy, global_iterations, n_samples, kl_convergence,
-                    sampling_convergence, nonlinear_sampling_convergence, constants,
+    ift.optimize_kl(likelihood_energy, global_iterations, n_samples, kl_minimizer,
+                    sampling_iteration_controller, nonlinear_sampling_minimizer, constants,
                     point_estimates, plottable_operators, output_directory, initial_position,
                     initial_index, ground_truth_position, comm, overwrite, callback, plot_latent)

@@ -48,9 +48,9 @@ except ImportError:
 def optimize_kl(likelihood_energy,
                 global_iterations,
                 n_samples,
-                kl_convergence,
-                sampling_convergence,
-                nonlinear_sampling_convergence,
+                kl_minimizer,
+                sampling_iteration_controller,
+                nonlinear_sampling_minimizer,
                 constants=[],
                 point_estimates=[],
                 plottable_operators={},
@@ -66,8 +66,8 @@ def optimize_kl(likelihood_energy,
                 return_final_position=False):
     """Provide potentially useful interface for standard KL minimization.
 
-    The parameters `likelihood_energy`, `kl_convergence`,
-    `sampling_convergence`, `nonlinear_sampling_convergence`, `constants`,
+    The parameters `likelihood_energy`, `kl_minimizer`,
+    `sampling_iteration_controller`, `nonlinear_sampling_minimizer`, `constants`,
     `point_estimates` and `comm` also accept a function as input that takes the
     index of the global iteration as input and return the respective value that
     should be used for that iteration.
@@ -83,13 +83,13 @@ def optimize_kl(likelihood_energy,
     n_samples : int or callable
         Number of samples used to sample Kullback-Leibler divergence. 0
         corresponds to maximum-a-posteriori.
-    kl_convergence : Minimizer or callable
+    kl_minimizer : Minimizer or callable
         Controls the minimizer for the KL optimization.
-    sampling_convergence : IterationController or None or callable
+    sampling_iteration_controller : IterationController or None or callable
         Controls the conjugate gradient for inverting the posterior metric.  If
         `None`, approximate posterior samples cannot be drawn. It is only
         suited for maximum-a-posteriori solutions.
-    nonlinear_sampling_convergence : Minimizer or None or callable
+    nonlinear_sampling_minimizer : Minimizer or None or callable
         Controls the minimizer for the non-linear geometric sampling to
         approximate the KL. Can be either None (then the MGVI algorithm is used
         instead of geoVI) or a Minimizer.
@@ -168,9 +168,9 @@ def optimize_kl(likelihood_energy,
         raise ValueError("Save strategy '{save_strategy}' not supported.")
 
     likelihood_energy = _make_callable(likelihood_energy)
-    kl_convergence = _make_callable(kl_convergence)
-    sampling_convergence = _make_callable(sampling_convergence)
-    nonlinear_sampling_convergence = _make_callable(nonlinear_sampling_convergence)
+    kl_minimizer = _make_callable(kl_minimizer)
+    sampling_iteration_controller = _make_callable(sampling_iteration_controller)
+    nonlinear_sampling_minimizer = _make_callable(nonlinear_sampling_minimizer)
     constants = _make_callable(constants)
     point_estimates = _make_callable(point_estimates)
     n_samples = _make_callable(n_samples)
@@ -195,8 +195,8 @@ def optimize_kl(likelihood_energy,
             makedirs(join(output_directory, subfolder), exist_ok=overwrite)
 
     for iglobal in range(initial_index, global_iterations + initial_index):
-        ham = StandardHamiltonian(likelihood_energy(iglobal), sampling_convergence(iglobal))
-        minimizer = kl_convergence(iglobal)
+        ham = StandardHamiltonian(likelihood_energy(iglobal), sampling_iteration_controller(iglobal))
+        minimizer = kl_minimizer(iglobal)
         mean_iter = mean.extract(ham.domain)
 
         # Distributing the domain of the likelihood is not supported (yet)
@@ -228,7 +228,7 @@ def optimize_kl(likelihood_energy,
                 mean_iter,
                 ham,
                 n_samples(iglobal),
-                nonlinear_sampling_convergence(iglobal),
+                nonlinear_sampling_minimizer(iglobal),
                 comm=comm(iglobal),
                 constants=constants(iglobal),
                 point_estimates=point_estimates(iglobal))
