@@ -319,9 +319,7 @@ def _plot_samples(file_name, samples, ground_truth, comm):
                     p.add(ground_truth[kk], title=_append_key("Ground truth", kk))
                     p.add(None)
                 for ii, ss in enumerate(single_samples):
-                    if ground_truth is not None:
-                        ii += 2
-                    if ii == 16:
+                    if (ground_truth is None and ii == 16) or (ground_truth is not None and ii == 14):
                         break
                     p.add(ss, title=_append_key(f"Samples {ii}", kk))
             else:
