@@ -236,6 +236,14 @@ class SampleListBase:
                              f"Current domain:\n{dom}")
         h = pyfits.Header()
         h["DATE-MAP"] = Time(time.time(), format="unix").iso.split()[0]
+        h["CRVAL1"] = h["CRVAL2"] = 0
+        h["CRPIX1"] = h["CRPIX2"] = 0
+        h["CUNIT1"] = h["CUNIT2"] = "deg"
+        h["CDELT1"], h["CDELT2"] = -dom[0].distances[0], dom[0].distances[1]
+        h["CTYPE1"] = "RA---SIN"
+        h["CTYPE2"] = "DEC---SIN"
+        h["EQUINOX"] = 2000
+
         hdu = pyfits.PrimaryHDU(fld.val[:, :].T, header=h)
         hdulist = pyfits.HDUList([hdu])
         if self.MPI_master:
