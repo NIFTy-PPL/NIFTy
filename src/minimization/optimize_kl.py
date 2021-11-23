@@ -62,6 +62,7 @@ def optimize_kl(likelihood_energy,
                 overwrite=False,
                 callback=None,
                 plot_latent=False,
+                save_strategy="last",
                 return_final_position=False):
     """Provide potentially useful interface for standard KL minimization.
 
@@ -128,6 +129,10 @@ def optimize_kl(likelihood_energy,
         the global iteration index are passed). Default: None.
     plot_latent : bool
         Determine if latent space shall be plotted or not. Default: False.
+    save_strategy : str
+        If "last", only the samples of the last global iteration are stored. If
+        "all", all intermediate samples are written to disk. `save_strategy` is
+        only applicable, if `output_directory` is not None. Default: "last".
     return_final_position : bool
         Determine if the final position of the minimization shall be return.
         May be useful to feed it as `initial_position` into another
@@ -159,6 +164,8 @@ def optimize_kl(likelihood_energy,
         plottable_operators["latent"] = ScalingOperator(likelihood_energy.domain, 1.)
     if not isinstance(initial_index, int):
         raise TypeError
+    if save_strategy not in ["all", "last"]:
+        raise ValueError("Save strategy '{save_strategy}' not supported.")
 
     likelihood_energy = _make_callable(likelihood_energy)
     kl_convergence = _make_callable(kl_convergence)
@@ -231,8 +238,9 @@ def optimize_kl(likelihood_energy,
 
         if output_directory is not None:
             _plot_operators(output_directory, iglobal, plottable_operators, sl,
-                            ground_truth_position, comm(iglobal))
-            sl.save(join(output_directory, "pickle/") + "last", overwrite=overwrite)
+                            ground_truth_position, comm(iglobal), save_strategy)
+            sl.save(join(output_directory, "pickle/") + _file_name_by_strategy(save_strategy, iglobal),
+                    overwrite=overwrite)
 
         callback(*((sl,) if _number_of_arguments(callback) == 1 else (sl, iglobal)))
 
@@ -248,7 +256,15 @@ def _file_name(output_directory, name, index, prefix=""):
     return join(op_direc, f"{prefix}{index:03d}.png")
 
 
-def _plot_operators(output_directory, index, plottable_operators, sample_list, ground_truth, comm):
+def _file_name_by_strategy(strategy, iglobal):
+    if strategy == "all":
+        return f"iteration_{iglobal}"
+    elif strategy == "last":
+        return "last"
+    raise RuntimeError
+
+
+def _plot_operators(output_directory, index, plottable_operators, sample_list, ground_truth, comm, save_strategy):
     if not isinstance(plottable_operators, dict):
         raise TypeError
     if not isdir(output_directory):
@@ -278,13 +294,13 @@ def _plot_operators(output_directory, index, plottable_operators, sample_list, g
         else:
             ground_truth_sl = SampleList([ground_truth])
         if h5py:
-            file_name = join(op_direc, "last.hdf5")
+            file_name = join(op_direc, _file_name_by_strategy(save_strategy, index) + ".hdf5")
             sample_list.save_to_hdf5(file_name, op=op, overwrite=True, **cfg)
             file_name = join(op_direc, "ground_truth.hdf5")
             ground_truth_sl.save_to_hdf5(file_name, op=op, overwrite=True, samples=True)
         if astropy:
             try:
-                file_name_base = join(op_direc, "last")
+                file_name_base = join(op_direc, _file_name_by_strategy(save_strategy, index))
                 sample_list.save_to_fits(file_name_base, op=op, overwrite=True, **cfg)
                 file_name_base = join(op_direc, "ground_truth")
                 ground_truth_sl.save_to_fits(file_name_base, op=op, overwrite=True, samples=True)
