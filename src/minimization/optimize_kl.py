@@ -241,6 +241,7 @@ def optimize_kl(likelihood_energy,
                             ground_truth_position, comm(iglobal), save_strategy)
             sl.save(join(output_directory, "pickle/") + _file_name_by_strategy(save_strategy, iglobal),
                     overwrite=overwrite)
+            _save_random_state(output_directory, iglobal, save_strategy)
 
         callback(*((sl,) if _number_of_arguments(callback) == 1 else (sl, iglobal)))
 
@@ -262,6 +263,14 @@ def _file_name_by_strategy(strategy, iglobal):
     elif strategy == "last":
         return "last"
     raise RuntimeError
+
+
+def _save_random_state(output_directory, index, save_strategy):
+    from ..random import getState
+    file_name = join(output_directory, "pickle/nifty_random_state_")
+    file_name += _file_name_by_strategy(save_strategy, index)
+    with open(file_name, "wb") as f:
+        f.write(getState())
 
 
 def _plot_operators(output_directory, index, plottable_operators, sample_list, ground_truth, comm, save_strategy):
