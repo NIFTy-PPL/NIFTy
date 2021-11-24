@@ -193,11 +193,11 @@ class NUTSChain(_Sampler):
     ) -> Chain:
         samples = tree_util.tree_map(
             lambda arr: jnp.
-            empty_like(arr, shape=(num_samples, ) + jnp.shape(arr)),
+            zeros_like(arr, shape=(num_samples, ) + jnp.shape(arr)),
             position_proto
         )
-        depths = jnp.empty(num_samples, dtype=jnp.uint8)
-        divergences = jnp.empty(num_samples, dtype=bool)
+        depths = jnp.zeros(num_samples, dtype=jnp.uint64)
+        divergences = jnp.zeros(num_samples, dtype=bool)
         chain = Chain(
             samples=samples,
             divergences=divergences,
@@ -218,7 +218,7 @@ class NUTSChain(_Sampler):
             )
             trees = tree_util.tree_map(
                 lambda leaf: jnp.
-                empty_like(leaf, shape=(num_samples, ) + jnp.shape(leaf)),
+                zeros_like(leaf, shape=(num_samples, ) + jnp.shape(leaf)),
                 _tree_proto
             )
             chain = chain._replace(trees=trees)
@@ -229,7 +229,7 @@ class NUTSChain(_Sampler):
     def update_chain(
         chain: Chain, idx: Union[jnp.ndarray, int], tree: Tree
     ) -> Chain:
-        num_proposals = 2**tree.depth - 1
+        num_proposals = 2**jnp.array(tree.depth, dtype=jnp.uint64) - 1
         tree_acceptance = jnp.where(
             num_proposals > 0, tree.cumulative_acceptance / num_proposals, 0.
         )
@@ -308,10 +308,10 @@ class HMCChain(_Sampler):
     ) -> Chain:
         samples = tree_util.tree_map(
             lambda arr: jnp.
-            empty_like(arr, shape=(num_samples, ) + jnp.shape(arr)),
+            zeros_like(arr, shape=(num_samples, ) + jnp.shape(arr)),
             position_proto
         )
-        divergences = jnp.empty(num_samples, dtype=bool)
+        divergences = jnp.zeros(num_samples, dtype=bool)
         chain = Chain(samples=samples, divergences=divergences, acceptance=0.)
         if save_intermediates:
             _qp_proto = QP(position_proto, position_proto)
@@ -320,7 +320,7 @@ class HMCChain(_Sampler):
             )
             trees = tree_util.tree_map(
                 lambda leaf: jnp.
-                empty_like(leaf, shape=(num_samples, ) + jnp.shape(leaf)),
+                zeros_like(leaf, shape=(num_samples, ) + jnp.shape(leaf)),
                 _acc_rej_proto
             )
             chain = chain._replace(trees=trees)
