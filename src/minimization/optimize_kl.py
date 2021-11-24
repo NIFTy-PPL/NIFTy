@@ -145,7 +145,7 @@ def optimize_kl(likelihood_energy,
     save_strategy : str
         If "last", only the samples of the last global iteration are stored. If
         "all", all intermediate samples are written to disk. `save_strategy` is
-        only applicable, if `output_directory` is not None. Default: "last".
+        only applicable if `output_directory` is not None. Default: "last".
     return_final_position : bool
         Determine if the final position of the minimization shall be return.
         May be useful to feed it as `initial_position` into another
