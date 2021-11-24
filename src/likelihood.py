@@ -4,7 +4,7 @@ from jax import numpy as jnp
 from jax import linear_transpose, linearize, vjp
 from jax.tree_util import Partial, tree_leaves
 
-from .forest_util import ShapeWithDtype
+from .forest_util import ShapeWithDtype, split
 from .sugar import is1d, isiterable, sum_of_squares, doc_from
 
 Q = TypeVar("Q")
@@ -219,23 +219,65 @@ class Likelihood():
         )
 
     def __matmul__(self, f: Callable):
+        return self.matmul(f, left_argnames=(), right_argnames=None)
+
+    def matmul(self, f: Callable, left_argnames=(), right_argnames=None):
+        """Amend the function `f` to the right of the likelihood.
+
+        Parameters
+        ----------
+        f : Callable
+            Function which to amend to the likelihood.
+        left_argnames : tuple or None
+            Keys of the keyword arguments of the joined likelihood which
+            to pass to the original likelihood. Passing `None` indicates
+            the intent to absorb everything not explicitly absorbed by
+            the other call.
+        right_argnames : tuple or None
+            Keys of the keyword arguments of the joined likelihood which
+            to pass to the amended function. Passing `None` indicates
+            the intent to absorb everything not explicitly absorbed by
+            the other call.
+
+        Returns
+        -------
+        lh : Likelihood
+        """
+        if (left_argnames is None and right_argnames is None) or \
+        (left_argnames is not None and right_argnames is not None):
+            ve = "only one of `left_argnames` and `right_argnames` can be (not) `None`"
+            raise ValueError(ve)
+
+        def split_kwargs(**kwargs):
+            if left_argnames is None:
+                assert right_argnames is not None
+                right_kw, left_kw = split(kwargs, right_argnames)
+            else:
+                assert right_argnames is None
+                left_kw, right_kw = split(kwargs, left_argnames)
+            return left_kw, right_kw
+
         def energy_at_f(primals, **primals_kw):
-            return self.energy(f(primals, **primals_kw))
+            kw_l, kw_r = split_kwargs(**primals_kw)
+            return self.energy(f(primals, **kw_r), **kw_l)
 
         def transformation_at_f(primals, **primals_kw):
-            return self.transformation(f(primals, **primals_kw))
+            kw_l, kw_r = split_kwargs(**primals_kw)
+            return self.transformation(f(primals, **kw_r), **kw_l)
 
         def metric_at_f(primals, tangents, **primals_kw):
+            kw_l, kw_r = split_kwargs(**primals_kw)
             # Note, judging by a simple benchmark on a large problem,
             # transposing the JVP seems faster than computing the VJP again. On
             # small problems there seems to be no measurable difference.
-            y, fwd = linearize(Partial(f, **primals_kw), primals)
+            y, fwd = linearize(Partial(f, **kw_r), primals)
             bwd = linear_transpose(fwd, primals)
-            return bwd(self.metric(y, fwd(tangents)))[0]
+            return bwd(self.metric(y, fwd(tangents), **kw_l))[0]
 
         def left_sqrt_metric_at_f(primals, tangents, **primals_kw):
-            y, bwd = vjp(Partial(f, **primals_kw), primals)
-            left_at_fp = self.left_sqrt_metric(y, tangents)
+            kw_l, kw_r = split_kwargs(**primals_kw)
+            y, bwd = vjp(Partial(f, **kw_r), primals)
+            left_at_fp = self.left_sqrt_metric(y, tangents, **kw_l)
             return bwd(left_at_fp)[0]
 
         return self.new(
@@ -308,8 +350,8 @@ class StandardHamiltonian():
             return self._lh(primals, **
                             primals_kw) + 0.5 * sum_of_squares(primals)
 
-        def joined_metric(primals, tangents):
-            return self._lh.metric(primals, tangents) + tangents
+        def joined_metric(primals, tangents, **primals_kw):
+            return self._lh.metric(primals, tangents, **primals_kw) + tangents
 
         if _compile_joined:
             from jax import jit

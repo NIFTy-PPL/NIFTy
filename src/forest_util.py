@@ -10,6 +10,19 @@ from typing import Any, Callable, Optional, Tuple, Union
 from .sugar import is1d
 
 
+def split(mappable, keys):
+    """Split a dictionary into one containing only the specified keys and one
+    with all of the remaining ones.
+    """
+    sel, rest = {}, {}
+    for k, v in mappable.items():
+        if k in keys:
+            sel[k] = v
+        else:
+            rest[k] = v
+    return sel, rest
+
+
 class ShapeWithDtype():
     """Minimal helper class storing the shape and dtype of an object.
 
