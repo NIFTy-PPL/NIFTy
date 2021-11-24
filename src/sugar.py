@@ -1,4 +1,4 @@
-from typing import Any, Callable, Hashable
+from typing import Any, Callable, Hashable, Mapping, TypeVar, Union
 from collections.abc import Iterable
 
 from jax import random
@@ -6,6 +6,8 @@ from jax import numpy as jnp
 from jax.tree_util import tree_structure, tree_unflatten, tree_map, tree_reduce
 
 from .field import Field
+
+O = TypeVar('O')
 
 
 def isiterable(candidate):
@@ -37,14 +39,14 @@ def doc_from(original):
     return wrapper
 
 
-def ducktape(call: Callable, key: Hashable):
+def ducktape(call: Callable[[Any], O], key: Hashable) -> Callable[[Mapping], O]:
     def named_call(p):
         return call(p[key])
 
     return named_call
 
 
-def sum_of_squares(tree):
+def sum_of_squares(tree) -> Union[jnp.ndarray, jnp.inexact]:
     return tree_reduce(jnp.add, tree_map(lambda x: jnp.sum(x**2), tree), 0.)
 
 
@@ -107,7 +109,7 @@ def random_like(
     return tree_map(draw, primals, subkeys)
 
 
-def interpolate(xmin=-7., xmax=7., N=14000):
+def interpolate(xmin=-7., xmax=7., N=14000) -> Callable:
     """Replaces a local nonlinearity such as jnp.exp with a linear interpolation
 
     Interpolating functions speeds up code and increases numerical stability in
