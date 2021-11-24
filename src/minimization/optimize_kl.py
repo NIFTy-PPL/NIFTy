@@ -48,13 +48,13 @@ except ImportError:
 def optimize_kl(likelihood_energy,
                 global_iterations,
                 n_samples,
-                kl_convergence,
-                sampling_convergence,
-                nonlinear_sampling_convergence,
+                kl_minimizer,
+                sampling_iteration_controller,
+                nonlinear_sampling_minimizer,
                 constants=[],
                 point_estimates=[],
                 plottable_operators={},
-                output_directory="optimize_kl",
+                output_directory="nifty_optimize_kl_output",
                 initial_position=None,
                 initial_index=0,
                 ground_truth_position=None,
@@ -62,14 +62,28 @@ def optimize_kl(likelihood_energy,
                 overwrite=False,
                 callback=None,
                 plot_latent=False,
+                save_strategy="last",
                 return_final_position=False):
     """Provide potentially useful interface for standard KL minimization.
 
-    The parameters `likelihood_energy`, `kl_convergence`,
-    `sampling_convergence`, `nonlinear_sampling_convergence`, `constants`,
+    The parameters `likelihood_energy`, `kl_minimizer`,
+    `sampling_iteration_controller`, `nonlinear_sampling_minimizer`, `constants`,
     `point_estimates` and `comm` also accept a function as input that takes the
     index of the global iteration as input and return the respective value that
     should be used for that iteration.
+
+    High-level pseudo code of the algorithm, that is implemented by `optimize_kl`:
+
+    .. code-block:: none
+
+        for ii in range(initial_index, initial_index+global_iterations):
+            samples = Draw `n_samples` approximate samples(position,
+                                                           likelihood_energy
+                                                           sampling_iteration_controller,
+                                                           nonlinear_sampling_minimizer,
+                                                           point_estimates)
+            position, samples = Optimize approximate KL(likelihood_energy, samples) with `kl_minimizer`(constants)
+            Save intermediate results(samples)
 
     Parameters
     ----------
@@ -82,13 +96,13 @@ def optimize_kl(likelihood_energy,
     n_samples : int or callable
         Number of samples used to sample Kullback-Leibler divergence. 0
         corresponds to maximum-a-posteriori.
-    kl_convergence : Minimizer or callable
+    kl_minimizer : Minimizer or callable
         Controls the minimizer for the KL optimization.
-    sampling_convergence : IterationController or None or callable
+    sampling_iteration_controller : IterationController or None or callable
         Controls the conjugate gradient for inverting the posterior metric.  If
         `None`, approximate posterior samples cannot be drawn. It is only
         suited for maximum-a-posteriori solutions.
-    nonlinear_sampling_convergence : Minimizer or None or callable
+    nonlinear_sampling_minimizer : Minimizer or None or callable
         Controls the minimizer for the non-linear geometric sampling to
         approximate the KL. Can be either None (then the MGVI algorithm is used
         instead of geoVI) or a Minimizer.
@@ -104,7 +118,7 @@ def optimize_kl(likelihood_energy,
         key contains a string that serves as identifier.
     output_directory : str or None
         Directory in which all output files are saved. If None, no output is
-        stored.  Default: "optimize_kl".
+        stored.  Default: "nifty_optimize_kl_output".
     initial_position : Field, MultiField or None
         Position in the definition space of `likelihood_energy` from which the
         optimization is started. If `None`, it starts at a random, normal
@@ -128,6 +142,10 @@ def optimize_kl(likelihood_energy,
         the global iteration index are passed). Default: None.
     plot_latent : bool
         Determine if latent space shall be plotted or not. Default: False.
+    save_strategy : str
+        If "last", only the samples of the last global iteration are stored. If
+        "all", all intermediate samples are written to disk. `save_strategy` is
+        only applicable, if `output_directory` is not None. Default: "last".
     return_final_position : bool
         Determine if the final position of the minimization shall be return.
         May be useful to feed it as `initial_position` into another
@@ -159,11 +177,13 @@ def optimize_kl(likelihood_energy,
         plottable_operators["latent"] = ScalingOperator(likelihood_energy.domain, 1.)
     if not isinstance(initial_index, int):
         raise TypeError
+    if save_strategy not in ["all", "last"]:
+        raise ValueError("Save strategy '{save_strategy}' not supported.")
 
     likelihood_energy = _make_callable(likelihood_energy)
-    kl_convergence = _make_callable(kl_convergence)
-    sampling_convergence = _make_callable(sampling_convergence)
-    nonlinear_sampling_convergence = _make_callable(nonlinear_sampling_convergence)
+    kl_minimizer = _make_callable(kl_minimizer)
+    sampling_iteration_controller = _make_callable(sampling_iteration_controller)
+    nonlinear_sampling_minimizer = _make_callable(nonlinear_sampling_minimizer)
     constants = _make_callable(constants)
     point_estimates = _make_callable(point_estimates)
     n_samples = _make_callable(n_samples)
@@ -188,8 +208,8 @@ def optimize_kl(likelihood_energy,
             makedirs(join(output_directory, subfolder), exist_ok=overwrite)
 
     for iglobal in range(initial_index, global_iterations + initial_index):
-        ham = StandardHamiltonian(likelihood_energy(iglobal), sampling_convergence(iglobal))
-        minimizer = kl_convergence(iglobal)
+        ham = StandardHamiltonian(likelihood_energy(iglobal), sampling_iteration_controller(iglobal))
+        minimizer = kl_minimizer(iglobal)
         mean_iter = mean.extract(ham.domain)
 
         # Distributing the domain of the likelihood is not supported (yet)
@@ -221,7 +241,7 @@ def optimize_kl(likelihood_energy,
                 mean_iter,
                 ham,
                 n_samples(iglobal),
-                nonlinear_sampling_convergence(iglobal),
+                nonlinear_sampling_minimizer(iglobal),
                 comm=comm(iglobal),
                 constants=constants(iglobal),
                 point_estimates=point_estimates(iglobal))
@@ -231,8 +251,10 @@ def optimize_kl(likelihood_energy,
 
         if output_directory is not None:
             _plot_operators(output_directory, iglobal, plottable_operators, sl,
-                            ground_truth_position, comm(iglobal))
-            sl.save(join(output_directory, "pickle/") + "last", overwrite=overwrite)
+                            ground_truth_position, comm(iglobal), save_strategy)
+            sl.save(join(output_directory, "pickle/") + _file_name_by_strategy(save_strategy, iglobal),
+                    overwrite=overwrite)
+            _save_random_state(output_directory, iglobal, save_strategy)
 
         callback(*((sl,) if _number_of_arguments(callback) == 1 else (sl, iglobal)))
 
@@ -248,7 +270,23 @@ def _file_name(output_directory, name, index, prefix=""):
     return join(op_direc, f"{prefix}{index:03d}.png")
 
 
-def _plot_operators(output_directory, index, plottable_operators, sample_list, ground_truth, comm):
+def _file_name_by_strategy(strategy, iglobal):
+    if strategy == "all":
+        return f"iteration_{iglobal}"
+    elif strategy == "last":
+        return "last"
+    raise RuntimeError
+
+
+def _save_random_state(output_directory, index, save_strategy):
+    from ..random import getState
+    file_name = join(output_directory, "pickle/nifty_random_state_")
+    file_name += _file_name_by_strategy(save_strategy, index)
+    with open(file_name, "wb") as f:
+        f.write(getState())
+
+
+def _plot_operators(output_directory, index, plottable_operators, sample_list, ground_truth, comm, save_strategy):
     if not isinstance(plottable_operators, dict):
         raise TypeError
     if not isdir(output_directory):
@@ -278,13 +316,13 @@ def _plot_operators(output_directory, index, plottable_operators, sample_list, g
         else:
             ground_truth_sl = SampleList([ground_truth])
         if h5py:
-            file_name = join(op_direc, "last.hdf5")
+            file_name = join(op_direc, _file_name_by_strategy(save_strategy, index) + ".hdf5")
             sample_list.save_to_hdf5(file_name, op=op, overwrite=True, **cfg)
             file_name = join(op_direc, "ground_truth.hdf5")
             ground_truth_sl.save_to_hdf5(file_name, op=op, overwrite=True, samples=True)
         if astropy:
             try:
-                file_name_base = join(op_direc, "last")
+                file_name_base = join(op_direc, _file_name_by_strategy(save_strategy, index))
                 sample_list.save_to_fits(file_name_base, op=op, overwrite=True, **cfg)
                 file_name_base = join(op_direc, "ground_truth")
                 ground_truth_sl.save_to_fits(file_name_base, op=op, overwrite=True, samples=True)
@@ -319,9 +357,7 @@ def _plot_samples(file_name, samples, ground_truth, comm):
                     p.add(ground_truth[kk], title=_append_key("Ground truth", kk))
                     p.add(None)
                 for ii, ss in enumerate(single_samples):
-                    if ground_truth is not None:
-                        ii += 2
-                    if ii == 16:
+                    if (ground_truth is None and ii == 16) or (ground_truth is not None and ii == 14):
                         break
                     p.add(ss, title=_append_key(f"Samples {ii}", kk))
             else:
