@@ -166,7 +166,8 @@ def optimize_kl(likelihood_energy,
 
     Note
     ----
-    This function comes with some MPI support. Generally, with the help of MPI samples are distributed over tasks.
+    This function comes with some MPI support. Generally, with the help of MPI
+    samples are distributed over tasks.
     """
     if not isinstance(plottable_operators, dict):
         raise TypeError
