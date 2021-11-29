@@ -169,6 +169,9 @@ def optimize_kl(likelihood_energy,
     This function comes with some MPI support. Generally, with the help of MPI
     samples are distributed over tasks.
     """
+    from ..utilities import myassert
+    from .descent_minimizers import DescentMinimizer
+
     if not isinstance(plottable_operators, dict):
         raise TypeError
     if len(set(["latent", "pickle"]) & set(plottable_operators.keys())) != 0:
@@ -191,6 +194,29 @@ def optimize_kl(likelihood_energy,
     comm = _make_callable(comm)
     if callback is None:
         callback = lambda x: None
+
+    # Sanity check of input
+    for iglobal in range(initial_index, global_iterations + initial_index):
+        for (obj, cls) in [(likelihood_energy, Operator), (kl_minimizer, DescentMinimizer),
+                           (nonlinear_sampling_minimizer, (DescentMinimizer, type(None))),
+                           (constants, (list, tuple)), (point_estimates, (list, tuple)),
+                           (n_samples, int)]:
+            if not isinstance(obj(iglobal), cls):
+                raise TypeError(f"{obj(iglobal)} is not instance of {cls}")
+
+        if sampling_iteration_controller(iglobal) is None:
+            myassert(n_samples(iglobal) == 0)
+        else:
+            myassert(isinstance(sampling_iteration_controller(iglobal), IterationController))
+        myassert(likelihood_energy(iglobal).target is DomainTuple.scalar_domain())
+        if not comm(iglobal) is None:
+            try:
+                import mpi4py
+                myassert(isinstance(comm(iglobal), mpi4py.MPI.Intracomm))
+            except ImportError:
+                pass
+    myassert(_number_of_arguments(callback) in [1, 2])
+    # /Sanity check of input
 
     if not likelihood_energy(0).target is DomainTuple.scalar_domain():
         raise TypeError
