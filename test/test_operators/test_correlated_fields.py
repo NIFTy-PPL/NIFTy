@@ -115,6 +115,37 @@ def test_unit_zero_mode(sspace, asperity, flexibility, matern):
         rtol = 1e-2
     assert_allclose(cf_r.s_integrate(), sspace.total_volume, rtol=rtol)
 
+@pmp('sspace', spaces)
+@pmp('asperity', [None, (1, 1)])
+@pmp('flexibility', [None, (1, 1)])
+@pmp('matern', [True, False])
+def test_constant_zero_mode(sspace, asperity, flexibility, matern):
+    if flexibility is None and asperity is not None:
+        pytest.skip()
+    cfg = 1, 1
+    cfm = ift.CorrelatedFieldMaker('')
+    if matern:
+        cfm.add_fluctuations_matern(sspace, *(3 * [cfg]))
+    else:
+        fl = (1., 0.5)
+        ll = (-4, 1)
+        cfm.add_fluctuations(sspace, fl, flexibility, asperity, ll)
+        
+        cf_simple = ift.SimpleCorrelatedField(sspace, 0, None, fl, flexibility, asperity, ll)
+    cfm.set_amplitude_total_offset(0, None)
+    cf = cfm.finalize(prior_info=0)
+
+    r = ift.from_random(cf.domain)
+    cf_r = cf(r)
+    atol = 1e-8
+    if isinstance(sspace, (ift.HPSpace, ift.GLSpace)):
+        atol = 1e-2
+        if matern:
+            atol = 1e-1
+    assert_allclose(cf_r.s_integrate(), 0., atol=atol)
+    if not matern:
+        cf_r_simple = cf_simple(r)
+        assert_allclose(cf_r_simple.s_integrate(), 0., atol=atol)
 
 @pmp('sspace', spaces)
 @pmp('N', [0, 2])
