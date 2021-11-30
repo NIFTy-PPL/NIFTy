@@ -20,7 +20,6 @@ from .stats_distributions import (
     laplace_prior, normal_prior, lognormal_prior, uniform_prior, invgamma_prior
 )
 from .sugar import (
-    ducktape, mean, mean_and_std, random_like, random_like_shapewdtype,
-    sum_of_squares, interpolate
+    ducktape, mean, mean_and_std, random_like, sum_of_squares, interpolate
 )
 from .version import *

@@ -73,7 +73,7 @@ def sample_momentum_from_diagonal(*, key, mass_matrix_sqrt):
         as (possibly pytree of) ndarray vector containing the entries of the
         diagonal.
     """
-    normal = random_like(mass_matrix_sqrt, key=key, rng=random.normal)
+    normal = random_like(key=key, primals=mass_matrix_sqrt, rng=random.normal)
     return tree_util.tree_map(jnp.multiply, mass_matrix_sqrt, normal)
 
 
