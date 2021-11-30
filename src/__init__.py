@@ -21,6 +21,7 @@ from .stats_distributions import (
     uniform_prior, invgamma_prior, invgamma_invprior
 )
 from .sugar import (
-    ducktape, mean, mean_and_std, random_like, sum_of_squares, interpolate
+    ducktape, ducktape_left, mean, mean_and_std, random_like, sum_of_squares,
+    interpolate
 )
 from .version import *

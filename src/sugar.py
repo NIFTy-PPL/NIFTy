@@ -8,6 +8,7 @@ from jax.tree_util import tree_structure, tree_unflatten, tree_map, tree_reduce
 from .field import Field
 
 O = TypeVar('O')
+I = TypeVar('I')
 
 
 def isiterable(candidate):
@@ -39,9 +40,18 @@ def doc_from(original):
     return wrapper
 
 
-def ducktape(call: Callable[[Any], O], key: Hashable) -> Callable[[Mapping], O]:
+def ducktape(call: Callable[[I], O],
+             key: Hashable) -> Callable[[Mapping[Hashable, I]], O]:
     def named_call(p):
         return call(p[key])
+
+    return named_call
+
+
+def ducktape_left(call: Callable[[I], O],
+                  key: Hashable) -> Callable[[I], dict[Hashable, O]]:
+    def named_call(p):
+        return {key: call(p)}
 
     return named_call
 
