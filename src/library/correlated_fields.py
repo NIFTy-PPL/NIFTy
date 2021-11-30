@@ -665,7 +665,9 @@ class CorrelatedFieldMaker:
             logger.warning("Overwriting the previous mean offset and zero-mode")
 
         self._offset_mean = offset_mean
-        if offset_std is None or (np.isscalar(offset_std) and offset_std == 1.):
+        if offset_std is None:
+            self._azm = 0.
+        elif np.isscalar(offset_std) and offset_std == 1.:
             self._azm = 1.
         elif isinstance(offset_std, Operator):
             self._azm = offset_std
@@ -718,7 +720,16 @@ class CorrelatedFieldMaker:
                                            space=spaces[i]) @ ht
 
         if np.isscalar(self.azm):
-            a = list(self.fluctuations)
+            if self.azm == 0:
+                if not len(self.fluctuations) == 1:
+                    raise RuntimeError("Zeromode can not be disabled for product spectra")
+                sp = self.fluctuations[0].target
+                maskzm = np.ones(self.fluctuations[0].target.shape)
+                maskzm[0] = 0
+                maskzm = makeOp(makeField(sp, maskzm))
+                a = [maskzm @ self.fluctuations[0]]
+            else:
+                a = list(self.fluctuations)
         else:
             a = list(self.get_normalized_amplitudes())
         for ii in range(n_amplitudes):
