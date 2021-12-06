@@ -211,6 +211,7 @@ class SampleListBase:
             `file_name`, is overwritten.
         """
         # TODO Add support for 3d and 4d fields
+        # https://fits.gsfc.nasa.gov/fits_standard.html
 
         if not (samples or mean or std):
             raise ValueError("Neither samples nor mean nor standard deviation shall be written.")
