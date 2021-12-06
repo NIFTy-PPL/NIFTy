@@ -263,7 +263,13 @@ class Operator(metaclass=NiftyMeta):
     def force(self, x):
         """Extract subset of domain of x according to `self.domain` and apply
         operator."""
-        return self.apply(x.extract(self.domain))
+        from ..sugar import is_operator
+        from .simple_linear_operators import DomainChangerAndReshaper
+
+        if is_operator(x):
+            return self @ DomainChangerAndReshaper(x.target, self.domain) @ x
+
+        return self(x.extract(self.domain))
 
     def _check_input(self, x):
         from .scaling_operator import ScalingOperator

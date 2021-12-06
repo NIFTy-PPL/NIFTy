@@ -140,9 +140,6 @@ class LinearOperator(Operator):
         """
         return self._capability
 
-    def force(self, x):
-        return self.apply(x.extract(self.domain), self.TIMES)
-
     def apply(self, x, mode):
         """Applies the Operator to a given `x`, in a specified `mode`.
 

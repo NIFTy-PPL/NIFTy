@@ -1,6 +1,15 @@
 Changes since NIFTy 7
 =====================
 
+Extension of Operator interface
+-------------------------------
+
+For an operator `op`, `op[key]` represents the operator that first applies `op`,
+which results in a `MultiField`, and then extracts the `Field` with key `key`
+out of that. Additionally, `op1.force(op2)` attempts to convert the target of
+`op2` into the domain of `op1`. This includes a potential reshape of the
+`Field`.
+
 Minimum Python version increased to 3.7
 ---------------------------------------
 
