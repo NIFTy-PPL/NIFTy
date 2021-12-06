@@ -239,6 +239,16 @@ class Operator(metaclass=NiftyMeta):
             return NotImplemented
         return self.ptw("power", power)
 
+    def __getitem__(self, key):
+        from ..sugar import is_operator
+        from .simple_linear_operators import ducktape
+
+        if not is_operator(self):
+            return NotImplemented
+        if not isinstance(self.target, MultiDomain):
+            raise TypeError("Only Operators with a MultiDomain as target get be subscipted.")
+        return ducktape(None, self, key) @ self
+
     def apply(self, x):
         """Applies the operator to a Field or MultiField.
 
