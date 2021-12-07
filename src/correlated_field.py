@@ -1,12 +1,13 @@
-from typing import Callable, Optional, Union
+from __future__ import annotations
 from collections.abc import Mapping
-
-import sys
 from functools import partial
+import sys
+from typing import Callable, Optional, Union
+
 from jax import numpy as jnp
 
 from .forest_util import ShapeWithDtype
-from .stats_distributions import normal_prior, lognormal_prior
+from .stats_distributions import lognormal_prior, normal_prior
 from .sugar import ducktape
 
 

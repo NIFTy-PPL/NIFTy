@@ -1,9 +1,10 @@
-from typing import Any, Callable, Hashable, Mapping, TypeVar, Union
+from __future__ import annotations
 from collections.abc import Iterable
+from typing import Any, Callable, Hashable, Mapping, TypeVar, Union
 
 from jax import random
 from jax import numpy as jnp
-from jax.tree_util import tree_structure, tree_unflatten, tree_map, tree_reduce
+from jax.tree_util import tree_map, tree_reduce, tree_structure, tree_unflatten
 
 from .field import Field
 

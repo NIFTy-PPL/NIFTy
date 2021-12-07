@@ -1,16 +1,20 @@
-import numpy as np
+from __future__ import annotations
 from functools import partial
+from typing import Any, Callable, NamedTuple, Optional, Union
+
 from jax import numpy as jnp
 from jax import random, tree_util
 from jax import grad
-
-from typing import Any, Callable, NamedTuple, Optional, Union
+import numpy as np
 
 from .disable_jax_control_flow import fori_loop
-from .hmc import Q, QP, Tree, AcceptedAndRejected
+from .hmc import AcceptedAndRejected, Q, QP, Tree
 from .hmc import (
-    generate_hmc_acc_rej, generate_nuts_tree, leapfrog_step,
-    sample_momentum_from_diagonal, tree_index_update
+    generate_hmc_acc_rej,
+    generate_nuts_tree,
+    leapfrog_step,
+    sample_momentum_from_diagonal,
+    tree_index_update,
 )
 
 

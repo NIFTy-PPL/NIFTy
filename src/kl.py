@@ -1,7 +1,8 @@
+from __future__ import annotations
 from collections.abc import Sequence
+from functools import partial
 from typing import Callable, Optional
 
-from functools import partial
 from jax import random
 from jax.tree_util import Partial
 
