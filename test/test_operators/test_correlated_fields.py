@@ -215,7 +215,6 @@ def testAmplitudesInvariants(sspace, N):
 def test_complicated_vs_simple(seed, domain, without):
     with ift.random.Context(seed):
         offset_mean = _rand()
-        offset_std = _posrand(), _posrand()
         fluctuations = _posrand(), _posrand()
         if "flexibility" in without:
             flexibility = None
@@ -225,6 +224,10 @@ def test_complicated_vs_simple(seed, domain, without):
             asperity = None
         else:
             asperity = _posrand(), _posrand()
+        if "offset_std" in without:
+            offset_std = None
+        else:
+            offset_std = _posrand(), _posrand()
         loglogavgslope = _posrand(), _posrand()
         prefix = 'foobar'
         hspace = domain.get_default_codomain()
