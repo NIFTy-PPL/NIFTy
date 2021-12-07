@@ -6,9 +6,13 @@ Extension of Operator interface
 
 For an operator `op`, `op[key]` represents the operator that first applies `op`,
 which results in a `MultiField`, and then extracts the `Field` with key `key`
-out of that. Additionally, `op1.force(op2)` attempts to convert the target of
-`op2` into the domain of `op1`. This includes a potential reshape of the
-`Field`.
+out of that.
+
+Additionally, `op1.ducktape(op2.target) @ op2` attempts to convert the target of
+`op2` into the domain of `op1`. Equivalently, one can write: `op1 @
+op2.ducktape_left(op1.domain)`. Both include a potential reshape of the `Field`.
+Note that only instances of `DomainTuple` (and not `Domain`s) are allowed for
+this use of `ducktape`.
 
 Minimum Python version increased to 3.7
 ---------------------------------------

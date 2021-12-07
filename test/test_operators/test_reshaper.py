@@ -33,4 +33,7 @@ def test_reshaper():
         with pytest.raises(ValueError):
             op1 @ op
 
-        op1.force(op)
+        op2 = op1 @ op.ducktape_left(op1.domain)
+        op3 = op1.ducktape(op.target) @ op
+        ift.extra.check_linear_operator(op2)
+        ift.extra.check_linear_operator(op3)
