@@ -545,7 +545,12 @@ class SampleList(SampleListBase):
 
     @classmethod
     def load(cls, file_name_base, comm=None):
+        from ..logger import logger
         _barrier(comm)
+        foo = "{file_name_base}.mean.pickle"
+        if os.path.isfile(foo):
+            logger.warn(f"{foo} is present. Most probably you intended to "
+                         "call `ift.ResidualSampleList.load()`.")
         files = cls._list_local_sample_files(file_name_base, comm)
         samples = [_load_from_disk(ff) for ff in files]
         return cls(samples, comm=comm)
