@@ -719,19 +719,7 @@ class CorrelatedFieldMaker:
                                            self._target_subdomains[i][amp_space],
                                            space=spaces[i]) @ ht
 
-        if np.isscalar(self.azm):
-            if self.azm == 0:
-                if not len(self.fluctuations) == 1:
-                    raise RuntimeError("Zeromode can not be disabled for product spectra")
-                sp = self.fluctuations[0].target
-                maskzm = np.ones(self.fluctuations[0].target.shape)
-                maskzm[0] = 0
-                maskzm = makeOp(makeField(sp, maskzm))
-                a = [maskzm @ self.fluctuations[0]]
-            else:
-                a = list(self.fluctuations)
-        else:
-            a = list(self.get_normalized_amplitudes())
+        a = list(self.get_normalized_amplitudes())
         for ii in range(n_amplitudes):
             co = ContractionOperator(hspace, spaces[:ii] + spaces[ii + 1:])
             pp = a[ii].target[amp_space]
@@ -807,7 +795,16 @@ class CorrelatedFieldMaker:
         In the case of no zero-mode, i.e. an assumed zero-mode of unity, this
         call is equivalent to the `fluctuations` property.
         """
-        if np.isscalar(self.azm):
+        if self._azm == 0:
+            if not len(self.fluctuations) == 1:
+                raise RuntimeError("Zeromode can not be disabled for product spectra")
+            sp = self.fluctuations[0].target
+            maskzm = np.ones(self.fluctuations[0].target.shape)
+            maskzm[0] = 0
+            maskzm = makeOp(makeField(sp, maskzm))
+            a = [maskzm @ self.fluctuations[0]]
+            return tuple(a)
+        elif self.azm == 1:
             return self.fluctuations
 
         normal_amp = []
