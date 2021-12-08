@@ -481,11 +481,11 @@ class ResidualSampleList(SampleListBase):
     @classmethod
     def load(cls, file_name_base, comm=None):
         _barrier(comm)
+        mean = _load_from_disk(f"{file_name_base}.mean.pickle")
         files = cls._list_local_sample_files(file_name_base, comm)
         tmp = [_load_from_disk(ff) for ff in files]
         res = [aa[0] for aa in tmp]
         neg = [aa[1] for aa in tmp]
-        mean = _load_from_disk(f"{file_name_base}.mean.pickle")
         return cls(mean, res, neg, comm=comm)
 
     @classmethod
@@ -545,7 +545,12 @@ class SampleList(SampleListBase):
 
     @classmethod
     def load(cls, file_name_base, comm=None):
+        from ..logger import logger
         _barrier(comm)
+        foo = "{file_name_base}.mean.pickle"
+        if os.path.isfile(foo):
+            logger.warn(f"{foo} is present. Most probably you intended to "
+                         "call `ift.ResidualSampleList.load()`.")
         files = cls._list_local_sample_files(file_name_base, comm)
         samples = [_load_from_disk(ff) for ff in files]
         return cls(samples, comm=comm)
