@@ -407,11 +407,11 @@ def _plot_samples(file_name, samples, ground_truth, comm):
                 color = n*["maroon"]
                 label = None
                 if ground_truth is not None:
-                    single_samples = [ground_truth] + single_samples
+                    single_samples = [ground_truth[kk]] + single_samples
                     alpha = [1.] + alpha
                     color = ["green"] + color
                     label = ["Ground truth", "Samples"] + (n-1)*[None]
-                p.add(samples, color=color, alpha=alpha, label=label, title=_append_key("", kk))
+                p.add(single_samples, color=color, alpha=alpha, label=label, title=_append_key("Samples", kk))
         p.output(name=file_name)
 
 
