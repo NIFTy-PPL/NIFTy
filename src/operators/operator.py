@@ -301,9 +301,10 @@ class Operator(metaclass=NiftyMeta):
         from .simple_linear_operators import ducktape, DomainChangerAndReshaper
         from ..domain_tuple import DomainTuple
 
+        if isinstance(name, DomainTuple):
+            dom = self.domain if is_fieldlike(self) else self.target
+            return DomainChangerAndReshaper(dom, name)(self)
         if is_operator(self):
-            if isinstance(name, DomainTuple):
-                return DomainChangerAndReshaper(self.target, name) @ self
             return ducktape(None, self, name) @ self
         if is_fieldlike(self) or is_linearization(self):
             return ducktape(None, self.domain, name)(self)

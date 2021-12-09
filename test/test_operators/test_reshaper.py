@@ -24,7 +24,10 @@ from ..common import list2fixture, setup_function, teardown_function
 
 def test_reshaper():
     dom = ift.makeDomain((ift.RGSpace([2, 4]), ift.UnstructuredDomain([10])))
+    fld = ift.full(dom, 0.)
+    lin = ift.Linearization.make_var(fld)
     for tgt in [ift.UnstructuredDomain(dom.size), ift.RGSpace([8, 10]), (ift.UnstructuredDomain(4), ift.RGSpace(20))]:
+        tgt = ift.makeDomain(tgt)
         op = DomainChangerAndReshaper(dom, tgt)
         ift.extra.check_linear_operator(op)
 
@@ -37,3 +40,6 @@ def test_reshaper():
         op3 = op1.ducktape(op.target) @ op
         ift.extra.check_linear_operator(op2)
         ift.extra.check_linear_operator(op3)
+
+        assert fld.ducktape_left(tgt).domain is tgt
+        assert lin.ducktape_left(tgt).target is tgt
