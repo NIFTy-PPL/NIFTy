@@ -118,7 +118,15 @@ def size(tree, axis: Optional[int] = None) -> Union[int, jnp.ndarray]:
 
 
 def zeros_like(a, dtype=None, shape=None):
-    return tree_map(partial(jnp.zeros_like, dtype=dtype, shape=shape), a)
+
+    def zl(x, dtype, shape):
+        if hasattr(x, "shape") and hasattr(x, "dtype"):
+            shp = x.shape if shape is None else shape
+            dtp = x.dtype if dtype is None else dtype
+            return jnp.zeros(shape=shp, dtype=dtp)
+        return jnp.zeros_like(x, dtype=dtype, shape=shape)
+
+    return tree_map(partial(zl, dtype=dtype, shape=shape), a)
 
 
 def norm(tree, ord, *, ravel: bool):
