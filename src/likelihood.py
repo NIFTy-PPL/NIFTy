@@ -191,28 +191,28 @@ class Likelihood():
             lsm_tangents_shape=self._lsm_tan_shp
         )
 
-    def jit(self):
+    def jit(self, **kwargs):
         """Returns a new likelihood with jit-compiled energy, left-square-root
         of metric and metric.
         """
         from jax import jit
 
         if self._transformation is not None:
-            j_trafo = jit(self.transformation)
-            j_lsm = jit(self.left_sqrt_metric)
-            j_m = jit(self.metric)
+            j_trafo = jit(self.transformation, **kwargs)
+            j_lsm = jit(self.left_sqrt_metric, **kwargs)
+            j_m = jit(self.metric, **kwargs)
         elif self._left_sqrt_metric is not None:
             j_trafo = None
-            j_lsm = jit(self.left_sqrt_metric)
-            j_m = jit(self.metric)
+            j_lsm = jit(self.left_sqrt_metric, **kwargs)
+            j_m = jit(self.metric, **kwargs)
         elif self._metric is not None:
             j_trafo, j_lsm = None, None
-            j_m = jit(self.metric)
+            j_m = jit(self.metric, **kwargs)
         else:
             j_trafo, j_lsm, j_m = None, None, None
 
         return self.new(
-            jit(self._hamiltonian),
+            jit(self._hamiltonian, **kwargs),
             transformation=j_trafo,
             left_sqrt_metric=j_lsm,
             metric=j_m
@@ -334,7 +334,12 @@ class StandardHamiltonian():
     """Joined object storage composed of a user-defined likelihood and a
     standard normal likelihood as prior.
     """
-    def __init__(self, likelihood: Likelihood, _compile_joined: bool = False):
+    def __init__(
+        self,
+        likelihood: Likelihood,
+        _compile_joined: bool = False,
+        _compile_kwargs: dict = {}
+    ):
         """Instantiates a new standardized Hamiltonian, i.e. a likelihood
         joined with a standard normal prior.
 
@@ -355,8 +360,8 @@ class StandardHamiltonian():
 
         if _compile_joined:
             from jax import jit
-            joined_hamiltonian = jit(joined_hamiltonian)
-            joined_metric = jit(joined_metric)
+            joined_hamiltonian = jit(joined_hamiltonian, **_compile_kwargs)
+            joined_metric = jit(joined_metric, **_compile_kwargs)
         self._hamiltonian = joined_hamiltonian
         self._metric = joined_metric
 
@@ -376,5 +381,9 @@ class StandardHamiltonian():
     def likelihood(self):
         return self._lh
 
-    def jit(self):
-        return StandardHamiltonian(self.likelihood.jit(), _compile_joined=True)
+    def jit(self, **kwargs):
+        return StandardHamiltonian(
+            self.likelihood.jit(**kwargs),
+            _compile_joined=True,
+            _compile_kwargs=kwargs
+        )
