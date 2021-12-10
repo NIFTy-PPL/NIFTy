@@ -90,7 +90,7 @@ class _InterpolationOperator(Operator):
         return res
 
 
-def InverseGammaOperator(domain, alpha, q, delta=1e-2):
+class InverseGammaOperator(Operator):
     """Transform a standard normal into an inverse gamma distribution.
 
     The pdf of the inverse gamma distribution is defined as follows:
@@ -99,7 +99,7 @@ def InverseGammaOperator(domain, alpha, q, delta=1e-2):
         \\frac{q^\\alpha}{\\Gamma(\\alpha)}x^{-\\alpha -1}
         \\exp \\left(-\\frac{q}{x}\\right)
 
-    That means that for large x the pdf falls off like :math:`x^(-\\alpha -1)`.
+    That means that for large x the pdf falls off like :math:`x^{(-\\alpha -1)}`.
     The mean of the pdf is at :math:`q / (\\alpha - 1)` if :math:`\\alpha > 1`.
     The mode is :math:`q / (\\alpha + 1)`.
 
@@ -118,11 +118,18 @@ def InverseGammaOperator(domain, alpha, q, delta=1e-2):
     delta : float
         Distance between sampling points for linear interpolation.
     """
-    op = _InterpolationOperator(domain, lambda x: invgamma.ppf(norm._cdf(x), float(alpha)),
-                                -8.2, 8.2, delta, lambda x: x.ptw("log"), lambda x: x.ptw("exp"))
-    if np.isscalar(q):
-        return op.scale(q)
-    return makeOp(q) @ op
+    def __init__(self, domain, alpha, q, delta=1e-2):
+        self._domain = self._target = DomainTuple.make(domain)
+        self._alpha = alpha
+        self._q = q
+        self._delta = delta
+
+    def apply(self, x):
+        op = _InterpolationOperator(self._domain, lambda x: invgamma.ppf(norm._cdf(x), float(self._alpha)),
+                                    -8.2, 8.2, self._delta, lambda x: x.ptw("log"), lambda x: x.ptw("exp"))
+        if np.isscalar(self._q):
+            return op.scale(self._q)
+        return makeOp(self._q) @ op
 
 
 def LogInverseGammaOperator(domain, alpha, q, delta=1e-2):
