@@ -401,3 +401,40 @@ class PrependKey(LinearOperator):
         else:
             res = {k:x[self._pre+k] for k in self._domain.keys()}
         return MultiField.from_dict(res, domain=self._tgt(mode))
+
+
+class DomainChangerAndReshaper(LinearOperator):
+    """Convert nifty domains into each other and reshape field.
+
+    This is only possible if `domain` and `target` have the same number of pixels.
+
+    Parameters
+    ----------
+    domain : DomainTuple
+        Domain of the operator
+    target : DomainTuple
+        Target of the operator
+    """
+    def __init__(self, domain, target):
+        from ..sugar import makeDomain
+
+        self._domain = makeDomain(domain)
+        self._target = makeDomain(target)
+        self._capability = self.TIMES | self.ADJOINT_TIMES
+        if isinstance(self._domain, MultiDomain) or isinstance(self._target, MultiDomain):
+            raise NotImplementedError("MultiDomains are not supported yet")
+
+    def apply(self, x, mode):
+        from ..sugar import makeField
+
+        self._check_input(x, mode)
+        x = x.val
+        tgt = self._tgt(mode)
+        return makeField(tgt, x.reshape(tgt.shape))
+
+    def __repr__(self):
+        return f"Reshape {self._shapes(self.target)} <- {self._shapes(self.domain)}"
+
+    @staticmethod
+    def _shapes(dom):
+        return " ".join([str(dd.shape) for dd in dom])
