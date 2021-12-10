@@ -128,9 +128,17 @@ class InverseGammaOperator(Operator):
         op = _InterpolationOperator(self._domain, lambda x: invgamma.ppf(norm._cdf(x), float(self._alpha)),
                                     -8.2, 8.2, self._delta, lambda x: x.ptw("log"), lambda x: x.ptw("exp"))
         if np.isscalar(self._q):
-            return op.scale(self._q)
-        return makeOp(self._q) @ op
+            op = op.scale(self._q)
+        else:
+            op = makeOp(self._q) @ op
+            #FIXME DomainCheck
+        return op(x)
 
+    def mode(self):
+        return self._q / (self.alpha + 1)
+
+    def mean(self):
+        return self._q / (self.alpha - 1)
 
 def LogInverseGammaOperator(domain, alpha, q, delta=1e-2):
     """Transform a standard normal into the log of an inverse gamma distribution.
