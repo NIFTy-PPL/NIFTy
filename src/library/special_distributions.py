@@ -135,10 +135,12 @@ class InverseGammaOperator(Operator):
         return op(x)
 
     def mode(self):
-        return self._q / (self.alpha + 1)
+        return self._q / (self._alpha + 1)
 
     def mean(self):
-        return self._q / (self.alpha - 1)
+        if self._alpha <= 1:
+            raise ValueError('mean only existing for alpha > 1')
+        return self._q / (self._alpha - 1)
 
 def LogInverseGammaOperator(domain, alpha, q, delta=1e-2):
     """Transform a standard normal into the log of an inverse gamma distribution.
