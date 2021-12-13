@@ -129,7 +129,7 @@ class InverseGammaOperator(Operator):
         self._domain = self._target = DomainTuple.make(domain)
         if mode is None and mean is None:
             self._alpha = float(alpha)
-            self._q = float(q)
+            self._q = q
             self._mode = self._q / (self._alpha + 1)
             if self._alpha <= 1:
                 raise ValueError('mean only existing for alpha > 1')
