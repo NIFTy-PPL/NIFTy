@@ -128,6 +128,7 @@ class InverseGammaOperator(Operator):
     """
     def __init__(self, domain, alpha=None, q=None, delta=1e-2, mode=None, mean=None):
         self._domain = self._target = DomainTuple.make(domain)
+
         if mode is None and mean is None:
             self._alpha = float(alpha)
             self._q = q
@@ -144,16 +145,18 @@ class InverseGammaOperator(Operator):
             self._q = self._mode * (self._alpha + 1)
         else:
             raise ValueError("Either one pair of arguments (mode, mean or alpha, q) must be given.")
-        self._delta = float(delta)
 
-    def apply(self, x):
+        self._delta = float(delta)
         op = _InterpolationOperator(self._domain, lambda x: invgamma.ppf(norm._cdf(x), float(self._alpha)),
                                     -8.2, 8.2, self._delta, lambda x: x.ptw("log"), lambda x: x.ptw("exp"))
         if np.isscalar(self._q):
             op = op.scale(self._q)
         else:
             op = makeOp(self._q) @ op
-        return op(x)
+        self._op = op
+
+    def apply(self, x):
+        return self._op(x)
 
     @property
     def alpha(self):
