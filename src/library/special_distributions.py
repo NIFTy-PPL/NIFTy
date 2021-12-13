@@ -128,8 +128,8 @@ class InverseGammaOperator(Operator):
     def __init__(self, domain, alpha=None, q=None, delta=1e-2, mode=None, mean=None):
         self._domain = self._target = DomainTuple.make(domain)
         if mode is None and mean is None:
-            self._alpha = alpha
-            self._q = q
+            self._alpha = float(alpha)
+            self._q = float(q)
             self._mode = self._q / (self._alpha + 1)
             if self._alpha <= 1:
                 raise ValueError('mean only existing for alpha > 1')
@@ -137,13 +137,13 @@ class InverseGammaOperator(Operator):
         elif alpha is None and q is None:
             if mean < mode:
                 raise ValueError('Mean should be greater than mode, otherwise alpha < 0')
-            self._mean = mean
-            self._mode = mode
+            self._mean = float(mean)
+            self._mode = float(mode)
             self._alpha = 2 / (self._mean / self._mode - 1) + 1
             self._q = self._mode * (self._alpha + 1)
         else:
             raise ValueError("Either one pair of arguments (mode, mean or alpha, q) must be given.")
-        self._delta = delta
+        self._delta = float(delta)
 
     def apply(self, x):
         op = _InterpolationOperator(self._domain, lambda x: invgamma.ppf(norm._cdf(x), float(self._alpha)),
