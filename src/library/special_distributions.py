@@ -130,13 +130,17 @@ class InverseGammaOperator(Operator):
         if mode is None:
             self._alpha = alpha
             self._q = q
+            self._mode = self._q / (self._alpha + 1)
+            if self._alpha <= 1:
+                raise ValueError('mean only existing for alpha > 1')
+            self._mean = self._q / (self._alpha - 1)
         else:
             if mean < mode:
                 raise ValueError('Mean should be greater than mode, otherwise alpha < 0')
             self._mean = mean
             self._mode = mode
-            self._alpha = self.alpha()
-            self._q = self.q()
+            self._alpha = 2 / (self._mean / self._mode - 1) + 1
+            self._q = self._mode * (self._alpha + 1)
         self._delta = delta
 
     def apply(self, x):
@@ -148,19 +152,21 @@ class InverseGammaOperator(Operator):
             op = makeOp(self._q) @ op
         return op(x)
 
+    @property
     def alpha(self):
-        return 2 / (self._mean / self._mode - 1) + 1
+        return self._alpha
 
+    @property
     def q(self):
-        return self._mode * (self._alpha + 1)
+        return self._q
 
+    @property
     def mode(self):
-        return self._q / (self._alpha + 1)
+        return self._mode
 
+    @property
     def mean(self):
-        if self._alpha <= 1:
-            raise ValueError('mean only existing for alpha > 1')
-        return self._q / (self._alpha - 1)
+        return self._mean
 
     def var(self):
         if self._alpha <= 2:
