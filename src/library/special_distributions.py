@@ -102,9 +102,10 @@ class InverseGammaOperator(Operator):
     That means that for large x the pdf falls off like :math:`x^{(-\\alpha -1)}`.
     The mean of the pdf is at :math:`q / (\\alpha - 1)` if :math:`\\alpha > 1`.
     The mode is :math:`q / (\\alpha + 1)`.
-    Alternatively one can set directly the mode and the mean. Therefore set alpha
-    and q to "None". In accordance to the statements above the mean must be greater
-    than the mode, other wise alpha < 0 and therefore no mean would be defined.
+
+    The operator can be initialized by setting either alpha and q or mode and mean.
+    In accordance to the statements above the mean must be greater
+    than the mode. Otherwise would get alpha < 0 and so no mean would be defined.
 
     This transformation is implemented as a linear interpolation which maps a
     Gaussian onto an inverse gamma distribution.
@@ -156,22 +157,27 @@ class InverseGammaOperator(Operator):
 
     @property
     def alpha(self):
+        """float : The value of the alpha-parameter of the inverse-gamma distribution"""
         return self._alpha
 
     @property
     def q(self):
+        """float : The value of q-parameters of the inverse-gamma distribution"""
         return self._q
 
     @property
     def mode(self):
+        """float : The value of the mode of the inverse-gamma distribution"""
         return self._mode
 
     @property
     def mean(self):
+        """float : The value of the mean of the inverse-gamma distribution. Only existing for alpha > 1."""
         return self._mean
 
     @property
     def var(self):
+        """float : The value of the variance of the inverse-gamma distribution. Only existing for alpha > 2."""
         if self._alpha <= 2:
             raise ValueError('variance only existing for alpha > 2')
         return self._q**2 / ((self._alpha - 1)**2 * (self._alpha - 2))
