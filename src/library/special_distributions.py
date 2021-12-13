@@ -170,6 +170,7 @@ class InverseGammaOperator(Operator):
     def mean(self):
         return self._mean
 
+    @property
     def var(self):
         if self._alpha <= 2:
             raise ValueError('variance only existing for alpha > 2')
