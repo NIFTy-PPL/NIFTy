@@ -125,7 +125,7 @@ class InverseGammaOperator(Operator):
     delta : float
         Distance between sampling points for linear interpolation.
     """
-    def __init__(self, domain, alpha, q, delta=1e-2, mode=None, mean=None):
+    def __init__(self, domain, alpha=None, q=None, delta=1e-2, mode=None, mean=None):
         self._domain = self._target = DomainTuple.make(domain)
         if mode is None:
             self._alpha = alpha
