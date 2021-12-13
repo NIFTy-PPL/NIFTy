@@ -102,6 +102,9 @@ class InverseGammaOperator(Operator):
     That means that for large x the pdf falls off like :math:`x^{(-\\alpha -1)}`.
     The mean of the pdf is at :math:`q / (\\alpha - 1)` if :math:`\\alpha > 1`.
     The mode is :math:`q / (\\alpha + 1)`.
+    Alternatively one can set directly the mode and the mean. Therefore set alpha
+    and q to "None". In accordance to the statements above the mean must be greater
+    than the mode, other wise alpha < 0 and therefore no mean would be defined.
 
     This transformation is implemented as a linear interpolation which maps a
     Gaussian onto an inverse gamma distribution.
@@ -115,13 +118,25 @@ class InverseGammaOperator(Operator):
         The alpha-parameter of the inverse-gamma distribution.
     q : float or Field
         The q-parameter of the inverse-gamma distribution.
+    mode: float
+        The mode of the inverse-gamma distribution.
+    mean: float
+        The mean of the inverse-gamma distribution.
     delta : float
         Distance between sampling points for linear interpolation.
     """
-    def __init__(self, domain, alpha, q, delta=1e-2):
+    def __init__(self, domain, alpha, q, delta=1e-2, mode=None, mean=None):
         self._domain = self._target = DomainTuple.make(domain)
-        self._alpha = alpha
-        self._q = q
+        if mode is None:
+            self._alpha = alpha
+            self._q = q
+        else:
+            if mean < mode:
+                raise ValueError('Mean should be greater than mode, otherwise alpha < 0')
+            self._mean = mean
+            self._mode = mode
+            self._alpha = self.alpha()
+            self._q = self.q()
         self._delta = delta
 
     def apply(self, x):
@@ -131,8 +146,13 @@ class InverseGammaOperator(Operator):
             op = op.scale(self._q)
         else:
             op = makeOp(self._q) @ op
-            #FIXME DomainCheck
         return op(x)
+
+    def alpha(self):
+        return 2 / (self._mean / self._mode - 1) + 1
+
+    def q(self):
+        return self._mode * (self._alpha + 1)
 
     def mode(self):
         return self._q / (self._alpha + 1)
@@ -141,6 +161,12 @@ class InverseGammaOperator(Operator):
         if self._alpha <= 1:
             raise ValueError('mean only existing for alpha > 1')
         return self._q / (self._alpha - 1)
+
+    def var(self):
+        if self._alpha <= 2:
+            raise ValueError('variance only existing for alpha > 2')
+        return self._q**2 / ((self._alpha - 1)**2 * (self._alpha - 2))
+
 
 def LogInverseGammaOperator(domain, alpha, q, delta=1e-2):
     """Transform a standard normal into the log of an inverse gamma distribution.
