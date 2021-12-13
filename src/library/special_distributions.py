@@ -129,14 +129,13 @@ class InverseGammaOperator(Operator):
     def __init__(self, domain, alpha=None, q=None, delta=1e-2, mode=None, mean=None):
         self._domain = self._target = DomainTuple.make(domain)
 
-        if mode is None and mean is None:
+        if isinstance(alpha, (int, float)) and isinstance(q, (int, float, Field)):
             self._alpha = float(alpha)
             self._q = q
             self._mode = self._q / (self._alpha + 1)
-            if self._alpha <= 1:
-                raise ValueError('mean only existing for alpha > 1')
-            self._mean = self._q / (self._alpha - 1)
-        elif alpha is None and q is None:
+            if self._alpha > 1:
+                self._mean = self._q / (self._alpha - 1)
+        elif isinstance(mean, (int, float)) and isinstance(mode,(int, float)):
             if mean < mode:
                 raise ValueError('Mean should be greater than mode, otherwise alpha < 0')
             self._mean = float(mean)
@@ -176,6 +175,8 @@ class InverseGammaOperator(Operator):
     @property
     def mean(self):
         """float : The value of the mean of the inverse-gamma distribution. Only existing for alpha > 1."""
+        if self._alpha <= 1:
+            raise ValueError('mean only existing for alpha > 1')
         return self._mean
 
     @property
