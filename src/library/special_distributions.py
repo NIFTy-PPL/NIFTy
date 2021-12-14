@@ -131,7 +131,7 @@ class InverseGammaOperator(Operator):
 
         if alpha is not None and q is not None:
             self._alpha = float(alpha)
-            self._q = q
+            self._q = q if isinstance(q, Field) else float(q)
             self._mode = self._q / (self._alpha + 1)
             if self._alpha > 1:
                 self._mean = self._q / (self._alpha - 1)
