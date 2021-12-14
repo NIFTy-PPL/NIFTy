@@ -230,9 +230,13 @@ def optimize_kl(likelihood_energy,
             raise ValueError("Ground truth needs to have the same domain as `likelihood_energy`.")
 
     if output_directory is not None:
-        makedirs(output_directory, exist_ok=overwrite)
-        for subfolder in ["pickle"] + list(plottable_operators.keys()):
-            makedirs(join(output_directory, subfolder), exist_ok=overwrite)
+        if not overwrite and isdir(output_directory):
+            raise RuntimeError(f"{output_directory} already exists. Please delete or set "
+                                "`overwrite` to `True`.")
+        if _MPI_master(comm(0)):
+            makedirs(output_directory, exist_ok=overwrite)
+            for subfolder in ["pickle"] + list(plottable_operators.keys()):
+                makedirs(join(output_directory, subfolder), exist_ok=overwrite)
 
     for iglobal in range(initial_index, global_iterations + initial_index):
         ham = StandardHamiltonian(likelihood_energy(iglobal), sampling_iteration_controller(iglobal))
