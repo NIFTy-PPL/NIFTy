@@ -25,12 +25,32 @@ from ..common import list2fixture, setup_function, teardown_function
 
 pmp = pytest.mark.parametrize
 
+
 @pmp("op", [ift.LaplaceOperator, ift.UniformOperator])
 @pmp("loc", [0, 1.324, 1400])
-@pmp("scale", [1., 0.0929, 1312.19])
+@pmp("scale", [1.0, 0.0929, 1312.19])
 def test_inverse(op, loc, scale):
     dom = ift.UnstructuredDomain([10])
     op = op(dom, loc=loc, scale=scale)
     pos = ift.from_random(dom)
     pos1 = op.inverse(op(pos))
     ift.extra.assert_allclose(pos, pos1)
+
+
+@pmp("alpha", [1.1, 2, 3, 4])
+@pmp("q", [0.2, 1, 5, 10])
+@pmp("mode", [0.1, 1])
+@pmp("mean", [1.25, 3])
+def test_init_parameter_equality(alpha, q, mode, mean):
+    dom = ift.UnstructuredDomain([10])
+    op1 = ift.InverseGammaOperator(dom, alpha=alpha, q=q)
+    op2 = ift.InverseGammaOperator(dom, mode=op1.mode, mean=op1.mean)
+    op3 = ift.InverseGammaOperator(dom, mode=mode, mean=mean)
+    op4 = ift.InverseGammaOperator(dom, alpha=op3.alpha, q=op3.q)
+    f = ift.from_random(dom)
+    pos1 = op1(f)
+    pos2 = op2(f)
+    pos3 = op3(f)
+    pos4 = op4(f)
+    ift.extra.assert_allclose(pos1, pos2)
+    ift.extra.assert_allclose(pos3, pos4)

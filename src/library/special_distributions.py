@@ -90,7 +90,7 @@ class _InterpolationOperator(Operator):
         return res
 
 
-def InverseGammaOperator(domain, alpha, q, delta=1e-2):
+class InverseGammaOperator(Operator):
     """Transform a standard normal into an inverse gamma distribution.
 
     The pdf of the inverse gamma distribution is defined as follows:
@@ -99,9 +99,13 @@ def InverseGammaOperator(domain, alpha, q, delta=1e-2):
         \\frac{q^\\alpha}{\\Gamma(\\alpha)}x^{-\\alpha -1}
         \\exp \\left(-\\frac{q}{x}\\right)
 
-    That means that for large x the pdf falls off like :math:`x^(-\\alpha -1)`.
+    That means that for large x the pdf falls off like :math:`x^{(-\\alpha -1)}`.
     The mean of the pdf is at :math:`q / (\\alpha - 1)` if :math:`\\alpha > 1`.
     The mode is :math:`q / (\\alpha + 1)`.
+
+    The operator can be initialized by setting either alpha and q or mode and mean.
+    In accordance to the statements above the mean must be greater
+    than the mode. Otherwise would get alpha < 0 and so no mean would be defined.
 
     This transformation is implemented as a linear interpolation which maps a
     Gaussian onto an inverse gamma distribution.
@@ -115,14 +119,72 @@ def InverseGammaOperator(domain, alpha, q, delta=1e-2):
         The alpha-parameter of the inverse-gamma distribution.
     q : float or Field
         The q-parameter of the inverse-gamma distribution.
+    mode: float
+        The mode of the inverse-gamma distribution.
+    mean: float
+        The mean of the inverse-gamma distribution.
     delta : float
         Distance between sampling points for linear interpolation.
     """
-    op = _InterpolationOperator(domain, lambda x: invgamma.ppf(norm._cdf(x), float(alpha)),
-                                -8.2, 8.2, delta, lambda x: x.ptw("log"), lambda x: x.ptw("exp"))
-    if np.isscalar(q):
-        return op.scale(q)
-    return makeOp(q) @ op
+    def __init__(self, domain, alpha=None, q=None, delta=1e-2, mode=None, mean=None):
+        self._domain = self._target = DomainTuple.make(domain)
+
+        if alpha is not None and q is not None:
+            self._alpha = float(alpha)
+            self._q = q if isinstance(q, Field) else float(q)
+            self._mode = self._q / (self._alpha + 1)
+            if self._alpha > 1:
+                self._mean = self._q / (self._alpha - 1)
+        elif mean is not None and mode is not None:
+            if mean < mode:
+                raise ValueError('Mean should be greater than mode, otherwise alpha < 0')
+            self._mean = float(mean)
+            self._mode = float(mode)
+            self._alpha = 2 / (self._mean / self._mode - 1) + 1
+            self._q = self._mode * (self._alpha + 1)
+        else:
+            raise ValueError("Either one pair of arguments (mode, mean or alpha, q) must be given.")
+
+        self._delta = float(delta)
+        op = _InterpolationOperator(self._domain, lambda x: invgamma.ppf(norm._cdf(x), float(self._alpha)),
+                                    -8.2, 8.2, self._delta, lambda x: x.ptw("log"), lambda x: x.ptw("exp"))
+        if np.isscalar(self._q):
+            op = op.scale(self._q)
+        else:
+            op = makeOp(self._q) @ op
+        self._op = op
+
+    def apply(self, x):
+        return self._op(x)
+
+    @property
+    def alpha(self):
+        """float : The value of the alpha-parameter of the inverse-gamma distribution"""
+        return self._alpha
+
+    @property
+    def q(self):
+        """float : The value of q-parameters of the inverse-gamma distribution"""
+        return self._q
+
+    @property
+    def mode(self):
+        """float : The value of the mode of the inverse-gamma distribution"""
+        return self._mode
+
+    @property
+    def mean(self):
+        """float : The value of the mean of the inverse-gamma distribution. Only existing for alpha > 1."""
+        if self._alpha <= 1:
+            raise ValueError('mean only existing for alpha > 1')
+        return self._mean
+
+    @property
+    def var(self):
+        """float : The value of the variance of the inverse-gamma distribution. Only existing for alpha > 2."""
+        if self._alpha <= 2:
+            raise ValueError('variance only existing for alpha > 2')
+        return self._q**2 / ((self._alpha - 1)**2 * (self._alpha - 2))
 
 
 def LogInverseGammaOperator(domain, alpha, q, delta=1e-2):

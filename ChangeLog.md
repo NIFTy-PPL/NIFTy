@@ -1,6 +1,13 @@
 Changes since NIFTy 7
 =====================
 
+InverseGammaOperator interface
+-------------------------------------
+
+The InverseGammaOperator now also supports initialization via mode and mean.
+Additionally it got some properties like `alpha`, `q`, `mode`, `mean`
+(for `alpha`>1), and `var` (for `alpha`>2), that return the respective value.
+
 Extension of Operator interface
 -------------------------------
 
