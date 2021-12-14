@@ -246,7 +246,7 @@ def optimize_kl(likelihood_energy,
         # Distributing the domain of the likelihood is not supported (yet)
         check_MPI_equality(likelihood_energy(iglobal).domain, comm(iglobal))
         check_MPI_equality(mean.domain, comm(iglobal))
-        check_MPI_equality(mean, comm(iglobal))  # Temporary because potentially expensive
+        check_MPI_equality(mean, comm(iglobal))  # FIXME Temporary because potentially expensive
 
         if n_samples(iglobal) == 0:
             e = EnergyAdapter(mean_iter, ham, constants=constants(iglobal),
