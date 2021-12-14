@@ -129,13 +129,13 @@ class InverseGammaOperator(Operator):
     def __init__(self, domain, alpha=None, q=None, delta=1e-2, mode=None, mean=None):
         self._domain = self._target = DomainTuple.make(domain)
 
-        if isinstance(alpha, (int, float)) and isinstance(q, (int, float, Field)):
+        if alpha is not None and q is not None:
             self._alpha = float(alpha)
             self._q = q
             self._mode = self._q / (self._alpha + 1)
             if self._alpha > 1:
                 self._mean = self._q / (self._alpha - 1)
-        elif isinstance(mean, (int, float)) and isinstance(mode,(int, float)):
+        elif mean is not None and mode is not None:
             if mean < mode:
                 raise ValueError('Mean should be greater than mode, otherwise alpha < 0')
             self._mean = float(mean)
