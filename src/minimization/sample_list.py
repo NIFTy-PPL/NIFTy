@@ -283,8 +283,8 @@ class SampleListBase:
         ----------
         op : callable or None
             Callable that is applied to each item in the :class:`SampleListBase`
-            before it is averaged. If `op` returns tuple, then individual
-            averages are computed and returned individually as tuple.
+            before it is averaged.
+
 
         Note
         ----
@@ -299,14 +299,34 @@ class SampleListBase:
         :class:`~nifty8.multi_field.MultiField`, :attr:`sample_stat()`
         can be used in order to compute the average memory efficiently.
         """
-        op = _none_to_id(op)
-        res = [op(ss) for ss in self.local_iterator()]
-        n = self.n_samples()
-        if not isinstance(res[0], tuple):
-            return utilities.allreduce_sum(res, self.comm) / n
+        res, n = self._prepare_average(op)
+        return utilities.allreduce_sum(res, self.comm) / n
+
+    def _average_tuple(self, op):
+        """Compute simultaneous average over all potentially distributed samples.
+
+        Parameters
+        ----------
+        op : callable
+            Callable that is applied to each item in the
+            :class:`SampleListBase` before it is averaged. `op` shall return a
+            tuple of whose individual averages are computed and returned as
+            tuple.
+
+        Note
+        ----
+        Calling this function involves MPI communication if `comm != None`.
+        """
+        res, n = self._prepare_average(op)
         n_output_elements = len(res[0])
         res = [[elem[ii] for elem in res] for ii in range(n_output_elements)]
         return tuple(utilities.allreduce_sum(rr, self.comm) / n for rr in res)
+
+    def _prepare_average(self, op):
+        op = _none_to_id(op)
+        res = [op(ss) for ss in self.local_iterator()]
+        n = self.n_samples()
+        return res, n
 
     def sample_stat(self, op=None):
         """Compute mean and variance of samples after applying `op`.
@@ -426,6 +446,8 @@ class ResidualSampleList(SampleListBase):
 
         if len(self._r) != len(self._n):
             raise ValueError("Residuals and neg need to have the same length.")
+        if any(elem == 0 for elem in utilities.allreduce_sum([[len(self._r)]], comm)):
+            raise RuntimeError("Empty list of residuals detected.")
 
         r_dom = self._r[0].domain
         if not all(rr.domain is r_dom for rr in self._r):

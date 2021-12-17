@@ -309,7 +309,7 @@ class SampledKLEnergyClass(Energy):
             tmp = tmp(Linearization.make_var(inp))
             return tmp.val.val[()], tmp.gradient
 
-        self._val, self._grad = sample_list.average(_func)
+        self._val, self._grad = sample_list._average_tuple(_func)
         if np.isnan(self._val) and self._nanisinf:
             self._val = np.inf
 
