@@ -21,13 +21,14 @@ from os.path import isdir, join
 from warnings import warn
 
 from ..domain_tuple import DomainTuple
+from ..multi_domain import MultiDomain
 from ..multi_field import MultiField
 from ..operators.energy_operators import StandardHamiltonian
 from ..operators.operator import Operator
 from ..operators.scaling_operator import ScalingOperator
 from ..plot import Plot, plottable2D
 from ..sugar import from_random
-from ..utilities import Nop, check_MPI_equality, get_MPI_params_from_comm
+from ..utilities import Nop, check_MPI_equality, get_MPI_params_from_comm, check_MPI_synced_random_state
 from .energy_adapter import EnergyAdapter
 from .iteration_controllers import IterationController
 from .kl_energies import SampledKLEnergy
@@ -216,23 +217,35 @@ def optimize_kl(likelihood_energy,
             except ImportError:
                 pass
     myassert(_number_of_arguments(callback) in [1, 2])
+    mf_dom = isinstance(likelihood_energy(initial_index).domain, MultiDomain)
+    if mf_dom:
+        dom = MultiDomain.union([likelihood_energy(iglobal).domain
+                                 for iglobal in
+                                 range(initial_index, global_iterations + initial_index)])
+    else:
+        dom = likelihood_energy(initial_index).domain
     # /Sanity check of input
 
     if not likelihood_energy(0).target is DomainTuple.scalar_domain():
         raise TypeError
     mean = initial_position
+    check_MPI_synced_random_state(comm(initial_index))
     if mean is None:
-        mean = 0.1 * from_random(likelihood_energy(0).domain)
-    dom = mean.domain
-    mf_dom = isinstance(mean, MultiField)
+        mean = 0.1 * from_random(dom)
+    myassert(dom is mean.domain)
+
     if ground_truth_position is not None:
         if ground_truth_position.domain is not dom:
             raise ValueError("Ground truth needs to have the same domain as `likelihood_energy`.")
 
     if output_directory is not None:
-        makedirs(output_directory, exist_ok=overwrite)
-        for subfolder in ["pickle"] + list(plottable_operators.keys()):
-            makedirs(join(output_directory, subfolder), exist_ok=overwrite)
+        if not overwrite and isdir(output_directory):
+            raise RuntimeError(f"{output_directory} already exists. Please delete or set "
+                                "`overwrite` to `True`.")
+        if _MPI_master(comm(0)):
+            makedirs(output_directory, exist_ok=overwrite)
+            for subfolder in ["pickle"] + list(plottable_operators.keys()):
+                makedirs(join(output_directory, subfolder), exist_ok=overwrite)
 
     for iglobal in range(initial_index, global_iterations + initial_index):
         ham = StandardHamiltonian(likelihood_energy(iglobal), sampling_iteration_controller(iglobal))
@@ -240,9 +253,10 @@ def optimize_kl(likelihood_energy,
         mean_iter = mean.extract(ham.domain)
 
         # Distributing the domain of the likelihood is not supported (yet)
+        check_MPI_synced_random_state(comm(iglobal))
         check_MPI_equality(likelihood_energy(iglobal).domain, comm(iglobal))
         check_MPI_equality(mean.domain, comm(iglobal))
-        check_MPI_equality(mean, comm(iglobal))  # Temporary because potentially expensive
+        check_MPI_equality(mean, comm(iglobal))  # FIXME Temporary because potentially expensive
 
         if n_samples(iglobal) == 0:
             e = EnergyAdapter(mean_iter, ham, constants=constants(iglobal),
@@ -393,11 +407,11 @@ def _plot_samples(file_name, samples, ground_truth, comm):
                 color = n*["maroon"]
                 label = None
                 if ground_truth is not None:
-                    single_samples = [ground_truth] + single_samples
+                    single_samples = [ground_truth[kk]] + single_samples
                     alpha = [1.] + alpha
                     color = ["green"] + color
                     label = ["Ground truth", "Samples"] + (n-1)*[None]
-                p.add(samples, color=color, alpha=alpha, label=label, title=_append_key("", kk))
+                p.add(single_samples, color=color, alpha=alpha, label=label, title=_append_key("Samples", kk))
         p.output(name=file_name)
 
 

@@ -289,10 +289,12 @@ class Operator(metaclass=NiftyMeta):
         from ..sugar import is_operator
         from .simple_linear_operators import ducktape, DomainChangerAndReshaper
         from ..domain_tuple import DomainTuple
+        from ..domains.domain import Domain
+        from ..multi_domain import MultiDomain
 
         if not is_operator(self):
             raise RuntimeError("ducktape works only on operators")
-        if isinstance(name, DomainTuple):
+        if isinstance(name, (DomainTuple, Domain, MultiDomain)):
             return self @ DomainChangerAndReshaper(name, self.domain)
         return self @ ducktape(self, None, name)
 
@@ -300,8 +302,10 @@ class Operator(metaclass=NiftyMeta):
         from ..sugar import is_fieldlike, is_linearization, is_operator
         from .simple_linear_operators import ducktape, DomainChangerAndReshaper
         from ..domain_tuple import DomainTuple
+        from ..domains.domain import Domain
+        from ..multi_domain import MultiDomain
 
-        if isinstance(name, DomainTuple):
+        if isinstance(name, (DomainTuple, Domain, MultiDomain)):
             dom = self.domain if is_fieldlike(self) else self.target
             return DomainChangerAndReshaper(dom, name)(self)
         if is_operator(self):
