@@ -226,7 +226,7 @@ def optimize_kl(likelihood_energy,
         dom = likelihood_energy(initial_index).domain
     # /Sanity check of input
 
-    if not likelihood_energy(0).target is DomainTuple.scalar_domain():
+    if not likelihood_energy(initial_index).target is DomainTuple.scalar_domain():
         raise TypeError
     mean = initial_position
     check_MPI_synced_random_state(comm(initial_index))
@@ -242,7 +242,7 @@ def optimize_kl(likelihood_energy,
         if not overwrite and isdir(output_directory):
             raise RuntimeError(f"{output_directory} already exists. Please delete or set "
                                 "`overwrite` to `True`.")
-        if _MPI_master(comm(0)):
+        if _MPI_master(comm(initial_index)):
             makedirs(output_directory, exist_ok=overwrite)
             for subfolder in ["pickle"] + list(plottable_operators.keys()):
                 makedirs(join(output_directory, subfolder), exist_ok=overwrite)
