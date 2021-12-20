@@ -286,11 +286,11 @@ class Operator(metaclass=NiftyMeta):
         return self @ x
 
     def ducktape(self, name):
-        from ..sugar import is_operator
-        from .simple_linear_operators import ducktape, DomainChangerAndReshaper
         from ..domain_tuple import DomainTuple
         from ..domains.domain import Domain
         from ..multi_domain import MultiDomain
+        from ..sugar import is_operator
+        from .simple_linear_operators import DomainChangerAndReshaper, ducktape
 
         if not is_operator(self):
             raise RuntimeError("ducktape works only on operators")
@@ -299,11 +299,11 @@ class Operator(metaclass=NiftyMeta):
         return self @ ducktape(self, None, name)
 
     def ducktape_left(self, name):
-        from ..sugar import is_fieldlike, is_linearization, is_operator
-        from .simple_linear_operators import ducktape, DomainChangerAndReshaper
         from ..domain_tuple import DomainTuple
         from ..domains.domain import Domain
         from ..multi_domain import MultiDomain
+        from ..sugar import is_fieldlike, is_linearization, is_operator
+        from .simple_linear_operators import DomainChangerAndReshaper, ducktape
 
         if isinstance(name, (DomainTuple, Domain, MultiDomain)):
             dom = self.domain if is_fieldlike(self) else self.target
