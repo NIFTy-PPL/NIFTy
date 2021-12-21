@@ -288,7 +288,7 @@ def optimize_kl(likelihood_energy,
                 point_estimates=point_estimates(iglobal))
             e, _ = minimizer(e)
             mean = MultiField.union([mean, e.position]) if mf_dom else e.position
-            sl = e.samples
+            sl = e.samples.at(mean)
 
         if output_directory is not None:
             _plot_operators(output_directory, iglobal, plottable_operators, sl,
