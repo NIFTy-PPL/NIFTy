@@ -12,7 +12,7 @@ stages:
   - demo_runs
 
 check_no_asserts:
-  image: debian:testing-slim
+  image: debian:stable-slim
   stage: static_checks
   before_script:
     - ls
