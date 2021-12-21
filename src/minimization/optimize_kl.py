@@ -140,7 +140,10 @@ def optimize_kl(likelihood_energy,
         Function that is called after every global iteration. It can be either
         a function with one argument (then the latest sample list is passed) or
         a function with two arguments (in which case the latest sample list and
-        the global iteration index are passed). Default: None.
+        the global iteration index are passed). If it returns something that is
+        not None, a Field defined on the same domain as the input sample list is
+        expected.  It is used as a position for the subsequent optimization.
+        Default: None.
     plot_latent : bool
         Determine if latent space shall be plotted or not. Default: False.
     save_strategy : str
@@ -297,7 +300,9 @@ def optimize_kl(likelihood_energy,
                     overwrite=overwrite)
             _save_random_state(output_directory, iglobal, save_strategy)
 
-        callback(*((sl,) if _number_of_arguments(callback) == 1 else (sl, iglobal)))
+        new_mean = callback(*((sl,) if _number_of_arguments(callback) == 1 else (sl, iglobal)))
+        if new_mean is not None:
+            mean = new_mean
 
         if mean.domain is not dom:
             raise RuntimeError
