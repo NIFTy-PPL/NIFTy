@@ -71,7 +71,7 @@ lh_init_approx = (
 
 def test_gaussian_vs_vcgaussian_consistency(seed, shape):
     rtol = 10 * jnp.finfo(jnp.zeros(0).dtype).eps
-    atol = 1 * jnp.finfo(jnp.zeros(0).dtype).eps
+    atol = 5 * jnp.finfo(jnp.zeros(0).dtype).eps
 
     key = random.PRNGKey(seed)
     sk = list(random.split(key, 5))
