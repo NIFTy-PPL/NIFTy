@@ -38,6 +38,12 @@ def _broadcast_binary_op(op, lhs, rhs):
         ts = tree_structure(lhs)
         rhs = ts.unflatten(repeat(rhs, ts.num_leaves))
 
+    ts_lhs = tree_structure(lhs).num_nodes
+    ts_rhs = tree_structure(rhs).num_nodes
+    if ts_lhs != ts_rhs:
+        ve = f"invalid binary operation for {ts_lhs!r} and {ts_rhs!r}"
+        raise ValueError(ve)
+
     out = tree_map(op, lhs, rhs)
     out._flags = flags
     return out
@@ -87,6 +93,13 @@ def matmul(lhs, rhs):
     if "strict_domain_checking" in flags:
         if rhs.domain != lhs.domain:
             raise ValueError("domains are incompatible.")
+
+    ts_lhs = tree_structure(lhs).num_nodes
+    ts_rhs = tree_structure(rhs).num_nodes
+    if ts_lhs != ts_rhs:
+        ve = f"invalid binary operation for {ts_lhs!r} and {ts_rhs!r}"
+        raise ValueError(ve)
+
     return dot(lhs, rhs)
 
 
