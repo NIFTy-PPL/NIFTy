@@ -3,7 +3,7 @@ from typing import Callable, Optional
 from jax import numpy as np
 
 
-def laplace_prior(alpha):
+def laplace_prior(alpha) -> Callable:
     """
     Takes random normal samples and outputs samples distributed according to
 
@@ -12,9 +12,13 @@ def laplace_prior(alpha):
 
     """
     from jax.scipy.stats import norm
-    res = lambda x: (x<0)*(norm.logcdf(x) + np.log(2))\
-                - (x>0)*(norm.logcdf(-x) + np.log(2))
-    return lambda x: res(x) * alpha
+
+    def standard_to_laplace(xi):
+        res = (xi < 0) * (norm.logcdf(xi) + np.log(2))
+        res -= (xi > 0) * (norm.logcdf(-xi) + np.log(2))
+        return res * alpha
+
+    return standard_to_laplace
 
 
 def normal_prior(mean, std) -> Callable:
@@ -69,7 +73,7 @@ def interpolator(
     num: Optional[int] = None,
     table_func: Optional[Callable] = None,
     inv_table_func: Optional[Callable] = None
-):  # Adapted from NIFTy
+) -> Callable:  # Adapted from NIFTy
     """
     Evaluate a function point-wise by interpolation.  Can be supplied with a
     table_func to increase the interpolation accuracy, Best results are

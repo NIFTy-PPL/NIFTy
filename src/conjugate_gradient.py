@@ -56,7 +56,8 @@ def _cg(
     miniter=None,
     maxiter=None,
     name=None,
-    time_threshold=None
+    time_threshold=None,
+    _within_newton=False
 ) -> CGResults:
     norm_ord = 2 if norm_ord is None else norm_ord  # TODO: change to 1
     maxiter_fallback = 20 * size(j)  # taken from SciPy's NewtonCG minimzer
@@ -99,12 +100,22 @@ def _cg(
 
         curv = float(d.dot(q))
         if curv == 0.:
+            if _within_newton:
+                info = 0
+                break
             nm = "CG" if name is None else name
-            raise ValueError(f"{nm}: zero curvature in conjugate gradient")
+            raise ValueError(f"{nm}: zero curvature")
+        elif curv < 0.:
+            if _within_newton and i > 1:
+                info = 0
+                break
+            elif _within_newton:
+                pos = previous_gamma / (-curv) * j
+                info = 0
+                break
+            nm = "CG" if name is None else name
+            raise ValueError(f"{nm}: negative curvature")
         alpha = previous_gamma / curv
-        if alpha < 0:
-            nm = "CG" if name is None else name
-            raise ValueError(f"{nm}: implausible gradient scaling `alpha < 0`")
         pos = pos - alpha * d
         if i % N_RESET == 0:
             r = mat(pos) - j
@@ -114,36 +125,39 @@ def _cg(
         gamma = float(sum_of_squares(r))
         if time_threshold is not None and datetime.now() > time_threshold:
             info = i
-            return CGResults(x=pos, info=info, nit=i, nfev=nfev, success=False)
+            break
         if gamma == 0:
             nm = "CG" if name is None else name
             print(f"{nm}: gamma=0, converged!", file=sys.stderr)
-            return CGResults(x=pos, info=0, nit=i, nfev=nfev, success=True)
+            info = 0
+            break
         if resnorm is not None:
             norm = float(jft_norm(r, ord=norm_ord, ravel=True))
             if name is not None:
                 msg = f"{name}: |∇|:{norm:.6e} 🞋:{resnorm:.6e}"
                 print(msg, file=sys.stderr)
             if norm < resnorm and i >= miniter:
-                return CGResults(x=pos, info=0, nit=i, nfev=nfev, success=True)
+                info = 0
+                break
         if absdelta is not None or name is not None:
             new_energy = float(((r - j) / 2).dot(pos))
             energy_diff = energy - new_energy
             if name is not None:
                 msg = (
                     f"{name}: Iteration {i} ⛰:{new_energy:+.6e} Δ⛰:{energy_diff:.6e}"
-                    f" 🞋:{absdelta:.6e}" if absdelta is not None else ""
+                    + (f" 🞋:{absdelta:.6e}" if absdelta is not None else "")
                 )
                 print(msg, file=sys.stderr)
         else:
             new_energy = energy
         if absdelta is not None:
-            basically_zero = -eps * np.abs(new_energy)
-            if energy_diff < basically_zero:
+            neg_energy_eps = -eps * np.abs(new_energy)
+            if energy_diff < neg_energy_eps:
                 nm = "CG" if name is None else name
                 raise ValueError(f"{nm}: WARNING: energy increased")
-            if basically_zero <= energy_diff < absdelta and i >= miniter:
-                return CGResults(x=pos, info=0, nit=i, nfev=nfev, success=True)
+            if neg_energy_eps <= energy_diff < absdelta and i >= miniter:
+                info = 0
+                break
         energy = new_energy
         d = d * max(0, gamma / previous_gamma) + r
         previous_gamma = gamma
@@ -231,18 +245,18 @@ def _static_cg(
             energy_diff = previous_energy - energy
             if name is not None:
                 msg = (
-                    f"{name}: Iteration {i!r} ⛰:{energy!r}"
-                    f" 🞋:{absdelta!r}" if absdelta is not None else ""
+                    f"{name}: Iteration {i!r} ⛰:{energy!r}" +
+                    (f" 🞋:{absdelta!r}" if absdelta is not None else "")
                 )
                 print(msg, file=sys.stderr)
         else:
             energy = previous_energy
         if absdelta is not None:
-            basically_zero = -eps * np.abs(energy)
+            neg_energy_eps = -eps * np.abs(energy)
             # print(f"energy increased", file=sys.stderr)
-            info = np.where(energy_diff < basically_zero, -1, info)
+            info = np.where(energy_diff < neg_energy_eps, -1, info)
             info = np.where(
-                (energy_diff >= basically_zero) & (energy_diff < absdelta) &
+                (energy_diff >= neg_energy_eps) & (energy_diff < absdelta) &
                 (i >= miniter) & (info != -1), 0, info
             )
         info = np.where((i >= maxiter) & (info != -1), i, info)
@@ -519,8 +533,8 @@ def _cg_steihaug_subproblem(
             energy_next = energy
             energy_diff = np.nan
         if absdelta is not None:
-            basically_zero = -eps * np.abs(energy)
-            accept_z_next |= (energy_diff >= basically_zero
+            neg_energy_eps = -eps * np.abs(energy)
+            accept_z_next |= (energy_diff >= neg_energy_eps
                              ) & (energy_diff < absdelta) & (nit >= miniter)
 
         # include a junk switch to catch the case where none should be executed
@@ -548,9 +562,13 @@ def _cg_steihaug_subproblem(
                     "{name}: |∇|:{r_norm:.6e} 🞋:{resnorm:.6e} ↗:{tr:.6e}"
                     " ☞:{case:1d} #∇²:{nhev:02d}"
                     "\n{name}: Iteration {i} ⛰:{energy:+.6e} Δ⛰:{energy_diff:.6e}"
-                    " 🞋:{absdelta:.6e}" if arg["absdelta"] is not None else ""
-                    "\n{name}: Iteration Limit Reached"
-                    if arg["i"] == arg["maxiter"] else ""
+                    + (
+                        " 🞋:{absdelta:.6e}"
+                        if arg["absdelta"] is not None else ""
+                    ) + (
+                        "\n{name}: Iteration Limit Reached"
+                        if arg["i"] == arg["maxiter"] else ""
+                    )
                 )
                 print(msg.format(name=name, **arg), file=sys.stderr)
 

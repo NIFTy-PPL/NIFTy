@@ -56,16 +56,55 @@ class OptimizeResults(NamedTuple):
     good_approximation: Union[None, bool, np.ndarray] = None
 
 
+def _prepare_vag_hessp(fun, jac, hessp,
+                       fun_and_grad) -> Tuple[Callable, Callable]:
+    """Returns a tuple of functions for computing the value-and-gradient and
+    the Hessian-Vector-Product.
+    """
+    from warnings import warn
+
+    if fun_and_grad is None:
+        if fun is not None and jac is not None:
+            uw = "computing the function together with its gradient would be faster"
+            warn(uw, UserWarning)
+
+            def fun_and_grad(x):
+                return (fun(x), jac(x))
+        elif fun is not None:
+            from jax import value_and_grad
+
+            fun_and_grad = value_and_grad(fun)
+        else:
+            ValueError("no function specified")
+
+    if hessp is None:
+        from jax import grad, jvp
+
+        jac = grad(fun) if jac is None else jac
+
+        def hessp(primals, tangents):
+            return jvp(jac, (primals, ), (tangents, ))[1]
+
+    return fun_and_grad, hessp
+
+
+def newton_cg(*args, **kwargs):
+    """Minimize a scalar-valued function using the Newton-CG algorithm."""
+    return _newton_cg(*args, **kwargs).x
+
+
 def _newton_cg(
     fun=None,
     x0=None,
     *,
+    miniter=None,
     maxiter=None,
     energy_reduction_factor=0.1,
     old_fval=None,
     absdelta=None,
     norm_ord=None,
     xtol=1e-5,
+    jac: Optional[Callable] = None,
     fun_and_grad=None,
     hessp=None,
     cg=conjugate_gradient._cg,
@@ -74,14 +113,14 @@ def _newton_cg(
     cg_kwargs=None
 ):
     norm_ord = 1 if norm_ord is None else norm_ord
+    miniter = 0 if miniter is None else miniter
     maxiter = 200 if maxiter is None else maxiter
     xtol = xtol * size(x0)
 
     pos = x0
-    if fun_and_grad is None:
-        from jax import value_and_grad
-
-        fun_and_grad = value_and_grad(fun)
+    fun_and_grad, hessp = _prepare_vag_hessp(
+        fun, jac, hessp, fun_and_grad=fun_and_grad
+    )
     cg_kwargs = {} if cg_kwargs is None else cg_kwargs
     cg_name = name + "CG" if name is not None else None
 
@@ -107,6 +146,7 @@ def _newton_cg(
             "absdelta": cg_absdelta,
             "resnorm": cg_resnorm,
             "norm_ord": 1,
+            "_within_newton": True,  # handle non-pos-def
             "name": cg_name,
             "time_threshold": time_threshold
         }
@@ -149,19 +189,22 @@ def _newton_cg(
         pos = new_pos
         g = new_g
 
+        descent_norm = grad_scaling * jft_norm(dd, ord=norm_ord, ravel=True)
         if name is not None:
             msg = (
                 f"{name}: →:{grad_scaling} ↺:{ls_reset} #∇²:{nhev:02d}"
+                f" |↘|:{descent_norm:.6e} 🞋:{xtol:.6e}"
                 f"\n{name}: Iteration {i} ⛰:{energy:+.6e} Δ⛰:{energy_diff:.6e}"
-                f" 🞋:{absdelta:.6e}" if absdelta is not None else ""
+                + (f" 🞋:{absdelta:.6e}" if absdelta is not None else "")
             )
             print(msg, file=sys.stderr)
         if np.isnan(new_energy):
             raise ValueError("energy is NaN")
-        if absdelta is not None and 0. <= energy_diff < absdelta and naive_ls_it < 2:
+        min_cond = naive_ls_it < 2 and i > miniter
+        if absdelta is not None and 0. <= energy_diff < absdelta and min_cond:
             status = 0
             break
-        if grad_scaling * jft_norm(dd, ord=norm_ord, ravel=True) <= xtol:
+        if descent_norm <= xtol and i > miniter:
             status = 0
             break
         if time_threshold is not None and datetime.now() > time_threshold:
@@ -199,7 +242,7 @@ class _TrustRegionState(NamedTuple):
     old_fval: Union[float, np.ndarray]
 
 
-def _minimize_trust_ncg(
+def _trust_ncg(
     fun=None,
     x0: np.ndarray = None,
     *,
@@ -236,23 +279,16 @@ def _minimize_trust_ncg(
     common_dtp = common_type(x0)
     eps = 6. * np.finfo(common_dtp).eps  # Inspired by SciPy's NewtonCG minimzer
 
-    if fun_and_grad is None:
-        from jax import value_and_grad
-
-        fun_and_grad = value_and_grad(fun)
-    if hessp is None:
-        from jax import grad, jvp
-
-        jac = grad(fun) if jac is None else jac
-
-        def hessp(primals, tangents):
-            return jvp(jac, (primals, ), (tangents, ))[1]
-
+    fun_and_grad, hessp = _prepare_vag_hessp(
+        fun, jac, hessp, fun_and_grad=fun_and_grad
+    )
     subproblem_kwargs = {} if subproblem_kwargs is None else subproblem_kwargs
     cg_name = name + "SP" if name is not None else None
 
     f_0, g_0 = fun_and_grad(x0)
-    g_0_mag = jft_norm(g_0, ord=subproblem_kwargs.get("norm_ord", 1), ravel=True)
+    g_0_mag = jft_norm(
+        g_0, ord=subproblem_kwargs.get("norm_ord", 1), ravel=True
+    )
     status = np.where(np.isfinite(g_0_mag), status, 2)
     init_params = _TrustRegionState(
         converged=False,
@@ -311,7 +347,9 @@ def _minimize_trust_ncg(
         )
 
         # compute norm to check for convergence
-        g_kp1_mag = jft_norm(g_kp1, ord=subproblem_kwargs.get("norm_ord", 1), ravel=True)
+        g_kp1_mag = jft_norm(
+            g_kp1, ord=subproblem_kwargs.get("norm_ord", 1), ravel=True
+        )
 
         # if the ratio is high enough then accept the proposed step
         f_kp1, x_kp1, g_kp1, g_kp1_mag = where(
@@ -350,11 +388,14 @@ def _minimize_trust_ncg(
             from jax.experimental.host_callback import call
 
             def pp(arg):
+                i = arg["i"]
                 msg = (
                     "{name}: ↗:{tr:.6e} ⬤:{hit} ∝:{rho:.2e} #∇²:{nhev:02d}"
                     "\n{name}: Iteration {i} ⛰:{energy:+.6e} Δ⛰:{energy_diff:.6e}"
-                    " 🞋:{absdelta:.6e}" if absdelta is not None else ""
-                    "\n{name}: Iteration Limit Reached" if i == maxiter else ""
+                    + (" 🞋:{absdelta:.6e}" if absdelta is not None else "") + (
+                        "\n{name}: Iteration Limit Reached"
+                        if i == maxiter else ""
+                    )
                 )
                 print(msg.format(name=name, **arg), file=sys.stderr)
 
@@ -394,12 +435,8 @@ def _minimize_trust_ncg(
     )
 
 
-def newton_cg(*args, **kwargs):
-    return _newton_cg(*args, **kwargs).x
-
-
 def trust_ncg(*args, **kwargs):
-    return _minimize_trust_ncg(*args, **kwargs).x
+    return _trust_ncg(*args, **kwargs).x
 
 
 def minimize(
@@ -428,6 +465,6 @@ def minimize(
     if method.lower() in ('newton-cg', 'newtoncg', 'ncg'):
         return _newton_cg(fun_with_args, x0, **options)
     elif method.lower() in ('trust-ncg', 'trustncg'):
-        return _minimize_trust_ncg(fun_with_args, x0, **options)
+        return _trust_ncg(fun_with_args, x0, **options)
 
     raise ValueError(f"method {method} not recognized")

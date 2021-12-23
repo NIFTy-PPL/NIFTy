@@ -94,10 +94,15 @@ if __name__ == "__main__":
         print(msg, file=sys.stderr)
 
     namps = cfm.get_normalized_amplitudes()
-    smpls = mkl.samples
-    post_sr_mean = jft.mean(tuple(signal_response(pos + s) for s in smpls))
-    post_namps1_mean = jft.mean(tuple(namps[0](pos + s)[1:] for s in smpls))
-    post_namps2_mean = jft.mean(tuple(namps[1](pos + s)[1:] for s in smpls))
+    post_sr_mean = jft.mean(
+        tuple(signal_response(pos + s) for s in mkl.samples)
+    )
+    post_namps1_mean = jft.mean(
+        tuple(namps[0](pos + s)[1:] for s in mkl.samples)
+    )
+    post_namps2_mean = jft.mean(
+        tuple(namps[1](pos + s)[1:] for s in mkl.samples)
+    )
     to_plot = [
         ("Signal", signal_response_truth, "im"),
         ("Noise", noise_truth, "im"),
