@@ -1,5 +1,5 @@
 from jax.tree_util import (
-    register_pytree_node_class, tree_map, tree_reduce, tree_structure
+    register_pytree_node_class, tree_leaves, tree_map, tree_structure
 )
 
 
@@ -175,6 +175,9 @@ class Field():
 
     def __bool__(self):
         return bool(self.val)
+
+    def __hash__(self):
+        return hash(tuple(tree_leaves(self)))
 
     # NOTE, this highly redundant code could be abstracted away using
     # `setattr`. However, a naive implementation would mask python's operation
