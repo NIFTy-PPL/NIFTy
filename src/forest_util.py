@@ -1,4 +1,5 @@
 from functools import partial
+from jax import lax
 from jax import numpy as np
 from jax.tree_util import (
     all_leaves, tree_leaves, tree_map, tree_structure, tree_reduce
@@ -107,7 +108,7 @@ def zeros_like(a, dtype=None, shape=None):
     return tree_map(partial(np.zeros_like, dtype=dtype, shape=shape), a)
 
 
-def norm(tree, ord, ravel: bool = False):
+def norm(tree, ord, *, ravel: bool):
     from jax.numpy import ndim, abs
     from jax.numpy.linalg import norm
 
@@ -123,7 +124,18 @@ def norm(tree, ord, ravel: bool = False):
     return norm(tree_leaves(tree_map(el_norm, tree)), ord=ord)
 
 
+def select(pred, on_true, on_false):
+    return tree_map(partial(lax.select, pred), on_true, on_false)
+
+
 def where(condition, x, y):
+    """Selects a pytree based on the condition which can be a pytree itself.
+
+    Notes
+    -----
+    If `condition` is not a pytree, then a partially evaluated selection is
+    simply mapped over `x` and `y` without actually broadcasting `condition`.
+    """
     import numpy as onp
     from itertools import repeat
 
@@ -134,10 +146,6 @@ def where(condition, x, y):
         [ts_c.num_nodes, ts_x.num_nodes, ts_y.num_nodes]
     )]
 
-    if ts_c.num_nodes < ts_max.num_nodes:
-        if ts_c.num_nodes > 1:
-            raise ValueError("can not broadcast condition")
-        condition = ts_max.unflatten(repeat(condition, ts_max.num_leaves))
     if ts_x.num_nodes < ts_max.num_nodes:
         if ts_x.num_nodes > 1:
             raise ValueError("can not broadcast LHS")
@@ -147,6 +155,10 @@ def where(condition, x, y):
             raise ValueError("can not broadcast RHS")
         y = ts_max.unflatten(repeat(y, ts_max.num_leaves))
 
+    if ts_c.num_nodes < ts_max.num_nodes:
+        if ts_c.num_nodes > 1:
+            raise ValueError("can not map condition")
+        return tree_map(partial(np.where, condition), x, y)
     return tree_map(np.where, condition, x, y)
 
 
