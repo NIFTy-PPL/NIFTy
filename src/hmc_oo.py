@@ -1,9 +1,10 @@
+import numpy as np
 from functools import partial
 from jax import numpy as jnp
 from jax import random, tree_util
-from jax import jit, grad
+from jax import grad
 
-from typing import Callable, NamedTuple, Optional, Union
+from typing import Any, Callable, NamedTuple, Optional, Union
 
 from .disable_jax_control_flow import fori_loop
 from .hmc import Q, QP, Tree, AcceptedAndRejected
@@ -11,6 +12,31 @@ from .hmc import (
     generate_hmc_acc_rej, generate_nuts_tree, leapfrog_step,
     sample_momentum_from_diagonal, tree_index_update
 )
+
+
+def _parse_diag_mass_matrix(mass_matrix, position_proto: Q) -> Q:
+    if isinstance(mass_matrix,
+                  (float, jnp.ndarray)) and jnp.size(mass_matrix) == 1:
+        mass_matrix = tree_util.tree_map(
+            partial(jnp.full_like, fill_value=mass_matrix), position_proto
+        )
+    elif tree_util.tree_structure(mass_matrix
+                                 ) == tree_util.tree_structure(position_proto):
+        shape_match_tree = tree_util.tree_map(
+            lambda a1, a2: jnp.shape(a1) == jnp.shape(a2), mass_matrix,
+            position_proto
+        )
+        shape_and_structure_match = all(
+            tree_util.tree_flatten(shape_match_tree)
+        )
+        if not shape_and_structure_match:
+            ve = "matrix has same tree_structe as the position but shapes do not match up"
+            raise ValueError(ve)
+    else:
+        te = "matrix must either be float or have same tree structure as the position"
+        raise TypeError(te)
+
+    return mass_matrix
 
 
 class Chain(NamedTuple):
@@ -21,63 +47,28 @@ class Chain(NamedTuple):
     divergences: jnp.ndarray
     acceptance: Union[jnp.ndarray, float]
     depths: Optional[jnp.ndarray] = None
-    resampled_momenta: Optional[Q] = None
     trees: Optional[Union[Tree, AcceptedAndRejected]] = None
 
 
-class NUTSChain:
+class _Sampler:
     def __init__(
         self,
-        potential_energy: Callable,
+        potential_energy: Callable[[Q], Union[jnp.ndarray, float]],
         inverse_mass_matrix,
-        initial_position,
-        key,
-        step_size: float = 1.0,
-        max_tree_depth: int = 10,
-        compile: bool = True,
-        dbg_info: bool = False,
-        bias_transition: bool = True,
-        max_energy_difference: float = jnp.inf
+        position_proto: Q,
+        step_size: Union[jnp.ndarray, float] = 1.0,
+        max_energy_difference: Union[jnp.ndarray, float] = jnp.inf
     ):
         if not callable(potential_energy):
             raise TypeError()
-        if not isinstance(step_size, float):
+        if not isinstance(step_size, (jnp.ndarray, float)):
             raise TypeError()
-        if not isinstance(max_tree_depth, int):
-            raise TypeError()
-        if not isinstance(key, jnp.ndarray):
-            if isinstance(key, int):
-                key = random.PRNGKey(key)
-            else:
-                raise TypeError()
 
-        self.last_state = (key, initial_position)
         self.potential_energy = potential_energy
 
-        if isinstance(inverse_mass_matrix, float):
-            self.inverse_mass_matrix = tree_util.tree_map(
-                lambda arr: jnp.full(arr.shape, inverse_mass_matrix),
-                initial_position
-            )
-        elif tree_util.tree_structure(
-            inverse_mass_matrix
-        ) == tree_util.tree_structure(initial_position):
-            shape_match_tree = tree_util.tree_map(
-                lambda a1, a2: a1.shape == a2.shape, inverse_mass_matrix,
-                initial_position
-            )
-            shape_and_structure_match = all(
-                tree_util.tree_flatten(shape_match_tree)
-            )
-            if shape_and_structure_match:
-                self.inverse_mass_matrix = inverse_mass_matrix
-            else:
-                raise ValueError(
-                    "inverse_mass_matrix has same tree_structe as initial_position but shapes don't match up"
-                )
-        else:
-            te = 'inverse_mass_matrix must either be float or have same tree structure as initial_position'
-            raise TypeError(te)
+        self.inverse_mass_matrix = _parse_diag_mass_matrix(
+            inverse_mass_matrix, position_proto=position_proto
+        )
         self.mass_matrix_sqrt = self.inverse_mass_matrix**(-0.5)
 
         self.step_size = step_size
@@ -93,63 +84,86 @@ class NUTSChain:
             leapfrog_step, potential_energy_gradient, kinetic_energy_gradient
         )
 
-        self.max_tree_depth = max_tree_depth
-
         self.max_energy_difference = max_energy_difference
-        self.bias_transition = bias_transition
 
-        self.compile = compile
-        self.dbg_info = dbg_info
+        def sample_next_state(key,
+                              prev_position: Q) -> tuple[Any, tuple[Any, Q]]:
+            raise NotImplementedError()
+
+        self.sample_next_state = sample_next_state
+
+    @staticmethod
+    def init_chain(
+        num_samples: int, position_proto, save_intermediates: bool
+    ) -> Chain:
+        raise NotImplementedError()
+
+    @staticmethod
+    def update_chain(
+        chain: Chain, idx: Union[jnp.ndarray, int], tree: Tree
+    ) -> Chain:
+        raise NotImplementedError()
 
     def generate_n_samples(
         self,
+        key: Any,
+        initial_position: Q,
         num_samples,
-        _state: Optional[tuple[jnp.ndarray, Q]] = None
-    ) -> Chain:
-        _state = self.last_state if _state is None else _state
-        key, initial_position = self.last_state
+        *,
+        save_intermediates: bool = False
+    ) -> tuple[Chain, tuple[Any, Q]]:
+        if not isinstance(key, (jnp.ndarray, np.ndarray)):
+            if isinstance(key, int):
+                key = random.PRNGKey(key)
+            else:
+                raise TypeError()
 
-        samples = tree_util.tree_map(
-            lambda arr: jnp.
-            empty_like(arr, shape=(num_samples, ) + jnp.shape(arr)),
-            initial_position
+        chain = self.init_chain(
+            num_samples, initial_position, save_intermediates
         )
-        depths = jnp.empty(num_samples, dtype=jnp.uint8)
-        divergences = jnp.empty(num_samples, dtype=bool)
-        chain = Chain(
-            samples=samples,
-            divergences=divergences,
-            acceptance=0.,
-            depths=depths
-        )
-        if self.dbg_info:
-            resampled_momenta = tree_util.tree_map(
-                lambda arr: jnp.empty_like(
-                    initial_position, shape=(num_samples, ) + jnp.shape(arr)
-                ), initial_position
-            )
-            _qp_proto = QP(initial_position, initial_position)
-            _tree_proto = Tree(
-                _qp_proto,
-                _qp_proto,
-                0.,
-                _qp_proto,
-                turning=True,
-                diverging=True,
-                depth=0,
-                cumulative_acceptance=0.
-            )
-            trees = tree_util.tree_map(
-                lambda leaf: jnp.
-                empty_like(leaf, shape=(num_samples, ) + jnp.shape(leaf)),
-                _tree_proto
-            )
-            chain = chain._replace(
-                resampled_momenta=resampled_momenta, trees=trees
-            )
 
         def amend_chain(idx, state):
-            key, prev_position, chain = state
+            chain, core_state = state
+            tree, core_state = self.sample_next_state(*core_state)
+            chain = self.update_chain(chain, idx, tree)
+            return chain, core_state
+
+        chain, core_state = fori_loop(
+            lower=0,
+            upper=num_samples,
+            body_fun=amend_chain,
+            init_val=(chain, (key, initial_position))
+        )
+
+        return chain, core_state
+
+
+class NUTSChain(_Sampler):
+    def __init__(
+        self,
+        potential_energy: Callable[[Q], Union[float, jnp.ndarray]],
+        inverse_mass_matrix,
+        position_proto: Q,
+        step_size: float = 1.0,
+        max_tree_depth: int = 10,
+        bias_transition: bool = True,
+        max_energy_difference: float = jnp.inf
+    ):
+        super().__init__(
+            potential_energy=potential_energy,
+            inverse_mass_matrix=inverse_mass_matrix,
+            position_proto=position_proto,
+            step_size=step_size,
+            max_energy_difference=max_energy_difference
+        )
+
+        if not isinstance(max_tree_depth, int):
+            raise TypeError()
+        self.bias_transition = bias_transition
+        self.max_tree_depth = max_tree_depth
+
+        def sample_next_state(key,
+                              prev_position: Q) -> tuple[Tree, tuple[Any, Q]]:
             key, key_momentum, key_nuts = random.split(key, 3)
 
             resampled_momentum = sample_momentum_from_diagonal(
@@ -169,165 +183,102 @@ class NUTSChain:
                 bias_transition=self.bias_transition,
                 max_energy_difference=self.max_energy_difference
             )
-            num_proposals = 2**tree.depth - 1
-            tree_acceptance = jnp.where(
-                num_proposals > 0, tree.cumulative_acceptance / num_proposals,
-                0.
-            )
+            return tree, (key, tree.proposal_candidate.position)
 
-            samples = tree_index_update(
-                chain.samples, idx, tree.proposal_candidate.position
-            )
-            divergences = chain.divergences.at[idx].set(tree.diverging)
-            depths = chain.depths.at[idx].set(tree.depth)
-            acceptance = (
-                chain.acceptance + (tree_acceptance - chain.acceptance) /
-                (idx + 1)
-            )
-            chain = chain._replace(
-                samples=samples,
-                divergences=divergences,
-                acceptance=acceptance,
-                depths=depths
-            )
-            if self.dbg_info:
-                resampled_momenta = tree_index_update(
-                    chain.resampled_momenta, idx, resampled_momentum
-                )
-                trees = tree_index_update(chain.trees, idx, tree)
-                chain = chain._replace(
-                    resampled_momenta=resampled_momenta, trees=trees
-                )
+        self.sample_next_state = sample_next_state
 
-            return (key, tree.proposal_candidate.position, chain)
-
-        # TODO: pass initial state as argument and donate to JIT
-        chain_assembly = lambda: fori_loop(
-            lower=0,
-            upper=num_samples,
-            body_fun=amend_chain,
-            init_val=(key, initial_position, chain)
-        )
-
-        if self.compile:
-            final_state = jit(chain_assembly)()
-        else:
-            final_state = chain_assembly()
-        self.last_state = final_state[:2]
-        return final_state[2]
-
-
-class HMCChain:
-    def __init__(
-        self,
-        potential_energy: Callable,
-        inverse_mass_matrix,
-        initial_position,
-        key,
-        num_steps,
-        step_size: float = 1.0,
-        compile=True,
-        dbg_info=False,
-        max_energy_difference: float = jnp.inf
-    ):
-        if not callable(potential_energy):
-            raise TypeError()
-        if not isinstance(num_steps, int):
-            raise TypeError()
-        if not isinstance(step_size, float):
-            raise TypeError()
-        if not isinstance(key, jnp.ndarray):
-            if isinstance(key, int):
-                key = random.PRNGKey(key)
-            else:
-                raise TypeError()
-
-        self.last_state = (key, initial_position)
-        self.potential_energy = potential_energy
-
-        if isinstance(inverse_mass_matrix, float):
-            self.inverse_mass_matrix = tree_util.tree_map(
-                lambda arr: jnp.full(arr.shape, inverse_mass_matrix),
-                initial_position
-            )
-        elif tree_util.tree_structure(
-            inverse_mass_matrix
-        ) == tree_util.tree_structure(initial_position):
-            shape_match_tree = tree_util.tree_map(
-                lambda a1, a2: a1.shape == a2.shape, inverse_mass_matrix,
-                initial_position
-            )
-            shape_and_structure_match = all(
-                tree_util.tree_flatten(shape_match_tree)
-            )
-            if shape_and_structure_match:
-                self.inverse_mass_matrix = inverse_mass_matrix
-            else:
-                raise ValueError(
-                    "inverse_mass_matrix has same tree_structe as initial_position but shapes don't match up"
-                )
-        else:
-            raise ValueError(
-                'inverse_mass_matrix must either be float or have same tree structure as initial_position'
-            )
-        self.mass_matrix_sqrt = self.inverse_mass_matrix**(-0.5)
-
-        self.num_steps = num_steps
-        self.step_size = step_size
-
-        def kinetic_energy(inverse_mass_matrix, momentum):
-            # NOTE, assume a diagonal mass-matrix
-            return inverse_mass_matrix.dot(momentum**2) / 2.
-
-        self.kinetic_energy = kinetic_energy
-        kinetic_energy_gradient = lambda inv_m, mom: inv_m * mom
-        potential_energy_gradient = grad(self.potential_energy)
-        self.stepper = partial(
-            leapfrog_step, potential_energy_gradient, kinetic_energy_gradient
-        )
-
-        self.max_energy_difference = max_energy_difference
-
-        self.compile = compile
-        self.dbg_info = dbg_info
-
-    # TODO: merge NUTSChain and HMCChain into a joined method
-    def generate_n_samples(
-        self,
-        num_samples,
-        _state: Optional[tuple[jnp.ndarray, Q]] = None
+    @staticmethod
+    def init_chain(
+        num_samples: int, position_proto, save_intermediates: bool
     ) -> Chain:
-        _state = self.last_state if _state is None else _state
-        key, initial_position = self.last_state
-
         samples = tree_util.tree_map(
             lambda arr: jnp.
             empty_like(arr, shape=(num_samples, ) + jnp.shape(arr)),
-            initial_position
+            position_proto
         )
+        depths = jnp.empty(num_samples, dtype=jnp.uint8)
         divergences = jnp.empty(num_samples, dtype=bool)
-        chain = Chain(samples=samples, divergences=divergences, acceptance=0.)
-        if self.dbg_info:
-            resampled_momenta = tree_util.tree_map(
-                lambda arr: jnp.empty_like(
-                    initial_position, shape=(num_samples, ) + jnp.shape(arr)
-                ), initial_position
-            )
-            _qp_proto = QP(initial_position, initial_position)
-            _acc_rej_proto = AcceptedAndRejected(
-                _qp_proto, _qp_proto, True, True
+        chain = Chain(
+            samples=samples,
+            divergences=divergences,
+            acceptance=0.,
+            depths=depths
+        )
+        if save_intermediates:
+            _qp_proto = QP(position_proto, position_proto)
+            _tree_proto = Tree(
+                _qp_proto,
+                _qp_proto,
+                0.,
+                _qp_proto,
+                turning=True,
+                diverging=True,
+                depth=0,
+                cumulative_acceptance=0.
             )
             trees = tree_util.tree_map(
                 lambda leaf: jnp.
                 empty_like(leaf, shape=(num_samples, ) + jnp.shape(leaf)),
-                _acc_rej_proto
+                _tree_proto
             )
-            chain = chain._replace(
-                resampled_momenta=resampled_momenta, trees=trees
-            )
+            chain = chain._replace(trees=trees)
 
-        def amend_chain(idx, state):
-            key, prev_position, chain = state
+        return chain
+
+    @staticmethod
+    def update_chain(
+        chain: Chain, idx: Union[jnp.ndarray, int], tree: Tree
+    ) -> Chain:
+        num_proposals = 2**tree.depth - 1
+        tree_acceptance = jnp.where(
+            num_proposals > 0, tree.cumulative_acceptance / num_proposals, 0.
+        )
+
+        samples = tree_index_update(
+            chain.samples, idx, tree.proposal_candidate.position
+        )
+        divergences = chain.divergences.at[idx].set(tree.diverging)
+        depths = chain.depths.at[idx].set(tree.depth)
+        acceptance = (
+            chain.acceptance + (tree_acceptance - chain.acceptance) / (idx + 1)
+        )
+        chain = chain._replace(
+            samples=samples,
+            divergences=divergences,
+            acceptance=acceptance,
+            depths=depths
+        )
+        if chain.trees is not None:
+            trees = tree_index_update(chain.trees, idx, tree)
+            chain = chain._replace(trees=trees)
+
+        return chain
+
+
+class HMCChain(_Sampler):
+    def __init__(
+        self,
+        potential_energy: Callable,
+        inverse_mass_matrix,
+        position_proto,
+        num_steps,
+        step_size: float = 1.0,
+        max_energy_difference: float = jnp.inf
+    ):
+        super().__init__(
+            potential_energy=potential_energy,
+            inverse_mass_matrix=inverse_mass_matrix,
+            position_proto=position_proto,
+            step_size=step_size,
+            max_energy_difference=max_energy_difference
+        )
+
+        if not isinstance(num_steps, (jnp.ndarray, int)):
+            raise TypeError()
+        self.num_steps = num_steps
+
+        def sample_next_state(key,
+                              prev_position: Q) -> tuple[Tree, tuple[Any, Q]]:
             key, key_choose, key_momentum_resample = random.split(key, 3)
 
             resampled_momentum = sample_momentum_from_diagonal(
@@ -347,40 +298,52 @@ class HMCChain:
                 step_size=self.step_size,
                 max_energy_difference=self.max_energy_difference
             )
+            return acc_rej, (key, acc_rej.accepted_qp.position)
 
-            samples = tree_index_update(
-                chain.samples, idx, acc_rej.accepted_qp.position
-            )
-            divergences = chain.divergences.at[idx].set(acc_rej.diverging)
-            acceptance = (
-                chain.acceptance + (acc_rej.accepted - chain.acceptance) /
-                (idx + 1)
-            )
-            chain = chain._replace(
-                samples=samples, divergences=divergences, acceptance=acceptance
-            )
-            if self.dbg_info:
-                resampled_momenta = tree_index_update(
-                    chain.resampled_momenta, idx, resampled_momentum
-                )
-                trees = tree_index_update(chain.trees, idx, acc_rej)
-                chain = chain._replace(
-                    resampled_momenta=resampled_momenta, trees=trees
-                )
+        self.sample_next_state = sample_next_state
 
-            return (key, acc_rej.accepted_qp.position, chain)
-
-        # TODO: pass initial state as argument and donate to JIT
-        chain_assembly = lambda: fori_loop(
-            lower=0,
-            upper=num_samples,
-            body_fun=amend_chain,
-            init_val=(key, initial_position, chain)
+    @staticmethod
+    def init_chain(
+        num_samples: int, position_proto, save_intermediates: bool
+    ) -> Chain:
+        samples = tree_util.tree_map(
+            lambda arr: jnp.
+            empty_like(arr, shape=(num_samples, ) + jnp.shape(arr)),
+            position_proto
         )
+        divergences = jnp.empty(num_samples, dtype=bool)
+        chain = Chain(samples=samples, divergences=divergences, acceptance=0.)
+        if save_intermediates:
+            _qp_proto = QP(position_proto, position_proto)
+            _acc_rej_proto = AcceptedAndRejected(
+                _qp_proto, _qp_proto, True, True
+            )
+            trees = tree_util.tree_map(
+                lambda leaf: jnp.
+                empty_like(leaf, shape=(num_samples, ) + jnp.shape(leaf)),
+                _acc_rej_proto
+            )
+            chain = chain._replace(trees=trees)
 
-        if self.compile:
-            final_state = jit(chain_assembly)()
-        else:
-            final_state = chain_assembly()
-        self.last_state = final_state[:2]
-        return final_state[2]
+        return chain
+
+    @staticmethod
+    def update_chain(
+        chain: Chain, idx: Union[jnp.ndarray, int], acc_rej: AcceptedAndRejected
+    ) -> Chain:
+        samples = tree_index_update(
+            chain.samples, idx, acc_rej.accepted_qp.position
+        )
+        divergences = chain.divergences.at[idx].set(acc_rej.diverging)
+        acceptance = (
+            chain.acceptance + (acc_rej.accepted - chain.acceptance) /
+            (idx + 1)
+        )
+        chain = chain._replace(
+            samples=samples, divergences=divergences, acceptance=acceptance
+        )
+        if chain.trees is not None:
+            trees = tree_index_update(chain.trees, idx, acc_rej)
+            chain = chain._replace(trees=trees)
+
+        return chain
