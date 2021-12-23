@@ -1,6 +1,109 @@
+import operator
+from jax import numpy as jnp
 from jax.tree_util import (
-    register_pytree_node_class, tree_map, tree_reduce, tree_structure
+    register_pytree_node_class, tree_leaves, tree_map, tree_structure
 )
+
+
+def _value_op(op, name=None):
+    def value_call(lhs, *args, **kwargs):
+        return op(lhs.val, *args, **kwargs)
+
+    name = op.__name__ if name is None else name
+    value_call.__name__ = f"__{name}__"
+    return value_call
+
+
+def _unary_op(op, name=None):
+    def unary_call(lhs):
+        return tree_map(op, lhs)
+
+    name = op.__name__ if name is None else name
+    unary_call.__name__ = f"__{name}__"
+    return unary_call
+
+
+def _broadcast_binary_op(op, lhs, rhs):
+    from itertools import repeat
+
+    flags = lhs.flags if isinstance(lhs, Field) else set()
+    flags |= rhs.flags if isinstance(rhs, Field) else set()
+    if "strict_domain_checking" in flags:
+        if rhs.domain != lhs.domain:
+            raise ValueError("domains are incompatible")
+    elif jnp.isscalar(lhs):
+        ts = tree_structure(rhs)
+        lhs = ts.unflatten(repeat(lhs, ts.num_leaves))
+    elif jnp.isscalar(rhs):
+        ts = tree_structure(lhs)
+        rhs = ts.unflatten(repeat(rhs, ts.num_leaves))
+
+    ts_lhs = tree_structure(lhs).num_nodes
+    ts_rhs = tree_structure(rhs).num_nodes
+    if ts_lhs != ts_rhs:
+        ve = f"invalid binary operation for {ts_lhs!r} and {ts_rhs!r}"
+        raise ValueError(ve)
+
+    out = tree_map(op, lhs, rhs)
+    out._flags = flags
+    return out
+
+
+def _binary_op(op, name=None):
+    def binary_call(lhs, rhs):
+        return _broadcast_binary_op(op, lhs, rhs)
+
+    name = op.__name__ if name is None else name
+    binary_call.__name__ = f"__{name}__"
+    return binary_call
+
+
+def _rev_binary_op(op, name=None):
+    def binary_call(lhs, rhs):
+        return _broadcast_binary_op(op, rhs, lhs)
+
+    name = op.__name__ if name is None else name
+    binary_call.__name__ = f"__r{name}__"
+    return binary_call
+
+
+def _fwd_rev_binary_op(op, name=None):
+    return (_binary_op(op, name=name), _rev_binary_op(op, name=name))
+
+
+def matmul(lhs, rhs):
+    """Returns the dot product of the two fields.
+
+    Parameters
+    ----------
+    lhs : object
+        Arbitrary, flatten-able objects.
+    other : object
+        Arbitrary, flatten-able objects.
+
+    Returns
+    -------
+    out : float
+        Dot product of fields.
+    """
+    from .forest_util import dot
+
+    flags = lhs.flags if isinstance(lhs, Field) else set()
+    flags |= rhs.flags if isinstance(rhs, Field) else set()
+    if "strict_domain_checking" in flags:
+        if rhs.domain != lhs.domain:
+            raise ValueError("domains are incompatible.")
+
+    ts_lhs = tree_structure(lhs).num_nodes
+    ts_rhs = tree_structure(rhs).num_nodes
+    if ts_lhs != ts_rhs:
+        ve = f"invalid binary operation for {ts_lhs!r} and {ts_rhs!r}"
+        raise ValueError(ve)
+
+    return dot(lhs, rhs)
+
+
+dot = matmul
 
 
 @register_pytree_node_class
@@ -96,30 +199,12 @@ class Field():
             flags=self.flags if flags is None else flags
         )
 
-    def dot(self, other):
-        """Returns the dot product of this field with another flatten-able
-        object.
-
-        Parameters
-        ----------
-        other : object
-            Arbitrary, flatten-able objects.
-
-        Returns
-        -------
-        out : float
-            Dot product of fields.
-        """
-        from .forest_util import dot
-
-        if isinstance(other, Field):
-            if "strict_domain_checking" in self.flags | other.flags:
-                if other.domain != self.domain:
-                    raise ValueError("domains are incompatible.")
-        return dot(self._val, other._val)
+    @property
+    def size(self):
+        return sum(jnp.size(el) for el in tree_leaves(self))
 
     def __str__(self):
-        s = f"Field(\n{self._val}"
+        s = f"Field(\n{self.val}"
         if self._domain:
             s += f",\ndomain={self._domain}"
         if self._flags:
@@ -128,7 +213,7 @@ class Field():
         return s
 
     def __repr__(self):
-        s = f"Field(\n{self._val!r}"
+        s = f"Field(\n{self.val!r}"
         if self._domain:
             s += f",\ndomain={self._domain!r}"
         if self._flags:
@@ -137,134 +222,57 @@ class Field():
         return s
 
     def ravel(self):
-        from jax.numpy import ravel
-        return self.new(tree_map(ravel, self.val))
-
-    def _val_op(self, op, *args, **kwargs):
-        return getattr(self._val, op)(*args, **kwargs)
-
-    def _unary_op(self, op):
-        return self.new(tree_map(lambda c: getattr(c, op)(), self._val))
-
-    def _type_check_and_broadcast(self, other):
-        from jax.numpy import ndim
-
-        flags = None
-        if isinstance(other, Field):
-            flags = self.flags | other.flags
-            if "strict_domain_checking" in flags:
-                if other.domain != self.domain:
-                    raise ValueError("domains are incompatible")
-        elif ndim(other) == 0:
-            from itertools import repeat
-
-            ts = tree_structure(self)
-            other = ts.unflatten(repeat(other, ts.num_leaves))
-        else:
-            te = f"invalid binary operation for Field and {type(other)}"
-            raise TypeError(te)
-
-        return other
-
-    def _binary_op(self, other, op):
-        other = self._type_check_and_broadcast(other)
-        return self.new(
-            tree_map(lambda s, o: getattr(s, op)(o), self._val, other._val),
-            flags=flags
-        )
+        return self.new(tree_map(jnp.ravel, self.val))
 
     def __bool__(self):
         return bool(self.val)
 
-    # NOTE, this highly redundant code could be abstracted away using
-    # `setattr`. However, a naive implementation would mask python's operation
-    # reversal if `NotImplemented` is returned. A more elusive implementation
-    # would necessarily need to re-implement this logic and incur a performance
-    # penalty.
+    def __hash__(self):
+        return hash(tuple(tree_leaves(self)))
 
-    def __add__(self, other):
-        other = self._type_check_and_broadcast(other)
-        return self.new(tree_map(lambda a, b: a + b, self.val, other.val))
+    # NOTE, this partly redundant code could be abstracted away using
+    # `setattr`. However, static code analyzers will not be able to infer the
+    # properties then.
 
-    def __radd__(self, other):
-        other = self._type_check_and_broadcast(other)
-        return self.new(tree_map(lambda a, b: b + a, self.val, other.val))
+    __add__, _radd__ = _fwd_rev_binary_op(operator.add)
+    __sub__, __rsub__ = _fwd_rev_binary_op(operator.sub)
+    __mul__, __rmul__ = _fwd_rev_binary_op(operator.mul)
+    __truediv__, __rtruediv__ = _fwd_rev_binary_op(operator.truediv)
+    __floordiv__, __rfloordiv__ = _fwd_rev_binary_op(operator.floordiv)
+    __pow__, __rpow__ = _fwd_rev_binary_op(operator.pow)
+    __mod__, __rmod__ = _fwd_rev_binary_op(operator.mod)
+    __matmul__ = __rmatmul__ = matmul  # arguments of matmul commute
 
-    def __sub__(self, other):
-        other = self._type_check_and_broadcast(other)
-        return self.new(tree_map(lambda a, b: a - b, self.val, other.val))
+    def __divmod__(self, other):
+        return self // other, self % other
 
-    def __rsub__(self, other):
-        other = self._type_check_and_broadcast(other)
-        return self.new(tree_map(lambda a, b: b - a, self.val, other.val))
+    def __rdivmod__(self, other):
+        return other // self, other % self
 
-    def __mul__(self, other):
-        other = self._type_check_and_broadcast(other)
-        return self.new(tree_map(lambda a, b: a * b, self.val, other.val))
+    __or__, __ror__ = _fwd_rev_binary_op(operator.or_, "or")
+    __xor__, __rxor__ = _fwd_rev_binary_op(operator.xor)
+    __and__, __rand__ = _fwd_rev_binary_op(operator.and_, "and")
+    __lshift__, __rlshift__ = _fwd_rev_binary_op(operator.lshift)
+    __rshift__, __rrshift__ = _fwd_rev_binary_op(operator.rshift)
 
-    def __rmul__(self, other):
-        other = self._type_check_and_broadcast(other)
-        return self.new(tree_map(lambda a, b: b * a, self.val, other.val))
+    __lt__ = _binary_op(operator.lt)
+    __le__ = _binary_op(operator.le)
+    __eq__ = _binary_op(operator.eq)
+    __ne__ = _binary_op(operator.ne)
+    __ge__ = _binary_op(operator.ge)
+    __gt__ = _binary_op(operator.gt)
 
-    def __or__(self, other):
-        other = self._type_check_and_broadcast(other)
-        return self.new(tree_map(lambda a, b: a | b, self.val, other.val))
+    __neg__ = _unary_op(operator.neg)
+    __pos__ = _unary_op(operator.pos)
+    __abs__ = _unary_op(operator.abs)
+    __invert__ = _unary_op(operator.invert)
 
-    def __ror__(self, other):
-        other = self._type_check_and_broadcast(other)
-        return self.new(tree_map(lambda a, b: b | a, self.val, other.val))
+    conj = conjugate = _unary_op(jnp.conj)
+    real = _unary_op(jnp.real)
+    imag = _unary_op(jnp.imag)
+    dot = matmul
 
-    def __truediv__(self, other):
-        other = self._type_check_and_broadcast(other)
-        return self.new(tree_map(lambda a, b: a / b, self.val, other.val))
-
-    def __rtruediv__(self, other):
-        other = self._type_check_and_broadcast(other)
-        return self.new(tree_map(lambda a, b: b / a, self.val, other.val))
-
-    def __floordiv__(self, other):
-        other = self._type_check_and_broadcast(other)
-        return self.new(tree_map(lambda a, b: a // b, self.val, other.val))
-
-    def __rfloordiv__(self, other):
-        other = self._type_check_and_broadcast(other)
-        return self.new(tree_map(lambda a, b: b // a, self.val, other.val))
-
-    def __pow__(self, other):
-        other = self._type_check_and_broadcast(other)
-        return self.new(tree_map(lambda a, b: a**b, self.val, other.val))
-
-    def __rpow__(self, other):
-        other = self._type_check_and_broadcast(other)
-        return self.new(tree_map(lambda a, b: b**a, self.val, other.val))
-
-
-for op in ["__neg__", "__pos__", "__abs__", "__invert__"]:
-
-    def func(op):
-        def func2(self):
-            return self._unary_op(op)
-
-        return func2
-
-    setattr(Field, op, func(op))
-
-for op in ["__lt__", "__le__", "__gt__", "__ge__", "__eq__", "__ne__"]:
-
-    def func(op):
-        def func2(self, other):
-            return self._binary_op(other, op)
-
-        return func2
-
-    setattr(Field, op, func(op))
-
-for op in ["__getitem__", "__contains__", "__iter__", "__len__"]:
-
-    def func(op):
-        def func2(self, *args, **kwargs):
-            return self._val_op(op, *args, **kwargs)
-
-        return func2
-
-    setattr(Field, op, func(op))
+    __getitem__ = _value_op(operator.getitem)
+    __contains__ = _value_op(operator.contains)
+    __len__ = _value_op(len)
+    __iter__ = _value_op(iter)

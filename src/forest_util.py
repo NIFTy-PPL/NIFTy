@@ -1,4 +1,5 @@
 from functools import partial
+import operator
 from jax import lax
 from jax import numpy as jnp
 from jax.tree_util import (
@@ -117,16 +118,16 @@ def size(tree, axis: Optional[int] = None) -> Union[int, jnp.ndarray]:
     return tree_reduce(jnp.add, sizes)
 
 
+def _zeros_like(x, dtype, shape):
+    if hasattr(x, "shape") and hasattr(x, "dtype"):
+        shp = x.shape if shape is None else shape
+        dtp = x.dtype if dtype is None else dtype
+        return jnp.zeros(shape=shp, dtype=dtp)
+    return jnp.zeros_like(x, dtype=dtype, shape=shape)
+
+
 def zeros_like(a, dtype=None, shape=None):
-
-    def zl(x, dtype, shape):
-        if hasattr(x, "shape") and hasattr(x, "dtype"):
-            shp = x.shape if shape is None else shape
-            dtp = x.dtype if dtype is None else dtype
-            return jnp.zeros(shape=shp, dtype=dtp)
-        return jnp.zeros_like(x, dtype=dtype, shape=shape)
-
-    return tree_map(partial(zl, dtype=dtype, shape=shape), a)
+    return tree_map(partial(_zeros_like, dtype=dtype, shape=shape), a)
 
 
 def norm(tree, ord, *, ravel: bool):
@@ -144,16 +145,20 @@ def norm(tree, ord, *, ravel: bool):
     return norm(tree_leaves(tree_map(el_norm, tree)), ord=ord)
 
 
+def _ravel(x):
+    return x.ravel() if hasattr(x, "ravel") else jnp.ravel(x)
+
+
 def dot(a, b, *, precision=None):
     tree_of_dots = tree_map(
-        lambda x, y: jnp.dot(x.ravel(), y.ravel(), precision=precision), a, b
+        lambda x, y: jnp.dot(_ravel(x), _ravel(y), precision=precision), a, b
     )
-    return tree_reduce(jnp.add, tree_of_dots, 0.)
+    return tree_reduce(operator.add, tree_of_dots, 0.)
 
 
 def vdot(a, b, *, precision=None):
     tree_of_vdots = tree_map(
-        lambda x, y: jnp.vdot(x.ravel(), y.ravel(), precision=precision), a, b
+        lambda x, y: jnp.vdot(_ravel(x), _ravel(y), precision=precision), a, b
     )
     return tree_reduce(jnp.add, tree_of_vdots, 0.)
 
