@@ -73,6 +73,7 @@ def _cg(
 
     common_dtp = common_type(j)
     eps = 6. * jnp.finfo(common_dtp).eps  # taken from SciPy's NewtonCG minimzer
+    tiny = 6. * jnp.finfo(common_dtp).tiny
 
     if x0 is None:
         pos = zeros_like(j)
@@ -126,7 +127,7 @@ def _cg(
         if time_threshold is not None and datetime.now() > time_threshold:
             info = i
             break
-        if gamma == 0:
+        if gamma >= 0. and gamma <= tiny:
             nm = "CG" if name is None else name
             print(f"{nm}: gamma=0, converged!", file=sys.stderr)
             info = 0
@@ -198,9 +199,8 @@ def _static_cg(
         resnorm = jnp.maximum(tol * jft_norm(j, ord=norm_ord, ravel=True), atol)
 
     common_dtp = common_type(j)
-    eps = 6. * jnp.finfo(
-        common_dtp
-    ).eps  # Inspired by SciPy's NewtonCG minimzer
+    eps = 6. * jnp.finfo(common_dtp).eps  # taken from SciPy's NewtonCG minimzer
+    tiny = 6. * jnp.finfo(common_dtp).tiny
 
     def continue_condition(v):
         return v["info"] < -1
@@ -232,7 +232,7 @@ def _static_cg(
         )
         gamma = sum_of_squares(r)
 
-        info = jnp.where((gamma == 0.) & (info != -1), 0, info)
+        info = jnp.where((gamma >= 0.) & (gamma <= tiny) & (info != -1), 0, info)
         if resnorm is not None:
             norm = jft_norm(r, ord=norm_ord, ravel=True)
             if name is not None:
