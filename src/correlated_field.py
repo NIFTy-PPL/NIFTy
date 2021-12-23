@@ -1,12 +1,13 @@
-from typing import Callable, Optional, Tuple, Union
+from __future__ import annotations
 from collections.abc import Mapping
-
-import sys
 from functools import partial
+import sys
+from typing import Callable, Optional, Union
+
 from jax import numpy as jnp
 
 from .forest_util import ShapeWithDtype
-from .stats_distributions import normal_prior, lognormal_prior
+from .stats_distributions import lognormal_prior, normal_prior
 from .sugar import ducktape
 
 
@@ -97,7 +98,8 @@ def non_parametric_amplitude(
     loglogavgslope: Callable,
     flexibility: Optional[Callable] = None,
     asperity: Optional[Callable] = None,
-    prefix: str = ""
+    prefix: str = "",
+    kind: str = "amplitude",
 ):
     totvol = domain.get("position_space_total_volume", 1.)
     rel_log_mode_len = domain["relative_log_mode_lengths"]
@@ -105,30 +107,30 @@ def non_parametric_amplitude(
     log_vol = domain.get("log_volume")
 
     ptree = {}
-    fluctuations = ducktape(fluctuations, prefix + "_fluctuations")
-    ptree[prefix + "_fluctuations"] = ShapeWithDtype(())
-    loglogavgslope = ducktape(loglogavgslope, prefix + "_loglogavgslope")
-    ptree[prefix + "_loglogavgslope"] = ShapeWithDtype(())
+    fluctuations = ducktape(fluctuations, prefix + "fluctuations")
+    ptree[prefix + "fluctuations"] = ShapeWithDtype(())
+    loglogavgslope = ducktape(loglogavgslope, prefix + "loglogavgslope")
+    ptree[prefix + "loglogavgslope"] = ShapeWithDtype(())
     if flexibility is not None:
-        flexibility = ducktape(flexibility, prefix + "_flexibility")
-        ptree[prefix + "_flexibility"] = ShapeWithDtype(())
+        flexibility = ducktape(flexibility, prefix + "flexibility")
+        ptree[prefix + "flexibility"] = ShapeWithDtype(())
         # Register the parameters for the spectrum
         assert log_vol is not None
         assert rel_log_mode_len.ndim == log_vol.ndim == 1
-        ptree[prefix + "_spectrum"] = ShapeWithDtype((2, ) + log_vol.shape)
+        ptree[prefix + "spectrum"] = ShapeWithDtype((2, ) + log_vol.shape)
     if asperity is not None:
-        asperity = ducktape(asperity, prefix + "_asperity")
-        ptree[prefix + "_asperity"] = ShapeWithDtype(())
+        asperity = ducktape(asperity, prefix + "asperity")
+        ptree[prefix + "asperity"] = ShapeWithDtype(())
 
     def correlate(primals: Mapping) -> jnp.ndarray:
         flu = fluctuations(primals)
         slope = loglogavgslope(primals)
         slope *= rel_log_mode_len
-        ln_amplitude = slope
+        ln_spectrum = slope
 
         if flexibility is not None:
             assert log_vol is not None
-            xi_spc = primals[prefix + "_spectrum"]
+            xi_spc = primals[prefix + "spectrum"]
             flx = flexibility(primals)
             sig_flx = flx * jnp.sqrt(log_vol)
             sig_flx = jnp.broadcast_to(sig_flx, (2, ) + log_vol.shape)
@@ -150,15 +152,22 @@ def non_parametric_amplitude(
 
             twolog = _twolog_integrate(log_vol, asp)
             wo_slope = _remove_slope(rel_log_mode_len, twolog)
-            ln_amplitude += wo_slope
+            ln_spectrum += wo_slope
 
         # Exponentiate and norm the power spectrum
-        amplitude = jnp.exp(ln_amplitude)
+        spectrum = jnp.exp(ln_spectrum)
         # Take the sqrt of the integral of the slope w/o fluctuations and
         # zero-mode while taking into account the multiplicity of each mode
-        norm = jnp.sqrt(jnp.sum(mode_multiplicity[1:] * amplitude[1:]**2))
-        norm /= jnp.sqrt(totvol)  # Due to integral in harmonic space
-        amplitude *= flu * (jnp.sqrt(totvol) / norm)
+        if kind.lower() == "amplitude":
+            norm = jnp.sqrt(jnp.sum(mode_multiplicity[1:] * spectrum[1:]**2))
+            norm /= jnp.sqrt(totvol)  # Due to integral in harmonic space
+            amplitude = flu * (jnp.sqrt(totvol) / norm) * spectrum
+        elif kind.lower() == "power":
+            norm = jnp.sqrt(jnp.sum(mode_multiplicity[1:] * spectrum[1:]))
+            norm /= jnp.sqrt(totvol)  # Due to integral in harmonic space
+            amplitude = flu * (jnp.sqrt(totvol) / norm) * jnp.sqrt(spectrum)
+        else:
+            raise ValueError(f"invalid kind specified {kind!r}")
         amplitude = amplitude.at[0].set(totvol)
         return amplitude
 
@@ -207,6 +216,7 @@ class CorrelatedFieldMaker():
         asperity: Union[tuple, Callable, None] = None,
         prefix: str = "",
         harmonic_domain_type: str = "fourier",
+        non_parametric_kind: str = "amplitude",
     ):
         """Adds a correlation structure to the to-be-made field.
 
@@ -214,11 +224,13 @@ class CorrelatedFieldMaker():
         which they apply.
 
         The parameters `fluctuations`, `flexibility`, `asperity` and
-        `loglogavgslope` configure the amplitude spectrum model used on the
-        target field subdomain of type `harmonic_domain_type`. It is assembled
-        as the sum of a power law component (linear slope in log-log
-        amplitude-frequency-space), a smooth varying component (integrated
-        Wiener process) and a ragged component (un-integrated Wiener process).
+        `loglogavgslope` configure either the amplitude or the power
+        spectrum model used on the target field subdomain of type
+        `harmonic_domain_type`. It is assembled as the sum of a power
+        law component (linear slope in log-log
+        amplitude-frequency-space), a smooth varying component
+        (integrated Wiener process) and a ragged component
+        (un-integrated Wiener process).
 
         Multiple calls to `add_fluctuations` are possible, in which case
         the constructed field will have the outer product of the individual
@@ -313,14 +325,15 @@ class CorrelatedFieldMaker():
             loglogavgslope=slp,
             flexibility=flx,
             asperity=asp,
-            prefix=self._prefix + "_" + prefix
+            prefix=self._prefix + prefix,
+            kind=non_parametric_kind,
         )
         self._fluctuations.append(npa)
         self._target_subdomains.append(domain)
         self._parameter_tree.update(ptree)
 
     def set_amplitude_total_offset(
-        self, offset_mean: float, offset_std: Union[Tuple, Callable]
+        self, offset_mean: float, offset_std: Union[tuple, Callable]
     ):
         """Sets the zero-mode for the combined amplitude operator
 
@@ -344,11 +357,11 @@ class CorrelatedFieldMaker():
                 raise TypeError
             zm = lognormal_prior(*offset_std)
 
-        self._azm = ducktape(zm, self._prefix + "_zeromode")
-        self._parameter_tree[self._prefix + "_zeromode"] = ShapeWithDtype(())
+        self._azm = ducktape(zm, self._prefix + "zeromode")
+        self._parameter_tree[self._prefix + "zeromode"] = ShapeWithDtype(())
 
     @property
-    def amplitude_total_offset(self):
+    def amplitude_total_offset(self) -> Callable:
         """Returns the total offset of the amplitudes"""
         if self._azm is None:
             nie = "You need to set the `amplitude_total_offset` first"
@@ -361,7 +374,7 @@ class CorrelatedFieldMaker():
         return self.amplitude_total_offset
 
     @property
-    def fluctuations(self):
+    def fluctuations(self) -> tuple[Callable, ...]:
         """Returns the added fluctuations, i.e. un-normalized amplitudes
 
         Their scales are only meaningful relative to one another. Their
@@ -369,7 +382,7 @@ class CorrelatedFieldMaker():
         """
         return tuple(self._fluctuations)
 
-    def get_normalized_amplitudes(self):
+    def get_normalized_amplitudes(self) -> tuple[Callable, ...]:
         """Returns the normalized amplitude operators used in the final model
 
         The amplitude operators are corrected for the otherwise degenerate
@@ -385,7 +398,7 @@ class CorrelatedFieldMaker():
         return tuple(_mk_normed_amp(amp) for amp in self._fluctuations)
 
     @property
-    def amplitude(self):
+    def amplitude(self) -> Callable:
         """Returns the added fluctuation, i.e. un-normalized amplitude"""
         if len(self._fluctuations) > 1:
             s = (
@@ -401,7 +414,17 @@ class CorrelatedFieldMaker():
 
         return ampliude_w_zm
 
-    def finalize(self):
+    @property
+    def power_spectrum(self) -> Callable:
+        """Returns the power spectrum"""
+        amp = self.amplitude
+
+        def power(p):
+            return amp(p)**2
+
+        return power
+
+    def finalize(self) -> tuple[Callable, dict[str, ShapeWithDtype]]:
         """Finishes off the model construction process and returns the
         constructed operator.
         """
@@ -418,7 +441,7 @@ class CorrelatedFieldMaker():
             harmonic_transforms.append(partial(hartley, axes=axes))
         # Register the parameters for the excitations in harmonic space
         # TODO: actually account for the dtype here
-        pfx = self._prefix + "_excitations"
+        pfx = self._prefix + "xi"
         self._parameter_tree[pfx] = ShapeWithDtype(excitation_shape)
 
         def outer_harmonic_transform(p):
@@ -449,7 +472,7 @@ class CorrelatedFieldMaker():
 
         def correlated_field(p):
             ea = outer_amplitude(p)
-            cf_h = self.azm(p) * ea * p[self._prefix + "_excitations"]
+            cf_h = self.azm(p) * ea * p[self._prefix + "xi"]
             return self._offset_mean + outer_harmonic_transform(cf_h)
 
         return correlated_field, self._parameter_tree.copy()

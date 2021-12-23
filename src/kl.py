@@ -1,20 +1,19 @@
+from __future__ import annotations
 from collections.abc import Sequence
+from functools import partial
 from typing import Callable, Optional
 
-from functools import partial
 from jax import random
 from jax.tree_util import Partial
 
 from . import conjugate_gradient
 from .forest_util import vmap_forest_mean
 from .likelihood import Likelihood, StandardHamiltonian
-from .sugar import random_like, random_like_shapewdtype
+from .sugar import random_like
 
 
 def sample_likelihood(likelihood: Likelihood, primals, key):
-    white_sample = random_like_shapewdtype(
-        key, likelihood.left_sqrt_metric_tangents_shape
-    )
+    white_sample = random_like(key, likelihood.left_sqrt_metric_tangents_shape)
     return likelihood.left_sqrt_metric(primals, white_sample)
 
 
@@ -45,7 +44,7 @@ def _sample_standard_hamiltonian(
     nll_smpl = sample_likelihood(
         hamiltonian.likelihood, primals, key=subkey_nll
     )
-    prr_inv_metric_smpl = random_like(primals, key=subkey_prr)
+    prr_inv_metric_smpl = random_like(key=subkey_prr, primals=primals)
     # One may transform any metric sample to a sample of the inverse
     # metric by simply applying the inverse metric to it
     prr_smpl = prr_inv_metric_smpl

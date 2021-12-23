@@ -1,10 +1,11 @@
-import sys
+from __future__ import annotations
 from datetime import datetime
+import sys
+from typing import Any, Callable, Mapping, NamedTuple, Optional, Tuple, Union
+
 from jax import lax
 from jax import numpy as jnp
 from jax.tree_util import Partial
-
-from typing import Any, Callable, NamedTuple, Mapping, Optional, Tuple, Union
 
 from . import conjugate_gradient
 from .forest_util import common_type, size, where

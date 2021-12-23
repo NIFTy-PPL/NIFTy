@@ -10,6 +10,19 @@ from typing import Any, Callable, Optional, Tuple, Union
 from .sugar import is1d
 
 
+def split(mappable, keys):
+    """Split a dictionary into one containing only the specified keys and one
+    with all of the remaining ones.
+    """
+    sel, rest = {}, {}
+    for k, v in mappable.items():
+        if k in keys:
+            sel[k] = v
+        else:
+            rest[k] = v
+    return sel, rest
+
+
 class ShapeWithDtype():
     """Minimal helper class storing the shape and dtype of an object.
 
@@ -105,7 +118,15 @@ def size(tree, axis: Optional[int] = None) -> Union[int, jnp.ndarray]:
 
 
 def zeros_like(a, dtype=None, shape=None):
-    return tree_map(partial(jnp.zeros_like, dtype=dtype, shape=shape), a)
+
+    def zl(x, dtype, shape):
+        if hasattr(x, "shape") and hasattr(x, "dtype"):
+            shp = x.shape if shape is None else shape
+            dtp = x.dtype if dtype is None else dtype
+            return jnp.zeros(shape=shp, dtype=dtp)
+        return jnp.zeros_like(x, dtype=dtype, shape=shape)
+
+    return tree_map(partial(zl, dtype=dtype, shape=shape), a)
 
 
 def norm(tree, ord, *, ravel: bool):
@@ -121,6 +142,20 @@ def norm(tree, ord, *, ravel: bool):
             return jnp.abs(x) if jnp.ndim(x) == 0 else norm(x, ord=ord)
 
     return norm(tree_leaves(tree_map(el_norm, tree)), ord=ord)
+
+
+def dot(a, b, *, precision=None):
+    tree_of_dots = tree_map(
+        lambda x, y: jnp.dot(x.ravel(), y.ravel(), precision=precision), a, b
+    )
+    return tree_reduce(jnp.add, tree_of_dots, 0.)
+
+
+def vdot(a, b, *, precision=None):
+    tree_of_vdots = tree_map(
+        lambda x, y: jnp.vdot(x.ravel(), y.ravel(), precision=precision), a, b
+    )
+    return tree_reduce(jnp.add, tree_of_vdots, 0.)
 
 
 def select(pred, on_true, on_false):

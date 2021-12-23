@@ -1,18 +1,18 @@
+from __future__ import annotations
 from functools import partial
-from jax import numpy as jnp
-from jax import random, tree_util
-from jax.scipy.special import expit
-from jax.lax import population_count
-
 from typing import Callable, NamedTuple, TypeVar, Union
 
-from .disable_jax_control_flow import cond, while_loop, fori_loop
-from .sugar import random_like
+from jax import numpy as jnp
+from jax import random, tree_util
+from jax.experimental import host_callback
+from jax.lax import population_count
+from jax.scipy.special import expit
+
+from .disable_jax_control_flow import cond, fori_loop, while_loop
 from .forest_util import select
+from .sugar import random_like
 
 _DEBUG_FLAG = False
-
-from jax.experimental import host_callback
 
 _DEBUG_TREE_END_IDXS = []
 _DEBUG_SUBTREE_END_IDXS = []
@@ -73,7 +73,7 @@ def sample_momentum_from_diagonal(*, key, mass_matrix_sqrt):
         as (possibly pytree of) ndarray vector containing the entries of the
         diagonal.
     """
-    normal = random_like(mass_matrix_sqrt, key=key, rng=random.normal)
+    normal = random_like(key=key, primals=mass_matrix_sqrt, rng=random.normal)
     return tree_util.tree_map(jnp.multiply, mass_matrix_sqrt, normal)
 
 

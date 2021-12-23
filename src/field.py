@@ -110,16 +110,13 @@ class Field():
         out : float
             Dot product of fields.
         """
-        from jax.numpy import add, dot
+        from .forest_util import dot
 
         if isinstance(other, Field):
             if "strict_domain_checking" in self.flags | other.flags:
                 if other.domain != self.domain:
                     raise ValueError("domains are incompatible.")
-        tree_dot = tree_map(
-            lambda x, y: dot(x.ravel(), y.ravel()), self._val, other._val
-        )
-        return tree_reduce(add, tree_dot, 0.)
+        return dot(self._val, other._val)
 
     def __str__(self):
         s = f"Field(\n{self._val}"
