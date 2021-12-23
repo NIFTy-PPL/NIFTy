@@ -3,8 +3,8 @@
 import jax.numpy as jnp
 import pytest
 from functools import partial
-from jax import eval_shape, random
-from jax.tree_util import tree_map, tree_leaves
+from jax import random
+from jax.tree_util import tree_map
 from numpy.testing import assert_allclose
 
 import jifty1 as jft
