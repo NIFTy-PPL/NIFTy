@@ -4,7 +4,7 @@ config.update("jax_enable_x64", True)
 
 import sys
 
-from jax import numpy as np
+from jax import numpy as jnp
 from jax import random
 from jax import value_and_grad, jit
 
@@ -13,7 +13,7 @@ import jifty1 as jft
 
 @jit
 def cosine_similarity(x, y):
-    return np.dot(x, y) / (np.linalg.norm(x) * np.linalg.norm(y))
+    return jnp.dot(x, y) / (jnp.linalg.norm(x) * jnp.linalg.norm(y))
 
 
 def hartley(p, axes=None):
@@ -34,21 +34,21 @@ if __name__ == "__main__":
     n_mgvi_iterations = 3
     n_samples = 4
     n_newton_iterations = 5
-    absdelta = 1e-4 * np.prod(np.array(dims))
+    absdelta = 1e-4 * jnp.prod(jnp.array(dims))
 
     cf = {"loglogavgslope": 2.}
     loglogslope = cf["loglogavgslope"]
     power_spectrum = lambda k: 1. / (k**loglogslope + 1.)
 
-    modes = np.arange((dims[0] / 2) + 1., dtype=float)
+    modes = jnp.arange((dims[0] / 2) + 1., dtype=float)
     harmonic_power = power_spectrum(modes)
     # Every mode appears exactly two times, first ascending then descending
     # Save a little on the computational side by mirroring the ascending part
-    harmonic_power = np.concatenate((harmonic_power, harmonic_power[-2:0:-1]))
+    harmonic_power = jnp.concatenate((harmonic_power, harmonic_power[-2:0:-1]))
 
     # Specify the model
     correlated_field = lambda x: hartley(harmonic_power * x.val)
-    signal_response = lambda x: np.exp(1. + correlated_field(x))
+    signal_response = lambda x: jnp.exp(1. + correlated_field(x))
     noise_cov = lambda x: 0.1**2 * x
     noise_cov_inv = lambda x: 0.1**-2 * x
 
@@ -57,8 +57,8 @@ if __name__ == "__main__":
     pos_truth = jft.Field(random.normal(shape=dims, key=key))
     signal_response_truth = signal_response(pos_truth)
     key, subkey = random.split(key)
-    noise_truth = np.sqrt(noise_cov(np.ones(dims))
-                         ) * random.normal(shape=dims, key=key)
+    noise_truth = jnp.sqrt(noise_cov(jnp.ones(dims))
+                          ) * random.normal(shape=dims, key=key)
     data = signal_response_truth + noise_truth
 
     nll = jft.Gaussian(data, noise_cov_inv) @ signal_response
@@ -72,10 +72,11 @@ if __name__ == "__main__":
         lambda p, s: ham.energy(p + s), in_axes=(None, 0)
     )
     kl_vag = jit(value_and_grad(kl_energy))
-    kl_metric = jit(jft.vmap_forest_mean(
-        lambda p, s, t: ham.metric(p + s, t),
-        in_axes=(None, 0, None)
-    ))
+    kl_metric = jit(
+        jft.vmap_forest_mean(
+            lambda p, s, t: ham.metric(p + s, t), in_axes=(None, 0, None)
+        )
+    )
 
     # Minimize the potential
     for i in range(n_mgvi_iterations):
@@ -94,7 +95,6 @@ if __name__ == "__main__":
         kl_metric_at = lambda p, t: kl_metric(p, tuple(mkl.samples), t)
 
         print("Minimizing...", file=sys.stderr)
-        # TODO: Re-introduce a simplified version that works without fields
         opt_state = jft.minimize(
             None,
             x0=pos,
@@ -111,7 +111,7 @@ if __name__ == "__main__":
             (
                 f"Post MGVI Iteration {i}: Energy {mkl(pos):2.4e}"
                 f"; Cos-Sim {cosine_similarity(pos.val, pos_truth.val):2.3%}"
-                f"; #NaNs {np.isnan(pos.val).sum()}"
+                f"; #NaNs {jnp.isnan(pos.val).sum()}"
             ),
             file=sys.stderr
         )

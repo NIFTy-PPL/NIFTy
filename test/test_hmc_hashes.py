@@ -1,6 +1,6 @@
 import sys
 from numpy import ndarray
-from jax import numpy as np
+from jax import numpy as jnp
 
 import jifty1 as jft
 
@@ -35,9 +35,9 @@ def hashit(obj, n_chars=8) -> str:
 def test_hmc_hash():
     """Test sapmler output against known hash from previous commits."""
     sampler = jft.HMCChain(
-        potential_energy=lambda x: np.sum(x**2),
+        potential_energy=lambda x: jnp.sum(x**2),
         inverse_mass_matrix=1.,
-        initial_position=np.array([0.1, 1.223]),
+        initial_position=jnp.array([0.1, 1.223]),
         key=42,
         step_size=0.193,
         num_steps=100,
@@ -59,9 +59,9 @@ def test_hmc_hash():
 def test_nuts_hash():
     """Test sapmler output against known hash from previous commits."""
     sampler = jft.NUTSChain(
-        potential_energy=lambda x: np.sum(x**2),
+        potential_energy=lambda x: jnp.sum(x**2),
         inverse_mass_matrix=1.,
-        initial_position=np.array([0.1, 1.223]),
+        initial_position=jnp.array([0.1, 1.223]),
         step_size=0.193,
         max_tree_depth=10,
         key=42,

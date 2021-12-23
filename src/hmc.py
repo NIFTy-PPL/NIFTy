@@ -1,5 +1,5 @@
 from functools import partial
-from jax import numpy as np
+from jax import numpy as jnp
 from jax import random, tree_util
 from jax.scipy.special import expit
 from jax.lax import population_count
@@ -74,7 +74,7 @@ def sample_momentum_from_diagonal(*, key, mass_matrix_sqrt):
         diagonal.
     """
     normal = random_like(mass_matrix_sqrt, key=key, rng=random.normal)
-    return tree_util.tree_map(np.multiply, mass_matrix_sqrt, normal)
+    return tree_util.tree_map(jnp.multiply, mass_matrix_sqrt, normal)
 
 
 # TODO: how to randomize step size (neal sect. 3.2)
@@ -128,8 +128,8 @@ def leapfrog_step(
 class AcceptedAndRejected(NamedTuple):
     accepted_qp: QP
     rejected_qp: QP
-    accepted: Union[np.ndarray, bool]
-    diverging: Union[np.ndarray, bool]
+    accepted: Union[jnp.ndarray, bool]
+    diverging: Union[jnp.ndarray, bool]
 
 
 # @partial(jit, static_argnames=('potential_energy', 'potential_energy_gradient'))
@@ -173,8 +173,8 @@ def generate_hmc_acc_rej(
         kinetic_energy_w_inv_mass=partial(kinetic_energy, inverse_mass_matrix)
     )
     energy_diff = total_energy(initial_qp) - total_energy(proposed_qp)
-    energy_diff = np.where(np.isnan(energy_diff), np.inf, energy_diff)
-    transition_probability = np.minimum(1., np.exp(energy_diff))
+    energy_diff = jnp.where(jnp.isnan(energy_diff), jnp.inf, energy_diff)
+    transition_probability = jnp.minimum(1., jnp.exp(energy_diff))
 
     accept = random.bernoulli(key, transition_probability)
     accepted_qp, rejected_qp = select(
@@ -182,7 +182,7 @@ def generate_hmc_acc_rej(
         (proposed_qp, initial_qp),
         (initial_qp, proposed_qp),
     )
-    diverging = np.abs(energy_diff) > max_energy_difference
+    diverging = jnp.abs(energy_diff) > max_energy_difference
     return AcceptedAndRejected(
         accepted_qp, rejected_qp, accepted=accept, diverging=diverging
     )
@@ -196,30 +196,30 @@ class Tree(NamedTuple):
     ----------
     left, right : QP
         Respective endpoints of the trees path.
-    logweight: Union[np.ndarray, float]
+    logweight: Union[jnp.ndarray, float]
         Sum over all -H(q, p) in the tree's path.
     proposal_candidate: QP
         Sample from the trees path, distributed as exp(-H(q, p)).
-    turning: Union[np.ndarray, bool]
+    turning: Union[jnp.ndarray, bool]
         Indicator for either the left or right endpoint are a uturn or any
         subtree is a uturn.
-    diverging: Union[np.ndarray, bool]
+    diverging: Union[jnp.ndarray, bool]
         Indicator for a large increase in energy in the next larger tree.
-    depth: Union[np.ndarray, int]
+    depth: Union[jnp.ndarray, int]
         Levels of the tree.
-    cumulative_acceptance: Union[np.ndarray, float]
+    cumulative_acceptance: Union[jnp.ndarray, float]
         Sum of all acceptance probabilities relative to some initial energy
         value. This value is distinct from `logweight` as its absolute value is
         only well defined for the very final tree of NUTS.
     """
     left: QP
     right: QP
-    logweight: Union[np.ndarray, float]
+    logweight: Union[jnp.ndarray, float]
     proposal_candidate: QP
-    turning: Union[np.ndarray, bool]
-    diverging: Union[np.ndarray, bool]
-    depth: Union[np.ndarray, int]
-    cumulative_acceptance: Union[np.ndarray, float]
+    turning: Union[jnp.ndarray, bool]
+    diverging: Union[jnp.ndarray, bool]
+    depth: Union[jnp.ndarray, int]
+    cumulative_acceptance: Union[jnp.ndarray, float]
 
 
 def total_energy_of_qp(qp, potential_energy, kinetic_energy_w_inv_mass):
@@ -232,12 +232,12 @@ def generate_nuts_tree(
     key,
     step_size,
     max_tree_depth,
-    stepper: Callable[[Union[np.ndarray, float], Q, QP], QP],
+    stepper: Callable[[Union[jnp.ndarray, float], Q, QP], QP],
     potential_energy,
     kinetic_energy: Callable[[Q, Q], float],
     inverse_mass_matrix: Q,
     bias_transition: bool = True,
-    max_energy_difference: Union[np.ndarray, float] = np.inf
+    max_energy_difference: Union[jnp.ndarray, float] = jnp.inf
 ) -> Tree:
     """Generate a sample given the initial position.
 
@@ -361,9 +361,8 @@ def tree_index_get(ptree, idx):
 
 def tree_index_update(x, idx, y):
     from jax.tree_util import tree_map
-    from jax.ops import index_update
 
-    return tree_map(lambda x_el, y_el: index_update(x_el, idx, y_el), x, y)
+    return tree_map(lambda x_el, y_el: x_el.at[idx].set(y_el), x, y)
 
 
 def count_trailing_ones(n):
@@ -443,16 +442,18 @@ def iterative_build_tree(
     # need `max_tree_depth` element even though the tree can be of length `max_tree_depth +
     # 1`. This is because we will never access the last element.
     S = tree_util.tree_map(
-        lambda proto: np.
-        empty_like(proto, shape=(max_tree_depth, ) + np.shape(proto)), z
+        lambda proto: jnp.
+        empty_like(proto, shape=(max_tree_depth, ) + jnp.shape(proto)), z
     )
 
-    z = stepper(np.where(go_right, 1., -1.) * step_size, inverse_mass_matrix, z)
+    z = stepper(
+        jnp.where(go_right, 1., -1.) * step_size, inverse_mass_matrix, z
+    )
     neg_energy = -total_energy_of_qp(
         z, potential_energy, partial(kinetic_energy, inverse_mass_matrix)
     )
-    diverging = np.abs(neg_energy - initial_neg_energy) > max_energy_difference
-    cum_acceptance = np.minimum(1., np.exp(initial_neg_energy - neg_energy))
+    diverging = jnp.abs(neg_energy - initial_neg_energy) > max_energy_difference
+    cum_acceptance = jnp.minimum(1., jnp.exp(initial_neg_energy - neg_energy))
     incomplete_tree = Tree(
         left=z,
         right=z,
@@ -470,7 +471,7 @@ def iterative_build_tree(
 
         key, key_choose_candidate = random.split(key)
         z = stepper(
-            np.where(go_right, 1., -1.) * step_size, inverse_mass_matrix, z
+            jnp.where(go_right, 1., -1.) * step_size, inverse_mass_matrix, z
         )
         incomplete_tree = add_single_qp_to_tree(
             key_choose_candidate,
@@ -536,7 +537,7 @@ def iterative_build_tree(
         host_callback.call(_DEBUG_FINISH_SUBTREE, None)
 
     # The depth of a tree which was aborted early is possibly ill defined
-    depth = np.where(n == max_num_proposals, depth, -1)
+    depth = jnp.where(n == max_num_proposals, depth, -1)
     return incomplete_tree._replace(depth=depth)
 
 
@@ -555,17 +556,17 @@ def add_single_qp_to_tree(
     neg_energy = -total_energy_of_qp(
         qp, potential_energy, partial(kinetic_energy, inverse_mass_matrix)
     )
-    diverging = np.abs(neg_energy - initial_neg_energy) > max_energy_difference
+    diverging = jnp.abs(neg_energy - initial_neg_energy) > max_energy_difference
     # ln(e^-H_1 + e^-H_2)
-    total_logweight = np.logaddexp(tree.logweight, neg_energy)
+    total_logweight = jnp.logaddexp(tree.logweight, neg_energy)
     # expit(x-y) := 1 / (1 + e^(-(x-y))) = 1 / (1 + e^(y-x)) = e^x / (e^y + e^x)
     prob_of_keeping_old = expit(tree.logweight - neg_energy)
     remain = random.bernoulli(key, prob_of_keeping_old)
     proposal_candidate = select(remain, tree.proposal_candidate, qp)
     # NOTE, set an invalid depth as to indicate that adding a single QP to a
     # perfect binary tree does not yield another perfect binary tree
-    cum_acceptance = tree.cumulative_acceptance + np.minimum(
-        1., np.exp(initial_neg_energy - neg_energy)
+    cum_acceptance = tree.cumulative_acceptance + jnp.minimum(
+        1., jnp.exp(initial_neg_energy - neg_energy)
     )
     return Tree(
         left,
@@ -585,8 +586,8 @@ def merge_trees(key, current_subtree, new_subtree, go_right, bias_transition):
     if bias_transition:
         # Bias the transition towards the new subtree (see Betancourt
         # conceptual intro (and Numpyro))
-        transition_probability = np.minimum(
-            1., np.exp(new_subtree.logweight - current_subtree.logweight)
+        transition_probability = jnp.minimum(
+            1., jnp.exp(new_subtree.logweight - current_subtree.logweight)
         )
     else:
         # expit(x-y) := 1 / (1 + e^(-(x-y))) = 1 / (1 + e^(y-x)) = e^x / (e^y + e^x)
@@ -606,7 +607,7 @@ def merge_trees(key, current_subtree, new_subtree, go_right, bias_transition):
     )
     turning = is_euclidean_uturn(left, right)
     diverging = current_subtree.diverging | new_subtree.diverging
-    neg_energy = np.logaddexp(new_subtree.logweight, current_subtree.logweight)
+    neg_energy = jnp.logaddexp(new_subtree.logweight, current_subtree.logweight)
     cum_acceptance = current_subtree.cumulative_acceptance + new_subtree.cumulative_acceptance
     merged_tree = Tree(
         left=left,

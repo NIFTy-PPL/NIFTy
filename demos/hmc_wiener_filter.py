@@ -3,7 +3,7 @@ from jax.config import config
 
 config.update("jax_enable_x64", True)
 
-from jax import numpy as np
+from jax import numpy as jnp
 from jax import random, jit, lax
 import jax
 import matplotlib.pyplot as plt
@@ -19,9 +19,9 @@ dims = (512, )
 #datadims = (4,)
 loglogslope = 2.
 power_spectrum = lambda k: 1. / (k**loglogslope + 1.)
-modes = np.arange((dims[0] / 2) + 1., dtype=float)
+modes = jnp.arange((dims[0] / 2) + 1., dtype=float)
 harmonic_power = power_spectrum(modes)
-harmonic_power = np.concatenate((harmonic_power, harmonic_power[-2:0:-1]))
+harmonic_power = jnp.concatenate((harmonic_power, harmonic_power[-2:0:-1]))
 
 #%%
 correlated_field = lambda x: jft.correlated_field.hartley(
@@ -32,10 +32,10 @@ correlated_field = lambda x: jft.correlated_field.hartley(
 )
 
 # %% [markdown]
-# signal_response = lambda x: np.exp(1. + correlated_field(x))
+# signal_response = lambda x: jnp.exp(1. + correlated_field(x))
 signal_response = lambda x: correlated_field(x)
 # The signal response is $ \vec{d} = \begin{pmatrix} 1 \\ 1 \\ 1 \\ 1 \end{pmatrix} \cdot s + \vec{n} $ where $s \in \mathbb{R}$ and $\vec{n} \sim \mathcal{G}(0, N)$
-# signal_response = lambda x: np.ones(shape=datadims) * x
+# signal_response = lambda x: jnp.ones(shape=datadims) * x
 # ???
 noise_cov_inv_sqrt = lambda x: 1.**-1 * x
 
@@ -48,8 +48,8 @@ key, subkey = random.split(key)
 pos_truth = random.normal(shape=dims, key=subkey)
 signal_response_truth = signal_response(pos_truth)
 key, subkey = random.split(key)
-# 1. / noise_cov_inv_sqrt(np.ones(dims)) becomes the standard deviation of the noise gaussian
-noise_truth = 1. / noise_cov_inv_sqrt(np.ones(dims)
+# 1. / noise_cov_inv_sqrt(jnp.ones(dims)) becomes the standard deviation of the noise gaussian
+noise_truth = 1. / noise_cov_inv_sqrt(jnp.ones(dims)
                                      ) * random.normal(shape=dims, key=subkey)
 data = signal_response_truth + noise_truth
 
@@ -72,7 +72,7 @@ def Gaussian(data, noise_cov_inv_sqrt):
         p_res = primals - data
         # TODO: is this the weighting with noies amplitude thing again?
         l_res = noise_cov_inv_sqrt(p_res)
-        return 0.5 * np.sum(l_res**2)
+        return 0.5 * jnp.sum(l_res**2)
 
     return jft.Likelihood(hamiltonian, )
 
@@ -89,16 +89,16 @@ ham_gradient = jax.grad(ham)
 def plot_mean_and_stddev(ax, samples, mean_of_r=None, truth=False, **kwargs):
     signal_response_of_samples = lax.map(signal_response, samples)
     if mean_of_r == None:
-        mean_of_signal_response = np.mean(signal_response_of_samples, axis=0)
+        mean_of_signal_response = jnp.mean(signal_response_of_samples, axis=0)
     else:
         mean_of_signal_response = mean_of_r
     mean_label = kwargs.pop('mean_label', 'sample mean of signal response')
     ax.plot(mean_of_signal_response, label=mean_label)
-    std_dev_of_signal_response = np.std(signal_response_of_samples, axis=0)
+    std_dev_of_signal_response = jnp.std(signal_response_of_samples, axis=0)
     if truth:
         ax.plot(signal_response_truth, label="truth")
     ax.fill_between(
-        np.arange(len(mean_of_signal_response)),
+        jnp.arange(len(mean_of_signal_response)),
         y1=mean_of_signal_response - std_dev_of_signal_response,
         y2=mean_of_signal_response + std_dev_of_signal_response,
         color='grey',
@@ -157,7 +157,7 @@ sampler = jft.NUTSChain(
 )
 
 chain = sampler.generate_n_samples(30)
-plt.hist(chain.depths, bins=np.arange(sampler.max_tree_depth + 2))
+plt.hist(chain.depths, bins=jnp.arange(sampler.max_tree_depth + 2))
 plt.title('NUTS tree depth histogram')
 plt.xlabel('tree depth')
 plt.ylabel('count')
@@ -170,15 +170,15 @@ plt.show()
 
 # %%
 if jft.hmc._DEBUG_FLAG:
-    debug_pos = np.array(jft.hmc._DEBUG_STORE)[:, 0, :]
+    debug_pos = jnp.array(jft.hmc._DEBUG_STORE)[:, 0, :]
 
     for idx, dbgp in enumerate(debug_pos):
         plt.plot(signal_response(dbgp), label=f'{idx}', alpha=0.1)
     #plt.legend()
 
     # %%
-    debug_pos_x = np.array(jft.hmc._DEBUG_STORE)[:, 0, 0]
-    debug_pos_y = np.array(jft.hmc._DEBUG_STORE)[:, 0, 1]
+    debug_pos_x = jnp.array(jft.hmc._DEBUG_STORE)[:, 0, 0]
+    debug_pos_y = jnp.array(jft.hmc._DEBUG_STORE)[:, 0, 1]
     for idx, dbgp in enumerate(debug_pos):
         plt.scatter(debug_pos_x, debug_pos_y, s=0.1, color='k')
     #plt.legend()
@@ -199,9 +199,9 @@ if chain.samples[0].shape == (1, ):
 # %% [markdown]
 # # energy time series
 potential_energies = lax.map(ham, chain.samples)
-kinetic_energies = np.sum(chain.trees.proposal_candidate.momentum**2, axis=1)
+kinetic_energies = jnp.sum(chain.trees.proposal_candidate.momentum**2, axis=1)
 #rejected_potential_energies = lax.map(ham, rejected_position_samples)
-#rejected_kinetic_energies = np.sum(rejected_momentum_samples**2, axis=1)
+#rejected_kinetic_energies = jnp.sum(rejected_momentum_samples**2, axis=1)
 plt.plot(potential_energies, label='pot')
 plt.plot(kinetic_energies, label='kin', linewidth=1)
 plt.plot(kinetic_energies + potential_energies, label='total', linewidth=1)
@@ -266,7 +266,7 @@ def sample_from_d(key):
     return smpl
 
 
-wiener_samples = np.array(
+wiener_samples = jnp.array(
     list(map(lambda key: sample_from_d(key) + m, random.split(key, 30)))
 )
 

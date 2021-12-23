@@ -2,7 +2,7 @@ from typing import Any, Callable, Hashable
 from collections.abc import Iterable
 
 from jax import random
-from jax import numpy as np
+from jax import numpy as jnp
 from jax.tree_util import tree_structure, tree_unflatten, tree_map, tree_reduce
 
 from .field import Field
@@ -45,9 +45,7 @@ def ducktape(call: Callable, key: Hashable):
 
 
 def sum_of_squares(tree):
-    from jax.numpy import add, sum
-
-    return tree_reduce(add, tree_map(lambda x: sum(x**2), tree), 0.)
+    return tree_reduce(jnp.add, tree_map(lambda x: jnp.sum(x**2), tree), 0.)
 
 
 def mean(forest):
@@ -71,8 +69,8 @@ def mean_and_std(forest, correct_bias=True):
         mean_of_sq = Field(mean(tuple(Field(t)**2 for t in forest)))
 
     n = len(forest)
-    scl = np.sqrt(n / (n - 1)) if correct_bias else 1.
-    std = scl * tree_map(np.sqrt, mean_of_sq - m**2)
+    scl = jnp.sqrt(n / (n - 1)) if correct_bias else 1.
+    std = scl * tree_map(jnp.sqrt, mean_of_sq - m**2)
     if isinstance(forest[0], Field):
         return m, std
     else:
@@ -95,23 +93,22 @@ def random_like_shapewdtype(
 def random_like(
     primals: Iterable, key: Iterable, rng: Callable = random.normal
 ):
-    import numpy as onp
-    from jax import numpy as np
+    import numpy as np
 
     struct = tree_structure(primals)
     # Cast the subkeys to the structure of `primals`
     subkeys = tree_unflatten(struct, random.split(key, struct.num_leaves))
 
     def draw(x, key):
-        shp = np.shape(x)
-        dtp = onp.common_type(x)
+        shp = jnp.shape(x)
+        dtp = np.common_type(x)
         return rng(key=key, shape=shp, dtype=dtp)
 
     return tree_map(draw, primals, subkeys)
 
 
 def interpolate(xmin=-7., xmax=7., N=14000):
-    """Replaces a local nonlinearity such as np.exp with a linear interpolation
+    """Replaces a local nonlinearity such as jnp.exp with a linear interpolation
 
     Interpolating functions speeds up code and increases numerical stability in
     some cases, but at a cost of precision and range.
@@ -128,12 +125,12 @@ def interpolate(xmin=-7., xmax=7., N=14000):
     def decorator(f):
         from functools import wraps
 
-        x = np.linspace(xmin, xmax, N)
+        x = jnp.linspace(xmin, xmax, N)
         y = f(x)
 
         @wraps(f)
         def wrapper(t):
-            return np.interp(t, x, y)
+            return jnp.interp(t, x, y)
 
         return wrapper
 

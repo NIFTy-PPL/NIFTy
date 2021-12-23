@@ -1,6 +1,6 @@
 from typing import Callable, Optional
 
-from jax import numpy as np
+from jax import numpy as jnp
 
 
 def laplace_prior(alpha) -> Callable:
@@ -14,8 +14,8 @@ def laplace_prior(alpha) -> Callable:
     from jax.scipy.stats import norm
 
     def standard_to_laplace(xi):
-        res = (xi < 0) * (norm.logcdf(xi) + np.log(2))
-        res -= (xi > 0) * (norm.logcdf(-xi) + np.log(2))
+        res = (xi < 0) * (norm.logcdf(xi) + jnp.log(2))
+        res -= (xi > 0) * (norm.logcdf(-xi) + jnp.log(2))
         return res * alpha
 
     return standard_to_laplace
@@ -35,13 +35,13 @@ def lognormal_moments(mean, std):
     """Compute the cumulants a log-normal process would need to comply with the
     provided mean and standard-deviation `std`
     """
-    if np.any(mean <= 0.):
+    if jnp.any(mean <= 0.):
         raise ValueError(f"`mean` must be greater zero; got {mean!r}")
-    if np.any(std <= 0.):
+    if jnp.any(std <= 0.):
         raise ValueError(f"`std` must be greater zero; got {std!r}")
 
-    logstd = np.sqrt(np.log1p((std / mean)**2))
-    logmean = np.log(mean) - 0.5 * logstd**2
+    logstd = jnp.sqrt(jnp.log1p((std / mean)**2))
+    logmean = jnp.log(mean) - 0.5 * logstd**2
     return logmean, logstd
 
 
@@ -59,7 +59,7 @@ def lognormal_prior(mean, std) -> Callable:
     standard_to_normal = normal_prior(*lognormal_moments(mean, std))
 
     def standard_to_lognormal(xi):
-        return np.exp(standard_to_normal(xi))
+        return jnp.exp(standard_to_normal(xi))
 
     return standard_to_lognormal
 
@@ -105,9 +105,9 @@ def interpolator(
         ve = "either but not both of `step` and `num` must be specified"
         raise ValueError(ve)
     if step is not None:
-        xs = np.arange(xmin, xmax + step, step)
+        xs = jnp.arange(xmin, xmax + step, step)
     elif num is not None:
-        xs = np.linspace(xmin, xmax, num)
+        xs = jnp.linspace(xmin, xmax, num)
     else:
         ve = "either of `step` or `num` must be specified"
         raise ValueError(ve)
@@ -123,7 +123,7 @@ def interpolator(
 
     def interp(x):
         # res = interpolator(x)
-        res = np.interp(x, xs, ys)
+        res = jnp.interp(x, xs, ys)
         if inv_table_func is not None:
             res = inv_table_func(res)
         return res
@@ -167,7 +167,7 @@ def invgamma_prior(a, scale, loc=0., step=1e-2) -> Callable:
         xmin,
         xmax,
         step=step,
-        table_func=np.log,
-        inv_table_func=np.exp
+        table_func=jnp.log,
+        inv_table_func=jnp.exp
     )
     return standard_to_invgamma

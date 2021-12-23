@@ -2,7 +2,7 @@ import sys
 from datetime import datetime
 from functools import partial
 from jax import lax
-from jax import numpy as np
+from jax import numpy as jnp
 from jax.tree_util import Partial
 
 from typing import Any, Callable, NamedTuple, Mapping, Optional, Tuple, Union
@@ -40,20 +40,20 @@ class OptimizeResults(NamedTuple):
         Number of iterations performed by the optimizer.
     """
     x: Any
-    success: Union[bool, np.ndarray]
-    status: Union[int, np.ndarray]
+    success: Union[bool, jnp.ndarray]
+    status: Union[int, jnp.ndarray]
     fun: Any
     jac: Any
-    hess: Optional[np.ndarray] = None
-    hess_inv: Optional[np.ndarray] = None
-    nfev: Union[None, int, np.ndarray] = None
-    njev: Union[None, int, np.ndarray] = None
-    nhev: Union[None, int, np.ndarray] = None
-    nit: Union[None, int, np.ndarray] = None
+    hess: Optional[jnp.ndarray] = None
+    hess_inv: Optional[jnp.ndarray] = None
+    nfev: Union[None, int, jnp.ndarray] = None
+    njev: Union[None, int, jnp.ndarray] = None
+    nhev: Union[None, int, jnp.ndarray] = None
+    nit: Union[None, int, jnp.ndarray] = None
     # Trust-Region specific slots
-    trust_radius: Union[None, float, np.ndarray] = None
-    jac_magnitude: Union[None, float, np.ndarray] = None
-    good_approximation: Union[None, bool, np.ndarray] = None
+    trust_radius: Union[None, float, jnp.ndarray] = None
+    jac_magnitude: Union[None, float, jnp.ndarray] = None
+    good_approximation: Union[None, bool, jnp.ndarray] = None
 
 
 def _prepare_vag_hessp(fun, jac, hessp,
@@ -126,7 +126,7 @@ def _newton_cg(
 
     energy, g = fun_and_grad(pos)
     nfev, njev, nhev = 1, 1, 0
-    if np.isnan(energy):
+    if jnp.isnan(energy):
         raise ValueError("energy is Nan")
     status = -1
     i = 0
@@ -141,7 +141,9 @@ def _newton_cg(
         else:
             cg_absdelta = None if absdelta is None else absdelta / 100.
         mag_g = jft_norm(g, ord=cg_kwargs.get("norm_ord", 1), ravel=True)
-        cg_resnorm = np.minimum(0.5, np.sqrt(mag_g)) * mag_g  # taken from SciPy
+        cg_resnorm = jnp.minimum(
+            0.5, jnp.sqrt(mag_g)
+        ) * mag_g  # taken from SciPy
         default_kwargs = {
             "absdelta": cg_absdelta,
             "resnorm": cg_resnorm,
@@ -198,7 +200,7 @@ def _newton_cg(
                 + (f" 🞋:{absdelta:.6e}" if absdelta is not None else "")
             )
             print(msg, file=sys.stderr)
-        if np.isnan(new_energy):
+        if jnp.isnan(new_energy):
             raise ValueError("energy is NaN")
         min_cond = naive_ls_it < 2 and i > miniter
         if absdelta is not None and 0. <= energy_diff < absdelta and min_cond:
@@ -229,31 +231,31 @@ def _newton_cg(
 
 class _TrustRegionState(NamedTuple):
     x: Any
-    converged: Union[bool, np.ndarray]
-    status: Union[int, np.ndarray]
+    converged: Union[bool, jnp.ndarray]
+    status: Union[int, jnp.ndarray]
     fun: Any
     jac: Any
-    nfev: Union[int, np.ndarray]
-    njev: Union[int, np.ndarray]
-    nhev: Union[int, np.ndarray]
-    nit: Union[int, np.ndarray]
-    trust_radius: Union[float, np.ndarray]
-    jac_magnitude: Union[float, np.ndarray]
-    old_fval: Union[float, np.ndarray]
+    nfev: Union[int, jnp.ndarray]
+    njev: Union[int, jnp.ndarray]
+    nhev: Union[int, jnp.ndarray]
+    nit: Union[int, jnp.ndarray]
+    trust_radius: Union[float, jnp.ndarray]
+    jac_magnitude: Union[float, jnp.ndarray]
+    old_fval: Union[float, jnp.ndarray]
 
 
 def _trust_ncg(
     fun=None,
-    x0: np.ndarray = None,
+    x0: jnp.ndarray = None,
     *,
     maxiter: Optional[int] = None,
     energy_reduction_factor=0.1,
-    old_fval=np.nan,
+    old_fval=jnp.nan,
     absdelta=None,
     gtol: float = 1e-4,
-    max_trust_radius: Union[float, np.ndarray] = 1000.,
-    initial_trust_radius: Union[float, np.ndarray] = 1.0,
-    eta: Union[float, np.ndarray] = 0.15,
+    max_trust_radius: Union[float, jnp.ndarray] = 1000.,
+    initial_trust_radius: Union[float, jnp.ndarray] = 1.0,
+    eta: Union[float, jnp.ndarray] = 0.15,
     subproblem=conjugate_gradient._cg_steihaug_subproblem,
     jac: Optional[Callable] = None,
     hessp: Optional[Callable] = None,
@@ -263,21 +265,23 @@ def _trust_ncg(
 ) -> OptimizeResults:
     maxiter = 200 if maxiter is None else maxiter
 
-    status = np.where(maxiter == 0, 1, 0)
+    status = jnp.where(maxiter == 0, 1, 0)
 
     if not (0 <= eta < 0.25):
         raise Exception("invalid acceptance stringency")
     # Exception("gradient tolerance must be positive")
-    status = np.where(gtol < 0., -1, status)
+    status = jnp.where(gtol < 0., -1, status)
     # Exception("max trust radius must be positive")
-    status = np.where(max_trust_radius <= 0, -1, status)
+    status = jnp.where(max_trust_radius <= 0, -1, status)
     # ValueError("initial trust radius must be positive")
-    status = np.where(initial_trust_radius <= 0, -1, status)
+    status = jnp.where(initial_trust_radius <= 0, -1, status)
     # ValueError("initial trust radius must be less than the max trust radius")
-    status = np.where(initial_trust_radius >= max_trust_radius, -1, status)
+    status = jnp.where(initial_trust_radius >= max_trust_radius, -1, status)
 
     common_dtp = common_type(x0)
-    eps = 6. * np.finfo(common_dtp).eps  # Inspired by SciPy's NewtonCG minimzer
+    eps = 6. * jnp.finfo(
+        common_dtp
+    ).eps  # Inspired by SciPy's NewtonCG minimzer
 
     fun_and_grad, hessp = _prepare_vag_hessp(
         fun, jac, hessp, fun_and_grad=fun_and_grad
@@ -289,7 +293,7 @@ def _trust_ncg(
     g_0_mag = jft_norm(
         g_0, ord=subproblem_kwargs.get("norm_ord", 1), ravel=True
     )
-    status = np.where(np.isfinite(g_0_mag), status, 2)
+    status = jnp.where(jnp.isfinite(g_0_mag), status, 2)
     init_params = _TrustRegionState(
         converged=False,
         status=status,
@@ -316,7 +320,7 @@ def _trust_ncg(
             cg_absdelta = energy_reduction_factor * (old_fval - f_k)
         else:
             cg_absdelta = None if absdelta is None else absdelta / 100.
-        cg_resnorm = np.minimum(0.5, np.sqrt(g_k_mag)) * g_k_mag
+        cg_resnorm = jnp.minimum(0.5, jnp.sqrt(g_k_mag)) * g_k_mag
         # TODO: add an internal success check for future subproblem approaches
         # that might not be solvable
         default_kwargs = {
@@ -340,10 +344,10 @@ def _trust_ncg(
 
         # update the trust radius according to the actual/predicted ratio
         rho = actual_reduction / pred_reduction
-        tr_kp1 = np.where(rho < 0.25, tr * 0.25, tr)
-        tr_kp1 = np.where(
+        tr_kp1 = jnp.where(rho < 0.25, tr * 0.25, tr)
+        tr_kp1 = jnp.where(
             (rho > 0.75) & sub_result.hits_boundary,
-            np.minimum(2. * tr, max_trust_radius), tr_kp1
+            jnp.minimum(2. * tr, max_trust_radius), tr_kp1
         )
 
         # compute norm to check for convergence
@@ -358,7 +362,7 @@ def _trust_ncg(
         )
 
         # Check whether we arrived at the float precision
-        energy_eps = eps * np.abs(f_kp1)
+        energy_eps = eps * jnp.abs(f_kp1)
         converged = (actual_reduction <=
                      energy_eps) & (actual_reduction > -energy_eps)
 
@@ -367,9 +371,9 @@ def _trust_ncg(
             converged |= (rho > eta) & (actual_reduction >
                                         0.) & (actual_reduction < absdelta)
 
-        status = np.where(converged, 0, params.status)
-        status = np.where(i >= maxiter, 1, status)
-        status = np.where(pred_reduction <= 0, 2, status)
+        status = jnp.where(converged, 0, params.status)
+        status = jnp.where(i >= maxiter, 1, status)
+        status = jnp.where(pred_reduction <= 0, 2, status)
         params = _TrustRegionState(
             converged=converged,
             nit=i,
@@ -414,7 +418,7 @@ def _trust_ncg(
         return params
 
     def _trust_region_cond_f(params: _TrustRegionState) -> bool:
-        return np.logical_not(params.converged) & (params.status == 0)
+        return jnp.logical_not(params.converged) & (params.status == 0)
 
     state = lax.while_loop(
         _trust_region_cond_f, _trust_region_body_f, init_params

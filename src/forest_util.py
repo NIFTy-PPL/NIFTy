@@ -1,6 +1,6 @@
 from functools import partial
 from jax import lax
-from jax import numpy as np
+from jax import numpy as jnp
 from jax.tree_util import (
     all_leaves, tree_leaves, tree_map, tree_structure, tree_reduce
 )
@@ -36,7 +36,7 @@ class ShapeWithDtype():
             raise TypeError(ve)
 
         self._shape = shape
-        self._dtype = np.float64 if dtype is None else dtype
+        self._dtype = jnp.float64 if dtype is None else dtype
 
     @classmethod
     def from_leave(cls, element):
@@ -61,7 +61,7 @@ class ShapeWithDtype():
         if not all_leaves((element, )):
             ve = "tree is not flat and still contains leaves"
             raise ValueError(ve)
-        return cls(np.shape(element), get_dtype(element))
+        return cls(jnp.shape(element), get_dtype(element))
 
     @property
     def shape(self):
@@ -97,29 +97,28 @@ def common_type(*trees):
     return common_dtp
 
 
-def size(tree, axis: Optional[int] = None) -> Union[int, np.ndarray]:
+def size(tree, axis: Optional[int] = None) -> Union[int, jnp.ndarray]:
     if axis is not None:
         raise TypeError("axis of an arbitrary tree is ill defined")
-    sizes = tree_map(np.size, tree)
-    return tree_reduce(np.add, sizes)
+    sizes = tree_map(jnp.size, tree)
+    return tree_reduce(jnp.add, sizes)
 
 
 def zeros_like(a, dtype=None, shape=None):
-    return tree_map(partial(np.zeros_like, dtype=dtype, shape=shape), a)
+    return tree_map(partial(jnp.zeros_like, dtype=dtype, shape=shape), a)
 
 
 def norm(tree, ord, *, ravel: bool):
-    from jax.numpy import ndim, abs
     from jax.numpy.linalg import norm
 
     if ravel:
 
         def el_norm(x):
-            return abs(x) if ndim(x) == 0 else norm(x.ravel(), ord=ord)
+            return jnp.abs(x) if jnp.ndim(x) == 0 else norm(x.ravel(), ord=ord)
     else:
 
         def el_norm(x):
-            return abs(x) if ndim(x) == 0 else norm(x, ord=ord)
+            return jnp.abs(x) if jnp.ndim(x) == 0 else norm(x, ord=ord)
 
     return norm(tree_leaves(tree_map(el_norm, tree)), ord=ord)
 
@@ -136,13 +135,13 @@ def where(condition, x, y):
     If `condition` is not a pytree, then a partially evaluated selection is
     simply mapped over `x` and `y` without actually broadcasting `condition`.
     """
-    import numpy as onp
+    import numpy as np
     from itertools import repeat
 
     ts_c = tree_structure(condition)
     ts_x = tree_structure(x)
     ts_y = tree_structure(y)
-    ts_max = (ts_c, ts_x, ts_y)[onp.argmax(
+    ts_max = (ts_c, ts_x, ts_y)[np.argmax(
         [ts_c.num_nodes, ts_x.num_nodes, ts_y.num_nodes]
     )]
 
@@ -158,8 +157,8 @@ def where(condition, x, y):
     if ts_c.num_nodes < ts_max.num_nodes:
         if ts_c.num_nodes > 1:
             raise ValueError("can not map condition")
-        return tree_map(partial(np.where, condition), x, y)
-    return tree_map(np.where, condition, x, y)
+        return tree_map(partial(jnp.where, condition), x, y)
+    return tree_map(jnp.where, condition, x, y)
 
 
 def vmap_forest(
@@ -196,7 +195,7 @@ def vmap_forest(
             te = f"expected mapped axes to be a tuple; got {type(xs[i])}"
             raise TypeError(te)
         element_count = len(xs[i])
-        x_T = tree_map(lambda *el: np.stack(el), *xs[i])
+        x_T = tree_map(lambda *el: jnp.stack(el), *xs[i])
 
         out_T = f_map(*xs[:i], x_T, *xs[i + 1:])
         # Since `out_axes` is forced to be `0`, we don't need to worry about
@@ -206,13 +205,13 @@ def vmap_forest(
 
         # TODO: Report?: Looping over or casting a DeviceArray tensor to a
         # tuple, yields NumPy arrays
-        split = partial(np.split, indices_or_sections=element_count)
+        split = partial(jnp.split, indices_or_sections=element_count)
         out = tree_util.tree_transpose(
             tree_util.tree_structure(out_T),
             tree_util.tree_structure((0., ) * element_count),
             tree_map(split, out_T)
         )
-        return tree_map(partial(np.squeeze, axis=0), out)
+        return tree_map(partial(jnp.squeeze, axis=0), out)
 
     return apply
 
@@ -223,6 +222,6 @@ def vmap_forest_mean(method, *args, **kwargs) -> Callable:
     )
 
     def meaned_apply(*xs, **xs_kw):
-        return tree_map(partial(np.mean, axis=0), method_map(*xs, **xs_kw))
+        return tree_map(partial(jnp.mean, axis=0), method_map(*xs, **xs_kw))
 
     return meaned_apply

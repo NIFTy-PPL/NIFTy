@@ -3,6 +3,7 @@ import numpy as np
 from functools import partial
 from jax import numpy as jnp
 from jax.tree_util import tree_leaves
+from numpy.testing import assert_array_equal
 
 import jifty1 as jft
 
@@ -28,12 +29,12 @@ def test_hmc_pytree():
         }, ))
     ).generate_n_samples(1000)
     smpl_wo_pytree = sampler_init(initial_position=initial_position
-                                ).generate_n_samples(1000)
+                                 ).generate_n_samples(1000)
 
     ts_w, ts_wo = tree_leaves(smpl_w_pytree), tree_leaves(smpl_wo_pytree)
     assert len(ts_w) == len(ts_wo)
     for w, wo in zip(ts_w, ts_wo):
-        np.testing.assert_array_equal(w, wo)
+        assert_array_equal(w, wo)
 
 
 def test_nuts_pytree():
@@ -57,12 +58,12 @@ def test_nuts_pytree():
         }, ))
     ).generate_n_samples(1000)
     smpl_wo_pytree = sampler_init(initial_position=initial_position
-                                ).generate_n_samples(1000)
+                                 ).generate_n_samples(1000)
 
     ts_w, ts_wo = tree_leaves(smpl_w_pytree), tree_leaves(smpl_wo_pytree)
     assert len(ts_w) == len(ts_wo)
     for w, wo in zip(ts_w, ts_wo):
-        np.testing.assert_array_equal(w, wo)
+        assert_array_equal(w, wo)
 
 
 if __name__ == "__main__":

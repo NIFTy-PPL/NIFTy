@@ -6,7 +6,7 @@ config.update("jax_enable_x64", True)
 import sys
 import matplotlib.pyplot as plt
 from functools import partial
-from jax import numpy as np
+from jax import numpy as jnp
 from jax import lax, random
 from jax import value_and_grad, jit
 
@@ -18,28 +18,28 @@ key = random.PRNGKey(seed)
 
 # %%
 def cartesian_product(arrays, out=None):
-    import numpy as onp
+    import numpy as np
 
     # Generalized N-dimensional products
-    arrays = [onp.asarray(x) for x in arrays]
+    arrays = [np.asarray(x) for x in arrays]
     la = len(arrays)
-    dtype = onp.find_common_type([a.dtype for a in arrays], [])
+    dtype = np.find_common_type([a.dtype for a in arrays], [])
     if out is None:
-        out = onp.empty([len(a) for a in arrays] + [la], dtype=dtype)
-    for i, a in enumerate(onp.ix_(*arrays)):
+        out = np.empty([len(a) for a in arrays] + [la], dtype=dtype)
+    for i, a in enumerate(np.ix_(*arrays)):
         out[..., i] = a
     return out.reshape(-1, la)
 
 
 def helper_phi_b(b, x):
-    return b * x[0] * np.exp(b * x[1])
+    return b * x[0] * jnp.exp(b * x[1])
 
 
 # %%
 b = 2.
 
 signal_response = partial(helper_phi_b, b)
-nll = jft.Gaussian(0., lambda x: x / np.sqrt(1.)) @ signal_response
+nll = jft.Gaussian(0., lambda x: x / jnp.sqrt(1.)) @ signal_response
 
 ham = jft.StandardHamiltonian(nll)
 ham = ham.jit()
@@ -47,14 +47,14 @@ ham_vg = jit(value_and_grad(ham))
 
 # %%
 n_pix_sqrt = 1000
-x = np.linspace(-4, 4, n_pix_sqrt)
-y = np.linspace(-4, 4, n_pix_sqrt)
+x = jnp.linspace(-4, 4, n_pix_sqrt)
+y = jnp.linspace(-4, 4, n_pix_sqrt)
 xx = cartesian_product((x, y))
-ham_everywhere = np.vectorize(ham, signature="(2)->()")(xx).reshape(
+ham_everywhere = jnp.vectorize(ham, signature="(2)->()")(xx).reshape(
     n_pix_sqrt, n_pix_sqrt
 )
 plt.imshow(
-    np.exp(-ham_everywhere.T),
+    jnp.exp(-ham_everywhere.T),
     extent=(x.min(), x.max(), y.min(), y.max()),
     origin="lower"
 )
@@ -68,7 +68,7 @@ n_samples = [2] * (n_mgvi_iterations - 10) + [2] * 5 + [10, 10, 10, 10, 100]
 n_newton_iterations = [7] * (n_mgvi_iterations - 10) + [10] * 6 + 4 * [25]
 absdelta = 1e-13
 
-initial_position = np.array([1., 1.])
+initial_position = jnp.array([1., 1.])
 mkl_pos = 1e-2 * jft.Field(initial_position)
 
 mgvi_positions = []
@@ -115,7 +115,7 @@ n_samples = [1] * (n_geovi_iterations - 10) + [2] * 5 + [10, 10, 10, 10, 100]
 n_newton_iterations = [7] * (n_geovi_iterations - 10) + [10] * 6 + [25] * 4
 absdelta = 1e-10
 
-initial_position = np.array([1., 1.])
+initial_position = jnp.array([1., 1.])
 gkl_pos = 1e-2 * jft.Field(initial_position)
 
 for i in range(n_geovi_iterations):
@@ -164,15 +164,15 @@ for i in range(n_geovi_iterations):
 
 # %%
 n_pix_sqrt = 200
-x = np.linspace(-4.0, 4.0, n_pix_sqrt, endpoint=True)
-y = np.linspace(-4.0, 4.0, n_pix_sqrt, endpoint=True)
-X, Y = np.meshgrid(x, y)
-XY = np.array([X, Y]).T
+x = jnp.linspace(-4.0, 4.0, n_pix_sqrt, endpoint=True)
+y = jnp.linspace(-4.0, 4.0, n_pix_sqrt, endpoint=True)
+X, Y = jnp.meshgrid(x, y)
+XY = jnp.array([X, Y]).T
 xy = XY.reshape((XY.shape[0] * XY.shape[1], 2))
-es = np.exp(-lax.map(ham, xy)).reshape(XY.shape[:2]).T
+es = jnp.exp(-lax.map(ham, xy)).reshape(XY.shape[:2]).T
 
 # %%
-mkl_b_space_smpls = np.array([(mkl_pos + smpl).val for smpl in mkl.samples])
+mkl_b_space_smpls = jnp.array([(mkl_pos + smpl).val for smpl in mkl.samples])
 
 fig, ax = plt.subplots()
 contour = ax.contour(X, Y, es)
@@ -183,7 +183,7 @@ plt.title("MGVI")
 plt.show()
 
 # %%
-gkl_b_space_smpls = np.array([(gkl_pos + smpl).val for smpl in gkl.samples])
+gkl_b_space_smpls = jnp.array([(gkl_pos + smpl).val for smpl in gkl.samples])
 
 fig, ax = plt.subplots()
 contour = ax.contour(X, Y, es)
@@ -194,7 +194,7 @@ plt.title("GeoVI")
 plt.show()
 
 # %%
-initial_position = np.array([1., 1.])
+initial_position = jnp.array([1., 1.])
 
 hmc_sampler = jft.HMCChain(
     potential_energy=ham,
@@ -217,7 +217,7 @@ plt.title("HMC (Metroplis-Hastings) samples")
 plt.show()
 
 # %%
-initial_position = np.array([1., 1.])
+initial_position = jnp.array([1., 1.])
 
 nuts_sampler = jft.NUTSChain(
     potential_energy=ham,
@@ -268,11 +268,11 @@ fig, ((ax1, ax4), (ax2, ax5), (ax3, ax6)
 
 ax1.set_title(r'$P(d=0|\xi_1, \xi_2) \cdot P(\xi_1, \xi_2)$')
 xx = cartesian_product((x, y))
-ham_everywhere = np.vectorize(ham, signature="(2)->()")(xx).reshape(
+ham_everywhere = jnp.vectorize(ham, signature="(2)->()")(xx).reshape(
     n_pix_sqrt, n_pix_sqrt
 )
 ax1.imshow(
-    np.exp(-ham_everywhere.T),
+    jnp.exp(-ham_everywhere.T),
     extent=(x.min(), x.max(), y.min(), y.max()),
     origin="lower"
 )
@@ -282,7 +282,8 @@ ax1.set_ylim([-4., 4.])
 ax1.set_xlim([-4., 4.])
 #ax1.autoscale(enable=True, axis='y', tight=True)
 asp = float(
-    np.diff(np.array(ax1.get_xlim()))[0] / np.diff(np.array(ax1.get_ylim()))[0]
+    jnp.diff(jnp.array(ax1.get_xlim()))[0] /
+    jnp.diff(jnp.array(ax1.get_ylim()))[0]
 )
 
 smplmarkersize = .3
@@ -293,7 +294,7 @@ fontsize = 5
 potlabels = False
 
 ax2.set_title('MGVI')
-mkl_b_space_smpls = np.array([(mkl_pos + smpl).val for smpl in mkl.samples])
+mkl_b_space_smpls = jnp.array([(mkl_pos + smpl).val for smpl in mkl.samples])
 contour = ax2.contour(X, Y, es, linewidths=linewidths)
 ax2.clabel(contour, inline=True, fontsize=fontsize)
 ax2.scatter(*mkl_b_space_smpls.T, s=smplmarkersize, c=smplmarkercolor)
@@ -301,7 +302,7 @@ ax2.plot(*mkl_pos, "rx")
 #ax2.set_aspect(asp)
 
 ax3.set_title('geoVI')
-gkl_b_space_smpls = np.array([(gkl_pos + smpl).val for smpl in gkl.samples])
+gkl_b_space_smpls = jnp.array([(gkl_pos + smpl).val for smpl in gkl.samples])
 contour = ax3.contour(X, Y, es, linewidths=linewidths)
 ax3.clabel(contour, inline=True, fontsize=fontsize)
 ax3.scatter(*gkl_b_space_smpls.T, s=smplmarkersize, c=smplmarkercolor)
@@ -319,7 +320,7 @@ for n, samples, ax in zip(ns_samples[:2], nuts_n_samples[:2], [ax4, ax5]):
     #ax.clabel(contour, inline=True, fontsize=fontsize)
     ax.scatter(*samples.T, s=smplmarkersize, c=smplmarkercolor)
 
-h, _, _ = np.histogram2d(
+h, _, _ = jnp.histogram2d(
     *nuts_n_samples[-1].T,
     bins=[x, y],
     range=[[x.min(), x.max()], [y.min(), y.max()]]

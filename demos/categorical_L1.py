@@ -5,7 +5,7 @@ config.update("jax_enable_x64", True)
 import sys
 
 from functools import partial
-from jax import numpy as np
+from jax import numpy as jnp
 from jax import random
 from jax import value_and_grad, jit
 
@@ -15,7 +15,7 @@ import jifty1 as jft
 def build_model(predictors, targets, sh, alpha=1):
     my_laplace_prior = jft.interpolate()(jft.laplace_prior(alpha))
     matrix = lambda x: my_laplace_prior(x).reshape(sh)
-    model = lambda x: np.matmul(predictors, matrix(x))
+    model = lambda x: jnp.matmul(predictors, matrix(x))
     lh = jft.Categorical(targets, axis=1)
     return {"lh": lh @ model, "logits": model, "matrix": matrix}
 
@@ -37,7 +37,7 @@ if __name__ == "__main__":
     mock_predictors = random.normal(shape=(N_data, N_predictors), key=key)
     key, subkey = random.split(key)
     model = build_model(
-        mock_predictors, np.zeros((N_data, 1), dtype=np.int32),
+        mock_predictors, jnp.zeros((N_data, 1), dtype=jnp.int32),
         (N_predictors, N_categories)
     )
     latent_truth = random.normal(
@@ -62,18 +62,18 @@ if __name__ == "__main__":
     key, subkey = random.split(key)
     pos = pos_init.copy()
 
-    diff_to_truth = np.linalg.norm(model["matrix"](pos) - matrix_truth)
+    diff_to_truth = jnp.linalg.norm(model["matrix"](pos) - matrix_truth)
     print(f"Initial diff to truth {diff_to_truth}", file=sys.stderr)
 
     def energy(p, samps):
-        return np.mean(np.array([ham(p + s) for s in samps]), axis=0)
+        return jnp.mean(jnp.array([ham(p + s) for s in samps]), axis=0)
 
     energy_vag = jit(value_and_grad(energy))
 
     @jit
     def metric(p, t, samps):
         results = [ham.metric(p + s, t) for s in samps]
-        return np.mean(np.array(results), axis=0)
+        return jnp.mean(jnp.array(results), axis=0)
 
     draw = partial(jft.kl.sample_standard_hamiltonian, hamiltonian=ham)
 
@@ -97,7 +97,7 @@ if __name__ == "__main__":
             }
         )
         pos = opt_state.x
-        diff_to_truth = np.linalg.norm(model["matrix"](pos) - matrix_truth)
+        diff_to_truth = jnp.linalg.norm(model["matrix"](pos) - matrix_truth)
         print(
             (
                 f"Post MGVI Iteration {i}: Energy {Evag(pos)[0]:2.4e}"
@@ -108,10 +108,10 @@ if __name__ == "__main__":
 
     posterior_samps = [s + pos for s in samples]
     import matplotlib.pyplot as plt
-    matrix_samps = np.array([model["matrix"](s) for s in posterior_samps])
-    matrix_mean = np.mean(matrix_samps, axis=0)
-    matrix_std = np.std(matrix_samps, axis=0)
-    xx = np.linspace(-3.5, 3.5, 2)
+    matrix_samps = jnp.array([model["matrix"](s) for s in posterior_samps])
+    matrix_mean = jnp.mean(matrix_samps, axis=0)
+    matrix_std = jnp.std(matrix_samps, axis=0)
+    xx = jnp.linspace(-3.5, 3.5, 2)
     plt.plot(xx, xx)
     plt.errorbar(
         matrix_truth.reshape(-1),

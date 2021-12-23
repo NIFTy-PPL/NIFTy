@@ -5,7 +5,7 @@ config.update("jax_enable_x64", True)
 import sys
 import matplotlib.pyplot as plt
 from functools import partial
-from jax import numpy as np
+from jax import numpy as jnp
 from jax import lax, random
 from jax import value_and_grad, jit
 
@@ -17,21 +17,21 @@ key = random.PRNGKey(seed)
 
 # %%
 def cartesian_product(arrays, out=None):
-    import numpy as onp
+    import numpy as np
 
     # Generalized N-dimensional products
-    arrays = [onp.asarray(x) for x in arrays]
+    arrays = [np.asarray(x) for x in arrays]
     la = len(arrays)
-    dtype = onp.find_common_type([a.dtype for a in arrays], [])
+    dtype = np.find_common_type([a.dtype for a in arrays], [])
     if out is None:
-        out = onp.empty([len(a) for a in arrays] + [la], dtype=dtype)
-    for i, a in enumerate(onp.ix_(*arrays)):
+        out = np.empty([len(a) for a in arrays] + [la], dtype=dtype)
+    for i, a in enumerate(np.ix_(*arrays)):
         out[..., i] = a
     return out.reshape(-1, la)
 
 
 def banana_helper_phi_b(b, x):
-    return np.array([x[0], x[1] + b * x[0]**2 - 100 * b])
+    return jnp.array([x[0], x[1] + b * x[0]**2 - 100 * b])
 
 
 def sample_nonstandard_hamiltonian(
@@ -100,7 +100,7 @@ b = 0.1
 
 signal_response = partial(banana_helper_phi_b, b)
 nll = jft.Gaussian(
-    np.zeros(2), lambda x: x / np.array([100., 1.])
+    jnp.zeros(2), lambda x: x / jnp.array([100., 1.])
 ) @ signal_response
 
 ham = nll
@@ -113,7 +113,7 @@ n_samples = [1] * (n_mgvi_iterations - 10) + [2] * 5 + [3, 3, 10, 10, 100]
 n_newton_iterations = [7] * (n_mgvi_iterations - 10) + [10] * 6 + 4 * [25]
 absdelta = 1e-12
 
-initial_position = np.array([1., 1.])
+initial_position = jnp.array([1., 1.])
 mkl_pos = 1e-2 * initial_position
 
 # Minimize the potential
@@ -153,15 +153,15 @@ for i in range(n_mgvi_iterations):
     print(msg, file=sys.stderr)
 
 # %%
-b_space_smpls = np.array([mkl_pos + smpl for smpl in mkl.samples])
+b_space_smpls = jnp.array([mkl_pos + smpl for smpl in mkl.samples])
 
 n_pix_sqrt = 1000
-x = np.linspace(-10.0, 10.0, n_pix_sqrt, endpoint=True)
-y = np.linspace(2.0, 17.0, n_pix_sqrt, endpoint=True)
-X, Y = np.meshgrid(x, y)
-XY = np.array([X, Y]).T
+x = jnp.linspace(-10.0, 10.0, n_pix_sqrt, endpoint=True)
+y = jnp.linspace(2.0, 17.0, n_pix_sqrt, endpoint=True)
+X, Y = jnp.meshgrid(x, y)
+XY = jnp.array([X, Y]).T
 xy = XY.reshape((XY.shape[0] * XY.shape[1], 2))
-es = np.exp(-lax.map(ham, xy)).reshape(XY.shape[:2]).T
+es = jnp.exp(-lax.map(ham, xy)).reshape(XY.shape[:2]).T
 
 fig, ax = plt.subplots()
 contour = ax.contour(X, Y, es)

@@ -1,6 +1,6 @@
 # %%
 from functools import partial
-import jax.numpy as np
+import jax.numpy as jnp
 import matplotlib.pyplot as plt
 
 import jifty1 as jft
@@ -11,7 +11,7 @@ def loggaussian(x, mu, sigma):
 
 
 def sum_of_gaussians(x, separation, sigma1, sigma2):
-    return -np.logaddexp(
+    return -jnp.logaddexp(
         loggaussian(x, 0, sigma1), loggaussian(x, separation, sigma2)
     )
 
@@ -42,7 +42,7 @@ fig, ((ax1, ax2), (ax3, ax4)) = plt.subplots(
 nuts_sampler = jft.NUTSChain(
     potential_energy=ham,
     inverse_mass_matrix=5.,
-    initial_position=np.array(3.),
+    initial_position=jnp.array(3.),
     step_size=EPS,
     max_tree_depth=15,
     key=SEED,
@@ -64,7 +64,7 @@ ax2.set_title(rf'$m={1. / nuts_sampler.inverse_mass_matrix:1.2f}$')
 nuts_sampler = jft.NUTSChain(
     potential_energy=ham,
     inverse_mass_matrix=50.,
-    initial_position=np.array(3.),
+    initial_position=jnp.array(3.),
     step_size=EPS,
     max_tree_depth=15,
     key=SEED,
@@ -83,10 +83,10 @@ ax3.set_title(rf'$m={1. / nuts_sampler.inverse_mass_matrix:1.2f}$')
 ax4.set_title(rf'$m={1. / nuts_sampler.inverse_mass_matrix:1.2f}$')
 
 # %%
-xs = np.linspace(-10, 20, num=500)
-Z = np.trapz(np.exp(-ham(xs)), xs)
-ax1.plot(xs, np.exp(-ham(xs)) / Z, linewidth=0.5, c='r')
-ax3.plot(xs, np.exp(-ham(xs)) / Z, linewidth=0.5, c='r')
+xs = jnp.linspace(-10, 20, num=500)
+Z = jnp.trapz(jnp.exp(-ham(xs)), xs)
+ax1.plot(xs, jnp.exp(-ham(xs)) / Z, linewidth=0.5, c='r')
+ax3.plot(xs, jnp.exp(-ham(xs)) / Z, linewidth=0.5, c='r')
 
 ax1.set_ylabel('frequency')
 ax2.set_ylabel('position')
