@@ -1,6 +1,5 @@
 import sys
 from datetime import datetime
-from functools import partial
 from jax import lax
 from jax import numpy as jnp
 from jax.tree_util import Partial
@@ -331,7 +330,7 @@ def _trust_ncg(
             "name": cg_name
         }
         sub_result = subproblem(
-            f_k, g_k, partial(hessp, x_k),
+            f_k, g_k, Partial(hessp, x_k),
             **(default_kwargs | subproblem_kwargs)
         )
 

@@ -1,10 +1,13 @@
-from typing import Callable, Optional
+from typing import Any, Callable, Optional, TypeVar, Union
 
+from jax import numpy as jnp
 from jax import linear_transpose, linearize, vjp
 from jax.tree_util import Partial, tree_leaves
 
 from .forest_util import ShapeWithDtype
 from .sugar import is1d, isiterable, sum_of_squares, doc_from
+
+Q = TypeVar("Q")
 
 
 class Likelihood():
@@ -13,10 +16,10 @@ class Likelihood():
     """
     def __init__(
         self,
-        energy: Callable,
-        transformation: Optional[Callable] = None,
-        left_sqrt_metric: Optional[Callable] = None,
-        metric: Optional[Callable] = None,
+        energy: Callable[..., Union[jnp.ndarray, float]],
+        transformation: Optional[Callable[[Q], Any]] = None,
+        left_sqrt_metric: Optional[Callable[[Q, Q], Any]] = None,
+        metric: Optional[Callable[[Q, Q], Any]] = None,
         lsm_tangents_shape=None
     ):
         """Instantiates a new likelihood.
@@ -52,27 +55,29 @@ class Likelihood():
                     raise TypeError(te)
         self._lsm_tan_shp = lsm_tangents_shape
 
-    def __call__(self, *primals, **primals_kw):
+    def __call__(self, primals, **primals_kw):
         """Convenience method to access the `energy` method of this instance.
         """
-        return self.energy(*primals, **primals_kw)
+        return self.energy(primals, **primals_kw)
 
-    def energy(self, *primals, **primals_kw):
+    def energy(self, primals, **primals_kw):
         """Applies the energy to `primals`.
 
         Parameters
         ----------
         primals : tree-like structure
             Position at which to evaluate the energy.
+        **primals_kw : Any
+           Additional arguments passed on to the energy.
 
         Returns
         -------
         energy : float
             Energy at the position `primals`.
         """
-        return self._hamiltonian(*primals, **primals_kw)
+        return self._hamiltonian(primals, **primals_kw)
 
-    def metric(self, primals, tangents):
+    def metric(self, primals, tangents, **primals_kw):
         """Applies the metric at `primals` to `tangents`.
 
         Parameters
@@ -81,6 +86,8 @@ class Likelihood():
             Position at which to evaluate the metric.
         tangents : tree-like structure
             Instance to which to apply the metric.
+        **primals_kw : Any
+           Additional arguments passed on to the metric.
 
         Returns
         -------
@@ -91,15 +98,15 @@ class Likelihood():
         if self._metric is None:
             from jax import linear_transpose
 
-            lsm_at_p = Partial(self.left_sqrt_metric, primals)
+            lsm_at_p = Partial(self.left_sqrt_metric, primals, **primals_kw)
             rsm_at_p = linear_transpose(
                 lsm_at_p, self.left_sqrt_metric_tangents_shape
             )
             res = lsm_at_p(*rsm_at_p(tangents))
             return res
-        return self._metric(primals, tangents)
+        return self._metric(primals, tangents, **primals_kw)
 
-    def left_sqrt_metric(self, primals, tangents):
+    def left_sqrt_metric(self, primals, tangents, **primals_kw):
         """Applies the left-square-root of the metric at `primals` to
         `tangents`.
 
@@ -109,6 +116,8 @@ class Likelihood():
             Position at which to evaluate the metric.
         tangents : tree-like structure
             Instance to which to apply the metric.
+        **primals_kw : Any
+           Additional arguments passed on to the LSM.
 
         Returns
         -------
@@ -117,12 +126,12 @@ class Likelihood():
             left-square-root of the metric has been applied to.
         """
         if self._left_sqrt_metric is None:
-            _, bwd = vjp(self.transformation, primals)
+            _, bwd = vjp(Partial(self.transformation, **primals_kw), primals)
             res = bwd(tangents)
             return res[0]
-        return self._left_sqrt_metric(primals, tangents)
+        return self._left_sqrt_metric(primals, tangents, **primals_kw)
 
-    def transformation(self, primals):
+    def transformation(self, primals, **primals_kw):
         """Applies the coordinate transformation that maps into a coordinate
         system in which the metric of the likelihood is the Euclidean metric.
 
@@ -130,6 +139,8 @@ class Likelihood():
         ----------
         primals : tree-like structure
             Position at which to transform.
+        **primals_kw : Any
+           Additional arguments passed on to the transformation.
 
         Returns
         -------
@@ -140,7 +151,7 @@ class Likelihood():
         if self._transformation is None:
             nie = "`transformation` is not implemented"
             raise NotImplementedError(nie)
-        return self._transformation(*primals, **primals_kw)
+        return self._transformation(primals, **primals_kw)
 
     @property
     def left_sqrt_metric_tangents_shape(self):
@@ -208,22 +219,22 @@ class Likelihood():
         )
 
     def __matmul__(self, f: Callable):
-        def energy_at_f(*primals, **primals_kw):
-            return self.energy(f(*primals, **primals_kw))
+        def energy_at_f(primals, **primals_kw):
+            return self.energy(f(primals, **primals_kw))
 
-        def transformation_at_f(*primals, **primals_kw):
-            return self.transformation(f(*primals, **primals_kw))
+        def transformation_at_f(primals, **primals_kw):
+            return self.transformation(f(primals, **primals_kw))
 
-        def metric_at_f(primals, tangents):
+        def metric_at_f(primals, tangents, **primals_kw):
             # Note, judging by a simple benchmark on a large problem,
             # transposing the JVP seems faster than computing the VJP again. On
             # small problems there seems to be no measurable difference.
-            y, fwd = linearize(f, primals)
+            y, fwd = linearize(Partial(f, **primals_kw), primals)
             bwd = linear_transpose(fwd, primals)
             return bwd(self.metric(y, fwd(tangents)))[0]
 
-        def left_sqrt_metric_at_f(primals, tangents):
-            y, bwd = vjp(f, primals)
+        def left_sqrt_metric_at_f(primals, tangents, **primals_kw):
+            y, bwd = vjp(Partial(f, **primals_kw), primals)
             left_at_fp = self.left_sqrt_metric(y, tangents)
             return bwd(left_at_fp)[0]
 
@@ -242,24 +253,31 @@ class Likelihood():
             )
             raise TypeError(te)
 
-        def joined_hamiltonian(p):
-            return self.energy(p) + other.energy(p)
+        def joined_hamiltonian(p, **pkw):
+            return self.energy(p, **pkw) + other.energy(p, **pkw)
 
-        def joined_metric(p, t):
-            return self.metric(p, t) + other.metric(p, t)
+        def joined_metric(p, t, **pkw):
+            return self.metric(p, t, **pkw) + other.metric(p, t, **pkw)
 
         joined_tangents_shape = {
             "lh_left": self._lsm_tan_shp,
             "lh_right": other._lsm_tan_shp
         }
 
-        def joined_transformation(p):
-            return self.transformation(p) + other.transformation(p)
+        def joined_transformation(p, **pkw):
+            from warnings import warn
 
-        def joined_left_sqrt_metric(p, t):
+            # FIXME
+            warn("adding transformations is untested", UserWarning)
+            return {
+                "lh_left": self.transformation(p, **pkw),
+                "lh_right": other.transformation(p, **pkw)
+            }
+
+        def joined_left_sqrt_metric(p, t, **pkw):
             return self.left_sqrt_metric(
-                p, t["lh_left"]
-            ) + other.left_sqrt_metric(p, t["lh_right"])
+                p, t["lh_left"], **pkw
+            ) + other.left_sqrt_metric(p, t["lh_right"], **pkw)
 
         return Likelihood(
             joined_hamiltonian,
@@ -283,15 +301,15 @@ class StandardHamiltonian():
         likelihood : Likelihood
             Energy, left-square-root of metric and metric of the likelihood.
         """
-        self._nll = likelihood
+        self._lh = likelihood
 
-        def joined_hamiltonian(*primals, **primals_kw):
+        def joined_hamiltonian(primals, **primals_kw):
             # Assume the first primals to be the parameters
-            return self._nll(*primals, **
-                             primals_kw) + 0.5 * sum_of_squares(primals[0])
+            return self._lh(primals, **
+                            primals_kw) + 0.5 * sum_of_squares(primals)
 
         def joined_metric(primals, tangents):
-            return self._nll.metric(primals, tangents) + tangents
+            return self._lh.metric(primals, tangents) + tangents
 
         if _compile_joined:
             from jax import jit
@@ -301,20 +319,20 @@ class StandardHamiltonian():
         self._metric = joined_metric
 
     @doc_from(Likelihood.__call__)
-    def __call__(self, *primals, **primals_kw):
-        return self.energy(*primals, **primals_kw)
+    def __call__(self, primals, **primals_kw):
+        return self.energy(primals, **primals_kw)
 
     @doc_from(Likelihood.energy)
-    def energy(self, *primals, **primals_kw):
-        return self._hamiltonian(*primals, **primals_kw)
+    def energy(self, primals, **primals_kw):
+        return self._hamiltonian(primals, **primals_kw)
 
     @doc_from(Likelihood.metric)
-    def metric(self, primals, tangents):
-        return self._metric(primals, tangents)
+    def metric(self, primals, tangents, **primals_kw):
+        return self._metric(primals, tangents, **primals_kw)
 
     @property
     def likelihood(self):
-        return self._nll
+        return self._lh
 
     def jit(self):
         return StandardHamiltonian(self.likelihood.jit(), _compile_joined=True)

@@ -64,6 +64,29 @@ def lognormal_prior(mean, std) -> Callable:
     return standard_to_lognormal
 
 
+def uniform_prior(a_min=0., a_max=1.) -> Callable:
+    """Transform a standard normal into a uniform distribution.
+
+    Parameters
+    ----------
+    a_min : float
+        Minimum value.
+    a_max : float
+        Maximum value.
+    """
+    from jax.scipy.stats import norm
+
+    if a_min == 0. and a_max == 1.:
+        return norm.cdf
+
+    scale = a_max - a_min
+
+    def standard_to_uniform(xi):
+        return a_min + scale * norm.cdf(xi)
+
+    return standard_to_uniform
+
+
 def interpolator(
     func: Callable,
     xmin: float,
