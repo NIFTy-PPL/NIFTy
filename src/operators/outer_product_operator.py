@@ -15,6 +15,7 @@
 #
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
 
+from functools import partial
 import numpy as np
 
 from ..domain_tuple import DomainTuple
@@ -37,6 +38,19 @@ class OuterProduct(LinearOperator):
         self._target = DomainTuple.make(
             tuple(sub_d for sub_d in field.domain._dom + self._domain._dom))
         self._capability = self.TIMES | self.ADJOINT_TIMES
+
+        try:
+            from jax import numpy as jnp
+            from jax.tree_util import tree_map
+
+            a_j = field.val if hasattr(field, "val") else field
+            self._jax_expr = partial(
+                tree_map,
+                partial(jnp.tensordot, axes=((), ())),
+                a_j
+            )
+        except ImportError:
+            self._jax_expr = None
 
     def apply(self, x, mode):
         self._check_input(x, mode)

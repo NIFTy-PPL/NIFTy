@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
 
-import jifty1 as jft
-from jax.tree_util import tree_map
-
+import operator
 from typing import Any, Callable, Mapping, Tuple
+
+from jax.tree_util import tree_map
+import jifty1 as jft
 
 from . import DomainTuple, Field, MultiDomain, MultiField, Operator
 
@@ -33,7 +34,12 @@ def translate_call(apply: Callable, from_to: Mapping):
     return translated_call
 
 
-def unite(x, y):
+def unite(x, y, op=operator.add):
+    """Unites two Fields or MultiFields.
+
+    If a key is contained in both MultiFields, then the fields at that key
+    combined.
+    """
     x = x.val if hasattr(x, "val") else x
     y = y.val if hasattr(y, "val") else y
     if not hasattr(x, "keys") and not hasattr(y, "keys"):
@@ -42,7 +48,7 @@ def unite(x, y):
     out = {}
     for k in x.keys() | y.keys():
         if k in x and k in y:
-            out[k] = x[k] + y[k]
+            out[k] = op(x[k], y[k])
         elif k in x:
             out[k] = x[k]
         else:
