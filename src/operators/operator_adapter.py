@@ -38,7 +38,7 @@ class OperatorAdapter(LinearOperator):
         3) adjoint inverse
     """
 
-    def __init__(self, op, op_transform):
+    def __init__(self, op, op_transform, domain_dtype=float):
         self._op = op
         self._trafo = int(op_transform)
         if self._trafo < 1 or self._trafo > 3:
@@ -46,6 +46,26 @@ class OperatorAdapter(LinearOperator):
         self._domain = self._op._dom(1 << self._trafo)
         self._target = self._op._tgt(1 << self._trafo)
         self._capability = self._capTable[self._trafo][self._op.capability]
+
+        try:
+            from jax import linear_transpose
+            import jax.numpy as jnp
+            from jax.tree_util import tree_map
+
+            from ..nifty2jax import shapewithdtype_from_domain
+
+            if callable(op.jax_expr) and self._trafo == self.ADJOINT_BIT:
+                def jax_expr(y):
+                    y_conj = tree_map(jnp.conj, y)
+                    op_domain = shapewithdtype_from_domain(op.domain, domain_dtype)
+                    jax_expr_T = linear_transpose(op.jax_expr, op_domain)
+                    return tree_map(jnp.conj, jax_expr_T(y_conj)[0])
+
+                self._jax_expr = jax_expr
+            else:
+                self._jax_expr = None
+        except ImportError:
+            self._jax_expr = None
 
     def _flip_modes(self, trafo):
         newtrafo = trafo ^ self._trafo
