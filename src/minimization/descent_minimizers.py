@@ -130,6 +130,10 @@ class DescentMinimizer(Minimizer):
         """
         raise NotImplementedError
 
+    @property
+    def controller(self):
+        return self._controller
+
 
 class SteepestDescent(DescentMinimizer):
     """Implementation of the steepest descent minimization scheme.

@@ -45,7 +45,7 @@ Installation
 
 ### Requirements
 
-- [Python 3](https://www.python.org/) (3.6.x or later)
+- [Python 3](https://www.python.org/) (3.7.x or later)
 - [SciPy](https://www.scipy.org/)
 
 Optional dependencies:
@@ -53,6 +53,7 @@ Optional dependencies:
     harmonic transforms, and radio interferometry gridding support
 - [mpi4py](https://mpi4py.scipy.org) (for MPI-parallel execution)
 - [h5py](https://www.h5py.org/) (for writing results to HDF5 files)
+- [astropy](https://www.astropy.org/) (for writing FITS files)
 - [matplotlib](https://matplotlib.org/) (for field plotting)
 - [jax](https://github.com/google/jax) (for implementing operators with jax)
 

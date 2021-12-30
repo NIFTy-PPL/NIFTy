@@ -252,6 +252,16 @@ class Operator(metaclass=NiftyMeta):
             return NotImplemented
         return self.ptw("power", power)
 
+    def __getitem__(self, key):
+        from ..sugar import is_operator
+        from .simple_linear_operators import ducktape
+
+        if not is_operator(self):
+            return NotImplemented
+        if not isinstance(self.target, MultiDomain):
+            raise TypeError("Only Operators with a MultiDomain as target get be subscipted.")
+        return ducktape(None, self, key) @ self
+
     def apply(self, x):
         """Applies the operator to a Field or MultiField.
 
@@ -290,14 +300,27 @@ class Operator(metaclass=NiftyMeta):
 
     def ducktape(self, name):
         from ..sugar import is_operator
-        from .simple_linear_operators import ducktape
+        from .simple_linear_operators import ducktape, DomainChangerAndReshaper
+        from ..domain_tuple import DomainTuple
+        from ..domains.domain import Domain
+        from ..multi_domain import MultiDomain
+
         if not is_operator(self):
             raise RuntimeError("ducktape works only on operators")
+        if isinstance(name, (DomainTuple, Domain, MultiDomain)):
+            return self @ DomainChangerAndReshaper(name, self.domain)
         return self @ ducktape(self, None, name)
 
     def ducktape_left(self, name):
         from ..sugar import is_fieldlike, is_linearization, is_operator
-        from .simple_linear_operators import ducktape
+        from .simple_linear_operators import ducktape, DomainChangerAndReshaper
+        from ..domain_tuple import DomainTuple
+        from ..domains.domain import Domain
+        from ..multi_domain import MultiDomain
+
+        if isinstance(name, (DomainTuple, Domain, MultiDomain)):
+            dom = self.domain if is_fieldlike(self) else self.target
+            return DomainChangerAndReshaper(dom, name)(self)
         if is_operator(self):
             return ducktape(None, self, name) @ self
         if is_fieldlike(self) or is_linearization(self):

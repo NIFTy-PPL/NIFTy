@@ -33,6 +33,14 @@ import nifty8 as ift
 
 ift.random.push_sseq_from_seed(27)
 
+try:
+    from mpi4py import MPI
+    comm = MPI.COMM_WORLD
+    master = comm.Get_rank() == 0
+except ImportError:
+    comm = None
+    master = True
+
 
 def random_los(n_los):
     starts = list(ift.random.current_rng().random((n_los, 2)).T)
@@ -97,55 +105,40 @@ def main():
     mock_position = ift.from_random(signal_response.domain, 'normal')
     data = signal_response(mock_position) + N.draw_sample()
 
-    plot = ift.Plot()
-    plot.add(signal(mock_position), title='Ground Truth', zmin=0, zmax=1)
-    plot.add(R.adjoint_times(data), title='Data')
-    plot.add([pspec.force(mock_position)], title='Power Spectrum')
-    plot.output(ny=1, nx=3, xsize=24, ysize=6, name=filename.format("setup"))
-
     # Minimization parameters
     ic_sampling = ift.AbsDeltaEnergyController(name="Sampling (linear)",
-            deltaE=0.05, iteration_limit=100)
+                                               deltaE=0.05, iteration_limit=100)
     ic_newton = ift.AbsDeltaEnergyController(name='Newton', deltaE=0.5,
-            convergence_level=2, iteration_limit=35)
-    minimizer = ift.NewtonCG(ic_newton)
+                                             convergence_level=2, iteration_limit=35)
     ic_sampling_nl = ift.AbsDeltaEnergyController(name='Sampling (nonlin)',
-            deltaE=0.5, iteration_limit=15, convergence_level=2)
+                                                  deltaE=0.5, iteration_limit=15,
+                                                  convergence_level=2)
+    minimizer = ift.NewtonCG(ic_newton)
     minimizer_sampling = ift.NewtonCG(ic_sampling_nl)
 
-    # Set up likelihood energy and information Hamiltonian
+    # Set up likelihood energy
     likelihood_energy = (ift.GaussianEnergy(mean=data, inverse_covariance=N.inverse) @
                          signal_response)
-    H = ift.StandardHamiltonian(likelihood_energy, ic_sampling)
 
-    initial_position = 1e-2 * ift.from_random(H.domain)
-    position = initial_position
+    def callback(samples):
+        s = ift.extra.minisanity(data, lambda x: N.inverse, signal_response, samples)
+        if master:
+            ift.logger.info(s)
 
-    # number of samples used to estimate the KL
-    N_samples = 10
+    # Minimize KL
+    n_iterations = 6
+    n_samples = lambda iiter: 10 if iiter < 5 else 20
+    samples = ift.optimize_kl(likelihood_energy, n_iterations, n_samples,
+                              minimizer, ic_sampling, minimizer_sampling,
+                              plottable_operators={"signal": signal, "power spectrum": pspec},
+                              ground_truth_position=mock_position,
+                              output_directory="getting_started_3_results",
+                              overwrite=True, comm=comm, callback=callback)
 
-    # Draw new samples to approximate the KL six times
-    for i in range(6):
-        if i == 5:
-            # Double the number of samples in the last step for better statistics
-            N_samples = 2*N_samples
-        # Draw new samples and minimize KL
-        KL = ift.SampledKLEnergy(position, H, N_samples, minimizer_sampling)
-        KL, convergence = minimizer(KL)
-        position = KL.position
-        ift.extra.minisanity(data, lambda x: N.inverse, signal_response, KL.samples)
-
-        # Plot current reconstruction
-        plot = ift.Plot()
-        plot.add(KL.samples.average(signal), title="Posterior mean", zmin=0, zmax=1)
-        plot.add(KL.samples.iterator(pspec.force), title="Samples power spectrum")
-        plot.output(ny=1, ysize=6, xsize=16, name=filename.format("loop_{:02d}".format(i)))
-
-    # Write result to disk and load it immediately afterwards
-    # May be useful for long inference runs, where inference and posterior
-    # analysis are split into two steps
-    KL.samples.save("result")
-    samples = ift.ResidualSampleList.load("result")
+    if True:
+        # Load result from disk. May be useful for long inference runs, where
+        # inference and posterior analysis are split into two steps
+        samples = ift.ResidualSampleList.load("getting_started_3_results/pickle/last", comm=comm)
 
     # Plotting
     filename_res = filename.format("results")
@@ -155,14 +148,15 @@ def main():
     plot.add(var.sqrt(), title="Posterior Standard Deviation")
 
     nsamples = samples.n_samples()
-    logspec = pspec.log().force
-    plot.add(list(samples.iterator(pspec.force)) +
+    logspec = pspec.log()
+    plot.add(list(samples.iterator(pspec)) +
              [pspec.force(mock_position), samples.average(logspec).exp()],
              title="Sampled Posterior Power Spectrum",
              linewidth=[1.]*nsamples + [3., 3.],
              label=[None]*nsamples + ['Ground truth', 'Posterior mean'])
-    plot.output(ny=1, nx=3, xsize=24, ysize=6, name=filename_res)
-    print("Saved results as '{}'.".format(filename_res))
+    if master:
+        plot.output(ny=1, nx=3, xsize=24, ysize=6, name=filename_res)
+        print("Saved results as '{}'.".format(filename_res))
 
 
 if __name__ == '__main__':

@@ -30,12 +30,17 @@ comm = list2fixture(comm)
 def _get_sample_list(communicator, cls):
     dom = ift.makeDomain({"a": ift.UnstructuredDomain(2), "b": ift.RGSpace(12)})
     samples = [ift.from_random(dom) for _ in range(3)]
+    mean = ift.from_random(dom)
     if cls == "SampleList":
         return ift.SampleList(samples, communicator), samples
     elif cls == "ResidualSampleList":
-        mean = ift.from_random(dom)
         neg = 3*[False]
         return ift.ResidualSampleList(mean, samples, neg, communicator), [mean + ss for ss in samples]
+    elif cls == "SymmetricalSampleList":
+        neg = len(samples)*[False] + len(samples)*[True]
+        reference = [mean + ss for ss in samples] + [mean - ss for ss in samples]
+        samples = samples + samples
+        return ift.ResidualSampleList(mean, samples, neg, communicator), reference
     raise NotImplementedError
 
 
@@ -89,6 +94,17 @@ def test_load_and_save(comm, cls):
 
     for s0, s1 in zip(sl.local_iterator(), sl1.local_iterator()):
         ift.extra.assert_equal(s0, s1)
+
+
+def test_load_mean(comm):
+    sl, _ = _get_sample_list(comm, "SymmetricalSampleList")
+    m0 = sl._m
+    sl.save("sl")
+    sl1 = ift.ResidualSampleList.load("sl", comm=comm)
+    m1, _ = sl1.sample_stat(None)
+    m2 = ift.ResidualSampleList.load_mean("sl")
+    ift.extra.assert_equal(m0, m2)
+    ift.extra.assert_allclose(m1, m2)
 
 
 @pmp("cls", ["ResidualSampleList", "SampleList"])

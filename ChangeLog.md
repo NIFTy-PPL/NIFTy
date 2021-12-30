@@ -1,6 +1,35 @@
 Changes since NIFTy 7
 =====================
 
+InverseGammaOperator interface
+-------------------------------------
+
+The InverseGammaOperator now also supports initialization via mode and mean.
+Additionally it got some properties like `alpha`, `q`, `mode`, `mean`
+(for `alpha`>1), and `var` (for `alpha`>2), that return the respective value.
+
+Extension of Operator interface
+-------------------------------
+
+For an operator `op`, `op[key]` represents the operator that first applies `op`,
+which results in a `MultiField`, and then extracts the `Field` with key `key`
+out of that.
+
+Additionally, `op1.ducktape(op2.target) @ op2` attempts to convert the target of
+`op2` into the domain of `op1`. Equivalently, one can write: `op1 @
+op2.ducktape_left(op1.domain)`. Both include a potential reshape of the `Field`.
+Note that only instances of `DomainTuple` (and not `Domain`s) are allowed for
+this use of `ducktape`.
+
+Minimum Python version increased to 3.7
+---------------------------------------
+
+Optimize KL
+-----------
+
+The utility function `optimize_kl` has been added. It provides a blueprint for a
+typical NIFTy optimization.
+
 Unify MetricGaussianKL and GeoMetricKL
 --------------------------------------
 
@@ -66,8 +95,10 @@ covariance operators.
 Minisanity
 ----------
 
-Terminal colors can be disabled in order to make the output of
-`ift.extra.minisanity` more readable when written to a file.
+`ift.extra.minisanity` does write its results to `ift.logger.info` anymore, but
+rather returns its output as a string. Additonally, terminal colors can be
+disabled in order to make the output of `ift.extra.minisanity` more readable
+when written to a file.
 
 Jax interface
 -------------

@@ -44,7 +44,8 @@ from .operators.block_diagonal_operator import BlockDiagonalOperator
 from .operators.outer_product_operator import OuterProduct
 from .operators.simple_linear_operators import (
     VdotOperator, ConjugationOperator, Realizer, FieldAdapter, ducktape,
-    GeometryRemover, NullOperator, PartialExtractor, Imaginizer)
+    GeometryRemover, NullOperator, PartialExtractor, Imaginizer, PrependKey,
+    DomainChangerAndReshaper)
 from .operators.matrix_product_operator import MatrixProductOperator
 from .operators.value_inserter import ValueInserter
 from .operators.energy_operators import (
@@ -77,6 +78,7 @@ from .minimization.quadratic_energy import QuadraticEnergy
 from .minimization.sample_list import SampleList, SampleListBase, ResidualSampleList
 from .minimization.energy_adapter import EnergyAdapter, StochasticEnergyAdapter
 from .minimization.kl_energies import SampledKLEnergy, SampledKLEnergyClass
+from .minimization.optimize_kl import optimize_kl
 
 from .sugar import *
 
