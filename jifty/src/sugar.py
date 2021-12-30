@@ -1,11 +1,15 @@
-from typing import Any, Callable, Hashable
+from __future__ import annotations
 from collections.abc import Iterable
+from typing import Any, Callable, Hashable, Mapping, TypeVar, Union
 
 from jax import random
 from jax import numpy as jnp
-from jax.tree_util import tree_structure, tree_unflatten, tree_map, tree_reduce
+from jax.tree_util import tree_map, tree_reduce, tree_structure, tree_unflatten
 
 from .field import Field
+
+O = TypeVar('O')
+I = TypeVar('I')
 
 
 def isiterable(candidate):
@@ -37,14 +41,23 @@ def doc_from(original):
     return wrapper
 
 
-def ducktape(call: Callable, key: Hashable):
+def ducktape(call: Callable[[I], O],
+             key: Hashable) -> Callable[[Mapping[Hashable, I]], O]:
     def named_call(p):
         return call(p[key])
 
     return named_call
 
 
-def sum_of_squares(tree):
+def ducktape_left(call: Callable[[I], O],
+                  key: Hashable) -> Callable[[I], dict[Hashable, O]]:
+    def named_call(p):
+        return {key: call(p)}
+
+    return named_call
+
+
+def sum_of_squares(tree) -> Union[jnp.ndarray, jnp.inexact]:
     return tree_reduce(jnp.add, tree_map(lambda x: jnp.sum(x**2), tree), 0.)
 
 
@@ -77,21 +90,8 @@ def mean_and_std(forest, correct_bias=True):
         return m.val, std.val
 
 
-def random_like_shapewdtype(
-    key: Iterable, tree_of_shapes: Iterable, rng: Callable = random.normal
-):
-    struct = tree_structure(tree_of_shapes)
-    # Cast the subkeys to the structure of `primals`
-    subkeys = tree_unflatten(struct, random.split(key, struct.num_leaves))
-
-    def draw(swd, key):
-        return rng(key=key, shape=swd.shape, dtype=swd.dtype)
-
-    return tree_map(draw, tree_of_shapes, subkeys)
-
-
 def random_like(
-    primals: Iterable, key: Iterable, rng: Callable = random.normal
+    key: Iterable, primals: Iterable, rng: Callable = random.normal
 ):
     import numpy as np
 
@@ -99,15 +99,15 @@ def random_like(
     # Cast the subkeys to the structure of `primals`
     subkeys = tree_unflatten(struct, random.split(key, struct.num_leaves))
 
-    def draw(x, key):
-        shp = jnp.shape(x)
-        dtp = np.common_type(x)
+    def draw(key, x):
+        shp = x.shape if hasattr(x, "shape") else jnp.shape(x)
+        dtp = x.dtype if hasattr(x, "dtype") else np.common_type(x)
         return rng(key=key, shape=shp, dtype=dtp)
 
-    return tree_map(draw, primals, subkeys)
+    return tree_map(draw, subkeys, primals)
 
 
-def interpolate(xmin=-7., xmax=7., N=14000):
+def interpolate(xmin=-7., xmax=7., N=14000) -> Callable:
     """Replaces a local nonlinearity such as jnp.exp with a linear interpolation
 
     Interpolating functions speeds up code and increases numerical stability in

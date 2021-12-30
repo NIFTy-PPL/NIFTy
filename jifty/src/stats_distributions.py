@@ -64,6 +64,16 @@ def lognormal_prior(mean, std) -> Callable:
     return standard_to_lognormal
 
 
+def lognormal_invprior(mean, std) -> Callable:
+    """Get the inverse transform to `lognormal_prior`."""
+    ln_m, ln_std = lognormal_moments(mean, std)
+
+    def lognormal_to_standard(y):
+        return (jnp.log(y) - ln_m) / ln_std
+
+    return lognormal_to_standard
+
+
 def uniform_prior(a_min=0., a_max=1.) -> Callable:
     """Transform a standard normal into a uniform distribution.
 
@@ -95,8 +105,9 @@ def interpolator(
     step: Optional[float] = None,
     num: Optional[int] = None,
     table_func: Optional[Callable] = None,
-    inv_table_func: Optional[Callable] = None
-) -> Callable:  # Adapted from NIFTy
+    inv_table_func: Optional[Callable] = None,
+    return_inverse: Optional[bool] = False
+):  # Adapted from NIFTy
     """
     Evaluate a function point-wise by interpolation.  Can be supplied with a
     table_func to increase the interpolation accuracy, Best results are
@@ -121,6 +132,9 @@ def interpolator(
         transform the table to a more linear space.
     inv_table_func : function
         Inverse of `table_func`.
+    return_inverse : bool
+        Whether to also return the interpolation of the inverse of `func`. Only
+        sensible if `func` is invertible.
     """
     # from scipy.interpolate import CubicSpline
 
@@ -150,6 +164,15 @@ def interpolator(
         if inv_table_func is not None:
             res = inv_table_func(res)
         return res
+
+    if return_inverse:
+
+        def inverse_interp(y):
+            if table_func is not None:
+                y = table_func(y)
+            return jnp.interp(y, ys, xs)
+
+        return interp, inverse_interp
 
     return interp
 
@@ -194,3 +217,20 @@ def invgamma_prior(a, scale, loc=0., step=1e-2) -> Callable:
         inv_table_func=jnp.exp
     )
     return standard_to_invgamma
+
+
+def invgamma_invprior(a, scale, loc=0., step=1e-2) -> Callable:
+    """Get the inverse transformation to `invgamma_prior`."""
+    from scipy.stats import invgamma, norm
+
+    xmin, xmax = -8.2, 8.2  # (1. - norm.cdf(8.2)) * 2 < 1e-15
+    _, invgamma_to_standard = interpolator(
+        lambda x: invgamma.ppf(norm._cdf(x), a=a, loc=loc, scale=scale),
+        xmin,
+        xmax,
+        step=step,
+        table_func=jnp.log,
+        inv_table_func=jnp.exp,
+        return_inverse=True
+    )
+    return invgamma_to_standard

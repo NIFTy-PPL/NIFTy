@@ -44,7 +44,7 @@ def sample_nonstandard_hamiltonian(
 
     cg_kwargs = cg_kwargs if cg_kwargs is not None else {}
 
-    white_sample = jft.random_like_shapewdtype(
+    white_sample = jft.random_like(
         key, likelihood.left_sqrt_metric_tangents_shape
     )
     met_smpl = likelihood.left_sqrt_metric(primals, white_sample)

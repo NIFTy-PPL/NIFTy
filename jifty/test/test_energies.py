@@ -3,8 +3,8 @@
 import jax.numpy as jnp
 import pytest
 from functools import partial
-from jax import eval_shape, random
-from jax.tree_util import tree_map, tree_leaves
+from jax import random
+from jax.tree_util import tree_map
 from numpy.testing import assert_allclose
 
 import jifty1 as jft
@@ -71,7 +71,7 @@ lh_init_approx = (
 
 def test_gaussian_vs_vcgaussian_consistency(seed, shape):
     rtol = 10 * jnp.finfo(jnp.zeros(0).dtype).eps
-    atol = 1 * jnp.finfo(jnp.zeros(0).dtype).eps
+    atol = 5 * jnp.finfo(jnp.zeros(0).dtype).eps
 
     key = random.PRNGKey(seed)
     sk = list(random.split(key, 5))
