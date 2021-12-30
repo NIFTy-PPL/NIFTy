@@ -17,6 +17,7 @@
 
 import numpy as np
 
+from warnings import warn
 from typing import Callable, Optional
 
 from .. import pointwise
@@ -137,7 +138,11 @@ class Operator(metaclass=NiftyMeta):
     @property
     def jax_expr(self) -> Optional[Callable]:
         """Equivalent representation of the operator in JAX."""
-        return getattr(self, "_jax_expr", None)
+        expr = getattr(self, "_jax_expr", None)
+        # NOTE, it is incredibly useful to enable this for debugging
+        # if expr is None:
+        #     warn(f"no JAX expression associated with operator {self!r}")
+        return expr
 
     def scale(self, factor):
         if factor == 1:
@@ -388,20 +393,20 @@ class _FunctionApplier(Operator):
             elif hasattr(jax_nn, funcname):
                 jax_expr = getattr(jax_nn, funcname)
             else:
-                import warnings as warn
-
                 warn(f"unable to add JAX call for {funcname!r}")
                 jax_expr = None
+
+            def jax_expr_part(x):  # Partial insert with first open argument
+                return jax_expr(x, *args, **kwargs)
 
             if isinstance(self.domain, MultiDomain):
                 from functools import partial
                 from jax.tree_util import tree_map
 
-                jax_expr = partial(tree_map, jax_expr)
+                jax_expr_part = partial(tree_map, jax_expr_part)
             else:
                 assert isinstance(self.domain, DomainTuple)
-                jax_expr = jax_expr
-            self._jax_expr = jax_expr
+            self._jax_expr = jax_expr_part
         except ImportError:
             self._jax_expr = None
 
@@ -427,11 +432,6 @@ class _CombinedOperator(Operator):
                 return x
 
             self._jax_expr = joined_jax_op
-        elif any(callable(jop) for jop in jax_ops):
-            from warnings import warn
-
-            warn("dropping JAX support because of missing operator support")
-            self._jax_expr = None
         else:
             self._jax_expr = None
 
@@ -506,14 +506,6 @@ class _OpProd(Operator):
                 return self._op1(x) * self._op2(x)
 
             self._jax_expr = joined_jax_expr
-        elif lhs_has_jax or rhs_has_jax:
-            from warnings import warn
-
-            warn_msg = "dropping JAX support because of the following operator:\n"
-            warn_msg += repr(self._op1) + "\n" if not lhs_has_jax else ""
-            warn_msg += repr(self._op2) + "\n" if not rhs_has_jax else ""
-            warn(warn_msg)
-            self._jax_expr = None
         else:
             self._jax_expr = None
 
