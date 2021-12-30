@@ -1,12 +1,14 @@
 #!/usr/bin/env python3
 
+from functools import partial
 import operator
 from typing import Any, Callable, Mapping, Tuple
+from warnings import warn
 
 from jax.tree_util import tree_map
 import jifty1 as jft
 
-from . import DomainTuple, Field, MultiDomain, MultiField, Operator
+from . import DomainTuple, Field, MultiDomain, MultiField, Operator, makeField
 
 
 def translator(from_to: Mapping) -> Callable:
@@ -75,6 +77,26 @@ def shapewithdtype_from_domain(domain, dtype):
     else:
         raise TypeError(f"incompatible domain {domain!r}")
     return parameter_tree
+
+
+def wrap_nifty_call(op, target_dtype=float) -> Callable[[Any], jft.Field]:
+    from jax.experimental.host_callback import call
+
+    if callable(op.jax_expr):
+        warn("wrapping operator that has a callable `.jax_expr`")
+
+    def pack_unpack_call(x):
+        x = makeField(op.domain, x)
+        return op(x).val
+
+    # TODO: define custom JVP and VJP rules
+    pt = shapewithdtype_from_domain(op.target, target_dtype)
+    hcb_call = partial(call, pack_unpack_call, result_shape=pt)
+
+    def wrapped_call(x) -> jft.Field:
+        return jft.Field(hcb_call(x))
+
+    return wrapped_call
 
 
 def convert(op: Operator, dtype=float) -> Tuple[Any, Any]:
