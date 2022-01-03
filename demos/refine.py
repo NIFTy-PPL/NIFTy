@@ -13,6 +13,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 import jifty1 as jft
+from jifty1 import refine
 
 jax_config.update("jax_enable_x64", True)
 interactive = False
@@ -113,148 +114,7 @@ if interactive:
     plt.plot(lvl1_full_coord, lvl1)
     plt.show()
 
-
 # %%
-def layer_refinement_matrices(distances, kernel):
-    def cov_from_loc_sngl(x, y):
-        return kernel(jnp.linalg.norm(x - y))
-
-    # TODO: more dimensions
-    cov_from_loc = jax.vmap(
-        jax.vmap(cov_from_loc_sngl, in_axes=(None, 0)), in_axes=(0, None)
-    )
-
-    coarse_coord = distances * jnp.array([-1., 0., 1.])
-    fine_coord = distances * jnp.array([-.25, .25])
-    cov_ff = cov_from_loc(fine_coord, fine_coord)
-    cov_fc = cov_from_loc(fine_coord, coarse_coord)
-    cov_cc_inv = jnp.linalg.inv(cov_from_loc(coarse_coord, coarse_coord))
-
-    olf = cov_fc @ cov_cc_inv
-    fine_kernel_sqrt = jnp.linalg.cholesky(
-        cov_ff - cov_fc @ cov_cc_inv @ cov_fc.T
-    )
-
-    return olf, fine_kernel_sqrt
-
-
-def refinement_matrices_alt(size0, depth, distances, kernel):
-    coord0 = distances * jnp.arange(size0, dtype=float)
-    cov_sqrt0 = jnp.linalg.cholesky(cov_from_loc(coord0, coord0))
-
-    dist_by_depth = distances * 0.5**jnp.arange(1, depth)
-    opt_lin_filter, kernel_sqrt = jax.vmap(
-        partial(layer_refinement_matrices, kernel=kernel),
-        in_axes=0,
-        out_axes=(0, 0)
-    )(dist_by_depth)
-
-    return opt_lin_filter, (cov_sqrt0, kernel_sqrt)
-
-
-def refinement_matrices(size0, depth, distances, kernel):
-    #  Roughly twice as faster compared to vmapped `layer_refinement_matrices`
-
-    def cov_from_loc(x, y):
-        mat = jnp.subtract(*jnp.meshgrid(x, y, indexing="ij"))
-        return kernel(jnp.linalg.norm(mat[..., jnp.newaxis], axis=-1))
-
-    def olaf(dist):
-        coord = dist * jnp.array([-1., 0., 1., -0.25, 0.25])
-        cov = cov_from_loc(coord, coord)
-        cov_ff = cov[-2:, -2:]
-        cov_fc = cov[-2:, :-2]
-        cov_cc_inv = jnp.linalg.inv(cov[:-2, :-2])
-
-        olf = cov_fc @ cov_cc_inv
-        fine_kernel_sqrt = jnp.linalg.cholesky(
-            cov_ff - cov_fc @ cov_cc_inv @ cov_fc.T
-        )
-
-        return olf, fine_kernel_sqrt
-
-    coord0 = distances * jnp.arange(size0, dtype=float)
-    cov_sqrt0 = jnp.linalg.cholesky(cov_from_loc(coord0, coord0))
-
-    dist_by_depth = distances * 0.5**jnp.arange(1, depth)
-    opt_lin_filter, kernel_sqrt = jax.vmap(olaf, in_axes=0,
-                                           out_axes=(0, 0))(dist_by_depth)
-
-    return opt_lin_filter, (cov_sqrt0, kernel_sqrt)
-
-
-def refine_conv(coarse_values, excitations, olf, fine_kernel_sqrt):
-    fine_m = jax.vmap(
-        partial(jnp.convolve, mode="valid"), in_axes=(None, 0), out_axes=0
-    )(coarse_values, olf[::-1])
-    fine_m = jnp.moveaxis(fine_m, (0, ), (1, ))
-    fine_std = jax.vmap(jnp.matmul, in_axes=(None, 0))(
-        fine_kernel_sqrt, excitations.reshape(-1, fine_kernel_sqrt.shape[-1])
-    )
-
-    return (fine_m + fine_std).ravel()
-
-
-def refine_loop(coarse_values, excitations, olf, fine_kernel_sqrt):
-    fine_m = [jnp.convolve(coarse_values, o, mode="valid") for o in olf[::-1]]
-    fine_m = jnp.stack(fine_m, axis=1)
-    fine_std = jax.vmap(jnp.matmul, in_axes=(None, 0))(
-        fine_kernel_sqrt, excitations.reshape(-1, fine_kernel_sqrt.shape[-1])
-    )
-
-    return (fine_m + fine_std).ravel()
-
-
-def refine_conv_general(coarse_values, excitations, olf, fine_kernel_sqrt):
-    olf = olf[..., jnp.newaxis]
-
-    sh0 = coarse_values.shape[0]
-    conv = partial(
-        jax.lax.conv_general_dilated,
-        window_strides=(1, ),
-        padding="valid",
-        dimension_numbers=("NWC", "OIW", "NWC")
-    )
-    fine_m = jnp.zeros((coarse_values.size - 2, 2))
-    fine_m = fine_m.at[0::3].set(
-        conv(coarse_values[:sh0 - sh0 % 3].reshape(1, -1, 3), olf)[0]
-    )
-    fine_m = fine_m.at[1::3].set(
-        conv(coarse_values[1:sh0 - (sh0 - 1) % 3].reshape(1, -1, 3), olf)[0]
-    )
-    fine_m = fine_m.at[2::3].set(
-        conv(coarse_values[2:sh0 - (sh0 - 2) % 3].reshape(1, -1, 3), olf)[0]
-    )
-
-    fine_std = jax.vmap(jnp.matmul, in_axes=(None, 0))(
-        fine_kernel_sqrt, excitations.reshape(-1, fine_kernel_sqrt.shape[-1])
-    )
-
-    return (fine_m + fine_std).ravel()
-
-
-def refine_vmap(coarse_values, excitations, olf, fine_kernel_sqrt):
-    sh0 = coarse_values.shape[0]
-    conv = jax.vmap(jnp.matmul, in_axes=(None, 0), out_axes=0)
-    fine_m = jnp.zeros((coarse_values.size - 2, 2))
-    fine_m = fine_m.at[0::3].set(
-        conv(olf, coarse_values[:sh0 - sh0 % 3].reshape(-1, 3))
-    )
-    fine_m = fine_m.at[1::3].set(
-        conv(olf, coarse_values[1:sh0 - (sh0 - 1) % 3].reshape(-1, 3))
-    )
-    fine_m = fine_m.at[2::3].set(
-        conv(olf, coarse_values[2:sh0 - (sh0 - 2) % 3].reshape(-1, 3))
-    )
-
-    fine_std = jax.vmap(jnp.matmul, in_axes=(None, 0))(
-        fine_kernel_sqrt, excitations.reshape(-1, fine_kernel_sqrt.shape[-1])
-    )
-
-    return (fine_m + fine_std).ravel()
-
-
-refine = refine_conv
 
 distances0 = 10.
 distances1 = distances0 / 2
@@ -271,16 +131,19 @@ cov_sqrt = jnp.linalg.cholesky(cov_from_loc(main_coord, main_coord))
 lvl0 = cov_sqrt @ random.normal(k_c, shape=main_coord.shape[::-1])
 
 lvl1_exc = random.normal(k_f[1], shape=(2 * (lvl0.size - 2), ))
-lvl1 = refine(
-    lvl0.ravel(), lvl1_exc, *layer_refinement_matrices(distances0, kernel)
+lvl1 = refine.refine(
+    lvl0.ravel(), lvl1_exc,
+    *refine.layer_refinement_matrices(distances0, kernel)
 )
 lvl2_exc = random.normal(k_f[2], shape=(2 * (lvl1.size - 2), ))
-lvl2 = refine(
-    lvl1.ravel(), lvl2_exc, *layer_refinement_matrices(distances1, kernel)
+lvl2 = refine.refine(
+    lvl1.ravel(), lvl2_exc,
+    *refine.layer_refinement_matrices(distances1, kernel)
 )
 lvl3_exc = random.normal(k_f[3], shape=(2 * (lvl2.size - 2), ))
-lvl3 = refine(
-    lvl2.ravel(), lvl3_exc, *layer_refinement_matrices(distances2, kernel)
+lvl3 = refine.refine(
+    lvl2.ravel(), lvl3_exc,
+    *refine.layer_refinement_matrices(distances2, kernel)
 )
 
 if interactive:
@@ -299,8 +162,8 @@ if interactive:
     )
     plt.step(x0, lvl0.ravel(), alpha=0.7, where="mid", label="LVL0")
     plt.step(x1, lvl1, alpha=0.7, where="mid", label="LVL1")
-    # plt.step(x2, lvl2, alpha=0.7, where="mid", label="LVL2")
-    # plt.step(x3, lvl3, alpha=0.7, where="mid", label="LVL3")
+    plt.step(x2, lvl2, alpha=0.7, where="mid", label="LVL2")
+    plt.step(x3, lvl3, alpha=0.7, where="mid", label="LVL3")
     plt.legend()
     plt.show()
 
@@ -308,13 +171,13 @@ if interactive:
 # %%
 def fwd(xi, distances, kernel):
     size0, depth = xi[0].size, len(xi)
-    os, (cov_sqrt0, ks) = refinement_matrices(
+    os, (cov_sqrt0, ks) = refine.refinement_matrices(
         size0, depth, distances=distances, kernel=kernel
     )
 
     fine = cov_sqrt0 @ xi[0]
     for x, olf, ks in zip(xi[1:], os, ks):
-        fine = refine(fine, x, olf, ks)
+        fine = refine.refine(fine, x, olf, ks)
     return fine
 
 
@@ -448,11 +311,11 @@ for backend in ("cpu", "gpu"):
 
 # %%
 coarse_values = fwd(xi_truth, distances, kernel)
-olf, fine_kernel_sqrt = layer_refinement_matrices(distances, kernel)
+olf, fine_kernel_sqrt = refine.layer_refinement_matrices(distances, kernel)
 
 cv = coarse_values
 exc = random.normal(key, shape=(2 * (cv.size - 2), ))
-ref = jax.jit(refine)
+ref = jax.jit(refine.refine)
 _ = ref(cv, exc, olf, fine_kernel_sqrt)
 timeit(lambda: ref(cv, exc, olf, fine_kernel_sqrt).block_until_ready())
 
@@ -462,25 +325,27 @@ def fwd_diy(xi, opt_lin_filter, kernel_sqrt):
     cov_sqrt0, ks = kernel_sqrt
     fine = cov_sqrt0 @ xi[0]
     for x, olf, ks in zip(xi[1:], opt_lin_filter, ks):
-        fine = refine(fine, x, olf, ks)
+        fine = refine.refine(fine, x, olf, ks)
     return fine
 
 
 x = jft.random_like(key, jft.Field(xi_truth_swd))
-olfs, kss = refinement_matrices(x.val[0].size, len(x.val), distances, kernel)
+olfs, kss = refine.refinement_matrices(
+    x.val[0].size, len(x.val), distances, kernel
+)
 corr = jax.jit(jax.value_and_grad(lambda x: fwd_diy(x, olfs, kss).sum()), )
 
 _ = corr(x)[0].block_until_ready()
 timeit(lambda: corr(x)[0].block_until_ready())
 
 # %%
-rm = jax.jit(layer_refinement_matrices, static_argnames=("kernel", ))
+rm = jax.jit(refine.layer_refinement_matrices, static_argnames=("kernel", ))
 _ = rm(distances, kernel)
 timeit(lambda: rm(distances, kernel)[0].block_until_ready())
 
 # %%
 grm = jax.jit(
-    refinement_matrices, static_argnames=(
+    refine.refinement_matrices, static_argnames=(
         "size0",
         "depth",
         "kernel",
@@ -495,8 +360,8 @@ timeit(
 # %%
 cv = coarse_values.copy()
 exc = random.normal(key, shape=(2 * (cv.size - 2), ))
-olf, ks = layer_refinement_matrices(distances, kernel)
-ref = jax.jit(refine, static_argnames=("kernel", ))
+olf, ks = refine.layer_refinement_matrices(distances, kernel)
+ref = jax.jit(refine.refine, static_argnames=("kernel", ))
 _ = ref(cv, exc, olf, ks).block_until_ready()
 
 timeit(lambda: ref(cv, exc, olf, ks).block_until_ready())
