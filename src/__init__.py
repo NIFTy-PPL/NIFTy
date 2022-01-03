@@ -1,6 +1,7 @@
 from .version import __version__
 
 from . import random
+from . import re
 
 from .domains.domain import Domain
 from .domains.structured_domain import StructuredDomain
