@@ -112,11 +112,11 @@ run_getting_started_3:
       - 'getting_started_3_results'
       - '*.png'
 
-run_getting_started_3_nifty2jax:
+run_getting_started_nifty2jax:
   stage: demo_runs
   script:
     - pip3 install --user ./jifty/
-    - python3 demos/getting_started_3_nifty2jax.py
+    - python3 demos/getting_started_nifty2jax.py
   artifacts:
     paths:
       - '*.png'
