@@ -53,6 +53,10 @@ class Field(Operator):
         if not isinstance(val, np.ndarray):
             if np.isscalar(val):
                 val = np.broadcast_to(val, domain.shape)
+            elif np.shape(val) == domain.shape:
+                # If NumPy thinks the shapes are equal, attempt to convert to
+                # NumPy. This is especially helpful for JAX DeviceArrays.
+                val = np.asarray(val)
             else:
                 raise TypeError("val must be of type numpy.ndarray")
         if domain.shape != val.shape:
