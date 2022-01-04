@@ -5,19 +5,27 @@ from functools import partial
 from jax import vmap
 from jax import numpy as jnp
 from jax.lax import conv_general_dilated
+import numpy as np
 
 
 def layer_refinement_matrices(distances, kernel):
     def cov_from_loc_sngl(x, y):
         return kernel(jnp.linalg.norm(x - y))
 
-    # TODO: more dimensions
     cov_from_loc = vmap(
         vmap(cov_from_loc_sngl, in_axes=(None, 0)), in_axes=(0, None)
     )
 
+    distances = jnp.asarray(distances).reshape(-1, 1)
+    n_dim = distances.shape[0]
     coarse_coord = distances * jnp.array([-1., 0., 1.])
+    coarse_coord = jnp.stack(
+        jnp.meshgrid(*coarse_coord, indexing="ij"), axis=-1
+    )
+    coarse_coord = coarse_coord.reshape(-1, n_dim)
     fine_coord = distances * jnp.array([-.25, .25])
+    fine_coord = jnp.stack(jnp.meshgrid(*fine_coord, indexing="ij"), axis=-1)
+    fine_coord = fine_coord.reshape(-1, n_dim)
     cov_ff = cov_from_loc(fine_coord, fine_coord)
     cov_fc = cov_from_loc(fine_coord, coarse_coord)
     cov_cc_inv = jnp.linalg.inv(cov_from_loc(coarse_coord, coarse_coord))
@@ -53,18 +61,26 @@ def refinement_matrices_alt(size0, depth, distances, kernel):
 
 
 def refinement_matrices(size0, depth, distances, kernel):
-    #  Roughly twice faster compared to vmapped `layer_refinement_matrices`
+    def cov_from_loc_sngl(x, y):
+        return kernel(jnp.linalg.norm(x - y))
 
-    def cov_from_loc(x, y):
-        mat = jnp.subtract(*jnp.meshgrid(x, y, indexing="ij"))
-        return kernel(jnp.linalg.norm(mat[..., jnp.newaxis], axis=-1))
+    cov_from_loc = vmap(
+        vmap(cov_from_loc_sngl, in_axes=(None, 0)), in_axes=(0, None)
+    )
 
     def olaf(dist):
-        coord = dist * jnp.array([-1., 0., 1., -0.25, 0.25])
+        n_dim = dist.size
+        cc = dist.reshape(n_dim, 1) * jnp.array([-1., 0., 1.])
+        cc = jnp.stack(jnp.meshgrid(*cc, indexing="ij"), axis=-1)
+        cf = dist.reshape(n_dim, 1) * jnp.array([-0.25, 0.25])
+        cf = jnp.stack(jnp.meshgrid(*cf, indexing="ij"), axis=-1)
+        coord = jnp.concatenate(
+            (cc.reshape(-1, n_dim), cf.reshape(-1, n_dim)), axis=0
+        )
         cov = cov_from_loc(coord, coord)
-        cov_ff = cov[-2:, -2:]
-        cov_fc = cov[-2:, :-2]
-        cov_cc_inv = jnp.linalg.inv(cov[:-2, :-2])
+        cov_ff = cov[-2 * n_dim:, -2 * n_dim:]
+        cov_fc = cov[-2 * n_dim:, :-2 * n_dim]
+        cov_cc_inv = jnp.linalg.inv(cov[:-2 * n_dim, :-2 * n_dim])
 
         olf = cov_fc @ cov_cc_inv
         fine_kernel_sqrt = jnp.linalg.cholesky(
@@ -73,13 +89,22 @@ def refinement_matrices(size0, depth, distances, kernel):
 
         return olf, fine_kernel_sqrt
 
-    coord0 = distances * jnp.arange(size0, dtype=float)
+    size0 = np.atleast_1d(size0)
+    distances = jnp.atleast_1d(distances)
+    if size0.shape != distances.shape:
+        ve = (
+            f"shape of `size0` {size0.shape} is incompatible with"
+            f" shape of `distances` {distances.shape}"
+        )
+        raise ValueError(ve)
+    c0 = [d * jnp.arange(sz, dtype=float) for d, sz in zip(distances, size0)]
+    coord0 = jnp.stack(jnp.meshgrid(*c0, indexing="ij"), axis=-1)
+    coord0 = coord0.reshape(-1, len(size0))
     cov_sqrt0 = jnp.linalg.cholesky(cov_from_loc(coord0, coord0))
 
-    dist_by_depth = distances * 0.5**jnp.arange(1, depth)
+    dist_by_depth = distances * 0.5**jnp.arange(1, depth).reshape(-1, 1)
     opt_lin_filter, kernel_sqrt = vmap(olaf, in_axes=0,
                                        out_axes=(0, 0))(dist_by_depth)
-
     return opt_lin_filter, (cov_sqrt0, kernel_sqrt)
 
 
