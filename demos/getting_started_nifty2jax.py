@@ -32,6 +32,7 @@ from jax import jit, value_and_grad
 from jax import random
 from jax import numpy as jnp
 from jax.config import config as jax_config
+from jax.tree_util import tree_map
 import matplotlib.pyplot as plt
 import numpy as np
 
@@ -191,7 +192,6 @@ def timeit(stmt, setup=lambda: None, number=None):
 r = jft.random_like(random.PRNGKey(54), pt)
 
 r_nft = ift.makeField(signal_response_nft.domain, r.val)
-r_lin_nft = ift.Linearization.make_var(r_nft)
 data_nft = ift.makeField(signal_response_nft.target, data)
 lh_nft = ift.GaussianEnergy(
     data_nft,
@@ -199,14 +199,18 @@ lh_nft = ift.GaussianEnergy(
 ) @ signal_response_nft
 ham_nft = ift.StandardHamiltonian(lh_nft)
 
-_ = ham_vg(r)  # Warm-Up
-t = timeit(lambda: ham_vg(r)[0].block_until_ready())
-t_nft = timeit(lambda: ham_nft(r_lin_nft))
+_ = ham(r)  # Warm-Up
+t = timeit(lambda: ham(r).block_until_ready())
+t_nft = timeit(lambda: ham_nft(r_nft))
 
 print(f"W/  JAX :: {t}")
 print(f"W/O JAX :: {t_nft}")
 
 # %%
+# For about 2e+5 #parameters the FFT starts to dominate in the computation and
+# NumPy-based NIFTy is about as fast as JAX-based NIFTy. Thus, we should not
+# have expected to gain much performance for our model at hand.
+
 # So far so good but are we really sure that this is doing the same thing. To
 # validate the result of our model in JAX, let's transfer our synthetic
 # position to plain NIFTy and run the model there again.
@@ -217,17 +221,16 @@ np.testing.assert_allclose(
 )
 
 # %% [markdown]
-# Starting at about 2e+5 #parameters, the FFT should dominate and NumPy based
-# NIFTy should catch up to JAX-based NIFTy. For smaller models or models where
-# the FFT does not dominate JAX-based NIFTy should always have an edge over
-# NumPy based NIFTy. The difference in performance can range from only a couple
-# of double digit percentages for \approx 1e+5 #parameters to many orders of
-# magnitudes. For example with 65536 #parameters JAX-based NIFTy should be 2-3
-# times faster.
+# For smaller models or models where the FFT does not dominate JAX-based NIFTy
+# should always have an edge over NumPy based NIFTy. The difference in
+# performance can range from only a couple of double digit percentages for
+# \approx 1e+5 #parameters to many orders of magnitudes. For example with 65536
+# #parameters JAX-based NIFTy should be 2-3 times faster.
 
 # We can show this more explicitly with a proper benchmark. In the following we
 # will instantiate models of various shapes and time the JAX version against
-# the NumPy version.
+# the NumPy version. Instead of testing solely a single forward pass, we will
+# compare a full evaluation of the model and its gradient.
 
 
 # %%
@@ -254,10 +257,11 @@ def get_lognormal_model(shapes, cfm_kwargs, data_key, noise_cov=0.5**2):
     data = signal_response(synth_pos)
     data += jnp.sqrt(noise_cov) * random.normal(sk_noise, shape=data.shape)
 
-    noise_std_inv = 1. / jnp.sqrt(noise_cov)
+    noise_cov_inv = 1. / noise_cov
+    noise_std_inv = jnp.sqrt(noise_cov_inv)
     lh = jft.Gaussian(
         data,
-        noise_cov_inv=lambda x: x / noise_cov,
+        noise_cov_inv=lambda x: noise_cov_inv * x,
         noise_std_inv=lambda x: noise_std_inv * x
     ) @ signal_response
     ham = jft.StandardHamiltonian(likelihood=lh)
@@ -268,10 +272,10 @@ def get_lognormal_model(shapes, cfm_kwargs, data_key, noise_cov=0.5**2):
             action="ignore", category=UserWarning, message="no JAX"
         )
         data_nft = ift.makeField(signal_response_nft.target, data)
+        noise_cov_inv_nft = ift.ScalingOperator(data_nft.domain, 1. / noise_cov)
         lh_nft = ift.GaussianEnergy(
             data_nft,
-            inverse_covariance=ift.
-            ScalingOperator(data_nft.domain, 1. / noise_cov)
+            inverse_covariance=noise_cov_inv_nft
         ) @ signal_response_nft
         ham_nft = ift.StandardHamiltonian(lh_nft)
 
@@ -284,13 +288,17 @@ def get_lognormal_model(shapes, cfm_kwargs, data_key, noise_cov=0.5**2):
                 action="ignore", category=UserWarning, message="no JAX"
             )
             res = ham_nft(x)
-        return res
+        one_nft = ift.Field(ift.DomainTuple.make(()), 1.)
+        bwd = res.jac.adjoint_times(one_nft)
+        return (res.val.val, bwd.val)
 
     aux = {
         "synthetic_position": synth_pos,
         "parameter_tree": pt,
         "hamiltonian_nft": ham_nft,
-        "hamiltonian": ham
+        "hamiltonian": ham,
+        "signal_response_nft": signal_response_nft,
+        "signal_response": signal_response,
     }
     return ham_vg, ham_vg_nft, aux
 
@@ -309,7 +317,8 @@ for dims in dimensions_to_test:
     h = jit(h)
     _ = h(r)  # Warm-Up
 
-    np.testing.assert_allclose(h(r)[0], h_nft(r).val.val)
+    np.testing.assert_allclose(h(r)[0], h_nft(r)[0])
+    assert all(tree_map(np.allclose, h(r)[1].val, h_nft(r)[1]).values())
     ti = timeit(lambda: h(r)[0].block_until_ready())
     ti_n = timeit(lambda: h_nft(r))
 
@@ -321,13 +330,22 @@ for dims in dimensions_to_test:
     )
 
 # %% [markdown]
-# For small problems the JAX-based NIFTy is significantly faster than the NumPy
-# based one. For really small problems up to 200 times faster. This is because
-# the overhead from python can be significantly reduced with JAX because most
-# of the heavy-lifting happens without going back to python.
+# Shape           (256,) :: JAX 2.58e-05 :: NIFTy 6.96e-03 ;; ( 10000, 50     loops respectively)
+# Shape           (512,) :: JAX 3.90e-05 :: NIFTy 7.14e-03 ;; ( 10000, 50     loops respectively)
+# Shape          (1024,) :: JAX 6.33e-05 :: NIFTy 6.97e-03 ;; (  5000, 50     loops respectively)
+# Shape         (65536,) :: JAX 5.41e-03 :: NIFTy 1.42e-02 ;; (    50, 20     loops respectively)
+# Shape        (262144,) :: JAX 2.72e-02 :: NIFTy 4.41e-02 ;; (    10, 5      loops respectively)
+# Shape       (128, 128) :: JAX 5.07e-04 :: NIFTy 7.00e-03 ;; (   500, 50     loops respectively)
+# Shape       (256, 256) :: JAX 3.74e-03 :: NIFTy 1.01e-02 ;; (   100, 20     loops respectively)
+# Shape       (512, 512) :: JAX 1.53e-02 :: NIFTy 2.33e-02 ;; (    20, 10     loops respectively)
+# Shape     (1024, 1024) :: JAX 7.80e-02 :: NIFTy 7.72e-02 ;; (     5, 5      loops respectively)
+# Shape     (2048, 2048) :: JAX 3.21e-01 :: NIFTy 3.52e-01 ;; (     1, 1      loops respectively)
 
-# Notice, how above a certain threshold, here 1e+6, the JAX-based NIFTy starts
-# to become slower than NumPy-based NIFTy. This is because the FFT in JAX is
-# about twice as slow as the FFT in NumPy and SciPy. JAX could however easily
-# make use of the NumPy's FFT and get to the same speed but this needs to be
-# implemented in JAX. See https://github.com/google/jax/issues/7490 .
+# For small problems JAX-based NIFTy is significantly faster than the NumPy
+# based one. For really small problems it is more than 200 times faster. This
+# is because the overhead from python can be significantly reduced with JAX
+# since most of the heavy-lifting happens without going back to python.
+
+# Notice, how above a certain threshold, here 2e+5, the NumPy-based NIFTy and
+# JAX-bassed NIFTy start to perform similarly well because the performance of
+# the FFT is the sole bottle neck.
