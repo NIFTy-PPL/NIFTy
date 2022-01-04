@@ -71,6 +71,25 @@ class FFTOperator(LinearOperator):
         adom.check_codomain(target)
         target.check_codomain(adom)
 
+        try:
+            from jax.numpy import fft as jfft
+
+            if self.domain[self._space].harmonic:
+                func = jfft.ifftn
+                fct = self.domain[self._space].size
+            else:
+                func = jfft.fftn
+                fct = 1.
+            axes = self.domain.axes[self._space]
+            fct *= self.domain[self._space].scalar_dvol
+
+            def jax_expr(x):
+                return fct * func(x, axes=axes) if fct != 1 else func(x, axes=axes)
+
+            self._jax_expr = jax_expr
+        except ImportError:
+            self._jax_expr = None
+
     def apply(self, x, mode):
         self._check_input(x, mode)
         ncells = x.domain[self._space].size
@@ -137,6 +156,28 @@ class HartleyOperator(LinearOperator):
         self._target = DomainTuple.make(self._target)
         adom.check_codomain(target)
         target.check_codomain(adom)
+
+        try:
+            from jax.numpy import fft as jfft
+
+            axes = self.domain.axes[self._space]
+            fct = self.domain[self._space].scalar_dvol
+
+            def hartley(a):
+                ft = jfft.fftn(a, axes=axes)
+                return ft.real + ft.imag
+
+            def apply_cartesian(x):
+                return fct * hartley(x) if fct != 1 else hartley(x)
+
+            def jax_expr(x):
+                if np.issubdtype(x.dtype.type, np.complexfloating):
+                    return apply_cartesian(x.real) + 1j * apply_cartesian(x.imag)
+                return apply_cartesian(x)
+
+            self._jax_expr = jax_expr
+        except ImportError:
+            self._jax_expr = None
 
     def apply(self, x, mode):
         self._check_input(x, mode)
