@@ -517,6 +517,22 @@ def single_plot(field, **kwargs):
         del(kwargs['title'])
     p.output(**kwargs)
 
+def plot_priorsamples(op, n_samples=5, **kwargs):
+    """ Creates a number of prior sample plots using `Plot`.
+    Keyword arguments are passed to both `Plot.add` and `Plot.output`.
+
+    Parameters
+    ----------
+    op: operator mapping from standard Gaussian with covariance 1 to the prior distribution
+
+    n_samples: the number of prior samples for plotting
+    """
+    p = Plot()
+    for i in range(n_samples):
+        xi = from_random(op.domain)
+        f = op(xi)
+        p.add(f, **kwargs)
+    p.output(**kwargs)
 
 def exec_time(obj, want_metric=True):
     """Times the execution time of an operator or an energy."""
