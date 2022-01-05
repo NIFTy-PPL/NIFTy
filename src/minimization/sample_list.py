@@ -230,9 +230,10 @@ class SampleListBase:
     def _save_fits_2d(self, fld, file_name, overwrite):
         import astropy.io.fits as pyfits
         from astropy.time import Time
+        from ..domain_tuple import DomainTuple
 
         dom = fld.domain
-        if len(dom) != 1 or len(dom[0].shape) != 2:
+        if not isinstance(dom, DomainTuple) or len(dom) != 1 or len(dom[0].shape) != 2:
             raise ValueError("FITS file export is only supported from 2d-fields. "
                              f"Current domain:\n{dom}")
         h = pyfits.Header()
