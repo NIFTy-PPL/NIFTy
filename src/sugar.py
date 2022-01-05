@@ -42,6 +42,7 @@ __all__ = ['PS_field', 'power_analyze', 'create_power_operator',
            'get_signal_variance', 'makeOp', 'domain_union',
            'get_default_codomain', 'single_plot', 'exec_time',
            'calculate_position'] + list(pointwise.ptw_dict.keys())
+           'calculate_position', 'plot_priorsamples'] + list(pointwise.ptw_dict.keys())
 
 
 def PS_field(pspace, func):
