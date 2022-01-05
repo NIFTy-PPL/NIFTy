@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 from functools import partial
+from typing import Callable, Optional
 
 from jax import vmap
 from jax import numpy as jnp
@@ -8,27 +9,46 @@ from jax.lax import conv_general_dilated
 import numpy as np
 
 
-def layer_refinement_matrices(distances, kernel):
-    def cov_from_loc_sngl(x, y):
-        return kernel(jnp.linalg.norm(x - y))
+def _get_cov_from_loc(kernel=None, cov_from_loc=None):
+    if cov_from_loc is None and callable(kernel):
 
-    cov_from_loc = vmap(
-        vmap(cov_from_loc_sngl, in_axes=(None, 0)), in_axes=(0, None)
-    )
+        def cov_from_loc_sngl(x, y):
+            return kernel(jnp.linalg.norm(x - y))
 
-    distances = jnp.asarray(distances).reshape(-1, 1)
-    n_dim = distances.shape[0]
-    coarse_coord = distances * jnp.array([-1., 0., 1.])
-    coarse_coord = jnp.stack(
-        jnp.meshgrid(*coarse_coord, indexing="ij"), axis=-1
+        cov_from_loc = vmap(
+            vmap(cov_from_loc_sngl, in_axes=(None, 0)), in_axes=(0, None)
+        )
+    else:
+        if not callable(cov_from_loc):
+            ve = "exactly one of `cov_from_loc` or `kernel` must be set and callable"
+            raise ValueError(ve)
+    # TODO: benchmark whether using `triu_indices(n, k=1)` and
+    # `diag_indices(n)` is advantageous
+    return cov_from_loc
+
+
+def layer_refinement_matrices(
+    distances,
+    kernel: Optional[Callable] = None,
+    cov_from_loc: Optional[Callable] = None
+):
+    cov_from_loc = _get_cov_from_loc(kernel, cov_from_loc)
+    distances = jnp.asarray(distances)
+
+    n_dim = distances.size
+    gc = distances.reshape(n_dim, 1) * jnp.array([-1., 0., 1.])
+    gc = jnp.stack(jnp.meshgrid(*gc, indexing="ij"), axis=-1)
+    gf = distances.reshape(n_dim, 1) * jnp.array([-0.25, 0.25])
+    gf = jnp.stack(jnp.meshgrid(*gf, indexing="ij"), axis=-1)
+    # On the GPU a single `cov_from_loc` call is about twice as fast as three
+    # separate calls for coarse-coarse, fine-fine and coarse-fine.
+    coord = jnp.concatenate(
+        (gc.reshape(-1, n_dim), gf.reshape(-1, n_dim)), axis=0
     )
-    coarse_coord = coarse_coord.reshape(-1, n_dim)
-    fine_coord = distances * jnp.array([-.25, .25])
-    fine_coord = jnp.stack(jnp.meshgrid(*fine_coord, indexing="ij"), axis=-1)
-    fine_coord = fine_coord.reshape(-1, n_dim)
-    cov_ff = cov_from_loc(fine_coord, fine_coord)
-    cov_fc = cov_from_loc(fine_coord, coarse_coord)
-    cov_cc_inv = jnp.linalg.inv(cov_from_loc(coarse_coord, coarse_coord))
+    cov = cov_from_loc(coord, coord)
+    cov_ff = cov[-2 * n_dim:, -2 * n_dim:]
+    cov_fc = cov[-2 * n_dim:, :-2 * n_dim]
+    cov_cc_inv = jnp.linalg.inv(cov[:-2 * n_dim, :-2 * n_dim])
 
     olf = cov_fc @ cov_cc_inv
     fine_kernel_sqrt = jnp.linalg.cholesky(
@@ -38,56 +58,14 @@ def layer_refinement_matrices(distances, kernel):
     return olf, fine_kernel_sqrt
 
 
-def refinement_matrices_alt(size0, depth, distances, kernel):
-    def cov_from_loc_sngl(x, y):
-        return kernel(jnp.linalg.norm(x - y))
-
-    # TODO: more dimensions
-    cov_from_loc = vmap(
-        vmap(cov_from_loc_sngl, in_axes=(None, 0)), in_axes=(0, None)
-    )
-
-    coord0 = distances * jnp.arange(size0, dtype=float)
-    cov_sqrt0 = jnp.linalg.cholesky(cov_from_loc(coord0, coord0))
-
-    dist_by_depth = distances * 0.5**jnp.arange(1, depth)
-    opt_lin_filter, kernel_sqrt = vmap(
-        partial(layer_refinement_matrices, kernel=kernel),
-        in_axes=0,
-        out_axes=(0, 0)
-    )(dist_by_depth)
-
-    return opt_lin_filter, (cov_sqrt0, kernel_sqrt)
-
-
-def refinement_matrices(size0, depth, distances, kernel):
-    def cov_from_loc_sngl(x, y):
-        return kernel(jnp.linalg.norm(x - y))
-
-    cov_from_loc = vmap(
-        vmap(cov_from_loc_sngl, in_axes=(None, 0)), in_axes=(0, None)
-    )
-
-    def olaf(dist):
-        n_dim = dist.size
-        cc = dist.reshape(n_dim, 1) * jnp.array([-1., 0., 1.])
-        cc = jnp.stack(jnp.meshgrid(*cc, indexing="ij"), axis=-1)
-        cf = dist.reshape(n_dim, 1) * jnp.array([-0.25, 0.25])
-        cf = jnp.stack(jnp.meshgrid(*cf, indexing="ij"), axis=-1)
-        coord = jnp.concatenate(
-            (cc.reshape(-1, n_dim), cf.reshape(-1, n_dim)), axis=0
-        )
-        cov = cov_from_loc(coord, coord)
-        cov_ff = cov[-2 * n_dim:, -2 * n_dim:]
-        cov_fc = cov[-2 * n_dim:, :-2 * n_dim]
-        cov_cc_inv = jnp.linalg.inv(cov[:-2 * n_dim, :-2 * n_dim])
-
-        olf = cov_fc @ cov_cc_inv
-        fine_kernel_sqrt = jnp.linalg.cholesky(
-            cov_ff - cov_fc @ cov_cc_inv @ cov_fc.T
-        )
-
-        return olf, fine_kernel_sqrt
+def refinement_matrices(
+    size0,
+    depth,
+    distances,
+    kernel: Optional[Callable] = None,
+    cov_from_loc: Optional[Callable] = None
+):
+    cov_from_loc = _get_cov_from_loc(kernel, cov_from_loc)
 
     size0 = np.atleast_1d(size0)
     distances = jnp.atleast_1d(distances)
@@ -103,6 +81,7 @@ def refinement_matrices(size0, depth, distances, kernel):
     cov_sqrt0 = jnp.linalg.cholesky(cov_from_loc(coord0, coord0))
 
     dist_by_depth = distances * 0.5**jnp.arange(1, depth).reshape(-1, 1)
+    olaf = partial(layer_refinement_matrices, cov_from_loc=cov_from_loc)
     opt_lin_filter, kernel_sqrt = vmap(olaf, in_axes=0,
                                        out_axes=(0, 0))(dist_by_depth)
     return opt_lin_filter, (cov_sqrt0, kernel_sqrt)
