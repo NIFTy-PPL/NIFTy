@@ -533,6 +533,8 @@ def plot_priorsamples(op, n_samples=5, **kwargs):
         xi = from_random(op.domain)
         f = op(xi)
         p.add(f, **kwargs)
+        if 'title' in kwargs:
+            del(kwargs['title'])
     p.output(**kwargs)
 
 def exec_time(obj, want_metric=True):
