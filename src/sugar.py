@@ -33,7 +33,7 @@ from .operators.distributors import PowerDistributor
 from .operators.operator import Operator
 from .operators.scaling_operator import ScalingOperator
 from .operators.selection_operators import SliceOperator
-from .plot import Plot
+from .plot import Plot, plottable2D
 
 __all__ = ['PS_field', 'power_analyze', 'create_power_operator',
            'density_estimator', 'create_harmonic_smoothing_operator',
@@ -528,12 +528,22 @@ def plot_priorsamples(op, n_samples=5, **kwargs):
     n_samples: the number of prior samples for plotting
     """
     p = Plot()
-    for i in range(n_samples):
-        xi = from_random(op.domain)
-        f = op(xi)
-        p.add(f, **kwargs)
-        if 'title' in kwargs:
-            del(kwargs['title'])
+    samples = list(op(from_random(op.domain)) for _ in range(n_samples))
+    try:
+        plottable2D(samples[0])
+        twod = True
+    except ValueError:
+        twod = False
+
+    if twod:
+        for i in range(n_samples):
+            print(samples[i])
+            p.add(samples[i], **kwargs)
+            if 'title' in kwargs:
+                del(kwargs['title'])
+    else:
+        p.add(samples, **kwargs)
+
     p.output(**kwargs)
 
 def exec_time(obj, want_metric=True):
