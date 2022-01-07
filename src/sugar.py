@@ -517,7 +517,7 @@ def single_plot(field, **kwargs):
         del(kwargs['title'])
     p.output(**kwargs)
 
-def plot_priorsamples(op, n_samples=5, **kwargs):
+def plot_priorsamples(op, n_samples=5, common_colorbar=True, **kwargs):
     """ Creates a number of prior sample plots using `Plot`.
     Keyword arguments are passed to both `Plot.add` and `Plot.output`.
 
@@ -529,6 +529,11 @@ def plot_priorsamples(op, n_samples=5, **kwargs):
     """
     p = Plot()
     samples = list(op(from_random(op.domain)) for _ in range(n_samples))
+    if common_colorbar:
+        vmin = np.min(list(np.min(samples[i].val)for i in range(n_samples)))
+        vmax = np.max(list(np.max(samples[i].val)for i in range(n_samples)))
+    else:
+        vmin = vmax = None
     try:
         plottable2D(samples[0])
         twod = True
@@ -537,8 +542,7 @@ def plot_priorsamples(op, n_samples=5, **kwargs):
 
     if twod:
         for i in range(n_samples):
-            print(samples[i])
-            p.add(samples[i], **kwargs)
+            p.add(samples[i], vmin=vmin, vmax=vmax, **kwargs)
             if 'title' in kwargs:
                 del(kwargs['title'])
     else:
