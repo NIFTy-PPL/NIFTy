@@ -16,8 +16,9 @@
 #
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
 
+from functools import reduce
 from os import makedirs
-from os.path import isdir, join
+from os.path import isdir, isfile, join
 from warnings import warn
 
 from ..domain_tuple import DomainTuple
@@ -28,12 +29,15 @@ from ..operators.operator import Operator
 from ..operators.scaling_operator import ScalingOperator
 from ..plot import Plot, plottable2D
 from ..sugar import from_random
-from ..utilities import Nop, check_MPI_equality, get_MPI_params_from_comm, check_MPI_synced_random_state
+from ..utilities import (Nop, check_MPI_equality,
+                         check_MPI_synced_random_state,
+                         get_MPI_params_from_comm)
 from .energy_adapter import EnergyAdapter
 from .iteration_controllers import IterationController
 from .kl_energies import SampledKLEnergy
 from .minimizer import Minimizer
-from .sample_list import SampleList, SampleListBase
+from .sample_list import (ResidualSampleList, SampleList, SampleListBase,
+                          _barrier)
 
 try:
     import h5py
@@ -47,7 +51,7 @@ except ImportError:
 
 
 def optimize_kl(likelihood_energy,
-                global_iterations,
+                total_iterations,
                 n_samples,
                 kl_minimizer,
                 sampling_iteration_controller,
@@ -61,10 +65,12 @@ def optimize_kl(likelihood_energy,
                 ground_truth_position=None,
                 comm=None,
                 overwrite=False,
-                callback=None,
+                inspect_callback=None,
+                terminate_callback=None,
                 plot_latent=False,
                 save_strategy="last",
-                return_final_position=False):
+                return_final_position=False,
+                resume=False):
     """Provide potentially useful interface for standard KL minimization.
 
     The parameters `likelihood_energy`, `kl_minimizer`,
@@ -77,7 +83,7 @@ def optimize_kl(likelihood_energy,
 
     .. code-block:: none
 
-        for ii in range(initial_index, initial_index+global_iterations):
+        for ii in range(initial_index, total_iterations):
             samples = Draw `n_samples` approximate samples(position,
                                                            likelihood_energy
                                                            sampling_iteration_controller,
@@ -92,7 +98,7 @@ def optimize_kl(likelihood_energy,
         Likelihood energy shall be used for inference. It is assumed that the
         definition space of this energy contains parameters that are a-priori
         standard normal distributed.
-    global_iterations : int
+    total_iterations : int
         Number of resampling loops.
     n_samples : int or callable
         Number of samples used to sample Kullback-Leibler divergence. 0
@@ -136,7 +142,7 @@ def optimize_kl(likelihood_energy,
     overwrite : bool
         Determine if existing directories and files are allowed to be
         overwritten. Default: False.
-    callback : callable or None
+    inspect_callback : callable or None
         Function that is called after every global iteration. It can be either a
         function with one argument (then the latest sample list is passed), a
         function with two arguments (in which case the latest sample list and
@@ -145,6 +151,12 @@ def optimize_kl(likelihood_energy,
         returns something that is not None, a Field defined on the same domain
         as the input sample list is expected.  It is used as a position for the
         subsequent optimization.  Default: None.
+    terminate_callback : callable or None
+        Function that is called after every global iteration and after
+        `inspect_callback` if present.  It can be either None or a function
+        that takes the global iteration index as input and returns a boolean.
+        If the return value is true, the global loop in `optimize_kl` is
+        terminated. Default: None.
     plot_latent : bool
         Determine if latent space shall be plotted or not. Default: False.
     save_strategy : str
@@ -155,10 +167,16 @@ def optimize_kl(likelihood_energy,
         Determine if the final position of the minimization shall be return.
         May be useful to feed it as `initial_position` into another
         `optimize_kl` call. Default: False.
+    resume : bool
+        Resume partially run optimization. If `True` and `output_directory`
+        contains `last_finished_iteration`, `initial_index` and
+        `initial_position` are ignored and read from the output directory
+        instead. If `last_finished_iteration` is not a file, the value of
+        `initial_position` is used instead. Default: False.
 
     Returns
     -------
-    kl : Energy
+    sl : SampleList
 
     mean : Field or MultiField (optional)
 
@@ -194,11 +212,37 @@ def optimize_kl(likelihood_energy,
     point_estimates = _make_callable(point_estimates)
     n_samples = _make_callable(n_samples)
     comm = _make_callable(comm)
-    if callback is None:
-        callback = lambda x: None
+    if inspect_callback is None:
+        inspect_callback = lambda x: None
+    if terminate_callback is None:
+        terminate_callback = lambda x: False
+
+    lfile = join(output_directory, "last_finished_iteration")
+    if resume and isfile(lfile):
+        with open(lfile) as f:
+            last_finished_index = int(f.read())
+        initial_index = last_finished_index + 1
+        fname = _file_name_by_strategy(save_strategy, last_finished_index)
+        fname = reduce(join, [output_directory, "pickle", fname])
+        if isfile(fname + ".mean.pickle"):
+            initial_position = ResidualSampleList.load_mean(fname)
+        else:
+            sl = SampleList.load(fname)
+            myassert(sl.n_samples() == 1)
+            initial_position = sl.local_item(0)
+        _load_random_state(output_directory, last_finished_index, save_strategy)
 
     # Sanity check of input
-    for iglobal in range(initial_index, global_iterations + initial_index):
+    if initial_index >= total_iterations:
+        if resume:
+            if isfile(fname + ".mean.pickle"):
+                sl = ResidualSampleList.load(fname)
+            return (sl, mean) if return_final_position else sl
+        else:
+            raise ValueError("Initial index is bigger than total iterations: "
+                             f"{initial_index} >= {total_iterations}")
+
+    for iglobal in range(initial_index, total_iterations):
         for (obj, cls) in [(likelihood_energy, Operator), (kl_minimizer, DescentMinimizer),
                            (nonlinear_sampling_minimizer, (DescentMinimizer, type(None))),
                            (constants, (list, tuple)), (point_estimates, (list, tuple)),
@@ -217,14 +261,22 @@ def optimize_kl(likelihood_energy,
                 myassert(isinstance(comm(iglobal), mpi4py.MPI.Intracomm))
             except ImportError:
                 pass
-    myassert(_number_of_arguments(callback) in [1, 2, 3])
+    myassert(_number_of_arguments(inspect_callback) in [1, 2, 3])
+    myassert(_number_of_arguments(terminate_callback) == 1)
     mf_dom = isinstance(likelihood_energy(initial_index).domain, MultiDomain)
     if mf_dom:
         dom = MultiDomain.union([likelihood_energy(iglobal).domain
                                  for iglobal in
-                                 range(initial_index, global_iterations + initial_index)])
+                                 range(initial_index, total_iterations)])
     else:
         dom = likelihood_energy(initial_index).domain
+
+    for op in plottable_operators.values():
+        if mf_dom:
+            for kk, vv in op.domain.items():
+                myassert(dom[kk] == vv)
+        else:
+            myassert(op.domain is dom)
     # /Sanity check of input
 
     if not likelihood_energy(initial_index).target is DomainTuple.scalar_domain():
@@ -251,16 +303,16 @@ def optimize_kl(likelihood_energy,
             for subfolder in ["pickle"] + list(plottable_operators.keys()):
                 makedirs(join(output_directory, subfolder), exist_ok=overwrite)
 
-    for iglobal in range(initial_index, global_iterations + initial_index):
+    for iglobal in range(initial_index, total_iterations):
         ham = StandardHamiltonian(likelihood_energy(iglobal), sampling_iteration_controller(iglobal))
         minimizer = kl_minimizer(iglobal)
         mean_iter = mean.extract(ham.domain)
 
-        # Distributing the domain of the likelihood is not supported (yet)
+        # TODO Distributing the domain of the likelihood is not supported (yet)
         check_MPI_synced_random_state(comm(iglobal))
         check_MPI_equality(likelihood_energy(iglobal).domain, comm(iglobal))
         check_MPI_equality(mean.domain, comm(iglobal))
-        check_MPI_equality(mean, comm(iglobal))  # FIXME Temporary because potentially expensive
+        check_MPI_equality(mean, comm(iglobal))
 
         if n_samples(iglobal) == 0:
             e = EnergyAdapter(mean_iter, ham, constants=constants(iglobal),
@@ -279,7 +331,7 @@ def optimize_kl(likelihood_energy,
                 else:
                     mean = None
                     sl = SampleList([], comm=comm(iglobal), domain=dom)
-                comm(iglobal).Barrier()
+                _barrier(comm(iglobal))
                 mean = comm(iglobal).bcast(mean, root=0)
         else:
             e = SampledKLEnergy(
@@ -301,20 +353,31 @@ def optimize_kl(likelihood_energy,
                     overwrite=overwrite)
             _save_random_state(output_directory, iglobal, save_strategy)
 
-        if _number_of_arguments(callback) == 1:
+        if _MPI_master(comm(iglobal)):
+            with open(join(output_directory, "last_finished_iteration"), "w") as f:
+                f.write(str(iglobal))
+        _barrier(comm(iglobal))
+
+        if _number_of_arguments(inspect_callback) == 1:
             inp = (sl,)
-        elif _number_of_arguments(callback) == 2:
+        elif _number_of_arguments(inspect_callback) == 2:
             inp = (sl, iglobal)
-        elif _number_of_arguments(callback) == 3:
+        elif _number_of_arguments(inspect_callback) == 3:
             inp = (sl, iglobal, mean)
-        new_mean = callback(*inp)
+        new_mean = inspect_callback(*inp)
         if new_mean is not None:
             mean = new_mean
-
         if mean.domain is not dom:
             raise RuntimeError
         if sl.domain is not dom:
             raise RuntimeError
+        _barrier(comm(iglobal))
+
+        terminate = terminate_callback(iglobal)
+        check_MPI_equality(terminate, comm(iglobal))
+        if terminate:
+            break
+
     return (sl, mean) if return_final_position else sl
 
 
@@ -337,6 +400,14 @@ def _save_random_state(output_directory, index, save_strategy):
     file_name += _file_name_by_strategy(save_strategy, index)
     with open(file_name, "wb") as f:
         f.write(getState())
+
+
+def _load_random_state(output_directory, index, save_strategy):
+    from ..random import setState
+    file_name = join(output_directory, "pickle/nifty_random_state_")
+    file_name += _file_name_by_strategy(save_strategy, index)
+    with open(file_name, "rb") as f:
+        setState(f.read())
 
 
 def _plot_operators(output_directory, index, plottable_operators, sample_list, ground_truth, comm, save_strategy):
