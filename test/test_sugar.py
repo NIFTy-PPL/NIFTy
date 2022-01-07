@@ -90,4 +90,4 @@ def test_isinstance_helpers():
 def test_plot_priorsamples(dom_shape):
     dom = ift.RGSpace(dom_shape)
     op = ift.ScalingOperator(dom, 1.)
-    ift.plot_priorsamples(op)
+    ift.plot_priorsamples(op, name=f'test_plot_priorsamples_{dom_shape}.png')
