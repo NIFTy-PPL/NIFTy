@@ -20,13 +20,15 @@ from datetime import datetime as dt
 
 import numpy as np
 
-from .domains.gl_space import GLSpace
 from .domain_tuple import DomainTuple
+from .domains.gl_space import GLSpace
 from .domains.hp_space import HPSpace
 from .domains.power_space import PowerSpace
 from .domains.rg_space import RGSpace
 from .field import Field
 from .minimization.iteration_controllers import EnergyHistory
+from .multi_field import MultiField
+from .sugar import makeField
 from .utilities import check_object_identity, myassert
 
 # relevant properties:
@@ -175,6 +177,7 @@ def _find_closest(A, target):
 
 def _makeplot(name, block=True, dpi=None):
     import matplotlib.pyplot as plt
+
     if name is None:
         plt.show(block=block)
         if block:
@@ -193,6 +196,7 @@ def _makeplot(name, block=True, dpi=None):
 
 def _limit_xy(**kwargs):
     import matplotlib.pyplot as plt
+
     x1, x2, y1, y2 = plt.axis()
     x1 = kwargs.pop("xmin", x1)
     x2 = kwargs.pop("xmax", x2)
@@ -202,14 +206,15 @@ def _limit_xy(**kwargs):
 
 
 def _register_cmaps():
+    import matplotlib.pyplot as plt
+    from matplotlib.colors import LinearSegmentedColormap
+
     try:
         if _register_cmaps._cmaps_registered:
             return
     except AttributeError:
         _register_cmaps._cmaps_registered = True
 
-    import matplotlib.pyplot as plt
-    from matplotlib.colors import LinearSegmentedColormap
     planckcmap = {'red':   ((0., 0., 0.), (.4, 0., 0.), (.5, 1., 1.),
                             (.7, 1., 1.), (.8, .83, .83), (.9, .67, .67),
                             (1., .5, .5)),
@@ -277,6 +282,7 @@ def _extract_list_kwargs(kwargs, keys, n):
 def _plot_history(f, ax, **kwargs):
     import matplotlib.pyplot as plt
     from matplotlib.dates import DateFormatter, date2num
+
     for i, fld in enumerate(f):
         if not isinstance(fld, EnergyHistory):
             raise TypeError
@@ -387,7 +393,6 @@ def _plotting_args_2D(fld, f_space=1):
         x_space = 1 - f_space
         # Only one frequency?
         if dom[f_space].shape[0] == 1:
-            from .sugar import makeField
             fld = makeField(fld.domain[x_space], fld.val.squeeze(axis=dom.axes[f_space]))
         else:
             val = fld.val
@@ -439,6 +444,8 @@ def _plot2D(f, ax, **kwargs):
         return
     elif isinstance(dom, (HPSpace, GLSpace)):
         from ducc0.healpix import Healpix_Base
+        from ducc0.misc import GL_thetas
+
         xsize = 800
         res, mask, theta, phi = _mollweide_helper(xsize)
         if have_rgb:
@@ -455,7 +462,6 @@ def _plot2D(f, ax, **kwargs):
             else:
                 res[mask] = f.val[base.ang2pix(ptg)]
         else:
-            from ducc0.misc import GL_thetas
             ra = np.linspace(0, 2*np.pi, dom.nlon+1)
             dec = GL_thetas(dom.nlat)
             ilat = _find_closest(dec, theta)
@@ -562,7 +568,6 @@ class Plot:
         freq_space_idx: int
             for multi-frequency plotting: index of frequency space in domain
         """
-        from .multi_field import MultiField
         if f is None:
             self._plots.append(None)
             self._kwargs.append({})
@@ -603,6 +608,7 @@ class Plot:
             mode. The plot will not be closed in this case but is left open!
         """
         import matplotlib.pyplot as plt
+
         nplot = len(self._plots)
         fig = plt.figure()
         if "title" in kwargs:

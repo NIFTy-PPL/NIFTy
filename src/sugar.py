@@ -44,14 +44,14 @@ __all__ = ['PS_field', 'power_analyze', 'create_power_operator',
            'calculate_position', 'plot_priorsamples'] + list(pointwise.ptw_dict.keys())
 
 
-def PS_field(pspace, func):
+def PS_field(pspace, function):
     """Convenience function sampling a power spectrum
 
     Parameters
     ----------
     pspace : PowerSpace
         space at whose `k_lengths` the power spectrum function is evaluated
-    func : function taking and returning a numpy.ndarray(float)
+    function : function taking and returning a numpy.ndarray(float)
         the power spectrum function
 
     Returns
@@ -61,7 +61,7 @@ def PS_field(pspace, func):
     """
     if not isinstance(pspace, PowerSpace):
         raise TypeError
-    data = func(pspace.k_lengths)
+    data = function(pspace.k_lengths)
     return Field(DomainTuple.make(pspace), data)
 
 
@@ -549,11 +549,11 @@ def plot_priorsamples(op, n_samples=5, common_colorbar=True, **kwargs):
         p.add(samples, **kwargs)
     p.output(**kwargs)
 
+
 def exec_time(obj, want_metric=True):
     """Times the execution time of an operator or an energy."""
     from .linearization import Linearization
     from .minimization.energy import Energy
-    from .operators.energy_operators import EnergyOperator
     if isinstance(obj, Energy):
         t0 = time()
         obj.at(0.99*obj.position)
@@ -607,7 +607,7 @@ def calculate_position(operator, output):
     from .minimization.iteration_controllers import GradientNormController
     from .minimization.kl_energies import SampledKLEnergy
     from .operators.energy_operators import GaussianEnergy, StandardHamiltonian
-    from .operators.scaling_operator import ScalingOperator
+
     if not isinstance(operator, Operator):
         raise TypeError
     if output.domain != operator.target:
