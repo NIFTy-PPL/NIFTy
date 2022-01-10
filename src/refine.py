@@ -1,12 +1,19 @@
 #!/usr/bin/env python3
 
 from functools import partial
+from string import ascii_uppercase
 from typing import Callable, Optional
 
 from jax import vmap
 from jax import numpy as jnp
 from jax.lax import conv_general_dilated
 import numpy as np
+
+# N - batch dimension
+# C - feature dimension of data (channel)
+# I - input dimension of kernel
+# O - output dimension of kernel
+CONV_DIMENSION_NAMES = "".join(el for el in ascii_uppercase if el not in "NCIO")
 
 
 def _get_cov_from_loc(kernel=None, cov_from_loc=None):
@@ -87,6 +94,57 @@ def refinement_matrices(
     return opt_lin_filter, (cov_sqrt0, kernel_sqrt)
 
 
+def refine_conv_general(coarse_values, excitations, olf, fine_kernel_sqrt):
+    n_dim = np.ndim(coarse_values)
+    dim_names = CONV_DIMENSION_NAMES[:n_dim]
+    # Introduce an artificial channel dimension for the matrix product
+    olf = olf.reshape((2 * n_dim, ) + (3, ) * (n_dim - 1) + (1, 3))
+    fine_kernel_sqrt = fine_kernel_sqrt.reshape((2 * n_dim, ) * 2)
+    excitations = excitations.reshape((-1, 2 * n_dim))
+
+    conv = partial(
+        conv_general_dilated,
+        window_strides=(1, ) * n_dim,
+        padding="valid",
+        dimension_numbers=(
+            f"N{dim_names}C", f"O{dim_names}I", f"N{dim_names}C"
+        )
+    )
+    fine = jnp.zeros(tuple(n - 2 for n in coarse_values.shape) + (2 * n_dim, ))
+    c_shp_n1 = coarse_values.shape[-1]
+    c_slc_shp = (1, ) + coarse_values.shape[:-1] + (-1, 3)
+    fine = fine.at[..., 0::3, :].set(
+        conv(
+            coarse_values[..., :c_shp_n1 - c_shp_n1 % 3].reshape(c_slc_shp), olf
+        )[0]
+    )
+    fine = fine.at[..., 1::3, :].set(
+        conv(
+            coarse_values[...,
+                          1:c_shp_n1 - (c_shp_n1 - 1) % 3].reshape(c_slc_shp),
+            olf
+        )[0]
+    )
+    fine = fine.at[..., 2::3, :].set(
+        conv(
+            coarse_values[...,
+                          2:c_shp_n1 - (c_shp_n1 - 2) % 3].reshape(c_slc_shp),
+            olf
+        )[0]
+    )
+
+    fine += vmap(jnp.matmul,
+                 in_axes=(None, 0))(fine_kernel_sqrt,
+                                    excitations).reshape(fine.shape)
+
+    fine = fine.reshape(fine.shape[:-1] + (2, ) * n_dim)
+    ax_label = np.arange(2 * n_dim)
+    ax_t = [e for els in zip(ax_label[:n_dim], ax_label[n_dim:]) for e in els]
+    fine = jnp.transpose(fine, axes=ax_t)
+
+    return fine.reshape(tuple(2 * (n - 2) for n in coarse_values.shape))
+
+
 def refine_conv(coarse_values, excitations, olf, fine_kernel_sqrt):
     fine_m = vmap(
         partial(jnp.convolve, mode="valid"), in_axes=(None, 0), out_axes=0
@@ -102,34 +160,6 @@ def refine_conv(coarse_values, excitations, olf, fine_kernel_sqrt):
 def refine_loop(coarse_values, excitations, olf, fine_kernel_sqrt):
     fine_m = [jnp.convolve(coarse_values, o, mode="valid") for o in olf[::-1]]
     fine_m = jnp.stack(fine_m, axis=1)
-    fine_std = vmap(jnp.matmul, in_axes=(None, 0))(
-        fine_kernel_sqrt, excitations.reshape(-1, fine_kernel_sqrt.shape[-1])
-    )
-
-    return (fine_m + fine_std).ravel()
-
-
-def refine_conv_general(coarse_values, excitations, olf, fine_kernel_sqrt):
-    olf = olf[..., jnp.newaxis]
-
-    sh0 = coarse_values.shape[0]
-    conv = partial(
-        conv_general_dilated,
-        window_strides=(1, ),
-        padding="valid",
-        dimension_numbers=("NWC", "OIW", "NWC")
-    )
-    fine_m = jnp.zeros((coarse_values.size - 2, 2))
-    fine_m = fine_m.at[0::3].set(
-        conv(coarse_values[:sh0 - sh0 % 3].reshape(1, -1, 3), olf)[0]
-    )
-    fine_m = fine_m.at[1::3].set(
-        conv(coarse_values[1:sh0 - (sh0 - 1) % 3].reshape(1, -1, 3), olf)[0]
-    )
-    fine_m = fine_m.at[2::3].set(
-        conv(coarse_values[2:sh0 - (sh0 - 2) % 3].reshape(1, -1, 3), olf)[0]
-    )
-
     fine_std = vmap(jnp.matmul, in_axes=(None, 0))(
         fine_kernel_sqrt, excitations.reshape(-1, fine_kernel_sqrt.shape[-1])
     )
@@ -158,7 +188,7 @@ def refine_vmap(coarse_values, excitations, olf, fine_kernel_sqrt):
     return (fine_m + fine_std).ravel()
 
 
-refine = refine_conv
+refine = refine_conv_general
 
 
 def correlated_field(xi, distances, kernel):

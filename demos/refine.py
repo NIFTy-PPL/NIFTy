@@ -46,8 +46,8 @@ scale, cutoff, dof = 1., 80., 3 / 2
 x = np.logspace(-6, 11, base=jnp.e, num=int(1e+5))
 y = matern_kernel(x, scale, cutoff, dof)
 y = jnp.nan_to_num(y, nan=0.)
-kernel = partial(jnp.interp, xp=x, fp=y)
-inv_kernel = partial(jnp.interp, xp=y, fp=x)
+kernel = jax.tree_util.Partial(jnp.interp, xp=x, fp=y)
+inv_kernel = jax.tree_util.Partial(jnp.interp, xp=y, fp=x)
 
 # fig, ax = plt.subplots()
 # x_s = x[x < 10 * cutoff]
@@ -115,7 +115,6 @@ if interactive:
     plt.show()
 
 # %%
-
 distances0 = 10.
 distances1 = distances0 / 2
 distances2 = distances1 / 2
@@ -170,28 +169,30 @@ if interactive:
 
 # %%
 def fwd(xi, distances, kernel):
-    size0, depth = xi[0].size, len(xi)
+    size0, depth = xi[0].shape, len(xi)
     os, (cov_sqrt0, ks) = refine.refinement_matrices(
         size0, depth, distances=distances, kernel=kernel
     )
 
-    fine = cov_sqrt0 @ xi[0]
+    fine = (cov_sqrt0 @ xi[0].ravel()).reshape(xi[0].shape)
     for x, olf, ks in zip(xi[1:], os, ks):
         fine = refine.refine(fine, x, olf, ks)
     return fine
 
 
-key = random.PRNGKey(44)
+key = random.PRNGKey(45)
 key, *ks = random.split(key, 4)
 
-distances = 50. * 1000
+distances = jnp.array([5e+2, 3e+2])
 n_std = 0.1
 
-n0_pix = 12
-n_layers = 15
-exc_shp = [(n0_pix, )]
-for _ in range(n_layers):
-    exc_shp.append((2 * (exc_shp[-1][0] - 2), ))
+n_layers = 8
+exc_shp = [(12, 12)]
+exc_shp += [tuple(el - 2 for el in exc_shp[0]) + (2 * len(exc_shp[0]), )]
+for _ in range(n_layers - 1):
+    exc_shp += [
+        tuple(2 * el - 2 for el in exc_shp[-1][:-1]) + (2 * len(exc_shp[0]), )
+    ]
 
 xi_truth_swd = list(map(jft.ShapeWithDtype, exc_shp))
 xi_truth = jft.random_like(ks.pop(), xi_truth_swd)
@@ -210,16 +211,23 @@ def signal_response(xi, distances):
 
 
 xi_swd = {"excitations": xi_truth_swd, "cutoff": jft.ShapeWithDtype(())}
-xi = 1e-3 * jft.Field(jft.random_like(ks.pop(), xi_swd))
+xi = 1e-4 * jft.Field(jft.random_like(ks.pop(), xi_swd))
 ham = lambda x: jnp.linalg.norm(d - signal_response(x, distances), ord=2) / (
     2 * n_std**2
 ) + 0.5 * jft.norm(x, ord=2, ravel=True)
 ham = jax.jit(ham)
 
-if interactive:
+if interactive and d.ndim == 1:
     plt.plot(d, label="Data")
     plt.plot(fwd(xi_truth, distances, kernel), label="Truth")
     plt.plot(signal_response(xi, distances), label="Start")
+    plt.legend()
+    plt.show()
+elif interactive and d.ndim == 2:
+    fig, axs = plt.subplots(1, 3)
+    axs.flat[0].imshow(d)
+    axs.flat[1].imshow(fwd(xi_truth, distances, kernel))
+    axs.flat[2].imshow(signal_response(xi, distances))
     plt.show()
 
 # %%
@@ -240,14 +248,20 @@ if interactive:
         }
     )
 
-# %%
-if interactive:
-    plt.plot(d, label="Data")
-    plt.plot(fwd(xi_truth, distances, kernel), label="Truth")
-    plt.plot(signal_response(xi, distances), label="Start")
-    plt.plot(signal_response(opt_state.x, distances), label="Final")
-    plt.legend()
-    plt.show()
+    if d.ndim == 1:
+        plt.plot(d, label="Data")
+        plt.plot(fwd(xi_truth, distances, kernel), label="Truth")
+        plt.plot(signal_response(xi, distances), label="Start")
+        plt.plot(signal_response(opt_state.x, distances), label="Final")
+        plt.legend()
+        plt.show()
+    elif d.ndim == 2:
+        fig, axs = plt.subplots(1, 4)
+        axs.flat[0].imshow(d)
+        axs.flat[1].imshow(fwd(xi_truth, distances, kernel))
+        axs.flat[2].imshow(signal_response(xi, distances))
+        axs.flat[3].imshow(signal_response(opt_state.x, distances))
+        plt.show()
 
 # %%
 # JIFTy CF :: Shape        (262144,) (    10 loops) :: JAX 2.83e-02 :: NIFTy 3.93e-02
@@ -271,7 +285,10 @@ if interactive:
 # GRID REFINEMENT :: CPU :: Shape        (262148,) (    50 loops) :: JAX w/o learnable 4.55e-03
 # GRID REFINEMENT :: GPU :: Shape        (262148,) (    50 loops) :: JAX w/ learnable 8.23e-03
 # GRID REFINEMENT :: GPU :: Shape        (262148,) (   200 loops) :: JAX w/o learnable 1.66e-03
-for backend in ("cpu", "gpu"):
+all_backends = ["cpu"]
+all_backends += [jax.default_backend()
+                ] if jax.default_backend() != "cpu" else []
+for backend in all_backends:
     device_kw = {"device": jax.devices(backend=backend)[0]}
     device_put = partial(jax.device_put, **device_kw)
 
@@ -314,7 +331,10 @@ coarse_values = fwd(xi_truth, distances, kernel)
 olf, fine_kernel_sqrt = refine.layer_refinement_matrices(distances, kernel)
 
 cv = coarse_values
-exc = random.normal(key, shape=(2 * (cv.size - 2), ))
+exc = random.normal(
+    key,
+    shape=tuple(n - 2 for n in coarse_values.shape) + (2, ) * len(distances)
+)
 ref = jax.jit(refine.refine)
 _ = ref(cv, exc, olf, fine_kernel_sqrt)
 timeit(lambda: ref(cv, exc, olf, fine_kernel_sqrt).block_until_ready())
@@ -323,7 +343,7 @@ timeit(lambda: ref(cv, exc, olf, fine_kernel_sqrt).block_until_ready())
 # %%
 def fwd_diy(xi, opt_lin_filter, kernel_sqrt):
     cov_sqrt0, ks = kernel_sqrt
-    fine = cov_sqrt0 @ xi[0]
+    fine = (cov_sqrt0 @ xi[0].ravel()).reshape(xi[0].shape)
     for x, olf, ks in zip(xi[1:], opt_lin_filter, ks):
         fine = refine.refine(fine, x, olf, ks)
     return fine
@@ -331,7 +351,7 @@ def fwd_diy(xi, opt_lin_filter, kernel_sqrt):
 
 x = jft.random_like(key, jft.Field(xi_truth_swd))
 olfs, kss = refine.refinement_matrices(
-    x.val[0].size, len(x.val), distances, kernel
+    x.val[0].shape, len(x.val), distances, kernel
 )
 corr = jax.jit(jax.value_and_grad(lambda x: fwd_diy(x, olfs, kss).sum()), )
 
@@ -351,15 +371,18 @@ grm = jax.jit(
         "kernel",
     )
 )
-_ = grm(x.val[0].size, len(x.val), distances, kernel)
+_ = grm(x.val[0].shape, len(x.val), distances, kernel)
 timeit(
-    lambda: grm(x.val[0].size, len(x.val), distances, kernel)[0].
+    lambda: grm(x.val[0].shape, len(x.val), distances, kernel)[0].
     block_until_ready()
 )
 
 # %%
 cv = coarse_values.copy()
-exc = random.normal(key, shape=(2 * (cv.size - 2), ))
+exc = random.normal(
+    key,
+    shape=tuple(n - 2 for n in coarse_values.shape) + (2, ) * len(distances)
+)
 olf, ks = refine.layer_refinement_matrices(distances, kernel)
 ref = jax.jit(refine.refine, static_argnames=("kernel", ))
 _ = ref(cv, exc, olf, ks).block_until_ready()
@@ -367,7 +390,9 @@ _ = ref(cv, exc, olf, ks).block_until_ready()
 timeit(lambda: ref(cv, exc, olf, ks).block_until_ready())
 
 # %%
-cv = coarse_values.copy()
+olf, ks = refine.layer_refinement_matrices(distances[:1], kernel)
+
+cv = coarse_values.ravel().copy()
 conv = jax.jit(
     partial(
         jax.lax.conv_general_dilated,
