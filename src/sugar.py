@@ -517,15 +517,21 @@ def single_plot(field, **kwargs):
         del(kwargs['title'])
     p.output(**kwargs)
 
+
 def plot_priorsamples(op, n_samples=5, common_colorbar=True, **kwargs):
-    """ Creates a number of prior sample plots using `Plot`.
-    Keyword arguments are passed to both `Plot.add` and `Plot.output`.
+    """Create a number of prior sample plots using `Plot`
 
     Parameters
     ----------
-    op: operator mapping from standard Gaussian with covariance 1 to the prior distribution
+    op:
+        Operator that mapping from standard Gaussian with covariance 1 to the prior distribution
 
-    n_samples: the number of prior samples for plotting
+    n_samples: int
+        Number of prior samples for plotting
+
+    Note
+    ----
+    Keyword arguments are passed to both `Plot.add` and `Plot.output`.
     """
     p = Plot()
     samples = list(op(from_random(op.domain)) for _ in range(n_samples))
@@ -534,8 +540,7 @@ def plot_priorsamples(op, n_samples=5, common_colorbar=True, **kwargs):
         vmax = np.max(list(np.max(samples[i].val)for i in range(n_samples)))
     else:
         vmin = vmax = None
-    twod = plottable2D(samples[0])
-    if twod:
+    if plottable2D(samples[0]):
         for i in range(n_samples):
             p.add(samples[i], vmin=vmin, vmax=vmax, **kwargs)
             if 'title' in kwargs:
