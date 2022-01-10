@@ -534,12 +534,7 @@ def plot_priorsamples(op, n_samples=5, common_colorbar=True, **kwargs):
         vmax = np.max(list(np.max(samples[i].val)for i in range(n_samples)))
     else:
         vmin = vmax = None
-    try:
-        plottable2D(samples[0])
-        twod = True
-    except ValueError:
-        twod = False
-
+    twod = plottable2D(samples[0])
     if twod:
         for i in range(n_samples):
             p.add(samples[i], vmin=vmin, vmax=vmax, **kwargs)
@@ -547,7 +542,6 @@ def plot_priorsamples(op, n_samples=5, common_colorbar=True, **kwargs):
                 del(kwargs['title'])
     else:
         p.add(samples, **kwargs)
-
     p.output(**kwargs)
 
 def exec_time(obj, want_metric=True):

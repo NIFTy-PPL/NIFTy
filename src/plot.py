@@ -359,8 +359,27 @@ def _plot1D(f, ax, **kwargs):
 
 
 def plottable2D(fld, f_space=1):
-    if not isinstance(fld.domain, DomainTuple):
-        raise TypeError("cannot be MultiField")
+    if not isinstance(fld.domain, DomainTuple): # cannot plot MultiField
+        return False
+    x_space = 0
+    dom = fld.domain
+    if len(dom) == 2:
+        x_space = 1 - f_space
+        if f_space not in [0, 1]: # Invalid frequency space index
+            return False
+        if (not isinstance(dom[f_space], RGSpace)) or len(dom[f_space].shape) != 1: # Need 1D RGSpace as frequency space domain
+            return False
+    elif len(dom) > 2: # "DomainTuple can only have one or two entries.
+        return False
+    if not isinstance(dom[x_space], (RGSpace, HPSpace, GLSpace)): # Need RGSpace, HPSpace or GLSpace as xspace
+        return False
+    if isinstance(dom[x_space], RGSpace):
+        if not len(dom[x_space].shape) == 2: # xspace not 2d
+            return False
+    return True
+
+
+def plotting_args_2D(fld, f_space=1):
     # check for multifrequency plotting
     have_rgb, rgb = False, None
     x_space = 0
@@ -369,11 +388,6 @@ def plottable2D(fld, f_space=1):
         x_space = 0
     elif len(dom) == 2:
         x_space = 1 - f_space
-        if f_space not in [0, 1]:
-            raise ValueError("Invalid frequency space index")
-        if (not isinstance(dom[f_space], RGSpace)) or len(dom[f_space].shape) != 1:
-            raise ValueError("Need 1D RGSpace as frequency space domain")
-
         # Only one frequency?
         if dom[f_space].shape[0] == 1:
             from .sugar import makeField
@@ -384,14 +398,8 @@ def plottable2D(fld, f_space=1):
                 val = np.moveaxis(val, 0, -1)
             rgb = _rgb_data(val)
             have_rgb = True
-    else:
-        raise ValueError("DomainTuple can only have one or two entries.")
-
-    if not isinstance(dom[x_space], (RGSpace, HPSpace, GLSpace)):
-        raise ValueError("Need RGSpace, HPSpace or GLSpace as xspace")
-    if isinstance(dom[x_space], RGSpace):
-        if not len(dom[x_space].shape) == 2:
-            raise ValueError("xspace not 2d")
+    else: # "DomainTuple can only have one or two entries.
+        raise ValueError('check plottable2D before using this function')
     return fld, x_space, have_rgb, rgb
 
 
@@ -404,7 +412,7 @@ def _plot2D(f, ax, **kwargs):
     f = f[0]
     dom = f.domain
 
-    f, x_space, have_rgb, rgb = plottable2D(f, kwargs.pop("freq_space_idx", 1))
+    f, x_space, have_rgb, rgb = plotting_args_2D(f, kwargs.pop("freq_space_idx", 1))
 
     foo = kwargs.pop("norm", None)
     norm = {} if foo is None else {'norm': foo}

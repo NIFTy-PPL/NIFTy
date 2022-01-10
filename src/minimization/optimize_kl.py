@@ -385,12 +385,7 @@ def _plot_samples(file_name, samples, ground_truth, comm):
 
         p = Plot()
         for kk in keys:
-            try:
-                plottable2D(samples[0][kk])
-                twod = True
-            except ValueError:
-                twod = False
-
+            twod = plottable2D(samples[0][kk])
             single_samples = [ss[kk] for ss in samples]
 
             if twod:
