@@ -181,13 +181,10 @@ def optimize_kl(likelihood_energy,
         raise TypeError
     if len(set(["latent", "pickle"]) & set(plottable_operators.keys())) != 0:
         raise ValueError("The keys `latent` and `pickle` in `plottable_operators` are reserved.")
-    if plot_latent:
-        plottable_operators = plottable_operators.copy()
-        plottable_operators["latent"] = ScalingOperator(likelihood_energy.domain, 1.)
     if not isinstance(initial_index, int):
         raise TypeError
     if save_strategy not in ["all", "last"]:
-        raise ValueError("Save strategy '{save_strategy}' not supported.")
+        raise ValueError(f"Save strategy '{save_strategy}' not supported.")
 
     likelihood_energy = _make_callable(likelihood_energy)
     kl_minimizer = _make_callable(kl_minimizer)
@@ -232,6 +229,9 @@ def optimize_kl(likelihood_energy,
 
     if not likelihood_energy(initial_index).target is DomainTuple.scalar_domain():
         raise TypeError
+    if plot_latent:
+        plottable_operators = plottable_operators.copy()
+        plottable_operators["latent"] = ScalingOperator(dom, 1.)
     mean = initial_position
     check_MPI_synced_random_state(comm(initial_index))
     if mean is None:
