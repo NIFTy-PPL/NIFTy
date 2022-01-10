@@ -18,6 +18,7 @@ import os
 import pickle
 import re
 import time
+from warnings import warn
 
 from .. import utilities
 from ..field import Field
@@ -448,7 +449,7 @@ class ResidualSampleList(SampleListBase):
         if len(self._r) != len(self._n):
             raise ValueError("Residuals and neg need to have the same length.")
         if any(elem == 0 for elem in utilities.allreduce_sum([[len(self._r)]], comm)):
-            raise RuntimeError("Empty list of residuals detected.")
+            warn("ResidualSampleList: (Partially empty) sample list detected.")
 
         r_dom = self._r[0].domain
         if not all(rr.domain is r_dom for rr in self._r):
