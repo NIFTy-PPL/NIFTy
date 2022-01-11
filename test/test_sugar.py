@@ -85,3 +85,11 @@ def test_isinstance_helpers():
     assert ift.is_operator(op)
     assert not ift.is_operator(lin)
     assert not ift.is_operator(fld)
+
+@pmp('dom_shape', [10, (10,20)])
+@pmp('n_samples', [2, 5])
+@pmp('common_colorbar', (True, False))
+def test_plot_priorsamples(dom_shape, n_samples, common_colorbar):
+    dom = ift.RGSpace(dom_shape)
+    op = ift.ScalingOperator(dom, 1.)
+    ift.plot_priorsamples(op, n_samples, common_colorbar, name=f'test_plot_priorsamples_{dom_shape}.png')

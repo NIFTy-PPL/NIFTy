@@ -33,7 +33,7 @@ from .operators.distributors import PowerDistributor
 from .operators.operator import Operator
 from .operators.scaling_operator import ScalingOperator
 from .operators.selection_operators import SliceOperator
-from .plot import Plot
+from .plot import Plot, plottable2D
 
 __all__ = ['PS_field', 'power_analyze', 'create_power_operator',
            'density_estimator', 'create_harmonic_smoothing_operator',
@@ -41,17 +41,17 @@ __all__ = ['PS_field', 'power_analyze', 'create_power_operator',
            'is_linearization', 'is_operator', 'makeDomain', 'is_likelihood_energy',
            'get_signal_variance', 'makeOp', 'domain_union',
            'get_default_codomain', 'single_plot', 'exec_time',
-           'calculate_position'] + list(pointwise.ptw_dict.keys())
+           'calculate_position', 'plot_priorsamples'] + list(pointwise.ptw_dict.keys())
 
 
-def PS_field(pspace, func):
+def PS_field(pspace, function):
     """Convenience function sampling a power spectrum
 
     Parameters
     ----------
     pspace : PowerSpace
         space at whose `k_lengths` the power spectrum function is evaluated
-    func : function taking and returning a numpy.ndarray(float)
+    function : function taking and returning a numpy.ndarray(float)
         the power spectrum function
 
     Returns
@@ -61,7 +61,7 @@ def PS_field(pspace, func):
     """
     if not isinstance(pspace, PowerSpace):
         raise TypeError
-    data = func(pspace.k_lengths)
+    data = function(pspace.k_lengths)
     return Field(DomainTuple.make(pspace), data)
 
 
@@ -518,11 +518,42 @@ def single_plot(field, **kwargs):
     p.output(**kwargs)
 
 
+def plot_priorsamples(op, n_samples=5, common_colorbar=True, **kwargs):
+    """Create a number of prior sample plots using `Plot`
+
+    Parameters
+    ----------
+    op:
+        Operator that mapping from standard Gaussian with covariance 1 to the prior distribution
+
+    n_samples: int
+        Number of prior samples for plotting
+
+    Note
+    ----
+    Keyword arguments are passed to both `Plot.add` and `Plot.output`.
+    """
+    p = Plot()
+    samples = list(op(from_random(op.domain)) for _ in range(n_samples))
+    if common_colorbar:
+        vmin = min(np.min(samples[i].val) for i in range(n_samples))
+        vmax = max(np.max(samples[i].val) for i in range(n_samples))
+    else:
+        vmin = vmax = None
+    if plottable2D(samples[0]):
+        for i in range(n_samples):
+            p.add(samples[i], vmin=vmin, vmax=vmax, **kwargs)
+            if 'title' in kwargs:
+                del(kwargs['title'])
+    else:
+        p.add(samples, **kwargs)
+    p.output(**kwargs)
+
+
 def exec_time(obj, want_metric=True):
     """Times the execution time of an operator or an energy."""
     from .linearization import Linearization
     from .minimization.energy import Energy
-    from .operators.energy_operators import EnergyOperator
     if isinstance(obj, Energy):
         t0 = time()
         obj.at(0.99*obj.position)
@@ -576,7 +607,7 @@ def calculate_position(operator, output):
     from .minimization.iteration_controllers import GradientNormController
     from .minimization.kl_energies import SampledKLEnergy
     from .operators.energy_operators import GaussianEnergy, StandardHamiltonian
-    from .operators.scaling_operator import ScalingOperator
+
     if not isinstance(operator, Operator):
         raise TypeError
     if output.domain != operator.target:
