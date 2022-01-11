@@ -385,10 +385,9 @@ def _plot_samples(file_name, samples, ground_truth, comm):
 
         p = Plot()
         for kk in keys:
-            twod = plottable2D(samples[0][kk])
             single_samples = [ss[kk] for ss in samples]
 
-            if twod:
+            if plottable2D(samples[0][kk]):
                 if ground_truth is not None:
                     p.add(ground_truth[kk], title=_append_key("Ground truth", kk))
                     p.add(None)

@@ -86,7 +86,7 @@ def test_isinstance_helpers():
     assert not ift.is_operator(lin)
     assert not ift.is_operator(fld)
 
-@pmp('dom_shape', [10,(10,20)])
+@pmp('dom_shape', [10, (10,20)])
 def test_plot_priorsamples(dom_shape):
     dom = ift.RGSpace(dom_shape)
     op = ift.ScalingOperator(dom, 1.)
