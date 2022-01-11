@@ -536,8 +536,8 @@ def plot_priorsamples(op, n_samples=5, common_colorbar=True, **kwargs):
     p = Plot()
     samples = list(op(from_random(op.domain)) for _ in range(n_samples))
     if common_colorbar:
-        vmin = np.min(list(np.min(samples[i].val)for i in range(n_samples)))
-        vmax = np.max(list(np.max(samples[i].val)for i in range(n_samples)))
+        vmin = min(np.min(samples[i].val) for i in range(n_samples))
+        vmax = max(np.max(samples[i].val) for i in range(n_samples))
     else:
         vmin = vmax = None
     if plottable2D(samples[0]):
