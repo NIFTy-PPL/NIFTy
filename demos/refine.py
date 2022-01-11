@@ -8,7 +8,7 @@ import jax
 from jax import numpy as jnp
 from jax import random
 from jax import config as jax_config
-from jax.scipy.special import gammaln
+from jax.tree_util import Partial
 import matplotlib.pyplot as plt
 import numpy as np
 
@@ -33,7 +33,9 @@ def timeit(stmt, setup=lambda: None, number=None):
 
 
 def matern_kernel(distance, scale, cutoff, dof):
+    from jax.scipy.special import gammaln
     from scipy.special import kv
+
     reg_dist = jnp.sqrt(2 * dof) * distance / cutoff
     return scale**2 * 2**(1 - dof) / jnp.exp(
         gammaln(dof)
@@ -46,8 +48,8 @@ scale, cutoff, dof = 1., 80., 3 / 2
 x = np.logspace(-6, 11, base=jnp.e, num=int(1e+5))
 y = matern_kernel(x, scale, cutoff, dof)
 y = jnp.nan_to_num(y, nan=0.)
-kernel = jax.tree_util.Partial(jnp.interp, xp=x, fp=y)
-inv_kernel = jax.tree_util.Partial(jnp.interp, xp=y, fp=x)
+kernel = Partial(jnp.interp, xp=x, fp=y)
+inv_kernel = Partial(jnp.interp, xp=y, fp=x)
 
 # fig, ax = plt.subplots()
 # x_s = x[x < 10 * cutoff]
