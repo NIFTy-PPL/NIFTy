@@ -28,7 +28,6 @@ from .domains.rg_space import RGSpace
 from .field import Field
 from .minimization.iteration_controllers import EnergyHistory
 from .multi_field import MultiField
-from .sugar import makeField
 from .utilities import check_object_identity, myassert
 
 # relevant properties:
@@ -383,6 +382,8 @@ def plottable2D(fld, f_space=1):
 
 
 def _plotting_args_2D(fld, f_space=1):
+    from .sugar import makeField
+
     # check for multifrequency plotting
     have_rgb, rgb = False, None
     x_space = 0
