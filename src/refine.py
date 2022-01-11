@@ -94,7 +94,9 @@ def refinement_matrices(
     return opt_lin_filter, (cov_sqrt0, kernel_sqrt)
 
 
-def refine_conv_general(coarse_values, excitations, olf, fine_kernel_sqrt):
+def refine_conv_general(
+    coarse_values, excitations, olf, fine_kernel_sqrt, precision=None
+):
     n_dim = np.ndim(coarse_values)
     dim_names = CONV_DIMENSION_NAMES[:n_dim]
     # Introduce an artificial channel dimension for the matrix product
@@ -108,7 +110,8 @@ def refine_conv_general(coarse_values, excitations, olf, fine_kernel_sqrt):
         padding="valid",
         dimension_numbers=(
             f"N{dim_names}C", f"O{dim_names}I", f"N{dim_names}C"
-        )
+        ),
+        precision=precision,
     )
     fine = jnp.zeros(tuple(n - 2 for n in coarse_values.shape) + (2**n_dim, ))
     c_shp_n1 = coarse_values.shape[-1]
@@ -145,9 +148,13 @@ def refine_conv_general(coarse_values, excitations, olf, fine_kernel_sqrt):
     return fine.reshape(tuple(2 * (n - 2) for n in coarse_values.shape))
 
 
-def refine_conv(coarse_values, excitations, olf, fine_kernel_sqrt):
+def refine_conv(
+    coarse_values, excitations, olf, fine_kernel_sqrt, precision=None
+):
     fine_m = vmap(
-        partial(jnp.convolve, mode="valid"), in_axes=(None, 0), out_axes=0
+        partial(jnp.convolve, mode="valid", precision=precision),
+        in_axes=(None, 0),
+        out_axes=0
     )(coarse_values, olf[::-1])
     fine_m = jnp.moveaxis(fine_m, (0, ), (1, ))
     fine_std = vmap(jnp.matmul, in_axes=(None, 0))(
@@ -157,8 +164,13 @@ def refine_conv(coarse_values, excitations, olf, fine_kernel_sqrt):
     return (fine_m + fine_std).ravel()
 
 
-def refine_loop(coarse_values, excitations, olf, fine_kernel_sqrt):
-    fine_m = [jnp.convolve(coarse_values, o, mode="valid") for o in olf[::-1]]
+def refine_loop(
+    coarse_values, excitations, olf, fine_kernel_sqrt, precision=None
+):
+    fine_m = [
+        jnp.convolve(coarse_values, o, mode="valid", precision=precision)
+        for o in olf[::-1]
+    ]
     fine_m = jnp.stack(fine_m, axis=1)
     fine_std = vmap(jnp.matmul, in_axes=(None, 0))(
         fine_kernel_sqrt, excitations.reshape(-1, fine_kernel_sqrt.shape[-1])
@@ -167,9 +179,13 @@ def refine_loop(coarse_values, excitations, olf, fine_kernel_sqrt):
     return (fine_m + fine_std).ravel()
 
 
-def refine_vmap(coarse_values, excitations, olf, fine_kernel_sqrt):
+def refine_vmap(
+    coarse_values, excitations, olf, fine_kernel_sqrt, precision=None
+):
     sh0 = coarse_values.shape[0]
-    conv = vmap(jnp.matmul, in_axes=(None, 0), out_axes=0)
+    conv = vmap(
+        partial(jnp.matmul, precision=precision), in_axes=(None, 0), out_axes=0
+    )
     fine_m = jnp.zeros((coarse_values.size - 2, 2))
     fine_m = fine_m.at[0::3].set(
         conv(olf, coarse_values[:sh0 - sh0 % 3].reshape(-1, 3))
@@ -191,7 +207,7 @@ def refine_vmap(coarse_values, excitations, olf, fine_kernel_sqrt):
 refine = refine_conv_general
 
 
-def correlated_field(xi, distances, kernel):
+def correlated_field(xi, distances, kernel, precision=None):
     size0, depth = xi[0].size, len(xi)
     os, (cov_sqrt0, ks) = refinement_matrices(
         size0, depth, distances=distances, kernel=kernel
@@ -199,5 +215,5 @@ def correlated_field(xi, distances, kernel):
 
     fine = cov_sqrt0 @ xi[0]
     for x, olf, ks in zip(xi[1:], os, ks):
-        fine = refine(fine, x, olf, ks)
+        fine = refine(fine, x, olf, ks, precision=precision)
     return fine
