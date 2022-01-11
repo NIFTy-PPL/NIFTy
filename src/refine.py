@@ -53,9 +53,9 @@ def layer_refinement_matrices(
         (gc.reshape(-1, n_dim), gf.reshape(-1, n_dim)), axis=0
     )
     cov = cov_from_loc(coord, coord)
-    cov_ff = cov[-2 * n_dim:, -2 * n_dim:]
-    cov_fc = cov[-2 * n_dim:, :-2 * n_dim]
-    cov_cc_inv = jnp.linalg.inv(cov[:-2 * n_dim, :-2 * n_dim])
+    cov_ff = cov[-2**n_dim:, -2**n_dim:]
+    cov_fc = cov[-2**n_dim:, :-2**n_dim]
+    cov_cc_inv = jnp.linalg.inv(cov[:-2**n_dim, :-2**n_dim])
 
     olf = cov_fc @ cov_cc_inv
     fine_kernel_sqrt = jnp.linalg.cholesky(
@@ -98,9 +98,9 @@ def refine_conv_general(coarse_values, excitations, olf, fine_kernel_sqrt):
     n_dim = np.ndim(coarse_values)
     dim_names = CONV_DIMENSION_NAMES[:n_dim]
     # Introduce an artificial channel dimension for the matrix product
-    olf = olf.reshape((2 * n_dim, ) + (3, ) * (n_dim - 1) + (1, 3))
-    fine_kernel_sqrt = fine_kernel_sqrt.reshape((2 * n_dim, ) * 2)
-    excitations = excitations.reshape((-1, 2 * n_dim))
+    olf = olf.reshape((2**n_dim, ) + (3, ) * (n_dim - 1) + (1, 3))
+    fine_kernel_sqrt = fine_kernel_sqrt.reshape((2**n_dim, ) * 2)
+    excitations = excitations.reshape((-1, 2**n_dim))
 
     conv = partial(
         conv_general_dilated,
@@ -110,7 +110,7 @@ def refine_conv_general(coarse_values, excitations, olf, fine_kernel_sqrt):
             f"N{dim_names}C", f"O{dim_names}I", f"N{dim_names}C"
         )
     )
-    fine = jnp.zeros(tuple(n - 2 for n in coarse_values.shape) + (2 * n_dim, ))
+    fine = jnp.zeros(tuple(n - 2 for n in coarse_values.shape) + (2**n_dim, ))
     c_shp_n1 = coarse_values.shape[-1]
     c_slc_shp = (1, ) + coarse_values.shape[:-1] + (-1, 3)
     fine = fine.at[..., 0::3, :].set(

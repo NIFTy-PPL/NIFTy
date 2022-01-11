@@ -188,10 +188,10 @@ n_std = 0.1
 
 n_layers = 8
 exc_shp = [(12, 12)]
-exc_shp += [tuple(el - 2 for el in exc_shp[0]) + (2 * len(exc_shp[0]), )]
+exc_shp += [tuple(el - 2 for el in exc_shp[0]) + (2**len(exc_shp[0]), )]
 for _ in range(n_layers - 1):
     exc_shp += [
-        tuple(2 * el - 2 for el in exc_shp[-1][:-1]) + (2 * len(exc_shp[0]), )
+        tuple(2 * el - 2 for el in exc_shp[-1][:-1]) + (2**len(exc_shp[0]), )
     ]
 
 xi_truth_swd = list(map(jft.ShapeWithDtype, exc_shp))
