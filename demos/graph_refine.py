@@ -74,7 +74,6 @@ lh = jax.jit(
     lambda x: ((d - fwd(x))**2).sum() +
     sum([(el**2).sum() for el in jax.tree_util.tree_leaves(x)])
 )
-
 print(lh(xi))
 
 # %%
@@ -100,8 +99,8 @@ pos_rec = opt_state.x.val.copy()
 pos_rec["layer_weights"] = pos_rec["layer_weights"].at[:-8].set(-np.inf)
 
 pos_truth = jft.random_like(key, ptree)
-plt.plot(correlated_field(pos_truth), label="truth")
-plt.plot(fwd(opt_state.x), label="reconstruction")
-plt.plot(fwd(pos_rec), label="reconstruction coarse")
+plt.plot(correlated_field(pos_truth), alpha=0.7, label="truth")
+plt.plot(fwd(opt_state.x), alpha=0.7, label="reconstruction")
+plt.plot(fwd(pos_rec), alpha=0.7, label="reconstruction coarse")
 plt.legend()
 plt.show()
