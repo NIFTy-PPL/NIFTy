@@ -31,7 +31,8 @@ from ..plot import Plot, plottable2D
 from ..sugar import from_random
 from ..utilities import (Nop, check_MPI_equality,
                          check_MPI_synced_random_state,
-                         get_MPI_params_from_comm)
+                         get_MPI_params_from_comm,
+                         check_object_identity)
 from .energy_adapter import EnergyAdapter
 from .iteration_controllers import IterationController
 from .kl_energies import SampledKLEnergy
@@ -271,10 +272,12 @@ def optimize_kl(likelihood_energy,
     else:
         dom = likelihood_energy(initial_index).domain
 
-    for op in plottable_operators.values():
+    for k1, op in plottable_operators.items():
         if mf_dom:
-            for kk, vv in op.domain.items():
-                myassert(dom[kk] == vv)
+            for k2, vv in op.domain.items():
+                if k2 in dom.keys() and dom[k2] != vv:
+                    raise ValueError(f"The domain of plottable operator '{k1}' "
+                                      "does not fit to the minimization domain.")
         else:
             myassert(op.domain is dom)
     # /Sanity check of input
@@ -537,3 +540,12 @@ def _want_metric(mini):
 def _number_of_arguments(func):
     from inspect import signature
     return len(signature(func).parameters)
+
+
+def _is_subdomain(sub_domain, total_domain):
+    if not isinstance(sub_domain, (MultiDomain, DomainTuple)):
+        raise TypeError
+    if isinstance(sub_domain, DomainTuple):
+        return sub_domain == total_domain
+    return all(kk in total_domain.keys() and vv == total_domain[kk]
+               for kk, vv in sub_domain.items())
