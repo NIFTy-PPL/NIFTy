@@ -413,7 +413,8 @@ def _load_random_state(output_directory, index, save_strategy):
         setState(f.read())
 
 
-def _plot_operators(output_directory, index, plottable_operators, sample_list, ground_truth, comm, save_strategy):
+def _plot_operators(output_directory, index, plottable_operators, sample_list,
+                    ground_truth, comm, save_strategy):
     if not isinstance(plottable_operators, dict):
         raise TypeError
     if not isdir(output_directory):
@@ -424,12 +425,14 @@ def _plot_operators(output_directory, index, plottable_operators, sample_list, g
         raise TypeError
 
     for name, op in plottable_operators.items():
+        if not _is_subdomain(op.domain, sample_list.domain):
+            continue
         gt = _op_force_or_none(op, ground_truth)
-        _plot_samples(
-            _file_name(output_directory, name, index, "samples_"), sample_list.iterator(op), gt, comm)
-        if sample_list.n_samples > 1:
-            _plot_stats(
-                _file_name(output_directory, name, index, "stats_"), *sample_list.sample_stat(op), gt, comm)
+        fname = _file_name(output_directory, name, index, "samples_")
+        _plot_samples(fname, sample_list.iterator(op), gt, comm)
+        if sample_list.n_samples() > 1:
+            fname = _file_name(output_directory, name, index, "stats_")
+            _plot_stats(fname, *sample_list.sample_stat(op), gt, comm)
 
         op_direc = join(output_directory, name)
         if sample_list.n_samples > 1:
