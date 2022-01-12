@@ -8,9 +8,11 @@ import jax
 from jax import numpy as jnp
 from jax import random
 from jax import config as jax_config
-from jax.tree_util import Partial
+from jax import vmap
+from jax.scipy.interpolate import RegularGridInterpolator
 import matplotlib.pyplot as plt
 import numpy as np
+from scipy.special import kv as special_kv
 
 import jifty1 as jft
 from jifty1 import refine
@@ -32,7 +34,7 @@ def timeit(stmt, setup=lambda: None, number=None):
     return Timed(time=t, number=number)
 
 
-def matern_kernel(distance, scale, cutoff, dof):
+def _matern_kernel(distance, scale, cutoff, dof):
     from jax.scipy.special import gammaln
     from scipy.special import kv
 
@@ -42,35 +44,66 @@ def matern_kernel(distance, scale, cutoff, dof):
     ) * (reg_dist)**dof * kv(dof, reg_dist)
 
 
+n_dof = 100
+n_dist = 1000
+dof_grid = np.linspace(0., 15., n_dof)
+reg_dist_grid = np.concatenate(
+    (
+        np.array([0.]),
+        np.logspace(np.log(1e-6), np.log(8e+2), base=np.e, num=n_dist - 1)
+    )
+)
+reg_dist_grid = np.logspace(np.log(1e-6), np.log(8e+2), base=np.e, num=n_dist)
+grid = np.meshgrid(dof_grid, reg_dist_grid, indexing="ij")
+
+ln_kv = RegularGridInterpolator(
+    (dof_grid, reg_dist_grid), jnp.log(special_kv(*grid))
+)
+
+
+def matern_kernel(distance, scale, cutoff, dof):
+    from jax.scipy.special import gammaln
+
+    reg_dist = jnp.sqrt(2 * dof) * distance / cutoff
+    dof, reg_dist = jnp.broadcast_arrays(dof, reg_dist)
+
+    corr = 2**(1 - dof) * jnp.exp(
+        jnp.squeeze(ln_kv(jnp.stack((dof, reg_dist), axis=-1))) - gammaln(dof)
+    ) * (reg_dist)**dof
+    # Cut-off at low and high radii
+    corr = corr.clip(0., 1.)
+    corr = jnp.where(reg_dist < 1e-6, 1., corr)
+    corr = jnp.where(reg_dist > 1e+4, 0., corr)
+    return scale**2 * corr
+
+
 scale, cutoff, dof = 1., 80., 3 / 2
 
 # %%
 x = np.logspace(-6, 11, base=jnp.e, num=int(1e+5))
-y = matern_kernel(x, scale, cutoff, dof)
+y = _matern_kernel(x, scale, cutoff, dof)
 y = jnp.nan_to_num(y, nan=0.)
-kernel = Partial(jnp.interp, xp=x, fp=y)
-inv_kernel = Partial(jnp.interp, xp=y, fp=x)
+kernel = partial(jnp.interp, xp=x, fp=y)
+kernel_j = partial(matern_kernel, scale=scale, cutoff=cutoff, dof=dof)
 
-# fig, ax = plt.subplots()
-# x_s = x[x < 10 * cutoff]
-# ax.plot(x_s, kernel(x_s))
-# ax.plot(x_s, jnp.exp(-(x_s / (2. * cutoff))**2))
-# ax.set_yscale("log")
-# plt.show()
+if interactive:
+    fig, ax = plt.subplots()
+    x_s = x[x < 10 * cutoff]
+    ax.plot(x_s, kernel(x_s))
+    ax.plot(x_s, kernel_j(x_s))
+    ax.plot(x_s, jnp.exp(-(x_s / (2. * cutoff))**2))
+    ax.set_yscale("log")
+    plt.show()
 
 # %%
 coord = jnp.linspace(0., 500., num=500)
 coord = coord.reshape(1, -1)
 
-kern_outer = jax.vmap(
-    jax.vmap(lambda x, y: kernel(jnp.linalg.norm(x - y)), in_axes=(None, 1)),
+kern_outer = vmap(
+    vmap(lambda x, y: kernel(jnp.linalg.norm(x - y)), in_axes=(None, 1)),
     in_axes=(1, None)
 )
-# plt.imshow(kern_outer(coord, coord))
-# plt.colorbar()
-# plt.show()
 
-# %%
 key = random.PRNGKey(42)
 key, k_c, k_f = random.split(key, 3)
 
@@ -89,6 +122,16 @@ fine_kernel = cov_ff - cov_fc @ cov_cc_inv @ cov_fc.T
 fine_kernel_sqrt = jnp.linalg.cholesky(fine_kernel)
 olf = cov_fc @ cov_cc_inv
 
+if interactive:
+    fig, axs = plt.subplots(1, 3)
+    im = axs.flat[0].matshow(kern_outer(coord, coord))
+    fig.colorbar(im, ax=axs.flat[0])
+    im = axs.flat[1].matshow(olf)
+    fig.colorbar(im, ax=axs.flat[1])
+    im = axs.flat[2].matshow(fine_kernel_sqrt)
+    fig.colorbar(im, ax=axs.flat[2])
+    plt.show()
+
 # %%
 # N - batch dimension
 # H - spatial height
@@ -99,13 +142,12 @@ olf = cov_fc @ cov_cc_inv
 # O - kernel output channel dimension
 #dim_nums = ('NCWH', 'IWHO', 'NWHC')
 
-refined_m = jax.vmap(
+refined_m = vmap(
     partial(jnp.convolve, mode="valid"), in_axes=(None, 0), out_axes=1
 )(lvl0.ravel(), olf[::-1])
 
 lvl1_exc = random.normal(k_f, shape=refined_m.shape)
-refined_std = jax.vmap(jnp.matmul,
-                       in_axes=(None, 0))(fine_kernel_sqrt, lvl1_exc)
+refined_std = vmap(jnp.matmul, in_axes=(None, 0))(fine_kernel_sqrt, lvl1_exc)
 lvl1 = (refined_m + refined_std).ravel()
 
 lvl1_full_coord = main_coord[
@@ -124,8 +166,8 @@ distances2 = distances1 / 2
 key, k_c, *k_f = random.split(key, 6)
 
 main_coord = jnp.linspace(0., 1000., 50)
-cov_from_loc = jax.vmap(
-    jax.vmap(lambda x, y: kernel(jnp.linalg.norm(x - y)), in_axes=(None, 0)),
+cov_from_loc = vmap(
+    vmap(lambda x, y: kernel(jnp.linalg.norm(x - y)), in_axes=(None, 0)),
     in_axes=(0, None)
 )
 cov_sqrt = jnp.linalg.cholesky(cov_from_loc(main_coord, main_coord))
@@ -188,7 +230,7 @@ key, *ks = random.split(key, 4)
 distances = jnp.array([5e+2, 3e+2])
 n_std = 0.1
 
-n_layers = 8
+n_layers = 5
 exc_shp = [(12, 12)]
 exc_shp += [tuple(el - 2 for el in exc_shp[0]) + (2**len(exc_shp[0]), )]
 for _ in range(n_layers - 1):
@@ -203,16 +245,28 @@ d += n_std * random.normal(ks.pop(), shape=d.shape)
 
 
 def signal_response(xi, distances):
-    def kernel(x, cutoff):
-        cutoff = jnp.exp(0.05 * cutoff + 1.5)
-        return jnp.exp(-(x / cutoff)**2)
+    xi = jft.Field(xi.val.copy())
+    # Un-standardize parameters
+    # xi.val["scale"] = jnp.exp(-0.5 + 0.2 * xi.val.pop("lat_scale"))
+    # xi.val["cutoff"] = jnp.exp(4. + 0.5 * xi.val.pop("lat_cutoff"))
+    # xi.val["dof"] = jnp.exp(0.5 + 0.1 * xi.val.pop("lat_dof"))
+    # kernel = partial(
+    #     matern_kernel, scale=xi["scale"], cutoff=xi["cutoff"], dof=xi["dof"]
+    # )
 
-    return fwd(
-        xi["excitations"], distances, partial(kernel, cutoff=xi["cutoff"])
-    )
+    xi.val["scale"] = jnp.exp(-0.1 + 0.1 * xi.val.pop("lat_scale"))
+    xi.val["cutoff"] = jnp.exp(4.5 + 0.1 * xi.val.pop("lat_cutoff"))
+    kernel = lambda r: xi["scale"] * jnp.exp(-(r / xi["cutoff"])**2)
+
+    return fwd(xi["excitations"], distances, kernel)
 
 
-xi_swd = {"excitations": xi_truth_swd, "cutoff": jft.ShapeWithDtype(())}
+xi_swd = {
+    "excitations": xi_truth_swd,
+    "lat_scale": jft.ShapeWithDtype(()),
+    "lat_cutoff": jft.ShapeWithDtype(()),
+    # "lat_dof": jft.ShapeWithDtype(())
+}
 xi = 1e-4 * jft.Field(jft.random_like(ks.pop(), xi_swd))
 ham = lambda x: jnp.linalg.norm(d - signal_response(x, distances), ord=2) / (
     2 * n_std**2
