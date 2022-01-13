@@ -12,12 +12,13 @@ from jax import vmap
 from jax.scipy.interpolate import RegularGridInterpolator
 import matplotlib.pyplot as plt
 import numpy as np
-from scipy.special import kv as special_kv
+from scipy.special import kv as mod_bessel2
 
 import jifty1 as jft
 from jifty1 import refine
 
 jax_config.update("jax_enable_x64", True)
+# jax_config.update("jax_debug_nans", True)
 interactive = False
 
 Timed = namedtuple("Timed", ("time", "number"), rename=True)
@@ -36,28 +37,28 @@ def timeit(stmt, setup=lambda: None, number=None):
 
 def _matern_kernel(distance, scale, cutoff, dof):
     from jax.scipy.special import gammaln
-    from scipy.special import kv
 
     reg_dist = jnp.sqrt(2 * dof) * distance / cutoff
     return scale**2 * 2**(1 - dof) / jnp.exp(
         gammaln(dof)
-    ) * (reg_dist)**dof * kv(dof, reg_dist)
+    ) * (reg_dist)**dof * mod_bessel2(dof, reg_dist)
 
 
 n_dof = 100
 n_dist = 1000
+min_reg_dist = 1e-6  # approx. lowest resolution of `_matern_kernel` at float64
+max_reg_dist = 8e+2  # approx. highest resolution of `_matern_kernel` at float64
+eps = 8. * jnp.finfo(jnp.array(min_reg_dist).dtype.type).eps
 dof_grid = np.linspace(0., 15., n_dof)
-reg_dist_grid = np.concatenate(
-    (
-        np.array([0.]),
-        np.logspace(np.log(1e-6), np.log(8e+2), base=np.e, num=n_dist - 1)
-    )
+reg_dist_grid = np.logspace(
+    np.log(min_reg_dist * (1. - eps)),
+    np.log(max_reg_dist * (1. + eps)),
+    base=np.e,
+    num=n_dist
 )
-reg_dist_grid = np.logspace(np.log(1e-6), np.log(8e+2), base=np.e, num=n_dist)
 grid = np.meshgrid(dof_grid, reg_dist_grid, indexing="ij")
-
-ln_kv = RegularGridInterpolator(
-    (dof_grid, reg_dist_grid), jnp.log(special_kv(*grid))
+_unsafe_ln_mod_bessel2 = RegularGridInterpolator(
+    (dof_grid, reg_dist_grid), jnp.log(mod_bessel2(*grid)), fill_value=-np.inf
 )
 
 
@@ -67,13 +68,13 @@ def matern_kernel(distance, scale, cutoff, dof):
     reg_dist = jnp.sqrt(2 * dof) * distance / cutoff
     dof, reg_dist = jnp.broadcast_arrays(dof, reg_dist)
 
-    corr = 2**(1 - dof) * jnp.exp(
-        jnp.squeeze(ln_kv(jnp.stack((dof, reg_dist), axis=-1))) - gammaln(dof)
-    ) * (reg_dist)**dof
-    # Cut-off at low and high radii
-    corr = corr.clip(0., 1.)
-    corr = jnp.where(reg_dist < 1e-6, 1., corr)
-    corr = jnp.where(reg_dist > 1e+4, 0., corr)
+    # Never produce NaNs (https://github.com/google/jax/issues/1052)
+    reg_dist = reg_dist.clip(min_reg_dist, max_reg_dist)
+
+    ln_kv = jnp.squeeze(
+        _unsafe_ln_mod_bessel2(jnp.stack((dof, reg_dist), axis=-1))
+    )
+    corr = 2**(1 - dof) * jnp.exp(ln_kv - gammaln(dof)) * (reg_dist)**dof
     return scale**2 * corr
 
 
@@ -108,9 +109,6 @@ key = random.PRNGKey(42)
 key, k_c, k_f = random.split(key, 3)
 
 main_coord = coord[:, ::10]
-cov_sqrt = jnp.linalg.cholesky(kern_outer(main_coord, main_coord))
-lvl0 = cov_sqrt @ random.normal(k_c, shape=main_coord.shape[::-1])
-
 coarse_coord = main_coord[:, :3]
 fine_coord = coarse_coord[tuple(jnp.array(coarse_coord.shape) // 2)
                          ] + (jnp.diff(coarse_coord) / jnp.array([-4., 4.]))
@@ -119,7 +117,12 @@ cov_fc = kern_outer(fine_coord, coarse_coord)
 cov_cc_inv = jnp.linalg.inv(kern_outer(coarse_coord, coarse_coord))
 
 fine_kernel = cov_ff - cov_fc @ cov_cc_inv @ cov_fc.T
-fine_kernel_sqrt = jnp.linalg.cholesky(fine_kernel)
+# For falling power spectra the above must theoretically always have a positive
+# diagonal
+if jnp.all(jnp.diag(fine_kernel) > 0.):
+    fine_kernel_sqrt = jnp.linalg.cholesky(fine_kernel)
+else:
+    fine_kernel_sqrt = jnp.diag(jnp.sqrt(jnp.abs(jnp.diag(fine_kernel))))
 olf = cov_fc @ cov_cc_inv
 
 if interactive:
@@ -141,6 +144,9 @@ if interactive:
 # I - kernel input channel dimension
 # O - kernel output channel dimension
 #dim_nums = ('NCWH', 'IWHO', 'NWHC')
+
+cov_sqrt = jnp.linalg.cholesky(kern_outer(main_coord, main_coord))
+lvl0 = cov_sqrt @ random.normal(k_c, shape=main_coord.shape[::-1])
 
 refined_m = vmap(
     partial(jnp.convolve, mode="valid"), in_axes=(None, 0), out_axes=1
@@ -228,7 +234,7 @@ key = random.PRNGKey(45)
 key, *ks = random.split(key, 4)
 
 distances = jnp.array([5e+2, 3e+2])
-n_std = 0.1
+n_std = 0.5
 
 n_layers = 5
 exc_shp = [(12, 12)]
@@ -247,16 +253,16 @@ d += n_std * random.normal(ks.pop(), shape=d.shape)
 def signal_response(xi, distances):
     xi = jft.Field(xi.val.copy())
     # Un-standardize parameters
-    # xi.val["scale"] = jnp.exp(-0.5 + 0.2 * xi.val.pop("lat_scale"))
-    # xi.val["cutoff"] = jnp.exp(4. + 0.5 * xi.val.pop("lat_cutoff"))
-    # xi.val["dof"] = jnp.exp(0.5 + 0.1 * xi.val.pop("lat_dof"))
-    # kernel = partial(
-    #     matern_kernel, scale=xi["scale"], cutoff=xi["cutoff"], dof=xi["dof"]
-    # )
+    xi.val["scale"] = jnp.exp(-0.5 + 0.2 * xi.val.pop("lat_scale"))
+    xi.val["cutoff"] = jnp.exp(4. + 1e-2 * xi.val.pop("lat_cutoff"))
+    xi.val["dof"] = jnp.exp(0.5 + 0.1 * xi.val.pop("lat_dof"))
+    kernel = partial(
+        matern_kernel, scale=xi["scale"], cutoff=xi["cutoff"], dof=xi["dof"]
+    )
 
-    xi.val["scale"] = jnp.exp(-0.1 + 0.1 * xi.val.pop("lat_scale"))
-    xi.val["cutoff"] = jnp.exp(4.5 + 0.1 * xi.val.pop("lat_cutoff"))
-    kernel = lambda r: xi["scale"] * jnp.exp(-(r / xi["cutoff"])**2)
+    # xi.val["scale"] = jnp.exp(-0.1 + 0.1 * xi.val.pop("lat_scale"))
+    # xi.val["cutoff"] = jnp.exp(4.5 + 0.1 * xi.val.pop("lat_cutoff"))
+    # kernel = lambda r: xi["scale"] * jnp.exp(-(r / xi["cutoff"])**2)
 
     return fwd(xi["excitations"], distances, kernel)
 
@@ -265,7 +271,7 @@ xi_swd = {
     "excitations": xi_truth_swd,
     "lat_scale": jft.ShapeWithDtype(()),
     "lat_cutoff": jft.ShapeWithDtype(()),
-    # "lat_dof": jft.ShapeWithDtype(())
+    "lat_dof": jft.ShapeWithDtype(())
 }
 xi = 1e-4 * jft.Field(jft.random_like(ks.pop(), xi_swd))
 ham = lambda x: jnp.linalg.norm(d - signal_response(x, distances), ord=2) / (
