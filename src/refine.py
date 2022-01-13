@@ -58,9 +58,15 @@ def layer_refinement_matrices(
     cov_cc_inv = jnp.linalg.inv(cov[:-2**n_dim, :-2**n_dim])
 
     olf = cov_fc @ cov_cc_inv
-    fine_kernel_sqrt = jnp.linalg.cholesky(
-        cov_ff - cov_fc @ cov_cc_inv @ cov_fc.T
+    fine_kernel = cov_ff - cov_fc @ cov_cc_inv @ cov_fc.T
+    # Implicitly assume a white power spectrum beyond the numerics limit. Use
+    # the diagonal as estimate for the magnitude of the variance.
+    fine_kernel_fallback = jnp.diag(jnp.abs(jnp.diag(fine_kernel)))
+    # Never produce NaNs (https://github.com/google/jax/issues/1052)
+    fine_kernel = jnp.where(
+        jnp.all(jnp.diag(fine_kernel) > 0.), fine_kernel, fine_kernel_fallback
     )
+    fine_kernel_sqrt = jnp.linalg.cholesky(fine_kernel)
 
     return olf, fine_kernel_sqrt
 
