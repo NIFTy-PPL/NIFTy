@@ -267,6 +267,13 @@ def SampledKLEnergy(position, hamiltonian, n_samples, minimizer_sampling,
         if set(point_estimates) == set(position.keys()):
             raise RuntimeError('Point estimates for whole domain. Use EnergyAdapter instead.')
 
+    # if comm is not None:
+    #     eff_n_samples = (2 if mirror_samples else 1)*n_samples
+    #     n_tasks = comm.Get_size()
+    #     if n_tasks > eff_n_samples:
+    #         raise RuntimeError("More MPI tasks available than number of samples "
+    #                            f"({n_tasks} > {eff_n_samples})")
+
     # If a key is in both lists `constants` and `point_estimates` remove it.
     invariant = list(set(constants).intersection(point_estimates))
     if isinstance(position, MultiField) and len(invariant) > 0:

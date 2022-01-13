@@ -43,7 +43,8 @@ pms = pytest.mark.skipif
 @pmp('mirror_samples', (False, True))
 @pmp('mf', (False, True))
 @pmp('geo', (False, True))
-def test_kl(constants, point_estimates, mirror_samples, mf, geo):
+@pmp('nsamps', (1, 2))
+def test_kl(constants, point_estimates, mirror_samples, mf, geo, nsamps):
     if not mf and (len(point_estimates) != 0 or len(constants) != 0):
         return
     dom = ift.RGSpace((12,), (2.12))
@@ -55,7 +56,6 @@ def test_kl(constants, point_estimates, mirror_samples, mf, geo):
     ic2 = ift.GradientNormController(iteration_limit=5)
     h = ift.StandardHamiltonian(lh, ic_samp=ic)
     mean0 = ift.from_random(h.domain, 'normal')
-    nsamps = 2
     args = {'constants': constants,
             'point_estimates': point_estimates,
             'mirror_samples': mirror_samples,

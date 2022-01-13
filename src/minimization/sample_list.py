@@ -172,9 +172,13 @@ class SampleListBase:
             grp = f.create_group("samples")
             for ii, ss in enumerate(self.iterator(op)):
                 _field2hdf5(grp, ss, str(ii))
-        if mean or std:
+        if std:
             grp = f.create_group("stats")
             m, v = self.sample_stat(op)
+        else:
+            if mean:
+                grp = f.create_group("stats")
+                m = self.average(op)
         if mean:
             _field2hdf5(grp, m, "mean")
         if std:
@@ -320,8 +324,7 @@ class SampleListBase:
         Calling this function involves MPI communication if `comm != None`.
         """
         res, n = self._prepare_average(op)
-        n_output_elements = len(res[0])
-        res = [[elem[ii] for elem in res] for ii in range(n_output_elements)]
+        res = _list_transpose(res)
         return tuple(utilities.allreduce_sum(rr, self.comm) / n for rr in res)
 
     def _prepare_average(self, op):
@@ -451,14 +454,15 @@ class ResidualSampleList(SampleListBase):
         if any(elem == 0 for elem in utilities.allreduce_sum([[len(self._r)]], comm)):
             warn("ResidualSampleList: (Partially empty) sample list detected.")
 
-        r_dom = self._r[0].domain
-        if not all(rr.domain is r_dom for rr in self._r):
-            raise ValueError("All residuals must have the same domain.")
-        if isinstance(r_dom, MultiDomain):
-            try:
-                self._m.extract(r_dom)
-            except:
-                raise ValueError("`residual.domain` must be a subdomain of `mean.domain`.")
+        if len(self._r) > 0:
+            r_dom = self._r[0].domain
+            if not all(rr.domain is r_dom for rr in self._r):
+                raise ValueError("All residuals must have the same domain.")
+            if isinstance(r_dom, MultiDomain):
+                try:
+                    self._m.extract(r_dom)
+                except:
+                    raise ValueError("`residual.domain` must be a subdomain of `mean.domain`.")
 
         if not all(isinstance(nn, bool) for nn in neg):
             raise TypeError("All entries in neg need to be bool.")
@@ -577,7 +581,12 @@ class SampleList(SampleListBase):
                          "call `ift.ResidualSampleList.load()`.")
         files = cls._list_local_sample_files(file_name_base, comm)
         samples = [_load_from_disk(ff) for ff in files]
-        return cls(samples, comm=comm)
+        dom = None
+        if comm is not None:
+            if comm.Get_rank() == 0:
+                dom = samples[0].domain
+            dom = comm.bcast(dom, 0)
+        return cls(samples, comm=comm, domain=dom)
 
 
 def _none_to_id(obj):
@@ -655,3 +664,8 @@ def _field2hdf5(file_handle, obj, name):
 def _barrier(comm):
     if comm is not None:
         comm.Barrier()
+
+
+def _list_transpose(list_of_lists):
+    ny = len(list_of_lists[0])
+    return [[elem[ii] for elem in list_of_lists] for ii in range(ny)]
