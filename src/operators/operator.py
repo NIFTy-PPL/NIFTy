@@ -15,6 +15,8 @@
 #
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
 
+import numbers
+
 import numpy as np
 
 from warnings import warn
@@ -145,6 +147,8 @@ class Operator(metaclass=NiftyMeta):
         return expr
 
     def scale(self, factor):
+        if not isinstance(factor, numbers.Number):
+            raise TypeError(".scale() takes a number as input")
         if factor == 1:
             return self
         from .scaling_operator import ScalingOperator
