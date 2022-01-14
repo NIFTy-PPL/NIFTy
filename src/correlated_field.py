@@ -353,9 +353,9 @@ class CorrelatedFieldMaker():
         self._offset_mean = offset_mean
         zm = offset_std
         if not callable(zm):
-            if len(offset_std) != 2:
-                raise TypeError
-            zm = lognormal_prior(*offset_std)
+            if zm is None or len(zm) != 2:
+                raise TypeError(f"`offset_std` of invalid type {type(zm)!r}")
+            zm = lognormal_prior(*zm)
 
         self._azm = ducktape(zm, self._prefix + "zeromode")
         self._parameter_tree[self._prefix + "zeromode"] = ShapeWithDtype(())
