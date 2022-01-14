@@ -124,7 +124,7 @@ def SimpleCorrelatedField(
     op.power_spectrum = a**2
 
     try:
-        import jifty1 as jft
+        from .. import re as jft
         from .. import RGSpace
 
         if not all(isinstance(dom, RGSpace) for dom in op.target):

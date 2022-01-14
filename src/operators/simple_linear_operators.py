@@ -43,7 +43,7 @@ class VdotOperator(LinearOperator):
         self._capability = self.TIMES | self.ADJOINT_TIMES
 
         try:
-            from jifty1 import vdot
+            from ..re import vdot
 
             self._jax_expr = partial(vdot, field.val)
         except ImportError:
@@ -199,7 +199,7 @@ class FieldAdapter(LinearOperator):
         self._capability = self.TIMES | self.ADJOINT_TIMES
 
         try:
-            import jifty1 as jft
+            from .. import re as jft
 
             def wrap(x):
                 return jft.Field({name: x})

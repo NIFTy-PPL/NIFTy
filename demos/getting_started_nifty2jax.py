@@ -37,7 +37,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 import nifty8 as ift
-import nifty8.re.jax as jft
+import nifty8.re as jft
 
 jax_config.update("jax_enable_x64", True)
 # jax_config.update('jax_log_compiles', True)

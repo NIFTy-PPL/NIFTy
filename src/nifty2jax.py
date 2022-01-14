@@ -6,7 +6,7 @@ from typing import Any, Callable, Mapping, Tuple
 from warnings import warn
 
 from jax.tree_util import tree_map
-import jifty1 as jft
+from . import re as jft
 
 from . import DomainTuple, Field, MultiDomain, MultiField, Operator, makeField
 

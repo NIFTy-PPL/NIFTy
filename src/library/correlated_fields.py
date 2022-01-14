@@ -438,7 +438,7 @@ class CorrelatedFieldMaker:
         self._total_N = total_N
 
         try:
-            import jifty1 as jft
+            from .. import re as jft
 
             if total_N != 0:
                 warn(f"unable to add JAX operator for {total_N=}")

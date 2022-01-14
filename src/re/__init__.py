@@ -1,5 +1,5 @@
 try:
     import jax as _
-    from . import jax
+    from .jax_backend import *
 except ImportError:
     pass
