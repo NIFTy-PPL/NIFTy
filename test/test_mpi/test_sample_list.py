@@ -79,7 +79,7 @@ def test_sample_list(comm, cls):
             [sc.add(ss) for ss in samples]
         else:
             [sc.add(op(ss)) for ss in samples]
-        if sl.n_samples() > 1:
+        if sl.n_samples > 1:
             mean, var = sl.sample_stat(op)
             ift.extra.assert_allclose(mean, sl.average(op))
             ift.extra.assert_allclose(mean, sc.mean)  # FIXME Why does this not fail for comm != None?
@@ -94,9 +94,9 @@ def test_sample_list(comm, cls):
             ift.extra.assert_equal(s0, s1)
 
         if comm is None:
-            assert len(samples) == sl.n_samples()
+            assert len(samples) == sl.n_samples
         else:
-            assert len(samples) <= sl.n_samples()
+            assert len(samples) <= sl.n_samples
 
 
 @pmp("cls", all_cls)
@@ -136,7 +136,7 @@ def test_save_to_hdf5(comm, cls, mean, std, samples):
     if comm is None and ift.utilities.get_MPI_params()[1] > 1:
         pytest.skip()
     sl, _ = _get_sample_list(comm, cls)
-    if sl.n_samples() < 2 and std:
+    if sl.n_samples < 2 and std:
         pytest.skip()
     for op in _get_ops(sl):
         if not mean and not std and not samples:

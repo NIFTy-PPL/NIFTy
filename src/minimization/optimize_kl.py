@@ -353,12 +353,12 @@ def _plot_operators(output_directory, index, plottable_operators, sample_list, g
         gt = _op_force_or_none(op, ground_truth)
         _plot_samples(
             _file_name(output_directory, name, index, "samples_"), sample_list.iterator(op), gt, comm)
-        if sample_list.n_samples() > 1:
+        if sample_list.n_samples > 1:
             _plot_stats(
                 _file_name(output_directory, name, index, "stats_"), *sample_list.sample_stat(op), gt, comm)
 
         op_direc = join(output_directory, name)
-        if sample_list.n_samples() > 1:
+        if sample_list.n_samples > 1:
             cfg = {"samples": True, "mean": True, "std": True}
         else:
             cfg = {"samples": True, "mean": False, "std": False}

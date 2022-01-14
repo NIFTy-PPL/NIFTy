@@ -99,8 +99,8 @@ def test_kl(constants, point_estimates, mirror_samples, mf, geo, nsamps):
 
     # Test number of samples
     expected_nsamps = 2*nsamps if mirror_samples else nsamps
-    ift.myassert(kl0.samples.n_samples() == expected_nsamps)
-    ift.myassert(kl1.samples.n_samples() == expected_nsamps)
+    ift.myassert(kl0.samples.n_samples == expected_nsamps)
+    ift.myassert(kl1.samples.n_samples == expected_nsamps)
 
     # Test value
     assert_equal(kl0.value, kl1.value)

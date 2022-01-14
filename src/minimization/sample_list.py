@@ -25,7 +25,7 @@ from ..field import Field
 from ..multi_domain import MultiDomain
 from ..multi_field import MultiField
 from ..operators.operator import Operator
-from ..utilities import get_MPI_params_from_comm, shareRange, allreduce_sum
+from ..utilities import get_MPI_params_from_comm, shareRange
 
 
 class SampleListBase:
@@ -69,14 +69,17 @@ class SampleListBase:
             key = 0
             self._active_comm = comm.Split(color, key)
 
+        self._n_samples = utilities.allreduce_sum([self.n_local_samples], self.comm)
+
     @property
     def n_local_samples(self):
         """int: Number of local samples."""
         return len(self.local_indices)
 
+    @property
     def n_samples(self):
         """Return number of samples across all MPI tasks."""
-        return utilities.allreduce_sum([self.n_local_samples], self.comm)
+        return self._n_samples
 
     def local_item(self, i):
         """Return ith local sample."""
@@ -300,7 +303,7 @@ class SampleListBase:
         can be used in order to compute the average memory efficiently.
         """
         res = self._prepare_average(op)
-        n = self.n_samples()
+        n = self.n_samples
         return utilities.allreduce_sum(res, self.comm) / n
 
     def _average_tuple(self, op):
@@ -318,7 +321,7 @@ class SampleListBase:
         ----
         Calling this function involves MPI communication if `comm != None`.
         """
-        n = self.n_samples()
+        n = self.n_samples
         if len(self.local_indices) > 0:
             res = self._prepare_average(op)
             res = _list_transpose(res)
@@ -562,7 +565,7 @@ class SampleList(SampleListBase):
         return self._s[i]
 
     def save(self, file_name_base, overwrite=False):
-        nsample = self.n_samples()
+        nsample = self.n_samples
         for isample in range(nsample):
             if isample in self.local_indices:
                 obj = self._s[isample-self.local_indices[0]]

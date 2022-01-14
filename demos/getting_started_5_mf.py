@@ -148,7 +148,7 @@ def main():
     plot.add(mean, title="Posterior Mean")
     plot.add(ift.sqrt(var), title="Posterior Standard Deviation")
 
-    n_samples = samples.n_samples()
+    n_samples = samples.n_samples
     plot.add(list(samples.iterator(pspec1)) + [samples.average(pspec1.log()).exp(),
               pspec1.force(mock_position)],
              title="Sampled Posterior Power Spectrum 1",
