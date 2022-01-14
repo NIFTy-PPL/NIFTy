@@ -59,6 +59,16 @@ class SampleListBase:
         utilities.check_MPI_equality(self._domain, comm)
         self.local_indices = _compute_local_indices(n_local_samples, comm)
 
+        self._active_comm = comm
+        if comm is not None:
+            # 0 corresponds to empty tasks
+            # 1 corresponds to tasks with samples
+            color = 0 if len(self.local_indices) == 0 else 1
+            # If the same key is assigned to multiple processes, the conflict is
+            # resolved according to the rank in the original communicator
+            key = 0
+            self._active_comm = comm.Split(color, key)
+
     @property
     def n_local_samples(self):
         """int: Number of local samples."""
@@ -289,7 +299,8 @@ class SampleListBase:
         :class:`~nifty8.multi_field.MultiField`, :attr:`sample_stat()`
         can be used in order to compute the average memory efficiently.
         """
-        res, n = self._prepare_average(op)
+        res = self._prepare_average(op)
+        n = self.n_samples()
         return utilities.allreduce_sum(res, self.comm) / n
 
     def _average_tuple(self, op):
@@ -307,15 +318,22 @@ class SampleListBase:
         ----
         Calling this function involves MPI communication if `comm != None`.
         """
-        res, n = self._prepare_average(op)
-        res = _list_transpose(res)
-        return tuple(utilities.allreduce_sum(rr, self.comm) / n for rr in res)
+        n = self.n_samples()
+        if len(self.local_indices) > 0:
+            res = self._prepare_average(op)
+            res = _list_transpose(res)
+            res = tuple(utilities.allreduce_sum(rr, self._active_comm) / n for rr in res)
+            task_list = self._comm.allgather(self._comm.Get_rank())
+        else:
+            res = None
+            task_list = self._comm.allgather(-1)
+        root = next(filter((-1).__ne__, task_list))
+        return self._comm.bcast(res, root=root)
 
     def _prepare_average(self, op):
         op = _none_to_id(op)
         res = [op(ss) for ss in self.local_iterator()]
-        n = self.n_samples()
-        return res, n
+        return res
 
     def sample_stat(self, op=None):
         """Compute mean and variance of samples after applying `op`.
