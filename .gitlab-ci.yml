@@ -111,6 +111,15 @@ run_getting_started_3:
       - 'getting_started_3_results'
       - '*.png'
 
+run_getting_started_3_mpi:
+  stage: demo_runs
+  script:
+    - mpirun -np 2 --bind-to none python3 demos/getting_started_3.py
+  artifacts:
+    paths:
+      - 'getting_started_3_results'
+      - '*.png'
+
 run_getting_started_mf:
   stage: demo_runs
   script:
