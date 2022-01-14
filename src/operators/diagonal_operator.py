@@ -96,7 +96,7 @@ class DiagonalOperator(EndomorphicOperator):
         try:
             from jax import numpy as jnp
 
-            self._jax_expr = partial(jnp.multiply, jnp.array(self._ldiag))
+            self._jax_expr = partial(jnp.multiply, self._ldiag)
         except ImportError:
             self._jax_expr = None
 
@@ -121,7 +121,7 @@ class DiagonalOperator(EndomorphicOperator):
         try:
             from jax import numpy as jnp
 
-            res._jax_expr = partial(jnp.multiply, jnp.array(ldiag))
+            res._jax_expr = partial(jnp.multiply, ldiag)
         except ImportError:
             res._jax_expr = None
 
