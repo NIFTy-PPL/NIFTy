@@ -25,6 +25,7 @@ from ..field import Field
 from ..multi_domain import MultiDomain
 from ..multi_field import MultiField
 from ..operators.operator import Operator
+from ..utilities import get_MPI_params_from_comm, shareRange, allreduce_sum
 
 
 class SampleListBase:
@@ -43,22 +44,25 @@ class SampleListBase:
         MPI tasks. If `None`, :class:`SampleListBase` is not a distributed object.
     domain : Domainoid (can be DomainTuple, MultiDomain, dict, Domain or list of Domains)
         The domain on which the samples are defined.
+    n_local_samples : int
+        Number of samples present on the current MPI task.
 
     Note
     ----
     A class inheriting from :class:`SampleListBase` needs to call the constructor of
     `SampleListBase` and needs to implement :attr:`n_local_samples` and :attr:`local_item()`.
     """
-    def __init__(self, comm, domain):
+    def __init__(self, comm, domain, n_local_samples):
         from ..sugar import makeDomain
         self._comm = comm
         self._domain = makeDomain(domain)
         utilities.check_MPI_equality(self._domain, comm)
+        self.local_indices = _compute_local_indices(n_local_samples, comm)
 
     @property
     def n_local_samples(self):
         """int: Number of local samples."""
-        raise NotImplementedError
+        return len(self.local_indices)
 
     def n_samples(self):
         """Return number of samples across all MPI tasks."""
@@ -86,27 +90,6 @@ class SampleListBase:
     def domain(self):
         """DomainTuple or MultiDomain: the domain on which the samples are defined."""
         return self._domain
-
-    @staticmethod
-    def local_indices(n_samples, comm=None):
-        """Return range of global sample indices for local task.
-
-        This method calls `utilities.shareRange`
-
-        Parameters
-        ----------
-        n_samples : int
-            Number of work items to be distributed.
-        comm : MPI communicator or None
-            The communicator used for the distribution.
-
-        Returns
-        -------
-        range
-            Range of relevant indices for the local task.
-        """
-        ntask, rank, _ = utilities.get_MPI_params_from_comm(comm)
-        return range(*utilities.shareRange(n_samples, ntask, rank))
 
     def save_to_hdf5(self, file_name, op=None, samples=False, mean=False, std=False,
                      overwrite=False):
@@ -235,6 +218,7 @@ class SampleListBase:
     def _save_fits_2d(self, fld, file_name, overwrite):
         import astropy.io.fits as pyfits
         from astropy.time import Time
+
         from ..domain_tuple import DomainTuple
 
         dom = fld.domain
@@ -409,14 +393,22 @@ class SampleListBase:
         This function makes sure that the all file numbers between 0 and the
         maximal found number are present. If this is not the case, a
         `RuntimeError` is raised.
+
+        Note
+        ----
+        This function distributes the samples according to the standard NIFTy
+        distribution scheme (see `ift.utilities.shareRange`).
         """
         base_dir, base_file = os.path.split(os.path.abspath(file_name_base))
         files = [ff for ff in os.listdir(base_dir)
-                 if re.match(f"{base_file}.[0-9]+.pickle", ff) ]
+                 if re.match(f"{base_file}.[0-9]+.pickle", ff)]
         if len(files) == 0:
             raise RuntimeError(f"No files matching `{file_name_base}.*.pickle`")
         n_samples = max(list(map(lambda x: int(x.split(".")[-2]), files))) + 1
-        files = [f"{file_name_base}.{ii}.pickle" for ii in cls.local_indices(n_samples, comm)]
+
+        ntask, rank, _ = get_MPI_params_from_comm(comm)
+        local_indices = range(*shareRange(n_samples, ntask, rank))
+        files = [f"{file_name_base}.{ii}.pickle" for ii in local_indices]
         for ff in files:
             if not os.path.isfile(ff):
                 raise RuntimeError(f"File {ff} not found")
@@ -444,10 +436,10 @@ class ResidualSampleList(SampleListBase):
             If not `None`, samples can be gathered across multiple MPI tasks. If
             `None`, :class:`ResidualSampleList` is not a distributed object.
         """
-        super(ResidualSampleList, self).__init__(comm, mean.domain)
         self._m = mean
         self._r = tuple(residuals)
         self._n = tuple(neg)
+        super(ResidualSampleList, self).__init__(comm, mean.domain, len(self._r))
 
         if len(self._r) != len(self._n):
             raise ValueError("Residuals and neg need to have the same length.")
@@ -469,10 +461,6 @@ class ResidualSampleList(SampleListBase):
 
     def local_item(self, i):
         return self._m.flexible_addsub(self._r[i], self._n[i])
-
-    @property
-    def n_local_samples(self):
-        return len(self._r)
 
     def at(self, mean):
         """Instantiate `ResidualSampleList` with the same residuals as `self`.
@@ -496,9 +484,7 @@ class ResidualSampleList(SampleListBase):
         return ResidualSampleList(mean, self._r, self._n, self.comm)
 
     def save(self, file_name_base, overwrite=False):
-        nsample = self.n_samples()
-        local_indices = self.local_indices(nsample, self.comm)
-        for ii, isample in enumerate(local_indices):
+        for ii, isample in enumerate(self.local_indices):
             obj = [self._r[ii], self._n[ii]]
             fname = _sample_file_name(file_name_base, isample)
             _save_to_disk(fname, obj, overwrite)
@@ -549,7 +535,7 @@ class SampleList(SampleListBase):
                 domain = samples[0].domain
         else:
             domain = makeDomain(domain)
-        super(SampleList, self).__init__(comm, domain)
+        super(SampleList, self).__init__(comm, domain, len(samples))
         self._s = samples
         for ss in self._s:
             utilities.check_object_identity(ss.domain, self.domain)
@@ -557,16 +543,11 @@ class SampleList(SampleListBase):
     def local_item(self, i):
         return self._s[i]
 
-    @property
-    def n_local_samples(self):
-        return len(self._s)
-
     def save(self, file_name_base, overwrite=False):
         nsample = self.n_samples()
-        local_indices = self.local_indices(nsample, self.comm)
         for isample in range(nsample):
-            if isample in local_indices:
-                obj = self._s[isample-local_indices[0]]
+            if isample in self.local_indices:
+                obj = self._s[isample-self.local_indices[0]]
                 fname = _sample_file_name(file_name_base, isample)
                 _save_to_disk(fname, obj, overwrite=True)
         _barrier(self.comm)
@@ -669,3 +650,11 @@ def _barrier(comm):
 def _list_transpose(list_of_lists):
     ny = len(list_of_lists[0])
     return [[elem[ii] for elem in list_of_lists] for ii in range(ny)]
+
+
+def _compute_local_indices(n_local, comm):
+    if comm is None:
+        return range(n_local)
+    n_locals = comm.allgather(n_local)
+    start = sum(n_locals[:comm.Get_rank()])
+    return range(start, start + n_local)
