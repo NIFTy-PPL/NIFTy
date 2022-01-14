@@ -322,13 +322,17 @@ class SampleListBase:
         Calling this function involves MPI communication if `comm != None`.
         """
         n = self.n_samples
+        res = None
         if len(self.local_indices) > 0:
             res = self._prepare_average(op)
             res = _list_transpose(res)
             res = tuple(utilities.allreduce_sum(rr, self._active_comm) / n for rr in res)
+        if self._active_comm is None and self._comm is None:
+            return res
+
+        if len(self.local_indices) > 0:
             task_list = self._comm.allgather(self._comm.Get_rank())
         else:
-            res = None
             task_list = self._comm.allgather(-1)
         root = next(filter((-1).__ne__, task_list))
         return self._comm.bcast(res, root=root)
