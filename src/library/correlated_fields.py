@@ -729,11 +729,16 @@ class CorrelatedFieldMaker:
             warn(f"unable to add JAX operator for {dofdex=}")
             self._jax_cfm = None
         if self._jax_cfm is not None:
-            self._jax_cfm.set_amplitude_total_offset(
-                offset_mean=offset_mean, offset_std=jax_offset_std
-            )
-            if not isinstance(self._azm, float):
-                self._azm._jax_expr = self._jax_cfm.azm
+            try:
+                self._jax_cfm.set_amplitude_total_offset(
+                    offset_mean=offset_mean, offset_std=jax_offset_std
+                )
+                if not isinstance(self._azm, float):
+                    self._azm._jax_expr = self._jax_cfm.azm
+            except TypeError as e:
+                self._jax_cfm = None
+                if isinstance(e, TypeError):
+                    warn(f"no JAX operator for this configuration;\n{e}")
 
     def finalize(self, prior_info=100):
         """Finishes model construction process and returns the constructed

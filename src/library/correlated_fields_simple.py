@@ -152,7 +152,8 @@ def SimpleCorrelatedField(
         op._jax_expr = cf
         op.amplitude._jax_expr = cfm.amplitude
         op.power_spectrum._jax_expr = cfm.power_spectrum
-    except ImportError:
-        pass
+    except (ImportError, TypeError) as e:
+        if isinstance(e, TypeError):
+            warn(f"no JAX operator for this configuration;\n{e}")
 
     return op
