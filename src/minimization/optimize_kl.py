@@ -229,7 +229,7 @@ def optimize_kl(likelihood_energy,
             initial_position = ResidualSampleList.load_mean(fname)
         else:
             sl = SampleList.load(fname)
-            myassert(sl.n_samples() == 1)
+            myassert(sl.n_samples == 1)
             initial_position = sl.local_item(0)
         _load_random_state(output_directory, last_finished_index, save_strategy)
 
@@ -430,7 +430,7 @@ def _plot_operators(output_directory, index, plottable_operators, sample_list,
         gt = _op_force_or_none(op, ground_truth)
         fname = _file_name(output_directory, name, index, "samples_")
         _plot_samples(fname, sample_list.iterator(op), gt, comm)
-        if sample_list.n_samples() > 1:
+        if sample_list.n_samples > 1:
             fname = _file_name(output_directory, name, index, "stats_")
             _plot_stats(fname, *sample_list.sample_stat(op), gt, comm)
 
