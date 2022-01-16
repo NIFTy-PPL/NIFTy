@@ -139,7 +139,7 @@ def main():
                               ground_truth_position=mock_position,
                               plottable_operators={"signal": signal, "power spectrum 1": pspec1,
                                                    "power spectrum 2": pspec2},
-                              callback=callback)
+                              inspect_callback=callback)
 
     # Plotting
     filename_res = filename.format("results")

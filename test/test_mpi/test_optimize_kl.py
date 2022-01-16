@@ -15,14 +15,16 @@
 #
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
 
-import numpy as np
-import pytest
-from numpy.testing import assert_allclose, assert_raises
+from tempfile import TemporaryDirectory
 
 import nifty8 as ift
-from nifty8 import myassert
+import pytest
 
 from ..common import setup_function, teardown_function
+
+
+comm = ift.utilities.get_MPI_params()[0]
+master = True if comm is None else comm.Get_rank() == 0
 
 pmp = pytest.mark.parametrize
 
@@ -32,6 +34,7 @@ dom = ift.RGSpace([20, 20])
 logsky = ift.SimpleCorrelatedField(dom, 0., None, (1, 1), None, None, (-3, 1))
 sky = logsky.exp()
 mock_pos = ift.from_random(logsky.domain)
+
 
 def cstfunc(iglobal):
     if iglobal == 0:
@@ -43,6 +46,7 @@ def cstfunc(iglobal):
     if iglobal == 4:
         return []
     return []
+
 
 def pefunc(iglobal):
     if iglobal == 0:
@@ -57,6 +61,7 @@ def pefunc(iglobal):
         return ["xi"]
     return []
 
+
 ic = ift.GradientNormController(iteration_limit=5)
 
 @pmp("constants", [[], ["fluctuations"], cstfunc])
@@ -68,21 +73,51 @@ ic = ift.GradientNormController(iteration_limit=5)
 @pmp("n_samples", [0, 2])
 def test_optimize_kl(constants, point_estimates, kl_minimizer, n_samples,
                      sampling_iteration_controller, nonlinear_sampling_minimizer):
-    global_iterations = 5
-    output_directory = "out"
+    final_index = 5
+
+    foo, output_directory = _create_temp_outputdir()
+    bar, output_directory1 = _create_temp_outputdir()
 
     initial_position = None
     initial_index = 0
     ground_truth_position = None
-    comm = ift.utilities.get_MPI_params()[0]
     overwrite = True
 
     d = sky(mock_pos)
     likelihood_energy = ift.GaussianEnergy(mean=d) @ sky
-    callback = None
+    inspect_callback = None
+    terminate_callback = None
     plot_latent = False
     plottable_operators = {}
-    ift.optimize_kl(likelihood_energy, global_iterations, n_samples, kl_minimizer,
-                    sampling_iteration_controller, nonlinear_sampling_minimizer, constants,
-                    point_estimates, plottable_operators, output_directory, initial_position,
-                    initial_index, ground_truth_position, comm, overwrite, callback, plot_latent)
+    rand_state = ift.random.getState()
+    sl = ift.optimize_kl(likelihood_energy, final_index, n_samples, kl_minimizer,
+                         sampling_iteration_controller, nonlinear_sampling_minimizer, constants,
+                         point_estimates, plottable_operators, output_directory, initial_position,
+                         initial_index, ground_truth_position, comm, overwrite, inspect_callback,
+                         terminate_callback, plot_latent)
+
+    ift.random.setState(rand_state)
+
+    def terminate_callback(iglobal):
+        return iglobal in [0, 3]
+
+    for _ in range(5):
+        sl1 = ift.optimize_kl(likelihood_energy, final_index, n_samples, kl_minimizer,
+                              sampling_iteration_controller, nonlinear_sampling_minimizer, constants,
+                              point_estimates, plottable_operators, output_directory1, initial_position,
+                              initial_index, ground_truth_position, comm, overwrite, inspect_callback,
+                              terminate_callback, plot_latent, resume=True)
+
+    for aa, bb in zip(sl.iterator(), sl1.iterator()):
+        ift.extra.assert_allclose(aa, bb)
+
+
+def _create_temp_outputdir():
+    if master:
+        output_directory = TemporaryDirectory()
+        name = output_directory.name
+    else:
+        name = output_directory = None
+    if comm is not None:
+        name = comm.bcast(name, 0)
+    return output_directory, name

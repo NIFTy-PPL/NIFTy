@@ -133,7 +133,7 @@ def main():
                               plottable_operators={"signal": signal, "power spectrum": pspec},
                               ground_truth_position=mock_position,
                               output_directory="getting_started_3_results",
-                              overwrite=True, comm=comm, callback=callback)
+                              overwrite=True, comm=comm, inspect_callback=callback)
 
     if True:
         # Load result from disk. May be useful for long inference runs, where
