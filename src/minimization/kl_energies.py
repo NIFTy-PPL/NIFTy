@@ -31,7 +31,7 @@ from ..operators.sandwich_operator import SandwichOperator
 from ..operators.scaling_operator import ScalingOperator
 from ..probing import approximation2endo
 from ..sugar import makeOp
-from ..utilities import myassert
+from ..utilities import get_MPI_params_from_comm, myassert, shareRange
 from .descent_minimizers import DescentMinimizer
 from .energy import Energy
 from .energy_adapter import EnergyAdapter
@@ -136,7 +136,9 @@ def draw_samples(position, H, minimizer, n_samples, mirror_samples, napprox=0,
     utilities.check_MPI_synced_random_state(comm)
     utilities.check_MPI_equality(sseq, comm)
     y = None
-    for i in SampleListBase.local_indices(len(sseq), comm):
+
+    ntask, rank, _ = get_MPI_params_from_comm(comm)
+    for i in range(*shareRange(len(sseq), ntask, rank)):
         with random.Context(sseq[i]):
             neg = mirror_samples and (i % 2 != 0)
             if not neg or y is None:  # we really need to draw a sample
@@ -267,6 +269,13 @@ def SampledKLEnergy(position, hamiltonian, n_samples, minimizer_sampling,
         if set(point_estimates) == set(position.keys()):
             raise RuntimeError('Point estimates for whole domain. Use EnergyAdapter instead.')
 
+    # if comm is not None:
+    #     eff_n_samples = (2 if mirror_samples else 1)*n_samples
+    #     n_tasks = comm.Get_size()
+    #     if n_tasks > eff_n_samples:
+    #         raise RuntimeError("More MPI tasks available than number of samples "
+    #                            f"({n_tasks} > {eff_n_samples})")
+
     # If a key is in both lists `constants` and `point_estimates` remove it.
     invariant = list(set(constants).intersection(point_estimates))
     if isinstance(position, MultiField) and len(invariant) > 0:
@@ -309,7 +318,7 @@ class SampledKLEnergyClass(Energy):
             tmp = tmp(Linearization.make_var(inp))
             return tmp.val.val[()], tmp.gradient
 
-        self._val, self._grad = sample_list.average(_func)
+        self._val, self._grad = sample_list._average_tuple(_func)
         if np.isnan(self._val) and self._nanisinf:
             self._val = np.inf
 

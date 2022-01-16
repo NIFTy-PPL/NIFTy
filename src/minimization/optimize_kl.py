@@ -137,10 +137,14 @@ def optimize_kl(likelihood_energy,
         Determine if existing directories and files are allowed to be
         overwritten. Default: False.
     callback : callable or None
-        Function that is called after every global iteration. It can be either
-        a function with one argument (then the latest sample list is passed) or
-        a function with two arguments (in which case the latest sample list and
-        the global iteration index are passed). Default: None.
+        Function that is called after every global iteration. It can be either a
+        function with one argument (then the latest sample list is passed), a
+        function with two arguments (in which case the latest sample list and
+        the global iteration index are passed) or three arguments (latest sample
+        list, global iteration index and latent position as inputs). If it
+        returns something that is not None, a Field defined on the same domain
+        as the input sample list is expected.  It is used as a position for the
+        subsequent optimization.  Default: None.
     plot_latent : bool
         Determine if latent space shall be plotted or not. Default: False.
     save_strategy : str
@@ -216,7 +220,7 @@ def optimize_kl(likelihood_energy,
                 myassert(isinstance(comm(iglobal), mpi4py.MPI.Intracomm))
             except ImportError:
                 pass
-    myassert(_number_of_arguments(callback) in [1, 2])
+    myassert(_number_of_arguments(callback) in [1, 2, 3])
     mf_dom = isinstance(likelihood_energy(initial_index).domain, MultiDomain)
     if mf_dom:
         dom = MultiDomain.union([likelihood_energy(iglobal).domain
@@ -226,7 +230,7 @@ def optimize_kl(likelihood_energy,
         dom = likelihood_energy(initial_index).domain
     # /Sanity check of input
 
-    if not likelihood_energy(0).target is DomainTuple.scalar_domain():
+    if not likelihood_energy(initial_index).target is DomainTuple.scalar_domain():
         raise TypeError
     mean = initial_position
     check_MPI_synced_random_state(comm(initial_index))
@@ -242,7 +246,7 @@ def optimize_kl(likelihood_energy,
         if not overwrite and isdir(output_directory):
             raise RuntimeError(f"{output_directory} already exists. Please delete or set "
                                 "`overwrite` to `True`.")
-        if _MPI_master(comm(0)):
+        if _MPI_master(comm(initial_index)):
             makedirs(output_directory, exist_ok=overwrite)
             for subfolder in ["pickle"] + list(plottable_operators.keys()):
                 makedirs(join(output_directory, subfolder), exist_ok=overwrite)
@@ -288,7 +292,7 @@ def optimize_kl(likelihood_energy,
                 point_estimates=point_estimates(iglobal))
             e, _ = minimizer(e)
             mean = MultiField.union([mean, e.position]) if mf_dom else e.position
-            sl = e.samples
+            sl = e.samples.at(mean)
 
         if output_directory is not None:
             _plot_operators(output_directory, iglobal, plottable_operators, sl,
@@ -297,7 +301,15 @@ def optimize_kl(likelihood_energy,
                     overwrite=overwrite)
             _save_random_state(output_directory, iglobal, save_strategy)
 
-        callback(*((sl,) if _number_of_arguments(callback) == 1 else (sl, iglobal)))
+        if _number_of_arguments(callback) == 1:
+            inp = (sl,)
+        elif _number_of_arguments(callback) == 2:
+            inp = (sl, iglobal)
+        elif _number_of_arguments(callback) == 3:
+            inp = (sl, iglobal, mean)
+        new_mean = callback(*inp)
+        if new_mean is not None:
+            mean = new_mean
 
         if mean.domain is not dom:
             raise RuntimeError
@@ -341,12 +353,12 @@ def _plot_operators(output_directory, index, plottable_operators, sample_list, g
         gt = _op_force_or_none(op, ground_truth)
         _plot_samples(
             _file_name(output_directory, name, index, "samples_"), sample_list.iterator(op), gt, comm)
-        if sample_list.n_samples() > 1:
+        if sample_list.n_samples > 1:
             _plot_stats(
                 _file_name(output_directory, name, index, "stats_"), *sample_list.sample_stat(op), gt, comm)
 
         op_direc = join(output_directory, name)
-        if sample_list.n_samples() > 1:
+        if sample_list.n_samples > 1:
             cfg = {"samples": True, "mean": True, "std": True}
         else:
             cfg = {"samples": True, "mean": False, "std": False}

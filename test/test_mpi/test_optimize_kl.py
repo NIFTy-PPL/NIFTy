@@ -65,9 +65,9 @@ ic = ift.GradientNormController(iteration_limit=5)
                       lambda n: ift.NewtonCG(ic) if n < 2 else ift.VL_BFGS(ic)])
 @pmp("sampling_iteration_controller", [ic])
 @pmp("nonlinear_sampling_minimizer", [None, ift.NewtonCG(ift.GradInfNormController(1e-3, iteration_limit=1))])
-def test_optimize_kl(constants, point_estimates, kl_minimizer,
+@pmp("n_samples", [0, 2])
+def test_optimize_kl(constants, point_estimates, kl_minimizer, n_samples,
                      sampling_iteration_controller, nonlinear_sampling_minimizer):
-    n_samples = 2
     global_iterations = 5
     output_directory = "out"
 

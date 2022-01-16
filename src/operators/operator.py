@@ -290,32 +290,29 @@ class Operator(metaclass=NiftyMeta):
         return self @ x
 
     def ducktape(self, name):
-        from ..sugar import is_operator
-        from .simple_linear_operators import ducktape, DomainChangerAndReshaper
-        from ..domain_tuple import DomainTuple
-        from ..domains.domain import Domain
-        from ..multi_domain import MultiDomain
+        from ..sugar import is_operator, makeDomain
+        from .simple_linear_operators import DomainChangerAndReshaper, ducktape
 
         if not is_operator(self):
             raise RuntimeError("ducktape works only on operators")
-        if isinstance(name, (DomainTuple, Domain, MultiDomain)):
-            return self @ DomainChangerAndReshaper(name, self.domain)
-        return self @ ducktape(self, None, name)
+
+        if isinstance(name, str):  # convert to MultiDomain
+            return self @ ducktape(self, None, name)
+        else:  # convert domain
+            newdom = makeDomain(name)
+            return self @ DomainChangerAndReshaper(newdom, self.domain)
 
     def ducktape_left(self, name):
-        from ..sugar import is_fieldlike, is_linearization, is_operator
-        from .simple_linear_operators import ducktape, DomainChangerAndReshaper
-        from ..domain_tuple import DomainTuple
-        from ..domains.domain import Domain
-        from ..multi_domain import MultiDomain
+        from ..sugar import is_fieldlike, is_operator, makeDomain
+        from .simple_linear_operators import DomainChangerAndReshaper, ducktape
 
-        if isinstance(name, (DomainTuple, Domain, MultiDomain)):
+        if isinstance(name, str):  # convert to MultiDomain
+            tgt = self.target if is_operator(self) else self.domain
+            return ducktape(None, tgt, name)(self)
+        else:  # convert domain
+            newdom = makeDomain(name)
             dom = self.domain if is_fieldlike(self) else self.target
-            return DomainChangerAndReshaper(dom, name)(self)
-        if is_operator(self):
-            return ducktape(None, self, name) @ self
-        if is_fieldlike(self) or is_linearization(self):
-            return ducktape(None, self.domain, name)(self)
+            return DomainChangerAndReshaper(dom, newdom)(self)
 
     def __repr__(self):
         return self.__class__.__name__

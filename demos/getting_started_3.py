@@ -147,7 +147,7 @@ def main():
     plot.add(mean, title="Posterior Mean", zmin=0, zmax=1)
     plot.add(var.sqrt(), title="Posterior Standard Deviation")
 
-    nsamples = samples.n_samples()
+    nsamples = samples.n_samples
     logspec = pspec.log()
     plot.add(list(samples.iterator(pspec)) +
              [pspec.force(mock_position), samples.average(logspec).exp()],
