@@ -152,7 +152,7 @@ def _newton_cg(
             "name": cg_name,
             "time_threshold": time_threshold
         }
-        cg_res = cg(Partial(hessp, pos), g, **(default_kwargs | cg_kwargs))
+        cg_res = cg(Partial(hessp, pos), g, **{**default_kwargs, ** cg_kwargs})
         nat_g, info = cg_res.x, cg_res.info
         nhev += cg_res.nfev
         if info is not None and info < 0:
@@ -332,7 +332,7 @@ def _trust_ncg(
         }
         sub_result = subproblem(
             f_k, g_k, Partial(hessp, x_k),
-            **(default_kwargs | subproblem_kwargs)
+            **{**default_kwargs, **subproblem_kwargs}
         )
 
         pred_f_kp1 = sub_result.pred_f
