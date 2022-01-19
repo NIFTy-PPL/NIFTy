@@ -169,9 +169,9 @@ distances0 = 10.
 distances1 = distances0 / 2
 distances2 = distances1 / 2
 
-key, k_c, *k_f = random.split(key, 6)
+key, k_c, *k_f = random.split(random.PRNGKey(42), 6)
 
-main_coord = jnp.linspace(0., 1000., 50)
+main_coord = jnp.linspace(0., 200., 25)
 cov_from_loc = vmap(
     vmap(lambda x, y: kernel(jnp.linalg.norm(x - y)), in_axes=(None, 0)),
     in_axes=(0, None)
@@ -182,6 +182,10 @@ lvl0 = cov_sqrt @ random.normal(k_c, shape=main_coord.shape[::-1])
 lvl1_exc = random.normal(k_f[1], shape=(2 * (lvl0.size - 2), ))
 lvl1 = refine.refine(
     lvl0.ravel(), lvl1_exc,
+    *refine.layer_refinement_matrices(distances0, kernel)
+)
+lvl1_wo_exc = refine.refine(
+    lvl0.ravel(), 0. * lvl1_exc,
     *refine.layer_refinement_matrices(distances0, kernel)
 )
 lvl2_exc = random.normal(k_f[2], shape=(2 * (lvl1.size - 2), ))
@@ -209,11 +213,17 @@ if interactive:
         x2.min() + 0.75 * distances2,
         x2.max() - 0.75 * distances1, lvl3.size
     )
-    plt.step(x0, lvl0.ravel(), alpha=0.7, where="mid", label="LVL0")
-    plt.step(x1, lvl1, alpha=0.7, where="mid", label="LVL1")
-    plt.step(x2, lvl2, alpha=0.7, where="mid", label="LVL2")
-    plt.step(x3, lvl3, alpha=0.7, where="mid", label="LVL3")
-    plt.legend()
+    fig, ax = plt.subplots(figsize=(8, 4))
+    ax.step(x0, lvl0.ravel(), alpha=0.7, where="mid", label="LVL0")
+    ax.step(x1, lvl1_wo_exc, alpha=0.7, where="mid", label="LVL1 w/o Excitations")
+    ax.step(x1, lvl1, alpha=0.7, where="mid", label="LVL1")
+    ax.step(x2, lvl2, alpha=0.7, where="mid", label="LVL2")
+    ax.step(x3, lvl3, alpha=0.7, where="mid", label="LVL3")
+    ax.set_frame_on(False)
+    ax.set_xticks([], [])
+    ax.set_yticks([], [])
+    ax.legend()
+    fig.tight_layout()
     plt.show()
 
 
@@ -229,14 +239,14 @@ def fwd(xi, distances, kernel):
         fine = refine.refine(fine, x, olf, ks)
     return fine
 
-
+# %%
 key = random.PRNGKey(45)
 key, *ks = random.split(key, 4)
 
-distances = jnp.array([5e+2, 3e+2])
+distances = jnp.array([6e+2, 6e+2])
 n_std = 0.5
 
-n_layers = 5
+n_layers = 3
 exc_shp = [(12, 12)]
 exc_shp += [tuple(el - 2 for el in exc_shp[0]) + (2**len(exc_shp[0]), )]
 for _ in range(n_layers - 1):
@@ -245,9 +255,72 @@ for _ in range(n_layers - 1):
     ]
 
 xi_truth_swd = list(map(jft.ShapeWithDtype, exc_shp))
-xi_truth = jft.random_like(ks.pop(), xi_truth_swd)
-d = fwd(xi_truth, distances, kernel)
-d += n_std * random.normal(ks.pop(), shape=d.shape)
+xi = jft.random_like(random.PRNGKey(42), xi_truth_swd)
+
+size0, depth = xi[0].shape, len(xi)
+os, (cov_sqrt0, ks) = refine.refinement_matrices(
+    size0, depth, distances=distances, kernel=kernel, _with_zeros=True,
+)
+
+fine = (cov_sqrt0 @ xi[0].ravel()).reshape(xi[0].shape)
+for x, olf, ks in zip(xi[1:], os, ks):
+    fine = refine.refine(fine, x, olf, ks)
+
+fine_w0 = fine.copy()
+
+size0, depth = xi[0].shape, len(xi)
+os, (cov_sqrt0, ks) = refine.refinement_matrices(
+    size0, depth, distances=distances, kernel=kernel
+)
+
+fine = (cov_sqrt0 @ xi[0].ravel()).reshape(xi[0].shape)
+for x, olf, ks in zip(xi[1:], os, ks):
+    fine = refine.refine(fine, x, olf, ks)
+
+mi, ma = min(fine_w0.min(), fine.min()), max(fine_w0.max(), fine.max())
+fig, axs = plt.subplots(1, 3)
+im = axs.flat[0].imshow(fine_w0.clip(mi, ma))
+fig.colorbar(im, ax=axs.flat[0])
+im = axs.flat[1].imshow(fine.clip(mi, ma))
+fig.colorbar(im, ax=axs.flat[1])
+im = axs.flat[2].imshow(fine - fine_w0)
+fig.colorbar(im, ax=axs.flat[2])
+plt.show()
+# %%
+
+fig, axs = plt.subplots(1, 2)
+f = np.fft.fft2(fine)
+axs.flat[0].imshow(f.real)
+axs.flat[1].imshow(f.imag)
+plt.show()
+
+# %%
+key = random.PRNGKey(45)
+key, *ks = random.split(key, 4)
+
+distances = jnp.array([5e+2, 3e+2])
+n_std = 0.5
+
+n_layers = 3
+exc_shp = [(12, 12)]
+exc_shp += [tuple(el - 2 for el in exc_shp[0]) + (2**len(exc_shp[0]), )]
+for _ in range(n_layers - 1):
+    exc_shp += [
+        tuple(2 * el - 2 for el in exc_shp[-1][:-1]) + (2**len(exc_shp[0]), )
+    ]
+
+ds = []
+for seed in range(100):
+    xi_truth_swd = list(map(jft.ShapeWithDtype, exc_shp))
+    xi_truth = jft.random_like(random.PRNGKey(seed), xi_truth_swd)
+    ds += [fwd(xi_truth, distances, kernel).ravel()]
+ds = np.stack(ds, axis=1)
+
+plt.imshow(np.cov(ds))
+plt.colorbar()
+plt.show()
+
+# %%
 
 
 def signal_response(xi, distances):
@@ -293,10 +366,20 @@ elif interactive and d.ndim == 2:
     plt.show()
 
 # %%
+fig, ax = plt.subplots(figsize=(8, 4))
+im = ax.imshow(fwd(xi_truth, distances, kernel).T, cmap="Blues")
+# fig.colorbar(im)
+ax.set_frame_on(False)
+ax.set_xticks([], [])
+ax.set_yticks([], [])
+fig.tight_layout()
+plt.show()
+
+# %%
 if interactive:
     opt_state = jft.minimize(
         ham,
-        xi,
+        opt_state.x,
         method="NewtonCG",
         options={
             "energy_reduction_factor": None,
@@ -324,6 +407,17 @@ if interactive:
         axs.flat[2].imshow(signal_response(xi, distances))
         axs.flat[3].imshow(signal_response(opt_state.x, distances))
         plt.show()
+
+# %%
+fig, axs = plt.subplots(1, 3, figsize=(12, 4))
+axs.flat[0].imshow(d, cmap="Blues")
+axs.flat[1].imshow(fwd(xi_truth, distances, kernel), cmap="Blues")
+axs.flat[2].imshow(signal_response(opt_state.x, distances), cmap="Blues")
+for ax in axs:
+    ax.set_frame_on(False)
+    ax.set_xticks([], [])
+    ax.set_yticks([], [])
+plt.show()
 
 # %%
 # JIFTy CF :: Shape        (262144,) (    10 loops) :: JAX 2.83e-02 :: NIFTy 3.93e-02

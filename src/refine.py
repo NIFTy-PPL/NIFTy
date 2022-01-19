@@ -37,7 +37,8 @@ def _get_cov_from_loc(kernel=None, cov_from_loc=None):
 def layer_refinement_matrices(
     distances,
     kernel: Optional[Callable] = None,
-    cov_from_loc: Optional[Callable] = None
+    cov_from_loc: Optional[Callable] = None,
+    _with_zeros: bool = False,
 ):
     cov_from_loc = _get_cov_from_loc(kernel, cov_from_loc)
     distances = jnp.asarray(distances)
@@ -55,10 +56,14 @@ def layer_refinement_matrices(
     cov = cov_from_loc(coord, coord)
     cov_ff = cov[-2**n_dim:, -2**n_dim:]
     cov_fc = cov[-2**n_dim:, :-2**n_dim]
+    cov_cc = cov[:-2**n_dim, :-2**n_dim]
     cov_cc_inv = jnp.linalg.inv(cov[:-2**n_dim, :-2**n_dim])
 
     olf = cov_fc @ cov_cc_inv
-    fine_kernel = cov_ff - cov_fc @ cov_cc_inv @ cov_fc.T
+    if _with_zeros:
+        olf = olf.at[:,(0, 2, 6, 8)].set(0.)
+    # fine_kernel = cov_ff - cov_fc @ cov_cc_inv @ cov_fc.T
+    fine_kernel = cov_ff - olf @ cov_cc @ olf.T
     # Implicitly assume a white power spectrum beyond the numerics limit. Use
     # the diagonal as estimate for the magnitude of the variance.
     fine_kernel_fallback = jnp.diag(jnp.abs(jnp.diag(fine_kernel)))
@@ -76,7 +81,8 @@ def refinement_matrices(
     depth,
     distances,
     kernel: Optional[Callable] = None,
-    cov_from_loc: Optional[Callable] = None
+    cov_from_loc: Optional[Callable] = None,
+    _with_zeros: bool = False,
 ):
     cov_from_loc = _get_cov_from_loc(kernel, cov_from_loc)
 
@@ -94,7 +100,7 @@ def refinement_matrices(
     cov_sqrt0 = jnp.linalg.cholesky(cov_from_loc(coord0, coord0))
 
     dist_by_depth = distances * 0.5**jnp.arange(1, depth).reshape(-1, 1)
-    olaf = partial(layer_refinement_matrices, cov_from_loc=cov_from_loc)
+    olaf = partial(layer_refinement_matrices, cov_from_loc=cov_from_loc, _with_zeros=_with_zeros)
     opt_lin_filter, kernel_sqrt = vmap(olaf, in_axes=0,
                                        out_axes=(0, 0))(dist_by_depth)
     return opt_lin_filter, (cov_sqrt0, kernel_sqrt)
