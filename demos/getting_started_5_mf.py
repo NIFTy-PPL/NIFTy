@@ -127,7 +127,8 @@ def main():
 
     # Generate mock signal and data
     mock_position = ift.from_random(signal_response.domain, 'normal')
-    data = signal_response(mock_position) + N.draw_sample()
+    # data = signal_response(mock_position) + N.draw_sample()
+    data = ift.makeField(signal_response.target, np.load("data.npy", allow_pickle=True))
 
     plot = ift.Plot()
     plot.add(signal(mock_position), title='Ground Truth')
