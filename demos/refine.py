@@ -215,7 +215,9 @@ if interactive:
     )
     fig, ax = plt.subplots(figsize=(8, 4))
     ax.step(x0, lvl0.ravel(), alpha=0.7, where="mid", label="LVL0")
-    ax.step(x1, lvl1_wo_exc, alpha=0.7, where="mid", label="LVL1 w/o Excitations")
+    ax.step(
+        x1, lvl1_wo_exc, alpha=0.7, where="mid", label="LVL1 w/o Excitations"
+    )
     ax.step(x1, lvl1, alpha=0.7, where="mid", label="LVL1")
     ax.step(x2, lvl2, alpha=0.7, where="mid", label="LVL2")
     ax.step(x3, lvl3, alpha=0.7, where="mid", label="LVL3")
@@ -239,13 +241,59 @@ def fwd(xi, distances, kernel):
         fine = refine.refine(fine, x, olf, k)
     return fine
 
+
 # %%
 key = random.PRNGKey(45)
-key, *key_splits = random.split(key, 4)
 
 distances = jnp.array([6e+2, 6e+2])
 n_std = 0.5
 
+# Manually toggle the following values
+n_layers = 4
+olf_sz = 5
+fine_sz = 2
+with_zeros = True
+
+n_plots = 9
+
+fig, axs = plt.subplots(*((int(n_plots**0.5), ) * 2), figsize=(16, 16))
+for i in range(n_plots):
+    key, _ = random.split(key, 2)
+
+    exc_shp = [(12, 12)]
+    exc_shp += [
+        tuple(el - (olf_sz - 1)
+              for el in exc_shp[0]) + (fine_sz**len(exc_shp[0]), )
+    ]
+    for _ in range(n_layers - 1):
+        exc_shp += [
+            tuple(2 * el - (olf_sz - 1)
+                  for el in exc_shp[-1][:-1]) + (fine_sz**len(exc_shp[0]), )
+        ]
+
+    xi_truth_swd = list(map(jft.ShapeWithDtype, exc_shp))
+    xi = jft.random_like(key, xi_truth_swd)
+
+    size0, depth = xi[0].shape, len(xi)
+    os, (cov_sqrt0, ks) = refine.refinement_matrices(
+        size0,
+        depth,
+        distances=distances,
+        kernel=kernel,
+        _coarse_size=olf_sz,
+        _with_zeros=with_zeros,
+    )
+
+    fine = (cov_sqrt0 @ xi[0].ravel()).reshape(xi[0].shape)
+    for x, olf, k in zip(xi[1:], os, ks):
+        fine = refine.refine(fine, x, olf, k, _coarse_size=olf_sz)
+
+    im = axs.flat[i].imshow(fine)
+    fig.colorbar(im, ax=axs.flat[i])
+fig.tight_layout()
+plt.show()
+
+# %%
 n_layers = 3
 exc_shp = [(12, 12)]
 exc_shp += [tuple(el - 2 for el in exc_shp[0]) + (2**len(exc_shp[0]), )]
@@ -259,7 +307,11 @@ xi = jft.random_like(random.PRNGKey(42), xi_truth_swd)
 
 size0, depth = xi[0].shape, len(xi)
 os, (cov_sqrt0, ks) = refine.refinement_matrices(
-    size0, depth, distances=distances, kernel=kernel, _with_zeros=True,
+    size0,
+    depth,
+    distances=distances,
+    kernel=kernel,
+    _with_zeros=False,
 )
 
 fine = (cov_sqrt0 @ xi[0].ravel()).reshape(xi[0].shape)

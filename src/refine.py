@@ -38,15 +38,29 @@ def layer_refinement_matrices(
     distances,
     kernel: Optional[Callable] = None,
     cov_from_loc: Optional[Callable] = None,
+    _coarse_size: int = 3,
+    _fine_size: int = 2,
     _with_zeros: bool = False,
 ):
     cov_from_loc = _get_cov_from_loc(kernel, cov_from_loc)
     distances = jnp.asarray(distances)
+    csz = int(_coarse_size)  # coarse size
+    # TODO: distances must be a tensor iff _coarse_size > 3
+    # TODO: allow different grid sizes for different axis
+    if _coarse_size % 2 != 1:
+        raise ValueError("only odd numbers allowed for `_coarse_size`")
+    fsz = int(_fine_size)  # fine size
+    assert fsz == 2
+    if _fine_size % 2 != 0:
+        raise ValueError("only even numbers allowed for `_fine_size`")
 
     n_dim = distances.size
-    gc = distances.reshape(n_dim, 1) * jnp.array([-1., 0., 1.])
+    csz_half = int((csz - 1) / 2)
+    gc = jnp.arange(-csz_half, csz_half + 1, dtype=float)
+    gc = distances.reshape(n_dim, 1) * gc
     gc = jnp.stack(jnp.meshgrid(*gc, indexing="ij"), axis=-1)
-    gf = distances.reshape(n_dim, 1) * jnp.array([-0.25, 0.25])
+    gf = distances.reshape(n_dim,
+                           1) * jnp.array([-0.25, 0.25])  # TODO: adapt for fsz
     gf = jnp.stack(jnp.meshgrid(*gf, indexing="ij"), axis=-1)
     # On the GPU a single `cov_from_loc` call is about twice as fast as three
     # separate calls for coarse-coarse, fine-fine and coarse-fine.
@@ -54,16 +68,26 @@ def layer_refinement_matrices(
         (gc.reshape(-1, n_dim), gf.reshape(-1, n_dim)), axis=0
     )
     cov = cov_from_loc(coord, coord)
-    cov_ff = cov[-2**n_dim:, -2**n_dim:]
-    cov_fc = cov[-2**n_dim:, :-2**n_dim]
-    cov_cc = cov[:-2**n_dim, :-2**n_dim]
-    cov_cc_inv = jnp.linalg.inv(cov[:-2**n_dim, :-2**n_dim])
+    cov_ff = cov[-fsz**n_dim:, -fsz**n_dim:]
+    cov_fc = cov[-fsz**n_dim:, :-fsz**n_dim]
+    cov_cc = cov[:-fsz**n_dim, :-fsz**n_dim]
+    cov_cc_inv = jnp.linalg.inv(cov_cc)
 
     olf = cov_fc @ cov_cc_inv
+    # Also see Schur-Complement
     if _with_zeros:
-        olf = olf.at[:,(0, 2, 6, 8)].set(0.)
-    # fine_kernel = cov_ff - cov_fc @ cov_cc_inv @ cov_fc.T
-    fine_kernel = cov_ff - olf @ cov_cc @ olf.T
+        r = jnp.linalg.norm(gc.reshape(-1, n_dim), axis=1)
+        r_cutoff = jnp.max(distances) * csz_half
+        # dampening is chosen somewhat arbitrarily
+        r_dampening = jnp.max(distances)**-n_dim
+        olf_wgt_sphere = jnp.where(
+            r <= r_cutoff, 1.,
+            jnp.exp(-r_dampening * jnp.abs(r - r_cutoff)**n_dim)
+        )
+        olf *= olf_wgt_sphere[jnp.newaxis, ...]
+        fine_kernel = cov_ff - olf @ cov_cc @ olf.T
+    else:
+        fine_kernel = cov_ff - cov_fc @ cov_cc_inv @ cov_fc.T
     # Implicitly assume a white power spectrum beyond the numerics limit. Use
     # the diagonal as estimate for the magnitude of the variance.
     fine_kernel_fallback = jnp.diag(jnp.abs(jnp.diag(fine_kernel)))
@@ -82,7 +106,7 @@ def refinement_matrices(
     distances,
     kernel: Optional[Callable] = None,
     cov_from_loc: Optional[Callable] = None,
-    _with_zeros: bool = False,
+    **kwargs,
 ):
     cov_from_loc = _get_cov_from_loc(kernel, cov_from_loc)
 
@@ -100,21 +124,37 @@ def refinement_matrices(
     cov_sqrt0 = jnp.linalg.cholesky(cov_from_loc(coord0, coord0))
 
     dist_by_depth = distances * 0.5**jnp.arange(1, depth).reshape(-1, 1)
-    olaf = partial(layer_refinement_matrices, cov_from_loc=cov_from_loc, _with_zeros=_with_zeros)
+    olaf = partial(
+        layer_refinement_matrices, cov_from_loc=cov_from_loc, **kwargs
+    )
     opt_lin_filter, kernel_sqrt = vmap(olaf, in_axes=0,
                                        out_axes=(0, 0))(dist_by_depth)
     return opt_lin_filter, (cov_sqrt0, kernel_sqrt)
 
 
 def refine_conv_general(
-    coarse_values, excitations, olf, fine_kernel_sqrt, precision=None
+    coarse_values,
+    excitations,
+    olf,
+    fine_kernel_sqrt,
+    precision=None,
+    _coarse_size: int = 3,
+    _fine_size: int = 2,
 ):
     n_dim = np.ndim(coarse_values)
     dim_names = CONV_DIMENSION_NAMES[:n_dim]
     # Introduce an artificial channel dimension for the matrix product
-    olf = olf.reshape((2**n_dim, ) + (3, ) * (n_dim - 1) + (1, 3))
-    fine_kernel_sqrt = fine_kernel_sqrt.reshape((2**n_dim, ) * 2)
-    excitations = excitations.reshape((-1, 2**n_dim))
+    # TODO: allow different grid sizes for different axis
+    csz = int(_coarse_size)
+    if _coarse_size % 2 != 1:
+        raise ValueError("only odd numbers allowed for `_coarse_size`")
+    fsz = int(_fine_size)  # fine size
+    assert fsz == 2
+    if _fine_size % 2 != 0:
+        raise ValueError("only even numbers allowed for `_fine_size`")
+    olf = olf.reshape((fsz**n_dim, ) + (csz, ) * (n_dim - 1) + (1, csz))
+    fine_kernel_sqrt = fine_kernel_sqrt.reshape((fsz**n_dim, ) * 2)
+    excitations = excitations.reshape((-1, fsz**n_dim))
 
     conv = partial(
         conv_general_dilated,
@@ -125,39 +165,29 @@ def refine_conv_general(
         ),
         precision=precision,
     )
-    fine = jnp.zeros(tuple(n - 2 for n in coarse_values.shape) + (2**n_dim, ))
+    fine = jnp.zeros(
+        tuple(n - (csz - 1) for n in coarse_values.shape) + (fsz**n_dim, )
+    )
     c_shp_n1 = coarse_values.shape[-1]
-    c_slc_shp = (1, ) + coarse_values.shape[:-1] + (-1, 3)
-    fine = fine.at[..., 0::3, :].set(
-        conv(
-            coarse_values[..., :c_shp_n1 - c_shp_n1 % 3].reshape(c_slc_shp), olf
-        )[0]
-    )
-    fine = fine.at[..., 1::3, :].set(
-        conv(
-            coarse_values[...,
-                          1:c_shp_n1 - (c_shp_n1 - 1) % 3].reshape(c_slc_shp),
-            olf
-        )[0]
-    )
-    fine = fine.at[..., 2::3, :].set(
-        conv(
-            coarse_values[...,
-                          2:c_shp_n1 - (c_shp_n1 - 2) % 3].reshape(c_slc_shp),
-            olf
-        )[0]
-    )
+    c_slc_shp = (1, ) + coarse_values.shape[:-1] + (-1, csz)
+    for i in range(csz):
+        fine = fine.at[..., i::csz, :].set(
+            conv(
+                coarse_values[..., i:c_shp_n1 -
+                              (c_shp_n1 - i) % csz].reshape(c_slc_shp), olf
+            )[0]
+        )
 
     fine += vmap(jnp.matmul,
                  in_axes=(None, 0))(fine_kernel_sqrt,
                                     excitations).reshape(fine.shape)
 
-    fine = fine.reshape(fine.shape[:-1] + (2, ) * n_dim)
+    fine = fine.reshape(fine.shape[:-1] + (fsz, ) * n_dim)
     ax_label = np.arange(2 * n_dim)
     ax_t = [e for els in zip(ax_label[:n_dim], ax_label[n_dim:]) for e in els]
     fine = jnp.transpose(fine, axes=ax_t)
 
-    return fine.reshape(tuple(2 * (n - 2) for n in coarse_values.shape))
+    return fine.reshape(tuple(2 * (n - (csz - 1)) for n in coarse_values.shape))
 
 
 def refine_conv(
