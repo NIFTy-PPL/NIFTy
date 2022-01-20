@@ -8,22 +8,19 @@ import numpy as np
 
 import jifty1 as jft
 
-def get_kernel(layer_weights, depth, nsamples = 100):
-    xi = {
-        "offset": 0.,
-        "layer_weights": layer_weights
-    }
+
+def get_kernel(layer_weights, depth, nsamples=100):
+    xi = {"offset": 0., "layer_weights": layer_weights}
     kernel = np.zeros(2**depth)
     for _ in range(nsamples):
         xi["excitations"] = jnp.array(rng.normal(size=(2**depth, )))
         r = fwd(xi)
         for i in range(r.size):
-            kernel[i] += np.mean(r*np.roll(r, i))
+            kernel[i] += np.mean(r * np.roll(r, i))
     kernel /= len(r)
     return kernel
 
 
-# %%
 def fwd(xi):
     offset = xi["offset"]
     excitations = xi["excitations"]
@@ -46,28 +43,41 @@ def fwd(xi):
     return field
 
 
+# %%
 rng = np.random.default_rng(42)
 depth = 8
 
-#plt.plot(xi["excitations"], label="excitations", alpha=0.6)
-#plt.plot(fwd(xi), label="Forward Model", alpha=0.6)
-#plt.legend()
-#plt.show()
-
 for _ in range(10):
     layer_weights = jnp.array(rng.normal(size=(depth + 1, )))
-    #layer_weights *= jnp.exp(0.1 * jnp.arange(depth + 1, dtype=float)) #normal
-    layer_weights = jnp.exp(0.1* layer_weights) #lognomral
-    kernel = get_kernel(layer_weights, depth, nsamples = 30)
+    layer_weights = jnp.exp(0.1 * layer_weights)  #lognomral
+    kernel = get_kernel(layer_weights, depth, nsamples=30)
     plt.plot(kernel)
-    plt.show()
-exit()
+plt.show()
+
+# %%
 spec = np.fft.fft(kernel)
 plt.plot(spec)
 plt.yscale("log")
 plt.xscale("log")
 plt.show()
-exit()
+
+# %%
+
+rng = np.random.default_rng(42)
+depth = 12
+xi = {
+    "offset": 0.,
+    "excitations": jnp.array(rng.normal(size=(2**depth, ))),
+    # "layer_weights": jnp.exp(+jnp.array(rng.normal(size=(depth + 1, )))),
+    "layer_weights": jnp.exp(0.1 * jnp.arange(depth + 1, dtype=float)),
+    # "layer_weights": jnp.array([1., 1., 1., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0.,]),
+}
+
+plt.plot(xi["excitations"], label="excitations", alpha=0.6)
+plt.plot(fwd(xi), label="Forward Model", alpha=0.6)
+plt.legend()
+plt.show()
+
 # %%
 cf_zm = {"offset_mean": 0., "offset_std": (1e-3, 1e-4)}
 cf_fl = {
@@ -117,7 +127,7 @@ plt.show()
 
 # %%
 pos_rec = opt_state.x.val.copy()
-pos_rec["layer_weights"] = pos_rec["layer_weights"].at[:-8].set(-np.inf)
+pos_rec["layer_weights"] = pos_rec["layer_weights"].at[:-8].set(0.)
 
 pos_truth = jft.random_like(key, ptree)
 plt.plot(correlated_field(pos_truth), alpha=0.7, label="truth")
