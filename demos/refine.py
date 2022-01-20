@@ -410,18 +410,11 @@ if interactive:
         axs.flat[1].imshow(fwd(xi_truth, distances, kernel))
         axs.flat[2].imshow(signal_response(xi, distances))
         axs.flat[3].imshow(signal_response(opt_state.x, distances))
+        for ax in axs:
+            ax.set_frame_on(False)
+            ax.set_xticks([], [])
+            ax.set_yticks([], [])
         plt.show()
-
-# %%
-fig, axs = plt.subplots(1, 3, figsize=(12, 4))
-axs.flat[0].imshow(d, cmap="Blues")
-axs.flat[1].imshow(fwd(xi_truth, distances, kernel), cmap="Blues")
-axs.flat[2].imshow(signal_response(opt_state.x, distances), cmap="Blues")
-for ax in axs:
-    ax.set_frame_on(False)
-    ax.set_xticks([], [])
-    ax.set_yticks([], [])
-plt.show()
 
 # %%
 # JIFTy CF :: Shape        (262144,) (    10 loops) :: JAX 2.83e-02 :: NIFTy 3.93e-02
