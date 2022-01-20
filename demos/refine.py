@@ -311,9 +311,9 @@ for _ in range(n_layers - 1):
 
 ds = []
 for seed in range(100):
-    xi_truth_swd = list(map(jft.ShapeWithDtype, exc_shp))
-    xi_truth = jft.random_like(random.PRNGKey(seed), xi_truth_swd)
-    ds += [fwd(xi_truth, distances, kernel).ravel()]
+    xi_swd = list(map(jft.ShapeWithDtype, exc_shp))
+    xi = jft.random_like(random.PRNGKey(seed), xi_swd)
+    ds += [fwd(xi, distances, kernel).ravel()]
 ds = np.stack(ds, axis=1)
 
 plt.imshow(np.cov(ds))
@@ -321,6 +321,10 @@ plt.colorbar()
 plt.show()
 
 # %%
+xi_truth_swd = list(map(jft.ShapeWithDtype, exc_shp))
+xi_truth = jft.random_like(ks.pop(), xi_truth_swd)
+d = fwd(xi_truth, distances, kernel)
+d += n_std * random.normal(ks.pop(), shape=d.shape)
 
 
 def signal_response(xi, distances):
@@ -379,7 +383,7 @@ plt.show()
 if interactive:
     opt_state = jft.minimize(
         ham,
-        opt_state.x,
+        xi,
         method="NewtonCG",
         options={
             "energy_reduction_factor": None,
