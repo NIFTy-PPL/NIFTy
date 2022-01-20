@@ -9,15 +9,15 @@ import numpy as np
 import jifty1 as jft
 
 
-def get_kernel(layer_weights, depth, nsamples=100):
+def get_kernel(layer_weights, depth, n_samples=100):
     xi = {"offset": 0., "layer_weights": layer_weights}
     kernel = np.zeros(2**depth)
-    for _ in range(nsamples):
+    for _ in range(n_samples):
         xi["excitations"] = jnp.array(rng.normal(size=(2**depth, )))
         r = fwd(xi)
         for i in range(r.size):
             kernel[i] += np.mean(r * np.roll(r, i))
-    kernel /= len(r)
+    kernel /= len(n_samples)
     return kernel
 
 
@@ -50,7 +50,7 @@ depth = 8
 for _ in range(10):
     layer_weights = jnp.array(rng.normal(size=(depth + 1, )))
     layer_weights = jnp.exp(0.1 * layer_weights)  #lognomral
-    kernel = get_kernel(layer_weights, depth, nsamples=30)
+    kernel = get_kernel(layer_weights, depth, n_samples=30)
     plt.plot(kernel)
 plt.show()
 
