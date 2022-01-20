@@ -235,13 +235,13 @@ def fwd(xi, distances, kernel):
     )
 
     fine = (cov_sqrt0 @ xi[0].ravel()).reshape(xi[0].shape)
-    for x, olf, ks in zip(xi[1:], os, ks):
-        fine = refine.refine(fine, x, olf, ks)
+    for x, olf, k in zip(xi[1:], os, ks):
+        fine = refine.refine(fine, x, olf, k)
     return fine
 
 # %%
 key = random.PRNGKey(45)
-key, *ks = random.split(key, 4)
+key, *key_splits = random.split(key, 4)
 
 distances = jnp.array([6e+2, 6e+2])
 n_std = 0.5
@@ -263,8 +263,8 @@ os, (cov_sqrt0, ks) = refine.refinement_matrices(
 )
 
 fine = (cov_sqrt0 @ xi[0].ravel()).reshape(xi[0].shape)
-for x, olf, ks in zip(xi[1:], os, ks):
-    fine = refine.refine(fine, x, olf, ks)
+for x, olf, k in zip(xi[1:], os, ks):
+    fine = refine.refine(fine, x, olf, k)
 
 fine_w0 = fine.copy()
 
@@ -274,8 +274,8 @@ os, (cov_sqrt0, ks) = refine.refinement_matrices(
 )
 
 fine = (cov_sqrt0 @ xi[0].ravel()).reshape(xi[0].shape)
-for x, olf, ks in zip(xi[1:], os, ks):
-    fine = refine.refine(fine, x, olf, ks)
+for x, olf, k in zip(xi[1:], os, ks):
+    fine = refine.refine(fine, x, olf, k)
 
 mi, ma = min(fine_w0.min(), fine.min()), max(fine_w0.max(), fine.max())
 fig, axs = plt.subplots(1, 3)
@@ -296,7 +296,7 @@ plt.show()
 
 # %%
 key = random.PRNGKey(45)
-key, *ks = random.split(key, 4)
+key, *key_splits = random.split(key, 4)
 
 distances = jnp.array([5e+2, 3e+2])
 n_std = 0.5
@@ -346,7 +346,7 @@ xi_swd = {
     "lat_cutoff": jft.ShapeWithDtype(()),
     "lat_dof": jft.ShapeWithDtype(())
 }
-xi = 1e-4 * jft.Field(jft.random_like(ks.pop(), xi_swd))
+xi = 1e-4 * jft.Field(jft.random_like(key_splits.pop(), xi_swd))
 ham = lambda x: jnp.linalg.norm(d - signal_response(x, distances), ord=2) / (
     2 * n_std**2
 ) + 0.5 * jft.norm(x, ord=2, ravel=True)
@@ -500,8 +500,8 @@ timeit(lambda: ref(cv, exc, olf, fine_kernel_sqrt).block_until_ready())
 def fwd_diy(xi, opt_lin_filter, kernel_sqrt):
     cov_sqrt0, ks = kernel_sqrt
     fine = (cov_sqrt0 @ xi[0].ravel()).reshape(xi[0].shape)
-    for x, olf, ks in zip(xi[1:], opt_lin_filter, ks):
-        fine = refine.refine(fine, x, olf, ks)
+    for x, olf, k in zip(xi[1:], opt_lin_filter, ks):
+        fine = refine.refine(fine, x, olf, k)
     return fine
 
 
