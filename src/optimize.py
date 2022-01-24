@@ -1,4 +1,3 @@
-from __future__ import annotations
 from datetime import datetime
 import sys
 from typing import Any, Callable, Mapping, NamedTuple, Optional, Tuple, Union
