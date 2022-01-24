@@ -97,6 +97,20 @@ if interactive:
     plt.show()
 
 # %%
+# Quick demo of the correlated field scheme that is to be used in the following
+cf, exc_shp = refine.get_fixed_power_correlated_field(
+    size0=(12, 12), distances0=(200., 200.), n_layers=5, kernel=kernel
+)
+
+if interactive:
+    fig, ax = plt.subplots()
+    xi = jft.random_like(random.PRNGKey(42), exc_shp)
+    im = ax.imshow(cf(xi))
+    fig.colorbar(im, ax=ax)
+    fig.tight_layout()
+    plt.show()
+
+# %%
 coord = jnp.linspace(0., 500., num=500)
 coord = coord.reshape(1, -1)
 

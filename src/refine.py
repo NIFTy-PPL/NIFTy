@@ -277,6 +277,27 @@ def get_refinement_shapewithdtype(
     return exc_shp
 
 
+def get_fixed_power_correlated_field(
+    size0: Union[int, tuple],
+    distances0,
+    n_layers: int,
+    kernel: Callable,
+    dtype=None,
+    *,
+    _coarse_size: int = 3,
+    _fine_size: int = 2,
+):
+    cf = partial(correlated_field, distances=distances0, kernel=kernel)
+    exc_swd = get_refinement_shapewithdtype(
+        size0,
+        n_layers=n_layers,
+        dtype=dtype,
+        _coarse_size=_coarse_size,
+        _fine_size=_fine_size
+    )
+    return cf, exc_swd
+
+
 def correlated_field(xi, distances, kernel, precision=None):
     size0, depth = xi[0].shape, len(xi)
     os, (cov_sqrt0, ks) = refinement_matrices(
