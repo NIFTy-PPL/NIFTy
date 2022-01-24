@@ -228,20 +228,6 @@ if interactive:
     fig.tight_layout()
     plt.show()
 
-
-# %%
-def fwd(xi, distances, kernel):
-    size0, depth = xi[0].shape, len(xi)
-    os, (cov_sqrt0, ks) = refine.refinement_matrices(
-        size0, depth, distances=distances, kernel=kernel
-    )
-
-    fine = (cov_sqrt0 @ xi[0].ravel()).reshape(xi[0].shape)
-    for x, olf, k in zip(xi[1:], os, ks):
-        fine = refine.refine(fine, x, olf, k)
-    return fine
-
-
 # %%
 key = random.PRNGKey(45)
 
@@ -250,9 +236,9 @@ n_std = 0.5
 
 # Manually toggle the following values
 n_layers = 4
-olf_sz = 5
-fine_sz = 2
+coarse_sz = 5
 with_zeros = True
+size0 = (12, 12)
 
 n_plots = 9
 
@@ -260,18 +246,9 @@ fig, axs = plt.subplots(*((int(n_plots**0.5), ) * 2), figsize=(16, 16))
 for i in range(n_plots):
     key, _ = random.split(key, 2)
 
-    exc_shp = [(12, 12)]
-    exc_shp += [
-        tuple(el - (olf_sz - 1)
-              for el in exc_shp[0]) + (fine_sz**len(exc_shp[0]), )
-    ]
-    for _ in range(n_layers - 1):
-        exc_shp += [
-            tuple(2 * el - (olf_sz - 1)
-                  for el in exc_shp[-1][:-1]) + (fine_sz**len(exc_shp[0]), )
-        ]
-
-    xi_truth_swd = list(map(jft.ShapeWithDtype, exc_shp))
+    xi_truth_swd = refine.get_refinement_shapewithdtype(
+        size0, n_layers, _coarse_size=coarse_sz
+    )
     xi = jft.random_like(key, xi_truth_swd)
 
     size0, depth = xi[0].shape, len(xi)
@@ -280,13 +257,13 @@ for i in range(n_plots):
         depth,
         distances=distances,
         kernel=kernel,
-        _coarse_size=olf_sz,
+        _coarse_size=coarse_sz,
         _with_zeros=with_zeros,
     )
 
     fine = (cov_sqrt0 @ xi[0].ravel()).reshape(xi[0].shape)
     for x, olf, k in zip(xi[1:], os, ks):
-        fine = refine.refine(fine, x, olf, k, _coarse_size=olf_sz)
+        fine = refine.refine(fine, x, olf, k, _coarse_size=coarse_sz)
 
     im = axs.flat[i].imshow(fine)
     fig.colorbar(im, ax=axs.flat[i])
@@ -294,24 +271,17 @@ fig.tight_layout()
 plt.show()
 
 # %%
-n_layers = 3
-exc_shp = [(12, 12)]
-exc_shp += [tuple(el - 2 for el in exc_shp[0]) + (2**len(exc_shp[0]), )]
-for _ in range(n_layers - 1):
-    exc_shp += [
-        tuple(2 * el - 2 for el in exc_shp[-1][:-1]) + (2**len(exc_shp[0]), )
-    ]
-
-xi_truth_swd = list(map(jft.ShapeWithDtype, exc_shp))
+n_layers = 4
+size0 = (12, 12)
+xi_truth_swd = refine.get_refinement_shapewithdtype(size0, n_layers)
 xi = jft.random_like(random.PRNGKey(42), xi_truth_swd)
 
-size0, depth = xi[0].shape, len(xi)
 os, (cov_sqrt0, ks) = refine.refinement_matrices(
     size0,
-    depth,
+    n_layers,
     distances=distances,
     kernel=kernel,
-    _with_zeros=False,
+    _with_zeros=True,
 )
 
 fine = (cov_sqrt0 @ xi[0].ravel()).reshape(xi[0].shape)
@@ -320,9 +290,8 @@ for x, olf, k in zip(xi[1:], os, ks):
 
 fine_w0 = fine.copy()
 
-size0, depth = xi[0].shape, len(xi)
 os, (cov_sqrt0, ks) = refine.refinement_matrices(
-    size0, depth, distances=distances, kernel=kernel
+    size0, n_layers, distances=distances, kernel=kernel
 )
 
 fine = (cov_sqrt0 @ xi[0].ravel()).reshape(xi[0].shape)
@@ -347,25 +316,17 @@ axs.flat[1].imshow(f.imag)
 plt.show()
 
 # %%
-key = random.PRNGKey(45)
-key, *key_splits = random.split(key, 4)
-
 distances = jnp.array([5e+2, 3e+2])
 n_std = 0.5
 
 n_layers = 3
-exc_shp = [(12, 12)]
-exc_shp += [tuple(el - 2 for el in exc_shp[0]) + (2**len(exc_shp[0]), )]
-for _ in range(n_layers - 1):
-    exc_shp += [
-        tuple(2 * el - 2 for el in exc_shp[-1][:-1]) + (2**len(exc_shp[0]), )
-    ]
+size0 = (12, 12)
+xi_swd = refine.get_refinement_shapewithdtype(size0, n_layers)
 
 ds = []
 for seed in range(100):
-    xi_swd = list(map(jft.ShapeWithDtype, exc_shp))
     xi = jft.random_like(random.PRNGKey(seed), xi_swd)
-    ds += [fwd(xi, distances, kernel).ravel()]
+    ds += [refine.correlated_field(xi, distances, kernel).ravel()]
 ds = np.stack(ds, axis=1)
 
 plt.imshow(np.cov(ds))
@@ -373,10 +334,13 @@ plt.colorbar()
 plt.show()
 
 # %%
-xi_truth_swd = list(map(jft.ShapeWithDtype, exc_shp))
-xi_truth = jft.random_like(ks.pop(), xi_truth_swd)
-d = fwd(xi_truth, distances, kernel)
-d += n_std * random.normal(ks.pop(), shape=d.shape)
+key = random.PRNGKey(45)
+key, *key_splits = random.split(key, 4)
+
+xi_truth_swd = refine.get_refinement_shapewithdtype(size0, n_layers)
+xi_truth = jft.random_like(key_splits.pop(), xi_truth_swd)
+d = refine.correlated_field(xi_truth, distances, kernel)
+d += n_std * random.normal(key_splits.pop(), shape=d.shape)
 
 
 def signal_response(xi, distances):
@@ -393,7 +357,7 @@ def signal_response(xi, distances):
     # xi.val["cutoff"] = jnp.exp(4.5 + 0.1 * xi.val.pop("lat_cutoff"))
     # kernel = lambda r: xi["scale"] * jnp.exp(-(r / xi["cutoff"])**2)
 
-    return fwd(xi["excitations"], distances, kernel)
+    return refine.correlated_field(xi["excitations"], distances, kernel)
 
 
 xi_swd = {
@@ -410,20 +374,24 @@ ham = jax.jit(ham)
 
 if interactive and d.ndim == 1:
     plt.plot(d, label="Data")
-    plt.plot(fwd(xi_truth, distances, kernel), label="Truth")
+    plt.plot(
+        refine.correlated_field(xi_truth, distances, kernel), label="Truth"
+    )
     plt.plot(signal_response(xi, distances), label="Start")
     plt.legend()
     plt.show()
 elif interactive and d.ndim == 2:
     fig, axs = plt.subplots(1, 3)
     axs.flat[0].imshow(d)
-    axs.flat[1].imshow(fwd(xi_truth, distances, kernel))
+    axs.flat[1].imshow(refine.correlated_field(xi_truth, distances, kernel))
     axs.flat[2].imshow(signal_response(xi, distances))
     plt.show()
 
 # %%
 fig, ax = plt.subplots(figsize=(8, 4))
-im = ax.imshow(fwd(xi_truth, distances, kernel).T, cmap="Blues")
+im = ax.imshow(
+    refine.correlated_field(xi_truth, distances, kernel).T, cmap="Blues"
+)
 # fig.colorbar(im)
 ax.set_frame_on(False)
 ax.set_xticks([], [])
@@ -451,7 +419,9 @@ if interactive:
 
     if d.ndim == 1:
         plt.plot(d, label="Data")
-        plt.plot(fwd(xi_truth, distances, kernel), label="Truth")
+        plt.plot(
+            refine.correlated_field(xi_truth, distances, kernel), label="Truth"
+        )
         plt.plot(signal_response(xi, distances), label="Start")
         plt.plot(signal_response(opt_state.x, distances), label="Final")
         plt.legend()
@@ -459,7 +429,7 @@ if interactive:
     elif d.ndim == 2:
         fig, axs = plt.subplots(1, 4)
         axs.flat[0].imshow(d)
-        axs.flat[1].imshow(fwd(xi_truth, distances, kernel))
+        axs.flat[1].imshow(refine.correlated_field(xi_truth, distances, kernel))
         axs.flat[2].imshow(signal_response(xi, distances))
         axs.flat[3].imshow(signal_response(opt_state.x, distances))
         for ax in axs:
@@ -509,15 +479,17 @@ for backend in all_backends:
     t = timeit(lambda: corr(x)[0].block_until_ready())
     ti, num = t.time, t.number
 
+    lvln1_shp = xi_truth_swd[-1].shape
     print(
-        f"{backend.upper()} :: Shape {str(exc_shp[-1]):>16s} ({num:6d} loops) :: JAX w/ learnable {ti:4.2e}",
+        f"{backend.upper()} :: Shape {str(lvln1_shp):>16s} ({num:6d} loops) :: JAX w/ learnable {ti:4.2e}",
         file=sys.stderr
     )
 
     corr = jax.jit(
-        jax.
-        value_and_grad(lambda x: ((1. - fwd(x, distances, kernel))**2).sum()),
-        **device_kw
+        jax.value_and_grad(
+            lambda x:
+            ((1. - refine.correlated_field(x, distances, kernel))**2).sum()
+        ), **device_kw
     )
     x = xi_truth
 
@@ -527,12 +499,12 @@ for backend in all_backends:
     ti, num = t.time, t.number
 
     print(
-        f"{backend.upper()} :: Shape {str(exc_shp[-1]):>16s} ({num:6d} loops) :: JAX w/o learnable {ti:4.2e}",
+        f"{backend.upper()} :: Shape {str(lvln1_shp):>16s} ({num:6d} loops) :: JAX w/o learnable {ti:4.2e}",
         file=sys.stderr
     )
 
 # %%
-coarse_values = fwd(xi_truth, distances, kernel)
+coarse_values = refine.correlated_field(xi_truth, distances, kernel)
 olf, fine_kernel_sqrt = refine.layer_refinement_matrices(distances, kernel)
 
 cv = coarse_values

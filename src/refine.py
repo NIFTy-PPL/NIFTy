@@ -2,7 +2,7 @@
 
 from functools import partial
 from string import ascii_uppercase
-from typing import Callable, Optional
+from typing import Callable, Optional, Union
 
 from jax import vmap
 from jax import numpy as jnp
@@ -249,13 +249,40 @@ def refine_vmap(
 refine = refine_conv_general
 
 
+def get_refinement_shapewithdtype(
+    size0: Union[int, tuple],
+    n_layers: int,
+    dtype=None,
+    *,
+    _coarse_size: int = 3,
+    _fine_size: int = 2,
+):
+    from .forest_util import ShapeWithDtype
+
+    csz = int(_coarse_size)  # coarse size
+    fsz = int(_fine_size)  # fine size
+
+    size0 = (size0, ) if isinstance(size0, int) else size0
+    n_dim = len(size0)
+    exc_shp = [size0]
+    exc_shp += [tuple(el - (csz - 1) for el in exc_shp[0]) + (fsz**n_dim, )]
+    for _ in range(n_layers - 1):
+        exc_shp += [
+            tuple(fsz * el - (csz - 1)
+                  for el in exc_shp[-1][:-1]) + (fsz**n_dim, )
+        ]
+
+    exc_shp = list(map(partial(ShapeWithDtype, dtype=dtype), exc_shp))
+    return exc_shp
+
+
 def correlated_field(xi, distances, kernel, precision=None):
-    size0, depth = xi[0].size, len(xi)
+    size0, depth = xi[0].shape, len(xi)
     os, (cov_sqrt0, ks) = refinement_matrices(
         size0, depth, distances=distances, kernel=kernel
     )
 
-    fine = cov_sqrt0 @ xi[0]
-    for x, olf, ks in zip(xi[1:], os, ks):
-        fine = refine(fine, x, olf, ks, precision=precision)
+    fine = (cov_sqrt0 @ xi[0].ravel()).reshape(xi[0].shape)
+    for x, olf, k in zip(xi[1:], os, ks):
+        fine = refine(fine, x, olf, k, precision=precision)
     return fine
