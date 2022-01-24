@@ -1,4 +1,3 @@
-from __future__ import annotations
 from collections.abc import Iterable
 from typing import Any, Callable, Hashable, Mapping, TypeVar, Union
 
@@ -90,9 +89,7 @@ def mean_and_std(forest, correct_bias=True):
         return m.val, std.val
 
 
-def random_like(
-    key: Iterable, primals: Iterable, rng: Callable = random.normal
-):
+def random_like(key: Iterable, primals, rng: Callable = random.normal):
     import numpy as np
 
     struct = tree_structure(primals)

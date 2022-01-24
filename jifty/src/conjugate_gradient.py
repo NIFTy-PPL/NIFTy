@@ -182,6 +182,7 @@ def _static_cg(
     miniter=None,
     maxiter=None,
     name=None,
+    _within_newton=False,  # TODO
     **kwargs
 ) -> CGResults:
     from jax.lax import cond, while_loop

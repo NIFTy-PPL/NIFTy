@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 from functools import partial
+import sys
 
 import jax.numpy as jnp
 from jax.tree_util import Partial
@@ -72,12 +73,13 @@ def test_refinement_1d(seed, dist, kernel=kernel):
     lvl1_exc = rng.normal(size=(2 * (lvl0.size - 2), ))
 
     fine_reference = refine.refine(lvl0, lvl1_exc, olf, fine_kernel_sqrt)
-    rtol = 4. * jnp.finfo(lvl0.dtype.type).eps
+    rtol = 6. * jnp.finfo(lvl0.dtype.type).eps
     atol = 60. * jnp.finfo(lvl0.dtype.type).eps
     aallclose = partial(
         assert_allclose, desired=fine_reference, rtol=rtol, atol=atol
     )
     for ref in refs:
+        print(f"testing {ref.__name__}", file=sys.stderr)
         aallclose(ref(lvl0, lvl1_exc, olf, fine_kernel_sqrt))
 
 
