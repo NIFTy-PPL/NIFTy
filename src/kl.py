@@ -245,7 +245,7 @@ def geometrically_sample_standard_hamiltonian(
     return (smpl1 - primals, smpl2 - primals)
 
 
-class SampledKL():
+class SampledKL():  # TODO Transform into SampledList
     def __init__(
         self,
         hamiltonian,
