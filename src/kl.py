@@ -1,4 +1,3 @@
-from __future__ import annotations
 from collections.abc import Sequence
 from functools import partial
 from typing import Callable, Optional
@@ -245,7 +244,7 @@ def geometrically_sample_standard_hamiltonian(
     return (smpl1 - primals, smpl2 - primals)
 
 
-class SampledKL():
+class SampledKL():  # TODO Transform into SampledList
     def __init__(
         self,
         hamiltonian,

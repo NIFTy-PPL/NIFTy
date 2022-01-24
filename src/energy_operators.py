@@ -271,6 +271,8 @@ def VariableCovarianceGaussian(data):
         A global transformation to Euclidean space does not exist. A local
         approximation invoking the residual is used instead.
         """
+        # TODO: test by drawing synthetic data that actually follows the
+        # noise-cov and then average over it
         res = (primals[1] * (primals[0] - data), tree_map(jnp.log, primals[1]))
         return type(primals)(res)
 
