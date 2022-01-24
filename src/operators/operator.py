@@ -314,6 +314,13 @@ class Operator(metaclass=NiftyMeta):
             dom = self.domain if is_fieldlike(self) else self.target
             return DomainChangerAndReshaper(dom, newdom)(self)
 
+    def transpose(self, indices):
+        from .transpose_operator import TransposeOperator
+        from ..sugar import is_fieldlike
+
+        dom = self.domain if is_fieldlike(self) else self.target
+        return TransposeOperator(dom, indices)(self)
+
     def __repr__(self):
         return self.__class__.__name__
 
