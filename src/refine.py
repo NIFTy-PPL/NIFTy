@@ -38,6 +38,7 @@ def layer_refinement_matrices(
     distances,
     kernel: Optional[Callable] = None,
     cov_from_loc: Optional[Callable] = None,
+    *,
     _coarse_size: int = 3,
     _fine_size: int = 2,
     _with_zeros: bool = False,
