@@ -234,7 +234,7 @@ class Field():
     # `setattr`. However, static code analyzers will not be able to infer the
     # properties then.
 
-    __add__, _radd__ = _fwd_rev_binary_op(operator.add)
+    __add__, __radd__ = _fwd_rev_binary_op(operator.add)
     __sub__, __rsub__ = _fwd_rev_binary_op(operator.sub)
     __mul__, __rmul__ = _fwd_rev_binary_op(operator.mul)
     __truediv__, __rtruediv__ = _fwd_rev_binary_op(operator.truediv)
