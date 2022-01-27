@@ -91,6 +91,41 @@ class LikelihoodEnergyOperator(EnergyOperator):
     `LikelihoodEnergyOperator` is the Fisher information metric of the
     likelihood.
     """
+    def __init__(self, data, model_data_op=None):
+        self._data = data
+        if model_data_op is None:
+            model_data_op = ScalingOperator(data.domain, 1.)
+        self._model_data_op = model_data_op
+        myassert(data.domain == model_data_op.target)
+        self._domain = model_data_op.domain  # TODO Remove all domains from EnergyOperators and call this constructor
+
+
+    def get_transformation(self):
+        """The coordinate transformation that maps into a coordinate system in
+        which the metric of a likelihood is the Euclidean metric.
+
+        Returns
+        -------
+        np.dtype, or dict of np.dtype : The dtype(s) of the target space of the
+        transformation.
+
+        Operator : The transformation that maps from `domain` into the
+        Euclidean target space.
+
+        Note
+        ----
+        This Euclidean target space is the disjoint union of the Euclidean
+        target spaces of all summands. Therefore, the keys of `MultiDomains`
+        are prefixed with an index and `DomainTuples` are converted to
+        `MultiDomains` with the index as the key.
+        """
+        raise NotImplementedError
+
+    def __matmul__(self, other):
+        return _LhChain(self, other)
+
+    def __rmatmul__(self, other):
+        return _LhChain(other, self)
 
     def get_metric_at(self, x):
         """Compute the Fisher information metric for a `LikelihoodEnergyOperator`
@@ -99,6 +134,47 @@ class LikelihoodEnergyOperator(EnergyOperator):
         dtp, f = self.get_transformation()
         bun = f(Linearization.make_var(x)).jac
         return SandwichOperator.make(bun, sampling_dtype=dtp)
+
+
+class _LhChain(LikelihoodEnergyOperator):
+    def __init__(self, op1, op2):  # FIXME Refactor to oplist and introduce simplify
+        super(_LhChain, self).__init__(data=op1.data, model_data_op=op1.model_data_op @ op2)
+        self._op1, self._op2 = op1, op2
+
+    def apply(self, x):
+        self._check_input(x)
+        return self._op1(self._op2(x))
+
+    def get_transformation(self):
+        # TEMPORARY
+        from .operator import _OpChain
+
+        return _OpChain.make((self._op1, self._op2)).get_transformation()
+
+
+class _LhSum(LikelihoodEnergyOperator):
+    def __init__(self, op1, op2):  # FIXME Refactor to oplist and introduce simplify
+        if isinstance(op1.data.domain, DomainTuple):
+            data = MultiField.union([op1.data.ducktape_left("1"), op2.data.ducktape_left("2")])
+            model_data_op = op1.model_data_op.ducktape_left("1") + op2.model_data_op.ducktape_left("2")
+        else:
+            from .simple_linear_operators import PrependKey
+            prep1 = PrependKey(op1.data.domain, "1")
+            prep2 = PrependKey(op2.data.domain, "2")
+            data1 = prep1 @ op1.data
+            data2 = prep2 @ op2.data
+            data = MultiField.union([data1, data2])
+            model_data_op = prep1 @ op1.model_data_op + prep2 @ op2.model_data_op
+        super(_LhChain, self).__init__(data=data, model_data_op=model_data_op)
+
+    def apply(self, x):
+        return self._op1(x) + self._op2(x)
+
+    def get_transformation(self):
+        # TEMPORARY
+        from .operator import _OpSum
+
+        return _OpSum.make((self._op1, self._op2)).get_transformation()
 
 
 class Squared2NormOperator(EnergyOperator):
@@ -330,6 +406,8 @@ class GaussianEnergy(LikelihoodEnergyOperator):
             s += f"icov.sampling_dtype: {icovdtype}\n"
             s += f"data.dtype: {data.dtype}"
             raise RuntimeError(s)
+
+        super(GaussianEnergy, self).__init__(data=data, model_data_op=op1.model_data_op @ op2)
 
     def _checkEquivalence(self, newdom):
         newdom = makeDomain(newdom)

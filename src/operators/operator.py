@@ -109,30 +109,6 @@ class Operator(metaclass=NiftyMeta):
         """
         return None
 
-    def get_transformation(self):
-        """The coordinate transformation that maps into a coordinate system in
-        which the metric of a likelihood is the Euclidean metric. It is `None`,
-        except for instances of
-        :class:`~nifty8.operators.energy_operators.LikelihoodEnergyOperator` or
-        (nested) sums thereof.
-
-        Returns
-        -------
-        np.dtype, or dict of np.dtype : The dtype(s) of the target space of the
-        transformation.
-
-        Operator : The transformation that maps from `domain` into the
-        Euclidean target space.
-
-        Note
-        ----
-        This Euclidean target space is the disjoint union of the Euclidean
-        target spaces of all summands. Therefore, the keys of `MultiDomains`
-        are prefixed with an index and `DomainTuples` are converted to
-        `MultiDomains` with the index as the key.
-        """
-        return None
-
     def scale(self, factor):
         if not isinstance(factor, numbers.Number):
             raise TypeError(".scale() takes a number as input")
@@ -177,12 +153,20 @@ class Operator(metaclass=NiftyMeta):
         return self.scale(-1)
 
     def __matmul__(self, x):
+        from .energy_operators import LikelihoodEnergyOperator
+
         if not isinstance(x, Operator):
+            return NotImplemented
+        if isinstance(x, LikelihoodEnergyOperator):
             return NotImplemented
         return _OpChain.make((self, x))
 
     def __rmatmul__(self, x):
+        from .energy_operators import LikelihoodEnergyOperator
+
         if not isinstance(x, Operator):
+            return NotImplemented
+        if isinstance(x, LikelihoodEnergyOperator):
             return NotImplemented
         return _OpChain.make((x, self))
 
@@ -455,6 +439,10 @@ class _OpChain(_CombinedOperator):
         return x
 
     def get_transformation(self):
+        # FIXME Move to likelihoodenergy as soon as we have a similar interface
+        from .energy_operators import LikelihoodEnergyOperator
+        if not isinstance(self, LikelihoodEnergyOperator):
+            raise RuntimeError("bug")
         tr = self._ops[0].get_transformation()
         if tr is None:
             return tr
@@ -547,6 +535,11 @@ class _OpSum(Operator):
         return res
 
     def get_transformation(self):
+        # FIXME Move to likelihoodenergy as soon as we have a similar interface
+        from .energy_operators import LikelihoodEnergyOperator
+        if not isinstance(self, LikelihoodEnergyOperator):
+            raise RuntimeError("bug")
+
         from .simple_linear_operators import PrependKey
         tr1 = self._op1.get_transformation()
         tr2 = self._op2.get_transformation()
