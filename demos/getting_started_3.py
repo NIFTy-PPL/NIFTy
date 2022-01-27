@@ -121,7 +121,7 @@ def main():
                          signal_response)
 
     def callback(samples):
-        s = ift.extra.minisanity(data, lambda x: N.inverse, signal_response, samples)
+        s = ift.extra.minisanity(likelihood_energy, samples)
         if master:
             ift.logger.info(s)
 

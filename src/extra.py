@@ -130,6 +130,7 @@ def check_operator(op, loc, tol=1e-12, ntries=100, perf_check=True,
                                only_r_differentiable)
     _check_nontrivial_constant(op, loc, tol, ntries, only_r_differentiable,
                                metric_sampling)
+    # FIXME Check special functions of LikelihoodEnergies
 
 
 def assert_allclose(f1, f2, atol=0, rtol=1e-7):
@@ -412,7 +413,7 @@ def _jac_vs_finite_differences(op, loc, tol, ntries, only_r_differentiable):
                               atol=tol**2, rtol=tol**2)
 
 
-def minisanity(data, metric_at_pos, modeldata_operator, samples, terminal_colors=True):
+def minisanity(likelihood_energy, samples, terminal_colors=True):
     """Log information about the current fit quality and prior compatibility.
 
     Log a table with fitting information for the likelihood and the prior.
@@ -433,16 +434,8 @@ def minisanity(data, metric_at_pos, modeldata_operator, samples, terminal_colors
 
     Parameters
     ----------
-    data : Field or MultiField
-        Data which is subtracted from the output of `model_data`.
-
-    metric_at_pos : function
-        Function which takes a `Field` or `MultiField` in the domain of `mean`
-        and returns an endomorphic operator which applies the inverse of the
-        noise covariance in the domain of `data`.
-
-    model_data : Operator
-        Operator which generates model data.
+    likelihood_energy: LikelihoodEnergyOperator
+        FIXME
 
     samples : SampleListBase
         List of samples.
@@ -460,8 +453,9 @@ def minisanity(data, metric_at_pos, modeldata_operator, samples, terminal_colors
     from .minimization.sample_list import SampleListBase
     from .sugar import makeDomain
 
-    if not (is_operator(modeldata_operator) and is_fieldlike(data)):
-        raise TypeError
+    data = likelihood_energy._data
+    sqrt_metric_at_pos = likelihood_energy.get_sqrt_data_metric_at
+    modeldata_operator = likelihood_energy._model_data_op
     if not isinstance(samples, SampleListBase):
         raise TypeError(
             "Minisanity takes only SampleLists as input. If you happen to have "
@@ -479,11 +473,11 @@ def minisanity(data, metric_at_pos, modeldata_operator, samples, terminal_colors
     # compute xops
     xops = []
     if isinstance(xdoms[0], MultiDomain):
-        lam = lambda x: (metric_at_pos(x).get_sqrt().abs() @
+        lam = lambda x: (sqrt_metric_at_pos(x).abs() @
                 Adder(data, neg=True) @ modeldata_operator).force(x)
     else:
         xdoms[0] = makeDomain({"<None>": xdoms[0]})
-        lam = lambda x: (metric_at_pos(x).get_sqrt().abs().ducktape_left("<None>") @
+        lam = lambda x: (sqrt_metric_at_pos(x).abs().ducktape_left("<None>") @
                 Adder(data, neg=True) @ modeldata_operator).force(x)
     xops.append(lam)
     if isinstance(xdoms[1], MultiDomain):

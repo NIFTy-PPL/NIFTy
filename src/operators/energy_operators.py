@@ -121,11 +121,22 @@ class LikelihoodEnergyOperator(EnergyOperator):
         """
         raise NotImplementedError
 
+    def get_sqrt_data_metric_at(self, x):
+        met = self.get_metric_at(x).get_sqrt()
+        myassert(met.domain == met.target == self._data.domain)
+        return met
+
     def __matmul__(self, other):
         return _LhChain(self, other)
 
     def __rmatmul__(self, other):
         return _LhChain(other, self)
+
+    def __add__(self, other):
+        return _LhSum(self, other)
+
+    def __radd__(self, other):
+        return _LhSum(other, self)
 
     def get_metric_at(self, x):
         """Compute the Fisher information metric for a `LikelihoodEnergyOperator`
@@ -138,7 +149,7 @@ class LikelihoodEnergyOperator(EnergyOperator):
 
 class _LhChain(LikelihoodEnergyOperator):
     def __init__(self, op1, op2):  # FIXME Refactor to oplist and introduce simplify
-        super(_LhChain, self).__init__(data=op1.data, model_data_op=op1.model_data_op @ op2)
+        super(_LhChain, self).__init__(data=op1._data, model_data_op=op1._model_data_op @ op2)
         self._op1, self._op2 = op1, op2
 
     def apply(self, x):
@@ -151,21 +162,39 @@ class _LhChain(LikelihoodEnergyOperator):
 
         return _OpChain.make((self._op1, self._op2)).get_transformation()
 
+    def get_sqrt_data_metric_at(self, x):
+        loc = self._op2(x)
+        met = self._op1.get_sqrt_data_metric_at(loc)
+        myassert(met.domain == met.target == self._data.domain)
+        return met
+
 
 class _LhSum(LikelihoodEnergyOperator):
     def __init__(self, op1, op2):  # FIXME Refactor to oplist and introduce simplify
-        if isinstance(op1.data.domain, DomainTuple):
-            data = MultiField.union([op1.data.ducktape_left("1"), op2.data.ducktape_left("2")])
-            model_data_op = op1.model_data_op.ducktape_left("1") + op2.model_data_op.ducktape_left("2")
-        else:
-            from .simple_linear_operators import PrependKey
-            prep1 = PrependKey(op1.data.domain, "1")
-            prep2 = PrependKey(op2.data.domain, "2")
-            data1 = prep1 @ op1.data
-            data2 = prep2 @ op2.data
-            data = MultiField.union([data1, data2])
-            model_data_op = prep1 @ op1.model_data_op + prep2 @ op2.model_data_op
-        super(_LhChain, self).__init__(data=data, model_data_op=model_data_op)
+        from .simple_linear_operators import PrependKey
+
+        data1, data2 = op1._data, op2._data
+        mdop1, mdop2 = op1._model_data_op, op2._model_data_op
+        b1 = isinstance(data1.domain, DomainTuple)
+        b2 = isinstance(data2.domain, DomainTuple)
+        if isinstance(op1.domain, DomainTuple) ^ isinstance(op2.domain, DomainTuple):
+            raise TypeError()
+
+        fa1 = FieldAdapter(data1.domain, "").adjoint if b1 else ScalingOperator(data1.domain, 1.)
+        fa2 = FieldAdapter(data2.domain, "").adjoint if b2 else ScalingOperator(data2.domain, 1.)
+        prep1 = PrependKey(fa1.target, "1") @ fa1
+        prep2 = PrependKey(fa2.target, "2") @ fa2
+
+        data1 = prep1(data1)
+        data2 = prep2(data2)
+        data = MultiField.union([data1, data2])
+
+        model_data_op = prep1 @ mdop1 + prep2 @ mdop2
+
+        super(_LhSum, self).__init__(data=data, model_data_op=model_data_op)
+
+        self._op1, self._op2 = op1, op2
+        self._prep1, self._prep2 = prep1, prep2
 
     def apply(self, x):
         return self._op1(x) + self._op2(x)
@@ -174,7 +203,17 @@ class _LhSum(LikelihoodEnergyOperator):
         # TEMPORARY
         from .operator import _OpSum
 
-        return _OpSum.make((self._op1, self._op2)).get_transformation()
+        return _OpSum(self._op1, self._op2).get_transformation()
+
+    def get_sqrt_data_metric_at(self, x):
+        cheese = self._op1.get_sqrt_data_metric_at(x)
+        bun = self._prep1.adjoint
+        met1 = SandwichOperator.make(cheese=cheese, bun=bun)
+        met2 = SandwichOperator.make(cheese=self._op2.get_sqrt_data_metric_at(x), bun=self._prep2.adjoint)
+        myassert(len(set(met1.domain.keys()) & set(met2.domain.keys())) == 0)
+        met = met1 + met2
+        myassert(met.domain == met.target == self._data.domain)
+        return met
 
 
 class Squared2NormOperator(EnergyOperator):
@@ -387,6 +426,7 @@ class GaussianEnergy(LikelihoodEnergyOperator):
             data = full(self._domain, 0.)
         if not isinstance(data, (Field, MultiField)):
             raise TypeError
+        super(GaussianEnergy, self).__init__(data=data)
 
         self._icov = inverse_covariance
         if inverse_covariance is None:

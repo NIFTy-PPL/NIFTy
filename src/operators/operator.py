@@ -440,9 +440,6 @@ class _OpChain(_CombinedOperator):
 
     def get_transformation(self):
         # FIXME Move to likelihoodenergy as soon as we have a similar interface
-        from .energy_operators import LikelihoodEnergyOperator
-        if not isinstance(self, LikelihoodEnergyOperator):
-            raise RuntimeError("bug")
         tr = self._ops[0].get_transformation()
         if tr is None:
             return tr
@@ -536,10 +533,6 @@ class _OpSum(Operator):
 
     def get_transformation(self):
         # FIXME Move to likelihoodenergy as soon as we have a similar interface
-        from .energy_operators import LikelihoodEnergyOperator
-        if not isinstance(self, LikelihoodEnergyOperator):
-            raise RuntimeError("bug")
-
         from .simple_linear_operators import PrependKey
         tr1 = self._op1.get_transformation()
         tr2 = self._op2.get_transformation()
