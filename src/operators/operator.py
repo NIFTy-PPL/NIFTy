@@ -250,7 +250,7 @@ class Operator(metaclass=NiftyMeta):
         if not is_operator(self):
             return NotImplemented
         if not isinstance(self.target, MultiDomain):
-            raise TypeError("Only Operators with a MultiDomain as target get be subscipted.")
+            raise TypeError("Only Operators with a MultiDomain as target can be subscripted.")
         return ducktape(None, self, key) @ self
 
     def apply(self, x):
