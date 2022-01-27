@@ -4,7 +4,7 @@ import sys
 
 from jax import numpy as jnp
 from jax import lax, random
-from jax import jit, value_and_grad
+from jax import jit
 from jax.config import config
 import matplotlib.pyplot as plt
 
@@ -41,9 +41,14 @@ b = 2.
 signal_response = partial(helper_phi_b, b)
 nll = jft.Gaussian(0., lambda x: x / jnp.sqrt(1.)) @ signal_response
 
-ham = jft.StandardHamiltonian(nll)
-ham = ham.jit()
-ham_vg = jit(value_and_grad(ham))
+ham = jft.StandardHamiltonian(nll).jit()
+ham_vg = jit(jft.mean_value_and_grad(ham))
+ham_metric = jit(jft.mean_metric(ham.metric))
+MetricKL = jit(
+    partial(jft.MetricKL, ham),
+    static_argnames=("n_samples", "mirror_samples", "linear_sampling_name")
+)
+GeoMetricKL = partial(jft.GeoMetricKL, ham)
 
 # %%
 n_pix_sqrt = 1000
@@ -78,14 +83,12 @@ for i in range(n_mgvi_iterations):
     print(f"MGVI Iteration {i}", file=sys.stderr)
     print("Sampling...", file=sys.stderr)
     key, subkey = random.split(key, 2)
-    mkl = jft.MetricKL(
-        ham,
+    mg_samples = MetricKL(
         mkl_pos,
         n_samples[i],
         key=subkey,
         mirror_samples=True,
         linear_sampling_kwargs={"absdelta": absdelta / 10.},
-        hamiltonian_and_gradient=ham_vg
     )
 
     print("Minimizing...", file=sys.stderr)
@@ -94,8 +97,8 @@ for i in range(n_mgvi_iterations):
         x0=mkl_pos,
         method="newton-cg",
         options={
-            "fun_and_grad": mkl.energy_and_gradient,
-            "hessp": mkl.metric,
+            "fun_and_grad": partial(ham_vg, primals_samples=mg_samples),
+            "hessp": partial(ham_metric, primals_samples=mg_samples),
             "absdelta": absdelta,
             "maxiter": n_newton_iterations[i],
             "cg_kwargs": {
@@ -122,21 +125,19 @@ for i in range(n_geovi_iterations):
     print(f"geoVI Iteration {i}", file=sys.stderr)
     print("Sampling...", file=sys.stderr)
     key, subkey = random.split(key, 2)
-    gkl = jft.GeoMetricKL(
-        ham,
+    geo_samples = GeoMetricKL(
         gkl_pos,
         n_samples[i],
         key=subkey,
         mirror_samples=True,
+        linear_sampling_name=None,
         linear_sampling_kwargs={"absdelta": absdelta / 10.},
         non_linear_sampling_kwargs={
             "cg_kwargs": {
-                "miniter": 0,
-                "name": None
+                "miniter": 0
             },
             "maxiter": 20
         },
-        hamiltonian_and_gradient=ham_vg
     )
 
     print("Minimizing...", file=sys.stderr)
@@ -145,14 +146,12 @@ for i in range(n_geovi_iterations):
         x0=gkl_pos,
         method="newton-cg",
         options={
-            "cg_kwargs": {
-                "miniter": 0
-            },
-            "fun_and_grad": gkl.energy_and_gradient,
-            "hessp": gkl.metric,
+            "fun_and_grad": partial(ham_vg, primals_samples=geo_samples),
+            "hessp": partial(ham_metric, primals_samples=geo_samples),
             "absdelta": absdelta,
             "maxiter": n_newton_iterations[i],
             "cg_kwargs": {
+                "miniter": 0,
                 "name": None
             },
             "name": "N"
@@ -172,7 +171,7 @@ xy = XY.reshape((XY.shape[0] * XY.shape[1], 2))
 es = jnp.exp(-lax.map(ham, xy)).reshape(XY.shape[:2]).T
 
 # %%
-mkl_b_space_smpls = jnp.array([(mkl_pos + smpl).val for smpl in mkl.samples])
+mkl_b_space_smpls = jnp.array([s.val for s in mg_samples.at(mkl_pos)])
 
 fig, ax = plt.subplots()
 contour = ax.contour(X, Y, es)
@@ -183,7 +182,7 @@ plt.title("MGVI")
 plt.show()
 
 # %%
-gkl_b_space_smpls = jnp.array([(gkl_pos + smpl).val for smpl in gkl.samples])
+gkl_b_space_smpls = jnp.array([s.val for s in geo_samples.at(gkl_pos)])
 
 fig, ax = plt.subplots()
 contour = ax.contour(X, Y, es)
@@ -295,7 +294,7 @@ fontsize = 5
 potlabels = False
 
 ax2.set_title('MGVI')
-mkl_b_space_smpls = jnp.array([(mkl_pos + smpl).val for smpl in mkl.samples])
+mkl_b_space_smpls = jnp.array([s.val for s in mg_samples.at(mkl_pos)])
 contour = ax2.contour(X, Y, es, linewidths=linewidths)
 ax2.clabel(contour, inline=True, fontsize=fontsize)
 ax2.scatter(*mkl_b_space_smpls.T, s=smplmarkersize, c=smplmarkercolor)
@@ -303,7 +302,7 @@ ax2.plot(*mkl_pos, "rx")
 #ax2.set_aspect(asp)
 
 ax3.set_title('geoVI')
-gkl_b_space_smpls = jnp.array([(gkl_pos + smpl).val for smpl in gkl.samples])
+gkl_b_space_smpls = jnp.array([s.val for s in geo_samples.at(gkl_pos)])
 contour = ax3.contour(X, Y, es, linewidths=linewidths)
 ax3.clabel(contour, inline=True, fontsize=fontsize)
 ax3.scatter(*gkl_b_space_smpls.T, s=smplmarkersize, c=smplmarkercolor)

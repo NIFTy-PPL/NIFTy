@@ -26,6 +26,9 @@ from .kl import (
     GeoMetricKL,
     MetricKL,
     geometrically_sample_standard_hamiltonian,
+    mean_hessp,
+    mean_metric,
+    mean_value_and_grad,
     sample_standard_hamiltonian,
 )
 from .likelihood import Likelihood, StandardHamiltonian

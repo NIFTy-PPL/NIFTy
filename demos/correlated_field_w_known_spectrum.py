@@ -1,8 +1,9 @@
+from functools import partial
 import sys
 
 from jax import numpy as jnp
 from jax import random
-from jax import jit, value_and_grad
+from jax import jit
 from jax.config import config
 import matplotlib.pyplot as plt
 
@@ -65,14 +66,11 @@ key, subkey = random.split(key)
 pos_init = random.normal(shape=dims, key=subkey)
 pos = 1e-2 * jft.Field(pos_init)
 
-kl_energy = jft.vmap_forest_mean(
-    lambda p, s: ham.energy(p + s), in_axes=(None, 0)
-)
-kl_vag = jit(value_and_grad(kl_energy))
-kl_metric = jit(
-    jft.vmap_forest_mean(
-        lambda p, s, t: ham.metric(p + s, t), in_axes=(None, 0, None)
-    )
+ham_vg = jit(jft.mean_value_and_grad(ham))
+ham_metric = jit(jft.mean_metric(ham.metric))
+MetricKL = jit(
+    partial(jft.MetricKL, ham),
+    static_argnames=("n_samples", "mirror_samples", "linear_sampling_name")
 )
 
 # Minimize the potential
@@ -80,40 +78,54 @@ for i in range(n_mgvi_iterations):
     print(f"MGVI Iteration {i}", file=sys.stderr)
     print("Sampling...", file=sys.stderr)
     key, subkey = random.split(key, 2)
-    mkl = jft.MetricKL(
-        ham,
+    samples = MetricKL(
         pos,
         n_samples=n_samples,
         key=subkey,
         mirror_samples=True,
         linear_sampling_kwargs={"absdelta": absdelta / 10.}
     )
-    kl_vag_at_p = lambda p: kl_vag(p, tuple(mkl.samples))
-    kl_metric_at = lambda p, t: kl_metric(p, tuple(mkl.samples), t)
 
     print("Minimizing...", file=sys.stderr)
     opt_state = jft.minimize(
         None,
         x0=pos,
-        method="newton-cg",
+        method="trust-ncg",
         options={
-            "fun_and_grad": kl_vag_at_p,
-            "hessp": kl_metric_at,
+            "fun_and_grad": partial(ham_vg, primals_samples=samples),
+            "hessp": partial(ham_metric, primals_samples=samples),
+            "initial_trust_radius": 1e+1,
+            "max_trust_radius": 1e+4,
             "absdelta": absdelta,
-            "maxiter": n_newton_iterations
+            "maxiter": n_newton_iterations,
+            "name": "N",
+            "subproblem_kwargs": {
+                "miniter": 6,
+            }
         }
     )
+    # opt_state = jft.minimize(
+    #     None,
+    #     x0=pos,
+    #     method="newton-cg",
+    #     options={
+    #         "fun_and_grad": partial(ham_vg, primals_samples=samples),
+    #         "hessp": partial(ham_metric, primals_samples=samples),
+    #         "absdelta": absdelta,
+    #         "maxiter": n_newton_iterations
+    #     }
+    # )
     pos = opt_state.x
     print(
         (
-            f"Post MGVI Iteration {i}: Energy {mkl(pos):2.4e}"
+            f"Post MGVI Iteration {i}: Energy {samples.at(pos).mean(ham)[0]:2.4e}"
             f"; Cos-Sim {cosine_similarity(pos.val, pos_truth.val):2.3%}"
             f"; #NaNs {jnp.isnan(pos.val).sum()}"
         ),
         file=sys.stderr
     )
 
-post_sr_mean = jft.mean(tuple(signal_response(pos + s) for s in mkl.samples))
+post_sr_mean = jft.mean(tuple(signal_response(s) for s in samples.at(pos)))
 fig, ax = plt.subplots()
 ax.plot(signal_response_truth, alpha=0.7, label="Signal")
 ax.plot(noise_truth, alpha=0.7, label="Noise")

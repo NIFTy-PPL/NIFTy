@@ -35,7 +35,7 @@ def banana_helper_phi_b(b, x):
 
 
 def sample_nonstandard_hamiltonian(
-    likelihood, primals, key, cg=jft.cg, cg_kwargs=None
+    likelihood, primals, key, cg=jft.static_cg, cg_name=None, cg_kwargs=None
 ):
     if not isinstance(likelihood, jft.Likelihood):
         te = f"`likelihood` of invalid type; got '{type(likelihood)}'"
@@ -43,6 +43,7 @@ def sample_nonstandard_hamiltonian(
     from jax.tree_util import Partial
 
     cg_kwargs = cg_kwargs if cg_kwargs is not None else {}
+    cg_kwargs = {"name": cg_name, **cg_kwargs}
 
     white_sample = jft.random_like(
         key, likelihood.left_sqrt_metric_tangents_shape
@@ -61,10 +62,9 @@ def NonStandardMetricKL(
     n_samples,
     key,
     mirror_samples: bool = True,
-    linear_sampling_cg=jft.cg,
+    linear_sampling_cg=jft.static_cg,
+    linear_sampling_name=None,
     linear_sampling_kwargs=None,
-    hamiltonian_and_gradient=None,
-    _samples=None
 ):
     from jax.tree_util import Partial
 
@@ -72,26 +72,21 @@ def NonStandardMetricKL(
         te = f"`likelihood` of invalid type; got '{type(likelihood)}'"
         raise TypeError(te)
 
-    if _samples is None:
-        _samples = []
-        draw = Partial(
-            sample_nonstandard_hamiltonian,
-            likelihood=likelihood,
-            primals=primals,
-            cg=linear_sampling_cg,
-            cg_kwargs=linear_sampling_kwargs
-        )
-        subkeys = random.split(key, n_samples)
-        samples = tuple(draw(key=k) for k in subkeys)
-    else:
-        samples = tuple(_samples)
-
-    return jft.kl.SampledKL(
-        hamiltonian=likelihood,
+    draw = Partial(
+        sample_nonstandard_hamiltonian,
+        likelihood=likelihood,
         primals=primals,
-        samples=samples,
-        linearly_mirror_samples=mirror_samples,
-        hamiltonian_and_gradient=hamiltonian_and_gradient
+        cg=linear_sampling_cg,
+        cg_name=linear_sampling_name,
+        cg_kwargs=linear_sampling_kwargs,
+    )
+    subkeys = random.split(key, n_samples)
+    samples_stack = lax.map(lambda k: draw(key=k), subkeys)
+
+    return jft.kl.SampleIter(
+        mean=primals,
+        samples=jft.unstack(samples_stack),
+        linearly_mirror_samples=mirror_samples
     )
 
 
@@ -105,7 +100,8 @@ nll = jft.Gaussian(
 
 ham = nll
 ham = ham.jit()
-ham_vg = jit(value_and_grad(ham))
+ham_vg = jit(jft.mean_value_and_grad(ham))
+ham_metric = jit(jft.mean_metric(ham.metric))
 
 # %%
 n_mgvi_iterations = 30
@@ -121,14 +117,13 @@ for i in range(n_mgvi_iterations):
     print(f"MGVI Iteration {i}", file=sys.stderr)
     print("Sampling...", file=sys.stderr)
     key, subkey = random.split(key, 2)
-    mkl = NonStandardMetricKL(
+    samples = NonStandardMetricKL(
         ham,
         mkl_pos,
         n_samples[i],
         key=subkey,
         mirror_samples=True,
         linear_sampling_kwargs={"miniter": 0},
-        hamiltonian_and_gradient=ham_vg
     )
 
     print("Minimizing...", file=sys.stderr)
@@ -137,8 +132,8 @@ for i in range(n_mgvi_iterations):
         x0=mkl_pos,
         method="newton-cg",
         options={
-            "fun_and_grad": mkl.energy_and_gradient,
-            "hessp": mkl.metric,
+            "fun_and_grad": partial(ham_vg, primals_samples=samples),
+            "hessp": partial(ham_metric, primals_samples=samples),
             "energy_reduction_factor": None,
             "absdelta": absdelta,
             "maxiter": n_newton_iterations[i],
@@ -153,7 +148,7 @@ for i in range(n_mgvi_iterations):
     print(msg, file=sys.stderr)
 
 # %%
-b_space_smpls = jnp.array([mkl_pos + smpl for smpl in mkl.samples])
+b_space_smpls = jnp.array(tuple(samples.at(mkl_pos)))
 
 n_pix_sqrt = 1000
 x = jnp.linspace(-10.0, 10.0, n_pix_sqrt, endpoint=True)

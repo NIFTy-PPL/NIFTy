@@ -1,8 +1,9 @@
+from functools import partial
 import sys
 
 from jax import numpy as jnp
 from jax import random
-from jax import jit, value_and_grad
+from jax import jit
 from jax.config import config as jax_config
 import matplotlib.pyplot as plt
 
@@ -53,7 +54,13 @@ data = signal_response_truth + noise_truth
 
 nll = jft.Gaussian(data, noise_cov_inv) @ signal_response
 ham = jft.StandardHamiltonian(likelihood=nll).jit()
-ham_vg = jit(value_and_grad(ham))
+
+ham_vg = jit(jft.mean_value_and_grad(ham))
+ham_metric = jit(jft.mean_metric(ham.metric))
+MetricKL = jit(
+    partial(jft.MetricKL, ham),
+    static_argnames=("n_samples", "mirror_samples", "linear_sampling_name")
+)
 
 key, subkey = random.split(key)
 pos_init = jft.random_like(subkey, ptree)
@@ -64,13 +71,11 @@ for i in range(n_mgvi_iterations):
     print(f"MGVI Iteration {i}", file=sys.stderr)
     print("Sampling...", file=sys.stderr)
     key, subkey = random.split(key, 2)
-    mkl = jft.MetricKL(
-        ham,
+    samples = MetricKL(
         pos,
         n_samples=n_samples,
         key=subkey,
         mirror_samples=True,
-        hamiltonian_and_gradient=ham_vg,
         linear_sampling_kwargs={"absdelta": absdelta / 10.}
     )
 
@@ -80,20 +85,20 @@ for i in range(n_mgvi_iterations):
         x0=pos,
         method="newton-cg",
         options={
-            "fun_and_grad": mkl.energy_and_gradient,
-            "hessp": mkl.metric,
+            "fun_and_grad": partial(ham_vg, primals_samples=samples),
+            "hessp": partial(ham_metric, primals_samples=samples),
             "absdelta": absdelta,
             "maxiter": n_newton_iterations
         }
     )
     pos = opt_state.x
-    msg = f"Post MGVI Iteration {i}: Energy {mkl(pos):2.4e}"
+    msg = f"Post MGVI Iteration {i}: Energy {samples.at(pos).mean(ham):2.4e}"
     print(msg, file=sys.stderr)
 
 namps = cfm.get_normalized_amplitudes()
-post_sr_mean = jft.mean(tuple(signal_response(pos + s) for s in mkl.samples))
-post_namps1_mean = jft.mean(tuple(namps[0](pos + s)[1:] for s in mkl.samples))
-post_namps2_mean = jft.mean(tuple(namps[1](pos + s)[1:] for s in mkl.samples))
+post_sr_mean = jft.mean(tuple(signal_response(s) for s in samples.at(pos)))
+post_namps1_mean = jft.mean(tuple(namps[0](s)[1:] for s in samples.at(pos)))
+post_namps2_mean = jft.mean(tuple(namps[1](s)[1:] for s in samples.at(pos)))
 to_plot = [
     ("Signal", signal_response_truth, "im"),
     ("Noise", noise_truth, "im"),
