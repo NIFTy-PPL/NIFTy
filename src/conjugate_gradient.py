@@ -233,27 +233,23 @@ def _static_cg(
         )
         gamma = sum_of_squares(r)
 
-        info = jnp.where((gamma >= 0.) & (gamma <= tiny) & (info != -1), 0, info)
+        info = jnp.where(
+            (gamma >= 0.) & (gamma <= tiny) & (info != -1), 0, info
+        )
         if resnorm is not None:
             norm = jft_norm(r, ord=norm_ord, ravel=True)
-            if name is not None:
-                msg = f"{name}: |∇|:{norm!r} 🞋:{resnorm!r}"
-                print(msg, file=sys.stderr)
             info = jnp.where(
                 (norm < resnorm) & (i >= miniter) & (info != -1), 0, info
             )
+        else:
+            norm = None
         # Do not compute the energy if we do not check `absdelta`
         if absdelta is not None or name is not None:
             energy = ((r - j) / 2).dot(pos)
             energy_diff = previous_energy - energy
-            if name is not None:
-                msg = (
-                    f"{name}: Iteration {i!r} ⛰:{energy!r}" +
-                    (f" 🞋:{absdelta!r}" if absdelta is not None else "")
-                )
-                print(msg, file=sys.stderr)
         else:
             energy = previous_energy
+            energy_diff = None
         if absdelta is not None:
             neg_energy_eps = -eps * jnp.abs(energy)
             # print(f"energy increased", file=sys.stderr)
@@ -265,6 +261,36 @@ def _static_cg(
         info = jnp.where((i >= maxiter) & (info != -1), i, info)
 
         d = d * jnp.maximum(0, gamma / previous_gamma) + r
+
+        if name is not None:
+            from jax.experimental.host_callback import call
+
+            def pp(arg):
+                msg = (
+                    (
+                        "{name}: |∇|:{norm:.6e} 🞋:{resnorm:.6e}\n"
+                        if arg["resnorm"] is not None else ""
+                    ) + "{name}: Iteration {i} ⛰:{energy:+.6e}" +
+                    " Δ⛰:{energy_diff:.6e}" + (
+                        " 🞋:{absdelta:.6e}"
+                        if arg["absdelta"] is not None else ""
+                    ) + (
+                        "\n{name}: Iteration Limit Reached"
+                        if arg["i"] == arg["maxiter"] else ""
+                    )
+                )
+                print(msg.format(name=name, **arg), file=sys.stderr)
+
+            printable_state = {
+                "i": i,
+                "energy": energy,
+                "energy_diff": energy_diff,
+                "absdelta": absdelta,
+                "norm": norm,
+                "resnorm": resnorm,
+                "maxiter": maxiter
+            }
+            call(pp, printable_state, result_shape=None)
 
         ret = {
             "info": info,
