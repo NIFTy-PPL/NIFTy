@@ -270,27 +270,28 @@ class _SpecialGammaEnergy(LikelihoodEnergyOperator):
 class GaussianEnergy(LikelihoodEnergyOperator):
     """Computes a negative-log Gaussian.
 
-    Represents up to constants in :math:`m`:
+    Represents up to constants in :math:`d`:
 
     .. math ::
-        E(f) = - \\log G(f-m, D) = 0.5 (f-m)^\\dagger D^{-1} (f-m),
+        E(f) = - \\log G(f-d, D) = 0.5 (f-d)^\\dagger D^{-1} (f-d),
 
-    an information energy for a Gaussian distribution with mean m and
+    an information energy for a Gaussian distribution with data d and
     covariance D.
 
     Parameters
     ----------
-    mean : Field
-        Mean of the Gaussian. If `inverse_covariance` is `None`, the
-        `sampling_dtype` of `mean` is used for sampling. Default is 0.
+    data : Field or None
+        Observed data of the Gaussian likelihood. If `inverse_covariance` is
+        `None`, the `dtype` of `data` is used for sampling. Default is
+        0.
     inverse_covariance : LinearOperator
         Inverse covariance of the Gaussian. Default is the identity operator.
     domain : Domain, DomainTuple, tuple of Domain or MultiDomain
-        Operator domain. By default it is inferred from `mean` or
+        Operator domain. By default it is inferred from `data` or
         `covariance` if specified
     sampling_dtype : dtype or dict of dtype
         Type used for sampling from the inverse covariance if
-        `inverse_covariance` and `mean` is `None`. Otherwise, this parameter
+        `inverse_covariance` and `data` is `None`. Otherwise, this parameter
         does not have an effect. Default: None.
 
     Note
@@ -298,36 +299,36 @@ class GaussianEnergy(LikelihoodEnergyOperator):
     At least one of the arguments has to be provided.
     """
 
-    def __init__(self, mean=None, inverse_covariance=None, domain=None, sampling_dtype=None):
-        if mean is not None and not isinstance(mean, (Field, MultiField)):
+    def __init__(self, data, inverse_covariance=None, domain=None, sampling_dtype=None):
+        if data is not None and not isinstance(data, (Field, MultiField)):
             raise TypeError
         if inverse_covariance is not None and not isinstance(inverse_covariance, LinearOperator):
             raise TypeError
         self._domain = None
-        if mean is not None:
-            self._checkEquivalence(mean.domain)
+        if data is not None:
+            self._checkEquivalence(data.domain)
         if inverse_covariance is not None:
             self._checkEquivalence(inverse_covariance.domain)
         if domain is not None:
             self._checkEquivalence(domain)
         if self._domain is None:
             raise ValueError("no domain given")
-        self._mean = mean
+        self._data = data
 
         self._icov = inverse_covariance
         if inverse_covariance is None:
             self._op = Squared2NormOperator(self._domain).scale(0.5)
-            dt = sampling_dtype if mean is None else mean.dtype
+            dt = sampling_dtype if data is None else data.dtype
             self._icov = ScalingOperator(self._domain, 1., dt)
         else:
             self._op = QuadraticFormOperator(inverse_covariance)
             self._icov = inverse_covariance
 
         icovdtype = self._icov.sampling_dtype
-        if icovdtype is not None and mean is not None and icovdtype != mean.dtype:
-            s = "Sampling dtype of inverse covariance does not match dtype of mean.\n"
+        if icovdtype is not None and data is not None and icovdtype != data.dtype:
+            s = "Sampling dtype of inverse covariance does not match dtype of data.\n"
             s += f"icov.sampling_dtype: {icovdtype}\n"
-            s += f"mean.dtype: {mean.dtype}"
+            s += f"data.dtype: {data.dtype}"
             raise RuntimeError(s)
 
     def _checkEquivalence(self, newdom):
@@ -339,7 +340,7 @@ class GaussianEnergy(LikelihoodEnergyOperator):
 
     def apply(self, x):
         self._check_input(x)
-        residual = x if self._mean is None else x - self._mean
+        residual = x if self._data is None else x - self._data
         res = self._op(residual).real
         if x.want_metric:
             return res.add_metric(self.get_metric_at(x.val))
