@@ -147,7 +147,7 @@ def draw_samples(position, H, minimizer, n_samples, mirror_samples, napprox=0,
             if geometric:
                 m = transformation_mean - y if neg else transformation_mean + y
                 pos = sam_position - yi if neg else sam_position + yi
-                en = GaussianEnergy(mean=m) @ transformation
+                en = GaussianEnergy(m) @ transformation
                 en = EnergyAdapter(pos, en, nanisinf=True, want_metric=True)
                 en, _ = minimizer(en)
                 local_samples.append(en.position - sam_position)

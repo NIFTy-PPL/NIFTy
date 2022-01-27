@@ -376,20 +376,17 @@ class GaussianEnergy(LikelihoodEnergyOperator):
     """
 
     def __init__(self, data, inverse_covariance=None, domain=None, sampling_dtype=None):
-        if data is not None and not isinstance(data, (Field, MultiField)):
-            raise TypeError
+        from ..sugar import full
+
         if inverse_covariance is not None and not isinstance(inverse_covariance, LinearOperator):
             raise TypeError
-        self._domain = None
-        if data is not None:
-            self._checkEquivalence(data.domain)
-        if inverse_covariance is not None:
-            self._checkEquivalence(inverse_covariance.domain)
-        if domain is not None:
-            self._checkEquivalence(domain)
-        if self._domain is None:
-            raise ValueError("no domain given")
-        self._data = data
+
+        self._domain = self._parseDomain(data, inverse_covariance, domain)
+
+        if data is None:
+            data = full(self._domain, 0.)
+        if not isinstance(data, (Field, MultiField)):
+            raise TypeError
 
         self._icov = inverse_covariance
         if inverse_covariance is None:
@@ -407,14 +404,25 @@ class GaussianEnergy(LikelihoodEnergyOperator):
             s += f"data.dtype: {data.dtype}"
             raise RuntimeError(s)
 
-        super(GaussianEnergy, self).__init__(data=data, model_data_op=op1.model_data_op @ op2)
-
-    def _checkEquivalence(self, newdom):
+    @staticmethod
+    def _checkEquivalence(olddom, newdom):
         newdom = makeDomain(newdom)
-        if self._domain is None:
-            self._domain = newdom
-        else:
-            utilities.check_object_identity(self._domain, newdom)
+        if olddom is None:
+            return newdom
+        utilities.check_object_identity(olddom, newdom)
+        return newdom
+
+    def _parseDomain(self, data, inverse_covariance, domain):
+        dom = None
+        if inverse_covariance is not None:
+            dom = self._checkEquivalence(dom, inverse_covariance.domain)
+        if data is not None:
+            dom = self._checkEquivalence(dom, data.domain)
+        if domain is not None:
+            dom = self._checkEquivalence(dom, domain)
+        if dom is None:
+            raise ValueError("no domain given")
+        return dom
 
     def apply(self, x):
         self._check_input(x)
@@ -634,7 +642,7 @@ class StandardHamiltonian(EnergyOperator):
 
     def __init__(self, lh, ic_samp=None):
         self._lh = lh
-        self._prior = GaussianEnergy(domain=lh.domain, sampling_dtype=float)
+        self._prior = GaussianEnergy(data=None, domain=lh.domain, sampling_dtype=float)
         self._ic_samp = ic_samp
         self._domain = lh.domain
 

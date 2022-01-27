@@ -124,7 +124,7 @@ def main():
     minimizer = ift.NewtonCG(ic_newton, enable_logging=True)
 
     # Set up likelihood energy and information Hamiltonian
-    likelihood_energy = ift.GaussianEnergy(mean=data, inverse_covariance=N.inverse) @ signal_response
+    likelihood_energy = ift.GaussianEnergy(data, inverse_covariance=N.inverse) @ signal_response
 
     def callback(samples):
         s = ift.extra.minisanity(data, lambda x: N.inverse, signal_response, samples)

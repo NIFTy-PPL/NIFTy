@@ -117,7 +117,7 @@ def main():
     minimizer_sampling = ift.NewtonCG(ic_sampling_nl)
 
     # Set up likelihood energy
-    likelihood_energy = (ift.GaussianEnergy(mean=data, inverse_covariance=N.inverse) @
+    likelihood_energy = (ift.GaussianEnergy(data, inverse_covariance=N.inverse) @
                          signal_response)
 
     def callback(samples):

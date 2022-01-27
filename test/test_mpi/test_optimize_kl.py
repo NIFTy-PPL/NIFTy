@@ -84,7 +84,7 @@ def test_optimize_kl(constants, point_estimates, kl_minimizer, n_samples,
     overwrite = True
 
     d = sky(mock_pos)
-    likelihood_energy = ift.GaussianEnergy(mean=d) @ sky
+    likelihood_energy = ift.GaussianEnergy(d) @ sky
     inspect_callback = None
     terminate_callback = None
     plot_latent = False
