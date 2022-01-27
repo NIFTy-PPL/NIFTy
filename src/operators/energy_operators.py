@@ -147,7 +147,7 @@ class LikelihoodEnergyOperator(EnergyOperator):
         return SandwichOperator.make(bun, sampling_dtype=dtp)
 
 
-class _LhChain(LikelihoodEnergyOperator):
+class _LikelihoodChain(LikelihoodEnergyOperator):
     def __init__(self, op1, op2):  # FIXME Refactor to oplist and introduce simplify
         super(_LhChain, self).__init__(data=op1._data, model_data_op=op1._model_data_op @ op2)
         self._op1, self._op2 = op1, op2
@@ -169,7 +169,7 @@ class _LhChain(LikelihoodEnergyOperator):
         return met
 
 
-class _LhSum(LikelihoodEnergyOperator):
+class _LikelihoodSum(LikelihoodEnergyOperator):
     def __init__(self, op1, op2):  # FIXME Refactor to oplist and introduce simplify
         from .simple_linear_operators import PrependKey
 
