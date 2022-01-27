@@ -10,7 +10,7 @@ from .kl import (
 )
 from .field import Field
 from .forest_util import (
-    norm, dot, vdot, ShapeWithDtype, vmap_forest, vmap_forest_mean, zeros_like
+    norm, dot, vdot, ShapeWithDtype, vmap_forest, vmap_forest_mean, zeros_like, stack, unstack
 )
 from .optimize import minimize, newton_cg, trust_ncg
 from .hmc import generate_hmc_acc_rej, generate_nuts_tree
