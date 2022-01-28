@@ -104,7 +104,12 @@ plt.show()
 # %%
 lh = jft.Gaussian(data, noise_cov_inv=lambda x: x / noise_cov) @ signal_response
 ham = jft.StandardHamiltonian(likelihood=lh).jit()
-ham_vg = jit(value_and_grad(ham))
+ham_vg = jit(jft.mean_value_and_grad(ham))
+ham_metric = jit(jft.mean_metric(ham.metric))
+MetricKL = jit(
+    partial(jft.MetricKL, ham),
+    static_argnames=("n_samples", "mirror_samples", "linear_sampling_name")
+)
 
 key, subkey = random.split(key)
 pos = pos_init = 1e-2 * jft.random_like(subkey, pt)
@@ -127,13 +132,12 @@ key, *sk = random.split(key, 1 + n_mgvi_iterations)
 for i, subkey in enumerate(sk):
     print(f"MGVI Iteration {i}", file=sys.stderr)
     print("Sampling...", file=sys.stderr)
-    mkl = jft.MetricKL(
-        ham,
+    mg_samples = MetricKL(
         pos,
         n_samples=n_samples,
         key=subkey,
         mirror_samples=True,
-        hamiltonian_and_gradient=ham_vg,
+        linear_sampling_name=None,
         linear_sampling_kwargs={"absdelta": absdelta / 10.}
     )
 
@@ -143,14 +147,14 @@ for i, subkey in enumerate(sk):
         pos,
         method="newton-cg",
         options={
-            "fun_and_grad": mkl.energy_and_gradient,
-            "hessp": mkl.metric,
+            "fun_and_grad": partial(ham_vg, primals_samples=mg_samples),
+            "hessp": partial(ham_metric, primals_samples=mg_samples),
             "absdelta": absdelta,
             "maxiter": n_newton_iterations
         }
     )
     pos = opt_state.x
-    msg = f"Post MGVI Iteration {i}: Energy {mkl(pos):2.4e}"
+    msg = f"Post MGVI Iteration {i}: Energy {mg_samples.at(pos).mean(ham):2.4e}"
     print(msg, file=sys.stderr)
 
 # %%
@@ -160,7 +164,7 @@ im = axs.flat[0].imshow(synth_signal_response)
 fig.colorbar(im, ax=axs.flat[0])
 im = axs.flat[1].imshow(data)
 fig.colorbar(im, ax=axs.flat[1])
-sr_pm = jnp.average([signal_response(pos + s) for s in mkl.samples], axis=0)
+sr_pm = mg_samples.at(pos).mean(signal_response)
 im = axs.flat[2].imshow(sr_pm)
 fig.colorbar(im, ax=axs.flat[2])
 fig.tight_layout()
@@ -274,8 +278,7 @@ def get_lognormal_model(shapes, cfm_kwargs, data_key, noise_cov=0.5**2):
         data_nft = ift.makeField(signal_response_nft.target, data)
         noise_cov_inv_nft = ift.ScalingOperator(data_nft.domain, 1. / noise_cov)
         lh_nft = ift.GaussianEnergy(
-            data_nft,
-            inverse_covariance=noise_cov_inv_nft
+            data_nft, inverse_covariance=noise_cov_inv_nft
         ) @ signal_response_nft
         ham_nft = ift.StandardHamiltonian(lh_nft)
 
