@@ -243,8 +243,6 @@ def vmap_forest(
         if not tree_transpose_output:
             return out_T
 
-        # TODO: Report?: Looping over or casting a DeviceArray tensor to a
-        # tuple, yields NumPy arrays
         split = partial(jnp.split, indices_or_sections=element_count)
         out = tree_util.tree_transpose(
             tree_util.tree_structure(out_T),
