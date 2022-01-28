@@ -1,15 +1,16 @@
 #!/usr/bin/env python3
-from jax.config import config
-
-config.update("jax_enable_x64", True)
-
+from functools import partial
 import sys
+
 from jax import numpy as jnp
 from jax import random
-from jax import value_and_grad, jit
+from jax import jit
+from jax.config import config
 import matplotlib.pyplot as plt
 
 import jifty1 as jft
+
+config.update("jax_enable_x64", True)
 
 # %%
 # ## Likelihood
@@ -86,8 +87,12 @@ data = signal_response_truth + noise_truth
 
 nll = Gaussian(data, noise_cov_inv_sqrt) @ signal_response
 ham = jft.StandardHamiltonian(likelihood=nll).jit()
-ham_vg = jit(value_and_grad(ham))
-met = ham.metric
+ham_vg = jit(jft.mean_value_and_grad(ham))
+ham_metric = jit(jft.mean_metric(ham.metric))
+MetricKL = jit(
+    partial(jft.MetricKL, ham),
+    static_argnames=("n_samples", "mirror_samples", "linear_sampling_name")
+)
 
 key, subkey = random.split(key)
 pos_init = jft.Field(random.normal(shape=dims, key=subkey))
@@ -96,7 +101,7 @@ pos = jft.Field(pos_init.val)
 n_newton_iterations = 10
 # Maximize the posterior using natural gradient scaling
 pos = jft.newton_cg(
-    fun_and_grad=ham_vg, x0=pos, hessp=met, maxiter=n_newton_iterations
+    fun_and_grad=ham_vg, x0=pos, hessp=ham_metric, maxiter=n_newton_iterations
 )
 
 fig, ax = plt.subplots()
@@ -158,34 +163,32 @@ for i in range(n_mgvi_iterations):
     print(f"MGVI Iteration {i}", file=sys.stderr)
     print("Sampling...", file=sys.stderr)
     key, subkey = random.split(key, 2)
-    mkl = jft.MetricKL(
-        ham,
+    mg_samples = MetricKL(
         pos,
         n_samples=n_samples,
         key=subkey,
         mirror_samples=True,
-        hamiltonian_and_gradient=ham_vg
     )
 
     print("Minimizing...", file=sys.stderr)
     pos = jft.newton_cg(
-        fun_and_grad=mkl.energy_and_gradient,
+        fun_and_grad=partial(ham_vg, primals_samples=mg_samples),
         x0=pos,
-        hessp=mkl.metric,
+        hessp=partial(ham_metric, primals_samples=mg_samples),
         maxiter=n_newton_iterations
     )
-    msg = f"Post MGVI Iteration {i}: Energy {mkl(pos):2.4e}"
+    msg = f"Post MGVI Iteration {i}: Energy {mg_samples.at(pos).mean(ham):2.4e}"
     print(msg, file=sys.stderr)
 
-post_sr_mean = jft.mean(tuple(signal_response(pos + s) for s in mkl.samples))
+post_sr_mean = jft.mean(tuple(signal_response(s) for s in mg_samples.at(pos)))
 fig, ax = plt.subplots()
 ax.plot(signal_response_truth, alpha=0.7, label="Signal")
 ax.plot(noise_truth, alpha=0.7, label="Noise")
 ax.plot(data, alpha=0.7, label="Data")
 ax.plot(post_sr_mean, alpha=0.7, label="Reconstruction")
 label = "Reconstructed samples"
-for s in mkl.samples:
-    ax.plot(signal_response(pos + s), color="gray", alpha=0.5, label=label)
+for s in mg_samples:
+    ax.plot(signal_response(s), color="gray", alpha=0.5, label=label)
     label = None
 ax.legend()
 fig.tight_layout()
@@ -252,7 +255,12 @@ data = signal_response_truth + noise_truth
 
 nll = jft.Gaussian(data, noise_cov_inv) @ signal_response
 ham = jft.StandardHamiltonian(likelihood=nll).jit()
-ham_vg = jit(value_and_grad(ham))
+ham_vg = jit(jft.mean_value_and_grad(ham))
+ham_metric = jit(jft.mean_metric(ham.metric))
+MetricKL = jit(
+    partial(jft.MetricKL, ham),
+    static_argnames=("n_samples", "mirror_samples", "linear_sampling_name")
+)
 
 key, subkey = random.split(key)
 pos_init = jft.Field(jft.random_like(subkey, ptree))
@@ -267,29 +275,27 @@ for i in range(n_mgvi_iterations):
     print(f"MGVI Iteration {i}", file=sys.stderr)
     print("Sampling...", file=sys.stderr)
     key, subkey = random.split(key, 2)
-    mkl = jft.MetricKL(
-        ham,
+    mg_samples = MetricKL(
         pos,
         n_samples=n_samples,
         key=subkey,
         mirror_samples=True,
-        hamiltonian_and_gradient=ham_vg
     )
 
     print("Minimizing...", file=sys.stderr)
     pos = jft.newton_cg(
-        fun_and_grad=mkl.energy_and_gradient,
+        fun_and_grad=partial(ham_vg, primals_samples=mg_samples),
         x0=pos,
-        hessp=mkl.metric,
+        hessp=partial(ham_metric, primals_samples=mg_samples),
         maxiter=n_newton_iterations
     )
-    msg = f"Post MGVI Iteration {i}: Energy {mkl(pos):2.4e}"
+    msg = f"Post MGVI Iteration {i}: Energy {mg_samples.at(pos).mean(ham):2.4e}"
     print(msg, file=sys.stderr)
 
 namps = cfm.get_normalized_amplitudes()
-post_sr_mean = jft.mean(tuple(signal_response(pos + s) for s in mkl.samples))
-post_namps1_mean = jft.mean(tuple(namps[0](pos + s)[1:] for s in mkl.samples))
-post_namps2_mean = jft.mean(tuple(namps[1](pos + s)[1:] for s in mkl.samples))
+post_sr_mean = jft.mean(tuple(signal_response(s) for s in mg_samples.at(pos)))
+post_namps1_mean = jft.mean(tuple(namps[0](s)[1:] for s in mg_samples.at(pos)))
+post_namps2_mean = jft.mean(tuple(namps[1](s)[1:] for s in mg_samples.at(pos)))
 to_plot = [
     ("Signal", signal_response_truth, "im"),
     ("Noise", noise_truth, "im"),
