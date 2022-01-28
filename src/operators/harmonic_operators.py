@@ -355,6 +355,7 @@ class HarmonicTransformOperator(LinearOperator):
         self._domain = self._op.domain
         self._target = self._op.target
         self._capability = self.TIMES | self.ADJOINT_TIMES
+        self._jax_expr = self._op.jax_expr
 
     def apply(self, x, mode):
         self._check_input(x, mode)
