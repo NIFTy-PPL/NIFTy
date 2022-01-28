@@ -1,6 +1,9 @@
 Changes since NIFTy 7
 =====================
 
+Add TransposeOperator
+---------------------
+
 InverseGammaOperator interface
 -------------------------------------
 

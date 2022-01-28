@@ -420,6 +420,11 @@ class DomainChangerAndReshaper(LinearOperator):
 
         self._domain = makeDomain(domain)
         self._target = makeDomain(target)
+        if self._domain.size != self._target.size:
+            s = ["Domain and target do not have the same number of pixels",
+                f"Domain: {self._domain.shape}",
+                f"Target: {self._target.shape}"]
+            raise ValueError("\n".join(s))
         self._capability = self.TIMES | self.ADJOINT_TIMES
         if isinstance(self._domain, MultiDomain) or isinstance(self._target, MultiDomain):
             raise NotImplementedError("MultiDomains are not supported yet")
