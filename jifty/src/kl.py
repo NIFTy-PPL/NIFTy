@@ -1,14 +1,16 @@
-from collections.abc import Sequence
 from functools import partial
-from typing import Callable, Optional
+from typing import Any, Callable, Optional, Sequence, Tuple, TypeVar, Union
 
+from jax import lax
 from jax import random
-from jax.tree_util import Partial
+from jax.tree_util import Partial, register_pytree_node_class, tree_map
 
 from . import conjugate_gradient
-from .forest_util import vmap_forest_mean
+from .forest_util import unstack, vmap_forest, vmap_forest_mean
 from .likelihood import Likelihood, StandardHamiltonian
 from .sugar import random_like
+
+P = TypeVar("P")
 
 
 def sample_likelihood(likelihood: Likelihood, primals, key):
@@ -31,8 +33,9 @@ def _sample_standard_hamiltonian(
     primals,
     key,
     from_inverse: bool,
-    cg: Callable = conjugate_gradient.cg,
-    cg_kwargs: Optional[dict] = None
+    cg: Callable = conjugate_gradient.static_cg,
+    cg_name: Optional[str] = None,
+    cg_kwargs: Optional[dict] = None,
 ):
     if not isinstance(hamiltonian, StandardHamiltonian):
         te = f"`hamiltonian` of invalid type; got '{type(hamiltonian)}'"
@@ -59,7 +62,10 @@ def _sample_standard_hamiltonian(
     met_smpl = nll_smpl + prr_smpl
     if from_inverse:
         inv_metric_at_p = partial(
-            cg, Partial(hamiltonian.metric, primals), **cg_kwargs
+            cg, Partial(hamiltonian.metric, primals), **{
+                "name": cg_name,
+                **cg_kwargs
+            }
         )
         signal_smpl, info = inv_metric_at_p(met_smpl, x0=prr_inv_metric_smpl)
         cond_raise(
@@ -137,10 +143,12 @@ def geometrically_sample_standard_hamiltonian(
     primals,
     key,
     mirror_linear_sample: bool,
-    linear_sampling_cg: Callable = conjugate_gradient.cg,
+    linear_sampling_cg: Callable = conjugate_gradient.static_cg,
+    linear_sampling_name: Optional[str] = None,
     linear_sampling_kwargs: Optional[dict] = None,
     non_linear_sampling_method: str = "NewtonCG",
-    non_linear_sampling_kwargs: Optional[dict] = None
+    non_linear_sampling_name: Optional[str] = None,
+    non_linear_sampling_kwargs: Optional[dict] = None,
 ):
     r"""Draws a sample which follows a standard normal distribution in the
     canonical coordinate system of the Riemannian manifold associated with the
@@ -181,6 +189,7 @@ def geometrically_sample_standard_hamiltonian(
         key=key,
         from_inverse=True,
         cg=linear_sampling_cg,
+        cg_name=linear_sampling_name,
         cg_kwargs=linear_sampling_kwargs
     )
 
@@ -194,6 +203,7 @@ def geometrically_sample_standard_hamiltonian(
             "{type(non_linear_sampling_kwargs)}"
         )
         raise TypeError(te)
+    nls_kwargs = {"name": non_linear_sampling_name, **nls_kwargs}
     if "hessp" in nls_kwargs:
         ve = "setting the hessian for an unknown function is invalid"
         raise ValueError(ve)
@@ -244,69 +254,80 @@ def geometrically_sample_standard_hamiltonian(
     return (smpl1 - primals, smpl2 - primals)
 
 
-class SampledKL():  # TODO Transform into SampledList
+@register_pytree_node_class
+class SampleIter():
     def __init__(
         self,
-        hamiltonian,
-        primals,
-        samples: Sequence,
-        linearly_mirror_samples: bool,
-        hamiltonian_and_gradient: Optional[Callable] = None
+        *,
+        mean: P = None,
+        samples: Sequence[P],
+        linearly_mirror_samples: bool = False,
     ):
-        self._ham = hamiltonian
-        self._pos = primals
         self._samples = tuple(samples)
-        self._linearly_mirror_samples = linearly_mirror_samples
+        self._mean = mean
+
         self._n_samples = len(self._samples)
+        if linearly_mirror_samples == True:
+            self._n_samples *= 2
+        self._linearly_mirror_samples = linearly_mirror_samples
+        # TODO/IDEA: Implement a transposed SampleIter object (SampleStack)
+        # akin to `vmap_forest_mean`
 
-        self._ham_vg = hamiltonian_and_gradient
+    def __iter__(self):
+        for s in self._samples:
+            yield self._mean + s if self._mean is not None else s
+            if self._linearly_mirror_samples:
+                yield self._mean - s if self._mean is not None else -s
 
-        self._energy = vmap_forest_mean(
-            lambda p, s: self._ham(p + s), in_axes=(None, 0)
-        )
-        # gradient of mean is the mean of the gradients
-        self._energy_vg = vmap_forest_mean(
-            lambda p, s: self._ham_vg(p + s), in_axes=(None, 0)
-        )
-        self._metric = vmap_forest_mean(
-            lambda p, s, t: self._ham.metric(p + s, t), in_axes=(None, 0, None)
-        )
-
-    def __call__(self, primals):
-        return self.energy(primals)
-
-    def energy(self, primals):
-        return self._energy(primals, tuple(self.samples))
-
-    def energy_and_gradient(self, primals):
-        if self._ham_vg is None:
-            nie = "need to set `hamiltonian_and_gradient` first"
-            raise NotImplementedError(nie)
-        return self._energy_vg(primals, tuple(self.samples))
-
-    def metric(self, primals, tangents):
-        return self._metric(primals, tuple(self.samples), tangents)
-
-    @property
-    def hamiltonian(self):
-        return self._ham
-
-    @property
-    def position(self):
-        return self._pos
-
-    @property
-    def n_eff_samples(self):
-        if self._linearly_mirror_samples:
-            return 2 * self._n_samples
+    def __len__(self):
         return self._n_samples
 
     @property
-    def samples(self):
-        for s in self._samples:
-            yield s
-            if self._linearly_mirror_samples:
-                yield -s
+    def n_samples(self):
+        return len(self)
+
+    def at(self, mean):
+        return SampleIter(
+            mean=mean,
+            samples=self._samples,
+            linearly_mirror_samples=self._linearly_mirror_samples
+        )
+
+    @property
+    def first(self):
+        if self._mean is not None:
+            return self._mean + self._samples[0]
+        return self._samples[0]
+
+    def apply(self, call: Callable, *args, **kwargs):
+        if set(kwargs.keys()) | {"in_axes"} != {"in_axes"}:
+            raise ValueError(f"invalid keyword arguments {kwargs}")
+
+        # TODO: vmap is significantly slower than looping over the samples
+        # for an extremely high dimensional problem.
+        in_axes = kwargs.get("in_axes", (0, ))
+        return vmap_forest(call, in_axes=in_axes)(tuple(self), *args)
+
+    def mean(self, call: Callable, *args, **kwargs):
+        if set(kwargs.keys()) | {"in_axes"} != {"in_axes"}:
+            raise ValueError(f"invalid keyword arguments {kwargs}")
+
+        # TODO: vmap is significantly slower than looping over the samples
+        # for an extremely high dimensional problem.
+        in_axes = kwargs.get("in_axes", (0, ))
+        return vmap_forest_mean(call, in_axes=in_axes)(tuple(self), *args)
+
+    def tree_flatten(self):
+        return ((self._mean, self._samples), (self._linearly_mirror_samples, ))
+
+    @classmethod
+    def tree_unflatten(cls, aux, children):
+        assert len(aux) == 1 and len(children) == 2
+        return cls(
+            mean=children[0],
+            samples=children[1],
+            linearly_mirror_samples=aux[0]
+        )
 
 
 def MetricKL(
@@ -315,11 +336,10 @@ def MetricKL(
     n_samples: int,
     key,
     mirror_samples: bool = True,
-    linear_sampling_cg: Callable = conjugate_gradient.cg,
+    linear_sampling_cg: Callable = conjugate_gradient.static_cg,
+    linear_sampling_name: Optional[str] = None,
     linear_sampling_kwargs: Optional[dict] = None,
-    hamiltonian_and_gradient: Optional[Callable] = None,
-    _samples: Optional[tuple] = None
-) -> SampledKL:
+) -> SampleIter:
     """Provides the sampled Kullback-Leibler divergence between a distribution
     and a Metric Gaussian.
 
@@ -338,25 +358,21 @@ def MetricKL(
         te = f"`hamiltonian` of invalid type; got '{type(hamiltonian)}'"
         raise TypeError(te)
 
-    if _samples is None:
-        draw = partial(
-            sample_standard_hamiltonian,
-            hamiltonian=hamiltonian,
-            primals=primals,
-            cg=linear_sampling_cg,
-            cg_kwargs=linear_sampling_kwargs
-        )
-        subkeys = random.split(key, n_samples)
-        samples = tuple(draw(key=k) for k in subkeys)
-    else:
-        samples = tuple(_samples)
-
-    return SampledKL(
+    draw = partial(
+        sample_standard_hamiltonian,
         hamiltonian=hamiltonian,
         primals=primals,
-        samples=samples,
-        linearly_mirror_samples=mirror_samples,
-        hamiltonian_and_gradient=hamiltonian_and_gradient
+        cg=linear_sampling_cg,
+        cg_name=linear_sampling_name,
+        cg_kwargs=linear_sampling_kwargs
+    )
+    subkeys = random.split(key, n_samples)
+    samples_stack = lax.map(lambda k: draw(key=k), subkeys)
+
+    return SampleIter(
+        mean=primals,
+        samples=unstack(samples_stack),
+        linearly_mirror_samples=mirror_samples
     )
 
 
@@ -366,13 +382,13 @@ def GeoMetricKL(
     n_samples: int,
     key,
     mirror_samples: bool = True,
-    linear_sampling_cg: Callable = conjugate_gradient.cg,
+    linear_sampling_cg: Callable = conjugate_gradient.static_cg,
+    linear_sampling_name: Optional[str] = None,
     linear_sampling_kwargs: Optional[dict] = None,
     non_linear_sampling_method: str = "NewtonCG",
+    non_linear_sampling_name: Optional[str] = None,
     non_linear_sampling_kwargs: Optional[dict] = None,
-    hamiltonian_and_gradient: Optional[Callable] = None,
-    _samples: Optional[tuple] = None
-) -> SampledKL:
+) -> SampleIter:
     """Provides the sampled Kullback-Leibler used in geometric Variational
     Inference (geoVI).
 
@@ -393,29 +409,103 @@ def GeoMetricKL(
         te = f"`hamiltonian` of invalid type; got '{type(hamiltonian)}'"
         raise TypeError(te)
 
-    if _samples is None:
-        draw = partial(
-            geometrically_sample_standard_hamiltonian,
-            hamiltonian=hamiltonian,
-            primals=primals,
-            mirror_linear_sample=mirror_samples,
-            linear_sampling_cg=linear_sampling_cg,
-            linear_sampling_kwargs=linear_sampling_kwargs,
-            non_linear_sampling_method=non_linear_sampling_method,
-            non_linear_sampling_kwargs=non_linear_sampling_kwargs
-        )
-        subkeys = random.split(key, n_samples)
-        samples = tuple(
-            s for smpl_tuple in (draw(key=k) for k in subkeys)
-            for s in smpl_tuple
-        )
-    else:
-        samples = tuple(_samples)
-
-    return SampledKL(
+    draw = partial(
+        geometrically_sample_standard_hamiltonian,
         hamiltonian=hamiltonian,
         primals=primals,
-        samples=samples,
-        linearly_mirror_samples=False,
-        hamiltonian_and_gradient=hamiltonian_and_gradient
+        mirror_linear_sample=mirror_samples,
+        linear_sampling_cg=linear_sampling_cg,
+        linear_sampling_name=linear_sampling_name,
+        linear_sampling_kwargs=linear_sampling_kwargs,
+        non_linear_sampling_method=non_linear_sampling_method,
+        non_linear_sampling_name=non_linear_sampling_name,
+        non_linear_sampling_kwargs=non_linear_sampling_kwargs
     )
+    subkeys = random.split(key, n_samples)
+    # TODO: Make `geometrically_sample_standard_hamiltonian` jit-able
+    # samples_stack = lax.map(lambda k: draw(key=k), subkeys)
+    # Unpack tuple of samples
+    # samples_stack = tree_map(
+    #     lambda a: a.reshape((-1, ) + a.shape[2:]), samples_stack
+    # )
+    # samples = unstack(samples_stack)
+    samples = tuple(s for ss in map(lambda k: draw(key=k), subkeys) for s in ss)
+
+    return SampleIter(
+        mean=primals, samples=samples, linearly_mirror_samples=False
+    )
+
+
+def mean_value_and_grad(ham: Callable, *args, **kwargs):
+    """Thin wrapper around `value_and_grad` and `vmap` to apply a cost function
+    to a mean and a list of residual samples.
+    """
+    from jax import value_and_grad
+    vg = value_and_grad(ham, *args, **kwargs)
+
+    def mean_vg(
+        primals: P,
+        primals_samples: Union[None, Sequence[P], SampleIter] = None,
+        **primals_kw
+    ) -> Tuple[Any, P]:
+        ham_vg = partial(vg, **primals_kw)
+        if primals_samples is None:
+            return ham_vg(primals)
+
+        if not isinstance(primals_samples, SampleIter):
+            primals_samples = SampleIter(samples=primals_samples)
+        # TODO: Allow for different mapping methods
+        return vmap_forest_mean(ham_vg, in_axes=(0, ))(
+            tuple(primals_samples.at(primals))
+        )
+
+    return mean_vg
+
+
+def mean_hessp(ham: Callable, *args, **kwargs):
+    """Thin wrapper around `jvp`, `grad` and `vmap` to apply a binary method to
+    a primal mean, a tangent and a list of residual primal samples.
+    """
+    from jax import jvp, grad
+    jac = grad(ham, *args, **kwargs)
+
+    def mean_hp(
+        primals: P,
+        tangents: Any,
+        primals_samples: Union[None, Sequence[P], SampleIter] = None,
+        **primals_kw
+    ) -> P:
+        if primals_samples is None:
+            _, hp = jvp(partial(jac, **primals_kw), (primals, ), (tangents, ))
+            return hp
+
+        if not isinstance(primals_samples, SampleIter):
+            primals_samples = SampleIter(samples=primals_samples)
+        return vmap_forest_mean(
+            partial(mean_hp, primals_samples=None, **primals_kw),
+            in_axes=(0, None)
+        )(tuple(primals_samples.at(primals)), tangents)
+
+    return mean_hp
+
+
+def mean_metric(metric: Callable):
+    """Thin wrapper around `vmap` to apply a binary method to a primal mean, a
+    tangent and a list of residual primal samples.
+    """
+    def mean_met(
+        primals: P,
+        tangents: Any,
+        primals_samples: Union[None, Sequence[P], SampleIter] = None,
+        **primals_kw
+    ) -> P:
+        if primals_samples is None:
+            return metric(primals, tangents, **primals_kw)
+
+        if not isinstance(primals_samples, SampleIter):
+            primals_samples = SampleIter(samples=primals_samples)
+        return vmap_forest_mean(
+            partial(metric, **primals_kw), in_axes=(0, None)
+        )(tuple(primals_samples.at(primals)), tangents)
+
+    return mean_met

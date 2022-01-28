@@ -1,12 +1,17 @@
 from functools import partial
 import operator
+from typing import Any, Callable, Optional, Tuple, Union
+
 from jax import lax
 from jax import numpy as jnp
 from jax.tree_util import (
-    all_leaves, tree_leaves, tree_map, tree_structure, tree_reduce
+    all_leaves,
+    tree_leaves,
+    tree_map,
+    tree_reduce,
+    tree_structure,
+    tree_transpose,
 )
-
-from typing import Any, Callable, Optional, Tuple, Union
 
 from .sugar import is1d
 
@@ -201,6 +206,20 @@ def where(condition, x, y):
     return tree_map(jnp.where, condition, x, y)
 
 
+def stack(arrays):
+    return tree_map(lambda *el: jnp.stack(el), *arrays)
+
+
+def unstack(stack):
+    element_count = tree_leaves(stack)[0].shape[0]
+    split = partial(jnp.split, indices_or_sections=element_count)
+    unstacked = tree_transpose(
+        tree_structure(stack), tree_structure((0., ) * element_count),
+        tree_map(split, stack)
+    )
+    return tree_map(partial(jnp.squeeze, axis=0), unstacked)
+
+
 def vmap_forest(
     f: Callable,
     in_axes: Union[int, Tuple] = 0,
@@ -208,9 +227,7 @@ def vmap_forest(
     tree_transpose_output: bool = True,
     **kwargs
 ) -> Callable:
-    from functools import partial
     from jax import vmap
-    from jax import tree_util
 
     if out_axes != 0:
         raise TypeError("`out_axis` not yet supported")
@@ -234,24 +251,14 @@ def vmap_forest(
         if not isinstance(xs[i], (list, tuple)):
             te = f"expected mapped axes to be a tuple; got {type(xs[i])}"
             raise TypeError(te)
-        element_count = len(xs[i])
-        x_T = tree_map(lambda *el: jnp.stack(el), *xs[i])
+        x_T = stack(xs[i])
 
         out_T = f_map(*xs[:i], x_T, *xs[i + 1:])
         # Since `out_axes` is forced to be `0`, we don't need to worry about
         # transposing only part of the output
         if not tree_transpose_output:
             return out_T
-
-        # TODO: Report?: Looping over or casting a DeviceArray tensor to a
-        # tuple, yields NumPy arrays
-        split = partial(jnp.split, indices_or_sections=element_count)
-        out = tree_util.tree_transpose(
-            tree_util.tree_structure(out_T),
-            tree_util.tree_structure((0., ) * element_count),
-            tree_map(split, out_T)
-        )
-        return tree_map(partial(jnp.squeeze, axis=0), out)
+        return unstack(out_T)
 
     return apply
 

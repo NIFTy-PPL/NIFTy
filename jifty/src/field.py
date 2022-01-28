@@ -26,22 +26,21 @@ def _unary_op(op, name=None):
 def _broadcast_binary_op(op, lhs, rhs):
     from itertools import repeat
 
+    ts_lhs = tree_structure(lhs)
+    ts_rhs = tree_structure(rhs)
+
     flags = lhs.flags if isinstance(lhs, Field) else set()
     flags |= rhs.flags if isinstance(rhs, Field) else set()
     if "strict_domain_checking" in flags:
-        if rhs.domain != lhs.domain:
-            raise ValueError("domains are incompatible")
-    elif jnp.isscalar(lhs):
-        ts = tree_structure(rhs)
-        lhs = ts.unflatten(repeat(lhs, ts.num_leaves))
-    elif jnp.isscalar(rhs):
-        ts = tree_structure(lhs)
-        rhs = ts.unflatten(repeat(rhs, ts.num_leaves))
-
-    ts_lhs = tree_structure(lhs).num_nodes
-    ts_rhs = tree_structure(rhs).num_nodes
-    if ts_lhs != ts_rhs:
-        ve = f"invalid binary operation for {ts_lhs!r} and {ts_rhs!r}"
+        if rhs.domain != lhs.domain or ts_rhs != ts_lhs:
+            raise ValueError("domains and/or structures are incompatible")
+    # Catch non-objects scalars and 0d array-likes with a `ndim` property
+    elif jnp.isscalar(lhs) or getattr(lhs, "ndim", -1) == 0:
+        lhs = ts_rhs.unflatten(repeat(lhs, ts_rhs.num_leaves))
+    elif jnp.isscalar(rhs) or getattr(rhs, "ndim", -1) == 0:
+        rhs = ts_lhs.unflatten(repeat(rhs, ts_lhs.num_leaves))
+    elif ts_lhs.num_nodes != ts_rhs.num_nodes:
+        ve = f"invalid binary operation {op} for {ts_lhs!r} and {ts_rhs!r}"
         raise ValueError(ve)
 
     out = tree_map(op, lhs, rhs)
@@ -88,16 +87,16 @@ def matmul(lhs, rhs):
     """
     from .forest_util import dot
 
+    ts_lhs = tree_structure(lhs)
+    ts_rhs = tree_structure(rhs)
+
     flags = lhs.flags if isinstance(lhs, Field) else set()
     flags |= rhs.flags if isinstance(rhs, Field) else set()
     if "strict_domain_checking" in flags:
-        if rhs.domain != lhs.domain:
-            raise ValueError("domains are incompatible.")
-
-    ts_lhs = tree_structure(lhs).num_nodes
-    ts_rhs = tree_structure(rhs).num_nodes
-    if ts_lhs != ts_rhs:
-        ve = f"invalid binary operation for {ts_lhs!r} and {ts_rhs!r}"
+        if rhs.domain != lhs.domain or ts_rhs != ts_lhs:
+            raise ValueError("domains and/or structures are incompatible")
+    elif ts_lhs.num_nodes != ts_rhs.num_nodes:
+        ve = f"invalid operation for {ts_lhs!r} and {ts_rhs!r}"
         raise ValueError(ve)
 
     return dot(lhs, rhs)
@@ -234,7 +233,7 @@ class Field():
     # `setattr`. However, static code analyzers will not be able to infer the
     # properties then.
 
-    __add__, _radd__ = _fwd_rev_binary_op(operator.add)
+    __add__, __radd__ = _fwd_rev_binary_op(operator.add)
     __sub__, __rsub__ = _fwd_rev_binary_op(operator.sub)
     __mul__, __rmul__ = _fwd_rev_binary_op(operator.mul)
     __truediv__, __rtruediv__ = _fwd_rev_binary_op(operator.truediv)
