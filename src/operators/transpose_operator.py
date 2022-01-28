@@ -26,6 +26,8 @@ class TransposeOperator(LinearOperator):
     def __init__(self, domain, indices):
         self._domain = DomainTuple.make(domain)
         indices = tuple(indices)
+        if len(indices) != len(self._domain):
+            raise IndexError("Either too many or too few indices given.")
         self._target = DomainTuple.make(self._domain[ind] for ind in indices)
         if self._domain.size != self._target.size:
             raise ValueError("List of indices not complete")

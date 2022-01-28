@@ -320,9 +320,9 @@ class Operator(metaclass=NiftyMeta):
         Parameters
         ----------
         indices : tuple
-            If specified, it must be a tuple or list which contains a
-            permutation of [0,1,..,N-1] where N is the number of domains in
-            the target of the Operator (or the Field).
+            Must be a tuple or list which contains a permutation of
+            [0,1,..,N-1] where N is the number of domains in the target of the
+            Operator (or the Field).
         """
         from .transpose_operator import TransposeOperator
         from ..sugar import is_fieldlike
