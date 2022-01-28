@@ -1,16 +1,16 @@
 # %%
-from jax.config import config
-
-config.update("jax_enable_x64", True)
-
-import sys
-import matplotlib.pyplot as plt
 from functools import partial
+import sys
+
 from jax import numpy as jnp
 from jax import lax, random
-from jax import value_and_grad, jit
+from jax import jit, value_and_grad
+from jax.config import config
+import matplotlib.pyplot as plt
 
 import jifty1 as jft
+
+config.update("jax_enable_x64", True)
 
 seed = 42
 key = random.PRNGKey(seed)
