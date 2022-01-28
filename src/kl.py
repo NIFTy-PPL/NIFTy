@@ -436,18 +436,19 @@ def GeoMetricKL(
     )
 
 
-def mean_value_and_grad(ham: Callable):
+def mean_value_and_grad(ham: Callable, *args, **kwargs):
     """Thin wrapper around `value_and_grad` and `vmap` to apply a cost function
     to a mean and a list of residual samples.
     """
     from jax import value_and_grad
+    vg = value_and_grad(ham, *args, **kwargs)
 
-    def mean_vag(
+    def mean_vg(
         primals: P,
         primals_samples: Union[None, Sequence[P], SampleIter] = None,
         **primals_kw
     ) -> Tuple[Any, P]:
-        ham_vg = partial(value_and_grad(ham), **primals_kw)
+        ham_vg = partial(vg, **primals_kw)
         if primals_samples is None:
             return ham_vg(primals)
 
@@ -458,15 +459,15 @@ def mean_value_and_grad(ham: Callable):
             tuple(primals_samples.at(primals))
         )
 
-    return mean_vag
+    return mean_vg
 
 
-def mean_hessp(ham: Callable):
+def mean_hessp(ham: Callable, *args, **kwargs):
     """Thin wrapper around `jvp`, `grad` and `vmap` to apply a binary method to
     a primal mean, a tangent and a list of residual primal samples.
     """
     from jax import jvp, grad
-    jac = grad(ham, argnums=0)
+    jac = grad(ham, *args, **kwargs)
 
     def mean_hp(
         primals: P,
