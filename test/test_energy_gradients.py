@@ -31,13 +31,13 @@ ntries = 10
 
 
 def test_gaussian(field):
-    energy = ift.GaussianEnergy(domain=field.domain, sampling_dtype=float)
+    energy = ift.GaussianEnergy(data=None, domain=field.domain, sampling_dtype=float)
     ift.extra.check_operator(energy, field)
 
 
 def test_ScaledEnergy(field):
     icov = ift.ScalingOperator(field.domain, 1.2, np.float64)
-    energy = ift.GaussianEnergy(inverse_covariance=icov)
+    energy = ift.GaussianEnergy(data=None, inverse_covariance=icov)
     ift.extra.check_operator(energy.scale(0.3), field)
 
     lin = ift.Linearization.make_var(field, want_metric=True)

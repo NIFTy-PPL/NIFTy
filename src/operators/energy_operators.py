@@ -127,16 +127,16 @@ class LikelihoodEnergyOperator(EnergyOperator):
         return met
 
     def __matmul__(self, other):
-        return _LhChain(self, other)
+        return _LikelihoodChain(self, other)
 
     def __rmatmul__(self, other):
-        return _LhChain(other, self)
+        return _LikelihoodChain(other, self)
 
     def __add__(self, other):
-        return _LhSum(self, other)
+        return _LikelihoodSum(self, other)
 
     def __radd__(self, other):
-        return _LhSum(other, self)
+        return _LikelihoodSum(other, self)
 
     def get_metric_at(self, x):
         """Compute the Fisher information metric for a `LikelihoodEnergyOperator`
