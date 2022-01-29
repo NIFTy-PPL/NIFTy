@@ -445,6 +445,11 @@ class GaussianEnergy(LikelihoodEnergyOperator):
 
         icovdtype = self._icov.sampling_dtype
         if icovdtype is not None and data is not None and icovdtype != data.dtype:
+            for i0, i1 in [(icovdtype, data.dtype), (data.dtype, icovdtype)]:
+                if isinstance(i0, dict) and not isinstance(i1, dict):
+                    fst = list(i0.values())[0]
+                    if all(elem == fst for elem in i0.values()) and i1 == fst:
+                        return
             s = "Sampling dtype of inverse covariance does not match dtype of data.\n"
             s += f"icov.sampling_dtype: {icovdtype}\n"
             s += f"data.dtype: {data.dtype}"
