@@ -206,8 +206,7 @@ class DomainTuple:
         return DomainTuple._scalarDomain
 
     def __repr__(self):
-        subs = "\n".join(sub.__repr__() for sub in self._dom)
-        return "DomainTuple:\n"+utilities.indent(subs)
+        return f"DomainTuple.make({tuple(self)})"
 
 
 def _unpickleDomainTuple(*args):
