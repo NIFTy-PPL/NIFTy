@@ -149,7 +149,13 @@ class LikelihoodEnergyOperator(EnergyOperator):
 
 class _LikelihoodChain(LikelihoodEnergyOperator):
     def __init__(self, op1, op2):  # FIXME Refactor to oplist and introduce simplify
-        super(_LhChain, self).__init__(data=op1._data, model_data_op=op1._model_data_op @ op2)
+        if isinstance(op1, ScalingOperator):
+            data = op2._data
+            model_data_op = op2._model_data_op
+        else:
+            data = op1._data
+            model_data_op = op1._model_data_op @ op2
+        super(_LikelihoodChain, self).__init__(data=data, model_data_op=model_data_op)
         self._op1, self._op2 = op1, op2
 
     def apply(self, x):
