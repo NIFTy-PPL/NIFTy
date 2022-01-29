@@ -170,7 +170,10 @@ class _LikelihoodChain(LikelihoodEnergyOperator):
 
     def get_sqrt_data_metric_at(self, x):
         loc = self._op2(x)
-        met = self._op1.get_sqrt_data_metric_at(loc)
+        if isinstance(self._op1, ScalingOperator):  # FIXME Is this correct? Should not be scaled, right?
+            met = self._op2.get_sqrt_data_metric_at(loc)
+        else:
+            met = self._op1.get_sqrt_data_metric_at(loc)
         myassert(met.domain == met.target == self._data.domain)
         return met
 
@@ -305,6 +308,7 @@ class VariableCovarianceGaussianEnergy(LikelihoodEnergyOperator):
 
     def __init__(self, domain, residual_key, inverse_covariance_key,
                  sampling_dtype, use_full_fisher=True):
+        #super(VariableCovarianceGaussianEnergy, self).__init__(data=)
         self._kr = str(residual_key)
         self._ki = str(inverse_covariance_key)
         dom = DomainTuple.make(domain)
@@ -367,6 +371,7 @@ class VariableCovarianceGaussianEnergy(LikelihoodEnergyOperator):
 
 class _SpecialGammaEnergy(LikelihoodEnergyOperator):
     def __init__(self, residual):
+        #super(_SpecialGammaEnergy, self).__init__(data=data)
         self._domain = DomainTuple.make(residual.domain)
         self._resi = residual
         self._cplx = _iscomplex(self._resi.dtype)
@@ -553,6 +558,7 @@ class InverseGammaEnergy(LikelihoodEnergyOperator):
     """
 
     def __init__(self, beta, alpha=-0.5):
+        #super(InverseGammaEnergy, self).__init__(data=)
         if not isinstance(beta, Field):
             raise TypeError
         self._domain = DomainTuple.make(beta.domain)
@@ -599,6 +605,7 @@ class StudentTEnergy(LikelihoodEnergyOperator):
     """
 
     def __init__(self, domain, theta):
+        #super(StudentTEnergy, self).__init__(data=)
         self._domain = DomainTuple.make(domain)
         self._theta = theta
 
@@ -636,6 +643,7 @@ class BernoulliEnergy(LikelihoodEnergyOperator):
     """
 
     def __init__(self, d):
+        #super(BernoulliEnergy, self).__init__(data=)
         if not isinstance(d, Field) or not np.issubdtype(d.dtype, np.integer):
             raise TypeError
         if np.any(np.logical_and(d.val != 0, d.val != 1)):

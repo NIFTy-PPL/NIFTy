@@ -130,7 +130,7 @@ def check_operator(op, loc, tol=1e-12, ntries=100, perf_check=True,
                                only_r_differentiable)
     _check_nontrivial_constant(op, loc, tol, ntries, only_r_differentiable,
                                metric_sampling)
-    # FIXME Check special functions of LikelihoodEnergies
+    _check_likelihood_energy(op, loc)
 
 
 def assert_allclose(f1, f2, atol=0, rtol=1e-7):
@@ -411,6 +411,20 @@ def _jac_vs_finite_differences(op, loc, tol, ntries, only_r_differentiable):
                               target_dtype=dirder.dtype,
                               only_r_linear=only_r_differentiable,
                               atol=tol**2, rtol=tol**2)
+
+
+def _check_likelihood_energy(op, loc):
+    from .operators.energy_operators import LikelihoodEnergyOperator
+    if not isinstance(op, LikelihoodEnergyOperator):
+        return
+    myassert(op.domain is op._model_data_op.domain)
+    myassert(op._data.domain is op._model_data_op.target)
+    data_metric = op.get_sqrt_data_metric_at(loc)
+    metric = op.get_metric_at(loc)
+    myassert(isinstance(metric, LinearOperator))
+    myassert(isinstance(data_metric, LinearOperator))
+    myassert(metric.domain == metric.target == loc.domain)
+    myassert(data_metric.domain == data_metric.target == op._data.domain)
 
 
 def minisanity(likelihood_energy, samples, terminal_colors=True):
