@@ -220,7 +220,7 @@ def optimize_kl(likelihood_energy,
     if terminate_callback is None:
         terminate_callback = lambda x: False
 
-    if not output_directory is None:
+    if output_directory is not None:
         lfile = join(output_directory, "last_finished_iteration")
         if resume and isfile(lfile):
             with open(lfile) as f:
