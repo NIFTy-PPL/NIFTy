@@ -1,10 +1,10 @@
 from functools import partial
-from typing import Any, Callable, NamedTuple, Optional, Union
+from typing import Any, Callable, NamedTuple, Optional, Tuple, Union
 
+import numpy as np
+from jax import grad
 from jax import numpy as jnp
 from jax import random, tree_util
-from jax import grad
-import numpy as np
 
 from .disable_jax_control_flow import fori_loop
 from .hmc import AcceptedAndRejected, Q, QP, Tree
@@ -90,7 +90,7 @@ class _Sampler:
         self.max_energy_difference = max_energy_difference
 
         def sample_next_state(key,
-                              prev_position: Q) -> tuple[Any, tuple[Any, Q]]:
+                              prev_position: Q) -> Tuple[Any, Tuple[Any, Q]]:
             raise NotImplementedError()
 
         self.sample_next_state = sample_next_state
@@ -114,7 +114,7 @@ class _Sampler:
         num_samples,
         *,
         save_intermediates: bool = False
-    ) -> tuple[Chain, tuple[Any, Q]]:
+    ) -> Tuple[Chain, Tuple[Any, Q]]:
         if not isinstance(key, (jnp.ndarray, np.ndarray)):
             if isinstance(key, int):
                 key = random.PRNGKey(key)
@@ -166,7 +166,7 @@ class NUTSChain(_Sampler):
         self.max_tree_depth = max_tree_depth
 
         def sample_next_state(key,
-                              prev_position: Q) -> tuple[Tree, tuple[Any, Q]]:
+                              prev_position: Q) -> Tuple[Tree, Tuple[Any, Q]]:
             key, key_momentum, key_nuts = random.split(key, 3)
 
             resampled_momentum = sample_momentum_from_diagonal(
@@ -281,7 +281,7 @@ class HMCChain(_Sampler):
         self.num_steps = num_steps
 
         def sample_next_state(key,
-                              prev_position: Q) -> tuple[Tree, tuple[Any, Q]]:
+                              prev_position: Q) -> Tuple[Tree, Tuple[Any, Q]]:
             key, key_choose, key_momentum_resample = random.split(key, 3)
 
             resampled_momentum = sample_momentum_from_diagonal(

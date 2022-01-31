@@ -1,8 +1,8 @@
 from collections.abc import Iterable
-from typing import Any, Callable, Hashable, Mapping, TypeVar, Union
+from typing import Any, Callable, Dict, Hashable, Mapping, TypeVar, Union
 
-from jax import random
 from jax import numpy as jnp
+from jax import random
 from jax.tree_util import tree_map, tree_reduce, tree_structure, tree_unflatten
 
 from .field import Field
@@ -49,7 +49,7 @@ def ducktape(call: Callable[[I], O],
 
 
 def ducktape_left(call: Callable[[I], O],
-                  key: Hashable) -> Callable[[I], dict[Hashable, O]]:
+                  key: Hashable) -> Callable[[I], Dict[Hashable, O]]:
     def named_call(p):
         return {key: call(p)}
 
