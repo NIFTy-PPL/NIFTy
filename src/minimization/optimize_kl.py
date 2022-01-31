@@ -204,6 +204,8 @@ def optimize_kl(likelihood_energy,
         raise TypeError
     if save_strategy not in ["all", "last"]:
         raise ValueError(f"Save strategy '{save_strategy}' not supported.")
+    if output_directory is None and resume:
+        raise ValueError("Can only resume minimization if output_directory is not None")
 
     likelihood_energy = _make_callable(likelihood_energy)
     kl_minimizer = _make_callable(kl_minimizer)
@@ -218,20 +220,21 @@ def optimize_kl(likelihood_energy,
     if terminate_callback is None:
         terminate_callback = lambda x: False
 
-    lfile = join(output_directory, "last_finished_iteration")
-    if resume and isfile(lfile):
-        with open(lfile) as f:
-            last_finished_index = int(f.read())
-        initial_index = last_finished_index + 1
-        fname = _file_name_by_strategy(save_strategy, last_finished_index)
-        fname = reduce(join, [output_directory, "pickle", fname])
-        if isfile(fname + ".mean.pickle"):
-            initial_position = ResidualSampleList.load_mean(fname)
-        else:
-            sl = SampleList.load(fname)
-            myassert(sl.n_samples == 1)
-            initial_position = sl.local_item(0)
-        _load_random_state(output_directory, last_finished_index, save_strategy)
+    if not output_directory is None:
+        lfile = join(output_directory, "last_finished_iteration")
+        if resume and isfile(lfile):
+            with open(lfile) as f:
+                last_finished_index = int(f.read())
+            initial_index = last_finished_index + 1
+            fname = _file_name_by_strategy(save_strategy, last_finished_index)
+            fname = reduce(join, [output_directory, "pickle", fname])
+            if isfile(fname + ".mean.pickle"):
+                initial_position = ResidualSampleList.load_mean(fname)
+            else:
+                sl = SampleList.load(fname)
+                myassert(sl.n_samples == 1)
+                initial_position = sl.local_item(0)
+            _load_random_state(output_directory, last_finished_index, save_strategy)
 
     # Sanity check of input
     if initial_index >= total_iterations:
@@ -356,10 +359,10 @@ def optimize_kl(likelihood_energy,
                     overwrite=overwrite)
             _save_random_state(output_directory, iglobal, save_strategy)
 
-        if _MPI_master(comm(iglobal)):
-            with open(join(output_directory, "last_finished_iteration"), "w") as f:
-                f.write(str(iglobal))
-        _barrier(comm(iglobal))
+            if _MPI_master(comm(iglobal)):
+                with open(join(output_directory, "last_finished_iteration"), "w") as f:
+                    f.write(str(iglobal))
+            _barrier(comm(iglobal))
 
         if _number_of_arguments(inspect_callback) == 1:
             inp = (sl,)
