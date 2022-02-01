@@ -250,3 +250,10 @@ class PowerSpace(StructuredDomain):
     def k_lengths(self):
         """numpy.ndarray(float) : k-vector length for each bin."""
         return self._k_lengths
+
+    def __reduce__(self):
+        return (_unpicklePowerSpace, (self._harmonic_partner, self._binbounds))
+
+
+def _unpicklePowerSpace(*args):
+    return PowerSpace(*args)
