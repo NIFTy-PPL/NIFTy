@@ -1,12 +1,13 @@
-import pytest
-import scipy
 import sys
+
 from jax import numpy as jnp
 from jax.scipy import stats
-from scipy.special import comb
 from numpy.testing import assert_allclose
+import pytest
+import scipy
+from scipy.special import comb
 
-import jifty1 as jft
+import nifty8.re as jft
 
 pmp = pytest.mark.parametrize
 
@@ -38,7 +39,7 @@ def mnc2mc(mnc, wmean=True):
 # Test simple distributions with no extra parameters
 dists = [stats.cauchy, stats.expon, stats.laplace, stats.logistic, stats.norm]
 # Tuple of `rtol` and `atol` for every tested moment
-moments_tol = {1: (0., 2e-1), 2: (2e-1, 0.), 3: (4e-1, 8e-1), 4: (2., 0.)}
+moments_tol = {1: (0., 2e-1), 2: (3e-1, 0.), 3: (4e-1, 8e-1), 4: (4., 0.)}
 
 
 @pmp("distribution", dists)

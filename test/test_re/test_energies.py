@@ -7,7 +7,7 @@ from jax import random
 from jax.tree_util import tree_map
 from numpy.testing import assert_allclose
 
-import jifty1 as jft
+import nifty8.re as jft
 
 pmp = pytest.mark.parametrize
 

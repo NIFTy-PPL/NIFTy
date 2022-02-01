@@ -9,7 +9,7 @@ import numpy as np
 from numpy.testing import assert_allclose
 import pytest
 
-from jifty1 import refine
+from nifty8.re import refine
 
 pmp = pytest.mark.parametrize
 

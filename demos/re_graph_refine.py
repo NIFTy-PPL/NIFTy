@@ -6,7 +6,7 @@ from jax import random
 import matplotlib.pyplot as plt
 import numpy as np
 
-import jifty1 as jft
+import nifty8.re as jft
 
 
 def get_kernel(layer_weights, depth, n_samples=100):

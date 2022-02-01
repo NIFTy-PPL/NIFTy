@@ -4,7 +4,7 @@ from jax import grad
 from jax import numpy as jnp
 from numpy.testing import assert_allclose
 
-import jifty1 as jft
+import nifty8.re as jft
 
 pmp = pytest.mark.parametrize
 

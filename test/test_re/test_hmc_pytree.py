@@ -1,11 +1,9 @@
-import sys
-import numpy as np
 from functools import partial
 from jax import numpy as jnp
 from jax.tree_util import tree_leaves
 from numpy.testing import assert_array_equal
 
-import jifty1 as jft
+import nifty8.re as jft
 
 
 def test_hmc_pytree():

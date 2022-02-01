@@ -4,7 +4,7 @@ from functools import partial
 import jax.numpy as jnp
 import matplotlib.pyplot as plt
 
-import jifty1 as jft
+import nifty8.re as jft
 
 
 def loggaussian(x, mu, sigma):

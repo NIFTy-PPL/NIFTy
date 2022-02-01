@@ -1,11 +1,13 @@
 #!/usr/bin/env python3
 
 import sys
+
+from jax import random, value_and_grad
 import jax.numpy as jnp
-import jifty1 as jft
-import pytest
-from jax import value_and_grad, random
 from numpy.testing import assert_allclose
+import pytest
+
+import nifty8.re as jft
 
 pmp = pytest.mark.parametrize
 
@@ -44,7 +46,14 @@ def eggholder(np):
 
 
 def test_ncg_for_pytree():
-    pos = jft.Field([jnp.array(0.), (jnp.array(3.), ), {"a": jnp.array(5.)}])
+    pos = jft.Field(
+        [
+            jnp.array(0., dtype=jnp.float32),
+            (jnp.array(3., dtype=jnp.float32), ), {
+                "a": jnp.array(5., dtype=jnp.float32)
+            }
+        ]
+    )
     getters = (lambda x: x[0], lambda x: x[1][0], lambda x: x[2]["a"])
     tgt = [-10., 1., 2.]
     met = [10., 40., 2]

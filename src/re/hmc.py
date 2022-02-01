@@ -294,7 +294,7 @@ def generate_nuts_tree(
         turning=False,
         diverging=False,
         depth=0,
-        cumulative_acceptance=0.
+        cumulative_acceptance=jnp.zeros_like(initial_neg_energy)
     )
 
     def _cont_cond(loop_state):

@@ -1,8 +1,11 @@
 import sys
-from numpy import ndarray
-from jax import numpy as jnp
 
-import jifty1 as jft
+from jax import numpy as jnp
+from jax.config import config as jax_config
+from numpy import ndarray
+
+import nifty8.re as jft
+
 
 NDARRAY_TYPE = [ndarray]
 
@@ -34,7 +37,7 @@ def hashit(obj, n_chars=8) -> str:
 
 def test_hmc_hash():
     """Test sapmler output against known hash from previous commits."""
-    x0 = jnp.array([0.1, 1.223])
+    x0 = jnp.array([0.1, 1.223], dtype=jnp.float32)
     sampler = jft.HMCChain(
         potential_energy=lambda x: jnp.sum(x**2),
         inverse_mass_matrix=1.,
@@ -57,7 +60,9 @@ def test_hmc_hash():
 
 def test_nuts_hash():
     """Test sapmler output against known hash from previous commits."""
-    x0 = jnp.array([0.1, 1.223])
+    jax_config.update("jax_enable_x64", False)
+
+    x0 = jnp.array([0.1, 1.223], dtype=jnp.float32)
     sampler = jft.NUTSChain(
         potential_energy=lambda x: jnp.sum(x**2),
         inverse_mass_matrix=1.,
@@ -76,6 +81,8 @@ def test_nuts_hash():
     print(f"full hash: {results_hash}", file=sys.stderr)
     old_hash = "ba324b77e6d73afae514"
     assert results_hash == old_hash
+
+    jax_config.update("jax_enable_x64", True)
 
 
 if __name__ == "__main__":

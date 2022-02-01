@@ -14,8 +14,8 @@ import matplotlib.pyplot as plt
 import numpy as np
 from scipy.special import kv as mod_bessel2
 
-import jifty1 as jft
-from jifty1 import refine
+import nifty8.re as jft
+from nifty8.re import refine
 
 jax_config.update("jax_enable_x64", True)
 # jax_config.update("jax_debug_nans", True)

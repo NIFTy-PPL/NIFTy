@@ -7,7 +7,7 @@ from jax import jit, value_and_grad
 from jax.config import config
 import matplotlib.pyplot as plt
 
-import jifty1 as jft
+import nifty8.re as jft
 
 config.update("jax_enable_x64", True)
 

@@ -2,7 +2,7 @@ import numpy as np
 from numpy.testing import assert_allclose
 import pytest
 
-import jifty1 as jft
+import nifty8.re as jft
 
 pmp = pytest.mark.parametrize
 

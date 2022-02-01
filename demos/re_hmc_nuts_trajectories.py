@@ -12,7 +12,7 @@ import jax.numpy as jnp
 import matplotlib
 import matplotlib.pyplot as plt
 
-import jifty1 as jft
+import nifty8.re as jft
 
 # %%
 jft.hmc._DEBUG_FLAG = True
