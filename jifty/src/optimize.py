@@ -1,6 +1,6 @@
-from datetime import datetime
 import sys
-from typing import Any, Callable, Mapping, NamedTuple, Optional, Tuple, Union
+from datetime import datetime
+from typing import Any, Callable, Dict, Mapping, NamedTuple, Optional, Tuple, Union
 
 from jax import lax
 from jax import numpy as jnp
@@ -259,7 +259,7 @@ def _trust_ncg(
     jac: Optional[Callable] = None,
     hessp: Optional[Callable] = None,
     fun_and_grad: Optional[Callable] = None,
-    subproblem_kwargs: Optional[dict[str, Any]] = None,
+    subproblem_kwargs: Optional[Dict[str, Any]] = None,
     name: Optional[str] = None
 ) -> OptimizeResults:
     maxiter = 200 if maxiter is None else maxiter

@@ -1,7 +1,7 @@
 from collections.abc import Mapping
 from functools import partial
 import sys
-from typing import Callable, Optional, Union
+from typing import Callable, Optional, Union, Dict, Tuple
 
 from jax import numpy as jnp
 
@@ -373,7 +373,7 @@ class CorrelatedFieldMaker():
         return self.amplitude_total_offset
 
     @property
-    def fluctuations(self) -> tuple[Callable, ...]:
+    def fluctuations(self) -> Tuple[Callable, ...]:
         """Returns the added fluctuations, i.e. un-normalized amplitudes
 
         Their scales are only meaningful relative to one another. Their
@@ -381,7 +381,7 @@ class CorrelatedFieldMaker():
         """
         return tuple(self._fluctuations)
 
-    def get_normalized_amplitudes(self) -> tuple[Callable, ...]:
+    def get_normalized_amplitudes(self) -> Tuple[Callable, ...]:
         """Returns the normalized amplitude operators used in the final model
 
         The amplitude operators are corrected for the otherwise degenerate
@@ -423,7 +423,7 @@ class CorrelatedFieldMaker():
 
         return power
 
-    def finalize(self) -> tuple[Callable, dict[str, ShapeWithDtype]]:
+    def finalize(self) -> Tuple[Callable, Dict[str, ShapeWithDtype]]:
         """Finishes off the model construction process and returns the
         constructed operator.
         """
