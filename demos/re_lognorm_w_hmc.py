@@ -108,7 +108,7 @@ for i in range(n_mgvi_iterations):
         }
     )
     mkl_pos = opt_state.x
-    msg = f"Post MGVI Iteration {i}: Energy {ham(mkl_pos):2.4e}"
+    msg = f"Post MGVI Iteration {i}: Energy {mg_samples.at(mkl_pos).mean(ham):2.4e}"
     print(msg, file=sys.stderr)
     mgvi_positions.append(mkl_pos)
 
@@ -158,7 +158,7 @@ for i in range(n_geovi_iterations):
         }
     )
     gkl_pos = opt_state.x
-    msg = f"Post geoVI Iteration {i}: Energy {ham(gkl_pos):2.4e}"
+    msg = f"Post geoVI Iteration {i}: Energy {geo_samples.at(gkl_pos).mean(ham):2.4e}"
     print(msg, file=sys.stderr)
 
 # %%

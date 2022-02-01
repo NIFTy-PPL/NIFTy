@@ -144,7 +144,7 @@ for i in range(n_mgvi_iterations):
         }
     )
     mkl_pos = opt_state.x
-    msg = f"Post MGVI Iteration {i}: Energy {ham(mkl_pos):2.4e}"
+    msg = f"Post MGVI Iteration {i}: Energy {samples.at(mkl_pos).mean(ham):2.4e}"
     print(msg, file=sys.stderr)
 
 # %%

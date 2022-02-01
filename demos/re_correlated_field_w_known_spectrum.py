@@ -118,7 +118,7 @@ for i in range(n_mgvi_iterations):
     pos = opt_state.x
     print(
         (
-            f"Post MGVI Iteration {i}: Energy {samples.at(pos).mean(ham)[0]:2.4e}"
+            f"Post MGVI Iteration {i}: Energy {samples.at(pos).mean(ham):2.4e}"
             f"; Cos-Sim {cosine_similarity(pos.val, pos_truth.val):2.3%}"
             f"; #NaNs {jnp.isnan(pos.val).sum()}"
         ),

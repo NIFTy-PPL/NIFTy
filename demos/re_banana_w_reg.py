@@ -121,7 +121,7 @@ for i in range(n_mgvi_iterations):
     mkl_pos = opt_state.x
     print(
         (
-            f"Post MGVI Iteration {i}: Energy {ham(mkl_pos):2.4e}"
+            f"Post MGVI Iteration {i}: Energy {mg_samples.at(mkl_pos).mean(ham):2.4e}"
             f"; #NaNs {jnp.isnan(mkl_pos).sum()}"
         ),
         file=sys.stderr
