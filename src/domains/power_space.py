@@ -39,7 +39,7 @@ class PowerSpace(StructuredDomain):
             The bin bounds requested for this PowerSpace. The array
             must be sorted and strictly ascending. The first entry is the right
             boundary of the first bin, and the last entry is the left boundary
-            of the last bin, i.e. thee will be `len(binbounds)+1` bins in
+            of the last bin, i.e. there will be `len(binbounds)+1` bins in
             total, with the first and last bins reaching to -+infinity,
             respectively.
     """
@@ -250,3 +250,10 @@ class PowerSpace(StructuredDomain):
     def k_lengths(self):
         """numpy.ndarray(float) : k-vector length for each bin."""
         return self._k_lengths
+
+    def __reduce__(self):
+        return (_unpicklePowerSpace, (self._harmonic_partner, self._binbounds))
+
+
+def _unpicklePowerSpace(*args):
+    return PowerSpace(*args)

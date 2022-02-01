@@ -139,7 +139,7 @@ def main():
                               ground_truth_position=mock_position,
                               plottable_operators={"signal": signal, "power spectrum 1": pspec1,
                                                    "power spectrum 2": pspec2},
-                              callback=callback)
+                              inspect_callback=callback)
 
     # Plotting
     filename_res = filename.format("results")
@@ -148,7 +148,7 @@ def main():
     plot.add(mean, title="Posterior Mean")
     plot.add(ift.sqrt(var), title="Posterior Standard Deviation")
 
-    n_samples = samples.n_samples()
+    n_samples = samples.n_samples
     plot.add(list(samples.iterator(pspec1)) + [samples.average(pspec1.log()).exp(),
               pspec1.force(mock_position)],
              title="Sampled Posterior Power Spectrum 1",

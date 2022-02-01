@@ -41,7 +41,24 @@ def _get_sample_list(communicator, cls):
         reference = [mean + ss for ss in samples] + [mean - ss for ss in samples]
         samples = samples + samples
         return ift.ResidualSampleList(mean, samples, neg, communicator), reference
+    elif cls == "PartiallyEmptyResidualSampleList":
+        if communicator is None or communicator.Get_rank() == 0:
+            neg = [False]
+            resi = samples[0:1]
+        else:
+            neg = resi = []
+        return ift.ResidualSampleList(mean, resi, neg, communicator), [mean + samples[0]]
+    elif cls == "PartiallyEmptySampleList":
+        if communicator is None or communicator.Get_rank() == 0:
+            local_samples = samples[0:1]
+        else:
+            local_samples = []
+        return ift.SampleList(local_samples, comm=communicator, domain=samples[0].domain), samples[0:1]
     raise NotImplementedError
+
+
+all_cls = ["ResidualSampleList", "SampleList", "PartiallyEmptyResidualSampleList",
+           "PartiallyEmptySampleList"]
 
 
 def _get_ops(sample_list):
@@ -51,8 +68,9 @@ def _get_ops(sample_list):
             ift.ducktape(None, dom, "a") @ ift.ScalingOperator(dom, 1.).exp()]
 
 
-def test_sample_list(comm):
-    sl, samples = _get_sample_list(comm, "SampleList")
+@pmp("cls", ["SampleList", "PartiallyEmptySampleList"])
+def test_sample_list(comm, cls):
+    sl, samples = _get_sample_list(comm, cls)
     assert comm == sl.comm
 
     for op in _get_ops(sl):
@@ -61,11 +79,12 @@ def test_sample_list(comm):
             [sc.add(ss) for ss in samples]
         else:
             [sc.add(op(ss)) for ss in samples]
-        mean, var = sl.sample_stat(op)
-        ift.extra.assert_allclose(mean, sl.average(op))
-        ift.extra.assert_allclose(mean, sc.mean)  # FIXME Why does this not fail for comm != None?
-        if comm is None:
-            ift.extra.assert_allclose(var, sc.var)
+        if sl.n_samples > 1:
+            mean, var = sl.sample_stat(op)
+            ift.extra.assert_allclose(mean, sl.average(op))
+            ift.extra.assert_allclose(mean, sc.mean)  # FIXME Why does this not fail for comm != None?
+            if comm is None:
+                ift.extra.assert_allclose(var, sc.var)
 
         samples = list(samples)
         if op is not None:
@@ -75,19 +94,20 @@ def test_sample_list(comm):
             ift.extra.assert_equal(s0, s1)
 
         if comm is None:
-            assert len(samples) == sl.n_samples()
+            assert len(samples) == sl.n_samples
         else:
-            assert len(samples) <= sl.n_samples()
+            assert len(samples) <= sl.n_samples
 
 
-@pmp("cls", ["ResidualSampleList", "SampleList"])
+@pmp("cls", all_cls)
 def test_load_and_save(comm, cls):
     if comm is None and ift.utilities.get_MPI_params()[1] > 1:
         pytest.skip()
 
     sl, _ = _get_sample_list(comm, cls)
     sl.save("sl")
-    sl1 = getattr(ift, cls).load("sl", comm)
+    lcls = cls[14:] if cls[:14] == "PartiallyEmpty" else cls
+    sl1 = getattr(ift, lcls).load("sl", comm)
 
     for s0, s1 in zip(sl.local_iterator(), sl1.local_iterator()):
         ift.extra.assert_equal(s0, s1)
@@ -107,7 +127,7 @@ def test_load_mean(comm):
     ift.extra.assert_allclose(m1, m2)
 
 
-@pmp("cls", ["ResidualSampleList", "SampleList"])
+@pmp("cls", all_cls)
 @pmp("mean", [False, True])
 @pmp("std", [False, True])
 @pmp("samples", [False, True])
@@ -116,6 +136,8 @@ def test_save_to_hdf5(comm, cls, mean, std, samples):
     if comm is None and ift.utilities.get_MPI_params()[1] > 1:
         pytest.skip()
     sl, _ = _get_sample_list(comm, cls)
+    if sl.n_samples < 2 and std:
+        pytest.skip()
     for op in _get_ops(sl):
         if not mean and not std and not samples:
             with pytest.raises(ValueError):

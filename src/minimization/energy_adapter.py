@@ -23,7 +23,8 @@ from ..linearization import Linearization
 from ..minimization.energy import Energy
 from ..multi_domain import MultiDomain
 from ..sugar import from_random
-from ..utilities import allreduce_sum, myassert
+from ..utilities import (allreduce_sum, get_MPI_params_from_comm, myassert,
+                         shareRange)
 
 
 class EnergyAdapter(Energy):
@@ -204,8 +205,9 @@ class StochasticEnergyAdapter(Energy):
         samdom = MultiDomain.make(samdom)
         noise = []
         sseq = random.spawn_sseq(n_samples)
-        from .sample_list import SampleListBase
-        for i in SampleListBase.local_indices(n_samples, comm):
+
+        ntask, rank, _ = get_MPI_params_from_comm(comm)
+        for i in range(*shareRange(n_samples, ntask, rank)):
             with random.Context(sseq[i]):
                 rnd = from_random(samdom)
                 noise.append(rnd)

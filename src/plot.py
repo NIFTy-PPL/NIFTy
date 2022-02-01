@@ -374,6 +374,8 @@ def plottable2D(fld, f_space=1):
         x_space = 1 - f_space
         if (not isinstance(dom[f_space], RGSpace)) or len(dom[f_space].shape) != 1:
             return False
+    elif len(dom) == 0:
+        return False
     if not isinstance(dom[x_space], (RGSpace, HPSpace, GLSpace)):
         return False
     if isinstance(dom[x_space], RGSpace) and not len(dom[x_space].shape) == 2:

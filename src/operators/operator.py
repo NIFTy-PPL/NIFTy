@@ -263,7 +263,7 @@ class Operator(metaclass=NiftyMeta):
         if not is_operator(self):
             return NotImplemented
         if not isinstance(self.target, MultiDomain):
-            raise TypeError("Only Operators with a MultiDomain as target get be subscipted.")
+            raise TypeError("Only Operators with a MultiDomain as target can be subscripted.")
         return ducktape(None, self, key) @ self
 
     def apply(self, x):
@@ -303,32 +303,45 @@ class Operator(metaclass=NiftyMeta):
         return self @ x
 
     def ducktape(self, name):
-        from ..sugar import is_operator
-        from .simple_linear_operators import ducktape, DomainChangerAndReshaper
-        from ..domain_tuple import DomainTuple
-        from ..domains.domain import Domain
-        from ..multi_domain import MultiDomain
+        from ..sugar import is_operator, makeDomain
+        from .simple_linear_operators import DomainChangerAndReshaper, ducktape
 
         if not is_operator(self):
             raise RuntimeError("ducktape works only on operators")
-        if isinstance(name, (DomainTuple, Domain, MultiDomain)):
-            return self @ DomainChangerAndReshaper(name, self.domain)
-        return self @ ducktape(self, None, name)
+
+        if isinstance(name, str):  # convert to MultiDomain
+            return self @ ducktape(self, None, name)
+        else:  # convert domain
+            newdom = makeDomain(name)
+            return self @ DomainChangerAndReshaper(newdom, self.domain)
 
     def ducktape_left(self, name):
-        from ..sugar import is_fieldlike, is_linearization, is_operator
-        from .simple_linear_operators import ducktape, DomainChangerAndReshaper
-        from ..domain_tuple import DomainTuple
-        from ..domains.domain import Domain
-        from ..multi_domain import MultiDomain
+        from ..sugar import is_fieldlike, is_operator, makeDomain
+        from .simple_linear_operators import DomainChangerAndReshaper, ducktape
 
-        if isinstance(name, (DomainTuple, Domain, MultiDomain)):
+        if isinstance(name, str):  # convert to MultiDomain
+            tgt = self.target if is_operator(self) else self.domain
+            return ducktape(None, tgt, name)(self)
+        else:  # convert domain
+            newdom = makeDomain(name)
             dom = self.domain if is_fieldlike(self) else self.target
-            return DomainChangerAndReshaper(dom, name)(self)
-        if is_operator(self):
-            return ducktape(None, self, name) @ self
-        if is_fieldlike(self) or is_linearization(self):
-            return ducktape(None, self.domain, name)(self)
+            return DomainChangerAndReshaper(dom, newdom)(self)
+
+    def transpose(self, indices):
+        """Transposes a Field.
+
+        Parameters
+        ----------
+        indices : tuple
+            Must be a tuple or list which contains a permutation of
+            [0,1,..,N-1] where N is the number of domains in the target of the
+            Operator (or the Field).
+        """
+        from .transpose_operator import TransposeOperator
+        from ..sugar import is_fieldlike
+
+        dom = self.domain if is_fieldlike(self) else self.target
+        return TransposeOperator(dom, indices)(self)
 
     def __repr__(self):
         return self.__class__.__name__
