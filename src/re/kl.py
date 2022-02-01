@@ -3,7 +3,7 @@ from typing import Any, Callable, Optional, Sequence, Tuple, TypeVar, Union
 
 from jax import lax
 from jax import random
-from jax.tree_util import Partial, register_pytree_node_class, tree_map
+from jax.tree_util import Partial, register_pytree_node_class
 
 from . import conjugate_gradient
 from .forest_util import unstack, vmap_forest, vmap_forest_mean
