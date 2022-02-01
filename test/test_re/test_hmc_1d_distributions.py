@@ -58,8 +58,8 @@ def test_moment_consistency(distribution, plot=False):
         42, jnp.array(1.03890), num_samples=1000, save_intermediates=True
     )
 
-    unique, counts = jnp.unique(chain.depths, return_counts=True)
-    depths_frequencies = jnp.asarray((unique, counts)).T
+    # unique, counts = jnp.unique(chain.depths, return_counts=True)
+    # depths_frequencies = jnp.asarray((unique, counts)).T
 
     if plot is True:
         import matplotlib.pyplot as plt
