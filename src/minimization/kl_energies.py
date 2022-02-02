@@ -51,7 +51,7 @@ def _reduce_by_keys(field, operator, keys):
 
     Parameters
     ----------
-    field : Field or MultiField
+    field : :class:`nifty8.field.Field` or :class:`nifty8.multi_field.MultiField`
         Potentially partially constant input field.
     operator : Operator
         Operator into which `field` is partially inserted.
@@ -183,9 +183,9 @@ def SampledKLEnergy(position, hamiltonian, n_samples, minimizer_sampling,
 
     Parameters
     ----------
-    position : Field
+    position : :class:`nifty8.field.Field`
         Expansion point of the coordinate transformation.
-    hamiltonian : StandardHamiltonian
+    hamiltonian : :class:`nifty8.operators.energy_operators.StandardHamiltonian`
         Hamiltonian of the approximated probability distribution.
     n_samples : integer
         Number of samples used to stochastically estimate the KL.

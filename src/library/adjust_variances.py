@@ -44,9 +44,9 @@ def make_adjust_variances_hamiltonian(a,
     xi : Operator
         Field Adapter selecting a part of position.
         xi is desired to be a Gaussian white Field.
-    position : Field, MultiField
+    position : :class:`nifty8.field.Field`, :class:`nifty8.multi_field.MultiField`
         Contains the initial values for the operators a and xi, to be adjusted
-    samples : Field, MultiField
+    samples : :class:`nifty8.field.Field`, :class:`nifty8.multi_field.MultiField`
         Residual samples of position.
     scaling : Float
         Optional rescaling of the Likelihood.
@@ -55,7 +55,7 @@ def make_adjust_variances_hamiltonian(a,
 
     Returns
     -------
-    StandardHamiltonian
+    :class:`nifty8.operators.energy_operators.StandardHamiltonian`
         A Hamiltonian that can be used for further minimization.
     """
 
@@ -91,7 +91,7 @@ def do_adjust_variances(position, A, minimizer, xi_key='xi', samples=[]):
 
     Parameters
     ----------
-    position : Field, MultiField
+    position : :class:`nifty8.field.Field`, :class:`nifty8.multi_field.MultiField`
         Contains the initial values for amplitude_operator and the key xi_key,
         to be adjusted.
     A : Operator
@@ -101,7 +101,7 @@ def do_adjust_variances(position, A, minimizer, xi_key='xi', samples=[]):
     xi_key : String
         Key of the Field containing undesired variations. This Field is
         contained in position.
-    samples : Field, MultiField, optional
+    samples : :class:`nifty8.field.Field`, :class:`nifty8.multi_field.MultiField`, optional
         Residual samples of position. If samples are supplied then phi remains
         only approximately constant. Default: [].
 

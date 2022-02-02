@@ -34,7 +34,7 @@ class LineEnergy:
         self.energy.position = zero_point + line_position*line_direction
     energy : Energy
         The Energy object which will be evaluated along the given direction.
-    line_direction : Field
+    line_direction : :class:`nifty8.field.Field`
         Direction used for line evaluation. Does not have to be normalized.
     offset :  float *optional*
         Indirectly defines the zero point of the line via the equation
@@ -156,7 +156,7 @@ class LineSearch(metaclass=NiftyMeta):
         energy : Energy
             Energy object from which we will calculate the energy and the
             gradient at a specific point.
-        pk : Field
+        pk : :class:`nifty8.field.Field`
             Vector pointing into the search direction.
         f_k_minus_1 : float, optional
             Value of the fuction (which is being minimized) at the k-1

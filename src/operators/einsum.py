@@ -174,7 +174,7 @@ class LinearEinsum(LinearOperator):
     ----------
     domain : Domain, DomainTuple or tuple of Domain
         The operator's input domain.
-    mf : MultiField
+    mf : :class:`nifty8.multi_field.MultiField`
         The first part of the left-hand side of the einsum.
     subscripts : str
         The subscripts which is passed to einsum. Everything before the very

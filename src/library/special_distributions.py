@@ -117,7 +117,7 @@ class InverseGammaOperator(Operator):
         time the domain and the target of the operator.
     alpha : float
         The alpha-parameter of the inverse-gamma distribution.
-    q : float or Field
+    q : float or :class:`nifty8.field.Field`
         The q-parameter of the inverse-gamma distribution.
     mode: float
         The mode of the inverse-gamma distribution.

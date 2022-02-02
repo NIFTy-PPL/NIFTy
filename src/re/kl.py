@@ -77,7 +77,9 @@ def _sample_standard_hamiltonian(
         return None, met_smpl
 
 
-def sample_standard_hamiltonian(*args, **kwargs):
+def sample_standard_hamiltonian(
+    hamiltonian: StandardHamiltonian, *args, **kwargs
+):
     r"""Draws a sample of which the covariance is the metric or the inverse
     metric of the Hamiltonian.
 
@@ -109,7 +111,7 @@ def sample_standard_hamiltonian(*args, **kwargs):
 
     Parameters
     ----------
-    hamiltonian: StandardHamiltonian
+    hamiltonian:
         Hamiltonian with standard prior from which to draw samples.
     primals : tree-like structure
         Position at which to draw samples.
@@ -127,7 +129,7 @@ def sample_standard_hamiltonian(*args, **kwargs):
         Sample of which the covariance is the inverse metric.
     """
     inv_met_smpl, _ = _sample_standard_hamiltonian(
-        *args, from_inverse=True, **kwargs
+        hamiltonian, *args, from_inverse=True, **kwargs
     )
     return inv_met_smpl
 
@@ -151,7 +153,7 @@ def geometrically_sample_standard_hamiltonian(
 
     Parameters
     ----------
-    hamiltonian: StandardHamiltonian
+    hamiltonian:
         Hamiltonian with standard prior from which to draw samples.
     primals : tree-like structure
         Position at which to draw samples.

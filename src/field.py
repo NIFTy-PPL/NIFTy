@@ -280,7 +280,7 @@ class Field(Operator):
 
         Parameters
         ----------
-        x : Field
+        x : :class:`nifty8.field.Field`
 
         Returns
         -------
@@ -298,7 +298,7 @@ class Field(Operator):
 
         Parameters
         ----------
-        x : Field
+        x : :class:`nifty8.field.Field`
             x must be defined on the same domain as `self`.
 
         spaces : None, int or tuple of int
@@ -330,7 +330,7 @@ class Field(Operator):
 
         Parameters
         ----------
-        x : Field
+        x : :class:`nifty8.field.Field`
             x must be defined on the same domain as `self`.
 
         Returns

@@ -159,7 +159,7 @@ class Field():
 
         Returns
         -------
-        unflattened_tree : Field
+        unflattened_tree : :class:`nifty8.field.Field`
             Re-constructed field.
         """
         return cls(*children, domain=aux_data[0], flags=aux_data[1])

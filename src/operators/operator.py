@@ -271,7 +271,7 @@ class Operator(metaclass=NiftyMeta):
 
         Parameters
         ----------
-        x : Field or MultiField
+        x : :class:`nifty8.field.Field` or :class:`nifty8.multi_field.MultiField`
             Input on which the operator shall act. Needs to be defined on
             :attr:`domain`.
         """

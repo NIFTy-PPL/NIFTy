@@ -106,7 +106,7 @@ def check_operator(op, loc, tol=1e-12, ntries=100, perf_check=True,
     ----------
     op : Operator
         Operator which shall be checked.
-    loc : Field or MultiField
+    loc : :class:`nifty8.field.Field` or :class:`nifty8.multi_field.MultiField`
         An Field or MultiField instance which has the same domain
         as op. The location at which the gradient is checked
     tol : float
@@ -433,7 +433,7 @@ def minisanity(data, metric_at_pos, modeldata_operator, samples, terminal_colors
 
     Parameters
     ----------
-    data : Field or MultiField
+    data : :class:`nifty8.field.Field` or :class:`nifty8.multi_field.MultiField`
         Data which is subtracted from the output of `model_data`.
 
     metric_at_pos : function
