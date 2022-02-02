@@ -444,8 +444,6 @@ class _FunctionApplier(Operator):
                 from jax.tree_util import tree_map
 
                 jax_expr_part = partial(tree_map, jax_expr_part)
-            else:
-                assert isinstance(self.domain, DomainTuple)
             self._jax_expr = jax_expr_part
         except ImportError:
             self._jax_expr = None

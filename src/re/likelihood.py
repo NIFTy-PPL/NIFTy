@@ -249,11 +249,9 @@ class Likelihood():
             raise ValueError(ve)
 
         def split_kwargs(**kwargs):
-            if left_argnames is None:
-                assert right_argnames is not None
+            if left_argnames is None:  # right_argnames must be not None
                 right_kw, left_kw = split(kwargs, right_argnames)
-            else:
-                assert right_argnames is None
+            else:  # right_argnames must be None
                 left_kw, right_kw = split(kwargs, left_argnames)
             return left_kw, right_kw
 

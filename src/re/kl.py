@@ -316,7 +316,8 @@ class SampleIter():
 
     @classmethod
     def tree_unflatten(cls, aux, children):
-        assert len(aux) == 1 and len(children) == 2
+        if len(aux) != 1 or len(children) != 2:
+            raise ValueError()
         return cls(
             mean=children[0],
             samples=children[1],

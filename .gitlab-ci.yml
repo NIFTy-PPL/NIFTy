@@ -14,7 +14,6 @@ stages:
 check_no_asserts:
   image: debian:stable-slim
   stage: static_checks
-  allow_failure: true
   before_script:
     - ls
   script:

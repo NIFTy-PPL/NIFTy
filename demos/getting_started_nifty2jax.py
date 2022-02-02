@@ -81,7 +81,7 @@ pow_spec = pow_spec_nft.jax_expr
 signal = signal_nft.jax_expr
 # Convenience method to get JAX expression and domain
 signal_response, pt = ift.nifty2jax.convert(signal_response_nft, float)
-assert signal_response_nft.jax_expr is signal_response
+ift.myassert(signal_response_nft.jax_expr is signal_response)
 
 noise_cov = 0.5**2
 
@@ -327,7 +327,7 @@ for dims in dimensions_to_test:
     _ = h(r)  # Warm-Up
 
     np.testing.assert_allclose(h(r)[0], h_nft(r)[0])
-    assert all(tree_map(np.allclose, h(r)[1].val, h_nft(r)[1]).values())
+    ift.myassert(all(tree_map(np.allclose, h(r)[1].val, h_nft(r)[1]).values()))
     ti = timeit(lambda: h(r)[0].block_until_ready())
     ti_n = timeit(lambda: h_nft(r))
 

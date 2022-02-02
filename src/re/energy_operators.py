@@ -56,7 +56,8 @@ def _get_cov_inv_and_std_inv(
         def std_inv(tangents):
             return noise_cov_inv_sqrt * tangents
 
-    assert callable(cov_inv) and callable(std_inv)
+    if not (callable(cov_inv) and callable(std_inv)):
+        raise ValueError("received un-callable input")
     return cov_inv, std_inv
 
 

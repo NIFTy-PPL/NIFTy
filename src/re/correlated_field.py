@@ -10,6 +10,11 @@ from .stats_distributions import lognormal_prior, normal_prior
 from .sugar import ducktape
 
 
+def _safe_assert(condition):
+    if not condition:
+        raise AssertionError()
+
+
 def hartley(p, axes=None):
     from jax.numpy import fft
 
@@ -114,8 +119,8 @@ def non_parametric_amplitude(
         flexibility = ducktape(flexibility, prefix + "flexibility")
         ptree[prefix + "flexibility"] = ShapeWithDtype(())
         # Register the parameters for the spectrum
-        assert log_vol is not None
-        assert rel_log_mode_len.ndim == log_vol.ndim == 1
+        _safe_assert(log_vol is not None)
+        _safe_assert(rel_log_mode_len.ndim == log_vol.ndim == 1)
         ptree[prefix + "spectrum"] = ShapeWithDtype((2, ) + log_vol.shape)
     if asperity is not None:
         asperity = ducktape(asperity, prefix + "asperity")
@@ -128,7 +133,7 @@ def non_parametric_amplitude(
         ln_spectrum = slope
 
         if flexibility is not None:
-            assert log_vol is not None
+            _safe_assert(log_vol is not None)
             xi_spc = primals[prefix + "spectrum"]
             flx = flexibility(primals)
             sig_flx = flx * jnp.sqrt(log_vol)
@@ -283,10 +288,10 @@ class CorrelatedFieldMaker():
             # Transform the unique modes to log-space for the amplitude model
             um = um.at[1:].set(jnp.log(um[1:]))
             um = um.at[1:].add(-um[1])
-            assert um[0] == 0.
+            _safe_assert(um[0] == 0.)
             domain["relative_log_mode_lengths"] = um
             log_vol = um[2:] - um[1:-1]
-            assert um.shape[0] - 2 == log_vol.shape[0]
+            _safe_assert(um.shape[0] - 2 == log_vol.shape[0])
             domain["log_volume"] = log_vol
         else:
             ve = f"invalid `harmonic_domain_type` {harmonic_domain_type!r}"

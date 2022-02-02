@@ -110,7 +110,6 @@ def convert(op: Operator, dtype=float) -> Tuple[Any, Any]:
     parameter_tree = jft.Field(parameter_tree)
 
     if isinstance(op, (Field, MultiField)):
-        assert op.jax_expr is None
         expr = jft.Field(op.val)
     else:
         expr = op.jax_expr

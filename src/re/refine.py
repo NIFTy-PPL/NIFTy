@@ -51,7 +51,8 @@ def layer_refinement_matrices(
     if _coarse_size % 2 != 1:
         raise ValueError("only odd numbers allowed for `_coarse_size`")
     fsz = int(_fine_size)  # fine size
-    assert fsz == 2
+    if fsz != 2:  # TODO
+        raise NotImplementedError()
     if _fine_size % 2 != 0:
         raise ValueError("only even numbers allowed for `_fine_size`")
 
@@ -150,7 +151,8 @@ def refine_conv_general(
     if _coarse_size % 2 != 1:
         raise ValueError("only odd numbers allowed for `_coarse_size`")
     fsz = int(_fine_size)  # fine size
-    assert fsz == 2
+    if fsz != 2:  # TODO
+        raise NotImplementedError()
     if _fine_size % 2 != 0:
         raise ValueError("only even numbers allowed for `_fine_size`")
     olf = olf.reshape((fsz**n_dim, ) + (csz, ) * (n_dim - 1) + (1, csz))

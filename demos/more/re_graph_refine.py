@@ -34,7 +34,8 @@ def fwd(xi):
         if layers[-1].size > 2:
             lvl = jnp.convolve(lvl, kernel, mode="same")
         layers += [0.5 * lvl.reshape(-1, 2).sum(axis=1)]
-    assert len(layers) == len(layer_wgt)
+    if len(layers) != len(layer_wgt):
+        raise ValueError()
 
     field = offset
     for d, (wgt, lvl) in enumerate(zip(layer_wgt, layers)):
