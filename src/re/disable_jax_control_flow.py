@@ -1,7 +1,5 @@
 from jax import lax
 
-# WARNING: mostly ripped from https://num.pyro.ai/en/stable/_modules/numpyro/util.html
-
 _DISABLE_CONTROL_FLOW_PRIM = False
 
 
