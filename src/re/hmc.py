@@ -65,7 +65,7 @@ def sample_momentum_from_diagonal(*, key, mass_matrix_sqrt):
     Parameters
     ----------
     key: ndarray
-        a PRNGKey used as the random key.
+        PRNGKey used as the random key.
     mass_matrix_sqrt: ndarray
         The left square-root mass matrix (i.e. square-root of the inverse
         diagonal covariance) to use for sampling. Diagonal matrix represented
@@ -91,7 +91,8 @@ def leapfrog_step(
     Parameters
     ----------
     potential_energy_gradient: Callable[[ndarray], float]
-        Potential energy gradient part of the hamiltonian (V). Depends on position only.
+        Potential energy gradient part of the hamiltonian (V). Depends on
+        position only.
     qp: QP
         Point in position and momentum space from which to start integration.
     step_size: float
@@ -245,27 +246,29 @@ def generate_nuts_tree(
     Parameters
     ----------
     initial_qp: QP
-        starting (position, momentum) pair
-        WARNING: momentum must be resampled from conditional distribution BEFORE passing into this function!
+        Starting pair of (position, momentum). **NOTE**, the momentum must be
+        resampled from conditional distribution **BEFORE** passing it into this
+        function!
     key: ndarray
-        a PRNGKey used as the random key
+        PRNGKey used as the random key.
     step_size: float
-        The step size (usually called epsilon) for the leapfrog integrator.
+        Step size (usually called epsilon) for the leapfrog integrator.
     max_tree_depth: int
-        The maximum depth of the trajectory tree before expansion is terminated
-        and value is sampled even if the U-turn condition is not met.
-        The maximum number of points (/integration steps) per trajectory is
-            N = 2**max_tree_depth
-        Memory requirements of this function are linear in max_tree_depth, i.e. logarithmic in trajectory length.
-        JIT: static argument
+        The maximum depth of the trajectory tree before the expansion is
+        terminated. At the maximum iteration depth, the current value is
+        returned even if the U-turn condition is not met. The maximum number of
+        points (/integration steps) per trajectory is :math:`N =
+        2^{\\mathrm{max\\_tree\\_depth}}`. This function requires memory linear
+        in max_tree_depth, i.e. logarithmic in trajectory length. It is used to
+        statically allocate memory in advance.
     stepper: Callable[[float, Q, QP], QP]
         The function that performs (Leapfrog) steps. Takes as arguments (in order)
-            step size (containing the direction): float
-            inverse mass matrix: Q
-            starting point: QP
+        1) step size (containing the direction): float ,
+        2) inverse mass matrix: Q ,
+        3) starting point: QP .
     potential_energy: Callable[[Q], float]
-        The potential energy, of the distribution to be sampled from.
-        Takes only the position part (QP.position) as argument
+        The potential energy, of the distribution to be sampled from. Takes
+        only the position part (QP.position) as argument.
     kinetic_energy: Callable[[Q, Q], float], optional
         Mapping of the momentum to its corresponding kinetic energy. As
         argument the function takes the inverse mass matrix and the momentum.
@@ -403,32 +406,35 @@ def iterative_build_tree(
     max_energy_difference
 ):
     """
-    Starting from either the left or right endpoint of a given tree, builds a new adjacent tree of the same size.
+    Starting from either the left or right endpoint of a given tree, builds a
+    new adjacent tree of the same size.
 
     Parameters
     ----------
     key: ndarray
-        randomness uses to choose a sample when adding QPs to the tree
+        PRNGKey to choose a sample when adding QPs to the tree.
     initial_tree: Tree
         Tree to be extended (doubled) on the left or right.
     step_size: float
         The step size (usually called epsilon) for the leapfrog integrator.
     go_right: bool
-        If go_right start at the right end, going right else start at the left end, going left.
+        If `go_right` start at the right end, going right else start at the
+        left end, going left.
     stepper: Callable[[float, Q, QP], QP]
         The function that performs (Leapfrog) steps. Takes as arguments (in order)
-            step size (containing the direction): float
-            inverse mass matrix: Q
-            starting point: QP
+        1) step size (containing the direction): float ,
+        2) inverse mass matrix: Q ,
+        3) starting point: QP .
     potential_energy: Callable[[Q], float]
-        The potential energy, of the distribution to be sampled from.
-        Takes only the position part (QP.position) as argument
+        Potential energy, of the distribution to be sampled from. Takes
+        only the position part (QP.position) as argument.
     kinetic_energy: Callable[[Q, Q], float], optional
         Mapping of the momentum to its corresponding kinetic energy. As
         argument the function takes the inverse mass matrix and the momentum.
     max_tree_depth: int
-        An upper bound on the 'depth' argument, but has no effect on the functions behaviour.
-        It's only required to statically set the size of the `S` array (Q).
+        An upper bound on the 'depth' argument, but has no effect on the
+        functions behaviour. It's only required to statically set the size of
+        the `S` array (Q).
     """
     # 1. choose start point of integration
     z = select(go_right, initial_tree.right, initial_tree.left)

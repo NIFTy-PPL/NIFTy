@@ -88,12 +88,9 @@ def sample_standard_hamiltonian(*args, **kwargs):
     likelihood:
 
     .. math::
-        :nowrap:
 
-        \begin{gather*}
-            \tilde{d} \leftarrow \mathcal{G}(0,\mathbb{1}) \\
-            t = L \tilde{d}
-        \end{gather*}
+        \tilde{d} \leftarrow \mathcal{G}(0,\mathbb{1}) \\
+        t = L \tilde{d}
 
     with :math:`t` now having a covariance structure of
 
@@ -102,16 +99,13 @@ def sample_standard_hamiltonian(*args, **kwargs):
 
     We now need to apply the inverse metric in order to transform the
     sample to an inverse sample. We can do so using the conjugate gradient
-    algorithm which yields the solution to $M s = t$, i.e. applies the
-    inverse of $M$ to $t$:
+    algorithm which yields the solution to :math:`M s = t`, i.e. applies the
+    inverse of :math:`M` to :math:`t`:
 
     .. math::
-        :nowrap:
 
-        \begin{gather*}
-            M s =  t \\
-            s = M^{-1} t = cg(M, t) .
-        \end{gather*}
+        M &s =  t \\
+        &s = M^{-1} t = cg(M, t) .
 
     Parameters
     ----------

@@ -184,12 +184,13 @@ def invgamma_prior(a, scale, loc=0., step=1e-2) -> Callable:
     :math:`q` to denote the scale:
 
     .. math::
-        \\frac{q^\\a}{\\Gamma(\\a)}x^{-\\a -1}
+
+        P(x|q, a) = \\frac{q^a}{\\Gamma(a)}x^{-a -1}
         \\exp \\left(-\\frac{q}{x}\\right)
 
-    That means that for large x the pdf falls off like :math:`x^(-\\a -1)`.
-    The mean of the pdf is at :math:`q / (\\a - 1)` if :math:`\\a > 1`.
-    The mode is :math:`q / (\\a + 1)`.
+    That means that for large x the pdf falls off like :math:`x^{(-a -1)}`.
+    The mean of the pdf is at :math:`q / (a - 1)` if :math:`a > 1`.
+    The mode is :math:`q / (a + 1)`.
 
     This transformation is implemented as a linear interpolation which maps a
     Gaussian onto an inverse gamma distribution.
