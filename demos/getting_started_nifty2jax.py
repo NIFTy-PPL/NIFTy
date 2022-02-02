@@ -114,7 +114,7 @@ MetricKL = jit(
 key, subkey = random.split(key)
 pos = pos_init = 1e-2 * jft.random_like(subkey, pt)
 
-# %%
+# %% [markdown]
 # Let's do a simple MGVI minimization. Note, while this might look very similar
 # to plain NIFTy, the convergence criteria and various implementation details
 # are very different. Thus, timing the minimization and comparing it to NIFTy
@@ -122,6 +122,7 @@ pos = pos_init = 1e-2 * jft.random_like(subkey, pt)
 # single value-and-gradient call in both implementations for the purpose of
 # creating a benchmark.
 
+# %%
 n_mgvi_iterations = 10
 n_samples = 2
 absdelta = 0.1
@@ -177,8 +178,13 @@ plt.show()
 # and other useful JAX features like `vmap` and `pmap`. Last but certainly not
 # least, we can now also let our code run on the GPU.
 
+# %% [markdown]
+# ## Performance
+#
 # The driving force behind all of this is of course speed! So let's validate
 # that translating the model to JAX actually is faster.
+
+# %%
 Timed = namedtuple("Timed", ("time", "number"), rename=True)
 
 
@@ -333,16 +339,18 @@ for dims in dimensions_to_test:
     )
 
 # %% [markdown]
-# Shape           (256,) :: JAX 2.58e-05 :: NIFTy 6.96e-03 ;; ( 10000, 50     loops respectively)
-# Shape           (512,) :: JAX 3.90e-05 :: NIFTy 7.14e-03 ;; ( 10000, 50     loops respectively)
-# Shape          (1024,) :: JAX 6.33e-05 :: NIFTy 6.97e-03 ;; (  5000, 50     loops respectively)
-# Shape         (65536,) :: JAX 5.41e-03 :: NIFTy 1.42e-02 ;; (    50, 20     loops respectively)
-# Shape        (262144,) :: JAX 2.72e-02 :: NIFTy 4.41e-02 ;; (    10, 5      loops respectively)
-# Shape       (128, 128) :: JAX 5.07e-04 :: NIFTy 7.00e-03 ;; (   500, 50     loops respectively)
-# Shape       (256, 256) :: JAX 3.74e-03 :: NIFTy 1.01e-02 ;; (   100, 20     loops respectively)
-# Shape       (512, 512) :: JAX 1.53e-02 :: NIFTy 2.33e-02 ;; (    20, 10     loops respectively)
-# Shape     (1024, 1024) :: JAX 7.80e-02 :: NIFTy 7.72e-02 ;; (     5, 5      loops respectively)
-# Shape     (2048, 2048) :: JAX 3.21e-01 :: NIFTy 3.52e-01 ;; (     1, 1      loops respectively)
+# | Shape                  | JAX          | NIFTy          | Loops respectively                  |
+# |:-----------------------|:-------------|:---------------| -----------------------------------:|
+# | Shape           (256,) | JAX 2.58e-05 | NIFTy 6.96e-03 | ( 10000, 50     loops respectively) |
+# | Shape           (512,) | JAX 3.90e-05 | NIFTy 7.14e-03 | ( 10000, 50     loops respectively) |
+# | Shape          (1024,) | JAX 6.33e-05 | NIFTy 6.97e-03 | (  5000, 50     loops respectively) |
+# | Shape         (65536,) | JAX 5.41e-03 | NIFTy 1.42e-02 | (    50, 20     loops respectively) |
+# | Shape        (262144,) | JAX 2.72e-02 | NIFTy 4.41e-02 | (    10, 5      loops respectively) |
+# | Shape       (128, 128) | JAX 5.07e-04 | NIFTy 7.00e-03 | (   500, 50     loops respectively) |
+# | Shape       (256, 256) | JAX 3.74e-03 | NIFTy 1.01e-02 | (   100, 20     loops respectively) |
+# | Shape       (512, 512) | JAX 1.53e-02 | NIFTy 2.33e-02 | (    20, 10     loops respectively) |
+# | Shape     (1024, 1024) | JAX 7.80e-02 | NIFTy 7.72e-02 | (     5, 5      loops respectively) |
+# | Shape     (2048, 2048) | JAX 3.21e-01 | NIFTy 3.52e-01 | (     1, 1      loops respectively) |
 
 # For small problems JAX-based NIFTy is significantly faster than the NumPy
 # based one. For really small problems it is more than 200 times faster. This
