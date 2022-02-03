@@ -508,6 +508,10 @@ def minisanity(likelihood_energy, samples, terminal_colors=True):
         xndof.append({})
 
     for ss1, ss2 in zip(samples.iterator(xops[0]), samples.iterator(xops[1])):
+        if isinstance(data.domain, MultiDomain):
+            assert ss1.domain == data.domain
+        if isinstance(samples.domain, MultiDomain):
+            assert ss2.domain == samples.domain
         for ii, ss in enumerate((ss1, ss2)):
             for kk in ss.domain.keys():
                 lsize = ss[kk].size - np.sum(np.isnan(ss[kk].val))

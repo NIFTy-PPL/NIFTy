@@ -169,7 +169,7 @@ class _LikelihoodChain(LikelihoodEnergyOperator):
         return _OpChain.make((self._op1, self._op2)).get_transformation()
 
     def get_sqrt_data_metric_at(self, x):
-        loc = self._op2(x)
+        loc = self._op2.force(x)
         if isinstance(self._op1, ScalingOperator):  # FIXME Is this correct? Should not be scaled, right?
             met = self._op2.get_sqrt_data_metric_at(loc)
         else:
@@ -206,7 +206,8 @@ class _LikelihoodSum(LikelihoodEnergyOperator):
         self._prep1, self._prep2 = prep1, prep2
 
     def apply(self, x):
-        return self._op1(x) + self._op2(x)
+        from .operator import _OpSum
+        return _OpSum(self._op1, self._op2)(x)
 
     def get_transformation(self):
         # TEMPORARY
