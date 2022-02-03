@@ -200,7 +200,7 @@ class _LikelihoodSum(LikelihoodEnergyOperator):
 
         model_data_op = prep1 @ mdop1 + prep2 @ mdop2
 
-        super(_LhSum, self).__init__(data=data, model_data_op=model_data_op)
+        super(_LikelihoodSum, self).__init__(data=data, model_data_op=model_data_op)
 
         self._op1, self._op2 = op1, op2
         self._prep1, self._prep2 = prep1, prep2
