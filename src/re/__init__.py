@@ -51,4 +51,3 @@ from .sugar import (
     random_like,
     sum_of_squares,
 )
-from .version import *
