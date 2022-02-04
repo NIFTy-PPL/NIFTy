@@ -1,3 +1,6 @@
+# Copyright(C) 2013-2021 Max-Planck-Society
+# SPDX-License-Identifier: GPL-2.0+ OR BSD-2-Clause
+
 from jax import lax
 
 _DISABLE_CONTROL_FLOW_PRIM = False

@@ -1,3 +1,6 @@
+# Copyright(C) 2013-2021 Max-Planck-Society
+# SPDX-License-Identifier: GPL-2.0+ OR BSD-2-Clause
+
 import sys
 from datetime import datetime
 from functools import partial

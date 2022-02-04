@@ -1,4 +1,5 @@
-#!/usr/bin/env python3
+# Copyright(C) 2013-2021 Max-Planck-Society
+# SPDX-License-Identifier: GPL-2.0+ OR BSD-2-Clause
 
 from functools import partial
 import operator

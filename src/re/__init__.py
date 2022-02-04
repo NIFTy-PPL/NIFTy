@@ -1,3 +1,6 @@
+# Copyright(C) 2013-2021 Max-Planck-Society
+# SPDX-License-Identifier: GPL-2.0+ OR BSD-2-Clause
+
 from .conjugate_gradient import cg, static_cg
 from .correlated_field import CorrelatedFieldMaker, non_parametric_amplitude
 from .energy_operators import (

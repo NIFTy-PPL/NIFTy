@@ -1,5 +1,8 @@
 #!/usr/bin/env python3
 
+# Copyright(C) 2013-2021 Max-Planck-Society
+# SPDX-License-Identifier: GPL-2.0+ OR BSD-2-Clause
+
 import jax
 from jax import numpy as jnp
 from jax import random
