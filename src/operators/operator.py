@@ -541,7 +541,7 @@ class _OpProd(Operator):
         if lhs_has_jax and rhs_has_jax:
 
             def joined_jax_expr(x):
-                return self._op1(x) * self._op2(x)
+                return self._op1.jax_expr(x) * self._op2.jax_expr(x)
 
             self._jax_expr = joined_jax_expr
         else:
