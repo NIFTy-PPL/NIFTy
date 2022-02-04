@@ -1,7 +1,7 @@
 # Copyright(C) 2013-2021 Max-Planck-Society
 # SPDX-License-Identifier: GPL-2.0+ OR BSD-2-Clause
 
-from functools import partial
+from functools import partial, reduce
 import operator
 from typing import Any, Callable, Mapping, Tuple
 from warnings import warn
@@ -35,6 +35,17 @@ def translate_call(apply: Callable, from_to: Mapping):
         return apply(dipl_x)
 
     return translated_call
+
+
+def spaces_to_axes(domain, spaces):
+    """Converts spaces in a domain to axes of the underlying NumPy array."""
+    if spaces is None:
+        return None
+
+    domain = DomainTuple.make(domain)
+    axes = tuple(domain.axes[sp_index] for sp_index in spaces)
+    axes = reduce(operator.add, axes) if len(axes) > 0 else axes
+    return axes
 
 
 def unite(x, y, op=operator.add):

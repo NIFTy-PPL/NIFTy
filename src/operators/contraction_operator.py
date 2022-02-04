@@ -15,6 +15,8 @@
 #
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
 
+from functools import partial
+
 import numpy as np
 
 from .. import utilities
@@ -53,12 +55,13 @@ class ContractionOperator(LinearOperator):
 
         try:
             from jax import numpy as jnp
+            from jax.tree_util import tree_map
+            from ..nifty2jax import spaces_to_axes
 
             fct = jnp.array(1.)
             wgt = jnp.array(1.)
             if self._power != 0:
-                spaces = utilities.parse_spaces(spaces, len(self._domain))
-                for ind in spaces:
+                for ind in self._spaces:
                     wgt_spc = self._domain[ind].dvol
                     if np.isscalar(wgt_spc):
                         fct *= wgt_spc
@@ -69,12 +72,13 @@ class ContractionOperator(LinearOperator):
                         wgt *= wgt_spc.reshape(new_shape)**power
                 fct = fct**power
 
-            def weighted_sum(x):
+            def weighted_space_sum(x):
                 if self._power != 0:
                     x = fct * wgt * x
-                return x.sum(self._spaces)
+                axes = spaces_to_axes(self._domain, self._spaces)
+                return tree_map(partial(jnp.sum, axis=axes), x)
 
-            self._jax_expr = weighted_sum
+            self._jax_expr = weighted_space_sum
         except ImportError:
             self._jax_expr = None
 
