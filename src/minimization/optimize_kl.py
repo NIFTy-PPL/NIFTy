@@ -236,15 +236,15 @@ def optimize_kl(likelihood_energy,
                 initial_position = sl.local_item(0)
             _load_random_state(output_directory, last_finished_index, save_strategy)
 
+            if initial_index == total_iterations:
+                if isfile(fname + ".mean.pickle"):
+                    sl = ResidualSampleList.load(fname)
+                return (sl, initial_position) if return_final_position else sl
+
     # Sanity check of input
     if initial_index >= total_iterations:
-        if resume:
-            if isfile(fname + ".mean.pickle"):
-                sl = ResidualSampleList.load(fname)
-            return (sl, mean) if return_final_position else sl
-        else:
-            raise ValueError("Initial index is bigger than total iterations: "
-                             f"{initial_index} >= {total_iterations}")
+        raise ValueError("Initial index is bigger than total iterations: "
+                         f"{initial_index} >= {total_iterations}")
 
     for iglobal in range(initial_index, total_iterations):
         for (obj, cls) in [(likelihood_energy, Operator), (kl_minimizer, DescentMinimizer),
