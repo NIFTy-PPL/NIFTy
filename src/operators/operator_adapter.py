@@ -53,11 +53,13 @@ class OperatorAdapter(LinearOperator):
             from jax.tree_util import tree_map
 
             from ..nifty2jax import shapewithdtype_from_domain
+            from ..re import Field
 
             if callable(op.jax_expr) and self._trafo == self.ADJOINT_BIT:
                 def jax_expr(y):
                     y_conj = tree_map(jnp.conj, y)
                     op_domain = shapewithdtype_from_domain(op.domain, domain_dtype)
+                    op_domain = Field(op_domain) if isinstance(y, Field) else op_domain
                     jax_expr_T = linear_transpose(op.jax_expr, op_domain)
                     return tree_map(jnp.conj, jax_expr_T(y_conj)[0])
 
