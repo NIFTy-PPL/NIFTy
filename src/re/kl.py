@@ -266,6 +266,22 @@ def geometrically_sample_standard_hamiltonian(
 
 @register_pytree_node_class
 class SampleIter():
+    """Storage class for samples with some convenience methods for applying
+    operators of them
+
+    This class is used to store samples for the Variational Inference schemes
+    MGVI and geoVI where samples are defined relative to some expansion point
+    (a.k.a. latent mean or offset).
+
+    See also
+    --------
+    `Geometric Variational Inference`, Philipp Frank, Reimar Leike,
+    Torsten A. Enßlin, `<https://arxiv.org/abs/2105.10470>`_
+    `<https://doi.org/10.3390/e23070853>`_
+
+    `Metric Gaussian Variational Inference`, Jakob Knollmüller,
+    Torsten A. Enßlin, `<https://arxiv.org/abs/1901.11033>`_
+    """
     def __init__(
         self,
         *,
@@ -294,9 +310,11 @@ class SampleIter():
 
     @property
     def n_samples(self):
+        """Total number of samples, equivalent to the length of the object"""
         return len(self)
 
     def at(self, mean):
+        """Updates the offset (usually the latent mean) of all samples"""
         return SampleIter(
             mean=mean,
             samples=self._samples,
@@ -305,11 +323,17 @@ class SampleIter():
 
     @property
     def first(self):
+        """Convenience method to easily retrieve a sample (the first one)"""
         if self._mean is not None:
             return self._mean + self._samples[0]
         return self._samples[0]
 
     def apply(self, call: Callable, *args, **kwargs):
+        """Applies an operator over all samples, yielding a list of outputs
+
+        Internally, the call is `vmap`-ed over the samples for additional
+        efficiency.
+        """
         if set(kwargs.keys()) | {"in_axes"} != {"in_axes"}:
             raise ValueError(f"invalid keyword arguments {kwargs}")
 
@@ -319,6 +343,11 @@ class SampleIter():
         return vmap_forest(call, in_axes=in_axes)(tuple(self), *args)
 
     def mean(self, call: Callable, *args, **kwargs):
+        """Applies an operator over all samples and averages the results
+
+        Internally, the call is `vmap`-ed over the samples for additional
+        efficiency.
+        """
         if set(kwargs.keys()) | {"in_axes"} != {"in_axes"}:
             raise ValueError(f"invalid keyword arguments {kwargs}")
 
