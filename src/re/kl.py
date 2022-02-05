@@ -130,6 +130,11 @@ def sample_standard_hamiltonian(
     -------
     sample : tree-like structure
         Sample of which the covariance is the inverse metric.
+
+    See also
+    --------
+    `Metric Gaussian Variational Inference`, Jakob Knollmüller,
+    Torsten A. Enßlin, `<https://arxiv.org/abs/1901.11033>`_
     """
     inv_met_smpl, _ = _sample_standard_hamiltonian(
         hamiltonian, *args, from_inverse=True, **kwargs
@@ -175,6 +180,12 @@ def geometrically_sample_standard_hamiltonian(
     -------
     sample : tree-like structure
         Sample of which the covariance is the inverse metric.
+
+    See also
+    --------
+    `Geometric Variational Inference`, Philipp Frank, Reimar Leike,
+    Torsten A. Enßlin, `<https://arxiv.org/abs/2105.10470>`_
+    `<https://doi.org/10.3390/e23070853>`_
     """
     if not isinstance(hamiltonian, StandardHamiltonian):
         te = f"`hamiltonian` of invalid type; got '{type(hamiltonian)}'"
@@ -353,6 +364,11 @@ def MetricKL(
     typically nonlinear structure of the true distribution these samples have
     to be updated eventually by re-instantiating the Metric Gaussian again. For
     the true probability distribution the standard parametrization is assumed.
+
+    See also
+    --------
+    `Metric Gaussian Variational Inference`, Jakob Knollmüller,
+    Torsten A. Enßlin, `<https://arxiv.org/abs/1901.11033>`_
     """
     if not isinstance(hamiltonian, StandardHamiltonian):
         te = f"`hamiltonian` of invalid type; got '{type(hamiltonian)}'"
@@ -404,6 +420,12 @@ def GeoMetricKL(
     have to be updated eventually by re-instantiating the geometric Gaussian
     again. For the true probability distribution the standard parametrization
     is assumed.
+
+    See also
+    --------
+    `Geometric Variational Inference`, Philipp Frank, Reimar Leike,
+    Torsten A. Enßlin, `<https://arxiv.org/abs/2105.10470>`_
+    `<https://doi.org/10.3390/e23070853>`_
     """
     if not isinstance(hamiltonian, StandardHamiltonian):
         te = f"`hamiltonian` of invalid type; got '{type(hamiltonian)}'"
