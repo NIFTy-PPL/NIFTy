@@ -107,7 +107,22 @@ def non_parametric_amplitude(
     asperity: Optional[Callable] = None,
     prefix: str = "",
     kind: str = "amplitude",
-):
+) -> Tuple[Callable, Dict[str, ShapeWithDtype]]:
+    """Constructs an function computing the amplitude of a non-parametric power
+    spectrum
+
+    See
+    :class:`nifty8.re.correlated_field.CorrelatedFieldMaker.add_fluctuations`
+    for more details on the parameters.
+
+    See also
+    --------
+    `Variable structures in M87* from space, time and frequency resolved
+    interferometry`, Arras, Philipp and Frank, Philipp and Haim, Philipp
+    and Knollmüller, Jakob and Leike, Reimar and Reinecke, Martin and
+    Enßlin, Torsten, `<https://arxiv.org/abs/2002.05218>`_
+    `<http://dx.doi.org/10.1038/s41550-021-01548-0>`_
+    """
     totvol = domain.get("position_space_total_volume", 1.)
     rel_log_mode_len = domain["relative_log_mode_lengths"]
     mode_multiplicity = domain["mode_multiplicity"]
@@ -230,6 +245,10 @@ class CorrelatedFieldMaker():
         Correlations are described by their power spectrum and the subdomain on
         which they apply.
 
+        Multiple calls to `add_fluctuations` are possible, in which case
+        the constructed field will have the outer product of the individual
+        power spectra as its global power spectrum.
+
         The parameters `fluctuations`, `flexibility`, `asperity` and
         `loglogavgslope` configure either the amplitude or the power
         spectrum model used on the target field subdomain of type
@@ -238,10 +257,6 @@ class CorrelatedFieldMaker():
         amplitude-frequency-space), a smooth varying component
         (integrated Wiener process) and a ragged component
         (un-integrated Wiener process).
-
-        Multiple calls to `add_fluctuations` are possible, in which case
-        the constructed field will have the outer product of the individual
-        power spectra as its global power spectrum.
 
         Parameters
         ----------
@@ -267,6 +282,14 @@ class CorrelatedFieldMaker():
         harmonic_domain_type : str
             Description of the harmonic partner domain in which the amplitude
             lives
+
+        See also
+        --------
+        `Variable structures in M87* from space, time and frequency resolved
+        interferometry`, Arras, Philipp and Frank, Philipp and Haim, Philipp
+        and Knollmüller, Jakob and Leike, Reimar and Reinecke, Martin and
+        Enßlin, Torsten, `<https://arxiv.org/abs/2002.05218>`_
+        `<http://dx.doi.org/10.1038/s41550-021-01548-0>`_
         """
         shape = (shape, ) if isinstance(shape, int) else tuple(shape)
         distances = tuple(jnp.broadcast_to(distances, jnp.shape(shape)))
