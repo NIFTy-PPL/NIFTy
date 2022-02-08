@@ -11,7 +11,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
-# Copyright(C) 2021 Max-Planck-Society
+# Copyright(C) 2021-2022 Max-Planck-Society
 # Author: Philipp Arras
 
 from types import SimpleNamespace
