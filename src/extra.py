@@ -449,7 +449,7 @@ def minisanity(likelihood_energy, samples, terminal_colors=True):
     Parameters
     ----------
     likelihood_energy: LikelihoodEnergyOperator
-        FIXME
+        Likelihood energy of which the normalized residuals shall be computed.
 
     samples : SampleListBase
         List of samples.
