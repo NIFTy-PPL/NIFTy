@@ -74,7 +74,7 @@ def test_mf_jax():
 def test_jax_energy(dom):
     pytest.importorskip("jax")
     dom = ift.makeDomain(dom)
-    e0 = ift.GaussianEnergy(data=None, domain=dom, sampling_dtype=np.float64)
+    e0 = ift.GaussianEnergy(domain=dom, sampling_dtype=np.float64)
     def func(x):
         return 0.5*jnp.vdot(x, x)
     def funcmf(x):

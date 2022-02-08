@@ -218,12 +218,12 @@ def testValueInserter(sp, seed):
 
 @pmp('dom', _h_spaces + _p_spaces)
 def testGaussianEnergy(dom):
-    _check_repr(ift.GaussianEnergy(data=None, domain=dom))
+    _check_repr(ift.GaussianEnergy(domain=dom))
 
 
 @pmp('dom', _h_spaces + _p_spaces)
 def testHamiltonian(dom):
-    lh = ift.GaussianEnergy(data=None, domain=dom)
+    lh = ift.GaussianEnergy(domain=dom)
     _check_repr(ift.StandardHamiltonian(lh))
 
 

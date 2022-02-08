@@ -432,7 +432,7 @@ class GaussianEnergy(LikelihoodEnergyOperator):
     At least one of the arguments has to be provided.
     """
 
-    def __init__(self, data, inverse_covariance=None, domain=None, sampling_dtype=None):
+    def __init__(self, data=None, inverse_covariance=None, domain=None, sampling_dtype=None):
         from ..sugar import full
 
         if inverse_covariance is not None and not isinstance(inverse_covariance, LinearOperator):

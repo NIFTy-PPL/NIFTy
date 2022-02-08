@@ -51,7 +51,7 @@ def test_kl(constants, point_estimates, mirror_samples, mf, geo, nsamps):
     op = ift.HarmonicSmoothingOperator(dom, 3)
     if mf:
         op = ift.ducktape(dom, None, 'a')*(op.ducktape('b'))
-    lh = ift.GaussianEnergy(data=None, domain=op.target, sampling_dtype=np.float64) @ op
+    lh = ift.GaussianEnergy(domain=op.target, sampling_dtype=np.float64) @ op
     ic = ift.GradientNormController(iteration_limit=5)
     ic2 = ift.GradientNormController(iteration_limit=5)
     h = ift.StandardHamiltonian(lh, ic_samp=ic)
@@ -121,7 +121,7 @@ def test_kl(constants, point_estimates, mirror_samples, mf, geo, nsamps):
 def test_mirror(n_samples, seed, geo):
     ift.random.push_sseq_from_seed(seed)
     a = ift.FieldAdapter(ift.UnstructuredDomain(2), 'a').exp()
-    lh = ift.GaussianEnergy(data=None, domain=a.target, sampling_dtype=float) @ a
+    lh = ift.GaussianEnergy(domain=a.target, sampling_dtype=float) @ a
     H = ift.StandardHamiltonian(lh, ic_samp=ift.AbsDeltaEnergyController(1E-10, iteration_limit=2))
     mini = None
     if geo:
