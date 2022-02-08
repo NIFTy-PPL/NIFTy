@@ -195,6 +195,9 @@ class JaxLikelihoodEnergyOperator(LikelihoodEnergyOperator):
         self._dt = sampling_dtype
         self._trafo = transformation
 
+        # FIXME
+        super(JaxLikelihoodEnergyOperator, self).__init__(None, None)
+
     def get_transformation(self):
         if self._trafo is None:
             s = self.__name__ + " was instantiated without `transformation`"

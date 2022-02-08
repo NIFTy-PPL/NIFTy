@@ -417,7 +417,9 @@ def _check_likelihood_energy(op, loc):
     from .operators.energy_operators import LikelihoodEnergyOperator
     if not isinstance(op, LikelihoodEnergyOperator):
         return
-    data_domain = op._res.target
+    data_domain = op.data_domain
+    if data_domain is None:
+        return
     smet = op._sqrt_data_metric_at(loc)
     myassert(smet.domain == smet.target == data_domain)
     nres = op.normalized_residual(loc)
@@ -471,8 +473,7 @@ def minisanity(likelihood_energy, samples, terminal_colors=True):
             "`ift.SampleList([field])` and pass it to minisanity."
         )
 
-    nres = likelihood_energy.normalized_residual
-    data_domain = likelihood_energy.data_residual.target
+    data_domain = likelihood_energy.data_domain
     latent_domain = samples.domain
     xdoms = [data_domain, latent_domain]
 
@@ -484,11 +485,12 @@ def minisanity(likelihood_energy, samples, terminal_colors=True):
 
     # compute xops
     xops = []
+    nres = likelihood_energy.normalized_residual
     if isinstance(data_domain, MultiDomain):
         lam = lambda x: nres(x)
     else:
         data_domain = makeDomain({"<None>": data_domain})
-        lam = lambda x: nres.ducktape_left("<None>")(x)
+        lam = lambda x: nres(x).ducktape_left("<None>")
     xops.append(lam)
     if isinstance(latent_domain, MultiDomain):
         xops.append(lambda x: x)
@@ -497,6 +499,7 @@ def minisanity(likelihood_energy, samples, terminal_colors=True):
         xops.append(lambda x: x.ducktape_left("<None>"))
     # /compute xops
 
+    xdoms = [data_domain, latent_domain]
     xredchisq, xscmean, xndof = [], [], []
     for dd in xdoms:
         xredchisq.append({kk: StatCalculator() for kk in dd.keys()})

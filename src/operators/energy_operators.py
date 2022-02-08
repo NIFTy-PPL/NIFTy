@@ -93,13 +93,19 @@ class LikelihoodEnergyOperator(EnergyOperator):
     """
     def __init__(self, data_residual, sqrt_data_metric_at):
         from ..extra import is_operator
-        if not is_operator(data_residual):
+        if data_residual is not None and not is_operator(data_residual):
             raise TypeError(f"{data_residual} is not an operator")
         self._res = data_residual
         self._sqrt_data_metric_at = sqrt_data_metric_at
 
     def normalized_residual(self, x):
         return (self._sqrt_data_metric_at(x).abs() @ self._res).force(x)
+
+    @property
+    def data_domain(self):
+        if self._res is None:
+            return None
+        return self._res.target
 
     def get_transformation(self):
         """The coordinate transformation that maps into a coordinate system in
@@ -149,14 +155,18 @@ class _LikelihoodChain(LikelihoodEnergyOperator):
 
         if isinstance(op1, ScalingOperator):
             res = op2._res
-            data_metric_at = op2._sqrt_data_metric_at
+            sqrt_data_metric_at = op2._sqrt_data_metric_at
         else:
-            if isinstance(op2.target, MultiDomain):
-                extract = PartialExtractor(op2.target, op1._res.domain)
+            if op1._res is None:  # Support that residual and sqrt metric is not implemented
+                res = sqrt_data_metric_at = None
             else:
-                extract = Operator.identity_operator(op2.target)
-            res = op1._res @ extract @ op2
-            sqrt_data_metric_at = lambda x: op1._sqrt_data_metric_at(op2(x))
+                if isinstance(op2.target, MultiDomain):
+                    extract = PartialExtractor(op2.target, op1._res.domain)
+                else:
+                    extract = Operator.identity_operator(op2.target)
+                res = op1._res @ extract @ op2
+                sqrt_data_metric_at = lambda x: op1._sqrt_data_metric_at(op2(x))
+
         super(_LikelihoodChain, self).__init__(res, sqrt_data_metric_at)
         self._op1, self._op2 = op1, op2
         self._domain = op2.domain
@@ -352,11 +362,12 @@ class VariableCovarianceGaussianEnergy(LikelihoodEnergyOperator):
 
 class _SpecialGammaEnergy(LikelihoodEnergyOperator):
     def __init__(self, residual):
-        #super(_SpecialGammaEnergy, self).__init__(data=data)
         self._domain = DomainTuple.make(residual.domain)
         self._resi = residual
         self._cplx = _iscomplex(self._resi.dtype)
         self._dt = self._resi.dtype
+        super(_SpecialGammaEnergy, self).__init__(Adder(self._resi, neg=True),
+                                                  lambda x: self.get_metric_at(x).get_sqrt())
 
     def apply(self, x):
         self._check_input(x)
@@ -510,6 +521,8 @@ class PoissonianEnergy(LikelihoodEnergyOperator):
             raise ValueError(ve)
         self._d = d
         self._domain = DomainTuple.make(d.domain)
+        super(PoissonianEnergy, self).__init__(Adder(d, neg=True),
+                                               lambda x: self.get_metric_at(x).get_sqrt())
 
     def apply(self, x):
         self._check_input(x)
@@ -544,7 +557,6 @@ class InverseGammaEnergy(LikelihoodEnergyOperator):
     """
 
     def __init__(self, beta, alpha=-0.5):
-        #super(InverseGammaEnergy, self).__init__(data=)
         if not isinstance(beta, Field):
             raise TypeError
         self._domain = DomainTuple.make(beta.domain)
@@ -558,6 +570,10 @@ class InverseGammaEnergy(LikelihoodEnergyOperator):
             # FIXME Add proper complex support for this energy
             raise TypeError
         self._sampling_dtype = _field_to_dtype(self._beta)
+
+        # FIXME
+        super(InverseGammaEnergy, self).__init__(None, None)
+        #Adder(d, neg=True), lambda x: self.get_metric_at(x).get_sqrt())
 
     def apply(self, x):
         self._check_input(x)
@@ -630,13 +646,14 @@ class BernoulliEnergy(LikelihoodEnergyOperator):
     """
 
     def __init__(self, d):
-        #super(BernoulliEnergy, self).__init__(data=)
         if not isinstance(d, Field) or not np.issubdtype(d.dtype, np.integer):
             raise TypeError
         if np.any(np.logical_and(d.val != 0, d.val != 1)):
             raise ValueError
         self._d = d
         self._domain = DomainTuple.make(d.domain)
+        super(BernoulliEnergy, self).__init__(Adder(d, neg=True),
+                                              lambda x: self.get_metric_at(x).get_sqrt())
 
     def apply(self, x):
         self._check_input(x)
