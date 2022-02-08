@@ -34,6 +34,7 @@ from .sampling_enabler import SamplingEnabler
 from .sandwich_operator import SandwichOperator
 from .scaling_operator import ScalingOperator
 from .simple_linear_operators import FieldAdapter, VdotOperator
+from .operator import _OpChain, _OpSum
 
 
 def _check_sampling_dtype(domain, dtypes):
@@ -151,8 +152,27 @@ class LikelihoodEnergyOperator(EnergyOperator):
         return SandwichOperator.make(bun, sampling_dtype=dtp)
 
 
-class _LikelihoodChain(LikelihoodEnergyOperator):
-    def __init__(self, op1, op2):  # FIXME Refactor to oplist and introduce simplify
+class _CombinedLh(LikelihoodEnergyOperator):
+    @property
+    def _domain(self):
+        return self._op._domain
+
+    def apply(self, x):
+        self._check_input(x)
+        return self._op(x)
+
+    def get_transformation(self):
+        return self._op.get_transformation()
+
+    def __repr__(self):
+        return self._op.__repr__()
+
+    def _simplify_for_constant_input_nontrivial(self, c_inp):
+        return self._op._simplify_for_constant_input_nontrivial(c_inp)
+
+
+class _LikelihoodChain(_CombinedLh):
+    def __init__(self, op1, op2):
         from .simple_linear_operators import PartialExtractor
 
         if isinstance(op1, ScalingOperator):
@@ -168,25 +188,12 @@ class _LikelihoodChain(LikelihoodEnergyOperator):
                     extract = Operator.identity_operator(op2.target)
                 res = op1._res @ extract @ op2
                 sqrt_data_metric_at = lambda x: op1._sqrt_data_metric_at(op2.force(x))
-
         super(_LikelihoodChain, self).__init__(res, sqrt_data_metric_at)
-        self._op1, self._op2 = op1, op2
-        self._domain = op2.domain
-
-    def apply(self, x):
-        self._check_input(x)
-        return self._op1(self._op2(x))
-
-    def get_transformation(self):
-        # TEMPORARY
-        from .operator import _OpChain
-
-        return _OpChain.make((self._op1, self._op2)).get_transformation()
+        self._op = _OpChain.make((op1, op2))
 
 
-class _LikelihoodSum(LikelihoodEnergyOperator):
-    def __init__(self, op1, op2):  # FIXME Refactor to oplist and introduce simplify
-        from .operator import _OpSum
+class _LikelihoodSum(_CombinedLh):
+    def __init__(self, op1, op2):
         from .simple_linear_operators import PrependKey
 
         res1, res2 = op1._res, op2._res
@@ -216,16 +223,7 @@ class _LikelihoodSum(LikelihoodEnergyOperator):
             return reduce(sum, result)
 
         super(_LikelihoodSum, self).__init__(reduce(sum, res), sqrt_data_metric_at)
-
-        self._op1, self._op2 = op1, op2
-        self._op = _OpSum(self._op1, self._op2)  # Temporary?
-        self._domain = self._op.domain
-
-    def apply(self, x):
-        return self._op(x)
-
-    def get_transformation(self):
-        return self._op.get_transformation()
+        self._op = _OpSum(op1, op2)
 
 
 class Squared2NormOperator(EnergyOperator):
