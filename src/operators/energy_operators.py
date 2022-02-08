@@ -91,14 +91,15 @@ class LikelihoodEnergyOperator(EnergyOperator):
     `LikelihoodEnergyOperator` is the Fisher information metric of the
     likelihood.
     """
-    def __init__(self, data, model_data_op=None):
-        self._data = data
-        if model_data_op is None:
-            model_data_op = ScalingOperator(data.domain, 1.)
-        self._model_data_op = model_data_op
-        myassert(data.domain == model_data_op.target)
-        self._domain = model_data_op.domain  # TODO Remove all domains from EnergyOperators and call this constructor
+    def __init__(self, data_residual, sqrt_data_metric_at):
+        from ..extra import is_operator
+        if not is_operator(data_residual):
+            raise TypeError(f"{data_residual} is not an operator")
+        self._res = data_residual
+        self._sqrt_data_metric_at = sqrt_data_metric_at
 
+    def normalized_residual(self, x):
+        return (self._sqrt_data_metric_at(x).abs() @ self._res).force(x)
 
     def get_transformation(self):
         """The coordinate transformation that maps into a coordinate system in
@@ -120,11 +121,6 @@ class LikelihoodEnergyOperator(EnergyOperator):
         `MultiDomains` with the index as the key.
         """
         raise NotImplementedError
-
-    def get_sqrt_data_metric_at(self, x):
-        met = self.get_metric_at(x).get_sqrt()
-        myassert(met.domain == met.target == self._data.domain)
-        return met
 
     def __matmul__(self, other):
         return _LikelihoodChain(self, other)
@@ -149,14 +145,21 @@ class LikelihoodEnergyOperator(EnergyOperator):
 
 class _LikelihoodChain(LikelihoodEnergyOperator):
     def __init__(self, op1, op2):  # FIXME Refactor to oplist and introduce simplify
+        from .simple_linear_operators import PartialExtractor
+
         if isinstance(op1, ScalingOperator):
-            data = op2._data
-            model_data_op = op2._model_data_op
+            res = op2._res
+            data_metric_at = op2._sqrt_data_metric_at
         else:
-            data = op1._data
-            model_data_op = op1._model_data_op @ op2
-        super(_LikelihoodChain, self).__init__(data=data, model_data_op=model_data_op)
+            if isinstance(op2.target, MultiDomain):
+                extract = PartialExtractor(op2.target, op1._res.domain)
+            else:
+                extract = Operator.identity_operator(op2.target)
+            res = op1._res @ extract @ op2
+            sqrt_data_metric_at = lambda x: op1._sqrt_data_metric_at(op2(x))
+        super(_LikelihoodChain, self).__init__(res, sqrt_data_metric_at)
         self._op1, self._op2 = op1, op2
+        self._domain = op2.domain
 
     def apply(self, x):
         self._check_input(x)
@@ -168,62 +171,36 @@ class _LikelihoodChain(LikelihoodEnergyOperator):
 
         return _OpChain.make((self._op1, self._op2)).get_transformation()
 
-    def get_sqrt_data_metric_at(self, x):
-        loc = self._op2.force(x)
-        if isinstance(self._op1, ScalingOperator):  # FIXME Is this correct? Should not be scaled, right?
-            met = self._op2.get_sqrt_data_metric_at(loc)
-        else:
-            met = self._op1.get_sqrt_data_metric_at(loc)
-        myassert(met.domain == met.target == self._data.domain)
-        return met
-
 
 class _LikelihoodSum(LikelihoodEnergyOperator):
     def __init__(self, op1, op2):  # FIXME Refactor to oplist and introduce simplify
+        from .operator import _OpSum
         from .simple_linear_operators import PrependKey
 
-        data1, data2 = op1._data, op2._data
-        mdop1, mdop2 = op1._model_data_op, op2._model_data_op
-        b1 = isinstance(data1.domain, DomainTuple)
-        b2 = isinstance(data2.domain, DomainTuple)
+        res1, res2 = op1._res, op2._res
+        b1 = isinstance(res1.target, DomainTuple)
+        b2 = isinstance(res2.target, DomainTuple)
         if isinstance(op1.domain, DomainTuple) ^ isinstance(op2.domain, DomainTuple):
             raise TypeError()
 
-        fa1 = FieldAdapter(data1.domain, "").adjoint if b1 else ScalingOperator(data1.domain, 1.)
-        fa2 = FieldAdapter(data2.domain, "").adjoint if b2 else ScalingOperator(data2.domain, 1.)
+        fa1 = FieldAdapter(res1.target, "").adjoint if b1 else ScalingOperator(res1.target, 1.)
+        fa2 = FieldAdapter(res2.target, "").adjoint if b2 else ScalingOperator(res2.target, 1.)
         prep1 = PrependKey(fa1.target, "1") @ fa1
         prep2 = PrependKey(fa2.target, "2") @ fa2
 
-        data1 = prep1(data1)
-        data2 = prep2(data2)
-        data = MultiField.union([data1, data2])
+        res = prep1 @ res1 + prep2 @ res2
+        sqrt_data_metric_at = lambda x: (prep1 @ op1._sqrt_data_metric_at(x)) + (prep2 @ op2._sqrt_data_metric_at(x))
 
-        model_data_op = prep1 @ mdop1 + prep2 @ mdop2
-
-        super(_LikelihoodSum, self).__init__(data=data, model_data_op=model_data_op)
+        super(_LikelihoodSum, self).__init__(res, sqrt_data_metric_at)
 
         self._op1, self._op2 = op1, op2
-        self._prep1, self._prep2 = prep1, prep2
+        self._op = _OpSum(self._op1, self._op2)  # Temporary?
 
     def apply(self, x):
-        from .operator import _OpSum
-        return _OpSum(self._op1, self._op2)(x)
+        return self._op(x)
 
     def get_transformation(self):
-        # TEMPORARY
-        from .operator import _OpSum
-
-        return _OpSum(self._op1, self._op2).get_transformation()
-
-    def get_sqrt_data_metric_at(self, x):
-        cheese = self._op1.get_sqrt_data_metric_at(x)
-        bun = self._prep1.adjoint
-        met1 = SandwichOperator.make(cheese=cheese, bun=bun)
-        met2 = SandwichOperator.make(cheese=self._op2.get_sqrt_data_metric_at(x), bun=self._prep2.adjoint)
-        myassert(len(set(met1.domain.keys()) & set(met2.domain.keys())) == 0)
-        met = met1 + met2
-        myassert(met.domain == met.target == self._data.domain)
-        return met
+        return self._op.get_transformation()
 
 
 class Squared2NormOperator(EnergyOperator):
@@ -309,7 +286,6 @@ class VariableCovarianceGaussianEnergy(LikelihoodEnergyOperator):
 
     def __init__(self, domain, residual_key, inverse_covariance_key,
                  sampling_dtype, use_full_fisher=True):
-        #super(VariableCovarianceGaussianEnergy, self).__init__(data=)
         self._kr = str(residual_key)
         self._ki = str(inverse_covariance_key)
         dom = DomainTuple.make(domain)
@@ -318,6 +294,10 @@ class VariableCovarianceGaussianEnergy(LikelihoodEnergyOperator):
         _check_sampling_dtype(self._domain, self._dt)
         self._cplx = _iscomplex(sampling_dtype)
         self._use_full_fisher = use_full_fisher
+        inp = ScalingOperator(dom, 1.)
+        res = inp.ducktape(self._kr)
+        sqrt_data_metric_at = lambda x: makeOp(x[self._ki].sqrt())
+        super(VariableCovarianceGaussianEnergy, self).__init__(res, sqrt_data_metric_at)
 
     def apply(self, x):
         self._check_input(x)
@@ -346,7 +326,7 @@ class VariableCovarianceGaussianEnergy(LikelihoodEnergyOperator):
             res = _SpecialGammaEnergy(cst).ducktape(self._ki)
         else:
             icov = makeOp(cst, sampling_dtype=self._dt[self._kr])
-            res = GaussianEnergy(inverse_covariance=icov).ducktape(self._kr)
+            res = GaussianEnergy(data=None, inverse_covariance=icov).ducktape(self._kr)
             trlog = cst.log().sum().val_rw()
             if not self._cplx:
                 trlog /= 2
@@ -434,11 +414,8 @@ class GaussianEnergy(LikelihoodEnergyOperator):
 
         self._domain = self._parseDomain(data, inverse_covariance, domain)
 
-        if data is None:
-            data = full(self._domain, 0.)
-        if not isinstance(data, (Field, MultiField)):
+        if not isinstance(data, (Field, MultiField)) and data is not None:
             raise TypeError
-        super(GaussianEnergy, self).__init__(data=data)
 
         self._icov = inverse_covariance
         if inverse_covariance is None:
@@ -448,6 +425,13 @@ class GaussianEnergy(LikelihoodEnergyOperator):
         else:
             self._op = QuadraticFormOperator(inverse_covariance)
             self._icov = inverse_covariance
+
+        self._data = data
+        if data is None:
+            res = ScalingOperator(self._domain, 1.)
+        else:
+            res = Adder(data, neg=True)
+        super(GaussianEnergy, self).__init__(res, lambda x: self.get_metric_at(x).get_sqrt())
 
         icovdtype = self._icov.sampling_dtype
         if icovdtype is not None and data is not None and icovdtype != data.dtype:
@@ -460,6 +444,7 @@ class GaussianEnergy(LikelihoodEnergyOperator):
             s += f"icov.sampling_dtype: {icovdtype}\n"
             s += f"data.dtype: {data.dtype}"
             raise RuntimeError(s)
+
 
     @staticmethod
     def _checkEquivalence(olddom, newdom):
@@ -606,9 +591,10 @@ class StudentTEnergy(LikelihoodEnergyOperator):
     """
 
     def __init__(self, domain, theta):
-        #super(StudentTEnergy, self).__init__(data=)
         self._domain = DomainTuple.make(domain)
         self._theta = theta
+        res = ScalingOperator(self._domain, 1.)
+        super(StudentTEnergy, self).__init__(res, lambda x: self.get_metric_at(x).get_sqrt())
 
     def apply(self, x):
         self._check_input(x)

@@ -23,6 +23,7 @@ from .. import pointwise
 from ..logger import logger
 from ..multi_domain import MultiDomain
 from ..utilities import NiftyMeta, check_object_identity, indent, myassert
+from ..domain_tuple import DomainTuple
 
 
 class Operator(metaclass=NiftyMeta):
@@ -196,6 +197,11 @@ class Operator(metaclass=NiftyMeta):
     def identity_operator(dom):
         from .block_diagonal_operator import BlockDiagonalOperator
         from .scaling_operator import ScalingOperator
+        from ..sugar import makeDomain
+
+        dom = makeDomain(dom)
+        if isinstance(dom, DomainTuple):
+            return ScalingOperator(dom, 1.)
         idops = {kk: ScalingOperator(dd, 1.) for kk, dd in dom.items()}
         return BlockDiagonalOperator(dom, idops)
 
@@ -294,7 +300,7 @@ class Operator(metaclass=NiftyMeta):
             tgt = self.target if is_operator(self) else self.domain
             return ducktape(None, tgt, name)(self)
         else:  # convert domain
-            newdom = makeDomain(name)
+            newdom = DomainTuple.make(name)
             dom = self.domain if is_fieldlike(self) else self.target
             return DomainChangerAndReshaper(dom, newdom)(self)
 
@@ -318,7 +324,6 @@ class Operator(metaclass=NiftyMeta):
         return self.__class__.__name__
 
     def simplify_for_constant_input(self, c_inp):
-        from ..domain_tuple import DomainTuple
         from ..multi_field import MultiField
         from ..sugar import makeDomain
         from .energy_operators import EnergyOperator

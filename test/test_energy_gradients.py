@@ -70,7 +70,7 @@ def test_studentt(field):
 def test_hamiltonian_and_KL(field):
     field = field.ptw("exp")
     space = field.domain
-    lh = ift.GaussianEnergy(domain=space, sampling_dtype=float)
+    lh = ift.GaussianEnergy(domain=space, sampling_dtype=float, data=None)
     hamiltonian = ift.StandardHamiltonian(lh)
     ift.extra.check_operator(hamiltonian, field, ntries=ntries)
     samps = [ift.from_random(space, 'normal') for i in range(2)]

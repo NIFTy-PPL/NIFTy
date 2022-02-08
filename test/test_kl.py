@@ -39,7 +39,7 @@ def test_kl(constants, point_estimates, mirror_samples, mf, geo):
     op = ift.HarmonicSmoothingOperator(dom, 3)
     if mf:
         op = ift.ducktape(dom, None, 'a')*(op.ducktape('b'))
-    lh = ift.GaussianEnergy(domain=op.target, sampling_dtype=np.float64) @ op
+    lh = ift.GaussianEnergy(data=None, domain=op.target, sampling_dtype=np.float64) @ op
     ic = ift.GradientNormController(iteration_limit=5)
     ic.enable_logging()
     h = ift.StandardHamiltonian(lh, ic_samp=ic)
@@ -107,7 +107,7 @@ def test_ParametricVI(mirror_samples, fc):
     dom = ift.RGSpace((12,), (2.12))
     op = ift.HarmonicSmoothingOperator(dom, 3)
     op = ift.ducktape(dom, None, 'a')*(op.ducktape('b'))
-    lh = ift.GaussianEnergy(domain=op.target, sampling_dtype=np.float64) @ op
+    lh = ift.GaussianEnergy(data=None, domain=op.target, sampling_dtype=np.float64) @ op
     ic = ift.GradientNormController(iteration_limit=5)
     ic.enable_logging()
     h = ift.StandardHamiltonian(lh, ic_samp=ic)

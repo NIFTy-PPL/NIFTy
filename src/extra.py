@@ -417,14 +417,11 @@ def _check_likelihood_energy(op, loc):
     from .operators.energy_operators import LikelihoodEnergyOperator
     if not isinstance(op, LikelihoodEnergyOperator):
         return
-    myassert(op.domain is op._model_data_op.domain)
-    myassert(op._data.domain is op._model_data_op.target)
-    data_metric = op.get_sqrt_data_metric_at(loc)
-    metric = op.get_metric_at(loc)
-    myassert(isinstance(metric, LinearOperator))
-    myassert(isinstance(data_metric, LinearOperator))
-    myassert(metric.domain == metric.target == loc.domain)
-    myassert(data_metric.domain == data_metric.target == op._data.domain)
+    data_domain = op._res.target
+    smet = op._sqrt_data_metric_at(loc)
+    myassert(smet.domain == smet.target == data_domain)
+    nres = op.normalized_residual(loc)
+    myassert(nres.domain is data_domain)
 
 
 def minisanity(likelihood_energy, samples, terminal_colors=True):
@@ -467,37 +464,36 @@ def minisanity(likelihood_energy, samples, terminal_colors=True):
     from .minimization.sample_list import SampleListBase
     from .sugar import makeDomain
 
-    data = likelihood_energy._data
-    sqrt_metric_at_pos = likelihood_energy.get_sqrt_data_metric_at
-    modeldata_operator = likelihood_energy._model_data_op
     if not isinstance(samples, SampleListBase):
         raise TypeError(
             "Minisanity takes only SampleLists as input. If you happen to have "
             "only one field (i.e. no samples), you may wrap it via "
             "`ift.SampleList([field])` and pass it to minisanity."
         )
-    colors = bool(terminal_colors)
+
+    nres = likelihood_energy.normalized_residual
+    data_domain = likelihood_energy.data_residual.target
+    latent_domain = samples.domain
+    xdoms = [data_domain, latent_domain]
+
     keylen = 18
-    for dom in [data.domain, samples.domain]:
+    for dom in xdoms:
         if isinstance(dom, MultiDomain):
             keylen = max([max(map(len, dom.keys())), keylen])
     keylen = min([keylen, 42])
 
-    xdoms = [data.domain, samples.domain]
     # compute xops
     xops = []
-    if isinstance(xdoms[0], MultiDomain):
-        lam = lambda x: (sqrt_metric_at_pos(x).abs() @
-                Adder(data, neg=True) @ modeldata_operator).force(x)
+    if isinstance(data_domain, MultiDomain):
+        lam = lambda x: nres(x)
     else:
-        xdoms[0] = makeDomain({"<None>": xdoms[0]})
-        lam = lambda x: (sqrt_metric_at_pos(x).abs().ducktape_left("<None>") @
-                Adder(data, neg=True) @ modeldata_operator).force(x)
+        data_domain = makeDomain({"<None>": data_domain})
+        lam = lambda x: nres.ducktape_left("<None>")(x)
     xops.append(lam)
-    if isinstance(xdoms[1], MultiDomain):
+    if isinstance(latent_domain, MultiDomain):
         xops.append(lambda x: x)
     else:
-        xdoms[1] = makeDomain({"<None>": xdoms[1]})
+        latent_domain = makeDomain({"<None>": latent_domain})
         xops.append(lambda x: x.ducktape_left("<None>"))
     # /compute xops
 
@@ -508,8 +504,8 @@ def minisanity(likelihood_energy, samples, terminal_colors=True):
         xndof.append({})
 
     for ss1, ss2 in zip(samples.iterator(xops[0]), samples.iterator(xops[1])):
-        if isinstance(data.domain, MultiDomain):
-            assert ss1.domain == data.domain
+        if isinstance(data_domain, MultiDomain):
+            assert ss1.domain == data_domain
         if isinstance(samples.domain, MultiDomain):
             assert ss2.domain == samples.domain
         for ii, ss in enumerate((ss1, ss2)):
@@ -519,8 +515,8 @@ def minisanity(likelihood_energy, samples, terminal_colors=True):
                 xscmean[ii][kk].add(np.nanmean(ss[kk].val))
                 xndof[ii][kk] = lsize
 
-    s0 = _tableentries(xredchisq[0], xscmean[0], xndof[0], keylen, colors)
-    s1 = _tableentries(xredchisq[1], xscmean[1], xndof[1], keylen, colors)
+    s0 = _tableentries(xredchisq[0], xscmean[0], xndof[0], keylen, terminal_colors)
+    s1 = _tableentries(xredchisq[1], xscmean[1], xndof[1], keylen, terminal_colors)
 
     n = 38 + keylen
     s = [n * "=",
