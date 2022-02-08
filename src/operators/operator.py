@@ -326,8 +326,9 @@ class Operator(metaclass=NiftyMeta):
     def simplify_for_constant_input(self, c_inp):
         from ..multi_field import MultiField
         from ..sugar import makeDomain
-        from .energy_operators import EnergyOperator
+        from .energy_operators import EnergyOperator, LikelihoodEnergyOperator
         from .simplify_for_const import (ConstantEnergyOperator,
+                                         ConstantLikelihoodEnergyOperator,
                                          ConstantOperator)
         if c_inp is None or (isinstance(c_inp, MultiField) and len(c_inp.keys()) == 0):
             return None, self
@@ -347,6 +348,8 @@ class Operator(metaclass=NiftyMeta):
                 raise RuntimeError
             if isinstance(self, EnergyOperator):
                 op = ConstantEnergyOperator(self(c_inp))
+            elif isinstance(self, LikelihoodEnergyOperator):
+                op = ConstantLikelihoodEnergyOperator(self(c_inp))
             else:
                 op = ConstantOperator(self(c_inp))
             return None, op

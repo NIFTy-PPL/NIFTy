@@ -11,9 +11,11 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
-# Copyright(C) 2013-2021 Max-Planck-Society
+# Copyright(C) 2013-2022 Max-Planck-Society
 #
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
+
+from functools import reduce
 
 import numpy as np
 
@@ -165,7 +167,7 @@ class _LikelihoodChain(LikelihoodEnergyOperator):
                 else:
                     extract = Operator.identity_operator(op2.target)
                 res = op1._res @ extract @ op2
-                sqrt_data_metric_at = lambda x: op1._sqrt_data_metric_at(op2(x))
+                sqrt_data_metric_at = lambda x: op1._sqrt_data_metric_at(op2.force(x))
 
         super(_LikelihoodChain, self).__init__(res, sqrt_data_metric_at)
         self._op1, self._op2 = op1, op2
@@ -188,23 +190,36 @@ class _LikelihoodSum(LikelihoodEnergyOperator):
         from .simple_linear_operators import PrependKey
 
         res1, res2 = op1._res, op2._res
-        b1 = isinstance(res1.target, DomainTuple)
-        b2 = isinstance(res2.target, DomainTuple)
+        b1 = res1 is None or isinstance(res1.target, DomainTuple)
+        b2 = res2 is None or isinstance(res2.target, DomainTuple)
         if isinstance(op1.domain, DomainTuple) ^ isinstance(op2.domain, DomainTuple):
             raise TypeError()
 
-        fa1 = FieldAdapter(res1.target, "").adjoint if b1 else ScalingOperator(res1.target, 1.)
-        fa2 = FieldAdapter(res2.target, "").adjoint if b2 else ScalingOperator(res2.target, 1.)
-        prep1 = PrependKey(fa1.target, "1") @ fa1
-        prep2 = PrependKey(fa2.target, "2") @ fa2
+        res = []
+        sqrt_data_metric = []
+        if res1 is not None:
+            fa1 = FieldAdapter(res1.target, "").adjoint if b1 else ScalingOperator(res1.target, 1.)
+            prep1 = PrependKey(fa1.target, "1") @ fa1
+            res.append(prep1 @ res1)
+        if res2 is not None:
+            fa2 = FieldAdapter(res2.target, "").adjoint if b2 else ScalingOperator(res2.target, 1.)
+            prep2 = PrependKey(fa2.target, "2") @ fa2
+            res.append(prep2 @ res2)
+            sqrt_data_metric.append(prep2 @ op2._sqrt_data_metric_at(x))
 
-        res = prep1 @ res1 + prep2 @ res2
-        sqrt_data_metric_at = lambda x: (prep1 @ op1._sqrt_data_metric_at(x)) + (prep2 @ op2._sqrt_data_metric_at(x))
+        def sqrt_data_metric_at(x):
+            result = []
+            if res1 is not None:
+                result.append(prep1 @ op1._sqrt_data_metric_at(x))
+            if res2 is not None:
+                result.append(prep2 @ op2._sqrt_data_metric_at(x))
+            return reduce(sum, result)
 
-        super(_LikelihoodSum, self).__init__(res, sqrt_data_metric_at)
+        super(_LikelihoodSum, self).__init__(reduce(sum, res), sqrt_data_metric_at)
 
         self._op1, self._op2 = op1, op2
         self._op = _OpSum(self._op1, self._op2)  # Temporary?
+        self._domain = self._op.domain
 
     def apply(self, x):
         return self._op(x)
@@ -327,7 +342,7 @@ class VariableCovarianceGaussianEnergy(LikelihoodEnergyOperator):
         return res.add_metric(met)
 
     def _simplify_for_constant_input_nontrivial(self, c_inp):
-        from .simplify_for_const import ConstantEnergyOperator
+        from .simplify_for_const import ConstantLikelihoodEnergyOperator
         myassert(len(c_inp.keys()) == 1)
         key = c_inp.keys()[0]
         myassert(key in self._domain.keys())
@@ -340,8 +355,8 @@ class VariableCovarianceGaussianEnergy(LikelihoodEnergyOperator):
             trlog = cst.log().sum().val_rw()
             if not self._cplx:
                 trlog /= 2
-            res = res + ConstantEnergyOperator(-trlog)
-        res = res + ConstantEnergyOperator(0.)
+            res = res + ConstantLikelihoodEnergyOperator(-trlog)
+        res = res + ConstantLikelihoodEnergyOperator(0.)
         myassert(res.target is self.target)
         return None, res
 

@@ -19,7 +19,7 @@
 from ..multi_domain import MultiDomain
 from ..utilities import myassert
 from .block_diagonal_operator import BlockDiagonalOperator
-from .energy_operators import EnergyOperator
+from .energy_operators import EnergyOperator, LikelihoodEnergyOperator
 from .operator import Operator
 from .scaling_operator import ScalingOperator
 from .simple_linear_operators import NullOperator
@@ -97,6 +97,14 @@ class ConstantEnergyOperator(EnergyOperator):
             met = NullOperator(self._domain, self._domain) if x.want_metric else None
             return x.new(val, jac, met)
         return self._output
+
+
+class ConstantLikelihoodEnergyOperator(LikelihoodEnergyOperator):
+    def __init__(self, output):
+        super(ConstantLikelihoodEnergyOperator, self).__init__(None, None)
+        op = ConstantEnergyOperator(output)
+        self.apply = op.apply
+        self._domain = op._domain
 
 
 class InsertionOperator(Operator):
