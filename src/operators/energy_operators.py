@@ -16,6 +16,7 @@
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
 
 from functools import reduce
+from operator import add
 
 import numpy as np
 
@@ -212,17 +213,16 @@ class _LikelihoodSum(_CombinedLh):
             fa2 = FieldAdapter(res2.target, "").adjoint if b2 else ScalingOperator(res2.target, 1.)
             prep2 = PrependKey(fa2.target, "2") @ fa2
             res.append(prep2 @ res2)
-            sqrt_data_metric.append(prep2 @ op2._sqrt_data_metric_at(x))
 
         def sqrt_data_metric_at(x):
             result = []
             if res1 is not None:
-                result.append(prep1 @ op1._sqrt_data_metric_at(x))
+                result.append(prep1 @ op1._sqrt_data_metric_at(x) @ prep1.adjoint)
             if res2 is not None:
-                result.append(prep2 @ op2._sqrt_data_metric_at(x))
-            return reduce(sum, result)
+                result.append(prep2 @ op2._sqrt_data_metric_at(x) @ prep2.adjoint)
+            return reduce(add, result)
 
-        super(_LikelihoodSum, self).__init__(reduce(sum, res), sqrt_data_metric_at)
+        super(_LikelihoodSum, self).__init__(reduce(add, res), sqrt_data_metric_at)
         self._op = _OpSum(op1, op2)
 
 
