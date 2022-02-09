@@ -502,9 +502,10 @@ def minisanity(data, metric_at_pos, modeldata_operator, samples, terminal_colors
     for ss1, ss2 in zip(samples.iterator(xops[0]), samples.iterator(xops[1])):
         for ii, ss in enumerate((ss1, ss2)):
             for kk in ss.domain.keys():
-                xredchisq[ii][kk].add(np.nansum(abs(ss[kk].val) ** 2) / ss[kk].size)
+                lsize = ss[kk].size - np.sum(np.isnan(ss[kk].val))
+                xredchisq[ii][kk].add(np.nansum(abs(ss[kk].val) ** 2) / lsize)
                 xscmean[ii][kk].add(np.nanmean(ss[kk].val))
-                xndof[ii][kk] = ss[kk].size - np.sum(np.isnan(ss[kk].val))
+                xndof[ii][kk] = lsize
 
     s0 = _tableentries(xredchisq[0], xscmean[0], xndof[0], keylen, colors)
     s1 = _tableentries(xredchisq[1], xscmean[1], xndof[1], keylen, colors)
