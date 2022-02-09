@@ -507,12 +507,12 @@ def _append_key(s, key):
     return f"{s} ({key})"
 
 
-def _plot_stats(file_name, mean, stddev, ground_truth, comm):
+def _plot_stats(file_name, mean, var, ground_truth, comm):
     p = Plot()
     if ground_truth is not None:
         p.add(ground_truth, title="Ground truth")
     p.add(mean, title="Mean")
-    p.add(stddev, vmin=0, title="Standard deviation")
+    p.add(var.sqrt(), vmin=0, title="Standard deviation")
     if _MPI_master(comm):
         p.output(name=file_name, ny=2 if ground_truth is None else 3)
 
