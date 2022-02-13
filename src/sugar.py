@@ -12,6 +12,7 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
 # Copyright(C) 2013-2021 Max-Planck-Society
+# Copyright(C) 2022 Philipp Arras
 #
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
 
@@ -587,6 +588,14 @@ def exec_time(obj, want_metric=True):
         t0 = time()
         res = obj(lin)
         logger.info('Operator call with linearization: {}'.format(time() - t0))
+
+        t0 = time()
+        res.jac(pos)
+        logger.info('Apply linearization: {}'.format(time() - t0))
+
+        t0 = time()
+        res.jac.adjoint(res.val)
+        logger.info('Apply linearization (adjoint): {}'.format(time() - t0))
 
         if obj.target is DomainTuple.scalar_domain():
             t0 = time()
