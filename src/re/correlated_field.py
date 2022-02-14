@@ -468,16 +468,18 @@ class CorrelatedFieldMaker():
             axes = tuple(range(n - len(sub_shp), n))
 
             # TODO: Generalize to complex
-            harmonic_transforms.append(partial(hartley, axes=axes))
+            harmonic_dvol = 1. / sub_dom["position_space_total_volume"]
+            harmonic_transforms.append((harmonic_dvol, partial(hartley, axes=axes)))
         # Register the parameters for the excitations in harmonic space
         # TODO: actually account for the dtype here
         pfx = self._prefix + "xi"
         self._parameter_tree[pfx] = ShapeWithDtype(excitation_shape)
 
         def outer_harmonic_transform(p):
-            outer = harmonic_transforms[0](p)
-            for ht in harmonic_transforms[1:]:
-                outer = ht(outer)
+            harmonic_dvol, ht = harmonic_transforms[0]
+            outer = harmonic_dvol * ht(p)
+            for harmonic_dvol, ht in harmonic_transforms[1:]:
+                outer = harmonic_dvol * ht(outer)
             return outer
 
         def _mk_expanded_amp(amp, sub_dom):  # Avoid late binding
