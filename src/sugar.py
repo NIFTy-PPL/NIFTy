@@ -16,6 +16,9 @@
 #
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
 
+import cProfile
+import io
+import pstats
 import sys
 from time import time
 
@@ -551,61 +554,50 @@ def plot_priorsamples(op, n_samples=5, common_colorbar=True, **kwargs):
     p.output(**kwargs)
 
 
-def exec_time(obj, want_metric=True):
+def exec_time(obj, want_metric=True, verbose=False):
     """Times the execution time of an operator or an energy."""
     from .linearization import Linearization
     from .minimization.energy import Energy
+
+    # FIXME Add warmup for jax functions?
+
+    def _profile_func(func, inp, what):
+        t0 = time()
+        with cProfile.Profile() as pr:
+            res = func(inp)
+        logger.info(f'{what}: {time() - t0}')
+        if verbose:
+            s = io.StringIO()
+            pstats.Stats(pr, stream=s).sort_stats(pstats.SortKey.TIME).print_stats(5)
+            logger.info(s.getvalue())
+        return res
+
+    def _profile_get_attr(obj, attr, what):
+        return _profile_func(lambda x: getattr(obj, x), attr, what)
+
     if isinstance(obj, Energy):
-        t0 = time()
-        obj.at(0.99*obj.position)
-        logger.info('Energy.at(): {}'.format(time() - t0))
+        newpos = 0.99*obj.position
+        _profile_func(lambda x: x.at(newpos), obj, "Energy.at()")
+        _profile_get_attr(obj, "value", "Energy.value")
+        _profile_get_attr(obj, "gradient", "Energy.gradient")
+        _profile_get_attr(obj, "metric", "Energy.metric")
+        _profile_func(lambda x: x.apply_metric(x.position), obj, "Energy.apply_metric")
+        _profile_func(lambda x: x.metric(x.position), obj, "Energy.metric(position)")
 
-        t0 = time()
-        obj.value
-        logger.info('Energy.value: {}'.format(time() - t0))
-        t0 = time()
-        obj.gradient
-        logger.info('Energy.gradient: {}'.format(time() - t0))
-        t0 = time()
-        obj.metric
-        logger.info('Energy.metric: {}'.format(time() - t0))
-
-        t0 = time()
-        obj.apply_metric(obj.position)
-        logger.info('Energy.apply_metric: {}'.format(time() - t0))
-
-        t0 = time()
-        obj.metric(obj.position)
-        logger.info('Energy.metric(position): {}'.format(time() - t0))
     elif isinstance(obj, Operator):
         want_metric = bool(want_metric)
+
         pos = from_random(obj.domain, 'normal')
-        t0 = time()
-        obj(pos)
-        logger.info('Operator call with field: {}'.format(time() - t0))
-
         lin = Linearization.make_var(pos, want_metric=want_metric)
-        t0 = time()
-        res = obj(lin)
-        logger.info('Operator call with linearization: {}'.format(time() - t0))
-
-        t0 = time()
-        res.jac(pos)
-        logger.info('Apply linearization: {}'.format(time() - t0))
-
-        t0 = time()
-        res.jac.adjoint(res.val)
-        logger.info('Apply linearization (adjoint): {}'.format(time() - t0))
+        _profile_func(lambda x: x(pos), obj, "Operator call with field")
+        res = _profile_func(lambda x: x(lin), obj, "Operator call with linearization")
+        _profile_func(lambda x: res.jac(x), pos, "Apply linearization")
+        _profile_func(lambda x: res.jac.adjoint(x), res.val, "Apply linearization (adjoint)")
 
         if obj.target is DomainTuple.scalar_domain():
-            t0 = time()
-            res.gradient
-            logger.info('Gradient evaluation: {}'.format(time() - t0))
-
+            _profile_get_attr(res, "gradient", "Gradient evaluation")
             if want_metric:
-                t0 = time()
-                res.metric(pos)
-                logger.info('Metric apply: {}'.format(time() - t0))
+                _profile_func(lambda x: res.metric(x), pos, "Metric apply")
     else:
         raise TypeError
 
