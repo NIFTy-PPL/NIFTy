@@ -16,6 +16,7 @@
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
 
 import numpy as np
+from functools import partial
 
 from .. import utilities
 from ..domain_tuple import DomainTuple
@@ -161,21 +162,26 @@ class HartleyOperator(LinearOperator):
             from jax.numpy import fft as jfft
 
             axes = self.domain.axes[self._space]
-            fct = self.domain[self._space].scalar_dvol
 
             def hartley(a):
                 ft = jfft.fftn(a, axes=axes)
                 return ft.real + ft.imag
 
-            def apply_cartesian(x):
+            def apply_cartesian(x, inverse=False):
+                if inverse:
+                    fct = self.target[self._space].scalar_dvol
+                else:
+                    fct = self.domain[self._space].scalar_dvol
                 return fct * hartley(x) if fct != 1 else hartley(x)
 
-            def jax_expr(x):
+            def jax_expr(x, inverse=False):
+                ap = partial(apply_cartesian, inverse=inverse)
                 if np.issubdtype(x.dtype.type, np.complexfloating):
-                    return apply_cartesian(x.real) + 1j * apply_cartesian(x.imag)
-                return apply_cartesian(x)
+                    return ap(x.real) + 1j * ap(x.imag)
+                return ap(x)
 
             self._jax_expr = jax_expr
+            self._jax_expr_inv = partial(jax_expr, inverse=True)
         except ImportError:
             self._jax_expr = None
 

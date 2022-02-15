@@ -64,6 +64,9 @@ class OperatorAdapter(LinearOperator):
                     return tree_map(jnp.conj, jax_expr_T(y_conj)[0])
 
                 self._jax_expr = jax_expr
+            elif hasattr(op, "_jax_expr_inv") and callable(op._jax_expr_inv) and self._trafo == self.INVERSE_BIT:
+                self._jax_expr = op._jax_expr_inv
+                self._jax_expr_inv = op._jax_expr
             else:
                 self._jax_expr = None
         except ImportError:
