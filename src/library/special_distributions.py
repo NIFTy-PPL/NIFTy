@@ -76,6 +76,16 @@ class _InterpolationOperator(Operator):
         self._interpolator = CubicSpline(self._xs, self._table)
         self._deriv = self._interpolator.derivative()
         self._inv_table_func = inv_table_func
+        try:
+            from jax import numpy as jnp
+            def jax_expr(x):
+                res = jnp.interp(x, self._xs, self._table)
+                if self._inv_table_func is not None:
+                    raise ValueError
+                return res
+            self._jax_expr = jax_expr
+        except ImportError:
+            self._jax_expr = None
 
     def apply(self, x):
         self._check_input(x)
@@ -153,6 +163,11 @@ class InverseGammaOperator(Operator):
         else:
             op = makeOp(self._q) @ op
         self._op = op
+        try:
+            from ..re.stats_distributions import invgamma_prior
+            self._jax_expr = invgamma_prior(float(self._alpha), self._q)
+        except ImportError:
+            self._jax_expr = None
 
     def apply(self, x):
         return self._op(x)
