@@ -571,13 +571,11 @@ def exec_time(obj, want_metric=True, verbose=False):
     from .linearization import Linearization
     from .minimization.energy import Energy
 
-    # FIXME Add warmup for jax functions?
-
     def _profile_func(func, inp, what):
         t0 = time()
         with cProfile.Profile() as pr:
             res = func(inp)
-        logger.info(f'{what}: {(time() - t0)*1000:.3f} ms')
+        logger.info(f'{what}: {(time() - t0)*1000:>8.3f} ms')
         if verbose:
             s = io.StringIO()
             pstats.Stats(pr, stream=s).sort_stats(pstats.SortKey.TIME).print_stats(5)
