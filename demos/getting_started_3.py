@@ -119,6 +119,10 @@ def main():
     # Set up likelihood energy
     likelihood_energy = (ift.GaussianEnergy(data, inverse_covariance=N.inverse) @
                          signal_response)
+    loc = ift.full(likelihood_energy.domain, 0.)
+    likelihood_energy = ift.EnergyAdapter(loc, likelihood_energy)
+    ift.exec_time(likelihood_energy)
+    exit()
 
     def callback(samples):
         s = ift.extra.minisanity(likelihood_energy, samples)

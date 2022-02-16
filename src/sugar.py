@@ -555,7 +555,19 @@ def plot_priorsamples(op, n_samples=5, common_colorbar=True, **kwargs):
 
 
 def exec_time(obj, want_metric=True, verbose=False):
-    """Times the execution time of an operator or an energy."""
+    """Times the execution time of an operator or an energy.
+
+    Parameters
+    ----------
+
+    obj : Operator or Energy
+        Operator or Energy that shall be profiled.
+    want_metric : bool, optional
+        Determine if Operator shall be called with `want_metric=True`. Only
+        applicable for EnergyOperators. Default: True.
+    verbose : bool, optional
+        If True, more profiling information is printed. Default: False.
+    """
     from .linearization import Linearization
     from .minimization.energy import Energy
 
@@ -565,7 +577,7 @@ def exec_time(obj, want_metric=True, verbose=False):
         t0 = time()
         with cProfile.Profile() as pr:
             res = func(inp)
-        logger.info(f'{what}: {time() - t0}')
+        logger.info(f'{what}: {(time() - t0)*1000:.3f} ms')
         if verbose:
             s = io.StringIO()
             pstats.Stats(pr, stream=s).sort_stats(pstats.SortKey.TIME).print_stats(5)
@@ -577,27 +589,28 @@ def exec_time(obj, want_metric=True, verbose=False):
 
     if isinstance(obj, Energy):
         newpos = 0.99*obj.position
-        _profile_func(lambda x: x.at(newpos), obj, "Energy.at()")
-        _profile_get_attr(obj, "value", "Energy.value")
-        _profile_get_attr(obj, "gradient", "Energy.gradient")
-        _profile_get_attr(obj, "metric", "Energy.metric")
-        _profile_func(lambda x: x.apply_metric(x.position), obj, "Energy.apply_metric")
-        _profile_func(lambda x: x.metric(x.position), obj, "Energy.metric(position)")
+        _profile_func(lambda x: x.at(newpos), obj, "Energy.at()\t\t\t\t")
+        _profile_get_attr(obj, "value", "Energy.value\t\t\t\t")
+        _profile_get_attr(obj, "gradient", "Energy.gradient\t\t\t\t")
+        _profile_get_attr(obj, "metric", "Energy.metric\t\t\t\t")
+        if obj.metric is not None:
+            _profile_func(lambda x: x.apply_metric(x.position), obj, "Energy.apply_metric\t\t\t")
+            _profile_func(lambda x: x.metric(x.position), obj, "Energy.metric(position)\t\t\t")
 
     elif isinstance(obj, Operator):
         want_metric = bool(want_metric)
 
         pos = from_random(obj.domain, 'normal')
         lin = Linearization.make_var(pos, want_metric=want_metric)
-        _profile_func(lambda x: x(pos), obj, "Operator call with field")
-        res = _profile_func(lambda x: x(lin), obj, "Operator call with linearization")
-        _profile_func(lambda x: res.jac(x), pos, "Apply linearization")
-        _profile_func(lambda x: res.jac.adjoint(x), res.val, "Apply linearization (adjoint)")
+        _profile_func(lambda x: x(pos), obj, "Operator call with field\t\t")
+        res = _profile_func(lambda x: x(lin), obj, "Operator call with linearization\t")
+        _profile_func(lambda x: res.jac(x), pos, "Apply linearization\t\t\t")
+        _profile_func(lambda x: res.jac.adjoint(x), res.val, "Apply linearization (adjoint)\t\t")
 
         if obj.target is DomainTuple.scalar_domain():
-            _profile_get_attr(res, "gradient", "Gradient evaluation")
+            _profile_get_attr(res, "gradient", "Gradient evaluation\t\t\t")
             if want_metric:
-                _profile_func(lambda x: res.metric(x), pos, "Metric apply")
+                _profile_func(lambda x: res.metric(x), pos, "Metric apply\t\t\t\t")
     else:
         raise TypeError
 
