@@ -75,19 +75,30 @@ class FFTOperator(LinearOperator):
         try:
             from jax.numpy import fft as jfft
 
-            if self.domain[self._space].harmonic:
-                func = jfft.ifftn
-                fct = self.domain[self._space].size
-            else:
-                func = jfft.fftn
-                fct = 1.
             axes = self.domain.axes[self._space]
-            fct *= self.domain[self._space].scalar_dvol
 
-            def jax_expr(x):
+            def jax_expr(x, inverse=False):
+                if inverse:
+                    if self.domain[self._space].harmonic:
+                        func = jfft.fftn
+                        fct = 1.
+                    else:
+                        func = jfft.ifftn
+                        fct = self.domain[self._space].size
+                    fct *= self.target[self._space].scalar_dvol
+                else:
+                    if self.domain[self._space].harmonic:
+                        func = jfft.ifftn
+                        fct = self.domain[self._space].size
+                    else:
+                        func = jfft.fftn
+                        fct = 1.
+                    fct *= self.domain[self._space].scalar_dvol
                 return fct * func(x, axes=axes) if fct != 1 else func(x, axes=axes)
 
             self._jax_expr = jax_expr
+            self._jax_expr_inv = partial(jax_expr, inverse=True)
+
         except ImportError:
             self._jax_expr = None
 

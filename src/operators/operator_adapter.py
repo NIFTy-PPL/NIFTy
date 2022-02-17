@@ -48,18 +48,22 @@ class OperatorAdapter(LinearOperator):
         self._capability = self._capTable[self._trafo][self._op.capability]
 
         try:
-            from jax import linear_transpose
+            from jax import eval_shape, linear_transpose
             import jax.numpy as jnp
-            from jax.tree_util import tree_map
+            from jax.tree_util import tree_map, tree_all
 
             from ..nifty2jax import shapewithdtype_from_domain
             from ..re import Field
 
             if callable(op.jax_expr) and self._trafo == self.ADJOINT_BIT:
                 def jax_expr(y):
-                    y_conj = tree_map(jnp.conj, y)
                     op_domain = shapewithdtype_from_domain(op.domain, domain_dtype)
                     op_domain = Field(op_domain) if isinstance(y, Field) else op_domain
+                    tentative_yshape = eval_shape(op.jax_expr, op_domain)
+                    if not tree_all(tree_map(lambda a,b : jnp.can_cast(a.dtype, b.dtype), y, tentative_yshape)): 
+                        raise ValueError(f"wrong dtype during transposition:/got {tentative_yshape} and expected {y!r}")
+                    y = tree_map(lambda c, d: c.astype(d.dtype, casting="safe", copy=False), y, tentative_yshape) 
+                    y_conj = tree_map(jnp.conj, y)
                     jax_expr_T = linear_transpose(op.jax_expr, op_domain)
                     return tree_map(jnp.conj, jax_expr_T(y_conj)[0])
 
