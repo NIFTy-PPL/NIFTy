@@ -103,7 +103,7 @@ class LikelihoodEnergyOperator(EnergyOperator):
         self._sqrt_data_metric_at = sqrt_data_metric_at
 
     def normalized_residual(self, x):
-        return (self._sqrt_data_metric_at(x).abs() @ self._res).force(x)
+        return (self._sqrt_data_metric_at(x) @ self._res).force(x)
 
     @property
     def data_domain(self):
