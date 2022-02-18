@@ -25,66 +25,10 @@ from .field import Field
 from .minimization.sample_list import SampleListBase
 from .multi_domain import MultiDomain
 from .multi_field import MultiField
+from .operator_spectrum import _DomRemover
 from .operators.linear_operator import LinearOperator
 from .operators.sandwich_operator import SandwichOperator
 from .sugar import makeDomain, makeField
-
-
-class _DomRemover(LinearOperator):
-    """Operator which transforms between a structured MultiDomain
-    and an unstructured domain.
-
-    Parameters
-    ----------
-    domain: MultiDomain
-        the full input domain of the operator.
-
-    Notes
-    -----
-    The operator converts the full domain of its input domain to an
-    UnstructuredDomain
-    """
-
-    def __init__(self, domain):
-        self._domain = makeDomain(domain)
-        if isinstance(self._domain, MultiDomain):
-            self._size_array = np.array([0] +
-                                        [d.size for d in domain.values()])
-        else:
-            self._size_array = np.array([0, domain.size])
-        np.cumsum(self._size_array, out=self._size_array)
-        target = UnstructuredDomain(self._size_array[-1])
-        self._target = makeDomain(target)
-        self._capability = self.TIMES | self.ADJOINT_TIMES
-
-    def apply(self, x, mode):
-        self._check_input(x, mode)
-        self._check_float_dtype(x)
-        x = x.val
-        if isinstance(self._domain, DomainTuple):
-            res = x.ravel() if mode == self.TIMES else x.reshape(
-                self._domain.shape)
-        else:
-            res = np.empty(self.target.shape) if mode == self.TIMES else {}
-            for ii, (kk, dd) in enumerate(self.domain.items()):
-                i0, i1 = self._size_array[ii:ii + 2]
-                if mode == self.TIMES:
-                    res[i0:i1] = x[kk].ravel()
-                else:
-                    res[kk] = x[i0:i1].reshape(dd.shape)
-        return makeField(self._tgt(mode), res)
-
-    @staticmethod
-    def _check_float_dtype(fld):
-        if isinstance(fld, MultiField):
-            dts = [ff.dtype for ff in fld.values()]
-        elif isinstance(fld, Field):
-            dts = [fld.dtype]
-        else:
-            raise TypeError
-        for dt in dts:
-            if not np.issubdtype(dt, np.float64):
-                raise TypeError('Operator supports only floating point dtypes')
 
 
 class _Projector(ssl.LinearOperator):
