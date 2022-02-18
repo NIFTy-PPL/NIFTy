@@ -13,24 +13,17 @@
 #
 # Copyright(C) 2013-2022 Max-Planck-Society
 
-import sys
-
 import numpy as np
 import scipy.sparse.linalg as ssl
 
-from src import SampledKLEnergyClass
-
-from .domain_tuple import DomainTuple
-from .domains.unstructured_domain import UnstructuredDomain
 from .field import Field
 from .logger import logger
+from .minimization.kl_energies import SampledKLEnergyClass
 from .minimization.sample_list import SampleListBase
-from .multi_domain import MultiDomain
-from .multi_field import MultiField
 from .operator_spectrum import _DomRemover
 from .operators.linear_operator import LinearOperator
 from .operators.sandwich_operator import SandwichOperator
-from .sugar import makeDomain, makeField
+from .sugar import makeField
 
 
 class _Projector(ssl.LinearOperator):
