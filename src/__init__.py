@@ -101,6 +101,7 @@ from .logger import logger
 from .linearization import Linearization
 
 from .operator_spectrum import operator_spectrum
+from .evidence_lower_bound import get_evidence
 
 from .operator_tree_optimiser import optimise_operator
 
