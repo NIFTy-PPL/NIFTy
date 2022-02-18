@@ -227,16 +227,11 @@ def get_evidence(mean, samples, n_eigenvalues, hamiltonian, constants=[], invari
              "tr_log_diagonal_lat_cov_error": tr_log_diagonal_lat_cov_error}
 
     if verbose:
-        elbo_decomposition = ("ELBO decomposition (in log units)"
-                              f"\nELBO           : {stats['estimate'].val:.4e} (upper: {stats['upper'].val:.4e}, "
-                              f"lower: {stats['lower'].val:.4e})"
-                              f"\nH_lh           : {stats['ln_likelihood_mean'].val:.4e} ± "
-                              f"{stats['ln_likelihood_mean_std']:.5e}"
-                              f"\nH_{{lh,0}}       : {stats['ln_likelihood_0']:.4e}"
-                              f"\n\\xi^2'         : {stats['xi^2']:.4e}"
-                              f"\nTr \\Lambda     : {stats['tr_reduced_diag_lat_cov']:.5e} (+ "
-                              f"{stats['tr_reduced_diagonal_lat_cov_error']:.5e})"
-                              f"\nTr \\ln \\Lambda : {stats['tr_ln_diag_lat_cov']:.5e} (+ "
-                              f"{stats['tr_log_diagonal_lat_cov_error']:.5e})")
-        logger.info(elbo_decomposition)
+        s = ["ELBO decomposition (in log units)",
+            f"ELBO           : {stats['estimate'].val:.4e} (upper: {stats['upper'].val:.4e}, lower: {stats['lower'].val:.4e})",
+            f"H_lh           : {stats['ln_likelihood_mean'].val:.4e} ± {stats['ln_likelihood_mean_std']:.5e}",
+            f"H_{{lh,0}}       : {stats['ln_likelihood_0']:.4e} \\xi^2'         : {stats['xi^2']:.4e}",
+            f"Tr \\Lambda     : {stats['tr_reduced_diag_lat_cov']:.5e} (+ {stats['tr_reduced_diagonal_lat_cov_error']:.5e})",
+            f"Tr \\ln \\Lambda : {stats['tr_ln_diag_lat_cov']:.5e} (+ {stats['tr_log_diagonal_lat_cov_error']:.5e})"]
+        logger.info(s)
     return stats
