@@ -70,8 +70,7 @@ def _return_eigenspace(M, n_eigenvalues, tol):
 
 def get_evidence(mean, samples, n_eigenvalues, hamiltonian, constants=[], invariants=None, fudge_factor=0,
                  max_iteration=0, eps=1e-1, tol=0., verbose=True, data=None):
-    """
-    Provides an estimate of the Evidence Lower Bound (ELBO).
+    """Provide an estimate of the Evidence Lower Bound (ELBO).
 
     Parameters
     ----------
@@ -98,14 +97,15 @@ def get_evidence(mean, samples, n_eigenvalues, hamiltonian, constants=[], invari
         `n_eigenvalues` must be smaller than N-1, where N is the metric dimension.
 
     fudge_factor : signed int
-        Constant number of eigenvalues that will always be subtracted (or computed) during each iteration of the
-        algorithm.
+        Constant number of eigenvalues that will always be subtracted (or
+        computed) during each iteration of the algorithm.
 
     max_iteration : int
         Maximum iteration -> stopping criterion for the algorithm.
 
     eps : float
-        Relative accuracy (with respect to `1.`) for the eigenvalues (stopping criterion).
+        Relative accuracy (with respect to `1.`) for the eigenvalues (stopping
+        criterion).
 
     tol : float
         Tolerance on the eigenvalue calculation. Zero indicates machine precision.
@@ -115,8 +115,9 @@ def get_evidence(mean, samples, n_eigenvalues, hamiltonian, constants=[], invari
         Default is True.
 
     data :
-        Required to evaluate evidence contributions deriving from parameter-independent likelihood terms that might
-        have been ignored during minimization.
+        Required to evaluate evidence contributions deriving from
+        parameter-independent likelihood terms that might have been ignored
+        during minimization.
 
 
     Returns
@@ -127,12 +128,14 @@ def get_evidence(mean, samples, n_eigenvalues, hamiltonian, constants=[], invari
 
     Notes
     -----
-    It is advisable to start with a higher number of initial eigenvalues to ensure better convergence.
+    It is advisable to start with a higher number of initial eigenvalues to
+    ensure better convergence.
 
 
     See also
     -----
-    For details on the analytic formulation we refer to A. Kostić et Al. (manuscript in preparation).
+    For details on the analytic formulation we refer to A. Kostić et Al.
+    (manuscript in preparation).
     """
 
     # TODO: Implement checks on the input parameters
