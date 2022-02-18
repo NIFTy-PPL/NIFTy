@@ -17,11 +17,13 @@ import sys
 
 import numpy as np
 import scipy.sparse.linalg as ssl
+
 from src import SampledKLEnergyClass
 
 from .domain_tuple import DomainTuple
 from .domains.unstructured_domain import UnstructuredDomain
 from .field import Field
+from .logger import logger
 from .minimization.sample_list import SampleListBase
 from .multi_domain import MultiDomain
 from .multi_field import MultiField
@@ -143,7 +145,7 @@ def get_evidence(mean, samples, n_eigenvalues, hamiltonian, constants=[], invari
         raise TypeError("samples attribute should be of type SampleListBase.")
 
     if verbose:
-        print(f"Number of eigenvalues to compute: {n_eigenvalues}", file=sys.stderr)
+        logger.info(f"Number of eigenvalues to compute: {n_eigenvalues}")
 
     metric = SampledKLEnergyClass(samples, hamiltonian, constants, invariants,
                                   False).metric  # FIXME: Check parameters of SKLEC
@@ -160,7 +162,7 @@ def get_evidence(mean, samples, n_eigenvalues, hamiltonian, constants=[], invari
         projected_metric = _Projector(eigenvectors) @ M
         n_eigenvalues -= int(n_eigenvalues / 4) + fudge_factor  # FIXME: Not sure if it makes sense. Open to suggestions
         if verbose:
-            print(f"Number of additional eigenvalues being computed: {n_eigenvalues}", file=sys.stderr)
+            logger.info(f"Number of additional eigenvalues being computed: {n_eigenvalues}")
 
         eigvals, eigenvectors = _return_eigenspace(projected_metric, n_eigenvalues, tol)
         eigenvalues = np.concatenate((eigenvalues, eigvals))
@@ -171,7 +173,7 @@ def get_evidence(mean, samples, n_eigenvalues, hamiltonian, constants=[], invari
         count += 1
 
     if verbose:
-        print(f"{eigenvalues.size} largest eigenvalues\n{eigenvalues}", file=sys.stderr)
+        logger.info(f"{eigenvalues.size} largest eigenvalues\n{eigenvalues}")
 
     # Calculate the \Tr \ln term and \Tr terms
     tr_reduced_diagonal_lat_cov = 0.
@@ -209,7 +211,7 @@ def get_evidence(mean, samples, n_eigenvalues, hamiltonian, constants=[], invari
         tp_lh = type(hamiltonian.likelihood_energy)
         warn_msg = (f"Unknown likelihood of type {tp_lh!r};\n"
                     f"The (log) ELBO is potentially missing some constant term from the likelihood.")
-        print(warn_msg, file=sys.stderr)
+        logger.warn(warn_msg)
 
     elbo_mean = - h0 - hamiltonian_mean - prior_evidence + 0.5 * tr_log_diagonal_lat_cov
     elbo_var_upper = abs(
@@ -236,5 +238,5 @@ def get_evidence(mean, samples, n_eigenvalues, hamiltonian, constants=[], invari
                               f"{stats['tr_reduced_diagonal_lat_cov_error']:.5e})"
                               f"\nTr \\ln \\Lambda : {stats['tr_ln_diag_lat_cov']:.5e} (+ "
                               f"{stats['tr_log_diagonal_lat_cov_error']:.5e})")
-        print(elbo_decomposition, file=sys.stderr)
+        logger.info(elbo_decomposition)
     return stats
