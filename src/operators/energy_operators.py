@@ -584,9 +584,9 @@ class InverseGammaEnergy(LikelihoodEnergyOperator):
             raise TypeError
         self._sampling_dtype = _field_to_dtype(self._beta)
 
-        # FIXME
-        super(InverseGammaEnergy, self).__init__(None, None)
-        #Adder(d, neg=True), lambda x: self.get_metric_at(x).get_sqrt())
+        data_residual = Adder(self._beta) @ ScalingOperator(self._domain, 0.)
+        data_metric = lambda x: makeOp(x.reciprocal().sqrt())
+        super(InverseGammaEnergy, self).__init__(data_residual, data_metric)
 
     def apply(self, x):
         self._check_input(x)
