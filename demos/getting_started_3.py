@@ -160,6 +160,8 @@ def main():
     if master:
         plot.output(ny=1, nx=3, xsize=24, ysize=6, name=filename_res)
         print("Saved results as '{}'.".format(filename_res))
+        # Proof of concept of the evidence lower bound function. It can take long, so comment if unnecessary.
+        ift.estimate_evidence_lower_bound(mean, samples, 100, ift.StandardHamiltonian(likelihood_energy), eps=1e-3)
 
 
 if __name__ == '__main__':
