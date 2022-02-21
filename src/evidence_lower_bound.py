@@ -63,9 +63,41 @@ def _return_eigenspace(M, n_eigenvalues, tol):
     return eigenvalues, eigenvectors
 
 
-def estimate_evidence_lower_bound(mean, samples, n_eigenvalues, hamiltonian, constants=[], invariants=None, fudge_factor=0,
+def estimate_evidence_lower_bound(mean, samples, n_eigenvalues, hamiltonian, constants=[], invariants=None,
+                                  fudge_factor=0,
                                   max_iteration=5, eps=1e-3, tol=0., verbose=True, data=None):
-    """Provide an estimate of the Evidence Lower Bound (ELBO).
+    """Provides an estimate for the Evidence Lower Bound (ELBO).
+
+    Statistical inference deals with the problem of hypothesis testing, given the data and models that can describe it.
+    In general, it is hard to find a good metric to discern between different models. In Bayesian Inference,
+    the Bayes factor can serve this purpose.
+    To compute the Bayes factor it is necessary to calculate the evidence, given the specific model :math:`p(
+    d|\\text{model})` at hand.
+    Then, the ratio between the evidence of a model A and the one of a model B represents how much more likely it is
+    that model A represents the data better than model B.
+
+    The evidence for an approximated-inference problem could be in principle calculated by considering
+
+    .. math ::
+        \\log(p(d)) - D_\\text{KL} \\left[ Q(\\theta(\\xi)|d) || p(\\theta(\\xi) | d) \\right] = -\\langleH(
+        d|\\xi)\\rangle - \\frac{1}{2} \\left( \\Tr[\\Lambda - \\mathbb{1}] + \\xi^\\dagger \\xi - \\Tr\\log\\Lambda
+        \\right)
+
+    where :math:`D_\\text{KL} \\left[ Q || p \\right]` is the Kullback-Leibler (KL) divergence between the
+    approximating posterior distribution :math:`Q` and the actual posterior :math:`p`.
+    But since the Kullback-Leibler divergence :math:`D_\\text{KL}[\\dot] \\geq 0` is positive definite, it is convenient
+    to consider the lower bound
+
+    .. math ::
+        \\log(p(d)) \\geq -\\langleH(d|\\xi)\\rangle - \\frac{1}{2} \\left( \\Tr[\\Lambda - \\mathbb{1}] +
+        \\xi^\\dagger \\xi - \\Tr\\log\\Lambda \\right),
+
+    which takes the name of Evidence Lower Bound (ELBO).
+
+    If the KL divergence is well minimized (which should always be the case when a Variational Inference approach is
+    followed), then it is possible to utilize the ELBO (as a proxy for the actual evidences) and calculate the Bayes
+    factors for model comparison.
+
 
     Parameters
     ----------
@@ -123,9 +155,7 @@ def estimate_evidence_lower_bound(mean, samples, n_eigenvalues, hamiltonian, con
 
     Notes
     -----
-    It is advisable to start with a higher number of initial eigenvalues to
-    ensure better convergence.
-
+    It is advisable to start with a higher number of initial eigenvalues to ensure better convergence.
 
     See also
     -----
@@ -228,10 +258,10 @@ def estimate_evidence_lower_bound(mean, samples, n_eigenvalues, hamiltonian, con
              f"\nELBO           : {stats['estimate'].val:.4e} (upper: {stats['upper'].val:.4e}, lower: "
              f"{stats['lower'].val:.4e})"
              f"\nH_lh           : {stats['ln_likelihood_mean'].val:.4e} ± {stats['ln_likelihood_mean_std']:.5e}"
-             f"\nH_{{lh,0}}       : {stats['ln_likelihood_0']:.4e} "
-             f"\n\\xi^2'         : {stats['xi^2']:.4e}"
+             f"\nH_{{0, lh}}       : {stats['ln_likelihood_0']:.4e} "
+             f"\n\\xi^2         : {stats['xi^2']:.4e}"
              f"\nTr \\Lambda     : {stats['tr_reduced_diag_lat_cov']:.5e} (+ "
              f"{stats['tr_reduced_diagonal_lat_cov_error']:.5e})"
-             f"\nTr \\ln \\Lambda : {stats['tr_ln_diag_lat_cov']:.5e} (+ {stats['tr_log_diagonal_lat_cov_error']:.5e})")
+             f"\nTr \\log \\Lambda : {stats['tr_ln_diag_lat_cov']:.5e} (+ {stats['tr_log_diagonal_lat_cov_error']:.5e})")
         logger.info(s)
     return stats
