@@ -63,8 +63,8 @@ def _return_eigenspace(M, n_eigenvalues, tol):
     return eigenvalues, eigenvectors
 
 
-def get_evidence(mean, samples, n_eigenvalues, hamiltonian, constants=[], invariants=None, fudge_factor=0,
-                 max_iteration=0, eps=1e-1, tol=0., verbose=True, data=None):
+def estimate_evidence_lower_bound(mean, samples, n_eigenvalues, hamiltonian, constants=[], invariants=None, fudge_factor=0,
+                                  max_iteration=5, eps=1e-3, tol=0., verbose=True, data=None):
     """Provide an estimate of the Evidence Lower Bound (ELBO).
 
     Parameters
@@ -129,7 +129,7 @@ def get_evidence(mean, samples, n_eigenvalues, hamiltonian, constants=[], invari
 
     See also
     -----
-    For details on the analytic formulation we refer to A. Kostić et Al.
+    For further details on the analytic formulation we refer to A. Kostić et Al.
     (manuscript in preparation).
     """
 
@@ -152,8 +152,8 @@ def get_evidence(mean, samples, n_eigenvalues, hamiltonian, constants=[], invari
     count = 0
 
     while (eigenvalue_error > eps) and (count < max_iteration):
-        projected_metric = _Projector(eigenvectors) @ M
-        n_eigenvalues -= int(n_eigenvalues / 4) + fudge_factor  # FIXME: Not sure if it makes sense. Open to suggestions
+        projected_metric = _Projector(eigenvectors) @ M if count == 0 else _Projector(eigenvectors) @ projected_metric
+        n_eigenvalues -= n_eigenvalues // 4 + fudge_factor  # FIXME: Not sure if it makes sense. Open to suggestions
         if verbose:
             logger.info(f"Number of additional eigenvalues being computed: {n_eigenvalues}")
 
@@ -186,7 +186,7 @@ def get_evidence(mean, samples, n_eigenvalues, hamiltonian, constants=[], invari
     tr_log_diagonal_lat_cov_error = unexplored_dimensions * np.log(min(eigenvalues))
 
     # Calculate the contribution from the prior
-    squared_mean = mean.vdot(mean).val  # FIXME: Is this the correct mean?
+    squared_mean = mean.vdot(mean).val
     prior_evidence = 0.5 * (squared_mean + tr_reduced_diagonal_lat_cov)
 
     hamiltonian_mean, hamiltonian_var = samples.sample_stat(hamiltonian)
@@ -194,17 +194,21 @@ def get_evidence(mean, samples, n_eigenvalues, hamiltonian, constants=[], invari
 
     h0 = 0.
     # if isinstance(hamiltonian.likelihood_energy, ift.PoissonianEnergy): # FIXME: Try to simplify this expression
-    if str(hamiltonian.likelihood_energy.__dict__['_ops'][0]) == 'PoissonianEnergy':
+    likelihood_type = str(hamiltonian.likelihood_energy.__dict__['_ops'][0])
+
+    if likelihood_type in {'PoissonianEnergy', 'PoissonianEnergy ()'}:
         from scipy.special import factorial
         data = data.to_numpy() if hasattr(data, "to_numpy") else data.val if hasattr(data, "val") else data
         h0 = np.log(factorial(data)).sum()
 
     # elif not isinstance(hamiltonian.likelihood_energy, ift.GaussianEnergy): # FIXME: Try to simplify this expression
-    elif not str(hamiltonian.likelihood_energy.__dict__['_ops'][0]) == 'GaussianEnergy':
+    elif not likelihood_type in {'GaussianEnergy', 'GaussianEnergy ()'}:
         tp_lh = type(hamiltonian.likelihood_energy)
         warn_msg = (f"Unknown likelihood of type {tp_lh!r};\n"
                     f"The (log) ELBO is potentially missing some constant term from the likelihood.")
         logger.warn(warn_msg)
+
+    # TODO: Implement these checks for all NIFTy-supported likelihoods
 
     elbo_mean = - h0 - hamiltonian_mean - prior_evidence + 0.5 * tr_log_diagonal_lat_cov
     elbo_var_upper = abs(
@@ -220,11 +224,14 @@ def get_evidence(mean, samples, n_eigenvalues, hamiltonian, constants=[], invari
              "tr_log_diagonal_lat_cov_error": tr_log_diagonal_lat_cov_error}
 
     if verbose:
-        s = ["ELBO decomposition (in log units)",
-            f"ELBO           : {stats['estimate'].val:.4e} (upper: {stats['upper'].val:.4e}, lower: {stats['lower'].val:.4e})",
-            f"H_lh           : {stats['ln_likelihood_mean'].val:.4e} ± {stats['ln_likelihood_mean_std']:.5e}",
-            f"H_{{lh,0}}       : {stats['ln_likelihood_0']:.4e} \\xi^2'         : {stats['xi^2']:.4e}",
-            f"Tr \\Lambda     : {stats['tr_reduced_diag_lat_cov']:.5e} (+ {stats['tr_reduced_diagonal_lat_cov_error']:.5e})",
-            f"Tr \\ln \\Lambda : {stats['tr_ln_diag_lat_cov']:.5e} (+ {stats['tr_log_diagonal_lat_cov_error']:.5e})"]
+        s = (f"\nELBO decomposition (in log units)"
+             f"\nELBO           : {stats['estimate'].val:.4e} (upper: {stats['upper'].val:.4e}, lower: "
+             f"{stats['lower'].val:.4e})"
+             f"\nH_lh           : {stats['ln_likelihood_mean'].val:.4e} ± {stats['ln_likelihood_mean_std']:.5e}"
+             f"\nH_{{lh,0}}       : {stats['ln_likelihood_0']:.4e} "
+             f"\n\\xi^2'         : {stats['xi^2']:.4e}"
+             f"\nTr \\Lambda     : {stats['tr_reduced_diag_lat_cov']:.5e} (+ "
+             f"{stats['tr_reduced_diagonal_lat_cov_error']:.5e})"
+             f"\nTr \\ln \\Lambda : {stats['tr_ln_diag_lat_cov']:.5e} (+ {stats['tr_log_diagonal_lat_cov_error']:.5e})")
         logger.info(s)
     return stats
