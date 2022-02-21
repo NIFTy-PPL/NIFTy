@@ -116,7 +116,8 @@ class FinuFFT(LinearOperator):
             res = self._f(*self._pos, c=x.val_rw(),
                           n_modes=self._target[0].shape, eps=self._eps).real
         else:
-            res = self._fadj(*self._pos, f=x.val, eps=self._eps)
+            res = self._fadj(*self._pos, f=x.val.astype('complex128')
+                             , eps=self._eps)
             if res.ndim == 0:
                 res = np.array([res])
         return makeField(self._tgt(mode), res)
