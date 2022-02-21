@@ -9,7 +9,7 @@ from jax import random
 from jax.tree_util import Partial, register_pytree_node_class
 
 from . import conjugate_gradient
-from .forest_util import unstack, vmap_forest, vmap_forest_mean
+from .forest_util import assert_arithmetics, unstack, vmap_forest, vmap_forest_mean
 from .likelihood import Likelihood, StandardHamiltonian
 from .sugar import random_like
 
@@ -81,7 +81,7 @@ def _sample_standard_hamiltonian(
 
 
 def sample_standard_hamiltonian(
-    hamiltonian: StandardHamiltonian, *args, **kwargs
+    hamiltonian: StandardHamiltonian, primals, *args, **kwargs
 ):
     r"""Draws a sample of which the covariance is the metric or the inverse
     metric of the Hamiltonian.
@@ -136,8 +136,9 @@ def sample_standard_hamiltonian(
     `Metric Gaussian Variational Inference`, Jakob Knollmüller,
     Torsten A. Enßlin, `<https://arxiv.org/abs/1901.11033>`_
     """
+    assert_arithmetics(primals)
     inv_met_smpl, _ = _sample_standard_hamiltonian(
-        hamiltonian, *args, from_inverse=True, **kwargs
+        hamiltonian, primals, *args, from_inverse=True, **kwargs
     )
     return inv_met_smpl
 
@@ -190,6 +191,7 @@ def geometrically_sample_standard_hamiltonian(
     if not isinstance(hamiltonian, StandardHamiltonian):
         te = f"`hamiltonian` of invalid type; got '{type(hamiltonian)}'"
         raise TypeError(te)
+    assert_arithmetics(primals)
     from .energy_operators import Gaussian
     from .optimize import minimize
 
@@ -402,6 +404,7 @@ def MetricKL(
     if not isinstance(hamiltonian, StandardHamiltonian):
         te = f"`hamiltonian` of invalid type; got '{type(hamiltonian)}'"
         raise TypeError(te)
+    assert_arithmetics(primals)
 
     draw = partial(
         sample_standard_hamiltonian,
@@ -459,6 +462,7 @@ def GeoMetricKL(
     if not isinstance(hamiltonian, StandardHamiltonian):
         te = f"`hamiltonian` of invalid type; got '{type(hamiltonian)}'"
         raise TypeError(te)
+    assert_arithmetics(primals)
 
     draw = partial(
         geometrically_sample_standard_hamiltonian,

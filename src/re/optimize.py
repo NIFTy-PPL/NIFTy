@@ -10,7 +10,7 @@ from jax import numpy as jnp
 from jax.tree_util import Partial
 
 from . import conjugate_gradient
-from .forest_util import common_type, size, where
+from .forest_util import assert_arithmetics, common_type, size, where
 from .forest_util import norm as jft_norm
 from .sugar import sum_of_squares
 
@@ -90,9 +90,11 @@ def _prepare_vag_hessp(fun, jac, hessp,
     return fun_and_grad, hessp
 
 
-def newton_cg(*args, **kwargs):
+def newton_cg(fun=None, x0=None, *args, **kwargs):
     """Minimize a scalar-valued function using the Newton-CG algorithm."""
-    return _newton_cg(*args, **kwargs).x
+    if x0 is not None:
+        assert_arithmetics(x0)
+    return _newton_cg(fun, x0, *args, **kwargs).x
 
 
 def _newton_cg(
@@ -248,7 +250,7 @@ class _TrustRegionState(NamedTuple):
 
 def _trust_ncg(
     fun=None,
-    x0: jnp.ndarray = None,
+    x0=None,
     *,
     maxiter: Optional[int] = None,
     energy_reduction_factor=0.1,
@@ -441,8 +443,10 @@ def _trust_ncg(
     )
 
 
-def trust_ncg(*args, **kwargs):
-    return _trust_ncg(*args, **kwargs).x
+def trust_ncg(fun=None, x0=None, *args, **kwargs):
+    if x0 is not None:
+        assert_arithmetics(x0)
+    return _trust_ncg(fun, x0, *args, **kwargs).x
 
 
 def minimize(
@@ -455,6 +459,7 @@ def minimize(
     options: Optional[Mapping[str, Any]] = None
 ) -> OptimizeResults:
     """Minimize fun."""
+    assert_arithmetics(x0)
     if options is None:
         options = {}
     if not isinstance(args, tuple):

@@ -32,6 +32,30 @@ def split(mappable, keys):
     return sel, rest
 
 
+CORE_ARITHMETIC_ATTRIBUTES = (
+    "__neg__", "__pos__", "__abs__", "__add__", "__radd__", "__sub__",
+    "__rsub__", "__mul__", "__rmul__", "__truediv__", "__rtruediv__",
+    "__floordiv__", "__rfloordiv__", "__pow__", "__rpow__", "__mod__",
+    "__rmod__", "__matmul__", "__rmatmul__"
+)
+
+
+def has_arithmetics(obj, additional_attributes=()):
+    desired_attrs = CORE_ARITHMETIC_ATTRIBUTES + additional_attributes
+    return all(hasattr(obj, attr) for attr in desired_attrs)
+
+
+def assert_arithmetics(obj, *args, **kwargs):
+    if not has_arithmetics(obj, *args, **kwargs):
+        ae = (
+            f"input of type {type(obj)} does not support"
+            " core arithmetic operations"
+            "\nmaybe you forgot to wrap your object in a"
+            " :class:`nifty8.re.field.Field` instance"
+        )
+        raise AssertionError(ae)
+
+
 class ShapeWithDtype():
     """Minimal helper class storing the shape and dtype of an object.
 

@@ -9,7 +9,7 @@ from jax import lax
 
 from typing import Any, Callable, NamedTuple, Optional, Tuple, Union
 
-from .forest_util import common_type, size, where, zeros_like
+from .forest_util import assert_arithmetics, common_type, size, where, zeros_like
 from .forest_util import norm as jft_norm
 from .sugar import doc_from, sum_of_squares
 
@@ -26,7 +26,7 @@ class CGResults(NamedTuple):
     success: Union[bool, jnp.ndarray]
 
 
-def cg(*args, **kwargs) -> Tuple[Any, Union[int, jnp.ndarray]]:
+def cg(mat, j, x0=None, *args, **kwargs) -> Tuple[Any, Union[int, jnp.ndarray]]:
     """Solve `mat(x) = j` using Conjugate Gradient. `mat` must be callable and
     represent a hermitian, positive definite matrix.
 
@@ -35,13 +35,19 @@ def cg(*args, **kwargs) -> Tuple[Any, Union[int, jnp.ndarray]]:
     If set, the parameters `absdelta` and `resnorm` always take precedence over
     `tol` and `atol`.
     """
-    cg_res = _cg(*args, **kwargs)
+    assert_arithmetics(j)
+    if x0 is not None:
+        assert_arithmetics(x0)
+    cg_res = _cg(mat, j, x0, *args, **kwargs)
     return cg_res.x, cg_res.info
 
 
 @doc_from(cg)
-def static_cg(*args, **kwargs):
-    cg_res = _static_cg(*args, **kwargs)
+def static_cg(mat, j, x0=None, *args, **kwargs):
+    assert_arithmetics(j)
+    if x0 is not None:
+        assert_arithmetics(x0)
+    cg_res = _static_cg(mat, j, x0, *args, **kwargs)
     return cg_res.x, cg_res.info
 
 

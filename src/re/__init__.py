@@ -14,7 +14,9 @@ from .energy_operators import (
 from .field import Field
 from .forest_util import (
     ShapeWithDtype,
+    assert_arithmetics,
     dot,
+    has_arithmetics,
     norm,
     stack,
     unstack,
