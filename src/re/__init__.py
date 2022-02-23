@@ -19,6 +19,7 @@ from .forest_util import (
     has_arithmetics,
     norm,
     stack,
+    unite,
     unstack,
     vdot,
     vmap_forest,
