@@ -277,7 +277,7 @@ def get_lognormal_model(shapes, cfm_kwargs, data_key, noise_cov=0.5**2):
         ham_nft = ift.StandardHamiltonian(lh_nft)
 
     def ham_vg_nft(x):
-        x = x.val if hasattr(x, "val") else x
+        x = x.val if isinstance(x, jft.Field) else x
         x = ift.makeField(ham_nft.domain, x)
         x = ift.Linearization.make_var(x)
         with warnings.catch_warnings():

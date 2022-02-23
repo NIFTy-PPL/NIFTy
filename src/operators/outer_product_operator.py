@@ -20,6 +20,7 @@ import numpy as np
 
 from ..domain_tuple import DomainTuple
 from ..field import Field
+from ..multi_field import MultiField
 from .linear_operator import LinearOperator
 
 
@@ -40,10 +41,11 @@ class OuterProduct(LinearOperator):
         self._capability = self.TIMES | self.ADJOINT_TIMES
 
         try:
+            from ..re import Field as ReField
             from jax import numpy as jnp
             from jax.tree_util import tree_map
 
-            a_j = field.val if hasattr(field, "val") else field
+            a_j = ReField(field.val) if isinstance(field, (Field, MultiField)) else field
             self._jax_expr = partial(
                 tree_map,
                 partial(jnp.tensordot, axes=((), ())),

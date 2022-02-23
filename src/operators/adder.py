@@ -15,8 +15,10 @@
 #
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
 
-import numpy as np
 from functools import partial
+from operator import add
+
+import numpy as np
 
 from ..field import Field
 from ..multi_field import MultiField
@@ -44,14 +46,17 @@ class Adder(Operator):
         self._neg = bool(neg)
 
         try:
-            from jax import numpy as jnp
-            from jax.tree_util import tree_map
+            from ..re import Field as ReField
 
-            a_j = a.val if hasattr(a, "val") else a
+            def named_sub(a, b):
+                return a - b
+
+            # Let ReField do the broadcasting
+            a_j = ReField(a.val) if isinstance(a, (Field, MultiField)) else a
             if neg:
-                self._jax_expr = partial(tree_map, lambda a, x: x - a, a_j)
+                self._jax_expr = partial(named_sub, b=a_j)
             else:
-                self._jax_expr = partial(tree_map, jnp.add, a_j)
+                self._jax_expr = partial(add, a_j)
         except ImportError:
             self._jax_expr = None
 
