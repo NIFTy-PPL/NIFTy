@@ -3,10 +3,10 @@
 
 from functools import partial, reduce
 import operator
-from typing import Any, Callable, Tuple
+from typing import Any, Callable, Optional, Union
 from warnings import warn
 
-from jax.tree_util import tree_map
+from jax.tree_util import register_pytree_node_class
 
 from . import re as jft
 from .domain_tuple import DomainTuple
@@ -49,6 +49,66 @@ def shapewithdtype_from_domain(domain, dtype):
     return parameter_tree
 
 
+@register_pytree_node_class
+class Model(jft.Field):
+    """Modified field class with an additional call method taking itself as
+    input.
+    """
+    def __init__(self, apply: Optional[Callable], val, domain=None, flags=None):
+        """Instantiates a modified field with an accompanying callable.
+
+        Parameters
+        ----------
+        apply : callable
+            Method acting on `val`.
+        val : object
+            Arbitrary, flatten-able objects.
+        domain : dict or None, optional
+            Domain of the field, e.g. with description of modes and volume.
+        flags : set, str or None, optional
+            Capabilities and constraints of the field.
+        """
+        super().__init__(val, domain, flags)
+        self._apply = apply
+
+    def tree_flatten(self):
+        return ((self._val, ), (self._apply, self._domain, self._flags))
+
+    @classmethod
+    def tree_unflatten(cls, aux_data, children):
+        return cls(
+            aux_data[0], *children, domain=aux_data[1], flags=aux_data[2]
+        )
+
+    def __call__(self, *args, **kwargs):
+        if self._apply is None:
+            nie = "no `apply` method specified; behaving like field"
+            raise NotImplementedError(nie)
+        return self._apply(*args, **kwargs)
+
+    @property
+    def tree(self):
+        return jft.Field(self.val, domain=self.domain, flags=self.flags)
+
+    def __str__(self):
+        s = f"Model(\n{self._apply},\n{self.val}"
+        if self._domain:
+            s += f",\ndomain={self._domain}"
+        if self._flags:
+            s += f",\nflags={self._flags}"
+        s += ")"
+        return s
+
+    def __repr__(self):
+        s = f"Model(\n{self._apply!r},\n{self.val!r}"
+        if self._domain:
+            s += f",\ndomain={self._domain!r}"
+        if self._flags:
+            s += f",\nflags={self._flags!r}"
+        s += ")"
+        return s
+
+
 def wrap_nifty_call(op, target_dtype=float) -> Callable[[Any], jft.Field]:
     from jax.experimental.host_callback import call
 
@@ -69,25 +129,21 @@ def wrap_nifty_call(op, target_dtype=float) -> Callable[[Any], jft.Field]:
     return wrapped_call
 
 
-def convert(op: Operator, dtype=float) -> Tuple[Any, Any]:
-    # TODO: return a registered `Model` (?) class that combines both call and
-    # values/domain. This would allow for converting everything: domains,
-    # operators, fields, ... into single unified object
-    if not isinstance(op, Operator):
-        raise TypeError(f"invalid input type {type(op)!r}")
+def convert(nifty_obj: Union[Operator,DomainTuple,MultiDomain], dtype=float) -> Model:
+    if not isinstance(nifty_obj, (Operator, DomainTuple, MultiDomain)):
+        raise TypeError(f"invalid input type {type(nifty_obj)!r}")
 
-    if isinstance(op, (Field, MultiField)):
-        parameter_tree = tree_map(jft.ShapeWithDtype.from_leave, op.val)
+    if isinstance(nifty_obj, (Field, MultiField)):
+        expr = None
+        parameter_tree = jft.Field(nifty_obj.val)
+    elif isinstance(nifty_obj, (DomainTuple, MultiDomain)):
+        expr = None
+        parameter_tree = shapewithdtype_from_domain(nifty_obj, dtype)
     else:
-        parameter_tree = shapewithdtype_from_domain(op.domain, dtype)
-    parameter_tree = jft.Field(parameter_tree)
-
-    if isinstance(op, (Field, MultiField)):
-        expr = jft.Field(op.val)
-    else:
-        expr = op.jax_expr
+        expr = nifty_obj.jax_expr
+        parameter_tree = shapewithdtype_from_domain(nifty_obj.domain, dtype)
         if not callable(expr):
             # TODO: implement conversion via host_callback and custom_vjp
             raise NotImplementedError("Sorry, not yet done :(")
 
-    return expr, parameter_tree
+    return Model(expr, parameter_tree)
