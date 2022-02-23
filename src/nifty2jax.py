@@ -121,6 +121,9 @@ def wrap_nifty_call(op, target_dtype=float) -> Callable[[Any], jft.Field]:
 
 
 def convert(op: Operator, dtype=float) -> Tuple[Any, Any]:
+    # TODO: return a registered `Model` (?) class that combines both call and
+    # values/domain. This would allow for converting everything: domains,
+    # operators, fields, ... into single unified object
     if not isinstance(op, Operator):
         raise TypeError(f"invalid input type {type(op)!r}")
 
