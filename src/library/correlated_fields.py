@@ -441,7 +441,7 @@ class CorrelatedFieldMaker:
             from .. import re as jft
 
             if total_N != 0:
-                warn(f"unable to add JAX operator for {total_N=}")
+                warn(f"unable to add JAX operator for total_N={total_N}")
                 raise ImportError("short-circuit JAX init")
             self._jax_cfm = jft.CorrelatedFieldMaker(prefix=prefix)
         except ImportError:
@@ -726,7 +726,7 @@ class CorrelatedFieldMaker:
             self._azm = zm
 
         if self._jax_cfm is not None and dofdex is not None and len(dofdex) > 0:
-            warn(f"unable to add JAX operator for {dofdex=}")
+            warn(f"unable to add JAX operator for dofdex={dofdex}")
             self._jax_cfm = None
         if self._jax_cfm is not None:
             try:
