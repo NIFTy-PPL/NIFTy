@@ -193,25 +193,6 @@ class Field():
         """Retrieves a **copy** of the field's flags."""
         return self._flags.copy()
 
-    def new(self, val, domain=None, flags=None):
-        """Instantiates a new field with the same domain and flags as this
-        instance of a field.
-
-        Parameters
-        ----------
-        val : object
-            Arbitrary, flatten-able objects.
-        domain : dict or None, optional
-            Domain of the field, e.g. with description of modes and volume.
-        flags : set, str or None, optional
-            Capabilities and constraints of the field.
-        """
-        return Field(
-            val,
-            domain=self.domain if domain is None else domain,
-            flags=self.flags if flags is None else flags
-        )
-
     @property
     def size(self):
         return sum(jnp.size(el) for el in tree_leaves(self))
@@ -235,7 +216,7 @@ class Field():
         return s
 
     def ravel(self):
-        return self.new(tree_map(jnp.ravel, self.val))
+        return tree_map(jnp.ravel, self)
 
     def __bool__(self):
         return bool(self.val)
