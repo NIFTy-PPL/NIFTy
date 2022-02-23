@@ -7,9 +7,14 @@ from typing import Any, Callable, Tuple
 from warnings import warn
 
 from jax.tree_util import tree_map
-from . import re as jft
 
-from . import DomainTuple, Field, MultiDomain, MultiField, Operator, makeField
+from . import re as jft
+from .domain_tuple import DomainTuple
+from .field import Field
+from .multi_domain import MultiDomain
+from .multi_field import MultiField
+from .operators.operator import Operator
+from .sugar import makeField
 
 
 def spaces_to_axes(domain, spaces):
