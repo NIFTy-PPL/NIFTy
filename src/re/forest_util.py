@@ -15,6 +15,7 @@ from jax.tree_util import (
     tree_structure,
     tree_transpose,
 )
+import numpy as np
 
 from .field import Field
 from .sugar import is1d
@@ -114,6 +115,7 @@ class ShapeWithDtype():
 
         self._shape = shape
         self._dtype = jnp.float64 if dtype is None else dtype
+        self._size = None
 
     @classmethod
     def from_leave(cls, element):
@@ -150,6 +152,13 @@ class ShapeWithDtype():
         """Retrieves the data-type."""
         return self._dtype
 
+    @property
+    def size(self):
+        """Total number of elements."""
+        if self._size is None:
+            self._size = np.prod(self.shape, dtype=int)
+        return self._size
+
     def __repr__(self):
         nm = self.__class__.__name__
         return f"{nm}(shape={self.shape}, dtype={self.dtype})"
@@ -174,11 +183,15 @@ def common_type(*trees):
     return common_dtp
 
 
+def _size(x):
+    return x.size if hasattr(x, "size") else jnp.size(x)
+
+
 def size(tree, axis: Optional[int] = None) -> Union[int, jnp.ndarray]:
     if axis is not None:
         raise TypeError("axis of an arbitrary tree is ill defined")
-    sizes = tree_map(jnp.size, tree)
-    return tree_reduce(jnp.add, sizes)
+    sizes = tree_map(_size, tree)
+    return tree_reduce(operator.add, sizes)
 
 
 def _zeros_like(x, dtype, shape):

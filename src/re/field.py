@@ -195,7 +195,9 @@ class Field():
 
     @property
     def size(self):
-        return sum(jnp.size(el) for el in tree_leaves(self))
+        from .forest_util import size
+
+        return size(self)
 
     def __str__(self):
         s = f"Field(\n{self.val}"
