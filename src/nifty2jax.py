@@ -57,7 +57,7 @@ def unite(x, y, op=operator.add):
     x = x.val if hasattr(x, "val") else x
     y = y.val if hasattr(y, "val") else y
     if not hasattr(x, "keys") and not hasattr(y, "keys"):
-        return x + y
+        return op(x, y)
 
     out = {}
     for k in x.keys() | y.keys():
