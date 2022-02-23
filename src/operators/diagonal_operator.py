@@ -17,6 +17,7 @@
 
 import numpy as np
 from functools import partial
+from operator import mul
 
 from .. import utilities
 from ..domain_tuple import DomainTuple
@@ -93,12 +94,7 @@ class DiagonalOperator(EndomorphicOperator):
             self._ldiag = diagonal.val
         self._fill_rest()
 
-        try:
-            from jax import numpy as jnp
-
-            self._jax_expr = partial(jnp.multiply, self._ldiag)
-        except ImportError:
-            self._jax_expr = None
+        self._jax_expr = partial(mul, self._ldiag)
 
     def _fill_rest(self):
         self._ldiag.flags.writeable = False
@@ -118,12 +114,7 @@ class DiagonalOperator(EndomorphicOperator):
         res._ldiag = np.array(ldiag)
         res._fill_rest()
 
-        try:
-            from jax import numpy as jnp
-
-            res._jax_expr = partial(jnp.multiply, ldiag)
-        except ImportError:
-            res._jax_expr = None
+        res._jax_expr = partial(mul, res._ldiag)
 
         return res
 
