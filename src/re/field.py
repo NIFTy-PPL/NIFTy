@@ -26,19 +26,33 @@ def _unary_op(op, name=None):
     return unary_call
 
 
-def _broadcast_binary_op(op, lhs, rhs):
-    from itertools import repeat
-
-    ts_lhs = tree_structure(lhs)
-    ts_rhs = tree_structure(rhs)
-
+def _enforce_flags(lhs, rhs):
     flags = lhs.flags if isinstance(lhs, Field) else set()
     flags |= rhs.flags if isinstance(rhs, Field) else set()
     if "strict_domain_checking" in flags:
+        ts_lhs = tree_structure(lhs)
+        ts_rhs = tree_structure(rhs)
+
+        if not hasattr(rhs, "domain"):
+            te = f"RHS of type {type(rhs)} does not have a `domain` property"
+            raise TypeError(te)
+        if not hasattr(lhs, "domain"):
+            te = f"LHS of type {type(lhs)} does not have a `domain` property"
+            raise TypeError(te)
         if rhs.domain != lhs.domain or ts_rhs != ts_lhs:
             raise ValueError("domains and/or structures are incompatible")
+    return flags
+
+
+def _broadcast_binary_op(op, lhs, rhs):
+    from itertools import repeat
+
+    flags = _enforce_flags(lhs, rhs)
+
+    ts_lhs = tree_structure(lhs)
+    ts_rhs = tree_structure(rhs)
     # Catch non-objects scalars and 0d array-likes with a `ndim` property
-    elif jnp.isscalar(lhs) or getattr(lhs, "ndim", -1) == 0:
+    if jnp.isscalar(lhs) or getattr(lhs, "ndim", -1) == 0:
         lhs = ts_rhs.unflatten(repeat(lhs, ts_rhs.num_leaves))
     elif jnp.isscalar(rhs) or getattr(rhs, "ndim", -1) == 0:
         rhs = ts_lhs.unflatten(repeat(rhs, ts_lhs.num_leaves))
@@ -47,7 +61,8 @@ def _broadcast_binary_op(op, lhs, rhs):
         raise ValueError(ve)
 
     out = tree_map(op, lhs, rhs)
-    out._flags = flags
+    if flags != set():
+        out._flags = flags
     return out
 
 
@@ -90,15 +105,11 @@ def matmul(lhs, rhs):
     """
     from .forest_util import dot
 
+    _enforce_flags(lhs, rhs)
+
     ts_lhs = tree_structure(lhs)
     ts_rhs = tree_structure(rhs)
-
-    flags = lhs.flags if isinstance(lhs, Field) else set()
-    flags |= rhs.flags if isinstance(rhs, Field) else set()
-    if "strict_domain_checking" in flags:
-        if rhs.domain != lhs.domain or ts_rhs != ts_lhs:
-            raise ValueError("domains and/or structures are incompatible")
-    elif ts_lhs.num_nodes != ts_rhs.num_nodes:
+    if ts_lhs.num_nodes != ts_rhs.num_nodes:
         ve = f"invalid operation for {ts_lhs!r} and {ts_rhs!r}"
         raise ValueError(ve)
 
