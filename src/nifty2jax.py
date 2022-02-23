@@ -3,38 +3,13 @@
 
 from functools import partial, reduce
 import operator
-from typing import Any, Callable, Mapping, Tuple
+from typing import Any, Callable, Tuple
 from warnings import warn
 
 from jax.tree_util import tree_map
 from . import re as jft
 
 from . import DomainTuple, Field, MultiDomain, MultiField, Operator, makeField
-
-
-def translator(from_to: Mapping) -> Callable:
-    """Convenience method to rename keys in a dictionary."""
-    def translate(x):
-        x = x.copy()
-        for old, new in from_to.items():
-            if old in x:
-                x[new] = x.pop(old)
-        return x
-
-    return translate
-
-
-def translate_call(apply: Callable, from_to: Mapping):
-    translate = translator(from_to)
-
-    def translated_call(x):
-        if isinstance(x, jft.Field):
-            dipl_x = jft.Field(translate(x.val))
-        else:
-            dipl_x = translate(x)
-        return apply(dipl_x)
-
-    return translated_call
 
 
 def spaces_to_axes(domain, spaces):
