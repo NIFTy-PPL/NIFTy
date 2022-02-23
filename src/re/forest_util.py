@@ -16,6 +16,7 @@ from jax.tree_util import (
     tree_transpose,
 )
 
+from .field import Field
 from .sugar import is1d
 
 
@@ -30,6 +31,36 @@ def split(mappable, keys):
         else:
             rest[k] = v
     return sel, rest
+
+
+def unite(x, y, op=operator.add):
+    """Unites two array-, dict- or Field-like objects.
+
+    If a key is contained in both objects, then the fields at that key
+    are combined.
+    """
+    if isinstance(x, Field) or isinstance(y, Field):
+        x = x.val if isinstance(x, Field) else x
+        y = y.val if isinstance(y, Field) else y
+        return Field(unite(x, y, op=op))
+    if not hasattr(x, "keys") and not hasattr(y, "keys"):
+        return op(x, y)
+    if not hasattr(x, "keys") or not hasattr(y, "keys"):
+        te = (
+            "one of the inputs does not have a `keys` property;"
+            f" got {type(x)} and {type(y)}"
+        )
+        raise TypeError(te)
+
+    out = {}
+    for k in x.keys() | y.keys():
+        if k in x and k in y:
+            out[k] = op(x[k], y[k])
+        elif k in x:
+            out[k] = x[k]
+        else:
+            out[k] = y[k]
+    return out
 
 
 CORE_ARITHMETIC_ATTRIBUTES = (

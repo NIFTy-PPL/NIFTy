@@ -591,7 +591,7 @@ class _OpSum(Operator):
         self._op2 = op2
 
         try:
-            from ..nifty2jax import unite
+            from ..re import unite
 
             def joined_jax_expr(x):
                 return unite(self._op1.jax_expr(x), self._op2.jax_expr(x))

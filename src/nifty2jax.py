@@ -8,7 +8,6 @@ from warnings import warn
 
 from jax.tree_util import tree_map
 from . import re as jft
-from .re import Field as ReField
 
 from . import DomainTuple, Field, MultiDomain, MultiField, Operator, makeField
 
@@ -47,36 +46,6 @@ def spaces_to_axes(domain, spaces):
     axes = tuple(domain.axes[sp_index] for sp_index in spaces)
     axes = reduce(operator.add, axes) if len(axes) > 0 else axes
     return axes
-
-
-def unite(x, y, op=operator.add):
-    """Unites two array-, dict- or Field-like objects.
-
-    If a key is contained in both objects, then the fields at that key
-    are combined.
-    """
-    if isinstance(x, ReField) or isinstance(y, ReField):
-        x = x.val if isinstance(x, ReField) else x
-        y = y.val if isinstance(y, ReField) else y
-        return ReField(unite(x, y, op=op))
-    if not hasattr(x, "keys") and not hasattr(y, "keys"):
-        return op(x, y)
-    if not hasattr(x, "keys") or not hasattr(y, "keys"):
-        te = (
-            "one of the inputs does not have a `keys` property;"
-            f" got {type(x)} and {type(y)}"
-        )
-        raise TypeError(te)
-
-    out = {}
-    for k in x.keys() | y.keys():
-        if k in x and k in y:
-            out[k] = op(x[k], y[k])
-        elif k in x:
-            out[k] = x[k]
-        else:
-            out[k] = y[k]
-    return out
 
 
 def shapewithdtype_from_domain(domain, dtype):

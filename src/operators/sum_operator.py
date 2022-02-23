@@ -44,7 +44,7 @@ class SumOperator(LinearOperator):
             self._capability &= op.capability
 
         try:
-            from ..nifty2jax import unite
+            from ..re import unite
 
             def joined_jax_expr(x):
                 res = None
