@@ -87,7 +87,7 @@ class Model(jft.Field):
         return self._apply(*args, **kwargs)
 
     @property
-    def tree(self):
+    def field(self):
         return jft.Field(self.val, domain=self.domain, flags=self.flags)
 
     def __str__(self):
