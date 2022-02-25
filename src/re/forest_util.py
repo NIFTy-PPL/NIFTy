@@ -3,7 +3,7 @@
 
 from functools import partial
 import operator
-from typing import Any, Callable, Optional, Tuple, Union
+from typing import Any, Callable, Optional, Tuple, TypeVar, Union
 
 from jax import lax
 from jax import numpy as jnp
@@ -187,11 +187,22 @@ def _size(x):
     return x.size if hasattr(x, "size") else jnp.size(x)
 
 
-def size(tree, axis: Optional[int] = None) -> Union[int, jnp.ndarray]:
+def size(tree, axis: Optional[int] = None) -> int:
     if axis is not None:
         raise TypeError("axis of an arbitrary tree is ill defined")
     sizes = tree_map(_size, tree)
     return tree_reduce(operator.add, sizes)
+
+
+def _shape(x):
+    return x.shape if hasattr(x, "shape") else jnp.shape(x)
+
+
+T = TypeVar("T")
+
+
+def shape(tree: T) -> T:
+    return tree_map(_shape, tree)
 
 
 def _zeros_like(x, dtype, shape):

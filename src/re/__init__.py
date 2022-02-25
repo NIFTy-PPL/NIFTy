@@ -18,6 +18,8 @@ from .forest_util import (
     dot,
     has_arithmetics,
     norm,
+    shape,
+    size,
     stack,
     unite,
     unstack,
