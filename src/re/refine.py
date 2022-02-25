@@ -286,10 +286,18 @@ def get_fixed_power_correlated_field(
     kernel: Callable,
     dtype=None,
     *,
+    precision=None,
     _coarse_size: int = 3,
     _fine_size: int = 2,
 ):
-    cf = partial(correlated_field, distances=distances0, kernel=kernel)
+    cf = partial(
+        correlated_field,
+        distances=distances0,
+        kernel=kernel,
+        precision=precision,
+        _coarse_size=_coarse_size,
+        _fine_size=_fine_size,
+    )
     exc_swd = get_refinement_shapewithdtype(
         size0,
         n_layers=n_layers,
@@ -300,13 +308,15 @@ def get_fixed_power_correlated_field(
     return cf, exc_swd
 
 
-def correlated_field(xi, distances, kernel, precision=None):
+def correlated_field(xi, distances, kernel, **kwargs):
+    precision = kwargs.pop("precision", None)
+
     size0, depth = xi[0].shape, len(xi)
     os, (cov_sqrt0, ks) = refinement_matrices(
-        size0, depth, distances=distances, kernel=kernel
+        size0, depth, distances=distances, kernel=kernel, **kwargs
     )
 
     fine = (cov_sqrt0 @ xi[0].ravel()).reshape(xi[0].shape)
     for x, olf, k in zip(xi[1:], os, ks):
-        fine = refine(fine, x, olf, k, precision=precision)
+        fine = refine(fine, x, olf, k, precision=precision, **kwargs)
     return fine
