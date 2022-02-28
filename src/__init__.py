@@ -1,11 +1,6 @@
 from .version import __version__
 
 from . import random
-try:
-    from . import re
-    from . import nifty2jax
-except ImportError:
-    pass
 
 from .domains import *
 
@@ -110,6 +105,12 @@ from .operator_spectrum import operator_spectrum
 from .operator_tree_optimiser import optimise_operator
 
 from .ducc_dispatch import set_nthreads, nthreads
+
+try:
+    from . import re
+    from . import nifty2jax
+except ImportError:
+    pass
 
 # We deliberately don't set __all__ here, because we don't want people to do a
 # "from nifty8 import *"; that would swamp the global namespace.
