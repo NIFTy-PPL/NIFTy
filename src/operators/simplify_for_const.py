@@ -62,9 +62,9 @@ class ConstCollector:
 
 
 class ConstantOperator(Operator):
-    def __init__(self, output):
+    def __init__(self, output, domain={}):
         from ..sugar import makeDomain
-        self._domain = makeDomain({})
+        self._domain = makeDomain(domain)
         self._target = makeDomain(output.domain)
         self._output = output
 

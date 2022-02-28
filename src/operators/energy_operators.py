@@ -30,12 +30,11 @@ from ..sugar import makeDomain, makeOp
 from ..utilities import myassert
 from .adder import Adder
 from .linear_operator import LinearOperator
-from .operator import Operator
+from .operator import Operator, _OpChain, _OpSum
 from .sampling_enabler import SamplingEnabler
 from .sandwich_operator import SandwichOperator
 from .scaling_operator import ScalingOperator
 from .simple_linear_operators import FieldAdapter, VdotOperator
-from .operator import _OpChain, _OpSum
 
 
 def _check_sampling_dtype(domain, dtypes):
@@ -317,10 +316,9 @@ class VariableCovarianceGaussianEnergy(LikelihoodEnergyOperator):
         _check_sampling_dtype(self._domain, self._dt)
         self._cplx = _iscomplex(sampling_dtype)
         self._use_full_fisher = use_full_fisher
-        inp = ScalingOperator(dom, 1.)
-        res = inp.ducktape(self._kr)
-        sqrt_data_metric_at = lambda x: makeOp(x[self._ki].sqrt())
-        super(VariableCovarianceGaussianEnergy, self).__init__(res, sqrt_data_metric_at)
+        super(VariableCovarianceGaussianEnergy, self).__init__(
+                ScalingOperator(dom, 1.).ducktape(self._kr),
+                lambda x: makeOp(x[self._ki].sqrt()))
 
     def apply(self, x):
         self._check_input(x)
@@ -375,12 +373,15 @@ class VariableCovarianceGaussianEnergy(LikelihoodEnergyOperator):
 
 class _SpecialGammaEnergy(LikelihoodEnergyOperator):
     def __init__(self, residual):
+        from .simplify_for_const import ConstantOperator
+
         self._domain = DomainTuple.make(residual.domain)
         self._resi = residual
         self._cplx = _iscomplex(self._resi.dtype)
         self._dt = self._resi.dtype
-        super(_SpecialGammaEnergy, self).__init__(Adder(self._resi, neg=True),
-                                                  lambda x: self.get_metric_at(x).get_sqrt())
+        super(_SpecialGammaEnergy, self).__init__(
+                ConstantOperator(self._resi, domain=self._domain),
+                lambda x: self.get_metric_at(x).get_sqrt())
 
     def apply(self, x):
         self._check_input(x)
@@ -570,6 +571,8 @@ class InverseGammaEnergy(LikelihoodEnergyOperator):
     """
 
     def __init__(self, beta, alpha=-0.5):
+        from .simplify_for_const import ConstantOperator
+
         if not isinstance(beta, Field):
             raise TypeError
         self._domain = DomainTuple.make(beta.domain)
@@ -584,9 +587,9 @@ class InverseGammaEnergy(LikelihoodEnergyOperator):
             raise TypeError
         self._sampling_dtype = _field_to_dtype(self._beta)
 
-        data_residual = Adder(self._beta) @ ScalingOperator(self._domain, 0.)
-        data_metric = lambda x: makeOp(x.reciprocal().sqrt())
-        super(InverseGammaEnergy, self).__init__(data_residual, data_metric)
+        super(InverseGammaEnergy, self).__init__(
+                ConstantOperator(self._beta, domain=self._domain),
+                lambda x: makeOp(x.reciprocal().sqrt()))
 
     def apply(self, x):
         self._check_input(x)
@@ -622,8 +625,8 @@ class StudentTEnergy(LikelihoodEnergyOperator):
     def __init__(self, domain, theta):
         self._domain = DomainTuple.make(domain)
         self._theta = theta
-        res = ScalingOperator(self._domain, 1.)
-        super(StudentTEnergy, self).__init__(res, lambda x: self.get_metric_at(x).get_sqrt())
+        inp = ScalingOperator(self._domain, 1.)
+        super(StudentTEnergy, self).__init__(inp, lambda x: self.get_metric_at(x).get_sqrt())
 
     def apply(self, x):
         self._check_input(x)
