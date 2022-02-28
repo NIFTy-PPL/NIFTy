@@ -24,8 +24,8 @@ import numpy as np
 
 __all__ = ["get_slice_list", "safe_cast", "parse_spaces", "infer_space",
            "memo", "NiftyMeta", "my_sum", "my_lincomb_simple",
-           "my_lincomb", "indent",
-           "my_product", "frozendict", "special_add_at", "iscomplextype",
+           "my_lincomb", "indent", "my_product", "frozendict",
+           "special_add_at", "iscomplextype", "issingleprec",
            "value_reshaper", "lognormal_moments", "check_object_identity",
            "check_MPI_equality", "check_MPI_synced_random_state"]
 
@@ -246,8 +246,18 @@ def iscomplextype(dtype):
     return np.issubdtype(dtype, np.complexfloating)
 
 
-def iscomplextype(dtype):
-    return dtype.type in _iscomplex_tpl
+def issingleprec(dtype):
+    if isinstance(dtype, dict):
+        return _getunique(issingleprec, dtype.values())
+    return dtype.type in (np.float32, np.complex64)
+
+
+def _getunique(f, iterable):
+    val = set(f(vv) for vv in iterable)
+    if len(val) == 1:
+        return tuple(val)[0]
+    else:
+        raise RuntimeError("Precision is not unique", dtype)
 
 
 def indent(inp):
