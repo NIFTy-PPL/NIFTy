@@ -16,14 +16,16 @@
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
 
 import numbers
+from functools import reduce
+from operator import add
 
 import numpy as np
 
 from .. import pointwise
+from ..domain_tuple import DomainTuple
 from ..logger import logger
 from ..multi_domain import MultiDomain
 from ..utilities import NiftyMeta, check_object_identity, indent, myassert
-from ..domain_tuple import DomainTuple
 
 
 class Operator(metaclass=NiftyMeta):
@@ -195,9 +197,9 @@ class Operator(metaclass=NiftyMeta):
 
     @staticmethod
     def identity_operator(dom):
+        from ..sugar import makeDomain
         from .block_diagonal_operator import BlockDiagonalOperator
         from .scaling_operator import ScalingOperator
-        from ..sugar import makeDomain
 
         dom = makeDomain(dom)
         if isinstance(dom, DomainTuple):
@@ -314,8 +316,8 @@ class Operator(metaclass=NiftyMeta):
             [0,1,..,N-1] where N is the number of domains in the target of the
             Operator (or the Field).
         """
-        from .transpose_operator import TransposeOperator
         from ..sugar import is_fieldlike
+        from .transpose_operator import TransposeOperator
 
         dom = self.domain if is_fieldlike(self) else self.target
         return TransposeOperator(dom, indices)(self)
@@ -515,21 +517,26 @@ class _OpSum(Operator):
         self._op2 = op2
 
     def apply(self, x):
-        from ..linearization import Linearization
         self._check_input(x)
+        return self._apply_operator_sum(x, [self._op1, self._op2])
+
+    @staticmethod
+    def _apply_operator_sum(x, ops):
+        from ..linearization import Linearization
+
+        unite = lambda x, y: x.unite(y)
         if x.jac is None:
-            v1 = x.extract(self._op1.domain)
-            v2 = x.extract(self._op2.domain)
-            return self._op1(v1).unite(self._op2(v2))
-        v1 = x.val.extract(self._op1.domain)
-        v2 = x.val.extract(self._op2.domain)
-        wm = x.want_metric
-        lin1 = self._op1(Linearization.make_var(v1, wm))
-        lin2 = self._op2(Linearization.make_var(v2, wm))
-        op = lin1._jac._myadd(lin2._jac, False)
-        res = lin1.new(lin1._val.unite(lin2._val), op)
-        if lin1._metric is not None and lin2._metric is not None:
-            res = res.add_metric(lin1._metric + lin2._metric)
+            return reduce(unite, (oo.force(x) for oo in ops))
+        lin = [oo(Linearization.make_var(x.val.extract(oo.domain), x.want_metric))
+                for oo in ops]
+        jacs = map(lambda x: x._jac, lin)
+        vals = map(lambda x: x._val, lin)
+        metrics = list(map(lambda x: x._metric, lin))
+        jac = reduce(lambda x, y: x._myadd(y, False), jacs)
+        val = reduce(unite, vals)
+        res = x.new(val, jac)
+        if all(mm is not None for mm in metrics):
+            res = res.add_metric(reduce(add, metrics))
         return res
 
     def _simplify_for_constant_input_nontrivial(self, c_inp):

@@ -100,6 +100,7 @@ class LikelihoodEnergyOperator(EnergyOperator):
             raise TypeError(f"{data_residual} is not an operator")
         self._res = data_residual
         self._sqrt_data_metric_at = sqrt_data_metric_at
+        self._name = None
 
     def normalized_residual(self, x):
         return (self._sqrt_data_metric_at(x) @ self._res).force(x)
@@ -138,10 +139,10 @@ class LikelihoodEnergyOperator(EnergyOperator):
         return _LikelihoodChain(other, self)
 
     def __add__(self, other):
-        return _LikelihoodSum(self, other)
+        return _LikelihoodSum.make([self, other])
 
     def __radd__(self, other):
-        return _LikelihoodSum(other, self)
+        return _LikelihoodSum.make([other, self])
 
     def get_metric_at(self, x):
         """Compute the Fisher information metric for a `LikelihoodEnergyOperator`
@@ -151,12 +152,19 @@ class LikelihoodEnergyOperator(EnergyOperator):
         bun = f(Linearization.make_var(x)).jac
         return SandwichOperator.make(bun, sampling_dtype=dtp)
 
+    @property
+    def name(self):
+        return self._name
+
+    @name.setter
+    def name(self, x):
+        if isinstance(self, _LikelihoodSum):
+            raise RuntimeError("The name of a LikelihoodSum cannot be set. "
+                               "Set the name of each individual LikelihoodEnergy seperately.")
+        self._name = x
+
 
 class _CombinedLh(LikelihoodEnergyOperator):
-    @property
-    def _domain(self):
-        return self._op._domain
-
     def apply(self, x):
         self._check_input(x)
         return self._op(x)
@@ -170,6 +178,22 @@ class _CombinedLh(LikelihoodEnergyOperator):
     def _simplify_for_constant_input_nontrivial(self, c_inp):
         return self._op._simplify_for_constant_input_nontrivial(c_inp)
 
+    @classmethod
+    def unpack(cls, ops, res):
+        for op in ops:
+            if isinstance(op, cls):
+                res = cls.unpack(op._ops, res)
+            else:
+                res = res + [op]
+        return res
+
+    @classmethod
+    def make(cls, ops):
+        res = cls.unpack(ops, [])
+        if len(res) == 1:
+            return res[0]
+        return cls(res, _callingfrommake=True)
+
 
 class _LikelihoodChain(_CombinedLh):
     def __init__(self, op1, op2):
@@ -179,17 +203,15 @@ class _LikelihoodChain(_CombinedLh):
             res = op2._res
             sqrt_data_metric_at = op2._sqrt_data_metric_at
         else:
-            if op1._res is None:  # Support that residual and sqrt metric is not implemented
-                res = sqrt_data_metric_at = None
+            if isinstance(op2.target, MultiDomain):
+                extract = PartialExtractor(op2.target, op1._res.domain)
             else:
-                if isinstance(op2.target, MultiDomain):
-                    extract = PartialExtractor(op2.target, op1._res.domain)
-                else:
-                    extract = Operator.identity_operator(op2.target)
-                res = op1._res @ extract @ op2
-                sqrt_data_metric_at = lambda x: op1._sqrt_data_metric_at(op2.force(x))
+                extract = Operator.identity_operator(op2.target)
+            res = op1._res @ extract @ op2
+            sqrt_data_metric_at = lambda x: op1._sqrt_data_metric_at(op2.force(x))
         super(_LikelihoodChain, self).__init__(res, sqrt_data_metric_at)
         self._op = _OpChain.make((op1, op2))
+        self._domain = self._op.domain
 
     def get_transformation(self):
         tr = self._op._ops[0].get_transformation()
@@ -199,58 +221,80 @@ class _LikelihoodChain(_CombinedLh):
 
 
 class _LikelihoodSum(_CombinedLh):
-    def __init__(self, op1, op2):
+    def __init__(self, ops, _callingfrommake=False):
         from .simple_linear_operators import PrependKey
 
-        res1, res2 = op1._res, op2._res
-        b1 = res1 is None or isinstance(res1.target, DomainTuple)
-        b2 = res2 is None or isinstance(res2.target, DomainTuple)
-        if isinstance(op1.domain, DomainTuple) ^ isinstance(op2.domain, DomainTuple):
-            raise TypeError()
-
-        res = []
-        sqrt_data_metric = []
-        if res1 is not None:
-            fa1 = FieldAdapter(res1.target, "").adjoint if b1 else ScalingOperator(res1.target, 1.)
-            prep1 = PrependKey(fa1.target, "1") @ fa1
-            res.append(prep1 @ res1)
-        if res2 is not None:
-            fa2 = FieldAdapter(res2.target, "").adjoint if b2 else ScalingOperator(res2.target, 1.)
-            prep2 = PrependKey(fa2.target, "2") @ fa2
-            res.append(prep2 @ res2)
+        if not _callingfrommake:
+            raise NotImplementedError
+        if len(set([isinstance(oo.domain, DomainTuple) for oo in ops])) > 1:
+            raise RuntimeError("Some operators have DomainTuple and others have "
+                    "MultiDomain as domain. This should not happen.")
+        self._ops = ops
+        res, prep, data_ops = [], [], []
+        for ii, oo in enumerate(ops):
+            rr = oo._res
+            if rr is None:
+                continue
+            tgt = oo.data_domain
+            lprep = Operator.identity_operator(tgt)
+            key = self._get_name(ii)
+            if isinstance(lprep.target, DomainTuple):
+                lprep = lprep.ducktape_left("")
+            else:
+                key = key + ": "
+            lprep = PrependKey(lprep.target, key) @ lprep
+            prep.append(lprep)
+            res.append(lprep @ rr)
+            data_ops.append(oo)
 
         def sqrt_data_metric_at(x):
-            result = []
-            if res1 is not None:
-                result.append(prep1 @ op1._sqrt_data_metric_at(x) @ prep1.adjoint)
-            if res2 is not None:
-                result.append(prep2 @ op2._sqrt_data_metric_at(x) @ prep2.adjoint)
-            return reduce(add, result)
+            return reduce(add, (pp @ oo._sqrt_data_metric_at(x) @ pp.adjoint
+                                for pp, oo in zip(prep, data_ops)))
 
-        super(_LikelihoodSum, self).__init__(reduce(add, res), sqrt_data_metric_at)
-        self._op = _OpSum(op1, op2)
+        if not self._trivial_names():
+            lst = self._all_names()
+            if len(lst) != len(set(lst)):
+                raise RuntimeError(f"Name collision in likelihoods detected: {names}")
+
+        data_residuals = reduce(add, res)
+        super(_LikelihoodSum, self).__init__(data_residuals, sqrt_data_metric_at)
+        self._domain = data_residuals.domain
+
+    def apply(self, x):
+        from ..linearization import Linearization
+        self._check_input(x)
+        return _OpSum._apply_operator_sum(x, self._ops)
 
     def get_transformation(self):
         from .simple_linear_operators import PrependKey
 
-        op1 = self._op._op1
-        op2 = self._op._op2
-        tr1 = op1.get_transformation()
-        tr2 = op2.get_transformation()
-        if tr1 is None or tr2 is None:
+        if any(oo.get_transformation() is None for oo in self._ops):
             return None
-        dtype, trafo = {}, None
-        for i, lh in enumerate([op1, op2]):
+        dtype, trafo = {}, []
+        for ii, lh in enumerate(self._ops):
             dtp, tr = lh.get_transformation()
+            key = self._get_name(ii)
             if isinstance(tr.target, MultiDomain):
-                dtype.update({str(i)+d: dtp[d] for d in dtp.keys()})
-                tr = PrependKey(tr.target, str(i)) @ tr
-                trafo = tr if trafo is None else trafo+tr
+                key = key + ": "
+                dtype.update({key+d: dtp[d] for d in dtp.keys()})
+                tr = PrependKey(tr.target, key) @ tr
             else:
-                dtype[str(i)] = dtp
-                tr = tr.ducktape_left(str(i))
-                trafo = tr if trafo is None else trafo + tr
-        return dtype, trafo
+                dtype[key] = dtp
+                tr = tr.ducktape_left(key)
+            trafo.append(tr)
+        return dtype, reduce(add, trafo)
+
+    def _trivial_names(self):
+        return all(nn is None for nn in self._all_names())
+
+    def _all_names(self):
+        return [oo.name for oo in self._ops]
+
+    def _get_name(self, i):
+        myassert(isinstance(i, int) and i >= 0)
+        if self._trivial_names():
+            return f"Likelihood {i}"
+        return self._all_names[i]
 
 
 class Squared2NormOperator(EnergyOperator):
