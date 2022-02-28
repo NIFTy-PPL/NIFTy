@@ -257,7 +257,7 @@ class _LikelihoodSum(_CombinedLh):
         if not self._trivial_names():
             lst = self._all_names()
             if len(lst) != len(set(lst)):
-                raise RuntimeError(f"Name collision in likelihoods detected: {names}")
+                raise ValueError(f"Name collision in likelihoods detected: {lst}")
 
         data_residuals = reduce(add, res)
         super(_LikelihoodSum, self).__init__(data_residuals, sqrt_data_metric_at)
@@ -297,7 +297,7 @@ class _LikelihoodSum(_CombinedLh):
         myassert(isinstance(i, int) and i >= 0)
         if self._trivial_names():
             return f"Likelihood {i}"
-        return self._all_names[i]
+        return self._all_names()[i]
 
 
 class Squared2NormOperator(EnergyOperator):
