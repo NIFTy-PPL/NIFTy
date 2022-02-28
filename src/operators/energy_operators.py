@@ -191,6 +191,12 @@ class _LikelihoodChain(_CombinedLh):
         super(_LikelihoodChain, self).__init__(res, sqrt_data_metric_at)
         self._op = _OpChain.make((op1, op2))
 
+    def get_transformation(self):
+        tr = self._op._ops[0].get_transformation()
+        if tr is None:
+            return tr
+        return tr[0], _OpChain.make((tr[1],)+self._op._ops[1:])
+
 
 class _LikelihoodSum(_CombinedLh):
     def __init__(self, op1, op2):
@@ -223,6 +229,28 @@ class _LikelihoodSum(_CombinedLh):
 
         super(_LikelihoodSum, self).__init__(reduce(add, res), sqrt_data_metric_at)
         self._op = _OpSum(op1, op2)
+
+    def get_transformation(self):
+        from .simple_linear_operators import PrependKey
+
+        op1 = self._op._op1
+        op2 = self._op._op2
+        tr1 = op1.get_transformation()
+        tr2 = op2.get_transformation()
+        if tr1 is None or tr2 is None:
+            return None
+        dtype, trafo = {}, None
+        for i, lh in enumerate([op1, op2]):
+            dtp, tr = lh.get_transformation()
+            if isinstance(tr.target, MultiDomain):
+                dtype.update({str(i)+d: dtp[d] for d in dtp.keys()})
+                tr = PrependKey(tr.target, str(i)) @ tr
+                trafo = tr if trafo is None else trafo+tr
+            else:
+                dtype[str(i)] = dtp
+                tr = tr.ducktape_left(str(i))
+                trafo = tr if trafo is None else trafo + tr
+        return dtype, trafo
 
 
 class Squared2NormOperator(EnergyOperator):

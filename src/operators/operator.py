@@ -446,13 +446,6 @@ class _OpChain(_CombinedOperator):
             x = op(x)
         return x
 
-    def get_transformation(self):
-        # FIXME Move to likelihoodenergy as soon as we have a similar interface
-        tr = self._ops[0].get_transformation()
-        if tr is None:
-            return tr
-        return tr[0], _OpChain.make((tr[1],)+self._ops[1:])
-
     def _simplify_for_constant_input_nontrivial(self, c_inp):
         from ..multi_domain import MultiDomain
         if not isinstance(self._domain, MultiDomain):
@@ -538,26 +531,6 @@ class _OpSum(Operator):
         if lin1._metric is not None and lin2._metric is not None:
             res = res.add_metric(lin1._metric + lin2._metric)
         return res
-
-    def get_transformation(self):
-        # FIXME Move to likelihoodenergy as soon as we have a similar interface
-        from .simple_linear_operators import PrependKey
-        tr1 = self._op1.get_transformation()
-        tr2 = self._op2.get_transformation()
-        if tr1 is None or tr2 is None:
-            return None
-        dtype, trafo = {}, None
-        for i, lh in enumerate([self._op1, self._op2]):
-            dtp, tr = lh.get_transformation()
-            if isinstance(tr.target, MultiDomain):
-                dtype.update({str(i)+d: dtp[d] for d in dtp.keys()})
-                tr = PrependKey(tr.target, str(i)) @ tr
-                trafo = tr if trafo is None else trafo+tr
-            else:
-                dtype[str(i)] = dtp
-                tr = tr.ducktape_left(str(i))
-                trafo = tr if trafo is None else trafo + tr
-        return dtype, trafo
 
     def _simplify_for_constant_input_nontrivial(self, c_inp):
         from ..multi_domain import MultiDomain
