@@ -11,7 +11,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
-# Copyright(C) 2013-2021 Max-Planck-Society
+# Copyright(C) 2013-2022 Max-Planck-Society
 #
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
 
@@ -242,7 +242,8 @@ def special_add_at(a, axis, index, b):
     return a2.reshape(a.shape)
 
 
-_iscomplex_tpl = (np.complex64, np.complex128)
+def iscomplextype(dtype):
+    return np.issubdtype(dtype, np.complexfloating)
 
 
 def iscomplextype(dtype):
