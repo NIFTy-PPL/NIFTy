@@ -11,7 +11,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
-# Copyright(C) 2013-2021 Max-Planck-Society
+# Copyright(C) 2013-2022 Max-Planck-Society
 #
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
 
@@ -24,8 +24,8 @@ import numpy as np
 
 __all__ = ["get_slice_list", "safe_cast", "parse_spaces", "infer_space",
            "memo", "NiftyMeta", "my_sum", "my_lincomb_simple",
-           "my_lincomb", "indent",
-           "my_product", "frozendict", "special_add_at", "iscomplextype",
+           "my_lincomb", "indent", "my_product", "frozendict",
+           "special_add_at", "iscomplextype", "issingleprec",
            "value_reshaper", "lognormal_moments", "check_object_identity",
            "check_MPI_equality", "check_MPI_synced_random_state"]
 
@@ -242,11 +242,23 @@ def special_add_at(a, axis, index, b):
     return a2.reshape(a.shape)
 
 
-_iscomplex_tpl = (np.complex64, np.complex128)
-
-
 def iscomplextype(dtype):
-    return dtype.type in _iscomplex_tpl
+    if isinstance(dtype, dict):
+        return _getunique(iscomplextype, dtype.values())
+    return np.issubdtype(dtype, np.complexfloating)
+
+
+def issingleprec(dtype):
+    if isinstance(dtype, dict):
+        return _getunique(issingleprec, dtype.values())
+    return dtype.type in (np.float32, np.complex64)
+
+
+def _getunique(f, iterable):
+    lst = list(f(vv) for vv in iterable)
+    if len(set(lst)) == 1:
+        return lst[0]
+    raise RuntimeError("Value is not unique", lst)
 
 
 def indent(inp):

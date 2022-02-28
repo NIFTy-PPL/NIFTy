@@ -26,12 +26,12 @@ from .multi_domain import MultiDomain
 from .multi_field import MultiField
 from .operators.adder import Adder
 from .operators.endomorphic_operator import EndomorphicOperator
-from .operators.energy_operators import EnergyOperator
+from .operators.energy_operators import EnergyOperator, LikelihoodEnergyOperator
 from .operators.linear_operator import LinearOperator
 from .operators.operator import Operator
 from .probing import StatCalculator
 from .sugar import from_random, is_fieldlike, is_operator
-from .utilities import myassert
+from .utilities import myassert, issingleprec
 
 __all__ = ["check_linear_operator", "check_operator", "assert_allclose", "minisanity"]
 
@@ -130,6 +130,7 @@ def check_operator(op, loc, tol=1e-12, ntries=100, perf_check=True,
                                only_r_differentiable)
     _check_nontrivial_constant(op, loc, tol, ntries, only_r_differentiable,
                                metric_sampling)
+    _check_likelihood(op)
 
 
 def assert_allclose(f1, f2, atol=0, rtol=1e-7):
@@ -297,6 +298,16 @@ def _performance_check(op, pos, raise_on_fail):
                 raise RuntimeError(s)
 
 
+def _check_likelihood(op):
+    if isinstance(op, LikelihoodEnergyOperator):
+        res = op.get_transformation()
+        if res is None:
+            raise RuntimeError("`get_transformation` is not implemented for "
+                               "this LikelihoodEnergyOperator")
+        if len(res) != 2:
+            raise RuntimeError("`get_transformation` has to return a dtype and the transformation")
+
+
 def _purity_check(op, pos):
     if isinstance(op, LinearOperator) and (op.capability & op.TIMES) != op.TIMES:
         return
@@ -310,10 +321,11 @@ def _get_acceptable_location(op, loc, lin):
         raise ValueError('Initial value must be finite')
     direction = from_random(loc.domain, dtype=loc.dtype)
     dirder = lin.jac(direction)
+    fac = 1e-3 if issingleprec(loc.dtype) else 1e-6
     if dirder.norm() == 0:
-        direction = direction * (lin.val.norm() * 1e-5)
+        direction = direction * (lin.val.norm() * fac)
     else:
-        direction = direction * (lin.val.norm() * 1e-5 / dirder.norm())
+        direction = direction * (lin.val.norm() * fac / dirder.norm())
     # Find a step length that leads to a "reasonable" location
     for i in range(50):
         try:
