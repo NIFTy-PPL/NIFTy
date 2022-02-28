@@ -26,7 +26,7 @@ from .multi_domain import MultiDomain
 from .multi_field import MultiField
 from .operators.adder import Adder
 from .operators.endomorphic_operator import EndomorphicOperator
-from .operators.energy_operators import EnergyOperator
+from .operators.energy_operators import EnergyOperator, LikelihoodEnergyOperator
 from .operators.linear_operator import LinearOperator
 from .operators.operator import Operator
 from .probing import StatCalculator
@@ -130,6 +130,7 @@ def check_operator(op, loc, tol=1e-12, ntries=100, perf_check=True,
                                only_r_differentiable)
     _check_nontrivial_constant(op, loc, tol, ntries, only_r_differentiable,
                                metric_sampling)
+    _check_likelihood(op)
 
 
 def assert_allclose(f1, f2, atol=0, rtol=1e-7):
@@ -295,6 +296,16 @@ def _performance_check(op, pos, raise_on_fail):
             logger.info(cond)
             if raise_on_fail:
                 raise RuntimeError(s)
+
+
+def _check_likelihood(op):
+    if isinstance(op, LikelihoodEnergyOperator):
+        res = op.get_transformation()
+        if res is None:
+            raise RuntimeError("`get_transformation` is not implemented for "
+                               "this LikelihoodEnergyOperator")
+        if len(res) != 2:
+            raise RuntimeError("`get_transformation` has to return a dtype and the transformation")
 
 
 def _purity_check(op, pos):
