@@ -345,7 +345,7 @@ class VariableCovarianceGaussianEnergy(LikelihoodEnergyOperator):
         self._cplx = _iscomplex(sampling_dtype)
         self._use_full_fisher = use_full_fisher
         super(VariableCovarianceGaussianEnergy, self).__init__(
-                ScalingOperator(dom, 1.).ducktape(self._kr),
+                Operator.identity_operator(dom).ducktape(self._kr),
                 lambda x: makeOp(x[self._ki].sqrt()))
 
     def apply(self, x):
@@ -424,7 +424,7 @@ class _SpecialGammaEnergy(LikelihoodEnergyOperator):
 
     def get_transformation(self):
         sc = 1. if self._cplx else np.sqrt(0.5)
-        return self._dt, ScalingOperator(self._domain, 1.).log().scale(sc)
+        return self._dt, Operator.identity_operator(self._domain).log().scale(sc)
 
 
 class GaussianEnergy(LikelihoodEnergyOperator):
@@ -481,7 +481,7 @@ class GaussianEnergy(LikelihoodEnergyOperator):
 
         self._data = data
         if data is None:
-            res = ScalingOperator(self._domain, 1.)
+            res = Operator.identity_operator(self._domain)
         else:
             res = Adder(data, neg=True)
         super(GaussianEnergy, self).__init__(res, lambda x: self.get_metric_at(x).get_sqrt())
@@ -574,7 +574,7 @@ class PoissonianEnergy(LikelihoodEnergyOperator):
         return res.add_metric(self.get_metric_at(x.val))
 
     def get_transformation(self):
-        return np.float64, 2.*ScalingOperator(self._domain, 1.).sqrt()
+        return np.float64, 2.*Operator.identity_operator(self._domain).sqrt()
 
 
 class InverseGammaEnergy(LikelihoodEnergyOperator):
@@ -628,7 +628,7 @@ class InverseGammaEnergy(LikelihoodEnergyOperator):
 
     def get_transformation(self):
         fact = self._alphap1.sqrt()
-        res = makeOp(fact) @ ScalingOperator(self._domain, 1.).log()
+        res = makeOp(fact) @ Operator.identity_operator(self._domain).log()
         return self._sampling_dtype, res
 
 
@@ -653,7 +653,7 @@ class StudentTEnergy(LikelihoodEnergyOperator):
     def __init__(self, domain, theta):
         self._domain = DomainTuple.make(domain)
         self._theta = theta
-        inp = ScalingOperator(self._domain, 1.)
+        inp = Operator.identity_operator(self._domain)
         super(StudentTEnergy, self).__init__(inp, lambda x: self.get_metric_at(x).get_sqrt())
 
     def apply(self, x):
@@ -709,7 +709,7 @@ class BernoulliEnergy(LikelihoodEnergyOperator):
     def get_transformation(self):
         from ..sugar import full
         res = Adder(full(self._domain, 1.)) @ ScalingOperator(self._domain, -1)
-        res = res * ScalingOperator(self._domain, 1).reciprocal()
+        res = res * Operator.identity_operator(self._domain).reciprocal()
         return np.float64, -2.*res.sqrt().arctan()
 
 
