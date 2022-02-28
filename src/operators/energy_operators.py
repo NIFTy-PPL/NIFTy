@@ -202,6 +202,9 @@ class _LikelihoodChain(_CombinedLh):
         if isinstance(op1, ScalingOperator):
             res = op2._res
             sqrt_data_metric_at = op2._sqrt_data_metric_at
+        elif op1._res is None:
+            res = None
+            sqrt_data_metric_at = None
         else:
             if isinstance(op2.target, MultiDomain):
                 extract = PartialExtractor(op2.target, op1._res.domain)

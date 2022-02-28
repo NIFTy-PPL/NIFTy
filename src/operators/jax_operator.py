@@ -15,6 +15,7 @@
 # Author: Philipp Arras
 
 from types import SimpleNamespace
+from warnings import warn
 
 import numpy as np
 
@@ -194,8 +195,9 @@ class JaxLikelihoodEnergyOperator(LikelihoodEnergyOperator):
         self._val_and_grad = jax.jit(jax.value_and_grad(func))
         self._dt = sampling_dtype
         self._trafo = transformation
-
-        # FIXME
+        warn("JaxLikelihoodEnergyOperator does not support normalized residuals "
+             "yet. This mean that the inference works but the data residuals do "
+             "not show up in e.g. `ift.minisanity`.")
         super(JaxLikelihoodEnergyOperator, self).__init__(None, None)
 
     def get_transformation(self):
