@@ -133,6 +133,9 @@ def test_load_mean(comm):
 @pmp("samples", [False, True])
 def test_save_to_hdf5(comm, cls, mean, std, samples):
     pytest.importorskip("h5py")
+    import h5py
+    from nifty8 import MultiDomain, DomainTuple, UnstructuredDomain, RGSpace
+
     if comm is None and ift.utilities.get_MPI_params()[1] > 1:
         pytest.skip()
     sl, _ = _get_sample_list(comm, cls)
@@ -146,3 +149,29 @@ def test_save_to_hdf5(comm, cls, mean, std, samples):
         sl.save_to_hdf5("output.h5", op, mean=mean, std=std, samples=samples, overwrite=True)
         if comm is not None:
             comm.Barrier()
+
+        flddom = sl.domain if op is None else op.target
+        mdom = isinstance(flddom, ift.MultiDomain)
+
+        shps = []
+        f = h5py.File("output.h5", "r")
+        domain_repr = f.attrs["nifty domain"]
+        if mean:
+            shps.append(_get_shape(f["stats"]["mean"], mdom))
+        if std:
+            shps.append(_get_shape(f["stats"]["standard deviation"], mdom))
+        if samples:
+            for ii in range(sl.n_samples):
+                shps.append(_get_shape(f["samples"][str(ii)], mdom))
+        assert all(elem == shps[0] for elem in shps)
+
+        dom1 = eval(domain_repr)
+        assert dom1 is flddom
+
+        f.close()
+
+
+def _get_shape(inp, mdom):
+    if not mdom:
+        return inp.shape
+    return {kk: _get_shape(vv, False) for kk, vv in inp.items()}

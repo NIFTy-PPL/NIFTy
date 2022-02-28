@@ -11,14 +11,15 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
-# Copyright(C) 2013-2021 Max-Planck-Society
+# Copyright(C) 2013-2022 Max-Planck-Society
+# Author: Philipp Arras
 #
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
 
 import numpy as np
 import pytest
 from numpy.testing import assert_allclose
-from scipy.stats import invgamma, norm
+from scipy.stats import invgamma, norm, gamma
 
 import nifty8 as ift
 
@@ -47,3 +48,8 @@ def testInterpolationAccuracy(space, seed):
         arr0 = invgamma.ppf(norm.cdf(pos.val), alpha, scale=q)
         assert_allclose(arr0, arr1)
         assert_allclose(arr0, arr2)
+
+        op2 = ift.GammaOperator(space, alpha=alpha, theta=qfld)
+        arr1 = op2(pos).val
+        arr0 = gamma.ppf(norm.cdf(pos.val), alpha, scale=q)
+        assert_allclose(arr0, arr1)

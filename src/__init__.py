@@ -7,15 +7,7 @@ try:
 except ImportError:
     pass
 
-from .domains.domain import Domain
-from .domains.structured_domain import StructuredDomain
-from .domains.unstructured_domain import UnstructuredDomain
-from .domains.rg_space import RGSpace
-from .domains.lm_space import LMSpace
-from .domains.gl_space import GLSpace
-from .domains.hp_space import HPSpace
-from .domains.power_space import PowerSpace
-from .domains.dof_space import DOFSpace
+from .domains import *
 
 from .domain_tuple import DomainTuple
 from .multi_domain import MultiDomain
@@ -90,7 +82,8 @@ from .sugar import *
 from .plot import Plot
 
 from .library.special_distributions import InverseGammaOperator, \
-    UniformOperator, LaplaceOperator, LogInverseGammaOperator
+    UniformOperator, LaplaceOperator, LogInverseGammaOperator, \
+    GammaOperator
 from .library.los_response import LOSResponse
 from .library.dynamic_operator import (dynamic_operator,
                                        dynamic_lightcone_operator)

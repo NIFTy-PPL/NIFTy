@@ -236,15 +236,15 @@ def optimize_kl(likelihood_energy,
                 initial_position = sl.local_item(0)
             _load_random_state(output_directory, last_finished_index, save_strategy)
 
+            if initial_index == total_iterations:
+                if isfile(fname + ".mean.pickle"):
+                    sl = ResidualSampleList.load(fname)
+                return (sl, initial_position) if return_final_position else sl
+
     # Sanity check of input
     if initial_index >= total_iterations:
-        if resume:
-            if isfile(fname + ".mean.pickle"):
-                sl = ResidualSampleList.load(fname)
-            return (sl, mean) if return_final_position else sl
-        else:
-            raise ValueError("Initial index is bigger than total iterations: "
-                             f"{initial_index} >= {total_iterations}")
+        raise ValueError("Initial index is bigger than total iterations: "
+                         f"{initial_index} >= {total_iterations}")
 
     for iglobal in range(initial_index, total_iterations):
         for (obj, cls) in [(likelihood_energy, Operator), (kl_minimizer, DescentMinimizer),
@@ -507,12 +507,12 @@ def _append_key(s, key):
     return f"{s} ({key})"
 
 
-def _plot_stats(file_name, mean, stddev, ground_truth, comm):
+def _plot_stats(file_name, mean, var, ground_truth, comm):
     p = Plot()
     if ground_truth is not None:
         p.add(ground_truth, title="Ground truth")
     p.add(mean, title="Mean")
-    p.add(stddev, vmin=0, title="Standard deviation")
+    p.add(var.sqrt(), vmin=0, title="Standard deviation")
     if _MPI_master(comm):
         p.output(name=file_name, ny=2 if ground_truth is None else 3)
 

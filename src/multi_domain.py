@@ -137,9 +137,7 @@ class MultiDomain:
         return (_unpickleMultiDomain, (dict(self),))
 
     def __repr__(self):
-        subs = "\n".join("{}:\n  {}".format(key, dom.__repr__())
-                         for key, dom in self.items())
-        return "MultiDomain:\n"+indent(subs)
+        return f"MultiDomain.make({dict(self)})"
 
 
 def _unpickleMultiDomain(*args):
