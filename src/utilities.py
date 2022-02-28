@@ -243,6 +243,8 @@ def special_add_at(a, axis, index, b):
 
 
 def iscomplextype(dtype):
+    if isinstance(dtype, dict):
+        return _getunique(iscomplextype, dtype.values())
     return np.issubdtype(dtype, np.complexfloating)
 
 
@@ -253,11 +255,10 @@ def issingleprec(dtype):
 
 
 def _getunique(f, iterable):
-    val = set(f(vv) for vv in iterable)
-    if len(val) == 1:
-        return tuple(val)[0]
-    else:
-        raise RuntimeError("Precision is not unique", dtype)
+    lst = list(f(vv) for vv in iterable)
+    if len(set(lst)) == 1:
+        return lst[0]
+    raise RuntimeError("Value is not unique", lst)
 
 
 def indent(inp):
