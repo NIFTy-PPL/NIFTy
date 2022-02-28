@@ -9,6 +9,7 @@ from jax import numpy as jnp
 from jax.lax import conv_general_dilated
 import numpy as np
 
+NDARRAY = Union[jnp.ndarray, np.ndarray]
 # N - batch dimension
 # C - feature dimension of data (channel)
 # I - input dimension of kernel
@@ -16,7 +17,9 @@ import numpy as np
 CONV_DIMENSION_NAMES = "".join(el for el in ascii_uppercase if el not in "NCIO")
 
 
-def _get_cov_from_loc(kernel=None, cov_from_loc=None):
+def _get_cov_from_loc(kernel=None,
+                      cov_from_loc=None
+                     ) -> Callable[[NDARRAY, NDARRAY], NDARRAY]:
     if cov_from_loc is None and callable(kernel):
 
         def cov_from_loc_sngl(x, y):
@@ -262,18 +265,26 @@ def get_refinement_shapewithdtype(
 ):
     from .forest_util import ShapeWithDtype
 
+    if n_layers < 0:
+        raise ValueError(f"invalid `n_layers`; got {n_layers!r}")
     csz = int(_coarse_size)  # coarse size
     fsz = int(_fine_size)  # fine size
 
     size0 = (size0, ) if isinstance(size0, int) else size0
     n_dim = len(size0)
     exc_shp = [size0]
-    exc_shp += [tuple(el - (csz - 1) for el in exc_shp[0]) + (fsz**n_dim, )]
-    for _ in range(n_layers - 1):
-        exc_shp += [
-            tuple(fsz * el - (csz - 1)
-                  for el in exc_shp[-1][:-1]) + (fsz**n_dim, )
-        ]
+    if n_layers > 0:
+        exc_shp += [tuple(el - (csz - 1) for el in exc_shp[0]) + (fsz**n_dim, )]
+    for depth in range(1, n_layers):
+        exc_lvl = tuple(fsz * el - (csz - 1)
+                        for el in exc_shp[-1][:-1]) + (fsz**n_dim, )
+        if any(el <= 0 for el in exc_lvl):
+            ve = (
+                f"`size0` ({size0}) with `n_layers` ({n_layers}) yield an"
+                f" invalid shape ({exc_lvl}) at depth {depth}"
+            )
+            raise ValueError(ve)
+        exc_shp += [exc_lvl]
 
     exc_shp = list(map(partial(ShapeWithDtype, dtype=dtype), exc_shp))
     return exc_shp
