@@ -310,10 +310,11 @@ def _get_acceptable_location(op, loc, lin):
         raise ValueError('Initial value must be finite')
     direction = from_random(loc.domain, dtype=loc.dtype)
     dirder = lin.jac(direction)
+    fac = 1e-3 if issingleprec(loc.dtype) else 1e-6
     if dirder.norm() == 0:
-        direction = direction * (lin.val.norm() * 1e-5)
+        direction = direction * (lin.val.norm() * fac)
     else:
-        direction = direction * (lin.val.norm() * 1e-5 / dirder.norm())
+        direction = direction * (lin.val.norm() * fac / dirder.norm())
     # Find a step length that leads to a "reasonable" location
     for i in range(50):
         try:
