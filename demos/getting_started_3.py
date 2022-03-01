@@ -125,7 +125,8 @@ def main():
     n_samples = lambda iiter: 10 if iiter < 5 else 20
     samples = ift.optimize_kl(likelihood_energy, n_iterations, n_samples,
                               minimizer, ic_sampling, minimizer_sampling,
-                              plottable_operators={"signal": signal, "power spectrum": pspec},
+                              plottable_operators={"signal": (signal, dict(vmin=0, vmax=1)),
+                                                   "power spectrum": pspec},
                               ground_truth_position=mock_position,
                               output_directory="getting_started_3_results",
                               overwrite=True, comm=comm)

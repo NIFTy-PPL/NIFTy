@@ -27,12 +27,12 @@ from .multi_domain import MultiDomain
 from .multi_field import MultiField
 from .operators.adder import Adder
 from .operators.endomorphic_operator import EndomorphicOperator
-from .operators.energy_operators import EnergyOperator
+from .operators.energy_operators import EnergyOperator, LikelihoodEnergyOperator
 from .operators.linear_operator import LinearOperator
 from .operators.operator import Operator
 from .probing import StatCalculator
 from .sugar import from_random, is_fieldlike, is_operator
-from .utilities import myassert
+from .utilities import myassert, issingleprec
 
 __all__ = ["check_linear_operator", "check_operator", "assert_allclose", "minisanity"]
 
@@ -312,10 +312,11 @@ def _get_acceptable_location(op, loc, lin):
         raise ValueError('Initial value must be finite')
     direction = from_random(loc.domain, dtype=loc.dtype)
     dirder = lin.jac(direction)
+    fac = 1e-3 if issingleprec(loc.dtype) else 1e-6
     if dirder.norm() == 0:
-        direction = direction * (lin.val.norm() * 1e-5)
+        direction = direction * (lin.val.norm() * fac)
     else:
-        direction = direction * (lin.val.norm() * 1e-5 / dirder.norm())
+        direction = direction * (lin.val.norm() * fac / dirder.norm())
     # Find a step length that leads to a "reasonable" location
     for i in range(50):
         try:
@@ -425,6 +426,12 @@ def _check_likelihood_energy(op, loc):
     myassert(smet.domain == smet.target == data_domain)
     nres = op.normalized_residual(loc)
     myassert(nres.domain is data_domain)
+    res = op.get_transformation()
+    if res is None:
+        raise RuntimeError("`get_transformation` is not implemented for "
+                            "this LikelihoodEnergyOperator")
+    if len(res) != 2:
+        raise RuntimeError("`get_transformation` has to return a dtype and the transformation")
 
 
 def minisanity(likelihood_energy, samples, terminal_colors=True):

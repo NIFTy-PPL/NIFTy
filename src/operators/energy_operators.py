@@ -27,7 +27,7 @@ from ..linearization import Linearization
 from ..multi_domain import MultiDomain
 from ..multi_field import MultiField
 from ..sugar import makeDomain, makeOp
-from ..utilities import myassert
+from ..utilities import myassert, iscomplextype
 from .adder import Adder
 from .linear_operator import LinearOperator
 from .operator import Operator, _OpChain, _OpSum
@@ -53,10 +53,6 @@ def _check_sampling_dtype(domain, dtypes):
             np.dtype(dtypes)
             return
     raise TypeError
-
-
-def _iscomplex(dtype):
-    return np.issubdtype(dtype, np.complexfloating)
 
 
 def _field_to_dtype(field):
@@ -389,7 +385,7 @@ class VariableCovarianceGaussianEnergy(LikelihoodEnergyOperator):
         self._domain = MultiDomain.make({self._kr: dom, self._ki: dom})
         self._dt = {self._kr: sampling_dtype, self._ki: np.float64}
         _check_sampling_dtype(self._domain, self._dt)
-        self._cplx = _iscomplex(sampling_dtype)
+        self._cplx = iscomplextype(sampling_dtype)
         self._use_full_fisher = use_full_fisher
         super(VariableCovarianceGaussianEnergy, self).__init__(
                 Operator.identity_operator(dom).ducktape(self._kr),
@@ -452,7 +448,7 @@ class _SpecialGammaEnergy(LikelihoodEnergyOperator):
 
         self._domain = DomainTuple.make(residual.domain)
         self._resi = residual
-        self._cplx = _iscomplex(self._resi.dtype)
+        self._cplx = iscomplextype(self._resi.dtype)
         self._dt = self._resi.dtype
         super(_SpecialGammaEnergy, self).__init__(
                 ConstantOperator(self._resi, domain=self._domain),
