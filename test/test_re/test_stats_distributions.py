@@ -9,7 +9,7 @@ pmp = pytest.mark.parametrize
 
 @pmp("a", (3., 1.5, 4.))
 @pmp("scale", (2., 4.))
-@pmp("loc", (2., 4.))
+@pmp("loc", (2., 4., 0.))
 @pmp("seed", (42, 43))
 def test_invgamma_roundtrip(a, scale, loc, seed, step=1e-1):
     rng = np.random.default_rng(seed)

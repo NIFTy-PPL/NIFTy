@@ -208,15 +208,32 @@ def invgamma_prior(a, scale, loc=0., step=1e-2) -> Callable:
     """
     from scipy.stats import invgamma, norm
 
+    if not jnp.isscalar(a) or not jnp.isscalar(loc):
+        te = (
+            "Shape `a` and location `loc` must be of scalar type"
+            f"; got {type(a)} and {type(loc)} respectively"
+        )
+        raise TypeError(te)
+    if loc == 0.:
+        # Pull out `scale` to interpolate less
+        s2i = lambda x: invgamma.ppf(norm._cdf(x), a=a)
+    elif jnp.isscalar(scale):
+        s2i = lambda x: invgamma.ppf(norm._cdf(x), a=a, loc=loc, scale=scale)
+    else:
+        raise TypeError("`scale` may only be array-like for `loc == 0.`")
+
     xmin, xmax = -8.2, 8.2  # (1. - norm.cdf(8.2)) * 2 < 1e-15
-    standard_to_invgamma = interpolator(
-        lambda x: invgamma.ppf(norm._cdf(x), a=a, loc=loc, scale=scale),
-        xmin,
-        xmax,
-        step=step,
-        table_func=jnp.log,
-        inv_table_func=jnp.exp
+    standard_to_invgamma_interp = interpolator(
+        s2i, xmin, xmax, step=step, table_func=jnp.log, inv_table_func=jnp.exp
     )
+
+    def standard_to_invgamma(x):
+        # Allow for array-like `scale` without separate interpolations and only
+        # interpolate for shape `a` and `loc`
+        if loc == 0.:
+            return standard_to_invgamma_interp(x) * scale
+        return standard_to_invgamma_interp(x)
+
     return standard_to_invgamma
 
 
