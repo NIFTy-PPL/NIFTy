@@ -160,38 +160,7 @@ class LikelihoodEnergyOperator(EnergyOperator):
         self._name = x
 
 
-class _CombinedLh(LikelihoodEnergyOperator):
-    def apply(self, x):
-        self._check_input(x)
-        return self._op(x)
-
-    def get_transformation(self):
-        return self._op.get_transformation()
-
-    def __repr__(self):
-        return self._op.__repr__()
-
-    def _simplify_for_constant_input_nontrivial(self, c_inp):
-        return self._op._simplify_for_constant_input_nontrivial(c_inp)
-
-    @classmethod
-    def unpack(cls, ops, res):
-        for op in ops:
-            if isinstance(op, cls):
-                res = cls.unpack(op._ops, res)
-            else:
-                res = res + [op]
-        return res
-
-    @classmethod
-    def make(cls, ops):
-        res = cls.unpack(ops, [])
-        if len(res) == 1:
-            return res[0]
-        return cls(res, _callingfrommake=True)
-
-
-class _LikelihoodChain(_CombinedLh):
+class _LikelihoodChain(LikelihoodEnergyOperator):
     def __init__(self, op1, op2):
         from .simple_linear_operators import PartialExtractor
 
@@ -219,8 +188,18 @@ class _LikelihoodChain(_CombinedLh):
             return tr
         return tr[0], _OpChain.make((tr[1],)+self._op._ops[ii+1:])
 
+    def apply(self, x):
+        self._check_input(x)
+        return self._op(x)
 
-class _LikelihoodSum(_CombinedLh):
+    def _simplify_for_constant_input_nontrivial(self, c_inp):
+        return self._op._simplify_for_constant_input_nontrivial(c_inp)
+
+    def __repr__(self):
+        return self._op.__repr__()
+
+
+class _LikelihoodSum(LikelihoodEnergyOperator):
     def __init__(self, ops, _callingfrommake=False):
         from .simple_linear_operators import PrependKey
 
@@ -259,6 +238,22 @@ class _LikelihoodSum(_CombinedLh):
         data_residuals = reduce(add, res)
         super(_LikelihoodSum, self).__init__(data_residuals, sqrt_data_metric_at)
         self._domain = data_residuals.domain
+
+    @classmethod
+    def unpack(cls, ops, res):
+        for op in ops:
+            if isinstance(op, cls):
+                res = cls.unpack(op._ops, res)
+            else:
+                res = res + [op]
+        return res
+
+    @classmethod
+    def make(cls, ops):
+        res = cls.unpack(ops, [])
+        if len(res) == 1:
+            return res[0]
+        return cls(res, _callingfrommake=True)
 
     def apply(self, x):
         from ..linearization import Linearization
