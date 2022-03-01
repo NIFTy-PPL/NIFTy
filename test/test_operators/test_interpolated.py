@@ -26,7 +26,6 @@ import nifty8 as ift
 from ..common import list2fixture, setup_function, teardown_function
 
 pmp = pytest.mark.parametrize
-pmp = pytest.mark.parametrize
 space = list2fixture([ift.GLSpace(15),
                       ift.RGSpace(64, distances=.789),
                       ift.RGSpace([32, 32], distances=.789)])
@@ -34,6 +33,7 @@ seed = list2fixture([4, 78, 23])
 
 
 def testInterpolationAccuracy(space, seed):
+    ift.random.push_sseq_from_seed(seed)
     pos = ift.from_random(space, 'normal')
     alpha = 1.5
     qs = [0.73, pos.ptw("exp").val]
