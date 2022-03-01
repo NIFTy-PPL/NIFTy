@@ -10,6 +10,8 @@ to be able to distinguish in the output of `minisanity` between different
 likelihoods, one can assign a `name` to each LikelihoodEnergyOperator. This
 `name` has no effect on the inference and is only used inside `minisanity` for
 now.
+This change makes it possible to call `minisanity` automatically from within
+`optimize_kl`.
 
 Add TransposeOperator
 ---------------------

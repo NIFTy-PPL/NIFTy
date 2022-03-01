@@ -126,11 +126,6 @@ def main():
     # Set up likelihood energy and information Hamiltonian
     likelihood_energy = ift.GaussianEnergy(data, inverse_covariance=N.inverse) @ signal_response
 
-    def callback(samples):
-        s = ift.extra.minisanity(likelihood_energy, samples)
-        if master:
-            ift.logger.info(s)
-
     n_samples = 20
     n_iterations = 5
     samples = ift.optimize_kl(likelihood_energy, n_iterations, n_samples,
@@ -138,8 +133,7 @@ def main():
                               output_directory="getting_started_5_results",
                               ground_truth_position=mock_position,
                               plottable_operators={"signal": signal, "power spectrum 1": pspec1,
-                                                   "power spectrum 2": pspec2},
-                              inspect_callback=callback)
+                                                   "power spectrum 2": pspec2})
 
     # Plotting
     filename_res = filename.format("results")

@@ -119,12 +119,6 @@ def main():
     # Set up likelihood energy
     likelihood_energy = (ift.GaussianEnergy(data, inverse_covariance=N.inverse) @
                          signal_response)
-    likelihood_energy = likelihood_energy + likelihood_energy
-
-    def callback(samples):
-        s = ift.extra.minisanity(likelihood_energy, samples)
-        if master:
-            ift.logger.info(s)
 
     # Minimize KL
     n_iterations = 6
@@ -134,7 +128,7 @@ def main():
                               plottable_operators={"signal": signal, "power spectrum": pspec},
                               ground_truth_position=mock_position,
                               output_directory="getting_started_3_results",
-                              overwrite=True, comm=comm, inspect_callback=callback)
+                              overwrite=True, comm=comm)
 
     if True:
         # Load result from disk. May be useful for long inference runs, where
