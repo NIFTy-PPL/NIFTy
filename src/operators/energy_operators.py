@@ -213,10 +213,11 @@ class _LikelihoodChain(_CombinedLh):
         self._domain = self._op.domain
 
     def get_transformation(self):
-        tr = self._op._ops[0].get_transformation()
+        ii = 1 if isinstance(self._op._ops[0], ScalingOperator) else 0
+        tr = self._op._ops[ii].get_transformation()
         if tr is None:
             return tr
-        return tr[0], _OpChain.make((tr[1],)+self._op._ops[1:])
+        return tr[0], _OpChain.make((tr[1],)+self._op._ops[ii+1:])
 
 
 class _LikelihoodSum(_CombinedLh):
