@@ -49,5 +49,6 @@ def test_likelihood(with_names):
             lh = reduce(add, lhs)
         return
     lh = reduce(add, lhs)
+    print(lh)
     samples = ift.SampleList([ift.from_random(lh.domain) for _ in range(2)])
     print(ift.extra.minisanity(lh, samples))

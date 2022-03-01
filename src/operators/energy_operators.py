@@ -230,10 +230,9 @@ class _LikelihoodSum(LikelihoodEnergyOperator):
             return reduce(add, (pp @ oo._sqrt_data_metric_at(x) @ pp.adjoint
                                 for pp, oo in zip(prep, data_ops)))
 
-        if not self._trivial_names():
-            lst = self._all_names()
-            if len(lst) != len(set(lst)):
-                raise ValueError(f"Name collision in likelihoods detected: {lst}")
+        lst = self._all_names()
+        if len(lst) != len(set(lst)):
+            raise ValueError(f"Name collision in likelihoods detected: {lst}")
 
         data_residuals = reduce(add, res)
         super(_LikelihoodSum, self).__init__(data_residuals, sqrt_data_metric_at)
@@ -279,17 +278,21 @@ class _LikelihoodSum(LikelihoodEnergyOperator):
             trafo.append(tr)
         return dtype, reduce(add, trafo)
 
-    def _trivial_names(self):
-        return all(nn is None for nn in self._all_names())
-
     def _all_names(self):
-        return [oo.name for oo in self._ops]
+        return [self._get_name(ii) for ii in range(len(self._ops))]
 
     def _get_name(self, i):
-        myassert(isinstance(i, int) and i >= 0)
-        if self._trivial_names():
+        res = self._ops[i].name
+        if res is None:
             return f"Likelihood {i}"
-        return self._all_names()[i]
+        return res
+
+    def __repr__(self):
+        subs = []
+        for ii, oo in enumerate(self._ops):
+            subs.append(f"*{self._get_name(ii)}*")
+            subs.append(oo.__repr__())
+        return "_LikelihoodSum:\n" + utilities.indent("\n".join(subs))
 
 
 class Squared2NormOperator(EnergyOperator):
