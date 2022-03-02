@@ -161,6 +161,22 @@ class ShapeWithDtype():
             self._size = np.prod(self.shape, dtype=int)
         return self._size
 
+    @property
+    def ndim(self) -> int:
+        return len(self.shape)
+
+    def __len__(self) -> int:
+        if self.ndim > 0:
+            return self.shape[0]
+        else:  # mimic numpy
+            raise TypeError("len() of unsized object")
+
+    def __eq__(self, other) -> bool:
+        if not isinstance(other, ShapeWithDtype):
+            return False
+        else:
+            return (self.shape, self.dtype) == (other.shape, other.dtype)
+
     def __repr__(self):
         nm = self.__class__.__name__
         return f"{nm}(shape={self.shape}, dtype={self.dtype})"
