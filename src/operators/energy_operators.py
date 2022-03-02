@@ -163,6 +163,8 @@ class LikelihoodEnergyOperator(EnergyOperator):
 class _LikelihoodChain(LikelihoodEnergyOperator):
     def __init__(self, op1, op2):
         from .simple_linear_operators import PartialExtractor
+        self._op = _OpChain.make((op1, op2))
+        self._domain = self._op.domain
 
         if isinstance(op1, ScalingOperator):
             res = op2._res
@@ -178,8 +180,6 @@ class _LikelihoodChain(LikelihoodEnergyOperator):
             res = op1._res @ extract @ op2
             sqrt_data_metric_at = lambda x: op1._sqrt_data_metric_at(op2.force(x))
         super(_LikelihoodChain, self).__init__(res, sqrt_data_metric_at)
-        self._op = _OpChain.make((op1, op2))
-        self._domain = self._op.domain
 
     def get_transformation(self):
         ii = 1 if isinstance(self._op._ops[0], ScalingOperator) else 0
