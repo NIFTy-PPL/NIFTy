@@ -1,7 +1,7 @@
 # Copyright(C) 2013-2021 Max-Planck-Society
 # SPDX-License-Identifier: GPL-2.0+ OR BSD-2-Clause
 
-from functools import partial
+from functools import partial, reduce
 import operator
 from typing import Any, Callable, List, Optional, Tuple, TypeVar, Union
 
@@ -15,7 +15,6 @@ from jax.tree_util import (
     tree_structure,
     tree_transpose,
 )
-import numpy as np
 
 from .field import Field
 from .sugar import is1d
@@ -158,7 +157,7 @@ class ShapeWithDtype():
     def size(self) -> int:
         """Total number of elements."""
         if self._size is None:
-            self._size = np.prod(self.shape, dtype=int)
+            self._size = reduce(operator.mul, self.shape, 1)
         return self._size
 
     @property
