@@ -3,7 +3,7 @@
 
 from functools import partial
 import operator
-from typing import Any, Callable, Optional, Tuple, TypeVar, Union
+from typing import Any, Callable, List, Optional, Tuple, TypeVar, Union
 
 from jax import lax
 from jax import numpy as jnp
@@ -96,7 +96,7 @@ class ShapeWithDtype():
     This class may not be transparent to JAX as it shall not be flattened
     itself. If used in a tree-like structure. It should only be used as leave.
     """
-    def __init__(self, shape: Union[tuple, list, int], dtype=None):
+    def __init__(self, shape: Union[Tuple[int], List[int], int], dtype=None):
         """Instantiates a storage unit for shape and dtype.
 
         Parameters
@@ -109,6 +109,8 @@ class ShapeWithDtype():
         """
         if isinstance(shape, int):
             shape = (shape, )
+        if isinstance(shape, list):
+            shape = tuple(shape)
         if not is1d(shape):
             ve = f"invalid shape; got {shape!r}"
             raise TypeError(ve)
@@ -143,7 +145,7 @@ class ShapeWithDtype():
         return cls(jnp.shape(element), get_dtype(element))
 
     @property
-    def shape(self):
+    def shape(self) -> Tuple[int]:
         """Retrieves the shape."""
         return self._shape
 
@@ -153,7 +155,7 @@ class ShapeWithDtype():
         return self._dtype
 
     @property
-    def size(self):
+    def size(self) -> int:
         """Total number of elements."""
         if self._size is None:
             self._size = np.prod(self.shape, dtype=int)
