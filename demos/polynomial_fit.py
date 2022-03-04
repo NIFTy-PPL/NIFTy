@@ -81,7 +81,7 @@ class PolynomialResponse(ift.LinearOperator):
         return ift.makeField(self._tgt(mode), out)
 
 def mock_fct(x):
-    return np.sin(x**2) * x**3
+    return np.sin(x**2 / 10) * x**3
 
 def main():
     # Generate some mock data
