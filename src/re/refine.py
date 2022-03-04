@@ -48,14 +48,12 @@ def layer_refinement_matrices(
 ):
     cov_from_loc = _get_cov_from_loc(kernel, cov_from_loc)
     distances = jnp.asarray(distances)
-    csz = int(_coarse_size)  # coarse size
     # TODO: distances must be a tensor iff _coarse_size > 3
     # TODO: allow different grid sizes for different axis
+    csz = int(_coarse_size)  # coarse size
     if _coarse_size % 2 != 1:
         raise ValueError("only odd numbers allowed for `_coarse_size`")
     fsz = int(_fine_size)  # fine size
-    if fsz != 2:  # TODO
-        raise NotImplementedError()
     if _fine_size % 2 != 0:
         raise ValueError("only even numbers allowed for `_fine_size`")
 
@@ -64,8 +62,8 @@ def layer_refinement_matrices(
     gc = jnp.arange(-csz_half, csz_half + 1, dtype=float)
     gc = distances.reshape(n_dim, 1) * gc
     gc = jnp.stack(jnp.meshgrid(*gc, indexing="ij"), axis=-1)
-    gf = distances.reshape(n_dim,
-                           1) * jnp.array([-0.25, 0.25])  # TODO: adapt for fsz
+    gf = jnp.arange(fsz, dtype=float) / fsz - 0.5 + 0.5 / fsz
+    gf = distances.reshape(n_dim, 1) * gf
     gf = jnp.stack(jnp.meshgrid(*gf, indexing="ij"), axis=-1)
     # On the GPU a single `cov_from_loc` call is about twice as fast as three
     # separate calls for coarse-coarse, fine-fine and coarse-fine.
@@ -111,6 +109,9 @@ def refinement_matrices(
     distances,
     kernel: Optional[Callable] = None,
     cov_from_loc: Optional[Callable] = None,
+    *,
+    _coarse_size: int = 3,
+    _fine_size: int = 2,
     **kwargs,
 ):
     cov_from_loc = _get_cov_from_loc(kernel, cov_from_loc)
@@ -128,9 +129,13 @@ def refinement_matrices(
     coord0 = coord0.reshape(-1, len(size0))
     cov_sqrt0 = jnp.linalg.cholesky(cov_from_loc(coord0, coord0))
 
-    dist_by_depth = distances * 0.5**jnp.arange(1, depth).reshape(-1, 1)
+    dist_by_depth = distances / _fine_size**jnp.arange(1, depth).reshape(-1, 1)
     olaf = partial(
-        layer_refinement_matrices, cov_from_loc=cov_from_loc, **kwargs
+        layer_refinement_matrices,
+        cov_from_loc=cov_from_loc,
+        _coarse_size=_coarse_size,
+        _fine_size=_fine_size,
+        **kwargs
     )
     opt_lin_filter, kernel_sqrt = vmap(olaf, in_axes=0,
                                        out_axes=(0, 0))(dist_by_depth)
@@ -150,12 +155,10 @@ def refine_conv_general(
     dim_names = CONV_DIMENSION_NAMES[:n_dim]
     # Introduce an artificial channel dimension for the matrix product
     # TODO: allow different grid sizes for different axis
-    csz = int(_coarse_size)
+    csz = int(_coarse_size)  # coarse size
     if _coarse_size % 2 != 1:
         raise ValueError("only odd numbers allowed for `_coarse_size`")
     fsz = int(_fine_size)  # fine size
-    if fsz != 2:  # TODO
-        raise NotImplementedError()
     if _fine_size % 2 != 0:
         raise ValueError("only even numbers allowed for `_fine_size`")
     olf = olf.reshape((fsz**n_dim, ) + (csz, ) * (n_dim - 1) + (1, csz))
@@ -166,6 +169,8 @@ def refine_conv_general(
         conv_general_dilated,
         window_strides=(1, ) * n_dim,
         padding="valid",
+        # channel-last layout is most efficient for vision models (at least in
+        # PyTorch)
         dimension_numbers=(
             f"N{dim_names}C", f"O{dim_names}I", f"N{dim_names}C"
         ),
@@ -193,7 +198,9 @@ def refine_conv_general(
     ax_t = [e for els in zip(ax_label[:n_dim], ax_label[n_dim:]) for e in els]
     fine = jnp.transpose(fine, axes=ax_t)
 
-    return fine.reshape(tuple(2 * (n - (csz - 1)) for n in coarse_values.shape))
+    return fine.reshape(
+        tuple(fsz * (n - (csz - 1)) for n in coarse_values.shape)
+    )
 
 
 def refine_conv(
