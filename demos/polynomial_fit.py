@@ -139,9 +139,9 @@ def main():
         plt.plot(xs, ys, 'k', alpha=.05)
     ys = polynomial(H.position, xs)
     plt.plot(xs, ys, 'r', linewidth=2., label='Interpolation')
-    plt.plot(xlin, ylin, 'b', linewidth=2., label='GroundTruth')
+    plt.plot(xs, y_true, 'b', linewidth=0.5, label='f(x) = sin(x² / 10) * x³')
     plt.legend()
-    plt.savefig('fit.png')
+    plt.savefig('fit.png', dpi=300)
     plt.close()
 
     # Print parameters
