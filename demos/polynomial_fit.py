@@ -80,18 +80,26 @@ class PolynomialResponse(ift.LinearOperator):
             out = self._mat.conj().T.dot(val)
         return ift.makeField(self._tgt(mode), out)
 
+def mock_fct(x):
+    return np.sin(x**2) * x**3
 
 def main():
     # Generate some mock data
     N_params = 10
     N_samples = 100
     size = (12,)
+
     x = ift.random.current_rng().random(size) * 10
-    y = np.sin(x**2) * x**3
+    y = mock_fct(x)
+
+    #Groundtruth
+    xlin = np.linspace(0, size, num=200)
+    ylin = mock_fct(xlin)
+
     var = np.full_like(y, y.var() / 10)
     var[-2] *= 4
     var[5] /= 2
-    y[5] -= 0
+    var[5] -= 1
 
     # Set up minimization problem
     p_space = ift.UnstructuredDomain(N_params)
@@ -104,7 +112,7 @@ def main():
     N = ift.makeOp(ift.makeField(d_space, var), sampling_dtype=float)
 
     IC = ift.DeltaEnergyController(tol_rel_deltaE=1e-12, iteration_limit=200)
-    likelihood_energy = ift.GaussianEnergy(d, N) @ R
+    likelihood_energy = ift.GaussianEnergy(d, N.inverse) @ R
     Ham = ift.StandardHamiltonian(likelihood_energy, IC)
     H = ift.EnergyAdapter(params, Ham, want_metric=True)
 
@@ -132,6 +140,7 @@ def main():
         plt.plot(xs, ys, 'k', alpha=.05)
     ys = polynomial(H.position, xs)
     plt.plot(xs, ys, 'r', linewidth=2., label='Interpolation')
+    plt.plot(xlin, ylin, 'b', linewidth=2., label='GroundTruth')
     plt.legend()
     plt.savefig('fit.png')
     plt.close()
