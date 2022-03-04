@@ -502,7 +502,7 @@ def _plot_samples(file_name, samples, ground_truth, comm, plotting_kwargs):
                 for ii, ss in enumerate(single_samples):
                     if (ground_truth is None and ii == 16) or (ground_truth is not None and ii == 14):
                         break
-                    p.add(ss, title=_append_key(f"Samples {ii}", kk), **plotting_kwargs)
+                    p.add(ss, title=_append_key(f"Sample {ii}", kk), **plotting_kwargs)
             else:
                 n = len(samples)
                 alpha = n*[0.5]
