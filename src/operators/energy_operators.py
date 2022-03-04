@@ -179,7 +179,9 @@ class _LikelihoodChain(LikelihoodEnergyOperator):
                 extract = Operator.identity_operator(op2.target)
             res = op1._res @ extract @ op2
             sqrt_data_metric_at = lambda x: op1._sqrt_data_metric_at(op2.force(x))
+
         super(_LikelihoodChain, self).__init__(res, sqrt_data_metric_at)
+        self.name = (op2 if isinstance(op1, ScalingOperator) else op1).name
 
     def get_transformation(self):
         ii = 1 if isinstance(self._op._ops[0], ScalingOperator) else 0

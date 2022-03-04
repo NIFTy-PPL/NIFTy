@@ -497,8 +497,11 @@ def minisanity(likelihood_energy, samples, terminal_colors=True):
     if isinstance(data_domain, MultiDomain):
         lam = lambda x: nres(x)
     else:
-        data_domain = makeDomain({"<None>": data_domain})
-        lam = lambda x: nres(x).ducktape_left("<None>")
+        name = likelihood_energy.name
+        if name is None:
+            name = "<None>"
+        data_domain = makeDomain({name: data_domain})
+        lam = lambda x: nres(x).ducktape_left(name)
     xops.append(lam)
     if isinstance(latent_domain, MultiDomain):
         xops.append(lambda x: x)
