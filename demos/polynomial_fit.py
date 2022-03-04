@@ -92,10 +92,6 @@ def main():
     x = ift.random.current_rng().random(size) * 10
     y = mock_fct(x)
 
-    #Groundtruth
-    xlin = np.linspace(0, size, num=200)
-    ylin = mock_fct(xlin)
-
     var = np.full_like(y, y.var() / 10)
     var[-2] *= 4
     var[5] /= 2
@@ -129,6 +125,9 @@ def main():
     plt.errorbar(x, y, np.sqrt(var), fmt='ko', label='Data with error bars')
     xmin, xmax = x.min(), x.max()
     xs = np.linspace(xmin, xmax, 100)
+
+    # Ground truth
+    y_true = mock_fct(xs)
 
     sc = ift.StatCalculator()
     for ii in range(len(samples)):
