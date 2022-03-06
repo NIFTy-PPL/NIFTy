@@ -104,6 +104,13 @@ def main():
     # Generate mock signal and data
     mock_position = ift.from_random(signal_response.domain, 'normal')
     data = signal_response(mock_position) + N.draw_sample()
+    
+    # Plot setup
+    plot = ift.Plot()
+    plot.add(signal(mock_position), title='Ground Truth')
+    plot.add(R.adjoint_times(data), title='Data')
+    plot.add([pspec.force(mock_position)], title='Power Spectrum')
+    plot.output(ny=1, nx=3, xsize=24, ysize=6, name=filename.format("setup"))
 
     # Minimization parameters
     ic_sampling = ift.AbsDeltaEnergyController(name="Sampling (linear)",
