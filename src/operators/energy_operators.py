@@ -322,7 +322,7 @@ class QuadraticFormOperator(EnergyOperator):
     specific kernel given by `endo`.
 
     .. math ::
-        E(f) = \\frac12 f^\\dagger \\text{endo}(f)
+        E(f) = \\frac1 2 f^\\dagger \\text{endo}(f)
 
     Parameters
     ----------
