@@ -63,25 +63,20 @@ class PolynomialResponse(ift.LinearOperator):
         tgt = ift.UnstructuredDomain(sampling_points.shape)
         self._target = ift.DomainTuple.make(tgt)
         self._capability = self.TIMES | self.ADJOINT_TIMES
-
-        sh = (self.target.size, domain.size)
-        self._mat = np.empty(sh)
+        self._mat = np.empty((self.target.size, domain.size))
         for d in range(domain.size):
             self._mat.T[d] = sampling_points**d
 
     def apply(self, x, mode):
         self._check_input(x, mode)
-        val = x.val_rw()
-        if mode == self.TIMES:
-            # FIXME Use polynomial() here
-            out = self._mat.dot(val)
-        else:
-            # FIXME Can this be optimized?
-            out = self._mat.conj().T.dot(val)
-        return ift.makeField(self._tgt(mode), out)
+        m = self._mat
+        f = m if mode == self.TIMES else m.conj().T
+        return ift.makeField(self._tgt(mode), f.dot(x.val))
+
 
 def mock_fct(x):
     return np.sin(x**2 / 10) * x**3
+
 
 def main():
     # Generate some mock data
@@ -112,7 +107,7 @@ def main():
     Ham = ift.StandardHamiltonian(likelihood_energy, IC)
     H = ift.EnergyAdapter(params, Ham, want_metric=True)
 
-    # Minimize
+    # Minimize KL
     minimizer = ift.NewtonCG(IC)
     H, _ = minimizer(H)
 
