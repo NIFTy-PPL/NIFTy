@@ -293,18 +293,21 @@ def optimize_kl(likelihood_energy,
                                       "does not fit to the minimization domain.")
         else:
             myassert(op.domain is dom)
-    # /Sanity check of input
-
     if not likelihood_energy(initial_index).target is DomainTuple.scalar_domain():
         raise TypeError
+    # /Sanity check of input
+
     if plot_latent:
         plottable_operators = plottable_operators.copy()
         plottable_operators["latent"] = ScalingOperator(dom, 1.)
+
+    # Initial position
     mean = initial_position
     check_MPI_synced_random_state(comm(initial_index))
     if mean is None:
         mean = 0.1 * from_random(dom)
     myassert(dom is mean.domain)
+    # /Initial position
 
     if ground_truth_position is not None:
         if ground_truth_position.domain is not dom:
@@ -372,27 +375,17 @@ def optimize_kl(likelihood_energy,
             if _MPI_master(comm(iglobal)):
                 with open(join(output_directory, "last_finished_iteration"), "w") as f:
                     f.write(str(iglobal))
-            _barrier(comm(iglobal))
-
-        if _number_of_arguments(inspect_callback) == 1:
-            inp = (sl,)
-        elif _number_of_arguments(inspect_callback) == 2:
-            inp = (sl, iglobal)
-        elif _number_of_arguments(inspect_callback) == 3:
-            inp = (sl, iglobal, mean)
-        new_mean = inspect_callback(*inp)
-        if new_mean is not None:
-            mean = new_mean
-        if mean.domain is not dom:
-            raise RuntimeError
-        if sl.domain is not dom:
-            raise RuntimeError
         _barrier(comm(iglobal))
 
-        terminate = terminate_callback(iglobal)
-        check_MPI_equality(terminate, comm(iglobal))
-        if terminate:
+        _minisanity(likelihood_energy, iglobal, sl, output_directory, comm)
+        _barrier(comm(iglobal))
+
+        _handle_inspect_callback(inspect_callback, sl, iglobal, mean, dom, comm)
+        _barrier(comm(iglobal))
+
+        if _handle_terminate_callback(terminate_callback, iglobal, comm):
             break
+        _barrier(comm(iglobal))
 
     return (sl, mean) if return_final_position else sl
 
@@ -532,6 +525,49 @@ def _plot_stats(file_name, mean, var, ground_truth, comm, plotting_kwargs):
     p.add(var.sqrt(), title="Standard deviation", norm=LogNorm())
     if _MPI_master(comm):
         p.output(name=file_name, ny=2 if ground_truth is None else 3)
+
+
+def _minisanity(likelihood_energy, iglobal, sl, output_directory, comm):
+    from datetime import datetime
+    from ..logger import logger
+    from ..extra import minisanity
+
+    s = "\n".join(
+        ["",
+         f"Finished index: {iglobal}",
+         f"Current datetime: {datetime.now()}",
+         minisanity(likelihood_energy(iglobal), sl, terminal_colors=False),
+         ""]
+        )
+
+    if _MPI_master(comm(iglobal)):
+        logger.info(s)
+        if output_directory is not None:
+            with open(join(output_directory, "minisanity.txt"), "a") as f:
+                f.write(s)
+
+
+def _handle_inspect_callback(inspect_callback, sl, iglobal, mean, dom, comm):
+    if _number_of_arguments(inspect_callback) == 1:
+        inp = (sl,)
+    elif _number_of_arguments(inspect_callback) == 2:
+        inp = (sl, iglobal)
+    elif _number_of_arguments(inspect_callback) == 3:
+        inp = (sl, iglobal, mean)
+    new_mean = inspect_callback(*inp)
+    if new_mean is not None:
+        mean = new_mean
+    if mean.domain is not dom:
+        raise RuntimeError
+    if sl.domain is not dom:
+        raise RuntimeError
+    return mean
+
+
+def _handle_terminate_callback(terminate_callback, iglobal, comm):
+    terminate = terminate_callback(iglobal)
+    check_MPI_equality(terminate, comm(iglobal))
+    return terminate
 
 
 def _MPI_master(comm):

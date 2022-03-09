@@ -11,7 +11,8 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
-# Copyright(C) 2013-2021 Max-Planck-Society
+# Copyright(C) 2013-2022 Max-Planck-Society
+# Author: Philipp Arras
 #
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
 
@@ -113,7 +114,7 @@ def test_GaussianEnergy(field):
     icov = ift.from_random(field.domain, 'normal')**2
     icov = ift.makeOp(icov, sampling_dtype=field.dtype)
     get_noisy_data = lambda mean: mean + icov.draw_sample(from_inverse=True)
-    E_init = lambda data: ift.GaussianEnergy(mean=data, inverse_covariance=icov)
+    E_init = lambda data: ift.GaussianEnergy(data=data, inverse_covariance=icov)
     energy_tester(field, get_noisy_data, E_init)
 
 

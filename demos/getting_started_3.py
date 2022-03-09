@@ -11,7 +11,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
-# Copyright(C) 2013-2021 Max-Planck-Society
+# Copyright(C) 2013-2022 Max-Planck-Society
 #
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
 
@@ -124,13 +124,8 @@ def main():
     minimizer_sampling = ift.NewtonCG(ic_sampling_nl)
 
     # Set up likelihood energy
-    likelihood_energy = (ift.GaussianEnergy(mean=data, inverse_covariance=N.inverse) @
+    likelihood_energy = (ift.GaussianEnergy(data, inverse_covariance=N.inverse) @
                          signal_response)
-
-    def callback(samples):
-        s = ift.extra.minisanity(data, lambda x: N.inverse, signal_response, samples)
-        if master:
-            ift.logger.info(s)
 
     # Minimize KL
     n_iterations = 6
@@ -141,7 +136,7 @@ def main():
                                                    "power spectrum": pspec},
                               ground_truth_position=mock_position,
                               output_directory="getting_started_3_results",
-                              overwrite=True, comm=comm, inspect_callback=callback)
+                              overwrite=True, comm=comm)
 
     if True:
         # Load result from disk. May be useful for long inference runs, where
