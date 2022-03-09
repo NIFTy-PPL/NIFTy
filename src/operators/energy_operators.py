@@ -660,7 +660,7 @@ class InverseGammaEnergy(LikelihoodEnergyOperator):
         self._sampling_dtype = _field_to_dtype(self._beta)
 
         super(InverseGammaEnergy, self).__init__(
-                ConstantOperator(self._beta, domain=self._domain),
+                2*ConstantOperator(self._beta, domain=self._domain),
                 lambda x: makeOp(x.reciprocal().sqrt()))
 
     def apply(self, x):
