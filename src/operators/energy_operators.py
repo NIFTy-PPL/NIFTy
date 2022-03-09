@@ -156,7 +156,7 @@ class LikelihoodEnergyOperator(EnergyOperator):
     def name(self, x):
         if isinstance(self, _LikelihoodSum):
             raise RuntimeError("The name of a LikelihoodSum cannot be set. "
-                               "Set the name of each individual LikelihoodEnergy seperately.")
+                               "Set the name of each individual LikelihoodEnergy separately.")
         self._name = x
 
 
