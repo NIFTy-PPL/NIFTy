@@ -107,7 +107,7 @@ def main():
     
     # Plot setup
     plot = ift.Plot()
-    plot.add(signal(mock_position), title='Ground Truth')
+    plot.add(signal(mock_position), title='Ground Truth', vmin=0, vmax=1)
     plot.add(R.adjoint_times(data), title='Data')
     plot.add([pspec.force(mock_position)], title='Power Spectrum')
     plot.output(ny=1, nx=3, xsize=24, ysize=6, name=filename.format("setup"))
@@ -147,8 +147,8 @@ def main():
     filename_res = filename.format("results")
     plot = ift.Plot()
     mean, var = samples.sample_stat(signal)
-    plot.add(mean, title="Posterior Mean", zmin=0, zmax=1)
-    plot.add(var.sqrt(), title="Posterior Standard Deviation")
+    plot.add(mean, title="Posterior Mean", vmin=0, vmax=1)
+    plot.add(var.sqrt(), title="Posterior Standard Deviation", vmin=0)
 
     nsamples = samples.n_samples
     logspec = pspec.log()
