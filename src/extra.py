@@ -510,6 +510,7 @@ def minisanity(likelihood_energy, samples, terminal_colors=True):
         xops.append(lambda x: x.ducktape_left("<None>"))
     # /compute xops
 
+    xdoms = [data_domain, latent_domain]
     xredchisq, xscmean, xndof = [], [], []
     for dd in xdoms:
         xredchisq.append({kk: StatCalculator() for kk in dd.keys()})
