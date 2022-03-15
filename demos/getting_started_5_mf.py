@@ -72,7 +72,7 @@ def main():
         mode = 0
 
     # Preparing the filename string for store results
-    filename = "getting_started_mf_mode_{}_".format(mode) + "{}.png"
+    filename_root = f"getting_started_mf_mode_{mode}_"
 
     # Set up signal domain
     npix1, npix2 = 128, 128
@@ -116,7 +116,7 @@ def main():
     plot.add(R.adjoint_times(data), title='Data')
     plot.add([pspec1.force(mock_position)], title='Power Spectrum 1')
     plot.add([pspec2.force(mock_position)], title='Power Spectrum 2')
-    plot.output(ny=2, nx=2, xsize=10, ysize=10, name=filename.format("setup"))
+    plot.output(ny=2, nx=2, xsize=10, ysize=10, name=filename_root + "setup.png")
 
     # Minimization parameters
     ic_sampling = ift.AbsDeltaEnergyController(name='Sampling', deltaE=0.01, iteration_limit=100)
@@ -136,7 +136,7 @@ def main():
                                                    "power spectrum 2": pspec2})
 
     # Plotting
-    filename_res = filename.format("results")
+    filename_res = filename_root + "results.png"
     plot = ift.Plot()
     mean, var = samples.sample_stat(signal)
     plot.add(mean, title="Posterior Mean")
@@ -153,7 +153,7 @@ def main():
              linewidth=[1.]*n_samples + [3., 3.])
     if master:
         plot.output(ny=2, nx=2, xsize=15, ysize=15, name=filename_res)
-    print("Saved results as '{}'.".format(filename_res))
+    print(f"Saved results as '{filename_res}'.")
 
 
 if __name__ == '__main__':

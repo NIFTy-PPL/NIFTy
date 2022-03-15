@@ -131,7 +131,7 @@ def main():
     # Plotting
     rg = isinstance(position_space, ift.RGSpace)
     plot = ift.Plot()
-    filename = "getting_started_1_mode_{}.png".format(mode)
+    filename = f"getting_started_1_mode_{mode}.png"
     if rg and len(position_space.shape) == 1:
         plot.add(
             [HT(MOCK_SIGNAL), Mask.adjoint(data),
@@ -147,7 +147,7 @@ def main():
         plot.add(Mask.adjoint(Mask(HT(m) - HT(MOCK_SIGNAL))),
                  title='Residuals')
         plot.output(nx=2, ny=2, xsize=10, ysize=10, name=filename)
-    print("Saved results as '{}'.".format(filename))
+    print(f"Saved results as '{filename}'.")
 
 
 if __name__ == '__main__':
