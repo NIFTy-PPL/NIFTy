@@ -481,6 +481,9 @@ def minisanity(likelihood_energy, samples, terminal_colors=True):
             "`ift.SampleList([field])` and pass it to minisanity."
         )
 
+    if not isinstance(likelihood_energy, LikelihoodEnergyOperator):
+        return ""
+
     data_domain = likelihood_energy.data_domain
     latent_domain = samples.domain
     xdoms = [data_domain, latent_domain]
