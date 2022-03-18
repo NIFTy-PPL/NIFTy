@@ -82,3 +82,20 @@ def test_mf_plot():
     plot.add(f2, freq_space_idx=0, title='f_space_idx = 0')
     plot.output(nx=2, ny=1, title='MF-Plots, should look identical',
                 name=next(name))
+
+
+def test_iter_plot():
+    for ind in range(2):
+        x_space = ift.RGSpace((16, 16))
+        f_space = ift.UnstructuredDomain(4)
+
+        if ind == 0:
+            dom = ift.DomainTuple.make([x_space, f_space])
+        else:
+            dom = ift.DomainTuple.make([f_space, x_space])
+
+        fld = ift.from_random(dom, 'normal')
+
+        plot = ift.Plot()
+        plot.add(fld)
+        plot.output(title='Should be 4 plots', name=next(name))

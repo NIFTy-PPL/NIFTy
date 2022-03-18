@@ -122,7 +122,7 @@ class Linearization(Operator):
 
     def __neg__(self):
         if self._metric is not None:
-            raise RuntimeError("Cannot subtract operators with metric")
+            raise RuntimeError("Cannot negate operators with metric")
         return self.new(-self._val, -self._jac, metric=None)
 
     def conjugate(self):
