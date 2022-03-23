@@ -360,6 +360,9 @@ class SampleListBase:
             A tuple with two items: the mean and the variance.
         """
         from ..probing import StatCalculator
+        if self.n_samples == 1:
+            res = self.average(op)
+            return res, 0*res
         sc = StatCalculator()
         for ss in self.iterator(op):
             sc.add(ss)

@@ -16,6 +16,7 @@
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
 
 import os
+from itertools import product
 from datetime import datetime as dt
 
 import numpy as np
@@ -575,7 +576,7 @@ class Plot:
             self._plots.append(None)
             self._kwargs.append({})
             return
-        if isinstance(f, MultiField):
+        if isinstance(f, (MultiField, Field)):
             f = [f]
         if hasattr(f, "__len__") and all(isinstance(ff, MultiField) for ff in f):
             for kk in f[0].domain.keys():
@@ -587,6 +588,35 @@ class Plot:
                     mykwargs['title'] = "{}".format(kk)
                 self._kwargs.append(mykwargs)
             return
+
+        if isinstance(f[0], EnergyHistory):
+            f = f[0]
+            dom = None
+        else:
+            dom = f[0].domain
+
+        if isinstance(dom, DomainTuple) \
+                and any(isinstance(dd, RGSpace) for dd in dom) \
+                and not "freq_space_idx" in kwargs \
+                and not plottable2D(f[0], kwargs.get("freq_space_idx", 1)):
+            from .sugar import makeField
+
+            dims = [len(dd.shape) for dd in dom]
+            # One space is 2d, the rest is 1d
+            if np.sum(np.array(dims) == 2) == 1 and np.sum(np.array(dims) == 1) == len(dims) - 1:
+                twod_index = dims.index(2)
+                sizes = [dd.size for dd in dom]
+                del(sizes[twod_index])
+                for multi_index in product(*[tuple(range(ii)) for ii in sizes]):
+                    multi_index = list(multi_index)
+                    multi_index.insert(twod_index, slice(None))
+                    multi_index.insert(twod_index, slice(None))
+                    for ifield in range(len(f)):
+                        arr = f[ifield].val[tuple(multi_index)]
+                        myassert(arr.ndim == 2)
+                        self._plots.append(makeField(dom[twod_index], arr))
+                        self._kwargs.append(kwargs)
+                return
         self._plots.append(f)
         self._kwargs.append(kwargs)
 

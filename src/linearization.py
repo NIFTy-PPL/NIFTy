@@ -121,8 +121,9 @@ class Linearization(Operator):
         return self.new(self._val[name], self._jac.ducktape_left(name))
 
     def __neg__(self):
-        return self.new(-self._val, -self._jac,
-                        None if self._metric is None else -self._metric)
+        if self._metric is not None:
+            raise RuntimeError("Cannot negate operators with metric")
+        return self.new(-self._val, -self._jac, metric=None)
 
     def conjugate(self):
         return self.new(
@@ -273,7 +274,7 @@ class Linearization(Operator):
             the (partial) integral
         """
         from .operators.contraction_operator import IntegrationOperator
-        return IntegrationOperator(self._target, spaces)(self)
+        return IntegrationOperator(self.target, spaces)(self)
 
     def ptw(self, op, *args, **kwargs):
         t1, t2 = self._val.ptw_with_deriv(op, *args, **kwargs)
