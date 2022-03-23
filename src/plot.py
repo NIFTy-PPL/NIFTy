@@ -589,7 +589,11 @@ class Plot:
                 self._kwargs.append(mykwargs)
             return
 
-        dom = f[0].domain
+        if isinstance(f[0], EnergyHistory):
+            f = f[0]
+            dom = None
+        else:
+            dom = f[0].domain
 
         if isinstance(dom, DomainTuple) \
                 and any(isinstance(dd, RGSpace) for dd in dom) \
