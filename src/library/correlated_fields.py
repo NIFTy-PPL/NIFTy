@@ -289,10 +289,13 @@ class _Amplitude(Operator):
         if len(dofdex) > 0:
             N_copies = max(dofdex) + 1
             space = 1
-            distributed_tgt = makeDomain((UnstructuredDomain(len(dofdex)),
-                                          target))
             target = makeDomain((UnstructuredDomain(N_copies), target))
-            Distributor = _Distributor(dofdex, target, distributed_tgt)
+            if N_copies != len(dofdex):
+                distributed_tgt = makeDomain((UnstructuredDomain(len(dofdex)),
+                                              target[1]))
+                Distributor = _Distributor(dofdex, target, distributed_tgt)
+            else:
+                distributed_tgt = target
         else:
             N_copies = 0
             space = 0
@@ -358,7 +361,7 @@ class _Amplitude(Operator):
             smooth = _SlopeRemover(target, space) @ twolog @ (sigma * xi)
             op = _Normalization(target, space) @ (slope + smooth)
 
-        if N_copies > 0:
+        if N_copies != len(dofdex):
             op = Distributor @ op
             sig_fluc = Distributor @ sig_fluc
             op = Adder(Distributor(vol0)) @ (sig_fluc * op)
