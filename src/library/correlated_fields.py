@@ -225,7 +225,7 @@ class _Distributor(LinearOperator):
             res = x[self._dofdex]
         else:
             res = np.zeros(self._tgt(mode).shape, dtype=x.dtype)
-            res = utilities.special_add_at(res, 0, self._dofdex, x)
+            np.add.at(res, self._dofdex, x)
         return makeField(self._tgt(mode), res)
 
 
