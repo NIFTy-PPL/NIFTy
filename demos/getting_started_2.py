@@ -99,13 +99,10 @@ def main():
         name='Newton', iteration_limit=100, tol_rel_deltaE=1e-8)
     minimizer = ift.NewtonCG(ic_newton)
 
-    callback = lambda sl: ift.logger.info(ift.extra.minisanity(data, lambda x: ift.makeOp(1/lamb(x)), lamb, sl))
-
     # Compute MAP solution by minimizing the information Hamiltonian
     sl = ift.optimize_kl(likelihood_energy, 1, 0, minimizer, None, None,
                          output_directory="getting_started_2_results", overwrite=True,
-                         plottable_operators={"signal": sky}, inspect_callback=callback)
-
+                         plottable_operators={"signal": sky})
 
 
 if __name__ == '__main__':

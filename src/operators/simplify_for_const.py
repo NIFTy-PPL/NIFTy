@@ -11,14 +11,15 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
-# Copyright(C) 2013-2021 Max-Planck-Society
+# Copyright(C) 2013-2022 Max-Planck-Society
+# Author: Philipp Arras
 #
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
 
 from ..multi_domain import MultiDomain
 from ..utilities import myassert
 from .block_diagonal_operator import BlockDiagonalOperator
-from .energy_operators import EnergyOperator
+from .energy_operators import EnergyOperator, LikelihoodEnergyOperator
 from .operator import Operator
 from .scaling_operator import ScalingOperator
 from .simple_linear_operators import NullOperator
@@ -61,9 +62,9 @@ class ConstCollector:
 
 
 class ConstantOperator(Operator):
-    def __init__(self, output):
+    def __init__(self, output, domain={}):
         from ..sugar import makeDomain
-        self._domain = makeDomain({})
+        self._domain = makeDomain(domain)
         self._target = makeDomain(output.domain)
         self._output = output
 
@@ -93,10 +94,17 @@ class ConstantEnergyOperator(EnergyOperator):
         if x.jac is not None:
             val = self._output
             jac = NullOperator(self._domain, self._target)
-            # FIXME Do we need a metric here?
             met = NullOperator(self._domain, self._domain) if x.want_metric else None
             return x.new(val, jac, met)
         return self._output
+
+
+class ConstantLikelihoodEnergyOperator(LikelihoodEnergyOperator):
+    def __init__(self, output):
+        super(ConstantLikelihoodEnergyOperator, self).__init__(None, None)
+        op = ConstantEnergyOperator(output)
+        self.apply = op.apply
+        self._domain = op._domain
 
 
 class InsertionOperator(Operator):

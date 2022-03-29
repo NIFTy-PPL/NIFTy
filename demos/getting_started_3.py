@@ -11,7 +11,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
-# Copyright(C) 2013-2021 Max-Planck-Society
+# Copyright(C) 2013-2022 Max-Planck-Society
 #
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
 
@@ -104,6 +104,13 @@ def main():
     # Generate mock signal and data
     mock_position = ift.from_random(signal_response.domain, 'normal')
     data = signal_response(mock_position) + N.draw_sample()
+    
+    # Plot setup
+    plot = ift.Plot()
+    plot.add(signal(mock_position), title='Ground Truth', vmin=0, vmax=1)
+    plot.add(R.adjoint_times(data), title='Data')
+    plot.add([pspec.force(mock_position)], title='Power Spectrum')
+    plot.output(ny=1, nx=3, xsize=24, ysize=6, name=filename.format("setup"))
 
     # Minimization parameters
     ic_sampling = ift.AbsDeltaEnergyController(name="Sampling (linear)",
@@ -117,23 +124,19 @@ def main():
     minimizer_sampling = ift.NewtonCG(ic_sampling_nl)
 
     # Set up likelihood energy
-    likelihood_energy = (ift.GaussianEnergy(mean=data, inverse_covariance=N.inverse) @
+    likelihood_energy = (ift.GaussianEnergy(data, inverse_covariance=N.inverse) @
                          signal_response)
-
-    def callback(samples):
-        s = ift.extra.minisanity(data, lambda x: N.inverse, signal_response, samples)
-        if master:
-            ift.logger.info(s)
 
     # Minimize KL
     n_iterations = 6
     n_samples = lambda iiter: 10 if iiter < 5 else 20
     samples = ift.optimize_kl(likelihood_energy, n_iterations, n_samples,
                               minimizer, ic_sampling, minimizer_sampling,
-                              plottable_operators={"signal": signal, "power spectrum": pspec},
+                              plottable_operators={"signal": (signal, dict(vmin=0, vmax=1)),
+                                                   "power spectrum": pspec},
                               ground_truth_position=mock_position,
                               output_directory="getting_started_3_results",
-                              overwrite=True, comm=comm, inspect_callback=callback)
+                              overwrite=True, comm=comm)
 
     if True:
         # Load result from disk. May be useful for long inference runs, where
@@ -144,8 +147,8 @@ def main():
     filename_res = filename.format("results")
     plot = ift.Plot()
     mean, var = samples.sample_stat(signal)
-    plot.add(mean, title="Posterior Mean", zmin=0, zmax=1)
-    plot.add(var.sqrt(), title="Posterior Standard Deviation")
+    plot.add(mean, title="Posterior Mean", vmin=0, vmax=1)
+    plot.add(var.sqrt(), title="Posterior Standard Deviation", vmin=0)
 
     nsamples = samples.n_samples
     logspec = pspec.log()

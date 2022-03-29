@@ -11,10 +11,11 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
-# Copyright(C) 2021 Max-Planck-Society
+# Copyright(C) 2021-2022 Max-Planck-Society
 # Author: Philipp Arras
 
 from types import SimpleNamespace
+from warnings import warn
 
 import numpy as np
 from functools import partial
@@ -203,6 +204,10 @@ class JaxLikelihoodEnergyOperator(LikelihoodEnergyOperator):
         self._val_and_grad = jax.jit(jax.value_and_grad(func))
         self._dt = sampling_dtype
         self._trafo = transformation
+        warn("JaxLikelihoodEnergyOperator does not support normalized residuals "
+             "yet. This mean that the inference works but the data residuals do "
+             "not show up in e.g. `ift.minisanity`.")
+        super(JaxLikelihoodEnergyOperator, self).__init__(None, None)
 
     def get_transformation(self):
         if self._trafo is None:

@@ -11,7 +11,8 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
-# Copyright(C) 2013-2021 Max-Planck-Society
+# Copyright(C) 2013-2022 Max-Planck-Society
+# Author: Philipp Arras
 #
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
 
@@ -26,12 +27,12 @@ from .multi_domain import MultiDomain
 from .multi_field import MultiField
 from .operators.adder import Adder
 from .operators.endomorphic_operator import EndomorphicOperator
-from .operators.energy_operators import EnergyOperator
+from .operators.energy_operators import EnergyOperator, LikelihoodEnergyOperator
 from .operators.linear_operator import LinearOperator
 from .operators.operator import Operator
 from .probing import StatCalculator
 from .sugar import from_random, is_fieldlike, is_operator
-from .utilities import myassert
+from .utilities import myassert, issingleprec
 
 __all__ = ["check_linear_operator", "check_operator", "assert_allclose", "minisanity"]
 
@@ -130,6 +131,7 @@ def check_operator(op, loc, tol=1e-12, ntries=100, perf_check=True,
                                only_r_differentiable)
     _check_nontrivial_constant(op, loc, tol, ntries, only_r_differentiable,
                                metric_sampling)
+    _check_likelihood_energy(op, loc)
 
 
 def assert_allclose(f1, f2, atol=0, rtol=1e-7):
@@ -310,10 +312,11 @@ def _get_acceptable_location(op, loc, lin):
         raise ValueError('Initial value must be finite')
     direction = from_random(loc.domain, dtype=loc.dtype)
     dirder = lin.jac(direction)
+    fac = 1e-3 if issingleprec(loc.dtype) else 1e-6
     if dirder.norm() == 0:
-        direction = direction * (lin.val.norm() * 1e-5)
+        direction = direction * (lin.val.norm() * fac)
     else:
-        direction = direction * (lin.val.norm() * 1e-5 / dirder.norm())
+        direction = direction * (lin.val.norm() * fac / dirder.norm())
     # Find a step length that leads to a "reasonable" location
     for i in range(50):
         try:
@@ -412,7 +415,26 @@ def _jac_vs_finite_differences(op, loc, tol, ntries, only_r_differentiable):
                               atol=tol**2, rtol=tol**2)
 
 
-def minisanity(data, metric_at_pos, modeldata_operator, samples, terminal_colors=True):
+def _check_likelihood_energy(op, loc):
+    from .operators.energy_operators import LikelihoodEnergyOperator
+    if not isinstance(op, LikelihoodEnergyOperator):
+        return
+    data_domain = op.data_domain
+    if data_domain is None:
+        return
+    smet = op._sqrt_data_metric_at(loc)
+    myassert(smet.domain == smet.target == data_domain)
+    nres = op.normalized_residual(loc)
+    myassert(nres.domain is data_domain)
+    res = op.get_transformation()
+    if res is None:
+        raise RuntimeError("`get_transformation` is not implemented for "
+                            "this LikelihoodEnergyOperator")
+    if len(res) != 2:
+        raise RuntimeError("`get_transformation` has to return a dtype and the transformation")
+
+
+def minisanity(likelihood_energy, samples, terminal_colors=True):
     """Log information about the current fit quality and prior compatibility.
 
     Log a table with fitting information for the likelihood and the prior.
@@ -433,16 +455,8 @@ def minisanity(data, metric_at_pos, modeldata_operator, samples, terminal_colors
 
     Parameters
     ----------
-    data : :class:`nifty8.field.Field` or :class:`nifty8.multi_field.MultiField`
-        Data which is subtracted from the output of `model_data`.
-
-    metric_at_pos : function
-        Function which takes a `Field` or `MultiField` in the domain of `mean`
-        and returns an endomorphic operator which applies the inverse of the
-        noise covariance in the domain of `data`.
-
-    model_data : Operator
-        Operator which generates model data.
+    likelihood_energy: LikelihoodEnergyOperator
+        Likelihood energy of which the normalized residuals shall be computed.
 
     samples : SampleListBase
         List of samples.
@@ -460,39 +474,46 @@ def minisanity(data, metric_at_pos, modeldata_operator, samples, terminal_colors
     from .minimization.sample_list import SampleListBase
     from .sugar import makeDomain
 
-    if not (is_operator(modeldata_operator) and is_fieldlike(data)):
-        raise TypeError
     if not isinstance(samples, SampleListBase):
         raise TypeError(
             "Minisanity takes only SampleLists as input. If you happen to have "
             "only one field (i.e. no samples), you may wrap it via "
             "`ift.SampleList([field])` and pass it to minisanity."
         )
-    colors = bool(terminal_colors)
+
+    if not isinstance(likelihood_energy, LikelihoodEnergyOperator):
+        return ""
+
+    data_domain = likelihood_energy.data_domain
+    latent_domain = samples.domain
+    xdoms = [data_domain, latent_domain]
+
     keylen = 18
-    for dom in [data.domain, samples.domain]:
+    for dom in xdoms:
         if isinstance(dom, MultiDomain):
             keylen = max([max(map(len, dom.keys())), keylen])
     keylen = min([keylen, 42])
 
-    xdoms = [data.domain, samples.domain]
     # compute xops
     xops = []
-    if isinstance(xdoms[0], MultiDomain):
-        lam = lambda x: (metric_at_pos(x).get_sqrt().abs() @
-                Adder(data, neg=True) @ modeldata_operator).force(x)
+    nres = likelihood_energy.normalized_residual
+    if isinstance(data_domain, MultiDomain):
+        lam = lambda x: nres(x)
     else:
-        xdoms[0] = makeDomain({"<None>": xdoms[0]})
-        lam = lambda x: (metric_at_pos(x).get_sqrt().abs().ducktape_left("<None>") @
-                Adder(data, neg=True) @ modeldata_operator).force(x)
+        name = likelihood_energy.name
+        if name is None:
+            name = "<None>"
+        data_domain = makeDomain({name: data_domain})
+        lam = lambda x: nres(x).ducktape_left(name)
     xops.append(lam)
-    if isinstance(xdoms[1], MultiDomain):
+    if isinstance(latent_domain, MultiDomain):
         xops.append(lambda x: x)
     else:
-        xdoms[1] = makeDomain({"<None>": xdoms[1]})
+        latent_domain = makeDomain({"<None>": latent_domain})
         xops.append(lambda x: x.ducktape_left("<None>"))
     # /compute xops
 
+    xdoms = [data_domain, latent_domain]
     xredchisq, xscmean, xndof = [], [], []
     for dd in xdoms:
         xredchisq.append({kk: StatCalculator() for kk in dd.keys()})
@@ -500,6 +521,10 @@ def minisanity(data, metric_at_pos, modeldata_operator, samples, terminal_colors
         xndof.append({})
 
     for ss1, ss2 in zip(samples.iterator(xops[0]), samples.iterator(xops[1])):
+        if isinstance(data_domain, MultiDomain):
+            myassert(ss1.domain == data_domain)
+        if isinstance(samples.domain, MultiDomain):
+            myassert(ss2.domain == samples.domain)
         for ii, ss in enumerate((ss1, ss2)):
             for kk in ss.domain.keys():
                 lsize = ss[kk].size - np.sum(np.isnan(ss[kk].val))
@@ -507,8 +532,8 @@ def minisanity(data, metric_at_pos, modeldata_operator, samples, terminal_colors
                 xscmean[ii][kk].add(np.nanmean(ss[kk].val))
                 xndof[ii][kk] = lsize
 
-    s0 = _tableentries(xredchisq[0], xscmean[0], xndof[0], keylen, colors)
-    s1 = _tableentries(xredchisq[1], xscmean[1], xndof[1], keylen, colors)
+    s0 = _tableentries(xredchisq[0], xscmean[0], xndof[0], keylen, terminal_colors)
+    s1 = _tableentries(xredchisq[1], xscmean[1], xndof[1], keylen, terminal_colors)
 
     n = 38 + keylen
     s = [n * "=",

@@ -11,7 +11,8 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
-# Copyright(C) 2013-2021 Max-Planck-Society
+# Copyright(C) 2013-2022 Max-Planck-Society
+# Author: Philipp Arras
 #
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
 
@@ -84,7 +85,7 @@ def test_optimize_kl(constants, point_estimates, kl_minimizer, n_samples,
     overwrite = True
 
     d = sky(mock_pos)
-    likelihood_energy = ift.GaussianEnergy(mean=d) @ sky
+    likelihood_energy = ift.GaussianEnergy(d) @ sky
     inspect_callback = None
     terminate_callback = None
     plot_latent = False

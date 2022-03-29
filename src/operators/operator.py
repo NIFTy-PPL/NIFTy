@@ -11,11 +11,13 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
-# Copyright(C) 2013-2021 Max-Planck-Society
+# Copyright(C) 2013-2022 Max-Planck-Society
 #
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
 
 import numbers
+from functools import reduce
+from operator import add
 
 import numpy as np
 
@@ -113,30 +115,6 @@ class Operator(metaclass=NiftyMeta):
         """
         return None
 
-    def get_transformation(self):
-        """The coordinate transformation that maps into a coordinate system in
-        which the metric of a likelihood is the Euclidean metric. It is `None`,
-        except for instances of
-        :class:`~nifty8.operators.energy_operators.LikelihoodEnergyOperator` or
-        (nested) sums thereof.
-
-        Returns
-        -------
-        np.dtype, or dict of np.dtype : The dtype(s) of the target space of the
-        transformation.
-
-        Operator : The transformation that maps from `domain` into the
-        Euclidean target space.
-
-        Note
-        ----
-        This Euclidean target space is the disjoint union of the Euclidean
-        target spaces of all summands. Therefore, the keys of `MultiDomains`
-        are prefixed with an index and `DomainTuples` are converted to
-        `MultiDomains` with the index as the key.
-        """
-        return None
-
     @property
     def jax_expr(self) -> Optional[Callable]:
         """Equivalent representation of the operator in JAX."""
@@ -190,12 +168,20 @@ class Operator(metaclass=NiftyMeta):
         return self.scale(-1)
 
     def __matmul__(self, x):
+        from .energy_operators import LikelihoodEnergyOperator
+
         if not isinstance(x, Operator):
+            return NotImplemented
+        if isinstance(x, LikelihoodEnergyOperator):
             return NotImplemented
         return _OpChain.make((self, x))
 
     def __rmatmul__(self, x):
+        from .energy_operators import LikelihoodEnergyOperator
+
         if not isinstance(x, Operator):
+            return NotImplemented
+        if isinstance(x, LikelihoodEnergyOperator):
             return NotImplemented
         return _OpChain.make((x, self))
 
@@ -223,8 +209,13 @@ class Operator(metaclass=NiftyMeta):
 
     @staticmethod
     def identity_operator(dom):
+        from ..sugar import makeDomain
         from .block_diagonal_operator import BlockDiagonalOperator
         from .scaling_operator import ScalingOperator
+
+        dom = makeDomain(dom)
+        if isinstance(dom, DomainTuple):
+            return ScalingOperator(dom, 1.)
         idops = {kk: ScalingOperator(dd, 1.) for kk, dd in dom.items()}
         return BlockDiagonalOperator(dom, idops)
 
@@ -323,7 +314,7 @@ class Operator(metaclass=NiftyMeta):
             tgt = self.target if is_operator(self) else self.domain
             return ducktape(None, tgt, name)(self)
         else:  # convert domain
-            newdom = makeDomain(name)
+            newdom = DomainTuple.make(name)
             dom = self.domain if is_fieldlike(self) else self.target
             return DomainChangerAndReshaper(dom, newdom)(self)
 
@@ -337,8 +328,8 @@ class Operator(metaclass=NiftyMeta):
             [0,1,..,N-1] where N is the number of domains in the target of the
             Operator (or the Field).
         """
-        from .transpose_operator import TransposeOperator
         from ..sugar import is_fieldlike
+        from .transpose_operator import TransposeOperator
 
         dom = self.domain if is_fieldlike(self) else self.target
         return TransposeOperator(dom, indices)(self)
@@ -347,11 +338,11 @@ class Operator(metaclass=NiftyMeta):
         return self.__class__.__name__
 
     def simplify_for_constant_input(self, c_inp):
-        from ..domain_tuple import DomainTuple
         from ..multi_field import MultiField
         from ..sugar import makeDomain
-        from .energy_operators import EnergyOperator
+        from .energy_operators import EnergyOperator, LikelihoodEnergyOperator
         from .simplify_for_const import (ConstantEnergyOperator,
+                                         ConstantLikelihoodEnergyOperator,
                                          ConstantOperator)
         if c_inp is None or (isinstance(c_inp, MultiField) and len(c_inp.keys()) == 0):
             return None, self
@@ -371,6 +362,8 @@ class Operator(metaclass=NiftyMeta):
                 raise RuntimeError
             if isinstance(self, EnergyOperator):
                 op = ConstantEnergyOperator(self(c_inp))
+            elif isinstance(self, LikelihoodEnergyOperator):
+                op = ConstantLikelihoodEnergyOperator(self(c_inp))
             else:
                 op = ConstantOperator(self(c_inp))
             return None, op
@@ -505,12 +498,6 @@ class _OpChain(_CombinedOperator):
             x = op(x)
         return x
 
-    def get_transformation(self):
-        tr = self._ops[0].get_transformation()
-        if tr is None:
-            return tr
-        return tr[0], _OpChain.make((tr[1],)+self._ops[1:])
-
     def _simplify_for_constant_input_nontrivial(self, c_inp):
         from ..multi_domain import MultiDomain
         if not isinstance(self._domain, MultiDomain):
@@ -601,41 +588,27 @@ class _OpSum(Operator):
             self._jax_expr = None
 
     def apply(self, x):
-        from ..linearization import Linearization
         self._check_input(x)
-        if x.jac is None:
-            v1 = x.extract(self._op1.domain)
-            v2 = x.extract(self._op2.domain)
-            return self._op1(v1).unite(self._op2(v2))
-        v1 = x.val.extract(self._op1.domain)
-        v2 = x.val.extract(self._op2.domain)
-        wm = x.want_metric
-        lin1 = self._op1(Linearization.make_var(v1, wm))
-        lin2 = self._op2(Linearization.make_var(v2, wm))
-        op = lin1._jac._myadd(lin2._jac, False)
-        res = lin1.new(lin1._val.unite(lin2._val), op)
-        if lin1._metric is not None and lin2._metric is not None:
-            res = res.add_metric(lin1._metric + lin2._metric)
-        return res
+        return self._apply_operator_sum(x, [self._op1, self._op2])
 
-    def get_transformation(self):
-        from .simple_linear_operators import PrependKey
-        tr1 = self._op1.get_transformation()
-        tr2 = self._op2.get_transformation()
-        if tr1 is None or tr2 is None:
-            return None
-        dtype, trafo = {}, None
-        for i, lh in enumerate([self._op1, self._op2]):
-            dtp, tr = lh.get_transformation()
-            if isinstance(tr.target, MultiDomain):
-                dtype.update({str(i)+d: dtp[d] for d in dtp.keys()})
-                tr = PrependKey(tr.target, str(i)) @ tr
-                trafo = tr if trafo is None else trafo+tr
-            else:
-                dtype[str(i)] = dtp
-                tr = tr.ducktape_left(str(i))
-                trafo = tr if trafo is None else trafo + tr
-        return dtype, trafo
+    @staticmethod
+    def _apply_operator_sum(x, ops):
+        from ..linearization import Linearization
+
+        unite = lambda x, y: x.unite(y)
+        if x.jac is None:
+            return reduce(unite, (oo.force(x) for oo in ops))
+        lin = [oo(Linearization.make_var(x.val.extract(oo.domain), x.want_metric))
+                for oo in ops]
+        jacs = map(lambda x: x._jac, lin)
+        vals = map(lambda x: x._val, lin)
+        metrics = list(map(lambda x: x._metric, lin))
+        jac = reduce(lambda x, y: x._myadd(y, False), jacs)
+        val = reduce(unite, vals)
+        res = x.new(val, jac)
+        if all(mm is not None for mm in metrics):
+            res = res.add_metric(reduce(add, metrics))
+        return res
 
     def _simplify_for_constant_input_nontrivial(self, c_inp):
         from ..multi_domain import MultiDomain

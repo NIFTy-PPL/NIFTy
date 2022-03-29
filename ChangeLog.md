@@ -1,6 +1,18 @@
 Changes since NIFTy 7
 =====================
 
+Introduce Likelihood energies
+-----------------------------
+The interface of many energy operators has changed such that they know
+themselves how to compute normalized residuals. Therefore, `minisanity` takes
+only the LikelihooodEnergyOperator and a `SampleList` as an input now. In order
+to be able to distinguish in the output of `minisanity` between different
+likelihoods, one can assign a `name` to each LikelihoodEnergyOperator. This
+`name` has no effect on the inference and is only used inside `minisanity` for
+now.
+This change makes it possible to call `minisanity` automatically from within
+`optimize_kl`.
+
 Add TransposeOperator
 ---------------------
 
