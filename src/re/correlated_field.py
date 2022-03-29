@@ -4,9 +4,10 @@
 from collections.abc import Mapping
 from functools import partial
 import sys
-from typing import Callable, Optional, Union, Dict, Tuple
+from typing import Callable, Dict, Optional, Tuple, Union
 
 from jax import numpy as jnp
+import numpy as np
 
 from .forest_util import ShapeWithDtype
 from .stats_distributions import lognormal_prior, normal_prior
@@ -292,7 +293,7 @@ class CorrelatedFieldMaker():
         `<http://dx.doi.org/10.1038/s41550-021-01548-0>`_
         """
         shape = (shape, ) if isinstance(shape, int) else tuple(shape)
-        distances = tuple(jnp.broadcast_to(distances, jnp.shape(shape)))
+        distances = tuple(np.broadcast_to(distances, jnp.shape(shape)))
         totvol = jnp.prod(jnp.array(shape) * jnp.array(distances))
 
         # Pre-compute lengths of modes and indices for distributing power
