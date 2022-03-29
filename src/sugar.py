@@ -554,7 +554,7 @@ def plot_priorsamples(op, n_samples=5, common_colorbar=True, **kwargs):
     p.output(**kwargs)
 
 
-def exec_time(obj, want_metric=True, verbose=False):
+def exec_time(obj, want_metric=True, verbose=False, domain_dtype=np.float64):
     """Times the execution time of an operator or an energy.
 
     Parameters
@@ -567,6 +567,8 @@ def exec_time(obj, want_metric=True, verbose=False):
         applicable for EnergyOperators. Default: True.
     verbose : bool, optional
         If True, more profiling information is printed. Default: False.
+    domain_dtype : dtype or dict of dtype
+
     """
     from .linearization import Linearization
     from .minimization.energy import Energy
@@ -598,7 +600,7 @@ def exec_time(obj, want_metric=True, verbose=False):
     elif isinstance(obj, Operator):
         want_metric = bool(want_metric)
 
-        pos = from_random(obj.domain, 'normal')
+        pos = from_random(obj.domain, 'normal', dtype=domain_dtype)
         lin = Linearization.make_var(pos, want_metric=want_metric)
         _profile_func(lambda x: x(pos), obj, "Operator call with field\t\t")
         res = _profile_func(lambda x: x(lin), obj, "Operator call with linearization\t")
