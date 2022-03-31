@@ -54,7 +54,7 @@ def test_hmc_hash():
     results = (pos, key, chain.samples, accepted)
     results_hash = hashit(results, n_chars=20)
     print(f"full hash: {results_hash}", file=sys.stderr)
-    old_hash = "a62bbc84432eb4f13ad6"
+    old_hash = "3d665689f809a98c81b3"
     assert results_hash == old_hash
 
 
@@ -79,7 +79,7 @@ def test_nuts_hash():
     results = (pos, key, chain.samples)
     results_hash = hashit(results, n_chars=20)
     print(f"full hash: {results_hash}", file=sys.stderr)
-    old_hash = "ba324b77e6d73afae514"
+    old_hash = "8043850d7249acb77b26"
     assert results_hash == old_hash
 
     jax_config.update("jax_enable_x64", True)
