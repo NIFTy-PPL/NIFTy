@@ -129,7 +129,7 @@ def refinement_matrices(
     coord0 = coord0.reshape(-1, len(size0))
     cov_sqrt0 = jnp.linalg.cholesky(cov_from_loc(coord0, coord0))
 
-    dist_by_depth = distances / _fine_size**jnp.arange(1, depth).reshape(-1, 1)
+    dist_by_depth = distances / _fine_size**jnp.arange(0, depth).reshape(-1, 1)
     olaf = partial(
         layer_refinement_matrices,
         cov_from_loc=cov_from_loc,
@@ -329,7 +329,7 @@ def get_fixed_power_correlated_field(
 def correlated_field(xi, distances, kernel, **kwargs):
     precision = kwargs.pop("precision", None)
 
-    size0, depth = xi[0].shape, len(xi)
+    size0, depth = xi[0].shape, len(xi) - 1
     os, (cov_sqrt0, ks) = refinement_matrices(
         size0, depth, distances=distances, kernel=kernel, **kwargs
     )

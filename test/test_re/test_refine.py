@@ -3,12 +3,15 @@
 from functools import partial
 import sys
 
+import jax
 import jax.numpy as jnp
 from jax.tree_util import Partial
 import numpy as np
 from numpy.testing import assert_allclose
 import pytest
+from scipy.spatial import distance_matrix
 
+import nifty8.re as jft
 from nifty8.re import refine
 
 pmp = pytest.mark.parametrize
@@ -81,6 +84,45 @@ def test_refinement_1d(seed, dist, kernel=kernel):
     for ref in refs:
         print(f"testing {ref.__name__}", file=sys.stderr)
         aallclose(ref(lvl0, lvl1_exc, olf, fine_kernel_sqrt))
+
+
+@pmp("dist", (60., 1e+3, (80., 80.), (40., 90.), (1e+2, 1e+3, 1e+4)))
+def test_refinement_covariance(dist, kernel=kernel):
+    distances0 = np.atleast_1d(dist)
+    cf = partial(
+        refine.correlated_field,
+        distances=distances0,
+        kernel=kernel,
+    )
+    exc_shp = [
+        jft.ShapeWithDtype((3, ) * len(distances0)),
+        jft.ShapeWithDtype((2, ) * len(distances0))
+    ]
+
+    cf_shp = jax.eval_shape(cf, exc_shp)
+    assert cf_shp.shape == (2, ) * len(distances0)
+    c0 = [
+        d * jnp.arange(sz, dtype=distances0.dtype)
+        for d, sz in zip(distances0 / 2, cf_shp.shape)
+    ]
+    pos = jnp.stack(jnp.meshgrid(*c0, indexing="ij"), axis=-1)
+
+    probe = jnp.zeros(pos.shape[:-1])
+    indices = np.indices(pos.shape[:-1]).reshape(pos.ndim - 1, -1)
+
+    cf_T = jax.linear_transpose(cf, exc_shp)
+    cf_cf_T = lambda x: cf(*cf_T(x))
+    cov_empirical = jax.vmap(
+        lambda idx: cf_cf_T(probe.at[tuple(idx)].set(1.)).ravel(),
+        in_axes=1,
+        out_axes=-1
+    )(indices)
+
+    p = pos.reshape(-1, pos.shape[-1])
+    dist_mat = distance_matrix(p, p)
+    cov_truth = kernel(dist_mat)
+
+    assert_allclose(cov_empirical, cov_truth, rtol=1e-13, atol=0.)
 
 
 @pmp("seed", (12, 42, 43, 45))
