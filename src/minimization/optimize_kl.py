@@ -22,8 +22,6 @@ from os import makedirs
 from os.path import isdir, isfile, join
 from warnings import warn
 
-from matplotlib.colors import LogNorm
-
 from ..domain_tuple import DomainTuple
 from ..multi_domain import MultiDomain
 from ..multi_field import MultiField
@@ -518,6 +516,11 @@ def _append_key(s, key):
 
 
 def _plot_stats(file_name, mean, var, ground_truth, comm, plotting_kwargs):
+    try:
+        from matplotlib.colors import LogNorm
+    except ImportError:
+        return
+
     p = Plot()
     if ground_truth is not None:
         p.add(ground_truth, title="Ground truth", **plotting_kwargs)
