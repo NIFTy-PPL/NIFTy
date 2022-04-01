@@ -643,8 +643,8 @@ class Plot:
         """
         try:
             import matplotlib.pyplot as plt
-            warn("Since matplotlib is not installed, NIFTy will not generate any plots.")
         except ImportError:
+            warn("Since matplotlib is not installed, NIFTy will not generate any plots.")
             return
 
         nplot = len(self._plots)
