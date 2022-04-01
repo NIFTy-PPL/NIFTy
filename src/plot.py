@@ -17,6 +17,7 @@
 
 import os
 from itertools import product
+from warnings import warn
 from datetime import datetime as dt
 
 import numpy as np
@@ -640,7 +641,11 @@ class Plot:
             Override the blocking behavior of the non-interactive plotting
             mode. The plot will not be closed in this case but is left open!
         """
-        import matplotlib.pyplot as plt
+        try:
+            import matplotlib.pyplot as plt
+            warn("Since matplotlib is not installed, NIFTy will not generate any plots.")
+        except ImportError:
+            return
 
         nplot = len(self._plots)
         fig = plt.figure()
