@@ -225,10 +225,10 @@ def main():
         print("Saved results as '{}'.".format(filename_res))
         # Proof of concept of the evidence lower bound function
         # FIXME: Make it MPI-compatible (SampleList inside if master block)
-        evidence_1 = ift.estimate_evidence_lower_bound(samples_1, 100, ift.StandardHamiltonian(likelihood_energy_1), eps=1e-3)
-        evidence_2 = ift.estimate_evidence_lower_bound(samples_2, 100, ift.StandardHamiltonian(likelihood_energy_2), eps=1e-3)
+        evidence_1, _ = ift.estimate_evidence_lower_bound(ift.StandardHamiltonian(likelihood_energy_1), samples_1, 100,  min_lh_eval=1e-3)
+        evidence_2, _ = ift.estimate_evidence_lower_bound(ift.StandardHamiltonian(likelihood_energy_2), samples_2, 100, min_lh_eval=1e-3)
 
-        log_elbo_difference = evidence_1['estimate'].val - evidence_2['estimate'].val
+        log_elbo_difference = evidence_1.average().val - evidence_2.average().val
         s = f"\nModel 1 is favored over model 2 by a factor of " + str(np.exp(
             log_elbo_difference)) if (log_elbo_difference > 0) \
             else "Model 2 is favored over model 1 by a factor of " + str(np.exp(-log_elbo_difference))

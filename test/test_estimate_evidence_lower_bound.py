@@ -118,7 +118,7 @@ def test_estimate_evidence_lower_bound():
 
     evidence = -H_0 + 0.5 * np.log(det_2pi_D)
     nifty_adjusted_evidence = evidence + 0.5 * n_datapoints * np.log(2 * np.pi * noise_level ** 2)
-
+    constants = 0.5*(np.log(det_2pi_S) + )
     likelihood_energy = ift.GaussianEnergy(data=data, inverse_covariance=N.inverse) @ linear_response_on_signal
 
     # Minimization parameters
@@ -137,9 +137,9 @@ def test_estimate_evidence_lower_bound():
                               output_directory=None)
 
     # Estimate the ELBO
-    elbo_dictionary = ift.estimate_evidence_lower_bound(samples, 2, ift.StandardHamiltonian(lh=likelihood_energy),
-                                                        eps=1e-5, exact=True)
-    elbo_up = elbo_dictionary["upper"]
-    elbo_lw = elbo_dictionary["lower"]
+    elbo, stats = ift.estimate_evidence_lower_bound(ift.StandardHamiltonian(lh=likelihood_energy), samples, 2)
+    elbo_mean, elbo_var = elbo.sample_stat()
+    elbo_up = elbo_mean + elbo_var.sqrt()
+    elbo_lw = elbo_up - elbo_var.sqrt() - stats["lower_error"]
 
     assert (elbo_lw.val <= nifty_adjusted_evidence <= elbo_up.val)
