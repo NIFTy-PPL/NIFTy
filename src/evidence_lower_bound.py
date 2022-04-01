@@ -215,33 +215,13 @@ def estimate_evidence_lower_bound(hamiltonian, samples, n_eigenvalues,
     hamiltonian_mean, hamiltonian_var = samples.sample_stat(hamiltonian)
     hamiltonian_mean_std = np.sqrt(hamiltonian_var.val / samples.n_samples)  # std of the estimate for the mean
 
-    h0 = 0.
-    # if isinstance(hamiltonian.likelihood_energy, ift.PoissonianEnergy): # FIXME: Try to simplify this expression
-    likelihood_type = str(hamiltonian.likelihood_energy.__dict__['_op'])
-
-    if 'PoissonianEnergy' in likelihood_type:
-        if data is None:
-            raise TypeError("For correct ELBO estimation data must be provided.")
-        from scipy.special import factorial
-        data = data.to_numpy() if hasattr(data, "to_numpy") else data.val if hasattr(data, "val") else data
-        h0 = np.log(factorial(data)).sum()
-
-    # elif not isinstance(hamiltonian.likelihood_energy, ift.GaussianEnergy): # FIXME: Try to simplify this expression
-    elif not 'GaussianEnergy' in likelihood_type:
-        tp_lh = type(hamiltonian.likelihood_energy)
-        warn_msg = (f"Unknown likelihood of type {tp_lh!r};\n"
-                    f"The (log) ELBO is potentially missing some constant term from the likelihood.")
-        logger.warn(warn_msg)
-
-    # TODO: Implement these checks for all NIFTy-supported likelihoods
-
-    elbo_mean = - hamiltonian_mean + 0.5 * metric_size + 0.5 * tr_log_diagonal_lat_cov - h0
+    elbo_mean = - hamiltonian_mean + 0.5 * metric_size + 0.5 * tr_log_diagonal_lat_cov
     elbo_var_upper = abs(hamiltonian_mean_std + 0.5 * tr_log_diagonal_lat_cov_error)
     elbo_var_lower = abs(- hamiltonian_mean_std + 0.5 * tr_log_diagonal_lat_cov_error)
 
     stats = {"estimate": elbo_mean, "upper": elbo_mean + elbo_var_upper, "lower": elbo_mean - elbo_var_lower,
              "hamiltonian_mean": hamiltonian_mean, "hamiltonian_mean_std": hamiltonian_mean_std,
-             "ln_likelihood_0": h0, "tr_log_diag_lat_cov": tr_log_diagonal_lat_cov,
+             "tr_log_diag_lat_cov": tr_log_diagonal_lat_cov,
              "tr_log_diagonal_lat_cov_error": tr_log_diagonal_lat_cov_error}
 
     if verbose:
