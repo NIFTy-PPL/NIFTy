@@ -18,10 +18,8 @@ import scipy.sparse.linalg as ssl
 
 from .linearization import Linearization
 from .logger import logger
-from .minimization.kl_energies import SampledKLEnergyClass
-from .minimization.sample_list import SampleListBase
+from .minimization.sample_list import ResidualSampleList
 from .operator_spectrum import _DomRemover
-from .operators.linear_operator import LinearOperator
 from .operators.sandwich_operator import SandwichOperator
 from .sugar import makeField
 
@@ -56,17 +54,24 @@ class _Projector(ssl.LinearOperator):
         return self._matvec(x)
 
 
-def _return_eigenspace(M, n_eigenvalues, tol, exact):
-    eigenvalues, eigenvectors = ssl.eigsh(M, k=n_eigenvalues, tol=tol, return_eigenvectors=True,
-                                          which='LM') if not exact else slg.eigh(M)
+def _return_eigenspace(M, n_eigenvalues, tol):
+    if isinstance(M, ssl.LinearOperator):
+        eigenvalues, eigenvectors = ssl.eigsh(M, k=n_eigenvalues, tol=tol,
+                                return_eigenvectors=True, which='LM')
+    else:
+        eigenvalues, eigenvectors = slg.eigh(M)
     i = np.argsort(eigenvalues)
-    eigenvalues, eigenvectors = np.flip(eigenvalues[i]), np.flip(eigenvectors[:, i], axis=1)
-    return eigenvalues, eigenvectors
+    return np.flip(eigenvalues[i]), np.flip(eigenvectors[:, i], axis=1)
 
+def _explicify(M):
+    identity = np.identity(M.shape[0], dtype=np.float64)
+    m = []
+    for v in identity:
+        m.append(M.matvec(v))
+    return np.vstack(m).T
 
-def estimate_evidence_lower_bound(samples, n_eigenvalues, hamiltonian, constants=[], invariants=None,
-                                  fudge_factor=0, max_iteration=5, eps=1e-3, tol=0., verbose=True, data=None,
-                                  exact=False):
+def estimate_evidence_lower_bound(samples, n_eigenvalues, hamiltonian,
+                                  fudge_factor=0, max_iteration=5, eps=1e-3, tol=0., verbose=True, data=None):
     """Provides an estimate for the Evidence Lower Bound (ELBO).
 
     Statistical inference deals with the problem of hypothesis testing, given the data and models that can describe it.
@@ -102,7 +107,7 @@ def estimate_evidence_lower_bound(samples, n_eigenvalues, hamiltonian, constants
     Parameters
     ----------
 
-    samples : SampleListBase
+    samples : ResidualSampleList
         Collection of samples from the posterior distribution.
 
     n_eigenvalues : int
@@ -145,10 +150,6 @@ def estimate_evidence_lower_bound(samples, n_eigenvalues, hamiltonian, constants
         parameter-independent likelihood terms that might have been ignored
         during minimization. Default is None.
 
-    exact : Optional[bool]
-        If true calculates all the metric eigenvalues and returns non-approximated ELBO.
-        Default is False.
-
 
     Returns
     ----------
@@ -176,64 +177,49 @@ def estimate_evidence_lower_bound(samples, n_eigenvalues, hamiltonian, constants
     """
 
     # TODO: Implement checks on the input parameters
-    if not isinstance(samples, SampleListBase):
-        raise TypeError("samples attribute should be of type SampleListBase.")
+    if not isinstance(samples, ResidualSampleList):
+        raise TypeError("samples attribute should be of type ResidualSampleList.")
 
-    KL = SampledKLEnergyClass(samples, hamiltonian, constants, invariants, False)  # FIXME: Check parameters of SKLEC
-    # metric = KL.metric
-    mean = KL.position
-    lin = Linearization.make_var(mean, want_metric=True)
-    metric = hamiltonian(lin).metric
-
-    Ar = SandwichOperator.make(_DomRemover(metric.domain).adjoint, metric)
+    metric = hamiltonian(Linearization.make_var(samples._m, want_metric=True)).metric
+    metric = SandwichOperator.make(_DomRemover(metric.domain).adjoint, metric)
     metric_size = metric.domain.size
-    M = ssl.LinearOperator(shape=2 * (metric_size,), matvec=lambda x: Ar(makeField(Ar.domain, x)).val)
+    M = ssl.LinearOperator(
+            shape = 2 * (metric_size,),
+            matvec = lambda x: metric(makeField(metric.domain, x)).val)
 
-    if exact:
-        n_eigenvalues = metric_size
-        identity = np.identity(n_eigenvalues, dtype=np.float64)
-        m = []
-        for v in identity:
-            m.append(M.matvec(v))
-        M = np.vstack(m).T
+    if n_eigenvalues > metric_size:
+        raise ValueError("Number of requested eigenvalues exeeds size of matrix!")
+    exact = metric_size == n_eigenvalues
+    M = _explicify(M) if exact else M
 
     if verbose:
         logger.info(f"Number of eigenvalues to compute: {n_eigenvalues}")
-    eigenvalues, eigenvectors = _return_eigenspace(M, n_eigenvalues, tol, exact)
+    eigenvalues, eigenvectors = _return_eigenspace(M, n_eigenvalues, tol)
 
-    eigenvalue_error = abs(1.0 - eigenvalues[-1])
-    count = 0
+    eigenvalue_error = abs(1.0 - eigenvalues[-1]) if not exact else 0.
+    count = 1
+    while (eigenvalue_error > eps) and (count < max_iteration):
+        projector = _Projector(eigenvectors)
+        projected_metric = projector @ M @ projector.T
+        n_eigenvalues -= n_eigenvalues // 4 + fudge_factor  # FIXME: Not sure if it makes sense. Open to suggestions
 
-    if not exact:
-        while (eigenvalue_error > eps) and (count < max_iteration):
-            projected_metric = _Projector(eigenvectors) @ M if count == 0 else _Projector(
-                eigenvectors) @ projected_metric
-            n_eigenvalues -= n_eigenvalues // 4 + fudge_factor  # FIXME: Not sure if it makes sense. Open to suggestions
-            if verbose:
-                logger.info(f"Number of additional eigenvalues being computed: {n_eigenvalues}")
-
-            eigvals, eigenvectors = _return_eigenspace(projected_metric, n_eigenvalues, tol, False)
-            eigenvalues = np.concatenate((eigenvalues, eigvals))
-            eigenvalue_error = abs(1.0 - eigenvalues[-1])
-
-            if eigenvalue_error == 0.:
-                break
-            count += 1
+        if verbose:
+            logger.info(f"Number of additional eigenvalues being computed: {n_eigenvalues}")
+        eigvals, eigvecs = _return_eigenspace(projected_metric, n_eigenvalues, tol)
+        eigenvalues = np.concatenate((eigenvalues, eigvals))
+        eigenvectors = np.vstack((eigenvectors, eigvecs))
+        eigenvalue_error = abs(1.0 - eigenvalues[-1])
+        count += 1
 
     if verbose:
         logger.info(f"{eigenvalues.size} largest eigenvalues (out of {metric_size})\n{eigenvalues}")
 
-    # Calculate the \Tr term and \Tr \log terms
-    tr_identity = metric_size
-    tr_log_diagonal_lat_cov = 0.
-
-    for ev in eigenvalues:
-        if abs(np.log(ev)) > eps:
-            tr_log_diagonal_lat_cov -= np.log(ev)
+    # Calculate the \Tr \log term
+    log_eigenvalues = np.log(eigenvalues)
+    tr_log_diagonal_lat_cov = - np.sum(log_eigenvalues)
 
     # Asses maximal error: propagate the error on the eigenvalues
-    unexplored_dimensions = metric_size - n_eigenvalues
-    tr_log_diagonal_lat_cov_error = unexplored_dimensions * np.log(min(eigenvalues))
+    tr_log_diagonal_lat_cov_error = (metric_size - log_eigenvalues.size) * np.min(log_eigenvalues)
 
     hamiltonian_mean, hamiltonian_var = samples.sample_stat(hamiltonian)
     hamiltonian_mean_std = np.sqrt(hamiltonian_var.val / samples.n_samples)  # std of the estimate for the mean
@@ -258,8 +244,7 @@ def estimate_evidence_lower_bound(samples, n_eigenvalues, hamiltonian, constants
 
     # TODO: Implement these checks for all NIFTy-supported likelihoods
 
-    hamiltonian_mean = samples.sample_stat(hamiltonian)[0]
-    elbo_mean = - hamiltonian_mean + 0.5 * tr_identity + 0.5 * tr_log_diagonal_lat_cov - h0
+    elbo_mean = - hamiltonian_mean + 0.5 * metric_size + 0.5 * tr_log_diagonal_lat_cov - h0
     elbo_var_upper = abs(hamiltonian_mean_std + 0.5 * tr_log_diagonal_lat_cov_error)
     elbo_var_lower = abs(- hamiltonian_mean_std + 0.5 * tr_log_diagonal_lat_cov_error)
 
