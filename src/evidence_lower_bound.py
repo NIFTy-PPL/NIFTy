@@ -16,13 +16,13 @@ import numpy as np
 import scipy.linalg as slg
 import scipy.sparse.linalg as ssl
 
+from .field import Field
 from .linearization import Linearization
 from .logger import logger
 from .minimization.sample_list import ResidualSampleList, SampleList
 from .operator_spectrum import _DomRemover
 from .operators.sandwich_operator import SandwichOperator
 from .sugar import makeField
-from .field import Field
 
 
 class _Projector(ssl.LinearOperator):
@@ -54,6 +54,7 @@ class _Projector(ssl.LinearOperator):
     def _rmatvec(self, x):
         return self._matvec(x)
 
+
 def _explicify(M):
     identity = np.identity(M.shape[0], dtype=np.float64)
     m = []
@@ -61,33 +62,34 @@ def _explicify(M):
         m.append(M.matvec(v))
     return np.vstack(m).T
 
-def _eigsh(metric, n_eigenvalues, min_lh_eval = 1E-3, batch_number = 10,
-           tol = 0., verbose = True):
+
+def _eigsh(metric, tot_dofs, n_eigenvalues, min_lh_eval=1e-4, batch_number=10, tol=0., verbose=True):
     metric = SandwichOperator.make(_DomRemover(metric.domain).adjoint, metric)
-    M = ssl.LinearOperator(
-            shape = 2 * (metric.domain.size,),
-            matvec = lambda x: metric(makeField(metric.domain, x)).val)
+    M = ssl.LinearOperator(shape=2 * (metric.domain.size,), matvec=lambda x: metric(makeField(metric.domain, x)).val)
 
-    if n_eigenvalues > metric.domain.size:
-        raise ValueError("Number of requested eigenvalues exeeds size of matrix!")
+    if n_eigenvalues > tot_dofs:
+        raise ValueError("Number of requested eigenvalues exceeds the number of relevant degrees of freedom!")
 
-    if metric.domain.size == n_eigenvalues:
-        # Compute exact eigensystem 
+    if tot_dofs == n_eigenvalues:
+        # Compute exact eigensystem
         if verbose:
-            logger.info(f"Number of eigenvalues being computed: {n_eigenvalues}")
-        eigenvalues, eigenvectors = slg.eigh(_explicify(M))
+            logger.info(
+                f"Computing all relevant metric eigenvalues. The remaining {tot_dofs - metric.domain.size} "
+                f"eigenvalues are all equal to 1.")
+            logger.info(f"Number of eigenvalues being computed: {n_eigenvalues}.")
+        eigenvalues, _ = slg.eigh(_explicify(M))
     else:
         # Set up batches
-        batchsize = int(n_eigenvalues / batch_number)
-        batches = [batchsize, ]*(batch_number-1) 
-        batches += [n_eigenvalues - batchsize*(batch_number - 1), ]
-        eigenvalues, eigenvectors, Mproj = None, None, M
+        # FIXME: Shouldn't the batch_size decrease ideally?
+        batch_size = n_eigenvalues // batch_number
+        batches = [batch_size, ] * (batch_number - 1)
+        batches += [n_eigenvalues - batch_size * (batch_number - 1), ]
+        eigenvalues, eigenvectors, projected_metric = None, None, M
         for batch in batches:
             if verbose:
                 logger.info(f"Number of eigenvalues being computed: {batch}")
             # Get eigensystem for current batch
-            eigvals, eigvecs = ssl.eigsh(Mproj, k=batch, tol=tol,
-                                        return_eigenvectors=True, which='LM')
+            eigvals, eigvecs = ssl.eigsh(projected_metric, k=batch, tol=tol, return_eigenvectors=True, which='LM')
             eigenvalues = eigvals if eigenvalues is None else np.concatenate((eigenvalues, eigvals))
             eigenvectors = eigvecs if eigenvectors is None else np.hstack((eigenvectors, eigvecs))
 
@@ -95,15 +97,15 @@ def _eigsh(metric, n_eigenvalues, min_lh_eval = 1E-3, batch_number = 10,
                 break
             # Project out subspace of already computed eigenvalues
             projector = _Projector(eigenvectors)
-            Mproj = projector @ M @ projector.T
+            projected_metric = projector @ M @ projector.T
     return eigenvalues, eigenvectors
 
-def estimate_evidence_lower_bound(hamiltonian, samples, n_eigenvalues,
-                                  min_lh_eval = 1E-3, batch_number = 10,
-                                  tol = 0., verbose = True):
+
+def estimate_evidence_lower_bound(hamiltonian, samples, n_eigenvalues, min_lh_eval=1e-3, batch_number=10, tol=0.,
+                                  verbose=True):
     """Provides an estimate for the Evidence Lower Bound (ELBO).
 
-    Statistical inference deals with the problem of hypothesis testing, given the data and models that can describe it.
+    Statistical inference deals with the problem of hypothesis testing, given some data and models that can describe it.
     In general, it is hard to find a good metric to discern between different models. In Bayesian Inference,
     the Bayes factor can serve this purpose.
     To compute the Bayes factor it is necessary to calculate the evidence, given the specific model :math:`p(
@@ -111,15 +113,16 @@ def estimate_evidence_lower_bound(hamiltonian, samples, n_eigenvalues,
     Then, the ratio between the evidence of a model A and the one of a model B represents how much more likely it is
     that model A represents the data better than model B.
 
-    The evidence for an approximated-inference problem could be in principle calculated by considering
+    The evidence for an approximated-inference problem can in principle be calculated. However, this is only
+    practically feasible in a low-dimensional setting. What often can be computed is
 
     .. math ::
         \\log(p(d)) - D_\\text{KL} \\left[ Q(\\theta(\\xi)|d) || p(\\theta(\\xi) | d) \\right] = -\\langle H(\\theta(
-        \\xi), d)\\rangle + \\frac1 2 \\left( N + \\text{Tr } \\log\\Lambda\\right)
+        \\xi), d)\\rangle + \\frac1 2 \\left( N + \\text{Tr } \\log\\Lambda\\right),
 
     where :math:`D_\\text{KL} \\left[ Q || p \\right]` is the Kullback-Leibler (KL) divergence between the
     approximating posterior distribution :math:`Q` and the actual posterior :math:`p`.
-    But since the Kullback-Leibler divergence :math:`D_\\text{KL} [\\cdot, \\cdot] \\geq 0` is positive definite,
+    Since the Kullback-Leibler divergence :math:`D_\\text{KL} [\\cdot, \\cdot] \\geq 0` is positive definite,
     it is convenient to consider the lower bound
 
     .. math ::
@@ -144,15 +147,15 @@ def estimate_evidence_lower_bound(hamiltonian, samples, n_eigenvalues,
 
     n_eigenvalues : int
         Maximum number of eigenvalues to be considered for the estimation of the
-        log determinant of the metric. Note that if `n_eigenvalues` equals the
-        total number of dimensions of the problem, all eigenvalues are always 
+        log-determinant of the metric. Note that if `n_eigenvalues` equals the
+        total number of dimensions of the problem, all eigenvalues are always
         computed irrespective of other stopping criteria.
 
     min_lh_eval : float
         Smallest eigenvalue of the likelihood to be considered. If the estimated
         eigenvalues become smaller then 1 + `min_lh_eval`, the eigenvalue
         estimation terminates and uses the smallest eigenvalue as a proxy for
-        all remaining eigenvalues in the trace log estimation. Default is 1e-3.
+        all remaining eigenvalues in the trace-log estimation. Default is 1e-3.
 
     batch_number : int
         Number of batches into which the eigenvalue estimation gets subdivided
@@ -164,12 +167,14 @@ def estimate_evidence_lower_bound(hamiltonian, samples, n_eigenvalues,
         Default is 0.
 
     verbose : Optional[bool]
-        FIXME
-        Annoy me with what you are doing. Or don't.
+        Print list of eigenvalues and summary of evidence calculation.
         Default is True.
 
     Returns
     ----------
+    elbo_samples : SampleList
+        List of elbo samples from the posterior distribution.
+
     stats : dict
         Dictionary with the statistics of the estimated ELBO.
 
@@ -177,51 +182,62 @@ def estimate_evidence_lower_bound(hamiltonian, samples, n_eigenvalues,
     Notes
     -----
     FIXME
-    **IMPORTANT**: The provided estimate is missing the constant term :math:`-\\frac1 2 \\log \\det |2 \\pi N|`,
-    where :math:`N` is the noise covariance matrix. This term is not considered in (most of) the NIFTy
-    implementations of the energy operators, since it is constant throughout minimization. To obtain the actual ELBO
-    this term should be added. Since calculating this term can in principle be expensive and in most cases it is
-    not needed for model comparison (the noise statistics should be independent of the model at hand) it has here
-    been neglected.
-    Only when comparing models with different noise statistics (or when the ELBO is needed to approximate the true
-    evidence) this contribution should be added.
-
-    It is advisable to start with a higher number of initial eigenvalues to ensure better convergence.
+    **IMPORTANT**:
+    To perform Variational Inference there is no need to take into account quantities that are not explicitly
+    dependent on the signal. Explicitly calculating these terms can be expensive, therefore they are usually
+    neglected. Since in most cases they are also not required for model comparison, the provided estimate may not
+    include terms which are constant in the signal. Only when comparing models with different noise statistics (or
+    when the ELBO is needed to approximate the true evidence) these contributions have to be considered.
+    For example, for a Gaussian distributed signal and a linear problem (Wiener Filter problem) the only term missing
+    is :math:`-\\frac1 2 \\log \\det |2 \\pi N|`, where :math:`N` is the noise covariance matrix.
 
     See also
     -----
-    For further details on the analytic formulation we refer to A. Kostić et Al.
+    For further details we refer to:
+    - Analytic formulation
+    P. Frank et Al., Geometric Variational Inference <https://arxiv.org/pdf/2105.10470.pdf> (Sec. 5.1)
+
+    - Conceptualization
+    A. Kostić et Al.
     (manuscript in preparation).
     """
 
-    # TODO: Implement checks on the input parameters
     if not isinstance(samples, ResidualSampleList):
         raise TypeError("samples attribute should be of type ResidualSampleList.")
 
+    n_data_points = hamiltonian.likelihood_energy.data_domain.size if not None else hamiltonian.domain.size
+    n_relevant_dofs = min(n_data_points, hamiltonian.domain.size)  # Number of metric eigenvalues that are not one
+
     metric = hamiltonian(Linearization.make_var(samples._m, want_metric=True)).metric
     metric_size = metric.domain.size
-    eigenvalues, _ = _eigsh(metric, n_eigenvalues, min_lh_eval = min_lh_eval,
-                            batch_number = batch_number, tol = tol, verbose = verbose)
+    eigenvalues, _ = _eigsh(metric, n_eigenvalues, min_lh_eval=min_lh_eval, batch_number=batch_number, tol=tol,
+                            verbose=verbose)
     if verbose:
         # FIXME
         logger.info(f"{eigenvalues.size} largest eigenvalues (out of {metric_size})\n{eigenvalues}")
 
     # Calculate the \Tr \log term upper bound
     log_eigenvalues = np.log(eigenvalues)
-    tr_log_lat_cov = - 0.5 * np.sum(log_eigenvalues) 
+    tr_log_lat_cov = - 0.5 * np.sum(log_eigenvalues)
+
     # And its lower bound
-    tr_log_lat_cov_lower = 0.5 * (metric_size - log_eigenvalues.size) * np.min(log_eigenvalues)
+    tr_log_lat_cov_lower = 0.5 * (n_relevant_dofs - log_eigenvalues.size) * np.min(log_eigenvalues)
     tr_log_lat_cov_lower = Field.scalar(tr_log_lat_cov_lower)
 
-    elbo = Field.scalar(tr_log_lat_cov + 0.5 * metric_size)
-    elbo_samples = SampleList(list([-h + elbo for h in samples.iterator(hamiltonian)]))
-    
-    #FIXME
+    # Calculate the contribution coming from the posterior expectation value
+    posterior_contribution = Field.scalar(tr_log_lat_cov + 0.5 * metric_size)
+
+    # Return a list of ELBO samples and a summary of the ELBO statistics
+    elbo_samples = SampleList(list([-h + posterior_contribution for h in samples.iterator(hamiltonian)]))
+
     stats = {'lower_error': tr_log_lat_cov_lower}
+    elbo_mean, elbo_var = elbo_samples.sample_stat()
+    elbo_up = elbo_mean + elbo_var.sqrt()
+    elbo_lw = elbo_mean - elbo_var.sqrt() - stats["lower_error"]
+    stats['elbo_mean'], stats['elbo_up'], stats['elbo_lw'] = elbo_mean, elbo_up, elbo_lw
     if verbose:
-        #FIXME
         s = (f"\nELBO decomposition (in log units)"
-            )
+             f"\nELBO mean : {elbo_mean.val:.4e} (upper: {elbo_up.val:.4e}, lower: {elbo_lw.val:.4e})")
         logger.info(s)
 
     return elbo_samples, stats
