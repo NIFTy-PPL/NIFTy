@@ -53,16 +53,6 @@ class _Projector(ssl.LinearOperator):
     def _rmatvec(self, x):
         return self._matvec(x)
 
-
-def _return_eigenspace(M, n_eigenvalues, tol):
-    if isinstance(M, ssl.LinearOperator):
-        eigenvalues, eigenvectors = ssl.eigsh(M, k=n_eigenvalues, tol=tol,
-                                return_eigenvectors=True, which='LM')
-    else:
-        eigenvalues, eigenvectors = slg.eigh(M)
-    i = np.argsort(eigenvalues)
-    return np.flip(eigenvalues[i]), np.flip(eigenvectors[:, i], axis=1)
-
 def _explicify(M):
     identity = np.identity(M.shape[0], dtype=np.float64)
     m = []
@@ -70,8 +60,46 @@ def _explicify(M):
         m.append(M.matvec(v))
     return np.vstack(m).T
 
-def estimate_evidence_lower_bound(samples, n_eigenvalues, hamiltonian,
-                                  fudge_factor=0, max_iteration=5, eps=1e-3, tol=0., verbose=True, data=None):
+def _eigsh(metric, n_eigenvalues, min_lh_eval = 1E-3, batch_number = 10,
+           tol = 0., verbose = True):
+    metric = SandwichOperator.make(_DomRemover(metric.domain).adjoint, metric)
+    M = ssl.LinearOperator(
+            shape = 2 * (metric.domain.size,),
+            matvec = lambda x: metric(makeField(metric.domain, x)).val)
+
+    if n_eigenvalues > metric.domain.size:
+        raise ValueError("Number of requested eigenvalues exeeds size of matrix!")
+
+    if metric.domain.size == n_eigenvalues:
+        # Compute exact eigensystem 
+        if verbose:
+            logger.info(f"Number of eigenvalues being computed: {n_eigenvalues}")
+        eigenvalues, eigenvectors = slg.eigh(_explicify(M))
+    else:
+        # Set up batches
+        batchsize = int(n_eigenvalues / batch_number)
+        batches = [batchsize, ]*(batch_number-1) 
+        batches += [n_eigenvalues - batchsize*(batch_number - 1), ]
+        eigenvalues, eigenvectors, Mproj = None, None, M
+        for batch in batches:
+            if verbose:
+                logger.info(f"Number of eigenvalues being computed: {batch}")
+            # Get eigensystem for current batch
+            eigvals, eigvecs = ssl.eigsh(Mproj, k=batch, tol=tol,
+                                        return_eigenvectors=True, which='LM')
+            eigenvalues = eigvals if eigenvalues is None else np.concatenate((eigenvalues, eigvals))
+            eigenvectors = eigvecs if eigenvectors is None else np.vstack((eigenvectors, eigvecs))
+
+            if abs(1.0 - np.min(eigenvalues)) < min_lh_eval:
+                break
+            # Project out subspace of already computed eigenvalues
+            projector = _Projector(eigenvectors)
+            Mproj = projector @ M @ projector.T
+    return eigenvalues, eigenvectors
+
+def estimate_evidence_lower_bound(hamiltonian, samples, n_eigenvalues,
+                                  min_lh_eval = 1E-3, batch_number = 10,
+                                  tol = 0., verbose = True):
     """Provides an estimate for the Evidence Lower Bound (ELBO).
 
     Statistical inference deals with the problem of hypothesis testing, given the data and models that can describe it.
@@ -107,49 +135,37 @@ def estimate_evidence_lower_bound(samples, n_eigenvalues, hamiltonian,
     Parameters
     ----------
 
+    hamiltonian : StandardHamiltonian
+        Hamiltonian of the approximated probability distribution.
+
     samples : ResidualSampleList
         Collection of samples from the posterior distribution.
 
     n_eigenvalues : int
-        The starting number of eigenvalues and eigenvectors to be calculated.
-        `n_eigenvalues` must be smaller than N-1, where N is the metric dimension.
+        Maximum number of eigenvalues to be considered for the estimation of the
+        log determinant of the metric. Note that if `n_eigenvalues` equals the
+        total number of dimensions of the problem, all eigenvalues are always 
+        computed irrespective of other stopping criteria.
 
-    hamiltonian : StandardHamiltonian
-        Hamiltonian of the approximated probability distribution.
+    min_lh_eval : float
+        Smallest eigenvalue of the likelihood to be considered. If the estimated
+        eigenvalues become smaller then 1 + `min_lh_eval`, the eigenvalue
+        estimation terminates and uses the smallest eigenvalue as a proxy for
+        all remaining eigenvalues in the trace log estimation. Default is 1e-3.
 
-    constants : Optional[list]
-        Collection of parameter keys that are kept constant during optimization.
-        Default is empty list.
-
-    invariants : Optional[XXX]
-        TODO: Explain
-        Default is None.
-
-    fudge_factor : Optional[signed int]
-        Constant number of eigenvalues that will always be subtracted (or
-        computed) during each iteration of the algorithm.
-
-    max_iteration : Optional[int]
-        Maximum iteration -> stopping criterion for the algorithm.
-        Default is 5 iterations.
-
-    eps : Optional[float]
-        Relative accuracy (with respect to `1.`) for the eigenvalues (stopping
-        criterion). Default is 1e-3.
+    batch_number : int
+        Number of batches into which the eigenvalue estimation gets subdivided
+        into. Only after completing one batch the early stopping criterion based
+        on `min_lh_eval` is checked for.
 
     tol : Optional[float]
         Tolerance on the eigenvalue calculation. Zero indicates machine precision.
         Default is 0.
 
     verbose : Optional[bool]
+        FIXME
         Annoy me with what you are doing. Or don't.
         Default is True.
-
-    data : Optional[Field]
-        Required to evaluate evidence contributions deriving from
-        parameter-independent likelihood terms that might have been ignored
-        during minimization. Default is None.
-
 
     Returns
     ----------
@@ -159,6 +175,7 @@ def estimate_evidence_lower_bound(samples, n_eigenvalues, hamiltonian,
 
     Notes
     -----
+    FIXME
     **IMPORTANT**: The provided estimate is missing the constant term :math:`-\\frac1 2 \\log \\det |2 \\pi N|`,
     where :math:`N` is the noise covariance matrix. This term is not considered in (most of) the NIFTy
     implementations of the energy operators, since it is constant throughout minimization. To obtain the actual ELBO
@@ -181,37 +198,11 @@ def estimate_evidence_lower_bound(samples, n_eigenvalues, hamiltonian,
         raise TypeError("samples attribute should be of type ResidualSampleList.")
 
     metric = hamiltonian(Linearization.make_var(samples._m, want_metric=True)).metric
-    metric = SandwichOperator.make(_DomRemover(metric.domain).adjoint, metric)
     metric_size = metric.domain.size
-    M = ssl.LinearOperator(
-            shape = 2 * (metric_size,),
-            matvec = lambda x: metric(makeField(metric.domain, x)).val)
-
-    if n_eigenvalues > metric_size:
-        raise ValueError("Number of requested eigenvalues exeeds size of matrix!")
-    exact = metric_size == n_eigenvalues
-    M = _explicify(M) if exact else M
-
+    eigenvalues, _ = _eigsh(metric, n_eigenvalues, min_lh_eval = min_lh_eval,
+                            batch_number = batch_number, tol = tol, verbose = verbose)
     if verbose:
-        logger.info(f"Number of eigenvalues to compute: {n_eigenvalues}")
-    eigenvalues, eigenvectors = _return_eigenspace(M, n_eigenvalues, tol)
-
-    eigenvalue_error = abs(1.0 - eigenvalues[-1]) if not exact else 0.
-    count = 1
-    while (eigenvalue_error > eps) and (count < max_iteration):
-        projector = _Projector(eigenvectors)
-        projected_metric = projector @ M @ projector.T
-        n_eigenvalues -= n_eigenvalues // 4 + fudge_factor  # FIXME: Not sure if it makes sense. Open to suggestions
-
-        if verbose:
-            logger.info(f"Number of additional eigenvalues being computed: {n_eigenvalues}")
-        eigvals, eigvecs = _return_eigenspace(projected_metric, n_eigenvalues, tol)
-        eigenvalues = np.concatenate((eigenvalues, eigvals))
-        eigenvectors = np.vstack((eigenvectors, eigvecs))
-        eigenvalue_error = abs(1.0 - eigenvalues[-1])
-        count += 1
-
-    if verbose:
+        # FIXME
         logger.info(f"{eigenvalues.size} largest eigenvalues (out of {metric_size})\n{eigenvalues}")
 
     # Calculate the \Tr \log term
