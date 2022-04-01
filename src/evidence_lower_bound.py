@@ -70,7 +70,7 @@ def _explicify(M):
         m.append(M.matvec(v))
     return np.vstack(m).T
 
-def estimate_evidence_lower_bound(samples, n_eigenvalues, hamiltonian, constants=[], invariants=None,
+def estimate_evidence_lower_bound(samples, n_eigenvalues, hamiltonian,
                                   fudge_factor=0, max_iteration=5, eps=1e-3, tol=0., verbose=True, data=None):
     """Provides an estimate for the Evidence Lower Bound (ELBO).
 
@@ -107,7 +107,7 @@ def estimate_evidence_lower_bound(samples, n_eigenvalues, hamiltonian, constants
     Parameters
     ----------
 
-    samples : SampleListBase
+    samples : ResidualSampleList
         Collection of samples from the posterior distribution.
 
     n_eigenvalues : int
@@ -180,9 +180,7 @@ def estimate_evidence_lower_bound(samples, n_eigenvalues, hamiltonian, constants
     if not isinstance(samples, ResidualSampleList):
         raise TypeError("samples attribute should be of type ResidualSampleList.")
 
-    lin = Linearization.make_var(samples._m, want_metric=True)
-    metric = hamiltonian(lin).metric
-
+    metric = hamiltonian(Linearization.make_var(samples._m, want_metric=True)).metric
     metric = SandwichOperator.make(_DomRemover(metric.domain).adjoint, metric)
     metric_size = metric.domain.size
     M = ssl.LinearOperator(
@@ -190,7 +188,7 @@ def estimate_evidence_lower_bound(samples, n_eigenvalues, hamiltonian, constants
             matvec = lambda x: metric(makeField(metric.domain, x)).val)
 
     if n_eigenvalues > metric_size:
-        raise ValueError("Number of requested eigenvalues exeeds ")
+        raise ValueError("Number of requested eigenvalues exeeds size of matrix!")
     exact = metric_size == n_eigenvalues
     M = _explicify(M) if exact else M
 
@@ -216,17 +214,12 @@ def estimate_evidence_lower_bound(samples, n_eigenvalues, hamiltonian, constants
     if verbose:
         logger.info(f"{eigenvalues.size} largest eigenvalues (out of {metric_size})\n{eigenvalues}")
 
-    # Calculate the \Tr term and \Tr \log terms
-    tr_identity = metric_size
-    tr_log_diagonal_lat_cov = 0.
-
-    for ev in eigenvalues:
-        if abs(np.log(ev)) > eps:
-            tr_log_diagonal_lat_cov -= np.log(ev)
+    # Calculate the \Tr \log term
+    log_eigenvalues = np.log(eigenvalues)
+    tr_log_diagonal_lat_cov = - np.sum(log_eigenvalues)
 
     # Asses maximal error: propagate the error on the eigenvalues
-    unexplored_dimensions = metric_size - n_eigenvalues
-    tr_log_diagonal_lat_cov_error = unexplored_dimensions * np.log(min(eigenvalues))
+    tr_log_diagonal_lat_cov_error = (metric_size - log_eigenvalues.size) * np.min(log_eigenvalues)
 
     hamiltonian_mean, hamiltonian_var = samples.sample_stat(hamiltonian)
     hamiltonian_mean_std = np.sqrt(hamiltonian_var.val / samples.n_samples)  # std of the estimate for the mean
@@ -251,8 +244,7 @@ def estimate_evidence_lower_bound(samples, n_eigenvalues, hamiltonian, constants
 
     # TODO: Implement these checks for all NIFTy-supported likelihoods
 
-    hamiltonian_mean = samples.sample_stat(hamiltonian)[0]
-    elbo_mean = - hamiltonian_mean + 0.5 * tr_identity + 0.5 * tr_log_diagonal_lat_cov - h0
+    elbo_mean = - hamiltonian_mean + 0.5 * metric_size + 0.5 * tr_log_diagonal_lat_cov - h0
     elbo_var_upper = abs(hamiltonian_mean_std + 0.5 * tr_log_diagonal_lat_cov_error)
     elbo_var_lower = abs(- hamiltonian_mean_std + 0.5 * tr_log_diagonal_lat_cov_error)
 
