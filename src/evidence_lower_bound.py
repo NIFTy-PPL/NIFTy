@@ -208,13 +208,13 @@ def estimate_evidence_lower_bound(hamiltonian, samples, n_eigenvalues,
 
     # Calculate the \Tr \log term upper bound
     log_eigenvalues = np.log(eigenvalues)
-    tr_log_lat_cov = - 0.5 * np.sum(log_eigenvalues)
+    tr_log_lat_cov = - 0.5 * np.sum(log_eigenvalues) 
     # And its lower bound
     tr_log_lat_cov_lower = 0.5 * (metric_size - log_eigenvalues.size) * np.min(log_eigenvalues)
-    tr_log_lat_cov = Field.scalar(tr_log_lat_cov)
     tr_log_lat_cov_lower = Field.scalar(tr_log_lat_cov_lower)
 
-    elbo_samples = SampleList(list([h + tr_log_lat_cov for h in samples.iterator(hamiltonian)]))
+    elbo = Field.scalar(tr_log_lat_cov + 0.5 * metric_size)
+    elbo_samples = SampleList(list([-h + elbo for h in samples.iterator(hamiltonian)]))
     
     #FIXME
     stats = {'lower_error': tr_log_lat_cov_lower}
