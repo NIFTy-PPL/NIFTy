@@ -163,12 +163,12 @@ def main():
     n_iterations = 6
     n_samples = lambda iiter: 10 if iiter < 5 else 20
     latent_mean_1 = ift.optimize_kl(likelihood_energy_1, n_iterations, n_samples,
-                                minimizer, ic_sampling, minimizer_sampling,
-                                plottable_operators={"signal": (signal_1, dict(vmin=0, vmax=1)),
-                                                     "power spectrum": pspec_1},
-                                ground_truth_position=mock_position,
-                                output_directory="getting_started_model_comparison_results/model_1",
-                                overwrite=True, comm=comm, inspect_callback=callback)
+                                    minimizer, ic_sampling, minimizer_sampling,
+                                    plottable_operators={"signal": (signal_1, dict(vmin=0, vmax=1)),
+                                                         "power spectrum": pspec_1},
+                                    ground_truth_position=mock_position,
+                                    output_directory="getting_started_model_comparison_results/model_1",
+                                    overwrite=True, comm=comm, inspect_callback=callback)
 
     if True:
         # Load result from disk. May be useful for long inference runs, where
@@ -225,8 +225,10 @@ def main():
         print("Saved results as '{}'.".format(filename_res))
         # Proof of concept of the evidence lower bound function
         # FIXME: Make it MPI-compatible (SampleList inside if master block)
-        evidence_1, _ = ift.estimate_evidence_lower_bound(ift.StandardHamiltonian(likelihood_energy_1), samples_1, 100,  min_lh_eval=1e-3)
-        evidence_2, _ = ift.estimate_evidence_lower_bound(ift.StandardHamiltonian(likelihood_energy_2), samples_2, 100, min_lh_eval=1e-3)
+        evidence_1, _ = ift.estimate_evidence_lower_bound(ift.StandardHamiltonian(likelihood_energy_1), samples_1, 100,
+                                                          min_lh_eval=1e-3)
+        evidence_2, _ = ift.estimate_evidence_lower_bound(ift.StandardHamiltonian(likelihood_energy_2), samples_2, 100,
+                                                          min_lh_eval=1e-3)
 
         log_elbo_difference = evidence_1.average().val - evidence_2.average().val
         s = f"\nModel 1 is favored over model 2 by a factor of " + str(np.exp(

@@ -22,7 +22,7 @@ pmp = pytest.mark.parametrize
 from nifty8.operator_spectrum import _DomRemover
 
 
-def evaluator_2d(operator):
+def _explicify(operator):
     tmp = _DomRemover(operator.domain)
     operator = operator @ tmp.adjoint
     tmp = _DomRemover(operator.target)
@@ -91,14 +91,14 @@ def test_estimate_evidence_lower_bound():
 
     linear_response_on_signal = linear_response @ (intercept + slope)  # In general not a linear operator
 
-    R = evaluator_2d(linear_response_on_signal)
+    R = _explicify(linear_response_on_signal)
     d = ift.makeField(data_space, y)
     noise_level = 0.8
     N = ift.makeOp(ift.makeField(data_space, noise_level ** 2), sampling_dtype=float)
     noise = N.draw_sample()
     data = d + noise
 
-    N_inv = evaluator_2d(N.inverse)
+    N_inv = _explicify(N.inverse)
 
     S = np.identity(2)
     S_inv = np.identity(2)
@@ -137,7 +137,4 @@ def test_estimate_evidence_lower_bound():
 
     # Estimate the ELBO
     elbo, stats = ift.estimate_evidence_lower_bound(ift.StandardHamiltonian(lh=likelihood_energy), samples, 2)
-    elbo_mean, elbo_var = elbo.sample_stat()
-    elbo_up = elbo_mean + elbo_var.sqrt()
-    elbo_lw = elbo_up - elbo_var.sqrt() - stats["lower_error"]
-    assert (elbo_lw.val <= nifty_adjusted_evidence <= elbo_up.val)
+    assert (stats['elbo_lw'].val <= nifty_adjusted_evidence <= stats['elbo_up'].val)
