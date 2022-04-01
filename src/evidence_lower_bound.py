@@ -18,10 +18,8 @@ import scipy.sparse.linalg as ssl
 
 from .linearization import Linearization
 from .logger import logger
-from .minimization.kl_energies import SampledKLEnergyClass
-from .minimization.sample_list import SampleListBase
+from .minimization.sample_list import ResidualSampleList
 from .operator_spectrum import _DomRemover
-from .operators.linear_operator import LinearOperator
 from .operators.sandwich_operator import SandwichOperator
 from .sugar import makeField
 
@@ -176,13 +174,10 @@ def estimate_evidence_lower_bound(samples, n_eigenvalues, hamiltonian, constants
     """
 
     # TODO: Implement checks on the input parameters
-    if not isinstance(samples, SampleListBase):
-        raise TypeError("samples attribute should be of type SampleListBase.")
+    if not isinstance(samples, ResidualSampleList):
+        raise TypeError("samples attribute should be of type ResidualSampleList.")
 
-    KL = SampledKLEnergyClass(samples, hamiltonian, constants, invariants, False)  # FIXME: Check parameters of SKLEC
-    # metric = KL.metric
-    mean = KL.position
-    lin = Linearization.make_var(mean, want_metric=True)
+    lin = Linearization.make_var(samples._m, want_metric=True)
     metric = hamiltonian(lin).metric
 
     Ar = SandwichOperator.make(_DomRemover(metric.domain).adjoint, metric)
