@@ -89,7 +89,7 @@ def _eigsh(metric, n_eigenvalues, min_lh_eval = 1E-3, batch_number = 10,
             eigvals, eigvecs = ssl.eigsh(Mproj, k=batch, tol=tol,
                                         return_eigenvectors=True, which='LM')
             eigenvalues = eigvals if eigenvalues is None else np.concatenate((eigenvalues, eigvals))
-            eigenvectors = eigvecs if eigenvectors is None else np.vstack((eigenvectors, eigvecs))
+            eigenvectors = eigvecs if eigenvectors is None else np.hstack((eigenvectors, eigvecs))
 
             if abs(1.0 - np.min(eigenvalues)) < min_lh_eval:
                 break
@@ -210,20 +210,18 @@ def estimate_evidence_lower_bound(hamiltonian, samples, n_eigenvalues,
     log_eigenvalues = np.log(eigenvalues)
     tr_log_lat_cov = - 0.5 * np.sum(log_eigenvalues)
     # And its lower bound
-    tr_log_lat_cov_lower = - 0.5 * (metric_size - log_eigenvalues.size) * np.min(log_eigenvalues)
-    tr_log_lat_cov_lower -= tr_log_lat_cov
+    tr_log_lat_cov_lower = 0.5 * (metric_size - log_eigenvalues.size) * np.min(log_eigenvalues)
     tr_log_lat_cov = Field.scalar(tr_log_lat_cov)
     tr_log_lat_cov_lower = Field.scalar(tr_log_lat_cov_lower)
 
-    hamiltonian_samples = tuple([h for h in samples.iterator(hamiltonian)])
-    elbo_samples_upper = SampleList(list([hamiltonian_samples + tr_log_lat_cov]))
-    elbo_samples_lower = SampleList(list([hamiltonian_samples + tr_log_lat_cov_lower]))
-
-    stats = {'upper':elbo_samples_upper, 'lower':elbo_samples_lower}
-
+    elbo_samples = SampleList(list([h + tr_log_lat_cov for h in samples.iterator(hamiltonian)]))
+    
+    #FIXME
+    stats = {'lower_error': tr_log_lat_cov_lower}
     if verbose:
         #FIXME
         s = (f"\nELBO decomposition (in log units)"
             )
         logger.info(s)
-    return stats
+
+    return elbo_samples, stats
