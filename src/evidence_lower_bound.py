@@ -18,10 +18,11 @@ import scipy.sparse.linalg as ssl
 
 from .linearization import Linearization
 from .logger import logger
-from .minimization.sample_list import ResidualSampleList
+from .minimization.sample_list import ResidualSampleList, SampleList
 from .operator_spectrum import _DomRemover
 from .operators.sandwich_operator import SandwichOperator
 from .sugar import makeField
+from .field import Field
 
 
 class _Projector(ssl.LinearOperator):
@@ -205,33 +206,24 @@ def estimate_evidence_lower_bound(hamiltonian, samples, n_eigenvalues,
         # FIXME
         logger.info(f"{eigenvalues.size} largest eigenvalues (out of {metric_size})\n{eigenvalues}")
 
-    # Calculate the \Tr \log term
+    # Calculate the \Tr \log term upper bound
     log_eigenvalues = np.log(eigenvalues)
-    tr_log_diagonal_lat_cov = - np.sum(log_eigenvalues)
+    tr_log_lat_cov = - 0.5 * np.sum(log_eigenvalues)
+    # And its lower bound
+    tr_log_lat_cov_lower = - 0.5 * (metric_size - log_eigenvalues.size) * np.min(log_eigenvalues)
+    tr_log_lat_cov_lower -= tr_log_lat_cov
+    tr_log_lat_cov = Field.scalar(tr_log_lat_cov)
+    tr_log_lat_cov_lower = Field.scalar(tr_log_lat_cov_lower)
 
-    # Asses maximal error: propagate the error on the eigenvalues
-    tr_log_diagonal_lat_cov_error = (metric_size - log_eigenvalues.size) * np.min(log_eigenvalues)
+    hamiltonian_samples = tuple([h for h in samples.iterator(hamiltonian)])
+    elbo_samples_upper = SampleList(list([hamiltonian_samples + tr_log_lat_cov]))
+    elbo_samples_lower = SampleList(list([hamiltonian_samples + tr_log_lat_cov_lower]))
 
-    hamiltonian_mean, hamiltonian_var = samples.sample_stat(hamiltonian)
-    hamiltonian_mean_std = np.sqrt(hamiltonian_var.val / samples.n_samples)  # std of the estimate for the mean
-
-    elbo_mean = - hamiltonian_mean + 0.5 * metric_size + 0.5 * tr_log_diagonal_lat_cov
-    elbo_var_upper = abs(hamiltonian_mean_std + 0.5 * tr_log_diagonal_lat_cov_error)
-    elbo_var_lower = abs(- hamiltonian_mean_std + 0.5 * tr_log_diagonal_lat_cov_error)
-
-    stats = {"estimate": elbo_mean, "upper": elbo_mean + elbo_var_upper, "lower": elbo_mean - elbo_var_lower,
-             "hamiltonian_mean": hamiltonian_mean, "hamiltonian_mean_std": hamiltonian_mean_std,
-             "tr_log_diag_lat_cov": tr_log_diagonal_lat_cov,
-             "tr_log_diagonal_lat_cov_error": tr_log_diagonal_lat_cov_error}
+    stats = {'upper':elbo_samples_upper, 'lower':elbo_samples_lower}
 
     if verbose:
+        #FIXME
         s = (f"\nELBO decomposition (in log units)"
-             f"\nELBO            : {stats['estimate'].val:.4e} (upper: {stats['upper'].val:.4e}, lower: "
-             f"{stats['lower'].val:.4e})"
-             f"\n<H>             : {stats['hamiltonian_mean'].val:.4e} ± {stats['hamiltonian_mean_std']:.5e}"
-             f"\nH_{{0, lh}}       : {stats['ln_likelihood_0']:.4e} "
-             f"\nTr \\log \\Lambda : {stats['tr_log_diag_lat_cov']:.5e} (+ "
-             f"{stats['tr_log_diagonal_lat_cov_error']:.5e})"
-             )
+            )
         logger.info(s)
     return stats
