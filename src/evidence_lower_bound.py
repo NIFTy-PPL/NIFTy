@@ -242,6 +242,7 @@ def estimate_evidence_lower_bound(hamiltonian, samples, n_eigenvalues, min_lh_ev
     elbo_lw = elbo_mean - elbo_var.sqrt() - stats["lower_error"]
     stats['elbo_mean'], stats['elbo_up'], stats['elbo_lw'] = elbo_mean, elbo_up, elbo_lw
     if verbose:
+        #FIXME
         s = (f"\nELBO decomposition (in log units)"
              f"\nELBO mean : {elbo_mean.val:.4e} (upper: {elbo_up.val:.4e}, lower: {elbo_lw.val:.4e})")
         logger.info(s)
