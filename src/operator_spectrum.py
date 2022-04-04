@@ -15,6 +15,7 @@
 
 import numpy as np
 import scipy.sparse.linalg as ssl
+import scipy.linalg as slg
 
 from .domain_tuple import DomainTuple
 from .domains.unstructured_domain import UnstructuredDomain
@@ -24,6 +25,18 @@ from .multi_field import MultiField
 from .operators.linear_operator import LinearOperator
 from .operators.sandwich_operator import SandwichOperator
 from .sugar import makeDomain, makeField
+
+
+def _explicify(operator):
+    tmp = _DomRemover(operator.domain)
+    operator = operator @ tmp.adjoint
+    tmp = _DomRemover(operator.target)
+    operator = tmp @ operator
+    identity = np.identity(operator.domain.size, dtype=np.float64)
+    res = []
+    for v in identity:
+        res.append(operator(makeField(operator.domain, v)).val)
+    return np.vstack(res).T
 
 
 class _DomRemover(LinearOperator):
@@ -93,8 +106,9 @@ def operator_spectrum(A, k, hermitian, which='LM', tol=0, return_eigenvectors=Fa
         Operator of which eigenvalues shall be computed.
     k : int
         The number of eigenvalues and eigenvectors desired. `k` must be
-        smaller than N-1. It is not possible to compute all eigenvectors of a
-        matrix.
+        smaller than N-1 (for the approximated solution).
+        If k is the number of dimensions of the endomorphism A, then the
+        complete eigensystem is computed.
     hermitian: bool
         Specifies whether A is hermitian or not.
     which : str, ['LM' | 'SM' | 'LR' | 'SR' | 'LI' | 'SI'], optional
@@ -148,6 +162,12 @@ def operator_spectrum(A, k, hermitian, which='LM', tol=0, return_eigenvectors=Fa
         matvec=lambda x: Ar(makeField(Ar.domain, x)).val)
     f = ssl.eigsh if hermitian else ssl.eigs
     eigs = f(M, k=k, tol=tol, return_eigenvectors=return_eigenvectors, which=which)
+
+    if A.domain.size == k:
+        # Compute exact eigensystem
+        eigenvalues, eigenvectors = slg.eigh(_explicify(A))
+        return eigenvalues, eigenvectors if return_eigenvectors else eigenvalues
+
     if return_eigenvectors:
         eigval, eigvec = eigs
         inds = np.argsort(eigval)

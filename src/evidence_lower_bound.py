@@ -232,6 +232,7 @@ def estimate_evidence_lower_bound(hamiltonian, samples, n_eigenvalues, min_lh_ev
 
     # Calculate the contribution coming from the posterior expectation value
     posterior_contribution = Field.scalar(tr_log_lat_cov + 0.5 * metric_size)
+    # FIXME: Include where possible h.calculate_constant_terms (?)
 
     # Return a list of ELBO samples and a summary of the ELBO statistics
     elbo_samples = SampleList(list([-h + posterior_contribution for h in samples.iterator(hamiltonian)]))
@@ -242,7 +243,6 @@ def estimate_evidence_lower_bound(hamiltonian, samples, n_eigenvalues, min_lh_ev
     elbo_lw = elbo_mean - elbo_var.sqrt() - stats["lower_error"]
     stats['elbo_mean'], stats['elbo_up'], stats['elbo_lw'] = elbo_mean, elbo_up, elbo_lw
     if verbose:
-        #FIXME
         s = (f"\nELBO decomposition (in log units)"
              f"\nELBO mean : {elbo_mean.val:.4e} (upper: {elbo_up.val:.4e}, lower: {elbo_lw.val:.4e})")
         logger.info(s)
