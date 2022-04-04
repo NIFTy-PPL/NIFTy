@@ -165,6 +165,9 @@ def refine_conv_general(
     _fine_size: int = 2,
 ):
     n_dim = np.ndim(coarse_values)
+    if n_dim > len(CONV_DIMENSION_NAMES):
+        ve = f"convolution for {n_dim} dimensions not yet implemented"
+        raise ValueError(ve)
     dim_names = CONV_DIMENSION_NAMES[:n_dim]
     # Introduce an artificial channel dimension for the matrix product
     # TODO: allow different grid sizes for different axis
