@@ -2,7 +2,7 @@
 
 from functools import partial
 from string import ascii_uppercase
-from typing import Callable, Optional, Union
+from typing import Callable, Literal, Optional, Union
 
 from jax import vmap
 from jax import numpy as jnp
@@ -44,6 +44,7 @@ def layer_refinement_matrices(
     *,
     _coarse_size: int = 3,
     _fine_size: int = 2,
+    _fine_strategy: Literal["jump", "extend"] = "jump",
     _with_zeros: bool = False,
 ):
     cov_from_loc = _get_cov_from_loc(kernel, cov_from_loc)
@@ -62,7 +63,12 @@ def layer_refinement_matrices(
     gc = jnp.arange(-csz_half, csz_half + 1, dtype=float)
     gc = distances.reshape(n_dim, 1) * gc
     gc = jnp.stack(jnp.meshgrid(*gc, indexing="ij"), axis=-1)
-    gf = jnp.arange(fsz, dtype=float) / fsz - 0.5 + 0.5 / fsz
+    if _fine_strategy == "jump":
+        gf = jnp.arange(fsz, dtype=float) / fsz - 0.5 + 0.5 / fsz
+    elif _fine_strategy == "extend":
+        gf = jnp.arange(fsz, dtype=float) / 2 - 0.25 * (fsz - 1)
+    else:
+        raise ValueError(f"invalid `_fine_strategy`; got {_fine_strategy}")
     gf = distances.reshape(n_dim, 1) * gf
     gf = jnp.stack(jnp.meshgrid(*gf, indexing="ij"), axis=-1)
     # On the GPU a single `cov_from_loc` call is about twice as fast as three
@@ -112,6 +118,7 @@ def refinement_matrices(
     *,
     _coarse_size: int = 3,
     _fine_size: int = 2,
+    _fine_strategy: Literal["jump", "extend"] = "jump",
     **kwargs,
 ):
     cov_from_loc = _get_cov_from_loc(kernel, cov_from_loc)
@@ -129,12 +136,18 @@ def refinement_matrices(
     coord0 = coord0.reshape(-1, len(size0))
     cov_sqrt0 = jnp.linalg.cholesky(cov_from_loc(coord0, coord0))
 
-    dist_by_depth = distances / _fine_size**jnp.arange(0, depth).reshape(-1, 1)
+    if _fine_strategy == "jump":
+        dist_by_depth = distances / _fine_size**jnp.arange(0, depth).reshape(-1, 1)
+    elif _fine_strategy == "extend":
+        dist_by_depth = distances / 2**jnp.arange(0, depth).reshape(-1, 1)
+    else:
+        raise ValueError(f"invalid `_fine_strategy`; got {_fine_strategy}")
     olaf = partial(
         layer_refinement_matrices,
         cov_from_loc=cov_from_loc,
         _coarse_size=_coarse_size,
         _fine_size=_fine_size,
+        _fine_strategy=_fine_strategy,
         **kwargs
     )
     opt_lin_filter, kernel_sqrt = vmap(olaf, in_axes=0,

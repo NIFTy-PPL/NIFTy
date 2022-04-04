@@ -87,6 +87,32 @@ def test_refinement_1d(seed, dist, kernel=kernel):
 
 
 @pmp("dist", (60., 1e+3, (80., 80.), (40., 90.), (1e+2, 1e+3, 1e+4)))
+def test_refinement_fine_strategy_basic_consistency(dist, kernel=kernel):
+    olf_j, ks_j = refine.layer_refinement_matrices(
+        dist, kernel=kernel, _fine_size=2, _fine_strategy="jump"
+    )
+    olf_e, ks_e = refine.layer_refinement_matrices(
+        dist, kernel=kernel, _fine_size=2, _fine_strategy="extend"
+    )
+
+    assert_allclose(olf_j, olf_e, rtol=1e-13, atol=0.)
+    assert_allclose(ks_j, ks_e, rtol=1e-13, atol=0.)
+
+    size0 = (12, ) * len(dist) if isinstance(dist, tuple) else (12, )
+    depth = 2
+    olfs_j, (csq0_j, kss_j) = refine.refinement_matrices(
+        size0, depth, dist, kernel=kernel, _fine_strategy="jump"
+    )
+    olfs_e, (csq0_e, kss_e) = refine.refinement_matrices(
+        size0, depth, dist, kernel=kernel, _fine_strategy="extend"
+    )
+
+    assert_allclose(olfs_j, olfs_e, rtol=1e-13, atol=0.)
+    assert_allclose(kss_j, kss_e, rtol=1e-13, atol=0.)
+    assert_allclose(csq0_j, csq0_e, rtol=1e-13, atol=0.)
+
+
+@pmp("dist", (60., 1e+3, (80., 80.), (40., 90.), (1e+2, 1e+3, 1e+4)))
 def test_refinement_covariance(dist, kernel=kernel):
     distances0 = np.atleast_1d(dist)
     cf = partial(
