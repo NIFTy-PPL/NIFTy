@@ -1,8 +1,10 @@
 #!/usr/bin/env python3
 
 from functools import partial
+from math import ceil
 from string import ascii_uppercase
 from typing import Callable, Literal, Optional, Union
+from warnings import warn
 
 from jax import vmap
 from jax import numpy as jnp
@@ -137,7 +139,8 @@ def refinement_matrices(
     cov_sqrt0 = jnp.linalg.cholesky(cov_from_loc(coord0, coord0))
 
     if _fine_strategy == "jump":
-        dist_by_depth = distances / _fine_size**jnp.arange(0, depth).reshape(-1, 1)
+        dist_by_depth = distances / _fine_size**jnp.arange(0, depth
+                                                          ).reshape(-1, 1)
     elif _fine_strategy == "extend":
         dist_by_depth = distances / 2**jnp.arange(0, depth).reshape(-1, 1)
     else:
@@ -163,6 +166,7 @@ def refine_conv_general(
     precision=None,
     _coarse_size: int = 3,
     _fine_size: int = 2,
+    _fine_strategy: Literal["jump", "extend"] = "jump",
 ):
     n_dim = np.ndim(coarse_values)
     if n_dim > len(CONV_DIMENSION_NAMES):
@@ -181,9 +185,35 @@ def refine_conv_general(
     fine_kernel_sqrt = fine_kernel_sqrt.reshape((fsz**n_dim, ) * 2)
     excitations = excitations.reshape((-1, fsz**n_dim))
 
+    if _fine_strategy == "jump":
+        window_strides = (1, ) * n_dim
+        fine_init_shape = tuple(n - (csz - 1)
+                                for n in coarse_values.shape) + (fsz**n_dim, )
+        fine_final_shape = tuple(
+            fsz * (n - (csz - 1)) for n in coarse_values.shape
+        )
+        convolution_slices = list(range(csz))
+    elif _fine_strategy == "extend":
+        window_strides = (fsz // 2, ) * n_dim
+        fine_init_shape = tuple(
+            ceil((n - (csz - 1)) / (fsz // 2)) for n in coarse_values.shape
+        ) + (fsz**n_dim, )
+        fine_final_shape = tuple(
+            fsz * ceil((n - (csz - 1)) / (fsz // 2))
+            for n in coarse_values.shape
+        )
+        convolution_slices = list(range(0, csz * fsz // 2, fsz // 2))
+        warn("this is completely untested; expect bugs!!!", UserWarning)  # TODO
+
+        if fsz // 2 > csz:
+            ve = "extrapolation is not allowed (use `fine_size / 2 <= coarse_size`)"
+            raise ValueError(ve)
+    else:
+        raise ValueError(f"invalid `_fine_strategy`; got {_fine_strategy}")
+
     conv = partial(
         conv_general_dilated,
-        window_strides=(1, ) * n_dim,
+        window_strides=window_strides,
         padding="valid",
         # channel-last layout is most efficient for vision models (at least in
         # PyTorch)
@@ -192,16 +222,14 @@ def refine_conv_general(
         ),
         precision=precision,
     )
-    fine = jnp.zeros(
-        tuple(n - (csz - 1) for n in coarse_values.shape) + (fsz**n_dim, )
-    )
+    fine = jnp.zeros(fine_init_shape)
     c_shp_n1 = coarse_values.shape[-1]
     c_slc_shp = (1, ) + coarse_values.shape[:-1] + (-1, csz)
-    for i in range(csz):
-        fine = fine.at[..., i::csz, :].set(
+    for i_f, i_c in enumerate(convolution_slices):
+        fine = fine.at[..., i_f::csz, :].set(
             conv(
-                coarse_values[..., i:c_shp_n1 -
-                              (c_shp_n1 - i) % csz].reshape(c_slc_shp), olf
+                coarse_values[..., i_c:c_shp_n1 -
+                              (c_shp_n1 - i_c) % csz].reshape(c_slc_shp), olf
             )[0]
         )
 
@@ -214,9 +242,7 @@ def refine_conv_general(
     ax_t = [e for els in zip(ax_label[:n_dim], ax_label[n_dim:]) for e in els]
     fine = jnp.transpose(fine, axes=ax_t)
 
-    return fine.reshape(
-        tuple(fsz * (n - (csz - 1)) for n in coarse_values.shape)
-    )
+    return fine.reshape(fine_final_shape)
 
 
 def refine_conv(
@@ -285,6 +311,7 @@ def get_refinement_shapewithdtype(
     *,
     _coarse_size: int = 3,
     _fine_size: int = 2,
+    _fine_strategy: Literal["jump", "extend"] = "jump",
 ):
     from .forest_util import ShapeWithDtype
 
@@ -297,10 +324,28 @@ def get_refinement_shapewithdtype(
     n_dim = len(size0)
     exc_shp = [size0]
     if n_layers > 0:
-        exc_shp += [tuple(el - (csz - 1) for el in exc_shp[0]) + (fsz**n_dim, )]
+        if _fine_strategy == "jump":
+            exc_shp += [
+                tuple(el - (csz - 1) for el in exc_shp[0]) + (fsz**n_dim, )
+            ]
+        elif _fine_strategy == "extend":
+            exc_shp += [
+                tuple(ceil((el - (csz - 1)) / (fsz // 2))
+                      for el in exc_shp[0]) + (fsz**n_dim, )
+            ]
+        else:
+            raise ValueError(f"invalid `_fine_strategy`; got {_fine_strategy}")
     for depth in range(1, n_layers):
-        exc_lvl = tuple(fsz * el - (csz - 1)
-                        for el in exc_shp[-1][:-1]) + (fsz**n_dim, )
+        if _fine_strategy == "jump":
+            exc_lvl = tuple(fsz * el - (csz - 1)
+                            for el in exc_shp[-1][:-1]) + (fsz**n_dim, )
+        elif _fine_strategy == "extend":
+            exc_lvl = tuple(
+                ceil((fsz * el - (csz - 1)) / (fsz // 2))
+                for el in exc_shp[-1][:-1]
+            ) + (fsz**n_dim, )
+        else:
+            raise AssertionError()
         if any(el <= 0 for el in exc_lvl):
             ve = (
                 f"`size0` ({size0}) with `n_layers` ({n_layers}) yield an"
@@ -321,23 +366,20 @@ def get_fixed_power_correlated_field(
     dtype=None,
     *,
     precision=None,
-    _coarse_size: int = 3,
-    _fine_size: int = 2,
+    **kwargs,
 ):
     cf = partial(
         correlated_field,
         distances=distances0,
         kernel=kernel,
         precision=precision,
-        _coarse_size=_coarse_size,
-        _fine_size=_fine_size,
+        **kwargs,
     )
     exc_swd = get_refinement_shapewithdtype(
         size0,
         n_layers=n_layers,
         dtype=dtype,
-        _coarse_size=_coarse_size,
-        _fine_size=_fine_size
+        **kwargs,
     )
     return cf, exc_swd
 

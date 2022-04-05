@@ -102,7 +102,7 @@ if interactive:
 # %%
 # Quick demo of the correlated field scheme that is to be used in the following
 cf, exc_shp = refine.get_fixed_power_correlated_field(
-    size0=(12, 12), distances0=(200., 200.), n_layers=5, kernel=kernel
+    size0=(12, 12), distances0=(200., 200.), depth=5, kernel=kernel
 )
 
 if interactive:
@@ -252,7 +252,7 @@ distances = jnp.array([6e+2, 6e+2])
 n_std = 0.5
 
 # Manually toggle the following values
-n_layers = 4
+depth = 4
 coarse_sz = 5
 with_zeros = True
 size0 = (12, 12)
@@ -264,11 +264,10 @@ for i in range(n_plots):
     key, _ = random.split(key, 2)
 
     xi_truth_swd = refine.get_refinement_shapewithdtype(
-        size0, n_layers, _coarse_size=coarse_sz
+        size0, depth, _coarse_size=coarse_sz
     )
     xi = jft.random_like(key, xi_truth_swd)
 
-    size0, depth = xi[0].shape, len(xi)
     os, (cov_sqrt0, ks) = refine.refinement_matrices(
         size0,
         depth,
@@ -288,14 +287,14 @@ fig.tight_layout()
 plt.show()
 
 # %%
-n_layers = 4
+depth = 4
 size0 = (12, 12)
-xi_truth_swd = refine.get_refinement_shapewithdtype(size0, n_layers)
+xi_truth_swd = refine.get_refinement_shapewithdtype(size0, depth)
 xi = jft.random_like(random.PRNGKey(42), xi_truth_swd)
 
 os, (cov_sqrt0, ks) = refine.refinement_matrices(
     size0,
-    n_layers,
+    depth,
     distances=distances,
     kernel=kernel,
     _with_zeros=True,
@@ -308,7 +307,7 @@ for x, olf, k in zip(xi[1:], os, ks):
 fine_w0 = fine.copy()
 
 os, (cov_sqrt0, ks) = refine.refinement_matrices(
-    size0, n_layers, distances=distances, kernel=kernel
+    size0, depth, distances=distances, kernel=kernel
 )
 
 fine = (cov_sqrt0 @ xi[0].ravel()).reshape(xi[0].shape)
@@ -336,9 +335,9 @@ plt.show()
 distances = jnp.array([5e+2, 3e+2])
 n_std = 0.5
 
-n_layers = 3
+depth = 3
 size0 = (12, 12)
-xi_swd = refine.get_refinement_shapewithdtype(size0, n_layers)
+xi_swd = refine.get_refinement_shapewithdtype(size0, depth)
 
 ds = []
 for seed in range(100):
@@ -354,7 +353,7 @@ plt.show()
 key = random.PRNGKey(45)
 key, *key_splits = random.split(key, 4)
 
-xi_truth_swd = refine.get_refinement_shapewithdtype(size0, n_layers)
+xi_truth_swd = refine.get_refinement_shapewithdtype(size0, depth)
 xi_truth = jft.random_like(key_splits.pop(), xi_truth_swd)
 d = refine.correlated_field(xi_truth, distances, kernel)
 d += n_std * random.normal(key_splits.pop(), shape=d.shape)
