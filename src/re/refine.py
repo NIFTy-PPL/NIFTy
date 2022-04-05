@@ -306,7 +306,7 @@ refine = refine_conv_general
 
 def get_refinement_shapewithdtype(
     size0: Union[int, tuple],
-    n_layers: int,
+    depth: int,
     dtype=None,
     *,
     _coarse_size: int = 3,
@@ -315,15 +315,15 @@ def get_refinement_shapewithdtype(
 ):
     from .forest_util import ShapeWithDtype
 
-    if n_layers < 0:
-        raise ValueError(f"invalid `n_layers`; got {n_layers!r}")
+    if depth < 0:
+        raise ValueError(f"invalid `depth`; got {depth!r}")
     csz = int(_coarse_size)  # coarse size
     fsz = int(_fine_size)  # fine size
 
     size0 = (size0, ) if isinstance(size0, int) else size0
     n_dim = len(size0)
     exc_shp = [size0]
-    if n_layers > 0:
+    if depth > 0:
         if _fine_strategy == "jump":
             exc_shp += [
                 tuple(el - (csz - 1) for el in exc_shp[0]) + (fsz**n_dim, )
@@ -335,7 +335,7 @@ def get_refinement_shapewithdtype(
             ]
         else:
             raise ValueError(f"invalid `_fine_strategy`; got {_fine_strategy}")
-    for depth in range(1, n_layers):
+    for lvl in range(1, depth):
         if _fine_strategy == "jump":
             exc_lvl = tuple(fsz * el - (csz - 1)
                             for el in exc_shp[-1][:-1]) + (fsz**n_dim, )
@@ -348,8 +348,8 @@ def get_refinement_shapewithdtype(
             raise AssertionError()
         if any(el <= 0 for el in exc_lvl):
             ve = (
-                f"`size0` ({size0}) with `n_layers` ({n_layers}) yield an"
-                f" invalid shape ({exc_lvl}) at depth {depth}"
+                f"`size0` ({size0}) with `depth` ({depth}) yield an"
+                f" invalid shape ({exc_lvl}) at level {lvl}"
             )
             raise ValueError(ve)
         exc_shp += [exc_lvl]
@@ -361,7 +361,7 @@ def get_refinement_shapewithdtype(
 def get_fixed_power_correlated_field(
     size0: Union[int, tuple],
     distances0,
-    n_layers: int,
+    depth: int,
     kernel: Callable,
     dtype=None,
     *,
@@ -377,7 +377,7 @@ def get_fixed_power_correlated_field(
     )
     exc_swd = get_refinement_shapewithdtype(
         size0,
-        n_layers=n_layers,
+        depth=depth,
         dtype=dtype,
         **kwargs,
     )
