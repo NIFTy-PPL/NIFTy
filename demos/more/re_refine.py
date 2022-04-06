@@ -102,7 +102,7 @@ if interactive:
 # %%
 # Quick demo of the correlated field scheme that is to be used in the following
 cf, exc_shp = refine.get_fixed_power_correlated_field(
-    size0=(12, 12), distances0=(200., 200.), depth=5, kernel=kernel
+    shape0=(12, 12), distances0=(200., 200.), depth=5, kernel=kernel
 )
 
 if interactive:
@@ -248,14 +248,14 @@ if interactive:
 # %%
 key = random.PRNGKey(45)
 
-distances = jnp.array([6e+2, 6e+2])
+distances0 = jnp.array([6e+2, 6e+2])
 n_std = 0.5
 
 # Manually toggle the following values
 depth = 4
 coarse_sz = 5
 with_zeros = True
-size0 = (12, 12)
+shape0 = (12, 12)
 
 n_plots = 9
 
@@ -264,14 +264,14 @@ for i in range(n_plots):
     key, _ = random.split(key, 2)
 
     xi_truth_swd = refine.get_refinement_shapewithdtype(
-        size0, depth, _coarse_size=coarse_sz
+        shape0, depth, _coarse_size=coarse_sz
     )
     xi = jft.random_like(key, xi_truth_swd)
 
     os, (cov_sqrt0, ks) = refine.refinement_matrices(
-        size0,
+        shape0,
         depth,
-        distances=distances,
+        distances0=distances0,
         kernel=kernel,
         _coarse_size=coarse_sz,
         _with_zeros=with_zeros,
@@ -288,14 +288,14 @@ plt.show()
 
 # %%
 depth = 4
-size0 = (12, 12)
-xi_truth_swd = refine.get_refinement_shapewithdtype(size0, depth)
+shape0 = (12, 12)
+xi_truth_swd = refine.get_refinement_shapewithdtype(shape0, depth)
 xi = jft.random_like(random.PRNGKey(42), xi_truth_swd)
 
 os, (cov_sqrt0, ks) = refine.refinement_matrices(
-    size0,
+    shape0,
     depth,
-    distances=distances,
+    distances0=distances0,
     kernel=kernel,
     _with_zeros=True,
 )
@@ -307,7 +307,7 @@ for x, olf, k in zip(xi[1:], os, ks):
 fine_w0 = fine.copy()
 
 os, (cov_sqrt0, ks) = refine.refinement_matrices(
-    size0, depth, distances=distances, kernel=kernel
+    shape0, depth, distances0=distances0, kernel=kernel
 )
 
 fine = (cov_sqrt0 @ xi[0].ravel()).reshape(xi[0].shape)
@@ -332,17 +332,17 @@ axs.flat[1].imshow(f.imag)
 plt.show()
 
 # %%
-distances = jnp.array([5e+2, 3e+2])
+distances0 = jnp.array([5e+2, 3e+2])
 n_std = 0.5
 
 depth = 3
-size0 = (12, 12)
-xi_swd = refine.get_refinement_shapewithdtype(size0, depth)
+shape0 = (12, 12)
+xi_swd = refine.get_refinement_shapewithdtype(shape0, depth)
 
 ds = []
 for seed in range(100):
     xi = jft.random_like(random.PRNGKey(seed), xi_swd)
-    ds += [refine.correlated_field(xi, distances, kernel).ravel()]
+    ds += [refine.correlated_field(xi, distances0, kernel).ravel()]
 ds = np.stack(ds, axis=1)
 
 plt.imshow(np.cov(ds))
@@ -353,13 +353,13 @@ plt.show()
 key = random.PRNGKey(45)
 key, *key_splits = random.split(key, 4)
 
-xi_truth_swd = refine.get_refinement_shapewithdtype(size0, depth)
+xi_truth_swd = refine.get_refinement_shapewithdtype(shape0, depth)
 xi_truth = jft.random_like(key_splits.pop(), xi_truth_swd)
-d = refine.correlated_field(xi_truth, distances, kernel)
+d = refine.correlated_field(xi_truth, distances0, kernel)
 d += n_std * random.normal(key_splits.pop(), shape=d.shape)
 
 
-def signal_response(xi, distances):
+def signal_response(xi, distances0):
     xi = jft.Field(xi.val.copy())
     # Un-standardize parameters
     xi.val["scale"] = jnp.exp(-0.5 + 0.2 * xi.val.pop("lat_scale"))
@@ -373,7 +373,7 @@ def signal_response(xi, distances):
     # xi.val["cutoff"] = jnp.exp(4.5 + 0.1 * xi.val.pop("lat_cutoff"))
     # kernel = lambda r: xi["scale"] * jnp.exp(-(r / xi["cutoff"])**2)
 
-    return refine.correlated_field(xi["excitations"], distances, kernel)
+    return refine.correlated_field(xi["excitations"], distances0, kernel)
 
 
 xi_swd = {
@@ -383,7 +383,7 @@ xi_swd = {
     "lat_dof": jft.ShapeWithDtype(())
 }
 xi = 1e-4 * jft.Field(jft.random_like(key_splits.pop(), xi_swd))
-ham = lambda x: jnp.linalg.norm(d - signal_response(x, distances), ord=2) / (
+ham = lambda x: jnp.linalg.norm(d - signal_response(x, distances0), ord=2) / (
     2 * n_std**2
 ) + 0.5 * jft.norm(x, ord=2, ravel=True)
 ham = jax.jit(ham)
@@ -391,22 +391,22 @@ ham = jax.jit(ham)
 if interactive and d.ndim == 1:
     plt.plot(d, label="Data")
     plt.plot(
-        refine.correlated_field(xi_truth, distances, kernel), label="Truth"
+        refine.correlated_field(xi_truth, distances0, kernel), label="Truth"
     )
-    plt.plot(signal_response(xi, distances), label="Start")
+    plt.plot(signal_response(xi, distances0), label="Start")
     plt.legend()
     plt.show()
 elif interactive and d.ndim == 2:
     fig, axs = plt.subplots(1, 3)
     axs.flat[0].imshow(d)
-    axs.flat[1].imshow(refine.correlated_field(xi_truth, distances, kernel))
-    axs.flat[2].imshow(signal_response(xi, distances))
+    axs.flat[1].imshow(refine.correlated_field(xi_truth, distances0, kernel))
+    axs.flat[2].imshow(signal_response(xi, distances0))
     plt.show()
 
 # %%
 fig, ax = plt.subplots(figsize=(8, 4))
 im = ax.imshow(
-    refine.correlated_field(xi_truth, distances, kernel).T, cmap="Blues"
+    refine.correlated_field(xi_truth, distances0, kernel).T, cmap="Blues"
 )
 # fig.colorbar(im)
 ax.set_frame_on(False)
@@ -436,18 +436,21 @@ if interactive:
     if d.ndim == 1:
         plt.plot(d, label="Data")
         plt.plot(
-            refine.correlated_field(xi_truth, distances, kernel), label="Truth"
+            refine.correlated_field(xi_truth, distances0, kernel),
+            label="Truth"
         )
-        plt.plot(signal_response(xi, distances), label="Start")
-        plt.plot(signal_response(opt_state.x, distances), label="Final")
+        plt.plot(signal_response(xi, distances0), label="Start")
+        plt.plot(signal_response(opt_state.x, distances0), label="Final")
         plt.legend()
         plt.show()
     elif d.ndim == 2:
         fig, axs = plt.subplots(1, 4)
         axs.flat[0].imshow(d)
-        axs.flat[1].imshow(refine.correlated_field(xi_truth, distances, kernel))
-        axs.flat[2].imshow(signal_response(xi, distances))
-        axs.flat[3].imshow(signal_response(opt_state.x, distances))
+        axs.flat[1].imshow(
+            refine.correlated_field(xi_truth, distances0, kernel)
+        )
+        axs.flat[2].imshow(signal_response(xi, distances0))
+        axs.flat[3].imshow(signal_response(opt_state.x, distances0))
         for ax in axs:
             ax.set_frame_on(False)
             ax.set_xticks([], [])
@@ -456,22 +459,22 @@ if interactive:
 
 # %%
 # JIFTy CF :: Shape        (262144,) (    10 loops) :: JAX 2.83e-02 :: NIFTy 3.93e-02
-# # # GRID REFINEMENT (size0 = 12) CPU: 8 cores 22 GB; GPU: A100 40 GB (refine_conv_general)
+# # # GRID REFINEMENT (shape0 = 12) CPU: 8 cores 22 GB; GPU: A100 40 GB (refine_conv_general)
 # GRID REFINEMENT :: CPU :: Shape        (262148,) (    20 loops) :: JAX w/ learnable 1.13e-02
 # GRID REFINEMENT :: CPU :: Shape        (262148,) (    50 loops) :: JAX w/o learnable 8.91e-03
 # GRID REFINEMENT :: GPU :: Shape        (262148,) (    50 loops) :: JAX w/ learnable 9.62e-03
 # GRID REFINEMENT :: GPU :: Shape        (262148,) (   100 loops) :: JAX w/o learnable 2.78e-03
-# # # GRID REFINEMENT (size0 = 12) CPU: 8 cores 22 GB; GPU: A100 40 GB (refine_vmap)
+# # # GRID REFINEMENT (shape0 = 12) CPU: 8 cores 22 GB; GPU: A100 40 GB (refine_vmap)
 # GRID REFINEMENT :: CPU :: Shape        (262148,) (    20 loops) :: JAX w/ learnable 1.09e-02
 # GRID REFINEMENT :: CPU :: Shape        (262148,) (    50 loops) :: JAX w/o learnable 8.08e-03
 # GRID REFINEMENT :: GPU :: Shape        (262148,) (    50 loops) :: JAX w/ learnable 8.95e-03
 # GRID REFINEMENT :: GPU :: Shape        (262148,) (   100 loops) :: JAX w/o learnable 2.21e-03
-# # # GRID REFINEMENT (size0 = 12) CPU: 8 cores 22 GB; GPU: A100 40 GB (refine_conv)
+# # # GRID REFINEMENT (shape0 = 12) CPU: 8 cores 22 GB; GPU: A100 40 GB (refine_conv)
 # GRID REFINEMENT :: CPU :: Shape        (262148,) (    50 loops) :: JAX w/ learnable 5.80e-03
 # GRID REFINEMENT :: CPU :: Shape        (262148,) (   100 loops) :: JAX w/o learnable 3.80e-03
 # GRID REFINEMENT :: GPU :: Shape        (262148,) (    10 loops) :: JAX w/ learnable 2.34e-02
 # GRID REFINEMENT :: GPU :: Shape        (262148,) (   200 loops) :: JAX w/o learnable 1.44e-03
-# # # GRID REFINEMENT (size0 = 12) CPU: 8 cores 22 GB; GPU: A100 40 GB (refine_loop)
+# # # GRID REFINEMENT (shape0 = 12) CPU: 8 cores 22 GB; GPU: A100 40 GB (refine_loop)
 # GRID REFINEMENT :: CPU :: Shape        (262148,) (    50 loops) :: JAX w/ learnable 6.19e-03
 # GRID REFINEMENT :: CPU :: Shape        (262148,) (    50 loops) :: JAX w/o learnable 4.55e-03
 # GRID REFINEMENT :: GPU :: Shape        (262148,) (    50 loops) :: JAX w/ learnable 8.23e-03
@@ -485,7 +488,7 @@ for backend in all_backends:
 
     corr = jax.jit(
         jax.value_and_grad(
-            lambda x: ((1. - signal_response(x, distances))**2).sum()
+            lambda x: ((1. - signal_response(x, distances0))**2).sum()
         ), **device_kw
     )
     x = xi
@@ -504,7 +507,7 @@ for backend in all_backends:
     corr = jax.jit(
         jax.value_and_grad(
             lambda x:
-            ((1. - refine.correlated_field(x, distances, kernel))**2).sum()
+            ((1. - refine.correlated_field(x, distances0, kernel))**2).sum()
         ), **device_kw
     )
     x = xi_truth
@@ -520,13 +523,13 @@ for backend in all_backends:
     )
 
 # %%
-coarse_values = refine.correlated_field(xi_truth, distances, kernel)
-olf, fine_kernel_sqrt = refine.layer_refinement_matrices(distances, kernel)
+coarse_values = refine.correlated_field(xi_truth, distances0, kernel)
+olf, fine_kernel_sqrt = refine.layer_refinement_matrices(distances0, kernel)
 
 cv = coarse_values
 exc = random.normal(
     key,
-    shape=tuple(n - 2 for n in coarse_values.shape) + (2, ) * len(distances)
+    shape=tuple(n - 2 for n in coarse_values.shape) + (2, ) * len(distances0)
 )
 ref = jax.jit(refine.refine)
 _ = ref(cv, exc, olf, fine_kernel_sqrt)
@@ -544,7 +547,7 @@ def fwd_diy(xi, opt_lin_filter, kernel_sqrt):
 
 x = jft.random_like(key, jft.Field(xi_truth_swd))
 olfs, kss = refine.refinement_matrices(
-    x.val[0].shape, len(x.val), distances, kernel
+    x.val[0].shape, len(x.val), distances0, kernel
 )
 corr = jax.jit(jax.value_and_grad(lambda x: fwd_diy(x, olfs, kss).sum()), )
 
@@ -553,20 +556,20 @@ timeit(lambda: corr(x)[0].block_until_ready())
 
 # %%
 rm = jax.jit(refine.layer_refinement_matrices, static_argnames=("kernel", ))
-_ = rm(distances, kernel)
-timeit(lambda: rm(distances, kernel)[0].block_until_ready())
+_ = rm(distances0, kernel)
+timeit(lambda: rm(distances0, kernel)[0].block_until_ready())
 
 # %%
 grm = jax.jit(
     refine.refinement_matrices, static_argnames=(
-        "size0",
+        "shape0",
         "depth",
         "kernel",
     )
 )
-_ = grm(x.val[0].shape, len(x.val), distances, kernel)
+_ = grm(x.val[0].shape, len(x.val), distances0, kernel)
 timeit(
-    lambda: grm(x.val[0].shape, len(x.val), distances, kernel)[0].
+    lambda: grm(x.val[0].shape, len(x.val), distances0, kernel)[0].
     block_until_ready()
 )
 
@@ -574,16 +577,16 @@ timeit(
 cv = coarse_values.copy()
 exc = random.normal(
     key,
-    shape=tuple(n - 2 for n in coarse_values.shape) + (2, ) * len(distances)
+    shape=tuple(n - 2 for n in coarse_values.shape) + (2, ) * len(distances0)
 )
-olf, ks = refine.layer_refinement_matrices(distances, kernel)
+olf, ks = refine.layer_refinement_matrices(distances0, kernel)
 ref = jax.jit(refine.refine, static_argnames=("kernel", ))
 _ = ref(cv, exc, olf, ks).block_until_ready()
 
 timeit(lambda: ref(cv, exc, olf, ks).block_until_ready())
 
 # %%
-olf, ks = refine.layer_refinement_matrices(distances[:1], kernel)
+olf, ks = refine.layer_refinement_matrices(distances0[:1], kernel)
 
 cv = coarse_values.ravel().copy()
 conv = jax.jit(

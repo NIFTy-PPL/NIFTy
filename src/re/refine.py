@@ -112,9 +112,9 @@ def layer_refinement_matrices(
 
 
 def refinement_matrices(
-    size0,
+    shape0,
     depth,
-    distances,
+    distances0,
     kernel: Optional[Callable] = None,
     cov_from_loc: Optional[Callable] = None,
     *,
@@ -125,24 +125,24 @@ def refinement_matrices(
 ):
     cov_from_loc = _get_cov_from_loc(kernel, cov_from_loc)
 
-    size0 = np.atleast_1d(size0)
-    distances = jnp.atleast_1d(distances)
-    if size0.shape != distances.shape:
+    shape0 = np.atleast_1d(shape0)
+    distances0 = jnp.atleast_1d(distances0)
+    if shape0.shape != distances0.shape:
         ve = (
-            f"shape of `size0` {size0.shape} is incompatible with"
-            f" shape of `distances` {distances.shape}"
+            f"shape of `shape0` {shape0.shape} is incompatible with"
+            f" shape of `distances0` {distances0.shape}"
         )
         raise ValueError(ve)
-    c0 = [d * jnp.arange(sz, dtype=float) for d, sz in zip(distances, size0)]
+    c0 = [d * jnp.arange(sz, dtype=float) for d, sz in zip(distances0, shape0)]
     coord0 = jnp.stack(jnp.meshgrid(*c0, indexing="ij"), axis=-1)
-    coord0 = coord0.reshape(-1, len(size0))
+    coord0 = coord0.reshape(-1, len(shape0))
     cov_sqrt0 = jnp.linalg.cholesky(cov_from_loc(coord0, coord0))
 
     if _fine_strategy == "jump":
-        dist_by_depth = distances / _fine_size**jnp.arange(0, depth
-                                                          ).reshape(-1, 1)
+        dist_by_depth = distances0 / _fine_size**jnp.arange(0, depth
+                                                           ).reshape(-1, 1)
     elif _fine_strategy == "extend":
-        dist_by_depth = distances / 2**jnp.arange(0, depth).reshape(-1, 1)
+        dist_by_depth = distances0 / 2**jnp.arange(0, depth).reshape(-1, 1)
     else:
         raise ValueError(f"invalid `_fine_strategy`; got {_fine_strategy}")
     olaf = partial(
@@ -305,7 +305,7 @@ refine = refine_conv_general
 
 
 def get_refinement_shapewithdtype(
-    size0: Union[int, tuple],
+    shape0: Union[int, tuple],
     depth: int,
     dtype=None,
     *,
@@ -320,9 +320,9 @@ def get_refinement_shapewithdtype(
     csz = int(_coarse_size)  # coarse size
     fsz = int(_fine_size)  # fine size
 
-    size0 = (size0, ) if isinstance(size0, int) else size0
-    n_dim = len(size0)
-    exc_shp = [size0]
+    shape0 = (shape0, ) if isinstance(shape0, int) else shape0
+    n_dim = len(shape0)
+    exc_shp = [shape0]
     if depth > 0:
         if _fine_strategy == "jump":
             exc_shp += [
@@ -348,7 +348,7 @@ def get_refinement_shapewithdtype(
             raise AssertionError()
         if any(el <= 0 for el in exc_lvl):
             ve = (
-                f"`size0` ({size0}) with `depth` ({depth}) yield an"
+                f"`shape0` ({shape0}) with `depth` ({depth}) yield an"
                 f" invalid shape ({exc_lvl}) at level {lvl}"
             )
             raise ValueError(ve)
@@ -359,7 +359,7 @@ def get_refinement_shapewithdtype(
 
 
 def get_fixed_power_correlated_field(
-    size0: Union[int, tuple],
+    shape0: Union[int, tuple],
     distances0,
     depth: int,
     kernel: Callable,
@@ -370,13 +370,13 @@ def get_fixed_power_correlated_field(
 ):
     cf = partial(
         correlated_field,
-        distances=distances0,
+        distances0=distances0,
         kernel=kernel,
         precision=precision,
         **kwargs,
     )
     exc_swd = get_refinement_shapewithdtype(
-        size0,
+        shape0,
         depth=depth,
         dtype=dtype,
         **kwargs,
@@ -384,12 +384,12 @@ def get_fixed_power_correlated_field(
     return cf, exc_swd
 
 
-def correlated_field(xi, distances, kernel, **kwargs):
+def correlated_field(xi, distances0, kernel, **kwargs):
     precision = kwargs.pop("precision", None)
 
-    size0, depth = xi[0].shape, len(xi) - 1
+    shape0, depth = xi[0].shape, len(xi) - 1
     os, (cov_sqrt0, ks) = refinement_matrices(
-        size0, depth, distances=distances, kernel=kernel, **kwargs
+        shape0, depth, distances0=distances0, kernel=kernel, **kwargs
     )
 
     fine = (cov_sqrt0 @ xi[0].ravel()).reshape(xi[0].shape)

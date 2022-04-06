@@ -98,13 +98,13 @@ def test_refinement_fine_strategy_basic_consistency(dist, kernel=kernel):
     assert_allclose(olf_j, olf_e, rtol=1e-13, atol=0.)
     assert_allclose(ks_j, ks_e, rtol=1e-13, atol=0.)
 
-    size0 = (12, ) * len(dist) if isinstance(dist, tuple) else (12, )
+    shape0 = (12, ) * len(dist) if isinstance(dist, tuple) else (12, )
     depth = 2
     olfs_j, (csq0_j, kss_j) = refine.refinement_matrices(
-        size0, depth, dist, kernel=kernel, _fine_strategy="jump"
+        shape0, depth, dist, kernel=kernel, _fine_strategy="jump"
     )
     olfs_e, (csq0_e, kss_e) = refine.refinement_matrices(
-        size0, depth, dist, kernel=kernel, _fine_strategy="extend"
+        shape0, depth, dist, kernel=kernel, _fine_strategy="extend"
     )
 
     assert_allclose(olfs_j, olfs_e, rtol=1e-13, atol=0.)
@@ -117,7 +117,7 @@ def test_refinement_covariance(dist, kernel=kernel):
     distances0 = np.atleast_1d(dist)
     cf = partial(
         refine.correlated_field,
-        distances=distances0,
+        distances0=distances0,
         kernel=kernel,
     )
     exc_shp = [
