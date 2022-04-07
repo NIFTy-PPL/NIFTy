@@ -1,7 +1,6 @@
 Contributing to NIFTy
 =====================
 
-
 Coding conventions
 ------------------
 
@@ -22,23 +21,6 @@ NIFTy8 and its mandatory dependencies can be installed via::
 
     sudo apt-get install git python3 python3-pip python3-dev
     pip3 install --user git+https://gitlab.mpcdf.mpg.de/ift/nifty.git@NIFTy_8
-
-Plotting support is added via::
-
-    sudo apt-get install python3-matplotlib
-
-The DUCC0 package is installed via::
-
-    pip3 install --user ducc0
-
-If this library is present, NIFTy will detect it automatically and prefer
-`ducc0.fft` over SciPy's FFT. The underlying code is actually the same, but
-DUCC's FFT is compiled with optimizations for the host CPU and can provide
-significantly faster transforms.
-
-MPI support is added via::
-
-    sudo apt-get install python3-mpi4py
 
 
 Build the documentation
