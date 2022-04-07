@@ -3,7 +3,7 @@ Installation for users
 
 
 If you only want to to use NIFTy in your projects, but not change its source
-code, the easiest way to install the package is the command:
+code, the easiest way to install the package is the command::
 
     pip install --user nifty7
 
