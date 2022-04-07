@@ -93,7 +93,6 @@ The DUCC0 package is installed via:
 
     pip3 install ducc0
 
-For installing jax refer to [google/jax:README#Installation](https://github.com/google/jax#installation).
 
 If this library is present, NIFTy will detect it automatically and prefer
 `ducc0.fft` over SciPy's FFT. The underlying code is actually the same, but
@@ -103,6 +102,8 @@ significantly faster transforms.
 MPI support is added via:
 
     sudo apt-get install python3-mpi4py
+
+For installing jax refer to [google/jax:README#Installation](https://github.com/google/jax#installation).
 
 ### Run the tests
 
