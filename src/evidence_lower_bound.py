@@ -63,9 +63,11 @@ def _explicify(M):
     return np.vstack(m).T
 
 
-def _eigsh(metric, tot_dofs, n_eigenvalues, min_lh_eval=1e-4, batch_number=10, tol=0., verbose=True):
+def _eigsh(metric, n_eigenvalues, tot_dofs, min_lh_eval=1e-4, batch_number=10, tol=0., verbose=True):
     metric = SandwichOperator.make(_DomRemover(metric.domain).adjoint, metric)
-    M = ssl.LinearOperator(shape=2 * (metric.domain.size,), matvec=lambda x: metric(makeField(metric.domain, x)).val)
+    metric_size = metric.domain.size
+    M = ssl.LinearOperator(shape=2 * (metric_size,), matvec=lambda x: metric(makeField(metric.domain, x)).val)
+    eigenvectors = None
 
     if n_eigenvalues > tot_dofs:
         raise ValueError("Number of requested eigenvalues exceeds the number of relevant degrees of freedom!")
@@ -73,23 +75,24 @@ def _eigsh(metric, tot_dofs, n_eigenvalues, min_lh_eval=1e-4, batch_number=10, t
     if tot_dofs == n_eigenvalues:
         # Compute exact eigensystem
         if verbose:
-            logger.info(
-                f"Computing all relevant metric eigenvalues. The remaining {tot_dofs - metric.domain.size} "
-                f"eigenvalues are all equal to 1.")
-            logger.info(f"Number of eigenvalues being computed: {n_eigenvalues}.")
-        eigenvalues, _ = slg.eigh(_explicify(M))
+            logger.info(f"Computing all {tot_dofs} relevant metric eigenvalues.")
+        eigenvalues = slg.eigh(_explicify(M), eigvals_only=True,
+                               subset_by_index=[metric_size - tot_dofs, metric_size - 1])
+        eigenvalues = np.flip(eigenvalues)
     else:
         # Set up batches
         # FIXME: Shouldn't the batch_size decrease ideally?
         batch_size = n_eigenvalues // batch_number
         batches = [batch_size, ] * (batch_number - 1)
         batches += [n_eigenvalues - batch_size * (batch_number - 1), ]
-        eigenvalues, eigenvectors, projected_metric = None, None, M
+        eigenvalues, projected_metric = None, M
         for batch in batches:
             if verbose:
-                logger.info(f"Number of eigenvalues being computed: {batch}")
+                logger.info(f"\nNumber of eigenvalues being computed: {batch}")
             # Get eigensystem for current batch
             eigvals, eigvecs = ssl.eigsh(projected_metric, k=batch, tol=tol, return_eigenvectors=True, which='LM')
+            i = np.argsort(eigvals)
+            eigvals, eigvecs = np.flip(eigvals[i]), np.flip(eigvecs[:, i], axis=1)
             eigenvalues = eigvals if eigenvalues is None else np.concatenate((eigenvalues, eigvals))
             eigenvectors = eigvecs if eigenvectors is None else np.hstack((eigenvectors, eigvecs))
 
@@ -148,8 +151,8 @@ def estimate_evidence_lower_bound(hamiltonian, samples, n_eigenvalues, min_lh_ev
     n_eigenvalues : int
         Maximum number of eigenvalues to be considered for the estimation of the
         log-determinant of the metric. Note that if `n_eigenvalues` equals the
-        total number of dimensions of the problem, all eigenvalues are always
-        computed irrespective of other stopping criteria.
+        total number of relevant degrees of freedom of the problem, all relevant
+        eigenvalues are always computed irrespective of other stopping criteria.
 
     min_lh_eval : float
         Smallest eigenvalue of the likelihood to be considered. If the estimated
@@ -210,11 +213,14 @@ def estimate_evidence_lower_bound(hamiltonian, samples, n_eigenvalues, min_lh_ev
 
     metric = hamiltonian(Linearization.make_var(samples._m, want_metric=True)).metric
     metric_size = metric.domain.size
-    eigenvalues, _ = _eigsh(metric, n_eigenvalues, min_lh_eval=min_lh_eval, batch_number=batch_number, tol=tol,
-                            verbose=verbose)
+    eigenvalues, _ = _eigsh(metric, n_eigenvalues, tot_dofs=n_relevant_dofs, min_lh_eval=min_lh_eval,
+                            batch_number=batch_number, tol=tol, verbose=verbose)
     if verbose:
         # FIXME
-        logger.info(f"{eigenvalues.size} largest eigenvalues (out of {metric_size})\n{eigenvalues}")
+        logger.info(
+            f"\nComputed {eigenvalues.size} largest eigenvalues (out of {n_relevant_dofs} relevant degrees of freedom)."
+            f"\nThe remaining {metric_size - n_relevant_dofs} metric eigenvalues (out of {metric_size}) are equal to "
+            f"1.\n\n{eigenvalues}.")
 
     # Calculate the \Tr \log term upper bound
     log_eigenvalues = np.log(eigenvalues)
