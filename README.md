@@ -51,7 +51,7 @@ Installation
 Optional dependencies:
 - [ducc0](https://gitlab.mpcdf.mpg.de/mtr/ducc) for faster FFTs, spherical
     harmonic transforms, and radio interferometry gridding support
-- [mpi4py](https://mpi4py.scipy.org) (for MPI-parallel execution)
+- [mpi4py](https://github.com/mpi4py/mpi4py/) (for MPI-parallel execution)
 - [h5py](https://www.h5py.org/) (for writing results to HDF5 files)
 - [astropy](https://www.astropy.org/) (for writing FITS files)
 - [matplotlib](https://matplotlib.org/) (for field plotting)
