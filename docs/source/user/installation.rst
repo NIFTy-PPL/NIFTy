@@ -33,5 +33,4 @@ For installing jax refer to `google/jax:README#Installation <https://github.com/
 Installation for developers
 ===========================
 
-Information for the installation for developers you can
-find `here <https://ift.pages.mpcdf.de/nifty/dev/index.html>`_.
+Information for the installation for developers you can find :doc:`here <../dev/index>`
