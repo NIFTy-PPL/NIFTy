@@ -98,9 +98,9 @@ class BlockDiagonalOperator(EndomorphicOperator):
         s = []
         for ii, kk in enumerate(self.domain.keys()):
             if self._ops[ii] is None:
-                s = f"{kk}: id"
+                ss = f"{kk}: id"
                 if self._dtype is not None and kk in self._dtype:
-                    s += f" (sampling dtype: {self._dtype[kk]})"
+                    ss += f" (sampling dtype: {self._dtype[kk]})"
                 s.append(ss)
             else:
                 s.append(f'{kk}: {self._ops[ii]}')
