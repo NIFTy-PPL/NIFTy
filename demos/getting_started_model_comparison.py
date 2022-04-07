@@ -227,7 +227,7 @@ def main():
         # FIXME: Make it MPI-compatible (SampleList inside if master block)
         evidence_1, _ = ift.estimate_evidence_lower_bound(ift.StandardHamiltonian(likelihood_energy_1), samples_1, 100,
                                                           min_lh_eval=1e-3)
-        evidence_2, _ = ift.estimate_evidence_lower_bound(ift.StandardHamiltonian(likelihood_energy_2), samples_2, 100,
+        evidence_2, _ = ift.estimate_evidence_lower_bound(ift.StandardHamiltonian(likelihood_energy_2), samples_2, 99,
                                                           min_lh_eval=1e-3)
 
         log_elbo_difference = evidence_1.average().val - evidence_2.average().val
