@@ -12,7 +12,7 @@ guaranteed to by executed by Python and can be turned off by the user
 
 
 Installation for developers
-===========================
+---------------------------
 
 
 In the following, we assume a Debian-based Linux distribution. For other
