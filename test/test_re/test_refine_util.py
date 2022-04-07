@@ -86,13 +86,13 @@ def test_gauss_kl(seed, n_resamples=100):
         scl = rng.lognormal(2., 3.)
 
         np.testing.assert_allclose(
-            refine_util.gauss_kl(m_t, m_t), 0., atol=4e-12
+            refine_util.gauss_kl(m_t, m_t), 0., atol=1e-11
         )
         kl_rhs_scl = 0.5 * d * (np.log(scl) + 1. / scl - 1.)
         np.testing.assert_allclose(
-            kl_rhs_scl, refine_util.gauss_kl(m_t, scl * m_t), rtol=4e-12
+            kl_rhs_scl, refine_util.gauss_kl(m_t, scl * m_t), rtol=1e-11
         )
         kl_lhs_scl = 0.5 * d * (-np.log(scl) + scl - 1.)
         np.testing.assert_allclose(
-            kl_lhs_scl, refine_util.gauss_kl(scl * m_t, m_t), rtol=4e-12
+            kl_lhs_scl, refine_util.gauss_kl(scl * m_t, m_t), rtol=1e-11
         )
