@@ -118,7 +118,7 @@ following command in the repository root:
 ### First Steps
 
 For a quick start, you can browse through the [informal
-introduction](https://ift.pages.mpcdf.de/nifty/code.html) or
+introduction](https://ift.pages.mpcdf.de/nifty/user/code.html) or
 dive into NIFTy by running one of the demonstrations, e.g.:
 
     python3 demos/getting_started_1.py
