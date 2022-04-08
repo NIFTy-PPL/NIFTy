@@ -47,7 +47,7 @@ Plotting support is added via::
 
 The DUCC0 package is installed via::
 
-    pip3 install --user ducc0
+    pip3 install ducc0
 
 If this library is present, NIFTy will detect it automatically and prefer
 `ducc0.fft` over SciPy's FFT. The underlying code is actually the same, but
