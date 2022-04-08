@@ -1,5 +1,5 @@
 Installation for users
-======================
+----------------------
 
 
 If you only want to to use NIFTy in your projects, but not change its source
@@ -11,6 +11,16 @@ Depending on your OS, you may have to use `pip3` instead of `pip`.
 This approach should work on Linux, MacOS and Windows.
 
 **NOTE**: nifty8 is not yet released. Consider the installation for developers.
+
+
+Installation for developers
+---------------------------
+
+Information for the installation for developers you can find :doc:`here <../dev/index>`
+
+
+Installation of optional dependencies
+-------------------------------------
 
 Plotting support is added via::
 
@@ -30,9 +40,3 @@ MPI support is added via::
     sudo apt-get install python3-mpi4py
 
 For installing jax refer to `google/jax:README#Installation <https://github.com/google/jax#installation>`_.
-
-
-Installation for developers
-===========================
-
-Information for the installation for developers you can find :doc:`here <../dev/index>`
