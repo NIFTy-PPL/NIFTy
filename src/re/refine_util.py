@@ -79,9 +79,9 @@ def fine2coarse_shape(
                 # NOTE, not unique because of `ceil`; use lower limit
                 sz_at_max = (sz_at / fsz) * (fsz // 2) + (csz - 1)
                 sz_at_min = ceil(sz_at_max - (fsz // 2 - 1))
-                for sz_at_cand in range(sz_at_min, int(sz_at_max) + 1):
+                for sz_at_cand in range(sz_at_min, ceil(sz_at_max) + 1):
                     try:
-                        shp_w_min = coarse2fine_shape(
+                        shp_cand = coarse2fine_shape(
                             (sz_at_cand, ),
                             depth=depth - lvl + 1,
                             _coarse_size=csz,
@@ -92,12 +92,12 @@ def fine2coarse_shape(
                         if "invalid shape" not in "".join(e.args):
                             ve = "unexpected behavior of `coarse2fine_shape`"
                             raise ValueError(ve) from e
-                        shp_w_min = -1
-                    if shp_w_min == shp:
+                        shp_cand = -1
+                    if shp_cand >= shp:
                         sz_at = sz_at_cand
                         break
                 else:
-                    ve = "interval search within [{sz_at_min}, {sz_at_max}] failed"
+                    ve = f"interval search within [{sz_at_min}, {ceil(sz_at_max)}] failed"
                     raise ValueError(ve)
             else:
                 ve = f"invalid `_fine_strategy`; got {_fine_strategy}"
