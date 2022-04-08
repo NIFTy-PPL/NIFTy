@@ -180,13 +180,9 @@ def refinement_approximation_error(
     cf_T = jax.linear_transpose(cf, dom)
     cov_implicit = jax.jit(lambda x: cf(*cf_T(x)))
 
-    if _fine_strategy == "jump":
-        d_at = np.atleast_1d(distances0) / _fine_size**depth
-    elif _fine_strategy == "extend":
-        d_at = np.atleast_1d(distances0) / 2**depth
-    else:
-        raise AssertionError()
-    c0 = [d * jnp.arange(sz, dtype=float) for d, sz in zip(d_at, tgt.shape)]
+    c0 = [
+        d * jnp.arange(sz, dtype=float) for d, sz in zip(distances, tgt.shape)
+    ]
     pos = jnp.stack(jnp.meshgrid(*c0, indexing="ij"), axis=0)
 
     probe = jnp.zeros(pos.shape[1:])
