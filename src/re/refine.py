@@ -205,7 +205,6 @@ def refine_conv_general(
             for n in coarse_values.shape
         )
         convolution_slices = list(range(0, csz * fsz // 2, fsz // 2))
-        warn("this is completely untested; expect bugs!!!", UserWarning)  # TODO
 
         if fsz // 2 > csz:
             ve = "extrapolation is not allowed (use `fine_size / 2 <= coarse_size`)"
