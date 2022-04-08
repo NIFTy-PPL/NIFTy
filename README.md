@@ -88,7 +88,7 @@ NIFTy8 and its mandatory dependencies can be installed via:
 
 Consider the installation of [optional dependencies](#installation-of-optional-dependencies).
 
-### Installation of optional dependencies>
+### Installation of optional dependencies
 
 Plotting support is added via:
 
