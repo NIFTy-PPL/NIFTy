@@ -554,7 +554,7 @@ def plot_priorsamples(op, n_samples=5, common_colorbar=True, **kwargs):
     p.output(**kwargs)
 
 
-def exec_time(obj, want_metric=True, verbose=False, domain_dtype=np.float64):
+def exec_time(obj, want_metric=True, verbose=False, domain_dtype=np.float64, ntries=1):
     """Times the execution time of an operator or an energy.
 
     Parameters
@@ -569,6 +569,9 @@ def exec_time(obj, want_metric=True, verbose=False, domain_dtype=np.float64):
         If True, more profiling information is printed. Default: False.
     domain_dtype : dtype or dict of dtype
 
+    ntries : int
+        Number of times the operator shall be called. Default: 1.
+
     """
     from .linearization import Linearization
     from .minimization.energy import Energy
@@ -576,8 +579,9 @@ def exec_time(obj, want_metric=True, verbose=False, domain_dtype=np.float64):
     def _profile_func(func, inp, what):
         t0 = time()
         with cProfile.Profile() as pr:
-            res = func(inp)
-        logger.info(f'{what}: {(time() - t0)*1000:>8.3f} ms')
+            for _ in range(ntries):
+                res = func(inp)
+        logger.info(f'{what}: {(time() - t0)*1000/ntries:>8.3f} ms')
         if verbose:
             s = io.StringIO()
             pstats.Stats(pr, stream=s).sort_stats(pstats.SortKey.TIME).print_stats(5)
