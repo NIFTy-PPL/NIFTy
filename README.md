@@ -86,6 +86,8 @@ NIFTy8 and its mandatory dependencies can be installed via:
     sudo apt-get install git python3 python3-pip python3-dev
     pip3 install --user git+https://gitlab.mpcdf.mpg.de/ift/nifty.git@NIFTy_8
 
+Consider the installation of [optional dependencies](#installation-of-optional-dependencies).
+
 ### Installation of optional dependencies>
 
 Plotting support is added via:
