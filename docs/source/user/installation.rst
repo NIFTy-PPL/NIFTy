@@ -16,7 +16,7 @@ This approach should work on Linux, MacOS and Windows.
 Installation for developers
 ---------------------------
 
-Information for the installation for developers you can find :doc:`here <../dev/index>`
+Information for the installation for developers you can find :doc:`here.<../dev/index>`
 
 
 Installation of optional dependencies

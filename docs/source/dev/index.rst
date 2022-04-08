@@ -22,7 +22,7 @@ NIFTy8 and its mandatory dependencies can be installed via::
     sudo apt-get install git python3 python3-pip python3-dev
     pip3 install --user git+https://gitlab.mpcdf.mpg.de/ift/nifty.git@NIFTy_8
 
-Information for the installation of optional dependecies you can find :doc:`here <../user/installation>`
+Information for the installation of optional dependecies you can find :doc:`here.<../user/installation>`
 
 Build the documentation
 -----------------------
