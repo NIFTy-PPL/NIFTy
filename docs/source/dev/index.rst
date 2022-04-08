@@ -1,5 +1,5 @@
-Contributing to NIFTy
-=====================
+Development
+===========
 
 Coding conventions
 ------------------
