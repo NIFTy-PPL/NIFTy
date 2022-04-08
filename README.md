@@ -74,7 +74,7 @@ code, the easiest way to install the package is the command:
 Depending on your OS, you may have to use `pip3` instead of `pip`.
 This approach should work on Linux, MacOS and Windows.
 
-Consider the installation of [optional dependencies](installation-of-optional-dependencies).
+Consider the installation of [optional dependencies](#installation-of-optional-dependencies).
 
 ### Installation for developers
 
