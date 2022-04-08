@@ -110,6 +110,14 @@ MPI support is added via:
 
     sudo apt-get install python3-mpi4py
 
+The h5py package for writing HDF5 files is installed via:
+
+    pip install h5py
+
+The astropy package for writing FITS files is installed via:
+
+    pip install astropy
+
 For installing jax refer to [google/jax:README#Installation](https://github.com/google/jax#installation).
 
 ### Run the tests
