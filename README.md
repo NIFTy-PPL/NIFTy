@@ -69,10 +69,12 @@ switching to the NIFTy_8 branch:
 If you only want to to use NIFTy in your projects, but not change its source
 code, the easiest way to install the package is the command:
 
-    pip install --user nifty7
+    pip install --user nifty8
 
 Depending on your OS, you may have to use `pip3` instead of `pip`.
 This approach should work on Linux, MacOS and Windows.
+
+**NOTE**: nifty8 is not yet released. Consider the installation for developers.
 
 Consider the installation of [optional dependencies](#installation-of-optional-dependencies).
 
