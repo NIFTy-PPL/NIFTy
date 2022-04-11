@@ -11,7 +11,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
-# Copyright(C) 2013-2021 Max-Planck-Society
+# Copyright(C) 2013-2022 Max-Planck-Society
 #
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
 
@@ -39,15 +39,6 @@ import nifty8 as ift
 import numpy as np
 
 ift.random.push_sseq_from_seed(28)
-
-try:
-    from mpi4py import MPI
-
-    comm = MPI.COMM_WORLD
-    master = comm.Get_rank() == 0
-except ImportError:
-    comm = None
-    master = True
 
 
 def random_los(n_los):
@@ -153,45 +144,23 @@ def main():
     likelihood_energy_2 = (ift.GaussianEnergy(data=data, inverse_covariance=N.inverse) @
                            signal_response_2)
 
-    # Minimization model 1
-    def callback(samples):
-        s = ift.extra.minisanity(likelihood_energy_1, samples)
-        if master:
-            ift.logger.info(s)
-
     # Minimize KL
     n_iterations = 6
     n_samples = lambda iiter: 10 if iiter < 5 else 20
-    latent_mean_1 = ift.optimize_kl(likelihood_energy_1, n_iterations, n_samples,
-                                    minimizer, ic_sampling, minimizer_sampling,
-                                    plottable_operators={"signal": (signal_1, dict(vmin=0, vmax=1)),
-                                                         "power spectrum": pspec_1},
-                                    ground_truth_position=mock_position,
-                                    output_directory="getting_started_model_comparison_results/model_1",
-                                    overwrite=True, comm=comm, inspect_callback=callback)
-
-    if True:
-        # Load result from disk. May be useful for long inference runs, where
-        # inference and posterior analysis are split into two steps
-        samples_1 = ift.ResidualSampleList.load("getting_started_model_comparison_results/model_1/pickle/last",
-                                                comm=comm)
-
-    # Minimization model 2
-    def callback(samples):
-        s = ift.extra.minisanity(likelihood_energy_2, samples)
-        if master:
-            ift.logger.info(s)
-
-    # Minimize KL
-    n_iterations = 6
-    n_samples = lambda iiter: 10 if iiter < 5 else 20
+    samples_1 = ift.optimize_kl(likelihood_energy_1, n_iterations, n_samples,
+                                minimizer, ic_sampling, minimizer_sampling,
+                                plottable_operators={"signal": (signal_1, dict(vmin=0, vmax=1)),
+                                                     "power spectrum": pspec_1},
+                                ground_truth_position=mock_position,
+                                output_directory="getting_started_model_comparison_results/model_1",
+                                overwrite=True)
     samples_2 = ift.optimize_kl(likelihood_energy_2, n_iterations, n_samples,
                                 minimizer, ic_sampling, minimizer_sampling,
                                 plottable_operators={"signal": (signal_2, dict(vmin=0, vmax=1)),
                                                      "power spectrum": pspec_2},
                                 ground_truth_position=mock_position,
                                 output_directory="getting_started_model_comparison_results/model_2",
-                                overwrite=True, comm=comm, inspect_callback=callback)
+                                overwrite=True)
 
     # Plotting
     filename_res = filename.format("results")
@@ -220,22 +189,23 @@ def main():
              linewidth=[1.] * nsamples_2 + [3., 3.],
              label=[None] * nsamples_2 + ['Ground truth (model 2)', 'Posterior mean'])
 
-    if master:
-        plot.output(ny=2, nx=3, xsize=24, ysize=12, name=filename_res)
-        print("Saved results as '{}'.".format(filename_res))
-        # Proof of concept of the evidence lower bound function
-        # FIXME: Make it MPI-compatible (SampleList inside if master block)
-        evidence_1, _ = ift.estimate_evidence_lower_bound(ift.StandardHamiltonian(likelihood_energy_1), samples_1, 100,
-                                                          min_lh_eval=1e-3)
-        evidence_2, _ = ift.estimate_evidence_lower_bound(ift.StandardHamiltonian(likelihood_energy_2), samples_2, 99,
-                                                          min_lh_eval=1e-3)
+    plot.output(ny=2, nx=3, xsize=24, ysize=12, name=filename_res)
+    ift.logger.info("Saved results as '{}'.".format(filename_res))
 
-        log_elbo_difference = evidence_1.average().val - evidence_2.average().val
-        s = f"\nModel 1 is favored over model 2 by a factor of " + str(np.exp(
-            log_elbo_difference)) if (log_elbo_difference > 0) \
-            else "Model 2 is favored over model 1 by a factor of " + str(np.exp(-log_elbo_difference))
-        s += "."
-        ift.logger.info(s)
+    # Compute evidence lower bound
+    evidence_1, _ = ift.estimate_evidence_lower_bound(ift.StandardHamiltonian(likelihood_energy_1), samples_1, 100,
+                                                      min_lh_eval=1e-3)
+    evidence_2, _ = ift.estimate_evidence_lower_bound(ift.StandardHamiltonian(likelihood_energy_2), samples_2, 99,
+                                                      min_lh_eval=1e-3)
+
+    log_elbo_difference = evidence_1.average().val - evidence_2.average().val
+    ift.logger.info("\n")
+    elbo_ratio = np.exp(log_elbo_difference)
+    if log_elbo_difference > 0:
+        s = f"Model 1 is favored over model 2 by a factor of {elbo_ratio}."
+    else:
+        s = f"Model 2 is favored over model 1 by a factor of {1/elbo_ratio}."
+    ift.logger.info(s)
 
 
 if __name__ == '__main__':

@@ -12,6 +12,8 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
 # Copyright(C) 2013-2022 Max-Planck-Society
+# Author: Matteo Guardiani, Philipp Frank
+
 import numpy as np
 import scipy.linalg as slg
 import scipy.sparse.linalg as ssl
@@ -21,6 +23,7 @@ from .linearization import Linearization
 from .logger import logger
 from .minimization.sample_list import ResidualSampleList, SampleList
 from .operator_spectrum import _DomRemover
+from .operators.energy_operators import StandardHamiltonian
 from .operators.sandwich_operator import SandwichOperator
 from .sugar import makeField
 
@@ -81,7 +84,6 @@ def _eigsh(metric, n_eigenvalues, tot_dofs, min_lh_eval=1e-4, batch_number=10, t
         eigenvalues = np.flip(eigenvalues)
     else:
         # Set up batches
-        # FIXME: Shouldn't the batch_size decrease ideally?
         batch_size = n_eigenvalues // batch_number
         batches = [batch_size, ] * (batch_number - 1)
         batches += [n_eigenvalues - batch_size * (batch_number - 1), ]
@@ -174,18 +176,28 @@ def estimate_evidence_lower_bound(hamiltonian, samples, n_eigenvalues, min_lh_ev
         Default is True.
 
     Returns
-    ----------
+    -------
     elbo_samples : SampleList
         List of elbo samples from the posterior distribution.
+        The samples are returned to allow for more accurate elbo statistics.
 
     stats : dict
-        Dictionary with the statistics of the estimated ELBO.
+        Dictionary with a summary of the statistics of the estimated ELBO.
+        The keys of this dictionary are:
+        - elbo_mean: returns the mean value of the elbo estimate calculated
+                     over posterior samples
+        - elbo_up: returns an upper bound to the
+                   elbo estimate (given by one posterior-sample standard deviation)
+        - elbo_lw: returns a lower bound to the elbo estimate
+                   (one standard deviation plus a maximal error on the metric trace-log)
+        - lower_error: maximal error on the metric trace-log term given by the number
+                       of relevant metric eigenvalues different from 1 neglected
+                       in the estimation of the trace-log times the log of the smallest
+                       calculated eigenvalue.
 
 
-    Notes
-    -----
-    FIXME
-    **IMPORTANT**:
+    Warning
+    -------
     To perform Variational Inference there is no need to take into account quantities that are not explicitly
     dependent on the signal. Explicitly calculating these terms can be expensive, therefore they are usually
     neglected. Since in most cases they are also not required for model comparison, the provided estimate may not
@@ -195,18 +207,18 @@ def estimate_evidence_lower_bound(hamiltonian, samples, n_eigenvalues, min_lh_ev
     is :math:`-\\frac1 2 \\log \\det |2 \\pi N|`, where :math:`N` is the noise covariance matrix.
 
     See also
-    -----
+    --------
     For further details we refer to:
-    - Analytic formulation
-    P. Frank et Al., Geometric Variational Inference <https://arxiv.org/pdf/2105.10470.pdf> (Sec. 5.1)
 
-    - Conceptualization
-    A. Kostić et Al.
-    (manuscript in preparation).
+    * Analytic formulation: P. Frank et Al., Geometric Variational Inference <https://arxiv.org/pdf/2105.10470.pdf> (Sec. 5.1)
+
+    * Conceptualization: A. Kostić et Al. (manuscript in preparation).
     """
 
     if not isinstance(samples, ResidualSampleList):
         raise TypeError("samples attribute should be of type ResidualSampleList.")
+    if not isinstance(hamiltonian, StandardHamiltonian):
+        raise TypeError("hamiltonian is not an instance of `ift.StandardHamiltonian`.")
 
     n_data_points = hamiltonian.likelihood_energy.data_domain.size if not None else hamiltonian.domain.size
     n_relevant_dofs = min(n_data_points, hamiltonian.domain.size)  # Number of metric eigenvalues that are not one
@@ -222,19 +234,13 @@ def estimate_evidence_lower_bound(hamiltonian, samples, n_eigenvalues, min_lh_ev
             f"\nThe remaining {metric_size - n_relevant_dofs} metric eigenvalues (out of {metric_size}) are equal to "
             f"1.\n\n{eigenvalues}.")
 
-    # Calculate the \Tr \log term upper bound
+    # Return a list of ELBO samples and a summary of the ELBO statistics
     log_eigenvalues = np.log(eigenvalues)
     tr_log_lat_cov = - 0.5 * np.sum(log_eigenvalues)
-
-    # And its lower bound
     tr_log_lat_cov_lower = 0.5 * (n_relevant_dofs - log_eigenvalues.size) * np.min(log_eigenvalues)
     tr_log_lat_cov_lower = Field.scalar(tr_log_lat_cov_lower)
-
-    # Calculate the contribution coming from the posterior expectation value
     posterior_contribution = Field.scalar(tr_log_lat_cov + 0.5 * metric_size)
-
-    # Return a list of ELBO samples and a summary of the ELBO statistics
-    elbo_samples = SampleList(list([-h + posterior_contribution for h in samples.iterator(hamiltonian)]))
+    elbo_samples = SampleList(list(samples.iterator(lambda x: posterior_contribution - hamiltonian(x))))
 
     stats = {'lower_error': tr_log_lat_cov_lower}
     elbo_mean, elbo_var = elbo_samples.sample_stat()

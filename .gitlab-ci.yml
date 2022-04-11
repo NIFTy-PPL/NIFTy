@@ -150,6 +150,14 @@ run_getting_density:
     paths:
       - '*.png'
 
+run_getting_started_model_comparison:
+  stage: demo_runs
+  script:
+    - python3 demos/getting_started_model_comparison.py
+  artifacts:
+    paths:
+      - '*.png'
+
 run_bernoulli:
   stage: demo_runs
   script:

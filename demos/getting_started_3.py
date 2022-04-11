@@ -27,14 +27,14 @@
 
 import sys
 
-import nifty8 as ift
 import numpy as np
+
+import nifty8 as ift
 
 ift.random.push_sseq_from_seed(27)
 
 try:
     from mpi4py import MPI
-
     comm = MPI.COMM_WORLD
     master = comm.Get_rank() == 0
 except ImportError:
@@ -50,7 +50,7 @@ def random_los(n_los):
 
 def radial_los(n_los):
     starts = list(ift.random.current_rng().random((n_los, 2)).T)
-    ends = list(0.5 + 0 * ift.random.current_rng().random((n_los, 2)).T)
+    ends = list(0.5 + 0*ift.random.current_rng().random((n_los, 2)).T)
     return starts, ends
 
 
@@ -155,8 +155,8 @@ def main():
     plot.add(list(samples.iterator(pspec)) +
              [pspec.force(mock_position), samples.average(logspec).exp()],
              title="Sampled Posterior Power Spectrum",
-             linewidth=[1.] * nsamples + [3., 3.],
-             label=[None] * nsamples + ['Ground truth', 'Posterior mean'])
+             linewidth=[1.]*nsamples + [3., 3.],
+             label=[None]*nsamples + ['Ground truth', 'Posterior mean'])
     if master:
         plot.output(ny=1, nx=3, xsize=24, ysize=6, name=filename_res)
         print("Saved results as '{}'.".format(filename_res))
