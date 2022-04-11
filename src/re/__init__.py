@@ -61,3 +61,4 @@ from .sugar import (
 )
 from . import refine
 from . import refine_util
+from . import refine_chart

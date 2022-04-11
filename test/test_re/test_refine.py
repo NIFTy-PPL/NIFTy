@@ -14,7 +14,7 @@ import pytest
 from scipy.spatial import distance_matrix
 
 import nifty8.re as jft
-from nifty8.re import refine
+from nifty8.re import refine, refine_chart
 
 pmp = pytest.mark.parametrize
 
@@ -171,6 +171,98 @@ def test_refinement_nd_shape(seed, n_dim, kernel=kernel):
 
     fine_reference = refine.refine(lvl0, lvl1_exc, olf, fine_kernel_sqrt)
     assert fine_reference.shape == tuple((2 * (shp_i - 2), ) * n_dim)
+
+
+@pmp("dist", (60., 1e+3, (80., 80.), (40., 90.), (1e+2, 1e+3, 1e+4)))
+@pmp("_coarse_size", (3, 5))
+@pmp("_fine_size", (2, 4))
+@pmp("_fine_strategy", ("jump", "extend"))
+def test_chart_pixel_refinement_matrices_consistency(
+    dist, _coarse_size, _fine_size, _fine_strategy, kernel=kernel
+):
+    depth = 3
+    distances = np.atleast_1d(dist)
+    kwargs = {
+        "_coarse_size": _coarse_size,
+        "_fine_size": _fine_size,
+        "_fine_strategy": _fine_strategy
+    }
+
+    cc = refine_chart.CoordinateChart(
+        (12, ) * distances.size, depth=depth, distances=distances, **kwargs
+    )
+    olf, ks = refine_chart.coordinate_pixel_refinement_matrices(
+        cc, depth, pixel_index=(0, ) * distances.size, kernel=kernel
+    )
+    olf_classical, ks_classical = refine.layer_refinement_matrices(
+        distances, kernel, **kwargs
+    )
+    assert_allclose(olf, olf_classical, atol=1e-14, rtol=1e-14)
+    assert_allclose(ks, ks_classical, atol=1e-14, rtol=1e-14)
+
+
+@pmp("dist", (60., 1e+3, (80., 80.), (40., 90.), (1e+2, 1e+3, 1e+4)))
+@pmp("_coarse_size", (3, 5))
+@pmp("_fine_size", (2, 4))
+@pmp("_fine_strategy", ("jump", "extend"))
+def test_chart_refinement_matrices_consistency(
+    dist, _coarse_size, _fine_size, _fine_strategy, kernel=kernel
+):
+    depth = 3
+    distances = np.atleast_1d(dist)
+    ndim = distances.size
+    kwargs = {
+        "_coarse_size": _coarse_size,
+        "_fine_size": _fine_size,
+        "_fine_strategy": _fine_strategy
+    }
+
+    cc = refine_chart.CoordinateChart(
+        (12, ) * ndim, depth=depth, distances=distances, **kwargs
+    )
+    refinement = cc.refinement_matrices(kernel=kernel)
+
+    cc_irreg = refine_chart.CoordinateChart(
+        shape0=cc.shape0,
+        depth=depth,
+        distances=distances,
+        irregular_axes=tuple(range(ndim)),
+        **kwargs
+    )
+    refinement_irreg = cc_irreg.refinement_matrices(kernel=kernel)
+
+    _, (cov_sqrt0, _) = refine.refinement_matrices(
+        cc.shape0, 0, cc.distances0, kernel, **kwargs
+    )
+
+    aallclose = partial(assert_allclose, rtol=1e-14, atol=1e-13)
+    aallclose(refinement.cov_sqrt0, cov_sqrt0)
+    aallclose(refinement_irreg.cov_sqrt0, cov_sqrt0)
+
+    for lvl in range(depth):
+        olf, ks = refinement.filter[lvl], refinement.propagator_sqrt[lvl]
+        olf_irreg, ks_irreg = refinement_irreg.filter[
+            lvl], refinement_irreg.propagator_sqrt[lvl]
+
+        if _fine_strategy == "jump":
+            distances_lvl = cc.distances0 / _fine_size**lvl
+        elif _fine_strategy == "extend":
+            distances_lvl = cc.distances0 / 2**lvl
+        else:
+            raise AssertionError()
+        olf_classical, ks_classical = refine.layer_refinement_matrices(
+            distances_lvl, kernel, **kwargs
+        )
+
+        aallclose(olf.squeeze(), olf_classical)
+        aallclose(ks.squeeze(), ks_classical)
+
+        olf_d = np.diff(olf_irreg.reshape((-1, ) + olf_irreg.shape[-2:]), axis=0)
+        ks_d = np.diff(ks_irreg.reshape((-1, ) + ks_irreg.shape[-2:]), axis=0)
+        aallclose(olf_d, 0.)
+        aallclose(ks_d, 0.)
+        aallclose(olf_irreg[(0, ) * ndim], olf_classical)
+        aallclose(ks_irreg[(0, ) * ndim], ks_classical)
 
 
 if __name__ == "__main__":
