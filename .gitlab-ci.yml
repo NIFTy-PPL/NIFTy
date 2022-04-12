@@ -61,15 +61,31 @@ test_mpi:
 
 pages:
   stage: release
+  before_script:
+    - ls
   script:
-    - rm -rf docs/build docs/source/mod
+    - python3 setup.py install --user -f
+    - git clean -xfd docs/source
     - sh docs/generate.sh
-    - mv docs/build/ public/
-  artifacts:
-    paths:
-    - public
-  only:
-  - NIFTy_7
+    - mv docs/build docs/build_stable
+    - git checkout NIFTy_8
+    - python3 setup.py install --user -f
+    - git clean -xfd docs/source
+    - sh docs/generate.sh
+    - mv docs/build docs/build_devel
+    - mv docs/build_stable docs/build
+    - mv docs/build_devel docs/build/nifty8
+    - mv docs/build/ upload/
+   artifacts:
+     paths:
+     - upload
+# THE ABOVE IS TEMPORARY
+#    - mv docs/build/ public/
+#   artifacts:
+#     paths:
+#     - public
+#   only:
+#   - NIFTy_7
 
 
 before_script:
