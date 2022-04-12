@@ -62,10 +62,10 @@ def layer_refinement_matrices(
     if _fine_size % 2 != 0:
         raise ValueError("only even numbers allowed for `_fine_size`")
 
-    n_dim = distances.size
+    ndim = distances.size
     csz_half = int((csz - 1) / 2)
     gc = jnp.arange(-csz_half, csz_half + 1, dtype=float)
-    gc = distances.reshape(n_dim, 1) * gc
+    gc = distances.reshape(ndim, 1) * gc
     gc = jnp.stack(jnp.meshgrid(*gc, indexing="ij"), axis=-1)
     if _fine_strategy == "jump":
         gf = jnp.arange(fsz, dtype=float) / fsz - 0.5 + 0.5 / fsz
@@ -73,29 +73,29 @@ def layer_refinement_matrices(
         gf = jnp.arange(fsz, dtype=float) / 2 - 0.25 * (fsz - 1)
     else:
         raise ValueError(f"invalid `_fine_strategy`; got {_fine_strategy}")
-    gf = distances.reshape(n_dim, 1) * gf
+    gf = distances.reshape(ndim, 1) * gf
     gf = jnp.stack(jnp.meshgrid(*gf, indexing="ij"), axis=-1)
     # On the GPU a single `cov_from_loc` call is about twice as fast as three
     # separate calls for coarse-coarse, fine-fine and coarse-fine.
     coord = jnp.concatenate(
-        (gc.reshape(-1, n_dim), gf.reshape(-1, n_dim)), axis=0
+        (gc.reshape(-1, ndim), gf.reshape(-1, ndim)), axis=0
     )
     cov = cov_from_loc(coord, coord)
-    cov_ff = cov[-fsz**n_dim:, -fsz**n_dim:]
-    cov_fc = cov[-fsz**n_dim:, :-fsz**n_dim]
-    cov_cc = cov[:-fsz**n_dim, :-fsz**n_dim]
+    cov_ff = cov[-fsz**ndim:, -fsz**ndim:]
+    cov_fc = cov[-fsz**ndim:, :-fsz**ndim]
+    cov_cc = cov[:-fsz**ndim, :-fsz**ndim]
     cov_cc_inv = jnp.linalg.inv(cov_cc)
 
     olf = cov_fc @ cov_cc_inv
     # Also see Schur-Complement
     if _with_zeros:
-        r = jnp.linalg.norm(gc.reshape(-1, n_dim), axis=1)
+        r = jnp.linalg.norm(gc.reshape(-1, ndim), axis=1)
         r_cutoff = jnp.max(distances) * csz_half
         # dampening is chosen somewhat arbitrarily
-        r_dampening = jnp.max(distances)**-n_dim
+        r_dampening = jnp.max(distances)**-ndim
         olf_wgt_sphere = jnp.where(
             r <= r_cutoff, 1.,
-            jnp.exp(-r_dampening * jnp.abs(r - r_cutoff)**n_dim)
+            jnp.exp(-r_dampening * jnp.abs(r - r_cutoff)**ndim)
         )
         olf *= olf_wgt_sphere[jnp.newaxis, ...]
         fine_kernel = cov_ff - olf @ cov_cc @ olf.T
@@ -170,11 +170,7 @@ def refine_conv_general(
     _fine_size: int = 2,
     _fine_strategy: Literal["jump", "extend"] = "jump",
 ):
-    n_dim = np.ndim(coarse_values)
-    if n_dim > len(CONV_DIMENSION_NAMES):
-        ve = f"convolution for {n_dim} dimensions not yet implemented"
-        raise ValueError(ve)
-    dim_names = CONV_DIMENSION_NAMES[:n_dim]
+    ndim = np.ndim(coarse_values)
     # Introduce an artificial channel dimension for the matrix product
     # TODO: allow different grid sizes for different axis
     csz = int(_coarse_size)  # coarse size
@@ -183,23 +179,22 @@ def refine_conv_general(
     fsz = int(_fine_size)  # fine size
     if _fine_size % 2 != 0:
         raise ValueError("only even numbers allowed for `_fine_size`")
-    olf = olf.reshape((fsz**n_dim, ) + (csz, ) * (n_dim - 1) + (1, csz))
-    fine_kernel_sqrt = fine_kernel_sqrt.reshape((fsz**n_dim, ) * 2)
-    excitations = excitations.reshape((-1, fsz**n_dim))
+    olf = olf.reshape((fsz**ndim, ) + (csz, ) * (ndim - 1) + (1, csz))
+    fine_kernel_sqrt = fine_kernel_sqrt.reshape((fsz**ndim, ) * 2)
 
     if _fine_strategy == "jump":
-        window_strides = (1, ) * n_dim
+        window_strides = (1, ) * ndim
         fine_init_shape = tuple(n - (csz - 1)
-                                for n in coarse_values.shape) + (fsz**n_dim, )
+                                for n in coarse_values.shape) + (fsz**ndim, )
         fine_final_shape = tuple(
             fsz * (n - (csz - 1)) for n in coarse_values.shape
         )
         convolution_slices = list(range(csz))
     elif _fine_strategy == "extend":
-        window_strides = (fsz // 2, ) * n_dim
+        window_strides = (fsz // 2, ) * ndim
         fine_init_shape = tuple(
             ceil((n - (csz - 1)) / (fsz // 2)) for n in coarse_values.shape
-        ) + (fsz**n_dim, )
+        ) + (fsz**ndim, )
         fine_final_shape = tuple(
             fsz * ceil((n - (csz - 1)) / (fsz // 2))
             for n in coarse_values.shape
@@ -212,6 +207,10 @@ def refine_conv_general(
     else:
         raise ValueError(f"invalid `_fine_strategy`; got {_fine_strategy}")
 
+    if ndim > len(CONV_DIMENSION_NAMES):
+        ve = f"convolution for {ndim} dimensions not yet implemented"
+        raise ValueError(ve)
+    dim_names = CONV_DIMENSION_NAMES[:ndim]
     conv = partial(
         conv_general_dilated,
         window_strides=window_strides,
@@ -234,13 +233,14 @@ def refine_conv_general(
             )[0]
         )
 
+    excitations = excitations.reshape((-1, fsz**ndim))
     fine += vmap(jnp.matmul,
                  in_axes=(None, 0))(fine_kernel_sqrt,
                                     excitations).reshape(fine.shape)
 
-    fine = fine.reshape(fine.shape[:-1] + (fsz, ) * n_dim)
-    ax_label = np.arange(2 * n_dim)
-    ax_t = [e for els in zip(ax_label[:n_dim], ax_label[n_dim:]) for e in els]
+    fine = fine.reshape(fine.shape[:-1] + (fsz, ) * ndim)
+    ax_label = np.arange(2 * ndim)
+    ax_t = [e for els in zip(ax_label[:ndim], ax_label[ndim:]) for e in els]
     fine = jnp.transpose(fine, axes=ax_t)
 
     return fine.reshape(fine_final_shape)
@@ -322,29 +322,29 @@ def get_refinement_shapewithdtype(
     fsz = int(_fine_size)  # fine size
 
     shape0 = (shape0, ) if isinstance(shape0, int) else shape0
-    n_dim = len(shape0)
+    ndim = len(shape0)
     exc_shp = [shape0]
     if depth > 0:
         if _fine_strategy == "jump":
             exc_shp += [
-                tuple(el - (csz - 1) for el in exc_shp[0]) + (fsz**n_dim, )
+                tuple(el - (csz - 1) for el in exc_shp[0]) + (fsz**ndim, )
             ]
         elif _fine_strategy == "extend":
             exc_shp += [
                 tuple(ceil((el - (csz - 1)) / (fsz // 2))
-                      for el in exc_shp[0]) + (fsz**n_dim, )
+                      for el in exc_shp[0]) + (fsz**ndim, )
             ]
         else:
             raise ValueError(f"invalid `_fine_strategy`; got {_fine_strategy}")
     for lvl in range(1, depth):
         if _fine_strategy == "jump":
             exc_lvl = tuple(fsz * el - (csz - 1)
-                            for el in exc_shp[-1][:-1]) + (fsz**n_dim, )
+                            for el in exc_shp[-1][:-1]) + (fsz**ndim, )
         elif _fine_strategy == "extend":
             exc_lvl = tuple(
                 ceil((fsz * el - (csz - 1)) / (fsz // 2))
                 for el in exc_shp[-1][:-1]
-            ) + (fsz**n_dim, )
+            ) + (fsz**ndim, )
         else:
             raise AssertionError()
         if any(el <= 0 for el in exc_lvl):
