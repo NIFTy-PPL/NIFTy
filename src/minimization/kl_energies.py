@@ -246,6 +246,8 @@ def SampledKLEnergy(position, hamiltonian, n_samples, minimizer_sampling,
 
     `Metric Gaussian Variational Inference`, Jakob Knollmüller,
     Torsten A. Enßlin, `<https://arxiv.org/abs/1901.11033>`_
+
+    Consider citing these papers, if you use MGVI or geoVI.
     """
     if not isinstance(hamiltonian, StandardHamiltonian):
         raise TypeError

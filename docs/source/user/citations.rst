@@ -66,3 +66,27 @@ NIFTy-related publications
       doi = {10.3390/e23070853}
       }
 
+.. parsed-literal::
+    @article{correlated_field_model_one_spectrum,
+      author = {{Arras}, Philipp and {Bester}, Hertzog L. and {Perley}, Richard A. and {Leike}, Reimar and {Smirnov}, Oleg and {Westermann}, R{\"u}diger and {En{\ss}lin}, Torsten A.},
+      title = "{Comparison of classical and Bayesian imaging in radio interferometry. Cygnus A with CLEAN and resolve}",
+      journal = {Astronomy and Astrophysics},
+      year = 2021,
+      month = feb,
+      volume = {646},
+      eid = {A84},
+      pages = {A84},
+      doi = {10.1051/0004-6361/202039258},
+      }
+
+.. parsed-literal::
+    @article{correlated_field_model_multiple_spectra,
+      author = {{Arras}, Philipp and {Frank}, Philipp and {Haim}, Philipp and {Knollm{\"u}ller}, Jakob and {Leike}, Reimar and {Reinecke}, Martin and {En{\ss}lin}, Torsten},
+      title = "{Variable structures in M87* from space, time and frequency resolved interferometry}",
+      journal = {Nature Astronomy},
+      year = 2022,
+      month = jan,
+      volume = {6},
+      pages = {259-269},
+      doi = {10.1038/s41550-021-01548-0},
+      }
