@@ -76,11 +76,11 @@ pages:
     - mv docs/build_stable docs/build
     - mv docs/build_devel docs/build/nifty8
     - mv docs/build/ public/
-   artifacts:
-     paths:
-     - public
-   only:
-   - NIFTy_7
+  artifacts:
+    paths:
+    - public
+  only:
+  - NIFTy_7
 
 
 before_script:
