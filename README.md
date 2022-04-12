@@ -126,7 +126,7 @@ such as the following:
 > "Some of the results in this publication have been derived using the
 > NIFTy package [(https://gitlab.mpcdf.mpg.de/ift/NIFTy)](https://gitlab.mpcdf.mpg.de/ift/NIFTy)"
 
-and a citation to one of the [publications](https://ift.pages.mpcdf.de/nifty/citations.html).
+and a citation to one of the [publications](https://ift.pages.mpcdf.de/nifty/user/citations.html).
 
 
 ### Licensing terms
