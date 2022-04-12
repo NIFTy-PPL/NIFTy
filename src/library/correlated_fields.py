@@ -20,6 +20,7 @@
 
 from functools import reduce
 from operator import mul
+from warnings import warn
 
 import numpy as np
 
@@ -512,6 +513,8 @@ class CorrelatedFieldMaker:
         elif len(dofdex) != self._total_N:
             raise ValueError("length of dofdex needs to match total_N")
 
+        _check_dofdex(dofdex, self._total_N)
+
         if self._total_N > 0:
             N = max(dofdex) + 1
             target_subdomain = makeDomain((UnstructuredDomain(N), target_subdomain))
@@ -679,6 +682,9 @@ class CorrelatedFieldMaker:
                 dofdex = np.full(self._total_N, 0)
             elif len(dofdex) != self._total_N:
                 raise ValueError("length of dofdex needs to match total_N")
+
+            _check_dofdex(dofdex, self._total_N)
+
             N = max(dofdex) + 1 if self._total_N > 0 else 0
             if len(offset_std) != 2:
                 te = (
@@ -1028,3 +1034,11 @@ class CorrelatedFieldMaker:
             res = res + (r - co.adjoint(co(r)/size))**2
         res = res.mean(spaces[0])/len(samples)
         return np.sqrt(res if np.isscalar(res) else res.val)
+
+
+def _check_dofdex(dofdex, total_N):
+    if not (list(dofdex) == list(range(total_N)) or list(dofdex) == total_N*[0]):
+        warn("In the upcoming release only dofdex==range(total_N) or dofdex==total_N*[0] "
+             f"will be supported. You use dofdex={dofdex}.\n"
+             "Please report at `c@philipp-arras.de` if you use this "
+             "feature and would like to see it continued.", DeprecationWarning)
