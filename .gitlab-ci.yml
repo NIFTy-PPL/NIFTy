@@ -76,9 +76,9 @@ pages:
     - mv docs/build_stable docs/build
     - mv docs/build_devel docs/build/nifty8
     - mv docs/build/ upload/
-   artifacts:
-     paths:
-     - upload
+  artifacts:
+    paths:
+    - upload
 # THE ABOVE IS TEMPORARY
 #    - mv docs/build/ public/
 #   artifacts:
