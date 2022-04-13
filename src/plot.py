@@ -72,12 +72,11 @@ def _hammer_helper(xsize):
     umask, vmask = u[mask], v[mask]
 
     zmask = np.sqrt(1-umask*umask/16 - vmask*vmask/4)
+    longitude = 2*np.arctan(zmask*umask / 2 / (2*zmask*zmask - 1.))
+    latitude = np.arcsin(zmask*vmask)
 
-    wiki_lam = 2*np.arctan(zmask*umask / 2*(2*zmask*zmask - 1.))
-    wiki_phi = np.arcsin(zmask*vmask)
-
-    theta = np.pi/2 - wiki_phi
-    phi = wiki_lam
+    theta = np.pi/2 - latitude
+    phi = longitude
 
     assert np.min(theta) >= 0.
     assert np.max(theta) <= np.pi
