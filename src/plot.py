@@ -68,9 +68,10 @@ def _hammer_helper(xsize):
     u, v = np.meshgrid(np.arange(xsize), np.arange(ysize))
     u, v = 2*(u-xc)/(xc/1.02), (v-yc)/(yc/1.02)
 
-    mask = np.where((u*u/4 + v*v) <= 1.)
-    u*=2
-    v*=2
+    u *= np.sqrt(2)
+    v *= np.sqrt(2)
+
+    mask = np.where((u*u/8 + v*v/2) <= 1.)
     umask, vmask = u[mask], v[mask]
 
     zmask = np.sqrt(1-umask*umask/16 - vmask*vmask/4)
@@ -82,12 +83,6 @@ def _hammer_helper(xsize):
 
     assert np.min(theta) >= 0.
     assert np.max(theta) <= np.pi
-
-    print(np.min(theta)/np.pi, np.max(theta)/np.pi)
-    print("Should be 0, 1")
-    print()
-    print(np.min(phi)/np.pi, np.max(phi)/np.pi)
-    print("Should be -1, 1")
 
     return res, mask, theta, phi
 
