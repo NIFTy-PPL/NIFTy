@@ -60,6 +60,31 @@ def _mollweide_helper(xsize):
     return res, mask, theta, phi
 
 
+def _hammer_helper(xsize):
+    xsize = int(xsize)
+    ysize = xsize//2
+    res = np.full(shape=(ysize, xsize), fill_value=np.nan, dtype=np.float64)
+    xc, yc = (xsize-1)*0.5, (ysize-1)*0.5
+    u, v = np.meshgrid(np.arange(xsize), np.arange(ysize))
+    u, v = 2*(u-xc)/(xc/1.02), (v-yc)/(yc/1.02)
+
+    mask = np.where((u*u/16 + v*v/4) <= 1.)
+    umask, vmask = u[mask], v[mask]
+
+    zmask = np.sqrt(1-umask*umask/16 - vmask*vmask/4)
+
+    lam = 2*np.arctan(zmask*umask / 2*(2*zmask*zmask - 1.)) + np.pi/2
+    phi = np.arcsin(zmask*vmask)
+
+    phi = 2*np.arctan(zmask*umask / 2*(2*zmask*zmask - 1.))
+    lam = np.arcsin(zmask*vmask) + np.pi/2
+
+    assert np.min(lam) >= 0.
+    assert np.max(lam) <= np.pi
+
+    return res, mask, lam, phi
+
+
 def _rgb_data(spectral_cube):
     _xyz = np.array(
           [[0.000160, 0.000662, 0.002362, 0.007242, 0.019110,
@@ -453,6 +478,7 @@ def _plot2D(f, ax, **kwargs):
 
         xsize = 800
         res, mask, theta, phi = _mollweide_helper(xsize)
+        res, mask, theta, phi = _hammer_helper(xsize)
         if have_rgb:
             res = np.full(shape=res.shape+(3,), fill_value=1.,
                           dtype=np.float64)
