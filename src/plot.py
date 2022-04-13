@@ -76,7 +76,7 @@ def _hammer_helper(xsize):
     latitude = np.arcsin(zmask*vmask)
 
     theta = np.pi/2 - latitude
-    phi = longitude
+    phi = -longitude
 
     assert np.min(theta) >= 0.
     assert np.max(theta) <= np.pi
