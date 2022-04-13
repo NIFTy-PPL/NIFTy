@@ -81,6 +81,12 @@ def _hammer_helper(xsize):
     assert np.min(theta) >= 0.
     assert np.max(theta) <= np.pi
 
+    print(np.min(theta)/np.pi, np.max(theta)/np.pi)
+    print("Should be 0, 1")
+    print()
+    print(np.min(phi)/np.pi, np.max(phi)/np.pi)
+    print("Should be -1, 1")
+
     return res, mask, theta, phi
 
 
