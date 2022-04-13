@@ -69,6 +69,8 @@ def _hammer_helper(xsize):
     u, v = 2*(u-xc)/(xc/1.02), (v-yc)/(yc/1.02)
 
     mask = np.where((u*u/4 + v*v) <= 1.)
+    u*=2
+    v*=2
     umask, vmask = u[mask], v[mask]
 
     zmask = np.sqrt(1-umask*umask/16 - vmask*vmask/4)
