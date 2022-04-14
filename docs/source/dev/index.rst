@@ -35,7 +35,7 @@ NIFTy documentation is provided by `Sphinx <https://www.sphinx-doc.org/en/stable
 To build the documentation::
 
     sudo apt-get install dvipng jupyter-nbconvert texlive-latex-base texlive-latex-extra
-    pip3 install sphinx pydata-sphinx-theme
+    pip3 install --user sphinx pydata-sphinx-theme
     cd <nifty_directory>
     sh docs/generate.sh
 

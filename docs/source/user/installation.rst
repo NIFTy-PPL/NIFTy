@@ -24,9 +24,8 @@ Installation for users
 If you only want to to use NIFTy in your projects, but not change its source
 code, the easiest way to install the package is the command::
 
-    pip install --user nifty8
+    pip3 install --user nifty8
 
-Depending on your OS, you may have to use `pip3` instead of `pip`.
 This approach should work on Linux, MacOS and Windows.
 
 **NOTE**: nifty8 is not yet released. Consider the installation for developers.
@@ -49,7 +48,7 @@ Plotting support is added via::
 
 The DUCC0 package is installed via::
 
-    pip3 install ducc0
+    pip3 install --user ducc0
 
 If this library is present, NIFTy will detect it automatically and prefer
 `ducc0.fft` over SciPy's FFT. The underlying code is actually the same, but
@@ -62,10 +61,10 @@ MPI support is added via::
 
 The h5py package for writing HDF5 files is installed via::
 
-    pip install h5py
+    pip3 install --user h5py
 
 The astropy package for writing FITS files is installed via::
 
-    pip install astropy
+    pip3 install --user astropy
 
 For installing jax refer to `google/jax:README#Installation <https://github.com/google/jax#installation>`_.
