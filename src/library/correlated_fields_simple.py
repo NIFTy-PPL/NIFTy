@@ -50,6 +50,15 @@ def SimpleCorrelatedField(
     Assumes `total_N = 0`, `dofdex = None` and the presence of only one power
     spectrum, i.e. only one call of
     :func:`~nifty8.library.correlated_fields.CorrelatedFieldMaker.add_fluctuations`.
+
+    See also
+    --------
+    * The simple correlated field model has first been described in "Comparison
+      of classical and Bayesian imaging in radio interferometry", A&A 646, A84
+      (2021) by P. Arras et al.
+      `<https://doi.org/10.1051/0004-6361/202039258>`_
+
+    Consider citing this paper, if you use the simple correlated field model.
     """
     target = DomainTuple.make(target)
     if len(target) != 1:

@@ -417,7 +417,20 @@ class CorrelatedFieldMaker:
     :func:`add_fluctuations`.
 
     See the methods :func:`add_fluctuations*` and :func:`finalize` for
-    further usage information."""
+    further usage information.
+
+    See also
+    --------
+    * For one power spectrum, the correlated field model has first been
+      described in "Comparison of classical and Bayesian imaging in radio
+      interferometry", A&A 646, A84 (2021) by P. Arras et al.
+      `<https://doi.org/10.1051/0004-6361/202039258>`_
+    * For multiple power spectra, it has first been used in "M87* in space,
+      time and frequency", Nature Astronomy (2022), by P. Arras et al.
+      `<https://doi.org/10.1038/s41550-021-01548-0>`_
+
+    Consider citing these papers, if you use the correlated field model.
+    """
     def __init__(self, prefix, total_N=0):
         """Instantiate a CorrelatedFieldMaker object.
 
@@ -522,6 +535,8 @@ class CorrelatedFieldMaker:
             dofdex = np.full(self._total_N, 0)
         elif len(dofdex) != self._total_N:
             raise ValueError("length of dofdex needs to match total_N")
+
+        _check_dofdex(dofdex, self._total_N)
 
         if self._total_N > 0:
             N = max(dofdex) + 1
@@ -716,6 +731,9 @@ class CorrelatedFieldMaker:
                 dofdex = np.full(self._total_N, 0)
             elif len(dofdex) != self._total_N:
                 raise ValueError("length of dofdex needs to match total_N")
+
+            _check_dofdex(dofdex, self._total_N)
+
             N = max(dofdex) + 1 if self._total_N > 0 else 0
             if len(offset_std) != 2:
                 te = (
@@ -1095,3 +1113,11 @@ class CorrelatedFieldMaker:
             res = res + (r - co.adjoint(co(r)/size))**2
         res = res.mean(spaces[0])/len(samples)
         return np.sqrt(res if np.isscalar(res) else res.val)
+
+
+def _check_dofdex(dofdex, total_N):
+    if not (list(dofdex) == list(range(total_N)) or list(dofdex) == total_N*[0]):
+        warn("In the upcoming release only dofdex==range(total_N) or dofdex==total_N*[0] "
+             f"will be supported. You use dofdex={dofdex}.\n"
+             "Please report at `c@philipp-arras.de` if you use this "
+             "feature and would like to see it continued.", DeprecationWarning)
