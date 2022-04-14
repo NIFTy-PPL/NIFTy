@@ -25,7 +25,7 @@ NIFTy8 and its mandatory dependencies can be installed via::
     pip3 install --user .
 
 For a installation in editable mode add a `-e` to the last command.
-Information for the installation of optional dependecies you can find :doc:`here.<../user/installation>`
+Information for requirements and the installation of optional dependecies you can find :doc:`here.<../user/installation>`
 
 Build the documentation
 -----------------------

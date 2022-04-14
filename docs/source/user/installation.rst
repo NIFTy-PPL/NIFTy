@@ -31,6 +31,8 @@ This approach should work on Linux, MacOS and Windows.
 
 **NOTE**: nifty8 is not yet released. Consider the installation for developers.
 
+Consider the installation of optional dependencies. (see below)
+
 
 Installation for developers
 ---------------------------

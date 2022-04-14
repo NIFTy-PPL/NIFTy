@@ -43,85 +43,10 @@ inference procedures and process-specific model properties.
 Installation
 ------------
 
-### Requirements
+Detailed installation instructions can be found in the NIFTy Documentation for:
 
-- [Python 3](https://www.python.org/) (3.7.x or later)
-- [SciPy](https://www.scipy.org/)
-
-Optional dependencies:
-- [ducc0](https://gitlab.mpcdf.mpg.de/mtr/ducc) for faster FFTs, spherical
-    harmonic transforms, and radio interferometry gridding support
-- [mpi4py](https://github.com/mpi4py/mpi4py/) (for MPI-parallel execution)
-- [h5py](https://www.h5py.org/) (for writing results to HDF5 files)
-- [astropy](https://www.astropy.org/) (for writing FITS files)
-- [matplotlib](https://matplotlib.org/) (for field plotting)
-- [jax](https://github.com/google/jax) (for implementing operators with jax)
-
-### Sources
-
-The current version of NIFTy8 can be obtained by cloning the repository and
-switching to the NIFTy_8 branch:
-
-    git clone -b NIFTy_8 https://gitlab.mpcdf.mpg.de/ift/nifty.git
-
-### Installation for users
-
-If you only want to to use NIFTy in your projects, but not change its source
-code, the easiest way to install the package is the command:
-
-    pip install --user nifty8
-
-Depending on your OS, you may have to use `pip3` instead of `pip`.
-This approach should work on Linux, MacOS and Windows.
-
-**NOTE**: nifty8 is not yet released. Consider the installation for developers.
-
-Consider the installation of [optional dependencies](#installation-of-optional-dependencies).
-
-### Installation for developers
-
-In the following, we assume a Debian-based distribution. For other
-distributions, the "apt" lines will need slight changes.
-
-NIFTy8 and its mandatory dependencies can be installed via:
-
-    sudo apt-get install git python3 python3-pip python3-dev
-    git clone -b NIFTy_8 https://gitlab.mpcdf.mpg.de/ift/nifty.git
-    cd nifty
-    pip3 install --user . 
-
-For a installation in editable mode add a `-e` to the last command.
-Consider the installation of [optional dependencies](#installation-of-optional-dependencies).
-
-### Installation of optional dependencies
-
-Plotting support is added via:
-
-    sudo apt-get install python3-matplotlib
-
-The DUCC0 package is installed via:
-
-    pip3 install ducc0
-
-
-If this library is present, NIFTy will detect it automatically and prefer
-`ducc0.fft` over SciPy's FFT. The underlying code is actually the same, but
-DUCC's FFT is compiled with optimizations for the host CPU and can provide
-significantly faster transforms.
-
-MPI support is added via:
-
-    sudo apt-get install python3-mpi4py
-
-The h5py package for writing HDF5 files is installed via:
-
-    pip install h5py
-
-The astropy package for writing FITS files is installed via:
-
-    pip install astropy
-
-For installing jax refer to [google/jax:README#Installation](https://github.com/google/jax#installation).
+- [users](http://ift.pages.mpcdf.de/nifty/nifty8/user/installation.html)
+- [developers](http://ift.pages.mpcdf.de/nifty/nifty8/dev/index.html) 
 
 ### Run the tests
 
