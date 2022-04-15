@@ -82,6 +82,12 @@ The `ResidualSampleList` is a sub-class of `SampleList` which handles samples
 via a shared position and residual deviations thereof internally. This
 distinction is a required structure for defining the `SampledKLEnergy`.
 
+Evidence Lower Bound
+--------------------
+Created new function `estimate_evidence_lower_bound` to calculate an estimate
+of the evidence lower bound (ELBO) for a model at hand. This can be used for 
+model comparison. 
+
 Sampling dtypes
 ---------------
 
