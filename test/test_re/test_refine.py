@@ -267,4 +267,4 @@ def test_chart_refinement_matrices_consistency(
 
 if __name__ == "__main__":
     test_refinement_matrices_1d(5.)
-    test_refinement_1d(42, 5.)
+    test_refinement_1d(42, 10.)
