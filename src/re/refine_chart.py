@@ -9,7 +9,7 @@ from typing import Callable, Iterable, Literal, Optional, Tuple, Union
 from jax import numpy as jnp
 from jax import vmap
 
-from .refine import _get_cov_from_loc
+from .refine import _get_cov_from_loc, get_refinement_shapewithdtype
 from .refine_util import coarse2fine_shape, fine2coarse_shape
 
 
@@ -246,6 +246,19 @@ class CoordinateChart():
     def refinement_matrices(self, kernel: Callable, depth=None):
         depth = self.depth if depth is None else depth
         return coordinate_refinement_matrices(self, depth, kernel=kernel)
+
+    def refinement_shapewithdtype(
+        self, depth: Optional[int] = None, dtype=None
+    ):
+        depth = self.depth if depth is None else depth
+        return get_refinement_shapewithdtype(
+            shape0=self.shape0,
+            depth=depth,
+            dtype=dtype,
+            _coarse_size=self.coarse_size,
+            _fine_size=self.fine_size,
+            _fine_strategy=self.fine_strategy
+        )
 
     def __repr__(self):
         return f"{self.__class__.__name__}(**{self._descr})"
