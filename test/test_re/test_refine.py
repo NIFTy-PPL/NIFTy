@@ -265,6 +265,47 @@ def test_chart_refinement_matrices_consistency(
         aallclose(ks_irreg[(0, ) * ndim], ks_classical)
 
 
+@pmp("seed", (12, ))
+@pmp("dist", (60., 1e+3, (80., 80.), (40., 90.), (1e+2, 1e+3, 1e+4)))
+@pmp("_coarse_size", (3, 5))
+@pmp("_fine_size", (2, 4))
+@pmp("_fine_strategy", ("jump", "extend"))
+def test_refinement_conv_general_irregular_regular_consistency(
+    seed, dist, _coarse_size, _fine_size, _fine_strategy, kernel=kernel
+):
+    depth = 1
+    distances = np.atleast_1d(dist)
+    ndim = distances.size
+    kwargs = {
+        "_coarse_size": _coarse_size,
+        "_fine_size": _fine_size,
+        "_fine_strategy": _fine_strategy
+    }
+
+    cc = refine_chart.CoordinateChart(
+        shape0=(2 * _coarse_size, ) * ndim, depth=depth, distances=distances, **kwargs
+    )
+    refinement = cc.refinement_matrices(kernel=kernel)
+
+    cc_irreg = refine_chart.CoordinateChart(
+        shape0=cc.shape0,
+        depth=depth,
+        distances=distances,
+        irregular_axes=tuple(range(ndim)),
+        **kwargs
+    )
+    refinement_irreg = cc_irreg.refinement_matrices(kernel=kernel)
+
+    rng = np.random.default_rng(seed)
+    exc_swd = cc.refinement_shapewithdtype()[-1]
+    fn1 = rng.normal(size=cc.shape_at(depth - 1))
+    exc = rng.normal(size=exc_swd.shape)
+
+    refined = refine.refine(fn1, exc, refinement.filter[-1], refinement.propagator_sqrt[-1], **kwargs)
+    refined_irreg = refine.refine(fn1, exc, refinement_irreg.filter[-1], refinement_irreg.propagator_sqrt[-1], **kwargs)
+    assert_allclose(refined_irreg, refined, rtol=1e-14, atol=1e-13)
+
+
 if __name__ == "__main__":
     test_refinement_matrices_1d(5.)
     test_refinement_1d(42, 10.)
