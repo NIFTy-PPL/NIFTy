@@ -286,6 +286,9 @@ def coordinate_pixel_refinement_matrices(
     if pixel_index is None:
         pixel_index = (0, ) * ndim
     pixel_index = jnp.asarray(pixel_index)
+    if pixel_index.size != ndim:
+        ve = f"`pixel_index` has {pixel_index.size} dimensions but `chart` has {ndim}"
+        raise ValueError(ve)
 
     csz_half = int((csz - 1) / 2)
     gc = jnp.arange(-csz_half, csz_half + 1, dtype=float)
