@@ -6,7 +6,6 @@ from functools import partial
 from math import ceil
 from string import ascii_uppercase
 from typing import Callable, Literal, Optional, Union
-from warnings import warn
 
 from jax import vmap
 from jax import numpy as jnp
@@ -179,8 +178,23 @@ def refine_conv_general(
     fsz = int(_fine_size)  # fine size
     if _fine_size % 2 != 0:
         raise ValueError("only even numbers allowed for `_fine_size`")
-    olf = olf.reshape((fsz**ndim, ) + (csz, ) * (ndim - 1) + (1, csz))
-    fine_kernel_sqrt = fine_kernel_sqrt.reshape((fsz**ndim, ) * 2)
+    if olf.shape[:-2] != fine_kernel_sqrt.shape[:-2]:
+        ve = (
+            "incompatible optimal linear filter (`olf`) and `fine_kernel_sqrt` shapes"
+            f"; got {olf.shape} and {fine_kernel_sqrt.shape}"
+        )
+        raise ValueError(ve)
+    if olf.ndim > 2:
+        irreg_shape = olf.shape[:-2]
+    elif olf.ndim == 2:
+        irreg_shape = (1, ) * ndim
+    else:
+        ve = f"invalid shape of optimal linear filter (`olf`); got {olf.shape}"
+        raise ValueError(ve)
+    olf = olf.reshape(
+        irreg_shape + (fsz**ndim, ) + (csz, ) * (ndim - 1) + (1, csz)
+    )
+    fine_kernel_sqrt = fine_kernel_sqrt.reshape(irreg_shape + (fsz**ndim, ) * 2)
 
     if _fine_strategy == "jump":
         window_strides = (1, ) * ndim
@@ -222,21 +236,80 @@ def refine_conv_general(
         ),
         precision=precision,
     )
+
     fine = jnp.zeros(fine_init_shape)
     c_shp_n1 = coarse_values.shape[-1]
-    c_slc_shp = (1, ) + coarse_values.shape[:-1] + (-1, csz)
-    for i_f, i_c in enumerate(convolution_slices):
-        fine = fine.at[..., i_f::csz, :].set(
-            conv(
-                coarse_values[..., i_c:c_shp_n1 -
-                              (c_shp_n1 - i_c) % csz].reshape(c_slc_shp), olf
-            )[0]
+    c_slc_shp = (1, )
+    c_slc_shp += tuple(
+        c if i == 1 else csz
+        for i, c in zip(irreg_shape, coarse_values.shape[:-1])
+    )
+    c_slc_shp += (-1, csz)
+
+    PLC = -1 << 63 if jnp.array(0).dtype == jnp.int64 else -1 << 31
+    irreg_indices = np.stack(
+        np.meshgrid(
+            *[
+                np.arange(sz) if sz != 1 else np.array([PLC])
+                for sz in irreg_shape
+            ],
+            indexing="ij"
+        ),
+        axis=-1
+    )
+    for i in range(np.prod(irreg_indices.shape[:-1])):
+        irreg_idx = np.unravel_index(i, irreg_indices.shape[:-1])
+        fine_init_idx = tuple(
+            idx if idx != PLC else slice(None)
+            for idx in irreg_indices[irreg_idx]
+        )
+        coarse_idx = tuple(
+            slice(window_strides[i_ax] * idx, window_strides[i_ax] * idx +
+                  csz) if idx != PLC else slice(None)
+            for i_ax, idx in enumerate(irreg_indices[irreg_idx])
         )
 
-    excitations = excitations.reshape((-1, fsz**ndim))
-    fine += vmap(jnp.matmul,
-                 in_axes=(None, 0))(fine_kernel_sqrt,
-                                    excitations).reshape(fine.shape)
+        olf_at_i = jnp.squeeze(
+            olf[fine_init_idx],
+            axis=tuple(a for a, i in enumerate(irreg_shape) if i == 1)
+        )
+        if irreg_shape[-1] == 1 and fine_init_shape[-1] != 1:
+            if fine_init_idx[-1] != slice(None):
+                raise AssertionError()
+            # loop over conv channel offsets to apply the filter matrix in a convolution
+            for i_f, i_c in enumerate(convolution_slices):
+                c = conv(
+                    coarse_values[coarse_idx][...,
+                                              i_c:c_shp_n1 - (c_shp_n1 - i_c) %
+                                              csz].reshape(c_slc_shp), olf_at_i
+                )[0]
+                c = jnp.squeeze(
+                    c,
+                    axis=tuple(a for a, i in enumerate(irreg_shape) if i != 1)
+                )
+                toti = fine_init_idx[:-1] + (slice(i_f, None, csz), )
+                fine = fine.at[toti].set(c)
+        else:
+            if isinstance(
+                fine_init_idx[-1], slice
+            ) or fine_init_idx[-1].ndim != 0 or coarse_idx[-1] == slice(None):
+                raise AssertionError()
+            c = conv(coarse_values[coarse_idx].reshape(c_slc_shp), olf_at_i)[0]
+            c = jnp.squeeze(
+                c, axis=tuple(a for a, i in enumerate(irreg_shape) if i != 1)
+            )
+            fine = fine.at[fine_init_idx].set(c)
+
+    matmul = jnp.matmul
+    for i in irreg_shape:
+        in_axes = (0, 0) if i != 1 else (None, 0)
+        matmul = vmap(matmul, in_axes=in_axes)
+    m = matmul(fine_kernel_sqrt, excitations.reshape(fine_init_shape))
+    rm_axs = tuple(
+        ax for ax, i in enumerate(m.shape[len(irreg_shape):], len(irreg_shape))
+        if i == 1
+    )
+    fine += jnp.squeeze(m, axis=rm_axs)
 
     fine = fine.reshape(fine.shape[:-1] + (fsz, ) * ndim)
     ax_label = np.arange(2 * ndim)
