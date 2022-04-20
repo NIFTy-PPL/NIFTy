@@ -20,6 +20,11 @@ NDARRAY = Union[jnp.ndarray, np.ndarray]
 CONV_DIMENSION_NAMES = "".join(el for el in ascii_uppercase if el not in "NCIO")
 
 
+def _assert(assertion):
+    if not assertion:
+        raise AssertionError()
+
+
 def _get_cov_from_loc(kernel=None,
                       cov_from_loc=None
                      ) -> Callable[[NDARRAY, NDARRAY], NDARRAY]:
@@ -246,11 +251,11 @@ def refine_conv_general(
     )
     c_slc_shp += (-1, csz)
 
-    PLC = -1 << 63 if jnp.array(0).dtype == jnp.int64 else -1 << 31
-    irreg_indices = np.stack(
-        np.meshgrid(
+    PLC = -1 << 31  # integer placeholder outside of the here encountered regimes
+    irreg_indices = jnp.stack(
+        jnp.meshgrid(
             *[
-                np.arange(sz) if sz != 1 else np.array([PLC])
+                jnp.arange(sz) if sz != 1 else jnp.array([PLC])
                 for sz in irreg_shape
             ],
             indexing="ij"
@@ -258,15 +263,19 @@ def refine_conv_general(
         axis=-1
     )
     for i in range(np.prod(irreg_indices.shape[:-1])):
-        irreg_idx = np.unravel_index(i, irreg_indices.shape[:-1])
+        irreg_idx = jnp.unravel_index(i, irreg_indices.shape[:-1])
+        _assert(
+            len(irreg_shape) == len(irreg_indices[irreg_idx]) ==
+            len(window_strides)
+        )
         fine_init_idx = tuple(
-            idx if idx != PLC else slice(None)
-            for idx in irreg_indices[irreg_idx]
+            idx if sz != 1 else slice(None)
+            for sz, idx in zip(irreg_shape, irreg_indices[irreg_idx])
         )
         coarse_idx = tuple(
-            slice(window_strides[i_ax] * idx, window_strides[i_ax] * idx +
-                  csz) if idx != PLC else slice(None)
-            for i_ax, idx in enumerate(irreg_indices[irreg_idx])
+            slice(ws * idx, ws * idx + csz) if sz != 1 else slice(None)
+            for ws, sz, idx in
+            zip(window_strides, irreg_shape, irreg_indices[irreg_idx])
         )
 
         olf_at_i = jnp.squeeze(
@@ -274,8 +283,7 @@ def refine_conv_general(
             axis=tuple(a for a, i in enumerate(irreg_shape) if i == 1)
         )
         if irreg_shape[-1] == 1 and fine_init_shape[-1] != 1:
-            if fine_init_idx[-1] != slice(None):
-                raise AssertionError()
+            _assert(fine_init_idx[-1] == slice(None))
             # loop over conv channel offsets to apply the filter matrix in a convolution
             for i_f, i_c in enumerate(convolution_slices):
                 c = conv(
@@ -290,10 +298,11 @@ def refine_conv_general(
                 toti = fine_init_idx[:-1] + (slice(i_f, None, csz), )
                 fine = fine.at[toti].set(c)
         else:
-            if isinstance(
-                fine_init_idx[-1], slice
-            ) or fine_init_idx[-1].ndim != 0 or coarse_idx[-1] == slice(None):
-                raise AssertionError()
+            _assert(
+                not isinstance(fine_init_idx[-1], slice) and
+                fine_init_idx[-1].ndim == 0
+            )
+            _assert(coarse_idx[-1] != slice(None))
             c = conv(coarse_values[coarse_idx].reshape(c_slc_shp), olf_at_i)[0]
             c = jnp.squeeze(
                 c, axis=tuple(a for a, i in enumerate(irreg_shape) if i != 1)
