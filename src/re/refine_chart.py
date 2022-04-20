@@ -70,7 +70,7 @@ class CoordinateChart():
 
         self.coarse_size = int(_coarse_size)
         self.fine_size = int(_fine_size)
-        self.fine_strategy = str(_fine_strategy)
+        self.fine_strategy = _fine_strategy
 
         # Derived attributes
         self.ndim = len(self.shape)
@@ -351,7 +351,6 @@ def coordinate_refinement_matrices(
         partial(
             coordinate_pixel_refinement_matrices,
             chart,
-            kernel=None,
             _cov_from_loc=cov_from_loc,
         ),
         in_axes=(None, 0),
