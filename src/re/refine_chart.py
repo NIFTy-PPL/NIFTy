@@ -9,7 +9,7 @@ from typing import Callable, Iterable, Literal, Optional, Tuple, Union
 from jax import numpy as jnp
 from jax import vmap
 
-from .refine import _get_cov_from_loc, get_refinement_shapewithdtype
+from .refine import _get_cov_from_loc, get_refinement_shapewithdtype, refine
 from .refine_util import coarse2fine_shape, fine2coarse_shape
 
 
@@ -243,28 +243,64 @@ class CoordinateChart():
         else:
             raise ValueError(f"invalid shape {shape!r}")
 
-    def refinement_matrices(self, kernel: Callable, depth=None):
-        depth = self.depth if depth is None else depth
-        return coordinate_refinement_matrices(self, depth, kernel=kernel)
-
-    def refinement_shapewithdtype(
-        self, depth: Optional[int] = None, dtype=None
-    ):
-        depth = self.depth if depth is None else depth
-        return get_refinement_shapewithdtype(
-            shape0=self.shape0,
-            depth=depth,
-            dtype=dtype,
-            _coarse_size=self.coarse_size,
-            _fine_size=self.fine_size,
-            _fine_strategy=self.fine_strategy
-        )
-
     def __repr__(self):
         return f"{self.__class__.__name__}(**{self._descr})"
 
     def __eq__(self, other):
         return repr(self) == repr(other)
+
+
+class RefinementField():
+    def __init__(self, *args, kernel=None, dtype=None, **kwargs):
+        self.kernel = kernel
+        self.dtype = jnp.float64 if dtype is None else dtype
+
+        if len(args) == 1 and isinstance(args[0], CoordinateChart):
+            self.chart = args[0]
+        else:
+            self.chart = CoordinateChart(*args, **kwargs)
+
+    def matrices(
+        self, kernel: Optional[Callable] = None, depth: Optional[int] = None
+    ):
+        kernel = self.kernel if kernel is None else kernel
+        if kernel is None:
+            te = "either specify a fixed kernel during init or provide one here"
+            raise TypeError(te)
+        depth = self.chart.depth if depth is None else depth
+
+        return coordinate_refinement_matrices(
+            self.chart, kernel=kernel, depth=depth
+        )
+
+    @property
+    def shapewithdtype(self):
+        return get_refinement_shapewithdtype(
+            shape0=self.chart.shape0,
+            depth=self.chart.depth,
+            dtype=self.dtype,
+            _coarse_size=self.chart.coarse_size,
+            _fine_size=self.chart.fine_size,
+            _fine_strategy=self.chart.fine_strategy
+        )
+
+    def __call__(self, xi, kernel=None, precision=None):
+        kernel = self.kernel if kernel is None else kernel
+        if kernel is None:
+            te = "either specify a fixed kernel during init or provide one here"
+            raise TypeError(te)
+        return self.apply(xi, self.chart, kernel=kernel, precision=precision)
+
+    @staticmethod
+    def apply(xi, chart, kernel, precision=None):
+        refinement = coordinate_refinement_matrices(chart, kernel=kernel, depth=len(xi) - 1)
+
+        fine = (refinement.cov_sqrt0 @ xi[0].ravel()).reshape(xi[0].shape)
+        for x, olf, k in zip(
+            xi[1:], refinement.filter, refinement.propagator_sqrt
+        ):
+            fine = refine(fine, x, olf, k, precision=precision)
+        return fine
 
 
 def coordinate_pixel_refinement_matrices(
@@ -337,12 +373,13 @@ RefinementMatrices = namedtuple(
 
 def coordinate_refinement_matrices(
     chart: CoordinateChart,
-    depth: int,
     kernel: Callable,
     *,
+    depth: Optional[int] = None,
     _cov_from_loc=None
 ):
     cov_from_loc = _get_cov_from_loc(kernel, _cov_from_loc)
+    depth = chart.depth if depth is None else depth
 
     rg0_ax = [jnp.arange(shp) for shp in chart.shape0]
     rg0 = jnp.stack(jnp.meshgrid(*rg0_ax, indexing="ij"), axis=0)

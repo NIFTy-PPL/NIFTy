@@ -220,7 +220,7 @@ def test_chart_refinement_matrices_consistency(
     cc = refine_chart.CoordinateChart(
         (12, ) * ndim, depth=depth, distances=distances, **kwargs
     )
-    refinement = cc.refinement_matrices(kernel=kernel)
+    refinement = refine_chart.coordinate_refinement_matrices(cc, kernel=kernel)
 
     cc_irreg = refine_chart.CoordinateChart(
         shape0=cc.shape0,
@@ -229,7 +229,9 @@ def test_chart_refinement_matrices_consistency(
         irregular_axes=tuple(range(ndim)),
         **kwargs
     )
-    refinement_irreg = cc_irreg.refinement_matrices(kernel=kernel)
+    refinement_irreg = refine_chart.coordinate_refinement_matrices(
+        cc_irreg, kernel=kernel
+    )
 
     _, (cov_sqrt0, _) = refine.refinement_matrices(
         cc.shape0, 0, cc.distances0, kernel, **kwargs
@@ -257,7 +259,9 @@ def test_chart_refinement_matrices_consistency(
         aallclose(olf.squeeze(), olf_classical)
         aallclose(ks.squeeze(), ks_classical)
 
-        olf_d = np.diff(olf_irreg.reshape((-1, ) + olf_irreg.shape[-2:]), axis=0)
+        olf_d = np.diff(
+            olf_irreg.reshape((-1, ) + olf_irreg.shape[-2:]), axis=0
+        )
         ks_d = np.diff(ks_irreg.reshape((-1, ) + ks_irreg.shape[-2:]), axis=0)
         aallclose(olf_d, 0.)
         aallclose(ks_d, 0.)
@@ -282,27 +286,36 @@ def test_refinement_conv_general_irregular_regular_consistency(
         "_fine_strategy": _fine_strategy
     }
 
-    cc = refine_chart.CoordinateChart(
-        shape0=(2 * _coarse_size, ) * ndim, depth=depth, distances=distances, **kwargs
+    cc = refine_chart.RefinementField(
+        shape0=(2 * _coarse_size, ) * ndim,
+        depth=depth,
+        distances=distances,
+        **kwargs
     )
-    refinement = cc.refinement_matrices(kernel=kernel)
+    refinement = cc.matrices(kernel=kernel)
 
-    cc_irreg = refine_chart.CoordinateChart(
-        shape0=cc.shape0,
+    cc_irreg = refine_chart.RefinementField(
+        shape0=cc.chart.shape0,
         depth=depth,
         distances=distances,
         irregular_axes=tuple(range(ndim)),
         **kwargs
     )
-    refinement_irreg = cc_irreg.refinement_matrices(kernel=kernel)
+    refinement_irreg = cc_irreg.matrices(kernel=kernel)
 
     rng = np.random.default_rng(seed)
-    exc_swd = cc.refinement_shapewithdtype()[-1]
-    fn1 = rng.normal(size=cc.shape_at(depth - 1))
+    exc_swd = cc.shapewithdtype[-1]
+    fn1 = rng.normal(size=cc.chart.shape_at(depth - 1))
     exc = rng.normal(size=exc_swd.shape)
 
-    refined = refine.refine(fn1, exc, refinement.filter[-1], refinement.propagator_sqrt[-1], **kwargs)
-    refined_irreg = refine.refine(fn1, exc, refinement_irreg.filter[-1], refinement_irreg.propagator_sqrt[-1], **kwargs)
+    refined = refine.refine(
+        fn1, exc, refinement.filter[-1], refinement.propagator_sqrt[-1],
+        **kwargs
+    )
+    refined_irreg = refine.refine(
+        fn1, exc, refinement_irreg.filter[-1],
+        refinement_irreg.propagator_sqrt[-1], **kwargs
+    )
     assert_allclose(refined_irreg, refined, rtol=1e-14, atol=1e-13)
 
 
