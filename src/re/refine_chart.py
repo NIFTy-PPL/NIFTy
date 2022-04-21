@@ -252,29 +252,72 @@ class CoordinateChart():
 
 class RefinementField():
     def __init__(self, *args, kernel=None, dtype=None, **kwargs):
-        self.kernel = kernel
-        self.dtype = jnp.float64 if dtype is None else dtype
+        self._kernel = kernel
+        self._dtype = dtype
 
         if len(args) == 1 and isinstance(args[0], CoordinateChart):
             self.chart = args[0]
         else:
             self.chart = CoordinateChart(*args, **kwargs)
 
+    @property
+    def kernel(self):
+        """Yields the kernel specified during initialization or throw a
+        `TypeError`.
+        """
+        if self._kernel is None:
+            te = (
+                "either specify a fixed kernel during initialization of the"
+                f" {self.__class__.__name__} class or provide one here"
+            )
+            raise TypeError(te)
+        return self._kernel
+
+    @property
+    def dtype(self):
+        """Yields the data-type of the excitations."""
+        return jnp.float64 if self._dtype is None else self._dtype
+
     def matrices(
         self, kernel: Optional[Callable] = None, depth: Optional[int] = None
     ):
+        """Computes the refinement matrices namely the optimal linear filter
+        and the square root of the information propagator (a.k.a. the square
+        root of the fine covariance matrix for the excitations) for all
+        refinement levels and all pixel indices in the coordinate chart.
+        """
         kernel = self.kernel if kernel is None else kernel
-        if kernel is None:
-            te = "either specify a fixed kernel during init or provide one here"
-            raise TypeError(te)
         depth = self.chart.depth if depth is None else depth
 
-        return coordinate_refinement_matrices(
+        return _coordinate_refinement_matrices(
             self.chart, kernel=kernel, depth=depth
+        )
+
+    def matrices_at(
+        self,
+        level: int,
+        pixel_index: Optional[Iterable[int]] = None,
+        kernel: Optional[Callable] = None,
+        **kwargs
+    ):
+        """Computes the refinement matrices namely the optimal linear filter
+        and the square root of the information propagator (a.k.a. the square
+        root of the fine covariance matrix for the excitations) at the
+        specified level and pixel index.
+        """
+        kernel = self.kernel if kernel is None else kernel
+
+        return _coordinate_pixel_refinement_matrices(
+            self.chart,
+            level=level,
+            pixel_index=pixel_index,
+            kernel=kernel,
+            **kwargs
         )
 
     @property
     def shapewithdtype(self):
+        """Yields the `ShapeWithDtype` of the primals."""
         return get_refinement_shapewithdtype(
             shape0=self.chart.shape0,
             depth=self.chart.depth,
@@ -286,14 +329,16 @@ class RefinementField():
 
     def __call__(self, xi, kernel=None, precision=None):
         kernel = self.kernel if kernel is None else kernel
-        if kernel is None:
-            te = "either specify a fixed kernel during init or provide one here"
-            raise TypeError(te)
         return self.apply(xi, self.chart, kernel=kernel, precision=precision)
 
     @staticmethod
     def apply(xi, chart, kernel, precision=None):
-        refinement = coordinate_refinement_matrices(chart, kernel=kernel, depth=len(xi) - 1)
+        """Static method to apply a refinement field given some excitations, a
+        chart and a kernel.
+        """
+        refinement = _coordinate_refinement_matrices(
+            chart, kernel=kernel, depth=len(xi) - 1
+        )
 
         fine = (refinement.cov_sqrt0 @ xi[0].ravel()).reshape(xi[0].shape)
         for x, olf, k in zip(
@@ -303,14 +348,14 @@ class RefinementField():
         return fine
 
 
-def coordinate_pixel_refinement_matrices(
+def _coordinate_pixel_refinement_matrices(
     chart: CoordinateChart,
     level: int,
     pixel_index: Optional[Iterable[int]] = None,
     kernel: Optional[Callable] = None,
     *,
     _cov_from_loc: Optional[Callable] = None,
-):
+) -> Tuple[jnp.ndarray, jnp.ndarray]:
     cov_from_loc = _get_cov_from_loc(kernel, _cov_from_loc)
     csz = int(chart.coarse_size)  # coarse size
     if csz % 2 != 1:
@@ -371,13 +416,13 @@ RefinementMatrices = namedtuple(
 )
 
 
-def coordinate_refinement_matrices(
+def _coordinate_refinement_matrices(
     chart: CoordinateChart,
     kernel: Callable,
     *,
     depth: Optional[int] = None,
     _cov_from_loc=None
-):
+) -> RefinementMatrices:
     cov_from_loc = _get_cov_from_loc(kernel, _cov_from_loc)
     depth = chart.depth if depth is None else depth
 
@@ -389,7 +434,7 @@ def coordinate_refinement_matrices(
     opt_lin_filter, kernel_sqrt = [], []
     olf_at = vmap(
         partial(
-            coordinate_pixel_refinement_matrices,
+            _coordinate_pixel_refinement_matrices,
             chart,
             _cov_from_loc=cov_from_loc,
         ),

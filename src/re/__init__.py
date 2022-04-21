@@ -1,6 +1,9 @@
 # Copyright(C) 2013-2021 Max-Planck-Society
 # SPDX-License-Identifier: GPL-2.0+ OR BSD-2-Clause
 
+from . import refine
+from . import refine_util
+from . import refine_chart
 from .conjugate_gradient import cg, static_cg
 from .correlated_field import CorrelatedFieldMaker, non_parametric_amplitude
 from .energy_operators import (
@@ -41,6 +44,7 @@ from .kl import (
 )
 from .likelihood import Likelihood, StandardHamiltonian
 from .optimize import minimize, newton_cg, trust_ncg
+from .refine_chart import CoordinateChart, RefinementField
 from .stats_distributions import (
     invgamma_invprior,
     invgamma_prior,
@@ -59,6 +63,3 @@ from .sugar import (
     random_like,
     sum_of_squares,
 )
-from . import refine
-from . import refine_util
-from . import refine_chart

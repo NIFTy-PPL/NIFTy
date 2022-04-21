@@ -191,8 +191,8 @@ def test_chart_pixel_refinement_matrices_consistency(
     cc = refine_chart.CoordinateChart(
         (12, ) * distances.size, depth=depth, distances=distances, **kwargs
     )
-    olf, ks = refine_chart.coordinate_pixel_refinement_matrices(
-        cc, depth, pixel_index=(0, ) * distances.size, kernel=kernel
+    olf, ks = refine_chart.RefinementField(cc).matrices_at(
+        level=depth, pixel_index=(0, ) * distances.size, kernel=kernel
     )
     olf_classical, ks_classical = refine.layer_refinement_matrices(
         distances, kernel, **kwargs
@@ -220,7 +220,7 @@ def test_chart_refinement_matrices_consistency(
     cc = refine_chart.CoordinateChart(
         (12, ) * ndim, depth=depth, distances=distances, **kwargs
     )
-    refinement = refine_chart.coordinate_refinement_matrices(cc, kernel=kernel)
+    refinement = refine_chart.RefinementField(cc).matrices(kernel=kernel)
 
     cc_irreg = refine_chart.CoordinateChart(
         shape0=cc.shape0,
@@ -229,8 +229,8 @@ def test_chart_refinement_matrices_consistency(
         irregular_axes=tuple(range(ndim)),
         **kwargs
     )
-    refinement_irreg = refine_chart.coordinate_refinement_matrices(
-        cc_irreg, kernel=kernel
+    refinement_irreg = refine_chart.RefinementField(cc_irreg).matrices(
+        kernel=kernel
     )
 
     _, (cov_sqrt0, _) = refine.refinement_matrices(
