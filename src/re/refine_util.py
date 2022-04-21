@@ -4,15 +4,13 @@
 
 from math import ceil
 import sys
-from typing import Iterable, Literal, Union
+from typing import Callable, Iterable, Literal, Optional, Tuple, Union
 from warnings import warn
 
 import jax
 from jax import numpy as jnp
 import numpy as np
 from scipy.spatial import distance_matrix
-
-from .refine import get_fixed_power_correlated_field
 
 
 def coarse2fine_shape(
@@ -130,15 +128,9 @@ def gauss_kl(cov_desired, cov_approx, *, m_desired=None, m_approx=None):
 
 
 def refinement_approximation_error(
-    *,
-    shape,
-    distances,
-    depth,
-    kernel,
-    cutout=None,
-    _coarse_size=3,
-    _fine_size=2,
-    _fine_strategy="jump"
+    chart,
+    kernel: Callable,
+    cutout: Optional[Union[slice, int, Tuple[slice], Tuple[int]]] = None,
 ):
     """Computes the Kullback-Leibler (KL) divergence of the true covariance versus the
     approximative one for a given kernel and shape of the fine grid.
@@ -146,75 +138,69 @@ def refinement_approximation_error(
     If the desired shape can not be matched, the next larger one is used and
     the field is subsequently cropped to the desired shape.
     """
-    if _fine_strategy == "jump":
-        fpx_in_cpx = _fine_size**depth
-    elif _fine_strategy == "extend":
-        fpx_in_cpx = 2**depth
-    else:
-        ve = f"invalid `_fine_strategy`; got {_fine_strategy}"
-        raise ValueError(ve)
-    distances0 = tuple(d * fpx_in_cpx for d in distances)
+    from .refine_chart import RefinementField
 
-    if any(s <= 2 * fpx_in_cpx for s in shape):
-        msg = f"shape potentially too small (coarse pixel has {fpx_in_cpx} fine pixels)"
+    suggested_min_shape = 2 * 4**chart.depth
+    if any(s <= suggested_min_shape for s in chart.shape):
+        msg = (
+            f"shape {chart.shape} potentially too small"
+            f" (desired {(suggested_min_shape, ) * chart.ndim} (=`2*4^depth`))"
+        )
         warn(msg)
 
-    shape0 = fine2coarse_shape(
-        shape,
-        depth,
-        ceil_sizes=True,
-        _coarse_size=_coarse_size,
-        _fine_size=_fine_size,
-        _fine_strategy=_fine_strategy
-    )
-    cf, dom = get_fixed_power_correlated_field(
-        shape0=shape0,
-        distances0=distances0,
-        depth=depth,
-        kernel=kernel,
-        _coarse_size=_coarse_size,
-        _fine_size=_fine_size,
-        _fine_strategy=_fine_strategy
-    )
-    tgt = jax.eval_shape(cf, dom)
-    cf_T = jax.linear_transpose(cf, dom)
+    cf = RefinementField(chart, kernel=kernel)
+    cf_T = jax.linear_transpose(cf, cf.shapewithdtype)
     cov_implicit = jax.jit(lambda x: cf(*cf_T(x)))
 
-    c0 = [
-        d * jnp.arange(sz, dtype=float) for d, sz in zip(distances, tgt.shape)
-    ]
-    pos = jnp.stack(jnp.meshgrid(*c0, indexing="ij"), axis=0)
+    c0 = [jnp.arange(sz) for sz in chart.shape]
+    pos = jnp.stack(
+        chart.ind2cart(jnp.meshgrid(*c0, indexing="ij"), chart.depth), axis=0
+    )
 
-    probe = jnp.zeros(pos.shape[1:])
-    indices = np.indices(pos.shape[1:]).reshape(pos.ndim - 1, -1)
+    probe = jnp.zeros(chart.shape)
+    indices = np.indices(chart.shape).reshape(chart.ndim, -1)
     cov_empirical = jax.lax.map(
         lambda idx: cov_implicit(probe.at[tuple(idx)].set(1.)).ravel(),
         indices.T
     ).T  # vmap over `indices` w/ `in_axes=1, out_axes=-1`
 
-    p = jnp.moveaxis(pos, 0, -1).reshape(-1, pos.shape[0])
+    p = jnp.moveaxis(pos, 0, -1).reshape(-1, chart.ndim)
     dist_mat = distance_matrix(p, p)
     del p
     cov_truth = kernel(dist_mat)
 
-    if cutout is None and tgt.shape != shape:
+    if cutout is None and all(s > suggested_min_shape for s in chart.shape):
+        cutout = (suggested_min_shape, ) * chart.ndim
         print(
-            f"cropping enlarged field (w/ shape {tgt.shape}) to {shape}",
+            f"cropping field (w/ shape {chart.shape}) to {cutout}",
             file=sys.stderr
         )
-        cutout = tuple(slice(s) for s in shape)
     if cutout is not None:
-        sz = np.prod(shape)
-        cov_empirical = cov_empirical.reshape(tgt.shape * 2
-                                             )[cutout * 2].reshape(sz, sz)
-        cov_truth = cov_truth.reshape(tgt.shape * 2)[cutout * 2].reshape(sz, sz)
+        if isinstance(cutout, slice):
+            cutout = (cutout, ) * chart.ndim
+        elif isinstance(cutout, int):
+            cutout = (slice(cutout), ) * chart.ndim
+        elif isinstance(cutout, tuple):
+            if all(isinstance(el, slice) for el in cutout):
+                pass
+            elif all(isinstance(el, int) for el in cutout):
+                cutout = tuple(slice(el) for el in cutout)
+            else:
+                raise TypeError("elements of `cutout` of invalid type")
+        else:
+            raise TypeError("`cutout` of invalid type")
+
+        cov_empirical = cov_empirical.reshape(chart.shape * 2)[cutout * 2]
+        cov_truth = cov_truth.reshape(chart.shape * 2)[cutout * 2]
+        sz = np.prod(cov_empirical.shape[:chart.ndim])
+        if np.prod(cov_truth.shape[:chart.ndim]) != sz or not sz.dtype == int:
+            raise AssertionError()
+        cov_empirical = cov_empirical.reshape(sz, sz)
+        cov_truth = cov_truth.reshape(sz, sz)
 
     aux = {
         "cov_empirical": cov_empirical,
         "cov_truth": cov_truth,
-        "shape0": shape0,
-        "distances0": distances0,
-        "correlated_field": cf,
-        "domain": dom
+        "cov_implicit": cov_implicit,
     }
     return gauss_kl(cov_truth, cov_empirical), aux
