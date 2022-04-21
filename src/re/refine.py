@@ -319,10 +319,20 @@ def refine_conv_general(
             )
             fine = fine.at[fine_init_idx].set(c)
 
+    def vmap_squeeze_first(fun, in_axes):
+        vfun = vmap(fun, in_axes=in_axes)
+
+        def vfun_apply(*args):
+            return vfun(jnp.squeeze(args[0], axis=0), *args[1:])
+
+        return vfun_apply
+
     matmul = jnp.matmul
     for i in irreg_shape[::-1]:
-        in_axes = (0, 0) if i != 1 else (None, 0)
-        matmul = vmap(matmul, in_axes=in_axes)
+        if i != 1:
+            matmul = vmap(matmul, in_axes=(0, 0))
+        else:
+            matmul = vmap_squeeze_first(matmul, in_axes=(None, 0))
     m = matmul(fine_kernel_sqrt, excitations.reshape(fine_init_shape))
     rm_axs = tuple(
         ax for ax, i in enumerate(m.shape[len(irreg_shape):], len(irreg_shape))
