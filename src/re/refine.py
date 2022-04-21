@@ -280,7 +280,7 @@ def refine_conv_general(
 
         olf_at_i = jnp.squeeze(
             olf[fine_init_idx],
-            axis=tuple(a for a, i in enumerate(irreg_shape) if i == 1)
+            axis=tuple(range(sum(i == 1 for i in irreg_shape)))
         )
         if irreg_shape[-1] == 1 and fine_init_shape[-1] != 1:
             _assert(fine_init_idx[-1] == slice(None))
@@ -310,7 +310,7 @@ def refine_conv_general(
             fine = fine.at[fine_init_idx].set(c)
 
     matmul = jnp.matmul
-    for i in irreg_shape:
+    for i in irreg_shape[::-1]:
         in_axes = (0, 0) if i != 1 else (None, 0)
         matmul = vmap(matmul, in_axes=in_axes)
     m = matmul(fine_kernel_sqrt, excitations.reshape(fine_init_shape))
