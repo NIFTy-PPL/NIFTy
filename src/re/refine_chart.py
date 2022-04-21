@@ -327,10 +327,6 @@ class RefinementField():
             _fine_strategy=self.chart.fine_strategy
         )
 
-    def __call__(self, xi, kernel=None, precision=None):
-        kernel = self.kernel if kernel is None else kernel
-        return self.apply(xi, self.chart, kernel=kernel, precision=precision)
-
     @staticmethod
     def apply(xi, chart, kernel, precision=None):
         """Static method to apply a refinement field given some excitations, a
@@ -346,6 +342,20 @@ class RefinementField():
         ):
             fine = refine(fine, x, olf, k, precision=precision)
         return fine
+
+    def __call__(self, xi, kernel=None, precision=None):
+        kernel = self.kernel if kernel is None else kernel
+        return self.apply(xi, self.chart, kernel=kernel, precision=precision)
+
+    def __repr__(self):
+        descr = f"{self.__class__.__name__}({self.chart!r}"
+        descr += ", kernel={self._kernel!r}" if self._kernel is not None else ""
+        descr += ", dtype={self._dtype!r}" if self._dtype is not None else ""
+        descr += ")"
+        return descr
+
+    def __eq__(self, other):
+        return repr(self) == repr(other)
 
 
 def _coordinate_pixel_refinement_matrices(
