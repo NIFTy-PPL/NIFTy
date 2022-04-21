@@ -263,8 +263,19 @@ class RefinementField():
         self._kernel = kernel
         self._dtype = dtype
 
-        if len(args) == 1 and isinstance(args[0], CoordinateChart):
-            self.chart = args[0]
+        if len(args) > 0 and isinstance(args[0], CoordinateChart):
+            if kwargs:
+                raise TypeError(f"expected no keyword arguments, got {kwargs}")
+
+            if len(args) == 1:
+                self.chart, = args
+            elif len(args) == 2 and callable(args[1]) and kernel is None:
+                self.chart, self._kernel = args
+            elif len(args) == 3 and callable(args[1]) and kernel is None and dtype is None:
+                self.chart, self._kernel, self._dtype = args
+            else:
+                te = "got unexpected arguments in addition to CoordinateChart"
+                raise TypeError(te)
         else:
             self.chart = CoordinateChart(*args, **kwargs)
 
