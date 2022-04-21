@@ -25,15 +25,15 @@ from warnings import warn
 from ..domain_tuple import DomainTuple
 from ..multi_domain import MultiDomain
 from ..multi_field import MultiField
+from ..operators.counting_operator import CountingOperator
 from ..operators.energy_operators import StandardHamiltonian
 from ..operators.operator import Operator
 from ..operators.scaling_operator import ScalingOperator
 from ..plot import Plot, plottable2D
 from ..sugar import from_random
 from ..utilities import (Nop, check_MPI_equality,
-                         check_MPI_synced_random_state,
-                         get_MPI_params_from_comm,
-                         check_object_identity)
+                         check_MPI_synced_random_state, check_object_identity,
+                         get_MPI_params_from_comm)
 from .energy_adapter import EnergyAdapter
 from .iteration_controllers import IterationController
 from .kl_energies import SampledKLEnergy
@@ -321,7 +321,9 @@ def optimize_kl(likelihood_energy,
                 makedirs(join(output_directory, subfolder), exist_ok=overwrite)
 
     for iglobal in range(initial_index, total_iterations):
-        ham = StandardHamiltonian(likelihood_energy(iglobal), sampling_iteration_controller(iglobal))
+        lh = likelihood_energy(iglobal)
+        count = CountingOperator(lh.domain)
+        ham = StandardHamiltonian(lh @ count, sampling_iteration_controller(iglobal))
         minimizer = kl_minimizer(iglobal)
         mean_iter = mean.extract(ham.domain)
 
@@ -377,6 +379,8 @@ def optimize_kl(likelihood_energy,
 
         _minisanity(likelihood_energy, iglobal, sl, output_directory, comm)
         _barrier(comm(iglobal))
+
+        _counting_report(count, iglobal, output_directory, comm)
 
         _handle_inspect_callback(inspect_callback, sl, iglobal, mean, dom, comm)
         _barrier(comm(iglobal))
@@ -531,23 +535,39 @@ def _plot_stats(file_name, mean, var, ground_truth, comm, plotting_kwargs):
 
 
 def _minisanity(likelihood_energy, iglobal, sl, output_directory, comm):
-    from datetime import datetime
-    from ..logger import logger
     from ..extra import minisanity
 
-    s = "\n".join(
-        ["",
-         f"Finished index: {iglobal}",
-         f"Current datetime: {datetime.now()}",
-         minisanity(likelihood_energy(iglobal), sl, terminal_colors=False),
-         ""]
-        )
+    s = minisanity(likelihood_energy(iglobal), sl, terminal_colors=False)
+    _report_to_logger_and_file(s, "minisanity.txt", iglobal, output_directory,
+                               comm, True, True, True)
+
+
+def _counting_report(count, iglobal, output_directory, comm):
+    _report_to_logger_and_file(count.report(), "counting_report.txt", iglobal,
+                               output_directory, comm, output_directory is None,
+                               True, False)
+
+
+def _report_to_logger_and_file(report, file_name, iglobal, output_directory,
+                               comm, to_logger, to_file, only_master):
+    from datetime import datetime
+
+    from ..logger import logger
+    from ..utilities import allreduce_sum
+
+    intro = f"Finished index: {iglobal}\nCurrent datetime: {datetime.now()}\n"
+
+    if not only_master:
+        report = allreduce_sum([[report]], comm(iglobal))
+        report = [f"Task {ii}\n{rr}" for ii, rr in enumerate(report)]
+        report = "\n".join(report)
 
     if _MPI_master(comm(iglobal)):
-        logger.info(s)
-        if output_directory is not None:
-            with open(join(output_directory, "minisanity.txt"), "a") as f:
-                f.write(s)
+        if to_logger:
+            logger.info(report)
+        if output_directory is not None and to_file:
+            with open(join(output_directory, file_name), "a") as f:
+                f.write(intro + report + "\n\n")
 
 
 def _handle_inspect_callback(inspect_callback, sl, iglobal, mean, dom, comm):
@@ -598,6 +618,7 @@ def _want_metric(mini):
     if isinstance(mini, (SteepestDescent, L_BFGS, VL_BFGS)):
         return False
     return True
+
 
 def _number_of_arguments(func):
     from inspect import signature
