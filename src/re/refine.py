@@ -9,7 +9,7 @@ from typing import Callable, Literal, Optional, Union
 
 from jax import vmap
 from jax import numpy as jnp
-from jax.lax import conv_general_dilated
+from jax.lax import conv_general_dilated, dynamic_slice
 import numpy as np
 
 NDARRAY = Union[jnp.ndarray, np.ndarray]
@@ -272,10 +272,18 @@ def refine_conv_general(
             idx if sz != 1 else slice(None)
             for sz, idx in zip(irreg_shape, irreg_indices[irreg_idx])
         )
+        # Make JAX/XLA happy with `dynamic_slice`
         coarse_idx = tuple(
-            slice(ws * idx, ws * idx + csz) if sz != 1 else slice(None)
-            for ws, sz, idx in
-            zip(window_strides, irreg_shape, irreg_indices[irreg_idx])
+            (ws * idx, csz) if sz != 1 else (0, cend)
+            for ws, sz, idx, cend in zip(
+                window_strides, irreg_shape, irreg_indices[irreg_idx],
+                coarse_values.shape
+            )
+        )
+        coarse_idx_select = partial(
+            dynamic_slice,
+            start_indices=list(zip(*coarse_idx))[0],
+            slice_sizes=list(zip(*coarse_idx))[1]
         )
 
         olf_at_i = jnp.squeeze(
@@ -287,9 +295,10 @@ def refine_conv_general(
             # loop over conv channel offsets to apply the filter matrix in a convolution
             for i_f, i_c in enumerate(convolution_slices):
                 c = conv(
-                    coarse_values[coarse_idx][...,
-                                              i_c:c_shp_n1 - (c_shp_n1 - i_c) %
-                                              csz].reshape(c_slc_shp), olf_at_i
+                    coarse_idx_select(coarse_values)[..., i_c:c_shp_n1 -
+                                                     (c_shp_n1 - i_c) %
+                                                     csz].reshape(c_slc_shp),
+                    olf_at_i
                 )[0]
                 c = jnp.squeeze(
                     c,
@@ -302,8 +311,9 @@ def refine_conv_general(
                 not isinstance(fine_init_idx[-1], slice) and
                 fine_init_idx[-1].ndim == 0
             )
-            _assert(coarse_idx[-1] != slice(None))
-            c = conv(coarse_values[coarse_idx].reshape(c_slc_shp), olf_at_i)[0]
+            c = conv(
+                coarse_idx_select(coarse_values).reshape(c_slc_shp), olf_at_i
+            )[0]
             c = jnp.squeeze(
                 c, axis=tuple(a for a, i in enumerate(irreg_shape) if i != 1)
             )
