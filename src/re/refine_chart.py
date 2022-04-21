@@ -343,12 +343,19 @@ class RefinementField():
         refinement = _coordinate_refinement_matrices(
             chart, kernel=kernel, depth=len(xi) - 1
         )
+        refine_w_chart = partial(
+            refine,
+            _coarse_size=chart.coarse_size,
+            _fine_size=chart.fine_size,
+            _fine_strategy=chart.fine_strategy,
+            precision=precision
+        )
 
         fine = (refinement.cov_sqrt0 @ xi[0].ravel()).reshape(xi[0].shape)
         for x, olf, k in zip(
             xi[1:], refinement.filter, refinement.propagator_sqrt
         ):
-            fine = refine(fine, x, olf, k, precision=precision)
+            fine = refine_w_chart(fine, x, olf, k)
         return fine
 
     def __call__(self, xi, kernel=None, precision=None):
