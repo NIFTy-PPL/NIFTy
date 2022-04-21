@@ -139,6 +139,13 @@ class CoordinateChart():
                 raise ValueError(ve)
         self.regular_axes = tuple(regular_axes)
         self.irregular_axes = tuple(irregular_axes)
+        if len(self.regular_axes) + len(self.irregular_axes) != self.ndim:
+            ve = (
+                f"length of regular_axes and irregular_axes"
+                f" ({len(self.regular_axes)} + {len(self.irregular_axes)} respectively)"
+                f" incompatible with overall dimension {self.ndim}"
+            )
+            raise ValueError(ve)
 
         self._descr = {
             "depth": self.depth,
@@ -152,6 +159,7 @@ class CoordinateChart():
         else:
             self._descr["rg2cart"] = repr(rg2cart)
             self._descr["cart2rg"] = repr(cart2rg)
+        self._descr["regular_axes"] = self.regular_axes
 
     def rgoffset(self, lvl: int) -> Tuple[float]:
         """Calculate the offset on the regular grid due to shrinking of the
