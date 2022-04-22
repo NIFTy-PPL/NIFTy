@@ -503,7 +503,7 @@ def _plotHist(f, ax, **kwargs):
 
 def _plot(f, ax, **kwargs):
     _register_cmaps()
-    if isinstance(f, Field) or isinstance(f, EnergyHistory):
+    if isinstance(f, (Field, EnergyHistory)):
         f = [f]
     f = list(f)
     if len(f) == 0:
@@ -577,7 +577,7 @@ class Plot:
             self._plots.append(None)
             self._kwargs.append({})
             return
-        if isinstance(f, (MultiField, Field)):
+        if isinstance(f, (MultiField, Field, EnergyHistory)):
             f = [f]
         if hasattr(f, "__len__") and all(isinstance(ff, MultiField) for ff in f):
             for kk in f[0].domain.keys():
@@ -591,7 +591,6 @@ class Plot:
             return
 
         if isinstance(f[0], EnergyHistory):
-            f = f[0]
             dom = None
         else:
             dom = f[0].domain
@@ -615,7 +614,7 @@ class Plot:
                     for ifield in range(len(f)):
                         arr = f[ifield].val[tuple(multi_index)]
                         myassert(arr.ndim == 2)
-                        self._plots.append(makeField(dom[twod_index], arr))
+                        self._plots.append([makeField(dom[twod_index], arr)])
                         self._kwargs.append(kwargs)
                 return
         self._plots.append(f)

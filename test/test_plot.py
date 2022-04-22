@@ -99,3 +99,12 @@ def test_iter_plot():
         plot = ift.Plot()
         plot.add(fld)
         plot.output(title='Should be 4 plots', name=next(name))
+
+
+def test_EnergyHistory_plot():
+    eh = ift.minimization.iteration_controllers.EnergyHistory()
+    for i in range(5):
+        eh.append((i, (i + 1)**-2))
+    plot = ift.Plot()
+    plot.add(eh)
+    plot.output(title='EnergyHistory plot', name=next(name))
