@@ -34,7 +34,15 @@ class CoordinateChart():
         distances: Optional[Union[Iterable[float], float]] = None,
         distances0: Optional[Union[Iterable[float], float]] = None,
     ):
-        """Initialize a refinement chart."""
+        """Initialize a refinement chart.
+
+        Note
+        ----
+        The functions `rg2cart` and `cart2rg` are always w.r.t. the grid at
+        zero depth. In other words, it is straight forward to increase the
+        resolution of an existing chart by simply increasing its depth.
+        However, extending a grid spatially is more cumbersome.
+        """
         self.depth = depth
         if shape0 is None and min_shape is not None:
             shape0 = fine2coarse_shape(
