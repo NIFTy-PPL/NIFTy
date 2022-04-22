@@ -29,6 +29,7 @@ def test_counting_operator():
     inp = ift.Operator.identity_operator(dom)
 
     counting = ift.CountingOperator(dom)
+
     op = inp.exp() @ counting
 
     assert_equal(counting.count_apply, 0)
@@ -70,3 +71,5 @@ def test_counting_operator():
     assert_equal(counting.count_jac_adj, 5)
 
     counting.__repr__()
+
+    ift.extra.check_operator(counting, fld)
