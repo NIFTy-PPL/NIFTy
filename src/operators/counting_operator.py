@@ -63,6 +63,10 @@ class CountingOperator(Operator):
              f"* Adjoint Jacobian: \t{self.count_jac_adj:>7}"]
         return "\n".join(s)
 
+    def _simplify_for_constant_input_nontrivial(self, c_inp):
+        from .simplify_for_const import InsertionOperator
+        return None, self @ InsertionOperator(self.domain, c_inp)
+
 
 class _JacCountingOperator(EndomorphicOperator):
     def __init__(self, domain):
