@@ -21,6 +21,7 @@ import pytest
 import nifty8 as ift
 
 from ..common import list2fixture, setup_function, teardown_function
+from numpy.testing import assert_equal
 
 
 def test_counting_operator():
@@ -30,42 +31,42 @@ def test_counting_operator():
     counting = ift.CountingOperator(dom)
     op = inp.exp() @ counting
 
-    assert counting.count_apply == 0
-    assert counting.count_apply_lin == 0
-    assert counting.count_jac == 0
-    assert counting.count_jac_adj == 0
+    assert_equal(counting.count_apply, 0)
+    assert_equal(counting.count_apply_lin, 0)
+    assert_equal(counting.count_jac, 0)
+    assert_equal(counting.count_jac_adj, 0)
 
     fld = ift.from_random(op.domain)
     lin = ift.Linearization.make_var(fld)
     op(fld)
     op(fld)
 
-    assert counting.count_apply == 2
-    assert counting.count_apply_lin == 0
-    assert counting.count_jac == 0
-    assert counting.count_jac_adj == 0
+    assert_equal(counting.count_apply, 2)
+    assert_equal(counting.count_apply_lin, 0)
+    assert_equal(counting.count_jac, 0)
+    assert_equal(counting.count_jac_adj, 0)
 
     res = op(lin)
 
-    assert counting.count_apply == 2
-    assert counting.count_apply_lin == 1
-    assert counting.count_jac == 0
-    assert counting.count_jac_adj == 0
+    assert_equal(counting.count_apply, 2)
+    assert_equal(counting.count_apply_lin, 1)
+    assert_equal(counting.count_jac, 0)
+    assert_equal(counting.count_jac_adj, 0)
 
     for _ in range(3):
         res.jac(fld)
 
-    assert counting.count_apply == 2
-    assert counting.count_apply_lin == 1
-    assert counting.count_jac == 3
-    assert counting.count_jac_adj == 0
+    assert_equal(counting.count_apply, 2)
+    assert_equal(counting.count_apply_lin, 1)
+    assert_equal(counting.count_jac, 3)
+    assert_equal(counting.count_jac_adj, 0)
 
     for _ in range(5):
         res.jac.adjoint(res.val)
 
-    assert counting.count_apply == 2
-    assert counting.count_apply_lin == 1
-    assert counting.count_jac == 3
-    assert counting.count_jac_adj == 5
+    assert_equal(counting.count_apply, 2)
+    assert_equal(counting.count_apply_lin, 1)
+    assert_equal(counting.count_jac, 3)
+    assert_equal(counting.count_jac_adj, 5)
 
     counting.__repr__()
