@@ -117,7 +117,9 @@ class CoordinateChart():
             self.rg2cart = _rg2cart
             self.cart2rg = _cart2rg
         elif rg2cart is not None and cart2rg is not None:
-            c0 = [jnp.arange(shp) for shp in self.shape0]
+            c0 = jnp.meshgrid(
+                *[jnp.arange(s) for s in self.shape0], indexing="ij"
+            )
             if not all(
                 jnp.allclose(r, c) for r, c in zip(cart2rg(rg2cart(c0)), c0)
             ):
