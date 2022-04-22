@@ -35,7 +35,7 @@ from ..utilities import (Nop, check_MPI_equality,
                          get_MPI_params_from_comm,
                          check_object_identity)
 from .energy_adapter import EnergyAdapter
-from .iteration_controllers import IterationController
+from .iteration_controllers import IterationController, EnergyHistory
 from .kl_energies import SampledKLEnergy
 from .minimizer import Minimizer
 from .sample_list import (ResidualSampleList, SampleList, SampleListBase,
@@ -320,6 +320,8 @@ def optimize_kl(likelihood_energy,
             for subfolder in ["pickle"] + list(plottable_operators.keys()):
                 makedirs(join(output_directory, subfolder), exist_ok=overwrite)
 
+    energy_history = EnergyHistory()
+
     for iglobal in range(initial_index, total_iterations):
         ham = StandardHamiltonian(likelihood_energy(iglobal), sampling_iteration_controller(iglobal))
         minimizer = kl_minimizer(iglobal)
@@ -338,6 +340,7 @@ def optimize_kl(likelihood_energy,
                 e, _ = minimizer(e)
                 mean = MultiField.union([mean, e.position]) if mf_dom else e.position
                 sl = SampleList([mean])
+                energy_history.append((iglobal + 1, e.value))
             else:
                 warn("Have detected MPI communicator for optimizing Hamiltonian. Will use only "
                      "the rank0 task and communicate the result afterwards to all other tasks.")
@@ -345,6 +348,7 @@ def optimize_kl(likelihood_energy,
                     e, _ = minimizer(e)
                     mean = MultiField.union([mean, e.position]) if mf_dom else e.position
                     sl = SampleList([mean], comm=comm(iglobal), domain=dom)
+                    energy_history.append((iglobal + 1, e.value))
                 else:
                     mean = None
                     sl = SampleList([], comm=comm(iglobal), domain=dom)
@@ -362,6 +366,7 @@ def optimize_kl(likelihood_energy,
             e, _ = minimizer(e)
             mean = MultiField.union([mean, e.position]) if mf_dom else e.position
             sl = e.samples.at(mean)
+            energy_history.append((iglobal + 1, e.value))
 
         if output_directory is not None:
             _plot_operators(output_directory, iglobal, plottable_operators, sl,
@@ -373,6 +378,7 @@ def optimize_kl(likelihood_energy,
             if _MPI_master(comm(iglobal)):
                 with open(join(output_directory, "last_finished_iteration"), "w") as f:
                     f.write(str(iglobal))
+                _plot_energy_history(output_directory, iglobal, energy_history, save_strategy)
         _barrier(comm(iglobal))
 
         _minisanity(likelihood_energy, iglobal, sl, output_directory, comm)
@@ -507,6 +513,16 @@ def _plot_samples(file_name, samples, ground_truth, comm, plotting_kwargs):
                 p.add(single_samples, color=color, alpha=alpha, label=label,
                       title=_append_key("Samples", kk), **plotting_kwargs)
         p.output(name=file_name)
+
+
+def _plot_energy_history(output_directory, index, energy_history, save_strategy):
+    if len(energy_history) < 2:
+        return
+    p = Plot()
+    p.add(energy_history, xscale='log', yscale='linear', use_history_timestamps=False)
+    fname = join(output_directory, 'energy_history_' + \
+                 _file_name_by_strategy(save_strategy, index) + '.png')
+    p.output(title='energy history', name=fname)
 
 
 def _append_key(s, key):

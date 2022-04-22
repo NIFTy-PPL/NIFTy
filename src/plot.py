@@ -304,17 +304,22 @@ def _plot_history(f, ax, **kwargs):
     ax.set_ylabel(kwargs.pop("ylabel", ""))
     plt.xscale(kwargs.pop("xscale", "linear"))
     plt.yscale(kwargs.pop("yscale", "linear"))
+    timestamps = kwargs.pop("use_history_timestamps", True)
     mi, ma = np.inf, -np.inf
     for i, fld in enumerate(f):
-        xcoord = date2num([dt.fromtimestamp(ts) for ts in fld.time_stamps])
+        if timestamps:
+            xcoord = date2num([dt.fromtimestamp(ts) for ts in fld.time_stamps])
+        else:
+            xcoord = np.arange(len(fld)) + 1
         ycoord = fld.energy_values
         ax.scatter(xcoord, ycoord, label=label[i], alpha=alpha[i],
                    color=color[i], s=size[i])
         mi, ma = min([min(xcoord), mi]), max([max(xcoord), ma])
     delta = (ma-mi)*0.05
     ax.set_xlim((mi-delta, ma+delta))
-    xfmt = DateFormatter('%H:%M')
-    ax.xaxis.set_major_formatter(xfmt)
+    if timestamps:
+        xfmt = DateFormatter('%H:%M')
+        ax.xaxis.set_major_formatter(xfmt)
     _limit_xy(**kwargs)
     if label != ([None]*len(f)):
         plt.legend(loc="upper right")
