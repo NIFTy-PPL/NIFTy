@@ -9,7 +9,7 @@ from typing import Callable, Literal, Optional, Union
 
 from jax import vmap
 from jax import numpy as jnp
-from jax.lax import conv_general_dilated, dynamic_slice
+from jax.lax import conv_general_dilated, dynamic_slice, fori_loop
 import numpy as np
 
 NDARRAY = Union[jnp.ndarray, np.ndarray]
@@ -242,7 +242,6 @@ def refine_conv_general(
         precision=precision,
     )
 
-    fine = jnp.zeros(fine_init_shape)
     c_shp_n1 = coarse_values.shape[-1]
     c_slc_shp = (1, )
     c_slc_shp += tuple(
@@ -251,6 +250,7 @@ def refine_conv_general(
     )
     c_slc_shp += (-1, csz)
 
+    fine = jnp.zeros(fine_init_shape)
     PLC = -1 << 31  # integer placeholder outside of the here encountered regimes
     irreg_indices = jnp.stack(
         jnp.meshgrid(
@@ -262,7 +262,8 @@ def refine_conv_general(
         ),
         axis=-1
     )
-    for i in range(np.prod(irreg_indices.shape[:-1])):
+
+    def single_refinement_step(i, fine: jnp.ndarray) -> jnp.ndarray:
         irreg_idx = jnp.unravel_index(i, irreg_indices.shape[:-1])
         _assert(
             len(irreg_shape) == len(irreg_indices[irreg_idx]) ==
@@ -318,6 +319,12 @@ def refine_conv_general(
                 c, axis=tuple(a for a, i in enumerate(irreg_shape) if i != 1)
             )
             fine = fine.at[fine_init_idx].set(c)
+
+        return fine
+
+    fine = fori_loop(
+        0, np.prod(irreg_indices.shape[:-1]), single_refinement_step, fine
+    )
 
     def vmap_squeeze_first(fun, in_axes):
         vfun = vmap(fun, in_axes=in_axes)
