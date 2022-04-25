@@ -12,6 +12,8 @@ from jax import numpy as jnp
 import numpy as np
 from scipy.spatial import distance_matrix
 
+from .forest_util import zeros_like
+
 
 def coarse2fine_shape(
     shape0: Union[int, Iterable[int]],
@@ -149,8 +151,15 @@ def refinement_approximation_error(
         warn(msg)
 
     cf = RefinementField(chart, kernel=kernel)
-    cf_T = jax.linear_transpose(cf, cf.shapewithdtype)
-    cov_implicit = jax.jit(lambda x: cf(*cf_T(x)))
+    try:
+        cf_T = jax.linear_transpose(cf, cf.shapewithdtype)
+        cov_implicit = jax.jit(lambda x: cf(*cf_T(x)))
+        _ = cov_implicit(jnp.zeros(chart.shape))  # Test transpose
+    except NotImplementedError:
+        # Workaround JAX not yet implementing the transpose of the scanned
+        # refinement
+        _, cf_T = jax.vjp(cf, zeros_like(cf.shapewithdtype))
+        cov_implicit = jax.jit(lambda x: cf(*cf_T(x)))
 
     c0 = [jnp.arange(sz) for sz in chart.shape]
     pos = jnp.stack(
