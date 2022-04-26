@@ -4,12 +4,13 @@
 from functools import partial
 from typing import Any, Callable, Optional, Sequence, Tuple, TypeVar, Union
 
+import jax
 from jax import lax
 from jax import random
 from jax.tree_util import Partial, register_pytree_node_class
 
 from . import conjugate_gradient
-from .forest_util import assert_arithmetics, unstack, vmap_forest, vmap_forest_mean
+from .forest_util import assert_arithmetics, map_forest, map_forest_mean, unstack
 from .likelihood import Likelihood, StandardHamiltonian
 from .sugar import random_like
 
@@ -342,7 +343,7 @@ class SampleIter():
         # TODO: vmap is significantly slower than looping over the samples
         # for an extremely high dimensional problem.
         in_axes = kwargs.get("in_axes", (0, ))
-        return vmap_forest(call, in_axes=in_axes)(tuple(self), *args)
+        return map_forest(call, in_axes=in_axes)(tuple(self), *args)
 
     def mean(self, call: Callable, *args, **kwargs):
         """Applies an operator over all samples and averages the results
@@ -356,7 +357,7 @@ class SampleIter():
         # TODO: vmap is significantly slower than looping over the samples
         # for an extremely high dimensional problem.
         in_axes = kwargs.get("in_axes", (0, ))
-        return vmap_forest_mean(call, in_axes=in_axes)(tuple(self), *args)
+        return map_forest_mean(call, in_axes=in_axes)(tuple(self), *args)
 
     def tree_flatten(self):
         return ((self._mean, self._samples), (self._linearly_mirror_samples, ))
@@ -378,6 +379,7 @@ def MetricKL(
     n_samples: int,
     key,
     mirror_samples: bool = True,
+    sample_mapping: Union[str, Callable] = 'lax',
     linear_sampling_cg: Callable = conjugate_gradient.static_cg,
     linear_sampling_name: Optional[str] = None,
     linear_sampling_kwargs: Optional[dict] = None,
@@ -395,6 +397,44 @@ def MetricKL(
     typically nonlinear structure of the true distribution these samples have
     to be updated eventually by re-instantiating the Metric Gaussian again. For
     the true probability distribution the standard parametrization is assumed.
+
+    Parameters
+    ----------
+
+    hamiltonian : :class:`nifty8.src.re.likelihood.StandardHamiltonian`
+        Hamiltonian of the approximated probability distribution.
+    primals : :class:`nifty8.re.field.Field`
+        Expansion point of the coordinate transformation.
+    n_samples : integer
+        Number of samples used to stochastically estimate the KL.
+    key : DeviceArray
+        A PRNG-key.
+    mirror_samples : boolean
+        Whether the mirrored version of the drawn samples are also used.
+        If true, the number of used samples doubles.
+        Mirroring samples stabilizes the KL estimate as extreme
+        sample variation is counterbalanced.
+        Default is True.
+    sample_mapping : string, callable
+        Can be either a string-key to a mapping function or a mapping function
+        itself. The function is used to map the drawing of samples. Possible
+        string-keys are:
+
+        keys                -       functions
+        -------------------------------------
+        'pmap' or 'p'       -       jax.pmap
+        'lax.map' or 'lax'  -       jax.lax.map
+
+        In case sample_mapping is passed as a function, it should produce a
+        mapped function f_mapped of a general function f as: `f_mapped =
+        sample_mapping(f)`
+    linear_sampling_cg : callable
+        Implementation of the conjugate gradient algorithm and used to
+        apply the inverse of the metric.
+    linear_sampling_name : string, optional
+        'name'-keyword-argument passed to `linear_sampling_cg`.
+    linear_sampling_kwargs : dict, optional
+        Additional keyword arguments passed on to `linear_sampling_cg`.
 
     See also
     --------
@@ -415,7 +455,26 @@ def MetricKL(
         cg_kwargs=linear_sampling_kwargs
     )
     subkeys = random.split(key, n_samples)
-    samples_stack = lax.map(lambda k: draw(key=k), subkeys)
+    if isinstance(sample_mapping, str):
+        if sample_mapping == 'pmap' or sample_mapping == 'p':
+            sample_mapping = jax.pmap
+        elif sample_mapping == 'lax.map' or sample_mapping == 'lax':
+            sample_mapping = partial(partial, lax.map)
+        else:
+            ve = (
+                f"{sample_mapping} is not an accepted key to a mapping function"
+                "; please pass function directly"
+            )
+            raise ValueError(ve)
+
+    elif not callable(sample_mapping):
+        te = (
+            f"invalid `sample_mapping` of type {type(sample_mapping)!r}"
+            "; expected string or callable"
+        )
+        raise TypeError(te)
+
+    samples_stack = sample_mapping(lambda k: draw(key=k))(subkeys)
 
     return SampleIter(
         mean=primals,
@@ -491,9 +550,31 @@ def GeoMetricKL(
     )
 
 
-def mean_value_and_grad(ham: Callable, *args, **kwargs):
-    """Thin wrapper around `value_and_grad` and `vmap` to apply a cost function
-    to a mean and a list of residual samples.
+def mean_value_and_grad(ham: Callable, sample_mapping='vmap', *args, **kwargs):
+    """Thin wrapper around `value_and_grad` and the provided sample mapping
+    function, e.g. `vmap` to apply a cost function to a mean and a list of
+    residual samples.
+
+    Parameters
+    ----------
+
+    ham : :class:`nifty8.src.re.likelihood.StandardHamiltonian`
+        Hamiltonian of the approximated probability distribution,
+        of which the mean value and the mean gradient are to be computed.
+    sample_mapping : string, callable
+        Can be either a string-key to a mapping function or a mapping function
+        itself. The function is used to map the drawing of samples. Possible
+        string-keys are:
+
+        keys                -       functions
+        -------------------------------------
+        'vmap' or 'v'       -       jax.vmap
+        'pmap' or 'p'       -       jax.pmap
+        'lax.map' or 'lax'  -       jax.lax.map
+
+        In case sample_mapping is passed as a function, it should produce a
+        mapped function f_mapped of a general function f as: `f_mapped =
+        sample_mapping(f)`
     """
     from jax import value_and_grad
     vg = value_and_grad(ham, *args, **kwargs)
@@ -509,8 +590,7 @@ def mean_value_and_grad(ham: Callable, *args, **kwargs):
 
         if not isinstance(primals_samples, SampleIter):
             primals_samples = SampleIter(samples=primals_samples)
-        # TODO: Allow for different mapping methods
-        return vmap_forest_mean(ham_vg, in_axes=(0, ))(
+        return map_forest_mean(ham_vg, mapping=sample_mapping, in_axes=(0, ))(
             tuple(primals_samples.at(primals))
         )
 
@@ -536,7 +616,7 @@ def mean_hessp(ham: Callable, *args, **kwargs):
 
         if not isinstance(primals_samples, SampleIter):
             primals_samples = SampleIter(samples=primals_samples)
-        return vmap_forest_mean(
+        return map_forest_mean(
             partial(mean_hp, primals_samples=None, **primals_kw),
             in_axes=(0, None)
         )(tuple(primals_samples.at(primals)), tangents)
@@ -559,7 +639,7 @@ def mean_metric(metric: Callable):
 
         if not isinstance(primals_samples, SampleIter):
             primals_samples = SampleIter(samples=primals_samples)
-        return vmap_forest_mean(
+        return map_forest_mean(
             partial(metric, **primals_kw), in_axes=(0, None)
         )(tuple(primals_samples.at(primals)), tangents)
 

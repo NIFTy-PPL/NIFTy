@@ -17,6 +17,8 @@ from .forest_util import (
     assert_arithmetics,
     dot,
     has_arithmetics,
+    map_forest,
+    map_forest_mean,
     norm,
     shape,
     size,
@@ -24,8 +26,6 @@ from .forest_util import (
     unite,
     unstack,
     vdot,
-    vmap_forest,
-    vmap_forest_mean,
     zeros_like,
 )
 from .hmc import generate_hmc_acc_rej, generate_nuts_tree

@@ -15,6 +15,7 @@ from jax.tree_util import (
     tree_structure,
     tree_transpose,
 )
+import numpy as np
 
 from .field import Field
 from .sugar import is1d
@@ -319,14 +320,15 @@ def unstack(stack):
     return tree_map(partial(jnp.squeeze, axis=0), unstacked)
 
 
-def vmap_forest(
+def map_forest(
     f: Callable,
     in_axes: Union[int, Tuple] = 0,
     out_axes: Union[int, Tuple] = 0,
     tree_transpose_output: bool = True,
+    mapping: Union[str, Callable] = 'vmap',
     **kwargs
 ) -> Callable:
-    from jax import vmap
+    from jax import vmap, pmap
 
     if out_axes != 0:
         raise TypeError("`out_axis` not yet supported")
@@ -344,7 +346,35 @@ def vmap_forest(
         te = "mapping over a non integer axis is not yet supported"
         raise TypeError(te)
 
-    f_map = vmap(f, in_axes=in_axes, out_axes=out_axes, **kwargs)
+    if isinstance(mapping, str):
+        if mapping == 'vmap' or mapping == 'v':
+            f_map = vmap(f, in_axes=in_axes, out_axes=out_axes, **kwargs)
+        elif mapping == 'pmap' or mapping == 'p':
+            f_map = pmap(f, in_axes=in_axes, out_axes=out_axes, **kwargs)
+        elif mapping == 'lax.map' or mapping == 'lax':
+            if all(el == 0
+                   for el in in_axes) and np.all(0 == np.array(out_axes)):
+                f_map = partial(lax.map, f)
+            else:
+                ve = (
+                    "mapping `in_axes` and `out_axes` along another axis than"
+                    " the 0-axis is not possible for `lax.map`"
+                )
+                raise ValueError(ve)
+        else:
+            ve = (
+                f"{mapping} is not an accepted key to a mapping function"
+                "; please pass function directly"
+            )
+            raise ValueError(ve)
+    elif callable(mapping):
+        f_map = mapping(f, in_axes=in_axes, out_axes=out_axes, **kwargs)
+    else:
+        te = (
+            f"invalid `mapping` of type {type(mapping)!r}"
+            "; expected string or callable"
+        )
+        raise TypeError(te)
 
     def apply(*xs):
         if not isinstance(xs[i], (list, tuple)):
@@ -362,9 +392,9 @@ def vmap_forest(
     return apply
 
 
-def vmap_forest_mean(method, *args, **kwargs) -> Callable:
-    method_map = vmap_forest(
-        method, *args, tree_transpose_output=False, **kwargs
+def map_forest_mean(method, mapping='vmap', *args, **kwargs) -> Callable:
+    method_map = map_forest(
+        method, *args, tree_transpose_output=False, mapping=mapping, **kwargs
     )
 
     def meaned_apply(*xs, **xs_kw):
