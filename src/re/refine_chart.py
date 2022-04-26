@@ -402,6 +402,7 @@ def _coordinate_pixel_refinement_matrices(
     pixel_index: Optional[Iterable[int]] = None,
     kernel: Optional[Callable] = None,
     *,
+    coerce_fine_kernel: bool = True,
     _cov_from_loc: Optional[Callable] = None,
 ) -> Tuple[jnp.ndarray, jnp.ndarray]:
     cov_from_loc = _get_cov_from_loc(kernel, _cov_from_loc)
@@ -447,16 +448,18 @@ def _coordinate_pixel_refinement_matrices(
     olf = cov_fc @ cov_cc_inv
     # Also see Schur-Complement
     fine_kernel = cov_ff - cov_fc @ cov_cc_inv @ cov_fc.T
-    # Implicitly assume a white power spectrum beyond the numerics limit. Use
-    # the diagonal as estimate for the magnitude of the variance.
-    fine_kernel_fallback = jnp.diag(jnp.abs(jnp.diag(fine_kernel)))
-    # Never produce NaNs (https://github.com/google/jax/issues/1052)
-    # This is expensive but necessary (worse but cheaper:
-    # `jnp.all(jnp.diag(fine_kernel) > 0.)`)
-    is_pos_def = jnp.all(jnp.linalg.eigvalsh(fine_kernel) > 0)
-    fine_kernel = jnp.where(is_pos_def, fine_kernel, fine_kernel_fallback)
-    # NOTE, use the Cholesky decomposition, even though already having computed
-    # the eigenvalues, as to get consistent results across platforms
+    if coerce_fine_kernel:
+        # Implicitly assume a white power spectrum beyond the numerics limit.
+        # Use the diagonal as estimate for the magnitude of the variance.
+        fine_kernel_fallback = jnp.diag(jnp.abs(jnp.diag(fine_kernel)))
+        # Never produce NaNs (https://github.com/google/jax/issues/1052)
+        # This is expensive but necessary (worse but cheaper:
+        # `jnp.all(jnp.diag(fine_kernel) > 0.)`)
+        is_pos_def = jnp.all(jnp.linalg.eigvalsh(fine_kernel) > 0)
+        fine_kernel = jnp.where(is_pos_def, fine_kernel, fine_kernel_fallback)
+        # NOTE, subsequently use the Cholesky decomposition, even though
+        # already having computed the eigenvalues, as to get consistent results
+        # across platforms
     fine_kernel_sqrt = jnp.linalg.cholesky(fine_kernel)
 
     return olf, fine_kernel_sqrt
