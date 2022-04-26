@@ -281,7 +281,9 @@ class RefinementField():
                 self.chart, = args
             elif len(args) == 2 and callable(args[1]) and kernel is None:
                 self.chart, self._kernel = args
-            elif len(args) == 3 and callable(args[1]) and kernel is None and dtype is None:
+            elif len(args) == 3 and callable(
+                args[1]
+            ) and kernel is None and dtype is None:
                 self.chart, self._kernel, self._dtype = args
             else:
                 te = "got unexpected arguments in addition to CoordinateChart"
@@ -452,9 +454,7 @@ def _coordinate_pixel_refinement_matrices(
     # This is expensive but necessary (worse but cheaper:
     # `jnp.all(jnp.diag(fine_kernel) > 0.)`)
     is_pos_def = jnp.all(jnp.linalg.eigvalsh(fine_kernel) > 0)
-    fine_kernel = jnp.where(
-        is_pos_def, fine_kernel, fine_kernel_fallback
-    )
+    fine_kernel = jnp.where(is_pos_def, fine_kernel, fine_kernel_fallback)
     # NOTE, use the Cholesky decomposition, even though already having computed
     # the eigenvalues, as to get consistent results across platforms
     fine_kernel_sqrt = jnp.linalg.cholesky(fine_kernel)
