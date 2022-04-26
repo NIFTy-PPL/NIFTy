@@ -381,6 +381,13 @@ class Operator(metaclass=NiftyMeta):
     def ptw_pre(self, op, *args, **kwargs):
         return _OpChain.make((self, _FunctionApplier(self.domain, op, *args, **kwargs)))
 
+    def gen_random_sample(self, **kwargs):
+        """Applies the operator to a sample drawn with `ift.sugar.from_random`.
+        Keyword arguments are passed through to the sample generation."""
+        from ..sugar import from_random
+        random_input = from_random(self.domain, **kwargs)
+        return self.__call__(random_input)
+
 
 for f in pointwise.ptw_dict.keys():
     def func(f):
