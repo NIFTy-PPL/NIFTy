@@ -129,6 +129,47 @@ def gauss_kl(cov_desired, cov_approx, *, m_desired=None, m_approx=None):
     return 0.5 * kl
 
 
+def refinement_covariance(chart, kernel, jit=True):
+    """Computes the implied covariance as modeled by the refinement scheme."""
+    from .refine_chart import RefinementField
+
+    cf = RefinementField(chart, kernel=kernel)
+    try:
+        cf_T = jax.linear_transpose(cf, cf.shapewithdtype)
+        cov_implicit = lambda x: cf(*cf_T(x))
+        cov_implicit = jax.jit(cov_implicit) if jit else cov_implicit
+        _ = cov_implicit(jnp.zeros(chart.shape))  # Test transpose
+    except NotImplementedError:
+        # Workaround JAX not yet implementing the transpose of the scanned
+        # refinement
+        _, cf_T = jax.vjp(cf, zeros_like(cf.shapewithdtype))
+        cov_implicit = lambda x: cf(*cf_T(x))
+        cov_implicit = jax.jit(cov_implicit) if jit else cov_implicit
+
+    probe = jnp.zeros(chart.shape)
+    indices = np.indices(chart.shape).reshape(chart.ndim, -1)
+    cov_empirical = jax.lax.map(
+        lambda idx: cov_implicit(probe.at[tuple(idx)].set(1.)).ravel(),
+        indices.T
+    ).T  # vmap over `indices` w/ `in_axes=1, out_axes=-1`
+
+    return cov_empirical
+
+
+def true_covariance(chart, kernel, depth=None):
+    """Computes the true covariance at the final grid."""
+    depth = chart.depth if depth is None else depth
+
+    c0 = [jnp.arange(sz) for sz in chart.shape_at(depth)]
+    pos = jnp.stack(
+        chart.ind2cart(jnp.meshgrid(*c0, indexing="ij"), depth), axis=0
+    )
+
+    p = jnp.moveaxis(pos, 0, -1).reshape(-1, chart.ndim)
+    dist_mat = distance_matrix(p, p)
+    return kernel(dist_mat)
+
+
 def refinement_approximation_error(
     chart,
     kernel: Callable,
@@ -140,7 +181,6 @@ def refinement_approximation_error(
     If the desired shape can not be matched, the next larger one is used and
     the field is subsequently cropped to the desired shape.
     """
-    from .refine_chart import RefinementField
 
     suggested_min_shape = 2 * 4**chart.depth
     if any(s <= suggested_min_shape for s in chart.shape):
@@ -150,33 +190,8 @@ def refinement_approximation_error(
         )
         warn(msg)
 
-    cf = RefinementField(chart, kernel=kernel)
-    try:
-        cf_T = jax.linear_transpose(cf, cf.shapewithdtype)
-        cov_implicit = jax.jit(lambda x: cf(*cf_T(x)))
-        _ = cov_implicit(jnp.zeros(chart.shape))  # Test transpose
-    except NotImplementedError:
-        # Workaround JAX not yet implementing the transpose of the scanned
-        # refinement
-        _, cf_T = jax.vjp(cf, zeros_like(cf.shapewithdtype))
-        cov_implicit = jax.jit(lambda x: cf(*cf_T(x)))
-
-    c0 = [jnp.arange(sz) for sz in chart.shape]
-    pos = jnp.stack(
-        chart.ind2cart(jnp.meshgrid(*c0, indexing="ij"), chart.depth), axis=0
-    )
-
-    probe = jnp.zeros(chart.shape)
-    indices = np.indices(chart.shape).reshape(chart.ndim, -1)
-    cov_empirical = jax.lax.map(
-        lambda idx: cov_implicit(probe.at[tuple(idx)].set(1.)).ravel(),
-        indices.T
-    ).T  # vmap over `indices` w/ `in_axes=1, out_axes=-1`
-
-    p = jnp.moveaxis(pos, 0, -1).reshape(-1, chart.ndim)
-    dist_mat = distance_matrix(p, p)
-    del p
-    cov_truth = kernel(dist_mat)
+    cov_empirical = refinement_covariance(chart, kernel)
+    cov_truth = true_covariance(chart, kernel)
 
     if cutout is None and all(s > suggested_min_shape for s in chart.shape):
         cutout = (suggested_min_shape, ) * chart.ndim
@@ -210,6 +225,5 @@ def refinement_approximation_error(
     aux = {
         "cov_empirical": cov_empirical,
         "cov_truth": cov_truth,
-        "cov_implicit": cov_implicit,
     }
     return gauss_kl(cov_truth, cov_empirical), aux
