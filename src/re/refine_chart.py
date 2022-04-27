@@ -8,6 +8,7 @@ from typing import Callable, Iterable, Literal, Optional, Tuple, Union
 
 from jax import numpy as jnp
 from jax import vmap
+import numpy as np
 
 from .refine import _get_cov_from_loc, get_refinement_shapewithdtype, refine
 from .refine_util import coarse2fine_shape, fine2coarse_shape
@@ -82,6 +83,7 @@ class CoordinateChart():
 
         # Derived attributes
         self.ndim = len(self.shape)
+        self.size = np.prod(self.shape, dtype=int)
 
         if rg2cart is None and cart2rg is None:
             if _fine_strategy == "jump":
