@@ -555,14 +555,18 @@ def _plot_samples(file_name, samples, ground_truth, comm, plotting_kwargs):
 def _plot_energy_history(index, energy_history):
     import matplotlib.pyplot as plt
     fname = join(_output_directory, '{}_' + _file_name_by_strategy(index) + '.png')
+
+    E = np.array(energy_history.energy_values)
+
+    # energy value plot
     p = Plot()
-    p.add(energy_history, skip_timestamp_conversion=True,
-          xlabel='iteration', ylabel=r'E')
+    p.add(energy_history, skip_timestamp_conversion=True, xlabel='iteration',
+          ylabel=r'E', yscale='log' if (E > 0.).all() else 'linear')
     p.output(title='energy history', name=fname.format('energy_history'))
 
+    # energy change plot
     if index > 0:
         ts = np.array(energy_history.time_stamps[1:])
-        E = np.array(energy_history.energy_values)
         dE = E[1:] - E[:-1]
         idx_pos = (dE > 0)
         idx_neg = (dE < 0)
