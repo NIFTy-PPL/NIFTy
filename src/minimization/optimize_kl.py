@@ -544,7 +544,7 @@ def _plot_energy_history(output_directory, index, save_strategy, energy_history)
     fname = join(output_directory, '{}_' + \
                  _file_name_by_strategy(save_strategy, index) + '.png')
     p = Plot()
-    p.add(energy_history, use_history_timestamps=False)
+    p.add(energy_history, skip_timestamp_conversion=True)
     p.output(title='energy history', name=fname.format('energy_history'))
 
     if index > 0:

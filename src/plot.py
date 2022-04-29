@@ -302,22 +302,45 @@ def _plot_history(f, ax, **kwargs):
     ax.set_title(kwargs.pop("title", ""))
     ax.set_xlabel(kwargs.pop("xlabel", ""))
     ax.set_ylabel(kwargs.pop("ylabel", ""))
+
+    skip_timestamp_conversion = kwargs.pop("skip_timestamp_conversion", False)
+    energy_differences = kwargs.pop("plot_energy_differences", False)
+
     plt.xscale(kwargs.pop("xscale", "linear"))
-    plt.yscale(kwargs.pop("yscale", "linear"))
-    timestamps = kwargs.pop("use_history_timestamps", True)
+    default_yscale = 'linear' if not energy_differences else 'log'
+    plt.yscale(kwargs.pop("yscale", default_yscale))
+
     mi, ma = np.inf, -np.inf
+
     for i, fld in enumerate(f):
-        if timestamps:
-            xcoord = date2num([dt.fromtimestamp(ts) for ts in fld.time_stamps])
+        kwargs = {'alpha': alpha[i], 's': size[i], 'color': color[i]}
+
+        if skip_timestamp_conversion:
+            xcoord = fld.time_stamps
         else:
-            xcoord = np.arange(len(fld)) + 1
-        ycoord = fld.energy_values
-        ax.scatter(xcoord, ycoord, label=label[i], alpha=alpha[i],
-                   color=color[i], s=size[i])
+            xcoord = date2num([dt.fromtimestamp(ts) for ts in fld.time_stamps])
+
+        if not energy_differences:
+            ycoord = fld.energy_values
+            ax.scatter(xcoord, ycoord, label=label[i], **kwargs)
+        else:
+            E = np.array(fld.energy_values)
+            dE = E[1:] - E[:-1]
+            xcoord = np.array(xcoord[1:])
+            idx_pos = (dE > 0)
+            idx_neg = (dE < 0)
+            label_pos = label[i] + ' (pos)' if label[i] is not None else None
+            label_neg = label[i] + ' (neg)' if label[i] is not None else None
+            ax.scatter(xcoord[idx_pos], dE[idx_pos], marker='^',
+                       label=label_pos, **kwargs)
+            ax.scatter(xcoord[idx_neg], dE[idx_neg], marker='v',
+                       label=label_neg, **kwargs)
+
         mi, ma = min([min(xcoord), mi]), max([max(xcoord), ma])
+
     delta = (ma-mi)*0.05
     ax.set_xlim((mi-delta, ma+delta))
-    if timestamps:
+    if not skip_timestamp_conversion:
         xfmt = DateFormatter('%H:%M')
         ax.xaxis.set_major_formatter(xfmt)
     _limit_xy(**kwargs)
