@@ -40,6 +40,8 @@ from .kl_energies import SampledKLEnergy
 from .minimizer import Minimizer
 from .sample_list import (ResidualSampleList, SampleList, SampleListBase,
                           _barrier)
+import pickle
+import numpy as np
 
 try:
     import h5py
@@ -70,6 +72,7 @@ def optimize_kl(likelihood_energy,
                 inspect_callback=None,
                 terminate_callback=None,
                 plot_latent=False,
+                plot_energy_history=True,
                 save_strategy="last",
                 return_final_position=False,
                 resume=False):
@@ -164,6 +167,8 @@ def optimize_kl(likelihood_energy,
         terminated. Default: None.
     plot_latent : bool
         Determine if latent space shall be plotted or not. Default: False.
+    plot_energy_history : bool
+        Determine if the KLEnergy values shall be plotted or not. Default: True.
     save_strategy : str
         If "last", only the samples of the last global iteration are stored. If
         "all", all intermediate samples are written to disk. `save_strategy` is
@@ -239,6 +244,7 @@ def optimize_kl(likelihood_energy,
                 myassert(sl.n_samples == 1)
                 initial_position = sl.local_item(0)
             _load_random_state(output_directory, last_finished_index, save_strategy)
+            energy_history = _load_energy_history(output_directory, last_finished_index, save_strategy)
 
             if initial_index == total_iterations:
                 if isfile(fname + ".mean.pickle"):
@@ -320,7 +326,8 @@ def optimize_kl(likelihood_energy,
             for subfolder in ["pickle"] + list(plottable_operators.keys()):
                 makedirs(join(output_directory, subfolder), exist_ok=overwrite)
 
-    energy_history = EnergyHistory()
+    if initial_index == 0:
+        energy_history = EnergyHistory()
 
     for iglobal in range(initial_index, total_iterations):
         ham = StandardHamiltonian(likelihood_energy(iglobal), sampling_iteration_controller(iglobal))
@@ -340,7 +347,7 @@ def optimize_kl(likelihood_energy,
                 e, _ = minimizer(e)
                 mean = MultiField.union([mean, e.position]) if mf_dom else e.position
                 sl = SampleList([mean])
-                energy_history.append((iglobal + 1, e.value))
+                energy_history.append((iglobal, e.value))
             else:
                 warn("Have detected MPI communicator for optimizing Hamiltonian. Will use only "
                      "the rank0 task and communicate the result afterwards to all other tasks.")
@@ -348,7 +355,7 @@ def optimize_kl(likelihood_energy,
                     e, _ = minimizer(e)
                     mean = MultiField.union([mean, e.position]) if mf_dom else e.position
                     sl = SampleList([mean], comm=comm(iglobal), domain=dom)
-                    energy_history.append((iglobal + 1, e.value))
+                    energy_history.append((iglobal, e.value))
                 else:
                     mean = None
                     sl = SampleList([], comm=comm(iglobal), domain=dom)
@@ -366,7 +373,7 @@ def optimize_kl(likelihood_energy,
             e, _ = minimizer(e)
             mean = MultiField.union([mean, e.position]) if mf_dom else e.position
             sl = e.samples.at(mean)
-            energy_history.append((iglobal + 1, e.value))
+            energy_history.append((iglobal, e.value))
 
         if output_directory is not None:
             _plot_operators(output_directory, iglobal, plottable_operators, sl,
@@ -378,7 +385,9 @@ def optimize_kl(likelihood_energy,
             if _MPI_master(comm(iglobal)):
                 with open(join(output_directory, "last_finished_iteration"), "w") as f:
                     f.write(str(iglobal))
-                _plot_energy_history(output_directory, iglobal, energy_history, save_strategy)
+                _save_energy_history(output_directory, iglobal, save_strategy, energy_history)
+                if plot_energy_history:
+                    _plot_energy_history(output_directory, iglobal, save_strategy, energy_history)
         _barrier(comm(iglobal))
 
         _minisanity(likelihood_energy, iglobal, sl, output_directory, comm)
@@ -421,6 +430,21 @@ def _load_random_state(output_directory, index, save_strategy):
     file_name += _file_name_by_strategy(save_strategy, index)
     with open(file_name, "rb") as f:
         setState(f.read())
+
+
+def _save_energy_history(output_directory, index, save_strategy, energy_history):
+    file_name = join(output_directory, "pickle/energy_history_")
+    file_name += _file_name_by_strategy(save_strategy, index)
+    with open(file_name, "wb") as f:
+        pickle.dump(energy_history, f)
+
+
+def _load_energy_history(output_directory, index, save_strategy):
+    file_name = join(output_directory, "pickle/energy_history_")
+    file_name += _file_name_by_strategy(save_strategy, index)
+    with open(file_name, "rb") as f:
+        energy_history = pickle.load(f)
+    return energy_history
 
 
 def _plot_operators(output_directory, index, plottable_operators, sample_list,
@@ -515,14 +539,29 @@ def _plot_samples(file_name, samples, ground_truth, comm, plotting_kwargs):
         p.output(name=file_name)
 
 
-def _plot_energy_history(output_directory, index, energy_history, save_strategy):
-    if len(energy_history) < 2:
-        return
-    p = Plot()
-    p.add(energy_history, xscale='log', yscale='linear', use_history_timestamps=False)
-    fname = join(output_directory, 'energy_history_' + \
+def _plot_energy_history(output_directory, index, save_strategy, energy_history):
+    import matplotlib.pyplot as plt
+    fname = join(output_directory, '{}_' + \
                  _file_name_by_strategy(save_strategy, index) + '.png')
-    p.output(title='energy history', name=fname)
+    p = Plot()
+    p.add(energy_history, use_history_timestamps=False)
+    p.output(title='energy history', name=fname.format('energy_history'))
+
+    if index > 0:
+        ts = np.array(energy_history.time_stamps[1:])
+        E = np.array(energy_history.energy_values)
+        dE = E[1:] - E[:-1]
+        idx_pos = (dE > 0)
+        idx_neg = (dE < 0)
+        plt.plot(ts[idx_pos], dE[idx_pos], '^', color='red', label='positive')
+        plt.plot(ts[idx_neg], -dE[idx_neg], 'v', color='green', label='negative')
+        plt.yscale('log')
+        plt.title('energy change w.r.t. previous step')
+        plt.xlabel('iteration')
+        plt.ylabel('KL energy change')
+        plt.legend()
+        plt.savefig(fname.format('energy_change_history'))
+        plt.clf()
 
 
 def _append_key(s, key):
