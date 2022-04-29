@@ -557,7 +557,7 @@ def _plot_energy_history(index, energy_history):
     fname = join(_output_directory, '{}_' + _file_name_by_strategy(index) + '.png')
     p = Plot()
     p.add(energy_history, skip_timestamp_conversion=True,
-          xlabel='iteration', ylabel='KL energy')
+          xlabel='iteration', ylabel=r'E')
     p.output(title='energy history', name=fname.format('energy_history'))
 
     if index > 0:
@@ -571,7 +571,7 @@ def _plot_energy_history(index, energy_history):
         plt.yscale('log')
         plt.title('energy change w.r.t. previous step')
         plt.xlabel('iteration')
-        plt.ylabel('KL energy change')
+        plt.ylabel(r'$\Delta\,$E')
         plt.legend()
         plt.savefig(fname.format('energy_change_history'))
         plt.clf()
@@ -646,40 +646,48 @@ def _manage_minisanity_history(iglobal, current_minisanity_val, plot_minisanity_
 
 def _plot_minisanity_history(index, minisanity_history):
     from matplotlib.cm import plasma
-
-    vals = []
-    labels = []
+    import matplotlib.pyplot as plt
 
     mhrcs = minisanity_history['redchisq']
 
-    def energy_historify(k1, k2):
-        val = mhrcs[k1][k2]['mean']
-        ts = list(range(len(val)))
-        eh = EnergyHistory()
-        eh._lst = list(zip(ts, val))
-        return eh
+    labels = []
+    vals = []
 
     n_dr = 0
     for kk in mhrcs['data_residuals'].keys():
-        labels.append(f'residuals {n_dr}')
-        eh = energy_historify('data_residuals', kk)
-        vals.append(eh)
+        labels.append(f'residuals: {n_dr}')
+        vals.append(mhrcs['data_residuals'][kk]['mean'])
         n_dr += 1
 
     n_lv = 0
     for kk in mhrcs['latent_variables'].keys():
         labels.append(f'latent: {kk}')
-        eh = energy_historify('latent_variables', kk)
-        vals.append(eh)
+        vals.append(mhrcs['latent_variables'][kk]['mean'])
         n_lv += 1
 
-    colors = [plasma(x) for x in np.linspace(0, 1, n_dr + n_lv)]
+    n_tot = n_dr + n_lv
 
-    p = Plot()
-    p.add(vals, label=labels, color=colors, alpha=0.5, skip_timestamp_conversion=True)
-    p.output(title='reduced chi-square values',
-             name=join(_output_directory, 'minisanity_history_' + \
-                       _file_name_by_strategy(index) + '.png'))
+    colors = [plasma(x) for x in np.linspace(0, 1, n_tot)]
+
+    ts = np.arange(len(vals[0]))
+    vals = [np.array(v) for v in vals]
+
+    plt.figure()
+    for i in range(n_tot):
+        plt.plot(ts, vals[i], label=labels[i], color=colors[i], linestyle='-', marker='.')
+
+    xlim = plt.xlim()
+    plt.hlines(1., xlim[0], xlim[1], linestyle='dashed', color='black', linewidth=2, zorder=-1)
+    plt.xlim(*xlim)
+    plt.yscale('log')
+
+    plt.title(r'reduced $\chi^2$ values')
+    plt.xlabel('iteration')
+    plt.ylabel(r'red. $\chi^2$')
+    plt.legend(loc='upper right')
+    plt.savefig(join(_output_directory, 'minisanity_history_' +
+                     _file_name_by_strategy(index) + '.png'))
+    plt.clf()
 
 
 def _handle_inspect_callback(inspect_callback, sl, iglobal, mean, dom, comm):
