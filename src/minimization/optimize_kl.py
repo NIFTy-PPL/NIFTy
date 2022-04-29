@@ -25,15 +25,15 @@ from warnings import warn
 from ..domain_tuple import DomainTuple
 from ..multi_domain import MultiDomain
 from ..multi_field import MultiField
+from ..operators.counting_operator import CountingOperator
 from ..operators.energy_operators import StandardHamiltonian
 from ..operators.operator import Operator
 from ..operators.scaling_operator import ScalingOperator
 from ..plot import Plot, plottable2D
 from ..sugar import from_random
 from ..utilities import (Nop, check_MPI_equality,
-                         check_MPI_synced_random_state,
-                         get_MPI_params_from_comm,
-                         check_object_identity)
+                         check_MPI_synced_random_state, check_object_identity,
+                         get_MPI_params_from_comm)
 from .energy_adapter import EnergyAdapter
 from .iteration_controllers import IterationController, EnergyHistory
 from .kl_energies import SampledKLEnergy
@@ -342,8 +342,9 @@ def optimize_kl(likelihood_energy,
         energy_history = EnergyHistory()
 
     for iglobal in range(initial_index, total_iterations):
-        ham = StandardHamiltonian(likelihood_energy(iglobal),
-                                  sampling_iteration_controller(iglobal))
+        lh = likelihood_energy(iglobal)
+        count = CountingOperator(lh.domain)
+        ham = StandardHamiltonian(lh @ count, sampling_iteration_controller(iglobal))
         minimizer = kl_minimizer(iglobal)
         mean_iter = mean.extract(ham.domain)
 
@@ -404,6 +405,8 @@ def optimize_kl(likelihood_energy,
                 if plot_energy_history:
                     _plot_energy_history(iglobal, energy_history)
         _barrier(comm(iglobal))
+
+        _counting_report(count, iglobal, output_directory, comm)
 
         _handle_inspect_callback(inspect_callback, sl, iglobal, mean, dom, comm)
         _barrier(comm(iglobal))
@@ -603,49 +606,35 @@ def _plot_stats(file_name, mean, var, ground_truth, comm, plotting_kwargs):
 
 
 def _minisanity(likelihood_energy, iglobal, sl, comm, plot_minisanity_history):
-    from datetime import datetime
-    from ..logger import logger
     from ..extra import minisanity
 
-    ms_str, ms_val = minisanity(likelihood_energy(iglobal), sl,
-                                terminal_colors=False, return_values=True)
-    s = "\n".join(
-        ["",
-         f"Finished index: {iglobal}",
-         f"Current datetime: {datetime.now()}",
-         ms_str,
-         ""]
-        )
+    s, ms_val = minisanity(likelihood_energy(iglobal), sl, terminal_colors=False,
+                           return_values=True)
+    _report_to_logger_and_file(s, "minisanity.txt", iglobal, comm, True, True,
+                               True)
 
-    if _MPI_master(comm(iglobal)):
-        logger.info(s)
-        if _output_directory is not None:
-            with open(join(_output_directory, "minisanity.txt"), "a") as f:
-                f.write(s)
-            _manage_minisanity_history(iglobal, ms_val, plot_minisanity_history)
+    if _MPI_master(comm(iglobal)) and _output_directory is not None:
+        # load/create minisanity_history object
+        if iglobal == 0:
+            mh = ms_val
+        else:
+            mh = _pickle_load_values(iglobal, 'minisanity_history')
 
-def _manage_minisanity_history(iglobal, current_minisanity_val, plot_minisanity_history):
-    # load/create minisanity_history object
-    if iglobal == 0:
-        mh = current_minisanity_val
-    else:
-        mh = _pickle_load_values(iglobal, 'minisanity_history')
+        for k1 in ['redchisq', 'scmean']:
+            for k2 in ['data_residuals', 'latent_variables']:
+                for k3 in mh[k1][k2].keys():
+                    v = current_minisanity_val[k1][k2][k3]
+                    if iglobal == 0:
+                        mh[k1][k2][k3]['mean'] = [v['mean'], ]
+                        mh[k1][k2][k3]['std'] = [v['std'], ]
+                    else:
+                        mh[k1][k2][k3]['mean'].append(v['mean'])
+                        mh[k1][k2][k3]['std'].append(v['std'])
 
-    for k1 in ['redchisq', 'scmean']:
-        for k2 in ['data_residuals', 'latent_variables']:
-            for k3 in mh[k1][k2].keys():
-                v = current_minisanity_val[k1][k2][k3]
-                if iglobal == 0:
-                    mh[k1][k2][k3]['mean'] = [v['mean'], ]
-                    mh[k1][k2][k3]['std'] = [v['std'], ]
-                else:
-                    mh[k1][k2][k3]['mean'].append(v['mean'])
-                    mh[k1][k2][k3]['std'].append(v['std'])
+        _pickle_save_values(iglobal, 'minisanity_history', mh)
 
-    _pickle_save_values(iglobal, 'minisanity_history', mh)
-
-    if plot_minisanity_history:
-        _plot_minisanity_history(iglobal, mh)
+        if plot_minisanity_history:
+            _plot_minisanity_history(iglobal, mh)
 
 
 def _plot_minisanity_history(index, minisanity_history):
@@ -697,6 +686,33 @@ def _plot_minisanity_history(index, minisanity_history):
     plt.savefig(join(_output_directory, 'minisanity_history_' +
                      _file_name_by_strategy(index) + '.png'))
     plt.clf()
+
+
+def _counting_report(count, iglobal, comm):
+    _report_to_logger_and_file(count.report(), "counting_report.txt", iglobal,
+                               comm, _output_directory is None, True, False)
+
+
+def _report_to_logger_and_file(report, file_name, iglobal, comm, to_logger,
+                               to_file, only_master):
+    from datetime import datetime
+
+    from ..logger import logger
+    from ..utilities import allreduce_sum
+
+    intro = f"Finished index: {iglobal}\nCurrent datetime: {datetime.now()}\n"
+
+    if not only_master:
+        report = allreduce_sum([[report]], comm(iglobal))
+        report = [f"Task {ii}\n{rr}" for ii, rr in enumerate(report)]
+        report = "\n".join(report)
+
+    if _MPI_master(comm(iglobal)):
+        if to_logger:
+            logger.info(report)
+        if _output_directory is not None and to_file:
+            with open(join(_output_directory, file_name), "a") as f:
+                f.write(intro + report + "\n\n")
 
 
 def _handle_inspect_callback(inspect_callback, sl, iglobal, mean, dom, comm):

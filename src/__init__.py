@@ -49,6 +49,7 @@ from .operators.convolution_operators import FuncConvolutionOperator
 from .operators.normal_operators import NormalTransform, LognormalTransform
 from .operators.multifield2vector import Multifield2Vector
 from .operators.jax_operator import *
+from .operators.counting_operator import CountingOperator
 
 from .probing import probe_with_posterior_samples, probe_diagonal, \
     StatCalculator, approximation2endo
