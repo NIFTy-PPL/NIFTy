@@ -466,9 +466,14 @@ def minisanity(likelihood_energy, samples, terminal_colors=True, return_values=F
         the output of minisanity is written to a file. Default: True
 
     return_values : bool, optional
-        If the computed values should be returned as numerical values
-        additionally to the string represenation. By default, only the string
-        represenation is returned.
+        If true, in addition to the table in string format, `minisanity` will
+        return the computed values as a dictionary. Default: `False`.
+
+    Returns
+    -------
+        printable_table : string
+        values : dictionary
+            Only returned if `return_values` is `True`
 
     Note
     ----
