@@ -392,7 +392,7 @@ class Operator(metaclass=NiftyMeta):
         """
         from ..sugar import from_random
         random_input = from_random(self.domain, **kwargs)
-        return self.__call__(random_input)
+        return self(random_input)
 
 
 for f in pointwise.ptw_dict.keys():
