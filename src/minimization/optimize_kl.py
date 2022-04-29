@@ -671,14 +671,19 @@ def _plot_minisanity_history(index, minisanity_history):
 
     n_tot = n_dr + n_lv
 
-    colors = [plasma(x) for x in np.linspace(0, 1, n_tot)]
+    colors = [plasma(x) for x in np.linspace(0, 0.95, n_tot)]
+
+    linestyles = ['-'] * n_tot
+    for ii in range(1, n_tot, 2):
+        linestyles[ii] = '--'
 
     ts = np.arange(len(vals[0]))
     vals = [np.array(v) for v in vals]
 
     plt.figure()
     for i in range(n_tot):
-        plt.plot(ts, vals[i], label=labels[i], color=colors[i], linestyle='-', marker='.')
+        plt.plot(ts, vals[i], label=labels[i], color=colors[i], marker='.',
+                 linestyle=linestyles[i])
 
     xlim = plt.xlim()
     plt.hlines(1., xlim[0], xlim[1], linestyle='dashed', color='black', linewidth=2, zorder=-1)
