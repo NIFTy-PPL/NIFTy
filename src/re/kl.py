@@ -72,10 +72,11 @@ def _sample_standard_hamiltonian(
             }
         )
         signal_smpl, info = inv_metric_at_p(met_smpl, x0=prr_inv_metric_smpl)
-        cond_raise(
-            (info is not None) & (info < 0),
-            ValueError("conjugate gradient failed")
-        )
+        # commented out to make run with vmap sample mapping possible
+        #cond_raise(
+        #    (info is not None) & (info < 0),
+        #    ValueError("conjugate gradient failed")
+        #)
         return signal_smpl, met_smpl
     else:
         return None, met_smpl
