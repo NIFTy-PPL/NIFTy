@@ -434,7 +434,7 @@ def _check_likelihood_energy(op, loc):
         raise RuntimeError("`get_transformation` has to return a dtype and the transformation")
 
 
-def minisanity(likelihood_energy, samples, terminal_colors=True):
+def minisanity(likelihood_energy, samples, terminal_colors=True, return_values=False):
     """Log information about the current fit quality and prior compatibility.
 
     Log a table with fitting information for the likelihood and the prior.
@@ -464,6 +464,11 @@ def minisanity(likelihood_energy, samples, terminal_colors=True):
     terminal_colors : bool, optional
         Setting this to false disables terminal colors. This may be useful if
         the output of minisanity is written to a file. Default: True
+
+    return_values : bool, optional
+        If the computed values should be returned as numerical values
+        additionally to the string represenation. By default, only the string
+        represenation is returned.
 
     Note
     ----
@@ -532,6 +537,19 @@ def minisanity(likelihood_energy, samples, terminal_colors=True):
                 xscmean[ii][kk].add(np.nanmean(ss[kk].val))
                 xndof[ii][kk] = lsize
 
+    for ii in range(2):
+        for kk in xredchisq[ii].keys():
+            rcs_mean = xredchisq[ii][kk].mean
+            sc_mean = xscmean[ii][kk].mean
+            try:
+                rcs_std = np.sqrt(xredchisq[ii][kk].var)
+                sc_std = np.sqrt(xscmean[ii][kk].var)
+            except RuntimeError:
+                rcs_std = None
+                sc_std = None
+            xredchisq[ii][kk] = {'mean': rcs_mean, 'std': rcs_std}
+            xscmean[ii][kk] = {'mean': sc_mean, 'std': sc_std}
+
     s0 = _tableentries(xredchisq[0], xscmean[0], xndof[0], keylen, terminal_colors)
     s1 = _tableentries(xredchisq[1], xscmean[1], xndof[1], keylen, terminal_colors)
 
@@ -543,7 +561,27 @@ def minisanity(likelihood_energy, samples, terminal_colors=True):
          "Data residuals", s0,
          "Latent space", s1,
          n * "="]
-    return "\n".join(s)
+
+    res_string = "\n".join(s)
+
+    if not return_values:
+        return res_string
+    else:
+        res_dict = {
+            'redchisq': {
+                'data_residuals': xredchisq[0],
+                'latent_variables': xredchisq[1]
+            },
+            'scmean': {
+                'data_residuals': xscmean[0],
+                'latent_variables': xscmean[1],
+            },
+            'ndof': {
+                'data_residuals': xndof[0],
+                'latent_variables': xndof[1]
+            }
+        }
+        return res_string, res_dict
 
 
 def _tableentries(redchisq, scmean, ndof, keylen, colors):
@@ -559,23 +597,19 @@ def _tableentries(redchisq, scmean, ndof, keylen, colors):
             out += "  " + kk[: keylen - 1] + "…"
         else:
             out += "  " + kk.ljust(keylen)
-        foo = f"{redchisq[kk].mean:.1f}"
-        try:
-            foo += f" ± {np.sqrt(redchisq[kk].var):.1f}"
-        except RuntimeError:
-            pass
-        if redchisq[kk].mean > 5 or redchisq[kk].mean < 1/5:
+        foo = f"{redchisq[kk]['mean']:.1f}"
+        if redchisq[kk]['std'] is not None:
+            foo += f" ± {redchisq[kk]['std']:.1f}"
+        if redchisq[kk]['mean'] > 5 or redchisq[kk]['mean'] < 1/5:
             out += _bcolors.FAIL + _bcolors.BOLD + f"{foo:>11}" + _bcolors.ENDC
-        elif redchisq[kk].mean > 2 or redchisq[kk].mean < 1/2:
+        elif redchisq[kk]['mean'] > 2 or redchisq[kk]['mean'] < 1/2:
             out += _bcolors.WARNING + _bcolors.BOLD + f"{foo:>11}" + _bcolors.ENDC
         else:
             out += f"{foo:>11}"
 
-        foo = f"{scmean[kk].mean:.1f}"
-        try:
-            foo += f" ± {np.sqrt(scmean[kk].var):.1f}"
-        except RuntimeError:
-            pass
+        foo = f"{scmean[kk]['mean']:.1f}"
+        if scmean[kk]['std'] is not None:
+            foo += f" ± {scmean[kk]['std']:.1f}"
         out += f"{foo:>14}"
         out += f"{ndof[kk]:>11}"
         out += "\n"
