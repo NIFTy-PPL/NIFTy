@@ -46,9 +46,12 @@ Note that only instances of `DomainTuple` (and not `Domain`s) are allowed for
 this use of `ducktape`.
 
 For applying operators to random samples, there is now the convenience function
-`op.get_random_sample()`. It draws a random sample on the operators domain
-with a call to `ift.sugar.from_random` and applies the operator to it.
-The function accepts the same keyword arguments as `ift.sugar.from_random`.
+`op.apply_to_random_sample()`. It draws a random sample on the operators domain
+(of dtype `np.float64`, unless specified otherwise) and applies the operator
+to it. If the operator expects input values of other dtypes (complex, integer),
+this needs to be indicated with the `dtype` keyword argument. No checks are
+performed whether the sampled dtype matches the dtype the operator is designed
+for. The function accepts the same keyword arguments as `ift.sugar.from_random`.
 
 Minimum Python version increased to 3.7
 ---------------------------------------

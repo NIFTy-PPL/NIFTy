@@ -68,7 +68,7 @@ class Operator(metaclass=NiftyMeta):
 
     @property
     def jac(self):
-        """The Jacobian associated with this object
+        """The Jacobian associated with this object.
         For "pure" operators this is `None`. For Field-like objects this
         can be `None` (in which case the object is a constant), or it can be a
         `LinearOperator` with `domain` and `target` matching the object's.
@@ -381,9 +381,15 @@ class Operator(metaclass=NiftyMeta):
     def ptw_pre(self, op, *args, **kwargs):
         return _OpChain.make((self, _FunctionApplier(self.domain, op, *args, **kwargs)))
 
-    def gen_random_sample(self, **kwargs):
+    def apply_to_random_sample(self, **kwargs):
         """Applies the operator to a sample drawn with `ift.sugar.from_random`.
-        Keyword arguments are passed through to the sample generation."""
+        Keyword arguments are passed through to the sample generation.
+
+        .. warning::
+            If not specified otherwise, the sample will be of dtype
+            `np.float64`. If the operator requires input values of other
+            dtypes, this needs to be indicated with the `dtype` keyword argument.
+        """
         from ..sugar import from_random
         random_input = from_random(self.domain, **kwargs)
         return self.__call__(random_input)
