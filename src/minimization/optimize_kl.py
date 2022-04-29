@@ -406,7 +406,7 @@ def optimize_kl(likelihood_energy,
                     _plot_energy_history(iglobal, energy_history)
         _barrier(comm(iglobal))
 
-        _counting_report(count, iglobal, output_directory, comm)
+        _counting_report(count, iglobal, comm)
 
         _handle_inspect_callback(inspect_callback, sl, iglobal, mean, dom, comm)
         _barrier(comm(iglobal))
@@ -623,7 +623,7 @@ def _minisanity(likelihood_energy, iglobal, sl, comm, plot_minisanity_history):
         for k1 in ['redchisq', 'scmean']:
             for k2 in ['data_residuals', 'latent_variables']:
                 for k3 in mh[k1][k2].keys():
-                    v = current_minisanity_val[k1][k2][k3]
+                    v = ms_val[k1][k2][k3]
                     if iglobal == 0:
                         mh[k1][k2][k3]['mean'] = [v['mean'], ]
                         mh[k1][k2][k3]['std'] = [v['std'], ]
