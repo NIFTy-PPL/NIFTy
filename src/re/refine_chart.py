@@ -12,8 +12,10 @@ import numpy as np
 
 from .refine import _get_cov_from_loc, get_refinement_shapewithdtype, refine
 from .refine_util import (
-    coarse2fine_shape, fine2coarse_shape, coarse2fine_distances,
-    fine2coarse_distances
+    coarse2fine_distances,
+    coarse2fine_shape,
+    fine2coarse_distances,
+    fine2coarse_shape,
 )
 
 
@@ -394,7 +396,15 @@ class RefinementField():
         )
 
     @staticmethod
-    def apply(xi, chart, kernel, *, skip0=False, precision=None):
+    def apply(
+        xi,
+        chart,
+        kernel,
+        *,
+        skip0: bool = False,
+        precision=None,
+        _refine: Optional[Callable] = None,
+    ):
         """Static method to apply a refinement field given some excitations, a
         chart and a kernel.
         """
@@ -409,7 +419,7 @@ class RefinementField():
             chart, kernel=kernel, depth=len(xi) - 1, skip0=skip0
         )
         refine_w_chart = partial(
-            refine,
+            refine if _refine is None else _refine,
             _coarse_size=chart.coarse_size,
             _fine_size=chart.fine_size,
             _fine_strategy=chart.fine_strategy,
@@ -428,10 +438,19 @@ class RefinementField():
             fine = refine_w_chart(fine, x, olf, k)
         return fine
 
-    def __call__(self, xi, kernel=None, *, skip0=None, precision=None):
+    def __call__(
+        self, xi, kernel=None, *, skip0=None, precision=None, _refine=None
+    ):
         kernel = self.kernel if kernel is None else kernel
         skip0 = self.skip0 if skip0 is None else skip0
-        return self.apply(xi, self.chart, kernel=kernel, skip0=skip0, precision=precision)
+        return self.apply(
+            xi,
+            self.chart,
+            kernel=kernel,
+            skip0=skip0,
+            _refine=_refine,
+            precision=precision
+        )
 
     def __repr__(self):
         descr = f"{self.__class__.__name__}({self.chart!r}"
