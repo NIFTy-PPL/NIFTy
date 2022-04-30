@@ -331,7 +331,10 @@ class RefinementField():
         return jnp.float64 if self._dtype is None else self._dtype
 
     def matrices(
-        self, kernel: Optional[Callable] = None, depth: Optional[int] = None
+        self,
+        kernel: Optional[Callable] = None,
+        depth: Optional[int] = None,
+        skip0: bool = False
     ):
         """Computes the refinement matrices namely the optimal linear filter
         and the square root of the information propagator (a.k.a. the square
@@ -342,7 +345,7 @@ class RefinementField():
         depth = self.chart.depth if depth is None else depth
 
         return _coordinate_refinement_matrices(
-            self.chart, kernel=kernel, depth=depth
+            self.chart, kernel=kernel, depth=depth, skip0=skip0
         )
 
     def matrices_at(
@@ -380,12 +383,12 @@ class RefinementField():
         )
 
     @staticmethod
-    def apply(xi, chart, kernel, precision=None):
+    def apply(xi, chart, kernel, *, skip0=False, precision=None):
         """Static method to apply a refinement field given some excitations, a
         chart and a kernel.
         """
         refinement = _coordinate_refinement_matrices(
-            chart, kernel=kernel, depth=len(xi) - 1
+            chart, kernel=kernel, depth=len(xi) - 1, skip0=skip0
         )
         refine_w_chart = partial(
             refine,
@@ -395,7 +398,12 @@ class RefinementField():
             precision=precision
         )
 
-        fine = (refinement.cov_sqrt0 @ xi[0].ravel()).reshape(xi[0].shape)
+        if not skip0:
+            fine = (refinement.cov_sqrt0 @ xi[0].ravel()).reshape(xi[0].shape)
+        else:
+            if refinement.cov_sqrt0 is not None:
+                raise AssertionError()
+            fine = xi[0]
         for x, olf, k in zip(
             xi[1:], refinement.filter, refinement.propagator_sqrt
         ):
@@ -496,15 +504,19 @@ def _coordinate_refinement_matrices(
     kernel: Callable,
     *,
     depth: Optional[int] = None,
+    skip0=False,
     _cov_from_loc=None
 ) -> RefinementMatrices:
     cov_from_loc = _get_cov_from_loc(kernel, _cov_from_loc)
     depth = chart.depth if depth is None else depth
 
-    rg0_ax = [jnp.arange(shp) for shp in chart.shape0]
-    rg0 = jnp.stack(jnp.meshgrid(*rg0_ax, indexing="ij"), axis=0)
-    c0 = jnp.stack(chart.ind2cart(rg0, 0), axis=-1).reshape(-1, chart.ndim)
-    cov_sqrt0 = jnp.linalg.cholesky(cov_from_loc(c0, c0))
+    if not skip0:
+        rg0_ax = [jnp.arange(shp) for shp in chart.shape0]
+        rg0 = jnp.stack(jnp.meshgrid(*rg0_ax, indexing="ij"), axis=0)
+        c0 = jnp.stack(chart.ind2cart(rg0, 0), axis=-1).reshape(-1, chart.ndim)
+        cov_sqrt0 = jnp.linalg.cholesky(cov_from_loc(c0, c0))
+    else:
+        cov_sqrt0 = None
 
     opt_lin_filter, kernel_sqrt = [], []
     olf_at = vmap(

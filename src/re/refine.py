@@ -422,6 +422,7 @@ def get_refinement_shapewithdtype(
     _coarse_size: int = 3,
     _fine_size: int = 2,
     _fine_strategy: Literal["jump", "extend"] = "jump",
+    skip0: bool = False,
 ):
     from .forest_util import ShapeWithDtype
 
@@ -430,29 +431,30 @@ def get_refinement_shapewithdtype(
     csz = int(_coarse_size)  # coarse size
     fsz = int(_fine_size)  # fine size
 
+    swd = partial(ShapeWithDtype, dtype=dtype)
+
     shape0 = (shape0, ) if isinstance(shape0, int) else shape0
     ndim = len(shape0)
-    exc_shp = [shape0]
+    exc_shp = [swd(shape0)] if not skip0 else [None]
     if depth > 0:
         if _fine_strategy == "jump":
-            exc_shp += [
-                tuple(el - (csz - 1) for el in exc_shp[0]) + (fsz**ndim, )
-            ]
+            exc_lvl = tuple(el - (csz - 1) for el in shape0) + (fsz**ndim, )
         elif _fine_strategy == "extend":
-            exc_shp += [
-                tuple(ceil((el - (csz - 1)) / (fsz // 2))
-                      for el in exc_shp[0]) + (fsz**ndim, )
-            ]
+            exc_lvl = tuple(
+                ceil((el - (csz - 1)) / (fsz // 2)) for el in shape0
+            ) + (fsz**ndim, )
         else:
             raise ValueError(f"invalid `_fine_strategy`; got {_fine_strategy}")
+        exc_shp += [swd(exc_lvl)]
     for lvl in range(1, depth):
         if _fine_strategy == "jump":
-            exc_lvl = tuple(fsz * el - (csz - 1)
-                            for el in exc_shp[-1][:-1]) + (fsz**ndim, )
+            exc_lvl = tuple(
+                fsz * el - (csz - 1) for el in exc_shp[-1].shape[:-1]
+            ) + (fsz**ndim, )
         elif _fine_strategy == "extend":
             exc_lvl = tuple(
                 ceil((fsz * el - (csz - 1)) / (fsz // 2))
-                for el in exc_shp[-1][:-1]
+                for el in exc_shp[-1].shape[:-1]
             ) + (fsz**ndim, )
         else:
             raise AssertionError()
@@ -462,9 +464,8 @@ def get_refinement_shapewithdtype(
                 f" invalid shape ({exc_lvl}) at level {lvl}"
             )
             raise ValueError(ve)
-        exc_shp += [exc_lvl]
+        exc_shp += [swd(exc_lvl)]
 
-    exc_shp = list(map(partial(ShapeWithDtype, dtype=dtype), exc_shp))
     return exc_shp
 
 
