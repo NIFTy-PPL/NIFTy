@@ -11,7 +11,10 @@ from jax import vmap
 import numpy as np
 
 from .refine import _get_cov_from_loc, get_refinement_shapewithdtype, refine
-from .refine_util import coarse2fine_shape, fine2coarse_shape
+from .refine_util import (
+    coarse2fine_shape, fine2coarse_shape, coarse2fine_distances,
+    fine2coarse_distances
+)
 
 
 class CoordinateChart():
@@ -86,25 +89,34 @@ class CoordinateChart():
         self.size = np.prod(self.shape, dtype=int)
 
         if rg2cart is None and cart2rg is None:
-            if _fine_strategy == "jump":
-                fpx_in_cpx = _fine_size**depth
-            elif _fine_strategy == "extend":
-                fpx_in_cpx = 2**depth
-            else:
-                raise AssertionError()
             if distances0 is None and distances is None:
                 distances = jnp.ones((self.ndim, ))
-                distances0 = distances * fpx_in_cpx
+                distances0 = fine2coarse_distances(
+                    distances,
+                    depth,
+                    _fine_size=_fine_size,
+                    _fine_strategy=_fine_strategy
+                )
             elif distances0 is not None:
                 distances0 = jnp.broadcast_to(
                     jnp.atleast_1d(distances0), (self.ndim, )
                 )
-                distances = distances0 / fpx_in_cpx
+                distances = coarse2fine_distances(
+                    distances0,
+                    depth,
+                    _fine_size=_fine_size,
+                    _fine_strategy=_fine_strategy
+                )
             else:
                 distances = jnp.broadcast_to(
                     jnp.atleast_1d(distances), (self.ndim, )
                 )
-                distances0 = distances * fpx_in_cpx
+                distances0 = fine2coarse_distances(
+                    distances,
+                    depth,
+                    _fine_size=_fine_size,
+                    _fine_strategy=_fine_strategy
+                )
 
             def _rg2cart(x):
                 x = jnp.asarray(x)
@@ -134,6 +146,13 @@ class CoordinateChart():
             raise ValueError(ve)
         self.distances = distances
         self.distances0 = distances0
+
+        self.distances_at = partial(
+            coarse2fine_distances,
+            self.distances0,
+            _fine_size=_fine_size,
+            _fine_strategy=_fine_strategy
+        )
 
         if regular_axes is None and irregular_axes is not None:
             regular_axes = tuple(set(range(self.ndim)) - set(irregular_axes))

@@ -110,6 +110,46 @@ def fine2coarse_shape(
     return tuple(shape0)
 
 
+def coarse2fine_distances(
+    distances0: Union[float, Iterable[float]],
+    depth: int,
+    *,
+    _fine_size: int = 2,
+    _fine_strategy: Literal["jump", "extend"] = "jump",
+):
+    """Translates coarse distances to its corresponding fine distances."""
+    fsz = int(_fine_size)  # fine size
+    if _fine_strategy == "jump":
+        fpx_in_cpx = fsz**depth
+    elif _fine_strategy == "extend":
+        fpx_in_cpx = 2**depth
+    else:
+        ve = f"invalid `_fine_strategy`; got {_fine_strategy}"
+        raise ValueError(ve)
+
+    return jnp.atleast_1d(distances0) / fpx_in_cpx
+
+
+def fine2coarse_distances(
+    distances: Union[float, Iterable[float]],
+    depth: int,
+    *,
+    _fine_size: int = 2,
+    _fine_strategy: Literal["jump", "extend"] = "jump",
+):
+    """Translates fine distances to its corresponding coarse distances."""
+    fsz = int(_fine_size)  # fine size
+    if _fine_strategy == "jump":
+        fpx_in_cpx = fsz**depth
+    elif _fine_strategy == "extend":
+        fpx_in_cpx = 2**depth
+    else:
+        ve = f"invalid `_fine_strategy`; got {_fine_strategy}"
+        raise ValueError(ve)
+
+    return jnp.atleast_1d(distances) * fpx_in_cpx
+
+
 def gauss_kl(cov_desired, cov_approx, *, m_desired=None, m_approx=None):
     cov_t_ds, cov_t_dl = jnp.linalg.slogdet(cov_desired)
     cov_a_ds, cov_a_dl = jnp.linalg.slogdet(cov_approx)
