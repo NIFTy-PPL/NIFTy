@@ -292,9 +292,12 @@ class CoordinateChart():
 
 
 class RefinementField():
-    def __init__(self, *args, kernel=None, dtype=None, **kwargs):
+    def __init__(
+        self, *args, kernel=None, dtype=None, skip0: bool = False, **kwargs
+    ):
         self._kernel = kernel
         self._dtype = dtype
+        self.skip0 = skip0
 
         if len(args) > 0 and isinstance(args[0], CoordinateChart):
             if kwargs:
@@ -308,6 +311,10 @@ class RefinementField():
                 args[1]
             ) and kernel is None and dtype is None:
                 self.chart, self._kernel, self._dtype = args
+            elif len(args) == 4 and callable(
+                args[1]
+            ) and kernel is None and dtype is None and skip0 == False:
+                self.chart, self._kernel, self._dtype, self.skip0 = args
             else:
                 te = "got unexpected arguments in addition to CoordinateChart"
                 raise TypeError(te)
@@ -336,7 +343,7 @@ class RefinementField():
         self,
         kernel: Optional[Callable] = None,
         depth: Optional[int] = None,
-        skip0: bool = False
+        skip0: Optional[bool] = None,
     ):
         """Computes the refinement matrices namely the optimal linear filter
         and the square root of the information propagator (a.k.a. the square
@@ -345,6 +352,7 @@ class RefinementField():
         """
         kernel = self.kernel if kernel is None else kernel
         depth = self.chart.depth if depth is None else depth
+        skip0 = self.skip0 if skip0 is None else skip0
 
         return _coordinate_refinement_matrices(
             self.chart, kernel=kernel, depth=depth, skip0=skip0
@@ -379,9 +387,10 @@ class RefinementField():
             shape0=self.chart.shape0,
             depth=self.chart.depth,
             dtype=self.dtype,
+            skip0=self.skip0,
             _coarse_size=self.chart.coarse_size,
             _fine_size=self.chart.fine_size,
-            _fine_strategy=self.chart.fine_strategy
+            _fine_strategy=self.chart.fine_strategy,
         )
 
     @staticmethod
@@ -419,9 +428,10 @@ class RefinementField():
             fine = refine_w_chart(fine, x, olf, k)
         return fine
 
-    def __call__(self, xi, kernel=None, precision=None):
+    def __call__(self, xi, kernel=None, *, skip0=None, precision=None):
         kernel = self.kernel if kernel is None else kernel
-        return self.apply(xi, self.chart, kernel=kernel, precision=precision)
+        skip0 = self.skip0 if skip0 is None else skip0
+        return self.apply(xi, self.chart, kernel=kernel, skip0=skip0, precision=precision)
 
     def __repr__(self):
         descr = f"{self.__class__.__name__}({self.chart!r}"
