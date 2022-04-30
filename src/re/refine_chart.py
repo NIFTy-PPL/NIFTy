@@ -47,6 +47,8 @@ class CoordinateChart():
         resolution of an existing chart by simply increasing its depth.
         However, extending a grid spatially is more cumbersome.
         """
+        if depth < 0:
+            raise ValueError(f"invalid `depth`; got {depth!r}")
         self.depth = depth
         if shape0 is None and min_shape is not None:
             shape0 = fine2coarse_shape(
@@ -387,6 +389,13 @@ class RefinementField():
         """Static method to apply a refinement field given some excitations, a
         chart and a kernel.
         """
+        if chart.depth != len(xi) - 1:
+            ve = (
+                f"incompatible refinement depths of `xi` ({len(xi) - 1})"
+                f" and `chart` {chart.depth}"
+            )
+            raise ValueError(ve)
+
         refinement = _coordinate_refinement_matrices(
             chart, kernel=kernel, depth=len(xi) - 1, skip0=skip0
         )
