@@ -205,7 +205,7 @@ fig.savefig("re_refine_reconstruction.png", transparent=True)
 plt.close()
 
 # %%
-cf_bench = jft.RefinementField(min_shape=(248000, ), kernel=kernel, depth=5)
+cf_bench = jft.RefinementField(shape0=(12, ), kernel=kernel, depth=15)
 xi_wo = jft.random_like(random.PRNGKey(42), jft.Field(cf_bench.shapewithdtype))
 xi_w = jft.random_like(
     random.PRNGKey(42),
@@ -223,34 +223,32 @@ def signal_response_bench(xi):
     return cf_bench(xi["excitations"], parametrized_kernel(xi))
 
 
+d = signal_response_bench(0.5 * xi_w)
+nll_wo_fwd = jft.Gaussian(d, noise_std_inv=lambda x: x / n_std)
+ham_w = jft.StandardHamiltonian(nll_wo_fwd @ signal_response_bench)
+ham_wo = jft.StandardHamiltonian(nll_wo_fwd @ cf_bench)
+
+# %%
 all_backends = {"cpu"}
 all_backends |= {jax.default_backend()}
 for backend in all_backends:
     device_kw = {"device": jax.devices(backend=backend)[0]}
     device_put = partial(jax.device_put, **device_kw)
 
-    d = signal_response_bench(0.5 * xi_w)
-    nll = jft.Gaussian(
-        d, noise_std_inv=lambda x: x / n_std
-    ) @ signal_response_bench
-    ham = jft.StandardHamiltonian(nll)
-    cf_vag_bench = jax.jit(jax.value_and_grad(ham), **device_kw)
-
+    cf_vag_bench = jax.jit(jax.value_and_grad(ham_w), **device_kw)
     x = device_put(xi_w)
-    _ = cf_vag_bench(x)[0].block_until_ready()
-    t = timeit(lambda: cf_vag_bench(x)[0].block_until_ready())
+    _ = jax.block_until_ready(cf_vag_bench(x))
+    t = timeit(lambda: jax.block_until_ready(cf_vag_bench(x)))
     ti, num = t.time, t.number
 
-    msg = f"{backend.upper()} :: Shape {str(cf_bench.chart.shape):>16s} ({num:6d} loops) :: JAX w/ learnable {ti:4.2e}",
+    msg = f"{backend.upper()} :: Shape {str(cf_bench.chart.shape):>16s} ({num:6d} loops) :: JAX w/ learnable {ti:4.2e}"
     print(msg, file=sys.stderr)
 
-    nll = jft.Gaussian(d, noise_std_inv=lambda x: x / n_std) @ cf_bench
-    ham = jft.StandardHamiltonian(nll)
-    cf_vag_bench = jax.jit(jax.value_and_grad(ham), **device_kw)
+    cf_vag_bench = jax.jit(jax.value_and_grad(ham_wo), **device_kw)
     x = device_put(xi_wo)
-    _ = cf_vag_bench(x)[0].block_until_ready()
-    t = timeit(lambda: cf_vag_bench(x)[0].block_until_ready())
+    _ = jax.block_until_ready(cf_vag_bench(x))
+    t = timeit(lambda: jax.block_until_ready(cf_vag_bench(x)))
     ti, num = t.time, t.number
 
-    msg = f"{backend.upper()} :: Shape {str(cf_bench.chart.shape):>16s} ({num:6d} loops) :: JAX w/o learnable {ti:4.2e}",
+    msg = f"{backend.upper()} :: Shape {str(cf_bench.chart.shape):>16s} ({num:6d} loops) :: JAX w/o learnable {ti:4.2e}"
     print(msg, file=sys.stderr)
