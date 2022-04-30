@@ -138,7 +138,8 @@ def test_refinement_covariance(dist, kernel=kernel):
     probe = jnp.zeros(pos.shape[:-1])
     indices = np.indices(pos.shape[:-1]).reshape(pos.ndim - 1, -1)
 
-    cf_T = jax.linear_transpose(cf, exc_shp)
+    # Work around jax.linear_transpose NotImplementedError
+    _, cf_T = jax.vjp(cf, jft.zeros_like(exc_shp))
     cf_cf_T = lambda x: cf(*cf_T(x))
     cov_empirical = jax.vmap(
         lambda idx: cf_cf_T(probe.at[tuple(idx)].set(1.)).ravel(),
