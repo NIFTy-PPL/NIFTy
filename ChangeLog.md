@@ -46,7 +46,7 @@ Note that only instances of `DomainTuple` (and not `Domain`s) are allowed for
 this use of `ducktape`.
 
 For applying operators to random samples, there is now the convenience function
-`op.apply_to_random_sample()`. It draws a random sample on the operators domain
+`op.apply_to_random_sample()`. It draws a random sample on the operator's domain
 (of dtype `np.float64`, unless specified otherwise) and applies the operator
 to it. If the operator expects input values of other dtypes (complex, integer),
 this needs to be indicated with the `dtype` keyword argument. No checks are
