@@ -454,8 +454,8 @@ class RefinementField():
 
     def __repr__(self):
         descr = f"{self.__class__.__name__}({self.chart!r}"
-        descr += ", kernel={self._kernel!r}" if self._kernel is not None else ""
-        descr += ", dtype={self._dtype!r}" if self._dtype is not None else ""
+        descr += f", kernel={self._kernel!r}" if self._kernel is not None else ""
+        descr += f", dtype={self._dtype!r}" if self._dtype is not None else ""
         descr += ")"
         return descr
 
