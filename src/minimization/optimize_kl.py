@@ -610,6 +610,7 @@ def _minisanity(likelihood_energy, iglobal, sl, comm, plot_minisanity_history):
 
     s, ms_val = minisanity(likelihood_energy(iglobal), sl, terminal_colors=False,
                            return_values=True)
+    check_MPI_equality(ms_val, comm(iglobal))
     _report_to_logger_and_file(s, "minisanity.txt", iglobal, comm, True, True,
                                True)
 
