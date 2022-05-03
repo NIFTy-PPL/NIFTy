@@ -25,7 +25,8 @@ check_code_formatting:
   before_script:
     - ls
   script:
-    - yapf -d -r .
+    - apt-get update && apt-get install -y yapf3
+    - yapf3 -d -r .
 
 build_docker_from_scratch:
   only:
