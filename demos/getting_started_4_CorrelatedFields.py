@@ -298,10 +298,7 @@ vary_parameter('offset_std', [(1., 0.01), (1., 0.1), (1., 1.)], samples_vary_in=
 # The correlated fields model also supports parametrizing the power spectra of field dimensions
 # using Matern kernels. In the following, the effects of their parameters are demonstrated.
 #
-# Fields parametrized by Matern kernels have correlation structures independent of the volume
-# of the target subdomain, a clear advantage over the power spectrum model behind `add_fluctuations()`.
-#
-# However, contrary to the field fluctuations parametrization showed above, the Matern kernel
+# Contrary to the field fluctuations parametrization showed above, the Matern kernel
 # parameters show strong interactions. For example, the field amplitude does not only depend on the
 # amplitude scaling parameter `scale`, but on the combination of all three parameters `scale`,
 # `cutoff` and `loglogslope`.
