@@ -210,9 +210,9 @@ def estimate_evidence_lower_bound(hamiltonian, samples, n_eigenvalues, min_lh_ev
     --------
     For further details we refer to:
 
-    * Analytic formulation: P. Frank et Al., Geometric Variational Inference <https://arxiv.org/pdf/2105.10470.pdf> (Sec. 5.1)
+    * Analytic formulation: P. Frank et al., Geometric Variational Inference <https://arxiv.org/pdf/2105.10470.pdf> (Sec. 5.1)
 
-    * Conceptualization: A. Kostić et Al. (manuscript in preparation).
+    * Conceptualization: A. Kostić et al. (manuscript in preparation).
     """
 
     if not isinstance(samples, ResidualSampleList):
