@@ -62,6 +62,11 @@ Optimize KL
 The utility function `optimize_kl` has been added. It provides a blueprint for a
 typical NIFTy optimization.
 
+By default, after each global iteration the KL energy value history and reduced
+chi-square value history are plotted. If the plots are not wanted or if
+matplotlib is not available, set the `optimize_kl` keyword arguments
+`plot_energy_history` and `plot_minisanity_history` to `False`.
+
 Unify MetricGaussianKL and GeoMetricKL
 --------------------------------------
 
