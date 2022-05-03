@@ -35,11 +35,13 @@ from ..utilities import (Nop, check_MPI_equality,
                          check_MPI_synced_random_state, check_object_identity,
                          get_MPI_params_from_comm)
 from .energy_adapter import EnergyAdapter
-from .iteration_controllers import IterationController
+from .iteration_controllers import IterationController, EnergyHistory
 from .kl_energies import SampledKLEnergy
 from .minimizer import Minimizer
 from .sample_list import (ResidualSampleList, SampleList, SampleListBase,
                           _barrier)
+import pickle
+import numpy as np
 
 try:
     import h5py
@@ -50,6 +52,9 @@ try:
     import astropy
 except ImportError:
     astropy = False
+
+_output_directory = None
+_save_strategy = None
 
 
 def optimize_kl(likelihood_energy,
@@ -70,6 +75,8 @@ def optimize_kl(likelihood_energy,
                 inspect_callback=None,
                 terminate_callback=None,
                 plot_latent=False,
+                plot_energy_history=True,
+                plot_minisanity_history=True,
                 save_strategy="last",
                 return_final_position=False,
                 resume=False):
@@ -164,6 +171,11 @@ def optimize_kl(likelihood_energy,
         terminated. Default: None.
     plot_latent : bool
         Determine if latent space shall be plotted or not. Default: False.
+    plot_energy_history : bool
+        Determine if the KLEnergy values shall be plotted or not. Default: True.
+    plot_minisanity_history : bool
+        Determine if the reduced chi-square values computed by minisanity shall
+        be plotted or not. Default: True.
     save_strategy : str
         If "last", only the samples of the last global iteration are stored. If
         "all", all intermediate samples are written to disk. `save_strategy` is
@@ -225,12 +237,17 @@ def optimize_kl(likelihood_energy,
         terminate_callback = lambda x: False
 
     if output_directory is not None:
+        global _output_directory
+        global _save_strategy
+        _output_directory = output_directory
+        _save_strategy = save_strategy
+
         lfile = join(output_directory, "last_finished_iteration")
         if resume and isfile(lfile):
             with open(lfile) as f:
                 last_finished_index = int(f.read())
             initial_index = last_finished_index + 1
-            fname = _file_name_by_strategy(save_strategy, last_finished_index)
+            fname = _file_name_by_strategy(last_finished_index)
             fname = reduce(join, [output_directory, "pickle", fname])
             if isfile(fname + ".mean.pickle"):
                 initial_position = ResidualSampleList.load_mean(fname)
@@ -238,7 +255,8 @@ def optimize_kl(likelihood_energy,
                 sl = SampleList.load(fname)
                 myassert(sl.n_samples == 1)
                 initial_position = sl.local_item(0)
-            _load_random_state(output_directory, last_finished_index, save_strategy)
+            _load_random_state(last_finished_index)
+            energy_history = _pickle_load_values(last_finished_index, 'energy_history')
 
             if initial_index == total_iterations:
                 if isfile(fname + ".mean.pickle"):
@@ -320,6 +338,9 @@ def optimize_kl(likelihood_energy,
             for subfolder in ["pickle"] + list(plottable_operators.keys()):
                 makedirs(join(output_directory, subfolder), exist_ok=overwrite)
 
+    if initial_index == 0:
+        energy_history = EnergyHistory()
+
     for iglobal in range(initial_index, total_iterations):
         lh = likelihood_energy(iglobal)
         count = CountingOperator(lh.domain)
@@ -340,6 +361,7 @@ def optimize_kl(likelihood_energy,
                 e, _ = minimizer(e)
                 mean = MultiField.union([mean, e.position]) if mf_dom else e.position
                 sl = SampleList([mean])
+                energy_history.append((iglobal, e.value))
             else:
                 warn("Have detected MPI communicator for optimizing Hamiltonian. Will use only "
                      "the rank0 task and communicate the result afterwards to all other tasks.")
@@ -347,6 +369,7 @@ def optimize_kl(likelihood_energy,
                     e, _ = minimizer(e)
                     mean = MultiField.union([mean, e.position]) if mf_dom else e.position
                     sl = SampleList([mean], comm=comm(iglobal), domain=dom)
+                    energy_history.append((iglobal, e.value))
                 else:
                     mean = None
                     sl = SampleList([], comm=comm(iglobal), domain=dom)
@@ -364,23 +387,26 @@ def optimize_kl(likelihood_energy,
             e, _ = minimizer(e)
             mean = MultiField.union([mean, e.position]) if mf_dom else e.position
             sl = e.samples.at(mean)
+            energy_history.append((iglobal, e.value))
+
+        _minisanity(likelihood_energy, iglobal, sl, comm, plot_minisanity_history)
+        _barrier(comm(iglobal))
 
         if output_directory is not None:
-            _plot_operators(output_directory, iglobal, plottable_operators, sl,
-                            ground_truth_position, comm(iglobal), save_strategy)
-            sl.save(join(output_directory, "pickle/") + _file_name_by_strategy(save_strategy, iglobal),
+            _plot_operators(iglobal, plottable_operators, sl, ground_truth_position, comm(iglobal))
+            sl.save(join(output_directory, "pickle/") + _file_name_by_strategy(iglobal),
                     overwrite=overwrite)
-            _save_random_state(output_directory, iglobal, save_strategy)
+            _save_random_state(iglobal)
 
             if _MPI_master(comm(iglobal)):
                 with open(join(output_directory, "last_finished_iteration"), "w") as f:
                     f.write(str(iglobal))
+                _pickle_save_values(iglobal, 'energy_history', energy_history)
+                if plot_energy_history:
+                    _plot_energy_history(iglobal, energy_history)
         _barrier(comm(iglobal))
 
-        _minisanity(likelihood_energy, iglobal, sl, output_directory, comm)
-        _barrier(comm(iglobal))
-
-        _counting_report(count, iglobal, output_directory, comm)
+        _counting_report(count, iglobal, comm)
 
         _handle_inspect_callback(inspect_callback, sl, iglobal, mean, dom, comm)
         _barrier(comm(iglobal))
@@ -392,41 +418,57 @@ def optimize_kl(likelihood_energy,
     return (sl, mean) if return_final_position else sl
 
 
-def _file_name(output_directory, name, index, prefix=""):
-    op_direc = join(output_directory, name)
+def _file_name(name, index, prefix=""):
+    op_direc = join(_output_directory, name)
     return join(op_direc, f"{prefix}{index:03d}.png")
 
 
-def _file_name_by_strategy(strategy, iglobal):
-    if strategy == "all":
+def _file_name_by_strategy(iglobal, save_strategy='global_strategy'):
+    if save_strategy == 'global_strategy':
+        save_strategy = _save_strategy
+    if save_strategy == "all":
         return f"iteration_{iglobal}"
-    elif strategy == "last":
+    elif save_strategy == "last":
         return "last"
     raise RuntimeError
 
 
-def _save_random_state(output_directory, index, save_strategy):
+def _save_random_state(index):
     from ..random import getState
-    file_name = join(output_directory, "pickle/nifty_random_state_")
-    file_name += _file_name_by_strategy(save_strategy, index)
+    file_name = join(_output_directory, "pickle/nifty_random_state_")
+    file_name += _file_name_by_strategy(index)
     with open(file_name, "wb") as f:
         f.write(getState())
 
 
-def _load_random_state(output_directory, index, save_strategy):
+def _load_random_state(index):
     from ..random import setState
-    file_name = join(output_directory, "pickle/nifty_random_state_")
-    file_name += _file_name_by_strategy(save_strategy, index)
+    file_name = join(_output_directory, "pickle/nifty_random_state_")
+    file_name += _file_name_by_strategy(index)
     with open(file_name, "rb") as f:
         setState(f.read())
 
 
-def _plot_operators(output_directory, index, plottable_operators, sample_list,
-                    ground_truth, comm, save_strategy):
+def _pickle_save_values(index, name, val):
+    file_name = join(_output_directory, f"pickle/{name}_")
+    file_name += _file_name_by_strategy(index)
+    with open(file_name, "wb") as f:
+        pickle.dump(val, f)
+
+
+def _pickle_load_values(index, name):
+    file_name = join(_output_directory, f"pickle/{name}_")
+    file_name += _file_name_by_strategy(index)
+    with open(file_name, "rb") as f:
+        val = pickle.load(f)
+    return val
+
+
+def _plot_operators(index, plottable_operators, sample_list, ground_truth, comm):
     if not isinstance(plottable_operators, dict):
         raise TypeError
-    if not isdir(output_directory):
-        raise RuntimeError(f"{output_directory} does not exist")
+    if not isdir(_output_directory):
+        raise RuntimeError(f"{_output_directory} does not exist")
     if not isinstance(sample_list, SampleListBase):
         raise TypeError
     if ground_truth is not None and sample_list.domain != ground_truth.domain:
@@ -441,13 +483,13 @@ def _plot_operators(output_directory, index, plottable_operators, sample_list,
         if not _is_subdomain(op.domain, sample_list.domain):
             continue
         gt = _op_force_or_none(op, ground_truth)
-        fname = _file_name(output_directory, name, index, "samples_")
+        fname = _file_name(name, index, "samples_")
         _plot_samples(fname, sample_list.iterator(op), gt, comm, plotting_kwargs)
         if sample_list.n_samples > 1:
-            fname = _file_name(output_directory, name, index, "stats_")
+            fname = _file_name(name, index, "stats_")
             _plot_stats(fname, *sample_list.sample_stat(op), gt, comm, plotting_kwargs)
 
-        op_direc = join(output_directory, name)
+        op_direc = join(_output_directory, name)
         if sample_list.n_samples > 1:
             cfg = {"samples": True, "mean": True, "std": True}
         else:
@@ -459,13 +501,13 @@ def _plot_operators(output_directory, index, plottable_operators, sample_list,
         else:
             ground_truth_sl = SampleList([ground_truth])
         if h5py:
-            file_name = join(op_direc, _file_name_by_strategy(save_strategy, index) + ".hdf5")
+            file_name = join(op_direc, _file_name_by_strategy(index) + ".hdf5")
             sample_list.save_to_hdf5(file_name, op=op, overwrite=True, **cfg)
             file_name = join(op_direc, "ground_truth.hdf5")
             ground_truth_sl.save_to_hdf5(file_name, op=op, overwrite=True, samples=True)
         if astropy:
             try:
-                file_name_base = join(op_direc, _file_name_by_strategy(save_strategy, index))
+                file_name_base = join(op_direc, _file_name_by_strategy(index))
                 sample_list.save_to_fits(file_name_base, op=op, overwrite=True, **cfg)
                 file_name_base = join(op_direc, "ground_truth")
                 ground_truth_sl.save_to_fits(file_name_base, op=op, overwrite=True, samples=True)
@@ -513,6 +555,35 @@ def _plot_samples(file_name, samples, ground_truth, comm, plotting_kwargs):
         p.output(name=file_name)
 
 
+def _plot_energy_history(index, energy_history):
+    import matplotlib.pyplot as plt
+    fname = join(_output_directory, '{}_' + _file_name_by_strategy(index) + '.png')
+
+    E = np.array(energy_history.energy_values)
+
+    # energy value plot
+    p = Plot()
+    p.add(energy_history, skip_timestamp_conversion=True, xlabel='iteration',
+          ylabel=r'E', yscale='log' if (E > 0.).all() else 'linear')
+    p.output(title='energy history', name=fname.format('energy_history'))
+
+    # energy change plot
+    if index > 0:
+        ts = np.array(energy_history.time_stamps[1:])
+        dE = E[1:] - E[:-1]
+        idx_pos = (dE > 0)
+        idx_neg = (dE < 0)
+        plt.plot(ts[idx_pos], dE[idx_pos], '^', color='red', label='positive')
+        plt.plot(ts[idx_neg], -dE[idx_neg], 'v', color='green', label='negative')
+        plt.yscale('log')
+        plt.title('energy change w.r.t. previous step')
+        plt.xlabel('iteration')
+        plt.ylabel(r'$\Delta\,$E')
+        plt.legend()
+        plt.savefig(fname.format('energy_change_history'))
+        plt.clf()
+
+
 def _append_key(s, key):
     if key == "":
         return s
@@ -534,22 +605,97 @@ def _plot_stats(file_name, mean, var, ground_truth, comm, plotting_kwargs):
         p.output(name=file_name, ny=2 if ground_truth is None else 3)
 
 
-def _minisanity(likelihood_energy, iglobal, sl, output_directory, comm):
+def _minisanity(likelihood_energy, iglobal, sl, comm, plot_minisanity_history):
     from ..extra import minisanity
 
-    s = minisanity(likelihood_energy(iglobal), sl, terminal_colors=False)
-    _report_to_logger_and_file(s, "minisanity.txt", iglobal, output_directory,
-                               comm, True, True, True)
+    s, ms_val = minisanity(likelihood_energy(iglobal), sl, terminal_colors=False,
+                           return_values=True)
+    check_MPI_equality(ms_val, comm(iglobal))
+    _report_to_logger_and_file(s, "minisanity.txt", iglobal, comm, True, True,
+                               True)
+
+    if _MPI_master(comm(iglobal)) and _output_directory is not None:
+        # load/create minisanity_history object
+        if iglobal == 0:
+            mh = ms_val
+        else:
+            mh = _pickle_load_values(iglobal, 'minisanity_history')
+
+        for k1 in ['redchisq', 'scmean']:
+            for k2 in ['data_residuals', 'latent_variables']:
+                for k3 in mh[k1][k2].keys():
+                    v = ms_val[k1][k2][k3]
+                    if iglobal == 0:
+                        mh[k1][k2][k3]['mean'] = [v['mean'], ]
+                        mh[k1][k2][k3]['std'] = [v['std'], ]
+                    else:
+                        mh[k1][k2][k3]['mean'].append(v['mean'])
+                        mh[k1][k2][k3]['std'].append(v['std'])
+
+        _pickle_save_values(iglobal, 'minisanity_history', mh)
+
+        if plot_minisanity_history:
+            _plot_minisanity_history(iglobal, mh)
 
 
-def _counting_report(count, iglobal, output_directory, comm):
+def _plot_minisanity_history(index, minisanity_history):
+    from matplotlib.cm import plasma
+    import matplotlib.pyplot as plt
+
+    mhrcs = minisanity_history['redchisq']
+
+    labels = []
+    vals = []
+
+    n_dr = 0
+    for kk in mhrcs['data_residuals'].keys():
+        labels.append(f'residuals: {n_dr}')
+        vals.append(mhrcs['data_residuals'][kk]['mean'])
+        n_dr += 1
+
+    n_lv = 0
+    for kk in mhrcs['latent_variables'].keys():
+        labels.append(f'latent: {kk}')
+        vals.append(mhrcs['latent_variables'][kk]['mean'])
+        n_lv += 1
+
+    n_tot = n_dr + n_lv
+
+    colors = [plasma(x) for x in np.linspace(0, 0.95, n_tot)]
+
+    linestyles = ['-'] * n_tot
+    for ii in range(1, n_tot, 2):
+        linestyles[ii] = '--'
+
+    ts = np.arange(len(vals[0]))
+    vals = [np.array(v) for v in vals]
+
+    plt.figure()
+    for i in range(n_tot):
+        plt.plot(ts, vals[i], label=labels[i], color=colors[i], marker='.',
+                 linestyle=linestyles[i])
+
+    xlim = plt.xlim()
+    plt.hlines(1., xlim[0], xlim[1], linestyle='dashed', color='black', linewidth=2, zorder=-1)
+    plt.xlim(*xlim)
+    plt.yscale('log')
+
+    plt.title(r'reduced $\chi^2$ values')
+    plt.xlabel('iteration')
+    plt.ylabel(r'red. $\chi^2$')
+    plt.legend(loc='upper right')
+    plt.savefig(join(_output_directory, 'minisanity_history_' +
+                     _file_name_by_strategy(index) + '.png'))
+    plt.clf()
+
+
+def _counting_report(count, iglobal, comm):
     _report_to_logger_and_file(count.report(), "counting_report.txt", iglobal,
-                               output_directory, comm, output_directory is None,
-                               True, False)
+                               comm, _output_directory is None, True, False)
 
 
-def _report_to_logger_and_file(report, file_name, iglobal, output_directory,
-                               comm, to_logger, to_file, only_master):
+def _report_to_logger_and_file(report, file_name, iglobal, comm, to_logger,
+                               to_file, only_master):
     from datetime import datetime
 
     from ..logger import logger
@@ -565,14 +711,14 @@ def _report_to_logger_and_file(report, file_name, iglobal, output_directory,
     if _MPI_master(comm(iglobal)):
         if to_logger:
             logger.info(report)
-        if output_directory is not None and to_file:
-            with open(join(output_directory, file_name), "a") as f:
+        if _output_directory is not None and to_file:
+            with open(join(_output_directory, file_name), "a") as f:
                 f.write(intro + report + "\n\n")
 
 
 def _handle_inspect_callback(inspect_callback, sl, iglobal, mean, dom, comm):
     if _number_of_arguments(inspect_callback) == 1:
-        inp = (sl,)
+        inp = (sl, )
     elif _number_of_arguments(inspect_callback) == 2:
         inp = (sl, iglobal)
     elif _number_of_arguments(inspect_callback) == 3:
