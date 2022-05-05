@@ -200,13 +200,10 @@ def true_covariance(chart, kernel, depth=None):
     """Computes the true covariance at the final grid."""
     depth = chart.depth if depth is None else depth
 
-    c0 = [jnp.arange(sz) for sz in chart.shape_at(depth)]
-    pos = jnp.stack(
-        chart.ind2cart(jnp.meshgrid(*c0, indexing="ij"), depth), axis=0
-    )
-
-    p = jnp.moveaxis(pos, 0, -1).reshape(-1, chart.ndim)
-    dist_mat = distance_matrix(p, p)
+    c0_slc = tuple(slice(sz) for sz in chart.shape_at(depth))
+    pos = jnp.stack(chart.ind2cart(jnp.mgrid[c0_slc], depth),
+                    axis=-1).reshape(-1, chart.ndim)
+    dist_mat = distance_matrix(pos, pos)
     return kernel(dist_mat)
 
 
