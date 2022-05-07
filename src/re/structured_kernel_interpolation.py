@@ -39,7 +39,8 @@ def interp_mat(grid_shape, grid_bounds, sampling_points, *, distances=None):
         distances = np.array(
             [(b[1] - b[0]) / sz for b, sz in zip(grid_bounds, grid_shape)]
         )
-    assert distances is not None
+    if distances is None:
+        raise AssertionError()
 
     mg = np.mgrid[(slice(0, 2), ) * ndim].reshape(ndim, -1)
     pos = (sampling_points - offset.reshape(-1, 1)) / distances.reshape(-1, 1)
