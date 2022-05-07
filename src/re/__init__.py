@@ -5,6 +5,7 @@ from . import refine
 from . import refine_util
 from . import refine_chart
 from . import lanczos
+from . import structured_kernel_interpolation
 from .conjugate_gradient import cg, static_cg
 from .correlated_field import CorrelatedFieldMaker, non_parametric_amplitude
 from .energy_operators import (
