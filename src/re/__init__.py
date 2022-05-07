@@ -4,6 +4,7 @@
 from . import refine
 from . import refine_util
 from . import refine_chart
+from . import lanczos
 from .conjugate_gradient import cg, static_cg
 from .correlated_field import CorrelatedFieldMaker, non_parametric_amplitude
 from .energy_operators import (
@@ -42,6 +43,7 @@ from .kl import (
     mean_value_and_grad,
     sample_standard_hamiltonian,
 )
+from .lanczos import stochastic_lq_logdet
 from .likelihood import Likelihood, StandardHamiltonian
 from .optimize import minimize, newton_cg, trust_ncg
 from .refine_chart import CoordinateChart, RefinementField
