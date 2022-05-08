@@ -95,7 +95,7 @@ def test_optimize_kl(constants, point_estimates, kl_minimizer, n_samples,
                          sampling_iteration_controller, nonlinear_sampling_minimizer, constants,
                          point_estimates, plottable_operators, output_directory, initial_position,
                          initial_index, ground_truth_position, comm, overwrite, inspect_callback,
-                         terminate_callback, plot_latent)
+                         terminate_callback, plot_latent, save_strategy="all")
 
     ift.random.setState(rand_state)
 
@@ -107,7 +107,7 @@ def test_optimize_kl(constants, point_estimates, kl_minimizer, n_samples,
                               sampling_iteration_controller, nonlinear_sampling_minimizer, constants,
                               point_estimates, plottable_operators, output_directory1, initial_position,
                               initial_index, ground_truth_position, comm, overwrite, inspect_callback,
-                              terminate_callback, plot_latent, resume=True)
+                              terminate_callback, plot_latent, resume=True, save_strategy="last")
 
     for aa, bb in zip(sl.iterator(), sl1.iterator()):
         ift.extra.assert_allclose(aa, bb)
