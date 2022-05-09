@@ -1,8 +1,12 @@
 # SPDX-License-Identifier: GPL-2.0+ OR BSD-2-Clause
 
+from typing import Callable, Union
+
 import jax
 from jax import numpy as jnp
 import numpy as np
+
+NDArray = Union[jnp.ndarray, np.ndarray]
 
 from .correlated_field import get_fourier_mode_distributor, hartley
 
@@ -75,7 +79,7 @@ class SKIHarmonicCovariance():
         grid_shape,
         grid_bounds,
         sampling_points,
-        harmonic_kernel,
+        harmonic_kernel=None,
         padding=0.5,
         subslice=None,
         jitter=True
@@ -118,8 +122,13 @@ class SKIHarmonicCovariance():
             grid_bounds = grid_bounds_wpad
         self.grid_shape = np.asarray(grid_shape)
         self.grid_bounds = np.asarray(grid_bounds)
+        self.grid_distances = jnp.diff(self.grid_bounds,
+                                       axis=1).ravel() / self.grid_shape
+        self.grid_total_volume = jnp.prod(self.grid_shape * self.grid_distances)
 
-        self.harmonic_kernel = harmonic_kernel
+        self.power_distributor, self.unique_mode_lengths, _ = get_fourier_mode_distributor(
+            self.grid_shape, self.grid_distances
+        )
 
         if subslice is not None:
             if isinstance(subslice, slice):
@@ -137,65 +146,81 @@ class SKIHarmonicCovariance():
                 raise TypeError("`subslice` of invalid type")
         self.grid_subslice = subslice
 
-        self.grid_distances = jnp.diff(self.grid_bounds,
-                                       axis=1).ravel() / self.grid_shape
-        self.grid_total_volume = jnp.prod(self.grid_shape * self.grid_distances)
+        self._harmonic_kernel = harmonic_kernel
 
-        self.power_distributor, ks, _ = get_fourier_mode_distributor(
-            self.grid_shape, self.grid_distances
-        )
-        self.power = self.harmonic_kernel(ks)
-        # Assume that the kernel scales linear with the total volume
-        self.power *= self.grid_total_volume / self.grid_unpadded_total_volume
-        self.amplitude = jnp.sqrt(self.power)
-
-        def ht(x):
-            return 1. / self.grid_total_volume * hartley(x)
-
-        def correlated_field(x):
-            f = ht(self.amplitude[self.power_distributor] * x)
-            if self.grid_subslice is None:
-                return f
-            return f[self.grid_subslice]
-
-        self.correlated_field = correlated_field
-
-        def sandwich(x):
-            if self.grid_subslice is None:
-                x_wpad = x
-            else:
-                x_wpad = jnp.zeros(tuple(self.grid_shape))
-                x_wpad = x_wpad.at[self.grid_subslice].set(x)
-
-            ht_T = jax.linear_transpose(
-                ht, jax.ShapeDtypeStruct(tuple(self.grid_shape), x.dtype)
+    @property
+    def harmonic_kernel(self) -> Callable:
+        """Yields the harmonic kernel specified during initialization or throw
+        a `TypeError`.
+        """
+        if self._harmonic_kernel is None:
+            te = (
+                "either specify a fixed harmonic kernel during initialization"
+                f" of the {self.__class__.__name__} class or provide one here"
             )
-            s = ht(self.power[self.power_distributor] * ht_T(x_wpad)[0])
-            if self.grid_subslice is None:
-                return s
-            return s[self.grid_subslice]
+            raise TypeError(te)
+        return self._harmonic_kernel
 
-        self.sandwich = sandwich
+    def power(self, harmonic_kernel=None) -> NDArray:
+        if harmonic_kernel is None:
+            harmonic_kernel = self.harmonic_kernel
+        power = harmonic_kernel(self.unique_mode_lengths)
+        power *= self.grid_total_volume / self.grid_unpadded_total_volume
+        return power
 
-    def __call__(self, x):
+    def amplitude(self, harmonic_kernel=None):
+        power = self.power(harmonic_kernel)
+        # Assume that the kernel scales linear with the total volume
+        return jnp.sqrt(power)
+
+    def harmonic_transform(self, x) -> NDArray:
+        return 1. / self.grid_total_volume * hartley(x)
+
+    def correlated_field(self, x, harmonic_kernel=None) -> NDArray:
+        amp = self.amplitude(harmonic_kernel)
+        f = self.harmonic_transform(amp[self.power_distributor] * x)
+        if self.grid_subslice is None:
+            return f
+        return f[self.grid_subslice]
+
+    def sandwich(self, x, harmonic_kernel=None) -> NDArray:
+        if self.grid_subslice is None:
+            x_wpad = x
+        else:
+            x_wpad = jnp.zeros(tuple(self.grid_shape))
+            x_wpad = x_wpad.at[self.grid_subslice].set(x)
+
+        swd = jax.ShapeDtypeStruct(tuple(self.grid_shape), x.dtype)
+        ht = self.harmonic_transform
+        ht_T = jax.linear_transpose(self.harmonic_transform, swd)
+
+        power = self.power(harmonic_kernel=harmonic_kernel)
+        s = ht(power[self.power_distributor] * ht_T(x_wpad)[0])
+        if self.grid_subslice is None:
+            return s
+        return s[self.grid_subslice]
+
+    def __call__(self, x, harmonic_kernel=None) -> NDArray:
         """Applies the Covariance matrix."""
         x_shp = x.shape
         jitter = 0. if self.jitter is None else self.jitter * x
 
         x = (self.w.T @ x.ravel()).reshape(tuple(self.grid_unpadded_shape))
-        x = self.sandwich(x)
+        x = self.sandwich(x, harmonic_kernel=harmonic_kernel)
         x = (self.w @ x.ravel()).reshape(x_shp)
         return x + jitter
 
-    def evaluate(self):
+    def evaluate(self, harmonic_kernel=None):
         probe = jnp.zeros(self.w.shape[0])
         indices = jnp.arange(self.w.shape[0]).reshape(1, -1)
 
         return jax.lax.map(
-            lambda idx: self(probe.at[tuple(idx)].set(1.)).ravel(), indices.T
+            lambda idx: self(
+                probe.at[tuple(idx)].set(1.), harmonic_kernel=harmonic_kernel
+            ).ravel(), indices.T
         ).T  # vmap over `indices` w/ `in_axes=1, out_axes=-1`
 
-    def evaluate_(self, kernel):
+    def evaluate_(self, kernel) -> NDArray:
         from scipy.spatial import distance_matrix
 
         if self.jitter is None:
