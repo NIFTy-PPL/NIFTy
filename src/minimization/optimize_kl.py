@@ -619,7 +619,7 @@ def _minisanity(likelihood_energy, iglobal, sl, comm, plot_minisanity_history):
         if iglobal == 0:
             mh = ms_val
         else:
-            mh = _pickle_load_values(iglobal, 'minisanity_history')
+            mh = _pickle_load_values(iglobal-1, 'minisanity_history')
 
         for k1 in ['redchisq', 'scmean']:
             for k2 in ['data_residuals', 'latent_variables']:
