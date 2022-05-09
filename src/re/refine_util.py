@@ -153,8 +153,9 @@ def fine2coarse_distances(
 def gauss_kl(cov_desired, cov_approx, *, m_desired=None, m_approx=None):
     cov_t_ds, cov_t_dl = jnp.linalg.slogdet(cov_desired)
     cov_a_ds, cov_a_dl = jnp.linalg.slogdet(cov_approx)
-    if (cov_t_ds * cov_a_ds) <= 0.:
-        raise ValueError("fraction of determinants must be positive")
+    if cov_t_ds <= 0 or cov_a_ds <= 0.:
+        ve = "determinants must be positive otherwise the are not proper covariances"
+        raise ValueError(ve)
 
     cov_a_inv = jnp.linalg.inv(cov_approx)
 
