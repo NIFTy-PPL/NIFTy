@@ -73,7 +73,7 @@ def interp_mat(grid_shape, grid_bounds, sampling_points, *, distances=None):
     return BCOO.from_scipy_sparse(mat)
 
 
-class SKIHarmonicCovariance():
+class HarmonicSKI():
     def __init__(
         self,
         grid_shape,
