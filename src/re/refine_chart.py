@@ -346,6 +346,7 @@ class RefinementField():
         kernel: Optional[Callable] = None,
         depth: Optional[int] = None,
         skip0: Optional[bool] = None,
+        **kwargs
     ):
         """Computes the refinement matrices namely the optimal linear filter
         and the square root of the information propagator (a.k.a. the square
@@ -357,7 +358,7 @@ class RefinementField():
         skip0 = self.skip0 if skip0 is None else skip0
 
         return _coordinate_refinement_matrices(
-            self.chart, kernel=kernel, depth=depth, skip0=skip0
+            self.chart, kernel=kernel, depth=depth, skip0=skip0, **kwargs
         )
 
     def matrices_at(
@@ -403,6 +404,7 @@ class RefinementField():
         *,
         skip0: bool = False,
         precision=None,
+        coerce_fine_kernel: bool = True,
         _refine: Optional[Callable] = None,
     ):
         """Static method to apply a refinement field given some excitations, a
@@ -416,7 +418,11 @@ class RefinementField():
             raise ValueError(ve)
 
         refinement = _coordinate_refinement_matrices(
-            chart, kernel=kernel, depth=len(xi) - 1, skip0=skip0
+            chart,
+            kernel=kernel,
+            depth=len(xi) - 1,
+            skip0=skip0,
+            coerce_fine_kernel=coerce_fine_kernel
         )
         refine_w_chart = partial(
             refine if _refine is None else _refine,
@@ -438,19 +444,10 @@ class RefinementField():
             fine = refine_w_chart(fine, x, olf, k)
         return fine
 
-    def __call__(
-        self, xi, kernel=None, *, skip0=None, precision=None, _refine=None
-    ):
+    def __call__(self, xi, kernel=None, *, skip0=None, **kwargs):
         kernel = self.kernel if kernel is None else kernel
         skip0 = self.skip0 if skip0 is None else skip0
-        return self.apply(
-            xi,
-            self.chart,
-            kernel=kernel,
-            skip0=skip0,
-            _refine=_refine,
-            precision=precision
-        )
+        return self.apply(xi, self.chart, kernel=kernel, skip0=skip0, **kwargs)
 
     def __repr__(self):
         descr = f"{self.__class__.__name__}({self.chart!r}"
@@ -543,6 +540,7 @@ def _coordinate_refinement_matrices(
     *,
     depth: Optional[int] = None,
     skip0=False,
+    coerce_fine_kernel: bool = True,
     _cov_from_loc=None
 ) -> RefinementMatrices:
     cov_from_loc = _get_cov_from_loc(kernel, _cov_from_loc)
@@ -561,6 +559,7 @@ def _coordinate_refinement_matrices(
         partial(
             _coordinate_pixel_refinement_matrices,
             chart,
+            coerce_fine_kernel=coerce_fine_kernel,
             _cov_from_loc=cov_from_loc,
         ),
         in_axes=(None, 0),
