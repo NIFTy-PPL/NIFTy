@@ -150,13 +150,20 @@ def fine2coarse_distances(
     return jnp.atleast_1d(distances) * fpx_in_cpx
 
 
-def gauss_kl(cov_desired, cov_approx, *, m_desired=None, m_approx=None):
-    cov_t_ds, cov_t_dl = jnp.linalg.slogdet(cov_desired)
-    cov_a_ds, cov_a_dl = jnp.linalg.slogdet(cov_approx)
-    if cov_t_ds <= 0 or cov_a_ds <= 0.:
-        ve = "determinants must be positive otherwise the are not proper covariances"
-        raise ValueError(ve)
+def _clipping_posdef_logdet(mat, msg_prefix=""):
+    sign, logdet = jnp.linalg.slogdet(mat)
+    if sign <= 0:
+        ve = "not positive definite; clipping eigenvalues"
+        warn(msg_prefix + ve)
+        eps = jnp.finfo(mat.dtype.type).eps
+        evs = jnp.linalg.eigvalsh(mat)
+        logdet = jnp.sum(jnp.log(jnp.clip(evs, a_min=eps * evs.max())))
+    return logdet
 
+
+def gauss_kl(cov_desired, cov_approx, *, m_desired=None, m_approx=None):
+    cov_t_dl = _clipping_posdef_logdet(cov_desired, msg_prefix="`cov_desired` ")
+    cov_a_dl = _clipping_posdef_logdet(cov_approx, msg_prefix="`cov_approx` ")
     cov_a_inv = jnp.linalg.inv(cov_approx)
 
     kl = -cov_desired.shape[0]  # number of dimensions
