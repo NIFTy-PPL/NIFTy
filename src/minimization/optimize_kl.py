@@ -600,7 +600,7 @@ def _plot_stats(file_name, mean, var, ground_truth, comm, plotting_kwargs):
     if ground_truth is not None:
         p.add(ground_truth, title="Ground truth", **plotting_kwargs)
     p.add(mean, title="Mean", **plotting_kwargs)
-    p.add(var.sqrt(), title="Standard deviation", norm=LogNorm())
+    p.add(var.sqrt(), title="Standard deviation")
     if _MPI_master(comm):
         p.output(name=file_name, ny=2 if ground_truth is None else 3)
 
