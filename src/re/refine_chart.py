@@ -403,24 +403,26 @@ class RefinementField():
         kernel,
         *,
         skip0: bool = False,
-        precision=None,
+        depth: Optional[int] = None,
         coerce_fine_kernel: bool = True,
         _refine: Optional[Callable] = None,
+        precision=None,
     ):
         """Static method to apply a refinement field given some excitations, a
         chart and a kernel.
         """
-        if chart.depth != len(xi) - 1:
+        depth = chart.depth if depth is None else depth
+        if depth != len(xi) - 1:
             ve = (
                 f"incompatible refinement depths of `xi` ({len(xi) - 1})"
-                f" and `chart` {chart.depth}"
+                f" and `depth` (of chart) {depth}"
             )
             raise ValueError(ve)
 
         refinement = _coordinate_refinement_matrices(
             chart,
             kernel=kernel,
-            depth=len(xi) - 1,
+            depth=depth,
             skip0=skip0,
             coerce_fine_kernel=coerce_fine_kernel
         )
