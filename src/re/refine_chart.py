@@ -293,6 +293,11 @@ class CoordinateChart():
         return repr(self) == repr(other)
 
 
+RefinementMatrices = namedtuple(
+    "RefinementMatrices", ("filter", "propagator_sqrt", "cov_sqrt0")
+)
+
+
 class RefinementField():
     def __init__(
         self, *args, kernel=None, dtype=None, skip0: bool = False, **kwargs
@@ -400,7 +405,7 @@ class RefinementField():
     def apply(
         xi,
         chart,
-        kernel,
+        kernel: Union[Callable, RefinementMatrices],
         *,
         skip0: bool = False,
         depth: Optional[int] = None,
@@ -419,13 +424,16 @@ class RefinementField():
             )
             raise ValueError(ve)
 
-        refinement = _coordinate_refinement_matrices(
-            chart,
-            kernel=kernel,
-            depth=depth,
-            skip0=skip0,
-            coerce_fine_kernel=coerce_fine_kernel
-        )
+        if isinstance(kernel, RefinementMatrices):
+            refinement = kernel
+        else:
+            refinement = _coordinate_refinement_matrices(
+                chart,
+                kernel=kernel,
+                depth=depth,
+                skip0=skip0,
+                coerce_fine_kernel=coerce_fine_kernel
+            )
         refine_w_chart = partial(
             refine if _refine is None else _refine,
             _coarse_size=chart.coarse_size,
@@ -529,11 +537,6 @@ def _coordinate_pixel_refinement_matrices(
     fine_kernel_sqrt = jnp.linalg.cholesky(fine_kernel)
 
     return olf, fine_kernel_sqrt
-
-
-RefinementMatrices = namedtuple(
-    "RefinementMatrices", ("filter", "propagator_sqrt", "cov_sqrt0")
-)
 
 
 def _coordinate_refinement_matrices(
