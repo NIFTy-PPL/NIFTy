@@ -164,6 +164,15 @@ def refinement_matrices(
     return opt_lin_filter, (cov_sqrt0, kernel_sqrt)
 
 
+def _vmap_squeeze_first(fun, *args, **kwargs):
+    vfun = vmap(fun, *args, **kwargs)
+
+    def vfun_apply(*x):
+        return vfun(jnp.squeeze(x[0], axis=0), *x[1:])
+
+    return vfun_apply
+
+
 def refine_conv_general(
     coarse_values,
     excitations,
@@ -326,20 +335,13 @@ def refine_conv_general(
         0, np.prod(irreg_indices.shape[:-1]), single_refinement_step, fine
     )
 
-    def vmap_squeeze_first(fun, in_axes):
-        vfun = vmap(fun, in_axes=in_axes)
-
-        def vfun_apply(*args):
-            return vfun(jnp.squeeze(args[0], axis=0), *args[1:])
-
-        return vfun_apply
-
+    # TODO: incorporate precision
     matmul = jnp.matmul
     for i in irreg_shape[::-1]:
         if i != 1:
             matmul = vmap(matmul, in_axes=(0, 0))
         else:
-            matmul = vmap_squeeze_first(matmul, in_axes=(None, 0))
+            matmul = _vmap_squeeze_first(matmul, in_axes=(None, 0))
     m = matmul(fine_kernel_sqrt, excitations.reshape(fine_init_shape))
     rm_axs = tuple(
         ax for ax, i in enumerate(m.shape[len(irreg_shape):], len(irreg_shape))
@@ -351,6 +353,93 @@ def refine_conv_general(
     ax_label = np.arange(2 * ndim)
     ax_t = [e for els in zip(ax_label[:ndim], ax_label[ndim:]) for e in els]
     fine = jnp.transpose(fine, axes=ax_t)
+
+    return fine.reshape(fine_final_shape)
+
+
+def refine_slice(
+    coarse_values,
+    excitations,
+    olf,
+    fine_kernel_sqrt,
+    precision=None,
+    _coarse_size: int = 3,
+    _fine_size: int = 2,
+    _fine_strategy: Literal["jump", "extend"] = "jump",
+):
+    ndim = np.ndim(coarse_values)
+    csz = int(_coarse_size)  # coarse size
+    if _coarse_size % 2 != 1:
+        raise ValueError("only odd numbers allowed for `_coarse_size`")
+    fsz = int(_fine_size)  # fine size
+    if _fine_size % 2 != 0:
+        raise ValueError("only even numbers allowed for `_fine_size`")
+
+    if olf.shape[:-2] != fine_kernel_sqrt.shape[:-2]:
+        ve = (
+            "incompatible optimal linear filter (`olf`) and `fine_kernel_sqrt` shapes"
+            f"; got {olf.shape} and {fine_kernel_sqrt.shape}"
+        )
+        raise ValueError(ve)
+    if olf.ndim > 2:
+        irreg_shape = olf.shape[:-2]
+    elif olf.ndim == 2:
+        irreg_shape = (1, ) * ndim
+    else:
+        ve = f"invalid shape of optimal linear filter (`olf`); got {olf.shape}"
+        raise ValueError(ve)
+    olf = olf.reshape(irreg_shape + (fsz**ndim, ) + (csz, ) * ndim)
+    fine_kernel_sqrt = fine_kernel_sqrt.reshape(irreg_shape + (fsz**ndim, ) * 2)
+
+    if _fine_strategy == "jump":
+        raise NotImplementedError()
+    elif _fine_strategy == "extend":
+        window_strides = (fsz // 2, ) * ndim
+        fine_init_shape = tuple(
+            ceil((n - (csz - 1)) / (fsz // 2)) for n in coarse_values.shape
+        ) + (fsz**ndim, )
+        fine_final_shape = tuple(
+            fsz * ceil((n - (csz - 1)) / (fsz // 2))
+            for n in coarse_values.shape
+        )
+
+        if fsz // 2 > csz:
+            ve = "extrapolation is not allowed (use `fine_size / 2 <= coarse_size`)"
+            raise ValueError(ve)
+    else:
+        raise ValueError(f"invalid `_fine_strategy`; got {_fine_strategy}")
+
+    if ndim > 1:
+        raise NotImplementedError()
+
+    def matmul_with_window_into(x, y, idx, slice_sizes, precision=None):
+        return jnp.matmul(
+            x,
+            dynamic_slice(y, (idx, ), slice_sizes=slice_sizes),
+            precision=precision
+        )
+
+    cv_idx = np.mgrid[tuple(
+        slice(None, sz - csz + 1, ws)
+        for sz, ws in zip(coarse_values.shape, window_strides)
+    )][0]
+    matmul = partial(
+        matmul_with_window_into, slice_sizes=(csz, ), precision=precision
+    )
+    fine = vmap(matmul, in_axes=(0, None, 0))(olf, coarse_values, cv_idx)
+
+    matmul = partial(jnp.matmul, precision=precision)
+    for i in irreg_shape[::-1]:
+        if i != 1:
+            matmul = vmap(matmul, in_axes=(0, 0))
+        else:
+            matmul = _vmap_squeeze_first(matmul, in_axes=(None, 0))
+    m = matmul(fine_kernel_sqrt, excitations.reshape(fine_init_shape))
+    rm_axs = tuple(
+        ax for ax, i in enumerate(m.shape[len(irreg_shape):], len(irreg_shape))
+        if i == 1
+    )
+    fine += jnp.squeeze(m, axis=rm_axs)
 
     return fine.reshape(fine_final_shape)
 
