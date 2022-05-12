@@ -389,7 +389,7 @@ def optimize_kl(likelihood_energy,
             sl = e.samples.at(mean)
             energy_history.append((iglobal, e.value))
 
-        _minisanity(likelihood_energy, iglobal, sl, comm, plot_minisanity_history)
+        _minisanity(lh, iglobal, sl, comm, plot_minisanity_history)
         _barrier(comm(iglobal))
 
         if output_directory is not None:
@@ -414,6 +414,8 @@ def optimize_kl(likelihood_energy,
         if _handle_terminate_callback(terminate_callback, iglobal, comm):
             break
         _barrier(comm(iglobal))
+
+        del lh
 
     return (sl, mean) if return_final_position else sl
 
@@ -608,7 +610,7 @@ def _plot_stats(file_name, mean, var, ground_truth, comm, plotting_kwargs):
 def _minisanity(likelihood_energy, iglobal, sl, comm, plot_minisanity_history):
     from ..extra import minisanity
 
-    s, ms_val = minisanity(likelihood_energy(iglobal), sl, terminal_colors=False,
+    s, ms_val = minisanity(likelihood_energy, sl, terminal_colors=False,
                            return_values=True)
     check_MPI_equality(ms_val, comm(iglobal))
     _report_to_logger_and_file(s, "minisanity.txt", iglobal, comm, True, True,
@@ -616,21 +618,35 @@ def _minisanity(likelihood_energy, iglobal, sl, comm, plot_minisanity_history):
 
     if _MPI_master(comm(iglobal)) and _output_directory is not None:
         # load/create minisanity_history object
-        if iglobal == 0:
-            mh = ms_val
-        else:
-            mh = _pickle_load_values(iglobal-1, 'minisanity_history')
+        value_type_keys = ['redchisq', 'scmean']
+        category_keys = ['data_residuals', 'latent_variables']
 
-        for k1 in ['redchisq', 'scmean']:
-            for k2 in ['data_residuals', 'latent_variables']:
-                for k3 in mh[k1][k2].keys():
-                    v = ms_val[k1][k2][k3]
-                    if iglobal == 0:
-                        mh[k1][k2][k3]['mean'] = [v['mean'], ]
-                        mh[k1][k2][k3]['std'] = [v['std'], ]
-                    else:
-                        mh[k1][k2][k3]['mean'].append(v['mean'])
-                        mh[k1][k2][k3]['std'].append(v['std'])
+        if iglobal == 0:
+            mh = {tk: {ck: {} for ck in category_keys} for tk in value_type_keys}
+        else:
+            mh = _pickle_load_values(iglobal - 1, 'minisanity_history')
+
+        key_set_mh = {}
+        key_set_msval = {}
+        for ck in category_keys:
+            key_set_mh[ck] = set(mh['redchisq'][ck].keys())
+            key_set_msval[ck] = set(ms_val['redchisq'][ck].keys())
+
+        for tk in value_type_keys:
+            for ck in category_keys:
+                # all keys not yet in minisanity history
+                for ek in key_set_msval[ck] - key_set_mh[ck]:
+                    v = ms_val[tk][ck][ek]
+                    mh[tk][ck][ek] = {}
+                    mh[tk][ck][ek]['index'] = [iglobal, ]
+                    mh[tk][ck][ek]['mean'] = [v['mean'], ]
+                    mh[tk][ck][ek]['std'] = [v['std'], ]
+                # all keys already present in minisanity history
+                for ek in key_set_msval[ck].intersection(key_set_mh[ck]):
+                    v = ms_val[tk][ck][ek]
+                    mh[tk][ck][ek]['index'].append(iglobal)
+                    mh[tk][ck][ek]['mean'].append(v['mean'])
+                    mh[tk][ck][ek]['std'].append(v['std'])
 
         _pickle_save_values(iglobal, 'minisanity_history', mh)
 
@@ -646,17 +662,20 @@ def _plot_minisanity_history(index, minisanity_history):
 
     labels = []
     vals = []
+    idxs = []
 
     n_dr = 0
     for kk in mhrcs['data_residuals'].keys():
         labels.append(f'residuals: {n_dr}')
         vals.append(mhrcs['data_residuals'][kk]['mean'])
+        idxs.append(mhrcs['data_residuals'][kk]['index'])
         n_dr += 1
 
     n_lv = 0
     for kk in mhrcs['latent_variables'].keys():
         labels.append(f'latent: {kk}')
         vals.append(mhrcs['latent_variables'][kk]['mean'])
+        idxs.append(mhrcs['latent_variables'][kk]['index'])
         n_lv += 1
 
     n_tot = n_dr + n_lv
@@ -667,12 +686,12 @@ def _plot_minisanity_history(index, minisanity_history):
     for ii in range(1, n_tot, 2):
         linestyles[ii] = '--'
 
-    ts = np.arange(len(vals[0]))
     vals = [np.array(v) for v in vals]
+    idxs = [np.array(i) for i in idxs]
 
     plt.figure()
     for i in range(n_tot):
-        plt.plot(ts, vals[i], label=labels[i], color=colors[i], marker='.',
+        plt.plot(idxs[i], vals[i], label=labels[i], color=colors[i], marker='.',
                  linestyle=linestyles[i])
 
     xlim = plt.xlim()
