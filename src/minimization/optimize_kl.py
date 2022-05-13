@@ -336,9 +336,9 @@ def optimize_kl(likelihood_energy,
         if _MPI_master(comm(initial_index)):
             makedirs(output_directory, exist_ok=overwrite)
             subfolders = ["pickle"] + list(plottable_operators.keys())
-            if plot_energy_history and save_strategy == "all":
+            if plot_energy_history:
                 subfolders += ["energy_history"]
-            if plot_minisanity_history and save_strategy == "all":
+            if plot_minisanity_history:
                 subfolders += ["minisanity_history"]
             for subfolder in subfolders:
                 makedirs(join(output_directory, subfolder), exist_ok=overwrite)
@@ -564,8 +564,7 @@ def _plot_samples(file_name, samples, ground_truth, comm, plotting_kwargs):
 
 def _plot_energy_history(index, energy_history):
     import matplotlib.pyplot as plt
-    fname = join(_output_directory,
-                 'energy_history' if _save_strategy == "all" else '',
+    fname = join(_output_directory, 'energy_history',
                  '{}_' + _file_name_by_strategy(index) + '.png')
 
     E = np.array(energy_history.energy_values)
@@ -710,8 +709,7 @@ def _plot_minisanity_history(index, minisanity_history):
     plt.xlabel('iteration')
     plt.ylabel(r'red. $\chi^2$')
     plt.legend(loc='upper right')
-    plt.savefig(join(_output_directory,
-                     'minisanity_history' if _save_strategy == "all" else '',
+    plt.savefig(join(_output_directory, 'minisanity_history',
                      'minisanity_history_' + _file_name_by_strategy(index) + '.png'))
     plt.clf()
 
