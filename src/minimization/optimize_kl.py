@@ -413,7 +413,7 @@ def optimize_kl(likelihood_energy,
 
         _counting_report(count, iglobal, comm)
 
-        _handle_inspect_callback(inspect_callback, sl, iglobal, mean, dom, comm)
+        mean = _handle_inspect_callback(inspect_callback, sl, iglobal, mean, dom, comm)
         _barrier(comm(iglobal))
 
         if _handle_terminate_callback(terminate_callback, iglobal, comm):
