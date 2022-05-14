@@ -187,7 +187,7 @@ def refinement_covariance(chart, kernel, jit=True):
         cov_implicit = lambda x: cf(*cf_T(x))
         cov_implicit = jax.jit(cov_implicit) if jit else cov_implicit
         _ = cov_implicit(jnp.zeros(chart.shape))  # Test transpose
-    except NotImplementedError:
+    except (NotImplementedError, AssertionError):
         # Workaround JAX not yet implementing the transpose of the scanned
         # refinement
         _, cf_T = jax.vjp(cf, zeros_like(cf.shapewithdtype))
