@@ -135,9 +135,7 @@ class CoordinateChart():
             self.rg2cart = _rg2cart
             self.cart2rg = _cart2rg
         elif rg2cart is not None and cart2rg is not None:
-            c0 = jnp.meshgrid(
-                *[jnp.arange(s) for s in self.shape0], indexing="ij"
-            )
+            c0 = jnp.mgrid[tuple(slice(s) for s in self.shape0)]
             if not all(
                 jnp.allclose(r, c) for r, c in zip(cart2rg(rg2cart(c0)), c0)
             ):
@@ -553,8 +551,7 @@ def _coordinate_refinement_matrices(
     depth = chart.depth if depth is None else depth
 
     if not skip0:
-        rg0_ax = [jnp.arange(shp) for shp in chart.shape0]
-        rg0 = jnp.stack(jnp.meshgrid(*rg0_ax, indexing="ij"), axis=0)
+        rg0 = jnp.mgrid[tuple(slice(s) for s in chart.shape0)]
         c0 = jnp.stack(chart.ind2cart(rg0, 0), axis=-1).reshape(-1, chart.ndim)
         cov_sqrt0 = jnp.linalg.cholesky(cov_from_loc(c0, c0))
     else:
