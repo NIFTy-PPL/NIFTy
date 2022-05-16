@@ -508,7 +508,7 @@ def refine_vmap(
     return (fine_m + fine_std).ravel()
 
 
-refine = refine_conv_general
+refine = refine_slice
 
 
 def get_refinement_shapewithdtype(
