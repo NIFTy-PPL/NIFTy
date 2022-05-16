@@ -5,32 +5,12 @@
 from functools import partial
 
 import jax
-import jax.numpy as jnp
-from jax.tree_util import Partial
 import numpy as np
 import pytest
 
 from nifty8.re import refine, refine_util
 
 pmp = pytest.mark.parametrize
-
-
-def matern_kernel(distance, scale, cutoff, dof):
-    from jax.scipy.special import gammaln
-    from scipy.special import kv
-
-    reg_dist = jnp.sqrt(2 * dof) * distance / cutoff
-    return scale**2 * 2**(1 - dof) / jnp.exp(
-        gammaln(dof)
-    ) * (reg_dist)**dof * kv(dof, reg_dist)
-
-
-scale, cutoff, dof = 1., 80., 3 / 2
-
-x = jnp.logspace(-6, 11, base=jnp.e, num=int(1e+5))
-y = matern_kernel(x, scale, cutoff, dof)
-y = jnp.nan_to_num(y, nan=0.)
-kernel = Partial(jnp.interp, xp=x, fp=y)
 
 
 @pmp("shape0", ((16, ), (13, 15), (11, 12, 13)))
