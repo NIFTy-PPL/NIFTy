@@ -335,8 +335,7 @@ def refine_conv_general(
         0, np.prod(irreg_indices.shape[:-1]), single_refinement_step, fine
     )
 
-    # TODO: incorporate precision
-    matmul = jnp.matmul
+    matmul = partial(jnp.matmul, precision=precision)
     for i in irreg_shape[::-1]:
         if i != 1:
             matmul = vmap(matmul, in_axes=(0, 0))
@@ -392,7 +391,12 @@ def refine_slice(
     fine_kernel_sqrt = fine_kernel_sqrt.reshape(irreg_shape + (fsz**ndim, ) * 2)
 
     if _fine_strategy == "jump":
-        raise NotImplementedError()
+        window_strides = (1, ) * ndim
+        fine_init_shape = tuple(n - (csz - 1)
+                                for n in coarse_values.shape) + (fsz**ndim, )
+        fine_final_shape = tuple(
+            fsz * (n - (csz - 1)) for n in coarse_values.shape
+        )
     elif _fine_strategy == "extend":
         window_strides = (fsz // 2, ) * ndim
         fine_init_shape = tuple(
@@ -409,37 +413,41 @@ def refine_slice(
     else:
         raise ValueError(f"invalid `_fine_strategy`; got {_fine_strategy}")
 
-    if ndim > 1:
-        raise NotImplementedError()
-
-    def matmul_with_window_into(x, y, idx, slice_sizes, precision=None):
-        return jnp.matmul(
+    def matmul_with_window_into(x, y, idx):
+        return jnp.tensordot(
             x,
-            dynamic_slice(y, (idx, ), slice_sizes=slice_sizes),
+            dynamic_slice(y, idx, slice_sizes=(csz, ) * ndim),
+            axes=ndim,
             precision=precision
         )
+
+    filter_coarse = matmul_with_window_into
+    corr_fine = partial(jnp.matmul, precision=precision)
+    for i in irreg_shape[::-1]:
+        if i != 1:
+            filter_coarse = vmap(filter_coarse, in_axes=(0, None, 1))
+            corr_fine = vmap(corr_fine, in_axes=(0, 0))
+        else:
+            filter_coarse = _vmap_squeeze_first(filter_coarse, in_axes=(None, None, 1))
+            corr_fine = _vmap_squeeze_first(corr_fine, in_axes=(None, 0))
 
     cv_idx = np.mgrid[tuple(
         slice(None, sz - csz + 1, ws)
         for sz, ws in zip(coarse_values.shape, window_strides)
-    )][0]
-    matmul = partial(
-        matmul_with_window_into, slice_sizes=(csz, ), precision=precision
-    )
-    fine = vmap(matmul, in_axes=(0, None, 0))(olf, coarse_values, cv_idx)
+    )]
+    fine = filter_coarse(olf, coarse_values, cv_idx)
 
-    matmul = partial(jnp.matmul, precision=precision)
-    for i in irreg_shape[::-1]:
-        if i != 1:
-            matmul = vmap(matmul, in_axes=(0, 0))
-        else:
-            matmul = _vmap_squeeze_first(matmul, in_axes=(None, 0))
-    m = matmul(fine_kernel_sqrt, excitations.reshape(fine_init_shape))
+    m = corr_fine(fine_kernel_sqrt, excitations.reshape(fine_init_shape))
     rm_axs = tuple(
         ax for ax, i in enumerate(m.shape[len(irreg_shape):], len(irreg_shape))
         if i == 1
     )
     fine += jnp.squeeze(m, axis=rm_axs)
+
+    fine = fine.reshape(fine.shape[:-1] + (fsz, ) * ndim)
+    ax_label = np.arange(2 * ndim)
+    ax_t = [e for els in zip(ax_label[:ndim], ax_label[ndim:]) for e in els]
+    fine = jnp.transpose(fine, axes=ax_t)
 
     return fine.reshape(fine_final_shape)
 
