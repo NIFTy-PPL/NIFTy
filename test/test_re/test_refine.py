@@ -6,6 +6,7 @@ from functools import partial
 import sys
 
 import jax
+from jax import random
 import jax.numpy as jnp
 from jax.tree_util import Partial
 import numpy as np
@@ -67,7 +68,7 @@ def test_refinement_1d(seed, dist, kernel=kernel):
 
     refs = (
         refine.refine_conv, refine.refine_conv_general, refine.refine_loop,
-        refine.refine_vmap, refine.refine_loop
+        refine.refine_vmap, refine.refine_loop, refine.refine_slice
     )
     cov_from_loc = refine._get_cov_from_loc(kernel=kernel)
     olf, fine_kernel_sqrt = refine.layer_refinement_matrices(dist, kernel)
@@ -78,14 +79,51 @@ def test_refinement_1d(seed, dist, kernel=kernel):
     lvl1_exc = rng.normal(size=(2 * (lvl0.size - 2), ))
 
     fine_reference = refine.refine(lvl0, lvl1_exc, olf, fine_kernel_sqrt)
-    rtol = 6. * jnp.finfo(lvl0.dtype.type).eps
-    atol = 60. * jnp.finfo(lvl0.dtype.type).eps
+    eps = jnp.finfo(lvl0.dtype.type).eps
     aallclose = partial(
-        assert_allclose, desired=fine_reference, rtol=rtol, atol=atol
+        assert_allclose, desired=fine_reference, rtol=6 * eps, atol=60 * eps
     )
     for ref in refs:
         print(f"testing {ref.__name__}", file=sys.stderr)
         aallclose(ref(lvl0, lvl1_exc, olf, fine_kernel_sqrt))
+
+
+@pmp("seed", (12, 42))
+@pmp("dist", (60., 1e+3, (80., 80.), (40., 90.), (1e+2, 1e+3, 1e+4)))
+@pmp("_coarse_size", (3, 5))
+@pmp("_fine_size", (2, 4))
+@pmp("_fine_strategy", ("jump", "extend"))
+def test_refinement_nd_cross_consistency(
+    seed, dist, _coarse_size, _fine_size, _fine_strategy, kernel=kernel
+):
+    ndim = len(dist) if hasattr(dist, "__len__") else 1
+    min_shape = (12, ) * ndim
+    depth = 1
+    refs = (refine.refine_conv_general, refine.refine_slice)
+    kwargs = {
+        "_coarse_size": _coarse_size,
+        "_fine_size": _fine_size,
+        "_fine_strategy": _fine_strategy
+    }
+
+    chart = refine_chart.CoordinateChart(
+        min_shape, depth=depth, distances=dist, **kwargs
+    )
+    rfm = refine_chart.RefinementField(chart).matrices(kernel)
+    xi = jft.random_like(
+        random.PRNGKey(seed),
+        refine_chart.RefinementField(chart).shapewithdtype
+    )
+
+    cf = partial(refine_chart.RefinementField.apply, chart=chart, kernel=rfm)
+    fine_reference = cf(xi)
+    eps = jnp.finfo(fine_reference.dtype.type).eps
+    aallclose = partial(
+        assert_allclose, desired=fine_reference, rtol=6 * eps, atol=60 * eps
+    )
+    for ref in refs:
+        print(f"testing {ref.__name__}", file=sys.stderr)
+        aallclose(cf(xi, _refine=ref))
 
 
 @pmp("dist", (60., 1e+3, (80., 80.), (40., 90.), (1e+2, 1e+3, 1e+4)))
@@ -275,8 +313,15 @@ def test_chart_refinement_matrices_consistency(
 @pmp("_coarse_size", (3, 5))
 @pmp("_fine_size", (2, 4))
 @pmp("_fine_strategy", ("jump", "extend"))
-def test_refinement_conv_general_irregular_regular_consistency(
-    seed, dist, _coarse_size, _fine_size, _fine_strategy, kernel=kernel
+@pmp("_refine", (refine.refine_conv_general, refine.refine_slice))
+def test_refinement_irregular_regular_consistency(
+    seed,
+    dist,
+    _coarse_size,
+    _fine_size,
+    _fine_strategy,
+    _refine,
+    kernel=kernel
 ):
     depth = 1
     distances = np.atleast_1d(dist)
@@ -309,11 +354,11 @@ def test_refinement_conv_general_irregular_regular_consistency(
     fn1 = rng.normal(size=cc.chart.shape_at(depth - 1))
     exc = rng.normal(size=exc_swd.shape)
 
-    refined = refine.refine(
+    refined = _refine(
         fn1, exc, refinement.filter[-1], refinement.propagator_sqrt[-1],
         **kwargs
     )
-    refined_irreg = refine.refine(
+    refined_irreg = _refine(
         fn1, exc, refinement_irreg.filter[-1],
         refinement_irreg.propagator_sqrt[-1], **kwargs
     )
