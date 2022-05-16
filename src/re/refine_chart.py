@@ -463,6 +463,7 @@ class RefinementField():
         descr = f"{self.__class__.__name__}({self.chart!r}"
         descr += f", kernel={self._kernel!r}" if self._kernel is not None else ""
         descr += f", dtype={self._dtype!r}" if self._dtype is not None else ""
+        descr += f", skip0={self.skip0!r}" if self.skip0 is not False else ""
         descr += ")"
         return descr
 
