@@ -236,6 +236,8 @@ def optimize_kl(likelihood_energy,
         raise ValueError(f"Save strategy '{save_strategy}' not supported.")
     if output_directory is None and resume:
         raise ValueError("Can only resume minimization if output_directory is not None")
+    if output_directory is None and len(export_operator_outputs) > 0:
+        warn("`output_directory=None`, thus no plots will be generated.")
 
     likelihood_energy = _make_callable(likelihood_energy)
     kl_minimizer = _make_callable(kl_minimizer)
