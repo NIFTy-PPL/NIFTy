@@ -84,6 +84,31 @@ class HarmonicSKI():
         subslice=None,
         jitter=True
     ):
+        """Instantiate a KISS-GP model of the covariance using a harmonic
+        representation of the kernel.
+
+        Parameters
+        ----------
+        grid_shape :
+            Number of pixels along each axes of the inducing points within
+            `grid_bounds`.
+        grid_bounds :
+            Tuple of boundaries of length of the number of dimensions. The
+            boundaries should denote the leftmost and rightmost edge of the
+            modeling space.
+        sampling_points :
+            Locations of the modeled points within the grid.
+        harmonic_kernel :
+            Harmonically transformed kernel.
+        padding :
+            Padding factor which to apply along each axis.
+        subslice :
+            Slice of the inducing points which to use to model
+            `sampling_points`. By default, the subslice is determined by the
+            padding.
+        jitter :
+            Strength of the diagonal jitter which to add to the covariance.
+        """
         if jitter is True:
             if sampling_points.dtype.type == np.float64:
                 self.jitter = 1e-8
@@ -211,6 +236,7 @@ class HarmonicSKI():
         return x + jitter
 
     def evaluate(self, harmonic_kernel=None):
+        """Instantiate the full covariance matrix."""
         probe = jnp.zeros(self.w.shape[0])
         indices = jnp.arange(self.w.shape[0]).reshape(1, -1)
 
