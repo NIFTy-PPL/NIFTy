@@ -8,7 +8,7 @@ import jax
 import numpy as np
 import pytest
 
-from nifty8.re import refine, refine_util
+from nifty8.re import refine, refine_chart, refine_util
 
 pmp = pytest.mark.parametrize
 
@@ -27,17 +27,19 @@ def test_shape_translations(
         "_fine_strategy": _fine_strategy
     }
 
-    eval_cf_shape = partial(
-        jax.eval_shape,
-        partial(
-            refine.correlated_field,
+    def cf(shape0, xi):
+        chart = refine_chart.CoordinateChart(
+            shape0=shape0,
+            depth=depth,
             distances0=(1., ) * len(shape0),
-            kernel=lambda x: x,
             **kwargs
         )
-    )
+        return refine_chart.RefinementField.apply(
+            xi, chart=chart, kernel=lambda x: x
+        )
+
     dom = refine.get_refinement_shapewithdtype(shape0, depth, **kwargs)
-    tgt = eval_cf_shape(dom)
+    tgt = jax.eval_shape(partial(cf, shape0), dom)
     tgt_pred_shp = refine_util.coarse2fine_shape(shape0, depth, **kwargs)
     assert tgt_pred_shp == tgt.shape
     assert dom[-1].size == tgt.size == np.prod(tgt_pred_shp)
@@ -46,7 +48,7 @@ def test_shape_translations(
     dom_pred = refine.get_refinement_shapewithdtype(
         shape0_pred, depth, **kwargs
     )
-    tgt_pred = eval_cf_shape(dom_pred)
+    tgt_pred = jax.eval_shape(partial(cf, shape0_pred), dom_pred)
 
     assert tgt.shape == tgt_pred.shape
     if _fine_strategy == "jump":

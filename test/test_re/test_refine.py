@@ -153,29 +153,33 @@ def test_refinement_fine_strategy_basic_consistency(dist, kernel=kernel):
 
 
 @pmp("dist", (60., 1e+3, (80., 80.), (40., 90.), (1e+2, 1e+3, 1e+4)))
-def test_refinement_covariance(dist, kernel=kernel):
+@pmp("_coarse_size", (3, 5))
+@pmp("_fine_size", (2, 4))
+@pmp("_fine_strategy", ("jump", "extend"))
+def test_refinement_covariance(
+    dist, _coarse_size, _fine_size, _fine_strategy, kernel=kernel
+):
     distances0 = np.atleast_1d(dist)
-    cf = partial(
-        refine.correlated_field,
+    ndim = len(distances0)
+
+    cf = refine_chart.RefinementField(
+        shape0=(_coarse_size, ) * ndim,
+        depth=1,
+        _coarse_size=_coarse_size,
+        _fine_size=_fine_size,
+        _fine_strategy=_fine_strategy,
         distances0=distances0,
-        kernel=kernel,
+        kernel=kernel
     )
     exc_shp = [
-        jft.ShapeWithDtype((3, ) * len(distances0)),
-        jft.ShapeWithDtype((2, ) * len(distances0))
+        jft.ShapeWithDtype((_coarse_size, ) * ndim),
+        jft.ShapeWithDtype((_fine_size, ) * ndim)
     ]
-
     cf_shp = jax.eval_shape(cf, exc_shp)
-    assert cf_shp.shape == (2, ) * len(distances0)
-    c0 = [
-        d * jnp.arange(sz, dtype=distances0.dtype)
-        for d, sz in zip(distances0 / 2, cf_shp.shape)
-    ]
-    pos = jnp.stack(jnp.meshgrid(*c0, indexing="ij"), axis=-1)
+    assert cf_shp.shape == (_fine_size, ) * ndim
 
-    probe = jnp.zeros(pos.shape[:-1])
-    indices = np.indices(pos.shape[:-1]).reshape(pos.ndim - 1, -1)
-
+    probe = jnp.zeros(cf_shp.shape)
+    indices = np.indices(cf_shp.shape).reshape(ndim, -1)
     # Work around jax.linear_transpose NotImplementedError
     _, cf_T = jax.vjp(cf, jft.zeros_like(exc_shp))
     cf_cf_T = lambda x: cf(*cf_T(x))
@@ -185,11 +189,19 @@ def test_refinement_covariance(dist, kernel=kernel):
         out_axes=-1
     )(indices)
 
-    p = pos.reshape(-1, pos.shape[-1])
+    pos = np.mgrid[tuple(slice(s) for s in cf_shp.shape)].astype(float)
+    if _fine_strategy == "jump":
+        pos *= distances0.reshape((-1, ) + (1, ) * ndim) / _fine_size
+    elif _fine_strategy == "extend":
+        pos *= distances0.reshape((-1, ) + (1, ) * ndim) / 2
+    else:
+        raise AssertionError(f"invalid `_fine_strategy`; {_fine_strategy}")
+    pos = jnp.moveaxis(pos, 0, -1)
+    p = pos.reshape(-1, ndim)
     dist_mat = distance_matrix(p, p)
     cov_truth = kernel(dist_mat)
 
-    assert_allclose(cov_empirical, cov_truth, rtol=1e-13, atol=0.)
+    assert_allclose(cov_empirical, cov_truth, rtol=1e-14, atol=1e-15)
 
 
 @pmp("seed", (12, 42, 43, 45))
