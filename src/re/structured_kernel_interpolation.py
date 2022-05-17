@@ -1,14 +1,14 @@
 # SPDX-License-Identifier: GPL-2.0+ OR BSD-2-Clause
 
-from typing import Callable, Union
+from typing import Callable, Optional, Tuple, Union
 
 import jax
 from jax import numpy as jnp
 import numpy as np
 
-NDArray = Union[jnp.ndarray, np.ndarray]
-
 from .correlated_field import get_fourier_mode_distributor, hartley
+
+NDArray = Union[jnp.ndarray, np.ndarray]
 
 
 def interp_mat(grid_shape, grid_bounds, sampling_points, *, distances=None):
@@ -76,13 +76,13 @@ def interp_mat(grid_shape, grid_bounds, sampling_points, *, distances=None):
 class HarmonicSKI():
     def __init__(
         self,
-        grid_shape,
-        grid_bounds,
-        sampling_points,
-        harmonic_kernel=None,
-        padding=0.5,
+        grid_shape: Tuple[int],
+        grid_bounds: Tuple[Tuple[float, float]],
+        sampling_points: NDArray,
+        harmonic_kernel: Optional[Callable] = None,
+        padding: float = 0.5,
         subslice=None,
-        jitter=True
+        jitter: Union[bool, float, None] = True
     ):
         """Instantiate a KISS-GP model of the covariance using a harmonic
         representation of the kernel.
