@@ -19,12 +19,15 @@ from .refine_util import (
     get_refinement_shapewithdtype,
 )
 
+DEPTH_RANGE = (0, 32)
+MAX_SIZE0 = 1024
+
 
 class CoordinateChart():
     def __init__(
         self,
         min_shape: Optional[Iterable[int]] = None,
-        depth: int = 7,
+        depth: Optional[int] = None,
         *,
         shape0=None,
         _coarse_size=5,
@@ -50,9 +53,30 @@ class CoordinateChart():
         resolution of an existing chart by simply increasing its depth.
         However, extending a grid spatially is more cumbersome.
         """
+        if depth is None:
+            if min_shape is None:
+                raise ValueError("specify `min_shape` to infer `depth`")
+            if shape0 is not None or distances0 is not None:
+                ve = "can not infer `depth` with `shape0` or `distances0` set"
+                raise ValueError(ve)
+            for depth in range(*DEPTH_RANGE):
+                shape0 = fine2coarse_shape(
+                    min_shape,
+                    depth=depth,
+                    ceil_sizes=True,
+                    _coarse_size=_coarse_size,
+                    _fine_size=_fine_size,
+                    _fine_strategy=_fine_strategy
+                )
+                if np.prod(shape0, dtype=int) <= MAX_SIZE0:
+                    break
+            else:
+                ve = f"unable to find suitable `depth`; please specify manually"
+                raise ValueError(ve)
         if depth < 0:
             raise ValueError(f"invalid `depth`; got {depth!r}")
         self.depth = depth
+
         if shape0 is None and min_shape is not None:
             shape0 = fine2coarse_shape(
                 min_shape,
