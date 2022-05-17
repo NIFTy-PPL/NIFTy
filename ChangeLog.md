@@ -1,6 +1,15 @@
 Changes since NIFTy 7
 =====================
 
+Add CountingOperator
+--------------------
+It counts how often an operator is called and distinguishes between applications
+on Fields and Linearizations. It also keeps track of how often the Jacobian and
+its adjoint is called. This operator does not change the field values.
+
+It is used within `optimize_kl` and its report is written to a file within the
+`output_directory`.
+
 Introduce Likelihood energies
 -----------------------------
 The interface of many energy operators has changed such that they know
@@ -81,6 +90,12 @@ functionality to compute sample averages via the `sample_stat` method.
 The `ResidualSampleList` is a sub-class of `SampleList` which handles samples
 via a shared position and residual deviations thereof internally. This
 distinction is a required structure for defining the `SampledKLEnergy`.
+
+Evidence Lower Bound
+--------------------
+Created new function `estimate_evidence_lower_bound` to calculate an estimate
+of the evidence lower bound (ELBO) for a model at hand. This can be used for 
+model comparison. 
 
 Sampling dtypes
 ---------------

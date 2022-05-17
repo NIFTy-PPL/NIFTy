@@ -184,11 +184,15 @@ class _LikelihoodChain(LikelihoodEnergyOperator):
         self.name = (op2 if isinstance(op1, ScalingOperator) else op1).name
 
     def get_transformation(self):
-        ii = 1 if isinstance(self._op._ops[0], ScalingOperator) else 0
+        scaled_lh = isinstance(self._op._ops[0], ScalingOperator)
+        ii = 1 if scaled_lh else 0
         tr = self._op._ops[ii].get_transformation()
         if tr is None:
             return tr
-        return tr[0], _OpChain.make((tr[1],)+self._op._ops[ii+1:])
+        dtype, trafo = tr
+        if scaled_lh:
+            trafo = trafo.scale(np.sqrt(self._op._ops[0]._factor))
+        return dtype, _OpChain.make((trafo,)+self._op._ops[ii+1:])
 
     def apply(self, x):
         self._check_input(x)

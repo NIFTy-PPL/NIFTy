@@ -4,7 +4,7 @@ NIFTy - Numerical Information Field Theory
 [![coverage report](https://gitlab.mpcdf.mpg.de/ift/nifty/badges/NIFTy_8/coverage.svg)](https://gitlab.mpcdf.mpg.de/ift/nifty/-/commits/NIFTy_8)
 
 **NIFTy** project homepage:
-[https://ift.pages.mpcdf.de/nifty](https://ift.pages.mpcdf.de/nifty)
+[https://ift.pages.mpcdf.de/nifty](https://ift.pages.mpcdf.de/nifty/nifty8/index.html)
 
 Summary
 -------
@@ -43,66 +43,10 @@ inference procedures and process-specific model properties.
 Installation
 ------------
 
-### Requirements
+Detailed installation instructions can be found in the NIFTy Documentation for:
 
-- [Python 3](https://www.python.org/) (3.7.x or later)
-- [SciPy](https://www.scipy.org/)
-
-Optional dependencies:
-- [ducc0](https://gitlab.mpcdf.mpg.de/mtr/ducc) for faster FFTs, spherical
-    harmonic transforms, and radio interferometry gridding support
-- [mpi4py](https://mpi4py.scipy.org) (for MPI-parallel execution)
-- [h5py](https://www.h5py.org/) (for writing results to HDF5 files)
-- [astropy](https://www.astropy.org/) (for writing FITS files)
-- [matplotlib](https://matplotlib.org/) (for field plotting)
-- [jax](https://github.com/google/jax) (for implementing operators with jax)
-
-### Sources
-
-The current version of NIFTy8 can be obtained by cloning the repository and
-switching to the NIFTy_8 branch:
-
-    git clone -b NIFTy_8 https://gitlab.mpcdf.mpg.de/ift/nifty.git
-
-### Installation for users
-
-If you only want to to use NIFTy in your projects, but not change its source
-code, the easiest way to install the package is the command:
-
-    pip install --user nifty7
-
-Depending on your OS, you may have to use `pip3` instead of `pip`.
-This approach should work on Linux, MacOS and Windows.
-
-
-### Installation for developers
-
-In the following, we assume a Debian-based distribution. For other
-distributions, the "apt" lines will need slight changes.
-
-NIFTy8 and its mandatory dependencies can be installed via:
-
-    sudo apt-get install git python3 python3-pip python3-dev
-    pip3 install --user git+https://gitlab.mpcdf.mpg.de/ift/nifty.git@NIFTy_8
-
-Plotting support is added via:
-
-    sudo apt-get install python3-matplotlib
-
-The DUCC0 package is installed via:
-
-    pip3 install ducc0
-
-For installing jax refer to [google/jax:README#Installation](https://github.com/google/jax#installation).
-
-If this library is present, NIFTy will detect it automatically and prefer
-`ducc0.fft` over SciPy's FFT. The underlying code is actually the same, but
-DUCC's FFT is compiled with optimizations for the host CPU and can provide
-significantly faster transforms.
-
-MPI support is added via:
-
-    sudo apt-get install python3-mpi4py
+- [users](http://ift.pages.mpcdf.de/nifty/nifty8/user/installation.html)
+- [developers](http://ift.pages.mpcdf.de/nifty/nifty8/dev/index.html) 
 
 ### Run the tests
 
@@ -118,7 +62,7 @@ following command in the repository root:
 ### First Steps
 
 For a quick start, you can browse through the [informal
-introduction](https://ift.pages.mpcdf.de/nifty/code.html) or
+introduction](https://ift.pages.mpcdf.de/nifty/nifty8/user/code.html) or
 dive into NIFTy by running one of the demonstrations, e.g.:
 
     python3 demos/getting_started_1.py
@@ -131,7 +75,7 @@ such as the following:
 > "Some of the results in this publication have been derived using the
 > NIFTy package [(https://gitlab.mpcdf.mpg.de/ift/NIFTy)](https://gitlab.mpcdf.mpg.de/ift/NIFTy)"
 
-and a citation to one of the [publications](https://ift.pages.mpcdf.de/nifty/user/citations.html).
+and a citation to one of the [publications](https://ift.pages.mpcdf.de/nifty/nifty8/user/citations.html).
 
 
 ### Licensing terms
