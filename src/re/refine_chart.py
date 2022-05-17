@@ -27,9 +27,9 @@ class CoordinateChart():
         depth: int = 7,
         *,
         shape0=None,
-        _coarse_size=3,
-        _fine_size=2,
-        _fine_strategy: Literal["jump", "extend"] = "jump",
+        _coarse_size=5,
+        _fine_size=4,
+        _fine_strategy: Literal["jump", "extend"] = "extend",
         rg2cart: Optional[Callable[[
             Iterable,
         ], Iterable]] = None,
