@@ -117,7 +117,7 @@ class CoordinateChart():
                 raise ValueError(ve)
         if depth < 0:
             raise ValueError(f"invalid `depth`; got {depth!r}")
-        self.depth = depth
+        self._depth = depth
 
         if shape0 is None and min_shape is not None:
             shape0 = fine2coarse_shape(
@@ -130,8 +130,8 @@ class CoordinateChart():
             )
         elif shape0 is None:
             raise ValueError("either `shape0` or `min_shape` must be specified")
-        self.shape0 = (shape0, ) if isinstance(shape0, int) else tuple(shape0)
-        self.shape = coarse2fine_shape(
+        self._shape0 = (shape0, ) if isinstance(shape0, int) else tuple(shape0)
+        self._shape = coarse2fine_shape(
             shape0,
             depth,
             _coarse_size=_coarse_size,
@@ -143,7 +143,7 @@ class CoordinateChart():
             ve = f"invalid `_fine_strategy`; got {_fine_strategy}"
             raise ValueError(ve)
 
-        self.shape_at = partial(
+        self._shape_at = partial(
             coarse2fine_shape,
             self.shape0,
             _coarse_size=_coarse_size,
@@ -151,13 +151,13 @@ class CoordinateChart():
             _fine_strategy=_fine_strategy
         )
 
-        self.coarse_size = int(_coarse_size)
-        self.fine_size = int(_fine_size)
-        self.fine_strategy = _fine_strategy
+        self._coarse_size = int(_coarse_size)
+        self._fine_size = int(_fine_size)
+        self._fine_strategy = _fine_strategy
 
         # Derived attributes
-        self.ndim = len(self.shape)
-        self.size = np.prod(self.shape, dtype=int)
+        self._ndim = len(self.shape)
+        self._size = np.prod(self.shape, dtype=int)
 
         if rg2cart is None and cart2rg is None:
             if distances0 is None and distances is None:
@@ -199,16 +199,16 @@ class CoordinateChart():
 
             if regular_axes is None and irregular_axes is None:
                 regular_axes = tuple(range(self.ndim))
-            self.rg2cart = _rg2cart
-            self.cart2rg = _cart2rg
+            self._rg2cart = _rg2cart
+            self._cart2rg = _cart2rg
         elif rg2cart is not None and cart2rg is not None:
             c0 = jnp.mgrid[tuple(slice(s) for s in self.shape0)]
             if not all(
                 jnp.allclose(r, c) for r, c in zip(cart2rg(rg2cart(c0)), c0)
             ):
                 raise ValueError("`cart2rg` is not the inverse of `rg2cart`")
-            self.rg2cart = rg2cart
-            self.cart2rg = cart2rg
+            self._rg2cart = rg2cart
+            self._cart2rg = cart2rg
             distances = distances0 = None
         else:
             ve = "invalid combination of `cart2rg`, `rg2cart` and `distances`"
@@ -237,8 +237,8 @@ class CoordinateChart():
             if set(regular_axes) & set(irregular_axes) != set():
                 ve = "`regular_axes` and `irregular_axes` must be exclusive"
                 raise ValueError(ve)
-        self.regular_axes = tuple(regular_axes)
-        self.irregular_axes = tuple(irregular_axes)
+        self._regular_axes = tuple(regular_axes)
+        self._irregular_axes = tuple(irregular_axes)
         if len(self.regular_axes) + len(self.irregular_axes) != self.ndim:
             ve = (
                 f"length of regular_axes and irregular_axes"
@@ -260,6 +260,88 @@ class CoordinateChart():
             self._descr["rg2cart"] = repr(rg2cart)
             self._descr["cart2rg"] = repr(cart2rg)
         self._descr["regular_axes"] = self.regular_axes
+
+    @property
+    def shape(self):
+        """Shape at the final refinement level"""
+        return self._shape
+
+    @property
+    def shape0(self):
+        """Shape at the zeroth refinement level"""
+        return self._shape0
+
+    @property
+    def size(self):
+        return self._size
+
+    @property
+    def ndim(self):
+        return self._ndim
+
+    @property
+    def depth(self):
+        return self._depth
+
+    @property
+    def coarse_size(self):
+        return self._coarse_size
+
+    @property
+    def fine_size(self):
+        return self._fine_size
+
+    @property
+    def fine_strategy(self):
+        return self._fine_strategy
+
+    @property
+    def regular_axes(self):
+        return self._regular_axes
+
+    @property
+    def irregular_axes(self):
+        return self._irregular_axes
+
+    def rg2cart(self, positions):
+        """Translates positions from the regular Euclidean coordinate system to
+        the (in general) irregular Cartesian coordinate system.
+
+        Parameters
+        ----------
+        positions :
+            Positions on a regular Euclidean coordinate system.
+
+        Returns
+        -------
+        positions :
+            Positions on an (in general) irregular Cartesian coordinate system.
+
+        Note
+        ----
+        This method is independent of the refinement level!
+        """
+        return self._rg2cart(positions)
+
+    def cart2rg(self, positions):
+        """Translates positions from the (in general) irregular Cartesian
+        coordinate system to the regular Euclidean coordinate system.
+
+        Parameters
+        ----------
+        positions :
+            Positions on an (in general) irregular Cartesian coordinate system.
+
+        Returns
+        -------
+        positions :
+            Positions on a regular Euclidean coordinate system.
+
+        Note
+        ----
+        This method is independent of the refinement level!
+        """
+        return self._cart2rg(positions)
 
     def rgoffset(self, lvl: int) -> Tuple[float]:
         """Calculate the offset on the regular Euclidean grid due to shrinking
@@ -412,6 +494,10 @@ class CoordinateChart():
             Indices into the NDArray at refinement level `lvl`.
         """
         return self.rg2ind(self.cart2rg(positions), lvl, discretize=discretize)
+
+    def shape_at(self, lvl):
+        """Retrieves the shape at a given refinement level `lvl`."""
+        return self._shape_at(lvl)
 
     def level_of(self, shape: Tuple[int]):
         """Finds the refinement level at which the number of grid points
