@@ -526,33 +526,62 @@ RefinementMatrices = namedtuple(
 
 class RefinementField():
     def __init__(
-        self, *args, kernel=None, dtype=None, skip0: bool = False, **kwargs
+        self,
+        *args,
+        kernel: Optional[Callable] = None,
+        dtype=None,
+        skip0: bool = False,
+        **kwargs
     ):
+        """Initialize an Iterative Charted Refinement (ICR) field.
+
+        There are multiple ways to initialize a charted refinement field. The
+        recommended way is to first instantiate a `CoordinateChart` and pass it
+        as first argument to this method. Alternatively, you may pass any and
+        all arguments of `CoordinateChart` also to this method and it will
+        instantiate the `CoordinateChart` for you and use it in the same way as
+        if directly specified.
+
+        Parameters
+        ----------
+        chart : CoordinateChart
+            The `CoordinateChart` with which to refine.
+        kernel :
+            Covariance kernel of the refinement field.
+        dtype :
+            Data-type of the excitations which to add during refining.
+        skip0 :
+            Whether to skip the first refinement level. This is useful to e.g.
+            stack multiple refinement fields on top of each other.
+        **kwargs :
+            Alternatively to `chart` any parameters accepted by
+            `CoordinateChart`.
+        """
         self._kernel = kernel
         self._dtype = dtype
-        self.skip0 = skip0
+        self._skip0 = skip0
 
         if len(args) > 0 and isinstance(args[0], CoordinateChart):
             if kwargs:
                 raise TypeError(f"expected no keyword arguments, got {kwargs}")
 
             if len(args) == 1:
-                self.chart, = args
+                self._chart, = args
             elif len(args) == 2 and callable(args[1]) and kernel is None:
-                self.chart, self._kernel = args
+                self._chart, self._kernel = args
             elif len(args) == 3 and callable(
                 args[1]
             ) and kernel is None and dtype is None:
-                self.chart, self._kernel, self._dtype = args
+                self._chart, self._kernel, self._dtype = args
             elif len(args) == 4 and callable(
                 args[1]
             ) and kernel is None and dtype is None and skip0 == False:
-                self.chart, self._kernel, self._dtype, self.skip0 = args
+                self._chart, self._kernel, self._dtype, self._skip0 = args
             else:
                 te = "got unexpected arguments in addition to CoordinateChart"
                 raise TypeError(te)
         else:
-            self.chart = CoordinateChart(*args, **kwargs)
+            self._chart = CoordinateChart(*args, **kwargs)
 
     @property
     def kernel(self):
@@ -572,17 +601,37 @@ class RefinementField():
         """Yields the data-type of the excitations."""
         return jnp.float64 if self._dtype is None else self._dtype
 
+    @property
+    def skip0(self):
+        """Whether to skip the zeroth refinement"""
+        return self._skip0
+
+    @property
+    def chart(self):
+        """Associated `CoordinateChart` with which to iterative refine."""
+        return self._chart
+
     def matrices(
         self,
         kernel: Optional[Callable] = None,
         depth: Optional[int] = None,
         skip0: Optional[bool] = None,
         **kwargs
-    ):
+    ) -> RefinementMatrices:
         """Computes the refinement matrices namely the optimal linear filter
         and the square root of the information propagator (a.k.a. the square
         root of the fine covariance matrix for the excitations) for all
         refinement levels and all pixel indices in the coordinate chart.
+
+        Parameters
+        ----------
+        kernel :
+            Covariance kernel of the refinement field if not specified during
+            initialization.
+        depth :
+            Maximum refinement depth if different to the one of the `CoordinateChart`.
+        skip0 :
+            Whether to skip the first refinement level.
         """
         kernel = self.kernel if kernel is None else kernel
         depth = self.chart.depth if depth is None else depth
@@ -598,11 +647,22 @@ class RefinementField():
         pixel_index: Optional[Iterable[int]] = None,
         kernel: Optional[Callable] = None,
         **kwargs
-    ):
+    ) -> Tuple[jnp.ndarray, jnp.ndarray]:
         """Computes the refinement matrices namely the optimal linear filter
         and the square root of the information propagator (a.k.a. the square
         root of the fine covariance matrix for the excitations) at the
         specified level and pixel index.
+
+        Parameters
+        ----------
+        level :
+            Refinement level.
+        pixel_index :
+            Index of the NDArray at the refinement level `level` which to
+            refine, i.e. use as center coarse pixel.
+        kernel :
+            Covariance kernel of the refinement field if not specified during
+            initialization.
         """
         kernel = self.kernel if kernel is None else kernel
 
@@ -641,6 +701,24 @@ class RefinementField():
     ):
         """Static method to apply a refinement field given some excitations, a
         chart and a kernel.
+
+        Parameters
+        ----------
+        xi :
+            Latent parameters which to use for refining.
+        chart :
+            Chart with which to refine.
+        kernel :
+            Covariance kernel with which to build the refinement matrices.
+        skip0 :
+            Whether to skip the first refinement level.
+        depth :
+            Refinement depth if different to the depth of the coordinate chart.
+        coerce_fine_kernel :
+            Whether to coerce the refinement matrices at scales at which the
+            kernel matrix becomes singular or numerically highly unstable.
+        precision :
+            See JAX's precision.
         """
         depth = chart.depth if depth is None else depth
         if depth != len(xi) - 1:
@@ -681,6 +759,7 @@ class RefinementField():
         return fine
 
     def __call__(self, xi, kernel=None, *, skip0=None, **kwargs):
+        """See `RefinementField.apply`."""
         kernel = self.kernel if kernel is None else kernel
         skip0 = self.skip0 if skip0 is None else skip0
         return self.apply(xi, self.chart, kernel=kernel, skip0=skip0, **kwargs)
