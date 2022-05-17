@@ -10,12 +10,13 @@ from jax import numpy as jnp
 from jax import vmap
 import numpy as np
 
-from .refine import _get_cov_from_loc, get_refinement_shapewithdtype, refine
+from .refine import _get_cov_from_loc, refine
 from .refine_util import (
     coarse2fine_distances,
     coarse2fine_shape,
     fine2coarse_distances,
     fine2coarse_shape,
+    get_refinement_shapewithdtype,
 )
 
 

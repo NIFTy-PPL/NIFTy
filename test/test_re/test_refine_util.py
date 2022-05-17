@@ -8,7 +8,7 @@ import jax
 import numpy as np
 import pytest
 
-from nifty8.re import refine, refine_chart, refine_util
+from nifty8.re import refine_chart, refine_util
 
 pmp = pytest.mark.parametrize
 
@@ -38,14 +38,14 @@ def test_shape_translations(
             xi, chart=chart, kernel=lambda x: x
         )
 
-    dom = refine.get_refinement_shapewithdtype(shape0, depth, **kwargs)
+    dom = refine_util.get_refinement_shapewithdtype(shape0, depth, **kwargs)
     tgt = jax.eval_shape(partial(cf, shape0), dom)
     tgt_pred_shp = refine_util.coarse2fine_shape(shape0, depth, **kwargs)
     assert tgt_pred_shp == tgt.shape
     assert dom[-1].size == tgt.size == np.prod(tgt_pred_shp)
 
     shape0_pred = refine_util.fine2coarse_shape(tgt.shape, depth, **kwargs)
-    dom_pred = refine.get_refinement_shapewithdtype(
+    dom_pred = refine_util.get_refinement_shapewithdtype(
         shape0_pred, depth, **kwargs
     )
     tgt_pred = jax.eval_shape(partial(cf, shape0_pred), dom_pred)
