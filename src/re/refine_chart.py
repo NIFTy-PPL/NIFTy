@@ -64,7 +64,7 @@ class CoordinateChart():
             )
         elif shape0 is None:
             raise ValueError("either `shape0` or `min_shape` must be specified")
-        self.shape0 = tuple(shape0)
+        self.shape0 = (shape0, ) if isinstance(shape0, int) else tuple(shape0)
         self.shape = coarse2fine_shape(
             shape0,
             depth,
