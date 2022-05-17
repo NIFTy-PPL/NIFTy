@@ -29,9 +29,9 @@ class CoordinateChart():
         min_shape: Optional[Iterable[int]] = None,
         depth: Optional[int] = None,
         *,
-        shape0=None,
-        _coarse_size=5,
-        _fine_size=4,
+        shape0: Optional[Iterable[int]] = None,
+        _coarse_size: int = 5,
+        _fine_size: int = 4,
         _fine_strategy: Literal["jump", "extend"] = "extend",
         rg2cart: Optional[Callable[[
             Iterable,
@@ -46,12 +46,54 @@ class CoordinateChart():
     ):
         """Initialize a refinement chart.
 
+        Parameters
+        ----------
+        min_shape :
+            Minimal extent in pixels along each axes at the final refinement
+            level.
+        depth :
+            Number of refinement iterations.
+        shape0 :
+            Alternative to `min_shape` and specifies the extent in pixels along
+            each axes at the zeroth refinement level.
+        _coarse_size :
+            Number of coarse pixels which to refine to `_fine_size` fine
+            pixels.
+        _fine_size :
+            Number of fine pixels which to refine from `_coarse_size` coarse
+            pixels.
+        _fine_strategy :
+            Whether to space fine pixels solely within the centermost coarse
+            pixel ("jump"), or whether to always space them out s.t. each fine
+            pixels takes up half the Euclidean volume of a coarse pixel
+            ("extend").
+        rg2cart :
+            Function to translate Euclidean points on a regular coordinate
+            system to the Cartesian coordinate system of the modeled points.
+        cart2rg :
+            Inverse of `rg2cart`.
+        regular_axes :
+            Informs the coordinate chart on symmetries within the Cartesian
+            coordinate system of the modeled points. If specified, refinement
+            matrices are broadcasted as need instead of recomputed.
+        irregular_axes :
+            Negative of `regular_axes`. Specifying either is sufficient.
+        distances :
+            Special case of a coordinate chart in which the regular grid points
+            are merely stretched or compressed. `distances` are used to set the
+            distance between points along every axes at the final refinement
+            level.
+        distances0:
+            Same as `distances` except that `distances0` refers to the
+            distances along every axes at the zeroth refinement level.
+
         Note
         ----
         The functions `rg2cart` and `cart2rg` are always w.r.t. the grid at
         zero depth. In other words, it is straight forward to increase the
         resolution of an existing chart by simply increasing its depth.
-        However, extending a grid spatially is more cumbersome.
+        However, extending a grid spatially is more cumbersome and is best done
+        via `shape0`.
         """
         if depth is None:
             if min_shape is None:
@@ -220,8 +262,18 @@ class CoordinateChart():
         self._descr["regular_axes"] = self.regular_axes
 
     def rgoffset(self, lvl: int) -> Tuple[float]:
-        """Calculate the offset on the regular grid due to shrinking of the
-        grid with increasing refinement level.
+        """Calculate the offset on the regular Euclidean grid due to shrinking
+        of the grid with increasing refinement level.
+
+        Parameters
+        ----------
+        lvl :
+            Level of the refinement.
+
+        Returns
+        -------
+        offset :
+            The offset on the regular Euclidean grid along each axes.
 
         Note
         ----
@@ -253,7 +305,23 @@ class CoordinateChart():
 
     def ind2rg(self, indices: Iterable[Union[float, int]],
                lvl: int) -> Tuple[float]:
-        """Converts pixel indices to a continuous regular grid."""
+        """Converts pixel indices to a continuous regular Euclidean grid
+        coordinates.
+
+        Parameters
+        ----------
+        indices :
+            Indices of shape `(n_dim, n_indices)` into the NDArray at
+            refinement level `lvl` which to convert to points in our regular
+            Euclidean grid.
+        lvl :
+            Level of the refinement.
+
+        Returns
+        -------
+        rg :
+            Regular Euclidean grid coordinates of shape `(n_dim, n_indices)`.
+        """
         offset = self.rgoffset(lvl)
 
         if self.fine_strategy == "jump":
@@ -270,7 +338,24 @@ class CoordinateChart():
         lvl: int,
         discretize: bool = True
     ) -> Union[Tuple[float], Tuple[int]]:
-        """Converts continuous regular grid positions to pixel indices."""
+        """Converts continuous regular grid positions to pixel indices.
+
+        Parameters
+        ----------
+        positions :
+            Positions on the regular Euclidean coordinate system of shape
+            `(n_dim, n_indices)` at refinement level `lvl` which to convert to
+            indices in a NDArray at the refinement level `lvl`.
+        lvl :
+            Level of the refinement.
+        discretize :
+            Whether to round indices to the next closest integer.
+
+        Returns
+        -------
+        indices :
+            Indices into the NDArray at refinement level `lvl`.
+        """
         offset = self.rgoffset(lvl)
 
         if self.fine_strategy == "jump":
@@ -287,12 +372,44 @@ class CoordinateChart():
     def ind2cart(self, indices: Iterable[Union[float, int]], lvl: int):
         """Computes the Cartesian coordinates of a pixel given the indices of
         it.
+
+        Parameters
+        ----------
+        indices :
+            Indices of shape `(n_dim, n_indices)` into the NDArray at
+            refinement level `lvl` which to convert to locations in our (in
+            general) irregular coordinate system of the modeled points.
+        lvl :
+            Level of the refinement.
+
+        Returns
+        -------
+        positions :
+            Positions in the (in general) irregular coordinate system of the
+            modeled points of shape `(n_dim, n_indices)`.
         """
         return self.rg2cart(self.ind2rg(indices, lvl))
 
     def cart2ind(self, positions, lvl, discretize=True):
         """Computes the indices of a pixel given the Cartesian coordinates of
         it.
+
+        Parameters
+        ----------
+        positions :
+            Positions on the Cartesian (in general) irregular coordinate system
+            of the modeled points of shape `(n_dim, n_indices)` at refinement
+            level `lvl` which to convert to indices in a NDArray at the
+            refinement level `lvl`.
+        lvl :
+            Level of the refinement.
+        discretize :
+            Whether to round indices to the next closest integer.
+
+        Returns
+        -------
+        indices :
+            Indices into the NDArray at refinement level `lvl`.
         """
         return self.rg2ind(self.cart2rg(positions), lvl, discretize=discretize)
 
