@@ -195,7 +195,7 @@ run_meanfield:
 run_demo_categorical_L1:
   stage: demo_runs
   script:
-    - python3 demos/more/re_categorical_L1.py
+    - python3 demos/re/categorical_L1.py
   artifacts:
     paths:
       - '*.png'
@@ -203,7 +203,7 @@ run_demo_categorical_L1:
 run_demo_cf_w_known_spectrum:
   stage: demo_runs
   script:
-    - python3 demos/more/re_correlated_field_w_known_spectrum.py
+    - python3 demos/re/correlated_field_w_known_spectrum.py
   artifacts:
     paths:
       - '*.png'
@@ -211,7 +211,7 @@ run_demo_cf_w_known_spectrum:
 run_demo_cf_w_unknown_spectrum:
   stage: demo_runs
   script:
-    - python3 demos/more/re_correlated_field_w_unknown_spectrum.py
+    - python3 demos/re/correlated_field_w_unknown_spectrum.py
   artifacts:
     paths:
       - '*.png'
@@ -219,7 +219,7 @@ run_demo_cf_w_unknown_spectrum:
 run_demo_cf_w_unknown_factorizing_spectra:
   stage: demo_runs
   script:
-    - python3 demos/more/re_correlated_field_w_unknown_factorizing_spectra.py
+    - python3 demos/re/correlated_field_w_unknown_factorizing_spectra.py
   artifacts:
     paths:
       - '*.png'
@@ -227,7 +227,7 @@ run_demo_cf_w_unknown_factorizing_spectra:
 run_demo_nifty_to_jifty:
   stage: demo_runs
   script:
-    - python3 demos/more/re_nifty_to_jifty.py
+    - python3 demos/re/nifty_to_jifty.py
   artifacts:
     paths:
       - '*.png'
@@ -235,7 +235,7 @@ run_demo_nifty_to_jifty:
 run_demo_banana:
   stage: demo_runs
   script:
-    - python3 demos/more/re_banana.py
+    - python3 demos/re/banana.py
   artifacts:
     paths:
       - '*.png'
@@ -243,7 +243,7 @@ run_demo_banana:
 run_demo_banana_w_reg:
   stage: demo_runs
   script:
-    - python3 demos/more/re_banana_w_reg.py
+    - python3 demos/re/banana_w_reg.py
   artifacts:
     paths:
       - '*.png'
