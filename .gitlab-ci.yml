@@ -145,7 +145,7 @@ run_getting_started_mf:
 run_getting_started_nifty2jax:
   stage: demo_runs
   script:
-    - python3 demos/getting_started_nifty2jax.py
+    - python3 demos/getting_started_6_nifty2jax.py
   artifacts:
     paths:
       - '*.png'
