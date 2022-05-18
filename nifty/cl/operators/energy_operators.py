@@ -370,10 +370,10 @@ class VariableCovarianceGaussianEnergy(LikelihoodEnergyOperator):
     domain : Domain, DomainTuple, tuple of Domain
         domain of the residual and domain of the covariance diagonal.
 
-    residual_key : key
+    residual_key : str
         Residual key of the Gaussian.
 
-    inverse_covariance_key : key
+    inverse_covariance_key : str
         Inverse covariance diagonal key of the Gaussian.
 
     sampling_dtype : np.dtype
