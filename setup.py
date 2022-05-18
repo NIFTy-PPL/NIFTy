@@ -15,6 +15,8 @@
 #
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
 
+from functools import reduce
+import operator
 import os
 import site
 import sys
@@ -29,6 +31,14 @@ exec(open('nifty8/version.py').read())
 with open("README.md") as f:
     long_description = f.read()
 description = "Library for signal inference algorithms that operate regardless of the underlying grids and their resolutions."
+
+extras_require = {
+    "re": ("jax", ),
+    "native": ("ducc0", "finufft"),
+    "doc": ("sphinx", "pydata-sphinx-theme", "jupyter", "jupytext"),
+    "util": ("astropy", ),
+}
+extras_require["full"] = reduce(operator.add, extras_require.values())
 
 setup(name="nifty8",
       version=__version__,
@@ -48,6 +58,7 @@ setup(name="nifty8",
       license="GPLv3",
       setup_requires=['scipy>=1.4.1', 'numpy>=1.17'],
       install_requires=['scipy>=1.4.1', 'numpy>=1.17'],
+      extras_require=extras_require,
       python_requires='>=3.7',
       classifiers=[
           "Development Status :: 5 - Production/Stable",
