@@ -158,10 +158,10 @@ run_getting_density:
     paths:
       - '*.png'
 
-run_getting_started_model_comparison:
+run_model_comparison:
   stage: demo_runs
   script:
-    - python3 demos/getting_started_model_comparison.py
+    - python3 demos/more/model_comparison.py
   artifacts:
     paths:
       - '*.png'
