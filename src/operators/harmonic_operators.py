@@ -16,6 +16,7 @@
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
 
 import numpy as np
+from functools import partial
 
 from .. import utilities
 from ..domain_tuple import DomainTuple
@@ -70,6 +71,36 @@ class FFTOperator(LinearOperator):
         self._target = DomainTuple.make(self._target)
         adom.check_codomain(target)
         target.check_codomain(adom)
+
+        try:
+            from jax.numpy import fft as jfft
+
+            axes = self.domain.axes[self._space]
+
+            def jax_expr(x, inverse=False):
+                if inverse:
+                    if self.domain[self._space].harmonic:
+                        func = jfft.fftn
+                        fct = 1.
+                    else:
+                        func = jfft.ifftn
+                        fct = self.domain[self._space].size
+                    fct *= self.target[self._space].scalar_dvol
+                else:
+                    if self.domain[self._space].harmonic:
+                        func = jfft.ifftn
+                        fct = self.domain[self._space].size
+                    else:
+                        func = jfft.fftn
+                        fct = 1.
+                    fct *= self.domain[self._space].scalar_dvol
+                return fct * func(x, axes=axes) if fct != 1 else func(x, axes=axes)
+
+            self._jax_expr = jax_expr
+            self._jax_expr_inv = partial(jax_expr, inverse=True)
+
+        except ImportError:
+            self._jax_expr = None
 
     def apply(self, x, mode):
         self._check_input(x, mode)
@@ -137,6 +168,33 @@ class HartleyOperator(LinearOperator):
         self._target = DomainTuple.make(self._target)
         adom.check_codomain(target)
         target.check_codomain(adom)
+
+        try:
+            from jax.numpy import fft as jfft
+
+            axes = self.domain.axes[self._space]
+
+            def hartley(a):
+                ft = jfft.fftn(a, axes=axes)
+                return ft.real + ft.imag
+
+            def apply_cartesian(x, inverse=False):
+                if inverse:
+                    fct = self.target[self._space].scalar_dvol
+                else:
+                    fct = self.domain[self._space].scalar_dvol
+                return fct * hartley(x) if fct != 1 else hartley(x)
+
+            def jax_expr(x, inverse=False):
+                ap = partial(apply_cartesian, inverse=inverse)
+                if np.issubdtype(x.dtype.type, np.complexfloating):
+                    return ap(x.real) + 1j * ap(x.imag)
+                return ap(x)
+
+            self._jax_expr = jax_expr
+            self._jax_expr_inv = partial(jax_expr, inverse=True)
+        except ImportError:
+            self._jax_expr = None
 
     def apply(self, x, mode):
         self._check_input(x, mode)
@@ -314,6 +372,7 @@ class HarmonicTransformOperator(LinearOperator):
         self._domain = self._op.domain
         self._target = self._op.target
         self._capability = self.TIMES | self.ADJOINT_TIMES
+        self._jax_expr = self._op.jax_expr
 
     def apply(self, x, mode):
         self._check_input(x, mode)

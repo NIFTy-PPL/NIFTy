@@ -138,14 +138,14 @@ def optimize_kl(likelihood_energy,
     output_directory : str or None
         Directory in which all output files are saved. If None, no output is
         stored.  Default: "nifty_optimize_kl_output".
-    initial_position : Field, MultiField or None
+    initial_position : :class:`nifty8.field.Field`, :class:`nifty8.multi_field.MultiField` or None
         Position in the definition space of `likelihood_energy` from which the
         optimization is started. If `None`, it starts at a random, normal
         distributed position with standard deviation 0.1. Default: None.
     initial_index : int
         Initial index that is used to enumerate the output files. May be used
         if `optimize_kl` is called multiple times. Default: 0.
-    ground_truth_position : Field, MultiField or None
+    ground_truth_position : :class:`nifty8.field.Field`, :class:`nifty8.multi_field.MultiField` or None
         Position in latent space that represents the ground truth. Used only in
         plotting. May be useful for validating algorithms.
     comm : MPI communicator or None
@@ -195,7 +195,7 @@ def optimize_kl(likelihood_energy,
     -------
     sl : SampleList
 
-    mean : Field or MultiField (optional)
+    mean : :class:`nifty8.field.Field` or :class:`nifty8.multi_field.MultiField` (optional)
 
     Note
     ----

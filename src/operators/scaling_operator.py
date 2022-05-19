@@ -66,6 +66,14 @@ class ScalingOperator(EndomorphicOperator):
         check_dtype_or_none(sampling_dtype, self._domain)
         self._dtype = sampling_dtype
 
+        try:
+            from jax import numpy as jnp
+            from functools import partial
+
+            self._jax_expr = partial(jnp.multiply, factor)
+        except ImportError:
+            self._jax_expr = None
+
     def apply(self, x, mode):
         from ..sugar import full
 

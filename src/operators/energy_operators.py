@@ -488,7 +488,7 @@ class GaussianEnergy(LikelihoodEnergyOperator):
 
     Parameters
     ----------
-    data : Field or None
+    data : :class:`nifty8.field.Field` or None
         Observed data of the Gaussian likelihood. If `inverse_covariance` is
         `None`, the `dtype` of `data` is used for sampling. Default is
         0.
@@ -597,7 +597,7 @@ class PoissonianEnergy(LikelihoodEnergyOperator):
 
     Parameters
     ----------
-    d : Field
+    d : :class:`nifty8.field.Field`
         Data field with counts. Needs to have integer dtype and all field
         values need to be non-negative.
     """
@@ -635,14 +635,14 @@ class InverseGammaEnergy(LikelihoodEnergyOperator):
         \\sum_i (\\alpha_i+1)*\\ln(x_i) + \\beta_i/x_i
 
     This is the likelihood for the variance :math:`x=S_k` given data
-    :math:`\\beta = 0.5 |s_k|^2` where the Field :math:`s` is known to have
-    the covariance :math:`S_k`.
+    :math:`\\beta = 0.5 |s_k|^2` where the :class:`nifty8.field.Field`
+    :math:`s` is known to have the covariance :math:`S_k`.
 
     Parameters
     ----------
-    beta : Field
+    beta : :class:`nifty8.field.Field`
         beta parameter of the inverse gamma distribution
-    alpha : Scalar, Field, optional
+    alpha : Scalar, :class:`nifty8.field.Field`, optional
         alpha parameter of the inverse gamma distribution
     """
 
@@ -694,7 +694,7 @@ class StudentTEnergy(LikelihoodEnergyOperator):
     ----------
     domain : `Domain` or `DomainTuple`
         Domain of the operator
-    theta : Scalar or Field
+    theta : Scalar or :class:`nifty8.field.Field`
         Degree of freedom parameter for the student t distribution
     """
 
@@ -733,7 +733,7 @@ class BernoulliEnergy(LikelihoodEnergyOperator):
 
     Parameters
     ----------
-    d : Field
+    d : :class:`nifty8.field.Field`
         Data field with events (1) or non-events (0).
     """
 
@@ -838,7 +838,7 @@ class AveragedEnergy(EnergyOperator):
     ----------
     h: Hamiltonian
        The energy to be averaged.
-    res_samples : iterable of Fields
+    res_samples : iterable of :class:`nifty8.field.Field`
        Set of residual sample points to be added to mean field for
        approximate estimation of the KL.
 

@@ -60,7 +60,7 @@ def PS_field(pspace, function):
 
     Returns
     -------
-    Field
+    :class:`nifty8.field.Field`
         A field defined on (pspace,) containing the computed function values
     """
     if not isinstance(pspace, PowerSpace):
@@ -119,7 +119,7 @@ def power_analyze(field, spaces=None, binbounds=None,
 
     Parameters
     ----------
-    field : Field
+    field : :class:`nifty8.field.Field`
         The field to be analyzed
     spaces : None or int or tuple of int, optional
         The indices of subdomains for which the power spectrum shall be
@@ -142,7 +142,7 @@ def power_analyze(field, spaces=None, binbounds=None,
 
     Returns
     -------
-    Field
+    :class:`nifty8.field.Field`
         The output object. Its domain is a PowerSpace and it contains
         the power spectrum of `field`.
     """
@@ -203,7 +203,7 @@ def create_power_operator(domain, power_spectrum, space=None,
     ----------
     domain : Domain, tuple of Domain or DomainTuple
         Domain on which the power operator shall be defined.
-    power_spectrum : callable or Field
+    power_spectrum : callable or :class:`nifty8.field.Field`
         An object that contains the power spectrum as a function of k.
     space : int
         the domain index on which the power operator will work
@@ -318,7 +318,7 @@ def full(domain, val):
 
     Returns
     -------
-    Field or MultiField
+    :class:`nifty8.field.Field` or:class:`nifty8.mulit_field.MultiField`
         The newly created uniform field
     """
     if isinstance(domain, (dict, MultiDomain)):
@@ -344,7 +344,7 @@ def from_random(domain, random_type='normal', dtype=np.float64, **kwargs):
 
     Returns
     -------
-    Field or MultiField
+    :class:`nifty8.field.Field` or:class:`nifty8.mulit_field.MultiField`
         The newly created random field
 
     Notes
@@ -372,7 +372,7 @@ def makeField(domain, arr):
 
     Returns
     -------
-    Field or MultiField
+    :class:`nifty8.field.Field` or:class:`nifty8.mulit_field.MultiField`
         The newly created random field
     """
     if isinstance(domain, (dict, MultiDomain)):
@@ -405,7 +405,7 @@ def makeOp(inp, dom=None, sampling_dtype=None):
 
     Parameters
     ----------
-    inp : None, Field or MultiField
+    inp : None, :class:`nifty8.field.Field` or :class:`nifty8.multi_field.MultiField`
         - if None, None is returned.
         - if Field on scalar-domain, a ScalingOperator with the coefficient
             given by the Field is returned.

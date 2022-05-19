@@ -27,6 +27,7 @@ import numpy as np
 from .. import utilities
 from ..domain_tuple import DomainTuple
 from ..domains.power_space import PowerSpace
+from ..domains.rg_space import RGSpace
 from ..domains.unstructured_domain import UnstructuredDomain
 from ..field import Field
 from ..logger import logger
@@ -38,7 +39,6 @@ from ..operators.distributors import PowerDistributor
 from ..operators.endomorphic_operator import EndomorphicOperator
 from ..operators.harmonic_operators import HarmonicTransformOperator
 from ..operators.linear_operator import LinearOperator
-from ..operators.mask_operator import MaskOperator
 from ..operators.normal_operators import LognormalTransform, NormalTransform
 from ..operators.operator import Operator
 from ..operators.simple_linear_operators import VdotOperator, ducktape
@@ -453,6 +453,16 @@ class CorrelatedFieldMaker:
         self._prefix = prefix
         self._total_N = total_N
 
+        try:
+            from .. import re as jft
+
+            if total_N != 0:
+                warn(f"unable to add JAX operator for total_N={total_N}")
+                raise ImportError("short-circuit JAX init")
+            self._jax_cfm = jft.CorrelatedFieldMaker(prefix=prefix)
+        except ImportError:
+            self._jax_cfm = None
+
     def add_fluctuations(self,
                          target_subdomain,
                          fluctuations,
@@ -566,6 +576,25 @@ class CorrelatedFieldMaker:
                          target_subdomain[-1].total_volume,
                          pre + 'spectrum', dofdex)
 
+        is_rg = all(isinstance(dom, RGSpace) for dom in target_subdomain)
+        if self._jax_cfm is not None and (len(dofdex) > 0 or index or not is_rg):
+            warn(f"unable to add JAX operator for {target_subdomain}")
+            self._jax_cfm = None
+        if self._jax_cfm is not None:
+            dists = tuple(e for di in target_subdomain for e in di.distances)
+            self._jax_cfm.add_fluctuations(
+                shape=target_subdomain.shape,
+                distances=dists,
+                fluctuations=fluctuations,
+                loglogavgslope=loglogavgslope,
+                flexibility=flexibility,
+                asperity=asperity,
+                prefix=str(prefix),
+                harmonic_domain_type="fourier",
+                non_parametric_kind="power",
+            )
+            amp._jax_expr = self._jax_cfm.fluctuations[-1]
+
         if index is not None:
             self._a.insert(index, amp)
             self._target_subdomains.insert(index, target_subdomain)
@@ -652,6 +681,10 @@ class CorrelatedFieldMaker:
         amp = _AmplitudeMatern(pow_spc, scale, cutoff, loglogslope,
                                totvol)
 
+        if self._jax_cfm is not None:
+            warn(f"unable to add JAX operator for Matern fluctuations")
+            self._jax_cfm = None
+
         self._a.append(amp)
         self._target_subdomains.append(target_subdomain)
 
@@ -684,12 +717,15 @@ class CorrelatedFieldMaker:
             logger.warning("Overwriting the previous mean offset and zero-mode")
 
         self._offset_mean = offset_mean
+        jax_offset_std = offset_std
         if offset_std is None:
             self._azm = 0.
         elif np.isscalar(offset_std) and offset_std == 1.:
             self._azm = 1.
+            jax_offset_std = lambda _: 1.
         elif isinstance(offset_std, Operator):
             self._azm = offset_std
+            jax_offset_std = offset_std.jax_expr
         else:
             if dofdex is None:
                 dofdex = np.full(self._total_N, 0)
@@ -709,6 +745,21 @@ class CorrelatedFieldMaker:
             if self._total_N > 0:
                 zm = _Distributor(dofdex, zm.target, UnstructuredDomain(self._total_N)) @ zm
             self._azm = zm
+
+        if self._jax_cfm is not None and dofdex is not None and len(dofdex) > 0:
+            warn(f"unable to add JAX operator for dofdex={dofdex}")
+            self._jax_cfm = None
+        if self._jax_cfm is not None:
+            try:
+                self._jax_cfm.set_amplitude_total_offset(
+                    offset_mean=offset_mean, offset_std=jax_offset_std
+                )
+                if not isinstance(self._azm, float):
+                    self._azm._jax_expr = self._jax_cfm.azm
+            except TypeError as e:
+                self._jax_cfm = None
+                if isinstance(e, TypeError):
+                    warn(f"no JAX operator for this configuration;\n{e}")
 
     def finalize(self, prior_info=100):
         """Finishes model construction process and returns the constructed
@@ -766,6 +817,10 @@ class CorrelatedFieldMaker:
                 offset = float(offset)
                 op = Adder(full(op.target, offset)) @ op
         self.statistics_summary(prior_info)
+
+        if self._jax_cfm is not None:
+            cf, _ = self._jax_cfm.finalize()
+            op._jax_expr = cf
         return op
 
     def statistics_summary(self, prior_info):
@@ -829,8 +884,13 @@ class CorrelatedFieldMaker:
         elif self.azm == 1:
             return self.fluctuations
 
+        if self._jax_cfm:
+            normed_amps_jax = self._jax_cfm.get_normalized_amplitudes()
+        else:
+            normed_amps_jax = (None, ) * len(self._a)
+
         normal_amp = []
-        for amp in self._a:
+        for amp, na_jax in zip(self._a, normed_amps_jax):
             a_target = amp.target
             a_space = 0 if not hasattr(amp, "_space") else amp._space
             a_pp = amp.target[a_space]
@@ -852,7 +912,9 @@ class CorrelatedFieldMaker:
             zm_normalization = zm_unmask @ (
                 zm_mask @ azm_expander(self.azm.ptw("reciprocal"))
             )
-            normal_amp.append(zm_normalization * amp)
+            na = zm_normalization * amp
+            na._jax_expr = na_jax
+            normal_amp.append(na)
         return tuple(normal_amp)
 
     @property
@@ -865,12 +927,16 @@ class CorrelatedFieldMaker:
         normal_amp = self.get_normalized_amplitudes()[0]
 
         if np.isscalar(self.azm):
-            return normal_amp
+            na = normal_amp
         else:
             expand = ContractionOperator(
                 normal_amp.target, len(normal_amp.target) - 1
             ).adjoint
-            return normal_amp * (expand @ self.azm)
+            na = normal_amp * (expand @ self.azm)
+
+        if self._jax_cfm:
+            na._jax_expr = self._jax_cfm.amplitude
+        return na
 
     @property
     def power_spectrum(self):

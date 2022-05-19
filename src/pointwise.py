@@ -153,3 +153,23 @@ ptw_dict = {
     "arctan": (np.arctan, lambda v: (np.arctan(v), 1./(1.+v**2))),
     "unitstep": (lambda v: _step_helper(v, False), lambda v: _step_helper(v, True))
     }
+
+
+def sigmoid_j(v):
+    from jax import numpy as jnp
+
+    # NOTE, the sigmoid used in NIFTy is different to the one commonly referred
+    # to as sigmoid in most of the literature.
+    return 0.5 + (0.5 * jnp.tanh(v))
+
+
+def exponentiate_j(v, base):
+    from jax import numpy as jnp
+
+    return jnp.power(base, v)
+
+
+ptw_nifty2jax_dict = {
+    "sigmoid": sigmoid_j,
+    "exponentiate": exponentiate_j,
+}

@@ -78,6 +78,23 @@ class _InterpolationOperator(Operator):
         self._deriv = self._interpolator.derivative()
         self._inv_table_func = inv_table_func
 
+        try:
+            from jax import numpy as jnp
+
+            def jax_expr(x):
+                res = jnp.interp(x, self._xs, self._table)
+                if inv_table_func is not None:
+                    ve = (
+                        "can not translate arbitrary inverse"
+                        f" table function {inv_table_func!r}"
+                    )
+                    raise ValueError(ve)
+                return res
+
+            self._jax_expr = jax_expr
+        except ImportError:
+            self._jax_expr = None
+
     def apply(self, x):
         self._check_input(x)
         lin = x.jac is not None
@@ -118,7 +135,7 @@ class InverseGammaOperator(Operator):
         time the domain and the target of the operator.
     alpha : float
         The alpha-parameter of the inverse-gamma distribution.
-    q : float or Field
+    q : float or :class:`nifty8.field.Field`
         The q-parameter of the inverse-gamma distribution.
     mode: float
         The mode of the inverse-gamma distribution.
@@ -154,6 +171,14 @@ class InverseGammaOperator(Operator):
         else:
             op = makeOp(self._q) @ op
         self._op = op
+
+        try:
+            from ..re.stats_distributions import invgamma_prior
+
+            q_val = self._q.val if isinstance(self._q, Field) else self._q
+            self._jax_expr = invgamma_prior(float(self._alpha), q_val)
+        except ImportError:
+            self._jax_expr = None
 
     def apply(self, x):
         return self._op(x)

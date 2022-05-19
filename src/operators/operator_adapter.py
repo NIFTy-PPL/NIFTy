@@ -38,7 +38,7 @@ class OperatorAdapter(LinearOperator):
         3) adjoint inverse
     """
 
-    def __init__(self, op, op_transform):
+    def __init__(self, op, op_transform, domain_dtype=float):
         self._op = op
         self._trafo = int(op_transform)
         if self._trafo < 1 or self._trafo > 3:
@@ -46,6 +46,35 @@ class OperatorAdapter(LinearOperator):
         self._domain = self._op._dom(1 << self._trafo)
         self._target = self._op._tgt(1 << self._trafo)
         self._capability = self._capTable[self._trafo][self._op.capability]
+
+        try:
+            from jax import eval_shape, linear_transpose
+            import jax.numpy as jnp
+            from jax.tree_util import tree_map, tree_all
+
+            from ..nifty2jax import shapewithdtype_from_domain
+            from ..re import Field
+
+            if callable(op.jax_expr) and self._trafo == self.ADJOINT_BIT:
+                def jax_expr(y):
+                    op_domain = shapewithdtype_from_domain(op.domain, domain_dtype)
+                    op_domain = Field(op_domain) if isinstance(y, Field) else op_domain
+                    tentative_yshape = eval_shape(op.jax_expr, op_domain)
+                    if not tree_all(tree_map(lambda a,b : jnp.can_cast(a.dtype, b.dtype), y, tentative_yshape)): 
+                        raise ValueError(f"wrong dtype during transposition:/got {tentative_yshape} and expected {y!r}")
+                    y = tree_map(lambda c, d: c.astype(d.dtype, casting="safe", copy=False), y, tentative_yshape) 
+                    y_conj = tree_map(jnp.conj, y)
+                    jax_expr_T = linear_transpose(op.jax_expr, op_domain)
+                    return tree_map(jnp.conj, jax_expr_T(y_conj)[0])
+
+                self._jax_expr = jax_expr
+            elif hasattr(op, "_jax_expr_inv") and callable(op._jax_expr_inv) and self._trafo == self.INVERSE_BIT:
+                self._jax_expr = op._jax_expr_inv
+                self._jax_expr_inv = op._jax_expr
+            else:
+                self._jax_expr = None
+        except ImportError:
+            self._jax_expr = None
 
     def _flip_modes(self, trafo):
         newtrafo = trafo ^ self._trafo

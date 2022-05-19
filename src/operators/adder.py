@@ -15,6 +15,8 @@
 #
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
 
+from operator import add, sub
+
 import numpy as np
 
 from ..field import Field
@@ -28,7 +30,7 @@ class Adder(Operator):
 
     Parameters
     ----------
-    a : Field or MultiField or Scalar
+    a : :class:`nifty8.field.Field` or :class:`nifty8.multi_field.MultiField` or Scalar
         The field by which the input is shifted.
     """
     def __init__(self, a, neg=False, domain=None):
@@ -41,6 +43,24 @@ class Adder(Operator):
             raise TypeError
         self._domain = self._target = dom
         self._neg = bool(neg)
+
+        try:
+            from ..re import Field as ReField
+            from jax.tree_util import tree_map
+
+            a_j = ReField(a.val) if isinstance(a, (Field, MultiField)) else a
+
+            def jax_expr(x):
+                # Preserve the input type
+                if not isinstance(x, ReField):
+                    a_astype_x = a_j.val if isinstance(a_j, ReField) else a_j
+                else:
+                    a_astype_x = a_j
+                return tree_map(sub if neg else add, x, a_astype_x)
+
+            self._jax_expr = jax_expr
+        except ImportError:
+            self._jax_expr = None
 
     def apply(self, x):
         self._check_input(x)

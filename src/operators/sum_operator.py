@@ -16,6 +16,7 @@
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
 
 from collections import defaultdict
+import operator
 
 from ..sugar import domain_union
 from ..utilities import indent
@@ -41,6 +42,24 @@ class SumOperator(LinearOperator):
         self._capability = self.TIMES | self.ADJOINT_TIMES
         for op in ops:
             self._capability &= op.capability
+
+        try:
+            from ..re import unite
+
+            def joined_jax_expr(x):
+                res = None
+                for op, n in zip(ops, neg):
+                    tmp = op.jax_expr(x)
+                    if res is None:
+                        res = -tmp if n is True else tmp
+                    else:
+                        o = operator.sub if n is True else operator.add
+                        res = unite(res, tmp, op=o)
+                return res
+
+            self._jax_expr = joined_jax_expr
+        except ImportError:
+            self._jax_expr = None
 
     @staticmethod
     def simplify(ops, neg):
@@ -173,7 +192,7 @@ class SumOperator(LinearOperator):
             Individual operators of the sum.
         neg: list of bool
             Same length as ops.
-            If True then the equivalent operator gets a minus in the sum.
+            If True then the corresponding operator gets a minus in the sum.
         """
         ops = tuple(ops)
         neg = tuple(neg)

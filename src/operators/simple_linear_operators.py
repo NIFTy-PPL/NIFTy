@@ -16,6 +16,7 @@
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
 
 import numpy as np
+from functools import partial
 
 from ..domain_tuple import DomainTuple
 from ..domains.unstructured_domain import UnstructuredDomain
@@ -32,7 +33,7 @@ class VdotOperator(LinearOperator):
 
     Parameters
     ----------
-    field : Field or MultiField
+    field : :class:`nifty8.field.Field` or :class:`nifty8.multi_field.MultiField`
         The field used to build the scalar product with the operator input
     """
     def __init__(self, field):
@@ -40,6 +41,13 @@ class VdotOperator(LinearOperator):
         self._domain = field.domain
         self._target = DomainTuple.scalar_domain()
         self._capability = self.TIMES | self.ADJOINT_TIMES
+
+        try:
+            from ..re import vdot
+
+            self._jax_expr = partial(vdot, field.val)
+        except ImportError:
+            self._jax_expr = None
 
     def apply(self, x, mode):
         self._check_mode(mode)
@@ -60,6 +68,14 @@ class ConjugationOperator(EndomorphicOperator):
     def __init__(self, domain):
         self._domain = DomainTuple.make(domain)
         self._capability = self._all_ops
+
+        try:
+            from jax import numpy as jnp
+            from jax.tree_util import tree_map
+
+            self._jax_expr = partial(tree_map, jnp.conjugate)
+        except ImportError:
+            self._jax_expr = None
 
     def apply(self, x, mode):
         self._check_input(x, mode)
@@ -108,6 +124,14 @@ class Realizer(EndomorphicOperator):
         self._domain = DomainTuple.make(domain)
         self._capability = self.TIMES | self.ADJOINT_TIMES
 
+        try:
+            from jax import numpy as jnp
+            from jax.tree_util import tree_map
+
+            self._jax_expr = partial(tree_map, jnp.real)
+        except ImportError:
+            self._jax_expr = None
+
     def apply(self, x, mode):
         self._check_input(x, mode)
         return x.real
@@ -125,6 +149,14 @@ class Imaginizer(EndomorphicOperator):
     def __init__(self, domain):
         self._domain = DomainTuple.make(domain)
         self._capability = self.TIMES | self.ADJOINT_TIMES
+
+        try:
+            from jax import numpy as jnp
+            from jax.tree_util import tree_map
+
+            self._jax_expr = partial(tree_map, jnp.imag)
+        except ImportError:
+            self._jax_expr = None
 
     def apply(self, x, mode):
         self._check_input(x, mode)
@@ -165,6 +197,22 @@ class FieldAdapter(LinearOperator):
             self._domain = tmp[name]
             self._target = MultiDomain.make({name: tmp[name]})
         self._capability = self.TIMES | self.ADJOINT_TIMES
+
+        try:
+            from .. import re as jft
+
+            def wrap(x):
+                return jft.Field({name: x})
+
+            def unwrap(x):
+                return x[name]
+
+            if isinstance(tmp, DomainTuple):
+                self._jax_expr = unwrap
+            else:
+                self._jax_expr = wrap
+        except ImportError:
+            self._jax_expr = None
 
     def apply(self, x, mode):
         self._check_input(x, mode)
@@ -309,6 +357,11 @@ class GeometryRemover(LinearOperator):
             tgt = [UnstructuredDomain(dom.shape) for dom in self._domain]
         self._target = DomainTuple.make(tgt)
         self._capability = self.TIMES | self.ADJOINT_TIMES
+
+        def identity(x):
+            return x
+
+        self._jax_expr = identity
 
     def apply(self, x, mode):
         self._check_input(x, mode)
