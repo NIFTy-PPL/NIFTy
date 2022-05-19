@@ -16,8 +16,9 @@
 #
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
 
-import numpy as np
 from warnings import warn
+
+import numpy as np
 
 from ..domain_tuple import DomainTuple
 from ..domains.power_space import PowerSpace
@@ -133,8 +134,8 @@ def SimpleCorrelatedField(
     op.power_spectrum = a**2
 
     try:
-        from .. import re as jft
         from .. import RGSpace
+        from .. import re as jft
 
         if not all(isinstance(dom, RGSpace) for dom in op.target):
             warn(f"unable to add JAX operator for {op.target!r}")

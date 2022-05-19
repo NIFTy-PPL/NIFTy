@@ -15,9 +15,8 @@
 #
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
 
-import numpy as np
-
 import nifty8 as ift
+import numpy as np
 
 
 def check_state_back_to_orig():

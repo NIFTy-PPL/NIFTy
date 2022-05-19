@@ -15,10 +15,9 @@
 #
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
 
-from numpy.testing import assert_allclose, assert_raises
-
 import nifty8 as ift
 from nifty8.operators.simplify_for_const import ConstantOperator
+from numpy.testing import assert_allclose, assert_raises
 
 
 def test_simplification():

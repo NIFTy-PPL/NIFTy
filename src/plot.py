@@ -16,9 +16,9 @@
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
 
 import os
+from datetime import datetime as dt
 from itertools import product
 from warnings import warn
-from datetime import datetime as dt
 
 import numpy as np
 

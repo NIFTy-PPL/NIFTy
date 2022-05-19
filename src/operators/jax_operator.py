@@ -14,11 +14,11 @@
 # Copyright(C) 2021-2022 Max-Planck-Society
 # Author: Philipp Arras
 
+from functools import partial
 from types import SimpleNamespace
 from warnings import warn
 
 import numpy as np
-from functools import partial
 
 from .energy_operators import LikelihoodEnergyOperator
 from .linear_operator import LinearOperator

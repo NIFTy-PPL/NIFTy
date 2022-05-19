@@ -17,9 +17,8 @@
 
 from itertools import count
 
-import numpy as np
-
 import nifty8 as ift
+import numpy as np
 
 from .common import setup_function, teardown_function
 

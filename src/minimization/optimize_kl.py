@@ -17,10 +17,13 @@
 #
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
 
+import pickle
 from functools import reduce
 from os import makedirs
 from os.path import isdir, isfile, join
 from warnings import warn
+
+import numpy as np
 
 from ..domain_tuple import DomainTuple
 from ..multi_domain import MultiDomain
@@ -35,13 +38,11 @@ from ..utilities import (Nop, check_MPI_equality,
                          check_MPI_synced_random_state, check_object_identity,
                          get_MPI_params_from_comm)
 from .energy_adapter import EnergyAdapter
-from .iteration_controllers import IterationController, EnergyHistory
+from .iteration_controllers import EnergyHistory, IterationController
 from .kl_energies import SampledKLEnergy
 from .minimizer import Minimizer
 from .sample_list import (ResidualSampleList, SampleList, SampleListBase,
                           _barrier)
-import pickle
-import numpy as np
 
 try:
     import h5py
@@ -661,8 +662,8 @@ def _minisanity(likelihood_energy, iglobal, sl, comm, plot_minisanity_history):
 
 
 def _plot_minisanity_history(index, minisanity_history):
-    from matplotlib.cm import plasma
     import matplotlib.pyplot as plt
+    from matplotlib.cm import plasma
 
     mhrcs = minisanity_history['redchisq']
 

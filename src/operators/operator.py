@@ -18,11 +18,10 @@
 import numbers
 from functools import reduce
 from operator import add
+from typing import Callable, Optional
+from warnings import warn
 
 import numpy as np
-
-from warnings import warn
-from typing import Callable, Optional
 
 from .. import pointwise
 from ..domain_tuple import DomainTuple
@@ -447,6 +446,7 @@ class _FunctionApplier(Operator):
 
             if isinstance(self.domain, MultiDomain):
                 from functools import partial
+
                 from jax.tree_util import tree_map
 
                 jax_expr_part = partial(tree_map, jax_expr_part)

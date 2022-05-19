@@ -67,8 +67,9 @@ class ScalingOperator(EndomorphicOperator):
         self._dtype = sampling_dtype
 
         try:
-            from jax import numpy as jnp
             from functools import partial
+
+            from jax import numpy as jnp
 
             self._jax_expr = partial(jnp.multiply, factor)
         except ImportError:

@@ -15,10 +15,9 @@
 #
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
 
+import nifty8 as ift
 import pytest
 from mpi4py import MPI
-
-import nifty8 as ift
 
 from ..common import setup_function, teardown_function
 

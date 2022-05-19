@@ -13,12 +13,11 @@
 #
 # Copyright(C) 2022 Max-Planck-Society
 
+import nifty8 as ift
 import numpy as np
 import pytest
 
-import nifty8 as ift
-
-from ..common import setup_function, teardown_function, list2fixture
+from ..common import list2fixture, setup_function, teardown_function
 
 pmp = pytest.mark.parametrize
 

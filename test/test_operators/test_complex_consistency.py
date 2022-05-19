@@ -15,9 +15,8 @@
 #
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
 
-import numpy as np
-
 import nifty8 as ift
+import numpy as np
 
 Nsamp = 20000
 np.random.seed(42)
