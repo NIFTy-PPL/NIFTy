@@ -16,6 +16,10 @@ intersphinx_mapping = {"numpy": ("https://numpy.org/doc/stable/", None),
                        "scipy": ('https://docs.scipy.org/doc/scipy/reference/', None),
                        }
 
+autodoc_default_options = {
+    'special-members': '__init__',
+}
+
 napoleon_google_docstring = False
 napoleon_numpy_docstring = True
 napoleon_use_ivar = True
