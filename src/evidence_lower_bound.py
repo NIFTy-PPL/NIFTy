@@ -144,7 +144,7 @@ def estimate_evidence_lower_bound(hamiltonian, samples, n_eigenvalues, min_lh_ev
     Parameters
     ----------
 
-    hamiltonian : StandardHamiltonian
+    hamiltonian : :class:`nifty8.operators.energy_operators.StandardHamiltonian`
         Hamiltonian of the approximated probability distribution.
 
     samples : ResidualSampleList

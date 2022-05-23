@@ -232,9 +232,9 @@ class GammaOperator(Operator):
         time the domain and the target of the operator.
     alpha : float
         The shape parameter of the gamma distribution.
-    beta : float or Field
+    beta : float or :class:`nifty8.field.Field`
         The rate parameter of the gamma distribution.
-    theta : float or Field
+    theta : float or :class:`nifty8.field.Field`
         The scale parameter of the gamma distribution.
     mean : float
         Mean of the gamma distribution.
