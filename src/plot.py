@@ -339,6 +339,8 @@ def _plot_history(f, ax, **kwargs):
         mi, ma = min([min(xcoord), mi]), max([max(xcoord), ma])
 
     delta = (ma-mi)*0.05
+    if delta == 0.:
+        delta = 1.
     ax.set_xlim((mi-delta, ma+delta))
     if not skip_timestamp_conversion:
         xfmt = DateFormatter('%H:%M')
@@ -573,7 +575,7 @@ class Plot:
 
         Parameters
         ----------
-        f: Field or list of Field or None
+        f : :class:`nifty8.field.Field` or list of :class:`nifty8.field.Field` or None
             If `f` is a single Field, it must be defined on a single `RGSpace`,
             `PowerSpace`, `HPSpace`, `GLSpace`.
             If it is a list, all list members must be Fields defined over the

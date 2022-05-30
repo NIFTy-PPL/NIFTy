@@ -53,6 +53,10 @@ class Field(Operator):
         if not isinstance(val, np.ndarray):
             if np.isscalar(val):
                 val = np.broadcast_to(val, domain.shape)
+            elif np.shape(val) == domain.shape:
+                # If NumPy thinks the shapes are equal, attempt to convert to
+                # NumPy. This is especially helpful for JAX DeviceArrays.
+                val = np.asarray(val)
             else:
                 raise TypeError("val must be of type numpy.ndarray")
         if domain.shape != val.shape:
@@ -276,7 +280,7 @@ class Field(Operator):
 
         Parameters
         ----------
-        x : Field
+        x : :class:`nifty8.field.Field`
 
         Returns
         -------
@@ -294,7 +298,7 @@ class Field(Operator):
 
         Parameters
         ----------
-        x : Field
+        x : :class:`nifty8.field.Field`
             x must be defined on the same domain as `self`.
 
         spaces : None, int or tuple of int
@@ -326,7 +330,7 @@ class Field(Operator):
 
         Parameters
         ----------
-        x : Field
+        x : :class:`nifty8.field.Field`
             x must be defined on the same domain as `self`.
 
         Returns

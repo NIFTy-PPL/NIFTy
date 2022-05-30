@@ -15,10 +15,12 @@
 #
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
 
+from functools import partial
 import numpy as np
 
 from ..domain_tuple import DomainTuple
 from ..field import Field
+from ..multi_field import MultiField
 from .linear_operator import LinearOperator
 
 
@@ -27,8 +29,8 @@ class OuterProduct(LinearOperator):
 
     Parameters
     ---------
-    domain: DomainTuple, the domain of the input field
-    field: Field
+    domain : DomainTuple, the domain of the input field
+    field : :class:`nifty8.field.Field`
     ---------
     """
     def __init__(self, domain, field):
@@ -37,6 +39,29 @@ class OuterProduct(LinearOperator):
         self._target = DomainTuple.make(
             tuple(sub_d for sub_d in field.domain._dom + self._domain._dom))
         self._capability = self.TIMES | self.ADJOINT_TIMES
+
+        try:
+            from ..re import Field as ReField
+            from jax import numpy as jnp
+            from jax.tree_util import tree_map
+
+            a_j = ReField(field.val) if isinstance(field, (Field, MultiField)) else field
+
+            def jax_expr(x):
+                # Preserve the input type
+                if not isinstance(x, ReField):
+                    a_astype_x = a_j.val if isinstance(a_j, ReField) else a_j
+                else:
+                    a_astype_x = a_j
+
+                return tree_map(
+                    partial(jnp.tensordot, axes=((), ())),
+                    a_astype_x, x
+                )
+
+            self._jax_expr = jax_expr
+        except ImportError:
+            self._jax_expr = None
 
     def apply(self, x, mode):
         self._check_input(x, mode)

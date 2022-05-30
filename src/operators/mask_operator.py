@@ -31,7 +31,7 @@ class MaskOperator(LinearOperator):
 
     Parameters
     ----------
-    flags : Field
+    flags : :class:`nifty8.field.Field`
         Is converted to boolean. Where True, the input field is flagged.
     """
     def __init__(self, flags):
@@ -41,6 +41,11 @@ class MaskOperator(LinearOperator):
         self._flags = np.logical_not(flags.val)
         self._target = DomainTuple.make(UnstructuredDomain(self._flags.sum()))
         self._capability = self.TIMES | self.ADJOINT_TIMES
+
+        def mask(x):
+            return x[self._flags]
+
+        self._jax_expr = mask
 
     def apply(self, x, mode):
         self._check_input(x, mode)

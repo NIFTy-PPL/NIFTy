@@ -21,6 +21,9 @@ from operator import add
 
 import numpy as np
 
+from warnings import warn
+from typing import Callable, Optional
+
 from .. import pointwise
 from ..domain_tuple import DomainTuple
 from ..logger import logger
@@ -111,6 +114,15 @@ class Operator(metaclass=NiftyMeta):
         None or LinearOperator : the metric
         """
         return None
+
+    @property
+    def jax_expr(self) -> Optional[Callable]:
+        """Equivalent representation of the operator in JAX."""
+        expr = getattr(self, "_jax_expr", None)
+        # NOTE, it is incredibly useful to enable this for debugging
+        # if expr is None:
+        #     warn(f"no JAX expression associated with operator {self!r}")
+        return expr
 
     def scale(self, factor):
         if not isinstance(factor, numbers.Number):
@@ -250,7 +262,7 @@ class Operator(metaclass=NiftyMeta):
 
         Parameters
         ----------
-        x : Field or MultiField
+        x : :class:`nifty8.field.Field` or :class:`nifty8.multi_field.MultiField`
             Input on which the operator shall act. Needs to be defined on
             :attr:`domain`.
         """
@@ -416,6 +428,32 @@ class _FunctionApplier(Operator):
         self._args = args
         self._kwargs = kwargs
 
+        try:
+            import jax.numpy as jnp
+            from jax import nn as jax_nn
+
+            if funcname in pointwise.ptw_nifty2jax_dict:
+                jax_expr = pointwise.ptw_nifty2jax_dict[funcname]
+            elif hasattr(jnp, funcname):
+                jax_expr = getattr(jnp, funcname)
+            elif hasattr(jax_nn, funcname):
+                jax_expr = getattr(jax_nn, funcname)
+            else:
+                warn(f"unable to add JAX call for {funcname!r}")
+                jax_expr = None
+
+            def jax_expr_part(x):  # Partial insert with first open argument
+                return jax_expr(x, *args, **kwargs)
+
+            if isinstance(self.domain, MultiDomain):
+                from functools import partial
+                from jax.tree_util import tree_map
+
+                jax_expr_part = partial(tree_map, jax_expr_part)
+            self._jax_expr = jax_expr_part
+        except ImportError:
+            self._jax_expr = None
+
     def apply(self, x):
         self._check_input(x)
         return x.ptw(self._funcname, *self._args, **self._kwargs)
@@ -425,10 +463,21 @@ class _FunctionApplier(Operator):
 
 
 class _CombinedOperator(Operator):
-    def __init__(self, ops, _callingfrommake=False):
+    def __init__(self, ops, jax_ops, _callingfrommake=False):
         if not _callingfrommake:
             raise NotImplementedError
         self._ops = tuple(ops)
+
+        if all(callable(jop) for jop in jax_ops):
+
+            def joined_jax_op(x):
+                for jop in reversed(jax_ops):
+                    x = jop(x)
+                return x
+
+            self._jax_expr = joined_jax_op
+        else:
+            self._jax_expr = None
 
     @classmethod
     def unpack(cls, ops, res):
@@ -444,12 +493,13 @@ class _CombinedOperator(Operator):
         res = cls.unpack(ops, [])
         if len(res) == 1:
             return res[0]
-        return cls(res, _callingfrommake=True)
+        jax_res = tuple(op.jax_expr for op in ops)
+        return cls(res, jax_res, _callingfrommake=True)
 
 
 class _OpChain(_CombinedOperator):
-    def __init__(self, ops, _callingfrommake=False):
-        super(_OpChain, self).__init__(ops, _callingfrommake)
+    def __init__(self, ops, jax_ops, _callingfrommake=False):
+        super(_OpChain, self).__init__(ops, jax_ops, _callingfrommake)
         self._domain = self._ops[-1].domain
         self._target = self._ops[0].target
         for i in range(1, len(self._ops)):
@@ -485,6 +535,17 @@ class _OpProd(Operator):
             raise ValueError("target mismatch")
         self._op1 = op1
         self._op2 = op2
+
+        lhs_has_jax = callable(self._op1.jax_expr)
+        rhs_has_jax = callable(self._op2.jax_expr)
+        if lhs_has_jax and rhs_has_jax:
+
+            def joined_jax_expr(x):
+                return self._op1.jax_expr(x) * self._op2.jax_expr(x)
+
+            self._jax_expr = joined_jax_expr
+        else:
+            self._jax_expr = None
 
     def apply(self, x):
         from ..linearization import Linearization
@@ -528,6 +589,16 @@ class _OpSum(Operator):
         self._target = domain_union((op1.target, op2.target))
         self._op1 = op1
         self._op2 = op2
+
+        try:
+            from ..re import unite
+
+            def joined_jax_expr(x):
+                return unite(self._op1.jax_expr(x), self._op2.jax_expr(x))
+
+            self._jax_expr = joined_jax_expr
+        except ImportError:
+            self._jax_expr = None
 
     def apply(self, x):
         self._check_input(x)

@@ -138,14 +138,14 @@ def optimize_kl(likelihood_energy,
     output_directory : str or None
         Directory in which all output files are saved. If None, no output is
         stored.  Default: "nifty_optimize_kl_output".
-    initial_position : Field, MultiField or None
+    initial_position : :class:`nifty8.field.Field`, :class:`nifty8.multi_field.MultiField` or None
         Position in the definition space of `likelihood_energy` from which the
         optimization is started. If `None`, it starts at a random, normal
         distributed position with standard deviation 0.1. Default: None.
     initial_index : int
         Initial index that is used to enumerate the output files. May be used
         if `optimize_kl` is called multiple times. Default: 0.
-    ground_truth_position : Field, MultiField or None
+    ground_truth_position : :class:`nifty8.field.Field`, :class:`nifty8.multi_field.MultiField` or None
         Position in latent space that represents the ground truth. Used only in
         plotting. May be useful for validating algorithms.
     comm : MPI communicator or None
@@ -195,7 +195,7 @@ def optimize_kl(likelihood_energy,
     -------
     sl : SampleList
 
-    mean : Field or MultiField (optional)
+    mean : :class:`nifty8.field.Field` or :class:`nifty8.multi_field.MultiField` (optional)
 
     Note
     ----
@@ -335,7 +335,12 @@ def optimize_kl(likelihood_energy,
                                 "`overwrite` to `True`.")
         if _MPI_master(comm(initial_index)):
             makedirs(output_directory, exist_ok=overwrite)
-            for subfolder in ["pickle"] + list(plottable_operators.keys()):
+            subfolders = ["pickle"] + list(plottable_operators.keys())
+            if plot_energy_history:
+                subfolders += ["energy_history"]
+            if plot_minisanity_history:
+                subfolders += ["minisanity_history"]
+            for subfolder in subfolders:
                 makedirs(join(output_directory, subfolder), exist_ok=overwrite)
 
     if initial_index == 0:
@@ -389,7 +394,7 @@ def optimize_kl(likelihood_energy,
             sl = e.samples.at(mean)
             energy_history.append((iglobal, e.value))
 
-        _minisanity(likelihood_energy, iglobal, sl, comm, plot_minisanity_history)
+        _minisanity(lh, iglobal, sl, comm, plot_minisanity_history)
         _barrier(comm(iglobal))
 
         if output_directory is not None:
@@ -408,12 +413,14 @@ def optimize_kl(likelihood_energy,
 
         _counting_report(count, iglobal, comm)
 
-        _handle_inspect_callback(inspect_callback, sl, iglobal, mean, dom, comm)
+        mean = _handle_inspect_callback(inspect_callback, sl, iglobal, mean, dom, comm)
         _barrier(comm(iglobal))
 
         if _handle_terminate_callback(terminate_callback, iglobal, comm):
             break
         _barrier(comm(iglobal))
+
+        del lh
 
     return (sl, mean) if return_final_position else sl
 
@@ -557,7 +564,8 @@ def _plot_samples(file_name, samples, ground_truth, comm, plotting_kwargs):
 
 def _plot_energy_history(index, energy_history):
     import matplotlib.pyplot as plt
-    fname = join(_output_directory, '{}_' + _file_name_by_strategy(index) + '.png')
+    fname = join(_output_directory, 'energy_history',
+                 '{}_' + _file_name_by_strategy(index) + '.png')
 
     E = np.array(energy_history.energy_values)
 
@@ -600,7 +608,7 @@ def _plot_stats(file_name, mean, var, ground_truth, comm, plotting_kwargs):
     if ground_truth is not None:
         p.add(ground_truth, title="Ground truth", **plotting_kwargs)
     p.add(mean, title="Mean", **plotting_kwargs)
-    p.add(var.sqrt(), title="Standard deviation", norm=LogNorm())
+    p.add(var.sqrt(), title="Standard deviation")
     if _MPI_master(comm):
         p.output(name=file_name, ny=2 if ground_truth is None else 3)
 
@@ -608,7 +616,7 @@ def _plot_stats(file_name, mean, var, ground_truth, comm, plotting_kwargs):
 def _minisanity(likelihood_energy, iglobal, sl, comm, plot_minisanity_history):
     from ..extra import minisanity
 
-    s, ms_val = minisanity(likelihood_energy(iglobal), sl, terminal_colors=False,
+    s, ms_val = minisanity(likelihood_energy, sl, terminal_colors=False,
                            return_values=True)
     check_MPI_equality(ms_val, comm(iglobal))
     _report_to_logger_and_file(s, "minisanity.txt", iglobal, comm, True, True,
@@ -616,21 +624,35 @@ def _minisanity(likelihood_energy, iglobal, sl, comm, plot_minisanity_history):
 
     if _MPI_master(comm(iglobal)) and _output_directory is not None:
         # load/create minisanity_history object
-        if iglobal == 0:
-            mh = ms_val
-        else:
-            mh = _pickle_load_values(iglobal, 'minisanity_history')
+        value_type_keys = ['redchisq', 'scmean']
+        category_keys = ['data_residuals', 'latent_variables']
 
-        for k1 in ['redchisq', 'scmean']:
-            for k2 in ['data_residuals', 'latent_variables']:
-                for k3 in mh[k1][k2].keys():
-                    v = ms_val[k1][k2][k3]
-                    if iglobal == 0:
-                        mh[k1][k2][k3]['mean'] = [v['mean'], ]
-                        mh[k1][k2][k3]['std'] = [v['std'], ]
-                    else:
-                        mh[k1][k2][k3]['mean'].append(v['mean'])
-                        mh[k1][k2][k3]['std'].append(v['std'])
+        if iglobal == 0:
+            mh = {tk: {ck: {} for ck in category_keys} for tk in value_type_keys}
+        else:
+            mh = _pickle_load_values(iglobal - 1, 'minisanity_history')
+
+        key_set_mh = {}
+        key_set_msval = {}
+        for ck in category_keys:
+            key_set_mh[ck] = set(mh['redchisq'][ck].keys())
+            key_set_msval[ck] = set(ms_val['redchisq'][ck].keys())
+
+        for tk in value_type_keys:
+            for ck in category_keys:
+                # all keys not yet in minisanity history
+                for ek in key_set_msval[ck] - key_set_mh[ck]:
+                    v = ms_val[tk][ck][ek]
+                    mh[tk][ck][ek] = {}
+                    mh[tk][ck][ek]['index'] = [iglobal, ]
+                    mh[tk][ck][ek]['mean'] = [v['mean'], ]
+                    mh[tk][ck][ek]['std'] = [v['std'], ]
+                # all keys already present in minisanity history
+                for ek in key_set_msval[ck] & key_set_mh[ck]:
+                    v = ms_val[tk][ck][ek]
+                    mh[tk][ck][ek]['index'].append(iglobal)
+                    mh[tk][ck][ek]['mean'].append(v['mean'])
+                    mh[tk][ck][ek]['std'].append(v['std'])
 
         _pickle_save_values(iglobal, 'minisanity_history', mh)
 
@@ -646,17 +668,20 @@ def _plot_minisanity_history(index, minisanity_history):
 
     labels = []
     vals = []
+    idxs = []
 
     n_dr = 0
     for kk in mhrcs['data_residuals'].keys():
         labels.append(f'residuals: {n_dr}')
         vals.append(mhrcs['data_residuals'][kk]['mean'])
+        idxs.append(mhrcs['data_residuals'][kk]['index'])
         n_dr += 1
 
     n_lv = 0
     for kk in mhrcs['latent_variables'].keys():
         labels.append(f'latent: {kk}')
         vals.append(mhrcs['latent_variables'][kk]['mean'])
+        idxs.append(mhrcs['latent_variables'][kk]['index'])
         n_lv += 1
 
     n_tot = n_dr + n_lv
@@ -667,12 +692,12 @@ def _plot_minisanity_history(index, minisanity_history):
     for ii in range(1, n_tot, 2):
         linestyles[ii] = '--'
 
-    ts = np.arange(len(vals[0]))
     vals = [np.array(v) for v in vals]
+    idxs = [np.array(i) for i in idxs]
 
     plt.figure()
     for i in range(n_tot):
-        plt.plot(ts, vals[i], label=labels[i], color=colors[i], marker='.',
+        plt.plot(idxs[i], vals[i], label=labels[i], color=colors[i], marker='.',
                  linestyle=linestyles[i])
 
     xlim = plt.xlim()
@@ -684,8 +709,8 @@ def _plot_minisanity_history(index, minisanity_history):
     plt.xlabel('iteration')
     plt.ylabel(r'red. $\chi^2$')
     plt.legend(loc='upper right')
-    plt.savefig(join(_output_directory, 'minisanity_history_' +
-                     _file_name_by_strategy(index) + '.png'))
+    plt.savefig(join(_output_directory, 'minisanity_history',
+                     'minisanity_history_' + _file_name_by_strategy(index) + '.png'))
     plt.clf()
 
 

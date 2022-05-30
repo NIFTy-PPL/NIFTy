@@ -453,9 +453,9 @@ class ResidualSampleList(SampleListBase):
 
         Parameters
         ----------
-        mean : Field or MultiField
+        mean : :class:`nifty8.field.Field` or :class:`nifty8.multi_field.MultiField`
             Mean of the sample list.
-        residuals : list of Field or list of MultiField
+        residuals : list of :class:`nifty8.field.Field` or list of :class:`nifty8.multi_field.MultiField`
             List of residuals from the mean. If it is a list of `MultiField`,
             the domain of the residuals can be a subdomain of the domain of
             mean. This results in adding just a zero in respective `MultiField`
@@ -547,7 +547,7 @@ class SampleList(SampleListBase):
 
         Parameters
         ----------
-        samples : list of Field or list of MultiField
+        samples : list of :class:`nifty8.field.Field` or list of :class:`nifty8.multi_field.MultiField`
             List of samples.
         comm : MPI communicator or None
             If not `None`, samples can be gathered across multiple MPI tasks. If

@@ -148,7 +148,7 @@ class LinearOperator(Operator):
 
         Parameters
         ----------
-        x : Field
+        x : :class:`nifty8.field.Field`
             The input Field, defined on the Operator's domain or target,
             depending on mode.
 
@@ -161,7 +161,7 @@ class LinearOperator(Operator):
 
         Returns
         -------
-        Field
+        :class:`nifty8.field.Field`
             The processed Field defined on the Operator's target or domain,
             depending on mode.
         """
@@ -180,12 +180,12 @@ class LinearOperator(Operator):
 
         Parameters
         ----------
-        x : Field
+        x : :class:`nifty8.field.Field`
             The input Field, defined on the Operator's domain.
 
         Returns
         -------
-        Field
+        :class:`nifty8.field.Field`
             The processed Field defined on the Operator's target domain.
         """
         return self.apply(x, self.TIMES)
@@ -195,12 +195,12 @@ class LinearOperator(Operator):
 
         Parameters
         ----------
-        x : Field
+        x : :class:`nifty8.field.Field`
             The input Field, defined on the Operator's target domain
 
         Returns
         -------
-        Field
+        :class:`nifty8.field.Field`
             The processed Field defined on the Operator's domain.
         """
         return self.apply(x, self.INVERSE_TIMES)
@@ -210,12 +210,12 @@ class LinearOperator(Operator):
 
         Parameters
         ----------
-        x : Field
+        x : :class:`nifty8.field.Field`
             The input Field, defined on the Operator's target domain
 
         Returns
         -------
-        Field
+        :class:`nifty8.field.Field`
             The processed Field defined on the Operator's domain.
         """
         return self.apply(x, self.ADJOINT_TIMES)
@@ -225,12 +225,12 @@ class LinearOperator(Operator):
 
         Parameters
         ----------
-        x : Field
+        x : :class:`nifty8.field.Field`
             The input Field, defined on the Operator's domain.
 
         Returns
         -------
-        Field
+        :class:`nifty8.field.Field`
             The processed Field defined on the Operator's target domain.
 
         Notes

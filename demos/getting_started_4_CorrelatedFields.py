@@ -40,7 +40,7 @@ import numpy as np
 
 n_pix = 256
 x_space = ift.RGSpace(n_pix)
-
+ift.random.push_sseq_from_seed(1)
 
 # +
 # Plotting routine
@@ -84,20 +84,20 @@ def plot(fields, spectra, title=None):
 
 # Helper: draw main sample
 main_sample = None
-def init_model(m_pars, fl_pars):
+def init_model(m_pars, fl_pars, matern=False):
     global main_sample
     cf = ift.CorrelatedFieldMaker(m_pars["prefix"])
     cf.set_amplitude_total_offset(m_pars["offset_mean"], m_pars["offset_std"])
-    cf.add_fluctuations(**fl_pars)
+    cf.add_fluctuations_matern(**fl_pars) if matern else cf.add_fluctuations(**fl_pars)
     field = cf.finalize(prior_info=0)
     main_sample = ift.from_random(field.domain)
     print("model domain keys:", field.domain.keys())
     
 # Helper: field and spectrum from parameter dictionaries + plotting
-def eval_model(m_pars, fl_pars, title=None, samples=None):
+def eval_model(m_pars, fl_pars, title=None, samples=None, matern=False):
     cf = ift.CorrelatedFieldMaker(m_pars["prefix"])
     cf.set_amplitude_total_offset(m_pars["offset_mean"], m_pars["offset_std"])
-    cf.add_fluctuations(**fl_pars)
+    cf.add_fluctuations_matern(**fl_pars) if matern else cf.add_fluctuations(**fl_pars)
     field = cf.finalize(prior_info=0)
     spectrum = cf.amplitude
     if samples is None:
@@ -118,15 +118,15 @@ def gen_samples(key_to_vary):
         samples.append(ift.MultiField.from_dict(d))
     return samples
         
-def vary_parameter(parameter_key, values, samples_vary_in=None):
+def vary_parameter(parameter_key, values, samples_vary_in=None, matern=False):
     s = gen_samples(samples_vary_in)
     for v in values:
         if parameter_key in cf_make_pars.keys():
             m_pars = {**cf_make_pars, parameter_key: v}
-            eval_model(m_pars, cf_x_fluct_pars, f"{parameter_key} = {v}", s)
+            eval_model(m_pars, cf_x_fluct_pars, f"{parameter_key} = {v}", s, matern)
         else:
             fl_pars = {**cf_x_fluct_pars, parameter_key: v}
-            eval_model(cf_make_pars, fl_pars, f"{parameter_key} = {v}", s)
+            eval_model(cf_make_pars, fl_pars, f"{parameter_key} = {v}", s, matern)
 
 
 # -
@@ -292,3 +292,95 @@ vary_parameter('offset_std', [(1e-16, 1e-16), (0.5, 1e-16), (2., 1e-16)], sample
 # #### `offset_std` std:
 
 vary_parameter('offset_std', [(1., 0.01), (1., 0.1), (1., 1.)], samples_vary_in='zeromode')
+
+# ## Matern fluctuation kernels
+#
+# The correlated fields model also supports parametrizing the power spectra of field dimensions
+# using Matern kernels. In the following, the effects of their parameters are demonstrated.
+#
+# Contrary to the field fluctuations parametrization showed above, the Matern kernel
+# parameters show strong interactions. For example, the field amplitude does not only depend on the
+# amplitude scaling parameter `scale`, but on the combination of all three parameters `scale`,
+# `cutoff` and `loglogslope`.
+
+# Neutral model parameters yielding a quasi-constant field
+cf_make_pars = {
+    'offset_mean': 0.,
+    'offset_std': (1e-3, 1e-16),
+    'prefix': ''
+}
+
+cf_x_fluct_pars = {
+    'target_subdomain': x_space,
+    'scale': (1e-2, 1e-16),
+    'cutoff': (1., 1e-16),
+    'loglogslope': (-2.0, 1e-16)
+}
+
+init_model(cf_make_pars, cf_x_fluct_pars, matern=True)
+
+# Show neutral field
+eval_model(cf_make_pars, cf_x_fluct_pars, "Neutral Field", matern=True)
+
+# # Parameter Showcases
+#
+# ## The `scale` parameters of `add_fluctuations_matern()`
+#
+# determine the **overall amplitude scaling factor of fluctuations in the target subdomain**
+# for which `add_fluctuations_matern` is called.
+#
+# **It does not set the absolute amplitude**, which depends on all other parameters, too.
+#
+# `scale[0]` set the _average_ amplitude scaling factor of the fields' fluctuations along the given dimension,\
+# `scale[1]` sets the width and shape of the scaling factor distribution.
+#
+# The scaling factor is modelled as being log-normally distributed,
+# see `The Moment-Matched Log-Normal Distribution` above for details.
+# 
+# #### `scale` mean:
+
+vary_parameter('scale', [(0.01, 1e-16), (0.1, 1e-16), (1.0, 1e-16)], samples_vary_in='xi', matern=True)
+
+# #### `scale` std:
+
+vary_parameter('scale', [(0.5, 0.01), (0.5, 0.1), (0.5, 0.5)], samples_vary_in='scale', matern=True)
+cf_x_fluct_pars['scale'] = (0.5, 1e-16)
+
+# ## The `loglogslope` parameters of `add_fluctuations_matern()`
+#
+# determine **the slope of the loglog-linear (power law) component of the power spectrum**.
+#
+# `loglogslope[0]` set the _average_ power law exponent of the fields' power spectrum along the given dimension,\
+# `loglogslope[1]` sets the width and shape of the exponent distribution.
+#
+# The `loglogslope` is modelled to be normally distributed.
+#
+# #### `loglogslope` mean:
+
+vary_parameter('loglogslope', [(-4.0, 1e-16), (-2.0, 1e-16), (-1.0, 1e-16)], samples_vary_in='xi', matern=True)
+
+# As one can see, the field amplitude also depends on the `loglogslope` parameter.
+#
+# #### `loglogslope` std:
+
+vary_parameter('loglogslope', [(-3., 0.01), (-3., 0.5), (-3., 1.0)], samples_vary_in='loglogslope', matern=True)
+
+# ## The `cutoff` parameters of `add_fluctuations_matern()`
+#
+# determines **at what wavevector length the power spectrum should transition from constant power
+# to following the powerlaw set by `loglogslope`**.
+#
+# `cutoff[0]` set the _average_ wavevector length at which the power spectrum transition occurs,\
+# `cutoff[1]` sets the width and shape of the transition wavevector length distribution.
+#
+# The cutoff is modelled as being log-normally distributed,
+# see `The Moment-Matched Log-Normal Distribution` above for details.
+#
+# #### `cutoff` mean:
+
+cf_x_fluct_pars['loglogslope'] = (-8.0, 1e-16)
+vary_parameter('cutoff', [(1.0, 1e-16), (3.16, 1e-16), (10.0, 1e-16)], samples_vary_in='xi', matern=True)
+
+# #### `cutoff` std:
+
+vary_parameter('cutoff', [(10., 1.0), (10., 3.16), (10., 10.)], samples_vary_in='cutoff', matern=True)
