@@ -89,7 +89,7 @@ class ConjugateGradient(Minimizer):
             if curv == 0.:
                 logger.error("Error: ConjugateGradient: curv==0.")
                 return energy, controller.ERROR
-            alpha = previous_gamma/curv
+            alpha = previous_gamma / curv
 
             if alpha < 0:
                 logger.error("Error: ConjugateGradient: alpha<0.")
@@ -111,8 +111,7 @@ class ConjugateGradient(Minimizer):
                 logger.error("Error: ConjugateGradient: gamma==NaN")
                 return energy, controller.ERROR
             if gamma < 0:
-                logger.error(
-                    "Positive definiteness of preconditioner violated!")
+                logger.error("Positive definiteness of preconditioner violated!")
                 return energy, controller.ERROR
             if gamma == 0:
                 return energy, controller.CONVERGED
@@ -121,6 +120,6 @@ class ConjugateGradient(Minimizer):
             if status != controller.CONTINUE:
                 return energy, status
 
-            d = d * max(0, gamma/previous_gamma) + s
+            d = d * max(0, gamma / previous_gamma) + s
 
             previous_gamma = gamma

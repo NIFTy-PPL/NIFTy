@@ -21,8 +21,7 @@ from ..logger import logger
 from ..probing import approximation2endo
 from ..sugar import makeOp
 from .conjugate_gradient import ConjugateGradient
-from .iteration_controllers import (AbsDeltaEnergyController,
-                                    GradientNormController)
+from .iteration_controllers import (AbsDeltaEnergyController, GradientNormController)
 from .line_search import LineSearch
 from .minimizer import Minimizer
 from .quadratic_energy import QuadraticEnergy
@@ -98,8 +97,7 @@ class DescentMinimizer(Minimizer):
                 return energy, controller.ERROR
 
             if new_energy.value == energy.value:
-                logger.warning(
-                    "Warning: Energy has not changed. Assuming convergence...")
+                logger.warning("Warning: Energy has not changed. Assuming convergence...")
                 return new_energy, controller.CONVERGED
 
             energy = new_energy
@@ -156,8 +154,7 @@ class RelaxedNewton(DescentMinimizer):
     def __init__(self, controller, line_searcher=None):
         if line_searcher is None:
             line_searcher = LineSearch(preferred_initial_step_size=1.)
-        super(RelaxedNewton, self).__init__(controller=controller,
-                                            line_searcher=line_searcher)
+        super(RelaxedNewton, self).__init__(controller=controller, line_searcher=line_searcher)
 
     def get_descent_direction(self, energy, _=None):
         return -energy.metric.inverse_times(energy.gradient)
@@ -169,13 +166,18 @@ class NewtonCG(DescentMinimizer):
     Algorithm derived from SciPy sources.
     """
 
-    def __init__(self, controller, napprox=0, line_searcher=None, name=None,
-                 nreset=20, max_cg_iterations=200, energy_reduction_factor=0.1,
+    def __init__(self,
+                 controller,
+                 napprox=0,
+                 line_searcher=None,
+                 name=None,
+                 nreset=20,
+                 max_cg_iterations=200,
+                 energy_reduction_factor=0.1,
                  enable_logging=False):
         if line_searcher is None:
             line_searcher = LineSearch(preferred_initial_step_size=1.)
-        super(NewtonCG, self).__init__(controller=controller,
-                                       line_searcher=line_searcher)
+        super(NewtonCG, self).__init__(controller=controller, line_searcher=line_searcher)
         self._napprox = napprox
         self._name = name
         self._nreset = nreset
@@ -188,12 +190,12 @@ class NewtonCG(DescentMinimizer):
         if old_value is None:
             ic = GradientNormController(iteration_limit=5)
         else:
-            ediff = self._alpha*(old_value-energy.value)
+            ediff = self._alpha * (old_value - energy.value)
             ic = AbsDeltaEnergyController(
                 ediff, iteration_limit=self._max_cg_iterations, name=self._name)
         if self._history is not None:
             ic.enable_logging()
-        e = QuadraticEnergy(0*energy.position, energy.metric, energy.gradient)
+        e = QuadraticEnergy(0 * energy.position, energy.metric, energy.gradient)
         p = None
         if self._napprox > 1:
             met = energy.metric
@@ -211,10 +213,9 @@ class NewtonCG(DescentMinimizer):
 
 
 class L_BFGS(DescentMinimizer):
-    def __init__(self, controller, line_searcher=LineSearch(),
-                 max_history_length=5):
-        super(L_BFGS, self).__init__(controller=controller,
-                                     line_searcher=line_searcher)
+
+    def __init__(self, controller, line_searcher=LineSearch(), max_history_length=5):
+        super(L_BFGS, self).__init__(controller=controller, line_searcher=line_searcher)
         self.max_history_length = max_history_length
 
     def __call__(self, energy):
@@ -223,8 +224,8 @@ class L_BFGS(DescentMinimizer):
 
     def reset(self):
         self._k = 0
-        self._s = [None]*self.max_history_length
-        self._y = [None]*self.max_history_length
+        self._s = [None] * self.max_history_length
+        self._y = [None] * self.max_history_length
 
     def get_descent_direction(self, energy, _=None):
         x = energy.position
@@ -235,26 +236,26 @@ class L_BFGS(DescentMinimizer):
         gradient = energy.gradient
 
         nhist = min(k, maxhist)
-        alpha = [None]*maxhist
+        alpha = [None] * maxhist
         p = -gradient
         if k > 0:
             idx = (k-1) % maxhist
-            s[idx] = x-self._lastx
-            y[idx] = gradient-self._lastgrad
+            s[idx] = x - self._lastx
+            y[idx] = gradient - self._lastgrad
         if nhist > 0:
-            for i in range(k-1, k-nhist-1, -1):
+            for i in range(k - 1, k - nhist - 1, -1):
                 idx = i % maxhist
-                alpha[idx] = s[idx].s_vdot(p)/s[idx].s_vdot(y[idx])
-                p = p - alpha[idx]*y[idx]
+                alpha[idx] = s[idx].s_vdot(p) / s[idx].s_vdot(y[idx])
+                p = p - alpha[idx] * y[idx]
             idx = (k-1) % maxhist
             fact = s[idx].s_vdot(y[idx]) / y[idx].s_vdot(y[idx])
             if fact <= 0.:
                 logger.error("L-BFGS curvature not positive definite!")
-            p = p*fact
-            for i in range(k-nhist, k):
+            p = p * fact
+            for i in range(k - nhist, k):
                 idx = i % maxhist
                 beta = y[idx].s_vdot(p) / s[idx].s_vdot(y[idx])
-                p = p + (alpha[idx]-beta)*s[idx]
+                p = p + (alpha[idx] - beta) * s[idx]
         self._lastx = x
         self._lastgrad = gradient
         self._k += 1
@@ -276,10 +277,8 @@ class VL_BFGS(DescentMinimizer):
     Microsoft
     """
 
-    def __init__(self, controller, line_searcher=LineSearch(),
-                 max_history_length=5):
-        super(VL_BFGS, self).__init__(controller=controller,
-                                      line_searcher=line_searcher)
+    def __init__(self, controller, line_searcher=LineSearch(), max_history_length=5):
+        super(VL_BFGS, self).__init__(controller=controller, line_searcher=line_searcher)
         self.max_history_length = max_history_length
 
     def __call__(self, energy):
@@ -304,7 +303,7 @@ class VL_BFGS(DescentMinimizer):
 
         descent_direction = delta[0] * b[0]
         for i in range(1, len(delta)):
-            descent_direction = descent_direction + delta[i]*b[i]
+            descent_direction = descent_direction + delta[i] * b[i]
 
         return descent_direction
 
@@ -345,8 +344,8 @@ class _InformationStore:
 
     def __init__(self, max_history_length, x0, gradient):
         self.max_history_length = max_history_length
-        self.s = [None]*max_history_length
-        self.y = [None]*max_history_length
+        self.s = [None] * max_history_length
+        self.y = [None] * max_history_length
         self.last_x = x0
         self.last_gradient = gradient
         self.k = 0
@@ -375,10 +374,10 @@ class _InformationStore:
         mmax = self.max_history_length
 
         for i in range(m):
-            result.append(self.s[(self.k-m+i) % mmax])
+            result.append(self.s[(self.k - m + i) % mmax])
 
         for i in range(m):
-            result.append(self.y[(self.k-m+i) % mmax])
+            result.append(self.y[(self.k - m + i) % mmax])
 
         result.append(self.last_gradient)
 
@@ -399,7 +398,7 @@ class _InformationStore:
         m = self.history_length
         mmax = self.max_history_length
         k = self.k
-        result = np.empty((2*m+1, 2*m+1), dtype=np.float64)
+        result = np.empty((2*m + 1, 2*m + 1), dtype=np.float64)
 
         # update the stores
         k1 = (k-1) % mmax
@@ -408,7 +407,7 @@ class _InformationStore:
             self.ss[kmi, k1] = self.ss[k1, kmi] = self.s[kmi].s_vdot(self.s[k1])
             self.yy[kmi, k1] = self.yy[k1, kmi] = self.y[kmi].s_vdot(self.y[k1])
             self.sy[kmi, k1] = self.s[kmi].s_vdot(self.y[k1])
-        for j in range(m-1):
+        for j in range(m - 1):
             kmj = (k-m+j) % mmax
             self.sy[k1, kmj] = self.s[k1].s_vdot(self.y[kmj])
 
@@ -417,16 +416,16 @@ class _InformationStore:
             for j in range(m):
                 kmj = (k-m+j) % mmax
                 result[i, j] = self.ss[kmi, kmj]
-                result[i, m+j] = result[m+j, i] = self.sy[kmi, kmj]
-                result[m+i, m+j] = self.yy[kmi, kmj]
+                result[i, m + j] = result[m + j, i] = self.sy[kmi, kmj]
+                result[m + i, m + j] = self.yy[kmi, kmj]
 
             sgrad_i = self.s[kmi].s_vdot(self.last_gradient)
-            result[2*m, i] = result[i, 2*m] = sgrad_i
+            result[2 * m, i] = result[i, 2 * m] = sgrad_i
 
             ygrad_i = self.y[kmi].s_vdot(self.last_gradient)
-            result[2*m, m+i] = result[m+i, 2*m] = ygrad_i
+            result[2 * m, m + i] = result[m + i, 2 * m] = ygrad_i
 
-        result[2*m, 2*m] = self.last_gradient.norm()
+        result[2 * m, 2 * m] = self.last_gradient.norm()
         return result
 
     @property
@@ -441,22 +440,22 @@ class _InformationStore:
         m = self.history_length
         b_dot_b = self.b_dot_b
 
-        delta = np.zeros(2*m+1, dtype=np.float64)
-        delta[2*m] = -1
+        delta = np.zeros(2*m + 1, dtype=np.float64)
+        delta[2 * m] = -1
 
         alpha = np.empty(m, dtype=np.float64)
 
-        for j in range(m-1, -1, -1):
-            delta_b_b = sum([delta[l] * b_dot_b[l, j] for l in range(2*m+1)])
-            alpha[j] = delta_b_b/b_dot_b[j, m+j]
-            delta[m+j] -= alpha[j]
+        for j in range(m - 1, -1, -1):
+            delta_b_b = sum([delta[l] * b_dot_b[l, j] for l in range(2*m + 1)])
+            alpha[j] = delta_b_b / b_dot_b[j, m + j]
+            delta[m + j] -= alpha[j]
 
-        for i in range(2*m+1):
-            delta[i] *= b_dot_b[m-1, 2*m-1]/b_dot_b[2*m-1, 2*m-1]
+        for i in range(2*m + 1):
+            delta[i] *= b_dot_b[m - 1, 2*m - 1] / b_dot_b[2*m - 1, 2*m - 1]
 
         for j in range(m):
-            delta_b_b = sum([delta[l]*b_dot_b[m+j, l] for l in range(2*m+1)])
-            beta = delta_b_b/b_dot_b[j, m+j]
+            delta_b_b = sum([delta[l] * b_dot_b[m + j, l] for l in range(2*m + 1)])
+            beta = delta_b_b / b_dot_b[j, m + j]
             delta[j] += (alpha[j] - beta)
 
         return delta

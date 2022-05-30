@@ -25,8 +25,9 @@ def normal_prior(mean, std) -> Callable:
     """Match standard normally distributed random variables to non-standard
     variables.
     """
+
     def standard_to_normal(xi):
-        return mean + std * xi
+        return mean + std*xi
 
     return standard_to_normal
 
@@ -97,17 +98,15 @@ def uniform_prior(a_min=0., a_max=1.) -> Callable:
     return standard_to_uniform
 
 
-def interpolator(
-    func: Callable,
-    xmin: float,
-    xmax: float,
-    *,
-    step: Optional[float] = None,
-    num: Optional[int] = None,
-    table_func: Optional[Callable] = None,
-    inv_table_func: Optional[Callable] = None,
-    return_inverse: Optional[bool] = False
-):  # Adapted from NIFTy
+def interpolator(func: Callable,
+                 xmin: float,
+                 xmax: float,
+                 *,
+                 step: Optional[float] = None,
+                 num: Optional[int] = None,
+                 table_func: Optional[Callable] = None,
+                 inv_table_func: Optional[Callable] = None,
+                 return_inverse: Optional[bool] = False):    # Adapted from NIFTy
     """
     Evaluate a function point-wise by interpolation.  Can be supplied with a
     table_func to increase the interpolation accuracy, Best results are
@@ -209,10 +208,8 @@ def invgamma_prior(a, scale, loc=0., step=1e-2) -> Callable:
     from scipy.stats import invgamma, norm
 
     if not jnp.isscalar(a) or not jnp.isscalar(loc):
-        te = (
-            "Shape `a` and location `loc` must be of scalar type"
-            f"; got {type(a)} and {type(loc)} respectively"
-        )
+        te = ("Shape `a` and location `loc` must be of scalar type"
+              f"; got {type(a)} and {type(loc)} respectively")
         raise TypeError(te)
     if loc == 0.:
         # Pull out `scale` to interpolate less
@@ -222,10 +219,9 @@ def invgamma_prior(a, scale, loc=0., step=1e-2) -> Callable:
     else:
         raise TypeError("`scale` may only be array-like for `loc == 0.`")
 
-    xmin, xmax = -8.2, 8.2  # (1. - norm.cdf(8.2)) * 2 < 1e-15
+    xmin, xmax = -8.2, 8.2    # (1. - norm.cdf(8.2)) * 2 < 1e-15
     standard_to_invgamma_interp = interpolator(
-        s2i, xmin, xmax, step=step, table_func=jnp.log, inv_table_func=jnp.exp
-    )
+        s2i, xmin, xmax, step=step, table_func=jnp.log, inv_table_func=jnp.exp)
 
     def standard_to_invgamma(x):
         # Allow for array-like `scale` without separate interpolations and only
@@ -241,7 +237,7 @@ def invgamma_invprior(a, scale, loc=0., step=1e-2) -> Callable:
     """Get the inverse transformation to `invgamma_prior`."""
     from scipy.stats import invgamma, norm
 
-    xmin, xmax = -8.2, 8.2  # (1. - norm.cdf(8.2)) * 2 < 1e-15
+    xmin, xmax = -8.2, 8.2    # (1. - norm.cdf(8.2)) * 2 < 1e-15
     _, invgamma_to_standard = interpolator(
         lambda x: invgamma.ppf(norm._cdf(x), a=a, loc=loc, scale=scale),
         xmin,
@@ -249,6 +245,5 @@ def invgamma_invprior(a, scale, loc=0., step=1e-2) -> Callable:
         step=step,
         table_func=jnp.log,
         inv_table_func=jnp.exp,
-        return_inverse=True
-    )
+        return_inverse=True)
     return invgamma_to_standard

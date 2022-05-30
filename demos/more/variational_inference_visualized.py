@@ -37,12 +37,12 @@ def main():
 
     a = ift.FieldAdapter(dom, 'a')
     b = ift.FieldAdapter(dom, 'b')
-    lh = (a.adjoint @ a).scale(scale) + (b.adjoint @ b).scale(-1.35*2).exp()
+    lh = (a.adjoint @ a).scale(scale) + (b.adjoint @ b).scale(-1.35 * 2).exp()
     lh = ift.VariableCovarianceGaussianEnergy(dom, 'a', 'b', np.float64) @ lh
     icsamp = ift.AbsDeltaEnergyController(deltaE=0.1, iteration_limit=2)
     ham = ift.StandardHamiltonian(lh, icsamp)
 
-    x_limits = [-8/scale, 8/scale]
+    x_limits = [-8 / scale, 8 / scale]
     x_limits_scaled = [-8, 8]
     y_limits = [-4, 4]
     x = np.linspace(*x_limits, num=401)
@@ -51,19 +51,19 @@ def main():
 
     def np_ham(x, y):
         prior = x**2 + y**2
-        mean = x*scale
-        lcov = 1.35*2*y
-        lh = .5*(mean**2*np.exp(-lcov) + lcov)
+        mean = x * scale
+        lcov = 1.35 * 2 * y
+        lh = .5 * (mean**2 * np.exp(-lcov) + lcov)
         return lh + prior
 
-    z = np.exp(-1*np_ham(xx, yy))
+    z = np.exp(-1 * np_ham(xx, yy))
     plt.plot(y, np.sum(z, axis=0))
     plt.xlabel('y')
     plt.ylabel('unnormalized pdf')
     plt.title('Marginal density')
     plt.pause(2.)
     plt.close()
-    plt.plot(x*scale, np.sum(z, axis=1))
+    plt.plot(x * scale, np.sum(z, axis=1))
     plt.xlabel('x')
     plt.ylabel('unnormalized pdf')
     plt.title('Marginal density')
@@ -72,14 +72,12 @@ def main():
 
     mapx = xx[z == np.max(z)]
     mapy = yy[z == np.max(z)]
-    meanx = (xx*z).sum()/z.sum()
-    meany = (yy*z).sum()/z.sum()
+    meanx = (xx * z).sum() / z.sum()
+    meany = (yy * z).sum() / z.sum()
 
     n_samples = 100
-    minimizer = ift.NewtonCG(
-        ift.GradientNormController(iteration_limit=3, name='Mini'))
-    IC = ift.StochasticAbsDeltaEnergyController(0.5, iteration_limit=20,
-                                                name='advi')
+    minimizer = ift.NewtonCG(ift.GradientNormController(iteration_limit=3, name='Mini'))
+    IC = ift.StochasticAbsDeltaEnergyController(0.5, iteration_limit=20, name='advi')
     stochastic_minimizer_mf = ift.ADVIOptimizer(IC, eta=0.3)
     stochastic_minimizer_fc = ift.ADVIOptimizer(IC, eta=0.3)
     posmg = posgeo = posmf = posfc = ift.from_random(ham.domain, 'normal')
@@ -92,9 +90,12 @@ def main():
     def update_plot(runs):
         for axx, (nn, kl) in zip(axs, runs):
             axx.clear()
-            axx.imshow(z.T, origin='lower',  cmap='gist_earth_r',
-                       norm=LogNorm(vmin=1e-3, vmax=np.max(z)),
-                       extent=x_limits_scaled + y_limits)
+            axx.imshow(
+                z.T,
+                origin='lower',
+                cmap='gist_earth_r',
+                norm=LogNorm(vmin=1e-3, vmax=np.max(z)),
+                extent=x_limits_scaled + y_limits)
             xs, ys = [], []
             if isinstance(kl, ift.SampledKLEnergyClass):
                 samples = kl.samples.iterator()
@@ -110,11 +111,10 @@ def main():
                 my += b
             mx /= n_samples
             my /= n_samples
-            axx.scatter(np.array(xs)*scale, np.array(ys),
-                        label=f'{nn} samples')
-            axx.scatter(mx*scale, my, label=f'{nn} mean')
-            axx.scatter(mapx*scale, mapy, label='MAP')
-            axx.scatter(meanx*scale, meany, label='Posterior mean')
+            axx.scatter(np.array(xs) * scale, np.array(ys), label=f'{nn} samples')
+            axx.scatter(mx * scale, my, label=f'{nn} mean')
+            axx.scatter(mapx * scale, mapy, label='MAP')
+            axx.scatter(meanx * scale, meany, label='Posterior mean')
             axx.set_title(nn)
             axx.set_xlim(x_limits_scaled)
             axx.set_ylim(y_limits)
@@ -134,12 +134,10 @@ def main():
         if ii % 2 == 0:
             # Resample GeoVI and MGVI
             mgkl = ift.SampledKLEnergy(posmg, ham, n_samples, None, False)
-            mini_samp = ift.NewtonCG(
-                    ift.AbsDeltaEnergyController(1E-8, iteration_limit=5))
+            mini_samp = ift.NewtonCG(ift.AbsDeltaEnergyController(1E-8, iteration_limit=5))
             geokl = ift.SampledKLEnergy(posgeo, ham, n_samples, mini_samp, False)
 
-            runs = (("MGVI", mgkl), ("GeoVI", geokl),
-                    ("MeanfieldVI", mf), ("FullCovarianceVI", fc))
+            runs = (("MGVI", mgkl), ("GeoVI", geokl), ("MeanfieldVI", mf), ("FullCovarianceVI", fc))
             update_plot(runs)
 
         mgkl, _ = minimizer(mgkl)
@@ -148,8 +146,7 @@ def main():
         fc.minimize(stochastic_minimizer_fc)
         posmg = mgkl.position
         posgeo = geokl.position
-        runs = (("MGVI", mgkl), ("GeoVI", geokl),
-                ("MeanfieldVI", mf), ("FullCovarianceVI", fc))
+        runs = (("MGVI", mgkl), ("GeoVI", geokl), ("MeanfieldVI", mf), ("FullCovarianceVI", fc))
         update_plot(runs)
     ift.logger.info('Finished')
     # Uncomment the following line in order to leave the plots open

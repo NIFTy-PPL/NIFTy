@@ -89,23 +89,22 @@ class ScalingOperator(EndomorphicOperator):
         if (mode & MODES_WITH_ADJOINT) != 0:
             fct = np.conj(fct)
         if (mode & MODES_WITH_INVERSE) != 0:
-            fct = 1./fct
-        return x*fct
+            fct = 1. / fct
+        return x * fct
 
     def _flip_modes(self, trafo):
         fct = self._factor
         if trafo & self.ADJOINT_BIT:
             fct = np.conj(fct)
         if trafo & self.INVERSE_BIT:
-            fct = 1./fct
+            fct = 1. / fct
         return ScalingOperator(self._domain, fct, self._dtype)
 
     def _get_fct(self, from_inverse):
         fct = self._factor
-        if (fct.imag != 0. or fct.real < 0. or
-                (fct.real == 0. and from_inverse)):
+        if (fct.imag != 0. or fct.real < 0. or (fct.real == 0. and from_inverse)):
             raise ValueError("operator not positive definite")
-        return 1./np.sqrt(fct) if from_inverse else np.sqrt(fct)
+        return 1. / np.sqrt(fct) if from_inverse else np.sqrt(fct)
 
     def draw_sample(self, from_inverse=False):
         from ..sugar import from_random
@@ -113,8 +112,11 @@ class ScalingOperator(EndomorphicOperator):
             s = "Need to specify dtype to be able to sample from this operator:\n"
             s += self.__repr__()
             raise RuntimeError(s)
-        return from_random(domain=self._domain, random_type="normal",
-                           dtype=self._dtype, std=self._get_fct(from_inverse))
+        return from_random(
+            domain=self._domain,
+            random_type="normal",
+            dtype=self._dtype,
+            std=self._get_fct(from_inverse))
 
     def get_sqrt(self):
         fct = self._get_fct(False)

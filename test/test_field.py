@@ -30,8 +30,8 @@ SPACE_COMBINATIONS = [(), SPACES[0], SPACES[1], SPACES]
 
 @pmp('domain', SPACE_COMBINATIONS)
 @pmp('attribute_desired_type',
-     [['domain', ift.DomainTuple], ['val', np.ndarray],
-      ['shape', tuple], ['size', (int, np.int64)]])
+     [['domain', ift.DomainTuple], ['val', np.ndarray], ['shape', tuple], ['size',
+                                                                           (int, np.int64)]])
 def test_return_types(domain, attribute_desired_type):
     attribute = attribute_desired_type[0]
     desired_type = attribute_desired_type[1]
@@ -40,15 +40,16 @@ def test_return_types(domain, attribute_desired_type):
 
 
 def _spec1(k):
-    return 42/(1. + k)**2
+    return 42 / (1. + k)**2
 
 
 def _spec2(k):
-    return 42/(1. + k)**3
+    return 42 / (1. + k)**3
 
 
-@pmp('space1', [ift.RGSpace((8,), harmonic=True),
-                ift.RGSpace((8, 8), harmonic=True, distances=0.123)])
+@pmp('space1',
+     [ift.RGSpace((8,), harmonic=True),
+      ift.RGSpace((8, 8), harmonic=True, distances=0.123)])
 @pmp('space2', [ift.RGSpace((8,), harmonic=True), ift.LMSpace(12)])
 def test_power_synthesize_analyze(space1, space2):
     p1 = ift.PowerSpace(space1)
@@ -65,16 +66,15 @@ def test_power_synthesize_analyze(space1, space2):
     for ii in range(samples):
         sk = opfull.draw_sample()
         sp = ift.power_analyze(sk, spaces=(0, 1), keep_phase_information=False)
-        sc1.add(sp.sum(spaces=1)/fp2.s_sum())
-        sc2.add(sp.sum(spaces=0)/fp1.s_sum())
+        sc1.add(sp.sum(spaces=1) / fp2.s_sum())
+        sc2.add(sp.sum(spaces=0) / fp1.s_sum())
     assert_allclose(sc1.mean.val, fp1.val, rtol=0.2)
     assert_allclose(sc2.mean.val, fp2.val, rtol=0.2)
 
 
-@pmp('space1', [
-    ift.RGSpace((8,), harmonic=True),
-    ift.RGSpace((8, 8), harmonic=True, distances=0.123)
-])
+@pmp('space1',
+     [ift.RGSpace((8,), harmonic=True),
+      ift.RGSpace((8, 8), harmonic=True, distances=0.123)])
 @pmp('space2', [ift.RGSpace((8,), harmonic=True), ift.LMSpace(12)])
 def test_DiagonalOperator_power_analyze2(space1, space2):
     fp1 = ift.PS_field(ift.PowerSpace(space1), _spec1)
@@ -91,8 +91,8 @@ def test_DiagonalOperator_power_analyze2(space1, space2):
     for ii in range(samples):
         sk = S_full.draw_sample()
         sp = ift.power_analyze(sk, spaces=(0, 1), keep_phase_information=False)
-        sc1.add(sp.sum(spaces=1)/fp2.s_sum())
-        sc2.add(sp.sum(spaces=0)/fp1.s_sum())
+        sc1.add(sp.sum(spaces=1) / fp2.s_sum())
+        sc2.add(sp.sum(spaces=0) / fp1.s_sum())
 
     assert_allclose(sc1.mean.val, fp1.val, rtol=0.2)
     assert_allclose(sc2.mean.val, fp2.val, rtol=0.2)
@@ -146,7 +146,7 @@ def test_sum():
     res1 = m1.s_sum()
     res2 = m2.sum(spaces=1)
     assert_allclose(res1, 36)
-    assert_allclose(res2.val, np.full(9, 2*12*0.45))
+    assert_allclose(res2.val, np.full(9, 2 * 12 * 0.45))
 
 
 def test_integrate():
@@ -156,14 +156,14 @@ def test_integrate():
     m2 = ift.Field.full(ift.makeDomain((x1, x2)), 0.45)
     res1 = m1.s_integrate()
     res2 = m2.integrate(spaces=1)
-    assert_allclose(res1, 36*2)
-    assert_allclose(res2.val, np.full(9, 2*12*0.45*0.3**2))
+    assert_allclose(res1, 36 * 2)
+    assert_allclose(res2.val, np.full(9, 2 * 12 * 0.45 * 0.3**2))
     for m in [m1, m2]:
         res3 = m.integrate()
         res4 = m.s_integrate()
         assert_allclose(res3.val, res4)
     dom = ift.HPSpace(3)
-    assert_allclose(ift.full(dom, 1).s_integrate(), 4*np.pi)
+    assert_allclose(ift.full(dom, 1).s_integrate(), 4 * np.pi)
 
 
 def test_dataconv():
@@ -195,12 +195,11 @@ def test_trivialities():
     assert_equal(f1.val, f1.real.val)
     assert_equal(f1.val, (+f1).val)
     f1 = ift.Field.full(s1, 27. + 3j)
-    assert_equal(f1.ptw("reciprocal").val, (1./f1).val)
+    assert_equal(f1.ptw("reciprocal").val, (1. / f1).val)
     assert_equal(f1.real.val, 27.)
     assert_equal(f1.imag.val, 3.)
     assert_equal(f1.s_sum(), f1.sum(0).val)
-    assert_equal(f1.conjugate().val,
-                 ift.Field.full(s1, 27. - 3j).val)
+    assert_equal(f1.conjugate().val, ift.Field.full(s1, 27. - 3j).val)
     f1 = ift.makeField(s1, np.arange(10))
     # assert_equal(f1.min(), 0)
     # assert_equal(f1.max(), 9)
@@ -308,8 +307,8 @@ def test_stdfunc():
     assert_equal((f == f2).val, f.val == f2.val)
     assert_equal((f + f2).val, f.val + f2.val)
     assert_equal((f - f2).val, f.val - f2.val)
-    assert_equal((f*f2).val, f.val*f2.val)
-    assert_equal((f/f2).val, f.val/f2.val)
+    assert_equal((f * f2).val, f.val * f2.val)
+    assert_equal((f / f2).val, f.val / f2.val)
     assert_equal((-f).val, -(f.val))
     assert_equal(abs(f).val, abs(f.val))
 
@@ -327,8 +326,8 @@ def test_emptydomain():
 @pmp('num', [float(5), 5.])
 @pmp('dom', [ift.RGSpace((8,), harmonic=True), ()])
 @pmp('func', [
-    "exp", "log", "sin", "cos", "tan", "sinh", "cosh", "sinc", "absolute",
-    "sign", "log10", "log1p", "expm1"
+    "exp", "log", "sin", "cos", "tan", "sinh", "cosh", "sinc", "absolute", "sign", "log10", "log1p",
+    "expm1"
 ])
 def test_funcs(num, dom, func):
     num = 5

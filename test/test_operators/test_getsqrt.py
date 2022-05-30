@@ -26,7 +26,8 @@ pmp = pytest.mark.parametrize
 
 dom = ift.RGSpace(5)
 
-@pmp("inp", [(4., True), (-3., False), (2, True), (2.+0j, False), (1, True)])
+
+@pmp("inp", [(4., True), (-3., False), (2, True), (2. + 0j, False), (1, True)])
 @pmp("mode", [0, 1, 2])
 def test_get_sqrt(inp, mode):
     val, shouldwork = inp

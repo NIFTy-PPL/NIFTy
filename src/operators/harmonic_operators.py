@@ -105,7 +105,7 @@ class FFTOperator(LinearOperator):
     def apply(self, x, mode):
         self._check_input(x, mode)
         ncells = x.domain[self._space].size
-        if x.domain[self._space].harmonic:  # harmonic -> position
+        if x.domain[self._space].harmonic:    # harmonic -> position
             func = ifftn
             fct = ncells
         else:
@@ -119,7 +119,7 @@ class FFTOperator(LinearOperator):
             fct *= self._domain[self._space].scalar_dvol
         else:
             fct *= self._target[self._space].scalar_dvol
-        return Tval if fct == 1 else Tval*fct
+        return Tval if fct == 1 else Tval * fct
 
 
 class HartleyOperator(LinearOperator):
@@ -199,8 +199,7 @@ class HartleyOperator(LinearOperator):
     def apply(self, x, mode):
         self._check_input(x, mode)
         if utilities.iscomplextype(x.dtype):
-            return (self._apply_cartesian(x.real, mode) +
-                    1j*self._apply_cartesian(x.imag, mode))
+            return (self._apply_cartesian(x.real, mode) + 1j * self._apply_cartesian(x.imag, mode))
         else:
             return self._apply_cartesian(x, mode)
 
@@ -213,7 +212,7 @@ class HartleyOperator(LinearOperator):
             fct = self._domain[self._space].scalar_dvol
         else:
             fct = self._target[self._space].scalar_dvol
-        return Tval if fct == 1 else Tval*fct
+        return Tval if fct == 1 else Tval * fct
 
 
 class SHTOperator(LinearOperator):
@@ -272,14 +271,12 @@ class SHTOperator(LinearOperator):
             self.sjob.set_healpix_geometry(target.nside)
 
     def __reduce__(self):
-        return (_unpickleSHTOperator,
-                (self._domain, self._target[self._space], self._space))
+        return (_unpickleSHTOperator, (self._domain, self._target[self._space], self._space))
 
     def apply(self, x, mode):
         self._check_input(x, mode)
         if utilities.iscomplextype(x.dtype):
-            return (self._apply_spherical(x.real, mode) +
-                    1j*self._apply_spherical(x.imag, mode))
+            return (self._apply_spherical(x.real, mode) + 1j * self._apply_spherical(x.imag, mode))
         else:
             return self._apply_spherical(x, mode)
 
@@ -288,22 +285,21 @@ class SHTOperator(LinearOperator):
         if len(rr) != ((self.mmax+1)*(self.mmax+2))//2 + \
                       (self.mmax+1)*(self.lmax-self.mmax):
             raise ValueError("array length mismatch")
-        res = np.empty(2*len(rr)-self.lmax-1, dtype=rr[0].real.dtype)
-        res[0:self.lmax+1] = rr[0:self.lmax+1].real
-        res[self.lmax+1::2] = np.sqrt(2)*rr[self.lmax+1:].real
-        res[self.lmax+2::2] = np.sqrt(2)*rr[self.lmax+1:].imag
-        return res/np.sqrt(np.pi*4)
+        res = np.empty(2 * len(rr) - self.lmax - 1, dtype=rr[0].real.dtype)
+        res[0:self.lmax + 1] = rr[0:self.lmax + 1].real
+        res[self.lmax + 1::2] = np.sqrt(2) * rr[self.lmax + 1:].real
+        res[self.lmax + 2::2] = np.sqrt(2) * rr[self.lmax + 1:].imag
+        return res / np.sqrt(np.pi * 4)
 
     def _slice_h2p(self, inp):
-        res = np.empty((len(inp)+self.lmax+1)//2, dtype=(inp[0]*1j).dtype)
+        res = np.empty((len(inp) + self.lmax + 1) // 2, dtype=(inp[0] * 1j).dtype)
         if len(res) != ((self.mmax+1)*(self.mmax+2))//2 + \
                        (self.mmax+1)*(self.lmax-self.mmax):
             raise ValueError("array length mismatch")
-        res[0:self.lmax+1] = inp[0:self.lmax+1]
-        res[self.lmax+1:] = np.sqrt(0.5)*(inp[self.lmax+1::2] +
-                                          1j*inp[self.lmax+2::2])
+        res[0:self.lmax + 1] = inp[0:self.lmax + 1]
+        res[self.lmax + 1:] = np.sqrt(0.5) * (inp[self.lmax + 1::2] + 1j * inp[self.lmax + 2::2])
         res = self.sjob.alm2map(res)
-        return res/np.sqrt(np.pi*4)
+        return res / np.sqrt(np.pi * 4)
 
     def _apply_spherical(self, x, mode):
         axes = x.domain.axes[self._space]
@@ -363,8 +359,7 @@ class HarmonicTransformOperator(LinearOperator):
 
         hspc = domain[space]
         if not hspc.harmonic:
-            raise TypeError(
-                "HarmonicTransformOperator only works on a harmonic space")
+            raise TypeError("HarmonicTransformOperator only works on a harmonic space")
         if isinstance(hspc, RGSpace):
             self._op = HartleyOperator(domain, target, space)
         else:

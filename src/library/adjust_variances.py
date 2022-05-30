@@ -17,18 +17,12 @@
 
 from ..minimization.energy_adapter import EnergyAdapter
 from ..multi_field import MultiField
-from ..operators.energy_operators import (InverseGammaEnergy,
-                                          StandardHamiltonian)
+from ..operators.energy_operators import (InverseGammaEnergy, StandardHamiltonian)
 from ..operators.scaling_operator import ScalingOperator
 from ..operators.simple_linear_operators import ducktape
 
 
-def make_adjust_variances_hamiltonian(a,
-                                      xi,
-                                      position,
-                                      samples=[],
-                                      scaling=None,
-                                      ic_samp=None):
+def make_adjust_variances_hamiltonian(a, xi, position, samples=[], scaling=None, ic_samp=None):
     """Creates a Hamiltonian for constant likelihood optimizations.
 
     Constructs a Hamiltonian to solve constant likelihood optimizations of the
@@ -59,23 +53,22 @@ def make_adjust_variances_hamiltonian(a,
         A Hamiltonian that can be used for further minimization.
     """
 
-    d = a*xi
-    d = (d.conjugate()*d).real
+    d = a * xi
+    d = (d.conjugate() * d).real
     n = len(samples)
     if n > 0:
         d_eval = 0.
         for i in range(n):
             d_eval = d_eval + d.force(position + samples[i])
-        d_eval = d_eval/n
+        d_eval = d_eval / n
     else:
         d_eval = d.force(position)
 
-    x = (a.conjugate()*a).real
+    x = (a.conjugate() * a).real
     if scaling is not None:
         x = ScalingOperator(x.target, scaling)(x)
 
-    return StandardHamiltonian(InverseGammaEnergy(d_eval/2.)(x),
-                               ic_samp=ic_samp)
+    return StandardHamiltonian(InverseGammaEnergy(d_eval / 2.)(x), ic_samp=ic_samp)
 
 
 def do_adjust_variances(position, A, minimizer, xi_key='xi', samples=[]):
@@ -114,14 +107,13 @@ def do_adjust_variances(position, A, minimizer, xi_key='xi', samples=[]):
     ham = make_adjust_variances_hamiltonian(A, xi, position, samples=samples)
 
     # Minimize
-    e = EnergyAdapter(
-        position.extract(A.domain), ham, constants=[], want_metric=True)
+    e = EnergyAdapter(position.extract(A.domain), ham, constants=[], want_metric=True)
     e, _ = minimizer(e)
 
     # Update position
-    s_h_old = (A*xi).force(position)
+    s_h_old = (A * xi).force(position)
 
     position = position.to_dict()
-    position[xi_key] = s_h_old/A(e.position)
+    position[xi_key] = s_h_old / A(e.position)
     position = MultiField.from_dict(position)
     return MultiField.union([position, e.position])

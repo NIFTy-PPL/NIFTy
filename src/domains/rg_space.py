@@ -64,8 +64,7 @@ class RGSpace(StructuredDomain):
                 self._rdistances = tuple(1. / (np.array(self._shape)))
             elif np.isscalar(distances):
                 if self.harmonic:
-                    self._rdistances = tuple(
-                        1. / (np.array(self._shape) * float(distances)))
+                    self._rdistances = tuple(1. / (np.array(self._shape) * float(distances)))
                 else:
                     self._rdistances = (float(distances),) * len(self._shape)
             else:
@@ -74,17 +73,16 @@ class RGSpace(StructuredDomain):
                 if self._harmonic:
                     temp = 1. / (np.array(self._shape) * temp)
                 self._rdistances = tuple(temp)
-        self._hdistances = tuple(
-            1. / (np.array(self.shape)*np.array(self._rdistances)))
+        self._hdistances = tuple(1. / (np.array(self.shape) * np.array(self._rdistances)))
         if min(self._rdistances) <= 0:
             raise ValueError('Non-positive distances encountered')
 
-        self._dvol = float(reduce(lambda x, y: x*y, self.distances))
-        self._size = int(reduce(lambda x, y: x*y, self._shape))
+        self._dvol = float(reduce(lambda x, y: x * y, self.distances))
+        self._size = int(reduce(lambda x, y: x * y, self._shape))
 
     def __repr__(self):
-        return ("RGSpace(shape={}, distances={}, harmonic={})"
-                .format(self.shape, self.distances, self.harmonic))
+        return ("RGSpace(shape={}, distances={}, harmonic={})".format(self.shape, self.distances,
+                                                                      self.harmonic))
 
     @property
     def harmonic(self):
@@ -104,13 +102,13 @@ class RGSpace(StructuredDomain):
 
     def _get_dist_array(self):
         res = np.arange(self.shape[0], dtype=np.float64)
-        res = np.minimum(res, self.shape[0]-res)*self.distances[0]
+        res = np.minimum(res, self.shape[0] - res) * self.distances[0]
         if len(self.shape) == 1:
             return Field.from_raw(self, res)
         res *= res
         for i in range(1, len(self.shape)):
             tmp = np.arange(self.shape[i], dtype=np.float64)
-            tmp = np.minimum(tmp, self.shape[i]-tmp)*self.distances[i]
+            tmp = np.minimum(tmp, self.shape[i] - tmp) * self.distances[i]
             tmp *= tmp
             res = np.add.outer(res, tmp)
         return Field.from_raw(self, np.sqrt(res))
@@ -124,34 +122,34 @@ class RGSpace(StructuredDomain):
         if (not self.harmonic):
             raise NotImplementedError
         dimensions = len(self.shape)
-        if dimensions == 1:  # extra easy
-            maxdist = self.shape[0]//2
-            return np.arange(maxdist+1, dtype=np.float64) * self.distances[0]
-        if np.all(self.distances == self.distances[0]):  # shortcut
-            maxdist = np.asarray(self.shape)//2
-            tmp = np.sum(maxdist*maxdist)
-            tmp = np.zeros(tmp+1, dtype=bool)
-            t2 = np.arange(maxdist[0]+1, dtype=np.int64)
+        if dimensions == 1:    # extra easy
+            maxdist = self.shape[0] // 2
+            return np.arange(maxdist + 1, dtype=np.float64) * self.distances[0]
+        if np.all(self.distances == self.distances[0]):    # shortcut
+            maxdist = np.asarray(self.shape) // 2
+            tmp = np.sum(maxdist * maxdist)
+            tmp = np.zeros(tmp + 1, dtype=bool)
+            t2 = np.arange(maxdist[0] + 1, dtype=np.int64)
             t2 *= t2
             for i in range(1, dimensions):
-                t3 = np.arange(maxdist[i]+1, dtype=np.int64)
+                t3 = np.arange(maxdist[i] + 1, dtype=np.int64)
                 t3 *= t3
                 t2 = np.add.outer(t2, t3)
             tmp[t2] = True
-            return np.sqrt(np.nonzero(tmp)[0])*self.distances[0]
-        else:  # do it the hard way
+            return np.sqrt(np.nonzero(tmp)[0]) * self.distances[0]
+        else:    # do it the hard way
             tmp = self.get_k_length_array().val
             tmp = np.unique(tmp)
-            tol = 1e-12*tmp[-1]
+            tol = 1e-12 * tmp[-1]
             # remove all points that are closer than tol to their right
             # neighbors.
             # I'm appending the last value*2 to the array to treat the
             # rightmost point correctly.
-            return tmp[np.diff(np.r_[tmp, 2*tmp[-1]]) > tol]
+            return tmp[np.diff(np.r_[tmp, 2 * tmp[-1]]) > tol]
 
     @staticmethod
     def _kernel(x, sigma):
-        return (x*x * (-2.*np.pi*np.pi*sigma*sigma)).ptw("exp")
+        return (x * x * (-2. * np.pi * np.pi * sigma * sigma)).ptw("exp")
 
     def get_fft_smoothing_kernel_function(self, sigma):
         if (not self.harmonic):
@@ -207,9 +205,10 @@ class RGSpace(StructuredDomain):
                                  "not be the same.")
 
         # Check if the distances match, i.e. dist' = 1 / (num * dist)
-        if not np.all(abs(np.array(self.shape) *
-                          np.array(self.distances) *
-                          np.array(codomain.distances)-1) < 1e-7):
+        if not np.all(
+                abs(
+                    np.array(self.shape) * np.array(self.distances) * np.array(codomain.distances) -
+                    1) < 1e-7):
             raise AttributeError("The grid-distances of domain and codomain "
                                  "do not match.")
 

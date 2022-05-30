@@ -12,7 +12,7 @@ NDArray = Union[jnp.ndarray, np.ndarray]
 
 
 def interp_mat(grid_shape, grid_bounds, sampling_points, *, distances=None):
-    from scipy.sparse import coo_matrix  # TODO: use only JAX w/o SciPy or NumPy
+    from scipy.sparse import coo_matrix    # TODO: use only JAX w/o SciPy or NumPy
     from jax.experimental.sparse import BCOO
 
     if sampling_points.ndim != 2:
@@ -20,33 +20,27 @@ def interp_mat(grid_shape, grid_bounds, sampling_points, *, distances=None):
         raise ValueError(ve)
     ndim, n_points = sampling_points.shape
     if grid_bounds is not None and len(grid_bounds) != ndim:
-        ve = (
-            f"grid_bounds of length {len(grid_bounds)} incompatible with"
-            " sampling_points of shape {sampling_points.shape!r}"
-        )
+        ve = (f"grid_bounds of length {len(grid_bounds)} incompatible with"
+              " sampling_points of shape {sampling_points.shape!r}")
         raise ValueError(ve)
     elif grid_bounds is not None:
         offset = np.array(list(zip(*grid_bounds))[0])
     else:
         offset = np.zeros(ndim)
     if distances is not None and np.size(distances) != ndim:
-        ve = (
-            f"distances of size {np.size(distances)} incompatible with"
-            " sampling_points of shape {sampling_points.shape!r}"
-        )
+        ve = (f"distances of size {np.size(distances)} incompatible with"
+              " sampling_points of shape {sampling_points.shape!r}")
         raise ValueError(ve)
     distances = np.asarray(distances) if distances is not None else None
-    if (distances is not None and grid_bounds
-        is not None) or (distances is None and grid_bounds is None):
+    if (distances is not None and grid_bounds is not None) or (distances is None and
+                                                               grid_bounds is None):
         raise ValueError("exactly one of `distances` or `grid_shape` expected")
     elif grid_bounds is not None:
-        distances = np.array(
-            [(b[1] - b[0]) / sz for b, sz in zip(grid_bounds, grid_shape)]
-        )
+        distances = np.array([(b[1] - b[0]) / sz for b, sz in zip(grid_bounds, grid_shape)])
     if distances is None:
         raise AssertionError()
 
-    mg = np.mgrid[(slice(0, 2), ) * ndim].reshape(ndim, -1)
+    mg = np.mgrid[(slice(0, 2),) * ndim].reshape(ndim, -1)
     pos = (sampling_points - offset.reshape(-1, 1)) / distances.reshape(-1, 1)
     excess, pos = np.modf(pos)
     pos = pos.astype(np.int64)
@@ -55,17 +49,13 @@ def interp_mat(grid_shape, grid_bounds, sampling_points, *, distances=None):
     ii = np.zeros((2**ndim, n_points), dtype=np.int64)
     jj = np.zeros((2**ndim, n_points), dtype=np.int64)
     for i in range(2**ndim):
-        weights[i, :] = np.prod(
-            np.abs(1 - mg[:, i].reshape(-1, 1) - excess), axis=0
-        )
-        fromi = (pos + mg[:, i].reshape(-1, 1))  # % max_index
+        weights[i, :] = np.prod(np.abs(1 - mg[:, i].reshape(-1, 1) - excess), axis=0)
+        fromi = (pos + mg[:, i].reshape(-1, 1))    # % max_index
         ii[i, :] = np.arange(n_points)
         jj[i, :] = np.ravel_multi_index(fromi, grid_shape)
 
-    mat = coo_matrix(
-        (weights.ravel(), (ii.ravel(), jj.ravel())),
-        shape=(n_points, np.prod(grid_shape))
-    )
+    mat = coo_matrix((weights.ravel(), (ii.ravel(), jj.ravel())),
+                     shape=(n_points, np.prod(grid_shape)))
     # BCOO(
     #     (weights.ravel(), jnp.stack((ii.ravel(), jj.ravel()), axis=1)),
     #     shape=(n_points, np.prod(grid_shape))
@@ -74,16 +64,15 @@ def interp_mat(grid_shape, grid_bounds, sampling_points, *, distances=None):
 
 
 class HarmonicSKI():
-    def __init__(
-        self,
-        grid_shape: Tuple[int],
-        grid_bounds: Tuple[Tuple[float, float]],
-        sampling_points: NDArray,
-        harmonic_kernel: Optional[Callable] = None,
-        padding: float = 0.5,
-        subslice=None,
-        jitter: Union[bool, float, None] = True
-    ):
+
+    def __init__(self,
+                 grid_shape: Tuple[int],
+                 grid_bounds: Tuple[Tuple[float, float]],
+                 sampling_points: NDArray,
+                 harmonic_kernel: Optional[Callable] = None,
+                 padding: float = 0.5,
+                 subslice=None,
+                 jitter: Union[bool, float, None] = True):
         """Instantiate a KISS-GP model of the covariance using a harmonic
         representation of the kernel.
 
@@ -124,11 +113,9 @@ class HarmonicSKI():
         self.grid_unpadded_shape = np.asarray(grid_shape)
         self.grid_unpadded_bounds = np.asarray(grid_bounds)
         self.grid_unpadded_distances = jnp.diff(
-            self.grid_unpadded_bounds, axis=1
-        ).ravel() / self.grid_unpadded_shape
-        self.grid_unpadded_total_volume = jnp.prod(
-            self.grid_unpadded_shape * self.grid_unpadded_distances
-        )
+            self.grid_unpadded_bounds, axis=1).ravel() / self.grid_unpadded_shape
+        self.grid_unpadded_total_volume = jnp.prod(self.grid_unpadded_shape *
+                                                   self.grid_unpadded_distances)
         self.w = interp_mat(grid_shape, grid_bounds, sampling_points)
 
         if padding is not None and padding != 0.:
@@ -138,28 +125,25 @@ class HarmonicSKI():
             scl = grid_shape_wpad / grid_shape
             scl_end = jnp.diff(jnp.asarray(grid_bounds), axis=1).ravel() * scl
             grid_bounds_wpad = jnp.asarray(grid_bounds)
-            grid_bounds_wpad = grid_bounds_wpad.at[:, 1].set(
-                grid_bounds_wpad[:, 0].ravel() + scl_end
-            )
+            grid_bounds_wpad = grid_bounds_wpad.at[:,
+                                                   1].set(grid_bounds_wpad[:, 0].ravel() + scl_end)
             if subslice is None:
                 subslice = tuple(map(int, grid_shape))
             grid_shape = grid_shape_wpad
             grid_bounds = grid_bounds_wpad
         self.grid_shape = np.asarray(grid_shape)
         self.grid_bounds = np.asarray(grid_bounds)
-        self.grid_distances = jnp.diff(self.grid_bounds,
-                                       axis=1).ravel() / self.grid_shape
+        self.grid_distances = jnp.diff(self.grid_bounds, axis=1).ravel() / self.grid_shape
         self.grid_total_volume = jnp.prod(self.grid_shape * self.grid_distances)
 
         self.power_distributor, self.unique_mode_lengths, _ = get_fourier_mode_distributor(
-            self.grid_shape, self.grid_distances
-        )
+            self.grid_shape, self.grid_distances)
 
         if subslice is not None:
             if isinstance(subslice, slice):
-                subslice = (subslice, ) * len(self.grid_shape)
+                subslice = (subslice,) * len(self.grid_shape)
             elif isinstance(subslice, int):
-                subslice = (slice(subslice), ) * len(self.grid_shape)
+                subslice = (slice(subslice),) * len(self.grid_shape)
             elif isinstance(subslice, tuple):
                 if all(isinstance(el, slice) for el in subslice):
                     pass
@@ -179,10 +163,8 @@ class HarmonicSKI():
         a `TypeError`.
         """
         if self._harmonic_kernel is None:
-            te = (
-                "either specify a fixed harmonic kernel during initialization"
-                f" of the {self.__class__.__name__} class or provide one here"
-            )
+            te = ("either specify a fixed harmonic kernel during initialization"
+                  f" of the {self.__class__.__name__} class or provide one here")
             raise TypeError(te)
         return self._harmonic_kernel
 
@@ -241,10 +223,8 @@ class HarmonicSKI():
         indices = jnp.arange(self.w.shape[0]).reshape(1, -1)
 
         return jax.lax.map(
-            lambda idx: self(
-                probe.at[tuple(idx)].set(1.), harmonic_kernel=harmonic_kernel
-            ).ravel(), indices.T
-        ).T  # vmap over `indices` w/ `in_axes=1, out_axes=-1`
+            lambda idx: self(probe.at[tuple(idx)].set(1.), harmonic_kernel=harmonic_kernel).ravel(),
+            indices.T).T    # vmap over `indices` w/ `in_axes=1, out_axes=-1`
 
     def evaluate_(self, kernel) -> NDArray:
         from scipy.spatial import distance_matrix
@@ -255,11 +235,11 @@ class HarmonicSKI():
             jitter = self.jitter * jnp.eye(self.w.shape[0])
 
         p = [
-            np.linspace(*b, num=sz, endpoint=True) for b, sz in
-            zip(self.grid_unpadded_bounds, self.grid_unpadded_shape)
+            np.linspace(*b, num=sz, endpoint=True)
+            for b, sz in zip(self.grid_unpadded_bounds, self.grid_unpadded_shape)
         ]
-        p = np.stack(np.meshgrid(*p, indexing="ij"),
-                     axis=-1).reshape(-1, len(self.grid_unpadded_shape))
+        p = np.stack(
+            np.meshgrid(*p, indexing="ij"), axis=-1).reshape(-1, len(self.grid_unpadded_shape))
         kernel_inducing = kernel(distance_matrix(p, p))
 
         return self.w @ kernel_inducing @ self.w.T + jitter

@@ -26,9 +26,10 @@ import nifty8 as ift
 from ..common import list2fixture, setup_function, teardown_function
 
 pmp = pytest.mark.parametrize
-space = list2fixture([ift.GLSpace(15),
-                      ift.RGSpace(64, distances=.789),
-                      ift.RGSpace([32, 32], distances=.789)])
+space = list2fixture(
+    [ift.GLSpace(15),
+     ift.RGSpace(64, distances=.789),
+     ift.RGSpace([32, 32], distances=.789)])
 seed = list2fixture([4, 78, 23])
 
 

@@ -22,31 +22,30 @@ from itertools import product
 
 import numpy as np
 
-__all__ = ["get_slice_list", "safe_cast", "parse_spaces", "infer_space",
-           "memo", "NiftyMeta", "my_sum", "my_lincomb_simple",
-           "my_lincomb", "indent", "my_product", "frozendict",
-           "special_add_at", "iscomplextype", "issingleprec",
-           "value_reshaper", "lognormal_moments", "check_object_identity",
-           "check_MPI_equality", "check_MPI_synced_random_state"]
+__all__ = [
+    "get_slice_list", "safe_cast", "parse_spaces", "infer_space", "memo", "NiftyMeta", "my_sum",
+    "my_lincomb_simple", "my_lincomb", "indent", "my_product", "frozendict", "special_add_at",
+    "iscomplextype", "issingleprec", "value_reshaper", "lognormal_moments", "check_object_identity",
+    "check_MPI_equality", "check_MPI_synced_random_state"
+]
 
 
 def my_sum(iterable):
-    return reduce(lambda x, y: x+y, iterable)
+    return reduce(lambda x, y: x + y, iterable)
 
 
 def my_lincomb_simple(terms, factors):
-    terms2 = map(lambda v: v[0]*v[1], zip(terms, factors))
+    terms2 = map(lambda v: v[0] * v[1], zip(terms, factors))
     return my_sum(terms2)
 
 
 def my_lincomb(terms, factors):
-    terms2 = map(lambda v: v[0] if v[1] == 1. else v[0]*v[1],
-                 zip(terms, factors))
+    terms2 = map(lambda v: v[0] if v[1] == 1. else v[0] * v[1], zip(terms, factors))
     return my_sum(terms2)
 
 
 def my_product(iterable):
-    return reduce(lambda x, y: x*y, iterable)
+    return reduce(lambda x, y: x * y, iterable)
 
 
 def get_slice_list(shape, axes):
@@ -83,10 +82,7 @@ def get_slice_list(shape, axes):
             [list(range(y)) for x, y in enumerate(shape) if x not in axes]
         for index in product(*axes_iterables):
             it_iter = iter(index)
-            slice_list = tuple(
-                next(it_iter)
-                if axis else slice(None, None) for axis in axes_select
-            )
+            slice_list = tuple(next(it_iter) if axis else slice(None, None) for axis in axes_select)
             yield slice_list
     else:
         yield [slice(None, None)]
@@ -140,6 +136,7 @@ def memo(f):
         except KeyError:
             self._cache[name] = f(self)
             return self._cache[name]
+
     return wrapped_f
 
 
@@ -149,31 +146,27 @@ class _DocStringInheritor(type):
     https://groups.google.com/group/comp.lang.python/msg/26f7b4fcb4d66c95
     by Paul McGuire
     """
+
     def __new__(meta, name, bases, clsdict):
-        if not('__doc__' in clsdict and clsdict['__doc__']):
-            for mro_cls in (mro_cls for base in bases
-                            for mro_cls in base.mro()):
+        if not ('__doc__' in clsdict and clsdict['__doc__']):
+            for mro_cls in (mro_cls for base in bases for mro_cls in base.mro()):
                 doc = mro_cls.__doc__
                 if doc:
                     clsdict['__doc__'] = doc
                     break
         for attr, attribute in clsdict.items():
             if not attribute.__doc__:
-                for mro_cls in (mro_cls for base in bases
-                                for mro_cls in base.mro()
+                for mro_cls in (mro_cls for base in bases for mro_cls in base.mro()
                                 if hasattr(mro_cls, attr)):
                     doc = getattr(getattr(mro_cls, attr), '__doc__')
                     if doc:
                         if isinstance(attribute, property):
-                            clsdict[attr] = property(attribute.fget,
-                                                     attribute.fset,
-                                                     attribute.fdel,
+                            clsdict[attr] = property(attribute.fget, attribute.fset, attribute.fdel,
                                                      doc)
                         else:
                             attribute.__doc__ = doc
                         break
-        return super(_DocStringInheritor, meta).__new__(meta, name,
-                                                        bases, clsdict)
+        return super(_DocStringInheritor, meta).__new__(meta, name, bases, clsdict)
 
 
 class NiftyMeta(_DocStringInheritor):
@@ -224,7 +217,7 @@ def special_add_at(a, axis, index, b):
     if a.dtype != b.dtype:
         raise TypeError("data type mismatch")
     sz1 = int(np.prod(a.shape[:axis]))
-    sz3 = int(np.prod(a.shape[axis+1:]))
+    sz3 = int(np.prod(a.shape[axis + 1:]))
     a2 = a.reshape([sz1, -1, sz3])
     b2 = b.reshape([sz1, -1, sz3])
     if iscomplextype(a.dtype):
@@ -234,8 +227,7 @@ def special_add_at(a, axis, index, b):
         sz3 *= 2
     for i1 in range(sz1):
         for i3 in range(sz3):
-            a2[i1, :, i3] += np.bincount(index, b2[i1, :, i3],
-                                         minlength=a2.shape[1])
+            a2[i1, :, i3] += np.bincount(index, b2[i1, :, i3], minlength=a2.shape[1])
 
     if iscomplextype(a.dtype):
         a2 = a2.view(a.dtype)
@@ -262,7 +254,7 @@ def _getunique(f, iterable):
 
 
 def indent(inp):
-    return "\n".join((("  "+s).rstrip() for s in inp.splitlines()))
+    return "\n".join((("  " + s).rstrip() for s in inp.splitlines()))
 
 
 def shareRange(nwork, nshares, myshare):
@@ -285,7 +277,7 @@ def shareRange(nwork, nshares, myshare):
         index range of work items for this share
     """
 
-    nbase = nwork//nshares
+    nbase = nwork // nshares
     additional = nwork % nshares
     lo = myshare*nbase + min(myshare, additional)
     hi = lo + nbase + int(myshare < additional)
@@ -368,22 +360,22 @@ def allreduce_sum(obj, comm):
         nobj = all_hi[-1]
         rank_lo_hi = [(l, h) for l, h in zip(all_lo, all_hi)]
         lo, hi = rank_lo_hi[rank]
-        vals = [None]*lo + vals + [None]*(nobj-hi)
-        who = [t for t, (l, h) in enumerate(rank_lo_hi) for cnt in range(h-l)]
+        vals = [None] * lo + vals + [None] * (nobj-hi)
+        who = [t for t, (l, h) in enumerate(rank_lo_hi) for cnt in range(h - l)]
 
     step = 1
     while step < nobj:
-        for j in range(0, nobj, 2*step):
-            if j+step < nobj:  # summation partner found
+        for j in range(0, nobj, 2 * step):
+            if j + step < nobj:    # summation partner found
                 if rank == who[j]:
-                    if who[j] == who[j+step]:  # no communication required
-                        vals[j] = vals[j] + vals[j+step]
-                        vals[j+step] = None
+                    if who[j] == who[j + step]:    # no communication required
+                        vals[j] = vals[j] + vals[j + step]
+                        vals[j + step] = None
                     else:
-                        vals[j] = vals[j] + comm.recv(source=who[j+step])
-                elif rank == who[j+step]:
-                    comm.send(vals[j+step], dest=who[j])
-                    vals[j+step] = None
+                        vals[j] = vals[j] + comm.recv(source=who[j + step])
+                elif rank == who[j + step]:
+                    comm.send(vals[j + step], dest=who[j])
+                    vals[j + step] = None
         step *= 2
     if comm is None:
         return vals[0]
@@ -395,9 +387,9 @@ def value_reshaper(x, N):
     If `x` is a scalar or array of length one, fill the target array with it.
     If `x` is an array, check if it has the right shape."""
     x = np.asfarray(x)
-    if x.shape in [(), (1, )]:
+    if x.shape in [(), (1,)]:
         return np.full(N, x) if N != 0 else x.reshape(())
-    elif x.shape == (N, ):
+    elif x.shape == (N,):
         return x
     raise TypeError("x and N are incompatible")
 
@@ -497,9 +489,7 @@ def check_dtype_or_none(obj, domain=None):
             for kk in domain.keys():
                 check_dtype_or_none(obj[kk])
             return
-    check = obj in [np.float32, np.float64, float,
-                    np.complex64, np.complex128, complex,
-                    None]
+    check = obj in [np.float32, np.float64, float, np.complex64, np.complex128, complex, None]
     if not check:
         s = "Need to pass floating dtype (e.g. np.float64, complex) "
         s += f"or `None` to this function.\nHave recieved:\n{obj}"
@@ -507,7 +497,9 @@ def check_dtype_or_none(obj, domain=None):
 
 
 class Nop:
+
     def nop(*args, **kw):
         return Nop()
+
     def __getattr__(self, _):
         return self.nop

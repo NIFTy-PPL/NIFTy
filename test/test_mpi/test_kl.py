@@ -50,19 +50,21 @@ def test_kl(constants, point_estimates, mirror_samples, mf, geo, nsamps):
     dom = ift.RGSpace((12,), (2.12))
     op = ift.HarmonicSmoothingOperator(dom, 3)
     if mf:
-        op = ift.ducktape(dom, None, 'a')*(op.ducktape('b'))
+        op = ift.ducktape(dom, None, 'a') * (op.ducktape('b'))
     lh = ift.GaussianEnergy(domain=op.target, sampling_dtype=np.float64) @ op
     ic = ift.GradientNormController(iteration_limit=5)
     ic2 = ift.GradientNormController(iteration_limit=5)
     h = ift.StandardHamiltonian(lh, ic_samp=ic)
     mean0 = ift.from_random(h.domain, 'normal')
-    args = {'constants': constants,
-            'point_estimates': point_estimates,
-            'mirror_samples': mirror_samples,
-            'n_samples': nsamps,
-            'position': mean0,
-            'hamiltonian': h,
-            'minimizer_sampling': ift.NewtonCG(ic2) if geo else None}
+    args = {
+        'constants': constants,
+        'point_estimates': point_estimates,
+        'mirror_samples': mirror_samples,
+        'n_samples': nsamps,
+        'position': mean0,
+        'hamiltonian': h,
+        'minimizer_sampling': ift.NewtonCG(ic2) if geo else None
+    }
     if isinstance(mean0, ift.MultiField) and set(point_estimates) == set(mean0.keys()):
         with assert_raises(RuntimeError):
             ift.SampledKLEnergy(**args, comm=comm)
@@ -83,22 +85,25 @@ def test_kl(constants, point_estimates, mirror_samples, mf, geo, nsamps):
 
     if not mpi:
         samples = tuple(s for s in samp._r)
-        ii = len(samples)//2
+        ii = len(samples) // 2
         slc = slice(None, ii) if rank == 0 else slice(ii, None)
         locsamp = samples[slc]
         if mirror_samples:
-            neg = [False, ]*2*nsamps if geo else [False, True]*nsamps
+            neg = [
+                False,
+            ] * 2 * nsamps if geo else [False, True] * nsamps
         else:
-            neg = [False, ]*nsamps
+            neg = [
+                False,
+            ] * nsamps
         locneg = neg[slc]
-        samp = ift.minimization.sample_list.ResidualSampleList(
-                    tmpmean, locsamp, locneg, comm)
+        samp = ift.minimization.sample_list.ResidualSampleList(tmpmean, locsamp, locneg, comm)
 
     from nifty8.minimization.kl_energies import SampledKLEnergyClass
     kl1 = SampledKLEnergyClass(samp, tmph, constants, invariant, False)
 
     # Test number of samples
-    expected_nsamps = 2*nsamps if mirror_samples else nsamps
+    expected_nsamps = 2 * nsamps if mirror_samples else nsamps
     ift.myassert(kl0.samples.n_samples == expected_nsamps)
     ift.myassert(kl1.samples.n_samples == expected_nsamps)
 
@@ -126,8 +131,8 @@ def test_mirror(n_samples, seed, geo):
     mini = None
     if geo:
         mini = ift.NewtonCG(ift.AbsDeltaEnergyController(1E-10, iteration_limit=0))
-    KL = ift.SampledKLEnergy(ift.from_random(H.domain), H, n_samples, mini,
-                             mirror_samples=True, comm=comm)
-    sams = list([s-KL.position for s in KL.samples.iterator()])
-    for i in range(len(sams)//2):
-        ift.extra.assert_allclose(sams[2*i], -sams[2*i+1])
+    KL = ift.SampledKLEnergy(
+        ift.from_random(H.domain), H, n_samples, mini, mirror_samples=True, comm=comm)
+    sams = list([s - KL.position for s in KL.samples.iterator()])
+    for i in range(len(sams) // 2):
+        ift.extra.assert_allclose(sams[2 * i], -sams[2*i + 1])

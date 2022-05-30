@@ -38,6 +38,7 @@ class RegriddingOperator(LinearOperator):
         Index of space in `domain` on which the operator shall act.
         Default is 0.
     """
+
     def __init__(self, domain, new_shape, space=0):
         self._domain = DomainTuple.make(domain)
         self._space = infer_space(self._domain, space)
@@ -52,8 +53,8 @@ class RegriddingOperator(LinearOperator):
         if any([ii <= 0 for ii in new_shape]):
             raise ValueError('New shape must not be zero or negative.')
 
-        newdist = tuple(dom.distances[i]*dom.shape[i]/new_shape[i]
-                        for i in range(len(dom.shape)))
+        newdist = tuple(
+            dom.distances[i] * dom.shape[i] / new_shape[i] for i in range(len(dom.shape)))
 
         tgt = RGSpace(new_shape, newdist)
         self._target = list(self._domain)
@@ -65,9 +66,9 @@ class RegriddingOperator(LinearOperator):
         self._bindex = [None] * ndim
         self._frac = [None] * ndim
         for d in range(ndim):
-            tmp = np.arange(new_shape[d])*(newdist[d]/dom.distances[d])
-            self._bindex[d] = np.minimum(dom.shape[d]-2, tmp.astype(np.int64))
-            self._frac[d] = tmp-self._bindex[d]
+            tmp = np.arange(new_shape[d]) * (newdist[d] / dom.distances[d])
+            self._bindex[d] = np.minimum(dom.shape[d] - 2, tmp.astype(np.int64))
+            self._frac[d] = tmp - self._bindex[d]
 
     def apply(self, x, mode):
         self._check_input(x, mode)
@@ -78,17 +79,17 @@ class RegriddingOperator(LinearOperator):
         d0 = self._target.axes[self._space][0]
         for d in self._target.axes[self._space]:
             idx = (slice(None),) * d
-            wgt = self._frac[d-d0].reshape((1,)*d + (-1,) + (1,)*(ndim-d-1))
+            wgt = self._frac[d - d0].reshape((1,) * d + (-1,) + (1,) * (ndim-d-1))
 
             if mode == self.ADJOINT_TIMES:
                 shp = list(v.shape)
                 shp[d] = tgtshp[d]
                 xnew = np.zeros(shp, dtype=v.dtype)
-                xnew = special_add_at(xnew, d, self._bindex[d-d0], v*(1.-wgt))
-                xnew = special_add_at(xnew, d, self._bindex[d-d0]+1, v*wgt)
-            else:  # TIMES
-                xnew = v[idx + (self._bindex[d-d0],)] * (1.-wgt)
-                xnew += v[idx + (self._bindex[d-d0]+1,)] * wgt
+                xnew = special_add_at(xnew, d, self._bindex[d - d0], v * (1.-wgt))
+                xnew = special_add_at(xnew, d, self._bindex[d - d0] + 1, v * wgt)
+            else:    # TIMES
+                xnew = v[idx + (self._bindex[d - d0],)] * (1.-wgt)
+                xnew += v[idx + (self._bindex[d - d0] + 1,)] * wgt
 
             curshp[d] = xnew.shape[d]
             v = xnew

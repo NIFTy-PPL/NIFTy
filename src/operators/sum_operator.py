@@ -76,6 +76,8 @@ class SumOperator(LinearOperator):
                     negnew += [not n for n in op._neg]
                 else:
                     negnew += list(op._neg)
+
+
 # FIXME: this needs some more work to keep the domain and target unchanged!
 #            elif isinstance(op, NullOperator):
 #                pass
@@ -107,7 +109,7 @@ class SumOperator(LinearOperator):
                     opsnew.append(op)
                     negnew.append(ng)
             lastdom = opset[0][0].domain
-            del(opset)
+            del (opset)
 
             if len(dtype) > 0:
                 # Propagate sampling dtypes only if they are all the same
@@ -130,7 +132,7 @@ class SumOperator(LinearOperator):
                 # have to add the scaling operator at the end
                 opsnew.append(ScalingOperator(lastdom, sum, dtype))
                 negnew.append(False)
-            del(dtype, sum, lastdom)
+            del (dtype, sum, lastdom)
 
             ops = opsnew
             neg = negnew
@@ -143,8 +145,9 @@ class SumOperator(LinearOperator):
                     if isinstance(ops[i], DiagonalOperator):
                         op = ops[i]
                         opneg = neg[i]
-                        for j in range(i+1, len(ops)):
-                            if isinstance(ops[j], DiagonalOperator) and ops[i]._dtype == ops[j]._dtype:
+                        for j in range(i + 1, len(ops)):
+                            if isinstance(ops[j],
+                                          DiagonalOperator) and ops[i]._dtype == ops[j]._dtype:
                                 op = op._combine_sum(ops[j], opneg, neg[j])
                                 opneg = False
                                 processed[j] = True
@@ -165,7 +168,7 @@ class SumOperator(LinearOperator):
                     if isinstance(ops[i], BlockDiagonalOperator):
                         op = ops[i]
                         opneg = neg[i]
-                        for j in range(i+1, len(ops)):
+                        for j in range(i + 1, len(ops)):
                             if isinstance(ops[j], BlockDiagonalOperator):
                                 op = op._combine_sum(ops[j], opneg, neg[j])
                                 opneg = False
@@ -222,8 +225,7 @@ class SumOperator(LinearOperator):
 
     def draw_sample(self, from_inverse=False):
         if from_inverse:
-            raise NotImplementedError(
-                "cannot draw from inverse of this operator")
+            raise NotImplementedError("cannot draw from inverse of this operator")
         res = None
         for op in self._ops:
             from .simple_linear_operators import NullOperator
@@ -235,14 +237,13 @@ class SumOperator(LinearOperator):
 
     def __repr__(self):
         subs = "\n".join(sub.__repr__() for sub in self._ops)
-        return "SumOperator:\n"+indent(subs)
+        return "SumOperator:\n" + indent(subs)
 
     def _simplify_for_constant_input_nontrivial(self, c_inp):
         f = []
         o = []
         for op in self._ops:
-            tf, to = op.simplify_for_constant_input(
-                c_inp.extract_part(op.domain))
+            tf, to = op.simplify_for_constant_input(c_inp.extract_part(op.domain))
             f.append(tf)
             o.append(to)
 

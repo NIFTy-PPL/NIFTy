@@ -41,6 +41,7 @@ except ImportError:
 
 
 class SingleDomain(ift.LinearOperator):
+
     def __init__(self, domain, target):
         self._domain = ift.makeDomain(domain)
         self._target = ift.makeDomain(target)
@@ -59,7 +60,7 @@ def random_los(n_los):
 
 def radial_los(n_los):
     starts = list(ift.random.current_rng().random((n_los, 2)).T)
-    ends = list(0.5 + 0*ift.random.current_rng().random((n_los, 2)).T)
+    ends = list(0.5 + 0 * ift.random.current_rng().random((n_los, 2)).T)
     return starts, ends
 
 
@@ -82,10 +83,8 @@ def main():
 
     # Set up signal model
     cfmaker = ift.CorrelatedFieldMaker('')
-    cfmaker.add_fluctuations(sp1, (0.1, 1e-2), (2, .2), (.01, .5), (-4, 2.),
-                             'amp1')
-    cfmaker.add_fluctuations(sp2, (0.1, 1e-2), (2, .2), (.01, .5), (-3, 1),
-                             'amp2')
+    cfmaker.add_fluctuations(sp1, (0.1, 1e-2), (2, .2), (.01, .5), (-4, 2.), 'amp1')
+    cfmaker.add_fluctuations(sp2, (0.1, 1e-2), (2, .2), (.01, .5), (-3, 1), 'amp2')
     cfmaker.set_amplitude_total_offset(0., (1e-2, 1e-6))
     correlated_field = cfmaker.finalize()
 
@@ -128,12 +127,22 @@ def main():
 
     n_samples = 20
     n_iterations = 5
-    samples = ift.optimize_kl(likelihood_energy, n_iterations, n_samples,
-                              minimizer, ic_sampling, None, overwrite=True, comm=comm,
-                              output_directory="getting_started_5_results",
-                              ground_truth_position=mock_position,
-                              plottable_operators={"signal": signal, "power spectrum 1": pspec1,
-                                                   "power spectrum 2": pspec2})
+    samples = ift.optimize_kl(
+        likelihood_energy,
+        n_iterations,
+        n_samples,
+        minimizer,
+        ic_sampling,
+        None,
+        overwrite=True,
+        comm=comm,
+        output_directory="getting_started_5_results",
+        ground_truth_position=mock_position,
+        plottable_operators={
+            "signal": signal,
+            "power spectrum 1": pspec1,
+            "power spectrum 2": pspec2
+        })
 
     # Plotting
     filename_res = filename.format("results")
@@ -143,14 +152,18 @@ def main():
     plot.add(ift.sqrt(var), title="Posterior Standard Deviation")
 
     n_samples = samples.n_samples
-    plot.add(list(samples.iterator(pspec1)) + [samples.average(pspec1.log()).exp(),
-              pspec1.force(mock_position)],
-             title="Sampled Posterior Power Spectrum 1",
-             linewidth=[1.]*n_samples + [3., 3.])
-    plot.add(list(samples.iterator(pspec2)) + [samples.average(pspec2.log()).exp(),
-              pspec2.force(mock_position)],
-             title="Sampled Posterior Power Spectrum 2",
-             linewidth=[1.]*n_samples + [3., 3.])
+    plot.add(
+        list(samples.iterator(pspec1)) +
+        [samples.average(pspec1.log()).exp(),
+         pspec1.force(mock_position)],
+        title="Sampled Posterior Power Spectrum 1",
+        linewidth=[1.] * n_samples + [3., 3.])
+    plot.add(
+        list(samples.iterator(pspec2)) +
+        [samples.average(pspec2.log()).exp(),
+         pspec2.force(mock_position)],
+        title="Sampled Posterior Power Spectrum 2",
+        linewidth=[1.] * n_samples + [3., 3.])
     if master:
         plot.output(ny=2, nx=2, xsize=15, ysize=15, name=filename_res)
     print("Saved results as '{}'.".format(filename_res))

@@ -27,26 +27,29 @@ pmp = pytest.mark.parametrize
 
 
 class NonPureOperator(ift.Operator):
+
     def __init__(self, domain):
         self._domain = self._target = ift.makeDomain(domain)
 
     def apply(self, x):
         self._check_input(x)
-        return x*time()
+        return x * time()
 
 
 class NonPureLinearOperator(ift.LinearOperator):
+
     def __init__(self, domain, cap):
         self._domain = self._target = ift.makeDomain(domain)
         self._capability = cap
 
     def apply(self, x, mode):
         self._check_input(x, mode)
-        return x*time()
+        return x * time()
 
 
-@pmp("cap", [ift.LinearOperator.ADJOINT_TIMES,
-             ift.LinearOperator.INVERSE_TIMES | ift.LinearOperator.TIMES])
+@pmp(
+    "cap",
+    [ift.LinearOperator.ADJOINT_TIMES, ift.LinearOperator.INVERSE_TIMES | ift.LinearOperator.TIMES])
 @pmp("ddtype", [np.float64, np.complex128])
 @pmp("tdtype", [np.float64, np.complex128])
 def test_purity_check_linear(cap, ddtype, tdtype):

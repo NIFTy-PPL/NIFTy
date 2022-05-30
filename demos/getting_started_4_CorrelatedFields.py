@@ -34,6 +34,7 @@
 # %matplotlib inline
 import nifty8 as ift
 import matplotlib.pyplot as plt
+
 plt.rcParams['figure.dpi'] = 100
 plt.style.use("seaborn-notebook")
 import numpy as np
@@ -41,6 +42,7 @@ import numpy as np
 n_pix = 256
 x_space = ift.RGSpace(n_pix)
 ift.random.push_sseq_from_seed(1)
+
 
 # +
 # Plotting routine
@@ -51,7 +53,7 @@ def plot(fields, spectra, title=None):
     fig = plt.figure(tight_layout=True, figsize=(10, 3))
     if title is not None:
         fig.suptitle(title, fontsize=14)
-    
+
     # Field
     ax1 = fig.add_subplot(1, 2, 1)
     ax1.axhline(y=0., color='k', linestyle='--', alpha=0.25)
@@ -64,7 +66,7 @@ def plot(fields, spectra, title=None):
     ax1.set_xlabel('x')
     ax1.set_ylabel('f(x)')
     ax1.set_title('Field realizations')
-    
+
     # Spectrum
     ax2 = fig.add_subplot(1, 2, 2)
     for spectrum in spectra:
@@ -78,12 +80,15 @@ def plot(fields, spectra, title=None):
     ax2.set_xlabel('k')
     ax2.set_ylabel('p(k)')
     ax2.set_title('Power Spectrum')
-    
+
     fig.align_labels()
     plt.show()
 
+
 # Helper: draw main sample
 main_sample = None
+
+
 def init_model(m_pars, fl_pars, matern=False):
     global main_sample
     cf = ift.CorrelatedFieldMaker(m_pars["prefix"])
@@ -92,7 +97,8 @@ def init_model(m_pars, fl_pars, matern=False):
     field = cf.finalize(prior_info=0)
     main_sample = ift.from_random(field.domain)
     print("model domain keys:", field.domain.keys())
-    
+
+
 # Helper: field and spectrum from parameter dictionaries + plotting
 def eval_model(m_pars, fl_pars, title=None, samples=None, matern=False):
     cf = ift.CorrelatedFieldMaker(m_pars["prefix"])
@@ -106,6 +112,7 @@ def eval_model(m_pars, fl_pars, title=None, samples=None, matern=False):
     spectrum_realizations = [spectrum.force(s) for s in samples]
     plot(field_realizations, spectrum_realizations, title)
 
+
 def gen_samples(key_to_vary):
     if key_to_vary is None:
         return [main_sample]
@@ -117,7 +124,8 @@ def gen_samples(key_to_vary):
         d[key_to_vary] = ift.from_random(subdom_to_vary)
         samples.append(ift.MultiField.from_dict(d))
     return samples
-        
+
+
 def vary_parameter(parameter_key, values, samples_vary_in=None, matern=False):
     s = gen_samples(samples_vary_in)
     for v in values:
@@ -145,10 +153,8 @@ mean = 1.0
 sigmas = [1.0, 0.5, 0.1]
 
 for i in range(3):
-    op = ift.LognormalTransform(mean=mean, sigma=sigmas[i],
-                                key='foo', N_copies=0)
-    op_samples = np.array(
-        [op(s).val for s in [ift.from_random(op.domain) for i in range(10000)]])
+    op = ift.LognormalTransform(mean=mean, sigma=sigmas[i], key='foo', N_copies=0)
+    op_samples = np.array([op(s).val for s in [ift.from_random(op.domain) for i in range(10000)]])
 
     ax = fig.add_subplot(1, 3, i + 1)
     ax.hist(op_samples, bins=50)
@@ -170,11 +176,7 @@ plt.show()
 
 # +
 # Neutral model parameters yielding a quasi-constant field
-cf_make_pars = {
-    'offset_mean': 0.,
-    'offset_std': (1e-3, 1e-16),
-    'prefix': ''
-}
+cf_make_pars = {'offset_mean': 0., 'offset_std': (1e-3, 1e-16), 'prefix': ''}
 
 cf_x_fluct_pars = {
     'target_subdomain': x_space,
@@ -224,7 +226,8 @@ vary_parameter('loglogavgslope', [(-6., 1e-16), (-2., 1e-16), (2., 1e-16)], samp
 
 # #### `loglogavgslope` std:
 
-vary_parameter('loglogavgslope', [(-2., 0.02), (-2., 0.2), (-2., 2.0)], samples_vary_in='loglogavgslope')
+vary_parameter(
+    'loglogavgslope', [(-2., 0.02), (-2., 0.2), (-2., 2.0)], samples_vary_in='loglogavgslope')
 cf_x_fluct_pars['loglogavgslope'] = (-2., 1e-16)
 
 # ## The `flexibility` parameters of `add_fluctuations()`
@@ -239,7 +242,8 @@ cf_x_fluct_pars['loglogavgslope'] = (-2., 1e-16)
 #
 # #### `flexibility` mean:
 
-vary_parameter('flexibility', [(0.4, 1e-16), (4.0, 1e-16), (12.0, 1e-16)], samples_vary_in='spectrum')
+vary_parameter(
+    'flexibility', [(0.4, 1e-16), (4.0, 1e-16), (12.0, 1e-16)], samples_vary_in='spectrum')
 
 # #### `flexibility` std:
 
@@ -304,11 +308,7 @@ vary_parameter('offset_std', [(1., 0.01), (1., 0.1), (1., 1.)], samples_vary_in=
 # `cutoff` and `loglogslope`.
 
 # Neutral model parameters yielding a quasi-constant field
-cf_make_pars = {
-    'offset_mean': 0.,
-    'offset_std': (1e-3, 1e-16),
-    'prefix': ''
-}
+cf_make_pars = {'offset_mean': 0., 'offset_std': (1e-3, 1e-16), 'prefix': ''}
 
 cf_x_fluct_pars = {
     'target_subdomain': x_space,
@@ -336,10 +336,11 @@ eval_model(cf_make_pars, cf_x_fluct_pars, "Neutral Field", matern=True)
 #
 # The scaling factor is modelled as being log-normally distributed,
 # see `The Moment-Matched Log-Normal Distribution` above for details.
-# 
+#
 # #### `scale` mean:
 
-vary_parameter('scale', [(0.01, 1e-16), (0.1, 1e-16), (1.0, 1e-16)], samples_vary_in='xi', matern=True)
+vary_parameter(
+    'scale', [(0.01, 1e-16), (0.1, 1e-16), (1.0, 1e-16)], samples_vary_in='xi', matern=True)
 
 # #### `scale` std:
 
@@ -357,13 +358,17 @@ cf_x_fluct_pars['scale'] = (0.5, 1e-16)
 #
 # #### `loglogslope` mean:
 
-vary_parameter('loglogslope', [(-4.0, 1e-16), (-2.0, 1e-16), (-1.0, 1e-16)], samples_vary_in='xi', matern=True)
+vary_parameter(
+    'loglogslope', [(-4.0, 1e-16), (-2.0, 1e-16), (-1.0, 1e-16)], samples_vary_in='xi', matern=True)
 
 # As one can see, the field amplitude also depends on the `loglogslope` parameter.
 #
 # #### `loglogslope` std:
 
-vary_parameter('loglogslope', [(-3., 0.01), (-3., 0.5), (-3., 1.0)], samples_vary_in='loglogslope', matern=True)
+vary_parameter(
+    'loglogslope', [(-3., 0.01), (-3., 0.5), (-3., 1.0)],
+    samples_vary_in='loglogslope',
+    matern=True)
 
 # ## The `cutoff` parameters of `add_fluctuations_matern()`
 #
@@ -379,8 +384,10 @@ vary_parameter('loglogslope', [(-3., 0.01), (-3., 0.5), (-3., 1.0)], samples_var
 # #### `cutoff` mean:
 
 cf_x_fluct_pars['loglogslope'] = (-8.0, 1e-16)
-vary_parameter('cutoff', [(1.0, 1e-16), (3.16, 1e-16), (10.0, 1e-16)], samples_vary_in='xi', matern=True)
+vary_parameter(
+    'cutoff', [(1.0, 1e-16), (3.16, 1e-16), (10.0, 1e-16)], samples_vary_in='xi', matern=True)
 
 # #### `cutoff` std:
 
-vary_parameter('cutoff', [(10., 1.0), (10., 3.16), (10., 10.)], samples_vary_in='cutoff', matern=True)
+vary_parameter(
+    'cutoff', [(10., 1.0), (10., 3.16), (10., 10.)], samples_vary_in='cutoff', matern=True)

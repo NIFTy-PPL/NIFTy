@@ -50,7 +50,7 @@ def random_los(n_los):
 
 def radial_los(n_los):
     starts = list(ift.random.current_rng().random((n_los, 2)).T)
-    ends = list(0.5 + 0*ift.random.current_rng().random((n_los, 2)).T)
+    ends = list(0.5 + 0 * ift.random.current_rng().random((n_los, 2)).T)
     return starts, ends
 
 
@@ -115,30 +115,36 @@ def main():
     plot.output(ny=1, nx=3, xsize=24, ysize=6, name=filename.format("setup"))
 
     # Minimization parameters
-    ic_sampling = ift.AbsDeltaEnergyController(name="Sampling (linear)",
-                                               deltaE=0.05, iteration_limit=100)
-    ic_newton = ift.AbsDeltaEnergyController(name='Newton', deltaE=0.5,
-                                             convergence_level=2, iteration_limit=35)
-    ic_sampling_nl = ift.AbsDeltaEnergyController(name='Sampling (nonlin)',
-                                                  deltaE=0.5, iteration_limit=15,
-                                                  convergence_level=2)
+    ic_sampling = ift.AbsDeltaEnergyController(
+        name="Sampling (linear)", deltaE=0.05, iteration_limit=100)
+    ic_newton = ift.AbsDeltaEnergyController(
+        name='Newton', deltaE=0.5, convergence_level=2, iteration_limit=35)
+    ic_sampling_nl = ift.AbsDeltaEnergyController(
+        name='Sampling (nonlin)', deltaE=0.5, iteration_limit=15, convergence_level=2)
     minimizer = ift.NewtonCG(ic_newton)
     minimizer_sampling = ift.NewtonCG(ic_sampling_nl)
 
     # Set up likelihood energy
-    likelihood_energy = (ift.GaussianEnergy(data, inverse_covariance=N.inverse) @
-                         signal_response)
+    likelihood_energy = (ift.GaussianEnergy(data, inverse_covariance=N.inverse) @ signal_response)
 
     # Minimize KL
     n_iterations = 6
     n_samples = lambda iiter: 10 if iiter < 5 else 20
-    samples = ift.optimize_kl(likelihood_energy, n_iterations, n_samples,
-                              minimizer, ic_sampling, minimizer_sampling,
-                              plottable_operators={"signal": (signal, dict(vmin=0, vmax=1)),
-                                                   "power spectrum": pspec},
-                              ground_truth_position=mock_position,
-                              output_directory="getting_started_3_results",
-                              overwrite=True, comm=comm)
+    samples = ift.optimize_kl(
+        likelihood_energy,
+        n_iterations,
+        n_samples,
+        minimizer,
+        ic_sampling,
+        minimizer_sampling,
+        plottable_operators={
+            "signal": (signal, dict(vmin=0, vmax=1)),
+            "power spectrum": pspec
+        },
+        ground_truth_position=mock_position,
+        output_directory="getting_started_3_results",
+        overwrite=True,
+        comm=comm)
 
     if True:
         # Load result from disk. May be useful for long inference runs, where
@@ -154,11 +160,12 @@ def main():
 
     nsamples = samples.n_samples
     logspec = pspec.log()
-    plot.add(list(samples.iterator(pspec)) +
-             [pspec.force(mock_position), samples.average(logspec).exp()],
-             title="Sampled Posterior Power Spectrum",
-             linewidth=[1.]*nsamples + [3., 3.],
-             label=[None]*nsamples + ['Ground truth', 'Posterior mean'])
+    plot.add(
+        list(samples.iterator(pspec)) +
+        [pspec.force(mock_position), samples.average(logspec).exp()],
+        title="Sampled Posterior Power Spectrum",
+        linewidth=[1.] * nsamples + [3., 3.],
+        label=[None] * nsamples + ['Ground truth', 'Posterior mean'])
     if master:
         plot.output(ny=1, nx=3, xsize=24, ysize=6, name=filename_res)
         print("Saved results as '{}'.".format(filename_res))

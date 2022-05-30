@@ -58,7 +58,7 @@ class ADVIOptimizer(Minimizer):
         self.resample = resample
 
     def _step(self, position, gradient):
-        self.s = self.alpha * gradient ** 2 + (1 - self.alpha) * self.s
+        self.s = self.alpha * gradient**2 + (1 - self.alpha) * self.s
         self.rho = self.eta * self.counter ** (-0.5 + self.epsilon) \
                 / (self.tau + (self.s).sqrt())
         new_position = position - self.rho * gradient
@@ -74,7 +74,7 @@ class ADVIOptimizer(Minimizer):
             return energy, status
 
         if self.s is None:
-            self.s = energy.gradient ** 2
+            self.s = energy.gradient**2
         while True:
             # check if position is at a flat point
             if energy.gradient_norm == 0:

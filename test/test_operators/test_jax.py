@@ -30,10 +30,10 @@ pmp = pytest.mark.parametrize
 
 
 @pmp("dom", [ift.RGSpace((10, 8)), (ift.RGSpace(10), ift.RGSpace(8))])
-@pmp("func", [(lambda x: x, True), (lambda x: x**2, False), (lambda x: x*x, False),
-              (lambda x: x*x[0, 0], False), (lambda x: x+x[0, 0], True),
-              (lambda x: jnp.sin(x), False), (lambda x: x*x.sum(), False),
-              (lambda x: x+x.sum(), True)])
+@pmp("func", [(lambda x: x, True), (lambda x: x**2, False), (lambda x: x * x, False),
+              (lambda x: x * x[0, 0], False), (lambda x: x + x[0, 0], True),
+              (lambda x: jnp.sin(x), False), (lambda x: x * x.sum(), False),
+              (lambda x: x + x.sum(), True)])
 def test_jax(dom, func):
     pytest.importorskip("jax")
     loc = ift.from_random(dom)
@@ -55,13 +55,16 @@ def test_mf_jax():
     pytest.importorskip("jax")
     dom = ift.makeDomain({"a": ift.RGSpace(10), "b": ift.UnstructuredDomain(2)})
 
-    func = lambda x: x["a"]*x["b"][0]
+    func = lambda x: x["a"] * x["b"][0]
     op = ift.JaxOperator(dom, dom["a"], func)
     loc = ift.from_random(op.domain)
     np.testing.assert_allclose(np.array(func(loc.val)), op(loc).val)
     ift.extra.check_operator(op, loc)
 
-    func = lambda x: {"a": jnp.full(dom["a"].shape, 2.)*x[0]*x[1], "b": jnp.full(dom["b"].shape, 1.)*jnp.exp(x[0])}
+    func = lambda x: {
+        "a": jnp.full(dom["a"].shape, 2.) * x[0] * x[1],
+        "b": jnp.full(dom["b"].shape, 1.) * jnp.exp(x[0])
+    }
     op = ift.JaxOperator(dom["b"], dom, func)
     loc = ift.from_random(op.domain)
     for kk in dom.keys():
@@ -69,23 +72,26 @@ def test_mf_jax():
     ift.extra.check_operator(op, loc)
 
 
-@pmp("dom", [ift.RGSpace((10, 8)),
-    {"a": ift.RGSpace(10), "b": ift.UnstructuredDomain(2)}])
+@pmp("dom", [ift.RGSpace((10, 8)), {"a": ift.RGSpace(10), "b": ift.UnstructuredDomain(2)}])
 def test_jax_energy(dom):
     pytest.importorskip("jax")
     dom = ift.makeDomain(dom)
     e0 = ift.GaussianEnergy(domain=dom, sampling_dtype=np.float64)
+
     def func(x):
-        return 0.5*jnp.vdot(x, x)
+        return 0.5 * jnp.vdot(x, x)
+
     def funcmf(x):
         res = 0
         for kk, vv in x.items():
             res += jnp.vdot(vv, vv)
-        return 0.5*res
-    e = ift.JaxLikelihoodEnergyOperator(dom,
-            funcmf if isinstance(dom, ift.MultiDomain) else func,
-            transformation=ift.ScalingOperator(dom, 1.),
-            sampling_dtype=np.float64)
+        return 0.5 * res
+
+    e = ift.JaxLikelihoodEnergyOperator(
+        dom,
+        funcmf if isinstance(dom, ift.MultiDomain) else func,
+        transformation=ift.ScalingOperator(dom, 1.),
+        sampling_dtype=np.float64)
     ift.extra.check_operator(e, ift.from_random(e.domain))
     for wm in [False, True]:
         pos = ift.from_random(e.domain)
@@ -123,8 +129,8 @@ def test_jax_complex():
     dom = ift.UnstructuredDomain(1)
     a = ift.ducktape(dom, None, "a")
     b = ift.ducktape(dom, None, "b")
-    op = a.real+1j*b.real
-    op1 = ift.JaxOperator(op.domain, op.target, lambda x: x["a"] + 1j*x["b"])
+    op = a.real + 1j * b.real
+    op1 = ift.JaxOperator(op.domain, op.target, lambda x: x["a"] + 1j * x["b"])
     _op_equal(op, op1, ift.from_random(op.domain))
     ift.extra.check_operator(op, ift.from_random(op.domain), ntries=10)
     ift.extra.check_operator(op1, ift.from_random(op.domain), ntries=10)

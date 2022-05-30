@@ -16,7 +16,7 @@ def get_kernel(layer_weights, depth, n_samples=100):
     xi = {"offset": 0., "layer_weights": layer_weights}
     kernel = np.zeros(2**depth)
     for _ in range(n_samples):
-        xi["excitations"] = jnp.array(rng.normal(size=(2**depth, )))
+        xi["excitations"] = jnp.array(rng.normal(size=(2**depth,)))
         r = fwd(xi)
         for i in range(r.size):
             kernel[i] += np.mean(r * np.roll(r, i))
@@ -52,8 +52,8 @@ rng = np.random.default_rng(42)
 depth = 8
 
 for _ in range(10):
-    layer_weights = jnp.array(rng.normal(size=(depth + 1, )))
-    layer_weights = jnp.exp(0.1 * layer_weights)  #lognomral
+    layer_weights = jnp.array(rng.normal(size=(depth + 1,)))
+    layer_weights = jnp.exp(0.1 * layer_weights)    #lognomral
     kernel = get_kernel(layer_weights, depth, n_samples=30)
     plt.plot(kernel)
 plt.show()
@@ -71,7 +71,7 @@ rng = np.random.default_rng(42)
 depth = 12
 xi = {
     "offset": 0.,
-    "excitations": jnp.array(rng.normal(size=(2**depth, ))),
+    "excitations": jnp.array(rng.normal(size=(2**depth,))),
     # "layer_weights": jnp.exp(+jnp.array(rng.normal(size=(depth + 1, )))),
     "layer_weights": jnp.exp(0.1 * jnp.arange(depth + 1, dtype=float)),
     # "layer_weights": jnp.array([1., 1., 1., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0.,]),
@@ -105,23 +105,17 @@ plt.show()
 
 # %%
 d = correlated_field(pos_truth)
-lh = jax.jit(
-    lambda x: ((d - fwd(x))**2).sum() +
-    sum([(el**2).sum() for el in jax.tree_util.tree_leaves(x)])
-)
+lh = jax.jit(lambda x:
+             ((d - fwd(x))**2).sum() + sum([(el**2).sum() for el in jax.tree_util.tree_leaves(x)]))
 print(lh(xi))
 
 # %%
 opt_state = jft.minimize(
-    lh,
-    jft.Field(xi),
-    method="newton-cg",
-    options={
+    lh, jft.Field(xi), method="newton-cg", options={
         "name": "N",
         "absdelta": 0.1,
         "maxiter": 30
-    }
-)
+    })
 
 # %%
 plt.plot(correlated_field(pos_truth), label="truth")

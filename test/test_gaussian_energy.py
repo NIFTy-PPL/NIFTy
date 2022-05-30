@@ -31,9 +31,7 @@ pmp = pytest.mark.parametrize
 ntries = 10
 
 
-@pmp('space', [ift.GLSpace(5),
-               ift.RGSpace(5, distances=.789),
-               ift.RGSpace([2, 2], distances=.789)])
+@pmp('space', [ift.GLSpace(5), ift.RGSpace(5, distances=.789), ift.RGSpace([2, 2], distances=.789)])
 @pmp('nonlinearity', ["tanh", "exp", ""])
 @pmp('noise', [1, 1e-2, 1e2])
 @pmp('seed', [4, 78])
@@ -48,7 +46,7 @@ def test_gaussian_energy(space, nonlinearity, noise, seed):
         xi0 = ift.Field.from_random(domain=hspace, random_type='normal')
 
         def pspec(k):
-            return 1/(1 + k**2)**dim
+            return 1 / (1 + k**2)**dim
 
         pspec = ift.PS_field(pspace, pspec)
         A = Dist(pspec.ptw("sqrt"))
@@ -70,8 +68,7 @@ def test_gaussian_energy(space, nonlinearity, noise, seed):
             N = None
 
         energy = ift.GaussianEnergy(d, N, sampling_dtype=float) @ d_model()
-        ift.extra.check_operator(
-            energy, xi0, ntries=ntries, tol=1e-6)
+        ift.extra.check_operator(energy, xi0, ntries=ntries, tol=1e-6)
 
 
 @pmp('cplx', [True, False])
@@ -81,7 +78,7 @@ def testgaussianenergy_compatibility(cplx):
     e = ift.VariableCovarianceGaussianEnergy(dom, 'resi', 'icov', dt)
     resi = ift.from_random(dom)
     if cplx:
-        resi = resi + 1j*ift.from_random(dom)
+        resi = resi + 1j * ift.from_random(dom)
     loc0 = ift.MultiField.from_dict({'resi': resi})
     loc1 = ift.MultiField.from_dict({'icov': ift.from_random(dom).exp()})
     loc = loc0.unite(loc1)

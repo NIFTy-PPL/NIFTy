@@ -14,7 +14,6 @@
 # Copyright(C) 2013-2020 Max-Planck-Society
 #
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
-
 """
 Some remarks on NIFTy's treatment of random numbers
 
@@ -215,19 +214,19 @@ def pop_sseq():
 
 
 class Random:
+
     @staticmethod
     def pm1(dtype, shape):
         if np.issubdtype(dtype, np.complexfloating):
-            x = np.array([1+0j, 0+1j, -1+0j, 0-1j], dtype=dtype)
+            x = np.array([1 + 0j, 0 + 1j, -1 + 0j, 0 - 1j], dtype=dtype)
             x = x[_rng[-1].integers(0, 4, size=shape)]
         else:
-            x = 2*_rng[-1].integers(0, 2, size=shape)-1
+            x = 2 * _rng[-1].integers(0, 2, size=shape) - 1
         return x.astype(dtype, copy=False)
 
     @staticmethod
     def normal(dtype, shape, mean=0., std=1.):
-        if not (np.issubdtype(dtype, np.floating) or
-                np.issubdtype(dtype, np.complexfloating)):
+        if not (np.issubdtype(dtype, np.floating) or np.issubdtype(dtype, np.complexfloating)):
             raise TypeError("dtype must be float or complex")
         if not np.isscalar(mean) or not np.isscalar(std):
             raise TypeError("mean and std must be scalars")
@@ -256,10 +255,9 @@ class Random:
             x.real = _rng[-1].uniform(low, high, shape)
             x.imag = _rng[-1].uniform(low, high, shape)
         elif np.issubdtype(dtype, np.integer):
-            if not (np.issubdtype(type(low), np.integer) and
-                    np.issubdtype(type(high), np.integer)):
+            if not (np.issubdtype(type(low), np.integer) and np.issubdtype(type(high), np.integer)):
                 raise TypeError("low and high must be integer")
-            x = _rng[-1].integers(low, high+1, shape)
+            x = _rng[-1].integers(low, high + 1, shape)
         else:
             x = _rng[-1].uniform(low, high, shape)
         return x.astype(dtype, copy=False)

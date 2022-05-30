@@ -18,7 +18,7 @@ config.update("jax_enable_x64", True)
 matplotlib.rcParams['figure.figsize'] = (10, 7)
 
 #%%
-dims = (512, )
+dims = (512,)
 #datadims = (4,)
 loglogslope = 2.
 power_spectrum = lambda k: 1. / (k**loglogslope + 1.)
@@ -31,8 +31,7 @@ correlated_field = lambda x: jft.correlated_field.hartley(
     # x is a signal in fourier space
     # each modes amplitude gets multiplied by it's harmonic_power
     # and the whole signal is transformed back
-    harmonic_power * x
-)
+    harmonic_power * x)
 
 # %% [markdown]
 # signal_response = lambda x: jnp.exp(1. + correlated_field(x))
@@ -52,8 +51,7 @@ pos_truth = random.normal(shape=dims, key=subkey)
 signal_response_truth = signal_response(pos_truth)
 key, subkey = random.split(key)
 # 1. / noise_cov_inv_sqrt(jnp.ones(dims)) becomes the standard deviation of the noise gaussian
-noise_truth = 1. / noise_cov_inv_sqrt(jnp.ones(dims)
-                                     ) * random.normal(shape=dims, key=subkey)
+noise_truth = 1. / noise_cov_inv_sqrt(jnp.ones(dims)) * random.normal(shape=dims, key=subkey)
 data = signal_response_truth + noise_truth
 
 #%%
@@ -77,7 +75,7 @@ def Gaussian(data, noise_cov_inv_sqrt):
         l_res = noise_cov_inv_sqrt(p_res)
         return 0.5 * jnp.sum(l_res**2)
 
-    return jft.Likelihood(hamiltonian, )
+    return jft.Likelihood(hamiltonian,)
 
 
 # negative log likelihood
@@ -105,8 +103,7 @@ def plot_mean_and_stddev(ax, samples, mean_of_r=None, truth=False, **kwargs):
         y1=mean_of_signal_response - std_dev_of_signal_response,
         y2=mean_of_signal_response + std_dev_of_signal_response,
         color='grey',
-        alpha=0.5
-    )
+        alpha=0.5)
     title = kwargs.pop('title', 'position samples')
     if title is not None:
         ax.set_title(title)
@@ -131,9 +128,7 @@ sampler = jft.HMCChain(
     num_steps=128,
 )
 
-chain, _ = sampler.generate_n_samples(
-    42, initial_position, num_samples=30, save_intermediates=True
-)
+chain, _ = sampler.generate_n_samples(42, initial_position, num_samples=30, save_intermediates=True)
 print(f"acceptance ratio: {chain.acceptance}")
 
 # %%
@@ -155,9 +150,7 @@ sampler = jft.NUTSChain(
     max_tree_depth=17,
 )
 
-chain, _ = sampler.generate_n_samples(
-    42, initial_position, num_samples=30, save_intermediates=True
-)
+chain, _ = sampler.generate_n_samples(42, initial_position, num_samples=30, save_intermediates=True)
 plt.hist(chain.depths, bins=jnp.arange(sampler.max_tree_depth + 2))
 plt.title('NUTS tree depth histogram')
 plt.xlabel('tree depth')
@@ -187,7 +180,7 @@ if jft.hmc._DEBUG_FLAG:
 
 # %%[markdown]
 # # 1D position and momentum time series
-if chain.samples[0].shape == (1, ):
+if chain.samples[0].shape == (1,):
     plt.plot(chain.samples, label='position')
     #plt.plot(momentum_samples, label='momentum', linewidth=0.2)
     #plt.plot(unintegrated_momenta, label='unintegrated momentum', linewidth=0.2)
@@ -255,8 +248,7 @@ def sample_from_d_inv(key):
     # random.normal sample from dataspace and then R^\dagger \sqrt{N^{-1}}
     # jax.eval_shape(signal_response, pos_truth)
     rnr_smpl = signal_response_dagger(
-        noise_cov_inv_sqrt(random.normal(rnr_key, signal_response_truth.shape))
-    )
+        noise_cov_inv_sqrt(random.normal(rnr_key, signal_response_truth.shape)))
     return s_inv_smpl + rnr_smpl
 
 
@@ -267,13 +259,11 @@ def sample_from_d(key):
     return smpl
 
 
-wiener_samples = jnp.array(
-    list(map(lambda key: sample_from_d(key) + m, random.split(key, 30)))
-)
+wiener_samples = jnp.array(list(map(lambda key: sample_from_d(key) + m, random.split(key, 30))))
 
 # %%
 subplots = (3, 1)
-fig_height_pt = 541  # pt
+fig_height_pt = 541    # pt
 #fig_width_pt = 360 # pt
 inches_per_pt = 1 / 72.27
 fig_height_in = 1. * fig_height_pt * inches_per_pt
@@ -281,8 +271,7 @@ fig_width_in = fig_height_in / 0.618 * (subplots[1] / subplots[0])
 fig_dims = (fig_width_in, fig_height_in)
 
 fig, (ax_raw, ax_nuts, ax_wiener) = plt.subplots(
-    subplots[0], subplots[1], sharex=True, sharey=False, figsize=fig_dims
-)
+    subplots[0], subplots[1], sharex=True, sharey=False, figsize=fig_dims)
 
 ax_raw.plot(signal_response_truth, label='true signal response')
 ax_raw.plot(data, 'k.', label='noisy data', markersize=2.)
@@ -292,21 +281,14 @@ ax_raw.set_title("signal and data")
 ax_raw.legend(fontsize=8)
 
 plot_mean_and_stddev(
-    ax_nuts,
-    chain.samples,
-    truth=True,
-    title="NUTS",
-    xlabel=None,
-    mean_label='sample mean'
-)
+    ax_nuts, chain.samples, truth=True, title="NUTS", xlabel=None, mean_label='sample mean')
 plot_mean_and_stddev(
     ax_wiener,
     wiener_samples,
     mean_of_r=signal_response(m),
     truth=True,
     title="Wiener Filter",
-    mean_label='exact posterior mean'
-)
+    mean_label='exact posterior mean')
 
 fig.tight_layout()
 

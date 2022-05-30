@@ -48,6 +48,7 @@ class FieldZeroPadder(LinearOperator):
     When doing central padding on an axis with an even length, the "central"
     entry should in principle be split up; this is currently not done.
     """
+
     def __init__(self, domain, new_shape, space=0, central=False):
         self._domain = DomainTuple.make(domain)
         self._space = utilities.infer_space(self._domain, space)
@@ -60,8 +61,7 @@ class FieldZeroPadder(LinearOperator):
         if any([a < b for a, b in zip(new_shape, dom.shape)]):
             raise ValueError("New shape must not be smaller than old shape")
         self._target = list(self._domain)
-        self._target[self._space] = RGSpace(new_shape, dom.distances,
-                                            dom.harmonic)
+        self._target[self._space] = RGSpace(new_shape, dom.distances, dom.harmonic)
         self._target = DomainTuple.make(self._target)
         self._capability = self.TIMES | self.ADJOINT_TIMES
 
@@ -71,7 +71,7 @@ class FieldZeroPadder(LinearOperator):
         curshp = list(self._dom(mode).shape)
         tgtshp = self._tgt(mode).shape
         for d in self._target.axes[self._space]:
-            if v.shape[d] == tgtshp[d]:  # nothing to do
+            if v.shape[d] == tgtshp[d]:    # nothing to do
                 continue
 
             idx = (slice(None),) * d
@@ -81,10 +81,10 @@ class FieldZeroPadder(LinearOperator):
                 shp[d] = tgtshp[d]
                 xnew = np.zeros(shp, dtype=v.dtype)
                 if self._central:
-                    Nyquist = v.shape[d]//2
-                    i1 = idx + (slice(0, Nyquist+1),)
+                    Nyquist = v.shape[d] // 2
+                    i1 = idx + (slice(0, Nyquist + 1),)
                     xnew[i1] = v[i1]
-                    i1 = idx + (slice(None, -(Nyquist+1), -1),)
+                    i1 = idx + (slice(None, -(Nyquist + 1), -1),)
                     xnew[i1] = v[i1]
 #                     if (v.shape[d] & 1) == 0:  # even number of pixels
 #                         i1 = idx+(Nyquist,)
@@ -93,16 +93,18 @@ class FieldZeroPadder(LinearOperator):
 #                         xnew[i1] *= 0.5
                 else:
                     xnew[idx + (slice(0, v.shape[d]),)] = v
-            else:  # ADJOINT_TIMES
+            else:    # ADJOINT_TIMES
                 if self._central:
                     shp = list(v.shape)
                     shp[d] = tgtshp[d]
                     xnew = np.zeros(shp, dtype=v.dtype)
-                    Nyquist = xnew.shape[d]//2
-                    i1 = idx + (slice(0, Nyquist+1),)
+                    Nyquist = xnew.shape[d] // 2
+                    i1 = idx + (slice(0, Nyquist + 1),)
                     xnew[i1] = v[i1]
-                    i1 = idx + (slice(None, -(Nyquist+1), -1),)
+                    i1 = idx + (slice(None, -(Nyquist + 1), -1),)
                     xnew[i1] += v[i1]
+
+
 #                     if (xnew.shape[d] & 1) == 0:  # even number of pixels
 #                         i1 = idx+(Nyquist,)
 #                         xnew[i1] *= 0.5

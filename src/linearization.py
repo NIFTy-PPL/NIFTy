@@ -39,6 +39,7 @@ class Linearization(Operator):
         If True, the metric will be computed for other Linearizations derived
         from this one. Default: False.
     """
+
     def __init__(self, val, jac, metric=None, want_metric=False):
         self._val = val
         self._jac = jac
@@ -126,9 +127,8 @@ class Linearization(Operator):
         return self.new(-self._val, -self._jac, metric=None)
 
     def conjugate(self):
-        return self.new(
-            self._val.conjugate(), self._jac.conjugate(),
-            None if self._metric is None else self._metric.conjugate())
+        return self.new(self._val.conjugate(), self._jac.conjugate(),
+                        None if self._metric is None else self._metric.conjugate())
 
     @property
     def real(self):
@@ -140,14 +140,13 @@ class Linearization(Operator):
 
     def _myadd(self, other, neg):
         if np.isscalar(other) or other.jac is None:
-            return self.new(self._val-other if neg else self._val+other,
-                            self._jac, self._metric)
+            return self.new(self._val - other if neg else self._val + other, self._jac,
+                            self._metric)
         met = None
         if self._metric is not None and other._metric is not None:
             met = self._metric._myadd(other._metric, neg)
         return self.new(
-            self.val.flexible_addsub(other.val, neg),
-            self.jac._myadd(other.jac, neg), met)
+            self.val.flexible_addsub(other.val, neg), self.jac._myadd(other.jac, neg), met)
 
     def __add__(self, other):
         return self._myadd(other, False)
@@ -163,7 +162,7 @@ class Linearization(Operator):
 
     def __truediv__(self, other):
         if np.isscalar(other):
-            return self.__mul__(1/other)
+            return self.__mul__(1 / other)
         return self.__mul__(other.ptw("reciprocal"))
 
     def __rtruediv__(self, other):
@@ -179,15 +178,13 @@ class Linearization(Operator):
             if other == 1:
                 return self
             met = None if self._metric is None else self._metric.scale(other)
-            return self.new(self._val*other, self._jac.scale(other), met)
+            return self.new(self._val * other, self._jac.scale(other), met)
         if other.jac is None:
             check_object_identity(self.target, other.domain)
-            return self.new(self._val*other, makeOp(other)(self._jac))
+            return self.new(self._val * other, makeOp(other)(self._jac))
         check_object_identity(self.target, other.target)
-        return self.new(
-            self.val*other.val,
-            (makeOp(other.val)(self.jac))._myadd(
-             makeOp(self.val)(other.jac), False))
+        return self.new(self.val * other.val,
+                        (makeOp(other.val)(self.jac))._myadd(makeOp(self.val)(other.jac), False))
 
     def __rmul__(self, other):
         return self.__mul__(other)
@@ -209,13 +206,13 @@ class Linearization(Operator):
             return self.__mul__(other)
         from .operators.outer_product_operator import OuterProduct
         if other.jac is None:
-            return self.new(OuterProduct(other.domain, self._val)(other),
-                            OuterProduct(other.domain, self._jac(self._val)))
+            return self.new(
+                OuterProduct(other.domain, self._val)(other),
+                OuterProduct(other.domain, self._jac(self._val)))
         tmp_op = OuterProduct(other.target, self._val)
         return self.new(
             tmp_op(other._val),
-            OuterProduct(other.target, self._jac(self._val))._myadd(
-                tmp_op(other._jac), False))
+            OuterProduct(other.target, self._jac(self._val))._myadd(tmp_op(other._jac), False))
 
     def vdot(self, other):
         """Computes the inner product of this Linearization with a Field or
@@ -232,13 +229,10 @@ class Linearization(Operator):
         """
         from .operators.simple_linear_operators import VdotOperator
         if other.jac is None:
-            return self.new(
-                self._val.vdot(other),
-                VdotOperator(other)(self._jac))
+            return self.new(self._val.vdot(other), VdotOperator(other)(self._jac))
         return self.new(
             self._val.vdot(other._val),
-            VdotOperator(self._val)(other._jac) +
-            VdotOperator(other._val)(self._jac))
+            VdotOperator(self._val)(other._jac) + VdotOperator(other._val)(self._jac))
 
     def sum(self, spaces=None):
         """Computes the (partial) sum over self
@@ -304,8 +298,7 @@ class Linearization(Operator):
             the requested Linearization
         """
         from .operators.scaling_operator import ScalingOperator
-        return Linearization(field, ScalingOperator(field.domain, 1.),
-                             want_metric=want_metric)
+        return Linearization(field, ScalingOperator(field.domain, 1.), want_metric=want_metric)
 
     @staticmethod
     def make_const(field, want_metric=False):
@@ -329,8 +322,8 @@ class Linearization(Operator):
         The Jacobian is square and contains only zeroes.
         """
         from .operators.simple_linear_operators import NullOperator
-        return Linearization(field, NullOperator(field.domain, field.domain),
-                             want_metric=want_metric)
+        return Linearization(
+            field, NullOperator(field.domain, field.domain), want_metric=want_metric)
 
     @staticmethod
     def make_const_empty_input(field, want_metric=False):
@@ -357,8 +350,7 @@ class Linearization(Operator):
         from .multi_domain import MultiDomain
         from .operators.simple_linear_operators import NullOperator
         return Linearization(
-            field, NullOperator(MultiDomain.make({}), field.domain),
-            want_metric=want_metric)
+            field, NullOperator(MultiDomain.make({}), field.domain), want_metric=want_metric)
 
     @staticmethod
     def make_partial_var(field, constants, want_metric=False):
@@ -390,7 +382,9 @@ class Linearization(Operator):
         if len(constants) == 0:
             return Linearization.make_var(field, want_metric)
         else:
-            ops = {key: ScalingOperator(dom, 0. if key in constants else 1.)
-                   for key, dom in field.domain.items()}
+            ops = {
+                key: ScalingOperator(dom, 0. if key in constants else 1.)
+                for key, dom in field.domain.items()
+            }
             bdop = BlockDiagonalOperator(field.domain, ops)
             return Linearization(field, bdop, want_metric=want_metric)

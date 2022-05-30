@@ -23,9 +23,11 @@ import nifty8 as ift
 import pytest
 
 from ..common import setup_function, teardown_function
+
 pmp = pytest.mark.parametrize
 
 doms = [ift.HPSpace(4), {"a": ift.UnstructuredDomain(2), "b": ift.HPSpace(4)}]
+
 
 @pmp("with_names", [0, 1, 2])
 @pmp("dom", doms)

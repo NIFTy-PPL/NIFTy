@@ -57,7 +57,7 @@ class HPSpace(StructuredDomain):
 
     @property
     def scalar_dvol(self):
-        return np.pi / (3*self._nside*self._nside)
+        return np.pi / (3 * self._nside * self._nside)
 
     @property
     def nside(self):
@@ -79,7 +79,7 @@ class HPSpace(StructuredDomain):
         set to `2*self.nside`.
         """
         from ..domains.lm_space import LMSpace
-        return LMSpace(lmax=2*self.nside)
+        return LMSpace(lmax=2 * self.nside)
 
     def check_codomain(self, codomain):
         """Raises `TypeError` if `codomain` is not a matching partner domain

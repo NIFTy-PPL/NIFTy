@@ -39,13 +39,13 @@ from .operators.scaling_operator import ScalingOperator
 from .operators.selection_operators import SliceOperator
 from .plot import Plot, plottable2D
 
-__all__ = ['PS_field', 'power_analyze', 'create_power_operator',
-           'density_estimator', 'create_harmonic_smoothing_operator',
-           'from_random', 'full', 'makeField', 'is_fieldlike',
-           'is_linearization', 'is_operator', 'makeDomain', 'is_likelihood_energy',
-           'get_signal_variance', 'makeOp', 'domain_union',
-           'get_default_codomain', 'single_plot', 'exec_time',
-           'calculate_position', 'plot_priorsamples'] + list(pointwise.ptw_dict.keys())
+__all__ = [
+    'PS_field', 'power_analyze', 'create_power_operator', 'density_estimator',
+    'create_harmonic_smoothing_operator', 'from_random', 'full', 'makeField', 'is_fieldlike',
+    'is_linearization', 'is_operator', 'makeDomain', 'is_likelihood_energy', 'get_signal_variance',
+    'makeOp', 'domain_union', 'get_default_codomain', 'single_plot', 'exec_time',
+    'calculate_position', 'plot_priorsamples'
+] + list(pointwise.ptw_dict.keys())
 
 
 def PS_field(pspace, function):
@@ -90,8 +90,7 @@ def get_signal_variance(spec, space):
     if space.harmonic:
         space = PowerSpace(space)
     if not isinstance(space, PowerSpace):
-        raise ValueError(
-            "space must be either a harmonic space or Power space.")
+        raise ValueError("space must be either a harmonic space or Power space.")
     field = PS_field(space, spec)
     dist = PowerDistributor(space.harmonic_partner, space)
     k_field = dist(field)
@@ -101,13 +100,12 @@ def get_signal_variance(spec, space):
 def _single_power_analyze(field, idx, binbounds):
     power_domain = PowerSpace(field.domain[idx], binbounds)
     pd = PowerDistributor(field.domain, power_domain, idx)
-    return pd.adjoint_times(field.weight(1)).weight(-1)  # divides by bin size
+    return pd.adjoint_times(field.weight(1)).weight(-1)    # divides by bin size
 
 
 # MR FIXME: this function is not well suited for analyzing more than one
 # subdomain at once, because it allows only one set of binbounds.
-def power_analyze(field, spaces=None, binbounds=None,
-                  keep_phase_information=False):
+def power_analyze(field, spaces=None, binbounds=None, keep_phase_information=False):
     """Computes the power spectrum for a subspace of `field`.
 
     Creates a PowerSpace for the space addressed by `spaces` with the
@@ -162,22 +160,21 @@ def power_analyze(field, spaces=None, binbounds=None,
         raise ValueError("cannot keep phase from real-valued input Field")
 
     if keep_phase_information:
-        parts = [field.real*field.real, field.imag*field.imag]
+        parts = [field.real * field.real, field.imag * field.imag]
     else:
         if field_real:
             parts = [field**2]
         else:
-            parts = [field.real*field.real + field.imag*field.imag]
+            parts = [field.real * field.real + field.imag * field.imag]
 
     for space_index in spaces:
-        parts = [_single_power_analyze(part, space_index, binbounds)
-                 for part in parts]
+        parts = [_single_power_analyze(part, space_index, binbounds) for part in parts]
 
-    return parts[0] + 1j*parts[1] if keep_phase_information else parts[0]
+    return parts[0] + 1j * parts[1] if keep_phase_information else parts[0]
 
 
 def _create_power_field(domain, power_spectrum):
-    if not callable(power_spectrum):  # we have a Field defined on a PowerSpace
+    if not callable(power_spectrum):    # we have a Field defined on a PowerSpace
         if not isinstance(power_spectrum, Field):
             raise TypeError("Field object expected")
         if len(power_spectrum.domain) != 1:
@@ -193,8 +190,7 @@ def _create_power_field(domain, power_spectrum):
     return PowerDistributor(domain, power_domain)(fp)
 
 
-def create_power_operator(domain, power_spectrum, space=None,
-                          sampling_dtype=None):
+def create_power_operator(domain, power_spectrum, space=None, sampling_dtype=None):
     """Creates a diagonal operator with the given power spectrum.
 
     Constructs a diagonal operator that is defined on the specified domain.
@@ -223,8 +219,7 @@ def create_power_operator(domain, power_spectrum, space=None,
     return DiagonalOperator(field, domain, space, sampling_dtype)
 
 
-def density_estimator(domain, pad=1.0, cf_fluctuations=None,
-                      cf_azm_uniform=None, prefix=""):
+def density_estimator(domain, pad=1.0, cf_fluctuations=None, cf_azm_uniform=None, prefix=""):
     from .domains.rg_space import RGSpace
     from .library.correlated_fields import CorrelatedFieldMaker
     from .library.special_distributions import UniformOperator
@@ -237,7 +232,7 @@ def density_estimator(domain, pad=1.0, cf_fluctuations=None,
     }
 
     domain = DomainTuple.make(domain)
-    dom_scaling = 1. + np.broadcast_to(pad, (len(domain.axes), ))
+    dom_scaling = 1. + np.broadcast_to(pad, (len(domain.axes),))
     if cf_fluctuations is None:
         cf_fluctuations = cf_fluctuations_sane_default
     if cf_azm_uniform is None:
@@ -254,7 +249,7 @@ def density_estimator(domain, pad=1.0, cf_fluctuations=None,
     domain_padded = DomainTuple.make(domain_padded)
 
     # Set up the signal model
-    azm_offset_mean = 0.0  # The zero-mode should be inferred only from the data
+    azm_offset_mean = 0.0    # The zero-mode should be inferred only from the data
     cfmaker = CorrelatedFieldMaker(prefix)
     for i, d in enumerate(domain_padded):
         if isinstance(cf_fluctuations, (list, tuple)):
@@ -302,8 +297,7 @@ def create_harmonic_smoothing_operator(domain, space, sigma):
         The requested smoothing operator
     """
     kfunc = domain[space].get_fft_smoothing_kernel_function(sigma)
-    return DiagonalOperator(kfunc(domain[space].get_k_length_array()), domain,
-                            space)
+    return DiagonalOperator(kfunc(domain[space].get_k_length_array()), domain, space)
 
 
 def full(domain, val):
@@ -377,7 +371,9 @@ def makeField(domain, arr):
     """
     if isinstance(domain, (dict, MultiDomain)):
         if not isinstance(arr, dict):
-            raise TypeError("If `domain` is an instance of `MultiDomain`, `arr` must be a dict of Numpy arrays.")
+            raise TypeError(
+                "If `domain` is an instance of `MultiDomain`, `arr` must be a dict of Numpy arrays."
+            )
         return MultiField.from_raw(domain, arr)
     return Field.from_raw(domain, arr)
 
@@ -472,10 +468,14 @@ def domain_union(domains):
 _current_module = sys.modules[__name__]
 
 for f in pointwise.ptw_dict.keys():
+
     def func(f):
+
         def func2(x, *args, **kwargs):
-           return x.ptw(f, *args, **kwargs)
+            return x.ptw(f, *args, **kwargs)
+
         return func2
+
     setattr(_current_module, f, func(f))
 
 
@@ -501,8 +501,7 @@ def get_default_codomain(domainoid, space=None):
     if isinstance(domainoid, RGSpace):
         return domainoid.get_default_codomain()
     if not isinstance(domainoid, DomainTuple):
-        raise TypeError(
-            'Works only on RGSpaces and DomainTuples containing those')
+        raise TypeError('Works only on RGSpaces and DomainTuples containing those')
     space = utilities.infer_space(domainoid, space)
     if not isinstance(domainoid[space], (RGSpace, HPSpace, GLSpace, LMSpace)):
         raise TypeError("can only codomain structrued spaces")
@@ -518,7 +517,7 @@ def single_plot(field, **kwargs):
     p = Plot()
     p.add(field, **kwargs)
     if 'title' in kwargs:
-        del(kwargs['title'])
+        del (kwargs['title'])
     p.output(**kwargs)
 
 
@@ -548,7 +547,7 @@ def plot_priorsamples(op, n_samples=5, common_colorbar=True, **kwargs):
         for i in range(n_samples):
             p.add(samples[i], vmin=vmin, vmax=vmax, **kwargs)
             if 'title' in kwargs:
-                del(kwargs['title'])
+                del (kwargs['title'])
     else:
         p.add(samples, **kwargs)
     p.output(**kwargs)
@@ -592,7 +591,7 @@ def exec_time(obj, want_metric=True, verbose=False, domain_dtype=np.float64, ntr
         return _profile_func(lambda x: getattr(obj, x), attr, what)
 
     if isinstance(obj, Energy):
-        newpos = 0.99*obj.position
+        newpos = 0.99 * obj.position
         _profile_func(lambda x: x.at(newpos), obj, "Energy.at()\t\t\t\t")
         _profile_get_attr(obj, "value", "Energy.value\t\t\t\t")
         _profile_get_attr(obj, "gradient", "Energy.gradient\t\t\t\t")
@@ -631,21 +630,20 @@ def calculate_position(operator, output):
     if output.domain != operator.target:
         raise TypeError
     if isinstance(output, MultiField):
-        cov = 1e-3*max([np.max(np.abs(vv)) for vv in output.val.values()])**2
+        cov = 1e-3 * max([np.max(np.abs(vv)) for vv in output.val.values()])**2
         invcov = ScalingOperator(output.domain, cov).inverse
         dtype = list(set([ff.dtype for ff in output.values()]))
         if len(dtype) != 1:
             raise ValueError('Only MultiFields with one dtype supported.')
         dtype = dtype[0]
     else:
-        cov = 1e-3*np.max(np.abs(output.val))**2
+        cov = 1e-3 * np.max(np.abs(output.val))**2
         dtype = output.dtype
     invcov = ScalingOperator(output.domain, cov, output.dtype).inverse
     d = output + invcov.draw_sample(from_inverse=True)
     lh = GaussianEnergy(d, invcov) @ operator
-    H = StandardHamiltonian(
-        lh, ic_samp=GradientNormController(iteration_limit=200))
-    pos = 0.1*from_random(operator.domain)
+    H = StandardHamiltonian(lh, ic_samp=GradientNormController(iteration_limit=200))
+    pos = 0.1 * from_random(operator.domain)
     minimizer = NewtonCG(GradientNormController(iteration_limit=10, name='findpos'))
     for ii in range(3):
         logger.info(f'Start iteration {ii+1}/3')

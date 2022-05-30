@@ -47,7 +47,7 @@ def _optimise_operator(op):
         current_letter = 65
         repeats = 1
         while True:
-            yield chr(current_letter)*repeats
+            yield chr(current_letter) * repeats
             current_letter += 1
             if current_letter == 91:
                 # skip specials
@@ -61,7 +61,6 @@ def _optimise_operator(op):
 
     def isnode(op):
         return isinstance(op, (_OpSum, _OpProd))
-
 
     def left_parser(left_bool):
         return '_op1' if left_bool else '_op2'
@@ -92,12 +91,11 @@ def _optimise_operator(op):
             index = nodes[index][1]
             cond = type(index) is int
 
-
     def recognize_nodes(op, active_node, left):
         # If nothing added - is a leaf!
         isleaf = True
         if isinstance(op, _OpChain):
-           for i in range(len(op._ops)):
+            for i in range(len(op._ops)):
                 if isnode(op._ops[i]):
                     nodes.append((op._ops[i], active_node, left))
                     isleaf = False
@@ -106,7 +104,6 @@ def _optimise_operator(op):
             isleaf = False
         if isleaf:
             leaves.add((active_node, left))
-
 
     def equal_nodes(op):
         # BFS-Algorithm which fills the nodes list and id_dic dictionary
@@ -136,6 +133,7 @@ def _optimise_operator(op):
 
     def equal_leaves(leaves):
         id_leaf = {}
+
         # Find matching leaves
         def write_to_dic(leaf, leaf_op_id):
             try:
@@ -159,7 +157,6 @@ def _optimise_operator(op):
                 if not isinstance(leaf_op, FieldAdapter):
                     write_to_dic(leaf, str(id(leaf_op)))
 
-
         # Unroll their OpChain and see how far they are equal
         key_list_leaf = []
         same_leaf = {}
@@ -180,7 +177,8 @@ def _optimise_operator(op):
             if not max_diff == 1:
                 compare_iterator = iter(to_compare)
                 first = next(compare_iterator)
-                while all(first[first_difference] == rest[first_difference] for rest in compare_iterator):
+                while all(first[first_difference] == rest[first_difference]
+                          for rest in compare_iterator):
                     first_difference += 1
                     if first_difference >= max_diff:
                         break
@@ -192,7 +190,10 @@ def _optimise_operator(op):
             for ops in common_op[1:]:
                 res_op = ops @ res_op
 
-            same_leaf[key] = [res_op, FieldAdapter(res_op.target, next(prepend_id) + str(id(res_op)))]
+            same_leaf[key] = [
+                res_op, FieldAdapter(res_op.target,
+                                     next(prepend_id) + str(id(res_op)))
+            ]
 
             for leaf in id_leaf[key]:
                 parent = nodes[leaf[0]][0]
@@ -230,8 +231,11 @@ def _optimise_operator(op):
     get_duplicate_keys(key_list_node, id_dic)
 
     for key in key_list_node:
-        same_node[key] = [nodes[id_dic[key][0]][0],
-                          FieldAdapter(nodes[id_dic[key][0]][0].target, next(prepend_id) + str(key))]
+        same_node[key] = [
+            nodes[id_dic[key][0]][0],
+            FieldAdapter(nodes[id_dic[key][0]][0].target,
+                         next(prepend_id) + str(key))
+        ]
 
         for node_indices in id_dic[key]:
             edited.add(node_indices)
@@ -249,7 +253,9 @@ def _optimise_operator(op):
             key_temp = key_temp1 + key_temp
             same_subtrees.update(same_temp)
             cond = len(same_temp) > 0
-        key_list_subtrees += key_temp + [key, ]
+        key_list_subtrees += key_temp + [
+            key,
+        ]
         key_temp.clear()
         subtree_leaves.clear()
     same_subtrees.update(same_node)
@@ -265,9 +271,6 @@ def _optimise_operator(op):
     for key in reversed(key_list_op):
         op = op.partial_insert(same_op[key][1].adjoint(same_op[key][0]))
     return op
-
-
-
 
 
 def optimise_operator(op):

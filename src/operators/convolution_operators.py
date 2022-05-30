@@ -15,7 +15,6 @@
 #
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
 
-
 from .. import utilities
 from ..domain_tuple import DomainTuple
 from ..domains.gl_space import GLSpace
@@ -71,13 +70,14 @@ def _ConvolutionOperator(domain, kernel, space=None):
     lm = DomainTuple.make(lm)
     utilities.check_object_identity(lm[space], kernel.domain[0])
     HT = HarmonicTransformOperator(lm, domain[space], space)
-    diag = DiagonalOperator(kernel*domain[space].total_volume, lm, (space,))
+    diag = DiagonalOperator(kernel * domain[space].total_volume, lm, (space,))
     wgt = WeightApplier(domain, space, 1)
     op = HT(diag(HT.adjoint(wgt)))
     return _ApplicationWithoutMeanOperator(op)
 
 
 class _ApplicationWithoutMeanOperator(EndomorphicOperator):
+
     def __init__(self, op):
         self._capability = self.TIMES | self.ADJOINT_TIMES
         if op.domain != op.target:
@@ -92,6 +92,4 @@ class _ApplicationWithoutMeanOperator(EndomorphicOperator):
 
     def __repr__(self):
         from ..utilities import indent
-        return "\n".join((
-            "_ApplicationWithoutMeanOperator:",
-            indent(self._op.__repr__())))
+        return "\n".join(("_ApplicationWithoutMeanOperator:", indent(self._op.__repr__())))

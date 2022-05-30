@@ -51,8 +51,7 @@ ham_vg = jit(jft.mean_value_and_grad(ham))
 ham_metric = jit(jft.mean_metric(ham.metric))
 MetricKL = jit(
     partial(jft.MetricKL, ham),
-    static_argnames=("n_samples", "mirror_samples", "linear_sampling_name")
-)
+    static_argnames=("n_samples", "mirror_samples", "linear_sampling_name"))
 GeoMetricKL = partial(jft.GeoMetricKL, ham)
 
 # %%
@@ -60,22 +59,16 @@ n_pix_sqrt = 1000
 x = jnp.linspace(-4, 4, n_pix_sqrt)
 y = jnp.linspace(-4, 4, n_pix_sqrt)
 xx = cartesian_product((x, y))
-ham_everywhere = jnp.vectorize(ham, signature="(2)->()")(xx).reshape(
-    n_pix_sqrt, n_pix_sqrt
-)
-plt.imshow(
-    jnp.exp(-ham_everywhere.T),
-    extent=(x.min(), x.max(), y.min(), y.max()),
-    origin="lower"
-)
+ham_everywhere = jnp.vectorize(ham, signature="(2)->()")(xx).reshape(n_pix_sqrt, n_pix_sqrt)
+plt.imshow(jnp.exp(-ham_everywhere.T), extent=(x.min(), x.max(), y.min(), y.max()), origin="lower")
 plt.colorbar()
 plt.title("target distribution")
 plt.show()
 
 # %%
 n_mgvi_iterations = 30
-n_samples = [2] * (n_mgvi_iterations - 10) + [2] * 5 + [10, 10, 10, 10, 100]
-n_newton_iterations = [7] * (n_mgvi_iterations - 10) + [10] * 6 + 4 * [25]
+n_samples = [2] * (n_mgvi_iterations-10) + [2] * 5 + [10, 10, 10, 10, 100]
+n_newton_iterations = [7] * (n_mgvi_iterations-10) + [10] * 6 + 4 * [25]
 absdelta = 1e-13
 
 initial_position = jnp.array([1., 1.])
@@ -110,8 +103,7 @@ for i in range(n_mgvi_iterations):
                 "name": None
             },
             "name": "N"
-        }
-    )
+        })
     mkl_pos = opt_state.x
     msg = f"Post MGVI Iteration {i}: Energy {mg_samples.at(mkl_pos).mean(ham):2.4e}"
     print(msg, file=sys.stderr)
@@ -119,8 +111,8 @@ for i in range(n_mgvi_iterations):
 
 # %%
 n_geovi_iterations = 15
-n_samples = [1] * (n_geovi_iterations - 10) + [2] * 5 + [10, 10, 10, 10, 100]
-n_newton_iterations = [7] * (n_geovi_iterations - 10) + [10] * 6 + [25] * 4
+n_samples = [1] * (n_geovi_iterations-10) + [2] * 5 + [10, 10, 10, 10, 100]
+n_newton_iterations = [7] * (n_geovi_iterations-10) + [10] * 6 + [25] * 4
 absdelta = 1e-10
 
 initial_position = jnp.array([1., 1.])
@@ -160,8 +152,7 @@ for i in range(n_geovi_iterations):
                 "name": None
             },
             "name": "N"
-        }
-    )
+        })
     gkl_pos = opt_state.x
     msg = f"Post geoVI Iteration {i}: Energy {geo_samples.at(gkl_pos).mean(ham):2.4e}"
     print(msg, file=sys.stderr)
@@ -209,8 +200,7 @@ hmc_sampler = jft.HMCChain(
 )
 
 chain, _ = hmc_sampler.generate_n_samples(
-    42, 1e-2 * initial_position, num_samples=100, save_intermediates=True
-)
+    42, 1e-2 * initial_position, num_samples=100, save_intermediates=True)
 
 # %%
 b_space_smpls = chain.samples
@@ -234,11 +224,7 @@ nuts_n_samples = []
 ns_samples = [200, 1000, 1000000]
 for n_samples in ns_samples:
     chain, _ = nuts_sampler.generate_n_samples(
-        43 + n_samples,
-        1e-2 * initial_position,
-        num_samples=n_samples,
-        save_intermediates=True
-    )
+        43 + n_samples, 1e-2 * initial_position, num_samples=n_samples, save_intermediates=True)
     nuts_n_samples.append(chain.samples)
 
 # %%
@@ -251,45 +237,32 @@ ax.scatter(*b_space_smpls.T, s=2.)
 plt.show()
 
 # %%
-plt.hist2d(
-    *b_space_smpls.T,
-    bins=[x, y],
-    range=[[x.min(), x.max()], [y.min(), y.max()]]
-)
+plt.hist2d(*b_space_smpls.T, bins=[x, y], range=[[x.min(), x.max()], [y.min(), y.max()]])
 plt.colorbar()
 plt.show()
 
 # %%
 subplots = (3, 2)
 
-fig_width_pt = 426  # pt (a4paper, and such)
+fig_width_pt = 426    # pt (a4paper, and such)
 inches_per_pt = 1 / 72.27
 fig_width_in = fig_width_pt * inches_per_pt
 fig_height_in = fig_width_in * 1. * (subplots[0] / subplots[1])
 fig_dims = (fig_width_in, fig_height_in)
 
-fig, ((ax1, ax4), (ax2, ax5), (ax3, ax6)
-     ) = plt.subplots(*subplots, figsize=fig_dims, sharex=True, sharey=True)
+fig, ((ax1, ax4), (ax2, ax5), (ax3, ax6)) = plt.subplots(
+    *subplots, figsize=fig_dims, sharex=True, sharey=True)
 
 ax1.set_title(r'$P(d=0|\xi_1, \xi_2) \cdot P(\xi_1, \xi_2)$')
 xx = cartesian_product((x, y))
-ham_everywhere = jnp.vectorize(ham, signature="(2)->()")(xx).reshape(
-    n_pix_sqrt, n_pix_sqrt
-)
-ax1.imshow(
-    jnp.exp(-ham_everywhere.T),
-    extent=(x.min(), x.max(), y.min(), y.max()),
-    origin="lower"
-)
+ham_everywhere = jnp.vectorize(ham, signature="(2)->()")(xx).reshape(n_pix_sqrt, n_pix_sqrt)
+ax1.imshow(jnp.exp(-ham_everywhere.T), extent=(x.min(), x.max(), y.min(), y.max()), origin="lower")
 #ax1.colorbar()
 
 ax1.set_ylim([-4., 4.])
 ax1.set_xlim([-4., 4.])
 #ax1.autoscale(enable=True, axis='y', tight=True)
-asp = float(
-    jnp.diff(jnp.array(ax1.get_xlim()))[0] /
-    jnp.diff(jnp.array(ax1.get_ylim()))[0]
-)
+asp = float(jnp.diff(jnp.array(ax1.get_xlim()))[0] / jnp.diff(jnp.array(ax1.get_ylim()))[0])
 
 smplmarkersize = .3
 smplmarkercolor = 'k'
@@ -326,10 +299,7 @@ for n, samples, ax in zip(ns_samples[:2], nuts_n_samples[:2], [ax4, ax5]):
     ax.scatter(*samples.T, s=smplmarkersize, c=smplmarkercolor)
 
 h, _, _ = jnp.histogram2d(
-    *nuts_n_samples[-1].T,
-    bins=[x, y],
-    range=[[x.min(), x.max()], [y.min(), y.max()]]
-)
+    *nuts_n_samples[-1].T, bins=[x, y], range=[[x.min(), x.max()], [y.min(), y.max()]])
 ax6.imshow(h.T, extent=(x.min(), x.max(), y.min(), y.max()), origin="lower")
 ax6.set_title(f'NUTS N={ns_samples[-1]:.0E}')
 

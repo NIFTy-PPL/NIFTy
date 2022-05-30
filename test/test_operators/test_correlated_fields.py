@@ -24,12 +24,7 @@ import nifty8 as ift
 from ..common import setup_function, teardown_function
 
 pmp = pytest.mark.parametrize
-spaces = [
-    ift.RGSpace(4),
-    ift.RGSpace((4, 4), (0.123, 0.4)),
-    ift.HPSpace(8),
-    ift.GLSpace(4)
-]
+spaces = [ift.RGSpace(4), ift.RGSpace((4, 4), (0.123, 0.4)), ift.HPSpace(8), ift.GLSpace(4)]
 
 
 def _stats(op, samples):
@@ -53,11 +48,9 @@ def testDistributor(dofdex, seed):
     with ift.random.Context(seed):
         dom = ift.RGSpace(3)
         N_copies = max(dofdex) + 1
-        distributed_target = ift.makeDomain(
-            (ift.UnstructuredDomain(len(dofdex)), dom))
+        distributed_target = ift.makeDomain((ift.UnstructuredDomain(len(dofdex)), dom))
         target = ift.makeDomain((ift.UnstructuredDomain(N_copies), dom))
-        op = ift.library.correlated_fields._Distributor(
-            dofdex, target, distributed_target)
+        op = ift.library.correlated_fields._Distributor(dofdex, target, distributed_target)
         ift.extra.check_linear_operator(op)
 
 
@@ -77,12 +70,12 @@ def test_init(total_N, offset_std, asperity, flexibility, ind, matern):
         if not offset_std is None:
             if matern:
                 if total_N == 0:
-                    cfm.add_fluctuations_matern(ift.RGSpace(4), *(3*[cfg]))
+                    cfm.add_fluctuations_matern(ift.RGSpace(4), *(3 * [cfg]))
                 else:
                     with pytest.raises(NotImplementedError):
-                        cfm.add_fluctuations_matern(ift.RGSpace(4), *(3*[cfg]))
+                        cfm.add_fluctuations_matern(ift.RGSpace(4), *(3 * [cfg]))
             else:
-                cfm.add_fluctuations(ift.RGSpace(4), *(4*[cfg]), index=ind)
+                cfm.add_fluctuations(ift.RGSpace(4), *(4 * [cfg]), index=ind)
         cfm.set_amplitude_total_offset(0, offset_std, dofdex=dofdex)
         cfm.finalize(prior_info=0)
 
@@ -115,6 +108,7 @@ def test_unit_zero_mode(sspace, asperity, flexibility, matern):
         rtol = 1e-2
     assert_allclose(cf_r.s_integrate(), sspace.total_volume, rtol=rtol)
 
+
 @pmp('sspace', spaces)
 @pmp('asperity', [None, (1, 1)])
 @pmp('flexibility', [None, (1, 1)])
@@ -130,7 +124,7 @@ def test_constant_zero_mode(sspace, asperity, flexibility, matern):
         fl = (1., 0.5)
         ll = (-4, 1)
         cfm.add_fluctuations(sspace, fl, flexibility, asperity, ll)
-        
+
         cf_simple = ift.SimpleCorrelatedField(sspace, 0, None, fl, flexibility, asperity, ll)
     cfm.set_amplitude_total_offset(0, None)
     cf = cfm.finalize(prior_info=0)
@@ -147,6 +141,7 @@ def test_constant_zero_mode(sspace, asperity, flexibility, matern):
         cf_r_simple = cf_simple(r)
         assert_allclose(cf_r_simple.s_integrate(), 0., atol=atol)
 
+
 @pmp('sspace', spaces)
 @pmp('N', [0, 2])
 def testAmplitudesInvariants(sspace, N):
@@ -158,10 +153,10 @@ def testAmplitudesInvariants(sspace, N):
     astds = 0.2, 1.2
     offset_std_mean = 1.3
     fa = ift.CorrelatedFieldMaker('', N)
-    fa.add_fluctuations(sspace, (astds[0], 1e-2), (1.1, 2.), (2.1, .5), (-2, 1.),
-                        'spatial', dofdex=dofdex2)
-    fa.add_fluctuations(fsspace, (astds[1], 1e-2), (3.1, 1.), (.5, .1), (-4, 1.),
-                        'freq', dofdex=dofdex3)
+    fa.add_fluctuations(
+        sspace, (astds[0], 1e-2), (1.1, 2.), (2.1, .5), (-2, 1.), 'spatial', dofdex=dofdex2)
+    fa.add_fluctuations(
+        fsspace, (astds[1], 1e-2), (3.1, 1.), (.5, .1), (-4, 1.), 'freq', dofdex=dofdex3)
     fa.set_amplitude_total_offset(1.2, (offset_std_mean, 1e-2), dofdex=dofdex1)
     op = fa.finalize(prior_info=0)
 
@@ -191,12 +186,12 @@ def testAmplitudesInvariants(sspace, N):
 
     fa = ift.CorrelatedFieldMaker('', N)
     fa.set_amplitude_total_offset(0., (offset_std_mean, .1), dofdex=dofdex1)
-    fa.add_fluctuations(fsspace, (astds[1], 1.), (3.1, 1.), (.5, .1), (-4, 1.), 'freq',
-                        dofdex=dofdex3)
+    fa.add_fluctuations(
+        fsspace, (astds[1], 1.), (3.1, 1.), (.5, .1), (-4, 1.), 'freq', dofdex=dofdex3)
     m = 3.
     x = fa.moment_slice_to_average(m)
-    fa.add_fluctuations(sspace, (x, 1.5), (1.1, 2.), (2.1, .5), (-2, 1.), 'spatial', 0,
-                        dofdex=dofdex2)
+    fa.add_fluctuations(
+        sspace, (x, 1.5), (1.1, 2.), (2.1, .5), (-2, 1.), 'spatial', 0, dofdex=dofdex2)
     op = fa.finalize(prior_info=0)
     em, estd = _stats(fa.slice_fluctuation(0), samples)
 
@@ -205,13 +200,13 @@ def testAmplitudesInvariants(sspace, N):
     assert op.target[-1] == fsspace
 
     for ampl in fa.get_normalized_amplitudes():
-        ift.extra.check_operator(ampl, 0.1*ift.from_random(ampl.domain), ntries=10)
-    ift.extra.check_operator(op, 0.1*ift.from_random(op.domain), ntries=10)
+        ift.extra.check_operator(ampl, 0.1 * ift.from_random(ampl.domain), ntries=10)
+    ift.extra.check_operator(op, 0.1 * ift.from_random(op.domain), ntries=10)
 
 
 @pmp('seed', [42, 31])
 @pmp('domain', spaces)
-@pmp('without', (('offset_std', ), ('asperity', ), ('flexibility', ), ('flexibility', 'asperity')))
+@pmp('without', (('offset_std',), ('asperity',), ('flexibility',), ('flexibility', 'asperity')))
 def test_complicated_vs_simple(seed, domain, without):
     with ift.random.Context(seed):
         offset_mean = _rand()
@@ -231,35 +226,18 @@ def test_complicated_vs_simple(seed, domain, without):
         loglogavgslope = _posrand(), _posrand()
         prefix = 'foobar'
         hspace = domain.get_default_codomain()
-        scf_args = (
-            domain,
-            offset_mean,
-            offset_std,
-            fluctuations,
-            flexibility,
-            asperity,
-            loglogavgslope
-        )
-        add_fluct_args = (
-            domain,
-            fluctuations,
-            flexibility,
-            asperity,
-            loglogavgslope
-        )
+        scf_args = (domain, offset_mean, offset_std, fluctuations, flexibility, asperity,
+                    loglogavgslope)
+        add_fluct_args = (domain, fluctuations, flexibility, asperity, loglogavgslope)
         cfm = ift.CorrelatedFieldMaker(prefix)
         if asperity is not None and flexibility is None:
             with pytest.raises(ValueError):
-                scf = ift.SimpleCorrelatedField(*scf_args, prefix=prefix,
-                                                harmonic_partner=hspace)
+                scf = ift.SimpleCorrelatedField(*scf_args, prefix=prefix, harmonic_partner=hspace)
             with pytest.raises(ValueError):
-                cfm.add_fluctuations(*add_fluct_args, prefix='',
-                                     harmonic_partner=hspace)
+                cfm.add_fluctuations(*add_fluct_args, prefix='', harmonic_partner=hspace)
             return
-        scf = ift.SimpleCorrelatedField(*scf_args, prefix=prefix,
-                                        harmonic_partner=hspace)
-        cfm.add_fluctuations(*add_fluct_args, prefix='',
-                             harmonic_partner=hspace)
+        scf = ift.SimpleCorrelatedField(*scf_args, prefix=prefix, harmonic_partner=hspace)
+        cfm.add_fluctuations(*add_fluct_args, prefix='', harmonic_partner=hspace)
         cfm.set_amplitude_total_offset(offset_mean, offset_std)
         inp = ift.from_random(scf.domain)
         op1 = cfm.finalize(prior_info=0)

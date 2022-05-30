@@ -38,7 +38,7 @@ def test_kl(constants, point_estimates, mirror_samples, mf, geo):
     dom = ift.RGSpace((12,), (2.12))
     op = ift.HarmonicSmoothingOperator(dom, 3)
     if mf:
-        op = ift.ducktape(dom, None, 'a')*(op.ducktape('b'))
+        op = ift.ducktape(dom, None, 'a') * (op.ducktape('b'))
     lh = ift.GaussianEnergy(domain=op.target, sampling_dtype=np.float64) @ op
     ic = ift.GradientNormController(iteration_limit=5)
     ic.enable_logging()
@@ -46,13 +46,15 @@ def test_kl(constants, point_estimates, mirror_samples, mf, geo):
     mean0 = ift.from_random(h.domain, 'normal')
 
     nsamps = 2
-    args = {'constants': constants,
-            'point_estimates': point_estimates,
-            'mirror_samples': mirror_samples,
-            'n_samples': nsamps,
-            'position': mean0,
-            'hamiltonian': h,
-            'minimizer_sampling': ift.NewtonCG(ic) if geo else None}
+    args = {
+        'constants': constants,
+        'point_estimates': point_estimates,
+        'mirror_samples': mirror_samples,
+        'n_samples': nsamps,
+        'position': mean0,
+        'hamiltonian': h,
+        'minimizer_sampling': ift.NewtonCG(ic) if geo else None
+    }
     if isinstance(mean0, ift.MultiField) and set(point_estimates) == set(mean0.keys()):
         with assert_raises(RuntimeError):
             ift.SampledKLEnergy(**args)
@@ -81,7 +83,7 @@ def test_kl(constants, point_estimates, mirror_samples, mf, geo):
     from nifty8.minimization.kl_energies import SampledKLEnergyClass
     klpure = SampledKLEnergyClass(samp, tmph, constants, invariant, False)
     # Test number of samples
-    expected_nsamps = 2*nsamps if mirror_samples else nsamps
+    expected_nsamps = 2 * nsamps if mirror_samples else nsamps
     myassert(kl.samples.n_samples == expected_nsamps)
 
     # Test value
@@ -95,7 +97,7 @@ def test_kl(constants, point_estimates, mirror_samples, mf, geo):
     for kk in kl.position.domain.keys():
         res1 = kl.gradient[kk].val
         if kk in constants:
-            res0 = 0*res1
+            res0 = 0 * res1
         else:
             res0 = klpure.gradient[kk].val
         assert_allclose(res0, res1)
@@ -106,7 +108,7 @@ def test_kl(constants, point_estimates, mirror_samples, mf, geo):
 def test_ParametricVI(mirror_samples, fc):
     dom = ift.RGSpace((12,), (2.12))
     op = ift.HarmonicSmoothingOperator(dom, 3)
-    op = ift.ducktape(dom, None, 'a')*(op.ducktape('b'))
+    op = ift.ducktape(dom, None, 'a') * (op.ducktape('b'))
     lh = ift.GaussianEnergy(domain=op.target, sampling_dtype=np.float64) @ op
     ic = ift.GradientNormController(iteration_limit=5)
     ic.enable_logging()
@@ -116,7 +118,7 @@ def test_ParametricVI(mirror_samples, fc):
     args = initial_mean, h, nsamps, mirror_samples, 0.01
     model = (ift.FullCovarianceVI if fc else ift.MeanFieldVI)(*args)
     kl = model.KL
-    expected_nsamps = 2*nsamps if mirror_samples else nsamps
+    expected_nsamps = 2 * nsamps if mirror_samples else nsamps
     myassert(len(tuple(kl._local_ops)) == expected_nsamps)
 
     true_val = []
@@ -126,7 +128,7 @@ def test_ParametricVI(mirror_samples, fc):
         samp['latent'] = lat_rnd
         samp = ift.MultiField.from_dict(samp)
         true_val.append(model.KL._op(samp))
-    true_val = sum(true_val)/expected_nsamps
+    true_val = sum(true_val) / expected_nsamps
     assert_allclose(true_val.val, kl.value, rtol=0.1)
 
     samples = model.KL.samples()

@@ -31,6 +31,7 @@ class StatCalculator:
     - The code computes the unbiased variance (which contains a `1./(n-1)`
       term for `n` samples).
     """
+
     def __init__(self):
         self._count = 0
 
@@ -44,11 +45,11 @@ class StatCalculator:
         """
         self._count += 1
         if self._count == 1:
-            self._mean = 1.*value
-            self._M2 = 0.*value
+            self._mean = 1. * value
+            self._M2 = 0. * value
         else:
             delta = value - self._mean
-            self._mean = self.mean + delta*(1./self._count)
+            self._mean = self.mean + delta * (1. / self._count)
             delta2 = value - self._mean
             self._M2 = self._M2 + delta*delta2
 
@@ -59,7 +60,7 @@ class StatCalculator:
         """
         if self._count == 0:
             raise RuntimeError
-        return 1.*self._mean
+        return 1. * self._mean
 
     @property
     def var(self):
@@ -68,7 +69,7 @@ class StatCalculator:
         """
         if self._count < 2:
             raise RuntimeError
-        return self._M2 * (1./(self._count-1))
+        return self._M2 * (1. / (self._count - 1))
 
 
 def probe_with_posterior_samples(op, post_op, nprobes, dtype):
@@ -135,7 +136,7 @@ def probe_diagonal(op, nprobes, random_type="pm1"):
     sc = StatCalculator()
     for i in range(nprobes):
         x = from_random(op.domain, random_type)
-        sc.add(op(x).conjugate()*x)
+        sc.add(op(x).conjugate() * x)
     return sc.mean
 
 

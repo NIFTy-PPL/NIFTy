@@ -34,10 +34,11 @@ def _get_sample_list(communicator, cls):
     if cls == "SampleList":
         return ift.SampleList(samples, communicator), samples
     elif cls == "ResidualSampleList":
-        neg = 3*[False]
-        return ift.ResidualSampleList(mean, samples, neg, communicator), [mean + ss for ss in samples]
+        neg = 3 * [False]
+        return ift.ResidualSampleList(mean, samples, neg,
+                                      communicator), [mean + ss for ss in samples]
     elif cls == "SymmetricalSampleList":
-        neg = len(samples)*[False] + len(samples)*[True]
+        neg = len(samples) * [False] + len(samples) * [True]
         reference = [mean + ss for ss in samples] + [mean - ss for ss in samples]
         samples = samples + samples
         return ift.ResidualSampleList(mean, samples, neg, communicator), reference
@@ -53,19 +54,24 @@ def _get_sample_list(communicator, cls):
             local_samples = samples[0:1]
         else:
             local_samples = []
-        return ift.SampleList(local_samples, comm=communicator, domain=samples[0].domain), samples[0:1]
+        return ift.SampleList(
+            local_samples, comm=communicator, domain=samples[0].domain), samples[0:1]
     raise NotImplementedError
 
 
-all_cls = ["ResidualSampleList", "SampleList", "PartiallyEmptyResidualSampleList",
-           "PartiallyEmptySampleList"]
+all_cls = [
+    "ResidualSampleList", "SampleList", "PartiallyEmptyResidualSampleList",
+    "PartiallyEmptySampleList"
+]
 
 
 def _get_ops(sample_list):
     dom = sample_list.domain
-    return [None,
-            ift.ScalingOperator(dom, 1.),
-            ift.ducktape(None, dom, "a") @ ift.ScalingOperator(dom, 1.).exp()]
+    return [
+        None,
+        ift.ScalingOperator(dom, 1.),
+        ift.ducktape(None, dom, "a") @ ift.ScalingOperator(dom, 1.).exp()
+    ]
 
 
 @pmp("cls", ["SampleList", "PartiallyEmptySampleList"])
@@ -82,7 +88,8 @@ def test_sample_list(comm, cls):
         if sl.n_samples > 1:
             mean, var = sl.sample_stat(op)
             ift.extra.assert_allclose(mean, sl.average(op))
-            ift.extra.assert_allclose(mean, sc.mean)  # FIXME Why does this not fail for comm != None?
+            ift.extra.assert_allclose(mean,
+                                      sc.mean)    # FIXME Why does this not fail for comm != None?
             if comm is None:
                 ift.extra.assert_allclose(var, sc.var)
 

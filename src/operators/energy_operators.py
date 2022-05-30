@@ -90,6 +90,7 @@ class LikelihoodEnergyOperator(EnergyOperator):
     `LikelihoodEnergyOperator` is the Fisher information metric of the
     likelihood.
     """
+
     def __init__(self, data_residual, sqrt_data_metric_at):
         from ..extra import is_operator
         if data_residual is not None and not is_operator(data_residual):
@@ -161,6 +162,7 @@ class LikelihoodEnergyOperator(EnergyOperator):
 
 
 class _LikelihoodChain(LikelihoodEnergyOperator):
+
     def __init__(self, op1, op2):
         from .simple_linear_operators import PartialExtractor
         self._op = _OpChain.make((op1, op2))
@@ -192,7 +194,7 @@ class _LikelihoodChain(LikelihoodEnergyOperator):
         dtype, trafo = tr
         if scaled_lh:
             trafo = trafo.scale(np.sqrt(self._op._ops[0]._factor))
-        return dtype, _OpChain.make((trafo,)+self._op._ops[ii+1:])
+        return dtype, _OpChain.make((trafo,) + self._op._ops[ii + 1:])
 
     def apply(self, x):
         self._check_input(x)
@@ -206,6 +208,7 @@ class _LikelihoodChain(LikelihoodEnergyOperator):
 
 
 class _LikelihoodSum(LikelihoodEnergyOperator):
+
     def __init__(self, ops, _callingfrommake=False):
         from .simple_linear_operators import PrependKey
 
@@ -213,7 +216,7 @@ class _LikelihoodSum(LikelihoodEnergyOperator):
             raise NotImplementedError
         if len(set([isinstance(oo.domain, DomainTuple) for oo in ops])) > 1:
             raise RuntimeError("Some operators have DomainTuple and others have "
-                    "MultiDomain as domain. This should not happen.")
+                               "MultiDomain as domain. This should not happen.")
         self._ops = ops
         res, prep, data_ops = [], [], []
         for ii, oo in enumerate(ops):
@@ -233,8 +236,9 @@ class _LikelihoodSum(LikelihoodEnergyOperator):
             data_ops.append(oo)
 
         def sqrt_data_metric_at(x):
-            return reduce(add, (pp @ oo._sqrt_data_metric_at(x) @ pp.adjoint
-                                for pp, oo in zip(prep, data_ops)))
+            return reduce(
+                add,
+                (pp @ oo._sqrt_data_metric_at(x) @ pp.adjoint for pp, oo in zip(prep, data_ops)))
 
         lst = self._all_names()
         if len(lst) != len(set(lst)):
@@ -276,7 +280,7 @@ class _LikelihoodSum(LikelihoodEnergyOperator):
             key = self._get_name(ii)
             if isinstance(tr.target, MultiDomain):
                 key = key + ": "
-                dtype.update({key+d: dtp[d] for d in dtp.keys()})
+                dtype.update({key + d: dtp[d] for d in dtp.keys()})
                 tr = PrependKey(tr.target, key) @ tr
             else:
                 dtype[key] = dtp
@@ -318,7 +322,7 @@ class Squared2NormOperator(EnergyOperator):
         if x.jac is None:
             return x.vdot(x)
         res = x.val.vdot(x.val)
-        return x.new(res, VdotOperator(2*x.val))
+        return x.new(res, VdotOperator(2 * x.val))
 
 
 class QuadraticFormOperator(EnergyOperator):
@@ -344,8 +348,8 @@ class QuadraticFormOperator(EnergyOperator):
     def apply(self, x):
         self._check_input(x)
         if x.jac is None:
-            return 0.5*x.vdot(self._op(x))
-        res = 0.5*x.val.vdot(self._op(x.val))
+            return 0.5 * x.vdot(self._op(x))
+        res = 0.5 * x.val.vdot(self._op(x.val))
         return x.new(res, VdotOperator(self._op(x.val)))
 
 
@@ -382,8 +386,12 @@ class VariableCovarianceGaussianEnergy(LikelihoodEnergyOperator):
         is used. Default is True.
     """
 
-    def __init__(self, domain, residual_key, inverse_covariance_key,
-                 sampling_dtype, use_full_fisher=True):
+    def __init__(self,
+                 domain,
+                 residual_key,
+                 inverse_covariance_key,
+                 sampling_dtype,
+                 use_full_fisher=True):
         self._kr = str(residual_key)
         self._ki = str(inverse_covariance_key)
         dom = DomainTuple.make(domain)
@@ -393,22 +401,22 @@ class VariableCovarianceGaussianEnergy(LikelihoodEnergyOperator):
         self._cplx = iscomplextype(sampling_dtype)
         self._use_full_fisher = use_full_fisher
         super(VariableCovarianceGaussianEnergy, self).__init__(
-                Operator.identity_operator(dom).ducktape(self._kr),
-                lambda x: makeOp(x[self._ki].sqrt()))
+            Operator.identity_operator(dom).ducktape(self._kr),
+            lambda x: makeOp(x[self._ki].sqrt()))
 
     def apply(self, x):
         self._check_input(x)
         r, i = x[self._kr], x[self._ki]
         if self._cplx:
-            res = 0.5*r.vdot(r*i.real).real - i.log().sum()
+            res = 0.5 * r.vdot(r * i.real).real - i.log().sum()
         else:
-            res = 0.5*(r.vdot(r*i) - i.log().sum())
+            res = 0.5 * (r.vdot(r * i) - i.log().sum())
         if not x.want_metric:
             return res
         if not self._use_full_fisher:
             return res.add_metric(self.get_metric_at(x.val))
         fct = 1. if self._cplx else 0.5
-        met = {self._kr: i.val, self._ki: fct*i.val**(-2)}
+        met = {self._kr: i.val, self._ki: fct * i.val**(-2)}
         met = MultiField.from_dict(met, domain=self._domain)
         met = makeOp(met, sampling_dtype=self._dt)
         return res.add_metric(met)
@@ -443,11 +451,12 @@ class VariableCovarianceGaussianEnergy(LikelihoodEnergyOperator):
         r = FieldAdapter(self._domain[self._kr], self._kr)
         ivar = FieldAdapter(self._domain[self._kr], self._ki).real
         sc = 1. if self._cplx else 0.5
-        f = r.adjoint @ (ivar.sqrt()*r) + ivar.adjoint @ (sc*ivar.log())
+        f = r.adjoint @ (ivar.sqrt() * r) + ivar.adjoint @ (sc * ivar.log())
         return self._dt, f
 
 
 class _SpecialGammaEnergy(LikelihoodEnergyOperator):
+
     def __init__(self, residual):
         from .simplify_for_const import ConstantOperator
 
@@ -456,16 +465,16 @@ class _SpecialGammaEnergy(LikelihoodEnergyOperator):
         self._cplx = iscomplextype(self._resi.dtype)
         self._dt = self._resi.dtype
         super(_SpecialGammaEnergy, self).__init__(
-                ConstantOperator(self._resi, domain=self._domain),
-                lambda x: self.get_metric_at(x).get_sqrt())
+            ConstantOperator(self._resi, domain=self._domain),
+            lambda x: self.get_metric_at(x).get_sqrt())
 
     def apply(self, x):
         self._check_input(x)
         r = self._resi
         if self._cplx:
-            res = 0.5*(r*x.real).vdot(r).real - x.log().sum()
+            res = 0.5 * (r * x.real).vdot(r).real - x.log().sum()
         else:
-            res = 0.5*((r*x).vdot(r) - x.log().sum())
+            res = 0.5 * ((r * x).vdot(r) - x.log().sum())
         if not x.want_metric:
             return res
         return res.add_metric(self.get_metric_at(x.val))
@@ -546,7 +555,6 @@ class GaussianEnergy(LikelihoodEnergyOperator):
             s += f"data.dtype: {data.dtype}"
             raise RuntimeError(s)
 
-
     @staticmethod
     def _checkEquivalence(olddom, newdom):
         newdom = makeDomain(newdom)
@@ -611,8 +619,8 @@ class PoissonianEnergy(LikelihoodEnergyOperator):
             raise ValueError(ve)
         self._d = d
         self._domain = DomainTuple.make(d.domain)
-        super(PoissonianEnergy, self).__init__(Adder(d, neg=True),
-                                               lambda x: self.get_metric_at(x).get_sqrt())
+        super(PoissonianEnergy,
+              self).__init__(Adder(d, neg=True), lambda x: self.get_metric_at(x).get_sqrt())
 
     def apply(self, x):
         self._check_input(x)
@@ -622,7 +630,7 @@ class PoissonianEnergy(LikelihoodEnergyOperator):
         return res.add_metric(self.get_metric_at(x.val))
 
     def get_transformation(self):
-        return np.float64, 2.*Operator.identity_operator(self._domain).sqrt()
+        return np.float64, 2. * Operator.identity_operator(self._domain).sqrt()
 
 
 class InverseGammaEnergy(LikelihoodEnergyOperator):
@@ -657,15 +665,15 @@ class InverseGammaEnergy(LikelihoodEnergyOperator):
             alpha = Field(beta.domain, np.full(beta.shape, alpha))
         elif not isinstance(alpha, Field):
             raise TypeError
-        self._alphap1 = alpha+1
+        self._alphap1 = alpha + 1
         if not self._beta.dtype == np.float64:
             # FIXME Add proper complex support for this energy
             raise TypeError
         self._sampling_dtype = _field_to_dtype(self._beta)
 
-        super(InverseGammaEnergy, self).__init__(
-                2*ConstantOperator(self._beta, domain=self._domain),
-                lambda x: makeOp(x.reciprocal().sqrt()))
+        super(InverseGammaEnergy,
+              self).__init__(2 * ConstantOperator(self._beta, domain=self._domain),
+                             lambda x: makeOp(x.reciprocal().sqrt()))
 
     def apply(self, x):
         self._check_input(x)
@@ -706,7 +714,7 @@ class StudentTEnergy(LikelihoodEnergyOperator):
 
     def apply(self, x):
         self._check_input(x)
-        res = (((self._theta+1)/2)*(x**2/self._theta).log1p()).sum()
+        res = (((self._theta + 1) / 2) * (x**2 / self._theta).log1p()).sum()
         if not x.want_metric:
             return res
         return res.add_metric(self.get_metric_at(x.val))
@@ -717,7 +725,7 @@ class StudentTEnergy(LikelihoodEnergyOperator):
         else:
             from ..sugar import full
             th = full(self._domain, self._theta)
-        return np.float64, makeOp(((th+1)/(th+3)).sqrt())
+        return np.float64, makeOp(((th+1) / (th+3)).sqrt())
 
 
 class BernoulliEnergy(LikelihoodEnergyOperator):
@@ -744,12 +752,12 @@ class BernoulliEnergy(LikelihoodEnergyOperator):
             raise ValueError
         self._d = d
         self._domain = DomainTuple.make(d.domain)
-        super(BernoulliEnergy, self).__init__(Adder(d, neg=True),
-                                              lambda x: self.get_metric_at(x).get_sqrt())
+        super(BernoulliEnergy,
+              self).__init__(Adder(d, neg=True), lambda x: self.get_metric_at(x).get_sqrt())
 
     def apply(self, x):
         self._check_input(x)
-        res = -x.log().vdot(self._d) + (1.-x).log().vdot(self._d-1.)
+        res = -x.log().vdot(self._d) + (1. - x).log().vdot(self._d - 1.)
         if not x.want_metric:
             return res
         return res.add_metric(self.get_metric_at(x.val))
@@ -758,7 +766,7 @@ class BernoulliEnergy(LikelihoodEnergyOperator):
         from ..sugar import full
         res = Adder(full(self._domain, 1.)) @ ScalingOperator(self._domain, -1)
         res = res * Operator.identity_operator(self._domain).reciprocal()
-        return np.float64, -2.*res.sqrt().arctan()
+        return np.float64, -2. * res.sqrt().arctan()
 
 
 class StandardHamiltonian(EnergyOperator):
@@ -807,7 +815,7 @@ class StandardHamiltonian(EnergyOperator):
         if not x.want_metric or self._ic_samp is None:
             return lhx + prx
         met = SamplingEnabler(lhx.metric, prx.metric, self._ic_samp)
-        return (lhx+prx).add_metric(met)
+        return (lhx + prx).add_metric(met)
 
     @property
     def prior_energy(self):
@@ -860,10 +868,10 @@ class AveragedEnergy(EnergyOperator):
 
     def apply(self, x):
         self._check_input(x)
-        mymap = map(lambda v: self._h(x+v), self._res_samples)
-        return utilities.my_sum(mymap)/len(self._res_samples)
+        mymap = map(lambda v: self._h(x + v), self._res_samples)
+        return utilities.my_sum(mymap) / len(self._res_samples)
 
     def get_transformation(self):
         dtp, trafo = self._h.get_transformation()
-        mymap = map(lambda v: trafo@Adder(v), self._res_samples)
-        return dtp, utilities.my_sum(mymap)/np.sqrt(len(self._res_samples))
+        mymap = map(lambda v: trafo @ Adder(v), self._res_samples)
+        return dtp, utilities.my_sum(mymap) / np.sqrt(len(self._res_samples))

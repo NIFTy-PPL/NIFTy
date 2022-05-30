@@ -26,16 +26,15 @@ from .minimizer import Minimizer
 
 
 def _multiToArray(fld):
-    szall = sum(2*v.size if iscomplextype(v.dtype) else v.size
-                for v in fld.values())
+    szall = sum(2 * v.size if iscomplextype(v.dtype) else v.size for v in fld.values())
     res = np.empty(szall, dtype=np.float64)
     ofs = 0
     for val in fld.values():
-        sz2 = 2*val.size if iscomplextype(val.dtype) else val.size
+        sz2 = 2 * val.size if iscomplextype(val.dtype) else val.size
         locdat = val.val.reshape(-1)
         if iscomplextype(val.dtype):
             locdat = locdat.view(locdat.real.dtype)
-        res[ofs:ofs+sz2] = locdat
+        res[ofs:ofs + sz2] = locdat
         ofs += sz2
     return res
 
@@ -58,8 +57,8 @@ def _toField(arr, template):
     ofs = 0
     res = []
     for v in template.values():
-        sz2 = 2*v.size if iscomplextype(v.dtype) else v.size
-        locdat = arr[ofs:ofs+sz2].copy()
+        sz2 = 2 * v.size if iscomplextype(v.dtype) else v.size
+        locdat = arr[ofs:ofs + sz2].copy()
         if iscomplextype(v.dtype):
             locdat = locdat.view(np.complex128)
         res.append(Field(v.domain, locdat.reshape(v.shape)))
@@ -68,6 +67,7 @@ def _toField(arr, template):
 
 
 class _MinHelper:
+
     def __init__(self, energy):
         self._energy = energy
         self._domain = energy.position.domain
@@ -111,20 +111,26 @@ class _ScipyMinimizer(Minimizer):
     def __call__(self, energy):
         import scipy.optimize as opt
         hlp = _MinHelper(energy)
-        energy = None  # drop handle, since we don't need it any more
+        energy = None    # drop handle, since we don't need it any more
         bounds = None
         if self._bounds is not None:
             if len(self._bounds) == 2:
                 lo = self._bounds[0]
                 hi = self._bounds[1]
-                bounds = [(lo, hi)]*hlp._energy.position.size
+                bounds = [(lo, hi)] * hlp._energy.position.size
             else:
                 raise ValueError("unrecognized bounds")
 
         x = _toArray_rw(hlp._energy.position)
         hessp = hlp.hessp if self._need_hessp else None
-        r = opt.minimize(hlp.fun, x, method=self._method, jac=hlp.jac,
-                         hessp=hessp, options=self._options, bounds=bounds)
+        r = opt.minimize(
+            hlp.fun,
+            x,
+            method=self._method,
+            jac=hlp.jac,
+            hessp=hessp,
+            options=self._options,
+            bounds=bounds)
         if not r.success:
             logger.error("Problem in Scipy minimization: {}".format(r.message))
             return hlp._energy, IterationController.ERROR
@@ -138,8 +144,7 @@ def L_BFGS_B(ftol, gtol, maxiter, maxcor=10, disp=False, bounds=None):
     --------
     _ScipyMinimizer
     """
-    options = {"ftol": ftol, "gtol": gtol, "maxiter": maxiter,
-               "maxcor": maxcor, "disp": disp}
+    options = {"ftol": ftol, "gtol": gtol, "maxiter": maxiter, "maxcor": maxcor, "disp": disp}
     return _ScipyMinimizer("L-BFGS-B", options, False, bounds)
 
 
@@ -150,6 +155,7 @@ class _ScipyCG(Minimizer):
     This class is only intended for double-checking NIFTy's own conjugate
     gradient implementation and should not be used otherwise.
     """
+
     def __init__(self, tol, maxiter):
         self._tol = tol
         self._maxiter = maxiter
@@ -163,6 +169,7 @@ class _ScipyCG(Minimizer):
             raise ValueError("need a quadratic energy for CG")
 
         class mymatvec:
+
             def __init__(self, op):
                 self._op = op
 
@@ -172,14 +179,12 @@ class _ScipyCG(Minimizer):
         op = energy._A
         b = _toArray(energy._b)
         sx = _toArray(energy.position)
-        sci_op = scipy_linop(shape=(op.domain.size, op.target.size),
-                             matvec=mymatvec(op))
+        sci_op = scipy_linop(shape=(op.domain.size, op.target.size), matvec=mymatvec(op))
         prec_op = None
         if preconditioner is not None:
-            prec_op = scipy_linop(shape=(op.domain.size, op.target.size),
-                                  matvec=mymatvec(preconditioner))
-        res, stat = cg(sci_op, b, x0=sx, tol=self._tol, M=prec_op,
-                       maxiter=self._maxiter, atol='legacy')
-        stat = (IterationController.CONVERGED if stat >= 0 else
-                IterationController.ERROR)
+            prec_op = scipy_linop(
+                shape=(op.domain.size, op.target.size), matvec=mymatvec(preconditioner))
+        res, stat = cg(
+            sci_op, b, x0=sx, tol=self._tol, M=prec_op, maxiter=self._maxiter, atol='legacy')
+        stat = (IterationController.CONVERGED if stat >= 0 else IterationController.ERROR)
         return energy.at(_toField(res, energy.position)), stat

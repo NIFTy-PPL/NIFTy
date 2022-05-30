@@ -25,14 +25,12 @@ from ..common import setup_function, teardown_function
 
 pmp = pytest.mark.parametrize
 # [nside, expected]
-CONSTRUCTOR_CONFIGS = [[
-    2, {
-        'nside': 2,
-        'harmonic': False,
-        'shape': (48,),
-        'size': 48,
-    }
-], [5, {
+CONSTRUCTOR_CONFIGS = [[2, {
+    'nside': 2,
+    'harmonic': False,
+    'shape': (48,),
+    'size': 48,
+}], [5, {
     'nside': 5,
     'harmonic': False,
     'shape': (300,),
@@ -64,4 +62,4 @@ def test_constructor(nside, expected):
 
 
 def test_dvol():
-    assert_almost_equal(HPSpace(2).dvol, np.pi/12)
+    assert_almost_equal(HPSpace(2).dvol, np.pi / 12)

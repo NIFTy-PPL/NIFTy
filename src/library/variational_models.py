@@ -74,11 +74,18 @@ class MeanFieldVI:
         occasions but rather the minimizer is told that the position it has
         tried is not sensible.
     """
-    def __init__(self, position, hamiltonian, n_samples, mirror_samples,
-                 initial_sig=1, comm=None, nanisinf=False):
+
+    def __init__(self,
+                 position,
+                 hamiltonian,
+                 n_samples,
+                 mirror_samples,
+                 initial_sig=1,
+                 comm=None,
+                 nanisinf=False):
         Flat = Multifield2Vector(position.domain)
         self._std = FieldAdapter(Flat.target, 'std').absolute()
-        latent = FieldAdapter(Flat.target,'latent')
+        latent = FieldAdapter(Flat.target, 'latent')
         self._mean = FieldAdapter(Flat.target, 'mean')
         self._generator = Flat.adjoint(self._mean + self._std * latent)
         self._entropy = GaussianEntropy(self._std.target) @ self._std
@@ -91,8 +98,10 @@ class MeanFieldVI:
             pos['std'] = full(Flat.target, initial_sig)
         pos = MultiField.from_dict(pos)
         op = hamiltonian(self._generator) + self._entropy
-        self._KL = StochasticEnergyAdapter.make(pos, op, ['latent',], n_samples,
-                                    mirror_samples, nanisinf=nanisinf, comm=comm)
+        self._KL = StochasticEnergyAdapter.make(
+            pos, op, [
+                'latent',
+            ], n_samples, mirror_samples, nanisinf=nanisinf, comm=comm)
         self._samdom = latent.domain
 
     @property
@@ -112,8 +121,7 @@ class MeanFieldVI:
         return self._KL
 
     def draw_sample(self):
-        _, op = self._generator.simplify_for_constant_input(
-                from_random(self._samdom))
+        _, op = self._generator.simplify_for_constant_input(from_random(self._samdom))
         return op(self._KL.position)
 
     def minimize(self, minimizer):
@@ -165,31 +173,40 @@ class FullCovarianceVI:
         occasions but rather the minimizer is told that the position it has
         tried is not sensible.
     """
-    def __init__(self, position, hamiltonian, n_samples, mirror_samples,
-                initial_sig=1, comm=None, nanisinf=False):
+
+    def __init__(self,
+                 position,
+                 hamiltonian,
+                 n_samples,
+                 mirror_samples,
+                 initial_sig=1,
+                 comm=None,
+                 nanisinf=False):
         Flat = Multifield2Vector(position.domain)
         flat_domain = Flat.target[0]
-        mat_space = DomainTuple.make((flat_domain,flat_domain))
-        lat = FieldAdapter(Flat.target,'latent')
+        mat_space = DomainTuple.make((flat_domain, flat_domain))
+        lat = FieldAdapter(Flat.target, 'latent')
         LT = LowerTriangularInserter(mat_space)
         tri = FieldAdapter(LT.domain, 'cov')
-        mean = FieldAdapter(flat_domain,'mean')
+        mean = FieldAdapter(flat_domain, 'mean')
         cov = LT @ tri
         matmul_setup = lat.adjoint @ lat + cov.ducktape_left('co')
-        MatMult = MultiLinearEinsum(matmul_setup.target,'ij,j->i',
-                                    key_order=('co','latent'))
+        MatMult = MultiLinearEinsum(matmul_setup.target, 'ij,j->i', key_order=('co', 'latent'))
 
-        self._generator = Flat.adjoint @ (mean + MatMult @ matmul_setup)
+        self._generator = Flat.adjoint @ (mean + MatMult@matmul_setup)
 
         diag_cov = (DiagonalSelector(cov.target) @ cov).absolute()
         self._entropy = GaussianEntropy(diag_cov.target) @ diag_cov
         diag_tri = np.diag(np.full(flat_domain.shape[0], initial_sig))
-        pos = MultiField.from_dict(
-                {'mean': Flat(position),
-                 'cov': LT.adjoint(makeField(mat_space, diag_tri))})
+        pos = MultiField.from_dict({
+            'mean': Flat(position),
+            'cov': LT.adjoint(makeField(mat_space, diag_tri))
+        })
         op = hamiltonian(self._generator) + self._entropy
-        self._KL = StochasticEnergyAdapter.make(pos, op, ['latent',], n_samples,
-                                    mirror_samples, nanisinf=nanisinf, comm=comm)
+        self._KL = StochasticEnergyAdapter.make(
+            pos, op, [
+                'latent',
+            ], n_samples, mirror_samples, nanisinf=nanisinf, comm=comm)
         self._mean = Flat.adjoint @ mean
         self._samdom = lat.domain
 
@@ -206,8 +223,7 @@ class FullCovarianceVI:
         return self._KL
 
     def draw_sample(self):
-        _, op = self._generator.simplify_for_constant_input(
-                from_random(self._samdom))
+        _, op = self._generator.simplify_for_constant_input(from_random(self._samdom))
         return op(self._KL.position)
 
     def minimize(self, minimizer):
@@ -233,13 +249,13 @@ class GaussianEntropy(EnergyOperator):
     def apply(self, x):
         self._check_input(x)
         if isinstance(x, Field):
-             if not np.issubdtype(x.dtype, np.floating):
-                 raise NotImplementedError("only real fields are allowed")
+            if not np.issubdtype(x.dtype, np.floating):
+                raise NotImplementedError("only real fields are allowed")
         if isinstance(x, MultiField):
-             for key in x.keys():
-                 if not np.issubdtype(x[key].dtype, np.floating):
-                     raise NotImplementedError("only real fields are allowed")
-        res = (x*x).scale(2*np.pi*np.e).log().sum().scale(-0.5)
+            for key in x.keys():
+                if not np.issubdtype(x[key].dtype, np.floating):
+                    raise NotImplementedError("only real fields are allowed")
+        res = (x * x).scale(2 * np.pi * np.e).log().sum().scale(-0.5)
         if not isinstance(x, Linearization):
             return res
         if not x.want_metric:
@@ -260,7 +276,7 @@ class LowerTriangularInserter(LinearOperator):
         myassert(len(target.shape) == 2)
         myassert(target.shape[0] == target.shape[1])
         self._target = makeDomain(target)
-        ndof = (target.shape[0]*(target.shape[0]+1))//2
+        ndof = (target.shape[0] * (target.shape[0] + 1)) // 2
         self._domain = makeDomain(UnstructuredDomain(ndof))
         self._indices = np.tril_indices(target.shape[0])
         self._capability = self.TIMES | self.ADJOINT_TIMES

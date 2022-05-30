@@ -22,14 +22,20 @@ import nifty8 as ift
 
 from ..common import list2fixture, setup_function, teardown_function
 
-_h_RG_spaces = [ift.RGSpace(7, distances=0.2, harmonic=True),
-                ift.RGSpace((12, 46), distances=(.2, .3), harmonic=True)]
+_h_RG_spaces = [
+    ift.RGSpace(7, distances=0.2, harmonic=True),
+    ift.RGSpace((12, 46), distances=(.2, .3), harmonic=True)
+]
 _h_spaces = _h_RG_spaces + [ift.LMSpace(17)]
-_p_RG_spaces = [ift.RGSpace(19, distances=0.7),
-                ift.RGSpace((1, 2, 3, 6), distances=(0.2, 0.25, 0.34, .8))]
+_p_RG_spaces = [
+    ift.RGSpace(19, distances=0.7),
+    ift.RGSpace((1, 2, 3, 6), distances=(0.2, 0.25, 0.34, .8))
+]
 _p_spaces = _p_RG_spaces + [ift.HPSpace(17), ift.GLSpace(8, 13)]
-_pow_spaces = [ift.PowerSpace(ift.RGSpace((17, 38), (0.99, 1340), harmonic=True)),
-               ift.PowerSpace(ift.LMSpace(18), ift.PowerSpace.useful_binbounds(ift.LMSpace(18), False))]
+_pow_spaces = [
+    ift.PowerSpace(ift.RGSpace((17, 38), (0.99, 1340), harmonic=True)),
+    ift.PowerSpace(ift.LMSpace(18), ift.PowerSpace.useful_binbounds(ift.LMSpace(18), False))
+]
 
 pmp = pytest.mark.parametrize
 dtype = list2fixture([np.float64, np.complex128])
@@ -39,8 +45,8 @@ dtype = list2fixture([np.float64, np.complex128])
 def testLOSResponse(sp, dtype):
     starts = ift.random.current_rng().standard_normal((len(sp.shape), 10))
     ends = ift.random.current_rng().standard_normal((len(sp.shape), 10))
-    sigma_low = 1e-4*ift.random.current_rng().standard_normal(10)
-    sigma_ups = 1e-5*ift.random.current_rng().standard_normal(10)
+    sigma_low = 1e-4 * ift.random.current_rng().standard_normal(10)
+    sigma_ups = 1e-5 * ift.random.current_rng().standard_normal(10)
     op = ift.LOSResponse(sp, starts, ends, sigma_low, sigma_ups)
     ift.extra.check_linear_operator(op, dtype, dtype)
 
@@ -63,7 +69,7 @@ def testLinearInterpolator():
     sp = ift.RGSpace((10, 8), distances=(0.1, 3.5))
     pos = ift.random.current_rng().random((2, 23))
     pos[0, :] *= 0.9
-    pos[1, :] *= 7*3.5
+    pos[1, :] *= 7 * 3.5
     op = ift.LinearInterpolator(sp, pos)
     ift.extra.check_linear_operator(op)
 
@@ -71,15 +77,13 @@ def testLinearInterpolator():
 @pmp('sp', _h_spaces + _p_spaces + _pow_spaces)
 def testRealizer(sp):
     op = ift.Realizer(sp)
-    ift.extra.check_linear_operator(op, np.complex128, np.float64,
-                                only_r_linear=True)
+    ift.extra.check_linear_operator(op, np.complex128, np.float64, only_r_linear=True)
 
 
 @pmp('sp', _h_spaces + _p_spaces + _pow_spaces)
 def testImaginizer(sp):
     op = ift.Imaginizer(sp)
-    ift.extra.check_linear_operator(op, np.complex128, np.float64,
-                                only_r_linear=True)
+    ift.extra.check_linear_operator(op, np.complex128, np.float64, only_r_linear=True)
     loc = ift.from_random(op.domain, dtype=np.complex128)
     ift.extra.check_operator(op, loc)
 
@@ -87,8 +91,7 @@ def testImaginizer(sp):
 @pmp('sp', _h_spaces + _p_spaces + _pow_spaces)
 def testConjugationOperator(sp):
     op = ift.ConjugationOperator(sp)
-    ift.extra.check_linear_operator(op, np.complex128, np.complex128,
-                                only_r_linear=True)
+    ift.extra.check_linear_operator(op, np.complex128, np.complex128, only_r_linear=True)
 
 
 @pmp('sp', _h_spaces + _p_spaces + _pow_spaces)
@@ -136,12 +139,10 @@ def testDOFDistributor(sp, dtype):
 def testPPO(sp, dtype):
     op = ift.PowerDistributor(target=sp)
     ift.extra.check_linear_operator(op, dtype, dtype)
-    ps = ift.PowerSpace(
-        sp, ift.PowerSpace.useful_binbounds(sp, logarithmic=False, nbin=3))
+    ps = ift.PowerSpace(sp, ift.PowerSpace.useful_binbounds(sp, logarithmic=False, nbin=3))
     op = ift.PowerDistributor(target=sp, power_space=ps)
     ift.extra.check_linear_operator(op, dtype, dtype)
-    ps = ift.PowerSpace(
-        sp, ift.PowerSpace.useful_binbounds(sp, logarithmic=True, nbin=3))
+    ps = ift.PowerSpace(sp, ift.PowerSpace.useful_binbounds(sp, logarithmic=True, nbin=3))
     op = ift.PowerDistributor(target=sp, power_space=ps)
     ift.extra.check_linear_operator(op, dtype, dtype)
 
@@ -199,9 +200,8 @@ def testContractionOperator(spaces, wgt, dtype):
 
 
 def testDomainTupleFieldInserter():
-    target = ift.DomainTuple.make((ift.UnstructuredDomain([3, 2]),
-                                   ift.UnstructuredDomain(7),
-                                   ift.RGSpace([4, 22])))
+    target = ift.DomainTuple.make(
+        (ift.UnstructuredDomain([3, 2]), ift.UnstructuredDomain(7), ift.RGSpace([4, 22])))
     op = ift.DomainTupleFieldInserter(target, 1, (5,))
     ift.extra.check_linear_operator(op)
 
@@ -210,26 +210,22 @@ def testDomainTupleFieldInserter():
 @pmp('factor', [1, 2, 2.7])
 @pmp('central', [False, True])
 def testZeroPadder(space, factor, dtype, central):
-    dom = (ift.RGSpace(4), ift.UnstructuredDomain(5), ift.RGSpace(3, 4),
-           ift.HPSpace(2))
-    newshape = [int(factor*ll) for ll in dom[space].shape]
+    dom = (ift.RGSpace(4), ift.UnstructuredDomain(5), ift.RGSpace(3, 4), ift.HPSpace(2))
+    newshape = [int(factor * ll) for ll in dom[space].shape]
     op = ift.FieldZeroPadder(dom, newshape, space, central)
     ift.extra.check_linear_operator(op, dtype, dtype)
 
 
-@pmp('args', [[ift.RGSpace((13, 52, 40)), (4, 6, 25), None],
-              [ift.RGSpace((128, 128)), (45, 48), 0],
-              [ift.RGSpace(13), (7,), None],
+@pmp('args', [[ift.RGSpace((13, 52, 40)), (4, 6, 25), None], [ift.RGSpace(
+    (128, 128)), (45, 48), 0], [ift.RGSpace(13), (7,), None],
               [(ift.HPSpace(3), ift.RGSpace((12, 24), distances=0.3)), (12, 12), 1]])
 def testRegridding(args):
     op = ift.RegriddingOperator(*args)
     ift.extra.check_linear_operator(op)
 
 
-@pmp('fdomain', [(ift.RGSpace((2, 3, 2)), ift.RGSpace((4,), distances=(7.,))),
-                 ift.HPSpace(3)])
-@pmp('domain', [(ift.RGSpace(2), ift.GLSpace(10)),
-                ift.RGSpace((4, 3), distances=(0.1, 1.))])
+@pmp('fdomain', [(ift.RGSpace((2, 3, 2)), ift.RGSpace((4,), distances=(7.,))), ift.HPSpace(3)])
+@pmp('domain', [(ift.RGSpace(2), ift.GLSpace(10)), ift.RGSpace((4, 3), distances=(0.1, 1.))])
 def testOuter(fdomain, domain):
     f = ift.from_random(ift.makeDomain(fdomain), 'normal')
     op = ift.OuterProduct(domain, f)
@@ -245,7 +241,7 @@ def testValueInserter(sp, seed):
             if ss == 1:
                 ind.append(0)
             else:
-                ind.append(int(ift.random.current_rng().integers(0, ss-1)))
+                ind.append(int(ift.random.current_rng().integers(0, ss - 1)))
         op = ift.ValueInserter(sp, ind)
         ift.extra.check_linear_operator(op)
 
@@ -281,7 +277,7 @@ def metatestMatrixProductOperator(sp, mat_shape, seed, **kwargs):
         mat = ift.random.current_rng().standard_normal(mat_shape)
         op = ift.MatrixProductOperator(sp, mat, **kwargs)
         ift.extra.check_linear_operator(op)
-        mat = mat + 1j*ift.random.current_rng().standard_normal(mat_shape)
+        mat = mat + 1j * ift.random.current_rng().standard_normal(mat_shape)
         op = ift.MatrixProductOperator(sp, mat, **kwargs)
         ift.extra.check_linear_operator(op)
 
@@ -332,12 +328,14 @@ def testSlowFieldAdapter(seed):
     op = ift.operators.simple_linear_operators._SlowFieldAdapter(dom, 'a')
     ift.extra.check_linear_operator(op)
 
+
 @pmp('seed', [12, 3])
 def testDiagonalExtractor(seed):
     N = 42
-    square_space = ift.RGSpace([N,N])
+    square_space = ift.RGSpace([N, N])
     op = ift.library.variational_models.DiagonalSelector(square_space)
     ift.extra.check_linear_operator(op)
+
 
 @pmp('seed', [12, 3])
 @pmp("N", [10, 17])
@@ -345,6 +343,7 @@ def testLowerTriangularInserter(seed, N):
     square_space = ift.RGSpace([N, N])
     op = ift.library.variational_models.LowerTriangularInserter(square_space)
     ift.extra.check_linear_operator(op)
+
 
 @pmp('seed', [12, 3])
 def test_Multifield2Vector(seed):

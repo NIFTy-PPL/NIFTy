@@ -44,10 +44,7 @@ CONSTRUCTOR_CONFIGS = [[
 def get_dvol_configs():
     wgt = [2.0943951, 2.0943951]
     # for GLSpace(nlat=2, nlon=3)
-    dvol_0 = np.array(
-        list(
-            itertools.chain.from_iterable(
-                itertools.repeat(x, 3) for x in wgt)))
+    dvol_0 = np.array(list(itertools.chain.from_iterable(itertools.repeat(x, 3) for x in wgt)))
     return [
         [1, dvol_0],
     ]

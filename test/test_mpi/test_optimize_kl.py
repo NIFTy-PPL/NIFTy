@@ -23,7 +23,6 @@ import pytest
 
 from ..common import setup_function, teardown_function
 
-
 comm = ift.utilities.get_MPI_params()[0]
 master = True if comm is None else comm.Get_rank() == 0
 
@@ -65,12 +64,14 @@ def pefunc(iglobal):
 
 ic = ift.GradientNormController(iteration_limit=5)
 
+
 @pmp("constants", [[], ["fluctuations"], cstfunc])
 @pmp("point_estimates", [[], ["fluctuations"], pefunc])
-@pmp("kl_minimizer", [ift.SteepestDescent(ic),
-                      lambda n: ift.NewtonCG(ic) if n < 2 else ift.VL_BFGS(ic)])
+@pmp("kl_minimizer",
+     [ift.SteepestDescent(ic), lambda n: ift.NewtonCG(ic) if n < 2 else ift.VL_BFGS(ic)])
 @pmp("sampling_iteration_controller", [ic])
-@pmp("nonlinear_sampling_minimizer", [None, ift.NewtonCG(ift.GradInfNormController(1e-3, iteration_limit=1))])
+@pmp("nonlinear_sampling_minimizer",
+     [None, ift.NewtonCG(ift.GradInfNormController(1e-3, iteration_limit=1))])
 @pmp("n_samples", [0, 2])
 def test_optimize_kl(constants, point_estimates, kl_minimizer, n_samples,
                      sampling_iteration_controller, nonlinear_sampling_minimizer):
@@ -91,11 +92,26 @@ def test_optimize_kl(constants, point_estimates, kl_minimizer, n_samples,
     plot_latent = False
     plottable_operators = {}
     rand_state = ift.random.getState()
-    sl = ift.optimize_kl(likelihood_energy, final_index, n_samples, kl_minimizer,
-                         sampling_iteration_controller, nonlinear_sampling_minimizer, constants,
-                         point_estimates, plottable_operators, output_directory, initial_position,
-                         initial_index, ground_truth_position, comm, overwrite, inspect_callback,
-                         terminate_callback, plot_latent, save_strategy="all")
+    sl = ift.optimize_kl(
+        likelihood_energy,
+        final_index,
+        n_samples,
+        kl_minimizer,
+        sampling_iteration_controller,
+        nonlinear_sampling_minimizer,
+        constants,
+        point_estimates,
+        plottable_operators,
+        output_directory,
+        initial_position,
+        initial_index,
+        ground_truth_position,
+        comm,
+        overwrite,
+        inspect_callback,
+        terminate_callback,
+        plot_latent,
+        save_strategy="all")
 
     ift.random.setState(rand_state)
 
@@ -103,11 +119,27 @@ def test_optimize_kl(constants, point_estimates, kl_minimizer, n_samples,
         return iglobal in [0, 3]
 
     for _ in range(5):
-        sl1 = ift.optimize_kl(likelihood_energy, final_index, n_samples, kl_minimizer,
-                              sampling_iteration_controller, nonlinear_sampling_minimizer, constants,
-                              point_estimates, plottable_operators, output_directory1, initial_position,
-                              initial_index, ground_truth_position, comm, overwrite, inspect_callback,
-                              terminate_callback, plot_latent, resume=True, save_strategy="last")
+        sl1 = ift.optimize_kl(
+            likelihood_energy,
+            final_index,
+            n_samples,
+            kl_minimizer,
+            sampling_iteration_controller,
+            nonlinear_sampling_minimizer,
+            constants,
+            point_estimates,
+            plottable_operators,
+            output_directory1,
+            initial_position,
+            initial_index,
+            ground_truth_position,
+            comm,
+            overwrite,
+            inspect_callback,
+            terminate_callback,
+            plot_latent,
+            resume=True,
+            save_strategy="last")
 
     for aa, bb in zip(sl.iterator(), sl1.iterator()):
         ift.extra.assert_allclose(aa, bb)

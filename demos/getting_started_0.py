@@ -66,11 +66,12 @@
 #
 
 # + slideshow={"slide_type": "-"}
-N_pixels = 512     # Number of pixels
+N_pixels = 512    # Number of pixels
+
 
 def pow_spec(k):
     P0, k0, gamma = [.2, 5, 4]
-    return P0 / ((1. + (k/k0)**2)**(gamma / 2))
+    return P0 / ((1. + (k / k0)**2)**(gamma / 2))
 
 
 # + [markdown] slideshow={"slide_type": "slide"}
@@ -84,20 +85,21 @@ def pow_spec(k):
 import numpy as np
 import nifty8 as ift
 import matplotlib.pyplot as plt
+
 plt.rcParams['figure.dpi'] = 100
 plt.style.use("seaborn-notebook")
-
 
 # + [markdown] slideshow={"slide_type": "subslide"}
 # #### Implement Propagator
 
+
 # + slideshow={"slide_type": "-"}
 def Curvature(R, N, Sh):
-    IC = ift.GradientNormController(iteration_limit=50000,
-                                    tol_abs_gradnorm=0.1)
+    IC = ift.GradientNormController(iteration_limit=50000, tol_abs_gradnorm=0.1)
     # WienerFilterCurvature is (R.adjoint*N.inverse*R + Sh.inverse) plus some handy
     # helper methods.
-    return ift.WienerFilterCurvature(R,N,Sh,iteration_controller=IC,iteration_controller_sampling=IC)
+    return ift.WienerFilterCurvature(
+        R, N, Sh, iteration_controller=IC, iteration_controller_sampling=IC)
 
 
 # + [markdown] slideshow={"slide_type": "skip"}
@@ -105,7 +107,7 @@ def Curvature(R, N, Sh):
 #
 # - $D$ is defined via:
 # $$D^{-1} = \mathcal S_h^{-1} + R^\dagger N^{-1} R.$$
-# In the end, we want to apply $D$ to $j$, i.e. we need the inverse action of $D^{-1}$. This is done numerically (algorithm: *Conjugate Gradient*). 
+# In the end, we want to apply $D$ to $j$, i.e. we need the inverse action of $D^{-1}$. This is done numerically (algorithm: *Conjugate Gradient*).
 #
 # <!--
 # - One can define the *condition number* of a non-singular and normal matrix $A$:
@@ -136,16 +138,15 @@ HT = ift.HarmonicTransformOperator(h_space, target=s_space)
 
 # Operators
 Sh = ift.create_power_operator(h_space, power_spectrum=pow_spec, sampling_dtype=float)
-R = HT # @ ift.create_harmonic_smoothing_operator((h_space,), 0, 0.02)
+R = HT    # @ ift.create_harmonic_smoothing_operator((h_space,), 0, 0.02)
 
 # Fields and data
 sh = Sh.draw_sample()
-noiseless_data=R(sh)
+noiseless_data = R(sh)
 noise_amplitude = np.sqrt(0.2)
 N = ift.ScalingOperator(s_space, noise_amplitude**2, float)
 
-n = ift.Field.from_random(domain=s_space, random_type='normal',
-                          std=noise_amplitude, mean=0)
+n = ift.Field.from_random(domain=s_space, random_type='normal', std=noise_amplitude, mean=0)
 d = noiseless_data + n
 j = R.adjoint_times(N.inverse_times(d))
 curv = Curvature(R=R, N=N, Sh=Sh)
@@ -168,7 +169,7 @@ d_data = d.val
 
 plt.plot(s_data, 'r', label="Signal", linewidth=2)
 plt.plot(d_data, 'k.', label="Data")
-plt.plot(m_data, 'k', label="Reconstruction",linewidth=2)
+plt.plot(m_data, 'k', label="Reconstruction", linewidth=2)
 plt.title("Reconstruction")
 plt.legend()
 plt.show()
@@ -176,8 +177,8 @@ plt.show()
 # + slideshow={"slide_type": "subslide"}
 plt.plot(s_data - s_data, 'r', label="Signal", linewidth=2)
 plt.plot(d_data - s_data, 'k.', label="Data")
-plt.plot(m_data - s_data, 'k', label="Reconstruction",linewidth=2)
-plt.axhspan(-noise_amplitude,noise_amplitude, facecolor='0.9', alpha=.5)
+plt.plot(m_data - s_data, 'k', label="Reconstruction", linewidth=2)
+plt.axhspan(-noise_amplitude, noise_amplitude, facecolor='0.9', alpha=.5)
 plt.title("Residuals")
 plt.legend()
 plt.show()
@@ -189,11 +190,11 @@ plt.show()
 s_power_data = ift.power_analyze(sh).val
 m_power_data = ift.power_analyze(m).val
 plt.loglog()
-plt.xlim(1, int(N_pixels/2))
+plt.xlim(1, int(N_pixels / 2))
 ymin = min(m_power_data)
 plt.ylim(ymin, 1)
-xs = np.arange(1,int(N_pixels/2),.1)
-plt.plot(xs, pow_spec(xs), label="True Power Spectrum", color='k',alpha=0.5)
+xs = np.arange(1, int(N_pixels / 2), .1)
+plt.plot(xs, pow_spec(xs), label="True Power Spectrum", color='k', alpha=0.5)
 plt.plot(s_power_data, 'r', label="Signal")
 plt.plot(m_power_data, 'k', label="Reconstruction")
 plt.axhline(noise_amplitude**2 / N_pixels, color="k", linestyle='--', label="Noise level", alpha=.5)
@@ -214,8 +215,7 @@ N = ift.ScalingOperator(s_space, noise_amplitude**2, sampling_dtype=float)
 # Fields
 sh = Sh.draw_sample()
 s = HT(sh)
-n = ift.Field.from_random(domain=s_space, random_type='normal',
-                      std=noise_amplitude, mean=0)
+n = ift.Field.from_random(domain=s_space, random_type='normal', std=noise_amplitude, mean=0)
 
 # + [markdown] slideshow={"slide_type": "skip"}
 # ### Partially Lose Data
@@ -263,8 +263,9 @@ d_data = d.val_rw()
 d_data[d_data == 0] = np.nan
 
 # + slideshow={"slide_type": "skip"}
-plt.axvspan(l, h, facecolor='0.8',alpha=0.5)
-plt.fill_between(range(N_pixels), m_data - uncertainty, m_data + uncertainty, facecolor='0.5', alpha=0.5)
+plt.axvspan(l, h, facecolor='0.8', alpha=0.5)
+plt.fill_between(
+    range(N_pixels), m_data - uncertainty, m_data + uncertainty, facecolor='0.5', alpha=0.5)
 plt.plot(s_data, 'r', label="Signal", alpha=1, linewidth=2)
 plt.plot(d_data, 'k.', label="Data")
 plt.plot(m_data, 'k', label="Reconstruction", linewidth=2)
@@ -275,18 +276,20 @@ plt.legend()
 # ## Wiener filter on two-dimensional field
 
 # +
-N_pixels = 256      # Number of pixels
-sigma2 = 2.         # Noise variance
+N_pixels = 256    # Number of pixels
+sigma2 = 2.    # Noise variance
+
 
 def pow_spec(k):
     P0, k0, gamma = [.2, 2, 4]
-    return P0 * (1. + (k/k0)**2)**(-gamma/2)
+    return P0 * (1. + (k / k0)**2)**(-gamma / 2)
+
 
 s_space = ift.RGSpace([N_pixels, N_pixels])
 
 # + slideshow={"slide_type": "skip"}
 h_space = s_space.get_default_codomain()
-HT = ift.HarmonicTransformOperator(h_space,s_space)
+HT = ift.HarmonicTransformOperator(h_space, s_space)
 
 # Operators
 Sh = ift.create_power_operator(h_space, power_spectrum=pow_spec, sampling_dtype=float)
@@ -294,8 +297,7 @@ N = ift.ScalingOperator(s_space, sigma2, sampling_dtype=float)
 
 # Fields and data
 sh = Sh.draw_sample()
-n = ift.Field.from_random(domain=s_space, random_type='normal',
-                      std=np.sqrt(sigma2), mean=0)
+n = ift.Field.from_random(domain=s_space, random_type='normal', std=np.sqrt(sigma2), mean=0)
 
 # Lose some data
 
@@ -303,7 +305,7 @@ l = int(N_pixels * 0.33)
 h = int(N_pixels * 0.33 * 2)
 
 mask = np.full(s_space.shape, 1.)
-mask[l:h,l:h] = 0.
+mask[l:h, l:h] = 0.
 mask = ift.Field.from_raw(s_space, mask)
 
 R = ift.DiagonalOperator(mask)(HT)
@@ -341,8 +343,7 @@ data = [s_data, d_data]
 caption = ["Signal", "Data"]
 
 for ax in axes.flat:
-    im = ax.imshow(data.pop(0), interpolation='nearest', cmap=cmap, vmin=mi,
-                   vmax=ma)
+    im = ax.imshow(data.pop(0), interpolation='nearest', cmap=cmap, vmin=mi, vmax=ma)
     ax.set_title(caption.pop(0))
 
 fig.subplots_adjust(right=0.8)
@@ -354,7 +355,7 @@ mi = np.min(s_data)
 ma = np.max(s_data)
 
 fig, axes = plt.subplots(3, 2, figsize=(10, 15))
-sample = HT(curv.draw_sample(from_inverse=True)+m).val
+sample = HT(curv.draw_sample(from_inverse=True) + m).val
 post_mean = (m_mean + HT(m)).val
 
 data = [s_data, m_data, post_mean, sample, s_data - m_data, uncertainty]
@@ -372,7 +373,7 @@ fig.colorbar(im, cax=cbar_ax)
 # ### Is the uncertainty map reliable?
 
 # + slideshow={"slide_type": "-"}
-precise = (np.abs(s_data-m_data) < uncertainty)
+precise = (np.abs(s_data - m_data) < uncertainty)
 print("Error within uncertainty map bounds: " + str(np.sum(precise) * 100 / N_pixels**2) + "%")
 
 plt.imshow(precise.astype(float), cmap="brg")

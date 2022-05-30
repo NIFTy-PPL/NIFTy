@@ -50,8 +50,10 @@ class LinearResponse(ift.LinearOperator):
         # FIXME: Add input checks
         self.intercept_key = intercept.domain.keys()[0]
         self.slope_key = slope.domain.keys()[0]
-        domain = {self.intercept_key: intercept.domain[self.intercept_key],
-                  self.slope_key: slope.domain[self.slope_key]}
+        domain = {
+            self.intercept_key: intercept.domain[self.intercept_key],
+            self.slope_key: slope.domain[self.slope_key]
+        }
         self.sampling_points = sampling_points
 
         self._domain = ift.MultiDomain.make(domain)
@@ -85,16 +87,17 @@ def test_estimate_evidence_lower_bound():
     slope = ift.NormalTransform(0., sigma_m, "slope").ducktape_left("slope")
 
     x = ift.random.current_rng().random(n_datapoints) * 10
-    y = q + m_slope * x
+    y = q + m_slope*x
     linear_response = LinearResponse(intercept, slope, x)
     # ift.extra.check_linear_operator(linear_response)
 
-    linear_response_on_signal = linear_response @ (intercept + slope)  # In general not a linear operator
+    linear_response_on_signal = linear_response @ (intercept+slope
+                                                  )    # In general not a linear operator
 
     R = _explicify(linear_response_on_signal)
     d = ift.makeField(data_space, y)
     noise_level = 0.8
-    N = ift.makeOp(ift.makeField(data_space, noise_level ** 2), sampling_dtype=float)
+    N = ift.makeOp(ift.makeField(data_space, noise_level**2), sampling_dtype=float)
     noise = N.draw_sample()
     data = d + noise
 
@@ -113,18 +116,22 @@ def test_estimate_evidence_lower_bound():
     det_2pi_D = np.linalg.det(2 * np.pi * D)
     det_2pi_S = np.linalg.det(2 * np.pi * S)
 
-    H_0 = 0.5 * (data.s_vdot(N.inverse(data)) + n_datapoints * np.log(2 * np.pi * noise_level ** 2) + np.log(
-        det_2pi_S) - m_dag_j)
+    H_0 = 0.5 * (
+        data.s_vdot(N.inverse(data)) + n_datapoints * np.log(2 * np.pi * noise_level**2) +
+        np.log(det_2pi_S) - m_dag_j)
 
     evidence = -H_0 + 0.5 * np.log(det_2pi_D)
-    nifty_adjusted_evidence = evidence + 0.5 * n_datapoints * np.log(2 * np.pi * noise_level ** 2)
-    likelihood_energy = ift.GaussianEnergy(data=data, inverse_covariance=N.inverse) @ linear_response_on_signal
+    nifty_adjusted_evidence = evidence + 0.5 * n_datapoints * np.log(2 * np.pi * noise_level**2)
+    likelihood_energy = ift.GaussianEnergy(
+        data=data, inverse_covariance=N.inverse) @ linear_response_on_signal
 
     # Minimization parameters
-    ic_sampling = ift.AbsDeltaEnergyController(name="Sampling (linear)", deltaE=1e-8, iteration_limit=2)
-    ic_newton = ift.AbsDeltaEnergyController(name='Newton', deltaE=1e-5, convergence_level=2, iteration_limit=100)
-    ic_sampling_nl = ift.AbsDeltaEnergyController(name='Sampling (nonlin)', deltaE=1e-3, iteration_limit=15,
-                                                  convergence_level=1)
+    ic_sampling = ift.AbsDeltaEnergyController(
+        name="Sampling (linear)", deltaE=1e-8, iteration_limit=2)
+    ic_newton = ift.AbsDeltaEnergyController(
+        name='Newton', deltaE=1e-5, convergence_level=2, iteration_limit=100)
+    ic_sampling_nl = ift.AbsDeltaEnergyController(
+        name='Sampling (nonlin)', deltaE=1e-3, iteration_limit=15, convergence_level=1)
 
     minimizer = ift.NewtonCG(ic_newton)
     minimizer_sampling = ift.NewtonCG(ic_sampling_nl)
@@ -132,9 +139,16 @@ def test_estimate_evidence_lower_bound():
     n_iterations = 3
     n_samples = lambda iiter: 10 if iiter < n_iterations else 80
 
-    samples = ift.optimize_kl(likelihood_energy, n_iterations, n_samples, minimizer, ic_sampling, minimizer_sampling,
-                              output_directory=None)
+    samples = ift.optimize_kl(
+        likelihood_energy,
+        n_iterations,
+        n_samples,
+        minimizer,
+        ic_sampling,
+        minimizer_sampling,
+        output_directory=None)
 
     # Estimate the ELBO
-    elbo, stats = ift.estimate_evidence_lower_bound(ift.StandardHamiltonian(lh=likelihood_energy), samples, 2)
+    elbo, stats = ift.estimate_evidence_lower_bound(
+        ift.StandardHamiltonian(lh=likelihood_energy), samples, 2)
     assert (stats['elbo_lw'].val <= nifty_adjusted_evidence <= stats['elbo_up'].val)

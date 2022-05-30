@@ -47,27 +47,23 @@ class SliceOperator(LinearOperator):
     preserve_dist: bool, optional
         Whether to preserve the distance of the input field.
     """
+
     def __init__(self, domain, new_shape, center=False, preserve_dist=True):
         self._domain = DomainTuple.make(domain)
         if len(new_shape) != len(self._domain):
-            ve = (
-                f"shape ({new_shape}) is incompatible with the shape of the"
-                f" domain ({self._domain.shape})"
-            )
+            ve = (f"shape ({new_shape}) is incompatible with the shape of the"
+                  f" domain ({self._domain.shape})")
             raise ValueError(ve)
         for i, shape in enumerate(new_shape):
             if len(np.atleast_1d(shape)) != len(self._domain[i].shape):
-                ve = (
-                    f"shape of subspace ({i}) is incompatible with the domain"
-                )
+                ve = (f"shape of subspace ({i}) is incompatible with the domain")
                 raise ValueError(ve)
 
         tgt = []
         slc_by_ax = []
         for i, d in enumerate(self._domain):
             if new_shape[i] is None or np.all(
-                np.array(self._domain.shape[i]) == np.array(new_shape[i])
-            ):
+                    np.array(self._domain.shape[i]) == np.array(new_shape[i])):
                 tgt += [d]
             elif np.all(np.array(new_shape[i]) <= np.array(d.shape)):
                 dom_kw = dict()
@@ -81,10 +77,8 @@ class SliceOperator(LinearOperator):
                     raise ValueError(ve)
                 tgt += [d.__class__(new_shape[i], **dom_kw)]
             else:
-                ve = (
-                    f"domain axes ({d}) is smaller than the target shape"
-                    f"{new_shape[i]}"
-                )
+                ve = (f"domain axes ({d}) is smaller than the target shape"
+                      f"{new_shape[i]}")
                 raise ValueError(ve)
 
             if center:
@@ -113,10 +107,8 @@ class SliceOperator(LinearOperator):
         return Field.from_raw(self.domain, res)
 
     def __str__(self):
-        ss = (
-            f"{self.__class__.__name__}"
-            f"({self.domain.shape} -> {self.target.shape})"
-        )
+        ss = (f"{self.__class__.__name__}"
+              f"({self.domain.shape} -> {self.target.shape})")
         return ss
 
 
@@ -146,6 +138,7 @@ class SplitOperator(LinearOperator):
         the adjoint is constructed a little less efficiently.  Set this
         parameter to `False` to gain a little more efficiency.
     """
+
     def __init__(self, domain, slices_by_key, intersecting_slices=True):
         self._domain = DomainTuple.make(domain)
         self._intersec_slc = intersecting_slices
@@ -159,25 +152,21 @@ class SplitOperator(LinearOperator):
             k_tgt = []
             k_slc_by_ax = []
             for i, d in enumerate(self._domain):
-                if i >= len(slc) or slc[i] is None or (
-                    isinstance(slc[i], slice) and slc[i] == slice(None)
-                ):
+                if i >= len(slc) or slc[i] is None or (isinstance(slc[i], slice) and
+                                                       slc[i] == slice(None)):
                     k_tgt += [d]
                     k_slc_by_ax += [slice(None)]
                 elif isinstance(slc[i], slice):
                     start = slc[i].start if slc[i].start is not None else 0
                     stop = slc[i].stop if slc[i].stop is not None else d.size
                     step = slc[i].step if slc[i].step is not None else 1
-                    frac = np.floor((stop - start) / np.abs(step))
+                    frac = np.floor((stop-start) / np.abs(step))
                     k_tgt += [UnstructuredDomain(frac.astype(int))]
                     k_slc_by_ax += [slc[i]]
-                elif isinstance(slc[i],
-                                np.ndarray) and slc[i].dtype is np.dtype(bool):
+                elif isinstance(slc[i], np.ndarray) and slc[i].dtype is np.dtype(bool):
                     if slc[i].size != d.size:
-                        raise ValueError(
-                            "shape mismatch between desired slice {slc[i]}"
-                            "and the shape of the domain {d.size}"
-                        )
+                        raise ValueError("shape mismatch between desired slice {slc[i]}"
+                                         "and the shape of the domain {d.size}")
                     k_tgt += [UnstructuredDomain(slc[i].sum())]
                     k_slc_by_ax += [slc[i]]
                 elif isinstance(slc[i], (tuple, list, np.ndarray)):

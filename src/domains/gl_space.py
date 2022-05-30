@@ -43,7 +43,7 @@ class GLSpace(StructuredDomain):
         if self._nlat < 1:
             raise ValueError("nlat must be a positive number.")
         if nlon is None:
-            self._nlon = 2*self._nlat - 1
+            self._nlon = 2 * self._nlat - 1
         else:
             self._nlon = int(nlon)
             if self._nlon < 1:
@@ -80,7 +80,7 @@ class GLSpace(StructuredDomain):
 
     @property
     def total_volume(self):
-        return 4*np.pi
+        return 4 * np.pi
 
     @property
     def nlat(self):
@@ -103,8 +103,8 @@ class GLSpace(StructuredDomain):
             The partner domain
         """
         from ..domains.lm_space import LMSpace
-        mmax = self._nlon//2
-        lmax = max(mmax, self._nlat-1)
+        mmax = self._nlon // 2
+        lmax = max(mmax, self._nlat - 1)
         return LMSpace(lmax=lmax, mmax=mmax)
 
     def check_codomain(self, codomain):

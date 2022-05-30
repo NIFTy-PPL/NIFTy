@@ -26,8 +26,7 @@ from ..common import setup_function, teardown_function
 pmp = pytest.mark.parametrize
 
 
-@pmp('attr_expected_type',
-     [['harmonic', bool], ['shape', tuple], ['size', int]])
+@pmp('attr_expected_type', [['harmonic', bool], ['shape', tuple], ['size', int]])
 @pmp('space', [
     ift.RGSpace(4),
     ift.PowerSpace(ift.RGSpace((4, 4), harmonic=True)),
@@ -36,17 +35,13 @@ pmp = pytest.mark.parametrize
     ift.GLSpace(4)
 ])
 def test_property_ret_type(space, attr_expected_type):
-    ift.myassert(
-        isinstance(
-            getattr(space, attr_expected_type[0]), attr_expected_type[1]))
+    ift.myassert(isinstance(getattr(space, attr_expected_type[0]), attr_expected_type[1]))
 
 
 @pmp('method_expected_type',
-     [['get_k_length_array', ift.Field],
-      ['get_fft_smoothing_kernel_function', 2.0, LambdaType]])
+     [['get_k_length_array', ift.Field], ['get_fft_smoothing_kernel_function', 2.0, LambdaType]])
 @pmp('space', [ift.RGSpace(4, harmonic=True), ift.LMSpace(5)])
 def test_method_ret_type(space, method_expected_type):
     ift.myassert(
-        type(
-            getattr(space, method_expected_type[0])
-            (*method_expected_type[1:-1])) is method_expected_type[-1])
+        type(getattr(space, method_expected_type[0])(
+            *method_expected_type[1:-1])) is method_expected_type[-1])

@@ -32,10 +32,10 @@ def test_lower_triangular_inserter(N):
     square_space = ift.RGSpace([N, N])
     op = LowerTriangularInserter(square_space)
     flat_space = op.domain
-    assert_allclose(flat_space.shape, (N*(N+1)//2,))
+    assert_allclose(flat_space.shape, (N * (N+1) // 2,))
 
     mat = op(ift.from_random(flat_space))
-    for i in range(0,N):
-        for j in range(i+1, N):
+    for i in range(0, N):
+        for j in range(i + 1, N):
             assert mat.val[i, j] == 0.
-    assert_allclose((mat.val == 0).sum(), (N-1)*N//2)
+    assert_allclose((mat.val == 0).sum(), (N-1) * N // 2)

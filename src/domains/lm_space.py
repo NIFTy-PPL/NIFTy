@@ -69,7 +69,7 @@ class LMSpace(StructuredDomain):
         l, m = self._lmax, self._mmax
         # the LMSpace consists of the full triangle (including -m's!),
         # minus two little triangles if mmax < lmax
-        return (l+1)**2 - (l-m)*(l-m+1)
+        return (l + 1)**2 - (l-m) * (l-m+1)
 
     @property
     def scalar_dvol(self):
@@ -79,18 +79,18 @@ class LMSpace(StructuredDomain):
         lmax = self._lmax
         mmax = self._mmax
         ldist = np.empty((self.size,), dtype=np.float64)
-        ldist[0:lmax+1] = np.arange(lmax+1, dtype=np.float64)
-        tmp = np.empty((2*lmax+2), dtype=np.float64)
-        tmp[0::2] = np.arange(lmax+1)
-        tmp[1::2] = np.arange(lmax+1)
-        idx = lmax+1
-        for m in range(1, mmax+1):
-            ldist[idx:idx+2*(lmax+1-m)] = tmp[2*m:]
-            idx += 2*(lmax+1-m)
+        ldist[0:lmax + 1] = np.arange(lmax + 1, dtype=np.float64)
+        tmp = np.empty((2*lmax + 2), dtype=np.float64)
+        tmp[0::2] = np.arange(lmax + 1)
+        tmp[1::2] = np.arange(lmax + 1)
+        idx = lmax + 1
+        for m in range(1, mmax + 1):
+            ldist[idx:idx + 2 * (lmax+1-m)] = tmp[2 * m:]
+            idx += 2 * (lmax+1-m)
         return Field.from_raw(self, ldist)
 
     def get_unique_k_lengths(self):
-        return np.arange(self.lmax+1, dtype=np.float64)
+        return np.arange(self.lmax + 1, dtype=np.float64)
 
     @staticmethod
     def _kernel(x, sigma):
@@ -98,7 +98,7 @@ class LMSpace(StructuredDomain):
         # by Challinor et al.
         # https://arxiv.org/abs/astro-ph/0008228
         from ..sugar import exp
-        return exp((x+1.) * x * (-0.5*sigma*sigma))
+        return exp((x+1.) * x * (-0.5 * sigma * sigma))
 
     def get_fft_smoothing_kernel_function(self, sigma):
         return lambda x: self._kernel(x, sigma)
@@ -165,7 +165,7 @@ class LMSpace(StructuredDomain):
             The partner domain
         """
         from ..domains.gl_space import GLSpace
-        return GLSpace(self.lmax+1, self.mmax*2+1)
+        return GLSpace(self.lmax + 1, self.mmax * 2 + 1)
 
     def check_codomain(self, codomain):
         """Raises `TypeError` if `codomain` is not a matching partner domain

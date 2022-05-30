@@ -25,6 +25,7 @@ from .operators.operator import Operator
 
 
 class MultiField(Operator):
+
     def __init__(self, domain, val):
         """The discrete representation of a continuous field over a sum space.
 
@@ -54,8 +55,7 @@ class MultiField(Operator):
                 if not isinstance(dd.domain, DomainTuple):
                     raise TypeError('Values of dictionary need to be Fields '
                                     'defined on DomainTuples.')
-            domain = MultiDomain.make({key: v._domain
-                                       for key, v in dct.items()})
+            domain = MultiDomain.make({key: v._domain for key, v in dct.items()})
         res = tuple(dct[key] if key in dct else Field(dom, 0.)
                     for key, dom in zip(domain.keys(), domain.domains()))
         return MultiField(domain, res)
@@ -132,8 +132,10 @@ class MultiField(Operator):
         else:
             dtype = np.dtype(dtype)
             dtype = {kk: dtype for kk in domain.keys()}
-        dct = {kk: Field.from_random(domain[kk], random_type, dtype[kk], **kwargs)
-               for kk in domain.keys()}
+        dct = {
+            kk: Field.from_random(domain[kk], random_type, dtype[kk], **kwargs)
+            for kk in domain.keys()
+        }
         return MultiField.from_dict(dct)
 
     def s_vdot(self, x):
@@ -157,23 +159,18 @@ class MultiField(Operator):
     @staticmethod
     def full(domain, val):
         domain = MultiDomain.make(domain)
-        return MultiField(domain, tuple(Field(dom, val)
-                          for dom in domain._domains))
+        return MultiField(domain, tuple(Field(dom, val) for dom in domain._domains))
 
     @property
     def val(self):
-        return {key: val.val
-                for key, val in zip(self._domain.keys(), self._val)}
+        return {key: val.val for key, val in zip(self._domain.keys(), self._val)}
 
     def val_rw(self):
-        return {key: val.val_rw()
-                for key, val in zip(self._domain.keys(), self._val)}
+        return {key: val.val_rw() for key, val in zip(self._domain.keys(), self._val)}
 
     @staticmethod
     def from_raw(domain, arr):
-        return MultiField(
-            domain, tuple(Field(domain[key], arr[key])
-                          for key in domain.keys()))
+        return MultiField(domain, tuple(Field(domain[key], arr[key]) for key in domain.keys()))
 
     def norm(self, ord=2):
         """Computes the norm of the field values.
@@ -191,7 +188,9 @@ class MultiField(Operator):
         nrm = np.asarray([f.norm(ord) for f in self._val])
         if ord == np.inf:
             return nrm.max()
-        return (nrm ** ord).sum() ** (1./ord)
+        return (nrm**ord).sum()**(1. / ord)
+
+
 #        return np.sqrt(np.abs(self.vdot(x=self)))
 
     def s_sum(self):
@@ -242,8 +241,7 @@ class MultiField(Operator):
     def extract(self, subset):
         if subset is self._domain:
             return self
-        return MultiField(subset,
-                          tuple(self[key] for key in subset.keys()))
+        return MultiField(subset, tuple(self[key] for key in subset.keys()))
 
     def extract_by_keys(self, keys):
         dom = MultiDomain.make({kk: vv for kk, vv in self.domain.items() if kk in keys})
@@ -322,7 +320,7 @@ class MultiField(Operator):
             assumed to have an uniform value of zero.
         """
         if self._domain is other._domain and not isinstance(neg, dict):
-            return self-other if neg else self+other
+            return self - other if neg else self + other
 
         if isinstance(neg, dict):
             fct = lambda k: neg[k]
@@ -331,7 +329,7 @@ class MultiField(Operator):
         res = self.to_dict()
         for key, val in other.items():
             if key in res:
-                res[key] = res[key]-val if fct(key) else res[key]+val
+                res[key] = res[key] - val if fct(key) else res[key] + val
             else:
                 res[key] = -val if fct(key) else val
         return MultiField.from_dict(res)
@@ -340,10 +338,11 @@ class MultiField(Operator):
         for arg in args + tuple(kwargs.values()):
             if not (arg is None or np.isscalar(arg) or arg.jac is None):
                 raise TypeError("bad argument")
-        argstmp = tuple(arg if arg is None or np.isscalar(arg) else arg._val[i]
-                        for arg in args)
-        kwargstmp = {key: val if val is None or np.isscalar(val) else val._val[i]
-                     for key, val in kwargs.items()}
+        argstmp = tuple(arg if arg is None or np.isscalar(arg) else arg._val[i] for arg in args)
+        kwargstmp = {
+            key: val if val is None or np.isscalar(val) else val._val[i]
+            for key, val in kwargs.items()
+        }
         return argstmp, kwargstmp
 
     def ptw(self, op, *args, **kwargs):
@@ -365,32 +364,35 @@ class MultiField(Operator):
         f = getattr(Field, op)
         if isinstance(other, MultiField):
             utilities.check_object_identity(self._domain, other._domain)
-            val = tuple(f(v1, v2)
-                        for v1, v2 in zip(self._val, other._val))
+            val = tuple(f(v1, v2) for v1, v2 in zip(self._val, other._val))
         else:
             val = tuple(f(v1, other) for v1 in self._val)
         return MultiField(self._domain, val)
 
+for op in [
+        "__add__", "__radd__", "__sub__", "__rsub__", "__mul__", "__rmul__", "__truediv__",
+        "__rtruediv__", "__floordiv__", "__rfloordiv__", "__pow__", "__rpow__", "__lt__", "__le__",
+        "__gt__", "__ge__", "__eq__", "__ne__"
+]:
 
-for op in ["__add__", "__radd__",
-           "__sub__", "__rsub__",
-           "__mul__", "__rmul__",
-           "__truediv__", "__rtruediv__",
-           "__floordiv__", "__rfloordiv__",
-           "__pow__", "__rpow__",
-           "__lt__", "__le__", "__gt__", "__ge__", "__eq__", "__ne__"]:
     def func(op):
+
         def func2(self, other):
             return self._binary_op(other, op)
+
         return func2
+
     setattr(MultiField, op, func(op))
 
+for op in [
+        "__iadd__", "__isub__", "__imul__", "__idiv__", "__itruediv__", "__ifloordiv__", "__ipow__"
+]:
 
-for op in ["__iadd__", "__isub__", "__imul__", "__idiv__",
-           "__itruediv__", "__ifloordiv__", "__ipow__"]:
     def func(op):
+
         def func2(self, other):
-            raise TypeError(
-                "In-place operations are deliberately not supported")
+            raise TypeError("In-place operations are deliberately not supported")
+
         return func2
+
     setattr(MultiField, op, func(op))

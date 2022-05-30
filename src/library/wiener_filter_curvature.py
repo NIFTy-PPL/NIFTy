@@ -21,8 +21,7 @@ from ..operators.sampling_enabler import SamplingEnabler
 from ..operators.sandwich_operator import SandwichOperator
 
 
-def WienerFilterCurvature(R, N, S, iteration_controller=None,
-                          iteration_controller_sampling=None):
+def WienerFilterCurvature(R, N, S, iteration_controller=None, iteration_controller_sampling=None):
     """The curvature of the WienerFilterEnergy.
 
     This operator implements the second derivative of the

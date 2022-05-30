@@ -71,34 +71,34 @@ def main():
         'offset_mean': 0,
         'offset_std': (1e-3, 1e-6),
 
-        # Amplitude of field fluctuations
-        'fluctuations': (1., 0.8),  # 1.0, 1e-2
+    # Amplitude of field fluctuations
+        'fluctuations': (1., 0.8),    # 1.0, 1e-2
 
-        # Exponent of power law power spectrum component
-        'loglogavgslope': (-3., 1),  # -6.0, 1
+    # Exponent of power law power spectrum component
+        'loglogavgslope': (-3., 1),    # -6.0, 1
 
-        # Amplitude of integrated Wiener process power spectrum component
-        'flexibility': (2, 1.),  # 1.0, 0.5
+    # Amplitude of integrated Wiener process power spectrum component
+        'flexibility': (2, 1.),    # 1.0, 0.5
 
-        # How ragged the integrated Wiener process component is
-        'asperity': (0.5, 0.4)  # 0.1, 0.5
+    # How ragged the integrated Wiener process component is
+        'asperity': (0.5, 0.4)    # 0.1, 0.5
     }
 
     args_2 = {
         'offset_mean': 0,
         'offset_std': (1e-3, 1e-6),
 
-        # Amplitude of field fluctuations
-        'fluctuations': (3., 0.8),  # 1.0, 1e-2
+    # Amplitude of field fluctuations
+        'fluctuations': (3., 0.8),    # 1.0, 1e-2
 
-        # Exponent of power law power spectrum component
-        'loglogavgslope': (-3., 1),  # -6.0, 1
+    # Exponent of power law power spectrum component
+        'loglogavgslope': (-3., 1),    # -6.0, 1
 
-        # Amplitude of integrated Wiener process power spectrum component
-        'flexibility': (1.5, 1.),  # 1.0, 0.5
+    # Amplitude of integrated Wiener process power spectrum component
+        'flexibility': (1.5, 1.),    # 1.0, 0.5
 
-        # How ragged the integrated Wiener process component is
-        'asperity': (2.5, 0.4)  # 0.1, 0.5
+    # How ragged the integrated Wiener process component is
+        'asperity': (2.5, 0.4)    # 0.1, 0.5
     }
 
     correlated_field_1 = ift.SimpleCorrelatedField(position_space, **args_1)
@@ -127,40 +127,53 @@ def main():
     data = signal_response_1(mock_position) + N.draw_sample()
 
     # Minimization parameters
-    ic_sampling = ift.AbsDeltaEnergyController(name="Sampling (linear)",
-                                               deltaE=0.05, iteration_limit=100)
-    ic_newton = ift.AbsDeltaEnergyController(name='Newton', deltaE=0.5,
-                                             convergence_level=2, iteration_limit=35)
-    ic_sampling_nl = ift.AbsDeltaEnergyController(name='Sampling (nonlin)',
-                                                  deltaE=0.5, iteration_limit=15,
-                                                  convergence_level=2)
+    ic_sampling = ift.AbsDeltaEnergyController(
+        name="Sampling (linear)", deltaE=0.05, iteration_limit=100)
+    ic_newton = ift.AbsDeltaEnergyController(
+        name='Newton', deltaE=0.5, convergence_level=2, iteration_limit=35)
+    ic_sampling_nl = ift.AbsDeltaEnergyController(
+        name='Sampling (nonlin)', deltaE=0.5, iteration_limit=15, convergence_level=2)
     minimizer = ift.NewtonCG(ic_newton)
     minimizer_sampling = ift.NewtonCG(ic_sampling_nl)
 
     # Set up likelihood energy
-    likelihood_energy_1 = (ift.GaussianEnergy(data=data, inverse_covariance=N.inverse) @
-                           signal_response_1)
+    likelihood_energy_1 = (
+        ift.GaussianEnergy(data=data, inverse_covariance=N.inverse) @ signal_response_1)
 
-    likelihood_energy_2 = (ift.GaussianEnergy(data=data, inverse_covariance=N.inverse) @
-                           signal_response_2)
+    likelihood_energy_2 = (
+        ift.GaussianEnergy(data=data, inverse_covariance=N.inverse) @ signal_response_2)
 
     # Minimize KL
     n_iterations = 6
     n_samples = lambda iiter: 10 if iiter < 5 else 20
-    samples_1 = ift.optimize_kl(likelihood_energy_1, n_iterations, n_samples,
-                                minimizer, ic_sampling, minimizer_sampling,
-                                plottable_operators={"signal": (signal_1, dict(vmin=0, vmax=1)),
-                                                     "power spectrum": pspec_1},
-                                ground_truth_position=mock_position,
-                                output_directory="getting_started_model_comparison_results/model_1",
-                                overwrite=True)
-    samples_2 = ift.optimize_kl(likelihood_energy_2, n_iterations, n_samples,
-                                minimizer, ic_sampling, minimizer_sampling,
-                                plottable_operators={"signal": (signal_2, dict(vmin=0, vmax=1)),
-                                                     "power spectrum": pspec_2},
-                                ground_truth_position=mock_position,
-                                output_directory="getting_started_model_comparison_results/model_2",
-                                overwrite=True)
+    samples_1 = ift.optimize_kl(
+        likelihood_energy_1,
+        n_iterations,
+        n_samples,
+        minimizer,
+        ic_sampling,
+        minimizer_sampling,
+        plottable_operators={
+            "signal": (signal_1, dict(vmin=0, vmax=1)),
+            "power spectrum": pspec_1
+        },
+        ground_truth_position=mock_position,
+        output_directory="getting_started_model_comparison_results/model_1",
+        overwrite=True)
+    samples_2 = ift.optimize_kl(
+        likelihood_energy_2,
+        n_iterations,
+        n_samples,
+        minimizer,
+        ic_sampling,
+        minimizer_sampling,
+        plottable_operators={
+            "signal": (signal_2, dict(vmin=0, vmax=1)),
+            "power spectrum": pspec_2
+        },
+        ground_truth_position=mock_position,
+        output_directory="getting_started_model_comparison_results/model_2",
+        overwrite=True)
 
     # Plotting
     filename_res = filename.format("results")
@@ -168,35 +181,40 @@ def main():
     mean_1, var_1 = samples_1.sample_stat(signal_1)
     mean_2, var_2 = samples_2.sample_stat(signal_2)
     plot.add(data, title="Data")
-    plot.add([signal_1(mock_position), mean_1, mean_2], title='Reconstruction',
+    plot.add([signal_1(mock_position), mean_1, mean_2],
+             title='Reconstruction',
              label=['Ground truth', 'Posterior Mean 1', 'Posterior Mean 2'])
     plot.add(var_1.sqrt(), title="Posterior Standard Deviation Model 1")
     plot.add(var_2.sqrt(), title="Posterior Standard Deviation Model 2")
 
     nsamples_1 = samples_1.n_samples
     logspec_1 = pspec_1.log()
-    plot.add(list(samples_1.iterator(pspec_1)) +
-             [pspec_1.force(mock_position), samples_1.average(logspec_1).exp()],
-             title="Sampled Posterior Power Spectrum Model 1",
-             linewidth=[1.] * nsamples_1 + [3., 3.],
-             label=[None] * nsamples_1 + ['Ground truth', 'Posterior mean'])
+    plot.add(
+        list(samples_1.iterator(pspec_1)) +
+        [pspec_1.force(mock_position),
+         samples_1.average(logspec_1).exp()],
+        title="Sampled Posterior Power Spectrum Model 1",
+        linewidth=[1.] * nsamples_1 + [3., 3.],
+        label=[None] * nsamples_1 + ['Ground truth', 'Posterior mean'])
 
     nsamples_2 = samples_2.n_samples
     logspec_2 = pspec_2.log()
-    plot.add(list(samples_2.iterator(pspec_2)) +
-             [pspec_2.force(mock_position), samples_2.average(logspec_2).exp()],
-             title="Sampled Posterior Power Spectrum Model 2",
-             linewidth=[1.] * nsamples_2 + [3., 3.],
-             label=[None] * nsamples_2 + ['Ground truth (model 2)', 'Posterior mean'])
+    plot.add(
+        list(samples_2.iterator(pspec_2)) +
+        [pspec_2.force(mock_position),
+         samples_2.average(logspec_2).exp()],
+        title="Sampled Posterior Power Spectrum Model 2",
+        linewidth=[1.] * nsamples_2 + [3., 3.],
+        label=[None] * nsamples_2 + ['Ground truth (model 2)', 'Posterior mean'])
 
     plot.output(ny=2, nx=3, xsize=24, ysize=12, name=filename_res)
     ift.logger.info("Saved results as '{}'.".format(filename_res))
 
     # Compute evidence lower bound
-    evidence_1, _ = ift.estimate_evidence_lower_bound(ift.StandardHamiltonian(likelihood_energy_1), samples_1, 100,
-                                                      min_lh_eval=1e-3)
-    evidence_2, _ = ift.estimate_evidence_lower_bound(ift.StandardHamiltonian(likelihood_energy_2), samples_2, 99,
-                                                      min_lh_eval=1e-3)
+    evidence_1, _ = ift.estimate_evidence_lower_bound(
+        ift.StandardHamiltonian(likelihood_energy_1), samples_1, 100, min_lh_eval=1e-3)
+    evidence_2, _ = ift.estimate_evidence_lower_bound(
+        ift.StandardHamiltonian(likelihood_energy_2), samples_2, 99, min_lh_eval=1e-3)
 
     log_elbo_difference = evidence_1.average().val - evidence_2.average().val
     ift.logger.info("\n")

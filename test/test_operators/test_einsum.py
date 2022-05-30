@@ -24,10 +24,7 @@ from nifty8.extra import check_linear_operator, check_operator
 
 from ..common import list2fixture, setup_function, teardown_function
 
-spaces = (ift.UnstructuredDomain(4),
-          ift.RGSpace((3, 2)),
-          ift.LMSpace(5),
-          ift.GLSpace(4))
+spaces = (ift.UnstructuredDomain(4), ift.RGSpace((3, 2)), ift.LMSpace(5), ift.GLSpace(4))
 
 space1 = list2fixture(spaces)
 space2 = list2fixture(spaces)
@@ -37,16 +34,18 @@ dtype = list2fixture([np.float64, np.complex128])
 def test_linear_einsum_outer(space1, space2, dtype, n_invocations=10):
     mf_dom = ift.MultiDomain.make({
         "dom01": space1,
-        "dom02": ift.DomainTuple.make((space1, space2))})
+        "dom02": ift.DomainTuple.make((space1, space2))
+    })
     mf = ift.from_random(mf_dom, "normal", dtype=dtype)
     ss = "i,ij,j->ij"
     key_order = ("dom01", "dom02")
     le = ift.LinearEinsum(space2, mf, ss, key_order=key_order)
     ift.myassert(check_linear_operator(le, domain_dtype=dtype, target_dtype=dtype) is None)
 
-    le_ift = ift.DiagonalOperator(mf["dom01"], domain=mf_dom["dom02"], spaces=0) @ ift.DiagonalOperator(mf["dom02"])
-    le_ift = le_ift @ ift.OuterProduct(ift.DomainTuple.make(mf_dom["dom02"][1]),
-                                       ift.full(mf_dom["dom01"], 1.))
+    le_ift = ift.DiagonalOperator(
+        mf["dom01"], domain=mf_dom["dom02"], spaces=0) @ ift.DiagonalOperator(mf["dom02"])
+    le_ift = le_ift @ ift.OuterProduct(
+        ift.DomainTuple.make(mf_dom["dom02"][1]), ift.full(mf_dom["dom01"], 1.))
 
     for _ in range(n_invocations):
         r = ift.from_random(le.domain, "normal", dtype=dtype)
@@ -58,7 +57,8 @@ def test_linear_einsum_outer(space1, space2, dtype, n_invocations=10):
 def test_linear_einsum_contraction(space1, space2, dtype, n_invocations=10):
     mf_dom = ift.MultiDomain.make({
         "dom01": space1,
-        "dom02": ift.DomainTuple.make((space1, space2))})
+        "dom02": ift.DomainTuple.make((space1, space2))
+    })
     mf = ift.from_random(mf_dom, "normal", dtype=dtype)
     ss = "i,ij,j->i"
     key_order = ("dom01", "dom02")
@@ -68,8 +68,10 @@ def test_linear_einsum_contraction(space1, space2, dtype, n_invocations=10):
     le_ift = ift.ContractionOperator(mf_dom["dom02"], 1)
     le_ift = le_ift @ ift.DiagonalOperator(mf["dom01"], domain=mf_dom["dom02"], spaces=0)
     le_ift = le_ift @ ift.DiagonalOperator(mf["dom02"])
-    le_ift = le_ift @ ift.OuterProduct(ift.DomainTuple.make(mf_dom["dom02"][1]),
-                                       ift.full(mf_dom["dom01"], 1.),)
+    le_ift = le_ift @ ift.OuterProduct(
+        ift.DomainTuple.make(mf_dom["dom02"][1]),
+        ift.full(mf_dom["dom01"], 1.),
+    )
 
     for _ in range(n_invocations):
         r = ift.from_random(le.domain, "normal", dtype=dtype)
@@ -83,6 +85,7 @@ class _SwitchSpacesOperator(ift.LinearOperator):
 
     Exchanges the entries `space1` and `space2` of the input's domain.
     """
+
     def __init__(self, domain, space1, space2=0):
         self._capability = self.TIMES | self.ADJOINT_TIMES
         self._domain = ift.DomainTuple.make(domain)
@@ -134,18 +137,17 @@ def test_multi_linear_einsum_outer(space1, space2, dtype):
     mf_dom = ift.MultiDomain.make({
         "dom01": space1,
         "dom02": ift.DomainTuple.make((space1, space2)),
-        "dom03": space2})
+        "dom03": space2
+    })
     ss = "i,ij,j->ij"
     key_order = ("dom01", "dom02", "dom03")
     mle = ift.MultiLinearEinsum(mf_dom, ss, key_order=key_order)
     check_operator(mle, ift.from_random(mle.domain, "normal", dtype=dtype), ntries=ntries)
 
     outer_i = ift.OuterProduct(
-        ift.DomainTuple.make(mf_dom["dom02"][0]), ift.full(mf_dom["dom03"], 1.)
-    )
+        ift.DomainTuple.make(mf_dom["dom02"][0]), ift.full(mf_dom["dom03"], 1.))
     outer_j = ift.OuterProduct(
-        ift.DomainTuple.make(mf_dom["dom02"][1]), ift.full(mf_dom["dom01"], 1.)
-    )
+        ift.DomainTuple.make(mf_dom["dom02"][1]), ift.full(mf_dom["dom01"], 1.))
     # SwitchSpacesOperator is equivalent to LinearEinsum with "ij->ji"
     mle_ift = _SwitchSpacesOperator(outer_i.target, 1) @ outer_i @ \
         ift.FieldAdapter(mf_dom["dom01"], "dom01") * \

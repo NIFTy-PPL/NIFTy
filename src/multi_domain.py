@@ -39,8 +39,7 @@ class MultiDomain:
 
     def __init__(self, dct, _callingfrommake=False):
         if not _callingfrommake:
-            raise NotImplementedError(
-                'To create a MultiDomain call `MultiDomain.make()`.')
+            raise NotImplementedError('To create a MultiDomain call `MultiDomain.make()`.')
         self._keys = tuple(sorted(dct.keys()))
         self._domains = tuple(dct[key] for key in self._keys)
         self._idx = frozendict({key: i for i, key in enumerate(self._keys)})
@@ -122,7 +121,7 @@ class MultiDomain:
     @staticmethod
     def union(inp):
         inp = set(inp)
-        if len(inp) == 1:  # all domains are identical
+        if len(inp) == 1:    # all domains are identical
             return inp.pop()
         res = {}
         for dom in inp:

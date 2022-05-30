@@ -265,8 +265,7 @@ class Field(Operator):
                 fct *= wgt
             else:
                 new_shape = np.ones(len(self.shape), dtype=np.int64)
-                new_shape[self._domain.axes[ind][0]:
-                          self._domain.axes[ind][-1]+1] = wgt.shape
+                new_shape[self._domain.axes[ind][0]:self._domain.axes[ind][-1] + 1] = wgt.shape
                 wgt = wgt.reshape(new_shape)
                 aout *= wgt**power
         fct = fct**power
@@ -288,8 +287,7 @@ class Field(Operator):
             Defined on the product space of self.domain and x.domain.
         """
         if not isinstance(x, Field):
-            raise TypeError("The multiplier must be an instance of " +
-                            "the Field class")
+            raise TypeError("The multiplier must be an instance of " + "the Field class")
         from .operators.outer_product_operator import OuterProduct
         return OuterProduct(x.domain, self)(x)
 
@@ -311,8 +309,7 @@ class Field(Operator):
         float, complex, either scalar (for full dot products) or Field (for partial dot products).
         """
         if not isinstance(x, Field):
-            raise TypeError("The dot-partner must be an instance of " +
-                            "the Field class")
+            raise TypeError("The dot-partner must be an instance of " + "the Field class")
 
         utilities.check_object_identity(x._domain, self._domain)
 
@@ -323,7 +320,7 @@ class Field(Operator):
             return Field.scalar(np.array(vdot(self._val, x._val)))
         # If we arrive here, we have to do a partial dot product.
         # For the moment, do this the explicit, non-optimized way
-        return (self.conjugate()*x).sum(spaces=spaces)
+        return (self.conjugate() * x).sum(spaces=spaces)
 
     def s_vdot(self, x):
         """Computes the dot product of 'self' with x.
@@ -339,8 +336,7 @@ class Field(Operator):
             The dot product
         """
         if not isinstance(x, Field):
-            raise TypeError("The dot-partner must be an instance of " +
-                            "the Field class")
+            raise TypeError("The dot-partner must be an instance of " + "the Field class")
 
         utilities.check_object_identity(x._domain, self._domain)
 
@@ -393,7 +389,7 @@ class Field(Operator):
         axes_list = tuple(self._domain.axes[sp_index] for sp_index in spaces)
 
         if len(axes_list) > 0:
-            axes_list = reduce(lambda x, y: x+y, axes_list)
+            axes_list = reduce(lambda x, y: x + y, axes_list)
 
         # perform the contraction on the data
         data = getattr(self._val, op)(axis=axes_list)
@@ -402,16 +398,14 @@ class Field(Operator):
         if np.isscalar(data):
             return Field.scalar(data)
         else:
-            return_domain = tuple(dom
-                                  for i, dom in enumerate(self._domain)
-                                  if i not in spaces)
+            return_domain = tuple(dom for i, dom in enumerate(self._domain) if i not in spaces)
 
             return Field(DomainTuple.make(return_domain), data)
 
     def scale(self, factor):
         if factor == 1:
             return self
-        return factor*self
+        return factor * self
 
     def sum(self, spaces=None):
         """Sums up over the sub-domains given by `spaces`.
@@ -459,7 +453,7 @@ class Field(Operator):
         swgt = self.scalar_weight(spaces)
         if swgt is not None:
             res = self.sum(spaces)
-            res = res*swgt
+            res = res * swgt
             return res
         tmp = self.weight(1, spaces=spaces)
         return tmp.sum(spaces)
@@ -477,7 +471,7 @@ class Field(Operator):
         """
         swgt = self.scalar_weight()
         if swgt is not None:
-            return self.s_sum()*swgt
+            return self.s_sum() * swgt
         tmp = self.weight(1)
         return tmp.s_sum()
 
@@ -512,6 +506,7 @@ class Field(Operator):
 
     def s_any(self):
         return self._val.any()
+
 
 #     def min(self, spaces=None):
 #         """Determines the minimum over the sub-domains given by `spaces`.
@@ -567,7 +562,7 @@ class Field(Operator):
         # MR FIXME: not very efficient
         # MR FIXME: do we need "spaces" here?
         tmp = self.weight(1, spaces)
-        return tmp.sum(spaces)*(1./tmp.total_volume(spaces))
+        return tmp.sum(spaces) * (1. / tmp.total_volume(spaces))
 
     def s_mean(self):
         """Determines the field mean
@@ -580,7 +575,7 @@ class Field(Operator):
         scalar
             The result of the operation.
         """
-        return self.s_integrate()/self.total_volume()
+        return self.s_integrate() / self.total_volume()
 
     def var(self, spaces=None):
         """Determines the variance over the sub-domains given by `spaces`.
@@ -605,9 +600,9 @@ class Field(Operator):
         op = ContractionOperator(self._domain, spaces)
         m1 = op.adjoint_times(m1)
         if utilities.iscomplextype(self.dtype):
-            sq = abs(self-m1)**2
+            sq = abs(self - m1)**2
         else:
-            sq = (self-m1)**2
+            sq = (self - m1)**2
         return sq.mean(spaces)
 
     def s_var(self):
@@ -623,9 +618,9 @@ class Field(Operator):
         # MR FIXME: not very efficient or accurate
         m1 = self.s_mean()
         if utilities.iscomplextype(self.dtype):
-            sq = abs(self-m1)**2
+            sq = abs(self - m1)**2
         else:
-            sq = (self-m1)**2
+            sq = (self - m1)**2
         return sq.s_mean()
 
     def std(self, spaces=None):
@@ -681,10 +676,10 @@ class Field(Operator):
         return self
 
     def unite(self, other):
-        return self+other
+        return self + other
 
     def flexible_addsub(self, other, neg):
-        return self-other if neg else self+other
+        return self - other if neg else self + other
 
     def _binary_op(self, other, op):
         # if other is a field, make sure that the domains match
@@ -700,10 +695,11 @@ class Field(Operator):
         for arg in args + tuple(kwargs.values()):
             if not (arg is None or np.isscalar(arg) or arg.jac is None):
                 raise TypeError("bad argument")
-        argstmp = tuple(arg if arg is None or np.isscalar(arg) else arg._val
-                        for arg in args)
-        kwargstmp = {key: val if val is None or np.isscalar(val) else val._val
-                     for key, val in kwargs.items()}
+        argstmp = tuple(arg if arg is None or np.isscalar(arg) else arg._val for arg in args)
+        kwargstmp = {
+            key: val if val is None or np.isscalar(val) else val._val
+            for key, val in kwargs.items()
+        }
         return argstmp, kwargstmp
 
     def ptw(self, op, *args, **kwargs):
@@ -717,25 +713,30 @@ class Field(Operator):
         tmp = ptw_dict[op][1](self._val, *argstmp, **kwargstmp)
         return (Field(self._domain, tmp[0]), Field(self._domain, tmp[1]))
 
+for op in [
+        "__add__", "__radd__", "__sub__", "__rsub__", "__mul__", "__rmul__", "__truediv__",
+        "__rtruediv__", "__floordiv__", "__rfloordiv__", "__pow__", "__rpow__", "__lt__", "__le__",
+        "__gt__", "__ge__", "__eq__", "__ne__"
+]:
 
-for op in ["__add__", "__radd__",
-           "__sub__", "__rsub__",
-           "__mul__", "__rmul__",
-           "__truediv__", "__rtruediv__",
-           "__floordiv__", "__rfloordiv__",
-           "__pow__", "__rpow__",
-           "__lt__", "__le__", "__gt__", "__ge__", "__eq__", "__ne__"]:
     def func(op):
+
         def func2(self, other):
             return self._binary_op(other, op)
+
         return func2
+
     setattr(Field, op, func(op))
 
-for op in ["__iadd__", "__isub__", "__imul__", "__idiv__",
-           "__itruediv__", "__ifloordiv__", "__ipow__"]:
+for op in [
+        "__iadd__", "__isub__", "__imul__", "__idiv__", "__itruediv__", "__ifloordiv__", "__ipow__"
+]:
+
     def func(op):
+
         def func2(self, other):
-            raise TypeError(
-                "In-place operations are deliberately not supported")
+            raise TypeError("In-place operations are deliberately not supported")
+
         return func2
+
     setattr(Field, op, func(op))

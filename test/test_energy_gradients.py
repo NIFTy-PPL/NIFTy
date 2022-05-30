@@ -22,9 +22,11 @@ import nifty8 as ift
 
 from .common import list2fixture, setup_function, teardown_function
 
-spaces = [ift.GLSpace(5),
-          ift.MultiDomain.make({'': ift.RGSpace(5, distances=.789)}),
-          (ift.RGSpace(3, distances=.789), ift.UnstructuredDomain(2))]
+spaces = [
+    ift.GLSpace(5),
+    ift.MultiDomain.make({'': ift.RGSpace(5, distances=.789)}),
+    (ift.RGSpace(3, distances=.789), ift.UnstructuredDomain(2))
+]
 pmp = pytest.mark.parametrize
 field = list2fixture([ift.from_random(sp, 'normal') for sp in spaces])
 ntries = 10
@@ -44,7 +46,7 @@ def test_ScaledEnergy(field):
     met1 = energy(lin).metric
     met2 = energy.scale(0.3)(lin).metric
     res1 = met1(field)
-    res2 = met2(field)/0.3
+    res2 = met2(field) / 0.3
     ift.extra.assert_allclose(res1, res2, 0, 1e-12)
     met1.draw_sample()
     met2.draw_sample()

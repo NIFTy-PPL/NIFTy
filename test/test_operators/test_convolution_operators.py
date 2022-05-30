@@ -22,11 +22,7 @@ import nifty8 as ift
 
 from ..common import list2fixture, setup_function, teardown_function
 
-space = list2fixture([
-    ift.RGSpace(4),
-    ift.HPSpace(4),
-    ift.GLSpace(4)
-])
+space = list2fixture([ift.RGSpace(4), ift.HPSpace(4), ift.GLSpace(4)])
 
 
 def test_const_func(space):
@@ -49,9 +45,5 @@ def test_gaussian_smoothing():
     sig = ift.Field.from_random(dom, 'normal').ptw("exp")
     fco_op = ift.FuncConvolutionOperator(dom, lambda x: gauss(x, sigma))
     sm_op = ift.HarmonicSmoothingOperator(dom, sigma)
-    assert_allclose(fco_op(sig).val,
-                    sm_op(sig).val,
-                    rtol=1e-05)
-    assert_allclose(fco_op.adjoint_times(sig).val,
-                    sm_op.adjoint_times(sig).val,
-                    rtol=1e-05)
+    assert_allclose(fco_op(sig).val, sm_op(sig).val, rtol=1e-05)
+    assert_allclose(fco_op.adjoint_times(sig).val, sm_op.adjoint_times(sig).val, rtol=1e-05)

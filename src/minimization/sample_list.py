@@ -52,6 +52,7 @@ class SampleListBase:
     A class inheriting from :class:`SampleListBase` needs to call the constructor of
     `SampleListBase` and needs to implement :attr:`n_local_samples` and :attr:`local_item()`.
     """
+
     def __init__(self, comm, domain, n_local_samples):
         from ..sugar import makeDomain
         self._comm = comm
@@ -104,7 +105,12 @@ class SampleListBase:
         """DomainTuple or MultiDomain: the domain on which the samples are defined."""
         return self._domain
 
-    def save_to_hdf5(self, file_name, op=None, samples=False, mean=False, std=False,
+    def save_to_hdf5(self,
+                     file_name,
+                     op=None,
+                     samples=False,
+                     mean=False,
+                     std=False,
                      overwrite=False):
         """Write sample list to HDF5 file.
 
@@ -186,7 +192,12 @@ class SampleListBase:
         f.close()
         _barrier(self.comm)
 
-    def save_to_fits(self, file_name_base, op=None, samples=False, mean=False, std=False,
+    def save_to_fits(self,
+                     file_name_base,
+                     op=None,
+                     samples=False,
+                     mean=False,
+                     std=False,
                      overwrite=False):
         """Write sample list to FITS file.
 
@@ -362,7 +373,7 @@ class SampleListBase:
         from ..probing import StatCalculator
         if self.n_samples == 1:
             res = self.average(op)
-            return res, 0*res
+            return res, 0 * res
         sc = StatCalculator()
         for ss in self.iterator(op):
             sc.add(ss)
@@ -431,8 +442,7 @@ class SampleListBase:
         distribution scheme (see `ift.utilities.shareRange`).
         """
         base_dir, base_file = os.path.split(os.path.abspath(file_name_base))
-        files = [ff for ff in os.listdir(base_dir)
-                 if re.match(f"{base_file}.[0-9]+.pickle", ff)]
+        files = [ff for ff in os.listdir(base_dir) if re.match(f"{base_file}.[0-9]+.pickle", ff)]
         if len(files) == 0:
             raise RuntimeError(f"No files matching `{file_name_base}.*.pickle`")
         n_samples = max(list(map(lambda x: int(x.split(".")[-2]), files))) + 1
@@ -447,6 +457,7 @@ class SampleListBase:
 
 
 class ResidualSampleList(SampleListBase):
+
     def __init__(self, mean, residuals, neg, comm=None):
         """Store samples in terms of a mean and a residual deviation thereof.
 
@@ -539,6 +550,7 @@ class ResidualSampleList(SampleListBase):
 
 
 class SampleList(SampleListBase):
+
     def __init__(self, samples, comm=None, domain=None):
         """Store samples as a plain list.
 
@@ -578,7 +590,7 @@ class SampleList(SampleListBase):
         nsample = self.n_samples
         for isample in range(nsample):
             if isample in self.local_indices:
-                obj = self._s[isample-self.local_indices[0]]
+                obj = self._s[isample - self.local_indices[0]]
                 fname = _sample_file_name(file_name_base, isample)
                 _save_to_disk(fname, obj, overwrite=True)
         _barrier(self.comm)
@@ -590,7 +602,7 @@ class SampleList(SampleListBase):
         foo = "{file_name_base}.mean.pickle"
         if os.path.isfile(foo):
             logger.warn(f"{foo} is present. Most probably you intended to "
-                         "call `ift.ResidualSampleList.load()`.")
+                        "call `ift.ResidualSampleList.load()`.")
         files = cls._list_local_sample_files(file_name_base, comm)
         samples = [_load_from_disk(ff) for ff in files]
         dom = None

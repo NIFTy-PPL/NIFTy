@@ -48,9 +48,7 @@ def _sample_standard_hamiltonian(
     cg_kwargs = cg_kwargs if cg_kwargs is not None else {}
 
     subkey_nll, subkey_prr = random.split(key, 2)
-    nll_smpl = sample_likelihood(
-        hamiltonian.likelihood, primals, key=subkey_nll
-    )
+    nll_smpl = sample_likelihood(hamiltonian.likelihood, primals, key=subkey_nll)
     prr_inv_metric_smpl = random_like(key=subkey_prr, primals=primals)
     # One may transform any metric sample to a sample of the inverse
     # metric by simply applying the inverse metric to it
@@ -66,25 +64,18 @@ def _sample_standard_hamiltonian(
     # antithetically.
     met_smpl = nll_smpl + prr_smpl
     if from_inverse:
-        inv_metric_at_p = partial(
-            cg, Partial(hamiltonian.metric, primals), **{
-                "name": cg_name,
-                **cg_kwargs
-            }
-        )
+        inv_metric_at_p = partial(cg, Partial(hamiltonian.metric, primals), **{
+            "name": cg_name,
+            **cg_kwargs
+        })
         signal_smpl, info = inv_metric_at_p(met_smpl, x0=prr_inv_metric_smpl)
-        cond_raise(
-            (info is not None) & (info < 0),
-            ValueError("conjugate gradient failed")
-        )
+        cond_raise((info is not None) & (info < 0), ValueError("conjugate gradient failed"))
         return signal_smpl, met_smpl
     else:
         return None, met_smpl
 
 
-def sample_standard_hamiltonian(
-    hamiltonian: StandardHamiltonian, primals, *args, **kwargs
-):
+def sample_standard_hamiltonian(hamiltonian: StandardHamiltonian, primals, *args, **kwargs):
     r"""Draws a sample of which the covariance is the metric or the inverse
     metric of the Hamiltonian.
 
@@ -140,8 +131,7 @@ def sample_standard_hamiltonian(
     """
     assert_arithmetics(primals)
     inv_met_smpl, _ = _sample_standard_hamiltonian(
-        hamiltonian, primals, *args, from_inverse=True, **kwargs
-    )
+        hamiltonian, primals, *args, from_inverse=True, **kwargs)
     return inv_met_smpl
 
 
@@ -205,18 +195,15 @@ def geometrically_sample_standard_hamiltonian(
         from_inverse=True,
         cg=linear_sampling_cg,
         cg_name=linear_sampling_name,
-        cg_kwargs=linear_sampling_kwargs
-    )
+        cg_kwargs=linear_sampling_kwargs)
 
     if isinstance(non_linear_sampling_kwargs, dict):
         nls_kwargs = non_linear_sampling_kwargs
     elif non_linear_sampling_kwargs is None:
         nls_kwargs = {}
     else:
-        te = (
-            "`non_linear_sampling_kwargs` of invalid type"
-            "{type(non_linear_sampling_kwargs)}"
-        )
+        te = ("`non_linear_sampling_kwargs` of invalid type"
+              "{type(non_linear_sampling_kwargs)}")
         raise TypeError(te)
     nls_kwargs = {"name": non_linear_sampling_name, **nls_kwargs}
     if "hessp" in nls_kwargs:
@@ -226,7 +213,7 @@ def geometrically_sample_standard_hamiltonian(
     if nls_kwargs.get("maxiter") == 0:
         if mirror_linear_sample:
             return (inv_met_smpl, -inv_met_smpl)
-        return (inv_met_smpl, )
+        return (inv_met_smpl,)
 
     lh_trafo_at_p = hamiltonian.likelihood.transformation(primals)
 
@@ -234,38 +221,25 @@ def geometrically_sample_standard_hamiltonian(
         x0 = primals + inv_met_smpl
 
         def g(x):
-            return x - primals + lh.left_sqrt_metric(
-                primals,
-                lh.transformation(x) - lh_trafo_at_p
-            )
+            return x - primals + lh.left_sqrt_metric(primals, lh.transformation(x) - lh_trafo_at_p)
 
-        r2_half = Gaussian(met_smpl) @ g  # (g - met_smpl)**2 / 2
+        r2_half = Gaussian(met_smpl) @ g    # (g - met_smpl)**2 / 2
 
         options = nls_kwargs.copy()
         options["hessp"] = r2_half.metric
 
-        opt_state = minimize(
-            r2_half, x0=x0, method=non_linear_sampling_method, options=options
-        )
+        opt_state = minimize(r2_half, x0=x0, method=non_linear_sampling_method, options=options)
 
         return opt_state.x, opt_state.status
 
-    smpl1, smpl1_status = draw_non_linear_sample(
-        hamiltonian.likelihood, met_smpl, inv_met_smpl
-    )
-    cond_raise(
-        (smpl1_status is not None) & (smpl1_status < 0),
-        ValueError("S: failed to invert map")
-    )
+    smpl1, smpl1_status = draw_non_linear_sample(hamiltonian.likelihood, met_smpl, inv_met_smpl)
+    cond_raise((smpl1_status is not None) & (smpl1_status < 0),
+               ValueError("S: failed to invert map"))
     if not mirror_linear_sample:
-        return (smpl1 - primals, )
-    smpl2, smpl2_status = draw_non_linear_sample(
-        hamiltonian.likelihood, -met_smpl, -inv_met_smpl
-    )
-    cond_raise(
-        (smpl2_status is not None) & (smpl2_status < 0),
-        ValueError("S: failed to invert map")
-    )
+        return (smpl1 - primals,)
+    smpl2, smpl2_status = draw_non_linear_sample(hamiltonian.likelihood, -met_smpl, -inv_met_smpl)
+    cond_raise((smpl2_status is not None) & (smpl2_status < 0),
+               ValueError("S: failed to invert map"))
     return (smpl1 - primals, smpl2 - primals)
 
 
@@ -287,6 +261,7 @@ class SampleIter():
     `Metric Gaussian Variational Inference`, Jakob Knollmüller,
     Torsten A. Enßlin, `<https://arxiv.org/abs/1901.11033>`_
     """
+
     def __init__(
         self,
         *,
@@ -321,10 +296,7 @@ class SampleIter():
     def at(self, mean):
         """Updates the offset (usually the latent mean) of all samples"""
         return SampleIter(
-            mean=mean,
-            samples=self._samples,
-            linearly_mirror_samples=self._linearly_mirror_samples
-        )
+            mean=mean, samples=self._samples, linearly_mirror_samples=self._linearly_mirror_samples)
 
     @property
     def first(self):
@@ -344,7 +316,7 @@ class SampleIter():
 
         # TODO: vmap is significantly slower than looping over the samples
         # for an extremely high dimensional problem.
-        in_axes = kwargs.get("in_axes", (0, ))
+        in_axes = kwargs.get("in_axes", (0,))
         return map_forest(call, in_axes=in_axes)(tuple(self), *args)
 
     def mean(self, call: Callable, *args, **kwargs):
@@ -358,21 +330,17 @@ class SampleIter():
 
         # TODO: vmap is significantly slower than looping over the samples
         # for an extremely high dimensional problem.
-        in_axes = kwargs.get("in_axes", (0, ))
+        in_axes = kwargs.get("in_axes", (0,))
         return map_forest_mean(call, in_axes=in_axes)(tuple(self), *args)
 
     def tree_flatten(self):
-        return ((self._mean, self._samples), (self._linearly_mirror_samples, ))
+        return ((self._mean, self._samples), (self._linearly_mirror_samples,))
 
     @classmethod
     def tree_unflatten(cls, aux, children):
         if len(aux) != 1 or len(children) != 2:
             raise ValueError()
-        return cls(
-            mean=children[0],
-            samples=children[1],
-            linearly_mirror_samples=aux[0]
-        )
+        return cls(mean=children[0], samples=children[1], linearly_mirror_samples=aux[0])
 
 
 def MetricKL(
@@ -451,8 +419,7 @@ def MetricKL(
         primals=primals,
         cg=linear_sampling_cg,
         cg_name=linear_sampling_name,
-        cg_kwargs=linear_sampling_kwargs
-    )
+        cg_kwargs=linear_sampling_kwargs)
     subkeys = random.split(key, n_samples)
     if isinstance(sample_mapping, str):
         if sample_mapping == 'pmap' or sample_mapping == 'p':
@@ -460,26 +427,19 @@ def MetricKL(
         elif sample_mapping == 'lax.map' or sample_mapping == 'lax':
             sample_mapping = partial(partial, lax.map)
         else:
-            ve = (
-                f"{sample_mapping} is not an accepted key to a mapping function"
-                "; please pass function directly"
-            )
+            ve = (f"{sample_mapping} is not an accepted key to a mapping function"
+                  "; please pass function directly")
             raise ValueError(ve)
 
     elif not callable(sample_mapping):
-        te = (
-            f"invalid `sample_mapping` of type {type(sample_mapping)!r}"
-            "; expected string or callable"
-        )
+        te = (f"invalid `sample_mapping` of type {type(sample_mapping)!r}"
+              "; expected string or callable")
         raise TypeError(te)
 
     samples_stack = sample_mapping(lambda k: draw(key=k))(subkeys)
 
     return SampleIter(
-        mean=primals,
-        samples=unstack(samples_stack),
-        linearly_mirror_samples=mirror_samples
-    )
+        mean=primals, samples=unstack(samples_stack), linearly_mirror_samples=mirror_samples)
 
 
 def GeoMetricKL(
@@ -532,8 +492,7 @@ def GeoMetricKL(
         linear_sampling_kwargs=linear_sampling_kwargs,
         non_linear_sampling_method=non_linear_sampling_method,
         non_linear_sampling_name=non_linear_sampling_name,
-        non_linear_sampling_kwargs=non_linear_sampling_kwargs
-    )
+        non_linear_sampling_kwargs=non_linear_sampling_kwargs)
     subkeys = random.split(key, n_samples)
     # TODO: Make `geometrically_sample_standard_hamiltonian` jit-able
     # samples_stack = lax.map(lambda k: draw(key=k), subkeys)
@@ -544,9 +503,7 @@ def GeoMetricKL(
     # samples = unstack(samples_stack)
     samples = tuple(s for ss in map(lambda k: draw(key=k), subkeys) for s in ss)
 
-    return SampleIter(
-        mean=primals, samples=samples, linearly_mirror_samples=False
-    )
+    return SampleIter(mean=primals, samples=samples, linearly_mirror_samples=False)
 
 
 def mean_value_and_grad(ham: Callable, sample_mapping='vmap', *args, **kwargs):
@@ -575,20 +532,18 @@ def mean_value_and_grad(ham: Callable, sample_mapping='vmap', *args, **kwargs):
     from jax import value_and_grad
     vg = value_and_grad(ham, *args, **kwargs)
 
-    def mean_vg(
-        primals: P,
-        primals_samples: Union[None, Sequence[P], SampleIter] = None,
-        **primals_kw
-    ) -> Tuple[Any, P]:
+    def mean_vg(primals: P,
+                primals_samples: Union[None, Sequence[P], SampleIter] = None,
+                **primals_kw) -> Tuple[Any, P]:
         ham_vg = partial(vg, **primals_kw)
         if primals_samples is None:
             return ham_vg(primals)
 
         if not isinstance(primals_samples, SampleIter):
             primals_samples = SampleIter(samples=primals_samples)
-        return map_forest_mean(ham_vg, mapping=sample_mapping, in_axes=(0, ))(
-            tuple(primals_samples.at(primals))
-        )
+        return map_forest_mean(
+            ham_vg, mapping=sample_mapping, in_axes=(0,))(
+                tuple(primals_samples.at(primals)))
 
     return mean_vg
 
@@ -600,22 +555,19 @@ def mean_hessp(ham: Callable, *args, **kwargs):
     from jax import jvp, grad
     jac = grad(ham, *args, **kwargs)
 
-    def mean_hp(
-        primals: P,
-        tangents: Any,
-        primals_samples: Union[None, Sequence[P], SampleIter] = None,
-        **primals_kw
-    ) -> P:
+    def mean_hp(primals: P,
+                tangents: Any,
+                primals_samples: Union[None, Sequence[P], SampleIter] = None,
+                **primals_kw) -> P:
         if primals_samples is None:
-            _, hp = jvp(partial(jac, **primals_kw), (primals, ), (tangents, ))
+            _, hp = jvp(partial(jac, **primals_kw), (primals,), (tangents,))
             return hp
 
         if not isinstance(primals_samples, SampleIter):
             primals_samples = SampleIter(samples=primals_samples)
         return map_forest_mean(
             partial(mean_hp, primals_samples=None, **primals_kw),
-            in_axes=(0, None)
-        )(tuple(primals_samples.at(primals)), tangents)
+            in_axes=(0, None))(tuple(primals_samples.at(primals)), tangents)
 
     return mean_hp
 
@@ -624,19 +576,18 @@ def mean_metric(metric: Callable):
     """Thin wrapper around `vmap` to apply a binary method to a primal mean, a
     tangent and a list of residual primal samples.
     """
-    def mean_met(
-        primals: P,
-        tangents: Any,
-        primals_samples: Union[None, Sequence[P], SampleIter] = None,
-        **primals_kw
-    ) -> P:
+
+    def mean_met(primals: P,
+                 tangents: Any,
+                 primals_samples: Union[None, Sequence[P], SampleIter] = None,
+                 **primals_kw) -> P:
         if primals_samples is None:
             return metric(primals, tangents, **primals_kw)
 
         if not isinstance(primals_samples, SampleIter):
             primals_samples = SampleIter(samples=primals_samples)
         return map_forest_mean(
-            partial(metric, **primals_kw), in_axes=(0, None)
-        )(tuple(primals_samples.at(primals)), tangents)
+            partial(metric, **primals_kw), in_axes=(0, None))(tuple(primals_samples.at(primals)),
+                                                              tangents)
 
     return mean_met

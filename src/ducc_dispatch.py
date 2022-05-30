@@ -15,7 +15,6 @@
 #
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
 
-
 import numpy as np
 
 _nthreads = 1
@@ -34,19 +33,14 @@ try:
     import ducc0.fft as my_fft
     import ducc0.misc
 
-
     def fftn(a, axes=None):
         return my_fft.c2c(a, axes=axes, nthreads=max(_nthreads, 0))
 
-
     def ifftn(a, axes=None):
-        return my_fft.c2c(a, axes=axes, inorm=2, forward=False,
-                          nthreads=max(_nthreads, 0))
-
+        return my_fft.c2c(a, axes=axes, inorm=2, forward=False, nthreads=max(_nthreads, 0))
 
     def hartley(a, axes=None):
         return my_fft.genuine_hartley(a, axes=axes, nthreads=max(_nthreads, 0))
-
 
     def vdot(a, b):
         if isinstance(a, np.ndarray) and a.dtype == np.int64:
@@ -58,19 +52,15 @@ try:
 except ImportError:
     import scipy.fft
 
-
     def fftn(a, axes=None):
         return scipy.fft.fftn(a, axes=axes, workers=_nthreads)
-
 
     def ifftn(a, axes=None):
         return scipy.fft.ifftn(a, axes=axes, workers=_nthreads)
 
-
     def hartley(a, axes=None):
         tmp = scipy.fft.fftn(a, axes=axes, workers=_nthreads)
-        return tmp.real+tmp.imag
-
+        return tmp.real + tmp.imag
 
     def vdot(a, b):
         from .logger import logger

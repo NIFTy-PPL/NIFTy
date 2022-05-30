@@ -30,12 +30,11 @@ pmp = pytest.mark.parametrize
 @pmp("dom0", _h_spaces + _p_spaces + _pow_spaces)
 @pmp("dom1", _h_spaces + _p_spaces + _pow_spaces)
 def test_multifield2vector(dom0, dom1):
-    fld = ift.MultiField.from_dict({'a': ift.from_random(dom0),
-                                    'b': ift.from_random(dom1)})
+    fld = ift.MultiField.from_dict({'a': ift.from_random(dom0), 'b': ift.from_random(dom1)})
     op = ift.Multifield2Vector(fld.domain)
     ift.extra.assert_allclose(fld, op.adjoint(op(fld)))
     assert op.target.size == fld.size
-    
+
     arr = np.empty(fld.size)
     arr[:dom0.size] = fld['a'].val.flatten()
     arr[dom0.size:] = fld['b'].val.flatten()

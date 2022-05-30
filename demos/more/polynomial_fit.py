@@ -33,8 +33,7 @@ def polynomial(coefficients, sampling_points):
     sampling_points: Numpy array
     """
 
-    if not (isinstance(coefficients, ift.Field)
-            and isinstance(sampling_points, np.ndarray)):
+    if not (isinstance(coefficients, ift.Field) and isinstance(sampling_points, np.ndarray)):
         raise TypeError
     params = coefficients.val
     out = np.zeros_like(sampling_points)
@@ -56,8 +55,8 @@ class PolynomialResponse(ift.LinearOperator):
     """
 
     def __init__(self, domain, sampling_points):
-        if not (isinstance(domain, ift.UnstructuredDomain)
-                and isinstance(sampling_points, np.ndarray)):
+        if not (isinstance(domain, ift.UnstructuredDomain) and
+                isinstance(sampling_points, np.ndarray)):
             raise TypeError
         self._domain = ift.DomainTuple.make(domain)
         tgt = ift.UnstructuredDomain(sampling_points.shape)
@@ -113,8 +112,7 @@ def main():
 
     # Draw posterior samples
     metric = Ham(ift.Linearization.make_var(H.position, want_metric=True)).metric
-    samples = [metric.draw_sample(from_inverse=True) + H.position
-               for _ in range(N_samples)]
+    samples = [metric.draw_sample(from_inverse=True) + H.position for _ in range(N_samples)]
 
     # Plotting
     plt.errorbar(x, y, np.sqrt(var), fmt='ko', label='Data with error bars')

@@ -60,6 +60,7 @@ class _InterpolationOperator(Operator):
     inv_table_func : function
         Inverse of table_func, optional.
     """
+
     def __init__(self, domain, func, xmin, xmax, delta, table_func=None, inv_table_func=None):
         self._domain = self._target = DomainTuple.make(domain)
         self._xmin, self._xmax = float(xmin), float(xmax)
@@ -69,6 +70,8 @@ class _InterpolationOperator(Operator):
         if table_func is not None:
             if inv_table_func is None:
                 raise ValueError
+
+
 # MR FIXME: not sure whether we should have this in production code
             a = func(random.current_rng().random(10))
             a1 = _f_on_np(lambda x: inv_table_func(table_func(x)), a)
@@ -84,10 +87,8 @@ class _InterpolationOperator(Operator):
             def jax_expr(x):
                 res = jnp.interp(x, self._xs, self._table)
                 if inv_table_func is not None:
-                    ve = (
-                        "can not translate arbitrary inverse"
-                        f" table function {inv_table_func!r}"
-                    )
+                    ve = ("can not translate arbitrary inverse"
+                          f" table function {inv_table_func!r}")
                     raise ValueError(ve)
                 return res
 
@@ -144,6 +145,7 @@ class InverseGammaOperator(Operator):
     delta : float
         Distance between sampling points for linear interpolation.
     """
+
     def __init__(self, domain, alpha=None, q=None, delta=1e-2, mode=None, mean=None):
         self._domain = self._target = DomainTuple.make(domain)
 
@@ -164,8 +166,10 @@ class InverseGammaOperator(Operator):
             raise ValueError("Either one pair of arguments (mode, mean or alpha, q) must be given.")
 
         self._delta = float(delta)
-        op = _InterpolationOperator(self._domain, lambda x: invgamma.ppf(norm._cdf(x), float(self._alpha)),
-                                    -8.2, 8.2, self._delta, lambda x: x.ptw("log"), lambda x: x.ptw("exp"))
+        op = _InterpolationOperator(self._domain,
+                                    lambda x: invgamma.ppf(norm._cdf(x), float(self._alpha)), -8.2,
+                                    8.2, self._delta, lambda x: x.ptw("log"),
+                                    lambda x: x.ptw("exp"))
         if np.isscalar(self._q):
             op = op.scale(self._q)
         else:
@@ -243,6 +247,7 @@ class GammaOperator(Operator):
     delta : float
         Distance between sampling points for linear interpolation.
     """
+
     def __init__(self, domain, alpha=None, beta=None, theta=None, mean=None, var=None, delta=1e-2):
         self._domain = self._target = DomainTuple.make(domain)
 
@@ -329,6 +334,7 @@ class UniformOperator(Operator):
     scale: float
 
     """
+
     def __init__(self, domain, loc=0, scale=1):
         self._target = self._domain = DomainTuple.make(domain)
         self._loc = float(loc)
@@ -338,10 +344,10 @@ class UniformOperator(Operator):
         self._check_input(x)
         lin = x.jac is not None
         xval = x.val.val if lin else x.val
-        res = Field(self._target, self._scale*norm._cdf(xval) + self._loc)
+        res = Field(self._target, self._scale * norm._cdf(xval) + self._loc)
         if not lin:
             return res
-        jac = makeOp(Field(self._domain, norm._pdf(xval)*self._scale))
+        jac = makeOp(Field(self._domain, norm._pdf(xval) * self._scale))
         return x.new(res, jac)
 
     def inverse(self, field):
@@ -361,6 +367,7 @@ class LaplaceOperator(Operator):
 
     scale : float
     """
+
     def __init__(self, domain, loc=0, scale=1):
         self._target = self._domain = DomainTuple.make(domain)
         self._loc = float(loc)
@@ -374,8 +381,8 @@ class LaplaceOperator(Operator):
         if not lin:
             return res
         y = norm._cdf(xval)
-        y = self._scale * np.where(y > 0.5, 1/(1-y), 1/y)
-        jac = makeOp(Field(self.domain, y*norm._pdf(xval)))
+        y = self._scale * np.where(y > 0.5, 1 / (1-y), 1 / y)
+        jac = makeOp(Field(self.domain, y * norm._pdf(xval)))
         return x.new(res, jac)
 
     def inverse(self, x):

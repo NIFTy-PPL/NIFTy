@@ -44,8 +44,7 @@ class _DomRemover(LinearOperator):
     def __init__(self, domain):
         self._domain = makeDomain(domain)
         if isinstance(self._domain, MultiDomain):
-            self._size_array = np.array([0] +
-                                        [d.size for d in domain.values()])
+            self._size_array = np.array([0] + [d.size for d in domain.values()])
         else:
             self._size_array = np.array([0, domain.size])
         np.cumsum(self._size_array, out=self._size_array)
@@ -58,8 +57,7 @@ class _DomRemover(LinearOperator):
         self._check_float_dtype(x)
         x = x.val
         if isinstance(self._domain, DomainTuple):
-            res = x.ravel() if mode == self.TIMES else x.reshape(
-                self._domain.shape)
+            res = x.ravel() if mode == self.TIMES else x.reshape(self._domain.shape)
         else:
             res = np.empty(self.target.shape) if mode == self.TIMES else {}
             for ii, (kk, dd) in enumerate(self.domain.items()):
@@ -143,14 +141,12 @@ def operator_spectrum(A, k, hermitian, which='LM', tol=0, return_eigenvectors=Fa
         raise TypeError('Operator needs to be endomorphism.')
     size = A.domain.size
     Ar = SandwichOperator.make(_DomRemover(A.domain).adjoint, A)
-    M = ssl.LinearOperator(
-        shape=2*(size,),
-        matvec=lambda x: Ar(makeField(Ar.domain, x)).val)
+    M = ssl.LinearOperator(shape=2 * (size,), matvec=lambda x: Ar(makeField(Ar.domain, x)).val)
     f = ssl.eigsh if hermitian else ssl.eigs
     eigs = f(M, k=k, tol=tol, return_eigenvectors=return_eigenvectors, which=which)
     if return_eigenvectors:
         eigval, eigvec = eigs
         inds = np.argsort(eigval)
-        return np.flip(eigval[inds]), np.flip(eigvec[:,inds],axis = 1)
+        return np.flip(eigval[inds]), np.flip(eigvec[:, inds], axis=1)
     else:
         return np.flip(np.sort(eigs))

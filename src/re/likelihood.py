@@ -17,14 +17,13 @@ class Likelihood():
     """Storage class for keeping track of the energy, the associated
     left-square-root of the metric and the metric.
     """
-    def __init__(
-        self,
-        energy: Callable[..., Union[jnp.ndarray, float]],
-        transformation: Optional[Callable[[Q], Any]] = None,
-        left_sqrt_metric: Optional[Callable[[Q, Q], Any]] = None,
-        metric: Optional[Callable[[Q, Q], Any]] = None,
-        lsm_tangents_shape=None
-    ):
+
+    def __init__(self,
+                 energy: Callable[..., Union[jnp.ndarray, float]],
+                 transformation: Optional[Callable[[Q], Any]] = None,
+                 left_sqrt_metric: Optional[Callable[[Q, Q], Any]] = None,
+                 metric: Optional[Callable[[Q, Q], Any]] = None,
+                 lsm_tangents_shape=None):
         """Instantiates a new likelihood.
 
         Parameters
@@ -47,11 +46,8 @@ class Likelihood():
 
         if lsm_tangents_shape is not None:
             leaves = tree_leaves(lsm_tangents_shape)
-            if not all(
-                hasattr(e, "shape") and hasattr(e, "dtype") for e in leaves
-            ):
-                if is1d(lsm_tangents_shape
-                       ) or not isiterable(lsm_tangents_shape):
+            if not all(hasattr(e, "shape") and hasattr(e, "dtype") for e in leaves):
+                if is1d(lsm_tangents_shape) or not isiterable(lsm_tangents_shape):
                     lsm_tangents_shape = ShapeWithDtype(lsm_tangents_shape)
                 else:
                     te = "`lsm_tangent_shapes` of invalid type"
@@ -102,9 +98,7 @@ class Likelihood():
             from jax import linear_transpose
 
             lsm_at_p = Partial(self.left_sqrt_metric, primals, **primals_kw)
-            rsm_at_p = linear_transpose(
-                lsm_at_p, self.left_sqrt_metric_tangents_shape
-            )
+            rsm_at_p = linear_transpose(lsm_at_p, self.left_sqrt_metric_tangents_shape)
             res = lsm_at_p(*rsm_at_p(tangents))
             return res
         return self._metric(primals, tangents, **primals_kw)
@@ -168,10 +162,8 @@ class Likelihood():
         """Alias for `left_sqrt_metric_tangents_shape`."""
         return self.left_sqrt_metric_tangents_shape
 
-    def new(
-        self, energy: Callable, transformation: Optional[Callable],
-        left_sqrt_metric: Optional[Callable], metric: Optional[Callable]
-    ):
+    def new(self, energy: Callable, transformation: Optional[Callable],
+            left_sqrt_metric: Optional[Callable], metric: Optional[Callable]):
         """Instantiates a new likelihood with the same `lsm_tangents_shape`.
 
         Parameters
@@ -191,8 +183,7 @@ class Likelihood():
             transformation=transformation,
             left_sqrt_metric=left_sqrt_metric,
             metric=metric,
-            lsm_tangents_shape=self._lsm_tan_shp
-        )
+            lsm_tangents_shape=self._lsm_tan_shp)
 
     def jit(self, **kwargs):
         """Returns a new likelihood with jit-compiled energy, left-square-root
@@ -218,8 +209,7 @@ class Likelihood():
             jit(self._hamiltonian, **kwargs),
             transformation=j_trafo,
             left_sqrt_metric=j_lsm,
-            metric=j_m
-        )
+            metric=j_m)
 
     def __matmul__(self, f: Callable):
         return self.matmul(f, left_argnames=(), right_argnames=None)
@@ -252,9 +242,9 @@ class Likelihood():
             raise ValueError(ve)
 
         def split_kwargs(**kwargs):
-            if left_argnames is None:  # right_argnames must be not None
+            if left_argnames is None:    # right_argnames must be not None
                 right_kw, left_kw = split(kwargs, right_argnames)
-            else:  # right_argnames must be None
+            else:    # right_argnames must be None
                 left_kw, right_kw = split(kwargs, left_argnames)
             return left_kw, right_kw
 
@@ -285,15 +275,12 @@ class Likelihood():
             energy_at_f,
             transformation=transformation_at_f,
             left_sqrt_metric=left_sqrt_metric_at_f,
-            metric=metric_at_f
-        )
+            metric=metric_at_f)
 
     def __add__(self, other):
         if not isinstance(other, Likelihood):
-            te = (
-                "object which to add to this instance is of invalid type"
-                f" {type(other)!r}"
-            )
+            te = ("object which to add to this instance is of invalid type"
+                  f" {type(other)!r}")
             raise TypeError(te)
 
         def joined_hamiltonian(p, **pkw):
@@ -302,10 +289,7 @@ class Likelihood():
         def joined_metric(p, t, **pkw):
             return self.metric(p, t, **pkw) + other.metric(p, t, **pkw)
 
-        joined_tangents_shape = {
-            "lh_left": self._lsm_tan_shp,
-            "lh_right": other._lsm_tan_shp
-        }
+        joined_tangents_shape = {"lh_left": self._lsm_tan_shp, "lh_right": other._lsm_tan_shp}
 
         def joined_transformation(p, **pkw):
             from warnings import warn
@@ -318,29 +302,26 @@ class Likelihood():
             }
 
         def joined_left_sqrt_metric(p, t, **pkw):
-            return self.left_sqrt_metric(
-                p, t["lh_left"], **pkw
-            ) + other.left_sqrt_metric(p, t["lh_right"], **pkw)
+            return self.left_sqrt_metric(p, t["lh_left"], **pkw) + other.left_sqrt_metric(
+                p, t["lh_right"], **pkw)
 
         return Likelihood(
             joined_hamiltonian,
             transformation=joined_transformation,
             left_sqrt_metric=joined_left_sqrt_metric,
             metric=joined_metric,
-            lsm_tangents_shape=joined_tangents_shape
-        )
+            lsm_tangents_shape=joined_tangents_shape)
 
 
 class StandardHamiltonian():
     """Joined object storage composed of a user-defined likelihood and a
     standard normal likelihood as prior.
     """
-    def __init__(
-        self,
-        likelihood: Likelihood,
-        _compile_joined: bool = False,
-        _compile_kwargs: dict = {}
-    ):
+
+    def __init__(self,
+                 likelihood: Likelihood,
+                 _compile_joined: bool = False,
+                 _compile_kwargs: dict = {}):
         """Instantiates a new standardized Hamiltonian, i.e. a likelihood
         joined with a standard normal prior.
 
@@ -353,8 +334,7 @@ class StandardHamiltonian():
 
         def joined_hamiltonian(primals, **primals_kw):
             # Assume the first primals to be the parameters
-            return self._lh(primals, **
-                            primals_kw) + 0.5 * sum_of_squares(primals)
+            return self._lh(primals, **primals_kw) + 0.5 * sum_of_squares(primals)
 
         def joined_metric(primals, tangents, **primals_kw):
             return self._lh.metric(primals, tangents, **primals_kw) + tangents
@@ -384,7 +364,4 @@ class StandardHamiltonian():
 
     def jit(self, **kwargs):
         return StandardHamiltonian(
-            self.likelihood.jit(**kwargs),
-            _compile_joined=True,
-            _compile_kwargs=kwargs
-        )
+            self.likelihood.jit(**kwargs), _compile_joined=True, _compile_kwargs=kwargs)

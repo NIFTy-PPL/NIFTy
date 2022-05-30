@@ -26,7 +26,7 @@ pmp = pytest.mark.parametrize
 
 
 def _l2error(a, b):
-    return np.sqrt(np.sum(np.abs(a-b)**2)/np.sum(np.abs(a)**2))
+    return np.sqrt(np.sum(np.abs(a - b)**2) / np.sum(np.abs(a)**2))
 
 
 @pmp('eps', [1e-2, 1e-4, 1e-7, 1e-10, 1e-11, 1e-12, 2e-13])
@@ -35,8 +35,9 @@ def _l2error(a, b):
 @pmp('N', [1, 10, 100])
 def test_gridding(nxdirty, nydirty, N, eps):
     uv = ift.random.current_rng().random((N, 2)) - 0.5
-    vis = (ift.random.current_rng().standard_normal(N)
-           + 1j*ift.random.current_rng().standard_normal(N))
+    vis = (
+        ift.random.current_rng().standard_normal(N) +
+        1j * ift.random.current_rng().standard_normal(N))
 
     if N > 2:
         uv[-1] = 0
@@ -44,19 +45,17 @@ def test_gridding(nxdirty, nydirty, N, eps):
     # Nifty
     dom = ift.RGSpace((nxdirty, nydirty), distances=(0.2, 1.12))
     dstx, dsty = dom.distances
-    uv[:, 0] = uv[:, 0]/dstx
-    uv[:, 1] = uv[:, 1]/dsty
+    uv[:, 0] = uv[:, 0] / dstx
+    uv[:, 1] = uv[:, 1] / dsty
     Op = ift.Gridder(dom, uv=uv, eps=eps)
     vis2 = ift.makeField(ift.UnstructuredDomain(vis.shape), vis)
 
     pynu = Op(vis2).val
     # DFT
-    x, y = np.meshgrid(
-        *[-ss/2 + np.arange(ss) for ss in [nxdirty, nydirty]], indexing='ij')
-    dft = pynu*0.
+    x, y = np.meshgrid(*[-ss / 2 + np.arange(ss) for ss in [nxdirty, nydirty]], indexing='ij')
+    dft = pynu * 0.
     for i in range(N):
-        dft += (
-            vis[i]*np.exp(2j*np.pi*(x*uv[i, 0]*dstx + y*uv[i, 1]*dsty))).real
+        dft += (vis[i] * np.exp(2j * np.pi * (x * uv[i, 0] * dstx + y * uv[i, 1] * dsty))).real
     ift.myassert(_l2error(dft, pynu) < eps)
 
 
@@ -76,14 +75,14 @@ def test_cartesian():
     fld = ift.from_random(dom, 'normal')
     arr = fld.val
 
-    fld2 = ift.makeField(dom, np.roll(arr, (nx//2, ny//2), axis=(0, 1)))
+    fld2 = ift.makeField(dom, np.roll(arr, (nx // 2, ny // 2), axis=(0, 1)))
     res = op(fld2).val.reshape(nx, ny)
 
     fft = ift.FFTOperator(dom.get_default_codomain(), target=dom).adjoint
     vol = ift.full(dom, 1.).s_integrate()
     res1 = fft(fld).val
 
-    np.testing.assert_allclose(res, res1*vol)
+    np.testing.assert_allclose(res, res1 * vol)
 
 
 @pmp('eps', [1e-2, 1e-6, 2e-13])
@@ -109,8 +108,9 @@ def test_build(nxdirty, nydirty, N, eps):
 def test_finu1d(nxdirty, N, eps):
     pytest.importorskip("finufft")
     pos = ift.random.current_rng().random((N)) - 0.5
-    vis = (ift.random.current_rng().standard_normal(N)
-           + 1j*ift.random.current_rng().standard_normal(N))
+    vis = (
+        ift.random.current_rng().standard_normal(N) +
+        1j * ift.random.current_rng().standard_normal(N))
 
     if N > 2:
         pos[-1] = 0
@@ -123,12 +123,12 @@ def test_finu1d(nxdirty, N, eps):
     vis2 = ift.makeField(ift.UnstructuredDomain(vis.shape), vis)
     pynu = Op(vis2).val
     # DFT
-    x = -nxdirty/2 + np.arange(nxdirty)
+    x = -nxdirty / 2 + np.arange(nxdirty)
 
-    dft = pynu*0
+    dft = pynu * 0
     for i in range(N):
-        dft += (vis[i]*np.exp(2j*np.pi*(x*pos[i]*dstx))).real
-    ift.myassert(_l2error(dft, pynu) < eps*10)
+        dft += (vis[i] * np.exp(2j * np.pi * (x * pos[i] * dstx))).real
+    ift.myassert(_l2error(dft, pynu) < eps * 10)
 
 
 @pmp('eps', [1e-2, 1e-4, 1e-7, 1e-10, 1e-11, 1e-12, 2e-13])
@@ -138,8 +138,9 @@ def test_finu1d(nxdirty, N, eps):
 def test_finu2d(nxdirty, nydirty, N, eps):
     pytest.importorskip("finufft")
     uv = ift.random.current_rng().random((N, 2)) - 0.5
-    vis = (ift.random.current_rng().standard_normal(N)
-           + 1j*ift.random.current_rng().standard_normal(N))
+    vis = (
+        ift.random.current_rng().standard_normal(N) +
+        1j * ift.random.current_rng().standard_normal(N))
 
     if N > 2:
         uv[-1] = 0
@@ -147,20 +148,18 @@ def test_finu2d(nxdirty, nydirty, N, eps):
     # Nifty
     dom = ift.RGSpace((nxdirty, nydirty), distances=(0.2, 1.12))
     dstx, dsty = dom.distances
-    uv[:, 0] = uv[:, 0]/dstx
-    uv[:, 1] = uv[:, 1]/dsty
+    uv[:, 0] = uv[:, 0] / dstx
+    uv[:, 1] = uv[:, 1] / dsty
     Op = ift.FinuFFT(dom, pos=uv, eps=eps)
     vis2 = ift.makeField(ift.UnstructuredDomain(vis.shape), vis)
 
     pynu = Op(vis2).val
     # DFT
-    x, y = np.meshgrid(
-        *[-ss/2 + np.arange(ss) for ss in [nxdirty, nydirty]], indexing='ij')
-    dft = pynu*0.
+    x, y = np.meshgrid(*[-ss / 2 + np.arange(ss) for ss in [nxdirty, nydirty]], indexing='ij')
+    dft = pynu * 0.
     for i in range(N):
-        dft += (
-            vis[i]*np.exp(2j*np.pi*(x*uv[i, 0]*dstx + y*uv[i, 1]*dsty))).real
-    ift.myassert(_l2error(dft, pynu) < eps*10)
+        dft += (vis[i] * np.exp(2j * np.pi * (x * uv[i, 0] * dstx + y * uv[i, 1] * dsty))).real
+    ift.myassert(_l2error(dft, pynu) < eps * 10)
 
 
 @pmp('eps', [1e-2, 1e-4, 1e-7, 1e-11])
@@ -171,32 +170,32 @@ def test_finu2d(nxdirty, nydirty, N, eps):
 def test_finu3d(nxdirty, nydirty, nzdirty, N, eps):
     pytest.importorskip("finufft")
     pos = ift.random.current_rng().random((N, 3)) - 0.5
-    vis = (ift.random.current_rng().standard_normal(N)
-           + 1j*ift.random.current_rng().standard_normal(N))
+    vis = (
+        ift.random.current_rng().standard_normal(N) +
+        1j * ift.random.current_rng().standard_normal(N))
     # Nifty
     dom = ift.RGSpace((nxdirty, nydirty, nzdirty), distances=(0.2, 1.12, 0.7))
     dstx, dsty, dstz = dom.distances
-    pos[:, 0] = pos[:, 0]/dstx
-    pos[:, 1] = pos[:, 1]/dsty
-    pos[:, 2] = pos[:, 2]/dstz
+    pos[:, 0] = pos[:, 0] / dstx
+    pos[:, 1] = pos[:, 1] / dsty
+    pos[:, 2] = pos[:, 2] / dstz
     Op = ift.FinuFFT(dom, pos=pos, eps=eps)
     vis2 = ift.makeField(ift.UnstructuredDomain(vis.shape), vis)
 
     pynu = Op(vis2).val
     # DFT
     x, y, z = np.meshgrid(
-        *[-ss/2 + np.arange(ss) for ss in [nxdirty, nydirty, nzdirty]], indexing='ij')
-    dft = pynu*0.
+        *[-ss / 2 + np.arange(ss) for ss in [nxdirty, nydirty, nzdirty]], indexing='ij')
+    dft = pynu * 0.
     for i in range(N):
-        dft += (
-            vis[i]*np.exp(2j*np.pi*(x*pos[i, 0]*dstx + y*pos[i, 1]*dsty + z*pos[i, 2]*dstz))).real
-    ift.myassert(_l2error(dft, pynu) < eps*10)
+        dft += (vis[i] *
+                np.exp(2j * np.pi *
+                       (x * pos[i, 0] * dstx + y * pos[i, 1] * dsty + z * pos[i, 2] * dstz))).real
+    ift.myassert(_l2error(dft, pynu) < eps * 10)
 
 
 @pmp('eps', [1e-2, 1e-6, 2e-13])
-@pmp('space', [ift.RGSpace(128),
-               ift.RGSpace([32, 64]),
-               ift.RGSpace([4, 27, 32])])
+@pmp('space', [ift.RGSpace(128), ift.RGSpace([32, 64]), ift.RGSpace([4, 27, 32])])
 @pmp('N', [1, 10, 100])
 def test_build_finufft(space, N, eps):
     pytest.importorskip("finufft")

@@ -28,26 +28,25 @@ from ..operators.linear_operator import LinearOperator
 
 
 def _gaussian_sf(x):
-    return 0.5*erfc(x/np.sqrt(2.))
+    return 0.5 * erfc(x / np.sqrt(2.))
 
 
 def _comp_traverse(start, end, shp, dist, lo, mid, hi, sig, erf):
     ndim = start.shape[0]
     nlos = start.shape[1]
     inc = np.full(len(shp), 1, dtype=np.int64)
-    for i in range(-2, -len(shp)-1, -1):
-        inc[i] = inc[i+1]*shp[i+1]
+    for i in range(-2, -len(shp) - 1, -1):
+        inc[i] = inc[i + 1] * shp[i + 1]
 
     pmax = np.array(shp)
 
-    out = [None]*nlos
+    out = [None] * nlos
     for i in range(nlos):
-        direction = end[:, i]-start[:, i]
+        direction = end[:, i] - start[:, i]
         dirx = np.where(direction == 0., 1e-12, direction)
-        d0 = np.where(direction == 0., ((start[:, i] > 0)-0.5)*1e12,
-                      -start[:, i]/dirx)
-        d1 = np.where(direction == 0., ((start[:, i] < pmax)-0.5)*-1e12,
-                      (pmax-start[:, i])/dirx)
+        d0 = np.where(direction == 0., ((start[:, i] > 0) - 0.5) * 1e12, -start[:, i] / dirx)
+        d1 = np.where(direction == 0., ((start[:, i] < pmax) - 0.5) * -1e12,
+                      (pmax - start[:, i]) / dirx)
         (dmin, dmax) = (np.minimum(d0, d1), np.maximum(d0, d1))
         dmin = dmin.max()
         dmax = dmax.min()
@@ -57,22 +56,21 @@ def _comp_traverse(start, end, shp, dist, lo, mid, hi, sig, erf):
         # hack: move away from potential grid crossings
         dmin += 1e-7
         dmax -= 1e-7
-        if dmin >= dmax:  # no intersection
+        if dmin >= dmax:    # no intersection
             out[i] = (np.full(0, 0, dtype=np.int64), np.full(0, 0.))
             continue
         # determine coordinates of first cell crossing
-        c_first = np.ceil(start[:, i]+direction*dmin)
-        c_first = np.where(direction > 0., c_first, c_first-1.)
-        c_first = (c_first-start[:, i])/dirx
-        pos1 = np.asarray((start[:, i]+dmin*direction), dtype=np.int64)
-        pos1 = np.sum(pos1*inc)
+        c_first = np.ceil(start[:, i] + direction*dmin)
+        c_first = np.where(direction > 0., c_first, c_first - 1.)
+        c_first = (c_first - start[:, i]) / dirx
+        pos1 = np.asarray((start[:, i] + dmin*direction), dtype=np.int64)
+        pos1 = np.sum(pos1 * inc)
         cdist = np.empty(0, dtype=np.float64)
         add = np.empty(0, dtype=np.int64)
         for j in range(ndim):
             if direction[j] != 0:
                 step = inc[j] if direction[j] > 0 else -inc[j]
-                tmp = np.arange(start=c_first[j], stop=dmax,
-                                step=abs(1./direction[j]))
+                tmp = np.arange(start=c_first[j], stop=dmax, step=abs(1. / direction[j]))
                 cdist = np.append(cdist, tmp)
                 add = np.append(add, np.full(len(tmp), step, dtype=np.int64))
         idx = np.argsort(cdist)
@@ -80,10 +78,10 @@ def _comp_traverse(start, end, shp, dist, lo, mid, hi, sig, erf):
         add = add[idx]
         cdist = np.append(np.full(1, dmin), cdist)
         cdist = np.append(cdist, np.full(1, dmax))
-        corfac = np.linalg.norm(direction*dist)
+        corfac = np.linalg.norm(direction * dist)
         cdist *= corfac
         wgt = np.diff(cdist)
-        mdist = 0.5*(cdist[:-1]+cdist[1:])
+        mdist = 0.5 * (cdist[:-1] + cdist[1:])
         wgt = apply_erf(wgt, mdist, lo[i], mid[i], hi[i], sig[i], erf)
         add = np.append(pos1, add)
         add = np.cumsum(add)
@@ -96,7 +94,7 @@ def apply_erf(wgt, dist, lo, mid, hi, sig, erf):
     mask = dist > hi
     wgt[mask] = 0.
     mask = (dist > lo) & (dist <= hi)
-    wgt[mask] *= erf((-1/dist[mask]+1/mid)/sig)
+    wgt[mask] *= erf((-1 / dist[mask] + 1/mid) / sig)
     return wgt
 
 
@@ -145,8 +143,7 @@ class LOSResponse(LinearOperator):
         self._domain = DomainTuple.make(domain)
         self._capability = self.TIMES | self.ADJOINT_TIMES
 
-        if ((not isinstance(self.domain[0], RGSpace)) or
-                (len(self._domain) != 1)):
+        if ((not isinstance(self.domain[0], RGSpace)) or (len(self._domain) != 1)):
             raise TypeError("The domain must be exactly one RGSpace instance.")
 
         ndim = len(self.domain[0].shape)
@@ -163,10 +160,10 @@ class LOSResponse(LinearOperator):
         if starts.shape != ends.shape:
             raise TypeError("dimension mismatch")
 
-        diffs = ends-starts
+        diffs = ends - starts
         difflen = np.linalg.norm(diffs, axis=0)
         diffs /= difflen
-        real_distances = 1./(1./difflen - truncation*sigmas)
+        real_distances = 1. / (1./difflen - truncation*sigmas)
         if np.any(real_distances < 0):
             raise ValueError("parallax error truncation to high: "
                              "getting negative distances")
@@ -175,15 +172,10 @@ class LOSResponse(LinearOperator):
         pixel_starts = starts/dist + 0.5
         pixel_ends = real_ends/dist + 0.5
 
-        w_i = _comp_traverse(pixel_starts,
-                             pixel_ends,
-                             self.domain[0].shape,
+        w_i = _comp_traverse(pixel_starts, pixel_ends, self.domain[0].shape,
                              np.array(self.domain[0].distances),
-                             1./(1./difflen+truncation*sigmas),
-                             difflen,
-                             1./(1./difflen-truncation*sigmas),
-                             sigmas,
-                             _gaussian_sf)
+                             1. / (1./difflen + truncation*sigmas), difflen,
+                             1. / (1./difflen - truncation*sigmas), sigmas, _gaussian_sf)
 
         boxsz = 16
         nlos = len(w_i)
@@ -199,18 +191,18 @@ class LOSResponse(LinearOperator):
         cnt = 0
         for i in w_i:
             nval = len(i[1])
-            ilos[ofs:ofs+nval] = cnt
-            iarr[ofs:ofs+nval] = i[0]
-            xwgt[ofs:ofs+nval] = i[1]
+            ilos[ofs:ofs + nval] = cnt
+            iarr[ofs:ofs + nval] = i[0]
+            xwgt[ofs:ofs + nval] = i[1]
             fullidx = np.unravel_index(i[0], self.domain[0].shape)
             tmp = np.zeros(nval, dtype=np.float64)
             fct = 1.
             for j in range(ndim):
-                tmp += (fullidx[j]//boxsz)*fct
+                tmp += (fullidx[j] // boxsz) * fct
                 fct *= self.domain[0].shape[j]
-            tmp += cnt/float(nlos)
-            tmp += iarr[ofs:ofs+nval]/(float(nlos)*float(npix))
-            pri[ofs:ofs+nval] = tmp
+            tmp += cnt / float(nlos)
+            tmp += iarr[ofs:ofs + nval] / (float(nlos) * float(npix))
+            pri[ofs:ofs + nval] = tmp
             ofs += nval
             cnt += 1
         xtmp = np.argsort(pri)
@@ -218,8 +210,7 @@ class LOSResponse(LinearOperator):
         iarr = iarr[xtmp]
         xwgt = xwgt[xtmp]
         self._smat = aslinearoperator(
-            coo_matrix((xwgt, (ilos, iarr)),
-                       shape=(nlos, np.prod(self.domain[0].shape))))
+            coo_matrix((xwgt, (ilos, iarr)), shape=(nlos, np.prod(self.domain[0].shape))))
 
         self._target = DomainTuple.make(UnstructuredDomain(nlos))
 

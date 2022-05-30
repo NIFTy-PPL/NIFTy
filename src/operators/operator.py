@@ -149,7 +149,7 @@ class Operator(metaclass=NiftyMeta):
         if not isinstance(other, Operator):
             raise TypeError
         if other.jac is None:
-            res = self.conjugate()*other
+            res = self.conjugate() * other
         else:
             res = makeOp(other) @ self.conjugate()
         return res.sum()
@@ -198,13 +198,9 @@ class Operator(metaclass=NiftyMeta):
         le, ri = k2 - k1, k1 - k2
         leop, riop = self, x
         if len(ri) > 0:
-            riop = riop + self.identity_operator(
-                MultiDomain.make({kk: bigdom[kk]
-                                  for kk in ri}))
+            riop = riop + self.identity_operator(MultiDomain.make({kk: bigdom[kk] for kk in ri}))
         if len(le) > 0:
-            leop = leop + self.identity_operator(
-                MultiDomain.make({kk: bigdom[kk]
-                                  for kk in le}))
+            leop = leop + self.identity_operator(MultiDomain.make({kk: bigdom[kk] for kk in le}))
         return leop @ riop
 
     @staticmethod
@@ -300,9 +296,9 @@ class Operator(metaclass=NiftyMeta):
         if not is_operator(self):
             raise RuntimeError("ducktape works only on operators")
 
-        if isinstance(name, str):  # convert to MultiDomain
+        if isinstance(name, str):    # convert to MultiDomain
             return self @ ducktape(self, None, name)
-        else:  # convert domain
+        else:    # convert domain
             newdom = makeDomain(name)
             return self @ DomainChangerAndReshaper(newdom, self.domain)
 
@@ -310,10 +306,10 @@ class Operator(metaclass=NiftyMeta):
         from ..sugar import is_fieldlike, is_operator, makeDomain
         from .simple_linear_operators import DomainChangerAndReshaper, ducktape
 
-        if isinstance(name, str):  # convert to MultiDomain
+        if isinstance(name, str):    # convert to MultiDomain
             tgt = self.target if is_operator(self) else self.domain
             return ducktape(None, tgt, name)(self)
-        else:  # convert domain
+        else:    # convert domain
             newdom = DomainTuple.make(name)
             dom = self.domain if is_fieldlike(self) else self.target
             return DomainChangerAndReshaper(dom, newdom)(self)
@@ -341,8 +337,7 @@ class Operator(metaclass=NiftyMeta):
         from ..multi_field import MultiField
         from ..sugar import makeDomain
         from .energy_operators import EnergyOperator, LikelihoodEnergyOperator
-        from .simplify_for_const import (ConstantEnergyOperator,
-                                         ConstantLikelihoodEnergyOperator,
+        from .simplify_for_const import (ConstantEnergyOperator, ConstantLikelihoodEnergyOperator,
                                          ConstantOperator)
         if c_inp is None or (isinstance(c_inp, MultiField) and len(c_inp.keys()) == 0):
             return None, self
@@ -370,8 +365,7 @@ class Operator(metaclass=NiftyMeta):
         if not isinstance(dom, MultiDomain):
             raise RuntimeError
         c_out, op = self._simplify_for_constant_input_nontrivial(c_inp)
-        vardom = makeDomain({kk: vv for kk, vv in self.domain.items()
-                             if kk not in c_inp.keys()})
+        vardom = makeDomain({kk: vv for kk, vv in self.domain.items() if kk not in c_inp.keys()})
         myassert(op.domain is vardom)
         myassert(op.target is self.target)
         myassert(isinstance(op, Operator))
@@ -408,19 +402,28 @@ class Operator(metaclass=NiftyMeta):
 
 
 for f in pointwise.ptw_dict.keys():
+
     def func(f):
+
         def func2(self, *args, **kwargs):
             return self.ptw(f, *args, **kwargs)
+
         return func2
+
     setattr(Operator, f, func(f))
+
     def func(f):
+
         def func2(self, *args, **kwargs):
             return self.ptw_pre(f, *args, **kwargs)
+
         return func2
+
     setattr(Operator, f + "_pre", func(f))
 
 
 class _FunctionApplier(Operator):
+
     def __init__(self, domain, funcname, *args, **kwargs):
         from ..sugar import makeDomain
         self._domain = self._target = makeDomain(domain)
@@ -442,7 +445,7 @@ class _FunctionApplier(Operator):
                 warn(f"unable to add JAX call for {funcname!r}")
                 jax_expr = None
 
-            def jax_expr_part(x):  # Partial insert with first open argument
+            def jax_expr_part(x):    # Partial insert with first open argument
                 return jax_expr(x, *args, **kwargs)
 
             if isinstance(self.domain, MultiDomain):
@@ -463,6 +466,7 @@ class _FunctionApplier(Operator):
 
 
 class _CombinedOperator(Operator):
+
     def __init__(self, ops, jax_ops, _callingfrommake=False):
         if not _callingfrommake:
             raise NotImplementedError
@@ -498,12 +502,13 @@ class _CombinedOperator(Operator):
 
 
 class _OpChain(_CombinedOperator):
+
     def __init__(self, ops, jax_ops, _callingfrommake=False):
         super(_OpChain, self).__init__(ops, jax_ops, _callingfrommake)
         self._domain = self._ops[-1].domain
         self._target = self._ops[0].target
         for i in range(1, len(self._ops)):
-            check_object_identity(self._ops[i-1].domain, self._ops[i].target)
+            check_object_identity(self._ops[i - 1].domain, self._ops[i].target)
 
     def apply(self, x):
         self._check_input(x)
@@ -527,6 +532,7 @@ class _OpChain(_CombinedOperator):
 
 
 class _OpProd(Operator):
+
     def __init__(self, op1, op2):
         from ..sugar import domain_union
         self._domain = domain_union((op1.domain, op2.domain))
@@ -561,15 +567,13 @@ class _OpProd(Operator):
         lin1 = self._op1(Linearization.make_var(v1, wm))
         lin2 = self._op2(Linearization.make_var(v2, wm))
         jac = (makeOp(lin1._val)(lin2._jac))._myadd(makeOp(lin2._val)(lin1._jac), False)
-        return lin1.new(lin1._val*lin2._val, jac)
+        return lin1.new(lin1._val * lin2._val, jac)
 
     def _simplify_for_constant_input_nontrivial(self, c_inp):
         from ..multi_domain import MultiDomain
         from .simplify_for_const import ConstCollector
-        f1, o1 = self._op1.simplify_for_constant_input(
-            c_inp.extract_part(self._op1.domain))
-        f2, o2 = self._op2.simplify_for_constant_input(
-            c_inp.extract_part(self._op2.domain))
+        f1, o1 = self._op1.simplify_for_constant_input(c_inp.extract_part(self._op1.domain))
+        f2, o2 = self._op2.simplify_for_constant_input(c_inp.extract_part(self._op2.domain))
         if not isinstance(self._target, MultiDomain):
             return None, _OpProd(o1, o2)
         cc = ConstCollector()
@@ -579,10 +583,11 @@ class _OpProd(Operator):
 
     def __repr__(self):
         subs = "\n".join(sub.__repr__() for sub in (self._op1, self._op2))
-        return "_OpProd:\n"+indent(subs)
+        return "_OpProd:\n" + indent(subs)
 
 
 class _OpSum(Operator):
+
     def __init__(self, op1, op2):
         from ..sugar import domain_union
         self._domain = domain_union((op1.domain, op2.domain))
@@ -611,8 +616,7 @@ class _OpSum(Operator):
         unite = lambda x, y: x.unite(y)
         if x.jac is None:
             return reduce(unite, (oo.force(x) for oo in ops))
-        lin = [oo(Linearization.make_var(x.val.extract(oo.domain), x.want_metric))
-                for oo in ops]
+        lin = [oo(Linearization.make_var(x.val.extract(oo.domain), x.want_metric)) for oo in ops]
         jacs = map(lambda x: x._jac, lin)
         vals = map(lambda x: x._val, lin)
         metrics = list(map(lambda x: x._metric, lin))
@@ -626,10 +630,8 @@ class _OpSum(Operator):
     def _simplify_for_constant_input_nontrivial(self, c_inp):
         from ..multi_domain import MultiDomain
         from .simplify_for_const import ConstCollector
-        f1, o1 = self._op1.simplify_for_constant_input(
-            c_inp.extract_part(self._op1.domain))
-        f2, o2 = self._op2.simplify_for_constant_input(
-            c_inp.extract_part(self._op2.domain))
+        f1, o1 = self._op1.simplify_for_constant_input(c_inp.extract_part(self._op1.domain))
+        f2, o2 = self._op2.simplify_for_constant_input(c_inp.extract_part(self._op2.domain))
         if not isinstance(self._target, MultiDomain):
             return None, _OpSum(o1, o2)
         cc = ConstCollector()
@@ -639,4 +641,4 @@ class _OpSum(Operator):
 
     def __repr__(self):
         subs = "\n".join(sub.__repr__() for sub in (self._op1, self._op2))
-        return "_OpSum:\n"+indent(subs)
+        return "_OpSum:\n" + indent(subs)

@@ -45,16 +45,15 @@ class DomainTuple:
             raise NotImplementedError
         self._dom = self._parse_domain(domain)
         self._axtuple = self._get_axes_tuple()
-        self._shape = reduce(lambda x, y: x+y, (sp.shape for sp in self._dom),
-                             ())
-        self._size = reduce(lambda x, y: x*y, self._shape, 1)
+        self._shape = reduce(lambda x, y: x + y, (sp.shape for sp in self._dom), ())
+        self._size = reduce(lambda x, y: x * y, self._shape, 1)
 
     def _get_axes_tuple(self):
         i = 0
-        res = [None]*len(self._dom)
+        res = [None] * len(self._dom)
         for idx, thing in enumerate(self._dom):
             nax = len(thing.shape)
-            res[idx] = tuple(range(i, i+nax))
+            res[idx] = tuple(range(i, i + nax))
             i += nax
         return tuple(res)
 
@@ -96,9 +95,8 @@ class DomainTuple:
             domain = tuple(domain)
         for d in domain:
             if not isinstance(d, Domain):
-                raise TypeError(
-                    "Given object contains something that is not an "
-                    "instance of Domain class.")
+                raise TypeError("Given object contains something that is not an "
+                                "instance of Domain class.")
         return domain
 
     def __getitem__(self, i):
@@ -193,8 +191,7 @@ class DomainTuple:
     def __str__(self):
         if len(self) == 0:
             return "DomainTuple, len: 0"
-        return ("DomainTuple, len: {}\n".format(len(self)) +
-                "\n".join("* " + str(i) for i in self))
+        return ("DomainTuple, len: {}\n".format(len(self)) + "\n".join("* " + str(i) for i in self))
 
     def __reduce__(self):
         return (_unpickleDomainTuple, (self._dom,))

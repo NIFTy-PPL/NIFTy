@@ -8,18 +8,13 @@ import nifty8.re as jft
 
 pmp = pytest.mark.parametrize
 
-pot_and_tol = (
-    (
-        lambda q: jnp.
-        sum(q.T @ jnp.linalg.inv(jnp.array([[1, 0.95], [0.95, 1]])) @ q / 2.),
-        0.2
-    ), (lambda q: -1 / jnp.linalg.norm(q), 2e-2)
-)
+pot_and_tol = ((lambda q: jnp.sum(q.T @ jnp.linalg.inv(jnp.array([[1, 0.95], [0.95, 1]])) @ q / 2.),
+                0.2), (lambda q: -1 / jnp.linalg.norm(q), 2e-2))
 
 
 @pmp("potential_energy, rtol", pot_and_tol)
 def test_leapfrog_energy_conservation(potential_energy, rtol):
-    dims = (2, )
+    dims = (2,)
     mass_matrix = jnp.ones(shape=dims)
     kinetic_energy = lambda p: jnp.sum(p**2 / mass_matrix / 2.)
 
@@ -32,8 +27,7 @@ def test_leapfrog_energy_conservation(potential_energy, rtol):
             potential_energy_gradient=potential_energy_gradient,
             kinetic_energy_gradient=lambda x, y: x * y,
             step_size=0.25,
-            inverse_mass_matrix=1. / mass_matrix
-        )
+            inverse_mass_matrix=1. / mass_matrix)
         positions.append(new_qp.position)
         momenta.append(new_qp.momentum)
 
@@ -41,13 +35,9 @@ def test_leapfrog_energy_conservation(potential_energy, rtol):
     kinetic_energies = list(map(kinetic_energy, momenta))
 
     jnp.set_printoptions(precision=2)
-    for q, p, e_kin, e_pot in zip(
-        positions, momenta, potential_energies, kinetic_energies
-    ):
-        msg = (
-            f"q: {q}; p: {p}"
-            f"\nE_tot: {e_pot+e_kin:.2e}; E_pot: {e_pot:.2e}; E_kin: {e_kin:.2e}"
-        )
+    for q, p, e_kin, e_pot in zip(positions, momenta, potential_energies, kinetic_energies):
+        msg = (f"q: {q}; p: {p}"
+               f"\nE_tot: {e_pot+e_kin:.2e}; E_pot: {e_pot:.2e}; E_kin: {e_kin:.2e}")
         print(msg, file=sys.stderr)
 
     old_energy_tot = potential_energies[0] + kinetic_energies[0]

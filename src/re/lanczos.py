@@ -10,17 +10,13 @@ from jax import random
 from .forest_util import ShapeWithDtype
 
 
-def lanczos_tridiag(
-    mat: Callable, shape_dtype_struct: ShapeWithDtype, order: int,
-    key: jnp.ndarray
-):
+def lanczos_tridiag(mat: Callable, shape_dtype_struct: ShapeWithDtype, order: int,
+                    key: jnp.ndarray):
     """Compute the Lanczos decomposition into a tri-diagonal matrix and its
     corresponding orthonormal projection matrix.
     """
     tridiag = jnp.zeros((order, order), dtype=shape_dtype_struct.dtype)
-    vecs = jnp.zeros(
-        (order, ) + shape_dtype_struct.shape, dtype=shape_dtype_struct.dtype
-    )
+    vecs = jnp.zeros((order,) + shape_dtype_struct.shape, dtype=shape_dtype_struct.dtype)
 
     v = random.normal(key, shape=shape_dtype_struct.shape)
     v = v / jnp.linalg.norm(v)
@@ -54,7 +50,7 @@ def lanczos_tridiag(
         v = vecs[i, :].reshape(shape_dtype_struct.shape)
         v_old = vecs[i - 1, :].reshape(shape_dtype_struct.shape)
 
-        w = mat(v) - beta * v_old
+        w = mat(v) - beta*v_old
         alpha = jnp.dot(w, v)
         tridiag = tridiag.at[(i, i)].set(alpha)
         w -= alpha * v
@@ -71,14 +67,12 @@ def lanczos_tridiag(
 
         return tridiag, vecs, beta
 
-    tridiag, vecs, beta = jax.lax.fori_loop(
-        1, order - 1, lanczos_step, (tridiag, vecs, beta)
-    )
+    tridiag, vecs, beta = jax.lax.fori_loop(1, order - 1, lanczos_step, (tridiag, vecs, beta))
 
     # Final tridiag value and reorthogonalization
     v = vecs[order - 1, :].reshape(shape_dtype_struct.shape)
     v_old = vecs[order - 2, :].reshape(shape_dtype_struct.shape)
-    w = mat(v) - beta * v_old
+    w = mat(v) - beta*v_old
     alpha = jnp.dot(w, v)
     tridiag = tridiag.at[(order - 1, order - 1)].set(alpha)
     w -= alpha * v
@@ -87,9 +81,9 @@ def lanczos_tridiag(
     return (tridiag, vecs)
 
 
-def stochastic_logdet_from_lanczos(
-    tridiag_stack: jnp.ndarray, matrix_shape0: int, func: Callable = jnp.log
-):
+def stochastic_logdet_from_lanczos(tridiag_stack: jnp.ndarray,
+                                   matrix_shape0: int,
+                                   func: Callable = jnp.log):
     """Computes a stochastic estimate of the log-determinate of a matrix using
     its Lanczos decomposition.
 
@@ -107,15 +101,13 @@ def stochastic_logdet_from_lanczos(
     return matrix_shape0 / float(num_random_probes) * dot_products
 
 
-def stochastic_lq_logdet(
-    mat: Union[jnp.ndarray, Callable],
-    order: int,
-    n_samples: int,
-    key: Union[int, jnp.ndarray],
-    *,
-    shape0: Optional[int] = None,
-    dtype=None
-):
+def stochastic_lq_logdet(mat: Union[jnp.ndarray, Callable],
+                         order: int,
+                         n_samples: int,
+                         key: Union[int, jnp.ndarray],
+                         *,
+                         shape0: Optional[int] = None,
+                         dtype=None):
     """Computes a stochastic estimate of the log-determinate of a matrix using
     the stoachstic Lanczos quadrature algorithm.
     """
@@ -126,6 +118,5 @@ def stochastic_lq_logdet(
     keys = random.split(key, n_samples)
 
     lanczos = partial(lanczos_tridiag, mat, ShapeWithDtype(shape0, dtype))
-    tridiags, _ = jax.vmap(lanczos, in_axes=(None, 0),
-                           out_axes=(0, 0))(order, keys)
+    tridiags, _ = jax.vmap(lanczos, in_axes=(None, 0), out_axes=(0, 0))(order, keys)
     return stochastic_logdet_from_lanczos(tridiags, shape0)

@@ -9,7 +9,6 @@ from .multi_domain import MultiDomain
 from .field import Field
 from .multi_field import MultiField
 
-
 from .operators.operator import Operator
 from .operators.linear_operator import LinearOperator
 
@@ -21,9 +20,8 @@ from .operators.einsum import LinearEinsum, MultiLinearEinsum
 from .operators.contraction_operator import ContractionOperator, IntegrationOperator
 from .operators.linear_interpolation import LinearInterpolator
 from .operators.endomorphic_operator import EndomorphicOperator
-from .operators.harmonic_operators import (
-    FFTOperator, HartleyOperator, SHTOperator, HarmonicTransformOperator,
-    HarmonicSmoothingOperator)
+from .operators.harmonic_operators import (FFTOperator, HartleyOperator, SHTOperator,
+                                           HarmonicTransformOperator, HarmonicSmoothingOperator)
 from .operators.field_zero_padder import FieldZeroPadder
 from .operators.inversion_enabler import InversionEnabler
 from .operators.mask_operator import MaskOperator
@@ -34,17 +32,17 @@ from .operators.scaling_operator import ScalingOperator
 from .operators.selection_operators import SliceOperator, SplitOperator
 from .operators.block_diagonal_operator import BlockDiagonalOperator
 from .operators.outer_product_operator import OuterProduct
-from .operators.simple_linear_operators import (
-    VdotOperator, ConjugationOperator, Realizer, FieldAdapter, ducktape,
-    GeometryRemover, NullOperator, PartialExtractor, Imaginizer, PrependKey,
-    DomainChangerAndReshaper)
+from .operators.simple_linear_operators import (VdotOperator, ConjugationOperator, Realizer,
+                                                FieldAdapter, ducktape, GeometryRemover,
+                                                NullOperator, PartialExtractor, Imaginizer,
+                                                PrependKey, DomainChangerAndReshaper)
 from .operators.matrix_product_operator import MatrixProductOperator
 from .operators.value_inserter import ValueInserter
-from .operators.energy_operators import (
-    EnergyOperator, GaussianEnergy, PoissonianEnergy, InverseGammaEnergy,
-    BernoulliEnergy, StandardHamiltonian, AveragedEnergy, QuadraticFormOperator,
-    Squared2NormOperator, StudentTEnergy, VariableCovarianceGaussianEnergy,
-    LikelihoodEnergyOperator)
+from .operators.energy_operators import (EnergyOperator, GaussianEnergy, PoissonianEnergy,
+                                         InverseGammaEnergy, BernoulliEnergy, StandardHamiltonian,
+                                         AveragedEnergy, QuadraticFormOperator,
+                                         Squared2NormOperator, StudentTEnergy,
+                                         VariableCovarianceGaussianEnergy, LikelihoodEnergyOperator)
 from .operators.convolution_operators import FuncConvolutionOperator
 from .operators.normal_operators import NormalTransform, LognormalTransform
 from .operators.multifield2vector import Multifield2Vector
@@ -55,15 +53,15 @@ from .probing import probe_with_posterior_samples, probe_diagonal, \
     StatCalculator, approximation2endo
 
 from .minimization.line_search import LineSearch
-from .minimization.iteration_controllers import (
-    IterationController, GradientNormController, DeltaEnergyController,
-    GradInfNormController, AbsDeltaEnergyController, StochasticAbsDeltaEnergyController)
+from .minimization.iteration_controllers import (IterationController, GradientNormController,
+                                                 DeltaEnergyController, GradInfNormController,
+                                                 AbsDeltaEnergyController,
+                                                 StochasticAbsDeltaEnergyController)
 from .minimization.minimizer import Minimizer
 from .minimization.conjugate_gradient import ConjugateGradient
 from .minimization.nonlinear_cg import NonlinearCG
-from .minimization.descent_minimizers import (
-    DescentMinimizer, SteepestDescent, VL_BFGS, L_BFGS, RelaxedNewton,
-    NewtonCG)
+from .minimization.descent_minimizers import (DescentMinimizer, SteepestDescent, VL_BFGS, L_BFGS,
+                                              RelaxedNewton, NewtonCG)
 from .minimization.stochastic_minimizer import ADVIOptimizer
 from .minimization.scipy_minimizer import L_BFGS_B
 from .minimization.energy import Energy
@@ -81,13 +79,11 @@ from .library.special_distributions import InverseGammaOperator, \
     UniformOperator, LaplaceOperator, LogInverseGammaOperator, \
     GammaOperator
 from .library.los_response import LOSResponse
-from .library.dynamic_operator import (dynamic_operator,
-                                       dynamic_lightcone_operator)
+from .library.dynamic_operator import (dynamic_operator, dynamic_lightcone_operator)
 from .library.light_cone_operator import LightConeOperator
 
 from .library.wiener_filter_curvature import WienerFilterCurvature
-from .library.adjust_variances import (make_adjust_variances_hamiltonian,
-                                       do_adjust_variances)
+from .library.adjust_variances import (make_adjust_variances_hamiltonian, do_adjust_variances)
 from .library.nft import Gridder, FinuFFT
 from .library.correlated_fields import CorrelatedFieldMaker
 from .library.correlated_fields_simple import SimpleCorrelatedField

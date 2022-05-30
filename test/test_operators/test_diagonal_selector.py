@@ -40,6 +40,6 @@ def test_diagonal_selector(N):
 
 @pmp("n", [1, 3])
 def test_error(n):
-    square_space = ift.RGSpace(n*[13])
+    square_space = ift.RGSpace(n * [13])
     with pytest.raises(AssertionError):
         myDiagonalSelector = DiagonalSelector(square_space)

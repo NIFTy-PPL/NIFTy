@@ -41,14 +41,12 @@ minimizers = [
 
 newton_minimizers = ['ift.RelaxedNewton(IC)']
 quadratic_only_minimizers = [
-    'ift.ConjugateGradient(IC)',
-    'ift.minimization.scipy_minimizer._ScipyCG(tol=1e-5, maxiter=300)'
+    'ift.ConjugateGradient(IC)', 'ift.minimization.scipy_minimizer._ScipyCG(tol=1e-5, maxiter=300)'
 ]
 slow_minimizers = ['ift.SteepestDescent(IC)', 'ift.ADVIOptimizer(SIC, resample=False)']
 
 
-@pmp('minimizer', minimizers + newton_minimizers + quadratic_only_minimizers +
-     slow_minimizers)
+@pmp('minimizer', minimizers + newton_minimizers + quadratic_only_minimizers + slow_minimizers)
 @pmp('space', spaces)
 def test_quadratic_minimization(minimizer, space):
     with ift.random.Context(98765):
@@ -56,22 +54,17 @@ def test_quadratic_minimization(minimizer, space):
         covariance_diagonal = ift.Field.from_random(domain=space, random_type='uniform') + 0.5
         covariance = ift.DiagonalOperator(covariance_diagonal)
         required_result = ift.full(space, 1.)
-    
+
         try:
             minimizer = eval(minimizer)
-            energy = ift.QuadraticEnergy(
-                A=covariance, b=required_result, position=starting_point)
-    
+            energy = ift.QuadraticEnergy(A=covariance, b=required_result, position=starting_point)
+
             (energy, convergence) = minimizer(energy)
         except NotImplementedError:
             pytest.skip()
-    
+
         assert_equal(convergence, IC.CONVERGED)
-        assert_allclose(
-            energy.position.val,
-            1./covariance_diagonal.val,
-            rtol=1e-3,
-            atol=1e-3)
+        assert_allclose(energy.position.val, 1. / covariance_diagonal.val, rtol=1e-3, atol=1e-3)
 
 
 @pmp('space', spaces)
@@ -84,19 +77,15 @@ def test_WF_curvature(space):
     R = ift.DiagonalOperator(r)
     n = ift.Field.from_random(domain=space, random_type='uniform') + 0.5
     N = ift.makeOp(n, sampling_dtype=np.float64)
-    all_diag = 1./s + r**2/n
-    curv = ift.WienerFilterCurvature(R, N, S, iteration_controller=IC,
-                                     iteration_controller_sampling=IC)
+    all_diag = 1./s + r**2 / n
+    curv = ift.WienerFilterCurvature(
+        R, N, S, iteration_controller=IC, iteration_controller_sampling=IC)
     for b in [False, True]:
         S.draw_sample(b)
         N.draw_sample(b)
 
     m = curv.inverse(required_result)
-    assert_allclose(
-        m.val,
-        1./all_diag.val,
-        rtol=1e-3,
-        atol=1e-3)
+    assert_allclose(m.val, 1. / all_diag.val, rtol=1e-3, atol=1e-3)
     curv.draw_sample()
     curv.draw_sample(from_inverse=True)
 
@@ -104,16 +93,11 @@ def test_WF_curvature(space):
         R = ift.ValueInserter(space, [0])
         n = ift.from_random(R.domain, 'uniform') + 0.5
         N = ift.makeOp(n, sampling_dtype=np.float64)
-        all_diag = 1./s + R(1/n)
-        curv = ift.WienerFilterCurvature(R.adjoint, N, S,
-                                         iteration_controller=IC,
-                                         iteration_controller_sampling=IC)
+        all_diag = 1./s + R(1 / n)
+        curv = ift.WienerFilterCurvature(
+            R.adjoint, N, S, iteration_controller=IC, iteration_controller_sampling=IC)
         m = curv.inverse(required_result)
-        assert_allclose(
-            m.val,
-            1./all_diag.val,
-            rtol=1e-3,
-            atol=1e-3)
+        assert_allclose(m.val, 1. / all_diag.val, rtol=1e-3, atol=1e-3)
         curv.draw_sample()
         curv.draw_sample(from_inverse=True)
 
@@ -128,6 +112,7 @@ def test_rosenbrock(minimizer):
     starting_point = ift.Field.from_random(domain=space, random_type='normal') * 10
 
     class RBEnergy(ift.Energy):
+
         def __init__(self, position):
             super(RBEnergy, self).__init__(position)
 
@@ -143,7 +128,9 @@ def test_rosenbrock(minimizer):
 
         @property
         def metric(self):
+
             class RBCurv(ift.EndomorphicOperator):
+
                 def __init__(self, loc):
                     self._loc = loc.val_rw()
                     self._capability = self.TIMES
@@ -152,12 +139,10 @@ def test_rosenbrock(minimizer):
                 def apply(self, x, mode):
                     self._check_input(x, mode)
                     inp = x.val_rw()
-                    out = ift.Field(
-                        space, rosen_hess_prod(self._loc.copy(), inp))
+                    out = ift.Field(space, rosen_hess_prod(self._loc.copy(), inp))
                     return out
 
-            t1 = ift.GradientNormController(
-                tol_abs_gradnorm=1e-5, iteration_limit=1000)
+            t1 = ift.GradientNormController(tol_abs_gradnorm=1e-5, iteration_limit=1000)
             return ift.InversionEnabler(RBCurv(self._position), t1)
 
         def apply_metric(self, x):
@@ -183,6 +168,7 @@ def test_gauss(minimizer):
     starting_point = ift.Field.full(space, 3.)
 
     class ExpEnergy(ift.Energy):
+
         def __init__(self, position):
             super(ExpEnergy, self).__init__(position)
 
@@ -194,13 +180,12 @@ def test_gauss(minimizer):
         @property
         def gradient(self):
             x = self.position.val[0]
-            return ift.Field.full(self.position.domain, 2*x*np.exp(-(x**2)))
+            return ift.Field.full(self.position.domain, 2 * x * np.exp(-(x**2)))
 
         def apply_metric(self, x):
             p = self.position.val[0]
-            v = (2 - 4*p*p)*np.exp(-p**2)
-            return ift.DiagonalOperator(
-                ift.Field.full(self.position.domain, v))(x)
+            v = (2 - 4*p*p) * np.exp(-p**2)
+            return ift.DiagonalOperator(ift.Field.full(self.position.domain, v))(x)
 
     try:
         minimizer = eval(minimizer)
@@ -220,6 +205,7 @@ def test_cosh(minimizer):
     starting_point = ift.Field.full(space, 3.)
 
     class CoshEnergy(ift.Energy):
+
         def __init__(self, position):
             super(CoshEnergy, self).__init__(position)
 
@@ -237,14 +223,12 @@ def test_cosh(minimizer):
         def metric(self):
             x = self.position.val[0]
             v = np.cosh(x)
-            return ift.DiagonalOperator(
-                ift.Field.full(self.position.domain, v))
+            return ift.DiagonalOperator(ift.Field.full(self.position.domain, v))
 
         def apply_metric(self, x):
             p = self.position.val[0]
             v = np.cosh(p)
-            return ift.DiagonalOperator(
-                ift.Field.full(self.position.domain, v))(x)
+            return ift.DiagonalOperator(ift.Field.full(self.position.domain, v))(x)
 
     try:
         minimizer = eval(minimizer)

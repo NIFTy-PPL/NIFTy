@@ -29,8 +29,7 @@ from ..operators.normal_operators import LognormalTransform, NormalTransform
 from ..operators.simple_linear_operators import ducktape
 from ..operators.value_inserter import ValueInserter
 from ..sugar import full, makeField, makeOp
-from .correlated_fields import (_log_vol, _Normalization,
-                                _relative_log_k_lengths, _SlopeRemover,
+from .correlated_fields import (_log_vol, _Normalization, _relative_log_k_lengths, _SlopeRemover,
                                 _TwoLogIntegrations)
 
 
@@ -110,13 +109,13 @@ def SimpleCorrelatedField(
             vasp[1] = 0
             vasp = makeOp(makeField(dom, vasp))
             sig_asp = vasp @ expander @ asp
-            asp = xi*sig_flex*(Adder(shift) @ sig_asp).ptw("sqrt")
+            asp = xi * sig_flex * (Adder(shift) @ sig_asp).ptw("sqrt")
         a = a + _SlopeRemover(pspace, 0) @ twolog @ asp
     a = _Normalization(pspace, 0) @ a
     maskzm = np.ones(pspace.shape)
     maskzm[0] = 0
     maskzm = makeOp(makeField(pspace, maskzm))
-    a = (maskzm @ ((ps_expander @ fluct)*a))
+    a = (maskzm @ ((ps_expander@fluct) * a))
     if offset_std is not None:
         zm = LognormalTransform(*offset_std, prefix + 'zeromode', 0)
         insert = ValueInserter(pspace, (0,))
@@ -126,7 +125,7 @@ def SimpleCorrelatedField(
     ht = HarmonicTransformOperator(harmonic_partner, target)
     pd = PowerDistributor(harmonic_partner, pspace)
     xi = ducktape(harmonic_partner, None, prefix + 'xi')
-    op = ht(pd(a)*xi)
+    op = ht(pd(a) * xi)
     if offset_mean is not None:
         op = Adder(full(op.target, float(offset_mean))) @ op
     op.amplitude = a
@@ -153,9 +152,7 @@ def SimpleCorrelatedField(
             harmonic_domain_type="fourier",
             non_parametric_kind="power",
         )
-        cfm.set_amplitude_total_offset(
-            offset_mean=offset_mean, offset_std=offset_std
-        )
+        cfm.set_amplitude_total_offset(offset_mean=offset_mean, offset_std=offset_std)
         cf, _ = cfm.finalize()
 
         op._jax_expr = cf

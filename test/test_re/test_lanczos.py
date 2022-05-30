@@ -21,9 +21,7 @@ def matern_kernel(distance, scale, cutoff, dof):
     from scipy.special import kv
 
     reg_dist = jnp.sqrt(2 * dof) * distance / cutoff
-    cov = scale**2 * 2**(1 - dof) / jnp.exp(
-        gammaln(dof)
-    ) * (reg_dist)**dof * kv(dof, reg_dist)
+    cov = scale**2 * 2**(1 - dof) / jnp.exp(gammaln(dof)) * (reg_dist)**dof * kv(dof, reg_dist)
     # NOTE, this is not safe for differentiating because `cov` still may
     # contain NaNs
     return jnp.where(distance < 1e-8 * cutoff, scale**2, cov)
@@ -38,12 +36,11 @@ def test_lanczos_tridiag(seed, shape0):
     rng = np.random.default_rng(seed)
     rng_key = random.PRNGKey(rng.integers(12, 42))
 
-    m = rng.normal(size=(shape0, ) * 2)
-    m = m @ m.T  # ensure positive-definiteness
+    m = rng.normal(size=(shape0,) * 2)
+    m = m @ m.T    # ensure positive-definiteness
 
     tridiag, vecs = jft.lanczos.lanczos_tridiag(
-        partial(matmul, m), jft.ShapeWithDtype((shape0, )), shape0, rng_key
-    )
+        partial(matmul, m), jft.ShapeWithDtype((shape0,)), shape0, rng_key)
     m_est = vecs.T @ tridiag @ vecs
 
     np.testing.assert_allclose(m_est, m, atol=1e-13, rtol=1e-13)
@@ -61,9 +58,7 @@ def test_stochastic_lq_logdet(seed, shape0, lq_order=15, n_lq_samples=10):
     p = np.logspace(np.log(0.1 * c), np.log(1e+2 * c), num=shape0 - 1)
     p = np.concatenate(([0], p)).reshape(-1, 1)
 
-    m = jnp.asarray(
-        matern_kernel(distance_matrix(p, p), cutoff=c, scale=s, dof=2.5)
-    )
+    m = jnp.asarray(matern_kernel(distance_matrix(p, p), cutoff=c, scale=s, dof=2.5))
 
     _, logdet = jnp.linalg.slogdet(m)
     logdet_est = jft.stochastic_lq_logdet(m, lq_order, n_lq_samples, rng_key)

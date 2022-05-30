@@ -25,7 +25,7 @@
 # a stochastic estimate of the KL-Divergence
 #
 # Note that the fullcovariance approximation scales quadratically with the
-# number of parameters. 
+# number of parameters.
 ###############################################################################
 
 import numpy as np
@@ -35,7 +35,6 @@ import nifty8 as ift
 
 ift.random.push_sseq_from_seed(27)
 
-
 if __name__ == "__main__":
     # Space and model setup
     position_space = ift.RGSpace([100])
@@ -44,13 +43,13 @@ if __name__ == "__main__":
     p_space = ift.PowerSpace(harmonic_space)
 
     pd = ift.PowerDistributor(harmonic_space, p_space)
-    a = ift.PS_field(p_space, lambda k: 1.0 / (1.0 + k ** 2))
+    a = ift.PS_field(p_space, lambda k: 1.0 / (1.0 + k**2))
     A = pd(a)
     sky = 10 * ift.exp(HT(ift.makeOp(A))).ducktape("xi")
     R = ift.GeometryRemover(position_space)
 
     mask = np.zeros(position_space.shape)
-    mask[mask.shape[0]//3:2*mask.shape[0]//3] = 1
+    mask[mask.shape[0] // 3:2 * mask.shape[0] // 3] = 1
     mask = ift.Field.from_raw(position_space, mask)
     R = ift.MaskOperator(mask)
 
@@ -65,19 +64,17 @@ if __name__ == "__main__":
     H = ift.StandardHamiltonian(likelihood_energy)
 
     # Settings for minimization
-    IC = ift.StochasticAbsDeltaEnergyController(5, iteration_limit=200,
-                                                name='advi')
+    IC = ift.StochasticAbsDeltaEnergyController(5, iteration_limit=200, name='advi')
     minimizer_fc = ift.ADVIOptimizer(IC, eta=0.1)
     minimizer_mf = ift.ADVIOptimizer(IC)
 
-    # Initial positions 
-    position_fc = ift.from_random(H.domain)*0.1
-    position_mf = ift.from_random(H.domain)*0.1
+    # Initial positions
+    position_fc = ift.from_random(H.domain) * 0.1
+    position_mf = ift.from_random(H.domain) * 0.1
 
     # Setup of the variational models
     fc = ift.FullCovarianceVI(position_fc, H, 3, True, initial_sig=0.01)
     mf = ift.MeanFieldVI(position_mf, H, 3, True, initial_sig=0.01)
-
 
     niter = 10
     for ii in range(niter):

@@ -31,15 +31,13 @@ from ..operators.operator import Operator
 from ..operators.scaling_operator import ScalingOperator
 from ..plot import Plot, plottable2D
 from ..sugar import from_random
-from ..utilities import (Nop, check_MPI_equality,
-                         check_MPI_synced_random_state, check_object_identity,
-                         get_MPI_params_from_comm)
+from ..utilities import (Nop, check_MPI_equality, check_MPI_synced_random_state,
+                         check_object_identity, get_MPI_params_from_comm)
 from .energy_adapter import EnergyAdapter
 from .iteration_controllers import IterationController, EnergyHistory
 from .kl_energies import SampledKLEnergy
 from .minimizer import Minimizer
-from .sample_list import (ResidualSampleList, SampleList, SampleListBase,
-                          _barrier)
+from .sample_list import (ResidualSampleList, SampleList, SampleListBase, _barrier)
 import pickle
 import numpy as np
 
@@ -291,9 +289,9 @@ def optimize_kl(likelihood_energy,
     myassert(_number_of_arguments(terminate_callback) == 1)
     mf_dom = isinstance(likelihood_energy(initial_index).domain, MultiDomain)
     if mf_dom:
-        dom = MultiDomain.union([likelihood_energy(iglobal).domain
-                                 for iglobal in
-                                 range(initial_index, total_iterations)])
+        dom = MultiDomain.union([
+            likelihood_energy(iglobal).domain for iglobal in range(initial_index, total_iterations)
+        ])
     else:
         dom = likelihood_energy(initial_index).domain
 
@@ -306,7 +304,7 @@ def optimize_kl(likelihood_energy,
             for k2, vv in op.domain.items():
                 if k2 in dom.keys() and dom[k2] != vv:
                     raise ValueError(f"The domain of plottable operator '{k1}' "
-                                      "does not fit to the minimization domain.")
+                                     "does not fit to the minimization domain.")
         else:
             myassert(op.domain is dom)
     if not likelihood_energy(initial_index).target is DomainTuple.scalar_domain():
@@ -332,7 +330,7 @@ def optimize_kl(likelihood_energy,
     if output_directory is not None:
         if not overwrite and isdir(output_directory):
             raise RuntimeError(f"{output_directory} already exists. Please delete or set "
-                                "`overwrite` to `True`.")
+                               "`overwrite` to `True`.")
         if _MPI_master(comm(initial_index)):
             makedirs(output_directory, exist_ok=overwrite)
             subfolders = ["pickle"] + list(plottable_operators.keys())
@@ -360,8 +358,8 @@ def optimize_kl(likelihood_energy,
         check_MPI_equality(mean, comm(iglobal))
 
         if n_samples(iglobal) == 0:
-            e = EnergyAdapter(mean_iter, ham, constants=constants(iglobal),
-                              want_metric=_want_metric(minimizer))
+            e = EnergyAdapter(
+                mean_iter, ham, constants=constants(iglobal), want_metric=_want_metric(minimizer))
             if comm(iglobal) is None:
                 e, _ = minimizer(e)
                 mean = MultiField.union([mean, e.position]) if mf_dom else e.position
@@ -399,8 +397,9 @@ def optimize_kl(likelihood_energy,
 
         if output_directory is not None:
             _plot_operators(iglobal, plottable_operators, sl, ground_truth_position, comm(iglobal))
-            sl.save(join(output_directory, "pickle/") + _file_name_by_strategy(iglobal),
-                    overwrite=overwrite)
+            sl.save(
+                join(output_directory, "pickle/") + _file_name_by_strategy(iglobal),
+                overwrite=overwrite)
             _save_random_state(iglobal)
 
             if _MPI_master(comm(iglobal)):
@@ -540,25 +539,31 @@ def _plot_samples(file_name, samples, ground_truth, comm, plotting_kwargs):
 
             if plottable2D(samples[0][kk]):
                 if ground_truth is not None:
-                    p.add(ground_truth[kk], title=_append_key("Ground truth", kk),
-                          **plotting_kwargs)
+                    p.add(
+                        ground_truth[kk], title=_append_key("Ground truth", kk), **plotting_kwargs)
                     p.add(None)
                 for ii, ss in enumerate(single_samples):
-                    if (ground_truth is None and ii == 16) or (ground_truth is not None and ii == 14):
+                    if (ground_truth is None and ii == 16) or (ground_truth is not None and
+                                                               ii == 14):
                         break
                     p.add(ss, title=_append_key(f"Sample {ii}", kk), **plotting_kwargs)
             else:
                 n = len(samples)
-                alpha = n*[0.5]
-                color = n*["maroon"]
+                alpha = n * [0.5]
+                color = n * ["maroon"]
                 label = None
                 if ground_truth is not None:
                     single_samples = [ground_truth[kk]] + single_samples
                     alpha = [1.] + alpha
                     color = ["green"] + color
-                    label = ["Ground truth", "Samples"] + (n-1)*[None]
-                p.add(single_samples, color=color, alpha=alpha, label=label,
-                      title=_append_key("Samples", kk), **plotting_kwargs)
+                    label = ["Ground truth", "Samples"] + (n-1) * [None]
+                p.add(
+                    single_samples,
+                    color=color,
+                    alpha=alpha,
+                    label=label,
+                    title=_append_key("Samples", kk),
+                    **plotting_kwargs)
         p.output(name=file_name)
 
 
@@ -571,8 +576,12 @@ def _plot_energy_history(index, energy_history):
 
     # energy value plot
     p = Plot()
-    p.add(energy_history, skip_timestamp_conversion=True, xlabel='iteration',
-          ylabel=r'E', yscale='log' if (E > 0.).all() else 'linear')
+    p.add(
+        energy_history,
+        skip_timestamp_conversion=True,
+        xlabel='iteration',
+        ylabel=r'E',
+        yscale='log' if (E > 0.).all() else 'linear')
     p.output(title='energy history', name=fname.format('energy_history'))
 
     # energy change plot
@@ -616,11 +625,9 @@ def _plot_stats(file_name, mean, var, ground_truth, comm, plotting_kwargs):
 def _minisanity(likelihood_energy, iglobal, sl, comm, plot_minisanity_history):
     from ..extra import minisanity
 
-    s, ms_val = minisanity(likelihood_energy, sl, terminal_colors=False,
-                           return_values=True)
+    s, ms_val = minisanity(likelihood_energy, sl, terminal_colors=False, return_values=True)
     check_MPI_equality(ms_val, comm(iglobal))
-    _report_to_logger_and_file(s, "minisanity.txt", iglobal, comm, True, True,
-                               True)
+    _report_to_logger_and_file(s, "minisanity.txt", iglobal, comm, True, True, True)
 
     if _MPI_master(comm(iglobal)) and _output_directory is not None:
         # load/create minisanity_history object
@@ -644,9 +651,15 @@ def _minisanity(likelihood_energy, iglobal, sl, comm, plot_minisanity_history):
                 for ek in key_set_msval[ck] - key_set_mh[ck]:
                     v = ms_val[tk][ck][ek]
                     mh[tk][ck][ek] = {}
-                    mh[tk][ck][ek]['index'] = [iglobal, ]
-                    mh[tk][ck][ek]['mean'] = [v['mean'], ]
-                    mh[tk][ck][ek]['std'] = [v['std'], ]
+                    mh[tk][ck][ek]['index'] = [
+                        iglobal,
+                    ]
+                    mh[tk][ck][ek]['mean'] = [
+                        v['mean'],
+                    ]
+                    mh[tk][ck][ek]['std'] = [
+                        v['std'],
+                    ]
                 # all keys already present in minisanity history
                 for ek in key_set_msval[ck] & key_set_mh[ck]:
                     v = ms_val[tk][ck][ek]
@@ -697,8 +710,8 @@ def _plot_minisanity_history(index, minisanity_history):
 
     plt.figure()
     for i in range(n_tot):
-        plt.plot(idxs[i], vals[i], label=labels[i], color=colors[i], marker='.',
-                 linestyle=linestyles[i])
+        plt.plot(
+            idxs[i], vals[i], label=labels[i], color=colors[i], marker='.', linestyle=linestyles[i])
 
     xlim = plt.xlim()
     plt.hlines(1., xlim[0], xlim[1], linestyle='dashed', color='black', linewidth=2, zorder=-1)
@@ -709,18 +722,18 @@ def _plot_minisanity_history(index, minisanity_history):
     plt.xlabel('iteration')
     plt.ylabel(r'red. $\chi^2$')
     plt.legend(loc='upper right')
-    plt.savefig(join(_output_directory, 'minisanity_history',
-                     'minisanity_history_' + _file_name_by_strategy(index) + '.png'))
+    plt.savefig(
+        join(_output_directory, 'minisanity_history',
+             'minisanity_history_' + _file_name_by_strategy(index) + '.png'))
     plt.clf()
 
 
 def _counting_report(count, iglobal, comm):
-    _report_to_logger_and_file(count.report(), "counting_report.txt", iglobal,
-                               comm, _output_directory is None, True, False)
+    _report_to_logger_and_file(count.report(), "counting_report.txt", iglobal, comm,
+                               _output_directory is None, True, False)
 
 
-def _report_to_logger_and_file(report, file_name, iglobal, comm, to_logger,
-                               to_file, only_master):
+def _report_to_logger_and_file(report, file_name, iglobal, comm, to_logger, to_file, only_master):
     from datetime import datetime
 
     from ..logger import logger
@@ -743,7 +756,7 @@ def _report_to_logger_and_file(report, file_name, iglobal, comm, to_logger,
 
 def _handle_inspect_callback(inspect_callback, sl, iglobal, mean, dom, comm):
     if _number_of_arguments(inspect_callback) == 1:
-        inp = (sl, )
+        inp = (sl,)
     elif _number_of_arguments(inspect_callback) == 2:
         inp = (sl, iglobal)
     elif _number_of_arguments(inspect_callback) == 3:
@@ -801,5 +814,5 @@ def _is_subdomain(sub_domain, total_domain):
         raise TypeError
     if isinstance(sub_domain, DomainTuple):
         return sub_domain == total_domain
-    return all(kk in total_domain.keys() and vv == total_domain[kk]
-               for kk, vv in sub_domain.items())
+    return all(
+        kk in total_domain.keys() and vv == total_domain[kk] for kk, vv in sub_domain.items())

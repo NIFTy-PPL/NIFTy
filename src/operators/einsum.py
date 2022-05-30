@@ -61,8 +61,8 @@ class MultiLinearEinsum(Operator):
     inputs. To achieve operations with upper/lower indices use
     :class:`PartialConjugate` before applying this operator.
     """
-    def __init__(self, domain, subscripts,
-                 key_order=None, static_mf=None, optimize='optimal'):
+
+    def __init__(self, domain, subscripts, key_order=None, static_mf=None, optimize='optimal'):
         self._domain = MultiDomain.make(domain)
         if key_order is None:
             self._key_order = tuple(self._domain.keys())
@@ -82,14 +82,12 @@ class MultiLinearEinsum(Operator):
         shapes, numpy_subscripts, subscriptmap = {}, '', {}
         alphabet = list(string.ascii_lowercase)[::-1]
         for k, ss in zip(self._key_order, iss_spl):
-            dom = self._domain[k] if k in self._domain.keys(
-            ) else self._stat_mf[k].domain
+            dom = self._domain[k] if k in self._domain.keys() else self._stat_mf[k].domain
             if len(dom) != len(ss):
                 raise ValueError(ve)
             for i, a in enumerate(list(ss)):
                 if a not in subscriptmap.keys():
-                    subscriptmap[a] = [alphabet.pop() for _ in
-                                       range(len(dom[i].shape))]
+                    subscriptmap[a] = [alphabet.pop() for _ in range(len(dom[i].shape))]
                 numpy_subscripts += ''.join(subscriptmap[a])
             numpy_subscripts += ','
             shapes[k] = dom.shape
@@ -136,10 +134,7 @@ class MultiLinearEinsum(Operator):
             val = x.val.val
         else:
             val = x.val
-        v = (
-            val[k] if k in val else self._stat_mf[k].val
-            for k in self._key_order
-        )
+        v = (val[k] if k in val else self._stat_mf[k].val for k in self._key_order)
         res = np.einsum(self._sscr, *v, **self._ein_kw)
 
         if isinstance(x, Linearization):
@@ -147,7 +142,8 @@ class MultiLinearEinsum(Operator):
             for wrt in self.domain.keys():
                 plc = {
                     k: x.val[k] if k in x.val else self._stat_mf[k]
-                    for k in self._key_order if k != wrt
+                    for k in self._key_order
+                    if k != wrt
                 }
                 mf_wo_k = MultiField.from_dict(plc)
                 ss = self._sscr_endswith[wrt]
@@ -160,8 +156,7 @@ class MultiLinearEinsum(Operator):
                     key_order=tuple(plc.keys()),
                     optimize=self._linpaths[wrt],
                     _target=self._target,
-                    _calling_as_lin=True
-                ).ducktape(wrt)
+                    _calling_as_lin=True).ducktape(wrt)
                 jac = jac + jac_k if jac is not None else jac_k
             return x.new(Field.from_raw(self.target, res), jac)
         return Field.from_raw(self.target, res)
@@ -198,8 +193,15 @@ class LinearEinsum(LinearOperator):
     inputs or mf. To achieve operations with upper/lower indices use
     :class:`PartialConjugate` before applying this operator.
     """
-    def __init__(self, domain, mf, subscripts, key_order=None, optimize='optimal',
-                 _target=None, _calling_as_lin=False):
+
+    def __init__(self,
+                 domain,
+                 mf,
+                 subscripts,
+                 key_order=None,
+                 optimize='optimal',
+                 _target=None,
+                 _calling_as_lin=False):
         self._domain = DomainTuple.make(domain)
         if _calling_as_lin:
             self._init_wo_preproc(mf, subscripts, key_order, optimize, _target)
@@ -225,8 +227,7 @@ class LinearEinsum(LinearOperator):
                     raise ValueError(ve)
                 for i, a in enumerate(list(ss)):
                     if a not in subscriptmap.keys():
-                        subscriptmap[a] = [alphabet.pop() for _ in
-                                           range(len(dom[i].shape))]
+                        subscriptmap[a] = [alphabet.pop() for _ in range(len(dom[i].shape))]
                     numpy_subscripts += ''.join(subscriptmap[a])
                 numpy_subscripts += ','
                 shapes += (dom.shape,)
@@ -234,8 +235,7 @@ class LinearEinsum(LinearOperator):
                 raise ValueError(ve)
             for i, a in enumerate(list(iss_spl[-1])):
                 if a not in subscriptmap.keys():
-                    subscriptmap[a] = [alphabet.pop() for _ in
-                                       range(len(self._domain[i].shape))]
+                    subscriptmap[a] = [alphabet.pop() for _ in range(len(self._domain[i].shape))]
                 numpy_subscripts += ''.join(subscriptmap[a])
             shapes += (self._domain.shape,)
             numpy_subscripts += '->'
@@ -284,8 +284,5 @@ class LinearEinsum(LinearOperator):
             dom, ss, mf = self.target, self._sscr, self._mf
         else:
             dom, ss, mf = self.domain, self._adj_sscr, self._mf.conjugate()
-        res = np.einsum(
-            ss, *(mf[k].val for k in self._key_order), x.val,
-            **self._ein_kw
-        )
+        res = np.einsum(ss, *(mf[k].val for k in self._key_order), x.val, **self._ein_kw)
         return Field.from_raw(dom, res)

@@ -33,6 +33,7 @@ class OuterProduct(LinearOperator):
     field : :class:`nifty8.field.Field`
     ---------
     """
+
     def __init__(self, domain, field):
         self._domain = DomainTuple.make(domain)
         self._field = field
@@ -54,10 +55,7 @@ class OuterProduct(LinearOperator):
                 else:
                     a_astype_x = a_j
 
-                return tree_map(
-                    partial(jnp.tensordot, axes=((), ())),
-                    a_astype_x, x
-                )
+                return tree_map(partial(jnp.tensordot, axes=((), ())), a_astype_x, x)
 
             self._jax_expr = jax_expr
         except ImportError:
@@ -66,9 +64,6 @@ class OuterProduct(LinearOperator):
     def apply(self, x, mode):
         self._check_input(x, mode)
         if mode == self.TIMES:
-            return Field(
-                self._target, np.multiply.outer(
-                    self._field.val, x.val))
+            return Field(self._target, np.multiply.outer(self._field.val, x.val))
         axes = len(self._field.shape)
-        return Field(
-            self._domain, np.tensordot(self._field.val, x.val, axes))
+        return Field(self._domain, np.tensordot(self._field.val, x.val, axes))

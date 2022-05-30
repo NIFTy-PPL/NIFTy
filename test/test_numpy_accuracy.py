@@ -21,10 +21,11 @@ from .common import setup_function, teardown_function
 
 dt = np.float32
 
+
 def _check(a, b):
     res0 = np.vdot(a, b)
     res1 = vdot(a, b)
-    rel_error = np.abs((res0-res1)/(res0+res1)*2)
+    rel_error = np.abs((res0-res1) / (res0+res1) * 2)
     assert rel_error < 1e-6
 
 
@@ -32,12 +33,12 @@ def _check(a, b):
 # necessary
 @pytest.mark.xfail(reason="np.vdot inaccurate for single precision", strict=True)
 def test_vdot():
-    a = 100*np.ones((1000000,)).astype(dt)
+    a = 100 * np.ones((1000000,)).astype(dt)
     _check(a, a)
 
 
 @pytest.mark.xfail(reason="np.vdot inaccurate for single precision", strict=True)
 def test_vdot_extreme():
     a = np.array([1e8, 1, -1e8]).astype(dt)
-    b = np.array([1e8, 1,  1e8]).astype(dt)
+    b = np.array([1e8, 1, 1e8]).astype(dt)
     _check(a, b)

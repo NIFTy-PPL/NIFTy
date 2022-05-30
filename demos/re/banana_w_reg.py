@@ -37,7 +37,7 @@ def cartesian_product(arrays, out=None):
 
 
 def banana_helper_phi_b(b, x):
-    return jnp.array([x[0], x[1] + b * x[0]**2 - 100 * b])
+    return jnp.array([x[0], x[1] + b * x[0]**2 - 100*b])
 
 
 # %%
@@ -46,9 +46,7 @@ b = 0.1
 SCALE = 10.
 
 signal_response = lambda s: banana_helper_phi_b(b, SCALE * s)
-nll = jft.Gaussian(
-    jnp.zeros(2), lambda x: x / jnp.array([100., 1.])
-) @ signal_response
+nll = jft.Gaussian(jnp.zeros(2), lambda x: x / jnp.array([100., 1.])) @ signal_response
 nll = nll.jit()
 nll_vg = jit(value_and_grad(nll))
 
@@ -59,8 +57,7 @@ ham_metric = jit(jft.mean_metric(ham.metric))
 
 MetricKL = jit(
     partial(jft.MetricKL, ham),
-    static_argnames=("n_samples", "mirror_samples", "linear_sampling_name")
-)
+    static_argnames=("n_samples", "mirror_samples", "linear_sampling_name"))
 GeoMetricKL = partial(jft.GeoMetricKL, ham)
 
 # # %%
@@ -85,8 +82,8 @@ GeoMetricKL = partial(jft.GeoMetricKL, ham)
 
 # %%  # MGVI
 n_mgvi_iterations = 30
-n_samples = [1] * (n_mgvi_iterations - 2) + [2] + [100]
-n_newton_iterations = [7] * (n_mgvi_iterations - 10) + [10] * 6 + 4 * [25]
+n_samples = [1] * (n_mgvi_iterations-2) + [2] + [100]
+n_newton_iterations = [7] * (n_mgvi_iterations-10) + [10] * 6 + 4 * [25]
 absdelta = 1e-10
 
 initial_position = jnp.array([1., 1.])
@@ -102,8 +99,7 @@ for i in range(n_mgvi_iterations):
         n_samples=n_samples[i],
         key=subkey,
         mirror_samples=True,
-        linear_sampling_kwargs={"miniter": 0}
-    )
+        linear_sampling_kwargs={"miniter": 0})
 
     print("Minimizing...", file=sys.stderr)
     opt_state = jft.minimize(
@@ -121,21 +117,16 @@ for i in range(n_mgvi_iterations):
                 "name": None
             },
             "name": "N"
-        }
-    )
+        })
     mkl_pos = opt_state.x
-    print(
-        (
-            f"Post MGVI Iteration {i}: Energy {mg_samples.at(mkl_pos).mean(ham):2.4e}"
-            f"; #NaNs {jnp.isnan(mkl_pos).sum()}"
-        ),
-        file=sys.stderr
-    )
+    print((f"Post MGVI Iteration {i}: Energy {mg_samples.at(mkl_pos).mean(ham):2.4e}"
+           f"; #NaNs {jnp.isnan(mkl_pos).sum()}"),
+          file=sys.stderr)
 
 # %%  # geoVI
 n_geovi_iterations = 15
-n_samples = [1] * (n_geovi_iterations - 2) + [2] + [100]
-n_newton_iterations = [7] * (n_geovi_iterations - 10) + [10] * 6 + [25] * 4
+n_samples = [1] * (n_geovi_iterations-2) + [2] + [100]
+n_newton_iterations = [7] * (n_geovi_iterations-10) + [10] * 6 + [25] * 4
 absdelta = 1e-10
 
 initial_position = jnp.array([1., 1.])
@@ -178,8 +169,7 @@ for i in range(n_geovi_iterations):
                 "name": None
             },
             "name": "N",
-        }
-    )
+        })
     gkl_pos = opt_state.x
 
 # %%
@@ -199,8 +189,7 @@ opt_state = jft.minimize(
             "name": None
         },
         "name": "MAP"
-    }
-)
+    })
 map_pos = opt_state.x
 key, subkey = random.split(key, 2)
 map_geo_samples = GeoMetricKL(
@@ -216,8 +205,7 @@ map_geo_samples = GeoMetricKL(
             "miniter": 0
         },
         "maxiter": 20,
-    }
-)
+    })
 
 # %%
 

@@ -39,7 +39,7 @@ class UnstructuredDomain(Domain):
         try:
             self._shape = tuple([int(i) for i in shape])
         except TypeError:
-            self._shape = (int(shape), )
+            self._shape = (int(shape),)
 
     def __repr__(self):
         return "UnstructuredDomain(shape={})".format(self.shape)
@@ -50,4 +50,4 @@ class UnstructuredDomain(Domain):
 
     @property
     def size(self):
-        return reduce(lambda x, y: x*y, self.shape)
+        return reduce(lambda x, y: x * y, self.shape)

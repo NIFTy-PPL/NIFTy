@@ -80,25 +80,26 @@ def _structured_spaces(domain):
 def _total_fluctuation_realized(samples):
     spaces = _structured_spaces(samples[0].domain)
     co = ContractionOperator(samples[0].domain, spaces)
-    size = co.domain.size/co.target.size
+    size = co.domain.size / co.target.size
     res = 0.
     for s in samples:
-        res = res + (s - co.adjoint(co(s)/size))**2
-    res = res.mean(spaces)/len(samples)
+        res = res + (s - co.adjoint(co(s) / size))**2
+    res = res.mean(spaces) / len(samples)
     return np.sqrt(res if np.isscalar(res) else res.val)
 
 
 class _SlopeRemover(EndomorphicOperator):
+
     def __init__(self, domain, space=0):
         self._domain = makeDomain(domain)
         myassert(isinstance(self._domain[space], PowerSpace))
         logkl = _relative_log_k_lengths(self._domain[space])
-        sc = logkl/float(logkl[-1])
+        sc = logkl / float(logkl[-1])
 
         self._space = space
         axis = self._domain.axes[space][0]
-        self._last = (slice(None),)*axis + (-1,) + (None,)
-        extender = (None,)*(axis) + (slice(None),) + (None,)*(self._domain.axes[-1][-1]-axis)
+        self._last = (slice(None),) * axis + (-1,) + (None,)
+        extender = (None,) * (axis) + (slice(None),) + (None,) * (self._domain.axes[-1][-1] - axis)
         self._sc = sc[extender]
         self._capability = self.TIMES | self.ADJOINT_TIMES
 
@@ -106,19 +107,20 @@ class _SlopeRemover(EndomorphicOperator):
         self._check_input(x, mode)
         if mode == self.TIMES:
             x = x.val
-            res = x - x[self._last]*self._sc
+            res = x - x[self._last] * self._sc
         else:
             res = x.val_rw()
-            res[self._last] -= (res*self._sc).sum(axis=self._space, keepdims=True)
+            res[self._last] -= (res * self._sc).sum(axis=self._space, keepdims=True)
         return makeField(self._tgt(mode), res)
 
 
 class _TwoLogIntegrations(LinearOperator):
+
     def __init__(self, target, space=0):
         self._target = makeDomain(target)
         myassert(isinstance(self.target[space], PowerSpace))
         dom = list(self._target)
-        dom[space] = UnstructuredDomain((2, self.target[space].shape[0]-2))
+        dom[space] = UnstructuredDomain((2, self.target[space].shape[0] - 2))
         self._domain = makeDomain(dom)
         self._space = space
         self._log_vol = _log_vol(self._target[space])
@@ -129,8 +131,8 @@ class _TwoLogIntegrations(LinearOperator):
 
         # Maybe make class properties
         axis = self._target.axes[self._space][0]
-        sl = (slice(None),)*axis
-        extender_sl = (None,)*axis + (slice(None),) + (None,)*(self._target.axes[-1][-1] - axis)
+        sl = (slice(None),) * axis
+        extender_sl = (None,) * axis + (slice(None),) + (None,) * (self._target.axes[-1][-1] - axis)
         first = sl + (0,)
         second = sl + (1,)
         from_third = sl + (slice(2, None),)
@@ -142,14 +144,15 @@ class _TwoLogIntegrations(LinearOperator):
             res = np.empty(self._target.shape)
             res[first] = res[second] = 0
             res[from_third] = np.cumsum(x[second], axis=axis)
-            res[from_third] = (res[from_third] + res[no_border])/2*self._log_vol[extender_sl] + x[first]
+            res[from_third] = (res[from_third] +
+                               res[no_border]) / 2 * self._log_vol[extender_sl] + x[first]
             res[from_third] = np.cumsum(res[from_third], axis=axis)
         else:
             x = x.val_rw()
             res = np.zeros(self._domain.shape)
             x[from_third] = np.cumsum(x[from_third][reverse], axis=axis)[reverse]
             res[first] += x[from_third]
-            x[from_third] *= (self._log_vol/2.)[extender_sl]
+            x[from_third] *= (self._log_vol / 2.)[extender_sl]
             x[no_border] += x[from_third]
             res[second] += np.cumsum(x[from_third][reverse], axis=axis)[reverse]
         return makeField(self._tgt(mode), res)
@@ -173,17 +176,16 @@ class _Normalization(Operator):
     linear decrease in per pixel volume in harmonic space is not captured by
     just summing up the modes.
     """
+
     def __init__(self, domain, space=0):
         self._domain = self._target = DomainTuple.make(domain)
         myassert(isinstance(self._domain[space], PowerSpace))
         hspace = list(self._domain)
         hspace[space] = hspace[space].harmonic_partner
         hspace = makeDomain(hspace)
-        pd = PowerDistributor(hspace,
-                              power_space=self._domain[space],
-                              space=space)
+        pd = PowerDistributor(hspace, power_space=self._domain[space], space=space)
         mode_multiplicity = pd.adjoint(full(pd.target, 1.)).val_rw()
-        zero_mode = (slice(None),)*self._domain.axes[space][0] + (0,)
+        zero_mode = (slice(None),) * self._domain.axes[space][0] + (0,)
         mode_multiplicity[zero_mode] = 0
         multipl = makeOp(makeField(self._domain, mode_multiplicity))
         self._specsum = _SpecialSum(self._domain, space) @ multipl
@@ -198,10 +200,11 @@ class _Normalization(Operator):
         # zero-mode is set to 0, the norm does not contain traces of it.
         # However, it wrongly sets the zeroth entry of the result. Luckily,
         # in subsequent calls, the zeroth entry is not used in the CF model.
-        return (self._specsum(spec).reciprocal()*spec).sqrt()
+        return (self._specsum(spec).reciprocal() * spec).sqrt()
 
 
 class _SpecialSum(EndomorphicOperator):
+
     def __init__(self, domain, space=0):
         self._domain = makeDomain(domain)
         self._capability = self.TIMES | self.ADJOINT_TIMES
@@ -213,6 +216,7 @@ class _SpecialSum(EndomorphicOperator):
 
 
 class _Distributor(LinearOperator):
+
     def __init__(self, dofdex, domain, target):
         self._dofdex = np.array(dofdex)
         self._target = DomainTuple.make(target)
@@ -231,6 +235,7 @@ class _Distributor(LinearOperator):
 
 
 class _AmplitudeMatern(Operator):
+
     def __init__(self, pow_spc, scale, cutoff, loglogslope, totvol):
         expander = ContractionOperator(pow_spc, spaces=None).adjoint
         k_squared = makeField(pow_spc, pow_spc.k_lengths**2)
@@ -274,8 +279,9 @@ class _AmplitudeMatern(Operator):
 
 
 class _Amplitude(Operator):
-    def __init__(self, target, fluctuations, flexibility, asperity,
-                 loglogavgslope, totvol, key, dofdex):
+
+    def __init__(self, target, fluctuations, flexibility, asperity, loglogavgslope, totvol, key,
+                 dofdex):
         """
         fluctuations > 0
         flexibility > 0 or None
@@ -292,8 +298,7 @@ class _Amplitude(Operator):
             space = 1
             target = makeDomain((UnstructuredDomain(N_copies), target))
             if N_copies != len(dofdex):
-                distributed_tgt = makeDomain((UnstructuredDomain(len(dofdex)),
-                                              target[1]))
+                distributed_tgt = makeDomain((UnstructuredDomain(len(dofdex)), target[1]))
                 Distributor = _Distributor(dofdex, target, distributed_tgt)
             else:
                 distributed_tgt = target
@@ -325,8 +330,7 @@ class _Amplitude(Operator):
         shift = shift(full(shift.domain, 1))
 
         vslope = DiagonalOperator(
-            makeField(target[space], _relative_log_k_lengths(target[space])),
-            target, space)
+            makeField(target[space], _relative_log_k_lengths(target[space])), target, space)
 
         vol0, vol1 = [np.zeros(target[space].shape) for _ in range(2)]
         # In the harmonic transform convention used here, the zero-mode scales
@@ -352,24 +356,24 @@ class _Amplitude(Operator):
         elif sig_asp is None:
             xi = ducktape(dom, None, key)
             sigma = DiagonalOperator(shift.ptw("sqrt"), dom) @ sig_flex
-            smooth = _SlopeRemover(target, space) @ twolog @ (sigma * xi)
-            op = _Normalization(target, space) @ (slope + smooth)
+            smooth = _SlopeRemover(target, space) @ twolog @ (sigma*xi)
+            op = _Normalization(target, space) @ (slope+smooth)
         elif sig_flex is None:
             raise ValueError("flexibility may not be disabled on its own")
         else:
             xi = ducktape(dom, None, key)
             sigma = sig_flex * (Adder(shift) @ sig_asp).ptw("sqrt")
-            smooth = _SlopeRemover(target, space) @ twolog @ (sigma * xi)
-            op = _Normalization(target, space) @ (slope + smooth)
+            smooth = _SlopeRemover(target, space) @ twolog @ (sigma*xi)
+            op = _Normalization(target, space) @ (slope+smooth)
 
         if N_copies != len(dofdex):
             op = Distributor @ op
             sig_fluc = Distributor @ sig_fluc
-            op = Adder(Distributor(vol0)) @ (sig_fluc * op)
-            self._fluc = (_Distributor(dofdex, fluctuations.target,
-                                       distributed_tgt[0]) @ fluctuations)
+            op = Adder(Distributor(vol0)) @ (sig_fluc*op)
+            self._fluc = (
+                _Distributor(dofdex, fluctuations.target, distributed_tgt[0]) @ fluctuations)
         else:
-            op = Adder(vol0) @ (sig_fluc * op)
+            op = Adder(vol0) @ (sig_fluc*op)
             self._fluc = fluctuations
 
         self.apply = op.apply
@@ -431,6 +435,7 @@ class CorrelatedFieldMaker:
 
     Consider citing these papers, if you use the correlated field model.
     """
+
     def __init__(self, prefix, total_N=0):
         """Instantiate a CorrelatedFieldMaker object.
 
@@ -572,9 +577,9 @@ class CorrelatedFieldMaker:
             asp = None
         avgsl = NormalTransform(*loglogavgslope, pre + 'loglogavgslope', N)
 
-        amp = _Amplitude(PowerSpace(harmonic_partner), fluct, flex, asp, avgsl,
-                         target_subdomain[-1].total_volume,
-                         pre + 'spectrum', dofdex)
+        amp = _Amplitude(
+            PowerSpace(harmonic_partner), fluct, flex, asp, avgsl,
+            target_subdomain[-1].total_volume, pre + 'spectrum', dofdex)
 
         is_rg = all(isinstance(dom, RGSpace) for dom in target_subdomain)
         if self._jax_cfm is not None and (len(dofdex) > 0 or index or not is_rg):
@@ -678,8 +683,7 @@ class CorrelatedFieldMaker:
         if adjust_for_volume:
             totvol = target_subdomain[-1].total_volume
         pow_spc = PowerSpace(harmonic_partner)
-        amp = _AmplitudeMatern(pow_spc, scale, cutoff, loglogslope,
-                               totvol)
+        amp = _AmplitudeMatern(pow_spc, scale, cutoff, loglogslope, totvol)
 
         if self._jax_cfm is not None:
             warn(f"unable to add JAX operator for Matern fluctuations")
@@ -736,10 +740,8 @@ class CorrelatedFieldMaker:
 
             N = max(dofdex) + 1 if self._total_N > 0 else 0
             if len(offset_std) != 2:
-                te = (
-                    "`offset_std` of invalid type and/or shape"
-                    f"; expected a 2D tuple of floats; got '{offset_std!r}'"
-                )
+                te = ("`offset_std` of invalid type and/or shape"
+                      f"; expected a 2D tuple of floats; got '{offset_std!r}'")
                 raise TypeError(te)
             zm = LognormalTransform(*offset_std, self._prefix + 'zeromode', N)
             if self._total_N > 0:
@@ -752,8 +754,7 @@ class CorrelatedFieldMaker:
         if self._jax_cfm is not None:
             try:
                 self._jax_cfm.set_amplitude_total_offset(
-                    offset_mean=offset_mean, offset_std=jax_offset_std
-                )
+                    offset_mean=offset_mean, offset_std=jax_offset_std)
                 if not isinstance(self._azm, float):
                     self._azm._jax_expr = self._jax_cfm.azm
             except TypeError as e:
@@ -773,24 +774,20 @@ class CorrelatedFieldMaker:
         """
         n_amplitudes = len(self._a)
         if self._total_N > 0:
-            hspace = makeDomain(
-                [UnstructuredDomain(self._total_N)] +
-                [dd.target[-1].harmonic_partner for dd in self._a])
+            hspace = makeDomain([UnstructuredDomain(self._total_N)] +
+                                [dd.target[-1].harmonic_partner for dd in self._a])
             spaces = tuple(range(1, n_amplitudes + 1))
             amp_space = 1
         else:
-            hspace = makeDomain(
-                [dd.target[0].harmonic_partner for dd in self._a])
+            hspace = makeDomain([dd.target[0].harmonic_partner for dd in self._a])
             spaces = tuple(range(n_amplitudes))
             amp_space = 0
 
-        ht = HarmonicTransformOperator(hspace,
-                                       self._target_subdomains[0][amp_space],
-                                       space=spaces[0])
+        ht = HarmonicTransformOperator(
+            hspace, self._target_subdomains[0][amp_space], space=spaces[0])
         for i in range(1, n_amplitudes):
-            ht = HarmonicTransformOperator(ht.target,
-                                           self._target_subdomains[i][amp_space],
-                                           space=spaces[i]) @ ht
+            ht = HarmonicTransformOperator(
+                ht.target, self._target_subdomains[i][amp_space], space=spaces[i]) @ ht
 
         a = list(self.get_normalized_amplitudes())
         for ii in range(n_amplitudes):
@@ -832,18 +829,18 @@ class CorrelatedFieldMaker:
         lst = []
         try:
             lst.append(('Offset amplitude', self.amplitude_total_offset))
-        except NotImplementedError:  # AZM mustn't be set to get stats
+        except NotImplementedError:    # AZM mustn't be set to get stats
             pass
         lst.append(('Total fluctuation amplitude', self.total_fluctuation))
         namps = len(self._a)
         if namps > 1:
             for ii in range(namps):
-                lst.append(('Average fluctuation (space {})'.format(ii),
-                            self.average_fluctuation(ii)))
+                lst.append(
+                    ('Average fluctuation (space {})'.format(ii), self.average_fluctuation(ii)))
                 try:
-                    lst.append(('Slice fluctuation (space {})'.format(ii),
-                                self.slice_fluctuation(ii)))
-                except NotImplementedError:  # AZM mustn't be set to get stats
+                    lst.append(
+                        ('Slice fluctuation (space {})'.format(ii), self.slice_fluctuation(ii)))
+                except NotImplementedError:    # AZM mustn't be set to get stats
                     pass
 
         for kk, op in lst:
@@ -887,7 +884,7 @@ class CorrelatedFieldMaker:
         if self._jax_cfm:
             normed_amps_jax = self._jax_cfm.get_normalized_amplitudes()
         else:
-            normed_amps_jax = (None, ) * len(self._a)
+            normed_amps_jax = (None,) * len(self._a)
 
         normal_amp = []
         for amp, na_jax in zip(self._a, normed_amps_jax):
@@ -896,22 +893,14 @@ class CorrelatedFieldMaker:
             a_pp = amp.target[a_space]
             myassert(isinstance(a_pp, PowerSpace))
 
-            azm_expander = ContractionOperator(
-                a_target, spaces=a_space
-            ).adjoint
+            azm_expander = ContractionOperator(a_target, spaces=a_space).adjoint
             zm_unmask, zm_mask = [np.zeros(a_pp.shape) for _ in range(2)]
             zm_mask[1:] = zm_unmask[0] = 1.
-            zm_mask = DiagonalOperator(
-                makeField(a_pp, zm_mask), a_target, a_space
-            )
-            zm_unmask = DiagonalOperator(
-                makeField(a_pp, zm_unmask), a_target, a_space
-            )
+            zm_mask = DiagonalOperator(makeField(a_pp, zm_mask), a_target, a_space)
+            zm_unmask = DiagonalOperator(makeField(a_pp, zm_unmask), a_target, a_space)
             zm_unmask = Adder(zm_unmask(full(zm_unmask.domain, 1)))
 
-            zm_normalization = zm_unmask @ (
-                zm_mask @ azm_expander(self.azm.ptw("reciprocal"))
-            )
+            zm_normalization = zm_unmask @ (zm_mask @ azm_expander(self.azm.ptw("reciprocal")))
             na = zm_normalization * amp
             na._jax_expr = na_jax
             normal_amp.append(na)
@@ -929,9 +918,7 @@ class CorrelatedFieldMaker:
         if np.isscalar(self.azm):
             na = normal_amp
         else:
-            expand = ContractionOperator(
-                normal_amp.target, len(normal_amp.target) - 1
-            ).adjoint
+            expand = ContractionOperator(normal_amp.target, len(normal_amp.target) - 1).adjoint
             na = normal_amp * (expand @ self.azm)
 
         if self._jax_cfm:
@@ -1013,8 +1000,7 @@ class CorrelatedFieldMaker:
         scm = 1.
         for a in self._a:
             op = a.fluctuation_amplitude * self.azm.ptw("reciprocal")
-            res = np.array([op(from_random(op.domain, 'normal')).val
-                            for _ in range(nsamples)])
+            res = np.array([op(from_random(op.domain, 'normal')).val for _ in range(nsamples)])
             scm *= res**2 + 1.
         return fluctuations_slice_mean / np.mean(np.sqrt(scm))
 
@@ -1027,9 +1013,9 @@ class CorrelatedFieldMaker:
             return self.average_fluctuation(0)
         q = 1.
         for a in self._a:
-            fl = a.fluctuation_amplitude*self.azm.ptw("reciprocal")
-            q = q*(Adder(full(fl.target, 1.)) @ fl**2)
-        return (Adder(full(q.target, -1.)) @ q).ptw("sqrt")*self.azm
+            fl = a.fluctuation_amplitude * self.azm.ptw("reciprocal")
+            q = q * (Adder(full(fl.target, 1.)) @ fl**2)
+        return (Adder(full(q.target, -1.)) @ q).ptw("sqrt") * self.azm
 
     def slice_fluctuation(self, space):
         """Returns operator which acts on prior or posterior samples"""
@@ -1041,12 +1027,12 @@ class CorrelatedFieldMaker:
             return self.average_fluctuation(0)
         q = 1.
         for j in range(len(self._a)):
-            fl = self._a[j].fluctuation_amplitude*self.azm.ptw("reciprocal")
+            fl = self._a[j].fluctuation_amplitude * self.azm.ptw("reciprocal")
             if j == space:
-                q = q*fl**2
+                q = q * fl**2
             else:
-                q = q*(Adder(full(fl.target, 1.)) @ fl**2)
-        return q.ptw("sqrt")*self.azm
+                q = q * (Adder(full(fl.target, 1.)) @ fl**2)
+        return q.ptw("sqrt") * self.azm
 
     def average_fluctuation(self, space):
         """Returns operator which acts on prior or posterior samples"""
@@ -1064,7 +1050,7 @@ class CorrelatedFieldMaker:
         res = 0.
         for s in samples:
             res = res + s.mean(spaces)**2
-        res = res/len(samples)
+        res = res / len(samples)
         return np.sqrt(res if np.isscalar(res) else res.val)
 
     @staticmethod
@@ -1085,8 +1071,8 @@ class CorrelatedFieldMaker:
         for s in samples:
             res1 = res1 + s**2
             res2 = res2 + s.mean(space)**2
-        res1 = res1/len(samples)
-        res2 = res2/len(samples)
+        res1 = res1 / len(samples)
+        res2 = res2 / len(samples)
         res = res1.mean(spaces) - res2.mean(spaces[:-1])
         return np.sqrt(res if np.isscalar(res) else res.val)
 
@@ -1103,21 +1089,22 @@ class CorrelatedFieldMaker:
         sub_spaces = set(spaces)
         sub_spaces.remove(space)
         # Domain containing domain[space] and domain[0] iff total_N>0
-        sub_dom = makeDomain([samples[0].domain[ind]
-                              for ind in (set([0])-set(spaces)) | set([space])])
-        co = ContractionOperator(sub_dom, len(sub_dom)-1)
-        size = co.domain.size/co.target.size
+        sub_dom = makeDomain(
+            [samples[0].domain[ind] for ind in (set([0]) - set(spaces)) | set([space])])
+        co = ContractionOperator(sub_dom, len(sub_dom) - 1)
+        size = co.domain.size / co.target.size
         res = 0.
         for s in samples:
             r = s.mean(sub_spaces)
-            res = res + (r - co.adjoint(co(r)/size))**2
-        res = res.mean(spaces[0])/len(samples)
+            res = res + (r - co.adjoint(co(r) / size))**2
+        res = res.mean(spaces[0]) / len(samples)
         return np.sqrt(res if np.isscalar(res) else res.val)
 
 
 def _check_dofdex(dofdex, total_N):
-    if not (list(dofdex) == list(range(total_N)) or list(dofdex) == total_N*[0]):
-        warn("In the upcoming release only dofdex==range(total_N) or dofdex==total_N*[0] "
-             f"will be supported. You use dofdex={dofdex}.\n"
-             "Please report at `c@philipp-arras.de` if you use this "
-             "feature and would like to see it continued.", DeprecationWarning)
+    if not (list(dofdex) == list(range(total_N)) or list(dofdex) == total_N * [0]):
+        warn(
+            "In the upcoming release only dofdex==range(total_N) or dofdex==total_N*[0] "
+            f"will be supported. You use dofdex={dofdex}.\n"
+            "Please report at `c@philipp-arras.de` if you use this "
+            "feature and would like to see it continued.", DeprecationWarning)

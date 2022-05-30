@@ -56,19 +56,26 @@ class OperatorAdapter(LinearOperator):
             from ..re import Field
 
             if callable(op.jax_expr) and self._trafo == self.ADJOINT_BIT:
+
                 def jax_expr(y):
                     op_domain = shapewithdtype_from_domain(op.domain, domain_dtype)
                     op_domain = Field(op_domain) if isinstance(y, Field) else op_domain
                     tentative_yshape = eval_shape(op.jax_expr, op_domain)
-                    if not tree_all(tree_map(lambda a,b : jnp.can_cast(a.dtype, b.dtype), y, tentative_yshape)): 
-                        raise ValueError(f"wrong dtype during transposition:/got {tentative_yshape} and expected {y!r}")
-                    y = tree_map(lambda c, d: c.astype(d.dtype, casting="safe", copy=False), y, tentative_yshape) 
+                    if not tree_all(
+                            tree_map(lambda a, b: jnp.can_cast(a.dtype, b.dtype), y,
+                                     tentative_yshape)):
+                        raise ValueError(
+                            f"wrong dtype during transposition:/got {tentative_yshape} and expected {y!r}"
+                        )
+                    y = tree_map(lambda c, d: c.astype(d.dtype, casting="safe", copy=False), y,
+                                 tentative_yshape)
                     y_conj = tree_map(jnp.conj, y)
                     jax_expr_T = linear_transpose(op.jax_expr, op_domain)
                     return tree_map(jnp.conj, jax_expr_T(y_conj)[0])
 
                 self._jax_expr = jax_expr
-            elif hasattr(op, "_jax_expr_inv") and callable(op._jax_expr_inv) and self._trafo == self.INVERSE_BIT:
+            elif hasattr(op, "_jax_expr_inv") and callable(
+                    op._jax_expr_inv) and self._trafo == self.INVERSE_BIT:
                 self._jax_expr = op._jax_expr_inv
                 self._jax_expr_inv = op._jax_expr
             else:
@@ -82,8 +89,7 @@ class OperatorAdapter(LinearOperator):
             else OperatorAdapter(self._op, newtrafo)
 
     def apply(self, x, mode):
-        return self._op.apply(x,
-                              self._modeTable[self._trafo][self._ilog[mode]])
+        return self._op.apply(x, self._modeTable[self._trafo][self._ilog[mode]])
 
     def draw_sample(self, from_inverse=False):
         if self._trafo & self.INVERSE_BIT:
@@ -92,6 +98,6 @@ class OperatorAdapter(LinearOperator):
 
     def __repr__(self):
         from ..utilities import indent
-        mode = ["adjoint", "inverse", "adjoint inverse"][self._trafo-1]
+        mode = ["adjoint", "inverse", "adjoint inverse"][self._trafo - 1]
         res = "OperatorAdapter: {}\n".format(mode)
         return res + indent(self._op.__repr__())

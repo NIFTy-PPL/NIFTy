@@ -23,6 +23,7 @@ from ..utilities import NiftyMeta
 class Domain(metaclass=NiftyMeta):
     """The abstract class repesenting a (structured or unstructured) domain.
     """
+
     def __repr__(self):
         raise NotImplementedError
 
@@ -38,8 +39,8 @@ class Domain(metaclass=NiftyMeta):
             return self._hash
         except AttributeError:
             v = vars(self)
-            self._hash = reduce(lambda x, y: x ^ y, (hash(v[key])
-                                for key in self._needed_for_hash), 0)
+            self._hash = reduce(lambda x, y: x ^ y, (hash(v[key]) for key in self._needed_for_hash),
+                                0)
         return self._hash
 
     def __eq__(self, x):
@@ -63,7 +64,7 @@ class Domain(metaclass=NiftyMeta):
         :meth:`__ne__`, or :meth:`__hash__`; they should instead add their
         relevant attributes' names to :attr:`._needed_for_hash`.
         """
-        if self is x:  # shortcut for simple case
+        if self is x:    # shortcut for simple case
             return True
         if not isinstance(x, type(self)):
             return False

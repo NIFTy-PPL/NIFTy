@@ -40,11 +40,9 @@ n_newton_iterations = 5
 # Create synthetic data
 mock_predictors = random.normal(shape=(N_data, N_predictors), key=key)
 key, subkey = random.split(key)
-model = build_model(
-    mock_predictors, jnp.zeros((N_data, 1), dtype=jnp.int32),
-    (N_predictors, N_categories)
-)
-latent_truth = random.normal(shape=(N_predictors * N_categories, ), key=subkey)
+model = build_model(mock_predictors, jnp.zeros((N_data, 1), dtype=jnp.int32),
+                    (N_predictors, N_categories))
+latent_truth = random.normal(shape=(N_predictors * N_categories,), key=subkey)
 key, subkey = random.split(key)
 matrix_truth = model["matrix"](latent_truth)
 logits_truth = model["logits"](latent_truth)
@@ -56,7 +54,7 @@ mock_targets = mock_targets.reshape(N_data, 1)
 model = build_model(mock_predictors, mock_targets, (N_predictors, N_categories))
 ham = jft.StandardHamiltonian(likelihood=model["lh"]).jit()
 
-pos_init = .1 * random.normal(shape=(N_predictors * N_categories, ), key=subkey)
+pos_init = .1 * random.normal(shape=(N_predictors * N_categories,), key=subkey)
 key, subkey = random.split(key)
 pos = pos_init.copy()
 
@@ -94,17 +92,12 @@ for i in range(n_mgvi_iterations):
             "fun_and_grad": Evag,
             "hessp": met,
             "maxiter": n_newton_iterations
-        }
-    )
+        })
     pos = opt_state.x
     diff_to_truth = jnp.linalg.norm(model["matrix"](pos) - matrix_truth)
-    print(
-        (
-            f"Post MGVI Iteration {i}: Energy {Evag(pos)[0]:2.4e}"
-            f"; diff to truth {diff_to_truth}"
-        ),
-        file=sys.stderr
-    )
+    print((f"Post MGVI Iteration {i}: Energy {Evag(pos)[0]:2.4e}"
+           f"; diff to truth {diff_to_truth}"),
+          file=sys.stderr)
 
 posterior_samps = [s + pos for s in samples]
 
@@ -118,8 +111,7 @@ plt.errorbar(
     matrix_mean.reshape(-1),
     yerr=matrix_std.reshape(-1),
     fmt='o',
-    color="black"
-)
+    color="black")
 plt.xlabel("truth")
 plt.ylabel("inferred value")
 plt.savefig("matrix_fit.png", dpi=400)

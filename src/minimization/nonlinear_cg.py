@@ -42,8 +42,7 @@ class NonlinearCG(Minimizer):
     """
 
     def __init__(self, controller, beta_heuristics='Polak-Ribiere'):
-        valid_beta_heuristics = ['Polak-Ribiere', 'Fletcher-Reeves',
-                                 'Hestenes-Stiefel', "5.49"]
+        valid_beta_heuristics = ['Polak-Ribiere', 'Fletcher-Reeves', 'Hestenes-Stiefel', "5.49"]
         if not (beta_heuristics in valid_beta_heuristics):
             raise ValueError("beta heuristics must be either 'Polak-Ribiere', "
                              "'Fletcher-Reeves', 'Hestenes-Stiefel, or '5.49'")
@@ -63,8 +62,7 @@ class NonlinearCG(Minimizer):
         while True:
             grad_old = energy.gradient
             f_k = energy.value
-            energy, success = self._line_searcher.perform_line_search(
-                energy, p, f_k_minus_1)
+            energy, success = self._line_searcher.perform_line_search(energy, p, f_k_minus_1)
             if not success:
                 return energy, controller.ERROR
             f_k_minus_1 = f_k
@@ -75,17 +73,16 @@ class NonlinearCG(Minimizer):
 
             if self._beta_heuristic == 'Hestenes-Stiefel':
                 # Eq. (5.46) in Nocedal & Wright.
-                beta = max(0.0, (grad_new.s_vdot(grad_new-grad_old) /
-                                 (grad_new-grad_old).s_vdot(p)).real)
+                beta = max(0.0, (grad_new.s_vdot(grad_new - grad_old) /
+                                 (grad_new - grad_old).s_vdot(p)).real)
             elif self._beta_heuristic == 'Polak-Ribiere':
                 # Eq. (5.44) in Nocedal & Wright. (with (5.45) additionally)
-                beta = max(0.0, (grad_new.s_vdot(grad_new-grad_old) /
+                beta = max(0.0, (grad_new.s_vdot(grad_new - grad_old) /
                                  (grad_old.s_vdot(grad_old))).real)
             elif self._beta_heuristic == 'Fletcher-Reeves':
                 # Eq. (5.41a) in Nocedal & Wright.
-                beta = (grad_new.s_vdot(grad_new)/(grad_old.s_vdot(grad_old))).real
+                beta = (grad_new.s_vdot(grad_new) / (grad_old.s_vdot(grad_old))).real
             else:
                 # Eq. (5.49) in Nocedal & Wright.
-                beta = (grad_new.s_vdot(grad_new) /
-                        ((grad_new-grad_old).s_vdot(p))).real
+                beta = (grad_new.s_vdot(grad_new) / ((grad_new - grad_old).s_vdot(p))).real
             p = beta*p - grad_new

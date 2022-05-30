@@ -87,12 +87,10 @@ class SandwichOperator(EndomorphicOperator):
                     return self._bun.inverse_times(s)
                 except NotImplementedError:
                     pass
-            raise NotImplementedError(
-                "cannot draw from inverse of this operator")
+            raise NotImplementedError("cannot draw from inverse of this operator")
 
         # Samples from general sandwiches
-        return self._bun.adjoint_times(
-            self._cheese.draw_sample(from_inverse))
+        return self._bun.adjoint_times(self._cheese.draw_sample(from_inverse))
 
     def get_sqrt(self):
         if self._cheese is None:
@@ -101,8 +99,6 @@ class SandwichOperator(EndomorphicOperator):
 
     def __repr__(self):
         from ..utilities import indent
-        return "\n".join((
-            "SandwichOperator:",
-            indent("\n".join((
-                "Cheese:", self._cheese.__repr__(),
-                "Bun:", self._bun.__repr__())))))
+        return "\n".join(("SandwichOperator:",
+                          indent("\n".join(
+                              ("Cheese:", self._cheese.__repr__(), "Bun:", self._bun.__repr__())))))

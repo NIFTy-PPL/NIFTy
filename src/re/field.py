@@ -3,12 +3,11 @@
 
 import operator
 from jax import numpy as jnp
-from jax.tree_util import (
-    register_pytree_node_class, tree_leaves, tree_map, tree_structure
-)
+from jax.tree_util import (register_pytree_node_class, tree_leaves, tree_map, tree_structure)
 
 
 def _value_op(op, name=None):
+
     def value_call(lhs, *args, **kwargs):
         return op(lhs.val, *args, **kwargs)
 
@@ -18,6 +17,7 @@ def _value_op(op, name=None):
 
 
 def _unary_op(op, name=None):
+
     def unary_call(lhs):
         return tree_map(op, lhs)
 
@@ -67,6 +67,7 @@ def _broadcast_binary_op(op, lhs, rhs):
 
 
 def _binary_op(op, name=None):
+
     def binary_call(lhs, rhs):
         return _broadcast_binary_op(op, lhs, rhs)
 
@@ -76,6 +77,7 @@ def _binary_op(op, name=None):
 
 
 def _rev_binary_op(op, name=None):
+
     def binary_call(lhs, rhs):
         return _broadcast_binary_op(op, rhs, lhs)
 
@@ -139,13 +141,11 @@ class Field():
         self._val = val
         self._domain = {} if domain is None else dict(domain)
 
-        flags = (flags, ) if isinstance(flags, str) else flags
+        flags = (flags,) if isinstance(flags, str) else flags
         flags = set() if flags is None else set(flags)
         if not flags.issubset(Field.supported_flags):
-            ve = (
-                f"specified flags ({flags!r}) are not a subset of the"
-                f" supported flags ({Field.supported_flags!r})"
-            )
+            ve = (f"specified flags ({flags!r}) are not a subset of the"
+                  f" supported flags ({Field.supported_flags!r})")
             raise ValueError(ve)
         self._flags = flags
 
@@ -158,7 +158,7 @@ class Field():
             Pair of an iterable with the children to be flattened recursively,
             and some opaque auxiliary data.
         """
-        return ((self._val, ), (self._domain, self._flags))
+        return ((self._val,), (self._domain, self._flags))
 
     @classmethod
     def tree_unflatten(cls, aux_data, children):
@@ -237,7 +237,7 @@ class Field():
     __floordiv__, __rfloordiv__ = _fwd_rev_binary_op(operator.floordiv)
     __pow__, __rpow__ = _fwd_rev_binary_op(operator.pow)
     __mod__, __rmod__ = _fwd_rev_binary_op(operator.mod)
-    __matmul__ = __rmatmul__ = matmul  # arguments of matmul commute
+    __matmul__ = __rmatmul__ = matmul    # arguments of matmul commute
 
     def __divmod__(self, other):
         return self // other, self % other

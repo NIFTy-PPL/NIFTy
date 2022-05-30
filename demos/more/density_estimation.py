@@ -55,13 +55,13 @@ if __name__ == "__main__":
 
     plot = ift.Plot()
     plot.add(
-        ift.Field.from_raw(
-            plotting_domain_expanded, ift.exp(correlated_field(mock_position)).val
-        ),
+        ift.Field.from_raw(plotting_domain_expanded,
+                           ift.exp(correlated_field(mock_position)).val),
         title="Pre-Slicing Truth",
     )
     plot.add(
-        ift.Field.from_raw(plotting_domain, signal(mock_position).val),
+        ift.Field.from_raw(plotting_domain,
+                           signal(mock_position).val),
         title="Ground Truth",
     )
     plot.add(ift.Field.from_raw(plotting_domain, data.val), title="Data")
@@ -69,12 +69,8 @@ if __name__ == "__main__":
     print("Setup saved as", filename.format("setup"))
 
     # Minimization parameters
-    ic_sampling = ift.AbsDeltaEnergyController(
-        name="Sampling", deltaE=0.01, iteration_limit=100
-    )
-    ic_newton = ift.AbsDeltaEnergyController(
-        name="Newton", deltaE=0.01, iteration_limit=35
-    )
+    ic_sampling = ift.AbsDeltaEnergyController(name="Sampling", deltaE=0.01, iteration_limit=100)
+    ic_newton = ift.AbsDeltaEnergyController(name="Newton", deltaE=0.01, iteration_limit=35)
     ic_sampling.enable_logging()
     ic_newton.enable_logging()
     minimizer = ift.NewtonCG(ic_newton, enable_logging=True)
@@ -99,17 +95,18 @@ if __name__ == "__main__":
         # Plot current reconstruction
         plot = ift.Plot()
         plot.add(
-            ift.Field.from_raw(
-                plotting_domain_expanded, ift.exp(correlated_field(mock_position)).val
-            ),
+            ift.Field.from_raw(plotting_domain_expanded,
+                               ift.exp(correlated_field(mock_position)).val),
             title="Ground truth",
         )
         plot.add(
-            ift.Field.from_raw(plotting_domain, signal(mock_position).val),
+            ift.Field.from_raw(plotting_domain,
+                               signal(mock_position).val),
             title="Ground truth",
         )
         plot.add(
-            ift.Field.from_raw(plotting_domain, kl.samples.average(signal).val),
+            ift.Field.from_raw(plotting_domain,
+                               kl.samples.average(signal).val),
             title="Reconstruction",
         )
         plot.add(
@@ -119,9 +116,7 @@ if __name__ == "__main__":
             s=[None, None, 1],
             alpha=[None, 0.2, None],
         )
-        plot.output(
-            nx=3, ny=2, ysize=10, xsize=15, name=filename.format(f"loop_{i:02d}")
-        )
+        plot.output(nx=3, ny=2, ysize=10, xsize=15, name=filename.format(f"loop_{i:02d}"))
 
     # Done, compute posterior statistics
     mean, var = kl.samples.sample_stat(signal)
@@ -131,7 +126,8 @@ if __name__ == "__main__":
     plot = ift.Plot()
     plot.add(ift.Field.from_raw(plotting_domain, mean.val), title="Posterior Mean")
     plot.add(
-        ift.Field.from_raw(plotting_domain, ift.sqrt(var).val),
+        ift.Field.from_raw(plotting_domain,
+                           ift.sqrt(var).val),
         title="Posterior Standard Deviation",
     )
     plot.add(
@@ -139,7 +135,8 @@ if __name__ == "__main__":
         title="Posterior Unsliced Mean",
     )
     plot.add(
-        ift.Field.from_raw(plotting_domain_expanded, ift.sqrt(var_unsliced).val),
+        ift.Field.from_raw(plotting_domain_expanded,
+                           ift.sqrt(var_unsliced).val),
         title="Posterior Unsliced Standard Deviation",
     )
     plot.output(xsize=15, ysize=15, name=filename.format("results"))

@@ -47,8 +47,12 @@ class SamplingEnabler(EndomorphicOperator):
         False.
     """
 
-    def __init__(self, likelihood, prior, iteration_controller,
-                 approximation=None, start_from_zero=False):
+    def __init__(self,
+                 likelihood,
+                 prior,
+                 iteration_controller,
+                 approximation=None,
+                 start_from_zero=False):
         if not isinstance(likelihood, Operator) or not isinstance(prior, Operator):
             raise TypeError
         self._likelihood = likelihood
@@ -70,17 +74,15 @@ class SamplingEnabler(EndomorphicOperator):
                 raise ValueError("from_inverse must be True here")
             if self._start_from_zero:
                 b = self._op.draw_sample()
-                energy = QuadraticEnergy(0*b, self._op, b)
+                energy = QuadraticEnergy(0 * b, self._op, b)
             else:
                 s = self._prior.draw_sample(from_inverse=True)
                 nj = self._likelihood.draw_sample()
                 b = self._prior(s) + nj
-                energy = QuadraticEnergy(s, self._op, b,
-                                         _grad=self._likelihood(s) - nj)
+                energy = QuadraticEnergy(s, self._op, b, _grad=self._likelihood(s) - nj)
             inverter = ConjugateGradient(self._ic)
             if self._approximation is not None:
-                energy, convergence = inverter(
-                    energy, preconditioner=self._approximation.inverse)
+                energy, convergence = inverter(energy, preconditioner=self._approximation.inverse)
             else:
                 energy, convergence = inverter(energy)
             return b, energy.position
@@ -90,8 +92,7 @@ class SamplingEnabler(EndomorphicOperator):
 
     def __repr__(self):
         from ..utilities import indent
-        return "\n".join((
-            "SamplingEnabler:",
-            indent("\n".join((
-                "Likelihood:", self._likelihood.__repr__(),
-                "Prior:", self._prior.__repr__())))))
+        return "\n".join(
+            ("SamplingEnabler:",
+             indent("\n".join(
+                 ("Likelihood:", self._likelihood.__repr__(), "Prior:", self._prior.__repr__())))))

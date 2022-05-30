@@ -32,7 +32,7 @@ def hartley(p, axes=None):
 seed = 42
 key = random.PRNGKey(seed)
 
-dims = (1024, )
+dims = (1024,)
 
 n_mgvi_iterations = 3
 n_samples = 4
@@ -60,8 +60,7 @@ key, subkey = random.split(key)
 pos_truth = jft.Field(random.normal(shape=dims, key=key))
 signal_response_truth = signal_response(pos_truth)
 key, subkey = random.split(key)
-noise_truth = jnp.sqrt(noise_cov(jnp.ones(dims))
-                      ) * random.normal(shape=dims, key=key)
+noise_truth = jnp.sqrt(noise_cov(jnp.ones(dims))) * random.normal(shape=dims, key=key)
 data = signal_response_truth + noise_truth
 
 nll = jft.Gaussian(data, noise_cov_inv) @ signal_response
@@ -75,8 +74,7 @@ ham_vg = jit(jft.mean_value_and_grad(ham))
 ham_metric = jit(jft.mean_metric(ham.metric))
 MetricKL = jit(
     partial(jft.MetricKL, ham),
-    static_argnames=("n_samples", "mirror_samples", "linear_sampling_name")
-)
+    static_argnames=("n_samples", "mirror_samples", "linear_sampling_name"))
 
 # Minimize the potential
 for i in range(n_mgvi_iterations):
@@ -88,8 +86,7 @@ for i in range(n_mgvi_iterations):
         n_samples=n_samples,
         key=subkey,
         mirror_samples=True,
-        linear_sampling_kwargs={"absdelta": absdelta / 10.}
-    )
+        linear_sampling_kwargs={"absdelta": absdelta / 10.})
 
     print("Minimizing...", file=sys.stderr)
     opt_state = jft.minimize(
@@ -107,8 +104,7 @@ for i in range(n_mgvi_iterations):
             "subproblem_kwargs": {
                 "miniter": 6,
             }
-        }
-    )
+        })
     # opt_state = jft.minimize(
     #     None,
     #     x0=pos,
@@ -121,14 +117,10 @@ for i in range(n_mgvi_iterations):
     #     }
     # )
     pos = opt_state.x
-    print(
-        (
-            f"Post MGVI Iteration {i}: Energy {samples.at(pos).mean(ham):2.4e}"
-            f"; Cos-Sim {cosine_similarity(pos.val, pos_truth.val):2.3%}"
-            f"; #NaNs {jnp.isnan(pos.val).sum()}"
-        ),
-        file=sys.stderr
-    )
+    print((f"Post MGVI Iteration {i}: Energy {samples.at(pos).mean(ham):2.4e}"
+           f"; Cos-Sim {cosine_similarity(pos.val, pos_truth.val):2.3%}"
+           f"; #NaNs {jnp.isnan(pos.val).sum()}"),
+          file=sys.stderr)
 
 post_sr_mean = jft.mean(tuple(signal_response(s) for s in samples.at(pos)))
 fig, ax = plt.subplots()

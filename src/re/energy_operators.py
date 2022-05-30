@@ -12,21 +12,20 @@ from .likelihood import Likelihood
 
 
 def standard_t(nwr, dof):
-    return jnp.sum(jnp.log1p(nwr**2 / dof) * (dof + 1)) / 2
+    return jnp.sum(jnp.log1p(nwr**2 / dof) * (dof+1)) / 2
 
 
 def _shape_w_fixed_dtype(dtype):
+
     def shp_w_dtp(e):
         return ShapeWithDtype(jnp.shape(e), dtype)
 
     return shp_w_dtp
 
 
-def _get_cov_inv_and_std_inv(
-    cov_inv: Optional[Callable],
-    std_inv: Optional[Callable],
-    primals=None
-) -> Tuple[Callable, Callable]:
+def _get_cov_inv_and_std_inv(cov_inv: Optional[Callable],
+                             std_inv: Optional[Callable],
+                             primals=None) -> Tuple[Callable, Callable]:
     if not cov_inv and not std_inv:
 
         def cov_inv(tangents):
@@ -36,10 +35,8 @@ def _get_cov_inv_and_std_inv(
             return tangents
 
     elif not cov_inv:
-        wm = (
-            "assuming a diagonal covariance matrix"
-            ";\nsetting `cov_inv` to `std_inv(jnp.ones_like(data))**2`"
-        )
+        wm = ("assuming a diagonal covariance matrix"
+              ";\nsetting `cov_inv` to `std_inv(jnp.ones_like(data))**2`")
         print(wm, file=sys.stderr)
         noise_std_inv_sq = std_inv(tree_map(jnp.ones_like, primals))**2
 
@@ -47,14 +44,10 @@ def _get_cov_inv_and_std_inv(
             return noise_std_inv_sq * tangents
 
     elif not std_inv:
-        wm = (
-            "assuming a diagonal covariance matrix"
-            ";\nsetting `std_inv` to `cov_inv(jnp.ones_like(data))**0.5`"
-        )
+        wm = ("assuming a diagonal covariance matrix"
+              ";\nsetting `std_inv` to `cov_inv(jnp.ones_like(data))**0.5`")
         print(wm, file=sys.stderr)
-        noise_cov_inv_sqrt = tree_map(
-            jnp.sqrt, cov_inv(tree_map(jnp.ones_like, primals))
-        )
+        noise_cov_inv_sqrt = tree_map(jnp.sqrt, cov_inv(tree_map(jnp.ones_like, primals)))
 
         def std_inv(tangents):
             return noise_cov_inv_sqrt * tangents
@@ -64,11 +57,9 @@ def _get_cov_inv_and_std_inv(
     return cov_inv, std_inv
 
 
-def Gaussian(
-    data,
-    noise_cov_inv: Optional[Callable] = None,
-    noise_std_inv: Optional[Callable] = None
-):
+def Gaussian(data,
+             noise_cov_inv: Optional[Callable] = None,
+             noise_std_inv: Optional[Callable] = None):
     """Gaussian likelihood of the data
 
     Parameters
@@ -87,9 +78,7 @@ def Gaussian(
     root. If both `noise_cov_inv` and `noise_std_inv` are `None`, a unit
     covariance is assumed.
     """
-    noise_cov_inv, noise_std_inv = _get_cov_inv_and_std_inv(
-        noise_cov_inv, noise_std_inv, data
-    )
+    noise_cov_inv, noise_std_inv = _get_cov_inv_and_std_inv(noise_cov_inv, noise_std_inv, data)
 
     def hamiltonian(primals):
         p_res = primals - data
@@ -111,16 +100,13 @@ def Gaussian(
         transformation=transformation,
         left_sqrt_metric=left_sqrt_metric,
         metric=metric,
-        lsm_tangents_shape=lsm_tangents_shape
-    )
+        lsm_tangents_shape=lsm_tangents_shape)
 
 
-def StudentT(
-    data,
-    dof,
-    noise_cov_inv: Optional[Callable] = None,
-    noise_std_inv: Optional[Callable] = None
-):
+def StudentT(data,
+             dof,
+             noise_cov_inv: Optional[Callable] = None,
+             noise_std_inv: Optional[Callable] = None):
     """Student's t likelihood of the data
 
     Parameters
@@ -141,9 +127,7 @@ def StudentT(
     root. If both `noise_cov_inv` and `noise_std_inv` are `None`, a unit
     covariance is assumed.
     """
-    noise_cov_inv, noise_std_inv = _get_cov_inv_and_std_inv(
-        noise_cov_inv, noise_std_inv, data
-    )
+    noise_cov_inv, noise_std_inv = _get_cov_inv_and_std_inv(noise_cov_inv, noise_std_inv, data)
 
     def hamiltonian(primals):
         """
@@ -155,19 +139,19 @@ def StudentT(
         """
         primals, tangent : mean
         """
-        return noise_cov_inv((dof + 1) / (dof + 3) * tangents)
+        return noise_cov_inv((dof+1) / (dof+3) * tangents)
 
     def left_sqrt_metric(primals, tangents):
         """
         primals, tangents : mean
         """
-        return noise_std_inv(jnp.sqrt((dof + 1) / (dof + 3)) * tangents)
+        return noise_std_inv(jnp.sqrt((dof+1) / (dof+3)) * tangents)
 
     def transformation(primals):
         """
         primals : mean
         """
-        return noise_std_inv(jnp.sqrt((dof + 1) / (dof + 3)) * primals)
+        return noise_std_inv(jnp.sqrt((dof+1) / (dof+3)) * primals)
 
     lsm_tangents_shape = tree_map(ShapeWithDtype.from_leave, data)
 
@@ -176,8 +160,7 @@ def StudentT(
         transformation=transformation,
         left_sqrt_metric=left_sqrt_metric,
         metric=metric,
-        lsm_tangents_shape=lsm_tangents_shape
-    )
+        lsm_tangents_shape=lsm_tangents_shape)
 
 
 def Poissonian(data, sampling_dtype=float):
@@ -226,8 +209,7 @@ def Poissonian(data, sampling_dtype=float):
         transformation=transformation,
         left_sqrt_metric=left_sqrt_metric,
         metric=metric,
-        lsm_tangents_shape=lsm_tangents_shape
-    )
+        lsm_tangents_shape=lsm_tangents_shape)
 
 
 def VariableCovarianceGaussian(data):
@@ -287,8 +269,7 @@ def VariableCovarianceGaussian(data):
         transformation=transformation,
         left_sqrt_metric=left_sqrt_metric,
         metric=metric,
-        lsm_tangents_shape=lsm_tangents_shape
-    )
+        lsm_tangents_shape=lsm_tangents_shape)
 
 
 def VariableCovarianceStudentT(data, dof):
@@ -305,6 +286,7 @@ def VariableCovarianceStudentT(data, dof):
     -----
     The likelihood acts on a tuple of (mean, std).
     """
+
     def hamiltonian(primals):
         """
         primals : pair of (mean, std)
@@ -317,19 +299,14 @@ def VariableCovarianceStudentT(data, dof):
         """
         primals, tangent : pair of (mean, std)
         """
-        return (
-            tangent[0] * (dof + 1) / (dof + 3) / primals[1]**2,
-            tangent[1] * 2 * dof / (dof + 3) / primals[1]**2
-        )
+        return (tangent[0] * (dof+1) / (dof+3) / primals[1]**2,
+                tangent[1] * 2 * dof / (dof+3) / primals[1]**2)
 
     def left_sqrt_metric(primals, tangents):
         """
         primals, tangents : pair of (mean, std)
         """
-        cov = (
-            (dof + 1) / (dof + 3) / primals[1]**2,
-            2 * dof / (dof + 3) / primals[1]**2
-        )
+        cov = ((dof+1) / (dof+3) / primals[1]**2, 2 * dof / (dof+3) / primals[1]**2)
         res = (jnp.sqrt(cov[0]) * tangents[0], jnp.sqrt(cov[1]) * tangents[1])
         return res
 
@@ -339,8 +316,7 @@ def VariableCovarianceStudentT(data, dof):
         hamiltonian,
         left_sqrt_metric=left_sqrt_metric,
         metric=metric,
-        lsm_tangents_shape=lsm_tangents_shape
-    )
+        lsm_tangents_shape=lsm_tangents_shape)
 
 
 def Categorical(data, axis=-1, sampling_dtype=float):
@@ -356,6 +332,7 @@ def Categorical(data, axis=-1, sampling_dtype=float):
     sampling_dtype : dtype, optional
         Data-type for sampling.
     """
+
     def hamiltonian(primals):
         from jax.nn import log_softmax
         logits = log_softmax(primals, axis=axis)
@@ -366,14 +343,14 @@ def Categorical(data, axis=-1, sampling_dtype=float):
 
         preds = softmax(primals, axis=axis)
         norm_term = jnp.sum(preds * tangents, axis=axis, keepdims=True)
-        return preds * tangents - preds * norm_term
+        return preds*tangents - preds*norm_term
 
     def left_sqrt_metric(primals, tangents):
         from jax.nn import softmax
 
         sqrtp = jnp.sqrt(softmax(primals, axis=axis))
         norm_term = jnp.sum(sqrtp * tangents, axis=axis, keepdims=True)
-        return sqrtp * (tangents - sqrtp * norm_term)
+        return sqrtp * (tangents - sqrtp*norm_term)
 
     lsm_tangents_shape = tree_map(_shape_w_fixed_dtype(sampling_dtype), data)
 
@@ -381,5 +358,4 @@ def Categorical(data, axis=-1, sampling_dtype=float):
         hamiltonian,
         left_sqrt_metric=left_sqrt_metric,
         metric=metric,
-        lsm_tangents_shape=lsm_tangents_shape
-    )
+        lsm_tangents_shape=lsm_tangents_shape)

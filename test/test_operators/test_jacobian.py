@@ -22,11 +22,10 @@ import nifty8 as ift
 from ..common import list2fixture, setup_function, teardown_function
 
 pmp = pytest.mark.parametrize
-space = list2fixture([
-    ift.GLSpace(5),
-    ift.RGSpace(3, distances=.789),
-    ift.RGSpace([4, 4], distances=.789)
-])
+space = list2fixture(
+    [ift.GLSpace(5),
+     ift.RGSpace(3, distances=.789),
+     ift.RGSpace([4, 4], distances=.789)])
 _h_RG_spaces = [
     ift.RGSpace(7, distances=0.2, harmonic=True),
     ift.RGSpace((3, 4), distances=(.2, .3), harmonic=True)
@@ -54,7 +53,7 @@ def testBinary(type1, type2, space, seed):
         dom = ift.MultiDomain.union((dom1, dom2))
         select_s1 = ift.ducktape(None, dom1, "s1")
         select_s2 = ift.ducktape(None, dom2, "s2")
-        model = select_s1*select_s2
+        model = select_s1 * select_s2
         pos = ift.from_random(dom, "normal")
         ift.extra.check_operator(model, pos, ntries=ntries)
         model = select_s1 + select_s2
@@ -63,10 +62,10 @@ def testBinary(type1, type2, space, seed):
         model = select_s1.scale(3.)
         pos = ift.from_random(dom1, "normal")
         ift.extra.check_operator(model, pos, ntries=ntries)
-        model = ift.ScalingOperator(space, 2.456)(select_s1*select_s2)
+        model = ift.ScalingOperator(space, 2.456)(select_s1 * select_s2)
         pos = ift.from_random(dom, "normal")
         ift.extra.check_operator(model, pos, ntries=ntries)
-        model = (2.456*(select_s1*select_s2)).ptw("sigmoid")
+        model = (2.456 * (select_s1*select_s2)).ptw("sigmoid")
         pos = ift.from_random(dom, "normal")
         ift.extra.check_operator(model, pos, ntries=ntries)
         pos = ift.from_random(dom, "normal")
@@ -79,11 +78,11 @@ def testBinary(type1, type2, space, seed):
         pos = ift.from_random(dom1, "normal")
         ift.extra.check_operator(model, pos, ntries=ntries)
         f = ift.from_random(space, "normal")
-        model = select_s1.clip(f-0.1, f+1.)
+        model = select_s1.clip(f - 0.1, f + 1.)
         pos = ift.from_random(dom1, "normal")
         ift.extra.check_operator(model, pos, ntries=ntries)
         if isinstance(space, ift.RGSpace):
-            model = ift.FFTOperator(space)(select_s1*select_s2)
+            model = ift.FFTOperator(space)(select_s1 * select_s2)
             pos = ift.from_random(dom, "normal")
             ift.extra.check_operator(model, pos, ntries=ntries)
 
@@ -129,19 +128,23 @@ def testAbs(space, seed):
         ift.extra.check_operator(op, f, ntries=ntries)
 
 
-@pmp('target', [ift.RGSpace(64, distances=.789, harmonic=True),
-                ift.RGSpace([10, 10], distances=.789, harmonic=True)])
+@pmp('target', [
+    ift.RGSpace(64, distances=.789, harmonic=True),
+    ift.RGSpace([10, 10], distances=.789, harmonic=True)
+])
 @pmp('causal', [True, False])
 @pmp('minimum_phase', [True, False])
 def testDynamicModel(target, causal, minimum_phase, seed):
     with ift.random.Context(seed):
-        dct = {'target': target,
-               'harmonic_padding': None,
-               'sm_s0': 3.,
-               'sm_x0': 1.,
-               'key': 'f',
-               'causal': causal,
-               'minimum_phase': minimum_phase}
+        dct = {
+            'target': target,
+            'harmonic_padding': None,
+            'sm_s0': 3.,
+            'sm_x0': 1.,
+            'key': 'f',
+            'causal': causal,
+            'minimum_phase': minimum_phase
+        }
         model, _ = ift.dynamic_operator(**dct)
         pos = ift.from_random(model.domain, 'normal')
         ift.extra.check_operator(model, pos, ntries=ntries)

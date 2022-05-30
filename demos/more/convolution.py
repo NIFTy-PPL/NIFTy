@@ -30,8 +30,7 @@ def convtest(test_signal, delta, func):
     conv_signal = conv_op(test_signal)
     cac_signal = conv_op.adjoint_times(conv_signal)
 
-    print(test_signal.integrate(), conv_signal.integrate(),
-          cac_signal.integrate())
+    print(test_signal.integrate(), conv_signal.integrate(), cac_signal.integrate())
 
     # generate kernel image
     conv_delta = conv_op(delta)

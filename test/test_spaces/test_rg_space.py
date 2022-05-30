@@ -40,25 +40,27 @@ CONSTRUCTOR_CONFIGS = [[(8,), None, False, {
     'distances': (12.0,),
     'harmonic': True,
     'size': 8,
-}], [(11, 11), None, False, {
-    'shape': (11, 11),
-    'distances': (1/11, 1/11),
-    'harmonic': False,
-    'size': 121,
-}], [(12, 12), (1.3, 1.3), True, {
-    'shape': (12, 12),
-    'distances': (1.3, 1.3),
-    'harmonic': True,
-    'size': 144,
-}]]
+}],
+                       [(11, 11), None, False, {
+                           'shape': (11, 11),
+                           'distances': (1 / 11, 1 / 11),
+                           'harmonic': False,
+                           'size': 121,
+                       }],
+                       [(12, 12), (1.3, 1.3), True, {
+                           'shape': (12, 12),
+                           'distances': (1.3, 1.3),
+                           'harmonic': True,
+                           'size': 144,
+                       }]]
 
 
 def get_k_length_array_configs():
     # for RGSpace(shape=(4, 4), distances=(0.25,0.25))
     cords_0 = np.ogrid[0:4, 0:4]
-    da_0 = ((cords_0[0] - 4//2)*0.25)**2
+    da_0 = ((cords_0[0] - 4//2) * 0.25)**2
     da_0 = np.fft.ifftshift(da_0)
-    temp = ((cords_0[1] - 4//2)*0.25)**2
+    temp = ((cords_0[1] - 4//2) * 0.25)**2
     temp = np.fft.ifftshift(temp)
     da_0 = da_0 + temp
     da_0 = np.sqrt(da_0)
@@ -68,11 +70,10 @@ def get_k_length_array_configs():
 
 
 def get_dvol_configs():
-    return [[(11, 11), None, False, 1], [(11, 11), None, False, 1],
-            [(11, 11), (1.3, 1.3), False, 1], [(11, 11), (1.3, 1.3), False,
-                                               1], [(11, 11), None, True, 1],
-            [(11, 11), None, True, 1], [(11, 11), (1.3, 1.3), True,
-                                        1], [(11, 11), (1.3, 1.3), True, 1]]
+    return [[(11, 11), None, False, 1], [(11, 11), None, False, 1], [(11, 11), (1.3, 1.3), False,
+                                                                     1],
+            [(11, 11), (1.3, 1.3), False, 1], [(11, 11), None, True, 1], [(11, 11), None, True, 1],
+            [(11, 11), (1.3, 1.3), True, 1], [(11, 11), (1.3, 1.3), True, 1]]
 
 
 @pmp('attribute, expected_type', [['distances', tuple]])

@@ -71,7 +71,7 @@ class PowerSpace(StructuredDomain):
         nbin = int(nbin)
         if nbin < 3:
             raise ValueError("nbin must be at least 3")
-        return np.linspace(float(first_bound), float(last_bound), nbin-1)
+        return np.linspace(float(first_bound), float(last_bound), nbin - 1)
 
     @staticmethod
     def logarithmic_binbounds(nbin, first_bound, last_bound):
@@ -97,9 +97,8 @@ class PowerSpace(StructuredDomain):
         nbin = int(nbin)
         if nbin < 3:
             raise ValueError("nbin must be at least 3")
-        return np.logspace(np.log(float(first_bound)),
-                           np.log(float(last_bound)),
-                           nbin-1, base=np.e)
+        return np.logspace(
+            np.log(float(first_bound)), np.log(float(last_bound)), nbin - 1, base=np.e)
 
     @staticmethod
     def useful_binbounds(space, logarithmic, nbin=None):
@@ -133,14 +132,14 @@ class PowerSpace(StructuredDomain):
         dists = space.get_unique_k_lengths()
         if len(dists) < 3:
             raise ValueError("Space does not have enough unique k lengths")
-        lbound = 0.5*(dists[0]+dists[1])
-        rbound = 0.5*(dists[-2]+dists[-1])
+        lbound = 0.5 * (dists[0] + dists[1])
+        rbound = 0.5 * (dists[-2] + dists[-1])
         dists[0] = lbound
         dists[-1] = rbound
         if logarithmic:
             dists = np.log(dists)
         binsz_min = np.max(np.diff(dists))
-        nbin_max = int((dists[-1]-dists[0])/binsz_min)+2
+        nbin_max = int((dists[-1] - dists[0]) / binsz_min) + 2
         if nbin is None:
             nbin = nbin_max
         if nbin < 3:
@@ -153,8 +152,7 @@ class PowerSpace(StructuredDomain):
             return PowerSpace.linear_binbounds(nbin, lbound, rbound)
 
     def __init__(self, harmonic_partner, binbounds=None):
-        if not (isinstance(harmonic_partner, StructuredDomain) and
-                harmonic_partner.harmonic):
+        if not (isinstance(harmonic_partner, StructuredDomain) and harmonic_partner.harmonic):
             raise ValueError("harmonic_partner must be a harmonic space.")
         if harmonic_partner.scalar_dvol is None:
             raise ValueError("harmonic partner must have "
@@ -172,34 +170,33 @@ class PowerSpace(StructuredDomain):
             k_length_array = self.harmonic_partner.get_k_length_array()
             if binbounds is None:
                 tmp = harmonic_partner.get_unique_k_lengths()
-                tbb = 0.5*(tmp[:-1]+tmp[1:])
+                tbb = 0.5 * (tmp[:-1] + tmp[1:])
             else:
                 tbb = binbounds
             temp_pindex = np.searchsorted(tbb, k_length_array.val)
-            nbin = len(tbb)+1
+            nbin = len(tbb) + 1
             temp_rho = np.bincount(temp_pindex.ravel(), minlength=nbin)
             if (temp_rho == 0).any():
                 raise ValueError("empty bins detected")
             # The explicit conversion to float64 is necessary because bincount
             # sometimes returns its result as an integer array, even when
             # floating-point weights are present ...
-            temp_k_lengths = np.bincount(temp_pindex.ravel(),
-                weights=k_length_array.val.ravel(),
-                minlength=nbin).astype(np.float64, copy=False)
+            temp_k_lengths = np.bincount(
+                temp_pindex.ravel(), weights=k_length_array.val.ravel(), minlength=nbin).astype(
+                    np.float64, copy=False)
             temp_k_lengths = temp_k_lengths / temp_rho
             temp_k_lengths.flags.writeable = False
             temp_pindex.flags.writeable = False
-            temp_dvol = temp_rho*pdvol
+            temp_dvol = temp_rho * pdvol
             temp_dvol.flags.writeable = False
-            self._powerIndexCache[key] = (binbounds, temp_pindex,
-                                          temp_k_lengths, temp_dvol)
+            self._powerIndexCache[key] = (binbounds, temp_pindex, temp_k_lengths, temp_dvol)
 
         (self._binbounds, self._pindex, self._k_lengths, self._dvol) = \
             self._powerIndexCache[key]
 
     def __repr__(self):
-        return ("PowerSpace(harmonic_partner={}, binbounds={})"
-                .format(self.harmonic_partner, self._binbounds))
+        return ("PowerSpace(harmonic_partner={}, binbounds={})".format(
+            self.harmonic_partner, self._binbounds))
 
     @property
     def harmonic(self):

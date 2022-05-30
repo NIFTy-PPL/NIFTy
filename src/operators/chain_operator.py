@@ -91,8 +91,8 @@ class ChainOperator(LinearOperator):
         # combine DiagonalOperators where possible
         opsnew = []
         for op in ops:
-            if (len(opsnew) > 0 and isinstance(opsnew[-1], DiagonalOperator)
-                    and isinstance(op, DiagonalOperator)):
+            if (len(opsnew) > 0 and isinstance(opsnew[-1], DiagonalOperator) and
+                    isinstance(op, DiagonalOperator)):
                 opsnew[-1] = opsnew[-1]._combine_prod(op)
             else:
                 opsnew.append(op)
@@ -101,9 +101,8 @@ class ChainOperator(LinearOperator):
         from .block_diagonal_operator import BlockDiagonalOperator
         opsnew = []
         for op in ops:
-            if (len(opsnew) > 0
-                    and isinstance(opsnew[-1], BlockDiagonalOperator)
-                    and isinstance(op, BlockDiagonalOperator)):
+            if (len(opsnew) > 0 and isinstance(opsnew[-1], BlockDiagonalOperator) and
+                    isinstance(op, BlockDiagonalOperator)):
                 opsnew[-1] = opsnew[-1]._combine_chain(op)
             else:
                 opsnew.append(op)
@@ -135,8 +134,7 @@ class ChainOperator(LinearOperator):
         if trafo == 0:
             return self
         if trafo == ADJ or trafo == INV:
-            return self.make(
-                [op._flip_modes(trafo) for op in reversed(self._ops)])
+            return self.make([op._flip_modes(trafo) for op in reversed(self._ops)])
         if trafo == ADJ | INV:
             return self.make([op._flip_modes(trafo) for op in self._ops])
         raise ValueError("invalid operator transformation")

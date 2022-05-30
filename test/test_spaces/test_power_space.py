@@ -38,12 +38,9 @@ HARMONIC_SPACES = [
 ]
 
 # Try all sensible kinds of combinations of spaces and binning parameters
-CONSISTENCY_CONFIGS_IMPLICIT = product(HARMONIC_SPACES, [None], [None, 3, 4],
-                                       [True, False])
-CONSISTENCY_CONFIGS_EXPLICIT = product(HARMONIC_SPACES, [[0., 1.3]], [None],
-                                       [None])
-CONSISTENCY_CONFIGS = chain(CONSISTENCY_CONFIGS_IMPLICIT,
-                            CONSISTENCY_CONFIGS_EXPLICIT)
+CONSISTENCY_CONFIGS_IMPLICIT = product(HARMONIC_SPACES, [None], [None, 3, 4], [True, False])
+CONSISTENCY_CONFIGS_EXPLICIT = product(HARMONIC_SPACES, [[0., 1.3]], [None], [None])
+CONSISTENCY_CONFIGS = chain(CONSISTENCY_CONFIGS_IMPLICIT, CONSISTENCY_CONFIGS_EXPLICIT)
 
 # [harmonic_partner, logarithmic, nbin, binbounds, expected]
 CONSTRUCTOR_CONFIGS = [
@@ -55,35 +52,24 @@ CONSTRUCTOR_CONFIGS = [
     }],
     [
         ift.RGSpace((8,), harmonic=True), None, None, None, {
-            'harmonic':
-            False,
+            'harmonic': False,
             'shape': (5,),
-            'size':
-            5,
-            'harmonic_partner':
-            ift.RGSpace((8,), harmonic=True),
-            'binbounds':
-            None,
-            'pindex':
-            np.array([0, 1, 2, 3, 4, 3, 2, 1]),
-            'k_lengths':
-            np.array([0., 1., 2., 3., 4.]),
+            'size': 5,
+            'harmonic_partner': ift.RGSpace((8,), harmonic=True),
+            'binbounds': None,
+            'pindex': np.array([0, 1, 2, 3, 4, 3, 2, 1]),
+            'k_lengths': np.array([0., 1., 2., 3., 4.]),
         }
     ],
     [
         ift.RGSpace((8,), harmonic=True), True, None, None, {
-            'harmonic':
-            False,
+            'harmonic': False,
             'shape': (4,),
-            'size':
-            4,
-            'harmonic_partner':
-            ift.RGSpace((8,), harmonic=True),
+            'size': 4,
+            'harmonic_partner': ift.RGSpace((8,), harmonic=True),
             'binbounds': (0.5, 1.3228756555322954, 3.5),
-            'pindex':
-            np.array([0, 1, 2, 2, 3, 2, 2, 1]),
-            'k_lengths':
-            np.array([0., 1., 2.5, 4.]),
+            'pindex': np.array([0, 1, 2, 2, 3, 2, 2, 1]),
+            'k_lengths': np.array([0., 1., 2.5, 4.]),
         }
     ],
 ]
@@ -114,22 +100,17 @@ def test_rhopindexConsistency(harmonic_partner, binbounds, nbin, logarithmic):
     p = ift.PowerSpace(harmonic_partner=harmonic_partner, binbounds=bb)
 
     assert_equal(
-        np.bincount(p.pindex.ravel()),
-        p.dvol,
-        err_msg='rho is not equal to pindex degeneracy')
+        np.bincount(p.pindex.ravel()), p.dvol, err_msg='rho is not equal to pindex degeneracy')
 
 
-@pmp('harmonic_partner, logarithmic, nbin, binbounds, expected',
-     CONSTRUCTOR_CONFIGS)
+@pmp('harmonic_partner, logarithmic, nbin, binbounds, expected', CONSTRUCTOR_CONFIGS)
 def test_constructor(harmonic_partner, logarithmic, nbin, binbounds, expected):
     if 'error' in expected:
         with assert_raises(expected['error']):
-            bb = ift.PowerSpace.useful_binbounds(harmonic_partner, logarithmic,
-                                                 nbin)
+            bb = ift.PowerSpace.useful_binbounds(harmonic_partner, logarithmic, nbin)
             ift.PowerSpace(harmonic_partner=harmonic_partner, binbounds=bb)
     else:
-        bb = ift.PowerSpace.useful_binbounds(harmonic_partner, logarithmic,
-                                             nbin)
+        bb = ift.PowerSpace.useful_binbounds(harmonic_partner, logarithmic, nbin)
         p = ift.PowerSpace(harmonic_partner=harmonic_partner, binbounds=bb)
         for key, value in expected.items():
             if isinstance(value, np.ndarray):
@@ -148,7 +129,7 @@ def test_dvol():
     hp = ift.RGSpace(10, harmonic=True)
     p = ift.PowerSpace(harmonic_partner=hp)
     v1 = hp.dvol
-    v1 = hp.size*v1 if np.isscalar(v1) else np.sum(v1)
+    v1 = hp.size * v1 if np.isscalar(v1) else np.sum(v1)
     v2 = p.dvol
-    v2 = p.size*v2 if np.isscalar(v2) else np.sum(v2)
+    v2 = p.size * v2 if np.isscalar(v2) else np.sum(v2)
     assert_allclose(v1, v2)

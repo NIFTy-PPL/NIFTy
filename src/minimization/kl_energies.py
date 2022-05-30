@@ -39,7 +39,7 @@ from .sample_list import ResidualSampleList, SampleListBase
 
 
 def _reduce_field(field, keys):
-    if isinstance(field, MultiField) and len(keys)>0:
+    if isinstance(field, MultiField) and len(keys) > 0:
         return field.extract_by_keys(set(field.keys()) - set(keys))
     return field
 
@@ -76,6 +76,7 @@ def _reduce_by_keys(field, operator, keys):
 
 
 class _SelfAdjointOperatorWrapper(EndomorphicOperator):
+
     def __init__(self, domain, func):
         from ..sugar import makeDomain
         self._func = func
@@ -87,8 +88,14 @@ class _SelfAdjointOperatorWrapper(EndomorphicOperator):
         return self._func(x)
 
 
-def draw_samples(position, H, minimizer, n_samples, mirror_samples, napprox=0,
-                 want_error=False, comm=None):
+def draw_samples(position,
+                 H,
+                 minimizer,
+                 n_samples,
+                 mirror_samples,
+                 napprox=0,
+                 want_error=False,
+                 comm=None):
     if not isinstance(n_samples, int):
         raise TypeError
     if not isinstance(mirror_samples, bool):
@@ -118,9 +125,9 @@ def draw_samples(position, H, minimizer, n_samples, mirror_samples, napprox=0,
         transformation_mean = sam_position + fl.jac.adjoint(fl.val)
         # Note: This metric is equivalent to H.metric, except for the case of a
         # `VariableCovarianceGaussianEnergy` with `use_full_fisher = True`.
-        met = SamplingEnabler(SandwichOperator.make(fl.jac, scale),
-                              ScalingOperator(fl.domain, 1., float),
-                              H.iteration_controller)
+        met = SamplingEnabler(
+            SandwichOperator.make(fl.jac, scale), ScalingOperator(fl.domain, 1., float),
+            H.iteration_controller)
     else:
         met = H(Linearization.make_var(sam_position, want_metric=True)).metric
     if napprox >= 1:
@@ -130,7 +137,7 @@ def draw_samples(position, H, minimizer, n_samples, mirror_samples, napprox=0,
     # Draw samples
     sseq = random.spawn_sseq(n_samples)
     if mirror_samples:
-        sseq = reduce(lambda a, b: a+b, [[ss]*2 for ss in sseq])
+        sseq = reduce(lambda a, b: a + b, [[ss] * 2 for ss in sseq])
     local_samples = []
     local_neg = []
     utilities.check_MPI_synced_random_state(comm)
@@ -141,7 +148,7 @@ def draw_samples(position, H, minimizer, n_samples, mirror_samples, napprox=0,
     for i in range(*shareRange(len(sseq), ntask, rank)):
         with random.Context(sseq[i]):
             neg = mirror_samples and (i % 2 != 0)
-            if not neg or y is None:  # we really need to draw a sample
+            if not neg or y is None:    # we really need to draw a sample
                 y, yi = met.special_draw_sample(True)
 
             if geometric:
@@ -158,9 +165,16 @@ def draw_samples(position, H, minimizer, n_samples, mirror_samples, napprox=0,
     return ResidualSampleList(position, local_samples, local_neg, comm)
 
 
-def SampledKLEnergy(position, hamiltonian, n_samples, minimizer_sampling,
-                    mirror_samples=True, constants=[], point_estimates=[],
-                    napprox=0, comm=None, nanisinf=True):
+def SampledKLEnergy(position,
+                    hamiltonian,
+                    n_samples,
+                    minimizer_sampling,
+                    mirror_samples=True,
+                    constants=[],
+                    point_estimates=[],
+                    napprox=0,
+                    comm=None,
+                    nanisinf=True):
     """Provides the sampled Kullback-Leibler used for Variational Inference,
     specifically for geometric Variational Inference (geoVI) and Metric
     Gaussian VI (MGVI).
@@ -287,8 +301,14 @@ def SampledKLEnergy(position, hamiltonian, n_samples, minimizer_sampling,
     position, hamiltonian = _reduce_by_keys(position, hamiltonian, invariant)
 
     _, ham_sampling = _reduce_by_keys(position, hamiltonian, point_estimates)
-    sample_list = draw_samples(position, ham_sampling, minimizer_sampling, n_samples,
-                               mirror_samples, napprox=napprox, comm=comm)
+    sample_list = draw_samples(
+        position,
+        ham_sampling,
+        minimizer_sampling,
+        n_samples,
+        mirror_samples,
+        napprox=napprox,
+        comm=comm)
     return SampledKLEnergyClass(sample_list, hamiltonian, constants, inv_pos, nanisinf)
 
 
@@ -299,6 +319,7 @@ class SampledKLEnergyClass(Energy):
 
     Supports the samples to be distributed across MPI tasks.
     """
+
     def __init__(self, sample_list, hamiltonian, constants, invariants, nanisinf):
         myassert(isinstance(sample_list, ResidualSampleList))
         myassert(sample_list.domain is hamiltonian.domain)
@@ -333,21 +354,22 @@ class SampledKLEnergyClass(Energy):
         return self._grad
 
     def at(self, position):
-        return SampledKLEnergyClass(self._sample_list.at(position),
-                                    self._hamiltonian, self._constants,
-                                    self._invariants, self._nanisinf)
+        return SampledKLEnergyClass(
+            self._sample_list.at(position), self._hamiltonian, self._constants, self._invariants,
+            self._nanisinf)
 
     def apply_metric(self, x):
+
         def _func(inp):
             inp, tmp = _reduce_by_keys(inp, self._hamiltonian, self._constants)
             tmp = tmp(Linearization.make_var(inp, want_metric=True))
             return tmp.metric(x)
+
         return self._sample_list.average(_func)
 
     @property
     def metric(self):
-        return _SelfAdjointOperatorWrapper(self.position.domain,
-                                           self.apply_metric)
+        return _SelfAdjointOperatorWrapper(self.position.domain, self.apply_metric)
 
     @property
     def samples(self):

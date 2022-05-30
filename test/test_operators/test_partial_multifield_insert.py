@@ -40,12 +40,12 @@ def test_part_mf_insert():
     op = a.partial_insert(b)
     fld = ift.from_random(op.domain, 'normal')
     ift.extra.check_operator(op, fld, ntries=ntries)
-    ift.myassert(op.domain is ift.MultiDomain.union(
-        [op1.domain, op2.domain, op4.domain, op5.domain]))
-    ift.myassert(op.target is ift.MultiDomain.union(
-        [op1.target, op2.target, op3.target, op5.target]))
+    ift.myassert(
+        op.domain is ift.MultiDomain.union([op1.domain, op2.domain, op4.domain, op5.domain]))
+    ift.myassert(
+        op.target is ift.MultiDomain.union([op1.target, op2.target, op3.target, op5.target]))
     x, y = fld.val, op(fld).val
-    assert_allclose(y['a1'], x['a']*1.32)
+    assert_allclose(y['a1'], x['a'] * 1.32)
     assert_allclose(y['b1'], np.exp(x['b']))
     assert_allclose(y['c1'], np.sin(x['c0']**2))
     assert_allclose(y['d'], np.tan(x['d0']))

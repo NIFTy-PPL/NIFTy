@@ -55,6 +55,7 @@ class JaxOperator(Operator):
         `MultiDomain`, `func` takes a `dict` as argument and like-wise for the
         target.
     """
+
     def __init__(self, domain, target, func):
         from ..sugar import makeDomain
         self._domain = makeDomain(domain)
@@ -143,6 +144,7 @@ class JaxLinearOperator(LinearOperator):
     user can double check this with the help of
     `nifty8.extra.check_linear_operator`.
     """
+
     def __init__(self, domain, target, func, domain_dtype=None, func_T=None):
         from ..domain_tuple import DomainTuple
         from ..sugar import makeDomain
@@ -151,8 +153,10 @@ class JaxLinearOperator(LinearOperator):
             if isinstance(domain, DomainTuple):
                 inp = SimpleNamespace(shape=domain.shape, dtype=domain_dtype)
             else:
-                inp = {kk: SimpleNamespace(shape=domain[kk].shape, dtype=domain_dtype[kk])
-                       for kk in domain.keys()}
+                inp = {
+                    kk: SimpleNamespace(shape=domain[kk].shape, dtype=domain_dtype[kk])
+                    for kk in domain.keys()
+                }
             func_T = jax.jit(lambda x: jax.linear_transpose(func, inp)(x)[0])
         elif domain_dtype is None and func_T is not None:
             pass
@@ -197,6 +201,7 @@ class JaxLikelihoodEnergyOperator(LikelihoodEnergyOperator):
         The dtype that shall be used for drawing samples from the metric of the
         likelihood.
     """
+
     def __init__(self, domain, func, transformation=None, sampling_dtype=None):
         from ..sugar import makeDomain
         self._domain = makeDomain(domain)

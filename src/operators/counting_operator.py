@@ -18,6 +18,7 @@ from .operator import Operator
 
 
 class CountingOperator(Operator):
+
     def __init__(self, domain):
         from ..sugar import makeDomain
 
@@ -57,10 +58,11 @@ class CountingOperator(Operator):
         return f"CountingOperator({self._domain.__repr__()})"
 
     def report(self):
-        s = [f"* apply: \t\t{self.count_apply:>7}",
-             f"* apply Linearization: \t{self.count_apply_lin:>7}",
-             f"* Jacobian: \t\t{self.count_jac:>7}",
-             f"* Adjoint Jacobian: \t{self.count_jac_adj:>7}"]
+        s = [
+            f"* apply: \t\t{self.count_apply:>7}",
+            f"* apply Linearization: \t{self.count_apply_lin:>7}",
+            f"* Jacobian: \t\t{self.count_jac:>7}", f"* Adjoint Jacobian: \t{self.count_jac_adj:>7}"
+        ]
         return "\n".join(s)
 
     def _simplify_for_constant_input_nontrivial(self, c_inp):
@@ -69,6 +71,7 @@ class CountingOperator(Operator):
 
 
 class _JacCountingOperator(EndomorphicOperator):
+
     def __init__(self, domain):
         from ..sugar import makeDomain
 

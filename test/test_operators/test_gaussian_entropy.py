@@ -32,6 +32,6 @@ def test_gaussian_entropy(N):
     linear_space = ift.RGSpace(N)
     fld = ift.from_random(linear_space, 'uniform')
     # minus due to subtraction in KL
-    entropy = -0.5*np.sum(np.log(2*fld.val*fld.val*np.pi*np.e))
+    entropy = -0.5 * np.sum(np.log(2 * fld.val * fld.val * np.pi * np.e))
     myEntropy = GaussianEntropy(fld.domain)
     assert_allclose(entropy, myEntropy(fld).val)

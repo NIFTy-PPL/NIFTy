@@ -22,6 +22,7 @@ class EndomorphicOperator(LinearOperator):
     """Represents a :class:`LinearOperator` which is endomorphic, i.e. one
     which has identical domain and target.
     """
+
     @property
     def target(self):
         """DomainTuple : returns :attr:`domain`

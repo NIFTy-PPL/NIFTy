@@ -19,8 +19,8 @@ jax_config.update("jax_enable_x64", True)
 seed = 42
 key = random.PRNGKey(seed)
 
-dims_ax1 = (128, )
-dims_ax2 = (256, )
+dims_ax1 = (128,)
+dims_ax2 = (256,)
 
 n_mgvi_iterations = 3
 n_samples = 4
@@ -52,9 +52,8 @@ key, subkey = random.split(key)
 pos_truth = jft.random_like(subkey, ptree)
 signal_response_truth = signal_response(pos_truth)
 key, subkey = random.split(key)
-noise_truth = jnp.sqrt(
-    noise_cov(jnp.ones(signal_response_truth.shape))
-) * random.normal(shape=signal_response_truth.shape, key=key)
+noise_truth = jnp.sqrt(noise_cov(jnp.ones(signal_response_truth.shape))) * random.normal(
+    shape=signal_response_truth.shape, key=key)
 data = signal_response_truth + noise_truth
 
 nll = jft.Gaussian(data, noise_cov_inv) @ signal_response
@@ -64,8 +63,7 @@ ham_vg = jit(jft.mean_value_and_grad(ham))
 ham_metric = jit(jft.mean_metric(ham.metric))
 MetricKL = jit(
     partial(jft.MetricKL, ham),
-    static_argnames=("n_samples", "mirror_samples", "linear_sampling_name")
-)
+    static_argnames=("n_samples", "mirror_samples", "linear_sampling_name"))
 
 key, subkey = random.split(key)
 pos_init = jft.random_like(subkey, ptree)
@@ -81,8 +79,7 @@ for i in range(n_mgvi_iterations):
         n_samples=n_samples,
         key=subkey,
         mirror_samples=True,
-        linear_sampling_kwargs={"absdelta": absdelta / 10.}
-    )
+        linear_sampling_kwargs={"absdelta": absdelta / 10.})
 
     print("Minimizing...", file=sys.stderr)
     opt_state = jft.minimize(
@@ -94,8 +91,7 @@ for i in range(n_mgvi_iterations):
             "hessp": partial(ham_metric, primals_samples=samples),
             "absdelta": absdelta,
             "maxiter": n_newton_iterations
-        }
-    )
+        })
     pos = opt_state.x
     msg = f"Post MGVI Iteration {i}: Energy {samples.at(pos).mean(ham):2.4e}"
     print(msg, file=sys.stderr)
@@ -120,7 +116,7 @@ for ax, (title, field, tp) in zip(axs.flat, to_plot):
         plt.colorbar(im, ax=ax, orientation="horizontal")
     else:
         ax_plot = ax.loglog if tp == "loglog" else ax.plot
-        field = field if isinstance(field, (tuple, list)) else (field, )
+        field = field if isinstance(field, (tuple, list)) else (field,)
         for f in field:
             ax_plot(f, alpha=0.7)
 fig.tight_layout()

@@ -33,15 +33,13 @@ CONSTRUCTOR_CONFIGS = [[
         'harmonic': True,
         'size': 36,
     }
-], [
-    7, 4, {
-        'lmax': 7,
-        'mmax': 4,
-        'shape': (52,),
-        'harmonic': True,
-        'size': 52,
-    }
-], [-1, 28, {
+], [7, 4, {
+    'lmax': 7,
+    'mmax': 4,
+    'shape': (52,),
+    'harmonic': True,
+    'size': 52,
+}], [-1, 28, {
     'error': ValueError
 }]]
 
@@ -50,15 +48,14 @@ def _k_length_array_helper(index_arr, lmax):
     if index_arr <= lmax:
         index_half = index_arr
     else:
-        if (index_arr - lmax) % 2 == 0:
-            index_half = (index_arr + lmax)//2
+        if (index_arr-lmax) % 2 == 0:
+            index_half = (index_arr+lmax) // 2
         else:
-            index_half = (index_arr + lmax + 1)//2
+            index_half = (index_arr+lmax+1) // 2
 
-    m = np.ceil(((2*lmax + 1) - np.sqrt((2*lmax + 1)**2 - 8 *
-                                        (index_half - lmax)))/2).astype(int)
+    m = np.ceil(((2*lmax + 1) - np.sqrt((2*lmax + 1)**2 - 8 * (index_half-lmax))) / 2).astype(int)
 
-    return index_half - m*(2*lmax + 1 - m)//2
+    return index_half - m * (2*lmax + 1 - m) // 2
 
 
 def get_k_length_array_configs():

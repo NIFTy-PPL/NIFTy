@@ -33,8 +33,7 @@ def test_vdot():
 
 def test_func():
     f1 = ift.from_random(domain=dom, random_type="normal", dtype=np.complex128)
-    assert_allclose(
-        f1.ptw("exp").ptw("log")["d1"].val, f1["d1"].val)
+    assert_allclose(f1.ptw("exp").ptw("log")["d1"].val, f1["d1"].val)
 
 
 def test_multifield_field_consistency():
@@ -52,15 +51,14 @@ def test_dataconv():
     if "d1" not in f2:
         raise KeyError()
     assert_equal({"d1": f1}, f2.to_dict())
-    f3 = ift.full(dom, 27+1.j)
+    f3 = ift.full(dom, 27 + 1.j)
     f4 = ift.full(dom, 1.j)
     assert_equal(f2, f3.real)
     assert_equal(f4, f3.imag)
 
 
 def test_blockdiagonal():
-    op = ift.BlockDiagonalOperator(
-        dom, {"d1": ift.ScalingOperator(dom["d1"], 20.)})
+    op = ift.BlockDiagonalOperator(dom, {"d1": ift.ScalingOperator(dom["d1"], 20.)})
     op2 = op(op)
     ift.extra.check_linear_operator(op2)
     assert_equal(type(op2), ift.BlockDiagonalOperator)
@@ -80,5 +78,5 @@ def test_blockdiagonal_nontrivial():
     ift.extra.check_linear_operator(op)
     assert op.domain == dom
     fld = ift.from_random(dom)
-    ift.extra.assert_equal(op(fld)["d1"], 2*fld["d1"])
+    ift.extra.assert_equal(op(fld)["d1"], 2 * fld["d1"])
     ift.extra.assert_equal(op(fld)["d2"], fld["d2"])

@@ -37,8 +37,12 @@ from .utilities import myassert, issingleprec
 __all__ = ["check_linear_operator", "check_operator", "assert_allclose", "minisanity"]
 
 
-def check_linear_operator(op, domain_dtype=np.float64, target_dtype=np.float64,
-                          atol=1e-12, rtol=1e-12, only_r_linear=False):
+def check_linear_operator(op,
+                          domain_dtype=np.float64,
+                          target_dtype=np.float64,
+                          atol=1e-12,
+                          rtol=1e-12,
+                          only_r_linear=False):
     """Checks an operator for algebraic consistency of its capabilities.
 
     Checks whether times(), adjoint_times(), inverse_times() and
@@ -81,22 +85,23 @@ def check_linear_operator(op, domain_dtype=np.float64, target_dtype=np.float64,
     _check_linearity(op.adjoint, target_dtype, atol, rtol)
     _check_linearity(op.inverse, target_dtype, atol, rtol)
     _check_linearity(op.adjoint.inverse, domain_dtype, atol, rtol)
-    _full_implementation(op, domain_dtype, target_dtype, atol, rtol,
-                         only_r_linear)
-    _full_implementation(op.adjoint, target_dtype, domain_dtype, atol, rtol,
-                         only_r_linear)
-    _full_implementation(op.inverse, target_dtype, domain_dtype, atol, rtol,
-                         only_r_linear)
-    _full_implementation(op.adjoint.inverse, domain_dtype, target_dtype, atol,
-                         rtol, only_r_linear)
+    _full_implementation(op, domain_dtype, target_dtype, atol, rtol, only_r_linear)
+    _full_implementation(op.adjoint, target_dtype, domain_dtype, atol, rtol, only_r_linear)
+    _full_implementation(op.inverse, target_dtype, domain_dtype, atol, rtol, only_r_linear)
+    _full_implementation(op.adjoint.inverse, domain_dtype, target_dtype, atol, rtol, only_r_linear)
     _check_sqrt(op, domain_dtype)
     _check_sqrt(op.adjoint, target_dtype)
     _check_sqrt(op.inverse, target_dtype)
     _check_sqrt(op.adjoint.inverse, domain_dtype)
 
 
-def check_operator(op, loc, tol=1e-12, ntries=100, perf_check=True,
-                   only_r_differentiable=True, metric_sampling=True):
+def check_operator(op,
+                   loc,
+                   tol=1e-12,
+                   ntries=100,
+                   perf_check=True,
+                   only_r_differentiable=True,
+                   metric_sampling=True):
     """Performs various checks of the implementation of linear and nonlinear
     operators.
 
@@ -127,10 +132,8 @@ def check_operator(op, loc, tol=1e-12, ntries=100, perf_check=True,
     _purity_check(op, loc)
     _performance_check(op, loc, bool(perf_check))
     _linearization_value_consistency(op, loc)
-    _jac_vs_finite_differences(op, loc, np.sqrt(tol), ntries,
-                               only_r_differentiable)
-    _check_nontrivial_constant(op, loc, tol, ntries, only_r_differentiable,
-                               metric_sampling)
+    _jac_vs_finite_differences(op, loc, np.sqrt(tol), ntries, only_r_differentiable)
+    _check_nontrivial_constant(op, loc, tol, ntries, only_r_differentiable, metric_sampling)
     _check_likelihood_energy(op, loc)
 
 
@@ -152,8 +155,7 @@ def assert_equal(f1, f2):
         assert_equal(val, f2[key])
 
 
-def _adjoint_implementation(op, domain_dtype, target_dtype, atol, rtol,
-                            only_r_linear):
+def _adjoint_implementation(op, domain_dtype, target_dtype, atol, rtol, only_r_linear):
     needed_cap = op.TIMES | op.ADJOINT_TIMES
     if (op.capability & needed_cap) != needed_cap:
         return
@@ -179,10 +181,8 @@ def _inverse_implementation(op, domain_dtype, target_dtype, atol, rtol):
     assert_allclose(res, foo, atol=atol, rtol=rtol)
 
 
-def _full_implementation(op, domain_dtype, target_dtype, atol, rtol,
-                         only_r_linear):
-    _adjoint_implementation(op, domain_dtype, target_dtype, atol, rtol,
-                            only_r_linear)
+def _full_implementation(op, domain_dtype, target_dtype, atol, rtol, only_r_linear):
+    _adjoint_implementation(op, domain_dtype, target_dtype, atol, rtol, only_r_linear)
     _inverse_implementation(op, domain_dtype, target_dtype, atol, rtol)
 
 
@@ -193,8 +193,8 @@ def _check_linearity(op, domain_dtype, atol, rtol):
     fld1 = from_random(op.domain, "normal", dtype=domain_dtype)
     fld2 = from_random(op.domain, "normal", dtype=domain_dtype)
     alpha = 0.42
-    val1 = op(alpha*fld1+fld2)
-    val2 = alpha*op(fld1)+op(fld2)
+    val1 = op(alpha*fld1 + fld2)
+    val2 = alpha * op(fld1) + op(fld2)
     assert_allclose(val1, val2, atol=atol, rtol=rtol)
 
 
@@ -215,7 +215,8 @@ def _check_sqrt(op, domain_dtype):
     if not isinstance(op, EndomorphicOperator):
         try:
             op.get_sqrt()
-            raise RuntimeError("Operator implements get_sqrt() although it is not an endomorphic operator.")
+            raise RuntimeError(
+                "Operator implements get_sqrt() although it is not an endomorphic operator.")
         except AttributeError:
             return
     try:
@@ -255,13 +256,14 @@ def _domain_check_nonlinear(op, loc):
 def _domain_check(op):
     for dd in [op.domain, op.target]:
         if not isinstance(dd, (DomainTuple, MultiDomain)):
-            raise TypeError(
-                'The domain and the target of an operator need to',
-                'be instances of either DomainTuple or MultiDomain.')
+            raise TypeError('The domain and the target of an operator need to',
+                            'be instances of either DomainTuple or MultiDomain.')
 
 
 def _performance_check(op, pos, raise_on_fail):
+
     class CountingOp(LinearOperator):
+
         def __init__(self, domain):
             from .sugar import makeDomain
 
@@ -276,6 +278,7 @@ def _performance_check(op, pos, raise_on_fail):
         @property
         def count(self):
             return self._count
+
     for wm in [False, True]:
         cop = CountingOp(op.domain)
         myop = op @ cop
@@ -340,8 +343,7 @@ def _linearization_value_consistency(op, loc):
         assert_allclose(fld0, fld1, 0, 1e-7)
 
 
-def _check_nontrivial_constant(op, loc, tol, ntries, only_r_differentiable,
-                               metric_sampling):
+def _check_nontrivial_constant(op, loc, tol, ntries, only_r_differentiable, metric_sampling):
     if isinstance(op.domain, DomainTuple):
         return
     keys = op.domain.keys()
@@ -372,10 +374,11 @@ def _check_nontrivial_constant(op, loc, tol, ntries, only_r_differentiable,
 
         myassert(oplin.jac.target is oplin0.jac.target)
         rndinp = from_random(oplin.jac.target, dtype=oplin.val.dtype)
-        assert_allclose(oplin.jac.adjoint(rndinp).extract(varloc.domain),
-                        oplin0.jac.adjoint(rndinp), 1e-13, 1e-13)
+        assert_allclose(
+            oplin.jac.adjoint(rndinp).extract(varloc.domain), oplin0.jac.adjoint(rndinp), 1e-13,
+            1e-13)
         foo = oplin.jac.adjoint(rndinp).extract(cstloc.domain)
-        assert_equal(foo, 0*foo)
+        assert_equal(foo, 0 * foo)
 
         if isinstance(op, EnergyOperator) and metric_sampling:
             oplin.metric.draw_sample()
@@ -393,7 +396,7 @@ def _jac_vs_finite_differences(op, loc, tol, ntries, only_r_differentiable):
         dirnorm = direction.norm()
         hist = []
         for i in range(50):
-            locmid = loc + 0.5 * direction
+            locmid = loc + 0.5*direction
             linmid = op(Linearization.make_var(locmid))
             dirder = linmid.jac(direction)
             numgrad = (lin2.val - lin.val)
@@ -409,10 +412,13 @@ def _jac_vs_finite_differences(op, loc, tol, ntries, only_r_differentiable):
             print(hist)
             raise ValueError("gradient and value seem inconsistent")
         loc = locnext
-        check_linear_operator(linmid.jac, domain_dtype=loc.dtype,
-                              target_dtype=dirder.dtype,
-                              only_r_linear=only_r_differentiable,
-                              atol=tol**2, rtol=tol**2)
+        check_linear_operator(
+            linmid.jac,
+            domain_dtype=loc.dtype,
+            target_dtype=dirder.dtype,
+            only_r_linear=only_r_differentiable,
+            atol=tol**2,
+            rtol=tol**2)
 
 
 def _check_likelihood_energy(op, loc):
@@ -429,7 +435,7 @@ def _check_likelihood_energy(op, loc):
     res = op.get_transformation()
     if res is None:
         raise RuntimeError("`get_transformation` is not implemented for "
-                            "this LikelihoodEnergyOperator")
+                           "this LikelihoodEnergyOperator")
     if len(res) != 2:
         raise RuntimeError("`get_transformation` has to return a dtype and the transformation")
 
@@ -485,11 +491,9 @@ def minisanity(likelihood_energy, samples, terminal_colors=True, return_values=F
     from .sugar import makeDomain
 
     if not isinstance(samples, SampleListBase):
-        raise TypeError(
-            "Minisanity takes only SampleLists as input. If you happen to have "
-            "only one field (i.e. no samples), you may wrap it via "
-            "`ift.SampleList([field])` and pass it to minisanity."
-        )
+        raise TypeError("Minisanity takes only SampleLists as input. If you happen to have "
+                        "only one field (i.e. no samples), you may wrap it via "
+                        "`ift.SampleList([field])` and pass it to minisanity.")
 
     if not isinstance(likelihood_energy, LikelihoodEnergyOperator):
         return ""
@@ -538,7 +542,7 @@ def minisanity(likelihood_energy, samples, terminal_colors=True, return_values=F
         for ii, ss in enumerate((ss1, ss2)):
             for kk in ss.domain.keys():
                 lsize = ss[kk].size - np.sum(np.isnan(ss[kk].val))
-                xredchisq[ii][kk].add(np.nansum(abs(ss[kk].val) ** 2) / lsize)
+                xredchisq[ii][kk].add(np.nansum(abs(ss[kk].val)**2) / lsize)
                 xscmean[ii][kk].add(np.nanmean(ss[kk].val))
                 xndof[ii][kk] = lsize
 
@@ -559,13 +563,10 @@ def minisanity(likelihood_energy, samples, terminal_colors=True, return_values=F
     s1 = _tableentries(xredchisq[1], xscmean[1], xndof[1], keylen, terminal_colors)
 
     n = 38 + keylen
-    s = [n * "=",
-         (keylen + 2) * " " + "{:>11}".format("reduced χ²")
-           + "{:>14}".format("mean") + "{:>11}".format("# dof"),
-         n * "-",
-         "Data residuals", s0,
-         "Latent space", s1,
-         n * "="]
+    s = [
+        n * "=", (keylen+2) * " " + "{:>11}".format("reduced χ²") + "{:>14}".format("mean") +
+        "{:>11}".format("# dof"), n * "-", "Data residuals", s0, "Latent space", s1, n * "="
+    ]
 
     res_string = "\n".join(s)
 
@@ -590,6 +591,7 @@ def minisanity(likelihood_energy, samples, terminal_colors=True, return_values=F
 
 
 def _tableentries(redchisq, scmean, ndof, keylen, colors):
+
     class _bcolors:
         WARNING = "\033[33m" if colors else ""
         FAIL = "\033[31m" if colors else ""
@@ -599,15 +601,15 @@ def _tableentries(redchisq, scmean, ndof, keylen, colors):
     out = ""
     for kk in redchisq.keys():
         if len(kk) > keylen:
-            out += "  " + kk[: keylen - 1] + "…"
+            out += "  " + kk[:keylen - 1] + "…"
         else:
             out += "  " + kk.ljust(keylen)
         foo = f"{redchisq[kk]['mean']:.1f}"
         if redchisq[kk]['std'] is not None:
             foo += f" ± {redchisq[kk]['std']:.1f}"
-        if redchisq[kk]['mean'] > 5 or redchisq[kk]['mean'] < 1/5:
+        if redchisq[kk]['mean'] > 5 or redchisq[kk]['mean'] < 1 / 5:
             out += _bcolors.FAIL + _bcolors.BOLD + f"{foo:>11}" + _bcolors.ENDC
-        elif redchisq[kk]['mean'] > 2 or redchisq[kk]['mean'] < 1/2:
+        elif redchisq[kk]['mean'] > 2 or redchisq[kk]['mean'] < 1 / 2:
             out += _bcolors.WARNING + _bcolors.BOLD + f"{foo:>11}" + _bcolors.ENDC
         else:
             out += f"{foo:>11}"

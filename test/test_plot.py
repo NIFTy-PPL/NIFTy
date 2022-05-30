@@ -50,8 +50,13 @@ def test_plots():
     plot = ift.Plot()
     plot.add(field_rg2, title='2d rg')
     plot.add([field_rg1_1, field_rg1_2], title='list 1d rg', label=['1', '2'])
-    plot.add(field_rg1_2, title='1d rg, xmin, ymin', xmin=0.5, ymin=0.,
-             xlabel='xmin=0.5', ylabel='ymin=0')
+    plot.add(
+        field_rg1_2,
+        title='1d rg, xmin, ymin',
+        xmin=0.5,
+        ymin=0.,
+        xlabel='xmin=0.5',
+        ylabel='ymin=0')
     plot.output(title='Three plots', name=next(name))
     field_us1 = ift.from_random(us_space, 'normal')
 
@@ -64,7 +69,6 @@ def test_plots():
     plot.add(field_us, title='Histogram')
     plot.add([field_us, field_us1], label="ii", title='Two Histograms')
     plot.output(title='Seven plots', name=next(name))
-
 
 
 def test_mf_plot():
@@ -80,8 +84,7 @@ def test_mf_plot():
     plot = ift.Plot()
     plot.add(f1, block=False, title='f_space_idx = 1')
     plot.add(f2, freq_space_idx=0, title='f_space_idx = 0')
-    plot.output(nx=2, ny=1, title='MF-Plots, should look identical',
-                name=next(name))
+    plot.output(nx=2, ny=1, title='MF-Plots, should look identical', name=next(name))
 
 
 def test_iter_plot():

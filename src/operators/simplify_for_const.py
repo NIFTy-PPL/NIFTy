@@ -26,9 +26,10 @@ from .simple_linear_operators import NullOperator
 
 
 class ConstCollector:
+
     def __init__(self):
-        self._const = None  # MultiField on the part of the MultiDomain that could be constant
-        self._nc = set()  # NoConstant - set of keys that we know cannot be constant
+        self._const = None    # MultiField on the part of the MultiDomain that could be constant
+        self._nc = set()    # NoConstant - set of keys that we know cannot be constant
 
     def mult(self, const, fulldom):
         if const is None:
@@ -38,12 +39,13 @@ class ConstCollector:
             self._nc |= set(fulldom.keys()) - set(const.keys())
             if self._const is None:
                 self._const = MultiField.from_dict(
-                    {key: const[key]
-                     for key in const.keys() if key not in self._nc})
-            else:  # we know that the domains are identical for products
-                self._const = MultiField.from_dict(
-                    {key: self._const[key]*const[key]
-                     for key in const.keys() if key not in self._nc})
+                    {key: const[key] for key in const.keys() if key not in self._nc})
+            else:    # we know that the domains are identical for products
+                self._const = MultiField.from_dict({
+                    key: self._const[key] * const[key]
+                    for key in const.keys()
+                    if key not in self._nc
+                })
 
     def add(self, const, fulldom):
         if const is None:
@@ -53,8 +55,7 @@ class ConstCollector:
             self._nc |= set(fulldom.keys()) - set(const.keys())
             self._const = const if self._const is None else self._const.unite(const)
             self._const = MultiField.from_dict(
-                {key: const[key]
-                 for key in const.keys() if key not in self._nc})
+                {key: const[key] for key in const.keys() if key not in self._nc})
 
     @property
     def constfield(self):
@@ -62,6 +63,7 @@ class ConstCollector:
 
 
 class ConstantOperator(Operator):
+
     def __init__(self, output, domain={}):
         from ..sugar import makeDomain
         self._domain = makeDomain(domain)
@@ -81,6 +83,7 @@ class ConstantOperator(Operator):
 
 
 class ConstantEnergyOperator(EnergyOperator):
+
     def __init__(self, output):
         from ..field import Field
         from ..sugar import makeDomain
@@ -100,6 +103,7 @@ class ConstantEnergyOperator(EnergyOperator):
 
 
 class ConstantLikelihoodEnergyOperator(LikelihoodEnergyOperator):
+
     def __init__(self, output):
         super(ConstantLikelihoodEnergyOperator, self).__init__(None, None)
         op = ConstantEnergyOperator(output)
@@ -108,6 +112,7 @@ class ConstantLikelihoodEnergyOperator(LikelihoodEnergyOperator):
 
 
 class InsertionOperator(Operator):
+
     def __init__(self, target, cst_field):
         from ..multi_field import MultiField
         from ..sugar import makeDomain
@@ -117,8 +122,8 @@ class InsertionOperator(Operator):
             raise TypeError
         self._target = MultiDomain.make(target)
         cstdom = cst_field.domain
-        vardom = makeDomain({kk: vv for kk, vv in self._target.items()
-                             if kk not in cst_field.keys()})
+        vardom = makeDomain(
+            {kk: vv for kk, vv in self._target.items() if kk not in cst_field.keys()})
         self._domain = vardom
         self._cst = cst_field
         jac = {kk: ScalingOperator(vv, 1.) for kk, vv in self._domain.items()}
@@ -135,4 +140,4 @@ class InsertionOperator(Operator):
     def __repr__(self):
         from ..utilities import indent
         subs = f'Constant: {self._cst.keys()}\nVariable: {self._domain.keys()}'
-        return 'InsertionOperator\n'+indent(subs)
+        return 'InsertionOperator\n' + indent(subs)

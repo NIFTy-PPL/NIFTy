@@ -96,6 +96,7 @@ class IterationController(metaclass=NiftyMeta):
 
 
 class EnergyHistory:
+
     def __init__(self):
         self._lst = []
 
@@ -136,12 +137,14 @@ class EnergyHistory:
 
 
 def append_history(func):
+
     @functools.wraps(func)
     def wrapper(*args, **kwargs):
         hist = args[0].history
         if isinstance(hist, EnergyHistory):
             hist.append((time(), args[1].value))
         return func(*args, **kwargs)
+
     return wrapper
 
 
@@ -167,8 +170,12 @@ class GradientNormController(IterationController):
         printed after every iteration
     """
 
-    def __init__(self, tol_abs_gradnorm=None, tol_rel_gradnorm=None,
-                 convergence_level=1, iteration_limit=None, name=None):
+    def __init__(self,
+                 tol_abs_gradnorm=None,
+                 tol_rel_gradnorm=None,
+                 convergence_level=1,
+                 iteration_limit=None,
+                 name=None):
         super(GradientNormController, self).__init__()
         self._tol_abs_gradnorm = tol_abs_gradnorm
         self._tol_rel_gradnorm = tol_rel_gradnorm
@@ -199,21 +206,18 @@ class GradientNormController(IterationController):
         if inclvl:
             self._ccount += 1
         else:
-            self._ccount = max(0, self._ccount-1)
+            self._ccount = max(0, self._ccount - 1)
 
         # report
         if self._name is not None:
-            logger.info(
-                "{}: Iteration #{} energy={:.6E} gradnorm={:.2E} clvl={}"
-                .format(self._name, self._itcount, energy.value,
-                        energy.gradient_norm, self._ccount))
+            logger.info("{}: Iteration #{} energy={:.6E} gradnorm={:.2E} clvl={}".format(
+                self._name, self._itcount, energy.value, energy.gradient_norm, self._ccount))
 
         # Are we done?
         if self._iteration_limit is not None:
             if self._itcount >= self._iteration_limit:
-                logger.warning(
-                    "{}Iteration limit reached. Assuming convergence"
-                    .format("" if self._name is None else self._name+": "))
+                logger.warning("{}Iteration limit reached. Assuming convergence".format(
+                    "" if self._name is None else self._name + ": "))
                 return self.CONVERGED
         if self._ccount >= self._convergence_level:
             return self.CONVERGED
@@ -239,8 +243,7 @@ class GradInfNormController(IterationController):
         printed after every iteration
     """
 
-    def __init__(self, tol, convergence_level=1, iteration_limit=None,
-                 name=None):
+    def __init__(self, tol, convergence_level=1, iteration_limit=None, name=None):
         super(GradInfNormController, self).__init__()
         self._tol = tol
         self._convergence_level = convergence_level
@@ -261,21 +264,18 @@ class GradInfNormController(IterationController):
         if self._tol is not None and crit <= self._tol:
             self._ccount += 1
         else:
-            self._ccount = max(0, self._ccount-1)
+            self._ccount = max(0, self._ccount - 1)
 
         # report
         if self._name is not None:
-            logger.info(
-                "{}: Iteration #{} energy={:.6E} crit={:.2E} clvl={}"
-                .format(self._name, self._itcount, energy.value,
-                        crit, self._ccount))
+            logger.info("{}: Iteration #{} energy={:.6E} crit={:.2E} clvl={}".format(
+                self._name, self._itcount, energy.value, crit, self._ccount))
 
         # Are we done?
         if self._iteration_limit is not None:
             if self._itcount >= self._iteration_limit:
-                logger.warning(
-                    "{} Iteration limit reached. Assuming convergence"
-                    .format("" if self._name is None else self._name+": "))
+                logger.warning("{} Iteration limit reached. Assuming convergence".format(
+                    "" if self._name is None else self._name + ": "))
                 return self.CONVERGED
         if self._ccount >= self._convergence_level:
             return self.CONVERGED
@@ -303,8 +303,7 @@ class DeltaEnergyController(IterationController):
         printed after every iteration
     """
 
-    def __init__(self, tol_rel_deltaE, convergence_level=1,
-                 iteration_limit=None, name=None):
+    def __init__(self, tol_rel_deltaE, convergence_level=1, iteration_limit=None, name=None):
         super(DeltaEnergyController, self).__init__()
         self._tol_rel_deltaE = tol_rel_deltaE
         self._convergence_level = convergence_level
@@ -324,7 +323,7 @@ class DeltaEnergyController(IterationController):
 
         inclvl = False
         Eval = energy.value
-        rel = abs(self._Eold-Eval)/max(abs(self._Eold), abs(Eval))
+        rel = abs(self._Eold - Eval) / max(abs(self._Eold), abs(Eval))
         if self._itcount > 0:
             if rel < self._tol_rel_deltaE:
                 inclvl = True
@@ -332,20 +331,18 @@ class DeltaEnergyController(IterationController):
         if inclvl:
             self._ccount += 1
         else:
-            self._ccount = max(0, self._ccount-1)
+            self._ccount = max(0, self._ccount - 1)
 
         # report
         if self._name is not None:
-            logger.info(
-                "{}: Iteration #{} energy={:.6E} reldiff={:.6E} clvl={}"
-                .format(self._name, self._itcount, Eval, rel, self._ccount))
+            logger.info("{}: Iteration #{} energy={:.6E} reldiff={:.6E} clvl={}".format(
+                self._name, self._itcount, Eval, rel, self._ccount))
 
         # Are we done?
         if self._iteration_limit is not None:
             if self._itcount >= self._iteration_limit:
-                logger.warning(
-                    "{} Iteration limit reached. Assuming convergence"
-                    .format("" if self._name is None else self._name+": "))
+                logger.warning("{} Iteration limit reached. Assuming convergence".format(
+                    "" if self._name is None else self._name + ": "))
                 return self.CONVERGED
         if self._ccount >= self._convergence_level:
             return self.CONVERGED
@@ -372,8 +369,7 @@ class AbsDeltaEnergyController(IterationController):
         printed after every iteration
     """
 
-    def __init__(self, deltaE, convergence_level=1, iteration_limit=None,
-                 name=None):
+    def __init__(self, deltaE, convergence_level=1, iteration_limit=None, name=None):
         super(AbsDeltaEnergyController, self).__init__()
         self._deltaE = deltaE
         self._convergence_level = convergence_level
@@ -393,7 +389,7 @@ class AbsDeltaEnergyController(IterationController):
 
         inclvl = False
         Eval = energy.value
-        diff = abs(self._Eold-Eval)
+        diff = abs(self._Eold - Eval)
         if self._itcount > 0:
             if diff < self._deltaE:
                 inclvl = True
@@ -401,21 +397,18 @@ class AbsDeltaEnergyController(IterationController):
         if inclvl:
             self._ccount += 1
         else:
-            self._ccount = max(0, self._ccount-1)
+            self._ccount = max(0, self._ccount - 1)
 
         # report
         if self._name is not None:
-            logger.info(
-                "{}: Iteration #{} energy={:.6E} diff={:.6E} crit={:.1E} clvl={}"
-                .format(self._name, self._itcount, Eval, diff, self._deltaE,
-                        self._ccount))
+            logger.info("{}: Iteration #{} energy={:.6E} diff={:.6E} crit={:.1E} clvl={}".format(
+                self._name, self._itcount, Eval, diff, self._deltaE, self._ccount))
 
         # Are we done?
         if self._iteration_limit is not None:
             if self._itcount >= self._iteration_limit:
-                logger.warning(
-                    "{} Iteration limit reached. Assuming convergence"
-                    .format("" if self._name is None else self._name+": "))
+                logger.warning("{} Iteration limit reached. Assuming convergence".format(
+                    "" if self._name is None else self._name + ": "))
                 return self.CONVERGED
         if self._ccount >= self._convergence_level:
             return self.CONVERGED
@@ -447,8 +440,12 @@ class StochasticAbsDeltaEnergyController(IterationController):
         defaults to 10.
     """
 
-    def __init__(self, deltaE, convergence_level=1, iteration_limit=None,
-                 name=None, memory_length=10):
+    def __init__(self,
+                 deltaE,
+                 convergence_level=1,
+                 iteration_limit=None,
+                 name=None,
+                 memory_length=10):
         super(StochasticAbsDeltaEnergyController, self).__init__()
         self._deltaE = deltaE
         self._convergence_level = convergence_level
@@ -479,21 +476,18 @@ class StochasticAbsDeltaEnergyController(IterationController):
         if inclvl:
             self._ccount += 1
         else:
-            self._ccount = max(0, self._ccount-1)
+            self._ccount = max(0, self._ccount - 1)
 
         # report
         if self._name is not None:
-            logger.info(
-                "{}: Iteration #{} energy={:.6E} diff={:.6E} crit={:.1E} clvl={}"
-                .format(self._name, self._itcount, Eval, diff, self._deltaE,
-                        self._ccount))
+            logger.info("{}: Iteration #{} energy={:.6E} diff={:.6E} crit={:.1E} clvl={}".format(
+                self._name, self._itcount, Eval, diff, self._deltaE, self._ccount))
 
         # Are we done?
         if self._iteration_limit is not None:
             if self._itcount >= self._iteration_limit:
-                logger.warning(
-                    "{} Iteration limit reached. Assuming convergence"
-                    .format("" if self._name is None else self._name+": "))
+                logger.warning("{} Iteration limit reached. Assuming convergence".format(
+                    "" if self._name is None else self._name + ": "))
                 return self.CONVERGED
         if self._ccount >= self._convergence_level:
             return self.CONVERGED

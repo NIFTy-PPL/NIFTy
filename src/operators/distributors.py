@@ -65,18 +65,17 @@ class DOFDistributor(LinearOperator):
             raise ValueError("incorrect dofdex domain")
 
         ldat = dofdex.val
-        if ldat.size == 0:  # can happen for weird configurations
+        if ldat.size == 0:    # can happen for weird configurations
             nbin = 0
         else:
             nbin = ldat.max()
         nbin = nbin + 1
         if partner.scalar_dvol is not None:
             wgt = np.bincount(dofdex.val.ravel(), minlength=nbin)
-            wgt = wgt*partner.scalar_dvol
+            wgt = wgt * partner.scalar_dvol
         else:
             dvol = Field.from_raw(partner, partner.dvol).val
-            wgt = np.bincount(dofdex.val.ravel(),
-                              minlength=nbin, weights=dvol)
+            wgt = np.bincount(dofdex.val.ravel(), minlength=nbin, weights=dvol)
         # The explicit conversion to float64 is necessary because bincount
         # sometimes returns its result as an integer array, even when
         # floating-point weights are present ...
@@ -98,7 +97,7 @@ class DOFDistributor(LinearOperator):
         lastaxis = self._target.axes[self._space][-1]
         arrshape = self._target.shape
         presize = np.prod(arrshape[0:firstaxis], dtype=np.int64)
-        postsize = np.prod(arrshape[lastaxis+1:], dtype=np.int64)
+        postsize = np.prod(arrshape[lastaxis + 1:], dtype=np.int64)
         self._hshape = (presize, self._domain[self._space].shape[0], postsize)
         self._pshape = (presize, self._dofdex.size, postsize)
 

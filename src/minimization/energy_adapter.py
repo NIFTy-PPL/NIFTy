@@ -23,8 +23,7 @@ from ..linearization import Linearization
 from ..minimization.energy import Energy
 from ..multi_domain import MultiDomain
 from ..sugar import from_random
-from ..utilities import (allreduce_sum, get_MPI_params_from_comm, myassert,
-                         shareRange)
+from ..utilities import (allreduce_sum, get_MPI_params_from_comm, myassert, shareRange)
 
 
 class EnergyAdapter(Energy):
@@ -53,8 +52,7 @@ class EnergyAdapter(Energy):
         has tried is not sensible.
     """
 
-    def __init__(self, position, op, constants=[], want_metric=False,
-                 nanisinf=False):
+    def __init__(self, position, op, constants=[], want_metric=False, nanisinf=False):
         if len(constants) > 0:
             cstpos = position.extract_by_keys(constants)
             _, op = op.simplify_for_constant_input(cstpos)
@@ -73,8 +71,8 @@ class EnergyAdapter(Energy):
             self._val = np.inf
 
     def at(self, position):
-        return EnergyAdapter(position, self._op, want_metric=self._want_metric,
-                             nanisinf=self._nanisinf)
+        return EnergyAdapter(
+            position, self._op, want_metric=self._want_metric, nanisinf=self._nanisinf)
 
     @property
     def value(self):
@@ -107,8 +105,17 @@ class StochasticEnergyAdapter(Energy):
     `StochasticEnergyAdapter` should never be created using the constructor,
     but rather via the factory function :attr:`make`.
     """
-    def __init__(self, position, op, keys, local_ops, n_samples, comm, nanisinf,
-                 noise, _callingfrommake=False):
+
+    def __init__(self,
+                 position,
+                 op,
+                 keys,
+                 local_ops,
+                 n_samples,
+                 comm,
+                 nanisinf,
+                 noise,
+                 _callingfrommake=False):
         if not _callingfrommake:
             raise NotImplementedError
         super(StochasticEnergyAdapter, self).__init__(position)
@@ -124,10 +131,10 @@ class StochasticEnergyAdapter(Energy):
             tmp = lop(lin)
             v.append(tmp.val.val)
             g.append(tmp.gradient)
-        self._val = allreduce_sum(v, self._comm)[()]/self._n_samples
+        self._val = allreduce_sum(v, self._comm)[()] / self._n_samples
         if np.isnan(self._val) and self._nanisinf:
             self._val = np.inf
-        self._grad = allreduce_sum(g, self._comm)/self._n_samples
+        self._grad = allreduce_sum(g, self._comm) / self._n_samples
         self._noise = noise
 
         self._op = op
@@ -142,30 +149,35 @@ class StochasticEnergyAdapter(Energy):
         return self._grad
 
     def at(self, position):
-        return StochasticEnergyAdapter(position, self._op, self._keys,
-                    self._local_ops, self._n_samples, self._comm, self._nanisinf,
-                    self._noise, _callingfrommake=True)
+        return StochasticEnergyAdapter(
+            position,
+            self._op,
+            self._keys,
+            self._local_ops,
+            self._n_samples,
+            self._comm,
+            self._nanisinf,
+            self._noise,
+            _callingfrommake=True)
 
     def apply_metric(self, x):
         lin = Linearization.make_var(self.position, want_metric=True)
         res = []
         for op in self._local_ops:
             res.append(op(lin).metric(x))
-        return allreduce_sum(res, self._comm)/self._n_samples
+        return allreduce_sum(res, self._comm) / self._n_samples
 
     @property
     def metric(self):
         from .kl_energies import _SelfAdjointOperatorWrapper
-        return _SelfAdjointOperatorWrapper(self.position.domain,
-                                           self.apply_metric)
+        return _SelfAdjointOperatorWrapper(self.position.domain, self.apply_metric)
 
     def resample_at(self, position):
-        return StochasticEnergyAdapter.make(position, self._op, self._keys,
-                                            self._n_samples, self._comm)
+        return StochasticEnergyAdapter.make(position, self._op, self._keys, self._n_samples,
+                                            self._comm)
 
     @staticmethod
-    def make(position, op, sampling_keys, n_samples, mirror_samples,
-             comm=None, nanisinf=False):
+    def make(position, op, sampling_keys, n_samples, mirror_samples, comm=None, nanisinf=False):
         """Factory function for StochasticEnergyAdapter.
 
         Parameters
@@ -218,9 +230,17 @@ class StochasticEnergyAdapter(Energy):
             _, tmp = op.simplify_for_constant_input(nn)
             myassert(tmp.domain == position.domain)
             local_ops.append(tmp)
-        n_samples = 2*n_samples if mirror_samples else n_samples
-        return StochasticEnergyAdapter(position, op, sampling_keys, local_ops,
-                              n_samples, comm, nanisinf, noise, _callingfrommake=True)
+        n_samples = 2 * n_samples if mirror_samples else n_samples
+        return StochasticEnergyAdapter(
+            position,
+            op,
+            sampling_keys,
+            local_ops,
+            n_samples,
+            comm,
+            nanisinf,
+            noise,
+            _callingfrommake=True)
 
     def samples(self):
         return self._noise

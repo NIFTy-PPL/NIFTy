@@ -48,7 +48,7 @@ def main():
 
     # Define power spectrum and amplitudes
     def sqrtpspec(k):
-        return 1./(20. + k**2)
+        return 1. / (20. + k**2)
 
     A = ift.create_power_operator(harmonic_space, sqrtpspec)
 
@@ -67,8 +67,7 @@ def main():
     # Compute likelihood energy and Hamiltonian
     position = ift.from_random(harmonic_space, 'normal')
     likelihood_energy = ift.BernoulliEnergy(data) @ p
-    ic_newton = ift.DeltaEnergyController(
-        name='Newton', iteration_limit=100, tol_rel_deltaE=1e-8)
+    ic_newton = ift.DeltaEnergyController(name='Newton', iteration_limit=100, tol_rel_deltaE=1e-8)
     minimizer = ift.NewtonCG(ic_newton)
     ic_sampling = ift.GradientNormController(iteration_limit=100)
 

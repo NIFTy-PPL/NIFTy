@@ -36,17 +36,17 @@ def _make_coords(domain, absolute=False):
     shape = domain.shape
     k_array = np.zeros((dim,) + shape)
     for i in range(dim):
-        ks = np.minimum(shape[i] - np.arange(shape[i]), np.arange(
-            shape[i]))*dist[i]
+        ks = np.minimum(shape[i] - np.arange(shape[i]), np.arange(shape[i])) * dist[i]
         if not absolute:
-            ks[int(shape[i]/2) + 1:] *= -1
-        fst_dims = (1,)*i
-        lst_dims = (1,)*(dim - i - 1)
+            ks[int(shape[i] / 2) + 1:] *= -1
+        fst_dims = (1,) * i
+        lst_dims = (1,) * (dim-i-1)
         k_array[i] += ks.reshape(fst_dims + (shape[i],) + lst_dims)
     return k_array
 
 
 class _LightConeDerivative(LinearOperator):
+
     def __init__(self, domain, target, derivatives):
         super(_LightConeDerivative, self).__init__()
         self._domain = domain
@@ -60,9 +60,9 @@ class _LightConeDerivative(LinearOperator):
         res = np.zeros(self._tgt(mode).shape, dtype=self._derivatives.dtype)
         for i in range(self.domain.shape[0]):
             if mode == self.TIMES:
-                res += self._derivatives[i]*x[i]
+                res += self._derivatives[i] * x[i]
             else:
-                res[i] = np.sum(self._derivatives[i]*x.real)
+                res[i] = np.sum(self._derivatives[i] * x.real)
         return Field(self._tgt(mode), res)
 
 
@@ -73,10 +73,10 @@ def _cone_arrays(c, domain, sigx, want_gradient):
         derivs = np.zeros((c.size,) + domain.shape, dtype=np.complex128)
     else:
         derivs = None
-    a -= (x[0]/(sigx*domain[0].distances[0]))**2
+    a -= (x[0] / (sigx * domain[0].distances[0]))**2
     for i in range(c.size):
-        res = (x[i + 1]/(sigx*domain[0].distances[i + 1]))**2
-        a += c[i]*res
+        res = (x[i + 1] / (sigx * domain[0].distances[i + 1]))**2
+        a += c[i] * res
         if want_gradient:
             derivs[i] = res
     a = np.sqrt(a)
@@ -88,9 +88,9 @@ def _cone_arrays(c, domain, sigx, want_gradient):
     a = a.real
     if want_gradient:
         derivs *= a
-    a = np.exp(-0.5*a**2)
+    a = np.exp(-0.5 * a**2)
     if want_gradient:
-        derivs = a*derivs.real
+        derivs = a * derivs.real
     return a, derivs
 
 
@@ -125,6 +125,7 @@ class LightConeOperator(Operator):
     sigx : float
         Width of the Gaussian for the discretized representation of the cone.
     '''
+
     def __init__(self, domain, target, sigx):
         self._domain = DomainTuple.make(domain)
         self._target = DomainTuple.make(target)

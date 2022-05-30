@@ -34,14 +34,23 @@ def _float_or_listoffloat(inp):
     return [float(x) for x in inp] if isinstance(inp, list) else float(inp)
 
 
-def _make_dynamic_operator(target, harmonic_padding, sm_s0, sm_x0, cone, keys, causal,
-                           minimum_phase, sigc=None, quant=None, codomain=None):
+def _make_dynamic_operator(target,
+                           harmonic_padding,
+                           sm_s0,
+                           sm_x0,
+                           cone,
+                           keys,
+                           causal,
+                           minimum_phase,
+                           sigc=None,
+                           quant=None,
+                           codomain=None):
     if not isinstance(target, RGSpace):
         raise TypeError("RGSpace required")
     if not target.harmonic:
         raise TypeError("Target space must be harmonic")
-    if not (isinstance(harmonic_padding, int) or harmonic_padding is None
-            or all(isinstance(ii, int) for ii in harmonic_padding)):
+    if not (isinstance(harmonic_padding, int) or harmonic_padding is None or
+            all(isinstance(ii, int) for ii in harmonic_padding)):
         raise TypeError
     sm_s0 = float(sm_s0)
     sm_x0 = _float_or_listoffloat(sm_x0)
@@ -68,12 +77,10 @@ def _make_dynamic_operator(target, harmonic_padding, sm_s0, sm_x0, cone, keys, c
         CentralPadd = ScalingOperator(FFT.target, 1.)
     else:
         if isinstance(harmonic_padding, int):
-            harmonic_padding = list((harmonic_padding,)*len(FFT.target.shape))
+            harmonic_padding = list((harmonic_padding,) * len(FFT.target.shape))
         elif len(harmonic_padding) != len(FFT.target.shape):
             raise (ValueError, "Shape mismatch!")
-        shp = [
-            sh + harmonic_padding[ii] for ii, sh in enumerate(FFT.target.shape)
-        ]
+        shp = [sh + harmonic_padding[ii] for ii, sh in enumerate(FFT.target.shape)]
         CentralPadd = FieldZeroPadder(FFT.target, shp, central=True)
     ops['central_padding'] = CentralPadd
     sdom = CentralPadd.target[0].get_default_codomain()
@@ -83,15 +90,15 @@ def _make_dynamic_operator(target, harmonic_padding, sm_s0, sm_x0, cone, keys, c
 
     dists = m.target[0].distances
     if isinstance(sm_x0, float):
-        sm_x0 = list((sm_x0,)*len(dists))
+        sm_x0 = list((sm_x0,) * len(dists))
     elif len(sm_x0) != len(dists):
         raise (ValueError, "Shape mismatch!")
 
     def smoothness_prior_func(x):
         res = 1.
         for i in range(len(dists)):
-            res = res + (x[i]/sm_x0[i]/dists[i])**2
-        return sm_s0/res
+            res = res + (x[i] / sm_x0[i] / dists[i])**2
+        return sm_s0 / res
 
     Sm = makeOp(_field_from_function(m.target, smoothness_prior_func))
     m = CentralPadd.adjoint(FFTB(Sm(m)))
@@ -102,26 +109,25 @@ def _make_dynamic_operator(target, harmonic_padding, sm_s0, sm_x0, cone, keys, c
         m = m.ptw("exp")
     if causal or minimum_phase:
         m = Real.adjoint(FFT.inverse(Realizer(FFT.target).adjoint(m)))
-        kernel = makeOp(
-            _field_from_function(FFT.domain, (lambda x: 1. + np.sign(x[0]))))
+        kernel = makeOp(_field_from_function(FFT.domain, (lambda x: 1. + np.sign(x[0]))))
         m = kernel(m)
 
     if cone and len(m.target.shape) > 1:
         if isinstance(sigc, float):
-            sigc = list((sigc,)*(len(m.target.shape) - 1))
+            sigc = list((sigc,) * (len(m.target.shape) - 1))
         elif len(sigc) != len(m.target.shape) - 1:
             raise (ValueError, "Shape mismatch!")
         c = FieldAdapter(UnstructuredDomain(len(sigc)), keys[1])
         c = makeOp(Field(c.target, np.array(sigc)))(c)
 
         lightspeed = ScalingOperator(c.target, -0.5)(c).ptw("exp")
-        scaling = np.array(m.target[0].distances[1:])/m.target[0].distances[0]
+        scaling = np.array(m.target[0].distances[1:]) / m.target[0].distances[0]
         scaling = DiagonalOperator(Field(c.target, scaling))
         ops['lightspeed'] = scaling(lightspeed)
 
         c = LightConeOperator(c.target, m.target, quant) @ c.ptw("exp")
         ops['light_cone'] = c
-        m = c*m
+        m = c * m
 
     if causal or minimum_phase:
         m = FFT(Real(m))
@@ -130,7 +136,13 @@ def _make_dynamic_operator(target, harmonic_padding, sm_s0, sm_x0, cone, keys, c
     return m, ops
 
 
-def dynamic_operator(*, target, harmonic_padding, sm_s0, sm_x0, key, causal=True,
+def dynamic_operator(*,
+                     target,
+                     harmonic_padding,
+                     sm_s0,
+                     sm_x0,
+                     key,
+                     causal=True,
                      minimum_phase=False):
     """Constructs an operator encoding the Green's function of a linear
     homogeneous dynamic system.
@@ -191,8 +203,17 @@ def dynamic_operator(*, target, harmonic_padding, sm_s0, sm_x0, key, causal=True
     return _make_dynamic_operator(**dct)
 
 
-def dynamic_lightcone_operator(*, target, harmonic_padding, sm_s0, sm_x0, key, lightcone_key,
-                               sigc, quant, causal=True, minimum_phase=False):
+def dynamic_lightcone_operator(*,
+                               target,
+                               harmonic_padding,
+                               sm_s0,
+                               sm_x0,
+                               key,
+                               lightcone_key,
+                               sigc,
+                               quant,
+                               causal=True,
+                               minimum_phase=False):
     '''Extends the functionality of :func:`dynamic_operator` to a Green's
     function which is constrained to be within a light cone.
 

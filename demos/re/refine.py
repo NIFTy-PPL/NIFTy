@@ -38,27 +38,22 @@ def _matern_kernel(distance, scale, cutoff, dof):
     from jax.scipy.special import gammaln
 
     reg_dist = jnp.sqrt(2 * dof) * distance / cutoff
-    return scale**2 * 2**(1 - dof) / jnp.exp(
-        gammaln(dof)
-    ) * (reg_dist)**dof * mod_bessel2(dof, reg_dist)
+    return scale**2 * 2**(1 - dof) / jnp.exp(gammaln(dof)) * (reg_dist)**dof * mod_bessel2(
+        dof, reg_dist)
 
 
 n_dof = 100
 n_dist = 1000
-min_reg_dist = 1e-6  # approx. lowest resolution of `_matern_kernel` at float64
-max_reg_dist = 8e+2  # approx. highest resolution of `_matern_kernel` at float64
+min_reg_dist = 1e-6    # approx. lowest resolution of `_matern_kernel` at float64
+max_reg_dist = 8e+2    # approx. highest resolution of `_matern_kernel` at float64
 eps = 8. * jnp.finfo(jnp.array(min_reg_dist).dtype.type).eps
 dof_grid = np.linspace(0., 15., n_dof)
 reg_dist_grid = np.logspace(
-    np.log(min_reg_dist * (1. - eps)),
-    np.log(max_reg_dist * (1. + eps)),
-    base=np.e,
-    num=n_dist
-)
+    np.log(min_reg_dist * (1.-eps)), np.log(max_reg_dist * (1.+eps)), base=np.e, num=n_dist)
 grid = np.meshgrid(dof_grid, reg_dist_grid, indexing="ij")
-_unsafe_ln_mod_bessel2 = RegularGridInterpolator(
-    (dof_grid, reg_dist_grid), jnp.log(mod_bessel2(*grid)), fill_value=-np.inf
-)
+_unsafe_ln_mod_bessel2 = RegularGridInterpolator((dof_grid, reg_dist_grid),
+                                                 jnp.log(mod_bessel2(*grid)),
+                                                 fill_value=-np.inf)
 
 
 def matern_kernel(distance, scale, cutoff, dof):
@@ -70,9 +65,7 @@ def matern_kernel(distance, scale, cutoff, dof):
     # Never produce NaNs (https://github.com/google/jax/issues/1052)
     reg_dist = reg_dist.clip(min_reg_dist, max_reg_dist)
 
-    ln_kv = jnp.squeeze(
-        _unsafe_ln_mod_bessel2(jnp.stack((dof, reg_dist), axis=-1))
-    )
+    ln_kv = jnp.squeeze(_unsafe_ln_mod_bessel2(jnp.stack((dof, reg_dist), axis=-1)))
     corr = 2**(1 - dof) * jnp.exp(ln_kv - gammaln(dof)) * (reg_dist)**dof
     return scale**2 * corr
 
@@ -90,14 +83,14 @@ fig, ax = plt.subplots()
 x_s = x[x < 10 * cutoff]
 ax.plot(x_s, kernel(x_s))
 ax.plot(x_s, kernel_j(x_s))
-ax.plot(x_s, jnp.exp(-(x_s / (2. * cutoff))**2))
+ax.plot(x_s, jnp.exp(-(x_s / (2.*cutoff))**2))
 ax.set_yscale("log")
 fig.savefig("re_refine_kernel.png", transparent=True)
 plt.close()
 
 # %%
 # Quick demo of the correlated field scheme that is to be used in the following
-cf_kwargs = {"shape0": (12, ), "distances0": (50., ), "kernel": kernel}
+cf_kwargs = {"shape0": (12,), "distances0": (50.,), "kernel": kernel}
 
 cf = jft.RefinementField(**cf_kwargs, depth=5)
 xi = jft.random_like(random.PRNGKey(42), cf.shapewithdtype)
@@ -156,13 +149,12 @@ n_samples = 2
 absdelta = 1e-5
 
 nll = jft.Gaussian(d, noise_std_inv=lambda x: x / n_std) @ signal_response
-ham = jft.StandardHamiltonian(nll)  # + 0.5 * jft.norm(x, ord=2, ravel=True)
+ham = jft.StandardHamiltonian(nll)    # + 0.5 * jft.norm(x, ord=2, ravel=True)
 ham_vg = jax.jit(jft.mean_value_and_grad(ham))
 ham_metric = jax.jit(jft.mean_metric(ham.metric))
 MetricKL = jax.jit(
     partial(jft.MetricKL, ham),
-    static_argnames=("n_samples", "mirror_samples", "linear_sampling_name")
-)
+    static_argnames=("n_samples", "mirror_samples", "linear_sampling_name"))
 
 # %%
 # Minimize the potential
@@ -175,8 +167,7 @@ for i in range(n_mgvi_iterations):
         n_samples=n_samples,
         key=subkey,
         mirror_samples=True,
-        linear_sampling_kwargs={"absdelta": absdelta / 10.}
-    )
+        linear_sampling_kwargs={"absdelta": absdelta / 10.})
 
     print("Minimizing...", file=sys.stderr)
     opt_state = jft.minimize(
@@ -188,8 +179,7 @@ for i in range(n_mgvi_iterations):
             "hessp": partial(ham_metric, primals_samples=samples),
             "absdelta": absdelta,
             "maxiter": n_newton_iterations
-        }
-    )
+        })
     pos = opt_state.x
     msg = f"Post MGVI Iteration {i}: Energy {samples.at(pos).mean(ham):2.4e}"
     print(msg, file=sys.stderr)
@@ -205,18 +195,15 @@ fig.savefig("re_refine_reconstruction.png", transparent=True)
 plt.close()
 
 # %%
-cf_bench = jft.RefinementField(shape0=(12, ), kernel=kernel, depth=15)
+cf_bench = jft.RefinementField(shape0=(12,), kernel=kernel, depth=15)
 xi_wo = jft.random_like(random.PRNGKey(42), jft.Field(cf_bench.shapewithdtype))
 xi_w = jft.random_like(
     random.PRNGKey(42),
-    jft.Field(
-        {
-            "excitations": cf_bench.shapewithdtype,
-            "lat_scale": jft.ShapeWithDtype(()),
-            "lat_cutoff": jft.ShapeWithDtype(()),
-        }
-    )
-)
+    jft.Field({
+        "excitations": cf_bench.shapewithdtype,
+        "lat_scale": jft.ShapeWithDtype(()),
+        "lat_cutoff": jft.ShapeWithDtype(()),
+    }))
 
 
 def signal_response_bench(xi):

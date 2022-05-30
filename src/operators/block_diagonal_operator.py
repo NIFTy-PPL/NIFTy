@@ -32,6 +32,7 @@ class BlockDiagonalOperator(EndomorphicOperator):
         Dictionary with subdomain names as keys and :class:`LinearOperator` s
         as items. Any missing item will be treated as unity operator.
     """
+
     def __init__(self, domain, operators):
         if not isinstance(domain, MultiDomain):
             raise TypeError("MultiDomain expected")
@@ -63,8 +64,8 @@ class BlockDiagonalOperator(EndomorphicOperator):
 
     def apply(self, x, mode):
         self._check_input(x, mode)
-        val = tuple(op.apply(v, mode=mode) if op is not None else v
-                    for op, v in zip(self._ops, x.values()))
+        val = tuple(
+            op.apply(v, mode=mode) if op is not None else v for op, v in zip(self._ops, x.values()))
         return MultiField(self._domain, val)
 
     def draw_sample(self, from_inverse=False):
@@ -83,15 +84,16 @@ class BlockDiagonalOperator(EndomorphicOperator):
 
     def _combine_chain(self, op):
         check_object_identity(self._domain, op._domain)
-        res = {key: v1(v2)
-               for key, v1, v2 in zip(self._domain.keys(), self._ops, op._ops)}
+        res = {key: v1(v2) for key, v1, v2 in zip(self._domain.keys(), self._ops, op._ops)}
         return BlockDiagonalOperator(self._domain, res)
 
     def _combine_sum(self, op, selfneg, opneg):
         from ..operators.sum_operator import SumOperator
         check_object_identity(self._domain, op._domain)
-        res = {key: SumOperator.make([v1, v2], [selfneg, opneg])
-               for key, v1, v2 in zip(self._domain.keys(), self._ops, op._ops)}
+        res = {
+            key: SumOperator.make([v1, v2], [selfneg, opneg])
+            for key, v1, v2 in zip(self._domain.keys(), self._ops, op._ops)
+        }
         return BlockDiagonalOperator(self._domain, res)
 
     def __repr__(self):

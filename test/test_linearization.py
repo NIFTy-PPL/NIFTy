@@ -43,21 +43,16 @@ def test_special_gradients():
     jt(var.clip(0, 10), np.ones_like(s))
     jt(var.clip(-1, 0), np.zeros_like(s))
 
-    assert_allclose(
-        _lin2grad(ift.Linearization.make_var(0*f).ptw("sinc")), np.zeros(s.shape))
-    ift.myassert(np.isnan(_lin2grad(ift.Linearization.make_var(0*f).ptw("abs"))))
-    assert_allclose(
-        _lin2grad(ift.Linearization.make_var(0*f + 10).ptw("abs")),
-        np.ones(s.shape))
-    assert_allclose(
-        _lin2grad(ift.Linearization.make_var(0*f - 10).ptw("abs")),
-        -np.ones(s.shape))
+    assert_allclose(_lin2grad(ift.Linearization.make_var(0 * f).ptw("sinc")), np.zeros(s.shape))
+    ift.myassert(np.isnan(_lin2grad(ift.Linearization.make_var(0 * f).ptw("abs"))))
+    assert_allclose(_lin2grad(ift.Linearization.make_var(0*f + 10).ptw("abs")), np.ones(s.shape))
+    assert_allclose(_lin2grad(ift.Linearization.make_var(0*f - 10).ptw("abs")), -np.ones(s.shape))
 
 
 @pmp('f', [
-    'log', 'exp', 'sqrt', 'sin', 'cos', 'tan', 'sinc', 'sinh', 'cosh', 'tanh',
-    'absolute', 'reciprocal', 'sigmoid', 'log10', 'log1p', 'expm1', 'softplus',
-    ('power', 2.), ('exponentiate', 1.1)
+    'log', 'exp', 'sqrt', 'sin', 'cos', 'tan', 'sinc', 'sinh', 'cosh', 'tanh', 'absolute',
+    'reciprocal', 'sigmoid', 'log10', 'log1p', 'expm1', 'softplus', ('power', 2.),
+    ('exponentiate', 1.1)
 ])
 @pmp('cplxpos', [True, False])
 @pmp('cplxdir', [True, False])
@@ -76,7 +71,7 @@ def test_actual_gradients(f, cplxpos, cplxdir, holomorphic):
     if cplxdir:
         eps *= 1j
     if holomorphic:
-        eps *= (1+0.78j)
+        eps *= (1 + 0.78j)
     var0 = ift.Linearization.make_var(fld)
     var1 = ift.Linearization.make_var(fld + eps)
     if not isinstance(f, tuple):
@@ -84,5 +79,5 @@ def test_actual_gradients(f, cplxpos, cplxdir, holomorphic):
     f0 = var0.ptw(*f).val.val
     f1 = var1.ptw(*f).val.val
     df1 = _lin2grad(var0.ptw(*f))
-    df0 = (f1 - f0)/eps
-    assert_allclose(df0, df1, rtol=100*np.abs(eps))
+    df0 = (f1-f0) / eps
+    assert_allclose(df0, df1, rtol=100 * np.abs(eps))

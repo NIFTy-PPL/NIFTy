@@ -36,12 +36,15 @@ def cartesian_product(arrays, out=None):
 
 
 def banana_helper_phi_b(b, x):
-    return jnp.array([x[0], x[1] + b * x[0]**2 - 100 * b])
+    return jnp.array([x[0], x[1] + b * x[0]**2 - 100*b])
 
 
-def sample_nonstandard_hamiltonian(
-    likelihood, primals, key, cg=jft.static_cg, cg_name=None, cg_kwargs=None
-):
+def sample_nonstandard_hamiltonian(likelihood,
+                                   primals,
+                                   key,
+                                   cg=jft.static_cg,
+                                   cg_name=None,
+                                   cg_kwargs=None):
     if not isinstance(likelihood, jft.Likelihood):
         te = f"`likelihood` of invalid type; got '{type(likelihood)}'"
         raise TypeError(te)
@@ -50,13 +53,9 @@ def sample_nonstandard_hamiltonian(
     cg_kwargs = cg_kwargs if cg_kwargs is not None else {}
     cg_kwargs = {"name": cg_name, **cg_kwargs}
 
-    white_sample = jft.random_like(
-        key, likelihood.left_sqrt_metric_tangents_shape
-    )
+    white_sample = jft.random_like(key, likelihood.left_sqrt_metric_tangents_shape)
     met_smpl = likelihood.left_sqrt_metric(primals, white_sample)
-    inv_metric_at_p = partial(
-        cg, Partial(likelihood.metric, primals), **cg_kwargs
-    )
+    inv_metric_at_p = partial(cg, Partial(likelihood.metric, primals), **cg_kwargs)
     signal_smpl = inv_metric_at_p(met_smpl)[0]
     return signal_smpl
 
@@ -89,19 +88,14 @@ def NonStandardMetricKL(
     samples_stack = lax.map(lambda k: draw(key=k), subkeys)
 
     return jft.kl.SampleIter(
-        mean=primals,
-        samples=jft.unstack(samples_stack),
-        linearly_mirror_samples=mirror_samples
-    )
+        mean=primals, samples=jft.unstack(samples_stack), linearly_mirror_samples=mirror_samples)
 
 
 # %%
 b = 0.1
 
 signal_response = partial(banana_helper_phi_b, b)
-nll = jft.Gaussian(
-    jnp.zeros(2), lambda x: x / jnp.array([100., 1.])
-) @ signal_response
+nll = jft.Gaussian(jnp.zeros(2), lambda x: x / jnp.array([100., 1.])) @ signal_response
 
 ham = nll
 ham = ham.jit()
@@ -110,8 +104,8 @@ ham_metric = jit(jft.mean_metric(ham.metric))
 
 # %%
 n_mgvi_iterations = 30
-n_samples = [1] * (n_mgvi_iterations - 10) + [2] * 5 + [3, 3, 10, 10, 100]
-n_newton_iterations = [7] * (n_mgvi_iterations - 10) + [10] * 6 + 4 * [25]
+n_samples = [1] * (n_mgvi_iterations-10) + [2] * 5 + [3, 3, 10, 10, 100]
+n_newton_iterations = [7] * (n_mgvi_iterations-10) + [10] * 6 + 4 * [25]
 absdelta = 1e-12
 
 initial_position = jnp.array([1., 1.])
@@ -146,8 +140,7 @@ for i in range(n_mgvi_iterations):
                 "miniter": 0
             },
             "name": "N",
-        }
-    )
+        })
     mkl_pos = opt_state.x
     msg = f"Post MGVI Iteration {i}: Energy {samples.at(mkl_pos).mean(ham):2.4e}"
     print(msg, file=sys.stderr)

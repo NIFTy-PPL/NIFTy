@@ -26,9 +26,7 @@ def hartley(p, axes=None):
     return tmp.real + tmp.imag
 
 
-def get_fourier_mode_distributor(
-    shape: Union[tuple, int], distances: Union[tuple, float]
-):
+def get_fourier_mode_distributor(shape: Union[tuple, int], distances: Union[tuple, float]):
     """Get the unique lengths of the Fourier modes, a mapping from a mode to
     its length index and the multiplicity of each unique Fourier mode length.
 
@@ -49,7 +47,7 @@ def get_fourier_mode_distributor(
     mode_multiplicity : jnp.ndarray
         Multiplicity for each unique Fourier mode length.
     """
-    shape = (shape, ) if isinstance(shape, int) else tuple(shape)
+    shape = (shape,) if isinstance(shape, int) else tuple(shape)
 
     # Compute length of modes
     mspc_distances = 1. / (jnp.array(shape) * jnp.array(distances))
@@ -83,14 +81,12 @@ def get_fourier_mode_distributor(
 def _twolog_integrate(log_vol, x):
     # Map the space to the one for the relative log-modes, i.e. pad the space
     # of the log volume
-    twolog = jnp.empty((2 + log_vol.shape[0], ))
+    twolog = jnp.empty((2 + log_vol.shape[0],))
     twolog = twolog.at[0].set(0.)
     twolog = twolog.at[1].set(0.)
 
     twolog = twolog.at[2:].set(jnp.cumsum(x[1], axis=0))
-    twolog = twolog.at[2:].set(
-        (twolog[2:] + twolog[1:-1]) / 2. * log_vol + x[0]
-    )
+    twolog = twolog.at[2:].set((twolog[2:] + twolog[1:-1]) / 2. * log_vol + x[0])
     twolog = twolog.at[2:].set(jnp.cumsum(twolog[2:], axis=0))
     return twolog
 
@@ -140,7 +136,7 @@ def non_parametric_amplitude(
         # Register the parameters for the spectrum
         _safe_assert(log_vol is not None)
         _safe_assert(rel_log_mode_len.ndim == log_vol.ndim == 1)
-        ptree[prefix + "spectrum"] = ShapeWithDtype((2, ) + log_vol.shape)
+        ptree[prefix + "spectrum"] = ShapeWithDtype((2,) + log_vol.shape)
     if asperity is not None:
         asperity = ducktape(asperity, prefix + "asperity")
         ptree[prefix + "asperity"] = ShapeWithDtype(())
@@ -156,21 +152,15 @@ def non_parametric_amplitude(
             xi_spc = primals[prefix + "spectrum"]
             flx = flexibility(primals)
             sig_flx = flx * jnp.sqrt(log_vol)
-            sig_flx = jnp.broadcast_to(sig_flx, (2, ) + log_vol.shape)
+            sig_flx = jnp.broadcast_to(sig_flx, (2,) + log_vol.shape)
 
             if asperity is None:
-                shift = jnp.stack(
-                    (log_vol / jnp.sqrt(12.), jnp.ones_like(log_vol)), axis=0
-                )
+                shift = jnp.stack((log_vol / jnp.sqrt(12.), jnp.ones_like(log_vol)), axis=0)
                 asp = shift * sig_flx * xi_spc
             else:
                 asp = asperity(primals)
-                shift = jnp.stack(
-                    (log_vol**2 / 12., jnp.ones_like(log_vol)), axis=0
-                )
-                sig_asp = jnp.broadcast_to(
-                    jnp.array([[asp], [0.]]), shift.shape
-                )
+                shift = jnp.stack((log_vol**2 / 12., jnp.ones_like(log_vol)), axis=0)
+                sig_asp = jnp.broadcast_to(jnp.array([[asp], [0.]]), shift.shape)
                 asp = jnp.sqrt(shift + sig_asp) * sig_flx * xi_spc
 
             twolog = _twolog_integrate(log_vol, asp)
@@ -183,11 +173,11 @@ def non_parametric_amplitude(
         # zero-mode while taking into account the multiplicity of each mode
         if kind.lower() == "amplitude":
             norm = jnp.sqrt(jnp.sum(mode_multiplicity[1:] * spectrum[1:]**2))
-            norm /= jnp.sqrt(totvol)  # Due to integral in harmonic space
+            norm /= jnp.sqrt(totvol)    # Due to integral in harmonic space
             amplitude = flu * (jnp.sqrt(totvol) / norm) * spectrum
         elif kind.lower() == "power":
             norm = jnp.sqrt(jnp.sum(mode_multiplicity[1:] * spectrum[1:]))
-            norm /= jnp.sqrt(totvol)  # Due to integral in harmonic space
+            norm /= jnp.sqrt(totvol)    # Due to integral in harmonic space
             amplitude = flu * (jnp.sqrt(totvol) / norm) * jnp.sqrt(spectrum)
         else:
             raise ValueError(f"invalid kind specified {kind!r}")
@@ -212,6 +202,7 @@ class CorrelatedFieldMaker():
 
     See the methods initialization, :func:`add_fluctuations` and
     :func:`finalize` for further usage information."""
+
     def __init__(self, prefix: str):
         """Instantiate a CorrelatedFieldMaker object.
 
@@ -292,7 +283,7 @@ class CorrelatedFieldMaker():
         Enßlin, Torsten, `<https://arxiv.org/abs/2002.05218>`_
         `<http://dx.doi.org/10.1038/s41550-021-01548-0>`_
         """
-        shape = (shape, ) if isinstance(shape, int) else tuple(shape)
+        shape = (shape,) if isinstance(shape, int) else tuple(shape)
         distances = tuple(np.broadcast_to(distances, jnp.shape(shape)))
         totvol = jnp.prod(jnp.array(shape) * jnp.array(distances))
 
@@ -306,9 +297,7 @@ class CorrelatedFieldMaker():
         }
         if harmonic_domain_type.lower() == "fourier":
             domain["harmonic_space_shape"] = shape
-            m_length_idx, um, m_count = get_fourier_mode_distributor(
-                shape, distances
-            )
+            m_length_idx, um, m_count = get_fourier_mode_distributor(shape, distances)
             domain["power_distributor"] = m_length_idx
             domain["mode_multiplicity"] = m_count
 
@@ -363,9 +352,7 @@ class CorrelatedFieldMaker():
         self._target_subdomains.append(domain)
         self._parameter_tree.update(ptree)
 
-    def set_amplitude_total_offset(
-        self, offset_mean: float, offset_std: Union[tuple, Callable]
-    ):
+    def set_amplitude_total_offset(self, offset_mean: float, offset_std: Union[tuple, Callable]):
         """Sets the zero-mode for the combined amplitude operator
 
         Parameters
@@ -420,7 +407,9 @@ class CorrelatedFieldMaker():
         zero-mode. Their scales are only meaningful relative to one another.
         Their absolute scale bares no information.
         """
-        def _mk_normed_amp(amp):  # Avoid late binding
+
+        def _mk_normed_amp(amp):    # Avoid late binding
+
             def normed_amplitude(p):
                 return amp(p).at[1:].mul(1. / self.azm(p))
 
@@ -432,11 +421,9 @@ class CorrelatedFieldMaker():
     def amplitude(self) -> Callable:
         """Returns the added fluctuation, i.e. un-normalized amplitude"""
         if len(self._fluctuations) > 1:
-            s = (
-                'If more than one spectrum is present in the model,'
-                ' no unique set of amplitudes exist because only the'
-                ' relative scale is determined.'
-            )
+            s = ('If more than one spectrum is present in the model,'
+                 ' no unique set of amplitudes exist because only the'
+                 ' relative scale is determined.')
             raise NotImplementedError(s)
         amp = self._fluctuations[0]
 
@@ -483,7 +470,8 @@ class CorrelatedFieldMaker():
                 outer = harmonic_dvol * ht(outer)
             return outer
 
-        def _mk_expanded_amp(amp, sub_dom):  # Avoid late binding
+        def _mk_expanded_amp(amp, sub_dom):    # Avoid late binding
+
             def expanded_amp(p):
                 return amp(p)[sub_dom["power_distributor"]]
 

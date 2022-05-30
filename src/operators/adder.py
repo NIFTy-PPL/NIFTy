@@ -33,6 +33,7 @@ class Adder(Operator):
     a : :class:`nifty8.field.Field` or :class:`nifty8.multi_field.MultiField` or Scalar
         The field by which the input is shifted.
     """
+
     def __init__(self, a, neg=False, domain=None):
         self._a = a
         if isinstance(a, (Field, MultiField)):

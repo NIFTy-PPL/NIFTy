@@ -30,41 +30,33 @@ def get_refinement_shapewithdtype(
 
     if depth < 0:
         raise ValueError(f"invalid `depth`; got {depth!r}")
-    csz = int(_coarse_size)  # coarse size
-    fsz = int(_fine_size)  # fine size
+    csz = int(_coarse_size)    # coarse size
+    fsz = int(_fine_size)    # fine size
 
     swd = partial(ShapeWithDtype, dtype=dtype)
 
-    shape0 = (shape0, ) if isinstance(shape0, int) else shape0
+    shape0 = (shape0,) if isinstance(shape0, int) else shape0
     ndim = len(shape0)
     exc_shp = [swd(shape0)] if not skip0 else [None]
     if depth > 0:
         if _fine_strategy == "jump":
-            exc_lvl = tuple(el - (csz - 1) for el in shape0) + (fsz**ndim, )
+            exc_lvl = tuple(el - (csz-1) for el in shape0) + (fsz**ndim,)
         elif _fine_strategy == "extend":
-            exc_lvl = tuple(
-                ceil((el - (csz - 1)) / (fsz // 2)) for el in shape0
-            ) + (fsz**ndim, )
+            exc_lvl = tuple(ceil((el - (csz-1)) / (fsz//2)) for el in shape0) + (fsz**ndim,)
         else:
             raise ValueError(f"invalid `_fine_strategy`; got {_fine_strategy}")
         exc_shp += [swd(exc_lvl)]
     for lvl in range(1, depth):
         if _fine_strategy == "jump":
-            exc_lvl = tuple(
-                fsz * el - (csz - 1) for el in exc_shp[-1].shape[:-1]
-            ) + (fsz**ndim, )
+            exc_lvl = tuple(fsz*el - (csz-1) for el in exc_shp[-1].shape[:-1]) + (fsz**ndim,)
         elif _fine_strategy == "extend":
             exc_lvl = tuple(
-                ceil((fsz * el - (csz - 1)) / (fsz // 2))
-                for el in exc_shp[-1].shape[:-1]
-            ) + (fsz**ndim, )
+                ceil((fsz*el - (csz-1)) / (fsz//2)) for el in exc_shp[-1].shape[:-1]) + (fsz**ndim,)
         else:
             raise AssertionError()
         if any(el <= 0 for el in exc_lvl):
-            ve = (
-                f"`shape0` ({shape0}) with `depth` ({depth}) yield an"
-                f" invalid shape ({exc_lvl}) at level {lvl}"
-            )
+            ve = (f"`shape0` ({shape0}) with `depth` ({depth}) yield an"
+                  f" invalid shape ({exc_lvl}) at level {lvl}")
             raise ValueError(ve)
         exc_shp += [swd(exc_lvl)]
 
@@ -80,9 +72,9 @@ def coarse2fine_shape(
     _fine_strategy: Literal["jump", "extend"] = "jump",
 ):
     """Translates a coarse shape to its corresponding fine shape."""
-    shape0 = (shape0, ) if isinstance(shape0, int) else shape0
-    csz = int(_coarse_size)  # coarse size
-    fsz = int(_fine_size)  # fine size
+    shape0 = (shape0,) if isinstance(shape0, int) else shape0
+    csz = int(_coarse_size)    # coarse size
+    fsz = int(_fine_size)    # fine size
     if _fine_size % 2 != 0:
         raise ValueError("only even numbers allowed for `_fine_size`")
 
@@ -91,17 +83,15 @@ def coarse2fine_shape(
         sz_at = shp
         for lvl in range(depth):
             if _fine_strategy == "jump":
-                sz_at = fsz * (sz_at - (csz - 1))
+                sz_at = fsz * (sz_at - (csz-1))
             elif _fine_strategy == "extend":
-                sz_at = fsz * ceil((sz_at - (csz - 1)) / (fsz // 2))
+                sz_at = fsz * ceil((sz_at - (csz-1)) / (fsz//2))
             else:
                 ve = f"invalid `_fine_strategy`; got {_fine_strategy}"
                 raise ValueError(ve)
             if sz_at <= 0:
-                ve = (
-                    f"`shape0` ({shape0}) with `depth` ({depth}) yield an"
-                    f" invalid shape ({sz_at}) at level {lvl}"
-                )
+                ve = (f"`shape0` ({shape0}) with `depth` ({depth}) yield an"
+                      f" invalid shape ({sz_at}) at level {lvl}")
                 raise ValueError(ve)
         shape.append(int(sz_at))
     return tuple(shape)
@@ -117,9 +107,9 @@ def fine2coarse_shape(
     ceil_sizes: bool = False,
 ):
     """Translates a fine shape to its corresponding coarse shape."""
-    shape = (shape, ) if isinstance(shape, int) else shape
-    csz = int(_coarse_size)  # coarse size
-    fsz = int(_fine_size)  # fine size
+    shape = (shape,) if isinstance(shape, int) else shape
+    csz = int(_coarse_size)    # coarse size
+    fsz = int(_fine_size)    # fine size
     if _fine_size % 2 != 0:
         raise ValueError("only even numbers allowed for `_fine_size`")
 
@@ -129,21 +119,19 @@ def fine2coarse_shape(
         for lvl in range(depth, 0, -1):
             if _fine_strategy == "jump":
                 # solve for n: `fsz * (n - (csz - 1))`
-                sz_at = sz_at / fsz + (csz - 1)
+                sz_at = sz_at/fsz + (csz-1)
             elif _fine_strategy == "extend":
                 # solve for n: `fsz * ceil((n - (csz - 1)) / (fsz // 2))`
                 # NOTE, not unique because of `ceil`; use lower limit
-                sz_at_max = (sz_at / fsz) * (fsz // 2) + (csz - 1)
-                sz_at_min = ceil(sz_at_max - (fsz // 2 - 1))
+                sz_at_max = (sz_at/fsz) * (fsz//2) + (csz-1)
+                sz_at_min = ceil(sz_at_max - (fsz//2 - 1))
                 for sz_at_cand in range(sz_at_min, ceil(sz_at_max) + 1):
                     try:
-                        shp_cand = coarse2fine_shape(
-                            (sz_at_cand, ),
-                            depth=depth - lvl + 1,
-                            _coarse_size=csz,
-                            _fine_size=fsz,
-                            _fine_strategy=_fine_strategy
-                        )[0]
+                        shp_cand = coarse2fine_shape((sz_at_cand,),
+                                                     depth=depth - lvl + 1,
+                                                     _coarse_size=csz,
+                                                     _fine_size=fsz,
+                                                     _fine_strategy=_fine_strategy)[0]
                     except ValueError as e:
                         if "invalid shape" not in "".join(e.args):
                             ve = "unexpected behavior of `coarse2fine_shape`"
@@ -174,7 +162,7 @@ def coarse2fine_distances(
     _fine_strategy: Literal["jump", "extend"] = "jump",
 ):
     """Translates coarse distances to its corresponding fine distances."""
-    fsz = int(_fine_size)  # fine size
+    fsz = int(_fine_size)    # fine size
     if _fine_strategy == "jump":
         fpx_in_cpx = fsz**depth
     elif _fine_strategy == "extend":
@@ -194,7 +182,7 @@ def fine2coarse_distances(
     _fine_strategy: Literal["jump", "extend"] = "jump",
 ):
     """Translates fine distances to its corresponding coarse distances."""
-    fsz = int(_fine_size)  # fine size
+    fsz = int(_fine_size)    # fine size
     if _fine_strategy == "jump":
         fpx_in_cpx = fsz**depth
     elif _fine_strategy == "extend":
@@ -222,7 +210,7 @@ def gauss_kl(cov_desired, cov_approx, *, m_desired=None, m_approx=None):
     cov_a_dl = _clipping_posdef_logdet(cov_approx, msg_prefix="`cov_approx` ")
     cov_a_inv = jnp.linalg.inv(cov_approx)
 
-    kl = -cov_desired.shape[0]  # number of dimensions
+    kl = -cov_desired.shape[0]    # number of dimensions
     kl += cov_a_dl - cov_t_dl + jnp.trace(cov_a_inv @ cov_desired)
     if m_approx is not None and m_desired is not None:
         m_diff = m_approx - m_desired
@@ -242,7 +230,7 @@ def refinement_covariance(chart, kernel, jit=True):
         cf_T = jax.linear_transpose(cf, cf.shapewithdtype)
         cov_implicit = lambda x: cf(*cf_T(x))
         cov_implicit = jax.jit(cov_implicit) if jit else cov_implicit
-        _ = cov_implicit(jnp.zeros(chart.shape))  # Test transpose
+        _ = cov_implicit(jnp.zeros(chart.shape))    # Test transpose
     except (NotImplementedError, AssertionError):
         # Workaround JAX not yet implementing the transpose of the scanned
         # refinement
@@ -252,10 +240,8 @@ def refinement_covariance(chart, kernel, jit=True):
 
     probe = jnp.zeros(chart.shape)
     indices = np.indices(chart.shape).reshape(chart.ndim, -1)
-    cov_empirical = jax.lax.map(
-        lambda idx: cov_implicit(probe.at[tuple(idx)].set(1.)).ravel(),
-        indices.T
-    ).T  # vmap over `indices` w/ `in_axes=1, out_axes=-1`
+    cov_empirical = jax.lax.map(lambda idx: cov_implicit(probe.at[tuple(idx)].set(1.)).ravel(),
+                                indices.T).T    # vmap over `indices` w/ `in_axes=1, out_axes=-1`
 
     return cov_empirical
 
@@ -265,8 +251,7 @@ def true_covariance(chart, kernel, depth=None):
     depth = chart.depth if depth is None else depth
 
     c0_slc = tuple(slice(sz) for sz in chart.shape_at(depth))
-    pos = jnp.stack(chart.ind2cart(jnp.mgrid[c0_slc], depth),
-                    axis=-1).reshape(-1, chart.ndim)
+    pos = jnp.stack(chart.ind2cart(jnp.mgrid[c0_slc], depth), axis=-1).reshape(-1, chart.ndim)
     dist_mat = distance_matrix(pos, pos)
     return kernel(dist_mat)
 
@@ -285,26 +270,21 @@ def refinement_approximation_error(
 
     suggested_min_shape = 2 * 4**chart.depth
     if any(s <= suggested_min_shape for s in chart.shape):
-        msg = (
-            f"shape {chart.shape} potentially too small"
-            f" (desired {(suggested_min_shape, ) * chart.ndim} (=`2*4^depth`))"
-        )
+        msg = (f"shape {chart.shape} potentially too small"
+               f" (desired {(suggested_min_shape, ) * chart.ndim} (=`2*4^depth`))")
         warn(msg)
 
     cov_empirical = refinement_covariance(chart, kernel)
     cov_truth = true_covariance(chart, kernel)
 
     if cutout is None and all(s > suggested_min_shape for s in chart.shape):
-        cutout = (suggested_min_shape, ) * chart.ndim
-        print(
-            f"cropping field (w/ shape {chart.shape}) to {cutout}",
-            file=sys.stderr
-        )
+        cutout = (suggested_min_shape,) * chart.ndim
+        print(f"cropping field (w/ shape {chart.shape}) to {cutout}", file=sys.stderr)
     if cutout is not None:
         if isinstance(cutout, slice):
-            cutout = (cutout, ) * chart.ndim
+            cutout = (cutout,) * chart.ndim
         elif isinstance(cutout, int):
-            cutout = (slice(cutout), ) * chart.ndim
+            cutout = (slice(cutout),) * chart.ndim
         elif isinstance(cutout, tuple):
             if all(isinstance(el, slice) for el in cutout):
                 pass

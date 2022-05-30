@@ -37,11 +37,11 @@ position_space = ift.RGSpace([512, 512])
 cfm_kwargs = {
     'offset_mean': -2.,
     'offset_std': (1e-5, 1e-6),
-    'fluctuations': (2., 0.2),  # Amplitude of field fluctuations
-    'loglogavgslope': (-4., 1),  # Exponent of power law power spectrum
+    'fluctuations': (2., 0.2),    # Amplitude of field fluctuations
+    'loglogavgslope': (-4., 1),    # Exponent of power law power spectrum
     # Amplitude of integrated Wiener process on top of power law power spectrum
     'flexibility': (8e-1, 1e-1),
-    'asperity': (3e-1, 1e-3)  # Ragged-ness of integrated Wiener process
+    'asperity': (3e-1, 1e-3)    # Ragged-ness of integrated Wiener process
 }
 
 correlated_field_nft = ift.SimpleCorrelatedField(position_space, **cfm_kwargs)
@@ -95,8 +95,7 @@ ham_vg = jit(jft.mean_value_and_grad(ham))
 ham_metric = jit(jft.mean_metric(ham.metric))
 MetricKL = jit(
     partial(jft.MetricKL, ham),
-    static_argnames=("n_samples", "mirror_samples", "linear_sampling_name")
-)
+    static_argnames=("n_samples", "mirror_samples", "linear_sampling_name"))
 
 key, subkey = random.split(key)
 pos = pos_init = 1e-2 * jft.random_like(subkey, signal_response)
@@ -126,8 +125,7 @@ for i, subkey in enumerate(sk):
         key=subkey,
         mirror_samples=True,
         linear_sampling_name=None,
-        linear_sampling_kwargs={"absdelta": absdelta / 10.}
-    )
+        linear_sampling_kwargs={"absdelta": absdelta / 10.})
 
     print("Minimizing...", file=sys.stderr)
     opt_state = jft.minimize(
@@ -139,8 +137,7 @@ for i, subkey in enumerate(sk):
             "hessp": partial(ham_metric, primals_samples=mg_samples),
             "absdelta": absdelta,
             "maxiter": n_newton_iterations
-        }
-    )
+        })
     pos = opt_state.x
     msg = f"Post MGVI Iteration {i}: Energy {mg_samples.at(pos).mean(ham):2.4e}"
     print(msg, file=sys.stderr)
@@ -191,12 +188,11 @@ r = jft.random_like(random.PRNGKey(54), signal_response)
 r_nft = ift.makeField(signal_response_nft.domain, r.val)
 data_nft = ift.makeField(signal_response_nft.target, data)
 lh_nft = ift.GaussianEnergy(
-    data_nft,
-    inverse_covariance=ift.ScalingOperator(data_nft.domain, 1. / noise_cov)
-) @ signal_response_nft
+    data_nft, inverse_covariance=ift.ScalingOperator(data_nft.domain,
+                                                     1. / noise_cov)) @ signal_response_nft
 ham_nft = ift.StandardHamiltonian(lh_nft)
 
-_ = ham(r)  # Warm-Up
+_ = ham(r)    # Warm-Up
 t = timeit(lambda: ham(r).block_until_ready())
 t_nft = timeit(lambda: ham_nft(r_nft))
 
@@ -213,9 +209,7 @@ print(f"W/O JAX :: {t_nft}")
 # position to plain NIFTy and run the model there again.
 
 sp = ift.makeField(signal_response_nft.domain, synth_pos.val)
-np.testing.assert_allclose(
-    signal_response_nft(sp).val, signal_response(synth_pos)
-)
+np.testing.assert_allclose(signal_response_nft(sp).val, signal_response(synth_pos))
 
 # %% [markdown]
 # For smaller models or models where the FFT does not dominate JAX-based NIFTy
@@ -237,12 +231,8 @@ def get_lognormal_model(shapes, cfm_kwargs, data_key, noise_cov=0.5**2):
     position_space = ift.RGSpace(shapes)
 
     with warnings.catch_warnings():
-        warnings.filterwarnings(
-            action="ignore", category=UserWarning, message="no JAX"
-        )
-        correlated_field_nft = ift.SimpleCorrelatedField(
-            position_space, **cfm_kwargs
-        )
+        warnings.filterwarnings(action="ignore", category=UserWarning, message="no JAX")
+        correlated_field_nft = ift.SimpleCorrelatedField(position_space, **cfm_kwargs)
         signal_nft = correlated_field_nft.exp()
         response_nft = ift.GeometryRemover(signal_nft.target)
         signal_response_nft = response_nft(signal_nft)
@@ -257,22 +247,17 @@ def get_lognormal_model(shapes, cfm_kwargs, data_key, noise_cov=0.5**2):
     noise_cov_inv = 1. / noise_cov
     noise_std_inv = jnp.sqrt(noise_cov_inv)
     lh = jft.Gaussian(
-        data,
-        noise_cov_inv=lambda x: noise_cov_inv * x,
-        noise_std_inv=lambda x: noise_std_inv * x
-    ) @ signal_response
+        data, noise_cov_inv=lambda x: noise_cov_inv * x,
+        noise_std_inv=lambda x: noise_std_inv * x) @ signal_response
     ham = jft.StandardHamiltonian(likelihood=lh)
     ham_vg = value_and_grad(ham)
 
     with warnings.catch_warnings():
-        warnings.filterwarnings(
-            action="ignore", category=UserWarning, message="no JAX"
-        )
+        warnings.filterwarnings(action="ignore", category=UserWarning, message="no JAX")
         data_nft = ift.makeField(signal_response_nft.target, data)
         noise_cov_inv_nft = ift.ScalingOperator(data_nft.domain, 1. / noise_cov)
         lh_nft = ift.GaussianEnergy(
-            data_nft, inverse_covariance=noise_cov_inv_nft
-        ) @ signal_response_nft
+            data_nft, inverse_covariance=noise_cov_inv_nft) @ signal_response_nft
         ham_nft = ift.StandardHamiltonian(lh_nft)
 
     def ham_vg_nft(x):
@@ -280,9 +265,7 @@ def get_lognormal_model(shapes, cfm_kwargs, data_key, noise_cov=0.5**2):
         x = ift.makeField(ham_nft.domain, x)
         x = ift.Linearization.make_var(x)
         with warnings.catch_warnings():
-            warnings.filterwarnings(
-                action="ignore", category=UserWarning, message="no JAX"
-            )
+            warnings.filterwarnings(action="ignore", category=UserWarning, message="no JAX")
             res = ham_nft(x)
         one_nft = ift.Field(ift.DomainTuple.make(()), 1.)
         bwd = res.jac.adjoint_times(one_nft)
@@ -298,31 +281,25 @@ def get_lognormal_model(shapes, cfm_kwargs, data_key, noise_cov=0.5**2):
     return ham_vg, ham_vg_nft, aux
 
 
-get_ln_mod = partial(
-    get_lognormal_model, cfm_kwargs=cfm_kwargs, data_key=key, noise_cov=0.5**2
-)
+get_ln_mod = partial(get_lognormal_model, cfm_kwargs=cfm_kwargs, data_key=key, noise_cov=0.5**2)
 
-dimensions_to_test = [
-    (256, ), (512, ), (1024, ), (256**2, ), (512**2, ), (128, 128), (256, 256),
-    (512, 512), (1024, 1024), (2048, 2048)
-]
+dimensions_to_test = [(256,), (512,), (1024,), (256**2,), (512**2,), (128, 128), (256, 256),
+                      (512, 512), (1024, 1024), (2048, 2048)]
 for dims in dimensions_to_test:
     h, h_nft, aux = get_ln_mod(dims)
     r = aux["synthetic_position"]
     h = jit(h)
-    _ = h(r)  # Warm-Up
+    _ = h(r)    # Warm-Up
 
     np.testing.assert_allclose(h(r)[0], h_nft(r)[0])
     ift.myassert(all(tree_map(np.allclose, h(r)[1].val, h_nft(r)[1]).values()))
     ti = timeit(lambda: h(r)[0].block_until_ready())
     ti_n = timeit(lambda: h_nft(r))
 
-    print(
-        f"Shape {str(dims):>16s}"
-        f" :: JAX {ti.time:4.2e}"
-        f" :: NIFTy {ti_n.time:4.2e}"
-        f" ;; ({ti.number:6d}, {ti_n.number:<6d} loops respectively)"
-    )
+    print(f"Shape {str(dims):>16s}"
+          f" :: JAX {ti.time:4.2e}"
+          f" :: NIFTy {ti_n.time:4.2e}"
+          f" ;; ({ti.number:6d}, {ti_n.number:<6d} loops respectively)")
 
 # %% [markdown]
 # | Shape                  | JAX          | NIFTy          | Loops respectively                  |

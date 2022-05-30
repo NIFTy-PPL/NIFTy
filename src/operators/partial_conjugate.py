@@ -32,6 +32,7 @@ class PartialConjugate(EndomorphicOperator):
         The keys of the :class:`MultiField` for which complex conjugation
         should be performed.
     """
+
     def __init__(self, domain, conjugation_keys):
         if not isinstance(domain, MultiDomain):
             raise ValueError("MultiDomain expected!")

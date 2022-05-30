@@ -32,12 +32,12 @@ def exposure_2d(domain):
     # Structured exposure for 2D mode
     x_shape, y_shape = domain.shape
     exposure = np.ones(domain.shape)
-    exposure[x_shape//3:x_shape//2, :] *= 2.
-    exposure[x_shape*4//5:x_shape, :] *= .1
-    exposure[x_shape//2:x_shape*3//2, :] *= 3.
-    exposure[:, x_shape//3:x_shape//2] *= 2.
-    exposure[:, x_shape*4//5:x_shape] *= .1
-    exposure[:, x_shape//2:x_shape*3//2] *= 3.
+    exposure[x_shape // 3:x_shape // 2, :] *= 2.
+    exposure[x_shape * 4 // 5:x_shape, :] *= .1
+    exposure[x_shape // 2:x_shape * 3 // 2, :] *= 3.
+    exposure[:, x_shape // 3:x_shape // 2] *= 2.
+    exposure[:, x_shape * 4 // 5:x_shape] *= .1
+    exposure[:, x_shape // 2:x_shape * 3 // 2] *= 3.
     return ift.Field.from_raw(domain, exposure)
 
 
@@ -70,7 +70,7 @@ def main():
 
     # Define amplitude (square root of power spectrum)
     def sqrtpspec(k):
-        return 1./(20. + k**2)
+        return 1. / (20. + k**2)
 
     p_space = ift.PowerSpace(harmonic_space)
     pd = ift.PowerDistributor(harmonic_space, p_space)
@@ -95,14 +95,20 @@ def main():
     likelihood_energy = ift.PoissonianEnergy(data) @ lamb
 
     # Settings for minimization
-    ic_newton = ift.DeltaEnergyController(
-        name='Newton', iteration_limit=100, tol_rel_deltaE=1e-8)
+    ic_newton = ift.DeltaEnergyController(name='Newton', iteration_limit=100, tol_rel_deltaE=1e-8)
     minimizer = ift.NewtonCG(ic_newton)
 
     # Compute MAP solution by minimizing the information Hamiltonian
-    sl = ift.optimize_kl(likelihood_energy, 1, 0, minimizer, None, None,
-                         output_directory="getting_started_2_results", overwrite=True,
-                         plottable_operators={"signal": sky})
+    sl = ift.optimize_kl(
+        likelihood_energy,
+        1,
+        0,
+        minimizer,
+        None,
+        None,
+        output_directory="getting_started_2_results",
+        overwrite=True,
+        plottable_operators={"signal": sky})
 
 
 if __name__ == '__main__':

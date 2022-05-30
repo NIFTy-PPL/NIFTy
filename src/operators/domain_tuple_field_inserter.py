@@ -54,7 +54,7 @@ class DomainTupleFieldInserter(LinearOperator):
             if p < 0 or p >= s:
                 raise ValueError("bad position value")
 
-        self._slc = (slice(None),)*fst_dims + index
+        self._slc = (slice(None),) * fst_dims + index
 
     def apply(self, x, mode):
         self._check_input(x, mode)

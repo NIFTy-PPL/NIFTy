@@ -56,16 +56,13 @@ def Gaussian(data, noise_cov_inv_sqrt):
     # Better: `tree_map(ShapeWithDtype.from_leave, data)`
 
     return jft.Likelihood(
-        hamiltonian,
-        left_sqrt_metric=left_sqrt_metric,
-        lsm_tangents_shape=lsm_tangents_shape
-    )
+        hamiltonian, left_sqrt_metric=left_sqrt_metric, lsm_tangents_shape=lsm_tangents_shape)
 
 
 seed = 42
 key = random.PRNGKey(seed)
 
-dims = (1024, )
+dims = (1024,)
 
 loglogslope = 2.
 power_spectrum = lambda k: 1. / (k**loglogslope + 1.)
@@ -74,9 +71,7 @@ harmonic_power = power_spectrum(modes)
 harmonic_power = jnp.concatenate((harmonic_power, harmonic_power[-2:0:-1]))
 
 # Specify the model
-correlated_field = lambda x: jft.correlated_field.hartley(
-    harmonic_power * x.val
-)
+correlated_field = lambda x: jft.correlated_field.hartley(harmonic_power * x.val)
 signal_response = lambda x: jnp.exp(1. + correlated_field(x))
 noise_cov_inv_sqrt = lambda x: 0.1**-1 * x
 
@@ -85,8 +80,7 @@ key, subkey = random.split(key)
 pos_truth = jft.Field(random.normal(shape=dims, key=key))
 signal_response_truth = signal_response(pos_truth)
 key, subkey = random.split(key)
-noise_truth = 1. / noise_cov_inv_sqrt(jnp.ones(dims)
-                                     ) * random.normal(shape=dims, key=key)
+noise_truth = 1. / noise_cov_inv_sqrt(jnp.ones(dims)) * random.normal(shape=dims, key=key)
 data = signal_response_truth + noise_truth
 
 nll = Gaussian(data, noise_cov_inv_sqrt) @ signal_response
@@ -95,8 +89,7 @@ ham_vg = jit(jft.mean_value_and_grad(ham))
 ham_metric = jit(jft.mean_metric(ham.metric))
 MetricKL = jit(
     partial(jft.MetricKL, ham),
-    static_argnames=("n_samples", "mirror_samples", "linear_sampling_name")
-)
+    static_argnames=("n_samples", "mirror_samples", "linear_sampling_name"))
 
 key, subkey = random.split(key)
 pos_init = jft.Field(random.normal(shape=dims, key=subkey))
@@ -104,9 +97,7 @@ pos = jft.Field(pos_init.val)
 
 n_newton_iterations = 10
 # Maximize the posterior using natural gradient scaling
-pos = jft.newton_cg(
-    fun_and_grad=ham_vg, x0=pos, hessp=ham_metric, maxiter=n_newton_iterations
-)
+pos = jft.newton_cg(fun_and_grad=ham_vg, x0=pos, hessp=ham_metric, maxiter=n_newton_iterations)
 
 fig, ax = plt.subplots()
 ax.plot(signal_response_truth, alpha=0.7, label="Signal")
@@ -179,8 +170,7 @@ for i in range(n_mgvi_iterations):
         fun_and_grad=partial(ham_vg, primals_samples=mg_samples),
         x0=pos,
         hessp=partial(ham_metric, primals_samples=mg_samples),
-        maxiter=n_newton_iterations
-    )
+        maxiter=n_newton_iterations)
     msg = f"Post MGVI Iteration {i}: Energy {mg_samples.at(pos).mean(ham):2.4e}"
     print(msg, file=sys.stderr)
 
@@ -225,8 +215,8 @@ plt.close()
 # * No domains --> no domain mismatches --> broadcasting \o/
 # * No domains --> no domain mismatches --> more errors :(
 
-dims_ax1 = (64, )
-dims_ax2 = (128, )
+dims_ax1 = (64,)
+dims_ax2 = (128,)
 cf_zm = {"offset_mean": 0., "offset_std": (1e-3, 1e-4)}
 cf_fl = {
     "fluctuations": (1e-1, 5e-3),
@@ -252,9 +242,8 @@ key, subkey = random.split(key)
 pos_truth = jft.random_like(subkey, ptree)
 signal_response_truth = signal_response(pos_truth)
 key, subkey = random.split(key)
-noise_truth = jnp.sqrt(
-    noise_cov(jnp.ones(signal_response_truth.shape))
-) * random.normal(shape=signal_response_truth.shape, key=key)
+noise_truth = jnp.sqrt(noise_cov(jnp.ones(signal_response_truth.shape))) * random.normal(
+    shape=signal_response_truth.shape, key=key)
 data = signal_response_truth + noise_truth
 
 nll = jft.Gaussian(data, noise_cov_inv) @ signal_response
@@ -263,8 +252,7 @@ ham_vg = jit(jft.mean_value_and_grad(ham))
 ham_metric = jit(jft.mean_metric(ham.metric))
 MetricKL = jit(
     partial(jft.MetricKL, ham),
-    static_argnames=("n_samples", "mirror_samples", "linear_sampling_name")
-)
+    static_argnames=("n_samples", "mirror_samples", "linear_sampling_name"))
 
 key, subkey = random.split(key)
 pos_init = jft.Field(jft.random_like(subkey, ptree))
@@ -291,8 +279,7 @@ for i in range(n_mgvi_iterations):
         fun_and_grad=partial(ham_vg, primals_samples=mg_samples),
         x0=pos,
         hessp=partial(ham_metric, primals_samples=mg_samples),
-        maxiter=n_newton_iterations
-    )
+        maxiter=n_newton_iterations)
     msg = f"Post MGVI Iteration {i}: Energy {mg_samples.at(pos).mean(ham):2.4e}"
     print(msg, file=sys.stderr)
 
@@ -316,7 +303,7 @@ for ax, (title, field, tp) in zip(axs.flat, to_plot):
         plt.colorbar(im, ax=ax, orientation="horizontal")
     else:
         ax_plot = ax.loglog if tp == "loglog" else ax.plot
-        field = field if isinstance(field, (tuple, list)) else (field, )
+        field = field if isinstance(field, (tuple, list)) else (field,)
         for f in field:
             ax_plot(f, alpha=0.7)
 fig.tight_layout()

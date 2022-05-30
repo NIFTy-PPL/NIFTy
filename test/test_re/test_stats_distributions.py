@@ -15,7 +15,7 @@ def test_invgamma_roundtrip(a, scale, loc, seed, step=1e-1):
     rng = np.random.default_rng(seed)
 
     n_samples = int(1e+4)
-    n_rvs = rng.normal(loc=0., scale=2., size=(n_samples, ))
+    n_rvs = rng.normal(loc=0., scale=2., size=(n_samples,))
     n_rvs = n_rvs.clip(-5.2, 5.2)
 
     pr = jft.invgamma_prior(a, scale, loc=loc, step=step)
@@ -32,7 +32,7 @@ def test_lognormal_roundtrip(mean, std, seed):
     rng = np.random.default_rng(seed)
 
     n_samples = int(1e+4)
-    n_rvs = rng.normal(loc=0., scale=2., size=(n_samples, ))
+    n_rvs = rng.normal(loc=0., scale=2., size=(n_samples,))
 
     pr = jft.lognormal_prior(mean, std)
     ipr = jft.lognormal_invprior(mean, std)

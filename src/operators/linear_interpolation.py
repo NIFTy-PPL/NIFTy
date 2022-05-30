@@ -44,6 +44,7 @@ class LinearInterpolator(LinearOperator):
     periodic boundary conditions. This reflects the general property of
     RGSpaces to be tori topologically.
     """
+
     def __init__(self, domain, sampling_points):
         self._domain = makeDomain(domain)
         for dom in self.domain:
@@ -68,13 +69,13 @@ class LinearInterpolator(LinearOperator):
 
     def _build_mat(self, sampling_points, N_points):
         ndim = sampling_points.shape[0]
-        mg = np.mgrid[(slice(0, 2),)*ndim]
+        mg = np.mgrid[(slice(0, 2),) * ndim]
         mg = np.array(list(map(np.ravel, mg)))
         dist = [list(dom.distances) for dom in self.domain]
         # FIXME This breaks as soon as not all domains have the same number of
         # dimensions.
         dist = np.array(dist).reshape(-1, 1)
-        pos = sampling_points/dist
+        pos = sampling_points / dist
         excess = pos - np.floor(pos)
         pos = np.floor(pos).astype(np.int64)
         max_index = np.array(self.domain.shape).reshape(-1, 1)
@@ -82,14 +83,12 @@ class LinearInterpolator(LinearOperator):
         ii = np.zeros((len(mg[0]), N_points), dtype=np.int64)
         jj = np.zeros((len(mg[0]), N_points), dtype=np.int64)
         for i in range(len(mg[0])):
-            factor = np.prod(
-                np.abs(1 - mg[:, i].reshape(-1, 1) - excess), axis=0)
+            factor = np.prod(np.abs(1 - mg[:, i].reshape(-1, 1) - excess), axis=0)
             data[i, :] = factor
             fromi = (pos + mg[:, i].reshape(-1, 1)) % max_index
             ii[i, :] = np.arange(N_points)
             jj[i, :] = np.ravel_multi_index(fromi, self.domain.shape)
-        self._mat = coo_matrix((data.reshape(-1),
-                                (ii.reshape(-1), jj.reshape(-1))),
+        self._mat = coo_matrix((data.reshape(-1), (ii.reshape(-1), jj.reshape(-1))),
                                (N_points, np.prod(self.domain.shape)))
         self._mat = aslinearoperator(self._mat)
 

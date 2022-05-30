@@ -23,6 +23,7 @@ from ..sugar import makeField
 
 
 class TransposeOperator(LinearOperator):
+
     def __init__(self, domain, indices):
         self._domain = DomainTuple.make(domain)
         indices = tuple(indices)
@@ -52,8 +53,7 @@ def _niftyspace_to_np_indices(domain, indices):
     np_indices = []
     dimensions = np.cumsum((0,) + tuple(len(dd.shape) for dd in domain))
     for ind in indices:
-        np_indices.extend(range(dimensions[ind], dimensions[ind+1]))
+        np_indices.extend(range(dimensions[ind], dimensions[ind + 1]))
     res = tuple(np_indices)
     myassert(len(res) == len(domain.shape))
     return res
-

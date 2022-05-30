@@ -46,8 +46,8 @@ def _check_repr(op):
 def testLOSResponse(sp, dtype):
     starts = ift.random.current_rng().standard_normal((len(sp.shape), 10))
     ends = ift.random.current_rng().standard_normal((len(sp.shape), 10))
-    sigma_low = 1e-4*ift.random.current_rng().standard_normal(10)
-    sigma_ups = 1e-5*ift.random.current_rng().standard_normal(10)
+    sigma_low = 1e-4 * ift.random.current_rng().standard_normal(10)
+    sigma_ups = 1e-5 * ift.random.current_rng().standard_normal(10)
     _check_repr(ift.LOSResponse(sp, starts, ends, sigma_low, sigma_ups))
 
 
@@ -57,9 +57,9 @@ def testOperatorCombinations(sp, dtype):
     b = ift.DiagonalOperator(ift.Field.from_random(sp, "normal", dtype=dtype))
     _check_repr(ift.SandwichOperator.make(a, b))
     _check_repr(a(b))
-    _check_repr(a+b)
-    _check_repr(a-b)
-    _check_repr(a*b)
+    _check_repr(a + b)
+    _check_repr(a - b)
+    _check_repr(a * b)
     _check_repr(a**2)
 
 
@@ -67,7 +67,7 @@ def testLinearInterpolator():
     sp = ift.RGSpace((10, 8), distances=(0.1, 3.5))
     pos = ift.random.current_rng().random((2, 23))
     pos[0, :] *= 0.9
-    pos[1, :] *= 7*3.5
+    pos[1, :] *= 7 * 3.5
     _check_repr(ift.LinearInterpolator(sp, pos))
 
 
@@ -109,11 +109,9 @@ def testDOFDistributor(sp, dtype):
 @pmp('sp', _h_spaces)
 def testPPO(sp, dtype):
     _check_repr(ift.PowerDistributor(target=sp))
-    ps = ift.PowerSpace(
-        sp, ift.PowerSpace.useful_binbounds(sp, logarithmic=False, nbin=3))
+    ps = ift.PowerSpace(sp, ift.PowerSpace.useful_binbounds(sp, logarithmic=False, nbin=3))
     _check_repr(ift.PowerDistributor(target=sp, power_space=ps))
-    ps = ift.PowerSpace(
-        sp, ift.PowerSpace.useful_binbounds(sp, logarithmic=True, nbin=3))
+    ps = ift.PowerSpace(sp, ift.PowerSpace.useful_binbounds(sp, logarithmic=True, nbin=3))
     _check_repr(ift.PowerDistributor(target=sp, power_space=ps))
 
 
@@ -164,9 +162,8 @@ def testContractionOperator(spaces, wgt, dtype):
 
 
 def testDomainTupleFieldInserter():
-    target = ift.DomainTuple.make((ift.UnstructuredDomain([3, 2]),
-                                   ift.UnstructuredDomain(7),
-                                   ift.RGSpace([4, 22])))
+    target = ift.DomainTuple.make(
+        (ift.UnstructuredDomain([3, 2]), ift.UnstructuredDomain(7), ift.RGSpace([4, 22])))
     _check_repr(ift.DomainTupleFieldInserter(target, 1, (5,)))
 
 
@@ -174,24 +171,20 @@ def testDomainTupleFieldInserter():
 @pmp('factor', [1, 2, 2.7])
 @pmp('central', [False, True])
 def testZeroPadder(space, factor, dtype, central):
-    dom = (ift.RGSpace(10), ift.UnstructuredDomain(13), ift.RGSpace(7, 12),
-           ift.HPSpace(4))
-    newshape = [int(factor*l) for l in dom[space].shape]
+    dom = (ift.RGSpace(10), ift.UnstructuredDomain(13), ift.RGSpace(7, 12), ift.HPSpace(4))
+    newshape = [int(factor * l) for l in dom[space].shape]
     _check_repr(ift.FieldZeroPadder(dom, newshape, space, central))
 
 
-@pmp('args', [[ift.RGSpace(
-    (13, 52, 40)), (4, 6, 25), None], [ift.RGSpace(
-        (128, 128)), (45, 48), 0], [ift.RGSpace(13), (7,), None], [
-            (ift.HPSpace(3), ift.RGSpace((12, 24), distances=0.3)), (12, 12), 1
-        ]])
+@pmp('args', [[ift.RGSpace((13, 52, 40)), (4, 6, 25), None], [ift.RGSpace(
+    (128, 128)), (45, 48), 0], [ift.RGSpace(13), (7,), None],
+              [(ift.HPSpace(3), ift.RGSpace((12, 24), distances=0.3)), (12, 12), 1]])
 def testRegridding(args):
     _check_repr(ift.RegriddingOperator(*args))
 
 
 @pmp('fdomain', [
-    ift.DomainTuple.make((ift.RGSpace(
-        (3, 5, 4)), ift.RGSpace((16,), distances=(7.,))),),
+    ift.DomainTuple.make((ift.RGSpace((3, 5, 4)), ift.RGSpace((16,), distances=(7.,))),),
     ift.DomainTuple.make(ift.HPSpace(12),)
 ])
 @pmp('domain', [
@@ -231,4 +224,4 @@ def testHamiltonian(dom):
 def testSumOperator(dom):
     op0 = ift.FFTOperator(dom)
     op1 = op0.scale(2)
-    _check_repr(op0+op1)
+    _check_repr(op0 + op1)

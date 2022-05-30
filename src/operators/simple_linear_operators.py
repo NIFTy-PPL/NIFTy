@@ -36,6 +36,7 @@ class VdotOperator(LinearOperator):
     field : :class:`nifty8.field.Field` or :class:`nifty8.multi_field.MultiField`
         The field used to build the scalar product with the operator input
     """
+
     def __init__(self, field):
         self._field = field
         self._domain = field.domain
@@ -53,7 +54,7 @@ class VdotOperator(LinearOperator):
         self._check_mode(mode)
         if mode == self.TIMES:
             return self._field.vdot(x)
-        return self._field*x.val[()]
+        return self._field * x.val[()]
 
 
 class ConjugationOperator(EndomorphicOperator):
@@ -65,6 +66,7 @@ class ConjugationOperator(EndomorphicOperator):
         domain of the input field
 
     """
+
     def __init__(self, domain):
         self._domain = DomainTuple.make(domain)
         self._capability = self._all_ops
@@ -95,6 +97,7 @@ class WeightApplier(EndomorphicOperator):
         the power of to be used for the volume factors
 
     """
+
     def __init__(self, domain, spaces, power):
         from .. import utilities
         self._domain = DomainTuple.make(domain)
@@ -120,6 +123,7 @@ class Realizer(EndomorphicOperator):
         domain of the input field
 
     """
+
     def __init__(self, domain):
         self._domain = DomainTuple.make(domain)
         self._capability = self.TIMES | self.ADJOINT_TIMES
@@ -146,6 +150,7 @@ class Imaginizer(EndomorphicOperator):
         domain of the input field
 
     """
+
     def __init__(self, domain):
         self._domain = DomainTuple.make(domain)
         self._capability = self.TIMES | self.ADJOINT_TIMES
@@ -166,7 +171,7 @@ class Imaginizer(EndomorphicOperator):
             return x.imag
         if x.dtype not in (np.float64, np.float32):
             raise ValueError
-        return 1j*x
+        return 1j * x
 
 
 class FieldAdapter(LinearOperator):
@@ -302,12 +307,12 @@ def ducktape(left, right, name):
         left = left.domain
     elif left is not None:
         left = makeDomain(left)
-    if left is None:  # need to infer left from right
+    if left is None:    # need to infer left from right
         if isinstance(right, MultiDomain):
             left = right[name]
         else:
             left = MultiDomain.make({name: right})
-    elif right is None:  # need to infer right from left
+    elif right is None:    # need to infer right from left
         if isinstance(left, MultiDomain):
             right = left[name]
         else:
@@ -403,6 +408,7 @@ class NullOperator(LinearOperator):
 
 
 class PartialExtractor(LinearOperator):
+
     def __init__(self, domain, target):
         if not isinstance(domain, MultiDomain):
             raise TypeError("MultiDomain expected")
@@ -413,9 +419,8 @@ class PartialExtractor(LinearOperator):
         for key in self._target.keys():
             check_object_identity(self._domain[key], self._target[key])
         self._capability = self.TIMES | self.ADJOINT_TIMES
-        self._compldomain = MultiDomain.make({kk: self._domain[kk]
-                                              for kk in self._domain.keys()
-                                              if kk not in self._target.keys()})
+        self._compldomain = MultiDomain.make(
+            {kk: self._domain[kk] for kk in self._domain.keys() if kk not in self._target.keys()})
 
     def apply(self, x, mode):
         self._check_input(x, mode)
@@ -437,22 +442,23 @@ class PrependKey(LinearOperator):
     domain : MultiDomain
     pre : str
     """
+
     def __init__(self, domain, pre):
         if not isinstance(domain, MultiDomain):
             raise ValueError
         from ..sugar import makeDomain
         self._domain = makeDomain(domain)
         self._pre = str(pre)
-        target = {self._pre+k: domain[k] for k in domain.keys()}
+        target = {self._pre + k: domain[k] for k in domain.keys()}
         self._target = makeDomain(MultiDomain.make(target))
         self._capability = self.TIMES | self.ADJOINT_TIMES
 
     def apply(self, x, mode):
         self._check_input(x, mode)
         if mode == self.TIMES:
-            res = {self._pre+k:x[k] for k in self._domain.keys()}
+            res = {self._pre + k: x[k] for k in self._domain.keys()}
         else:
-            res = {k:x[self._pre+k] for k in self._domain.keys()}
+            res = {k: x[self._pre + k] for k in self._domain.keys()}
         return MultiField.from_dict(res, domain=self._tgt(mode))
 
 
@@ -468,15 +474,17 @@ class DomainChangerAndReshaper(LinearOperator):
     target : DomainTuple
         Target of the operator
     """
+
     def __init__(self, domain, target):
         from ..sugar import makeDomain
 
         self._domain = makeDomain(domain)
         self._target = makeDomain(target)
         if self._domain.size != self._target.size:
-            s = ["Domain and target do not have the same number of pixels",
-                f"Domain: {self._domain.shape}",
-                f"Target: {self._target.shape}"]
+            s = [
+                "Domain and target do not have the same number of pixels",
+                f"Domain: {self._domain.shape}", f"Target: {self._target.shape}"
+            ]
             raise ValueError("\n".join(s))
         self._capability = self.TIMES | self.ADJOINT_TIMES
         if isinstance(self._domain, MultiDomain) or isinstance(self._target, MultiDomain):

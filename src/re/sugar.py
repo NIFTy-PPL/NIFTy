@@ -36,6 +36,7 @@ def is1d(ls: Any) -> bool:
 
 
 def doc_from(original):
+
     def wrapper(target):
         target.__doc__ = original.__doc__
         return target
@@ -43,16 +44,16 @@ def doc_from(original):
     return wrapper
 
 
-def ducktape(call: Callable[[I], O],
-             key: Hashable) -> Callable[[Mapping[Hashable, I]], O]:
+def ducktape(call: Callable[[I], O], key: Hashable) -> Callable[[Mapping[Hashable, I]], O]:
+
     def named_call(p):
         return call(p[key])
 
     return named_call
 
 
-def ducktape_left(call: Callable[[I], O],
-                  key: Hashable) -> Callable[[I], Dict[Hashable, O]]:
+def ducktape_left(call: Callable[[I], O], key: Hashable) -> Callable[[I], Dict[Hashable, O]]:
+
     def named_call(p):
         return {key: call(p)}
 
@@ -84,7 +85,7 @@ def mean_and_std(forest, correct_bias=True):
         mean_of_sq = Field(mean(tuple(Field(t)**2 for t in forest)))
 
     n = len(forest)
-    scl = jnp.sqrt(n / (n - 1)) if correct_bias else 1.
+    scl = jnp.sqrt(n / (n-1)) if correct_bias else 1.
     std = scl * tree_map(jnp.sqrt, mean_of_sq - m**2)
     if isinstance(forest[0], Field):
         return m, std
@@ -122,6 +123,7 @@ def interpolate(xmin=-7., xmax=7., N=14000) -> Callable:
     N : int
         Number of points used for the interpolation. Default: 14000
     """
+
     def decorator(f):
         from functools import wraps
 

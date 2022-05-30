@@ -30,7 +30,7 @@ def spaces_to_axes(domain, spaces):
 
 def shapewithdtype_from_domain(domain, dtype):
     if isinstance(dtype, dict):
-        dtp_fallback = float  # Fallback to `float` for unspecified keys
+        dtp_fallback = float    # Fallback to `float` for unspecified keys
         k2dtp = dtype
     else:
         dtp_fallback = dtype
@@ -39,9 +39,7 @@ def shapewithdtype_from_domain(domain, dtype):
     if isinstance(domain, MultiDomain):
         parameter_tree = {}
         for k, dom in domain.items():
-            parameter_tree[k] = jft.ShapeWithDtype(
-                dom.shape, k2dtp.get(k, dtp_fallback)
-            )
+            parameter_tree[k] = jft.ShapeWithDtype(dom.shape, k2dtp.get(k, dtp_fallback))
     elif isinstance(domain, DomainTuple):
         parameter_tree = jft.ShapeWithDtype(domain.shape, dtype)
     else:
@@ -54,6 +52,7 @@ class Model(jft.Field):
     """Modified field class with an additional call method taking itself as
     input.
     """
+
     def __init__(self, apply: Optional[Callable], val, domain=None, flags=None):
         """Instantiates a modified field with an accompanying callable.
 
@@ -72,13 +71,11 @@ class Model(jft.Field):
         self._apply = apply
 
     def tree_flatten(self):
-        return ((self._val, ), (self._apply, self._domain, self._flags))
+        return ((self._val,), (self._apply, self._domain, self._flags))
 
     @classmethod
     def tree_unflatten(cls, aux_data, children):
-        return cls(
-            aux_data[0], *children, domain=aux_data[1], flags=aux_data[2]
-        )
+        return cls(aux_data[0], *children, domain=aux_data[1], flags=aux_data[2])
 
     def __call__(self, *args, **kwargs):
         if self._apply is None:
@@ -129,7 +126,7 @@ def wrap_nifty_call(op, target_dtype=float) -> Callable[[Any], jft.Field]:
     return wrapped_call
 
 
-def convert(nifty_obj: Union[Operator,DomainTuple,MultiDomain], dtype=float) -> Model:
+def convert(nifty_obj: Union[Operator, DomainTuple, MultiDomain], dtype=float) -> Model:
     if not isinstance(nifty_obj, (Operator, DomainTuple, MultiDomain)):
         raise TypeError(f"invalid input type {type(nifty_obj)!r}")
 

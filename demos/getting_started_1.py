@@ -33,15 +33,15 @@ def make_checkerboard_mask(position_space):
     mask = np.ones(position_space.shape)
     for i in range(4):
         for j in range(4):
-            if (i + j) % 2 == 0:
-                mask[i*128//4:(i + 1)*128//4, j*128//4:(j + 1)*128//4] = 0
+            if (i+j) % 2 == 0:
+                mask[i * 128 // 4:(i+1) * 128 // 4, j * 128 // 4:(j+1) * 128 // 4] = 0
     return mask
 
 
 def make_random_mask(domain):
     # Random mask for spherical mode
     mask = ift.from_random(domain, 'pm1')
-    mask = (mask + 1)/2
+    mask = (mask+1) / 2
     return mask.val
 
 
@@ -74,7 +74,7 @@ def main():
     # Set prior correlation covariance with a power spectrum leading to
     # homogeneous and isotropic statistics
     def power_spectrum(k):
-        return 100./(20. + k**3)
+        return 100. / (20. + k**3)
 
     # 1D spectral space on which the power spectrum is defined
     power_space = ift.PowerSpace(harmonic_space)
@@ -133,19 +133,16 @@ def main():
     plot = ift.Plot()
     filename = "getting_started_1_mode_{}.png".format(mode)
     if rg and len(position_space.shape) == 1:
-        plot.add(
-            [HT(MOCK_SIGNAL), Mask.adjoint(data),
-             HT(m)],
-            label=['Mock signal', 'Data', 'Reconstruction'],
-            alpha=[1, .3, 1])
+        plot.add([HT(MOCK_SIGNAL), Mask.adjoint(data), HT(m)],
+                 label=['Mock signal', 'Data', 'Reconstruction'],
+                 alpha=[1, .3, 1])
         plot.add(Mask.adjoint(Mask(HT(m - MOCK_SIGNAL))), title='Residuals')
         plot.output(nx=2, ny=1, xsize=10, ysize=4, name=filename)
     else:
         plot.add(HT(MOCK_SIGNAL), title='Mock Signal')
         plot.add(Mask.adjoint(data), title='Data')
         plot.add(HT(m), title='Reconstruction')
-        plot.add(Mask.adjoint(Mask(HT(m) - HT(MOCK_SIGNAL))),
-                 title='Residuals')
+        plot.add(Mask.adjoint(Mask(HT(m) - HT(MOCK_SIGNAL))), title='Residuals')
         plot.output(nx=2, ny=2, xsize=10, ysize=10, name=filename)
     print("Saved results as '{}'.".format(filename))
 

@@ -58,13 +58,10 @@ class LinearOperator(Operator):
 
     _ilog = (-1, 0, 1, -1, 2, -1, -1, -1, 3)
     _validMode = (False, True, True, False, True, False, False, False, True)
-    _modeTable = ((1, 2, 4, 8),
-                  (2, 1, 8, 4),
-                  (4, 8, 1, 2),
-                  (8, 4, 2, 1))
-    _capTable = ((0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15),
-                 (0, 2, 1, 3, 8, 10, 9, 11, 4, 6, 5, 7, 12, 14, 13, 15),
-                 (0, 4, 8, 12, 1, 5, 9, 13, 2, 6, 10, 14, 3, 7, 11, 15),
+    _modeTable = ((1, 2, 4, 8), (2, 1, 8, 4), (4, 8, 1, 2), (8, 4, 2, 1))
+    _capTable = ((0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14,
+                  15), (0, 2, 1, 3, 8, 10, 9, 11, 4, 6, 5, 7, 12, 14, 13,
+                        15), (0, 4, 8, 12, 1, 5, 9, 13, 2, 6, 10, 14, 3, 7, 11, 15),
                  (0, 8, 4, 12, 2, 10, 6, 14, 1, 9, 5, 13, 3, 11, 7, 15))
     _addInverse = (0, 5, 10, 15, 5, 5, 15, 15, 10, 15, 10, 15, 15, 15, 15, 15)
     _backwards = 6
@@ -173,7 +170,7 @@ class LinearOperator(Operator):
             return x.new(self(x._val), self).prepend_jac(x.jac)
         if x.val is not None:
             return self.apply(x, self.TIMES)
-        return self@x
+        return self @ x
 
     def times(self, x):
         """Applies the Operator to a given Field.
@@ -248,8 +245,7 @@ class LinearOperator(Operator):
         if not self._validMode[mode]:
             raise NotImplementedError("invalid operator mode specified")
         if mode & self.capability == 0:
-            raise NotImplementedError(
-                "requested operator mode is not supported")
+            raise NotImplementedError("requested operator mode is not supported")
 
     def _check_input(self, x, mode):
         self._check_mode(mode)

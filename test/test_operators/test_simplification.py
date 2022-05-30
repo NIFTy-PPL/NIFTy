@@ -35,8 +35,7 @@ def test_simplification():
     f2 = ift.full(pdom, 2.)
     o1 = ift.FFTOperator(f1.domain["a"])
     o2 = ift.FFTOperator(f1.domain["b"])
-    op = (o1.ducktape("a").ducktape_left("a") +
-          o2.ducktape("b").ducktape_left("b"))
+    op = (o1.ducktape("a").ducktape_left("a") + o2.ducktape("b").ducktape_left("b"))
     _, op2 = op.simplify_for_constant_input(f2)
     assert_allclose(op(f1)["a"].val, op2.force(f1)["a"].val)
     assert_allclose(op(f1)["b"].val, op2.force(f1)["b"].val)

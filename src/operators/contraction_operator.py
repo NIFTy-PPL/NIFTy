@@ -46,9 +46,7 @@ class ContractionOperator(LinearOperator):
     def __init__(self, domain, spaces, power=0):
         self._domain = DomainTuple.make(domain)
         self._spaces = utilities.parse_spaces(spaces, len(self._domain))
-        self._target = [
-            dom for i, dom in enumerate(self._domain) if i not in self._spaces
-        ]
+        self._target = [dom for i, dom in enumerate(self._domain) if i not in self._spaces]
         self._target = DomainTuple.make(self._target)
         self._power = power
         self._capability = self.TIMES | self.ADJOINT_TIMES
@@ -67,8 +65,8 @@ class ContractionOperator(LinearOperator):
                         fct *= wgt_spc
                     else:
                         new_shape = np.ones(len(self._domain.shape), dtype=np.int64)
-                        new_shape[self._domain.axes[ind][0]:
-                                  self._domain.axes[ind][-1]+1] = wgt_spc.shape
+                        new_shape[self._domain.axes[ind][0]:self._domain.axes[ind][-1] +
+                                  1] = wgt_spc.shape
                         wgt *= wgt_spc.reshape(new_shape)**power
                 fct = fct**power
 
@@ -89,7 +87,7 @@ class ContractionOperator(LinearOperator):
             shp = []
             for i, dom in enumerate(self._domain):
                 tmp = dom.shape
-                shp += tmp if i not in self._spaces else (1,)*len(dom.shape)
+                shp += tmp if i not in self._spaces else (1,) * len(dom.shape)
             ldat = np.broadcast_to(ldat.reshape(shp), self._domain.shape)
             res = Field(self._domain, ldat)
             if self._power != 0:

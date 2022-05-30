@@ -47,10 +47,8 @@ def unite(x, y, op=operator.add):
     if not hasattr(x, "keys") and not hasattr(y, "keys"):
         return op(x, y)
     if not hasattr(x, "keys") or not hasattr(y, "keys"):
-        te = (
-            "one of the inputs does not have a `keys` property;"
-            f" got {type(x)} and {type(y)}"
-        )
+        te = ("one of the inputs does not have a `keys` property;"
+              f" got {type(x)} and {type(y)}")
         raise TypeError(te)
 
     out = {}
@@ -64,12 +62,10 @@ def unite(x, y, op=operator.add):
     return out
 
 
-CORE_ARITHMETIC_ATTRIBUTES = (
-    "__neg__", "__pos__", "__abs__", "__add__", "__radd__", "__sub__",
-    "__rsub__", "__mul__", "__rmul__", "__truediv__", "__rtruediv__",
-    "__floordiv__", "__rfloordiv__", "__pow__", "__rpow__", "__mod__",
-    "__rmod__", "__matmul__", "__rmatmul__"
-)
+CORE_ARITHMETIC_ATTRIBUTES = ("__neg__", "__pos__", "__abs__", "__add__", "__radd__", "__sub__",
+                              "__rsub__", "__mul__", "__rmul__", "__truediv__", "__rtruediv__",
+                              "__floordiv__", "__rfloordiv__", "__pow__", "__rpow__", "__mod__",
+                              "__rmod__", "__matmul__", "__rmatmul__")
 
 
 def has_arithmetics(obj, additional_attributes=()):
@@ -79,12 +75,10 @@ def has_arithmetics(obj, additional_attributes=()):
 
 def assert_arithmetics(obj, *args, **kwargs):
     if not has_arithmetics(obj, *args, **kwargs):
-        ae = (
-            f"input of type {type(obj)} does not support"
-            " core arithmetic operations"
-            "\nmaybe you forgot to wrap your object in a"
-            " :class:`nifty8.re.field.Field` instance"
-        )
+        ae = (f"input of type {type(obj)} does not support"
+              " core arithmetic operations"
+              "\nmaybe you forgot to wrap your object in a"
+              " :class:`nifty8.re.field.Field` instance")
         raise AssertionError(ae)
 
 
@@ -96,6 +90,7 @@ class ShapeWithDtype():
     This class may not be transparent to JAX as it shall not be flattened
     itself. If used in a tree-like structure. It should only be used as leave.
     """
+
     def __init__(self, shape: Union[Tuple[int], List[int], int], dtype=None):
         """Instantiates a storage unit for shape and dtype.
 
@@ -108,7 +103,7 @@ class ShapeWithDtype():
             Data-type of the to-be-described object.
         """
         if isinstance(shape, int):
-            shape = (shape, )
+            shape = (shape,)
         if isinstance(shape, list):
             shape = tuple(shape)
         if not is1d(shape):
@@ -139,7 +134,7 @@ class ShapeWithDtype():
         swd : instance of ShapeWithDtype
             Instance storing the shape and data-type of `element`.
         """
-        if not all_leaves((element, )):
+        if not all_leaves((element,)):
             ve = "tree is not flat and still contains leaves"
             raise ValueError(ve)
         return cls(jnp.shape(element), get_dtype(element))
@@ -168,7 +163,7 @@ class ShapeWithDtype():
     def __len__(self) -> int:
         if self.ndim > 0:
             return self.shape[0]
-        else:  # mimic numpy
+        else:    # mimic numpy
             raise TypeError("len() of unsized object")
 
     def __eq__(self, other) -> bool:
@@ -193,11 +188,8 @@ def common_type(*trees):
     from numpy import find_common_type
 
     common_dtp = find_common_type(
-        tuple(
-            find_common_type(tuple(get_dtype(v) for v in tree_leaves(tr)), ())
-            for tr in trees
-        ), ()
-    )
+        tuple(find_common_type(tuple(get_dtype(v) for v in tree_leaves(tr)), ()) for tr in trees),
+        ())
     return common_dtp
 
 
@@ -255,16 +247,12 @@ def _ravel(x):
 
 
 def dot(a, b, *, precision=None):
-    tree_of_dots = tree_map(
-        lambda x, y: jnp.dot(_ravel(x), _ravel(y), precision=precision), a, b
-    )
+    tree_of_dots = tree_map(lambda x, y: jnp.dot(_ravel(x), _ravel(y), precision=precision), a, b)
     return tree_reduce(operator.add, tree_of_dots, 0.)
 
 
 def vdot(a, b, *, precision=None):
-    tree_of_vdots = tree_map(
-        lambda x, y: jnp.vdot(_ravel(x), _ravel(y), precision=precision), a, b
-    )
+    tree_of_vdots = tree_map(lambda x, y: jnp.vdot(_ravel(x), _ravel(y), precision=precision), a, b)
     return tree_reduce(jnp.add, tree_of_vdots, 0.)
 
 
@@ -286,9 +274,7 @@ def where(condition, x, y):
     ts_c = tree_structure(condition)
     ts_x = tree_structure(x)
     ts_y = tree_structure(y)
-    ts_max = (ts_c, ts_x, ts_y)[np.argmax(
-        [ts_c.num_nodes, ts_x.num_nodes, ts_y.num_nodes]
-    )]
+    ts_max = (ts_c, ts_x, ts_y)[np.argmax([ts_c.num_nodes, ts_x.num_nodes, ts_y.num_nodes])]
 
     if ts_x.num_nodes < ts_max.num_nodes:
         if ts_x.num_nodes > 1:
@@ -314,25 +300,21 @@ def unstack(stack):
     element_count = tree_leaves(stack)[0].shape[0]
     split = partial(jnp.split, indices_or_sections=element_count)
     unstacked = tree_transpose(
-        tree_structure(stack), tree_structure((0., ) * element_count),
-        tree_map(split, stack)
-    )
+        tree_structure(stack), tree_structure((0.,) * element_count), tree_map(split, stack))
     return tree_map(partial(jnp.squeeze, axis=0), unstacked)
 
 
-def map_forest(
-    f: Callable,
-    in_axes: Union[int, Tuple] = 0,
-    out_axes: Union[int, Tuple] = 0,
-    tree_transpose_output: bool = True,
-    mapping: Union[str, Callable] = 'vmap',
-    **kwargs
-) -> Callable:
+def map_forest(f: Callable,
+               in_axes: Union[int, Tuple] = 0,
+               out_axes: Union[int, Tuple] = 0,
+               tree_transpose_output: bool = True,
+               mapping: Union[str, Callable] = 'vmap',
+               **kwargs) -> Callable:
     from jax import vmap, pmap
 
     if out_axes != 0:
         raise TypeError("`out_axis` not yet supported")
-    in_axes = in_axes if isinstance(in_axes, tuple) else (in_axes, )
+    in_axes = in_axes if isinstance(in_axes, tuple) else (in_axes,)
     i = None
     for idx, el in enumerate(in_axes):
         if el is not None and i is None:
@@ -352,28 +334,21 @@ def map_forest(
         elif mapping == 'pmap' or mapping == 'p':
             f_map = pmap(f, in_axes=in_axes, out_axes=out_axes, **kwargs)
         elif mapping == 'lax.map' or mapping == 'lax':
-            if all(el == 0
-                   for el in in_axes) and np.all(0 == np.array(out_axes)):
+            if all(el == 0 for el in in_axes) and np.all(0 == np.array(out_axes)):
                 f_map = partial(lax.map, f)
             else:
-                ve = (
-                    "mapping `in_axes` and `out_axes` along another axis than"
-                    " the 0-axis is not possible for `lax.map`"
-                )
+                ve = ("mapping `in_axes` and `out_axes` along another axis than"
+                      " the 0-axis is not possible for `lax.map`")
                 raise ValueError(ve)
         else:
-            ve = (
-                f"{mapping} is not an accepted key to a mapping function"
-                "; please pass function directly"
-            )
+            ve = (f"{mapping} is not an accepted key to a mapping function"
+                  "; please pass function directly")
             raise ValueError(ve)
     elif callable(mapping):
         f_map = mapping(f, in_axes=in_axes, out_axes=out_axes, **kwargs)
     else:
-        te = (
-            f"invalid `mapping` of type {type(mapping)!r}"
-            "; expected string or callable"
-        )
+        te = (f"invalid `mapping` of type {type(mapping)!r}"
+              "; expected string or callable")
         raise TypeError(te)
 
     def apply(*xs):
@@ -393,9 +368,7 @@ def map_forest(
 
 
 def map_forest_mean(method, mapping='vmap', *args, **kwargs) -> Callable:
-    method_map = map_forest(
-        method, *args, tree_transpose_output=False, mapping=mapping, **kwargs
-    )
+    method_map = map_forest(method, *args, tree_transpose_output=False, mapping=mapping, **kwargs)
 
     def meaned_apply(*xs, **xs_kw):
         return tree_map(partial(jnp.mean, axis=0), method_map(*xs, **xs_kw))

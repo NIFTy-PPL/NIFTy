@@ -74,8 +74,8 @@ class LineEnergy:
 
         """
 
-        return LineEnergy(line_position, self._energy, self._line_direction,
-                          offset=self._line_position)
+        return LineEnergy(
+            line_position, self._energy, self._line_direction, offset=self._line_position)
 
     @property
     def energy(self):
@@ -133,8 +133,12 @@ class LineSearch(metaclass=NiftyMeta):
         Default: 100.
     """
 
-    def __init__(self, preferred_initial_step_size=None, c1=1e-4, c2=0.9,
-                 max_step_size=1e30, max_iterations=100,
+    def __init__(self,
+                 preferred_initial_step_size=None,
+                 c1=1e-4,
+                 c2=0.9,
+                 max_step_size=1e30,
+                 max_iterations=100,
                  max_zoom_iterations=100):
 
         self.preferred_initial_step_size = preferred_initial_step_size
@@ -181,8 +185,7 @@ class LineSearch(metaclass=NiftyMeta):
         phi_0 = le_0.value
         phiprime_0 = le_0.directional_derivative
         if phiprime_0 == 0:
-            logger.warning(
-                "Directional derivative is zero; assuming convergence")
+            logger.warning("Directional derivative is zero; assuming convergence")
             return energy, False
         if phiprime_0 > 0:
             logger.error("Error: search direction is not a descent direction")
@@ -196,12 +199,12 @@ class LineSearch(metaclass=NiftyMeta):
         if self.preferred_initial_step_size is not None:
             alpha1 = self.preferred_initial_step_size
         elif old_phi_0 is not None:
-            alpha1 = min(1.0, 1.01*2*(phi_0 - old_phi_0)/phiprime_0)
+            alpha1 = min(1.0, 1.01 * 2 * (phi_0-old_phi_0) / phiprime_0)
             if alpha1 < 0:
                 alpha1 = 1.0
         else:
-            alpha1 = 1.0/pk.norm()
-        alpha1 = min(alpha1, 0.99*maxstepsize)
+            alpha1 = 1.0 / pk.norm()
+        alpha1 = min(alpha1, 0.99 * maxstepsize)
 
         # start the minimization loop
         iteration_number = 0
@@ -213,31 +216,29 @@ class LineSearch(metaclass=NiftyMeta):
             try:
                 le_alpha1 = le_0.at(alpha1)
                 phi_alpha1 = le_alpha1.value
-            except FloatingPointError:  # backtrack
-                alpha1 = (alpha0+alpha1)/2
-                continue  # next iteration
+            except FloatingPointError:    # backtrack
+                alpha1 = (alpha0+alpha1) / 2
+                continue    # next iteration
 
-            if np.isnan(phi_alpha1) or np.abs(phi_alpha1) > 1e100:  # also backtrack
-                alpha1 = (alpha0+alpha1)/2
-                continue  # next iteration
+            if np.isnan(phi_alpha1) or np.abs(phi_alpha1) > 1e100:    # also backtrack
+                alpha1 = (alpha0+alpha1) / 2
+                continue    # next iteration
 
             if (phi_alpha1 > phi_0 + self.c1*alpha1*phiprime_0) or \
                ((phi_alpha1 >= phi_alpha0) and (iteration_number > 1)):
-                return self._zoom(alpha0, alpha1, phi_0, phiprime_0,
-                                  phi_alpha0, phiprime_alpha0, phi_alpha1,
-                                  le_0)
+                return self._zoom(alpha0, alpha1, phi_0, phiprime_0, phi_alpha0, phiprime_alpha0,
+                                  phi_alpha1, le_0)
 
             phiprime_alpha1 = le_alpha1.directional_derivative
-            if abs(phiprime_alpha1) <= -self.c2*phiprime_0:
+            if abs(phiprime_alpha1) <= -self.c2 * phiprime_0:
                 return le_alpha1.energy, True
 
             if phiprime_alpha1 >= 0:
-                return self._zoom(alpha1, alpha0, phi_0, phiprime_0,
-                                  phi_alpha1, phiprime_alpha1, phi_alpha0,
-                                  le_0)
+                return self._zoom(alpha1, alpha0, phi_0, phiprime_0, phi_alpha1, phiprime_alpha1,
+                                  phi_alpha0, le_0)
 
             # update alphas
-            alpha0, alpha1 = alpha1, min(2*alpha1, maxstepsize)
+            alpha0, alpha1 = alpha1, min(2 * alpha1, maxstepsize)
             if alpha1 == maxstepsize:
                 logger.warning("max step size reached")
                 return le_alpha1.energy, False
@@ -248,8 +249,7 @@ class LineSearch(metaclass=NiftyMeta):
         logger.warning("max iterations reached")
         return le_alpha1.energy, False
 
-    def _zoom(self, alpha_lo, alpha_hi, phi_0, phiprime_0,
-              phi_lo, phiprime_lo, phi_hi, le_0):
+    def _zoom(self, alpha_lo, alpha_hi, phi_0, phiprime_0, phi_lo, phiprime_lo, phi_hi, le_0):
         """Performs the second stage of the line search algorithm.
 
         If the first stage was not successful then the Zoom algorithm tries to
@@ -284,14 +284,14 @@ class LineSearch(metaclass=NiftyMeta):
         Energy
             The new Energy object on the new position.
         """
-        cubic_delta = 0.2  # cubic interpolant checks
-        quad_delta = 0.1  # quadratic interpolant checks
+        cubic_delta = 0.2    # cubic interpolant checks
+        quad_delta = 0.1    # quadratic interpolant checks
         alpha_recent = None
         phi_recent = None
 
-        if phi_lo > phi_0 + self.c1*alpha_lo*phiprime_0:
+        if phi_lo > phi_0 + self.c1 * alpha_lo * phiprime_0:
             raise ValueError("inconsistent data")
-        if phiprime_lo*(alpha_hi-alpha_lo) >= 0.:
+        if phiprime_lo * (alpha_hi-alpha_lo) >= 0.:
             raise ValueError("inconsistent data")
         for i in range(self.max_zoom_iterations):
             # myassert(phi_lo <= phi_0 + self.c1*alpha_lo*phiprime_0)
@@ -302,15 +302,13 @@ class LineSearch(metaclass=NiftyMeta):
             # Try cubic interpolation
             if i > 0:
                 cubic_check = cubic_delta * delta_alpha
-                alpha_j = self._cubicmin(alpha_lo, phi_lo, phiprime_lo,
-                                         alpha_hi, phi_hi,
+                alpha_j = self._cubicmin(alpha_lo, phi_lo, phiprime_lo, alpha_hi, phi_hi,
                                          alpha_recent, phi_recent)
             # If cubic was not successful or not available, try quadratic
             if (i == 0) or (alpha_j is None) or (alpha_j > b - cubic_check) or\
                (alpha_j < a + cubic_check):
                 quad_check = quad_delta * delta_alpha
-                alpha_j = self._quadmin(alpha_lo, phi_lo, phiprime_lo,
-                                        alpha_hi, phi_hi)
+                alpha_j = self._quadmin(alpha_lo, phi_lo, phiprime_lo, alpha_hi, phi_hi)
                 # If quadratic was not successful, try bisection
                 if (alpha_j is None) or (alpha_j > b - quad_check) or \
                    (alpha_j < a + quad_check):
@@ -329,21 +327,19 @@ class LineSearch(metaclass=NiftyMeta):
             else:
                 phiprime_alphaj = le_alphaj.directional_derivative
                 # If the second Wolfe condition is met, return the result
-                if abs(phiprime_alphaj) <= -self.c2*phiprime_0:
+                if abs(phiprime_alphaj) <= -self.c2 * phiprime_0:
                     return le_alphaj.energy, True
                 # If not, check the sign of the slope
-                if phiprime_alphaj*delta_alpha >= 0:
+                if phiprime_alphaj * delta_alpha >= 0:
                     alpha_recent, phi_recent = alpha_hi, phi_hi
                     alpha_hi, phi_hi = alpha_lo, phi_lo
                 else:
                     alpha_recent, phi_recent = alpha_lo, phi_lo
                 # Replace alpha_lo by alpha_j
-                (alpha_lo, phi_lo, phiprime_lo) = (alpha_j, phi_alphaj,
-                                                   phiprime_alphaj)
+                (alpha_lo, phi_lo, phiprime_lo) = (alpha_j, phi_alphaj, phiprime_alphaj)
 
         else:
-            logger.warning(
-                "The line search algorithm (zoom) did not converge.")
+            logger.warning("The line search algorithm (zoom) did not converge.")
             return le_alphaj.energy, False
 
     def _cubicmin(self, a, fa, fpa, b, fb, c, fc):
@@ -372,18 +368,17 @@ class LineSearch(metaclass=NiftyMeta):
                 C = fpa
                 db = b - a
                 dc = c - a
-                denom = db * db * dc * dc * (db - dc)
+                denom = db * db * dc * dc * (db-dc)
                 d1 = np.empty((2, 2))
                 d1[0, 0] = dc * dc
-                d1[0, 1] = -(db*db)
-                d1[1, 0] = -(dc*dc*dc)
-                d1[1, 1] = db*db*db
-                [A, B] = np.dot(d1, np.asarray([fb - fa - C * db,
-                                                fc - fa - C * dc]).ravel())
+                d1[0, 1] = -(db * db)
+                d1[1, 0] = -(dc * dc * dc)
+                d1[1, 1] = db * db * db
+                [A, B] = np.dot(d1, np.asarray([fb - fa - C*db, fc - fa - C*dc]).ravel())
                 A /= denom
                 B /= denom
-                radical = B * B - 3 * A * C
-                xmin = a + (-B + np.sqrt(radical)) / (3 * A)
+                radical = B*B - 3*A*C
+                xmin = a + (-B + np.sqrt(radical)) / (3*A)
             except ArithmeticError:
                 return None
         if not np.isfinite(xmin):
@@ -410,9 +405,9 @@ class LineSearch(metaclass=NiftyMeta):
         """
         with np.errstate(divide='raise', over='raise', invalid='raise'):
             try:
-                db = b - a * 1.0
-                B = (fb - fa - fpa * db) / (db * db)
-                xmin = a - fpa / (2.0 * B)
+                db = b - a*1.0
+                B = (fb - fa - fpa*db) / (db*db)
+                xmin = a - fpa / (2.0*B)
             except ArithmeticError:
                 return None
         if not np.isfinite(xmin):

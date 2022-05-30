@@ -33,39 +33,40 @@ with open("README.md") as f:
 description = "Library for signal inference algorithms that operate regardless of the underlying grids and their resolutions."
 
 extras_require = {
-    "re": ("jax", ),
+    "re": ("jax",),
     "native": ("ducc0", "finufft"),
     "doc": ("sphinx", "pydata-sphinx-theme", "jupyter", "jupytext"),
-    "util": ("astropy", ),
+    "util": ("astropy",),
 }
 extras_require["full"] = reduce(operator.add, extras_require.values())
 
-setup(name="nifty8",
-      version=__version__,
-      author="Martin Reinecke",
-      author_email="martin@mpa-garching.mpg.de",
-      description=description,
-      long_description=long_description,
-      long_description_content_type="text/markdown",
-      url="https://ift.pages.mpcdf.de/nifty/",
-      project_urls={
-          "Bug Tracker": "https://gitlab.mpcdf.mpg.de/ift/nifty/issues",
-          "Documentation": "https://ift.pages.mpcdf.de/nifty/",
-          "Source Code": "https://gitlab.mpcdf.mpg.de/ift/nifty",
-          "Changelog": "https://gitlab.mpcdf.mpg.de/ift/nifty/-/blob/NIFTy_8/ChangeLog",
-      },
-      packages=find_packages(include=["nifty8", "nifty8.*"]),
-      license="GPLv3",
-      setup_requires=['scipy>=1.4.1', 'numpy>=1.17'],
-      install_requires=['scipy>=1.4.1', 'numpy>=1.17'],
-      extras_require=extras_require,
-      python_requires='>=3.7',
-      classifiers=[
-          "Development Status :: 5 - Production/Stable",
-          "Topic :: Scientific/Engineering :: Mathematics",
-          "Topic :: Scientific/Engineering :: Physics",
-          "License :: OSI Approved :: GNU General Public License v3 (GPLv3)",
-          "Operating System :: OS Independent",
-          "Programming Language :: Python",
-          "Intended Audience :: Science/Research"],
-      )
+setup(
+    name="nifty8",
+    version=__version__,
+    author="Martin Reinecke",
+    author_email="martin@mpa-garching.mpg.de",
+    description=description,
+    long_description=long_description,
+    long_description_content_type="text/markdown",
+    url="https://ift.pages.mpcdf.de/nifty/",
+    project_urls={
+        "Bug Tracker": "https://gitlab.mpcdf.mpg.de/ift/nifty/issues",
+        "Documentation": "https://ift.pages.mpcdf.de/nifty/",
+        "Source Code": "https://gitlab.mpcdf.mpg.de/ift/nifty",
+        "Changelog": "https://gitlab.mpcdf.mpg.de/ift/nifty/-/blob/NIFTy_8/ChangeLog",
+    },
+    packages=find_packages(include=["nifty8", "nifty8.*"]),
+    license="GPLv3",
+    setup_requires=['scipy>=1.4.1', 'numpy>=1.17'],
+    install_requires=['scipy>=1.4.1', 'numpy>=1.17'],
+    extras_require=extras_require,
+    python_requires='>=3.7',
+    classifiers=[
+        "Development Status :: 5 - Production/Stable",
+        "Topic :: Scientific/Engineering :: Mathematics",
+        "Topic :: Scientific/Engineering :: Physics",
+        "License :: OSI Approved :: GNU General Public License v3 (GPLv3)",
+        "Operating System :: OS Independent", "Programming Language :: Python",
+        "Intended Audience :: Science/Research"
+    ],
+)

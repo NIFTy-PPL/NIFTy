@@ -66,6 +66,7 @@ class MatrixProductOperator(EndomorphicOperator):
         afterwards.
         Needed for scipy.sparse matrices if `len(domain) > 1`.
     """
+
     def __init__(self, domain, matrix, spaces=None, flatten=False):
         self._capability = self.TIMES | self.ADJOINT_TIMES
         self._domain = DomainTuple.make(domain)
@@ -75,11 +76,11 @@ class MatrixProductOperator(EndomorphicOperator):
         if mat_dim % 2 != 0 or \
            matrix.shape != (matrix.shape[:mat_dim//2] + matrix.shape[:mat_dim//2]):
             raise ValueError("Matrix must be quadratic.")
-        appl_dim = mat_dim // 2  # matrix application space dimension
+        appl_dim = mat_dim // 2    # matrix application space dimension
 
         # take shortcut for trivial case
         if spaces is not None:
-            if len(self._domain.shape) == 1 and spaces == (0, ):
+            if len(self._domain.shape) == 1 and spaces == (0,):
                 spaces = None
 
         if spaces is None:
@@ -87,15 +88,13 @@ class MatrixProductOperator(EndomorphicOperator):
             self._active_axes = utilities.my_sum(self._domain.axes)
             appl_space_shape = self._domain.shape
             if flatten:
-                appl_space_shape = (utilities.my_product(appl_space_shape), )
+                appl_space_shape = (utilities.my_product(appl_space_shape),)
         else:
             if flatten:
-                raise ValueError(
-                    "Cannot flatten input AND apply to a subspace")
+                raise ValueError("Cannot flatten input AND apply to a subspace")
             if not isinstance(matrix, np.ndarray):
                 raise ValueError(
-                    "Application to subspaces only supported for numpy array matrices."
-                )
+                    "Application to subspaces only supported for numpy array matrices.")
             self._spaces = utilities.parse_spaces(spaces, len(self._domain))
             appl_space_shape = []
             active_axes = []
@@ -110,11 +109,10 @@ class MatrixProductOperator(EndomorphicOperator):
 
         # Test if the matrix and the array it will be applied to fit
         if matrix.shape[:appl_dim] != appl_space_shape:
-            raise ValueError(
-                "Matrix and domain shapes are incompatible under the requested "
-                + "application scheme.\n" +
-                f"Matrix appl shape: {matrix.shape[:appl_dim]}, " +
-                f"appl_space_shape: {appl_space_shape}.")
+            raise ValueError("Matrix and domain shapes are incompatible under the requested " +
+                             "application scheme.\n" +
+                             f"Matrix appl shape: {matrix.shape[:appl_dim]}, " +
+                             f"appl_space_shape: {appl_space_shape}.")
 
         self._mat = matrix
         self._mat_tr = matrix.transpose().conjugate()

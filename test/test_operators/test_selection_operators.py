@@ -38,19 +38,14 @@ space2 = list2fixture(spaces)
 dtype = list2fixture([np.float64, np.complex128])
 
 
-def test_split_operator_first_axes_without_intersections(
-    space1, space2, n_splits=3
-):
+def test_split_operator_first_axes_without_intersections(space1, space2, n_splits=3):
     rng = ift.random.current_rng()
 
     dom = ift.DomainTuple.make((space1, space2))
     orig_idx = np.arange(space1.shape[0])
     rng.shuffle(orig_idx)
     split_idx = np.array_split(orig_idx, n_splits)
-    split = ift.SplitOperator(
-        dom, {f"{i:06d}": (si, )
-              for i, si in enumerate(split_idx)}
-    )
+    split = ift.SplitOperator(dom, {f"{i:06d}": (si,) for i, si in enumerate(split_idx)})
     assert check_linear_operator(split) is None
 
     r = ift.from_random(dom, "normal")
@@ -64,9 +59,7 @@ def test_split_operator_first_axes_without_intersections(
     assert_array_equal(split.adjoint(split_r).val, r.val)
 
 
-def test_split_operator_first_axes_with_intersections(
-    space1, space2, n_splits=3
-):
+def test_split_operator_first_axes_with_intersections(space1, space2, n_splits=3):
     rng = ift.random.current_rng()
 
     dom = ift.DomainTuple.make((space1, space2))
@@ -75,10 +68,7 @@ def test_split_operator_first_axes_with_intersections(
         rng.choice(orig_idx, rng.integers(1, space1.shape[0]), replace=False)
         for _ in range(n_splits)
     ]
-    split = ift.SplitOperator(
-        dom, {f"{i:06d}": (si, )
-              for i, si in enumerate(split_idx)}
-    )
+    split = ift.SplitOperator(dom, {f"{i:06d}": (si,) for i, si in enumerate(split_idx)})
     print(split_idx)
     assert check_linear_operator(split) is None
 

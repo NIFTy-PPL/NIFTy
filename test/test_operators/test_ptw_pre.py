@@ -25,9 +25,9 @@ pmp = pytest.mark.parametrize
 
 
 @pmp('f', [
-    'log', 'exp', 'sqrt', 'sin', 'cos', 'tan', 'sinc', 'sinh', 'cosh', 'tanh',
-    'absolute', 'reciprocal', 'sigmoid', 'log10', 'log1p', 'expm1', 'softplus',
-    ('power', 2.), ('exponentiate', 1.1)
+    'log', 'exp', 'sqrt', 'sin', 'cos', 'tan', 'sinc', 'sinh', 'cosh', 'tanh', 'absolute',
+    'reciprocal', 'sigmoid', 'log10', 'log1p', 'expm1', 'softplus', ('power', 2.),
+    ('exponentiate', 1.1)
 ])
 def test_ptw_pre(f):
     if not isinstance(f, tuple):

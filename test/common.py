@@ -21,6 +21,7 @@ from os import remove
 
 
 def list2fixture(lst):
+
     @pytest.fixture(params=lst)
     def myfixture(request):
         return request.param
