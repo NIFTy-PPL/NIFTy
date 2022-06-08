@@ -56,6 +56,7 @@ class ContractionOperator(LinearOperator):
         try:
             from jax import numpy as jnp
             from jax.tree_util import tree_map
+
             from ..nifty2jax import spaces_to_axes
 
             fct = jnp.array(1.)

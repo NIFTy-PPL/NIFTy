@@ -23,7 +23,6 @@ import pytest
 
 from ..common import setup_function, teardown_function
 
-
 comm = ift.utilities.get_MPI_params()[0]
 master = True if comm is None else comm.Get_rank() == 0
 

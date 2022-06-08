@@ -17,9 +17,9 @@
 import numpy as np
 
 from ..domain_tuple import DomainTuple
+from ..sugar import makeField
 from ..utilities import myassert
 from .linear_operator import LinearOperator
-from ..sugar import makeField
 
 
 class TransposeOperator(LinearOperator):

@@ -15,9 +15,10 @@
 #
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
 
-import numpy as np
 from functools import partial
 from operator import mul
+
+import numpy as np
 
 from .. import utilities
 from ..domain_tuple import DomainTuple

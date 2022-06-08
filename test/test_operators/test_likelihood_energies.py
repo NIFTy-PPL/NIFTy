@@ -15,14 +15,15 @@
 #
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
 
-import numpy as np
 from functools import reduce
 from operator import add
 
 import nifty8 as ift
+import numpy as np
 import pytest
 
 from ..common import setup_function, teardown_function
+
 pmp = pytest.mark.parametrize
 
 doms = [ift.HPSpace(4), {"a": ift.UnstructuredDomain(2), "b": ift.HPSpace(4)}]

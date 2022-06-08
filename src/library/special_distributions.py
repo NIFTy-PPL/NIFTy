@@ -18,7 +18,7 @@
 
 import numpy as np
 from scipy.interpolate import CubicSpline
-from scipy.stats import invgamma, laplace, norm, gamma
+from scipy.stats import gamma, invgamma, laplace, norm
 
 from .. import random
 from ..domain_tuple import DomainTuple

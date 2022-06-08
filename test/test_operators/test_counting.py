@@ -15,13 +15,12 @@
 #
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
 
+import nifty8 as ift
 import numpy as np
 import pytest
-
-import nifty8 as ift
+from numpy.testing import assert_equal
 
 from ..common import list2fixture, setup_function, teardown_function
-from numpy.testing import assert_equal
 
 
 def test_counting_operator():

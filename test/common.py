@@ -15,9 +15,10 @@
 #
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
 
-import pytest
 from glob import glob
 from os import remove
+
+import pytest
 
 
 def list2fixture(lst):

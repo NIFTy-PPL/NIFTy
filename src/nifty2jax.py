@@ -1,8 +1,8 @@
 # Copyright(C) 2013-2021 Max-Planck-Society
 # SPDX-License-Identifier: GPL-2.0+ OR BSD-2-Clause
 
-from functools import partial, reduce
 import operator
+from functools import partial, reduce
 from typing import Any, Callable, Optional, Union
 from warnings import warn
 

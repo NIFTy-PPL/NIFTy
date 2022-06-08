@@ -48,9 +48,9 @@ class OperatorAdapter(LinearOperator):
         self._capability = self._capTable[self._trafo][self._op.capability]
 
         try:
-            from jax import eval_shape, linear_transpose
             import jax.numpy as jnp
-            from jax.tree_util import tree_map, tree_all
+            from jax import eval_shape, linear_transpose
+            from jax.tree_util import tree_all, tree_map
 
             from ..nifty2jax import shapewithdtype_from_domain
             from ..re import Field

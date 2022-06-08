@@ -45,8 +45,9 @@ class Adder(Operator):
         self._neg = bool(neg)
 
         try:
-            from ..re import Field as ReField
             from jax.tree_util import tree_map
+
+            from ..re import Field as ReField
 
             a_j = ReField(a.val) if isinstance(a, (Field, MultiField)) else a
 

@@ -27,7 +27,7 @@ from ..linearization import Linearization
 from ..multi_domain import MultiDomain
 from ..multi_field import MultiField
 from ..sugar import makeDomain, makeOp
-from ..utilities import myassert, iscomplextype
+from ..utilities import iscomplextype, myassert
 from .adder import Adder
 from .linear_operator import LinearOperator
 from .operator import Operator, _OpChain, _OpSum

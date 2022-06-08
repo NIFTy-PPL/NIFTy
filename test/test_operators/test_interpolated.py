@@ -16,12 +16,11 @@
 #
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
 
+import nifty8 as ift
 import numpy as np
 import pytest
 from numpy.testing import assert_allclose
-from scipy.stats import invgamma, norm, gamma
-
-import nifty8 as ift
+from scipy.stats import gamma, invgamma, norm
 
 from ..common import list2fixture, setup_function, teardown_function
 

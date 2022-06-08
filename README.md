@@ -90,6 +90,20 @@ Contributors
 
 ### NIFTy8
 
+- Andrija Kostic
+- David Outland
+- Gordian Edenhofer
+- Jakob Roth
+- Lukas Platz
+- Margret Westerkamp
+- Martin Reinecke
+- Massin Guerdi
+- Matteo Guardiani
+- [Philipp Arras](https://philipp-arras.de)
+- [Philipp Frank](http://www.ph-frank.de)
+- [Reimar Heinrich Leike](https://wwwmpa.mpa-garching.mpg.de/~reimar/)
+- [Torsten Enßlin](https://wwwmpa.mpa-garching.mpg.de/~ensslin/)
+- Vincent Eberle
 
 ### NIFTy7
 
