@@ -12,7 +12,9 @@ RUN apt-get update && apt-get install -y \
     # Optional NIFTy dependencies
     python3-mpi4py python3-matplotlib python3-h5py python3-astropy \
   # more optional NIFTy dependencies
-  && DUCC0_OPTIMIZATION=portable pip3 install ducc0 finufft jupyter jax jaxlib sphinx pydata-sphinx-theme jupytext \
+  #&& DUCC0_OPTIMIZATION=portable pip3 install ducc0 finufft jupyter jax jaxlib sphinx pydata-sphinx-theme jupytext \
+  && pip3 install finufft jupyter jax jaxlib sphinx pydata-sphinx-theme jupytext \
+  && pip3 install git+https://gitlab.mpcdf.mpg.de/mtr/ducc@nufft \
   && rm -rf /var/lib/apt/lists/*
 
 # Set matplotlib backend

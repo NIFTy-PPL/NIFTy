@@ -12,6 +12,7 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
 # Copyright(C) 2019-2021 Max-Planck-Society
+# Copyright(C) 2022 Max-Planck-Society, Philipp Arras
 #
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
 
@@ -105,8 +106,7 @@ def test_build(nxdirty, nydirty, N, eps):
 @pmp('eps', [1e-2, 1e-4, 1e-7, 1e-10, 1e-11, 1e-12, 2e-13])
 @pmp('nxdirty', [32, 128])
 @pmp('N', [1, 10, 100])
-def test_finu1d(nxdirty, N, eps):
-    pytest.importorskip("finufft")
+def test_nu1d(nxdirty, N, eps):
     pos = ift.random.current_rng().random((N)) - 0.5
     vis = (ift.random.current_rng().standard_normal(N)
            + 1j*ift.random.current_rng().standard_normal(N))
@@ -118,7 +118,7 @@ def test_finu1d(nxdirty, N, eps):
     dom = ift.RGSpace((nxdirty), distances=0.2)
     dstx = dom.distances
     pos = pos / dstx
-    Op = ift.FinuFFT(dom, pos=pos, eps=eps)
+    Op = ift.Nufft(dom, pos=pos[:, None], eps=eps)
     vis2 = ift.makeField(ift.UnstructuredDomain(vis.shape), vis)
     pynu = Op(vis2).val
     # DFT
@@ -134,8 +134,7 @@ def test_finu1d(nxdirty, N, eps):
 @pmp('nxdirty', [32, 128])
 @pmp('nydirty', [32, 48, 128])
 @pmp('N', [1, 10, 100])
-def test_finu2d(nxdirty, nydirty, N, eps):
-    pytest.importorskip("finufft")
+def test_nu2d(nxdirty, nydirty, N, eps):
     uv = ift.random.current_rng().random((N, 2)) - 0.5
     vis = (ift.random.current_rng().standard_normal(N)
            + 1j*ift.random.current_rng().standard_normal(N))
@@ -148,7 +147,7 @@ def test_finu2d(nxdirty, nydirty, N, eps):
     dstx, dsty = dom.distances
     uv[:, 0] = uv[:, 0]/dstx
     uv[:, 1] = uv[:, 1]/dsty
-    Op = ift.FinuFFT(dom, pos=uv, eps=eps)
+    Op = ift.Nufft(dom, pos=uv, eps=eps)
     vis2 = ift.makeField(ift.UnstructuredDomain(vis.shape), vis)
 
     pynu = Op(vis2).val
@@ -167,8 +166,7 @@ def test_finu2d(nxdirty, nydirty, N, eps):
 @pmp('nydirty', [32, 48])
 @pmp('nzdirty', [32, 54])
 @pmp('N', [1, 10])
-def test_finu3d(nxdirty, nydirty, nzdirty, N, eps):
-    pytest.importorskip("finufft")
+def test_nu3d(nxdirty, nydirty, nzdirty, N, eps):
     pos = ift.random.current_rng().random((N, 3)) - 0.5
     vis = (ift.random.current_rng().standard_normal(N)
            + 1j*ift.random.current_rng().standard_normal(N))
@@ -178,7 +176,7 @@ def test_finu3d(nxdirty, nydirty, nzdirty, N, eps):
     pos[:, 0] = pos[:, 0]/dstx
     pos[:, 1] = pos[:, 1]/dsty
     pos[:, 2] = pos[:, 2]/dstz
-    Op = ift.FinuFFT(dom, pos=pos, eps=eps)
+    Op = ift.Nufft(dom, pos=pos, eps=eps)
     vis2 = ift.makeField(ift.UnstructuredDomain(vis.shape), vis)
 
     pynu = Op(vis2).val
@@ -195,12 +193,11 @@ def test_finu3d(nxdirty, nydirty, nzdirty, N, eps):
 @pmp('eps', [1e-2, 1e-6, 2e-13])
 @pmp('space', [ift.RGSpace(128),
                ift.RGSpace([32, 64]),
-               ift.RGSpace([4, 27, 32])])
+               ift.RGSpace([10, 27, 32])])
 @pmp('N', [1, 10, 100])
-def test_build_finufft(space, N, eps):
-    pytest.importorskip("finufft")
+def test_build_nufft(space, N, eps):
     pos = ift.random.current_rng().random((N, len(space.shape))) - 0.5
-    RF = ift.FinuFFT(space, pos=pos, eps=eps)
+    RF = ift.Nufft(space, pos=pos, eps=eps)
     flt = np.float64
     cmplx = np.complex128
     # We set rtol=eps here, because the gridder operator only guarantees
