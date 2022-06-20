@@ -190,7 +190,7 @@ def test_nu3d(nxdirty, nydirty, nzdirty, N, eps):
     ift.myassert(_l2error(dft, pynu) < eps*10)
 
 
-@pmp('eps', [1e-2, 1e-6, 2e-13])
+@pmp('eps', [1e-2, 1e-6, 3e-13])
 @pmp('space', [ift.RGSpace(128),
                ift.RGSpace([32, 64]),
                ift.RGSpace([10, 27, 32])])
