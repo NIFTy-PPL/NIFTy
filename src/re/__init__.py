@@ -54,6 +54,7 @@ from .stats_distributions import (
     laplace_prior,
     lognormal_invprior,
     lognormal_prior,
+    normal_invprior,
     normal_prior,
     uniform_prior,
 )
