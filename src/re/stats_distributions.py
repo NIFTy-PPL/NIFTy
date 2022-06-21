@@ -31,6 +31,14 @@ def normal_prior(mean, std) -> Callable:
     return standard_to_normal
 
 
+def normal_invprior(mean, std) -> Callable:
+    """Get the inverse transform to `normal_prior`."""
+    def normal_to_standard(y):
+        return (y - mean) / std
+
+    return normal_to_standard
+
+
 def lognormal_moments(mean, std):
     """Compute the cumulants a log-normal process would need to comply with the
     provided mean and standard-deviation `std`
