@@ -2,6 +2,7 @@
 # SPDX-License-Identifier: GPL-2.0+ OR BSD-2-Clause
 
 import operator
+from pprint import pformat
 from jax import numpy as jnp
 from jax.tree_util import (
     register_pytree_node_class, tree_leaves, tree_map, tree_structure
@@ -199,23 +200,22 @@ class Field():
 
         return size(self)
 
-    def __str__(self):
-        s = f"Field(\n{self.val}"
+    def __repr__(self):
+        s = "Field("
+        rep = pformat(self.val).replace("\n", "\n\t").strip()
+        s += f"\n\t{rep}"
         if self._domain:
-            s += f",\ndomain={self._domain}"
+            rep = pformat(self._domain).replace("\n", "\n\t").strip()
+            s += f",\n\tdomain={rep}"
         if self._flags:
-            s += f",\nflags={self._flags}"
-        s += ")"
+            rep = pformat(self._flags).replace("\n", "\n\t").strip()
+            s += f",\n\tflags={rep}"
+        s += "\n)"
+        s = s.replace("\n", "").replace("\t", "") if s.count("\n") <= 2 else s
         return s
 
-    def __repr__(self):
-        s = f"Field(\n{self.val!r}"
-        if self._domain:
-            s += f",\ndomain={self._domain!r}"
-        if self._flags:
-            s += f",\nflags={self._flags!r}"
-        s += ")"
-        return s
+    def __str__(self):
+        return repr(self)
 
     def ravel(self):
         return tree_map(jnp.ravel, self)
