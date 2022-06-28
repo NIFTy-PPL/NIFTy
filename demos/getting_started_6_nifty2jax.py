@@ -68,7 +68,7 @@ signal_response_nft = response_nft(signal_nft)
 pow_spec = pow_spec_nft.jax_expr
 signal = signal_nft.jax_expr
 # Convenience method to get JAX expression and domain
-signal_response = ift.nifty2jax.convert(signal_response_nft, float)
+signal_response: jft.Model = ift.nifty2jax.convert(signal_response_nft, float)
 
 noise_cov = 0.5**2
 
@@ -76,7 +76,7 @@ noise_cov = 0.5**2
 key = random.PRNGKey(42)
 
 key, sk = random.split(key)
-synth_pos = jft.random_like(sk, signal_response)
+synth_pos = signal_response.init(sk)
 data = synth_signal_response = signal_response(synth_pos)
 data += jnp.sqrt(noise_cov) * random.normal(sk, shape=data.shape)
 
@@ -99,7 +99,7 @@ MetricKL = jit(
 )
 
 key, subkey = random.split(key)
-pos = pos_init = 1e-2 * jft.random_like(subkey, signal_response)
+pos = pos_init = 1e-2 * signal_response.init(subkey)
 
 # %% [markdown]
 # Let's do a simple MGVI minimization. Note, while this might look very similar
@@ -186,7 +186,7 @@ def timeit(stmt, setup=lambda: None, number=None):
     return Timed(time=t, number=number)
 
 
-r = jft.random_like(random.PRNGKey(54), signal_response)
+r = signal_response.init(random.PRNGKey(54))
 
 r_nft = ift.makeField(signal_response_nft.domain, r.val)
 data_nft = ift.makeField(signal_response_nft.target, data)
@@ -247,10 +247,12 @@ def get_lognormal_model(shapes, cfm_kwargs, data_key, noise_cov=0.5**2):
         response_nft = ift.GeometryRemover(signal_nft.target)
         signal_response_nft = response_nft(signal_nft)
 
-    signal_response = ift.nifty2jax.convert(signal_response_nft, float)
+    signal_response: jft.Model = ift.nifty2jax.convert(
+        signal_response_nft, float
+    )
 
     sk_signal, sk_noise = random.split(data_key)
-    synth_pos = jft.random_like(sk_signal, signal_response)
+    synth_pos = signal_response.init(sk_signal)
     data = signal_response(synth_pos)
     data += jnp.sqrt(noise_cov) * random.normal(sk_noise, shape=data.shape)
 
