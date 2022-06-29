@@ -114,7 +114,7 @@ def test_refinement_nd_cross_consistency(
     rfm = refine_chart.RefinementField(chart).matrices(kernel)
     xi = jft.random_like(
         random.PRNGKey(seed),
-        refine_chart.RefinementField(chart).shapewithdtype
+        refine_chart.RefinementField(chart).domain
     )
 
     cf = partial(refine_chart.RefinementField.apply, chart=chart, kernel=rfm)
@@ -364,7 +364,7 @@ def test_refinement_irregular_regular_consistency(
     refinement_irreg = cc_irreg.matrices(kernel=kernel)
 
     rng = np.random.default_rng(seed)
-    exc_swd = cc.shapewithdtype[-1]
+    exc_swd = cc.domain[-1]
     fn1 = rng.normal(size=cc.chart.shape_at(depth - 1))
     exc = rng.normal(size=exc_swd.shape)
 

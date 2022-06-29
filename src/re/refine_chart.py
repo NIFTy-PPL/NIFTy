@@ -10,6 +10,7 @@ from jax import numpy as jnp
 from jax import vmap
 import numpy as np
 
+from .model import AbstractModel
 from .refine import _get_cov_from_loc, refine
 from .refine_util import (
     coarse2fine_distances,
@@ -23,7 +24,7 @@ DEPTH_RANGE = (0, 32)
 MAX_SIZE0 = 1024
 
 
-class CoordinateChart():
+class CoordinateChart(AbstractModel):
     def __init__(
         self,
         min_shape: Optional[Iterable[int]] = None,
@@ -675,7 +676,7 @@ class RefinementField():
         )
 
     @property
-    def shapewithdtype(self):
+    def domain(self):
         """Yields the `ShapeWithDtype` of the primals."""
         return get_refinement_shapewithdtype(
             shape0=self.chart.shape0,

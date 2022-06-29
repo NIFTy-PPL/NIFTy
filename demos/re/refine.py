@@ -100,7 +100,7 @@ plt.close()
 cf_kwargs = {"shape0": (12, ), "distances0": (50., ), "kernel": kernel}
 
 cf = jft.RefinementField(**cf_kwargs, depth=5)
-xi = jft.random_like(random.PRNGKey(42), cf.shapewithdtype)
+xi = jft.random_like(random.PRNGKey(42), cf.domain)
 
 fig, ax = plt.subplots(figsize=(8, 4))
 for i in range(cf.chart.depth):
@@ -139,12 +139,12 @@ n_std = 0.5
 key = random.PRNGKey(45)
 key, *key_splits = random.split(key, 4)
 
-xi_truth = jft.random_like(key_splits.pop(), cf.shapewithdtype)
+xi_truth = jft.random_like(key_splits.pop(), cf.domain)
 d = cf(xi_truth, kernel)
 d += n_std * random.normal(key_splits.pop(), shape=d.shape)
 
 xi_swd = {
-    "excitations": cf.shapewithdtype,
+    "excitations": cf.domain,
     "lat_scale": jft.ShapeWithDtype(()),
     "lat_cutoff": jft.ShapeWithDtype(()),
 }
@@ -206,12 +206,12 @@ plt.close()
 
 # %%
 cf_bench = jft.RefinementField(shape0=(12, ), kernel=kernel, depth=15)
-xi_wo = jft.random_like(random.PRNGKey(42), jft.Field(cf_bench.shapewithdtype))
+xi_wo = jft.random_like(random.PRNGKey(42), jft.Field(cf_bench.domain))
 xi_w = jft.random_like(
     random.PRNGKey(42),
     jft.Field(
         {
-            "excitations": cf_bench.shapewithdtype,
+            "excitations": cf_bench.domain,
             "lat_scale": jft.ShapeWithDtype(()),
             "lat_cutoff": jft.ShapeWithDtype(()),
         }
