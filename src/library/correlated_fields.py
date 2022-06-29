@@ -819,8 +819,7 @@ class CorrelatedFieldMaker:
         self.statistics_summary(prior_info)
 
         if self._jax_cfm is not None:
-            cf, _ = self._jax_cfm.finalize()
-            op._jax_expr = cf
+            op._jax_expr = self._jax_cfm.finalize()
         return op
 
     def statistics_summary(self, prior_info):

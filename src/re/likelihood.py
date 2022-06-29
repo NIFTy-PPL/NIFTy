@@ -2,128 +2,15 @@
 # SPDX-License-Identifier: GPL-2.0+ OR BSD-2-Clause
 
 from typing import Any, Callable, Optional, TypeVar, Union
-from warnings import warn
 
 from jax import numpy as jnp
-from jax import eval_shape, linear_transpose, linearize, vjp
+from jax import linear_transpose, linearize, vjp
 from jax.tree_util import Partial, tree_leaves
 
 from .forest_util import ShapeWithDtype, split
-from .sugar import doc_from, is1d, isiterable, random_like, sum_of_squares
+from .sugar import doc_from, is1d, isiterable, sum_of_squares
 
 Q = TypeVar("Q")
-
-
-class Model():
-    """Thin wrapper of a method to jointly store the shape of its primals
-    (`domain`) and optionally an initialization method and an associated
-    inverse method.
-    """
-    def __init__(
-        self,
-        apply: Callable,
-        *,
-        domain=None,
-        init: Optional[Callable] = None,
-        apply_inverse: Optional[Callable] = None,
-        _linear_transpose: Optional[Callable] = None,
-        _target=None,
-    ):
-        """Wrap a callable and associate it with a `domain`.
-
-        Parameters
-        ----------
-        apply : callable
-            Method acting on objects of type `domain`.
-        domain : object, optional
-            PyTree of objects with a shape and dtype attribute. Inferred from
-            init if not specified.
-        init : callable, optional
-            Initialization method taking a PRNG key as first argument and
-            creating an object of type `domain`. Inferred from `domain`
-            assuming a white normal prior if not set.
-        apply_inverse : callable, optional
-            If the apply method has an inverse, this can be stored in addition
-            to the apply method itself.
-        """
-        self._apply = apply
-        self._apply_inverse = apply_inverse
-
-        if domain is None and init is not None:
-            domain = eval_shape(init, ShapeWithDtype((2, ), jnp.uint32))
-        elif domain is not None and init is None:
-
-            def _init(key):
-                msg = (
-                    "drawing white parameters"
-                    "\nto silence this warning, explicitly set the `init` method"
-                )
-                warn(msg)
-                return random_like(key, domain)
-
-            init = _init
-
-        self._domain = domain
-        self._init = init
-
-        self._linear_transpose = _linear_transpose
-        self._target = _target
-
-    def __call__(self, *args, **kwargs):
-        return self._apply(*args, **kwargs)
-
-    @property
-    def domain(self):
-        return self._domain
-
-    @property
-    def target(self):
-        if self._target is not None:
-            return self._target
-        return eval_shape(self.__call__, self.domain)
-
-    def init(self, *args, **kwargs):
-        if not callable(self._init):
-            raise NotImplementedError("must specify callable `init`")
-        return self._init(*args, **kwargs)
-
-    def transpose(self):
-        if self._linear_transpose is not None:
-            apply_T = self._linear_transpose
-        else:
-            apply_T = linear_transpose(self.__call__, self.domain)
-        return self.__class__(
-            apply_T,
-            domain=self.target,
-            _target=self.domain,
-            _linear_transpose=self._apply
-        )
-
-    @property
-    def T(self):
-        return self.transpose()
-
-    def inv(self):
-        if not callable(self._apply_inverse):
-            raise NotImplementedError("must specify callable `apply_inverse`")
-        return self.__class__(
-            self._apply_inverse, domain=self.target, _target=self.domain
-        )
-
-    def __repr__(self):
-        s = f"Model(\n\t{self._apply!r}"
-        if self._domain:
-            s += f",\n\tdomain={self._domain!r}"
-        if self._init:
-            s += f",\n\tinit={self._init}"
-        if self._apply_inverse:
-            s += f",\n\tapply_inverse={self._apply_inverse}"
-        s += "\n)"
-        s = s.replace("\n", "").replace("\t", "") if s.count("\n") <= 2 else s
-        return s
-
-    def __str__(self):
-        return repr(self)
 
 
 class Likelihood():
