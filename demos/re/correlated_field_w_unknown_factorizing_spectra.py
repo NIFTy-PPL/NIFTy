@@ -41,7 +41,7 @@ d = 1. / dims_ax1[0]
 cfm.add_fluctuations(dims_ax1, distances=d, **cf_fl, prefix="ax1")
 d = 1. / dims_ax2[0]
 cfm.add_fluctuations(dims_ax2, distances=d, **cf_fl, prefix="ax2")
-correlated_field, ptree = cfm.finalize()
+correlated_field = cfm.finalize()
 
 signal_response = lambda x: correlated_field(x)
 noise_cov = lambda x: 0.1**2 * x
@@ -49,7 +49,7 @@ noise_cov_inv = lambda x: 0.1**-2 * x
 
 # Create synthetic data
 key, subkey = random.split(key)
-pos_truth = jft.random_like(subkey, ptree)
+pos_truth = jft.random_like(subkey, correlated_field.domain)
 signal_response_truth = signal_response(pos_truth)
 key, subkey = random.split(key)
 noise_truth = jnp.sqrt(
@@ -68,7 +68,7 @@ MetricKL = jit(
 )
 
 key, subkey = random.split(key)
-pos_init = jft.random_like(subkey, ptree)
+pos_init = jft.random_like(subkey, correlated_field.domain)
 pos = 1e-2 * jft.Field(pos_init)
 
 # Minimize the potential
