@@ -405,9 +405,6 @@ def optimize_kl(likelihood_energy,
             sl = e.samples.at(mean)
             energy_history.append((iglobal, e.value))
 
-        _minisanity(lh, iglobal, sl, comm, plot_minisanity_history)
-        _barrier(comm(iglobal))
-
         if output_directory is not None:
             _export_operators(iglobal, export_operator_outputs, sl, comm(iglobal))
             sl.save(join(output_directory, "pickle/") + _file_name_by_strategy(iglobal),
@@ -420,6 +417,9 @@ def optimize_kl(likelihood_energy,
                 _pickle_save_values(iglobal, 'energy_history', energy_history)
                 if plot_energy_history:
                     _plot_energy_history(iglobal, energy_history)
+        _barrier(comm(iglobal))
+
+        _minisanity(lh, iglobal, sl, comm, plot_minisanity_history)
         _barrier(comm(iglobal))
 
         _counting_report(count, iglobal, comm)
