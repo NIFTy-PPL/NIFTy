@@ -672,7 +672,7 @@ def _report_to_logger_and_file(report, file_name, iglobal, comm, to_logger,
         if to_logger:
             logger.info(report)
         if _output_directory is not None and to_file:
-            with open(join(_output_directory, file_name), "a") as f:
+            with open(join(_output_directory, file_name), "a", encoding="utf-8") as f:
                 f.write(intro + report + "\n\n")
 
 
