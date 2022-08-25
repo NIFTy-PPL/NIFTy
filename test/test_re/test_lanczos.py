@@ -48,7 +48,7 @@ def test_lanczos_tridiag(seed, shape0):
     )
     m_est = vecs.T @ tridiag @ vecs
 
-    np.testing.assert_allclose(m_est, m, atol=1e-13, rtol=1e-13)
+    assert_allclose(m_est, m, atol=1e-13, rtol=1e-13)
 
 
 @pmp("seed", tuple(range(12, 44, 5)))
