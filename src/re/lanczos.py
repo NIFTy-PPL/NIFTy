@@ -117,7 +117,7 @@ def stochastic_lq_logdet(
     dtype=None
 ):
     """Computes a stochastic estimate of the log-determinate of a matrix using
-    the stoachstic Lanczos quadrature algorithm.
+    the stochastic Lanczos quadrature algorithm.
     """
     shape0 = shape0 if shape0 is not None else mat.shape[0]
     mat = mat.__matmul__ if not hasattr(mat, "__call__") else mat
