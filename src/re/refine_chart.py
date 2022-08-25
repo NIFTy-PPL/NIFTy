@@ -24,7 +24,7 @@ DEPTH_RANGE = (0, 32)
 MAX_SIZE0 = 1024
 
 
-class CoordinateChart(AbstractModel):
+class CoordinateChart():
     def __init__(
         self,
         min_shape: Optional[Iterable[int]] = None,
@@ -525,7 +525,7 @@ RefinementMatrices = namedtuple(
 )
 
 
-class RefinementField():
+class RefinementField(AbstractModel):
     def __init__(
         self,
         *args,
