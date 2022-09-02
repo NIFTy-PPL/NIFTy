@@ -1,5 +1,8 @@
 import sys
 
+import pytest
+pytest.importorskip("jax")
+
 from jax import numpy as jnp
 from jax.config import config as jax_config
 from numpy import ndarray

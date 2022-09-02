@@ -1,6 +1,8 @@
+import pytest
+pytest.importorskip("jax")
+
 import numpy as np
 from numpy.testing import assert_allclose
-import pytest
 
 import nifty8.re as jft
 

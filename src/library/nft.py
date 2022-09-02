@@ -90,6 +90,10 @@ class Nufft(LinearOperator):
         Requested precision, defaults to 2e-10.
     """
     def __init__(self, target, pos, eps=2e-10):
+        try:
+            from ducc0.nufft import nu2u, u2nu
+        except ImportError:
+            raise ImportError("ducc0 needs to be installed for nifty.Nufft()")
         self._capability = self.TIMES | self.ADJOINT_TIMES
         self._target = makeDomain(target)
         if not isinstance(self._target[0], RGSpace):

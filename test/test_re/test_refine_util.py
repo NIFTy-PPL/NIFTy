@@ -4,9 +4,11 @@
 
 from functools import partial
 
+import pytest
+pytest.importorskip("jax")
+
 import jax
 import numpy as np
-import pytest
 
 from nifty8.re import refine_chart, refine_util
 

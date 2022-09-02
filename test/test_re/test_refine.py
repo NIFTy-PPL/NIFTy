@@ -5,13 +5,14 @@
 from functools import partial
 import sys
 
-import jax
+import pytest
+pytest.importorskip("jax")
+
 from jax import random
 import jax.numpy as jnp
 from jax.tree_util import Partial
 import numpy as np
 from numpy.testing import assert_allclose
-import pytest
 from scipy.spatial import distance_matrix
 
 import nifty8.re as jft
