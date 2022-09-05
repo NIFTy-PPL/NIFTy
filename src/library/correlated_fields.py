@@ -1118,6 +1118,6 @@ class CorrelatedFieldMaker:
 def _check_dofdex(dofdex, total_N):
     if not (list(dofdex) == list(range(total_N)) or list(dofdex) == total_N*[0]):
         warn("In the upcoming release only dofdex==range(total_N) or dofdex==total_N*[0] "
-             f"will be supported. You use dofdex={dofdex}.\n"
+             f"will be supported. You can use dofdex={dofdex}.\n"
              "Please report at `c@philipp-arras.de` if you use this "
              "feature and would like to see it continued.", DeprecationWarning)
