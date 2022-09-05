@@ -159,11 +159,7 @@ def optimize_kl(likelihood_energy,
         Function that is called after every global iteration. It can be either a
         function with one argument (then the latest sample list is passed), a
         function with two arguments (in which case the latest sample list and
-        the global iteration index are passed) or three arguments (latest sample
-        list, global iteration index and latent position as inputs). If it
-        returns something that is not None, a Field defined on the same domain
-        as the input sample list is expected.  It is used as a position for the
-        subsequent optimization.  Default: None.
+        the global iteration index are passed). Default: None.
     terminate_callback : callable or None
         Function that is called after every global iteration and after
         `inspect_callback` if present.  It can be either None or a function
@@ -288,7 +284,7 @@ def optimize_kl(likelihood_energy,
                 myassert(isinstance(comm(iglobal), mpi4py.MPI.Intracomm))
             except ImportError:
                 pass
-    myassert(_number_of_arguments(inspect_callback) in [1, 2, 3])
+    myassert(_number_of_arguments(inspect_callback) in [1, 2])
     myassert(_number_of_arguments(terminate_callback) == 1)
     mf_dom = isinstance(likelihood_energy(initial_index).domain, MultiDomain)
     if mf_dom:
@@ -414,7 +410,7 @@ def optimize_kl(likelihood_energy,
 
         _counting_report(count, iglobal, comm)
 
-        mean = _handle_inspect_callback(inspect_callback, sl, iglobal, mean, dom, comm)
+        _handle_inspect_callback(inspect_callback, sl, iglobal)
         _barrier(comm(iglobal))
 
         if _handle_terminate_callback(terminate_callback, iglobal, comm):
@@ -742,21 +738,12 @@ def _report_to_logger_and_file(report, file_name, iglobal, comm, to_logger,
                 f.write(intro + report + "\n\n")
 
 
-def _handle_inspect_callback(inspect_callback, sl, iglobal, mean, dom, comm):
+def _handle_inspect_callback(inspect_callback, sl, iglobal):
     if _number_of_arguments(inspect_callback) == 1:
         inp = (sl, )
     elif _number_of_arguments(inspect_callback) == 2:
         inp = (sl, iglobal)
-    elif _number_of_arguments(inspect_callback) == 3:
-        inp = (sl, iglobal, mean)
-    new_mean = inspect_callback(*inp)
-    if new_mean is not None:
-        mean = new_mean
-    if mean.domain is not dom:
-        raise RuntimeError
-    if sl.domain is not dom:
-        raise RuntimeError
-    return mean
+    inspect_callback(*inp)
 
 
 def _handle_terminate_callback(terminate_callback, iglobal, comm):
