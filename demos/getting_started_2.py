@@ -65,9 +65,6 @@ def main():
     harmonic_space = position_space.get_default_codomain()
     HT = ift.HarmonicTransformOperator(harmonic_space, position_space)
 
-    # Domain on which the field's degrees of freedom are defined
-    domain = ift.DomainTuple.make(harmonic_space)
-
     # Define amplitude (square root of power spectrum)
     def sqrtpspec(k):
         return 1./(20. + k**2)
@@ -78,7 +75,7 @@ def main():
     A = pd(a)
 
     # Define sky operator
-    sky = ift.exp(HT(ift.makeOp(A)))
+    sky = ift.exp(HT(ift.makeOp(A)).ducktape("domain"))
 
     M = ift.DiagonalOperator(exposure)
     GR = ift.GeometryRemover(position_space)
@@ -88,7 +85,7 @@ def main():
     # Generate mock data and define likelihood energy operator
     d_space = R.target[0]
     lamb = R(sky)
-    mock_position = ift.from_random(domain, 'normal')
+    mock_position = ift.from_random(sky.domain, 'normal')
     data = lamb(mock_position)
     data = ift.random.current_rng().poisson(data.val.astype(np.float64))
     data = ift.Field.from_raw(d_space, data)

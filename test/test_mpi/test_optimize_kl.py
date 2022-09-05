@@ -19,6 +19,7 @@
 from tempfile import TemporaryDirectory
 
 import nifty8 as ift
+import numpy as np
 import pytest
 
 from ..common import setup_function, teardown_function
@@ -80,19 +81,19 @@ def test_optimize_kl(constants, point_estimates, kl_minimizer, n_samples,
 
     initial_position = None
     initial_index = 0
-    ground_truth_position = None
     overwrite = True
 
     d = sky(mock_pos)
     likelihood_energy = ift.GaussianEnergy(d) @ sky
     inspect_callback = None
     terminate_callback = None
+    transitions = None
     export_operator_outputs = {}
     rand_state = ift.random.getState()
     sl = ift.optimize_kl(likelihood_energy, final_index, n_samples, kl_minimizer,
                          sampling_iteration_controller, nonlinear_sampling_minimizer, constants,
-                         point_estimates, export_operator_outputs, output_directory, initial_position,
-                         initial_index, ground_truth_position, comm, overwrite, inspect_callback,
+                         point_estimates, transitions, export_operator_outputs, output_directory, initial_position,
+                         initial_index, comm, overwrite, inspect_callback,
                          terminate_callback, save_strategy="all")
 
     ift.random.setState(rand_state)
@@ -103,12 +104,69 @@ def test_optimize_kl(constants, point_estimates, kl_minimizer, n_samples,
     for _ in range(5):
         sl1 = ift.optimize_kl(likelihood_energy, final_index, n_samples, kl_minimizer,
                               sampling_iteration_controller, nonlinear_sampling_minimizer, constants,
-                              point_estimates, export_operator_outputs, output_directory1, initial_position,
-                              initial_index, ground_truth_position, comm, overwrite, inspect_callback,
+                              point_estimates, transitions, export_operator_outputs, output_directory1, initial_position,
+                              initial_index, comm, overwrite, inspect_callback,
                               terminate_callback, resume=True, save_strategy="last")
 
     for aa, bb in zip(sl.iterator(), sl1.iterator()):
         ift.extra.assert_allclose(aa, bb)
+
+
+def test_transitions():
+    final_index = 3
+
+    foo, output_directory = _create_temp_outputdir()
+
+    initial_position = None
+    initial_index = 0
+    n_samples = 2
+    overwrite = True
+
+    kl_minimizer = ift.SteepestDescent(ic)
+    # ift.NewtonCG(ift.GradInfNormController(1e-3, iteration_limit=1))
+    sampling_iteration_controller = ic
+    nonlinear_sampling_minimizer = None
+    constants = []
+    point_estimates = []
+
+    dom0 = ift.UnstructuredDomain(5)
+    dom1 = ift.UnstructuredDomain(7)
+    mdom0 = ift.makeDomain({"in0": dom0})
+    mdom1 = ift.makeDomain({"in0": dom1})
+    mdom2 = ift.makeDomain({"in1": dom1})
+
+
+    def likelihood_energy(iglobal):
+        if iglobal == 0:
+            return ift.GaussianEnergy(domain=mdom0, sampling_dtype=float)
+        elif iglobal == 1:
+            return ift.GaussianEnergy(domain=mdom1, sampling_dtype=float)
+        else:
+            return ift.GaussianEnergy(domain=mdom2, sampling_dtype=float)
+
+
+    def transitions(iglobal):
+        if iglobal == 0:
+            return None
+        elif iglobal == 1:
+            mask = np.zeros(dom1.shape)
+            mask[:2] = 1
+            return ift.MaskOperator(ift.makeField(dom1, mask)).adjoint.ducktape("in0").ducktape_left("in0")
+        elif iglobal == 2:
+            fa = ift.FieldAdapter(dom1, "in0")
+            return fa.ducktape_left("in1")
+        raise RuntimeError
+
+
+    inspect_callback = None
+    terminate_callback = None
+    export_operator_outputs = {}
+
+    sl = ift.optimize_kl(likelihood_energy, final_index, n_samples, kl_minimizer,
+                         sampling_iteration_controller, nonlinear_sampling_minimizer, constants,
+                         point_estimates, transitions, export_operator_outputs, output_directory, initial_position,
+                         initial_index, comm, overwrite, inspect_callback, terminate_callback, save_strategy="all")
+    assert sl.domain is mdom2
 
 
 def _create_temp_outputdir():

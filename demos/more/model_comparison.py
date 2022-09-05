@@ -150,13 +150,11 @@ def main():
     samples_1 = ift.optimize_kl(likelihood_energy_1, n_iterations, n_samples,
                                 minimizer, ic_sampling, minimizer_sampling,
                                 export_operator_outputs={"signal": signal_1},
-                                ground_truth_position=mock_position,
                                 output_directory="getting_started_model_comparison_results/model_1",
                                 overwrite=True)
     samples_2 = ift.optimize_kl(likelihood_energy_2, n_iterations, n_samples,
                                 minimizer, ic_sampling, minimizer_sampling,
                                 export_operator_outputs={"signal": signal_2},
-                                ground_truth_position=mock_position,
                                 output_directory="getting_started_model_comparison_results/model_2",
                                 overwrite=True)
 

@@ -66,6 +66,7 @@ def optimize_kl(likelihood_energy,
                 nonlinear_sampling_minimizer,
                 constants=[],
                 point_estimates=[],
+                transitions=None,
                 export_operator_outputs={},
                 output_directory="nifty_optimize_kl_output",
                 initial_position=None,
@@ -105,7 +106,7 @@ def optimize_kl(likelihood_energy,
     likelihood_energy : Operator or callable
         Likelihood energy shall be used for inference. It is assumed that the
         definition space of this energy contains parameters that are a-priori
-        standard normal distributed.
+        standard normal distributed. It needs to have a MultiDomain as Domain.
     total_iterations : int
         Number of resampling loops.
     n_samples : int or callable
@@ -128,6 +129,10 @@ def optimize_kl(likelihood_energy,
         List of parameter keys for which no samples are drawn, but that are
         (possibly) optimized for, corresponding to point estimates of these.
         Default is to draw samples for the complete domain.
+    transitions : list or callable
+        List of operators that are applied at the beginning of each iteration to the
+        latent position. This can be used if parts of the likelihood_energy are
+        replaced and thereby have a different domain. Default is no transitions.
     export_operator_outputs : dict
         Dictionary of operators that are exported during the minimization. The
         key contains a string that serves as identifier. The value of the
@@ -217,6 +222,7 @@ def optimize_kl(likelihood_energy,
     nonlinear_sampling_minimizer = _make_callable(nonlinear_sampling_minimizer)
     constants = _make_callable(constants)
     point_estimates = _make_callable(point_estimates)
+    transitions = _make_callable(transitions)
     n_samples = _make_callable(n_samples)
     comm = _make_callable(comm)
     if inspect_callback is None:
@@ -260,7 +266,7 @@ def optimize_kl(likelihood_energy,
         for (obj, cls) in [(likelihood_energy, Operator), (kl_minimizer, DescentMinimizer),
                            (nonlinear_sampling_minimizer, (DescentMinimizer, type(None))),
                            (constants, (list, tuple)), (point_estimates, (list, tuple)),
-                           (n_samples, int)]:
+                           (transitions, (Operator, type(None))), (n_samples, int)]:
             if not isinstance(obj(iglobal), cls):
                 raise TypeError(f"{obj(iglobal)} is not instance of {cls}")
 
@@ -277,25 +283,46 @@ def optimize_kl(likelihood_energy,
                 pass
     myassert(_number_of_arguments(inspect_callback) in [1, 2])
     myassert(_number_of_arguments(terminate_callback) == 1)
-    mf_dom = isinstance(likelihood_energy(initial_index).domain, MultiDomain)
-    if mf_dom:
-        dom = MultiDomain.union([likelihood_energy(iglobal).domain
-                                 for iglobal in
-                                 range(initial_index, total_iterations)])
-    else:
-        dom = likelihood_energy(initial_index).domain
 
     if not likelihood_energy(initial_index).target is DomainTuple.scalar_domain():
         raise TypeError
     # /Sanity check of input
 
     # Initial position
-    mean = initial_position
     check_MPI_synced_random_state(comm(initial_index))
-    if mean is None:
-        mean = 0.1 * from_random(dom)
-    myassert(dom is mean.domain)
+    if initial_position is None:
+        from ..sugar import full, makeDomain
+        mean = full(makeDomain({}), 0.)
+    else:
+        mean = initial_position
     # /Initial position
+
+    # Automatic transitions
+    def trans(iglobal):
+        res = transitions(iglobal)
+        if res is not None:
+            return res
+
+        if iglobal == 0:
+            dom = mean.domain
+        else:
+            dom = likelihood_energy(iglobal - 1).domain
+        tgt = likelihood_energy(iglobal).domain
+
+        if dom is tgt:
+            return Operator.identity_operator(dom)
+        if set(dom.keys()).issubset(set(tgt.keys())):
+            return _InitializeOperator(dom, tgt, std=0.1)
+        raise RuntimeError
+
+
+    for iglobal in range(initial_index, total_iterations):
+        myassert(likelihood_energy(iglobal).domain is trans(iglobal).target)
+        if iglobal == 0:
+            myassert(mean.domain is trans(iglobal).domain)
+        else:
+            myassert(likelihood_energy(iglobal - 1).domain is trans(iglobal).domain)
+    # /Automatic transitions
 
     if output_directory is not None:
         if not overwrite and isdir(output_directory):
@@ -317,6 +344,16 @@ def optimize_kl(likelihood_energy,
         energy_history = EnergyHistory()
 
     for iglobal in range(initial_index, total_iterations):
+        mean = trans(iglobal)(mean)
+        dom = mean.domain
+        mf_dom = isinstance(dom, MultiDomain)
+        if not mf_dom:
+            warn("In the upcoming release nifty8.optimize_kl will no longer support "
+                 "DomainTuple as latent position. You can use "
+                 "`likelihood_energy.ducktape(key)` to convert a DomainTuple domain into "
+                 "a MultiDomain. Please report at `c@philipp-arras.de` if you use this "
+                 "feature and would like to see it continued.", DeprecationWarning)
+
         lh = likelihood_energy(iglobal)
         count = CountingOperator(lh.domain)
         ham = StandardHamiltonian(lh @ count, sampling_iteration_controller(iglobal))
@@ -462,15 +499,11 @@ def _plot_operators(index, export_operator_outputs, sample_list, comm):
         if h5py:
             file_name = join(op_direc, _file_name_by_strategy(index) + ".hdf5")
             sample_list.save_to_hdf5(file_name, op=op, overwrite=True, **cfg)
-            file_name = join(op_direc, "ground_truth.hdf5")
-            ground_truth_sl.save_to_hdf5(file_name, op=op, overwrite=True, samples=True)
 
         if astropy:
             try:
                 file_name_base = join(op_direc, _file_name_by_strategy(index))
                 sample_list.save_to_fits(file_name_base, op=op, overwrite=True, **cfg)
-                file_name_base = join(op_direc, "ground_truth")
-                ground_truth_sl.save_to_fits(file_name_base, op=op, overwrite=True, samples=True)
             except ValueError:
                 pass
 
@@ -686,3 +719,27 @@ def _is_subdomain(sub_domain, total_domain):
         return sub_domain == total_domain
     return all(kk in total_domain.keys() and vv == total_domain[kk]
                for kk, vv in sub_domain.items())
+
+
+class _InitializeOperator(Operator):
+    def __init__(self, domain, target, std):
+        self._domain = MultiDomain.make(domain)
+        self._target = MultiDomain.make(target)
+        self._has_been_called = False
+        self._std = float(std)
+
+    def apply(self, x):
+        from ..sugar import from_random, is_linearization, makeDomain
+        from ..utilities import myassert
+
+        self._check_input(x)
+        if self._has_been_called:
+            raise RuntimeError("This operator can only be called once since it returns random numbers.")
+        self._has_been_called = True
+        if is_linearization(x):
+            raise TypeError("Only MultiFields are supported as input")
+        diff_keys = set(self._target.keys()) - set(self._domain.keys())
+        diff_domain = makeDomain({kk: self._target[kk] for kk in diff_keys})
+        diff_fld = from_random(diff_domain, std=self._std)
+        myassert(len(set(diff_fld.keys()) & set(self._domain.keys())) == 0)
+        return x.unite(diff_fld)
