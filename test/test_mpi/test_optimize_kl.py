@@ -87,11 +87,11 @@ def test_optimize_kl(constants, point_estimates, kl_minimizer, n_samples,
     likelihood_energy = ift.GaussianEnergy(d) @ sky
     inspect_callback = None
     terminate_callback = None
-    plottable_operators = {}
+    export_operator_outputs = {}
     rand_state = ift.random.getState()
     sl = ift.optimize_kl(likelihood_energy, final_index, n_samples, kl_minimizer,
                          sampling_iteration_controller, nonlinear_sampling_minimizer, constants,
-                         point_estimates, plottable_operators, output_directory, initial_position,
+                         point_estimates, export_operator_outputs, output_directory, initial_position,
                          initial_index, ground_truth_position, comm, overwrite, inspect_callback,
                          terminate_callback, save_strategy="all")
 
@@ -103,7 +103,7 @@ def test_optimize_kl(constants, point_estimates, kl_minimizer, n_samples,
     for _ in range(5):
         sl1 = ift.optimize_kl(likelihood_energy, final_index, n_samples, kl_minimizer,
                               sampling_iteration_controller, nonlinear_sampling_minimizer, constants,
-                              point_estimates, plottable_operators, output_directory1, initial_position,
+                              point_estimates, export_operator_outputs, output_directory1, initial_position,
                               initial_index, ground_truth_position, comm, overwrite, inspect_callback,
                               terminate_callback, resume=True, save_strategy="last")
 
