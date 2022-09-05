@@ -66,11 +66,10 @@ def optimize_kl(likelihood_energy,
                 nonlinear_sampling_minimizer,
                 constants=[],
                 point_estimates=[],
-                plottable_operators={},
+                export_operator_outputs={},
                 output_directory="nifty_optimize_kl_output",
                 initial_position=None,
                 initial_index=0,
-                ground_truth_position=None,
                 comm=None,
                 overwrite=False,
                 inspect_callback=None,
@@ -129,12 +128,10 @@ def optimize_kl(likelihood_energy,
         List of parameter keys for which no samples are drawn, but that are
         (possibly) optimized for, corresponding to point estimates of these.
         Default is to draw samples for the complete domain.
-    plottable_operators : dict
-        Dictionary of operators that are plotted during the minimization. The
+    export_operator_outputs : dict
+        Dictionary of operators that are exported during the minimization. The
         key contains a string that serves as identifier. The value of the
-        dictionary can either be an operator or a tuple of an operator and a
-        dictionary that contains kwargs for the plotting that are passed into
-        the NIFTy plotting routine.
+        dictionary is an operator.
     output_directory : str or None
         Directory in which all output files are saved. If None, no output is
         stored.  Default: "nifty_optimize_kl_output".
@@ -145,9 +142,6 @@ def optimize_kl(likelihood_energy,
     initial_index : int
         Initial index that is used to enumerate the output files. May be used
         if `optimize_kl` is called multiple times. Default: 0.
-    ground_truth_position : :class:`nifty8.field.Field`, :class:`nifty8.multi_field.MultiField` or None
-        Position in latent space that represents the ground truth. Used only in
-        plotting. May be useful for validating algorithms.
     comm : MPI communicator or None
         MPI communicator for distributing samples over MPI tasks. If `None`,
         the samples are not distributed. Default: None.
@@ -206,10 +200,10 @@ def optimize_kl(likelihood_energy,
     from ..utilities import myassert
     from .descent_minimizers import DescentMinimizer
 
-    if not isinstance(plottable_operators, dict):
+    if not isinstance(export_operator_outputs, dict):
         raise TypeError
-    if len(set(["pickle"]) & set(plottable_operators.keys())) != 0:
-        raise ValueError("The key `pickle` in `plottable_operators` is reserved.")
+    if len(set(["pickle"]) & set(export_operator_outputs.keys())) != 0:
+        raise ValueError("The key `pickle` in `export_operator_outputs` is reserved.")
     if not isinstance(initial_index, int):
         raise TypeError
     if save_strategy not in ["all", "last"]:
@@ -291,18 +285,6 @@ def optimize_kl(likelihood_energy,
     else:
         dom = likelihood_energy(initial_index).domain
 
-    for k1, op in plottable_operators.items():
-        if mf_dom:
-            if isinstance(op, tuple) and len(op) == 2:
-                if not isinstance(op[1], dict):
-                    raise TypeError
-                op = op[0]
-            for k2, vv in op.domain.items():
-                if k2 in dom.keys() and dom[k2] != vv:
-                    raise ValueError(f"The domain of plottable operator '{k1}' "
-                                      "does not fit to the minimization domain.")
-        else:
-            myassert(op.domain is dom)
     if not likelihood_energy(initial_index).target is DomainTuple.scalar_domain():
         raise TypeError
     # /Sanity check of input
@@ -315,17 +297,15 @@ def optimize_kl(likelihood_energy,
     myassert(dom is mean.domain)
     # /Initial position
 
-    if ground_truth_position is not None:
-        if ground_truth_position.domain is not dom:
-            raise ValueError("Ground truth needs to have the same domain as `likelihood_energy`.")
-
     if output_directory is not None:
         if not overwrite and isdir(output_directory):
             raise RuntimeError(f"{output_directory} already exists. Please delete or set "
                                 "`overwrite` to `True`.")
+
+        # Create all necessary subfolders
         if _MPI_master(comm(initial_index)):
             makedirs(output_directory, exist_ok=overwrite)
-            subfolders = ["pickle"] + list(plottable_operators.keys())
+            subfolders = ["pickle"] + list(export_operator_outputs.keys())
             if plot_energy_history:
                 subfolders += ["energy_history"]
             if plot_minisanity_history:
@@ -388,7 +368,7 @@ def optimize_kl(likelihood_energy,
         _barrier(comm(iglobal))
 
         if output_directory is not None:
-            _plot_operators(iglobal, plottable_operators, sl, ground_truth_position, comm(iglobal))
+            _plot_operators(iglobal, export_operator_outputs, sl, comm(iglobal))
             sl.save(join(output_directory, "pickle/") + _file_name_by_strategy(iglobal),
                     overwrite=overwrite)
             _save_random_state(iglobal)
@@ -461,47 +441,30 @@ def _pickle_load_values(index, name):
     return val
 
 
-def _plot_operators(index, plottable_operators, sample_list, ground_truth, comm):
-    if not isinstance(plottable_operators, dict):
+def _plot_operators(index, export_operator_outputs, sample_list, comm):
+    if not isinstance(export_operator_outputs, dict):
         raise TypeError
     if not isdir(_output_directory):
         raise RuntimeError(f"{_output_directory} does not exist")
     if not isinstance(sample_list, SampleListBase):
         raise TypeError
-    if ground_truth is not None and sample_list.domain != ground_truth.domain:
-        raise TypeError
 
-    for name, op in plottable_operators.items():
-        plotting_kwargs = {}
-        if isinstance(op, tuple) and len(op) == 2:
-            op, plotting_kwargs = op
-        if not isinstance(plotting_kwargs, dict):
-            raise TypeError
+    for name, op in export_operator_outputs.items():
         if not _is_subdomain(op.domain, sample_list.domain):
             continue
-        gt = _op_force_or_none(op, ground_truth)
-        fname = _file_name(name, index, "samples_")
-        _plot_samples(fname, sample_list.iterator(op), gt, comm, plotting_kwargs)
-        if sample_list.n_samples > 1:
-            fname = _file_name(name, index, "stats_")
-            _plot_stats(fname, *sample_list.sample_stat(op), gt, comm, plotting_kwargs)
 
         op_direc = join(_output_directory, name)
         if sample_list.n_samples > 1:
             cfg = {"samples": True, "mean": True, "std": True}
         else:
             cfg = {"samples": True, "mean": False, "std": False}
-        if name == "latent":
-            continue
-        if ground_truth is None or not _MPI_master(comm):
-            ground_truth_sl = Nop()
-        else:
-            ground_truth_sl = SampleList([ground_truth])
+
         if h5py:
             file_name = join(op_direc, _file_name_by_strategy(index) + ".hdf5")
             sample_list.save_to_hdf5(file_name, op=op, overwrite=True, **cfg)
             file_name = join(op_direc, "ground_truth.hdf5")
             ground_truth_sl.save_to_hdf5(file_name, op=op, overwrite=True, samples=True)
+
         if astropy:
             try:
                 file_name_base = join(op_direc, _file_name_by_strategy(index))
@@ -510,46 +473,6 @@ def _plot_operators(index, plottable_operators, sample_list, ground_truth, comm)
                 ground_truth_sl.save_to_fits(file_name_base, op=op, overwrite=True, samples=True)
             except ValueError:
                 pass
-
-
-def _plot_samples(file_name, samples, ground_truth, comm, plotting_kwargs):
-    samples = list(samples)
-
-    if _MPI_master(comm):
-        if isinstance(samples[0].domain, DomainTuple):
-            samples = [MultiField.from_dict({"": ss}) for ss in samples]
-            if ground_truth is not None:
-                ground_truth = MultiField.from_dict({"": ground_truth})
-        if not all(isinstance(ss, MultiField) for ss in samples):
-            raise TypeError
-        keys = samples[0].keys()
-
-        p = Plot()
-        for kk in keys:
-            single_samples = [ss[kk] for ss in samples]
-
-            if plottable2D(samples[0][kk]):
-                if ground_truth is not None:
-                    p.add(ground_truth[kk], title=_append_key("Ground truth", kk),
-                          **plotting_kwargs)
-                    p.add(None)
-                for ii, ss in enumerate(single_samples):
-                    if (ground_truth is None and ii == 16) or (ground_truth is not None and ii == 14):
-                        break
-                    p.add(ss, title=_append_key(f"Sample {ii}", kk), **plotting_kwargs)
-            else:
-                n = len(samples)
-                alpha = n*[0.5]
-                color = n*["maroon"]
-                label = None
-                if ground_truth is not None:
-                    single_samples = [ground_truth[kk]] + single_samples
-                    alpha = [1.] + alpha
-                    color = ["green"] + color
-                    label = ["Ground truth", "Samples"] + (n-1)*[None]
-                p.add(single_samples, color=color, alpha=alpha, label=label,
-                      title=_append_key("Samples", kk), **plotting_kwargs)
-        p.output(name=file_name)
 
 
 def _plot_energy_history(index, energy_history):
@@ -586,21 +509,6 @@ def _append_key(s, key):
     if key == "":
         return s
     return f"{s} ({key})"
-
-
-def _plot_stats(file_name, mean, var, ground_truth, comm, plotting_kwargs):
-    try:
-        from matplotlib.colors import LogNorm
-    except ImportError:
-        return
-
-    p = Plot()
-    if ground_truth is not None:
-        p.add(ground_truth, title="Ground truth", **plotting_kwargs)
-    p.add(mean, title="Mean", **plotting_kwargs)
-    p.add(var.sqrt(), title="Standard deviation")
-    if _MPI_master(comm):
-        p.output(name=file_name, ny=2 if ground_truth is None else 3)
 
 
 def _minisanity(likelihood_energy, iglobal, sl, comm, plot_minisanity_history):
@@ -755,12 +663,6 @@ def _make_callable(obj):
         return obj
     else:
         return lambda x: obj
-
-
-def _op_force_or_none(operator, fld):
-    if fld is None:
-        return None
-    return operator.force(fld)
 
 
 def _want_metric(mini):

@@ -132,7 +132,7 @@ def main():
                               minimizer, ic_sampling, None, overwrite=True, comm=comm,
                               output_directory="getting_started_5_results",
                               ground_truth_position=mock_position,
-                              plottable_operators={"signal": signal, "power spectrum 1": pspec1,
+                              export_operator_outputs={"signal": signal, "power spectrum 1": pspec1,
                                                    "power spectrum 2": pspec2})
 
     # Plotting

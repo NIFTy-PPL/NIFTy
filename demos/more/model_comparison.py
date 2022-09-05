@@ -149,15 +149,13 @@ def main():
     n_samples = lambda iiter: 10 if iiter < 5 else 20
     samples_1 = ift.optimize_kl(likelihood_energy_1, n_iterations, n_samples,
                                 minimizer, ic_sampling, minimizer_sampling,
-                                plottable_operators={"signal": (signal_1, dict(vmin=0, vmax=1)),
-                                                     "power spectrum": pspec_1},
+                                export_operator_outputs={"signal": signal_1},
                                 ground_truth_position=mock_position,
                                 output_directory="getting_started_model_comparison_results/model_1",
                                 overwrite=True)
     samples_2 = ift.optimize_kl(likelihood_energy_2, n_iterations, n_samples,
                                 minimizer, ic_sampling, minimizer_sampling,
-                                plottable_operators={"signal": (signal_2, dict(vmin=0, vmax=1)),
-                                                     "power spectrum": pspec_2},
+                                export_operator_outputs={"signal": signal_2},
                                 ground_truth_position=mock_position,
                                 output_directory="getting_started_model_comparison_results/model_2",
                                 overwrite=True)
