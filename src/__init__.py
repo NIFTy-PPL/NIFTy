@@ -102,7 +102,7 @@ from .logger import logger
 from .linearization import Linearization
 
 from .operator_spectrum import operator_spectrum
-from .evidence_lower_bound import estimate_evidence_lower_bound
+from .lanczos_evidence_lower_bound import estimate_evidence_lower_bound
 
 from .operator_tree_optimiser import optimise_operator
 

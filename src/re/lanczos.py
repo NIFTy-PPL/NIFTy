@@ -23,6 +23,7 @@ def lanczos_tridiag(
     )
 
     v = random.normal(key, shape=shape_dtype_struct.shape)
+    # v = random.rademacher(key, shape=shape_dtype_struct.shape)
     v = v / jnp.linalg.norm(v)
     vecs = vecs.at[0].set(v)
 
