@@ -75,7 +75,6 @@ def optimize_kl(likelihood_energy,
                 overwrite=False,
                 inspect_callback=None,
                 terminate_callback=None,
-                plot_latent=False,
                 plot_energy_history=True,
                 plot_minisanity_history=True,
                 save_strategy="last",
@@ -166,8 +165,6 @@ def optimize_kl(likelihood_energy,
         that takes the global iteration index as input and returns a boolean.
         If the return value is true, the global loop in `optimize_kl` is
         terminated. Default: None.
-    plot_latent : bool
-        Determine if latent space shall be plotted or not. Default: False.
     plot_energy_history : bool
         Determine if the KLEnergy values shall be plotted or not. Default: True.
     plot_minisanity_history : bool
@@ -211,8 +208,8 @@ def optimize_kl(likelihood_energy,
 
     if not isinstance(plottable_operators, dict):
         raise TypeError
-    if len(set(["latent", "pickle"]) & set(plottable_operators.keys())) != 0:
-        raise ValueError("The keys `latent` and `pickle` in `plottable_operators` are reserved.")
+    if len(set(["pickle"]) & set(plottable_operators.keys())) != 0:
+        raise ValueError("The key `pickle` in `plottable_operators` is reserved.")
     if not isinstance(initial_index, int):
         raise TypeError
     if save_strategy not in ["all", "last"]:
@@ -309,10 +306,6 @@ def optimize_kl(likelihood_energy,
     if not likelihood_energy(initial_index).target is DomainTuple.scalar_domain():
         raise TypeError
     # /Sanity check of input
-
-    if plot_latent:
-        plottable_operators = plottable_operators.copy()
-        plottable_operators["latent"] = ScalingOperator(dom, 1.)
 
     # Initial position
     mean = initial_position
