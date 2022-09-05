@@ -131,9 +131,8 @@ def main():
     samples = ift.optimize_kl(likelihood_energy, n_iterations, n_samples,
                               minimizer, ic_sampling, None, overwrite=True, comm=comm,
                               output_directory="getting_started_5_results",
-                              ground_truth_position=mock_position,
                               export_operator_outputs={"signal": signal, "power spectrum 1": pspec1,
-                                                   "power spectrum 2": pspec2})
+                                                       "power spectrum 2": pspec2})
 
     # Plotting
     filename_res = filename.format("results")
