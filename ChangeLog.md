@@ -1,6 +1,9 @@
 Changes since NIFTy 7
 =====================
 
+Rename FinuFFT to Nufft
+-----------------------
+
 Add CountingOperator
 --------------------
 It counts how often an operator is called and distinguishes between applications
