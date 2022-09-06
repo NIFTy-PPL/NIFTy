@@ -668,11 +668,10 @@ class CorrelatedFieldMaker:
             harmonic_partner.check_codomain(target_subdomain)
         target_subdomain = makeDomain(target_subdomain)
 
-        scale = LognormalTransform(*scale, self._prefix + prefix + 'scale', 0)
-        prfx = self._prefix + prefix + 'cutoff'
-        cutoff = LognormalTransform(*cutoff, prfx, 0)
-        prfx = self._prefix + prefix + 'loglogslope'
-        loglogslope = NormalTransform(*loglogslope, prfx, 0)
+        pre = self._prefix + str(prefix)
+        scale = LognormalTransform(*scale, pre + 'scale', 0)
+        cutoff = LognormalTransform(*cutoff, pre + 'cutoff', 0)
+        loglogslope = NormalTransform(*loglogslope, pre + 'loglogslope', 0)
 
         totvol = 1.
         if adjust_for_volume:
