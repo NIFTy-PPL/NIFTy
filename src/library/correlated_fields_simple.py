@@ -86,8 +86,8 @@ def SimpleCorrelatedField(
     expander = ContractionOperator(twolog.domain, 0).adjoint
     ps_expander = ContractionOperator(pspace, 0).adjoint
     vslope = makeOp(makeField(pspace, _relative_log_k_lengths(pspace)))
-    slope = vslope @ ps_expander @ avgsl
-    a = slope
+    # slope
+    a = vslope @ ps_expander @ avgsl
 
     if flexibility is not None:
         flex = LognormalTransform(*flexibility, prefix + 'flexibility', 0)
