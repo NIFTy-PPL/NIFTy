@@ -34,7 +34,7 @@ description = "Library for signal inference algorithms that operate regardless o
 
 extras_require = {
     "re": ("jax", ),
-    "native": ("ducc0", "finufft"),
+    "native": ("ducc0>=0.24.0", ),
     "doc": ("sphinx", "pydata-sphinx-theme", "jupyter", "jupytext"),
     "util": ("astropy", ),
 }

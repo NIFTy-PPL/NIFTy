@@ -12,6 +12,7 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
 # Copyright(C) 2019-2021 Max-Planck-Society
+# Copyright(C) 2022 Max-Planck-Society, Philipp Arras
 #
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
 
@@ -76,8 +77,8 @@ class Gridder(LinearOperator):
         return makeField(self._tgt(mode), res)
 
 
-class FinuFFT(LinearOperator):
-    """Compute non-uniform 1D, 2D and 3D FFTs with finufft.
+class Nufft(LinearOperator):
+    """Compute non-uniform 1D, 2D and 3D FFTs.
 
     Parameters
     ----------
@@ -89,35 +90,35 @@ class FinuFFT(LinearOperator):
         Requested precision, defaults to 2e-10.
     """
     def __init__(self, target, pos, eps=2e-10):
-        import finufft
         self._capability = self.TIMES | self.ADJOINT_TIMES
         self._target = makeDomain(target)
         if not isinstance(self._target[0], RGSpace):
             raise TypeError("target needs to be an RGSpace")
         if len(self._target.shape) > 3:
-            raise ValueError("Only 1D, 2D and 3D FFTs are supported by finufft")
+            raise ValueError("Only 1D, 2D and 3D FFTs are supported")
+        if pos.ndim != 2:
+            raise TypeError(f"pos needs to be 2d array (got shape {pos.shape})")
         self._domain = DomainTuple.make(UnstructuredDomain((pos.shape[0])))
-        self._eps = float(eps)
         dst = np.array(self._target[0].distances)
         pos = (2*np.pi*pos*dst) % (2*np.pi)
-        self._eps = float(eps)
-        if len(target.shape) > 1:
-            self._pos = [pos[:, k] for k in range(pos.shape[1])]
-            s = 'nufft' + str(pos.shape[1]) + 'd'
-        else:
-            self._pos = [pos.ravel()]
-            s = 'nufft1d'
-        self._f = getattr(finufft, s+'1')
-        self._fadj = getattr(finufft, s+'2')
+        self._args = dict(nthreads=1, epsilon=float(eps), coord=pos)
 
     def apply(self, x, mode):
+        from ducc0.nufft import nu2u, u2nu
+
         self._check_input(x, mode)
         if mode == self.TIMES:
-            res = self._f(*self._pos, c=x.val_rw(),
-                          n_modes=self._target[0].shape, eps=self._eps).real
+            res = np.empty(self.target.shape, dtype=x.dtype)
+            nu2u(points=x.val, out=res, forward=False, **self._args)
+            res = res.real
         else:
-            res = self._fadj(*self._pos, f=x.val.astype('complex128')
-                             , eps=self._eps)
-            if res.ndim == 0:
-                res = np.array([res])
+            res = u2nu(grid=x.val.astype('complex128'), forward=True, **self._args)
+            #if res.ndim == 0:
+                #res = np.array([res])
         return makeField(self._tgt(mode), res)
+
+
+def FinuFFT(*args, **kwargs):
+    warn("This operator has been renamed to Nufft. "
+         "FinuFFT won't be present in the upcoming release.", DeprecationWarning)
+    return Nufft(*args, **kwargs)
