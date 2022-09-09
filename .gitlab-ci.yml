@@ -150,6 +150,14 @@ run_getting_started_nifty2jax:
     paths:
       - '*.png'
 
+run_getting_started_7:
+  stage: demo_runs
+  script:
+    - python3 demos/getting_started_7_config_file.py demos/getting_started_7_config_file.cfg
+  artifacts:
+    paths:
+      - '*.png'
+
 run_getting_density:
   stage: demo_runs
   script:
