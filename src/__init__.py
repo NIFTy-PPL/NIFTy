@@ -72,6 +72,7 @@ from .minimization.sample_list import SampleList, SampleListBase, ResidualSample
 from .minimization.energy_adapter import EnergyAdapter, StochasticEnergyAdapter
 from .minimization.kl_energies import SampledKLEnergy, SampledKLEnergyClass
 from .minimization.optimize_kl import optimize_kl
+from .minimization.config.optimize_kl_config import OptimizeKLConfig
 
 from .sugar import *
 
