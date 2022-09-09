@@ -68,7 +68,7 @@ def interp_mat(grid_shape, grid_bounds, sampling_points, *, distances=None):
     if grid_bounds is not None and len(grid_bounds) != ndim:
         ve = (
             f"grid_bounds of length {len(grid_bounds)} incompatible with"
-            " sampling_points of shape {sampling_points.shape!r}"
+            f" sampling_points of shape {sampling_points.shape!r}"
         )
         raise ValueError(ve)
     elif grid_bounds is not None:
@@ -78,7 +78,7 @@ def interp_mat(grid_shape, grid_bounds, sampling_points, *, distances=None):
     if distances is not None and np.size(distances) != ndim:
         ve = (
             f"distances of size {np.size(distances)} incompatible with"
-            " sampling_points of shape {sampling_points.shape!r}"
+            f" sampling_points of shape {sampling_points.shape!r}"
         )
         raise ValueError(ve)
     distances = np.asarray(distances) if distances is not None else None
