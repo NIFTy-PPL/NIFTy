@@ -15,63 +15,69 @@ from jax import numpy as jnp
 from jax.lax import dynamic_slice
 from nifty8.re.refine import _get_cov_from_loc
 
+# %%
+
+
+def get_1st_hp_nbrs_idx(nside, pix, nest: bool = False):
+    pix_nbr = pixelfunc.get_all_neighbours(nside, pix, nest=nest)
+    pix_2nbr = pixelfunc.get_all_neighbours(
+        nside, pix_nbr[pix_nbr != -1], nest=nest
+    )
+    pix_2nbr_not1 = set(pix_2nbr.ravel())
+    pix_2nbr_not1.discard(-1)
+    pix_2nbr_not1.discard(int(pix))
+    pix_2nbr_not1.difference_update(pix_nbr)
+
+    pix_eff_nbr = pix_nbr.copy()
+    fill = pix_nbr == -1
+    pix_eff_nbr[fill] = list(pix_2nbr_not1)[:np.sum(fill)]
+    return np.append(pix_eff_nbr, pix)
+
+
+def get_1st_hp_nbrs(nside, pix, nest: bool = False):
+    return np.array(
+        pixelfunc.pix2vec(
+            nside, get_1st_hp_nbrs_idx(nside, pix, nest=nest), nest=nest
+        )
+    )
+
 
 # %%
-nside = 2
+nside = 256
 pix = 0
 
-pix_neighbors = pixelfunc.get_all_neighbours(nside, pix)
-np.array(pixelfunc.pix2vec(nside, pix_neighbors))
+get_1st_hp_nbrs(nside, pix)
 
 
 # %%
 def _coordinate_pixel_refinement_matrices(
-    chart,
     level: int,
     pixel_index: Optional[Iterable[int]] = None,
     kernel: Optional[Callable] = None,
     *,
+    nest: bool = False,
     coerce_fine_kernel: bool = True,
     _cov_from_loc: Optional[Callable] = None,
 ) -> Tuple[jnp.ndarray, jnp.ndarray]:
     cov_from_loc = _get_cov_from_loc(kernel, _cov_from_loc)
-    csz = int(chart.coarse_size)  # coarse size
-    if csz % 2 != 1:
-        raise ValueError("only odd numbers allowed for `_coarse_size`")
-    fsz = int(chart.fine_size)  # fine size
-    if fsz % 2 != 0:
-        raise ValueError("only even numbers allowed for `_fine_size`")
-    ndim = chart.ndim
     if pixel_index is None:
-        pixel_index = (0, ) * ndim
+        pixel_index = (0, 0)
     pixel_index = jnp.asarray(pixel_index)
-    if pixel_index.size != ndim:
-        ve = f"`pixel_index` has {pixel_index.size} dimensions but `chart` has {ndim}"
-        raise ValueError(ve)
+    n_fsz = 4  # `n_csz = 9`
 
-    csz_half = int((csz - 1) / 2)
-    gc = jnp.arange(-csz_half, csz_half + 1, dtype=float)
-    gc = jnp.ones((ndim, 1)) * gc
-    gc = jnp.stack(jnp.meshgrid(*gc, indexing="ij"), axis=-1)
-    if chart.fine_strategy == "jump":
-        gf = jnp.arange(fsz, dtype=float) / fsz - 0.5 + 0.5 / fsz
-    elif chart.fine_strategy == "extend":
-        gf = jnp.arange(fsz, dtype=float) / 2 - 0.25 * (fsz - 1)
-    else:
-        raise ValueError(f"invalid `_fine_strategy`; got {chart.fine_strategy}")
-    gf = jnp.ones((ndim, 1)) * gf
-    gf = jnp.stack(jnp.meshgrid(*gf, indexing="ij"), axis=-1)
-    # On the GPU a single `cov_from_loc` call is about twice as fast as three
-    # separate calls for coarse-coarse, fine-fine and coarse-fine.
-    coord = jnp.concatenate(
-        (gc.reshape(-1, ndim), gf.reshape(-1, ndim)), axis=0
+    gc = get_1st_hp_nbrs(2**level, pixel_index[0], nest=nest)
+    gc = gc.T
+    pi = pixel_index[0]
+    pi_nest = pixelfunc.ring2nest(2**level, pi) if nest is False else pi
+    gf = np.array(
+        pixelfunc.pix2vec(2**level, 4 * pi_nest + jnp.arange(0, 4), nest=True)
     )
-    coord = chart.ind2cart((coord + pixel_index.reshape((1, ndim))).T, level)
-    coord = jnp.stack(coord, axis=-1)
+    gf = gf.T
+    coord = jnp.concatenate((gc, gf), axis=0)
     cov = cov_from_loc(coord, coord)
-    cov_ff = cov[-fsz**ndim:, -fsz**ndim:]
-    cov_fc = cov[-fsz**ndim:, :-fsz**ndim]
-    cov_cc = cov[:-fsz**ndim, :-fsz**ndim]
+    cov_ff = cov[-n_fsz:, -n_fsz:]
+    cov_fc = cov[-n_fsz:, :-n_fsz]
+    cov_cc = cov[:-n_fsz, :-n_fsz]
     cov_cc_inv = jnp.linalg.inv(cov_cc)
 
     olf = cov_fc @ cov_cc_inv
@@ -99,6 +105,7 @@ def _coordinate_pixel_refinement_matrices(
     return olf, fine_kernel_sqrt
 
 
+# %%
 def _vmap_squeeze_first(fun, *args, **kwargs):
     vfun = vmap(fun, *args, **kwargs)
 
