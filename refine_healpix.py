@@ -19,19 +19,34 @@ from nifty8.re.refine import _get_cov_from_loc
 
 
 def get_1st_hp_nbrs_idx(nside, pix, nest: bool = False):
-    pix_nbr = pixelfunc.get_all_neighbours(nside, pix, nest=nest)
-    pix_2nbr = pixelfunc.get_all_neighbours(
-        nside, pix_nbr[pix_nbr != -1], nest=nest
-    )
-    pix_2nbr_not1 = set(pix_2nbr.ravel())
-    pix_2nbr_not1.discard(-1)
-    pix_2nbr_not1.discard(int(pix))
-    pix_2nbr_not1.difference_update(pix_nbr)
+    n_nbr = 8
 
-    pix_eff_nbr = pix_nbr.copy()
-    fill = pix_nbr == -1
-    pix_eff_nbr[fill] = list(pix_2nbr_not1)[:np.sum(fill)]
-    return np.append(pix_eff_nbr, pix)
+    n_pix = 1 if np.ndim(pix) == 0 else len(pix)
+    pix_nbr = np.empty((n_pix, n_nbr + 1), dtype=int)
+    pix_nbr[:, 0] = pix
+    nbr = pixelfunc.get_all_neighbours(nside, pix, nest=nest)
+    nbr = nbr.reshape(n_nbr, n_pix)
+    pix_nbr[:, 1:] = nbr.T
+
+    # Account for unknown neighbors, encoded by -1
+    # TODO: capture warning
+    # TODO: only do this for affected pixels
+    nbr2 = pixelfunc.get_all_neighbours(nside, nbr, nest=nest)
+    nbr2 = nbr2.reshape(n_nbr, n_nbr, n_pix)
+    nbr2.T[nbr.T == -1] = -1
+
+    n_2nbr = np.prod(nbr2.shape[:-1])
+    setdiffer1d = partial(jnp.setdiff1d, size=n_nbr + 2, fill_value=-1)
+    pix_2nbr = jax.vmap(setdiffer1d, (1, 1),
+                        0)(nbr2.reshape(n_2nbr, n_pix), nbr)
+    # If there is a -1 in there, it will be at the first location
+    pix_2nbr = pix_2nbr[:, 1:]
+
+    # Select a "random" 2nd neighbor to fill in for the missing 1st order
+    # neighbor
+    pix_nbr = np.sort(pix_nbr, axis=1)
+    pix_nbr = np.where(pix_nbr != -1, pix_nbr, pix_2nbr)
+    return np.squeeze(pix_nbr, axis=0) if np.ndim(pix) == 0 else pix_nbr
 
 
 def get_1st_hp_nbrs(nside, pix, nest: bool = False):
