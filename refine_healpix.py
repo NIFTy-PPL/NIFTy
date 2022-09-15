@@ -5,6 +5,7 @@
 from functools import partial
 import sys
 from typing import Callable, Optional, Tuple
+import warnings
 
 from healpy import pixelfunc
 from jax import vmap
@@ -28,9 +29,11 @@ def get_1st_hp_nbrs_idx(nside, pix, nest: bool = False):
     pix_nbr[:, 1:] = nbr.T
 
     # Account for unknown neighbors, encoded by -1
-    # TODO: capture warning
     # TODO: only do this for affected pixels
-    nbr2 = pixelfunc.get_all_neighbours(nside, nbr, nest=nest)
+    with warnings.catch_warnings():
+        wmsg = "invalid value encountered in _get_neigbors"
+        warnings.filterwarnings("ignore", message=wmsg)
+        nbr2 = pixelfunc.get_all_neighbours(nside, nbr, nest=nest)
     nbr2 = nbr2.reshape(n_nbr, n_nbr, n_pix)
     nbr2.T[nbr.T == -1] = -1
 
