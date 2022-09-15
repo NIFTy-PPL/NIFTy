@@ -72,7 +72,6 @@ def optimize_kl(likelihood_energy,
                 initial_position=None,
                 initial_index=0,
                 comm=None,
-                overwrite=False,
                 inspect_callback=None,
                 terminate_callback=None,
                 plot_energy_history=True,
@@ -150,9 +149,6 @@ def optimize_kl(likelihood_energy,
     comm : MPI communicator or None
         MPI communicator for distributing samples over MPI tasks. If `None`,
         the samples are not distributed. Default: None.
-    overwrite : bool
-        Determine if existing directories and files are allowed to be
-        overwritten. Default: False.
     inspect_callback : callable or None
         Function that is called after every global iteration. It can be either a
         function with one argument (then the latest sample list is passed), a
@@ -328,20 +324,16 @@ def optimize_kl(likelihood_energy,
     # /Automatic transitions
 
     if output_directory is not None:
-        if not overwrite and isdir(output_directory):
-            raise RuntimeError(f"{output_directory} already exists. Please delete or set "
-                                "`overwrite` to `True`.")
-
         # Create all necessary subfolders
         if _MPI_master(comm(initial_index)):
-            makedirs(output_directory, exist_ok=overwrite)
+            makedirs(output_directory, exist_ok=True)
             subfolders = ["pickle"] + list(export_operator_outputs.keys())
             if plot_energy_history:
                 subfolders += ["energy_history"]
             if plot_minisanity_history:
                 subfolders += ["minisanity_history"]
             for subfolder in subfolders:
-                makedirs(join(output_directory, subfolder), exist_ok=overwrite)
+                makedirs(join(output_directory, subfolder), exist_ok=True)
 
     if initial_index == 0:
         energy_history = EnergyHistory()
@@ -410,7 +402,7 @@ def optimize_kl(likelihood_energy,
         if output_directory is not None:
             _plot_operators(iglobal, export_operator_outputs, sl, comm(iglobal))
             sl.save(join(output_directory, "pickle/") + _file_name_by_strategy(iglobal),
-                    overwrite=overwrite)
+                    overwrite=True)
             _save_random_state(iglobal)
 
             if _MPI_master(comm(iglobal)):

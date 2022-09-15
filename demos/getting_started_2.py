@@ -98,7 +98,7 @@ def main():
 
     # Compute MAP solution by minimizing the information Hamiltonian
     sl = ift.optimize_kl(likelihood_energy, 1, 0, minimizer, None, None,
-                         output_directory="getting_started_2_results", overwrite=True,
+                         output_directory="getting_started_2_results",
                          export_operator_outputs={"signal": sky})
 
 

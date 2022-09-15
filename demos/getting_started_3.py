@@ -135,7 +135,7 @@ def main():
                               minimizer, ic_sampling, minimizer_sampling,
                               export_operator_outputs={"signal": signal},
                               output_directory="getting_started_3_results",
-                              overwrite=True, comm=comm)
+                              comm=comm)
 
     if True:
         # Load result from disk. May be useful for long inference runs, where

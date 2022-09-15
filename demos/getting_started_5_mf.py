@@ -129,7 +129,7 @@ def main():
     n_samples = 20
     n_iterations = 5
     samples = ift.optimize_kl(likelihood_energy, n_iterations, n_samples,
-                              minimizer, ic_sampling, None, overwrite=True, comm=comm,
+                              minimizer, ic_sampling, None, comm=comm,
                               output_directory="getting_started_5_results",
                               export_operator_outputs={"signal": signal, "power spectrum 1": pspec1,
                                                        "power spectrum 2": pspec2})
