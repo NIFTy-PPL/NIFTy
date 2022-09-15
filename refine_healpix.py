@@ -3,21 +3,20 @@
 # SPDX-License-Identifier: GPL-2.0+ OR BSD-2-Clause
 
 from functools import partial
-from math import ceil
-from typing import Callable, Iterable, Literal, Optional, Tuple
+import sys
+from typing import Callable, Optional, Tuple
 
 from healpy import pixelfunc
-import numpy as np
-
 from jax import vmap
 import jax
 from jax import numpy as jnp
-from jax.lax import dynamic_slice
+from jax import random
+import numpy as np
+
 from nifty8.re.refine import _get_cov_from_loc
 
+
 # %%
-
-
 def get_1st_hp_nbrs_idx(nside, pix, nest: bool = False):
     n_nbr = 8
 
@@ -37,8 +36,8 @@ def get_1st_hp_nbrs_idx(nside, pix, nest: bool = False):
 
     n_2nbr = np.prod(nbr2.shape[:-1])
     setdiffer1d = partial(jnp.setdiff1d, size=n_nbr + 2, fill_value=-1)
-    pix_2nbr = jax.vmap(setdiffer1d, (1, 1),
-                        0)(nbr2.reshape(n_2nbr, n_pix), nbr)
+    pix_2nbr = jax.vmap(setdiffer1d, (1, 0),
+                        0)(nbr2.reshape(n_2nbr, n_pix), pix_nbr)
     # If there is a -1 in there, it will be at the first location
     pix_2nbr = pix_2nbr[:, 1:]
 
@@ -50,10 +49,11 @@ def get_1st_hp_nbrs_idx(nside, pix, nest: bool = False):
 
 
 def get_1st_hp_nbrs(nside, pix, nest: bool = False):
-    return np.array(
+    return np.stack(
         pixelfunc.pix2vec(
             nside, get_1st_hp_nbrs_idx(nside, pix, nest=nest), nest=nest
-        )
+        ),
+        axis=-1
     )
 
 
@@ -61,33 +61,37 @@ def get_1st_hp_nbrs(nside, pix, nest: bool = False):
 nside = 256
 pix = 0
 
+
+def test_uniqueness(nside, nest):
+    print(nside, nest, file=sys.stderr)
+    pix = np.arange(12 * nside**2)
+    nbr = get_1st_hp_nbrs_idx(nside, pix, nest)
+    n_non_uniq = np.sum(np.diff(np.sort(nbr, axis=1), axis=1) == 0, axis=1)
+    np.testing.assert_equal(n_non_uniq, 0)
+
+
+for nside in (1, 2):
+    for n in (True, False):
+        test_uniqueness(nside, n)
+
 get_1st_hp_nbrs(nside, pix)
 
 
 # %%
-def _coordinate_pixel_refinement_matrices(
-    level: int,
-    pixel_index: Optional[Iterable[int]] = None,
+def _refinement_matrices(
+    # level: int,
+    gc_and_gf,
+    # pixel_index: Optional[Iterable[int]] = None,
     kernel: Optional[Callable] = None,
     *,
-    nest: bool = False,
+    # nest: bool = False,
     coerce_fine_kernel: bool = True,
     _cov_from_loc: Optional[Callable] = None,
 ) -> Tuple[jnp.ndarray, jnp.ndarray]:
     cov_from_loc = _get_cov_from_loc(kernel, _cov_from_loc)
-    if pixel_index is None:
-        pixel_index = (0, 0)
-    pixel_index = jnp.asarray(pixel_index)
     n_fsz = 4  # `n_csz = 9`
 
-    gc = get_1st_hp_nbrs(2**level, pixel_index[0], nest=nest)
-    gc = gc.T
-    pi = pixel_index[0]
-    pi_nest = pixelfunc.ring2nest(2**level, pi) if nest is False else pi
-    gf = np.array(
-        pixelfunc.pix2vec(2**level, 4 * pi_nest + jnp.arange(0, 4), nest=True)
-    )
-    gf = gf.T
+    gc, gf = gc_and_gf
     coord = jnp.concatenate((gc, gf), axis=0)
     cov = cov_from_loc(coord, coord)
     cov_ff = cov[-n_fsz:, -n_fsz:]
@@ -121,108 +125,107 @@ def _coordinate_pixel_refinement_matrices(
 
 
 # %%
-def _vmap_squeeze_first(fun, *args, **kwargs):
-    vfun = vmap(fun, *args, **kwargs)
+def matern_kernel(distance, scale, cutoff, dof):
+    """Evaluates the Matern covariance kernel parametrized by its `scale`,
+    length scale (a.k.a. `cutoff`) and degree-of-freedom parameter `dof` at
+    `distance`.
+    """
+    if dof == 0.5:
+        cov = scale**2 * jnp.exp(-distance / cutoff)
+    elif dof == 1.5:
+        reg_dist = jnp.sqrt(3) * distance / cutoff
+        cov = scale**2 * (1 + reg_dist) * jnp.exp(-reg_dist)
+    elif dof == 2.5:
+        reg_dist = jnp.sqrt(5) * distance / cutoff
+        cov = scale**2 * (1 + reg_dist + reg_dist**2 / 3) * jnp.exp(-reg_dist)
+    else:
+        from jax.scipy.special import gammaln
+        from scipy.special import kv
+        from warnings import warn
 
-    def vfun_apply(*x):
-        return vfun(jnp.squeeze(x[0], axis=0), *x[1:])
+        warn("falling back to generic Matern covariance function")
+        reg_dist = jnp.sqrt(2 * dof) * distance / cutoff
+        cov = scale**2 * 2**(1 - dof) / jnp.exp(
+            gammaln(dof)
+        ) * (reg_dist)**dof * kv(dof, reg_dist)
 
-    return vfun_apply
+    # NOTE, this is not safe for differentiating because `cov` still may
+    # contain NaNs
+    return jnp.where(distance < 1e-8 * cutoff, scale**2, cov)
 
 
+nest = True
+kernel = partial(matern_kernel, scale=1., cutoff=1., dof=1.5)
+pix0s = np.stack(pixelfunc.pix2vec(1, np.arange(12), nest=nest), axis=-1)
+cov_from_loc = _get_cov_from_loc(kernel, None)
+fks_sqrt = jnp.linalg.cholesky(cov_from_loc(pix0s, pix0s))
+
+key = random.PRNGKey(43)
+r0 = random.normal(key, (12, ))
+coarse_values = fks_sqrt @ r0
+
+
+# %%
 def refine_slice(
     coarse_values,
     excitations,
-    olf,
-    fine_kernel_sqrt,
+    kernel,
     precision=None,
-    _coarse_size: int = 3,
-    _fine_size: int = 2,
-    _fine_strategy: Literal["jump", "extend"] = "jump",
 ):
     ndim = np.ndim(coarse_values)
-    csz = int(_coarse_size)  # coarse size
-    if _coarse_size % 2 != 1:
-        raise ValueError("only odd numbers allowed for `_coarse_size`")
-    fsz = int(_fine_size)  # fine size
-    if _fine_size % 2 != 0:
-        raise ValueError("only even numbers allowed for `_fine_size`")
+    assert ndim == 1
 
-    if olf.shape[:-2] != fine_kernel_sqrt.shape[:-2]:
-        ve = (
-            "incompatible optimal linear filter (`olf`) and `fine_kernel_sqrt` shapes"
-            f"; got {olf.shape} and {fine_kernel_sqrt.shape}"
-        )
-        raise ValueError(ve)
-    if olf.ndim > 2:
-        irreg_shape = olf.shape[:-2]
-    elif olf.ndim == 2:
-        irreg_shape = (1, ) * ndim
-    else:
-        ve = f"invalid shape of optimal linear filter (`olf`); got {olf.shape}"
-        raise ValueError(ve)
-    olf = olf.reshape(irreg_shape + (fsz**ndim, ) + (csz, ) * ndim)
-    fine_kernel_sqrt = fine_kernel_sqrt.reshape(irreg_shape + (fsz**ndim, ) * 2)
+    nside = (coarse_values.size / 12)**0.5
+    if not nside.is_integer():
+        raise ValueError("invalid nside of `coarse_values`")
+    nside = int(nside)
 
-    if _fine_strategy == "jump":
-        window_strides = (1, ) * ndim
-        fine_init_shape = tuple(n - (csz - 1)
-                                for n in coarse_values.shape) + (fsz**ndim, )
-        fine_final_shape = tuple(
-            fsz * (n - (csz - 1)) for n in coarse_values.shape
-        )
-    elif _fine_strategy == "extend":
-        window_strides = (fsz // 2, ) * ndim
-        fine_init_shape = tuple(
-            ceil((n - (csz - 1)) / (fsz // 2)) for n in coarse_values.shape
-        ) + (fsz**ndim, )
-        fine_final_shape = tuple(
-            fsz * ceil((n - (csz - 1)) / (fsz // 2))
-            for n in coarse_values.shape
-        )
+    pix_idx = np.arange(coarse_values.size)
+    pix_nbr_idx = get_1st_hp_nbrs_idx(nside, pix_idx, nest=nest)
 
-        if fsz // 2 > csz:
-            ve = "extrapolation is not allowed (use `fine_size / 2 <= coarse_size`)"
-            raise ValueError(ve)
-    else:
-        raise ValueError(f"invalid `_fine_strategy`; got {_fine_strategy}")
-
-    def matmul_with_window_into(x, y, idx):
-        return jnp.tensordot(
-            x,
-            dynamic_slice(y, idx, slice_sizes=(csz, ) * ndim),
-            axes=ndim,
-            precision=precision
-        )
-
-    filter_coarse = matmul_with_window_into
-    corr_fine = partial(jnp.matmul, precision=precision)
-    for i in irreg_shape[::-1]:
-        if i != 1:
-            filter_coarse = vmap(filter_coarse, in_axes=(0, None, 1))
-            corr_fine = vmap(corr_fine, in_axes=(0, 0))
-        else:
-            filter_coarse = _vmap_squeeze_first(
-                filter_coarse, in_axes=(None, None, 1)
-            )
-            corr_fine = _vmap_squeeze_first(corr_fine, in_axes=(None, 0))
-
-    cv_idx = np.mgrid[tuple(
-        slice(None, sz - csz + 1, ws)
-        for sz, ws in zip(coarse_values.shape, window_strides)
-    )]
-    fine = filter_coarse(olf, coarse_values, cv_idx)
-
-    m = corr_fine(fine_kernel_sqrt, excitations.reshape(fine_init_shape))
-    rm_axs = tuple(
-        ax for ax, i in enumerate(m.shape[len(irreg_shape):], len(irreg_shape))
-        if i == 1
+    gc = np.stack(pixelfunc.pix2vec(nside, pix_nbr_idx, nest=nest), axis=-1)
+    # gc = get_1st_hp_nbrs(2**nside, pix_idx, nest=nest)
+    i = pixelfunc.ring2nest(nside, pix_idx) if nest is False else pix_idx
+    gf = np.stack(
+        pixelfunc.pix2vec(
+            2 * nside, 4 * i[:, None] + jnp.arange(0, 4)[None, :], nest=True
+        ),
+        axis=-1
     )
-    fine += jnp.squeeze(m, axis=rm_axs)
 
-    fine = fine.reshape(fine.shape[:-1] + (fsz, ) * ndim)
-    ax_label = np.arange(2 * ndim)
-    ax_t = [e for els in zip(ax_label[:ndim], ax_label[ndim:]) for e in els]
-    fine = jnp.transpose(fine, axes=ax_t)
+    def refine(coarse_full, exc, idx, gc, gf):
+        olf, fks = _refinement_matrices((gc, gf), kernel=kernel)
 
-    return fine.reshape(fine_final_shape)
+        refined = jnp.tensordot(
+            olf, coarse_full[idx], axes=ndim, precision=precision
+        )
+        refined += jnp.matmul(fks, exc)
+        return refined
+
+    refined = vmap(refine,
+                   in_axes=(None, 0, 0, 0, 0
+                           ))(coarse_values, excitations, pix_nbr_idx, gc, gf)
+    return refined.ravel()
+
+
+jax.config.update("jax_debug_nans", True)
+excitations = random.normal(key, (coarse_values.size, 4))
+refined0 = refine_slice(coarse_values, excitations, kernel)
+refined0 = refined.ravel()
+
+# %%
+refined = coarse_values
+key = random.PRNGKey(42)
+depth = 8
+for i in range(depth):
+    _, key = random.split(key)
+    exc = random.normal(key, (refined.size, 4))
+    refined = refine_slice(refined, exc, kernel)
+
+# %%
+import healpy as hp
+import matplotlib.pyplot as plt
+
+hp.mollview(coarse_values, nest=nest, fig=0)
+hp.mollview(refined.ravel(), nest=nest, fig=1)
+plt.show()
