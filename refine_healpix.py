@@ -3,15 +3,16 @@
 # SPDX-License-Identifier: GPL-2.0+ OR BSD-2-Clause
 
 from functools import partial
-import sys
 from typing import Callable, Optional, Tuple
 import warnings
 
 from healpy import pixelfunc
+import healpy as hp
 from jax import vmap
 import jax
 from jax import numpy as jnp
 from jax import random
+import matplotlib.pyplot as plt
 import numpy as np
 
 from nifty8.re.refine import _get_cov_from_loc
@@ -66,7 +67,6 @@ pix = 0
 
 
 def test_uniqueness(nside, nest):
-    print(nside, nest, file=sys.stderr)
     pix = np.arange(12 * nside**2)
     nbr = get_1st_hp_nbrs_idx(nside, pix, nest)
     n_non_uniq = np.sum(np.diff(np.sort(nbr, axis=1), axis=1) == 0, axis=1)
@@ -226,9 +226,6 @@ for i in range(depth):
     refined = refine_slice(refined, exc, kernel)
 
 # %%
-import healpy as hp
-import matplotlib.pyplot as plt
-
 hp.mollview(coarse_values, nest=nest, fig=0)
 hp.mollview(refined.ravel(), nest=nest, fig=1)
 plt.show()
