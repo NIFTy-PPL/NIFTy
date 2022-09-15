@@ -81,7 +81,6 @@ def test_optimize_kl(constants, point_estimates, kl_minimizer, n_samples,
 
     initial_position = None
     initial_index = 0
-    overwrite = True
 
     d = sky(mock_pos)
     likelihood_energy = ift.GaussianEnergy(d) @ sky
@@ -93,7 +92,7 @@ def test_optimize_kl(constants, point_estimates, kl_minimizer, n_samples,
     sl = ift.optimize_kl(likelihood_energy, final_index, n_samples, kl_minimizer,
                          sampling_iteration_controller, nonlinear_sampling_minimizer, constants,
                          point_estimates, transitions, export_operator_outputs, output_directory, initial_position,
-                         initial_index, comm, overwrite, inspect_callback,
+                         initial_index, comm, inspect_callback,
                          terminate_callback, save_strategy="all")
 
     ift.random.setState(rand_state)
@@ -105,7 +104,7 @@ def test_optimize_kl(constants, point_estimates, kl_minimizer, n_samples,
         sl1 = ift.optimize_kl(likelihood_energy, final_index, n_samples, kl_minimizer,
                               sampling_iteration_controller, nonlinear_sampling_minimizer, constants,
                               point_estimates, transitions, export_operator_outputs, output_directory1, initial_position,
-                              initial_index, comm, overwrite, inspect_callback,
+                              initial_index, comm, inspect_callback,
                               terminate_callback, resume=True, save_strategy="last")
 
     for aa, bb in zip(sl.iterator(), sl1.iterator()):
@@ -120,7 +119,6 @@ def test_transitions():
     initial_position = None
     initial_index = 0
     n_samples = 2
-    overwrite = True
 
     kl_minimizer = ift.SteepestDescent(ic)
     # ift.NewtonCG(ift.GradInfNormController(1e-3, iteration_limit=1))
@@ -165,7 +163,7 @@ def test_transitions():
     sl = ift.optimize_kl(likelihood_energy, final_index, n_samples, kl_minimizer,
                          sampling_iteration_controller, nonlinear_sampling_minimizer, constants,
                          point_estimates, transitions, export_operator_outputs, output_directory, initial_position,
-                         initial_index, comm, overwrite, inspect_callback, terminate_callback, save_strategy="all")
+                         initial_index, comm, inspect_callback, terminate_callback, save_strategy="all")
     assert sl.domain is mdom2
 
 
