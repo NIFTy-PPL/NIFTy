@@ -10,6 +10,6 @@ do
     fi
 done
 
-EXCLUDE="nifty8/logger.py nifty8/git_version.py"
+EXCLUDE="nifty8/logger.py"
 sphinx-apidoc -e -o docs/source/mod nifty8 ${EXCLUDE}
 sphinx-build -b html docs/source/ docs/build/
