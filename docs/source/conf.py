@@ -54,5 +54,5 @@ html_theme_options = {
 html_last_updated_fmt = '%b %d, %Y'
 
 exclude_patterns = [
-    'mod/modules.rst', 'mod/nifty8.git_version.rst', 'mod/nifty8.logger.rst'
+    'mod/modules.rst', 'mod/nifty8.logger.rst'
 ]
