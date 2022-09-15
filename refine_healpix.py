@@ -3,6 +3,7 @@
 # SPDX-License-Identifier: GPL-2.0+ OR BSD-2-Clause
 
 from functools import partial
+from math import log2
 from typing import Callable, Optional, Tuple
 import warnings
 
@@ -12,10 +13,14 @@ from jax import vmap
 import jax
 from jax import numpy as jnp
 from jax import random
+from jax.lax import dynamic_slice
 import matplotlib.pyplot as plt
 import numpy as np
 
+import nifty8.re as jft
 from nifty8.re.refine import _get_cov_from_loc
+
+jax.config.update("jax_debug_nans", True)
 
 
 # %%
@@ -92,9 +97,9 @@ def _refinement_matrices(
     _cov_from_loc: Optional[Callable] = None,
 ) -> Tuple[jnp.ndarray, jnp.ndarray]:
     cov_from_loc = _get_cov_from_loc(kernel, _cov_from_loc)
-    n_fsz = 4  # `n_csz = 9`
-
     gc, gf = gc_and_gf
+    n_fsz = gf.shape[0]
+
     coord = jnp.concatenate((gc, gf), axis=0)
     cov = cov_from_loc(coord, coord)
     cov_ff = cov[-n_fsz:, -n_fsz:]
@@ -157,33 +162,29 @@ def matern_kernel(distance, scale, cutoff, dof):
     return jnp.where(distance < 1e-8 * cutoff, scale**2, cov)
 
 
-nest = True
-kernel = partial(matern_kernel, scale=1., cutoff=1., dof=1.5)
-pix0s = np.stack(pixelfunc.pix2vec(1, np.arange(12), nest=nest), axis=-1)
-cov_from_loc = _get_cov_from_loc(kernel, None)
-fks_sqrt = jnp.linalg.cholesky(cov_from_loc(pix0s, pix0s))
-
-key = random.PRNGKey(43)
-r0 = random.normal(key, (12, ))
-coarse_values = fks_sqrt @ r0
-
-
-# %%
 def refine_slice(
+    radial_chart,
     coarse_values,
     excitations,
     kernel,
     precision=None,
 ):
     ndim = np.ndim(coarse_values)
-    assert ndim == 1
+    if ndim not in (1, 2):
+        raise ValueError(f"invalid dimensions {ndim!r}; expected either 0 or 1")
+    coarse_values = jnp.atleast_2d(coarse_values)
+    fsz_hp = 4
+    fsz_r = 2
+    csz_hp = 9
+    csz_r = 3
 
-    nside = (coarse_values.size / 12)**0.5
-    if not nside.is_integer():
+    nside = (coarse_values.shape[0] / 12)**0.5
+    level = log2(nside)
+    if not nside.is_integer() or not level.is_integer():
         raise ValueError("invalid nside of `coarse_values`")
-    nside = int(nside)
+    nside, level = int(nside), int(level)
 
-    pix_idx = np.arange(coarse_values.size)
+    pix_idx = np.arange(coarse_values.shape[0])
     pix_nbr_idx = get_1st_hp_nbrs_idx(nside, pix_idx, nest=nest)
 
     gc = np.stack(pixelfunc.pix2vec(nside, pix_nbr_idx, nest=nest), axis=-1)
@@ -196,36 +197,109 @@ def refine_slice(
         axis=-1
     )
 
-    def refine(coarse_full, exc, idx, gc, gf):
+    def refine(coarse_full, exc, idx_hp, idx_r, gc, gf):
+        # `idx_r` is the left-most radial pixel of the to-be-refined slice
+        # Extend `gc` and `gf` radially
+        if ndim == 1:
+            if gc.ndim != 2 or gf.ndim != 2:
+                raise AssertionError()
+        elif ndim == 2:
+            bc = (1, ) * (ndim - 2) + (-1, 1)
+            rc = radial_chart.ind2cart(
+                idx_r + jnp.arange(csz_r)[np.newaxis, :], level
+            ).reshape(bc)
+            gc = gc[:, np.newaxis, :] * rc
+            gc = gc.reshape(-1, ndim + 1)
+            rf = radial_chart.ind2cart(
+                idx_r + jnp.array([0.75, 1.25])[np.newaxis, :], level
+            ).reshape(bc)
+            gf = gf[:, np.newaxis, :] * rf
+            gf = gf.reshape(-1, ndim + 1)
+        else:
+            raise AssertionError()
         olf, fks = _refinement_matrices((gc, gf), kernel=kernel)
+        olf = olf.reshape(fsz_hp, fsz_r, csz_hp, csz_r)
 
-        refined = jnp.tensordot(
-            olf, coarse_full[idx], axes=ndim, precision=precision
-        )
-        refined += jnp.matmul(fks, exc)
+        c = coarse_full[idx_hp]
+        if ndim > 1:
+            c = dynamic_slice(
+                coarse_full[idx_hp], (0, idx_r),
+                slice_sizes=(csz_hp, ) + (3, ) * (ndim - 1)
+            )
+        refined = jnp.tensordot(olf, c, axes=ndim, precision=precision)
+        refined += jnp.matmul(fks, exc).reshape(fsz_hp, fsz_r)
         return refined
 
-    refined = vmap(refine,
-                   in_axes=(None, 0, 0, 0, 0
-                           ))(coarse_values, excitations, pix_nbr_idx, gc, gf)
-    return refined.ravel()
+    pix_r_off = jnp.arange(radial_chart.shape_at(level)[0] - csz_r)
+    # TODO: benchmark swapping these two
+    vrefine = vmap(refine, in_axes=(None, 0, None, 0, None, None))
+    vrefine = vmap(vrefine, in_axes=(None, 0, 0, None, 0, 0))
+    refined = vrefine(
+        coarse_values, excitations, pix_nbr_idx, pix_r_off, gc, gf
+    )
+    if ndim == 1:
+        refined = refined.ravel()
+    elif ndim == 2:
+        refined = jnp.transpose(refined, (0, 2, 1, 3))
+        n_hp = refined.shape[0] * refined.shape[1]
+        n_r = refined.shape[2] * refined.shape[3]
+        refined = refined.reshape(n_hp, n_r)
+    else:
+        raise AssertionError()
+    return refined
 
-
-jax.config.update("jax_debug_nans", True)
-excitations = random.normal(key, (coarse_values.size, 4))
-refined0 = refine_slice(coarse_values, excitations, kernel)
-refined0 = refined.ravel()
 
 # %%
-refined = coarse_values
+nest = True
+kernel = partial(matern_kernel, scale=1., cutoff=1., dof=1.5)
+pix0s = np.stack(pixelfunc.pix2vec(1, np.arange(12), nest=nest), axis=-1)
+n_r = 4
+pix0s = pix0s[:, np.newaxis, :] * jnp.linspace(1, 3, num=n_r,
+                                               endpoint=False)[np.newaxis, :,
+                                                               np.newaxis]
+pix0s = pix0s.reshape(12 * n_r, 3)
+cov_from_loc = _get_cov_from_loc(kernel, None)
+fks_sqrt = jnp.linalg.cholesky(cov_from_loc(pix0s, pix0s))
+
+# %%
+key = random.PRNGKey(43)
+r0 = random.normal(key, (12 * n_r, ))
+coarse_values = (fks_sqrt @ r0).reshape(12, n_r)
+for i in range(n_r):
+    hp.mollview(coarse_values[:, i], nest=nest)
+plt.show()
+
+# %%
 key = random.PRNGKey(42)
-depth = 8
+
+
+def rg2cart(x, idx0, scl):
+    """Transforms regular, points from a Euclidean space to irregular points in
+    an cartesian coordinate system in 1D."""
+    return jnp.exp(scl * x[0] + idx0)[np.newaxis, ...]
+
+
+def cart2rg(x, idx0, scl):
+    """Inverse of `rg2cart`."""
+    return ((jnp.log(x[0]) - idx0) / scl)[np.newaxis, ...]
+
+
+radial_chart = jft.CoordinateChart(
+    min_shape=(n_r, ),
+    depth=1,
+    rg2cart=partial(rg2cart, idx0=-6.27, scl=1.1),
+    cart2rg=partial(cart2rg, idx0=-6.27, scl=1.1)
+)
+
+refined = coarse_values
+depth = 1
 for i in range(depth):
     _, key = random.split(key)
-    exc = random.normal(key, (refined.size, 4))
-    refined = refine_slice(refined, exc, kernel)
+    exc = random.normal(key, (refined.shape[0], refined.shape[1] - 2, 8))
+    refined = refine_slice(radial_chart, refined, exc, kernel)
 
 # %%
-hp.mollview(coarse_values, nest=nest, fig=0)
-hp.mollview(refined.ravel(), nest=nest, fig=1)
+for i in range(refined.shape[1]):
+    hp.mollview(coarse_values[:, i], nest=nest)
+    hp.mollview(refined[:, i], nest=nest)
 plt.show()
