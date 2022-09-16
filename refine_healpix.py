@@ -172,7 +172,7 @@ def refine_slice(
     ndim = np.ndim(coarse_values)
     if ndim not in (1, 2):
         raise ValueError(f"invalid dimensions {ndim!r}; expected either 0 or 1")
-    coarse_values = jnp.atleast_2d(coarse_values)
+    coarse_values = coarse_values[:, np.newaxis] if ndim == 1 else coarse_values
     fsz_hp = 4
     fsz_r = 2
     csz_hp = 9
@@ -218,7 +218,8 @@ def refine_slice(
         else:
             raise AssertionError()
         olf, fks = _refinement_matrices((gc, gf), kernel=kernel)
-        olf = olf.reshape(fsz_hp, fsz_r, csz_hp, csz_r)
+        if ndim > 1:
+            olf = olf.reshape(fsz_hp, fsz_r, csz_hp, csz_r)
 
         c = coarse_full[idx_hp]
         if ndim > 1:
@@ -227,12 +228,19 @@ def refine_slice(
                 slice_sizes=(csz_hp, ) + (3, ) * (ndim - 1)
             )
         refined = jnp.tensordot(olf, c, axes=ndim, precision=precision)
-        refined += jnp.matmul(fks, exc).reshape(fsz_hp, fsz_r)
+        f_shp = (fsz_hp, ) if ndim == 1 else (fsz_hp, fsz_r)
+        refined += jnp.matmul(fks, exc).reshape(f_shp)
         return refined
 
-    pix_r_off = jnp.arange(radial_chart.shape_at(level)[0] - csz_r + 1)
     # TODO: benchmark swapping these two
-    vrefine = vmap(refine, in_axes=(None, 0, None, 0, None, None))
+    if ndim == 1:
+        pix_r_off = None
+        vrefine = refine
+    elif ndim == 2:
+        pix_r_off = jnp.arange(radial_chart.shape_at(level)[0] - csz_r + 1)
+        vrefine = vmap(refine, in_axes=(None, 0, None, 0, None, None))
+    else:
+        raise AssertionError()
     vrefine = vmap(vrefine, in_axes=(None, 0, 0, None, 0, 0))
     refined = vrefine(
         coarse_values, excitations, pix_nbr_idx, pix_r_off, gc, gf
@@ -252,21 +260,21 @@ def refine_slice(
 # %%
 nest = True
 kernel = partial(matern_kernel, scale=1., cutoff=1., dof=1.5)
+
+key = random.PRNGKey(41)
 pix0s = np.stack(pixelfunc.pix2vec(1, np.arange(12), nest=nest), axis=-1)
-n_r = 4
-pix0s = pix0s[:, np.newaxis, :] * jnp.linspace(1, 3, num=n_r,
-                                               endpoint=False)[np.newaxis, :,
-                                                               np.newaxis]
-pix0s = pix0s.reshape(12 * n_r, 3)
 cov_from_loc = _get_cov_from_loc(kernel, None)
 fks_sqrt = jnp.linalg.cholesky(cov_from_loc(pix0s, pix0s))
 
-# %%
-key = random.PRNGKey(43)
-r0 = random.normal(key, (12 * n_r, ))
-coarse_values = (fks_sqrt @ r0).reshape(12, n_r)
-for i in range(n_r):
-    hp.mollview(coarse_values[:, i], nest=nest)
+r0 = random.normal(key, (12, ))
+refined = fks_sqrt @ r0
+hp.mollview(refined, nest=nest)
+depth = 4
+for i in range(depth):
+    _, key = random.split(key)
+    exc = random.normal(key, (refined.shape[0], 4))
+    refined = refine_slice(None, refined, exc, kernel)
+    hp.mollview(refined, nest=nest)
 plt.show()
 
 # %%
@@ -293,6 +301,12 @@ radial_chart = jft.CoordinateChart(
     _coarse_size=3,
     _fine_size=2,
 )
+pix0s = (
+    pix0s[:, np.newaxis, :] *
+    jnp.linspace(1, 3, num=n_r, endpoint=False)[np.newaxis, :, np.newaxis]
+).reshape(12 * n_r, 3)
+cov_from_loc = _get_cov_from_loc(kernel, None)
+fks_sqrt = jnp.linalg.cholesky(cov_from_loc(pix0s, pix0s))
 
 r0 = random.normal(key, (12 * n_r, ))
 refined = (fks_sqrt @ r0).reshape(12, n_r)
@@ -304,6 +318,6 @@ for i in range(depth):
 
 # %%
 for i in range(refined.shape[1]):
-    hp.mollview(coarse_values[:, i], nest=nest)
+    hp.mollview((fks_sqrt @ r0).reshape(12, n_r)[:, i], nest=nest)
     hp.mollview(refined[:, i], nest=nest)
 plt.show()
