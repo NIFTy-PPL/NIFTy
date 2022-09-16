@@ -230,7 +230,7 @@ def refine_slice(
         refined += jnp.matmul(fks, exc).reshape(fsz_hp, fsz_r)
         return refined
 
-    pix_r_off = jnp.arange(radial_chart.shape_at(level)[0] - csz_r)
+    pix_r_off = jnp.arange(radial_chart.shape_at(level)[0] - csz_r + 1)
     # TODO: benchmark swapping these two
     vrefine = vmap(refine, in_axes=(None, 0, None, 0, None, None))
     vrefine = vmap(vrefine, in_axes=(None, 0, 0, None, 0, 0))
@@ -284,15 +284,19 @@ def cart2rg(x, idx0, scl):
     return ((jnp.log(x[0]) - idx0) / scl)[np.newaxis, ...]
 
 
+n_r = 4
 radial_chart = jft.CoordinateChart(
     min_shape=(n_r, ),
     depth=1,
     rg2cart=partial(rg2cart, idx0=-6.27, scl=1.1),
-    cart2rg=partial(cart2rg, idx0=-6.27, scl=1.1)
+    cart2rg=partial(cart2rg, idx0=-6.27, scl=1.1),
+    _coarse_size=3,
+    _fine_size=2,
 )
 
-refined = coarse_values
-depth = 1
+r0 = random.normal(key, (12 * n_r, ))
+refined = (fks_sqrt @ r0).reshape(12, n_r)
+depth = 7
 for i in range(depth):
     _, key = random.split(key)
     exc = random.normal(key, (refined.shape[0], refined.shape[1] - 2, 8))
