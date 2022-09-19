@@ -57,27 +57,23 @@
 # ### In NIFTy
 #
 # - We assume statistical homogeneity and isotropy. Therefore the signal covariance $S$ is diagonal in harmonic space, and is described by a one-dimensional power spectrum, assumed here as $$P(k) = P_0\,\left(1+\left(\frac{k}{k_0}\right)^2\right)^{-\gamma /2},$$
-# with $P_0 = 0.2, k_0 = 5, \gamma = 4$.
+# with $P_0 = 20000, k_0 = 5, \gamma = 4$.
 # - $N = 0.2 \cdot \mathbb{1}$.
 # - Number of data points $N_{pix} = 512$.
 # - reconstruction in harmonic space.
 # - Response operator:
-# $$R = FFT_{\text{harmonic} \rightarrow \text{position}}$$
+# $$R = \mathbb{1}$$
 #
 
 # + slideshow={"slide_type": "-"}
-N_pixels = 512     # Number of pixels
-
 def pow_spec(k):
-    P0, k0, gamma = [.2, 5, 4]
+    P0, k0, gamma = [2e4, 5, 4]
     return P0 / ((1. + (k/k0)**2)**(gamma / 2))
 
+s_space = ift.RGSpace(512)
 
 # + [markdown] slideshow={"slide_type": "slide"}
 # ### Implementation
-
-# + [markdown] slideshow={"slide_type": "-"}
-# #### Import Modules
 
 # + slideshow={"slide_type": "-"}
 # %matplotlib inline
@@ -86,69 +82,32 @@ import nifty8 as ift
 import matplotlib.pyplot as plt
 plt.rcParams['figure.dpi'] = 100
 plt.style.use("seaborn-notebook")
+# -
 
+HT = ift.HartleyOperator(s_space)
 
-# + [markdown] slideshow={"slide_type": "subslide"}
-# #### Implement Propagator
+Sh = ift.create_power_operator(HT.target, power_spectrum=pow_spec, sampling_dtype=float)
 
-# + slideshow={"slide_type": "-"}
-def Curvature(R, N, Sh):
-    IC = ift.GradientNormController(iteration_limit=50000,
-                                    tol_abs_gradnorm=0.1)
-    # WienerFilterCurvature is (R.adjoint*N.inverse*R + Sh.inverse) plus some handy
-    # helper methods.
-    return ift.WienerFilterCurvature(R,N,Sh,iteration_controller=IC,iteration_controller_sampling=IC)
+S = HT.adjoint @ Sh @ HT
+S = ift.SandwichOperator.make(bun=HT, cheese=Sh)
 
+s = S.draw_sample()
 
-# + [markdown] slideshow={"slide_type": "skip"}
-# #### Conjugate Gradient Preconditioning
-#
-# - $D$ is defined via:
-# $$D^{-1} = \mathcal S_h^{-1} + R^\dagger N^{-1} R.$$
-# In the end, we want to apply $D$ to $j$, i.e. we need the inverse action of $D^{-1}$. This is done numerically (algorithm: *Conjugate Gradient*). 
-#
-# <!--
-# - One can define the *condition number* of a non-singular and normal matrix $A$:
-# $$\kappa (A) := \frac{|\lambda_{\text{max}}|}{|\lambda_{\text{min}}|},$$
-# where $\lambda_{\text{max}}$ and $\lambda_{\text{min}}$ are the largest and smallest eigenvalue of $A$, respectively.
-#
-# - The larger $\kappa$ the slower Conjugate Gradient.
-#
-# - By default, conjugate gradient solves: $D^{-1} m = j$ for $m$, where $D^{-1}$ can be badly conditioned. If one knows a non-singular matrix $T$ for which $TD^{-1}$ is better conditioned, one can solve the equivalent problem:
-# $$\tilde A m = \tilde j,$$
-# where $\tilde A = T D^{-1}$ and $\tilde j = Tj$.
-#
-# - In our case $S^{-1}$ is responsible for the bad conditioning of $D$ depending on the chosen power spectrum. Thus, we choose
-#
-# $$T = \mathcal F^\dagger S_h^{-1} \mathcal F.$$
-# -->
-
-# + [markdown] slideshow={"slide_type": "subslide"}
-# #### Generate Mock data
-#
-# - Generate a field $s$ and $n$ with given covariances.
-# - Calculate $d$.
+R = ift.GeometryRemover(s_space)
+d_space = R.target
 
 # +
-s_space = ift.RGSpace(N_pixels)
-h_space = s_space.get_default_codomain()
-HT = ift.HarmonicTransformOperator(h_space, target=s_space)
-
-# Operators
-Sh = ift.create_power_operator(h_space, power_spectrum=pow_spec, sampling_dtype=float)
-R = HT # @ ift.create_harmonic_smoothing_operator((h_space,), 0, 0.02)
-
-# Fields and data
-sh = Sh.draw_sample()
-noiseless_data=R(sh)
+noiseless_data = R(s)
 noise_amplitude = np.sqrt(0.2)
-N = ift.ScalingOperator(s_space, noise_amplitude**2, float)
+N = ift.ScalingOperator(d_space, noise_amplitude**2, float)
 
 n = N.draw_sample()
 d = noiseless_data + n
 j = R.adjoint(N.inverse(d))
-curv = Curvature(R=R, N=N, Sh=Sh)
-D = curv.inverse
+
+ic = ift.GradientNormController(iteration_limit=50000, tol_abs_gradnorm=0.1)
+Dinv = ift.InversionEnabler(S.inverse + R.adjoint @ N.inverse @ R, ic)
+D = Dinv.inverse
 
 # + [markdown] slideshow={"slide_type": "subslide"}
 # #### Run Wiener Filter
@@ -160,44 +119,19 @@ m = D(j)
 # #### Results
 
 # + slideshow={"slide_type": "-"}
-# Get signal data and reconstruction data
-s_data = HT(sh).val
-m_data = HT(m).val
-d_data = d.val
-
-plt.plot(s_data, 'r', label="Signal", linewidth=2)
-plt.plot(d_data, 'k.', label="Data")
-plt.plot(m_data, 'k', label="Reconstruction",linewidth=2)
+plt.plot(s.val, 'r', label="Signal", linewidth=2)
+plt.plot(d.val, 'k.', label="Data")
+plt.plot(m.val, 'k', label="Reconstruction",linewidth=2)
 plt.title("Reconstruction")
 plt.legend()
 plt.show()
 
 # + slideshow={"slide_type": "subslide"}
-plt.plot(s_data - s_data, 'r', label="Signal", linewidth=2)
-plt.plot(d_data - s_data, 'k.', label="Data")
-plt.plot(m_data - s_data, 'k', label="Reconstruction",linewidth=2)
+plt.plot(s.val - s.val, 'r', label="Signal", linewidth=2)
+plt.plot(d.val - s.val, 'k.', label="Data")
+plt.plot(m.val - s.val, 'k', label="Reconstruction",linewidth=2)
 plt.axhspan(-noise_amplitude,noise_amplitude, facecolor='0.9', alpha=.5)
 plt.title("Residuals")
-plt.legend()
-plt.show()
-
-# + [markdown] slideshow={"slide_type": "subslide"}
-# #### Power Spectrum
-
-# + slideshow={"slide_type": "-"}
-s_power_data = ift.power_analyze(sh).val
-m_power_data = ift.power_analyze(m).val
-plt.loglog()
-plt.xlim(1, int(N_pixels/2))
-ymin = min(m_power_data)
-plt.ylim(ymin, 1)
-xs = np.arange(1,int(N_pixels/2),.1)
-plt.plot(xs, pow_spec(xs), label="True Power Spectrum", color='k',alpha=0.5)
-plt.plot(s_power_data, 'r', label="Signal")
-plt.plot(m_power_data, 'k', label="Reconstruction")
-plt.axhline(noise_amplitude**2 / N_pixels, color="k", linestyle='--', label="Noise level", alpha=.5)
-plt.axhspan(noise_amplitude**2 / N_pixels, ymin, facecolor='0.9', alpha=.5)
-plt.title("Power Spectrum")
 plt.legend()
 plt.show()
 
@@ -213,8 +147,7 @@ N = ift.ScalingOperator(s_space, noise_amplitude**2, sampling_dtype=float)
 # Fields
 sh = Sh.draw_sample()
 s = HT(sh)
-n = ift.Field.from_random(domain=s_space, random_type='normal',
-                      std=noise_amplitude, mean=0)
+n = N.draw_sample()
 
 # + [markdown] slideshow={"slide_type": "skip"}
 # ### Partially Lose Data
