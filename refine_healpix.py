@@ -13,7 +13,7 @@ from jax import vmap
 import jax
 from jax import numpy as jnp
 from jax import random
-from jax.lax import dynamic_slice
+from jax.lax import dynamic_slice_in_dim
 import matplotlib.pyplot as plt
 import numpy as np
 
@@ -162,6 +162,15 @@ def matern_kernel(distance, scale, cutoff, dof):
     return jnp.where(distance < 1e-8 * cutoff, scale**2, cov)
 
 
+def _vmap_squeeze_first_2ndax(fun, *args, **kwargs):
+    vfun = vmap(fun, *args, **kwargs)
+
+    def vfun_apply(*x):
+        return vfun(jnp.squeeze(x[0], axis=1), *x[1:])
+
+    return vfun_apply
+
+
 def refine_slice(
     radial_chart,
     coarse_values,
@@ -204,7 +213,7 @@ def refine_slice(
             if gc.ndim != 2 or gf.ndim != 2:
                 raise AssertionError()
         elif ndim == 2:
-            bc = (1, ) * (ndim - 2) + (-1, 1)
+            bc = (1, ) * (ndim - 1) + (-1, 1)
             rc = radial_chart.ind2cart(
                 idx_r + jnp.arange(csz_r)[np.newaxis, :], level
             ).reshape(bc)
@@ -222,26 +231,27 @@ def refine_slice(
             olf = olf.reshape(fsz_hp, fsz_r, csz_hp, csz_r)
 
         c = coarse_full[idx_hp]
-        if ndim > 1:
-            c = dynamic_slice(
-                coarse_full[idx_hp], (0, idx_r),
-                slice_sizes=(csz_hp, ) + (3, ) * (ndim - 1)
+        if ndim == 2:
+            c = dynamic_slice_in_dim(
+                coarse_full[idx_hp], idx_r, slice_size=csz_r, axis=1
             )
         refined = jnp.tensordot(olf, c, axes=ndim, precision=precision)
         f_shp = (fsz_hp, ) if ndim == 1 else (fsz_hp, fsz_r)
-        refined += jnp.matmul(fks, exc).reshape(f_shp)
+        refined += jnp.matmul(fks, exc, precision=precision).reshape(f_shp)
         return refined
 
     # TODO: benchmark swapping these two
     if ndim == 1:
         pix_r_off = None
-        vrefine = refine
+        vrefine = _vmap_squeeze_first_2ndax(
+            refine, in_axes=(None, 0, 0, None, 0, 0)
+        )
     elif ndim == 2:
         pix_r_off = jnp.arange(radial_chart.shape_at(level)[0] - csz_r + 1)
         vrefine = vmap(refine, in_axes=(None, 0, None, 0, None, None))
+        vrefine = vmap(vrefine, in_axes=(None, 0, 0, None, 0, 0))
     else:
         raise AssertionError()
-    vrefine = vmap(vrefine, in_axes=(None, 0, 0, None, 0, 0))
     refined = vrefine(
         coarse_values, excitations, pix_nbr_idx, pix_r_off, gc, gf
     )
@@ -261,15 +271,16 @@ def refine_slice(
 nest = True
 kernel = partial(matern_kernel, scale=1., cutoff=1., dof=1.5)
 
-key = random.PRNGKey(41)
 pix0s = np.stack(pixelfunc.pix2vec(1, np.arange(12), nest=nest), axis=-1)
 cov_from_loc = _get_cov_from_loc(kernel, None)
 fks_sqrt = jnp.linalg.cholesky(cov_from_loc(pix0s, pix0s))
 
+key = random.PRNGKey(43)
 r0 = random.normal(key, (12, ))
 refined = fks_sqrt @ r0
 hp.mollview(refined, nest=nest)
 depth = 4
+key = random.PRNGKey(42)
 for i in range(depth):
     _, key = random.split(key)
     exc = random.normal(key, (refined.shape[0], 4))
