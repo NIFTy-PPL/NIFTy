@@ -120,7 +120,7 @@ def main():
 
     # Build inverse propagator D and information source j
     D_inv = R.adjoint @ N.inverse @ R + S.inverse
-    j = R.adjoint_times(N.inverse_times(data))
+    j = (R.adjoint @ N.inverse)(data)
     # Make D_inv invertible (via Conjugate Gradient)
     IC = ift.GradientNormController(iteration_limit=500, tol_abs_gradnorm=1e-3)
     D = ift.InversionEnabler(D_inv, IC, approximation=S.inverse).inverse

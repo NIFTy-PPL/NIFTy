@@ -144,10 +144,9 @@ noiseless_data=R(sh)
 noise_amplitude = np.sqrt(0.2)
 N = ift.ScalingOperator(s_space, noise_amplitude**2, float)
 
-n = ift.Field.from_random(domain=s_space, random_type='normal',
-                          std=noise_amplitude, mean=0)
+n = N.draw_sample()
 d = noiseless_data + n
-j = R.adjoint_times(N.inverse_times(d))
+j = R.adjoint(N.inverse(d))
 curv = Curvature(R=R, N=N, Sh=Sh)
 D = curv.inverse
 
@@ -238,7 +237,7 @@ d = R(sh) + n
 # + slideshow={"slide_type": "skip"}
 curv = Curvature(R=R, N=N, Sh=Sh)
 D = curv.inverse
-j = R.adjoint_times(N.inverse_times(d))
+j = R.adjoint(N.inverse(d))
 m = D(j)
 
 # + [markdown] slideshow={"slide_type": "subslide"}
@@ -314,7 +313,7 @@ curv = Curvature(R=R, N=N, Sh=Sh)
 D = curv.inverse
 
 d = R(sh) + n
-j = R.adjoint_times(N.inverse_times(d))
+j = R.adjoint(N.inverse(d))
 
 # Run Wiener filter
 m = D(j)
