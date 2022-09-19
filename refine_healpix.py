@@ -307,14 +307,15 @@ n_r = 4
 radial_chart = jft.CoordinateChart(
     min_shape=(n_r, ),
     depth=1,
-    rg2cart=partial(rg2cart, idx0=-6.27, scl=1.1),
-    cart2rg=partial(cart2rg, idx0=-6.27, scl=1.1),
+    rg2cart=partial(rg2cart, idx0=-0.27, scl=1.1),
+    cart2rg=partial(cart2rg, idx0=-0.27, scl=1.1),
     _coarse_size=3,
     _fine_size=2,
 )
+pix0s = np.stack(pixelfunc.pix2vec(1, np.arange(12), nest=nest), axis=-1)
 pix0s = (
     pix0s[:, np.newaxis, :] *
-    jnp.linspace(1, 3, num=n_r, endpoint=False)[np.newaxis, :, np.newaxis]
+    radial_chart.ind2cart(jnp.arange(n_r)[np.newaxis, :], -1)[..., np.newaxis]
 ).reshape(12 * n_r, 3)
 cov_from_loc = _get_cov_from_loc(kernel, None)
 fks_sqrt = jnp.linalg.cholesky(cov_from_loc(pix0s, pix0s))
