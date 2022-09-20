@@ -86,68 +86,31 @@ pages:
 before_script:
   - python3 setup.py install --user -f
 
-run_ipynb0:
+run_demo0:
   stage: demo_runs
   script:
-    - jupytext --to ipynb demos/getting_started_0.py
-    - jupyter nbconvert --execute --ExecutePreprocessor.timeout=None --to html demos/getting_started_0.ipynb
+    - jupytext --to ipynb demos/0_wiener_filter.py
+    - jupyter nbconvert --execute --ExecutePreprocessor.timeout=None --to html demos/0_wiener_filter.ipynb
 
-run_ipynb1:
+run_demo1:
   stage: demo_runs
   script:
-    - jupytext --to ipynb demos/getting_started_4_CorrelatedFields.py
-    - jupyter nbconvert --execute --ExecutePreprocessor.timeout=None --to html demos/getting_started_4_CorrelatedFields.ipynb
+    - jupytext --to ipynb demos/1_inference_with_nifty.py
+    - jupyter nbconvert --execute --ExecutePreprocessor.timeout=None --to html demos/1_inference_with_nifty.ipynb
 
-run_getting_started_1:
+run_demo2:
   stage: demo_runs
   script:
-    - python3 demos/getting_started_1.py
+    - jupytext --to ipynb demos/2_jax_backend.py
+    - jupyter nbconvert --execute --ExecutePreprocessor.timeout=None --to html demos/2_jax_backend.ipynb
+
+run_demo1_mpi:
+  stage: demo_runs
+  script:
+    - mpirun -np 2 --bind-to none python3 demos/1_inference_with_nifty.py
   artifacts:
     paths:
-      - '*.png'
-
-run_getting_started_2:
-  stage: demo_runs
-  script:
-    - python3 demos/getting_started_2.py
-  artifacts:
-    paths:
-      - 'getting_started_2_results'
-      - '*.png'
-
-run_getting_started_3:
-  stage: demo_runs
-  script:
-    - python3 demos/getting_started_3.py
-  artifacts:
-    paths:
-      - 'getting_started_3_results'
-      - '*.png'
-
-run_getting_started_3_mpi:
-  stage: demo_runs
-  script:
-    - mpirun -np 2 --bind-to none python3 demos/getting_started_3.py
-  artifacts:
-    paths:
-      - 'getting_started_3_results'
-      - '*.png'
-
-run_getting_started_mf:
-  stage: demo_runs
-  script:
-    - mpiexec -n 2 --bind-to none python3 demos/getting_started_5_mf.py
-  artifacts:
-    paths:
-      - 'getting_started_mf_results'
-      - '*.png'
-
-run_getting_started_nifty2jax:
-  stage: demo_runs
-  script:
-    - python3 demos/getting_started_6_nifty2jax.py
-  artifacts:
-    paths:
+      - '1_inference_with_nifty_results'
       - '*.png'
 
 run_getting_started_7:

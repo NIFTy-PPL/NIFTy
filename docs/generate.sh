@@ -2,7 +2,7 @@ set -e
 
 FOLDER=docs/source/user/
 
-for FILE in ${FOLDER}getting_started_0 ${FOLDER}getting_started_4_CorrelatedFields ${FOLDER}custom_nonlinearities
+for FILE in ${FOLDER}0_wiener_filter ${FOLDER}1_inference_with_nifty ${FOLDER}2_jax_backend ${FOLDER}custom_nonlinearities ${FOLDER}correlated_field_parameters
 do
     if [ ! -f "${FILE}.rst" ] || [ ${FILE}.ipynb -nt ${FILE}.rst ]; then
 		jupytext --to ipynb ${FILE}.py

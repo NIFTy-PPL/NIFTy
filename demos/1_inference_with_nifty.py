@@ -134,7 +134,7 @@ def main():
     samples = ift.optimize_kl(likelihood_energy, n_iterations, n_samples,
                               minimizer, ic_sampling, minimizer_sampling,
                               export_operator_outputs={"signal": signal},
-                              output_directory="getting_started_3_results",
+                              output_directory="1_inference_with_nifty_results",
                               comm=comm)
 
     if True:
@@ -160,6 +160,31 @@ def main():
         plot.output(ny=1, nx=3, xsize=24, ysize=6, name=filename_res)
         print("Saved results as '{}'.".format(filename_res))
 
+    # FIXME for the following show prior samples
+    # # Set up signal model
+    # cfmaker = ift.CorrelatedFieldMaker('')
+    # cfmaker.add_fluctuations(sp1, (0.1, 1e-2), (2, .2), (.01, .5), (-4, 2.),
+    #                          'amp1')
+    # cfmaker.add_fluctuations(sp2, (0.1, 1e-2), (2, .2), (.01, .5), (-3, 1),
+    #                          'amp2')
+    # cfmaker.set_amplitude_total_offset(0., (1e-2, 1e-6))
+    # correlated_field = cfmaker.finalize()
+
+    # normalized_amp = cfmaker.get_normalized_amplitudes()
+    # pspec1 = normalized_amp[0]**2
+    # pspec2 = normalized_amp[1]**2
+    # DC = SingleDomain(correlated_field.target, position_space)
+
+    # # Generate mock signal and data
+    # mock_position = ift.from_random(signal_response.domain, 'normal')
+    # data = signal_response(mock_position) + N.draw_sample()
+
+    # plot = ift.Plot()
+    # plot.add(signal(mock_position), title='Ground Truth')
+    # plot.add(R.adjoint_times(data), title='Data')
+    # plot.add([pspec1.force(mock_position)], title='Power Spectrum 1')
+    # plot.add([pspec2.force(mock_position)], title='Power Spectrum 2')
+    # plot.output(ny=2, nx=2, xsize=10, ysize=10, name=filename.format("setup"))
 
 if __name__ == '__main__':
     main()

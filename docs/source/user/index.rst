@@ -15,7 +15,9 @@ are found in the `API reference <../mod/nifty8.html>`_.
    approximate_inference
    volume
    code
-   getting_started_0
-   getting_started_4_CorrelatedFields
+   0_wiener_filter
+   1_inference_with_nifty
+   2_jax_backend
+   correlated_field_parameters
    custom_nonlinearities
    citations

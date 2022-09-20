@@ -1,0 +1,1 @@
+../../../demos/1_inference_with_nifty.py
