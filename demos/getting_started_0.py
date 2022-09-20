@@ -5,9 +5,9 @@
 #       extension: .py
 #       format_name: light
 #       format_version: '1.5'
-#       jupytext_version: 1.13.7
+#       jupytext_version: 1.14.1
 #   kernelspec:
-#     display_name: Python 3
+#     display_name: Python 3 (ipykernel)
 #     language: python
 #     name: python3
 # ---
@@ -204,108 +204,7 @@ plt.title("Reconstruction of incomplete data")
 plt.legend()
 
 # + [markdown] slideshow={"slide_type": "slide"}
-# ## Wiener filter on two-dimensional field
+# ## Wiener Filter standardized
+# + [markdown] slideshow={"slide_type": "slide"}
 
-# +
-N_pixels = 256      # Number of pixels
-sigma2 = 2.         # Noise variance
-
-def pow_spec(k):
-    P0, k0, gamma = [.2, 2, 4]
-    return P0 * (1. + (k/k0)**2)**(-gamma/2)
-
-s_space = ift.RGSpace([N_pixels, N_pixels])
-
-# + slideshow={"slide_type": "skip"}
-h_space = s_space.get_default_codomain()
-HT = ift.HarmonicTransformOperator(h_space,s_space)
-
-# Operators
-Sh = ift.create_power_operator(h_space, power_spectrum=pow_spec, sampling_dtype=float)
-N = ift.ScalingOperator(s_space, sigma2, sampling_dtype=float)
-
-# Fields and data
-sh = Sh.draw_sample()
-n = ift.Field.from_random(domain=s_space, random_type='normal',
-                      std=np.sqrt(sigma2), mean=0)
-
-# Lose some data
-
-l = int(N_pixels * 0.33)
-h = int(N_pixels * 0.33 * 2)
-
-mask = np.full(s_space.shape, 1.)
-mask[l:h,l:h] = 0.
-mask = ift.Field.from_raw(s_space, mask)
-
-R = ift.DiagonalOperator(mask)(HT)
-n = n.val_rw()
-n[l:h, l:h] = 0
-n = ift.Field.from_raw(s_space, n)
-curv = Curvature(R=R, N=N, Sh=Sh)
-D = curv.inverse
-
-d = R(sh) + n
-j = R.adjoint(N.inverse(d))
-
-# Run Wiener filter
-m = D(j)
-
-# Uncertainty
-m_mean, m_var = ift.probe_with_posterior_samples(curv, HT, 20, np.float64)
-
-# Get data
-s_data = HT(sh).val
-m_data = HT(m).val
-m_var_data = m_var.val
-d_data = d.val
-uncertainty = np.sqrt(np.abs(m_var_data))
-
-# + slideshow={"slide_type": "skip"}
-cmap = ['magma', 'inferno', 'plasma', 'viridis'][1]
-
-mi = np.min(s_data)
-ma = np.max(s_data)
-
-fig, axes = plt.subplots(1, 2)
-
-data = [s_data, d_data]
-caption = ["Signal", "Data"]
-
-for ax in axes.flat:
-    im = ax.imshow(data.pop(0), interpolation='nearest', cmap=cmap, vmin=mi,
-                   vmax=ma)
-    ax.set_title(caption.pop(0))
-
-fig.subplots_adjust(right=0.8)
-cbar_ax = fig.add_axes([0.85, 0.15, 0.05, 0.7])
-fig.colorbar(im, cax=cbar_ax)
-
-# + slideshow={"slide_type": "skip"}
-mi = np.min(s_data)
-ma = np.max(s_data)
-
-fig, axes = plt.subplots(3, 2, figsize=(10, 15))
-sample = HT(curv.draw_sample(from_inverse=True)+m).val
-post_mean = (m_mean + HT(m)).val
-
-data = [s_data, m_data, post_mean, sample, s_data - m_data, uncertainty]
-caption = ["Signal", "Reconstruction", "Posterior mean", "Sample", "Residuals", "Uncertainty Map"]
-
-for ax in axes.flat:
-    im = ax.imshow(data.pop(0), interpolation='nearest', cmap=cmap, vmin=mi, vmax=ma)
-    ax.set_title(caption.pop(0))
-
-fig.subplots_adjust(right=0.8)
-cbar_ax = fig.add_axes([.85, 0.15, 0.05, 0.7])
-fig.colorbar(im, cax=cbar_ax)
-
-# + [markdown] slideshow={"slide_type": "subslide"}
-# ### Is the uncertainty map reliable?
-
-# + slideshow={"slide_type": "-"}
-precise = (np.abs(s_data-m_data) < uncertainty)
-print("Error within uncertainty map bounds: " + str(np.sum(precise) * 100 / N_pixels**2) + "%")
-
-plt.imshow(precise.astype(float), cmap="brg")
-plt.colorbar()
+# FIXME
