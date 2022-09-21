@@ -117,12 +117,14 @@ class Realizer(EndomorphicOperator):
 
     Parameters
     ----------
-    domain: Domain, tuple of domains or DomainTuple
+    domain: Domain, tuple of domains, DomainTuple or MultiDomain
         domain of the input field
 
     """
     def __init__(self, domain):
-        self._domain = DomainTuple.make(domain)
+        from ..sugar import makeDomain
+
+        self._domain = makeDomain(domain)
         self._capability = self.TIMES | self.ADJOINT_TIMES
 
         try:
@@ -143,12 +145,14 @@ class Imaginizer(EndomorphicOperator):
 
     Parameters
     ----------
-    domain: Domain, tuple of domains or DomainTuple
+    domain: Domain, tuple of domains, DomainTuple or MultiDomain
         domain of the input field
 
     """
     def __init__(self, domain):
-        self._domain = DomainTuple.make(domain)
+        from ..sugar import makeDomain
+
+        self._domain = makeDomain(domain)
         self._capability = self.TIMES | self.ADJOINT_TIMES
 
         try:
