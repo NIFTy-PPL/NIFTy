@@ -66,6 +66,15 @@
 #
 
 # + slideshow={"slide_type": "-"}
+# %matplotlib inline
+import numpy as np
+import nifty8 as ift
+import matplotlib.pyplot as plt
+plt.rcParams['figure.dpi'] = 100
+plt.style.use("seaborn-notebook")
+
+
+# + slideshow={"slide_type": "-"}
 def pow_spec(k):
     P0, k0, gamma = [2e4, 5, 4]
     return P0 / ((1. + (k/k0)**2)**(gamma / 2))
@@ -74,14 +83,6 @@ s_space = ift.RGSpace(512)
 
 # + [markdown] slideshow={"slide_type": "slide"}
 # ### Implementation
-
-# + slideshow={"slide_type": "-"}
-# %matplotlib inline
-import numpy as np
-import nifty8 as ift
-import matplotlib.pyplot as plt
-plt.rcParams['figure.dpi'] = 100
-plt.style.use("seaborn-notebook")
 # -
 
 HT = ift.HartleyOperator(s_space)
@@ -138,73 +139,69 @@ plt.show()
 # + [markdown] slideshow={"slide_type": "slide"}
 # ## Wiener Filter on Incomplete Data
 
-# + slideshow={"slide_type": "skip"}
-# Operators
-Sh = ift.create_power_operator(h_space, power_spectrum=pow_spec, sampling_dtype=float)
-N = ift.ScalingOperator(s_space, noise_amplitude**2, sampling_dtype=float)
-# R is defined below
+# + slideshow={"slide_type": "-"}
+npix = d_space.size
+l = int(npix * 0.2)
+h = int(npix * 0.2 * 2)
 
-# Fields
-sh = Sh.draw_sample()
-s = HT(sh)
-n = N.draw_sample()
-
-# + [markdown] slideshow={"slide_type": "skip"}
-# ### Partially Lose Data
+mask = np.zeros(d_space.shape, bool)
+mask[l:h] = 1
+mask = ift.makeField(d_space, mask)
+maskOp = ift.MaskOperator(mask)
+R1 = maskOp @ R
 
 # + slideshow={"slide_type": "-"}
-l = int(N_pixels * 0.2)
-h = int(N_pixels * 0.2 * 2)
-
-mask = np.full(s_space.shape, 1.)
-mask[l:h] = 0
-mask = ift.Field.from_raw(s_space, mask)
-
-R = ift.DiagonalOperator(mask) @ HT
-n = n.val_rw()
-n[l:h] = 0
-n = ift.Field.from_raw(s_space, n)
-
-d = R(sh) + n
+N1 = ift.ScalingOperator(R1.target, noise_amplitude**2, float)
+n1 = N1.draw_sample()
+d1 = R1(s) + n1
 
 # + slideshow={"slide_type": "skip"}
-curv = Curvature(R=R, N=N, Sh=Sh)
-D = curv.inverse
-j = R.adjoint(N.inverse(d))
-m = D(j)
-
-# + [markdown] slideshow={"slide_type": "subslide"}
-# ### Compute Uncertainty
-#
+Dinv = ift.SamplingEnabler(ift.SandwichOperator.make(cheese=N1.inverse, bun=R1), S.inverse, ic, S.inverse)
+Dinv = ift.InversionEnabler(Dinv, ic)
+D1 = Dinv.inverse
+j1 = R1.adjoint(N1.inverse(d1))
+m1 = D1(j1)
 # -
 
-m_mean, m_var = ift.probe_with_posterior_samples(curv, HT, 200, np.float64)
-
-# + [markdown] slideshow={"slide_type": "skip"}
-# ### Get data
-
-# + slideshow={"slide_type": "skip"}
-# Get signal data and reconstruction data
-s_data = s.val
-m_data = HT(m).val
-m_var_data = m_var.val
-uncertainty = np.sqrt(m_var_data)
-d_data = d.val_rw()
-
-# Set lost data to NaN for proper plotting
-d_data[d_data == 0] = np.nan
+n_samples = 200
+sc = ift.StatCalculator()
+for _ in range(n_samples):
+    sample = m1 + D1.draw_sample()
+    sc.add(sample)
+m_std = sc.var.sqrt()
 
 # + slideshow={"slide_type": "skip"}
 plt.axvspan(l, h, facecolor='0.8',alpha=0.5)
-plt.fill_between(range(N_pixels), m_data - uncertainty, m_data + uncertainty, facecolor='0.5', alpha=0.5)
-plt.plot(s_data, 'r', label="Signal", alpha=1, linewidth=2)
-plt.plot(d_data, 'k.', label="Data")
-plt.plot(m_data, 'k', label="Reconstruction", linewidth=2)
+plt.fill_between(range(m1.size), (m1 - m_std).val, (m1 + m_std).val, facecolor='0.5', alpha=0.5, label="Sample std")
+plt.plot(sc.mean.val, 'k--', label="Sample mean")
+plt.plot(s.val, 'r', label="Signal", alpha=1, linewidth=2)
+
+tmp = maskOp.adjoint(d1).val_rw()
+tmp[tmp == 0.] = np.nan
+plt.plot(tmp, 'k.', label="Data")
+
+plt.plot(m1.val, 'k', label="Reconstruction", linewidth=2)
 plt.title("Reconstruction of incomplete data")
 plt.legend()
+plt.show()
 
 # + [markdown] slideshow={"slide_type": "slide"}
 # ## Wiener Filter standardized
-# + [markdown] slideshow={"slide_type": "slide"}
+# -
+sqrt_pspec = Sh(ift.full(Sh.domain, 1.)).sqrt()
+trafo = HT.adjoint @ ift.makeOp(sqrt_pspec)
+R2 = R1 @ trafo
+j2 = R2.adjoint(N1.inverse(d1))
+identity = ift.Operator.identity_operator(R2.domain)
+Dinv = ift.InversionEnabler(identity + R2.adjoint @ N1.inverse @ R2, ic)
+D2 = Dinv.inverse
+m2 = D2(j2)
 
-# FIXME
+m2_s_space = trafo(m2)
+plt.axvspan(l, h, facecolor='0.8',alpha=0.5)
+plt.plot(s.val, 'r', label="Signal", alpha=1, linewidth=2)
+plt.plot(tmp, 'k.', label="Data")
+plt.plot(m2_s_space.val, 'k', label="Reconstruction", linewidth=2)
+plt.title("Reconstruction of incomplete data in normalized coordinates")
+plt.legend()
+plt.show()
