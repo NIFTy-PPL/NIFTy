@@ -268,7 +268,7 @@ def optimize_kl(likelihood_energy,
                            (constants, (list, tuple)), (point_estimates, (list, tuple)),
                            (transitions, (Operator, type(None))), (n_samples, int)]:
             if not isinstance(obj(iglobal), cls):
-                raise TypeError(f"{obj(iglobal)} is not instance of {cls}")
+                raise TypeError(f"{obj(iglobal)} is not instance of {cls} but rather {type(obj(iglobal))}")
 
         if sampling_iteration_controller(iglobal) is None:
             myassert(n_samples(iglobal) == 0)
@@ -317,7 +317,10 @@ def optimize_kl(likelihood_energy,
 
 
     for iglobal in range(initial_index, total_iterations):
-        myassert(likelihood_energy(iglobal).domain is trans(iglobal).target)
+        if likelihood_energy(iglobal).domain != trans(iglobal).target:
+            raise RuntimeError(f"The domain of lh energy #{iglobal} should equal the target of transition.\n"
+                               f"{likelihood_energy(iglobal).domain}\n\n"
+                               f"{trans(iglobal).target}")
         if iglobal == 0:
             myassert(mean.domain is trans(iglobal).domain)
         else:
