@@ -71,44 +71,6 @@ class StatCalculator:
         return self._M2 * (1./(self._count-1))
 
 
-def probe_with_posterior_samples(op, post_op, nprobes, dtype):
-    '''FIXME
-
-    Parameters
-    ----------
-    op : EndomorphicOperator
-        FIXME
-    post_op : Operator
-        FIXME
-    nprobes : int
-        Number of samples which shall be drawn.
-    dtype :
-        the data type of the samples
-
-    Returns
-    -------
-    List of :class:`nifty8.field.Field`
-        List of two fields: the mean and the variance.
-    '''
-    if not isinstance(op, EndomorphicOperator):
-        raise TypeError
-    if post_op is not None:
-        if not isinstance(post_op, Operator):
-            raise TypeError
-        if post_op.domain is not op.target:
-            raise ValueError
-    sc = StatCalculator()
-    for i in range(nprobes):
-        if post_op is None:
-            sc.add(op.draw_sample(from_inverse=True))
-        else:
-            sc.add(post_op(op.draw_sample(from_inverse=True)))
-
-    if nprobes == 1:
-        return sc.mean, None
-    return sc.mean, sc.var
-
-
 def probe_diagonal(op, nprobes, random_type="pm1"):
     '''Probes the diagonal of an endomorphic operator.
 

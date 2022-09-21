@@ -51,8 +51,7 @@ from .operators.multifield2vector import Multifield2Vector
 from .operators.jax_operator import *
 from .operators.counting_operator import CountingOperator
 
-from .probing import probe_with_posterior_samples, probe_diagonal, \
-    StatCalculator, approximation2endo
+from .probing import probe_diagonal, StatCalculator, approximation2endo
 
 from .minimization.line_search import LineSearch
 from .minimization.iteration_controllers import (
