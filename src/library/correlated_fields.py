@@ -129,6 +129,7 @@ class _TwoLogIntegrations(LinearOperator):
 
         # Maybe make class properties
         axis = self._target.axes[self._space][0]
+        #FIXME self._space and space are both used. This is at least confusing....
         sl = (slice(None),)*axis
         extender_sl = (None,)*axis + (slice(None),) + (None,)*(self._target.axes[-1][-1] - axis)
         first = sl + (0,)
