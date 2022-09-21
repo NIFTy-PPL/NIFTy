@@ -68,7 +68,7 @@ def optimize_kl(likelihood_energy,
                 point_estimates=[],
                 transitions=None,
                 export_operator_outputs={},
-                output_directory="nifty_optimize_kl_output",
+                output_directory=None,
                 initial_position=None,
                 initial_index=0,
                 comm=None,
@@ -139,7 +139,7 @@ def optimize_kl(likelihood_energy,
         dictionary is an operator.
     output_directory : str or None
         Directory in which all output files are saved. If None, no output is
-        stored.  Default: "nifty_optimize_kl_output".
+        stored.  Default: None.
     initial_position : :class:`nifty8.field.Field`, :class:`nifty8.multi_field.MultiField` or None
         Position in the definition space of `likelihood_energy` from which the
         optimization is started. If `None`, it starts at a random, normal
