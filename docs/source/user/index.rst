@@ -20,4 +20,5 @@ are found in the `API reference <../mod/nifty8.html>`_.
    2_jax_backend
    correlated_field_parameters
    custom_nonlinearities
+   custom_operators
    citations
