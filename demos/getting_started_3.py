@@ -130,13 +130,12 @@ def main():
     # Minimize KL
     n_iterations = 6
     n_samples = lambda iiter: 10 if iiter < 5 else 20
+    # TODO Write callback for nice plots
     samples = ift.optimize_kl(likelihood_energy, n_iterations, n_samples,
                               minimizer, ic_sampling, minimizer_sampling,
-                              plottable_operators={"signal": (signal, dict(vmin=0, vmax=1)),
-                                                   "power spectrum": pspec},
-                              ground_truth_position=mock_position,
+                              export_operator_outputs={"signal": signal},
                               output_directory="getting_started_3_results",
-                              overwrite=True, comm=comm)
+                              comm=comm)
 
     if True:
         # Load result from disk. May be useful for long inference runs, where

@@ -66,16 +66,14 @@ def optimize_kl(likelihood_energy,
                 nonlinear_sampling_minimizer,
                 constants=[],
                 point_estimates=[],
-                plottable_operators={},
-                output_directory="nifty_optimize_kl_output",
+                transitions=None,
+                export_operator_outputs={},
+                output_directory=None,
                 initial_position=None,
                 initial_index=0,
-                ground_truth_position=None,
                 comm=None,
-                overwrite=False,
                 inspect_callback=None,
                 terminate_callback=None,
-                plot_latent=False,
                 plot_energy_history=True,
                 plot_minisanity_history=True,
                 save_strategy="last",
@@ -86,7 +84,7 @@ def optimize_kl(likelihood_energy,
     The parameters `likelihood_energy`, `kl_minimizer`,
     `sampling_iteration_controller`, `nonlinear_sampling_minimizer`, `constants`,
     `point_estimates` and `comm` also accept a function as input that takes the
-    index of the global iteration as input and return the respective value that
+    index of the global iteration as input and returns the respective value that
     should be used for that iteration.
 
     High-level pseudo code of the algorithm, that is implemented by `optimize_kl`:
@@ -107,7 +105,7 @@ def optimize_kl(likelihood_energy,
     likelihood_energy : Operator or callable
         Likelihood energy shall be used for inference. It is assumed that the
         definition space of this energy contains parameters that are a-priori
-        standard normal distributed.
+        standard normal distributed. It needs to have a MultiDomain as Domain.
     total_iterations : int
         Number of resampling loops.
     n_samples : int or callable
@@ -130,15 +128,18 @@ def optimize_kl(likelihood_energy,
         List of parameter keys for which no samples are drawn, but that are
         (possibly) optimized for, corresponding to point estimates of these.
         Default is to draw samples for the complete domain.
-    plottable_operators : dict
-        Dictionary of operators that are plotted during the minimization. The
+    transitions : Operator or callable
+        Operator that is applied at the beginning of each iteration to the
+        latent position. This can be used if parts of the likelihood_energy are
+        replaced and thereby have a different domain. If None is passed, no
+        transition will be applied. Default is None.
+    export_operator_outputs : dict
+        Dictionary of operators that are exported during the minimization. The
         key contains a string that serves as identifier. The value of the
-        dictionary can either be an operator or a tuple of an operator and a
-        dictionary that contains kwargs for the plotting that are passed into
-        the NIFTy plotting routine.
+        dictionary is an operator.
     output_directory : str or None
         Directory in which all output files are saved. If None, no output is
-        stored.  Default: "nifty_optimize_kl_output".
+        stored.  Default: None.
     initial_position : :class:`nifty8.field.Field`, :class:`nifty8.multi_field.MultiField` or None
         Position in the definition space of `likelihood_energy` from which the
         optimization is started. If `None`, it starts at a random, normal
@@ -146,32 +147,20 @@ def optimize_kl(likelihood_energy,
     initial_index : int
         Initial index that is used to enumerate the output files. May be used
         if `optimize_kl` is called multiple times. Default: 0.
-    ground_truth_position : :class:`nifty8.field.Field`, :class:`nifty8.multi_field.MultiField` or None
-        Position in latent space that represents the ground truth. Used only in
-        plotting. May be useful for validating algorithms.
     comm : MPI communicator or None
         MPI communicator for distributing samples over MPI tasks. If `None`,
         the samples are not distributed. Default: None.
-    overwrite : bool
-        Determine if existing directories and files are allowed to be
-        overwritten. Default: False.
     inspect_callback : callable or None
         Function that is called after every global iteration. It can be either a
         function with one argument (then the latest sample list is passed), a
         function with two arguments (in which case the latest sample list and
-        the global iteration index are passed) or three arguments (latest sample
-        list, global iteration index and latent position as inputs). If it
-        returns something that is not None, a Field defined on the same domain
-        as the input sample list is expected.  It is used as a position for the
-        subsequent optimization.  Default: None.
+        the global iteration index are passed). Default: None.
     terminate_callback : callable or None
         Function that is called after every global iteration and after
         `inspect_callback` if present.  It can be either None or a function
         that takes the global iteration index as input and returns a boolean.
         If the return value is true, the global loop in `optimize_kl` is
         terminated. Default: None.
-    plot_latent : bool
-        Determine if latent space shall be plotted or not. Default: False.
     plot_energy_history : bool
         Determine if the KLEnergy values shall be plotted or not. Default: True.
     plot_minisanity_history : bool
@@ -213,10 +202,10 @@ def optimize_kl(likelihood_energy,
     from ..utilities import myassert
     from .descent_minimizers import DescentMinimizer
 
-    if not isinstance(plottable_operators, dict):
+    if not isinstance(export_operator_outputs, dict):
         raise TypeError
-    if len(set(["latent", "pickle"]) & set(plottable_operators.keys())) != 0:
-        raise ValueError("The keys `latent` and `pickle` in `plottable_operators` are reserved.")
+    if len(set(["pickle"]) & set(export_operator_outputs.keys())) != 0:
+        raise ValueError("The key `pickle` in `export_operator_outputs` is reserved.")
     if not isinstance(initial_index, int):
         raise TypeError
     if save_strategy not in ["all", "last"]:
@@ -230,6 +219,7 @@ def optimize_kl(likelihood_energy,
     nonlinear_sampling_minimizer = _make_callable(nonlinear_sampling_minimizer)
     constants = _make_callable(constants)
     point_estimates = _make_callable(point_estimates)
+    transitions = _make_callable(transitions)
     n_samples = _make_callable(n_samples)
     comm = _make_callable(comm)
     if inspect_callback is None:
@@ -273,9 +263,9 @@ def optimize_kl(likelihood_energy,
         for (obj, cls) in [(likelihood_energy, Operator), (kl_minimizer, DescentMinimizer),
                            (nonlinear_sampling_minimizer, (DescentMinimizer, type(None))),
                            (constants, (list, tuple)), (point_estimates, (list, tuple)),
-                           (n_samples, int)]:
+                           (transitions, (Operator, type(None))), (n_samples, int)]:
             if not isinstance(obj(iglobal), cls):
-                raise TypeError(f"{obj(iglobal)} is not instance of {cls}")
+                raise TypeError(f"{obj(iglobal)} is not instance of {cls} but rather {type(obj(iglobal))}")
 
         if sampling_iteration_controller(iglobal) is None:
             myassert(n_samples(iglobal) == 0)
@@ -288,66 +278,78 @@ def optimize_kl(likelihood_energy,
                 myassert(isinstance(comm(iglobal), mpi4py.MPI.Intracomm))
             except ImportError:
                 pass
-    myassert(_number_of_arguments(inspect_callback) in [1, 2, 3])
+    myassert(_number_of_arguments(inspect_callback) in [1, 2])
     myassert(_number_of_arguments(terminate_callback) == 1)
-    mf_dom = isinstance(likelihood_energy(initial_index).domain, MultiDomain)
-    if mf_dom:
-        dom = MultiDomain.union([likelihood_energy(iglobal).domain
-                                 for iglobal in
-                                 range(initial_index, total_iterations)])
-    else:
-        dom = likelihood_energy(initial_index).domain
 
-    for k1, op in plottable_operators.items():
-        if mf_dom:
-            if isinstance(op, tuple) and len(op) == 2:
-                if not isinstance(op[1], dict):
-                    raise TypeError
-                op = op[0]
-            for k2, vv in op.domain.items():
-                if k2 in dom.keys() and dom[k2] != vv:
-                    raise ValueError(f"The domain of plottable operator '{k1}' "
-                                      "does not fit to the minimization domain.")
-        else:
-            myassert(op.domain is dom)
     if not likelihood_energy(initial_index).target is DomainTuple.scalar_domain():
         raise TypeError
     # /Sanity check of input
 
-    if plot_latent:
-        plottable_operators = plottable_operators.copy()
-        plottable_operators["latent"] = ScalingOperator(dom, 1.)
-
     # Initial position
-    mean = initial_position
     check_MPI_synced_random_state(comm(initial_index))
-    if mean is None:
-        mean = 0.1 * from_random(dom)
-    myassert(dom is mean.domain)
+    if initial_position is None:
+        from ..sugar import full, makeDomain
+        mean = full(makeDomain({}), 0.)
+    else:
+        mean = initial_position
     # /Initial position
 
-    if ground_truth_position is not None:
-        if ground_truth_position.domain is not dom:
-            raise ValueError("Ground truth needs to have the same domain as `likelihood_energy`.")
+    # Automatic transitions
+    def trans(iglobal):
+        res = transitions(iglobal)
+        if res is not None:
+            return res
+
+        if iglobal == 0:
+            dom = mean.domain
+        else:
+            dom = likelihood_energy(iglobal - 1).domain
+        tgt = likelihood_energy(iglobal).domain
+
+        if dom is tgt:
+            return Operator.identity_operator(dom)
+        if set(dom.keys()).issubset(set(tgt.keys())):
+            return _InitializeOperator(dom, tgt, std=0.1)
+        raise RuntimeError
+
+
+    for iglobal in range(initial_index, total_iterations):
+        if likelihood_energy(iglobal).domain != trans(iglobal).target:
+            raise RuntimeError(f"The domain of lh energy #{iglobal} should equal the target of transition.\n"
+                               f"{likelihood_energy(iglobal).domain}\n\n"
+                               f"{trans(iglobal).target}")
+        if iglobal == 0:
+            myassert(mean.domain is trans(iglobal).domain)
+        else:
+            myassert(likelihood_energy(iglobal - 1).domain is trans(iglobal).domain)
+    # /Automatic transitions
 
     if output_directory is not None:
-        if not overwrite and isdir(output_directory):
-            raise RuntimeError(f"{output_directory} already exists. Please delete or set "
-                                "`overwrite` to `True`.")
+        # Create all necessary subfolders
         if _MPI_master(comm(initial_index)):
-            makedirs(output_directory, exist_ok=overwrite)
-            subfolders = ["pickle"] + list(plottable_operators.keys())
+            makedirs(output_directory, exist_ok=True)
+            subfolders = ["pickle"] + list(export_operator_outputs.keys())
             if plot_energy_history:
                 subfolders += ["energy_history"]
             if plot_minisanity_history:
                 subfolders += ["minisanity_history"]
             for subfolder in subfolders:
-                makedirs(join(output_directory, subfolder), exist_ok=overwrite)
+                makedirs(join(output_directory, subfolder), exist_ok=True)
 
     if initial_index == 0:
         energy_history = EnergyHistory()
 
     for iglobal in range(initial_index, total_iterations):
+        mean = trans(iglobal)(mean)
+        dom = mean.domain
+        mf_dom = isinstance(dom, MultiDomain)
+        if not mf_dom:
+            warn("In the upcoming release nifty8.optimize_kl will no longer support "
+                 "DomainTuple as latent position. You can use "
+                 "`likelihood_energy.ducktape(key)` to convert a DomainTuple domain into "
+                 "a MultiDomain. Please report at `c@philipp-arras.de` if you use this "
+                 "feature and would like to see it continued.", DeprecationWarning)
+
         lh = likelihood_energy(iglobal)
         count = CountingOperator(lh.domain)
         ham = StandardHamiltonian(lh @ count, sampling_iteration_controller(iglobal))
@@ -399,9 +401,9 @@ def optimize_kl(likelihood_energy,
         _barrier(comm(iglobal))
 
         if output_directory is not None:
-            _plot_operators(iglobal, plottable_operators, sl, ground_truth_position, comm(iglobal))
+            _plot_operators(iglobal, export_operator_outputs, sl, comm(iglobal))
             sl.save(join(output_directory, "pickle/") + _file_name_by_strategy(iglobal),
-                    overwrite=overwrite)
+                    overwrite=True)
             _save_random_state(iglobal)
 
             if _MPI_master(comm(iglobal)):
@@ -414,7 +416,7 @@ def optimize_kl(likelihood_energy,
 
         _counting_report(count, iglobal, comm)
 
-        mean = _handle_inspect_callback(inspect_callback, sl, iglobal, mean, dom, comm)
+        _handle_inspect_callback(inspect_callback, sl, iglobal)
         _barrier(comm(iglobal))
 
         if _handle_terminate_callback(terminate_callback, iglobal, comm):
@@ -472,95 +474,34 @@ def _pickle_load_values(index, name):
     return val
 
 
-def _plot_operators(index, plottable_operators, sample_list, ground_truth, comm):
-    if not isinstance(plottable_operators, dict):
+def _plot_operators(index, export_operator_outputs, sample_list, comm):
+    if not isinstance(export_operator_outputs, dict):
         raise TypeError
     if not isdir(_output_directory):
         raise RuntimeError(f"{_output_directory} does not exist")
     if not isinstance(sample_list, SampleListBase):
         raise TypeError
-    if ground_truth is not None and sample_list.domain != ground_truth.domain:
-        raise TypeError
 
-    for name, op in plottable_operators.items():
-        plotting_kwargs = {}
-        if isinstance(op, tuple) and len(op) == 2:
-            op, plotting_kwargs = op
-        if not isinstance(plotting_kwargs, dict):
-            raise TypeError
+    for name, op in export_operator_outputs.items():
         if not _is_subdomain(op.domain, sample_list.domain):
             continue
-        gt = _op_force_or_none(op, ground_truth)
-        fname = _file_name(name, index, "samples_")
-        _plot_samples(fname, sample_list.iterator(op), gt, comm, plotting_kwargs)
-        if sample_list.n_samples > 1:
-            fname = _file_name(name, index, "stats_")
-            _plot_stats(fname, *sample_list.sample_stat(op), gt, comm, plotting_kwargs)
 
         op_direc = join(_output_directory, name)
         if sample_list.n_samples > 1:
             cfg = {"samples": True, "mean": True, "std": True}
         else:
             cfg = {"samples": True, "mean": False, "std": False}
-        if name == "latent":
-            continue
-        if ground_truth is None or not _MPI_master(comm):
-            ground_truth_sl = Nop()
-        else:
-            ground_truth_sl = SampleList([ground_truth])
+
         if h5py:
             file_name = join(op_direc, _file_name_by_strategy(index) + ".hdf5")
             sample_list.save_to_hdf5(file_name, op=op, overwrite=True, **cfg)
-            file_name = join(op_direc, "ground_truth.hdf5")
-            ground_truth_sl.save_to_hdf5(file_name, op=op, overwrite=True, samples=True)
+
         if astropy:
             try:
                 file_name_base = join(op_direc, _file_name_by_strategy(index))
                 sample_list.save_to_fits(file_name_base, op=op, overwrite=True, **cfg)
-                file_name_base = join(op_direc, "ground_truth")
-                ground_truth_sl.save_to_fits(file_name_base, op=op, overwrite=True, samples=True)
             except ValueError:
                 pass
-
-
-def _plot_samples(file_name, samples, ground_truth, comm, plotting_kwargs):
-    samples = list(samples)
-
-    if _MPI_master(comm):
-        if isinstance(samples[0].domain, DomainTuple):
-            samples = [MultiField.from_dict({"": ss}) for ss in samples]
-            if ground_truth is not None:
-                ground_truth = MultiField.from_dict({"": ground_truth})
-        if not all(isinstance(ss, MultiField) for ss in samples):
-            raise TypeError
-        keys = samples[0].keys()
-
-        p = Plot()
-        for kk in keys:
-            single_samples = [ss[kk] for ss in samples]
-
-            if plottable2D(samples[0][kk]):
-                if ground_truth is not None:
-                    p.add(ground_truth[kk], title=_append_key("Ground truth", kk),
-                          **plotting_kwargs)
-                    p.add(None)
-                for ii, ss in enumerate(single_samples):
-                    if (ground_truth is None and ii == 16) or (ground_truth is not None and ii == 14):
-                        break
-                    p.add(ss, title=_append_key(f"Sample {ii}", kk), **plotting_kwargs)
-            else:
-                n = len(samples)
-                alpha = n*[0.5]
-                color = n*["maroon"]
-                label = None
-                if ground_truth is not None:
-                    single_samples = [ground_truth[kk]] + single_samples
-                    alpha = [1.] + alpha
-                    color = ["green"] + color
-                    label = ["Ground truth", "Samples"] + (n-1)*[None]
-                p.add(single_samples, color=color, alpha=alpha, label=label,
-                      title=_append_key("Samples", kk), **plotting_kwargs)
-        p.output(name=file_name)
 
 
 def _plot_energy_history(index, energy_history):
@@ -597,21 +538,6 @@ def _append_key(s, key):
     if key == "":
         return s
     return f"{s} ({key})"
-
-
-def _plot_stats(file_name, mean, var, ground_truth, comm, plotting_kwargs):
-    try:
-        from matplotlib.colors import LogNorm
-    except ImportError:
-        return
-
-    p = Plot()
-    if ground_truth is not None:
-        p.add(ground_truth, title="Ground truth", **plotting_kwargs)
-    p.add(mean, title="Mean", **plotting_kwargs)
-    p.add(var.sqrt(), title="Standard deviation")
-    if _MPI_master(comm):
-        p.output(name=file_name, ny=2 if ground_truth is None else 3)
 
 
 def _minisanity(likelihood_energy, iglobal, sl, comm, plot_minisanity_history):
@@ -742,21 +668,12 @@ def _report_to_logger_and_file(report, file_name, iglobal, comm, to_logger,
                 f.write(intro + report + "\n\n")
 
 
-def _handle_inspect_callback(inspect_callback, sl, iglobal, mean, dom, comm):
+def _handle_inspect_callback(inspect_callback, sl, iglobal):
     if _number_of_arguments(inspect_callback) == 1:
         inp = (sl, )
     elif _number_of_arguments(inspect_callback) == 2:
         inp = (sl, iglobal)
-    elif _number_of_arguments(inspect_callback) == 3:
-        inp = (sl, iglobal, mean)
-    new_mean = inspect_callback(*inp)
-    if new_mean is not None:
-        mean = new_mean
-    if mean.domain is not dom:
-        raise RuntimeError
-    if sl.domain is not dom:
-        raise RuntimeError
-    return mean
+    inspect_callback(*inp)
 
 
 def _handle_terminate_callback(terminate_callback, iglobal, comm):
@@ -775,12 +692,6 @@ def _make_callable(obj):
         return obj
     else:
         return lambda x: obj
-
-
-def _op_force_or_none(operator, fld):
-    if fld is None:
-        return None
-    return operator.force(fld)
 
 
 def _want_metric(mini):
@@ -804,3 +715,27 @@ def _is_subdomain(sub_domain, total_domain):
         return sub_domain == total_domain
     return all(kk in total_domain.keys() and vv == total_domain[kk]
                for kk, vv in sub_domain.items())
+
+
+class _InitializeOperator(Operator):
+    def __init__(self, domain, target, std):
+        self._domain = MultiDomain.make(domain)
+        self._target = MultiDomain.make(target)
+        self._has_been_called = False
+        self._std = float(std)
+
+    def apply(self, x):
+        from ..sugar import from_random, is_linearization, makeDomain
+        from ..utilities import myassert
+
+        self._check_input(x)
+        if self._has_been_called:
+            raise RuntimeError("This operator can only be called once since it returns random numbers.")
+        self._has_been_called = True
+        if is_linearization(x):
+            raise TypeError("Only MultiFields are supported as input")
+        diff_keys = set(self._target.keys()) - set(self._domain.keys())
+        diff_domain = makeDomain({kk: self._target[kk] for kk in diff_keys})
+        diff_fld = from_random(diff_domain, std=self._std)
+        myassert(len(set(diff_fld.keys()) & set(self._domain.keys())) == 0)
+        return x.unite(diff_fld)
