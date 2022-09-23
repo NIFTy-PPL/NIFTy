@@ -519,6 +519,9 @@ class CoordinateChart():
     def __eq__(self, other):
         return repr(self) == repr(other)
 
+    def __hash__(self):
+        return hash(repr(self))
+
 
 RefinementMatrices = namedtuple(
     "RefinementMatrices", ("filter", "propagator_sqrt", "cov_sqrt0")
