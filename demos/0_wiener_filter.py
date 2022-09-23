@@ -16,53 +16,44 @@
 # # Code example: Wiener filter
 
 # + [markdown] slideshow={"slide_type": "subslide"}
-# ## Introduction
-# IFT starting point:
-#
-# $$d = Rs+n$$
-#
-# Typically, $s$ is a continuous field, $d$ a discrete data vector. Particularly, $R$ is not invertible.
-#
-# IFT aims at **inverting** the above uninvertible problem in the **best possible way** using Bayesian statistics.
+# ## Introduction to Information Field Theory(IFT)
+# Typically we start with the measurement equation
+# $$d_i = (Rs)_i+n_i$$
+# Here, $s$ is a continuous field, $d$ a discrete data vector, $n$ is the discrete noise on each data point and $R$ is the instrument response. In most cases, $R$ is not invertible. IFT aims at **inverting** the above uninvertible problem in the **best possible way** using Bayesian statistics.
 #
 # NIFTy (Numerical Information Field Theory) is a Python framework in which IFT problems can be tackled easily.
 #
-# Main Interfaces:
+# Its main interfaces are:
 #
 # - **Spaces**: Cartesian, 2-Spheres (Healpix, Gauss-Legendre) and their respective harmonic spaces.
 # - **Fields**: Defined on spaces.
 # - **Operators**: Acting on fields.
 
 # + [markdown] slideshow={"slide_type": "subslide"}
-# ## Wiener filter on one-dimensional fields
+# ## Wiener filter on 1D- fields in IFT
 #
 # ### Assumptions
+# - We consider a linear response R in the measurement equation $d=Rs+n$.
+# - We also assume the signal and the noise prior to be Gaussian  $\mathcal P (s) = \mathcal G (s,S)$, $\mathcal P (n) = \mathcal G (n,N)$ 
+# - Here $S, N$ are signal and noise covariances. Therefore they are positive definite matrices.
 #
-# - $d=Rs+n$, $R$ linear operator.
-# - $\mathcal P (s) = \mathcal G (s,S)$, $\mathcal P (n) = \mathcal G (n,N)$ where $S, N$ are positive definite matrices.
+# ### Wiener filter solution
+# - Making use of Bayes' theorem, the posterior is proportional to the joint probability and is given by:
 #
-# ### Posterior
-# The Posterior is given by:
+# $$\mathcal P (s|d) \propto P(s,d) = \mathcal G(d-Rs,N) \,\mathcal G(s,S) \propto \mathcal G (s-m,D)$$
 #
-# $$\mathcal P (s|d) \propto P(s,d) = \mathcal G(d-Rs,N) \,\mathcal G(s,S) \propto \mathcal G (s-m,D) $$
-#
-# where
-# $$m = Dj$$
-# with
-# $$D = (S^{-1} +R^\dagger N^{-1} R)^{-1} , \quad j = R^\dagger N^{-1} d.$$
+# - Here, m is the posterior mean , D is the information propagator.
+# - $m = Dj, D = (S^{-1} +R^\dagger N^{-1} R)^{-1} , \quad j = R^\dagger N^{-1} d.$
 #
 # Let us implement this in NIFTy!
 
 # + [markdown] slideshow={"slide_type": "subslide"}
-# ### In NIFTy
+# ### Implementation in NIFTy
 #
-# - We assume statistical homogeneity and isotropy. Therefore the signal covariance $S$ is diagonal in harmonic space, and is described by a one-dimensional power spectrum, assumed here as $$P(k) = P_0\,\left(1+\left(\frac{k}{k_0}\right)^2\right)^{-\gamma /2},$$
-# with $P_0 = 20000, k_0 = 5, \gamma = 4$.
-# - $N = 0.2 \cdot \mathbb{1}$.
-# - Number of data points $N_{pix} = 512$.
-# - reconstruction in harmonic space.
-# - Response operator:
-# $$R = \mathbb{1}$$
+# - We assume statistical homogeneity and isotropy. Therefore the signal covariance $S$ is diagonal in harmonic space, and is described by a one-dimensional power spectrum, assumed here to be a power-law, $$P(k) = P_0\,\left(1+\left(\frac{k}{k_0}\right)^2\right)^{-\gamma /2},$$ with $P_0 = 20000, k_0 = 5, \gamma = 4$, thus the reconstruction starts in harmonic space. 
+# - We define a Cartesian space with $N_{pix} = 512$ being the number of grid cells.
+# - We assume the noise covariance to be uncorrelated and constant, $N = 0.2 \cdot \mathbb{1}$.
+# - For simplicity we define the response operator as a unit matrix, $R = \mathbb{1}$.
 #
 
 # + slideshow={"slide_type": "-"}
@@ -79,11 +70,11 @@ def pow_spec(k):
     P0, k0, gamma = [2e4, 5, 4]
     return P0 / ((1. + (k/k0)**2)**(gamma / 2))
 
-s_space = ift.RGSpace(512)
 
-# + [markdown] slideshow={"slide_type": "slide"}
-# ### Implementation
 # -
+
+N_pix = 512
+s_space = ift.RGSpace(N_pix)
 
 HT = ift.HartleyOperator(s_space)
 
