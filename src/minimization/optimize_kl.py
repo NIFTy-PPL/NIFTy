@@ -84,7 +84,7 @@ def optimize_kl(likelihood_energy,
     The parameters `likelihood_energy`, `kl_minimizer`,
     `sampling_iteration_controller`, `nonlinear_sampling_minimizer`, `constants`,
     `point_estimates` and `comm` also accept a function as input that takes the
-    index of the global iteration as input and return the respective value that
+    index of the global iteration as input and returns the respective value that
     should be used for that iteration.
 
     High-level pseudo code of the algorithm, that is implemented by `optimize_kl`:
@@ -128,10 +128,11 @@ def optimize_kl(likelihood_energy,
         List of parameter keys for which no samples are drawn, but that are
         (possibly) optimized for, corresponding to point estimates of these.
         Default is to draw samples for the complete domain.
-    transitions : list or callable
-        List of operators that are applied at the beginning of each iteration to the
+    transitions : Operator or callable
+        Operator that is applied at the beginning of each iteration to the
         latent position. This can be used if parts of the likelihood_energy are
-        replaced and thereby have a different domain. Default is no transitions.
+        replaced and thereby have a different domain. If None is passed, no
+        transition will be applied. Default is None.
     export_operator_outputs : dict
         Dictionary of operators that are exported during the minimization. The
         key contains a string that serves as identifier. The value of the
