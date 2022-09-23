@@ -15,24 +15,20 @@
 #
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
 
-############################################################
-# Non-linear tomography
+# # Non-linear tomography
 #
 # The signal is a sigmoid-normal distributed field.
 # The data is the field integrated along lines of sight that are
 # randomly (set mode=0) or radially (mode=1) distributed
-#
-# Demo takes a while to compute
-#############################################################
 
 import sys
-
+import os
 import numpy as np
-
 import nifty8 as ift
-
+# %matplotlib inline
 ift.random.push_sseq_from_seed(27)
 
+""
 try:
     from mpi4py import MPI
     comm = MPI.COMM_WORLD
@@ -42,111 +38,75 @@ except ImportError:
     master = True
 
 
-def random_los(n_los):
-    starts = list(ift.random.current_rng().random((n_los, 2)).T)
-    ends = list(ift.random.current_rng().random((n_los, 2)).T)
-    return starts, ends
-
-
 def radial_los(n_los):
     starts = list(ift.random.current_rng().random((n_los, 2)).T)
     ends = list(0.5 + 0*ift.random.current_rng().random((n_los, 2)).T)
     return starts, ends
 
 
-def main():
-    # Choose between random line-of-sight response (mode=0) and radial lines
-    # of sight (mode=1)
-    if len(sys.argv) == 2:
-        mode = int(sys.argv[1])
-    else:
-        mode = 0
-    filename = "getting_started_3_mode_{}_".format(mode) + "{}.png"
-    position_space = ift.RGSpace([128, 128])
+output_directory="1_inference_with_nifty_results"
+os.makedirs(output_directory, exist_ok=True)
 
-    #  For a detailed showcase of the effects the parameters
-    #  of the CorrelatedField model have on the generated fields,
-    #  see 'getting_started_4_CorrelatedFields.ipynb'.
+position_space = ift.RGSpace([128, 128])
 
-    args = {
-        'offset_mean': 0,
-        'offset_std': (1e-3, 1e-6),
+correlated_field = ift.SimpleCorrelatedField(
+    position_space,
+    offset_mean=0,
+    offset_std=(1e-3, 1e-6),
+    fluctuations=(1., 0.8),
+    loglogavgslope=(-3., 1),
+    flexibility=(2, 1.),
+    asperity=(0.5, 0.4))
+pspec = correlated_field.power_spectrum
 
-        # Amplitude of field fluctuations
-        'fluctuations': (1., 0.8),  # 1.0, 1e-2
+signal = ift.sigmoid(correlated_field)
 
-        # Exponent of power law power spectrum component
-        'loglogavgslope': (-3., 1),  # -6.0, 1
+LOS_starts, LOS_ends = radial_los(100)
+R = ift.LOSResponse(position_space, starts=LOS_starts, ends=LOS_ends)
+signal_response = R @ signal
 
-        # Amplitude of integrated Wiener process power spectrum component
-        'flexibility': (2, 1.),  # 1.0, 0.5
+""
+data_space = R.target
+noise = .001
+N = ift.ScalingOperator(data_space, noise, float)
 
-        # How ragged the integrated Wiener process component is
-        'asperity': (0.5, 0.4)  # 0.1, 0.5
-    }
+""
+mock_position = ift.from_random(signal_response.domain, 'normal')
+data = signal_response(mock_position) + N.draw_sample()
 
-    correlated_field = ift.SimpleCorrelatedField(position_space, **args)
-    pspec = correlated_field.power_spectrum
+plot = ift.Plot()
+plot.add(signal(mock_position), title='Ground Truth', vmin=0, vmax=1)
+plot.add(R.adjoint_times(data), title='Data')
+plot.add([pspec.force(mock_position)], title='Power Spectrum')
+plot.output(ny=1, nx=3, xsize=24, ysize=6)
 
-    # Apply a nonlinearity
-    signal = ift.sigmoid(correlated_field)
+""
+ic_sampling = ift.AbsDeltaEnergyController(#name="Sampling (linear)",
+                                           deltaE=0.05, iteration_limit=100)
+ic_newton = ift.AbsDeltaEnergyController(name='Newton',
+                                         deltaE=0.5,
+                                         convergence_level=2, iteration_limit=35)
+ic_sampling_nl = ift.AbsDeltaEnergyController(name='Sampling (nonlin)',
+                                              deltaE=0.5, iteration_limit=15,
+                                              convergence_level=2)
+minimizer = ift.NewtonCG(ic_newton)
+minimizer_sampling = ift.NewtonCG(ic_sampling_nl)
 
-    # Build the line-of-sight response and define signal response
-    LOS_starts, LOS_ends = random_los(100) if mode == 0 else radial_los(100)
-    R = ift.LOSResponse(position_space, starts=LOS_starts, ends=LOS_ends)
-    signal_response = R(signal)
+""
+likelihood_energy = (ift.GaussianEnergy(data, inverse_covariance=N.inverse) @
+                     signal_response)
 
-    # Specify noise
-    data_space = R.target
-    noise = .001
-    N = ift.ScalingOperator(data_space, noise, np.float64)
 
-    # Generate mock signal and data
-    mock_position = ift.from_random(signal_response.domain, 'normal')
-    data = signal_response(mock_position) + N.draw_sample()
+# +
+plot_directory = os.path.join(output_directory, "plots")
+os.makedirs(plot_directory, exist_ok=True)
 
-    # Plot setup
-    plot = ift.Plot()
-    plot.add(signal(mock_position), title='Ground Truth', vmin=0, vmax=1)
-    plot.add(R.adjoint_times(data), title='Data')
-    plot.add([pspec.force(mock_position)], title='Power Spectrum')
-    plot.output(ny=1, nx=3, xsize=24, ysize=6, name=filename.format("setup"))
-
-    # Minimization parameters
-    ic_sampling = ift.AbsDeltaEnergyController(name="Sampling (linear)",
-                                               deltaE=0.05, iteration_limit=100)
-    ic_newton = ift.AbsDeltaEnergyController(name='Newton', deltaE=0.5,
-                                             convergence_level=2, iteration_limit=35)
-    ic_sampling_nl = ift.AbsDeltaEnergyController(name='Sampling (nonlin)',
-                                                  deltaE=0.5, iteration_limit=15,
-                                                  convergence_level=2)
-    minimizer = ift.NewtonCG(ic_newton)
-    minimizer_sampling = ift.NewtonCG(ic_sampling_nl)
-
-    # Set up likelihood energy
-    likelihood_energy = (ift.GaussianEnergy(data, inverse_covariance=N.inverse) @
-                         signal_response)
-
-    # Minimize KL
-    n_iterations = 6
-    n_samples = lambda iiter: 10 if iiter < 5 else 20
-    # TODO Write callback for nice plots
-    samples = ift.optimize_kl(likelihood_energy, n_iterations, n_samples,
-                              minimizer, ic_sampling, minimizer_sampling,
-                              export_operator_outputs={"signal": signal},
-                              output_directory="1_inference_with_nifty_results",
-                              comm=comm)
-
-    if True:
-        # Load result from disk. May be useful for long inference runs, where
-        # inference and posterior analysis are split into two steps
-        samples = ift.ResidualSampleList.load("getting_started_3_results/pickle/last", comm=comm)
-
-    # Plotting
-    filename_res = filename.format("results")
+def inspect_callback(samples, iglobal):
     plot = ift.Plot()
     mean, var = samples.sample_stat(signal)
     plot.add(mean, title="Posterior Mean", vmin=0, vmax=1)
+    plot.add(signal(mock_position), title="Ground truth", vmin=0, vmax=1)
+    plot.add((mean - signal(mock_position)).abs()/var.sqrt(), title="abs(posterior mean - ground truth) / posterior std", vmin=0, vmax=4)
     plot.add(var.sqrt(), title="Posterior Standard Deviation", vmin=0)
 
     nsamples = samples.n_samples
@@ -157,34 +117,23 @@ def main():
              linewidth=[1.]*nsamples + [3., 3.],
              label=[None]*nsamples + ['Ground truth', 'Posterior mean'])
     if master:
-        plot.output(ny=1, nx=3, xsize=24, ysize=6, name=filename_res)
-        print("Saved results as '{}'.".format(filename_res))
+        plot.output(ny=3, nx=2, xsize=20, ysize=16, name=os.path.join(plot_directory, f"{iglobal}.png"))
 
-    # FIXME for the following show prior samples
-    # # Set up signal model
-    # cfmaker = ift.CorrelatedFieldMaker('')
-    # cfmaker.add_fluctuations(sp1, (0.1, 1e-2), (2, .2), (.01, .5), (-4, 2.),
-    #                          'amp1')
-    # cfmaker.add_fluctuations(sp2, (0.1, 1e-2), (2, .2), (.01, .5), (-3, 1),
-    #                          'amp2')
-    # cfmaker.set_amplitude_total_offset(0., (1e-2, 1e-6))
-    # correlated_field = cfmaker.finalize()
 
-    # normalized_amp = cfmaker.get_normalized_amplitudes()
-    # pspec1 = normalized_amp[0]**2
-    # pspec2 = normalized_amp[1]**2
-    # DC = SingleDomain(correlated_field.target, position_space)
+# -
 
-    # # Generate mock signal and data
-    # mock_position = ift.from_random(signal_response.domain, 'normal')
-    # data = signal_response(mock_position) + N.draw_sample()
+""
+n_iterations = 6
+n_samples = lambda iiter: 10 if iiter < 5 else 20
+samples = ift.optimize_kl(likelihood_energy, n_iterations, n_samples,
+                          minimizer, ic_sampling, minimizer_sampling,
+                          export_operator_outputs={"signal": signal},
+                          inspect_callback=inspect_callback,
+                          output_directory="1_inference_with_nifty_results",
+                          comm=comm)
 
-    # plot = ift.Plot()
-    # plot.add(signal(mock_position), title='Ground Truth')
-    # plot.add(R.adjoint_times(data), title='Data')
-    # plot.add([pspec1.force(mock_position)], title='Power Spectrum 1')
-    # plot.add([pspec2.force(mock_position)], title='Power Spectrum 2')
-    # plot.output(ny=2, nx=2, xsize=10, ysize=10, name=filename.format("setup"))
+""
+print(ift.ResidualSampleList.load("1_inference_with_nifty_results/pickle/last", comm=comm))
 
-if __name__ == '__main__':
-    main()
+""
+
