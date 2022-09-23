@@ -42,21 +42,13 @@
 #
 # $$\mathcal P (s|d) \propto P(s,d) = \mathcal G(d-Rs,N) \,\mathcal G(s,S) \propto \mathcal G (s-m,D)$$
 #
-# - Here, m is the posterior mean , D is the information propagator.
-# - $m = Dj, D = (S^{-1} +R^\dagger N^{-1} R)^{-1} , \quad j = R^\dagger N^{-1} d.$
+# - Here, $m$ is the posterior mean , $D$ is the information propagator and are defined as follows:
+# $$m = Dj, \quad D = (S^{-1} +R^\dagger N^{-1} R)^{-1} $$
+# - There, $j$ is the information source defined as $$ j = R^\dagger N^{-1} d.$$
 #
-# Let us implement this in NIFTy!
+# Let us implement this in **NIFTy!** So let's import all the packages we need. :D
+# -
 
-# + [markdown] slideshow={"slide_type": "subslide"}
-# ### Implementation in NIFTy
-#
-# - We assume statistical homogeneity and isotropy. Therefore the signal covariance $S$ is diagonal in harmonic space, and is described by a one-dimensional power spectrum, assumed here to be a power-law, $$P(k) = P_0\,\left(1+\left(\frac{k}{k_0}\right)^2\right)^{-\gamma /2},$$ with $P_0 = 20000, k_0 = 5, \gamma = 4$, thus the reconstruction starts in harmonic space. 
-# - We define a Cartesian space with $N_{pix} = 512$ being the number of grid cells.
-# - We assume the noise covariance to be uncorrelated and constant, $N = 0.2 \cdot \mathbb{1}$.
-# - For simplicity we define the response operator as a unit matrix, $R = \mathbb{1}$.
-#
-
-# + slideshow={"slide_type": "-"}
 # %matplotlib inline
 import numpy as np
 import nifty8 as ift
@@ -64,6 +56,12 @@ import matplotlib.pyplot as plt
 plt.rcParams['figure.dpi'] = 100
 plt.style.use("seaborn-notebook")
 
+
+# + [markdown] slideshow={"slide_type": "subslide"}
+# ### Implementation in NIFTy
+#
+# - We assume statistical **homogeneity** and **isotropy**, so the signal covariance $S$ is **translation invariant** and only depends on the **absolute value** of the distance. According to Wiener-Khinchin theorem, the signal covariance $S$ is diagonal in harmonic space, $$S_{kk^{\prime}} = 2 \pi \delta(k-k^{\prime}) P(k)= \text{diag}(S) \equiv \widehat{S_k}$$
+# and is described by a one-dimensional power spectrum. We assume the power spectrum to follow a power-law, $$P(k) = P_0\,\left(1+\left(\frac{k}{k_0}\right)^2\right)^{-\gamma /2},$$ with $P_0 = 2 \cdot 10^4, \ k_0 = 5, \ \gamma = 4$, thus the reconstruction starts in harmonic space. 
 
 # + slideshow={"slide_type": "-"}
 def pow_spec(k):
@@ -73,15 +71,26 @@ def pow_spec(k):
 
 # -
 
+# ### Spaces and harmonic transformations
+# - We define our non-harmonic signal space to be Cartesian with $N_{pix} = 512$ being the number of grid cells.
+# - To connect harmonic and non-harmonic spaces we introduce the Hartley transform $H$ that is closely related to the Fourier transform but maps $\mathbb{R}\rightarrow\mathbb{R}$.
+# - The covariance S in non-harmonic space is given by $$S = H^{\dagger}\widehat{S_k} H \ .$$
+
 N_pix = 512
-s_space = ift.RGSpace(N_pix)
-
+s_space = ift.RGSpace(N_pix) # signal space is a regular Cartesian grid space
 HT = ift.HartleyOperator(s_space)
+k_space = HT.target # k_space is the harmonic conjugate space of s_space
 
-Sh = ift.create_power_operator(HT.target, power_spectrum=pow_spec, sampling_dtype=float)
+S_k = ift.create_power_operator(k_space, power_spectrum=pow_spec, sampling_dtype=float)
 
-S = HT.adjoint @ Sh @ HT
-S = ift.SandwichOperator.make(bun=HT, cheese=Sh)
+S = ift.SandwichOperator.make(bun=HT, cheese=S_k) # Sandwich Operator implements S = HT.adjoint @ S_k @ HT and enables NIFTy to sample from S 
+
+# ### Synthetic Data
+# - In order to demonstrate the Wiener filter, we are using **synthetic data**. Therefore, we draw a sample from $S$
+# - For simplicity we define the response operator as a unit matrix, $R = \mathbb{1}$.
+# - We assume the noise covariance to be uncorrelated and constant, $N = 0.2 \cdot \mathbb{1}$.
+# #FIXME: Describe Sampling and Noise_amplitude in detail
+#
 
 s = S.draw_sample()
 
