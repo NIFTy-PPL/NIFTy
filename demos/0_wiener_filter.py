@@ -34,7 +34,7 @@
 #
 # ### Assumptions
 # - We consider a linear response R in the measurement equation $d=Rs+n$.
-# - We also assume the signal and the noise prior to be Gaussian  $\mathcal P (s) = \mathcal G (s,S)$, $\mathcal P (n) = \mathcal G (n,N)$ 
+# - We also assume the **signal** and the **noise** prior to be **Gaussian**  $\mathcal P (s) = \mathcal G (s,S)$, $\mathcal P (n) = \mathcal G (n,N)$ 
 # - Here $S, N$ are signal and noise covariances. Therefore they are positive definite matrices.
 #
 # ### Wiener filter solution
@@ -90,6 +90,12 @@ S = ift.SandwichOperator.make(bun=HT, cheese=S_k) # Sandwich Operator implements
 # - For simplicity we define the response operator as a unit matrix, $R = \mathbb{1}$.
 # - We assume the noise covariance to be uncorrelated and constant, $N = 0.2 \cdot \mathbb{1}$.
 # #FIXME: Describe Sampling and Noise_amplitude in detail
+#
+
+# ### Sampling
+#
+# - Assuming we have a distribution $\mathcal{G}(b,B)$ we can sample from and we want to draw a sample from a distritbution $\mathcal{G}(c,C)$ with covariance $C$. The two distributions are connected via the relation $C = ABA^{\dagger}.$ One can show that $c= Ab$ with $b \curvearrowleft \mathcal{G}(b,B)$	has a probability distribution with covariance $C$ as desired. 
+# $$ \langle cc^\dagger\rangle_{\mathcal{G}(c,C)} = \langle Ab(Ab)^\dagger\rangle = \langle Abb^\dagger A^\dagger \rangle =  A \langle bb^\dagger  \rangle A^\dagger = ABA^\dagger = C$$
 #
 
 s = S.draw_sample()
