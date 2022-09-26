@@ -57,10 +57,19 @@ def test_refinement_matrices_1d(dist, kernel=kernel):
     fine_kernel_sqrt_diy = jnp.linalg.cholesky(fine_kernel)
     olf_diy = cov_fc @ cov_cc_inv
 
-    olf, fine_kernel_sqrt = refine.layer_refinement_matrices(dist, kernel)
+    cc = refine_chart.CoordinateChart(
+        shape0=(12, ) * np.size(dist),
+        distances=dist,
+        depth=0,
+        _coarse_size=3,
+        _fine_size=2
+    )
+    olf, ks = refine_chart.RefinementField(cc).matrices_at(
+        level=0, pixel_index=(0, ) * np.size(dist), kernel=kernel
+    )
 
     assert_allclose(olf, olf_diy)
-    assert_allclose(fine_kernel_sqrt, fine_kernel_sqrt_diy)
+    assert_allclose(ks, fine_kernel_sqrt_diy)
 
 
 @pmp("seed", (12, 45))
@@ -73,21 +82,30 @@ def test_refinement_1d(seed, dist, kernel=kernel):
         refine.refine_vmap, refine.refine_loop, refine.refine_slice
     )
     cov_from_loc = refine._get_cov_from_loc(kernel=kernel)
-    olf, fine_kernel_sqrt = refine.layer_refinement_matrices(dist, kernel)
+    cc = refine_chart.CoordinateChart(
+        shape0=(12, ) * np.size(dist),
+        distances=dist,
+        depth=0,
+        _coarse_size=3,
+        _fine_size=2
+    )
+    olf, ks = refine_chart.RefinementField(cc).matrices_at(
+        level=0, pixel_index=(0, ) * np.size(dist), kernel=kernel
+    )
 
     main_coord = jnp.linspace(0., 1000., 50)
     cov_sqrt = jnp.linalg.cholesky(cov_from_loc(main_coord, main_coord))
     lvl0 = cov_sqrt @ rng.normal(size=main_coord.shape)
     lvl1_exc = rng.normal(size=(2 * (lvl0.size - 2), ))
 
-    fine_reference = refine.refine(lvl0, lvl1_exc, olf, fine_kernel_sqrt)
+    fine_reference = refine.refine(lvl0, lvl1_exc, olf, ks)
     eps = jnp.finfo(lvl0.dtype.type).eps
     aallclose = partial(
         assert_allclose, desired=fine_reference, rtol=6 * eps, atol=120 * eps
     )
     for ref in refs:
         print(f"testing {ref.__name__}", file=sys.stderr)
-        aallclose(ref(lvl0, lvl1_exc, olf, fine_kernel_sqrt))
+        aallclose(ref(lvl0, lvl1_exc, olf, ks))
 
 
 @pmp("seed", (12, ))
@@ -130,28 +148,47 @@ def test_refinement_nd_cross_consistency(
 
 @pmp("dist", (60., 1e+3, (40., 90.), (1e+2, 1e+3, 1e+4)))
 def test_refinement_fine_strategy_basic_consistency(dist, kernel=kernel):
-    olf_j, ks_j = refine.layer_refinement_matrices(
-        dist, kernel=kernel, _fine_size=2, _fine_strategy="jump"
+    shape0 = (12, ) * len(dist) if isinstance(dist, tuple) else (12, )
+
+    cc_e = refine_chart.CoordinateChart(
+        shape0=shape0,
+        distances=dist,
+        depth=0,
+        _fine_strategy="extend",
+        _coarse_size=3,
+        _fine_size=2
     )
-    olf_e, ks_e = refine.layer_refinement_matrices(
-        dist, kernel=kernel, _fine_size=2, _fine_strategy="extend"
+    olf_e, ks_e = refine_chart.RefinementField(cc_e).matrices_at(
+        level=0, pixel_index=(0, ) * np.size(dist), kernel=kernel
+    )
+    cc_j = refine_chart.CoordinateChart(
+        shape0=shape0,
+        distances=dist,
+        depth=0,
+        _fine_strategy="jump",
+        _coarse_size=3,
+        _fine_size=2
+    )
+    olf_j, ks_j = refine_chart.RefinementField(cc_j).matrices_at(
+        level=0, pixel_index=(0, ) * np.size(dist), kernel=kernel
     )
 
     assert_allclose(olf_j, olf_e, rtol=1e-13, atol=0.)
     assert_allclose(ks_j, ks_e, rtol=1e-13, atol=0.)
 
-    shape0 = (12, ) * len(dist) if isinstance(dist, tuple) else (12, )
     depth = 2
-    olfs_j, (csq0_j, kss_j) = refine.refinement_matrices(
-        shape0, depth, dist, kernel=kernel, _fine_strategy="jump"
+    rm_j = refine_chart.RefinementField(cc_j).matrices(
+        kernel=kernel, depth=depth
     )
-    olfs_e, (csq0_e, kss_e) = refine.refinement_matrices(
-        shape0, depth, dist, kernel=kernel, _fine_strategy="extend"
+    rm_e = refine_chart.RefinementField(cc_e).matrices(
+        kernel=kernel, depth=depth
     )
 
-    assert_allclose(olfs_j, olfs_e, rtol=1e-13, atol=0.)
-    assert_allclose(kss_j, kss_e, rtol=1e-13, atol=0.)
-    assert_allclose(csq0_j, csq0_e, rtol=1e-13, atol=0.)
+    assert_allclose(rm_j.filter, rm_e.filter, rtol=1e-13, atol=0.)
+    assert_allclose(
+        rm_j.propagator_sqrt, rm_e.propagator_sqrt, rtol=1e-13, atol=0.
+    )
+    assert_allclose(rm_j.cov_sqrt0, rm_e.cov_sqrt0, rtol=1e-13, atol=0.)
 
 
 @pmp("dist", (60., 1e+3, (40., 90.), (1e+2, 1e+3, 1e+4)))
@@ -213,7 +250,19 @@ def test_refinement_nd_shape(seed, n_dim, kernel=kernel):
 
     distances = np.exp(rng.normal(size=(n_dim, )))
     cov_from_loc = refine._get_cov_from_loc(kernel=kernel)
-    olf, fine_kernel_sqrt = refine.layer_refinement_matrices(distances, kernel)
+    cc = refine_chart.CoordinateChart(
+        shape0=(12, ) * n_dim,
+        distances=distances,
+        depth=0,
+        _coarse_size=3,
+        _fine_size=2
+    )
+    olf, ks = refine_chart.RefinementField(cc).matrices_at(
+        level=0,
+        pixel_index=(0, ) * n_dim,
+        kernel=kernel,
+        coerce_fine_kernel=False
+    )
 
     shp_i = 5
     gc = distances.reshape(n_dim, 1) * jnp.linspace(0., 1000., shp_i)
@@ -222,7 +271,7 @@ def test_refinement_nd_shape(seed, n_dim, kernel=kernel):
     lvl0 = (cov_sqrt @ rng.normal(size=gc.shape[0])).reshape((shp_i, ) * n_dim)
     lvl1_exc = rng.normal(size=tuple(n - 2 for n in lvl0.shape) + (2**n_dim, ))
 
-    fine_reference = refine.refine(lvl0, lvl1_exc, olf, fine_kernel_sqrt)
+    fine_reference = refine.refine(lvl0, lvl1_exc, olf, ks)
     assert fine_reference.shape == tuple((2 * (shp_i - 2), ) * n_dim)
 
 
@@ -230,35 +279,7 @@ def test_refinement_nd_shape(seed, n_dim, kernel=kernel):
 @pmp("_coarse_size", (3, 5))
 @pmp("_fine_size", (2, 4))
 @pmp("_fine_strategy", ("jump", "extend"))
-def test_chart_pixel_refinement_matrices_consistency(
-    dist, _coarse_size, _fine_size, _fine_strategy, kernel=kernel
-):
-    depth = 3
-    distances = np.atleast_1d(dist)
-    kwargs = {
-        "_coarse_size": _coarse_size,
-        "_fine_size": _fine_size,
-        "_fine_strategy": _fine_strategy
-    }
-
-    cc = refine_chart.CoordinateChart(
-        (12, ) * distances.size, depth=depth, distances=distances, **kwargs
-    )
-    olf, ks = refine_chart.RefinementField(cc).matrices_at(
-        level=depth, pixel_index=(0, ) * distances.size, kernel=kernel
-    )
-    olf_classical, ks_classical = refine.layer_refinement_matrices(
-        distances, kernel, **kwargs
-    )
-    assert_allclose(olf, olf_classical, atol=1e-14, rtol=1e-14)
-    assert_allclose(ks, ks_classical, atol=1e-14, rtol=1e-14)
-
-
-@pmp("dist", (60., 1e+3, (80., 80.), (40., 90.), (1e+2, 1e+3, 1e+4)))
-@pmp("_coarse_size", (3, 5))
-@pmp("_fine_size", (2, 4))
-@pmp("_fine_strategy", ("jump", "extend"))
-def test_chart_refinement_matrices_consistency(
+def test_chart_refinement_regular_irregular_matrices_consistency(
     dist, _coarse_size, _fine_size, _fine_strategy, kernel=kernel
 ):
     depth = 2
@@ -286,31 +307,13 @@ def test_chart_refinement_matrices_consistency(
         kernel=kernel
     )
 
-    _, (cov_sqrt0, _) = refine.refinement_matrices(
-        cc.shape0, 0, cc.distances0, kernel, **kwargs
-    )
-
     aallclose = partial(assert_allclose, rtol=1e-14, atol=1e-13)
-    aallclose(refinement.cov_sqrt0, cov_sqrt0)
-    aallclose(refinement_irreg.cov_sqrt0, cov_sqrt0)
+    aallclose(refinement.cov_sqrt0, refinement_irreg.cov_sqrt0)
 
     for lvl in range(depth):
         olf, ks = refinement.filter[lvl], refinement.propagator_sqrt[lvl]
         olf_irreg, ks_irreg = refinement_irreg.filter[
             lvl], refinement_irreg.propagator_sqrt[lvl]
-
-        if _fine_strategy == "jump":
-            distances_lvl = cc.distances0 / _fine_size**lvl
-        elif _fine_strategy == "extend":
-            distances_lvl = cc.distances0 / 2**lvl
-        else:
-            raise AssertionError()
-        olf_classical, ks_classical = refine.layer_refinement_matrices(
-            distances_lvl, kernel, **kwargs
-        )
-
-        aallclose(olf.squeeze(), olf_classical)
-        aallclose(ks.squeeze(), ks_classical)
 
         olf_d = np.diff(
             olf_irreg.reshape((-1, ) + olf_irreg.shape[-2:]), axis=0
@@ -318,8 +321,8 @@ def test_chart_refinement_matrices_consistency(
         ks_d = np.diff(ks_irreg.reshape((-1, ) + ks_irreg.shape[-2:]), axis=0)
         aallclose(olf_d, 0.)
         aallclose(ks_d, 0.)
-        aallclose(olf_irreg[(0, ) * ndim], olf_classical)
-        aallclose(ks_irreg[(0, ) * ndim], ks_classical)
+        aallclose(olf_irreg[(0, ) * ndim], olf.squeeze())
+        aallclose(ks_irreg[(0, ) * ndim], ks.squeeze())
 
 
 @pmp("seed", (12, ))
