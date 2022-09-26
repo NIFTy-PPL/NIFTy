@@ -46,7 +46,7 @@ build_docker_from_cache:
 test_serial:
   stage: test
   script:
-    - pytest-3 -q --cov=nifty8 test
+    - pytest -q --cov=nifty8 test
     - >
       python3 -m coverage report --omit "*plot*" | tee coverage.txt
     - >
@@ -57,7 +57,7 @@ test_mpi:
   variables:
     OMPI_MCA_btl_vader_single_copy_mechanism: none
   script:
-    - mpiexec -n 2 --bind-to none pytest-3 -q test/test_mpi
+    - mpiexec -n 2 --bind-to none pytest -q test/test_mpi
 
 pages:
   stage: release

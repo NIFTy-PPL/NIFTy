@@ -3,17 +3,20 @@ FROM debian:stable-slim
 RUN apt-get update && apt-get install -y \
     # Needed for setup
     git python3-pip \
-    # Packages needed for NIFTy
-    python3-scipy \
     # Documentation build dependencies
     dvipng texlive-latex-base texlive-latex-extra \
+    # Dependency of mpi4py
+    libopenmpi-dev \
+    && rm -rf /var/lib/apt/lists/*
+RUN DUCC0_OPTIMIZATION=portable pip3 install \
+    # Packages needed for NIFTy
+    scipy \
+    # Optional nifty dependencies
+    matplotlib h5py astropy ducc0 jax jaxlib mpi4py \
     # Testing dependencies
-    python3-pytest-cov \
-    # Optional NIFTy dependencies
-    python3-mpi4py python3-matplotlib python3-h5py \
-  # more optional NIFTy dependencies
-  && DUCC0_OPTIMIZATION=portable pip3 install astropy ducc0 jupyter nbconvert jax jaxlib sphinx pydata-sphinx-theme jupytext \
-  && rm -rf /var/lib/apt/lists/*
+    pytest pytest-cov \
+    # Documentation build dependencies
+    jupyter nbconvert jupytext sphinx pydata-sphinx-theme
 
 # Set matplotlib backend
 ENV MPLBACKEND agg
