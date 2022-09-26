@@ -129,6 +129,7 @@ class OptimizeKLConfig:
         from ..optimize_kl import optimize_kl
 
         dct = dict(self)
+        os.makedirs(dct["output_directory"], exist_ok=True)
         self.to_file(os.path.join(dct["output_directory"], "optimization.cfg"))
         return optimize_kl(**dct, **kwargs)
 
