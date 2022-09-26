@@ -2,6 +2,7 @@
 # SPDX-License-Identifier: GPL-2.0+ OR BSD-2-Clause
 
 from . import refine
+from . import refine_healpix
 from . import refine_util
 from . import refine_chart
 from . import lanczos
