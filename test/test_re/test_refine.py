@@ -17,7 +17,12 @@ from numpy.testing import assert_allclose
 from scipy.spatial import distance_matrix
 
 import nifty8.re as jft
-from nifty8.re import refine, refine_chart
+from nifty8.re import refine, refine_chart, refine_healpix
+
+try:
+    import healpy
+except ImportError:
+    healpy = None
 
 pmp = pytest.mark.parametrize
 
@@ -380,6 +385,17 @@ def test_refinement_irregular_regular_consistency(
         refinement_irreg.propagator_sqrt[-1], **kwargs
     )
     assert_allclose(refined_irreg, refined, rtol=1e-14, atol=1e-13)
+
+
+@pytest.mark.skipif(
+    healpy is None, reason="requires the software library `healpy`"
+)
+@pmp("nside", (1, 2, 16))
+@pmp("nest", (True, False))
+def test_healpix_refinement_neigbor_uniqueness(nside, nest):
+    nbr = refine_healpix.get_all_1st_hp_nbrs_idx(nside, nest)
+    n_non_uniq = np.sum(np.diff(np.sort(nbr, axis=1), axis=1) == 0, axis=1)
+    np.testing.assert_equal(n_non_uniq, 0)
 
 
 if __name__ == "__main__":

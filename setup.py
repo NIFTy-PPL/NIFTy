@@ -36,7 +36,7 @@ extras_require = {
     "re": ("jax", ),
     "native": ("ducc0>=0.24.0", ),
     "doc": ("sphinx", "pydata-sphinx-theme", "jupyter", "jupytext"),
-    "util": ("astropy", ),
+    "util": ("astropy", "healpy"),
 }
 extras_require["full"] = reduce(operator.add, extras_require.values())
 
