@@ -205,7 +205,7 @@ class OptimizeKLConfig:
                 diff = total_iterations - len(entry_list_pre)
                 if diff < 0:
                     raise RuntimeError(
-                        f"The number of total iterations ({total_iterationsl}) is at least {-diff} too small."
+                        f"The number of total iterations ({total_iterations}) is at least {-diff} too small."
                     )
                 entry_list_post = entry_list_pre + diff * [entry_list_pre[-1]]
                 myassert(len(entry_list_post) == total_iterations)
