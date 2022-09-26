@@ -81,9 +81,9 @@ s_space = ift.RGSpace(N_pix) # signal space is a regular Cartesian grid space
 HT = ift.HartleyOperator(s_space)
 k_space = HT.target # k_space is the harmonic conjugate space of s_space
 
-S_h = ift.create_power_operator(k_space, power_spectrum=pow_spec, sampling_dtype=float)
+S_k = ift.create_power_operator(k_space, power_spectrum=pow_spec, sampling_dtype=float)
 
-S = ift.SandwichOperator.make(bun=HT, cheese=S_h) # Sandwich Operator implements S = HT.adjoint @ S_h @ HT and enables NIFTy to sample from S
+S = ift.SandwichOperator.make(bun=HT, cheese=S_k) # Sandwich Operator implements S = HT.adjoint @ S_k @ HT and enables NIFTy to sample from S
 
 # ### Synthetic Data
 # - In order to demonstrate the Wiener filter, we are using **synthetic data**. Therefore, we draw a sample from $S$
