@@ -194,6 +194,7 @@ def _vmap_squeeze_first_2ndax(fun, *args, **kwargs):
     return vfun_apply
 
 
+@partial(jax.jit, static_argnames=("radial_chart", "kernel", "precision"))
 def refine_slice(
     radial_chart,
     coarse_values,
