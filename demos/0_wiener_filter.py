@@ -86,29 +86,35 @@ S_k = ift.create_power_operator(k_space, power_spectrum=pow_spec, sampling_dtype
 S = ift.SandwichOperator.make(bun=HT, cheese=S_k) # Sandwich Operator implements S = HT.adjoint @ S_k @ HT and enables NIFTy to sample from S
 
 # ### Synthetic Data
-# - In order to demonstrate the Wiener filter, we are using **synthetic data**. Therefore, we draw a sample from $S$
+# - In order to demonstrate the Wiener filter, we are using **synthetic data**. Therefore, we draw a sample $\tilde{s}$ from $S$. (see Sampling)
 # - For simplicity we define the response operator as a unit matrix, $R = \mathbb{1}$.
-# - We assume the noise covariance to be uncorrelated and constant, $N = 0.2 \cdot \mathbb{1}$.
-# #FIXME: Describe Sampling and Noise_amplitude in detail
-#
+# - We assume the noise covariance to be uncorrelated and constant, $N = 0.2 \cdot \mathbb{1}$ and draw a sample $\tilde{n}$.
+# - Thus the synthetic data $d = R(\tilde{s}) + \tilde{n}$.
 
 # ### Sampling
 #
 # - Assuming we have a distribution $\mathcal{G}(b,B)$ we can sample from and we want to draw a sample from a distritbution $\mathcal{G}(c,C)$ with covariance $C$. The two distributions are connected via the relation $C = ABA^{\dagger}.$ One can show that $c= Ab$ with $b \curvearrowleft \mathcal{G}(b,B)$	has a probability distribution with covariance $C$ as desired. 
-# $$ \langle cc^\dagger\rangle_{\mathcal{G}(c,C)} = \langle Ab(Ab)^\dagger\rangle = \langle Abb^\dagger A^\dagger \rangle =  A \langle bb^\dagger  \rangle A^\dagger = ABA^\dagger = C$$
-#
+# $$ \langle cc^\dagger\rangle_{\mathcal{G}(c,C)} = \langle Ab(Ab)^\dagger\rangle_{\mathcal{G}(b,B)} = \langle Abb^\dagger A^\dagger \rangle =  A \langle bb^\dagger  \rangle A^\dagger = ABA^\dagger = C$$
+# - This is also true for the case that $B = \mathbb{1}$, meaning that $\mathcal{G}(b,\mathbb{1})$ Thus $C = AA^{\dagger}$ .
+# - Note that, if $C$ is diagonal, $A$ is diagonal as well.
+# - It can be shown that if $C = A + B$, then $c = a + b$ with $b \curvearrowleft \mathcal{G}(b,B)$ and $a \curvearrowleft \mathcal{G}(a,A)$ has a probability distribution with covariance $C$ as desired. 
+# - If we can draw samples from $\mathcal{G}(a,A)$, and we want to draw a sample with the covariance $A^{-1}$, one can simply show that $c = A^{-1}a$ has a  a probability distribution with covariance $A^{-1}$.
+# $$\langle c c^{\dagger} \rangle = \langle A^{-1}aa^{\dagger}(A^{-1})^{\dagger} \rangle =  A^{-1}\langle aa^{\dagger}\rangle(A^{-1})^{\dagger} = A^{-1} A(A^{-1})^{\dagger} =A^{-1}$$
+# as we assume $A^{-1}$ to be Hermitian.
 
 s = S.draw_sample()
 
 R = ift.GeometryRemover(s_space)
 d_space = R.target
+print(s.domain, d_space)
 
 # +
 noiseless_data = R(s)
-noise_amplitude = np.sqrt(0.2)
-N = ift.ScalingOperator(d_space, noise_amplitude**2, float)
 
+noise_amplitude = np.sqrt(0.2) # this is the multiplicative factor going from a sample with unit covariance to N
+N = ift.ScalingOperator(d_space, noise_amplitude**2, float)
 n = N.draw_sample()
+
 d = noiseless_data + n
 j = R.adjoint(N.inverse(d))
 
