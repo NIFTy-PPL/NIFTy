@@ -2,8 +2,10 @@
 
 # SPDX-License-Identifier: GPL-2.0+ OR BSD-2-Clause
 
+from collections import namedtuple
 from functools import partial
 from math import log2
+import sys
 from typing import Callable, Optional, Tuple
 import warnings
 
@@ -308,7 +310,7 @@ for i in range(depth):
     exc = random.normal(key, (refined.shape[0], 4))
     refined = refine_slice(None, refined, exc, kernel)
     hp.mollview(refined, nest=nest)
-plt.show()
+# plt.show()
 
 # %%
 key = random.PRNGKey(42)
@@ -354,4 +356,76 @@ for i in range(depth):
 for i in range(refined.shape[1]):
     hp.mollview((fks_sqrt @ r0).reshape(12, n_r)[:, i], nest=nest)
     hp.mollview(refined[:, i], nest=nest)
-plt.show()
+# plt.show()
+
+# %%
+Timed = namedtuple(
+    "Timed",
+    ("time", "number", "repeat", "median", "min", "max", "mean", "std"),
+    rename=True
+)
+
+
+def timeit(stmt, setup="pass", repeat=7, number=None):
+    """Handy timer utility returning the median time it took evaluate `stmt`."""
+    import timeit
+
+    timer = timeit.Timer(stmt, setup=setup)
+    if number is None:
+        number, _ = timer.autorange()
+    timings = np.array(timer.repeat(repeat=repeat, number=number)) / number
+
+    t = np.median(timings)
+    mi, ma = np.min(timings), np.max(timings)
+    m, std = np.mean(timings), np.std(timings)
+    return Timed(
+        time=t,
+        number=number,
+        repeat=repeat,
+        median=t,
+        min=mi,
+        max=ma,
+        mean=m,
+        std=std
+    )
+
+
+pix0s = np.stack(pixelfunc.pix2vec(1, np.arange(12), nest=nest), axis=-1)
+cov_from_loc = _get_cov_from_loc(kernel, None)
+fks_sqrt = jnp.linalg.cholesky(cov_from_loc(pix0s, pix0s))
+
+key = random.PRNGKey(12)
+r0 = random.normal(key, (12, ))
+refined = fks_sqrt @ r0
+depth = 9
+for i in range(depth):
+    _r = refined
+    exc = random.normal(key, (refined.shape[0], 4))
+    refined = refine_slice(None, refined, exc, kernel)
+    t = timeit(lambda: refine_slice(None, _r, exc, kernel))
+    print(
+        f"{refined.shape=} time={t.time:4.2e} min={t.min:4.2e}",
+        file=sys.stderr
+    )
+
+pix0s = np.stack(pixelfunc.pix2vec(1, np.arange(12), nest=nest), axis=-1)
+pix0s = (
+    pix0s[:, np.newaxis, :] *
+    radial_chart.ind2cart(jnp.arange(n_r)[np.newaxis, :], -1)[..., np.newaxis]
+).reshape(12 * n_r, 3)
+cov_from_loc = _get_cov_from_loc(kernel, None)
+fks_sqrt = jnp.linalg.cholesky(cov_from_loc(pix0s, pix0s))
+
+r0 = random.normal(key, (12 * n_r, ))
+refined = (fks_sqrt @ r0).reshape(12, n_r)
+depth = 7
+for i in range(depth):
+    _r = refined
+    _, key = random.split(key)
+    exc = random.normal(key, (refined.shape[0], refined.shape[1] - 2, 8))
+    refined = refine_slice(radial_chart, refined, exc, kernel)
+    t = timeit(lambda: refine_slice(radial_chart, _r, exc, kernel))
+    print(
+        f"{refined.shape=} time={t.time:4.2e} min={t.min:4.2e}",
+        file=sys.stderr
+    )
