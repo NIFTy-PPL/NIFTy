@@ -1,5 +1,7 @@
 set -e
 
+export OMP_NUM_THREADS=1
+
 FOLDER=docs/source/user/
 
 for FILE in ${FOLDER}0_wiener_filter ${FOLDER}1_inference_with_nifty ${FOLDER}2_jax_backend ${FOLDER}custom_nonlinearities ${FOLDER}custom_operators ${FOLDER}correlated_field_parameters
