@@ -29,6 +29,7 @@ def _get_cov_from_loc(kernel=None,
                       cov_from_loc=None
                      ) -> Callable[[NDARRAY, NDARRAY], NDARRAY]:
     if cov_from_loc is None and callable(kernel):
+        # TODO: extend to non-stationary kernels
 
         def cov_from_loc_sngl(x, y):
             return kernel(jnp.linalg.norm(x - y))
@@ -141,6 +142,7 @@ def refine_conv_general(
     c_slc_shp += (-1, csz)
 
     fine = jnp.zeros(fine_init_shape)
+    # TODO: Use `jnp.mgrid` (np.mgrid[-1<<31:(-1<<31) + 1] ?)
     PLC = -1 << 31  # integer placeholder outside of the here encountered regimes
     irreg_indices = jnp.stack(
         jnp.meshgrid(
@@ -153,6 +155,8 @@ def refine_conv_general(
         axis=-1
     )
 
+    # TODO: register a custom transpose for the fori_loop (since VJP works, why
+    # not just use that :)) or use vmap or the like here
     def single_refinement_step(i, fine: jnp.ndarray) -> jnp.ndarray:
         irreg_idx = jnp.unravel_index(i, irreg_indices.shape[:-1])
         _assert(
@@ -309,7 +313,9 @@ def refine_slice(
             filter_coarse = vmap(filter_coarse, in_axes=(0, None, 1))
             corr_fine = vmap(corr_fine, in_axes=(0, 0))
         else:
-            filter_coarse = _vmap_squeeze_first(filter_coarse, in_axes=(None, None, 1))
+            filter_coarse = _vmap_squeeze_first(
+                filter_coarse, in_axes=(None, None, 1)
+            )
             corr_fine = _vmap_squeeze_first(corr_fine, in_axes=(None, 0))
 
     cv_idx = np.mgrid[tuple(
