@@ -7,8 +7,8 @@ from math import log2
 from typing import Callable, Optional, Tuple
 import warnings
 
-from healpy import pixelfunc
 import healpy as hp
+from healpy import pixelfunc
 from jax import vmap
 import jax
 from jax import numpy as jnp
@@ -24,40 +24,64 @@ jax.config.update("jax_debug_nans", True)
 
 
 # %%
-def get_1st_hp_nbrs_idx(nside, pix, nest: bool = False):
+def get_1st_hp_nbrs_idx(nside, pix, nest: bool = False, dtype=np.uint32):
+    from healpy import pixelfunc
+
     n_nbr = 8
 
     n_pix = 1 if np.ndim(pix) == 0 else len(pix)
-    pix_nbr = np.empty((n_pix, n_nbr + 1), dtype=int)
+    pix_nbr = np.zeros((n_pix, n_nbr + 1), dtype=int)
     pix_nbr[:, 0] = pix
     nbr = pixelfunc.get_all_neighbours(nside, pix, nest=nest)
-    nbr = nbr.reshape(n_nbr, n_pix)
-    pix_nbr[:, 1:] = nbr.T
+    nbr = nbr.reshape(n_nbr, n_pix).T
+    pix_nbr[:, 1:] = nbr
+    pix_nbr = np.sort(pix_nbr, axis=1)  # Move `-1` to the front
 
     # Account for unknown neighbors, encoded by -1
-    # TODO: only do this for affected pixels
-    with warnings.catch_warnings():
-        wmsg = "invalid value encountered in _get_neigbors"
-        warnings.filterwarnings("ignore", message=wmsg)
-        nbr2 = pixelfunc.get_all_neighbours(nside, nbr, nest=nest)
-    nbr2 = nbr2.reshape(n_nbr, n_nbr, n_pix)
-    nbr2.T[nbr.T == -1] = -1
+    idx_w_invalid, _ = np.nonzero(nbr == -1)
+    if idx_w_invalid.size != 0:
+        idx_w_invalid = np.unique(idx_w_invalid)
+        nbr_invalid = nbr[idx_w_invalid]
+        with warnings.catch_warnings():
+            wmsg = "invalid value encountered in _get_neigbors"
+            warnings.filterwarnings("ignore", message=wmsg)
+            # shape of (n_2nd_neighbors, n_idx_w_invalid, n_1st_neighbors)
+            nbr2 = pixelfunc.get_all_neighbours(nside, nbr_invalid, nest=nest)
+            nbr2 = np.transpose(nbr2, (1, 2, 0))
+            nbr2[nbr_invalid == -1] = -1
+            nbr2 = nbr2.reshape(idx_w_invalid.size, -1)
+        pix_2nbr = np.stack(
+            [
+                np.setdiff1d(ar1, ar2)[:n_nbr + 1]
+                for ar1, ar2 in zip(nbr2, pix_nbr[idx_w_invalid])
+            ]
+        )
+        if np.sum(pix_2nbr == -1):
+            # `setdiff1d` should remove all `-1` because we worked with rows in
+            # pix_nbr that all contain them
+            raise AssertionError()
+        pad = max(n_nbr + 1 - pix_2nbr.shape[1], 0)
+        pix_2nbr = np.pad(
+            pix_2nbr, ((0, 0), (0, pad)), mode="constant", constant_values=-1
+        )
+        # Select a "random" 2nd neighbor to fill in for the missing 1st order
+        # neighbor
+        pix_nbr[idx_w_invalid] = np.where(
+            pix_nbr[idx_w_invalid] == -1, pix_2nbr, pix_nbr[idx_w_invalid]
+        )
 
-    n_2nbr = np.prod(nbr2.shape[:-1])
-    setdiffer1d = partial(jnp.setdiff1d, size=n_nbr + 2, fill_value=-1)
-    pix_2nbr = jax.vmap(setdiffer1d, (1, 0),
-                        0)(nbr2.reshape(n_2nbr, n_pix), pix_nbr)
-    # If there is a -1 in there, it will be at the first location
-    pix_2nbr = pix_2nbr[:, 1:]
+    out = np.squeeze(pix_nbr, axis=0) if np.ndim(pix) == 0 else pix_nbr
+    return out.astype(dtype)
 
-    # Select a "random" 2nd neighbor to fill in for the missing 1st order
-    # neighbor
-    pix_nbr = np.sort(pix_nbr, axis=1)
-    pix_nbr = np.where(pix_nbr != -1, pix_nbr, pix_2nbr)
-    return np.squeeze(pix_nbr, axis=0) if np.ndim(pix) == 0 else pix_nbr
+
+def get_all_1st_hp_nbrs_idx(nside, nest: bool = False):
+    pix = np.arange(12 * nside**2)
+    return get_1st_hp_nbrs_idx(nside, pix, nest=nest)
 
 
 def get_1st_hp_nbrs(nside, pix, nest: bool = False):
+    from healpy import pixelfunc
+
     return np.stack(
         pixelfunc.pix2vec(
             nside, get_1st_hp_nbrs_idx(nside, pix, nest=nest), nest=nest
@@ -72,8 +96,7 @@ pix = 0
 
 
 def test_uniqueness(nside, nest):
-    pix = np.arange(12 * nside**2)
-    nbr = get_1st_hp_nbrs_idx(nside, pix, nest)
+    nbr = get_all_1st_hp_nbrs_idx(nside, nest)
     n_non_uniq = np.sum(np.diff(np.sort(nbr, axis=1), axis=1) == 0, axis=1)
     np.testing.assert_equal(n_non_uniq, 0)
 
@@ -276,15 +299,13 @@ def refine_slice(
         raise ValueError("invalid nside of `coarse_values`")
     nside, level = int(nside), int(level)
 
-    pix_idx = np.arange(coarse_values.shape[0])
-    pix_nbr_idx = get_1st_hp_nbrs_idx(nside, pix_idx, nest=nest)
-
+    pix_nbr_idx = get_all_1st_hp_nbrs_idx(nside, nest=nest)
     gc = np.stack(pixelfunc.pix2vec(nside, pix_nbr_idx, nest=nest), axis=-1)
-    # gc = get_1st_hp_nbrs(2**nside, pix_idx, nest=nest)
+    pix_idx = np.arange(coarse_values.shape[0])
     i = pixelfunc.ring2nest(nside, pix_idx) if nest is False else pix_idx
     gf = np.stack(
         pixelfunc.pix2vec(
-            2 * nside, 4 * i[:, None] + jnp.arange(0, 4)[None, :], nest=True
+            2 * nside, 4 * i[:, None] + np.arange(0, 4)[None, :], nest=True
         ),
         axis=-1
     )
@@ -328,7 +349,7 @@ key = random.PRNGKey(43)
 r0 = random.normal(key, (12, ))
 refined = fks_sqrt @ r0
 hp.mollview(refined, nest=nest)
-depth = 4
+depth = 6
 key = random.PRNGKey(42)
 for i in range(depth):
     _, key = random.split(key)
