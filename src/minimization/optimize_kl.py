@@ -299,7 +299,7 @@ def optimize_kl(likelihood_energy,
     # /Initial position
 
     # Automatic transitions
-    def trans(iglobal):
+    def trans(iglobal, prev_dom, next_dom):
         res = transitions(iglobal)
         if res is not None:
             return res
@@ -307,8 +307,8 @@ def optimize_kl(likelihood_energy,
         if iglobal == 0:
             dom = mean.domain
         else:
-            dom = likelihood_energy(iglobal - 1).domain
-        tgt = likelihood_energy(iglobal).domain
+            dom = prev_dom
+        tgt = next_dom
 
         if dom is tgt:
             return Operator.identity_operator(dom)
@@ -318,14 +318,18 @@ def optimize_kl(likelihood_energy,
 
     if sanity_checks:
         for iglobal in range(initial_index, total_iterations):
-            if likelihood_energy(iglobal).domain != trans(iglobal).target:
-                raise RuntimeError(f"The domain of lh energy #{iglobal} should equal the target of transition.\n"
-                                f"{likelihood_energy(iglobal).domain}\n\n"
-                                f"{trans(iglobal).target}")
+            next_dom = likelihood_energy(iglobal).domain
             if iglobal == 0:
-                myassert(mean.domain is trans(iglobal).domain)
+                prev_dom = mean.domain
             else:
-                myassert(likelihood_energy(iglobal - 1).domain is trans(iglobal).domain)
+                prev_dom = likelihood_energy(iglobal-1).domain
+
+            next_dom1 = trans(iglobal, prev_dom, next_dom).target
+            if next_dom != next_dom1:
+                raise RuntimeError(f"The domain of lh energy #{iglobal} should equal the target of transition.\n"
+                                f"{next_dom}\n\n"
+                                f"{next_dom1}")
+            myassert(prev_dom is trans(iglobal, prev_dom, next_dom).domain)
     # /Automatic transitions
 
     if output_directory is not None:
@@ -344,7 +348,8 @@ def optimize_kl(likelihood_energy,
         energy_history = EnergyHistory()
 
     for iglobal in range(initial_index, total_iterations):
-        mean = trans(iglobal)(mean)
+        lh = likelihood_energy(iglobal)
+        mean = trans(iglobal, mean.domain, lh.domain)(mean)
         dom = mean.domain
         mf_dom = isinstance(dom, MultiDomain)
         if not mf_dom:
@@ -354,7 +359,6 @@ def optimize_kl(likelihood_energy,
                  "a MultiDomain. Please report at `c@philipp-arras.de` if you use this "
                  "feature and would like to see it continued.", DeprecationWarning)
 
-        lh = likelihood_energy(iglobal)
         count = CountingOperator(lh.domain)
         ham = StandardHamiltonian(lh @ count, sampling_iteration_controller(iglobal))
         minimizer = kl_minimizer(iglobal)
@@ -362,7 +366,7 @@ def optimize_kl(likelihood_energy,
 
         # TODO Distributing the domain of the likelihood is not supported (yet)
         check_MPI_synced_random_state(comm(iglobal))
-        check_MPI_equality(likelihood_energy(iglobal).domain, comm(iglobal))
+        check_MPI_equality(lh.domain, comm(iglobal))
         check_MPI_equality(mean.domain, comm(iglobal))
         check_MPI_equality(mean, comm(iglobal))
 
