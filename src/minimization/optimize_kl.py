@@ -78,7 +78,8 @@ def optimize_kl(likelihood_energy,
                 plot_minisanity_history=True,
                 save_strategy="last",
                 return_final_position=False,
-                resume=False):
+                resume=False,
+                sanity_checks=True):
     """Provide potentially useful interface for standard KL minimization.
 
     The parameters `likelihood_energy`, `kl_minimizer`,
@@ -180,6 +181,10 @@ def optimize_kl(likelihood_energy,
         `initial_position` are ignored and read from the output directory
         instead. If `last_finished_iteration` is not a file, the value of
         `initial_position` is used instead. Default: False.
+    sanity_checks : bool
+        Check if all domains of likelihoods and transitions fit together. This
+        is potentially expensive because all likelihoods have to be instantiated
+        multiple times. Default: True.
 
     Returns
     -------
@@ -254,36 +259,35 @@ def optimize_kl(likelihood_energy,
                     sl = ResidualSampleList.load(fname)
                 return (sl, initial_position) if return_final_position else sl
 
-    # Sanity check of input
-    if initial_index >= total_iterations:
-        raise ValueError("Initial index is bigger than total iterations: "
-                         f"{initial_index} >= {total_iterations}")
+    if sanity_checks:
+        if initial_index >= total_iterations:
+            raise ValueError("Initial index is bigger than total iterations: "
+                            f"{initial_index} >= {total_iterations}")
 
-    for iglobal in range(initial_index, total_iterations):
-        for (obj, cls) in [(likelihood_energy, Operator), (kl_minimizer, DescentMinimizer),
-                           (nonlinear_sampling_minimizer, (DescentMinimizer, type(None))),
-                           (constants, (list, tuple)), (point_estimates, (list, tuple)),
-                           (transitions, (Operator, type(None))), (n_samples, int)]:
-            if not isinstance(obj(iglobal), cls):
-                raise TypeError(f"{obj(iglobal)} is not instance of {cls} but rather {type(obj(iglobal))}")
+        for iglobal in range(initial_index, total_iterations):
+            for (obj, cls) in [(likelihood_energy, Operator), (kl_minimizer, DescentMinimizer),
+                            (nonlinear_sampling_minimizer, (DescentMinimizer, type(None))),
+                            (constants, (list, tuple)), (point_estimates, (list, tuple)),
+                            (transitions, (Operator, type(None))), (n_samples, int)]:
+                if not isinstance(obj(iglobal), cls):
+                    raise TypeError(f"{obj(iglobal)} is not instance of {cls} but rather {type(obj(iglobal))}")
 
-        if sampling_iteration_controller(iglobal) is None:
-            myassert(n_samples(iglobal) == 0)
-        else:
-            myassert(isinstance(sampling_iteration_controller(iglobal), IterationController))
-        myassert(likelihood_energy(iglobal).target is DomainTuple.scalar_domain())
-        if not comm(iglobal) is None:
-            try:
-                import mpi4py
-                myassert(isinstance(comm(iglobal), mpi4py.MPI.Intracomm))
-            except ImportError:
-                pass
-    myassert(_number_of_arguments(inspect_callback) in [1, 2])
-    myassert(_number_of_arguments(terminate_callback) == 1)
+            if sampling_iteration_controller(iglobal) is None:
+                myassert(n_samples(iglobal) == 0)
+            else:
+                myassert(isinstance(sampling_iteration_controller(iglobal), IterationController))
+            myassert(likelihood_energy(iglobal).target is DomainTuple.scalar_domain())
+            if not comm(iglobal) is None:
+                try:
+                    import mpi4py
+                    myassert(isinstance(comm(iglobal), mpi4py.MPI.Intracomm))
+                except ImportError:
+                    pass
+        myassert(_number_of_arguments(inspect_callback) in [1, 2])
+        myassert(_number_of_arguments(terminate_callback) == 1)
 
-    if not likelihood_energy(initial_index).target is DomainTuple.scalar_domain():
-        raise TypeError
-    # /Sanity check of input
+        if not likelihood_energy(initial_index).target is DomainTuple.scalar_domain():
+            raise TypeError
 
     # Initial position
     check_MPI_synced_random_state(comm(initial_index))
@@ -312,16 +316,16 @@ def optimize_kl(likelihood_energy,
             return _InitializeOperator(dom, tgt, std=0.1)
         raise RuntimeError
 
-
-    for iglobal in range(initial_index, total_iterations):
-        if likelihood_energy(iglobal).domain != trans(iglobal).target:
-            raise RuntimeError(f"The domain of lh energy #{iglobal} should equal the target of transition.\n"
-                               f"{likelihood_energy(iglobal).domain}\n\n"
-                               f"{trans(iglobal).target}")
-        if iglobal == 0:
-            myassert(mean.domain is trans(iglobal).domain)
-        else:
-            myassert(likelihood_energy(iglobal - 1).domain is trans(iglobal).domain)
+    if sanity_checks:
+        for iglobal in range(initial_index, total_iterations):
+            if likelihood_energy(iglobal).domain != trans(iglobal).target:
+                raise RuntimeError(f"The domain of lh energy #{iglobal} should equal the target of transition.\n"
+                                f"{likelihood_energy(iglobal).domain}\n\n"
+                                f"{trans(iglobal).target}")
+            if iglobal == 0:
+                myassert(mean.domain is trans(iglobal).domain)
+            else:
+                myassert(likelihood_energy(iglobal - 1).domain is trans(iglobal).domain)
     # /Automatic transitions
 
     if output_directory is not None:
