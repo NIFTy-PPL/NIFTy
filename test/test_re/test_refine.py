@@ -83,7 +83,7 @@ def test_refinement_1d(seed, dist, kernel=kernel):
     fine_reference = refine.refine(lvl0, lvl1_exc, olf, fine_kernel_sqrt)
     eps = jnp.finfo(lvl0.dtype.type).eps
     aallclose = partial(
-        assert_allclose, desired=fine_reference, rtol=6 * eps, atol=60 * eps
+        assert_allclose, desired=fine_reference, rtol=6 * eps, atol=120 * eps
     )
     for ref in refs:
         print(f"testing {ref.__name__}", file=sys.stderr)
