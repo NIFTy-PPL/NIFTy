@@ -3,16 +3,17 @@
 # SPDX-License-Identifier: GPL-2.0+ OR BSD-2-Clause
 
 from math import log2
-from typing import Callable, Tuple, Optional
+from typing import Callable, Optional, Tuple
+import warnings
 
 from jax import vmap
 from jax import numpy as jnp
 from jax.lax import dynamic_slice_in_dim
 import numpy as np
-import warnings
 
-from .refine_chart import CoordinateChart
 from .refine import _get_cov_from_loc
+
+NEST = True
 
 
 def get_1st_hp_nbrs_idx(nside, pix, nest: bool = False, dtype=np.uint32):
@@ -81,6 +82,32 @@ def get_1st_hp_nbrs(nside, pix, nest: bool = False):
     )
 
 
+def cov_sqrt(nside, radial_chart, kernel, level: int = 0):
+    from healpy import pixelfunc
+
+    if radial_chart.ndim != 1:
+        nie = "covariance computation only implemented for 3D HEALPix"
+        raise NotImplementedError(nie)
+    n_r, = radial_chart.shape_at(level)
+
+    pix0s = np.stack(
+        pixelfunc.pix2vec(1, np.arange(12 * (nside * 2**level)**2), nest=NEST),
+        axis=-1
+    )
+    r_rg0 = jnp.mgrid[tuple(slice(s) for s in radial_chart.shape0)]
+    pix0s = (
+        pix0s[:, np.newaxis, :] *
+        radial_chart.ind2cart(r_rg0, level)[..., np.newaxis]
+    ).reshape(12 * n_r, 3)
+    cov_from_loc = _get_cov_from_loc(kernel, None)
+    # Matrices are symmetrized by JAX, i.e. gradients are projected to the
+    # subspace of symmetric matrices (see
+    # https://github.com/google/jax/issues/10815)
+    fks_sqrt = jnp.linalg.cholesky(cov_from_loc(pix0s, pix0s))
+
+    return fks_sqrt
+
+
 def _refinement_matrices(
     gc_and_gf,
     kernel: Optional[Callable] = None,
@@ -137,10 +164,12 @@ def refine(
     coarse_values,
     excitations,
     kernel: Callable,
-    radial_chart: Optional[CoordinateChart] = None,
+    radial_chart = None,
+    coerce_fine_kernel: bool = True,
     precision=None,
 ):
     from healpy import pixelfunc
+    # TODO: Check performance of 'ring' versus 'nest' alignment
 
     ndim = np.ndim(coarse_values)
     if ndim not in (1, 2):
@@ -150,7 +179,6 @@ def refine(
     FSZ_R = 2
     CSZ_HP = 9
     CSZ_R = 3
-    NEST = True  # TODO: Check performance of ring versus nest
 
     nside = (coarse_values.shape[0] / 12)**0.5
     level = log2(nside)
@@ -189,7 +217,9 @@ def refine(
             gf = gf.reshape(-1, ndim + 1)
         else:
             raise AssertionError()
-        olf, fks = _refinement_matrices((gc, gf), kernel=kernel)
+        olf, fks = _refinement_matrices(
+            (gc, gf), kernel=kernel, coerce_fine_kernel=coerce_fine_kernel
+        )
         if ndim > 1:
             olf = olf.reshape(FSZ_HP, FSZ_R, CSZ_HP, CSZ_R)
 

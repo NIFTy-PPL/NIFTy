@@ -54,6 +54,36 @@ def matern_kernel(distance, scale, cutoff, dof):
 nest = True
 kernel = partial(matern_kernel, scale=1., cutoff=1., dof=1.5)
 
+key = random.PRNGKey(42)
+# rcc = jft.CoordinateChart(min_shape=(512, ), depth=3, _coarse_size=3, _fine_size=2)
+
+
+def rg2cart(x, idx0, scl):
+    """Transforms regular, points from a Euclidean space to irregular points in
+    an cartesian coordinate system in 1D."""
+    return jnp.exp(scl * x[0] + idx0)[np.newaxis, ...]
+
+
+def cart2rg(x, idx0, scl):
+    """Inverse of `rg2cart`."""
+    return ((jnp.log(x[0]) - idx0) / scl)[np.newaxis, ...]
+
+
+n_r = 4
+rcc = jft.CoordinateChart(
+    min_shape=(n_r, ),
+    depth=1,
+    rg2cart=partial(rg2cart, idx0=-0.27, scl=1.1),
+    cart2rg=partial(cart2rg, idx0=-0.27, scl=1.1),
+    _coarse_size=3,
+    _fine_size=2,
+)
+rf = jft.RefinementHPField(nside=128, radial_chart=rcc)
+
+xi = jft.random_like(key, rf.domain)
+rf(xi, kernel)
+
+# %%
 pix0s = np.stack(pixelfunc.pix2vec(1, np.arange(12), nest=nest), axis=-1)
 cov_from_loc = _get_cov_from_loc(kernel, None)
 fks_sqrt = jnp.linalg.cholesky(cov_from_loc(pix0s, pix0s))
@@ -74,31 +104,10 @@ for i in range(depth):
 # %%
 key = random.PRNGKey(42)
 
-
-def rg2cart(x, idx0, scl):
-    """Transforms regular, points from a Euclidean space to irregular points in
-    an cartesian coordinate system in 1D."""
-    return jnp.exp(scl * x[0] + idx0)[np.newaxis, ...]
-
-
-def cart2rg(x, idx0, scl):
-    """Inverse of `rg2cart`."""
-    return ((jnp.log(x[0]) - idx0) / scl)[np.newaxis, ...]
-
-
-n_r = 4
-radial_chart = jft.CoordinateChart(
-    min_shape=(n_r, ),
-    depth=1,
-    rg2cart=partial(rg2cart, idx0=-0.27, scl=1.1),
-    cart2rg=partial(cart2rg, idx0=-0.27, scl=1.1),
-    _coarse_size=3,
-    _fine_size=2,
-)
 pix0s = np.stack(pixelfunc.pix2vec(1, np.arange(12), nest=nest), axis=-1)
 pix0s = (
     pix0s[:, np.newaxis, :] *
-    radial_chart.ind2cart(jnp.arange(n_r)[np.newaxis, :], -1)[..., np.newaxis]
+    rcc.ind2cart(jnp.arange(n_r)[np.newaxis, :], -1)[..., np.newaxis]
 ).reshape(12 * n_r, 3)
 cov_from_loc = _get_cov_from_loc(kernel, None)
 fks_sqrt = jnp.linalg.cholesky(cov_from_loc(pix0s, pix0s))
@@ -109,7 +118,7 @@ depth = 7
 for i in range(depth):
     _, key = random.split(key)
     exc = random.normal(key, (refined.shape[0], refined.shape[1] - 2, 8))
-    refined = jft.refine_healpix.refine(refined, exc, kernel, radial_chart)
+    refined = jft.refine_healpix.refine(refined, exc, kernel, rcc)
 
 # %%
 for i in range(refined.shape[1]):
@@ -170,7 +179,7 @@ for i in range(depth):
 pix0s = np.stack(pixelfunc.pix2vec(1, np.arange(12), nest=nest), axis=-1)
 pix0s = (
     pix0s[:, np.newaxis, :] *
-    radial_chart.ind2cart(jnp.arange(n_r)[np.newaxis, :], -1)[..., np.newaxis]
+    rcc.ind2cart(jnp.arange(n_r)[np.newaxis, :], -1)[..., np.newaxis]
 ).reshape(12 * n_r, 3)
 cov_from_loc = _get_cov_from_loc(kernel, None)
 fks_sqrt = jnp.linalg.cholesky(cov_from_loc(pix0s, pix0s))
@@ -182,8 +191,8 @@ for i in range(depth):
     _r = refined
     _, key = random.split(key)
     exc = random.normal(key, (refined.shape[0], refined.shape[1] - 2, 8))
-    refined = jft.refine_healpix.refine(refined, exc, kernel, radial_chart)
-    t = timeit(lambda: jft.refine_healpix.refine(_r, exc, kernel, radial_chart))
+    refined = jft.refine_healpix.refine(refined, exc, kernel, rcc)
+    t = timeit(lambda: jft.refine_healpix.refine(_r, exc, kernel, rcc))
     print(
         f"{refined.shape=} time={t.time:4.2e} min={t.min:4.2e}",
         file=sys.stderr
