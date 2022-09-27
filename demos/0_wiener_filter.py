@@ -28,6 +28,7 @@
 # - **Spaces**: Cartesian, 2-Spheres (Healpix, Gauss-Legendre) and their respective harmonic spaces.
 # - **Fields**: Defined on spaces.
 # - **Operators**: Acting on fields.
+#
 
 # + [markdown] slideshow={"slide_type": "subslide"}
 # ## Wiener filter on 1D- fields in IFT
@@ -101,48 +102,63 @@ S = ift.SandwichOperator.make(bun=HT, cheese=S_k) # Sandwich Operator implements
 # - If we can draw samples from $\mathcal{G}(a,A)$, and we want to draw a sample with the covariance $A^{-1}$, one can simply show that $c = A^{-1}a$ has a  a probability distribution with covariance $A^{-1}$.
 # $$\langle c c^{\dagger} \rangle = \langle A^{-1}aa^{\dagger}(A^{-1})^{\dagger} \rangle =  A^{-1}\langle aa^{\dagger}\rangle(A^{-1})^{\dagger} = A^{-1} A(A^{-1})^{\dagger} =A^{-1}$$
 # as we assume $A^{-1}$ to be Hermitian.
+#
+# By this brief introduction to sampling, we apply it in order to get the synthetic data. All of these sampling rules are implemented in NIFTy so we do not need to take care. 
 
-s = S.draw_sample()
+s = S.draw_sample() # Drawing a sample from signal with covariance S.
 
-R = ift.GeometryRemover(s_space)
-d_space = R.target
-print(s.domain, d_space)
+R = ift.GeometryRemover(s_space) # Defining the responce operator that removes the geometry meaning it removes distances and volumes.
+d_space = R.target # Defining the data space that has an unstructured domain.
 
 # +
 noiseless_data = R(s)
 
 noise_amplitude = np.sqrt(0.2) # this is the multiplicative factor going from a sample with unit covariance to N
-N = ift.ScalingOperator(d_space, noise_amplitude**2, float)
-n = N.draw_sample()
+N = ift.ScalingOperator(d_space, noise_amplitude**2, float) # Defining the noise covariance.
+n = N.draw_sample() #Drawing a sample from noise with covariance N.
 
-d = noiseless_data + n
-j = R.adjoint(N.inverse(d))
+d = noiseless_data + n  # Synthetic data!
 
-ic = ift.GradientNormController(iteration_limit=50000, tol_abs_gradnorm=0.1)
-Dinv = ift.InversionEnabler(S.inverse + R.adjoint @ N.inverse @ R, ic)
-D = Dinv.inverse
+# -
+
+# ### Information Source and Information Propagator
+#
+#  Now that we have the synthetic data, we are one step closer to the Wiener filter! In order to apply Wiener filter on the data we first need to define the information source $j$ along with the information propagator $D$.   
+
+# +
+j = R.adjoint(N.inverse(d)) # Defining the information propagator.
+
+ic = ift.GradientNormController(iteration_limit=50000, tol_abs_gradnorm=0.1) # Iteration controller
+D_inv = S.inverse + R.adjoint @ N.inverse @ R
+D_inv = ift.InversionEnabler(D_inv, ic) # Enabling .inverse to invert D via Conjugate Gradient.
+D = D_inv.inverse
 
 # + [markdown] slideshow={"slide_type": "subslide"}
-# #### Run Wiener Filter
+# ### Applying Wiener Filter 
+#
+# After defining the information source and propagator, we are able to apply the Wiener filter in order to get the posterior mean $m = \langle s \rangle_{\mathcal{P}(s|d)}$ that is our reconstruction of the signal:
 
 # + slideshow={"slide_type": "-"}
 m = D(j)
 
 # + [markdown] slideshow={"slide_type": "subslide"}
-# #### Results
+# ### Results
 
 # + slideshow={"slide_type": "-"}
-plt.plot(s.val, 'r', label="Signal", linewidth=2)
-plt.plot(d.val, 'k.', label="Data")
-plt.plot(m.val, 'k', label="Reconstruction",linewidth=2)
+plt.plot(s.val, 'r', label="signal ground truth", linewidth=2) # .val retrieves numpy array from fields.
+plt.plot(d.val, 'k.', label="noisy data")
+plt.plot(m.val, 'k', label="posterior mean",linewidth=2)
 plt.title("Reconstruction")
 plt.legend()
 plt.show()
+# -
+
+# In order to show the deviations with respect to the true signal (ground truth), we  plot the residuals as follows:
 
 # + slideshow={"slide_type": "subslide"}
-plt.plot(s.val - s.val, 'r', label="Signal", linewidth=2)
-plt.plot(d.val - s.val, 'k.', label="Data")
-plt.plot(m.val - s.val, 'k', label="Reconstruction",linewidth=2)
+plt.plot(s.val - s.val, 'r', label="ground truth ref [$s-s$]", linewidth=2)
+plt.plot(d.val - s.val, 'k.', label="noise [$d-Rs$]")
+plt.plot(m.val - s.val, 'k', label="posterior mean - ground truth",linewidth=2)
 plt.axhspan(-noise_amplitude,noise_amplitude, facecolor='0.9', alpha=.5)
 plt.title("Residuals")
 plt.legend()
@@ -150,13 +166,19 @@ plt.show()
 
 # + [markdown] slideshow={"slide_type": "slide"}
 # ## Wiener Filter on Incomplete Data
+#
+#  Now we consider a case that the data is not complete. This might be the case in real situations as the instrument might not be able to recieve data. In order to apply the Wiener filter to this case, we first need to build the incomplete data in NIFTy!
+# -
+
+# ### Incomplete Measuring 
+#
 
 # + slideshow={"slide_type": "-"}
 npix = d_space.size
-l = int(npix * 0.2)
-h = int(npix * 0.2 * 2)
+l = int(npix * 0.2) 
+h = int(npix * 0.4)
 
-mask = np.zeros(d_space.shape, bool)
+mask = np.zeros(d_space.shape, bool) 
 mask[l:h] = 1
 mask = ift.makeField(d_space, mask)
 maskOp = ift.MaskOperator(mask)
@@ -200,7 +222,7 @@ plt.show()
 # + [markdown] slideshow={"slide_type": "slide"}
 # ## Wiener Filter standardized
 # -
-sqrt_pspec = S_h(ift.full(S_h.domain, 1.)).sqrt()
+sqrt_pspec = S_k(ift.full(S_k.domain, 1.)).sqrt()
 trafo = HT.adjoint @ ift.makeOp(sqrt_pspec)
 R2 = R1 @ trafo
 j2 = R2.adjoint(N1.inverse(d1))
@@ -217,3 +239,5 @@ plt.plot(m2_s_space.val, 'k', label="Reconstruction", linewidth=2)
 plt.title("Reconstruction of incomplete data in normalized coordinates")
 plt.legend()
 plt.show()
+
+
