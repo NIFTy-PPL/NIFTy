@@ -49,7 +49,8 @@ from .lanczos import stochastic_lq_logdet
 from .likelihood import Likelihood, StandardHamiltonian
 from .model import Model
 from .optimize import minimize, newton_cg, trust_ncg
-from .refine_chart import CoordinateChart, RefinementField, RefinementHPField
+from .refine_chart import CoordinateChart
+from .refinement import RefinementField, RefinementHPField
 from .stats_distributions import (
     invgamma_invprior,
     invgamma_prior,
