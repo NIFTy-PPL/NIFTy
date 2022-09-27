@@ -8,6 +8,7 @@ import sys
 import pytest
 pytest.importorskip("jax")
 
+import jax
 from jax import random
 import jax.numpy as jnp
 from jax.tree_util import Partial
