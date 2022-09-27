@@ -10,7 +10,8 @@ pytest.importorskip("jax")
 import jax
 import numpy as np
 
-from nifty8.re import refine_chart, refine_util
+import nifty8.re as jft
+from nifty8.re import refine_util
 
 pmp = pytest.mark.parametrize
 
@@ -30,13 +31,13 @@ def test_shape_translations(
     }
 
     def cf(shape0, xi):
-        chart = refine_chart.CoordinateChart(
+        chart = jft.CoordinateChart(
             shape0=shape0,
             depth=depth,
             distances0=(1., ) * len(shape0),
             **kwargs
         )
-        return refine_chart.RefinementField.apply(
+        return jft.RefinementField.apply(
             xi, chart=chart, kernel=lambda x: x
         )
 
