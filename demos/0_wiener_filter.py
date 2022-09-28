@@ -182,7 +182,7 @@ h = int(npix * 0.4) # time when the instrument is turned on again
 mask = np.zeros(s_space.shape, bool) # initialising a new array for the whole time frame
 mask[l:h] = 1 # defining the mask
 mask = ift.makeField(s_space, mask) # turning the numpy array into a nifty field
-R = ift.MaskOperator(mask1) # defining the response operator which masks the places where mask == 1
+R = ift.MaskOperator(mask) # defining the response operator which masks the places where mask == 1
 # -
 
 # ### Synthetic Data
@@ -228,10 +228,10 @@ plt.show()
 # -
 sqrt_pspec = S_k(ift.full(S_k.domain, 1.)).sqrt()
 trafo = HT.adjoint @ ift.makeOp(sqrt_pspec)
-R2 = R1 @ trafo
-j2 = R2.adjoint(N1.inverse(d1))
+R2 = R @ trafo
+j2 = R2.adjoint(N.inverse(d))
 identity = ift.Operator.identity_operator(R2.domain)
-Dinv = ift.InversionEnabler(identity + R2.adjoint @ N1.inverse @ R2, ic)
+Dinv = ift.InversionEnabler(identity + R2.adjoint @ N.inverse @ R2, ic)
 D2 = Dinv.inverse
 m2 = D2(j2)
 
