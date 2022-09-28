@@ -167,54 +167,58 @@ plt.show()
 # + [markdown] slideshow={"slide_type": "slide"}
 # ## Wiener Filter on Incomplete Data
 #
-#  Now we consider a case that the data is not complete. This might be the case in real situations as the instrument might not be able to recieve data. In order to apply the Wiener filter to this case, we first need to build the incomplete data in NIFTy!
+# Now we consider a case that the data is not complete. This might be the case in real situations as the instrument might not be able to receive data. In order to apply the Wiener filter to this case, we first need to build the response corresponding to the incomplete measurement in NIFTy!
 # -
 
-# ### Incomplete Measuring 
+# ### Incomplete Measuring / Masking 
+# We need to build mask operator which cuts out all the unobserved parts of the signal. Lets assume that we first observe the signal for some time, but then something goes wrong with our instrument and we don't collect data for a while. After fixing the instrument we can collect data again. This means that data lives on an unstructured domain as the there is data missing for the period of time $t_{\text{off}}$ when the instrument was offline. In order to implement this incomplete measurement we need to define a new response operator $R$ which masks the signal for the time $t_{\text{off}}$.
+#
 #
 
 # + slideshow={"slide_type": "-"}
-npix = d_space.size
-l = int(npix * 0.2) 
-h = int(npix * 0.4)
+npix = s_space.size # whole observation time
+l = int(npix * 0.2) # time when the instrument is turned off
+h = int(npix * 0.4) # time when the instrument is turned on again
+mask = np.zeros(s_space.shape, bool) # initialising a new array for the whole time frame
+mask[l:h] = 1 # defining the mask
+mask = ift.makeField(s_space, mask) # turning the numpy array into a nifty field
+R = ift.MaskOperator(mask1) # defining the response operator which masks the places where mask == 1
+# -
 
-mask = np.zeros(d_space.shape, bool) 
-mask[l:h] = 1
-mask = ift.makeField(d_space, mask)
-maskOp = ift.MaskOperator(mask)
-R1 = maskOp @ R
+# ### Synthetic Data
+# As in the Wiener filter example with complete data, we are generating some synthetic data now.
 
-# + slideshow={"slide_type": "-"}
-N1 = ift.ScalingOperator(R1.target, noise_amplitude**2, float)
-n1 = N1.draw_sample()
-d1 = R1(s) + n1
+N = ift.ScalingOperator(R.target, noise_amplitude**2, float) # defining the noise covariance
+n = N.draw_sample() # drawing a noise sample
+d = R(s) + n # measuring the signal sample with additional noise
 
 # + slideshow={"slide_type": "skip"}
-Dinv = ift.SamplingEnabler(ift.SandwichOperator.make(cheese=N1.inverse, bun=R1), S.inverse, ic, S.inverse)
-Dinv = ift.InversionEnabler(Dinv, ic)
-D1 = Dinv.inverse
-j1 = R1.adjoint(N1.inverse(d1))
-m1 = D1(j1)
+#D_inv = S.inverse + R.adjoint @ N.inverse @ R
+D_inv = ift.SamplingEnabler(ift.SandwichOperator.make(cheese=N.inverse, bun=R), S.inverse, ic, S.inverse)
+D_inv = ift.InversionEnabler(D_inv, ic)
+D = D_inv.inverse
+j = R.adjoint(N.inverse(d))
+m = D(j)
 # -
 
 n_samples = 200
 sc = ift.StatCalculator()
 for _ in range(n_samples):
-    sample = m1 + D1.draw_sample()
+    sample = m + D.draw_sample()
     sc.add(sample)
 m_std = sc.var.sqrt()
 
 # + slideshow={"slide_type": "skip"}
 plt.axvspan(l, h, facecolor='0.8',alpha=0.5)
-plt.fill_between(range(m1.size), (m1 - m_std).val, (m1 + m_std).val, facecolor='0.5', alpha=0.5, label="Sample std")
+plt.fill_between(range(m.size), (m - m_std).val, (m + m_std).val, facecolor='0.5', alpha=0.5, label="Sample std")
 plt.plot(sc.mean.val, 'k--', label="Sample mean")
 plt.plot(s.val, 'r', label="Signal", alpha=1, linewidth=2)
 
-tmp = maskOp.adjoint(d1).val_rw()
-tmp[tmp == 0.] = np.nan
+tmp = R.adjoint(d).val_rw()
+tmp[l:h] = np.nan
 plt.plot(tmp, 'k.', label="Data")
 
-plt.plot(m1.val, 'k', label="Reconstruction", linewidth=2)
+plt.plot(m.val, 'k', label="Reconstruction", linewidth=2)
 plt.title("Reconstruction of incomplete data")
 plt.legend()
 plt.show()
