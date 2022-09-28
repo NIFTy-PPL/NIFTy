@@ -4,7 +4,7 @@ RUN apt-get update && apt-get install -y \
     # Needed for setup
     git python3-pip \
     # Documentation build dependencies
-    dvipng texlive-latex-base texlive-latex-extra \
+    dvipng texlive-latex-base texlive-latex-extra pandoc \
     # Dependency of mpi4py
     libopenmpi-dev \
     && rm -rf /var/lib/apt/lists/*
