@@ -37,5 +37,10 @@
           # ( pkgs.lib.attrValues req ) ;
           venvDir = "./.nix-nifty-venv";
         };
+
+        devShells."all" = pkgs.mkShell {
+          nativeBuildInputs = with myPyPkgs; [ pip venvShellHook ] ++ ( pkgs.lib.attrValues req );
+          venvDir = "./.nix-nifty-venv";
+        };
       });
 }
