@@ -409,7 +409,7 @@ def optimize_kl(likelihood_energy,
         _barrier(comm(iglobal))
 
         if output_directory is not None:
-            _plot_operators(iglobal, export_operator_outputs, sl, comm(iglobal))
+            _export_operators(iglobal, export_operator_outputs, sl, comm(iglobal))
             sl.save(join(output_directory, "pickle/") + _file_name_by_strategy(iglobal),
                     overwrite=True)
             _save_random_state(iglobal)
@@ -482,7 +482,7 @@ def _pickle_load_values(index, name):
     return val
 
 
-def _plot_operators(index, export_operator_outputs, sample_list, comm):
+def _export_operators(index, export_operator_outputs, sample_list, comm):
     if not isinstance(export_operator_outputs, dict):
         raise TypeError
     if not isdir(_output_directory):
