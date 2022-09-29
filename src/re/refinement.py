@@ -281,7 +281,8 @@ class RefinementField(AbstractModel):
         skip0 :
             Whether to skip the first refinement level.
         """
-        kernel = self.kernel if kernel is None else kernel
+        if kernel is None and "_cov_from_loc" not in kwargs:
+            kernel = self.kernel
         depth = self.chart.depth if depth is None else depth
         skip0 = self.skip0 if skip0 is None else skip0
 
@@ -312,7 +313,8 @@ class RefinementField(AbstractModel):
             Covariance kernel of the refinement field if not specified during
             initialization.
         """
-        kernel = self.kernel if kernel is None else kernel
+        if kernel is None and "_cov_from_loc" not in kwargs:
+            kernel = self.kernel
 
         return _coordinate_pixel_refinement_matrices(
             self.chart,
@@ -345,6 +347,7 @@ class RefinementField(AbstractModel):
         depth: Optional[int] = None,
         coerce_fine_kernel: bool = True,
         _refine: Optional[Callable] = None,
+        _cov_from_loc: Optional[Callable] = None,
         precision=None,
     ):
         """Static method to apply a refinement field given some excitations, a
@@ -384,7 +387,8 @@ class RefinementField(AbstractModel):
                 kernel=kernel,
                 depth=depth,
                 skip0=skip0,
-                coerce_fine_kernel=coerce_fine_kernel
+                coerce_fine_kernel=coerce_fine_kernel,
+                _cov_from_loc=_cov_from_loc,
             )
         refine_w_chart = partial(
             refine if _refine is None else _refine,
@@ -408,7 +412,8 @@ class RefinementField(AbstractModel):
 
     def __call__(self, xi, kernel=None, *, skip0=None, **kwargs):
         """See `RefinementField.apply`."""
-        kernel = self.kernel if kernel is None else kernel
+        if kernel is None and "_cov_from_loc" not in kwargs:
+            kernel = self.kernel
         skip0 = self.skip0 if skip0 is None else skip0
         return self.apply(xi, self.chart, kernel=kernel, skip0=skip0, **kwargs)
 
