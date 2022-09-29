@@ -442,7 +442,9 @@ class CoordinateChart():
             dvol = 1 / 2**lvl
         else:
             raise AssertionError()
-        indices = tuple(pos / dvol - off for off, pos in zip(offset, positions))
+        indices = tuple(
+            (pos - off) / dvol for off, pos in zip(offset, positions)
+        )
         if discretize:
             indices = tuple(jnp.rint(idx).astype(jnp.int32) for idx in indices)
         return indices
