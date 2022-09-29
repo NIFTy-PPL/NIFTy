@@ -308,6 +308,12 @@ class OptimizeKLConfig:
             if len(tmp) == 2:  # type information available
                 if tmp[0] == "bool":
                     vv = bool(tmp[1])
+                    if tmp[1] == "True":
+                        vv = True
+                    elif tmp[1] == "False":
+                        vv = False
+                    else:
+                        ValueError(f"{tmp[1]} is not boolean")
                 elif tmp[0] == "float":
                     vv = float(tmp[1])
                 elif tmp[0] == "int":
