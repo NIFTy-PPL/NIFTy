@@ -235,7 +235,7 @@ def gauss_kl(cov_desired, cov_approx, *, m_desired=None, m_approx=None):
 
 def refinement_covariance(chart, kernel, jit=True):
     """Computes the implied covariance as modeled by the refinement scheme."""
-    from .refine_chart import RefinementField
+    from .refinement import RefinementField
 
     cf = RefinementField(chart, kernel=kernel)
     try:
