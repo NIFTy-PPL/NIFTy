@@ -1,11 +1,11 @@
 # SPDX-License-Identifier: GPL-2.0+ OR BSD-2-Clause
 
-from functools import partial
 from typing import Callable, Optional, Union
 
 import jax
 from jax import numpy as jnp
 from jax import random
+from jax.tree_util import Partial
 
 from .forest_util import ShapeWithDtype
 
@@ -114,7 +114,8 @@ def stochastic_lq_logdet(
     key: Union[int, jnp.ndarray],
     *,
     shape0: Optional[int] = None,
-    dtype=None
+    dtype=None,
+    cmap=jax.vmap,
 ):
     """Computes a stochastic estimate of the log-determinate of a matrix using
     the stochastic Lanczos quadrature algorithm.
@@ -125,7 +126,6 @@ def stochastic_lq_logdet(
         key = random.PRNGKey(key)
     keys = random.split(key, n_samples)
 
-    lanczos = partial(lanczos_tridiag, mat, ShapeWithDtype(shape0, dtype))
-    tridiags, _ = jax.vmap(lanczos, in_axes=(None, 0),
-                           out_axes=(0, 0))(order, keys)
+    lanczos = Partial(lanczos_tridiag, mat, ShapeWithDtype(shape0, dtype), order)
+    tridiags, _ = cmap(lanczos)(keys)
     return stochastic_logdet_from_lanczos(tridiags, shape0)
