@@ -116,7 +116,7 @@ def interp_mat(grid_shape, grid_bounds, sampling_points, *, distances=None):
     #     (weights.ravel(), jnp.stack((ii.ravel(), jj.ravel()), axis=1)),
     #     shape=(n_points, np.prod(grid_shape))
     # )
-    return BCOO.from_scipy_sparse(mat)
+    return BCOO.from_scipy_sparse(mat).sort_indices()
 
 
 class HarmonicSKI():
