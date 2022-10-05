@@ -41,7 +41,7 @@ kernel = Partial(jnp.interp, xp=x, fp=y)
 inv_kernel = Partial(jnp.interp, xp=y, fp=x)
 
 
-@pmp("dist", (10., 20., 30., 1e+3))
+@pmp("dist", (10., 1e+3))
 def test_refinement_matrices_1d(dist, kernel=kernel):
     cov_from_loc = refine._get_cov_from_loc(kernel=kernel)
 
@@ -63,8 +63,8 @@ def test_refinement_matrices_1d(dist, kernel=kernel):
     assert_allclose(fine_kernel_sqrt, fine_kernel_sqrt_diy)
 
 
-@pmp("seed", (12, 42, 43, 45))
-@pmp("dist", (10., 20., 30., 1e+3))
+@pmp("seed", (12, 45))
+@pmp("dist", (10., 1e+3))
 def test_refinement_1d(seed, dist, kernel=kernel):
     rng = np.random.default_rng(seed)
 
@@ -90,8 +90,8 @@ def test_refinement_1d(seed, dist, kernel=kernel):
         aallclose(ref(lvl0, lvl1_exc, olf, fine_kernel_sqrt))
 
 
-@pmp("seed", (12, 42))
-@pmp("dist", (60., 1e+3, (80., 80.), (40., 90.), (1e+2, 1e+3, 1e+4)))
+@pmp("seed", (12, ))
+@pmp("dist", (60., 1e+3, (40., 90.), (1e+2, 1e+3, 1e+4)))
 @pmp("_coarse_size", (3, 5))
 @pmp("_fine_size", (2, 4))
 @pmp("_fine_strategy", ("jump", "extend"))
@@ -128,7 +128,7 @@ def test_refinement_nd_cross_consistency(
         aallclose(cf(xi, _refine=ref))
 
 
-@pmp("dist", (60., 1e+3, (80., 80.), (40., 90.), (1e+2, 1e+3, 1e+4)))
+@pmp("dist", (60., 1e+3, (40., 90.), (1e+2, 1e+3, 1e+4)))
 def test_refinement_fine_strategy_basic_consistency(dist, kernel=kernel):
     olf_j, ks_j = refine.layer_refinement_matrices(
         dist, kernel=kernel, _fine_size=2, _fine_strategy="jump"
@@ -154,7 +154,7 @@ def test_refinement_fine_strategy_basic_consistency(dist, kernel=kernel):
     assert_allclose(csq0_j, csq0_e, rtol=1e-13, atol=0.)
 
 
-@pmp("dist", (60., 1e+3, (80., 80.), (40., 90.), (1e+2, 1e+3, 1e+4)))
+@pmp("dist", (60., 1e+3, (40., 90.), (1e+2, 1e+3, 1e+4)))
 @pmp("_coarse_size", (3, 5))
 @pmp("_fine_size", (2, 4))
 @pmp("_fine_strategy", ("jump", "extend"))
@@ -226,7 +226,7 @@ def test_refinement_nd_shape(seed, n_dim, kernel=kernel):
     assert fine_reference.shape == tuple((2 * (shp_i - 2), ) * n_dim)
 
 
-@pmp("dist", (60., 1e+3, (80., 80.), (40., 90.), (1e+2, 1e+3, 1e+4)))
+@pmp("dist", (60., 1e+3, (40., 90.)))
 @pmp("_coarse_size", (3, 5))
 @pmp("_fine_size", (2, 4))
 @pmp("_fine_strategy", ("jump", "extend"))
@@ -261,7 +261,7 @@ def test_chart_pixel_refinement_matrices_consistency(
 def test_chart_refinement_matrices_consistency(
     dist, _coarse_size, _fine_size, _fine_strategy, kernel=kernel
 ):
-    depth = 3
+    depth = 2
     distances = np.atleast_1d(dist)
     ndim = distances.size
     kwargs = {
@@ -323,7 +323,7 @@ def test_chart_refinement_matrices_consistency(
 
 
 @pmp("seed", (12, ))
-@pmp("dist", (60., 1e+3, (80., 80.), (40., 90.), (1e+2, 1e+3, 1e+4)))
+@pmp("dist", (60., 1e+3, (40., 90.), (1e+2, 1e+3, 1e+4)))
 @pmp("_coarse_size", (3, 5))
 @pmp("_fine_size", (2, 4))
 @pmp("_fine_strategy", ("jump", "extend"))
