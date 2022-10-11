@@ -34,13 +34,14 @@
 
         devShells.default = pkgs.mkShell {
           nativeBuildInputs = with myPyPkgs; [ pip venvShellHook ] ++ req.minimal ++ req.dev;
-          # ( pkgs.lib.attrValues req ) ;
           venvDir = "./.nix-nifty-venv";
+          shellHook = "export MPLBACKEND=TkAgg";
         };
 
         devShells."all" = pkgs.mkShell {
           nativeBuildInputs = with myPyPkgs; [ pip venvShellHook ] ++ ( pkgs.lib.attrValues req );
           venvDir = "./.nix-nifty-venv";
+          shellHook = "export MPLBACKEND=TkAgg";  # Otherwise matplotlib manages to crash python
         };
       });
 }

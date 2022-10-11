@@ -93,7 +93,8 @@ def test_optimize_kl(constants, point_estimates, kl_minimizer, n_samples,
                          sampling_iteration_controller, nonlinear_sampling_minimizer, constants,
                          point_estimates, transitions, export_operator_outputs, output_directory, initial_position,
                          initial_index, comm, inspect_callback,
-                         terminate_callback, save_strategy="all")
+                         terminate_callback, save_strategy="all", plot_energy_history=False,
+                         plot_minisanity_history=False)
 
     ift.random.setState(rand_state)
 
@@ -105,7 +106,8 @@ def test_optimize_kl(constants, point_estimates, kl_minimizer, n_samples,
                               sampling_iteration_controller, nonlinear_sampling_minimizer, constants,
                               point_estimates, transitions, export_operator_outputs, output_directory1, initial_position,
                               initial_index, comm, inspect_callback,
-                              terminate_callback, resume=True, save_strategy="last")
+                              terminate_callback, resume=True, save_strategy="last",
+                              plot_energy_history=False, plot_minisanity_history=False)
 
     for aa, bb in zip(sl.iterator(), sl1.iterator()):
         ift.extra.assert_allclose(aa, bb)
@@ -163,7 +165,8 @@ def test_transitions():
     sl = ift.optimize_kl(likelihood_energy, final_index, n_samples, kl_minimizer,
                          sampling_iteration_controller, nonlinear_sampling_minimizer, constants,
                          point_estimates, transitions, export_operator_outputs, output_directory, initial_position,
-                         initial_index, comm, inspect_callback, terminate_callback, save_strategy="all")
+                         initial_index, comm, inspect_callback, terminate_callback, save_strategy="all",
+                         plot_energy_history=False, plot_minisanity_history=False)
     assert sl.domain is mdom2
 
 
