@@ -35,7 +35,7 @@
 #
 # ### Assumptions
 # - We consider a linear response R in the measurement equation $d=Rs+n$.
-# - We also assume the **signal** and the **noise** prior to be **Gaussian**  $\mathcal P (s) = \mathcal G (s,S)$, $\mathcal P (n) = \mathcal G (n,N)$ 
+# - We also assume the **signal** and the **noise** prior to be **Gaussian**  $\mathcal P (s) = \mathcal G (s,S)$, $\mathcal P (n) = \mathcal G (n,N)$
 # - Here $S, N$ are signal and noise covariances. Therefore they are positive definite matrices.
 #
 # ### Wiener filter solution
@@ -62,7 +62,7 @@ plt.style.use("seaborn-notebook")
 # ### Implementation in NIFTy
 #
 # - We assume statistical **homogeneity** and **isotropy**, so the signal covariance $S$ is **translation invariant** and only depends on the **absolute value** of the distance. According to Wiener-Khinchin theorem, the signal covariance $S$ is diagonal in harmonic space, $$S_{kk^{\prime}} = 2 \pi \delta(k-k^{\prime}) P(k)= \text{diag}(S) \equiv \widehat{S_k}$$
-# and is described by a one-dimensional power spectrum. We assume the power spectrum to follow a power-law, $$P(k) = P_0\,\left(1+\left(\frac{k}{k_0}\right)^2\right)^{-\gamma /2},$$ with $P_0 = 2 \cdot 10^4, \ k_0 = 5, \ \gamma = 4$, thus the reconstruction starts in harmonic space. 
+# and is described by a one-dimensional power spectrum. We assume the power spectrum to follow a power-law, $$P(k) = P_0\,\left(1+\left(\frac{k}{k_0}\right)^2\right)^{-\gamma /2},$$ with $P_0 = 2 \cdot 10^4, \ k_0 = 5, \ \gamma = 4$, thus the reconstruction starts in harmonic space.
 
 # + slideshow={"slide_type": "-"}
 def pow_spec(k):
@@ -94,16 +94,16 @@ S = ift.SandwichOperator.make(bun=HT, cheese=S_k) # Sandwich Operator implements
 
 # ### Sampling
 #
-# - Assuming we have a distribution $\mathcal{G}(b,B)$ we can sample from and we want to draw a sample from a distritbution $\mathcal{G}(c,C)$ with covariance $C$. The two distributions are connected via the relation $C = ABA^{\dagger}.$ One can show that $c= Ab$ with $b \curvearrowleft \mathcal{G}(b,B)$	has a probability distribution with covariance $C$ as desired. 
+# - Assuming we have a distribution $\mathcal{G}(b,B)$ we can sample from and we want to draw a sample from a distritbution $\mathcal{G}(c,C)$ with covariance $C$. The two distributions are connected via the relation $C = ABA^{\dagger}.$ One can show that $c= Ab$ with $b \curvearrowleft \mathcal{G}(b,B)$	has a probability distribution with covariance $C$ as desired.
 # $$ \langle cc^\dagger\rangle_{\mathcal{G}(c,C)} = \langle Ab(Ab)^\dagger\rangle_{\mathcal{G}(b,B)} = \langle Abb^\dagger A^\dagger \rangle =  A \langle bb^\dagger  \rangle A^\dagger = ABA^\dagger = C$$
 # - This is also true for the case that $B = \mathbb{1}$, meaning that $\mathcal{G}(b,\mathbb{1})$ Thus $C = AA^{\dagger}$ .
 # - Note that, if $C$ is diagonal, $A$ is diagonal as well.
-# - It can be shown that if $C = A + B$, then $c = a + b$ with $b \curvearrowleft \mathcal{G}(b,B)$ and $a \curvearrowleft \mathcal{G}(a,A)$ has a probability distribution with covariance $C$ as desired. 
+# - It can be shown that if $C = A + B$, then $c = a + b$ with $b \curvearrowleft \mathcal{G}(b,B)$ and $a \curvearrowleft \mathcal{G}(a,A)$ has a probability distribution with covariance $C$ as desired.
 # - If we can draw samples from $\mathcal{G}(a,A)$, and we want to draw a sample with the covariance $A^{-1}$, one can simply show that $c = A^{-1}a$ has a  a probability distribution with covariance $A^{-1}$.
 # $$\langle c c^{\dagger} \rangle = \langle A^{-1}aa^{\dagger}(A^{-1})^{\dagger} \rangle =  A^{-1}\langle aa^{\dagger}\rangle(A^{-1})^{\dagger} = A^{-1} A(A^{-1})^{\dagger} =A^{-1}$$
 # as we assume $A^{-1}$ to be Hermitian.
 #
-# By this brief introduction to sampling, we apply it in order to get the synthetic data. All of these sampling rules are implemented in NIFTy so we do not need to take care. 
+# By this brief introduction to sampling, we apply it in order to get the synthetic data. All of these sampling rules are implemented in NIFTy so we do not need to take care.
 
 s = S.draw_sample() # Drawing a sample from signal with covariance S.
 
@@ -123,7 +123,7 @@ d = noiseless_data + n  # Synthetic data!
 
 # ### Information Source and Information Propagator
 #
-#  Now that we have the synthetic data, we are one step closer to the Wiener filter! In order to apply Wiener filter on the data we first need to define the information source $j$ along with the information propagator $D$.   
+#  Now that we have the synthetic data, we are one step closer to the Wiener filter! In order to apply Wiener filter on the data we first need to define the information source $j$ along with the information propagator $D$.
 
 # +
 j = R.adjoint(N.inverse(d)) # Defining the information propagator.
@@ -134,7 +134,7 @@ D_inv = ift.InversionEnabler(D_inv, ic) # Enabling .inverse to invert D via Conj
 D = D_inv.inverse
 
 # + [markdown] slideshow={"slide_type": "subslide"}
-# ### Applying Wiener Filter 
+# ### Applying Wiener Filter
 #
 # After defining the information source and propagator, we are able to apply the Wiener filter in order to get the posterior mean $m = \langle s \rangle_{\mathcal{P}(s|d)}$ that is our reconstruction of the signal:
 
@@ -170,7 +170,7 @@ plt.show()
 # Now we consider a case that the data is not complete. This might be the case in real situations as the instrument might not be able to receive data. In order to apply the Wiener filter to this case, we first need to build the response corresponding to the incomplete measurement in NIFTy!
 # -
 
-# ### Incomplete Measuring / Masking 
+# ### Incomplete Measuring / Masking
 # We need to build mask operator which cuts out all the unobserved parts of the signal. Lets assume that we first observe the signal for some time, but then something goes wrong with our instrument and we don't collect data for a while. After fixing the instrument we can collect data again. This means that data lives on an unstructured domain as the there is data missing for the period of time $t_{\text{off}}$ when the instrument was offline. In order to implement this incomplete measurement we need to define a new response operator $R$ which masks the signal for the time $t_{\text{off}}$.
 #
 #
@@ -186,45 +186,57 @@ R = ift.MaskOperator(mask) # defining the response operator which masks the plac
 # -
 
 # ### Synthetic Data
-# As in the Wiener filter example with complete data, we are generating some synthetic data now.
+# As in the Wiener filter example with complete data, we are generating some synthetic data now by propagating the previously drawn prior sample through the incomplete measurement response and adding a noise sample.
 
 N = ift.ScalingOperator(R.target, noise_amplitude**2, float) # defining the noise covariance
 n = N.draw_sample() # drawing a noise sample
 d = R(s) + n # measuring the signal sample with additional noise
 
+# ### Sampling from D
+# Since we have an incomplete measurement we want to know how uncertain we are about our Wiener filter solution. Therefore we want to get the one sigma uncertainty interval for our reconstruction [$m^x-\sqrt{D^{xx}},m^x+\sqrt{D^{xx}}$]. We cannot access the diagonal elements of $D$ easily due to its operator structure, but we can easily obtain both, the mean and the standard deviation by sampling from $D$ and computing them directly from the drawn samples. In order to enable NIFTy to sample from $D$ we need to use some helper functions.
+
 # + slideshow={"slide_type": "skip"}
-#D_inv = S.inverse + R.adjoint @ N.inverse @ R
+# this implements the rule how to sample from a sum of covariances
 D_inv = ift.SamplingEnabler(ift.SandwichOperator.make(cheese=N.inverse, bun=R), S.inverse, ic, S.inverse)
-D_inv = ift.InversionEnabler(D_inv, ic)
+D_inv = ift.InversionEnabler(D_inv, ic) # this allows for numerical inversion
 D = D_inv.inverse
-j = R.adjoint(N.inverse(d))
-m = D(j)
+j = R.adjoint(N.inverse(d)) # Defining the information source
+m = D(j) # posterior mean
+
+n_samples = 200 # number of samples to calculate the posterior standard deviation
+
+sc = ift.StatCalculator() # helper function that calculates the mean and
+                          # the variance from a set of samples in an efficient way
+for _ in range(n_samples):
+    sample = m + D.draw_sample() # drawing a sample of G(s,D) and shifting it by m -> G(s-m,D)
+    sc.add(sample) #adding it to the StatCalculator
+samples_std = sc.var.sqrt() # standard deviation from samples
+samples_mean = sc.mean # mean from samples that converges to m in the limit of infinite samples
 # -
 
-n_samples = 200
-sc = ift.StatCalculator()
-for _ in range(n_samples):
-    sample = m + D.draw_sample()
-    sc.add(sample)
-m_std = sc.var.sqrt()
+# ### Plotting the results
+# In the following we are visualising the results of the Wiener filter $m$, the sampled standard deviation and mean, as well as the true signal (ground truth). Also, we are plotting the data. Since the data lives in data space, we first need to project it back into the signal space via $R^{\dagger}d$
 
 # + slideshow={"slide_type": "skip"}
-plt.axvspan(l, h, facecolor='0.8',alpha=0.5)
-plt.fill_between(range(m.size), (m - m_std).val, (m + m_std).val, facecolor='0.5', alpha=0.5, label="Sample std")
-plt.plot(sc.mean.val, 'k--', label="Sample mean")
-plt.plot(s.val, 'r', label="Signal", alpha=1, linewidth=2)
+plt.axvspan(l, h, facecolor='0.8',alpha=0.3, label="masked area") # Shading the masked interval
 
-tmp = R.adjoint(d).val_rw()
-tmp[l:h] = np.nan
+plt.plot(s.val, '#f28109', label="Signal (ground truth)", alpha=1, linewidth=2) #
+plt.plot(m.val, 'k', label="Posterior mean (reconstruction)", linewidth=2)
+plt.fill_between(range(m.size), (m - samples_std).val, (m + samples_std).val,
+                 facecolor='#8592ff', alpha=0.8, label="Posterior std (samples)")
+plt.plot(samples_mean.val, 'k--', label="Posterior mean (samples)")
+
+tmp = R.adjoint(d).val_rw() #.val returns a read only array. If you want to return a copy of the array use .val_rw()
+tmp[l:h] = np.nan # removing the "0" data points in the masked array which come from backprojecting d to s_space
 plt.plot(tmp, 'k.', label="Data")
 
-plt.plot(m.val, 'k', label="Reconstruction", linewidth=2)
 plt.title("Reconstruction of incomplete data")
 plt.legend()
 plt.show()
 
 # + [markdown] slideshow={"slide_type": "slide"}
 # ## Wiener Filter standardized
+#
 # -
 sqrt_pspec = S_k(ift.full(S_k.domain, 1.)).sqrt()
 trafo = HT.adjoint @ ift.makeOp(sqrt_pspec)
