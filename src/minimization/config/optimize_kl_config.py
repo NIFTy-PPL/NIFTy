@@ -18,6 +18,7 @@
 
 import importlib
 import os
+import nifty8 as ift
 from configparser import ConfigParser
 from warnings import warn
 
@@ -126,12 +127,12 @@ class OptimizeKLConfig:
         All additional parameters to `ift.optimize_kl` can be passed via
         `kwargs`.
         """
-        from ..optimize_kl import optimize_kl
+        import xubik0 as xu
 
         dct = dict(self)
         os.makedirs(dct["output_directory"], exist_ok=True)
         self.to_file(os.path.join(dct["output_directory"], "optimization.cfg"))
-        return optimize_kl(**dct, **kwargs)
+        return ift.optimize_kl(**dct)
 
     def _interpret_base(self):
         """Replace `base` entry in every section by the content of the section it points to."""
@@ -269,6 +270,10 @@ class OptimizeKLConfig:
 
         return f
 
+    def _number_of_arguments(self, func):
+        from inspect import signature
+        return len(signature(func).parameters)
+
     def instantiate_section(self, sec):
         """Instantiate object that is described by a section in the config file.
 
@@ -318,6 +323,9 @@ class OptimizeKLConfig:
 
         # Plug into builder or something else
         if sec in self._builders:
+            if len(dct) < self._number_of_arguments(self._builders[sec]):
+                from functools import partial
+                return partial(self._builders[sec], **dct)
             return self._builders[sec](**dct)
         if "custom_function" in dct:
             mod_name, func_name = dct.pop("custom_function").rsplit(".", 1)
@@ -340,6 +348,7 @@ class OptimizeKLConfig:
         yield "save_strategy", copt["save strategy"]
         yield "plot_energy_history", True
         yield "plot_minisanity_history", True
+
 
         # dynamic
         yield "total_iterations", int(cdyn["total iterations"])
@@ -370,3 +379,4 @@ class OptimizeKLConfig:
             if getattr(self, a) != getattr(other, a):
                 return False
         return True
+

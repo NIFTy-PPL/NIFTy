@@ -219,13 +219,17 @@ def optimize_kl(likelihood_energy,
     nonlinear_sampling_minimizer = _make_callable(nonlinear_sampling_minimizer)
     constants = _make_callable(constants)
     point_estimates = _make_callable(point_estimates)
-    transitions = _make_callable(transitions)
     n_samples = _make_callable(n_samples)
     comm = _make_callable(comm)
+
+
+    if transitions is None:
+        transitions = lambda x: None
     if inspect_callback is None:
         inspect_callback = lambda x: None
     if terminate_callback is None:
         terminate_callback = lambda x: False
+
 
     if output_directory is not None:
         global _output_directory
@@ -263,7 +267,7 @@ def optimize_kl(likelihood_energy,
         for (obj, cls) in [(likelihood_energy, Operator), (kl_minimizer, DescentMinimizer),
                            (nonlinear_sampling_minimizer, (DescentMinimizer, type(None))),
                            (constants, (list, tuple)), (point_estimates, (list, tuple)),
-                           (transitions, (Operator, type(None))), (n_samples, int)]:
+                           (n_samples, int)]:
             if not isinstance(obj(iglobal), cls):
                 raise TypeError(f"{obj(iglobal)} is not instance of {cls} but rather {type(obj(iglobal))}")
 
@@ -295,11 +299,23 @@ def optimize_kl(likelihood_energy,
     # /Initial position
 
     # Automatic transitions
-    def trans(iglobal):
-        res = transitions(iglobal)
-        if res is not None:
-            return res
+    myassert(_number_of_arguments(transitions) in [1, 2])
 
+    def trans(iglobal):
+        if not isinstance(transitions(iglobal), (Operator, type(None))):
+            from functools import partial
+            if isinstance(transitions(iglobal), partial):
+                res = transitions(iglobal)
+                old_sl = ResidualSampleList.load(join(output_directory, "pickle/") + _file_name_by_strategy(iglobal-1))
+                res = res(i_global=iglobal, old_sample_list=old_sl)
+                if res is not None:
+                    return res
+            else:
+                raise TypeError
+        else:
+            res = transitions(iglobal)
+            if res is not None:
+                return res
         if iglobal == 0:
             dom = mean.domain
         else:
@@ -311,7 +327,6 @@ def optimize_kl(likelihood_energy,
         if set(dom.keys()).issubset(set(tgt.keys())):
             return _InitializeOperator(dom, tgt, std=0.1)
         raise RuntimeError
-
 
     for iglobal in range(initial_index, total_iterations):
         if likelihood_energy(iglobal).domain != trans(iglobal).target:
