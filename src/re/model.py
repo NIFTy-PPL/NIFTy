@@ -1,12 +1,15 @@
 # Copyright(C) 2022 Gordian Edenhofer
 # SPDX-License-Identifier: GPL-2.0+ OR BSD-2-Clause
 
+from functools import partial
 from pprint import pformat
 from typing import Callable, Optional
 from warnings import warn
 
 from jax import numpy as jnp
 from jax import eval_shape, linear_transpose
+from jax import random
+from jax.tree_util import tree_map, tree_structure, tree_unflatten
 
 from .forest_util import ShapeWithDtype
 from .sugar import random_like
@@ -24,13 +27,14 @@ class AbstractModel():
     def target(self):
         return eval_shape(self.__call__, self.domain)
 
-    def init(self, key, *args, **kwargs):
+    @property
+    def init(self):
         msg = (
             "drawing white parameters"
             ";\nto silence this warning, overload the `init` method"
         )
         warn(msg)
-        return random_like(key, self.domain)
+        return Initializer(partial(random_like, primals=self.domain))
 
     def transpose(self):
         apply_T = linear_transpose(self.__call__, self.domain)
@@ -47,6 +51,68 @@ class AbstractModel():
         return self.transpose()
 
 
+class Initializer():
+    domain = ShapeWithDtype((2, ), jnp.uint32)
+
+    def __new__(cls, call_or_struct):
+        if isinstance(call_or_struct, Initializer):
+            return call_or_struct
+        obj = super().__new__(cls)
+        obj._call_or_struct = call_or_struct
+        return obj
+
+    def __call__(self, key, *args, **kwargs):
+        if not self.stupid:
+            struct = tree_structure(self._call_or_struct)
+            # Cast the subkeys to the structure of `primals`
+            subkeys = tree_unflatten(
+                struct, random.split(key, struct.num_leaves)
+            )
+
+            def draw(init, key):
+                return init(key, *args, **kwargs)
+
+            return tree_map(draw, self._call_or_struct, subkeys)
+
+        return self._call_or_struct(key, *args, **kwargs)
+
+    @property
+    def target(self):
+        return eval_shape(self, self.domain)
+
+    @property
+    def stupid(self):
+        return callable(self._call_or_struct)
+
+    def __or__(self, other):
+        other = Initializer(other)
+        if not self.stupid and not other.stupid:
+            return Initializer(self._call_or_struct | other._call_or_struct)
+        # TODO: we can actually do better here and combine the output of both
+        # calls in a new call
+        return NotImplemented
+
+    def __getitem__(self, key):
+        if not self.stupid:
+            return Initializer(self._call_or_struct[key])
+        raise NotImplementedError("'stupid' initializer not supported")
+
+    def __len__(self):
+        if not self.stupid:
+            return len(self._call_or_struct)
+        return len(self.target)
+
+    def __repr__(self):
+        s = "Initializer("
+        rep = pformat(self._call_or_struct).replace("\n", "\n\t").strip()
+        s += f"\n\t{rep}\n)"
+        s = s.replace("\n", "").replace("\t", "") if s.count("\n") <= 2 else s
+        return s
+
+    def __str__(self):
+        return repr(self)
+
+
 class Model(AbstractModel):
     """Thin wrapper of a method to jointly store the shape of its primals
     (`domain`) and optionally an initialization method and an associated
@@ -57,7 +123,7 @@ class Model(AbstractModel):
         apply: Callable,
         *,
         domain=None,
-        init: Optional[Callable] = None,
+        init=None,
         apply_inverse: Optional[Callable] = None,
         _linear_transpose: Optional[Callable] = None,
         _target=None,
@@ -104,12 +170,13 @@ class Model(AbstractModel):
             return self._target
         return super().target
 
-    def init(self, *args, **kwargs):
-        if callable(self._init):
-            return self._init(*args, **kwargs)
+    @property
+    def init(self) -> Initializer:
+        if self._init is not None:
+            return Initializer(self._init)
         if self.domain is not None:
-            return super().init(*args, **kwargs)
-        raise NotImplementedError("must specify callable `init` or set the `domain`")
+            return super().init
+        raise NotImplementedError("must specify `init` or set the `domain`")
 
     def transpose(self):
         if self._linear_transpose is not None:

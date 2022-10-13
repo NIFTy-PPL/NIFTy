@@ -47,7 +47,7 @@ from .kl import (
 )
 from .lanczos import stochastic_lq_logdet
 from .likelihood import Likelihood, StandardHamiltonian
-from .model import Model
+from .model import Model, Initializer
 from .optimize import minimize, newton_cg, trust_ncg
 from .refine_chart import CoordinateChart
 from .refinement import RefinementField, RefinementHPField
