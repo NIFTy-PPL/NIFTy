@@ -26,6 +26,10 @@ def lanczos_tridiag(
     v = v / jnp.linalg.norm(v)
     vecs = vecs.at[0].set(v)
 
+    # TODO
+    # * use `forest_util.dot` in favor of plain `jnp.dot`
+    # * remove all reshapes as they are unnecessary
+
     # Zeroth iteration
     w = mat(v)
     if w.shape != shape_dtype_struct.shape:
