@@ -25,22 +25,27 @@ class AbstractModel():
 
     @property
     def target(self):
-        return eval_shape(self.__call__, self.domain)
+        if self._target is None:
+            self._target = eval_shape(self.__call__, self.domain)
+        return self._target
 
     @property
     def init(self):
-        msg = (
-            "drawing white parameters"
-            ";\nto silence this warning, overload the `init` method"
-        )
-        warn(msg)
-        return Initializer(partial(random_like, primals=self.domain))
+        if self._init is None:
+            msg = (
+                "drawing white parameters"
+                ";\nto silence this warning, overload the `init` method"
+            )
+            warn(msg)
+            self._init = Initializer(partial(random_like, primals=self.domain))
+        return self._init
 
     def transpose(self):
-        apply_T = linear_transpose(self.__call__, self.domain)
+        if self._linear_transpose is None:
+            self._linear_transpose = linear_transpose(self.__call__, self.domain)
         # Yield a concrete model b/c __init__ signature is unspecified
         return Model(
-            apply_T,
+            self._linear_transpose,
             domain=self.target,
             _target=self.domain,
             _linear_transpose=self.__call__
@@ -59,6 +64,7 @@ class Initializer():
             return call_or_struct
         obj = super().__new__(cls)
         obj._call_or_struct = call_or_struct
+        obj._target = None  # Used only for caching
         return obj
 
     def __call__(self, key, *args, **kwargs):
@@ -78,7 +84,9 @@ class Initializer():
 
     @property
     def target(self):
-        return eval_shape(self, self.domain)
+        if self._target is None:
+            self._target = eval_shape(self, self.domain)
+        return self._target
 
     @property
     def stupid(self):
