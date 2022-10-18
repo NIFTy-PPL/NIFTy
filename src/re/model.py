@@ -17,6 +17,9 @@ from .sugar import random_like
 
 class AbstractModel():
     def __call__(self, *args, **kwargs):
+        return self.apply(*args, **kwargs)
+
+    def apply(self, *args, **kwargs):
         return NotImplementedError()
 
     @property
@@ -153,7 +156,7 @@ class Model(AbstractModel):
             If the apply method has an inverse, this can be stored in addition
             to the apply method itself.
         """
-        self._apply = apply
+        self.apply = apply
         if init is None and domain is None:
             raise ValueError("one of `init` or `domain` must be set")
         if domain is None and init is not None:
@@ -164,9 +167,6 @@ class Model(AbstractModel):
         self._apply_inverse = apply_inverse
         self._linear_transpose = _linear_transpose
         self._target = _target
-
-    def __call__(self, *args, **kwargs):
-        return self._apply(*args, **kwargs)
 
     @property
     def domain(self):
@@ -207,7 +207,7 @@ class Model(AbstractModel):
 
     def __repr__(self):
         s = "Model("
-        rep = pformat(self._apply).replace("\n", "\n\t").strip()
+        rep = pformat(self.apply).replace("\n", "\n\t").strip()
         s += f"\n\t{rep}"
         if self._domain:
             rep = pformat(self._domain).replace("\n", "\n\t").strip()
