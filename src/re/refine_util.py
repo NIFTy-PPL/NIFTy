@@ -328,3 +328,57 @@ def refinement_approximation_error(
         "cov_truth": cov_truth,
     }
     return gauss_kl(cov_truth, cov_empirical), aux
+
+
+REFINEMENT_STRATEGIES = [
+    {
+        "_coarse_size": 3,
+        "_fine_size": 2
+    },
+    {
+        "_coarse_size": 3,
+        "_fine_size": 4
+    },
+    {
+        "_coarse_size": 5,
+        "_fine_size": 2
+    },
+    {
+        "_coarse_size": 5,
+        "_fine_size": 4
+    },
+    {
+        "_coarse_size": 5,
+        "_fine_size": 6
+    },
+]
+
+
+def get_optimal_refinement_chart(
+    kernel,
+    *,
+    shape0,
+    refinement_strategies=REFINEMENT_STRATEGIES,
+    **common_kwargs
+):
+    """Compute the Kullback-Leibler divergence for a given `kernel`, initial
+    `shape0`, and parameters of a coordinate chart (`common_kwargs`); returning
+    the set within `refinement_strategies` that has the lowest Kullback-Leibler
+    divergence.
+    """
+    from .refine_chart import CoordinateChart
+
+    charts = []
+    min_shape = (1 << 31, ) * len(shape0)  # Absurdly large placeholder value
+    for kwargs in refinement_strategies:
+        cc = CoordinateChart(shape0=shape0, **(common_kwargs | kwargs))
+        charts.append(cc)
+        min_shape = tuple(min(ms, s) for ms, s in zip(min_shape, cc.shape))
+
+    errors = []
+    for cc in charts:
+        err, _ = refinement_approximation_error(cc, kernel, cutout=min_shape)
+        errors.append(err)
+
+    chosen = np.argmin(errors)
+    return charts[chosen], tuple(zip(errors, charts))
