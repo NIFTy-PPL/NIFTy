@@ -18,7 +18,6 @@
 
 import importlib
 import os
-import nifty8 as ift
 from configparser import ConfigParser
 from warnings import warn
 
@@ -127,12 +126,12 @@ class OptimizeKLConfig:
         All additional parameters to `ift.optimize_kl` can be passed via
         `kwargs`.
         """
-        import xubik0 as xu
+        from ..optimize_kl import optimize_kl
 
         dct = dict(self)
         os.makedirs(dct["output_directory"], exist_ok=True)
         self.to_file(os.path.join(dct["output_directory"], "optimization.cfg"))
-        return ift.optimize_kl(**dct)
+        return optimize_kl(**dct, **kwargs)
 
     def _interpret_base(self):
         """Replace `base` entry in every section by the content of the section it points to."""
@@ -349,7 +348,6 @@ class OptimizeKLConfig:
         yield "plot_energy_history", True
         yield "plot_minisanity_history", True
 
-
         # dynamic
         yield "total_iterations", int(cdyn["total iterations"])
         for key in [
@@ -379,4 +377,3 @@ class OptimizeKLConfig:
             if getattr(self, a) != getattr(other, a):
                 return False
         return True
-

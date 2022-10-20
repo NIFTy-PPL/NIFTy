@@ -230,7 +230,6 @@ def optimize_kl(likelihood_energy,
     if terminate_callback is None:
         terminate_callback = lambda x: False
 
-
     if output_directory is not None:
         global _output_directory
         global _save_strategy
@@ -306,8 +305,7 @@ def optimize_kl(likelihood_energy,
             from functools import partial
             if isinstance(transitions(iglobal), partial):
                 res = transitions(iglobal)
-                old_sl = ResidualSampleList.load(join(output_directory, "pickle/") + _file_name_by_strategy(iglobal-1))
-                res = res(i_global=iglobal, old_sample_list=old_sl)
+                res = res(i_global=iglobal)
                 if res is not None:
                     return res
             else:
@@ -327,6 +325,7 @@ def optimize_kl(likelihood_energy,
         if set(dom.keys()).issubset(set(tgt.keys())):
             return _InitializeOperator(dom, tgt, std=0.1)
         raise RuntimeError
+
 
     for iglobal in range(initial_index, total_iterations):
         if likelihood_energy(iglobal).domain != trans(iglobal).target:
