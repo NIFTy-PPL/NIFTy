@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: GPL-2.0+ OR BSD-2-Clause
 
-from typing import Callable, Optional, Union
+from typing import Callable, Optional, TypeVar, Union
 
 import jax
 from jax import numpy as jnp
@@ -11,18 +11,16 @@ from .forest_util import ShapeWithDtype
 
 from .disable_jax_control_flow import fori_loop
 
+V = TypeVar("V")
 
-def lanczos_tridiag(
-    mat: Callable, v, order: int,
-):
+
+def lanczos_tridiag(mat: Callable[[V], V], v: V, order: int):
     """Compute the Lanczos decomposition into a tri-diagonal matrix and its
     corresponding orthonormal projection matrix.
     """
     swd = ShapeWithDtype.from_leave(v)
     tridiag = jnp.zeros((order, order), dtype=swd.dtype)
-    vecs = jnp.zeros(
-        (order, ) + swd.shape, dtype=swd.dtype
-    )
+    vecs = jnp.zeros((order, ) + swd.shape, dtype=swd.dtype)
 
     v = v / jnp.linalg.norm(v)
     vecs = vecs.at[0].set(v)
@@ -67,7 +65,9 @@ def lanczos_tridiag(
         w -= alpha * v
 
         # Full reorthogonalization
-        vecs, w = fori_loop(0, order, reortho_step, (vecs, w))  # TODO: DO NOT DO THIS!
+        vecs, w = fori_loop(
+            0, order, reortho_step, (vecs, w)
+        )  # TODO: DO NOT DO THIS!
 
         # TODO: Raise if lanczos vectors are independent i.e. `beta` small?
         beta = jnp.linalg.norm(w)
@@ -135,6 +135,8 @@ def stochastic_lq_logdet(
 
     # TODO: draw rademacher vectors
     # v = random.rademacher(key, shape=shape_dtype_struct.shape, dtype=shape_dtype_struct.dtype)
-    lanczos = Partial(lanczos_tridiag, mat, ShapeWithDtype(shape0, dtype), order)
+    lanczos = Partial(
+        lanczos_tridiag, mat, ShapeWithDtype(shape0, dtype), order
+    )
     tridiags, _ = cmap(lanczos)(keys)
     return stochastic_logdet_from_lanczos(tridiags, shape0)
