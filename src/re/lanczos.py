@@ -5,7 +5,6 @@ from typing import Callable, Optional, TypeVar, Union
 import jax
 from jax import numpy as jnp
 from jax import random
-from jax.tree_util import Partial
 
 from .forest_util import ShapeWithDtype
 
@@ -131,12 +130,12 @@ def stochastic_lq_logdet(
     mat = mat.__matmul__ if not hasattr(mat, "__call__") else mat
     if not isinstance(key, jnp.ndarray):
         key = random.PRNGKey(key)
-    keys = random.split(key, n_samples)
+    key_smpls = random.split(key, n_samples)
 
-    # TODO: draw rademacher vectors
-    # v = random.rademacher(key, shape=shape_dtype_struct.shape, dtype=shape_dtype_struct.dtype)
-    lanczos = Partial(
-        lanczos_tridiag, mat, ShapeWithDtype(shape0, dtype), order
-    )
-    tridiags, _ = cmap(lanczos)(keys)
+    def random_lanczos(k):
+        v = random.rademacher(k, (shape0, ), dtype=dtype)
+        tri, _ = lanczos_tridiag(mat, v, order=order)
+        return tri
+
+    tridiags = cmap(random_lanczos)(key_smpls)
     return stochastic_logdet_from_lanczos(tridiags, shape0)
