@@ -9,12 +9,13 @@ import sys
 from jax import numpy as jnp
 from jax import random
 from jax import jit
-from jax.config import config
+import jax
+from jax import random
 import matplotlib.pyplot as plt
 
 import nifty8.re as jft
 
-config.update("jax_enable_x64", True)
+jax.config.update("jax_enable_x64", True)
 
 seed = 42
 key = random.PRNGKey(seed)
@@ -68,6 +69,7 @@ plt.plot(jnp.array([signal_response_truth, data]).T, label=("truth", "data"))
 plt.legend()
 plt.show()
 
+
 # %%
 def _sample_inverse_standard_hamiltonian(
     hamiltonian,
@@ -84,11 +86,6 @@ def _sample_inverse_standard_hamiltonian(
     prr_smpl = jft.random_like(key=subkey_prr, primals=primals)
     met_smpl = nll_smpl + prr_smpl
     return met_smpl, prr_smpl
-
-
-# %%
-import jax
-from jax import random
 
 
 def stochastic_lq_logdet(
@@ -114,14 +111,15 @@ def stochastic_lq_logdet(
     vs, prr_vs = _sample_inverse_standard_hamiltonian(ham, pos, keys[0])
     tridiags, vecs = jax.vmap(lanczos)(jnp.array([vs]))
     assert vecs.shape[0] == 1
-    return jft.lanczos.stochastic_logdet_from_lanczos(tridiags, shape0), vecs[
-        0], prr_vs  # TODO: do not use loop
+    return jft.lanczos.stochastic_logdet_from_lanczos(
+        tridiags, shape0
+    ), vecs[0], prr_vs  # TODO: do not use loop
 
 
 def geomap(order, key, mirror_samples=True):
     from jax import flatten_util
 
-    def energy(pos):
+    def energy(pos, return_sample=False):
         p, unflatten = flatten_util.ravel_pytree(pos)
 
         def mat(x):
@@ -133,6 +131,7 @@ def geomap(order, key, mirror_samples=True):
         logdet, vecs, smpl = stochastic_lq_logdet(
             mat, order, pos, key_lcz, shape0=p.size
         )
+        s = smpl.copy()
         # TODO: Pull into new lanczos method which computes orthoganlized smpls
         # for vecs
         ortho_smpl = vecs @ smpl
@@ -151,6 +150,8 @@ def geomap(order, key, mirror_samples=True):
                 h += ham(pos - smpl)
                 h *= 0.5
 
+        if return_sample:
+            return h + 0.5 * logdet, s, smpl
         return h + 0.5 * logdet
 
     return energy
@@ -172,7 +173,7 @@ geomap_order = 10
 geomap_energy = geomap(geomap_order, subkey_geomap, mirror_samples=False)
 
 # jft.disable_jax_control_flow._DISABLE_CONTROL_FLOW_PRIM = True
-geomap_energy = jax.jit(geomap_energy)
+geomap_energy = jax.jit(geomap_energy, static_argnames=("return_sample", ))
 print("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
 print(geomap_energy(pos))
 
@@ -193,12 +194,25 @@ opt_state_geomap = jft.minimize(
 )
 
 # %%
+_, prr_smpl, ortho_smpl = geomap_energy(opt_state_geomap.x, return_sample=True)
+
+plt.plot(prr_smpl, label="prior sample", alpha=0.7)
+plt.plot(ortho_smpl, label="ortho sample", alpha=0.7)
+plt.plot(jnp.abs(prr_smpl - ortho_smpl), label="abs diff", alpha=0.3)
+plt.legend()
+plt.show()
+
+# %%
 plt.plot(
     jnp.array(
-        [signal_response_truth, data,
-         signal_response(opt_state_geomap.x)]
+        [
+            signal_response_truth,
+            data,
+            signal_response(opt_state_geomap.x),
+            signal_response(opt_state_geomap.x + ortho_smpl),
+        ]
     ).T,
-    label=("truth", "data", "rec")
+    label=("truth", "data", "rec", "rec + smpl")
 )
 plt.legend()
 plt.show()
@@ -258,13 +272,19 @@ for i in range(n_mgvi_iterations):
 plt.plot(
     jnp.array(
         [
-            signal_response_truth, data,
+            signal_response_truth,
+            data,
             signal_response(opt_state_geomap.x),
             signal_response(opt_state_mgvi.x),
             *samples.at(opt_state_mgvi.x).apply(signal_response),
         ]
     ).T,
-    label=("truth", "data", "rec geomap", "rec mgvi", ) + ("smpls", ) * len(samples)
+    label=(
+        "truth",
+        "data",
+        "rec geomap",
+        "rec mgvi",
+    ) + ("smpls", ) * len(samples)
 )
 plt.legend()
 plt.show()
