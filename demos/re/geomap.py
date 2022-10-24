@@ -116,7 +116,7 @@ def stochastic_lq_logdet(
     ), vecs[0], prr_vs  # TODO: do not use loop
 
 
-def geomap(order, key, mirror_samples=True):
+def geomap(ham: jft.StandardHamiltonian, order: int, key, mirror_samples=True):
     from jax import flatten_util
 
     def energy(pos, return_sample=False):
@@ -170,7 +170,7 @@ print("!!!!!!!!!!!!!!!!!!!!!!! HAM", ham(pos))
 print("!!!!!!!!!!!!!!!!!!!!!!! metric", ham.metric(pos, pos) @ pos)
 # This is 50 times slower in compile time than ham.metric
 geomap_order = 10
-geomap_energy = geomap(geomap_order, subkey_geomap, mirror_samples=False)
+geomap_energy = geomap(ham, geomap_order, subkey_geomap, mirror_samples=False)
 
 # jft.disable_jax_control_flow._DISABLE_CONTROL_FLOW_PRIM = True
 geomap_energy = jax.jit(geomap_energy, static_argnames=("return_sample", ))
