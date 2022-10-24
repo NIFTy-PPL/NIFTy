@@ -9,31 +9,32 @@ from jax.tree_util import Partial
 
 from .forest_util import ShapeWithDtype
 
+from .disable_jax_control_flow import fori_loop
+
 
 def lanczos_tridiag(
-    mat: Callable, shape_dtype_struct: ShapeWithDtype, order: int,
-    key: jnp.ndarray
+    mat: Callable, v, order: int,
 ):
     """Compute the Lanczos decomposition into a tri-diagonal matrix and its
     corresponding orthonormal projection matrix.
     """
-    tridiag = jnp.zeros((order, order), dtype=shape_dtype_struct.dtype)
+    swd = ShapeWithDtype.from_leave(v)
+    tridiag = jnp.zeros((order, order), dtype=swd.dtype)
     vecs = jnp.zeros(
-        (order, ) + shape_dtype_struct.shape, dtype=shape_dtype_struct.dtype
+        (order, ) + swd.shape, dtype=swd.dtype
     )
 
-    v = random.normal(key, shape=shape_dtype_struct.shape)
     v = v / jnp.linalg.norm(v)
     vecs = vecs.at[0].set(v)
 
     # TODO
-    # * use `forest_util.dot` in favor of plain `jnp.dot`
+    # * use `forest_util.dot` and `forest_util.norm` in favor of plain `jnp.dot`
     # * remove all reshapes as they are unnecessary
 
     # Zeroth iteration
     w = mat(v)
-    if w.shape != shape_dtype_struct.shape:
-        ve = f"shape of `mat(v)` {w.shape!r} incompatible with {shape_dtype_struct}"
+    if w.shape != swd.shape:
+        ve = f"shape of `mat(v)` {w.shape!r} incompatible with {swd}"
         raise ValueError(ve)
     alpha = jnp.dot(w, v)
     tridiag = tridiag.at[(0, 0)].set(alpha)
@@ -47,7 +48,7 @@ def lanczos_tridiag(
     def reortho_step(j, state):
         vecs, w = state
 
-        tau = vecs[j, :].reshape(shape_dtype_struct.shape)
+        tau = vecs[j, :].reshape(swd.shape)
         coeff = jnp.dot(w, tau)
         w -= coeff * tau
         return vecs, w
@@ -55,8 +56,10 @@ def lanczos_tridiag(
     def lanczos_step(i, state):
         tridiag, vecs, beta = state
 
-        v = vecs[i, :].reshape(shape_dtype_struct.shape)
-        v_old = vecs[i - 1, :].reshape(shape_dtype_struct.shape)
+        # TODO: only save current and last vector and do not
+        # reorthogonalize??????; check theory beforehand!!!
+        v = vecs[i, :].reshape(swd.shape)
+        v_old = vecs[i - 1, :].reshape(swd.shape)
 
         w = mat(v) - beta * v_old
         alpha = jnp.dot(w, v)
@@ -64,7 +67,7 @@ def lanczos_tridiag(
         w -= alpha * v
 
         # Full reorthogonalization
-        vecs, w = jax.lax.fori_loop(0, i, reortho_step, (vecs, w))
+        vecs, w = fori_loop(0, order, reortho_step, (vecs, w))  # TODO: DO NOT DO THIS!
 
         # TODO: Raise if lanczos vectors are independent i.e. `beta` small?
         beta = jnp.linalg.norm(w)
@@ -75,18 +78,18 @@ def lanczos_tridiag(
 
         return tridiag, vecs, beta
 
-    tridiag, vecs, beta = jax.lax.fori_loop(
+    tridiag, vecs, beta = fori_loop(
         1, order - 1, lanczos_step, (tridiag, vecs, beta)
     )
 
     # Final tridiag value and reorthogonalization
-    v = vecs[order - 1, :].reshape(shape_dtype_struct.shape)
-    v_old = vecs[order - 2, :].reshape(shape_dtype_struct.shape)
+    v = vecs[order - 1, :].reshape(swd.shape)
+    v_old = vecs[order - 2, :].reshape(swd.shape)
     w = mat(v) - beta * v_old
     alpha = jnp.dot(w, v)
     tridiag = tridiag.at[(order - 1, order - 1)].set(alpha)
     w -= alpha * v
-    vecs, w = jax.lax.fori_loop(0, order - 1, reortho_step, (vecs, w))
+    vecs, w = fori_loop(0, order - 1, reortho_step, (vecs, w))
 
     return (tridiag, vecs)
 
@@ -130,6 +133,8 @@ def stochastic_lq_logdet(
         key = random.PRNGKey(key)
     keys = random.split(key, n_samples)
 
+    # TODO: draw rademacher vectors
+    # v = random.rademacher(key, shape=shape_dtype_struct.shape, dtype=shape_dtype_struct.dtype)
     lanczos = Partial(lanczos_tridiag, mat, ShapeWithDtype(shape0, dtype), order)
     tridiags, _ = cmap(lanczos)(keys)
     return stochastic_logdet_from_lanczos(tridiags, shape0)
