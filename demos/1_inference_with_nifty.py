@@ -21,14 +21,16 @@
 # The data is the field integrated along lines of sight that are
 # randomly (set mode=0) or radially (mode=1) distributed
 
+# +
 import sys
 import os
 import numpy as np
 import nifty8 as ift
+
 # %matplotlib inline
 ift.random.push_sseq_from_seed(27)
+# -
 
-""
 try:
     from mpi4py import MPI
     comm = MPI.COMM_WORLD
@@ -65,12 +67,10 @@ LOS_starts, LOS_ends = radial_los(100)
 R = ift.LOSResponse(position_space, starts=LOS_starts, ends=LOS_ends)
 signal_response = R @ signal
 
-""
 data_space = R.target
 noise = .001
 N = ift.ScalingOperator(data_space, noise, float)
 
-""
 mock_position = ift.from_random(signal_response.domain, 'normal')
 data = signal_response(mock_position) + N.draw_sample()
 
@@ -80,7 +80,6 @@ plot.add(R.adjoint_times(data), title='Data')
 plot.add([pspec.force(mock_position)], title='Power Spectrum')
 plot.output(ny=1, nx=3, xsize=24, ysize=6)
 
-""
 ic_sampling = ift.AbsDeltaEnergyController(#name="Sampling (linear)",
                                            deltaE=0.05, iteration_limit=100)
 ic_newton = ift.AbsDeltaEnergyController(name='Newton',
@@ -92,7 +91,6 @@ ic_sampling_nl = ift.AbsDeltaEnergyController(name='Sampling (nonlin)',
 minimizer = ift.NewtonCG(ic_newton)
 minimizer_sampling = ift.NewtonCG(ic_sampling_nl)
 
-""
 likelihood_energy = (ift.GaussianEnergy(data, inverse_covariance=N.inverse) @
                      signal_response)
 
@@ -122,7 +120,6 @@ def inspect_callback(samples, iglobal):
 
 # -
 
-""
 n_iterations = 6
 n_samples = lambda iiter: 10 if iiter < 5 else 20
 samples = ift.optimize_kl(likelihood_energy, n_iterations, n_samples,
@@ -132,8 +129,4 @@ samples = ift.optimize_kl(likelihood_energy, n_iterations, n_samples,
                           output_directory="1_inference_with_nifty_results",
                           comm=comm)
 
-""
 print(ift.ResidualSampleList.load("1_inference_with_nifty_results/pickle/last", comm=comm))
-
-""
-
