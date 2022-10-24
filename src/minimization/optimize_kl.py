@@ -344,6 +344,7 @@ def optimize_kl(likelihood_energy,
         energy_history = EnergyHistory()
 
     for iglobal in range(initial_index, total_iterations):
+        lh = likelihood_energy(iglobal)
         if iglobal == 0:
             sl = SampleList([mean])
         mean = _handle_transitions(transitions, iglobal, sl)
