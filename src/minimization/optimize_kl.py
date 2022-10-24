@@ -78,7 +78,8 @@ def optimize_kl(likelihood_energy,
                 plot_minisanity_history=True,
                 save_strategy="last",
                 return_final_position=False,
-                resume=False):
+                resume=False,
+                sanity_checks=True):
     """Provide potentially useful interface for standard KL minimization.
 
     The parameters `likelihood_energy`, `kl_minimizer`,
@@ -180,6 +181,10 @@ def optimize_kl(likelihood_energy,
         `initial_position` are ignored and read from the output directory
         instead. If `last_finished_iteration` is not a file, the value of
         `initial_position` is used instead. Default: False.
+    sanity_checks : bool
+        Check if all domains of likelihoods and transitions fit together. This
+        is potentially expensive because all likelihoods have to be instantiated
+        multiple times. Default: True.
 
     Returns
     -------
@@ -351,7 +356,6 @@ def optimize_kl(likelihood_energy,
                  "a MultiDomain. Please report at `c@philipp-arras.de` if you use this "
                  "feature and would like to see it continued.", DeprecationWarning)
 
-        lh = likelihood_energy(iglobal)
         count = CountingOperator(lh.domain)
         ham = StandardHamiltonian(lh @ count, sampling_iteration_controller(iglobal))
         minimizer = kl_minimizer(iglobal)
@@ -359,7 +363,7 @@ def optimize_kl(likelihood_energy,
 
         # TODO Distributing the domain of the likelihood is not supported (yet)
         check_MPI_synced_random_state(comm(iglobal))
-        check_MPI_equality(likelihood_energy(iglobal).domain, comm(iglobal))
+        check_MPI_equality(lh.domain, comm(iglobal))
         check_MPI_equality(mean.domain, comm(iglobal))
         check_MPI_equality(mean, comm(iglobal))
 
@@ -402,7 +406,7 @@ def optimize_kl(likelihood_energy,
         _barrier(comm(iglobal))
 
         if output_directory is not None:
-            _plot_operators(iglobal, export_operator_outputs, sl, comm(iglobal))
+            _export_operators(iglobal, export_operator_outputs, sl, comm(iglobal))
             sl.save(join(output_directory, "pickle/") + _file_name_by_strategy(iglobal),
                     overwrite=True)
             _save_random_state(iglobal)
@@ -475,7 +479,7 @@ def _pickle_load_values(index, name):
     return val
 
 
-def _plot_operators(index, export_operator_outputs, sample_list, comm):
+def _export_operators(index, export_operator_outputs, sample_list, comm):
     if not isinstance(export_operator_outputs, dict):
         raise TypeError
     if not isdir(_output_directory):
