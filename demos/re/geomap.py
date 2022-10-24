@@ -130,6 +130,7 @@ def geomap(ham: jft.StandardHamiltonian, order: int, key, mirror_samples=True):
         logdet, vecs, smpl = stochastic_lq_logdet(
             mat, order, pos, key_lcz, shape0=p.size
         )
+        # smpl = random.normal(key_smpls, p.shape, dtype=p.dtype)
         s = smpl.copy()
         # TODO: Pull into new lanczos method which computes orthoganlized smpls
         # for vecs
@@ -168,7 +169,7 @@ jax.config.update("jax_log_compiles", False)
 print("!!!!!!!!!!!!!!!!!!!!!!! HAM", ham(pos))
 print("!!!!!!!!!!!!!!!!!!!!!!! metric", ham.metric(pos, pos) @ pos)
 # This is 50 times slower in compile time than ham.metric
-geomap_order = 10
+geomap_order = 5
 geomap_energy = geomap(ham, geomap_order, subkey_geomap, mirror_samples=False)
 
 # jft.disable_jax_control_flow._DISABLE_CONTROL_FLOW_PRIM = True
@@ -199,6 +200,24 @@ plt.plot(prr_smpl, label="prior sample", alpha=0.7)
 plt.plot(ortho_smpl, label="ortho sample", alpha=0.7)
 plt.plot(jnp.abs(prr_smpl - ortho_smpl), label="abs diff", alpha=0.3)
 plt.legend()
+plt.show()
+
+# %%
+smpls_by_order = []
+for i in range(1, geomap_order):
+    _, _, s = geomap(ham, i, subkey_geomap, mirror_samples=False)(opt_state_geomap.x, return_sample=True)
+    smpls_by_order += [s]
+
+smpls_by_order = jnp.array(smpls_by_order)
+# %%
+fig, axs = plt.subplots(2, 1, sharex=True)
+d = jnp.diff(smpls_by_order, axis=0)
+axs.flat[0].plot(smpls_by_order.T, label=jnp.arange(1, geomap_order), alpha=0.3, marker=".")
+axs.flat[0].axhline(0., color="red")
+axs.flat[0].legend()
+axs.flat[1].plot(d.T, label=jnp.arange(1, geomap_order - 1), alpha=0.3, marker=".")
+axs.flat[1].axhline(0., color="red")
+axs.flat[1].legend()
 plt.show()
 
 # %%
