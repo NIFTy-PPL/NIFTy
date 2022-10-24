@@ -48,7 +48,7 @@ harmonic_power = jnp.concatenate((harmonic_power, harmonic_power[-2:0:-1]))
 correlated_field = jft.Model(
     lambda x: hartley(harmonic_power * x), domain=jft.ShapeWithDtype(dims)
 )
-signal_response = lambda x: jnp.exp(1. + correlated_field(x))
+signal_response = lambda x: correlated_field(x)  # jnp.exp(1. + correlated_field(x))
 
 noise_cov = lambda x: 0.1**2 * x
 noise_cov_inv = lambda x: 0.1**-2 * x
