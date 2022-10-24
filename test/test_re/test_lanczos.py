@@ -3,6 +3,7 @@
 # SPDX-License-Identifier: GPL-2.0+ OR BSD-2-Clause
 
 import pytest
+
 pytest.importorskip("jax")
 
 from functools import partial
@@ -43,9 +44,8 @@ def test_lanczos_tridiag(seed, shape0):
     m = rng.normal(size=(shape0, ) * 2)
     m = m @ m.T  # ensure positive-definiteness
 
-    tridiag, vecs = jft.lanczos.lanczos_tridiag(
-        partial(matmul, m), jft.ShapeWithDtype((shape0, )), shape0, rng_key
-    )
+    v = random.rademacher(rng_key, (shape0, ), float)
+    tridiag, vecs = jft.lanczos.lanczos_tridiag(partial(matmul, m), v, shape0)
     m_est = vecs.T @ tridiag @ vecs
 
     assert_allclose(m_est, m, atol=1e-13, rtol=1e-13)
