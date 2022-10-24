@@ -2,13 +2,15 @@
 
 # SPDX-License-Identifier: GPL-2.0+ OR BSD-2-Clause
 
+import pytest
+pytest.importorskip("jax")
+
 from functools import partial
 import sys
 from jax import random
 import jax.numpy as jnp
 import numpy as np
 from numpy.testing import assert_allclose
-import pytest
 from scipy.spatial import distance_matrix
 
 import nifty8.re as jft

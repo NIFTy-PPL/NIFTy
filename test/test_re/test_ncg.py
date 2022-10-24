@@ -2,10 +2,12 @@
 
 import sys
 
+import pytest
+pytest.importorskip("jax")
+
 from jax import random, value_and_grad
 import jax.numpy as jnp
 from numpy.testing import assert_allclose
-import pytest
 
 import nifty8.re as jft
 

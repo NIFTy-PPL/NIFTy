@@ -1,3 +1,6 @@
+import pytest
+pytest.importorskip("jax")
+
 from functools import partial
 from jax import numpy as jnp
 from jax.tree_util import tree_leaves
