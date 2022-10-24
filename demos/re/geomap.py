@@ -110,7 +110,6 @@ def stochastic_lq_logdet(
     )
     vs, prr_vs = _sample_inverse_standard_hamiltonian(ham, pos, keys[0])
     tridiags, vecs = jax.vmap(lanczos)(jnp.array([vs]))
-    assert vecs.shape[0] == 1
     return jft.lanczos.stochastic_logdet_from_lanczos(
         tridiags, shape0
     ), vecs[0], prr_vs  # TODO: do not use loop
