@@ -48,7 +48,9 @@ harmonic_power = jnp.concatenate((harmonic_power, harmonic_power[-2:0:-1]))
 correlated_field = jft.Model(
     lambda x: hartley(harmonic_power * x), domain=jft.ShapeWithDtype(dims)
 )
-signal_response = lambda x: correlated_field(x)  # jnp.exp(1. + correlated_field(x))
+signal_response = lambda x: correlated_field(
+    x
+)  # jnp.exp(1. + correlated_field(x))
 
 noise_cov = lambda x: 0.1**2 * x
 noise_cov_inv = lambda x: 0.1**-2 * x
@@ -205,17 +207,23 @@ plt.show()
 # %%
 smpls_by_order = []
 for i in range(1, geomap_order):
-    _, _, s = geomap(ham, i, subkey_geomap, mirror_samples=False)(opt_state_geomap.x, return_sample=True)
+    _, _, s = geomap(ham, i, subkey_geomap, mirror_samples=False)(
+        opt_state_geomap.x, return_sample=True
+    )
     smpls_by_order += [s]
 
 smpls_by_order = jnp.array(smpls_by_order)
 # %%
 fig, axs = plt.subplots(2, 1, sharex=True)
 d = jnp.diff(smpls_by_order, axis=0)
-axs.flat[0].plot(smpls_by_order.T, label=jnp.arange(1, geomap_order), alpha=0.3, marker=".")
+axs.flat[0].plot(
+    smpls_by_order.T, label=jnp.arange(1, geomap_order), alpha=0.3, marker="."
+)
 axs.flat[0].axhline(0., color="red")
 axs.flat[0].legend()
-axs.flat[1].plot(d.T, label=jnp.arange(1, geomap_order - 1), alpha=0.3, marker=".")
+axs.flat[1].plot(
+    d.T, label=jnp.arange(1, geomap_order - 1), alpha=0.3, marker="."
+)
 axs.flat[1].axhline(0., color="red")
 axs.flat[1].legend()
 plt.show()
