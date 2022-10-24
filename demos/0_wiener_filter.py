@@ -244,9 +244,7 @@ n = N.draw_sample()
 d = R(s) + n
 
 # ### Sampling from D
-# Since we have an incomplete measurement we want to know how uncertain we are about our Wiener filter solution.
-# Therefore we want to get the one sigma uncertainty interval for our reconstruction [$m^x-\sqrt{D^{xx}},m^x+\sqrt{D^{xx}}$].
-# We cannot access the diagonal elements of $D$ easily due to its operator structure, but we can easily obtain both, the mean and the standard deviation by sampling from $D$ and computing them directly from the drawn samples.
+# Since we have an incomplete measurement we want to know how uncertain we are about our Wiener filter solution. We can easily obtain both, the mean and the standard deviation by sampling from $D$ and computing them directly from the drawn samples.
 # In order to enable NIFTy to sample from $D$ we need to use some helper functions.
 
 # + slideshow={"slide_type": "skip"}
@@ -277,7 +275,7 @@ samples_mean = sc.mean
 # -
 
 # ### Plots
-# Let us visualise the results of the Wiener filter $m$, the sampled standard deviation and mean, as well as the true signal (ground truth) and the data.
+# Let us visualize the results of the Wiener filter $m$, the sampled standard deviation and mean, as well as the true signal (ground truth) and the data.
 # Since the data lives in data space, we first need to project it back into the signal space via $R^{\dagger}d$.
 
 # + slideshow={"slide_type": "skip"}
