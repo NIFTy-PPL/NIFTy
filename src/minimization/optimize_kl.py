@@ -240,10 +240,11 @@ def optimize_kl(likelihood_energy,
             initial_index = last_finished_index + 1
             fname = _file_name_by_strategy(last_finished_index)
             fname = reduce(join, [output_directory, "pickle", fname])
-            sl = SampleList.load(fname)
             if isfile(fname + ".mean.pickle"):
                 initial_position = ResidualSampleList.load_mean(fname)
+                sl = ResidualSampleList.load(fname)
             else:
+                sl = SampleList.load(fname)
                 myassert(sl.n_samples == 1)
                 initial_position = sl.local_item(0)
             _load_random_state(last_finished_index)
@@ -260,6 +261,8 @@ def optimize_kl(likelihood_energy,
                          f"{initial_index} >= {total_iterations}")
 
     myassert(_number_of_arguments(transitions) in [1, 2])
+    if _number_of_arguments(transitions) == 2 and not resume:
+        raise RuntimeError("Transitions are only possible if resume it True")
     for iglobal in range(initial_index, total_iterations):
         for (obj, cls) in [(likelihood_energy, Operator), (kl_minimizer, DescentMinimizer),
                            (nonlinear_sampling_minimizer, (DescentMinimizer, type(None))),
@@ -267,12 +270,6 @@ def optimize_kl(likelihood_energy,
                            (n_samples, int)]:
             if not isinstance(obj(iglobal), cls):
                 raise TypeError(f"{obj(iglobal)} is not instance of {cls} but rather {type(obj(iglobal))}")
-        if _number_of_arguments(transitions) == 1 and transitions(iglobal) is not None:
-            raise ValueError('SampleList and global iteration are needed for the transition')
-        if _number_of_arguments(transitions) == 2:
-            if not resume:
-                raise ValueError(f'Resume is set to {resume}.'
-                             f'Transitions only work if resume is True')
         if sampling_iteration_controller(iglobal) is None:
             myassert(n_samples(iglobal) == 0)
         else:
@@ -300,7 +297,12 @@ def optimize_kl(likelihood_energy,
     # /Initial position
 
     def _handle_transitions(transitions, iglobal, sl):
-        if _number_of_arguments(transitions) == 1 or transitions(iglobal, sl) is None:
+        if _number_of_arguments(transitions) == 1:
+            inp = iglobal
+        elif _number_of_arguments(transitions) == 2:
+            inp = (iglobal, sl)
+        trans = transitions(*inp)
+        if trans is None:
             if iglobal == 0:
                 dom = mean.domain
             else:
@@ -316,10 +318,7 @@ def optimize_kl(likelihood_energy,
         else:
             if iglobal == 0:
                 raise ValueError(f'A transition in iteration {iglobal} is not allowed.')
-            try:
-                return transitions(iglobal, sl)
-            except:
-                raise RuntimeError('The transition function could not be generated.')
+            return trans
 
 
     # /Automatic transitions
