@@ -1,4 +1,6 @@
 import pytest
+pytest.importorskip("jax")
+
 import sys
 from jax import grad
 from jax import numpy as jnp

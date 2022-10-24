@@ -4,9 +4,11 @@
 
 from functools import partial
 
+import pytest
+pytest.importorskip("jax")
+
 import jax
 import numpy as np
-import pytest
 
 from nifty8.re import refine_chart, refine_util
 
@@ -72,7 +74,7 @@ def test_gauss_kl(seed, n_resamples=100):
         )
         kl_rhs_scl = 0.5 * d * (np.log(scl) + 1. / scl - 1.)
         np.testing.assert_allclose(
-            kl_rhs_scl, refine_util.gauss_kl(m_t, scl * m_t), rtol=1e-11
+            kl_rhs_scl, refine_util.gauss_kl(m_t, scl * m_t), rtol=1e-10
         )
         kl_lhs_scl = 0.5 * d * (-np.log(scl) + scl - 1.)
         np.testing.assert_allclose(

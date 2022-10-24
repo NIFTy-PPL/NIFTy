@@ -101,7 +101,7 @@ Contributors
 - Matteo Guardiani
 - [Philipp Arras](https://philipp-arras.de)
 - [Philipp Frank](http://www.ph-frank.de)
-- [Reimar Heinrich Leike](https://wwwmpa.mpa-garching.mpg.de/~reimar/)
+- Reimar Heinrich Leike
 - [Torsten Enßlin](https://wwwmpa.mpa-garching.mpg.de/~ensslin/)
 - Vincent Eberle
 
@@ -116,7 +116,7 @@ Contributors
 - Martin Reinecke
 - [Philipp Arras](https://philipp-arras.de)
 - [Philipp Frank](http://www.ph-frank.de)
-- [Reimar Heinrich Leike](https://wwwmpa.mpa-garching.mpg.de/~reimar/)
+- Reimar Heinrich Leike
 - Simon Ding
 - Vincent Eberle
 
@@ -130,7 +130,7 @@ Contributors
 - [Philipp Arras](https://philipp-arras.de)
 - [Philipp Frank](http://www.ph-frank.de)
 - Philipp Haim
-- [Reimar Heinrich Leike](https://wwwmpa.mpa-garching.mpg.de/~reimar/)
+- Reimar Heinrich Leike
 - Rouven Lemmerz
 - [Torsten Enßlin](https://wwwmpa.mpa-garching.mpg.de/~ensslin/)
 - Vincent Eberle

@@ -123,17 +123,14 @@ def test_estimate_evidence_lower_bound():
     # Minimization parameters
     ic_sampling = ift.AbsDeltaEnergyController(name="Sampling (linear)", deltaE=1e-8, iteration_limit=2)
     ic_newton = ift.AbsDeltaEnergyController(name='Newton', deltaE=1e-5, convergence_level=2, iteration_limit=100)
-    ic_sampling_nl = ift.AbsDeltaEnergyController(name='Sampling (nonlin)', deltaE=1e-3, iteration_limit=15,
-                                                  convergence_level=1)
 
     minimizer = ift.NewtonCG(ic_newton)
-    minimizer_sampling = ift.NewtonCG(ic_sampling_nl)
+    minimizer_sampling = None
 
-    n_iterations = 3
-    n_samples = lambda iiter: 10 if iiter < n_iterations else 80
+    n_iterations = 2
+    n_samples = 2
 
-    samples = ift.optimize_kl(likelihood_energy, n_iterations, n_samples, minimizer, ic_sampling, minimizer_sampling,
-                              output_directory=None)
+    samples = ift.optimize_kl(likelihood_energy, n_iterations, n_samples, minimizer, ic_sampling, minimizer_sampling)
 
     # Estimate the ELBO
     elbo, stats = ift.estimate_evidence_lower_bound(ift.StandardHamiltonian(lh=likelihood_energy), samples, 2)

@@ -1,7 +1,9 @@
 #!/usr/bin/env python3
 
-import jax.numpy as jnp
 import pytest
+pytest.importorskip("jax")
+
+import jax.numpy as jnp
 from functools import partial
 from jax import random
 from jax.tree_util import tree_map

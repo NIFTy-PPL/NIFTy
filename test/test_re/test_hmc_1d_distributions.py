@@ -1,9 +1,11 @@
 import sys
 
+import pytest
+pytest.importorskip("jax")
+
 from jax import numpy as jnp
 from jax.scipy import stats
 from numpy.testing import assert_allclose
-import pytest
 import scipy
 from scipy.special import comb
 
