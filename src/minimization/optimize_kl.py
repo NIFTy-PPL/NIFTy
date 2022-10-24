@@ -303,7 +303,7 @@ def optimize_kl(likelihood_energy,
 
     def _handle_transitions(transitions, iglobal, sl):
         if _number_of_arguments(transitions) == 1:
-            inp = iglobal
+            inp = (iglobal,)
         elif _number_of_arguments(transitions) == 2:
             inp = (iglobal, sl)
         trans = transitions(*inp)
