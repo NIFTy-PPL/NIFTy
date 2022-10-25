@@ -20,7 +20,7 @@ class AbstractModel():
         return self.apply(*args, **kwargs)
 
     def apply(self, *args, **kwargs):
-        return NotImplementedError()
+        raise NotImplementedError()
 
     @property
     def domain(self):
