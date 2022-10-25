@@ -173,9 +173,7 @@ class Operator(metaclass=NiftyMeta):
             return NotImplemented
         if isinstance(x, LikelihoodEnergyOperator):
             return NotImplemented
-        if x.target is self.domain:
-            return _OpChain.make((self, x))
-        return self.partial_insert(x)
+        return _OpChain.make((self, x))
 
     def __rmatmul__(self, x):
         from .energy_operators import LikelihoodEnergyOperator
@@ -184,9 +182,7 @@ class Operator(metaclass=NiftyMeta):
             return NotImplemented
         if isinstance(x, LikelihoodEnergyOperator):
             return NotImplemented
-        if x.domain is self.target:
-            return _OpChain.make((x, self))
-        return x.partial_insert(self)
+        return _OpChain.make((x, self))
 
     def partial_insert(self, x):
         from ..multi_domain import MultiDomain

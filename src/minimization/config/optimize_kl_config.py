@@ -269,10 +269,6 @@ class OptimizeKLConfig:
 
         return f
 
-    def _number_of_arguments(self, func):
-        from inspect import signature
-        return len(signature(func).parameters)
-
     def instantiate_section(self, sec):
         """Instantiate object that is described by a section in the config file.
 
@@ -327,9 +323,6 @@ class OptimizeKLConfig:
 
         # Plug into builder or something else
         if sec in self._builders:
-            if len(dct) < self._number_of_arguments(self._builders[sec]):
-                from functools import partial
-                return partial(self._builders[sec], **dct)
             return self._builders[sec](**dct)
         if "custom_function" in dct:
             mod_name, func_name = dct.pop("custom_function").rsplit(".", 1)
