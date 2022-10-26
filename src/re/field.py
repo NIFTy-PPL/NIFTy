@@ -1,12 +1,21 @@
 # Copyright(C) 2013-2021 Max-Planck-Society
 # SPDX-License-Identifier: GPL-2.0+ OR BSD-2-Clause
 
+from copy import deepcopy
 import operator
 from pprint import pformat
+
 from jax import numpy as jnp
 from jax.tree_util import (
-    register_pytree_node_class, tree_leaves, tree_map, tree_structure
+    register_pytree_node_class,
+    tree_leaves,
+    tree_map,
+    tree_structure,
 )
+
+
+def _copy(obj):
+    return obj.copy() if hasattr(obj, "copy") else deepcopy(obj)
 
 
 def _value_op(op, name=None):
@@ -199,6 +208,9 @@ class Field():
         from .forest_util import size
 
         return size(self)
+
+    def copy(self):
+        return tree_map(_copy, self)
 
     def __repr__(self):
         s = "Field("
