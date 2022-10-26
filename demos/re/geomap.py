@@ -93,10 +93,10 @@ def _sample_inverse_standard_hamiltonian(
 def stochastic_lq_logdet(
     mat,
     order: int,
-    pos,
     key,
     *,
     shape0=None,
+    dtype=None,
 ):
     """Computes a stochastic estimate of the log-determinate of a matrix using
     the stochastic Lanczos quadrature algorithm.
@@ -110,11 +110,10 @@ def stochastic_lq_logdet(
     lanczos = jax.tree_util.Partial(
         jft.lanczos.lanczos_tridiag, mat, order=order
     )
-    vs, prr_vs = _sample_inverse_standard_hamiltonian(ham, pos, keys[0])
-    tridiags, vecs = jax.vmap(lanczos)(jnp.array([vs]))
-    return jft.lanczos.stochastic_logdet_from_lanczos(
-        tridiags, shape0
-    ), vecs[0], prr_vs  # TODO: do not use loop
+    probe = random.normal(keys[0], (shape0, ), dtype=dtype)
+    # TODO: do not use loop
+    tridiags, vecs = jax.vmap(lanczos)(jnp.array([probe]))
+    return jft.lanczos.stochastic_logdet_from_lanczos(tridiags, shape0), vecs[0]
 
 
 def geomap(ham: jft.StandardHamiltonian, order: int, key, mirror_samples=True):
@@ -129,17 +128,17 @@ def geomap(ham: jft.StandardHamiltonian, order: int, key, mirror_samples=True):
             return o
 
         key_lcz, key_smpls = random.split(key, 2)
-        logdet, vecs, smpl = stochastic_lq_logdet(
-            mat, order, pos, key_lcz, shape0=p.size
+        logdet, vecs = stochastic_lq_logdet(
+            mat, order, key_lcz, shape0=p.size, dtype=p.dtype
         )
-        # smpl = random.normal(key_smpls, p.shape, dtype=p.dtype)
-        s = smpl.copy()
+        smpl = random.normal(key_smpls, p.shape, dtype=p.dtype)
+        smpl_orig = smpl.copy()
         # TODO: Pull into new lanczos method which computes orthoganlized smpls
         # for vecs
         ortho_smpl = vecs @ smpl
         # One could add an additional `jnp.linalg.inv(vecs @ vecs.T)` in
         # between the vecs to ensure proper projection
-        ortho_smpl = jnp.linalg.inv(vecs @ vecs.T) @ ortho_smpl
+        # ortho_smpl = jnp.linalg.inv(vecs @ vecs.T) @ ortho_smpl
         ortho_smpl = vecs.T @ ortho_smpl
         smpl -= ortho_smpl
         smpl = unflatten(smpl)
@@ -147,13 +146,15 @@ def geomap(ham: jft.StandardHamiltonian, order: int, key, mirror_samples=True):
         if mirror_samples is None:
             h = ham(pos)
         else:
-            h = ham(pos + smpl)
-            if mirror_samples:
-                h += ham(pos - smpl)
-                h *= 0.5
+            # GeoMAP requires the sample to be mirrored as to perform MAP along
+            # the space in the (near) linear regime. Without samples, the
+            # solution is not only much less noisy in this regime but is
+            # actually the true posterior.
+            h = ham(pos + smpl) + ham(pos - smpl)
+            h *= 0.5
 
         if return_sample:
-            return h + 0.5 * logdet, s, smpl
+            return h + 0.5 * logdet, smpl_orig, smpl
         return h + 0.5 * logdet
 
     return energy
