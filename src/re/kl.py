@@ -32,7 +32,8 @@ def cond_raise(condition, exception):
     call(maybe_raise, condition, result_shape=None)
 
 
-# TODO (?): optionally accept ham.metric and likelihood.lsm
+# TODO (?): optionally accept ham.metric and likelihood.lsm or alternatively
+# implement some kind of partial for likelihoods
 def _sample_standard_hamiltonian(
     hamiltonian: StandardHamiltonian,
     primals,
