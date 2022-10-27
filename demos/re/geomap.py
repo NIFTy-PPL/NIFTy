@@ -17,18 +17,94 @@ import nifty8.re as jft
 
 jax.config.update("jax_enable_x64", True)
 
-seed = 42
-key = random.PRNGKey(seed)
 
-dims = (256, )
+# %%
+def stochastic_lq_logdet(
+    mat,
+    order: int,
+    key,
+    *,
+    shape0=None,
+    dtype=None,
+):
+    """Computes a stochastic estimate of the log-determinate of a matrix using
+    the stochastic Lanczos quadrature algorithm.
+    """
+    shape0 = shape0 if shape0 is not None else mat.shape[0]
+    mat = mat.__matmul__ if not hasattr(mat, "__call__") else mat
+    key = random.PRNGKey(key) if not isinstance(key, jnp.ndarray) else key
+
+    probe = random.normal(key, (shape0, ), dtype=dtype)
+    tridiags, vecs = jft.lanczos.lanczos_tridiag(mat, probe, order=order)
+    logdet = jft.lanczos.stochastic_logdet_from_lanczos(
+        tridiags.reshape((1, ) + tridiags.shape), shape0
+    )
+    return logdet, vecs
 
 
+def geomap(
+    hamiltonian: jft.StandardHamiltonian,
+    order: int,
+    key,
+    sample_orthonormally=True
+):
+    from jax import flatten_util
+
+    def geomap_energy(pos, return_aux=False):
+        p, unflatten = flatten_util.ravel_pytree(pos)
+
+        def mat(x):
+            # Hack to stomp arbitrary objects into a 1D array
+            o, _ = flatten_util.ravel_pytree(
+                hamiltonian.metric(pos, unflatten(x))
+            )
+            return o
+
+        key_lcz, key_smpls = random.split(key, 2)
+        logdet, vecs = stochastic_lq_logdet(
+            mat, order, key_lcz, shape0=p.size, dtype=p.dtype
+        )
+
+        if sample_orthonormally is None:
+            energy = hamiltonian(pos)
+            smpl_orig, smpl = None, None
+        else:
+            smpl = random.normal(key_smpls, p.shape, dtype=p.dtype)
+            smpl_orig = smpl.copy()
+            # TODO: Pull into new lanczos method which computes orthoganlized smpls
+            # for vecs
+            ortho_smpl = vecs @ smpl
+            # One could add an additional `jnp.linalg.inv(vecs @ vecs.T)` in
+            # between the vecs to ensure proper projection
+            # ortho_smpl = jnp.linalg.inv(vecs @ vecs.T) @ ortho_smpl
+            ortho_smpl = vecs.T @ ortho_smpl
+            smpl -= ortho_smpl
+            smpl = unflatten(smpl)
+
+            # GeoMAP requires the sample to be mirrored as to perform MAP along
+            # the subspace in the (near) linear regime. With samples, the
+            # solution is not only much less noisy in this regime but is
+            # actually the true posterior.
+            energy = 0.5 * (hamiltonian(pos + smpl) + hamiltonian(pos - smpl))
+
+        energy += 0.5 * logdet
+        if return_aux:
+            return energy, (smpl_orig, smpl)
+        return energy
+
+    return geomap_energy
+
+
+# %%
 def hartley(p, axes=None):
     from jax.numpy import fft
 
     tmp = fft.fftn(p, axes)
     return tmp.real + tmp.imag
 
+
+seed = 42
+key = random.PRNGKey(seed)
 
 dims = (1024, )
 
@@ -48,9 +124,7 @@ harmonic_power = jnp.concatenate((harmonic_power, harmonic_power[-2:0:-1]))
 correlated_field = jft.Model(
     lambda x: hartley(harmonic_power * x), domain=jft.ShapeWithDtype(dims)
 )
-signal_response = lambda x: correlated_field(
-    x
-)  # jnp.exp(1. + correlated_field(x))
+signal_response = lambda x: correlated_field(x)
 
 noise_cov = lambda x: 0.1**2 * x
 noise_cov_inv = lambda x: 0.1**-2 * x
@@ -71,95 +145,6 @@ plt.plot(jnp.array([signal_response_truth, data]).T, label=("truth", "data"))
 plt.legend()
 plt.show()
 
-
-# %%
-def _sample_inverse_standard_hamiltonian(
-    hamiltonian,
-    primals,
-    key,
-):
-    if not isinstance(hamiltonian, jft.StandardHamiltonian):
-        te = f"`hamiltonian` of invalid type; got '{type(hamiltonian)}'"
-        raise TypeError(te)
-    subkey_nll, subkey_prr = random.split(key, 2)
-    nll_smpl = jft.kl.sample_likelihood(
-        hamiltonian.likelihood, primals, key=subkey_nll
-    )
-    prr_smpl = jft.random_like(key=subkey_prr, primals=primals)
-    met_smpl = nll_smpl + prr_smpl
-    return met_smpl, prr_smpl
-
-
-def stochastic_lq_logdet(
-    mat,
-    order: int,
-    key,
-    *,
-    shape0=None,
-    dtype=None,
-):
-    """Computes a stochastic estimate of the log-determinate of a matrix using
-    the stochastic Lanczos quadrature algorithm.
-    """
-    shape0 = shape0 if shape0 is not None else mat.shape[0]
-    mat = mat.__matmul__ if not hasattr(mat, "__call__") else mat
-    if not isinstance(key, jnp.ndarray):
-        key = random.PRNGKey(key)
-    keys = random.split(key, 1)
-
-    lanczos = jax.tree_util.Partial(
-        jft.lanczos.lanczos_tridiag, mat, order=order
-    )
-    probe = random.normal(keys[0], (shape0, ), dtype=dtype)
-    # TODO: do not use loop
-    tridiags, vecs = jax.vmap(lanczos)(jnp.array([probe]))
-    return jft.lanczos.stochastic_logdet_from_lanczos(tridiags, shape0), vecs[0]
-
-
-def geomap(ham: jft.StandardHamiltonian, order: int, key, mirror_samples=True):
-    from jax import flatten_util
-
-    def energy(pos, return_sample=False):
-        p, unflatten = flatten_util.ravel_pytree(pos)
-
-        def mat(x):
-            # Hack to stomp arbitrary objects into a 1D array
-            o, _ = flatten_util.ravel_pytree(ham.metric(pos, unflatten(x)))
-            return o
-
-        key_lcz, key_smpls = random.split(key, 2)
-        logdet, vecs = stochastic_lq_logdet(
-            mat, order, key_lcz, shape0=p.size, dtype=p.dtype
-        )
-        smpl = random.normal(key_smpls, p.shape, dtype=p.dtype)
-        smpl_orig = smpl.copy()
-        # TODO: Pull into new lanczos method which computes orthoganlized smpls
-        # for vecs
-        ortho_smpl = vecs @ smpl
-        # One could add an additional `jnp.linalg.inv(vecs @ vecs.T)` in
-        # between the vecs to ensure proper projection
-        # ortho_smpl = jnp.linalg.inv(vecs @ vecs.T) @ ortho_smpl
-        ortho_smpl = vecs.T @ ortho_smpl
-        smpl -= ortho_smpl
-        smpl = unflatten(smpl)
-
-        if mirror_samples is None:
-            h = ham(pos)
-        else:
-            # GeoMAP requires the sample to be mirrored as to perform MAP along
-            # the space in the (near) linear regime. Without samples, the
-            # solution is not only much less noisy in this regime but is
-            # actually the true posterior.
-            h = ham(pos + smpl) + ham(pos - smpl)
-            h *= 0.5
-
-        if return_sample:
-            return h + 0.5 * logdet, smpl_orig, smpl
-        return h + 0.5 * logdet
-
-    return energy
-
-
 # %%
 
 key, subkey, subkey_geomap = random.split(key, 3)
@@ -167,18 +152,16 @@ pos_init = jft.random_like(subkey, correlated_field.domain)
 pos = 1e-2 * pos_init.copy()
 
 # %%
-jax.config.update("jax_log_compiles", False)
-
-print("!!!!!!!!!!!!!!!!!!!!!!! HAM", ham(pos))
-print("!!!!!!!!!!!!!!!!!!!!!!! metric", ham.metric(pos, pos) @ pos)
+print("!!! HAM", ham(pos))
+print("!!! metric", ham.metric(pos, pos) @ pos)
 # This is 50 times slower in compile time than ham.metric
 geomap_order = 5
-geomap_energy = geomap(ham, geomap_order, subkey_geomap, mirror_samples=False)
+geomap_energy = geomap(
+    ham, geomap_order, subkey_geomap, sample_orthonormally=False
+)
 
-# jft.disable_jax_control_flow._DISABLE_CONTROL_FLOW_PRIM = True
-geomap_energy = jax.jit(geomap_energy, static_argnames=("return_sample", ))
-print("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
-print(geomap_energy(pos))
+geomap_energy = jax.jit(geomap_energy, static_argnames=("return_aux", ))
+print("!!! geomap_energy", geomap_energy(pos))
 
 # %%
 pos = 1e-2 * pos_init.copy()
@@ -197,7 +180,7 @@ opt_state_geomap = jft.minimize(
 )
 
 # %%
-_, prr_smpl, ortho_smpl = geomap_energy(opt_state_geomap.x, return_sample=True)
+_, (prr_smpl, ortho_smpl) = geomap_energy(opt_state_geomap.x, return_aux=True)
 
 plt.plot(prr_smpl, label="prior sample", alpha=0.7)
 plt.plot(ortho_smpl, label="ortho sample", alpha=0.7)
@@ -208,8 +191,8 @@ plt.show()
 # %%
 smpls_by_order = []
 for i in range(1, geomap_order):
-    _, _, s = geomap(ham, i, subkey_geomap, mirror_samples=False)(
-        opt_state_geomap.x, return_sample=True
+    _, (_, s) = geomap(ham, i, subkey_geomap, sample_orthonormally=False)(
+        opt_state_geomap.x, return_aux=True
     )
     smpls_by_order += [s]
 
@@ -243,9 +226,6 @@ plt.plot(
 )
 plt.legend()
 plt.show()
-
-# %%
-# raise ValueError()
 
 # %%
 n_samples = 1
@@ -315,63 +295,3 @@ plt.plot(
 )
 plt.legend()
 plt.show()
-
-# %%
-raise ValueError()
-
-# %%
-
-# Minimize the potential
-for i in range(n_mgvi_iterations):
-    print(f"MGVI Iteration {i}", file=sys.stderr)
-    print("Sampling...", file=sys.stderr)
-    key, subkey = random.split(key, 2)
-    samples = jft.MetricKL(
-        ham,
-        pos,
-        n_samples=n_samples,
-        key=subkey,
-        mirror_samples=True,
-        linear_sampling_kwargs={"absdelta": absdelta / 10.}
-    )
-
-    print("Minimizing...", file=sys.stderr)
-    opt_state = jft.minimize(
-        None,
-        pos,
-        method="newton-cg",
-        options={
-            "fun_and_grad": partial(ham_vg, primals_samples=samples),
-            "hessp": partial(ham_metric, primals_samples=samples),
-            "absdelta": absdelta,
-            "maxiter": n_newton_iterations
-        }
-    )
-    pos = opt_state.x
-    msg = f"Post MGVI Iteration {i}: Energy {samples.at(pos).mean(ham):2.4e}"
-    print(msg, file=sys.stderr)
-
-namps = cfm.get_normalized_amplitudes()
-post_sr_mean = jft.mean(tuple(signal_response(s) for s in samples.at(pos)))
-post_a_mean = jft.mean(tuple(cfm.amplitude(s)[1:] for s in samples.at(pos)))
-to_plot = [
-    ("Signal", signal_response_truth, "im"),
-    ("Noise", noise_truth, "im"),
-    ("Data", data, "im"),
-    ("Reconstruction", post_sr_mean, "im"),
-    ("Ax1", (cfm.amplitude(pos_truth)[1:], post_a_mean), "loglog"),
-]
-fig, axs = plt.subplots(2, 3, figsize=(16, 9))
-for ax, (title, field, tp) in zip(axs.flat, to_plot):
-    ax.set_title(title)
-    if tp == "im":
-        im = ax.imshow(field, cmap="inferno")
-        plt.colorbar(im, ax=ax, orientation="horizontal")
-    else:
-        ax_plot = ax.loglog if tp == "loglog" else ax.plot
-        field = field if isinstance(field, (tuple, list)) else (field, )
-        for f in field:
-            ax_plot(f, alpha=0.7)
-fig.tight_layout()
-fig.savefig("cf_w_unknown_spectrum.png", dpi=400)
-plt.close()
