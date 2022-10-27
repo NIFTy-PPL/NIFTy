@@ -64,9 +64,9 @@ def lanczos_tridiag(mat: Callable[[V], V], v: V, order: int):
         w -= alpha * v
 
         # Full reorthogonalization
-        vecs, w = fori_loop(
-            0, order, reortho_step, (vecs, w)
-        )  # TODO: DO NOT DO THIS!
+        # NOTE, in theory the loop could terminate at `i` but this would make
+        # JAX's default backwards pass not work
+        vecs, w = fori_loop(0, order, reortho_step, (vecs, w))
 
         # TODO: Raise if lanczos vectors are independent i.e. `beta` small?
         beta = jnp.linalg.norm(w)
