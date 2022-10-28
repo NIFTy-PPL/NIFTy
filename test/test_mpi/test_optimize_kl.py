@@ -145,16 +145,19 @@ def test_transitions():
             return ift.GaussianEnergy(domain=mdom2, sampling_dtype=float)
 
 
-    def transitions(iglobal):
+    def transitions(iglobal, sl):
+        mean, _ = sl.sample_stat()
         if iglobal == 0:
             return None
         elif iglobal == 1:
             mask = np.zeros(dom1.shape)
             mask[:2] = 1
-            return ift.MaskOperator(ift.makeField(dom1, mask)).adjoint.ducktape("in0").ducktape_left("in0")
+            op = ift.MaskOperator(ift.makeField(dom1, mask)).adjoint.ducktape("in0").ducktape_left("in0")
+            return op(mean)
         elif iglobal == 2:
             fa = ift.FieldAdapter(dom1, "in0")
-            return fa.ducktape_left("in1")
+            op = fa.ducktape_left("in1")
+            return op(mean)
         raise RuntimeError
 
 
@@ -165,8 +168,7 @@ def test_transitions():
     sl = ift.optimize_kl(likelihood_energy, final_index, n_samples, kl_minimizer,
                          sampling_iteration_controller, nonlinear_sampling_minimizer, constants,
                          point_estimates, transitions, export_operator_outputs, output_directory, initial_position,
-                         initial_index, comm, inspect_callback, terminate_callback, save_strategy="all",
-                         plot_energy_history=False, plot_minisanity_history=False)
+                         initial_index, comm, inspect_callback, terminate_callback, save_strategy="all", resume=True)
     assert sl.domain is mdom2
 
 
