@@ -130,10 +130,12 @@ def optimize_kl(likelihood_energy,
         (possibly) optimized for, corresponding to point estimates of these.
         Default is to draw samples for the complete domain.
     transitions : callable or None
-        Operator that is applied at the beginning of each iteration to the
-        latent position. This can be used if parts of the likelihood_energy are
-        replaced and thereby have a different domain. If None is passed, no
-        transition will be applied. Default is None.
+        Function that takes the global iteration index and returns a function
+        that is applied at the beginning of each iteration to the current
+        ResidualSampleList. This can be used if parts of the likelihood_energy
+        are replaced and thereby have a different domain. If None is passed or
+        returned in one iteration, no transition will be applied. Default is
+        None.
     export_operator_outputs : dict
         Dictionary of operators that are exported during the minimization. The
         key contains a string that serves as identifier. The value of the
@@ -182,8 +184,8 @@ def optimize_kl(likelihood_energy,
         instead. If `last_finished_iteration` is not a file, the value of
         `initial_position` is used instead. Default: False.
     sanity_checks : bool
-        Check if all domains of likelihoods and transitions fit together. This
-        is potentially expensive because all likelihoods have to be instantiated
+        Some sanity checks that are evaluated at the beginning. They are
+        potentially expensive because all likelihoods have to be instantiated
         multiple times. Default: True.
 
     Returns
@@ -231,7 +233,7 @@ def optimize_kl(likelihood_energy,
     if terminate_callback is None:
         terminate_callback = lambda x: False
     if transitions is None:
-        transitions = lambda x: None
+        transitions = lambda iglobal: None
     if output_directory is not None:
         global _output_directory
         global _save_strategy
@@ -263,33 +265,33 @@ def optimize_kl(likelihood_energy,
     # Sanity check of input
     if initial_index >= total_iterations:
         raise ValueError("Initial index is bigger than total iterations: "
-                         f"{initial_index} >= {total_iterations}")
-
-    myassert(_number_of_arguments(transitions) in [1, 2])
-    if _number_of_arguments(transitions) == 2 and not resume:
-        raise RuntimeError("Transitions are only possible if resume it True")
-    for iglobal in range(initial_index, total_iterations):
-        for (obj, cls) in [(likelihood_energy, Operator), (kl_minimizer, DescentMinimizer),
-                           (nonlinear_sampling_minimizer, (DescentMinimizer, type(None))),
-                           (constants, (list, tuple)), (point_estimates, (list, tuple)),
-                           (n_samples, int)]:
-            if not isinstance(obj(iglobal), cls):
-                raise TypeError(f"{obj(iglobal)} is not instance of {cls} but rather {type(obj(iglobal))}")
-        if sampling_iteration_controller(iglobal) is None:
-            myassert(n_samples(iglobal) == 0)
-        else:
-            myassert(isinstance(sampling_iteration_controller(iglobal), IterationController))
-        myassert(likelihood_energy(iglobal).target is DomainTuple.scalar_domain())
-        if not comm(iglobal) is None:
-            try:
-                import mpi4py
-                myassert(isinstance(comm(iglobal), mpi4py.MPI.Intracomm))
-            except ImportError:
-                pass
+                        f"{initial_index} >= {total_iterations}")
+    myassert(_number_of_arguments(transitions) == 1)
     myassert(_number_of_arguments(inspect_callback) in [1, 2])
     myassert(_number_of_arguments(terminate_callback) == 1)
     if not likelihood_energy(initial_index).target is DomainTuple.scalar_domain():
         raise TypeError
+
+    if sanity_checks:  # Potentially expensive sanity checks
+        for iglobal in range(initial_index, total_iterations):
+            for (obj, cls) in [(likelihood_energy, Operator), (kl_minimizer, DescentMinimizer),
+                            (nonlinear_sampling_minimizer, (DescentMinimizer, type(None))),
+                            (constants, (list, tuple)), (point_estimates, (list, tuple)),
+                            (n_samples, int)]:
+                if not isinstance(obj(iglobal), cls):
+                    raise TypeError(f"{obj(iglobal)} is not instance of {cls} but rather {type(obj(iglobal))}")
+
+            if sampling_iteration_controller(iglobal) is None:
+                myassert(n_samples(iglobal) == 0)
+            else:
+                myassert(isinstance(sampling_iteration_controller(iglobal), IterationController))
+            myassert(likelihood_energy(iglobal).target is DomainTuple.scalar_domain())
+            if not comm(iglobal) is None:
+                try:
+                    import mpi4py
+                    myassert(isinstance(comm(iglobal), mpi4py.MPI.Intracomm))
+                except ImportError:
+                    pass
     # /Sanity check of input
 
     # Initial position
@@ -300,33 +302,6 @@ def optimize_kl(likelihood_energy,
     else:
         mean = initial_position
     # /Initial position
-
-    def _handle_transitions(transitions, iglobal, sl):
-        if _number_of_arguments(transitions) == 1:
-            inp = (iglobal,)
-        elif _number_of_arguments(transitions) == 2:
-            inp = (iglobal, sl)
-        trans = transitions(*inp)
-        if trans is None:
-            if iglobal == 0:
-                dom = mean.domain
-            else:
-                dom = likelihood_energy(iglobal - 1).domain
-            tgt = likelihood_energy(iglobal).domain
-
-            if dom is tgt:
-                return Operator.identity_operator(dom)(mean)
-            if set(dom.keys()).issubset(set(tgt.keys())):
-                return _InitializeOperator(dom, tgt, std=0.1)(mean)
-            else:
-                raise RuntimeError("Transition is needed to match domains.")
-        else:
-            if iglobal == 0:
-                raise ValueError(f'A transition in iteration {iglobal} is not allowed.')
-            return trans
-
-
-    # /Automatic transitions
 
     if output_directory is not None:
         # Create all necessary subfolders
@@ -345,10 +320,15 @@ def optimize_kl(likelihood_energy,
 
     for iglobal in range(initial_index, total_iterations):
         lh = likelihood_energy(iglobal)
-        if iglobal == 0:
-            sl = SampleList([mean])
-        mean = _handle_transitions(transitions, iglobal, sl)
-        dom = mean.domain
+
+        # Transform mean
+        t = transitions(iglobal)
+        mean = mean if t is None else t(sl)
+        dom0, dom = mean.domain, lh.domain
+        if set(dom0.keys()).issubset(set(dom.keys())):
+            mean = _InitializeOperator(dom0, dom, std=0.1)(mean)
+        # /Transform mean
+
         mf_dom = isinstance(dom, MultiDomain)
         if not mf_dom:
             warn("In the upcoming release nifty8.optimize_kl will no longer support "
