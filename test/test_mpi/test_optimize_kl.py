@@ -72,8 +72,10 @@ ic = ift.GradientNormController(iteration_limit=5)
 @pmp("sampling_iteration_controller", [ic])
 @pmp("nonlinear_sampling_minimizer", [None, ift.NewtonCG(ift.GradInfNormController(1e-3, iteration_limit=1))])
 @pmp("n_samples", [0, 2])
+@pmp("dry_run", [False, True])
 def test_optimize_kl(constants, point_estimates, kl_minimizer, n_samples,
-                     sampling_iteration_controller, nonlinear_sampling_minimizer):
+                     sampling_iteration_controller, nonlinear_sampling_minimizer,
+                     dry_run):
     final_index = 5
 
     foo, output_directory = _create_temp_outputdir()
@@ -94,7 +96,7 @@ def test_optimize_kl(constants, point_estimates, kl_minimizer, n_samples,
                          point_estimates, transitions, export_operator_outputs, output_directory, initial_position,
                          initial_index, comm, inspect_callback,
                          terminate_callback, save_strategy="all", plot_energy_history=False,
-                         plot_minisanity_history=False)
+                         plot_minisanity_history=False, dry_run=dry_run)
 
     ift.random.setState(rand_state)
 
@@ -107,7 +109,7 @@ def test_optimize_kl(constants, point_estimates, kl_minimizer, n_samples,
                               point_estimates, transitions, export_operator_outputs, output_directory1, initial_position,
                               initial_index, comm, inspect_callback,
                               terminate_callback, resume=True, save_strategy="last",
-                              plot_energy_history=False, plot_minisanity_history=False)
+                              plot_energy_history=False, plot_minisanity_history=False, dry_run=dry_run)
 
     for aa, bb in zip(sl.iterator(), sl1.iterator()):
         ift.extra.assert_allclose(aa, bb)

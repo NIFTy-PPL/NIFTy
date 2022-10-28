@@ -79,7 +79,8 @@ def optimize_kl(likelihood_energy,
                 save_strategy="last",
                 return_final_position=False,
                 resume=False,
-                sanity_checks=True):
+                sanity_checks=True,
+                dry_run=False):
     """Provide potentially useful interface for standard KL minimization.
 
     The parameters `likelihood_energy`, `kl_minimizer`,
@@ -187,6 +188,9 @@ def optimize_kl(likelihood_energy,
         Some sanity checks that are evaluated at the beginning. They are
         potentially expensive because all likelihoods have to be instantiated
         multiple times. Default: True.
+    dry_run : bool
+        Skips all expensive optimizations. Can be used to check that all domains
+        fit together. Default: False.
 
     Returns
     -------
@@ -301,6 +305,10 @@ def optimize_kl(likelihood_energy,
         mean = full(makeDomain({}), 0.)
     else:
         mean = initial_position
+    if _MPI_master(comm(initial_index)):
+        sl = SampleList([mean], comm=comm(initial_index), domain=mean.domain)
+    else:
+        sl = SampleList([], comm=comm(initial_index), domain=mean.domain)
     # /Initial position
 
     if output_directory is not None:
@@ -341,6 +349,11 @@ def optimize_kl(likelihood_energy,
         ham = StandardHamiltonian(lh @ count, sampling_iteration_controller(iglobal))
         minimizer = kl_minimizer(iglobal)
         mean_iter = mean.extract(ham.domain)
+
+        if dry_run:
+            from ..logger import logger
+            logger.info(f"Iteration {iglobal} checked")
+            continue
 
         # TODO Distributing the domain of the likelihood is not supported (yet)
         check_MPI_synced_random_state(comm(iglobal))
