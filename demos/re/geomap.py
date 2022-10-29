@@ -182,7 +182,7 @@ print("!!! metric", ham.metric(pos, pos) @ pos)
 # This is 50 times slower in compile time than ham.metric
 geomap_order = 40
 geomap_energy = geomap(
-    ham, geomap_order, subkey_geomap, sample_orthonormally=False
+    ham, geomap_order, subkey_geomap, sample_orthonormally=True
 )
 
 geomap_energy = jax.jit(geomap_energy, static_argnames=("return_aux", ))
