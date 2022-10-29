@@ -216,7 +216,7 @@ plt.show()
 # %%
 smpls_by_order = []
 for i in range(1, geomap_order):
-    _, (_, s) = geomap(ham, i, subkey_geomap, sample_orthonormally=False)(
+    _, (_, s) = geomap(ham, i, subkey_geomap, sample_orthonormally=True)(
         opt_state_geomap.x, return_aux=True
     )
     smpls_by_order += [s]
