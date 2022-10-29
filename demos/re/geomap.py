@@ -90,7 +90,7 @@ def geomap(
 
         logdet, vecs = lanczos_logdet(mat, probe, order, shape0=p.size)
 
-        if sample_orthonormally is None:
+        if not sample_orthonormally:
             energy = hamiltonian(pos)
             smpl_orig, smpl = None, None
         else:
