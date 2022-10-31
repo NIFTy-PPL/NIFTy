@@ -305,10 +305,7 @@ def optimize_kl(likelihood_energy,
         mean = full(makeDomain({}), 0.)
     else:
         mean = initial_position
-    if _MPI_master(comm(initial_index)):
-        sl = SampleList([mean], comm=comm(initial_index), domain=mean.domain)
-    else:
-        sl = SampleList([], comm=comm(initial_index), domain=mean.domain)
+    sl = _single_value_sample_list(mean, comm=comm(initial_index))
     # /Initial position
 
     if output_directory is not None:
@@ -328,22 +325,15 @@ def optimize_kl(likelihood_energy,
 
     for iglobal in range(initial_index, total_iterations):
         lh = likelihood_energy(iglobal)
+        if not isinstance(lh.domain, MultiDomain):
+            raise TypeError("Domain of likelihood_energy needs to be a MultiDomain, "
+                            f"got\n{lh.domain}")
 
         # Transform mean
         t = transitions(iglobal)
         mean = mean if t is None else t(sl)
-        dom0, dom = mean.domain, lh.domain
-        if set(dom0.keys()).issubset(set(dom.keys())):
-            mean = _InitializeOperator(dom0, dom, std=0.1)(mean)
+        mean = _normal_initialize(mean, lh.domain)
         # /Transform mean
-
-        mf_dom = isinstance(dom, MultiDomain)
-        if not mf_dom:
-            warn("In the upcoming release nifty8.optimize_kl will no longer support "
-                 "DomainTuple as latent position. You can use "
-                 "`likelihood_energy.ducktape(key)` to convert a DomainTuple domain into "
-                 "a MultiDomain. Please report at `c@philipp-arras.de` if you use this "
-                 "feature and would like to see it continued.", DeprecationWarning)
 
         count = CountingOperator(lh.domain)
         ham = StandardHamiltonian(lh @ count, sampling_iteration_controller(iglobal))
@@ -366,7 +356,7 @@ def optimize_kl(likelihood_energy,
                               want_metric=_want_metric(minimizer))
             if comm(iglobal) is None:
                 e, _ = minimizer(e)
-                mean = MultiField.union([mean, e.position]) if mf_dom else e.position
+                mean = MultiField.union([mean, e.position])
                 sl = SampleList([mean])
                 energy_history.append((iglobal, e.value))
             else:
@@ -374,14 +364,13 @@ def optimize_kl(likelihood_energy,
                      "the rank0 task and communicate the result afterwards to all other tasks.")
                 if _MPI_master(comm(iglobal)):
                     e, _ = minimizer(e)
-                    mean = MultiField.union([mean, e.position]) if mf_dom else e.position
-                    sl = SampleList([mean], comm=comm(iglobal), domain=dom)
                     energy_history.append((iglobal, e.value))
+                    mean = MultiField.union([mean, e.position])
                 else:
                     mean = None
-                    sl = SampleList([], comm=comm(iglobal), domain=dom)
                 _barrier(comm(iglobal))
                 mean = comm(iglobal).bcast(mean, root=0)
+                _single_value_sample_list(mean, comm(iglobal))
         else:
             e = SampledKLEnergy(
                 mean_iter,
@@ -392,7 +381,7 @@ def optimize_kl(likelihood_energy,
                 constants=constants(iglobal),
                 point_estimates=point_estimates(iglobal))
             e, _ = minimizer(e)
-            mean = MultiField.union([mean, e.position]) if mf_dom else e.position
+            mean = MultiField.union([mean, e.position])
             sl = e.samples.at(mean)
             energy_history.append((iglobal, e.value))
 
@@ -716,25 +705,26 @@ def _is_subdomain(sub_domain, total_domain):
                for kk, vv in sub_domain.items())
 
 
-class _InitializeOperator(Operator):
-    def __init__(self, domain, target, std):
-        self._domain = MultiDomain.make(domain)
-        self._target = MultiDomain.make(target)
-        self._has_been_called = False
-        self._std = float(std)
+def _normal_initialize(mf, domain, std=0.1):
+    from ..sugar import makeDomain
+    from ..utilities import myassert
 
-    def apply(self, x):
-        from ..sugar import from_random, is_linearization, makeDomain
-        from ..utilities import myassert
+    if MultiDomain.union([domain, mf.domain]) != domain:
+        raise RuntimeError(f"Domain of MultiField and final domain are not compatible\n"
+                           f"MultiField domain:\n{mf.domain}\n"
+                           f"Final domain:\n{domain}")
+    diff_keys = set(domain.keys()) - set(mf.domain.keys())
+    diff_domain = makeDomain({kk: domain[kk] for kk in diff_keys})
+    diff_fld = from_random(diff_domain, std=std)
+    res = mf.unite(diff_fld)
+    myassert(res.domain is domain)
+    return res
 
-        self._check_input(x)
-        if self._has_been_called:
-            raise RuntimeError("This operator can only be called once since it returns random numbers.")
-        self._has_been_called = True
-        if is_linearization(x):
-            raise TypeError("Only MultiFields are supported as input")
-        diff_keys = set(self._target.keys()) - set(self._domain.keys())
-        diff_domain = makeDomain({kk: self._target[kk] for kk in diff_keys})
-        diff_fld = from_random(diff_domain, std=self._std)
-        myassert(len(set(diff_fld.keys()) & set(self._domain.keys())) == 0)
-        return x.unite(diff_fld)
+
+def _single_value_sample_list(fld, comm):
+    check_MPI_equality(fld, comm)
+    if _MPI_master(comm):
+        sl = SampleList([fld], comm=comm, domain=fld.domain)
+    else:
+        sl = SampleList([], comm=comm, domain=fld.domain)
+    return sl
