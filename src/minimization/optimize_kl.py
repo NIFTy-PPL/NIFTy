@@ -366,7 +366,7 @@ def optimize_kl(likelihood_energy,
                     mean = None
                 _barrier(comm(iglobal))
                 mean = comm(iglobal).bcast(mean, root=0)
-                _single_value_sample_list(mean, comm(iglobal))
+                sl = _single_value_sample_list(mean, comm(iglobal))
         else:
             e = SampledKLEnergy(
                 mean_iter,
