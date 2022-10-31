@@ -238,12 +238,28 @@ def optimize_kl(likelihood_energy,
         terminate_callback = lambda x: False
     if transitions is None:
         transitions = lambda iglobal: None
+
+    mean, sl = initial_position, None
+    del(initial_position)
+
     if output_directory is not None:
         global _output_directory
         global _save_strategy
         _output_directory = output_directory
         _save_strategy = save_strategy
 
+        # Create all necessary subfolders
+        if _MPI_master(comm(initial_index)):
+            makedirs(output_directory, exist_ok=True)
+            subfolders = ["pickle"] + list(export_operator_outputs.keys())
+            if plot_energy_history:
+                subfolders += ["energy_history"]
+            if plot_minisanity_history:
+                subfolders += ["minisanity_history"]
+            for subfolder in subfolders:
+                makedirs(join(output_directory, subfolder), exist_ok=True)
+
+        # Resume
         lfile = join(output_directory, "last_finished_iteration")
         if resume and isfile(lfile):
             with open(lfile) as f:
@@ -252,19 +268,28 @@ def optimize_kl(likelihood_energy,
             fname = _file_name_by_strategy(last_finished_index)
             fname = reduce(join, [output_directory, "pickle", fname])
             if isfile(fname + ".mean.pickle"):
-                initial_position = ResidualSampleList.load_mean(fname)
+                mean = ResidualSampleList.load_mean(fname)
                 sl = ResidualSampleList.load(fname)
             else:
                 sl = SampleList.load(fname)
                 myassert(sl.n_samples == 1)
-                initial_position = sl.local_item(0)
+                mean = sl.local_item(0)
             _load_random_state(last_finished_index)
             energy_history = _pickle_load_values(last_finished_index, 'energy_history')
 
             if initial_index == total_iterations:
                 if isfile(fname + ".mean.pickle"):
                     sl = ResidualSampleList.load(fname)
-                return (sl, initial_position) if return_final_position else sl
+                return (sl, mean) if return_final_position else sl
+
+    # Initial position
+    if mean is None:
+        from ..sugar import full, makeDomain
+        mean = full(makeDomain({}), 0.)
+    if sl is None:
+        check_MPI_synced_random_state(comm(initial_index))
+        sl = _single_value_sample_list(mean, comm=comm(initial_index))
+    # /Initial position
 
     # Sanity check of input
     if initial_index >= total_iterations:
@@ -297,28 +322,6 @@ def optimize_kl(likelihood_energy,
                 except ImportError:
                     pass
     # /Sanity check of input
-
-    # Initial position
-    check_MPI_synced_random_state(comm(initial_index))
-    if initial_position is None:
-        from ..sugar import full, makeDomain
-        mean = full(makeDomain({}), 0.)
-    else:
-        mean = initial_position
-    sl = _single_value_sample_list(mean, comm=comm(initial_index))
-    # /Initial position
-
-    if output_directory is not None:
-        # Create all necessary subfolders
-        if _MPI_master(comm(initial_index)):
-            makedirs(output_directory, exist_ok=True)
-            subfolders = ["pickle"] + list(export_operator_outputs.keys())
-            if plot_energy_history:
-                subfolders += ["energy_history"]
-            if plot_minisanity_history:
-                subfolders += ["minisanity_history"]
-            for subfolder in subfolders:
-                makedirs(join(output_directory, subfolder), exist_ok=True)
 
     if initial_index == 0:
         energy_history = EnergyHistory()
