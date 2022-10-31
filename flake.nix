@@ -22,7 +22,7 @@
       in {
         packages.default = myPyPkgs.buildPythonPackage {
           pname = "nifty8";
-          version = "8.0";  # TODO Set this automatically
+          version = "8.4";  # TODO Set this automatically
           src = ./.;
           nativeBuildInputs = req.minimal;
           checkInputs =  [ myPyPkgs.pytestCheckHook ] ++ req.dev ++ req.mpi;
@@ -35,13 +35,13 @@
         devShells.default = pkgs.mkShell {
           nativeBuildInputs = with myPyPkgs; [ pip venvShellHook ] ++ req.minimal ++ req.dev;
           venvDir = "./.nix-nifty-venv";
-          shellHook = "export MPLBACKEND=TkAgg";
+          postShellHook = "export MPLBACKEND=TkAgg";
         };
 
         devShells."all" = pkgs.mkShell {
           nativeBuildInputs = with myPyPkgs; [ pip venvShellHook ] ++ ( pkgs.lib.attrValues req );
           venvDir = "./.nix-nifty-venv";
-          shellHook = "export MPLBACKEND=TkAgg";  # Otherwise matplotlib manages to crash python
+          postShellHook = "export MPLBACKEND=TkAgg";  # Otherwise matplotlib manages to crash python
         };
       });
 }
