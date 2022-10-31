@@ -212,6 +212,7 @@ def optimize_kl(likelihood_energy,
     """
     from ..utilities import myassert
     from .descent_minimizers import DescentMinimizer
+    from ..sugar import full, makeDomain
 
     if not isinstance(export_operator_outputs, dict):
         raise TypeError
@@ -238,9 +239,13 @@ def optimize_kl(likelihood_energy,
         terminate_callback = lambda x: False
     if transitions is None:
         transitions = lambda iglobal: None
-
-    mean, sl = initial_position, None
-    del(initial_position)
+    if initial_position is None:
+        mean = full(makeDomain({}), 0.)
+    else:
+        mean = initial_position
+        del(initial_position)
+    sl = _single_value_sample_list(mean, comm=comm(initial_index))
+    energy_history = EnergyHistory()
 
     if output_directory is not None:
         global _output_directory
@@ -282,15 +287,6 @@ def optimize_kl(likelihood_energy,
                     sl = ResidualSampleList.load(fname)
                 return (sl, mean) if return_final_position else sl
 
-    # Initial position
-    if mean is None:
-        from ..sugar import full, makeDomain
-        mean = full(makeDomain({}), 0.)
-    if sl is None:
-        check_MPI_synced_random_state(comm(initial_index))
-        sl = _single_value_sample_list(mean, comm=comm(initial_index))
-    # /Initial position
-
     # Sanity check of input
     if initial_index >= total_iterations:
         raise ValueError("Initial index is bigger than total iterations: "
@@ -322,9 +318,6 @@ def optimize_kl(likelihood_energy,
                 except ImportError:
                     pass
     # /Sanity check of input
-
-    if initial_index == 0:
-        energy_history = EnergyHistory()
 
     for iglobal in range(initial_index, total_iterations):
         lh = likelihood_energy(iglobal)
