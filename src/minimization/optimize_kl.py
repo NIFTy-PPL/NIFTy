@@ -247,6 +247,39 @@ def optimize_kl(likelihood_energy,
     sl = _single_value_sample_list(mean, comm=comm(initial_index))
     energy_history = EnergyHistory()
 
+    # Sanity check of input
+    if initial_index >= total_iterations:
+        raise ValueError("Initial index is bigger than total iterations: "
+                        f"{initial_index} >= {total_iterations}")
+    myassert(_number_of_arguments(transitions) == 1)
+    myassert(_number_of_arguments(inspect_callback) in [1, 2])
+    myassert(_number_of_arguments(terminate_callback) == 1)
+    if not likelihood_energy(initial_index).target is DomainTuple.scalar_domain():
+        raise TypeError
+
+    if sanity_checks:  # Potentially expensive sanity checks
+        for iglobal in range(initial_index, total_iterations):
+            for (obj, cls) in [(likelihood_energy, Operator), (kl_minimizer, DescentMinimizer),
+                               (nonlinear_sampling_minimizer, (DescentMinimizer, type(None))),
+                               (constants, (list, tuple)), (point_estimates, (list, tuple)),
+                               (n_samples, int)]:
+                if not isinstance(obj(iglobal), cls):
+                    s = f"{obj(iglobal)} is not instance of {cls} but rather {type(obj(iglobal))}"
+                    raise TypeError(s)
+
+            if sampling_iteration_controller(iglobal) is None:
+                myassert(n_samples(iglobal) == 0)
+            else:
+                myassert(isinstance(sampling_iteration_controller(iglobal), IterationController))
+            myassert(likelihood_energy(iglobal).target is DomainTuple.scalar_domain())
+            if not comm(iglobal) is None:
+                try:
+                    import mpi4py
+                    myassert(isinstance(comm(iglobal), mpi4py.MPI.Intracomm))
+                except ImportError:
+                    pass
+    # /Sanity check of input
+
     if output_directory is not None:
         global _output_directory
         global _save_strategy
@@ -286,38 +319,6 @@ def optimize_kl(likelihood_energy,
                 if isfile(fname + ".mean.pickle"):
                     sl = ResidualSampleList.load(fname)
                 return (sl, mean) if return_final_position else sl
-
-    # Sanity check of input
-    if initial_index >= total_iterations:
-        raise ValueError("Initial index is bigger than total iterations: "
-                        f"{initial_index} >= {total_iterations}")
-    myassert(_number_of_arguments(transitions) == 1)
-    myassert(_number_of_arguments(inspect_callback) in [1, 2])
-    myassert(_number_of_arguments(terminate_callback) == 1)
-    if not likelihood_energy(initial_index).target is DomainTuple.scalar_domain():
-        raise TypeError
-
-    if sanity_checks:  # Potentially expensive sanity checks
-        for iglobal in range(initial_index, total_iterations):
-            for (obj, cls) in [(likelihood_energy, Operator), (kl_minimizer, DescentMinimizer),
-                            (nonlinear_sampling_minimizer, (DescentMinimizer, type(None))),
-                            (constants, (list, tuple)), (point_estimates, (list, tuple)),
-                            (n_samples, int)]:
-                if not isinstance(obj(iglobal), cls):
-                    raise TypeError(f"{obj(iglobal)} is not instance of {cls} but rather {type(obj(iglobal))}")
-
-            if sampling_iteration_controller(iglobal) is None:
-                myassert(n_samples(iglobal) == 0)
-            else:
-                myassert(isinstance(sampling_iteration_controller(iglobal), IterationController))
-            myassert(likelihood_energy(iglobal).target is DomainTuple.scalar_domain())
-            if not comm(iglobal) is None:
-                try:
-                    import mpi4py
-                    myassert(isinstance(comm(iglobal), mpi4py.MPI.Intracomm))
-                except ImportError:
-                    pass
-    # /Sanity check of input
 
     for iglobal in range(initial_index, total_iterations):
         lh = likelihood_energy(iglobal)
