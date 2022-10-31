@@ -231,14 +231,13 @@ def optimize_kl(likelihood_energy,
     nonlinear_sampling_minimizer = _make_callable(nonlinear_sampling_minimizer)
     constants = _make_callable(constants)
     point_estimates = _make_callable(point_estimates)
+    transitions = _make_callable(transitions)
     n_samples = _make_callable(n_samples)
     comm = _make_callable(comm)
-    if inspect_callback is None:
-        inspect_callback = lambda x: None
+    inspect_callback = _make_callable(inspect_callback)
     if terminate_callback is None:
-        terminate_callback = lambda x: False
-    if transitions is None:
-        transitions = lambda iglobal: None
+        terminate_callback = _make_callable(False)
+
     if initial_position is None:
         mean = full(makeDomain({}), 0.)
     else:
