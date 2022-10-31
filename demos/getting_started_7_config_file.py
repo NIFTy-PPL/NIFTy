@@ -63,7 +63,8 @@ def lh(*, sky, noise_var):
 
 
 def trans(*, sky_before, sky_after):
-    return ift.NullOperator(sky_before.domain, sky_after.domain)  # FIXME
+    # FIXME Write a transition that e.g. transitions from a lower to a higher resolved grid
+    return lambda sample_list: ift.full(sky_after.domain, 0.)
 
 
 builder_dct = {"lh0": lh, "lh1": lh, "sky0": sky, "sky1": sky, "trans01": trans}
