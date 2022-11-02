@@ -79,7 +79,8 @@ def optimize_kl(likelihood_energy,
                 save_strategy="last",
                 return_final_position=False,
                 resume=False,
-                sanity_checks=True):
+                sanity_checks=True,
+                dry_run=False):
     """Provide potentially useful interface for standard KL minimization.
 
     The parameters `likelihood_energy`, `kl_minimizer`,
@@ -129,11 +130,13 @@ def optimize_kl(likelihood_energy,
         List of parameter keys for which no samples are drawn, but that are
         (possibly) optimized for, corresponding to point estimates of these.
         Default is to draw samples for the complete domain.
-    transitions : Operator or callable
-        Operator that is applied at the beginning of each iteration to the
-        latent position. This can be used if parts of the likelihood_energy are
-        replaced and thereby have a different domain. If None is passed, no
-        transition will be applied. Default is None.
+    transitions : callable or None
+        Function that takes the global iteration index and returns a function
+        that is applied at the beginning of each iteration to the current
+        ResidualSampleList. This can be used if parts of the likelihood_energy
+        are replaced and thereby have a different domain. If None is passed or
+        returned in one iteration, no transition will be applied. Default is
+        None.
     export_operator_outputs : dict
         Dictionary of operators that are exported during the minimization. The
         key contains a string that serves as identifier. The value of the
@@ -182,9 +185,12 @@ def optimize_kl(likelihood_energy,
         instead. If `last_finished_iteration` is not a file, the value of
         `initial_position` is used instead. Default: False.
     sanity_checks : bool
-        Check if all domains of likelihoods and transitions fit together. This
-        is potentially expensive because all likelihoods have to be instantiated
+        Some sanity checks that are evaluated at the beginning. They are
+        potentially expensive because all likelihoods have to be instantiated
         multiple times. Default: True.
+    dry_run : bool
+        Skips all expensive optimizations. Can be used to check that all domains
+        fit together. Default: False.
 
     Returns
     -------
@@ -206,6 +212,7 @@ def optimize_kl(likelihood_energy,
     """
     from ..utilities import myassert
     from .descent_minimizers import DescentMinimizer
+    from ..sugar import full, makeDomain
 
     if not isinstance(export_operator_outputs, dict):
         raise TypeError
@@ -227,50 +234,41 @@ def optimize_kl(likelihood_energy,
     transitions = _make_callable(transitions)
     n_samples = _make_callable(n_samples)
     comm = _make_callable(comm)
-    if inspect_callback is None:
-        inspect_callback = lambda x: None
+    inspect_callback = _make_callable(inspect_callback)
     if terminate_callback is None:
-        terminate_callback = lambda x: False
+        terminate_callback = _make_callable(False)
 
-    if output_directory is not None:
-        global _output_directory
-        global _save_strategy
-        _output_directory = output_directory
-        _save_strategy = save_strategy
+    if initial_position is None:
+        mean = full(makeDomain({}), 0.)
+    else:
+        mean = initial_position
+        del(initial_position)
+    sl = _single_value_sample_list(mean, comm=comm(initial_index))
+    energy_history = EnergyHistory()
 
-        lfile = join(output_directory, "last_finished_iteration")
-        if resume and isfile(lfile):
-            with open(lfile) as f:
-                last_finished_index = int(f.read())
-            initial_index = last_finished_index + 1
-            fname = _file_name_by_strategy(last_finished_index)
-            fname = reduce(join, [output_directory, "pickle", fname])
-            if isfile(fname + ".mean.pickle"):
-                initial_position = ResidualSampleList.load_mean(fname)
-            else:
-                sl = SampleList.load(fname)
-                myassert(sl.n_samples == 1)
-                initial_position = sl.local_item(0)
-            _load_random_state(last_finished_index)
-            energy_history = _pickle_load_values(last_finished_index, 'energy_history')
+    # Sanity check of input
+    if initial_index >= total_iterations:
+        raise ValueError("Initial index is bigger than total iterations: "
+                        f"{initial_index} >= {total_iterations}")
+    if _number_of_arguments(transitions) != 1:
+        raise ValueError(f"Transition takes 1 argument but {_number_of_arguments(transitions)} were given.")
+    if _number_of_arguments(inspect_callback) not in [1, 2]:
+        raise ValueError(f"Inspect callback takes either 1 or 2 arguments but {_number_of_arguments(inspect_callback)}"
+                         f"were given.")
+    if _number_of_arguments(terminate_callback) !=1:
+        raise ValueError(f"Terminate callback takes 1 argument but {_number_of_arguments(terminate_callback)} were given.")
+    if not likelihood_energy(initial_index).target is DomainTuple.scalar_domain():
+        raise TypeError
 
-            if initial_index == total_iterations:
-                if isfile(fname + ".mean.pickle"):
-                    sl = ResidualSampleList.load(fname)
-                return (sl, initial_position) if return_final_position else sl
-
-    if sanity_checks:
-        if initial_index >= total_iterations:
-            raise ValueError("Initial index is bigger than total iterations: "
-                            f"{initial_index} >= {total_iterations}")
-
+    if sanity_checks:  # Potentially expensive sanity checks
         for iglobal in range(initial_index, total_iterations):
             for (obj, cls) in [(likelihood_energy, Operator), (kl_minimizer, DescentMinimizer),
-                            (nonlinear_sampling_minimizer, (DescentMinimizer, type(None))),
-                            (constants, (list, tuple)), (point_estimates, (list, tuple)),
-                            (transitions, (Operator, type(None))), (n_samples, int)]:
+                               (nonlinear_sampling_minimizer, (DescentMinimizer, type(None))),
+                               (constants, (list, tuple)), (point_estimates, (list, tuple)),
+                               (n_samples, int)]:
                 if not isinstance(obj(iglobal), cls):
-                    raise TypeError(f"{obj(iglobal)} is not instance of {cls} but rather {type(obj(iglobal))}")
+                    s = f"{obj(iglobal)} is not instance of {cls} but rather {type(obj(iglobal))}"
+                    raise TypeError(s)
 
             if sampling_iteration_controller(iglobal) is None:
                 myassert(n_samples(iglobal) == 0)
@@ -283,56 +281,14 @@ def optimize_kl(likelihood_energy,
                     myassert(isinstance(comm(iglobal), mpi4py.MPI.Intracomm))
                 except ImportError:
                     pass
-        myassert(_number_of_arguments(inspect_callback) in [1, 2])
-        myassert(_number_of_arguments(terminate_callback) == 1)
-
-        if not likelihood_energy(initial_index).target is DomainTuple.scalar_domain():
-            raise TypeError
-
-    # Initial position
-    check_MPI_synced_random_state(comm(initial_index))
-    if initial_position is None:
-        from ..sugar import full, makeDomain
-        mean = full(makeDomain({}), 0.)
-    else:
-        mean = initial_position
-    # /Initial position
-
-    # Automatic transitions
-    def trans(iglobal, prev_dom, next_dom):
-        res = transitions(iglobal)
-        if res is not None:
-            return res
-
-        if iglobal == 0:
-            dom = mean.domain
-        else:
-            dom = prev_dom
-        tgt = next_dom
-
-        if dom is tgt:
-            return Operator.identity_operator(dom)
-        if set(dom.keys()).issubset(set(tgt.keys())):
-            return _InitializeOperator(dom, tgt, std=0.1)
-        raise RuntimeError
-
-    if sanity_checks:
-        for iglobal in range(initial_index, total_iterations):
-            next_dom = likelihood_energy(iglobal).domain
-            if iglobal == 0:
-                prev_dom = mean.domain
-            else:
-                prev_dom = likelihood_energy(iglobal-1).domain
-
-            next_dom1 = trans(iglobal, prev_dom, next_dom).target
-            if next_dom != next_dom1:
-                raise RuntimeError(f"The domain of lh energy #{iglobal} should equal the target of transition.\n"
-                                f"{next_dom}\n\n"
-                                f"{next_dom1}")
-            myassert(prev_dom is trans(iglobal, prev_dom, next_dom).domain)
-    # /Automatic transitions
+    # /Sanity check of input
 
     if output_directory is not None:
+        global _output_directory
+        global _save_strategy
+        _output_directory = output_directory
+        _save_strategy = save_strategy
+
         # Create all necessary subfolders
         if _MPI_master(comm(initial_index)):
             makedirs(output_directory, exist_ok=True)
@@ -344,25 +300,50 @@ def optimize_kl(likelihood_energy,
             for subfolder in subfolders:
                 makedirs(join(output_directory, subfolder), exist_ok=True)
 
-    if initial_index == 0:
-        energy_history = EnergyHistory()
+        # Resume
+        lfile = join(output_directory, "last_finished_iteration")
+        if resume and isfile(lfile):
+            with open(lfile) as f:
+                last_finished_index = int(f.read())
+            initial_index = last_finished_index + 1
+            fname = _file_name_by_strategy(last_finished_index)
+            fname = reduce(join, [output_directory, "pickle", fname])
+            if isfile(fname + ".mean.pickle"):
+                mean = ResidualSampleList.load_mean(fname)
+                sl = ResidualSampleList.load(fname)
+            else:
+                sl = SampleList.load(fname)
+                myassert(sl.n_samples == 1)
+                mean = sl.local_item(0)
+            _load_random_state(last_finished_index)
+            energy_history = _pickle_load_values(last_finished_index, 'energy_history')
+
+            if initial_index == total_iterations:
+                if isfile(fname + ".mean.pickle"):
+                    sl = ResidualSampleList.load(fname)
+                return (sl, mean) if return_final_position else sl
 
     for iglobal in range(initial_index, total_iterations):
         lh = likelihood_energy(iglobal)
-        mean = trans(iglobal, mean.domain, lh.domain)(mean)
-        dom = mean.domain
-        mf_dom = isinstance(dom, MultiDomain)
-        if not mf_dom:
-            warn("In the upcoming release nifty8.optimize_kl will no longer support "
-                 "DomainTuple as latent position. You can use "
-                 "`likelihood_energy.ducktape(key)` to convert a DomainTuple domain into "
-                 "a MultiDomain. Please report at `c@philipp-arras.de` if you use this "
-                 "feature and would like to see it continued.", DeprecationWarning)
+        if not isinstance(lh.domain, MultiDomain):
+            raise TypeError("Domain of likelihood_energy needs to be a MultiDomain, "
+                            f"got\n{lh.domain}")
+
+        # Transform mean
+        t = transitions(iglobal)
+        mean = mean if t is None else t(sl)
+        mean = _normal_initialize(mean, lh.domain)
+        # /Transform mean
 
         count = CountingOperator(lh.domain)
         ham = StandardHamiltonian(lh @ count, sampling_iteration_controller(iglobal))
         minimizer = kl_minimizer(iglobal)
         mean_iter = mean.extract(ham.domain)
+
+        if dry_run:
+            from ..logger import logger
+            logger.info(f"Iteration {iglobal} checked")
+            continue
 
         # TODO Distributing the domain of the likelihood is not supported (yet)
         check_MPI_synced_random_state(comm(iglobal))
@@ -375,7 +356,7 @@ def optimize_kl(likelihood_energy,
                               want_metric=_want_metric(minimizer))
             if comm(iglobal) is None:
                 e, _ = minimizer(e)
-                mean = MultiField.union([mean, e.position]) if mf_dom else e.position
+                mean = MultiField.union([mean, e.position])
                 sl = SampleList([mean])
                 energy_history.append((iglobal, e.value))
             else:
@@ -383,14 +364,13 @@ def optimize_kl(likelihood_energy,
                      "the rank0 task and communicate the result afterwards to all other tasks.")
                 if _MPI_master(comm(iglobal)):
                     e, _ = minimizer(e)
-                    mean = MultiField.union([mean, e.position]) if mf_dom else e.position
-                    sl = SampleList([mean], comm=comm(iglobal), domain=dom)
                     energy_history.append((iglobal, e.value))
+                    mean = MultiField.union([mean, e.position])
                 else:
                     mean = None
-                    sl = SampleList([], comm=comm(iglobal), domain=dom)
                 _barrier(comm(iglobal))
                 mean = comm(iglobal).bcast(mean, root=0)
+                sl = _single_value_sample_list(mean, comm(iglobal))
         else:
             e = SampledKLEnergy(
                 mean_iter,
@@ -401,7 +381,7 @@ def optimize_kl(likelihood_energy,
                 constants=constants(iglobal),
                 point_estimates=point_estimates(iglobal))
             e, _ = minimizer(e)
-            mean = MultiField.union([mean, e.position]) if mf_dom else e.position
+            mean = MultiField.union([mean, e.position])
             sl = e.samples.at(mean)
             energy_history.append((iglobal, e.value))
 
@@ -725,25 +705,26 @@ def _is_subdomain(sub_domain, total_domain):
                for kk, vv in sub_domain.items())
 
 
-class _InitializeOperator(Operator):
-    def __init__(self, domain, target, std):
-        self._domain = MultiDomain.make(domain)
-        self._target = MultiDomain.make(target)
-        self._has_been_called = False
-        self._std = float(std)
+def _normal_initialize(mf, domain, std=0.1):
+    from ..sugar import makeDomain
+    from ..utilities import myassert
 
-    def apply(self, x):
-        from ..sugar import from_random, is_linearization, makeDomain
-        from ..utilities import myassert
+    if MultiDomain.union([domain, mf.domain]) != domain:
+        raise RuntimeError(f"Domain of MultiField and final domain are not compatible\n"
+                           f"MultiField domain:\n{mf.domain}\n"
+                           f"Final domain:\n{domain}")
+    diff_keys = set(domain.keys()) - set(mf.domain.keys())
+    diff_domain = makeDomain({kk: domain[kk] for kk in diff_keys})
+    diff_fld = from_random(diff_domain, std=std)
+    res = mf.unite(diff_fld)
+    myassert(res.domain is domain)
+    return res
 
-        self._check_input(x)
-        if self._has_been_called:
-            raise RuntimeError("This operator can only be called once since it returns random numbers.")
-        self._has_been_called = True
-        if is_linearization(x):
-            raise TypeError("Only MultiFields are supported as input")
-        diff_keys = set(self._target.keys()) - set(self._domain.keys())
-        diff_domain = makeDomain({kk: self._target[kk] for kk in diff_keys})
-        diff_fld = from_random(diff_domain, std=self._std)
-        myassert(len(set(diff_fld.keys()) & set(self._domain.keys())) == 0)
-        return x.unite(diff_fld)
+
+def _single_value_sample_list(fld, comm):
+    check_MPI_equality(fld, comm)
+    if _MPI_master(comm):
+        sl = SampleList([fld], comm=comm, domain=fld.domain)
+    else:
+        sl = SampleList([], comm=comm, domain=fld.domain)
+    return sl

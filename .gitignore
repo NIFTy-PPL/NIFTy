@@ -1,6 +1,6 @@
 # nix-related
 result
-.nix-venv
+.nix-nifty-venv
 
 docs/source/user/getting_started_0.rst
 docs/source/user/custom_nonlinearities.rst
