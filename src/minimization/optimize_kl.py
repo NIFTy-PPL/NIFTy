@@ -250,9 +250,13 @@ def optimize_kl(likelihood_energy,
     if initial_index >= total_iterations:
         raise ValueError("Initial index is bigger than total iterations: "
                         f"{initial_index} >= {total_iterations}")
-    myassert(_number_of_arguments(transitions) == 1)
-    myassert(_number_of_arguments(inspect_callback) in [1, 2])
-    myassert(_number_of_arguments(terminate_callback) == 1)
+    if _number_of_arguments(transitions) != 1:
+        raise ValueError(f"Transition takes 1 argument but {_number_of_arguments(transitions)} were given.")
+    if _number_of_arguments(inspect_callback) not in [1, 2]:
+        raise ValueError(f"Inspect callback takes either 1 or 2 arguments but {_number_of_arguments(inspect_callback)}"
+                         f"were given.")
+    if _number_of_arguments(terminate_callback) !=1:
+        raise ValueError(f"Terminate callback takes 1 argument but {_number_of_arguments(terminate_callback)} were given.")
     if not likelihood_energy(initial_index).target is DomainTuple.scalar_domain():
         raise TypeError
 
