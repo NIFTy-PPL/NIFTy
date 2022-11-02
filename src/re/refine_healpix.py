@@ -2,7 +2,7 @@
 
 # SPDX-License-Identifier: GPL-2.0+ OR BSD-2-Clause
 
-from math import log2
+from math import log2, sqrt
 from typing import Callable, Optional, Tuple
 import warnings
 
@@ -12,8 +12,6 @@ from jax.lax import dynamic_slice_in_dim
 import numpy as np
 
 from .refine import _get_cov_from_loc
-
-NEST = True
 
 
 def get_1st_hp_nbrs_idx(nside, pix, nest: bool = False, dtype=np.uint32):
@@ -82,23 +80,23 @@ def get_1st_hp_nbrs(nside, pix, nest: bool = False):
     )
 
 
-def cov_sqrt(nside, radial_chart, kernel, level: int = 0):
+def cov_sqrt(chart, kernel, level: int = 0):
     from healpy import pixelfunc
 
-    if radial_chart.ndim != 1:
+    if chart.ndim != 2:
         nie = "covariance computation only implemented for 3D HEALPix"
         raise NotImplementedError(nie)
-    n_r, = radial_chart.shape_at(level)
 
+    nside = chart.nside_at(level)
     pix0s = np.stack(
-        pixelfunc.pix2vec(1, np.arange(12 * (nside * 2**level)**2), nest=NEST),
+        pixelfunc.pix2vec(nside, np.arange(12 * nside**2), nest=chart.nest),
         axis=-1
     )
-    r_rg0 = jnp.mgrid[tuple(slice(s) for s in radial_chart.shape0)]
+    r_rg0 = jnp.mgrid[tuple(slice(s) for s in chart.shape0[1:])]
     pix0s = (
         pix0s[:, np.newaxis, :] *
-        radial_chart.ind2cart(r_rg0, level)[..., np.newaxis]
-    ).reshape(12 * n_r, 3)
+        chart.nonhp_ind2cart(r_rg0, level)[..., np.newaxis]
+    ).reshape(-1, 3)
     cov_from_loc = _get_cov_from_loc(kernel, None)
     # Matrices are symmetrized by JAX, i.e. gradients are projected to the
     # subspace of symmetric matrices (see
@@ -163,94 +161,68 @@ def _vmap_squeeze_first_2ndax(fun, *args, **kwargs):
 def refine(
     coarse_values,
     excitations,
+    *,
+    chart,
     kernel: Callable,
-    radial_chart = None,
     coerce_fine_kernel: bool = True,
     precision=None,
 ):
-    from healpy import pixelfunc
     # TODO: Check performance of 'ring' versus 'nest' alignment
+    if chart.ndim not in (1, 2):
+        raise ValueError(
+            f"invalid dimensions {chart.ndim!r}; expected either 0 or 1"
+        )
+    coarse_values = coarse_values[:, np.
+                                  newaxis] if chart.ndim == 1 else coarse_values
+    nside = sqrt(coarse_values.shape[0] / 12)
+    lvl = int(log2(nside) - log2(chart.nside0))
 
-    ndim = np.ndim(coarse_values)
-    if ndim not in (1, 2):
-        raise ValueError(f"invalid dimensions {ndim!r}; expected either 0 or 1")
-    coarse_values = coarse_values[:, np.newaxis] if ndim == 1 else coarse_values
-    FSZ_HP = 4
-    FSZ_R = 2
-    CSZ_HP = 9
-    CSZ_R = 3
-
-    nside = (coarse_values.shape[0] / 12)**0.5
-    level = log2(nside)
-    if not nside.is_integer() or not level.is_integer():
-        raise ValueError("invalid nside of `coarse_values`")
-    nside, level = int(nside), int(level)
-
-    pix_nbr_idx = get_all_1st_hp_nbrs_idx(nside, nest=NEST)
-    gc = np.stack(pixelfunc.pix2vec(nside, pix_nbr_idx, nest=NEST), axis=-1)
-    pix_idx = np.arange(coarse_values.shape[0])
-    i = pixelfunc.ring2nest(nside, pix_idx) if NEST is False else pix_idx
-    gf = np.stack(
-        pixelfunc.pix2vec(
-            2 * nside, 4 * i[:, None] + np.arange(0, 4)[None, :], nest=True
-        ),
-        axis=-1
-    )
-
-    def refine(coarse_full, exc, idx_hp, idx_r, gc, gf):
+    def refine(coarse_values, exc, idx_hp, idx_r):
         # `idx_r` is the left-most radial pixel of the to-be-refined slice
         # Extend `gc` and `gf` radially
-        if ndim == 1:
-            if gc.ndim != 2 or gf.ndim != 2:
-                raise AssertionError()
-        elif ndim == 2:
-            bc = (1, ) * (ndim - 1) + (-1, 1)
-            rc = radial_chart.ind2cart(
-                idx_r + jnp.arange(CSZ_R)[np.newaxis, :], level
-            ).reshape(bc)
-            gc = gc[:, np.newaxis, :] * rc
-            gc = gc.reshape(-1, ndim + 1)
-            rf = radial_chart.ind2cart(
-                idx_r + jnp.array([0.75, 1.25])[np.newaxis, :], level
-            ).reshape(bc)
-            gf = gf[:, np.newaxis, :] * rf
-            gf = gf.reshape(-1, ndim + 1)
-        else:
-            raise AssertionError()
+        gc, gf = chart.get_coarse_fine_pair((idx_hp, idx_r), lvl)
         olf, fks = _refinement_matrices(
             (gc, gf), kernel=kernel, coerce_fine_kernel=coerce_fine_kernel
         )
-        if ndim > 1:
-            olf = olf.reshape(FSZ_HP, FSZ_R, CSZ_HP, CSZ_R)
-
-        c = coarse_full[idx_hp]
-        if ndim == 2:
-            c = dynamic_slice_in_dim(
-                coarse_full[idx_hp], idx_r, slice_size=CSZ_R, axis=1
+        if chart.ndim > 1:
+            olf = olf.reshape(
+                chart.fine_size**2, chart.fine_size, chart.coarse_size**2,
+                chart.coarse_size
             )
-        refined = jnp.tensordot(olf, c, axes=ndim, precision=precision)
-        f_shp = (FSZ_HP, ) if ndim == 1 else (FSZ_HP, FSZ_R)
+
+        c = coarse_values[chart.hp_neighbors_idx(lvl, idx_hp)]
+        if chart.ndim == 2:
+            c = dynamic_slice_in_dim(
+                coarse_values[chart.hp_neighbors_idx(lvl, idx_hp)],
+                idx_r,
+                slice_size=chart.coarse_size,
+                axis=1
+            )
+        refined = jnp.tensordot(olf, c, axes=chart.ndim, precision=precision)
+        if chart.ndim == 1:
+            f_shp = (chart.fine_size**2, )
+        else:
+            f_shp = (chart.fine_size**2, chart.fine_size)
         refined += jnp.matmul(fks, exc, precision=precision).reshape(f_shp)
         return refined
 
-    # TODO: benchmark swapping these two
-    if ndim == 1:
+    pix_hp_idx = jnp.arange(chart.shape_at(lvl)[0])
+    if chart.ndim == 1:
         pix_r_off = None
         vrefine = _vmap_squeeze_first_2ndax(
             refine, in_axes=(None, 0, 0, None, 0, 0)
         )
-    elif ndim == 2:
-        pix_r_off = jnp.arange(radial_chart.shape_at(level)[0] - CSZ_R + 1)
-        vrefine = vmap(refine, in_axes=(None, 0, None, 0, None, None))
-        vrefine = vmap(vrefine, in_axes=(None, 0, 0, None, 0, 0))
+    elif chart.ndim == 2:
+        pix_r_off = jnp.arange(chart.shape_at(lvl)[1] - chart.coarse_size + 1)
+        # TODO: benchmark swapping these two
+        vrefine = vmap(refine, in_axes=(None, 0, None, 0))
+        vrefine = vmap(vrefine, in_axes=(None, 0, 0, None))
     else:
         raise AssertionError()
-    refined = vrefine(
-        coarse_values, excitations, pix_nbr_idx, pix_r_off, gc, gf
-    )
-    if ndim == 1:
+    refined = vrefine(coarse_values, excitations, pix_hp_idx, pix_r_off)
+    if chart.ndim == 1:
         refined = refined.ravel()
-    elif ndim == 2:
+    elif chart.ndim == 2:
         refined = jnp.transpose(refined, (0, 2, 1, 3))
         n_hp = refined.shape[0] * refined.shape[1]
         n_r = refined.shape[2] * refined.shape[3]

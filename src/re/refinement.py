@@ -4,20 +4,18 @@
 
 from collections import namedtuple
 from functools import partial
-from math import log2
 from typing import Callable, Iterable, Optional, Tuple, Union
 
 from jax import numpy as jnp
 from jax import vmap
-import numpy as np
 
 from .forest_util import ShapeWithDtype
 from .model import AbstractModel
 from .refine import _get_cov_from_loc, refine
+from .refine_chart import CoordinateChart, HEALPixChart
 from .refine_healpix import refine as refine_hp
 from .refine_healpix import cov_sqrt as cov_sqrt_hp
 from .refine_util import get_refinement_shapewithdtype
-from .refine_chart import CoordinateChart
 
 RefinementMatrices = namedtuple(
     "RefinementMatrices", ("filter", "propagator_sqrt", "cov_sqrt0")
@@ -428,19 +426,14 @@ class RefinementField(AbstractModel):
     def __eq__(self, other):
         return repr(self) == repr(other)
 
-
-def _is_integer(maybe_int):
-    return np.asfarray(maybe_int).item().is_integer()
+    def __hash__(self):
+        return hash(repr(self))
 
 
 class RefinementHPField(AbstractModel):
     def __init__(
         self,
-        *,
-        nside: int,
-        depth: int = -1,
-        radial_chart: CoordinateChart,
-        nside0: Optional[int] = None,
+        chart: HEALPixChart,
         kernel: Optional[Callable] = None,
         dtype=None,
     ):
@@ -449,42 +442,14 @@ class RefinementHPField(AbstractModel):
 
         Parameters
         ----------
-        nside{,0} :
-            HEALPix :math:`N_{side}` parameter at the final (initial)
-            refinement level.
-        depth :
-            Number of refinement iterations.
-        radial_chart :
-            Coordinate chart for the radial axis.
+        chart :
+            HEALPix coordinate chart with which to iteratively refine.
         kernel :
             Covariance kernel of the refinement field.
         dtype :
             Data-type of the excitations which to add during refining.
         """
-        depth = log2(nside) if depth < 0 else depth
-        if not _is_integer(depth):
-            raise ValueError(f"`nside` ({nside!r}) not a power of 2")
-        self._depth = int(depth)
-
-        if nside is not None:
-            self._nside = nside
-            self._nside0 = nside / 2**self._depth
-        elif nside0 is not None:
-            self._nside0 = nside0
-            self._nside = nside0 * 2**self._depth
-        else:
-            raise TypeError("specify one of `nside` or `nside0`")
-        if not _is_integer(self._nside) or not _is_integer(self._nside0):
-            ve = f"`nside{{,0}}` must be a power of 2; got ({nside!r}, {nside0!r})"
-            raise ValueError(ve)
-        self._nside = int(self._nside)
-        self._nside0 = int(self._nside0)
-
-        if radial_chart._coarse_size != 3 or radial_chart._fine_size != 2:
-            nie = "only `3→2` radial chart is currently supported"
-            raise NotImplementedError(nie)
-        self._radial_chart = radial_chart
-
+        self._chart = chart
         self._kernel = kernel
         self._dtype = dtype
 
@@ -507,51 +472,41 @@ class RefinementHPField(AbstractModel):
         return jnp.float64 if self._dtype is None else self._dtype
 
     @property
-    def radial_chart(self):
-        """Associated `CoordinateChart` with which to iterative refine."""
-        return self._radial_chart
-
-    @property
-    def nside(self):
-        return self._nside
-
-    @property
-    def nside0(self):
-        return self._nside0
-
-    @property
-    def depth(self):
-        return self._depth
+    def chart(self):
+        """Associated `HEALPixChart` with which to iteratively refine."""
+        return self._chart
 
     @property
     def domain(self):
         """Yields the `ShapeWithDtype` of the primals."""
-        r_domain = get_refinement_shapewithdtype(
-            shape0=self.radial_chart.shape0,
-            depth=self.depth,
+        nonhp_domain = get_refinement_shapewithdtype(
+            shape0=self.chart.shape0[1:],
+            depth=self.chart.depth,
             dtype=self.dtype,
             skip0=False,
-            _coarse_size=self.radial_chart.coarse_size,
-            _fine_size=self.radial_chart.fine_size,
-            _fine_strategy=self.radial_chart.fine_strategy,
+            _coarse_size=self.chart.coarse_size,
+            _fine_size=self.chart.fine_size,
+            _fine_strategy=self.chart.fine_strategy,
         )
         domain = [
             ShapeWithDtype(
-                (12 * self.nside0**2, ) + r_domain[0].shape, r_domain[0].dtype
+                (12 * self.chart.nside0**2, ) + nonhp_domain[0].shape,
+                nonhp_domain[0].dtype
             )
         ]
         domain += [
             ShapeWithDtype(
-                (12 * (self.nside0 * 2**lvl)**2, ) + swd.shape[:-1] +
+                (12 * self.chart.nside_at(lvl)**2, ) + swd.shape[:-1] +
                 (4 * swd.shape[-1], ), swd.dtype
-            ) for lvl, swd in zip(range(self.depth + 1), r_domain[1:])
+            )
+            for lvl, swd in zip(range(self.chart.depth + 1), nonhp_domain[1:])
         ]
         return domain
 
     @staticmethod
     def apply(
         xi,
-        radial_chart: CoordinateChart,
+        chart: HEALPixChart,
         kernel: Union[Callable, RefinementMatrices],
         *,
         coerce_fine_kernel: bool = True,
@@ -575,24 +530,18 @@ class RefinementHPField(AbstractModel):
         precision :
             See JAX's precision.
         """
+        if xi[0].shape != chart.shape0:
+            ve = "zeroth excitations do not fit to chart"
+            raise ValueError(ve)
         refine_w_chart = partial(
             refine_hp if _refine is None else _refine,
             kernel=kernel,
-            radial_chart=radial_chart,
+            chart=chart,
             coerce_fine_kernel=coerce_fine_kernel,
             precision=precision
         )
 
-        nside0 = (xi[0].shape[0] / 12)**0.5
-        if not _is_integer(nside0):
-            ve = (
-                f"zeroth excitations do not fit on HEALPix map"
-                f"; invalid 'nside' ({nside0!r})"
-            )
-            raise ValueError(ve)
-        nside0 = int(nside0)
-        cov_sqrt0 = cov_sqrt_hp(nside0, radial_chart, kernel)
-
+        cov_sqrt0 = cov_sqrt_hp(chart, kernel)
         fine = (cov_sqrt0 @ xi[0].ravel()).reshape(xi[0].shape)
         for x in xi[1:]:
             fine = refine_w_chart(fine, x)
@@ -601,11 +550,10 @@ class RefinementHPField(AbstractModel):
     def __call__(self, xi, kernel=None, **kwargs):
         """See `RefinementField.apply`."""
         kernel = self.kernel if kernel is None else kernel
-        return self.apply(xi, self.radial_chart, kernel=kernel, **kwargs)
+        return self.apply(xi, self.chart, kernel=kernel, **kwargs)
 
     def __repr__(self):
-        descr = f"{self.__class__.__name__}(nside={self.nside!r}"
-        descr += f", depth={self.depth!r}, radial_chart={self.radial_chart!r}"
+        descr = f"{self.__class__.__name__}(chart={self.chart!r}"
         descr += f", kernel={self._kernel!r}" if self._kernel is not None else ""
         descr += f", dtype={self._dtype!r}" if self._dtype is not None else ""
         descr += ")"
@@ -613,3 +561,6 @@ class RefinementHPField(AbstractModel):
 
     def __eq__(self, other):
         return repr(self) == repr(other)
+
+    def __hash__(self):
+        return hash(repr(self))
