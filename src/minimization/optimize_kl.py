@@ -385,9 +385,6 @@ def optimize_kl(likelihood_energy,
             sl = e.samples.at(mean)
             energy_history.append((iglobal, e.value))
 
-        _minisanity(lh, iglobal, sl, comm, plot_minisanity_history)
-        _barrier(comm(iglobal))
-
         if output_directory is not None:
             _export_operators(iglobal, export_operator_outputs, sl, comm(iglobal))
             sl.save(join(output_directory, "pickle/") + _file_name_by_strategy(iglobal),
@@ -400,6 +397,9 @@ def optimize_kl(likelihood_energy,
                 _pickle_save_values(iglobal, 'energy_history', energy_history)
                 if plot_energy_history:
                     _plot_energy_history(iglobal, energy_history)
+        _barrier(comm(iglobal))
+
+        _minisanity(lh, iglobal, sl, comm, plot_minisanity_history)
         _barrier(comm(iglobal))
 
         _counting_report(count, iglobal, comm)
@@ -652,7 +652,7 @@ def _report_to_logger_and_file(report, file_name, iglobal, comm, to_logger,
         if to_logger:
             logger.info(report)
         if _output_directory is not None and to_file:
-            with open(join(_output_directory, file_name), "a") as f:
+            with open(join(_output_directory, file_name), "a", encoding="utf-8") as f:
                 f.write(intro + report + "\n\n")
 
 
