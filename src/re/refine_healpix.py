@@ -114,19 +114,23 @@ def _refinement_matrices(
     _cov_from_loc: Optional[Callable] = None,
 ) -> Tuple[jnp.ndarray, jnp.ndarray]:
     cov_from_loc = _get_cov_from_loc(kernel, _cov_from_loc)
-    gc, gf = gc_and_gf
-    n_fsz = gf.shape[0]
+    n_fsz = gc_and_gf[1].shape[0]
 
-    coord = jnp.concatenate((gc, gf), axis=0)
+    coord = jnp.concatenate(gc_and_gf, axis=0)
+    del gc_and_gf
     cov = cov_from_loc(coord, coord)
+    del coord
     cov_ff = cov[-n_fsz:, -n_fsz:]
     cov_fc = cov[-n_fsz:, :-n_fsz]
     cov_cc = cov[:-n_fsz, :-n_fsz]
+    del cov
     cov_cc_inv = jnp.linalg.inv(cov_cc)
+    del cov_cc
 
     olf = cov_fc @ cov_cc_inv
     # Also see Schur-Complement
     fine_kernel = cov_ff - cov_fc @ cov_cc_inv @ cov_fc.T
+    del cov_cc_inv, cov_fc, cov_ff
     if coerce_fine_kernel:
         # TODO: Try to work with NaN to avoid the expensive eigendecomposition;
         # work with nan_to_num?

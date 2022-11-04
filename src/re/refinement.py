@@ -65,15 +65,20 @@ def _coordinate_pixel_refinement_matrices(
     )
     coord = chart.ind2cart((coord + pixel_index.reshape((1, ndim))).T, level)
     coord = jnp.stack(coord, axis=-1)
+    del gc, gf
     cov = cov_from_loc(coord, coord)
+    del coord
     cov_ff = cov[-fsz**ndim:, -fsz**ndim:]
     cov_fc = cov[-fsz**ndim:, :-fsz**ndim]
     cov_cc = cov[:-fsz**ndim, :-fsz**ndim]
+    del cov
     cov_cc_inv = jnp.linalg.inv(cov_cc)
+    del cov_cc
 
     olf = cov_fc @ cov_cc_inv
     # Also see Schur-Complement
     fine_kernel = cov_ff - cov_fc @ cov_cc_inv @ cov_fc.T
+    del cov_cc_inv, cov_fc, cov_ff
     if coerce_fine_kernel:
         # TODO: Try to work with NaN to avoid the expensive eigendecomposition;
         # work with nan_to_num?
