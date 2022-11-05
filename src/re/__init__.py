@@ -46,6 +46,7 @@ from .kl import (
 )
 from .lanczos import stochastic_lq_logdet
 from .likelihood import Likelihood, StandardHamiltonian
+from .model import Model
 from .optimize import minimize, newton_cg, trust_ncg
 from .refine_chart import CoordinateChart, RefinementField
 from .stats_distributions import (
@@ -54,6 +55,7 @@ from .stats_distributions import (
     laplace_prior,
     lognormal_invprior,
     lognormal_prior,
+    normal_invprior,
     normal_prior,
     uniform_prior,
 )

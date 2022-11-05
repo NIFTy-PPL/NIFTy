@@ -8,7 +8,7 @@ from jax import linear_transpose, linearize, vjp
 from jax.tree_util import Partial, tree_leaves
 
 from .forest_util import ShapeWithDtype, split
-from .sugar import is1d, isiterable, sum_of_squares, doc_from
+from .sugar import doc_from, is1d, isiterable, sum_of_squares
 
 Q = TypeVar("Q")
 

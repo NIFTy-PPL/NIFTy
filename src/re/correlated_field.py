@@ -9,6 +9,7 @@ from typing import Callable, Dict, Optional, Tuple, Union
 from jax import numpy as jnp
 import numpy as np
 
+from .model import Model
 from .forest_util import ShapeWithDtype
 from .stats_distributions import lognormal_prior, normal_prior
 from .sugar import ducktape
@@ -455,7 +456,7 @@ class CorrelatedFieldMaker():
 
         return power
 
-    def finalize(self) -> Tuple[Callable, Dict[str, ShapeWithDtype]]:
+    def finalize(self) -> Model:
         """Finishes off the model construction process and returns the
         constructed operator.
         """
@@ -470,7 +471,9 @@ class CorrelatedFieldMaker():
 
             # TODO: Generalize to complex
             harmonic_dvol = 1. / sub_dom["position_space_total_volume"]
-            harmonic_transforms.append((harmonic_dvol, partial(hartley, axes=axes)))
+            harmonic_transforms.append(
+                (harmonic_dvol, partial(hartley, axes=axes))
+            )
         # Register the parameters for the excitations in harmonic space
         # TODO: actually account for the dtype here
         pfx = self._prefix + "xi"
@@ -508,4 +511,4 @@ class CorrelatedFieldMaker():
             cf_h = self.azm(p) * ea * p[self._prefix + "xi"]
             return self._offset_mean + outer_harmonic_transform(cf_h)
 
-        return correlated_field, self._parameter_tree.copy()
+        return Model(correlated_field, domain=self._parameter_tree.copy())

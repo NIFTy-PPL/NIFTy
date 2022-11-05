@@ -157,7 +157,7 @@ def SimpleCorrelatedField(
         cfm.set_amplitude_total_offset(
             offset_mean=offset_mean, offset_std=offset_std
         )
-        cf, _ = cfm.finalize()
+        cf = cfm.finalize()
 
         op._jax_expr = cf
         op.amplitude._jax_expr = cfm.amplitude
