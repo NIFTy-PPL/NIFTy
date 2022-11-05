@@ -252,7 +252,7 @@ def norm(tree, ord, *, ravel: bool):
         else:
             return norm(x, ord=ord)
 
-    return norm(tree_leaves(tree_map(el_norm, tree)), ord=ord)
+    return norm(jnp.array(tree_leaves(tree_map(el_norm, tree))), ord=ord)
 
 
 def dot(a, b, *, precision=None):
