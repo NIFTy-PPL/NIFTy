@@ -3,7 +3,7 @@
 
 import operator
 from functools import partial, reduce
-from typing import Any, Callable, Tuple, Union
+from typing import Any, Callable, Tuple, Union, Dict
 from warnings import warn
 
 from . import re as jft
@@ -28,7 +28,7 @@ def spaces_to_axes(domain, spaces) -> Union[Tuple, int, None]:
 
 def shapewithdtype_from_domain(
     domain, dtype
-) -> Union[jft.ShapeWithDtype, dict[str, jft.ShapeWithDtype]]:
+) -> Union[jft.ShapeWithDtype, Dict[str, jft.ShapeWithDtype]]:
     if isinstance(dtype, dict):
         dtp_fallback = float  # Fallback to `float` for unspecified keys
         k2dtp = dtype
@@ -74,7 +74,7 @@ def wrap_nifty_call(op, target_dtype=float) -> Callable[[Any], jft.Field]:
 def convert(
     nifty_obj: Union[Operator, DomainTuple, MultiDomain],
     dtype=float
-) -> Union[jft.Model, jft.Field, jft.ShapeWithDtype, dict[str,
+) -> Union[jft.Model, jft.Field, jft.ShapeWithDtype, Dict[str,
                                                           jft.ShapeWithDtype]]:
     if not isinstance(nifty_obj, (Operator, DomainTuple, MultiDomain)):
         raise TypeError(f"invalid input type {type(nifty_obj)!r}")
