@@ -431,7 +431,7 @@ def check_object_identity(obj0, obj1):
         raise ValueError(f"Mismatch:\n{obj0}\n{obj1}")
 
 
-def check_MPI_equality(obj, comm):
+def check_MPI_equality(obj, comm, hash=False):
     """Check that object is the same on all MPI tasks associated to a given
     communicator.
 
@@ -446,12 +446,16 @@ def check_MPI_equality(obj, comm):
     """
     if comm is None:
         return
-    if not _MPI_unique(obj, comm):
+    if not _MPI_unique(obj, comm, hash=hash):
         raise RuntimeError("MPI tasks are not in sync")
 
 
-def _MPI_unique(obj, comm):
-    return len(set(comm.allgather(pickle.dumps(obj)))) == 1
+def _MPI_unique(obj, comm, hash=False):
+    from hashlib import blake2b
+
+    obj = pickle.dumps(obj)
+    obj = blake2b(obj).hexdigest() if hash else obj
+    return len(set(comm.allgather(obj))) == 1
 
 
 def check_MPI_synced_random_state(comm):
