@@ -95,7 +95,7 @@ def cov_sqrt(chart, kernel, level: int = 0):
     r_rg0 = jnp.mgrid[tuple(slice(s) for s in chart.shape0[1:])]
     pix0s = (
         pix0s[:, np.newaxis, :] *
-        chart.nonhp_ind2cart(r_rg0, level)[..., np.newaxis]
+        jnp.asarray(chart.nonhp_ind2cart(r_rg0, level))[..., np.newaxis]
     ).reshape(-1, 3)
     cov_from_loc = _get_cov_from_loc(kernel, None)
     # Matrices are symmetrized by JAX, i.e. gradients are projected to the
