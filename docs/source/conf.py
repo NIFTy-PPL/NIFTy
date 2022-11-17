@@ -4,7 +4,7 @@ needs_sphinx = '3.2.0'
 
 extensions = [
     'sphinx.ext.napoleon',   # Support for NumPy and Google style docstrings
-    'sphinx.ext.imgmath',    # Render math as images
+    # 'sphinx.ext.imgmath',    # Render math as images
     'sphinx.ext.viewcode',   # Add links to highlighted source code
     'sphinx.ext.intersphinx' # Links to other sphinx docs (mostly numpy)
 ]
