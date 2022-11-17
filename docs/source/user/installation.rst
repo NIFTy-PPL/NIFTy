@@ -11,10 +11,10 @@ Optional dependencies:
 
 - `ducc0 <https://gitlab.mpcdf.mpg.de/mtr/ducc>`_ for faster FFTs, spherical harmonic transforms, and radio interferometry gridding support
 - `mpi4py <https://github.com/mpi4py/mpi4py/>`_ for MPI-parallel execution
-- `h5py <https://www.h5py.org/>`_ (for writing results to HDF5 files)
-- `astropy <https://www.astropy.org/>`_ (for writing FITS files)
-- `matplotlib <https://matplotlib.org/>`_  (for field plotting)
-- `jax <https://github.com/google/jax>`_  (for implementing operators with jax)
+- `h5py <https://www.h5py.org/>`_ for writing results to HDF5 files
+- `astropy <https://www.astropy.org/>`_ for writing FITS files
+- `matplotlib <https://matplotlib.org/>`_  for field plotting
+- `jax <https://github.com/google/jax>`_  for implementing operators with jax
 
 
 Installation for users
