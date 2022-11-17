@@ -39,10 +39,12 @@ from .kl import (
     GeoMetricKL,
     MetricKL,
     geometrically_sample_standard_hamiltonian,
+    sample_standard_hamiltonian,
+)
+from .kl_aux import (
     mean_hessp,
     mean_metric,
     mean_value_and_grad,
-    sample_standard_hamiltonian,
 )
 from .lanczos import stochastic_lq_logdet
 from .likelihood import Likelihood, StandardHamiltonian
