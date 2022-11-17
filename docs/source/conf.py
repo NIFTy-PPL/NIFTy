@@ -35,7 +35,7 @@ author = u'Martin Reinecke'
 release = nifty8.version.__version__
 version = release[:-2]
 
-language = None
+language = "en"
 exclude_patterns = []
 add_module_names = False
 
