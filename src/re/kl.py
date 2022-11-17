@@ -4,13 +4,11 @@
 from functools import partial
 from typing import Any, Callable, Optional, Sequence, Tuple, TypeVar, Union
 
-import jax
-from jax import lax
 from jax import random
 from jax.tree_util import Partial, register_pytree_node_class
 
 from . import conjugate_gradient
-from .forest_util import assert_arithmetics, map_forest, map_forest_mean, unstack
+from .forest_util import assert_arithmetics, map_forest, map_forest_mean, unstack, get_map
 from .likelihood import Likelihood, StandardHamiltonian
 from .sugar import random_like
 
@@ -381,7 +379,7 @@ def MetricKL(
     n_samples: int,
     key,
     mirror_samples: bool = True,
-    sample_mapping: Union[str, Callable] = 'lax',
+    map: Union[str, Callable] = 'lax',
     linear_sampling_cg: Callable = conjugate_gradient.static_cg,
     linear_sampling_name: Optional[str] = None,
     linear_sampling_kwargs: Optional[dict] = None,
@@ -416,7 +414,7 @@ def MetricKL(
         Mirroring samples stabilizes the KL estimate as extreme
         sample variation is counterbalanced.
         Default is True.
-    sample_mapping : string, callable
+    map : string, callable
         Can be either a string-key to a mapping function or a mapping function
         itself. The function is used to map the drawing of samples. Possible
         string-keys are:
@@ -424,9 +422,8 @@ def MetricKL(
         - 'pmap' or 'p' for `jax.pmap`
         - 'lax.map' or 'lax' for `jax.lax.map`
 
-        In case sample_mapping is passed as a function, it should produce a
-        mapped function f_mapped of a general function f as: `f_mapped =
-        sample_mapping(f)`
+        In case `map` is passed as a function, it should produce a mapped
+        function f_mapped of a general function f as: `f_mapped = map(f)`.
     linear_sampling_cg : callable
         Implementation of the conjugate gradient algorithm and used to
         apply the inverse of the metric.
@@ -454,26 +451,9 @@ def MetricKL(
         cg_kwargs=linear_sampling_kwargs
     )
     subkeys = random.split(key, n_samples)
-    if isinstance(sample_mapping, str):
-        if sample_mapping == 'pmap' or sample_mapping == 'p':
-            sample_mapping = jax.pmap
-        elif sample_mapping == 'lax.map' or sample_mapping == 'lax':
-            sample_mapping = partial(partial, lax.map)
-        else:
-            ve = (
-                f"{sample_mapping} is not an accepted key to a mapping function"
-                "; please pass function directly"
-            )
-            raise ValueError(ve)
 
-    elif not callable(sample_mapping):
-        te = (
-            f"invalid `sample_mapping` of type {type(sample_mapping)!r}"
-            "; expected string or callable"
-        )
-        raise TypeError(te)
-
-    samples_stack = sample_mapping(lambda k: draw(key=k))(subkeys)
+    map = get_map(map)
+    samples_stack = map(lambda k: draw(key=k))(subkeys)
 
     return SampleIter(
         mean=primals,
@@ -549,7 +529,7 @@ def GeoMetricKL(
     )
 
 
-def mean_value_and_grad(ham: Callable, sample_mapping='vmap', *args, **kwargs):
+def mean_value_and_grad(ham: Callable, map="vmap", *args, **kwargs):
     """Thin wrapper around `value_and_grad` and the provided sample mapping
     function, e.g. `vmap` to apply a cost function to a mean and a list of
     residual samples.
@@ -559,7 +539,7 @@ def mean_value_and_grad(ham: Callable, sample_mapping='vmap', *args, **kwargs):
     ham : :class:`nifty8.src.re.likelihood.StandardHamiltonian`
         Hamiltonian of the approximated probability distribution,
         of which the mean value and the mean gradient are to be computed.
-    sample_mapping : string, callable
+    map : string, callable
         Can be either a string-key to a mapping function or a mapping function
         itself. The function is used to map the drawing of samples. Possible
         string-keys are:
@@ -568,9 +548,8 @@ def mean_value_and_grad(ham: Callable, sample_mapping='vmap', *args, **kwargs):
         - 'pmap' or 'p' for `jax.pmap`
         - 'lax.map' or 'lax' for `jax.lax.map`
 
-        In case sample_mapping is passed as a function, it should produce a
-        mapped function f_mapped of a general function f as: `f_mapped =
-        sample_mapping(f)`
+        In case `map` is passed as a function, it should produce a mapped
+        function f_mapped of a general function f as: `f_mapped = map(f)`
     """
     from jax import value_and_grad
     vg = value_and_grad(ham, *args, **kwargs)
@@ -586,14 +565,14 @@ def mean_value_and_grad(ham: Callable, sample_mapping='vmap', *args, **kwargs):
 
         if not isinstance(primals_samples, SampleIter):
             primals_samples = SampleIter(samples=primals_samples)
-        return map_forest_mean(ham_vg, mapping=sample_mapping, in_axes=(0, ))(
+        return map_forest_mean(ham_vg, map=map, in_axes=(0, ))(
             tuple(primals_samples.at(primals))
         )
 
     return mean_vg
 
 
-def mean_hessp(ham: Callable, *args, **kwargs):
+def mean_hessp(ham: Callable, map="vmap", *args, **kwargs):
     """Thin wrapper around `jvp`, `grad` and `vmap` to apply a binary method to
     a primal mean, a tangent and a list of residual primal samples.
     """
@@ -614,13 +593,14 @@ def mean_hessp(ham: Callable, *args, **kwargs):
             primals_samples = SampleIter(samples=primals_samples)
         return map_forest_mean(
             partial(mean_hp, primals_samples=None, **primals_kw),
-            in_axes=(0, None)
+            in_axes=(0, None),
+            map=map
         )(tuple(primals_samples.at(primals)), tangents)
 
     return mean_hp
 
 
-def mean_metric(metric: Callable):
+def mean_metric(metric: Callable, map="vmap"):
     """Thin wrapper around `vmap` to apply a binary method to a primal mean, a
     tangent and a list of residual primal samples.
     """
@@ -636,7 +616,7 @@ def mean_metric(metric: Callable):
         if not isinstance(primals_samples, SampleIter):
             primals_samples = SampleIter(samples=primals_samples)
         return map_forest_mean(
-            partial(metric, **primals_kw), in_axes=(0, None)
+            partial(metric, **primals_kw), in_axes=(0, None), map=map
         )(tuple(primals_samples.at(primals)), tangents)
 
     return mean_met
