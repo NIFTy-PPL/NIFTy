@@ -61,6 +61,7 @@ html_theme_options = {
             "icon": "fab fa-gitlab",
         }
     ],
+    "navbar_end": ["navbar-icon-links"]
 }
 html_last_updated_fmt = '%b %d, %Y'
 
