@@ -182,6 +182,9 @@ class ShapeWithDtype():
         nm = self.__class__.__name__
         return f"{nm}(shape={self.shape}, dtype={self.dtype})"
 
+    # TODO: overlaod basic arithmetics (see `np.broadcast_shapes((1, 2), (3,
+    # 1), (3, 2))`)
+
 
 def get_dtype(v: Any):
     if hasattr(v, "dtype"):
