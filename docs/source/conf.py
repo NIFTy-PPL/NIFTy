@@ -54,9 +54,13 @@ html_theme_options = {
             "name": "PyPI",
             "url": "https://pypi.org/project/nifty8",
             "icon": "fas fa-box",
+        },
+        {
+            "name": "GitLab",
+            "url": "https://gitlab.mpcdf.mpg.de/ift/nifty",
+            "icon": "fab fa-gitlab",
         }
     ],
-    "gitlab_url": "https://gitlab.mpcdf.mpg.de/ift/nifty",
 }
 html_last_updated_fmt = '%b %d, %Y'
 
