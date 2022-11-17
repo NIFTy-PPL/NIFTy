@@ -43,6 +43,11 @@ add_module_names = False
 
 html_theme = "pydata_sphinx_theme"
 html_logo = 'nifty_logo_black.png'
+
+html_context = {
+   "default_mode": "light"
+}
+
 html_theme_options = {
     "icon_links": [
         {
