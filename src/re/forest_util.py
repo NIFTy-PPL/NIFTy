@@ -326,6 +326,87 @@ def _lax_map(fun, in_axes=0, out_axes=0):
     return partial(lax.map, fun)
 
 
+def _safe_assert(condition):
+    if not condition:
+        raise AssertionError()
+
+
+def _int_or_none(x):
+    return isinstance(x, int) or x is None
+
+
+def smap(fun, in_axes=0, out_axes=0, *, unroll=1):
+    """Stupid/sequential map.
+
+    Many of JAX's control flow logic reduces to a simple `jax.lax.scan`. This
+    function is one of these. In contrast to `jax.lax.map` or
+    `jax.lax.fori_loop`, it behaves much like `jax.vmap`. In fact, it
+    re-implements `in_axes` and `out_axes` and can be used in much the same way
+    as `jax.vmap`. However, instead of batching the input, it works through it
+    sequentially.
+
+    This implementation makes no claim on being efficient. It explicitly swaps
+    around axis in the input and output, potentially allocating more memory
+    than strictly necessary and worsening the memory layout.
+
+    For the semantics of `in_axes` and `out_axes` see `jax.vmap`. For the
+    semantics of `unroll` see `jax.lax.scan`.
+    """
+    from jax.tree_util import tree_map, tree_flatten, tree_unflatten
+
+    def blm(*args, **kwargs):
+        _safe_assert(not kwargs)
+        inax = in_axes
+        if isinstance(inax, int):
+            inax = tree_map(lambda _: inax, args)
+        args, args_td = tree_flatten(args)
+        inax, inax_td = tree_flatten(inax, is_leaf=_int_or_none)
+        if inax_td != args_td:
+            ve = f"`in_axes` {inax_td!r} incompatible with `args` {args_td!r}"
+            raise ValueError(ve)
+
+        args_map = []
+        for a, i in zip(args, inax):
+            if i is None:
+                continue
+            elif i != 0:
+                args_map += [jnp.swapaxes(a, 0, i)]
+            else:
+                args_map += [a]
+        del a, i
+
+        def fun_reord(_, x):
+            args_slice = []
+            x = list(x)
+            for a, i in zip(args, inax):
+                args_slice += [a if i is None else x.pop(0)]
+            _safe_assert(not len(x))
+            y = fun(*tree_unflatten(args_td, args_slice))
+            return None, y
+
+        _, scanned = lax.scan(fun_reord, None, args_map, unroll=unroll)
+
+        oax = out_axes
+        if isinstance(oax, int):
+            oax = tree_map(lambda _: oax, scanned)
+        scanned, scanned_td = tree_flatten(scanned)
+        oax, oax_td = tree_flatten(oax, is_leaf=_int_or_none)
+        if oax_td != scanned_td:
+            ve = f"`out_axes` {oax_td!r} incompatible with output {scanned_td!r}"
+            raise ValueError(ve)
+        out = []
+        for s, i in zip(scanned, oax):
+            if i != 0:
+                out += [jnp.swapaxes(s, 0, i)]
+            else:
+                out += [s]
+        del s, i
+
+        return tree_unflatten(scanned_td, out)
+
+    return blm
+
+
 def get_map(map) -> Callable:
     from jax import vmap, pmap
 
@@ -336,6 +417,8 @@ def get_map(map) -> Callable:
             m = pmap
         elif map in ('lax.map', 'lax', 'l'):
             m = _lax_map
+        elif map in ('smap', 's'):
+            m = smap
         else:
             raise ValueError(f"unknown `map` {map!r}")
     elif callable(map):
