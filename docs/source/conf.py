@@ -19,26 +19,39 @@ napoleon_include_special_with_doc = True
 
 project = u'NIFTy7'
 copyright = u'2013-2021, Max-Planck-Society'
+
+imgmath_embed = True
+
 author = u'Martin Reinecke'
 
 release = nifty7.version.__version__
 version = release[:-2]
 
-language = None
+language = "en"
 exclude_patterns = []
 add_module_names = False
 
 html_theme = "pydata_sphinx_theme"
 html_logo = 'nifty_logo_black.png'
+
+html_context = {
+   "default_mode": "light"
+}
+
 html_theme_options = {
     "icon_links": [
         {
             "name": "PyPI",
             "url": "https://pypi.org/project/nifty7",
             "icon": "fas fa-box",
+        },
+        {
+            "name": "GitLab",
+            "url": "https://gitlab.mpcdf.mpg.de/ift/nifty",
+            "icon": "fab fa-gitlab",
         }
     ],
-    "gitlab_url": "https://gitlab.mpcdf.mpg.de/ift/nifty",
+    "navbar_end": ["navbar-icon-links"]
 }
 html_last_updated_fmt = '%b %d, %Y'
 
