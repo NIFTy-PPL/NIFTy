@@ -320,6 +320,10 @@ class CoordinateChart():
         ----
         This method is independent of the refinement level!
         """
+        l = len(positions)
+        if l != self.ndim:
+            ve = f"`positions` of length {l} but chart is {self.ndim}-dimensional"
+            raise ValueError(ve)
         return self._rg2cart(positions)
 
     def cart2rg(self, positions):
@@ -340,6 +344,10 @@ class CoordinateChart():
         ----
         This method is independent of the refinement level!
         """
+        l = len(positions)
+        if l != self.ndim:
+            ve = f"`positions` of length {l} but chart is {self.ndim}-dimensional"
+            raise ValueError(ve)
         return self._cart2rg(positions)
 
     def rgoffset(self, lvl: int) -> Tuple[float]:
@@ -403,6 +411,11 @@ class CoordinateChart():
         rg :
             Regular Euclidean grid coordinates of shape `(n_dim, n_indices)`.
         """
+        l = len(indices)
+        if l != self.ndim:
+            ve = f"`indices` of length {l} but chart is {self.ndim}-dimensional"
+            raise ValueError(ve)
+
         offset = self.rgoffset(lvl)
 
         if self.fine_strategy == "jump":
@@ -437,6 +450,11 @@ class CoordinateChart():
         indices :
             Indices into the NDArray at refinement level `lvl`.
         """
+        l = len(positions)
+        if l != self.ndim:
+            ve = f"`positions` of length {l} but chart is {self.ndim}-dimensional"
+            raise ValueError(ve)
+
         offset = self.rgoffset(lvl)
 
         if self.fine_strategy == "jump":
@@ -779,6 +797,11 @@ class HEALPixChart():
     rgoffset.__doc__ = CoordinateChart.rgoffset.__doc__
 
     def nonhp_ind2cart(self, indices: Iterable[int], lvl: int) -> Tuple[float]:
+        l = len(indices)
+        if l != self.ndim - 1:
+            ve = f"`indices` of length {l} but chart is {self.ndim}-dimensional"
+            raise ValueError(ve)
+
         offset = self.rgoffset(lvl)[1:]
 
         if self.fine_strategy == "jump":
@@ -799,6 +822,10 @@ class HEALPixChart():
         if self.ndim == 1:
             i, = indices
             return self._hp_neighbors[lvl][i], self._hp_children[lvl][i]
+        l = len(indices)
+        if l != self.ndim:
+            ve = f"`indices` of length {l} but chart is {self.ndim}-dimensional"
+            raise ValueError(ve)
 
         idx_hp, idx_r, *idx_add = indices
         if len(idx_add) > 0:
