@@ -3,7 +3,6 @@
 # SPDX-License-Identifier: GPL-2.0+ OR BSD-2-Clause
 
 from math import log2, sqrt
-from typing import Callable, Optional, Tuple
 import warnings
 
 from jax import vmap
@@ -106,53 +105,6 @@ def cov_sqrt(chart, kernel, level: int = 0):
     return fks_sqrt
 
 
-def _refinement_matrices(
-    gc_and_gf,
-    kernel: Optional[Callable] = None,
-    *,
-    coerce_fine_kernel: bool = True,
-    _cov_from_loc: Optional[Callable] = None,
-) -> Tuple[jnp.ndarray, jnp.ndarray]:
-    cov_from_loc = _get_cov_from_loc(kernel, _cov_from_loc)
-    n_fsz = gc_and_gf[1].shape[0]
-
-    coord = jnp.concatenate(gc_and_gf, axis=0)
-    del gc_and_gf
-    cov = cov_from_loc(coord, coord)
-    del coord
-    cov_ff = cov[-n_fsz:, -n_fsz:]
-    cov_fc = cov[-n_fsz:, :-n_fsz]
-    cov_cc = cov[:-n_fsz, :-n_fsz]
-    del cov
-    cov_cc_inv = jnp.linalg.inv(cov_cc)
-    del cov_cc
-
-    olf = cov_fc @ cov_cc_inv
-    # Also see Schur-Complement
-    fine_kernel = cov_ff - cov_fc @ cov_cc_inv @ cov_fc.T
-    del cov_cc_inv, cov_fc, cov_ff
-    if coerce_fine_kernel:
-        # TODO: Try to work with NaN to avoid the expensive eigendecomposition;
-        # work with nan_to_num?
-        # Implicitly assume a white power spectrum beyond the numerics limit.
-        # Use the diagonal as estimate for the magnitude of the variance.
-        fine_kernel_fallback = jnp.diag(jnp.abs(jnp.diag(fine_kernel)))
-        # Never produce NaNs (https://github.com/google/jax/issues/1052)
-        # This is expensive but necessary (worse but cheaper:
-        # `jnp.all(jnp.diag(fine_kernel) > 0.)`)
-        is_pos_def = jnp.all(jnp.linalg.eigvalsh(fine_kernel) > 0)
-        fine_kernel = jnp.where(is_pos_def, fine_kernel, fine_kernel_fallback)
-        # NOTE, subsequently use the Cholesky decomposition, even though
-        # already having computed the eigenvalues, as to get consistent results
-        # across platforms
-    # Matrices are symmetrized by JAX, i.e. gradients are projected to the
-    # subspace of symmetric matrices (see
-    # https://github.com/google/jax/issues/10815)
-    fine_kernel_sqrt = jnp.linalg.cholesky(fine_kernel)
-
-    return olf, fine_kernel_sqrt
-
-
 def _vmap_squeeze_first_2ndax(fun, *args, **kwargs):
     vfun = vmap(fun, *args, **kwargs)
 
@@ -165,10 +117,10 @@ def _vmap_squeeze_first_2ndax(fun, *args, **kwargs):
 def refine(
     coarse_values,
     excitations,
+    olf,
+    fks,
     *,
     chart,
-    kernel: Callable,
-    coerce_fine_kernel: bool = True,
     precision=None,
 ):
     # TODO: Check performance of 'ring' versus 'nest' alignment
@@ -181,19 +133,7 @@ def refine(
     nside = sqrt(coarse_values.shape[0] / 12)
     lvl = int(log2(nside) - log2(chart.nside0))
 
-    def refine(coarse_values, exc, idx_hp, idx_r):
-        # `idx_r` is the left-most radial pixel of the to-be-refined slice
-        # Extend `gc` and `gf` radially
-        gc, gf = chart.get_coarse_fine_pair((idx_hp, idx_r), lvl)
-        olf, fks = _refinement_matrices(
-            (gc, gf), kernel=kernel, coerce_fine_kernel=coerce_fine_kernel
-        )
-        if chart.ndim > 1:
-            olf = olf.reshape(
-                chart.fine_size**2, chart.fine_size, chart.coarse_size**2,
-                chart.coarse_size
-            )
-
+    def refine(coarse_values, exc, idx_hp, idx_r, olf, fks):
         c = coarse_values[chart.hp_neighbors_idx(lvl, idx_hp)]
         if chart.ndim == 2:
             c = dynamic_slice_in_dim(
@@ -214,16 +154,18 @@ def refine(
     if chart.ndim == 1:
         pix_r_off = None
         vrefine = _vmap_squeeze_first_2ndax(
-            refine, in_axes=(None, 0, 0, None, 0, 0)
+            refine, in_axes=(None, 0, 0, None, 0, 0, 0, 0)
         )
     elif chart.ndim == 2:
         pix_r_off = jnp.arange(chart.shape_at(lvl)[1] - chart.coarse_size + 1)
         # TODO: benchmark swapping these two
-        vrefine = vmap(refine, in_axes=(None, 0, None, 0))
-        vrefine = vmap(vrefine, in_axes=(None, 0, 0, None))
+        vrefine = vmap(refine, in_axes=(None, 0, None, 0, 0, 0))
+        vrefine = vmap(vrefine, in_axes=(None, 0, 0, None, 0, 0))
     else:
         raise AssertionError()
-    refined = vrefine(coarse_values, excitations, pix_hp_idx, pix_r_off)
+    refined = vrefine(
+        coarse_values, excitations, pix_hp_idx, pix_r_off, olf, fks
+    )
     if chart.ndim == 1:
         refined = refined.ravel()
     elif chart.ndim == 2:
