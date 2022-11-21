@@ -18,7 +18,8 @@ from numpy.testing import assert_allclose
 from scipy.spatial import distance_matrix
 
 import nifty8.re as jft
-from nifty8.re import refine, refine_healpix
+from nifty8.re import refine
+from nifty8.re.refine import charted_refine, healpix_refine
 
 try:
     import healpy
@@ -49,7 +50,7 @@ inv_kernel = Partial(jnp.interp, xp=y, fp=x)
 
 @pmp("dist", (10., 1e+3))
 def test_refinement_matrices_1d(dist, kernel=kernel):
-    cov_from_loc = refine._get_cov_from_loc(kernel=kernel)
+    cov_from_loc = refine.util.get_cov_from_loc(kernel=kernel)
 
     coarse_coord = dist * jnp.array([0., 1., 2.])
     fine_coord = coarse_coord[tuple(
@@ -84,10 +85,11 @@ def test_refinement_1d(seed, dist, kernel=kernel):
     rng = np.random.default_rng(seed)
 
     refs = (
-        refine.refine_conv, refine.refine_conv_general, refine.refine_loop,
-        refine.refine_vmap, refine.refine_loop, refine.refine_slice
+        charted_refine.refine_conv, charted_refine.refine_conv_general,
+        charted_refine.refine_loop, charted_refine.refine_vmap,
+        charted_refine.refine_loop, charted_refine.refine_slice
     )
-    cov_from_loc = refine._get_cov_from_loc(kernel=kernel)
+    cov_from_loc = refine.util.get_cov_from_loc(kernel=kernel)
     cc = jft.CoordinateChart(
         shape0=(12, ) * np.size(dist),
         distances=dist,
@@ -104,7 +106,7 @@ def test_refinement_1d(seed, dist, kernel=kernel):
     lvl0 = cov_sqrt @ rng.normal(size=main_coord.shape)
     lvl1_exc = rng.normal(size=(2 * (lvl0.size - 2), ))
 
-    fine_reference = refine.refine(lvl0, lvl1_exc, olf, ks)
+    fine_reference = charted_refine.refine(lvl0, lvl1_exc, olf, ks)
     eps = jnp.finfo(lvl0.dtype.type).eps
     aallclose = partial(
         assert_allclose, desired=fine_reference, rtol=6 * eps, atol=120 * eps
@@ -125,7 +127,7 @@ def test_refinement_nd_cross_consistency(
     ndim = len(dist) if hasattr(dist, "__len__") else 1
     min_shape = (12, ) * ndim
     depth = 1
-    refs = (refine.refine_conv_general, refine.refine_slice)
+    refs = (charted_refine.refine_conv_general, charted_refine.refine_slice)
     kwargs = {
         "_coarse_size": _coarse_size,
         "_fine_size": _fine_size,
@@ -251,7 +253,7 @@ def test_refinement_nd_shape(seed, n_dim, kernel=kernel):
     rng = np.random.default_rng(seed)
 
     distances = np.exp(rng.normal(size=(n_dim, )))
-    cov_from_loc = refine._get_cov_from_loc(kernel=kernel)
+    cov_from_loc = refine.util.get_cov_from_loc(kernel=kernel)
     cc = jft.CoordinateChart(
         shape0=(12, ) * n_dim,
         distances=distances,
@@ -273,7 +275,7 @@ def test_refinement_nd_shape(seed, n_dim, kernel=kernel):
     lvl0 = (cov_sqrt @ rng.normal(size=gc.shape[0])).reshape((shp_i, ) * n_dim)
     lvl1_exc = rng.normal(size=tuple(n - 2 for n in lvl0.shape) + (2**n_dim, ))
 
-    fine_reference = refine.refine(lvl0, lvl1_exc, olf, ks)
+    fine_reference = charted_refine.refine(lvl0, lvl1_exc, olf, ks)
     assert fine_reference.shape == tuple((2 * (shp_i - 2), ) * n_dim)
 
 
@@ -330,7 +332,10 @@ def test_chart_refinement_regular_irregular_matrices_consistency(
 @pmp("_coarse_size", (3, 5))
 @pmp("_fine_size", (2, 4))
 @pmp("_fine_strategy", ("jump", "extend"))
-@pmp("_refine", (refine.refine_conv_general, refine.refine_slice))
+@pmp(
+    "_refine",
+    (charted_refine.refine_conv_general, charted_refine.refine_slice)
+)
 def test_refinement_irregular_regular_consistency(
     seed,
     dist,
@@ -388,7 +393,7 @@ def test_refinement_irregular_regular_consistency(
 @pmp("nside", (1, 2, 16))
 @pmp("nest", (True, False))
 def test_healpix_refinement_neigbor_uniqueness(nside, nest):
-    nbr = refine_healpix.get_all_1st_hp_nbrs_idx(nside, nest)
+    nbr = healpix_refine.get_all_1st_hp_nbrs_idx(nside, nest)
     n_non_uniq = np.sum(np.diff(np.sort(nbr, axis=1), axis=1) == 0, axis=1)
     np.testing.assert_equal(n_non_uniq, 0)
 

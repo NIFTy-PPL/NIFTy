@@ -10,7 +10,7 @@ from jax import numpy as jnp
 from jax.lax import dynamic_slice_in_dim
 import numpy as np
 
-from .refine import _get_cov_from_loc
+from .util import get_cov_from_loc
 
 
 def get_1st_hp_nbrs_idx(nside, pix, nest: bool = False, dtype=np.uint32):
@@ -96,7 +96,7 @@ def cov_sqrt(chart, kernel, level: int = 0):
         pix0s[:, np.newaxis, :] *
         jnp.asarray(chart.nonhp_ind2cart(r_rg0, level))[..., np.newaxis]
     ).reshape(-1, 3)
-    cov_from_loc = _get_cov_from_loc(kernel, None)
+    cov_from_loc = get_cov_from_loc(kernel, None)
     # Matrices are symmetrized by JAX, i.e. gradients are projected to the
     # subspace of symmetric matrices (see
     # https://github.com/google/jax/issues/10815)

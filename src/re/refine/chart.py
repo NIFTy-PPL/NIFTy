@@ -9,7 +9,7 @@ from typing import Callable, Iterable, Literal, Optional, Tuple, Union
 from jax import numpy as jnp
 import numpy as np
 
-from .refine_util import (
+from .util import (
     coarse2fine_distances,
     coarse2fine_shape,
     fine2coarse_distances,
@@ -571,7 +571,7 @@ class HEALPixChart():
         ----------
         """
         from healpy import pixelfunc
-        from .refine_healpix import get_1st_hp_nbrs_idx
+        from .healpix_refine import get_1st_hp_nbrs_idx
 
         nside, nside0 = None, None
         if min_shape is not None:

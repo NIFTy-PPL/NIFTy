@@ -2,9 +2,6 @@
 # SPDX-License-Identifier: GPL-2.0+ OR BSD-2-Clause
 
 from . import refine
-from . import refine_healpix
-from . import refine_util
-from . import refine_chart
 from . import lanczos
 from . import structured_kernel_interpolation
 from .conjugate_gradient import cg, static_cg
@@ -51,8 +48,9 @@ from .lanczos import stochastic_lq_logdet
 from .likelihood import Likelihood, StandardHamiltonian
 from .model import Model, Initializer
 from .optimize import minimize, newton_cg, trust_ncg
-from .refine_chart import CoordinateChart, HEALPixChart
-from .refinement import RefinementField, RefinementHPField
+from .refine.chart import CoordinateChart, HEALPixChart
+from .refine.charted_field import RefinementField
+from .refine.healpix_field import RefinementHPField
 from .stats_distributions import (
     invgamma_invprior,
     invgamma_prior,

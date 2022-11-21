@@ -5,7 +5,7 @@
 from functools import partial
 from math import ceil
 from string import ascii_uppercase
-from typing import Callable, Literal, Union
+from typing import Literal, Union
 
 from jax import vmap
 from jax import numpy as jnp
@@ -23,27 +23,6 @@ CONV_DIMENSION_NAMES = "".join(el for el in ascii_uppercase if el not in "NCIO")
 def _assert(assertion):
     if not assertion:
         raise AssertionError()
-
-
-def _get_cov_from_loc(kernel=None,
-                      cov_from_loc=None
-                     ) -> Callable[[NDARRAY, NDARRAY], NDARRAY]:
-    if cov_from_loc is None and callable(kernel):
-        # TODO: extend to non-stationary kernels
-
-        def cov_from_loc_sngl(x, y):
-            return kernel(jnp.linalg.norm(x - y))
-
-        cov_from_loc = vmap(
-            vmap(cov_from_loc_sngl, in_axes=(None, 0)), in_axes=(0, None)
-        )
-    else:
-        if not callable(cov_from_loc):
-            ve = "exactly one of `cov_from_loc` or `kernel` must be set and callable"
-            raise ValueError(ve)
-    # TODO: benchmark whether using `triu_indices(n, k=1)` and
-    # `diag_indices(n)` is advantageous
-    return cov_from_loc
 
 
 def _vmap_squeeze_first(fun, *args, **kwargs):

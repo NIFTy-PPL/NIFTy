@@ -2,6 +2,7 @@
 
 # SPDX-License-Identifier: GPL-2.0+ OR BSD-2-Clause
 
+from collections import namedtuple
 from functools import partial
 from math import ceil
 import sys
@@ -13,7 +14,34 @@ from jax import numpy as jnp
 import numpy as np
 from scipy.spatial import distance_matrix
 
-from .forest_util import zeros_like
+from ..forest_util import ShapeWithDtype, zeros_like
+
+NDARRAY = Union[jnp.ndarray, np.ndarray]
+
+RefinementMatrices = namedtuple(
+    "RefinementMatrices", ("filter", "propagator_sqrt", "cov_sqrt0")
+)
+
+
+def get_cov_from_loc(
+    kernel=None, cov_from_loc=None
+) -> Callable[[NDARRAY, NDARRAY], NDARRAY]:
+    if cov_from_loc is None and callable(kernel):
+        # TODO: extend to non-stationary kernels
+
+        def cov_from_loc_sngl(x, y):
+            return kernel(jnp.linalg.norm(x - y))
+
+        cov_from_loc = jax.vmap(
+            jax.vmap(cov_from_loc_sngl, in_axes=(None, 0)), in_axes=(0, None)
+        )
+    else:
+        if not callable(cov_from_loc):
+            ve = "exactly one of `cov_from_loc` or `kernel` must be set and callable"
+            raise ValueError(ve)
+    # TODO: benchmark whether using `triu_indices(n, k=1)` and
+    # `diag_indices(n)` is advantageous
+    return cov_from_loc
 
 
 def get_refinement_shapewithdtype(
@@ -26,8 +54,6 @@ def get_refinement_shapewithdtype(
     _fine_strategy: Literal["jump", "extend"] = "jump",
     skip0: bool = False,
 ):
-    from .forest_util import ShapeWithDtype
-
     if depth < 0:
         raise ValueError(f"invalid `depth`; got {depth!r}")
     csz = int(_coarse_size)  # coarse size
