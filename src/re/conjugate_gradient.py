@@ -51,6 +51,28 @@ def static_cg(mat, j, x0=None, *args, **kwargs):
     return cg_res.x, cg_res.info
 
 
+def _cg_pretty_print_it(
+    name,
+    i,
+    *,
+    energy,
+    energy_diff,
+    absdelta=None,
+    norm=None,
+    resnorm=None,
+    maxiter=None
+):
+    if maxiter is not None and i == maxiter:
+        i_str = "✖" * len(str(i)) + f" ({i})"
+    else:
+        i_str = str(i)
+    msg = f"{name}: Iteration {i_str} ⛰:{energy:+.4e} Δ⛰:{energy_diff:.4e}"
+    msg += f" 🞋:{absdelta:.4e}" if absdelta is not None else ""
+    if norm is not None and resnorm is not None:
+        msg += f" |∇|:{norm:.4e} 🞋:{resnorm:.4e}"
+    print(msg, file=sys.stderr)
+
+
 # Taken from nifty
 def _cg(
     mat,
@@ -98,12 +120,29 @@ def _cg(
         energy = float(((r - j) / 2).dot(pos))
         nfev = 1
     previous_gamma = float(sum_of_squares(r))
+
+    info = -1
+    i = 0
+    energy_diff = jnp.inf
+    norm = None
+    pp = partial(
+        _cg_pretty_print_it,
+        name,
+        absdelta=absdelta,
+        resnorm=resnorm,
+        maxiter=maxiter
+    )
+    if name is not None:
+        if resnorm is not None:
+            norm = jft_norm(r, ord=norm_ord, ravel=True)
+        else:
+            norm = None
+        pp(i, energy=energy, energy_diff=energy_diff, norm=norm)
+
     if previous_gamma == 0:
         info = 0
         return CGResults(x=pos, info=info, nit=0, nfev=nfev, success=True)
 
-    info = -1
-    i = 0
     for i in range(1, maxiter + 1):
         q = mat(d)
         nfev += 1
@@ -143,23 +182,17 @@ def _cg(
             break
         if resnorm is not None:
             norm = float(jft_norm(r, ord=norm_ord, ravel=True))
-            if name is not None:
-                msg = f"{name}: |∇|:{norm:.6e} 🞋:{resnorm:.6e}"
-                print(msg, file=sys.stderr)
             if norm < resnorm and i >= miniter:
                 info = 0
                 break
+        else:
+            norm = None
         if absdelta is not None or name is not None:
             new_energy = float(((r - j) / 2).dot(pos))
             energy_diff = energy - new_energy
-            if name is not None:
-                msg = (
-                    f"{name}: Iteration {i} ⛰:{new_energy:+.6e} Δ⛰:{energy_diff:.6e}"
-                    + (f" 🞋:{absdelta:.6e}" if absdelta is not None else "")
-                )
-                print(msg, file=sys.stderr)
         else:
             new_energy = energy
+            energy_diff = None
         if absdelta is not None:
             neg_energy_eps = -eps * jnp.abs(new_energy)
             if energy_diff < neg_energy_eps:
@@ -171,10 +204,15 @@ def _cg(
         energy = new_energy
         d = d * max(0, gamma / previous_gamma) + r
         previous_gamma = gamma
-    else:
-        nm = "CG" if name is None else name
-        print(f"{nm}: Iteration Limit Reached", file=sys.stderr)
-        info = i
+
+        if name is not None:
+            pp(i, energy=energy, energy_diff=energy_diff, norm=norm)
+
+    if name is not None and info != -1:
+        # only print if loop was terminated via `break` otherwise everything is
+        pp(i, energy=energy, energy_diff=energy_diff, norm=norm)
+
+    info = i if info == -1 else info
     return CGResults(x=pos, info=info, nit=i, nfev=nfev, success=info == 0)
 
 
@@ -194,6 +232,7 @@ def _static_cg(
     _within_newton=False,  # TODO
     **kwargs
 ) -> CGResults:
+    from jax.experimental.host_callback import call
     from jax.lax import cond, while_loop
 
     norm_ord = 2 if norm_ord is None else norm_ord  # TODO: change to 1
@@ -211,6 +250,9 @@ def _static_cg(
     common_dtp = common_type(j)
     eps = 6. * jnp.finfo(common_dtp).eps  # taken from SciPy's NewtonCG minimzer
     tiny = 6. * jnp.finfo(common_dtp).tiny
+
+    def pp(arg):
+        _cg_pretty_print_it(name, **arg)
 
     def continue_condition(v):
         return v["info"] < -1
@@ -272,24 +314,6 @@ def _static_cg(
         d = d * jnp.maximum(0, gamma / previous_gamma) + r
 
         if name is not None:
-            from jax.experimental.host_callback import call
-
-            def pp(arg):
-                msg = (
-                    (
-                        "{name}: |∇|:{norm:.6e} 🞋:{resnorm:.6e}\n"
-                        if arg["resnorm"] is not None else ""
-                    ) + "{name}: Iteration {i} ⛰:{energy:+.6e}" +
-                    " Δ⛰:{energy_diff:.6e}" + (
-                        " 🞋:{absdelta:.6e}"
-                        if arg["absdelta"] is not None else ""
-                    ) + (
-                        "\n{name}: Iteration Limit Reached"
-                        if arg["i"] == arg["maxiter"] else ""
-                    )
-                )
-                print(msg.format(name=name, **arg), file=sys.stderr)
-
             printable_state = {
                 "i": i,
                 "energy": energy,
@@ -342,6 +366,22 @@ def _static_cg(
     }
     # Finish early if already converged in the initial iteration
     val["info"] = jnp.where(gamma == 0., 0, val["info"])
+
+    if name is not None:
+        if resnorm is not None:
+            norm = jft_norm(r, ord=norm_ord, ravel=True)
+        else:
+            norm = None
+        printable_state = {
+            "i": 0,
+            "energy": energy,
+            "energy_diff": jnp.inf,
+            "absdelta": absdelta,
+            "norm": norm,
+            "resnorm": resnorm,
+            "maxiter": maxiter
+        }
+        call(pp, printable_state, result_shape=None)
 
     val = while_loop(continue_condition, cg_single_step, val)
 
