@@ -197,7 +197,11 @@ def _cg(
             neg_energy_eps = -eps * jnp.abs(new_energy)
             if energy_diff < neg_energy_eps:
                 nm = "CG" if name is None else name
-                raise ValueError(f"{nm}: WARNING: energy increased")
+                if not _within_newton:
+                    raise ValueError(f"{nm}: WARNING: energy increased")
+                print(f"{nm}: WARNING: energy increased", file=sys.stderr)
+                info = i
+                break
             if neg_energy_eps <= energy_diff < absdelta and i >= miniter:
                 info = 0
                 break
