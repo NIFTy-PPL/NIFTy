@@ -79,7 +79,7 @@ def geomap(
         probe = flatten_util.ravel_pytree(probe)[0]
         smpl = flatten_util.ravel_pytree(smpl)[0]
 
-        logdet, vecs = lanczos_logdet(mat, probe, order, shape0=p.size)
+        logdet, vecs = lanczos_logdet(mat, probe, order)
 
         if not sample_orthonormally:
             energy = hamiltonian(pos)
