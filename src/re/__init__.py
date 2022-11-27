@@ -1,7 +1,6 @@
 # Copyright(C) 2013-2021 Max-Planck-Society
 # SPDX-License-Identifier: GPL-2.0+ OR BSD-2-Clause
 
-from . import refine
 from . import lanczos
 from . import structured_kernel_interpolation
 from .conjugate_gradient import cg, static_cg
