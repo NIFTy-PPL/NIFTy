@@ -182,10 +182,13 @@ class HarmonicSKI():
             grid_shape = np.asarray(grid_shape)
             grid_shape_wpad = np.ceil(grid_shape * pad).astype(int)
             scl = grid_shape_wpad / grid_shape
-            scl_end = jnp.diff(jnp.asarray(grid_bounds), axis=1).ravel() * scl
+            p = jnp.diff(jnp.asarray(grid_bounds), axis=1).ravel() * (1. - scl)
             grid_bounds_wpad = jnp.asarray(grid_bounds)
+            grid_bounds_wpad = grid_bounds_wpad.at[:, 0].set(
+                grid_bounds_wpad[:, 0].ravel() - p
+            )
             grid_bounds_wpad = grid_bounds_wpad.at[:, 1].set(
-                grid_bounds_wpad[:, 0].ravel() + scl_end
+                grid_bounds_wpad[:, 1].ravel() + p
             )
             if subslice is None:
                 subslice = tuple(map(int, grid_shape))
