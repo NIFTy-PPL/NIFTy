@@ -261,7 +261,7 @@ def gauss_kl(cov_desired, cov_approx, *, m_desired=None, m_approx=None):
 
 def refinement_covariance(chart, kernel, jit=True):
     """Computes the implied covariance as modeled by the refinement scheme."""
-    from .refinement import RefinementField
+    from .charted_field import RefinementField
 
     cf = RefinementField(chart, kernel=kernel)
     try:
@@ -392,7 +392,7 @@ def get_optimal_refinement_chart(
     the set within `refinement_strategies` that has the lowest Kullback-Leibler
     divergence.
     """
-    from .refine_chart import CoordinateChart
+    from .chart import CoordinateChart
 
     charts = []
     min_shape = (1 << 31, ) * len(shape0)  # Absurdly large placeholder value
