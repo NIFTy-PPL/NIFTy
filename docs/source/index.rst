@@ -11,4 +11,4 @@ Welcome to the nifty7 documentation!
    Development <dev/index>
 
 
-The nifty8 documentation is available `here <nifty8/index.html>`_. nifty8 is under development and does not provide stable interfaces yet.
+The nifty8 documentation is available `here <../index.html>`_.
