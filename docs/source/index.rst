@@ -10,5 +10,5 @@ Welcome to the nifty8 documentation!
    API reference <mod/nifty8>
    Development <dev/index>
 
-..
-    The nifty9 documentation is available `here <nifty9/index.html>`_. nifty9 is under development and does not provide stable interfaces yet.
+
+The nifty7 documentation is available `here <nifty7/index.html>`_.
