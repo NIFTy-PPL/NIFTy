@@ -89,7 +89,7 @@ def _cg(
     maxiter=None,
     name=None,
     time_threshold=None,
-    _within_newton=False
+    _raise_nonposdef=True
 ) -> CGResults:
     norm_ord = 2 if norm_ord is None else norm_ord  # TODO: change to 1
     maxiter_fallback = 20 * size(j)  # taken from SciPy's NewtonCG minimzer
@@ -150,21 +150,22 @@ def _cg(
 
         curv = float(vdot(d, q))
         if curv == 0.:
-            if _within_newton:
-                info = 0
-                break
-            nm = "CG" if name is None else name
-            raise ValueError(f"{nm}: zero curvature")
+            if _raise_nonposdef:
+                nm = "CG" if name is None else name
+                raise ValueError(f"{nm}: zero curvature")
+            info = 0
+            break
         elif curv < 0.:
-            if _within_newton and i > 1:
+            if _raise_nonposdef:
+                nm = "CG" if name is None else name
+                raise ValueError(f"{nm}: negative curvature")
+            if i > 1:
                 info = 0
                 break
-            elif _within_newton:
+            else:
                 pos = previous_gamma / (-curv) * j
                 info = 0
                 break
-            nm = "CG" if name is None else name
-            raise ValueError(f"{nm}: negative curvature")
         alpha = previous_gamma / curv
         pos = pos - alpha * d
         if i % N_RESET == 0:
@@ -198,7 +199,7 @@ def _cg(
             neg_energy_eps = -eps * jnp.abs(new_energy)
             if energy_diff < neg_energy_eps:
                 nm = "CG" if name is None else name
-                if not _within_newton:
+                if _raise_nonposdef:
                     raise ValueError(f"{nm}: WARNING: energy increased")
                 print(f"{nm}: WARNING: energy increased", file=sys.stderr)
                 info = i
@@ -234,7 +235,7 @@ def _static_cg(
     miniter=None,
     maxiter=None,
     name=None,
-    _within_newton=False,  # TODO
+    _raise_nonposdef=False,  # TODO
     **kwargs
 ) -> CGResults:
     from jax.experimental.host_callback import call

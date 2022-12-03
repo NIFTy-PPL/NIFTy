@@ -152,7 +152,7 @@ def _newton_cg(
             "absdelta": cg_absdelta,
             "resnorm": cg_resnorm,
             "norm_ord": 1,
-            "_within_newton": True,  # handle non-pos-def
+            "_raise_nonposdef": False,  # handle non-pos-def
             "name": cg_name,
             "time_threshold": time_threshold
         }
