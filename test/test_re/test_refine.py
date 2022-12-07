@@ -395,6 +395,7 @@ def test_refinement_irregular_regular_consistency(
 def test_healpix_refinement_neigbor_uniqueness(nside, nest):
     nbr = healpix_refine.get_all_1st_hp_nbrs_idx(nside, nest)
     n_non_uniq = np.sum(np.diff(np.sort(nbr, axis=1), axis=1) == 0, axis=1)
+    np.testing.assert_array_equal(nbr == -1, False)
     np.testing.assert_equal(n_non_uniq, 0)
 
 
