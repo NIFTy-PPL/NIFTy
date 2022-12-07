@@ -401,3 +401,5 @@ def test_healpix_refinement_neigbor_uniqueness(nside, nest):
 if __name__ == "__main__":
     test_refinement_matrices_1d(5.)
     test_refinement_1d(42, 10.)
+    test_healpix_refinement_neigbor_uniqueness(1, True)
+    test_healpix_refinement_neigbor_uniqueness(2, True)

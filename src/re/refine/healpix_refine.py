@@ -13,59 +13,58 @@ import numpy as np
 from .util import get_cov_from_loc
 
 
-def get_1st_hp_nbrs_idx(nside, pix, nest: bool = False, dtype=np.uint32):
+def get_1st_hp_nbrs_idx(nside, pix, nest: bool = False, dtype=np.int32):
     from healpy import pixelfunc
 
     n_nbr = 8
 
     n_pix = 1 if np.ndim(pix) == 0 else len(pix)
-    pix_nbr = np.zeros((n_pix, n_nbr + 1), dtype=int)
+    pix_nbr = np.zeros((n_pix, n_nbr + 1), dtype=int)  # can contain `-1`
     pix_nbr[:, 0] = pix
     nbr = pixelfunc.get_all_neighbours(nside, pix, nest=nest)
     nbr = nbr.reshape(n_nbr, n_pix).T
     pix_nbr[:, 1:] = nbr
-    pix_nbr = np.sort(pix_nbr, axis=1)  # Move `-1` to the front
 
     # Account for unknown neighbors, encoded by -1
-    idx_w_invalid, _ = np.nonzero(nbr == -1)
+    idx_w_invalid, nbr_w_invalid = np.nonzero(pix_nbr == -1)
     if idx_w_invalid.size != 0:
-        idx_w_invalid = np.unique(idx_w_invalid)
-        nbr_invalid = nbr[idx_w_invalid]
+        uniq_idx_w_invalid = np.unique(idx_w_invalid)
+        nbr_invalid = nbr[uniq_idx_w_invalid]
         with warnings.catch_warnings():
             wmsg = "invalid value encountered in _get_neigbors"
             warnings.filterwarnings("ignore", message=wmsg)
             # shape of (n_2nd_neighbors, n_idx_w_invalid, n_1st_neighbors)
             nbr2 = pixelfunc.get_all_neighbours(nside, nbr_invalid, nest=nest)
-            nbr2 = np.transpose(nbr2, (1, 2, 0))
-            nbr2[nbr_invalid == -1] = -1
-            nbr2 = nbr2.reshape(idx_w_invalid.size, -1)
+        nbr2 = np.transpose(nbr2, (1, 2, 0))
+        nbr2[nbr_invalid == -1] = -1
+        nbr2 = nbr2.reshape(uniq_idx_w_invalid.size, -1)
+        n_replace = np.sum(pix_nbr[uniq_idx_w_invalid] == -1, axis=1)
+        if np.any(np.diff(n_replace)):
+            raise AssertionError()
+        n_replace = n_replace[0]
         pix_2nbr = np.stack(
             [
-                np.setdiff1d(ar1, ar2)[:n_nbr + 1]
-                for ar1, ar2 in zip(nbr2, pix_nbr[idx_w_invalid])
+                np.setdiff1d(ar1, ar2)[:n_replace]
+                for ar1, ar2 in zip(nbr2, pix_nbr[uniq_idx_w_invalid])
             ]
         )
         if np.sum(pix_2nbr == -1):
             # `setdiff1d` should remove all `-1` because we worked with rows in
             # pix_nbr that all contain them
             raise AssertionError()
-        pad = max(n_nbr + 1 - pix_2nbr.shape[1], 0)
-        pix_2nbr = np.pad(
-            pix_2nbr, ((0, 0), (0, pad)), mode="constant", constant_values=-1
-        )
         # Select a "random" 2nd neighbor to fill in for the missing 1st order
         # neighbor
-        pix_nbr[idx_w_invalid] = np.where(
-            pix_nbr[idx_w_invalid] == -1, pix_2nbr, pix_nbr[idx_w_invalid]
-        )
+        pix_nbr[idx_w_invalid, nbr_w_invalid] = pix_2nbr.ravel()
+        if np.sum(pix_nbr == -1):
+            raise AssertionError()
 
     out = np.squeeze(pix_nbr, axis=0) if np.ndim(pix) == 0 else pix_nbr
     return out.astype(dtype)
 
 
-def get_all_1st_hp_nbrs_idx(nside, nest: bool = False):
+def get_all_1st_hp_nbrs_idx(nside, nest: bool = False, dtype=np.int32):
     pix = np.arange(12 * nside**2)
-    return get_1st_hp_nbrs_idx(nside, pix, nest=nest)
+    return get_1st_hp_nbrs_idx(nside, pix, nest=nest, dtype=dtype)
 
 
 def get_1st_hp_nbrs(nside, pix, nest: bool = False):
