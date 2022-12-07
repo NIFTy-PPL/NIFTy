@@ -10,11 +10,12 @@ from jax import vmap
 
 from ..forest_util import ShapeWithDtype
 from ..model import AbstractModel
+from .chart import HEALPixChart
 from .healpix_refine import refine as refine_hp
 from .healpix_refine import cov_sqrt as cov_sqrt_hp
-from .chart import HEALPixChart
 from .util import (
-    RefinementMatrices, get_cov_from_loc, get_refinement_shapewithdtype
+    RefinementMatrices, get_cov_from_loc, get_refinement_shapewithdtype,
+    refinement_matrices
 )
 
 
@@ -30,39 +31,11 @@ def _healpix_pixel_refinement_matrices(
 
     coord = jnp.concatenate(gc_and_gf, axis=0)
     del gc_and_gf
-    cov = cov_from_loc(coord, coord)
-    del coord
-    cov_ff = cov[-n_fsz:, -n_fsz:]
-    cov_fc = cov[-n_fsz:, :-n_fsz]
-    cov_cc = cov[:-n_fsz, :-n_fsz]
-    del cov
-    cov_cc_inv = jnp.linalg.inv(cov_cc)
-    del cov_cc
-
-    olf = cov_fc @ cov_cc_inv
-    # Also see Schur-Complement
-    fine_kernel = cov_ff - cov_fc @ cov_cc_inv @ cov_fc.T
-    del cov_cc_inv, cov_fc, cov_ff
-    if coerce_fine_kernel:
-        # TODO: Try to work with NaN to avoid the expensive eigendecomposition;
-        # work with nan_to_num?
-        # Implicitly assume a white power spectrum beyond the numerics limit.
-        # Use the diagonal as estimate for the magnitude of the variance.
-        fine_kernel_fallback = jnp.diag(jnp.abs(jnp.diag(fine_kernel)))
-        # Never produce NaNs (https://github.com/google/jax/issues/1052)
-        # This is expensive but necessary (worse but cheaper:
-        # `jnp.all(jnp.diag(fine_kernel) > 0.)`)
-        is_pos_def = jnp.all(jnp.linalg.eigvalsh(fine_kernel) > 0)
-        fine_kernel = jnp.where(is_pos_def, fine_kernel, fine_kernel_fallback)
-        # NOTE, subsequently use the Cholesky decomposition, even though
-        # already having computed the eigenvalues, as to get consistent results
-        # across platforms
-    # Matrices are symmetrized by JAX, i.e. gradients are projected to the
-    # subspace of symmetric matrices (see
-    # https://github.com/google/jax/issues/10815)
-    fine_kernel_sqrt = jnp.linalg.cholesky(fine_kernel)
-
-    return olf, fine_kernel_sqrt
+    return refinement_matrices(
+        cov_from_loc(coord, coord),
+        n_fsz,
+        coerce_fine_kernel=coerce_fine_kernel
+    )
 
 
 class RefinementHPField(AbstractModel):

@@ -12,7 +12,8 @@ from ..model import AbstractModel
 from .charted_refine import refine
 from .chart import CoordinateChart
 from .util import (
-    get_refinement_shapewithdtype, RefinementMatrices, get_cov_from_loc
+    get_refinement_shapewithdtype, RefinementMatrices, get_cov_from_loc,
+    refinement_matrices
 )
 
 
@@ -57,42 +58,15 @@ def _coordinate_pixel_refinement_matrices(
     coord = jnp.concatenate(
         (gc.reshape(-1, ndim), gf.reshape(-1, ndim)), axis=0
     )
+    del gc, gf
     coord = chart.ind2cart((coord + pixel_index.reshape((1, ndim))).T, level)
     coord = jnp.stack(coord, axis=-1)
-    del gc, gf
-    cov = cov_from_loc(coord, coord)
-    del coord
-    cov_ff = cov[-fsz**ndim:, -fsz**ndim:]
-    cov_fc = cov[-fsz**ndim:, :-fsz**ndim]
-    cov_cc = cov[:-fsz**ndim, :-fsz**ndim]
-    del cov
-    cov_cc_inv = jnp.linalg.inv(cov_cc)
-    del cov_cc
 
-    olf = cov_fc @ cov_cc_inv
-    # Also see Schur-Complement
-    fine_kernel = cov_ff - cov_fc @ cov_cc_inv @ cov_fc.T
-    del cov_cc_inv, cov_fc, cov_ff
-    if coerce_fine_kernel:
-        # TODO: Try to work with NaN to avoid the expensive eigendecomposition;
-        # work with nan_to_num?
-        # Implicitly assume a white power spectrum beyond the numerics limit.
-        # Use the diagonal as estimate for the magnitude of the variance.
-        fine_kernel_fallback = jnp.diag(jnp.abs(jnp.diag(fine_kernel)))
-        # Never produce NaNs (https://github.com/google/jax/issues/1052)
-        # This is expensive but necessary (worse but cheaper:
-        # `jnp.all(jnp.diag(fine_kernel) > 0.)`)
-        is_pos_def = jnp.all(jnp.linalg.eigvalsh(fine_kernel) > 0)
-        fine_kernel = jnp.where(is_pos_def, fine_kernel, fine_kernel_fallback)
-        # NOTE, subsequently use the Cholesky decomposition, even though
-        # already having computed the eigenvalues, as to get consistent results
-        # across platforms
-    # Matrices are symmetrized by JAX, i.e. gradients are projected to the
-    # subspace of symmetric matrices (see
-    # https://github.com/google/jax/issues/10815)
-    fine_kernel_sqrt = jnp.linalg.cholesky(fine_kernel)
-
-    return olf, fine_kernel_sqrt
+    return refinement_matrices(
+        cov_from_loc(coord, coord),
+        fsz**ndim,
+        coerce_fine_kernel=coerce_fine_kernel
+    )
 
 
 def _coordinate_refinement_matrices(
