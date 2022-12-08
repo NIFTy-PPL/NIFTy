@@ -11,14 +11,6 @@ stages:
   - release
   - demo_runs
 
-check_no_asserts:
-  image: debian:stable-slim
-  stage: static_checks
-  before_script:
-    - ls
-  script:
-    - if [ `grep -r "^[[:space:]]*assert[ (]" src demos | wc -l` -ne 0 ]; then echo "Have found assert statements. Don't use them! Use \`utilities.myassert\` instead." && exit 1; fi
-
 build_docker_from_scratch:
   only:
     - schedules
