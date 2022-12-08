@@ -11,6 +11,7 @@ from typing import Any, Callable, NamedTuple, Optional, Tuple, Union
 
 from .forest_util import assert_arithmetics, common_type, size, where, zeros_like
 from .forest_util import norm as jft_norm
+from .forest_util import vdot
 from .sugar import doc_from, sum_of_squares
 
 HessVP = Callable[[jnp.ndarray], jnp.ndarray]
@@ -117,7 +118,7 @@ def _cg(
         pos = x0
         r = mat(pos) - j
         d = r
-        energy = float(((r - j) / 2).dot(pos))
+        energy = float(vdot((r - j) / 2, pos))
         nfev = 1
     previous_gamma = float(sum_of_squares(r))
 
@@ -147,7 +148,7 @@ def _cg(
         q = mat(d)
         nfev += 1
 
-        curv = float(d.dot(q))
+        curv = float(vdot(d, q))
         if curv == 0.:
             if _within_newton:
                 info = 0
@@ -188,7 +189,7 @@ def _cg(
         else:
             norm = None
         if absdelta is not None or name is not None:
-            new_energy = float(((r - j) / 2).dot(pos))
+            new_energy = float(vdot((r - j) / 2, pos))
             energy_diff = energy - new_energy
         else:
             new_energy = energy
@@ -269,7 +270,7 @@ def _static_cg(
         i += 1
 
         q = mat(d)
-        curv = d.dot(q)
+        curv = vdot(d, q)
         # ValueError("zero curvature in conjugate gradient")
         info = jnp.where(curv == 0., -1, info)
         alpha = previous_gamma / curv
@@ -300,7 +301,7 @@ def _static_cg(
             norm = None
         # Do not compute the energy if we do not check `absdelta`
         if absdelta is not None or name is not None:
-            energy = ((r - j) / 2).dot(pos)
+            energy = vdot((r - j) / 2, pos)
             energy_diff = previous_energy - energy
         else:
             energy = previous_energy
@@ -356,7 +357,7 @@ def _static_cg(
             # energy = .5xT M x - xT j
             energy = jnp.array(0.)
         else:
-            energy = ((r - j) / 2).dot(pos)
+            energy = vdot((r - j) / 2, pos)
 
     gamma = sum_of_squares(r)
     val = {
@@ -427,7 +428,7 @@ def second_order_approx(
     g: jnp.ndarray,
     hessp_at_xk: HessVP,
 ) -> Union[float, jnp.ndarray]:
-    return cur_val + g.dot(p) + 0.5 * p.dot(hessp_at_xk(p))
+    return cur_val + vdot(g, p) + 0.5 * vdot(p, hessp_at_xk(p))
 
 
 def get_boundaries_intersections(
@@ -439,9 +440,9 @@ def get_boundaries_intersections(
 
     Return the two values of t, sorted from low to high.
     """
-    a = d.dot(d)
-    b = 2 * z.dot(d)
-    c = z.dot(z) - trust_radius**2
+    a = vdot(d, d)
+    b = 2 * vdot(z, d)
+    c = vdot(z, z) - trust_radius**2
     sqrt_discriminant = jnp.sqrt(b * b - 4 * a * c)
 
     # The following calculation is mathematically
@@ -591,14 +592,14 @@ def _cg_steihaug_subproblem(
         nit += 1
 
         Bd = hessp_at_xk(d)
-        dBd = d.dot(Bd)
+        dBd = vdot(d, Bd)
 
-        r_squared = r.dot(r)
+        r_squared = vdot(r, r)
         alpha = r_squared / dBd
         z_next = z + alpha * d
 
         r_next = r + alpha * Bd
-        r_next_squared = r_next.dot(r_next)
+        r_next_squared = vdot(r_next, r_next)
 
         beta_next = r_next_squared / r_squared
         d_next = -r_next + beta_next * d
@@ -611,7 +612,7 @@ def _cg_steihaug_subproblem(
         accept_z_next |= r_next_norm < resnorm
         if absdelta is not None or name is not None:
             # Relative to a plain CG, `z_next` is negative
-            energy_next = ((r_next + g) / 2).dot(z_next)
+            energy_next = vdot((r_next + g) / 2, z_next)
             energy_diff = energy - energy_next
         else:
             energy_next = energy
