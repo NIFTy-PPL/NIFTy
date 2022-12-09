@@ -15,11 +15,13 @@ import numpy as np
 from scipy.spatial import distance_matrix
 
 from ..forest_util import ShapeWithDtype, zeros_like
+from ..model import AbstractModel
 
 NDARRAY = Union[jnp.ndarray, np.ndarray]
 
 RefinementMatrices = namedtuple(
-    "RefinementMatrices", ("filter", "propagator_sqrt", "cov_sqrt0")
+    "RefinementMatrices",
+    ("filter", "propagator_sqrt", "cov_sqrt0", "index_map")
 )
 
 
@@ -293,16 +295,30 @@ def gauss_kl(cov_desired, cov_approx, *, m_desired=None, m_approx=None):
     return 0.5 * kl
 
 
-def refinement_covariance(chart, kernel, jit=True):
+def refinement_covariance(chart_or_model, kernel=None, jit=True):
     """Computes the implied covariance as modeled by the refinement scheme."""
     from .charted_field import RefinementField
+    from .chart import CoordinateChart, HEALPixChart
 
-    cf = RefinementField(chart, kernel=kernel)
+    if isinstance(chart_or_model, CoordinateChart):
+        cf = RefinementField(chart_or_model, kernel=kernel)
+        shape= chart_or_model.shape
+    elif isinstance(chart_or_model, HEALPixChart):
+        cf = RefinementField(chart_or_model, kernel=kernel)
+        shape = chart_or_model.shape
+    elif isinstance(chart_or_model, AbstractModel):
+        cf = chart_or_model
+        shape = chart_or_model.target.shape
+    else:
+        te = f"expected a model or a chart; got {type(chart_or_model)!r}"
+        raise TypeError(te)
+    ndim = len(shape)
+
     try:
         cf_T = jax.linear_transpose(cf, cf.domain)
         cov_implicit = lambda x: cf(*cf_T(x))
         cov_implicit = jax.jit(cov_implicit) if jit else cov_implicit
-        _ = cov_implicit(jnp.zeros(chart.shape))  # Test transpose
+        _ = cov_implicit(jnp.zeros(shape))  # Test transpose
     except (NotImplementedError, AssertionError):
         # Workaround JAX not yet implementing the transpose of the scanned
         # refinement
@@ -310,8 +326,8 @@ def refinement_covariance(chart, kernel, jit=True):
         cov_implicit = lambda x: cf(*cf_T(x))
         cov_implicit = jax.jit(cov_implicit) if jit else cov_implicit
 
-    probe = jnp.zeros(chart.shape)
-    indices = np.indices(chart.shape).reshape(chart.ndim, -1)
+    probe = jnp.zeros(shape)
+    indices = np.indices(shape).reshape(ndim, -1)
     cov_empirical = jax.lax.map(
         lambda idx: cov_implicit(probe.at[tuple(idx)].set(1.)).ravel(),
         indices.T
