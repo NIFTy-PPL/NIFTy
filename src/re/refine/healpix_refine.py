@@ -118,6 +118,7 @@ def refine(
     excitations,
     olf,
     fks,
+    index_map,
     *,
     chart,
     precision=None,
@@ -132,8 +133,7 @@ def refine(
     nside = sqrt(coarse_values.shape[0] / 12)
     lvl = int(log2(nside) - log2(chart.nside0))
 
-    def refine(coarse_values, exc, idx_hp, idx_r, olf, fks):
-        c = coarse_values[chart.hp_neighbors_idx(lvl, idx_hp)]
+    def refine(coarse_values, exc, idx_hp, idx_r, olf, fks, im):
         if chart.ndim == 2:
             c = dynamic_slice_in_dim(
                 coarse_values[chart.hp_neighbors_idx(lvl, idx_hp)],
@@ -141,29 +141,36 @@ def refine(
                 slice_size=chart.coarse_size,
                 axis=1
             )
-        refined = jnp.tensordot(olf, c, axes=chart.ndim, precision=precision)
-        if chart.ndim == 1:
+            f_shp = (chart.fine_size**2, chart.fine_size)
+        elif chart.ndim == 1:
+            c = coarse_values[chart.hp_neighbors_idx(lvl, idx_hp)]
             f_shp = (chart.fine_size**2, )
         else:
-            f_shp = (chart.fine_size**2, chart.fine_size)
-        refined += jnp.matmul(fks, exc, precision=precision).reshape(f_shp)
+            raise AssertionError()
+        o = olf[im] if im is not None else olf
+        refined = jnp.tensordot(o, c, axes=chart.ndim, precision=precision)
+        f = fks[im] if im is not None else fks
+        refined += jnp.matmul(f, exc, precision=precision).reshape(f_shp)
         return refined
 
     pix_hp_idx = jnp.arange(chart.shape_at(lvl)[0])
-    if chart.ndim == 1:
+    if chart.ndim == 1:  # TODO: prune untested 1D HEALPix refine
         pix_r_off = None
-        vrefine = _vmap_squeeze_first_2ndax(
-            refine, in_axes=(None, 0, 0, None, 0, 0, 0, 0)
-        )
+        in_axes = (None, 0, 0, None, 0, 0, )
+        in_axes += (0, 0, None) if index_map is None else (None, None, 0)
+        vrefine = _vmap_squeeze_first_2ndax(refine, in_axes=in_axes)
     elif chart.ndim == 2:
         pix_r_off = jnp.arange(chart.shape_at(lvl)[1] - chart.coarse_size + 1)
         # TODO: benchmark swapping these two
-        vrefine = vmap(refine, in_axes=(None, 0, None, 0, 0, 0))
-        vrefine = vmap(vrefine, in_axes=(None, 0, 0, None, 0, 0))
+        off = index_map is not None
+        vrefine = vmap(refine, in_axes=(None, 0, None, 0, 0 + off, 0 + off, None))
+        in_axes = (None, 0, 0, None)
+        in_axes += (0, 0, None, ) if index_map is None else (None, None, 0)
+        vrefine = vmap(vrefine, in_axes=in_axes)
     else:
         raise AssertionError()
     refined = vrefine(
-        coarse_values, excitations, pix_hp_idx, pix_r_off, olf, fks
+        coarse_values, excitations, pix_hp_idx, pix_r_off, olf, fks, index_map
     )
     if chart.ndim == 1:
         refined = refined.ravel()

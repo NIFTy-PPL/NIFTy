@@ -140,7 +140,9 @@ def _coordinate_refinement_matrices(
         opt_lin_filter.append(olf.reshape(shape_bc_lvl + olf.shape[-2:]))
         kernel_sqrt.append(ks.reshape(shape_bc_lvl + ks.shape[-2:]))
 
-    return RefinementMatrices(opt_lin_filter, kernel_sqrt, cov_sqrt0)
+    return RefinementMatrices(
+        opt_lin_filter, kernel_sqrt, cov_sqrt0, (None, ) * len(opt_lin_filter)
+    )
 
 
 class RefinementField(AbstractModel):

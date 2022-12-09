@@ -3,6 +3,7 @@
 # SPDX-License-Identifier: GPL-2.0+ OR BSD-2-Clause
 
 from functools import partial
+import sys
 from typing import Callable, Optional, Union
 
 from jax import numpy as jnp
@@ -10,6 +11,7 @@ from jax import vmap
 
 from ..forest_util import ShapeWithDtype
 from ..model import AbstractModel
+from ..num import unique
 from .chart import HEALPixChart
 from .healpix_refine import refine as refine_hp
 from .healpix_refine import cov_sqrt as cov_sqrt_hp
@@ -81,7 +83,10 @@ class RefinementHPField(AbstractModel):
         skip0: Optional[bool] = None,
         *,
         coerce_fine_kernel: bool = True,
-        _cov_from_loc = None,
+        atol: Optional[float] = None,
+        rtol: Optional[float] = None,
+        which: Optional[str] = "dist",
+        _verbosity: int = 0,
     ) -> RefinementMatrices:
         """Computes the refinement matrices namely the optimal linear filter
         and the square root of the information propagator (a.k.a. the square
@@ -107,25 +112,43 @@ class RefinementHPField(AbstractModel):
         rtol :
             Relative tolerance of the element-wise difference between distance
             matrices up to which refinement matrices are merged.
+        which : 'cov' or 'dist'
+            Type of the matrix for which the unique instances shall be found.
+            If the covariance matrices (`cov`) are "uniquified", then the
+            procedure depends on the kernel used. If the distance matrices
+            (`dist`) are "uniquified", then the search for redundancies becomes
+            independent of the kernel. For a fixed charting, the latter can
+            always be done ahead of time while it might be easier to set
+            sensible `atol` and `rtol` parameters for the latter.
+
+        Note
+        ----
+        Finding duplicates in the distance matrices is computationally
+        expensive if there are only few of them. However, if the chart is kept
+        fixed, then this one time investment might still be worth it though.
         """
         cc = self.chart
-        if kernel is None and _cov_from_loc is None:
-            kernel = self.kernel
+        kernel = self.kernel if kernel is None else kernel
         depth = cc.depth if depth is None else depth
         skip0 = self.skip0 if skip0 is None else skip0
-        cov_from_loc = get_cov_from_loc(kernel, _cov_from_loc)
+        dist_mat_from_loc = get_cov_from_loc(lambda x: x, None)
+        if which not in (None, "dist", "cov"):
+            ve = f"expected `which` to be one of 'dist' or 'cov'; got {which!r}"
+            return ValueError(ve)
 
-        def mat(lvl, idx_hp, idx_r):
+        def dist_mat(lvl, idx_hp, idx_r):
             # `idx_r` is the left-most radial pixel of the to-be-refined slice
             # Extend `gc` and `gf` radially
             gc, gf = cc.get_coarse_fine_pair((idx_hp, idx_r), lvl)
-            n_fsz = gf.shape[0]
+            assert gf.shape[0] == cc.fine_size**(cc.ndim + 1)
 
             coord = jnp.concatenate((gc, gf), axis=0)
-            del gc, gf
+            return dist_mat_from_loc(coord, coord)
+
+        def ref_mat(cov):
             olf, ks = refinement_matrices(
-                cov_from_loc(coord, coord),
-                n_fsz,
+                cov,
+                cc.fine_size**(cc.ndim + 1),
                 coerce_fine_kernel=coerce_fine_kernel
             )
             if cc.ndim > 1:
@@ -137,23 +160,51 @@ class RefinementHPField(AbstractModel):
 
         cov_sqrt0 = cov_sqrt_hp(cc, kernel) if not skip0 else None
 
-        opt_lin_filter, kernel_sqrt = [], []
+        opt_lin_filter, kernel_sqrt, idx_map = [], [], []
         for lvl in range(depth):
             pix_hp_idx = jnp.arange(cc.shape_at(lvl)[0])
             if cc.ndim == 1:
                 pix_r_off = None
-                vmat = vmap(partial(mat, lvl), in_axes=(0, 0))
+                vdist = vmap(partial(dist_mat, lvl), in_axes=(0, 0))
+                vmat = vmap(ref_mat, in_axes=(0, ))
             elif cc.ndim == 2:
                 pix_r_off = jnp.arange(cc.shape_at(lvl)[1] - cc.coarse_size + 1)
-                vmat = vmap(partial(mat, lvl), in_axes=(None, 0))
-                vmat = vmap(vmat, in_axes=(0, None))
+                vdist = vmap(partial(dist_mat, lvl), in_axes=(None, 0))
+                vdist = vmap(vdist, in_axes=(0, None))
+                vmat = vmap(vmap(ref_mat, in_axes=(0, )), in_axes=(0, ))
             else:
                 raise AssertionError()
-            olf, ks = vmat(pix_hp_idx, pix_r_off)
+            # First, retrieve all distance matrices, identify duplicates in the
+            # distance matrices (up to a tolerance) and only then compute the
+            # refinement matrices
+            d = vdist(pix_hp_idx, pix_r_off)
+            if _verbosity > 0:
+                print(f"Pre uniquifying: {d.shape}", file=sys.stderr)
+            if atol is not None and rtol is not None:
+                if which == "cov":
+                    d = kernel(d)
+                u, i = unique(
+                    d,
+                    axis=0,
+                    atol=atol,
+                    rtol=rtol,
+                    return_inverse=True,
+                    _verbosity=max(_verbosity - 1, 0)
+                )
+                if which == "dist":
+                    u = kernel(u)
+            else:
+                u, i = kernel(d), None
+            if _verbosity > 0:
+                print(f"Post uniquifying: {u.shape}", file=sys.stderr)
+            olf, ks = vmat(u)
             opt_lin_filter.append(olf)
             kernel_sqrt.append(ks)
+            idx_map.append(i)
 
-        return RefinementMatrices(opt_lin_filter, kernel_sqrt, cov_sqrt0)
+        return RefinementMatrices(
+            opt_lin_filter, kernel_sqrt, cov_sqrt0, idx_map
+        )
 
     @property
     def domain(self):
@@ -239,10 +290,11 @@ class RefinementHPField(AbstractModel):
             if refinement.cov_sqrt0 is not None:
                 raise AssertionError()
             fine = xi[0]
-        for x, olf, k in zip(
-            xi[1:], refinement.filter, refinement.propagator_sqrt
+        for x, olf, k, im in zip(
+            xi[1:], refinement.filter, refinement.propagator_sqrt,
+            refinement.index_map
         ):
-            fine = refine_w_chart(fine, x, olf, k)
+            fine = refine_w_chart(fine, x, olf, k, im)
         return fine
 
     def __call__(self, xi, kernel=None, *, skip0=None, **kwargs):

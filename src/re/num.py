@@ -7,7 +7,7 @@ import numpy as np
 
 
 def unique(
-    ar, *, return_inverse=False, axis=-1, atol=1e-10, rtol=1e-5, _verbose=0
+    ar, *, return_inverse=False, axis=-1, atol=1e-10, rtol=1e-5, _verbosity=0
 ):
     """Find unique sub-arrays in `ar` along `axis` within a given tolerance.
 
@@ -35,7 +35,9 @@ def unique(
         else:
             uniqs = np.concatenate((uniqs, u), axis=axis)
         isclose = np.zeros(to_sort.shape, dtype=bool)
-        a = np.take(ar, np.nonzero(to_sort)[0], axis=axis)
+        # Set the `mode` to work around `ar` potentially being a JAX array and
+        # not supporting NumPy's default `mode='raise'`
+        a = np.take(ar, np.nonzero(to_sort)[0], axis=axis, mode=None)
         isclose[to_sort] = np.all(
             np.abs(u - a) <= (atol + rtol * np.abs(a)), axis=ra
         )
@@ -43,7 +45,7 @@ def unique(
         if return_inverse:
             assert inverse is not None
             inverse[isclose] = uniqs.shape[axis] - 1
-        if _verbose > 0:
+        if _verbosity > 0:
             print(f"to-sort: {np.sum(to_sort)}", file=sys.stderr)
 
     if return_inverse:
