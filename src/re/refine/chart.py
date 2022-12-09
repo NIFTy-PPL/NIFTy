@@ -799,7 +799,7 @@ class HEALPixChart():
     def nonhp_ind2cart(self, indices: Iterable[int], lvl: int) -> Tuple[float]:
         l = len(indices)
         if l != self.ndim - 1:
-            ve = f"`indices` of length {l} but chart is {self.ndim}-dimensional"
+            ve = f"non-hp `indices` of length {l} but chart is {self.ndim}-dimensional"
             raise ValueError(ve)
 
         offset = self.rgoffset(lvl)[1:]
@@ -824,7 +824,7 @@ class HEALPixChart():
             return self._hp_neighbors[lvl][i], self._hp_children[lvl][i]
         l = len(indices)
         if l != self.ndim:
-            ve = f"`indices` of length {l} but chart is {self.ndim}-dimensional"
+            ve = f"non-hp `indices` of length {l} but chart is {self.ndim}-dimensional"
             raise ValueError(ve)
 
         idx_hp, idx_r, *idx_add = indices
