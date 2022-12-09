@@ -257,13 +257,17 @@ class Operator(metaclass=NiftyMeta):
         return ducktape(None, self, key) @ self
 
     def apply(self, x):
-        """Applies the operator to a Field or MultiField.
+        """Applies the operator to a Field, MultiField or Linearization.
 
         Parameters
         ----------
-        x : :class:`nifty8.field.Field` or :class:`nifty8.multi_field.MultiField`
+        x : :class:`nifty8.field.Field`, :class:`nifty8.multi_field.MultiField`,
+            or :class:`nifty8.linearization.Linearization`
             Input on which the operator shall act. Needs to be defined on
-            :attr:`domain`.
+            :attr:`domain`. If `x`is a :class:`nifty8.linearization.Linearization`,
+            `apply` returns a new :class:`nifty8.linearization.Linearization`
+            contining the result of the operator application as well as its
+            Jacobian, evaluated at `x`.
         """
         raise NotImplementedError
 
