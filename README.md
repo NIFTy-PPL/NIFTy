@@ -4,7 +4,7 @@ NIFTy - Numerical Information Field Theory
 [![coverage report](https://gitlab.mpcdf.mpg.de/ift/nifty/badges/NIFTy_8/coverage.svg)](https://gitlab.mpcdf.mpg.de/ift/nifty/-/commits/NIFTy_8)
 
 **NIFTy** project homepage:
-[https://ift.pages.mpcdf.de/nifty](https://ift.pages.mpcdf.de/nifty/nifty8/index.html)
+[https://ift.pages.mpcdf.de/nifty](https://ift.pages.mpcdf.de/nifty/index.html)
 
 Summary
 -------
