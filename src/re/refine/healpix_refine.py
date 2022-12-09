@@ -90,7 +90,7 @@ def cov_sqrt(chart, kernel, level: int = 0):
         pixelfunc.pix2vec(nside, np.arange(12 * nside**2), nest=chart.nest),
         axis=-1
     )
-    r_rg0 = jnp.mgrid[tuple(slice(s) for s in chart.shape0[1:])]
+    r_rg0 = jnp.mgrid[tuple(slice(s) for s in chart.shape_at(level)[1:])]
     pix0s = (
         pix0s[:, np.newaxis, :] *
         jnp.asarray(chart.nonhp_ind2cart(r_rg0, level))[..., np.newaxis]
