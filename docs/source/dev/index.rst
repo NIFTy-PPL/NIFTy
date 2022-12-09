@@ -4,8 +4,9 @@ Development
 Coding conventions
 ------------------
 
-We do not use pure Python `assert` statements in production code. They are not
-guaranteed to by executed by Python and can be turned off by the user
+Pure Python `assert` statements should only be used for internal consistency
+checks and should not be used on user dependent input in production code. They 
+are not guaranteed to be executed by Python and can be turned off by the user
 (`python -O` in cPython). As an alternative use `ift.myassert`.
 
 
