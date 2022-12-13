@@ -8,6 +8,7 @@ from typing import Callable, Optional, Union
 
 from jax import numpy as jnp
 from jax import vmap
+import numpy as np
 
 from ..forest_util import ShapeWithDtype
 from ..model import AbstractModel
@@ -16,8 +17,10 @@ from .chart import HEALPixChart
 from .healpix_refine import refine as refine_hp
 from .healpix_refine import cov_sqrt as cov_sqrt_hp
 from .util import (
-    RefinementMatrices, get_cov_from_loc, get_refinement_shapewithdtype,
-    refinement_matrices
+    RefinementMatrices,
+    get_cov_from_loc,
+    get_refinement_shapewithdtype,
+    refinement_matrices,
 )
 
 
@@ -184,7 +187,7 @@ class RefinementHPField(AbstractModel):
                 if which == "cov":
                     d = kernel(d)
                 u, i = unique(
-                    d,
+                    np.array(d),
                     axis=0,
                     atol=atol,
                     rtol=rtol,
