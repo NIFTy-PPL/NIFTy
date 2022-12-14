@@ -7,10 +7,9 @@ import sys
 from typing import Callable, Optional, Union
 
 from jax import numpy as jnp
-from jax import vmap
 import numpy as np
 
-from ..forest_util import ShapeWithDtype
+from ..forest_util import ShapeWithDtype, get_map
 from ..model import AbstractModel
 from ..num import unique
 from .chart import HEALPixChart
@@ -89,6 +88,7 @@ class RefinementHPField(AbstractModel):
         atol: Optional[float] = None,
         rtol: Optional[float] = None,
         which: Optional[str] = "dist",
+        map: Union[str, Callable] = "vmap",
         _verbosity: int = 0,
     ) -> RefinementMatrices:
         """Computes the refinement matrices namely the optimal linear filter
@@ -163,18 +163,20 @@ class RefinementHPField(AbstractModel):
 
         cov_sqrt0 = cov_sqrt_hp(cc, kernel) if not skip0 else None
 
+        map = get_map(map)
+
         opt_lin_filter, kernel_sqrt, idx_map = [], [], []
         for lvl in range(depth):
             pix_hp_idx = jnp.arange(cc.shape_at(lvl)[0])
             if cc.ndim == 1:
                 pix_r_off = None
-                vdist = vmap(partial(dist_mat, lvl), in_axes=(0, 0))
-                vmat = vmap(ref_mat, in_axes=(0, ))
+                vdist = map(partial(dist_mat, lvl), in_axes=(0, 0))
+                vmat = map(ref_mat, in_axes=(0, ))
             elif cc.ndim == 2:
                 pix_r_off = jnp.arange(cc.shape_at(lvl)[1] - cc.coarse_size + 1)
-                vdist = vmap(partial(dist_mat, lvl), in_axes=(None, 0))
-                vdist = vmap(vdist, in_axes=(0, None))
-                vmat = vmap(vmap(ref_mat, in_axes=(0, )), in_axes=(0, ))
+                vdist = map(partial(dist_mat, lvl), in_axes=(None, 0))
+                vdist = map(vdist, in_axes=(0, None))
+                vmat = map(map(ref_mat, in_axes=(0, )), in_axes=(0, ))
             else:
                 raise AssertionError()
             # First, retrieve all distance matrices, identify duplicates in the
