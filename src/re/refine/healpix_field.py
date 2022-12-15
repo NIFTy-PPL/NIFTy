@@ -139,8 +139,13 @@ def _matrices_tol(
         def scanned_amend_unique(u, pix):
             d = vdist(pix, pix_r_off)
             d = kernel(d) if which == "cov" else d
+            if _verbosity > 1:
+                # Magic code to move up curser by one line and delete whole line
+                msg = "\x1b[1A\x1b[2K{pix}/{n}"
+                jax.debug.print(msg, pix=pix, n=pix_hp_idx[-1])
             return amend_unique_(u, d, axis=0, atol=atol, rtol=rtol)
 
+        print("\n" if _verbosity > 1 else "", end="", file=sys.stderr)
         u, inv = jax.lax.scan(scanned_amend_unique, u, pix_hp_idx)
         # Cut away the placeholder for preserving static shapes
         n = np.unique(inv).size
