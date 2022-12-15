@@ -15,7 +15,7 @@ from jax import random
 import jax.numpy as jnp
 from jax.tree_util import Partial
 import numpy as np
-from numpy.testing import assert_allclose
+from numpy.testing import assert_allclose, assert_array_equal
 
 import nifty8.re as jft
 
@@ -86,24 +86,35 @@ def test_healpix_refinement_matrices_uniquifying(
     cc, atol, rtol, which, kernel=kernel
 ):
     seed = 42
+    aassert = partial(
+        assert_allclose,
+        atol=1e-11 * scale,
+        rtol=1e-10 * scale,
+        equal_nan=False
+    )
 
     rf = jft.RefinementHPField(cc, kernel=kernel)
     rfm = rf.matrices()
     rfm_u = rf.matrices(atol=atol, rtol=rtol, which=which)
     assert rfm_u.index_map[-1].size == cc.shape_at(cc.depth - 1)[0]
     # Assert that we are actually using fewer matrices
-    assert np.unique(rfm_u.index_map[-1]).size < cc.shape_at(cc.depth - 1)[0]
+    assert np.unique(rfm_u.index_map[-1]).size < rfm_u.index_map[-1].size
     msg = f"{np.unique(rfm_u.index_map[-1]).size} !< {cc.shape_at(cc.depth - 1)[0]}"
     print(msg, file=sys.stderr)
+    assert_array_equal(rfm_u.cov_sqrt0, rfm.cov_sqrt0)
+    for lvl in range(cc.depth):
+        naive_f, naive_p = rfm.filter[lvl], rfm.propagator_sqrt[lvl]
+        uniq_f = rfm_u.filter[lvl][rfm_u.index_map[lvl]]
+        uniq_p = rfm_u.propagator_sqrt[lvl][rfm_u.index_map[lvl]]
+        aassert(uniq_f, naive_f)
+        aassert(uniq_p, naive_p)
 
     key = random.PRNGKey(seed)
     key, sk = random.split(key)
     exc = jft.random_like(sk, rf.domain)
     f = rf(exc, kernel=rfm)
     f_u = rf(exc, kernel=rfm_u)
-    assert_allclose(
-        f_u, f, atol=1e-11 * scale, rtol=1e-10 * scale, equal_nan=False
-    )
+    aassert(f_u, f)
 
 
 @pmp("atol,rtol,which", ((1e-2 * scale, 5e-2 * scale, "cov"), (None, ) * 3))

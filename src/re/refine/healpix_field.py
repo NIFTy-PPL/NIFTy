@@ -12,7 +12,7 @@ import numpy as np
 
 from ..forest_util import ShapeWithDtype
 from ..model import AbstractModel
-from ..num import unique
+from ..num import amend_unique
 from .chart import HEALPixChart
 from .healpix_refine import refine as refine_hp
 from .healpix_refine import cov_sqrt as cov_sqrt_hp
@@ -128,38 +128,27 @@ def _matrices_tol(
         # simply due to the HEALPix geometry and manually loop over the
         # HEALPix axis to only save unique values
         vdist = jax.vmap(partial(dist_mat, lvl), in_axes=(None, 0))
-        # Finally, when all distance/covariance matrices are assembled, we
-        # can map over them to construct the refinement matrices as usual
-        vmat = jax.vmap(jax.vmap(ref_mat, in_axes=(0, )), in_axes=(0, ))
 
-        # First, retrieve all distance matrices, identify duplicates in the
-        # distance matrices (up to a tolerance) and only then compute the
-        # refinement matrices
-        u, inv = [], []
-        for i, pix in enumerate(pix_hp_idx):
-            print(f"DEBUG {i}/{len(pix_hp_idx)}")  # FIXME
+        # Successively amend the duplicate-free distance/covariance matrices
+        d = vdist(pix_hp_idx[0], pix_r_off)
+        d = kernel(d) if which == "cov" else d
+        u = np.expand_dims(d, 0)
+        inv = [0]
+        for pix in pix_hp_idx[1:]:
             d = vdist(pix, pix_r_off)
-            if which == "cov":
-                d = kernel(d)
-            u += [d]
-            u, ni = unique(
-                np.array(u),
-                axis=0,
-                atol=atol,
-                rtol=rtol,
-                return_inverse=True,
-                _verbosity=max(_verbosity - 1, 0)
-            )
-            u = list(u)  # TODO: less casting
-            inv += [ni[-1]]
-        u = np.array(u)
+            d = kernel(d) if which == "cov" else d
+            u, ni = amend_unique(u, d, axis=0, atol=atol, rtol=rtol)
+            inv += [ni]
+        u = kernel(u) if which == "dist" else u
         inv = np.array(inv)
-        if which == "dist":
-            u = kernel(u)
         if _verbosity > 0:
             print(f"Post uniquifying: {u.shape}", file=sys.stderr)
 
+        # Finally, all distance/covariance matrices are assembled and we
+        # can map over them to construct the refinement matrices as usual
+        vmat = jax.vmap(jax.vmap(ref_mat, in_axes=(0, )), in_axes=(0, ))
         olf, ks = vmat(u)
+
         opt_lin_filter.append(olf)
         kernel_sqrt.append(ks)
         idx_map.append(inv)
