@@ -2,22 +2,37 @@
 
 # SPDX-License-Identifier: GPL-2.0+ OR BSD-2-Clause
 
+from jax import numpy as jnp
 import numpy as np
 from numpy.testing import assert_allclose, assert_array_equal
 import pytest
 
-from nifty8.re.num import amend_unique, unique
+from nifty8.re.num import amend_unique, amend_unique_, unique
 
 pmp = pytest.mark.parametrize
 
 
-def _unique_via_amend(ar, *, axis, return_inverse=True, **kwargs):
+def _unique_via_amend(
+    ar, *, axis, return_inverse=True, test_underscore=True, **kwargs
+):
     assert return_inverse
     u = np.take(ar, (0, ), axis=axis)
     inv = [0]
     for el in np.moveaxis(ar, axis, 0)[1:]:
         u, i = amend_unique(u, el, **kwargs)
         inv += [i]
+
+    if test_underscore:
+        u_ = jnp.full_like(ar, jnp.nan)
+        inv_ = []
+        for el in np.moveaxis(ar, axis, 0):
+            u_, i = amend_unique_(u_, el, **kwargs)
+            inv_ += [i]
+        # Remove NaN placeholder slices
+        u_ = jnp.take(u_, np.arange(np.unique(inv_).size), axis=axis)
+        assert_array_equal(u_, u)
+        assert_array_equal(inv_, inv)
+
     return u, np.array(inv)
 
 

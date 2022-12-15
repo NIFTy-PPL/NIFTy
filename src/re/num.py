@@ -5,6 +5,7 @@
 import sys
 from typing import Tuple
 
+from jax import numpy as jnp
 import numpy as np
 from numpy.typing import NDArray
 
@@ -82,3 +83,32 @@ def amend_unique(ar,
         return ar, np.nonzero(isclose)[0][0]
     else:
         return np.concatenate((ar, el), axis=axis), ar.shape[axis]
+
+
+def amend_unique_(ar, el, *, axis=-1, atol=1e-10, rtol=1e-5):
+    if not isinstance(axis, int):
+        raise TypeError(f"`axis` needs to be of type `int`; got {type(axis)!r}")
+    PLC = -1 << 63 if jnp.array(0).dtype == jnp.int64 else -1 << 31
+
+    # Ensure positive axis required for identify the axis of reductions
+    axis = np.arange(ar.ndim)[axis]
+    ra = tuple(set(range(ar.ndim)) - {
+        axis,
+    })
+
+    el = jnp.expand_dims(el, axis=axis)
+    isclose = jnp.all(jnp.abs(ar - el) <= (atol + rtol * jnp.abs(el)), axis=ra)
+
+    # Find the first not-NaN location in the array at which to potentially
+    # insert a new value
+    n = jnp.nonzero(jnp.all(jnp.isnan(ar), axis=ra), size=1,
+                    fill_value=PLC)[0].item()
+
+    # Replace NaN with NaN if the new element is close to any existing element,
+    # else insert it at the first not-NaN location
+    any_isclose = jnp.any(isclose)
+    e = jnp.where(any_isclose, jnp.full_like(el, jnp.nan), el)
+    ar = ar.at[(slice(None), ) * axis + (n, )].set(jnp.squeeze(e, axis=axis))
+    idx = jnp.nonzero(isclose, size=1, fill_value=PLC)[0].item()
+    idx = jnp.where(any_isclose, idx, n)
+    return ar, idx
