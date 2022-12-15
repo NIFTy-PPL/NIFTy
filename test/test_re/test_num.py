@@ -3,12 +3,22 @@
 # SPDX-License-Identifier: GPL-2.0+ OR BSD-2-Clause
 
 import numpy as np
-from numpy.testing import assert_allclose
+from numpy.testing import assert_allclose, assert_array_equal
 import pytest
 
-from nifty8.re.num import unique
+from nifty8.re.num import amend_unique, unique
 
 pmp = pytest.mark.parametrize
+
+
+def _unique_via_amend(ar, *, axis, return_inverse=True, **kwargs):
+    assert return_inverse
+    u = np.take(ar, (0, ), axis=axis)
+    inv = [0]
+    for el in np.moveaxis(ar, axis, 0)[1:]:
+        u, i = amend_unique(u, el, **kwargs)
+        inv += [i]
+    return u, np.array(inv)
 
 
 def test_unique_known_in_out():
@@ -20,6 +30,8 @@ def test_unique_known_in_out():
 
     u = unique(test, axis=-1)
     assert u.shape[-1] == 3
+    au, _ = _unique_via_amend(test, axis=-1)
+    assert au.shape[-1] == 3
 
     atol, rtol = 1e-12, 1e-12
     u, i = unique(test, atol=atol, rtol=rtol, axis=-1, return_inverse=True)
@@ -27,6 +39,11 @@ def test_unique_known_in_out():
     assert_allclose(
         test, np.take(u, i, axis=-1), atol=1.01 * atol, rtol=1.01 * rtol
     )
+    au, ai = _unique_via_amend(
+        test, atol=atol, rtol=rtol, axis=-1, return_inverse=True
+    )
+    assert_array_equal(au, u)
+    assert_array_equal(ai, i)
 
 
 @pmp("seed", (42, 43))
@@ -41,9 +58,18 @@ def test_unique_fuzz(seed, shape):
         da = np.repeat(d, rng.integers(1, 5, size=d.shape[axis]), axis=axis)
         da = rng.permutation(da, axis=axis)
         u, i = unique(da, atol=atol, rtol=rtol, axis=-1, return_inverse=True)
-        assert np.allclose(
-            da, np.take(u, i, axis=-1), atol=1.01 * atol, rtol=1.01 * rtol
+        assert_allclose(
+            da,
+            np.take(u, i, axis=-1),
+            atol=1.01 * atol,
+            rtol=1.01 * rtol,
+            equal_nan=False
         )
+        au, ai = _unique_via_amend(
+            da, atol=atol, rtol=rtol, axis=-1, return_inverse=True
+        )
+        assert_array_equal(au, u)
+        assert_array_equal(ai, i)
 
 
 if __name__ == "__main__":

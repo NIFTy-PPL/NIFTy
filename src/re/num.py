@@ -3,7 +3,10 @@
 # SPDX-License-Identifier: GPL-2.0+ OR BSD-2-Clause
 
 import sys
+from typing import Tuple
+
 import numpy as np
+from numpy.typing import NDArray
 
 
 def unique(
@@ -52,3 +55,30 @@ def unique(
         assert np.all(inverse != -1)
         return uniqs, inverse
     return uniqs
+
+
+def amend_unique(ar,
+                 el,
+                 *,
+                 axis=-1,
+                 atol=1e-10,
+                 rtol=1e-5) -> Tuple[NDArray, int]:
+    """Amend the element `el` if it is unique up to the specified tolerance
+    otherwise do nothing.
+    """
+    if not isinstance(axis, int):
+        raise TypeError(f"`axis` needs to be of type `int`; got {type(axis)!r}")
+
+    # Ensure positive axis required for identify the axis of reductions
+    axis = np.arange(ar.ndim)[axis]
+    ra = tuple(set(range(ar.ndim)) - {
+        axis,
+    })
+
+    el = np.expand_dims(el, axis=axis)
+    isclose = np.all(np.abs(ar - el) <= (atol + rtol * np.abs(el)), axis=ra)
+    assert isclose.size == ar.shape[axis]
+    if np.any(isclose):
+        return ar, np.nonzero(isclose)[0][0]
+    else:
+        return np.concatenate((ar, el), axis=axis), ar.shape[axis]
