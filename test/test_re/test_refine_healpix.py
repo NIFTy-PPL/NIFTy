@@ -95,7 +95,8 @@ def test_healpix_refinement_matrices_uniquifying(
 
     rf = jft.RefinementHPField(cc, kernel=kernel)
     rfm = rf.matrices()
-    rfm_u = rf.matrices(atol=atol, rtol=rtol, which=which)
+    mbs = 12 * cc.nside**2 - 1
+    rfm_u = rf.matrices(atol=atol, rtol=rtol, which=which, mat_buffer_size=mbs)
     assert rfm_u.index_map[-1].size == cc.shape_at(cc.depth - 1)[0]
     # Assert that we are actually using fewer matrices
     assert np.unique(rfm_u.index_map[-1]).size < rfm_u.index_map[-1].size
@@ -106,8 +107,8 @@ def test_healpix_refinement_matrices_uniquifying(
         naive_f, naive_p = rfm.filter[lvl], rfm.propagator_sqrt[lvl]
         uniq_f = rfm_u.filter[lvl][rfm_u.index_map[lvl]]
         uniq_p = rfm_u.propagator_sqrt[lvl][rfm_u.index_map[lvl]]
-        aassert(uniq_f, naive_f)
-        aassert(uniq_p, naive_p)
+        aassert(uniq_f, naive_f, rtol=1e-7)
+        aassert(uniq_p, naive_p, rtol=1e-7)
 
     key = random.PRNGKey(seed)
     key, sk = random.split(key)
@@ -123,7 +124,8 @@ def test_healpix_refinement(cc, atol, rtol, which, kernel=kernel):
     cov = cov_sqrt @ cov_sqrt.T
 
     cf = jft.RefinementHPField(cc, kernel)
-    rfm = cf.matrices(atol=atol, rtol=rtol, which=which)
+    mbs = 12 * cc.nside**2 - 1
+    rfm = cf.matrices(atol=atol, rtol=rtol, which=which, mat_buffer_size=mbs)
     if which is not None:
         assert rfm.index_map is not None
         # Assert that we are actually using fewer matrices

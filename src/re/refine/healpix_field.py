@@ -12,7 +12,7 @@ import numpy as np
 
 from ..forest_util import ShapeWithDtype
 from ..model import AbstractModel
-from ..num import amend_unique
+from ..num import amend_unique_
 from .chart import HEALPixChart
 from .healpix_refine import refine as refine_hp
 from .healpix_refine import cov_sqrt as cov_sqrt_hp
@@ -90,12 +90,15 @@ def _matrices_tol(
     atol: Optional[float] = None,
     rtol: Optional[float] = None,
     which: Optional[str] = "dist",
+    mat_buffer_size: Optional[int] = None,
     _verbosity: int = 0,
 ):
     dist_mat_from_loc = get_cov_from_loc(lambda x: x, None)
     if which not in (None, "dist", "cov"):
         ve = f"expected `which` to be one of 'dist' or 'cov'; got {which!r}"
         raise ValueError(ve)
+    if atol is not None and rtol is not None and mat_buffer_size is None:
+        raise TypeError("must specify `mat_buffer_size`")
 
     def dist_mat(lvl, idx_hp, idx_r):
         # `idx_r` is the left-most radial pixel of the to-be-refined slice
@@ -124,21 +127,26 @@ def _matrices_tol(
         pix_hp_idx = jnp.arange(chart.shape_at(lvl)[0])
         assert chart.ndim == 2
         pix_r_off = jnp.arange(chart.shape_at(lvl)[1] - chart.coarse_size + 1)
-        # Map only over the radial axis b/c that is irregular anyways
-        # simply due to the HEALPix geometry and manually loop over the
-        # HEALPix axis to only save unique values
+        # Map only over the radial axis b/c that is irregular anyways simply
+        # due to the HEALPix geometry and manually scan over the HEALPix axis
+        # to only save unique values
         vdist = jax.vmap(partial(dist_mat, lvl), in_axes=(None, 0))
 
         # Successively amend the duplicate-free distance/covariance matrices
-        d = vdist(pix_hp_idx[0], pix_r_off)
-        d = kernel(d) if which == "cov" else d
-        u = np.expand_dims(d, 0)
-        inv = [0]
-        for pix in pix_hp_idx[1:]:
+        d = jax.eval_shape(vdist, pix_hp_idx[0], pix_r_off)
+        u = jnp.full((mat_buffer_size, ) + d.shape, jnp.nan, dtype=d.dtype)
+
+        def scanned_amend_unique(u, pix):
             d = vdist(pix, pix_r_off)
             d = kernel(d) if which == "cov" else d
-            u, ni = amend_unique(u, d, axis=0, atol=atol, rtol=rtol)
-            inv += [ni]
+            return amend_unique_(u, d, axis=0, atol=atol, rtol=rtol)
+
+        u, inv = jax.lax.scan(scanned_amend_unique, u, pix_hp_idx)
+        # Cut away the placeholder for preserving static shapes
+        n = np.unique(inv).size
+        if n >= u.shape[0] or not np.all(np.isnan(u[n:])):
+            raise ValueError("`mat_buffer_size` too small")
+        u = u[:n]
         u = kernel(u) if which == "dist" else u
         inv = np.array(inv)
         if _verbosity > 0:
@@ -221,6 +229,7 @@ class RefinementHPField(AbstractModel):
         atol: Optional[float] = None,
         rtol: Optional[float] = None,
         which: Optional[str] = "dist",
+        mat_buffer_size: Optional[int] = None,
         _verbosity: int = 0,
     ) -> RefinementMatrices:
         """Computes the refinement matrices namely the optimal linear filter
@@ -282,6 +291,7 @@ class RefinementHPField(AbstractModel):
                 atol=atol,
                 rtol=rtol,
                 which=which,
+                mat_buffer_size=mat_buffer_size,
                 _verbosity=_verbosity
             )
         cov_sqrt0 = cov_sqrt_hp(self.chart, kernel) if not skip0 else None
