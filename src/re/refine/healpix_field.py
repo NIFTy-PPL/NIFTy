@@ -6,10 +6,11 @@ from functools import partial
 import sys
 from typing import Callable, Optional, Union
 
+import jax
 from jax import numpy as jnp
 import numpy as np
 
-from ..forest_util import ShapeWithDtype, get_map
+from ..forest_util import ShapeWithDtype
 from ..model import AbstractModel
 from ..num import unique
 from .chart import HEALPixChart
@@ -21,6 +22,149 @@ from .util import (
     get_refinement_shapewithdtype,
     refinement_matrices,
 )
+
+
+def _matrices_naive(
+    chart,
+    kernel: Callable,
+    depth: int,
+    *,
+    coerce_fine_kernel: bool = True,
+):
+    cov_from_loc = get_cov_from_loc(kernel)
+
+    def cov_mat(lvl, idx_hp, idx_r):
+        # `idx_r` is the left-most radial pixel of the to-be-refined slice
+        # Extend `gc` and `gf` radially
+        gc, gf = chart.get_coarse_fine_pair((idx_hp, idx_r), lvl)
+        assert gf.shape[0] == chart.fine_size**(chart.ndim + 1)
+
+        coord = jnp.concatenate((gc, gf), axis=0)
+        return cov_from_loc(coord, coord)
+
+    def ref_mat_from_cov(cov):
+        olf, ks = refinement_matrices(
+            cov,
+            chart.fine_size**(chart.ndim + 1),
+            coerce_fine_kernel=coerce_fine_kernel
+        )
+        if chart.ndim > 1:
+            olf = olf.reshape(
+                chart.fine_size**2, chart.fine_size, chart.coarse_size**2,
+                chart.coarse_size
+            )
+        return olf, ks
+
+    def ref_mat(lvl, idx_hp, idx_r):
+        return ref_mat_from_cov(cov_mat(lvl, idx_hp, idx_r))
+
+    opt_lin_filter, kernel_sqrt = [], []
+    for lvl in range(depth):
+        pix_hp_idx = jnp.arange(chart.shape_at(lvl)[0])
+        if chart.ndim == 1:
+            pix_r_off = None
+            vdist = jax.vmap(partial(ref_mat, lvl), in_axes=(0, 0))
+        elif chart.ndim == 2:
+            pix_r_off = jnp.arange(
+                chart.shape_at(lvl)[1] - chart.coarse_size + 1
+            )
+            vdist = jax.vmap(partial(ref_mat, lvl), in_axes=(None, 0))
+            vdist = jax.vmap(vdist, in_axes=(0, None))
+        else:
+            raise AssertionError()
+        olf, ks = vdist(pix_hp_idx, pix_r_off)
+        opt_lin_filter.append(olf)
+        kernel_sqrt.append(ks)
+
+    return RefinementMatrices(
+        opt_lin_filter, kernel_sqrt, None, (None, ) * len(opt_lin_filter)
+    )
+
+
+def _matrices_tol(
+    chart,
+    kernel: Callable,
+    depth: int,
+    *,
+    coerce_fine_kernel: bool = True,
+    atol: Optional[float] = None,
+    rtol: Optional[float] = None,
+    which: Optional[str] = "dist",
+    _verbosity: int = 0,
+):
+    dist_mat_from_loc = get_cov_from_loc(lambda x: x, None)
+    if which not in (None, "dist", "cov"):
+        ve = f"expected `which` to be one of 'dist' or 'cov'; got {which!r}"
+        raise ValueError(ve)
+
+    def dist_mat(lvl, idx_hp, idx_r):
+        # `idx_r` is the left-most radial pixel of the to-be-refined slice
+        # Extend `gc` and `gf` radially
+        gc, gf = chart.get_coarse_fine_pair((idx_hp, idx_r), lvl)
+        assert gf.shape[0] == chart.fine_size**(chart.ndim + 1)
+
+        coord = jnp.concatenate((gc, gf), axis=0)
+        return dist_mat_from_loc(coord, coord)
+
+    def ref_mat(cov):
+        olf, ks = refinement_matrices(
+            cov,
+            chart.fine_size**(chart.ndim + 1),
+            coerce_fine_kernel=coerce_fine_kernel
+        )
+        if chart.ndim > 1:
+            olf = olf.reshape(
+                chart.fine_size**2, chart.fine_size, chart.coarse_size**2,
+                chart.coarse_size
+            )
+        return olf, ks
+
+    opt_lin_filter, kernel_sqrt, idx_map = [], [], []
+    for lvl in range(depth):
+        pix_hp_idx = jnp.arange(chart.shape_at(lvl)[0])
+        assert chart.ndim == 2
+        pix_r_off = jnp.arange(chart.shape_at(lvl)[1] - chart.coarse_size + 1)
+        # Map only over the radial axis b/c that is irregular anyways
+        # simply due to the HEALPix geometry and manually loop over the
+        # HEALPix axis to only save unique values
+        vdist = jax.vmap(partial(dist_mat, lvl), in_axes=(None, 0))
+        # Finally, when all distance/covariance matrices are assembled, we
+        # can map over them to construct the refinement matrices as usual
+        vmat = jax.vmap(jax.vmap(ref_mat, in_axes=(0, )), in_axes=(0, ))
+
+        # First, retrieve all distance matrices, identify duplicates in the
+        # distance matrices (up to a tolerance) and only then compute the
+        # refinement matrices
+        u, inv = [], []
+        for i, pix in enumerate(pix_hp_idx):
+            print(f"DEBUG {i}/{len(pix_hp_idx)}")  # FIXME
+            d = vdist(pix, pix_r_off)
+            if which == "cov":
+                d = kernel(d)
+            u += [d]
+            u, ni = unique(
+                np.array(u),
+                axis=0,
+                atol=atol,
+                rtol=rtol,
+                return_inverse=True,
+                _verbosity=max(_verbosity - 1, 0)
+            )
+            u = list(u)  # TODO: less casting
+            inv += [ni[-1]]
+        u = np.array(u)
+        inv = np.array(inv)
+        if which == "dist":
+            u = kernel(u)
+        if _verbosity > 0:
+            print(f"Post uniquifying: {u.shape}", file=sys.stderr)
+
+        olf, ks = vmat(u)
+        opt_lin_filter.append(olf)
+        kernel_sqrt.append(ks)
+        idx_map.append(inv)
+
+    return RefinementMatrices(opt_lin_filter, kernel_sqrt, None, idx_map)
 
 
 class RefinementHPField(AbstractModel):
@@ -88,7 +232,6 @@ class RefinementHPField(AbstractModel):
         atol: Optional[float] = None,
         rtol: Optional[float] = None,
         which: Optional[str] = "dist",
-        map: Union[str, Callable] = "vmap",
         _verbosity: int = 0,
     ) -> RefinementMatrices:
         """Computes the refinement matrices namely the optimal linear filter
@@ -130,86 +273,30 @@ class RefinementHPField(AbstractModel):
         expensive if there are only few of them. However, if the chart is kept
         fixed, then this one time investment might still be worth it though.
         """
-        cc = self.chart
         kernel = self.kernel if kernel is None else kernel
-        depth = cc.depth if depth is None else depth
+        depth = self.chart.depth if depth is None else depth
         skip0 = self.skip0 if skip0 is None else skip0
-        dist_mat_from_loc = get_cov_from_loc(lambda x: x, None)
-        if which not in (None, "dist", "cov"):
-            ve = f"expected `which` to be one of 'dist' or 'cov'; got {which!r}"
-            return ValueError(ve)
 
-        def dist_mat(lvl, idx_hp, idx_r):
-            # `idx_r` is the left-most radial pixel of the to-be-refined slice
-            # Extend `gc` and `gf` radially
-            gc, gf = cc.get_coarse_fine_pair((idx_hp, idx_r), lvl)
-            assert gf.shape[0] == cc.fine_size**(cc.ndim + 1)
-
-            coord = jnp.concatenate((gc, gf), axis=0)
-            return dist_mat_from_loc(coord, coord)
-
-        def ref_mat(cov):
-            olf, ks = refinement_matrices(
-                cov,
-                cc.fine_size**(cc.ndim + 1),
+        if atol is None and rtol is None:
+            rfm = _matrices_naive(
+                self.chart,
+                kernel,
+                depth,
                 coerce_fine_kernel=coerce_fine_kernel
             )
-            if cc.ndim > 1:
-                olf = olf.reshape(
-                    cc.fine_size**2, cc.fine_size, cc.coarse_size**2,
-                    cc.coarse_size
-                )
-            return olf, ks
-
-        cov_sqrt0 = cov_sqrt_hp(cc, kernel) if not skip0 else None
-
-        map = get_map(map)
-
-        opt_lin_filter, kernel_sqrt, idx_map = [], [], []
-        for lvl in range(depth):
-            pix_hp_idx = jnp.arange(cc.shape_at(lvl)[0])
-            if cc.ndim == 1:
-                pix_r_off = None
-                vdist = map(partial(dist_mat, lvl), in_axes=(0, 0))
-                vmat = map(ref_mat, in_axes=(0, ))
-            elif cc.ndim == 2:
-                pix_r_off = jnp.arange(cc.shape_at(lvl)[1] - cc.coarse_size + 1)
-                vdist = map(partial(dist_mat, lvl), in_axes=(None, 0))
-                vdist = map(vdist, in_axes=(0, None))
-                vmat = map(map(ref_mat, in_axes=(0, )), in_axes=(0, ))
-            else:
-                raise AssertionError()
-            # First, retrieve all distance matrices, identify duplicates in the
-            # distance matrices (up to a tolerance) and only then compute the
-            # refinement matrices
-            d = vdist(pix_hp_idx, pix_r_off)
-            if _verbosity > 0:
-                print(f"Pre uniquifying: {d.shape}", file=sys.stderr)
-            if atol is not None and rtol is not None:
-                if which == "cov":
-                    d = kernel(d)
-                u, i = unique(
-                    np.array(d),
-                    axis=0,
-                    atol=atol,
-                    rtol=rtol,
-                    return_inverse=True,
-                    _verbosity=max(_verbosity - 1, 0)
-                )
-                if which == "dist":
-                    u = kernel(u)
-            else:
-                u, i = kernel(d), None
-            if _verbosity > 0:
-                print(f"Post uniquifying: {u.shape}", file=sys.stderr)
-            olf, ks = vmat(u)
-            opt_lin_filter.append(olf)
-            kernel_sqrt.append(ks)
-            idx_map.append(i)
-
-        return RefinementMatrices(
-            opt_lin_filter, kernel_sqrt, cov_sqrt0, idx_map
-        )
+        else:
+            rfm = _matrices_tol(
+                self.chart,
+                kernel,
+                depth,
+                coerce_fine_kernel=coerce_fine_kernel,
+                atol=atol,
+                rtol=rtol,
+                which=which,
+                _verbosity=_verbosity
+            )
+        cov_sqrt0 = cov_sqrt_hp(self.chart, kernel) if not skip0 else None
+        return rfm._replace(cov_sqrt0=cov_sqrt0)
 
     @property
     def domain(self):
