@@ -2,9 +2,11 @@
 
 # SPDX-License-Identifier: GPL-2.0+ OR BSD-2-Clause
 
+from functools import partial
 import sys
 from typing import Tuple
 
+import jax
 from jax import numpy as jnp
 import numpy as np
 from numpy.typing import NDArray
@@ -85,6 +87,7 @@ def amend_unique(ar,
         return np.concatenate((ar, el), axis=axis), ar.shape[axis]
 
 
+@partial(jax.jit, static_argnames=("axis", ))
 def amend_unique_(ar, el, *, axis=-1, atol=1e-10, rtol=1e-5):
     if not isinstance(axis, int):
         raise TypeError(f"`axis` needs to be of type `int`; got {type(axis)!r}")
@@ -102,13 +105,13 @@ def amend_unique_(ar, el, *, axis=-1, atol=1e-10, rtol=1e-5):
     # Find the first not-NaN location in the array at which to potentially
     # insert a new value
     n = jnp.nonzero(jnp.all(jnp.isnan(ar), axis=ra), size=1,
-                    fill_value=PLC)[0].item()
+                    fill_value=PLC)[0][0]
 
     # Replace NaN with NaN if the new element is close to any existing element,
     # else insert it at the first not-NaN location
     any_isclose = jnp.any(isclose)
     e = jnp.where(any_isclose, jnp.full_like(el, jnp.nan), el)
     ar = ar.at[(slice(None), ) * axis + (n, )].set(jnp.squeeze(e, axis=axis))
-    idx = jnp.nonzero(isclose, size=1, fill_value=PLC)[0].item()
+    idx = jnp.nonzero(isclose, size=1, fill_value=PLC)[0][0]
     idx = jnp.where(any_isclose, idx, n)
     return ar, idx
