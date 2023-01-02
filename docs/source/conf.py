@@ -16,9 +16,7 @@ intersphinx_mapping = {"numpy": ("https://numpy.org/doc/stable/", None),
                        "scipy": ('https://docs.scipy.org/doc/scipy/reference/', None),
                        }
 
-autodoc_default_options = {
-    'special-members': '__init__',
-}
+autodoc_default_options = {'special-members': '__init__'}
 
 napoleon_google_docstring = False
 napoleon_numpy_docstring = True
@@ -42,13 +40,14 @@ exclude_patterns = []
 add_module_names = False
 
 html_theme = "pydata_sphinx_theme"
-html_logo = 'nifty_logo_black.png'
 
-html_context = {
-   "default_mode": "light"
-}
+html_context = {"default_mode": "light"}
 
 html_theme_options = {
+    "logo": {
+        "image_light": "nifty_logo_black.png",
+        "image_dark": "nifty_logo_black.png"
+    },
     "icon_links": [
         {
             "name": "PyPI",
@@ -63,8 +62,7 @@ html_theme_options = {
     ],
     "navbar_end": ["navbar-icon-links"]
 }
+
 html_last_updated_fmt = '%b %d, %Y'
 
-exclude_patterns = [
-    'mod/modules.rst', 'mod/nifty8.logger.rst'
-]
+exclude_patterns = ['mod/modules.rst', 'mod/nifty8.logger.rst']
