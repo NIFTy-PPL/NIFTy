@@ -45,8 +45,8 @@ Installation
 
 Detailed installation instructions can be found in the NIFTy Documentation for:
 
-- [users](http://ift.pages.mpcdf.de/nifty/nifty8/user/installation.html)
-- [developers](http://ift.pages.mpcdf.de/nifty/nifty8/dev/index.html) 
+- [users](http://ift.pages.mpcdf.de/nifty/user/installation.html)
+- [developers](http://ift.pages.mpcdf.de/nifty/dev/index.html) 
 
 ### Run the tests
 
@@ -62,7 +62,7 @@ following command in the repository root:
 ### First Steps
 
 For a quick start, you can browse through the [informal
-introduction](https://ift.pages.mpcdf.de/nifty/nifty8/user/code.html) or
+introduction](https://ift.pages.mpcdf.de/nifty/user/code.html) or
 dive into NIFTy by running one of the demonstrations, e.g.:
 
     python3 demos/getting_started_1.py
@@ -75,7 +75,7 @@ such as the following:
 > "Some of the results in this publication have been derived using the
 > NIFTy package [(https://gitlab.mpcdf.mpg.de/ift/NIFTy)](https://gitlab.mpcdf.mpg.de/ift/NIFTy)"
 
-and a citation to one of the [publications](https://ift.pages.mpcdf.de/nifty/nifty8/user/citations.html).
+and a citation to one of the [publications](https://ift.pages.mpcdf.de/nifty/user/citations.html).
 
 
 ### Licensing terms
