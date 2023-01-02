@@ -35,7 +35,7 @@ class DOFDistributor(LinearOperator):
 
     Parameters
     ----------
-    dofdex: Field of integers
+    dofdex: :class:`nifty8.field.Field` of integers
         An integer Field on exactly one Space establishing the association
         between the locations in the operator's target and the underlying
         degrees of freedom in its domain.
