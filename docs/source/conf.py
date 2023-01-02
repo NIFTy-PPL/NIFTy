@@ -49,6 +49,10 @@ html_context = {
 }
 
 html_theme_options = {
+    "logo": {
+        "image_light": "nifty_logo_black.png",
+        "image_dark": "nifty_logo_black.png"
+    },
     "icon_links": [
         {
             "name": "PyPI",
