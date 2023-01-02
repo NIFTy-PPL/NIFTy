@@ -41,8 +41,7 @@ test_serial:
     - pytest -q --cov=nifty8 test
     - >
       python3 -m coverage report --omit "*plot*" | tee coverage.txt
-    - >
-      grep TOTAL coverage.txt | awk '{ print "TOTAL: "$4; }'
+  coverage: '/(?i)total.*? (100(?:\.0+)?\%|[1-9]?\d(?:\.\d+)?\%)$/'
 
 test_mpi:
   stage: test
