@@ -207,7 +207,7 @@ def _limit_xy(**kwargs):
 
 
 def _register_cmaps():
-    import matplotlib.pyplot as plt
+    import matplotlib as mpl
     from matplotlib.colors import LinearSegmentedColormap
 
     try:
@@ -263,12 +263,15 @@ def _register_cmaps():
                          (.7, .64, .64), (.8, .84, .84), (.9, .96, .96),
                          (1., 1., 1.))}
 
-    plt.register_cmap(cmap=LinearSegmentedColormap("Planck-like", planckcmap))
-    plt.register_cmap(cmap=LinearSegmentedColormap("High Energy", he_cmap))
-    plt.register_cmap(cmap=LinearSegmentedColormap("Faraday Map", fd_cmap))
-    plt.register_cmap(cmap=LinearSegmentedColormap("Faraday Uncertainty",
-                                                   fdu_cmap))
-    plt.register_cmap(cmap=LinearSegmentedColormap("Plus Minus", pm_cmap))
+    mpl.colormaps.register(cmap=LinearSegmentedColormap("Planck-like",
+                                                        planckcmap))
+    mpl.colormaps.register(cmap=LinearSegmentedColormap("High Energy",
+                                                        he_cmap))
+    mpl.colormaps.register(cmap=LinearSegmentedColormap("Faraday Map",
+                                                        fd_cmap))
+    mpl.colormaps.register(cmap=LinearSegmentedColormap("Faraday Uncertainty",
+                                                        fdu_cmap))
+    mpl.colormaps.register(cmap=LinearSegmentedColormap("Plus Minus", pm_cmap))
 
 
 def _extract_list_kwargs(kwargs, keys, n):
