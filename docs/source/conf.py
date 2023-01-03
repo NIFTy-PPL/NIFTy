@@ -40,8 +40,8 @@ exclude_patterns = []
 add_module_names = False
 
 html_theme = "pydata_sphinx_theme"
-
 html_context = {"default_mode": "light"}
+html_logo = 'nifty_logo_black.png'
 
 html_theme_options = {
     "logo": {
@@ -60,7 +60,8 @@ html_theme_options = {
             "icon": "fab fa-gitlab",
         }
     ],
-    "navbar_end": ["navbar-icon-links"]
+    "navbar_persistent": ["search-field"],
+    "navbar_end": ["navbar-icon-links"],
 }
 
 html_last_updated_fmt = '%b %d, %Y'
