@@ -110,6 +110,7 @@ run_getting_started_3:
   stage: demo_runs
   script:
     - python3 demos/getting_started_3.py
+    - pytest -q test/test_optimize_kl_out.py
   artifacts:
     paths:
       - 'getting_started_3_results'
