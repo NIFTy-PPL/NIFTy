@@ -221,11 +221,11 @@ class SampleListBase:
             raise ValueError("Neither samples nor mean nor standard deviation shall be written.")
 
         if mean or std:
-            m, s = self.sample_stat(op)
+            m, v = self.sample_stat(op)
         if mean:
             self._save_fits_2d(m, file_name_base + "_mean.fits", overwrite)
         if std:
-            self._save_fits_2d(s, file_name_base + "_std.fits", overwrite)
+            self._save_fits_2d(v.sqrt(), file_name_base + "_std.fits", overwrite)
 
         if samples:
             for ii, ss in enumerate(self.iterator(op)):
