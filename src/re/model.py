@@ -16,6 +16,9 @@ from .sugar import random_like
 
 
 class AbstractModel():
+    # TODO: This should really be a custom JAX type such that domain and init
+    # are preserved under JAX transformations.
+
     def __call__(self, *args, **kwargs):
         return self.apply(*args, **kwargs)
 
@@ -28,13 +31,13 @@ class AbstractModel():
 
     @property
     def target(self):
-        if self._target is None:
+        if getattr(self, "_target", None) is None:
             self._target = eval_shape(self.__call__, self.domain)
         return self._target
 
     @property
     def init(self):
-        if self._init is None:
+        if getattr(self, "_init", None) is None:
             msg = (
                 "drawing white parameters"
                 ";\nto silence this warning, overload the `init` method"
@@ -44,7 +47,8 @@ class AbstractModel():
         return self._init
 
     def transpose(self):
-        if self._linear_transpose is None:
+        # TODO: Split into linear model
+        if getattr(self, "_linear_transpose", None) is None:
             self._linear_transpose = linear_transpose(self.__call__, self.domain)
         # Yield a concrete model b/c __init__ signature is unspecified
         return Model(
