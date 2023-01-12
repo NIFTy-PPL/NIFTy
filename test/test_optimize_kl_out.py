@@ -14,23 +14,38 @@
 # Copyright(C) 2023 Vincent Eberle
 #
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
-import os
 
-import pytest
 import h5py
 import astropy.io.fits as ast
 from numpy.testing import assert_array_equal
 
-outroot = "demos/getting_started_3_results/signal/"
+import nifty8 as ift
 
-@pytest.mark.skipif(not os.path.exists(outroot), reason="This test only works after running the demos")
+
 def test_optimize_kl_operator_output():
+    sam_list = []
+    dom = ift.RGSpace([32, 32])
+    for i in range(10):
+        tmp = ift.from_random(dom)
+        sam_list.append(tmp)
+    samples = ift.SampleList(sam_list)
+    fname = "test_consistency"
+    samples.save_to_fits(file_name_base=fname,
+                         op=None,
+                         samples=True,
+                         mean=True,
+                         std=True)
+    samples.save_to_hdf5(file_name=fname+'.hdf5',
+                         op=None,
+                         samples=True,
+                         mean=True,
+                         std=True)
 
-    with ast.open(outroot+"last_std.fits") as f:
+    with ast.open(fname+"_std.fits") as f:
         f1 = f[0].data
-    with ast.open(outroot+"last_mean.fits") as f:
+    with ast.open(fname+"_mean.fits") as f:
         f3 = f[0].data
-    with h5py.File(outroot+"last.hdf5", "r") as g:
+    with h5py.File(fname+".hdf5", "r") as g:
         f2 = g["stats"]["standard deviation"][:]
         f4 = g["stats"]["mean"][:]
 
