@@ -70,7 +70,7 @@ chi-square value history are plotted. If the plots are not wanted or if
 matplotlib is not available, set the `optimize_kl` keyword arguments
 `plot_energy_history` and `plot_minisanity_history` to `False`.
 
-{Residual,}SampleList.save_to_fits implied that it would save the standard deviation
+`{Residual,}SampleList.save_to_fits` implied that it would save the standard deviation
 but instead saved the variance. This is now fixed as part of [815453f4](https://gitlab.mpcdf.mpg.de/ift/nifty/-/commit/815453f4335188e7383adf29573a0e4aeeb948ac?merge_request_iid=830) which saves the standard deviation.
 
 Unify MetricGaussianKL and GeoMetricKL
