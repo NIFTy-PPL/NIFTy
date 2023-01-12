@@ -11,6 +11,7 @@ docs/source/user/*.ipynb
 *_results
 *.h5
 *.hdf5
+*.fits
 *.txt
 *.pickle
 setup.cfg
