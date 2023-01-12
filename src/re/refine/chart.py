@@ -552,12 +552,12 @@ class HEALPixChart():
         min_shape: Optional[Iterable[int]],
         depth: int = -1,
         shape0: Optional[Iterable[int]] = None,
-        nonhp_rg2cart: Callable[[
+        nonhp_rg2cart: Optional[Callable[[
             Iterable,
-        ], Iterable],
-        nonhp_cart2rg: Callable[[
+        ], Iterable]],
+        nonhp_cart2rg: Optional[Callable[[
             Iterable,
-        ], Iterable],
+        ], Iterable]],
         _coarse_size: int = 3,
         _fine_size: int = 2,
         _fine_strategy: Literal["jump", "extend"] = "extend",
@@ -629,13 +629,14 @@ class HEALPixChart():
         self._size = np.prod(self.shape, dtype=int)
 
         c0 = np.mgrid[tuple(slice(s) for s in self.shape0[1:])]
-        if not all(
-            np.allclose(r, c)
-            for r, c in zip(nonhp_cart2rg(nonhp_rg2cart(c0)), c0)
-        ):
-            raise ValueError(
-                "`nonhp_cart2rg` is not the inverse of `nonhp_rg2cart`"
-            )
+        if nonhp_cart2rg is not None and nonhp_rg2cart is not None:
+            if not all(
+                np.allclose(r, c)
+                for r, c in zip(nonhp_cart2rg(nonhp_rg2cart(c0)), c0)
+            ):
+                raise ValueError(
+                    "`nonhp_cart2rg` is not the inverse of `nonhp_rg2cart`"
+                )
         self._nonhp_rg2cart = nonhp_rg2cart
         self._nonhp_cart2rg = nonhp_cart2rg
 

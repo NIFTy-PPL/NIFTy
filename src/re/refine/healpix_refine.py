@@ -90,11 +90,17 @@ def cov_sqrt(chart, kernel, level: int = 0):
         pixelfunc.pix2vec(nside, np.arange(12 * nside**2), nest=chart.nest),
         axis=-1
     )
-    r_rg0 = jnp.mgrid[tuple(slice(s) for s in chart.shape_at(level)[1:])]
-    pix0s = (
-        pix0s[:, np.newaxis, :] *
-        jnp.asarray(chart.nonhp_ind2cart(r_rg0, level))[..., np.newaxis]
-    ).reshape(-1, 3)
+    assert pix0s.ndim == 2
+    pix0s = pix0s.reshape(
+        pix0s.shape[:1] + (1, ) * (chart.ndim - 1) + pix0s.shape[1:]
+    )
+    if chart.ndim > 1:
+        # NOTE, this works for arbitrary many dimensions but is probably not
+        # what the user wants. In 1D for example, the distances are still
+        # computed for a 3D sphere with unit radius.
+        r_rg0 = jnp.mgrid[tuple(slice(s) for s in chart.shape_at(level)[1:])]
+        r_rg0 = jnp.asarray(chart.nonhp_ind2cart(r_rg0, level))[..., np.newaxis]
+        pix0s = (pix0s * r_rg0).reshape(-1, 3)
     cov_from_loc = get_cov_from_loc(kernel, None)
     # Matrices are symmetrized by JAX, i.e. gradients are projected to the
     # subspace of symmetric matrices (see
@@ -102,15 +108,6 @@ def cov_sqrt(chart, kernel, level: int = 0):
     fks_sqrt = jnp.linalg.cholesky(cov_from_loc(pix0s, pix0s))
 
     return fks_sqrt
-
-
-def _vmap_squeeze_first_2ndax(fun, *args, **kwargs):
-    vfun = vmap(fun, *args, **kwargs)
-
-    def vfun_apply(*x):
-        return vfun(jnp.squeeze(x[0], axis=1), *x[1:])
-
-    return vfun_apply
 
 
 def refine(
@@ -124,29 +121,22 @@ def refine(
     precision=None,
 ):
     # TODO: Check performance of 'ring' versus 'nest' alignment
-    if chart.ndim not in (1, 2):
-        raise ValueError(
-            f"invalid dimensions {chart.ndim!r}; expected either 0 or 1"
-        )
+    if chart.ndim != 2:
+        nie = f"invalid dimensions {chart.ndim!r}; expected `2`"
+        raise NotImplementedError(nie)
     coarse_values = coarse_values[:, np.
                                   newaxis] if chart.ndim == 1 else coarse_values
     nside = sqrt(coarse_values.shape[0] / 12)
     lvl = int(log2(nside) - log2(chart.nside0))
 
     def refine(coarse_values, exc, idx_hp, idx_r, olf, fks, im):
-        if chart.ndim == 2:
-            c = dynamic_slice_in_dim(
-                coarse_values[chart.hp_neighbors_idx(lvl, idx_hp)],
-                idx_r,
-                slice_size=chart.coarse_size,
-                axis=1
-            )
-            f_shp = (chart.fine_size**2, chart.fine_size)
-        elif chart.ndim == 1:
-            c = coarse_values[chart.hp_neighbors_idx(lvl, idx_hp)]
-            f_shp = (chart.fine_size**2, )
-        else:
-            raise AssertionError()
+        c = dynamic_slice_in_dim(
+            coarse_values[chart.hp_neighbors_idx(lvl, idx_hp)],
+            idx_r,
+            slice_size=chart.coarse_size,
+            axis=1
+        )
+        f_shp = (chart.fine_size**2, chart.fine_size)
         o = olf[im] if im is not None else olf
         refined = jnp.tensordot(o, c, axes=chart.ndim, precision=precision)
         f = fks[im] if im is not None else fks
@@ -154,31 +144,19 @@ def refine(
         return refined
 
     pix_hp_idx = jnp.arange(chart.shape_at(lvl)[0])
-    if chart.ndim == 1:  # TODO: prune untested 1D HEALPix refine
-        pix_r_off = None
-        in_axes = (None, 0, 0, None, 0, 0, )
-        in_axes += (0, 0, None) if index_map is None else (None, None, 0)
-        vrefine = _vmap_squeeze_first_2ndax(refine, in_axes=in_axes)
-    elif chart.ndim == 2:
-        pix_r_off = jnp.arange(chart.shape_at(lvl)[1] - chart.coarse_size + 1)
-        # TODO: benchmark swapping these two
-        off = index_map is not None
-        vrefine = vmap(refine, in_axes=(None, 0, None, 0, 0 + off, 0 + off, None))
-        in_axes = (None, 0, 0, None)
-        in_axes += (0, 0, None, ) if index_map is None else (None, None, 0)
-        vrefine = vmap(vrefine, in_axes=in_axes)
-    else:
-        raise AssertionError()
+    pix_r_off = jnp.arange(chart.shape_at(lvl)[1] - chart.coarse_size + 1)
+    # TODO: benchmark swapping these two
+    off = index_map is not None
+    vrefine = vmap(
+        refine, in_axes=(None, 0, None, 0, 0 + off, 0 + off, None)
+    )
+    in_axes = (None, 0, 0, None)
+    in_axes += (0, 0, None) if index_map is None else (None, None, 0)
+    vrefine = vmap(vrefine, in_axes=in_axes)
     refined = vrefine(
         coarse_values, excitations, pix_hp_idx, pix_r_off, olf, fks, index_map
     )
-    if chart.ndim == 1:
-        refined = refined.ravel()
-    elif chart.ndim == 2:
-        refined = jnp.transpose(refined, (0, 2, 1, 3))
-        n_hp = refined.shape[0] * refined.shape[1]
-        n_r = refined.shape[2] * refined.shape[3]
-        refined = refined.reshape(n_hp, n_r)
-    else:
-        raise AssertionError()
-    return refined
+    refined = jnp.transpose(refined, (0, 2, 1, 3))
+    n_hp = refined.shape[0] * refined.shape[1]
+    n_r = refined.shape[2] * refined.shape[3]
+    return refined.reshape(n_hp, n_r)
