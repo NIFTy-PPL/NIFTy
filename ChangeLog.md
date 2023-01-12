@@ -70,13 +70,8 @@ chi-square value history are plotted. If the plots are not wanted or if
 matplotlib is not available, set the `optimize_kl` keyword arguments
 `plot_energy_history` and `plot_minisanity_history` to `False`.
 
-10.Jan.23 - Bugfix in save_to_fits():
-If`astropy` is installed,`export_operator_outputs` is set up,
-and the domain of the outputs is two dimensional, the posterior mean, 
-the standard deviation and the samples are additionally saved as fits files.
-Bug: the file `last_std.fits` contained the variance instead of the standard
-deviation. Fix: now the standard deviation ist saved.
-Commit: 815453f4 
+{Residual,}SampleList.save_to_fits implied that it would save the standard deviation
+but instead saved the variance. This is now fixed as part of [815453f4](https://gitlab.mpcdf.mpg.de/ift/nifty/-/commit/815453f4335188e7383adf29573a0e4aeeb948ac?merge_request_iid=830) which saves the standard deviation.
 
 Unify MetricGaussianKL and GeoMetricKL
 --------------------------------------
