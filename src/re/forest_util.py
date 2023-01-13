@@ -182,6 +182,9 @@ class ShapeWithDtype():
         nm = self.__class__.__name__
         return f"{nm}(shape={self.shape}, dtype={self.dtype})"
 
+    # TODO: overlaod basic arithmetics (see `np.broadcast_shapes((1, 2), (3,
+    # 1), (3, 2))`)
+
 
 def get_dtype(v: Any):
     if hasattr(v, "dtype"):
@@ -321,7 +324,7 @@ def unstack(stack):
 
 
 def _lax_map(fun, in_axes=0, out_axes=0):
-    if in_axes != 0 or out_axes != 0:
+    if in_axes not in (0, (0, )) or out_axes not in (0, (0, )):
         raise ValueError("`lax.map` maps only along first axis")
     return partial(lax.map, fun)
 
@@ -359,6 +362,21 @@ def smap(fun, in_axes=0, out_axes=0, *, unroll=1):
         inax = in_axes
         if isinstance(inax, int):
             inax = tree_map(lambda _: inax, args)
+        elif isinstance(inax, tuple):
+            if len(inax) != len(args):
+                ve = f"`in_axes` {in_axes!r} and input {args!r} must be of same length"
+                raise ValueError(ve)
+            new_inax = []
+            for a, i in zip(args, inax):
+                if _int_or_none(i):
+                    new_inax += [tree_map(lambda _: i, a)]
+                else:
+                    new_inax += [i]
+            inax = tuple(new_inax)
+        else:
+            te = ("`in_axes` must be an integer or a tuple of arbitrary structures"
+                  f"; got {in_axes!r}")
+            raise TypeError(te)
         args, args_td = tree_flatten(args)
         inax, inax_td = tree_flatten(inax, is_leaf=_int_or_none)
         if inax_td != args_td:

@@ -2,26 +2,24 @@
 
 # SPDX-License-Identifier: GPL-2.0+ OR BSD-2-Clause
 
-from collections import namedtuple
 from functools import partial
+from math import log2, sqrt
 from typing import Callable, Iterable, Literal, Optional, Tuple, Union
 
 from jax import numpy as jnp
-from jax import vmap
 import numpy as np
 
-from .model import AbstractModel
-from .refine import _get_cov_from_loc, refine
-from .refine_util import (
+from .util import (
     coarse2fine_distances,
     coarse2fine_shape,
     fine2coarse_distances,
     fine2coarse_shape,
-    get_refinement_shapewithdtype,
 )
 
 DEPTH_RANGE = (0, 32)
 MAX_SIZE0 = 1024
+
+NEST = True
 
 
 class CoordinateChart():
@@ -322,6 +320,10 @@ class CoordinateChart():
         ----
         This method is independent of the refinement level!
         """
+        l = len(positions)
+        if l != self.ndim:
+            ve = f"`positions` of length {l} but chart is {self.ndim}-dimensional"
+            raise ValueError(ve)
         return self._rg2cart(positions)
 
     def cart2rg(self, positions):
@@ -342,6 +344,10 @@ class CoordinateChart():
         ----
         This method is independent of the refinement level!
         """
+        l = len(positions)
+        if l != self.ndim:
+            ve = f"`positions` of length {l} but chart is {self.ndim}-dimensional"
+            raise ValueError(ve)
         return self._cart2rg(positions)
 
     def rgoffset(self, lvl: int) -> Tuple[float]:
@@ -405,6 +411,11 @@ class CoordinateChart():
         rg :
             Regular Euclidean grid coordinates of shape `(n_dim, n_indices)`.
         """
+        l = len(indices)
+        if l != self.ndim:
+            ve = f"`indices` of length {l} but chart is {self.ndim}-dimensional"
+            raise ValueError(ve)
+
         offset = self.rgoffset(lvl)
 
         if self.fine_strategy == "jump":
@@ -439,6 +450,11 @@ class CoordinateChart():
         indices :
             Indices into the NDArray at refinement level `lvl`.
         """
+        l = len(positions)
+        if l != self.ndim:
+            ve = f"`positions` of length {l} but chart is {self.ndim}-dimensional"
+            raise ValueError(ve)
+
         offset = self.rgoffset(lvl)
 
         if self.fine_strategy == "jump":
@@ -447,7 +463,9 @@ class CoordinateChart():
             dvol = 1 / 2**lvl
         else:
             raise AssertionError()
-        indices = tuple(pos / dvol - off for off, pos in zip(offset, positions))
+        indices = tuple(
+            (pos - off) / dvol for off, pos in zip(offset, positions)
+        )
         if discretize:
             indices = tuple(jnp.rint(idx).astype(jnp.int32) for idx in indices)
         return indices
@@ -519,399 +537,321 @@ class CoordinateChart():
     def __eq__(self, other):
         return repr(self) == repr(other)
 
-
-RefinementMatrices = namedtuple(
-    "RefinementMatrices", ("filter", "propagator_sqrt", "cov_sqrt0")
-)
+    def __hash__(self):
+        return hash(repr(self))
 
 
-class RefinementField(AbstractModel):
+def _is_integer(maybe_int):
+    return np.asfarray(maybe_int).item().is_integer()
+
+
+class HEALPixChart():
     def __init__(
         self,
-        *args,
-        kernel: Optional[Callable] = None,
-        dtype=None,
-        skip0: bool = False,
-        **kwargs
-    ):
-        """Initialize an Iterative Charted Refinement (ICR) field.
-
-        There are multiple ways to initialize a charted refinement field. The
-        recommended way is to first instantiate a `CoordinateChart` and pass it
-        as first argument to this method. Alternatively, you may pass any and
-        all arguments of `CoordinateChart` also to this method and it will
-        instantiate the `CoordinateChart` for you and use it in the same way as
-        if directly specified.
-
-        Parameters
-        ----------
-        chart : CoordinateChart
-            The `CoordinateChart` with which to refine.
-        kernel :
-            Covariance kernel of the refinement field.
-        dtype :
-            Data-type of the excitations which to add during refining.
-        skip0 :
-            Whether to skip the first refinement level. This is useful to e.g.
-            stack multiple refinement fields on top of each other.
-        **kwargs :
-            Alternatively to `chart` any parameters accepted by
-            `CoordinateChart`.
-        """
-        self._kernel = kernel
-        self._dtype = dtype
-        self._skip0 = skip0
-
-        if len(args) > 0 and isinstance(args[0], CoordinateChart):
-            if kwargs:
-                raise TypeError(f"expected no keyword arguments, got {kwargs}")
-
-            if len(args) == 1:
-                self._chart, = args
-            elif len(args) == 2 and callable(args[1]) and kernel is None:
-                self._chart, self._kernel = args
-            elif len(args) == 3 and callable(
-                args[1]
-            ) and kernel is None and dtype is None:
-                self._chart, self._kernel, self._dtype = args
-            elif len(args) == 4 and callable(
-                args[1]
-            ) and kernel is None and dtype is None and skip0 == False:
-                self._chart, self._kernel, self._dtype, self._skip0 = args
-            else:
-                te = "got unexpected arguments in addition to CoordinateChart"
-                raise TypeError(te)
-        else:
-            self._chart = CoordinateChart(*args, **kwargs)
-
-    @property
-    def kernel(self):
-        """Yields the kernel specified during initialization or throw a
-        `TypeError`.
-        """
-        if self._kernel is None:
-            te = (
-                "either specify a fixed kernel during initialization of the"
-                f" {self.__class__.__name__} class or provide one here"
-            )
-            raise TypeError(te)
-        return self._kernel
-
-    @property
-    def dtype(self):
-        """Yields the data-type of the excitations."""
-        return jnp.float64 if self._dtype is None else self._dtype
-
-    @property
-    def skip0(self):
-        """Whether to skip the zeroth refinement"""
-        return self._skip0
-
-    @property
-    def chart(self):
-        """Associated `CoordinateChart` with which to iterative refine."""
-        return self._chart
-
-    def matrices(
-        self,
-        kernel: Optional[Callable] = None,
-        depth: Optional[int] = None,
-        skip0: Optional[bool] = None,
-        **kwargs
-    ) -> RefinementMatrices:
-        """Computes the refinement matrices namely the optimal linear filter
-        and the square root of the information propagator (a.k.a. the square
-        root of the fine covariance matrix for the excitations) for all
-        refinement levels and all pixel indices in the coordinate chart.
-
-        Parameters
-        ----------
-        kernel :
-            Covariance kernel of the refinement field if not specified during
-            initialization.
-        depth :
-            Maximum refinement depth if different to the one of the `CoordinateChart`.
-        skip0 :
-            Whether to skip the first refinement level.
-        """
-        kernel = self.kernel if kernel is None else kernel
-        depth = self.chart.depth if depth is None else depth
-        skip0 = self.skip0 if skip0 is None else skip0
-
-        return _coordinate_refinement_matrices(
-            self.chart, kernel=kernel, depth=depth, skip0=skip0, **kwargs
-        )
-
-    def matrices_at(
-        self,
-        level: int,
-        pixel_index: Optional[Iterable[int]] = None,
-        kernel: Optional[Callable] = None,
-        **kwargs
-    ) -> Tuple[jnp.ndarray, jnp.ndarray]:
-        """Computes the refinement matrices namely the optimal linear filter
-        and the square root of the information propagator (a.k.a. the square
-        root of the fine covariance matrix for the excitations) at the
-        specified level and pixel index.
-
-        Parameters
-        ----------
-        level :
-            Refinement level.
-        pixel_index :
-            Index of the NDArray at the refinement level `level` which to
-            refine, i.e. use as center coarse pixel.
-        kernel :
-            Covariance kernel of the refinement field if not specified during
-            initialization.
-        """
-        kernel = self.kernel if kernel is None else kernel
-
-        return _coordinate_pixel_refinement_matrices(
-            self.chart,
-            level=level,
-            pixel_index=pixel_index,
-            kernel=kernel,
-            **kwargs
-        )
-
-    @property
-    def domain(self):
-        """Yields the `ShapeWithDtype` of the primals."""
-        return get_refinement_shapewithdtype(
-            shape0=self.chart.shape0,
-            depth=self.chart.depth,
-            dtype=self.dtype,
-            skip0=self.skip0,
-            _coarse_size=self.chart.coarse_size,
-            _fine_size=self.chart.fine_size,
-            _fine_strategy=self.chart.fine_strategy,
-        )
-
-    @staticmethod
-    def apply(
-        xi,
-        chart,
-        kernel: Union[Callable, RefinementMatrices],
         *,
-        skip0: bool = False,
-        depth: Optional[int] = None,
-        coerce_fine_kernel: bool = True,
-        _refine: Optional[Callable] = None,
-        precision=None,
+        min_shape: Optional[Iterable[int]],
+        depth: int = -1,
+        shape0: Optional[Iterable[int]] = None,
+        nonhp_rg2cart: Optional[Callable[[
+            Iterable,
+        ], Iterable]],
+        nonhp_cart2rg: Optional[Callable[[
+            Iterable,
+        ], Iterable]],
+        _coarse_size: int = 3,
+        _fine_size: int = 2,
+        _fine_strategy: Literal["jump", "extend"] = "extend",
+        regular_axes: Optional[Union[Iterable[int], Tuple]] = None,
+        irregular_axes: Optional[Union[Iterable[int], Tuple]] = None,
     ):
-        """Static method to apply a refinement field given some excitations, a
-        chart and a kernel.
+        """Initialize a refinement chart with HEALPix pixelization on the first
+        axis, see NIFTy's `CoordinateChart` method.
 
         Parameters
         ----------
-        xi :
-            Latent parameters which to use for refining.
-        chart :
-            Chart with which to refine.
-        kernel :
-            Covariance kernel with which to build the refinement matrices.
-        skip0 :
-            Whether to skip the first refinement level.
-        depth :
-            Refinement depth if different to the depth of the coordinate chart.
-        coerce_fine_kernel :
-            Whether to coerce the refinement matrices at scales at which the
-            kernel matrix becomes singular or numerically highly unstable.
-        precision :
-            See JAX's precision.
         """
-        depth = chart.depth if depth is None else depth
-        if depth != len(xi) - 1:
-            ve = (
-                f"incompatible refinement depths of `xi` ({len(xi) - 1})"
-                f" and `depth` (of chart) {depth}"
+        from healpy import pixelfunc
+        from .healpix_refine import get_1st_hp_nbrs_idx
+
+        nside, nside0 = None, None
+        if min_shape is not None:
+            nside = sqrt(min_shape[0] / 12)
+        elif shape0 is not None:
+            nside0 = sqrt(shape0[0] / 12)
+        else:
+            raise ValueError("one of `min_shape` or `shape0` must be specified")
+
+        if depth < 0:
+            if not nside:
+                raise ValueError("need `min_shape` to compute `depth`")
+            depth = log2(nside)
+        if not _is_integer(depth):
+            raise ValueError(f"`depth` ({depth!r}) must be an integer")
+        self._depth = int(depth)
+
+        if nside is not None:
+            nside0 = nside / 2**self.depth
+        elif nside0 is not None:
+            nside = nside0 * 2**self.depth
+        else:
+            raise TypeError("specify one of `nside` or `nside0`")
+        if not _is_integer(nside) or not _is_integer(nside0):
+            ve = f"`nside{{,0}}` must be a power of 2; got ({nside!r}, {nside0!r})"
+            raise ValueError(ve)
+        self._nside = int(nside)
+        self._nside0 = int(nside0)
+
+        if _fine_strategy not in ("jump", "extend"):
+            ve = f"invalid `_fine_strategy`; got {_fine_strategy}"
+            raise ValueError(ve)
+        self._coarse_size = int(_coarse_size)
+        self._fine_size = int(_fine_size)
+        self._fine_strategy = _fine_strategy
+
+        min_shape = (min_shape, ) if isinstance(min_shape, int) else min_shape
+        if shape0 is None and min_shape is not None:
+            nonhp_shape0 = fine2coarse_shape(
+                min_shape[1:],
+                self.depth,
+                ceil_sizes=True,
+                _coarse_size=_coarse_size,
+                _fine_size=_fine_size,
+                _fine_strategy=_fine_strategy
             )
+            shape0 = (12 * self.nside0**2, ) + nonhp_shape0
+        elif shape0 is None:
+            raise ValueError("either `shape0` or `min_shape` must be specified")
+        self._shape0 = shape0
+        self._shape = self.shape_at(self.depth)
+
+        # Derived attributes
+        self._ndim = len(self.shape)
+        self._size = np.prod(self.shape, dtype=int)
+
+        c0 = np.mgrid[tuple(slice(s) for s in self.shape0[1:])]
+        if nonhp_cart2rg is not None and nonhp_rg2cart is not None:
+            if not all(
+                np.allclose(r, c)
+                for r, c in zip(nonhp_cart2rg(nonhp_rg2cart(c0)), c0)
+            ):
+                raise ValueError(
+                    "`nonhp_cart2rg` is not the inverse of `nonhp_rg2cart`"
+                )
+        self._nonhp_rg2cart = nonhp_rg2cart
+        self._nonhp_cart2rg = nonhp_cart2rg
+
+        if regular_axes is None and irregular_axes is not None:
+            regular_axes = tuple(set(range(self.ndim)) - set(irregular_axes))
+        elif regular_axes is not None and irregular_axes is None:
+            irregular_axes = tuple(set(range(self.ndim)) - set(regular_axes))
+        elif regular_axes is None and irregular_axes is None:
+            regular_axes = ()
+            irregular_axes = tuple(range(self.ndim))
+        self._regular_axes = tuple(regular_axes)
+        self._irregular_axes = tuple(irregular_axes)
+        if set(self.regular_axes) | set(self.irregular_axes) != set(
+            range(self.ndim)
+        ):
+            ve = "`regular_axes` and `irregular_axes` do not span the full axes"
+            raise ValueError(ve)
+        if set(self.regular_axes) & set(self.irregular_axes) != set():
+            ve = "`regular_axes` and `irregular_axes` must be exclusive"
             raise ValueError(ve)
 
-        if isinstance(kernel, RefinementMatrices):
-            refinement = kernel
-        else:
-            refinement = _coordinate_refinement_matrices(
-                chart,
-                kernel=kernel,
-                depth=depth,
-                skip0=skip0,
-                coerce_fine_kernel=coerce_fine_kernel
+        if 0 not in self.irregular_axes:
+            raise ValueError("zeroth HEALPix axis must be irregular")
+
+        if self.coarse_size != 3 or self.fine_size != 2:
+            nie = "only `3→2` radial chart is currently supported"
+            raise NotImplementedError(nie)
+
+        self.nest = NEST
+        self._hp_neighbors_idx = {}
+        self._hp_neighbors = {}
+        self._hp_children = {}
+        for lvl in range(self.depth):
+            nside = self.nside_at(lvl)
+            pix_idx = np.arange(12 * nside**2)
+            self._hp_neighbors_idx[lvl] = get_1st_hp_nbrs_idx(
+                nside, pix_idx, nest=NEST
             )
-        refine_w_chart = partial(
-            refine if _refine is None else _refine,
-            _coarse_size=chart.coarse_size,
-            _fine_size=chart.fine_size,
-            _fine_strategy=chart.fine_strategy,
-            precision=precision
+            self._hp_neighbors[lvl] = np.stack(
+                pixelfunc.pix2vec(
+                    nside, self._hp_neighbors_idx[lvl], nest=NEST
+                ),
+                axis=-1
+            )
+            i = pixelfunc.ring2nest(
+                nside, pix_idx
+            ) if NEST is False else pix_idx
+            self._hp_children[lvl] = np.stack(
+                pixelfunc.pix2vec(
+                    2 * nside,
+                    4 * i[:, None] + np.arange(0, 4)[None, :],
+                    nest=True
+                ),
+                axis=-1
+            )
+            # Cast to JAX arrays to allow jit-able indexing
+            self._hp_neighbors_idx[lvl] = jnp.array(self._hp_neighbors_idx[lvl])
+            self._hp_neighbors[lvl] = jnp.array(self._hp_neighbors[lvl])
+            self._hp_children[lvl] = jnp.array(self._hp_children[lvl])
+
+        self._descr = {
+            "depth": self.depth,
+            "shape0": self.shape0,
+            "_coarse_size": self.coarse_size,
+            "_fine_size": self.fine_size,
+            "_fine_strategy": self.fine_strategy,
+        }
+        self._descr["nonhp_rg2cart"] = repr(nonhp_rg2cart)
+        self._descr["nonhp_cart2rg"] = repr(nonhp_cart2rg)
+        self._descr["regular_axes"] = self.regular_axes
+
+    @property
+    def nside(self) -> int:
+        return self._nside
+
+    @property
+    def nside0(self) -> int:
+        return self._nside0
+
+    @property
+    def shape(self):
+        """Shape at the final refinement level"""
+        return self._shape
+
+    @property
+    def shape0(self):
+        """Shape at the zeroth refinement level"""
+        return self._shape0
+
+    @property
+    def size(self):
+        return self._size
+
+    @property
+    def ndim(self):
+        return self._ndim
+
+    @property
+    def depth(self):
+        return self._depth
+
+    @property
+    def coarse_size(self):
+        return self._coarse_size
+
+    @property
+    def fine_size(self):
+        return self._fine_size
+
+    @property
+    def fine_strategy(self):
+        return self._fine_strategy
+
+    @property
+    def regular_axes(self):
+        return self._regular_axes
+
+    @property
+    def irregular_axes(self):
+        return self._irregular_axes
+
+    def nside_at(self, lvl: int):
+        return self.nside0 * 2**lvl
+
+    def shape_at(self, lvl):
+        nonhp_shape = coarse2fine_shape(
+            self.shape0[1:],
+            lvl,
+            _coarse_size=self.coarse_size,
+            _fine_size=self.fine_size,
+            _fine_strategy=self.fine_strategy
         )
+        return (12 * self.nside_at(lvl)**2, ) + nonhp_shape
 
-        if not skip0:
-            fine = (refinement.cov_sqrt0 @ xi[0].ravel()).reshape(xi[0].shape)
+    def rgoffset(self, lvl: int) -> Tuple[float]:
+        csz = self.coarse_size  # abbreviations for readability
+        fsz = self.fine_size
+
+        leftmost_center = 0.
+        # Assume the indices denote the center of the pixels, i.e. the pixel
+        # with index 0 is at (0., ) * ndim
+        if self.fine_strategy == "jump":
+            # for i in range(lvl):
+            #     leftmost_center += ((csz - 1) / 2 - 0.5 + 0.5 / fsz) / fsz**i
+            lm0 = (csz - 1) / 2 - 0.5 + 0.5 / fsz
+            geo = (1. - fsz**
+                   -lvl) / (1. - 1. / fsz)  # sum(fsz**-i for i in range(lvl))
+            leftmost_center = lm0 * geo
+        elif self.fine_strategy == "extend":
+            # for i in range(lvl):
+            #     leftmost_center += ((csz - 1) / 2 - 0.25 * (fsz - 1)) / 2**i
+            lm0 = ((csz - 1) / 2 - 0.25 * (fsz - 1))
+            geo = (1. - 2.**-lvl) * 2.  # sum(fsz**-i for i in range(lvl))
+            leftmost_center = lm0 * geo
         else:
-            if refinement.cov_sqrt0 is not None:
-                raise AssertionError()
-            fine = xi[0]
-        for x, olf, k in zip(
-            xi[1:], refinement.filter, refinement.propagator_sqrt
-        ):
-            fine = refine_w_chart(fine, x, olf, k)
-        return fine
+            raise AssertionError()
+        return (0., ) + tuple((leftmost_center, ) * (self.ndim - 1))
 
-    def __call__(self, xi, kernel=None, *, skip0=None, **kwargs):
-        """See `RefinementField.apply`."""
-        kernel = self.kernel if kernel is None else kernel
-        skip0 = self.skip0 if skip0 is None else skip0
-        return self.apply(xi, self.chart, kernel=kernel, skip0=skip0, **kwargs)
+    rgoffset.__doc__ = CoordinateChart.rgoffset.__doc__
+
+    def nonhp_ind2cart(self, indices: Iterable[int], lvl: int) -> Tuple[float]:
+        l = len(indices)
+        if l != self.ndim - 1:
+            ve = f"non-hp `indices` of length {l} but chart is {self.ndim}-dimensional"
+            raise ValueError(ve)
+
+        offset = self.rgoffset(lvl)[1:]
+
+        if self.fine_strategy == "jump":
+            dvol = 1 / self.fine_size**lvl
+        elif self.fine_strategy == "extend":
+            dvol = 1 / 2**lvl
+        else:
+            raise AssertionError()
+        rg1 = tuple(off + idx * dvol for off, idx in zip(offset, indices))
+        return self._nonhp_rg2cart(rg1)
+
+    nonhp_ind2cart.__doc__ = CoordinateChart.ind2cart.__doc__
+
+    def hp_neighbors_idx(self, lvl, idx):
+        return self._hp_neighbors_idx[lvl][idx]
+
+    def get_coarse_fine_pair(self, indices, lvl: int):
+        if self.ndim == 1:
+            i, = indices
+            return self._hp_neighbors[lvl][i], self._hp_children[lvl][i]
+        l = len(indices)
+        if l != self.ndim:
+            ve = f"non-hp `indices` of length {l} but chart is {self.ndim}-dimensional"
+            raise ValueError(ve)
+
+        idx_hp, idx_r, *idx_add = indices
+        if len(idx_add) > 0:
+            raise NotImplementedError()
+        ciac = np.arange(self.coarse_size)
+        fiac = (np.arange(self.fine_size) - (self.fine_size - 1) / 2) / 2
+        fiac += (self.coarse_size - 1) // 2
+
+        gc, gf = self._hp_neighbors[lvl][idx_hp], self._hp_children[lvl][idx_hp]
+
+        bc = (1, ) * (self.ndim - 1) + (-1, 1)
+        rc = jnp.array(self.nonhp_ind2cart((idx_r + ciac, ), lvl)).reshape(bc)
+        gc = gc[:, np.newaxis, :] * rc
+        gc = gc.reshape(-1, self.ndim + 1)
+        rf = jnp.array(self.nonhp_ind2cart((idx_r + fiac, ), lvl)).reshape(bc)
+        gf = gf[:, np.newaxis, :] * rf
+        gf = gf.reshape(-1, self.ndim + 1)
+
+        return gc, gf
 
     def __repr__(self):
-        descr = f"{self.__class__.__name__}({self.chart!r}"
-        descr += f", kernel={self._kernel!r}" if self._kernel is not None else ""
-        descr += f", dtype={self._dtype!r}" if self._dtype is not None else ""
-        descr += f", skip0={self.skip0!r}" if self.skip0 is not False else ""
-        descr += ")"
-        return descr
+        return f"{self.__class__.__name__}(**{self._descr})"
 
     def __eq__(self, other):
         return repr(self) == repr(other)
 
-
-def _coordinate_pixel_refinement_matrices(
-    chart: CoordinateChart,
-    level: int,
-    pixel_index: Optional[Iterable[int]] = None,
-    kernel: Optional[Callable] = None,
-    *,
-    coerce_fine_kernel: bool = True,
-    _cov_from_loc: Optional[Callable] = None,
-) -> Tuple[jnp.ndarray, jnp.ndarray]:
-    cov_from_loc = _get_cov_from_loc(kernel, _cov_from_loc)
-    csz = int(chart.coarse_size)  # coarse size
-    if csz % 2 != 1:
-        raise ValueError("only odd numbers allowed for `_coarse_size`")
-    fsz = int(chart.fine_size)  # fine size
-    if fsz % 2 != 0:
-        raise ValueError("only even numbers allowed for `_fine_size`")
-    ndim = chart.ndim
-    if pixel_index is None:
-        pixel_index = (0, ) * ndim
-    pixel_index = jnp.asarray(pixel_index)
-    if pixel_index.size != ndim:
-        ve = f"`pixel_index` has {pixel_index.size} dimensions but `chart` has {ndim}"
-        raise ValueError(ve)
-
-    csz_half = int((csz - 1) / 2)
-    gc = jnp.arange(-csz_half, csz_half + 1, dtype=float)
-    gc = jnp.ones((ndim, 1)) * gc
-    gc = jnp.stack(jnp.meshgrid(*gc, indexing="ij"), axis=-1)
-    if chart.fine_strategy == "jump":
-        gf = jnp.arange(fsz, dtype=float) / fsz - 0.5 + 0.5 / fsz
-    elif chart.fine_strategy == "extend":
-        gf = jnp.arange(fsz, dtype=float) / 2 - 0.25 * (fsz - 1)
-    else:
-        raise ValueError(f"invalid `_fine_strategy`; got {chart.fine_strategy}")
-    gf = jnp.ones((ndim, 1)) * gf
-    gf = jnp.stack(jnp.meshgrid(*gf, indexing="ij"), axis=-1)
-    # On the GPU a single `cov_from_loc` call is about twice as fast as three
-    # separate calls for coarse-coarse, fine-fine and coarse-fine.
-    coord = jnp.concatenate(
-        (gc.reshape(-1, ndim), gf.reshape(-1, ndim)), axis=0
-    )
-    coord = chart.ind2cart((coord + pixel_index.reshape((1, ndim))).T, level)
-    coord = jnp.stack(coord, axis=-1)
-    cov = cov_from_loc(coord, coord)
-    cov_ff = cov[-fsz**ndim:, -fsz**ndim:]
-    cov_fc = cov[-fsz**ndim:, :-fsz**ndim]
-    cov_cc = cov[:-fsz**ndim, :-fsz**ndim]
-    cov_cc_inv = jnp.linalg.inv(cov_cc)
-
-    olf = cov_fc @ cov_cc_inv
-    # Also see Schur-Complement
-    fine_kernel = cov_ff - cov_fc @ cov_cc_inv @ cov_fc.T
-    if coerce_fine_kernel:
-        # Implicitly assume a white power spectrum beyond the numerics limit.
-        # Use the diagonal as estimate for the magnitude of the variance.
-        fine_kernel_fallback = jnp.diag(jnp.abs(jnp.diag(fine_kernel)))
-        # Never produce NaNs (https://github.com/google/jax/issues/1052)
-        # This is expensive but necessary (worse but cheaper:
-        # `jnp.all(jnp.diag(fine_kernel) > 0.)`)
-        is_pos_def = jnp.all(jnp.linalg.eigvalsh(fine_kernel) > 0)
-        fine_kernel = jnp.where(is_pos_def, fine_kernel, fine_kernel_fallback)
-        # NOTE, subsequently use the Cholesky decomposition, even though
-        # already having computed the eigenvalues, as to get consistent results
-        # across platforms
-    fine_kernel_sqrt = jnp.linalg.cholesky(fine_kernel)
-
-    return olf, fine_kernel_sqrt
-
-
-def _coordinate_refinement_matrices(
-    chart: CoordinateChart,
-    kernel: Callable,
-    *,
-    depth: Optional[int] = None,
-    skip0=False,
-    coerce_fine_kernel: bool = True,
-    _cov_from_loc=None
-) -> RefinementMatrices:
-    cov_from_loc = _get_cov_from_loc(kernel, _cov_from_loc)
-    depth = chart.depth if depth is None else depth
-
-    if not skip0:
-        rg0 = jnp.mgrid[tuple(slice(s) for s in chart.shape0)]
-        c0 = jnp.stack(chart.ind2cart(rg0, 0), axis=-1).reshape(-1, chart.ndim)
-        cov_sqrt0 = jnp.linalg.cholesky(cov_from_loc(c0, c0))
-    else:
-        cov_sqrt0 = None
-
-    opt_lin_filter, kernel_sqrt = [], []
-    olf_at = vmap(
-        partial(
-            _coordinate_pixel_refinement_matrices,
-            chart,
-            coerce_fine_kernel=coerce_fine_kernel,
-            _cov_from_loc=cov_from_loc,
-        ),
-        in_axes=(None, 0),
-        out_axes=(0, 0)
-    )
-
-    for lvl in range(depth):
-        shape_lvl = chart.shape_at(lvl)
-        pixel_indices = []
-        for ax in range(chart.ndim):
-            pad = (chart.coarse_size - 1) / 2
-            if int(pad) != pad:
-                raise ValueError("`coarse_size` must be odd")
-            pad = int(pad)
-            if chart.fine_strategy == "jump":
-                stride = 1
-            elif chart.fine_strategy == "extend":
-                stride = chart.fine_size / 2
-                if int(stride) != stride:
-                    raise ValueError("`fine_size` must be even")
-                stride = int(stride)
-            else:
-                raise AssertionError()
-            if ax in chart.irregular_axes:
-                pixel_indices.append(
-                    jnp.arange(pad, shape_lvl[ax] - pad, stride)
-                )
-            else:
-                pixel_indices.append(jnp.array([pad]))
-        pixel_indices = jnp.stack(
-            jnp.meshgrid(*pixel_indices, indexing="ij"), axis=-1
-        )
-        shape_filtered_lvl = pixel_indices.shape[:-1]
-        pixel_indices = pixel_indices.reshape(-1, chart.ndim)
-
-        olf, ks = olf_at(lvl, pixel_indices)
-        shape_bc_lvl = tuple(
-            shape_filtered_lvl[i] if i in chart.irregular_axes else 1
-            for i in range(chart.ndim)
-        )
-        opt_lin_filter.append(olf.reshape(shape_bc_lvl + olf.shape[-2:]))
-        kernel_sqrt.append(ks.reshape(shape_bc_lvl + ks.shape[-2:]))
-
-    return RefinementMatrices(opt_lin_filter, kernel_sqrt, cov_sqrt0)
+    def __hash__(self):
+        return hash(repr(self))

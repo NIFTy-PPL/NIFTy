@@ -5,12 +5,14 @@
 from functools import partial
 
 import pytest
+
 pytest.importorskip("jax")
 
 import jax
 import numpy as np
 
-from nifty8.re import refine_chart, refine_util
+import nifty8.re as jft
+from nifty8.re.refine import util
 
 pmp = pytest.mark.parametrize
 
@@ -30,26 +32,22 @@ def test_shape_translations(
     }
 
     def cf(shape0, xi):
-        chart = refine_chart.CoordinateChart(
+        chart = jft.CoordinateChart(
             shape0=shape0,
             depth=depth,
             distances0=(1., ) * len(shape0),
             **kwargs
         )
-        return refine_chart.RefinementField.apply(
-            xi, chart=chart, kernel=lambda x: x
-        )
+        return jft.RefinementField.apply(xi, chart=chart, kernel=lambda x: x)
 
-    dom = refine_util.get_refinement_shapewithdtype(shape0, depth, **kwargs)
+    dom = util.get_refinement_shapewithdtype(shape0, depth, **kwargs)
     tgt = jax.eval_shape(partial(cf, shape0), dom)
-    tgt_pred_shp = refine_util.coarse2fine_shape(shape0, depth, **kwargs)
+    tgt_pred_shp = util.coarse2fine_shape(shape0, depth, **kwargs)
     assert tgt_pred_shp == tgt.shape
     assert dom[-1].size == tgt.size == np.prod(tgt_pred_shp)
 
-    shape0_pred = refine_util.fine2coarse_shape(tgt.shape, depth, **kwargs)
-    dom_pred = refine_util.get_refinement_shapewithdtype(
-        shape0_pred, depth, **kwargs
-    )
+    shape0_pred = util.fine2coarse_shape(tgt.shape, depth, **kwargs)
+    dom_pred = util.get_refinement_shapewithdtype(shape0_pred, depth, **kwargs)
     tgt_pred = jax.eval_shape(partial(cf, shape0_pred), dom_pred)
 
     assert tgt.shape == tgt_pred.shape
@@ -69,14 +67,12 @@ def test_gauss_kl(seed, n_resamples=100):
         m_t = m_t @ m_t.T
         scl = rng.lognormal(2., 3.)
 
-        np.testing.assert_allclose(
-            refine_util.gauss_kl(m_t, m_t), 0., atol=1e-11
-        )
+        np.testing.assert_allclose(util.gauss_kl(m_t, m_t), 0., atol=1e-11)
         kl_rhs_scl = 0.5 * d * (np.log(scl) + 1. / scl - 1.)
         np.testing.assert_allclose(
-            kl_rhs_scl, refine_util.gauss_kl(m_t, scl * m_t), rtol=1e-10
+            kl_rhs_scl, util.gauss_kl(m_t, scl * m_t), rtol=1e-10
         )
         kl_lhs_scl = 0.5 * d * (-np.log(scl) + scl - 1.)
         np.testing.assert_allclose(
-            kl_lhs_scl, refine_util.gauss_kl(scl * m_t, m_t), rtol=1e-10
+            kl_lhs_scl, util.gauss_kl(scl * m_t, m_t), rtol=1e-10
         )
