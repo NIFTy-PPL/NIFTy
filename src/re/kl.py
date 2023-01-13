@@ -8,7 +8,13 @@ from jax import random
 from jax.tree_util import Partial, register_pytree_node_class
 
 from . import conjugate_gradient
-from .forest_util import assert_arithmetics, map_forest, map_forest_mean, unstack, get_map
+from .forest_util import (
+    assert_arithmetics,
+    get_map,
+    map_forest,
+    map_forest_mean,
+    unstack,
+)
 from .likelihood import Likelihood, StandardHamiltonian
 from .sugar import random_like
 
@@ -40,6 +46,7 @@ def _sample_standard_hamiltonian(
     cg: Callable = conjugate_gradient.static_cg,
     cg_name: Optional[str] = None,
     cg_kwargs: Optional[dict] = None,
+    _raise_nonposdef: bool = False,
 ):
     if not isinstance(hamiltonian, StandardHamiltonian):
         te = f"`hamiltonian` of invalid type; got '{type(hamiltonian)}'"
@@ -68,6 +75,7 @@ def _sample_standard_hamiltonian(
         inv_metric_at_p = partial(
             cg, Partial(hamiltonian.metric, primals), **{
                 "name": cg_name,
+                "_raise_nonposdef": _raise_nonposdef,
                 **cg_kwargs
             }
         )
@@ -156,6 +164,7 @@ def geometrically_sample_standard_hamiltonian(
     non_linear_sampling_method: str = "NewtonCG",
     non_linear_sampling_name: Optional[str] = None,
     non_linear_sampling_kwargs: Optional[dict] = None,
+    _raise_notconverged: bool = False,
 ):
     r"""Draws a sample which follows a standard normal distribution in the
     canonical coordinate system of the Riemannian manifold associated with the
@@ -204,7 +213,8 @@ def geometrically_sample_standard_hamiltonian(
         from_inverse=True,
         cg=linear_sampling_cg,
         cg_name=linear_sampling_name,
-        cg_kwargs=linear_sampling_kwargs
+        cg_kwargs=linear_sampling_kwargs,
+        _raise_nonposdef=_raise_notconverged,
     )
 
     if isinstance(non_linear_sampling_kwargs, dict):
@@ -253,7 +263,7 @@ def geometrically_sample_standard_hamiltonian(
         hamiltonian.likelihood, met_smpl, inv_met_smpl
     )
     cond_raise(
-        (smpl1_status is not None) & (smpl1_status < 0),
+        _raise_notconverged & (smpl1_status is not None) & (smpl1_status < 0),
         ValueError("S: failed to invert map")
     )
     if not mirror_linear_sample:
@@ -262,7 +272,7 @@ def geometrically_sample_standard_hamiltonian(
         hamiltonian.likelihood, -met_smpl, -inv_met_smpl
     )
     cond_raise(
-        (smpl2_status is not None) & (smpl2_status < 0),
+        _raise_notconverged & (smpl2_status is not None) & (smpl2_status < 0),
         ValueError("S: failed to invert map")
     )
     return (smpl1 - primals, smpl2 - primals)
@@ -475,6 +485,7 @@ def GeoMetricKL(
     non_linear_sampling_method: str = "NewtonCG",
     non_linear_sampling_name: Optional[str] = None,
     non_linear_sampling_kwargs: Optional[dict] = None,
+    _raise_notconverged: bool = False,
 ) -> SampleIter:
     """Provides the sampled Kullback-Leibler used in geometric Variational
     Inference (geoVI).
@@ -513,7 +524,8 @@ def GeoMetricKL(
         linear_sampling_kwargs=linear_sampling_kwargs,
         non_linear_sampling_method=non_linear_sampling_method,
         non_linear_sampling_name=non_linear_sampling_name,
-        non_linear_sampling_kwargs=non_linear_sampling_kwargs
+        non_linear_sampling_kwargs=non_linear_sampling_kwargs,
+        _raise_notconverged=_raise_notconverged,
     )
     subkeys = random.split(key, n_samples)
     # TODO: Make `geometrically_sample_standard_hamiltonian` jit-able
