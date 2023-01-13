@@ -11,6 +11,7 @@ from typing import Any, Callable, NamedTuple, Optional, Tuple, Union
 
 from .forest_util import assert_arithmetics, common_type, size, where, zeros_like
 from .forest_util import norm as jft_norm
+from .forest_util import vdot
 from .sugar import doc_from, sum_of_squares
 
 HessVP = Callable[[jnp.ndarray], jnp.ndarray]
@@ -49,6 +50,28 @@ def static_cg(mat, j, x0=None, *args, **kwargs):
         assert_arithmetics(x0)
     cg_res = _static_cg(mat, j, x0, *args, **kwargs)
     return cg_res.x, cg_res.info
+
+
+def _cg_pretty_print_it(
+    name,
+    i,
+    *,
+    energy,
+    energy_diff,
+    absdelta=None,
+    norm=None,
+    resnorm=None,
+    maxiter=None
+):
+    if maxiter is not None and i == maxiter:
+        i_str = "✖" * len(str(i)) + f" ({i})"
+    else:
+        i_str = str(i)
+    msg = f"{name}: Iteration {i_str} ⛰:{energy:+.4e} Δ⛰:{energy_diff:.4e}"
+    msg += f" 🞋:{absdelta:.4e}" if absdelta is not None else ""
+    if norm is not None and resnorm is not None:
+        msg += f" |∇|:{norm:.4e} 🞋:{resnorm:.4e}"
+    print(msg, file=sys.stderr)
 
 
 # Taken from nifty
@@ -95,20 +118,37 @@ def _cg(
         pos = x0
         r = mat(pos) - j
         d = r
-        energy = float(((r - j) / 2).dot(pos))
+        energy = float(vdot((r - j) / 2, pos))
         nfev = 1
     previous_gamma = float(sum_of_squares(r))
+
+    info = -1
+    i = 0
+    energy_diff = jnp.inf
+    norm = None
+    pp = partial(
+        _cg_pretty_print_it,
+        name,
+        absdelta=absdelta,
+        resnorm=resnorm,
+        maxiter=maxiter
+    )
+    if name is not None:
+        if resnorm is not None:
+            norm = jft_norm(r, ord=norm_ord, ravel=True)
+        else:
+            norm = None
+        pp(i, energy=energy, energy_diff=energy_diff, norm=norm)
+
     if previous_gamma == 0:
         info = 0
         return CGResults(x=pos, info=info, nit=0, nfev=nfev, success=True)
 
-    info = -1
-    i = 0
     for i in range(1, maxiter + 1):
         q = mat(d)
         nfev += 1
 
-        curv = float(d.dot(q))
+        curv = float(vdot(d, q))
         if curv == 0.:
             if _within_newton:
                 info = 0
@@ -143,38 +183,41 @@ def _cg(
             break
         if resnorm is not None:
             norm = float(jft_norm(r, ord=norm_ord, ravel=True))
-            if name is not None:
-                msg = f"{name}: |∇|:{norm:.6e} 🞋:{resnorm:.6e}"
-                print(msg, file=sys.stderr)
             if norm < resnorm and i >= miniter:
                 info = 0
                 break
+        else:
+            norm = None
         if absdelta is not None or name is not None:
-            new_energy = float(((r - j) / 2).dot(pos))
+            new_energy = float(vdot((r - j) / 2, pos))
             energy_diff = energy - new_energy
-            if name is not None:
-                msg = (
-                    f"{name}: Iteration {i} ⛰:{new_energy:+.6e} Δ⛰:{energy_diff:.6e}"
-                    + (f" 🞋:{absdelta:.6e}" if absdelta is not None else "")
-                )
-                print(msg, file=sys.stderr)
         else:
             new_energy = energy
+            energy_diff = None
         if absdelta is not None:
             neg_energy_eps = -eps * jnp.abs(new_energy)
             if energy_diff < neg_energy_eps:
                 nm = "CG" if name is None else name
-                raise ValueError(f"{nm}: WARNING: energy increased")
+                if not _within_newton:
+                    raise ValueError(f"{nm}: WARNING: energy increased")
+                print(f"{nm}: WARNING: energy increased", file=sys.stderr)
+                info = i
+                break
             if neg_energy_eps <= energy_diff < absdelta and i >= miniter:
                 info = 0
                 break
         energy = new_energy
         d = d * max(0, gamma / previous_gamma) + r
         previous_gamma = gamma
-    else:
-        nm = "CG" if name is None else name
-        print(f"{nm}: Iteration Limit Reached", file=sys.stderr)
-        info = i
+
+        if name is not None:
+            pp(i, energy=energy, energy_diff=energy_diff, norm=norm)
+
+    if name is not None and info != -1:
+        # only print if loop was terminated via `break` otherwise everything is
+        pp(i, energy=energy, energy_diff=energy_diff, norm=norm)
+
+    info = i if info == -1 else info
     return CGResults(x=pos, info=info, nit=i, nfev=nfev, success=info == 0)
 
 
@@ -194,6 +237,7 @@ def _static_cg(
     _within_newton=False,  # TODO
     **kwargs
 ) -> CGResults:
+    from jax.experimental.host_callback import call
     from jax.lax import cond, while_loop
 
     norm_ord = 2 if norm_ord is None else norm_ord  # TODO: change to 1
@@ -212,6 +256,9 @@ def _static_cg(
     eps = 6. * jnp.finfo(common_dtp).eps  # taken from SciPy's NewtonCG minimzer
     tiny = 6. * jnp.finfo(common_dtp).tiny
 
+    def pp(arg):
+        _cg_pretty_print_it(name, **arg)
+
     def continue_condition(v):
         return v["info"] < -1
 
@@ -223,7 +270,7 @@ def _static_cg(
         i += 1
 
         q = mat(d)
-        curv = d.dot(q)
+        curv = vdot(d, q)
         # ValueError("zero curvature in conjugate gradient")
         info = jnp.where(curv == 0., -1, info)
         alpha = previous_gamma / curv
@@ -254,7 +301,7 @@ def _static_cg(
             norm = None
         # Do not compute the energy if we do not check `absdelta`
         if absdelta is not None or name is not None:
-            energy = ((r - j) / 2).dot(pos)
+            energy = vdot((r - j) / 2, pos)
             energy_diff = previous_energy - energy
         else:
             energy = previous_energy
@@ -272,24 +319,6 @@ def _static_cg(
         d = d * jnp.maximum(0, gamma / previous_gamma) + r
 
         if name is not None:
-            from jax.experimental.host_callback import call
-
-            def pp(arg):
-                msg = (
-                    (
-                        "{name}: |∇|:{norm:.6e} 🞋:{resnorm:.6e}\n"
-                        if arg["resnorm"] is not None else ""
-                    ) + "{name}: Iteration {i} ⛰:{energy:+.6e}" +
-                    " Δ⛰:{energy_diff:.6e}" + (
-                        " 🞋:{absdelta:.6e}"
-                        if arg["absdelta"] is not None else ""
-                    ) + (
-                        "\n{name}: Iteration Limit Reached"
-                        if arg["i"] == arg["maxiter"] else ""
-                    )
-                )
-                print(msg.format(name=name, **arg), file=sys.stderr)
-
             printable_state = {
                 "i": i,
                 "energy": energy,
@@ -328,7 +357,7 @@ def _static_cg(
             # energy = .5xT M x - xT j
             energy = jnp.array(0.)
         else:
-            energy = ((r - j) / 2).dot(pos)
+            energy = vdot((r - j) / 2, pos)
 
     gamma = sum_of_squares(r)
     val = {
@@ -342,6 +371,22 @@ def _static_cg(
     }
     # Finish early if already converged in the initial iteration
     val["info"] = jnp.where(gamma == 0., 0, val["info"])
+
+    if name is not None:
+        if resnorm is not None:
+            norm = jft_norm(r, ord=norm_ord, ravel=True)
+        else:
+            norm = None
+        printable_state = {
+            "i": 0,
+            "energy": energy,
+            "energy_diff": jnp.inf,
+            "absdelta": absdelta,
+            "norm": norm,
+            "resnorm": resnorm,
+            "maxiter": maxiter
+        }
+        call(pp, printable_state, result_shape=None)
 
     val = while_loop(continue_condition, cg_single_step, val)
 
@@ -383,7 +428,7 @@ def second_order_approx(
     g: jnp.ndarray,
     hessp_at_xk: HessVP,
 ) -> Union[float, jnp.ndarray]:
-    return cur_val + g.dot(p) + 0.5 * p.dot(hessp_at_xk(p))
+    return cur_val + vdot(g, p) + 0.5 * vdot(p, hessp_at_xk(p))
 
 
 def get_boundaries_intersections(
@@ -395,9 +440,9 @@ def get_boundaries_intersections(
 
     Return the two values of t, sorted from low to high.
     """
-    a = d.dot(d)
-    b = 2 * z.dot(d)
-    c = z.dot(z) - trust_radius**2
+    a = vdot(d, d)
+    b = 2 * vdot(z, d)
+    c = vdot(z, z) - trust_radius**2
     sqrt_discriminant = jnp.sqrt(b * b - 4 * a * c)
 
     # The following calculation is mathematically
@@ -547,14 +592,14 @@ def _cg_steihaug_subproblem(
         nit += 1
 
         Bd = hessp_at_xk(d)
-        dBd = d.dot(Bd)
+        dBd = vdot(d, Bd)
 
-        r_squared = r.dot(r)
+        r_squared = vdot(r, r)
         alpha = r_squared / dBd
         z_next = z + alpha * d
 
         r_next = r + alpha * Bd
-        r_next_squared = r_next.dot(r_next)
+        r_next_squared = vdot(r_next, r_next)
 
         beta_next = r_next_squared / r_squared
         d_next = -r_next + beta_next * d
@@ -567,7 +612,7 @@ def _cg_steihaug_subproblem(
         accept_z_next |= r_next_norm < resnorm
         if absdelta is not None or name is not None:
             # Relative to a plain CG, `z_next` is negative
-            energy_next = ((r_next + g) / 2).dot(z_next)
+            energy_next = vdot((r_next + g) / 2, z_next)
             energy_diff = energy - energy_next
         else:
             energy_next = energy
