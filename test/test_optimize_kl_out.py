@@ -41,13 +41,19 @@ def test_optimize_kl_operator_output():
                          mean=True,
                          std=True)
 
-    with ast.open(fname+"_std.fits") as f:
-        f1 = f[0].data
-    with ast.open(fname+"_mean.fits") as f:
-        f3 = f[0].data
-    with h5py.File(fname+".hdf5", "r") as g:
-        f2 = g["stats"]["standard deviation"][:]
-        f4 = g["stats"]["mean"][:]
+    mean, var = samples.sample_stat()
+    mean = mean.val
+    std = var.sqrt().val
 
-    assert_array_equal(f1, f2.T)
-    assert_array_equal(f3, f4.T)
+    with ast.open(fname+"_mean.fits") as f:
+        mean_fits = f[0].data
+    with ast.open(fname+"_std.fits") as f:
+        std_fits = f[0].data
+    with h5py.File(fname+".hdf5", "r") as g:
+        mean_hdf5 = g["stats"]["mean"][:]
+        std_hdf5 = g["stats"]["standard deviation"][:]
+
+    assert_array_equal(mean, mean_fits.T)
+    assert_array_equal(std, std_fits.T)
+    assert_array_equal(mean, mean_hdf5)
+    assert_array_equal(std, std_hdf5)
