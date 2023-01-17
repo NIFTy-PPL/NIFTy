@@ -404,11 +404,6 @@ class SampleListBase:
         ----
         `file_name_base` needs to be the same string that has been used for
         saving the :class:`SampleListBase`.
-
-        Note
-        ----
-        The number of MPI tasks used for saving and loading the `SampleList`
-        need to be the same.
         """
         raise NotImplementedError
 
