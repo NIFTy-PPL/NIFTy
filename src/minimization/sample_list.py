@@ -375,8 +375,7 @@ class SampleListBase:
         ----------
         file_name_base : str
             File name of the output file without extension. The actual file name
-            will have the extension ".pickle" and before that an identifier that
-            distunguishes between MPI tasks.
+            will have the extension ".pickle".
         overwrite : bool
             Existing files are overwritten.
 
@@ -395,8 +394,7 @@ class SampleListBase:
         ----------
         file_name_base : str
             File name of the input file without extension. The actual file name
-            will have the extension ".pickle" and before that an identifier that
-            distunguishes between MPI tasks.
+            will have the extension ".pickle".
         comm : MPI communicator or None
             If not `None`, each MPI task reads its own input file.
 
@@ -404,11 +402,6 @@ class SampleListBase:
         ----
         `file_name_base` needs to be the same string that has been used for
         saving the :class:`SampleListBase`.
-
-        Note
-        ----
-        The number of MPI tasks used for saving and loading the `SampleList`
-        need to be the same.
         """
         raise NotImplementedError
 
