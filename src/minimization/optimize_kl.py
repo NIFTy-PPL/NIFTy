@@ -610,7 +610,6 @@ def _plot_minisanity_history(index, minisanity_history):
     vals = [np.array(v) for v in vals]
     idxs = [np.array(i) for i in idxs]
 
-    plt.figure()
     for i in range(n_tot):
         plt.plot(idxs[i], vals[i], label=labels[i], color=colors[i], marker='.',
                  linestyle=linestyles[i])
