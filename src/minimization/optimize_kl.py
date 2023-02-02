@@ -171,9 +171,12 @@ def optimize_kl(likelihood_energy,
         Determine if the reduced chi-square values computed by minisanity shall
         be plotted or not. Default: True.
     save_strategy : str
-        If "last", only the samples of the last global iteration are stored. If
-        "all", all intermediate samples are written to disk. `save_strategy` is
-        only applicable if `output_directory` is not None. Default: "last".
+        If "last", the samples are saved after each global iteration and
+        overwrite older saved samples so that only the latest ones are kept.
+        If "all", all intermediate samples are written to disk and the filename
+        contains the `global_iteration` so that nothing is overwritten.
+        `save_strategy` is only applicable if `output_directory` is not None.
+        Default: "last".
     return_final_position : bool
         Determine if the final position of the minimization shall be return.
         May be useful to feed it as `initial_position` into another
