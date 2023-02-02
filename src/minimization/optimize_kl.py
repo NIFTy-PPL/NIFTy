@@ -506,10 +506,16 @@ def _plot_energy_history(index, energy_history):
     p = Plot()
     p.add(energy_history, skip_timestamp_conversion=True, xlabel='iteration',
           ylabel=r'E', yscale='log' if (E > 0.).all() else 'linear')
-    p.output(title='energy history', name=fname.format('energy_history'))
+    p.output(title='energy history',
+             name=fname.format('energy_history'),
+             xsize=max(0.8 + 0.175 * index, 6.4),
+             ysize=4.8,
+             dpi=125)
 
     # energy change plot
     if index > 0:
+        xsize = max(0.8 + 0.175 * (index - 1), 6.4)
+        plt.figure(figsize=(xsize, 4.8))
         ts = np.array(energy_history.time_stamps[1:])
         dE = E[1:] - E[:-1]
         idx_pos = (dE > 0)
@@ -521,8 +527,9 @@ def _plot_energy_history(index, energy_history):
         plt.xlabel('iteration')
         plt.ylabel(r'$\Delta\,$E')
         plt.legend()
-        plt.savefig(fname.format('energy_change_history'))
-        plt.clf()
+        plt.savefig(fname.format('energy_change_history'),
+                    bbox_inches="tight", dpi=125)
+        plt.close()
 
 
 def _append_key(s, key):
@@ -607,7 +614,9 @@ def _plot_minisanity_history(index, minisanity_history):
     colors = [plasma(x) for x in np.linspace(0, 0.95, n_tot)]
 
     linestyles = ['-'] * n_tot
-    for ii in range(1, n_tot, 2):
+    for ii in range(1, n_tot, 3):
+        linestyles[ii] = ':'
+    for ii in range(2, n_tot, 3):
         linestyles[ii] = '--'
 
     vals = [np.array(v) for v in vals]
@@ -625,10 +634,14 @@ def _plot_minisanity_history(index, minisanity_history):
     plt.title(r'reduced $\chi^2$ values')
     plt.xlabel('iteration')
     plt.ylabel(r'red. $\chi^2$')
-    plt.legend(loc='upper right')
+    plt.legend(bbox_to_anchor=(1.04, 0.5),
+               loc='center left',
+               borderaxespad=0,
+               ncol=int(np.ceil(n_tot / 20)))
     plt.savefig(join(_output_directory, 'minisanity_history',
-                     'minisanity_history_' + _file_name_by_strategy(index) + '.png'))
-    plt.clf()
+                     'minisanity_history_' + _file_name_by_strategy(index) + '.png'),
+                bbox_inches="tight", dpi=250)
+    plt.close()
 
 
 def _counting_report(count, iglobal, comm):
