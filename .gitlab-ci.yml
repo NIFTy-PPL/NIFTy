@@ -56,6 +56,7 @@ pages:
     - ls
   script:
     - python3 setup.py install --user -f
+    - git config --global --add safe.directory /builds/ift/nifty
     - git clean -xfd docs/source
     - sh docs/generate.sh
     - mv docs/build docs/build_stable
