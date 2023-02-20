@@ -1,17 +1,17 @@
 # Copyright(C) 2013-2021 Max-Planck-Society
 # SPDX-License-Identifier: GPL-2.0+ OR BSD-2-Clause
 
-import sys
 from datetime import datetime
 from functools import partial
-from jax import numpy as jnp
-from jax import lax
-
 from typing import Any, Callable, NamedTuple, Optional, Tuple, Union
 
-from .forest_util import assert_arithmetics, common_type, size, where, zeros_like
+from jax import lax
+from jax import numpy as jnp
+
+from .forest_util import assert_arithmetics, common_type
 from .forest_util import norm as jft_norm
-from .forest_util import vdot
+from .forest_util import size, vdot, where, zeros_like
+from .logger import logger
 from .sugar import doc_from, sum_of_squares
 
 HessVP = Callable[[jnp.ndarray], jnp.ndarray]
@@ -71,7 +71,7 @@ def _cg_pretty_print_it(
     msg += f" 🞋:{absdelta:.4e}" if absdelta is not None else ""
     if norm is not None and resnorm is not None:
         msg += f" |∇|:{norm:.4e} 🞋:{resnorm:.4e}"
-    print(msg, file=sys.stderr)
+    logger.info(msg)
 
 
 # Taken from nifty
@@ -179,7 +179,7 @@ def _cg(
             break
         if gamma >= 0. and gamma <= tiny:
             nm = "CG" if name is None else name
-            print(f"{nm}: gamma=0, converged!", file=sys.stderr)
+            logger.warning(f"{nm}: gamma=0, converged!")
             info = 0
             break
         if resnorm is not None:
@@ -201,7 +201,7 @@ def _cg(
                 nm = "CG" if name is None else name
                 if _raise_nonposdef:
                     raise ValueError(f"{nm}: WARNING: energy increased")
-                print(f"{nm}: WARNING: energy increased", file=sys.stderr)
+                logger.error(f"{nm}: WARNING: energy increased")
                 info = i
                 break
             if neg_energy_eps <= energy_diff < absdelta and i >= miniter:
@@ -656,7 +656,7 @@ def _cg_steihaug_subproblem(
                         if arg["i"] == arg["maxiter"] else ""
                     )
                 )
-                print(msg.format(name=name, **arg), file=sys.stderr)
+                logger.info(msg.format(name=name, **arg))
 
             printable_state = {
                 "i": nit,

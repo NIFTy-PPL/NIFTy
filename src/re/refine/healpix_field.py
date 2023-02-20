@@ -3,24 +3,22 @@
 # SPDX-License-Identifier: GPL-2.0+ OR BSD-2-Clause
 
 from functools import partial
-import sys
 from typing import Callable, Optional, Union
 
 import jax
-from jax import numpy as jnp
 import numpy as np
+from jax import numpy as jnp
 
 from ..forest_util import ShapeWithDtype
+from ..logger import logger
 from ..model import AbstractModel
 from ..num import amend_unique_
 from .chart import HEALPixChart
-from .healpix_refine import refine as refine_hp
 from .healpix_refine import cov_sqrt as cov_sqrt_hp
+from .healpix_refine import refine as refine_hp
 from .util import (
-    RefinementMatrices,
-    get_cov_from_loc,
-    get_refinement_shapewithdtype,
-    refinement_matrices,
+    RefinementMatrices, get_cov_from_loc, get_refinement_shapewithdtype,
+    refinement_matrices
 )
 
 
@@ -145,7 +143,7 @@ def _matrices_tol(
                 jax.debug.print(msg, pix=pix, n=pix_hp_idx[-1])
             return amend_unique_(u, d, axis=0, atol=atol, rtol=rtol)
 
-        print("\n" if _verbosity > 1 else "", end="", file=sys.stderr)
+        jax.debug.print("" if _verbosity > 1 else "\x1b[1A\x1b[2K")
         u, inv = jax.lax.scan(scanned_amend_unique, u, pix_hp_idx)
         # Cut away the placeholder for preserving static shapes
         n = np.unique(inv).size
@@ -155,7 +153,7 @@ def _matrices_tol(
         u = kernel(u) if which == "dist" else u
         inv = np.array(inv)
         if _verbosity > 0:
-            print(f"Post uniquifying: {u.shape}", file=sys.stderr)
+            logger.info(f"Post uniquifying: {u.shape}")
 
         # Finally, all distance/covariance matrices are assembled and we
         # can map over them to construct the refinement matrices as usual

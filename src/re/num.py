@@ -2,14 +2,16 @@
 
 # SPDX-License-Identifier: GPL-2.0+ OR BSD-2-Clause
 
-from functools import partial
 import sys
+from functools import partial
 from typing import Tuple
 
 import jax
-from jax import numpy as jnp
 import numpy as np
+from jax import numpy as jnp
 from numpy.typing import NDArray
+
+from .logger import logger
 
 
 def unique(
@@ -52,7 +54,7 @@ def unique(
             assert inverse is not None
             inverse[isclose] = uniqs.shape[axis] - 1
         if _verbosity > 0:
-            print(f"to-sort: {np.sum(to_sort)}", file=sys.stderr)
+            logger.info(f"to-sort: {np.sum(to_sort)}", file=sys.stderr)
 
     if return_inverse:
         assert np.all(inverse != -1)
