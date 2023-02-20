@@ -3,14 +3,14 @@
 
 from collections.abc import Mapping
 from functools import partial
-import sys
 from typing import Callable, Dict, Optional, Tuple, Union
 
-from jax import numpy as jnp
 import numpy as np
+from jax import numpy as jnp
 
-from .model import Model
 from .forest_util import ShapeWithDtype
+from .logger import logger
+from .model import Model
 from .stats_distributions import lognormal_prior, normal_prior
 from .sugar import ducktape
 
@@ -380,7 +380,7 @@ class CorrelatedFieldMaker():
         """
         if self._offset_mean is not None and self._azm is not None:
             msg = "Overwriting the previous mean offset and zero-mode"
-            print(msg, file=sys.stderr)
+            logger.warning(msg)
 
         self._offset_mean = offset_mean
         zm = offset_std
