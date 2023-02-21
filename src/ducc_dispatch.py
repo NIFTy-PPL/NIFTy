@@ -49,9 +49,9 @@ try:
 
 
     def vdot(a, b):
-        if isinstance(a, np.ndarray) and a.dtype == np.int64:
+        if isinstance(a, np.ndarray) and np.issubdtype(a.dtype, np.integer):
             a = a.astype(np.float64)
-        if isinstance(b, np.ndarray) and b.dtype == np.int64:
+        if isinstance(b, np.ndarray) and np.issubdtype(b.dtype, np.integer):
             b = b.astype(np.float64)
         return ducc0.misc.vdot(a, b)
 
