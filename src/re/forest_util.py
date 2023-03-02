@@ -1,8 +1,8 @@
 # Copyright(C) 2013-2021 Max-Planck-Society
 # SPDX-License-Identifier: GPL-2.0+ OR BSD-2-Clause
 
-from functools import partial, reduce
 import operator
+from functools import partial, reduce
 from typing import Any, Callable, List, Optional, Tuple, TypeVar, Union
 
 from jax import lax
@@ -355,7 +355,7 @@ def smap(fun, in_axes=0, out_axes=0, *, unroll=1):
     For the semantics of `in_axes` and `out_axes` see `jax.vmap`. For the
     semantics of `unroll` see `jax.lax.scan`.
     """
-    from jax.tree_util import tree_map, tree_flatten, tree_unflatten
+    from jax.tree_util import tree_flatten, tree_map, tree_unflatten
 
     def blm(*args, **kwargs):
         _safe_assert(not kwargs)
@@ -374,8 +374,10 @@ def smap(fun, in_axes=0, out_axes=0, *, unroll=1):
                     new_inax += [i]
             inax = tuple(new_inax)
         else:
-            te = ("`in_axes` must be an integer or a tuple of arbitrary structures"
-                  f"; got {in_axes!r}")
+            te = (
+                "`in_axes` must be an integer or a tuple of arbitrary structures"
+                f"; got {in_axes!r}"
+            )
             raise TypeError(te)
         args, args_td = tree_flatten(args)
         inax, inax_td = tree_flatten(inax, is_leaf=_int_or_none)
@@ -402,6 +404,9 @@ def smap(fun, in_axes=0, out_axes=0, *, unroll=1):
             y = fun(*tree_unflatten(args_td, args_slice))
             return None, y
 
+        # TODO: wait for https://github.com/google/jax/issues/14743 to be fixed,
+        # then give fun_reord the hash of (fun, in_axes, out_axes) + the
+        # constant folded input.
         _, scanned = lax.scan(fun_reord, None, args_map, unroll=unroll)
 
         oax = out_axes
@@ -426,7 +431,7 @@ def smap(fun, in_axes=0, out_axes=0, *, unroll=1):
 
 
 def get_map(map) -> Callable:
-    from jax import vmap, pmap
+    from jax import pmap, vmap
 
     if isinstance(map, str):
         if map in ('vmap', 'v'):
