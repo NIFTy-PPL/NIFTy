@@ -354,6 +354,11 @@ def smap(fun, in_axes=0, out_axes=0, *, unroll=1):
 
     For the semantics of `in_axes` and `out_axes` see `jax.vmap`. For the
     semantics of `unroll` see `jax.lax.scan`.
+
+    Notes
+    -----
+    It is almost always necessary to JIT the wrapped call, as the inner scan
+    will incur a lot of re-compiles!
     """
     from jax.tree_util import tree_flatten, tree_map, tree_unflatten
 
@@ -404,9 +409,6 @@ def smap(fun, in_axes=0, out_axes=0, *, unroll=1):
             y = fun(*tree_unflatten(args_td, args_slice))
             return None, y
 
-        # TODO: wait for https://github.com/google/jax/issues/14743 to be fixed,
-        # then give fun_reord the hash of (fun, in_axes, out_axes) + the
-        # constant folded input.
         _, scanned = lax.scan(fun_reord, None, args_map, unroll=unroll)
 
         oax = out_axes
