@@ -29,32 +29,29 @@ def _smap(fun, in_axes, out_axes, unroll, *x, **k):
 
     if k:
         raise TypeError("keyword arguments are not allowed in map")
-    inax = in_axes
-    if isinstance(inax, int):
-        inax = tree_map(lambda _: inax, x)
-    elif isinstance(inax, tuple):
-        if len(inax) != len(x):
+
+    if isinstance(in_axes, int):
+        in_axes = tree_map(lambda _: in_axes, x)
+    elif isinstance(in_axes, tuple):
+        if len(in_axes) != len(x):
             ve = f"`in_axes` {in_axes!r} and input {x!r} must be of same length"
             raise ValueError(ve)
         new_inax = []
-        for el, i in zip(x, inax):
-            if _int_or_none(i):
-                new_inax += [tree_map(lambda _: i, el)]
-            else:
-                new_inax += [i]
-        inax = tuple(new_inax)
+        for el, i in zip(x, in_axes):
+            new_inax.append(tree_map(lambda _: i, el) if _int_or_none(i) else i)
+        in_axes = tuple(new_inax)
     else:
         te = f"`in_axes` must be an int or tuple of pytrees/int; got {in_axes!r}"
         raise TypeError(te)
     x, x_td = tree_flatten(x)
-    in_axes, in_axes_td = tree_flatten(inax, is_leaf=_int_or_none)
+    in_axes, in_axes_td = tree_flatten(in_axes, is_leaf=_int_or_none)
     if in_axes_td != x_td:
         ve = f"`in_axes` {in_axes_td!r} incompatible with input `*x` {x_td!r}"
         raise ValueError(ve)
 
     unmapped = []
     mapped = []
-    for i, el in zip(inax, x):
+    for i, el in zip(in_axes, x):
         if i is None:
             unmapped.append(el)
         elif isinstance(i, int):
