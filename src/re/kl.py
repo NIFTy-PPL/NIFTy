@@ -3,6 +3,7 @@
 
 from functools import partial
 from typing import Callable, Optional, Sequence, TypeVar, Union
+from warnings import warn
 
 from jax import random
 from jax.tree_util import Partial, register_pytree_node_class
@@ -36,10 +37,18 @@ def cond_raise(condition, exception):
     call(maybe_raise, condition, result_shape=None)
 
 
-# TODO (?): optionally accept ham.metric and likelihood.lsm or alternatively
-# implement some kind of partial for likelihoods
+def _likelihood_metric_plus_standard_prior(lh_metric):
+    if isinstance(lh_metric, Likelihood):
+        lh_metric = lh_metric.metric
+
+    def joined_metric(primals, tangents, **primals_kw):
+        return lh_metric(primals, tangents, **primals_kw) + tangents
+
+    return joined_metric
+
+
 def _sample_standard_hamiltonian(
-    hamiltonian: StandardHamiltonian,
+    likelihood: Likelihood,
     primals,
     key,
     from_inverse: bool,
@@ -48,15 +57,21 @@ def _sample_standard_hamiltonian(
     cg_kwargs: Optional[dict] = None,
     _raise_nonposdef: bool = False,
 ):
-    if not isinstance(hamiltonian, StandardHamiltonian):
-        te = f"`hamiltonian` of invalid type; got '{type(hamiltonian)}'"
+    if isinstance(likelihood, Likelihood):
+        lh = likelihood
+        ham_metric = _likelihood_metric_plus_standard_prior(lh)
+    elif isinstance(likelihood, StandardHamiltonian):
+        msg = "passing `StandardHamiltonian` instead of the `Likelihood` is deprecated"
+        warn(msg, DeprecationWarning)
+        lh = likelihood.likelihood
+        ham_metric = likelihood.metric
+    else:
+        te = f"`likelihood` of invalid type; got '{type(likelihood)}'"
         raise TypeError(te)
     cg_kwargs = cg_kwargs if cg_kwargs is not None else {}
 
     subkey_nll, subkey_prr = random.split(key, 2)
-    nll_smpl = sample_likelihood(
-        hamiltonian.likelihood, primals, key=subkey_nll
-    )
+    nll_smpl = sample_likelihood(lh, primals, key=subkey_nll)
     prr_inv_metric_smpl = random_like(key=subkey_prr, primals=primals)
     # One may transform any metric sample to a sample of the inverse
     # metric by simply applying the inverse metric to it
@@ -73,7 +88,7 @@ def _sample_standard_hamiltonian(
     met_smpl = nll_smpl + prr_smpl
     if from_inverse:
         inv_metric_at_p = partial(
-            cg, Partial(hamiltonian.metric, primals), **{
+            cg, Partial(ham_metric, primals), **{
                 "name": cg_name,
                 "_raise_nonposdef": _raise_nonposdef,
                 **cg_kwargs
@@ -90,10 +105,10 @@ def _sample_standard_hamiltonian(
 
 
 def sample_standard_hamiltonian(
-    hamiltonian: StandardHamiltonian, primals, *args, **kwargs
+    likelihood: Likelihood, primals, *args, **kwargs
 ):
     r"""Draws a sample of which the covariance is the metric or the inverse
-    metric of the Hamiltonian.
+    metric of the likelihood with assumed standard normal prior.
 
     To sample from the inverse metric, we need to be able to draw samples
     which have the metric as covariance structure and we need to be able to
@@ -123,8 +138,8 @@ def sample_standard_hamiltonian(
 
     Parameters
     ----------
-    hamiltonian:
-        Hamiltonian with standard prior from which to draw samples.
+    likelihood:
+        Likelihood with assumed standard prior from which to draw samples.
     primals : tree-like structure
         Position at which to draw samples.
     key : tuple, list or jnp.ndarray of uint32 of length two
@@ -147,14 +162,14 @@ def sample_standard_hamiltonian(
     """
     assert_arithmetics(primals)
     inv_met_smpl, _ = _sample_standard_hamiltonian(
-        hamiltonian, primals, *args, from_inverse=True, **kwargs
+        likelihood, primals, *args, from_inverse=True, **kwargs
     )
     return inv_met_smpl
 
 
 # TODO (?): optionally accept ham.metric and likelihood.lsm and likelihood.transformation
 def geometrically_sample_standard_hamiltonian(
-    hamiltonian: StandardHamiltonian,
+    likelihood: Likelihood,
     primals,
     key,
     mirror_linear_sample: bool,
@@ -173,8 +188,8 @@ def geometrically_sample_standard_hamiltonian(
 
     Parameters
     ----------
-    hamiltonian:
-        Hamiltonian with standard prior from which to draw samples.
+    likelihood:
+        Likelihood with assumed standard prior from which to draw samples.
     primals : tree-like structure
         Position at which to draw samples.
     key : tuple, list or jnp.ndarray of uint32 of length two
@@ -199,15 +214,22 @@ def geometrically_sample_standard_hamiltonian(
     Torsten A. Enßlin, `<https://arxiv.org/abs/2105.10470>`_
     `<https://doi.org/10.3390/e23070853>`_
     """
-    if not isinstance(hamiltonian, StandardHamiltonian):
-        te = f"`hamiltonian` of invalid type; got '{type(hamiltonian)}'"
-        raise TypeError(te)
-    assert_arithmetics(primals)
     from .energy_operators import Gaussian
     from .optimize import minimize
 
+    if isinstance(likelihood, Likelihood):
+        lh = likelihood
+    elif isinstance(likelihood, StandardHamiltonian):
+        msg = "passing the StandardHamiltonian instead of the Likelihood is deprecated"
+        warn(msg, DeprecationWarning)
+        lh = likelihood.likelihood
+    else:
+        te = f"`likelihood` of invalid type; got '{type(likelihood)}'"
+        raise TypeError(te)
+    assert_arithmetics(primals)
+
     inv_met_smpl, met_smpl = _sample_standard_hamiltonian(
-        hamiltonian,
+        likelihood,
         primals,
         key=key,
         from_inverse=True,
@@ -237,7 +259,7 @@ def geometrically_sample_standard_hamiltonian(
             return (inv_met_smpl, -inv_met_smpl)
         return (inv_met_smpl, )
 
-    lh_trafo_at_p = hamiltonian.likelihood.transformation(primals)
+    lh_trafo_at_p = lh.transformation(primals)
 
     def draw_non_linear_sample(lh, met_smpl, inv_met_smpl):
         x0 = primals + inv_met_smpl
@@ -259,18 +281,14 @@ def geometrically_sample_standard_hamiltonian(
 
         return opt_state.x, opt_state.status
 
-    smpl1, smpl1_status = draw_non_linear_sample(
-        hamiltonian.likelihood, met_smpl, inv_met_smpl
-    )
+    smpl1, smpl1_status = draw_non_linear_sample(lh, met_smpl, inv_met_smpl)
     cond_raise(
         _raise_notconverged & (smpl1_status is not None) & (smpl1_status < 0),
         ValueError("S: failed to invert map")
     )
     if not mirror_linear_sample:
         return (smpl1 - primals, )
-    smpl2, smpl2_status = draw_non_linear_sample(
-        hamiltonian.likelihood, -met_smpl, -inv_met_smpl
-    )
+    smpl2, smpl2_status = draw_non_linear_sample(lh, -met_smpl, -inv_met_smpl)
     cond_raise(
         _raise_notconverged & (smpl2_status is not None) & (smpl2_status < 0),
         ValueError("S: failed to invert map")
@@ -385,7 +403,7 @@ class SampleIter():
 
 
 def MetricKL(
-    hamiltonian: StandardHamiltonian,
+    likelihood: Likelihood,
     primals,
     n_samples: int,
     key,
@@ -411,8 +429,9 @@ def MetricKL(
 
     Parameters
     ----------
-    hamiltonian : :class:`nifty8.src.re.likelihood.StandardHamiltonian`
-        Hamiltonian of the approximated probability distribution.
+    likelihood :
+        Likelihood with assumed standard prior for which the probability
+        distribution is approximated.
     primals : :class:`nifty8.re.field.Field`
         Expansion point of the coordinate transformation.
     n_samples : integer
@@ -448,14 +467,9 @@ def MetricKL(
     `Metric Gaussian Variational Inference`, Jakob Knollmüller,
     Torsten A. Enßlin, `<https://arxiv.org/abs/1901.11033>`_
     """
-    if not isinstance(hamiltonian, StandardHamiltonian):
-        te = f"`hamiltonian` of invalid type; got '{type(hamiltonian)}'"
-        raise TypeError(te)
-    assert_arithmetics(primals)
-
     draw = partial(
         sample_standard_hamiltonian,
-        hamiltonian=hamiltonian,
+        likelihood=likelihood,
         primals=primals,
         cg=linear_sampling_cg,
         cg_name=linear_sampling_name,
@@ -474,7 +488,7 @@ def MetricKL(
 
 
 def GeoMetricKL(
-    hamiltonian: StandardHamiltonian,
+    likelihood: Likelihood,
     primals,
     n_samples: int,
     key,
@@ -509,14 +523,9 @@ def GeoMetricKL(
     Torsten A. Enßlin, `<https://arxiv.org/abs/2105.10470>`_
     `<https://doi.org/10.3390/e23070853>`_
     """
-    if not isinstance(hamiltonian, StandardHamiltonian):
-        te = f"`hamiltonian` of invalid type; got '{type(hamiltonian)}'"
-        raise TypeError(te)
-    assert_arithmetics(primals)
-
     draw = partial(
         geometrically_sample_standard_hamiltonian,
-        hamiltonian=hamiltonian,
+        likelihood=likelihood,
         primals=primals,
         mirror_linear_sample=mirror_samples,
         linear_sampling_cg=linear_sampling_cg,
