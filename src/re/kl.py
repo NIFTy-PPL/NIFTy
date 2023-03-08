@@ -1,21 +1,19 @@
-# Copyright(C) 2013-2021 Max-Planck-Society
+# Copyright(C) 2023 Gordian Edenhofer
 # SPDX-License-Identifier: GPL-2.0+ OR BSD-2-Clause
 
 from functools import partial
-from typing import Callable, Optional, Sequence, TypeVar, Union
+from operator import getitem
+from typing import Callable, Optional, TypeVar
 from warnings import warn
 
+from jax import numpy as jnp
 from jax import random
-from jax.tree_util import Partial, register_pytree_node_class
+from jax.tree_util import (
+    Partial, register_pytree_node_class, tree_leaves, tree_map
+)
 
 from . import conjugate_gradient
-from .forest_util import (
-    assert_arithmetics,
-    get_map,
-    map_forest,
-    map_forest_mean,
-    unstack,
-)
+from .forest_util import assert_arithmetics, stack
 from .likelihood import Likelihood, StandardHamiltonian
 from .sugar import random_like
 
@@ -27,7 +25,7 @@ def sample_likelihood(likelihood: Likelihood, primals, key):
     return likelihood.left_sqrt_metric(primals, white_sample)
 
 
-def cond_raise(condition, exception):
+def _cond_raise(condition, exception):
     from jax.experimental.host_callback import call
 
     def maybe_raise(condition):
@@ -47,7 +45,7 @@ def _likelihood_metric_plus_standard_prior(lh_metric):
     return joined_metric
 
 
-def _sample_standard_hamiltonian(
+def _sample_linearly(
     likelihood: Likelihood,
     primals,
     key,
@@ -57,6 +55,8 @@ def _sample_standard_hamiltonian(
     cg_kwargs: Optional[dict] = None,
     _raise_nonposdef: bool = False,
 ):
+    assert_arithmetics(primals)
+
     if isinstance(likelihood, Likelihood):
         lh = likelihood
         ham_metric = _likelihood_metric_plus_standard_prior(lh)
@@ -95,8 +95,8 @@ def _sample_standard_hamiltonian(
             }
         )
         signal_smpl, info = inv_metric_at_p(met_smpl, x0=prr_inv_metric_smpl)
-        cond_raise(
-            (info is not None) & (info < 0),
+        _cond_raise(
+            (info < 0) if info is not None else False,
             ValueError("conjugate gradient failed")
         )
         return signal_smpl, met_smpl
@@ -104,16 +104,67 @@ def _sample_standard_hamiltonian(
         return None, met_smpl
 
 
-def sample_standard_hamiltonian(
-    likelihood: Likelihood, primals, *args, **kwargs
+def _curve_sample(
+    likelihood, primals, met_smpl, inv_met_smpl, *, minimize_method,
+    minimize_options
 ):
-    r"""Draws a sample of which the covariance is the metric or the inverse
-    metric of the likelihood with assumed standard normal prior.
+    from .energy_operators import Gaussian
+    from .optimize import minimize
 
-    To sample from the inverse metric, we need to be able to draw samples
-    which have the metric as covariance structure and we need to be able to
-    apply the inverse metric. The first part is trivial since we can use
-    the left square root of the metric :math:`L` associated with every
+    if isinstance(likelihood, Likelihood):
+        lh = likelihood
+    elif isinstance(likelihood, StandardHamiltonian):
+        lh = likelihood.likelihood
+    else:
+        te = f"`likelihood` of invalid type; got '{type(likelihood)}'"
+        raise TypeError(te)
+    x0 = primals + inv_met_smpl
+    lh_trafo_at_p = lh.transformation(primals)
+
+    def g(x):
+        return x - primals + lh.left_sqrt_metric(
+            primals,
+            lh.transformation(x) - lh_trafo_at_p
+        )
+
+    r2_half = Gaussian(met_smpl) @ g  # (g - met_smpl)**2 / 2
+
+    opt_state = minimize(
+        r2_half,
+        x0=x0,
+        method=minimize_method,
+        options=minimize_options | {"hessp": r2_half.metric},
+    )
+
+    return opt_state.x, opt_state.status
+
+
+def sample_evi(
+    likelihood: Likelihood,
+    primals,
+    key,
+    mirror_linear_sample: bool = True,
+    linear_sampling_cg: Callable = conjugate_gradient.static_cg,
+    linear_sampling_name: Optional[str] = None,
+    linear_sampling_kwargs: Optional[dict] = None,
+    non_linear_sampling_method: str = "NewtonCG",
+    non_linear_sampling_name: Optional[str] = None,
+    non_linear_sampling_kwargs: Optional[dict] = None,
+    _raise_notconverged: bool = False,
+) -> "Samples":
+    r"""Draws a sample at a given expansion point.
+
+    The sample can be linear, i.e. following a standard normal distribution in
+    model space, or non linear, i.e. following a standard normal distribution in
+    the canonical coordinate system of the Riemannian manifold associated with
+    the metric of the approximate posterior distribution. The coordinate
+    transformation for the non-linear sample is approximated by an expansion.
+
+    Both linear and non-linear sample start by drawing a sample from the inverse
+    metric. To do so, we draw a sample which has the metric as covariance
+    structure and apply the inverse metric to it. The sample transformed in this
+    way has the inverse metric as covariance. The first part is trivial since we
+    can use the left square root of the metric :math:`L` associated with every
     likelihood:
 
     .. math::
@@ -126,65 +177,20 @@ def sample_standard_hamiltonian(
     .. math::
         <t t^\dagger> = L <\tilde{d} \tilde{d}^\dagger> L^\dagger = M .
 
-    We now need to apply the inverse metric in order to transform the
-    sample to an inverse sample. We can do so using the conjugate gradient
-    algorithm which yields the solution to :math:`M s = t`, i.e. applies the
-    inverse of :math:`M` to :math:`t`:
+    To transform the sample to an inverse sample, we apply the inverse metric.
+    We can do so using the conjugate gradient algorithm (CG). The CG algorithm
+    yields the solution to :math:`M s = t`, i.e. applies the inverse of
+    :math:`M` to :math:`t`:
 
     .. math::
 
         M &s =  t \\
         &s = M^{-1} t = cg(M, t) .
 
-    Parameters
-    ----------
-    likelihood:
-        Likelihood with assumed standard prior from which to draw samples.
-    primals : tree-like structure
-        Position at which to draw samples.
-    key : tuple, list or jnp.ndarray of uint32 of length two
-        Random key with which to generate random variables in data domain.
-    cg : callable, optional
-        Implementation of the conjugate gradient algorithm and used to
-        apply the inverse of the metric.
-    cg_kwargs : dict, optional
-        Additional keyword arguments passed on to `cg`.
-
-    Returns
-    -------
-    sample : tree-like structure
-        Sample of which the covariance is the inverse metric.
-
-    See also
-    --------
-    `Metric Gaussian Variational Inference`, Jakob Knollmüller,
-    Torsten A. Enßlin, `<https://arxiv.org/abs/1901.11033>`_
-    """
-    assert_arithmetics(primals)
-    inv_met_smpl, _ = _sample_standard_hamiltonian(
-        likelihood, primals, *args, from_inverse=True, **kwargs
-    )
-    return inv_met_smpl
-
-
-# TODO (?): optionally accept ham.metric and likelihood.lsm and likelihood.transformation
-def geometrically_sample_standard_hamiltonian(
-    likelihood: Likelihood,
-    primals,
-    key,
-    mirror_linear_sample: bool,
-    linear_sampling_cg: Callable = conjugate_gradient.static_cg,
-    linear_sampling_name: Optional[str] = None,
-    linear_sampling_kwargs: Optional[dict] = None,
-    non_linear_sampling_method: str = "NewtonCG",
-    non_linear_sampling_name: Optional[str] = None,
-    non_linear_sampling_kwargs: Optional[dict] = None,
-    _raise_notconverged: bool = False,
-):
-    r"""Draws a sample which follows a standard normal distribution in the
-    canonical coordinate system of the Riemannian manifold associated with the
-    metric of the other distribution. The coordinate transformation is
-    approximated by expanding around a given point `primals`.
+    The linear sample is :math:`s`. The non-linear sample uses :math:`s` as a
+    starting value and curves it in a non-linear way as to better resemble the
+    posterior locally. See the below reference literature for more details on
+    the non-linear sampling.
 
     Parameters
     ----------
@@ -194,14 +200,24 @@ def geometrically_sample_standard_hamiltonian(
         Position at which to draw samples.
     key : tuple, list or jnp.ndarray of uint32 of length two
         Random key with which to generate random variables in data domain.
+    mirror_samples : bool, optional
+        Whether the mirrored version of the drawn samples are also used. If
+        true, the number of used samples doubles. Mirroring samples stabilizes
+        the KL estimate as extreme sample variation is counterbalanced.
     linear_sampling_cg : callable
-        Implementation of the conjugate gradient algorithm and used to
-        apply the inverse of the metric.
+        Implementation of the conjugate gradient algorithm and used to apply the
+        inverse of the metric.
     linear_sampling_kwargs : dict
         Additional keyword arguments passed on to `cg`.
+    non_linear_sampling_method : str
+        Method to use for the minimization.
     non_linear_sampling_kwargs : dict
-        Additional keyword arguments passed on to the minimzer of the
-        non-linear potential.
+        Additional keyword arguments passed on to the minimzer of the non-linear
+        potential.
+    non_linear_sampling_name : str, optional
+        Name of the non-linear optimizer.
+    non_linear_sampling_kwargs : dict, optional
+        Options for the non-linear optimizer.
 
     Returns
     -------
@@ -213,22 +229,11 @@ def geometrically_sample_standard_hamiltonian(
     `Geometric Variational Inference`, Philipp Frank, Reimar Leike,
     Torsten A. Enßlin, `<https://arxiv.org/abs/2105.10470>`_
     `<https://doi.org/10.3390/e23070853>`_
+
+    `Metric Gaussian Variational Inference`, Jakob Knollmüller,
+    Torsten A. Enßlin, `<https://arxiv.org/abs/1901.11033>`_
     """
-    from .energy_operators import Gaussian
-    from .optimize import minimize
-
-    if isinstance(likelihood, Likelihood):
-        lh = likelihood
-    elif isinstance(likelihood, StandardHamiltonian):
-        msg = "passing the StandardHamiltonian instead of the Likelihood is deprecated"
-        warn(msg, DeprecationWarning)
-        lh = likelihood.likelihood
-    else:
-        te = f"`likelihood` of invalid type; got '{type(likelihood)}'"
-        raise TypeError(te)
-    assert_arithmetics(primals)
-
-    inv_met_smpl, met_smpl = _sample_standard_hamiltonian(
+    inv_met_smpl, met_smpl = _sample_linearly(
         likelihood,
         primals,
         key=key,
@@ -239,67 +244,47 @@ def geometrically_sample_standard_hamiltonian(
         _raise_nonposdef=_raise_notconverged,
     )
 
-    if isinstance(non_linear_sampling_kwargs, dict):
-        nls_kwargs = non_linear_sampling_kwargs
-    elif non_linear_sampling_kwargs is None:
-        nls_kwargs = {}
-    else:
-        te = (
-            "`non_linear_sampling_kwargs` of invalid type"
-            "{type(non_linear_sampling_kwargs)}"
-        )
-        raise TypeError(te)
-    nls_kwargs = {"name": non_linear_sampling_name, **nls_kwargs}
+    nls_kwargs = non_linear_sampling_kwargs
+    nls_kwargs = {} if nls_kwargs is None else nls_kwargs.copy()
+    nls_kwargs.setdefault("name", non_linear_sampling_name)
     if "hessp" in nls_kwargs:
         ve = "setting the hessian for an unknown function is invalid"
         raise ValueError(ve)
-    # Abort early if non-linear sampling is effectively disabled
-    if nls_kwargs.get("maxiter") == 0:
+    curve_sample = partial(
+        _curve_sample,
+        likelihood,
+        primals,
+        minimize_method=non_linear_sampling_method,
+        minimize_options=nls_kwargs,
+    )
+
+    if nls_kwargs.get("maxiter", 0) == 0:
+        smpls = (inv_met_smpl, )
         if mirror_linear_sample:
-            return (inv_met_smpl, -inv_met_smpl)
-        return (inv_met_smpl, )
-
-    lh_trafo_at_p = lh.transformation(primals)
-
-    def draw_non_linear_sample(lh, met_smpl, inv_met_smpl):
-        x0 = primals + inv_met_smpl
-
-        def g(x):
-            return x - primals + lh.left_sqrt_metric(
-                primals,
-                lh.transformation(x) - lh_trafo_at_p
-            )
-
-        r2_half = Gaussian(met_smpl) @ g  # (g - met_smpl)**2 / 2
-
-        options = nls_kwargs.copy()
-        options["hessp"] = r2_half.metric
-
-        opt_state = minimize(
-            r2_half, x0=x0, method=non_linear_sampling_method, options=options
+            smpls = (inv_met_smpl, -inv_met_smpl)
+    else:
+        smpl1, smpl1_status = curve_sample(met_smpl, inv_met_smpl)
+        _cond_raise(
+            _raise_notconverged &
+            ((smpl1_status < 0) if smpl1_status is not None else False),
+            ValueError("S: failed to invert map")
         )
-
-        return opt_state.x, opt_state.status
-
-    smpl1, smpl1_status = draw_non_linear_sample(lh, met_smpl, inv_met_smpl)
-    cond_raise(
-        _raise_notconverged & (smpl1_status is not None) & (smpl1_status < 0),
-        ValueError("S: failed to invert map")
-    )
-    if not mirror_linear_sample:
-        return (smpl1 - primals, )
-    smpl2, smpl2_status = draw_non_linear_sample(lh, -met_smpl, -inv_met_smpl)
-    cond_raise(
-        _raise_notconverged & (smpl2_status is not None) & (smpl2_status < 0),
-        ValueError("S: failed to invert map")
-    )
-    return (smpl1 - primals, smpl2 - primals)
+        smpls = (smpl1 - primals, )
+        if mirror_linear_sample:
+            smpl2, smpl2_status = curve_sample(-met_smpl, -inv_met_smpl)
+            _cond_raise(
+                _raise_notconverged &
+                ((smpl2_status < 0) if smpl2_status is not None else False),
+                ValueError("S: failed to invert map")
+            )
+            smpls = (smpl1 - primals, smpl2 - primals)
+    return Samples(pos=primals, samples=stack(smpls))
 
 
 @register_pytree_node_class
-class SampleIter():
-    """Storage class for samples with some convenience methods for applying
-    operators of them
+class Samples():
+    """Storage class for samples (relative to some expansion point) that is
+    fully compatible with JAX transformations like vmap, pmap, etc.
 
     This class is used to store samples for the Variational Inference schemes
     MGVI and geoVI where samples are defined relative to some expansion point
@@ -314,238 +299,72 @@ class SampleIter():
     `Metric Gaussian Variational Inference`, Jakob Knollmüller,
     Torsten A. Enßlin, `<https://arxiv.org/abs/1901.11033>`_
     """
-    def __init__(
-        self,
-        *,
-        mean: P = None,
-        samples: Sequence[P],
-        linearly_mirror_samples: bool = False,
-    ):
-        self._samples = tuple(samples)
-        self._mean = mean
+    def __init__(self, *, pos: P = None, samples: P):
+        self._pos, self._samples = pos, samples
+        self._n_samples = None
 
-        self._n_samples = len(self._samples)
-        if linearly_mirror_samples == True:
-            self._n_samples *= 2
-        self._linearly_mirror_samples = linearly_mirror_samples
-        # TODO/IDEA: Implement a transposed SampleIter object (SampleStack)
-        # akin to `vmap_forest_mean`
+    @property
+    def pos(self):
+        return self._pos
 
-    def __iter__(self):
-        for s in self._samples:
-            yield self._mean + s if self._mean is not None else s
-            if self._linearly_mirror_samples:
-                yield self._mean - s if self._mean is not None else -s
+    @property
+    def samples(self):
+        smpls = self._samples
+        if self.pos is not None:
+            smpls = tree_map(lambda p, s: p[jnp.newaxis] + s, self.pos, smpls)
+        return smpls
 
     def __len__(self):
-        return self._n_samples
+        return jnp.shape(tree_leaves(self._samples)[0])[0]
 
-    @property
-    def n_samples(self):
-        """Total number of samples, equivalent to the length of the object"""
-        return len(self)
+    def __getitem__(self, index):
+        def get(b):
+            return getitem(b, index)
 
-    def at(self, mean):
-        """Updates the offset (usually the latent mean) of all samples"""
-        return SampleIter(
-            mean=mean,
-            samples=self._samples,
-            linearly_mirror_samples=self._linearly_mirror_samples
+        if self.pos is None:
+            return tree_map(get, self._samples)
+        return tree_map(lambda p, s: p + get(s), self.pos, self._samples)
+
+    def __iter__(self):
+        for i in range(len(self)):
+            yield self[i]
+
+    def __eq__(self, other) -> bool:
+        if not isinstance(other, self.__class__):
+            return False
+        return self.samples == other.samples
+
+    def at(self, pos, old_pos=None):
+        """Update the offset (usually the latent mean) of all samples and
+        optionally subtracts `old_pos` from all samples before.
+        """
+        if self.pos is not None and old_pos is None:
+            smpls = self._samples
+        elif old_pos is not None:
+            smpls = self.samples
+            smpls = tree_map(lambda p, s: s - p[jnp.newaxis], old_pos, smpls)
+        else:
+            raise ValueError("invalid combination of `pos` and `old_pos`")
+        return Samples(pos=pos, samples=smpls)
+
+    def squeeze(self):
+        """Convenience method to merge the two leading axis of stacked samples
+        (e.g. from batching).
+        """
+        smpls = tree_map(
+            lambda s: s.reshape((-1, ) + s.shape[2:]), self._samples
         )
-
-    @property
-    def first(self):
-        """Convenience method to easily retrieve a sample (the first one)"""
-        if self._mean is not None:
-            return self._mean + self._samples[0]
-        return self._samples[0]
-
-    def apply(self, call: Callable, *args, **kwargs):
-        """Applies an operator over all samples, yielding a list of outputs
-
-        Internally, the call is `vmap`-ed over the samples for additional
-        efficiency.
-        """
-        if set(kwargs.keys()) | {"in_axes"} != {"in_axes"}:
-            raise ValueError(f"invalid keyword arguments {kwargs}")
-
-        # TODO: vmap is significantly slower than looping over the samples
-        # for an extremely high dimensional problem.
-        in_axes = kwargs.get("in_axes", (0, ))
-        return map_forest(call, in_axes=in_axes)(tuple(self), *args)
-
-    def mean(self, call: Callable, *args, **kwargs):
-        """Applies an operator over all samples and averages the results
-
-        Internally, the call is `vmap`-ed over the samples for additional
-        efficiency.
-        """
-        if set(kwargs.keys()) | {"in_axes"} != {"in_axes"}:
-            raise ValueError(f"invalid keyword arguments {kwargs}")
-
-        # TODO: vmap is significantly slower than looping over the samples
-        # for an extremely high dimensional problem.
-        in_axes = kwargs.get("in_axes", (0, ))
-        return map_forest_mean(call, in_axes=in_axes)(tuple(self), *args)
+        return Samples(pos=self.pos, samples=smpls)
 
     def tree_flatten(self):
-        return ((self._mean, self._samples), (self._linearly_mirror_samples, ))
+        # Include mean in samples when passing to JAX (for e.g. vmap, pmap, ...)
+        # return ((self.samples, ), (self.pos, ))  # confuses JAX
+        return ((self.pos, self._samples, ), ())
 
     @classmethod
     def tree_unflatten(cls, aux, children):
-        if len(aux) != 1 or len(children) != 2:
-            raise ValueError()
-        return cls(
-            mean=children[0],
-            samples=children[1],
-            linearly_mirror_samples=aux[0]
-        )
-
-
-def MetricKL(
-    likelihood: Likelihood,
-    primals,
-    n_samples: int,
-    key,
-    mirror_samples: bool = True,
-    map: Union[str, Callable] = 'lax',
-    linear_sampling_cg: Callable = conjugate_gradient.static_cg,
-    linear_sampling_name: Optional[str] = None,
-    linear_sampling_kwargs: Optional[dict] = None,
-) -> SampleIter:
-    """Provides the sampled Kullback-Leibler divergence between a distribution
-    and a Metric Gaussian.
-
-    A Metric Gaussian is used to approximate another probability distribution.
-    It is a Gaussian distribution that uses the Fisher information metric of
-    the other distribution at the location of its mean to approximate the
-    variance. In order to infer the mean, a stochastic estimate of the
-    Kullback-Leibler divergence is minimized. This estimate is obtained by
-    sampling the Metric Gaussian at the current mean. During minimization these
-    samples are kept constant and only the mean is updated. Due to the
-    typically nonlinear structure of the true distribution these samples have
-    to be updated eventually by re-instantiating the Metric Gaussian again. For
-    the true probability distribution the standard parametrization is assumed.
-
-    Parameters
-    ----------
-    likelihood :
-        Likelihood with assumed standard prior for which the probability
-        distribution is approximated.
-    primals : :class:`nifty8.re.field.Field`
-        Expansion point of the coordinate transformation.
-    n_samples : integer
-        Number of samples used to stochastically estimate the KL.
-    key : DeviceArray
-        A PRNG-key.
-    mirror_samples : bool
-        Whether the mirrored version of the drawn samples are also used.
-        If true, the number of used samples doubles.
-        Mirroring samples stabilizes the KL estimate as extreme
-        sample variation is counterbalanced.
-        Default is True.
-    map : string, callable
-        Can be either a string-key to a mapping function or a mapping function
-        itself. The function is used to map the drawing of samples. Possible
-        string-keys are:
-
-        - 'pmap' or 'p' for `jax.pmap`
-        - 'lax.map' or 'lax' for `jax.lax.map`
-
-        In case `map` is passed as a function, it should produce a mapped
-        function f_mapped of a general function f as: `f_mapped = map(f)`.
-    linear_sampling_cg : callable
-        Implementation of the conjugate gradient algorithm and used to
-        apply the inverse of the metric.
-    linear_sampling_name : string, optional
-        'name'-keyword-argument passed to `linear_sampling_cg`.
-    linear_sampling_kwargs : dict, optional
-        Additional keyword arguments passed on to `linear_sampling_cg`.
-
-    See also
-    --------
-    `Metric Gaussian Variational Inference`, Jakob Knollmüller,
-    Torsten A. Enßlin, `<https://arxiv.org/abs/1901.11033>`_
-    """
-    draw = partial(
-        sample_standard_hamiltonian,
-        likelihood=likelihood,
-        primals=primals,
-        cg=linear_sampling_cg,
-        cg_name=linear_sampling_name,
-        cg_kwargs=linear_sampling_kwargs
-    )
-    subkeys = random.split(key, n_samples)
-
-    map = get_map(map)
-    samples_stack = map(lambda k: draw(key=k))(subkeys)
-
-    return SampleIter(
-        mean=primals,
-        samples=unstack(samples_stack),
-        linearly_mirror_samples=mirror_samples
-    )
-
-
-def GeoMetricKL(
-    likelihood: Likelihood,
-    primals,
-    n_samples: int,
-    key,
-    mirror_samples: bool = True,
-    linear_sampling_cg: Callable = conjugate_gradient.static_cg,
-    linear_sampling_name: Optional[str] = None,
-    linear_sampling_kwargs: Optional[dict] = None,
-    non_linear_sampling_method: str = "NewtonCG",
-    non_linear_sampling_name: Optional[str] = None,
-    non_linear_sampling_kwargs: Optional[dict] = None,
-    _raise_notconverged: bool = False,
-) -> SampleIter:
-    """Provides the sampled Kullback-Leibler used in geometric Variational
-    Inference (geoVI).
-
-    In geoVI a probability distribution is approximated with a standard normal
-    distribution in the canonical coordinate system of the Riemannian manifold
-    associated with the metric of the other distribution. The coordinate
-    transformation is approximated by expanding around a point. In order to
-    infer the expansion point, a stochastic estimate of the Kullback-Leibler
-    divergence is minimized. This estimate is obtained by sampling from the
-    approximation using the current expansion point. During minimization these
-    samples are kept constant and only the expansion point is updated. Due to
-    the typically nonlinear structure of the true distribution these samples
-    have to be updated eventually by re-instantiating the geometric Gaussian
-    again. For the true probability distribution the standard parametrization
-    is assumed.
-
-    See also
-    --------
-    `Geometric Variational Inference`, Philipp Frank, Reimar Leike,
-    Torsten A. Enßlin, `<https://arxiv.org/abs/2105.10470>`_
-    `<https://doi.org/10.3390/e23070853>`_
-    """
-    draw = partial(
-        geometrically_sample_standard_hamiltonian,
-        likelihood=likelihood,
-        primals=primals,
-        mirror_linear_sample=mirror_samples,
-        linear_sampling_cg=linear_sampling_cg,
-        linear_sampling_name=linear_sampling_name,
-        linear_sampling_kwargs=linear_sampling_kwargs,
-        non_linear_sampling_method=non_linear_sampling_method,
-        non_linear_sampling_name=non_linear_sampling_name,
-        non_linear_sampling_kwargs=non_linear_sampling_kwargs,
-        _raise_notconverged=_raise_notconverged,
-    )
-    subkeys = random.split(key, n_samples)
-    # TODO: Make `geometrically_sample_standard_hamiltonian` jit-able
-    # samples_stack = lax.map(lambda k: draw(key=k), subkeys)
-    # Unpack tuple of samples
-    # samples_stack = tree_map(
-    #     lambda a: a.reshape((-1, ) + a.shape[2:]), samples_stack
-    # )
-    # samples = unstack(samples_stack)
-    samples = tuple(s for ss in map(lambda k: draw(key=k), subkeys) for s in ss)
-
-    return SampleIter(
-        mean=primals, samples=samples, linearly_mirror_samples=False
-    )
+        # pos, = aux
+        pos, smpls, = children
+        # if pos is not None:  # confuses JAX
+        #     smpls = tree_map(lambda p, s: s - p[jnp.newaxis], pos, smpls)
+        return cls(pos=pos, samples=smpls)

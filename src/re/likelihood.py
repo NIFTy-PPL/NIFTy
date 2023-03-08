@@ -3,12 +3,13 @@
 
 from typing import Any, Callable, Optional, TypeVar, Union
 
+from jax import linear_transpose, linearize
 from jax import numpy as jnp
-from jax import linear_transpose, linearize, vjp
+from jax import vjp
 from jax.tree_util import Partial, tree_leaves
 
-from .forest_util import ShapeWithDtype, split
-from .sugar import doc_from, is1d, isiterable, sum_of_squares
+from .forest_util import ShapeWithDtype
+from .sugar import doc_from, is1d, isiterable, split, sum_of_squares
 
 Q = TypeVar("Q")
 
@@ -331,6 +332,8 @@ class Likelihood():
         )
 
 
+# TODO: prune/hide/(make simply add unit mat) in favor of just passing around
+# likelihood; we exclusively built hierarchical models anyways.
 class StandardHamiltonian():
     """Joined object storage composed of a user-defined likelihood and a
     standard normal likelihood as prior.
