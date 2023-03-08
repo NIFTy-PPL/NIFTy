@@ -4,6 +4,7 @@
 from collections.abc import Iterable
 from typing import Any, Callable, Dict, Hashable, Mapping, TypeVar, Union
 
+import jax
 from jax import numpy as jnp
 from jax import random
 from jax.tree_util import tree_map, tree_reduce, tree_structure, tree_unflatten
@@ -12,6 +13,23 @@ from .field import Field
 
 O = TypeVar('O')
 I = TypeVar('I')
+
+
+def hvp(f, primals, tangents):
+    return jax.jvp(jax.grad(f), primals, tangents)[1]
+
+
+def split(mappable, keys):
+    """Split a dictionary into one containing only the specified keys and one
+    with all of the remaining ones.
+    """
+    sel, rest = {}, {}
+    for k, v in mappable.items():
+        if k in keys:
+            sel[k] = v
+        else:
+            rest[k] = v
+    return sel, rest
 
 
 def isiterable(candidate):
