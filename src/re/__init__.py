@@ -31,13 +31,7 @@ from .forest_util import (
 )
 from .hmc import generate_hmc_acc_rej, generate_nuts_tree
 from .hmc_oo import HMCChain, NUTSChain
-from .kl import (
-    GeoMetricKL,
-    MetricKL,
-    geometrically_sample_standard_hamiltonian,
-    sample_standard_hamiltonian,
-)
-from .kl_aux import mean_hessp, mean_metric, mean_value_and_grad
+from .kl import Samples, sample_evi
 from .lanczos import stochastic_lq_logdet
 from .likelihood import Likelihood, StandardHamiltonian
 from .logger import logger
@@ -60,6 +54,7 @@ from .stats_distributions import (
 from .sugar import (
     ducktape,
     ducktape_left,
+    hvp,
     interpolate,
     mean,
     mean_and_std,

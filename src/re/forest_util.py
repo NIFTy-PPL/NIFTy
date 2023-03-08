@@ -21,19 +21,6 @@ from .sugar import is1d
 from .smap import smap
 
 
-def split(mappable, keys):
-    """Split a dictionary into one containing only the specified keys and one
-    with all of the remaining ones.
-    """
-    sel, rest = {}, {}
-    for k, v in mappable.items():
-        if k in keys:
-            sel[k] = v
-        else:
-            rest[k] = v
-    return sel, rest
-
-
 def unite(x, y, op=operator.add):
     """Unites two array-, dict- or Field-like objects.
 
@@ -310,18 +297,18 @@ def where(condition, x, y):
     return tree_map(jnp.where, condition, x, y)
 
 
-def stack(arrays):
-    return tree_map(lambda *el: jnp.stack(el), *arrays)
+def stack(arrays, axis=0):
+    return tree_map(lambda *el: jnp.stack(el, axis=axis), *arrays)
 
 
-def unstack(stack):
+def unstack(stack, axis=0):
     element_count = tree_leaves(stack)[0].shape[0]
-    split = partial(jnp.split, indices_or_sections=element_count)
+    split = partial(jnp.split, indices_or_sections=element_count, axis=axis)
     unstacked = tree_transpose(
         tree_structure(stack), tree_structure((0., ) * element_count),
         tree_map(split, stack)
     )
-    return tree_map(partial(jnp.squeeze, axis=0), unstacked)
+    return tree_map(partial(jnp.squeeze, axis=axis), unstacked)
 
 
 def _lax_map(fun, in_axes=0, out_axes=0):
