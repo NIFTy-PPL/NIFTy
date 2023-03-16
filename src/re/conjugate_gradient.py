@@ -189,24 +189,19 @@ def _cg(
                 break
         else:
             norm = None
-        if absdelta is not None or name is not None:
-            new_energy = float(vdot((r - j) / 2, pos))
-            energy_diff = energy - new_energy
-        else:
-            new_energy = energy
-            energy_diff = None
-        if absdelta is not None:
-            neg_energy_eps = -eps * jnp.abs(new_energy)
-            if energy_diff < neg_energy_eps:
-                nm = "CG" if name is None else name
-                if _raise_nonposdef:
-                    raise ValueError(f"{nm}: WARNING: energy increased")
-                logger.error(f"{nm}: WARNING: energy increased")
-                info = i
-                break
-            if neg_energy_eps <= energy_diff < absdelta and i >= miniter:
-                info = 0
-                break
+        new_energy = float(vdot((r - j) / 2, pos))
+        energy_diff = energy - new_energy
+        neg_energy_eps = -eps * jnp.abs(new_energy)
+        if energy_diff < neg_energy_eps:
+            nm = "CG" if name is None else name
+            if _raise_nonposdef:
+                raise ValueError(f"{nm}: WARNING: energy increased")
+            logger.error(f"{nm}: WARNING: energy increased")
+            info = i
+            break
+        if absdelta is not None and energy_diff < absdelta and i >= miniter:
+            info = 0
+            break
         energy = new_energy
         d = d * max(0, gamma / previous_gamma) + r
         previous_gamma = gamma
@@ -300,20 +295,15 @@ def _static_cg(
             )
         else:
             norm = None
-        # Do not compute the energy if we do not check `absdelta`
-        if absdelta is not None or name is not None:
-            energy = vdot((r - j) / 2, pos)
-            energy_diff = previous_energy - energy
-        else:
-            energy = previous_energy
-            energy_diff = None
+        energy = vdot((r - j) / 2, pos)
+        energy_diff = previous_energy - energy
+        neg_energy_eps = -eps * jnp.abs(energy)
+        # print(f"energy increased", file=sys.stderr)
+        info = jnp.where(energy_diff < neg_energy_eps, -1, info)
         if absdelta is not None:
-            neg_energy_eps = -eps * jnp.abs(energy)
-            # print(f"energy increased", file=sys.stderr)
-            info = jnp.where(energy_diff < neg_energy_eps, -1, info)
             info = jnp.where(
-                (energy_diff >= neg_energy_eps) & (energy_diff < absdelta) &
-                (i >= miniter) & (info != -1), 0, info
+                (energy_diff < absdelta) & (i >= miniter) & (info != -1), 0,
+                info
             )
         info = jnp.where((i >= maxiter) & (info != -1), i, info)
 
@@ -352,13 +342,8 @@ def _static_cg(
         r = mat(pos) - j
         d = r
         nfev = 1
-    energy = None
-    if absdelta is not None or name is not None:
-        if x0 is None:
-            # energy = .5xT M x - xT j
-            energy = jnp.array(0.)
-        else:
-            energy = vdot((r - j) / 2, pos)
+    # energy = .5xT M x - xT j
+    energy = jnp.array(0.) if x0 is None else vdot((r - j) / 2, pos)
 
     gamma = sum_of_squares(r)
     val = {
@@ -572,7 +557,7 @@ def _cg_steihaug_subproblem(
     z = p_origin
     r = g
     d = -r
-    energy = 0. if absdelta is not None or name is not None else None
+    energy = 0.
     init_param = _CGSteihaugState(
         z=z,
         r=r,
@@ -611,13 +596,9 @@ def _cg_steihaug_subproblem(
         else:
             r_next_norm = jft_norm(r_next, ord=norm_ord, ravel=True)
         accept_z_next |= r_next_norm < resnorm
-        if absdelta is not None or name is not None:
-            # Relative to a plain CG, `z_next` is negative
-            energy_next = vdot((r_next + g) / 2, z_next)
-            energy_diff = energy - energy_next
-        else:
-            energy_next = energy
-            energy_diff = jnp.nan
+        # Relative to a plain CG, `z_next` is negative
+        energy_next = vdot((r_next + g) / 2, z_next)
+        energy_diff = energy - energy_next
         if absdelta is not None:
             neg_energy_eps = -eps * jnp.abs(energy)
             accept_z_next |= (energy_diff >= neg_energy_eps
