@@ -492,6 +492,8 @@ def _cg_steihaug_subproblem(
     The Hessian itself is not required, and the Hessian does
     not need to be positive semidefinite.
     """
+    from jax.experimental.host_callback import call
+
     tr_norm_ord = jnp.inf if tr_norm_ord is None else tr_norm_ord  # taken from JAX
     norm_ord = 2 if norm_ord is None else norm_ord  # TODO: change to 1
     maxiter_fallback = 20 * size(g)  # taken from SciPy's NewtonCG minimzer
@@ -512,6 +514,18 @@ def _cg_steihaug_subproblem(
     soa = partial(
         second_order_approx, cur_val=cur_val, g=g, hessp_at_xk=hessp_at_xk
     )
+
+    def pp(arg):
+        msg = (
+            "{name}: |∇|:{r_norm:.6e} 🞋:{resnorm:.6e} ↗:{tr:.6e}"
+            " ☞:{case:1d} #∇²:{nhev:02d}"
+            "\n{name}: Iteration {i} ⛰:{energy:+.6e} Δ⛰:{energy_diff:.6e}" +
+            (" 🞋:{absdelta:.6e}" if arg["absdelta"] is not None else "") + (
+                "\n{name}: Iteration Limit Reached"
+                if arg["i"] == arg["maxiter"] else ""
+            )
+        )
+        logger.info(msg.format(name=name, **arg))
 
     # helpers for internal switches in the main CGSteihaug logic
     def noop(
@@ -622,23 +636,6 @@ def _cg_steihaug_subproblem(
             nit=nit
         )
         if name is not None:
-            from jax.experimental.host_callback import call
-
-            def pp(arg):
-                msg = (
-                    "{name}: |∇|:{r_norm:.6e} 🞋:{resnorm:.6e} ↗:{tr:.6e}"
-                    " ☞:{case:1d} #∇²:{nhev:02d}"
-                    "\n{name}: Iteration {i} ⛰:{energy:+.6e} Δ⛰:{energy_diff:.6e}"
-                    + (
-                        " 🞋:{absdelta:.6e}"
-                        if arg["absdelta"] is not None else ""
-                    ) + (
-                        "\n{name}: Iteration Limit Reached"
-                        if arg["i"] == arg["maxiter"] else ""
-                    )
-                )
-                logger.info(msg.format(name=name, **arg))
-
             printable_state = {
                 "i": nit,
                 "energy": iterp.energy,

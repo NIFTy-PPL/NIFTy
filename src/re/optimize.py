@@ -270,6 +270,8 @@ def _trust_ncg(
     subproblem_kwargs: Optional[Dict[str, Any]] = None,
     name: Optional[str] = None
 ) -> OptimizeResults:
+    from jax.experimental.host_callback import call
+
     maxiter = 200 if maxiter is None else maxiter
 
     status = jnp.where(maxiter == 0, 1, 0)
@@ -315,6 +317,16 @@ def _trust_ncg(
         trust_radius=initial_trust_radius,
         old_fval=old_fval
     )
+
+    def pp(arg):
+        i = arg["i"]
+        msg = (
+            "{name}: ↗:{tr:.6e} ⬤:{hit} ∝:{rho:.2e} #∇²:{nhev:02d}"
+            "\n{name}: Iteration {i} ⛰:{energy:+.6e} Δ⛰:{energy_diff:.6e}" +
+            (" 🞋:{absdelta:.6e}" if absdelta is not None else "") +
+            ("\n{name}: Iteration Limit Reached" if i == maxiter else "")
+        )
+        logger.info(msg.format(name=name, **arg))
 
     def _trust_region_body_f(params: _TrustRegionState) -> _TrustRegionState:
         x_k, g_k, g_k_mag = params.x, params.jac, params.jac_magnitude
@@ -398,20 +410,6 @@ def _trust_ncg(
             old_fval=f_k
         )
         if name is not None:
-            from jax.experimental.host_callback import call
-
-            def pp(arg):
-                i = arg["i"]
-                msg = (
-                    "{name}: ↗:{tr:.6e} ⬤:{hit} ∝:{rho:.2e} #∇²:{nhev:02d}"
-                    "\n{name}: Iteration {i} ⛰:{energy:+.6e} Δ⛰:{energy_diff:.6e}"
-                    + (" 🞋:{absdelta:.6e}" if absdelta is not None else "") + (
-                        "\n{name}: Iteration Limit Reached"
-                        if i == maxiter else ""
-                    )
-                )
-                logger.info(msg.format(name=name, **arg))
-
             printable_state = {
                 "i": i,
                 "energy": params.fun,
