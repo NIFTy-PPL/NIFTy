@@ -34,12 +34,14 @@ def test_optimize_kl_operator_output():
                          op=None,
                          samples=True,
                          mean=True,
-                         std=True)
+                         std=True,
+                         overwrite=True)
     samples.save_to_hdf5(file_name=fname+'.hdf5',
                          op=None,
                          samples=True,
                          mean=True,
-                         std=True)
+                         std=True,
+                         overwrite=True)
 
     mean, var = samples.sample_stat()
     mean = mean.val
