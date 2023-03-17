@@ -1,7 +1,9 @@
 import pytest
+
 pytest.importorskip("jax")
 
 import sys
+
 from jax import grad
 from jax import numpy as jnp
 from numpy.testing import assert_allclose
@@ -20,7 +22,9 @@ pot_and_tol = (
 
 
 @pmp("potential_energy, rtol", pot_and_tol)
-def test_leapfrog_energy_conservation(potential_energy, rtol):
+def test_leapfrog_energy_conservation(
+    potential_energy, rtol, interactive=False
+):
     dims = (2, )
     mass_matrix = jnp.ones(shape=dims)
     kinetic_energy = lambda p: jnp.sum(p**2 / mass_matrix / 2.)
@@ -56,13 +60,16 @@ def test_leapfrog_energy_conservation(potential_energy, rtol):
     new_energy_tot = potential_energies[-1] + kinetic_energies[-1]
     assert_allclose(old_energy_tot, new_energy_tot, rtol=rtol)
 
-    return positions, momenta, kinetic_energies, potential_energies
+    if interactive:
+        return positions, momenta, kinetic_energies, potential_energies
 
 
 if __name__ == "__main__":
     import matplotlib.pyplot as plt
 
-    qs, ps, e_kins, e_pots = test_leapfrog_energy_conservation(*pot_and_tol[0])
+    qs, ps, e_kins, e_pots = test_leapfrog_energy_conservation(
+        *pot_and_tol[0], interactive=True
+    )
     positions = jnp.array(qs)
     momenta = jnp.array(ps)
     kinetic_energies = jnp.array(e_kins)

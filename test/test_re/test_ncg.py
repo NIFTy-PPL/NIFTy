@@ -3,10 +3,11 @@
 import sys
 
 import pytest
+
 pytest.importorskip("jax")
 
-from jax import random, value_and_grad
 import jax.numpy as jnp
+from jax import random, value_and_grad
 from numpy.testing import assert_allclose
 
 import nifty8.re as jft
@@ -187,15 +188,20 @@ def test_cg_steihaug_vs_cg_consistency(seed, size):
 
 
 @pmp(
-    "fun_and_init", (
-        (rosenbrock, jnp.zeros(2)), (himmelblau, jnp.zeros(2)),
-        (matyas, jnp.ones(2) * 6.), (eggholder, jnp.ones(2) * 100.)
+    "fun_and_init",
+    (
+        (rosenbrock, jnp.zeros(2)),
+        (himmelblau, jnp.zeros(2)),
+        (matyas, jnp.ones(2) * 6.),
+        # (eggholder, jnp.ones(2) * 100.)  # `eggholder` potential leads to
+        # infinite loop in trust-ncg's subproblem solver, see
+        # https://github.com/google/jax/issues/15035
     )
 )
 @pmp("maxiter", (jnp.inf, None))
 def test_minimize(fun_and_init, maxiter):
-    from scipy.optimize import minimize as opt_minimize
     from jax import grad, hessian
+    from scipy.optimize import minimize as opt_minimize
 
     func, x0 = fun_and_init
 
