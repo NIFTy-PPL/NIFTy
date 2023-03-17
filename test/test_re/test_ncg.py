@@ -3,10 +3,11 @@
 import sys
 
 import pytest
+
 pytest.importorskip("jax")
 
-from jax import random, value_and_grad
 import jax.numpy as jnp
+from jax import random, value_and_grad
 from numpy.testing import assert_allclose
 
 import nifty8.re as jft
@@ -199,8 +200,8 @@ def test_cg_steihaug_vs_cg_consistency(seed, size):
 )
 @pmp("maxiter", (jnp.inf, None))
 def test_minimize(fun_and_init, maxiter):
-    from scipy.optimize import minimize as opt_minimize
     from jax import grad, hessian
+    from scipy.optimize import minimize as opt_minimize
 
     func, x0 = fun_and_init
 
