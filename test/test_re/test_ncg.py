@@ -187,9 +187,14 @@ def test_cg_steihaug_vs_cg_consistency(seed, size):
 
 
 @pmp(
-    "fun_and_init", (
-        (rosenbrock, jnp.zeros(2)), (himmelblau, jnp.zeros(2)),
-        (matyas, jnp.ones(2) * 6.), (eggholder, jnp.ones(2) * 100.)
+    "fun_and_init",
+    (
+        (rosenbrock, jnp.zeros(2)),
+        (himmelblau, jnp.zeros(2)),
+        (matyas, jnp.ones(2) * 6.),
+        # (eggholder, jnp.ones(2) * 100.)  # `eggholder` potential leads to
+        # infinite loop in trust-ncg's subproblem solver, see
+        # https://github.com/google/jax/issues/15035
     )
 )
 @pmp("maxiter", (jnp.inf, None))
