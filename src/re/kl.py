@@ -542,7 +542,7 @@ class Samples():
     def tree_flatten(self):
         # Include mean in samples when passing to JAX (for e.g. vmap, pmap, ...)
         # return ((self.samples, ), (self.pos, ))  # confuses JAX
-        return ((self.pos, self._samples, ), ())
+        return ((self.pos, self._samples), ())
 
     @classmethod
     def tree_unflatten(cls, aux, children):
