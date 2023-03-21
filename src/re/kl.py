@@ -3,17 +3,19 @@
 
 from functools import partial
 from operator import getitem
-from typing import Callable, Optional, TypeVar
+from typing import Callable, Optional, Tuple, TypeVar, Union
 from warnings import warn
 
 from jax import numpy as jnp
 from jax import random
 from jax.tree_util import (
-    Partial, register_pytree_node_class, tree_leaves, tree_map
+    Partial, register_pytree_node_class, tree_flatten, tree_leaves, tree_map,
+    tree_structure, tree_unflatten
 )
 
 from . import conjugate_gradient
-from .forest_util import assert_arithmetics, stack
+from .field import Field
+from .forest_util import assert_arithmetics, stack, zeros_like
 from .likelihood import Likelihood, StandardHamiltonian
 from .sugar import random_like
 
@@ -139,11 +141,165 @@ def _curve_sample(
     return opt_state.x, opt_state.status
 
 
+def _partial_argument(call, insert_axes, flat_fill):
+    """For every non-None value in `insert_axes`, amend the value of `flat_fill`
+    at the same position to the argument.
+    """
+    if not flat_fill and not insert_axes:
+        return call
+
+    if len(insert_axes) != len(flat_fill):
+        ve = "`insert_axes` and `flat_fill` must be of equal length"
+        raise ValueError(ve)
+    for iae, ffe in zip(insert_axes, flat_fill):
+        if iae is not None and ffe is not None:
+            if not isinstance(ffe, (tuple, list)):
+                te = (
+                    f"`flat_fill` must be a tuple of flattened pytrees;"
+                    f" got '{flat_fill!r}'"
+                )
+                raise TypeError(te)
+            iae_leaves = tree_leaves(iae)
+            if not all(isinstance(e, bool) for e in iae_leaves):
+                te = "leaves of `insert_axes` elements must all be boolean"
+                raise TypeError(te)
+            if sum(iae_leaves) != len(ffe):
+                ve = "more inserts in `insert_axes` than elements in `flat_fill`"
+                raise ValueError(ve)
+        elif iae is not None or ffe is not None:
+            ve = "both `insert_axes` and `flat_full` must None at the same positions"
+            raise ValueError(ve)
+    # NOTE, `tree_flatten` replaces `None`s with list of zero length
+    insert_axes, in_axes_td = zip(*(tree_flatten(ia) for ia in insert_axes))
+
+    def insert(*x):
+        y = []
+        assert len(x) == len(insert_axes) == len(flat_fill) == len(in_axes_td)
+        for xe, iae, ffe, iatde in zip(x, insert_axes, flat_fill, in_axes_td):
+            if ffe is None and not iae:
+                y.append(xe)
+                continue
+            assert iae and ffe is not None
+            assert sum(iae) == len(ffe)
+            xe, ffe = list(tree_leaves(xe)), list(ffe)
+            ye = [xe.pop(0) if not cond else ffe.pop(0) for cond in iae]
+            # for cond in iae:
+            #     ye.append(xe.pop(0) if not cond else ffe.pop(0))
+            y.append(tree_unflatten(iatde, ye))
+        return tuple(y)
+
+    def partially_inserted_call(*x):
+        return call(*insert(*x))
+
+    return partially_inserted_call
+
+
+def _post_partial_remove(call, remove_axes, unflatten=None):
+    if not remove_axes:
+        return call
+
+    remove_axes = tree_leaves(remove_axes)
+    if not all(isinstance(e, bool) for e in remove_axes):
+        raise TypeError("leaves of `remove_axes` must all be boolean")
+
+    def remove(x):
+        x, y = list(tree_leaves(x)), []
+        if tree_structure(x) != tree_structure(remove_axes):
+            te = (
+                f"`remove_axes` ({tree_structure(remove_axes)!r}) is shaped"
+                f" differently than output of `call` ({tree_structure(x)!r})"
+            )
+            raise TypeError(te)
+        for maybe_remove, cond in zip(x, remove_axes):
+            if not cond:
+                y.append(maybe_remove)
+        y = unflatten(tuple(y)) if unflatten is not None else y
+        return y
+
+    def partially_removed_call(*x):
+        return remove(call(*x))
+
+    return partially_removed_call
+
+
+def _partial_insert_and_remove(
+    call, insert_axes, flat_fill, *, remove_axes=(), unflatten=None
+):
+    """Return a call in which `flat_fill` is inserted into arguments of `call`
+    at `inset_axes` and subsequently removed from its output at `remove_axes`.
+    """
+    call = _partial_argument(call, insert_axes=insert_axes, flat_fill=flat_fill)
+    return _post_partial_remove(call, remove_axes, unflatten=unflatten)
+
+
+def _wrap_likelihood(likelihood, point_estimates, primals_frozen) -> Likelihood:
+    energy = _partial_insert_and_remove(
+        likelihood.energy,
+        insert_axes=(point_estimates, ),
+        flat_fill=(primals_frozen, ),
+        remove_axes=None
+    )
+    trafo = _partial_insert_and_remove(
+        likelihood.transformation,
+        insert_axes=(point_estimates, ),
+        flat_fill=(primals_frozen, ),
+        remove_axes=None
+    )
+    lsm = _partial_insert_and_remove(
+        likelihood.left_sqrt_metric,
+        insert_axes=(point_estimates, None),
+        flat_fill=(primals_frozen, None),
+        remove_axes=point_estimates,
+        unflatten=Field
+    )
+    metric = _partial_insert_and_remove(
+        likelihood.metric,
+        insert_axes=(point_estimates, point_estimates),
+        flat_fill=(primals_frozen, ) * 2,
+        remove_axes=point_estimates,
+        unflatten=Field
+    )
+    return Likelihood(
+        energy=energy,
+        transformation=trafo,
+        left_sqrt_metric=lsm,
+        metric=metric,
+        lsm_tangents_shape=likelihood.lsm_tangents_shape
+    )
+
+
+def _parse_point_estimates(point_estimates, primals):
+    if isinstance(point_estimates, (tuple, list)):
+        if not isinstance(primals, (Field, dict)):
+            te = "tuple-shortcut point-estimate only availble for dict/Field type primals"
+            raise TypeError(te)
+        pe = tree_map(lambda x: False, primals)
+        pe = pe.val if isinstance(primals, Field) else pe
+        for k in point_estimates:
+            pe[k] = True
+        point_estimates = Field(pe) if isinstance(primals, Field) else pe
+    if tree_structure(primals) != tree_structure(point_estimates):
+        te = "`primals` and `point_estimates` pytree structre do no match"
+        raise TypeError(te)
+
+    primals_liquid, primals_frozen = [], []
+    for p, ep in zip(tree_leaves(primals), tree_leaves(point_estimates)):
+        if ep:
+            primals_frozen.append(p)
+        else:
+            primals_liquid.append(p)
+    primals_liquid = Field(tuple(primals_liquid))
+    primals_frozen = tuple(primals_frozen)
+    return point_estimates, primals_liquid, primals_frozen
+
+
 def sample_evi(
     likelihood: Likelihood,
-    primals,
+    primals: P,
     key,
     mirror_linear_sample: bool = True,
+    *,
+    point_estimates: Union[P, Tuple[str]] = (),
     linear_sampling_cg: Callable = conjugate_gradient.static_cg,
     linear_sampling_name: Optional[str] = None,
     linear_sampling_kwargs: Optional[dict] = None,
@@ -204,6 +360,12 @@ def sample_evi(
         Whether the mirrored version of the drawn samples are also used. If
         true, the number of used samples doubles. Mirroring samples stabilizes
         the KL estimate as extreme sample variation is counterbalanced.
+    point_estimates : tree-like structure or tuple of str
+        Pytree of same structure as `primals` but with boolean leaves indicating
+        whether to sample the value in `primals` or use it as a point estimate.
+        As a convenience method, for Field- and dict-like `primals`, a tuple of
+        strings is also valid. From these the boolean indicator pytree is
+        automatically constructed.
     linear_sampling_cg : callable
         Implementation of the conjugate gradient algorithm and used to apply the
         inverse of the metric.
@@ -233,9 +395,20 @@ def sample_evi(
     `Metric Gaussian Variational Inference`, Jakob Knollmüller,
     Torsten A. Enßlin, `<https://arxiv.org/abs/1901.11033>`_
     """
+    if point_estimates:
+        point_estimates, primals_liquid, primals_frozen = _parse_point_estimates(
+            point_estimates, primals
+        )
+        likelihood = _wrap_likelihood(
+            likelihood, point_estimates, primals_frozen
+        )
+    else:
+        primals_liquid = primals
+        primals_frozen = None
+
     inv_met_smpl, met_smpl = _sample_linearly(
         likelihood,
-        primals,
+        primals_liquid,
         key=key,
         from_inverse=True,
         cg=linear_sampling_cg,
@@ -253,15 +426,15 @@ def sample_evi(
     curve_sample = partial(
         _curve_sample,
         likelihood,
-        primals,
+        primals_liquid,
         minimize_method=non_linear_sampling_method,
         minimize_options=nls_kwargs,
     )
 
     if nls_kwargs.get("maxiter", 0) == 0:
-        smpls = (inv_met_smpl, )
+        smpls = [inv_met_smpl]
         if mirror_linear_sample:
-            smpls = (inv_met_smpl, -inv_met_smpl)
+            smpls = [inv_met_smpl, -inv_met_smpl]
     else:
         smpl1, smpl1_status = curve_sample(met_smpl, inv_met_smpl)
         _cond_raise(
@@ -269,7 +442,7 @@ def sample_evi(
             ((smpl1_status < 0) if smpl1_status is not None else False),
             ValueError("S: failed to invert map")
         )
-        smpls = (smpl1 - primals, )
+        smpls = [smpl1 - primals_liquid]
         if mirror_linear_sample:
             smpl2, smpl2_status = curve_sample(-met_smpl, -inv_met_smpl)
             _cond_raise(
@@ -277,7 +450,17 @@ def sample_evi(
                 ((smpl2_status < 0) if smpl2_status is not None else False),
                 ValueError("S: failed to invert map")
             )
-            smpls = (smpl1 - primals, smpl2 - primals)
+            smpls = [smpl1 - primals_liquid, smpl2 - primals_liquid]
+
+    if point_estimates:
+        assert primals_frozen is not None
+        insert = _partial_argument(
+            lambda *x: x[0],
+            insert_axes=(point_estimates, ),
+            flat_fill=(zeros_like(primals_frozen), )
+        )
+        for i in range(len(smpls)):
+            smpls[i] = insert(smpls[i])
     return Samples(pos=primals, samples=stack(smpls))
 
 
