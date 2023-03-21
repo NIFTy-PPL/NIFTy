@@ -73,8 +73,8 @@ def ham_metric(primals, tangents, primals_samples):
     return jax.tree_util.tree_map(partial(jnp.mean, axis=0), s)
 
 
-@jax.jit
-def sample_evi(primals, key, *, absdelta):
+@partial(jax.jit, static_argnames=("point_estimates", ))
+def sample_evi(primals, key, *, absdelta, point_estimates=()):
     # at: reset relative position as it gets (wrongly) batched too
     # squeeze: merge "samples" axis with "mirrored_samples" axis
     return jft.smap(
@@ -82,7 +82,8 @@ def sample_evi(primals, key, *, absdelta):
             jft.sample_evi,
             nll,
             # linear_sampling_name="S",  # enables verbose logging
-            linear_sampling_kwargs={"absdelta": absdelta / 10.}
+            linear_sampling_kwargs={"absdelta": absdelta / 10.},
+            point_estimates=point_estimates,
         ),
         in_axes=(None, 0)
     )(primals, key).at(primals).squeeze()
