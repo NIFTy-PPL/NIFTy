@@ -81,7 +81,7 @@ def mean_and_std(forest, correct_bias=True):
         mean_of_sq = mean(tuple(t**2 for t in forest))
     else:
         m = Field(mean(forest))
-        mean_of_sq = Field(mean(tuple(Field(t)**2 for t in forest)))
+        mean_of_sq = mean(tuple(Field(t)**2 for t in forest))
 
     n = len(forest)
     scl = jnp.sqrt(n / (n - 1)) if correct_bias else 1.
