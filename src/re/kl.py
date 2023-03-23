@@ -255,7 +255,7 @@ def _wrap_likelihood(likelihood, point_estimates, primals_frozen) -> Likelihood:
     metric = _partial_insert_and_remove(
         likelihood.metric,
         insert_axes=(point_estimates, point_estimates),
-        flat_fill=(primals_frozen, ) * 2,
+        flat_fill=(primals_frozen, ) + (zeros_like(primals_frozen), ),
         remove_axes=point_estimates,
         unflatten=Field
     )
