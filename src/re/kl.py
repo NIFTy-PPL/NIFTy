@@ -457,7 +457,11 @@ def sample_evi(
         insert = _partial_argument(
             lambda *x: x[0],
             insert_axes=(point_estimates, ),
-            flat_fill=(zeros_like(primals_frozen), )
+            flat_fill=(
+                tree_map(
+                    lambda x: jnp.zeros((1, ) * jnp.ndim(x)), primals_frozen
+                ),
+            )
         )
         for i in range(len(smpls)):
             smpls[i] = insert(smpls[i])
