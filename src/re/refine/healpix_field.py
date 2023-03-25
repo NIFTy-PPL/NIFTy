@@ -9,7 +9,7 @@ import jax
 import numpy as np
 from jax import numpy as jnp
 
-from ..forest_util import ShapeWithDtype
+from ..tree_math import ShapeWithDtype
 from ..logger import logger
 from ..model import AbstractModel
 from ..num import amend_unique_

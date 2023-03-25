@@ -14,10 +14,8 @@ from jax.tree_util import (
 )
 
 from . import conjugate_gradient
-from .field import Field
-from .forest_util import assert_arithmetics, stack, zeros_like
 from .likelihood import Likelihood, StandardHamiltonian
-from .sugar import random_like
+from .tree_math import Vector, assert_arithmetics, random_like, stack, zeros_like
 
 P = TypeVar("P")
 
@@ -250,14 +248,14 @@ def _wrap_likelihood(likelihood, point_estimates, primals_frozen) -> Likelihood:
         insert_axes=(point_estimates, None),
         flat_fill=(primals_frozen, None),
         remove_axes=point_estimates,
-        unflatten=Field
+        unflatten=Vector
     )
     metric = _partial_insert_and_remove(
         likelihood.metric,
         insert_axes=(point_estimates, point_estimates),
         flat_fill=(primals_frozen, ) + (zeros_like(primals_frozen), ),
         remove_axes=point_estimates,
-        unflatten=Field
+        unflatten=Vector
     )
     return Likelihood(
         energy=energy,
@@ -270,14 +268,14 @@ def _wrap_likelihood(likelihood, point_estimates, primals_frozen) -> Likelihood:
 
 def _parse_point_estimates(point_estimates, primals):
     if isinstance(point_estimates, (tuple, list)):
-        if not isinstance(primals, (Field, dict)):
-            te = "tuple-shortcut point-estimate only availble for dict/Field type primals"
+        if not isinstance(primals, (Vector, dict)):
+            te = "tuple-shortcut point-estimate only availble for dict/Vector type primals"
             raise TypeError(te)
         pe = tree_map(lambda x: False, primals)
-        pe = pe.val if isinstance(primals, Field) else pe
+        pe = pe.val if isinstance(primals, Vector) else pe
         for k in point_estimates:
             pe[k] = True
-        point_estimates = Field(pe) if isinstance(primals, Field) else pe
+        point_estimates = Vector(pe) if isinstance(primals, Vector) else pe
     if tree_structure(primals) != tree_structure(point_estimates):
         te = "`primals` and `point_estimates` pytree structre do no match"
         raise TypeError(te)
@@ -288,7 +286,7 @@ def _parse_point_estimates(point_estimates, primals):
             primals_frozen.append(p)
         else:
             primals_liquid.append(p)
-    primals_liquid = Field(tuple(primals_liquid))
+    primals_liquid = Vector(tuple(primals_liquid))
     primals_frozen = tuple(primals_frozen)
     return point_estimates, primals_liquid, primals_frozen
 

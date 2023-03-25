@@ -1,10 +1,14 @@
 # Copyright(C) 2013-2021 Max-Planck-Society
 # SPDX-License-Identifier: GPL-2.0+ OR BSD-2-Clause
 
-from . import lanczos, structured_kernel_interpolation
+from . import structured_kernel_interpolation
 from .conjugate_gradient import cg, static_cg
 from .correlated_field import CorrelatedFieldMaker, non_parametric_amplitude
-from .energy_operators import (
+from .hmc import generate_hmc_acc_rej, generate_nuts_tree
+from .hmc_oo import HMCChain, NUTSChain
+from .kl import Samples, sample_evi
+from .likelihood import Likelihood, StandardHamiltonian
+from .likelihood_impl import (
     Categorical,
     Gaussian,
     Poissonian,
@@ -12,30 +16,10 @@ from .energy_operators import (
     VariableCovarianceGaussian,
     VariableCovarianceStudentT,
 )
-from .field import Field
-from .forest_util import (
-    ShapeWithDtype,
-    assert_arithmetics,
-    dot,
-    has_arithmetics,
-    map_forest,
-    map_forest_mean,
-    norm,
-    shape,
-    size,
-    stack,
-    unite,
-    unstack,
-    vdot,
-    zeros_like,
-)
-from .hmc import generate_hmc_acc_rej, generate_nuts_tree
-from .hmc_oo import HMCChain, NUTSChain
-from .kl import Samples, sample_evi
-from .lanczos import stochastic_lq_logdet
-from .likelihood import Likelihood, StandardHamiltonian
 from .logger import logger
+from .misc import (ducktape, ducktape_left, hvp, interpolate, sum_of_squares)
 from .model import Initializer, Model
+from .num import *
 from .optimize import minimize, newton_cg, trust_ncg
 from .refine.chart import CoordinateChart, HEALPixChart
 from .refine.charted_field import RefinementField
@@ -51,13 +35,4 @@ from .stats_distributions import (
     normal_prior,
     uniform_prior,
 )
-from .sugar import (
-    ducktape,
-    ducktape_left,
-    hvp,
-    interpolate,
-    mean,
-    mean_and_std,
-    random_like,
-    sum_of_squares,
-)
+from .tree_math import *

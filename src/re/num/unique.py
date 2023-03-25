@@ -11,7 +11,7 @@ import numpy as np
 from jax import numpy as jnp
 from numpy.typing import NDArray
 
-from .logger import logger
+from ..logger import logger
 
 
 def unique(

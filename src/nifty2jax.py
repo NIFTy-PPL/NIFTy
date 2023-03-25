@@ -49,7 +49,7 @@ def shapewithdtype_from_domain(
     return parameter_tree
 
 
-def wrap_nifty_call(op, target_dtype=float) -> Callable[[Any], jft.Field]:
+def wrap_nifty_call(op, target_dtype=float) -> Callable[[Any], jft.Vector]:
     from jax.experimental.host_callback import call
 
     if callable(op.jax_expr):
@@ -64,9 +64,9 @@ def wrap_nifty_call(op, target_dtype=float) -> Callable[[Any], jft.Field]:
     pt = shapewithdtype_from_domain(op.target, target_dtype)
     hcb_call = partial(call, nifty_call, result_shape=pt)
 
-    def wrapped_call(x) -> jft.Field:
-        x = x.val if isinstance(x, jft.Field) else x
-        return jft.Field(hcb_call(x))
+    def wrapped_call(x) -> jft.Vector:
+        x = x.tree if isinstance(x, jft.Vector) else x
+        return jft.Vector(hcb_call(x))
 
     return wrapped_call
 
@@ -74,13 +74,13 @@ def wrap_nifty_call(op, target_dtype=float) -> Callable[[Any], jft.Field]:
 def convert(
     nifty_obj: Union[Operator, DomainTuple, MultiDomain],
     dtype=float
-) -> Union[jft.Model, jft.Field, jft.ShapeWithDtype, Dict[str,
+) -> Union[jft.Model, jft.Vector, jft.ShapeWithDtype, Dict[str,
                                                           jft.ShapeWithDtype]]:
     if not isinstance(nifty_obj, (Operator, DomainTuple, MultiDomain)):
         raise TypeError(f"invalid input type {type(nifty_obj)!r}")
 
     if isinstance(nifty_obj, (Field, MultiField)):
-        return jft.Field(nifty_obj.val)
+        return jft.Vector(nifty_obj.val)
     elif isinstance(nifty_obj, (DomainTuple, MultiDomain)):
         return shapewithdtype_from_domain(nifty_obj, dtype)
     else:
