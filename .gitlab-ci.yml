@@ -137,7 +137,7 @@ run_getting_started_mf:
 run_getting_started_nifty2jax:
   stage: demo_runs
   script:
-    - python3 demos/getting_started_6_nifty2jax.py
+    - python3 demos/nifty_re.py
   artifacts:
     paths:
       - '*.png'
@@ -191,59 +191,3 @@ run_meanfield:
   stage: demo_runs
   script:
     - python3 demos/more/parametric_variational_inference.py
-
-run_demo_categorical_L1:
-  stage: demo_runs
-  script:
-    - python3 demos/re/categorical_L1.py
-  artifacts:
-    paths:
-      - '*.png'
-
-run_demo_cf_w_known_spectrum:
-  stage: demo_runs
-  script:
-    - python3 demos/re/correlated_field_w_known_spectrum.py
-  artifacts:
-    paths:
-      - '*.png'
-
-run_demo_cf_w_unknown_spectrum:
-  stage: demo_runs
-  script:
-    - python3 demos/re/correlated_field_w_unknown_spectrum.py
-  artifacts:
-    paths:
-      - '*.png'
-
-run_demo_cf_w_unknown_factorizing_spectra:
-  stage: demo_runs
-  script:
-    - python3 demos/re/correlated_field_w_unknown_factorizing_spectra.py
-  artifacts:
-    paths:
-      - '*.png'
-
-run_demo_nifty_to_jifty:
-  stage: demo_runs
-  script:
-    - python3 demos/re/nifty_to_jifty.py
-  artifacts:
-    paths:
-      - '*.png'
-
-run_demo_banana:
-  stage: demo_runs
-  script:
-    - python3 demos/re/banana.py
-  artifacts:
-    paths:
-      - '*.png'
-
-run_demo_banana_w_reg:
-  stage: demo_runs
-  script:
-    - python3 demos/re/banana_w_reg.py
-  artifacts:
-    paths:
-      - '*.png'

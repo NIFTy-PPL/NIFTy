@@ -11,8 +11,7 @@ from jax import eval_shape, linear_transpose
 from jax import random
 from jax.tree_util import tree_map, tree_structure, tree_unflatten
 
-from .forest_util import ShapeWithDtype
-from .sugar import random_like
+from .tree_math import ShapeWithDtype, random_like
 
 
 class AbstractModel():
@@ -49,7 +48,9 @@ class AbstractModel():
     def transpose(self):
         # TODO: Split into linear model
         if getattr(self, "_linear_transpose", None) is None:
-            self._linear_transpose = linear_transpose(self.__call__, self.domain)
+            self._linear_transpose = linear_transpose(
+                self.__call__, self.domain
+            )
         # Yield a concrete model b/c __init__ signature is unspecified
         return Model(
             self._linear_transpose,
