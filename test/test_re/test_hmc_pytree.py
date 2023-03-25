@@ -21,7 +21,7 @@ def test_hmc_pytree():
         num_steps=100
     )
 
-    initial_position_py = jft.Field(({"lvl0": initial_position}, ))
+    initial_position_py = jft.Vector(({"lvl0": initial_position}, ))
     smpl_w_pytree = sampler_init(position_proto=initial_position_py
                                 ).generate_n_samples(
                                     key=321,
@@ -53,7 +53,7 @@ def test_nuts_pytree():
         max_tree_depth=10,
     )
 
-    initial_position_py = jft.Field(({"lvl0": initial_position}, ))
+    initial_position_py = jft.Vector(({"lvl0": initial_position}, ))
     smpl_w_pytree = sampler_init(position_proto=initial_position_py
                                 ).generate_n_samples(
                                     key=323,

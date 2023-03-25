@@ -49,7 +49,7 @@ def eggholder(np):
 
 
 def test_ncg_for_pytree():
-    pos = jft.Field(
+    pos = jft.Vector(
         [
             jnp.array(0., dtype=jnp.float32),
             (jnp.array(3., dtype=jnp.float32), ), {
@@ -72,7 +72,7 @@ def test_ncg_for_pytree():
         m.append(tan[0] * met[0])
         m.append((tan[1][0] * met[1], ))
         m.append({"a": tan[2]["a"] * met[2]})
-        return jft.Field(m)
+        return jft.Vector(m)
 
     res = jft.newton_cg(
         fun_and_grad=value_and_grad(model),

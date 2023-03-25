@@ -8,8 +8,8 @@ from jax import numpy as jnp
 from jax import vjp
 from jax.tree_util import Partial, tree_leaves
 
-from .forest_util import ShapeWithDtype
-from .sugar import doc_from, is1d, isiterable, split, sum_of_squares
+from .tree_math import ShapeWithDtype
+from .misc import doc_from, is1d, isiterable, split, sum_of_squares
 
 Q = TypeVar("Q")
 
@@ -41,6 +41,8 @@ class Likelihood():
         lsm_tangents_shape : tree-like structure of ShapeWithDtype, optional
             Structure of the data space.
         """
+        # TODO: track forward model and build lsm, metric only when called
+        # instead of always partially
         self._hamiltonian = energy
         self._transformation = transformation
         self._left_sqrt_metric = left_sqrt_metric
@@ -166,6 +168,7 @@ class Likelihood():
 
     @property
     def lsm_tangents_shape(self):
+        # TODO: track domain and infer LSM tan shape from it and LSM
         """Alias for `left_sqrt_metric_tangents_shape`."""
         return self.left_sqrt_metric_tangents_shape
 

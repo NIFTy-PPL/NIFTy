@@ -6,7 +6,7 @@ from typing import Callable, Optional, Tuple
 from jax import numpy as jnp
 from jax.tree_util import tree_map
 
-from .forest_util import ShapeWithDtype
+from .tree_math import ShapeWithDtype
 from .likelihood import Likelihood
 from .logger import logger
 
@@ -182,24 +182,24 @@ def StudentT(
 
 def Poissonian(data, sampling_dtype=float):
     """Computes the negative log-likelihood, i.e. the Hamiltonians of an
-    expected count field constrained by Poissonian count data.
+    expected count Vector constrained by Poissonian count data.
 
     Represents up to an f-independent term :math:`log(d!)`:
 
     .. math ::
         E(f) = -\\log \\text{Poisson}(d|f) = \\sum f - d^\\dagger \\log(f),
 
-    where f is a field in data space of the expectation values for the counts.
+    where f is a Vector in data space of the expectation values for the counts.
 
     Parameters
     ----------
     data : ndarray of uint
-        Data field with counts. Needs to have integer dtype and all values need
+        Data Vector with counts. Needs to have integer dtype and all values need
         to be non-negative.
     sampling_dtype : dtype, optional
         Data-type for sampling.
     """
-    from .forest_util import common_type
+    from .tree_math import common_type
 
     dtp = common_type(data)
     if not jnp.issubdtype(dtp, jnp.integer):
@@ -242,7 +242,9 @@ def VariableCovarianceGaussian(data):
     -----
     The likelihood acts on a tuple of (mean, std_inv).
     """
-    from .sugar import sum_of_squares
+    from .misc import sum_of_squares
+
+    # TODO: make configurable whether `std_inv` or `std` is passed
 
     def hamiltonian(primals):
         """
@@ -305,6 +307,7 @@ def VariableCovarianceStudentT(data, dof):
     -----
     The likelihood acts on a tuple of (mean, std).
     """
+    # TODO: make configurable whether `std_inv` or `std` is passed
     def hamiltonian(primals):
         """
         primals : pair of (mean, std)

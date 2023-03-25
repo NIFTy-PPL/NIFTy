@@ -8,11 +8,11 @@ from typing import Callable, Dict, Optional, Tuple, Union
 import numpy as np
 from jax import numpy as jnp
 
-from .forest_util import ShapeWithDtype
+from .tree_math import ShapeWithDtype
 from .logger import logger
 from .model import Model
 from .stats_distributions import lognormal_prior, normal_prior
-from .sugar import ducktape
+from .misc import ducktape
 
 
 def _safe_assert(condition):
