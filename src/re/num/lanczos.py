@@ -6,9 +6,8 @@ import jax
 from jax import numpy as jnp
 from jax import random
 
-from .forest_util import ShapeWithDtype
-
-from .disable_jax_control_flow import fori_loop
+from ..lax import fori_loop
+from ..tree_math import ShapeWithDtype
 
 V = TypeVar("V")
 
@@ -25,7 +24,7 @@ def lanczos_tridiag(mat: Callable[[V], V], v: V, order: int):
     vecs = vecs.at[0].set(v)
 
     # TODO
-    # * use `forest_util.dot` and `forest_util.norm` in favor of plain `jnp.dot`
+    # * use `tree_math.dot` and `tree_math.norm` in favor of plain `jnp.dot`
     # * remove all reshapes as they are unnecessary
 
     # Zeroth iteration

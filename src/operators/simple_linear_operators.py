@@ -207,7 +207,7 @@ class FieldAdapter(LinearOperator):
             from .. import re as jft
 
             def wrap(x):
-                return jft.Field({name: x})
+                return jft.Vector({name: x})
 
             def unwrap(x):
                 return x[name]

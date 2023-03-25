@@ -13,7 +13,7 @@ import numpy as np
 from jax import numpy as jnp
 from scipy.spatial import distance_matrix
 
-from ..forest_util import ShapeWithDtype, zeros_like
+from ..tree_math import ShapeWithDtype, zeros_like
 from ..logger import logger
 from ..model import AbstractModel
 

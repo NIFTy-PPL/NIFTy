@@ -11,11 +11,11 @@ from jax import numpy as jnp
 from jax.tree_util import Partial
 
 from . import conjugate_gradient
-from .forest_util import assert_arithmetics, common_type
-from .forest_util import norm as jft_norm
-from .forest_util import size, where
 from .logger import logger
-from .sugar import sum_of_squares
+from .misc import sum_of_squares
+from .tree_math import assert_arithmetics, common_type
+from .tree_math import norm as jft_norm
+from .tree_math import size, where
 
 
 class OptimizeResults(NamedTuple):
@@ -147,7 +147,7 @@ def _newton_cg(
             cg_absdelta = energy_reduction_factor * (old_fval - energy)
         else:
             cg_absdelta = None if absdelta is None else absdelta / 100.
-        mag_g = jft_norm(g, ord=cg_kwargs.get("norm_ord", 1), ravel=True)
+        mag_g = jft_norm(g, ord=cg_kwargs.get("norm_ord", 1))
         cg_resnorm = jnp.minimum(
             0.5, jnp.sqrt(mag_g)
         ) * mag_g  # taken from SciPy
@@ -198,7 +198,7 @@ def _newton_cg(
         pos = new_pos
         g = new_g
 
-        descent_norm = grad_scaling * jft_norm(dd, ord=norm_ord, ravel=True)
+        descent_norm = grad_scaling * jft_norm(dd, ord=norm_ord)
         if name is not None:
             msg = (
                 f"{name}: →:{grad_scaling} ↺:{ls_reset} #∇²:{nhev:02d}"
@@ -299,9 +299,7 @@ def _trust_ncg(
     cg_name = name + "SP" if name is not None else None
 
     f_0, g_0 = fun_and_grad(x0)
-    g_0_mag = jft_norm(
-        g_0, ord=subproblem_kwargs.get("norm_ord", 1), ravel=True
-    )
+    g_0_mag = jft_norm(g_0, ord=subproblem_kwargs.get("norm_ord", 1))
     status = jnp.where(jnp.isfinite(g_0_mag), status, 2)
     init_params = _TrustRegionState(
         converged=False,
@@ -372,9 +370,7 @@ def _trust_ncg(
         )
 
         # compute norm to check for convergence
-        g_kp1_mag = jft_norm(
-            g_kp1, ord=subproblem_kwargs.get("norm_ord", 1), ravel=True
-        )
+        g_kp1_mag = jft_norm(g_kp1, ord=subproblem_kwargs.get("norm_ord", 1))
 
         # if the ratio is high enough then accept the proposed step
         f_kp1, x_kp1, g_kp1, g_kp1_mag = where(
