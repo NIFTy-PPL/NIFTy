@@ -108,7 +108,7 @@ def _curve_sample(
     likelihood, primals, met_smpl, inv_met_smpl, *, minimize_method,
     minimize_options
 ):
-    from .energy_operators import Gaussian
+    from .likelihood_impl import Gaussian
     from .optimize import minimize
 
     if isinstance(likelihood, Likelihood):
