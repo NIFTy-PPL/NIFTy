@@ -98,7 +98,6 @@ class Vector():
         """Retrieves a **view** of the vector's values."""
         return self._tree
 
-    @property
     def __len__(self):
         return size(self)
 
