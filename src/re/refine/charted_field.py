@@ -9,10 +9,11 @@ from jax import numpy as jnp
 from jax import vmap
 
 from ..model import AbstractModel
-from .charted_refine import refine
+from ..tree_math import Vector
 from .chart import CoordinateChart
+from .charted_refine import refine
 from .util import (
-    get_refinement_shapewithdtype, RefinementMatrices, get_cov_from_loc,
+    RefinementMatrices, get_cov_from_loc, get_refinement_shapewithdtype,
     refinement_matrices
 )
 
@@ -345,7 +346,7 @@ class RefinementField(AbstractModel):
             See JAX's precision.
         """
         depth = chart.depth if depth is None else depth
-        if depth != len(xi) - 1:
+        if depth != len(xi.tree if isinstance(xi, Vector) else xi) - 1:
             ve = (
                 f"incompatible refinement depths of `xi` ({len(xi) - 1})"
                 f" and `depth` (of chart) {depth}"
