@@ -112,6 +112,9 @@ class Vector():
     def copy(self):
         return tree_map(_copy, self)
 
+    def ravel(self):
+        return self
+
     def __repr__(self):
         rep = pformat(self.tree).replace("\n", "\n\t").strip()
         s = f"{self.__class__.__name__}(\n\t{rep}\n)"
