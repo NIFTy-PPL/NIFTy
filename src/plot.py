@@ -60,8 +60,41 @@ def _mollweide_helper(xsize):
     return res, mask, theta, phi
 
 
-def _rgb_data(spectral_cube):
-    _xyz = np.array(
+def _hammer_helper(xsize):
+    xsize = int(xsize)
+    ysize = xsize//2
+    res = np.full(shape=(ysize, xsize), fill_value=np.nan, dtype=np.float64)
+    xc, yc = (xsize-1)*0.5, (ysize-1)*0.5
+    u, v = np.meshgrid(np.arange(xsize), np.arange(ysize))
+    u, v = 2*(u-xc)/(xc/1.02), (v-yc)/(yc/1.02)
+
+    u *= np.sqrt(2)
+    v *= np.sqrt(2)
+
+    mask = np.where((u*u/8 + v*v/2) <= 1.)
+    umask, vmask = u[mask], v[mask]
+
+    zmask = np.sqrt(1-umask*umask/16 - vmask*vmask/4)
+    longitude = 2*np.arctan(zmask*umask / 2 / (2*zmask*zmask - 1.))
+    latitude = np.arcsin(zmask*vmask)
+
+    theta = np.pi/2 - latitude
+    phi = -longitude
+
+    assert np.min(theta) >= 0.
+    assert np.max(theta) <= np.pi
+
+    return res, mask, theta, phi
+
+
+sphere_projection_helpers = {
+    'mollweide': _mollweide_helper,
+    'hammer': _hammer_helper,
+}
+
+
+class MultiFrequencyToRGBProjector:
+    _SPECTRAL_SENSITIVITY_CONES = np.array(
           [[0.000160, 0.000662, 0.002362, 0.007242, 0.019110,
             0.043400, 0.084736, 0.140638, 0.204492, 0.264737,
             0.314679, 0.357719, 0.383734, 0.386726, 0.370702,
@@ -114,12 +147,47 @@ def _rgb_data(spectral_cube):
             0.000000, 0.000000, 0.000000, 0.000000, 0.000000,
             0.000000]])
 
-    MATRIX_SRGB_D65 = np.array(
+    _WAVELENGTH_MIN = 380.
+    _WAVELENGTH_MAX = 780.
+
+    _MATRIX_SRGB_D65 = np.array(
             [[3.2404542, -1.5371385, -0.4985314],
              [-0.9692660,  1.8760108,  0.0415560],
              [0.0556434, -0.2040259,  1.0572252]])
 
-    def _gammacorr(inp):
+    def get_cone_sensitivity(self, wavelength):
+        """Get the spectral sensitivity of the eyes cones to emission at given wavelength.
+
+        Linearly interpolates between values given in table `SPECTRAL_SENSITIVITY_CONES`.
+        """
+        lambda_min = 380.
+        lambda_max = 780.
+
+        wavelength = np.asarray(wavelength, dtype=np.float64)
+        wavelength = np.clip(wavelength, self._WAVELENGTH_MIN, self._WAVELENGTH_MAX)
+
+        rel_wavelength = (wavelength - self._WAVELENGTH_MIN) / (self._WAVELENGTH_MAX - self._WAVELENGTH_MIN)
+        pos_sensitivity_table = rel_wavelength * (self._SPECTRAL_SENSITIVITY_CONES.shape[1] - 1)
+        idx_sensitivity_table = np.maximum(0, np.minimum(79, int(pos_sensitivity_table)))
+        weight = 1. - (pos_sensitivity_table - idx_sensitivity_table)
+        sens = weight * self._SPECTRAL_SENSITIVITY_CONES[:, idx_sensitivity_table]
+        sens += (1. - weight) * self._SPECTRAL_SENSITIVITY_CONES[:, idx_sensitivity_table + 1]
+        return sens
+
+    def get_cone_sensitivities_for_frequency_bins(self, n_freqs):
+        E0, E1 = 1./700., 1./400.
+        E = E0 + np.arange(n_freqs) * (E1 - E0)/(n_freqs - 1)
+        res = np.zeros((3, n_freqs), dtype=np.float64)
+        for i in range(n_freqs):
+            res[:, i] = self.get_cone_sensitivity(1./E[i])
+        return res
+
+    def transform_cone_response_to_sRGB(self, inp):
+        tmp = np.tensordot(self._MATRIX_SRGB_D65, inp, axes=(1, 1))
+        return self.sRGB_gammacorr(tmp.T)
+
+    def sRGB_gammacorr(self, inp):
+        """Perform gamma correction according to sRGB standard."""
         mask = np.zeros(inp.shape, dtype=np.float64)
         mask[inp <= 0.0031308] = 1.
         r1 = 12.92*inp
@@ -127,46 +195,41 @@ def _rgb_data(spectral_cube):
         r2 = (1 + a) * (np.maximum(inp, 0.0031308) ** (1/2.4)) - a
         return r1*mask + r2*(1.-mask)
 
-    def lambda2xyz(lam):
-        lammin = 380.
-        lammax = 780.
-        lam = np.asarray(lam, dtype=np.float64)
-        lam = np.clip(lam, lammin, lammax)
-
-        idx = (lam-lammin)/(lammax-lammin)*(_xyz.shape[1]-1)
-        ii = np.maximum(0, np.minimum(79, int(idx)))
-        w1 = 1.-(idx-ii)
-        w2 = 1.-w1
-        c = w1*_xyz[:, ii] + w2*_xyz[:, ii+1]
-        return c
-
-    def getxyz(n):
-        E0, E1 = 1./700., 1./400.
-        E = E0 + np.arange(n)*(E1-E0)/(n-1)
-        res = np.zeros((3, n), dtype=np.float64)
-        for i in range(n):
-            res[:, i] = lambda2xyz(1./E[i])
-        return res
-
-    def to_logscale(arr, lo, hi):
+    def _to_logscale(self, arr, lo, hi):
         res = arr.clip(lo, hi)
-        res = np.log(res/hi)
-        tmp = np.log(hi/lo)
-        res += tmp
-        res /= tmp
+        res = np.log(res/lo)  # >= 0. by design
+        res /= np.log(hi/lo)  # <= 1. by design
         return res
 
-    shp = spectral_cube.shape[:-1]+(3,)
-    spectral_cube = spectral_cube.reshape((-1, spectral_cube.shape[-1]))
-    xyz = getxyz(spectral_cube.shape[-1])
-    xyz_data = np.tensordot(spectral_cube, xyz, axes=[-1, -1])
-    xyz_data /= xyz_data.max()
-    xyz_data = to_logscale(xyz_data, max(1e-3, xyz_data.min()), 1.)
-    rgb_data = xyz_data.copy()
-    for x in range(xyz_data.shape[0]):
-        rgb_data[x] = _gammacorr(np.matmul(MATRIX_SRGB_D65, xyz_data[x]))
-    rgb_data = rgb_data.clip(0., 1.)
-    return rgb_data.reshape(shp)
+    def apply(self, spectral_data, dynamic_range=1e3, brightness_scale_anchor=None):
+        """Project"""
+        tgt_shp = spectral_data.shape[:-1]+(3,)
+        spectral_data = spectral_data.reshape((-1, spectral_data.shape[-1]))
+
+        n_freqs = spectral_data.shape[-1]
+        freq_bin_cone_sensitivities = self.get_cone_sensitivities_for_frequency_bins(n_freqs)
+
+        cone_response_data = np.tensordot(spectral_data, freq_bin_cone_sensitivities, axes=[-1, -1])
+
+        if brightness_scale_anchor is None:
+            max_cr_data = cone_response_data.max()
+        else:
+            if not isinstance(brightness_scale_anchor, numbers.Number) or brightness_scale_anchor <= 0.:
+                raise ValueError("Invalid brightness scale anchor: " + str(brightness_scale_anchor))
+            max_cr_data = brightness_scale_anchor
+
+        min_cr_data = max_cr_data / dynamic_range
+        cr_data_log = self._to_logscale(cone_response_data, min_cr_data, max_cr_data)
+
+        rgb_data = self.transform_cone_response_to_sRGB(cr_data_log)
+        rgb_data = rgb_data.clip(0., None)  # upper clipping changes color saturation point, rescaling instead
+        rgb_data_max = rgb_data.max()
+        if rgb_data_max > 1.:
+            rgb_data /= rgb_data_max
+        return rgb_data.reshape(tgt_shp)
+
+    def __init__(self):
+        pass
 
 
 def _find_closest(A, target):
@@ -418,64 +481,56 @@ def plottable2D(fld, f_space=1):
     return True
 
 
-def _plotting_args_2D(fld, f_space=1):
-    from .sugar import makeField
-
-    # check for multifrequency plotting
-    have_rgb, rgb = False, None
-    x_space = 0
-    dom = fld.domain
-    if len(dom) == 1:
-        x_space = 0
-    elif len(dom) == 2:
-        x_space = 1 - f_space
-        # Only one frequency?
-        if dom[f_space].shape[0] == 1:
-            fld = makeField(fld.domain[x_space], fld.val.squeeze(axis=dom.axes[f_space]))
-        else:
-            val = fld.val
-            if f_space == 0:
-                val = np.moveaxis(val, 0, -1)
-            rgb = _rgb_data(val)
-            have_rgb = True
-    else:  # "DomainTuple can only have one or two entries.
-        raise ValueError('check plottable2D before using this function')
-    return fld, x_space, have_rgb, rgb
-
-
 def _plot2D(f, ax, **kwargs):
     import matplotlib.pyplot as plt
     from mpl_toolkits.axes_grid1 import make_axes_locatable
+    from .sugar import makeField
 
     if len(f) != 1:
         raise ValueError("Can plot only one 2d field")
     f = f[0]
     dom = f.domain
 
-    f, x_space, have_rgb, rgb = _plotting_args_2D(f, kwargs.pop("freq_space_idx", 1))
+    # check for multifrequency plotting
+    have_rgb, rgb = False, None
+    if len(dom) == 1:
+        x_space = 0
+    elif len(dom) == 2:
+        f_space = kwargs.pop("freq_space_idx", 1)
+        x_space = 1 - f_space
 
-    foo = kwargs.pop("norm", None)
-    norm = {} if foo is None else {'norm': foo}
-
-    foo = kwargs.pop("aspect", None)
-    aspect = {} if foo is None else {'aspect': foo}
+        # Only one frequency?
+        if dom[f_space].shape[0] == 1:
+            f = makeField(dom[x_space], f.val.squeeze(axis=dom.axes[f_space]))
+        else:
+            # Need multifrequency plotting
+            val = f.val
+            if f_space == 0:
+                val = np.moveaxis(val, 0, -1)
+            dynamic_range = kwargs.pop('dynamic_range', 1e3)
+            brightness_scale_anchor = kwargs.pop('brightness_scale_anchor', None)
+            rgb = MultiFrequencyToRGBProjector().apply(val, dynamic_range, brightness_scale_anchor)
+            have_rgb = True
+    else:  # "DomainTuple can only have one or two entries.
+        raise ValueError('Plotting routine cannot handle DomainTuples longer than two :(')
 
     dom = dom[x_space]
+    aspect = kwargs.pop("aspect", None)
+
     if not have_rgb:
         cmap = kwargs.pop("cmap", plt.rcParams['image.cmap'])
+        norm = kwargs.pop("norm", None)
 
     if isinstance(dom, RGSpace):
         nx, ny = dom.shape
         dx, dy = dom.distances
         if have_rgb:
             im = ax.imshow(
-                rgb, extent=[0, nx*dx, 0, ny*dy], origin="lower", **norm,
-                **aspect)
+                np.moveaxis(rgb, 0, 1), extent=[0, nx*dx, 0, ny*dy], origin="lower", aspect=aspect)
         else:
             im = ax.imshow(
-                f.val.T, extent=[0, nx*dx, 0, ny*dy],
-                vmin=kwargs.get("vmin"), vmax=kwargs.get("vmax"),
-                cmap=cmap, origin="lower", **norm, **aspect)
+                f.val.T, extent=[0, nx*dx, 0, ny*dy], origin="lower", aspect=aspect,
+                cmap=cmap, vmin=kwargs.get("vmin"), vmax=kwargs.get("vmax"), norm=norm)
             cax = make_axes_locatable(ax).append_axes("right", size="5%", pad=0.05)
             plt.colorbar(im, cax=cax)
         _limit_xy(**kwargs)
@@ -484,8 +539,12 @@ def _plot2D(f, ax, **kwargs):
         from ducc0.healpix import Healpix_Base
         from ducc0.misc import GL_thetas
 
-        xsize = 800
-        res, mask, theta, phi = _mollweide_helper(xsize)
+        xsize = kwargs.pop('xsize', 800)
+        projection = kwargs.pop('projection', 'mollweide')
+        if projection not in sphere_projection_helpers.keys():
+            raise ValueError(f"Projection '{projection}' unsupported!")
+        res, mask, theta, phi = sphere_projection_helpers[projection](xsize)
+
         if have_rgb:
             res = np.full(shape=res.shape+(3,), fill_value=1.,
                           dtype=np.float64)
@@ -513,11 +572,11 @@ def _plot2D(f, ax, **kwargs):
         if have_rgb:
             plt.imshow(res, origin="lower")
         else:
-            plt.imshow(res, vmin=kwargs.get("vmin"), vmax=kwargs.get("vmax"),
-                       norm=norm.get('norm'), cmap=cmap, origin="lower")
+            plt.imshow(res, origin="lower", cmap=cmap, norm=norm,
+                       vmin=kwargs.get("vmin"), vmax=kwargs.get("vmax"))
             plt.colorbar(orientation="horizontal")
         return
-    raise ValueError("Field type not(yet) supported")
+    raise ValueError("Field type not (yet) supported")
 
 
 def _plotHist(f, ax, **kwargs):
@@ -705,6 +764,8 @@ class Plot:
             if self._plots[i] is None:
                 continue
             ax = fig.add_subplot(ny, nx, i+1)
+            self._kwargs[i].setdefault('xsise', xsize / nx)
+            self._kwargs[i].setdefault('ysize', ysize / ny)
             _plot(self._plots[i], ax, **self._kwargs[i])
         fig.tight_layout()
         _makeplot(kwargs.pop("name", None),
