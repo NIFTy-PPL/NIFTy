@@ -59,11 +59,12 @@ def test_plots():
     plot.add(field_rg1_2, title='1d rg')
     plot.add(field_ps)
     plot.add(field_gl, title='GL')
+    plot.add(field_hp, title='HP, hammer projection', projection='hammer')
+    plot.add(field_gl, title='GL, hammer projection', projection='hammer')
     plot.add(field_rg2, title='2d rg')
     plot.add(field_us, title='Histogram')
     plot.add([field_us, field_us1], label="ii", title='Two Histograms')
-    plot.output(title='Seven plots', name=next(name))
-
+    plot.output(title='Nine plots', name=next(name))
 
 
 def test_mf_plot():
