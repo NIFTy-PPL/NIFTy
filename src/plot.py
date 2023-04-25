@@ -99,7 +99,7 @@ def project_spherical_data_to_2d(val, domain, projection='mollweide', xsize=800,
     Parameters
     ----------
     val : :class:`numpy.ndarray`
-        Numpy array holding the values of the spherical field to be projected.
+        Values of the spherical field to be projected.
     domain : :class:`nifty8.domains.hp_space.HPSpace`, :class:`nifty8.domains.gl_space.GLSpace`
         Domain of the spherical field.
     projection : string
@@ -215,7 +215,15 @@ class MultiFrequencyToRGBProjector:
     def get_equivalent_rgb_intensity(self, wavelength):
         """Linearly interpolate equivalent RGB intensities for given wavelengths.
 
-        Accepts single wavelengths (scalars) and numpy arrays.
+        Parameters
+        ----------
+        wavelength : int, float, :class:`numpy.ndarray`
+            Wavelength(s) for which to compute the equivalent raw RGB intensities.
+
+        Returns
+        -------
+        rgb_intensities : :class:`numpy.ndarray`
+            Equivalent RGB intensities for the requested wavelength(s).
         """
         # convenience functionality: recursively process numpy arrays
         if isinstance(wavelength, np.ndarray) and len(wavelength.shape) >= 1:
@@ -243,10 +251,22 @@ class MultiFrequencyToRGBProjector:
         res += (1. - weight) * self._EQUIVALENT_RGB_INTENSITIES_380nm_TO_780nm[:, idx_table + 1]
         return res
 
-    def map_f_space_bin_energies_to_visible_range(self, f_space_bin_energies, log_mapping=True):
+    def map_f_space_bin_energies_to_visible_range(self, f_space_bin_energies, log_mapping=False):
         """Maps given bin energy values into the visible spectrum energy range.
 
-        By default, a logarithmic mapping is used."""
+        Parameters
+        ----------
+        f_space_bin_energies : :class:`numpy.ndarray`, list of float
+            Reference energies of the frequency/energy domain bins.
+        log_mapping : boolean
+            Whether to use linear or logarithmic mapping of bin energies to visible
+            ligth wavelengths. Default: `False`.
+
+        Returns
+        -------
+        E_vis : :class:`numpy.ndarray`
+            Mapped energies of the given frequency bins.
+        """
         E0_vis, E1_vis = 1./self._WAVELENGTH_MAX_MAPPABLE, 1./self._WAVELENGTH_MIN_MAPPABLE
 
         if log_mapping:
@@ -262,12 +282,33 @@ class MultiFrequencyToRGBProjector:
         return E0_vis + (inp - inp_min) / (inp_max - inp_min) * (E1_vis - E0_vis)
 
     def set_f_space_bin_to_rgb_mapping(self, f_space_bin_energies, log_mapping=True):
-        """Sets the `f_space` bin to RGB color mapping to be used for all conversions."""
+        """Sets the frequency/energy domain bin to RGB color mapping to be used for all conversions.
+
+        Parameters
+        ----------
+        f_space_bin_energies : :class:`numpy.ndarray`, list of float
+            Reference energies of the frequency/energy domain bins.
+        log_mapping : boolean
+            Whether to use linear or logarithmic mapping of bin energies to visible
+            ligth wavelengths. Default: `False`.
+        """
         E_vis = self.map_f_space_bin_energies_to_visible_range(f_space_bin_energies,
                                                                 log_mapping=log_mapping)
         self._mapping_f_space_bins_to_rgb = self.get_equivalent_rgb_intensity(1./E_vis)
 
     def transform_raw_rgb_values_to_sRGB(self, inp):
+        """Transform raw RGB values into the sRGB space.
+
+        Parameters
+        ----------
+        inp : :class:`numpy.ndarray`
+            Raw RGB values
+
+        Returns
+        -------
+        res : :class:`numpy.ndarray`
+            Corresponding sRGB values.
+        """
         tmp = np.tensordot(self._MATRIX_SRGB_D65, inp, axes=(1, 1)).T
         tmp = tmp.clip(0., None)  # remove negative values produce in step above
         return self._sRGB_gammacorr(tmp)
@@ -297,6 +338,31 @@ class MultiFrequencyToRGBProjector:
 
     def __init__(self, f_space_bin_energies, dynamic_range=1e3, brightness_scale_anchor=None,
                  map_energies_logarithmically=False):
+        """Class to facilitate projections of multi-frequency fields to sRGBs color space.
+
+        The fields frequency/energy domain is mapped into the visible light spectral range.
+        The thusly mapped images are encoded into the sRGB color space based on a model of
+        humans color perception.
+
+        For comparable plots of multiple component reconstructions, an absolute brightness
+        scale can be set via the argument `brightness_scale_anchor`.
+        If this is unset, the white point will be determined for each field individually.
+
+        Parameters
+        ----------
+        f_space_bin_energies : :class:`numpy.ndarray`, list of float
+            Reference energies of the frequency/energy domain bins.
+        dynamic_range : float, postitive
+            Dynamic range to be plotted. Sets the ratio of the white and black point on
+            a linear scale. Default: 1000.
+        brightness_scale_anchor : float, positive
+            Intensity anchor for the white point. If set, all plots share the same
+            white and black point. If `None`, white points are chosen for each image
+            individually. Default: `None`.
+        map_energies_logarithmically : boolean
+            Whether to use linear or logarithmic mapping of bin energies to visible
+            ligth wavelengths. Default: `False`.
+        """
         self.dynamic_range = self._check_pos_scalar(dynamic_range, "dynamic_range")
         self.brightness_scale_anchor = None if brightness_scale_anchor is None else \
             self._check_pos_scalar(brightness_scale_anchor, "brightness_scale_anchor")
@@ -309,7 +375,25 @@ class MultiFrequencyToRGBProjector:
         return self._check_pos_scalar(inp, name)
 
     def transform(self, spectral_data, override_dynamic_range=False, override_brightness_scale_anchor=False):
-        """Apply projection"""
+        """Projects spherical data `val` onto a two-dimensional plane.
+
+        Parameters
+        ----------
+        spectral_data : :class:`numpy.ndarray`
+            Values of the field to be projected.
+            The spectral dimension is expected to be the last dimension of the array.
+        override_dynamic_range : float, postitive
+            If set, overrides the class-wide setting of the dynamic range to be plotted.
+            Default: `False`.
+        override_brightness_scale_anchor : float, positive
+            If set, overrides the class-wide setting of the intensity anchor (white point).
+            Default: `False`.
+
+        Returns
+        -------
+        sRGB_data : :class:`numpy.ndarray`
+            The transformed image, containing the sRGB values in the last dimension.
+        """
         # input checks
         if (spectral_data < 0.).any():
             raise ValueError("Only positive data supported")
