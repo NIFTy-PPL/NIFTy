@@ -73,12 +73,12 @@ def test_mf_plot():
     d1 = ift.DomainTuple.make([x_space, f_space])
     d2 = ift.DomainTuple.make([f_space, x_space])
 
-    f1 = ift.from_random(d1, 'normal')
+    f1 = ift.from_random(d1, 'normal').exponentiate(10.)
     f2 = ift.makeField(d2, np.moveaxis(f1.val, -1, 0))
 
     plot = ift.Plot()
     plot.add(f1, block=False, title='f_space_idx = 1')
-    plot.add(f2, freq_space_idx=0, title='f_space_idx = 0')
+    plot.add(f2, freq_space_idx=0, title='f_space_idx = 0', dynamic_range=10.)
     plot.output(nx=2, ny=1, title='MF-Plots, should look identical',
                 name=next(name))
 

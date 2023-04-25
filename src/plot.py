@@ -91,10 +91,11 @@ sphere_projection_helpers = {
     'mollweide': _mollweide_helper,
     'hammer': _hammer_helper,
 }
+"""Dictionary of projection helpers for spherical projections"""
 
 
 class MultiFrequencyToRGBProjector:
-    _SPECTRAL_SENSITIVITY_CONES = np.array(
+    _EQUIVALENT_RGB_INTENSITIES_380nm_TO_780nm = np.array(
           [[0.000160, 0.000662, 0.002362, 0.007242, 0.019110,
             0.043400, 0.084736, 0.140638, 0.204492, 0.264737,
             0.314679, 0.357719, 0.383734, 0.386726, 0.370702,
@@ -147,46 +148,81 @@ class MultiFrequencyToRGBProjector:
             0.000000, 0.000000, 0.000000, 0.000000, 0.000000,
             0.000000]])
 
-    _WAVELENGTH_MIN = 380.
-    _WAVELENGTH_MAX = 780.
+    _WAVELENGTH_MIN_TABLE = 380.
+    _WAVELENGTH_MAX_TABLE = 780.
+    _WAVELENGTH_MIN_MAPPABLE = 400.
+    _WAVELENGTH_MAX_MAPPABLE = 700.
 
     _MATRIX_SRGB_D65 = np.array(
             [[3.2404542, -1.5371385, -0.4985314],
              [-0.9692660,  1.8760108,  0.0415560],
              [0.0556434, -0.2040259,  1.0572252]])
 
-    def get_cone_sensitivity(self, wavelength):
-        """Get the spectral sensitivity of the eyes cones to emission at given wavelength.
+    _mapping_f_space_bins_to_rgb = None
+    dynamic_range = None
+    brightness_scale_anchor = None
 
-        Linearly interpolates between values given in table `SPECTRAL_SENSITIVITY_CONES`.
+    def get_equivalent_rgb_intensity(self, wavelength):
+        """Linearly interpolate equivalent RGB intensities for given wavelengths.
+
+        Accepts single wavelengths (scalars) and numpy arrays.
         """
-        lambda_min = 380.
-        lambda_max = 780.
+        # convenience functionality: recursively process numpy arrays
+        if isinstance(wavelength, np.ndarray) and len(wavelength.shape) >= 1:
+            return np.array([self.get_equivalent_rgb_intensity(wl) for wl in wavelength])
 
-        wavelength = np.asarray(wavelength, dtype=np.float64)
-        wavelength = np.clip(wavelength, self._WAVELENGTH_MIN, self._WAVELENGTH_MAX)
+        # assure wavelength is a scalar
+        if not self._is_scalar(wavelength):
+            raise ValueError("not a scalar: " + str(wavelength))
 
-        rel_wavelength = (wavelength - self._WAVELENGTH_MIN) / (self._WAVELENGTH_MAX - self._WAVELENGTH_MIN)
-        pos_sensitivity_table = rel_wavelength * (self._SPECTRAL_SENSITIVITY_CONES.shape[1] - 1)
-        idx_sensitivity_table = np.maximum(0, np.minimum(79, int(pos_sensitivity_table)))
-        weight = 1. - (pos_sensitivity_table - idx_sensitivity_table)
-        sens = weight * self._SPECTRAL_SENSITIVITY_CONES[:, idx_sensitivity_table]
-        sens += (1. - weight) * self._SPECTRAL_SENSITIVITY_CONES[:, idx_sensitivity_table + 1]
-        return sens
+        # wavelengths outside the table range get mapped to the table ends (dark)
+        if wavelength <= self._WAVELENGTH_MIN_TABLE:
+            return self._EQUIVALENT_RGB_INTENSITIES_380nm_TO_780nm[:, 0]
+        if wavelength >= self._WAVELENGTH_MAX_TABLE:
+            return self._EQUIVALENT_RGB_INTENSITIES_380nm_TO_780nm[:, -1]
 
-    def get_cone_sensitivities_for_frequency_bins(self, n_freqs):
-        E0, E1 = 1./700., 1./400.
-        E = E0 + np.arange(n_freqs) * (E1 - E0)/(n_freqs - 1)
-        res = np.zeros((3, n_freqs), dtype=np.float64)
-        for i in range(n_freqs):
-            res[:, i] = self.get_cone_sensitivity(1./E[i])
+        delta_wavelength_table = self._WAVELENGTH_MAX_TABLE - self._WAVELENGTH_MIN_TABLE
+        rel_wavelength = (wavelength - self._WAVELENGTH_MIN_TABLE) / delta_wavelength_table
+
+        length_table = self._EQUIVALENT_RGB_INTENSITIES_380nm_TO_780nm.shape[1]
+        precise_position = rel_wavelength * (length_table - 1)
+        idx_table = int(np.floor(precise_position))
+
+        weight = 1. - (precise_position - idx_table)
+        res = weight * self._EQUIVALENT_RGB_INTENSITIES_380nm_TO_780nm[:, idx_table]
+        res += (1. - weight) * self._EQUIVALENT_RGB_INTENSITIES_380nm_TO_780nm[:, idx_table + 1]
         return res
 
-    def transform_cone_response_to_sRGB(self, inp):
-        tmp = np.tensordot(self._MATRIX_SRGB_D65, inp, axes=(1, 1))
-        return self.sRGB_gammacorr(tmp.T)
+    def map_f_space_bin_energies_to_visible_range(self, f_space_bin_energies, log_mapping=True):
+        """Maps given bin energy values into the visible spectrum energy range.
 
-    def sRGB_gammacorr(self, inp):
+        By default, a logarithmic mapping is used."""
+        E0_vis, E1_vis = 1./self._WAVELENGTH_MAX_MAPPABLE, 1./self._WAVELENGTH_MIN_MAPPABLE
+
+        if log_mapping:
+            if (f_space_bin_energies <= 0.).any():
+                raise ValueError("log mapping of energies only works with positive energies")
+            inp = np.log(f_space_bin_energies)
+        else:
+            inp = f_space_bin_energies
+
+        inp_min = np.min(inp)
+        inp_max = np.max(inp)
+
+        return E0_vis + (inp - inp_min) / (inp_max - inp_min) * (E1_vis - E0_vis)
+
+    def set_f_space_bin_to_rgb_mapping(self, f_space_bin_energies, log_mapping=True):
+        """Sets the `f_space` bin to RGB color mapping to be used for all conversions."""
+        E_vis = self.map_f_space_bin_energies_to_visible_range(f_space_bin_energies,
+                                                                log_mapping=log_mapping)
+        self._mapping_f_space_bins_to_rgb = self.get_equivalent_rgb_intensity(1./E_vis)
+
+    def transform_raw_rgb_values_to_sRGB(self, inp):
+        tmp = np.tensordot(self._MATRIX_SRGB_D65, inp, axes=(1, 1)).T
+        tmp = tmp.clip(0., None)  # remove negative values produce in step above
+        return self._sRGB_gammacorr(tmp)
+
+    def _sRGB_gammacorr(self, inp):
         """Perform gamma correction according to sRGB standard."""
         mask = np.zeros(inp.shape, dtype=np.float64)
         mask[inp <= 0.0031308] = 1.
@@ -195,41 +231,76 @@ class MultiFrequencyToRGBProjector:
         r2 = (1 + a) * (np.maximum(inp, 0.0031308) ** (1/2.4)) - a
         return r1*mask + r2*(1.-mask)
 
-    def _to_logscale(self, arr, lo, hi):
-        res = arr.clip(lo, hi)
-        res = np.log(res/lo)  # >= 0. by design
-        res /= np.log(hi/lo)  # <= 1. by design
+    def _to_logscale(self, arr, vmin, vmax):
+        res = arr.clip(vmin, vmax)
+        res = np.log(res/vmin)  # >= 0. by design
+        res /= np.log(vmax/vmin)  # <= 1. by design
         return res
 
-    def apply(self, spectral_data, dynamic_range=1e3, brightness_scale_anchor=None):
-        """Project"""
-        tgt_shp = spectral_data.shape[:-1]+(3,)
-        spectral_data = spectral_data.reshape((-1, spectral_data.shape[-1]))
+    def _check_pos_scalar(self, inp, name):
+        """Checks wether input is a strictly positive scalar"""
+        if not self._is_scalar(inp):
+            raise ValueError(name + "needs to be a scalar")
+        if inp <= 0.:
+            raise ValueError(name + "must me strictly positive")
+        return inp
 
+    def __init__(self, f_space_bin_energies, dynamic_range=1e3, brightness_scale_anchor=None,
+                 map_energies_logarithmically=False):
+        self.dynamic_range = self._check_pos_scalar(dynamic_range, "dynamic_range")
+        self.brightness_scale_anchor = None if brightness_scale_anchor is None else \
+            self._check_pos_scalar(brightness_scale_anchor, "brightness_scale_anchor")
+
+        self.set_f_space_bin_to_rgb_mapping(f_space_bin_energies, log_mapping=map_energies_logarithmically)
+
+    def _check_override(self, inp, name, default):
+        if inp == False:
+            return default
+        return self._check_pos_scalar(inp, name)
+
+    def transform(self, spectral_data, override_dynamic_range=False, override_brightness_scale_anchor=False):
+        """Apply projection"""
+        # input checks
+        if (spectral_data < 0.).any():
+            raise ValueError("Only positive data supported")
+
+        dynamic_range = self._check_override(override_dynamic_range, "dynamic range", default=self.dynamic_range)
+        brightness_scale_anchor = self._check_override(override_brightness_scale_anchor,
+                                                       "brightness scale anchor",
+                                                       default=self.brightness_scale_anchor)
         n_freqs = spectral_data.shape[-1]
-        freq_bin_cone_sensitivities = self.get_cone_sensitivities_for_frequency_bins(n_freqs)
+        if self._mapping_f_space_bins_to_rgb.shape[0] != n_freqs:
+            raise ValueError("Projector initialized with incompatible f_space.")
 
-        cone_response_data = np.tensordot(spectral_data, freq_bin_cone_sensitivities, axes=[-1, -1])
+        # processing of data
+        tgt_shp = spectral_data.shape[:-1]+(3,)
+        spectral_data = spectral_data.reshape((-1, n_freqs))
 
-        if brightness_scale_anchor is None:
-            max_cr_data = cone_response_data.max()
-        else:
-            if not isinstance(brightness_scale_anchor, numbers.Number) or brightness_scale_anchor <= 0.:
-                raise ValueError("Invalid brightness scale anchor: " + str(brightness_scale_anchor))
-            max_cr_data = brightness_scale_anchor
+        raw_rgb_data = np.tensordot(spectral_data, self._mapping_f_space_bins_to_rgb, axes=[1, 0])
 
-        min_cr_data = max_cr_data / dynamic_range
-        cr_data_log = self._to_logscale(cone_response_data, min_cr_data, max_cr_data)
+        max_raw_rgb_data = raw_rgb_data.max() if brightness_scale_anchor is None else brightness_scale_anchor
+        min_raw_rgb_data = max_raw_rgb_data / dynamic_range
+        raw_rgb_data_log = self._to_logscale(raw_rgb_data, min_raw_rgb_data, max_raw_rgb_data)
 
-        rgb_data = self.transform_cone_response_to_sRGB(cr_data_log)
-        rgb_data = rgb_data.clip(0., None)  # upper clipping changes color saturation point, rescaling instead
-        rgb_data_max = rgb_data.max()
-        if rgb_data_max > 1.:
-            rgb_data /= rgb_data_max
-        return rgb_data.reshape(tgt_shp)
+        sRGB_data = self.transform_raw_rgb_values_to_sRGB(raw_rgb_data_log)
+        sRGB_data = sRGB_data.reshape(tgt_shp)
 
-    def __init__(self):
-        pass
+        # ensuring outputs lie between zero and one
+        sRGB_data_max = sRGB_data.max()
+        if sRGB_data_max > 1.:
+            sRGB_data /= sRGB_data_max
+
+        return sRGB_data
+
+    def _is_scalar(self, inp):
+        return self._is_scalar_number(inp) or self._is_scalar_ndarray(inp)
+
+    def _is_scalar_number(self, inp):
+        import numbers
+        return isinstance(inp, numbers.Number)
+
+    def _is_scalar_ndarray(self, inp):
+        return isinstance(inp, np.ndarray) and inp.shape == ()
 
 
 def _find_closest(A, target):
@@ -416,6 +487,9 @@ def _plot_history(f, ax, **kwargs):
         plt.legend(loc="upper right")
 
 
+class UnsupportedInputError(ValueError): pass    # Exception class for lazy plotting function discovery
+
+
 def _plot1D(f, ax, **kwargs):
     import matplotlib.pyplot as plt
 
@@ -425,15 +499,15 @@ def _plot1D(f, ax, **kwargs):
         if i == 0:
             dom = fld.domain
             if len(dom) != 1:
-                raise ValueError("input field must have exactly one domain")
+                raise UnsupportedInputError("input field must have exactly one domain")
             if len(dom.shape) != 1:
-                raise ValueError("input field must have exactly one dimension")
+                raise UnsupportedInputError("input field must have exactly one dimension")
         else:
             check_object_identity(fld.domain, dom)
     dom = dom[0]
 
     if not isinstance(dom, (RGSpace, PowerSpace)):
-        raise ValueError("Field type not(yet) supported")
+        raise UnsupportedInputError(f"Field type not (yet) supported: {dom}")
 
     add_kwargs, with_legend = _extract_list_kwargs(kwargs, ("label", "alpha", "color", "linewidth"), len(f))
 
@@ -487,7 +561,7 @@ def _plot2D(f, ax, **kwargs):
     from .sugar import makeField
 
     if len(f) != 1:
-        raise ValueError("Can plot only one 2d field")
+        raise UnsupportedInputError("Can plot only one 2d field")
     f = f[0]
     dom = f.domain
 
@@ -500,19 +574,25 @@ def _plot2D(f, ax, **kwargs):
         x_space = 1 - f_space
 
         # Only one frequency?
-        if dom[f_space].shape[0] == 1:
+        n_freqs = dom[f_space].shape[0]
+        if n_freqs == 1:
             f = makeField(dom[x_space], f.val.squeeze(axis=dom.axes[f_space]))
         else:
             # Need multifrequency plotting
             val = f.val
             if f_space == 0:
                 val = np.moveaxis(val, 0, -1)
-            dynamic_range = kwargs.pop('dynamic_range', 1e3)
-            brightness_scale_anchor = kwargs.pop('brightness_scale_anchor', None)
-            rgb = MultiFrequencyToRGBProjector().apply(val, dynamic_range, brightness_scale_anchor)
+            mf_to_rgb = MultiFrequencyToRGBProjector(
+                # by default assume linearly spaced energy bins
+                f_space_bin_energies = kwargs.pop('f_space_bin_energies', np.arange(n_freqs)),
+                dynamic_range = kwargs.pop('dynamic_range', 1e3),
+                brightness_scale_anchor = kwargs.pop('brightness_scale_anchor', None),
+                map_energies_logarithmically = kwargs.pop('map_energies_logarithmically', False)
+            )
+            rgb = mf_to_rgb.transform(val)
             have_rgb = True
     else:  # "DomainTuple can only have one or two entries.
-        raise ValueError('Plotting routine cannot handle DomainTuples longer than two :(')
+        raise UnsupportedInputError('Plotting routine cannot handle DomainTuples longer than two :(')
 
     dom = dom[x_space]
     aspect = kwargs.pop("aspect", None)
@@ -576,7 +656,7 @@ def _plot2D(f, ax, **kwargs):
                        vmin=kwargs.get("vmin"), vmax=kwargs.get("vmax"))
             plt.colorbar(orientation="horizontal")
         return
-    raise ValueError("Field type not (yet) supported")
+    raise UnsupportedInputError("Field type not (yet) supported")
 
 
 def _plotHist(f, ax, **kwargs):
@@ -612,12 +692,12 @@ def _plot(f, ax, **kwargs):
     try:
         _plot1D(f, ax, **kwargs)
         return
-    except ValueError:
+    except UnsupportedInputError:
         pass
     try:
         _plot2D(f, ax, **kwargs)
         return
-    except ValueError:
+    except UnsupportedInputError:
         pass
     _plotHist(f, ax, **kwargs)
 
