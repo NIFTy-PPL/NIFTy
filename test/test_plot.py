@@ -78,10 +78,20 @@ def test_mf_plot():
 
     plot = ift.Plot()
     plot.add(f1, block=False, title='f_space_idx = 1')
-    plot.add(f2, freq_space_idx=0, title='f_space_idx = 0', dynamic_range=10.)
+    plot.add(f2, freq_space_idx=0, title='f_space_idx = 0')
     plot.output(nx=2, ny=1, title='MF-Plots, should look identical',
                 name=next(name))
 
+    ift.single_plot(f1, dynamic_range=10., brightness_scale_anchor=1.,
+                    name=next(name))
+
+    plot = ift.Plot()
+    plot.add(f1, block=False, title='plain')
+    plot.add(f1, f_space_bin_energies=10**np.arange(4),
+             map_energies_logarithmically=True, title='log mapped energies')
+    plot.output(nx=2, ny=1, title='MF-Plots, should look identical',
+                name=next(name))
+    
 
 def test_iter_plot():
     for ind in range(2):
