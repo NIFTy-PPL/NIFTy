@@ -310,9 +310,9 @@ class MultiFrequencyToRGBProjector:
         sRGB_data = sRGB_data.reshape(tgt_shp)
 
         # ensuring outputs lie between zero and one
-        sRGB_data_max = sRGB_data.max()
-        if sRGB_data_max > 1.:
-            sRGB_data /= sRGB_data_max
+        # LP FIXME: this clipping might lead to data-dependent white point shifts
+        # We could replace it with re-normalization, but this reduces color saturation
+        sRGB_data = sRGB_data.clip(0., 1.)
 
         return sRGB_data
 
