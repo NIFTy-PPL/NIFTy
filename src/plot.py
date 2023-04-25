@@ -87,11 +87,39 @@ def _hammer_helper(xsize):
     return res, mask, theta, phi
 
 
-sphere_projection_helpers = {
+_sphere_projection_helpers = {
     'mollweide': _mollweide_helper,
     'hammer': _hammer_helper,
 }
-"""Dictionary of projection helpers for spherical projections"""
+
+
+def project_spherical_field_to_2d(val, dom, projection='mollweide', xsize=800, have_rgb=False):
+    """Project spherical data onto a two-dimensional plane"""
+    if projection not in _sphere_projection_helpers.keys():
+        raise ValueError(f"Projection '{projection}' unsupported!")
+
+    res, mask, theta, phi = _sphere_projection_helpers[projection](xsize)
+
+    if have_rgb:
+        res = np.full(shape=res.shape+(3,), fill_value=1., dtype=np.float64)
+
+    if isinstance(dom, HPSpace):
+        from ducc0.healpix import Healpix_Base
+        ptg = np.empty((phi.size, 2), dtype=np.float64)
+        ptg[:, 0] = theta
+        ptg[:, 1] = phi
+        base = Healpix_Base(int(np.sqrt(dom.size//12)), "RING")
+        res[mask] = val[base.ang2pix(ptg)]
+    else:
+        from ducc0.misc import GL_thetas
+        ra = np.linspace(0, 2*np.pi, dom.nlon+1)
+        dec = GL_thetas(dom.nlat)
+        ilat = _find_closest(dec, theta)
+        ilon = _find_closest(ra, phi)
+        ilon = np.where(ilon == dom.nlon, 0, ilon)
+        res[mask] = val[ilat*dom.nlon + ilon]
+
+    return res
 
 
 class MultiFrequencyToRGBProjector:
@@ -616,38 +644,10 @@ def _plot2D(f, ax, **kwargs):
         _limit_xy(**kwargs)
         return
     elif isinstance(dom, (HPSpace, GLSpace)):
-        from ducc0.healpix import Healpix_Base
-        from ducc0.misc import GL_thetas
-
         xsize = kwargs.pop('xsize', 800)
         projection = kwargs.pop('projection', 'mollweide')
-        if projection not in sphere_projection_helpers.keys():
-            raise ValueError(f"Projection '{projection}' unsupported!")
-        res, mask, theta, phi = sphere_projection_helpers[projection](xsize)
-
-        if have_rgb:
-            res = np.full(shape=res.shape+(3,), fill_value=1.,
-                          dtype=np.float64)
-
-        if isinstance(dom, HPSpace):
-            ptg = np.empty((phi.size, 2), dtype=np.float64)
-            ptg[:, 0] = theta
-            ptg[:, 1] = phi
-            base = Healpix_Base(int(np.sqrt(dom.size//12)), "RING")
-            if have_rgb:
-                res[mask] = rgb[base.ang2pix(ptg)]
-            else:
-                res[mask] = f.val[base.ang2pix(ptg)]
-        else:
-            ra = np.linspace(0, 2*np.pi, dom.nlon+1)
-            dec = GL_thetas(dom.nlat)
-            ilat = _find_closest(dec, theta)
-            ilon = _find_closest(ra, phi)
-            ilon = np.where(ilon == dom.nlon, 0, ilon)
-            if have_rgb:
-                res[mask] = rgb[ilat*dom[0].nlon + ilon]
-            else:
-                res[mask] = f.val[ilat*dom.nlon + ilon]
+        val = rgb if have_rgb else f.val
+        res = project_spherical_field_to_2d(val, dom, projection, xsize, have_rgb)
         plt.axis('off')
         if have_rgb:
             plt.imshow(res, origin="lower")
