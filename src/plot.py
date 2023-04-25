@@ -93,8 +93,30 @@ _sphere_projection_helpers = {
 }
 
 
-def project_spherical_field_to_2d(val, dom, projection='mollweide', xsize=800, have_rgb=False):
-    """Project spherical data onto a two-dimensional plane"""
+def project_spherical_data_to_2d(val, domain, projection='mollweide', xsize=800, have_rgb=False):
+    """Projects spherical data `val` onto a two-dimensional plane.
+
+    Parameters
+    ----------
+    val : :class:`numpy.ndarray`
+        Numpy array holding the values of the spherical field to be projected.
+    domain : :class:`nifty8.domains.hp_space.HPSpace`, :class:`nifty8.domains.gl_space.GLSpace`
+        Domain of the spherical field.
+    projection : string
+        Name of the projection to be used. Currently supported: 'mollweide', 'hammer'.
+        Default: 'mollweide'.
+    xsize : int, float
+        Number of pixels of the output image in the horizontal dimension.
+        ysize is chosen automatically.
+    have_rgb : boolean
+        Whether `val` contains RGB values (in an extra dimension).
+        Needed for multi-frequency plotting.
+
+    Returns
+    -------
+    res : :class:`numpy.ndarray`
+        The image resulting from the projection.
+    """
     if projection not in _sphere_projection_helpers.keys():
         raise ValueError(f"Projection '{projection}' unsupported!")
 
@@ -103,21 +125,21 @@ def project_spherical_field_to_2d(val, dom, projection='mollweide', xsize=800, h
     if have_rgb:
         res = np.full(shape=res.shape+(3,), fill_value=1., dtype=np.float64)
 
-    if isinstance(dom, HPSpace):
+    if isinstance(domain, HPSpace):
         from ducc0.healpix import Healpix_Base
         ptg = np.empty((phi.size, 2), dtype=np.float64)
         ptg[:, 0] = theta
         ptg[:, 1] = phi
-        base = Healpix_Base(int(np.sqrt(dom.size//12)), "RING")
+        base = Healpix_Base(int(np.sqrt(domain.size//12)), "RING")
         res[mask] = val[base.ang2pix(ptg)]
     else:
         from ducc0.misc import GL_thetas
-        ra = np.linspace(0, 2*np.pi, dom.nlon+1)
-        dec = GL_thetas(dom.nlat)
+        ra = np.linspace(0, 2*np.pi, domain.nlon+1)
+        dec = GL_thetas(domain.nlat)
         ilat = _find_closest(dec, theta)
         ilon = _find_closest(ra, phi)
-        ilon = np.where(ilon == dom.nlon, 0, ilon)
-        res[mask] = val[ilat*dom.nlon + ilon]
+        ilon = np.where(ilon == domain.nlon, 0, ilon)
+        res[mask] = val[ilat*domain.nlon + ilon]
 
     return res
 
@@ -647,7 +669,7 @@ def _plot2D(f, ax, **kwargs):
         xsize = kwargs.pop('xsize', 800)
         projection = kwargs.pop('projection', 'mollweide')
         val = rgb if have_rgb else f.val
-        res = project_spherical_field_to_2d(val, dom, projection, xsize, have_rgb)
+        res = project_spherical_data_to_2d(val, dom, projection, xsize, have_rgb)
         plt.axis('off')
         if have_rgb:
             plt.imshow(res, origin="lower")
