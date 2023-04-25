@@ -300,13 +300,13 @@ class MultiFrequencyToRGBProjector:
         tgt_shp = spectral_data.shape[:-1]+(3,)
         spectral_data = spectral_data.reshape((-1, n_freqs))
 
-        raw_rgb_data = np.tensordot(spectral_data, self._mapping_f_space_bins_to_rgb, axes=[1, 0])
+        max_spectral_data = spectral_data.max() if brightness_scale_anchor is None else brightness_scale_anchor
+        min_spectral_data = max_spectral_data / dynamic_range
+        spectral_data_log = self._to_logscale(spectral_data, min_spectral_data, max_spectral_data)
 
-        max_raw_rgb_data = raw_rgb_data.max() if brightness_scale_anchor is None else brightness_scale_anchor
-        min_raw_rgb_data = max_raw_rgb_data / dynamic_range
-        raw_rgb_data_log = self._to_logscale(raw_rgb_data, min_raw_rgb_data, max_raw_rgb_data)
+        raw_rgb_data = np.tensordot(spectral_data_log, self._mapping_f_space_bins_to_rgb, axes=[1, 0])
 
-        sRGB_data = self.transform_raw_rgb_values_to_sRGB(raw_rgb_data_log)
+        sRGB_data = self.transform_raw_rgb_values_to_sRGB(raw_rgb_data)
         sRGB_data = sRGB_data.reshape(tgt_shp)
 
         # ensuring outputs lie between zero and one
