@@ -3,12 +3,12 @@
 
 from typing import Callable, Optional, Tuple
 
-import sys
 from jax import numpy as jnp
 from jax.tree_util import tree_map
 
 from .forest_util import ShapeWithDtype
 from .likelihood import Likelihood
+from .logger import logger
 
 
 def standard_t(nwr, dof):
@@ -40,7 +40,7 @@ def _get_cov_inv_and_std_inv(
             "assuming a diagonal covariance matrix"
             ";\nsetting `cov_inv` to `std_inv(jnp.ones_like(data))**2`"
         )
-        print(wm, file=sys.stderr)
+        logger.warning(wm)
         noise_std_inv_sq = std_inv(tree_map(jnp.ones_like, primals))**2
 
         def cov_inv(tangents):
@@ -51,7 +51,7 @@ def _get_cov_inv_and_std_inv(
             "assuming a diagonal covariance matrix"
             ";\nsetting `std_inv` to `cov_inv(jnp.ones_like(data))**0.5`"
         )
-        print(wm, file=sys.stderr)
+        logger.warning(wm)
         noise_cov_inv_sqrt = tree_map(
             jnp.sqrt, cov_inv(tree_map(jnp.ones_like, primals))
         )

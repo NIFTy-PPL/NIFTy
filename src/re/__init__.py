@@ -45,6 +45,7 @@ from .kl_aux import (
 )
 from .lanczos import stochastic_lq_logdet
 from .likelihood import Likelihood, StandardHamiltonian
+from .logger import logger
 from .model import Model, Initializer
 from .optimize import minimize, newton_cg, trust_ncg
 from .refine.chart import CoordinateChart, HEALPixChart

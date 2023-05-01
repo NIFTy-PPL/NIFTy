@@ -1,17 +1,20 @@
 # Copyright(C) 2013-2021 Max-Planck-Society
 # SPDX-License-Identifier: GPL-2.0+ OR BSD-2-Clause
 
-import sys
 from datetime import datetime
-from typing import Any, Callable, Dict, Mapping, NamedTuple, Optional, Tuple, Union
+from typing import (
+    Any, Callable, Dict, Mapping, NamedTuple, Optional, Tuple, Union
+)
 
 from jax import lax
 from jax import numpy as jnp
 from jax.tree_util import Partial
 
 from . import conjugate_gradient
-from .forest_util import assert_arithmetics, common_type, size, where
+from .forest_util import assert_arithmetics, common_type
 from .forest_util import norm as jft_norm
+from .forest_util import size, where
+from .logger import logger
 from .sugar import sum_of_squares
 
 
@@ -156,7 +159,7 @@ def _newton_cg(
             "name": cg_name,
             "time_threshold": time_threshold
         }
-        cg_res = cg(Partial(hessp, pos), g, **{**default_kwargs, ** cg_kwargs})
+        cg_res = cg(Partial(hessp, pos), g, **{**default_kwargs, **cg_kwargs})
         nat_g, info = cg_res.x, cg_res.info
         nhev += cg_res.nfev
         if info is not None and info < 0:
@@ -185,7 +188,7 @@ def _newton_cg(
             grad_scaling = 0.
             nm = "N" if name is None else name
             msg = f"{nm}: WARNING: Energy would increase; aborting"
-            print(msg, file=sys.stderr)
+            logger.warning(msg)
             status = -1
             break
 
@@ -203,7 +206,7 @@ def _newton_cg(
                 f"\n{name}: Iteration {i} ⛰:{energy:+.6e} Δ⛰:{energy_diff:.6e}"
                 + (f" 🞋:{absdelta:.6e}" if absdelta is not None else "")
             )
-            print(msg, file=sys.stderr)
+            logger.info(msg)
         if jnp.isnan(new_energy):
             raise ValueError("energy is NaN")
         min_cond = naive_ls_it < 2 and i > miniter
@@ -219,7 +222,7 @@ def _newton_cg(
     else:
         status = i
         nm = "N" if name is None else name
-        print(f"{nm}: Iteration Limit Reached", file=sys.stderr)
+        logger.error(f"{nm}: Iteration Limit Reached")
     return OptimizeResults(
         x=pos,
         success=True,
@@ -267,6 +270,8 @@ def _trust_ncg(
     subproblem_kwargs: Optional[Dict[str, Any]] = None,
     name: Optional[str] = None
 ) -> OptimizeResults:
+    from jax.experimental.host_callback import call
+
     maxiter = 200 if maxiter is None else maxiter
 
     status = jnp.where(maxiter == 0, 1, 0)
@@ -313,6 +318,16 @@ def _trust_ncg(
         old_fval=old_fval
     )
 
+    def pp(arg):
+        i = arg["i"]
+        msg = (
+            "{name}: ↗:{tr:.6e} ⬤:{hit} ∝:{rho:.2e} #∇²:{nhev:02d}"
+            "\n{name}: Iteration {i} ⛰:{energy:+.6e} Δ⛰:{energy_diff:.6e}" +
+            (" 🞋:{absdelta:.6e}" if absdelta is not None else "") +
+            ("\n{name}: Iteration Limit Reached" if i == maxiter else "")
+        )
+        logger.info(msg.format(name=name, **arg))
+
     def _trust_region_body_f(params: _TrustRegionState) -> _TrustRegionState:
         x_k, g_k, g_k_mag = params.x, params.jac, params.jac_magnitude
         i, f_k, old_fval = params.nit, params.fun, params.old_fval
@@ -335,8 +350,10 @@ def _trust_ncg(
             "name": cg_name
         }
         sub_result = subproblem(
-            f_k, g_k, Partial(hessp, x_k),
-            **{**default_kwargs, **subproblem_kwargs}
+            f_k, g_k, Partial(hessp, x_k), **{
+                **default_kwargs,
+                **subproblem_kwargs
+            }
         )
 
         pred_f_kp1 = sub_result.pred_f
@@ -393,20 +410,6 @@ def _trust_ncg(
             old_fval=f_k
         )
         if name is not None:
-            from jax.experimental.host_callback import call
-
-            def pp(arg):
-                i = arg["i"]
-                msg = (
-                    "{name}: ↗:{tr:.6e} ⬤:{hit} ∝:{rho:.2e} #∇²:{nhev:02d}"
-                    "\n{name}: Iteration {i} ⛰:{energy:+.6e} Δ⛰:{energy_diff:.6e}"
-                    + (" 🞋:{absdelta:.6e}" if absdelta is not None else "") + (
-                        "\n{name}: Iteration Limit Reached"
-                        if i == maxiter else ""
-                    )
-                )
-                print(msg.format(name=name, **arg), file=sys.stderr)
-
             printable_state = {
                 "i": i,
                 "energy": params.fun,

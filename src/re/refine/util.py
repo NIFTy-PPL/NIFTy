@@ -5,16 +5,16 @@
 from collections import namedtuple
 from functools import partial
 from math import ceil
-import sys
 from typing import Callable, Iterable, Literal, Optional, Tuple, Union
 from warnings import warn
 
 import jax
-from jax import numpy as jnp
 import numpy as np
+from jax import numpy as jnp
 from scipy.spatial import distance_matrix
 
 from ..forest_util import ShapeWithDtype, zeros_like
+from ..logger import logger
 from ..model import AbstractModel
 
 NDARRAY = Union[jnp.ndarray, np.ndarray]
@@ -297,12 +297,12 @@ def gauss_kl(cov_desired, cov_approx, *, m_desired=None, m_approx=None):
 
 def refinement_covariance(chart_or_model, kernel=None, jit=True):
     """Computes the implied covariance as modeled by the refinement scheme."""
-    from .charted_field import RefinementField
     from .chart import CoordinateChart, HEALPixChart
+    from .charted_field import RefinementField
 
     if isinstance(chart_or_model, CoordinateChart):
         cf = RefinementField(chart_or_model, kernel=kernel)
-        shape= chart_or_model.shape
+        shape = chart_or_model.shape
     elif isinstance(chart_or_model, HEALPixChart):
         cf = RefinementField(chart_or_model, kernel=kernel)
         shape = chart_or_model.shape
@@ -372,10 +372,7 @@ def refinement_approximation_error(
 
     if cutout is None and all(s > suggested_min_shape for s in chart.shape):
         cutout = (suggested_min_shape, ) * chart.ndim
-        print(
-            f"cropping field (w/ shape {chart.shape}) to {cutout}",
-            file=sys.stderr
-        )
+        logger.info(f"cropping field (w/ shape {chart.shape}) to {cutout}")
     if cutout is not None:
         if isinstance(cutout, slice):
             cutout = (cutout, ) * chart.ndim

@@ -1,17 +1,17 @@
 # Copyright(C) 2013-2021 Max-Planck-Society
 # SPDX-License-Identifier: GPL-2.0+ OR BSD-2-Clause
 
-import sys
 from datetime import datetime
 from functools import partial
-from jax import numpy as jnp
-from jax import lax
-
 from typing import Any, Callable, NamedTuple, Optional, Tuple, Union
 
-from .forest_util import assert_arithmetics, common_type, size, where, zeros_like
+from jax import lax
+from jax import numpy as jnp
+
+from .forest_util import assert_arithmetics, common_type
 from .forest_util import norm as jft_norm
-from .forest_util import vdot
+from .forest_util import size, vdot, where, zeros_like
+from .logger import logger
 from .sugar import doc_from, sum_of_squares
 
 HessVP = Callable[[jnp.ndarray], jnp.ndarray]
@@ -71,7 +71,7 @@ def _cg_pretty_print_it(
     msg += f" 🞋:{absdelta:.4e}" if absdelta is not None else ""
     if norm is not None and resnorm is not None:
         msg += f" |∇|:{norm:.4e} 🞋:{resnorm:.4e}"
-    print(msg, file=sys.stderr)
+    logger.info(msg)
 
 
 # Taken from nifty
@@ -179,7 +179,7 @@ def _cg(
             break
         if gamma >= 0. and gamma <= tiny:
             nm = "CG" if name is None else name
-            print(f"{nm}: gamma=0, converged!", file=sys.stderr)
+            logger.warning(f"{nm}: gamma=0, converged!")
             info = 0
             break
         if resnorm is not None:
@@ -189,24 +189,19 @@ def _cg(
                 break
         else:
             norm = None
-        if absdelta is not None or name is not None:
-            new_energy = float(vdot((r - j) / 2, pos))
-            energy_diff = energy - new_energy
-        else:
-            new_energy = energy
-            energy_diff = None
-        if absdelta is not None:
-            neg_energy_eps = -eps * jnp.abs(new_energy)
-            if energy_diff < neg_energy_eps:
-                nm = "CG" if name is None else name
-                if _raise_nonposdef:
-                    raise ValueError(f"{nm}: WARNING: energy increased")
-                print(f"{nm}: WARNING: energy increased", file=sys.stderr)
-                info = i
-                break
-            if neg_energy_eps <= energy_diff < absdelta and i >= miniter:
-                info = 0
-                break
+        new_energy = float(vdot((r - j) / 2, pos))
+        energy_diff = energy - new_energy
+        neg_energy_eps = -eps * jnp.abs(new_energy)
+        if energy_diff < neg_energy_eps:
+            nm = "CG" if name is None else name
+            if _raise_nonposdef:
+                raise ValueError(f"{nm}: WARNING: energy increased")
+            logger.error(f"{nm}: WARNING: energy increased")
+            info = i
+            break
+        if absdelta is not None and energy_diff < absdelta and i >= miniter:
+            info = 0
+            break
         energy = new_energy
         d = d * max(0, gamma / previous_gamma) + r
         previous_gamma = gamma
@@ -300,20 +295,15 @@ def _static_cg(
             )
         else:
             norm = None
-        # Do not compute the energy if we do not check `absdelta`
-        if absdelta is not None or name is not None:
-            energy = vdot((r - j) / 2, pos)
-            energy_diff = previous_energy - energy
-        else:
-            energy = previous_energy
-            energy_diff = None
+        energy = vdot((r - j) / 2, pos)
+        energy_diff = previous_energy - energy
+        neg_energy_eps = -eps * jnp.abs(energy)
+        # print(f"energy increased", file=sys.stderr)
+        info = jnp.where(energy_diff < neg_energy_eps, -1, info)
         if absdelta is not None:
-            neg_energy_eps = -eps * jnp.abs(energy)
-            # print(f"energy increased", file=sys.stderr)
-            info = jnp.where(energy_diff < neg_energy_eps, -1, info)
             info = jnp.where(
-                (energy_diff >= neg_energy_eps) & (energy_diff < absdelta) &
-                (i >= miniter) & (info != -1), 0, info
+                (energy_diff < absdelta) & (i >= miniter) & (info != -1), 0,
+                info
             )
         info = jnp.where((i >= maxiter) & (info != -1), i, info)
 
@@ -352,13 +342,8 @@ def _static_cg(
         r = mat(pos) - j
         d = r
         nfev = 1
-    energy = None
-    if absdelta is not None or name is not None:
-        if x0 is None:
-            # energy = .5xT M x - xT j
-            energy = jnp.array(0.)
-        else:
-            energy = vdot((r - j) / 2, pos)
+    # energy = .5xT M x - xT j
+    energy = jnp.array(0.) if x0 is None else vdot((r - j) / 2, pos)
 
     gamma = sum_of_squares(r)
     val = {
@@ -507,6 +492,8 @@ def _cg_steihaug_subproblem(
     The Hessian itself is not required, and the Hessian does
     not need to be positive semidefinite.
     """
+    from jax.experimental.host_callback import call
+
     tr_norm_ord = jnp.inf if tr_norm_ord is None else tr_norm_ord  # taken from JAX
     norm_ord = 2 if norm_ord is None else norm_ord  # TODO: change to 1
     maxiter_fallback = 20 * size(g)  # taken from SciPy's NewtonCG minimzer
@@ -527,6 +514,18 @@ def _cg_steihaug_subproblem(
     soa = partial(
         second_order_approx, cur_val=cur_val, g=g, hessp_at_xk=hessp_at_xk
     )
+
+    def pp(arg):
+        msg = (
+            "{name}: |∇|:{r_norm:.6e} 🞋:{resnorm:.6e} ↗:{tr:.6e}"
+            " ☞:{case:1d} #∇²:{nhev:02d}"
+            "\n{name}: Iteration {i} ⛰:{energy:+.6e} Δ⛰:{energy_diff:.6e}" +
+            (" 🞋:{absdelta:.6e}" if arg["absdelta"] is not None else "") + (
+                "\n{name}: Iteration Limit Reached"
+                if arg["i"] == arg["maxiter"] else ""
+            )
+        )
+        logger.info(msg.format(name=name, **arg))
 
     # helpers for internal switches in the main CGSteihaug logic
     def noop(
@@ -572,7 +571,7 @@ def _cg_steihaug_subproblem(
     z = p_origin
     r = g
     d = -r
-    energy = 0. if absdelta is not None or name is not None else None
+    energy = 0.
     init_param = _CGSteihaugState(
         z=z,
         r=r,
@@ -611,13 +610,9 @@ def _cg_steihaug_subproblem(
         else:
             r_next_norm = jft_norm(r_next, ord=norm_ord, ravel=True)
         accept_z_next |= r_next_norm < resnorm
-        if absdelta is not None or name is not None:
-            # Relative to a plain CG, `z_next` is negative
-            energy_next = vdot((r_next + g) / 2, z_next)
-            energy_diff = energy - energy_next
-        else:
-            energy_next = energy
-            energy_diff = jnp.nan
+        # Relative to a plain CG, `z_next` is negative
+        energy_next = vdot((r_next + g) / 2, z_next)
+        energy_diff = energy - energy_next
         if absdelta is not None:
             neg_energy_eps = -eps * jnp.abs(energy)
             accept_z_next |= (energy_diff >= neg_energy_eps
@@ -641,23 +636,6 @@ def _cg_steihaug_subproblem(
             nit=nit
         )
         if name is not None:
-            from jax.experimental.host_callback import call
-
-            def pp(arg):
-                msg = (
-                    "{name}: |∇|:{r_norm:.6e} 🞋:{resnorm:.6e} ↗:{tr:.6e}"
-                    " ☞:{case:1d} #∇²:{nhev:02d}"
-                    "\n{name}: Iteration {i} ⛰:{energy:+.6e} Δ⛰:{energy_diff:.6e}"
-                    + (
-                        " 🞋:{absdelta:.6e}"
-                        if arg["absdelta"] is not None else ""
-                    ) + (
-                        "\n{name}: Iteration Limit Reached"
-                        if arg["i"] == arg["maxiter"] else ""
-                    )
-                )
-                print(msg.format(name=name, **arg), file=sys.stderr)
-
             printable_state = {
                 "i": nit,
                 "energy": iterp.energy,

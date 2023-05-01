@@ -2,13 +2,14 @@
 
 # SPDX-License-Identifier: GPL-2.0+ OR BSD-2-Clause
 
-from math import log2, sqrt
 import warnings
+from functools import partial
+from math import log2, sqrt
 
-from jax import vmap
+import jax
+import numpy as np
 from jax import numpy as jnp
 from jax.lax import dynamic_slice_in_dim
-import numpy as np
 
 from .util import get_cov_from_loc
 
@@ -110,6 +111,7 @@ def cov_sqrt(chart, kernel, level: int = 0):
     return fks_sqrt
 
 
+@partial(jax.jit, static_argnames=("chart", "precision"))
 def refine(
     coarse_values,
     excitations,
@@ -147,12 +149,12 @@ def refine(
     pix_r_off = jnp.arange(chart.shape_at(lvl)[1] - chart.coarse_size + 1)
     # TODO: benchmark swapping these two
     off = index_map is not None
-    vrefine = vmap(
+    vrefine = jax.vmap(
         refine, in_axes=(None, 0, None, 0, 0 + off, 0 + off, None)
     )
     in_axes = (None, 0, 0, None)
     in_axes += (0, 0, None) if index_map is None else (None, None, 0)
-    vrefine = vmap(vrefine, in_axes=in_axes)
+    vrefine = jax.vmap(vrefine, in_axes=in_axes)
     refined = vrefine(
         coarse_values, excitations, pix_hp_idx, pix_r_off, olf, fks, index_map
     )
