@@ -148,8 +148,9 @@ class MultiFrequencyToRGBProjector:
     """Class to facilitate projections of multi-frequency fields to sRGBs color space.
 
     The fields frequency/energy domain is mapped into the visible light spectral range.
-    The thusly mapped images are encoded into the sRGB color space based on a model of
-    humans color perception.
+    The thusly created visible light spectra mapped to percieved colors following the
+    CIE 1931 model of human color perception. The image of percieved colors is then
+    encoded into the sRGB color space and returned.
 
     For comparable plots of multiple component reconstructions, a fixed white point
     and black point can be set at initialization time. These can be overridden for
@@ -158,7 +159,7 @@ class MultiFrequencyToRGBProjector:
     To apply the transformation, use the method :func:`transform`.
     """
 
-    _EQUIVALENT_RGB_INTENSITIES_380nm_TO_780nm = np.array(
+    _CIE1931_STANDARD_OBSERVER_XYZ_COLOR_MATCHING_TABLE_380nm_TO_780nm = np.array(
           [[0.000160, 0.000662, 0.002362, 0.007242, 0.019110,
             0.043400, 0.084736, 0.140638, 0.204492, 0.264737,
             0.314679, 0.357719, 0.383734, 0.386726, 0.370702,
@@ -211,17 +212,15 @@ class MultiFrequencyToRGBProjector:
             0.000000, 0.000000, 0.000000, 0.000000, 0.000000,
             0.000000]])
 
-    _WAVELENGTH_MIN_TABLE = 380.
-    _WAVELENGTH_MAX_TABLE = 780.
     _WAVELENGTH_MIN_MAPPABLE = 400.
     _WAVELENGTH_MAX_MAPPABLE = 700.
 
-    _MATRIX_SRGB_D65 = np.array(
+    _CIE1931_XYZ_TO_sRGB_D65 = np.array(
             [[3.2404542, -1.5371385, -0.4985314],
              [-0.9692660,  1.8760108,  0.0415560],
              [0.0556434, -0.2040259,  1.0572252]])
 
-    _mapping_f_space_bins_to_rgb = None
+    _mapping_f_space_bins_to_xyz = None
     _dynamic_range = None
     _brightness_scale_anchor = None
 
@@ -262,7 +261,7 @@ class MultiFrequencyToRGBProjector:
         self._brightness_scale_anchor = None if brightness_scale_anchor is None else \
             self._check_pos_scalar(brightness_scale_anchor, "brightness_scale_anchor")
 
-        self.set_f_space_bin_to_rgb_mapping(f_space_bin_energies, log_mapping=map_energies_logarithmically)
+        self.set_f_space_bin_to_xyz_mapping(f_space_bin_energies, log_mapping=map_energies_logarithmically)
 
     def transform(self, spectral_data, override_dynamic_range=False, override_brightness_scale_anchor=False):
         """Projects spherical data `val` onto a two-dimensional plane.
@@ -293,7 +292,7 @@ class MultiFrequencyToRGBProjector:
                                                        "brightness scale anchor",
                                                        default=self._brightness_scale_anchor)
         n_freqs = spectral_data.shape[-1]
-        if self._mapping_f_space_bins_to_rgb.shape[0] != n_freqs:
+        if self._mapping_f_space_bins_to_xyz.shape[0] != n_freqs:
             raise ValueError("Projector initialized with incompatible f_space.")
 
         # processing of data
@@ -304,20 +303,18 @@ class MultiFrequencyToRGBProjector:
         min_spectral_data = max_spectral_data / dynamic_range
         spectral_data_log = self._to_logscale(spectral_data, min_spectral_data, max_spectral_data)
 
-        raw_rgb_data = np.tensordot(spectral_data_log, self._mapping_f_space_bins_to_rgb, axes=[1, 0])
+        xyz_data = np.tensordot(spectral_data_log, self._mapping_f_space_bins_to_xyz, axes=[1, 0])
 
-        sRGB_data = self.transform_raw_rgb_values_to_sRGB(raw_rgb_data)
+        sRGB_data = self.embed_perceived_color_in_sRGB(xyz_data)
         sRGB_data = sRGB_data.reshape(tgt_shp)
 
-        # ensuring outputs lie between zero and one
-        # LP FIXME: this clipping might lead to data-dependent white point shifts
-        # We could replace it with re-normalization, but this reduces color saturation
-        sRGB_data = sRGB_data.clip(0., 1.)
+        if (sRGB_data < 0.).any() or (sRGB_data > 1.).any():
+            raise ValueError("illegal outputs produced, error somewhere")
 
         return sRGB_data
 
-    def set_f_space_bin_to_rgb_mapping(self, f_space_bin_energies, log_mapping=True):
-        """Sets the frequency/energy domain bin to RGB color mapping to be used for all conversions.
+    def set_f_space_bin_to_xyz_mapping(self, f_space_bin_energies, log_mapping=True):
+        """Sets the frequency/energy domain bin to CIE 1931 XYZ color mapping.
 
         Parameters
         ----------
@@ -328,8 +325,8 @@ class MultiFrequencyToRGBProjector:
             ligth wavelengths. Default: `False`.
         """
         E_vis = self.map_f_space_bin_energies_to_visible_range(f_space_bin_energies,
-                                                                log_mapping=log_mapping)
-        self._mapping_f_space_bins_to_rgb = self.get_equivalent_rgb_intensity(1./E_vis)
+                                                               log_mapping=log_mapping)
+        self._mapping_f_space_bins_to_xyz = self.get_cie1931_standard_observer_xyz_tristimulus(1./E_vis)
 
     def map_f_space_bin_energies_to_visible_range(self, f_space_bin_energies, log_mapping=False):
         """Maps given bin energy values into the visible spectrum energy range.
@@ -361,8 +358,11 @@ class MultiFrequencyToRGBProjector:
 
         return E0_vis + (inp - inp_min) / (inp_max - inp_min) * (E1_vis - E0_vis)
 
-    def get_equivalent_rgb_intensity(self, wavelength):
-        """Linearly interpolate equivalent RGB intensities for given wavelengths.
+    def get_cie1931_standard_observer_xyz_tristimulus(self, wavelength):
+        """Get CIE 1931 XYZ tristimulus vaules for given wavelengths.
+
+        Linearly interpolates in the CIE 1931 Standard Observer table
+        (:math:`\delta\lambda = \mathrm{5nm}`).
 
         Parameters
         ----------
@@ -371,50 +371,50 @@ class MultiFrequencyToRGBProjector:
 
         Returns
         -------
-        rgb_intensities : :class:`numpy.ndarray`
-            Equivalent RGB intensities for the requested wavelength(s).
+        xyz_tristimulus_values : :class:`numpy.ndarray`
+            CIE 1931 XYZ tristimulus values for the requested wavelength(s).
         """
         # convenience functionality: recursively process numpy arrays
         if isinstance(wavelength, np.ndarray) and len(wavelength.shape) >= 1:
-            return np.array([self.get_equivalent_rgb_intensity(wl) for wl in wavelength])
+            return np.array([self.get_cie1931_standard_observer_xyz_tristimulus(wl)
+                             for wl in wavelength])
 
         # assure wavelength is a scalar
         if not self._is_scalar(wavelength):
             raise ValueError("not a scalar: " + str(wavelength))
 
-        # wavelengths outside the table range get mapped to the table ends (dark)
-        if wavelength <= self._WAVELENGTH_MIN_TABLE:
-            return self._EQUIVALENT_RGB_INTENSITIES_380nm_TO_780nm[:, 0]
-        if wavelength >= self._WAVELENGTH_MAX_TABLE:
-            return self._EQUIVALENT_RGB_INTENSITIES_380nm_TO_780nm[:, -1]
+        # wavelengths outside the table range get mapped to the table ends (quasi-dark)
+        if wavelength <= 380.:
+            return self._CIE1931_STANDARD_OBSERVER_XYZ_COLOR_MATCHING_TABLE_380nm_TO_780nm[:, 0]
+        if wavelength >= 780:
+            return self._CIE1931_STANDARD_OBSERVER_XYZ_COLOR_MATCHING_TABLE_380nm_TO_780nm[:, -1]
 
-        delta_wavelength_table = self._WAVELENGTH_MAX_TABLE - self._WAVELENGTH_MIN_TABLE
-        rel_wavelength = (wavelength - self._WAVELENGTH_MIN_TABLE) / delta_wavelength_table
+        length_table = self._CIE1931_STANDARD_OBSERVER_XYZ_COLOR_MATCHING_TABLE_380nm_TO_780nm.shape[1]
 
-        length_table = self._EQUIVALENT_RGB_INTENSITIES_380nm_TO_780nm.shape[1]
-        precise_position = rel_wavelength * (length_table - 1)
+        precise_position = (wavelength - 380.) / (780. - 380.) * length_table
         idx_table = int(np.floor(precise_position))
 
         weight = 1. - (precise_position - idx_table)
-        res = weight * self._EQUIVALENT_RGB_INTENSITIES_380nm_TO_780nm[:, idx_table]
-        res += (1. - weight) * self._EQUIVALENT_RGB_INTENSITIES_380nm_TO_780nm[:, idx_table + 1]
+        res = weight * self._CIE1931_STANDARD_OBSERVER_XYZ_COLOR_MATCHING_TABLE_380nm_TO_780nm[:, idx_table]
+        res += (1. - weight) * self._CIE1931_STANDARD_OBSERVER_XYZ_COLOR_MATCHING_TABLE_380nm_TO_780nm[:, idx_table + 1]
         return res
 
-    def transform_raw_rgb_values_to_sRGB(self, raw_rgb):
-        """Transform raw RGB values into the sRGB space.
+    def embed_perceived_color_in_sRGB(self, xyz_values):
+        """Transform CIE 1931 XYZ tristimulus values to corresponding sRGB values,
+        as best as possible.
 
         Parameters
         ----------
-        raw_rgb : :class:`numpy.ndarray`
-            Raw RGB values
+        xyz_values : :class:`numpy.ndarray`
+            XYZ tristimulus values
 
         Returns
         -------
         res_sRGB : :class:`numpy.ndarray`
             Corresponding sRGB values.
         """
-        tmp = np.tensordot(self._MATRIX_SRGB_D65, raw_rgb, axes=(1, 1)).T
-        tmp = tmp.clip(0., None)  # remove negative values produce in step above
+        tmp = np.tensordot(self._CIE1931_XYZ_TO_sRGB_D65, xyz_values, axes=(1, 1)).T
+        tmp = tmp.clip(0., 1.)  # clip to values inside the sRGB garmut
         return self._sRGB_gammacorr(tmp)
 
     def _sRGB_gammacorr(self, inp):
