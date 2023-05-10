@@ -55,7 +55,14 @@ ham = jft.StandardHamiltonian(likelihood=nll)
 
 
 def riemannian_manifold_maximum_a_posterior_and_grad(
-    pos, data, noise_std, forward, n_samples=1, xmap=jax.vmap
+    pos,
+    data,
+    noise_std,
+    forward,
+    n_samples=1,
+    mirror_noise=True,
+    xmap=jax.vmap,
+    _return_trafo_gradient=False,
 ):
     """Riemannian manifold maximum a posteriori and gradient.
 
@@ -63,7 +70,7 @@ def riemannian_manifold_maximum_a_posterior_and_grad(
     -----
     Memory scales quadratically in the number of samples.
     """
-    n_eff_samples = 2 * n_samples
+    n_eff_samples = 2 * n_samples if mirror_noise else n_samples
     samples_key = random.split(key, n_samples)
 
     noise_cov_inv = lambda x: x / noise_std**2
@@ -85,11 +92,12 @@ def riemannian_manifold_maximum_a_posterior_and_grad(
         synth_nll_grad_stack += [tan]
         grad_ln_det_metric += jft.hvp(lh, (pos, ), (tan, ))
 
-        d = f - noise_std * random.normal(k, shape=noise_std.shape)
-        lh = lh_core(d) @ forward
-        tan = jax.grad(lh)(pos)
-        synth_nll_grad_stack += [tan]
-        grad_ln_det_metric += jft.hvp(lh, (pos, ), (tan, ))
+        if mirror_noise:
+            d = f - noise_std * random.normal(k, shape=noise_std.shape)
+            lh = lh_core(d) @ forward
+            tan = jax.grad(lh)(pos)
+            synth_nll_grad_stack += [tan]
+            grad_ln_det_metric += jft.hvp(lh, (pos, ), (tan, ))
     # synth_nll_grad_stack = jft.stack(synth_nll_grad_stack)
     synth_nll_grad_stack = jax.tree_map(
         lambda *x: jnp.stack(tuple(jnp.atleast_1d(el) for el in x)),
@@ -102,42 +110,39 @@ def riemannian_manifold_maximum_a_posterior_and_grad(
     del synth_nll_grad_stack
 
     s, ln_det_metric = jnp.linalg.slogdet(jnp.eye(n_eff_samples) + lh_met)
+    grad_ln_det_metric = 2 * jnp.exp(
+        -ln_det_metric
+    ) * grad_ln_det_metric / n_eff_samples
     # assert s == 1
+    print(ln_det_metric)
+
     value, grad = jax.value_and_grad(ham)(pos)
     value += 0.5 * ln_det_metric
-    grad += 2 * grad_ln_det_metric / (n_eff_samples * jnp.exp(ln_det_metric))
+    grad += grad_ln_det_metric
 
+    if _return_trafo_gradient:
+        return value, grad, grad_ln_det_metric
     return value, grad
 
 
-# %%
-v, g = riemannian_manifold_maximum_a_posterior_and_grad(
-    jft.Vector(pos_truth),
+# # %%
+p = jft.random_like(random.split(key, 99)[-1], correlated_field.domain)
+
+v, g, g_trafo = riemannian_manifold_maximum_a_posterior_and_grad(
+    jft.Vector(p),
     data,
     noise_std,
     forward=signal_response,
-    n_samples=2
+    n_samples=5,
+    mirror_noise=False,
+    _return_trafo_gradient=True,
 )
-# print(
-#     {
-#         k: g.tree[k]
-#         for k in (
-#             "cfax1asperity", "cfax1flexibility", "cfax1fluctuations",
-#             "cfax1loglogavgslope", "cfzeromode"
-#         )
-#     }
-# )
-
-# # %%
-# print(
-#     {
-#         k: jax.grad(ham)(jft.Vector(pos_truth)).tree[k]
-#         for k in (
-#             "cfax1asperity", "cfax1flexibility", "cfax1fluctuations",
-#             "cfax1loglogavgslope", "cfzeromode"
-#         )
-#     }
-# )
+pk = (
+    "cfax1asperity", "cfax1flexibility", "cfax1fluctuations",
+    "cfax1loglogavgslope", "cfzeromode"
+)
+print({k: g.tree[k] for k in pk})
+print({k: g_trafo.tree[k] for k in pk})
 
 # %%
 n_samples = 4
@@ -149,8 +154,10 @@ ham_vg = partial(
     data=data,
     noise_std=noise_std,
     forward=signal_response,
-    n_samples=2
+    n_samples=8,
+    mirror_noise=False,
 )
+# ham_vg = jax.jit(jax.value_and_grad(ham))
 ham_metric = jax.jit(ham.metric)
 
 # %%
@@ -208,7 +215,11 @@ to_plot = [
     ("Noise", noise_truth, "im"),
     ("Data", data, "im"),
     ("Reconstruction", post_sr_mean, "im"),
-    ("Ax1", (cfm.amplitude(pos_truth)[1:], post_a_mean), "loglog"),
+    (
+        "Ax1",
+        (cfm.amplitude(pos_truth)[1:], post_a_mean,
+         cfm.amplitude(pos)[1:]), "loglog"
+    ),
 ]
 fig, axs = plt.subplots(2, 3, figsize=(16, 9))
 for ax, (title, field, tp) in zip(axs.flat, to_plot):
@@ -222,6 +233,4 @@ for ax, (title, field, tp) in zip(axs.flat, to_plot):
         for f in field:
             ax_plot(f, alpha=0.7)
 fig.tight_layout()
-fig.savefig("cf_w_unknown_spectrum.png", dpi=400)
 plt.show()
-plt.close()
