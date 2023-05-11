@@ -9,6 +9,7 @@ from functools import partial
 
 import jax
 import matplotlib.pyplot as plt
+import numpy as np
 from jax import numpy as jnp
 from jax import random
 from jax.config import config
@@ -143,6 +144,36 @@ pk = (
 )
 print({k: g.tree[k] for k in pk})
 print({k: g_trafo.tree[k] for k in pk})
+
+# %%
+from jax.flatten_util import ravel_pytree
+
+ham_metric = jax.jit(ham.likelihood.metric)
+
+probe = jft.zeros_like(correlated_field.domain)
+flat_probe, unravel = ravel_pytree(probe)
+met = jax.vmap(
+    lambda i: ravel_pytree(
+        ham_metric(
+            jft.Vector(pos_truth), jft.
+            Vector(unravel(flat_probe.at[i].set(1.)))
+        )
+    )[0],
+    out_axes=1
+)(np.arange(len(flat_probe)))
+
+# %%
+eigvals = np.linalg.eigvalsh(met)
+
+# %%
+fig, axs = plt.subplots(1, 2, figsize=(10, 5))
+ax = axs.flat[0]
+im = ax.matshow(np.log(met))
+fig.colorbar(im, ax=ax)
+ax = axs.flat[1]
+ax.plot(eigvals[::-1])
+ax.set_yscale("log")
+plt.show()
 
 # %%
 n_samples = 4
