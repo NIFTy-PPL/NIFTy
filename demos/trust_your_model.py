@@ -98,15 +98,14 @@ def riemannian_manifold_maximum_a_posterior_and_grad(
             tan = jax.grad(lh)(pos)
             synth_nll_grad_stack += [tan]
             grad_ln_det_metric += jft.hvp(lh, (pos, ), (tan, ))
-    # synth_nll_grad_stack = jft.stack(synth_nll_grad_stack)
     synth_nll_grad_stack = jax.tree_map(
         lambda *x: jnp.stack(tuple(jnp.atleast_1d(el) for el in x)),
         *synth_nll_grad_stack
     )
     small_outer = xmap(xmap(jft.dot, in_axes=(None, 0)), in_axes=(0, None))
-    lh_met = 1. / n_eff_samples * small_outer(
+    lh_met = small_outer(
         synth_nll_grad_stack, synth_nll_grad_stack
-    )
+    ) / n_eff_samples
     del synth_nll_grad_stack
 
     s, ln_det_metric = jnp.linalg.slogdet(jnp.eye(n_eff_samples) + lh_met)
@@ -127,6 +126,7 @@ def riemannian_manifold_maximum_a_posterior_and_grad(
 
 # # %%
 p = jft.random_like(random.split(key, 99)[-1], correlated_field.domain)
+# p = pos_truth
 
 v, g, g_trafo = riemannian_manifold_maximum_a_posterior_and_grad(
     jft.Vector(p),
