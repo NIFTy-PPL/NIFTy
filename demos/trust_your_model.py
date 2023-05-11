@@ -85,40 +85,44 @@ def riemannian_manifold_maximum_a_posterior_and_grad(
 
     synth_nll_grad_stack = []  # TODO: pre-allocate stack of samples
     f = forward(pos)  # TODO combine with ham forward pass
-    grad_ln_det_metric = jft.zeros_like(pos)
-    for k in samples_key:
-        d = f + noise_std * random.normal(k, shape=noise_std.shape)
+    for i, k in enumerate(np.repeat(samples_key, 1 + mirror_noise, axis=0)):
+        n = noise_std * random.normal(k, shape=noise_std.shape)
+        d = f + n if i % 2 == 0 else f - n
         lh = lh_core(d) @ forward
-        tan = jax.grad(lh)(pos)
-        synth_nll_grad_stack += [tan]
-        grad_ln_det_metric += jft.hvp(lh, (pos, ), (tan, ))
-
-        if mirror_noise:
-            d = f - noise_std * random.normal(k, shape=noise_std.shape)
-            lh = lh_core(d) @ forward
-            tan = jax.grad(lh)(pos)
-            synth_nll_grad_stack += [tan]
-            grad_ln_det_metric += jft.hvp(lh, (pos, ), (tan, ))
+        synth_nll_grad_stack += [jax.grad(lh)(pos)]
     synth_nll_grad_stack = jax.tree_map(
-        lambda *x: jnp.stack(tuple(jnp.atleast_1d(el) for el in x)),
-        *synth_nll_grad_stack
+        lambda *x: jnp.stack(x), *synth_nll_grad_stack
     )
+    synth_nll_grad_stack /= jnp.sqrt(n_eff_samples)
     small_outer = xmap(xmap(jft.dot, in_axes=(None, 0)), in_axes=(0, None))
-    lh_met = small_outer(
-        synth_nll_grad_stack, synth_nll_grad_stack
-    ) / n_eff_samples
-    del synth_nll_grad_stack
-
-    s, ln_det_metric = jnp.linalg.slogdet(jnp.eye(n_eff_samples) + lh_met)
-    grad_ln_det_metric = 2 * jnp.exp(
-        -ln_det_metric
-    ) * grad_ln_det_metric / n_eff_samples
+    lh_met_small = small_outer(synth_nll_grad_stack, synth_nll_grad_stack)
+    met_small = jnp.eye(n_eff_samples) + lh_met_small
+    s, ln_det_metric = jnp.linalg.slogdet(met_small)
     # assert s == 1
-    print(ln_det_metric)
+    # print(ln_det_metric)
+
+    grad_ln_det_metric = jft.zeros_like(pos)
+    met_small_inv = jnp.linalg.inv(met_small)
+    for i, k in enumerate(np.repeat(samples_key, 1 + mirror_noise, axis=0)):
+        n = noise_std * random.normal(k, shape=noise_std.shape)
+        d = f + n if i % 2 == 0 else f - n
+        lh = lh_core(d) @ forward
+
+        nll_smpl = jnp.sqrt(n_eff_samples) * jax.tree_map(
+            lambda x: x[i], synth_nll_grad_stack
+        )
+        t = xmap(jft.dot, in_axes=(0, None))(synth_nll_grad_stack, nll_smpl)
+        t = met_small_inv @ t  # shape: (n_eff_samples, )
+        t = jax.tree_map(
+            lambda x: xmap(jnp.multiply)(x, t).sum(axis=0), synth_nll_grad_stack
+        )
+        t = nll_smpl - t
+        grad_ln_det_metric += jft.hvp(lh, (pos, ), (t, ))
+    grad_ln_det_metric = 2 * grad_ln_det_metric / n_eff_samples
 
     value, grad = jax.value_and_grad(ham)(pos)
     value += 0.5 * ln_det_metric
-    grad += grad_ln_det_metric
+    grad += 0.5 * grad_ln_det_metric
 
     if _return_trafo_gradient:
         return value, grad, grad_ln_det_metric
@@ -134,8 +138,8 @@ v, g, g_trafo = riemannian_manifold_maximum_a_posterior_and_grad(
     data,
     noise_std,
     forward=signal_response,
-    n_samples=5,
-    mirror_noise=False,
+    n_samples=15,
+    mirror_noise=True,
     _return_trafo_gradient=True,
 )
 pk = (
@@ -176,7 +180,7 @@ ax.set_yscale("log")
 plt.show()
 
 # %%
-n_samples = 4
+n_samples = 8
 n_newton_iterations = 25
 absdelta = 1e-4 * jnp.prod(jnp.array(dims))
 
@@ -185,7 +189,7 @@ ham_vg = partial(
     data=data,
     noise_std=noise_std,
     forward=signal_response,
-    n_samples=8,
+    n_samples=n_samples,
     mirror_noise=False,
 )
 # ham_vg = jax.jit(jax.value_and_grad(ham))
