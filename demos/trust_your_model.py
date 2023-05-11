@@ -60,7 +60,8 @@ def riemannian_manifold_maximum_a_posterior_and_grad(
     data,
     noise_std,
     forward,
-    n_samples=1,
+    key,
+    n_vecs=1,
     mirror_noise=True,
     xmap=jax.vmap,
     _return_trafo_gradient=False,
@@ -71,8 +72,8 @@ def riemannian_manifold_maximum_a_posterior_and_grad(
     -----
     Memory scales quadratically in the number of samples.
     """
-    n_eff_samples = 2 * n_samples if mirror_noise else n_samples
-    samples_key = random.split(key, n_samples)
+    n_eff_samples = 2 * n_vecs if mirror_noise else n_vecs
+    samples_key = random.split(key, n_vecs)
 
     noise_cov_inv = lambda x: x / noise_std**2
     noise_std_inv = lambda x: x / noise_std
@@ -138,7 +139,8 @@ v, g, g_trafo = riemannian_manifold_maximum_a_posterior_and_grad(
     data,
     noise_std,
     forward=signal_response,
-    n_samples=15,
+    key=random.split(key, 914)[-1],
+    n_vecs=15,
     mirror_noise=True,
     _return_trafo_gradient=True,
 )
@@ -184,21 +186,22 @@ n_samples = 8
 n_newton_iterations = 25
 absdelta = 1e-4 * jnp.prod(jnp.array(dims))
 
+key, subkey = random.split(key)
+pos_init = jft.random_like(subkey, correlated_field.domain)
+pos = 1e-2 * jft.Vector(pos_init.copy())
+
+key, subkey = random.split(key)
 ham_vg = partial(
     riemannian_manifold_maximum_a_posterior_and_grad,
     data=data,
     noise_std=noise_std,
     forward=signal_response,
-    n_samples=n_samples,
+    key=subkey,
+    n_vecs=n_samples,
     mirror_noise=False,
 )
 # ham_vg = jax.jit(jax.value_and_grad(ham))
 ham_metric = jax.jit(ham.metric)
-
-# %%
-key, subkey = random.split(key)
-pos_init = jft.random_like(subkey, correlated_field.domain)
-pos = 1e-2 * jft.Vector(pos_init.copy())
 
 # %%  Minimize the potential
 print(f"RMMAP Iteration", file=sys.stderr)
