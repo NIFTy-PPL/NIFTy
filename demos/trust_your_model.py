@@ -13,6 +13,7 @@ import numpy as np
 from jax import numpy as jnp
 from jax import random
 from jax.config import config
+from jax.flatten_util import ravel_pytree
 
 import nifty8.re as jft
 
@@ -65,6 +66,7 @@ def riemannian_manifold_maximum_a_posterior_and_grad(
     mirror_noise=True,
     xmap=jax.vmap,
     _return_trafo_gradient=False,
+    _return_vecs=False,
 ):
     """Riemannian manifold maximum a posteriori and gradient.
 
@@ -125,8 +127,12 @@ def riemannian_manifold_maximum_a_posterior_and_grad(
     value += 0.5 * ln_det_metric
     grad += 0.5 * grad_ln_det_metric
 
-    if _return_trafo_gradient:
+    if _return_trafo_gradient and not _return_vecs:
         return value, grad, grad_ln_det_metric
+    if _return_vecs and not _return_trafo_gradient:
+        return value, grad, synth_nll_grad_stack
+    if _return_trafo_gradient and _return_vecs:
+        return value, grad, grad_ln_det_metric, synth_nll_grad_stack
     return value, grad
 
 
@@ -134,15 +140,16 @@ def riemannian_manifold_maximum_a_posterior_and_grad(
 p = jft.random_like(random.split(key, 99)[-1], correlated_field.domain)
 # p = pos_truth
 
-v, g, g_trafo = riemannian_manifold_maximum_a_posterior_and_grad(
+v, g, g_trafo, vecs = riemannian_manifold_maximum_a_posterior_and_grad(
     jft.Vector(p),
     data,
     noise_std,
     forward=signal_response,
     key=random.split(key, 914)[-1],
-    n_vecs=15,
+    n_vecs=150,
     mirror_noise=True,
     _return_trafo_gradient=True,
+    _return_vecs=True,
 )
 pk = (
     "cfax1asperity", "cfax1flexibility", "cfax1fluctuations",
@@ -152,13 +159,15 @@ print({k: g.tree[k] for k in pk})
 print({k: g_trafo.tree[k] for k in pk})
 
 # %%
-from jax.flatten_util import ravel_pytree
+v = jft.stack([ravel_pytree(el)[0] for el in jft.unstack(vecs)], axis=0)
+large_outer = jax.vmap(jax.vmap(jnp.dot, in_axes=(None, 1)), in_axes=(1, None))
+rmmap_metric = large_outer(v, v)
+rmmap_metric += np.eye(len(g))
 
-ham_metric = jax.jit(ham.likelihood.metric)
-
+ham_metric = jax.jit(ham.metric)
 probe = jft.zeros_like(correlated_field.domain)
 flat_probe, unravel = ravel_pytree(probe)
-met = jax.vmap(
+true_metric = jax.vmap(
     lambda i: ravel_pytree(
         ham_metric(
             jft.Vector(pos_truth), jft.
@@ -169,16 +178,29 @@ met = jax.vmap(
 )(np.arange(len(flat_probe)))
 
 # %%
-eigvals = np.linalg.eigvalsh(met)
+true_eigvals = np.linalg.eigvalsh(true_metric)
+rmmap_eigvals = np.linalg.eigvalsh(rmmap_metric)
 
 # %%
-fig, axs = plt.subplots(1, 2, figsize=(10, 5))
+kw = {
+    "vmin":
+        min(np.nanmin(np.log(true_metric)), np.nanmin(np.log(rmmap_metric))),
+    "vmax":
+        np.log(max(true_metric.max(), rmmap_metric.max()))
+}
+fig, axs = plt.subplots(1, 3, figsize=(8.5, 4))
 ax = axs.flat[0]
-im = ax.matshow(np.log(met))
-fig.colorbar(im, ax=ax)
+im = ax.matshow(np.log(true_metric), **kw)
+ax.set_title("True Metric")
 ax = axs.flat[1]
-ax.plot(eigvals[::-1])
+im = ax.matshow(np.log(rmmap_metric), **kw)
+ax.set_title("This Work")
+fig.colorbar(im, ax=axs.flat[:2])
+ax = axs.flat[2]
+ax.plot(true_eigvals[::-1], label="True")
+ax.plot(rmmap_eigvals[::-1], label="This Work")
 ax.set_yscale("log")
+ax.legend()
 plt.show()
 
 # %%
