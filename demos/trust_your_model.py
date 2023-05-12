@@ -19,7 +19,7 @@ import nifty8.re as jft
 
 config.update("jax_enable_x64", True)
 
-dims = (64, 64)
+dims = (64, )
 cf_zm = {"offset_mean": 0., "offset_std": (1e-3, 1e-4)}
 cf_fl = {
     "fluctuations": (1e-1, 5e-3),
@@ -56,6 +56,26 @@ nll = jft.Gaussian(data, noise_cov_inv) @ signal_response
 ham = jft.StandardHamiltonian(likelihood=nll)
 
 
+@partial(jax.jit, static_argnames=("point_estimates", ))
+def sample_evi(primals, key, *, niter, point_estimates=()):
+    # at: reset relative position as it gets (wrongly) batched too
+    # squeeze: merge "samples" axis with "mirrored_samples" axis
+    return jft.smap(
+        partial(
+            jft.sample_evi,
+            nll,
+            # linear_sampling_name="S",  # enables verbose logging
+            linear_sampling_kwargs={
+                "miniter": niter,
+                "maxiter": niter
+            },
+            point_estimates=point_estimates,
+        ),
+        in_axes=(None, 0)
+    )(primals, key).at(primals).squeeze()
+
+
+# %%
 def riemannian_manifold_maximum_a_posterior_and_grad(
     pos,
     data,
@@ -204,7 +224,7 @@ ax.legend()
 plt.show()
 
 # %%
-n_samples = 8
+n_samples = 15
 n_newton_iterations = 25
 absdelta = 1e-4 * jnp.prod(jnp.array(dims))
 
@@ -243,27 +263,7 @@ pos = opt_state.x
 msg = f"Post RMMAP Iteration: Energy {ham_vg(pos)[0]:2.4e}"
 print(msg, file=sys.stderr)
 
-
 # %%
-@partial(jax.jit, static_argnames=("point_estimates", ))
-def sample_evi(primals, key, *, niter, point_estimates=()):
-    # at: reset relative position as it gets (wrongly) batched too
-    # squeeze: merge "samples" axis with "mirrored_samples" axis
-    return jft.smap(
-        partial(
-            jft.sample_evi,
-            nll,
-            # linear_sampling_name="S",  # enables verbose logging
-            linear_sampling_kwargs={
-                "miniter": niter,
-                "maxiter": niter
-            },
-            point_estimates=point_estimates,
-        ),
-        in_axes=(None, 0)
-    )(primals, key).at(primals).squeeze()
-
-
 samples = sample_evi(pos, random.split(key, 5), niter=50)
 
 # %%
@@ -271,10 +271,10 @@ namps = cfm.get_normalized_amplitudes()
 post_sr_mean = jft.mean(tuple(signal_response(s) for s in samples.at(pos)))
 post_a_mean = jft.mean(tuple(cfm.amplitude(s)[1:] for s in samples.at(pos)))
 to_plot = [
-    ("Signal", signal_response_truth, "im"),
-    ("Noise", noise_truth, "im"),
-    ("Data", data, "im"),
-    ("Reconstruction", post_sr_mean, "im"),
+    ("Signal", signal_response_truth, ""),
+    ("Noise", noise_truth, ""),
+    ("Data", data, ""),
+    ("Reconstruction", post_sr_mean, ""),
     (
         "Ax1",
         (cfm.amplitude(pos_truth)[1:], post_a_mean,
