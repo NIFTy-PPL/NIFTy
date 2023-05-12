@@ -162,18 +162,16 @@ def riemannian_manifold_maximum_a_posterior_and_grad(
     lh = lh_core(data) @ forward
     ham = jft.StandardHamiltonian(lh)
 
-    synth_nll_grad_stack = []  # TODO: pre-allocate stack of samples
+    vecs = []  # TODO: pre-allocate stack of samples
     f = forward(pos)  # TODO combine with ham forward pass
     for i, k in enumerate(np.repeat(samples_key, 1 + mirror_noise, axis=0)):
         n = noise_std * random.normal(k, shape=noise_std.shape)
         d = f + n if i % 2 == 0 else f - n
         lh = lh_core(d) @ forward
-        synth_nll_grad_stack += [jax.grad(lh)(pos)]
-    synth_nll_grad_stack = jax.tree_map(
-        lambda *x: jnp.stack(x), *synth_nll_grad_stack
-    )
-    synth_nll_grad_stack /= jnp.sqrt(n_eff_samples)
-    eye_plus_vdaggerv_inv = EyePlusVdaggerVInv(synth_nll_grad_stack, xmap=xmap)
+        vecs += [jax.grad(lh)(pos)]
+    vecs = jax.tree_map(lambda *x: jnp.stack(x), *vecs)
+    vecs /= jnp.sqrt(n_eff_samples)
+    eye_plus_vdaggerv_inv = EyePlusVdaggerVInv(vecs, xmap=xmap)
 
     s, ln_det_metric = jnp.linalg.slogdet(eye_plus_vdaggerv_inv.small)
     # assert s == 1
@@ -185,9 +183,7 @@ def riemannian_manifold_maximum_a_posterior_and_grad(
         d = f + n if i % 2 == 0 else f - n
         lh = lh_core(d) @ forward
 
-        nll_smpl = jnp.sqrt(n_eff_samples) * jax.tree_map(
-            lambda x: x[i], synth_nll_grad_stack
-        )
+        nll_smpl = jnp.sqrt(n_eff_samples) * jax.tree_map(lambda x: x[i], vecs)
         grad_ln_det_metric += jft.hvp(
             lh, (pos, ), (eye_plus_vdaggerv_inv @ nll_smpl, )
         )
@@ -200,9 +196,9 @@ def riemannian_manifold_maximum_a_posterior_and_grad(
     if _return_trafo_gradient and not _return_vecs:
         return value, grad, grad_ln_det_metric
     if _return_vecs and not _return_trafo_gradient:
-        return value, grad, synth_nll_grad_stack
+        return value, grad, vecs
     if _return_trafo_gradient and _return_vecs:
-        return value, grad, grad_ln_det_metric, synth_nll_grad_stack
+        return value, grad, grad_ln_det_metric, vecs
     return value, grad
 
 
