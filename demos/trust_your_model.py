@@ -76,6 +76,62 @@ def sample_evi(primals, key, *, niter, point_estimates=()):
 
 
 # %%
+class EyePlusVdaggerV():
+    def __init__(self, vecs, xmap=jax.vmap):
+        """Linear operator applying :math:`I + V^\\dagger V` to a vector with
+        Woodbury inverse.
+        """
+        self._vecs = vecs
+        self._xmap = xmap
+
+    def __matmul__(self, other):
+        t = self.xmap(jft.dot, in_axes=(0, None))(self._vecs, other)
+        t = jax.tree_map(
+            lambda x: self.xmap(jnp.multiply)(x, t).sum(axis=0), self._vecs
+        )
+        return other + t
+
+    @property
+    def xmap(self):
+        return self._xmap
+
+    def inv(self):
+        return EyePlusVdaggerVInv(self._vecs, xmap=self._xmap)
+
+
+class EyePlusVdaggerVInv():
+    def __init__(self, vecs, xmap=jax.vmap):
+        """Sister of `EyePlusVdaggerV` applying the inverse."""
+        self._vecs = vecs
+        self._xmap = xmap
+
+        self._n_vecs = jax.tree_util.tree_leaves(vecs)[0].shape[0]
+        small_outer = xmap(xmap(jft.dot, in_axes=(None, 0)), in_axes=(0, None))
+        vvdagger = small_outer(self._vecs, self._vecs)
+        self._small = jnp.eye(self._n_vecs) + vvdagger
+        self._small_inv = jnp.linalg.inv(self._small)
+
+    @property
+    def small(self):
+        return self._small
+
+    @property
+    def small_inv(self):
+        return self._small_inv
+
+    def __matmul__(self, other):
+        t = self.xmap(jft.dot, in_axes=(0, None))(self._vecs, other)
+        t = self.small_inv @ t  # shape: (n_eff_samples, )
+        t = jax.tree_map(
+            lambda x: self.xmap(jnp.multiply)(x, t).sum(axis=0), self._vecs
+        )
+        return other - t
+
+    @property
+    def xmap(self):
+        return self._xmap
+
+
 def riemannian_manifold_maximum_a_posterior_and_grad(
     pos,
     data,
@@ -117,15 +173,13 @@ def riemannian_manifold_maximum_a_posterior_and_grad(
         lambda *x: jnp.stack(x), *synth_nll_grad_stack
     )
     synth_nll_grad_stack /= jnp.sqrt(n_eff_samples)
-    small_outer = xmap(xmap(jft.dot, in_axes=(None, 0)), in_axes=(0, None))
-    lh_met_small = small_outer(synth_nll_grad_stack, synth_nll_grad_stack)
-    met_small = jnp.eye(n_eff_samples) + lh_met_small
-    s, ln_det_metric = jnp.linalg.slogdet(met_small)
+    eye_plus_vdaggerv_inv = EyePlusVdaggerVInv(synth_nll_grad_stack, xmap=xmap)
+
+    s, ln_det_metric = jnp.linalg.slogdet(eye_plus_vdaggerv_inv.small)
     # assert s == 1
     # print(ln_det_metric)
 
     grad_ln_det_metric = jft.zeros_like(pos)
-    met_small_inv = jnp.linalg.inv(met_small)
     for i, k in enumerate(np.repeat(samples_key, 1 + mirror_noise, axis=0)):
         n = noise_std * random.normal(k, shape=noise_std.shape)
         d = f + n if i % 2 == 0 else f - n
@@ -134,13 +188,9 @@ def riemannian_manifold_maximum_a_posterior_and_grad(
         nll_smpl = jnp.sqrt(n_eff_samples) * jax.tree_map(
             lambda x: x[i], synth_nll_grad_stack
         )
-        t = xmap(jft.dot, in_axes=(0, None))(synth_nll_grad_stack, nll_smpl)
-        t = met_small_inv @ t  # shape: (n_eff_samples, )
-        t = jax.tree_map(
-            lambda x: xmap(jnp.multiply)(x, t).sum(axis=0), synth_nll_grad_stack
+        grad_ln_det_metric += jft.hvp(
+            lh, (pos, ), (eye_plus_vdaggerv_inv @ nll_smpl, )
         )
-        t = nll_smpl - t
-        grad_ln_det_metric += jft.hvp(lh, (pos, ), (t, ))
     grad_ln_det_metric = 2 * grad_ln_det_metric / n_eff_samples
 
     value, grad = jax.value_and_grad(ham)(pos)
@@ -166,7 +216,7 @@ v, g, g_trafo, vecs = riemannian_manifold_maximum_a_posterior_and_grad(
     noise_std,
     forward=signal_response,
     key=random.split(key, 914)[-1],
-    n_vecs=150,
+    n_vecs=15,
     mirror_noise=True,
     _return_trafo_gradient=True,
     _return_vecs=True,
