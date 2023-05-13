@@ -501,3 +501,42 @@ class DomainChangerAndReshaper(LinearOperator):
     @staticmethod
     def _shapes(dom):
         return " ".join([str(dd.shape) for dd in dom])
+
+
+class ExtractAtIndices(LinearOperator):
+    """Extract Field values at the given indices and puts them in a field with an
+    unstructured domain. Note: There might be the same index several times.
+
+    Parameters
+    ----------
+    domain : DomainTuple
+        Domain of the operator
+    indices: tuple
+        Tuple of indices to extract from the field. The length of the tuple
+        needs to equal the number of axes of the field. Each entry of the
+        tuple should be a tuple of indies to take along the respective axis.
+        Example for a 2d field: ((0,1,1,0), (3,4,1,5))
+    """
+    def __init__(self, domain, indices):
+        from ..sugar import makeDomain
+
+        if not isinstance(indices, tuple):
+            raise TypeError("indices need to be a tuple")
+        self._domain = makeDomain(domain)
+        if not len(domain.shape) == len(indices):
+            raise ValueError("Shape of indices don't match dimension of domain")
+        if not len(set([len(ax) for ax in indices])) == 1:
+            raise ValueError("The number of indices must be the same along each axis")
+        tar = UnstructuredDomain(len(indices[0]))
+        self._target = makeDomain(tar)
+        self._inds = indices
+        self._capability = self.TIMES | self.ADJOINT_TIMES
+
+    def apply(self, x, mode):
+        self._check_input(x, mode)
+        if mode == self.TIMES:
+            res = x.val[self._inds]
+        else:
+            res = np.zeros(self._domain.shape, dtype=x.dtype)
+            np.add.at(res, self._inds, x.val)
+        return Field.from_raw(self._tgt(mode), res)
