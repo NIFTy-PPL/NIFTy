@@ -155,6 +155,14 @@ def testGeometryRemover(sp, dtype):
     _check_repr(ift.GeometryRemover(sp))
 
 
+@pmp('sp', _h_spaces + _p_spaces + _pow_spaces)
+def testExtractAtIndices(sp, dtype):
+    min_ax = np.min(sp.shape)
+    n_ax = len(sp.shape)
+    inds = (list(range(min_ax//2))+list(range(min_ax//3)), )*n_ax
+    _check_repr(ift.ExtractAtIndices(sp, inds))
+
+
 @pmp('spaces', [0, 1, 2, 3, (0, 1), (0, 2), (0, 1, 2), (0, 2, 3), (1, 3)])
 @pmp('wgt', [0, 1, 2, -1])
 def testContractionOperator(spaces, wgt, dtype):
