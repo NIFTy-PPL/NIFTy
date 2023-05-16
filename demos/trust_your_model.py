@@ -290,6 +290,8 @@ ham_vg = partial(
 )
 # ham_vg = jax.jit(jax.value_and_grad(ham))
 ham_metric = jax.jit(ham.metric)
+# TODO: use the actually used metric here (woodbury) and make NCG work with it
+# TODO: sample on top of RMMAP
 
 # %%  Minimize the potential
 print(f"RMMAP Iteration", file=sys.stderr)
