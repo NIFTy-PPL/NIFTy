@@ -505,7 +505,9 @@ class DomainChangerAndReshaper(LinearOperator):
 
 class ExtractAtIndices(LinearOperator):
     """Extract Field values at the given indices and puts them in a field with an
-    unstructured domain. Note: There might be the same index several times.
+    unstructured domain. Note: This operator supports having the same index
+    several times. If this is not the case also the numerically faster
+    `GeometryRemover` can be used.
 
     Parameters
     ----------
