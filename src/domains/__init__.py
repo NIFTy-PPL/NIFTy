@@ -5,5 +5,6 @@ from .hp_space import HPSpace
 from .lm_space import LMSpace
 from .power_space import PowerSpace
 from .rg_space import RGSpace
+from .irg_space import IRGSpace
 from .structured_domain import StructuredDomain
 from .unstructured_domain import UnstructuredDomain
