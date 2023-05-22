@@ -51,7 +51,6 @@ from .operators.multifield2vector import Multifield2Vector
 from .operators.jax_operator import *
 from .operators.counting_operator import CountingOperator
 from .operators.transpose_operator import TransposeOperator
-from .operators.cumsum_operator import CumsumOperator
 
 from .probing import probe_with_posterior_samples, probe_diagonal, \
     StatCalculator, approximation2endo
@@ -95,6 +94,7 @@ from .library.nft import Gridder, FinuFFT, Nufft
 from .library.correlated_fields import CorrelatedFieldMaker
 from .library.correlated_fields_simple import SimpleCorrelatedField
 from .library.variational_models import MeanFieldVI, FullCovarianceVI
+from .library.gauss_markov_processes import WPPrior
 
 from . import extra
 
