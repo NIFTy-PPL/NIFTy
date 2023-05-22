@@ -5,7 +5,7 @@ from ..domains.irg_space import IRGSpace
 from .endomorphic_operator import EndomorphicOperator
 from ..sugar import makeDomain, makeField
 
-class Cumsum(EndomorphicOperator):
+class CumsumOperator(EndomorphicOperator):
     def __init__(self, domain, spaces = None):
         self._domain = makeDomain(domain)
         if spaces is None:
