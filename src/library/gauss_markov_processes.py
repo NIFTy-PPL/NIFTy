@@ -27,7 +27,19 @@ from ..sugar import makeOp, makeDomain, makeField
 
 
 class _CumsumOperator(EndomorphicOperator):
-    def __init__(self, domain, space = None):
+    """
+    Operator performs a cumulative sum along a space.#    #####################
+
+    Parameters:
+    -----------
+    domain: Domain or tuple of Domain or DomainTuple
+        The domain on which the Operator's input Field is defined.
+    space: None or int
+        space for the integration
+
+    Note: Integration domain must be of instance RGSpace or IRGSpace
+    """
+    def __init__(self, domain, space=None):
         self._domain = makeDomain(domain)
         self._capability = self.TIMES | self.ADJOINT_TIMES
 
@@ -43,6 +55,7 @@ class _CumsumOperator(EndomorphicOperator):
             self._wgts = intdom.dvol
         else:
             raise ValueError("Integration domain of incorrect type!")
+
         self._wgts = np.sqrt(self._wgts)
 
         # spaces to axis
@@ -67,6 +80,20 @@ class _CumsumOperator(EndomorphicOperator):
 
 
 def WPPrior(Amplitude, key = 'xi', space = None):
+    """
+    Models a Wiener Process or Brownian Motion, meaning that the differences
+    along the considered space are Gaussian distirbutated. The Amplitude can be
+    field or an operator and is scaling the Gaussian deviations before the
+    cumulative Sum.
+
+    Parameters:
+    -----------
+    Amplitude: :class:`nifty8.field.Field` or :class:`nifty.operators.Operator`
+    key : String
+        Key of Field containing the standard Gaussian distributed deviations.
+    space:  None or int
+        if None the Wiener Process is performed on the 0th space.
+    """
     if is_fieldlike(Amplitude):
         wp = makeOp(Amplitude).ducktape(key)
     elif is_operator(Amplitude):
