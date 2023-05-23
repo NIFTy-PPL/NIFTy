@@ -79,7 +79,7 @@ class _CumsumOperator(EndomorphicOperator):
         return makeField(self._domain, res)
 
 
-def WPPrior(Amplitude, key = 'xi', space = None):
+def WPPrior(Amplitude, key='xi', space=None):
     """
     Models a Wiener Process or Brownian Motion, meaning that the differences
     along the considered space are Gaussian distirbutated. The Amplitude can be
