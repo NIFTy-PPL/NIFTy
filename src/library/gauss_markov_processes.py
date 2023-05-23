@@ -22,7 +22,7 @@ from ..operators.endomorphic_operator import EndomorphicOperator
 from ..operators.scaling_operator import ScalingOperator
 from ..domains.rg_space import RGSpace
 from ..domains.irg_space import IRGSpace
-from ..extra import is_fieldlike
+from ..extra import is_fieldlike, is_operator
 from ..sugar import makeOp, makeDomain, makeField
 
 
