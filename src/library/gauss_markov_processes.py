@@ -29,9 +29,12 @@ from ..sugar import makeOp, makeDomain, makeField
 class _CumsumOperator(EndomorphicOperator):
     def __init__(self, domain, space = None):
         self._domain = makeDomain(domain)
+        self._capability = self.TIMES | self.ADJOINT_TIMES
+
         if space is None:
-            space  = 0
+            space = 0
         intdom = self._domain[space]
+
         if isinstance(intdom, RGSpace):
             if not len(intdom.distances) == 1:
                 raise ValueError("Integration domain must be 1D")
@@ -42,15 +45,15 @@ class _CumsumOperator(EndomorphicOperator):
             raise ValueError("Integration domain of incorrect type!")
         self._wgts = np.sqrt(self._wgts)
 
-        self._axis = reduce(lambda a,b:a+b, (len(dd.shape) for dd in 
-                                            self._domain[:space]))
-        _back = reduce(lambda a,b:a+b, (len(dd.shape) for dd in 
-                                       self._domain[(space+1):]))
-        self._wgts = np.expand_dims(self._wgts, 
-                                    axis=tuple(i for i in range(self._axis)) + 
-                                    tuple(-(i+1) for i in range(_back)))
+        # spaces to axis
+        self._axis = reduce(lambda a, b: a+b,
+                            (len(dd.shape) for dd in self._domain[:space]), 0)
+        _back = reduce(lambda a, b: a+b,
+                       (len(dd.shape) for dd in self._domain[(space+1):]), 0)
 
-        self._capabilities = self.TIMES | self.ADJOINT_TIMES
+        self._wgts = np.expand_dims(self._wgts,
+                                    axis=tuple(i for i in range(self._axis)) +
+                                    tuple(-(i+1) for i in range(_back)))
 
     def apply(self, x, mode):
         self._check_input(x, mode)
@@ -66,6 +69,8 @@ class _CumsumOperator(EndomorphicOperator):
 def WPPrior(Amplitude, key = 'xi', space = None):
     if is_fieldlike(Amplitude):
         wp = makeOp(Amplitude).ducktape(key)
-    else:
+    elif is_operator(Amplitude):
         wp = Amplitude * ScalingOperator(Amplitude.target, 1).ducktape(key)
+    else:
+        raise ValueError("Amplitude should be a either be a field or an operator.")
     return _CumsumOperator(wp.target, space=space) @ wp
