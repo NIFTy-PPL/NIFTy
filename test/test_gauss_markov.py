@@ -2,7 +2,7 @@ import numpy as np
 import nifty8 as ift
 
 
-def check_linear_wpprior():
+def test_linear_wpprior():
     sp1 = ift.RGSpace(10, distances=1)
     sp2 = ift.RGSpace([3, 3])
     dom = ift.makeDomain([sp2, sp1])
@@ -24,7 +24,7 @@ def check_linear_wpprior():
     ift.extra.check_linear_operator(wp)
 
 
-def check_non_linear_wpprior():
+def test_non_linear_wpprior():
     sp1 = ift.RGSpace(10, distances=1)
     sp2 = ift.RGSpace([3, 3])
     dom = ift.makeDomain([sp2, sp1])
@@ -46,13 +46,3 @@ def check_non_linear_wpprior():
 
     # do the operator checks for non-linear ops
     ift.extra.check_operator(wp, xi)
-
-
-check_linear_wpprior()
-check_non_linear_wpprior()
-
-# plt.plot(x1, label="cumsum", alpha=0.3)
-# plt.plot(x2, label="xi")
-# plt.plot(diff, label="diff", alpha=0.3)
-# plt.legend()
-# plt.show()
