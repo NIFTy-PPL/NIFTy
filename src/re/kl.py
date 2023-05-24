@@ -367,6 +367,8 @@ def sample_evi(
     linear_sampling_cg : callable
         Implementation of the conjugate gradient algorithm and used to apply the
         inverse of the metric.
+    linear_sampling_name : str, optional
+        Name of cg optimizer.
     linear_sampling_kwargs : dict
         Additional keyword arguments passed on to `cg`.
     non_linear_sampling_method : str
