@@ -537,7 +537,7 @@ class ExtractAtIndices(LinearOperator):
                 for i, sp in enumerate(self._domain)]
         self._target = makeDomain(target)
 
-        inds = [slice(None)] * domain.shape
+        inds = [slice(None)] * len(domain.shape)
         dims_of_sps = [len(sp.shape) for sp in self._domain]
         start_ax_sp = int(np.sum(dims_of_sps[:space]))
         stop_ax_sp = start_ax_sp + dims_of_sps[space]
