@@ -371,13 +371,11 @@ def sample_evi(
         Additional keyword arguments passed on to `cg`.
     non_linear_sampling_method : str
         Method to use for the minimization.
-    non_linear_sampling_kwargs : dict
-        Additional keyword arguments passed on to the minimzer of the non-linear
-        potential.
     non_linear_sampling_name : str, optional
         Name of the non-linear optimizer.
     non_linear_sampling_kwargs : dict, optional
-        Options for the non-linear optimizer.
+        Additional keyword arguments passed on to the minimzer of the non-linear
+        potential.
 
     Returns
     -------
