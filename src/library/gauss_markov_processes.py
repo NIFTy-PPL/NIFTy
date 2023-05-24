@@ -28,7 +28,7 @@ from ..sugar import makeOp, makeDomain, makeField
 
 class _CumsumOperator(EndomorphicOperator):
     """
-    Operator performs a cumulative sum along a space.#    #####################
+    Operator performs a cumulative sum along a space.
 
     Parameters:
     -----------
@@ -99,5 +99,5 @@ def WPPrior(Amplitude, key='xi', space=None):
     elif is_operator(Amplitude):
         wp = Amplitude * ScalingOperator(Amplitude.target, 1).ducktape(key)
     else:
-        raise ValueError("Amplitude should be a either be a field or an operator.")
+        raise ValueError("Amplitude needs to be a field or an operator.")
     return _CumsumOperator(wp.target, space=space) @ wp
