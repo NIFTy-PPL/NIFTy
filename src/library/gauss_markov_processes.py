@@ -12,14 +12,15 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
 # Copyright(C) 2013-2023 Max-Planck-Society
-# Authors: Philipp Frank, Vincent Eberle
+# Authors: Philipp Frank, Vincent Eberle, Philipp Arras
 #
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
 
 import numpy as np
 from functools import reduce
-from ..operators.endomorphic_operator import EndomorphicOperator
+from ..operators.endomorphic_operator import EndomorphicOperator, LinearOperator
 from ..operators.scaling_operator import ScalingOperator
+from ..domains.unstructured_domain import UnstructuredDomain
 from ..domains.rg_space import RGSpace
 from ..domains.irg_space import IRGSpace
 from ..extra import is_fieldlike, is_operator
@@ -101,3 +102,56 @@ def WPPrior(Amplitude, key='xi', space=None):
     else:
         raise ValueError("Amplitude needs to be a field or an operator.")
     return _CumsumOperator(wp.target, space=space) @ wp
+
+
+class IWPPrior(LinearOperator):
+    """Operator that performs the integrations necessary for an integrated
+    Wiener process.
+
+    Parameters
+    ----------
+    iwp_domain: RGSpace or IRGSpace
+        Domain for integrated Wiener Process.
+    remaining_domain : DomainTuple, Domain or None
+        All integrations are handled independently for this domain.
+    """
+    def __init__(self, iwp_domain, remaining_domain=None):
+        # my_assert_isinstance(iwp_domain, IRGSpace)
+        if remaining_domain is not None:
+            self._target = makeDomain((iwp_domain, remaining_domain))
+            dom = UnstructuredDomain((2, iwp_domain.size - 1)), remaining_domain
+            self._domain = makeDomain(dom)
+        else:
+            self._target = makeDomain((iwp_domain))
+            self._domain = makeDomain(UnstructuredDomain((2, iwp_domain.size - 1)))
+
+        self._volumes = iwp_domain.distances
+        if isinstance(iwp_domain, IRGSpace) and remaining_domain is not None:
+            for _ in range(len(remaining_domain.shape)):
+                self._volumes = self._volumes[..., np.newaxis]
+        elif isinstance(iwp_domain, RGSpace):
+            self._volumes = self._volumes[0]
+        self._capability = self.TIMES | self.ADJOINT_TIMES
+
+    def apply(self, x, mode):
+        self._check_input(x, mode)
+        first, second = (0,), (1,)
+        from_second = (slice(1, None),)
+        no_border = (slice(0, -1),)
+        reverse = (slice(None, None, -1),)
+        if mode == self.TIMES:
+            x = x.val
+            res = np.zeros(self._target.shape)
+            res[from_second] = np.cumsum(x[second], axis=0)
+            res[from_second] = (res[from_second] + res[no_border]) / 2 * self._volumes + x[first]
+            res[from_second] = np.cumsum(res[from_second], axis=0)
+        else:
+            x = x.val_rw()
+            res = np.zeros(self._domain.shape)
+            x[from_second] = np.cumsum(x[from_second][reverse], axis=0)[reverse]
+            res[first] += x[from_second]
+            print(type(self._volumes))
+            x[from_second] *= self._volumes / 2.0
+            x[no_border] += x[from_second]
+            res[second] += np.cumsum(x[from_second][reverse], axis=0)[reverse]
+        return makeField(self._tgt(mode), res)

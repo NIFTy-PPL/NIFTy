@@ -94,7 +94,7 @@ from .library.nft import Gridder, FinuFFT, Nufft
 from .library.correlated_fields import CorrelatedFieldMaker
 from .library.correlated_fields_simple import SimpleCorrelatedField
 from .library.variational_models import MeanFieldVI, FullCovarianceVI
-from .library.gauss_markov_processes import WPPrior
+from .library.gauss_markov_processes import WPPrior, IWPPrior
 
 from . import extra
 
