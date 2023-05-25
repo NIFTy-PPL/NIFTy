@@ -206,17 +206,19 @@ def riemannian_manifold_maximum_a_posterior_and_grad(
 p = jft.random_like(random.split(key, 99)[-1], correlated_field.domain)
 # p = pos_truth
 
-v, g, g_trafo, vecs = riemannian_manifold_maximum_a_posterior_and_grad(
-    jft.Vector(p),
-    data,
-    noise_std,
-    forward=signal_response,
-    key=random.split(key, 914)[-1],
-    n_vecs=15,
-    mirror_noise=True,
-    _return_trafo_gradient=True,
-    _return_vecs=True,
-)
+v, g, g_trafo, vecs = jax.vmap(
+    partial(
+        riemannian_manifold_maximum_a_posterior_and_grad,
+        noise_std=noise_std,
+        forward=signal_response,
+        key=random.split(key, 914)[-1],
+        n_vecs=15,
+        mirror_noise=True,
+        _return_trafo_gradient=True,
+        _return_vecs=True,
+    ),
+    in_axes=(0, None)
+)(jft.stack((jft.Vector(p), jft.Vector(p))), data)
 pk = (
     "cfax1asperity", "cfax1flexibility", "cfax1fluctuations",
     "cfax1loglogavgslope", "cfzeromode"
@@ -270,8 +272,9 @@ ax.legend()
 plt.show()
 
 # %%
-n_samples = 15
+n_vecs = 30
 n_newton_iterations = 25
+n_rmmap_samples = 4
 absdelta = 1e-4 * jnp.prod(jnp.array(dims))
 
 key, subkey = random.split(key)
@@ -279,19 +282,35 @@ pos_init = jft.random_like(subkey, correlated_field.domain)
 pos = 1e-2 * jft.Vector(pos_init.copy())
 
 key, subkey = random.split(key)
-ham_vg = partial(
+_ham_vg = partial(
     riemannian_manifold_maximum_a_posterior_and_grad,
     data=data,
     noise_std=noise_std,
     forward=signal_response,
     key=subkey,
-    n_vecs=n_samples,
+    n_vecs=n_vecs,
     mirror_noise=False,
 )
+key, sample_key = random.split(key)
+
+
+@partial(
+    partial, key=sample_key, n_samples=n_rmmap_samples, mirror_samples=True
+)
+def ham_vg(pos, key, n_samples, mirror_samples):
+    samples = jax.vmap(jft.random_like,
+                       in_axes=(0, None))(random.split(key, n_samples), pos)
+    if mirror_samples:
+        samples = jax.tree_map(lambda *x: jnp.concatenate(x), samples, -samples)
+    return jax.tree_map(
+        partial(jnp.mean, axis=0),
+        jax.vmap(_ham_vg, in_axes=(0, ))(pos + samples)
+    )
+
+
 # ham_vg = jax.jit(jax.value_and_grad(ham))
 ham_metric = jax.jit(ham.metric)
 # TODO: use the actually used metric here (woodbury) and make NCG work with it
-# TODO: sample on top of RMMAP
 
 # %%  Minimize the potential
 print(f"RMMAP Iteration", file=sys.stderr)
