@@ -517,7 +517,7 @@ class ExtractAtIndices(LinearOperator):
     indices: tuple
         Tuple of indices to extract from the field along a given space.
         The length of the tuple needs to equal the number of axes of the space.
-        Each entry of the tuple should be a tuple of indies to take along the
+        Each entry of the tuple should be a tuple of indices to take along the
         respective axis of the space.
         Example for a 2d space: indices=((0,1,1,0), (3,4,1,5)) will extract
         the pixels (0,3), (1,4), (1,1) and (0,5).
