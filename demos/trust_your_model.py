@@ -298,6 +298,8 @@ key, sample_key = random.split(key)
     partial, key=sample_key, n_samples=n_rmmap_samples, mirror_samples=True
 )
 def ham_vg(pos, key, n_samples, mirror_samples):
+    # NOTE to self, this is wrong! We need to apply the coordinate
+    # transfomration to our white samples.
     samples = jax.vmap(jft.random_like,
                        in_axes=(0, None))(random.split(key, n_samples), pos)
     if mirror_samples:
