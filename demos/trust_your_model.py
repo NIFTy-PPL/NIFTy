@@ -300,6 +300,7 @@ key, sample_key = random.split(key)
 def ham_vg(pos, key, n_samples, mirror_samples):
     # NOTE to self, this is wrong! We need to apply the coordinate
     # transfomration to our white samples.
+    # TODO: project out the parts that are already covered by the vectors
     samples = jax.vmap(jft.random_like,
                        in_axes=(0, None))(random.split(key, n_samples), pos)
     if mirror_samples:
