@@ -105,6 +105,10 @@ noise_truth = jnp.sqrt(
 data = signal_response_truth + noise_truth
 
 nll = jft.Gaussian(data, noise_cov_inv) @ signal_response
+# NOTE, keep in mind that sampling with geoVI can currently not be compiled.
+# Jit-compile the next best thing: the likelihood, its metric and its
+# left-sqrt-metric. This is redundant for MGVI.
+nll = nll.jit()
 ham = jft.StandardHamiltonian(likelihood=nll)
 
 
@@ -122,6 +126,31 @@ def ham_metric(primals, tangents, primals_samples):
     vmet = jax.vmap(ham.metric, in_axes=(0, None))
     s = vmet(primals_samples.at(primals).samples, tangents)
     return jax.tree_util.tree_map(partial(jnp.mean, axis=0), s)
+
+
+def sample_geoevi(primals, key, *, absdelta, point_estimates=()):
+    n_non_linear_steps = 15
+    sample = partial(
+        jft.sample_evi,
+        nll,
+        # linear_sampling_name="S",  # enables verbose logging
+        # non_linear_sampling_name="SN",  # enables verbose logging
+        linear_sampling_kwargs={"absdelta": absdelta / 10.},
+        point_estimates=point_estimates,
+        non_linear_sampling_kwargs={
+            "maxiter": n_non_linear_steps,
+            # Disable verbose logging for the CG within the sampling
+            "cg_kwargs": {
+                "name": None
+            }
+        }
+    )
+    # Manually loop over the keys for the samples because mapping over them
+    # would implicitly JIT the sampling which is exacty what we want to avoid.
+    samples = tuple(sample(primals, k) for k in key)
+    # at: reset relative position as it gets (wrongly) batched too
+    # squeeze: merge "samples" axis with "mirrored_samples" axis
+    return jft.stack(samples).at(primals).squeeze()
 
 
 @partial(jax.jit, static_argnames=("point_estimates", ))
