@@ -154,8 +154,8 @@ def riemannian_manifold_maximum_a_posterior_and_grad(
     -----
     Memory scales linearly in the number of vectors and samples.
     """
-    # TODO: make depndent on dtype of `pos` and `data`
-    R_EPS = 1e-13  # sane relative tolerance for vectors with entries ~1
+    # Hopefully sane relative tolerance for vectors with entries ~1
+    R_EPS = 1e+3 * jnp.finfo(jft.common_type((pos, data))).eps
 
     n_eff_vecs = n_vecs * (1 + mirror_vecs)
     n_eff_samples = n_samples * (1 + mirror_samples)
