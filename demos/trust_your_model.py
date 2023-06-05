@@ -19,7 +19,7 @@ import nifty8.re as jft
 
 config.update("jax_enable_x64", True)
 
-dims = (64, )
+dims = (512, )
 cf_zm = {"offset_mean": 0., "offset_std": (1e-3, 1e-4)}
 cf_fl = {
     "fluctuations": (1e-1, 5e-3),
@@ -137,21 +137,34 @@ def riemannian_manifold_maximum_a_posterior_and_grad(
     data,
     noise_std,
     forward,
-    key,
+    key_vecs,
     n_vecs=1,
-    mirror_noise=True,
+    mirror_vecs=True,
+    key_samples=None,
+    n_samples=0,
+    mirror_samples=True,
     xmap=jax.vmap,
     _return_trafo_gradient=False,
     _return_vecs=False,
+    _return_samples=False,
 ):
     """Riemannian manifold maximum a posteriori and gradient.
 
     Notes
     -----
-    Memory scales quadratically in the number of samples.
+    Memory scales linearly in the number of vectors and samples.
     """
-    n_eff_samples = 2 * n_vecs if mirror_noise else n_vecs
-    samples_key = random.split(key, n_vecs)
+    # TODO: make depndent on dtype of `pos` and `data`
+    R_EPS = 1e-13  # sane relative tolerance for vectors with entries ~1
+
+    n_eff_vecs = n_vecs * (1 + mirror_vecs)
+    n_eff_samples = n_samples * (1 + mirror_samples)
+    key_vecs = random.split(key_vecs, n_vecs)
+    key_samples = random.split(key_samples,
+                               n_samples) if key_samples is not None else ()
+    if n_samples > 0 and key_samples is None:
+        ve = "`n_samples` > 0 requires a PRNG key for sampling (`key_samples`)"
+        raise ValueError(ve)
 
     noise_cov_inv = lambda x: x / noise_std**2
     noise_std_inv = lambda x: x / noise_std
@@ -163,66 +176,118 @@ def riemannian_manifold_maximum_a_posterior_and_grad(
     ham = jft.StandardHamiltonian(lh)
 
     vecs = []  # TODO: pre-allocate stack of samples
-    f = forward(pos)  # TODO combine with ham forward pass
-    for i, k in enumerate(np.repeat(samples_key, 1 + mirror_noise, axis=0)):
+    fwd_at_p = forward(pos)  # TODO combine with ham forward pass
+    for i, k in enumerate(jnp.repeat(key_vecs, 1 + mirror_vecs, axis=0)):
         n = noise_std * random.normal(k, shape=noise_std.shape)
-        d = f + n if i % 2 == 0 else f - n
+        d = (
+            fwd_at_p + n if i % 2 == 0 else fwd_at_p - n
+        ) if mirror_vecs else fwd_at_p + n
         lh = lh_core(d) @ forward
         vecs += [jax.grad(lh)(pos)]
     vecs = jax.tree_map(lambda *x: jnp.stack(x), *vecs)
-    vecs /= jnp.sqrt(n_eff_samples)
+    vecs /= jnp.sqrt(n_eff_vecs)
     eye_plus_vdaggerv_inv = EyePlusVdaggerVInv(vecs, xmap=xmap)
+
+    if n_samples > 0:
+        samples = xmap(jft.random_like, in_axes=(0, None))(
+            jnp.repeat(key_samples, 1 + mirror_samples, axis=0), pos
+        )
+        s = jnp.tile(jnp.array([1., -1.]) if mirror_samples else 1., n_samples)
+        assert s.size == n_eff_samples
+        smpl_apply_sgn = partial(xmap(jnp.multiply), s)
+        samples = jax.tree_map(smpl_apply_sgn, samples)
+
+        # Create a second orthonormalized stack of vectors for substracting from
+        # the samples
+        vecs_ortho = jft.zeros_like(vecs)
+        for i in range(n_eff_vecs):
+            vi = jax.tree_map(lambda x: x[i], vecs)
+            for j in range(n_eff_vecs):
+                vj = jax.tree_map(lambda x: x[j], vecs_ortho)
+                # Effectively truncate the loop by multiplying with (i < j)
+                vi -= (j < i) * jft.dot(vi, vj) * vj
+            s = jnp.sqrt(jft.dot(vi, vi))
+            vi *= jnp.where(s > R_EPS, 1. / s, 0.)
+            vecs_ortho = jax.tree_map(
+                lambda vecs_o, v: vecs_o.at[i].set(v), vecs_ortho, vi
+            )
+    else:
+        samples = None
+        vecs_ortho = None
+    # Project out the parts that are already covered by the vectors
+    # TODO: vectorize or pull sample creation into loop and vectorize jointly
+    for i in range(n_eff_samples):
+        si = jax.tree_map(lambda x: x[i], samples)
+        f = jax.vmap(jft.dot, in_axes=(0, None))(vecs_ortho, si)
+        si -= jax.tree_map(
+            partial(jnp.sum, axis=0),
+            jax.tree_map(partial(jax.vmap(jnp.multiply), f), vecs_ortho)
+        )
+        samples = jax.tree_map(lambda smpls, x: smpls.at[i].set(x), samples, si)
 
     s, ln_det_metric = jnp.linalg.slogdet(eye_plus_vdaggerv_inv.small)
     # assert s == 1
     # print(ln_det_metric)
 
     grad_ln_det_metric = jft.zeros_like(pos)
-    for i, k in enumerate(np.repeat(samples_key, 1 + mirror_noise, axis=0)):
+    for i, k in enumerate(jnp.repeat(key_vecs, 1 + mirror_vecs, axis=0)):
         n = noise_std * random.normal(k, shape=noise_std.shape)
-        d = f + n if i % 2 == 0 else f - n
+        d = (
+            fwd_at_p + n if i % 2 == 0 else fwd_at_p - n
+        ) if mirror_vecs else fwd_at_p + n
         lh = lh_core(d) @ forward
 
-        nll_smpl = jnp.sqrt(n_eff_samples) * jax.tree_map(lambda x: x[i], vecs)
+        nll_smpl = jnp.sqrt(n_eff_vecs) * jax.tree_map(lambda x: x[i], vecs)
         grad_ln_det_metric += jft.hvp(
             lh, (pos, ), (eye_plus_vdaggerv_inv @ nll_smpl, )
         )
-    grad_ln_det_metric = 2 * grad_ln_det_metric / n_eff_samples
+    grad_ln_det_metric = 2 * grad_ln_det_metric / n_eff_vecs
 
-    value, grad = jax.value_and_grad(ham)(pos)
+    if samples is not None:
+        # FIXME: account for the gradient of changing samples
+        value, grad = xmap(lambda s: jax.value_and_grad(ham)(pos + s))(samples)
+        m = partial(jnp.mean, axis=0)
+        value, grad = m(value), jax.tree_map(m, grad)
+    else:
+        value, grad = jax.value_and_grad(ham)(pos)
     value += 0.5 * ln_det_metric
     grad += 0.5 * grad_ln_det_metric
 
-    if _return_trafo_gradient and not _return_vecs:
-        return value, grad, grad_ln_det_metric
-    if _return_vecs and not _return_trafo_gradient:
-        return value, grad, vecs
-    if _return_trafo_gradient and _return_vecs:
-        return value, grad, grad_ln_det_metric, vecs
-    return value, grad
+    out = (value, grad)
+    if _return_trafo_gradient:
+        out += (grad_ln_det_metric, )
+    if _return_vecs:
+        out += (vecs, )
+    if _return_samples:
+        out += (samples, )
+    return out
 
 
 # # %%
 p = jft.random_like(random.split(key, 99)[-1], correlated_field.domain)
 # p = pos_truth
 
-v, g, g_trafo, vecs = jax.vmap(
-    partial(
-        riemannian_manifold_maximum_a_posterior_and_grad,
-        noise_std=noise_std,
-        forward=signal_response,
-        key=random.split(key, 914)[-1],
-        n_vecs=15,
-        mirror_noise=True,
-        _return_trafo_gradient=True,
-        _return_vecs=True,
-    ),
-    in_axes=(0, None)
-)(jft.stack((jft.Vector(p), jft.Vector(p))), data)
+v, g, g_trafo, vecs, samples = partial(
+    riemannian_manifold_maximum_a_posterior_and_grad,
+    noise_std=noise_std,
+    forward=signal_response,
+    key_vecs=random.split(key, 914)[-1],
+    n_vecs=15,
+    mirror_vecs=True,
+    key_samples=random.split(key, 922490)[-1],
+    n_samples=10,
+    mirror_samples=True,
+    _return_trafo_gradient=True,
+    _return_vecs=True,
+    _return_samples=True,
+)(jft.Vector(p), data)
 pk = (
     "cfax1asperity", "cfax1flexibility", "cfax1fluctuations",
     "cfax1loglogavgslope", "cfzeromode"
 )
+c = jax.vmap(jax.vmap(jft.dot, in_axes=(0, None)),
+             in_axes=(None, 0))(vecs, samples)
+print(f"samples are {'' if c.sum() == 0 else 'NOT '}orthonogal to vecs")
 print({k: g.tree[k] for k in pk})
 print({k: g_trafo.tree[k] for k in pk})
 
@@ -273,6 +338,7 @@ plt.show()
 
 # %%
 n_vecs = 30
+n_samples = 10
 n_newton_iterations = 25
 n_rmmap_samples = 4
 absdelta = 1e-4 * jnp.prod(jnp.array(dims))
@@ -281,35 +347,20 @@ key, subkey = random.split(key)
 pos_init = jft.random_like(subkey, correlated_field.domain)
 pos = 1e-2 * jft.Vector(pos_init.copy())
 
-key, subkey = random.split(key)
-_ham_vg = partial(
+key, key_vecs, key_samples = random.split(key, 3)
+ham_vg = partial(
     riemannian_manifold_maximum_a_posterior_and_grad,
     data=data,
     noise_std=noise_std,
     forward=signal_response,
-    key=subkey,
+    key_vecs=key_vecs,
     n_vecs=n_vecs,
-    mirror_noise=False,
+    mirror_vecs=False,
+    key_samples=key_samples,
+    n_samples=n_samples,
+    mirror_samples=True,
 )
 key, sample_key = random.split(key)
-
-
-@partial(
-    partial, key=sample_key, n_samples=n_rmmap_samples, mirror_samples=True
-)
-def ham_vg(pos, key, n_samples, mirror_samples):
-    # NOTE to self, this is wrong! We need to apply the coordinate
-    # transfomration to our white samples.
-    # TODO: project out the parts that are already covered by the vectors
-    samples = jax.vmap(jft.random_like,
-                       in_axes=(0, None))(random.split(key, n_samples), pos)
-    if mirror_samples:
-        samples = jax.tree_map(lambda *x: jnp.concatenate(x), samples, -samples)
-    return jax.tree_map(
-        partial(jnp.mean, axis=0),
-        jax.vmap(_ham_vg, in_axes=(0, ))(pos + samples)
-    )
-
 
 # ham_vg = jax.jit(jax.value_and_grad(ham))
 ham_metric = jax.jit(ham.metric)
@@ -334,12 +385,15 @@ msg = f"Post RMMAP Iteration: Energy {ham_vg(pos)[0]:2.4e}"
 print(msg, file=sys.stderr)
 
 # %%
-samples = sample_evi(pos, random.split(key, 5), niter=50)
+# samples = sample_evi(pos, random.split(key, 5), niter=50)
 
 # %%
 namps = cfm.get_normalized_amplitudes()
-post_sr_mean = jft.mean(tuple(signal_response(s) for s in samples.at(pos)))
-post_a_mean = jft.mean(tuple(cfm.amplitude(s)[1:] for s in samples.at(pos)))
+post_sr_mean = signal_response(
+    pos
+)  # jft.mean(tuple(signal_response(s) for s in samples.at(pos)))
+post_a_mean = cfm.amplitude(pos)[
+    1:]  # jft.mean(tuple(cfm.amplitude(s)[1:] for s in samples.at(pos)))
 to_plot = [
     ("Signal", signal_response_truth, ""),
     ("Noise", noise_truth, ""),
