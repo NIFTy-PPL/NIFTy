@@ -176,7 +176,7 @@ def riemannian_manifold_maximum_a_posterior_and_grad(
     ham = jft.StandardHamiltonian(lh)
 
     vecs = []  # TODO: pre-allocate stack of samples
-    fwd_at_p = forward(pos)  # TODO combine with ham forward pass
+    fwd_at_p = forward(pos)
     for i, k in enumerate(jnp.repeat(key_vecs, 1 + mirror_vecs, axis=0)):
         n = noise_std * random.normal(k, shape=noise_std.shape)
         d = (
