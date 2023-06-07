@@ -741,7 +741,7 @@ def _normal_initialize(mf, domain, std=0.1):
 
 
 def _single_value_sample_list(fld, comm):
-    check_MPI_equality(fld, comm)
+    check_MPI_equality(fld, comm, hash=True)
     if _MPI_master(comm):
         sl = SampleList([fld], comm=comm, domain=fld.domain)
     else:
