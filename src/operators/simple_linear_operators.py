@@ -501,3 +501,56 @@ class DomainChangerAndReshaper(LinearOperator):
     @staticmethod
     def _shapes(dom):
         return " ".join([str(dd.shape) for dd in dom])
+
+
+class ExtractAtIndices(LinearOperator):
+    """Extract Field values at given indices along a subspace of a DomainTuple,
+    and puts them in a field with an unstructured domain for the given subspace.
+    Note: This operator supports having the same index several times.
+    If this is not the case also the numerically faster `GeometryRemover`
+    and `MaskOperator` might be useful.
+
+    Parameters
+    ----------
+    domain : DomainTuple
+        Domain of the operator
+    indices: tuple
+        Tuple of indices to extract from the field along a given space.
+        The length of the tuple needs to equal the number of axes of the space.
+        Each entry of the tuple should be a tuple of indices to take along the
+        respective axis of the space.
+        Example for a 2d space: indices=((0,1,1,0), (3,4,1,5)) will extract
+        the pixels (0,3), (1,4), (1,1) and (0,5).
+    space: int
+        The index of the space in the domain along which to extract values
+    """
+    def __init__(self, domain, indices, space=0):
+        from ..sugar import makeDomain
+
+        self._domain = makeDomain(domain)
+        if not isinstance(indices, tuple):
+            raise TypeError("indices need to be a tuple")
+        if not len(self._domain[space].shape) == len(indices):
+            raise ValueError("Shape of indices don't match dimension of space")
+        target = [
+                UnstructuredDomain(len(indices[0])) if i == space else sp
+                for i, sp in enumerate(self._domain)]
+        self._target = makeDomain(target)
+
+        inds = [slice(None)] * len(domain.shape)
+        dims_of_sps = [len(sp.shape) for sp in self._domain]
+        start_ax_sp = int(np.sum(dims_of_sps[:space]))
+        stop_ax_sp = start_ax_sp + dims_of_sps[space]
+        for i, ax in enumerate(range(start_ax_sp, stop_ax_sp)):
+            inds[ax] = indices[i]
+        self._inds = tuple(inds)
+        self._capability = self.TIMES | self.ADJOINT_TIMES
+
+    def apply(self, x, mode):
+        self._check_input(x, mode)
+        if mode == self.TIMES:
+            res = x.val[self._inds]
+        else:
+            res = np.zeros(self._domain.shape, dtype=x.dtype)
+            np.add.at(res, self._inds, x.val)
+        return Field.from_raw(self._tgt(mode), res)
