@@ -81,10 +81,8 @@ def _matrices_naive(
 
 def _matrices_tol(
     chart,
-    kernel: Callable,
     depth: int,
     *,
-    coerce_fine_kernel: bool = True,
     atol: Optional[float] = None,
     rtol: Optional[float] = None,
     which: Optional[str] = "dist",
@@ -107,20 +105,7 @@ def _matrices_tol(
         coord = jnp.concatenate((gc, gf), axis=0)
         return dist_mat_from_loc(coord, coord)
 
-    def ref_mat(cov):
-        olf, ks = refinement_matrices(
-            cov,
-            chart.fine_size**(chart.ndim + 1),
-            coerce_fine_kernel=coerce_fine_kernel
-        )
-        if chart.ndim > 1:
-            olf = olf.reshape(
-                chart.fine_size**2, chart.fine_size, chart.coarse_size**2,
-                chart.coarse_size
-            )
-        return olf, ks
-
-    opt_lin_filter, kernel_sqrt, idx_map = [], [], []
+    udists, unindex = [], []
     for lvl in range(depth):
         pix_hp_idx = jnp.arange(chart.shape_at(lvl)[0])
         assert chart.ndim == 2
@@ -136,7 +121,7 @@ def _matrices_tol(
 
         def scanned_amend_unique(u, pix):
             d = vdist(pix, pix_r_off)
-            d = kernel(d) if which == "cov" else d
+            #d = kernel(d) if which == "cov" else d
             if _verbosity > 1:
                 # Magic code to move up curser by one line and delete whole line
                 msg = "\x1b[1A\x1b[2K{pix}/{n}"
@@ -151,21 +136,41 @@ def _matrices_tol(
         if n >= u.shape[0] or not np.all(np.isnan(u[n:])):
             raise ValueError("`mat_buffer_size` too small")
         u = u[:n]
-        u = kernel(u) if which == "dist" else u
         inv = np.array(inv)
         if _verbosity > 0:
             logger.info(f"Post uniquifying: {u.shape}")
+        udists.append(u)
+        unindex.append(inv)
+    return udists, unindex
 
+def _eval_mat_tol(kernel, udists, unindex, chart, coerce_fine_kernel = True):
+    assert len(udists) == len(unindex)
+
+    def ref_mat(cov):
+        olf, ks = refinement_matrices(
+            cov,
+            chart.fine_size**(chart.ndim + 1),
+            coerce_fine_kernel=coerce_fine_kernel
+        )
+        if chart.ndim > 1:
+            olf = olf.reshape(
+                chart.fine_size**2, chart.fine_size, chart.coarse_size**2,
+                chart.coarse_size
+            )
+        return olf, ks
+
+    opt_lin_filter, kernel_sqrt = [], []
+    for u in udists:
+        u = kernel(u)
         # Finally, all distance/covariance matrices are assembled and we
         # can map over them to construct the refinement matrices as usual
         vmat = jax.vmap(jax.vmap(ref_mat, in_axes=(0, )), in_axes=(0, ))
         olf, ks = vmat(u)
-
         opt_lin_filter.append(olf)
         kernel_sqrt.append(ks)
-        idx_map.append(inv)
+    return RefinementMatrices(opt_lin_filter, kernel_sqrt, None, unindex)
+    
 
-    return RefinementMatrices(opt_lin_filter, kernel_sqrt, None, idx_map)
 
 
 class RefinementHPField(AbstractModel):
@@ -287,17 +292,25 @@ class RefinementHPField(AbstractModel):
                 coerce_fine_kernel=coerce_fine_kernel
             )
         else:
-            rfm = _matrices_tol(
+            raise NotImplementedError
+        cov_sqrt0 = cov_sqrt_hp(self.chart, kernel) if not skip0 else None
+        return rfm._replace(cov_sqrt0=cov_sqrt0)
+
+    def get_dists(atol, rtol, mat_buffer_size):
+        depth = self.chart.depth if depth is None else depth
+        ud, ui = _matrices_tol(
                 self.chart,
-                kernel,
                 depth,
-                coerce_fine_kernel=coerce_fine_kernel,
                 atol=atol,
                 rtol=rtol,
-                which=which,
                 mat_buffer_size=mat_buffer_size,
-                _verbosity=_verbosity
             )
+        return ud, ui
+
+    def my_matrices(kernel, ud, ui, skip0 = None, coerce_fine_kernel = True):
+        skip0 = self.skip0 if skip0 is None else skip0
+        rfm = _eval_mat_tol(kernel, ud, ui, self.chart, 
+                            coerce_fine_kernel=coerce_fine_kernel)
         cov_sqrt0 = cov_sqrt_hp(self.chart, kernel) if not skip0 else None
         return rfm._replace(cov_sqrt0=cov_sqrt0)
 
