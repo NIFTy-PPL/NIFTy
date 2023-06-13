@@ -296,7 +296,7 @@ class RefinementHPField(AbstractModel):
         cov_sqrt0 = cov_sqrt_hp(self.chart, kernel) if not skip0 else None
         return rfm._replace(cov_sqrt0=cov_sqrt0)
 
-    def get_dists(atol, rtol, mat_buffer_size):
+    def get_dists(self, atol, rtol, mat_buffer_size):
         depth = self.chart.depth if depth is None else depth
         ud, ui = _matrices_tol(
                 self.chart,
@@ -307,7 +307,7 @@ class RefinementHPField(AbstractModel):
             )
         return ud, ui
 
-    def my_matrices(kernel, ud, ui, skip0 = None, coerce_fine_kernel = True):
+    def my_matrices(self, kernel, ud, ui, skip0 = None, coerce_fine_kernel = True):
         skip0 = self.skip0 if skip0 is None else skip0
         rfm = _eval_mat_tol(kernel, ud, ui, self.chart, 
                             coerce_fine_kernel=coerce_fine_kernel)
