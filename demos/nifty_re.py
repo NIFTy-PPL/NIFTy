@@ -94,6 +94,8 @@ signal_response = lambda x: jnp.exp(correlated_field(x))
 noise_cov = lambda x: 0.1**2 * x
 noise_cov_inv = lambda x: 0.1**-2 * x
 
+# TODO: Show how to build a model and use the init-method/domain
+
 # Create synthetic data
 key, subkey = random.split(key)
 pos_truth = jft.random_like(subkey, correlated_field.domain)
