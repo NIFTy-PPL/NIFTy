@@ -54,8 +54,7 @@ signal = jft.Model(
 # specifics of the forward model. The sampling and minimization always works the
 # same.
 
-
-# # %%
+# %%
 # def matern_kernel(distance, scale=1., cutoff=1., dof=1.5):
 #     if dof == 0.5:
 #         cov = scale**2 * jnp.exp(-distance / cutoff)
@@ -71,17 +70,14 @@ signal = jft.Model(
 #     # contain NaNs
 #     return jnp.where(distance < 1e-8 * cutoff, scale**2, cov)
 
-
 # def rg2cart(x, idx0, scl):
 #     """Transforms regular, points from a Euclidean space to irregular points in
 #     an cartesian coordinate system in 1D."""
 #     return jnp.exp(scl * x[0] + idx0)[jnp.newaxis, ...]
 
-
 # def cart2rg(x, idx0, scl):
 #     """Inverse of `rg2cart`."""
 #     return ((jnp.log(x[0]) - idx0) / scl)[jnp.newaxis, ...]
-
 
 # cc = jft.HEALPixChart(
 #     min_shape=(12 * 32**2, 4),  # 32 (Nside) times (at least) 4 radial bins
