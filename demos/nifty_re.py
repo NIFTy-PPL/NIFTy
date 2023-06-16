@@ -40,6 +40,12 @@ cfm.set_amplitude_total_offset(**cf_zm)
 cfm.add_fluctuations(dims, distances=1. / dims[0], **cf_fl, prefix="ax1")
 correlated_field = cfm.finalize()
 
+signal = jft.Model(
+    lambda x: jnp.exp(correlated_field(x)),
+    domain=correlated_field.domain,
+    init=correlated_field.init
+)
+
 # %% [markdown]
 # ## Notes on Refinement Field
 
@@ -90,20 +96,18 @@ correlated_field = cfm.finalize()
 # )
 
 # %%
-signal_response = lambda x: jnp.exp(correlated_field(x))
+signal_response = signal
 noise_cov = lambda x: 0.1**2 * x
 noise_cov_inv = lambda x: 0.1**-2 * x
 
-# TODO: Show how to build a model and use the init-method/domain
-
 # Create synthetic data
 key, subkey = random.split(key)
-pos_truth = jft.random_like(subkey, correlated_field.domain)
+pos_truth = jft.random_like(subkey, signal_response.domain)
 signal_response_truth = signal_response(pos_truth)
 key, subkey = random.split(key)
 noise_truth = jnp.sqrt(
-    noise_cov(jnp.ones(correlated_field.target.shape))
-) * random.normal(shape=correlated_field.target.shape, key=key)
+    noise_cov(jnp.ones(signal_response.target.shape))
+) * random.normal(shape=signal_response.target.shape, key=key)
 data = signal_response_truth + noise_truth
 
 nll = jft.Gaussian(data, noise_cov_inv) @ signal_response
