@@ -153,16 +153,10 @@ def _lh_lsm(likelihood, primals, tangents):
 
 
 def alternating_geoVI(
-    likelihood,
-    primals,
-    key,
-    n_samples,
-    *,
-    n_steps,
-    initial_sampling_depth,
-    non_linear_sampling_method="NCG",
-    nls_kwargs={"maxiter": 1},
+    likelihood, primals, key, n_samples, *, n_steps, initial_sampling_depth
 ):
+    # import jaxopt
+
     draw_metric = partial(
         jft.kl._sample_linearly, likelihood, from_inverse=False
     )
@@ -181,11 +175,46 @@ def alternating_geoVI(
 
     # Initialize the samples
     sample_keys = random.split(key, n_samples)
-    smpls, _ = draw_samples(primals, sample_keys)
+    smpls, met_smpl = draw_samples(primals, sample_keys)
+    met_smpl = jax.tree_map(lambda *x: jnp.concatenate(x), met_smpl, -met_smpl)
     smpls = jft.kl.Samples(
         pos=primals,
         samples=jax.tree_map(lambda *x: jnp.concatenate(x), smpls, -smpls)
     )
+
+    def nl_residual(x, p, lh_trafo_at_p, ms_at_p):
+        g = x - p + lh_lsm(p, lh_trafo(x) - lh_trafo_at_p)
+        r = ms_at_p - g
+        return jft.dot(r, r)
+
+    def nl_hessp(primals, tangents, p, lh_trafo_at_p, ms_at_p):
+        jac = jax.grad(nl_residual, argnums=0)
+        jac = partial(jac, p=p, lh_trafo_at_p=lh_trafo_at_p, ms_at_p=ms_at_p)
+        return jax.jvp(jac, (primals, ), (tangents, ))[1]
+
+    nl_vag = jax.value_and_grad(nl_residual)
+
+    nl_vag = jax.jit(nl_vag)
+    nl_hessp = jax.jit(nl_hessp)
+
+    # nl_history_size = 10  # TODO: make this a parameter
+    # nl_maxiter = 1 << 63  # absurdly large number
+    # nl_tol = 0.0  # absrudly small number
+    # nl_solver = jaxopt.LBFGS(
+    #     fun=nl_residual,
+    #     maxiter=nl_maxiter,
+    #     tol=nl_tol,
+    #     history_size=nl_history_size
+    # )
+    # nl_init = xmap(nl_solver.init_state, in_axes=(0, None, None, 0))
+    # nl_init = jax.jit(nl_init)
+    # nl_update = xmap(nl_solver.update, in_axes=(0, 0, None, None, 0))
+    # nl_update = jax.jit(nl_update)
+    # nl_run = xmap(nl_solver.run, in_axes=(0, None, None, 0))
+    # nl_run = jax.jit(nl_run)
+
+    # lh_trafo_at_p = lh_trafo(primals)
+    # nl_state = nl_init(smpls.samples, primals, lh_trafo_at_p, met_smpl)
 
     # Alternate between minimization and updating the sample
     # TODO: make this the update method of jaxopt style minimzer
@@ -208,32 +237,45 @@ def alternating_geoVI(
         # Update the samples non-linearly around the new position. To do so,
         # first update the metric sample to the new position.
         _, met_smpl = draw_metric(primals, sample_keys)
-        met_smpl = jft.unstack(
-            jax.tree_map(lambda *x: jnp.concatenate(x), met_smpl, -met_smpl)
+        met_smpl = jax.tree_map(
+            lambda *x: jnp.concatenate(x), met_smpl, -met_smpl
         )
         # Then curve the samples non-linearly to fit the new position
         print("Curving sample...", file=sys.stderr)
-        # TODO: vectorize
-        # TODO: put this into a much simpler optimizer e.g. one from jaxopt
+        lh_trafo_at_p = lh_trafo(primals)
+        # new_smpls, nl_state = nl_update(
+        #     smpls.samples, nl_state, primals, lh_trafo_at_p, met_smpl
+        # )
+        # smpls = jft.kl.Samples(
+        #     pos=primals,
+        #     samples=xmap(lambda ns, p: ns - p,
+        #                  in_axes=(0, None))(new_smpls, primals)
+        # )
+
         new_smpls = []
-        for s, ms in zip(smpls, met_smpl):
-            lh_trafo_at_p = lh_trafo(primals)
-
-            def g(x):
-                return x - primals + lh_lsm(
-                    primals,
-                    lh_trafo(x) - lh_trafo_at_p
-                )
-
-            r2_half = jft.Gaussian(ms) @ g  # (g - ms)**2 / 2
+        for s, ms in zip(smpls, jft.unstack(met_smpl)):
+            options = {
+                "maxiter":
+                    1,
+                "fun_and_grad":
+                    partial(
+                        nl_vag,
+                        p=primals,
+                        lh_trafo_at_p=lh_trafo_at_p,
+                        ms_at_p=ms
+                    ),
+                "hessp":
+                    partial(
+                        nl_hessp,
+                        p=primals,
+                        lh_trafo_at_p=lh_trafo_at_p,
+                        ms_at_p=ms
+                    ),
+            }
             opt_state = jft.minimize(
-                r2_half,
-                x0=s,
-                method=non_linear_sampling_method,
-                options=nls_kwargs | {"hessp": r2_half.metric},
+                None, x0=s, method="newton-cg", options=options
             )
             new_smpls += [opt_state.x - primals]
-            print(f"{opt_state.status}")
         smpls = jft.kl.Samples(pos=primals, samples=jft.stack(new_smpls))
 
     return primals, smpls
