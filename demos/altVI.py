@@ -115,6 +115,7 @@ noise_cov = lambda x: noise_cov_val * x
 noise_cov_inv = lambda x: x / noise_cov_val
 nll = jft.Gaussian(data, noise_cov_inv) @ signal
 
+
 # %%
 fig, axs = plt.subplots(1, 2, figsize=(12, 6))
 im = axs[0].imshow(data, vmin=0., vmax=data.max())
@@ -151,9 +152,21 @@ def _lh_trafo(likelihood, primals):
 def _lh_lsm(likelihood, primals, tangents):
     return likelihood.left_sqrt_metric(primals, tangents)
 
+def plot(pos, samples):
+    fig, axs = plt.subplots(1, 3, figsize=(8, 3), dpi=500)
+    im = axs[0].imshow(data, vmin=0., vmax=data.max())
+    axs[1].imshow(signal_truth, vmin=0., vmax=data.max())
+    axs[2].imshow(
+        jax.vmap(signal)(samples.at(pos).samples).mean(axis=0),
+        vmin=0.,
+        vmax=data.max()
+    )
+    fig.colorbar(im, ax=axs.ravel())
+    plt.show()
 
 def alternating_geoVI(
-    likelihood, primals, key, n_samples, *, n_steps, initial_sampling_depth
+    likelihood, primals, key, n_samples, *, n_steps, n_iter, 
+    initial_sampling_depth
 ):
     # import jaxopt
 
@@ -176,26 +189,55 @@ def alternating_geoVI(
     # Initialize the samples
     sample_keys = random.split(key, n_samples)
     smpls, met_smpl = draw_samples(primals, sample_keys)
-    met_smpl = jax.tree_map(lambda *x: jnp.concatenate(x), met_smpl, -met_smpl)
+    met_smpl = jax.tree_map(lambda *x: jnp.concatenate(x), 
+                            met_smpl, -met_smpl)
     smpls = jft.kl.Samples(
         pos=primals,
         samples=jax.tree_map(lambda *x: jnp.concatenate(x), smpls, -smpls)
     )
 
-    def nl_residual(x, p, lh_trafo_at_p, ms_at_p):
-        g = x - p + lh_lsm(p, lh_trafo(x) - lh_trafo_at_p)
-        r = ms_at_p - g
-        return jft.dot(r, r)
+    def nl_g(x, p, lh_trafo_at_p):
+        return x - p + lh_lsm(p, lh_trafo(x) - lh_trafo_at_p)
 
-    def nl_hessp(primals, tangents, p, lh_trafo_at_p, ms_at_p):
-        jac = jax.grad(nl_residual, argnums=0)
-        jac = partial(jac, p=p, lh_trafo_at_p=lh_trafo_at_p, ms_at_p=ms_at_p)
-        return jax.jvp(jac, (primals, ), (tangents, ))[1]
+    def nl_residual(x, p, lh_trafo_at_p, ms_at_p):
+        g = nl_g(x, p, lh_trafo_at_p)
+        r = ms_at_p - g
+        #return jft.Gaussian(0.) @ r
+        return 0.5*jft.dot(r, r)
+
+    def nl_metric(primals, tangents, p, lh_trafo_at_p):
+        #f = partial(nl_residual, p=p, lh_trafo_at_p=lh_trafo_at_p, 
+        #            ms_at_p=ms_at_p)
+        #return f.metric(primals, tangents)
+        f = partial(nl_g, p=p, lh_trafo_at_p=lh_trafo_at_p)
+        _, jj = jax.jvp(f, (primals,), (tangents,))
+        _, jv = jax.vjp(f, primals)
+        r = jv(jj)
+        return r[0]
+        #_, lsm = jax.vjp(f, primals)
+        #ll = lambda x: lsm(x)[0]
+        #rsm = jax.linear_transpose(ll, tangents)
+        #return lsm(*rsm(tangents))
+
+    #def nl_hessp(primals, tangents, p, lh_trafo_at_p, ms_at_p):
+    #    jac = jax.grad(nl_residual, argnums=0)
+    #    jac = partial(jac, p=p, lh_trafo_at_p=lh_trafo_at_p, ms_at_p=ms_at_p)
+    #    return jax.jvp(jac, (primals, ), (tangents, ))[1]
+
+    def nl_sampnorm(natgrad, p):
+        v = jft.vdot(natgrad, natgrad)
+        tm = lambda x: lh_lsm(p, x)
+        o = jax.linear_transpose(tm, data)
+        fpp = o(natgrad)
+        v += jft.vdot(fpp, fpp)
+        return jnp.sqrt(v)
 
     nl_vag = jax.value_and_grad(nl_residual)
 
     nl_vag = jax.jit(nl_vag)
-    nl_hessp = jax.jit(nl_hessp)
+    #nl_hessp = jax.jit(nl_hessp)
+    nl_metric = jax.jit(nl_metric)
+    nl_sampnorm = jax.jit(nl_sampnorm)
 
     # nl_history_size = 10  # TODO: make this a parameter
     # nl_maxiter = 1 << 63  # absurdly large number
@@ -215,31 +257,24 @@ def alternating_geoVI(
 
     # lh_trafo_at_p = lh_trafo(primals)
     # nl_state = nl_init(smpls.samples, primals, lh_trafo_at_p, met_smpl)
-
     # Alternate between minimization and updating the sample
     # TODO: make this the update method of jaxopt style minimzer
     for _ in range(n_steps):
-        # Minimize the KL divergence using the current samples
-        print("Minimizing...", file=sys.stderr)
-        opt_state = jft.minimize(
-            None,
-            primals,
-            method="newton-cg",
-            options={
-                "fun_and_grad": partial(vg, primals_samples=smpls),
-                "hessp": partial(metric, primals_samples=smpls),
-                "absdelta": absdelta,
-                "maxiter": 1,
-                # "name": "N",  # enables verbose logging
-            }
-        )
-        primals = opt_state.x
+
         # Update the samples non-linearly around the new position. To do so,
         # first update the metric sample to the new position.
         _, met_smpl = draw_metric(primals, sample_keys)
         met_smpl = jax.tree_map(
             lambda *x: jnp.concatenate(x), met_smpl, -met_smpl
         )
+
+        #smpls, met_smpl = draw_samples(primals, sample_keys)
+        #met_smpl = jax.tree_map(lambda *x: jnp.concatenate(x), 
+        #                        met_smpl, -met_smpl)
+        #smpls = jft.kl.Samples(
+        #    pos=primals,
+        #    samples=jax.tree_map(lambda *x: jnp.concatenate(x), smpls, -smpls)
+        #)
         # Then curve the samples non-linearly to fit the new position
         print("Curving sample...", file=sys.stderr)
         lh_trafo_at_p = lh_trafo(primals)
@@ -253,10 +288,14 @@ def alternating_geoVI(
         # )
 
         new_smpls = []
-        for s, ms in zip(smpls, jft.unstack(met_smpl)):
+        for i,(s, ms) in enumerate(zip(smpls, jft.unstack(met_smpl))):
             options = {
-                "maxiter":
-                    1,
+                "maxiter": n_iter,
+                'xtol': delta,
+                "absdelta": 0.,
+                "name": f"S_{i}",
+                "custom_gradnorm" : partial(nl_sampnorm, p=primals),
+                "cg_kwargs":{"name":None},
                 "fun_and_grad":
                     partial(
                         nl_vag,
@@ -266,18 +305,38 @@ def alternating_geoVI(
                     ),
                 "hessp":
                     partial(
-                        nl_hessp,
+                        nl_metric,
                         p=primals,
-                        lh_trafo_at_p=lh_trafo_at_p,
-                        ms_at_p=ms
+                        lh_trafo_at_p=lh_trafo_at_p
                     ),
             }
+            xx0 = jft.zeros_like(s)
             opt_state = jft.minimize(
-                None, x0=s, method="newton-cg", options=options
+                None, x0=xx0, method="newton-cg", options=options
             )
             new_smpls += [opt_state.x - primals]
         smpls = jft.kl.Samples(pos=primals, samples=jft.stack(new_smpls))
 
+
+        # Minimize the KL divergence using the current samples
+        print("Minimizing...", file=sys.stderr)
+        opt_state = jft.minimize(
+            None,
+            primals,
+            method="newton-cg",
+            options={
+                "fun_and_grad": partial(vg, primals_samples=smpls),
+                "hessp": partial(metric, primals_samples=smpls),
+                "absdelta": absdelta,
+                "maxiter": n_iter,
+                "name": "N",  # enables verbose logging
+                "cg_kwargs":{"name":None}
+            }
+        )
+        print(opt_state.status, opt_state.success)
+        primals = opt_state.x
+
+        plot(primals, smpls)
     return primals, smpls
 
 
@@ -288,8 +347,10 @@ pos = 1e-2 * jft.Vector(pos_init.copy())
 
 # %%
 n_steps = 5
+n_iter = 30
 n_samples = 2
-absdelta = 1e-4 * jnp.prod(jnp.array(min_shape))
+delta = 3e-4
+absdelta = delta * jnp.prod(jnp.array(min_shape))
 key, subkey = random.split(key)
 
 pos, smpls = alternating_geoVI(
@@ -298,17 +359,9 @@ pos, smpls = alternating_geoVI(
     subkey,
     n_samples=n_samples,
     n_steps=n_steps,
+    n_iter=n_iter,
     initial_sampling_depth=50
 )
 
 # %%
-fig, axs = plt.subplots(1, 3, figsize=(8, 3), dpi=500)
-im = axs[0].imshow(data, vmin=0., vmax=data.max())
-axs[1].imshow(signal_truth, vmin=0., vmax=data.max())
-axs[2].imshow(
-    jax.vmap(signal)(smpls.at(pos).samples).mean(axis=0),
-    vmin=0.,
-    vmax=data.max()
-)
-fig.colorbar(im, ax=axs.ravel())
-plt.show()
+plot(pos, smpls)
