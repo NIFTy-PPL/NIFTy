@@ -259,6 +259,8 @@ def alternating_geoVI(
     # nl_state = nl_init(smpls.samples, primals, lh_trafo_at_p, met_smpl)
     # Alternate between minimization and updating the sample
     # TODO: make this the update method of jaxopt style minimzer
+    niter_samples = np.zeros(n_samples*2)
+    tot_niter = 0
     for _ in range(n_steps):
 
         # Update the samples non-linearly around the new position. To do so,
@@ -293,7 +295,7 @@ def alternating_geoVI(
                 "maxiter": n_iter,
                 'xtol': delta,
                 "absdelta": 0.,
-                "name": f"S_{i}",
+                #"name": f"S_{i}",
                 "custom_gradnorm" : partial(nl_sampnorm, p=primals),
                 "cg_kwargs":{"name":None},
                 "fun_and_grad":
@@ -315,6 +317,8 @@ def alternating_geoVI(
                 None, x0=xx0, method="newton-cg", options=options
             )
             new_smpls += [opt_state.x - primals]
+            niter_samples[i] += opt_state.nit
+            print(i, opt_state.status, opt_state.success, opt_state.nit)
         smpls = jft.kl.Samples(pos=primals, samples=jft.stack(new_smpls))
 
 
@@ -329,14 +333,17 @@ def alternating_geoVI(
                 "hessp": partial(metric, primals_samples=smpls),
                 "absdelta": absdelta,
                 "maxiter": n_iter,
-                "name": "N",  # enables verbose logging
+                #"name": "N",  # enables verbose logging
                 "cg_kwargs":{"name":None}
             }
         )
-        print(opt_state.status, opt_state.success)
+        tot_niter += opt_state.nit
+        print(opt_state.status, opt_state.success, opt_state.nit)
         primals = opt_state.x
 
         plot(primals, smpls)
+    print("Samples niter:", niter_samples)
+    print("Total niter:", tot_niter)
     return primals, smpls
 
 
@@ -346,10 +353,10 @@ pos_init = jft.random_like(subkey, signal.domain)
 pos = 1e-2 * jft.Vector(pos_init.copy())
 
 # %%
-n_steps = 5
-n_iter = 30
+n_steps = 10
+n_iter = 60
 n_samples = 2
-delta = 3e-4
+delta = 1e-4
 absdelta = delta * jnp.prod(jnp.array(min_shape))
 key, subkey = random.split(key)
 
