@@ -2,6 +2,7 @@
 # SPDX-License-Identifier: GPL-2.0+ OR BSD-2-Clause
 
 from datetime import datetime
+from functools import partial
 from typing import (
     Any, Callable, Dict, Mapping, NamedTuple, Optional, Tuple, Union
 )
@@ -114,6 +115,7 @@ def _newton_cg(
     fun_and_grad=None,
     hessp=None,
     cg=conjugate_gradient._cg,
+    custom_gradnorm = None,
     name=None,
     time_threshold=None,
     cg_kwargs=None
@@ -130,6 +132,8 @@ def _newton_cg(
     cg_kwargs = {} if cg_kwargs is None else cg_kwargs
     cg_name = name + "CG" if name is not None else None
 
+    mynorm = (partial(jft_norm, ord=norm_ord) if custom_gradnorm is None else 
+              custom_gradnorm)
     energy, g = fun_and_grad(pos)
     nfev, njev, nhev = 1, 1, 0
     if jnp.isnan(energy):
@@ -197,7 +201,7 @@ def _newton_cg(
         pos = new_pos
         g = new_g
 
-        descent_norm = grad_scaling * jft_norm(dd, ord=norm_ord)
+        descent_norm = grad_scaling * mynorm(dd)
         if name is not None:
             msg = (
                 f"{name}: →:{grad_scaling} ↺:{ls_reset} #∇²:{nhev:02d}"
