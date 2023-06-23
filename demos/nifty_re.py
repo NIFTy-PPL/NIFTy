@@ -37,7 +37,13 @@ cf_fl = {
 }
 cfm = jft.CorrelatedFieldMaker("cf")
 cfm.set_amplitude_total_offset(**cf_zm)
-cfm.add_fluctuations(dims, distances=1. / dims[0], **cf_fl, prefix="ax1")
+cfm.add_fluctuations(
+    dims,
+    distances=1. / dims[0],
+    **cf_fl,
+    prefix="ax1",
+    non_parametric_kind="power"
+)
 correlated_field = cfm.finalize()
 
 signal = jft.Model(
@@ -45,6 +51,53 @@ signal = jft.Model(
     domain=correlated_field.domain,
     init=correlated_field.init
 )
+
+# %% [markdown]
+# ## NIFTy to NIFTY.re
+
+# The equivalent model in numpy-based NIFTy reads
+
+# ```python
+# import nifty8 as ift
+#
+# position_space = ift.RGSpace(dims, distances=1. / dims[0])
+# cf_fl_nft = {
+#     k: v
+#     for k, v in cf_fl.items() if k not in ("harmonic_domain_type", )
+# }
+# cfm_nft = ift.CorrelatedFieldMaker("cf")
+# cfm_nft.add_fluctuations(position_space, **cf_fl_nft, prefix="ax1")
+# cfm_nft.set_amplitude_total_offset(**cf_zm)
+# correlated_field_nft = cfm_nft.finalize()
+# signal_nft = correlated_field_nft.exp()
+#```
+
+# For convience, NIFTy implements a method to translate numpy-based NIFTy
+# operators to NIFTy.re. One can access the equivalent expression in JAX for a
+# NIFTy model via the `.jax_expr` property of an operator. In addition, NIFTy
+# features a method to additionally preserve the domain and target:
+# `ift.nifty2jax.convert` translate NIFTy operators to `jft.Model`. NIFTy.re
+# models feature `.domain` and `.target` properties but instead of yielding
+# domains, they return [JAX PyTrees](TODO:cite PyTree docu) of shape-and-dtype
+# objects.
+
+#```python
+# # Convenience method to get JAX expression as NIFTy.re model which tracks
+# # domain and target
+# signal_nft: jft.Model = ift.nifty2jax.convert(signal_nft, float)
+# ```
+
+# Both expressions are identical up to floating point precision
+# ```python
+# import numpy as np
+#
+# t = signal.init(random.PRNGKey(42))
+# np.testing.assert_allclose(signal(t), signal_nft(t), atol=1e-13, rtol=1e-13)
+# ```
+
+# Note, caution is advised when translating NIFTy models working on complex
+# numbers. Numyp-based NIFTy models are not dtype aware and thus require more
+# care when translating them to NIFTy.re/JAX which requires known dtypes.
 
 # %% [markdown]
 # ## Notes on Refinement Field
