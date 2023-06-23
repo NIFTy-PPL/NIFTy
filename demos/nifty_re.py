@@ -225,19 +225,16 @@ def sample_evi(primals, key, *, absdelta, point_estimates=()):
 
 
 # %%
-key, subkey = random.split(key)
-pos_init = jft.random_like(subkey, correlated_field.domain)
+key, ks, kp = random.split(key, 3)
+sampling_keys = random.split(ks, n_samples)
+pos_init = jft.random_like(kp, correlated_field.domain)
 pos = 1e-2 * jft.Vector(pos_init.copy())
 
 # %%  Minimize the potential
 for i in range(n_mgvi_iterations):
     print(f"MGVI Iteration {i}", file=sys.stderr)
     print("Sampling...", file=sys.stderr)
-    key, subkey = random.split(key, 2)
-
-    samples = sample_evi(
-        pos, random.split(subkey, n_samples), absdelta=absdelta / 10.
-    )
+    samples = sample_evi(pos, sampling_keys, absdelta=absdelta / 10.)
 
     print("Minimizing...", file=sys.stderr)
     opt_state = jft.minimize(
