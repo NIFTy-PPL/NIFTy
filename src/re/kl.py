@@ -124,7 +124,8 @@ def _curve_sample(
     def g(x):
         return x - primals + lh.left_sqrt_metric(
             primals,
-            lh.transformation(x) - lh_trafo_at_p
+            # lh.transformation(x) - lh_trafo_at_p
+            tree_map(jnp.subtract, lh.transformation(x), lh_trafo_at_p)
         )
 
     r2_half = Gaussian(met_smpl) @ g  # (g - met_smpl)**2 / 2
