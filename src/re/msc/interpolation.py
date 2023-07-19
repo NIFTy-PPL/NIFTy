@@ -18,7 +18,7 @@ def _get_binvals(values, actives, selection, shp):
     return res.reshape(shp)
 
 # TODO also implement bilinear interpolation
-def get_binvals(locs, chart, on_chart = False, want_bins = False):
+def binvals_from_loc(locs, chart, on_chart = False, want_bins = False):
     if not isinstance(chart, MSChart):
         raise ValueError
     shp = locs[0].shape[1:]
@@ -29,7 +29,7 @@ def get_binvals(locs, chart, on_chart = False, want_bins = False):
     selection = []
     for lvl in range(chart.maxlevel+1):
         bin = chart.binid_from_coord(locs, lvl, on_chart = on_chart)
-        active = np.array(tuple(np.isin(bb, chart.indices[lvl]) for bb in bin))
+        active = np.isin(bin, chart.indices[lvl])
         actives.append(active)
         if active.size > 0:
             bin = bin[active]
@@ -47,7 +47,7 @@ def get_binvals(locs, chart, on_chart = False, want_bins = False):
     return f
 
 def refine_integrand(arrays, indices, chart, want_chart = True, key = None, 
-           fine_axes = None, volume_scaling = 0.5):
+                     fine_axes = None, volume_scaling = 0.5):
     if not isinstance(chart, MSChart):
         raise ValueError
     if indices[-1].size != 0:
