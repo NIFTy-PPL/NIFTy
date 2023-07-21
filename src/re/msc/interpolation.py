@@ -100,16 +100,17 @@ def refine_output(indices, values, chart, want_chart = True, fine_axes = None):
         new_ids.append(np.array([], dtype=new_ids[-1].dtype))
     for lvl in range(newchart.maxlevel + 1):
         if lvl != 0:
-            if (chart.maxlevel == newchart.maxlevel) or (lvl != newchart.maxlevel):
-                vv = my_setdiff_indices(newchart.indices[lvl], chart.indices[lvl])
+            if (chart.maxlevel==newchart.maxlevel) or (lvl!=newchart.maxlevel):
+                vv = my_setdiff_indices(newchart.indices[lvl], 
+                                        chart.indices[lvl])
             else:
                 vv = newchart.indices[lvl]
             ll = newchart.get_coordinates(vv, lvl)
-            newvals, _, binlvl = get_binvals(ll, values, chart, 
-                                                want_bins=True)
+            f, _, binlvl = binvals_from_loc(ll, chart, want_bins=True)
             assert np.all(binlvl == lvl - 1)
-            new_vals[lvl], new_ids[lvl] = sorted_concat(
-                new_vals[lvl], new_ids[lvl], newvals, vv)
+            new_vals[lvl], new_ids[lvl] = sorted_concat(new_vals[lvl], 
+                                                        new_ids[lvl], 
+                                                        f(values), vv)
 
         if (chart.maxlevel == newchart.maxlevel) or (lvl != newchart.maxlevel):
             vv = my_setdiff_indices(chart.indices[lvl], newchart.indices[lvl])
