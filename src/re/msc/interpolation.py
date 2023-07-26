@@ -18,6 +18,7 @@ def _get_binvals(values, actives, selection, shp):
     return res.reshape(shp)
 
 # TODO also implement bilinear interpolation
+# FIXME issues when locs is on edge or center exactly
 def binvals_from_loc(locs, chart, on_chart = False, want_bins = False):
     if not isinstance(chart, MSChart):
         raise ValueError
