@@ -12,10 +12,9 @@ from jax.tree_util import Partial
 
 from . import conjugate_gradient
 from .logger import logger
-from .misc import sum_of_squares
 from .tree_math import assert_arithmetics, common_type
 from .tree_math import norm as jft_norm
-from .tree_math import size, where
+from .tree_math import size, where, vdot
 
 
 class OptimizeResults(NamedTuple):
@@ -179,7 +178,7 @@ def _newton_cg(
             grad_scaling /= 2
             if naive_ls_it == 5:
                 ls_reset = True
-                gam = float(sum_of_squares(g))
+                gam = float(vdot(g, g))
                 curv = float(g.dot(hessp(pos, g)))
                 nhev += 1
                 grad_scaling = 1.
@@ -380,13 +379,13 @@ def _trust_ncg(
 
         # Check whether we arrived at the float precision
         energy_eps = eps * jnp.abs(f_kp1)
-        converged = (actual_reduction <=
-                     energy_eps) & (actual_reduction > -energy_eps)
+        converged = (actual_reduction
+                     <= energy_eps) & (actual_reduction > -energy_eps)
 
         converged |= g_kp1_mag < gtol
         if absdelta:
-            converged |= (rho > eta) & (actual_reduction >
-                                        0.) & (actual_reduction < absdelta)
+            converged |= (rho > eta) & (actual_reduction
+                                        > 0.) & (actual_reduction < absdelta)
 
         status = jnp.where(converged, 0, params.status)
         status = jnp.where(i >= maxiter, 1, status)

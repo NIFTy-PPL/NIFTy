@@ -9,7 +9,7 @@ from jax import lax
 from jax import numpy as jnp
 
 from .logger import logger
-from .misc import doc_from, sum_of_squares
+from .misc import doc_from
 from .tree_math import assert_arithmetics, common_type
 from .tree_math import norm as jft_norm
 from .tree_math import size, vdot, where, zeros_like
@@ -120,7 +120,7 @@ def _cg(
         d = r
         energy = float(vdot((r - j) / 2, pos))
         nfev = 1
-    previous_gamma = float(sum_of_squares(r))
+    previous_gamma = float(vdot(r, r))
 
     info = -1
     i = 0
@@ -173,7 +173,7 @@ def _cg(
             nfev += 1
         else:
             r = r - q * alpha
-        gamma = float(sum_of_squares(r))
+        gamma = float(vdot(r, r))
         if time_threshold is not None and datetime.now() > time_threshold:
             info = i
             break
@@ -283,7 +283,7 @@ def _static_cg(
                 "alpha": alpha
             }
         )
-        gamma = sum_of_squares(r)
+        gamma = vdot(r, r)
 
         info = jnp.where(
             (gamma >= 0.) & (gamma <= tiny) & (info != -1), 0, info
@@ -345,7 +345,7 @@ def _static_cg(
     # energy = .5xT M x - xT j
     energy = jnp.array(0.) if x0 is None else vdot((r - j) / 2, pos)
 
-    gamma = sum_of_squares(r)
+    gamma = vdot(r, r)
     val = {
         "info": jnp.array(-2, dtype=int),
         "pos": pos,

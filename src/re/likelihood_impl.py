@@ -9,6 +9,7 @@ from jax.tree_util import tree_map
 from .tree_math import ShapeWithDtype
 from .likelihood import Likelihood
 from .logger import logger
+from .tree_math import vdot
 
 
 def standard_t(nwr, dof):
@@ -208,7 +209,7 @@ def Poissonian(data, sampling_dtype=float):
         raise ValueError("`data` may not be negative")
 
     def hamiltonian(primals):
-        return jnp.sum(primals) - jnp.vdot(jnp.log(primals), data)
+        return jnp.sum(primals) - vdot(jnp.log(primals), data)
 
     def metric(primals, tangents):
         return tangents / primals
@@ -243,8 +244,6 @@ def VariableCovarianceGaussian(data, cpx):
     -----
     The likelihood acts on a tuple of (mean, std_inv).
     """
-    from .misc import sum_of_squares
-    from .misc import sum_of_abs_squares
 
     # TODO: make configurable whether `std_inv` or `std` is passed
 
@@ -254,9 +253,9 @@ def VariableCovarianceGaussian(data, cpx):
         """
         res = (primals[0] - data) * primals[1]
         if cpx:
-            return 0.5 * sum_of_abs_squares(res) - 2*jnp.sum(jnp.log(primals[1]))
+            return 0.5 * vdot(res, res) - 2 * jnp.sum(jnp.log(primals[1]))
         else:
-            return 0.5 * sum_of_squares(res) - jnp.sum(jnp.log(primals[1]))
+            return 0.5 * vdot(res, res) - jnp.sum(jnp.log(primals[1]))
 
     def metric(primals, tangents):
         """
@@ -264,7 +263,9 @@ def VariableCovarianceGaussian(data, cpx):
         """
         fct = 4 if cpx else 2
         prim_std_inv_sq = primals[1]**2
-        res = (prim_std_inv_sq * tangents[0], fct * tangents[1] / prim_std_inv_sq)
+        res = (
+            prim_std_inv_sq * tangents[0], fct * tangents[1] / prim_std_inv_sq
+        )
         return type(primals)(res)
 
     def left_sqrt_metric(primals, tangents):
@@ -287,7 +288,10 @@ def VariableCovarianceGaussian(data, cpx):
         # TODO: test by drawing synthetic data that actually follows the
         # noise-cov and then average over it
         fct = 2 if cpx else 1
-        res = (primals[1] * (primals[0] - data), fct * tree_map(jnp.log, primals[1]))
+        res = (
+            primals[1] * (primals[0] - data),
+            fct * tree_map(jnp.log, primals[1])
+        )
         return type(primals)(res)
 
     lsm_tangents_shape = tree_map(ShapeWithDtype.from_leave, (data, data))
@@ -315,6 +319,7 @@ def VariableCovarianceStudentT(data, dof):
     -----
     The likelihood acts on a tuple of (mean, std).
     """
+
     # TODO: make configurable whether `std_inv` or `std` is passed
     def hamiltonian(primals):
         """
