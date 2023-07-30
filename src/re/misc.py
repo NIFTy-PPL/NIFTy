@@ -76,6 +76,9 @@ def ducktape_left(call: Callable[[I], O],
 def sum_of_squares(tree) -> Union[jnp.ndarray, jnp.inexact]:
     return tree_reduce(jnp.add, tree_map(lambda x: jnp.sum(x**2), tree), 0.)
 
+def sum_of_abs_squares(tree) -> Union[jnp.ndarray, jnp.inexact]:
+    return tree_reduce(jnp.add, tree_map(lambda x: jnp.sum(jnp.abs(x)**2), tree), 0.)
+
 
 def interpolate(xmin=-7., xmax=7., N=14000) -> Callable:
     """Replaces a local nonlinearity such as jnp.exp with a linear interpolation
