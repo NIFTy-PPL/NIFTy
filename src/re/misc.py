@@ -5,7 +5,6 @@ from typing import Any, Callable, Dict, Hashable, Mapping, TypeVar, Union
 
 import jax
 from jax import numpy as jnp
-from jax.tree_util import tree_map, tree_reduce
 
 O = TypeVar('O')
 I = TypeVar('I')
@@ -71,13 +70,6 @@ def ducktape_left(call: Callable[[I], O],
         return {key: call(p)}
 
     return named_call
-
-
-def sum_of_squares(tree) -> Union[jnp.ndarray, jnp.inexact]:
-    return tree_reduce(jnp.add, tree_map(lambda x: jnp.sum(x**2), tree), 0.)
-
-def sum_of_abs_squares(tree) -> Union[jnp.ndarray, jnp.inexact]:
-    return tree_reduce(jnp.add, tree_map(lambda x: jnp.sum(jnp.abs(x)**2), tree), 0.)
 
 
 def interpolate(xmin=-7., xmax=7., N=14000) -> Callable:

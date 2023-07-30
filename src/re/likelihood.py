@@ -8,8 +8,8 @@ from jax import numpy as jnp
 from jax import vjp
 from jax.tree_util import Partial, tree_leaves
 
-from .tree_math import ShapeWithDtype
-from .misc import doc_from, is1d, isiterable, split, sum_of_squares
+from .misc import doc_from, is1d, isiterable, split
+from .tree_math import ShapeWithDtype, vdot
 
 Q = TypeVar("Q")
 
@@ -360,7 +360,7 @@ class StandardHamiltonian():
         def joined_hamiltonian(primals, **primals_kw):
             # Assume the first primals to be the parameters
             return self._lh(primals, **
-                            primals_kw) + 0.5 * sum_of_squares(primals)
+                            primals_kw) + 0.5 * vdot(primals, primals)
 
         def joined_metric(primals, tangents, **primals_kw):
             return self._lh.metric(primals, tangents, **primals_kw) + tangents

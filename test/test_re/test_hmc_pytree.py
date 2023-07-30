@@ -1,7 +1,9 @@
 import pytest
+
 pytest.importorskip("jax")
 
 from functools import partial
+
 from jax import numpy as jnp
 from jax.tree_util import tree_leaves
 from numpy.testing import assert_array_equal
@@ -15,7 +17,7 @@ def test_hmc_pytree():
 
     sampler_init = partial(
         jft.HMCChain,
-        potential_energy=jft.sum_of_squares,
+        potential_energy=lambda x: jft.vdot(x, x),
         inverse_mass_matrix=1.,
         step_size=0.193,
         num_steps=100
@@ -47,7 +49,7 @@ def test_nuts_pytree():
 
     sampler_init = partial(
         jft.NUTSChain,
-        potential_energy=jft.sum_of_squares,
+        potential_energy=lambda x: jft.vdot(x, x),
         inverse_mass_matrix=1.,
         step_size=0.193,
         max_tree_depth=10,
