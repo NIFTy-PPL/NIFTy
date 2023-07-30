@@ -200,9 +200,9 @@ def Poissonian(data, sampling_dtype=float):
     sampling_dtype : dtype, optional
         Data-type for sampling.
     """
-    from .tree_math import common_type
+    from .tree_math import result_type
 
-    dtp = common_type(data)
+    dtp = result_type(data)
     if not jnp.issubdtype(dtp, jnp.integer):
         raise TypeError("`data` of invalid type")
     if jnp.any(data < 0):

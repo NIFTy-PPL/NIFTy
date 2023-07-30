@@ -12,7 +12,7 @@ from jax.tree_util import Partial
 
 from . import conjugate_gradient
 from .logger import logger
-from .tree_math import assert_arithmetics, common_type
+from .tree_math import assert_arithmetics, result_type
 from .tree_math import norm as jft_norm
 from .tree_math import size, where, vdot
 
@@ -286,7 +286,7 @@ def _trust_ncg(
     # ValueError("initial trust radius must be less than the max trust radius")
     status = jnp.where(initial_trust_radius >= max_trust_radius, -1, status)
 
-    common_dtp = common_type(x0)
+    common_dtp = result_type(x0)
     eps = 6. * jnp.finfo(
         common_dtp
     ).eps  # Inspired by SciPy's NewtonCG minimzer

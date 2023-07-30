@@ -123,14 +123,14 @@ def _get_dtype(v: Any):
         return type(v)
 
 
-def common_type(*trees):
-    from numpy import find_common_type
+def result_type(*trees):
+    from numpy import result_type as result_type_np
 
-    common_dtp = find_common_type(
-        tuple(
-            find_common_type(tuple(_get_dtype(v) for v in tree_leaves(tr)), ())
+    common_dtp = result_type_np(
+        *(
+            result_type_np(*(_get_dtype(v) for v in tree_leaves(tr)))
             for tr in trees
-        ), ()
+        )
     )
     return common_dtp
 

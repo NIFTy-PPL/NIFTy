@@ -10,7 +10,7 @@ from jax import numpy as jnp
 
 from .logger import logger
 from .misc import doc_from
-from .tree_math import assert_arithmetics, common_type
+from .tree_math import assert_arithmetics, result_type
 from .tree_math import norm as jft_norm
 from .tree_math import size, vdot, where, zeros_like
 
@@ -103,7 +103,7 @@ def _cg(
     if absdelta is None and resnorm is None:  # fallback convergence criterion
         resnorm = jnp.maximum(tol * jft_norm(j, ord=norm_ord), atol)
 
-    common_dtp = common_type(j)
+    common_dtp = result_type(j)
     eps = 6. * jnp.finfo(common_dtp).eps  # taken from SciPy's NewtonCG minimzer
     tiny = 6. * jnp.finfo(common_dtp).tiny
 
@@ -248,7 +248,7 @@ def _static_cg(
     if absdelta is None and resnorm is None:  # fallback convergence criterion
         resnorm = jnp.maximum(tol * jft_norm(j, ord=norm_ord), atol)
 
-    common_dtp = common_type(j)
+    common_dtp = result_type(j)
     eps = 6. * jnp.finfo(common_dtp).eps  # taken from SciPy's NewtonCG minimzer
     tiny = 6. * jnp.finfo(common_dtp).tiny
 
@@ -504,7 +504,7 @@ def _cg_steihaug_subproblem(
         jnp.minimum(200, maxiter_fallback), miniter
     ) if maxiter is None else maxiter
 
-    common_dtp = common_type(g)
+    common_dtp = result_type(g)
     eps = 6. * jnp.finfo(
         common_dtp
     ).eps  # Inspired by SciPy's NewtonCG minimzer
