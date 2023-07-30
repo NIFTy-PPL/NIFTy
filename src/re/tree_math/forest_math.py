@@ -47,7 +47,7 @@ def random_like(key: Iterable, primals, rng: Callable = random.normal):
 
     def draw(key, x):
         shp = x.shape if hasattr(x, "shape") else jnp.shape(x)
-        dtp = x.dtype if hasattr(x, "dtype") else np.common_type(x)
+        dtp = x.dtype if hasattr(x, "dtype") else np.result_type(x)
         return rng(key=key, shape=shp, dtype=dtp)
 
     return tree_map(draw, subkeys, primals)
