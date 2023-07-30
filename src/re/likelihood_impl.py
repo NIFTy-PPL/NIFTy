@@ -231,14 +231,15 @@ def Poissonian(data, sampling_dtype=float):
     )
 
 
-def VariableCovarianceGaussian(data, cpx):
+def VariableCovarianceGaussian(data, iscomplex=False):
     """Gaussian likelihood of the data with a variable covariance
 
     Parameters
     ----------
     data : tree-like structure of jnp.ndarray and float
         Data with additive noise following a Gaussian distribution.
-    cpx: Boolean
+    iscomplex: Boolean
+        Whether the parameters are complex-valued.
 
     Notes
     -----
@@ -252,16 +253,14 @@ def VariableCovarianceGaussian(data, cpx):
         primals : pair of (mean, std_inv)
         """
         res = (primals[0] - data) * primals[1]
-        if cpx:
-            return 0.5 * vdot(res, res) - 2 * jnp.sum(jnp.log(primals[1]))
-        else:
-            return 0.5 * vdot(res, res) - jnp.sum(jnp.log(primals[1]))
+        fct = 2 if iscomplex else 1
+        return 0.5 * vdot(res, res) - fct * jnp.sum(jnp.log(primals[1]))
 
     def metric(primals, tangents):
         """
         primals, tangent : pair of (mean, std_inv)
         """
-        fct = 4 if cpx else 2
+        fct = 4 if iscomplex else 2
         prim_std_inv_sq = primals[1]**2
         res = (
             prim_std_inv_sq * tangents[0], fct * tangents[1] / prim_std_inv_sq
@@ -272,7 +271,7 @@ def VariableCovarianceGaussian(data, cpx):
         """
         primals, tangent : pair of (mean, std_inv)
         """
-        fct = 2 if cpx else jnp.sqrt(2)
+        fct = 2 if iscomplex else jnp.sqrt(2)
         res = (primals[1] * tangents[0], fct * tangents[1] / primals[1])
         return type(primals)(res)
 
@@ -287,7 +286,7 @@ def VariableCovarianceGaussian(data, cpx):
         """
         # TODO: test by drawing synthetic data that actually follows the
         # noise-cov and then average over it
-        fct = 2 if cpx else 1
+        fct = 2 if iscomplex else 1
         res = (
             primals[1] * (primals[0] - data),
             fct * tree_map(jnp.log, primals[1])

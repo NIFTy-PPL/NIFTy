@@ -1,16 +1,18 @@
 #!/usr/bin/env python3
 
 import pytest
+
 pytest.importorskip("jax")
 
-import jax.numpy as jnp
 from functools import partial
+
+import jax
+import jax.numpy as jnp
 from jax import random
 from jax.tree_util import tree_map
 from numpy.testing import assert_allclose
 
 import nifty8.re as jft
-import nifty8 as ift
 
 pmp = pytest.mark.parametrize
 
@@ -192,17 +194,20 @@ def test_transformation_vs_left_sqrt_metric_consistency(seed, shape, lh_init):
             lh.metric(p, t), lh_mini.metric(p, t), rtol=rtol, atol=atol
         )
 
-@pmp('cpx', [False, True])
-def test(cpx):
+
+@pmp('iscomplex', [False, True])
+def test_nifty_vsgaussian_vs_niftyre_vcgaussian_consistency(seed, iscomplex):
+    import nifty8 as ift
+
+    key = random.PRNGKey(seed)
+
     sp = ift.RGSpace(1)
-    if cpx :
-        val = 1.+1.j
-        data = ift.full(sp, 0+0j)
+    if iscomplex:
+        val = 1.0 + 1.0j
+        data = ift.full(sp, 0.0 + 0.0j)
     else:
-        val = 1.
-        data = ift.full(sp, 0)
-
-
+        val = 1.0
+        data = ift.full(sp, 0.0)
     fl = ift.full(sp, val)
     rls = ift.Realizer(sp)
     res = ift.Adder(data, neg=True) @ ift.makeOp(fl) @ rls.adjoint
@@ -212,50 +217,52 @@ def test(cpx):
     invcov = invcov.ducktape('invcov')
     invcov = invcov.ducktape_left('invcov')
     op = res + invcov
-    if cpx:
-        dt = jnp.complex128
-    else:
-        dt = jnp.float64
-    varcov = ift.VariableCovarianceGaussianEnergy(sp, 'res', 'invcov', dt) @ op
-
+    dt = jnp.complex128 if iscomplex else jnp.float64
+    varcov_nft = ift.VariableCovarianceGaussianEnergy(
+        sp, 'res', 'invcov', dt
+    ) @ op
 
     def op_jft(x):
-        return [val*x['res'], jnp.sqrt(jnp.exp(x['invcov']))]
-    varcov_jft = jft.VariableCovarianceGaussian(data.val, cpx) @ op_jft
+        return [val * x['res'], jnp.sqrt(jnp.exp(x['invcov']))]
 
-    # test val
-    inp = ift.from_random(op.domain)
-    lh0 = varcov(inp)
-    lh1 = varcov_jft(inp.val)
-    print("test val: ")
-    print(f"nifty: {lh0.val}")
-    print(f"jft: {lh1}")
-    print("")
-    assert_allclose(lh0.val, lh1)
+    varcov_jft = jft.VariableCovarianceGaussian(data.val, iscomplex) @ op_jft
 
-    # test metric
-    lin = varcov(ift.Linearization.make_var(inp, want_metric=True))
-    met = lin.metric
-    inp2 = ift.from_random(met.domain)
-    met_res = met(inp2)
-    met_res_jax = varcov_jft.metric(inp.val, inp2.val)
-    print("test metric: ")
-    print(f"nifty: {met_res.val}")
-    print(f"jft: {met_res_jax}")
-    print("")
-    assert_allclose(met_res['invcov'].val, met_res_jax['invcov'])
-    assert_allclose(met_res['res'].val, met_res_jax['res'])
+    def random_jft_ift_field(key):
+        inp = jft.random_like(key, ift.nifty2jax.convert(op.domain))
+        inp_nft = ift.MultiField(
+            op.domain,
+            jax.tree_map(ift.Field, op.domain.values(), tuple(inp.values()))
+        )
+        return inp, inp_nft
 
-    # test transform
-    inp3 = ift.from_random(varcov.get_transformation()[1].domain)
-    res1 = varcov.get_transformation()[1](inp3)
-    res2 = varcov_jft.transformation(inp3.val)
-    print("test transform: ")
-    print(f"nifty: {res1.val}")
-    print(f"jft: {res2}")
-    print("")
-    assert_allclose(res1['res'].val, res2[0])
-    assert_allclose(res1['invcov'].val, res2[1])
+    # Test value
+    key, sk = random.split(key)
+    inp_jft, inp_nft = random_jft_ift_field(sk)
+    lh_jft = varcov_jft(inp_jft)
+    lh_nft = varcov_nft(inp_nft)
+    print(f"test value :: nifty: {lh_nft.val:.4f} :: jft: {lh_jft:.4f}")
+    assert_allclose(lh_nft.val, lh_jft)
+
+    # Test metric
+    key, sk = random.split(key)
+    inp2_jft, inp2_nft = random_jft_ift_field(sk)
+    lin = varcov_nft(ift.Linearization.make_var(inp_nft, want_metric=True))
+    met_nft = lin.metric
+    met_res_nft = met_nft(inp2_nft)
+    met_res_jft = varcov_jft.metric(inp_jft, inp2_jft)
+    print(f"test metric ::\nnifty: {met_res_nft.val}\njft: {met_res_jft}\n")
+    assert_allclose(met_res_nft['invcov'].val, met_res_jft['invcov'])
+    assert_allclose(met_res_nft['res'].val, met_res_jft['res'])
+
+    # Test transform
+    key, sk = random.split(key)
+    inp3_jft, inp3_nft = random_jft_ift_field(sk)
+    trafo_nft = varcov_nft.get_transformation()[1](inp3_nft)
+    trafo_jft = varcov_jft.transformation(inp3_jft)
+    print(f"test transform:\nnifty: {trafo_nft.val}\njft: {trafo_jft}\n")
+    assert_allclose(trafo_nft['res'].val, trafo_jft[0])
+    assert_allclose(trafo_nft['invcov'].val, trafo_jft[1])
+
 
 if __name__ == "__main__":
     test_gaussian_vs_vcgaussian_consistency(42, (5, ))
