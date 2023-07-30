@@ -222,6 +222,29 @@ def vdot(a, b, *, precision=None):
     return tree_reduce(jnp.add, tree_of_vdots, 0.)
 
 
+def _conj(x):
+    return x.conj() if hasattr(x, "conj") else jnp.conj(x)
+
+
+def conjugate(a):
+    """Returns the complex conjugate, component- and element-wise.
+
+    Parameters
+    ----------
+    a : object
+        Arbitrary, flatten-able objects.
+
+    Returns
+    -------
+    out : object
+        The complex conjugate of `a`, with same shape and dtype as `a`.
+    """
+    return tree_map(_conj, a)
+
+
+conj = conjugate
+
+
 def where(condition, x, y):
     """Selects a pytree based on the condition which can be a pytree itself.
 
