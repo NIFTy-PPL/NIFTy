@@ -13,7 +13,7 @@ from .tree_math import vdot
 
 
 def standard_t(nwr, dof):
-    return jnp.sum(jnp.log1p(nwr**2 / dof) * (dof + 1)) / 2
+    return jnp.sum(jnp.log1p((nwr.conj() * nwr).real / dof) * (dof + 1)) / 2
 
 
 def _shape_w_fixed_dtype(dtype):
@@ -42,7 +42,9 @@ def _get_cov_inv_and_std_inv(
             ";\nsetting `cov_inv` to `std_inv(jnp.ones_like(data))**2`"
         )
         logger.warning(wm)
-        noise_std_inv_sq = std_inv(tree_map(jnp.ones_like, primals))**2
+        noise_std_inv_sq = std_inv(
+            tree_map(jnp.real, tree_map(jnp.ones_like, primals))
+        )**2
 
         def cov_inv(tangents):
             return noise_std_inv_sq * tangents
@@ -54,7 +56,8 @@ def _get_cov_inv_and_std_inv(
         )
         logger.warning(wm)
         noise_cov_inv_sqrt = tree_map(
-            jnp.sqrt, cov_inv(tree_map(jnp.ones_like, primals))
+            jnp.sqrt,
+            cov_inv(tree_map(jnp.real, tree_map(jnp.ones_like, primals)))
         )
 
         def std_inv(tangents):
@@ -94,7 +97,7 @@ def Gaussian(
 
     def hamiltonian(primals):
         p_res = primals - data
-        return 0.5 * p_res.ravel().dot(noise_cov_inv(p_res).ravel())
+        return 0.5 * vdot(p_res, noise_cov_inv(p_res)).real
 
     def metric(primals, tangents):
         return noise_cov_inv(tangents)
@@ -254,7 +257,7 @@ def VariableCovarianceGaussian(data, iscomplex=False):
         """
         res = (primals[0] - data) * primals[1]
         fct = 2 if iscomplex else 1
-        return 0.5 * vdot(res, res) - fct * jnp.sum(jnp.log(primals[1]))
+        return 0.5 * vdot(res, res).real - fct * jnp.sum(jnp.log(primals[1]))
 
     def metric(primals, tangents):
         """
