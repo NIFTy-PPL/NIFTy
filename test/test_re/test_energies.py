@@ -196,7 +196,7 @@ def test_transformation_vs_left_sqrt_metric_consistency(seed, shape, lh_init):
 
 
 @pmp('iscomplex', [False, True])
-def test_nifty_vsgaussian_vs_niftyre_vcgaussian_consistency(seed, iscomplex):
+def test_nifty_vcgaussian_vs_niftyre_vcgaussian_consistency(seed, iscomplex):
     import nifty8 as ift
 
     key = random.PRNGKey(seed)
