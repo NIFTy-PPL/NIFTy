@@ -296,7 +296,7 @@ def VariableCovarianceGaussian(data, iscomplex=False):
         )
         return type(primals)(res)
 
-    lsm_tangents_shape = tree_map(ShapeWithDtype.from_leave, (data, data))
+    lsm_tangents_shape = tree_map(ShapeWithDtype.from_leave, (data, data.real))
 
     return Likelihood(
         hamiltonian,
