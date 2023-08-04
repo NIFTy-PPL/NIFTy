@@ -27,3 +27,4 @@ from .refine.charted_field import RefinementField
 from .refine.healpix_field import RefinementHPField
 from .smap import smap
 from .tree_math import *
+from .optimize_kl import optimize_kl
