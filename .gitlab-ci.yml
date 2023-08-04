@@ -1,7 +1,7 @@
 image: $CONTAINER_TEST_IMAGE
 
 variables:
-  CONTAINER_TEST_IMAGE: gitlab-registry.mpcdf.mpg.de/$CI_PROJECT_PATH:$CI_BUILD_REF_NAME
+  CONTAINER_TEST_IMAGE: gitlab-registry.mpcdf.mpg.de/$CI_PROJECT_PATH:$CI_COMMIT_REF_NAME
   OMP_NUM_THREADS: 1
 
 stages:
@@ -19,7 +19,7 @@ build_docker_from_scratch:
   before_script:
     - ls
   script:
-    - docker login -u gitlab-ci-token -p $CI_BUILD_TOKEN gitlab-registry.mpcdf.mpg.de
+    - docker login -u gitlab-ci-token -p $CI_JOB_TOKEN gitlab-registry.mpcdf.mpg.de
     - docker build -t $CONTAINER_TEST_IMAGE --no-cache .
     - docker push $CONTAINER_TEST_IMAGE
 
@@ -31,7 +31,7 @@ build_docker_from_cache:
   before_script:
     - ls
   script:
-    - docker login -u gitlab-ci-token -p $CI_BUILD_TOKEN gitlab-registry.mpcdf.mpg.de
+    - docker login -u gitlab-ci-token -p $CI_JOB_TOKEN gitlab-registry.mpcdf.mpg.de
     - docker build -t $CONTAINER_TEST_IMAGE .
     - docker push $CONTAINER_TEST_IMAGE
 
