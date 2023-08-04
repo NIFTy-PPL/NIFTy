@@ -164,95 +164,22 @@ nll = jft.Gaussian(data, noise_cov_inv) @ signal_response
 # Jit-compile the next best thing: the likelihood, its metric and its
 # left-sqrt-metric. This is redundant for MGVI.
 nll = nll.jit()
-ham = jft.StandardHamiltonian(likelihood=nll)
 
-
-@jax.jit
-def ham_vg(primals, primals_samples):
-    assert isinstance(primals_samples, jft.kl.Samples)
-    vvg = jax.vmap(jax.value_and_grad(ham))
-    s = vvg(primals_samples.at(primals).samples)
-    return jax.tree_util.tree_map(partial(jnp.mean, axis=0), s)
-
-
-@jax.jit
-def ham_metric(primals, tangents, primals_samples):
-    assert isinstance(primals_samples, jft.kl.Samples)
-    vmet = jax.vmap(ham.metric, in_axes=(0, None))
-    s = vmet(primals_samples.at(primals).samples, tangents)
-    return jax.tree_util.tree_map(partial(jnp.mean, axis=0), s)
-
-
-def sample_geoevi(primals, key, *, absdelta, point_estimates=()):
-    n_non_linear_steps = 15
-    sample = partial(
-        jft.sample_evi,
-        nll,
-        # linear_sampling_name="S",  # enables verbose logging
-        # non_linear_sampling_name="SN",  # enables verbose logging
-        linear_sampling_kwargs={"absdelta": absdelta / 10.},
-        point_estimates=point_estimates,
-        non_linear_sampling_kwargs={
-            "maxiter": n_non_linear_steps,
-            # Disable verbose logging for the CG within the sampling
-            "cg_kwargs": {
-                "name": None
-            }
-        }
-    )
-    # Manually loop over the keys for the samples because mapping over them
-    # would implicitly JIT the sampling which is exacty what we want to avoid.
-    samples = tuple(sample(primals, k) for k in key)
-    # at: reset relative position as it gets (wrongly) batched too
-    # squeeze: merge "samples" axis with "mirrored_samples" axis
-    return jft.stack(samples).at(primals).squeeze()
-
-
-@partial(jax.jit, static_argnames=("point_estimates", ))
-def sample_evi(primals, key, *, absdelta, point_estimates=()):
-    # at: reset relative position as it gets (wrongly) batched too
-    # squeeze: merge "samples" axis with "mirrored_samples" axis
-    return jft.smap(
-        partial(
-            jft.sample_evi,
-            nll,
-            # linear_sampling_name="S",  # enables verbose logging
-            linear_sampling_kwargs={"absdelta": absdelta / 10.},
-            point_estimates=point_estimates,
-        ),
-        in_axes=(None, 0)
-    )(primals, key).at(primals).squeeze()
-
-
-# %%
-key, ks, kp = random.split(key, 3)
-sampling_keys = random.split(ks, n_samples)
-pos_init = jft.random_like(kp, correlated_field.domain)
-pos = 1e-2 * jft.Vector(pos_init.copy())
-
-# %%  Minimize the potential
-for i in range(n_mgvi_iterations):
-    print(f"MGVI Iteration {i}", file=sys.stderr)
-    print("Sampling...", file=sys.stderr)
-    samples = sample_evi(pos, sampling_keys, absdelta=absdelta / 10.)
-
-    print("Minimizing...", file=sys.stderr)
-    opt_state = jft.minimize(
-        None,
-        pos,
-        method="newton-cg",
-        options={
-            "fun_and_grad": partial(ham_vg, primals_samples=samples),
-            "hessp": partial(ham_metric, primals_samples=samples),
-            "absdelta": absdelta,
-            "maxiter": n_newton_iterations,
-            # "name": "N",  # enables verbose logging
-        }
-    )
-    pos = opt_state.x
-    msg = f"Post MGVI Iteration {i}: Energy {ham_vg(pos, samples)[0]:2.4e}"
-    print(msg, file=sys.stderr)
-
+key, subkey = random.split(key)
+pos_init = jft.random_like(subkey, correlated_field.domain)
+linear_sampling_kwarks = {"absdelta": absdelta / 10., "maxiter": 100}
+non_linear_sampling_kwarks = None # For MGVI
+#non_linear_sampling_kwarks = {"absdelta": absdelta / 10., "maxiter": 10} # For geoVI
+newton_cg_kwarks = {"absdelta": absdelta, "maxiter": n_newton_iterations}
+n_samples = lambda i: 2 if i<2 else 4
+pos, samples, key = jft.optimize_kl(nll,
+                             pos_init,
+                             n_mgvi_iterations,
+                             n_samples,
+                             newton_cg_kwarks,
+                             linear_sampling_kwarks,
+                             non_linear_sampling_kwarks,
+                             key)
 # %%
 namps = cfm.get_normalized_amplitudes()
 post_sr_mean = jft.mean(tuple(signal_response(s) for s in samples.at(pos)))
