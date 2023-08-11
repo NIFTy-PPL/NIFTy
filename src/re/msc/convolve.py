@@ -3,6 +3,7 @@
 
 import numpy as np
 import jax.numpy as jnp
+from .chart import MSChart
 from .index_utils import get_selection, get_table
 from .utils import sorted_concat
 
@@ -47,50 +48,19 @@ def prepare_input(arrays, chart, volume_scaling = 1., indices = None):
         res.append(rr)
     return res
 
-def charted_convolve(arrays, kernel, chart):
-    if len(arrays) != chart.maxlevel + 1:
+def charted_convolve(arrays, kernels, kerneltables, chart):
+    if not isinstance(chart, MSChart):
         raise ValueError
-    result = [None,] * (chart.maxlevel + 1)
-    resultids = [None,] * (chart.maxlevel + 1)
-    for lvl in range(chart.maxlevel + 1)[::-1]:
-        if lvl != chart.maxlevel:
-            # Coarse grain
-            res, resid = chart.coarse_grain(arrays[lvl+1], lvl+1)
-            arrays[lvl], ids = sorted_concat(arrays[lvl], chart.indices[lvl],
-                                             res, resid)
-            assert np.all(ids == chart.main_indices[lvl])
-        res = arrays[lvl]
-        resid = chart.main_indices[lvl]
-        if lvl != 0:
-            # Get missing values for kernel windows from coarse layer.
-            refined = chart.refine_input(arrays[lvl-1], lvl-1)
-            if refined is not None:
-                res, resid = sorted_concat(res, resid, refined[0], refined[1])
-        result[lvl] = res
-        resultids[lvl] = resid
-
-    myres = None
-    oldker = None
-    for lvl in range(chart.maxlevel + 1):
-
-        ker = kernel.evaluate_kernel_function(lvl, chart.main_indices[lvl])
-        myres = chart.interpolate_convolve(result[lvl], resultids[lvl], ker, 
-                                           lvl, myres, oldker)
-        select = get_selection(get_table(chart.main_indices[lvl]), 
-                               chart.indices[lvl])
-        result[lvl] = myres[select].squeeze()
-        oldker = ker
-    return result
-
-def charted_convolve_precompute(arrays, kernels, kerneltables, chart):
     if len(arrays) != chart.maxlevel + 1:
         raise ValueError
     if len(kernels) != chart.maxlevel + 1:
         raise ValueError
     result = []
+    resultids = []
     for lvl in range(chart.maxlevel + 1)[::-1]:
         if lvl != chart.maxlevel:
             # Coarse grain
+            assert arrays[lvl+1].shape[0] == chart.main_indices[lvl+1].size
             res, resid = chart.coarse_grain(arrays[lvl+1], lvl+1)
             if arrays[lvl].size > 0:
                 res, resid = sorted_concat(arrays[lvl], chart.indices[lvl], res, 
@@ -98,21 +68,24 @@ def charted_convolve_precompute(arrays, kernels, kerneltables, chart):
             assert np.all(resid == chart.main_indices[lvl])
             arrays[lvl] = res
         else:
-            res, resid = arrays[lvl], chart.main_indices[lvl]
+            res = arrays[lvl]
+            resid = chart.main_indices[lvl]
         if lvl != 0:
             # Get missing values for kernel windows from coarse layer.
             refined = chart.refine_input(arrays[lvl-1], lvl-1)
             if refined is not None:
                 res, resid = sorted_concat(res, resid, refined[0], refined[1])
-        # Convolve with kernel
-        result.append(chart.convolve(res, resid, kernels[lvl], 
-                                     kerneltables[lvl], lvl))
+        result.append(res)
+        resultids.append(resid)
     result.reverse()
-    # Add up and interpolate results
-    for lvl in range(chart.maxlevel + 1):
-        if lvl != chart.maxlevel:
-            result[lvl+1] += chart.interpolate(result[lvl], lvl)
-        select = get_selection(get_table(chart.main_indices[lvl]), 
-                               chart.indices[lvl])
-        result[lvl] = result[lvl][select].squeeze()
+    resultids.reverse()
+    prev_result = None
+    for lvl in range(chart.maxlevel+1):
+        result[lvl] = chart.batch_interconvolve(prev_result, result[lvl], 
+                                                resultids[lvl], 
+                                                kernels[lvl],
+                                                kerneltables[lvl], lvl)
+        prev_result = result[lvl]
+        result[lvl] = result[lvl][get_selection(
+            get_table(chart.main_indices[lvl]), chart.indices[lvl])]
     return result

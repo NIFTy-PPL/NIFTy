@@ -79,6 +79,16 @@ def update_table(table, new_ids, check = True):
                 raise ValueError
     table.update({idx : len(table.keys()) + i for i, idx in enumerate(new_ids)})
 
+def batch_table_to_table(table, level, axes):
+    if level == 0:
+        raise ValueError
+    ids = np.array(list(table.keys()))
+    fids = get_fine_indices(ids, level-1, axes)
+    sz = reduce(lambda a,b: a*b, fids.shape[1:])
+    sel = np.array(list(table.values()))
+    sel = np.add.outer(sz*sel, np.arange(sz, dtype=sel.dtype))
+    return {kk:ii for kk,ii in zip(fids.flatten(), sel.flatten())}
+
 def _get_axes_tuple(axes, maxlevel):
     axs = [axes,]
     for _ in range(maxlevel):
@@ -161,37 +171,6 @@ def id_to_axisids(index, lvl, axes):
             raise ValueError
     return res
 
-#def _weights(shape, dtype):
-#    """Helper for weights to/from id conversion
-#    """
-#    res = np.array(shape, dtype=dtype)
-#    res = np.cumprod(res[::-1])
-#    res[-1] = 1
-#    return np.roll(res, shift=1)[::-1]
-
-#def id_to_axisids(index, lvl, axes):
-#    shape = tuple(ax.size for ax in _get_axes_tuple(axes, lvl)[-1])
-#    if np.any(index > reduce(lambda a,b: a*b, shape)):
-#        print(np.max(index), shape)
-#        raise ValueError
-#    """Translates the pixelid of a pixel to the corresponding axisids"""
-#    res = np.zeros((len(shape),) + index.shape, dtype=index.dtype)
-#    tm = np.copy(index)
-#    for i, w in enumerate(_weights(shape, index.dtype)):
-#        res[i] = tm // w
-#        tm -= w * res[i]
-#    return res
-
-#def axisids_to_id(index, lvl, axes):
-#    shape = tuple(ax.size for ax in _get_axes_tuple(axes, lvl)[-1])
-#    for ii, ss in zip(index, shape):
-#        if np.any(ii > ss):
-#            print(np.max(ii), ss)
-#            raise ValueError
-#    """Translates the axisids of a pixel to the corresponding pixelid"""
-#    return ((np.moveaxis(index, 0, -1) * 
-#            _weights(shape, index.dtype)).sum(axis = -1)).astype(index.dtype)
-
 def my_axes_outer(slices):
     """Helper to create an axis meshgrid given slices along all axes"""
     res = np.zeros((len(slices),) + 
@@ -258,3 +237,43 @@ def get_kernel_window(index, lvl, axes):
     myax = _get_axes_tuple(axes, lvl)[-1]
     slices = tuple(aa.get_kernel_window_ids(ii) for aa,ii in zip(myax, index))
     return axisids_to_id(my_axes_outer(slices), lvl, axes)
+
+def get_inter_window(index, lvl, axes):
+    """The index window covered by the kernel and interpolation for a given 
+    output `index`.
+
+    Parameters:
+    -----------
+    index: numpy.ndarray of int
+        Index around which the kernel window is requested.
+    lvl: int
+        Refinment level of `index`
+    axes: RegularAxes
+        Axes which correspond to the chart.
+    """
+    if len(index.shape) != 1:
+        raise ValueError
+    index = id_to_axisids(index, lvl, axes)
+    myax = _get_axes_tuple(axes, lvl)[-1]
+    slices = tuple(aa.get_inter_window_ids(ii) for aa,ii in zip(myax, index))
+    return axisids_to_id(my_axes_outer(slices), lvl, axes)
+
+def get_batch_kernel_window(index, lvl, axes):
+    """The index window covered by the kernel for a given output `index`.
+
+    Parameters:
+    -----------
+    index: numpy.ndarray of int
+        Index around which the kernel window is requested.
+    lvl: int
+        Refinment level of `index`
+    axes: RegularAxes
+        Axes which correspond to the chart.
+    """
+    if len(index.shape) != 1:
+        raise ValueError
+    index = id_to_axisids(index, lvl, axes)
+    myax = _get_axes_tuple(axes, lvl)[-1]
+    slices = tuple(aa.get_batch_kernel_window(ii) for aa, ii in 
+                   zip(myax, index))
+    return axisids_to_id(my_axes_outer(slices), lvl+1, axes)

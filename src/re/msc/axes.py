@@ -5,7 +5,7 @@ import numpy as np
 import healpy as hp
 import jax.numpy as jnp
 from jax import vmap
-from .utils import get_all_kneighbours, get_hp_knn
+from .utils import get_all_kneighbours
 
 
 class RegularAxis:
@@ -171,19 +171,16 @@ class RegularAxis:
     def kernel_to_batchkernel(self, index):
         ks = self.fine_axis.kernel_size
         wsize = self.base + 2*(ks//2)
-        trafo = np.zeros((self.base, wsize, self.base, ks))
+        trafo = np.zeros((self.base, wsize, self.base, ks), dtype=int)
         for i in range(self.base):
-            trafo[i, i:ks+i, i] = 1.
-        return trafo
+            trafo[i, i:ks+i, i] = np.eye(ks, dtype=int)
+        return trafo[np.newaxis, ...]
 
     def get_batch_kernel_window(self, index):
         ks = self.fine_axis.kernel_size
         w = np.arange(-(ks//2), self.base + ks//2, dtype=index.dtype)
         window = np.add.outer(self.base*index, w, dtype=index.dtype)
-        #trafo = np.zeros((self.base, w.size, self.base, ks))
-        #for i in range(self.base):
-        #    trafo[i, i:ks+i, i] = 1.
-        return window%self.fine_axis.size#, trafo
+        return window%self.fine_axis.size
 
     def flagged_kernel_window(self, index):
         """Potential flagging of entries in the kernel window.
@@ -335,6 +332,7 @@ class RegularAxis:
     def batch_interpolate(self, refine_index, kernel_index):
         #TODO add interpolation method (nearest & quadratic) to make use of full
         #     scope.
+        #TODO unify with `batch_window_to_window`
         """Finds the neighbouring bins and builds the interpolation matrices to
         interpolate the output from this level to the `fine_index` along this
         axis.
@@ -370,39 +368,45 @@ class RegularAxis:
         coarse = coarse%self.size
         return coarse, mat[np.newaxis, ...]
 
-    def interpolate(self, fine_index):
-        #TODO name bilinear?
-        """Finds the neighbouring bins and builds the interpolation matrices to
-        interpolate the output from this level to the `fine_index` along this
-        axis.
+    def batch_window_to_window(self):
+        mat = np.zeros((self.base, 2, 3))
+        for b in range(self.base):
+            if b < self.base//2:
+                mat[b] = np.array([[1, 0, 0], [0, 1, 0]])
+            else:
+                mat[b] = np.array([[0, 1, 0], [0, 0, 1]])
+        return mat
 
-        Parameters:
-        -----------
-        fine_index: numpy.ndarray of int
-            Indices on the next level which require interpolation of the output
-        Returns:
-        --------
-        coarse: numpy.ndarray of int
-            The indices on this level that are used for bilinear interpolation.
-            For each entry in `fine_index` two entries in `coarse` exist.
-        weights: numpy.ndarray of float
-            Unique interpolation weights
-        select: numpy.ndarray of int
-            Indexing of `weights` that yields the weights for all entries of
-            `fine_index` (See `refine_mat` for further information)
+    def get_batch_fine_kernel_selection(self, refine_index):
+        """Returns the selection to get the subset along the integrand axis of
+        the kernel that is covered by the kernel on the next refinment level.
+        #TODO docstring
         """
-        if self.fine_axis is None:
-            raise ValueError
+        fine_index = self.get_fine_indices(refine_index)
+        assert len(fine_index.shape) == 2
+        shp = fine_index.shape
+        (front, select) = self._get_fine_kernel_selection(fine_index.flatten())
+        return (front.reshape(shp+front.shape[1:]), 
+                select.reshape(shp+select.shape[1:]))
+
+    def _get_fine_kernel_selection(self, fine_index):
+        """Returns the selection to get the subset along the integrand axis of
+        the kernel that is covered by the kernel on the next refinment level.
+        #TODO docstring
+        """
         coarse = self.get_binid_of((fine_index - self.base//2))
-        weights = self._get_normalized_dist(fine_index, coarse)
-        weights, select = np.unique(weights, axis = 0, return_inverse=True)
-        weights = np.array([[[1. - weights,],], [[weights,],]])
-        weights = np.moveaxis(weights, -1, 0)
-        weights = weights[:, :, :(1 + self.fine_axis.is_linear)]
-        coarse = np.add.outer(coarse, np.arange(2, dtype=fine_index.dtype),
+        start = ((self.kernel_size+1)*self.base)//2 - self.base
+        start += (fine_index - self.base * coarse)
+        fine_size = self.fine_axis.kernel_size
+        start -= fine_size//2
+        select = np.add.outer(start, np.arange(fine_size), 
                               dtype=fine_index.dtype)
-        coarse = coarse%self.size
-        return coarse, weights, select
+        front = np.multiply.outer(np.ones_like(select), 
+                                  np.arange(2, dtype=fine_index.dtype),
+                                  dtype=fine_index.dtype)
+        front = np.moveaxis(front, 1, -1)
+        select = np.stack((select, select - self.base), axis = 1)
+        return (front, select)
 
     def get_coords_and_distances(self, index):
         """Returns the coordinate of `index` and the distances to
@@ -428,25 +432,6 @@ class RegularAxis:
         locs = locs[np.newaxis, ..., np.newaxis]
         window = window[np.newaxis, ...]
         return (locs, window)
-
-    def get_fine_kernel_selection(self, fine_index):
-        """Returns the selection to get the subset along the integrand axis of
-        the kernel that is covered by the kernel on the next refinment level.
-        #TODO docstring
-        """
-        coarse = self.get_binid_of((fine_index - self.base//2))
-        start = ((self.kernel_size+1)*self.base)//2 - self.base
-        start += (fine_index - self.base * coarse)
-        fine_size = self.fine_axis.kernel_size
-        start -= fine_size//2
-        select = np.add.outer(start, np.arange(fine_size), 
-                              dtype=fine_index.dtype)
-        front = np.multiply.outer(np.ones_like(select), 
-                                  np.arange(2, dtype=fine_index.dtype),
-                                  dtype=fine_index.dtype)
-        front = np.moveaxis(front, 1, -1)
-        select = np.stack((select, select - self.base), axis = 1)
-        return (front, select)
 
     def refine_axis(self, base = None, kernel_size = None, is_linear = None):
         """Creates a new instance of `RegularAxis` and sets it to be the
@@ -705,6 +690,100 @@ class HPAxis(RegularAxis):
         """
         return self.get_kernel_window_ids(index, True)[1]
 
+    def _batch_kernel(self, index, want_kernel=False):
+        fax = self.fine_axis
+        fids = self.get_fine_indices(index)
+        shp = fids.shape
+        windows, bad = fax.get_kernel_window_ids(fids.flatten(), 
+                                                 want_isbad=True)
+        windows = windows.reshape(shp+windows.shape[1:])
+        bad = bad.reshape(shp+bad.shape[1:])
+
+        ks = self.fine_axis.kernel_size
+        ksz = (1 + 1 + 2*self.fine_axis._knn)**2
+        if (self.fine_axis._knn == -1) or (ksz >= hp.nside2npix(self.nside)):
+            ksz = hp.nside2npix(self.nside)
+
+        ids = np.zeros(index.shape+(ksz,), dtype=index.dtype)
+        if want_kernel:
+            trafo = np.zeros((ids.shape[0], self.base, ksz, self.base, ks),
+                             dtype=np.int8)
+
+        good = np.prod(~bad.reshape((bad.shape[0],-1)), axis=1).astype(bool)
+        if np.sum(good) > 0:
+            goodw = windows[good]
+            goodw = goodw.reshape((goodw.shape[0],-1))
+            gs = np.argsort(goodw, axis=1)
+            goodw = np.take_along_axis(goodw, gs, axis=1)
+            sub = (goodw[:,1:] - goodw[:,:-1]) != 0
+            u = np.concatenate((np.ones((sub.shape[0],1),dtype=bool), sub), 
+                               axis=1)
+            assert np.all(np.sum(u, axis=1) == ksz)
+
+            goodids = goodw[u].reshape((goodw.shape[0],-1))
+            ids[good] = goodids
+            if want_kernel:
+                gtrafo = np.zeros((goodids.shape[0], self.base, ksz, 
+                                   self.base, ks), dtype=trafo.dtype)
+                tsort = np.zeros((gs.shape[1], gtrafo.shape[0], gs.shape[1]),
+                                 dtype=trafo.dtype)
+                fill = np.arange(gs.shape[0], dtype=gs.dtype)
+                for i in range(gs.shape[1]):
+                    tsort[i, fill, gs[:,i]] = 1
+                tsort = np.swapaxes(tsort, 0, 1)
+                assert np.all(np.sum(tsort, axis=-1) == 1)
+                tproj = np.zeros((gtrafo.shape[0],gs.shape[1],goodids.shape[1]),
+                                 dtype=trafo.dtype)
+                tm = np.cumsum(u, axis=1) - 1
+                for i in range(goodids.shape[1]):
+                    tproj[tm == i, i] = 1
+                tproj = np.swapaxes(tproj, 1, 2)
+                tr = (tproj[...,np.newaxis]*tsort[:,np.newaxis,:,:]).sum(axis=2)
+                for bb in range(self.base):
+                    m0 = np.zeros((self.base*ks, ks), dtype=trafo.dtype)
+                    m0[bb*ks:(bb+1)*ks, :] = np.eye(ks, dtype=trafo.dtype)
+                    gtrafo[:, bb, :, bb, :] = np.tensordot(tr, m0,
+                                        axes=((2,),(0,))).astype(trafo.dtype)
+                    assert np.all((gtrafo[:,bb,:,bb,:].sum(axis=-1) == 1) +
+                                  (gtrafo[:,bb,:,bb,:].sum(axis=-1) == 0))
+                trafo[good] = gtrafo
+
+        if np.sum(~good) > 0:
+            badw = windows[~good]
+            badw = badw.reshape((badw.shape[0],-1))
+            badids = np.zeros((badw.shape[0], ksz), dtype=index.dtype)
+            if want_kernel:
+                badtrafo = np.zeros((badw.shape[0],) + trafo.shape[1:],
+                                    dtype=trafo.dtype)
+            for ii in range(badw.shape[0]):
+                u, inv = np.unique(badw[ii], return_inverse=True)
+                extra = ksz-u.size
+                tm = np.concatenate((u,np.ones(extra, dtype=index.dtype)*u[-1]))
+                badids[ii] = tm
+                if want_kernel:
+                    um = np.zeros((ksz, self.base*ks), dtype=trafo.dtype)
+                    for j in range(u.size):
+                        um[j, inv == j] = 1
+                    for bb in range(self.base):
+                        m0 = np.zeros((self.base*ks, ks), dtype=trafo.dtype)
+                        m0[bb*ks:(bb+1)*ks, :] = np.eye(ks, dtype=trafo.dtype)
+                        badtrafo[ii, bb, :, bb, :] = np.tensordot(um, m0, 
+                                    axes=((1,),(0,)), ).astype(trafo.dtype)
+            ids[~good] = badids
+            if want_kernel:
+                trafo[~good] = badtrafo
+
+        if want_kernel:
+            assert np.all((trafo == 1) + (trafo == 0))
+            return ids, trafo
+        return ids
+
+    def kernel_to_batchkernel(self, index):
+        return self._batch_kernel(index, want_kernel=True)[1]
+
+    def get_batch_kernel_window(self, index):
+        return self._batch_kernel(index)
+
     def refine_mat(self, fine_index):
         """Finds the bin and builds the matrix to refine the input from this
         level to the `fine_index` on the next level along this axis.
@@ -749,6 +828,19 @@ class HPAxis(RegularAxis):
             return window, bad
         return window
 
+    def _select_pairs(self):
+        return {0:np.array([0,1,7,8]), 1:np.array([0,7,5,6]),
+                2:np.array([0,3,1,2]), 3:np.array([0,5,3,4])}
+
+    def batch_window_to_window(self):
+        mat = np.zeros((4, 4, 9), dtype=int)
+        pairs = self._select_pairs()
+        for i in range(4):
+            m = np.zeros((4,9), dtype=int)
+            m[np.arange(4, dtype=int), pairs[i]] = 1
+            mat[i] = m
+        return mat
+
     def batch_interpolate(self, refine_index, kernel_index):
         #TODO add interpolation method (nearest & quadratic) to make use of full
         #     scope.
@@ -775,15 +867,14 @@ class HPAxis(RegularAxis):
             raise ValueError
         window = self._get_interpolation_window(refine_index)
 
-        kid = np.multiply.outer(kernel_index, np.ones((4,), 
-                                                      dtype=kernel_index.dtype),
+        kid = np.multiply.outer(kernel_index, 
+                                np.ones((4,), dtype=kernel_index.dtype),
                                 dtype=kernel_index.dtype).flatten()
         coarse, bad = self._get_interpolation_window(kid, True)
         fine_index = self.get_fine_indices(kernel_index).flatten()
         dm = fine_index - 4*kid
 
-        select_pairs = {0:np.array([0,1,7,8]), 1:np.array([0,7,5,6]),
-                        2:np.array([0,3,1,2]), 3:np.array([0,5,3,4])}
+        select_pairs = self._select_pairs()
         all_coarse = np.zeros(fine_index.shape + (4,), dtype=coarse.dtype)
         all_bad = np.zeros(fine_index.shape + (4,), dtype=bad.dtype)
         for i in range(4):
@@ -797,13 +888,13 @@ class HPAxis(RegularAxis):
         weights = _interpolation_weights(angles, all_bad[:,-1])
         weights = weights.reshape(kernel_index.shape + (4,4))
         ker = np.zeros(weights.shape[:-1] + (9,))
+        mat = self.batch_window_to_window()
         for i in range(4):
-            m = np.zeros((4,9))
-            m[np.arange(4, dtype=int), select_pairs[i]] = 1.
-            ker[:, i] = weights[:, i] @ m
+            ker[:,i] = weights[:,i] @ mat[i]
         return window, ker
 
-    def interpolate(self, fine_index):
+    def _interpolate_ids(self, fine_index):
+        #TODO unify with batch interpolate
         """Finds the neighbouring bins and builds the interpolation matrices to
         interpolate the output from this level to the `fine_index` along this
         axis.
@@ -831,8 +922,7 @@ class HPAxis(RegularAxis):
         bad = coarse == -1
         x, y = np.where(bad)
         coarse[x, y] = cc[x]
-        select_pairs = {0:np.array([0,1,7,8]), 1:np.array([0,7,5,6]),
-                        2:np.array([0,3,1,2]), 3:np.array([0,5,3,4])}
+        select_pairs = self._select_pairs()
         all_coarse = np.zeros(fine_index.shape + (4,), dtype=coarse.dtype)
         all_bad = np.zeros(fine_index.shape + (4,), dtype=bad.dtype)
         for i in range(4):
@@ -840,14 +930,7 @@ class HPAxis(RegularAxis):
             all_coarse[cond] += coarse[cond][:,select_pairs[i]]
             all_bad[cond] = bad[cond][:,select_pairs[i]]
         assert np.all(np.sum(all_bad[:,:-1], axis=1) == 0)
-
-        angles = _int_to_basis(self.nside, fine_index, all_coarse.T, 
-                               all_bad[:,-1])
-        angles, inds, ker_select = np.unique(angles, return_index=True,
-                                             return_inverse=True, axis=-1)
-        weights = _interpolation_weights(angles, all_bad[:,-1][inds])
-        ker = weights.reshape(weights.shape+(1,1))
-        return all_coarse, np.array(ker), ker_select
+        return all_coarse
 
     def get_coords_and_distances(self, index):
         """Returns the coordinate of `index` and the distances to
@@ -877,12 +960,13 @@ class HPAxis(RegularAxis):
         dloc = locp - loc
         return (loc, dloc)
 
-    def get_fine_kernel_selection(self, fine_index):
+    def _get_fine_kernel_selection(self, fine_index):
         """Returns the selection to get the subset along the integrand axis of
         the kernel that is covered by the kernel on the next refinment level.
         """
         #TODO docstring
-        coarse_ids = self.interpolate(fine_index)[0]
+        coarse_ids = self._interpolate_ids(fine_index)
+
         coarse_ids = coarse_ids.T
         fine_kernel, fine_bad = self.fine_axis.get_kernel_window_ids(fine_index,
                                                             want_isbad = True)

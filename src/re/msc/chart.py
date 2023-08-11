@@ -4,11 +4,12 @@
 import numpy as np
 import jax.numpy as jnp
 from functools import reduce
-from jax import jit, vmap
+from jax import vmap
 from .index_utils import (get_selection, get_table, my_setdiff_indices,
                           get_kernel_window, get_coarse_index, my_axes_outer,
                           get_fine_indices, id_to_axisids, axisids_to_id,
-                          _get_axes_tuple)
+                          get_inter_window, _get_axes_tuple, 
+                          get_batch_kernel_window)
 from .utils import axes_matmul
 
 
@@ -23,7 +24,7 @@ def _check_indices(indices, baseaxes):
         if np.sum((counts%nref != 0)):
             msg = f"Indices not fully refined on level: {maxlevel-i-1}"
             raise ValueError(msg)
-        missing = get_kernel_window(inds, maxlevel - i, baseaxes)
+        missing = get_inter_window(inds, maxlevel - i, baseaxes)
         missing = my_setdiff_indices(missing, inds)
         missing = get_coarse_index(missing, maxlevel - i, baseaxes)
         missing = np.unique(missing)
@@ -183,7 +184,6 @@ class MSChart:
     def _get_main_indices(self):
         """All indices on each level including the ones that are obtained when
         coarse graining the finer levels."""
-        axes = _get_axes_tuple(self.axes(0), self.maxlevel)
         inds = np.copy(self.indices[-1])
         main_inds = [inds,]
         for lvl in range(self._maxlevel)[::-1]:
@@ -328,149 +328,83 @@ class MSChart:
             return self._refine_input(input, missing, table, level), missing
         return None
 
-    def _interpolation_selection(self, level, fine_indices, coarse_table):
+    def _batch_interpolation_selection(self, level, refine_indices, 
+                                       coarse_table):
         if level == self.maxlevel:
             raise ValueError
         axs = self.axes(level)
-        coarse, kernels, ker_select = (), (), ()
-        for ax, idx in zip(axs, id_to_axisids(fine_indices, level + 1,
-                                              self._axes)):
-            cc, ker, ker_sel = ax.interpolate(idx)
-            kernels += (jnp.array(ker),)
-            ker_select += (ker_sel,)
-            coarse += (cc,)
+        kids = id_to_axisids(refine_indices, level, self._axes)
+        for i, aa in enumerate(axs):
+            if aa.regular:
+                kids[i] = 0
+        kids = axisids_to_id(kids, level, self._axes)
+        _, sel, isel = np.unique(kids, return_index=True, return_inverse=True)
+        kids = refine_indices[sel]
+        coarse, kernels = [], []
+        for i, (ax, idx, kidx) in enumerate(zip(axs, 
+                            id_to_axisids(refine_indices, level, self._axes), 
+                            id_to_axisids(kids, level, self._axes))):
+            cc, kk = ax.batch_interpolate(idx, kidx)
+            kernels.append(kk)
+            coarse.append(cc)
         coarse = my_axes_outer(coarse)
         coarse = axisids_to_id(coarse, level, self._axes)
         coarse = get_selection(coarse_table, coarse)
+        ker_select = isel if kids.size > 1 else None
         return coarse, kernels, ker_select
 
-    def interpolate(self, input, level):
-        """Interpolate values to the next refinment level.
-
-        Parameters:
-        -----------
-        input: jax.DeviceArray
-            Input values on `level`
-        level: int
-            On which refinment level the input is defined.
-        """
-        if level == self.maxlevel:
-            raise ValueError
-        fine_inds = self.main_indices[level + 1]
-        coarse_tbl = get_table(self.main_indices[level])
-        select, kernels, ker_select = self._interpolation_selection(level,
-                                                                    fine_inds,
-                                                                    coarse_tbl)
-        axes = tuple(((0, self.ndim-i), (0,2)) for i in range(self.ndim))
-        return axes_matmul(input, kernels, select, axes, ker_select)
-
-    def convolve(self, input, inputids, kernel, kerneltable, level):
-        """Performs the convolution of `input` with `kernel` on `level`.
-
-        Parameters:
-        -----------
-        input: jax.DeviceArray
-            Input for the convolution on `level`
-        inputids: numpy.ndarray of int
-            Indices of the bins on which `input` is defined. Its size must be 
-            equal to the size of the first axis of `input`
-        kernel: jax.DeviceArray
-            Kernels that get applied to input.
-        kerneltable: dict
-            Lookup table that maps from `main_indices` to the arrayids of
-            `kernel` and determines which kernel is used for convolution for
-            each entry in `main_indices[level]`.
-        level: int
-            Refinment level on which the convolution is performed.
-        """
-        select = get_kernel_window(self.main_indices[level], level, self._axes)
-        select = get_selection(get_table(inputids), select)
-        ker_select = get_selection(kerneltable, self.main_indices[level])
-        window = np.arange(self.ndim)
-        arr_axes = tuple(window) + tuple(self.ndim + window)
-        kernel_axes = tuple(window) + tuple(2*self.ndim + window)
-        axs = (kernel_axes, arr_axes)
-        def _conv(ids, ker_id):
-            return jnp.tensordot(kernel[ker_id], input[ids], axes=axs)
-        return (vmap(_conv, in_axes=(0, 0), out_axes=0)(select, ker_select))
-
-    def interpolate_convolve(self, input, inputids, kernel, level, 
-                             oldres = None, oldkernel = None):
-        """Alternative implementation of convolve that lowers the operations of
-        `charted_convolve` (interpolation of the result on the previous coarse
-        level, interpolation of the previous kernel, convolution) into a single 
-        vmap. 
-        
-        Parameters:
-        -----------
-        input: jax.DeviceArray
-            Input for the convolution on `level`.
-        inputids: numpy.ndarray of int
-            Indices of the bins on which `input` is defined. Its size must be 
-            equal to the size of the first axis of `input`
-        kernel: jax.DeviceArray
-            Kernels on `level`. Befor application, if `oldkernel` is not None,
-            `oldkernel` gets interpolated to this level and is subtracted from
-            `kernel`. This ensures that only the contributions to the total
-            kernel not covered by `oldkernel` are applied and added to the
-            interpolated `oldres`.
-        level: int
-            Refinment level on which the convolution is performed.
-        oldres: jax.DeviceArray or None
-            Result of the convolution on the previous coarse level. If 
-            `level == 0`, no `oldres` exists.
-        oldkernel: jax.DeviceArray
-            Same as `oldres` but for the kernel.
-        """
-        if kernel.shape[0] != self._main_indices[level].size:
-            raise NotImplementedError
-        from .kernel import refine_kernel
-        select = get_kernel_window(self.main_indices[level], level, self._axes)
-        select = get_selection(get_table(inputids), select)
-        window = np.arange(self.ndim)
-        arr_axes = tuple(window) + tuple(self.ndim + window)
-        kernel_axes = tuple(window) + tuple(2*self.ndim + window)
-        axs = (kernel_axes, arr_axes)
-        #FIXME flags were moved to `MSKernel`
-        flags = self._good_kernel_window(level, self._kernel_indices[level])
-        flags = np.expand_dims(flags, 
-                               tuple(len(flags.shape)+np.arange(2*self.ndim)))
-        if oldres is not None:
-            if oldkernel is None:
+    def batch_interconvolve(self, oldres, input, inputids, kernel, kerneltable, 
+                            level):
+        input = input.reshape((input.shape[0],-1))
+        if level == 0:
+            if oldres is not None:
                 raise ValueError
-            if level == 0:
-                raise ValueError
-            fine_inds = self.main_indices[level]
-            coarse_tbl = get_table(self.main_indices[level - 1])
-            oldselect,inter,int_select = self._interpolation_selection(level-1,
-                                                                fine_inds,
-                                                                coarse_tbl)
-            oldaxes = self.axes(level-1)
-            fine_id = id_to_axisids(self.main_indices[level], level, self._axes)
-            fine_select = tuple(ax.get_fine_kernel_selection(idx) for ax, idx in 
-                                zip(oldaxes, fine_id))
-            @jit
-            def _interconv(ids, ker, oldids, int_sel, fine_sel, flag):
-                res = oldres[oldids]
-                oldk = oldkernel[oldids]
-                for i, (kk, ss, ax, fsel) in enumerate(zip(inter, int_sel, 
-                                                           oldaxes, fine_sel)):
-                    res = jnp.tensordot(res, kk[ss], 
-                                        axes = ((0, self.ndim-i), (0,2)))
-                    oldk = refine_kernel(ax, oldk, fsel, self.ndim)
-                    oldk = jnp.tensordot(kk[ss], oldk, 
-                                         axes = ((0,2), (0, 2*self.ndim-i)))
-                    oldk = jnp.moveaxis(oldk, 0, 2*self.ndim-i-1)
-                ker -= oldk
-                res += jnp.tensordot(ker*flag, input[ids], axes=axs)
-                return res
-            inaxs = (0, 0, 0, (0,)*self.ndim, ((0,0),)*self.ndim, 0)
-            f = vmap(_interconv, inaxs, 0)
-            return f(select, kernel, oldselect, int_select, fine_select, flags)
+            inds = self.main_indices[0]
+            select = get_kernel_window(inds, 0, self._axes)
+            interselect, interkernels, interker_select = None, None, None
+        else:
+            inds = my_setdiff_indices(self.main_indices[level-1], 
+                                      self.indices[level-1])
+            select = get_batch_kernel_window(inds, level-1, self._axes)
+            coarse_tbl = get_table(self.main_indices[level-1])
+            (interselect, interkernels, 
+            interker_select) = self._batch_interpolation_selection(level-1, 
+                                                                   inds, 
+                                                                   coarse_tbl)
+            dims = np.arange(2*self.ndim, dtype=int) + 1
+            interkernels = (np.expand_dims(kk, 
+                            tuple(np.delete(dims, [i, self.ndim+i])))
+                            for i,kk in enumerate(interkernels))
+            interkernels = reduce(lambda a,b: a*b, interkernels)
+            shp = (interkernels.shape[0],
+                   reduce(lambda a,b:a*b, interkernels.shape[1:self.ndim+1]),
+                   reduce(lambda a,b:a*b, interkernels.shape[self.ndim+1:]))
+            interselect = interselect.reshape((interselect.shape[0], shp[2]))
+            shp = shp[1:] if interker_select is None else shp
+            interkernels = jnp.array(interkernels.reshape(shp))
 
-        def _conv(ids, ker, flag):
-            return jnp.tensordot(ker*flag, input[ids], axes=axs)
-        return vmap(_conv, in_axes=(0, 0, 0), out_axes=0)(select, kernel, flags)
+        select = get_selection(get_table(inputids), select)
+        select = select.reshape((select.shape[0],-1))
+        if kernel.shape[0] == 1:
+            kernel = kernel[0]
+            ker_select = None
+        else:
+            ker_select = get_selection(kerneltable, inds)
+
+        def interconv(ores, rker, rsel, rksel, inp, ker, sel, ksel):
+            ker = ker[ksel] if ksel is not None else ker
+            res = jnp.tensordot(ker, inp[sel], axes=((1,2),(0,1)))
+            if ores is not None:
+                rker = rker[rksel] if rksel is not None else rker
+                res += jnp.matmul(rker, ores[rsel])
+            return res
+
+        axes = (None, None, 0 if oldres is not None else None, 
+                0 if interker_select is not None else None, 
+                None, None, 0, 0 if ker_select is not None else None)
+        return vmap(interconv, axes, 0)(oldres, interkernels, interselect,
+                                        interker_select, input, kernel, select,
+                                        ker_select).flatten()
 
     def copy(self):
         """Returns a copy of this instance of `MSChart`"""
@@ -531,7 +465,7 @@ class MSChart:
             if _want_ref_pairs:
                 pairs.append((fine, refine_indices[lvl]))
             assert np.all(fine == np.unique(fine))
-            missing = get_kernel_window(fine, lvl+1, chart._axes)
+            missing = get_inter_window(fine, lvl+1, chart._axes)
             missing = get_coarse_index(missing, lvl+1, chart._axes)
             missing = my_setdiff_indices(missing, chart.main_indices[lvl])
             if missing.size > 0:
