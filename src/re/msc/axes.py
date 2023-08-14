@@ -440,8 +440,9 @@ class RegularAxis:
             start += (fine_index - self.base * coarse)
             fine_size = self.fine_axis.kernel_size
             start -= fine_size//2
-            select = np.add.outer(start, np.arange(fine_size), 
-                                dtype=fine_index.dtype)
+            select = np.add.outer(start, 
+                                  np.arange(fine_size, dtype=fine_index.dtype), 
+                                  dtype=fine_index.dtype)
             front = np.multiply.outer(np.ones_like(select), 
                                     np.arange(2, dtype=fine_index.dtype),
                                     dtype=fine_index.dtype)

@@ -138,7 +138,8 @@ def outer_product_chart(charts, charted_trafos = None):
         #fax = tuple(aa.fine_axis for aa in ax)
         bax = reduce(lambda a,b: a+b, (cc._axes for cc in charts))
         newinds[lvl] = my_setdiff_indices(newinds[lvl], 
-                                get_coarse_index(newinds[lvl+1], lvl+1, bax))
+                                          get_coarse_index(newinds[lvl+1], 
+                                                           lvl+1, bax))
     axes = reduce(lambda a,b: a+b, tuple(cc.axes(0) for cc in charts))
     return MSChart(tuple(newinds), axes, charted_trafos=charted_trafos)
 

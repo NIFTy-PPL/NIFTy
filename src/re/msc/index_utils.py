@@ -95,44 +95,32 @@ def _get_axes_tuple(axes, maxlevel):
         axs.append(tuple((aa.fine_axis for aa in axs[-1])))
     return tuple(axs)
 
-def _ax_to_hax(axid, bs):
-    hax = np.zeros((bs.shape[0]+1,)+axid.shape, dtype=axid.dtype)
-    t = axid
-    for n in range(bs.shape[0])[::-1]:
-        hax[n+1] = t - bs[n] * (t // bs[n])
-        t = t // bs[n]
-    hax[0] = t
-    return hax
-
-def _hax_to_ax(hax, bs):
-    t = hax[0]
-    for n in range(bs.shape[0]):
-        t = bs[n]*t + hax[n+1]
-    return t
-
-def _hax_to_pix(hax, shp0, bases):
-    i = np.zeros(hax[0].shape[1:], dtype=hax[0].dtype)
+def _ax_to_pix(iax, shp0, bases):
+    #TODO vectorize properly
+    i = np.zeros(iax.shape[1:], dtype=iax.dtype)
     for n in range(bases.shape[1]+1):
         sh = shp0 if n == 0 else tuple(bases[:,n-1])
         j = 0
         for ax in range(len(sh)):
-            j = sh[ax]*j + hax[ax][n]
-        i = reduce(lambda a,b: a*b, sh)*i + j
+            j *= sh[ax]
+            j += ((iax[ax]//reduce(lambda a,b:a*b, bases[ax,n:], 1))%sh[ax])
+        i *= reduce(lambda a,b: a*b, sh)
+        i += j
     return i
 
-def _pix_to_hax(pix, shp0, bases):
-    hax = list(np.zeros((bases.shape[1]+1,) + pix.shape, dtype=pix.dtype) 
-               for _ in range(bases.shape[0]))
-    i = pix
+def _pix_to_ax(pix, shp0, bases):
+    #TODO vectorize properly
+    iax = np.zeros((bases.shape[0],) + pix.shape, dtype=pix.dtype)
+    i = np.copy(pix)
     for n in range(bases.shape[1]+1)[::-1]:
         sh = shp0 if n == 0 else tuple(bases[:,n-1])
         fct = reduce(lambda a,b: a*b, sh)
-        j = i - fct*(i//fct)
-        i = i // fct
+        j = i % fct
         for ax in range(len(sh))[::-1]:
-            hax[ax][n] = j - sh[ax] * (j // sh[ax])
-            j = j // sh[ax]
-    return hax
+            iax[ax] += reduce(lambda a,b:a*b, bases[ax,n:], 1) * (j%sh[ax])
+            j //= sh[ax]
+        i //= fct
+    return iax
 
 def _get_base_shapes(lvl, axes):
     shp0 = tuple(ax.size for ax in axes)
@@ -150,26 +138,23 @@ def axisids_to_id(index, lvl, axes):
     """Translates the axisids of a pixel to the corresponding pixelid"""
     bases, shp0, shpm = _get_base_shapes(lvl, axes)
     for ii, sh in zip(index, shpm):
-        if np.any(ii > sh):
+        if np.any(ii > sh) or np.any(ii < 0):
             raise ValueError
-    hax = list(_ax_to_hax(aa, bb) for aa,bb in zip(index, bases))
-    res = _hax_to_pix(hax, shp0, bases)
-    if np.any(res > reduce(lambda a,b: a*b, shpm)):
+    index = _ax_to_pix(index, shp0, bases)
+    if np.any(index > reduce(lambda a,b: a*b, shpm)) or np.any(index < 0):
         raise ValueError
-    return res
+    return index
 
 def id_to_axisids(index, lvl, axes):
     """Translates the pixelid of a pixel to the corresponding axisids"""
     bases, shp0, shpm = _get_base_shapes(lvl, axes)
-    if np.any(index > reduce(lambda a,b: a*b, shpm)):
+    if np.any(index > reduce(lambda a,b: a*b, shpm)) or np.any(index < 0):
         raise ValueError
-    hax = _pix_to_hax(index, shp0, bases)
-    res = np.stack(tuple(_hax_to_ax(aa, bb) for aa,bb in zip(hax, bases)), 
-                    axis=0)
-    for ii, sh in zip(res, shpm):
-        if np.any(ii > sh):
+    index = _pix_to_ax(index, shp0, bases)
+    for ii, sh in zip(index, shpm):
+        if np.any(ii > sh) or np.any(ii < 0):
             raise ValueError
-    return res
+    return index
 
 def my_axes_outer(slices):
     """Helper to create an axis meshgrid given slices along all axes"""
