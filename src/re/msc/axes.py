@@ -9,7 +9,8 @@ from .utils import get_all_kneighbours
 
 
 class RegularAxis:
-    def __init__(self, base, size, binsize, kernel_size, is_linear, fine_axis):
+    def __init__(self, base, size, binsize, kernel_size, fine_axis,
+                 interpolation_method_in, interpolation_method_out):
         """An axis describing a regularly spaced, one-dimensional and periodic
         space on one level in a sparse charted multigrid.
 
@@ -40,7 +41,16 @@ class RegularAxis:
         self._kernel_size = int(kernel_size)
         if self._kernel_size%2 == 0:
             raise ValueError("Kernel size must be odd!")
-        self._is_linear = bool(is_linear)
+        #self._is_linear = bool(is_linear)
+        self._imethod = str(interpolation_method_in)
+        self._omethod = str(interpolation_method_out)
+        methods = ['nearest', 'linear']
+        if self._imethod not in methods:
+            msg = f'Unknown input interpolation method: {self._imethod}'
+            raise NotImplementedError(msg)
+        if self._omethod not in methods:
+            msg = f'Unknown input interpolation method: {self._omethod}'
+            raise NotImplementedError(msg)
         self._fine_axis = fine_axis
         if self._fine_axis is not None:
             if not isinstance(fine_axis, RegularAxis):
@@ -49,10 +59,12 @@ class RegularAxis:
                 raise ValueError("Next refinment axis is of incorrect size!")
             if fine_axis.binsize != self.binsize / self.base:
                 raise ValueError("Next refinment axis has incorrect binsize!")
+            #FIXME test too small for linear case
             fine_ker_part = (fine_axis.kernel_size - 1) // 2 // self.base
             if fine_ker_part > (self.kernel_size - 1) // 2:
                 raise ValueError("Fine kernel too big for this axis!")
-            if fine_axis.is_linear and (not self.is_linear):
+            if ((fine_axis.method_in == 'linear') and 
+                (self.method_in != 'linear')):
                 msg = "Fine kernel cannot be second order if this axis is not"
                 raise ValueError(msg)
 
@@ -78,9 +90,25 @@ class RegularAxis:
         return self._size
 
     @property
-    def is_linear(self):
-        """Whether the kernel is linearly interpolated or not."""
-        return self._is_linear
+    def in_size(self):
+        if self.method_in == 'nearest':
+            return 1
+        if self.method_in == 'linear':
+            return 2
+        raise ValueError
+
+    #@property
+    #def is_linear(self):
+    #    """Whether the kernel is linearly interpolated or not."""
+    #    return self._is_linear
+
+    @property
+    def method_in(self):
+        return self._imethod
+
+    @property
+    def method_out(self):
+        return self._omethod
 
     @property
     def fine_axis(self):
@@ -101,7 +129,8 @@ class RegularAxis:
         """Creates a copy of this axis."""
         fine = None if self._fine_axis is None else self._fine_axis.copy()
         return RegularAxis(self._base, self._size, self._binsize, 
-                           self._kernel_size, self._is_linear, fine)
+                           self._kernel_size, fine, self._imethod, 
+                           self._omethod)
 
     def get_fine_indices(self, index):
         """Indices on the next level corresponding to the bins of `indices`.
@@ -286,7 +315,7 @@ class RegularAxis:
         wgt = 0.5 * delta * (2 * np.arange(self.base) + 1 - self.base)
         one, zero = np.ones_like(wgt), np.zeros_like(wgt)
         mat = np.array([[one, zero],[wgt, one]])
-        return mat[:(1 + self.is_linear), :(1 + self.fine_axis.is_linear)]
+        return mat[:self.in_size, :self.fine_axis.in_size]
 
     def refine_mat(self, fine_index):
         """Finds the bin and builds the matrix to refine the input from this
@@ -322,7 +351,7 @@ class RegularAxis:
         def get_ker(weight):
             return jnp.array([[1., -weight],[0., 1.]]) / self.base
         mat = vmap(get_ker, 0, 0)(dcoord)
-        mat = mat[:, :(1 + self.fine_axis.is_linear), :(1 + self.is_linear)]
+        mat = mat[:, :self.fine_axis.in_size, :self.in_size]
         return coarse, mat, select
 
     def _get_normalized_dist(self, fine_index, index):
@@ -355,26 +384,40 @@ class RegularAxis:
         if self.fine_axis is None:
             raise ValueError
         assert np.all(kernel_index == kernel_index[0])
-        mat = np.zeros((self.base, 3))
-        for b in range(self.base):
-            d = np.abs(self._get_normalized_dist(b, 0))
-            if b < self.base//2:
-                mat[b] = np.array([d, 1.-d, 0.])
-            else:
-                mat[b] = np.array([0., 1.-d, d])
-        coarse = np.add.outer(refine_index, 
-                              np.array([-1,0,1], dtype=refine_index.dtype), 
-                              dtype=refine_index.dtype)
-        coarse = coarse%self.size
-        return coarse, mat[np.newaxis, ...]
+        if self._omethod == 'nearest':
+            mat = np.ones((1,2,1))
+            coarse = refine_index[..., np.newaxis]
+        elif self._omethod == 'linear':
+            mat = np.zeros((self.base, 3))
+            for b in range(self.base):
+                d = np.abs(self._get_normalized_dist(b, 0))
+                if b < self.base//2:
+                    mat[b] = np.array([d, 1.-d, 0.])
+                else:
+                    mat[b] = np.array([0., 1.-d, d])
+            mat = mat[np.newaxis, ...]
+            coarse = np.add.outer(refine_index, 
+                                np.array([-1,0,1], dtype=refine_index.dtype), 
+                                dtype=refine_index.dtype)
+            coarse = coarse%self.size
+        else:
+            msg = f'Unknown interpolation method: {self._omethod}'
+            raise NotImplementedError(msg)
+        return coarse, mat
 
     def batch_window_to_window(self):
-        mat = np.zeros((self.base, 2, 3))
-        for b in range(self.base):
-            if b < self.base//2:
-                mat[b] = np.array([[1, 0, 0], [0, 1, 0]])
-            else:
-                mat[b] = np.array([[0, 1, 0], [0, 0, 1]])
+        if self._omethod == 'nearest':
+            mat = np.ones((self.base, 1, 1))
+        elif self._omethod == 'linear':
+            mat = np.zeros((self.base, 2, 3))
+            for b in range(self.base):
+                if b < self.base//2:
+                    mat[b] = np.array([[1, 0, 0], [0, 1, 0]])
+                else:
+                    mat[b] = np.array([[0, 1, 0], [0, 0, 1]])
+        else:
+            msg = f'Unknown interpolation method: {self._omethod}'
+            raise NotImplementedError(msg)
         return mat
 
     def get_batch_fine_kernel_selection(self, refine_index):
@@ -385,28 +428,36 @@ class RegularAxis:
         fine_index = self.get_fine_indices(refine_index)
         assert len(fine_index.shape) == 2
         shp = fine_index.shape
-        (front, select) = self._get_fine_kernel_selection(fine_index.flatten())
+        fine_index = fine_index.flatten()
+
+        if self._omethod == 'nearest':
+            coarse = self.get_binid_of(fine_index)
+            start = ((self.kernel_size+1)*self.base)//2 - self.base
+            start += (fine_index - self.base * coarse)
+            fine_size = self.fine_axis.kernel_size
+            start -= fine_size//2
+            select = np.add.outer(start, np.arange(fine_size), 
+                                  dtype=fine_index.dtype)
+            select = select[:, np.newaxis, ...]
+            front = np.zeros_like(select)
+        elif self._omethod == 'linear':
+            coarse = self.get_binid_of((fine_index - self.base//2))
+            start = ((self.kernel_size+1)*self.base)//2 - self.base
+            start += (fine_index - self.base * coarse)
+            fine_size = self.fine_axis.kernel_size
+            start -= fine_size//2
+            select = np.add.outer(start, np.arange(fine_size), 
+                                dtype=fine_index.dtype)
+            front = np.multiply.outer(np.ones_like(select), 
+                                    np.arange(2, dtype=fine_index.dtype),
+                                    dtype=fine_index.dtype)
+            front = np.moveaxis(front, 1, -1)
+            select = np.stack((select, select - self.base), axis = 1)
+        else:
+            msg = f'Unknown interpolation method: {self._omethod}'
+            raise NotImplementedError(msg)
         return (front.reshape(shp+front.shape[1:]), 
                 select.reshape(shp+select.shape[1:]))
-
-    def _get_fine_kernel_selection(self, fine_index):
-        """Returns the selection to get the subset along the integrand axis of
-        the kernel that is covered by the kernel on the next refinment level.
-        #TODO docstring
-        """
-        coarse = self.get_binid_of((fine_index - self.base//2))
-        start = ((self.kernel_size+1)*self.base)//2 - self.base
-        start += (fine_index - self.base * coarse)
-        fine_size = self.fine_axis.kernel_size
-        start -= fine_size//2
-        select = np.add.outer(start, np.arange(fine_size), 
-                              dtype=fine_index.dtype)
-        front = np.multiply.outer(np.ones_like(select), 
-                                  np.arange(2, dtype=fine_index.dtype),
-                                  dtype=fine_index.dtype)
-        front = np.moveaxis(front, 1, -1)
-        select = np.stack((select, select - self.base), axis = 1)
-        return (front, select)
 
     def get_coords_and_distances(self, index):
         """Returns the coordinate of `index` and the distances to
@@ -423,17 +474,21 @@ class RegularAxis:
             bins in the kernel window, centered on `index` along this axis.
         """
         locs = self._bincenter(index)
-        if self.is_linear:
+        if self._imethod == 'linear':
             window = np.arange(self.kernel_size+1) - self.kernel_size//2 - 0.5
-        else:
+        elif self._imethod == 'nearest':
             window = np.arange(self.kernel_size) - self.kernel_size//2
+        else:
+            raise NotImplementedError
         window = window*self.binsize
         window = np.outer(np.ones_like(locs), window)
         locs = locs[np.newaxis, ..., np.newaxis]
         window = window[np.newaxis, ...]
         return (locs, window)
 
-    def refine_axis(self, base = None, kernel_size = None, is_linear = None):
+    def refine_axis(self, base = None, kernel_size = None,
+                    interpolation_method_in = None,
+                    interpolation_method_out = None):
         """Creates a new instance of `RegularAxis` and sets it to be the
         `fine_axis` of this axis.
 
@@ -459,10 +514,13 @@ class RegularAxis:
             base = self.base
         if kernel_size is None:
             kernel_size = self.kernel_size
-        if is_linear is None:
-            is_linear = self.is_linear
+        if interpolation_method_in is None:
+            interpolation_method_in = self.method_in
+        if interpolation_method_out is None:
+            interpolation_method_out = self.method_out
         newax = RegularAxis(base, self.size*self.base, self.binsize/self.base,
-                            kernel_size, is_linear, None)
+                            kernel_size, None, interpolation_method_in,
+                            interpolation_method_out)
         self._fine_axis = newax
         return newax
 
@@ -516,7 +574,8 @@ def _interpolation_weights(theta, missing_neighbours):
     return M
 
 class HPAxis(RegularAxis):
-    def __init__(self, nside, knn_neighbours, fine_axis):
+    def __init__(self, nside, knn_neighbours, fine_axis, 
+                 interpolation_method_in, interpolation_method_out):
         """An axis describing a pixelization of a HEALPiX sphere.
 
         Parameters:
@@ -546,8 +605,11 @@ class HPAxis(RegularAxis):
                 raise ValueError("Fine axis is not an instance of `HPAxis`")
             if fine_axis.nside != 2*self.nside:
                 raise ValueError("Fine axis has incorrect nside")
+        if interpolation_method_in != 'nearest':
+            raise NotImplementedError
         sz = hp.nside2npix(self._nside)
-        super().__init__(4, sz, 4*np.pi / sz, 1, False, fine_axis)
+        super().__init__(4, sz, 4*np.pi / sz, 1, fine_axis,
+                         interpolation_method_in, interpolation_method_out)
 
     @property
     def nside(self):
@@ -833,15 +895,22 @@ class HPAxis(RegularAxis):
                 2:np.array([0,3,1,2]), 3:np.array([0,5,3,4])}
 
     def batch_window_to_window(self):
-        mat = np.zeros((4, 4, 9), dtype=int)
-        pairs = self._select_pairs()
-        for i in range(4):
-            m = np.zeros((4,9), dtype=int)
-            m[np.arange(4, dtype=int), pairs[i]] = 1
-            mat[i] = m
+        if self._omethod == 'nearest':
+            mat = np.ones((4,1,1))
+        elif self._omethod == 'linear':
+            mat = np.zeros((4, 4, 9), dtype=int)
+            pairs = self._select_pairs()
+            for i in range(4):
+                m = np.zeros((4,9), dtype=int)
+                m[np.arange(4, dtype=int), pairs[i]] = 1
+                mat[i] = m
+        else:
+            msg = f'Unknown interpolation method: {self._omethod}'
+            raise NotImplementedError(msg)
         return mat
 
-    def batch_interpolate(self, refine_index, kernel_index):
+    def batch_interpolate(self, refine_index, kernel_index, 
+                          want_coarse = False):
         #TODO add interpolation method (nearest & quadratic) to make use of full
         #     scope.
         """Finds the neighbouring bins and builds the interpolation matrices to
@@ -865,37 +934,47 @@ class HPAxis(RegularAxis):
         """
         if self.fine_axis is None:
             raise ValueError
-        window = self._get_interpolation_window(refine_index)
+        if self._omethod == 'nearest':
+            window = refine_index[..., np.newaxis]
+            ker = np.ones(kernel_index.shape+(4,1))
+            all_coarse = np.stack((kernel_index,)*4, axis=-1)
+            all_coarse = all_coarse.flatten()[..., np.newaxis]
+        elif self._omethod == 'linear':
+            window = self._get_interpolation_window(refine_index)
+            kid = np.multiply.outer(kernel_index, 
+                                    np.ones((4,), dtype=kernel_index.dtype),
+                                    dtype=kernel_index.dtype).flatten()
+            coarse, bad = self._get_interpolation_window(kid, True)
+            fine_index = self.get_fine_indices(kernel_index).flatten()
+            dm = fine_index - 4*kid
 
-        kid = np.multiply.outer(kernel_index, 
-                                np.ones((4,), dtype=kernel_index.dtype),
-                                dtype=kernel_index.dtype).flatten()
-        coarse, bad = self._get_interpolation_window(kid, True)
-        fine_index = self.get_fine_indices(kernel_index).flatten()
-        dm = fine_index - 4*kid
+            select_pairs = self._select_pairs()
+            all_coarse = np.zeros(fine_index.shape + (4,), dtype=coarse.dtype)
+            all_bad = np.zeros(fine_index.shape + (4,), dtype=bad.dtype)
+            for i in range(4):
+                cond = dm == i
+                all_coarse[cond] += coarse[cond][:,select_pairs[i]]
+                all_bad[cond] = bad[cond][:,select_pairs[i]]
+            assert np.all(np.sum(all_bad[:,:-1], axis=1) == 0)
 
-        select_pairs = self._select_pairs()
-        all_coarse = np.zeros(fine_index.shape + (4,), dtype=coarse.dtype)
-        all_bad = np.zeros(fine_index.shape + (4,), dtype=bad.dtype)
-        for i in range(4):
-            cond = dm == i
-            all_coarse[cond] += coarse[cond][:,select_pairs[i]]
-            all_bad[cond] = bad[cond][:,select_pairs[i]]
-        assert np.all(np.sum(all_bad[:,:-1], axis=1) == 0)
-
-        angles = _int_to_basis(self.nside, fine_index, all_coarse.T, 
-                               all_bad[:,-1])
-        weights = _interpolation_weights(angles, all_bad[:,-1])
-        weights = weights.reshape(kernel_index.shape + (4,4))
-        ker = np.zeros(weights.shape[:-1] + (9,))
-        mat = self.batch_window_to_window()
-        for i in range(4):
-            ker[:,i] = weights[:,i] @ mat[i]
+            angles = _int_to_basis(self.nside, fine_index, all_coarse.T, 
+                                all_bad[:,-1])
+            weights = _interpolation_weights(angles, all_bad[:,-1])
+            weights = weights.reshape(kernel_index.shape + (4,4))
+            ker = np.zeros(weights.shape[:-1] + (9,))
+            mat = self.batch_window_to_window()
+            for i in range(4):
+                ker[:,i] = weights[:,i] @ mat[i]
+        else:
+            msg = f'Unknown interpolation method: {self._omethod}'
+            raise NotImplementedError(msg)
+        if want_coarse:
+            return all_coarse
         return window, ker
-
+    """
     def _interpolate_ids(self, fine_index):
         #TODO unify with batch interpolate
-        """Finds the neighbouring bins and builds the interpolation matrices to
+        Finds the neighbouring bins and builds the interpolation matrices to
         interpolate the output from this level to the `fine_index` along this
         axis.
 
@@ -913,7 +992,7 @@ class HPAxis(RegularAxis):
         select: numpy.ndarray of int
             Indexing of `weights` that yields the weights for all entries of
             `fine_index` (See `refine_mat` for further information)
-        """
+        
         cc = fine_index // 4
         dm = fine_index - 4 * cc
         coarse = hp.get_all_neighbours(self.nside, cc, nest=True).T
@@ -931,7 +1010,7 @@ class HPAxis(RegularAxis):
             all_bad[cond] = bad[cond][:,select_pairs[i]]
         assert np.all(np.sum(all_bad[:,:-1], axis=1) == 0)
         return all_coarse
-
+    """
     def get_coords_and_distances(self, index):
         """Returns the coordinate of `index` and the distances to
         the locations of the kernel window surrounding `index` for this axis.
@@ -960,12 +1039,21 @@ class HPAxis(RegularAxis):
         dloc = locp - loc
         return (loc, dloc)
 
-    def _get_fine_kernel_selection(self, fine_index):
+    def get_batch_fine_kernel_selection(self, refine_index):
         """Returns the selection to get the subset along the integrand axis of
         the kernel that is covered by the kernel on the next refinment level.
-        """
         #TODO docstring
-        coarse_ids = self._interpolate_ids(fine_index)
+        """
+        coarse_ids = self.batch_interpolate(refine_index, refine_index, 
+                                            want_coarse=True)
+        fine_index = self.get_fine_indices(refine_index)
+        assert len(fine_index.shape) == 2
+        inshp = fine_index.shape
+        fine_index = fine_index.flatten()
+
+
+        #coarse_ids = self._interpolate_ids(fine_index)
+        #coarse_ids = self.batch_interpolate()
 
         coarse_ids = coarse_ids.T
         fine_kernel, fine_bad = self.fine_axis.get_kernel_window_ids(fine_index,
@@ -1010,13 +1098,16 @@ class HPAxis(RegularAxis):
                 rr = list(np.where(coarse[j] == bb)[0][0] for bb in fine[j])
                 badres[j] = np.array(rr)
             res[i][~all_good] = badres
-        front = np.multiply.outer(np.arange(4, dtype=fine_index.dtype), 
-                         np.ones_like(fine_kernel), dtype=fine_index.dtype)
+        front = np.multiply.outer(
+            np.arange(res.shape[0], dtype=fine_index.dtype), 
+            np.ones_like(fine_kernel), dtype=fine_index.dtype)
         res = np.moveaxis(res, 1, 0)
         front = np.moveaxis(front, 1, 0)
-        return (front, res)
+        return (front.reshape(inshp+front.shape[1:]), 
+                res.reshape(inshp+res.shape[1:]))
 
-    def refine_axis(self, knn_neighbours = None):
+    def refine_axis(self, knn_neighbours = None, interpolation_method_in = None,
+                    interpolation_method_out = None):
         """Creates a new instance of `RegularAxis` and sets it to be the
         `fine_axis` of this axis.
 
@@ -1034,6 +1125,11 @@ class HPAxis(RegularAxis):
             raise ValueError("Axis is already refined!")
         if knn_neighbours is None:
             knn_neighbours = self._knn
-        newax = HPAxis(2*self.nside, knn_neighbours, None)
+        if interpolation_method_in is None:
+            interpolation_method_in = self.method_in
+        if interpolation_method_out is None:
+            interpolation_method_out = self.method_out
+        newax = HPAxis(2*self.nside, knn_neighbours, None,
+                       interpolation_method_in, interpolation_method_out)
         self._fine_axis = newax
         return newax

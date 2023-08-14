@@ -241,13 +241,13 @@ class MSKernel:
                                                zip(locs, dists)))
                 locs = self._chart._chart_to_kernel(*locs)
                 dists = tuple(lp-l for lp,l in zip(locp, locs))
-            kershp = tuple(ks + (1 if ax.is_linear else 0) for ks, ax
+            kershp = tuple(ks + (ax.in_size - 1) for ks, ax
                            in zip(self.kernel_shape(level),
                                   self.chart.axes(level)))
             ker = func(*(locs+dists))
             ker = ker.reshape(kershp)
             for i, ax in enumerate(axes):
-                if ax.is_linear:
+                if ax.in_size == 2:
                     if isinstance(ax, HPAxis):
                         # TODO
                         raise NotImplementedError
@@ -302,8 +302,8 @@ class MSKernel:
             res = jnp.moveaxis(res, -2, 2*ndim)
             res = jnp.moveaxis(res, -1, ndim+1)
             res = res.reshape(res.shape[:ndim] + 
-                                (res.shape[ndim]*res.shape[ndim+1],) + 
-                                res.shape[(ndim+2):])
+                              (res.shape[ndim]*res.shape[ndim+1],) + 
+                              res.shape[(ndim+2):])
             res = res[(select[0],) + (slice(None),)*(ndim-1) + (select[1],)]
             res = jnp.moveaxis(res, 1, ndim)
             res = jnp.tensordot(trafo.T, res, axes=((1,),(0,)))
@@ -325,8 +325,8 @@ class MSKernel:
     def to_batch_kernel(self, kernel, level):
         kshp = self.kernel_shape(level)
         ksize = reduce(lambda a,b:a*b, kshp)
-        lsize = reduce(lambda a,b:a*b, (2 if ax.is_linear else 1 for ax in
-                                            self.chart.axes(level)))
+        lsize = reduce(lambda a,b:a*b, (ax.in_size for ax in 
+                                        self.chart.axes(level)))
         if level == 0:
             return kernel.reshape((kernel.shape[0],1,ksize,lsize))
         bases = tuple(ax.base for ax in self.chart.axes(level-1))

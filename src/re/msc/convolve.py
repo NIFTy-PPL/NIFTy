@@ -41,10 +41,12 @@ def prepare_input(arrays, chart, volume_scaling = 1., indices = None):
             raise ValueError
         rr = aa * chart.volume(inds, lvl)**volume_scaling
         for ax in chart.axes(lvl):
-            if ax.is_linear:
-                rr = jnp.stack((rr, jnp.zeros_like(rr)), axis=-1)
-            else:
-                rr = rr[..., jnp.newaxis]
+            rr = jnp.stack((rr, ) + tuple(jnp.zeros_like(rr) for _ in 
+                                          range(ax.in_size - 1)), axis=-1)
+            #if ax.is_linear:
+            #    rr = 
+            #else:
+            #    rr = rr[..., jnp.newaxis]
         res.append(rr)
     return res
 
