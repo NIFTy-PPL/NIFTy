@@ -9,11 +9,13 @@ from .axes import RegularAxis, HPAxis
 from .chart import MSChart
 
 
-def regular_grid_1D(base, kernel_sizes, is_linear,
-                      min_size = None, size0 = None, 
-                      binsize = None, binsize0 = None,
-                      dtype = np.int32, boundary_condition = 'periodic',
-                      nrefine = None, charted_trafos = None):
+def regular_grid_1D(base = 2, kernel_sizes = 3, 
+                    interpolation_method_in = 'linear', 
+                    interpolation_method_out = 'linear',
+                    min_size = None, size0 = None, 
+                    binsize = None, binsize0 = None,
+                    dtype = np.int32, boundary_condition = 'periodic',
+                    nrefine = None, charted_trafos = None):
     if (min_size is None) and (size0 is None):
         raise ValueError("Either `min_size` or `size0` have to be set!")
     if (binsize is None) and (binsize0 is None):
@@ -59,13 +61,20 @@ def regular_grid_1D(base, kernel_sizes, is_linear,
     else:
         kernel_sizes = (size0 + (1-size0%2), ) + (kernel_sizes, ) * nrefine
 
-    if isinstance(is_linear, tuple):
-        if len(is_linear) == nrefine:
-            is_linear = is_linear + (False, )
-        elif len(is_linear) != nrefine + 1:
+    if isinstance(interpolation_method_in, tuple):
+        if len(interpolation_method_in) == nrefine:
+            interpolation_method_in = interpolation_method_in + ('nearest', )
+        elif len(interpolation_method_in) != nrefine + 1:
             raise ValueError
     else:
-        is_linear = (is_linear,) * nrefine + (False,)
+        interpolation_method_in = (interpolation_method_in,) * nrefine 
+        interpolation_method_in = interpolation_method_in + ('nearest',)
+
+    if isinstance(interpolation_method_out, tuple):
+        if len(interpolation_method_out) != nrefine + 1:
+            raise ValueError
+    else:
+        interpolation_method_out = (interpolation_method_out,) * (nrefine + 1)
 
     inds = np.arange(size0, dtype=dtype)
     if boundary_condition == 'periodic':
@@ -82,13 +91,14 @@ def regular_grid_1D(base, kernel_sizes, is_linear,
         raise ValueError(f"Unknown boundary condition: {boundary_condition}")
 
     inds = [inds, ]
-    ax = RegularAxis(base[0], mysize0, binsize0, kernel_sizes[0], is_linear[0],
-                     None)
+    ax = RegularAxis(base[0], mysize0, binsize0, kernel_sizes[0], None,
+                     interpolation_method_in[0], interpolation_method_out[0])
     chart = MSChart((np.arange(mysize0, dtype=dtype),), (ax,), 
                     charted_trafos=charted_trafos)
     for i in range(1, nrefine + 1):
         ax = chart.axes(i-1)[0].copy().refine_axis(base[i], kernel_sizes[i], 
-                                                   is_linear[i])
+                                                   interpolation_method_in[i],
+                                                   interpolation_method_out[i])
         chart = chart.refine(inds, (ax,))
         if i != nrefine:
             refinds = chart.indices[-1]
@@ -137,7 +147,9 @@ def _to_tuple(x, ndim):
         return (x,) * ndim
     return x
 
-def regular_grid(base, kernel_sizes, is_linear,
+def regular_grid(base = 2, kernel_sizes = 3, 
+                 interpolation_method_in = 'linear', 
+                 interpolation_method_out = 'linear',
                  min_size = None, size0 = None, 
                  binsize = None, binsize0 = None,
                  dtype = np.int32, boundary_condition = 'periodic',
@@ -148,7 +160,8 @@ def regular_grid(base, kernel_sizes, is_linear,
         ndim = len(base)
 
     kernel_sizes = _to_tuple(kernel_sizes, ndim)
-    is_linear = _to_tuple(is_linear, ndim)
+    interpolation_method_in = _to_tuple(interpolation_method_in, ndim)
+    interpolation_method_out = _to_tuple(interpolation_method_out, ndim)
     min_size = _to_tuple(min_size, ndim)
     size0 = _to_tuple(size0, ndim)
     binsize = _to_tuple(binsize, ndim)
@@ -157,13 +170,16 @@ def regular_grid(base, kernel_sizes, is_linear,
 
     axes = []
     for i in range(ndim):
-        ax = regular_grid_1D(base[i], kernel_sizes[i], is_linear[i], 
+        ax = regular_grid_1D(base[i], kernel_sizes[i], 
+                             interpolation_method_in[i], 
+                             interpolation_method_out[i],
                              min_size[i], size0[i], binsize[i], binsize0[i], 
                              dtype, boundary_condition[i], nrefine)
         axes.append(ax)
     return outer_product_chart(tuple(axes), charted_trafos)
 
-def full_hp_chart(nside0, knn, nrefine = None, dtype = np.int32,
+def full_hp_chart(nside0, knn = 1, interpolation_method_out = 'linear', 
+                  nrefine = None, dtype = np.int32,
                   charted_trafos = None):
     if isinstance(knn, tuple):
         if nrefine is not None:
@@ -178,10 +194,17 @@ def full_hp_chart(nside0, knn, nrefine = None, dtype = np.int32,
             raise ValueError
         knn = (-1,) + (knn,) * nrefine
 
-    ax = HPAxis(nside0, knn[0], None)
+
+    if isinstance(interpolation_method_out, tuple):
+        if len(interpolation_method_out) != nrefine + 1:
+            raise ValueError
+    else:
+        interpolation_method_out = (interpolation_method_out,) * (nrefine + 1)
+
+    ax = HPAxis(nside0, knn[0], None, 'nearest', interpolation_method_out[0])
     fax = ax
     for i in range(1, nrefine+1):
-        fax = fax.refine_axis(knn[i])
+        fax = fax.refine_axis(knn[i], 'nearest', interpolation_method_out[i])
     inds = (np.array([], dtype=dtype), ) * nrefine 
     inds = inds + (np.arange(fax.size, dtype=dtype),)
     return MSChart(inds, (ax,), charted_trafos=charted_trafos)
