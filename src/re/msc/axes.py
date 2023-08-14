@@ -41,7 +41,6 @@ class RegularAxis:
         self._kernel_size = int(kernel_size)
         if self._kernel_size%2 == 0:
             raise ValueError("Kernel size must be odd!")
-        #self._is_linear = bool(is_linear)
         self._imethod = str(interpolation_method_in)
         self._omethod = str(interpolation_method_out)
         methods = ['nearest', 'linear']
@@ -96,11 +95,6 @@ class RegularAxis:
         if self.method_in == 'linear':
             return 2
         raise ValueError
-
-    #@property
-    #def is_linear(self):
-    #    """Whether the kernel is linearly interpolated or not."""
-    #    return self._is_linear
 
     @property
     def method_in(self):
@@ -500,7 +494,7 @@ class RegularAxis:
         kernel_size: int (optional)
             Kernel size of the new fine axis. If None, the kernel size of
             this axis is used.
-        is_linear: bool (optional)
+        is_linear: bool (optional)#TODO
             Whether the kernel is linearly interpolated or not. If None, the 
             `is_linear` of this axis is used.
         Returns:
@@ -971,46 +965,7 @@ class HPAxis(RegularAxis):
         if want_coarse:
             return all_coarse
         return window, ker
-    """
-    def _interpolate_ids(self, fine_index):
-        #TODO unify with batch interpolate
-        Finds the neighbouring bins and builds the interpolation matrices to
-        interpolate the output from this level to the `fine_index` along this
-        axis.
 
-        Parameters:
-        -----------
-        fine_index: numpy.ndarray of int
-            Indices on the next level which require interpolation of the output
-        Returns:
-        --------
-        coarse: numpy.ndarray of int
-            The indices on this level that are used for bilinear interpolation.
-            For each entry in `fine_index` two entries in `coarse` exist.
-        weights: numpy.ndarray of float
-            Unique interpolation weights
-        select: numpy.ndarray of int
-            Indexing of `weights` that yields the weights for all entries of
-            `fine_index` (See `refine_mat` for further information)
-        
-        cc = fine_index // 4
-        dm = fine_index - 4 * cc
-        coarse = hp.get_all_neighbours(self.nside, cc, nest=True).T
-        coarse = coarse.astype(fine_index.dtype)
-        coarse = np.concatenate((cc[:, np.newaxis], coarse), axis=1)
-        bad = coarse == -1
-        x, y = np.where(bad)
-        coarse[x, y] = cc[x]
-        select_pairs = self._select_pairs()
-        all_coarse = np.zeros(fine_index.shape + (4,), dtype=coarse.dtype)
-        all_bad = np.zeros(fine_index.shape + (4,), dtype=bad.dtype)
-        for i in range(4):
-            cond = dm == i
-            all_coarse[cond] += coarse[cond][:,select_pairs[i]]
-            all_bad[cond] = bad[cond][:,select_pairs[i]]
-        assert np.all(np.sum(all_bad[:,:-1], axis=1) == 0)
-        return all_coarse
-    """
     def get_coords_and_distances(self, index):
         """Returns the coordinate of `index` and the distances to
         the locations of the kernel window surrounding `index` for this axis.
@@ -1050,10 +1005,6 @@ class HPAxis(RegularAxis):
         assert len(fine_index.shape) == 2
         inshp = fine_index.shape
         fine_index = fine_index.flatten()
-
-
-        #coarse_ids = self._interpolate_ids(fine_index)
-        #coarse_ids = self.batch_interpolate()
 
         coarse_ids = coarse_ids.T
         fine_kernel, fine_bad = self.fine_axis.get_kernel_window_ids(fine_index,
