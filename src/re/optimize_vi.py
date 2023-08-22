@@ -3,14 +3,15 @@
 # SPDX-License-Identifier: BSD-2-Clause
 
 import sys
+from typing import List, NamedTuple
 import jax
 import jax.numpy as jnp
 from functools import partial
 
-from .optimize import minimize
+from .optimize import OptimizeResults, minimize
 from .tree_math.vector_math import dot, vdot
 from .tree_math.forest_math import stack, unstack
-from .likelihood import StandardHamiltonian
+from .likelihood import Likelihood, StandardHamiltonian
 from .kl import Samples, _sample_linearly
 from .smap import smap
 
@@ -40,32 +41,44 @@ def _lh_lsm(likelihood, primals, tangents):
     return likelihood.left_sqrt_metric(primals, tangents)
 
 
+class OptVIState(NamedTuple):
+  """Named tuple containing state information."""
+  niter: int
+  samples: Samples
+  sampling_states: List[OptimizeResults]
+  minimization_state: OptimizeResults
+
 class OptimizeVI:
-    def __init__(self, likelihood, sampling_params, opt_params, N_steps):
-        self._sampling_params = sampling_params
-        self._opt_params = opt_params
-        self.init_with_likelihood(likelihood)
-        self.N_steps = int(N_steps)
+    def __init__(self, 
+                 likelihood: Likelihood,
+                 n_iter: int,
+                 key: jax.random.PRNGKey,
+                 n_samples: int,
+                 sampling_method: str = 'altmetric',
+                 sampling_minimizer = 'newtoncg',
+                 sampling_kwargs: dict = {
+                     'cg_kwargs': {},
+                 },
+                 minimizer: str = 'newtoncg',
+                 minimization_kwargs: dict = {}):
+        self._n_iter = n_iter
+        self._sampling_method = sampling_method
+        self._minimizer = minimizer
+        self._sampling_minimizer = sampling_minimizer
+        self._sampling_kwargs = sampling_kwargs
+        # Only use xtol for sampling since a custom gradientnorm is used
+        self._sampling_kwargs['absdelta'] = 0.
+        self._mini_kwargs = minimization_kwargs
+        self._keys = jax.random.split(key, n_samples)
 
-    def _init_minimize(self, likelihood):
-        self._kl_vg = partial(_ham_vg, likelihood)
-        self._kl_metric = partial(_ham_metric, likelihood)
-
-    def _init_sampling(self, likelihood, cg_kwargs):
+        draw_metric = partial(_sample_linearly, likelihood, from_inverse=False)
         draw_metric = jax.vmap(draw_metric, in_axes=(None, 0), 
-                                        out_axes=(None, 0))
-        draw_linear = partial(
-                _sample_linearly,
-                likelihood,
-                from_inverse=True,
-                cg_kwargs=cg_kwargs
-            )
-        self._draw_linear = draw_linear
-        self._draw_metric = draw_metric
+                               out_axes=(None, 0))
+        draw_linear = partial(_sample_linearly, likelihood, from_inverse=True,
+                              cg_kwargs = self._sampling_kwargs['cg_kwargs'])
+        draw_linear = smap(draw_linear, in_axes=(None, 0))
 
-    def _init_geo(self, likelihood):
         lh_trafo = partial(_lh_trafo, likelihood)
-
         lh_lsm = partial(_lh_lsm, likelihood)
         def nl_g(x, p, lh_trafo_at_p):
             return x - p + lh_lsm(p, lh_trafo(x) - lh_trafo_at_p)
@@ -89,108 +102,114 @@ class OptimizeVI:
             fpp = o(natgrad)
             v += vdot(fpp, fpp)
             return jnp.sqrt(v)
-
         nl_vag = jax.jit(jax.value_and_grad(nl_residual))
+
+        self._kl_vg = partial(_ham_vg, likelihood)
+        self._kl_metric = partial(_ham_metric, likelihood)
+        self._draw_linear = draw_linear
+        self._draw_metric = draw_metric
         self._lh_trafo = lh_trafo
         self._nl_vag = nl_vag
         self._nl_metric = jax.jit(nl_metric)
         self._nl_sampnorm = jax.jit(nl_sampnorm)
 
-    def _linear_sampling(self, primals, keys):
-        samples, met_smpls = self._draw_linear(primals, keys)
-        samples = Samples(
-            pos=primals, 
-            samples=jax.tree_map(lambda *x: 
+    def linear_sampling(self, primals, from_inverse):
+        if from_inverse:
+            samples, met_smpls = self._draw_linear(primals, self._keys)
+            samples = Samples(
+                pos=primals, 
+                samples=jax.tree_map(lambda *x: 
                                     jnp.concatenate(x), samples, -samples)
-        )
+            )
+        else:
+            _, met_smpls = self._draw_metric(primals, self._keys)
+            samples = None
         met_smpls = Samples(pos=None,
                             samples=jax.tree_map(
                 lambda *x: jnp.concatenate(x), met_smpls, -met_smpls)
         )
         return samples, met_smpls
 
-    def _update_samples(self, samples, keys):
-        if len(samples) != len(keys):
-            raise ValueError("Length mismatch between samples and keys.")
-        method = self._sampling_params['method']
-        if method not in ['linear', 'geometric', 'altmetric']:
-            raise ValueError(f"Unknown sampling method: {method}")
-
+    def nonlinear_sampling(self, samples):
         primals = samples.pos
-        if (method == 'linear') or (method == 'geometric'):
-            samples, met_smpls = self._linear_sampling(primals, keys)
-        elif method == 'altmetric':
-            _, met_smpls = self._draw_metric(primals, keys)
+        lh_trafo_at_p = self._lh_trafo(primals)
+        metric_samples = self.linear_sampling(primals, False)[1]
+        new_smpls = []
+        opt_states = []
+        for s, ms in zip(samples, metric_samples):
+            options = {
+                "custom_gradnorm" : partial(self._nl_sampnorm, p=primals),
+                "fun_and_grad":
+                    partial(
+                        self._nl_vag,
+                        p=primals,
+                        lh_trafo_at_p=lh_trafo_at_p,
+                        ms_at_p=ms
+                    ),
+                "hessp":
+                    partial(
+                        self._nl_metric,
+                        p=primals,
+                        lh_trafo_at_p=lh_trafo_at_p
+                    ),
+                }
+            opt_state = minimize(None, x0=s, method=self._sampling_minimizer, 
+                                 options=self._sampling_kwargs | options)
+            new_smpls.append(opt_state.x - primals)
+            # Remove x from state to avoid copy of the samples
+            opt_states.append(opt_state._replace(x = None))
 
-        if (method == 'geometric') or (method == 'altmetric'):
-            options = self._sampling_params
-            lh_trafo_at_p = self._lh_trafo(primals)
-            new_smpls = []
-            for s, ms in zip(samples, met_smpls):
-                options = options.update({
-                    "custom_gradnorm" : partial(self._nl_sampnorm, p=primals),
-                    "fun_and_grad":
-                        partial(
-                            self._nl_vag,
-                            p=primals,
-                            lh_trafo_at_p=lh_trafo_at_p,
-                            ms_at_p=ms
-                        ),
-                    "hessp":
-                        partial(
-                            self._nl_metric,
-                            p=primals,
-                            lh_trafo_at_p=lh_trafo_at_p
-                        ),
-                    })
-                opt_state = minimize(
-                    None, x0=s, method=self._sampling_params['method'], 
-                    options=options
-                )
-                new_smpls += [opt_state.x - primals]
-            samples = Samples(pos=primals, samples=stack(new_smpls))
-        return samples
+        samples = Samples(pos=primals, samples=stack(new_smpls))
+        return samples, opt_states
 
-    def _minimize_kl(self, samples):
-        options = self._opt_params
-        options = options.update({
-            "fun_and_grad": partial(self._vg, primals_samples=samples),
-            "hessp": partial(self._metric, primals_samples=samples),
-        })
+    def minimize_kl(self, samples):
+        options = {
+            "fun_and_grad": partial(self._kl_vg, primals_samples=samples),
+            "hessp": partial(self._kl_metric, primals_samples=samples),
+        }
         opt_state = minimize(
             None,
             samples.pos,
-            method=options['method'],
-            options=options
+            method=self._minimizer,
+            options=self._mini_kwargs | options
         )
-        return samples.at(opt_state.x)
+        return samples.at(opt_state.x), opt_state
 
-    def init_with_likelihood(self, likelihood):
-        self._init_sampling(likelihood, self._sampling_params['cg_kwargs'])
-        self._init_minimize(likelihood)
-        self._init_geo(likelihood)
-
-    def update_params(self, sampling_params = {}, opt_params = {}):
-        self._sampling_params.update(sampling_params)
-        self._opt_params.update(opt_params)
-
-    def init_state(self, primals, n_samples, key):
-        keys = jax.random.split(key, n_samples)
-        return primals, self._linear_sampling(primals, keys)[0]
-
-    def update(self, primals, samples, key):
-        samples = samples.at(primals)
-        keys = jax.random.split(key, len(samples) // 2)
-        samples = self._update_samples(samples, keys)
-        samples = self._minimize_kl(samples)
-        return samples.pos, samples
-
-    def run(self, primals, n_samples, key):
-        if self._sampling_params['resample']:
-            keys = jax.random.split(key, self.N_steps)
+    def init_state(self, primals):
+        if self._sampling_method in ['linear', 'geometric']:
+            smpls = self.linear_sampling(primals, False)[1]
         else:
-            keys = (key, ) * self.N_steps
-        primals, samples = self.init_state(primals, n_samples, keys[0])
-        for i in range(self.N_steps):
-            primals, samples = self.update(primals, samples, keys[i])
-        return primals, samples
+            smpls = self.linear_sampling(primals, True)[0]
+        state = OptVIState(niter=0, samples=smpls, sampling_states=None,
+                           minimization_state=None)
+        return primals, state
+
+    def update(self, primals, state):
+        niter = state.niter
+        if self._sampling_method in ['linear', 'geometric']:
+            samples = self.linear_sampling(primals, True)[0]
+        else:
+            samples = state.samples.at(primals)
+        if self._sampling_method in ['geometric', 'altmetric']:
+            samples, sampling_states = self.nonlinear_sampling(samples)
+        else:
+            sampling_states = None
+        samples, opt_state = self.minimize_kl(samples)
+        state = OptVIState(niter=niter+1, samples=samples, 
+                           sampling_states=sampling_states,
+                           minimization_state=opt_state)
+        return samples.pos, state
+
+    def run(self, primals):
+        primals, state = self.init_state(primals)
+        for i in range(self._n_iter):
+            print(f"OptVI iteration number: {i}")
+            primals, state = self.update(primals, state)
+        return primals, state
+
+def _make_callable(obj):
+    if callable(obj) and not isinstance(obj, int):
+        return obj
+    else:
+        return lambda x: obj
+
