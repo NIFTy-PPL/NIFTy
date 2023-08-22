@@ -65,6 +65,8 @@ class OptimizeVI:
                  minimizer: str = 'newtoncg',
                  minimization_kwargs: dict = {},
                  _lh_funcs: Any = None):
+        # TODO reintroduce point-estimates (also possibly different sampling
+        # methods for pytree)
         """JaxOpt style minimizer for VI approximation of a Bayesian inference
         problem assuming a standard normal prior distribution.
 
