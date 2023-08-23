@@ -199,6 +199,10 @@ pos, samples = jft.optimize_kl(nll, pos_init,
                                sampling_kwargs=sampling_kwargs,
                                sampling_cg_kwargs=linear_sampling_kwarks,
                                resample=False)
+print("Likelihood residual(s)")
+print(jft.reduced_chisq_stats(pos, samples, func=nll.normalized_residual))
+print("Prior residual(s)")
+print(jft.reduced_chisq_stats(pos, samples))
 # %%
 namps = cfm.get_normalized_amplitudes()
 post_sr_mean = jft.mean(tuple(signal_response(s) for s in samples.at(pos)))
