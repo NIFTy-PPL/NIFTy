@@ -4,10 +4,6 @@
 # SPDX-License-Identifier: GPL-2.0+ OR BSD-2-Clause
 
 # %%
-import sys
-from functools import partial
-
-import jax
 import matplotlib.pyplot as plt
 from jax import numpy as jnp
 from jax import random
@@ -22,7 +18,7 @@ key = random.PRNGKey(seed)
 
 dims = (128, 128)
 
-n_mgvi_iterations = 3
+n_vi_iterations = 3
 n_samples = 4
 n_newton_iterations = 10
 absdelta = 1e-4 * jnp.prod(jnp.array(dims))
@@ -166,20 +162,23 @@ nll = jft.Gaussian(data, noise_cov_inv) @ signal_response
 nll = nll.jit()
 
 key, subkey = random.split(key)
-pos_init = jft.random_like(subkey, correlated_field.domain)
+pos_init = jft.random_like(subkey, signal_response.domain)
+pos_init = jft.Vector(pos_init)
 linear_sampling_kwarks = {"absdelta": absdelta / 10., "maxiter": 100}
-non_linear_sampling_kwarks = None # For MGVI
-#non_linear_sampling_kwarks = {"absdelta": absdelta / 10., "maxiter": 10} # For geoVI
-newton_cg_kwarks = {"absdelta": absdelta, "maxiter": n_newton_iterations}
+sampling_kwargs = {"xtol": 0.001, "maxiter": 10}
+minimization_kwarks = {"absdelta": absdelta, "maxiter": n_newton_iterations}
 n_samples = lambda i: 2 if i<2 else 4
-pos, samples, key = jft.optimize_kl(nll,
-                             pos_init,
-                             n_mgvi_iterations,
-                             n_samples,
-                             newton_cg_kwarks,
-                             linear_sampling_kwarks,
-                             non_linear_sampling_kwarks,
-                             key)
+pos, samples = jft.optimize_kl(nll, pos_init, 
+                               n_vi_iterations, 
+                               n_samples,
+                               key, 
+                               minimizer='newtoncg', 
+                               minimization_kwargs=minimization_kwarks,
+                               sampling_method='altmetric', # 'linear' for MGVI
+                               sampling_minimizer='newtoncg',
+                               sampling_kwargs=sampling_kwargs,
+                               sampling_cg_kwargs=linear_sampling_kwarks,
+                               resample=False)
 # %%
 namps = cfm.get_normalized_amplitudes()
 post_sr_mean = jft.mean(tuple(signal_response(s) for s in samples.at(pos)))
@@ -205,3 +204,5 @@ for ax, (title, field, tp) in zip(axs.flat, to_plot):
 fig.tight_layout()
 fig.savefig("cf_w_unknown_spectrum.png", dpi=400)
 plt.close()
+
+# %%
