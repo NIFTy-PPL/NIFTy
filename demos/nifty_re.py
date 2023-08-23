@@ -18,8 +18,7 @@ key = random.PRNGKey(seed)
 
 dims = (128, 128)
 
-n_vi_iterations = 3
-n_samples = 4
+n_vi_iterations = 4
 n_newton_iterations = 10
 absdelta = 1e-4 * jnp.prod(jnp.array(dims))
 
@@ -176,10 +175,6 @@ noise_truth = jnp.sqrt(
 data = signal_response_truth + noise_truth
 
 nll = jft.Gaussian(data, noise_cov_inv) @ signal_response
-# NOTE, keep in mind that sampling with geoVI can currently not be compiled.
-# Jit-compile the next best thing: the likelihood, its metric and its
-# left-sqrt-metric. This is redundant for MGVI.
-nll = nll.jit()
 
 key, subkey = random.split(key)
 pos_init = jft.random_like(subkey, signal_response.domain)
@@ -187,6 +182,8 @@ pos_init = jft.Vector(pos_init)
 linear_sampling_kwarks = {"absdelta": absdelta / 10., "maxiter": 100}
 sampling_kwargs = {"xtol": 0.001, "maxiter": 10}
 minimization_kwarks = {"absdelta": absdelta, "maxiter": n_newton_iterations}
+# NOTE, changing the number of samples always triggers a resampling even if
+# `resamples=False`, as more samples have to be drawn that did not exist before.
 n_samples = lambda i: 2 if i<2 else 4
 pos, samples = jft.optimize_kl(nll, pos_init, 
                                n_vi_iterations, 
