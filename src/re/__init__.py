@@ -36,4 +36,4 @@ from .stats_distributions import (
     uniform_prior,
 )
 from .tree_math import *
-from .optimize_kl import optimize_kl
+from .optimize_kl import OptimizeVI, optimize_kl
