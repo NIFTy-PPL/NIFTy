@@ -4,7 +4,7 @@
 from typing import Any, Callable, Dict, Hashable, Mapping, TypeVar, Union
 
 import jax
-from jax import numpy as jnp
+from jax import numpy as jnp, tree_map
 
 O = TypeVar('O')
 I = TypeVar('I')
@@ -100,3 +100,45 @@ def interpolate(xmin=-7., xmax=7., N=14000) -> Callable:
         return wrapper
 
     return decorator
+
+def _red_chisq(inp):
+    #FIXME complex numbers (use nifty convention)
+    return jnp.vdot(inp.conjugate(), inp).real / inp.size
+
+def reduced_chisq_stats(primals, samples = None, func = None):
+    """Computes the reduced chi-squared summary statistics for given input.
+
+    Parameters:
+    -----------
+    primals: tree-like
+        Input values to compute reduces chi-sq statistics. The statistics is 
+        computed for each leaf of the pytree, i.E. only array-like leafs are
+        square averaged. See `samples` and `func` for further infos.
+    samples: Samples (optional)
+        Posterior samples corresponding to primals. If provided, the chi-sq
+        statistics is computed for each sample, and the sample 
+        mean and standard deviation of the statistics is returned.
+    func: Callable (optional)
+        Function to compute the chi-sq statistics for instead of primals 
+        (samples). If provided, the statistics is computed for `func(x)` instead
+        of `x` where x is either primals or a sample.
+
+    Returns:
+    --------
+    reduced_chisq: tree-like
+        Pytree of Mean-Std pairs of the reduces chi-sq statistics at each leaf 
+        of the tree. Irregardless of samples being provided or not, the 
+        resulting leafs are always Mean-Std pairs, with the Std always being
+        zero if samples is None.
+    """
+    if samples is not None:
+        samples = samples.at(primals).samples
+    else:
+        samples = jax.tree_map(lambda x: x[jnp.newaxis, ...], primals)
+    samples = jax.vmap(func)(samples) if func is not None else samples
+
+    def red_chisq_stat(s):
+        res = jax.vmap(_red_chisq)(s)
+        return (jnp.mean(res), jnp.std(res))
+
+    return jax.tree_map(red_chisq_stat, samples)
