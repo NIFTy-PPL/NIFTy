@@ -3,14 +3,23 @@
 
 from typing import Any, Callable, Optional, TypeVar, Union
 
+from jax import linear_transpose, linearize
 from jax import numpy as jnp
-from jax import linear_transpose, linearize, vjp
+from jax import vjp
 from jax.tree_util import Partial, tree_leaves
 
-from .forest_util import ShapeWithDtype, split
-from .sugar import doc_from, is1d, isiterable, sum_of_squares
+from .misc import doc_from, is1d, isiterable, split
+from .tree_math import ShapeWithDtype, vdot, conj
 
 Q = TypeVar("Q")
+
+
+def _functional_conj(func):
+    def func_conj(*args, **kwargs):
+        # func^*(x) = (func(x^*))^*
+        return conj(func(*conj(args), **conj(kwargs)))
+
+    return func_conj
 
 
 class Likelihood():
@@ -40,6 +49,8 @@ class Likelihood():
         lsm_tangents_shape : tree-like structure of ShapeWithDtype, optional
             Structure of the data space.
         """
+        # TODO: track forward model and build lsm, metric only when called
+        # instead of always partially
         self._hamiltonian = energy
         self._transformation = transformation
         self._left_sqrt_metric = left_sqrt_metric
@@ -105,6 +116,7 @@ class Likelihood():
             rsm_at_p = linear_transpose(
                 lsm_at_p, self.left_sqrt_metric_tangents_shape
             )
+            rsm_at_p = _functional_conj(rsm_at_p)
             res = lsm_at_p(*rsm_at_p(tangents))
             return res
         return self._metric(primals, tangents, **primals_kw)
@@ -130,6 +142,7 @@ class Likelihood():
         """
         if self._left_sqrt_metric is None:
             _, bwd = vjp(Partial(self.transformation, **primals_kw), primals)
+            bwd = _functional_conj(bwd)
             res = bwd(tangents)
             return res[0]
         return self._left_sqrt_metric(primals, tangents, **primals_kw)
@@ -165,6 +178,7 @@ class Likelihood():
 
     @property
     def lsm_tangents_shape(self):
+        # TODO: track domain and infer LSM tan shape from it and LSM
         """Alias for `left_sqrt_metric_tangents_shape`."""
         return self.left_sqrt_metric_tangents_shape
 
@@ -273,11 +287,13 @@ class Likelihood():
             # small problems there seems to be no measurable difference.
             y, fwd = linearize(Partial(f, **kw_r), primals)
             bwd = linear_transpose(fwd, primals)
+            bwd = _functional_conj(bwd)
             return bwd(self.metric(y, fwd(tangents), **kw_l))[0]
 
         def left_sqrt_metric_at_f(primals, tangents, **primals_kw):
             kw_l, kw_r = split_kwargs(**primals_kw)
             y, bwd = vjp(Partial(f, **kw_r), primals)
+            bwd = _functional_conj(bwd)
             left_at_fp = self.left_sqrt_metric(y, tangents, **kw_l)
             return bwd(left_at_fp)[0]
 
@@ -331,6 +347,8 @@ class Likelihood():
         )
 
 
+# TODO: prune/hide/(make simply add unit mat) in favor of just passing around
+# likelihood; we exclusively built hierarchical models anyways.
 class StandardHamiltonian():
     """Joined object storage composed of a user-defined likelihood and a
     standard normal likelihood as prior.
@@ -354,7 +372,7 @@ class StandardHamiltonian():
         def joined_hamiltonian(primals, **primals_kw):
             # Assume the first primals to be the parameters
             return self._lh(primals, **
-                            primals_kw) + 0.5 * sum_of_squares(primals)
+                            primals_kw) + 0.5 * vdot(primals, primals)
 
         def joined_metric(primals, tangents, **primals_kw):
             return self._lh.metric(primals, tangents, **primals_kw) + tangents

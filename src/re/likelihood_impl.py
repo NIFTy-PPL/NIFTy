@@ -6,13 +6,14 @@ from typing import Callable, Optional, Tuple
 from jax import numpy as jnp
 from jax.tree_util import tree_map
 
-from .forest_util import ShapeWithDtype
+from .tree_math import ShapeWithDtype
 from .likelihood import Likelihood
 from .logger import logger
+from .tree_math import vdot
 
 
 def standard_t(nwr, dof):
-    return jnp.sum(jnp.log1p(nwr**2 / dof) * (dof + 1)) / 2
+    return jnp.sum(jnp.log1p((nwr.conj() * nwr).real / dof) * (dof + 1)) / 2
 
 
 def _shape_w_fixed_dtype(dtype):
@@ -41,7 +42,9 @@ def _get_cov_inv_and_std_inv(
             ";\nsetting `cov_inv` to `std_inv(jnp.ones_like(data))**2`"
         )
         logger.warning(wm)
-        noise_std_inv_sq = std_inv(tree_map(jnp.ones_like, primals))**2
+        noise_std_inv_sq = std_inv(
+            tree_map(jnp.real, tree_map(jnp.ones_like, primals))
+        )**2
 
         def cov_inv(tangents):
             return noise_std_inv_sq * tangents
@@ -53,7 +56,8 @@ def _get_cov_inv_and_std_inv(
         )
         logger.warning(wm)
         noise_cov_inv_sqrt = tree_map(
-            jnp.sqrt, cov_inv(tree_map(jnp.ones_like, primals))
+            jnp.sqrt,
+            cov_inv(tree_map(jnp.real, tree_map(jnp.ones_like, primals)))
         )
 
         def std_inv(tangents):
@@ -93,7 +97,7 @@ def Gaussian(
 
     def hamiltonian(primals):
         p_res = primals - data
-        return 0.5 * p_res.ravel().dot(noise_cov_inv(p_res).ravel())
+        return 0.5 * vdot(p_res, noise_cov_inv(p_res)).real
 
     def metric(primals, tangents):
         return noise_cov_inv(tangents)
@@ -182,33 +186,33 @@ def StudentT(
 
 def Poissonian(data, sampling_dtype=float):
     """Computes the negative log-likelihood, i.e. the Hamiltonians of an
-    expected count field constrained by Poissonian count data.
+    expected count Vector constrained by Poissonian count data.
 
     Represents up to an f-independent term :math:`log(d!)`:
 
     .. math ::
         E(f) = -\\log \\text{Poisson}(d|f) = \\sum f - d^\\dagger \\log(f),
 
-    where f is a field in data space of the expectation values for the counts.
+    where f is a Vector in data space of the expectation values for the counts.
 
     Parameters
     ----------
     data : ndarray of uint
-        Data field with counts. Needs to have integer dtype and all values need
+        Data Vector with counts. Needs to have integer dtype and all values need
         to be non-negative.
     sampling_dtype : dtype, optional
         Data-type for sampling.
     """
-    from .forest_util import common_type
+    from .tree_math import result_type
 
-    dtp = common_type(data)
+    dtp = result_type(data)
     if not jnp.issubdtype(dtp, jnp.integer):
         raise TypeError("`data` of invalid type")
     if jnp.any(data < 0):
         raise ValueError("`data` may not be negative")
 
     def hamiltonian(primals):
-        return jnp.sum(primals) - jnp.vdot(jnp.log(primals), data)
+        return jnp.sum(primals) - vdot(jnp.log(primals), data)
 
     def metric(primals, tangents):
         return tangents / primals
@@ -230,40 +234,48 @@ def Poissonian(data, sampling_dtype=float):
     )
 
 
-def VariableCovarianceGaussian(data):
+def VariableCovarianceGaussian(data, iscomplex=False):
     """Gaussian likelihood of the data with a variable covariance
 
     Parameters
     ----------
     data : tree-like structure of jnp.ndarray and float
         Data with additive noise following a Gaussian distribution.
+    iscomplex: Boolean
+        Whether the parameters are complex-valued.
 
     Notes
     -----
     The likelihood acts on a tuple of (mean, std_inv).
     """
-    from .sugar import sum_of_squares
+
+    # TODO: make configurable whether `std_inv` or `std` is passed
 
     def hamiltonian(primals):
         """
         primals : pair of (mean, std_inv)
         """
         res = (primals[0] - data) * primals[1]
-        return 0.5 * sum_of_squares(res) - jnp.sum(jnp.log(primals[1]))
+        fct = 2 if iscomplex else 1
+        return 0.5 * vdot(res, res).real - fct * jnp.sum(jnp.log(primals[1]))
 
     def metric(primals, tangents):
         """
         primals, tangent : pair of (mean, std_inv)
         """
+        fct = 4 if iscomplex else 2
         prim_std_inv_sq = primals[1]**2
-        res = (prim_std_inv_sq * tangents[0], 2 * tangents[1] / prim_std_inv_sq)
+        res = (
+            prim_std_inv_sq * tangents[0], fct * tangents[1] / prim_std_inv_sq
+        )
         return type(primals)(res)
 
     def left_sqrt_metric(primals, tangents):
         """
         primals, tangent : pair of (mean, std_inv)
         """
-        res = (primals[1] * tangents[0], jnp.sqrt(2) * tangents[1] / primals[1])
+        fct = 2 if iscomplex else jnp.sqrt(2)
+        res = (primals[1] * tangents[0], fct * tangents[1] / primals[1])
         return type(primals)(res)
 
     def transformation(primals):
@@ -277,10 +289,14 @@ def VariableCovarianceGaussian(data):
         """
         # TODO: test by drawing synthetic data that actually follows the
         # noise-cov and then average over it
-        res = (primals[1] * (primals[0] - data), tree_map(jnp.log, primals[1]))
+        fct = 2 if iscomplex else 1
+        res = (
+            primals[1] * (primals[0] - data),
+            fct * tree_map(jnp.log, primals[1])
+        )
         return type(primals)(res)
 
-    lsm_tangents_shape = tree_map(ShapeWithDtype.from_leave, (data, data))
+    lsm_tangents_shape = tree_map(ShapeWithDtype.from_leave, (data, data.real))
 
     return Likelihood(
         hamiltonian,
@@ -305,6 +321,8 @@ def VariableCovarianceStudentT(data, dof):
     -----
     The likelihood acts on a tuple of (mean, std).
     """
+
+    # TODO: make configurable whether `std_inv` or `std` is passed
     def hamiltonian(primals):
         """
         primals : pair of (mean, std)

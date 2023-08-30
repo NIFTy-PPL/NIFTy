@@ -4,15 +4,14 @@
 from functools import partial
 from typing import Callable, NamedTuple, TypeVar, Union
 
+from jax import lax
 from jax import numpy as jnp
 from jax import random, tree_util
 from jax.experimental import host_callback
-from jax.lax import population_count
 from jax.scipy.special import expit
 
-from .disable_jax_control_flow import cond, fori_loop, while_loop
-from .forest_util import select
-from .sugar import random_like
+from .lax import cond, fori_loop, while_loop
+from .tree_math import random_like
 
 _DEBUG_FLAG = False
 
@@ -37,6 +36,10 @@ def _DEBUG_FINISH_SUBTREE(dummy_arg):
     """Signal the position of a finished sub-tree in `_DEBUG_STORE`"""
     global _DEBUG_SUBTREE_END_IDXS
     _DEBUG_SUBTREE_END_IDXS.append(len(_DEBUG_STORE))
+
+
+def select(pred, on_true, on_false):
+    return tree_util.tree_map(partial(lax.select, pred), on_true, on_false)
 
 
 ### COMMON FUNCTIONALITY
@@ -498,7 +501,7 @@ def iterative_build_tree(
             # subtrees. Register the current z to be used in turning condition
             # checks later, when the right endpoints of it's subtrees are
             # generated.
-            S = tree_index_update(S, population_count(n), z)
+            S = tree_index_update(S, lax.population_count(n), z)
             return S, False
 
         def _odd_fun(S):
@@ -509,7 +512,7 @@ def iterative_build_tree(
             # l = nubmer of subtrees that have current z as their right endpoint.
             l = count_trailing_ones(n)
             # inclusive indices into S referring to the left endpoints of the l subtrees.
-            i_max_incl = population_count(n - 1)
+            i_max_incl = lax.population_count(n - 1)
             i_min_incl = i_max_incl - l + 1
             # TODO: this should traverse the range in reverse
             turning = fori_loop(

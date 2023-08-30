@@ -47,14 +47,14 @@ class Adder(Operator):
         try:
             from jax.tree_util import tree_map
 
-            from ..re import Field as ReField
+            from ..re import Vector as ReField
 
             a_j = ReField(a.val) if isinstance(a, (Field, MultiField)) else a
 
             def jax_expr(x):
                 # Preserve the input type
                 if not isinstance(x, ReField):
-                    a_astype_x = a_j.val if isinstance(a_j, ReField) else a_j
+                    a_astype_x = a_j.tree if isinstance(a_j, ReField) else a_j
                 else:
                     a_astype_x = a_j
                 return tree_map(sub if neg else add, x, a_astype_x)

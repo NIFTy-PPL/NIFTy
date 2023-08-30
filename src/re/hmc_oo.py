@@ -9,7 +9,7 @@ from jax import grad
 from jax import numpy as jnp
 from jax import random, tree_util
 
-from .disable_jax_control_flow import fori_loop
+from .lax import fori_loop
 from .hmc import AcceptedAndRejected, Q, QP, Tree
 from .hmc import (
     generate_hmc_acc_rej,

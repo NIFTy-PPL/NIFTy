@@ -40,7 +40,7 @@ def matmul_toeplitz(c, x):
     x = x.reshape(-1, 1) if x.ndim == 1 else x.reshape(x.shape[0], -1)
     m = x.shape[1]
 
-    dtp = np.find_common_type(tuple(i.dtype for i in (r, c, x)), ())
+    dtp = np.result_type(*(i.dtype for i in (r, c, x)))
     r, c, x = (jnp.asarray(i, dtype=dtp) for i in (r, c, x))
     embedded_col = jnp.concatenate((c, r[-1:0:-1]))
 

@@ -8,11 +8,11 @@ from typing import Any, Callable, NamedTuple, Optional, Tuple, Union
 from jax import lax
 from jax import numpy as jnp
 
-from .forest_util import assert_arithmetics, common_type
-from .forest_util import norm as jft_norm
-from .forest_util import size, vdot, where, zeros_like
 from .logger import logger
-from .sugar import doc_from, sum_of_squares
+from .misc import doc_from
+from .tree_math import assert_arithmetics, result_type
+from .tree_math import norm as jft_norm
+from .tree_math import size, vdot, where, zeros_like
 
 HessVP = Callable[[jnp.ndarray], jnp.ndarray]
 
@@ -101,9 +101,9 @@ def _cg(
     ) if maxiter is None else maxiter
 
     if absdelta is None and resnorm is None:  # fallback convergence criterion
-        resnorm = jnp.maximum(tol * jft_norm(j, ord=norm_ord, ravel=True), atol)
+        resnorm = jnp.maximum(tol * jft_norm(j, ord=norm_ord), atol)
 
-    common_dtp = common_type(j)
+    common_dtp = result_type(j)
     eps = 6. * jnp.finfo(common_dtp).eps  # taken from SciPy's NewtonCG minimzer
     tiny = 6. * jnp.finfo(common_dtp).tiny
 
@@ -120,7 +120,7 @@ def _cg(
         d = r
         energy = float(vdot((r - j) / 2, pos))
         nfev = 1
-    previous_gamma = float(sum_of_squares(r))
+    previous_gamma = float(vdot(r, r))
 
     info = -1
     i = 0
@@ -135,7 +135,7 @@ def _cg(
     )
     if name is not None:
         if resnorm is not None:
-            norm = jft_norm(r, ord=norm_ord, ravel=True)
+            norm = jft_norm(r, ord=norm_ord)
         else:
             norm = None
         pp(i, energy=energy, energy_diff=energy_diff, norm=norm)
@@ -173,7 +173,7 @@ def _cg(
             nfev += 1
         else:
             r = r - q * alpha
-        gamma = float(sum_of_squares(r))
+        gamma = float(vdot(r, r))
         if time_threshold is not None and datetime.now() > time_threshold:
             info = i
             break
@@ -183,7 +183,7 @@ def _cg(
             info = 0
             break
         if resnorm is not None:
-            norm = float(jft_norm(r, ord=norm_ord, ravel=True))
+            norm = float(jft_norm(r, ord=norm_ord))
             if norm < resnorm and i >= miniter:
                 info = 0
                 break
@@ -246,9 +246,9 @@ def _static_cg(
     ) if maxiter is None else maxiter
 
     if absdelta is None and resnorm is None:  # fallback convergence criterion
-        resnorm = jnp.maximum(tol * jft_norm(j, ord=norm_ord, ravel=True), atol)
+        resnorm = jnp.maximum(tol * jft_norm(j, ord=norm_ord), atol)
 
-    common_dtp = common_type(j)
+    common_dtp = result_type(j)
     eps = 6. * jnp.finfo(common_dtp).eps  # taken from SciPy's NewtonCG minimzer
     tiny = 6. * jnp.finfo(common_dtp).tiny
 
@@ -283,13 +283,13 @@ def _static_cg(
                 "alpha": alpha
             }
         )
-        gamma = sum_of_squares(r)
+        gamma = vdot(r, r)
 
         info = jnp.where(
             (gamma >= 0.) & (gamma <= tiny) & (info != -1), 0, info
         )
         if resnorm is not None:
-            norm = jft_norm(r, ord=norm_ord, ravel=True)
+            norm = jft_norm(r, ord=norm_ord)
             info = jnp.where(
                 (norm < resnorm) & (i >= miniter) & (info != -1), 0, info
             )
@@ -345,7 +345,7 @@ def _static_cg(
     # energy = .5xT M x - xT j
     energy = jnp.array(0.) if x0 is None else vdot((r - j) / 2, pos)
 
-    gamma = sum_of_squares(r)
+    gamma = vdot(r, r)
     val = {
         "info": jnp.array(-2, dtype=int),
         "pos": pos,
@@ -360,7 +360,7 @@ def _static_cg(
 
     if name is not None:
         if resnorm is not None:
-            norm = jft_norm(r, ord=norm_ord, ravel=True)
+            norm = jft_norm(r, ord=norm_ord)
         else:
             norm = None
         printable_state = {
@@ -504,7 +504,7 @@ def _cg_steihaug_subproblem(
         jnp.minimum(200, maxiter_fallback), miniter
     ) if maxiter is None else maxiter
 
-    common_dtp = common_type(g)
+    common_dtp = result_type(g)
     eps = 6. * jnp.finfo(
         common_dtp
     ).eps  # Inspired by SciPy's NewtonCG minimzer
@@ -608,7 +608,7 @@ def _cg_steihaug_subproblem(
         if norm_ord == 2:
             r_next_norm = jnp.sqrt(r_next_squared)
         else:
-            r_next_norm = jft_norm(r_next, ord=norm_ord, ravel=True)
+            r_next_norm = jft_norm(r_next, ord=norm_ord)
         accept_z_next |= r_next_norm < resnorm
         # Relative to a plain CG, `z_next` is negative
         energy_next = vdot((r_next + g) / 2, z_next)
@@ -619,7 +619,7 @@ def _cg_steihaug_subproblem(
                              ) & (energy_diff < absdelta) & (nit >= miniter)
 
         # include a junk switch to catch the case where none should be executed
-        z_next_norm = jft_norm(z_next, ord=tr_norm_ord, ravel=True)
+        z_next_norm = jft_norm(z_next, ord=tr_norm_ord)
         index = jnp.argmax(
             jnp.array(
                 [False, dBd <= 0, z_next_norm >= trust_radius, accept_z_next]
