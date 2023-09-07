@@ -10,11 +10,13 @@ from .tree_math import ShapeWithDtype, vdot, tree_reduce
 from .likelihood import Likelihood
 from .logger import logger
 
+
 def standard_t(nwr, dof):
     res = (nwr.conj() * nwr).real / dof
     res = tree_map(jnp.log1p, res) * (dof + 1)
     res = tree_map(jnp.sum, res) / 2
-    return tree_reduce(lambda a,b: a+b, res)
+    return tree_reduce(lambda a, b: a + b, res)
+
 
 def _shape_w_fixed_dtype(dtype):
     def shp_w_dtp(e):
@@ -219,12 +221,15 @@ def Poissonian(data, sampling_dtype=float):
     dtp = result_type(data)
     if not jnp.issubdtype(dtp, jnp.integer):
         raise TypeError("`data` of invalid type")
-    if tree_reduce(lambda a,b: a+b, tree_map(lambda x: jnp.any(x < 0), data)):
+    if tree_reduce(
+        lambda a, b: a + b, tree_map(lambda x: jnp.any(x < 0), data)
+    ):
         raise ValueError("`data` must not be negative")
 
     def hamiltonian(primals):
-        ham = tree_map(jnp.sum,primals) - vdot(tree_map(jnp.log,primals), data)
-        return tree_reduce(lambda a,b: a+b, ham)
+        ham = tree_map(jnp.sum,
+                       primals) - vdot(tree_map(jnp.log, primals), data)
+        return tree_reduce(lambda a, b: a + b, ham)
 
     def metric(primals, tangents):
         return tangents / primals
@@ -277,7 +282,7 @@ def VariableCovarianceGaussian(data, iscomplex=False):
         res = (data - primals[0]) * primals[1]
         fct = 2 if iscomplex else 1
         norm = tree_map(lambda x: jnp.sum(jnp.log(x)), primals[1])
-        norm = tree_reduce(lambda a,b: a*b, norm)
+        norm = tree_reduce(lambda a, b: a * b, norm)
         return 0.5 * vdot(res, res).real - fct * norm
 
     def metric(primals, tangents):
@@ -350,8 +355,10 @@ def VariableCovarianceStudentT(data, dof):
         primals : pair of (mean, std)
         """
         t = standard_t((data - primals[0]) / primals[1], dof)
-        t += tree_reduce(lambda a,b: a+b, 
-                         tree_map(lambda x: jnp.sum(jnp.log(x)), primals[1]))
+        t += tree_reduce(
+            lambda a, b: a + b,
+            tree_map(lambda x: jnp.sum(jnp.log(x)), primals[1])
+        )
         return t
 
     def metric(primals, tangent):
@@ -402,18 +409,21 @@ def Categorical(data, axis=-1, sampling_dtype=float):
     """
     def hamiltonian(primals):
         from jax.nn import log_softmax
+
         def eval(p, d):
             logits = log_softmax(p, axis=axis)
             return -jnp.sum(jnp.take_along_axis(logits, d, axis))
-        return tree_reduce(lambda a,b: a+b, tree_map(eval, primals, data))
+
+        return tree_reduce(lambda a, b: a + b, tree_map(eval, primals, data))
 
     def metric(primals, tangents):
         from jax.nn import softmax
 
         preds = tree_map(lambda p: softmax(p, axis=axis), primals)
-        norm_term = tree_map(lambda x: jnp.sum(x, axis=axis, keepdims=True),
-                             preds * tangents)
-        norm_term = tree_reduce(lambda a,b: a+b, norm_term)
+        norm_term = tree_map(
+            lambda x: jnp.sum(x, axis=axis, keepdims=True), preds * tangents
+        )
+        norm_term = tree_reduce(lambda a, b: a + b, norm_term)
         return preds * tangents - preds * norm_term
 
     def left_sqrt_metric(primals, tangents):
@@ -421,16 +431,17 @@ def Categorical(data, axis=-1, sampling_dtype=float):
 
         # FIXME: not sure if this is really the square root
         sqrtp = tree_map(lambda p: jnp.sqrt(softmax(p, axis=axis)), primals)
-        norm_term = tree_map(lambda x: jnp.sum(x, axis=axis, keepdims=True),
-                             sqrtp * tangents)
-        norm_term = tree_reduce(lambda a,b: a+b, norm_term)
+        norm_term = tree_map(
+            lambda x: jnp.sum(x, axis=axis, keepdims=True), sqrtp * tangents
+        )
+        norm_term = tree_reduce(lambda a, b: a + b, norm_term)
         return sqrtp * (tangents - sqrtp * norm_term)
 
     lsm_tangents_shape = tree_map(_shape_w_fixed_dtype(sampling_dtype), data)
 
     return Likelihood(
         hamiltonian,
-        normalized_residual = None,
+        normalized_residual=None,
         left_sqrt_metric=left_sqrt_metric,
         metric=metric,
         lsm_tangents_shape=lsm_tangents_shape
