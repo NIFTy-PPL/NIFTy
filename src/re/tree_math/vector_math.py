@@ -281,12 +281,18 @@ def where(condition, x, y):
 
 
 def sum(a):
+    if hasattr(a, "sum"):
+        return a.sum()
     return tree_reduce(operator.add, tree_map(jnp.sum, a))
 
 
 def max(a):
+    if hasattr(a, "max"):
+        return a.max()
     return tree_reduce(jnp.max, tree_map(jnp.max, a))
 
 
 def min(a):
+    if hasattr(a, "min"):
+        return a.min()
     return tree_reduce(jnp.min, tree_map(jnp.min, a))
