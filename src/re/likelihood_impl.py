@@ -219,52 +219,24 @@ def Poissonian(data, sampling_dtype=float):
     dtp = result_type(data)
     if not jnp.issubdtype(dtp, jnp.integer):
         raise TypeError("`data` of invalid type")
-    if isinstance(data, jnp.ndarray):
-        if jnp.any(data < 0):
-            raise ValueError("`data` may not be negative")
-    elif isinstance(data, Vector):
-        smaller_zero = lambda x: jnp.any(x < 0)
-        if any(value is False for value in tree_map(smaller_zero, data).tree.values()):
-            raise ValueError("`data` may not be negative")
-    else:
-        raise NotImplementedError('Data needs to be a jnp.array or have a tree-like structure of jnp.arrays')
+    if tree_reduce(lambda a,b: a+b, tree_map(lambda x: jnp.any(x < 0), data)):
+        raise ValueError("`data` must not be negative")
 
     def hamiltonian(primals):
-        if isinstance(primals, jnp.ndarray) and isinstance(data, jnp.ndarray):
-            ham = jnp.sum(primals) - vdot(jnp.log(primals), data)
-        elif isinstance(primals, Vector) and isinstance(data, Vector):
-            children_lklhd = tree_map(jnp.sum, primals) - vdot(tree_map(jnp.log, primals), data)
-            ham = tree_reduce(jnp.add, children_lklhd)
-        else:
-            raise NotImplementedError('Data and primals need to have the same type and need to be either an'
-                                      'array or have a tree-like structure.')
-        return ham
+        ham = tree_map(jnp.sum,primals) - vdot(tree_map(jnp.log,primals), data)
+        return tree_reduce(lambda a,b: a+b, ham)
 
     def metric(primals, tangents):
         return tangents / primals
 
     def left_sqrt_metric(primals, tangents):
-        if isinstance(primals, jnp.ndarray) and isinstance(tangents, jnp.ndarray):
-            lsm = tangents / jnp.sqrt(primals)
-        elif isinstance(primals, Vector) and isinstance(tangents, Vector):
-            lsm = tangents / tree_map(jnp.sqrt, primals)
-        else:
-            raise NotImplementedError('Tangents and primals need to have the same type and need to be either an'
-                                      'array or have a tree-like structure.')
-        return lsm
+        return tangents / primals**0.5
 
     def normalized_residual(primals):
         return left_sqrt_metric(primals, data - primals)
 
     def transformation(primals):
-        func = lambda x: jnp.sqrt(x) * 2.
-        if isinstance(primals, jnp.ndarray):
-            trans = func(primals)
-        elif isinstance(primals, Vector):
-            trans = tree_map(func, primals)
-        else:
-            raise NotImplementedError('Primals need to be either an array or have a tree-like structure.')
-        return trans
+        return 2. * primals**0.5
 
     lsm_tangents_shape = tree_map(_shape_w_fixed_dtype(sampling_dtype), data)
 
