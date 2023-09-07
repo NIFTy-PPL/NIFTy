@@ -6,15 +6,15 @@ from typing import Callable, Optional, Tuple
 from jax import numpy as jnp
 from jax.tree_util import tree_map
 
-from .tree_math import ShapeWithDtype
+from .tree_math import ShapeWithDtype, vdot, tree_reduce
 from .likelihood import Likelihood
 from .logger import logger
-from .tree_math import vdot, tree_reduce, Vector
-
 
 def standard_t(nwr, dof):
-    return jnp.sum(jnp.log1p((nwr.conj() * nwr).real / dof) * (dof + 1)) / 2
-
+    res = (nwr.conj() * nwr).real / dof
+    res = tree_map(jnp.log1p, res) * (dof + 1)
+    res = tree_map(jnp.sum, res) / 2
+    return tree_reduce(lambda a,b: a+b, res)
 
 def _shape_w_fixed_dtype(dtype):
     def shp_w_dtp(e):
@@ -169,7 +169,7 @@ def StudentT(
         """
         primals, tangents : mean
         """
-        return noise_std_inv(jnp.sqrt((dof + 1) / (dof + 3)) * tangents)
+        return noise_std_inv(((dof + 1) / (dof + 3))**0.5 * tangents)
 
     def normalized_residual(primals):
         """
@@ -181,7 +181,7 @@ def StudentT(
         """
         primals : mean
         """
-        return noise_std_inv(jnp.sqrt((dof + 1) / (dof + 3)) * primals)
+        return noise_std_inv(((dof + 1) / (dof + 3))**0.5 * primals)
 
     lsm_tangents_shape = tree_map(ShapeWithDtype.from_leave, data)
 
@@ -276,7 +276,9 @@ def VariableCovarianceGaussian(data, iscomplex=False):
         """
         res = (data - primals[0]) * primals[1]
         fct = 2 if iscomplex else 1
-        return 0.5 * vdot(res, res).real - fct * jnp.sum(jnp.log(primals[1]))
+        norm = tree_map(lambda x: jnp.sum(jnp.log(x)), primals[1])
+        norm = tree_reduce(lambda a,b: a*b, norm)
+        return 0.5 * vdot(res, res).real - fct * norm
 
     def metric(primals, tangents):
         """
@@ -348,7 +350,8 @@ def VariableCovarianceStudentT(data, dof):
         primals : pair of (mean, std)
         """
         t = standard_t((data - primals[0]) / primals[1], dof)
-        t += jnp.sum(jnp.log(primals[1]))
+        t += tree_reduce(lambda a,b: a+b, 
+                         tree_map(lambda x: jnp.sum(jnp.log(x)), primals[1]))
         return t
 
     def metric(primals, tangent):
@@ -371,8 +374,7 @@ def VariableCovarianceStudentT(data, dof):
             (dof + 1) / (dof + 3) / primals[1]**2,
             2 * dof / (dof + 3) / primals[1]**2
         )
-        res = (jnp.sqrt(cov[0]) * tangents[0], jnp.sqrt(cov[1]) * tangents[1])
-        return res
+        return (cov[0]**0.5 * tangents[0], cov[1]**0.5 * tangents[1])
 
     lsm_tangents_shape = tree_map(ShapeWithDtype.from_leave, (data, data))
 
