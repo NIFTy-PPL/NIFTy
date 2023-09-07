@@ -1,21 +1,20 @@
 # Copyright(C) 2013-2021 Max-Planck-Society
 # SPDX-License-Identifier: GPL-2.0+ OR BSD-2-Clause
 
+from functools import partial
 from typing import Callable, Optional, Tuple
 
 from jax import numpy as jnp
 from jax.tree_util import tree_map
 
-from .tree_math import ShapeWithDtype, vdot, tree_reduce
 from .likelihood import Likelihood
 from .logger import logger
+from .tree_math import ShapeWithDtype, sum, vdot
 
 
 def standard_t(nwr, dof):
     res = (nwr.conj() * nwr).real / dof
-    res = tree_map(jnp.log1p, res) * (dof + 1)
-    res = tree_map(jnp.sum, res) / 2
-    return tree_reduce(lambda a, b: a + b, res)
+    return sum(tree_map(jnp.log1p, res) * (dof + 1)) / 2
 
 
 def _shape_w_fixed_dtype(dtype):
@@ -221,15 +220,13 @@ def Poissonian(data, sampling_dtype=float):
     dtp = result_type(data)
     if not jnp.issubdtype(dtp, jnp.integer):
         raise TypeError("`data` of invalid type")
-    if tree_reduce(
-        lambda a, b: a + b, tree_map(lambda x: jnp.any(x < 0), data)
-    ):
+    if sum(tree_map(lambda x: jnp.any(x < 0), data)):
         raise ValueError("`data` must not be negative")
 
     def hamiltonian(primals):
         ham = tree_map(jnp.sum,
                        primals) - vdot(tree_map(jnp.log, primals), data)
-        return tree_reduce(lambda a, b: a + b, ham)
+        return sum(ham)
 
     def metric(primals, tangents):
         return tangents / primals
@@ -281,9 +278,8 @@ def VariableCovarianceGaussian(data, iscomplex=False):
         """
         res = (data - primals[0]) * primals[1]
         fct = 2 if iscomplex else 1
-        norm = tree_map(lambda x: jnp.sum(jnp.log(x)), primals[1])
-        norm = tree_reduce(lambda a, b: a * b, norm)
-        return 0.5 * vdot(res, res).real - fct * norm
+        return 0.5 * vdot(res,
+                          res).real - fct * sum(tree_map(jnp.log, primals[1]))
 
     def metric(primals, tangents):
         """
@@ -355,10 +351,7 @@ def VariableCovarianceStudentT(data, dof):
         primals : pair of (mean, std)
         """
         t = standard_t((data - primals[0]) / primals[1], dof)
-        t += tree_reduce(
-            lambda a, b: a + b,
-            tree_map(lambda x: jnp.sum(jnp.log(x)), primals[1])
-        )
+        t += sum(tree_map(jnp.log, primals[1]))
         return t
 
     def metric(primals, tangent):
@@ -414,27 +407,26 @@ def Categorical(data, axis=-1, sampling_dtype=float):
             logits = log_softmax(p, axis=axis)
             return -jnp.sum(jnp.take_along_axis(logits, d, axis))
 
-        return tree_reduce(lambda a, b: a + b, tree_map(eval, primals, data))
+        return sum(tree_map(eval, primals, data))
 
     def metric(primals, tangents):
         from jax.nn import softmax
 
-        preds = tree_map(lambda p: softmax(p, axis=axis), primals)
+        preds = tree_map(partial(softmax, axis=axis), primals)
         norm_term = tree_map(
-            lambda x: jnp.sum(x, axis=axis, keepdims=True), preds * tangents
+            partial(jnp.sum, axis=axis, keepdims=True), preds * tangents
         )
-        norm_term = tree_reduce(lambda a, b: a + b, norm_term)
-        return preds * tangents - preds * norm_term
+        return preds * tangents - preds * sum(norm_term)
 
     def left_sqrt_metric(primals, tangents):
         from jax.nn import softmax
 
         # FIXME: not sure if this is really the square root
-        sqrtp = tree_map(lambda p: jnp.sqrt(softmax(p, axis=axis)), primals)
+        sqrtp = tree_map(partial(softmax, axis=axis), primals)**0.5
         norm_term = tree_map(
-            lambda x: jnp.sum(x, axis=axis, keepdims=True), sqrtp * tangents
+            partial(jnp.sum, axis=axis, keepdims=True), sqrtp * tangents
         )
-        norm_term = tree_reduce(lambda a, b: a + b, norm_term)
+        norm_term = sum(norm_term)
         return sqrtp * (tangents - sqrtp * norm_term)
 
     lsm_tangents_shape = tree_map(_shape_w_fixed_dtype(sampling_dtype), data)
