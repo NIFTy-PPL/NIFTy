@@ -280,6 +280,10 @@ def where(condition, x, y):
     return tree_map(jnp.where, condition, x, y)
 
 
+def sum(a):
+    return tree_reduce(operator.add, tree_map(jnp.sum, a))
+
+
 def max(a):
     return tree_reduce(jnp.max, tree_map(jnp.max, a))
 
