@@ -392,31 +392,38 @@ def Categorical(data, axis=-1, sampling_dtype=float):
 
     Parameters
     ----------
-    data : sequence of int
-        An array stating which of the categories is the realized in the data.
-        Must agree with the input shape except for the shape[axis]
+    data : tree-like structure of jnp.ndarray and int
+        Which of the categories is the realized in the data. Must agree with the
+        input shape except for the shape[axis] of the leafs
     axis : int
-        Axis over which the categories are formed
+        Leaf-axis over which the categories are formed
     sampling_dtype : dtype, optional
         Data-type for sampling.
     """
     def hamiltonian(primals):
         from jax.nn import log_softmax
-        logits = log_softmax(primals, axis=axis)
-        return -jnp.sum(jnp.take_along_axis(logits, data, axis))
+        def eval(p, d):
+            logits = log_softmax(p, axis=axis)
+            return -jnp.sum(jnp.take_along_axis(logits, d, axis))
+        return tree_reduce(lambda a,b: a+b, tree_map(eval, primals, data))
 
     def metric(primals, tangents):
         from jax.nn import softmax
 
-        preds = softmax(primals, axis=axis)
-        norm_term = jnp.sum(preds * tangents, axis=axis, keepdims=True)
+        preds = tree_map(lambda p: softmax(p, axis=axis), primals)
+        norm_term = tree_map(lambda x: jnp.sum(x, axis=axis, keepdims=True),
+                             preds * tangents)
+        norm_term = tree_reduce(lambda a,b: a+b, norm_term)
         return preds * tangents - preds * norm_term
 
     def left_sqrt_metric(primals, tangents):
         from jax.nn import softmax
 
-        sqrtp = jnp.sqrt(softmax(primals, axis=axis))
-        norm_term = jnp.sum(sqrtp * tangents, axis=axis, keepdims=True)
+        # FIXME: not sure if this is really the square root
+        sqrtp = tree_map(lambda p: jnp.sqrt(softmax(p, axis=axis)), primals)
+        norm_term = tree_map(lambda x: jnp.sum(x, axis=axis, keepdims=True),
+                             sqrtp * tangents)
+        norm_term = tree_reduce(lambda a,b: a+b, norm_term)
         return sqrtp * (tangents - sqrtp * norm_term)
 
     lsm_tangents_shape = tree_map(_shape_w_fixed_dtype(sampling_dtype), data)
