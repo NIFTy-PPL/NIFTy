@@ -168,11 +168,10 @@ def test_left_sqrt_metric_vs_metric_consistency(seed, shape, lh_init):
         energy, left_sqrt_metric=lsm, lsm_tangents_shape=lsm_shp
     )
 
-    rng_method = latent_init if latent_init is not None else random.normal
     for _ in range(N_TRIES):
         key, *sk = random.split(key, 3)
-        p = rng_method(sk.pop(), shape=shape)
-        t = rng_method(sk.pop(), shape=shape)
+        p = latent_init(sk.pop(), shape=shape)
+        t = latent_init(sk.pop(), shape=shape)
         tree_map(aallclose, lh.metric(p, t), lh_mini.metric(p, t))
 
 
@@ -202,14 +201,34 @@ def test_transformation_vs_left_sqrt_metric_consistency(seed, shape, lh_init):
         energy, left_sqrt_metric=lsm, lsm_tangents_shape=lsm_shp
     )
 
-    rng_method = latent_init if latent_init is not None else random.normal
     for _ in range(N_TRIES):
         key, *sk = random.split(key, 3)
-        p = rng_method(sk.pop(), shape=shape)
-        t = rng_method(sk.pop(), shape=shape)
+        p = latent_init(sk.pop(), shape=shape)
+        t = latent_init(sk.pop(), shape=shape)
         jft.tree_map(aallclose, lh.left_sqrt_metric(p, t),
                      lh_mini.left_sqrt_metric(p, t))
         jft.tree_map(aallclose, lh.metric(p, t), lh_mini.metric(p, t))
+
+@pmp("lh_init", lh_init_true + lh_init_approx)
+def test_residuals(seed, shape, lh_init):
+    allfinite = lambda x: jnp.all(jnp.isfinite(x))
+
+    N_TRIES = 5
+
+    lh_init_method, draw, latent_init = lh_init
+    key = random.PRNGKey(seed)
+    key, *subkeys = random.split(key, 1 + len(draw))
+    init_kwargs = {
+        k: method(key=sk, shape=shape)
+        for (k, method), sk in zip(draw.items(), subkeys)
+    }
+    lh = lh_init_method(**init_kwargs)
+
+    residual = lh.normalized_residual
+    for _ in range(N_TRIES):
+        key, sk = random.split(key, 2)
+        r = residual(latent_init(sk, shape=shape))
+        assert jft.tree_reduce(lambda a,b: a*b, jft.tree_map(allfinite, r))
 
 
 @pmp('iscomplex', [False, True])
