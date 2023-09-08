@@ -4,7 +4,7 @@ import pytest
 
 pytest.importorskip("jax")
 
-from functools import partial
+from functools import partial, reduce
 
 import jax
 import jax.numpy as jnp
@@ -25,8 +25,20 @@ def lst2fixt(lst):
     return fixt
 
 
+def random_draw(key, shape, dtype, method):
+    def _isleaf(x):
+        if isinstance(x, tuple):
+            return reduce(lambda a, b: a * b, (isinstance(ii, int) for ii in x))
+        return False
+
+    swd = jft.tree_map(
+        lambda x: jft.ShapeWithDtype(x, dtype), shape, is_leaf=_isleaf
+    )
+    return jft.random_like(key, jft.Vector(swd), method)
+
+
 def random_noise_std_inv(key, shape):
-    diag = 1. / random.exponential(key, shape)
+    diag = 1. / random_draw(key, shape, float, random.exponential)
 
     def noise_std_inv(tangents):
         return diag * tangents
@@ -35,40 +47,51 @@ def random_noise_std_inv(key, shape):
 
 
 seed = lst2fixt((3639, 12, 41, 42))
-shape = lst2fixt(((4, 2), (2, 1), (5, )))
+shape = lst2fixt(
+    ((4, 2), (2, 1), (5, ), [(2, 3), (1, 2)], ((2, ), {
+        'a': (3, 1)
+    }))
+)
+
 lh_init_true = (
     (
         jft.Gaussian, {
-            "data": random.normal,
+            "data": partial(random_draw, dtype=float, method=random.normal),
             "noise_std_inv": random_noise_std_inv
-        }, None
+        }, partial(random_draw, dtype=float, method=random.normal)
     ), (
         jft.StudentT, {
-            "data": random.normal,
-            "dof": random.exponential,
+            "data": partial(random_draw, dtype=float, method=random.normal),
+            "dof": partial(random_draw, dtype=float, method=random.exponential),
             "noise_std_inv": random_noise_std_inv
-        }, None
+        }, partial(random_draw, dtype=float, method=random.normal)
     ), (
         jft.Poissonian, {
-            "data": partial(random.poisson, lam=3.14)
-        }, random.exponential
+            "data":
+                partial(
+                    random_draw,
+                    dtype=int,
+                    method=partial(random.poisson, lam=3.14)
+                ),
+        }, partial(random_draw, dtype=float, method=random.exponential)
     )
 )
 lh_init_approx = (
     (
         jft.VariableCovarianceGaussian, {
-            "data": random.normal
+            "data": partial(random_draw, dtype=float, method=random.normal),
         }, lambda key, shape: (
-            random.normal(key, shape=shape), 1. / jnp.
-            exp(random.normal(key, shape=shape))
+            random_draw(key, shape, float, random.normal), 1. / jft.
+            tree_map(jnp.exp, random_draw(key, shape, float, random.normal))
         )
     ), (
         jft.VariableCovarianceStudentT, {
-            "data": random.normal,
-            "dof": random.exponential
+            "data": partial(random_draw, dtype=float, method=random.normal),
+            "dof": partial(random_draw, dtype=float, method=random.exponential),
         }, lambda key, shape: (
-            random.normal(key, shape=shape),
-            jnp.exp(1. + random.normal(key, shape=shape))
+            random_draw(key, shape, float, random.normal), 1. / jft.tree_map(
+                jnp.exp, 1. + random_draw(key, shape, float, random.normal)
+            )
         )
     )
 )
@@ -80,22 +103,26 @@ def test_gaussian_vs_vcgaussian_consistency(seed, shape):
 
     key = random.PRNGKey(seed)
     sk = list(random.split(key, 5))
-    d = random.normal(sk.pop(), shape=shape)
-    m1 = random.normal(sk.pop(), shape=shape)
-    m2 = random.normal(sk.pop(), shape=shape)
-    t = random.normal(sk.pop(), shape=shape)
-    inv_std = 1. / jnp.exp(1. + random.normal(sk.pop(), shape=shape))
+    d = random_draw(sk.pop(), shape, float, random.normal)
+    m1 = random_draw(sk.pop(), shape, float, random.normal)
+    m2 = random_draw(sk.pop(), shape, float, random.normal)
+    t = random_draw(sk.pop(), shape, float, random.normal)
+    inv_std = random_draw(sk.pop(), shape, float, random.normal)
+    inv_std = 1. / jft.tree_map(jnp.exp, 1. + inv_std)
 
     gauss = jft.Gaussian(d, noise_std_inv=lambda x: inv_std * x)
     vcgauss = jft.VariableCovarianceGaussian(d)
 
     diff_g = gauss(m2) - gauss(m1)
     diff_vcg = vcgauss((m2, inv_std)) - vcgauss((m1, inv_std))
-    assert_allclose(diff_g, diff_vcg, rtol=rtol, atol=atol)
+
+    jft.tree_map(
+        partial(assert_allclose, rtol=rtol, atol=atol), diff_g, diff_vcg
+    )
 
     met_g = gauss.metric(m1, t)
     met_vcg = vcgauss.metric((m1, inv_std), (t, d / 2))[0]
-    assert_allclose(met_g, met_vcg, rtol=rtol, atol=atol)
+    jft.tree_map(partial(assert_allclose, rtol=rtol, atol=atol), met_g, met_vcg)
 
 
 def test_studt_vs_vcstudt_consistency(seed, shape):
@@ -104,23 +131,26 @@ def test_studt_vs_vcstudt_consistency(seed, shape):
 
     key = random.PRNGKey(seed)
     sk = list(random.split(key, 6))
-    d = random.normal(sk.pop(), shape=shape)
-    dof = random.normal(sk.pop(), shape=shape)
-    m1 = random.normal(sk.pop(), shape=shape)
-    m2 = random.normal(sk.pop(), shape=shape)
-    t = random.normal(sk.pop(), shape=shape)
-    inv_std = 1. / jnp.exp(1. + random.normal(sk.pop(), shape=shape))
+    d = random_draw(sk.pop(), shape, float, random.normal)
+    dof = random_draw(sk.pop(), shape, float, random.normal)
+    m1 = random_draw(sk.pop(), shape, float, random.normal)
+    m2 = random_draw(sk.pop(), shape, float, random.normal)
+    t = random_draw(sk.pop(), shape, float, random.normal)
+    inv_std = random_draw(sk.pop(), shape, float, random.normal)
+    inv_std = 1. / jft.tree_map(jnp.exp, 1. + inv_std)
 
     studt = jft.StudentT(d, dof, noise_std_inv=lambda x: inv_std * x)
     vcstudt = jft.VariableCovarianceStudentT(d, dof)
 
     diff_t = studt(m2) - studt(m1)
     diff_vct = vcstudt((m2, 1. / inv_std)) - vcstudt((m1, 1. / inv_std))
-    assert_allclose(diff_t, diff_vct, rtol=rtol, atol=atol)
+    jft.tree_map(
+        partial(assert_allclose, rtol=rtol, atol=atol), diff_t, diff_vct
+    )
 
-    met_g = studt.metric(m1, t)
-    met_vcg = vcstudt.metric((m1, 1. / inv_std), (t, d / 2))[0]
-    assert_allclose(met_g, met_vcg, rtol=rtol, atol=atol)
+    met_t = studt.metric(m1, t)
+    met_vct = vcstudt.metric((m1, 1. / inv_std), (t, d / 2))[0]
+    jft.tree_map(partial(assert_allclose, rtol=rtol, atol=atol), met_t, met_vct)
 
 
 @pmp("lh_init", lh_init_true + lh_init_approx)
@@ -146,11 +176,10 @@ def test_left_sqrt_metric_vs_metric_consistency(seed, shape, lh_init):
         energy, left_sqrt_metric=lsm, lsm_tangents_shape=lsm_shp
     )
 
-    rng_method = latent_init if latent_init is not None else random.normal
     for _ in range(N_TRIES):
         key, *sk = random.split(key, 3)
-        p = rng_method(sk.pop(), shape=shape)
-        t = rng_method(sk.pop(), shape=shape)
+        p = latent_init(sk.pop(), shape=shape)
+        t = latent_init(sk.pop(), shape=shape)
         tree_map(aallclose, lh.metric(p, t), lh_mini.metric(p, t))
 
 
@@ -158,6 +187,7 @@ def test_left_sqrt_metric_vs_metric_consistency(seed, shape, lh_init):
 def test_transformation_vs_left_sqrt_metric_consistency(seed, shape, lh_init):
     rtol = 4 * jnp.finfo(jnp.zeros(0).dtype).eps
     atol = 0.
+    aallclose = partial(assert_allclose, rtol=rtol, atol=atol)
 
     N_TRIES = 5
 
@@ -179,20 +209,37 @@ def test_transformation_vs_left_sqrt_metric_consistency(seed, shape, lh_init):
         energy, left_sqrt_metric=lsm, lsm_tangents_shape=lsm_shp
     )
 
-    rng_method = latent_init if latent_init is not None else random.normal
     for _ in range(N_TRIES):
         key, *sk = random.split(key, 3)
-        p = rng_method(sk.pop(), shape=shape)
-        t = rng_method(sk.pop(), shape=shape)
-        assert_allclose(
-            lh.left_sqrt_metric(p, t),
-            lh_mini.left_sqrt_metric(p, t),
-            rtol=rtol,
-            atol=atol
+        p = latent_init(sk.pop(), shape=shape)
+        t = latent_init(sk.pop(), shape=shape)
+        jft.tree_map(
+            aallclose, lh.left_sqrt_metric(p, t),
+            lh_mini.left_sqrt_metric(p, t)
         )
-        assert_allclose(
-            lh.metric(p, t), lh_mini.metric(p, t), rtol=rtol, atol=atol
-        )
+        jft.tree_map(aallclose, lh.metric(p, t), lh_mini.metric(p, t))
+
+
+@pmp("lh_init", lh_init_true + lh_init_approx)
+def test_residuals_allfinite(seed, shape, lh_init):
+    allfinite = lambda x: jnp.all(jnp.isfinite(x))
+
+    N_TRIES = 5
+
+    lh_init_method, draw, latent_init = lh_init
+    key = random.PRNGKey(seed)
+    key, *subkeys = random.split(key, 1 + len(draw))
+    init_kwargs = {
+        k: method(key=sk, shape=shape)
+        for (k, method), sk in zip(draw.items(), subkeys)
+    }
+    lh = lh_init_method(**init_kwargs)
+
+    residual = lh.normalized_residual
+    for _ in range(N_TRIES):
+        key, sk = random.split(key, 2)
+        r = residual(latent_init(sk, shape=shape))
+        assert jft.tree_reduce(lambda a, b: a * b, jft.tree_map(allfinite, r))
 
 
 @pmp('iscomplex', [False, True])

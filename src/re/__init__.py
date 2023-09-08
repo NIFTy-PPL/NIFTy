@@ -17,7 +17,7 @@ from .likelihood_impl import (
     VariableCovarianceStudentT,
 )
 from .logger import logger
-from .misc import ducktape, ducktape_left, hvp, interpolate
+from .misc import ducktape, ducktape_left, hvp, interpolate, reduced_chisq_stats
 from .model import Initializer, Model
 from .num import *
 from .optimize import minimize, newton_cg, trust_ncg

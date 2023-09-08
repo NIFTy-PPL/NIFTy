@@ -1,19 +1,20 @@
 # Copyright(C) 2013-2021 Max-Planck-Society
 # SPDX-License-Identifier: GPL-2.0+ OR BSD-2-Clause
 
+from functools import partial
 from typing import Callable, Optional, Tuple
 
 from jax import numpy as jnp
 from jax.tree_util import tree_map
 
-from .tree_math import ShapeWithDtype
 from .likelihood import Likelihood
 from .logger import logger
-from .tree_math import vdot
+from .tree_math import ShapeWithDtype, sum, vdot
 
 
 def standard_t(nwr, dof):
-    return jnp.sum(jnp.log1p((nwr.conj() * nwr).real / dof) * (dof + 1)) / 2
+    res = (nwr.conj() * nwr).real / dof
+    return sum(tree_map(jnp.log1p, res) * (dof + 1)) / 2
 
 
 def _shape_w_fixed_dtype(dtype):
@@ -95,8 +96,11 @@ def Gaussian(
         noise_cov_inv, noise_std_inv, data
     )
 
+    def normalized_residual(primals):
+        return noise_std_inv(data - primals)
+
     def hamiltonian(primals):
-        p_res = primals - data
+        p_res = data - primals
         return 0.5 * vdot(p_res, noise_cov_inv(p_res)).real
 
     def metric(primals, tangents):
@@ -112,6 +116,7 @@ def Gaussian(
 
     return Likelihood(
         hamiltonian,
+        normalized_residual=normalized_residual,
         transformation=transformation,
         left_sqrt_metric=left_sqrt_metric,
         metric=metric,
@@ -165,18 +170,25 @@ def StudentT(
         """
         primals, tangents : mean
         """
-        return noise_std_inv(jnp.sqrt((dof + 1) / (dof + 3)) * tangents)
+        return noise_std_inv(((dof + 1) / (dof + 3))**0.5 * tangents)
+
+    def normalized_residual(primals):
+        """
+        primals : mean
+        """
+        return left_sqrt_metric(None, data - primals)
 
     def transformation(primals):
         """
         primals : mean
         """
-        return noise_std_inv(jnp.sqrt((dof + 1) / (dof + 3)) * primals)
+        return noise_std_inv(((dof + 1) / (dof + 3))**0.5 * primals)
 
     lsm_tangents_shape = tree_map(ShapeWithDtype.from_leave, data)
 
     return Likelihood(
         hamiltonian,
+        normalized_residual=normalized_residual,
         transformation=transformation,
         left_sqrt_metric=left_sqrt_metric,
         metric=metric,
@@ -197,7 +209,7 @@ def Poissonian(data, sampling_dtype=float):
 
     Parameters
     ----------
-    data : ndarray of uint
+    data : jnp.ndarray or tree-like structure of jnp.ndarray and float
         Data Vector with counts. Needs to have integer dtype and all values need
         to be non-negative.
     sampling_dtype : dtype, optional
@@ -208,25 +220,31 @@ def Poissonian(data, sampling_dtype=float):
     dtp = result_type(data)
     if not jnp.issubdtype(dtp, jnp.integer):
         raise TypeError("`data` of invalid type")
-    if jnp.any(data < 0):
-        raise ValueError("`data` may not be negative")
+    if sum(tree_map(lambda x: jnp.any(x < 0), data)):
+        raise ValueError("`data` must not be negative")
 
     def hamiltonian(primals):
-        return jnp.sum(primals) - vdot(jnp.log(primals), data)
+        ham = tree_map(jnp.sum,
+                       primals) - vdot(tree_map(jnp.log, primals), data)
+        return sum(ham)
 
     def metric(primals, tangents):
         return tangents / primals
 
     def left_sqrt_metric(primals, tangents):
-        return tangents / jnp.sqrt(primals)
+        return tangents / primals**0.5
+
+    def normalized_residual(primals):
+        return left_sqrt_metric(primals, data - primals)
 
     def transformation(primals):
-        return jnp.sqrt(primals) * 2.
+        return 2. * primals**0.5
 
     lsm_tangents_shape = tree_map(_shape_w_fixed_dtype(sampling_dtype), data)
 
     return Likelihood(
         hamiltonian,
+        normalized_residual=normalized_residual,
         transformation=transformation,
         left_sqrt_metric=left_sqrt_metric,
         metric=metric,
@@ -251,13 +269,17 @@ def VariableCovarianceGaussian(data, iscomplex=False):
 
     # TODO: make configurable whether `std_inv` or `std` is passed
 
+    def normalized_residual(primals):
+        return (data - primals[0]) * primals[1]
+
     def hamiltonian(primals):
         """
         primals : pair of (mean, std_inv)
         """
-        res = (primals[0] - data) * primals[1]
+        res = (data - primals[0]) * primals[1]
         fct = 2 if iscomplex else 1
-        return 0.5 * vdot(res, res).real - fct * jnp.sum(jnp.log(primals[1]))
+        return 0.5 * vdot(res,
+                          res).real - fct * sum(tree_map(jnp.log, primals[1]))
 
     def metric(primals, tangents):
         """
@@ -300,6 +322,7 @@ def VariableCovarianceGaussian(data, iscomplex=False):
 
     return Likelihood(
         hamiltonian,
+        normalized_residual=normalized_residual,
         transformation=transformation,
         left_sqrt_metric=left_sqrt_metric,
         metric=metric,
@@ -328,7 +351,7 @@ def VariableCovarianceStudentT(data, dof):
         primals : pair of (mean, std)
         """
         t = standard_t((data - primals[0]) / primals[1], dof)
-        t += jnp.sum(jnp.log(primals[1]))
+        t += sum(tree_map(jnp.log, primals[1]))
         return t
 
     def metric(primals, tangent):
@@ -340,6 +363,9 @@ def VariableCovarianceStudentT(data, dof):
             tangent[1] * 2 * dof / (dof + 3) / primals[1]**2
         )
 
+    def normalized_residual(primals):
+        return (data - primals[0]) / primals[1] * ((dof + 1) / (dof + 3))**0.5
+
     def left_sqrt_metric(primals, tangents):
         """
         primals, tangents : pair of (mean, std)
@@ -348,13 +374,13 @@ def VariableCovarianceStudentT(data, dof):
             (dof + 1) / (dof + 3) / primals[1]**2,
             2 * dof / (dof + 3) / primals[1]**2
         )
-        res = (jnp.sqrt(cov[0]) * tangents[0], jnp.sqrt(cov[1]) * tangents[1])
-        return res
+        return (cov[0]**0.5 * tangents[0], cov[1]**0.5 * tangents[1])
 
     lsm_tangents_shape = tree_map(ShapeWithDtype.from_leave, (data, data))
 
     return Likelihood(
         hamiltonian,
+        normalized_residual=normalized_residual,
         left_sqrt_metric=left_sqrt_metric,
         metric=metric,
         lsm_tangents_shape=lsm_tangents_shape
@@ -366,37 +392,48 @@ def Categorical(data, axis=-1, sampling_dtype=float):
 
     Parameters
     ----------
-    data : sequence of int
-        An array stating which of the categories is the realized in the data.
-        Must agree with the input shape except for the shape[axis]
+    data : tree-like structure of jnp.ndarray and int
+        Which of the categories is the realized in the data. Must agree with the
+        input shape except for the shape[axis] of the leafs
     axis : int
-        Axis over which the categories are formed
+        Leaf-axis over which the categories are formed
     sampling_dtype : dtype, optional
         Data-type for sampling.
     """
     def hamiltonian(primals):
         from jax.nn import log_softmax
-        logits = log_softmax(primals, axis=axis)
-        return -jnp.sum(jnp.take_along_axis(logits, data, axis))
+
+        def eval(p, d):
+            logits = log_softmax(p, axis=axis)
+            return -jnp.sum(jnp.take_along_axis(logits, d, axis))
+
+        return sum(tree_map(eval, primals, data))
 
     def metric(primals, tangents):
         from jax.nn import softmax
 
-        preds = softmax(primals, axis=axis)
-        norm_term = jnp.sum(preds * tangents, axis=axis, keepdims=True)
-        return preds * tangents - preds * norm_term
+        preds = tree_map(partial(softmax, axis=axis), primals)
+        norm_term = tree_map(
+            partial(jnp.sum, axis=axis, keepdims=True), preds * tangents
+        )
+        return preds * tangents - preds * sum(norm_term)
 
     def left_sqrt_metric(primals, tangents):
         from jax.nn import softmax
 
-        sqrtp = jnp.sqrt(softmax(primals, axis=axis))
-        norm_term = jnp.sum(sqrtp * tangents, axis=axis, keepdims=True)
+        # FIXME: not sure if this is really the square root
+        sqrtp = tree_map(partial(softmax, axis=axis), primals)**0.5
+        norm_term = tree_map(
+            partial(jnp.sum, axis=axis, keepdims=True), sqrtp * tangents
+        )
+        norm_term = sum(norm_term)
         return sqrtp * (tangents - sqrtp * norm_term)
 
     lsm_tangents_shape = tree_map(_shape_w_fixed_dtype(sampling_dtype), data)
 
     return Likelihood(
         hamiltonian,
+        normalized_residual=None,
         left_sqrt_metric=left_sqrt_metric,
         metric=metric,
         lsm_tangents_shape=lsm_tangents_shape
