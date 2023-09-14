@@ -302,7 +302,7 @@ def VariableCovarianceGaussian(data, iscomplex=False):
 
     def transformation(primals):
         """
-        pirmals : pair of (mean, std_inv)
+        primals : pair of (mean, std_inv)
 
         Notes
         -----
