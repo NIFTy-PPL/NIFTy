@@ -34,9 +34,9 @@
 # %matplotlib inline
 import nifty8 as ift
 import matplotlib.pyplot as plt
-plt.rcParams['figure.dpi'] = 100
-plt.style.use("seaborn-notebook")
 import numpy as np
+
+plt.rcParams['figure.dpi'] = 100
 
 n_pix = 256
 x_space = ift.RGSpace(n_pix)

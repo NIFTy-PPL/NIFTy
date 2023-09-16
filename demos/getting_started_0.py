@@ -84,8 +84,8 @@ def pow_spec(k):
 import numpy as np
 import nifty8 as ift
 import matplotlib.pyplot as plt
+
 plt.rcParams['figure.dpi'] = 100
-plt.style.use("seaborn-notebook")
 
 
 # + [markdown] slideshow={"slide_type": "subslide"}
