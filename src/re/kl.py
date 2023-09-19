@@ -1,21 +1,27 @@
 # Copyright(C) 2023 Gordian Edenhofer
 # SPDX-License-Identifier: GPL-2.0+ OR BSD-2-Clause
+# Authors: Philipp Frank, Gordian Edenhofer
 
+import sys
 from functools import partial
 from operator import getitem
-from typing import Callable, Optional, Tuple, TypeVar, Union
+from typing import (Callable, Optional, Tuple, TypeVar, Union, NamedTuple, Any,
+                    List)
 from warnings import warn
 
 from jax import numpy as jnp
-from jax import random
+from jax import random, vmap, value_and_grad, jvp, vjp, linear_transpose, jit
 from jax.tree_util import (
     Partial, register_pytree_node_class, tree_flatten, tree_leaves, tree_map,
     tree_structure, tree_unflatten
 )
 
-from . import conjugate_gradient
+from . import conjugate_gradient, smap
+from .optimize import OptimizeResults, minimize
 from .likelihood import Likelihood, StandardHamiltonian
-from .tree_math import Vector, assert_arithmetics, random_like, stack, zeros_like
+from .tree_math import (Vector, assert_arithmetics, random_like, stack,
+                        zeros_like, dot, vdot)
+
 
 P = TypeVar("P")
 
@@ -556,3 +562,259 @@ class Samples():
         # if pos is not None:  # confuses JAX
         #     smpls = tree_map(lambda p, s: s - p[jnp.newaxis], pos, smpls)
         return cls(pos=pos, samples=smpls)
+
+
+def _ham_vg(likelihood, primals, primals_samples):
+    assert isinstance(primals_samples, Samples)
+    ham = StandardHamiltonian(likelihood=likelihood)
+    vvg = vmap(value_and_grad(ham))
+    s = vvg(primals_samples.at(primals).samples)
+    return tree_map(partial(jnp.mean, axis=0), s)
+
+def _ham_metric(likelihood, primals, tangents, primals_samples):
+    assert isinstance(primals_samples, Samples)
+    ham = StandardHamiltonian(likelihood=likelihood)
+    vmet = vmap(ham.metric, in_axes=(0, None))
+    s = vmet(primals_samples.at(primals).samples, tangents)
+    return tree_map(partial(jnp.mean, axis=0), s)
+
+def _lh_trafo(likelihood, primals):
+    return likelihood.transformation(primals)
+
+def _nl_g(likelihood, p, lh_trafo_at_p, x):
+    t = _lh_trafo(likelihood, x) - lh_trafo_at_p
+    return x - p + likelihood.left_sqrt_metric(p, t)
+
+def _nl_residual(likelihood, x, p, lh_trafo_at_p, ms_at_p):
+    r = ms_at_p - _nl_g(likelihood, p, lh_trafo_at_p, x)
+    return 0.5*dot(r, r)
+
+def _nl_metric(likelihood, primals, tangents, p, lh_trafo_at_p):
+    f = partial(_nl_g, likelihood, p, lh_trafo_at_p)
+    _, jj = jvp(f, (primals,), (tangents,))
+    return vjp(f, primals)[1](jj)[0]
+
+def _nl_sampnorm(likelihood, natgrad, p):
+    o = partial(likelihood.left_sqrt_metric, p)
+    fpp = linear_transpose(o, likelihood.lsm_tangents_shape)(natgrad)
+    return jnp.sqrt(vdot(natgrad, natgrad) + vdot(fpp, fpp))
+
+class OptVIState(NamedTuple):
+  """Named tuple containing state information."""
+  niter: int
+  samples: Samples
+  sampling_states: List[OptimizeResults]
+  minimization_state: OptimizeResults
+
+
+class OptimizeVI:
+    def __init__(self,
+                 likelihood: Union[Likelihood, None],
+                 n_iter: int,
+                 key: random.PRNGKey,
+                 n_samples: int,
+                 sampling_method: str = 'altmetric',
+                 sampling_minimizer = 'newtoncg',
+                 sampling_kwargs: dict = {'xtol':0.01},
+                 sampling_cg_kwargs: dict = {'maxiter':50},
+                 minimizer: str = 'newtoncg',
+                 minimization_kwargs: dict = {},
+                 do_jit = jit,
+                 _lh_funcs: Any = None):
+        # TODO reintroduce point-estimates (also possibly different sampling
+        # methods for pytree)
+        """JaxOpt style minimizer for VI approximation of a Bayesian inference
+        problem assuming a standard normal prior distribution.
+
+        Parameters
+        ----------
+        likelihood : :class:`nifty8.re.likelihood.Likelihood`
+            Likelihood to be used for inference.
+        n_iter : int
+            Number of iterations.
+        key : jax random number generataion key
+        n_samples : int
+            Number of samples used to sample Kullback-Leibler divergence. The
+            samples get mirrored, so the actual number of samples used for the
+            KL estimate is twice the number of `n_samples`.
+        sampling_method: str
+            Sampling method used for vi approximation. Default is `altmetric`.
+        sampling_minimizer: str
+            Minimization method used for non-linear sample minimization.
+        sampling_kwargs: dict
+            Keyword arguments for minimizer used for sample minimization.
+        sampling_cg_kwargs: dict
+            Keyword arguments for ConjugateGradient used for the linear part of
+            sample minimization.
+        minimizer: str or callable
+            Minimization method used for KL minimization.
+        minimization_kwargs : dict
+            Keyword arguments for minimizer used for KL minimization.
+        """
+        self._n_iter = n_iter
+        self._sampling_method = sampling_method
+        if self._sampling_method not in ['linear', 'geometric', 'altmetric']:
+            msg = f"Unknown sampling method: {self._sampling_method}"
+            raise NotImplementedError(msg)
+        self._minimizer = minimizer
+        self._sampling_minimizer = sampling_minimizer
+        self._sampling_kwargs = sampling_kwargs
+        # Only use xtol for sampling since a custom gradient norm is used
+        self._sampling_kwargs['absdelta'] = 0.
+        self._mini_kwargs = minimization_kwargs
+        self._keys = random.split(key, n_samples)
+        self._likelihood = likelihood
+        self._n_samples = n_samples
+        self._sampling_cg_kwargs = sampling_cg_kwargs
+
+        if _lh_funcs is None:
+            if likelihood is None:
+                raise ValueError("Neither Likelihood nor funcs provided.")
+            draw_metric = partial(_sample_linearly, likelihood,
+                                  from_inverse=False)
+            draw_metric = vmap(draw_metric, in_axes=(None, 0),
+                              out_axes=(None, 0))
+            draw_linear = partial(_sample_linearly, likelihood,
+                                  from_inverse = True,
+                                  cg_kwargs = sampling_cg_kwargs)
+            draw_linear = smap(draw_linear, in_axes=(None, 0))
+
+            # KL funcs
+            self._kl_vg = do_jit(partial(_ham_vg, likelihood))
+            self._kl_metric = do_jit(partial(_ham_metric, likelihood))
+            # Lin sampling
+            self._draw_metric = do_jit(draw_metric)
+            self._draw_linear = do_jit(draw_linear)
+            # Non-lin sampling
+            self._lh_trafo = do_jit(partial(_lh_trafo, likelihood))
+            self._nl_vag = do_jit(value_and_grad(
+                               partial(_nl_residual, likelihood)))
+            self._nl_metric = do_jit(partial(_nl_metric, likelihood))
+            self._nl_sampnorm = do_jit(partial(_nl_sampnorm, likelihood))
+        else:
+            if likelihood is not None:
+                msg = "Warning: Likelihood funcs is set, ignoring Likelihood"
+                msg += " input"
+                print(msg, file=sys.stderr)
+            (self._kl_vg,
+             self._kl_metric,
+             self._draw_linear,
+             self._draw_metric,
+             self._lh_trafo,
+             self._nl_vag,
+             self._nl_metric,
+             self._nl_sampnorm) = _lh_funcs
+
+    @property
+    def likelihood(self):
+        return self._likelihood
+
+    @property
+    def n_samples(self):
+        return self._n_samples
+
+    @property
+    def lh_funcs(self):
+        return (self._kl_vg,
+                self._kl_metric,
+                self._draw_linear,
+                self._draw_metric,
+                self._lh_trafo,
+                self._nl_vag,
+                self._nl_metric,
+                self._nl_sampnorm)
+
+    def _linear_sampling(self, primals, from_inverse):
+        if from_inverse:
+            samples, met_smpls = self._draw_linear(primals, self._keys)
+            samples = Samples(
+                pos=primals,
+                samples=tree_map(lambda *x:
+                                 jnp.concatenate(x), samples, -samples)
+            )
+        else:
+            _, met_smpls = self._draw_metric(primals, self._keys)
+            samples = None
+        met_smpls = Samples(
+            pos=None,
+            samples=tree_map(lambda *x:
+                             jnp.concatenate(x), met_smpls, -met_smpls)
+        )
+        return samples, met_smpls
+
+    def _nonlinear_sampling(self, samples):
+        primals = samples.pos
+        lh_trafo_at_p = self._lh_trafo(primals)
+        metric_samples = self._linear_sampling(primals, False)[1]
+        new_smpls = []
+        opt_states = []
+        for s, ms in zip(samples, metric_samples):
+            options = {
+                "fun_and_grad":
+                    partial(
+                        self._nl_vag,
+                        p=primals,
+                        lh_trafo_at_p=lh_trafo_at_p,
+                        ms_at_p=ms
+                    ),
+                "hessp":
+                    partial(
+                        self._nl_metric,
+                        p=primals,
+                        lh_trafo_at_p=lh_trafo_at_p
+                    ),
+                "custom_gradnorm" : partial(self._nl_sampnorm, p=primals),
+                }
+            opt_state = minimize(None, x0=s, method=self._sampling_minimizer,
+                                 options=self._sampling_kwargs | options)
+            new_smpls.append(opt_state.x - primals)
+            # Remove x from state to avoid copy of the samples
+            opt_states.append(opt_state._replace(x = None))
+
+        samples = Samples(pos=primals, samples=stack(new_smpls))
+        return samples, opt_states
+
+    def _minimize_kl(self, samples):
+        options = {
+            "fun_and_grad": partial(self._kl_vg, primals_samples=samples),
+            "hessp": partial(self._kl_metric, primals_samples=samples),
+        }
+        opt_state = minimize(
+            None,
+            samples.pos,
+            method=self._minimizer,
+            options=self._mini_kwargs | options
+        )
+        return samples.at(opt_state.x), opt_state
+
+    def init_state(self, primals):
+        if self._sampling_method in ['linear', 'geometric']:
+            smpls = self._linear_sampling(primals, False)[1]
+        else:
+            smpls = self._linear_sampling(primals, True)[0]
+        state = OptVIState(niter=0, samples=smpls, sampling_states=None,
+                           minimization_state=None)
+        return primals, state
+
+    def update(self, primals, state):
+        if self._sampling_method in ['linear', 'geometric']:
+            samples = self._linear_sampling(primals, True)[0]
+        else:
+            samples = state.samples.at(primals)
+
+        if self._sampling_method in ['geometric', 'altmetric']:
+            samples, sampling_states = self._nonlinear_sampling(samples)
+        else:
+            sampling_states = None
+        samples, opt_state = self._minimize_kl(samples)
+        state = OptVIState(niter=state.niter+1, samples=samples,
+                           sampling_states=sampling_states,
+                           minimization_state=opt_state)
+        return samples.pos, state
+
+    def run(self, primals):
+        primals, state = self.init_state(primals)
+        for i in range(self._n_iter):
+            print(f"OptVI iteration number: {i}", file=sys.stderr)
+            primals, state = self.update(primals, state)
+        return primals, state
