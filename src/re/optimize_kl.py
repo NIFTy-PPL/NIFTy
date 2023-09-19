@@ -53,7 +53,7 @@ class OptVIState(NamedTuple):
 
 
 class OptimizeVI:
-    def __init__(self, 
+    def __init__(self,
                  likelihood: Union[Likelihood, None],
                  n_iter: int,
                  key: jax.random.PRNGKey,
@@ -111,13 +111,13 @@ class OptimizeVI:
         if _lh_funcs is None:
             if likelihood is None:
                 raise ValueError("Neither Likelihood nor funcs provided.")
-            draw_metric = partial(_sample_linearly, likelihood, 
+            draw_metric = partial(_sample_linearly, likelihood,
                                   from_inverse=False)
-            draw_metric = jax.vmap(draw_metric, in_axes=(None, 0), 
+            draw_metric = jax.vmap(draw_metric, in_axes=(None, 0),
                                    out_axes=(None, 0))
             draw_metric = jax.jit(draw_metric)
-            draw_linear = partial(_sample_linearly, likelihood, 
-                                  from_inverse = True, 
+            draw_linear = partial(_sample_linearly, likelihood,
+                                  from_inverse = True,
                                   cg_kwargs = sampling_cg_kwargs)
             draw_linear = smap(draw_linear, in_axes=(None, 0))
             draw_linear = jax.jit(draw_linear)
@@ -161,7 +161,7 @@ class OptimizeVI:
                 msg = "Warning: Likelihood funcs is set, ignoring Likelihood"
                 msg += " input"
                 print(msg, file=sys.stderr)
-            (self._kl_vg, 
+            (self._kl_vg,
              self._kl_metric,
              self._draw_linear,
              self._draw_metric,
@@ -180,7 +180,7 @@ class OptimizeVI:
 
     @property
     def lh_funcs(self):
-        return (self._kl_vg, 
+        return (self._kl_vg,
                 self._kl_metric,
                 self._draw_linear,
                 self._draw_metric,
@@ -193,8 +193,8 @@ class OptimizeVI:
         if from_inverse:
             samples, met_smpls = self._draw_linear(primals, self._keys)
             samples = Samples(
-                pos=primals, 
-                samples=jax.tree_map(lambda *x: 
+                pos=primals,
+                samples=jax.tree_map(lambda *x:
                                     jnp.concatenate(x), samples, -samples)
             )
         else:
@@ -229,7 +229,7 @@ class OptimizeVI:
                         lh_trafo_at_p=lh_trafo_at_p
                     ),
                 }
-            opt_state = minimize(None, x0=s, method=self._sampling_minimizer, 
+            opt_state = minimize(None, x0=s, method=self._sampling_minimizer,
                                  options=self._sampling_kwargs | options)
             new_smpls.append(opt_state.x - primals)
             # Remove x from state to avoid copy of the samples
@@ -271,7 +271,7 @@ class OptimizeVI:
         else:
             sampling_states = None
         samples, opt_state = self.minimize_kl(samples)
-        state = OptVIState(niter=niter+1, samples=samples, 
+        state = OptVIState(niter=niter+1, samples=samples,
                            sampling_states=sampling_states,
                            minimization_state=opt_state)
         return samples.pos, state
@@ -291,10 +291,10 @@ def _make_callable(obj):
     else:
         return lambda x: obj
 
-def _eval(cfg, i):
+def _getitem(cfg, i):
     if not isinstance(cfg, dict):
         return cfg(i)
-    return {kk: _eval(ii,i) for kk,ii in cfg.items()}
+    return {kk: _getitem(ii,i) for kk,ii in cfg.items()}
 
 def optimize_kl(
     likelihood: Likelihood,
@@ -347,8 +347,8 @@ def optimize_kl(
     resample: bool or callable
         Whether to resample with new random numbers or not. Default is False
     callback : callable or None
-        Function that is called after every global iteration. It needs to be a 
-        function taking 3 arguments: 1. the position in latend space, 
+        Function that is called after every global iteration. It needs to be a
+        function taking 3 arguments: 1. the position in latend space,
                                      2. the residual samples,
                                      3. the global iteration.
         Default: None.
@@ -359,9 +359,9 @@ def optimize_kl(
         Resume partially run optimization. If `True` and `output_directory`
         is specified it resumes optimization. Default: False.
     verbosity : int
-        Sets verbosity of optimization. If -1 only the current global 
-        optimization index is printed. If 0 CG steps of linear sampling, 
-        NewtonCG steps of non linear sampling and NewtonCG steps of KL 
+        Sets verbosity of optimization. If -1 only the current global
+        optimization index is printed. If 0 CG steps of linear sampling,
+        NewtonCG steps of non linear sampling and NewtonCG steps of KL
         optimization are printed. If set to 1 additionally the internal CG steps
         of the NewtonCG optimization are printed. Default: 0.
     """
@@ -406,11 +406,11 @@ def optimize_kl(
     cfg = {kk: _make_callable(ii) for kk,ii in cfg.items()}
 
     def get_optvi(n, key, _func = None):
-        ncfg = _eval(cfg, n)
+        ncfg = _getitem(cfg, n)
         lh = ncfg['likelihood'] if _func is None else None
-        opt = OptimizeVI(lh, 0, key, 
+        opt = OptimizeVI(lh, 0, key,
                          ncfg['n_samples'],
-                         ncfg['sampling_method'], 
+                         ncfg['sampling_method'],
                          ncfg['sampling_minimizer'],
                          ncfg['sampling_kwargs'],
                          ncfg['sampling_cg_kwargs'],
@@ -436,9 +436,9 @@ def optimize_kl(
                            minimization_state=None)
         kp, sub = jax.random.split(key, 2)
         opt = get_optvi(last_finished_index+1, sub)
-        nsam = _eval(cfg['n_samples'], last_finished_index+1)
-        onsam = _eval(cfg['n_samples'], last_finished_index)
-        do_resampling = (_eval(cfg['resample'], last_finished_index+1) or 
+        nsam = _getitem(cfg['n_samples'], last_finished_index+1)
+        onsam = _getitem(cfg['n_samples'], last_finished_index)
+        do_resampling = (_getitem(cfg['resample'], last_finished_index+1) or
                          (nsam != onsam))
     else:
         pos = pos.copy()
@@ -447,25 +447,29 @@ def optimize_kl(
         do_resampling = True
 
     for i in range(last_finished_index + 1, total_iterations):
+        # Potentially re-initialize samples
         if do_resampling:
             pos, state = opt.init_state(pos)
+        # Do one sample and minimization step
         pos, state = opt.update(pos, state)
         en = state.minimization_state.fun
         msg = f"Post VI Iteration {i}: Energy {en:2.4e}"
         print(msg, file=sys.stderr)
-        if not callback == None:
-            callback(pos, state.samples, i)
-        do_resampling = (_eval(cfg['resample'], i+1) or 
-                (_eval(cfg['n_samples'], i+1) != _eval(cfg['n_samples'], i)))
+        if callback != None:
+            callback(pos, state, i)
+        do_resampling = (_getitem(cfg['resample'], i+1) or
+            (_getitem(cfg['n_samples'], i+1) != _getitem(cfg['n_samples'], i)))
         if do_resampling:
             key = kp
             kp, sub = jax.random.split(key)
         if i != total_iterations - 1:
             _func = opt.lh_funcs
-            if _eval(cfg['likelihood'], i+1) != _eval(cfg['likelihood'], i):
+            # If likelihood or sampling cg changes, trigger re-compilation
+            if (_getitem(cfg['likelihood'], i+1) !=
+                _getitem(cfg['likelihood'], i)):
                 _func = None
             kwa = cfg['sampling_cg_kwargs']
-            if _eval(kwa, i+1) != _eval(kwa, i):
+            if _getitem(kwa, i+1) != _getitem(kwa, i):
                 #TODO changing the linear sampling params triggers a full re-jit
                 # of all functions (including those used for minimization).
                 # This is not necessary and may cause unwanted overhead!
@@ -473,6 +477,7 @@ def optimize_kl(
             opt = get_optvi(i+1, sub, _func = _func)
 
         if not out_dir == None:
+            # Save iteration
             pickle.dump(pos, open(f"{out_dir}/position_it_{i}.p", "wb"))
             pickle.dump(state.samples, open(f"{out_dir}/samples_{i}.p", "wb"))
             pickle.dump(key, open(f"{out_dir}/rnd_key{i}.p", "wb"))
