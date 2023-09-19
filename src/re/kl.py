@@ -406,9 +406,7 @@ def sample_evi(
         point_estimates, primals_liquid, primals_frozen = _parse_point_estimates(
             point_estimates, primals
         )
-        likelihood = _wrap_likelihood(
-            likelihood, point_estimates, primals_frozen
-        )
+        likelihood = likelihood.partial(point_estimates, primals_frozen)
     else:
         primals_liquid = primals
         primals_frozen = None
