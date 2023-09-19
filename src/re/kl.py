@@ -16,8 +16,8 @@ from jax.tree_util import (
     tree_structure, tree_unflatten
 )
 
-from . import conjugate_gradient, smap
-from .optimize import OptimizeResults, minimize
+from .smap import smap
+from .optimize import OptimizeResults, minimize, conjugate_gradient
 from .likelihood import Likelihood, StandardHamiltonian
 from .tree_math import (Vector, assert_arithmetics, random_like, stack,
                         zeros_like, dot, vdot)
