@@ -440,11 +440,17 @@ def optimize_kl(
         # Potentially re-initialize samples
         if do_resampling:
             pos, state = opt.init_state(pos)
-        # Do one sample and minimization step
+        # Do one sampling and minimization step
         pos, state = opt.update(pos, state)
         en = state.minimization_state.fun
-        msg = f"Post VI Iteration {i}: Energy {en:2.4e}"
+        print(f"Post VI Iteration {i}: Energy {en:2.4e}", file=sys.stderr)
+        if state.sampling_states is not None:
+            niter = tuple(ss.nit for ss in state.sampling_states)
+            msg = f"Nonlinear sampling total iterations: {niter}"
+            print(msg, file=sys.stderr)
+        msg = f"KL-Minimization total iteration: {state.minimization_state.nit}"
         print(msg, file=sys.stderr)
+
         if callback != None:
             callback(pos, state, i)
         do_resampling = (_getitem(cfg['resample'], i+1) or
