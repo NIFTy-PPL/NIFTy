@@ -18,9 +18,9 @@ from jax.tree_util import (
 
 from .smap import smap
 from .optimize import OptimizeResults, minimize, conjugate_gradient
-from .likelihood import Likelihood, StandardHamiltonian
+from .likelihood import Likelihood, StandardHamiltonian, _partial_insert_and_remove, _partial_argument
 from .tree_math import (Vector, assert_arithmetics, random_like, stack,
-                        zeros_like, dot, vdot)
+                        zeros_like, dot, vdot, unstack)
 
 
 P = TypeVar("P")
@@ -147,145 +147,19 @@ def _curve_sample(
 
     return opt_state.x, opt_state.status
 
-
-def _partial_argument(call, insert_axes, flat_fill):
-    """For every non-None value in `insert_axes`, amend the value of `flat_fill`
-    at the same position to the argument.
-    """
-    if not flat_fill and not insert_axes:
-        return call
-
-    if len(insert_axes) != len(flat_fill):
-        ve = "`insert_axes` and `flat_fill` must be of equal length"
-        raise ValueError(ve)
-    for iae, ffe in zip(insert_axes, flat_fill):
-        if iae is not None and ffe is not None:
-            if not isinstance(ffe, (tuple, list)):
-                te = (
-                    f"`flat_fill` must be a tuple of flattened pytrees;"
-                    f" got '{flat_fill!r}'"
-                )
-                raise TypeError(te)
-            iae_leaves = tree_leaves(iae)
-            if not all(isinstance(e, bool) for e in iae_leaves):
-                te = "leaves of `insert_axes` elements must all be boolean"
-                raise TypeError(te)
-            if sum(iae_leaves) != len(ffe):
-                ve = "more inserts in `insert_axes` than elements in `flat_fill`"
-                raise ValueError(ve)
-        elif iae is not None or ffe is not None:
-            ve = "both `insert_axes` and `flat_full` must None at the same positions"
-            raise ValueError(ve)
-    # NOTE, `tree_flatten` replaces `None`s with list of zero length
-    insert_axes, in_axes_td = zip(*(tree_flatten(ia) for ia in insert_axes))
-
-    def insert(*x):
-        y = []
-        assert len(x) == len(insert_axes) == len(flat_fill) == len(in_axes_td)
-        for xe, iae, ffe, iatde in zip(x, insert_axes, flat_fill, in_axes_td):
-            if ffe is None and not iae:
-                y.append(xe)
-                continue
-            assert iae and ffe is not None
-            assert sum(iae) == len(ffe)
-            xe, ffe = list(tree_leaves(xe)), list(ffe)
-            ye = [xe.pop(0) if not cond else ffe.pop(0) for cond in iae]
-            # for cond in iae:
-            #     ye.append(xe.pop(0) if not cond else ffe.pop(0))
-            y.append(tree_unflatten(iatde, ye))
-        return tuple(y)
-
-    def partially_inserted_call(*x):
-        return call(*insert(*x))
-
-    return partially_inserted_call
-
-
-def _post_partial_remove(call, remove_axes, unflatten=None):
-    if not remove_axes:
-        return call
-
-    remove_axes = tree_leaves(remove_axes)
-    if not all(isinstance(e, bool) for e in remove_axes):
-        raise TypeError("leaves of `remove_axes` must all be boolean")
-
-    def remove(x):
-        x, y = list(tree_leaves(x)), []
-        if tree_structure(x) != tree_structure(remove_axes):
-            te = (
-                f"`remove_axes` ({tree_structure(remove_axes)!r}) is shaped"
-                f" differently than output of `call` ({tree_structure(x)!r})"
-            )
-            raise TypeError(te)
-        for maybe_remove, cond in zip(x, remove_axes):
-            if not cond:
-                y.append(maybe_remove)
-        y = unflatten(tuple(y)) if unflatten is not None else y
-        return y
-
-    def partially_removed_call(*x):
-        return remove(call(*x))
-
-    return partially_removed_call
-
-
-def _partial_insert_and_remove(
-    call, insert_axes, flat_fill, *, remove_axes=(), unflatten=None
-):
-    """Return a call in which `flat_fill` is inserted into arguments of `call`
-    at `inset_axes` and subsequently removed from its output at `remove_axes`.
-    """
-    call = _partial_argument(call, insert_axes=insert_axes, flat_fill=flat_fill)
-    return _post_partial_remove(call, remove_axes, unflatten=unflatten)
-
-
-def _wrap_likelihood(likelihood, point_estimates, primals_frozen) -> Likelihood:
-    energy = _partial_insert_and_remove(
-        likelihood.energy,
-        insert_axes=(point_estimates, ),
-        flat_fill=(primals_frozen, ),
-        remove_axes=None
-    )
-    trafo = _partial_insert_and_remove(
-        likelihood.transformation,
-        insert_axes=(point_estimates, ),
-        flat_fill=(primals_frozen, ),
-        remove_axes=None
-    )
-    lsm = _partial_insert_and_remove(
-        likelihood.left_sqrt_metric,
-        insert_axes=(point_estimates, None),
-        flat_fill=(primals_frozen, None),
-        remove_axes=point_estimates,
-        unflatten=Vector
-    )
-    metric = _partial_insert_and_remove(
-        likelihood.metric,
-        insert_axes=(point_estimates, point_estimates),
-        flat_fill=(primals_frozen, ) + (zeros_like(primals_frozen), ),
-        remove_axes=point_estimates,
-        unflatten=Vector
-    )
-    return Likelihood(
-        energy=energy,
-        transformation=trafo,
-        left_sqrt_metric=lsm,
-        metric=metric,
-        lsm_tangents_shape=likelihood.lsm_tangents_shape
-    )
-
-
 def _parse_point_estimates(point_estimates, primals):
     if isinstance(point_estimates, (tuple, list)):
         if not isinstance(primals, (Vector, dict)):
             te = "tuple-shortcut point-estimate only availble for dict/Vector type primals"
             raise TypeError(te)
         pe = tree_map(lambda x: False, primals)
-        pe = pe.val if isinstance(primals, Vector) else pe
+        pe = pe.tree if isinstance(primals, Vector) else pe
         for k in point_estimates:
             pe[k] = True
         point_estimates = Vector(pe) if isinstance(primals, Vector) else pe
     if tree_structure(primals) != tree_structure(point_estimates):
+        print(primals)
+        print(point_estimates)
         te = "`primals` and `point_estimates` pytree structre do no match"
         raise TypeError(te)
 
@@ -576,26 +450,54 @@ def _ham_metric(likelihood, primals, tangents, primals_samples):
     s = vmet(primals_samples.at(primals).samples, tangents)
     return tree_map(partial(jnp.mean, axis=0), s)
 
-def _lh_trafo(likelihood, primals):
-    return likelihood.transformation(primals)
+def _lh_trafo(likelihood, p):
+    return likelihood.transformation(p)
 
 def _nl_g(likelihood, p, lh_trafo_at_p, x):
-    t = _lh_trafo(likelihood, x) - lh_trafo_at_p
+    t = likelihood.transformation(x) - lh_trafo_at_p
     return x - p + likelihood.left_sqrt_metric(p, t)
 
-def _nl_residual(likelihood, x, p, lh_trafo_at_p, ms_at_p):
+def _nl_residual(likelihood, p, lh_trafo_at_p, ms_at_p, x):
     r = ms_at_p - _nl_g(likelihood, p, lh_trafo_at_p, x)
     return 0.5*dot(r, r)
 
-def _nl_metric(likelihood, primals, tangents, p, lh_trafo_at_p):
+def _nl_metric(likelihood, p, lh_trafo_at_p, primals, tangents):
     f = partial(_nl_g, likelihood, p, lh_trafo_at_p)
     _, jj = jvp(f, (primals,), (tangents,))
     return vjp(f, primals)[1](jj)[0]
 
-def _nl_sampnorm(likelihood, natgrad, p):
+def _nl_sampnorm(likelihood, p, natgrad):
     o = partial(likelihood.left_sqrt_metric, p)
     fpp = linear_transpose(o, likelihood.lsm_tangents_shape)(natgrad)
     return jnp.sqrt(vdot(natgrad, natgrad) + vdot(fpp, fpp))
+
+def _partial_func(func, likelihood, point_estimates):
+    if point_estimates:
+        def partial_func(primals, *args):
+            pe, p_liquid, p_frozen = _parse_point_estimates(point_estimates,
+                                                            primals)
+            return func(likelihood.partial(pe, p_frozen), p_liquid, *args)
+
+        return partial_func
+    return partial(func, likelihood)
+
+def _process_point_estimate(x, primals, point_estimates, insert):
+    if point_estimates:
+        point_estimates, _, p_frozen = _parse_point_estimates(
+            point_estimates,
+            primals
+        )
+        assert p_frozen is not None
+        in_out = _partial_insert_and_remove(
+            lambda *x: x[0],
+            insert_axes=(point_estimates,) if insert else None,
+            flat_fill=(tree_map(lambda x: jnp.zeros((1,)*jnp.ndim(x)), p_frozen),)
+                    if insert else None,
+            remove_axes=None if insert else (point_estimates,),
+            unflatten=None if insert else Vector
+        )
+        return in_out(x)
+    return x
 
 class OptVIState(NamedTuple):
   """Named tuple containing state information."""
@@ -611,6 +513,7 @@ class OptimizeVI:
                  n_iter: int,
                  key: random.PRNGKey,
                  n_samples: int,
+                 point_estimates: Union[P, Tuple[str]] = (),
                  sampling_method: str = 'altmetric',
                  sampling_minimizer = 'newtoncg',
                  sampling_kwargs: dict = {'xtol':0.01},
@@ -635,6 +538,12 @@ class OptimizeVI:
             Number of samples used to sample Kullback-Leibler divergence. The
             samples get mirrored, so the actual number of samples used for the
             KL estimate is twice the number of `n_samples`.
+        point_estimates : tree-like structure or tuple of str
+            Pytree of same structure as `primals` but with boolean leaves
+            indicating whether to sample the value in `primals` or use it as a
+            point estimate. As a convenience method, for Field- and dict-like
+            `primals`, a tuple of strings is also valid. From these the boolean
+            indicator pytree is automatically constructed.
         sampling_method: str
             Sampling method used for vi approximation. Default is `altmetric`.
         sampling_minimizer: str
@@ -664,31 +573,38 @@ class OptimizeVI:
         self._likelihood = likelihood
         self._n_samples = n_samples
         self._sampling_cg_kwargs = sampling_cg_kwargs
+        self._point_estimates = point_estimates
 
         if _lh_funcs is None:
             if likelihood is None:
                 raise ValueError("Neither Likelihood nor funcs provided.")
-            draw_metric = partial(_sample_linearly, likelihood,
-                                  from_inverse=False)
-            draw_metric = vmap(draw_metric, in_axes=(None, 0),
-                              out_axes=(None, 0))
-            draw_linear = partial(_sample_linearly, likelihood,
-                                  from_inverse = True,
-                                  cg_kwargs = sampling_cg_kwargs)
-            draw_linear = smap(draw_linear, in_axes=(None, 0))
+
+            def draw_metric(likelihood, p, keys):
+                f = partial(_sample_linearly, likelihood,
+                            from_inverse=False)
+                return vmap(f, in_axes=(None, 0), out_axes=(None, 0))(p, keys)
+
+            def draw_linear(likelihood, p, keys):
+                f = partial(_sample_linearly, likelihood,
+                            from_inverse=True, cg_kwargs=sampling_cg_kwargs)
+                return smap(f, in_axes=(None, 0))(p, keys)
 
             # KL funcs
             self._kl_vg = do_jit(partial(_ham_vg, likelihood))
             self._kl_metric = do_jit(partial(_ham_metric, likelihood))
+
+            # Sampling
+            get_partial = partial(_partial_func, likelihood=likelihood,
+                                  point_estimates=point_estimates)
             # Lin sampling
-            self._draw_metric = do_jit(draw_metric)
-            self._draw_linear = do_jit(draw_linear)
+            self._draw_metric = do_jit(get_partial(draw_metric))
+            self._draw_linear = do_jit(get_partial(draw_linear))
             # Non-lin sampling
-            self._lh_trafo = do_jit(partial(_lh_trafo, likelihood))
-            self._nl_vag = do_jit(value_and_grad(
-                               partial(_nl_residual, likelihood)))
-            self._nl_metric = do_jit(partial(_nl_metric, likelihood))
-            self._nl_sampnorm = do_jit(partial(_nl_sampnorm, likelihood))
+            self._lh_trafo = do_jit(get_partial(_lh_trafo))
+            self._nl_vag = do_jit(value_and_grad(get_partial(_nl_residual),
+                                                 argnums=3))
+            self._nl_metric = do_jit(get_partial(_nl_metric))
+            self._nl_sampnorm = do_jit(get_partial(_nl_sampnorm))
         else:
             if likelihood is not None:
                 msg = "Warning: Likelihood funcs is set, ignoring Likelihood"
@@ -725,6 +641,14 @@ class OptimizeVI:
     def _linear_sampling(self, primals, from_inverse):
         if from_inverse:
             samples, met_smpls = self._draw_linear(primals, self._keys)
+            samples = stack(
+                tuple(_process_point_estimate(ss,
+                                              primals,
+                                              self._point_estimates,
+                                              insert=True
+                                              )
+                      for ss in unstack(samples))
+            )
             samples = Samples(
                 pos=primals,
                 samples=tree_map(lambda *x:
@@ -733,6 +657,14 @@ class OptimizeVI:
         else:
             _, met_smpls = self._draw_metric(primals, self._keys)
             samples = None
+        met_smpls = stack(
+            tuple(_process_point_estimate(ss,
+                                          primals,
+                                          self._point_estimates,
+                                          insert=True
+                                          )
+                    for ss in unstack(met_smpls))
+        )
         met_smpls = Samples(
             pos=None,
             samples=tree_map(lambda *x:
@@ -747,28 +679,34 @@ class OptimizeVI:
         new_smpls = []
         opt_states = []
         for s, ms in zip(samples, metric_samples):
+            s = _process_point_estimate(s, primals, self._point_estimates,
+                                        insert=False)
+            ms = _process_point_estimate(ms, primals, self._point_estimates,
+                                         insert=False)
             options = {
                 "fun_and_grad":
                     partial(
                         self._nl_vag,
-                        p=primals,
-                        lh_trafo_at_p=lh_trafo_at_p,
-                        ms_at_p=ms
+                        primals,
+                        lh_trafo_at_p,
+                        ms
                     ),
                 "hessp":
                     partial(
                         self._nl_metric,
-                        p=primals,
-                        lh_trafo_at_p=lh_trafo_at_p
+                        primals,
+                        lh_trafo_at_p
                     ),
-                "custom_gradnorm" : partial(self._nl_sampnorm, p=primals),
+                "custom_gradnorm" : partial(self._nl_sampnorm, primals),
                 }
             opt_state = minimize(None, x0=s, method=self._sampling_minimizer,
                                  options=self._sampling_kwargs | options)
-            new_smpls.append(opt_state.x - primals)
+            newsam = _process_point_estimate(opt_state.x, primals,
+                                             self._point_estimates,
+                                             insert=True)
+            new_smpls.append(newsam - primals)
             # Remove x from state to avoid copy of the samples
             opt_states.append(opt_state._replace(x = None))
-
         samples = Samples(pos=primals, samples=stack(new_smpls))
         return samples, opt_states
 

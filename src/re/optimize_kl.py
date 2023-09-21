@@ -8,7 +8,7 @@ import sys
 import jax
 from os import makedirs
 from os.path import isfile
-from typing import Callable, Union
+from typing import Callable, Union, Tuple, TypeVar
 from .tree_math.vector import Vector
 from .likelihood import Likelihood
 from .kl import OptimizeVI, OptVIState
@@ -33,6 +33,7 @@ def optimize_kl(
     total_iterations: int,
     n_samples: Union[int, Callable],
     key: jax.random.PRNGKey,
+    point_estimates: Union[TypeVar("P"), Tuple[str]] = (),
     minimizer: Union[str, Callable] = 'newtoncg',
     minimization_kwargs: dict = {},
     sampling_method: Union[str, Callable] = 'altmetric',
@@ -128,6 +129,7 @@ def optimize_kl(
     cfg = {'likelihood': likelihood,
            'n_samples': n_samples,
            'resample': resample,
+           'point_estimates': point_estimates,
            'sampling_method': sampling_method,
            'sampling_minimizer':  sampling_minimizer,
            'sampling_kwargs': sampling_kwargs,
@@ -141,6 +143,7 @@ def optimize_kl(
         lh = ncfg['likelihood'] if _func is None else None
         opt = OptimizeVI(lh, 0, key,
                          ncfg['n_samples'],
+                         ncfg['point_estimates'],
                          ncfg['sampling_method'],
                          ncfg['sampling_minimizer'],
                          ncfg['sampling_kwargs'],
