@@ -19,7 +19,6 @@ from .smap import smap
 from .optimize import OptimizeResults, minimize, conjugate_gradient
 from .likelihood import (
     Likelihood, StandardHamiltonian, _partial_insert_and_remove,
-    _partial_argument
 )
 from .tree_math import (
     Vector, assert_arithmetics, random_like, stack, dot, vdot, unstack

@@ -6,7 +6,7 @@ from .conjugate_gradient import cg, static_cg
 from .correlated_field import CorrelatedFieldMaker, non_parametric_amplitude
 from .hmc import generate_hmc_acc_rej, generate_nuts_tree
 from .hmc_oo import HMCChain, NUTSChain
-from .kl import Samples, sample_evi
+from .kl import Samples, OptimizeVI
 from .likelihood import Likelihood, StandardHamiltonian
 from .likelihood_impl import (
     Categorical, Gaussian, Poissonian, StudentT, VariableCovarianceGaussian,
@@ -19,9 +19,13 @@ from .misc import (
 from .model import Initializer, Model
 from .num import *
 from .optimize import minimize, newton_cg, trust_ncg
+<<<<<<< HEAD
 from .prior import (
     InvGammaPrior, LaplacePrior, LogNormalPrior, NormalPrior, WrappedCall
 )
+=======
+from .optimize_kl import optimize_kl
+>>>>>>> 801cff31 (point_estimates: cleanup)
 from .refine.chart import CoordinateChart, HEALPixChart
 from .refine.charted_field import RefinementField
 from .refine.healpix_field import RefinementHPField
