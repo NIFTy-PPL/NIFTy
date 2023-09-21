@@ -209,16 +209,15 @@ def optimize_kl(
             kp, sub = jax.random.split(key)
         if i != total_iterations - 1:
             _func = opt.lh_funcs
-            # If likelihood or sampling cg changes, trigger re-compilation
-            if (_getitem(cfg['likelihood'], i+1) !=
-                _getitem(cfg['likelihood'], i)):
-                _func = None
-            kwa = cfg['sampling_cg_kwargs']
-            if _getitem(kwa, i+1) != _getitem(kwa, i):
-                #TODO changing the linear sampling params triggers a full re-jit
-                # of all functions (including those used for minimization).
-                # This is not necessary and may cause unwanted overhead!
-                _func = None
+            # If likelihood, point_estimates, or sampling_cg changes, trigger
+            # re-compilation.
+            #TODO changing sampling_cg triggers a full re-jit of all functions
+            # (including those used for minimization). This is not necessary and
+            # may cause unwanted overhead!
+            re_jit = ['likelihood', 'point_estimates', 'sampling_cg_kwargs']
+            for rr in re_jit:
+                if (_getitem(cfg[rr], i+1) != _getitem(cfg[rr], i)):
+                    _func = None
             opt = get_optvi(i+1, sub, _func = _func)
 
         if not out_dir == None:
