@@ -13,7 +13,6 @@ from .tree_math.vector import Vector
 from .likelihood import Likelihood
 from .kl import OptimizeVI, OptVIState
 
-
 def _make_callable(obj):
     if isinstance(obj, dict):
         return {kk:_make_callable(ii) for kk, ii in obj.items()}
@@ -33,7 +32,7 @@ def optimize_kl(
     total_iterations: int,
     n_samples: Union[int, Callable],
     key: jax.random.PRNGKey,
-    point_estimates: Union[TypeVar("P"), Tuple[str]] = (),
+    point_estimates: Union[Vector, Tuple[str]] = (),
     minimizer: Union[str, Callable] = 'newtoncg',
     minimization_kwargs: dict = {},
     sampling_method: Union[str, Callable] = 'altmetric',
@@ -60,6 +59,12 @@ def optimize_kl(
         Number of samples used to sample Kullback-Leibler divergence. See
         `likelihood` for the callable convention.
     key : jax random number generataion key
+    point_estimates : tree-like structure or tuple of str
+        Pytree of same structure as `pos` but with boolean leaves indicating
+        whether to sample the value in `pos` or use it as a point estimate. As
+        a convenience method, for dict-like `pos`, a tuple of strings is also
+        valid. From these the boolean indicator pytree is automatically
+        constructed.
     minimizer: str or callable
         Minimization method used for KL minimization.
     minimization_kwargs : dict

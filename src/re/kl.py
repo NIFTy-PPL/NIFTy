@@ -12,15 +12,18 @@ from warnings import warn
 from jax import numpy as jnp
 from jax import random, vmap, value_and_grad, jvp, vjp, linear_transpose, jit
 from jax.tree_util import (
-    Partial, register_pytree_node_class, tree_flatten, tree_leaves, tree_map,
-    tree_structure, tree_unflatten
+    Partial, register_pytree_node_class, tree_leaves, tree_map, tree_structure
 )
 
 from .smap import smap
 from .optimize import OptimizeResults, minimize, conjugate_gradient
-from .likelihood import Likelihood, StandardHamiltonian, _partial_insert_and_remove, _partial_argument
-from .tree_math import (Vector, assert_arithmetics, random_like, stack,
-                        zeros_like, dot, vdot, unstack)
+from .likelihood import (
+    Likelihood, StandardHamiltonian, _partial_insert_and_remove,
+    _partial_argument
+)
+from .tree_math import (
+    Vector, assert_arithmetics, random_like, stack, dot, vdot, unstack
+)
 
 
 P = TypeVar("P")
@@ -488,11 +491,11 @@ def _process_point_estimate(x, primals, point_estimates, insert):
             primals
         )
         assert p_frozen is not None
+        fill = tree_map(lambda x: jnp.zeros((1,)*jnp.ndim(x)), p_frozen)
         in_out = _partial_insert_and_remove(
             lambda *x: x[0],
             insert_axes=(point_estimates,) if insert else None,
-            flat_fill=(tree_map(lambda x: jnp.zeros((1,)*jnp.ndim(x)), p_frozen),)
-                    if insert else None,
+            flat_fill=(fill,) if insert else None,
             remove_axes=None if insert else (point_estimates,),
             unflatten=None if insert else Vector
         )
@@ -521,11 +524,56 @@ class OptimizeVI:
                  minimizer: str = 'newtoncg',
                  minimization_kwargs: dict = {},
                  do_jit = jit,
+                 _raise_notconverged = False,
                  _lh_funcs: Any = None):
         # TODO reintroduce point-estimates (also possibly different sampling
         # methods for pytree)
         """JaxOpt style minimizer for VI approximation of a Bayesian inference
         problem assuming a standard normal prior distribution.
+
+        Depending on `sampling_method` the VI approximation is performed via
+        variants of the `Geometric Variational Inference` and/or
+        `Metric Gaussian Variational Inference` algorithms. They produce
+        approximate posterior samples that are used for KL estimation internally
+        and the final set of samples are the approximation of the posterior.
+        The samples can be linear, i.e. following a standard normal distribution
+        in model space, or non linear, i.e. following a standard normal
+        distribution in the canonical coordinate system of the Riemannian
+        manifold associated with the metric of the approximate posterior
+        distribution. The coordinate transformation for the non-linear sample is
+        approximated by an expansion.
+
+        Both linear and non-linear sample start by drawing a sample from the
+        inverse metric. To do so, we draw a sample which has the metric as
+        covariance structure and apply the inverse metric to it. The sample
+        transformed in this way has the inverse metric as covariance. The first
+        part is trivial since we can use the left square root of the metric
+        :math:`L` associated with every likelihood:
+
+        .. math::
+
+            \tilde{d} \leftarrow \mathcal{G}(0,\mathbb{1}) \\
+            t = L \tilde{d}
+
+        with :math:`t` now having a covariance structure of
+
+        .. math::
+            <t t^\dagger> = L <\tilde{d} \tilde{d}^\dagger> L^\dagger = M .
+
+        To transform the sample to an inverse sample, we apply the inverse
+        metric. We can do so using the conjugate gradient algorithm (CG). The CG
+        algorithm yields the solution to :math:`M s = t`, i.e. applies the
+        inverse of :math:`M` to :math:`t`:
+
+        .. math::
+
+            M &s =  t \\
+            &s = M^{-1} t = cg(M, t) .
+
+        The linear sample is :math:`s`. The non-linear sample uses :math:`s` as
+        a starting value and curves it in a non-linear way as to better resemble
+        the posterior locally. See the below reference literature for more
+        details on the non-linear sampling.
 
         Parameters
         ----------
@@ -539,11 +587,11 @@ class OptimizeVI:
             samples get mirrored, so the actual number of samples used for the
             KL estimate is twice the number of `n_samples`.
         point_estimates : tree-like structure or tuple of str
-            Pytree of same structure as `primals` but with boolean leaves
-            indicating whether to sample the value in `primals` or use it as a
-            point estimate. As a convenience method, for Field- and dict-like
-            `primals`, a tuple of strings is also valid. From these the boolean
-            indicator pytree is automatically constructed.
+            Pytree of same structure as likelihood input but with boolean leaves
+            indicating whether to sample the value in the input or use it as a
+            point estimate. As a convenience method, for dict-like inputs, a
+            tuple of strings is also valid. From these the boolean indicator
+            pytree is automatically constructed.
         sampling_method: str
             Sampling method used for vi approximation. Default is `altmetric`.
         sampling_minimizer: str
@@ -557,6 +605,15 @@ class OptimizeVI:
             Minimization method used for KL minimization.
         minimization_kwargs : dict
             Keyword arguments for minimizer used for KL minimization.
+
+        See also
+        --------
+        `Geometric Variational Inference`, Philipp Frank, Reimar Leike,
+        Torsten A. Enßlin, `<https://arxiv.org/abs/2105.10470>`_
+        `<https://doi.org/10.3390/e23070853>`_
+
+        `Metric Gaussian Variational Inference`, Jakob Knollmüller,
+        Torsten A. Enßlin, `<https://arxiv.org/abs/1901.11033>`_
         """
         self._n_iter = n_iter
         self._sampling_method = sampling_method
@@ -574,6 +631,7 @@ class OptimizeVI:
         self._n_samples = n_samples
         self._sampling_cg_kwargs = sampling_cg_kwargs
         self._point_estimates = point_estimates
+        self._raise_notconverged = _raise_notconverged
 
         if _lh_funcs is None:
             if likelihood is None:
@@ -586,7 +644,8 @@ class OptimizeVI:
 
             def draw_linear(likelihood, p, keys):
                 f = partial(_sample_linearly, likelihood,
-                            from_inverse=True, cg_kwargs=sampling_cg_kwargs)
+                            from_inverse=True, cg_kwargs=sampling_cg_kwargs,
+                            _raise_nonposdef = self._raise_notconverged)
                 return smap(f, in_axes=(None, 0))(p, keys)
 
             # KL funcs
@@ -701,6 +760,10 @@ class OptimizeVI:
                 }
             opt_state = minimize(None, x0=s, method=self._sampling_minimizer,
                                  options=self._sampling_kwargs | options)
+            _cond_raise(
+                self._raise_notconverged & (opt_state.status < 0),
+                ValueError("S: failed to invert map")
+            )
             newsam = _process_point_estimate(opt_state.x, primals,
                                              self._point_estimates,
                                              insert=True)
