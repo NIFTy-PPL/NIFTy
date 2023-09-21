@@ -161,7 +161,7 @@ signal = Signal(correlated_field, scaling)
 
 # %%
 #signal_response = signal
-signal_response = jft.Model(lambda x: jft.Vector({'d0': signal(x)}), 
+signal_response = jft.Model(lambda x: jft.Vector({'d0': signal(x)}),
                             domain=signal.domain,
                             init=signal.init)
 noise_cov = lambda x: 0.1**2 * x
@@ -182,29 +182,25 @@ key, subkey = random.split(key)
 pos_init = jft.random_like(subkey, signal_response.domain)
 pos_init = jft.Vector(pos_init)
 linear_sampling_kwarks = {"absdelta": absdelta / 10., "maxiter": 100}
-sampling_kwargs = {"xtol": 0.001, "maxiter": 10}
+sampling_kwargs = {"xtol": 0.0001, "maxiter": 10}
 minimization_kwarks = {"absdelta": absdelta, "maxiter": n_newton_iterations}
 # NOTE, changing the number of samples always triggers a resampling even if
 # `resamples=False`, as more samples have to be drawn that did not exist before.
-n_samples = lambda i: 2 if i<2 else 4
-#n_samples = 4
-pos, samples = jft.optimize_kl(nll, pos_init, 
-                               n_vi_iterations, 
+n_samples = 4
+pos, samples = jft.optimize_kl(nll, pos_init,
+                               n_vi_iterations,
                                n_samples,
-                               key, 
-                               minimizer='newtoncg', 
+                               key,
+                               minimizer='newtoncg',
                                minimization_kwargs=minimization_kwarks,
-                               sampling_method='geometric', # 'linear' for MGVI
+                               sampling_method='altmetric',
+                               # 'linear' for MGVI, 'geometric' for geoVI
                                sampling_minimizer='newtoncg',
                                sampling_kwargs=sampling_kwargs,
                                sampling_cg_kwargs=linear_sampling_kwarks,
-                               resample=True,
+                               resample=lambda ii: True if ii<2 else False,
                                out_dir="results_jifty",
-                               verbosity=0)
-print("Likelihood residual(s)")
-print(jft.reduced_chisq_stats(pos, samples, func=nll.normalized_residual))
-print("Prior residual(s)")
-print(jft.reduced_chisq_stats(pos, samples))
+                               verbosity=-1)
 # %%
 namps = cfm.get_normalized_amplitudes()
 post_sr_mean = jft.mean(tuple(signal(s) for s in samples.at(pos)))
