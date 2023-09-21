@@ -10,7 +10,7 @@ from jax.tree_util import (Partial, tree_leaves, tree_structure, tree_flatten,
 
 from .misc import doc_from, is1d, isiterable, split
 from .model import AbstractModel
-from .tree_math import ShapeWithDtype, Vector, conj, vdot
+from .tree_math import ShapeWithDtype, Vector, conj, vdot, zeros_like
 
 Q = TypeVar("Q")
 P = TypeVar("P")
@@ -542,8 +542,14 @@ def _partial_argument(call, insert_axes, flat_fill):
 
     return partially_inserted_call
 
+def _partial_insert_and_remove(
+    call, insert_axes, flat_fill, *, remove_axes=(), unflatten=None
+):
+    """Return a call in which `flat_fill` is inserted into arguments of `call`
+    at `inset_axes` and subsequently removed from its output at `remove_axes`.
+    """
+    call = _partial_argument(call, insert_axes=insert_axes, flat_fill=flat_fill)
 
-def _post_partial_remove(call, remove_axes, unflatten=None):
     if not remove_axes:
         return call
 
@@ -570,14 +576,7 @@ def _post_partial_remove(call, remove_axes, unflatten=None):
 
     return partially_removed_call
 
-def _partial_insert_and_remove(
-    call, insert_axes, flat_fill, *, remove_axes=(), unflatten=None
-):
-    """Return a call in which `flat_fill` is inserted into arguments of `call`
-    at `inset_axes` and subsequently removed from its output at `remove_axes`.
-    """
-    call = _partial_argument(call, insert_axes=insert_axes, flat_fill=flat_fill)
-    return _post_partial_remove(call, remove_axes, unflatten=unflatten)
+
 
 # TODO: prune/hide/(make simply add unit mat) in favor of just passing around
 # likelihood; we exclusively built hierarchical models anyways.
