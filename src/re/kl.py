@@ -29,11 +29,6 @@ from .tree_math import (
 P = TypeVar("P")
 
 
-def sample_likelihood(likelihood: Likelihood, primals, key):
-    white_sample = random_like(key, likelihood.left_sqrt_metric_tangents_shape)
-    return likelihood.left_sqrt_metric(primals, white_sample)
-
-
 def _cond_raise(condition, exception):
     from jax.experimental.host_callback import call
 
@@ -44,6 +39,63 @@ def _cond_raise(condition, exception):
     call(maybe_raise, condition, result_shape=None)
 
 
+def _parse_point_estimates(point_estimates, primals):
+    if isinstance(point_estimates, (tuple, list)):
+        if not isinstance(primals, (Vector, dict)):
+            te = "tuple-shortcut point-estimate only availble for dict/Vector type primals"
+            raise TypeError(te)
+        pe = tree_map(lambda x: False, primals)
+        pe = pe.tree if isinstance(primals, Vector) else pe
+        for k in point_estimates:
+            pe[k] = True
+        point_estimates = Vector(pe) if isinstance(primals, Vector) else pe
+    if tree_structure(primals) != tree_structure(point_estimates):
+        print(primals)
+        print(point_estimates)
+        te = "`primals` and `point_estimates` pytree structre do no match"
+        raise TypeError(te)
+
+    primals_liquid, primals_frozen = [], []
+    for p, ep in zip(tree_leaves(primals), tree_leaves(point_estimates)):
+        if ep:
+            primals_frozen.append(p)
+        else:
+            primals_liquid.append(p)
+    primals_liquid = Vector(tuple(primals_liquid))
+    primals_frozen = tuple(primals_frozen)
+    return point_estimates, primals_liquid, primals_frozen
+
+
+def _partial_func(func, likelihood, point_estimates):
+    if point_estimates:
+        def partial_func(primals, *args):
+            pe, p_liquid, p_frozen = _parse_point_estimates(point_estimates,
+                                                            primals)
+            return func(likelihood.partial(pe, p_frozen), p_liquid, *args)
+
+        return partial_func
+    return partial(func, likelihood)
+
+
+def _process_point_estimate(x, primals, point_estimates, insert):
+    if point_estimates:
+        point_estimates, _, p_frozen = _parse_point_estimates(
+            point_estimates,
+            primals
+        )
+        assert p_frozen is not None
+        fill = tree_map(lambda x: jnp.zeros((1,)*jnp.ndim(x)), p_frozen)
+        in_out = _partial_insert_and_remove(
+            lambda *x: x[0],
+            insert_axes=(point_estimates,) if insert else None,
+            flat_fill=(fill,) if insert else None,
+            remove_axes=None if insert else (point_estimates,),
+            unflatten=None if insert else Vector
+        )
+        return in_out(x)
+    return x
+
+
 def _likelihood_metric_plus_standard_prior(lh_metric):
     if isinstance(lh_metric, Likelihood):
         lh_metric = lh_metric.metric
@@ -52,6 +104,11 @@ def _likelihood_metric_plus_standard_prior(lh_metric):
         return lh_metric(primals, tangents, **primals_kw) + tangents
 
     return joined_metric
+
+
+def sample_likelihood(likelihood: Likelihood, primals, key):
+    white_sample = random_like(key, likelihood.left_sqrt_metric_tangents_shape)
+    return likelihood.left_sqrt_metric(primals, white_sample)
 
 
 def _sample_linearly(
@@ -113,241 +170,47 @@ def _sample_linearly(
         return None, met_smpl
 
 
-def _curve_sample(
-    likelihood, primals, met_smpl, inv_met_smpl, *, minimize_method,
-    minimize_options
-):
-    from .likelihood_impl import Gaussian
-    from .optimize import minimize
-
-    if isinstance(likelihood, Likelihood):
-        lh = likelihood
-    elif isinstance(likelihood, StandardHamiltonian):
-        lh = likelihood.likelihood
-    else:
-        te = f"`likelihood` of invalid type; got '{type(likelihood)}'"
-        raise TypeError(te)
-    x0 = primals + inv_met_smpl
-    lh_trafo_at_p = lh.transformation(primals)
-
-    def g(x):
-        return x - primals + lh.left_sqrt_metric(
-            primals,
-            # lh.transformation(x) - lh_trafo_at_p
-            tree_map(jnp.subtract, lh.transformation(x), lh_trafo_at_p)
-        )
-
-    r2_half = Gaussian(met_smpl) @ g  # (g - met_smpl)**2 / 2
-
-    minimize_options = minimize_options.copy()
-    minimize_options.update({"hessp": r2_half.metric})
-    opt_state = minimize(
-        r2_half,
-        x0=x0,
-        method=minimize_method,
-        options=minimize_options,
-    )
-
-    return opt_state.x, opt_state.status
-
-def _parse_point_estimates(point_estimates, primals):
-    if isinstance(point_estimates, (tuple, list)):
-        if not isinstance(primals, (Vector, dict)):
-            te = "tuple-shortcut point-estimate only availble for dict/Vector type primals"
-            raise TypeError(te)
-        pe = tree_map(lambda x: False, primals)
-        pe = pe.tree if isinstance(primals, Vector) else pe
-        for k in point_estimates:
-            pe[k] = True
-        point_estimates = Vector(pe) if isinstance(primals, Vector) else pe
-    if tree_structure(primals) != tree_structure(point_estimates):
-        print(primals)
-        print(point_estimates)
-        te = "`primals` and `point_estimates` pytree structre do no match"
-        raise TypeError(te)
-
-    primals_liquid, primals_frozen = [], []
-    for p, ep in zip(tree_leaves(primals), tree_leaves(point_estimates)):
-        if ep:
-            primals_frozen.append(p)
-        else:
-            primals_liquid.append(p)
-    primals_liquid = Vector(tuple(primals_liquid))
-    primals_frozen = tuple(primals_frozen)
-    return point_estimates, primals_liquid, primals_frozen
+def _ham_vg(likelihood, primals, primals_samples):
+    assert isinstance(primals_samples, Samples)
+    ham = StandardHamiltonian(likelihood=likelihood)
+    vvg = vmap(value_and_grad(ham))
+    s = vvg(primals_samples.at(primals).samples)
+    return tree_map(partial(jnp.mean, axis=0), s)
 
 
-def sample_evi(
-    likelihood: Likelihood,
-    primals: P,
-    key,
-    mirror_linear_sample: bool = True,
-    *,
-    point_estimates: Union[P, Tuple[str]] = (),
-    linear_sampling_cg: Callable = conjugate_gradient.static_cg,
-    linear_sampling_name: Optional[str] = None,
-    linear_sampling_kwargs: Optional[dict] = None,
-    non_linear_sampling_method: str = "NewtonCG",
-    non_linear_sampling_name: Optional[str] = None,
-    non_linear_sampling_kwargs: Optional[dict] = None,
-    _raise_notconverged: bool = False,
-) -> "Samples":
-    r"""Draws a sample at a given expansion point.
+def _ham_metric(likelihood, primals, tangents, primals_samples):
+    assert isinstance(primals_samples, Samples)
+    ham = StandardHamiltonian(likelihood=likelihood)
+    vmet = vmap(ham.metric, in_axes=(0, None))
+    s = vmet(primals_samples.at(primals).samples, tangents)
+    return tree_map(partial(jnp.mean, axis=0), s)
 
-    The sample can be linear, i.e. following a standard normal distribution in
-    model space, or non linear, i.e. following a standard normal distribution in
-    the canonical coordinate system of the Riemannian manifold associated with
-    the metric of the approximate posterior distribution. The coordinate
-    transformation for the non-linear sample is approximated by an expansion.
 
-    Both linear and non-linear sample start by drawing a sample from the inverse
-    metric. To do so, we draw a sample which has the metric as covariance
-    structure and apply the inverse metric to it. The sample transformed in this
-    way has the inverse metric as covariance. The first part is trivial since we
-    can use the left square root of the metric :math:`L` associated with every
-    likelihood:
+def _lh_trafo(likelihood, p):
+    return likelihood.transformation(p)
 
-    .. math::
 
-        \tilde{d} \leftarrow \mathcal{G}(0,\mathbb{1}) \\
-        t = L \tilde{d}
+def _nl_g(likelihood, p, lh_trafo_at_p, x):
+    t = likelihood.transformation(x) - lh_trafo_at_p
+    return x - p + likelihood.left_sqrt_metric(p, t)
 
-    with :math:`t` now having a covariance structure of
 
-    .. math::
-        <t t^\dagger> = L <\tilde{d} \tilde{d}^\dagger> L^\dagger = M .
+def _nl_residual(likelihood, p, lh_trafo_at_p, ms_at_p, x):
+    r = ms_at_p - _nl_g(likelihood, p, lh_trafo_at_p, x)
+    return 0.5*dot(r, r)
 
-    To transform the sample to an inverse sample, we apply the inverse metric.
-    We can do so using the conjugate gradient algorithm (CG). The CG algorithm
-    yields the solution to :math:`M s = t`, i.e. applies the inverse of
-    :math:`M` to :math:`t`:
 
-    .. math::
+def _nl_metric(likelihood, p, lh_trafo_at_p, primals, tangents):
+    f = partial(_nl_g, likelihood, p, lh_trafo_at_p)
+    _, jj = jvp(f, (primals,), (tangents,))
+    return vjp(f, primals)[1](jj)[0]
 
-        M &s =  t \\
-        &s = M^{-1} t = cg(M, t) .
 
-    The linear sample is :math:`s`. The non-linear sample uses :math:`s` as a
-    starting value and curves it in a non-linear way as to better resemble the
-    posterior locally. See the below reference literature for more details on
-    the non-linear sampling.
+def _nl_sampnorm(likelihood, p, natgrad):
+    o = partial(likelihood.left_sqrt_metric, p)
+    fpp = linear_transpose(o, likelihood.lsm_tangents_shape)(natgrad)
+    return jnp.sqrt(vdot(natgrad, natgrad) + vdot(fpp, fpp))
 
-    Parameters
-    ----------
-    likelihood:
-        Likelihood with assumed standard prior from which to draw samples.
-    primals : tree-like structure
-        Position at which to draw samples.
-    key : tuple, list or jnp.ndarray of uint32 of length two
-        Random key with which to generate random variables in data domain.
-    mirror_samples : bool, optional
-        Whether the mirrored version of the drawn samples are also used. If
-        true, the number of used samples doubles. Mirroring samples stabilizes
-        the KL estimate as extreme sample variation is counterbalanced.
-    point_estimates : tree-like structure or tuple of str
-        Pytree of same structure as `primals` but with boolean leaves indicating
-        whether to sample the value in `primals` or use it as a point estimate.
-        As a convenience method, for Field- and dict-like `primals`, a tuple of
-        strings is also valid. From these the boolean indicator pytree is
-        automatically constructed.
-    linear_sampling_cg : callable
-        Implementation of the conjugate gradient algorithm and used to apply the
-        inverse of the metric.
-    linear_sampling_name : str, optional
-        Name of cg optimizer.
-    linear_sampling_kwargs : dict
-        Additional keyword arguments passed on to `cg`.
-    non_linear_sampling_method : str
-        Method to use for the minimization.
-    non_linear_sampling_name : str, optional
-        Name of the non-linear optimizer.
-    non_linear_sampling_kwargs : dict, optional
-        Additional keyword arguments passed on to the minimzer of the non-linear
-        potential.
-
-    Returns
-    -------
-    sample : tree-like structure
-        Sample of which the covariance is the inverse metric.
-
-    See also
-    --------
-    `Geometric Variational Inference`, Philipp Frank, Reimar Leike,
-    Torsten A. Enßlin, `<https://arxiv.org/abs/2105.10470>`_
-    `<https://doi.org/10.3390/e23070853>`_
-
-    `Metric Gaussian Variational Inference`, Jakob Knollmüller,
-    Torsten A. Enßlin, `<https://arxiv.org/abs/1901.11033>`_
-    """
-    if point_estimates:
-        point_estimates, primals_liquid, primals_frozen = _parse_point_estimates(
-            point_estimates, primals
-        )
-        likelihood = likelihood.partial(point_estimates, primals_frozen)
-    else:
-        primals_liquid = primals
-        primals_frozen = None
-
-    inv_met_smpl, met_smpl = _sample_linearly(
-        likelihood,
-        primals_liquid,
-        key=key,
-        from_inverse=True,
-        cg=linear_sampling_cg,
-        cg_name=linear_sampling_name,
-        cg_kwargs=linear_sampling_kwargs,
-        _raise_nonposdef=_raise_notconverged,
-    )
-
-    nls_kwargs = non_linear_sampling_kwargs
-    nls_kwargs = {} if nls_kwargs is None else nls_kwargs.copy()
-    nls_kwargs.setdefault("name", non_linear_sampling_name)
-    if "hessp" in nls_kwargs:
-        ve = "setting the hessian for an unknown function is invalid"
-        raise ValueError(ve)
-    curve_sample = partial(
-        _curve_sample,
-        likelihood,
-        primals_liquid,
-        minimize_method=non_linear_sampling_method,
-        minimize_options=nls_kwargs,
-    )
-
-    if nls_kwargs.get("maxiter", 0) == 0:
-        smpls = [inv_met_smpl]
-        if mirror_linear_sample:
-            smpls = [inv_met_smpl, -inv_met_smpl]
-    else:
-        smpl1, smpl1_status = curve_sample(met_smpl, inv_met_smpl)
-        _cond_raise(
-            _raise_notconverged &
-            ((smpl1_status < 0) if smpl1_status is not None else False),
-            ValueError("S: failed to invert map")
-        )
-        smpls = [smpl1 - primals_liquid]
-        if mirror_linear_sample:
-            smpl2, smpl2_status = curve_sample(-met_smpl, -inv_met_smpl)
-            _cond_raise(
-                _raise_notconverged &
-                ((smpl2_status < 0) if smpl2_status is not None else False),
-                ValueError("S: failed to invert map")
-            )
-            smpls = [smpl1 - primals_liquid, smpl2 - primals_liquid]
-
-    if point_estimates:
-        assert primals_frozen is not None
-        insert = _partial_argument(
-            lambda *x: x[0],
-            insert_axes=(point_estimates, ),
-            flat_fill=(
-                tree_map(
-                    lambda x: jnp.zeros((1, ) * jnp.ndim(x)), primals_frozen
-                ),
-            )
-        )
-        for i in range(len(smpls)):
-            smpls[i] = insert(smpls[i])
-    return Samples(pos=primals, samples=stack(smpls))
 
 
 @register_pytree_node_class
@@ -438,69 +301,6 @@ class Samples():
         #     smpls = tree_map(lambda p, s: s - p[jnp.newaxis], pos, smpls)
         return cls(pos=pos, samples=smpls)
 
-
-def _ham_vg(likelihood, primals, primals_samples):
-    assert isinstance(primals_samples, Samples)
-    ham = StandardHamiltonian(likelihood=likelihood)
-    vvg = vmap(value_and_grad(ham))
-    s = vvg(primals_samples.at(primals).samples)
-    return tree_map(partial(jnp.mean, axis=0), s)
-
-def _ham_metric(likelihood, primals, tangents, primals_samples):
-    assert isinstance(primals_samples, Samples)
-    ham = StandardHamiltonian(likelihood=likelihood)
-    vmet = vmap(ham.metric, in_axes=(0, None))
-    s = vmet(primals_samples.at(primals).samples, tangents)
-    return tree_map(partial(jnp.mean, axis=0), s)
-
-def _lh_trafo(likelihood, p):
-    return likelihood.transformation(p)
-
-def _nl_g(likelihood, p, lh_trafo_at_p, x):
-    t = likelihood.transformation(x) - lh_trafo_at_p
-    return x - p + likelihood.left_sqrt_metric(p, t)
-
-def _nl_residual(likelihood, p, lh_trafo_at_p, ms_at_p, x):
-    r = ms_at_p - _nl_g(likelihood, p, lh_trafo_at_p, x)
-    return 0.5*dot(r, r)
-
-def _nl_metric(likelihood, p, lh_trafo_at_p, primals, tangents):
-    f = partial(_nl_g, likelihood, p, lh_trafo_at_p)
-    _, jj = jvp(f, (primals,), (tangents,))
-    return vjp(f, primals)[1](jj)[0]
-
-def _nl_sampnorm(likelihood, p, natgrad):
-    o = partial(likelihood.left_sqrt_metric, p)
-    fpp = linear_transpose(o, likelihood.lsm_tangents_shape)(natgrad)
-    return jnp.sqrt(vdot(natgrad, natgrad) + vdot(fpp, fpp))
-
-def _partial_func(func, likelihood, point_estimates):
-    if point_estimates:
-        def partial_func(primals, *args):
-            pe, p_liquid, p_frozen = _parse_point_estimates(point_estimates,
-                                                            primals)
-            return func(likelihood.partial(pe, p_frozen), p_liquid, *args)
-
-        return partial_func
-    return partial(func, likelihood)
-
-def _process_point_estimate(x, primals, point_estimates, insert):
-    if point_estimates:
-        point_estimates, _, p_frozen = _parse_point_estimates(
-            point_estimates,
-            primals
-        )
-        assert p_frozen is not None
-        fill = tree_map(lambda x: jnp.zeros((1,)*jnp.ndim(x)), p_frozen)
-        in_out = _partial_insert_and_remove(
-            lambda *x: x[0],
-            insert_axes=(point_estimates,) if insert else None,
-            flat_fill=(fill,) if insert else None,
-            remove_axes=None if insert else (point_estimates,),
-            unflatten=None if insert else Vector
-        )
-        return in_out(x)
-    return x
 
 class OptVIState(NamedTuple):
   """Named tuple containing state information."""

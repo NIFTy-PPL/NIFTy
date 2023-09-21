@@ -24,6 +24,94 @@ def _functional_conj(func):
     return func_conj
 
 
+def _partial_argument(call, insert_axes, flat_fill):
+    """For every non-None value in `insert_axes`, amend the value of `flat_fill`
+    at the same position to the argument.
+    """
+    if not flat_fill and not insert_axes:
+        return call
+
+    if len(insert_axes) != len(flat_fill):
+        ve = "`insert_axes` and `flat_fill` must be of equal length"
+        raise ValueError(ve)
+    for iae, ffe in zip(insert_axes, flat_fill):
+        if iae is not None and ffe is not None:
+            if not isinstance(ffe, (tuple, list)):
+                te = (
+                    f"`flat_fill` must be a tuple of flattened pytrees;"
+                    f" got '{flat_fill!r}'"
+                )
+                raise TypeError(te)
+            iae_leaves = tree_leaves(iae)
+            if not all(isinstance(e, bool) for e in iae_leaves):
+                te = "leaves of `insert_axes` elements must all be boolean"
+                raise TypeError(te)
+            if sum(iae_leaves) != len(ffe):
+                ve = "more inserts in `insert_axes` than elements in `flat_fill`"
+                raise ValueError(ve)
+        elif iae is not None or ffe is not None:
+            ve = "both `insert_axes` and `flat_full` must None at the same positions"
+            raise ValueError(ve)
+    # NOTE, `tree_flatten` replaces `None`s with list of zero length
+    insert_axes, in_axes_td = zip(*(tree_flatten(ia) for ia in insert_axes))
+
+    def insert(*x):
+        y = []
+        assert len(x) == len(insert_axes) == len(flat_fill) == len(in_axes_td)
+        for xe, iae, ffe, iatde in zip(x, insert_axes, flat_fill, in_axes_td):
+            if ffe is None and not iae:
+                y.append(xe)
+                continue
+            assert iae and ffe is not None
+            assert sum(iae) == len(ffe)
+            xe, ffe = list(tree_leaves(xe)), list(ffe)
+            ye = [xe.pop(0) if not cond else ffe.pop(0) for cond in iae]
+            # for cond in iae:
+            #     ye.append(xe.pop(0) if not cond else ffe.pop(0))
+            y.append(tree_unflatten(iatde, ye))
+        return tuple(y)
+
+    def partially_inserted_call(*x):
+        return call(*insert(*x))
+
+    return partially_inserted_call
+
+
+def _partial_insert_and_remove(
+    call, insert_axes, flat_fill, *, remove_axes=(), unflatten=None
+):
+    """Return a call in which `flat_fill` is inserted into arguments of `call`
+    at `inset_axes` and subsequently removed from its output at `remove_axes`.
+    """
+    call = _partial_argument(call, insert_axes=insert_axes, flat_fill=flat_fill)
+
+    if not remove_axes:
+        return call
+
+    remove_axes = tree_leaves(remove_axes)
+    if not all(isinstance(e, bool) for e in remove_axes):
+        raise TypeError("leaves of `remove_axes` must all be boolean")
+
+    def remove(x):
+        x, y = list(tree_leaves(x)), []
+        if tree_structure(x) != tree_structure(remove_axes):
+            te = (
+                f"`remove_axes` ({tree_structure(remove_axes)!r}) is shaped"
+                f" differently than output of `call` ({tree_structure(x)!r})"
+            )
+            raise TypeError(te)
+        for maybe_remove, cond in zip(x, remove_axes):
+            if not cond:
+                y.append(maybe_remove)
+        y = unflatten(tuple(y)) if unflatten is not None else y
+        return y
+
+    def partially_removed_call(*x):
+        return remove(call(*x))
+
+    return partially_removed_call
+
+
 class Likelihood(AbstractModel):
     """Storage class for keeping track of the energy, the associated
     left-square-root of the metric and the metric.
@@ -446,7 +534,7 @@ class Likelihood(AbstractModel):
         )
 
     def partial(self, insert_axes, primals_frozen):
-        """
+        """TODO
         """
         energy = _partial_insert_and_remove(
             self.energy,
@@ -489,93 +577,6 @@ class Likelihood(AbstractModel):
             metric=metric,
             lsm_tangents_shape=self.lsm_tangents_shape
         )
-
-def _partial_argument(call, insert_axes, flat_fill):
-    """For every non-None value in `insert_axes`, amend the value of `flat_fill`
-    at the same position to the argument.
-    """
-    if not flat_fill and not insert_axes:
-        return call
-
-    if len(insert_axes) != len(flat_fill):
-        ve = "`insert_axes` and `flat_fill` must be of equal length"
-        raise ValueError(ve)
-    for iae, ffe in zip(insert_axes, flat_fill):
-        if iae is not None and ffe is not None:
-            if not isinstance(ffe, (tuple, list)):
-                te = (
-                    f"`flat_fill` must be a tuple of flattened pytrees;"
-                    f" got '{flat_fill!r}'"
-                )
-                raise TypeError(te)
-            iae_leaves = tree_leaves(iae)
-            if not all(isinstance(e, bool) for e in iae_leaves):
-                te = "leaves of `insert_axes` elements must all be boolean"
-                raise TypeError(te)
-            if sum(iae_leaves) != len(ffe):
-                ve = "more inserts in `insert_axes` than elements in `flat_fill`"
-                raise ValueError(ve)
-        elif iae is not None or ffe is not None:
-            ve = "both `insert_axes` and `flat_full` must None at the same positions"
-            raise ValueError(ve)
-    # NOTE, `tree_flatten` replaces `None`s with list of zero length
-    insert_axes, in_axes_td = zip(*(tree_flatten(ia) for ia in insert_axes))
-
-    def insert(*x):
-        y = []
-        assert len(x) == len(insert_axes) == len(flat_fill) == len(in_axes_td)
-        for xe, iae, ffe, iatde in zip(x, insert_axes, flat_fill, in_axes_td):
-            if ffe is None and not iae:
-                y.append(xe)
-                continue
-            assert iae and ffe is not None
-            assert sum(iae) == len(ffe)
-            xe, ffe = list(tree_leaves(xe)), list(ffe)
-            ye = [xe.pop(0) if not cond else ffe.pop(0) for cond in iae]
-            # for cond in iae:
-            #     ye.append(xe.pop(0) if not cond else ffe.pop(0))
-            y.append(tree_unflatten(iatde, ye))
-        return tuple(y)
-
-    def partially_inserted_call(*x):
-        return call(*insert(*x))
-
-    return partially_inserted_call
-
-def _partial_insert_and_remove(
-    call, insert_axes, flat_fill, *, remove_axes=(), unflatten=None
-):
-    """Return a call in which `flat_fill` is inserted into arguments of `call`
-    at `inset_axes` and subsequently removed from its output at `remove_axes`.
-    """
-    call = _partial_argument(call, insert_axes=insert_axes, flat_fill=flat_fill)
-
-    if not remove_axes:
-        return call
-
-    remove_axes = tree_leaves(remove_axes)
-    if not all(isinstance(e, bool) for e in remove_axes):
-        raise TypeError("leaves of `remove_axes` must all be boolean")
-
-    def remove(x):
-        x, y = list(tree_leaves(x)), []
-        if tree_structure(x) != tree_structure(remove_axes):
-            te = (
-                f"`remove_axes` ({tree_structure(remove_axes)!r}) is shaped"
-                f" differently than output of `call` ({tree_structure(x)!r})"
-            )
-            raise TypeError(te)
-        for maybe_remove, cond in zip(x, remove_axes):
-            if not cond:
-                y.append(maybe_remove)
-        y = unflatten(tuple(y)) if unflatten is not None else y
-        return y
-
-    def partially_removed_call(*x):
-        return remove(call(*x))
-
-    return partially_removed_call
-
 
 
 # TODO: prune/hide/(make simply add unit mat) in favor of just passing around
