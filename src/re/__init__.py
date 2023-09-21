@@ -14,18 +14,14 @@ from .likelihood_impl import (
 )
 from .logger import logger
 from .misc import (
-    wrap, wrap_left, hvp, interpolate, reduced_chisq_stats
+    wrap, wrap_left, hvp, interpolate, reduced_residual_stats, minisanity
 )
 from .model import Initializer, Model
 from .num import *
 from .optimize import minimize, newton_cg, trust_ncg
-<<<<<<< HEAD
 from .prior import (
     InvGammaPrior, LaplacePrior, LogNormalPrior, NormalPrior, WrappedCall
 )
-=======
-from .optimize_kl import optimize_kl
->>>>>>> 801cff31 (point_estimates: cleanup)
 from .refine.chart import CoordinateChart, HEALPixChart
 from .refine.charted_field import RefinementField
 from .refine.healpix_field import RefinementHPField

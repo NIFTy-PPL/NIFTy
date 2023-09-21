@@ -8,10 +8,11 @@ import sys
 import jax
 from os import makedirs
 from os.path import isfile
-from typing import Callable, Union, Tuple, TypeVar
+from typing import Callable, Union, Tuple
 from .tree_math.vector import Vector
 from .likelihood import Likelihood
 from .kl import OptimizeVI, OptVIState
+from .misc import minisanity
 
 def _make_callable(obj):
     if isinstance(obj, dict):
@@ -199,6 +200,12 @@ def optimize_kl(
             print(msg, file=sys.stderr)
         msg = f"KL-Minimization total iteration: {state.minimization_state.nit}"
         print(msg, file=sys.stderr)
+        _, minis = minisanity(pos, state.samples, likelihood.normalized_residual)
+        print("Likelihood residual(s):", file=sys.stderr)
+        print(minis, file=sys.stderr)
+        _, minis = minisanity(pos, state.samples)
+        print("Prior residual(s):", file=sys.stderr)
+        print(minis, file=sys.stderr)
 
         if callback != None:
             callback(pos, state, i)
