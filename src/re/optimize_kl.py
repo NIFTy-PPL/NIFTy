@@ -14,6 +14,7 @@ from .likelihood import Likelihood
 from .kl import OptimizeVI, OptVIState
 from .misc import minisanity
 
+
 def _make_callable(obj):
     if isinstance(obj, dict):
         return {kk:_make_callable(ii) for kk, ii in obj.items()}
@@ -22,10 +23,29 @@ def _make_callable(obj):
     else:
         return lambda x: obj
 
+
 def _getitem(cfg, i):
     if not isinstance(cfg, dict):
         return cfg(i)
     return {kk: _getitem(ii,i) for kk,ii in cfg.items()}
+
+
+def basic_status_print(iiter, primals, state, residual):
+    en = state.minimization_state.fun
+    print(f"Post VI Iteration {iiter}: Energy {en:2.4e}", file=sys.stderr)
+    if state.sampling_states is not None:
+        niter = tuple(ss.nit for ss in state.sampling_states)
+        msg = f"Nonlinear sampling total iterations: {niter}"
+        print(msg, file=sys.stderr)
+    msg = f"KL-Minimization total iteration: {state.minimization_state.nit}"
+    print(msg, file=sys.stderr)
+    _, minis = minisanity(primals, state.samples, residual)
+    print("Likelihood residual(s):", file=sys.stderr)
+    print(minis, file=sys.stderr)
+    _, minis = minisanity(primals, state.samples)
+    print("Prior residual(s):", file=sys.stderr)
+    print(minis, file=sys.stderr)
+
 
 def optimize_kl(
     likelihood: Likelihood,
@@ -192,20 +212,8 @@ def optimize_kl(
             pos, state = opt.init_state(pos)
         # Do one sampling and minimization step
         pos, state = opt.update(pos, state)
-        en = state.minimization_state.fun
-        print(f"Post VI Iteration {i}: Energy {en:2.4e}", file=sys.stderr)
-        if state.sampling_states is not None:
-            niter = tuple(ss.nit for ss in state.sampling_states)
-            msg = f"Nonlinear sampling total iterations: {niter}"
-            print(msg, file=sys.stderr)
-        msg = f"KL-Minimization total iteration: {state.minimization_state.nit}"
-        print(msg, file=sys.stderr)
-        _, minis = minisanity(pos, state.samples, likelihood.normalized_residual)
-        print("Likelihood residual(s):", file=sys.stderr)
-        print(minis, file=sys.stderr)
-        _, minis = minisanity(pos, state.samples)
-        print("Prior residual(s):", file=sys.stderr)
-        print(minis, file=sys.stderr)
+        # Print basic infos (TODO: save to ouput file)
+        basic_status_print(i, pos, state, likelihood.normalized_residual)
 
         if callback != None:
             callback(pos, state, i)
