@@ -238,8 +238,11 @@ class MSChart:
         """
         #TODO same keyword
         if (not on_chart) and (self._trafos is not None):
-            coordinate = np.array(self._kernel_to_chart(*coordinate))
-        ids = tuple(ax.binid_from_coord(ll) for ax,ll in 
+            coordinate = self._kernel_to_chart(*coordinate)
+            if not isinstance(coordinate, tuple):
+                coordinate = (coordinate, )
+            coordinate = tuple(np.array(cc) for cc in coordinate)
+        ids = tuple(ax.binid_from_coord(ll) for ax,ll in
                     zip(self.axes(level), coordinate))
         ids = np.stack(ids, axis = 0)
         return axisids_to_id(ids, level, self._axes)
