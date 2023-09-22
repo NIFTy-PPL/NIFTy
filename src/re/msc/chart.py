@@ -338,8 +338,8 @@ class MSChart:
             if aa.regular:
                 kids[i] = 0
         kids = axisids_to_id(kids, level, self._axes)
-        _, sel, isel = np.unique(kids, return_index=True, return_inverse=True)
-        kids = refine_indices[sel]
+        kids, isel = np.unique(kids, return_inverse=True)
+
         coarse, kernels = [], []
         for i, (ax, idx, kidx) in enumerate(zip(axs, 
                             id_to_axisids(refine_indices, level, self._axes), 
