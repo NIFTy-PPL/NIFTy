@@ -174,7 +174,7 @@ class _MSSpectralGP(AbstractModel):
     def __init__(self, chart, specfunc, logamp, offset, offset_logamp, r_minmax, 
                  N, prefix = "", dtype = jnp.float64, stationary_axes = False,
                  scan_kernel = False, atol = 1E-5, rtol = 1E-5, 
-                 buffer_size = 10000):
+                 buffer_size = 10000, nbatch = 10):
         """Abstract base class for isotropic GPs with a kernel defined via a 
         power spectrum.
 
@@ -264,7 +264,7 @@ class _MSSpectralGP(AbstractModel):
                                                  self._chart.nspacedims, True)
 
         self._kernel = MSKernel(None, chart, stationary_axes, scan_kernel,
-                                distmat, atol, rtol, buffer_size)
+                                distmat, atol, rtol, buffer_size, nbatch)
         self._xikey = prefix+'xi'
         self._pytree[self._xikey] = _get_msc_shapewithdtype(chart, dtype)
 
@@ -310,7 +310,7 @@ class MSCorrelatedField(_MSSpectralGP):
     def __init__(self, chart, logamp, slope, logflex, offset_logamp, 
                  offset = 0., prefix = '', dtype = jnp.float64, r_minmax=None,
                  N = 50, stationary_axes = False, scan_kernel = False,
-                 atol = 1E-5, rtol = 1E-5, buffer_size = 10000):
+                 atol = 1E-5, rtol = 1E-5, buffer_size = 10000, nbatch = 10):
         """Special case of `MSConvolve` that assumes the input to be standard
         normal random variables (see Notes) and `kernel` to be the amplitude of a
         Gaussian process.
@@ -401,7 +401,7 @@ class MSCorrelatedField(_MSSpectralGP):
 
         super().__init__(chart, get_spec, logamp, offset, offset_logamp,
                          self._r_minmax, N, prefix, dtype, stationary_axes, 
-                         scan_kernel, atol, rtol, buffer_size)
+                         scan_kernel, atol, rtol, buffer_size, nbatch)
 
     def get_slope(self, p):
         return self._slope(p)
@@ -413,7 +413,7 @@ class MSMatern(_MSSpectralGP):
     def __init__(self, chart, logamp, slope, logscale, offset_logamp, 
                  offset = 0., prefix = '', dtype = jnp.float64, r_minmax=None, 
                  N = 50, stationary_axes = False, scan_kernel = False,
-                 atol = 1E-5, rtol = 1E-5, buffer_size = 10000):
+                 atol = 1E-5, rtol = 1E-5, buffer_size = 10000, nbatch = 10):
         self._pytree = {}
         if not isinstance(chart, MSChart):
             raise ValueError
@@ -469,7 +469,7 @@ class MSMatern(_MSSpectralGP):
 
         super().__init__(chart, get_spec, logamp, offset, offset_logamp,
                          self._r_minmax, N, prefix, dtype, stationary_axes, 
-                         scan_kernel, atol, rtol, buffer_size)
+                         scan_kernel, atol, rtol, buffer_size, nbatch = 10)
 
     def get_slope(self, p):
         return self._slope(p)
