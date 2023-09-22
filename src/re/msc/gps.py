@@ -469,7 +469,7 @@ class MSMatern(_MSSpectralGP):
 
         super().__init__(chart, get_spec, logamp, offset, offset_logamp,
                          self._r_minmax, N, prefix, dtype, stationary_axes, 
-                         scan_kernel, atol, rtol, buffer_size, nbatch = 10)
+                         scan_kernel, atol, rtol, buffer_size, nbatch = nbatch)
 
     def get_slope(self, p):
         return self._slope(p)
