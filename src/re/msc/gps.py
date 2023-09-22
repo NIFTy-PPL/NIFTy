@@ -12,7 +12,7 @@ from .chart import MSChart
 from .kernel import MSKernel
 from ..model import AbstractModel, Model
 from ..misc import ducktape
-from ..tree_math import ShapeWithDtype
+from ..tree_math import ShapeWithDtype, zeros_like
 
 
 def _get_msc_shapewithdtype(chart, dtype):
@@ -171,11 +171,11 @@ def get_rminmax(chart):
     return r_min, r_max
 
 class _MSSpectralGP(AbstractModel):
-    def __init__(self, chart, specfunc, logamp, offset, offset_logamp, r_minmax, 
+    def __init__(self, chart, specfunc, logamp, offset, offset_logamp, r_minmax,
                  N, prefix = "", dtype = jnp.float64, stationary_axes = False,
-                 scan_kernel = False, atol = 1E-5, rtol = 1E-5, 
-                 buffer_size = 10000, nbatch = 10):
-        """Abstract base class for isotropic GPs with a kernel defined via a 
+                 scan_kernel = False, scan_use_latent = True,
+                 atol = 1E-5, rtol = 1E-5, buffer_size = 10000, nbatch = 10):
+        """Abstract base class for isotropic GPs with a kernel defined via a
         power spectrum.
 
         Parameters:
@@ -192,7 +192,7 @@ class _MSSpectralGP(AbstractModel):
             by `chart` and `r_minmax` and re scaled with this overall amplitude.
             If `float` the amplitude is the exponential of `logamp`.
             If `tuple` the pair defines the mean and standard deviation of a
-            Gaussian random variable that defines the log amplitude. This 
+            Gaussian random variable that defines the log amplitude. This
             parameter is inferred in addition to the other parameters and added
             to the domain of the GP.
             If `Model`
@@ -202,13 +202,13 @@ class _MSSpectralGP(AbstractModel):
         Returns:
         --------
         nifty6.re.Model
-            An instance of `Model` that can be applied to a `Vector` of standard 
-            normal variables of consistent shape to obtain a random realization 
+            An instance of `Model` that can be applied to a `Vector` of standard
+            normal variables of consistent shape to obtain a random realization
             of a GP with amplitude `kernel` on `chart`.
         Notes:
         ------
-            In order to generate a consistent approximation of a continuous GP, 
-            the input random variables get scaled with the square root of the 
+            In order to generate a consistent approximation of a continuous GP,
+            the input random variables get scaled with the square root of the
             volume in each bin as this yields the correct variance of integrals
             over a standard normal distributed random process.
         """
@@ -220,7 +220,7 @@ class _MSSpectralGP(AbstractModel):
             self._amp = lambda p: jnp.exp(logamp)
         else:
             key = prefix+'amplitude'
-            if isinstance(logamp, tuple): 
+            if isinstance(logamp, tuple):
                 if not len(logamp) == 2:
                     raise ValueError
                 self._pytree[key] = ShapeWithDtype(())
@@ -259,14 +259,19 @@ class _MSSpectralGP(AbstractModel):
         self._r_minmax = r_minmax
 
         self._specfunc = specfunc
-        self._ker_from_spec = distfunc_from_spec(self._r_minmax[0], 
-                                                 self._r_minmax[1], N, 
+        self._ker_from_spec = distfunc_from_spec(self._r_minmax[0],
+                                                 self._r_minmax[1], N,
                                                  self._chart.nspacedims, True)
 
-        self._kernel = MSKernel(None, chart, stationary_axes, scan_kernel,
-                                distmat, atol, rtol, buffer_size, nbatch)
         self._xikey = prefix+'xi'
         self._pytree[self._xikey] = _get_msc_shapewithdtype(chart, dtype)
+        if scan_use_latent:
+            test_kernel = self.get_kernelfunc(zeros_like(self.domain))
+        else:
+            test_kernel = distmat
+
+        self._kernel = MSKernel(None, chart, stationary_axes, scan_kernel,
+                                test_kernel, atol, rtol, buffer_size, nbatch)
 
     @property
     def kernel_dists(self):
@@ -307,10 +312,11 @@ class _MSSpectralGP(AbstractModel):
         return list(r + off for r in MSGp(self._kernel)(p[self._xikey]))
 
 class MSCorrelatedField(_MSSpectralGP):
-    def __init__(self, chart, logamp, slope, logflex, offset_logamp, 
+    def __init__(self, chart, logamp, slope, logflex, offset_logamp,
                  offset = 0., prefix = '', dtype = jnp.float64, r_minmax=None,
                  N = 50, stationary_axes = False, scan_kernel = False,
-                 atol = 1E-5, rtol = 1E-5, buffer_size = 10000, nbatch = 10):
+                 scan_use_latent = True, atol = 1E-5, rtol = 1E-5,
+                 buffer_size = 10000, nbatch = 10):
         """Special case of `MSConvolve` that assumes the input to be standard
         normal random variables (see Notes) and `kernel` to be the amplitude of a
         Gaussian process.
@@ -324,14 +330,14 @@ class MSCorrelatedField(_MSSpectralGP):
         Returns:
         --------
         nifty6.re.Model
-            An instance of `Model` that can be applied to a `Vector` of standard 
-            normal variables of consistent shape to obtain a random realization of 
+            An instance of `Model` that can be applied to a `Vector` of standard
+            normal variables of consistent shape to obtain a random realization of
             a GP with amplitude `kernel` on `chart`.
         Notes:
         ------
             In order to generate a consistent approximation of a continuous GP, the
             input random variables get scaled with the square root of the volume in
-            each bin as this yields the correct variance of integrals over a 
+            each bin as this yields the correct variance of integrals over a
             standard normal distributed random process.
         """
         self._pytree = {}
@@ -341,7 +347,7 @@ class MSCorrelatedField(_MSSpectralGP):
             self._r_minmax = get_rminmax(chart)
         else:
             self._r_minmax = r_minmax
-        
+
         if isinstance(slope, float):
             self._slope = lambda p: slope
         else:
@@ -350,7 +356,7 @@ class MSCorrelatedField(_MSSpectralGP):
                 if not len(slope) == 2:
                     raise ValueError
                 self._pytree[key] = ShapeWithDtype(())
-                self._slope = ducktape(lambda x: normal_transform(x, slope), 
+                self._slope = ducktape(lambda x: normal_transform(x, slope),
                                        key)
             elif isinstance(slope, Model):
                 if slope.target != ShapeWithDtype(()):
@@ -378,7 +384,7 @@ class MSCorrelatedField(_MSSpectralGP):
                 if isinstance(logflex, tuple):
                     if not len(logflex) == 2:
                         raise ValueError
-                    self._flex = ducktape(lambda x: 
+                    self._flex = ducktape(lambda x:
                                           jnp.exp(normal_transform(x, logflex)),
                                           key)
                     self._pytree[key] = ShapeWithDtype(())
@@ -391,7 +397,7 @@ class MSCorrelatedField(_MSSpectralGP):
             def get_dev(p):
                 flex = self.get_flex(p)
                 xispec = p[spkey]
-                return jnp.concatenate([jnp.array([0.,]), 
+                return jnp.concatenate([jnp.array([0.,]),
                                         flex*sigk*jnp.cumsum(xispec)])
 
         def get_spec(p):
@@ -400,8 +406,9 @@ class MSCorrelatedField(_MSSpectralGP):
             return jnp.exp(0.5 * spec)
 
         super().__init__(chart, get_spec, logamp, offset, offset_logamp,
-                         self._r_minmax, N, prefix, dtype, stationary_axes, 
-                         scan_kernel, atol, rtol, buffer_size, nbatch)
+                         self._r_minmax, N, prefix, dtype, stationary_axes,
+                         scan_kernel, scan_use_latent, atol, rtol, buffer_size,
+                         nbatch)
 
     def get_slope(self, p):
         return self._slope(p)
@@ -410,10 +417,11 @@ class MSCorrelatedField(_MSSpectralGP):
         return self._flex(p)
 
 class MSMatern(_MSSpectralGP):
-    def __init__(self, chart, logamp, slope, logscale, offset_logamp, 
-                 offset = 0., prefix = '', dtype = jnp.float64, r_minmax=None, 
+    def __init__(self, chart, logamp, slope, logscale, offset_logamp,
+                 offset = 0., prefix = '', dtype = jnp.float64, r_minmax=None,
                  N = 50, stationary_axes = False, scan_kernel = False,
-                 atol = 1E-5, rtol = 1E-5, buffer_size = 10000, nbatch = 10):
+                 scan_use_latent = True, atol = 1E-5, rtol = 1E-5,
+                 buffer_size = 10000, nbatch = 10):
         self._pytree = {}
         if not isinstance(chart, MSChart):
             raise ValueError
@@ -431,7 +439,7 @@ class MSMatern(_MSSpectralGP):
                 if not len(slope) == 2:
                     raise ValueError
                 self._pytree[key] = ShapeWithDtype(())
-                self._slope = ducktape(lambda x: normal_transform(x, slope), 
+                self._slope = ducktape(lambda x: normal_transform(x, slope),
                                        key)
             elif isinstance(slope, Model):
                 if slope.target != ShapeWithDtype(()):
@@ -450,7 +458,7 @@ class MSMatern(_MSSpectralGP):
                     raise ValueError
                 self._pytree[key] = ShapeWithDtype(())
                 self._scale= ducktape(lambda x:
-                                      jnp.exp(normal_transform(x, logscale)), 
+                                      jnp.exp(normal_transform(x, logscale)),
                                       key)
             elif isinstance(logscale, Model):
                 if logscale.target != ShapeWithDtype(()):
@@ -468,8 +476,9 @@ class MSMatern(_MSSpectralGP):
             return res**(sl / 4.)
 
         super().__init__(chart, get_spec, logamp, offset, offset_logamp,
-                         self._r_minmax, N, prefix, dtype, stationary_axes, 
-                         scan_kernel, atol, rtol, buffer_size, nbatch = nbatch)
+                         self._r_minmax, N, prefix, dtype, stationary_axes,
+                         scan_kernel, scan_use_latent, atol, rtol, buffer_size,
+                         nbatch = nbatch)
 
     def get_slope(self, p):
         return self._slope(p)
