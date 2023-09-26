@@ -132,8 +132,8 @@ def _newton_cg(
     cg_kwargs = {} if cg_kwargs is None else cg_kwargs
     cg_name = name + "CG" if name is not None else None
 
-    mynorm = (partial(jft_norm, ord=norm_ord) if custom_gradnorm is None else 
-              custom_gradnorm)
+    gradnorm = (partial(jft_norm, ord=norm_ord) if custom_gradnorm is None else
+                custom_gradnorm)
     energy, g = fun_and_grad(pos)
     nfev, njev, nhev = 1, 1, 0
     if jnp.isnan(energy):
@@ -201,7 +201,7 @@ def _newton_cg(
         pos = new_pos
         g = new_g
 
-        descent_norm = grad_scaling * mynorm(dd)
+        descent_norm = grad_scaling * gradnorm(dd)
         if name is not None:
             msg = (
                 f"{name}: →:{grad_scaling} ↺:{ls_reset} #∇²:{nhev:02d}"
