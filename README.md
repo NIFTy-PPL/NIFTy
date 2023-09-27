@@ -46,7 +46,7 @@ Installation
 Detailed installation instructions can be found in the NIFTy Documentation for:
 
 - [users](http://ift.pages.mpcdf.de/nifty/user/installation.html)
-- [developers](http://ift.pages.mpcdf.de/nifty/dev/index.html) 
+- [developers](http://ift.pages.mpcdf.de/nifty/dev/index.html)
 
 ### Run the tests
 
@@ -84,6 +84,9 @@ The NIFTy package is licensed under the terms of the
 [GPLv3](https://www.gnu.org/licenses/gpl.html) and is distributed
 *without any warranty*.
 
+### Citing NIFTy
+
+Please refer to [the corresponding entry on citing NIFTy in the documentation](https://ift.pages.mpcdf.de/nifty/user/citations.html).
 
 Contributors
 ------------
