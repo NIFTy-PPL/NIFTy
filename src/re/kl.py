@@ -19,7 +19,7 @@ from jax.tree_util import (
 from .smap import smap
 from .optimize import OptimizeResults, minimize, conjugate_gradient
 from .likelihood import (
-    Likelihood, StandardHamiltonian, partial_insert_and_remove,
+    Likelihood, StandardHamiltonian, partial_insert_and_remove, _functional_conj
 )
 from .tree_math import (
     Vector, assert_arithmetics, random_like, stack, dot, vdot, unstack
@@ -208,7 +208,8 @@ def _nl_metric(likelihood, p, lh_trafo_at_p, primals, tangents):
 
 def _nl_sampnorm(likelihood, p, natgrad):
     o = partial(likelihood.left_sqrt_metric, p)
-    fpp = linear_transpose(o, likelihood.lsm_tangents_shape)(natgrad)
+    o_transpose = linear_transpose(o, likelihood.lsm_tangents_shape)
+    fpp = _functional_conj(o_transpose)(natgrad)
     return jnp.sqrt(vdot(natgrad, natgrad) + vdot(fpp, fpp))
 
 
