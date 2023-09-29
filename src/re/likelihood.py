@@ -77,7 +77,7 @@ def _partial_argument(call, insert_axes, flat_fill):
     return partially_inserted_call
 
 
-def _partial_insert_and_remove(
+def partial_insert_and_remove(
     call, insert_axes, flat_fill, *, remove_axes=(), unflatten=None
 ):
     """Return a call in which `flat_fill` is inserted into arguments of `call`
@@ -536,33 +536,19 @@ class Likelihood(AbstractModel):
     def partial(self, insert_axes, primals_frozen):
         """TODO
         """
-        energy = _partial_insert_and_remove(
+        energy = partial_insert_and_remove(
             self.energy,
             insert_axes=(insert_axes, ),
             flat_fill=(primals_frozen, ),
             remove_axes=None
         )
-        trafo = _partial_insert_and_remove(
+        trafo = partial_insert_and_remove(
             self.transformation,
             insert_axes=(insert_axes, ),
             flat_fill=(primals_frozen, ),
             remove_axes=None
         )
-        lsm = _partial_insert_and_remove(
-            self.left_sqrt_metric,
-            insert_axes=(insert_axes, None),
-            flat_fill=(primals_frozen, None),
-            remove_axes=insert_axes,
-            unflatten=Vector
-        )
-        metric = _partial_insert_and_remove(
-            self.metric,
-            insert_axes=(insert_axes, insert_axes),
-            flat_fill=(primals_frozen, ) + (zeros_like(primals_frozen), ),
-            remove_axes=insert_axes,
-            unflatten=Vector
-        )
-        norm_residual = _partial_insert_and_remove(
+        norm_residual = partial_insert_and_remove(
             self.normalized_residual,
             insert_axes=(insert_axes, ),
             flat_fill=(primals_frozen, ),
@@ -573,8 +559,6 @@ class Likelihood(AbstractModel):
             energy,
             normalized_residual=norm_residual,
             transformation=trafo,
-            left_sqrt_metric=lsm,
-            metric=metric,
             lsm_tangents_shape=self.lsm_tangents_shape
         )
 

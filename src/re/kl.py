@@ -19,7 +19,7 @@ from jax.tree_util import (
 from .smap import smap
 from .optimize import OptimizeResults, minimize, conjugate_gradient
 from .likelihood import (
-    Likelihood, StandardHamiltonian, _partial_insert_and_remove,
+    Likelihood, StandardHamiltonian, partial_insert_and_remove,
 )
 from .tree_math import (
     Vector, assert_arithmetics, random_like, stack, dot, vdot, unstack
