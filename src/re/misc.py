@@ -2,7 +2,8 @@
 # SPDX-License-Identifier: GPL-2.0+ OR BSD-2-Clause
 
 from functools import reduce
-from typing import Any, Callable, Dict, Hashable, Mapping, TypeVar
+from typing import (Any, Callable, Dict, Hashable, Mapping, NamedTuple,
+                    TypeVar, Tuple)
 
 import numpy as np
 import pprint
@@ -112,6 +113,11 @@ def _residual_params(inp):
     rchisq = jnp.vdot(inp, inp) / ndof
     return mean, rchisq, ndof
 
+class ChiSqStats(NamedTuple):
+    mean: Any
+    reduced_chisq: Any
+    ndof: Any
+
 
 def reduced_residual_stats(primals, samples=None, func=None):
     """Computes the average, reduced chi-squared, and number of parameters
@@ -152,7 +158,7 @@ def reduced_residual_stats(primals, samples=None, func=None):
         m, rx, nd = get_stats(s)
         m = jnp.array([jnp.mean(m), jnp.std(m)])
         rx = jnp.array([jnp.mean(rx), jnp.std(rx)])
-        return (m, rx, nd[0])
+        return ChiSqStats(m, rx, nd[0])
 
     return jax.tree_map(red_chisq_stat, samples)
 
@@ -160,26 +166,14 @@ def minisanity(primals, samples=None, func=None):
     stat_tree = reduced_residual_stats(primals, samples=samples, func=func)
 
     def pretty_string(x):
-        s = f"reduced χ²: {x[1][0]:.2}±{x[1][1]:.2}, "
-        s += f"avg: {x[0][0]:.2}±{x[0][1]:.2}, "
-        s += f"#dof: {int(x[2])}"
+        rsq = x.reduced_chisq
+        s = f"reduced χ²: {rsq[0]:.2}±{rsq[1]:.2}, "
+        s += f"avg: {x.mean[0]:.2}±{x.mean[1]:.2}, "
+        s += f"#dof: {int(x.ndof)}"
         return s
 
     def is_leaf(l):
-        if not isinstance(l, tuple):
-            return False
-        if not (len(l) == 3):
-            return False
-        if not reduce(lambda a,b: a*b, (isinstance(ll, jax.Array) for ll in l)):
-            return False
-        if not (l[0].size == 2):
-            return False
-        if not (l[1].size == 2):
-            return False
-        if not (l[2].size == 1):
-            return False
-        return True
+        return isinstance(l, ChiSqStats)
 
     stat_tree = jax.tree_map(pretty_string, stat_tree, is_leaf=is_leaf)
-    pr = pprint.PrettyPrinter()
-    return stat_tree, pr.pformat(stat_tree)
+    return stat_tree, pprint.PrettyPrinter().pformat(stat_tree)
