@@ -27,7 +27,7 @@ def _matrices_naive(
     kernel: Callable,
     depth: int,
     *,
-    coerce_fine_kernel: bool = True,
+    coerce_fine_kernel: bool = False,
 ):
     cov_from_loc = get_cov_from_loc(kernel)
 
@@ -84,7 +84,7 @@ def _matrices_tol(
     kernel: Callable,
     depth: int,
     *,
-    coerce_fine_kernel: bool = True,
+    coerce_fine_kernel: bool = False,
     atol: Optional[float] = None,
     rtol: Optional[float] = None,
     which: Optional[str] = "dist",
@@ -229,7 +229,7 @@ class RefinementHPField(AbstractModel):
         depth: Optional[int] = None,
         skip0: Optional[bool] = None,
         *,
-        coerce_fine_kernel: bool = True,
+        coerce_fine_kernel: bool = False,
         atol: Optional[float] = None,
         rtol: Optional[float] = None,
         which: Optional[str] = "dist",
@@ -338,7 +338,7 @@ class RefinementHPField(AbstractModel):
         kernel: Union[Callable, RefinementMatrices],
         *,
         skip0: bool = False,
-        coerce_fine_kernel: bool = True,
+        coerce_fine_kernel: bool = False,
         _refine: Optional[Callable] = None,
         precision=None,
     ):

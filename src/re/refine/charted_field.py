@@ -24,7 +24,7 @@ def _coordinate_pixel_refinement_matrices(
     pixel_index: Optional[Iterable[int]] = None,
     kernel: Optional[Callable] = None,
     *,
-    coerce_fine_kernel: bool = True,
+    coerce_fine_kernel: bool = False,
     _cov_from_loc: Optional[Callable] = None,
 ) -> Tuple[jnp.ndarray, jnp.ndarray]:
     cov_from_loc = get_cov_from_loc(kernel, _cov_from_loc)
@@ -76,7 +76,7 @@ def _coordinate_refinement_matrices(
     *,
     depth: Optional[int] = None,
     skip0=False,
-    coerce_fine_kernel: bool = True,
+    coerce_fine_kernel: bool = False,
     _cov_from_loc=None
 ) -> RefinementMatrices:
     cov_from_loc = get_cov_from_loc(kernel, _cov_from_loc)
@@ -319,7 +319,7 @@ class RefinementField(AbstractModel):
         *,
         skip0: bool = False,
         depth: Optional[int] = None,
-        coerce_fine_kernel: bool = True,
+        coerce_fine_kernel: bool = False,
         _refine: Optional[Callable] = None,
         _cov_from_loc: Optional[Callable] = None,
         precision=None,
