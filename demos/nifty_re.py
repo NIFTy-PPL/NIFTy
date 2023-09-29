@@ -18,9 +18,10 @@ key = random.PRNGKey(seed)
 
 dims = (128, 128)
 
-n_vi_iterations = 4
+n_vi_iterations = 6
 n_newton_iterations = 10
-absdelta = 1e-4 * jnp.prod(jnp.array(dims))
+delta = 1e-4
+absdelta = delta * jnp.prod(jnp.array(dims))
 
 cf_zm = {"offset_mean": 0., "offset_std": (1e-3, 1e-4)}
 cf_fl = {
@@ -160,10 +161,7 @@ signal = Signal(correlated_field, scaling)
 # )
 
 # %%
-#signal_response = signal
-signal_response = jft.Model(lambda x: jft.Vector({'d0': signal(x)}),
-                            domain=signal.domain,
-                            init=signal.init)
+signal_response = signal
 noise_cov = lambda x: 0.1**2 * x
 noise_cov_inv = lambda x: 0.1**-2 * x
 
@@ -182,7 +180,7 @@ key, subkey = random.split(key)
 pos_init = jft.random_like(subkey, signal_response.domain)
 pos_init = jft.Vector(pos_init)
 linear_sampling_kwarks = {"absdelta": absdelta / 10., "maxiter": 100}
-sampling_kwargs = {"xtol": 0.0001, "maxiter": 10}
+sampling_kwargs = {"xtol": delta, "maxiter": 10}
 minimization_kwarks = {"absdelta": absdelta, "maxiter": n_newton_iterations}
 # NOTE, changing the number of samples always triggers a resampling even if
 # `resamples=False`, as more samples have to be drawn that did not exist before.
@@ -200,15 +198,15 @@ pos, samples = jft.optimize_kl(nll, pos_init,
                                sampling_cg_kwargs=linear_sampling_kwarks,
                                resample=lambda ii: True if ii<2 else False,
                                out_dir="results_jifty",
-                               verbosity=-1)
+                               verbosity=0)
 # %%
 namps = cfm.get_normalized_amplitudes()
 post_sr_mean = jft.mean(tuple(signal(s) for s in samples.at(pos)))
 post_a_mean = jft.mean(tuple(cfm.amplitude(s)[1:] for s in samples.at(pos)))
 to_plot = [
     ("Signal", signal(pos_truth), "im"),
-    ("Noise", noise_truth['d0'], "im"),
-    ("Data", data['d0'], "im"),
+    ("Noise", noise_truth, "im"),
+    ("Data", data, "im"),
     ("Reconstruction", post_sr_mean, "im"),
     ("Ax1", (cfm.amplitude(pos_truth)[1:], post_a_mean), "loglog"),
 ]
