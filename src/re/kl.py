@@ -8,6 +8,7 @@ from operator import getitem
 from typing import (Callable, Optional, Tuple, TypeVar, Union, NamedTuple, Any,
                     List)
 from warnings import warn
+from .logger import logger
 
 from jax import numpy as jnp
 from jax import random, vmap, value_and_grad, jvp, vjp, linear_transpose, jit
@@ -465,9 +466,8 @@ class OptimizeVI:
             self._nl_sampnorm = do_jit(get_partial(_nl_sampnorm))
         else:
             if likelihood is not None:
-                msg = "Warning: Likelihood funcs is set, ignoring Likelihood"
-                msg += " input"
-                print(msg, file=sys.stderr)
+                msg = "Likelihood funcs is set, ignoring Likelihood input"
+                logger.warn(msg)
             (self._kl_vg,
              self._kl_metric,
              self._draw_linear,
@@ -612,7 +612,7 @@ class OptimizeVI:
 
     def run(self, primals):
         primals, state = self.init_state(primals)
-        for i in range(self._n_iter):
-            print(f"OptVI iteration number: {i}", file=sys.stderr)
+        for n in range(self._n_iter):
+            logger.info(f"OptVI iteration number: {n}")
             primals, state = self.update(primals, state)
         return primals, state

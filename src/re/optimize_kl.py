@@ -13,6 +13,7 @@ from .tree_math.vector import Vector
 from .likelihood import Likelihood
 from .kl import OptimizeVI, OptVIState
 from .misc import minisanity
+from .logger import logger
 
 
 def _make_callable(obj):
@@ -32,19 +33,21 @@ def _getitem(cfg, i):
 
 def basic_status_print(iiter, primals, state, residual):
     en = state.minimization_state.fun
-    print(f"Post VI Iteration {iiter}: Energy {en:2.4e}", file=sys.stderr)
+    logger.info(f"Post VI Iteration {iiter}: Energy {en:2.4e}")
     if state.sampling_states is not None:
         niter = tuple(ss.nit for ss in state.sampling_states)
-        msg = f"Nonlinear sampling total iterations: {niter}"
-        print(msg, file=sys.stderr)
+        logger.info(f"Nonlinear sampling total iterations: {niter}")
+
     msg = f"KL-Minimization total iteration: {state.minimization_state.nit}"
-    print(msg, file=sys.stderr)
+    logger.info(msg)
     _, minis = minisanity(primals, state.samples, residual)
-    print("Likelihood residual(s):", file=sys.stderr)
-    print(minis, file=sys.stderr)
+    msg = "Likelihood residual(s):\n"
+    msg += minis
+    logger.info(msg)
     _, minis = minisanity(primals, state.samples)
-    print("Prior residual(s):", file=sys.stderr)
-    print(minis, file=sys.stderr)
+    msg = "Prior residual(s):\n"
+    msg += minis
+    logger.info(msg)
 
 
 def optimize_kl(
@@ -178,8 +181,8 @@ def optimize_kl(
                          ncfg['minimization_kwargs'],
                          _lh_funcs = _func)
         if (n > 0) and (lh is not None):
-            msg = f"Warning: OptVI re-jit triggered at iteration number: {i}"
-            print(msg, file=sys.stderr)
+            msg = f"OptVI re-jit triggered at iteration number: {n}"
+            logger.warn(msg)
         return opt
 
     # Load last finished reconstruction
