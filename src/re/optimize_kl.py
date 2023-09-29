@@ -137,20 +137,21 @@ def optimize_kl(
             last_finished_index = int(f.read())
 
     # Setup verbosity level
-    sampling_cg_kwargs['name'] = None
-    sampling_kwargs['name'] = None
-    minimization_kwargs["name"] = None
-    if verbosity >= 0:
-        sampling_cg_kwargs['name'] = "linear_sampling"
-        sampling_kwargs['name'] = "non_linear_sampling"
-        minimization_kwargs["name"] = "minimize"
+    if verbosity < 0:
+        sampling_cg_kwargs['name'] = None
+        sampling_kwargs['name'] = None
+        minimization_kwargs['name'] = None
+    else:
+        sampling_cg_kwargs.setdefault('name', 'linear_sampling')
+        sampling_kwargs.setdefault('name', 'non_linear_sampling')
+        minimization_kwargs.setdefault('name', 'minimize')
     if verbosity < 1:
         if "cg_kwargs" in minimization_kwargs.keys():
-            minimization_kwargs["cg_kwargs"]["name"] = None
+            minimization_kwargs["cg_kwargs"].set_default('name', None)
         else:
             minimization_kwargs["cg_kwargs"] = {"name": None}
         if "cg_kwargs" in sampling_kwargs.keys():
-            sampling_kwargs["cg_kwargs"]["name"] = None
+            sampling_kwargs["cg_kwargs"].set_default('name', None)
         else:
             sampling_kwargs["cg_kwargs"] = {"name": None}
 
@@ -204,7 +205,6 @@ def optimize_kl(
         do_resampling = (_getitem(cfg['resample'], last_finished_index+1) or
                          (nsam != onsam))
     else:
-        pos = pos.copy()
         kp, sub = jax.random.split(key, 2)
         opt = get_optvi(0, sub)
         do_resampling = True
