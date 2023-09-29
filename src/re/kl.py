@@ -85,7 +85,7 @@ def _process_point_estimate(x, primals, point_estimates, insert):
         )
         assert p_frozen is not None
         fill = tree_map(lambda x: jnp.zeros((1,)*jnp.ndim(x)), p_frozen)
-        in_out = _partial_insert_and_remove(
+        in_out = partial_insert_and_remove(
             lambda *x: x[0],
             insert_axes=(point_estimates,) if insert else None,
             flat_fill=(fill,) if insert else None,
