@@ -423,7 +423,11 @@ class OptimizeVI:
         self._sampling_minimizer = sampling_minimizer
         self._sampling_kwargs = sampling_kwargs
         # Only use xtol for sampling since a custom gradient norm is used
-        self._sampling_kwargs['absdelta'] = 0.
+        if 'absdelta' in self._sampling_kwargs.keys():
+            msg = 'Geometric sampling uses custom gradientnorm tolerance set '
+            msg += 'by `xtol`. Ignoring `absdelta`...'
+            logger.warn(msg)
+            self._sampling_kwargs['absdelta'] = 0.
         self._mini_kwargs = minimization_kwargs
         self._keys = random.split(key, n_samples)
         self._likelihood = likelihood
