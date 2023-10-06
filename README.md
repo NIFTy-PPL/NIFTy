@@ -67,17 +67,6 @@ dive into NIFTy by running one of the demonstrations, e.g.:
 
     python3 demos/getting_started_1.py
 
-### Acknowledgements
-
-Please consider acknowledging NIFTy in your publication(s) by using a phrase
-such as the following:
-
-> "Some of the results in this publication have been derived using the
-> NIFTy package [(https://gitlab.mpcdf.mpg.de/ift/NIFTy)](https://gitlab.mpcdf.mpg.de/ift/NIFTy)"
-
-and a citation to one of the [publications](https://ift.pages.mpcdf.de/nifty/user/citations.html).
-
-
 ### Licensing terms
 
 The NIFTy package is licensed under the terms of the
