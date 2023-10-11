@@ -46,16 +46,33 @@ cfm.add_fluctuations(
 )
 correlated_field = cfm.finalize()
 
-signal = jft.Model(
-    lambda x: jnp.exp(correlated_field(x)),
-    domain=correlated_field.domain,
-    init=correlated_field.init
-)
+scaling = jft.LogNormalPrior(3., 1., name="scaling", shape=(1, ))
+
+
+class Signal(jft.Model):
+    def __init__(self, correlated_field, scaling):
+        self.cf = correlated_field
+        self.scaling = scaling
+        # Init methods of the Correlated Field model and any prior model in
+        # NIFTy.re are aware that their input is standard normal a priori.
+        # The `domain` of a model does not know this. Thus, tracking the `init`
+        # methods should be preferred over tracking the `domain`.
+        super().__init__(init=self.cf.init | self.scaling.init)
+
+    def __call__(self, x):
+        # NOTE, think of `Model` as being just a plain function that takes some
+        # input and performs all the necessary computation for your model.
+        # Note, `scaling` here is completely degenarate with `offset_std` in the
+        # likelihood but the priors for them are very different.
+        return self.scaling(x) * jnp.exp(self.cf(x))
+
+
+signal = Signal(correlated_field, scaling)
 
 # %% [markdown]
 # ## NIFTy to NIFTY.re
 
-# The equivalent model in numpy-based NIFTy reads
+# The equivalent model for the correlated field in numpy-based NIFTy reads
 
 # ```python
 # import nifty8 as ift
@@ -69,7 +86,6 @@ signal = jft.Model(
 # cfm_nft.add_fluctuations(position_space, **cf_fl_nft, prefix="ax1")
 # cfm_nft.set_amplitude_total_offset(**cf_zm)
 # correlated_field_nft = cfm_nft.finalize()
-# signal_nft = correlated_field_nft.exp()
 #```
 
 # For convience, NIFTy implements a method to translate numpy-based NIFTy
@@ -84,15 +100,19 @@ signal = jft.Model(
 #```python
 # # Convenience method to get JAX expression as NIFTy.re model which tracks
 # # domain and target
-# signal_nft: jft.Model = ift.nifty2jax.convert(signal_nft, float)
+# correlated_field_nft: jft.Model = ift.nifty2jax.convert(
+#     correlated_field_nft, float
+# )
 # ```
 
 # Both expressions are identical up to floating point precision
 # ```python
 # import numpy as np
 #
-# t = signal.init(random.PRNGKey(42))
-# np.testing.assert_allclose(signal(t), signal_nft(t), atol=1e-13, rtol=1e-13)
+# t = correlated_field_nft.init(random.PRNGKey(42))
+# np.testing.assert_allclose(
+#     correlated_field(t), correlated_field_nft(t), atol=1e-13, rtol=1e-13
+# )
 # ```
 
 # Note, caution is advised when translating NIFTy models working on complex
@@ -227,7 +247,7 @@ def sample_evi(primals, key, *, absdelta, point_estimates=()):
 # %%
 key, ks, kp = random.split(key, 3)
 sampling_keys = random.split(ks, n_samples)
-pos_init = jft.random_like(kp, correlated_field.domain)
+pos_init = jft.random_like(kp, signal_response.domain)
 pos = 1e-2 * jft.Vector(pos_init.copy())
 
 # %%  Minimize the potential
