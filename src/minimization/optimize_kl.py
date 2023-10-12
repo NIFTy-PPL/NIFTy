@@ -44,16 +44,6 @@ from .minimizer import Minimizer
 from .sample_list import (ResidualSampleList, SampleList, SampleListBase,
                           _barrier)
 
-try:
-    import h5py
-except ImportError:
-    h5py = False
-
-try:
-    import astropy
-except ImportError:
-    astropy = False
-
 _output_directory = None
 _save_strategy = None
 
@@ -472,6 +462,16 @@ def _export_operators(index, export_operator_outputs, sample_list, comm):
         raise RuntimeError(f"{_output_directory} does not exist")
     if not isinstance(sample_list, SampleListBase):
         raise TypeError
+
+    try:
+        import h5py
+    except ImportError:
+        h5py = False
+
+    try:
+        import astropy
+    except ImportError:
+        astropy = False
 
     for name, op in export_operator_outputs.items():
         if not _is_subdomain(op.domain, sample_list.domain):
