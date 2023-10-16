@@ -112,7 +112,7 @@ def Gaussian(
     def transformation(primals):
         return noise_std_inv(primals)
 
-    lsm_tangents_shape = tree_map(ShapeWithDtype.from_leave, data)
+    domain = lsm_tangents_shape = tree_map(ShapeWithDtype.from_leave, data)
 
     return Likelihood(
         hamiltonian,
@@ -120,7 +120,8 @@ def Gaussian(
         transformation=transformation,
         left_sqrt_metric=left_sqrt_metric,
         metric=metric,
-        lsm_tangents_shape=lsm_tangents_shape
+        lsm_tangents_shape=lsm_tangents_shape,
+        domain=domain,
     )
 
 
@@ -184,7 +185,7 @@ def StudentT(
         """
         return noise_std_inv(((dof + 1) / (dof + 3))**0.5 * primals)
 
-    lsm_tangents_shape = tree_map(ShapeWithDtype.from_leave, data)
+    domain = lsm_tangents_shape = tree_map(ShapeWithDtype.from_leave, data)
 
     return Likelihood(
         hamiltonian,
@@ -192,7 +193,8 @@ def StudentT(
         transformation=transformation,
         left_sqrt_metric=left_sqrt_metric,
         metric=metric,
-        lsm_tangents_shape=lsm_tangents_shape
+        lsm_tangents_shape=lsm_tangents_shape,
+        domain=domain,
     )
 
 
@@ -240,7 +242,9 @@ def Poissonian(data, sampling_dtype=float):
     def transformation(primals):
         return 2. * primals**0.5
 
-    lsm_tangents_shape = tree_map(_shape_w_fixed_dtype(sampling_dtype), data)
+    domain = lsm_tangents_shape = tree_map(
+        _shape_w_fixed_dtype(sampling_dtype), data
+    )
 
     return Likelihood(
         hamiltonian,
@@ -248,7 +252,8 @@ def Poissonian(data, sampling_dtype=float):
         transformation=transformation,
         left_sqrt_metric=left_sqrt_metric,
         metric=metric,
-        lsm_tangents_shape=lsm_tangents_shape
+        lsm_tangents_shape=lsm_tangents_shape,
+        domain=domain,
     )
 
 
@@ -318,7 +323,9 @@ def VariableCovarianceGaussian(data, iscomplex=False):
         )
         return type(primals)(res)
 
-    lsm_tangents_shape = tree_map(ShapeWithDtype.from_leave, (data, data.real))
+    domain = lsm_tangents_shape = tree_map(
+        ShapeWithDtype.from_leave, (data, data.real)
+    )
 
     return Likelihood(
         hamiltonian,
@@ -326,7 +333,8 @@ def VariableCovarianceGaussian(data, iscomplex=False):
         transformation=transformation,
         left_sqrt_metric=left_sqrt_metric,
         metric=metric,
-        lsm_tangents_shape=lsm_tangents_shape
+        lsm_tangents_shape=lsm_tangents_shape,
+        domain=domain,
     )
 
 
@@ -376,14 +384,17 @@ def VariableCovarianceStudentT(data, dof):
         )
         return (cov[0]**0.5 * tangents[0], cov[1]**0.5 * tangents[1])
 
-    lsm_tangents_shape = tree_map(ShapeWithDtype.from_leave, (data, data))
+    domain = lsm_tangents_shape = tree_map(
+        ShapeWithDtype.from_leave, (data, data)
+    )
 
     return Likelihood(
         hamiltonian,
         normalized_residual=normalized_residual,
         left_sqrt_metric=left_sqrt_metric,
         metric=metric,
-        lsm_tangents_shape=lsm_tangents_shape
+        lsm_tangents_shape=lsm_tangents_shape,
+        domain=domain,
     )
 
 
@@ -429,12 +440,15 @@ def Categorical(data, axis=-1, sampling_dtype=float):
         norm_term = sum(norm_term)
         return sqrtp * (tangents - sqrtp * norm_term)
 
-    lsm_tangents_shape = tree_map(_shape_w_fixed_dtype(sampling_dtype), data)
+    domain = lsm_tangents_shape = tree_map(
+        _shape_w_fixed_dtype(sampling_dtype), data
+    )
 
     return Likelihood(
         hamiltonian,
         normalized_residual=None,
         left_sqrt_metric=left_sqrt_metric,
         metric=metric,
-        lsm_tangents_shape=lsm_tangents_shape
+        lsm_tangents_shape=lsm_tangents_shape,
+        domain=domain,
     )
