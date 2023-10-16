@@ -110,7 +110,7 @@ class Likelihood():
         Returns
         -------
         normalized_residual : tree-like structure
-            Structure of the same type as lsm_tangents_shape for which the 
+            Structure of the same type as lsm_tangents_shape for which the
             normalized_residual is computed.
         """
         if self._normalized_residual is None:
@@ -157,7 +157,7 @@ class Likelihood():
         primals : tree-like structure
             Position at which to evaluate the metric.
         tangents : tree-like structure
-            Instance to which to apply the metric. 
+            Instance to which to apply the metric.
             Must be of shape lsm_tangents_shape.
         **primals_kw : Any
            Additional arguments passed on to the LSM.
@@ -165,7 +165,7 @@ class Likelihood():
         Returns
         -------
         metric_sample : tree-like structure
-            Tree-like structure of the same type as primals to which 
+            Tree-like structure of the same type as primals to which
             the left-square-root of the metric has been applied to.
         """
         if self._left_sqrt_metric is None:
@@ -189,7 +189,7 @@ class Likelihood():
         Returns
         -------
         transformed_sample : tree-like structure
-            Structure of the same type as lsm_tangents_shape to which the 
+            Structure of the same type as lsm_tangents_shape to which the
             geometric transformation has been applied to.
         """
         if self._transformation is None:
@@ -371,6 +371,7 @@ class Likelihood():
 
         def joined_normalized_residual(p, **pkw):
             from warnings import warn
+
             # FIXME
             warn("adding residuals is untested", UserWarning)
             lres = self.normalized_residual(p, **pkw)
@@ -389,6 +390,7 @@ class Likelihood():
 
         def joined_transformation(p, **pkw):
             from warnings import warn
+
             # FIXME
             warn("adding transformations is untested", UserWarning)
             lres = self.transformation(p, **pkw)
