@@ -90,14 +90,17 @@ forward = likelihood @ signal
 forward = forward.ducktape("domain")  # HACK to make `optimize_vi` happy
 
 ic_sampling = ift.DeltaEnergyController(
-    name="Sampling", iteration_limit=100, tol_rel_deltaE=1e-8
+    name="Sampling", iteration_limit=200, tol_rel_deltaE=1e-8
 )
 ic_newton = ift.DeltaEnergyController(
-    name="Newton", iteration_limit=100, tol_rel_deltaE=1e-8
+    name="Newton", iteration_limit=35, tol_rel_deltaE=1e-8
 )
 minimizer = ift.NewtonCG(ic_newton)
-n_vi_iterations = 2
-n_samples = 10
+# Increase this number (and/or the convergence criteria in `ic_*`) if you don't
+# think your model converged yet
+n_vi_iterations = 5
+# Increase this number if you believe you got stuck in a weird local minimum
+n_samples = 4
 
 state = ift.optimize_kl(
     forward,
