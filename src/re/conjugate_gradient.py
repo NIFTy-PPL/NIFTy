@@ -5,7 +5,7 @@ from datetime import datetime
 from functools import partial
 from typing import Any, Callable, NamedTuple, Optional, Tuple, Union
 
-from jax import lax
+import jax
 from jax import numpy as jnp
 
 from .logger import logger
@@ -235,6 +235,12 @@ def _static_cg(
 ) -> CGResults:
     from jax.experimental.host_callback import call
     from jax.lax import cond, while_loop
+
+    # While in general it is strongly discouraged to use `jit` inside a
+    # function, we do it here to avoid the overhead of jitting through `mat`
+    # multiple times within the CG loop. This is safe because the call to
+    # `while_loop` in CG implies a JIT anyways.
+    mat = jax.jit(mat)
 
     norm_ord = 2 if norm_ord is None else norm_ord  # TODO: change to 1
     maxiter_fallback = 20 * size(j)  # taken from SciPy's NewtonCG minimzer
@@ -493,6 +499,7 @@ def _cg_steihaug_subproblem(
     not need to be positive semidefinite.
     """
     from jax.experimental.host_callback import call
+    from jax.lax import switch, while_loop
 
     tr_norm_ord = jnp.inf if tr_norm_ord is None else tr_norm_ord  # taken from JAX
     norm_ord = 2 if norm_ord is None else norm_ord  # TODO: change to 1
@@ -625,7 +632,7 @@ def _cg_steihaug_subproblem(
                 [False, dBd <= 0, z_next_norm >= trust_radius, accept_z_next]
             )
         )
-        iterp = lax.switch(index, [noop, step1, step2, step3], (iterp, z_next))
+        iterp = switch(index, [noop, step1, step2, step3], (iterp, z_next))
 
         iterp = iterp._replace(
             z=z_next,
@@ -657,7 +664,7 @@ def _cg_steihaug_subproblem(
 
     # perform inner optimization to solve the constrained
     # quadratic subproblem using cg
-    result = lax.while_loop(cond_f, body_f, init_param)
+    result = while_loop(cond_f, body_f, init_param)
 
     pred_f = soa(result.step)
     result = _QuadSubproblemResult(
