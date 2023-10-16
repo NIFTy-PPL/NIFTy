@@ -6,7 +6,7 @@ from pprint import pformat
 from typing import Callable, Optional
 from warnings import warn
 
-from jax import eval_shape, linear_transpose
+from jax import eval_shape
 from jax import numpy as jnp
 from jax import random
 from jax.tree_util import tree_map, tree_structure, tree_unflatten
@@ -89,8 +89,7 @@ class AbstractModel():
     as well as instantiate a default initializer. Both can also be set
     explicitly.
 
-    It has three (plus one) hidden properties: `_domain`, `_target`, `_init`,
-    and optionally `_linear_transpose`.
+    It has three hidden properties: `_domain`, `_target`, `_init`.
     """
     def __call__(self, *args, **kwargs):
         raise NotImplementedError()
@@ -129,29 +128,10 @@ class AbstractModel():
             )
         return self._init
 
-    def transpose(self):
-        # TODO: Split into linear model
-        if getattr(self, "_linear_transpose", None) is None:
-            self._linear_transpose = linear_transpose(
-                self.__call__, self.domain
-            )
-        # Yield a concrete model b/c __init__ signature is unspecified
-        return Model(
-            self._linear_transpose,
-            domain=self.target,
-            _target=self.domain,
-            _linear_transpose=self.__call__
-        )
-
-    @property
-    def T(self):
-        return self.transpose()
-
 
 class Model(AbstractModel):
-    """Thin wrapper of a method to jointly store the shape of its primals
-    (`domain`) and optionally an initialization method and an associated
-    inverse method.
+    """Thin wrapper for a callable to jointly store it with the shape of its
+    primals (`domain`) and optionally an initialization method.
     """
     def __init__(
         self,
@@ -159,8 +139,6 @@ class Model(AbstractModel):
         *,
         domain=None,
         init=None,
-        inverse: Optional[Callable] = None,
-        _linear_transpose: Optional[Callable] = None,
         _target=None,
     ):
         """Wrap a callable and associate it with a `domain`.
@@ -176,9 +154,6 @@ class Model(AbstractModel):
             Initialization method taking a PRNG key as first argument and
             creating an object of type `domain`. Inferred from `domain`
             assuming a white normal prior if not set.
-        inverse : callable, optional
-            If the call method has an inverse, this can be stored in addition
-            to the call method itself.
         """
         self._call = call
         if init is None and domain is None:
@@ -187,32 +162,10 @@ class Model(AbstractModel):
             domain = eval_shape(init, Initializer.domain)
         self._domain = domain
         self._init = Initializer(init) if init is not None else init
-
-        self._inverse = inverse
-        self._linear_transpose = _linear_transpose
         self._target = _target if _target is not None else super().target
 
     def __call__(self, *args, **kwargs):
         return self._call(*args, **kwargs)
-
-    def transpose(self):
-        if self._linear_transpose is not None:
-            call_T = self._linear_transpose
-        else:
-            call_T = linear_transpose(self.__call__, self.domain)
-        return self.__class__(
-            call_T,
-            domain=self.target,
-            _target=self.domain,
-            _linear_transpose=self.__call__
-        )
-
-    def inv(self):
-        if not callable(self._inverse):
-            raise NotImplementedError("must specify callable `inverse`")
-        return self.__class__(
-            self._inverse, domain=self.target, _target=self.domain
-        )
 
     def __repr__(self):
         s = f"{self.__class__.__name__}("
@@ -225,9 +178,6 @@ class Model(AbstractModel):
         if self._init is not None:
             rep = pformat(self._init).replace("\n", "\n\t").strip()
             s += f",\n\tinit={rep}"
-        if self._inverse is not None:
-            rep = pformat(self._inverse).replace("\n", "\n\t").strip()
-            s += f",\n\tinverse={rep}"
         s += "\n)"
         s = s.replace("\n", "").replace("\t", "") if s.count("\n") <= 2 else s
         return s
