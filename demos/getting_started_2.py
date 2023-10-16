@@ -1,106 +1,129 @@
-# This program is free software: you can redistribute it and/or modify
-# it under the terms of the GNU General Public License as published by
-# the Free Software Foundation, either version 3 of the License, or
-# (at your option) any later version.
-#
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU General Public License for more details.
-#
-# You should have received a copy of the GNU General Public License
-# along with this program.  If not, see <http://www.gnu.org/licenses/>.
-#
-# Copyright(C) 2013-2021 Max-Planck-Society
-#
-# NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik.
+#!/usr/bin/env python
+# %% [markdown]
+# # Nonlinear Models in NIFTy
 
-###############################################################################
-# Log-normal field reconstruction from Poissonian data with inhomogenous
-# exposure (in case for 2D mode)
-# 1D (set mode=0), 2D (mode=1), or on the sphere (mode=2)
-###############################################################################
+# 1. Posterior: We would like to know $P(\theta|d)$ with $\theta$ the sky
+#    brightness and $d$ measured count data of the sky brightness
+# 1. Likelihood: We assume that $P(d|\theta)$ is a Poisson distribution
+# 1. Prior: We assume that the sky brightness is a priori log-normal and
+#    $\log \theta$ is spatially smooth
+#
+# To build a model in NIFTy, we go bottom and start from the prior, next we
+# define the likelihood and finally retrieve (an approximation to) the posterior.
 
-import sys
-
-import numpy as np
-
+# %%
 import nifty8 as ift
 
+# %% [markdown]
+# ## Prior
+#
+# In NIFTy, we always start from a standard normal prior.
+# Thus, instead of trying to directly create a smooth log-normal $\theta$, we
+# instead ask ourselves (1) how we can make a standard normal smooth and
+# afterwards (2) how we can make it log-normal.
 
-def exposure_2d(domain):
-    # Structured exposure for 2D mode
-    x_shape, y_shape = domain.shape
-    exposure = np.ones(domain.shape)
-    exposure[x_shape//3:x_shape//2, :] *= 2.
-    exposure[x_shape*4//5:x_shape, :] *= .1
-    exposure[x_shape//2:x_shape*3//2, :] *= 3.
-    exposure[:, x_shape//3:x_shape//2] *= 2.
-    exposure[:, x_shape*4//5:x_shape] *= .1
-    exposure[:, x_shape//2:x_shape*3//2] *= 3.
-    return ift.Field.from_raw(domain, exposure)
+# %%
+position_space = ift.RGSpace([64, 64])  # domain on which our parameters live
 
 
-def main():
-    # Choose space on which the signal field is defined
-    if len(sys.argv) == 2:
-        mode = int(sys.argv[1])
-    else:
-        mode = 1
-
-    if mode == 0:
-        # One-dimensional regular grid with uniform exposure of 10
-        position_space = ift.RGSpace(1024)
-        exposure = ift.Field.full(position_space, 10.)
-    elif mode == 1:
-        # Two-dimensional regular grid with inhomogeneous exposure
-        position_space = ift.RGSpace([512, 512])
-        exposure = exposure_2d(position_space)
-    else:
-        # Sphere with uniform exposure of 100
-        position_space = ift.HPSpace(128)
-        exposure = ift.Field.full(position_space, 100.)
-
-    # Define harmonic space and harmonic transform
-    harmonic_space = position_space.get_default_codomain()
-    HT = ift.HarmonicTransformOperator(harmonic_space, position_space)
-
-    # Define amplitude (square root of power spectrum)
-    def sqrtpspec(k):
-        return 1./(20. + k**2)
-
-    p_space = ift.PowerSpace(harmonic_space)
-    pd = ift.PowerDistributor(harmonic_space, p_space)
-    a = ift.PS_field(p_space, sqrtpspec)
-    A = pd(a)
-
-    # Define sky operator
-    sky = ift.exp(HT(ift.makeOp(A)).ducktape("domain"))
-
-    M = ift.DiagonalOperator(exposure)
-    GR = ift.GeometryRemover(position_space)
-    # Define instrumental response
-    R = GR(M)
-
-    # Generate mock data and define likelihood energy operator
-    d_space = R.target[0]
-    lamb = R(sky)
-    mock_position = ift.from_random(sky.domain, 'normal')
-    data = lamb(mock_position)
-    data = ift.random.current_rng().poisson(data.val.astype(np.float64))
-    data = ift.Field.from_raw(d_space, data)
-    likelihood_energy = ift.PoissonianEnergy(data) @ lamb
-
-    # Settings for minimization
-    ic_newton = ift.DeltaEnergyController(
-        name='Newton', iteration_limit=100, tol_rel_deltaE=1e-8)
-    minimizer = ift.NewtonCG(ic_newton)
-
-    # Compute MAP solution by minimizing the information Hamiltonian
-    sl = ift.optimize_kl(likelihood_energy, 1, 0, minimizer, None, None,
-                         output_directory="getting_started_2_results",
-                         export_operator_outputs={"signal": sky})
+# We need to apply the sqrt of the power spectrum to give a standard normal
+# prior the desired power spectrum.
+def power_spectrum_sqrt(k):
+    return (1.0 / (20.0 + k**4))**0.5
 
 
-if __name__ == '__main__':
-    main()
+p_space = ift.PowerSpace(position_space.get_default_codomain())
+pd = ift.PowerDistributor(position_space.get_default_codomain(), p_space)
+
+a = ift.PS_field(p_space, power_spectrum_sqrt)
+amplitude = pd(a)
+amplitude = ift.makeOp(amplitude)
+harmonic2pos = ift.HarmonicTransformOperator(amplitude.target, position_space)
+
+# %%
+r = ift.from_random(amplitude.domain)
+ift.single_plot(harmonic2pos(amplitude(r)))
+# YAY, we achieved (1)
+
+# %%
+# Let's make it log-normal distributed. To do so we really only have to
+# exponentiate it.
+r = ift.from_random(amplitude.domain)
+harmonic2pos = ift.HarmonicTransformOperator(amplitude.target, position_space)
+ift.single_plot(ift.exp(harmonic2pos(amplitude(r))))
+
+# %%
+
+# We can also apply the operators to one another to retrieve a new operator that
+# joins all of them. Here we create an operator to propagate our a prior
+# standard normal distributed parameters to a smooth log-normal distributed
+# parameter.
+signal = ift.exp(harmonic2pos(amplitude))
+# YAY, we achieved (2)!
+
+# %% [markdown]
+# ## Likelihood
+#
+# We've done (1) and (2). Next, let us look at the likelihood $P(d|\theta)$.
+
+# %%
+r = ift.from_random(signal.domain)
+synthetic_signal_realization = signal(r)
+
+# Retrieve synthetic data from our model
+rng = ift.random.current_rng()  # numpy random number generator
+synthetic_data = rng.poisson(
+    lam=synthetic_signal_realization.val, size=position_space.shape
+)
+
+synthetic_data = ift.makeField(position_space, synthetic_data)
+likelihood = ift.PoissonianEnergy(synthetic_data)
+
+# %% [markdown]
+# ## Posterior
+#
+# We now have our prior model and our likelihood model.
+# Let's do some inference!
+
+# %%
+forward = likelihood @ signal
+forward = forward.ducktape("domain")  # HACK to make `optimize_vi` happy
+
+ic_sampling = ift.DeltaEnergyController(
+    name="Sampling", iteration_limit=100, tol_rel_deltaE=1e-8
+)
+ic_newton = ift.DeltaEnergyController(
+    name="Newton", iteration_limit=100, tol_rel_deltaE=1e-8
+)
+minimizer = ift.NewtonCG(ic_newton)
+n_vi_iterations = 2
+n_samples = 10
+
+state = ift.optimize_kl(
+    forward,
+    n_vi_iterations,
+    n_samples=n_samples,
+    kl_minimizer=minimizer,
+    sampling_iteration_controller=ic_sampling,
+    nonlinear_sampling_minimizer=None
+)
+
+# %%
+posterior_signal_samples = [
+    signal.ducktape("domain")(sample) for sample in state.iterator()
+]
+p = ift.Plot()
+p.add(synthetic_data, title="Synthetic Data")
+for i in range(3):  # Show the first three samples
+    p.add(posterior_signal_samples[i], title=f"Sample {i+1:02d}")
+p.output()
+
+# %%
+p = ift.Plot()
+m, v = state.sample_stat(signal.ducktape("domain"))
+s = v**0.5
+p.add(synthetic_signal_realization, title="Synthetic Signal Realization")
+p.add(m, title="Posterior Mean")
+p.add(s, title="Posterior Standard Deviation")
+p.add(s / m, title="Posterior Relative Uncertainty")
+p.output()
