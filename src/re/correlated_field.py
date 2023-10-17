@@ -516,7 +516,8 @@ class CorrelatedFieldMaker():
             k: partial(random_like, primals=v)
             for k, v in self._parameter_tree.items()
         }
-
-        return Model(
+        cf = Model(
             correlated_field, domain=self._parameter_tree.copy(), init=init
         )
+        cf.normalized_amplitudes = namps
+        return cf
