@@ -9,7 +9,7 @@ from warnings import warn
 from jax import eval_shape
 from jax import numpy as jnp
 from jax import random
-from jax.tree_util import tree_map, tree_structure, tree_unflatten
+from jax.tree_util import tree_leaves, tree_map, tree_structure, tree_unflatten
 
 from .misc import wrap
 from .tree_math import ShapeWithDtype, random_like
@@ -147,7 +147,7 @@ class Model(AbstractModel):
         ----------
         call : callable
             Method acting on objects of type `domain`.
-        domain : object, optional
+        domain : tree-like structure of ShapeWithDtype, optional
             PyTree of objects with a shape and dtype attribute. Inferred from
             init if not specified.
         init : callable, optional
@@ -195,12 +195,37 @@ class WrappedCall(Model):
         shape=(),
         dtype=None,
         white_domain=False,
-        **kwargs
+        _target=None,
     ):
-        domain = ShapeWithDtype(shape, dtype)
+        """Transforms `call` such that instead of it acting on `input` it
+        selects `name` from `input` using `input[name]`.
+
+        Parameters
+        ----------
+        call : callable
+            Callable to wrap.
+        name : hashable, optional
+            New name of the `input` on which `call` acts.
+        shape : tuple or tree-like structure of ShapeWithDtype
+            Shape of old `input` on which `call` acts. This can also be an
+            arbitrary shape-dtype structure in which case `dtype` is ignored.
+            Defaults to a scalar.
+        dtype : dtype or tree-like structure of ShapeWithDtype
+            If `shape` is a tuple, this is the dtype of the old `input` on
+            which `call` acts. This is redundant if `shape` already encodes the
+            `dtype`.
+        white_domain : bool, optional
+            If `True`, the domain is set to a white normal prior. Defaults to
+            `False`.
+        """
+        leaves = tree_leaves(shape)
+        isswd = all(hasattr(e, "shape") and hasattr(e, "dtype") for e in leaves)
+        isswd &= len(leaves) > 0
+        domain = ShapeWithDtype(shape, dtype) if not isswd else shape
+
         init = partial(random_like, primals=domain) if white_domain else None
         if name is not None:
             call = wrap(call, name=name)
             domain = {name: domain}
             init = {name: init} if init is not None else init
-        super().__init__(call, domain=domain, init=init, **kwargs)
+        super().__init__(call, domain=domain, init=init, _target=_target)
