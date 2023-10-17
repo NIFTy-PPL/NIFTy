@@ -14,8 +14,10 @@ def laplace_prior(alpha) -> Callable:
     from jax.scipy.stats import norm
 
     def standard_to_laplace(xi):
-        res = (xi < 0) * (norm.logcdf(xi) + jnp.log(2))
-        res -= (xi > 0) * (norm.logcdf(-xi) + jnp.log(2))
+        res = jnp.where(
+            xi < 0,
+            norm.logcdf(xi) + jnp.log(2), -1 * (norm.logcdf(-xi) + jnp.log(2))
+        )
         return res * alpha
 
     return standard_to_laplace
