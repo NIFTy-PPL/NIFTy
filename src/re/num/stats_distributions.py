@@ -1,6 +1,13 @@
+from functools import partial
 from typing import Callable, Optional
 
 from jax import numpy as jnp
+from jax.tree_util import tree_map, tree_reduce
+
+exp = partial(tree_map, jnp.exp)
+sqrt = partial(tree_map, jnp.sqrt)
+log = partial(tree_map, jnp.log)
+log1p = partial(tree_map, jnp.log1p)
 
 
 def laplace_prior(alpha) -> Callable:
@@ -13,9 +20,11 @@ def laplace_prior(alpha) -> Callable:
     """
     from jax.scipy.stats import norm
 
+    norm_logcdf = partial(tree_map, norm.logcdf)
+
     def standard_to_laplace(xi):
-        res = (xi < 0) * (norm.logcdf(xi) + jnp.log(2))
-        res -= (xi > 0) * (norm.logcdf(-xi) + jnp.log(2))
+        res = (xi < 0) * (norm_logcdf(xi) + jnp.log(2))
+        res -= (xi > 0) * (norm_logcdf(-xi) + jnp.log(2))
         return res * alpha
 
     return standard_to_laplace
@@ -43,13 +52,13 @@ def lognormal_moments(mean, std):
     """Compute the cumulants a log-normal process would need to comply with the
     provided mean and standard-deviation `std`
     """
-    if jnp.any(mean <= 0.):
+    if tree_reduce(any, mean <= 0.):
         raise ValueError(f"`mean` must be greater zero; got {mean!r}")
-    if jnp.any(std <= 0.):
+    if tree_reduce(any, std <= 0.):
         raise ValueError(f"`std` must be greater zero; got {std!r}")
 
-    logstd = jnp.sqrt(jnp.log1p((std / mean)**2))
-    logmean = jnp.log(mean) - 0.5 * logstd**2
+    logstd = sqrt(log1p((std / mean)**2))
+    logmean = log(mean) - 0.5 * logstd**2
     return logmean, logstd
 
 
@@ -70,7 +79,7 @@ def lognormal_prior(mean, std, *, _log_mean=None, _log_std=None) -> Callable:
         standard_to_normal = normal_prior(*lognormal_moments(mean, std))
 
     def standard_to_lognormal(xi):
-        return jnp.exp(standard_to_normal(xi))
+        return exp(standard_to_normal(xi))
 
     return standard_to_lognormal
 
@@ -83,7 +92,7 @@ def lognormal_invprior(mean, std, *, _log_mean=None, _log_std=None) -> Callable:
         ln_m, ln_std = lognormal_moments(mean, std)
 
     def lognormal_to_standard(y):
-        return (jnp.log(y) - ln_m) / ln_std
+        return (log(y) - ln_m) / ln_std
 
     return lognormal_to_standard
 
@@ -100,13 +109,16 @@ def uniform_prior(a_min=0., a_max=1.) -> Callable:
     """
     from jax.scipy.stats import norm
 
-    if a_min == 0. and a_max == 1.:
-        return norm.cdf
-
+    norm_cdf = partial(tree_map, norm.cdf)
     scale = a_max - a_min
 
+    if isinstance(a_min, float) and isinstance(
+        a_max, float
+    ) and a_min == 0. and a_max == 1.:
+        return norm_cdf
+
     def standard_to_uniform(xi):
-        return a_min + scale * norm.cdf(xi)
+        return a_min + scale * norm_cdf(xi)
 
     return standard_to_uniform
 
