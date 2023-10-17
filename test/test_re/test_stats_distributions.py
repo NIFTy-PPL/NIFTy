@@ -1,8 +1,12 @@
 import pytest
+
 pytest.importorskip("jax")
+
+from functools import partial
 
 import numpy as np
 from numpy.testing import assert_allclose
+from scipy import stats
 
 import nifty8.re as jft
 
@@ -41,3 +45,25 @@ def test_lognormal_roundtrip(mean, std, seed):
 
     n_roundtrip = ipr(pr(n_rvs))
     assert_allclose(n_roundtrip, n_rvs, rtol=1e-6, atol=1e-6)
+
+
+@pmp(
+    "stats_and_prior", (
+        (stats.norm(), jft.normal_prior(mean=0, std=1)),
+        (stats.laplace(), jft.laplace_prior(alpha=1)),
+        (
+            stats.lognorm(s=1),
+            jft.lognormal_prior(None, None, _log_mean=0, _log_std=1)
+        ),
+        (stats.invgamma(a=2), jft.invgamma_prior(a=2, scale=1)),
+        (stats.uniform(), jft.uniform_prior(a_min=0, a_max=1)),
+    )
+)
+def test_quantiles(stats_and_prior):
+    stats_distr, prior_dist = stats_and_prior
+    atol = 0.0
+    rtol = 1e-9 if not stats_distr.dist.name == "invgamma" else 1e-5
+
+    q = np.linspace(1e-6, 1 - 1e-6, num=100, endpoint=True)
+    pp = stats.norm.ppf(q, loc=0., scale=1.)
+    assert_allclose(prior_dist(pp), stats_distr.ppf(q), rtol=rtol, atol=atol)

@@ -53,7 +53,7 @@ def lognormal_moments(mean, std):
     return logmean, logstd
 
 
-def lognormal_prior(mean, std) -> Callable:
+def lognormal_prior(mean, std, *, _log_mean=None, _log_std=None) -> Callable:
     """Moment-match standard normally distributed random variables to log-space
 
     Takes random normal samples and outputs samples distributed according to
@@ -64,7 +64,10 @@ def lognormal_prior(mean, std) -> Callable:
     such that the mean and standard deviation of the distribution matches the
     specified values.
     """
-    standard_to_normal = normal_prior(*lognormal_moments(mean, std))
+    if _log_mean is not None and _log_std is not None:
+        standard_to_normal = normal_prior(_log_mean, _log_std)
+    else:
+        standard_to_normal = normal_prior(*lognormal_moments(mean, std))
 
     def standard_to_lognormal(xi):
         return jnp.exp(standard_to_normal(xi))
@@ -72,9 +75,12 @@ def lognormal_prior(mean, std) -> Callable:
     return standard_to_lognormal
 
 
-def lognormal_invprior(mean, std) -> Callable:
+def lognormal_invprior(mean, std, *, _log_mean=None, _log_std=None) -> Callable:
     """Get the inverse transform to `lognormal_prior`."""
-    ln_m, ln_std = lognormal_moments(mean, std)
+    if _log_mean is not None and _log_std is not None:
+        ln_m, ln_std = _log_mean, _log_std
+    else:
+        ln_m, ln_std = lognormal_moments(mean, std)
 
     def lognormal_to_standard(y):
         return (jnp.log(y) - ln_m) / ln_std
