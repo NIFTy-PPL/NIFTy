@@ -280,19 +280,24 @@ def where(condition, x, y):
     return tree_map(jnp.where, condition, x, y)
 
 
-def sum(a):
-    if hasattr(a, "sum"):
-        return a.sum()
-    return tree_reduce(operator.add, tree_map(jnp.sum, a))
+def _unary_reduction(jax_f, name=None):
+    name = name if name is not None else jax_f.__name__
+
+    def _safe_uni(a):
+        return jax_f(jnp.atleast_1d(a))
+
+    def _red(a, b):
+        return jax_f(jnp.array([a, b]))
+
+    def unary_reduction(a):
+        return tree_reduce(_red, tree_map(_safe_uni, a))
+
+    unary_reduction.__name__ = name
+    return unary_reduction
 
 
-def max(a):
-    if hasattr(a, "max"):
-        return a.max()
-    return tree_reduce(jnp.max, tree_map(jnp.max, a))
-
-
-def min(a):
-    if hasattr(a, "min"):
-        return a.min()
-    return tree_reduce(jnp.min, tree_map(jnp.min, a))
+sum = _unary_reduction(jnp.sum)
+min = _unary_reduction(jnp.min)
+max = _unary_reduction(jnp.max)
+any = _unary_reduction(jnp.any)
+all = _unary_reduction(jnp.all)

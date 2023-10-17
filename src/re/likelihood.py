@@ -1,15 +1,16 @@
 # Copyright(C) 2013-2021 Max-Planck-Society
 # SPDX-License-Identifier: GPL-2.0+ OR BSD-2-Clause
 
-from typing import Any, Callable, Optional, TypeVar, Union
+from typing import Callable, Optional, TypeVar, Union
 
-from jax import linear_transpose, linearize
+from jax import eval_shape, linear_transpose, linearize
 from jax import numpy as jnp
 from jax import vjp
 from jax.tree_util import Partial, tree_leaves
 
 from .misc import doc_from, is1d, isiterable, split
-from .tree_math import ShapeWithDtype, vdot, conj, Vector
+from .model import AbstractModel
+from .tree_math import ShapeWithDtype, Vector, conj, vdot
 
 Q = TypeVar("Q")
 P = TypeVar("P")
@@ -23,7 +24,7 @@ def _functional_conj(func):
     return func_conj
 
 
-class Likelihood():
+class Likelihood(AbstractModel):
     """Storage class for keeping track of the energy, the associated
     left-square-root of the metric and the metric.
     """
@@ -34,6 +35,7 @@ class Likelihood():
         transformation: Optional[Callable[[Q], P]] = None,
         left_sqrt_metric: Optional[Callable[[Q, Q], P]] = None,
         metric: Optional[Callable[[Q, Q], Q]] = None,
+        domain=None,
         lsm_tangents_shape=None
     ):
         """Instantiates a new likelihood.
@@ -51,8 +53,11 @@ class Likelihood():
             Function applying the left-square-root of the metric.
         metric : callable, optional
             Function applying the metric.
+        domain : tree-like structure of ShapeWithDtype, optional
+            Structure of the input/parameter space.
         lsm_tangents_shape : tree-like structure of ShapeWithDtype, optional
-            Structure of the data space.
+            Structure of the data space. Will be inferred from
+            `normalized_residual` and `domain` if not set.
         """
         # TODO: track forward model and build lsm, metric, residual only when
         # called instead of always partially
@@ -62,7 +67,10 @@ class Likelihood():
         self._left_sqrt_metric = left_sqrt_metric
         self._metric = metric
 
-        if lsm_tangents_shape is not None:
+        self._domain = domain
+        if lsm_tangents_shape is None and domain is not None:
+            lsm_tangents_shape = eval_shape(normalized_residual, domain)
+        elif lsm_tangents_shape is not None:
             leaves = tree_leaves(lsm_tangents_shape)
             if not all(
                 hasattr(e, "shape") and hasattr(e, "dtype") for e in leaves
@@ -110,7 +118,7 @@ class Likelihood():
         Returns
         -------
         normalized_residual : tree-like structure
-            Structure of the same type as lsm_tangents_shape for which the 
+            Structure of the same type as lsm_tangents_shape for which the
             normalized_residual is computed.
         """
         if self._normalized_residual is None:
@@ -157,7 +165,7 @@ class Likelihood():
         primals : tree-like structure
             Position at which to evaluate the metric.
         tangents : tree-like structure
-            Instance to which to apply the metric. 
+            Instance to which to apply the metric.
             Must be of shape lsm_tangents_shape.
         **primals_kw : Any
            Additional arguments passed on to the LSM.
@@ -165,7 +173,7 @@ class Likelihood():
         Returns
         -------
         metric_sample : tree-like structure
-            Tree-like structure of the same type as primals to which 
+            Tree-like structure of the same type as primals to which
             the left-square-root of the metric has been applied to.
         """
         if self._left_sqrt_metric is None:
@@ -189,13 +197,17 @@ class Likelihood():
         Returns
         -------
         transformed_sample : tree-like structure
-            Structure of the same type as lsm_tangents_shape to which the 
+            Structure of the same type as lsm_tangents_shape to which the
             geometric transformation has been applied to.
         """
         if self._transformation is None:
             nie = "`transformation` is not implemented"
             raise NotImplementedError(nie)
         return self._transformation(primals, **primals_kw)
+
+    @property
+    def domain(self):
+        return self._domain
 
     @property
     def left_sqrt_metric_tangents_shape(self):
@@ -217,6 +229,7 @@ class Likelihood():
         transformation: Optional[Callable],
         left_sqrt_metric: Optional[Callable],
         metric: Optional[Callable],
+        domain=None,
     ):
         """Instantiates a new likelihood with the same `lsm_tangents_shape`.
 
@@ -240,7 +253,8 @@ class Likelihood():
             transformation=transformation,
             left_sqrt_metric=left_sqrt_metric,
             metric=metric,
-            lsm_tangents_shape=self._lsm_tan_shp
+            lsm_tangents_shape=self._lsm_tan_shp,
+            domain=domain if domain is not None else self._domain
         )
 
     def jit(self, **kwargs):
@@ -277,9 +291,16 @@ class Likelihood():
         )
 
     def __matmul__(self, f: Callable):
-        return self.matmul(f, left_argnames=(), right_argnames=None)
+        return self.amend(f, left_argnames=(), right_argnames=None)
 
-    def matmul(self, f: Callable, left_argnames=(), right_argnames=None):
+    def amend(
+        self,
+        f: Callable,
+        *,
+        domain=None,
+        left_argnames=(),
+        right_argnames=None
+    ):
         """Amend the function `f` to the right of the likelihood.
 
         Parameters
@@ -342,12 +363,17 @@ class Likelihood():
             left_at_fp = self.left_sqrt_metric(y, tangents, **kw_l)
             return bwd(left_at_fp)[0]
 
+        domain = f.domain if domain is None and isinstance(
+            f, AbstractModel
+        ) else domain
+
         return self.new(
             energy_at_f,
             normalized_residual=normalized_residual_at_f,
             transformation=transformation_at_f,
             left_sqrt_metric=left_sqrt_metric_at_f,
-            metric=metric_at_f
+            metric=metric_at_f,
+            domain=domain,
         )
 
     def __add__(self, other):
@@ -371,6 +397,7 @@ class Likelihood():
 
         def joined_normalized_residual(p, **pkw):
             from warnings import warn
+
             # FIXME
             warn("adding residuals is untested", UserWarning)
             lres = self.normalized_residual(p, **pkw)
@@ -389,6 +416,7 @@ class Likelihood():
 
         def joined_transformation(p, **pkw):
             from warnings import warn
+
             # FIXME
             warn("adding transformations is untested", UserWarning)
             lres = self.transformation(p, **pkw)

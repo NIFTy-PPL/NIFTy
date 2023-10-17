@@ -10,7 +10,7 @@ from jax.tree_util import (
     register_pytree_node_class, tree_leaves, tree_map, tree_structure
 )
 
-from .vector_math import matmul, max, min, size
+from .vector_math import matmul, max, min, size, sum
 
 
 def _copy(obj):
@@ -176,6 +176,9 @@ class Vector():
 
     def min(self):
         return min(self)
+
+    def sum(self):
+        return sum(self)
 
     __getitem__ = _value_op(operator.getitem)
     __contains__ = _value_op(operator.contains)

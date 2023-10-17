@@ -9,30 +9,21 @@ from .hmc_oo import HMCChain, NUTSChain
 from .kl import Samples, sample_evi
 from .likelihood import Likelihood, StandardHamiltonian
 from .likelihood_impl import (
-    Categorical,
-    Gaussian,
-    Poissonian,
-    StudentT,
-    VariableCovarianceGaussian,
-    VariableCovarianceStudentT,
+    Categorical, Gaussian, Poissonian, StudentT, VariableCovarianceGaussian,
+    VariableCovarianceStudentT
 )
 from .logger import logger
-from .misc import ducktape, ducktape_left, hvp, interpolate, reduced_chisq_stats
+from .misc import (
+    wrap, wrap_left, hvp, interpolate, reduced_chisq_stats
+)
 from .model import Initializer, Model
 from .num import *
 from .optimize import minimize, newton_cg, trust_ncg
+from .prior import (
+    InvGammaPrior, LaplacePrior, LogNormalPrior, NormalPrior, WrappedCall
+)
 from .refine.chart import CoordinateChart, HEALPixChart
 from .refine.charted_field import RefinementField
 from .refine.healpix_field import RefinementHPField
 from .smap import smap
-from .stats_distributions import (
-    invgamma_invprior,
-    invgamma_prior,
-    laplace_prior,
-    lognormal_invprior,
-    lognormal_prior,
-    normal_invprior,
-    normal_prior,
-    uniform_prior,
-)
 from .tree_math import *

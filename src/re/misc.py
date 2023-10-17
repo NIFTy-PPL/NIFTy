@@ -56,18 +56,18 @@ def doc_from(original):
     return wrapper
 
 
-def ducktape(call: Callable[[I], O],
-             key: Hashable) -> Callable[[Mapping[Hashable, I]], O]:
+def wrap(call: Callable[[I], O],
+             name: Hashable) -> Callable[[Mapping[Hashable, I]], O]:
     def named_call(p):
-        return call(p[key])
+        return call(p[name])
 
     return named_call
 
 
-def ducktape_left(call: Callable[[I], O],
-                  key: Hashable) -> Callable[[I], Dict[Hashable, O]]:
+def wrap_left(call: Callable[[I], O],
+                  name: Hashable) -> Callable[[I], Dict[Hashable, O]]:
     def named_call(p):
-        return {key: call(p)}
+        return {name: call(p)}
 
     return named_call
 

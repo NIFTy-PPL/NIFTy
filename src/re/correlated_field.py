@@ -8,11 +8,11 @@ from typing import Callable, Dict, Optional, Tuple, Union
 import numpy as np
 from jax import numpy as jnp
 
-from .tree_math import ShapeWithDtype
 from .logger import logger
-from .model import Model
-from .stats_distributions import lognormal_prior, normal_prior
-from .misc import ducktape
+from .misc import wrap
+from .model import Model, WrappedCall
+from .num import lognormal_prior, normal_prior
+from .tree_math import ShapeWithDtype, random_like
 
 
 def _safe_assert(condition):
@@ -109,7 +109,7 @@ def non_parametric_amplitude(
     asperity: Optional[Callable] = None,
     prefix: str = "",
     kind: str = "amplitude",
-) -> Tuple[Callable, Dict[str, ShapeWithDtype]]:
+) -> Model:
     """Constructs an function computing the amplitude of a non-parametric power
     spectrum
 
@@ -130,21 +130,20 @@ def non_parametric_amplitude(
     mode_multiplicity = domain["mode_multiplicity"]
     log_vol = domain.get("log_volume")
 
-    ptree = {}
-    fluctuations = ducktape(fluctuations, prefix + "fluctuations")
-    ptree[prefix + "fluctuations"] = ShapeWithDtype(())
-    loglogavgslope = ducktape(loglogavgslope, prefix + "loglogavgslope")
-    ptree[prefix + "loglogavgslope"] = ShapeWithDtype(())
+    fluctuations = WrappedCall(fluctuations, name=prefix + "fluctuations")
+    ptree = fluctuations.domain
+    loglogavgslope = WrappedCall(loglogavgslope, name=prefix + "loglogavgslope")
+    ptree |= loglogavgslope.domain
     if flexibility is not None:
-        flexibility = ducktape(flexibility, prefix + "flexibility")
-        ptree[prefix + "flexibility"] = ShapeWithDtype(())
+        flexibility = WrappedCall(flexibility, name=prefix + "flexibility")
+        ptree |= flexibility.domain
         # Register the parameters for the spectrum
         _safe_assert(log_vol is not None)
         _safe_assert(rel_log_mode_len.ndim == log_vol.ndim == 1)
-        ptree[prefix + "spectrum"] = ShapeWithDtype((2, ) + log_vol.shape)
+        ptree |= {prefix + "spectrum": ShapeWithDtype((2, ) + log_vol.shape)}
     if asperity is not None:
-        asperity = ducktape(asperity, prefix + "asperity")
-        ptree[prefix + "asperity"] = ShapeWithDtype(())
+        asperity = WrappedCall(asperity, name=prefix + "asperity")
+        ptree |= asperity.domain
 
     def correlate(primals: Mapping) -> jnp.ndarray:
         flu = fluctuations(primals)
@@ -195,7 +194,9 @@ def non_parametric_amplitude(
         amplitude = amplitude.at[0].set(totvol)
         return amplitude
 
-    return correlate, ptree
+    return Model(
+        correlate, domain=ptree, init=partial(random_like, primals=ptree)
+    )
 
 
 class CorrelatedFieldMaker():
@@ -351,7 +352,7 @@ class CorrelatedFieldMaker():
             te = f"invalid `asperity` specified; got '{type(asperity)}'"
             raise TypeError(te)
 
-        npa, ptree = non_parametric_amplitude(
+        npa = non_parametric_amplitude(
             domain=domain,
             fluctuations=flu,
             loglogavgslope=slp,
@@ -362,7 +363,7 @@ class CorrelatedFieldMaker():
         )
         self._fluctuations.append(npa)
         self._target_subdomains.append(domain)
-        self._parameter_tree.update(ptree)
+        self._parameter_tree.update(npa.domain)
 
     def set_amplitude_total_offset(
         self, offset_mean: float, offset_std: Union[tuple, Callable]
@@ -389,7 +390,7 @@ class CorrelatedFieldMaker():
                 raise TypeError(f"`offset_std` of invalid type {type(zm)!r}")
             zm = lognormal_prior(*zm)
 
-        self._azm = ducktape(zm, self._prefix + "zeromode")
+        self._azm = wrap(zm, self._prefix + "zeromode")
         self._parameter_tree[self._prefix + "zeromode"] = ShapeWithDtype(())
 
     @property
@@ -511,4 +512,12 @@ class CorrelatedFieldMaker():
             cf_h = self.azm(p) * ea * p[self._prefix + "xi"]
             return self._offset_mean + outer_harmonic_transform(cf_h)
 
-        return Model(correlated_field, domain=self._parameter_tree.copy())
+        init = {
+            k: partial(random_like, primals=v)
+            for k, v in self._parameter_tree.items()
+        }
+        cf = Model(
+            correlated_field, domain=self._parameter_tree.copy(), init=init
+        )
+        cf.normalized_amplitudes = namps
+        return cf

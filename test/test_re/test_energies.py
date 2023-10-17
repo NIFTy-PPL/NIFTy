@@ -9,7 +9,6 @@ from functools import partial, reduce
 import jax
 import jax.numpy as jnp
 from jax import random
-from jax.tree_util import tree_map
 from numpy.testing import assert_allclose
 
 import nifty8.re as jft
@@ -31,7 +30,7 @@ def random_draw(key, shape, dtype, method):
             return reduce(lambda a, b: a * b, (isinstance(ii, int) for ii in x))
         return False
 
-    swd = jft.tree_map(
+    swd = jax.tree_map(
         lambda x: jft.ShapeWithDtype(x, dtype), shape, is_leaf=_isleaf
     )
     return jft.random_like(key, jft.Vector(swd), method)
@@ -81,7 +80,7 @@ lh_init_approx = (
         jft.VariableCovarianceGaussian, {
             "data": partial(random_draw, dtype=float, method=random.normal),
         }, lambda key, shape: (
-            random_draw(key, shape, float, random.normal), 1. / jft.
+            random_draw(key, shape, float, random.normal), 1. / jax.
             tree_map(jnp.exp, random_draw(key, shape, float, random.normal))
         )
     ), (
@@ -89,7 +88,7 @@ lh_init_approx = (
             "data": partial(random_draw, dtype=float, method=random.normal),
             "dof": partial(random_draw, dtype=float, method=random.exponential),
         }, lambda key, shape: (
-            random_draw(key, shape, float, random.normal), 1. / jft.tree_map(
+            random_draw(key, shape, float, random.normal), 1. / jax.tree_map(
                 jnp.exp, 1. + random_draw(key, shape, float, random.normal)
             )
         )
@@ -108,7 +107,7 @@ def test_gaussian_vs_vcgaussian_consistency(seed, shape):
     m2 = random_draw(sk.pop(), shape, float, random.normal)
     t = random_draw(sk.pop(), shape, float, random.normal)
     inv_std = random_draw(sk.pop(), shape, float, random.normal)
-    inv_std = 1. / jft.tree_map(jnp.exp, 1. + inv_std)
+    inv_std = 1. / jax.tree_map(jnp.exp, 1. + inv_std)
 
     gauss = jft.Gaussian(d, noise_std_inv=lambda x: inv_std * x)
     vcgauss = jft.VariableCovarianceGaussian(d)
@@ -116,13 +115,13 @@ def test_gaussian_vs_vcgaussian_consistency(seed, shape):
     diff_g = gauss(m2) - gauss(m1)
     diff_vcg = vcgauss((m2, inv_std)) - vcgauss((m1, inv_std))
 
-    jft.tree_map(
+    jax.tree_map(
         partial(assert_allclose, rtol=rtol, atol=atol), diff_g, diff_vcg
     )
 
     met_g = gauss.metric(m1, t)
     met_vcg = vcgauss.metric((m1, inv_std), (t, d / 2))[0]
-    jft.tree_map(partial(assert_allclose, rtol=rtol, atol=atol), met_g, met_vcg)
+    jax.tree_map(partial(assert_allclose, rtol=rtol, atol=atol), met_g, met_vcg)
 
 
 def test_studt_vs_vcstudt_consistency(seed, shape):
@@ -137,20 +136,20 @@ def test_studt_vs_vcstudt_consistency(seed, shape):
     m2 = random_draw(sk.pop(), shape, float, random.normal)
     t = random_draw(sk.pop(), shape, float, random.normal)
     inv_std = random_draw(sk.pop(), shape, float, random.normal)
-    inv_std = 1. / jft.tree_map(jnp.exp, 1. + inv_std)
+    inv_std = 1. / jax.tree_map(jnp.exp, 1. + inv_std)
 
     studt = jft.StudentT(d, dof, noise_std_inv=lambda x: inv_std * x)
     vcstudt = jft.VariableCovarianceStudentT(d, dof)
 
     diff_t = studt(m2) - studt(m1)
     diff_vct = vcstudt((m2, 1. / inv_std)) - vcstudt((m1, 1. / inv_std))
-    jft.tree_map(
+    jax.tree_map(
         partial(assert_allclose, rtol=rtol, atol=atol), diff_t, diff_vct
     )
 
     met_t = studt.metric(m1, t)
     met_vct = vcstudt.metric((m1, 1. / inv_std), (t, d / 2))[0]
-    jft.tree_map(partial(assert_allclose, rtol=rtol, atol=atol), met_t, met_vct)
+    jax.tree_map(partial(assert_allclose, rtol=rtol, atol=atol), met_t, met_vct)
 
 
 @pmp("lh_init", lh_init_true + lh_init_approx)
@@ -180,7 +179,7 @@ def test_left_sqrt_metric_vs_metric_consistency(seed, shape, lh_init):
         key, *sk = random.split(key, 3)
         p = latent_init(sk.pop(), shape=shape)
         t = latent_init(sk.pop(), shape=shape)
-        tree_map(aallclose, lh.metric(p, t), lh_mini.metric(p, t))
+        jax.tree_map(aallclose, lh.metric(p, t), lh_mini.metric(p, t))
 
 
 @pmp("lh_init", lh_init_true)
@@ -213,11 +212,11 @@ def test_transformation_vs_left_sqrt_metric_consistency(seed, shape, lh_init):
         key, *sk = random.split(key, 3)
         p = latent_init(sk.pop(), shape=shape)
         t = latent_init(sk.pop(), shape=shape)
-        jft.tree_map(
+        jax.tree_map(
             aallclose, lh.left_sqrt_metric(p, t),
             lh_mini.left_sqrt_metric(p, t)
         )
-        jft.tree_map(aallclose, lh.metric(p, t), lh_mini.metric(p, t))
+        jax.tree_map(aallclose, lh.metric(p, t), lh_mini.metric(p, t))
 
 
 @pmp("lh_init", lh_init_true + lh_init_approx)
@@ -239,7 +238,9 @@ def test_residuals_allfinite(seed, shape, lh_init):
     for _ in range(N_TRIES):
         key, sk = random.split(key, 2)
         r = residual(latent_init(sk, shape=shape))
-        assert jft.tree_reduce(lambda a, b: a * b, jft.tree_map(allfinite, r))
+        assert jax.tree_util.tree_reduce(
+            lambda a, b: a * b, jax.tree_map(allfinite, r)
+        )
 
 
 @pmp('iscomplex', [False, True])
