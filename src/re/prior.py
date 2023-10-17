@@ -2,27 +2,37 @@
 # SPDX-License-Identifier: GPL-2.0+ OR BSD-2-Clause
 
 from .model import WrappedCall
-from .num import *
+from .num import (
+    invgamma_prior, laplace_prior, lognormal_prior, normal_prior, uniform_prior
+)
+
+_doc_shared = """name : hashable, optional
+            Name within the new `input` on which `call` acts.
+        shape : tuple or tree-like structure of ShapeWithDtype
+            Shape of the latent parameter(s) that are transformed to the desired
+            distribution. This can also be an arbitrary shape-dtype structure in
+            which case `dtype` is ignored. Defaults to a scalar.
+        dtype : dtype
+            Data type of the latent parameter(s) that are transformed to the
+            desired distribution."""
+
+
+def _format_doc(func):
+    func.__doc__ = func.__doc__.format(_doc_shared=_doc_shared)
+    return func
 
 
 class LaplacePrior(WrappedCall):
+    @_format_doc
     def __init__(self, alpha, **kwargs):
         """Transforms standard normally distributed random variables to a
         Laplace distribution.
 
         Parameters
         ----------
-        alpha : float
+        alpha : tree-like structure with arithmetics
             Scale parameter.
-        name : hashable
-            Name of the latent parameter that transformed to a Laplace
-            distribution.
-        shape : tuple
-            Shape of the latent parameter that transformed to a Laplace
-            distribution.
-        dtype : dtype
-            Data type of the latent parameter that transformed to a Laplace
-            distribution.
+        {_doc_shared}
         """
         self.alpha = alpha
         call = laplace_prior(self.alpha)
@@ -30,25 +40,18 @@ class LaplacePrior(WrappedCall):
 
 
 class NormalPrior(WrappedCall):
+    @_format_doc
     def __init__(self, mean, std, **kwargs):
         """Transforms standard normally distributed random variables to a
         normal distribution.
 
         Parameters
         ----------
-        mean : float
+        mean : tree-like structure with arithmetics
             Mean of the normal distribution.
-        std : float
+        std : tree-like structure with arithmetics
             Standard deviation of the normal distribution.
-        name : hashable
-            Name of the latent parameter that transformed to a normal
-            distribution.
-        shape : tuple
-            Shape of the latent parameter that transformed to a normal
-            distribution.
-        dtype : dtype
-            Data type of the latent parameter that transformed to a normal
-            distribution.
+        {_doc_shared}
         """
         self.mean = mean
         self.std = std
@@ -57,25 +60,18 @@ class NormalPrior(WrappedCall):
 
 
 class LogNormalPrior(WrappedCall):
+    @_format_doc
     def __init__(self, mean, std, **kwargs):
         """Transforms standard normally distributed random variables to a
         log-normal distribution.
 
         Parameters
         ----------
-        mean : float
+        mean : tree-like structure with arithmetics
             Mean of the log-normal distribution.
-        std : float
+        std : tree-like structure with arithmetics
             Standard deviation of the log-normal distribution.
-        name : hashable
-            Name of the latent parameter that transformed to a log-normal
-            distribution.
-        shape : tuple
-            Shape of the latent parameter that transformed to a log-normal
-            distribution.
-        dtype : dtype
-            Data type of the latent parameter that transformed to a log-normal
-            distribution.
+        {_doc_shared}
         """
         self.mean = mean
         self.std = std
@@ -84,25 +80,18 @@ class LogNormalPrior(WrappedCall):
 
 
 class UniformPrior(WrappedCall):
+    @_format_doc
     def __init__(self, a_min, a_max, **kwargs):
         """Transforms standard normally distributed random variables to a
         uniform distribution.
 
         Parameters
         ----------
-        a_min : float
+        a_min : tree-like structure with arithmetics
             Minimum value.
-        a_max : float
+        a_max : tree-like structure with arithmetics
             Maximum value.
-        name : hashable
-            Name of the latent parameter that transformed to a uniform
-            distribution.
-        shape : tuple
-            Shape of the latent parameter that transformed to a uniform
-            distribution.
-        dtype : dtype
-            Data type of the latent parameter that transformed to a uniform
-            distribution.
+        {_doc_shared}
         """
         self.low = self.a_min = a_min
         self.high = self.a_max = a_max
@@ -111,6 +100,7 @@ class UniformPrior(WrappedCall):
 
 
 class InvGammaPrior(WrappedCall):
+    @_format_doc
     def __init__(self, a, scale, loc=0., step=1e-2, **kwargs):
         """Transforms standard normally distributed random variables to an
         inverse gamma distribution.
@@ -125,15 +115,12 @@ class InvGammaPrior(WrappedCall):
             Location parameter.
         step : float
             Step size for numerical integration.
-        name : hashable
-            Name of the latent parameter that transformed to an inverse gamma
-            distribution.
-        shape : tuple
-            Shape of the latent parameter that transformed to an inverse gamma
-            distribution.
-        dtype : dtype
-            Data type of the latent parameter that transformed to an inverse
-            gamma distribution.
+        {_doc_shared}
+
+        Notes
+        -----
+        Broadcasting over tree-like structure is not yet implemented. Please
+        file an issue if you need this feature.
         """
         self.a = a
         self.scale = scale
