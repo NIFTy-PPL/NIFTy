@@ -33,6 +33,8 @@ def power_spectrum_sqrt(k):
 
 
 p_space = ift.PowerSpace(position_space.get_default_codomain())
+# Create an operator to distribute the power of the power-spectrum to indiviudal
+# modes assuming the underlying field to be isotropic
 pd = ift.PowerDistributor(position_space.get_default_codomain(), p_space)
 
 a = ift.PS_field(p_space, power_spectrum_sqrt)
@@ -43,6 +45,8 @@ harmonic2pos = ift.HarmonicTransformOperator(amplitude.target, position_space)
 # %%
 r = ift.from_random(amplitude.domain)
 ift.single_plot(harmonic2pos(amplitude(r)))
+
+# %% [markdown]
 # YAY, we achieved (1)
 
 # %%
@@ -53,12 +57,13 @@ harmonic2pos = ift.HarmonicTransformOperator(amplitude.target, position_space)
 ift.single_plot(ift.exp(harmonic2pos(amplitude(r))))
 
 # %%
-
 # We can also apply the operators to one another to retrieve a new operator that
-# joins all of them. Here we create an operator to propagate our a prior
-# standard normal distributed parameters to a smooth log-normal distributed
+# joins all of them. Here we create an operator to propagate our standard
+# normally distributed prior parameters to smooth log-normal distributed
 # parameter.
 signal = ift.exp(harmonic2pos(amplitude))
+
+# %% [markdown]
 # YAY, we achieved (2)!
 
 # %% [markdown]
@@ -67,16 +72,20 @@ signal = ift.exp(harmonic2pos(amplitude))
 # We've done (1) and (2). Next, let us look at the likelihood $P(d|\theta)$.
 
 # %%
+# In any real life application, one would read in the actual data here. For
+# simplicity, we synthetically create some data from our model.
+
+# Create synthetic "true" latent parameters and propagate them through the model
 r = ift.from_random(signal.domain)
 synthetic_signal_realization = signal(r)
-
-# Retrieve synthetic data from our model
+# Retrieve synthetic noisy data
 rng = ift.random.current_rng()  # numpy random number generator
 synthetic_data = rng.poisson(
     lam=synthetic_signal_realization.val, size=position_space.shape
 )
-
 synthetic_data = ift.makeField(position_space, synthetic_data)
+
+# %%
 likelihood = ift.PoissonianEnergy(synthetic_data)
 
 # %% [markdown]
@@ -87,7 +96,11 @@ likelihood = ift.PoissonianEnergy(synthetic_data)
 
 # %%
 forward = likelihood @ signal
-forward = forward.ducktape("domain")  # HACK to make `optimize_vi` happy
+# NOTE, the optimization method only works with models that have named parameters.
+# Thus, we need to give our parameters a name. This is usually not necessary
+# for more complicated models (e.g. the correlated field model) as they are
+# automatically assigned a name.
+forward = forward.ducktape("domain")
 
 ic_sampling = ift.DeltaEnergyController(
     name="Sampling", iteration_limit=200, tol_rel_deltaE=1e-8
