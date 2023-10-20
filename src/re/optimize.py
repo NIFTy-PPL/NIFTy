@@ -99,6 +99,13 @@ def newton_cg(fun=None, x0=None, *args, **kwargs):
     return _newton_cg(fun, x0, *args, **kwargs).x
 
 
+@doc_from(newton_cg)
+def static_newton_cg(fun=None, x0=None, *args, **kwargs):
+    if x0 is not None:
+        assert_arithmetics(x0)
+    return _static_newton_cg(fun, x0, *args, **kwargs).x
+
+
 def _newton_cg(
     fun=None,
     x0=None,
@@ -135,15 +142,14 @@ def _newton_cg(
     if jnp.isnan(energy):
         raise ValueError("energy is Nan")
     status = -1
-    i = 0
     for i in range(1, maxiter + 1):
         # Newton approximates the potential up to second order. The CG energy
         # (`0.5 * x.T @ A @ x - x.T @ b`) and the approximation to the true
         # potential in Newton thus live on comparable energy scales. Hence, the
         # energy in a Newton minimization can be used to set the CG energy
         # convergence criterion.
-        if old_fval and energy_reduction_factor:
-            cg_absdelta = energy_reduction_factor * (old_fval - energy)
+        if old_energy and energy_reduction_factor:
+            cg_absdelta = energy_reduction_factor * (old_energy - energy)
         else:
             cg_absdelta = None if absdelta is None else absdelta / 100.
         mag_g = jft_norm(g, ord=cg_kwargs.get("norm_ord", 1))
@@ -164,7 +170,6 @@ def _newton_cg(
         if info is not None and info < 0:
             raise ValueError("conjugate gradient failed")
 
-        naive_ls_it = 0
         dd = nat_g  # negative descent direction
         grad_scaling = 1.
         ls_reset = False
@@ -184,7 +189,7 @@ def _newton_cg(
                 grad_scaling = 1.
                 dd = gam / curv * g
         else:
-            grad_scaling = 0.
+            grad_scaling = 0.  # FIXME Lk: does this line have an effect on the returned value?
             nm = "N" if name is None else name
             msg = f"{nm}: WARNING: Energy would increase; aborting"
             logger.warning(msg)
@@ -192,7 +197,7 @@ def _newton_cg(
             break
 
         energy_diff = energy - new_energy
-        old_fval = energy
+        old_energy = energy
         energy = new_energy
         pos = new_pos
         g = new_g
@@ -232,6 +237,290 @@ def _newton_cg(
         nfev=nfev,
         njev=njev,
         nhev=nhev
+    )
+
+
+def _static_newton_cg(
+    fun=None,
+    x0=None,
+    *,
+    miniter=None,
+    maxiter=None,
+    energy_reduction_factor=0.1,
+    old_fval=None,
+    absdelta=None,
+    norm_ord=None,
+    xtol=1e-5,
+    jac: Optional[Callable] = None,
+    fun_and_grad=None,
+    hessp=None,
+    cg=conjugate_gradient._static_cg,
+    name=None,
+    cg_kwargs=None
+):
+    norm_ord = 1 if norm_ord is None else norm_ord
+    miniter = 0 if miniter is None else miniter
+    maxiter = 200 if maxiter is None else maxiter
+    xtol = xtol * size(x0)
+
+    pos = x0
+    fun_and_grad, hessp = _prepare_vag_hessp(
+        fun, jac, hessp, fun_and_grad=fun_and_grad
+    )
+    cg_kwargs = {} if cg_kwargs is None else cg_kwargs
+    cg_name = name + "CG" if name is not None else None
+
+    energy, g = fun_and_grad(pos)
+
+    if jnp.isnan(energy):
+        raise ValueError("energy is Nan")
+
+    def continue_condition_newton_cg(v):
+        return v["status"] < -1
+
+    val = {
+        "status": -2,
+        "iteration": 0,
+        "energy": energy,
+        "old_energy": old_fval,
+        "g": g,
+        "nfev": 1,
+        "njev": 1,
+        "nhev": 0,
+    }
+
+    def pp(args):
+        def log(**kwargs):
+            msg = (
+                f"{name}: →:{grad_scaling} ↺:{ls_reset} #∇²:{nhev:02d}"
+                f" |↘|:{descent_norm:.6e} 🞋:{xtol:.6e}"
+                f"\n{name}: Iteration {i} ⛰:{energy:+.6e} Δ⛰:{energy_diff:.6e}"
+                + (f" 🞋:{absdelta:.6e}" if absdelta is not None else "")
+            )
+            logger.info(msg)
+        log(**args)
+        
+    nm = "N" if name is None else name
+
+    def pp_warn(msg):
+        logger.warning(f"{nm}: WARNING: {msg}")
+
+    def pp_error(msg):
+        logger.error(f"{nm}: ERROR: {msg}")
+
+    def single_newton_cg_step(v):
+        status, i = v["status"], v["iteration"]
+        energy, old_energy, g = v["energy"], v["old_energy"], v["g"]
+        nfev, njev, nhev = v["nfev"], v["njev"], v["nhev"]
+
+        # Newton approximates the potential up to second order. The CG energy
+        # (`0.5 * x.T @ A @ x - x.T @ b`) and the approximation to the true
+        # potential in Newton thus live on comparable energy scales. Hence, the
+        # energy in a Newton minimization can be used to set the CG energy
+        # convergence criterion.
+        if old_energy and energy_reduction_factor:
+            cg_absdelta = energy_reduction_factor * (old_energy - energy)
+        else:
+            cg_absdelta = None if absdelta is None else absdelta / 100.
+
+        mag_g = jft_norm(g, ord=cg_kwargs.get("norm_ord", 1))
+        cg_resnorm = jnp.minimum(
+            0.5, jnp.sqrt(mag_g)
+        ) * mag_g  # taken from SciPy
+
+        default_kwargs = {
+            "absdelta": cg_absdelta,
+            "resnorm": cg_resnorm,
+            "norm_ord": 1,
+            "_raise_nonposdef": False,  # handle non-pos-def
+            "name": cg_name
+        }
+        cg_res = cg(Partial(hessp, pos), g, **{**default_kwargs, **cg_kwargs})
+        nat_g, info = cg_res.x, cg_res.info
+        nhev += cg_res.nfev
+
+        # ValueError("conjugate gradient failed")
+        status = jnp.where((info is not None) & (info < 0), -1, status)
+        if (info is not None) and (info < 0):
+            call(pp_error, "Conjugate Gradient failed!", result_shape=None)
+
+        def continue_condition_line_search(vv):
+            return vv["status_ls"] < -1
+
+        val_ls = {
+            "status_ls": status, # if the Newton-CG step is already bound to stop, don't line search
+            "naive_ls_it": 0,
+            "pos": pos,
+            "new_pos": pos,        # dummy variable 
+            "energy": energy,
+            "new_energy": energy,  # dummy variable
+            "g", g,
+            "new_g": g,            # dummy variable
+            "dd": nat_g,  # negative descent direction
+            "grad_scaling": 1.,
+            "ls_reset": False,
+            "nfev_inner": 0,
+            "njev_inner": 0,
+            "nhev_inner": 0,
+        }
+
+        def line_search_single_step(vv):
+            status_ls = vv["status_ls"]
+            naive_ls_it = vv["naive_ls_it"]
+            pos, grad_scaling, dd, g = vv["pos"], vv["grad_scaling"], vv["dd"], vv["g"]
+            nfev_i, njev_i, nhev_i = vv["nfev_inner"], vv["njev_inner"], vv["nhev_inner"]
+
+            new_pos = pos - grad_scaling * dd
+            new_energy, new_g = fun_and_grad(new_pos)
+            nfev_i += 1
+            njev_i += 1
+
+            status_ls = jnp.where(new_energy <= energy , 0, status_ls)
+
+            grad_scaling = jnp.where(status_ls == -2, grad_scaling / 2, grad_scaling)
+
+            ls_reset, dd, grad_scaling, nhev_i = cond(
+                (naive_ls_it == 5) & (status_ls == -2),
+                lambda x: (True,
+                           vdot(x["g"], x["g"]) / x["g"].dot(hessp(x["pos"], x["g"])) * x["g"],
+                           1.,
+                           x["nhev_i"] + 1),
+                lambda x: (x["ls_reset"], x["dd"], x["grad_scaling"], x["nhev_i"]),
+                {
+                    "pos": pos,
+                    "g": g,
+                    "ls_reset": ls_reset,
+                    "dd": dd,
+                    "grad_scaling": grad_scaling,
+                    "nhev_i": nhev_i,
+                }
+            )
+
+            # if after 9 inner iterations energy has not yet decreased set error flag
+            status_ls = jnp.where((naive_ls_it == 8) & (status_ls < -1), -1, status_ls)
+
+            return {
+                "status_ls": status_ls,
+                "naive_ls_it": naive_ls_it + 1,
+                "pos": pos,
+                "new_pos": new_pos,
+                "energy": energy,
+                "new_energy": new_energy,
+                "g": g,
+                "new_g": new_g,
+                "dd": dd,
+                "grad_scaling": grad_scaling,
+                "ls_reset": ls_reset,
+                "nfev_inner": nfev_i,
+                "njev_inner": njev_i,
+                "nhev_inner": nhev_i,
+            }
+
+        val_ls = while_loop(continue_condition_line_search, line_search_single_step, val_ls)
+
+        status_ls = val_ls["status_ls"]
+
+        def finalize_success_line_search(x):
+            ret = x.copy()
+            status = x["status"]
+            energy, new_energy = x["energy"], x["new_energy"]
+            energy_diff = energy - new_energy
+            ret["old_energy"] = energy
+            ret["energy"] = new_energy
+            ret["pos"] = x["new_pos"]
+            ret["g"] = x["new_g"]
+
+            grad_scaling = x["grad_scaling"]
+
+            ret["nfev"] += x["nfev_inner"]
+            ret["njev"] += x["njev_inner"]
+            ret["nhev"] += x["nhev_inner"]
+
+            descent_norm = grad_scaling * jft_norm(x["dd"], ord=norm_ord)
+            if name is not None:
+                printable_state = {
+                    "grad_scaling": grad_scaling,
+                    "ls_reset": = x["ls_reset"]
+                    "nhev": x["nhev"],
+                    "descent_norm": descent_norm,
+                    "energy": new_energy,
+                    "energy_diff": energy_diff,
+                }
+                call(pp, printable_state, result_shape=None)
+
+            # ValueError("energy is NaN")
+            ne_isnan = jnp.isnan(new_energy)
+            status = jnp.where(ne_isnan, -1, status)
+            if ne_isnan:
+                call(pp_error, "Energy is NaN!", result_shape=None)
+
+            i = x["iteration"]
+            min_cond = x["naive_ls_it"] < 2 and i > miniter
+            status = jnp.where(
+                (absdelta is not None) & (0. <= energy_diff < absdelta) & min_cond & (status != -1),
+                0, status
+            )
+            status = jnp.where((descent_norm <= xtol) & (i > miniter) & (status != -1), 0, status)
+            ret["status"] = status
+
+            return ret
+
+        def finalize_error_line_search(x):
+            call(pp_warn, "Energy would increase; aborting line search.", result_shape=None)
+            ret = x.copy()
+            ret["status"] = -1
+            ret["grad_scaling"] = jnp.array(0.)  # FIXME Line seems superfluous
+            return ret
+        
+        ret = cond(
+            status_ls == 0,
+            finalize_success_line_search,
+            finalize_error_line_search,
+            {
+                **val_ls,
+                "status": status,
+                "iteration": i,
+                "nfev": nfev,
+                "njev": njev,
+                "nhev": nhev
+            }
+        )
+
+        # remove entries not needed for next Newton-CG step 
+        del ret["status_ls"]
+        del ret["naive_ls_it"]
+        del ret["new_pos"]
+        del ret["new_energy"]
+        del ret["new_g"]
+        del ret["grad_scaling"]
+        del ret["dd"]
+        del ret["ls_reset"]
+        del ret["nfev_inner"]
+        del ret["njev_inner"]
+        del ret["nhev_inner"]
+
+        ret["iteration"] += 1
+
+        # if after maxiter iterations convergence has not been reached set error flag
+        ret["status"] = jnp.where((i == maxiter) & (x["status"] < -1), i, x["status"])
+
+        return ret
+
+    val = while_loop(continue_condition_newton_cg, single_newton_cg_step, val)
+
+    if val["status"] > 0:
+        call(pp_error, "Iteration Limit Reached!", result_shape=None)
+
+    return OptimizeResults(
+        x=val["pos"],
+        success=True,
+        status=val["status"],
+        fun=val["energy"],
+        jac=val["g"],
+        nit=val["iteration"],
+        nfev=val["nfev"],
+        njev=val["njev"],
+        nhev=val["nhev"]
     )
 
 
