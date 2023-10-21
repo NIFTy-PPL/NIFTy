@@ -212,6 +212,7 @@ def _newton_cg(
             new_pos = pos - grad_scaling * dd
             new_energy, new_g = fun_and_grad(new_pos)
             nfev, njev = nfev + 1, njev + 1
+
             if new_energy <= energy:
                 break
 
@@ -357,6 +358,7 @@ def _static_newton_cg(
 
     def single_newton_cg_step(v):
         status, i = v["status"], v["iteration"]
+        pos = v["pos"]
         energy, g = v["energy"], v["g"]
         old_energy, old_energy_present = v["old_energy"], v["old_energy_present"]
         nfev, njev, nhev = v["nfev"], v["njev"], v["nhev"]
@@ -424,7 +426,7 @@ def _static_newton_cg(
             nfev_i += 1
             njev_i += 1
 
-            status_ls = jnp.where(new_energy <= energy , 0, status_ls)
+            status_ls = jnp.where(new_energy <= vv['energy'] , 0, status_ls)
 
             grad_scaling = jnp.where(status_ls == -2, grad_scaling / 2, grad_scaling)
 
@@ -453,7 +455,7 @@ def _static_newton_cg(
                 "naive_ls_it": naive_ls_it + 1,
                 "pos": pos,
                 "new_pos": new_pos,
-                "energy": energy,
+                "energy": vv['energy'],
                 "new_energy": new_energy,
                 "g": g,
                 "new_g": new_g,

@@ -113,7 +113,7 @@ def test_cg_steihaug_vs_cg_consistency(seed, size):
     # Note, the solution to the subproblem with infinite trust radius is the CG
     # but with the opposite sign
     for i in range(4):
-        print(f"Iteratoin {i:02d}", file=sys.stderr)
+        print(f"Iteration {i:02d}", file=sys.stderr)
         res_cgs = jft.conjugate_gradient._cg_steihaug_subproblem(
             jnp.nan,
             -x,
