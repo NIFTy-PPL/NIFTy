@@ -16,6 +16,7 @@ from jax.tree_util import (
 from . import conjugate_gradient
 from .likelihood import Likelihood, StandardHamiltonian
 from .tree_math import Vector, assert_arithmetics, random_like, stack, zeros_like
+from .misc import _cond_raise
 
 P = TypeVar("P")
 
@@ -23,16 +24,6 @@ P = TypeVar("P")
 def sample_likelihood(likelihood: Likelihood, primals, key):
     white_sample = random_like(key, likelihood.left_sqrt_metric_tangents_shape)
     return likelihood.left_sqrt_metric(primals, white_sample)
-
-
-def _cond_raise(condition, exception):
-    from jax.experimental.host_callback import call
-
-    def maybe_raise(condition):
-        if condition:
-            raise exception
-
-    call(maybe_raise, condition, result_shape=None)
 
 
 def _likelihood_metric_plus_standard_prior(lh_metric):

@@ -9,7 +9,7 @@ import jax
 from jax import numpy as jnp
 
 from .logger import logger
-from .misc import doc_from
+from .misc import doc_from, _cond_raise
 from .tree_math import assert_arithmetics, result_type
 from .tree_math import norm as jft_norm
 from .tree_math import size, vdot, where, zeros_like
@@ -267,20 +267,8 @@ def _static_cg(
              lambda x: None,
              ())
 
-    nm = "CG" if name is None else name
-
-    def pp_error_zero_curv(args):
-        msg = f"{nm}: Error: Zero curvature in conjugate gradient!"
-        logger.error(msg)
-
-    def pp_error_implausible_alpha(args):
-        msg = f"{nm}: Error: Implausible gradient scaling `alpha < 0`!"
-        logger.error(msg)
-
-    def pp_error_energy_incr(args):
-        logger.error(f"{nm}: Error: The energy increased!")
-
     def pp_success_gamma_zero(args):
+        nm = "CG" if name is None else name
         logger.warning(f"{nm}: gamma=0, converged!")
 
     def continue_condition(v):
@@ -295,16 +283,18 @@ def _static_cg(
 
         q = mat(d)
         curv = vdot(d, q)
-
-        # ValueError("zero curvature in conjugate gradient")
         info = jnp.where(curv == 0., -1, info)
-        cond_pp(curv == 0., pp_error_zero_curv)
+        _cond_raise(
+            (curv == 0) & _raise_nonposdef,
+            ValueError("zero curvature in conjugate gradient")
+        )
 
         alpha = previous_gamma / curv
-
-        # ValueError("implausible gradient scaling `alpha < 0`")
         info = jnp.where(alpha < 0., -1, info)
-        cond_pp(alpha < 0., pp_error_implausible_alpha)
+        _cond_raise(
+            (alpha < 0.) & _raise_nonposdef,
+            ValueError("implausible gradient scaling `alpha < 0`")
+        )
 
         pos = pos - alpha * d
         r = cond(
@@ -335,7 +325,10 @@ def _static_cg(
         neg_energy_eps = -eps * jnp.abs(energy)
 
         info = jnp.where(energy_diff < neg_energy_eps, -1, info)
-        cond_pp(energy_diff < neg_energy_eps, pp_error_energy_incr)
+        _cond_raise(
+            (energy_diff < neg_energy_eps) & _raise_nonposdef,
+            ValueError("energy increased")
+        )
 
         if absdelta is not None:
             info = jnp.where(

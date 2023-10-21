@@ -144,3 +144,13 @@ def reduced_chisq_stats(primals, samples=None, func=None):
         return (jnp.mean(res), jnp.std(res))
 
     return jax.tree_map(red_chisq_stat, samples)
+
+
+def _cond_raise(condition, exception):
+    from jax.experimental.host_callback import call
+
+    def maybe_raise(condition):
+        if condition:
+            raise exception
+
+    call(maybe_raise, condition, result_shape=None)

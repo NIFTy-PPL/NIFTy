@@ -13,7 +13,7 @@ from jax.tree_util import Partial
 
 from . import conjugate_gradient
 from .logger import logger
-from .misc import doc_from
+from .misc import doc_from, _cond_raise
 from .tree_math import assert_arithmetics, result_type
 from .tree_math import norm as jft_norm
 from .tree_math import size, where, vdot
@@ -306,8 +306,7 @@ def _static_newton_cg(
 
     energy, g = fun_and_grad(pos)
 
-    if jnp.isnan(energy):
-        raise ValueError("energy is Nan")
+    _cond_raise(jnp.isnan(energy), ValueError("energy is Nan"))
 
     # Printing functions
     def pp(args):
@@ -320,16 +319,9 @@ def _static_newton_cg(
 
     nm = "N" if name is None else name
 
-    def pp_error_cg_failed(args):
-        msg = f"{nm}: ERROR: Conjugate Gradient failed!"
-        logger.error(msg)
-
     def pp_warn_ls_aborted(args):
         msg = f"{nm}: WARNING: Energy would increase; aborting line search."
         logger.warning(msg)
-
-    def pp_error_ls_nan(args):
-        logger.error(f"{nm}: ERROR: Energy is NaN!")
 
     def pp_error_maxiter_reached(args):
         logger.error(f"{nm}: Iteration Limit Reached!")
@@ -392,7 +384,10 @@ def _static_newton_cg(
 
         # ValueError("conjugate gradient failed")
         status = jnp.where((info is not None) & (info < 0), -1, status)
-        cond_pp((info is not None) & (info < 0), pp_error_cg_failed)
+        _cond_raise(
+            (info is not None) & (info < 0),
+            ValueError("conjugate Gradient failed")
+        )
 
         def continue_condition_line_search(vv):
             return vv["status_ls"] < -1
@@ -503,7 +498,7 @@ def _static_newton_cg(
             # ValueError("energy is NaN")
             ne_isnan = jnp.isnan(new_energy)
             status = jnp.where(ne_isnan, -1, status)
-            cond_pp(ne_isnan, pp_error_ls_nan)
+            _cond_raise(ne_isnan, ValueError('energy is NaN'))
 
             i = x["iteration"]
             min_cond = (x["naive_ls_it"] < 2) & (i > miniter)
