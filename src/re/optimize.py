@@ -154,6 +154,8 @@ def _newton_cg(
             cg_absdelta = energy_reduction_factor * (old_energy - energy)
         else:
             cg_absdelta = None if absdelta is None else absdelta / 100.
+
+        # Use Conjugate Gradient to find the decent direction
         mag_g = jft_norm(g, ord=cg_kwargs.get("norm_ord", 1))
         cg_resnorm = jnp.minimum(
             0.5, jnp.sqrt(mag_g)
@@ -172,6 +174,7 @@ def _newton_cg(
         if info is not None and info < 0:
             raise ValueError("conjugate gradient failed")
 
+        # Line search to find a step width where the loss function/energy decreases
         dd = nat_g  # negative descent direction
         grad_scaling = 1.
         ls_reset = False
@@ -280,6 +283,7 @@ def _static_newton_cg(
     if jnp.isnan(energy):
         raise ValueError("energy is Nan")
 
+    # Printing functions
     def pp(args):
         def log(**kwargs):
             msg = (
@@ -312,11 +316,6 @@ def _static_newton_cg(
              lambda x: call(pp_fn, None, result_shape=None),
              lambda x: None,
              ())
-    if absdelta is None:
-        if energy_reduction_factor:
-            cg_absdelta_fn = lambda energy_diff: energy_reduction_factor * energy_diff
-        else:
-            cg_absdelta_fn = lambda energy_diff: None
 
     def continue_condition_newton_cg(v):
         return v["status"] < -1
