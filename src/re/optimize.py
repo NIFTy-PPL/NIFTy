@@ -2,6 +2,7 @@
 # SPDX-License-Identifier: GPL-2.0+ OR BSD-2-Clause
 
 from datetime import datetime
+from functools import partial
 from typing import (
     Any, Callable, Dict, Mapping, NamedTuple, Optional, Tuple, Union
 )
@@ -107,6 +108,28 @@ def static_newton_cg(fun=None, x0=None, *args, **kwargs):
     return _static_newton_cg(fun, x0, *args, **kwargs).x
 
 
+def _ncg_pretty_print_it(
+    name,
+    i,
+    *,
+    energy,
+    energy_diff,
+    grad_scaling,
+    ls_reset,
+    nhev,
+    descent_norm,
+    xtol,
+    absdelta=None
+):
+    msg = (
+        f"{name}: →:{grad_scaling} ↺:{ls_reset} #∇²:{nhev:02d}"
+        f" |↘|:{descent_norm:.6e} 🞋:{xtol:.6e}"
+        f"\n{name}: Iteration {i} ⛰:{energy:+.6e} Δ⛰:{energy_diff:.6e}"
+        + (f" 🞋:{absdelta:.6e}" if absdelta is not None else "")
+    )
+    logger.info(msg)
+
+
 def _newton_cg(
     fun=None,
     x0=None,
@@ -137,6 +160,13 @@ def _newton_cg(
     )
     cg_kwargs = {} if cg_kwargs is None else cg_kwargs
     cg_name = name + "CG" if name is not None else None
+
+    pp = partial(
+        _ncg_pretty_print_it,
+        name,
+        xtol=xtol,
+        absdelta=absdelta
+    )
 
     energy, g = fun_and_grad(pos)
     nfev, njev, nhev = 1, 1, 0
@@ -209,13 +239,8 @@ def _newton_cg(
 
         descent_norm = grad_scaling * jft_norm(dd, ord=norm_ord)
         if name is not None:
-            msg = (
-                f"{name}: →:{grad_scaling} ↺:{ls_reset} #∇²:{nhev:02d}"
-                f" |↘|:{descent_norm:.6e} 🞋:{xtol:.6e}"
-                f"\n{name}: Iteration {i} ⛰:{energy:+.6e} Δ⛰:{energy_diff:.6e}"
-                + (f" 🞋:{absdelta:.6e}" if absdelta is not None else "")
-            )
-            logger.info(msg)
+            pp(i, energy=energy, energy_diff=energy_diff, grad_scaling=grad_scaling,
+               ls_reset=ls_reset, nhev=nhev, descent_norm=descent_norm)
         if jnp.isnan(new_energy):
             raise ValueError("energy is NaN")
         min_cond = naive_ls_it < 2 and i > miniter
@@ -285,15 +310,12 @@ def _static_newton_cg(
 
     # Printing functions
     def pp(args):
-        def log(**kwargs):
-            msg = (
-                f"{name}: →:{grad_scaling} ↺:{ls_reset} #∇²:{nhev:02d}"
-                f" |↘|:{descent_norm:.6e} 🞋:{xtol:.6e}"
-                f"\n{name}: Iteration {i} ⛰:{energy:+.6e} Δ⛰:{energy_diff:.6e}"
-                + (f" 🞋:{absdelta:.6e}" if absdelta is not None else "")
-            )
-            logger.info(msg)
-        log(**args)
+        _ncg_pretty_print_it(
+            name,
+            xtol=xtol,
+            absdelta=absdelta,
+            **args
+        )
 
     nm = "N" if name is None else name
 
@@ -467,6 +489,7 @@ def _static_newton_cg(
             descent_norm = grad_scaling * jft_norm(x["dd"], ord=norm_ord)
             if name is not None:
                 printable_state = {
+                    "i": x["iteration"],
                     "grad_scaling": grad_scaling,
                     "ls_reset": x["ls_reset"],
                     "nhev": x["nhev"],
