@@ -60,6 +60,7 @@ def _cg_pretty_print_it(
     energy_diff,
     absdelta=None,
     norm=None,
+    norm_is_None=True,
     resnorm=None,
     maxiter=None
 ):
@@ -69,7 +70,7 @@ def _cg_pretty_print_it(
         i_str = str(i)
     msg = f"{name}: Iteration {i_str} ⛰:{energy:+.4e} Δ⛰:{energy_diff:.4e}"
     msg += f" 🞋:{absdelta:.4e}" if absdelta is not None else ""
-    if norm is not None and resnorm is not None:
+    if not norm_is_None and resnorm is not None:
         msg += f" |∇|:{norm:.4e} 🞋:{resnorm:.4e}"
     logger.info(msg)
 
@@ -207,11 +208,13 @@ def _cg(
         previous_gamma = gamma
 
         if name is not None:
-            pp(i, energy=energy, energy_diff=energy_diff, norm=norm)
+            pp(i, energy=energy, energy_diff=energy_diff, norm=norm,
+               norm_is_None=norm is None)
 
     if name is not None and info != -1:
         # only print if loop was terminated via `break` otherwise everything is
-        pp(i, energy=energy, energy_diff=energy_diff, norm=norm)
+        pp(i, energy=energy, energy_diff=energy_diff, norm=norm,
+           norm_is_None=norm is None)
 
     info = i if info == -1 else info
     return CGResults(x=pos, info=info, nit=i, nfev=nfev, success=info == 0)
@@ -393,13 +396,13 @@ def _static_cg(
         norm_is_None = x["norm_is_None"]
 
         if name is not None:
-            printable_norm = None if norm_is_None else norm
             printable_state = {
                 "i": i,
                 "energy": energy,
                 "energy_diff": energy_diff,
                 "absdelta": absdelta,
-                "norm": printable_norm,
+                "norm": norm,
+                "norm_is_None": norm_is_None,
                 "resnorm": resnorm,
                 "maxiter": maxiter
             }
@@ -429,7 +432,8 @@ def _static_cg(
         d = r
         nfev = 1
     # energy = .5xT M x - xT j
-    energy = jnp.array(0.) if x0 is None else vdot((r - j) / 2, pos)
+    tmp_type = vdot((r - j) / 2, pos).dtype
+    energy = jnp.array(0., dtype=tmp_type) if x0 is None else vdot((r - j) / 2, pos)
 
     gamma = vdot(r, r)
     val = {
@@ -440,7 +444,7 @@ def _static_cg(
         "iteration": jnp.array(0),
         "gamma": gamma,
         "energy": energy,
-        "energy_diff": jnp.inf,
+        "energy_diff": jnp.array(jnp.inf, dtype=tmp_type),
         "norm": jft_norm(r, ord=norm_ord),  # placeholder value
         "norm_is_None": True,
     }
@@ -450,15 +454,18 @@ def _static_cg(
 
     if name is not None:
         if resnorm is not None:
-            printable_norm = jft_norm(r, ord=norm_ord)
+            norm = jft_norm(r, ord=norm_ord)
+            norm_is_None = False
         else:
-            printable_norm = None
+            norm = None
+            norm_is_None = True
         printable_state = {
             "i": 0,
             "energy": energy,
             "energy_diff": jnp.inf,
             "absdelta": absdelta,
-            "norm": printable_norm,
+            "norm": norm,
+            "norm_is_None": norm_is_None,
             "resnorm": resnorm,
             "maxiter": maxiter
         }
