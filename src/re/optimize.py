@@ -442,7 +442,9 @@ def _static_newton_cg(
             )
 
             # if after 9 inner iterations energy has not yet decreased set error flag
-            status_ls = jnp.where((naive_ls_it == 8) & (status_ls < -1), -1, status_ls)
+            abort_ls = (naive_ls_it == 8) & (status_ls < -1)
+            status_ls = jnp.where(abort_ls, -1, status_ls)
+            cond_pp(abort_ls, pp_warn_ls_aborted)
 
             return {
                 "status_ls": status_ls,
@@ -465,92 +467,62 @@ def _static_newton_cg(
 
         status_ls = val_ls["status_ls"]
 
-        def finalize_success_line_search(x):
-            ret = x.copy()
-            status = x["status"]
-            energy, new_energy = x["energy"], x["new_energy"]
-            energy_diff = energy - new_energy
-            ret["old_energy"] = energy
-            ret["old_energy_present"] = True
-            ret["energy"] = new_energy
-            ret["pos"] = x["new_pos"]
-            ret["g"] = x["new_g"]
+        status = jnp.where(status_ls == 0, status, -1)
 
-            grad_scaling = x["grad_scaling"]
+        old_energy = jnp.where(status_ls == 0, val_ls["energy"], v["old_energy"])
+        energy = jnp.where(status_ls == 0, val_ls["new_energy"], v["energy"])
+        energy_diff = old_energy - energy
 
-            ret["nfev"] += x["nfev_inner"]
-            ret["njev"] += x["njev_inner"]
-            ret["nhev"] += x["nhev_inner"]
+        old_energy_present = jnp.where(status_ls == 0, True, v["old_energy_present"])
 
-            descent_norm = grad_scaling * jft_norm(x["dd"], ord=norm_ord)
-            if name is not None:
-                printable_state = {
-                    "i": x["iteration"],
-                    "grad_scaling": grad_scaling,
-                    "ls_reset": x["ls_reset"],
-                    "nhev": x["nhev"],
-                    "descent_norm": descent_norm,
-                    "energy": new_energy,
-                    "energy_diff": energy_diff,
-                }
-                call(pp, printable_state, result_shape=None)
+        pos = jnp.where(status_ls == 0, val_ls["new_pos"], v["pos"])
+        g = jnp.where(status_ls == 0, val_ls["new_g"], v["g"])
 
-            # ValueError("energy is NaN")
-            ne_isnan = jnp.isnan(new_energy)
-            status = jnp.where(ne_isnan, -1, status)
-            _cond_raise(ne_isnan, ValueError('energy is NaN'))
+        grad_scaling = jnp.where(status_ls == 0, val_ls["grad_scaling"], 0.)
 
-            i = x["iteration"]
-            min_cond = (x["naive_ls_it"] < 2) & (i > miniter)
-            status = jnp.where(
-                (absdelta is not None) & (0. <= energy_diff) & (energy_diff < absdelta) & min_cond & (status != -1),
-                0, status
-            )
-            status = jnp.where((descent_norm <= xtol) & (i > miniter) & (status != -1), 0, status)
-            ret["status"] = status
+        nfev += val_ls["nfev_inner"]
+        njev += val_ls["njev_inner"]
+        nhev += val_ls["nhev_inner"]
 
-            return ret
-
-        def finalize_error_line_search(x):
-            call(pp_warn_ls_aborted, None, result_shape=None)
-            ret = x.copy()
-            ret["status"] = -1
-            ret["grad_scaling"] = jnp.array(0.)
-            return ret
-
-        ret = cond(
-            status_ls == 0,
-            finalize_success_line_search,
-            finalize_error_line_search,
-            {
-                **val_ls,
-                "status": status,
-                "iteration": i,
-                "old_energy": old_energy,
-                "old_energy_present": old_energy_present,
-                "nfev": nfev,
-                "njev": njev,
-                "nhev": nhev
+        descent_norm = grad_scaling * jft_norm(val_ls['dd'], ord=norm_ord)
+        if name is not None:
+            printable_state = {
+                "i": i,
+                "grad_scaling": grad_scaling,
+                "ls_reset": val_ls["ls_reset"],
+                "nhev": nhev,
+                "descent_norm": descent_norm,
+                "energy": energy,
+                "energy_diff": energy_diff,
             }
+            call(pp, printable_state, result_shape=None) #FIXME don't call if error occured
+
+        ne_isnan = jnp.isnan(energy)
+        status = jnp.where(ne_isnan, -1, status)
+        _cond_raise(ne_isnan, ValueError('energy is NaN'))
+
+        min_cond = (val_ls["naive_ls_it"] < 2) & (i > miniter)
+        status = jnp.where(
+            (absdelta is not None) & (0. <= energy_diff) & (energy_diff < absdelta) & min_cond & (status != -1),
+            0, status
         )
-
-        # remove entries not needed for next Newton-CG step 
-        del ret["status_ls"]
-        del ret["naive_ls_it"]
-        del ret["new_pos"]
-        del ret["new_energy"]
-        del ret["new_g"]
-        del ret["grad_scaling"]
-        del ret["dd"]
-        del ret["ls_reset"]
-        del ret["nfev_inner"]
-        del ret["njev_inner"]
-        del ret["nhev_inner"]
-
-        ret["iteration"] += 1
+        status = jnp.where((descent_norm <= xtol) & (i > miniter) & (status != -1), 0, status)
 
         # if after maxiter iterations convergence has not been reached set error flag
-        ret["status"] = jnp.where((i == maxiter) & (ret["status"] < -1), i, ret["status"])
+        status = jnp.where((i == maxiter) & (status < -1), i, status)
+
+        ret = {
+            "status": status,
+            "iteration": i,
+            "pos": pos,
+            "energy": energy,
+            "old_energy": old_energy,
+            "old_energy_present": old_energy_present,
+            "g": g,
+            "nfev": nfev,
+            "njev": njev,
+            "nhev": nhev,
+        }
 
         return ret
 
