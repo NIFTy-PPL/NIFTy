@@ -18,7 +18,7 @@ from .misc import (
 )
 from .model import Initializer, Model
 from .num import *
-from .optimize import minimize, newton_cg, trust_ncg
+from .optimize import minimize, newton_cg, static_newton_cg, trust_ncg
 from .prior import (
     InvGammaPrior, LaplacePrior, LogNormalPrior, NormalPrior, WrappedCall
 )
