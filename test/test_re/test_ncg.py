@@ -48,64 +48,6 @@ def eggholder(np):
     return func
 
 
-def test_ncg_for_pytree():
-    pos = jft.Vector(
-        [
-            jnp.array(0., dtype=jnp.float32),
-            (jnp.array(3., dtype=jnp.float32), ), {
-                "a": jnp.array(5., dtype=jnp.float32)
-            }
-        ]
-    )
-    getters = (lambda x: x[0], lambda x: x[1][0], lambda x: x[2]["a"])
-    tgt = [-10., 1., 2.]
-    met = [10., 40., 2]
-
-    def model(p):
-        losses = []
-        for i, get in enumerate(getters):
-            losses.append((get(p) - tgt[i])**2 * met[i])
-        return jnp.sum(jnp.array(losses))
-
-    def metric(p, tan):
-        m = []
-        m.append(tan[0] * met[0])
-        m.append((tan[1][0] * met[1], ))
-        m.append({"a": tan[2]["a"] * met[2]})
-        return jft.Vector(m)
-
-    res = jft.newton_cg(
-        fun_and_grad=value_and_grad(model),
-        x0=pos,
-        hessp=metric,
-        maxiter=10,
-        absdelta=1e-6
-    )
-    for i, get in enumerate(getters):
-        assert_allclose(get(res), tgt[i], atol=1e-6, rtol=1e-5)
-
-
-@pmp("seed", (3637, 12, 42))
-def test_ncg(seed):
-    key = random.PRNGKey(seed)
-    x = random.normal(key, shape=(3, ))
-    diag = jnp.array([1., 2., 3.])
-    met = lambda y, t: t / diag
-    val_and_grad = lambda y: (
-        jnp.sum(y**2 / diag) / 2 - jnp.dot(x, y), y / diag - x
-    )
-
-    res = jft.newton_cg(
-        fun_and_grad=val_and_grad,
-        x0=x,
-        hessp=met,
-        maxiter=20,
-        absdelta=1e-6,
-        name='N'
-    )
-    assert_allclose(res, diag * x, rtol=1e-4, atol=1e-4)
-
-
 @pmp("seed", (3637, 12, 42))
 @pmp("cg", (jft.cg, jft.static_cg))
 def test_cg(seed, cg):
@@ -185,6 +127,66 @@ def test_cg_steihaug_vs_cg_consistency(seed, size):
             mat, x, resnorm=1e-6, miniter=i, maxiter=i
         )
         assert_allclose(res_cgs.step, res_cg_plain, rtol=1e-4, atol=1e-5)
+
+
+@pmp("ncg", (jft.newton_cg, jft.static_newton_cg))
+def test_ncg_for_pytree(ncg):
+    pos = jft.Vector(
+        [
+            jnp.array(0., dtype=jnp.float32),
+            (jnp.array(3., dtype=jnp.float32), ), {
+                "a": jnp.array(5., dtype=jnp.float32)
+            }
+        ]
+    )
+    getters = (lambda x: x[0], lambda x: x[1][0], lambda x: x[2]["a"])
+    tgt = [-10., 1., 2.]
+    met = [10., 40., 2]
+
+    def model(p):
+        losses = []
+        for i, get in enumerate(getters):
+            losses.append((get(p) - tgt[i])**2 * met[i])
+        return jnp.sum(jnp.array(losses))
+
+    def metric(p, tan):
+        m = []
+        m.append(tan[0] * met[0])
+        m.append((tan[1][0] * met[1], ))
+        m.append({"a": tan[2]["a"] * met[2]})
+        return jft.Vector(m)
+
+    res = ncg(
+        fun_and_grad=value_and_grad(model),
+        x0=pos,
+        hessp=metric,
+        maxiter=10,
+        absdelta=1e-6
+    )
+    for i, get in enumerate(getters):
+        assert_allclose(get(res), tgt[i], atol=1e-6, rtol=1e-5)
+
+
+@pmp("seed", (3637, 12, 42))
+@pmp("ncg", (jft.newton_cg, jft.static_newton_cg))
+def test_ncg(seed, ncg):
+    key = random.PRNGKey(seed)
+    x = random.normal(key, shape=(3, ))
+    diag = jnp.array([1., 2., 3.])
+    met = lambda y, t: t / diag
+    val_and_grad = lambda y: (
+        jnp.sum(y**2 / diag) / 2 - jnp.dot(x, y), y / diag - x
+    )
+
+    res = ncg(
+        fun_and_grad=val_and_grad,
+        x0=x,
+        hessp=met,
+        maxiter=20,
+        absdelta=1e-6,
+        name='N'
+    )
+    assert_allclose(res, diag * x, rtol=1e-4, atol=1e-4)
 
 
 @pmp(
