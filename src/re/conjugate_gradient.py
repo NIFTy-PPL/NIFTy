@@ -261,6 +261,28 @@ def _static_cg(
     def pp(arg):
         _cg_pretty_print_it(name, **arg)
 
+    def cond_pp(condition, pp_fn):
+        cond(condition,
+             lambda x: call(pp_fn, None, result_shape=None),
+             lambda x: None,
+             ())
+
+    nm = "CG" if name is None else name
+
+    def pp_error_zero_curv(args):
+        msg = f"{nm}: Error: Zero curvature in conjugate gradient!"
+        logger.error(msg)
+
+    def pp_error_implausible_alpha(args):
+        msg = f"{nm}: Error: Implausible gradient scaling `alpha < 0`!"
+        logger.error(msg)
+
+    def pp_error_energy_incr(args):
+        logger.error(f"{nm}: Error: The energy increased!")
+
+    def pp_success_gamma_zero(args):
+        logger.warn(f"{nm}: gamma=0, converged!")
+
     def continue_condition(v):
         return v["info"] < -1
 
@@ -273,11 +295,17 @@ def _static_cg(
 
         q = mat(d)
         curv = vdot(d, q)
+
         # ValueError("zero curvature in conjugate gradient")
         info = jnp.where(curv == 0., -1, info)
+        cond_pp(curv == 0., pp_error_zero_curv)
+
         alpha = previous_gamma / curv
+
         # ValueError("implausible gradient scaling `alpha < 0`")
         info = jnp.where(alpha < 0., -1, info)
+        cond_pp(alpha < 0., pp_error_implausible_alpha)
+
         pos = pos - alpha * d
         r = cond(
             i % N_RESET == 0, lambda x: mat(x["pos"]) - x["j"],
@@ -291,9 +319,10 @@ def _static_cg(
         )
         gamma = vdot(r, r)
 
-        info = jnp.where(
-            (gamma >= 0.) & (gamma <= tiny) & (info != -1), 0, info
-        )
+        is_success = (gamma >= 0.) & (gamma <= tiny) & (info != -1)
+        info = jnp.where(is_success, 0, info)
+        cond_pp(is_success, pp_success_gamma_zero)
+
         if resnorm is not None:
             norm = jft_norm(r, ord=norm_ord)
             info = jnp.where(
@@ -304,8 +333,10 @@ def _static_cg(
         energy = vdot((r - j) / 2, pos)
         energy_diff = previous_energy - energy
         neg_energy_eps = -eps * jnp.abs(energy)
-        # print(f"energy increased", file=sys.stderr)
+
         info = jnp.where(energy_diff < neg_energy_eps, -1, info)
+        cond_pp(energy_diff < neg_energy_eps, pp_error_energy_incr)
+
         if absdelta is not None:
             info = jnp.where(
                 (energy_diff < absdelta) & (i >= miniter) & (info != -1), 0,
@@ -363,6 +394,7 @@ def _static_cg(
     }
     # Finish early if already converged in the initial iteration
     val["info"] = jnp.where(gamma == 0., 0, val["info"])
+    cond_pp(gamma == 0., pp_success_gamma_zero)
 
     if name is not None:
         if resnorm is not None:

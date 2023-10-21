@@ -344,7 +344,7 @@ def _static_newton_cg(
 
     val = {
         "status": -2,
-        "iteration": 0,
+        "iteration": 1,
         "pos": pos,
         "energy": energy,
         "old_energy": old_fval if old_fval is not None else energy,
