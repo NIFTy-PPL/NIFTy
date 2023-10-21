@@ -225,7 +225,7 @@ def _newton_cg(
                 grad_scaling = 1.
                 dd = gam / curv * g
         else:
-            grad_scaling = 0.  # FIXME Lk: does this line have an effect on the returned value?
+            grad_scaling = 0.
             nm = "N" if name is None else name
             msg = f"{nm}: WARNING: Energy would increase; aborting"
             logger.warning(msg)
@@ -368,11 +368,10 @@ def _static_newton_cg(
         # potential in Newton thus live on comparable energy scales. Hence, the
         # energy in a Newton minimization can be used to set the CG energy
         # convergence criterion.
-        cg_absdelta = cond(
+        cg_absdelta = jnp.where(
             old_energy_present & (energy_reduction_factor is not None),
-            lambda x: energy_reduction_factor * x["energy_diff"],
-            lambda x: None if absdelta is None else jnp.array(absdelta / 100., dtype=x["energy_diff"].dtype),
-            {"energy_diff": old_energy - energy}
+            energy_reduction_factor * (old_energy - energy),
+            None if absdelta is None else jnp.array(absdelta / 100., dtype=energy.dtype)
         )
 
         mag_g = jft_norm(g, ord=cg_kwargs.get("norm_ord", 1))
@@ -521,7 +520,7 @@ def _static_newton_cg(
             call(pp_warn_ls_aborted, None, result_shape=None)
             ret = x.copy()
             ret["status"] = -1
-            ret["grad_scaling"] = jnp.array(0.)  # FIXME Line seems superfluous
+            ret["grad_scaling"] = jnp.array(0.)
             return ret
 
         ret = cond(
