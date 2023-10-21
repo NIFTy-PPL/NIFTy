@@ -475,8 +475,8 @@ def _static_newton_cg(
 
         old_energy_present = jnp.where(status_ls == 0, True, v["old_energy_present"])
 
-        pos = jnp.where(status_ls == 0, val_ls["new_pos"], v["pos"])
-        g = jnp.where(status_ls == 0, val_ls["new_g"], v["g"])
+        pos = where(status_ls == 0, val_ls["new_pos"], v["pos"])
+        g = where(status_ls == 0, val_ls["new_g"], v["g"])
 
         grad_scaling = jnp.where(status_ls == 0, val_ls["grad_scaling"], 0.)
 
