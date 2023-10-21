@@ -60,7 +60,6 @@ def _cg_pretty_print_it(
     energy_diff,
     absdelta=None,
     norm=None,
-    norm_is_None=True,
     resnorm=None,
     maxiter=None
 ):
@@ -70,7 +69,7 @@ def _cg_pretty_print_it(
         i_str = str(i)
     msg = f"{name}: Iteration {i_str} ⛰:{energy:+.4e} Δ⛰:{energy_diff:.4e}"
     msg += f" 🞋:{absdelta:.4e}" if absdelta is not None else ""
-    if not norm_is_None and resnorm is not None:
+    if norm is not None and resnorm is not None:
         msg += f" |∇|:{norm:.4e} 🞋:{resnorm:.4e}"
     logger.info(msg)
 
@@ -208,13 +207,11 @@ def _cg(
         previous_gamma = gamma
 
         if name is not None:
-            pp(i, energy=energy, energy_diff=energy_diff, norm=norm,
-               norm_is_None=norm is None)
+            pp(i, energy=energy, energy_diff=energy_diff, norm=norm)
 
     if name is not None and info != -1:
         # only print if loop was terminated via `break` otherwise everything is
-        pp(i, energy=energy, energy_diff=energy_diff, norm=norm,
-           norm_is_None=norm is None)
+        pp(i, energy=energy, energy_diff=energy_diff, norm=norm)
 
     info = i if info == -1 else info
     return CGResults(x=pos, info=info, nit=i, nfev=nfev, success=info == 0)
@@ -284,7 +281,7 @@ def _static_cg(
         logger.error(f"{nm}: Error: The energy increased!")
 
     def pp_success_gamma_zero(args):
-        logger.warn(f"{nm}: gamma=0, converged!")
+        logger.warning(f"{nm}: gamma=0, converged!")
 
     def continue_condition(v):
         return v["info"] < -1
@@ -292,7 +289,7 @@ def _static_cg(
     def cg_single_step(v):
         info = v["info"]
         pos, r, d, i = v["pos"], v["r"], v["d"], v["iteration"]
-        previous_gamma = v["gamma"]
+        previous_gamma, previous_energy = v["gamma"], v["energy"]
 
         i += 1
 
@@ -326,74 +323,28 @@ def _static_cg(
         info = jnp.where(is_success, 0, info)
         cond_pp(is_success, pp_success_gamma_zero)
 
-        def handle_no_success(x):
-            info, i = x["info"], x["i"]
-            r, j, d, pos = x["r"], x["j"], x["d"], x["pos"]
-            previous_energy = x["previous_energy"]
-
+        if resnorm is not None:
             norm = jft_norm(r, ord=norm_ord)
-            if resnorm is not None:
-                info = jnp.where(
-                    (norm < resnorm) & (i >= miniter) & (info != -1), 0, info
-                )
-                norm_is_None = False
-            else:
-                norm_is_None = True
+            info = jnp.where(
+                (norm < resnorm) & (i >= miniter) & (info != -1), 0, info
+            )
+        else:
+            norm = None
+        energy = vdot((r - j) / 2, pos)
+        energy_diff = previous_energy - energy
+        neg_energy_eps = -eps * jnp.abs(energy)
 
-            energy = vdot((r - j) / 2, pos)
-            energy_diff = previous_energy - energy
-            neg_energy_eps = -eps * jnp.abs(energy)
+        info = jnp.where(energy_diff < neg_energy_eps, -1, info)
+        cond_pp(energy_diff < neg_energy_eps, pp_error_energy_incr)
 
-            info = jnp.where(energy_diff < neg_energy_eps, -1, info)
-            cond_pp(energy_diff < neg_energy_eps, pp_error_energy_incr)
+        if absdelta is not None:
+            info = jnp.where(
+                (energy_diff < absdelta) & (i >= miniter) & (info != -1), 0,
+                info
+            )
+        info = jnp.where((i >= maxiter) & (info != -1), i, info)
 
-            if absdelta is not None:
-                info = jnp.where(
-                    (energy_diff < absdelta) & (i >= miniter) & (info != -1), 0,
-                    info
-                )
-            info = jnp.where((i >= maxiter) & (info != -1), i, info)
-
-            d = d * jnp.maximum(0, gamma / previous_gamma) + r
-
-            ret = x.copy()
-            ret["info"] = info
-            ret["energy"] = energy
-            ret["energy_diff"] = energy_diff
-            ret["d"] = d
-            ret["norm"] = norm
-            ret["norm_is_None"] = norm_is_None
-            return ret
-
-        def handle_success(x):
-            ret = x.copy()
-            ret["energy"] = ret["previous_energy"]
-            return ret
-
-        x = cond(is_success,
-            handle_success,
-            handle_no_success,
-            {
-                "info": info,
-                "i": i,
-                "r": r,
-                "j": j,
-                "pos": pos,
-                "d": d,
-                "previous_energy": v["energy"],
-                "energy_diff": v["energy_diff"],
-                "gamma": gamma,
-                "previous_gamma": previous_gamma,
-                "norm": v["norm"],
-                "norm_is_None": v["norm_is_None"],
-            })
-
-        info = x["info"]
-        energy = x["energy"]
-        energy_diff = x["energy_diff"]
-        d = x["d"]
-        norm = x["norm"]
-        norm_is_None = x["norm_is_None"]
+        d = d * jnp.maximum(0, gamma / previous_gamma) + r
 
         if name is not None:
             printable_state = {
@@ -402,24 +353,21 @@ def _static_cg(
                 "energy_diff": energy_diff,
                 "absdelta": absdelta,
                 "norm": norm,
-                "norm_is_None": norm_is_None,
                 "resnorm": resnorm,
                 "maxiter": maxiter
             }
             call(pp, printable_state, result_shape=None)
 
-        return {
+        ret = {
             "info": info,
             "pos": pos,
             "r": r,
             "d": d,
             "iteration": i,
             "gamma": gamma,
-            "energy": energy,
-            "energy_diff": energy_diff,
-            "norm": norm,
-            "norm_is_None": norm_is_None,
+            "energy": energy
         }
+        return ret
 
     if x0 is None:
         pos = zeros_like(j)
@@ -432,8 +380,7 @@ def _static_cg(
         d = r
         nfev = 1
     # energy = .5xT M x - xT j
-    tmp_type = vdot((r - j) / 2, pos).dtype
-    energy = jnp.array(0., dtype=tmp_type) if x0 is None else vdot((r - j) / 2, pos)
+    energy = jnp.array(0.) if x0 is None else vdot((r - j) / 2, pos)
 
     gamma = vdot(r, r)
     val = {
@@ -443,10 +390,7 @@ def _static_cg(
         "d": d,
         "iteration": jnp.array(0),
         "gamma": gamma,
-        "energy": energy,
-        "energy_diff": jnp.array(jnp.inf, dtype=tmp_type),
-        "norm": jft_norm(r, ord=norm_ord),  # placeholder value
-        "norm_is_None": True,
+        "energy": energy
     }
     # Finish early if already converged in the initial iteration
     val["info"] = jnp.where(gamma == 0., 0, val["info"])
@@ -455,17 +399,14 @@ def _static_cg(
     if name is not None:
         if resnorm is not None:
             norm = jft_norm(r, ord=norm_ord)
-            norm_is_None = False
         else:
             norm = None
-            norm_is_None = True
         printable_state = {
             "i": 0,
             "energy": energy,
             "energy_diff": jnp.inf,
             "absdelta": absdelta,
             "norm": norm,
-            "norm_is_None": norm_is_None,
             "resnorm": resnorm,
             "maxiter": maxiter
         }
