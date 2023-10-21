@@ -328,13 +328,15 @@ def _static_cg(
             r, j, d, pos = x["r"], x["j"], x["d"], x["pos"]
             previous_energy = x["previous_energy"]
 
+            norm = jft_norm(r, ord=norm_ord)
             if resnorm is not None:
-                norm = jft_norm(r, ord=norm_ord)
                 info = jnp.where(
                     (norm < resnorm) & (i >= miniter) & (info != -1), 0, info
                 )
+                norm_is_None = False
             else:
-                norm = None
+                norm_is_None = True
+
             energy = vdot((r - j) / 2, pos)
             energy_diff = previous_energy - energy
             neg_energy_eps = -eps * jnp.abs(energy)
@@ -357,6 +359,7 @@ def _static_cg(
             ret["energy_diff"] = energy_diff
             ret["d"] = d
             ret["norm"] = norm
+            ret["norm_is_None"] = norm_is_None
             return ret
 
         def handle_success(x):
@@ -379,21 +382,24 @@ def _static_cg(
                 "gamma": gamma,
                 "previous_gamma": previous_gamma,
                 "norm": v["norm"],
+                "norm_is_None": v["norm_is_None"],
             })
 
         info = x["info"]
-        energy = x["enery"]
+        energy = x["energy"]
         energy_diff = x["energy_diff"]
         d = x["d"]
         norm = x["norm"]
+        norm_is_None = x["norm_is_None"]
 
         if name is not None:
+            printable_norm = None if norm_is_None else norm
             printable_state = {
                 "i": i,
                 "energy": energy,
                 "energy_diff": energy_diff,
                 "absdelta": absdelta,
-                "norm": norm,
+                "norm": printable_norm,
                 "resnorm": resnorm,
                 "maxiter": maxiter
             }
@@ -409,6 +415,7 @@ def _static_cg(
             "energy": energy,
             "energy_diff": energy_diff,
             "norm": norm,
+            "norm_is_None": norm_is_None,
         }
 
     if x0 is None:
@@ -434,7 +441,8 @@ def _static_cg(
         "gamma": gamma,
         "energy": energy,
         "energy_diff": jnp.inf,
-        "norm": None,
+        "norm": jft_norm(r, ord=norm_ord),  # placeholder value
+        "norm_is_None": True,
     }
     # Finish early if already converged in the initial iteration
     val["info"] = jnp.where(gamma == 0., 0, val["info"])
@@ -442,15 +450,15 @@ def _static_cg(
 
     if name is not None:
         if resnorm is not None:
-            norm = jft_norm(r, ord=norm_ord)
+            printable_norm = jft_norm(r, ord=norm_ord)
         else:
-            norm = None
+            printable_norm = None
         printable_state = {
             "i": 0,
             "energy": energy,
             "energy_diff": jnp.inf,
             "absdelta": absdelta,
-            "norm": norm,
+            "norm": printable_norm,
             "resnorm": resnorm,
             "maxiter": maxiter
         }

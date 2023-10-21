@@ -400,11 +400,11 @@ def _static_newton_cg(
             "status_ls": status, # if the Newton-CG step is already bound to stop, don't line search
             "naive_ls_it": 0,
             "pos": pos,
-            "new_pos": pos,        # dummy variable 
+            "new_pos": pos,        # placeholder value
             "energy": energy,
-            "new_energy": energy,  # dummy variable
+            "new_energy": energy,  # placeholder value
             "g": g,
-            "new_g": g,            # dummy variable
+            "new_g": g,            # placeholder value
             "dd": nat_g,  # negative descent direction
             "grad_scaling": 1.,
             "ls_reset": False,
