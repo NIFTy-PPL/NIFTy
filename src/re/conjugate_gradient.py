@@ -289,7 +289,7 @@ def _static_cg(
     def cg_single_step(v):
         info = v["info"]
         pos, r, d, i = v["pos"], v["r"], v["d"], v["iteration"]
-        previous_gamma, previous_energy = v["gamma"], v["energy"]
+        previous_gamma = v["gamma"]
 
         i += 1
 
@@ -323,28 +323,69 @@ def _static_cg(
         info = jnp.where(is_success, 0, info)
         cond_pp(is_success, pp_success_gamma_zero)
 
-        if resnorm is not None:
-            norm = jft_norm(r, ord=norm_ord)
-            info = jnp.where(
-                (norm < resnorm) & (i >= miniter) & (info != -1), 0, info
-            )
-        else:
-            norm = None
-        energy = vdot((r - j) / 2, pos)
-        energy_diff = previous_energy - energy
-        neg_energy_eps = -eps * jnp.abs(energy)
+        def handle_no_success(x):
+            info, i = x["info"], x["i"]
+            r, j, d, pos = x["r"], x["j"], x["d"], x["pos"]
+            previous_energy = x["previous_energy"]
 
-        info = jnp.where(energy_diff < neg_energy_eps, -1, info)
-        cond_pp(energy_diff < neg_energy_eps, pp_error_energy_incr)
+            if resnorm is not None:
+                norm = jft_norm(r, ord=norm_ord)
+                info = jnp.where(
+                    (norm < resnorm) & (i >= miniter) & (info != -1), 0, info
+                )
+            else:
+                norm = None
+            energy = vdot((r - j) / 2, pos)
+            energy_diff = previous_energy - energy
+            neg_energy_eps = -eps * jnp.abs(energy)
 
-        if absdelta is not None:
-            info = jnp.where(
-                (energy_diff < absdelta) & (i >= miniter) & (info != -1), 0,
-                info
-            )
-        info = jnp.where((i >= maxiter) & (info != -1), i, info)
+            info = jnp.where(energy_diff < neg_energy_eps, -1, info)
+            cond_pp(energy_diff < neg_energy_eps, pp_error_energy_incr)
 
-        d = d * jnp.maximum(0, gamma / previous_gamma) + r
+            if absdelta is not None:
+                info = jnp.where(
+                    (energy_diff < absdelta) & (i >= miniter) & (info != -1), 0,
+                    info
+                )
+            info = jnp.where((i >= maxiter) & (info != -1), i, info)
+
+            d = d * jnp.maximum(0, gamma / previous_gamma) + r
+
+            ret = x.copy()
+            ret["info"] = info
+            ret["energy"] = energy
+            ret["energy_diff"] = energy_diff
+            ret["d"] = d
+            ret["norm"] = norm
+            return ret
+
+        def handle_success(x):
+            ret = x.copy()
+            ret["energy"] = ret["previous_energy"]
+            return ret
+
+        x = cond(is_success,
+            handle_success,
+            handle_no_success,
+            {
+                "info": info,
+                "i": i,
+                "r": r,
+                "j": j,
+                "pos": pos,
+                "d": d,
+                "previous_energy": v["energy"],
+                "energy_diff": v["energy_diff"],
+                "gamma": gamma,
+                "previous_gamma": previous_gamma,
+                "norm": v["norm"],
+            })
+
+        info = x["info"]
+        energy = x["enery"]
+        energy_diff = x["energy_diff"]
+        d = x["d"]
+        norm = x["norm"]
 
         if name is not None:
             printable_state = {
@@ -358,16 +399,17 @@ def _static_cg(
             }
             call(pp, printable_state, result_shape=None)
 
-        ret = {
+        return {
             "info": info,
             "pos": pos,
             "r": r,
             "d": d,
             "iteration": i,
             "gamma": gamma,
-            "energy": energy
+            "energy": energy,
+            "energy_diff": energy_diff,
+            "norm": norm,
         }
-        return ret
 
     if x0 is None:
         pos = zeros_like(j)
@@ -390,7 +432,9 @@ def _static_cg(
         "d": d,
         "iteration": jnp.array(0),
         "gamma": gamma,
-        "energy": energy
+        "energy": energy,
+        "energy_diff": jnp.inf,
+        "norm": None,
     }
     # Finish early if already converged in the initial iteration
     val["info"] = jnp.where(gamma == 0., 0, val["info"])
