@@ -130,11 +130,13 @@ def _curve_sample(
 
     r2_half = Gaussian(met_smpl) @ g  # (g - met_smpl)**2 / 2
 
+    minimize_options = minimize_options.copy()
+    minimize_options.update({"hessp": r2_half.metric})
     opt_state = minimize(
         r2_half,
         x0=x0,
         method=minimize_method,
-        options=minimize_options | {"hessp": r2_half.metric},
+        options=minimize_options,
     )
 
     return opt_state.x, opt_state.status

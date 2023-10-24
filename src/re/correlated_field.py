@@ -131,19 +131,19 @@ def non_parametric_amplitude(
     log_vol = domain.get("log_volume")
 
     fluctuations = WrappedCall(fluctuations, name=prefix + "fluctuations")
-    ptree = fluctuations.domain
+    ptree = fluctuations.domain.copy()
     loglogavgslope = WrappedCall(loglogavgslope, name=prefix + "loglogavgslope")
-    ptree |= loglogavgslope.domain
+    ptree.update(loglogavgslope.domain)
     if flexibility is not None:
         flexibility = WrappedCall(flexibility, name=prefix + "flexibility")
-        ptree |= flexibility.domain
+        ptree.update(flexibility.domain)
         # Register the parameters for the spectrum
         _safe_assert(log_vol is not None)
         _safe_assert(rel_log_mode_len.ndim == log_vol.ndim == 1)
-        ptree |= {prefix + "spectrum": ShapeWithDtype((2, ) + log_vol.shape)}
+        ptree.update({prefix + "spectrum": ShapeWithDtype((2, ) + log_vol.shape)})
     if asperity is not None:
         asperity = WrappedCall(asperity, name=prefix + "asperity")
-        ptree |= asperity.domain
+        ptree.update(asperity.domain)
 
     def correlate(primals: Mapping) -> jnp.ndarray:
         flu = fluctuations(primals)
