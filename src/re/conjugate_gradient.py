@@ -9,7 +9,7 @@ import jax
 from jax import numpy as jnp
 
 from .logger import logger
-from .misc import doc_from, _cond_raise
+from .misc import doc_from, _cond_raise, _cond_log
 from .tree_math import assert_arithmetics, result_type
 from .tree_math import norm as jft_norm
 from .tree_math import size, vdot, where, zeros_like
@@ -261,15 +261,7 @@ def _static_cg(
     def pp(arg):
         _cg_pretty_print_it(name, **arg)
 
-    def cond_pp(condition, pp_fn):
-        cond(condition,
-             lambda x: call(pp_fn, None, result_shape=None),
-             lambda x: None,
-             ())
-
-    def pp_success_gamma_zero(args):
-        nm = "CG" if name is None else name
-        logger.warning(f"{nm}: gamma=0, converged!")
+    nm = "CG" if name is None else name
 
     def continue_condition(v):
         return v["info"] < -1
@@ -311,7 +303,7 @@ def _static_cg(
 
         is_success = (gamma >= 0.) & (gamma <= tiny) & (info != -1)
         info = jnp.where(is_success, 0, info)
-        cond_pp(is_success, pp_success_gamma_zero)
+        _cond_log(is_success, logger.warning, f"{nm}: gamma=0, converged!")
 
         if resnorm is not None:
             norm = jft_norm(r, ord=norm_ord)
@@ -387,7 +379,7 @@ def _static_cg(
     }
     # Finish early if already converged in the initial iteration
     val["info"] = jnp.where(gamma == 0., 0, val["info"])
-    cond_pp(gamma == 0., pp_success_gamma_zero)
+    _cond_log(gamma == 0., logger.warning, f"{nm}: gamma=0, converged!")
 
     if name is not None:
         if resnorm is not None:

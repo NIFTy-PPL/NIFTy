@@ -13,7 +13,7 @@ from jax.tree_util import Partial
 
 from . import conjugate_gradient
 from .logger import logger
-from .misc import doc_from, _cond_raise
+from .misc import doc_from, _cond_raise, _cond_log
 from .tree_math import assert_arithmetics, result_type
 from .tree_math import norm as jft_norm
 from .tree_math import size, where, vdot
@@ -319,19 +319,6 @@ def _static_newton_cg(
 
     nm = "N" if name is None else name
 
-    def pp_warn_ls_aborted(args):
-        msg = f"{nm}: WARNING: Energy would increase; aborting line search."
-        logger.warning(msg)
-
-    def pp_error_maxiter_reached(args):
-        logger.error(f"{nm}: Iteration Limit Reached!")
-
-    def cond_pp(condition, pp_fn):
-        cond(condition,
-             lambda x: call(pp_fn, None, result_shape=None),
-             lambda x: None,
-             ())
-
     def continue_condition_newton_cg(v):
         return v["status"] < -1
 
@@ -444,7 +431,8 @@ def _static_newton_cg(
             # if after 9 inner iterations energy has not yet decreased set error flag
             abort_ls = (naive_ls_it == 8) & (status_ls < -1)
             status_ls = jnp.where(abort_ls, -1, status_ls)
-            cond_pp(abort_ls, pp_warn_ls_aborted)
+            _cond_log(abort_ls, logging.error,
+                      f"{nm}: WARNING: Energy would increase; aborting line search.")
 
             return {
                 "status_ls": status_ls,
@@ -528,7 +516,7 @@ def _static_newton_cg(
 
     val = while_loop(continue_condition_newton_cg, single_newton_cg_step, val)
 
-    cond_pp(val["status"] > 0, pp_error_maxiter_reached)
+    _cond_log(val["status"] > 0, logging.error, f"{nm}: Iteration Limit Reached!")
 
     return OptimizeResults(
         x=val["pos"],

@@ -154,3 +154,13 @@ def _cond_raise(condition, exception):
             raise exception
 
     call(maybe_raise, condition, result_shape=None)
+
+
+def _cond_log(condition, log_channel, log_msg):
+    from jax.experimental.host_callback import call
+
+    def maybe_log(condition):
+        if condition:
+            log_channel(log_msg)
+
+    call(maybe_log, condition, result_shape=None)
