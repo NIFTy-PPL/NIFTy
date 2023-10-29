@@ -431,7 +431,7 @@ def _static_newton_cg(
             # if after 9 inner iterations energy has not yet decreased set error flag
             abort_ls = (naive_ls_it == 8) & (status_ls < -1)
             status_ls = jnp.where(abort_ls, -1, status_ls)
-            _cond_log(abort_ls, logging.error,
+            _cond_log(abort_ls, logger.error,
                       f"{nm}: WARNING: Energy would increase; aborting line search.")
 
             return {
@@ -516,7 +516,7 @@ def _static_newton_cg(
 
     val = while_loop(continue_condition_newton_cg, single_newton_cg_step, val)
 
-    _cond_log(val["status"] > 0, logging.error, f"{nm}: Iteration Limit Reached!")
+    _cond_log(val["status"] > 0, logger.error, f"{nm}: Iteration Limit Reached!")
 
     return OptimizeResults(
         x=val["pos"],
