@@ -48,6 +48,14 @@ def eggholder(np):
     return func
 
 
+cg_static_argnames = ('absdelta', 'resnorm', 'norm_ord', 'tol', 'atol',
+                      'miniter', 'maxiter', 'name', '_raise_nonposdef')
+
+ncg_static_argnames = ('miniter', 'maxiter', 'energy_reduction_factor',
+                       'old_fval', 'absdelta', 'norm_ord', 'xtol',
+                       'name', 'cg_kwargs')
+
+
 @pmp("seed", (3637, 12, 42))
 @pmp("cg", (jft.cg, jft.static_cg))
 def test_cg(seed, cg):
@@ -79,6 +87,23 @@ def test_cg_non_pos_def_failure(seed, cg):
         _, info = cg(mat, x, resnorm=1e-5, absdelta=1e-5)
         if info < 0:
             raise ValueError()
+
+
+@pmp("seed", (3637, 12, 42))
+def test_static_cg_jittability(seed):
+    from jax import jit
+    from functools import partial
+
+    key = random.PRNGKey(seed)
+    sk = random.split(key, 2)
+    x = random.normal(sk[0], shape=(3, ))
+    # Avoid poorly conditioned matrices by shifting the elements from zero
+    diag = 6. + random.normal(sk[1], shape=(3, ))
+    mat = lambda x: x / diag
+
+    cg = jit(partial(jft.static_cg, mat=mat), static_argnames=cg_static_argnames)
+    res, _ = cg(j=x, x0=None, resnorm=1e-5, absdelta=1e-5)
+    assert_allclose(res, diag * x, rtol=1e-4, atol=1e-4)
 
 
 @pmp("seed", (3637, 12, 42))
@@ -187,6 +212,31 @@ def test_ncg(seed, ncg):
         name='N'
     )
     assert_allclose(res, diag * x, rtol=1e-4, atol=1e-4)
+
+
+@pmp("seed", (3637, 12, 42))
+def test_static_ncg_jittability(seed):
+    from jax import jit
+    from functools import partial
+
+    key = random.PRNGKey(seed)
+    x = random.normal(key, shape=(3, ))
+    diag = jnp.array([1., 2., 3.])
+    met = lambda y, t: t / diag
+    fun = lambda y: jnp.sum(y**2 / diag) / 2 - jnp.dot(x, y)
+    grad = lambda y: y / diag - x
+    fun_and_grad = lambda y: (fun(y), grad(y))
+
+    for kwargs in [{'fun': fun, 'jac': grad}, {'fun_and_grad': fun_and_grad}]:
+        ncg = jit(partial(jft.static_newton_cg, hessp=met, **kwargs),
+                  static_argnames=ncg_static_argnames)
+        res = ncg(
+            x0=x,
+            maxiter=20,
+            absdelta=1e-6,
+            name='N'
+        )
+        assert_allclose(res, diag * x, rtol=1e-4, atol=1e-4)
 
 
 @pmp(
