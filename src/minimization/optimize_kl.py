@@ -344,6 +344,10 @@ def optimize_kl(likelihood_energy,
         check_MPI_equality(mean.domain, comm(iglobal))
         check_MPI_equality(mean, comm(iglobal), hash=True)
 
+        # free memory of old samples before drawing new ones
+        if iglobal > 0:
+            del sl
+
         if n_samples(iglobal) == 0:
             e = EnergyAdapter(mean_iter, ham, constants=constants(iglobal),
                               want_metric=_want_metric(minimizer))
