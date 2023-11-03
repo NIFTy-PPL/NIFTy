@@ -191,7 +191,8 @@ def _lh_trafo(likelihood, p):
 
 
 def _nl_g(likelihood, p, lh_trafo_at_p, x):
-    t = likelihood.transformation(x) - lh_trafo_at_p
+    # t = likelihood.transformation(x) - lh_trafo_at_p
+    t = tree_map(jnp.subtract, likelihood.transformation(x), lh_trafo_at_p)
     return x - p + likelihood.left_sqrt_metric(p, t)
 
 
