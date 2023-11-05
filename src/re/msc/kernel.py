@@ -9,7 +9,7 @@ from jax.lax import scan, dynamic_slice_in_dim
 from ..num.unique import amend_unique_
 from .chart import MSChart
 from .axes import HPAxis
-from .index_utils import (axisids_to_id, batch_table_to_table, get_table, 
+from .index_utils import (axisids_to_id, batch_table_to_table, get_table,
                           id_to_axisids, my_setdiff_indices, get_fine_indices)
 
 
@@ -27,8 +27,8 @@ def _get_stationary_kernel_indices(indices, level, baseaxes, stataxes):
 
 
 class MSKernel:
-    def __init__(self, func, chart, stationary_axes = False, scan_kernel = False, 
-                 test_kernel = None, atol = None, rtol = None, 
+    def __init__(self, func, chart, stationary_axes = False, scan_kernel = False,
+                 test_kernel = None, atol = None, rtol = None,
                  buffer_size = 10000, nbatch = 10):
         """Representation of a convolution kernel to be applied via `MSConvolve`
 
@@ -36,10 +36,10 @@ class MSKernel:
         -----------
         func: python function
             Kernel function that yields the value of the kernel as a function of
-            location of the center of the kernel and distance to the center. 
-            I.e. in case of a 2D space labeled by x and y, `func` takes 4 
-            arguments (x,y,dx,dy) where the first two args are the location of 
-            the center of the kernel in space, and the second two are the 
+            location of the center of the kernel and distance to the center.
+            I.e. in case of a 2D space labeled by x and y, `func` takes 4
+            arguments (x,y,dx,dy) where the first two args are the location of
+            the center of the kernel in space, and the second two are the
             evaluation locations relative to the center.
         chart: MSChart
             Chart on which the convolution is performed.
@@ -76,10 +76,10 @@ class MSKernel:
         for lvl in range(1, chart.maxlevel+1):
             dd = my_setdiff_indices(chart.main_indices[lvl-1],
                                     chart.indices[lvl-1])
-            self._kernel_indices.append(dd)#get_fine_indices(dd, lvl-1, 
+            self._kernel_indices.append(dd)#get_fine_indices(dd, lvl-1,
                                            #              chart._axes).flatten())
         self._kernel_indices = tuple(self._kernel_indices)
-        self._kernel_tables = tuple(get_table(kk) for kk in 
+        self._kernel_tables = tuple(get_table(kk) for kk in
                                     self._kernel_indices)
         if isinstance(stationary_axes, bool):
             stationary_axes = (stationary_axes, ) * self._chart.ndim
@@ -92,7 +92,7 @@ class MSKernel:
             kk, tt = _get_stationary_kernel_indices(
                 self._kernel_indices[lvl], lvl, self._chart._axes,
                 self._stat_axes)
-            print("Stationary:", lvl, kk.shape[0], 
+            print("Stationary:", lvl, kk.shape[0],
                     self._kernel_indices[lvl].shape[0])
             kers.append(kk)
             tables.append(tt)
@@ -105,9 +105,9 @@ class MSKernel:
                 rtol = 0.
             test_kernel = func if test_kernel is None else test_kernel
             self._kernel_indices,self._kernel_tables = (
-                self._get_kernelids_by_tol(self._kernel_indices, 
+                self._get_kernelids_by_tol(self._kernel_indices,
                                            self._kernel_tables,
-                                           test_kernel, atol, rtol, 
+                                           test_kernel, atol, rtol,
                                            buffer_size, nbatch))
 
     @property
@@ -122,8 +122,8 @@ class MSKernel:
 
     @property
     def indices(self):
-        """Indices of bins on `chart` the kernel is evaluated. 
-        
+        """Indices of bins on `chart` the kernel is evaluated.
+
         Notes:
         ------
         In case of some `stationary_axes` or `scan_kernel` being True, the
@@ -151,7 +151,7 @@ class MSKernel:
     def update_kernelfunction(self, func):
         self._func = func
 
-    def _get_kernelids_by_tol(self, kernelids, kerneltables, testfunc, atol, 
+    def _get_kernelids_by_tol(self, kernelids, kerneltables, testfunc, atol,
                               rtol, buffer_size, nbatch):
         kernel_ids, kernel_tables = [kernelids[0], ], [kerneltables[0],]
         prev_kernel = self._get_kernel(0, kernelids[0], None, None, testfunc)[0]
@@ -167,7 +167,7 @@ class MSKernel:
             # Successively amend the duplicate-free distance/covariance matrices
             u, inv = None, None
             sc_amend_uq = partial(amend_unique_, axis=0, atol=atol, rtol=rtol)
-            getker = lambda id: self._get_kernel(lvl, id, prev_kernel, 
+            getker = lambda id: self._get_kernel(lvl, id, prev_kernel,
                                                  prev_table, testfunc)
             for i in range(mybatch):
                 myinds = allinds[i*bs:(i+1)*bs]
@@ -175,7 +175,7 @@ class MSKernel:
                     break
                 dkers = getker(myinds)[1]
                 if u is None:
-                    u = jnp.full((buffer_size, ) + dkers.shape[1:], jnp.nan, 
+                    u = jnp.full((buffer_size, ) + dkers.shape[1:], jnp.nan,
                                  dtype=dkers.dtype)
 
                 u, idx = scan(sc_amend_uq, u, dkers)
@@ -220,7 +220,7 @@ class MSKernel:
         axes = self._chart.axes(level)
         ndim = self._chart.ndim
         indices = id_to_axisids(indices, level, self._chart._axes)
-        locdists = (ax.get_coords_and_distances(ii) for ax, ii in 
+        locdists = (ax.get_coords_and_distances(ii) for ax, ii in
                     zip(axes,indices))
         locdists = reduce(lambda a,b:a+b, locdists)
         def evaluate(locdists):
@@ -229,15 +229,15 @@ class MSKernel:
             for i, (ll,dd) in enumerate(zip(locdists[::2], locdists[1::2])):
                 dims = np.arange(ndim)
                 partdims = np.delete(dims, i)
-                ll = jnp.expand_dims(ll, tuple(1 + partdims) + 
+                ll = jnp.expand_dims(ll, tuple(1 + partdims) +
                                      tuple(1 + ndim + dims))
-                dd = jnp.expand_dims(dd, tuple(1 + dims) + 
+                dd = jnp.expand_dims(dd, tuple(1 + dims) +
                                      tuple(1 + ndim + partdims))
                 locs.append(ll)
                 dists.append(dd)
 
             if self._chart._trafos is not None:
-                locp = self._chart._chart_to_kernel(*(ll+dd for ll,dd in 
+                locp = self._chart._chart_to_kernel(*(ll+dd for ll,dd in
                                                zip(locs, dists)))
                 locs = self._chart._chart_to_kernel(*locs)
                 dists = tuple(lp-l for lp,l in zip(locp, locs))
@@ -255,7 +255,7 @@ class MSKernel:
                     def eval(kernel, ind):
                         kk = dynamic_slice_in_dim(kernel, ind, 2, axis=i)
                         return jnp.tensordot(kk, mat, axes=((i,),(1,)))
-                    ker = vmap(eval, (None, 0), i)(ker, 
+                    ker = vmap(eval, (None, 0), i)(ker,
                                                    np.arange(ax.kernel_size))
                 else:
                     ker =  ker[..., jnp.newaxis]
@@ -264,7 +264,7 @@ class MSKernel:
 
     def interpolate_kernel(self, input, level, refine_inds, coarse_tbl):
         """Interpolate kernel values to the next level.
-    
+
         Parameters:
         -----------
         input: jax.DeviceArray
@@ -284,7 +284,7 @@ class MSKernel:
         """
         axs = self._chart.axes(level)
         ndim = self._chart.ndim
-        # Get the kernels and weigths required for interpolation along the 
+        # Get the kernels and weigths required for interpolation along the
         # output axes
         select, weights, wselect = self.chart._batch_interpolation_selection(
             level, refine_inds, coarse_tbl
@@ -301,8 +301,8 @@ class MSKernel:
             res = jnp.tensordot(res, cmat, axes=((2*ndim,),(0,)))
             res = jnp.moveaxis(res, -2, 2*ndim)
             res = jnp.moveaxis(res, -1, ndim+1)
-            res = res.reshape(res.shape[:ndim] + 
-                              (res.shape[ndim]*res.shape[ndim+1],) + 
+            res = res.reshape(res.shape[:ndim] +
+                              (res.shape[ndim]*res.shape[ndim+1],) +
                               res.shape[(ndim+2):])
             res = res[(select[0],) + (slice(None),)*(ndim-1) + (select[1],)]
             res = jnp.moveaxis(res, 1, ndim)
@@ -325,7 +325,7 @@ class MSKernel:
     def to_batch_kernel(self, kernel, level):
         kshp = self.kernel_shape(level)
         ksize = reduce(lambda a,b:a*b, kshp)
-        lsize = reduce(lambda a,b:a*b, (ax.in_size for ax in 
+        lsize = reduce(lambda a,b:a*b, (ax.in_size for ax in
                                         self.chart.axes(level)))
         if level == 0:
             return kernel.reshape((kernel.shape[0],1,ksize,lsize))
@@ -334,10 +334,10 @@ class MSKernel:
         kernel = kernel.reshape((kernel.shape[0],)+bases+kshp+(lsize,))
         axids = id_to_axisids(self._kernel_indices[level], level-1,
                               self.chart._axes)
-        trafos = tuple(ax.kernel_to_batchkernel(id) for ax, id in 
+        trafos = tuple(ax.kernel_to_batchkernel(id) for ax, id in
                        zip(self.chart.axes(level-1), axids))
         mapax = tuple(None if tt.shape[0]==1 else 0 for tt in trafos)
-        trafos = tuple(tt[0] if mm is None else tt for tt,mm in 
+        trafos = tuple(tt[0] if mm is None else tt for tt,mm in
                        zip(trafos, mapax))
         axs = tuple(1+2*i for i in range(self.chart.ndim))
         axs += tuple(2+2*i for i in range(self.chart.ndim))
@@ -347,7 +347,7 @@ class MSKernel:
                 inp = jnp.tensordot(inp, tt, axes=((0,self.chart.ndim-i),(2,3)))
             return inp.transpose(axs)
         kernel = vmap(trafo, in_axes=(0, mapax), out_axes=0)(kernel, trafos)
-        ksize = reduce(lambda a,b: a*b, 
+        ksize = reduce(lambda a,b: a*b,
                        kernel.shape[1+self.chart.ndim:1+2*self.chart.ndim])
         return kernel.reshape((kernel.shape[0],fct,ksize,lsize))
 
@@ -368,9 +368,9 @@ class MSKernel:
 
     def _good_kernel_window(self, level, indices):
         indices = id_to_axisids(indices, level, self._chart._axes)
-        flagging = tuple(ax.flagged_kernel_window(ii) for ax,ii in 
+        flagging = tuple(ax.flagged_kernel_window(ii) for ax,ii in
                          zip(self._chart.axes(level), indices))
-        res = np.zeros(indices.shape[1:]+tuple(ff.shape[1] for ff in flagging), 
+        res = np.zeros(indices.shape[1:]+tuple(ff.shape[1] for ff in flagging),
                        dtype=bool)
         for i,ff in enumerate(flagging):
             res = np.moveaxis(res, 0, -1)
@@ -380,14 +380,14 @@ class MSKernel:
             res = np.moveaxis(res, -1, 0)
         return (~res)
 
-    def _get_kernel(self, level, indices, prev_kernel = None, 
+    def _get_kernel(self, level, indices, prev_kernel = None,
                     prev_table = None, func = None):
         if level == 0 and prev_kernel is not None:
             raise ValueError
         if level > 0:
             evalinds = get_fine_indices(indices, level-1, self.chart._axes)
             shp = evalinds.shape
-            shp = (evalinds.shape[0], 
+            shp = (evalinds.shape[0],
                    reduce(lambda a,b:a*b, evalinds.shape[1:]))
             evalinds = evalinds.flatten()
         else:
@@ -404,7 +404,7 @@ class MSKernel:
                 sh = (prev_kernel.shape[0]*prev_kernel.shape[1],)
                 sh += prev_kernel.shape[2:]
                 prev_kernel = prev_kernel.reshape(sh)
-            dker = ker - self.interpolate_kernel(prev_kernel, level - 1, 
+            dker = ker - self.interpolate_kernel(prev_kernel, level - 1,
                                                  indices, prev_table)
         else:
             dker = ker

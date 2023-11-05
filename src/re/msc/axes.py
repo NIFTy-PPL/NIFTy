@@ -1000,7 +1000,7 @@ class HPAxis(RegularAxis):
         the kernel that is covered by the kernel on the next refinment level.
         #TODO docstring
         """
-        coarse_ids = self.batch_interpolate(refine_index, refine_index, 
+        coarse_ids = self.batch_interpolate(refine_index, refine_index,
                                             want_coarse=True)
         fine_index = self.get_fine_indices(refine_index)
         assert len(fine_index.shape) == 2
@@ -1017,11 +1017,11 @@ class HPAxis(RegularAxis):
         coarse_kernels = coarse_kernels.reshape(shp + (-1,))
         coarse_bad = coarse_bad.reshape(shp + (-1,))
         coarse_kernels = self.get_fine_indices(coarse_kernels)
-        coarse_bad = np.multiply.outer(coarse_bad, 
+        coarse_bad = np.multiply.outer(coarse_bad,
                                        np.ones(self.base, dtype=bool))
         coarse_kernels = coarse_kernels.reshape(coarse_kernels.shape[:2]+(-1,))
         coarse_bad = coarse_bad.reshape(coarse_bad.shape[:2]+(-1,))
-        res = np.zeros(coarse_kernels.shape[:2] + (fine_kernel.shape[-1],), 
+        res = np.zeros(coarse_kernels.shape[:2] + (fine_kernel.shape[-1],),
                        dtype=coarse_kernels.dtype)
         cshp = coarse_kernels.shape[-1]
         fine_good = fine_bad.sum(axis = -1) == 0
