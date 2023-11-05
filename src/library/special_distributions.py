@@ -173,7 +173,7 @@ class InverseGammaOperator(Operator):
         self._op = op
 
         try:
-            from ..re.stats_distributions import invgamma_prior
+            from ..re.num.stats_distributions import invgamma_prior
 
             q_val = self._q.val if isinstance(self._q, Field) else self._q
             self._jax_expr = invgamma_prior(float(self._alpha), q_val)
