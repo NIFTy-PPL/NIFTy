@@ -563,10 +563,8 @@ class OptimizeVI:
                 }
             opt_state = minimize(None, x0=s, method=self._sampling_minimizer,
                                  options=self._sampling_kwargs | options)
-            _cond_raise(
-                self._raise_notconverged & (opt_state.status < 0),
+            if self._raise_notconverged & (opt_state.status < 0):
                 ValueError("S: failed to invert map")
-            )
             newsam = _process_point_estimate(opt_state.x, primals,
                                              self._point_estimates,
                                              insert=True)
