@@ -143,7 +143,7 @@ def _sample_linearly(
     # impact on stability is still unknown.
     # TODO: investigate the impact of sampling the prior and likelihood
     # antithetically.
-    met_smpl = nll_smpl + prr_smpl
+    smpl = nll_smpl + prr_smpl
     if from_inverse:
         inv_metric_at_p = partial(
             cg, Partial(ham_metric, p_liquid), **{
@@ -152,18 +152,16 @@ def _sample_linearly(
                 **cg_kwargs
             }
         )
-        signal_smpl, info = inv_metric_at_p(met_smpl, x0=prr_inv_metric_smpl)
+        smpl, info = inv_metric_at_p(smpl, x0=prr_inv_metric_smpl)
         _cond_raise(
             (info < 0) if info is not None else False,
             ValueError("conjugate gradient failed")
         )
-        signal_smpl = _process_point_estimate(signal_smpl, primals,
-                                              point_estimates, insert=True)
-    else:
-        signal_smpl = None
-    met_smpl = _process_point_estimate(met_smpl, primals, point_estimates,
-                                       insert=True)
-    return signal_smpl, met_smpl
+        #signal_smpl = _process_point_estimate(signal_smpl, primals,
+        #                                      point_estimates, insert=True)
+    #else:
+    #    signal_smpl = None
+    return _process_point_estimate(smpl, primals, point_estimates, insert=True)
 
 
 def _ham_vg(likelihood, primals, primals_samples):
@@ -437,18 +435,19 @@ class OptimizeVI:
             if likelihood is None:
                 raise ValueError("Neither Likelihood nor funcs provided.")
 
-            def draw_metric(likelihood, p, keys):
-                f = partial(_sample_linearly, likelihood,
-                            point_estimates=point_estimates,
-                            from_inverse=False)
-                return vmap(f, in_axes=(None, 0), out_axes=(None, 0))(p, keys)
-
-            def draw_linear(likelihood, p, keys):
-                f = partial(_sample_linearly, likelihood,
-                            point_estimates=point_estimates,
-                            from_inverse=True, cg_kwargs=sampling_cg_kwargs,
-                            _raise_nonposdef = self._raise_notconverged)
-                return smap(f, in_axes=(None, 0))(p, keys)
+            def draw_linear(primals, keys, from_inverse):
+                sampler = partial(_sample_linearly, likelihood, primals,
+                                  from_inverse=from_inverse,
+                                  point_estimates=point_estimates,
+                                  cg_kwargs=sampling_cg_kwargs,
+                                  _raise_nonposdef=_raise_notconverged)
+                samples = smap(sampler)(keys)
+                samples = Samples(
+                            pos=primals,
+                            samples=tree_map(lambda *x:
+                                        jnp.concatenate(x), samples, -samples)
+                )
+                return samples
 
             # KL funcs
             self._kl_vg = do_jit(partial(_ham_vg, likelihood))
@@ -458,8 +457,9 @@ class OptimizeVI:
             get_partial = partial(_partial_func, likelihood=likelihood,
                                   point_estimates=point_estimates)
             # Lin sampling
-            self._draw_metric = do_jit(partial(draw_metric, likelihood))
-            self._draw_linear = do_jit(partial(draw_linear, likelihood))
+            self._draw_metric = do_jit(partial(draw_linear, from_inverse=False))
+            self._draw_linear = do_jit(partial(draw_linear, from_inverse=True))
+
             # Non-lin sampling
             self._lh_trafo = do_jit(get_partial(_lh_trafo))
             self._nl_vag = do_jit(value_and_grad(get_partial(_nl_residual),
@@ -498,44 +498,10 @@ class OptimizeVI:
                 self._nl_metric,
                 self._nl_sampnorm)
 
-    def _linear_sampling(self, primals, from_inverse):
-        if from_inverse:
-            samples, met_smpls = self._draw_linear(primals, self._keys)
-            #samples = stack(
-            #    tuple(_process_point_estimate(ss,
-            #                                  primals,
-            #                                  self._point_estimates,
-            #                                  insert=True
-            #                                  )
-            #          for ss in unstack(samples))
-            #)
-            samples = Samples(
-                pos=primals,
-                samples=tree_map(lambda *x:
-                                 jnp.concatenate(x), samples, -samples)
-            )
-        else:
-            _, met_smpls = self._draw_metric(primals, self._keys)
-            samples = None
-        #met_smpls = stack(
-        #    tuple(_process_point_estimate(ss,
-        #                                  primals,
-        #                                  self._point_estimates,
-        #                                  insert=True
-        #                                  )
-        #            for ss in unstack(met_smpls))
-        #)
-        met_smpls = Samples(
-            pos=None,
-            samples=tree_map(lambda *x:
-                             jnp.concatenate(x), met_smpls, -met_smpls)
-        )
-        return samples, met_smpls
-
     def _nonlinear_sampling(self, samples):
         primals = samples.pos
         lh_trafo_at_p = self._lh_trafo(primals)
-        metric_samples = self._linear_sampling(primals, False)[1]
+        metric_samples = self._draw_metric(primals, self._keys)
         new_smpls = []
         opt_states = []
         for s, ms in zip(samples, metric_samples):
@@ -587,16 +553,16 @@ class OptimizeVI:
 
     def init_state(self, primals):
         if self._sampling_method in ['linear', 'geometric']:
-            smpls = self._linear_sampling(primals, False)[1]
+            smpls = self._draw_metric(primals, self._keys)
         else:
-            smpls = self._linear_sampling(primals, True)[0]
+            smpls = self._draw_linear(primals, self._keys)
         state = OptVIState(niter=0, samples=smpls, sampling_states=None,
                            minimization_state=None)
         return primals, state
 
     def update(self, primals, state):
         if self._sampling_method in ['linear', 'geometric']:
-            samples = self._linear_sampling(primals, True)[0]
+            samples = self._draw_linear(primals, self._keys)
         else:
             samples = state.samples.at(primals)
 
