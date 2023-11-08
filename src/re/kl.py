@@ -10,7 +10,7 @@ from typing import (Callable, Optional, Tuple, TypeVar, Union, NamedTuple, Any,
 from warnings import warn
 from .logger import logger
 
-from jax import numpy as jnp
+from jax import numpy as jnp, Array
 from jax import random, vmap, value_and_grad, jvp, vjp, linear_transpose, jit
 from jax.tree_util import (
     Partial, register_pytree_node_class, tree_leaves, tree_map, tree_structure
@@ -444,11 +444,14 @@ class Samples():
 
 
 class OptVIState(NamedTuple):
-  """Named tuple containing state information."""
-  niter: int
-  samples: Samples
-  sampling_states: List[OptimizeResults]
-  minimization_state: OptimizeResults
+    """Named tuple containing state information."""
+    niter: int
+    samples: Samples
+    keys: Array
+    resample: bool
+    sampling_method: str
+    sampling_states: List[OptimizeResults]
+    minimization_state: OptimizeResults
 
 
 def _get_vi_callables(likelihood,
@@ -471,224 +474,210 @@ def _get_vi_callables(likelihood,
         point_estimates,
         **curve_kwargs
     )
-    return solver, draw_metric, draw_linear, curve
+    return solver, draw_linear, curve
 
-class OptimizeVI:
-    def __init__(self,
-                 likelihood: Union[Likelihood, None],
-                 n_iter: int,
-                 key: random.PRNGKey,
-                 n_samples: int,
-                 point_estimates: Union[P, Tuple[str]] = (),
-                 kl_kwargs: dict = {
+
+
+def OptimizeVI(likelihood: Union[Likelihood, None],
+               n_iter: int,
+               point_estimates: Union[P, Tuple[str]] = (),
+               kl_kwargs: dict = {
                     'samplemap': vmap,
                     'sample_reduce': _sample_mean,
                     'do_jit': jit
-                 },
-                 kl_minimizer: str = 'newtoncg',
-                 kl_minimizer_kwargs: dict = {},
-                 sampling_method: str = 'altmetric',
-                 linear_sampling_kwargs: dict = {
+               },
+               sampling_method: str = 'altmetric',
+               linear_sampling_kwargs: dict = {
                     'cg': conjugate_gradient.static_cg,
                     'cg_name': None,
                     'cg_kwargs': None,
                     'samplemap': smap,
                     'do_jit': jit,
-                 },
-                 curve_minimizer: str = 'newtoncg',
-                 curve_minimizer_kwargs: dict = {'xtol': 0.01},
-                 curve_kwargs: dict = {
+               },
+               curve_kwargs: dict = {
                     'sample_map': None, #TODO
                     'do_jit': jit,
-                 },
-                 _raise_notconverged: bool = False,
-                 _vi_callables: Any = None):
-        """JaxOpt style minimizer for VI approximation of a Bayesian inference
-        problem assuming a standard normal prior distribution.
+               },
+               _raise_notconverged: bool = False):
+    """JaxOpt style minimizer for VI approximation of a Bayesian inference
+    problem assuming a standard normal prior distribution.
 
-        Depending on `sampling_method` the VI approximation is performed via
-        variants of the `Geometric Variational Inference` and/or
-        `Metric Gaussian Variational Inference` algorithms. They produce
-        approximate posterior samples that are used for KL estimation internally
-        and the final set of samples are the approximation of the posterior.
-        The samples can be linear, i.e. following a standard normal distribution
-        in model space, or non linear, i.e. following a standard normal
-        distribution in the canonical coordinate system of the Riemannian
-        manifold associated with the metric of the approximate posterior
-        distribution. The coordinate transformation for the non-linear sample is
-        approximated by an expansion.
+    Depending on `sampling_method` the VI approximation is performed via
+    variants of the `Geometric Variational Inference` and/or
+    `Metric Gaussian Variational Inference` algorithms. They produce
+    approximate posterior samples that are used for KL estimation internally
+    and the final set of samples are the approximation of the posterior.
+    The samples can be linear, i.e. following a standard normal distribution
+    in model space, or non linear, i.e. following a standard normal
+    distribution in the canonical coordinate system of the Riemannian
+    manifold associated with the metric of the approximate posterior
+    distribution. The coordinate transformation for the non-linear sample is
+    approximated by an expansion.
 
-        Both linear and non-linear sample start by drawing a sample from the
-        inverse metric. To do so, we draw a sample which has the metric as
-        covariance structure and apply the inverse metric to it. The sample
-        transformed in this way has the inverse metric as covariance. The first
-        part is trivial since we can use the left square root of the metric
-        :math:`L` associated with every likelihood:
+    Both linear and non-linear sample start by drawing a sample from the
+    inverse metric. To do so, we draw a sample which has the metric as
+    covariance structure and apply the inverse metric to it. The sample
+    transformed in this way has the inverse metric as covariance. The first
+    part is trivial since we can use the left square root of the metric
+    :math:`L` associated with every likelihood:
 
-        .. math::
+    .. math::
 
-            \tilde{d} \leftarrow \mathcal{G}(0,\mathbb{1}) \\
-            t = L \tilde{d}
+        \tilde{d} \leftarrow \mathcal{G}(0,\mathbb{1}) \\
+        t = L \tilde{d}
 
-        with :math:`t` now having a covariance structure of
+    with :math:`t` now having a covariance structure of
 
-        .. math::
-            <t t^\dagger> = L <\tilde{d} \tilde{d}^\dagger> L^\dagger = M .
+    .. math::
+        <t t^\dagger> = L <\tilde{d} \tilde{d}^\dagger> L^\dagger = M .
 
-        To transform the sample to an inverse sample, we apply the inverse
-        metric. We can do so using the conjugate gradient algorithm (CG). The CG
-        algorithm yields the solution to :math:`M s = t`, i.e. applies the
-        inverse of :math:`M` to :math:`t`:
+    To transform the sample to an inverse sample, we apply the inverse
+    metric. We can do so using the conjugate gradient algorithm (CG). The CG
+    algorithm yields the solution to :math:`M s = t`, i.e. applies the
+    inverse of :math:`M` to :math:`t`:
 
-        .. math::
+    .. math::
 
-            M &s =  t \\
-            &s = M^{-1} t = cg(M, t) .
+        M &s =  t \\
+        &s = M^{-1} t = cg(M, t) .
 
-        The linear sample is :math:`s`. The non-linear sample uses :math:`s` as
-        a starting value and curves it in a non-linear way as to better resemble
-        the posterior locally. See the below reference literature for more
-        details on the non-linear sampling.
+    The linear sample is :math:`s`. The non-linear sample uses :math:`s` as
+    a starting value and curves it in a non-linear way as to better resemble
+    the posterior locally. See the below reference literature for more
+    details on the non-linear sampling.
 
-        Parameters
-        ----------
-        likelihood : :class:`nifty8.re.likelihood.Likelihood`
-            Likelihood to be used for inference.
-        n_iter : int
-            Number of iterations.
-        key : jax random number generataion key
-        n_samples : int
-            Number of samples used to sample Kullback-Leibler divergence. The
-            samples get mirrored, so the actual number of samples used for the
-            KL estimate is twice the number of `n_samples`.
-        point_estimates : tree-like structure or tuple of str
-            Pytree of same structure as likelihood input but with boolean leaves
-            indicating whether to sample the value in the input or use it as a
-            point estimate. As a convenience method, for dict-like inputs, a
-            tuple of strings is also valid. From these the boolean indicator
-            pytree is automatically constructed.
-        kl_kwargs: dict
-            Keyword arguments passed on to `kl_solver`.
-        kl_minimizer: str or callable
-            Minimization method used for KL minimization.
-        kl_minimizer_kwargs : dict
-            Keyword arguments for minimizer used for KL minimization.
-        sampling_method: str
-            Sampling method used for vi approximation. Must be in ('linear',
-            'geometric', 'altmetric'). Default is `altmetric`.
-        linear_sampling_kwargs: dict
-            Keyword arguments passed on to `linear_residual_sampler`. Includes
-            the cg gonfig used for linear sampling.
-        curve_minimizer: str
-            Minimization method used for non-linear sample minimization.
-        curve_minimizer_kwargs: dict
-            Keyword arguments for minimizer used for sample minimization.
-        curve_kwargs: dict
-            Keyword arguments passed on to `curve_sampler`.
-        _raise_notconverged: bool
-            Whether to raise inversion & minimization errors during sampling.
-            Default is False.
-        _vi_callables: tuple of callable (optional)
-            Alternative init to normal init with `likelihood`. If provided,
-            includes all functions for sampling and minimization and no new
-            functions are build.
+    Parameters
+    ----------
+    likelihood : :class:`nifty8.re.likelihood.Likelihood`
+        Likelihood to be used for inference.
+    n_iter : int
+        Number of iterations.
+    key : jax random number generataion key
+    n_samples : int
+        Number of samples used to sample Kullback-Leibler divergence. The
+        samples get mirrored, so the actual number of samples used for the
+        KL estimate is twice the number of `n_samples`.
+    point_estimates : tree-like structure or tuple of str
+        Pytree of same structure as likelihood input but with boolean leaves
+        indicating whether to sample the value in the input or use it as a
+        point estimate. As a convenience method, for dict-like inputs, a
+        tuple of strings is also valid. From these the boolean indicator
+        pytree is automatically constructed.
+    kl_kwargs: dict
+        Keyword arguments passed on to `kl_solver`.
+    kl_minimizer: str or callable
+        Minimization method used for KL minimization.
+    kl_minimizer_kwargs : dict
+        Keyword arguments for minimizer used for KL minimization.
+    sampling_method: str
+        Sampling method used for vi approximation. Must be in ('linear',
+        'geometric', 'altmetric'). Default is `altmetric`.
+    linear_sampling_kwargs: dict
+        Keyword arguments passed on to `linear_residual_sampler`. Includes
+        the cg gonfig used for linear sampling.
+    curve_minimizer: str
+        Minimization method used for non-linear sample minimization.
+    curve_minimizer_kwargs: dict
+        Keyword arguments for minimizer used for sample minimization.
+    curve_kwargs: dict
+        Keyword arguments passed on to `curve_sampler`.
+    _raise_notconverged: bool
+        Whether to raise inversion & minimization errors during sampling.
+        Default is False.
+    _vi_callables: tuple of callable (optional)
+        Alternative init to normal init with `likelihood`. If provided,
+        includes all functions for sampling and minimization and no new
+        functions are build.
 
-        See also
-        --------
-        `Geometric Variational Inference`, Philipp Frank, Reimar Leike,
-        Torsten A. Enßlin, `<https://arxiv.org/abs/2105.10470>`_
-        `<https://doi.org/10.3390/e23070853>`_
+    See also
+    --------
+    `Geometric Variational Inference`, Philipp Frank, Reimar Leike,
+    Torsten A. Enßlin, `<https://arxiv.org/abs/2105.10470>`_
+    `<https://doi.org/10.3390/e23070853>`_
 
-        `Metric Gaussian Variational Inference`, Jakob Knollmüller,
-        Torsten A. Enßlin, `<https://arxiv.org/abs/1901.11033>`_
-        """
+    `Metric Gaussian Variational Inference`, Jakob Knollmüller,
+    Torsten A. Enßlin, `<https://arxiv.org/abs/1901.11033>`_
+    """
+    linear_sampling_kwargs.update('_raise_nonposdef', _raise_notconverged)
+    curve_kwargs.update('_raise_notconverged', _raise_notconverged)
+
+    # KL funcs
+    solver = kl_solver(likelihood, **kl_kwargs)
+    # Lin sampling
+    draw_metric, draw_linear = linear_residual_sampler(
+        likelihood,
+        point_estimates,
+        **linear_sampling_kwargs
+    )
+    # Non-lin sampling
+    curve = curve_sampler(
+        likelihood,
+        draw_metric,
+        point_estimates,
+        **curve_kwargs
+    )
+    return _OptimizeVI(n_iter, solver, draw_linear, curve, sampling_method)
+
+
+class _OptimizeVI:
+    def __init__(self,
+                 n_iter: int,
+                 kl_solver: Callable,
+                 linear_sampler: Callable,
+                 curve_sampler: Callable,
+                 sampling_method: str):
         self._n_iter = n_iter
+        self._kl_solver = kl_solver
+        self._linear_sampler = linear_sampler
+        self._curve_sampler = curve_sampler
         self._sampling_method = sampling_method
         if self._sampling_method not in ['linear', 'geometric', 'altmetric']:
             msg = f"Unknown sampling method: {self._sampling_method}"
             raise NotImplementedError(msg)
-        self._keys = random.split(key, n_samples)
-        self._likelihood = likelihood
-        self._n_samples = n_samples
-        self._point_estimates = point_estimates
 
-        # To be passed on at runtime
-        self._minimizer = kl_minimizer
-        self._mini_kwargs = kl_minimizer_kwargs
-        self._curve_minimizer = curve_minimizer
-        self._curve_minimizer_kwargs = curve_minimizer_kwargs
-        # Only use xtol for sampling since a custom gradient norm is used
-        if 'absdelta' in self._curve_minimizer_kwargs.keys():
-            msg = 'Geometric sampling uses custom gradientnorm tolerance set '
-            msg += 'by `xtol`. Ignoring `absdelta`...'
-            logger.warn(msg)
-            self._curve_minimizer_kwargs['absdelta'] = 0.
-
-        linear_sampling_kwargs.update('_raise_nonposdef', _raise_notconverged)
-        curve_kwargs.update('_raise_notconverged', _raise_notconverged)
-        if _vi_callables is None:
-            if likelihood is None:
-                raise ValueError("Neither Likelihood nor funcs provided.")
-            (self._kl_solver, self._draw_linear,
-             self._draw_metric, self._curve_sampler) = _get_vi_callables(
-                likelihood,
-                point_estimates,
-                kl_kwargs=kl_kwargs,
-                lin_kwargs=linear_sampling_kwargs,
-                curve_kwargs=curve_kwargs
-            )
-        else:
-            if likelihood is not None:
-                msg = "Likelihood funcs is set, ignoring Likelihood input"
-                logger.warn(msg)
-            (self._kl_solver,
-             self._draw_linear,
-             self._draw_metric,
-             self._curve_sampler) = _vi_callables
-
-    @property
-    def likelihood(self):
-        return self._likelihood
-
-    @property
-    def n_samples(self):
-        return self._n_samples
-
-    @property
-    def vi_callables(self):
-        return (self._kl_solver,
-                self._draw_linear,
-                self._draw_metric,
-                self._curve_sampler)
-
-    def init_state(self, primals):
-        if self._sampling_method in ['linear', 'geometric']:
-            smpls = self._draw_metric(primals, self._keys)
-        else:
-            smpls = self._draw_linear(primals, self._keys)
-        state = OptVIState(niter=0, samples=smpls, sampling_states=None,
+    def init_state(self, primals, keys):
+        state = OptVIState(niter=0,
+                           samples=None,
+                           keys=keys,
+                           resample=True,
+                           sampling_method=self._sampling_method,
+                           sampling_states=None,
                            minimization_state=None)
         return primals, state
 
-    def update(self, primals, state):
-        if self._sampling_method in ['linear', 'geometric']:
-            samples = self._draw_linear(primals, self._keys)
+    def update(self, primals, state,
+               kl_minimizer: str = 'newtoncg',
+               kl_minimizer_kwargs: dict = {},
+               curve_minimizer: str = 'newtoncg',
+               curve_minimizer_kwargs: dict = {'xtol': 0.01},):
+        assert isinstance(state, OptVIState)
+        if state.resample or (state.sampling_method in ['linear', 'geometric']):
+            samples = self._linear_sampler(primals, state.keys)
         else:
             samples = state.samples.at(primals)
 
-        if self._sampling_method in ['geometric', 'altmetric']:
+        if state.sampling_method in ['geometric', 'altmetric']:
+            if 'absdelta' in curve_minimizer_kwargs.keys():
+                msg = 'Geometric sampling uses custom gradientnorm tolerance '
+                msg += 'set by `xtol`. Ignoring `absdelta`...'
+                logger.warn(msg)
+                curve_minimizer_kwargs['absdelta'] = 0.
             samples, sampling_states = self._curve_sampler(
                 samples,
-                self._keys,
-                method=self._sampling_minimizer,
-                method_options=self._sampling_kwargs
+                state.keys,
+                method=curve_minimizer,
+                method_options=curve_minimizer_kwargs
             )
         else:
             sampling_states = None
         samples, opt_state = self._kl_solver(samples,
-                                             method=self._minimizer,
-                                             method_options=self._mini_kwargs)
-        state = OptVIState(niter=state.niter+1, samples=samples,
+                                             method=kl_minimizer,
+                                             method_options=kl_minimizer_kwargs)
+        state = OptVIState(niter=state.niter+1,
+                           samples=samples,
+                           keys=state.keys,
+                           resample=state.resample,
+                           sampling_method=state.sampling_method,
                            sampling_states=sampling_states,
                            minimization_state=opt_state)
         return samples.pos, state
