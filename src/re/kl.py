@@ -214,6 +214,31 @@ def kl_vg_and_metric(likelihood,
     return do_jit(_ham_vg), do_jit(_ham_metric)
 
 
+def kl_solver(likelihood,
+              samplemap=vmap,
+              sample_reduce=_sample_mean,
+              do_jit=jit):
+    kl_vg, kl_metric = kl_vg_and_metric(likelihood,
+                                          samplemap=samplemap,
+                                          sample_reduce=sample_reduce,
+                                          do_jit=do_jit)
+    def _minimize_kl(samples,
+                     method='newtoncg',
+                     method_options={}):
+        options = {
+            "fun_and_grad": partial(kl_vg, primals_samples=samples),
+            "hessp": partial(kl_metric, primals_samples=samples),
+        }
+        opt_state = minimize(
+            None,
+            samples.pos,
+            method=method,
+            options=method_options | options
+        )
+        return samples.at(opt_state.x), opt_state
+    return _minimize_kl
+
+
 def _lh_trafo(likelihood, p):
     return likelihood.transformation(p)
 
@@ -470,7 +495,7 @@ class OptimizeVI:
                 raise ValueError("Neither Likelihood nor funcs provided.")
 
             # KL funcs
-            self._kl_vg, self._kl_metric = kl_vg_and_metric(likelihood)
+            self._kl_solver = kl_solver(likelihood)
 
             # Sampling
             get_partial = partial(_partial_func, likelihood=likelihood,
@@ -493,8 +518,7 @@ class OptimizeVI:
             if likelihood is not None:
                 msg = "Likelihood funcs is set, ignoring Likelihood input"
                 logger.warn(msg)
-            (self._kl_vg,
-             self._kl_metric,
+            (self._kl_solver,
              self._draw_linear,
              self._draw_metric,
              self._lh_trafo,
@@ -512,8 +536,7 @@ class OptimizeVI:
 
     @property
     def lh_funcs(self):
-        return (self._kl_vg,
-                self._kl_metric,
+        return (self._kl_solver,
                 self._draw_linear,
                 self._draw_metric,
                 self._lh_trafo,
@@ -561,19 +584,6 @@ class OptimizeVI:
         samples = Samples(pos=primals, samples=stack(new_smpls))
         return samples, opt_states
 
-    def _minimize_kl(self, samples):
-        options = {
-            "fun_and_grad": partial(self._kl_vg, primals_samples=samples),
-            "hessp": partial(self._kl_metric, primals_samples=samples),
-        }
-        opt_state = minimize(
-            None,
-            samples.pos,
-            method=self._minimizer,
-            options=self._mini_kwargs | options
-        )
-        return samples.at(opt_state.x), opt_state
-
     def init_state(self, primals):
         if self._sampling_method in ['linear', 'geometric']:
             smpls = self._draw_metric(primals, self._keys)
@@ -593,7 +603,9 @@ class OptimizeVI:
             samples, sampling_states = self._nonlinear_sampling(samples)
         else:
             sampling_states = None
-        samples, opt_state = self._minimize_kl(samples)
+        samples, opt_state = self._kl_solver(samples,
+                                             method=self._minimizer,
+                                             method_options=self._mini_kwargs)
         state = OptVIState(niter=state.niter+1, samples=samples,
                            sampling_states=sampling_states,
                            minimization_state=opt_state)
