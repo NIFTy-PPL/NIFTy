@@ -474,6 +474,7 @@ def OptimizeVI(likelihood: Union[Likelihood, None],
                     'do_jit': jit,
                },
                _raise_notconverged: bool = False):
+    # TODO update docstring
     """JaxOpt style minimizer for VI approximation of a Bayesian inference
     problem assuming a standard normal prior distribution.
 

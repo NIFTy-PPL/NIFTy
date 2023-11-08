@@ -70,6 +70,7 @@ def optimize_kl(
     out_dir=None,
     resume=False,
     verbosity=0):
+    # TODO update docstring
     """Interface for KL minimization similar to NIFTy optimize_kl.
 
     Parameters
