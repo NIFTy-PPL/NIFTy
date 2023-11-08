@@ -101,7 +101,7 @@ def sample_likelihood(likelihood: Likelihood, primals, key):
     return likelihood.left_sqrt_metric(primals, white_sample)
 
 
-def _sample_linearly(
+def draw_linear_residual(
     likelihood: Likelihood,
     primals,
     key,
@@ -160,16 +160,23 @@ def _sample_linearly(
     return _process_point_estimate(smpl, primals, point_estimates, insert=True)
 
 
-def linear_sampler(likelihood, point_estimates: Union[P, Tuple[str]] = (),
+def linear_residual_sampler(likelihood,
+                   point_estimates: Union[P, Tuple[str]] = (),
                    cg: Callable = conjugate_gradient.static_cg,
                    cg_name: Optional[str] = None,
                    cg_kwargs: Optional[dict] = None,
                    samplemap: Callable = smap,
                    do_dit: Callable = jit,
                    _raise_nonposdef: bool = False):
+    """Wrapper for `draw_linear_residual` to draw multiple samples at once.
 
+    Returns two functions which take as inputs `primals` and a list of `keys`.
+    The first function generates metric samples, the second one inverse metric
+    samples.
+    Allows to specify how to map over sample generation and how to jit it.
+    """
     def draw_linear(primals, keys, from_inverse):
-        sampler = partial(_sample_linearly, likelihood, primals,
+        sampler = partial(draw_linear_residual, likelihood, primals,
                           from_inverse=from_inverse,
                           point_estimates=point_estimates,
                           cg = cg,
@@ -218,10 +225,9 @@ def kl_solver(likelihood,
               samplemap=vmap,
               sample_reduce=_sample_mean,
               do_jit=jit):
-    kl_vg, kl_metric = kl_vg_and_metric(likelihood,
-                                          samplemap=samplemap,
-                                          sample_reduce=sample_reduce,
-                                          do_jit=do_jit)
+    kl_vg, kl_metric = kl_vg_and_metric(likelihood,samplemap=samplemap,
+                                        sample_reduce=sample_reduce,
+                                        do_jit=do_jit)
     def _minimize_kl(samples,
                      method='newtoncg',
                      method_options={}):
@@ -239,33 +245,113 @@ def kl_solver(likelihood,
     return _minimize_kl
 
 
-def _lh_trafo(likelihood, p):
-    return likelihood.transformation(p)
+def curve_residual_functions(likelihood, point_estimates=(), do_jit=jit):
+    def _trafo(likelihood, p):
+        return likelihood.transformation(p)
+
+    def _g(likelihood, p, lh_trafo_at_p, x):
+        # t = likelihood.transformation(x) - lh_trafo_at_p
+        t = tree_map(jnp.subtract, likelihood.transformation(x), lh_trafo_at_p)
+        return x - p + likelihood.left_sqrt_metric(p, t)
+
+    def _residual(likelihood, p, lh_trafo_at_p, ms_at_p, x):
+        r = ms_at_p - _g(likelihood, p, lh_trafo_at_p, x)
+        return 0.5*dot(r, r)
+
+    def _metric(likelihood, p, lh_trafo_at_p, primals, tangents):
+        f = partial(_g, likelihood, p, lh_trafo_at_p)
+        _, jj = jvp(f, (primals,), (tangents,))
+        return vjp(f, primals)[1](jj)[0]
+
+    def _sampnorm(likelihood, p, natgrad):
+        o = partial(likelihood.left_sqrt_metric, p)
+        o_transpose = linear_transpose(o, likelihood.lsm_tangents_shape)
+        fpp = _functional_conj(o_transpose)(natgrad)
+        return jnp.sqrt(vdot(natgrad, natgrad) + vdot(fpp, fpp))
+
+    # Partially insert frozen point estimates
+    get_partial = partial(_partial_func, likelihood=likelihood,
+                            point_estimates=point_estimates)
+    trafo = do_jit(get_partial(_trafo))
+    vag = do_jit(value_and_grad(get_partial(_residual), argnums=3))
+    metric = do_jit(get_partial(_metric))
+    sampnorm = do_jit(get_partial(_sampnorm))
+    return trafo, vag, metric, sampnorm
 
 
-def _nl_g(likelihood, p, lh_trafo_at_p, x):
-    # t = likelihood.transformation(x) - lh_trafo_at_p
-    t = tree_map(jnp.subtract, likelihood.transformation(x), lh_trafo_at_p)
-    return x - p + likelihood.left_sqrt_metric(p, t)
+def curve_residual(likelihood=None,
+                 point_estimates=(),
+                 primals=None,
+                 sample=None,
+                 metric_sample=None,
+                 method='newtoncg',
+                 method_options={},
+                 do_jit=jit,
+                 curve_funcs=None,
+                 _raise_notconverged=False):
 
+    if curve_funcs is None:
+        trafo, vag, metric, sampnorm = curve_residual_functions(
+            likelihood=likelihood,
+            point_estimates=point_estimates,
+            do_jit=do_jit
+        )
+    else:
+        trafo, vag, metric, sampnorm = curve_funcs
 
-def _nl_residual(likelihood, p, lh_trafo_at_p, ms_at_p, x):
-    r = ms_at_p - _nl_g(likelihood, p, lh_trafo_at_p, x)
-    return 0.5*dot(r, r)
+    sample = _process_point_estimate(sample, primals,
+                                     point_estimates,
+                                     insert=False)
+    metric_sample = _process_point_estimate(metric_sample, primals,
+                                            point_estimates,
+                                            insert=False)
+    trafo_at_p = trafo(primals)
+    options = {
+        "fun_and_grad": partial(vag, primals, trafo_at_p, metric_sample),
+        "hessp": partial(metric, primals, trafo_at_p),
+        "custom_gradnorm" : partial(sampnorm, primals),
+        }
+    opt_state = minimize(None, x0=sample, method=method,
+                         options=method_options | options)
+    if _raise_notconverged & (opt_state.status < 0):
+        ValueError("S: failed to invert map")
+    newsam = _process_point_estimate(opt_state.x, primals,
+                                     point_estimates,
+                                     insert=True)
+    # Remove x from state to avoid copy of the samples
+    return newsam - primals, opt_state._replace(x = None)
 
+def curve_sampler(likelihood,
+                  metric_sampler,
+                  point_estimates=(),
+                  sample_map=None, #TODO
+                  do_jit=jit,
+                  _raise_notconverged=False):
 
-def _nl_metric(likelihood, p, lh_trafo_at_p, primals, tangents):
-    f = partial(_nl_g, likelihood, p, lh_trafo_at_p)
-    _, jj = jvp(f, (primals,), (tangents,))
-    return vjp(f, primals)[1](jj)[0]
-
-
-def _nl_sampnorm(likelihood, p, natgrad):
-    o = partial(likelihood.left_sqrt_metric, p)
-    o_transpose = linear_transpose(o, likelihood.lsm_tangents_shape)
-    fpp = _functional_conj(o_transpose)(natgrad)
-    return jnp.sqrt(vdot(natgrad, natgrad) + vdot(fpp, fpp))
-
+    curve_funcs = curve_residual_functions(
+        likelihood=likelihood,
+        point_estimates=point_estimates,
+        do_jit=do_jit
+    )
+    def sampler(samples, keys, method='newtoncg', method_options={}):
+        assert isinstance(samples, Samples)
+        primals = samples.pos
+        residuals = samples._samples
+        met_samps = metric_sampler(primals, keys)
+        states = []
+        for i, (ss, ms) in enumerate(zip(samples, met_samps)):
+            rr, state = curve_residual(point_estimates=point_estimates,
+                                       primals=primals,
+                                       sample=ss,
+                                       metric_sample=ms,
+                                       method=method,
+                                       method_options=method_options,
+                                       curve_funcs=curve_funcs,
+                                       _raise_notconverged=_raise_notconverged)
+            residuals = tree_map(lambda ss, xx: ss.at[i].set(xx), residuals, rr)
+            states.append(state)
+        return Samples(pos=primals, samples=residuals), states
+    return sampler
 
 
 @register_pytree_node_class
@@ -493,27 +579,22 @@ class OptimizeVI:
         if _lh_funcs is None:
             if likelihood is None:
                 raise ValueError("Neither Likelihood nor funcs provided.")
-
             # KL funcs
             self._kl_solver = kl_solver(likelihood)
-
-            # Sampling
-            get_partial = partial(_partial_func, likelihood=likelihood,
-                                  point_estimates=point_estimates)
             # Lin sampling
-            self._draw_metric, self._draw_linear = linear_sampler(
+            self._draw_metric, self._draw_linear = linear_residual_sampler(
                 likelihood,
                 point_estimates,
                 cg_kwargs=sampling_cg_kwargs,
                 _raise_nonposdef=_raise_notconverged
             )
-
             # Non-lin sampling
-            self._lh_trafo = do_jit(get_partial(_lh_trafo))
-            self._nl_vag = do_jit(value_and_grad(get_partial(_nl_residual),
-                                                 argnums=3))
-            self._nl_metric = do_jit(get_partial(_nl_metric))
-            self._nl_sampnorm = do_jit(get_partial(_nl_sampnorm))
+            self._curve_sampler = curve_sampler(
+                likelihood,
+                self._draw_metric,
+                point_estimates=point_estimates,
+                _raise_notconverged=_raise_notconverged
+            )
         else:
             if likelihood is not None:
                 msg = "Likelihood funcs is set, ignoring Likelihood input"
@@ -521,10 +602,7 @@ class OptimizeVI:
             (self._kl_solver,
              self._draw_linear,
              self._draw_metric,
-             self._lh_trafo,
-             self._nl_vag,
-             self._nl_metric,
-             self._nl_sampnorm) = _lh_funcs
+             self._curve_sampler) = _lh_funcs
 
     @property
     def likelihood(self):
@@ -539,50 +617,7 @@ class OptimizeVI:
         return (self._kl_solver,
                 self._draw_linear,
                 self._draw_metric,
-                self._lh_trafo,
-                self._nl_vag,
-                self._nl_metric,
-                self._nl_sampnorm)
-
-    def _nonlinear_sampling(self, samples):
-        primals = samples.pos
-        lh_trafo_at_p = self._lh_trafo(primals)
-        metric_samples = self._draw_metric(primals, self._keys)
-        new_smpls = []
-        opt_states = []
-        for s, ms in zip(samples, metric_samples):
-            s = _process_point_estimate(s, primals, self._point_estimates,
-                                        insert=False)
-            ms = _process_point_estimate(ms, primals, self._point_estimates,
-                                         insert=False)
-            options = {
-                "fun_and_grad":
-                    partial(
-                        self._nl_vag,
-                        primals,
-                        lh_trafo_at_p,
-                        ms
-                    ),
-                "hessp":
-                    partial(
-                        self._nl_metric,
-                        primals,
-                        lh_trafo_at_p
-                    ),
-                "custom_gradnorm" : partial(self._nl_sampnorm, primals),
-                }
-            opt_state = minimize(None, x0=s, method=self._sampling_minimizer,
-                                 options=self._sampling_kwargs | options)
-            if self._raise_notconverged & (opt_state.status < 0):
-                ValueError("S: failed to invert map")
-            newsam = _process_point_estimate(opt_state.x, primals,
-                                             self._point_estimates,
-                                             insert=True)
-            new_smpls.append(newsam - primals)
-            # Remove x from state to avoid copy of the samples
-            opt_states.append(opt_state._replace(x = None))
-        samples = Samples(pos=primals, samples=stack(new_smpls))
-        return samples, opt_states
+                self._curve_sampler)
 
     def init_state(self, primals):
         if self._sampling_method in ['linear', 'geometric']:
@@ -600,7 +635,12 @@ class OptimizeVI:
             samples = state.samples.at(primals)
 
         if self._sampling_method in ['geometric', 'altmetric']:
-            samples, sampling_states = self._nonlinear_sampling(samples)
+            samples, sampling_states = self._curve_sampler(
+                samples,
+                self._keys,
+                method=self._sampling_minimizer,
+                method_options=self._sampling_kwargs
+            )
         else:
             sampling_states = None
         samples, opt_state = self._kl_solver(samples,
