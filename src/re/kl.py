@@ -157,27 +157,61 @@ def _sample_linearly(
             (info < 0) if info is not None else False,
             ValueError("conjugate gradient failed")
         )
-        #signal_smpl = _process_point_estimate(signal_smpl, primals,
-        #                                      point_estimates, insert=True)
-    #else:
-    #    signal_smpl = None
     return _process_point_estimate(smpl, primals, point_estimates, insert=True)
 
 
-def _ham_vg(likelihood, primals, primals_samples):
-    assert isinstance(primals_samples, Samples)
-    ham = StandardHamiltonian(likelihood=likelihood)
-    vvg = vmap(value_and_grad(ham))
-    s = vvg(primals_samples.at(primals).samples)
-    return tree_map(partial(jnp.mean, axis=0), s)
+def linear_sampler(likelihood, point_estimates: Union[P, Tuple[str]] = (),
+                   cg: Callable = conjugate_gradient.static_cg,
+                   cg_name: Optional[str] = None,
+                   cg_kwargs: Optional[dict] = None,
+                   samplemap: Callable = smap,
+                   do_dit: Callable = jit,
+                   _raise_nonposdef: bool = False):
+
+    def draw_linear(primals, keys, from_inverse):
+        sampler = partial(_sample_linearly, likelihood, primals,
+                          from_inverse=from_inverse,
+                          point_estimates=point_estimates,
+                          cg = cg,
+                          cg_name = cg_name,
+                          cg_kwargs=cg_kwargs,
+                          _raise_nonposdef=_raise_nonposdef)
+        samples = samplemap(sampler)(keys)
+        samples = Samples(
+                    pos=primals,
+                    samples=tree_map(lambda *x:
+                                jnp.concatenate(x), samples, -samples)
+        )
+        return samples
+
+    return (do_dit(partial(draw_linear, from_inverse=False)),
+            do_dit(partial(draw_linear, from_inverse=True)))
 
 
-def _ham_metric(likelihood, primals, tangents, primals_samples):
-    assert isinstance(primals_samples, Samples)
-    ham = StandardHamiltonian(likelihood=likelihood)
-    vmet = vmap(ham.metric, in_axes=(0, None))
-    s = vmet(primals_samples.at(primals).samples, tangents)
-    return tree_map(partial(jnp.mean, axis=0), s)
+def _sample_mean(samples, mean=jnp.mean, axis=0):
+    return tree_map(partial(mean, axis=axis), samples)
+
+
+def kl_vg_and_metric(likelihood,
+                     samplemap=vmap,
+                     sample_reduce=_sample_mean,
+                     do_jit=jit):
+
+    def _ham_vg(primals, primals_samples):
+        assert isinstance(primals_samples, Samples)
+        ham = StandardHamiltonian(likelihood=likelihood)
+        vvg = samplemap(value_and_grad(ham))
+        s = vvg(primals_samples.at(primals).samples)
+        return sample_reduce(s)
+
+    def _ham_metric(primals, tangents, primals_samples):
+        assert isinstance(primals_samples, Samples)
+        ham = StandardHamiltonian(likelihood=likelihood)
+        vmet = samplemap(ham.metric, in_axes=(0, None))
+        s = vmet(primals_samples.at(primals).samples, tangents)
+        return sample_reduce(s)
+
+    return do_jit(_ham_vg), do_jit(_ham_metric)
 
 
 def _lh_trafo(likelihood, p):
@@ -435,30 +469,19 @@ class OptimizeVI:
             if likelihood is None:
                 raise ValueError("Neither Likelihood nor funcs provided.")
 
-            def draw_linear(primals, keys, from_inverse):
-                sampler = partial(_sample_linearly, likelihood, primals,
-                                  from_inverse=from_inverse,
-                                  point_estimates=point_estimates,
-                                  cg_kwargs=sampling_cg_kwargs,
-                                  _raise_nonposdef=_raise_notconverged)
-                samples = smap(sampler)(keys)
-                samples = Samples(
-                            pos=primals,
-                            samples=tree_map(lambda *x:
-                                        jnp.concatenate(x), samples, -samples)
-                )
-                return samples
-
             # KL funcs
-            self._kl_vg = do_jit(partial(_ham_vg, likelihood))
-            self._kl_metric = do_jit(partial(_ham_metric, likelihood))
+            self._kl_vg, self._kl_metric = kl_vg_and_metric(likelihood)
 
             # Sampling
             get_partial = partial(_partial_func, likelihood=likelihood,
                                   point_estimates=point_estimates)
             # Lin sampling
-            self._draw_metric = do_jit(partial(draw_linear, from_inverse=False))
-            self._draw_linear = do_jit(partial(draw_linear, from_inverse=True))
+            self._draw_metric, self._draw_linear = linear_sampler(
+                likelihood,
+                point_estimates,
+                cg_kwargs=sampling_cg_kwargs,
+                _raise_nonposdef=_raise_notconverged
+            )
 
             # Non-lin sampling
             self._lh_trafo = do_jit(get_partial(_lh_trafo))
