@@ -451,6 +451,28 @@ class OptVIState(NamedTuple):
   minimization_state: OptimizeResults
 
 
+def _get_vi_callables(likelihood,
+                      point_estimates: Union[P, Tuple[str]] = (),
+                      kl_kwargs={},
+                      lin_kwargs={},
+                      curve_kwargs={}):
+    # KL funcs
+    solver = kl_solver(likelihood, **kl_kwargs)
+    # Lin sampling
+    draw_metric, draw_linear = linear_residual_sampler(
+        likelihood,
+        point_estimates,
+        **lin_kwargs
+    )
+    # Non-lin sampling
+    curve = curve_sampler(
+        likelihood,
+        draw_metric,
+        point_estimates,
+        **curve_kwargs
+    )
+    return solver, draw_metric, draw_linear, curve
+
 class OptimizeVI:
     def __init__(self,
                  likelihood: Union[Likelihood, None],
@@ -458,15 +480,29 @@ class OptimizeVI:
                  key: random.PRNGKey,
                  n_samples: int,
                  point_estimates: Union[P, Tuple[str]] = (),
+                 kl_kwargs: dict = {
+                    'samplemap': vmap,
+                    'sample_reduce': _sample_mean,
+                    'do_jit': jit
+                 },
+                 kl_minimizer: str = 'newtoncg',
+                 kl_minimizer_kwargs: dict = {},
                  sampling_method: str = 'altmetric',
-                 sampling_minimizer = 'newtoncg',
-                 sampling_kwargs: dict = {'xtol':0.01},
-                 sampling_cg_kwargs: dict = {'maxiter':50},
-                 minimizer: str = 'newtoncg',
-                 minimization_kwargs: dict = {},
-                 do_jit = jit,
-                 _raise_notconverged = False,
-                 _lh_funcs: Any = None):
+                 linear_sampling_kwargs: dict = {
+                    'cg': conjugate_gradient.static_cg,
+                    'cg_name': None,
+                    'cg_kwargs': None,
+                    'samplemap': smap,
+                    'do_jit': jit,
+                 },
+                 curve_minimizer: str = 'newtoncg',
+                 curve_minimizer_kwargs: dict = {'xtol': 0.01},
+                 curve_kwargs: dict = {
+                    'sample_map': None, #TODO
+                    'do_jit': jit,
+                 },
+                 _raise_notconverged: bool = False,
+                 _vi_callables: Any = None):
         """JaxOpt style minimizer for VI approximation of a Bayesian inference
         problem assuming a standard normal prior distribution.
 
@@ -531,19 +567,31 @@ class OptimizeVI:
             point estimate. As a convenience method, for dict-like inputs, a
             tuple of strings is also valid. From these the boolean indicator
             pytree is automatically constructed.
-        sampling_method: str
-            Sampling method used for vi approximation. Default is `altmetric`.
-        sampling_minimizer: str
-            Minimization method used for non-linear sample minimization.
-        sampling_kwargs: dict
-            Keyword arguments for minimizer used for sample minimization.
-        sampling_cg_kwargs: dict
-            Keyword arguments for ConjugateGradient used for the linear part of
-            sample minimization.
-        minimizer: str or callable
+        kl_kwargs: dict
+            Keyword arguments passed on to `kl_solver`.
+        kl_minimizer: str or callable
             Minimization method used for KL minimization.
-        minimization_kwargs : dict
+        kl_minimizer_kwargs : dict
             Keyword arguments for minimizer used for KL minimization.
+        sampling_method: str
+            Sampling method used for vi approximation. Must be in ('linear',
+            'geometric', 'altmetric'). Default is `altmetric`.
+        linear_sampling_kwargs: dict
+            Keyword arguments passed on to `linear_residual_sampler`. Includes
+            the cg gonfig used for linear sampling.
+        curve_minimizer: str
+            Minimization method used for non-linear sample minimization.
+        curve_minimizer_kwargs: dict
+            Keyword arguments for minimizer used for sample minimization.
+        curve_kwargs: dict
+            Keyword arguments passed on to `curve_sampler`.
+        _raise_notconverged: bool
+            Whether to raise inversion & minimization errors during sampling.
+            Default is False.
+        _vi_callables: tuple of callable (optional)
+            Alternative init to normal init with `likelihood`. If provided,
+            includes all functions for sampling and minimization and no new
+            functions are build.
 
         See also
         --------
@@ -559,41 +607,35 @@ class OptimizeVI:
         if self._sampling_method not in ['linear', 'geometric', 'altmetric']:
             msg = f"Unknown sampling method: {self._sampling_method}"
             raise NotImplementedError(msg)
-        self._minimizer = minimizer
-        self._sampling_minimizer = sampling_minimizer
-        self._sampling_kwargs = sampling_kwargs
-        # Only use xtol for sampling since a custom gradient norm is used
-        if 'absdelta' in self._sampling_kwargs.keys():
-            msg = 'Geometric sampling uses custom gradientnorm tolerance set '
-            msg += 'by `xtol`. Ignoring `absdelta`...'
-            logger.warn(msg)
-            self._sampling_kwargs['absdelta'] = 0.
-        self._mini_kwargs = minimization_kwargs
         self._keys = random.split(key, n_samples)
         self._likelihood = likelihood
         self._n_samples = n_samples
-        self._sampling_cg_kwargs = sampling_cg_kwargs
         self._point_estimates = point_estimates
-        self._raise_notconverged = _raise_notconverged
 
-        if _lh_funcs is None:
+        # To be passed on at runtime
+        self._minimizer = kl_minimizer
+        self._mini_kwargs = kl_minimizer_kwargs
+        self._curve_minimizer = curve_minimizer
+        self._curve_minimizer_kwargs = curve_minimizer_kwargs
+        # Only use xtol for sampling since a custom gradient norm is used
+        if 'absdelta' in self._curve_minimizer_kwargs.keys():
+            msg = 'Geometric sampling uses custom gradientnorm tolerance set '
+            msg += 'by `xtol`. Ignoring `absdelta`...'
+            logger.warn(msg)
+            self._curve_minimizer_kwargs['absdelta'] = 0.
+
+        linear_sampling_kwargs.update('_raise_nonposdef', _raise_notconverged)
+        curve_kwargs.update('_raise_notconverged', _raise_notconverged)
+        if _vi_callables is None:
             if likelihood is None:
                 raise ValueError("Neither Likelihood nor funcs provided.")
-            # KL funcs
-            self._kl_solver = kl_solver(likelihood)
-            # Lin sampling
-            self._draw_metric, self._draw_linear = linear_residual_sampler(
+            (self._kl_solver, self._draw_linear,
+             self._draw_metric, self._curve_sampler) = _get_vi_callables(
                 likelihood,
                 point_estimates,
-                cg_kwargs=sampling_cg_kwargs,
-                _raise_nonposdef=_raise_notconverged
-            )
-            # Non-lin sampling
-            self._curve_sampler = curve_sampler(
-                likelihood,
-                self._draw_metric,
-                point_estimates=point_estimates,
-                _raise_notconverged=_raise_notconverged
+                kl_kwargs=kl_kwargs,
+                lin_kwargs=linear_sampling_kwargs,
+                curve_kwargs=curve_kwargs
             )
         else:
             if likelihood is not None:
@@ -602,7 +644,7 @@ class OptimizeVI:
             (self._kl_solver,
              self._draw_linear,
              self._draw_metric,
-             self._curve_sampler) = _lh_funcs
+             self._curve_sampler) = _vi_callables
 
     @property
     def likelihood(self):
@@ -613,7 +655,7 @@ class OptimizeVI:
         return self._n_samples
 
     @property
-    def lh_funcs(self):
+    def vi_callables(self):
         return (self._kl_solver,
                 self._draw_linear,
                 self._draw_metric,
