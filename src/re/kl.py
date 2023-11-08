@@ -96,16 +96,6 @@ def _process_point_estimate(x, primals, point_estimates, insert):
     return x
 
 
-def _likelihood_metric_plus_standard_prior(lh_metric):
-    if isinstance(lh_metric, Likelihood):
-        lh_metric = lh_metric.metric
-
-    def joined_metric(primals, tangents, **primals_kw):
-        return lh_metric(primals, tangents, **primals_kw) + tangents
-
-    return joined_metric
-
-
 def sample_likelihood(likelihood: Likelihood, primals, key):
     white_sample = random_like(key, likelihood.left_sqrt_metric_tangents_shape)
     return likelihood.left_sqrt_metric(primals, white_sample)
@@ -116,6 +106,7 @@ def _sample_linearly(
     primals,
     key,
     from_inverse: bool,
+    point_estimates: Union[P, Tuple[str]] = (),
     cg: Callable = conjugate_gradient.static_cg,
     cg_name: Optional[str] = None,
     cg_kwargs: Optional[dict] = None,
@@ -123,22 +114,23 @@ def _sample_linearly(
 ):
     assert_arithmetics(primals)
 
-    if isinstance(likelihood, Likelihood):
-        lh = likelihood
-        ham_metric = _likelihood_metric_plus_standard_prior(lh)
-    elif isinstance(likelihood, StandardHamiltonian):
-        msg = "passing `StandardHamiltonian` instead of the `Likelihood` is deprecated"
-        warn(msg, DeprecationWarning)
-        lh = likelihood.likelihood
-        ham_metric = likelihood.metric
-    else:
+    if not isinstance(likelihood, Likelihood):
         te = f"`likelihood` of invalid type; got '{type(likelihood)}'"
         raise TypeError(te)
+    if point_estimates:
+        pe, p_liquid, p_frozen = _parse_point_estimates(point_estimates,primals)
+        lh = likelihood.partial(pe, p_frozen)
+    else:
+        lh = likelihood
+        p_liquid = primals
+    def ham_metric(primals, tangents, **primals_kw):
+        return lh.metric(primals, tangents, **primals_kw) + tangents
+
     cg_kwargs = cg_kwargs if cg_kwargs is not None else {}
 
     subkey_nll, subkey_prr = random.split(key, 2)
-    nll_smpl = sample_likelihood(lh, primals, key=subkey_nll)
-    prr_inv_metric_smpl = random_like(key=subkey_prr, primals=primals)
+    nll_smpl = sample_likelihood(lh, p_liquid, key=subkey_nll)
+    prr_inv_metric_smpl = random_like(key=subkey_prr, primals=p_liquid)
     # One may transform any metric sample to a sample of the inverse
     # metric by simply applying the inverse metric to it
     prr_smpl = prr_inv_metric_smpl
@@ -154,7 +146,7 @@ def _sample_linearly(
     met_smpl = nll_smpl + prr_smpl
     if from_inverse:
         inv_metric_at_p = partial(
-            cg, Partial(ham_metric, primals), **{
+            cg, Partial(ham_metric, p_liquid), **{
                 "name": cg_name,
                 "_raise_nonposdef": _raise_nonposdef,
                 **cg_kwargs
@@ -165,9 +157,13 @@ def _sample_linearly(
             (info < 0) if info is not None else False,
             ValueError("conjugate gradient failed")
         )
-        return signal_smpl, met_smpl
+        signal_smpl = _process_point_estimate(signal_smpl, primals,
+                                              point_estimates, insert=True)
     else:
-        return None, met_smpl
+        signal_smpl = None
+    met_smpl = _process_point_estimate(met_smpl, primals, point_estimates,
+                                       insert=True)
+    return signal_smpl, met_smpl
 
 
 def _ham_vg(likelihood, primals, primals_samples):
@@ -443,11 +439,13 @@ class OptimizeVI:
 
             def draw_metric(likelihood, p, keys):
                 f = partial(_sample_linearly, likelihood,
+                            point_estimates=point_estimates,
                             from_inverse=False)
                 return vmap(f, in_axes=(None, 0), out_axes=(None, 0))(p, keys)
 
             def draw_linear(likelihood, p, keys):
                 f = partial(_sample_linearly, likelihood,
+                            point_estimates=point_estimates,
                             from_inverse=True, cg_kwargs=sampling_cg_kwargs,
                             _raise_nonposdef = self._raise_notconverged)
                 return smap(f, in_axes=(None, 0))(p, keys)
@@ -460,8 +458,8 @@ class OptimizeVI:
             get_partial = partial(_partial_func, likelihood=likelihood,
                                   point_estimates=point_estimates)
             # Lin sampling
-            self._draw_metric = do_jit(get_partial(draw_metric))
-            self._draw_linear = do_jit(get_partial(draw_linear))
+            self._draw_metric = do_jit(partial(draw_metric, likelihood))
+            self._draw_linear = do_jit(partial(draw_linear, likelihood))
             # Non-lin sampling
             self._lh_trafo = do_jit(get_partial(_lh_trafo))
             self._nl_vag = do_jit(value_and_grad(get_partial(_nl_residual),
@@ -503,14 +501,14 @@ class OptimizeVI:
     def _linear_sampling(self, primals, from_inverse):
         if from_inverse:
             samples, met_smpls = self._draw_linear(primals, self._keys)
-            samples = stack(
-                tuple(_process_point_estimate(ss,
-                                              primals,
-                                              self._point_estimates,
-                                              insert=True
-                                              )
-                      for ss in unstack(samples))
-            )
+            #samples = stack(
+            #    tuple(_process_point_estimate(ss,
+            #                                  primals,
+            #                                  self._point_estimates,
+            #                                  insert=True
+            #                                  )
+            #          for ss in unstack(samples))
+            #)
             samples = Samples(
                 pos=primals,
                 samples=tree_map(lambda *x:
@@ -519,14 +517,14 @@ class OptimizeVI:
         else:
             _, met_smpls = self._draw_metric(primals, self._keys)
             samples = None
-        met_smpls = stack(
-            tuple(_process_point_estimate(ss,
-                                          primals,
-                                          self._point_estimates,
-                                          insert=True
-                                          )
-                    for ss in unstack(met_smpls))
-        )
+        #met_smpls = stack(
+        #    tuple(_process_point_estimate(ss,
+        #                                  primals,
+        #                                  self._point_estimates,
+        #                                  insert=True
+        #                                  )
+        #            for ss in unstack(met_smpls))
+        #)
         met_smpls = Samples(
             pos=None,
             samples=tree_map(lambda *x:
