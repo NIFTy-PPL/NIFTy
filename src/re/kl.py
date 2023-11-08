@@ -454,30 +454,6 @@ class OptVIState(NamedTuple):
     minimization_state: OptimizeResults
 
 
-def _get_vi_callables(likelihood,
-                      point_estimates: Union[P, Tuple[str]] = (),
-                      kl_kwargs={},
-                      lin_kwargs={},
-                      curve_kwargs={}):
-    # KL funcs
-    solver = kl_solver(likelihood, **kl_kwargs)
-    # Lin sampling
-    draw_metric, draw_linear = linear_residual_sampler(
-        likelihood,
-        point_estimates,
-        **lin_kwargs
-    )
-    # Non-lin sampling
-    curve = curve_sampler(
-        likelihood,
-        draw_metric,
-        point_estimates,
-        **curve_kwargs
-    )
-    return solver, draw_linear, curve
-
-
-
 def OptimizeVI(likelihood: Union[Likelihood, None],
                n_iter: int,
                point_estimates: Union[P, Tuple[str]] = (),
@@ -486,7 +462,6 @@ def OptimizeVI(likelihood: Union[Likelihood, None],
                     'sample_reduce': _sample_mean,
                     'do_jit': jit
                },
-               sampling_method: str = 'altmetric',
                linear_sampling_kwargs: dict = {
                     'cg': conjugate_gradient.static_cg,
                     'cg_name': None,
@@ -598,8 +573,8 @@ def OptimizeVI(likelihood: Union[Likelihood, None],
     `Metric Gaussian Variational Inference`, Jakob Knollmüller,
     Torsten A. Enßlin, `<https://arxiv.org/abs/1901.11033>`_
     """
-    linear_sampling_kwargs.update('_raise_nonposdef', _raise_notconverged)
-    curve_kwargs.update('_raise_notconverged', _raise_notconverged)
+    linear_sampling_kwargs.setdefault('_raise_nonposdef',_raise_notconverged)
+    curve_kwargs.setdefault('_raise_notconverged',_raise_notconverged)
 
     # KL funcs
     solver = kl_solver(likelihood, **kl_kwargs)
@@ -616,7 +591,7 @@ def OptimizeVI(likelihood: Union[Likelihood, None],
         point_estimates,
         **curve_kwargs
     )
-    return _OptimizeVI(n_iter, solver, draw_linear, curve, sampling_method)
+    return _OptimizeVI(n_iter, solver, draw_linear, curve)
 
 
 class _OptimizeVI:
@@ -624,26 +599,24 @@ class _OptimizeVI:
                  n_iter: int,
                  kl_solver: Callable,
                  linear_sampler: Callable,
-                 curve_sampler: Callable,
-                 sampling_method: str):
+                 curve_sampler: Callable):
         self._n_iter = n_iter
         self._kl_solver = kl_solver
         self._linear_sampler = linear_sampler
         self._curve_sampler = curve_sampler
-        self._sampling_method = sampling_method
-        if self._sampling_method not in ['linear', 'geometric', 'altmetric']:
-            msg = f"Unknown sampling method: {self._sampling_method}"
-            raise NotImplementedError(msg)
 
-    def init_state(self, primals, keys):
+    def init_state(self, primals, keys, sampling_method='geometric'):
+        if sampling_method not in ['linear', 'geometric', 'altmetric']:
+            msg = f"Unknown sampling method: {sampling_method}"
+            raise NotImplementedError(msg)
         state = OptVIState(niter=0,
                            samples=None,
                            keys=keys,
                            resample=True,
-                           sampling_method=self._sampling_method,
+                           sampling_method=sampling_method,
                            sampling_states=None,
                            minimization_state=None)
-        return primals, state
+        return state
 
     def update(self, primals, state,
                kl_minimizer: str = 'newtoncg',
