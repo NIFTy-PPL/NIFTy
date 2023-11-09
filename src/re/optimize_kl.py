@@ -192,15 +192,13 @@ def optimize_kl(
     if last_finished_index > -1:
         pos = pickle.load(
             open(f"{out_dir}/position_{last_finished_index}.p", "rb"))
-        kk = pickle.load(open(f"{out_dir}/rnd_key.p", "rb"))
-        if kk != key:
-            raise ValueError("Inconsistent random state loaded!")
+        key = pickle.load(
+            open(f"{out_dir}/rnd_key_{last_finished_index}.p", "rb"))
         state = pickle.load(
             open(f"{out_dir}/state_{last_finished_index}.p", "rb"))
         if last_finished_index == total_iterations - 1:
             return pos, state
     else:
-        pickle.dump(key, open(f"{out_dir}/rnd_key.p", "wb"))
         keys = jax.random.split(key, _getitem(state_cfg['n_samples'], 0)+1)
         key = keys[0]
         state = opt.init_state(pos, keys[1:],
@@ -244,7 +242,10 @@ def optimize_kl(
                                  **_getitem(constructor_cfg, i+1))
 
         if not out_dir == None:
+            # TODO: Make this fail safe! Cancelling the run while partially
+            # saving the outputs may result in a corrupted state.
             # Save iteration
+            pickle.dump(key, open(f"{out_dir}/rnd_key_{i}.p", "wb"))
             pickle.dump(pos, open(f"{out_dir}/position_{i}.p", "wb"))
             pickle.dump(state, open(f"{out_dir}/state_{i}.p", "wb"))
             with open(f"{out_dir}/last_finished_iteration", "w") as f:
