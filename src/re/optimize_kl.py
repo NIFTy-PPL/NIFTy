@@ -3,6 +3,7 @@
 # SPDX-License-Identifier: BSD-2-Clause
 # Authors: Philipp Frank, Jakob Roth
 
+from functools import reduce
 import pickle
 import sys
 import jax
@@ -11,14 +12,12 @@ from os.path import isfile
 from typing import Callable, Union, Tuple
 from .tree_math.vector import Vector
 from .likelihood import Likelihood
-from .kl import OptimizeVI, OptVIState
+from .kl import OptimizeVI, _OptimizeVI
 from .misc import minisanity
 from .logger import logger
 
 
 def _make_callable(obj):
-    if isinstance(obj, dict):
-        return {kk:_make_callable(ii) for kk, ii in obj.items()}
     if callable(obj) and not isinstance(obj, Likelihood):
         return obj
     else:
@@ -51,7 +50,7 @@ def basic_status_print(iiter, primals, state, residual):
 
 
 def optimize_kl(
-    likelihood: Likelihood,
+    likelihood: Union[Likelihood, None],
     pos: Vector,
     total_iterations: int,
     n_samples: Union[int, Callable],
@@ -66,6 +65,7 @@ def optimize_kl(
     resample: Union[bool, Callable] = False,
     kl_kwargs: dict = {},
     curve_kwargs: dict = {},
+    vi_callables: Union[None, Tuple[Callable], Callable] = None,
     callback=None,
     out_dir=None,
     resume=False,
@@ -170,7 +170,6 @@ def optimize_kl(
         'curve_minimizer': sampling_minimizer,
         'curve_minimizer_kwargs': sampling_kwargs,
     }
-
     constructor_cfg = {
         'likelihood': likelihood,
         'linear_sampling_kwargs': linear_sampling_kwargs,
@@ -183,10 +182,17 @@ def optimize_kl(
     update_cfg = {kk: _make_callable(ii) for kk,ii in update_cfg.items()}
     constructor_cfg = {kk: _make_callable(ii) for kk,ii in
                        constructor_cfg.items()}
+    vi_callables = _make_callable(vi_callables)
 
     # Initialize Optimizer
-    opt = OptimizeVI(n_iter=total_iterations,
-                     **_getitem(constructor_cfg, last_finished_index+1))
+    # If `vi_callables` are set, use them to set up optimizer instead of default
+    # `OptimizeVI` logic
+    vic = _getitem(vi_callables, last_finished_index+1)
+    if vic is not None:
+        opt = _OptimizeVI(n_iter=total_iterations, *vic)
+    else:
+        opt = OptimizeVI(n_iter=total_iterations,
+                         **_getitem(constructor_cfg, last_finished_index+1))
 
     # Load last finished reconstruction
     if last_finished_index > -1:
@@ -230,16 +236,23 @@ def optimize_kl(
                 )
 
             # Check for update in constructor and re-initialize sampler
-            rebuild = False
-            for rr in constructor_cfg.keys():
-                if (_getitem(constructor_cfg[rr], i+1) !=
-                    _getitem(constructor_cfg[rr], i)):
-                    rebuild = True
-            if rebuild:
-                # TODO print warning
-                # TODO only partial rebuild
-                opt = OptimizeVI(n_iter=total_iterations,
-                                 **_getitem(constructor_cfg, i+1))
+            vic = _getitem(vi_callables, i)
+            if vic is not None:
+                vin = _getitem(vi_callables, i+1)
+                if vic != vin:
+                    opt = _OptimizeVI(n_iter=total_iterations, *vin)
+            else:
+                keep = reduce(lambda a,b: a*b,
+                    (_getitem(constructor_cfg[rr], i+1) ==
+                     _getitem(constructor_cfg[rr], i) for rr in
+                     constructor_cfg.keys()),
+                    True
+                )
+                if not keep:
+                    # TODO print warning
+                    # TODO only partial rebuild
+                    opt = OptimizeVI(n_iter=total_iterations,
+                                    **_getitem(constructor_cfg, i+1))
 
         if not out_dir == None:
             # TODO: Make this fail safe! Cancelling the run while partially
