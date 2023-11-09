@@ -68,9 +68,9 @@ def _cg_pretty_print_it(
     else:
         i_str = str(i)
     msg = f"{name}: Iteration {i_str} ⛰:{energy:+.4e} Δ⛰:{energy_diff:.4e}"
-    msg += f" 🞋:{absdelta:.4e}" if absdelta is not None else ""
+    msg += f" ➽:{absdelta:.4e}" if absdelta is not None else ""
     if norm is not None and resnorm is not None:
-        msg += f" |∇|:{norm:.4e} 🞋:{resnorm:.4e}"
+        msg += f" |∇|:{norm:.4e} ➽:{resnorm:.4e}"
     logger.info(msg)
 
 
@@ -524,10 +524,10 @@ def _cg_steihaug_subproblem(
 
     def pp(arg):
         msg = (
-            "{name}: |∇|:{r_norm:.6e} 🞋:{resnorm:.6e} ↗:{tr:.6e}"
+            "{name}: |∇|:{r_norm:.6e} ➽:{resnorm:.6e} ↗:{tr:.6e}"
             " ☞:{case:1d} #∇²:{nhev:02d}"
             "\n{name}: Iteration {i} ⛰:{energy:+.6e} Δ⛰:{energy_diff:.6e}" +
-            (" 🞋:{absdelta:.6e}" if arg["absdelta"] is not None else "") + (
+            (" ➽:{absdelta:.6e}" if arg["absdelta"] is not None else "") + (
                 "\n{name}: Iteration Limit Reached"
                 if arg["i"] == arg["maxiter"] else ""
             )
