@@ -29,6 +29,10 @@ from .tree_math import (
 P = TypeVar("P")
 
 
+def _sample_mean(samples, mean=jnp.mean, axis=0):
+    return tree_map(partial(mean, axis=axis), samples)
+
+
 def _cond_raise(condition, exception):
     from jax.experimental.host_callback import call
 
@@ -160,6 +164,83 @@ def draw_linear_residual(
     return _process_point_estimate(smpl, primals, point_estimates, insert=True)
 
 
+def curve_residual_functions(likelihood, point_estimates=(), do_jit=jit):
+    def _trafo(likelihood, p):
+        return likelihood.transformation(p)
+
+    def _g(likelihood, p, lh_trafo_at_p, x):
+        # t = likelihood.transformation(x) - lh_trafo_at_p
+        t = tree_map(jnp.subtract, likelihood.transformation(x), lh_trafo_at_p)
+        return x - p + likelihood.left_sqrt_metric(p, t)
+
+    def _residual(likelihood, p, lh_trafo_at_p, ms_at_p, x):
+        r = ms_at_p - _g(likelihood, p, lh_trafo_at_p, x)
+        return 0.5*dot(r, r)
+
+    def _metric(likelihood, p, lh_trafo_at_p, primals, tangents):
+        f = partial(_g, likelihood, p, lh_trafo_at_p)
+        _, jj = jvp(f, (primals,), (tangents,))
+        return vjp(f, primals)[1](jj)[0]
+
+    def _sampnorm(likelihood, p, natgrad):
+        o = partial(likelihood.left_sqrt_metric, p)
+        o_transpose = linear_transpose(o, likelihood.lsm_tangents_shape)
+        fpp = _functional_conj(o_transpose)(natgrad)
+        return jnp.sqrt(vdot(natgrad, natgrad) + vdot(fpp, fpp))
+
+    # Partially insert frozen point estimates
+    get_partial = partial(_partial_func, likelihood=likelihood,
+                            point_estimates=point_estimates)
+    trafo = do_jit(get_partial(_trafo))
+    vag = do_jit(value_and_grad(get_partial(_residual), argnums=3))
+    metric = do_jit(get_partial(_metric))
+    sampnorm = do_jit(get_partial(_sampnorm))
+    return trafo, vag, metric, sampnorm
+
+
+def curve_residual(likelihood=None,
+                   point_estimates=(),
+                   primals=None,
+                   sample=None,
+                   metric_sample=None,
+                   method='newtoncg',
+                   method_options={},
+                   do_jit=jit,
+                   curve_funcs=None,
+                   _raise_notconverged=False):
+
+    if curve_funcs is None:
+        trafo, vag, metric, sampnorm = curve_residual_functions(
+            likelihood=likelihood,
+            point_estimates=point_estimates,
+            do_jit=do_jit
+        )
+    else:
+        trafo, vag, metric, sampnorm = curve_funcs
+
+    sample = _process_point_estimate(sample, primals,
+                                     point_estimates,
+                                     insert=False)
+    metric_sample = _process_point_estimate(metric_sample, primals,
+                                            point_estimates,
+                                            insert=False)
+    trafo_at_p = trafo(primals)
+    options = {
+        "fun_and_grad": partial(vag, primals, trafo_at_p, metric_sample),
+        "hessp": partial(metric, primals, trafo_at_p),
+        "custom_gradnorm" : partial(sampnorm, primals),
+        }
+    opt_state = minimize(None, x0=sample, method=method,
+                         options=method_options | options)
+    if _raise_notconverged & (opt_state.status < 0):
+        ValueError("S: failed to invert map")
+    newsam = _process_point_estimate(opt_state.x, primals,
+                                     point_estimates,
+                                     insert=True)
+    # Remove x from state to avoid copy of the samples
+    return newsam - primals, opt_state._replace(x = None)
+
+
 def linear_residual_sampler(likelihood,
                    point_estimates: Union[P, Tuple[str]] = (),
                    cg: Callable = conjugate_gradient.static_cg,
@@ -195,8 +276,37 @@ def linear_residual_sampler(likelihood,
             do_dit(partial(draw_linear, from_inverse=True)))
 
 
-def _sample_mean(samples, mean=jnp.mean, axis=0):
-    return tree_map(partial(mean, axis=axis), samples)
+def curve_sampler(likelihood,
+                  metric_sampler,
+                  point_estimates=(),
+                  sample_map=None, #TODO
+                  do_jit=jit,
+                  _raise_notconverged=False):
+
+    curve_funcs = curve_residual_functions(
+        likelihood=likelihood,
+        point_estimates=point_estimates,
+        do_jit=do_jit
+    )
+    def sampler(samples, keys, method='newtoncg', method_options={}):
+        assert isinstance(samples, Samples)
+        primals = samples.pos
+        residuals = samples._samples
+        met_samps = metric_sampler(primals, keys)
+        states = []
+        for i, (ss, ms) in enumerate(zip(samples, met_samps)):
+            rr, state = curve_residual(point_estimates=point_estimates,
+                                       primals=primals,
+                                       sample=ss,
+                                       metric_sample=ms,
+                                       method=method,
+                                       method_options=method_options,
+                                       curve_funcs=curve_funcs,
+                                       _raise_notconverged=_raise_notconverged)
+            residuals = tree_map(lambda ss, xx: ss.at[i].set(xx), residuals, rr)
+            states.append(state)
+        return Samples(pos=primals, samples=residuals), states
+    return sampler
 
 
 def kl_vg_and_metric(likelihood,
@@ -243,115 +353,6 @@ def kl_solver(likelihood,
         )
         return samples.at(opt_state.x), opt_state
     return _minimize_kl
-
-
-def curve_residual_functions(likelihood, point_estimates=(), do_jit=jit):
-    def _trafo(likelihood, p):
-        return likelihood.transformation(p)
-
-    def _g(likelihood, p, lh_trafo_at_p, x):
-        # t = likelihood.transformation(x) - lh_trafo_at_p
-        t = tree_map(jnp.subtract, likelihood.transformation(x), lh_trafo_at_p)
-        return x - p + likelihood.left_sqrt_metric(p, t)
-
-    def _residual(likelihood, p, lh_trafo_at_p, ms_at_p, x):
-        r = ms_at_p - _g(likelihood, p, lh_trafo_at_p, x)
-        return 0.5*dot(r, r)
-
-    def _metric(likelihood, p, lh_trafo_at_p, primals, tangents):
-        f = partial(_g, likelihood, p, lh_trafo_at_p)
-        _, jj = jvp(f, (primals,), (tangents,))
-        return vjp(f, primals)[1](jj)[0]
-
-    def _sampnorm(likelihood, p, natgrad):
-        o = partial(likelihood.left_sqrt_metric, p)
-        o_transpose = linear_transpose(o, likelihood.lsm_tangents_shape)
-        fpp = _functional_conj(o_transpose)(natgrad)
-        return jnp.sqrt(vdot(natgrad, natgrad) + vdot(fpp, fpp))
-
-    # Partially insert frozen point estimates
-    get_partial = partial(_partial_func, likelihood=likelihood,
-                            point_estimates=point_estimates)
-    trafo = do_jit(get_partial(_trafo))
-    vag = do_jit(value_and_grad(get_partial(_residual), argnums=3))
-    metric = do_jit(get_partial(_metric))
-    sampnorm = do_jit(get_partial(_sampnorm))
-    return trafo, vag, metric, sampnorm
-
-
-def curve_residual(likelihood=None,
-                 point_estimates=(),
-                 primals=None,
-                 sample=None,
-                 metric_sample=None,
-                 method='newtoncg',
-                 method_options={},
-                 do_jit=jit,
-                 curve_funcs=None,
-                 _raise_notconverged=False):
-
-    if curve_funcs is None:
-        trafo, vag, metric, sampnorm = curve_residual_functions(
-            likelihood=likelihood,
-            point_estimates=point_estimates,
-            do_jit=do_jit
-        )
-    else:
-        trafo, vag, metric, sampnorm = curve_funcs
-
-    sample = _process_point_estimate(sample, primals,
-                                     point_estimates,
-                                     insert=False)
-    metric_sample = _process_point_estimate(metric_sample, primals,
-                                            point_estimates,
-                                            insert=False)
-    trafo_at_p = trafo(primals)
-    options = {
-        "fun_and_grad": partial(vag, primals, trafo_at_p, metric_sample),
-        "hessp": partial(metric, primals, trafo_at_p),
-        "custom_gradnorm" : partial(sampnorm, primals),
-        }
-    opt_state = minimize(None, x0=sample, method=method,
-                         options=method_options | options)
-    if _raise_notconverged & (opt_state.status < 0):
-        ValueError("S: failed to invert map")
-    newsam = _process_point_estimate(opt_state.x, primals,
-                                     point_estimates,
-                                     insert=True)
-    # Remove x from state to avoid copy of the samples
-    return newsam - primals, opt_state._replace(x = None)
-
-def curve_sampler(likelihood,
-                  metric_sampler,
-                  point_estimates=(),
-                  sample_map=None, #TODO
-                  do_jit=jit,
-                  _raise_notconverged=False):
-
-    curve_funcs = curve_residual_functions(
-        likelihood=likelihood,
-        point_estimates=point_estimates,
-        do_jit=do_jit
-    )
-    def sampler(samples, keys, method='newtoncg', method_options={}):
-        assert isinstance(samples, Samples)
-        primals = samples.pos
-        residuals = samples._samples
-        met_samps = metric_sampler(primals, keys)
-        states = []
-        for i, (ss, ms) in enumerate(zip(samples, met_samps)):
-            rr, state = curve_residual(point_estimates=point_estimates,
-                                       primals=primals,
-                                       sample=ss,
-                                       metric_sample=ms,
-                                       method=method,
-                                       method_options=method_options,
-                                       curve_funcs=curve_funcs,
-                                       _raise_notconverged=_raise_notconverged)
-            residuals = tree_map(lambda ss, xx: ss.at[i].set(xx), residuals, rr)
-            states.append(state)
-        return Samples(pos=primals, samples=residuals), states
-    return sampler
 
 
 @register_pytree_node_class
