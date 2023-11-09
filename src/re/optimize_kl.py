@@ -30,23 +30,28 @@ def _getitem(cfg, i):
     return {kk: _getitem(ii,i) for kk,ii in cfg.items()}
 
 
-def basic_status_print(iiter, primals, state, residual):
+def basic_status_print(iiter, primals, state, residual, out_dir=None):
     en = state.minimization_state.fun
-    logger.info(f"Post VI Iteration {iiter}: Energy {en:2.4e}")
+    msg = f"Post VI Iteration {iiter}: Energy {en:2.4e}\n"
     if state.sampling_states is not None:
         niter = tuple(ss.nit for ss in state.sampling_states)
-        logger.info(f"Nonlinear sampling total iterations: {niter}")
-
-    msg = f"KL-Minimization total iteration: {state.minimization_state.nit}"
-    logger.info(msg)
+        msg += f"Nonlinear sampling total iterations: {niter}\n"
+    msg += f"KL-Minimization total iteration: {state.minimization_state.nit}\n"
     _, minis = minisanity(primals, state.samples, residual)
-    msg = "Likelihood residual(s):\n"
-    msg += minis
-    logger.info(msg)
+    msg += "Likelihood residual(s):\n"
+    msg += minis +"\n"
     _, minis = minisanity(primals, state.samples)
-    msg = "Prior residual(s):\n"
-    msg += minis
+    msg += "Prior residual(s):\n"
+    msg += minis+"\n"
     logger.info(msg)
+
+    if not out_dir == None:
+        lfile = f"{out_dir}/minisanity"
+        if isfile(lfile) and iiter != 0:
+            with open(lfile) as f:
+                msg = str(f.read()) + "\n" + msg
+        with open(f"{out_dir}/minisanity", "w") as f:
+            f.write(msg)
 
 
 def optimize_kl(
@@ -112,7 +117,7 @@ def optimize_kl(
         Whether to resample with new random numbers or not. Default is False
     callback : callable or None
         Function that is called after every global iteration. It needs to be a
-        function taking 3 arguments: 1. the position in latend space,
+        function taking 3 arguments: 1. the position in latent space,
                                      2. the residual samples,
                                      3. the global iteration.
         Default: None.
@@ -215,8 +220,9 @@ def optimize_kl(
     for i in range(last_finished_index + 1, total_iterations):
         # Do one sampling and minimization step
         pos, state = opt.update(pos, state, **_getitem(update_cfg, i))
-        # Print basic infos (TODO: save to ouput file)
-        basic_status_print(i, pos, state, likelihood.normalized_residual)
+        # Print basic infos
+        basic_status_print(i, pos, state, likelihood.normalized_residual,
+                           out_dir=out_dir)
         if callback != None:
             callback(pos, state, i)
 
