@@ -6,7 +6,8 @@ from .conjugate_gradient import cg, static_cg
 from .correlated_field import CorrelatedFieldMaker, non_parametric_amplitude
 from .hmc import generate_hmc_acc_rej, generate_nuts_tree
 from .hmc_oo import HMCChain, NUTSChain
-from .kl import Samples, OptimizeVI
+from .kl import Samples, OptimizeVI, optimizeVI_callables, OptVIState
+from .optimize_kl import optimize_kl
 from .likelihood import Likelihood, StandardHamiltonian
 from .likelihood_impl import (
     Categorical, Gaussian, Poissonian, StudentT, VariableCovarianceGaussian,
@@ -27,4 +28,3 @@ from .refine.charted_field import RefinementField
 from .refine.healpix_field import RefinementHPField
 from .smap import smap
 from .tree_math import *
-from .optimize_kl import optimize_kl
