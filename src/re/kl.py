@@ -439,19 +439,6 @@ class Samples():
         return cls(pos=pos, samples=smpls)
 
 
-class OptVIState(NamedTuple):
-    """Named tuple containing state information."""
-    niter: int
-    keys: Array
-    sample_regenerate: bool
-    sample_update: bool
-    sampling_states: List[OptimizeResults]
-    minimization_state: OptimizeResults
-    kl_solver_kwargs: dict
-    sample_generator_kwargs: dict
-    sample_update_kwargs: dict
-
-
 def optimizeVI_callables(likelihood: Likelihood,
                          point_estimates: Union[P, Tuple[str]] = (),
                          kl_kwargs: dict = {
@@ -472,20 +459,19 @@ def optimizeVI_callables(likelihood: Likelihood,
                          },
                          _raise_notconverged: bool = False):
     # TODO update docstring
-    """JaxOpt style minimizer for VI approximation of a Bayesian inference
-    problem assuming a standard normal prior distribution.
+    """MGVI/geoVI interface that creates the input functions of `OptimizeVI`
+    from a `Likelihood`.
 
-    Depending on `sampling_method` the VI approximation is performed via
-    variants of the `Geometric Variational Inference` and/or
-    `Metric Gaussian Variational Inference` algorithms. They produce
-    approximate posterior samples that are used for KL estimation internally
-    and the final set of samples are the approximation of the posterior.
-    The samples can be linear, i.e. following a standard normal distribution
-    in model space, or non linear, i.e. following a standard normal
-    distribution in the canonical coordinate system of the Riemannian
-    manifold associated with the metric of the approximate posterior
-    distribution. The coordinate transformation for the non-linear sample is
-    approximated by an expansion.
+    Builds functions for a VI approximation via variants of the `Geometric
+    Variational Inference` and/or `Metric Gaussian Variational Inference`
+    algorithms. They produce approximate posterior samples that are used for KL
+    estimation internally and the final set of samples are the approximation of
+    the posterior. The samples can be linear, i.e. following a standard normal
+    distribution in model space, or non-linear, i.e. following a standard normal
+    distribution in the canonical coordinate system of the Riemannian manifold
+    associated with the metric of the approximate posterior distribution. The
+    coordinate transformation for the non-linear sample is approximated by an
+    expansion.
 
     Both linear and non-linear sample start by drawing a sample from the
     inverse metric. To do so, we draw a sample which has the metric as
@@ -525,11 +511,6 @@ def optimizeVI_callables(likelihood: Likelihood,
         Likelihood to be used for inference.
     n_iter : int
         Number of iterations.
-    key : jax random number generataion key
-    n_samples : int
-        Number of samples used to sample Kullback-Leibler divergence. The
-        samples get mirrored, so the actual number of samples used for the
-        KL estimate is twice the number of `n_samples`.
     point_estimates : tree-like structure or tuple of str
         Pytree of same structure as likelihood input but with boolean leaves
         indicating whether to sample the value in the input or use it as a
@@ -537,30 +518,17 @@ def optimizeVI_callables(likelihood: Likelihood,
         tuple of strings is also valid. From these the boolean indicator
         pytree is automatically constructed.
     kl_kwargs: dict
-        Keyword arguments passed on to `kl_solver`.
-    kl_minimizer: str or callable
-        Minimization method used for KL minimization.
-    kl_minimizer_kwargs : dict
-        Keyword arguments for minimizer used for KL minimization.
-    sampling_method: str
-        Sampling method used for vi approximation. Must be in ('linear',
-        'geometric', 'altmetric'). Default is `altmetric`.
+        Keyword arguments passed on to `kl_solver`. Can be used to specify the
+        jit and map behavior of the function being constructed.
     linear_sampling_kwargs: dict
         Keyword arguments passed on to `linear_residual_sampler`. Includes
-        the cg gonfig used for linear sampling.
-    curve_minimizer: str
-        Minimization method used for non-linear sample minimization.
-    curve_minimizer_kwargs: dict
-        Keyword arguments for minimizer used for sample minimization.
+        the cg config used for linear sampling and its jit/map configuration.
     curve_kwargs: dict
-        Keyword arguments passed on to `curve_sampler`.
+        Keyword arguments passed on to `curve_sampler`. Can be used to specify
+        the jit and map behavior of the function being constructed.
     _raise_notconverged: bool
         Whether to raise inversion & minimization errors during sampling.
         Default is False.
-    _vi_callables: tuple of callable (optional)
-        Alternative init to normal init with `likelihood`. If provided,
-        includes all functions for sampling and minimization and no new
-        functions are build.
 
     See also
     --------
@@ -596,6 +564,19 @@ def optimizeVI_callables(likelihood: Likelihood,
     return _solver, linear_sampler, curve
 
 
+class OptVIState(NamedTuple):
+    """Named tuple containing state information."""
+    niter: int
+    keys: Array
+    sample_regenerate: bool
+    sample_update: bool
+    sampling_states: List[OptimizeResults]
+    minimization_state: OptimizeResults
+    kl_solver_kwargs: dict
+    sample_generator_kwargs: dict
+    sample_update_kwargs: dict
+
+
 class OptimizeVI:
     def __init__(self,
                  n_iter: int,
@@ -606,6 +587,49 @@ class OptimizeVI:
                  sample_generator_kwargs: dict  = {},
                  sample_update_kwargs: dict  = {},
                  ):
+        """JaxOpt style minimizer for VI approximation of a probability
+        distribution with a sampled approximate distribution.
+
+        Parameters:
+        -----------
+        n_iter: int
+            Total number of iterations. One iteration consists of the steps
+            1) - 3).
+        kl_solver: Callable
+            Solver that minimizes the KL w.r.t. the mean of the samples.
+        sample_generator: Callable
+            Function to generate new samples.
+        sample_update: Callable
+            Function to update existing samples.
+        kl_solver_kwargs: dict
+            Optional keyword arguments to be passed on to `kl_solver`. They are
+            added to the optimizers state and passed on at each `update` step.
+        sample_generator_kwargs: dict
+            Optional keyword arguments to be passed on to `sample_generator`.
+        sample_update_kwargs: dict
+            Optional keyword arguments to be passed on to `sample_update`.
+
+        Notes:
+        ------
+        Implements the base logic present in conditional VI approximations
+        such as MGVI and geoVI. First samples are generated (and/or updated)
+        and then their collective mean is optimized for using the sample
+        estimated variational KL between the true distribution and the sampled
+        approximation. This is split into three steps:
+        1) Sample generation
+        2) Sample update
+        3) KL minimization.
+        Step 1) and 2) may be skipped depending on the minimizers state, but
+        step 3) is always performed at the end of one iteration. A full loop
+        consists of repeatedly iterating over the steps 1) - 3).
+
+        The functions `kl_solver`, `sample_generator`, and `sample_update` all
+        share the same syntax: They must take two inputs, samples and keys,
+        where keys are the jax.random keys that are used for the samples.
+        Additionally they each can take respective keyword arguments. These
+        are passed on at runtime and stored in the optimizers state. All
+        functions must return samples, as an instance of `Samples`
+        """
         self._n_iter = n_iter
         self._kl_solver = kl_solver
         self._sample_generator = sample_generator
@@ -636,6 +660,13 @@ class OptimizeVI:
         self._sample_update = sample_update
 
     def init_state(self, keys, samples = None, primals = None):
+        """Initial state of the optimizer.
+
+        Unlike JaxOpt's optimizers this does not only take the optimizers
+        objective parameters (the `samples`) as an input and returns a state,
+        but also allows to set up samples and state according to a latent mean
+        `primals`. Therefor it also returns `samples` in addition to state.
+        """
         if samples is None:
             if primals is None:
                 raise ValueError("Neither samples nor primals set.")
@@ -658,7 +689,8 @@ class OptimizeVI:
         )
         return samples, state
 
-    def update(self, samples, state):
+    def update(self, samples: Samples, state: OptVIState):
+        """One sampling and kl optimization step."""
         assert isinstance(samples, Samples)
         assert isinstance(state, OptVIState)
         if state.sample_regenerate:
@@ -678,6 +710,7 @@ class OptimizeVI:
         return samples, state
 
     def run(self, keys, samples = None, primals = None):
+        """`n_iter` consecutive steps of `update`."""
         samples, state = self.init_state(keys, samples, primals)
         for n in range(self._n_iter):
             logger.info(f"OptVI iteration number: {n}")

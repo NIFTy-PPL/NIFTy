@@ -53,24 +53,6 @@ def basic_status_print(iiter, samples, state, residual, out_dir=None):
             f.write(msg)
 
 
-def _update_state(state: OptVIState, state_cfg, iiter):
-    cfgi = _getitem(state_cfg, iiter)
-    if iiter == 0:
-        regenerate = True
-    else:
-        cfgo = _getitem(state_cfg, iiter-1)
-        regenerate = cfgi['resample']
-        regenerate += (cfgi['n_samples'] != cfgo['n_samples'])
-        regenerate += cfgi['sampling_method'] in ['linear', 'geometric'],
-    state = state._replace(
-        regenerate=True,
-        sample_update=cfgi['sampling_method'] in ['geometric', 'altmetric'],
-        kl_solver_kwargs=cfgi['kl_solver_kwargs'],
-        sample_generator_kwargs=cfgi['sample_generator_kwargs'],
-        sample_update_kwargs=cfgi['sample_update_kwargs']
-    )
-
-
 def _do_resample(cfg, iiter):
     if iiter == 0:
         return True
@@ -105,26 +87,28 @@ def optimize_kl(
     n_samples: Union[int, Callable],
     key: jax.random.PRNGKey,
     point_estimates: Union[Vector, Tuple[str], Callable] = (),
+    sampling_method: Union[str, Callable] = 'altmetric',
+    make_kl_kwargs: Union[dict, Callable] = {},
+    make_sample_generator_kwargs: Union[dict, Callable] = {
+        'cg_kwargs':{'maxiter':50}
+    },
+    make_sample_update_kwargs: Union[dict, Callable] = {},
     kl_solver_kwargs: Union[dict, Callable] = {
         'method': 'newtoncg',
         'method_options': {},
     },
-    sampling_method: Union[str, Callable] = 'altmetric',
-    linear_sampling_kwargs: dict = {'cg_kwargs':{'maxiter':50}},
+    sample_generator_kwargs: dict = {},
     sample_update_kwargs: dict = {
         'method': 'newtoncg',
         'method_options': {'xtol':0.01},
     },
-    sample_generator_kwargs: dict = {},
-    make_kl_kwargs: dict = {},
-    make_sample_update_kwargs: dict = {},
     resample: Union[bool, Callable] = False,
-    vi_callables: Union[None, Tuple[Callable], Callable] = None,
-    _update_state: Callable = update_state,
     callback=None,
     out_dir=None,
     resume=False,
-    verbosity=0):
+    verbosity=0,
+    _vi_callables: Union[None, Tuple[Callable], Callable] = None,
+    _update_state: Callable = update_state):
     # TODO update docstring
     """Interface for KL minimization similar to NIFTy optimize_kl.
 
@@ -147,29 +131,39 @@ def optimize_kl(
         a convenience method, for dict-like `pos`, a tuple of strings is also
         valid. From these the boolean indicator pytree is automatically
         constructed.
-    minimizer: str or callable
-        Minimization method used for KL minimization.
-    minimization_kwargs : dict
-        Keyword arguments for minimizer used for KL minimization. Can also
-        contain callables as entries in the dict, to change the parameters as a
-        function of the current iteration.
     sampling_method: str or callable
         Sampling method used for vi approximation. Default is `altmetric`.
-    sampling_minimizer: str or callable
-        Minimization method used for non-linear sample minimization.
-    sampling_kwargs: dict
-        Keyword arguments for minimizer used for sample minimization. Can also
-        contain callables as entries in the dict.
-    sampling_cg_kwargs: dict
-        Keyword arguments for ConjugateGradient used for the linear part of
-        sample minimization. Can also contain callables as entries in the dict.
+    make_kl_kwargs: dict or callable
+        Configuration of the KL optimizer passed on to `optimizeVI_callables`.
+        Can also be a function of iteration number, in which case
+        `optimizeVI_callables` is called again to create new solvers. Note that
+        this may trigger re-compilations! The config of the minimizer used in
+        the kl optimization can be set at runtime via `kl_solver_kwargs`.
+    make_sample_generator_kwargs: dict or callable
+        Configuration of the sample generator `linear_sampling` passed on to
+        `optimizeVI_callables`. Can also be a function of iteration number.
+    make_sample_update_kwargs:  dict or callable
+        Configuration of the sample update `curve` passed on to
+        `optimizeVI_callables`. Can also be a function of iteration number.
+    kl_solver_kwargs: dict or callable
+        Keyword arguments to be passed on to `kl_solver` in `OptimizeVI`.
+        Specifies the minimizer being used during the kl optimization step and
+        its config. Can be a function of iteration number to change the
+        minimizers configuration during runtime.
+    sample_generator_kwargs: str or callable
+        Keyword arguments to be passed on to `sample_generator` in `OptimizeVI`.
+        Runtime configuration of the linear sampling.
+    sample_update_kwargs: dict or callable
+        Keyword arguments to be passed on to `sample_update` in `OptimizeVI`.
+        Specifies the minimizer being used during the non-linear `curve` sample
+        step and its config.
     resample: bool or callable
         Whether to resample with new random numbers or not. Default is False
     callback : callable or None
         Function that is called after every global iteration. It needs to be a
-        function taking 3 arguments: 1. the position in latent space,
-                                     2. the residual samples,
-                                     3. the global iteration.
+        function taking 3 arguments: 1. the current samples,
+                                     2. the state of `OptimizeVI`,
+                                     3. the global iteration number.
         Default: None.
     output_directory : str or None
         Directory in which all output files are saved. If None, no output is
@@ -183,6 +177,19 @@ def optimize_kl(
         NewtonCG steps of non linear sampling and NewtonCG steps of KL
         optimization are printed. If set to 1 additionally the internal CG steps
         of the NewtonCG optimization are printed. Default: 0.
+    _vi_callables: tuple of callable or callable (optional)
+        Option to completely sidestep the `optimizeVI_callables` interface.
+        Allows to specify a tuple of the three functions `kl_solver`,
+        `sample_generator`, and `sample_update` that are used to instantiate
+        `OptimizeVI`. If specified, these functions are used insted of the ones
+        created by `optimizeVI_callables` and the corresonding arguments above
+        are ignored. Can also be a function of iteration number instead.
+    _update_state: callable (Default update_state)
+        Function to update the state of `OptimizeVI` according to the config
+        specified by the arguments above. The defauls `update_state` respects
+        the MGVI/geoVI logic and implements the corresponding update. If
+        `_vi_callables` is set, this may be changed to a different function that
+        is applicable to the functions that are being passed on.
     """
 
     # Prepare dir and load last iteration
@@ -196,11 +203,11 @@ def optimize_kl(
 
     # Setup verbosity level
     if verbosity < 0:
-        linear_sampling_kwargs['cg_kwargs']['name'] = None
+        make_sample_generator_kwargs['cg_kwargs']['name'] = None
         kl_solver_kwargs['method_options']['name'] = None
         sample_update_kwargs['method_options']['name'] = None
     else:
-        linear_sampling_kwargs['cg_kwargs'].setdefault(
+        make_sample_generator_kwargs['cg_kwargs'].setdefault(
             'name', 'linear_sampling'
         )
         sample_update_kwargs['method_options'].setdefault(
@@ -234,8 +241,8 @@ def optimize_kl(
     }
     constructor_cfg = {
         'likelihood': likelihood,
-        'linear_sampling_kwargs': linear_sampling_kwargs,
         'point_estimates': point_estimates,
+        'linear_sampling_kwargs': make_sample_generator_kwargs,
         'kl_kwargs': make_kl_kwargs,
         'curve_kwargs': make_sample_update_kwargs,
     }
@@ -243,12 +250,12 @@ def optimize_kl(
     state_cfg = {kk: _make_callable(ii) for kk,ii in state_cfg.items()}
     constructor_cfg = {kk: _make_callable(ii) for kk,ii in
                        constructor_cfg.items()}
-    vi_callables = _make_callable(vi_callables)
+    _vi_callables = _make_callable(_vi_callables)
 
     # Initialize Optimizer
-    # If `vi_callables` are set, use them to set up optimizer instead of default
-    # `OptimizeVI` logic
-    vic = _getitem(vi_callables, last_finished_index+1)
+    # If `_vi_callables` are set, use them to set up optimizer directly instead
+    # of using `optimizeVI_callables`
+    vic = _getitem(_vi_callables, last_finished_index+1)
     if vic is not None:
         opt = OptimizeVI(n_iter=total_iterations, *vic)
     else:
@@ -291,14 +298,15 @@ def optimize_kl(
             state = _update_state(state, state_cfg, i+1)
             if _do_resample(state_cfg, i+1):
                 # Update keys
-                keys = jax.random.split(key, _getitem(state_cfg['n_samples'], 0)+1)
+                keys = jax.random.split(key,
+                                        _getitem(state_cfg['n_samples'],0) + 1)
                 key = keys[0]
                 state = state._replace(keys=keys[1:])
 
             # Check for update in constructor and re-initialize sampler
-            vic = _getitem(vi_callables, i)
+            vic = _getitem(_vi_callables, i)
             if vic is not None:
-                if vic != _getitem(vi_callables, i+1):
+                if vic != _getitem(_vi_callables, i+1):
                     opt.set_kl_solver(vic[0])
                     opt.set_sample_generator(vic[1])
                     opt.set_sample_update(vic[2])
