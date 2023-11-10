@@ -289,6 +289,8 @@ def curve_sampler(likelihood,
         residuals = samples._samples
         met_samps = metric_sampler(primals, keys)
         states = []
+        # TODO: move this loop into a "pyseqmap" with interface analogous to
+        # jax map and pass it to the function via `sample_map`.
         for i, (ss, ms) in enumerate(zip(samples, met_samps)):
             rr, state = curve_residual(point_estimates=point_estimates,
                                        primals=primals,
@@ -454,11 +456,10 @@ def optimizeVI_callables(likelihood: Likelihood,
                                  'do_jit': jit,
                          },
                          curve_kwargs: dict = {
-                                 'sample_map': None, #TODO
+                                 'sample_map': None,
                                  'do_jit': jit,
                          },
                          _raise_notconverged: bool = False):
-    # TODO update docstring
     """MGVI/geoVI interface that creates the input functions of `OptimizeVI`
     from a `Likelihood`.
 

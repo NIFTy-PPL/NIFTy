@@ -109,7 +109,6 @@ def optimize_kl(
     verbosity=0,
     _vi_callables: Union[None, Tuple[Callable], Callable] = None,
     _update_state: Callable = update_state):
-    # TODO update docstring
     """Interface for KL minimization similar to NIFTy optimize_kl.
 
     Parameters
