@@ -200,7 +200,7 @@ samples, state = jft.optimize_kl(nll, pos_init,
                                      'method':'newtoncg',
                                      'method_options':sampling_kwargs,
                                  },
-                                 linear_sampling_kwargs={
+                                 make_sample_generator_kwargs={
                                      'cg_kwargs':liner_cg_kwargs
                                  },
                                  resample=lambda ii: True if ii<2 else False,
