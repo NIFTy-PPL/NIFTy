@@ -2,12 +2,9 @@
 # SPDX-License-Identifier: GPL-2.0+ OR BSD-2-Clause
 # Authors: Philipp Frank, Gordian Edenhofer
 
-import sys
 from functools import partial
 from operator import getitem
-from typing import (Callable, Optional, Tuple, TypeVar, Union, NamedTuple, Any,
-                    List)
-from warnings import warn
+from typing import Callable, Optional, Tuple, TypeVar, Union, NamedTuple, List
 from .logger import logger
 
 from jax import numpy as jnp, Array
@@ -21,9 +18,7 @@ from .optimize import OptimizeResults, minimize, conjugate_gradient
 from .likelihood import (
     Likelihood, StandardHamiltonian, partial_insert_and_remove, _functional_conj
 )
-from .tree_math import (
-    Vector, assert_arithmetics, random_like, stack, dot, vdot, unstack
-)
+from .tree_math import Vector, assert_arithmetics, random_like, dot, vdot
 
 
 P = TypeVar("P")
@@ -447,34 +442,35 @@ class Samples():
 class OptVIState(NamedTuple):
     """Named tuple containing state information."""
     niter: int
-    samples: Samples
     keys: Array
-    resample: bool
-    sampling_method: str
+    sample_regenerate: bool
+    sample_update: bool
     sampling_states: List[OptimizeResults]
     minimization_state: OptimizeResults
+    kl_solver_kwargs: dict
+    sample_generator_kwargs: dict
+    sample_update_kwargs: dict
 
 
-def OptimizeVI(likelihood: Union[Likelihood, None],
-               n_iter: int,
-               point_estimates: Union[P, Tuple[str]] = (),
-               kl_kwargs: dict = {
-                    'samplemap': vmap,
-                    'sample_reduce': _sample_mean,
-                    'do_jit': jit
-               },
-               linear_sampling_kwargs: dict = {
-                    'cg': conjugate_gradient.static_cg,
-                    'cg_name': None,
-                    'cg_kwargs': None,
-                    'samplemap': smap,
-                    'do_jit': jit,
-               },
-               curve_kwargs: dict = {
-                    'sample_map': None, #TODO
-                    'do_jit': jit,
-               },
-               _raise_notconverged: bool = False):
+def optimizeVI_callables(likelihood: Likelihood,
+                         point_estimates: Union[P, Tuple[str]] = (),
+                         kl_kwargs: dict = {
+                                 'samplemap': vmap,
+                                 'sample_reduce': _sample_mean,
+                                 'do_jit': jit
+                         },
+                         linear_sampling_kwargs: dict = {
+                                 'cg': conjugate_gradient.static_cg,
+                                 'cg_name': None,
+                                 'cg_kwargs': None,
+                                 'samplemap': smap,
+                                 'do_jit': jit,
+                         },
+                         curve_kwargs: dict = {
+                                 'sample_map': None, #TODO
+                                 'do_jit': jit,
+                         },
+                         _raise_notconverged: bool = False):
     # TODO update docstring
     """JaxOpt style minimizer for VI approximation of a Bayesian inference
     problem assuming a standard normal prior distribution.
@@ -580,12 +576,16 @@ def OptimizeVI(likelihood: Union[Likelihood, None],
 
     # KL funcs
     solver = kl_solver(likelihood, **kl_kwargs)
+    def _solver(samples, keys, **kwargs):
+        return solver(samples, **kwargs)
     # Lin sampling
     draw_metric, draw_linear = linear_residual_sampler(
         likelihood,
         point_estimates,
         **linear_sampling_kwargs
     )
+    def linear_sampler(samples, keys, **kwargs):
+        return draw_linear(samples.pos, keys, **kwargs)
     # Non-lin sampling
     curve = curve_sampler(
         likelihood,
@@ -593,73 +593,93 @@ def OptimizeVI(likelihood: Union[Likelihood, None],
         point_estimates,
         **curve_kwargs
     )
-    return _OptimizeVI(n_iter, solver, draw_linear, curve)
+    return _solver, linear_sampler, curve
 
 
-class _OptimizeVI:
+class OptimizeVI:
     def __init__(self,
                  n_iter: int,
                  kl_solver: Callable,
-                 linear_sampler: Callable,
-                 curve_sampler: Callable):
+                 sample_generator: Callable,
+                 sample_update: Callable,
+                 kl_solver_kwargs: dict = {},
+                 sample_generator_kwargs: dict  = {},
+                 sample_update_kwargs: dict  = {},
+                 ):
         self._n_iter = n_iter
         self._kl_solver = kl_solver
-        self._linear_sampler = linear_sampler
-        self._curve_sampler = curve_sampler
+        self._sample_generator = sample_generator
+        self._sample_update = sample_update
+        self._kl_solver_kwargs = kl_solver_kwargs
+        self._sample_generator_kwargs = sample_generator_kwargs
+        self._sample_update_kwargs = sample_update_kwargs
 
-    def init_state(self, primals, keys, sampling_method='geometric'):
-        if sampling_method not in ['linear', 'geometric', 'altmetric']:
-            msg = f"Unknown sampling method: {sampling_method}"
-            raise NotImplementedError(msg)
-        state = OptVIState(niter=0,
-                           samples=None,
-                           keys=keys,
-                           resample=True,
-                           sampling_method=sampling_method,
-                           sampling_states=None,
-                           minimization_state=None)
-        return state
+    @property
+    def kl_solver(self):
+        return self._kl_solver
 
-    def update(self, primals, state,
-               kl_minimizer: str = 'newtoncg',
-               kl_minimizer_kwargs: dict = {},
-               curve_minimizer: str = 'newtoncg',
-               curve_minimizer_kwargs: dict = {'xtol': 0.01},):
-        assert isinstance(state, OptVIState)
-        if state.resample or (state.sampling_method in ['linear', 'geometric']):
-            samples = self._linear_sampler(primals, state.keys)
+    def set_kl_solver(self, kl_solver: Callable):
+        self._kl_solver = kl_solver
+
+    @property
+    def sample_generator(self):
+        return self._sample_generator
+
+    def set_sample_generator(self, sample_generator: Callable):
+        self._sample_generator = sample_generator
+
+    @property
+    def sample_update(self):
+        return self._sample_update
+
+    def set_sample_update(self, sample_update: Callable):
+        self._sample_update = sample_update
+
+    def init_state(self, keys, samples = None, primals = None):
+        if samples is None:
+            if primals is None:
+                raise ValueError("Neither samples nor primals set.")
+            samples = tree_map(lambda x: jnp.zeros((1,)*(len(x.shape)+1)),
+                               primals)
+            samples = Samples(pos=primals, samples=samples)
+            regenerate = True
         else:
-            samples = state.samples.at(primals)
+            regenerate = False
+        state = OptVIState(
+            niter=0,
+            keys=keys,
+            sample_regenerate=regenerate,
+            sample_update=True,
+            sampling_states=None,
+            minimization_state=None,
+            kl_solver_kwargs = self._kl_solver_kwargs,
+            sample_generator_kwargs = self._sample_generator_kwargs,
+            sample_update_kwargs = self._sample_update_kwargs
+        )
+        return samples, state
 
-        if state.sampling_method in ['geometric', 'altmetric']:
-            if 'absdelta' in curve_minimizer_kwargs.keys():
-                msg = 'Geometric sampling uses custom gradientnorm tolerance '
-                msg += 'set by `xtol`. Ignoring `absdelta`...'
-                logger.warn(msg)
-                curve_minimizer_kwargs['absdelta'] = 0.
-            samples, sampling_states = self._curve_sampler(
-                samples,
-                state.keys,
-                method=curve_minimizer,
-                method_options=curve_minimizer_kwargs
+    def update(self, samples, state):
+        assert isinstance(samples, Samples)
+        assert isinstance(state, OptVIState)
+        if state.sample_regenerate:
+            samples = self._sample_generator(samples, state.keys,
+                                             **state.sample_generator_kwargs)
+        if state.sample_update:
+            samples, sample_state = self._sample_update(
+                samples, state.keys, **state.sample_update_kwargs
             )
         else:
-            sampling_states = None
-        samples, opt_state = self._kl_solver(samples,
-                                             method=kl_minimizer,
-                                             method_options=kl_minimizer_kwargs)
-        state = OptVIState(niter=state.niter+1,
-                           samples=samples,
-                           keys=state.keys,
-                           resample=state.resample,
-                           sampling_method=state.sampling_method,
-                           sampling_states=sampling_states,
-                           minimization_state=opt_state)
-        return samples.pos, state
+            sample_state = None
+        samples, kl_state = self._kl_solver(samples, state.keys,
+                                            **state.kl_solver_kwargs)
+        state = state._replace(niter=state.niter+1,
+                               sampling_states=sample_state,
+                               minimization_state=kl_state)
+        return samples, state
 
-    def run(self, primals):
-        primals, state = self.init_state(primals)
+    def run(self, keys, samples = None, primals = None):
+        samples, state = self.init_state(keys, samples, primals)
         for n in range(self._n_iter):
             logger.info(f"OptVI iteration number: {n}")
-            primals, state = self.update(primals, state)
-        return primals, state
+            samples, state = self.update(samples, state)
+        return samples, state

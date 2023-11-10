@@ -5,14 +5,13 @@
 
 from functools import reduce
 import pickle
-import sys
 import jax
 from os import makedirs
 from os.path import isfile
 from typing import Callable, Union, Tuple
 from .tree_math.vector import Vector
 from .likelihood import Likelihood
-from .kl import OptimizeVI, _OptimizeVI
+from .kl import OptVIState, OptimizeVI, optimizeVI_callables
 from .misc import minisanity
 from .logger import logger
 
@@ -30,17 +29,17 @@ def _getitem(cfg, i):
     return {kk: _getitem(ii,i) for kk,ii in cfg.items()}
 
 
-def basic_status_print(iiter, primals, state, residual, out_dir=None):
+def basic_status_print(iiter, samples, state, residual, out_dir=None):
     en = state.minimization_state.fun
     msg = f"Post VI Iteration {iiter}: Energy {en:2.4e}\n"
     if state.sampling_states is not None:
         niter = tuple(ss.nit for ss in state.sampling_states)
         msg += f"Nonlinear sampling total iterations: {niter}\n"
     msg += f"KL-Minimization total iteration: {state.minimization_state.nit}\n"
-    _, minis = minisanity(primals, state.samples, residual)
+    _, minis = minisanity(samples.pos, samples, residual)
     msg += "Likelihood residual(s):\n"
     msg += minis +"\n"
-    _, minis = minisanity(primals, state.samples)
+    _, minis = minisanity(samples.pos, samples)
     msg += "Prior residual(s):\n"
     msg += minis+"\n"
     logger.info(msg)
@@ -54,22 +53,72 @@ def basic_status_print(iiter, primals, state, residual, out_dir=None):
             f.write(msg)
 
 
+def _update_state(state: OptVIState, state_cfg, iiter):
+    cfgi = _getitem(state_cfg, iiter)
+    if iiter == 0:
+        regenerate = True
+    else:
+        cfgo = _getitem(state_cfg, iiter-1)
+        regenerate = cfgi['resample']
+        regenerate += (cfgi['n_samples'] != cfgo['n_samples'])
+        regenerate += cfgi['sampling_method'] in ['linear', 'geometric'],
+    state = state._replace(
+        regenerate=True,
+        sample_update=cfgi['sampling_method'] in ['geometric', 'altmetric'],
+        kl_solver_kwargs=cfgi['kl_solver_kwargs'],
+        sample_generator_kwargs=cfgi['sample_generator_kwargs'],
+        sample_update_kwargs=cfgi['sample_update_kwargs']
+    )
+
+
+def _do_resample(cfg, iiter):
+    if iiter == 0:
+        return True
+    cfgi = _getitem(cfg, iiter)
+    cfgo = _getitem(cfg, iiter-1)
+    regenerate = cfgi['resample']
+    regenerate += (cfgi['n_samples'] != cfgo['n_samples'])
+    return bool(regenerate)
+
+
+def _update_state(state, cfg, iiter):
+    # This configures the generic interface of `OptimizeVI` for the specific
+    # cases of the `linear`, `geometric`, `altmetric` methods.
+    regenerate = (_getitem(cfg, iiter)['sampling_method'] in
+                  ['linear', 'geometric'])
+    update = (_getitem(cfg, iiter)['sampling_method'] in
+              ['geometric', 'altmetric'])
+    state = state._replace(
+        sample_regenerate=regenerate or _do_resample(cfg, iiter),
+        sample_update=update,
+        kl_solver_kwargs=_getitem(cfg, iiter)['kl_solver_kwargs'],
+        sample_generator_kwargs=_getitem(cfg, iiter)['sample_generator_kwargs'],
+        sample_update_kwargs=_getitem(cfg, iiter)['sample_update_kwargs'],
+    )
+    return state
+
+
 def optimize_kl(
-    likelihood: Union[Likelihood, None],
+    likelihood: Union[Likelihood, Callable, None],
     pos: Vector,
     total_iterations: int,
     n_samples: Union[int, Callable],
     key: jax.random.PRNGKey,
-    point_estimates: Union[Vector, Tuple[str]] = (),
-    minimizer: Union[str, Callable] = 'newtoncg',
-    minimization_kwargs: dict = {},
+    point_estimates: Union[Vector, Tuple[str], Callable] = (),
+    kl_solver_kwargs: Union[dict, Callable] = {
+        'method': 'newtoncg',
+        'method_options': {},
+    },
     sampling_method: Union[str, Callable] = 'altmetric',
     linear_sampling_kwargs: dict = {'cg_kwargs':{'maxiter':50}},
-    sampling_minimizer: Union[str, Callable] = 'newtoncg',
-    sampling_kwargs: dict = {'xtol':0.01},
+    sample_update_kwargs: dict = {
+        'method': 'newtoncg',
+        'method_options': {'xtol':0.01},
+    },
+    sample_generator_kwargs: dict = {},
+    make_kl_kwargs: dict = {},
+    make_sample_update_kwargs: dict = {},
     resample: Union[bool, Callable] = False,
-    kl_kwargs: dict = {},
-    curve_kwargs: dict = {},
     vi_callables: Union[None, Tuple[Callable], Callable] = None,
     callback=None,
     out_dir=None,
@@ -147,44 +196,50 @@ def optimize_kl(
     # Setup verbosity level
     if verbosity < 0:
         linear_sampling_kwargs['cg_kwargs']['name'] = None
-        sampling_kwargs['name'] = None
-        minimization_kwargs['name'] = None
+        kl_solver_kwargs['method_options']['name'] = None
+        sample_update_kwargs['method_options']['name'] = None
     else:
-        linear_sampling_kwargs['cg_kwargs'].setdefault('name','linear_sampling')
-        sampling_kwargs.setdefault('name', 'non_linear_sampling')
-        minimization_kwargs.setdefault('name', 'minimize')
+        linear_sampling_kwargs['cg_kwargs'].setdefault(
+            'name', 'linear_sampling'
+        )
+        sample_update_kwargs['method_options'].setdefault(
+            'name', 'non_linear_sampling'
+        )
+        kl_solver_kwargs['method_options'].setdefault(
+            'name', 'minimize'
+        )
     if verbosity < 1:
-        if "cg_kwargs" in minimization_kwargs.keys():
-            minimization_kwargs["cg_kwargs"].set_default('name', None)
+        if "cg_kwargs" in kl_solver_kwargs['method_options'].keys():
+            kl_solver_kwargs['method_options']["cg_kwargs"].set_default(
+                'name', None
+            )
         else:
-            minimization_kwargs["cg_kwargs"] = {"name": None}
-        if "cg_kwargs" in sampling_kwargs.keys():
-            sampling_kwargs["cg_kwargs"].set_default('name', None)
+            kl_solver_kwargs['method_options']["cg_kwargs"] = {"name": None}
+        if "cg_kwargs" in sample_update_kwargs['method_options'].keys():
+            sample_update_kwargs['method_options']["cg_kwargs"].set_default(
+                'name', None
+            )
         else:
-            sampling_kwargs["cg_kwargs"] = {"name": None}
+            sample_update_kwargs['method_options']["cg_kwargs"] = {"name": None}
 
     # Split into state changing inputs and constructor inputs of OptimizeVI
     state_cfg = {
         'n_samples': n_samples,
         'sampling_method': sampling_method,
         'resample': resample,
-    }
-    update_cfg = {
-        'kl_minimizer': minimizer,
-        'kl_minimizer_kwargs': minimization_kwargs,
-        'curve_minimizer': sampling_minimizer,
-        'curve_minimizer_kwargs': sampling_kwargs,
+        'kl_solver_kwargs': kl_solver_kwargs,
+        'sample_generator_kwargs':sample_generator_kwargs,
+        'sample_update_kwargs':sample_update_kwargs,
     }
     constructor_cfg = {
         'likelihood': likelihood,
         'linear_sampling_kwargs': linear_sampling_kwargs,
         'point_estimates': point_estimates,
-        'kl_kwargs': kl_kwargs,
-        'curve_kwargs': curve_kwargs,
+        'kl_kwargs': make_kl_kwargs,
+        'curve_kwargs': make_sample_update_kwargs,
     }
     # Turn everything into callables by iteration number
     state_cfg = {kk: _make_callable(ii) for kk,ii in state_cfg.items()}
-    update_cfg = {kk: _make_callable(ii) for kk,ii in update_cfg.items()}
     constructor_cfg = {kk: _make_callable(ii) for kk,ii in
                        constructor_cfg.items()}
     vi_callables = _make_callable(vi_callables)
@@ -194,59 +249,58 @@ def optimize_kl(
     # `OptimizeVI` logic
     vic = _getitem(vi_callables, last_finished_index+1)
     if vic is not None:
-        opt = _OptimizeVI(n_iter=total_iterations, *vic)
+        opt = OptimizeVI(n_iter=total_iterations, *vic)
     else:
+        kl, lin, geo = optimizeVI_callables(
+            **_getitem(constructor_cfg, last_finished_index+1)
+        )
         opt = OptimizeVI(n_iter=total_iterations,
-                         **_getitem(constructor_cfg, last_finished_index+1))
+                         kl_solver=kl,
+                         sample_generator=lin,
+                         sample_update=geo)
 
     # Load last finished reconstruction
     if last_finished_index > -1:
-        pos = pickle.load(
-            open(f"{out_dir}/position_{last_finished_index}.p", "rb"))
+        samples = pickle.load(
+            open(f"{out_dir}/samples_{last_finished_index}.p", "rb"))
         key = pickle.load(
             open(f"{out_dir}/rnd_key_{last_finished_index}.p", "rb"))
         state = pickle.load(
             open(f"{out_dir}/state_{last_finished_index}.p", "rb"))
         if last_finished_index == total_iterations - 1:
-            return pos, state
+            return samples, state
     else:
         keys = jax.random.split(key, _getitem(state_cfg['n_samples'], 0)+1)
         key = keys[0]
-        state = opt.init_state(pos, keys[1:],
-            sampling_method=_getitem(state_cfg['sampling_method'], 0)
-        )
+        samples, state = opt.init_state(keys[1:], primals=pos)
+        state = _update_state(state, state_cfg, 0)
 
     # Update loop
     for i in range(last_finished_index + 1, total_iterations):
         # Do one sampling and minimization step
-        pos, state = opt.update(pos, state, **_getitem(update_cfg, i))
+        samples, state = opt.update(samples, state)
         # Print basic infos
-        basic_status_print(i, pos, state, likelihood.normalized_residual,
+        basic_status_print(i, samples, state, likelihood.normalized_residual,
                            out_dir=out_dir)
         if callback != None:
-            callback(pos, state, i)
+            callback(samples, state, i)
 
         if i != total_iterations - 1:
             # Update state
-            do_resampling = (_getitem(state_cfg['resample'], i+1) or
-                                (_getitem(state_cfg['n_samples'], i+1) !=
-                                _getitem(state_cfg['n_samples'], i))
-                            )
-            if do_resampling:
+            state = _update_state(state, state_cfg, i+1)
+            if _do_resample(state_cfg, i+1):
+                # Update keys
                 keys = jax.random.split(key, _getitem(state_cfg['n_samples'], 0)+1)
                 key = keys[0]
                 state = state._replace(keys=keys[1:])
-            state = state._replace(
-                resample=do_resampling,
-                sampling_method=_getitem(state_cfg['sampling_method'], i+1)
-                )
 
             # Check for update in constructor and re-initialize sampler
             vic = _getitem(vi_callables, i)
             if vic is not None:
-                vin = _getitem(vi_callables, i+1)
-                if vic != vin:
-                    opt = _OptimizeVI(n_iter=total_iterations, *vin)
+                if vic != _getitem(vi_callables, i+1):
+                    opt.set_kl_solver(vic[0])
+                    opt.set_sample_generator(vic[1])
+                    opt.set_sample_update(vic[2])
             else:
                 keep = reduce(lambda a,b: a*b,
                     (_getitem(constructor_cfg[rr], i+1) ==
@@ -257,17 +311,22 @@ def optimize_kl(
                 if not keep:
                     # TODO print warning
                     # TODO only partial rebuild
-                    opt = OptimizeVI(n_iter=total_iterations,
-                                    **_getitem(constructor_cfg, i+1))
+                    funcs = optimizeVI_callables(
+                        n_iter=total_iterations,
+                        **_getitem(constructor_cfg, i+1)
+                    )
+                    opt.set_kl_solver(funcs[0])
+                    opt.set_sample_generator(funcs[1])
+                    opt.set_sample_update(funcs[2])
 
         if not out_dir == None:
             # TODO: Make this fail safe! Cancelling the run while partially
             # saving the outputs may result in a corrupted state.
             # Save iteration
             pickle.dump(key, open(f"{out_dir}/rnd_key_{i}.p", "wb"))
-            pickle.dump(pos, open(f"{out_dir}/position_{i}.p", "wb"))
+            pickle.dump(samples, open(f"{out_dir}/samples_{i}.p", "wb"))
             pickle.dump(state, open(f"{out_dir}/state_{i}.p", "wb"))
             with open(f"{out_dir}/last_finished_iteration", "w") as f:
                 f.write(str(i))
 
-    return pos, state
+    return samples, state
