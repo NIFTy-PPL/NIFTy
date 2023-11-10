@@ -81,7 +81,7 @@ def _do_resample(cfg, iiter):
     return bool(regenerate)
 
 
-def _update_state(state, cfg, iiter):
+def update_state(state, cfg, iiter):
     # This configures the generic interface of `OptimizeVI` for the specific
     # cases of the `linear`, `geometric`, `altmetric` methods.
     regenerate = (_getitem(cfg, iiter)['sampling_method'] in
@@ -120,6 +120,7 @@ def optimize_kl(
     make_sample_update_kwargs: dict = {},
     resample: Union[bool, Callable] = False,
     vi_callables: Union[None, Tuple[Callable], Callable] = None,
+    _update_state: Callable = update_state,
     callback=None,
     out_dir=None,
     resume=False,
