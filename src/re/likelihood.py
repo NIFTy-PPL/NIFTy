@@ -6,11 +6,11 @@ from typing import Callable, Optional, TypeVar, Union
 from jax import eval_shape, linear_transpose, linearize, vjp
 from jax import numpy as jnp
 from jax.tree_util import (Partial, tree_leaves, tree_structure, tree_flatten,
-                           tree_unflatten)
+                           tree_unflatten, tree_map)
 
 from .misc import doc_from, is1d, isiterable, split
 from .model import AbstractModel
-from .tree_math import ShapeWithDtype, Vector, conj, vdot, zeros_like
+from .tree_math import ShapeWithDtype, Vector, conj, vdot
 
 Q = TypeVar("Q")
 P = TypeVar("P")
@@ -22,6 +22,34 @@ def _functional_conj(func):
         return conj(func(*conj(args), **conj(kwargs)))
 
     return func_conj
+
+
+def _parse_point_estimates(point_estimates, primals):
+    if isinstance(point_estimates, (tuple, list)):
+        if not isinstance(primals, (Vector, dict)):
+            te = "tuple-shortcut point-estimate only availble for dict/Vector "
+            te += "type primals"
+            raise TypeError(te)
+        pe = tree_map(lambda x: False, primals)
+        pe = pe.tree if isinstance(primals, Vector) else pe
+        for k in point_estimates:
+            pe[k] = True
+        point_estimates = Vector(pe) if isinstance(primals, Vector) else pe
+    if tree_structure(primals) != tree_structure(point_estimates):
+        print(primals)
+        print(point_estimates)
+        te = "`primals` and `point_estimates` pytree structre do no match"
+        raise TypeError(te)
+
+    primals_liquid, primals_frozen = [], []
+    for p, ep in zip(tree_leaves(primals), tree_leaves(point_estimates)):
+        if ep:
+            primals_frozen.append(p)
+        else:
+            primals_liquid.append(p)
+    primals_liquid = Vector(tuple(primals_liquid))
+    primals_frozen = tuple(primals_frozen)
+    return point_estimates, primals_liquid, primals_frozen
 
 
 def _partial_argument(call, insert_axes, flat_fill):
@@ -50,7 +78,8 @@ def _partial_argument(call, insert_axes, flat_fill):
                 ve = "more inserts in `insert_axes` than elements in `flat_fill`"
                 raise ValueError(ve)
         elif iae is not None or ffe is not None:
-            ve = "both `insert_axes` and `flat_full` must None at the same positions"
+            ve = "both `insert_axes` and `flat_fill` must None at the same "
+            ve += "positions"
             raise ValueError(ve)
     # NOTE, `tree_flatten` replaces `None`s with list of zero length
     insert_axes, in_axes_td = zip(*(tree_flatten(ia) for ia in insert_axes))
@@ -533,9 +562,13 @@ class Likelihood(AbstractModel):
             lsm_tangents_shape=joined_tangents_shape
         )
 
-    def partial(self, insert_axes, primals_frozen):
+    def partial(self, point_estimates, primals):
         """TODO
         """
+        insert_axes, primals_liquid, primals_frozen = _parse_point_estimates(
+            point_estimates,
+            primals
+        )
         energy = partial_insert_and_remove(
             self.energy,
             insert_axes=(insert_axes, ),
@@ -555,12 +588,13 @@ class Likelihood(AbstractModel):
             remove_axes=None
         )
 
-        return Likelihood(
+        lh = Likelihood(
             energy,
             normalized_residual=norm_residual,
             transformation=trafo,
             lsm_tangents_shape=self.lsm_tangents_shape
         )
+        return lh, primals_liquid
 
 
 # TODO: prune/hide/(make simply add unit mat) in favor of just passing around

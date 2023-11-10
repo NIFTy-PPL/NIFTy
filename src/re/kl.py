@@ -10,13 +10,14 @@ from .logger import logger
 from jax import numpy as jnp, Array
 from jax import random, vmap, value_and_grad, jvp, vjp, linear_transpose, jit
 from jax.tree_util import (
-    Partial, register_pytree_node_class, tree_leaves, tree_map, tree_structure
+    Partial, register_pytree_node_class, tree_leaves, tree_map
 )
 
 from .smap import smap
 from .optimize import OptimizeResults, minimize, conjugate_gradient
 from .likelihood import (
-    Likelihood, StandardHamiltonian, partial_insert_and_remove, _functional_conj
+    Likelihood, StandardHamiltonian, partial_insert_and_remove,
+    _parse_point_estimates, _functional_conj
 )
 from .tree_math import Vector, assert_arithmetics, random_like, dot, vdot
 
@@ -38,39 +39,11 @@ def _cond_raise(condition, exception):
     call(maybe_raise, condition, result_shape=None)
 
 
-def _parse_point_estimates(point_estimates, primals):
-    if isinstance(point_estimates, (tuple, list)):
-        if not isinstance(primals, (Vector, dict)):
-            te = "tuple-shortcut point-estimate only availble for dict/Vector type primals"
-            raise TypeError(te)
-        pe = tree_map(lambda x: False, primals)
-        pe = pe.tree if isinstance(primals, Vector) else pe
-        for k in point_estimates:
-            pe[k] = True
-        point_estimates = Vector(pe) if isinstance(primals, Vector) else pe
-    if tree_structure(primals) != tree_structure(point_estimates):
-        print(primals)
-        print(point_estimates)
-        te = "`primals` and `point_estimates` pytree structre do no match"
-        raise TypeError(te)
-
-    primals_liquid, primals_frozen = [], []
-    for p, ep in zip(tree_leaves(primals), tree_leaves(point_estimates)):
-        if ep:
-            primals_frozen.append(p)
-        else:
-            primals_liquid.append(p)
-    primals_liquid = Vector(tuple(primals_liquid))
-    primals_frozen = tuple(primals_frozen)
-    return point_estimates, primals_liquid, primals_frozen
-
-
 def _partial_func(func, likelihood, point_estimates):
     if point_estimates:
         def partial_func(primals, *args):
-            pe, p_liquid, p_frozen = _parse_point_estimates(point_estimates,
-                                                            primals)
-            return func(likelihood.partial(pe, p_frozen), p_liquid, *args)
+            lh, p_liquid = likelihood.partial(point_estimates, primals)
+            return func(lh, p_liquid, *args)
 
         return partial_func
     return partial(func, likelihood)
@@ -117,8 +90,7 @@ def draw_linear_residual(
         te = f"`likelihood` of invalid type; got '{type(likelihood)}'"
         raise TypeError(te)
     if point_estimates:
-        pe, p_liquid, p_frozen = _parse_point_estimates(point_estimates,primals)
-        lh = likelihood.partial(pe, p_frozen)
+        lh, p_liquid = likelihood.partial(point_estimates, primals)
     else:
         lh = likelihood
         p_liquid = primals
