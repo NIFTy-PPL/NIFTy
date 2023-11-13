@@ -345,8 +345,7 @@ def optimize_kl(likelihood_energy,
         check_MPI_equality(mean, comm(iglobal), hash=True)
 
         # free memory of old samples before drawing new ones
-        if iglobal > 0:
-            del sl
+        sl = None
 
         if n_samples(iglobal) == 0:
             e = EnergyAdapter(mean_iter, ham, constants=constants(iglobal),
@@ -408,7 +407,7 @@ def optimize_kl(likelihood_energy,
             break
         _barrier(comm(iglobal))
 
-        del lh
+        lh = None
 
     return (sl, mean) if return_final_position else sl
 
