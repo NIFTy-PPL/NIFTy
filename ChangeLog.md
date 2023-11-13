@@ -1,3 +1,8 @@
+Changes since NIFTy 8
+=====================
+
+Minimum Python version increased to 3.8
+
 Changes since NIFTy 7
 =====================
 
