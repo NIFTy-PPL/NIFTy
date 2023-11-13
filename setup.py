@@ -59,7 +59,7 @@ setup(name="nifty8",
       setup_requires=['scipy>=1.4.1', 'numpy>=1.19'],
       install_requires=['scipy>=1.4.1', 'numpy>=1.19'],
       extras_require=extras_require,
-      python_requires='>=3.7',
+      python_requires='>=3.8',
       classifiers=[
           "Development Status :: 5 - Production/Stable",
           "Topic :: Scientific/Engineering :: Mathematics",
