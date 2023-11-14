@@ -180,12 +180,12 @@ def optimize_kl(
         Option to completely sidestep the `optimizeVI_callables` interface.
         Allows to specify a tuple of the three functions `kl_solver`,
         `sample_generator`, and `sample_update` that are used to instantiate
-        `OptimizeVI`. If specified, these functions are used insted of the ones
+        `OptimizeVI`. If specified, these functions are used instead of the ones
         created by `optimizeVI_callables` and the corresonding arguments above
         are ignored. Can also be a function of iteration number instead.
     _update_state: callable (Default update_state)
         Function to update the state of `OptimizeVI` according to the config
-        specified by the arguments above. The defauls `update_state` respects
+        specified by the arguments above. The default `update_state` respects
         the MGVI/geoVI logic and implements the corresponding update. If
         `_vi_callables` is set, this may be changed to a different function that
         is applicable to the functions that are being passed on.
