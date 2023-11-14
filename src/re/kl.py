@@ -16,7 +16,7 @@ from jax.tree_util import (
 from . import conjugate_gradient
 from .likelihood import Likelihood, StandardHamiltonian
 from .tree_math import Vector, assert_arithmetics, random_like, stack, zeros_like
-from .misc import _cond_raise
+from .misc import conditional_raise
 
 P = TypeVar("P")
 
@@ -86,7 +86,7 @@ def _sample_linearly(
             }
         )
         signal_smpl, info = inv_metric_at_p(met_smpl, x0=prr_inv_metric_smpl)
-        _cond_raise(
+        conditional_raise(
             (info < 0) if info is not None else False,
             ValueError("conjugate gradient failed")
         )
@@ -427,7 +427,7 @@ def sample_evi(
             smpls = [inv_met_smpl, -inv_met_smpl]
     else:
         smpl1, smpl1_status = curve_sample(met_smpl, inv_met_smpl)
-        _cond_raise(
+        conditional_raise(
             _raise_notconverged &
             ((smpl1_status < 0) if smpl1_status is not None else False),
             ValueError("S: failed to invert map")
@@ -435,7 +435,7 @@ def sample_evi(
         smpls = [smpl1 - primals_liquid]
         if mirror_linear_sample:
             smpl2, smpl2_status = curve_sample(-met_smpl, -inv_met_smpl)
-            _cond_raise(
+            conditional_raise(
                 _raise_notconverged &
                 ((smpl2_status < 0) if smpl2_status is not None else False),
                 ValueError("S: failed to invert map")

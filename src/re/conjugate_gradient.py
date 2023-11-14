@@ -9,7 +9,7 @@ import jax
 from jax import numpy as jnp
 
 from .logger import logger
-from .misc import doc_from, _cond_raise, _cond_log
+from .misc import doc_from, conditional_raise, conditional_call
 from .tree_math import assert_arithmetics, result_type
 from .tree_math import norm as jft_norm
 from .tree_math import size, vdot, where, zeros_like
@@ -276,14 +276,14 @@ def _static_cg(
         q = mat(d)
         curv = vdot(d, q)
         info = jnp.where(curv == 0., -1, info)
-        _cond_raise(
+        conditional_raise(
             (curv == 0) & _raise_nonposdef,
             ValueError("zero curvature in conjugate gradient")
         )
 
         alpha = previous_gamma / curv
         info = jnp.where(alpha < 0., -1, info)
-        _cond_raise(
+        conditional_raise(
             (alpha < 0.) & _raise_nonposdef,
             ValueError("implausible gradient scaling `alpha < 0`")
         )
@@ -303,7 +303,7 @@ def _static_cg(
 
         is_success = (gamma >= 0.) & (gamma <= tiny) & (info != -1)
         info = jnp.where(is_success, 0, info)
-        _cond_log(is_success, logger.warning, f"{nm}: gamma=0, converged!")
+        conditional_call(is_success, logger.warning, f"{nm}: gamma=0, converged!")
 
         if resnorm is not None:
             norm = jft_norm(r, ord=norm_ord)
@@ -317,7 +317,7 @@ def _static_cg(
         neg_energy_eps = -eps * jnp.abs(energy)
 
         info = jnp.where(energy_diff < neg_energy_eps, -1, info)
-        _cond_raise(
+        conditional_raise(
             (energy_diff < neg_energy_eps) & _raise_nonposdef,
             ValueError("energy increased")
         )
@@ -379,7 +379,7 @@ def _static_cg(
     }
     # Finish early if already converged in the initial iteration
     val["info"] = jnp.where(gamma == 0., 0, val["info"])
-    _cond_log(gamma == 0., logger.warning, f"{nm}: gamma=0, converged!")
+    conditional_call(gamma == 0., logger.warning, f"{nm}: gamma=0, converged!")
 
     if name is not None:
         if resnorm is not None:

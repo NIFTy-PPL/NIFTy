@@ -13,7 +13,7 @@ from jax.tree_util import Partial
 
 from . import conjugate_gradient
 from .logger import logger
-from .misc import doc_from, _cond_raise, _cond_log
+from .misc import doc_from, conditional_raise, conditional_call
 from .tree_math import assert_arithmetics, result_type
 from .tree_math import norm as jft_norm
 from .tree_math import size, where, vdot
@@ -306,7 +306,7 @@ def _static_newton_cg(
 
     energy, g = fun_and_grad(pos)
 
-    _cond_raise(jnp.isnan(energy), ValueError("energy is Nan"))
+    conditional_raise(jnp.isnan(energy), ValueError("energy is Nan"))
 
     # Printing functions
     def pp(args):
@@ -371,7 +371,7 @@ def _static_newton_cg(
 
         # ValueError("conjugate gradient failed")
         status = jnp.where((info is not None) & (info < 0), -1, status)
-        _cond_raise(
+        conditional_raise(
             (info is not None) & (info < 0),
             ValueError("conjugate Gradient failed")
         )
@@ -431,7 +431,7 @@ def _static_newton_cg(
             # if after 9 inner iterations energy has not yet decreased set error flag
             abort_ls = (naive_ls_it == 8) & (status_ls < -1)
             status_ls = jnp.where(abort_ls, -1, status_ls)
-            _cond_log(abort_ls, logger.error,
+            conditional_call(abort_ls, logger.error,
                       f"{nm}: WARNING: Energy would increase; aborting line search.")
 
             return {
@@ -487,7 +487,7 @@ def _static_newton_cg(
 
         ne_isnan = jnp.isnan(energy)
         status = jnp.where(ne_isnan, -1, status)
-        _cond_raise(ne_isnan, ValueError('energy is NaN'))
+        conditional_raise(ne_isnan, ValueError('energy is NaN'))
 
         min_cond = (val_ls["naive_ls_it"] < 2) & (i > miniter)
         status = jnp.where(
@@ -516,7 +516,7 @@ def _static_newton_cg(
 
     val = while_loop(continue_condition_newton_cg, single_newton_cg_step, val)
 
-    _cond_log(val["status"] > 0, logger.error, f"{nm}: Iteration Limit Reached!")
+    conditional_call(val["status"] > 0, logger.error, f"{nm}: Iteration Limit Reached!")
 
     return OptimizeResults(
         x=val["pos"],

@@ -146,7 +146,18 @@ def reduced_chisq_stats(primals, samples=None, func=None):
     return jax.tree_map(red_chisq_stat, samples)
 
 
-def _cond_raise(condition, exception):
+def conditional_raise(condition, exception):
+    """Raises the given Exception on the host if `condition` evaluates to True.
+
+    Can be used in static functions.
+
+    Parameters:
+    -----------
+    condition: boolean
+        If True, will raise `exception` on the host
+    exception: :class:`Exception`
+        Exception that will be raised if `condition` is True
+    """
     from jax.experimental.host_callback import call
 
     def maybe_raise(condition):
@@ -156,11 +167,27 @@ def _cond_raise(condition, exception):
     call(maybe_raise, condition, result_shape=None)
 
 
-def _cond_log(condition, log_channel, log_msg):
+def conditional_call(condition, fn, *arg, **kwargs):
+    """Calls the function `fn` with the given arguments on the host
+    if `condition` evaluates to True.
+
+    Can be used in static functions. Does not return a value.
+
+    Parameters:
+    -----------
+    condition: boolean
+        If True, will call `fn` on the host
+    fn: Callable
+        Function that will be called on the host if `condition` is True
+    *args: iterable (optional)
+        Positional arguments passed to `fn`
+    **kwargs: :class:`dict`
+        Dictionary of keyword arguments passed to `fn`
+    """
     from jax.experimental.host_callback import call
 
     def maybe_log(condition):
         if condition:
-            log_channel(log_msg)
+            fn(*arg, **kwargs)
 
     call(maybe_log, condition, result_shape=None)
