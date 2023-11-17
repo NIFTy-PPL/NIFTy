@@ -4,23 +4,24 @@
 
 from functools import partial
 from operator import getitem
-from typing import Callable, Optional, Tuple, TypeVar, Union, NamedTuple, List
-from .logger import logger
+from typing import Callable, List, NamedTuple, Optional, Tuple, TypeVar, Union
 
-from jax import numpy as jnp, Array
-from jax import random, vmap, value_and_grad, jvp, vjp, linear_transpose, jit
+import jax
+from jax import Array
+from jax import numpy as jnp
+from jax import random
 from jax.tree_util import (
     Partial, register_pytree_node_class, tree_leaves, tree_map
 )
 
-from .smap import smap
-from .optimize import OptimizeResults, minimize, conjugate_gradient
 from .likelihood import (
-    Likelihood, StandardHamiltonian, partial_insert_and_remove,
-    _parse_point_estimates, _functional_conj
+    Likelihood, StandardHamiltonian, _functional_conj, _parse_point_estimates,
+    partial_insert_and_remove
 )
-from .tree_math import Vector, assert_arithmetics, random_like, dot, vdot
-
+from .logger import logger
+from .optimize import OptimizeResults, conjugate_gradient, minimize
+from .smap import smap
+from .tree_math import Vector, assert_arithmetics, dot, random_like, vdot
 
 P = TypeVar("P")
 
@@ -41,6 +42,7 @@ def _cond_raise(condition, exception):
 
 def _partial_func(func, likelihood, point_estimates):
     if point_estimates:
+
         def partial_func(primals, *args):
             lh, p_liquid = likelihood.partial(point_estimates, primals)
             return func(lh, p_liquid, *args)
@@ -52,16 +54,15 @@ def _partial_func(func, likelihood, point_estimates):
 def _process_point_estimate(x, primals, point_estimates, insert):
     if point_estimates:
         point_estimates, _, p_frozen = _parse_point_estimates(
-            point_estimates,
-            primals
+            point_estimates, primals
         )
         assert p_frozen is not None
-        fill = tree_map(lambda x: jnp.zeros((1,)*jnp.ndim(x)), p_frozen)
+        fill = tree_map(lambda x: jnp.zeros((1, ) * jnp.ndim(x)), p_frozen)
         in_out = partial_insert_and_remove(
             lambda *x: x[0],
-            insert_axes=(point_estimates,) if insert else None,
-            flat_fill=(fill,) if insert else None,
-            remove_axes=None if insert else (point_estimates,),
+            insert_axes=(point_estimates, ) if insert else None,
+            flat_fill=(fill, ) if insert else None,
+            remove_axes=None if insert else (point_estimates, ),
             unflatten=None if insert else Vector
         )
         return in_out(x)
@@ -94,6 +95,7 @@ def draw_linear_residual(
     else:
         lh = likelihood
         p_liquid = primals
+
     def ham_metric(primals, tangents, **primals_kw):
         return lh.metric(primals, tangents, **primals_kw) + tangents
 
@@ -131,7 +133,7 @@ def draw_linear_residual(
     return _process_point_estimate(smpl, primals, point_estimates, insert=True)
 
 
-def curve_residual_functions(likelihood, point_estimates=(), do_jit=jit):
+def curve_residual_functions(likelihood, point_estimates=(), do_jit=jax.jit):
     def _trafo(likelihood, p):
         return likelihood.transformation(p)
 
@@ -142,39 +144,42 @@ def curve_residual_functions(likelihood, point_estimates=(), do_jit=jit):
 
     def _residual(likelihood, p, lh_trafo_at_p, ms_at_p, x):
         r = ms_at_p - _g(likelihood, p, lh_trafo_at_p, x)
-        return 0.5*dot(r, r)
+        return 0.5 * dot(r, r)
 
     def _metric(likelihood, p, lh_trafo_at_p, primals, tangents):
         f = partial(_g, likelihood, p, lh_trafo_at_p)
-        _, jj = jvp(f, (primals,), (tangents,))
-        return vjp(f, primals)[1](jj)[0]
+        _, jj = jax.jvp(f, (primals, ), (tangents, ))
+        return jax.vjp(f, primals)[1](jj)[0]
 
     def _sampnorm(likelihood, p, natgrad):
         o = partial(likelihood.left_sqrt_metric, p)
-        o_transpose = linear_transpose(o, likelihood.lsm_tangents_shape)
+        o_transpose = jax.linear_transpose(o, likelihood.lsm_tangents_shape)
         fpp = _functional_conj(o_transpose)(natgrad)
         return jnp.sqrt(vdot(natgrad, natgrad) + vdot(fpp, fpp))
 
     # Partially insert frozen point estimates
-    get_partial = partial(_partial_func, likelihood=likelihood,
-                            point_estimates=point_estimates)
+    get_partial = partial(
+        _partial_func, likelihood=likelihood, point_estimates=point_estimates
+    )
     trafo = do_jit(get_partial(_trafo))
-    vag = do_jit(value_and_grad(get_partial(_residual), argnums=3))
+    vag = do_jit(jax.value_and_grad(get_partial(_residual), argnums=3))
     metric = do_jit(get_partial(_metric))
     sampnorm = do_jit(get_partial(_sampnorm))
     return trafo, vag, metric, sampnorm
 
 
-def curve_residual(likelihood=None,
-                   point_estimates=(),
-                   primals=None,
-                   sample=None,
-                   metric_sample=None,
-                   method='newtoncg',
-                   method_options={},
-                   do_jit=jit,
-                   curve_funcs=None,
-                   _raise_notconverged=False):
+def curve_residual(
+    likelihood=None,
+    point_estimates=(),
+    primals=None,
+    sample=None,
+    metric_sample=None,
+    method='newtoncg',
+    method_options={},
+    do_jit=jax.jit,
+    curve_funcs=None,
+    _raise_notconverged=False
+):
 
     if curve_funcs is None:
         trafo, vag, metric, sampnorm = curve_residual_functions(
@@ -185,37 +190,40 @@ def curve_residual(likelihood=None,
     else:
         trafo, vag, metric, sampnorm = curve_funcs
 
-    sample = _process_point_estimate(sample, primals,
-                                     point_estimates,
-                                     insert=False)
-    metric_sample = _process_point_estimate(metric_sample, primals,
-                                            point_estimates,
-                                            insert=False)
+    sample = _process_point_estimate(
+        sample, primals, point_estimates, insert=False
+    )
+    metric_sample = _process_point_estimate(
+        metric_sample, primals, point_estimates, insert=False
+    )
     trafo_at_p = trafo(primals)
     options = {
         "fun_and_grad": partial(vag, primals, trafo_at_p, metric_sample),
         "hessp": partial(metric, primals, trafo_at_p),
-        "custom_gradnorm" : partial(sampnorm, primals),
-        }
-    opt_state = minimize(None, x0=sample, method=method,
-                         options=method_options | options)
+        "custom_gradnorm": partial(sampnorm, primals),
+    }
+    opt_state = minimize(
+        None, x0=sample, method=method, options=method_options | options
+    )
     if _raise_notconverged & (opt_state.status < 0):
         ValueError("S: failed to invert map")
-    newsam = _process_point_estimate(opt_state.x, primals,
-                                     point_estimates,
-                                     insert=True)
+    newsam = _process_point_estimate(
+        opt_state.x, primals, point_estimates, insert=True
+    )
     # Remove x from state to avoid copy of the samples
-    return newsam - primals, opt_state._replace(x = None)
+    return newsam - primals, opt_state._replace(x=None)
 
 
-def linear_residual_sampler(likelihood,
-                   point_estimates: Union[P, Tuple[str]] = (),
-                   cg: Callable = conjugate_gradient.static_cg,
-                   cg_name: Optional[str] = None,
-                   cg_kwargs: Optional[dict] = None,
-                   samplemap: Callable = smap,
-                   do_dit: Callable = jit,
-                   _raise_nonposdef: bool = False):
+def linear_residual_sampler(
+    likelihood,
+    point_estimates: Union[P, Tuple[str]] = (),
+    cg: Callable = conjugate_gradient.static_cg,
+    cg_name: Optional[str] = None,
+    cg_kwargs: Optional[dict] = None,
+    samplemap: Callable = smap,
+    do_dit: Callable = jax.jit,
+    _raise_nonposdef: bool = False
+):
     """Wrapper for `draw_linear_residual` to draw multiple samples at once.
 
     Returns two functions which take as inputs `primals` and a list of `keys`.
@@ -224,37 +232,43 @@ def linear_residual_sampler(likelihood,
     Allows to specify how to map over sample generation and how to jit it.
     """
     def draw_linear(primals, keys, from_inverse):
-        sampler = partial(draw_linear_residual, likelihood, primals,
-                          from_inverse=from_inverse,
-                          point_estimates=point_estimates,
-                          cg = cg,
-                          cg_name = cg_name,
-                          cg_kwargs=cg_kwargs,
-                          _raise_nonposdef=_raise_nonposdef)
+        sampler = partial(
+            draw_linear_residual,
+            likelihood,
+            primals,
+            from_inverse=from_inverse,
+            point_estimates=point_estimates,
+            cg=cg,
+            cg_name=cg_name,
+            cg_kwargs=cg_kwargs,
+            _raise_nonposdef=_raise_nonposdef
+        )
         samples = samplemap(sampler)(keys)
         samples = Samples(
-                    pos=primals,
-                    samples=tree_map(lambda *x:
-                                jnp.concatenate(x), samples, -samples)
+            pos=primals,
+            samples=tree_map(lambda *x: jnp.concatenate(x), samples, -samples)
         )
         return samples
 
-    return (do_dit(partial(draw_linear, from_inverse=False)),
-            do_dit(partial(draw_linear, from_inverse=True)))
+    return (
+        do_dit(partial(draw_linear, from_inverse=False)),
+        do_dit(partial(draw_linear, from_inverse=True))
+    )
 
 
-def curve_sampler(likelihood,
-                  metric_sampler,
-                  point_estimates=(),
-                  sample_map=None, #TODO
-                  do_jit=jit,
-                  _raise_notconverged=False):
+def curve_sampler(
+    likelihood,
+    metric_sampler,
+    point_estimates=(),
+    sample_map=None,  #TODO
+    do_jit=jax.jit,
+    _raise_notconverged=False
+):
 
     curve_funcs = curve_residual_functions(
-        likelihood=likelihood,
-        point_estimates=point_estimates,
-        do_jit=do_jit
+        likelihood=likelihood, point_estimates=point_estimates, do_jit=do_jit
     )
+
     def sampler(samples, keys, method='newtoncg', method_options={}):
         assert isinstance(samples, Samples)
         primals = samples.pos
@@ -264,29 +278,30 @@ def curve_sampler(likelihood,
         # TODO: move this loop into a "pyseqmap" with interface analogous to
         # jax map and pass it to the function via `sample_map`.
         for i, (ss, ms) in enumerate(zip(samples, met_samps)):
-            rr, state = curve_residual(point_estimates=point_estimates,
-                                       primals=primals,
-                                       sample=ss,
-                                       metric_sample=ms,
-                                       method=method,
-                                       method_options=method_options,
-                                       curve_funcs=curve_funcs,
-                                       _raise_notconverged=_raise_notconverged)
+            rr, state = curve_residual(
+                point_estimates=point_estimates,
+                primals=primals,
+                sample=ss,
+                metric_sample=ms,
+                method=method,
+                method_options=method_options,
+                curve_funcs=curve_funcs,
+                _raise_notconverged=_raise_notconverged
+            )
             residuals = tree_map(lambda ss, xx: ss.at[i].set(xx), residuals, rr)
             states.append(state)
         return Samples(pos=primals, samples=residuals), states
+
     return sampler
 
 
-def kl_vg_and_metric(likelihood,
-                     samplemap=vmap,
-                     sample_reduce=_sample_mean,
-                     do_jit=jit):
-
+def kl_vg_and_metric(
+    likelihood, samplemap=jax.vmap, sample_reduce=_sample_mean, do_jit=jax.jit
+):
     def _ham_vg(primals, primals_samples):
         assert isinstance(primals_samples, Samples)
         ham = StandardHamiltonian(likelihood=likelihood)
-        vvg = samplemap(value_and_grad(ham))
+        vvg = samplemap(jax.value_and_grad(ham))
         s = vvg(primals_samples.at(primals).samples)
         return sample_reduce(s)
 
@@ -300,27 +315,26 @@ def kl_vg_and_metric(likelihood,
     return do_jit(_ham_vg), do_jit(_ham_metric)
 
 
-def kl_solver(likelihood,
-              samplemap=vmap,
-              sample_reduce=_sample_mean,
-              do_jit=jit):
-    kl_vg, kl_metric = kl_vg_and_metric(likelihood,samplemap=samplemap,
-                                        sample_reduce=sample_reduce,
-                                        do_jit=do_jit)
-    def _minimize_kl(samples,
-                     method='newtoncg',
-                     method_options={}):
+def kl_solver(
+    likelihood, samplemap=jax.vmap, sample_reduce=_sample_mean, do_jit=jax.jit
+):
+    kl_vg, kl_metric = kl_vg_and_metric(
+        likelihood,
+        samplemap=samplemap,
+        sample_reduce=sample_reduce,
+        do_jit=do_jit
+    )
+
+    def _minimize_kl(samples, method='newtoncg', method_options={}):
         options = {
             "fun_and_grad": partial(kl_vg, primals_samples=samples),
             "hessp": partial(kl_metric, primals_samples=samples),
         }
         opt_state = minimize(
-            None,
-            samples.pos,
-            method=method,
-            options=method_options | options
+            None, samples.pos, method=method, options=method_options | options
         )
         return samples.at(opt_state.x), opt_state
+
     return _minimize_kl
 
 
@@ -413,25 +427,27 @@ class Samples():
         return cls(pos=pos, samples=smpls)
 
 
-def optimizeVI_callables(likelihood: Likelihood,
-                         point_estimates: Union[P, Tuple[str]] = (),
-                         kl_kwargs: dict = {
-                                 'samplemap': vmap,
-                                 'sample_reduce': _sample_mean,
-                                 'do_jit': jit
-                         },
-                         linear_sampling_kwargs: dict = {
-                                 'cg': conjugate_gradient.static_cg,
-                                 'cg_name': None,
-                                 'cg_kwargs': None,
-                                 'samplemap': smap,
-                                 'do_jit': jit,
-                         },
-                         curve_kwargs: dict = {
-                                 'sample_map': None,
-                                 'do_jit': jit,
-                         },
-                         _raise_notconverged: bool = False):
+def optimizeVI_callables(
+    likelihood: Likelihood,
+    point_estimates: Union[P, Tuple[str]] = (),
+    kl_kwargs: dict = {
+        'samplemap': jax.vmap,
+        'sample_reduce': _sample_mean,
+        'do_jit': jax.jit
+    },
+    linear_sampling_kwargs: dict = {
+        'cg': conjugate_gradient.static_cg,
+        'cg_name': None,
+        'cg_kwargs': None,
+        'samplemap': smap,
+        'do_jit': jax.jit,
+    },
+    curve_kwargs: dict = {
+        'sample_map': None,
+        'do_jit': jax.jit,
+    },
+    _raise_notconverged: bool = False
+):
     """MGVI/geoVI interface that creates the input functions of `OptimizeVI`
     from a `Likelihood`.
 
@@ -512,27 +528,26 @@ def optimizeVI_callables(likelihood: Likelihood,
     `Metric Gaussian Variational Inference`, Jakob Knollmüller,
     Torsten A. Enßlin, `<https://arxiv.org/abs/1901.11033>`_
     """
-    linear_sampling_kwargs.setdefault('_raise_nonposdef',_raise_notconverged)
-    curve_kwargs.setdefault('_raise_notconverged',_raise_notconverged)
+    linear_sampling_kwargs.setdefault('_raise_nonposdef', _raise_notconverged)
+    curve_kwargs.setdefault('_raise_notconverged', _raise_notconverged)
 
     # KL funcs
     solver = kl_solver(likelihood, **kl_kwargs)
+
     def _solver(samples, keys, **kwargs):
         return solver(samples, **kwargs)
+
     # Lin sampling
     draw_metric, draw_linear = linear_residual_sampler(
-        likelihood,
-        point_estimates,
-        **linear_sampling_kwargs
+        likelihood, point_estimates, **linear_sampling_kwargs
     )
+
     def linear_sampler(samples, keys, **kwargs):
         return draw_linear(samples.pos, keys, **kwargs)
+
     # Non-lin sampling
     curve = curve_sampler(
-        likelihood,
-        draw_metric,
-        point_estimates,
-        **curve_kwargs
+        likelihood, draw_metric, point_estimates, **curve_kwargs
     )
     return _solver, linear_sampler, curve
 
@@ -551,15 +566,16 @@ class OptVIState(NamedTuple):
 
 
 class OptimizeVI:
-    def __init__(self,
-                 n_iter: int,
-                 kl_solver: Callable,
-                 sample_generator: Callable,
-                 sample_update: Callable,
-                 kl_solver_kwargs: dict = {},
-                 sample_generator_kwargs: dict  = {},
-                 sample_update_kwargs: dict  = {},
-                 ):
+    def __init__(
+        self,
+        n_iter: int,
+        kl_solver: Callable,
+        sample_generator: Callable,
+        sample_update: Callable,
+        kl_solver_kwargs: dict = {},
+        sample_generator_kwargs: dict = {},
+        sample_update_kwargs: dict = {},
+    ):
         """JaxOpt style minimizer for VI approximation of a probability
         distribution with a sampled approximate distribution.
 
@@ -632,7 +648,7 @@ class OptimizeVI:
     def set_sample_update(self, sample_update: Callable):
         self._sample_update = sample_update
 
-    def init_state(self, keys, samples = None, primals = None):
+    def init_state(self, keys, samples=None, primals=None):
         """Initial state of the optimizer.
 
         Unlike JaxOpt's optimizers this does not only take the optimizers
@@ -643,8 +659,9 @@ class OptimizeVI:
         if samples is None:
             if primals is None:
                 raise ValueError("Neither samples nor primals set.")
-            samples = tree_map(lambda x: jnp.zeros((1,)*(len(x.shape)+1)),
-                               primals)
+            samples = tree_map(
+                lambda x: jnp.zeros((1, ) * (len(x.shape) + 1)), primals
+            )
             samples = Samples(pos=primals, samples=samples)
             regenerate = True
         else:
@@ -656,9 +673,9 @@ class OptimizeVI:
             sample_update=True,
             sampling_states=None,
             minimization_state=None,
-            kl_solver_kwargs = self._kl_solver_kwargs,
-            sample_generator_kwargs = self._sample_generator_kwargs,
-            sample_update_kwargs = self._sample_update_kwargs
+            kl_solver_kwargs=self._kl_solver_kwargs,
+            sample_generator_kwargs=self._sample_generator_kwargs,
+            sample_update_kwargs=self._sample_update_kwargs
         )
         return samples, state
 
@@ -667,22 +684,26 @@ class OptimizeVI:
         assert isinstance(samples, Samples)
         assert isinstance(state, OptVIState)
         if state.sample_regenerate:
-            samples = self._sample_generator(samples, state.keys,
-                                             **state.sample_generator_kwargs)
+            samples = self._sample_generator(
+                samples, state.keys, **state.sample_generator_kwargs
+            )
         if state.sample_update:
             samples, sample_state = self._sample_update(
                 samples, state.keys, **state.sample_update_kwargs
             )
         else:
             sample_state = None
-        samples, kl_state = self._kl_solver(samples, state.keys,
-                                            **state.kl_solver_kwargs)
-        state = state._replace(niter=state.niter+1,
-                               sampling_states=sample_state,
-                               minimization_state=kl_state)
+        samples, kl_state = self._kl_solver(
+            samples, state.keys, **state.kl_solver_kwargs
+        )
+        state = state._replace(
+            niter=state.niter + 1,
+            sampling_states=sample_state,
+            minimization_state=kl_state
+        )
         return samples, state
 
-    def run(self, keys, samples = None, primals = None):
+    def run(self, keys, samples=None, primals=None):
         """`n_iter` consecutive steps of `update`."""
         samples, state = self.init_state(keys, samples, primals)
         for n in range(self._n_iter):
