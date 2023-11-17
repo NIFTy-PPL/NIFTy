@@ -26,6 +26,18 @@ from .tree_math import Vector, assert_arithmetics, dot, random_like, vdot
 P = TypeVar("P")
 
 
+def _identity(x):
+    return x
+
+
+def _parse_jit(jit):
+    if callable(jit):
+        return jit
+    if isinstance(jit, bool):
+        return jax.jit if jit else _identity
+    raise TypeError(f"expected `jit` to be callable or bolean; got {jit!r}")
+
+
 def _sample_mean(samples, mean=jnp.mean, axis=0):
     return tree_map(partial(mean, axis=axis), samples)
 
@@ -133,7 +145,11 @@ def draw_linear_residual(
     return _process_point_estimate(smpl, primals, point_estimates, insert=True)
 
 
-def curve_residual_functions(likelihood, point_estimates=(), do_jit=jax.jit):
+def curve_residual_functions(
+    likelihood, point_estimates=(), jit: Union[Callable, bool] = True
+):
+    jit = _parse_jit(jit)
+
     def _trafo(likelihood, p):
         return likelihood.transformation(p)
 
@@ -161,10 +177,10 @@ def curve_residual_functions(likelihood, point_estimates=(), do_jit=jax.jit):
     get_partial = partial(
         _partial_func, likelihood=likelihood, point_estimates=point_estimates
     )
-    trafo = do_jit(get_partial(_trafo))
-    vag = do_jit(jax.value_and_grad(get_partial(_residual), argnums=3))
-    metric = do_jit(get_partial(_metric))
-    sampnorm = do_jit(get_partial(_sampnorm))
+    trafo = jit(get_partial(_trafo))
+    vag = jit(jax.value_and_grad(get_partial(_residual), argnums=3))
+    metric = jit(get_partial(_metric))
+    sampnorm = jit(get_partial(_sampnorm))
     return trafo, vag, metric, sampnorm
 
 
@@ -176,16 +192,14 @@ def curve_residual(
     metric_sample=None,
     method='newtoncg',
     method_options={},
-    do_jit=jax.jit,
+    jit: Union[Callable, bool] = True,
     curve_funcs=None,
     _raise_notconverged=False
 ):
-
+    jit = _parse_jit(jit)
     if curve_funcs is None:
         trafo, vag, metric, sampnorm = curve_residual_functions(
-            likelihood=likelihood,
-            point_estimates=point_estimates,
-            do_jit=do_jit
+            likelihood=likelihood, point_estimates=point_estimates, jit=jit
         )
     else:
         trafo, vag, metric, sampnorm = curve_funcs
@@ -221,7 +235,7 @@ def linear_residual_sampler(
     cg_name: Optional[str] = None,
     cg_kwargs: Optional[dict] = None,
     samplemap: Callable = smap,
-    do_dit: Callable = jax.jit,
+    jit: Union[Callable, bool] = True,
     _raise_nonposdef: bool = False
 ):
     """Wrapper for `draw_linear_residual` to draw multiple samples at once.
@@ -231,6 +245,8 @@ def linear_residual_sampler(
     samples.
     Allows to specify how to map over sample generation and how to jit it.
     """
+    jit = _parse_jit(jit)
+
     def draw_linear(primals, keys, from_inverse):
         sampler = partial(
             draw_linear_residual,
@@ -251,8 +267,8 @@ def linear_residual_sampler(
         return samples
 
     return (
-        do_dit(partial(draw_linear, from_inverse=False)),
-        do_dit(partial(draw_linear, from_inverse=True))
+        jit(partial(draw_linear, from_inverse=False)),
+        jit(partial(draw_linear, from_inverse=True))
     )
 
 
@@ -261,12 +277,12 @@ def curve_sampler(
     metric_sampler,
     point_estimates=(),
     sample_map=None,  #TODO
-    do_jit=jax.jit,
+    jit: Union[Callable, bool] = True,
     _raise_notconverged=False
 ):
-
+    jit = _parse_jit(jit)
     curve_funcs = curve_residual_functions(
-        likelihood=likelihood, point_estimates=point_estimates, do_jit=do_jit
+        likelihood=likelihood, point_estimates=point_estimates, jit=jit
     )
 
     def sampler(samples, keys, method='newtoncg', method_options={}):
@@ -296,8 +312,13 @@ def curve_sampler(
 
 
 def kl_vg_and_metric(
-    likelihood, samplemap=jax.vmap, sample_reduce=_sample_mean, do_jit=jax.jit
+    likelihood,
+    samplemap=jax.vmap,
+    sample_reduce=_sample_mean,
+    jit: Union[Callable, bool] = True
 ):
+    jit = _parse_jit(jit)
+
     def _ham_vg(primals, primals_samples):
         assert isinstance(primals_samples, Samples)
         ham = StandardHamiltonian(likelihood=likelihood)
@@ -312,17 +333,18 @@ def kl_vg_and_metric(
         s = vmet(primals_samples.at(primals).samples, tangents)
         return sample_reduce(s)
 
-    return do_jit(_ham_vg), do_jit(_ham_metric)
+    return jit(_ham_vg), jit(_ham_metric)
 
 
 def kl_solver(
-    likelihood, samplemap=jax.vmap, sample_reduce=_sample_mean, do_jit=jax.jit
+    likelihood,
+    samplemap=jax.vmap,
+    sample_reduce=_sample_mean,
+    jit: Union[Callable, bool] = True
 ):
+    jit = _parse_jit(jit)
     kl_vg, kl_metric = kl_vg_and_metric(
-        likelihood,
-        samplemap=samplemap,
-        sample_reduce=sample_reduce,
-        do_jit=do_jit
+        likelihood, samplemap=samplemap, sample_reduce=sample_reduce, jit=jit
     )
 
     def _minimize_kl(samples, method='newtoncg', method_options={}):
@@ -433,18 +455,18 @@ def optimizeVI_callables(
     kl_kwargs: dict = {
         'samplemap': jax.vmap,
         'sample_reduce': _sample_mean,
-        'do_jit': jax.jit
+        'jit': True,
     },
     linear_sampling_kwargs: dict = {
         'cg': conjugate_gradient.static_cg,
         'cg_name': None,
         'cg_kwargs': None,
         'samplemap': smap,
-        'do_jit': jax.jit,
+        'jit': True,
     },
     curve_kwargs: dict = {
         'sample_map': None,
-        'do_jit': jax.jit,
+        'jit': True,
     },
     _raise_notconverged: bool = False
 ):
