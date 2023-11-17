@@ -587,12 +587,14 @@ class Likelihood(AbstractModel):
             flat_fill=(primals_frozen, ),
             remove_axes=None
         )
+        domain = jax.tree_map(ShapeWithDtype.from_leave, primals_liquid)
 
         lh = Likelihood(
             energy,
             normalized_residual=norm_residual,
             transformation=trafo,
-            lsm_tangents_shape=self.lsm_tangents_shape
+            lsm_tangents_shape=self.lsm_tangents_shape,
+            domain=domain,
         )
         return lh, primals_liquid
 
