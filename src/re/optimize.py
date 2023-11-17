@@ -114,11 +114,11 @@ def _newton_cg(
     jac: Optional[Callable] = None,
     fun_and_grad=None,
     hessp=None,
-    cg=conjugate_gradient._cg,
-    custom_gradnorm = None,
     name=None,
+    cg=conjugate_gradient._cg,
+    cg_kwargs=None,
     time_threshold=None,
-    cg_kwargs=None
+    custom_gradnorm=None,
 ):
     norm_ord = 1 if norm_ord is None else norm_ord
     miniter = 0 if miniter is None else miniter
@@ -132,8 +132,10 @@ def _newton_cg(
     cg_kwargs = {} if cg_kwargs is None else cg_kwargs
     cg_name = name + "CG" if name is not None else None
 
-    gradnorm = (partial(jft_norm, ord=norm_ord) if custom_gradnorm is None else
-                custom_gradnorm)
+    gradnorm = (
+        partial(jft_norm, ord=norm_ord)
+        if custom_gradnorm is None else custom_gradnorm
+    )
     energy, g = fun_and_grad(pos)
     nfev, njev, nhev = 1, 1, 0
     if jnp.isnan(energy):
