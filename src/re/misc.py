@@ -1,15 +1,11 @@
 # Copyright(C) 2013-2021 Max-Planck-Society
 # SPDX-License-Identifier: GPL-2.0+ OR BSD-2-Clause
 
-from functools import reduce
-from typing import (Any, Callable, Dict, Hashable, Mapping, NamedTuple,
-                    TypeVar, Tuple)
-
-import numpy as np
 import pprint
+from typing import Any, Callable, Dict, Hashable, Mapping, NamedTuple, TypeVar
+
 import jax
 from jax import numpy as jnp
-
 
 O = TypeVar('O')
 I = TypeVar('I')
@@ -61,16 +57,20 @@ def doc_from(original):
     return wrapper
 
 
-def wrap(call: Callable[[I], O],
-             name: Hashable) -> Callable[[Mapping[Hashable, I]], O]:
+def wrap(
+    call: Callable[[I], O],
+    name: Hashable,
+) -> Callable[[Mapping[Hashable, I]], O]:
     def named_call(p):
         return call(p[name])
 
     return named_call
 
 
-def wrap_left(call: Callable[[I], O],
-                  name: Hashable) -> Callable[[I], Dict[Hashable, O]]:
+def wrap_left(
+    call: Callable[[I], O],
+    name: Hashable,
+) -> Callable[[I], Dict[Hashable, O]]:
     def named_call(p):
         return {name: call(p)}
 
@@ -108,10 +108,11 @@ def interpolate(xmin=-7., xmax=7., N=14000) -> Callable:
 
 
 def _residual_params(inp):
-    ndof = inp.size if jnp.isrealobj(inp) else 2.*inp.size
+    ndof = inp.size if jnp.isrealobj(inp) else 2 * inp.size
     mean = jnp.sum(inp.real + inp.imag) / ndof
     rchisq = jnp.vdot(inp, inp) / ndof
     return mean, rchisq, ndof
+
 
 class ChiSqStats(NamedTuple):
     mean: Any
@@ -162,14 +163,17 @@ def reduced_residual_stats(primals, samples=None, func=None):
 
     return jax.tree_map(red_chisq_stat, samples)
 
+
 def minisanity(primals, samples=None, func=None):
     stat_tree = reduced_residual_stats(primals, samples=samples, func=func)
 
     def pretty_string(x):
         rsq = x.reduced_chisq
-        s = f"reduced χ²: {rsq[0]:.2}±{rsq[1]:.2}, "
-        s += f"avg: {x.mean[0]:.2}±{x.mean[1]:.2}, "
-        s += f"#dof: {int(x.ndof)}"
+        s = (
+            f"reduced χ²: {rsq[0]:.2}±{rsq[1]:.2}"
+            f", avg: {x.mean[0]:.2}±{x.mean[1]:.2}"
+            f", #dof: {int(x.ndof)}"
+        )
         return s
 
     def is_leaf(l):
