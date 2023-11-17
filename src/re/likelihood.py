@@ -55,7 +55,8 @@ def _parse_point_estimates(point_estimates, primals):
 
 def _partial_argument(call, insert_axes, flat_fill):
     """For every non-None value in `insert_axes`, amend the value of `flat_fill`
-    at the same position to the argument.
+    at the same position to the argument. Both `insert_axes` and `flat_fill` are
+    w.r.t. the whole input argument tuple `arg` of `call(*args)`.
     """
     if not flat_fill and not insert_axes:
         return call
@@ -79,8 +80,10 @@ def _partial_argument(call, insert_axes, flat_fill):
                 ve = "more inserts in `insert_axes` than elements in `flat_fill`"
                 raise ValueError(ve)
         elif iae is not None or ffe is not None:
-            ve = "both `insert_axes` and `flat_fill` must None at the same "
-            ve += "positions"
+            ve = (
+                "both `insert_axes` and `flat_fill` must be `None` at the same"
+                " positions"
+            )
             raise ValueError(ve)
     # NOTE, `tree_flatten` replaces `None`s with list of zero length
     insert_axes, in_axes_td = zip(*(tree_flatten(ia) for ia in insert_axes))
