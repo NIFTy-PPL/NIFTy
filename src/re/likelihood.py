@@ -186,9 +186,9 @@ class Likelihood(AbstractModel):
         self._metric = metric
 
         self._domain = domain
-        if lsm_tangents_shape is None and domain is not None:
-            lsm_tangents_shape = jax.eval_shape(normalized_residual, domain)
-        elif lsm_tangents_shape is not None:
+        # NOTE, `lsm_tangents_shape` is not `normalized_residual` applied to
+        # `domain` for e.g. models with a learnable covariance
+        if lsm_tangents_shape is not None:
             leaves = tree_leaves(lsm_tangents_shape)
             if not all(
                 hasattr(e, "shape") and hasattr(e, "dtype") for e in leaves
