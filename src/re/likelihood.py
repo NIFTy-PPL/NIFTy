@@ -3,10 +3,11 @@
 
 from typing import Callable, Optional, TypeVar, Union
 
-from jax import eval_shape, linear_transpose, linearize, vjp
+import jax
 from jax import numpy as jnp
-from jax.tree_util import (Partial, tree_leaves, tree_structure, tree_flatten,
-                           tree_unflatten, tree_map)
+from jax.tree_util import (
+    Partial, tree_flatten, tree_leaves, tree_map, tree_structure, tree_unflatten
+)
 
 from .misc import doc_from, is1d, isiterable, split
 from .model import AbstractModel
@@ -186,7 +187,7 @@ class Likelihood(AbstractModel):
 
         self._domain = domain
         if lsm_tangents_shape is None and domain is not None:
-            lsm_tangents_shape = eval_shape(normalized_residual, domain)
+            lsm_tangents_shape = jax.eval_shape(normalized_residual, domain)
         elif lsm_tangents_shape is not None:
             leaves = tree_leaves(lsm_tangents_shape)
             if not all(
@@ -262,10 +263,8 @@ class Likelihood(AbstractModel):
             has been applied to.
         """
         if self._metric is None:
-            from jax import linear_transpose
-
             lsm_at_p = Partial(self.left_sqrt_metric, primals, **primals_kw)
-            rsm_at_p = linear_transpose(
+            rsm_at_p = jax.linear_transpose(
                 lsm_at_p, self.left_sqrt_metric_tangents_shape
             )
             rsm_at_p = _functional_conj(rsm_at_p)
@@ -294,7 +293,9 @@ class Likelihood(AbstractModel):
             the left-square-root of the metric has been applied to.
         """
         if self._left_sqrt_metric is None:
-            _, bwd = vjp(Partial(self.transformation, **primals_kw), primals)
+            _, bwd = jax.vjp(
+                Partial(self.transformation, **primals_kw), primals
+            )
             bwd = _functional_conj(bwd)
             res = bwd(tangents)
             return res[0]
@@ -468,14 +469,14 @@ class Likelihood(AbstractModel):
             # Note, judging by a simple benchmark on a large problem,
             # transposing the JVP seems faster than computing the VJP again. On
             # small problems there seems to be no measurable difference.
-            y, fwd = linearize(Partial(f, **kw_r), primals)
-            bwd = linear_transpose(fwd, primals)
+            y, fwd = jax.linearize(Partial(f, **kw_r), primals)
+            bwd = jax.linear_transpose(fwd, primals)
             bwd = _functional_conj(bwd)
             return bwd(self.metric(y, fwd(tangents), **kw_l))[0]
 
         def left_sqrt_metric_at_f(primals, tangents, **primals_kw):
             kw_l, kw_r = split_kwargs(**primals_kw)
-            y, bwd = vjp(Partial(f, **kw_r), primals)
+            y, bwd = jax.vjp(Partial(f, **kw_r), primals)
             bwd = _functional_conj(bwd)
             left_at_fp = self.left_sqrt_metric(y, tangents, **kw_l)
             return bwd(left_at_fp)[0]
@@ -566,8 +567,7 @@ class Likelihood(AbstractModel):
         """TODO
         """
         insert_axes, primals_liquid, primals_frozen = _parse_point_estimates(
-            point_estimates,
-            primals
+            point_estimates, primals
         )
         energy = partial_insert_and_remove(
             self.energy,
