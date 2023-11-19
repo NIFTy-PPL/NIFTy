@@ -1,12 +1,12 @@
-# Copyright(C) 2013-2021 Max-Planck-Society
 # SPDX-License-Identifier: GPL-2.0+ OR BSD-2-Clause
 
 from typing import Callable, Optional, TypeVar, Union
 
-from jax import eval_shape, linear_transpose, linearize
+import jax
 from jax import numpy as jnp
-from jax import vjp
-from jax.tree_util import Partial, tree_leaves
+from jax.tree_util import (
+    Partial, tree_flatten, tree_leaves, tree_map, tree_structure, tree_unflatten
+)
 
 from .misc import doc_from, is1d, isiterable, split
 from .model import AbstractModel
@@ -22,6 +22,152 @@ def _functional_conj(func):
         return conj(func(*conj(args), **conj(kwargs)))
 
     return func_conj
+
+
+def _parse_point_estimates(point_estimates, primals):
+    if isinstance(point_estimates, (tuple, list)):
+        if not isinstance(primals, (Vector, dict)):
+            te = "tuple-shortcut point-estimate only availble for dict/Vector "
+            te += "type primals"
+            raise TypeError(te)
+        pe = tree_map(lambda x: False, primals)
+        pe = pe.tree if isinstance(primals, Vector) else pe
+        for k in point_estimates:
+            pe[k] = True
+        point_estimates = Vector(pe) if isinstance(primals, Vector) else pe
+    if tree_structure(primals) != tree_structure(point_estimates):
+        print(primals)
+        print(point_estimates)
+        te = "`primals` and `point_estimates` pytree structre do no match"
+        raise TypeError(te)
+
+    primals_liquid, primals_frozen = [], []
+    for p, ep in zip(tree_leaves(primals), tree_leaves(point_estimates)):
+        if ep:
+            primals_frozen.append(p)
+        else:
+            primals_liquid.append(p)
+    primals_liquid = Vector(tuple(primals_liquid))
+    primals_frozen = tuple(primals_frozen)
+    return point_estimates, primals_liquid, primals_frozen
+
+
+def _partial_argument(call, insert_axes, flat_fill):
+    """For every non-None value in `insert_axes`, amend the value of `flat_fill`
+    at the same position to the argument. Both `insert_axes` and `flat_fill` are
+    w.r.t. the whole input argument tuple `arg` of `call(*args)`.
+    """
+    if not flat_fill and not insert_axes:
+        return call
+
+    if len(insert_axes) != len(flat_fill):
+        ve = "`insert_axes` and `flat_fill` must be of equal length"
+        raise ValueError(ve)
+    for iae, ffe in zip(insert_axes, flat_fill):
+        if iae is not None and ffe is not None:
+            if not isinstance(ffe, (tuple, list)):
+                te = (
+                    f"`flat_fill` must be a tuple of flattened pytrees;"
+                    f" got '{flat_fill!r}'"
+                )
+                raise TypeError(te)
+            iae_leaves = tree_leaves(iae)
+            if not all(isinstance(e, bool) for e in iae_leaves):
+                te = "leaves of `insert_axes` elements must all be boolean"
+                raise TypeError(te)
+            if sum(iae_leaves) != len(ffe):
+                ve = "more inserts in `insert_axes` than elements in `flat_fill`"
+                raise ValueError(ve)
+        elif iae is not None or ffe is not None:
+            ve = (
+                "both `insert_axes` and `flat_fill` must be `None` at the same"
+                " positions"
+            )
+            raise ValueError(ve)
+    # NOTE, `tree_flatten` replaces `None`s with list of zero length
+    insert_axes, in_axes_td = zip(*(tree_flatten(ia) for ia in insert_axes))
+
+    def insert(*x):
+        y = []
+        assert len(x) == len(insert_axes) == len(flat_fill) == len(in_axes_td)
+        for xe, iae, ffe, iatde in zip(x, insert_axes, flat_fill, in_axes_td):
+            if ffe is None and not iae:
+                y.append(xe)
+                continue
+            assert iae and ffe is not None
+            assert sum(iae) == len(ffe)
+            xe, ffe = list(tree_leaves(xe)), list(ffe)
+            ye = [xe.pop(0) if not cond else ffe.pop(0) for cond in iae]
+            # for cond in iae:
+            #     ye.append(xe.pop(0) if not cond else ffe.pop(0))
+            y.append(tree_unflatten(iatde, ye))
+        return tuple(y)
+
+    def partially_inserted_call(*x):
+        return call(*insert(*x))
+
+    return partially_inserted_call
+
+
+def partial_insert_and_remove(
+    call, insert_axes, flat_fill, *, remove_axes=(), unflatten=None
+):
+    """Return a call in which `flat_fill` is inserted into arguments of `call`
+    at `inset_axes` and subsequently removed from its output at `remove_axes`.
+
+    This function is best understood by example:
+
+    .. code-block:: python
+
+        def _identity(x):
+            return x
+
+        # _identity takes exactly one argument, thus `insert_axes` and `flat_fill`
+        # are length one tuples
+        _id_part = jpartial(
+            _identity,
+            insert_axes=(jft.Vector({
+                "a": (True, False),
+                "b": False
+            }), ),
+            flat_fill=(("THIS IS input['a'][0]", ), )
+        )
+        out = _id_part(("THIS IS input['a'][1]", "THIS IS input['b']"))
+        assert out == jft.Vector(
+            {
+                "a": ("THIS IS input['a'][0]", "THIS IS input['a'][1]"),
+                "b": "THIS IS input['b']"
+            }
+        )
+
+    """
+    call = _partial_argument(call, insert_axes=insert_axes, flat_fill=flat_fill)
+
+    if not remove_axes:
+        return call
+
+    remove_axes = tree_leaves(remove_axes)
+    if not all(isinstance(e, bool) for e in remove_axes):
+        raise TypeError("leaves of `remove_axes` must all be boolean")
+
+    def remove(x):
+        x, y = list(tree_leaves(x)), []
+        if tree_structure(x) != tree_structure(remove_axes):
+            te = (
+                f"`remove_axes` ({tree_structure(remove_axes)!r}) is shaped"
+                f" differently than output of `call` ({tree_structure(x)!r})"
+            )
+            raise TypeError(te)
+        for maybe_remove, cond in zip(x, remove_axes):
+            if not cond:
+                y.append(maybe_remove)
+        y = unflatten(tuple(y)) if unflatten is not None else y
+        return y
+
+    def partially_removed_call(*x):
+        return remove(call(*x))
+
+    return partially_removed_call
 
 
 class Likelihood(AbstractModel):
@@ -68,9 +214,9 @@ class Likelihood(AbstractModel):
         self._metric = metric
 
         self._domain = domain
-        if lsm_tangents_shape is None and domain is not None:
-            lsm_tangents_shape = eval_shape(normalized_residual, domain)
-        elif lsm_tangents_shape is not None:
+        # NOTE, `lsm_tangents_shape` is not `normalized_residual` applied to
+        # `domain` for e.g. models with a learnable covariance
+        if lsm_tangents_shape is not None:
             leaves = tree_leaves(lsm_tangents_shape)
             if not all(
                 hasattr(e, "shape") and hasattr(e, "dtype") for e in leaves
@@ -145,10 +291,8 @@ class Likelihood(AbstractModel):
             has been applied to.
         """
         if self._metric is None:
-            from jax import linear_transpose
-
             lsm_at_p = Partial(self.left_sqrt_metric, primals, **primals_kw)
-            rsm_at_p = linear_transpose(
+            rsm_at_p = jax.linear_transpose(
                 lsm_at_p, self.left_sqrt_metric_tangents_shape
             )
             rsm_at_p = _functional_conj(rsm_at_p)
@@ -177,7 +321,9 @@ class Likelihood(AbstractModel):
             the left-square-root of the metric has been applied to.
         """
         if self._left_sqrt_metric is None:
-            _, bwd = vjp(Partial(self.transformation, **primals_kw), primals)
+            _, bwd = jax.vjp(
+                Partial(self.transformation, **primals_kw), primals
+            )
             bwd = _functional_conj(bwd)
             res = bwd(tangents)
             return res[0]
@@ -351,14 +497,14 @@ class Likelihood(AbstractModel):
             # Note, judging by a simple benchmark on a large problem,
             # transposing the JVP seems faster than computing the VJP again. On
             # small problems there seems to be no measurable difference.
-            y, fwd = linearize(Partial(f, **kw_r), primals)
-            bwd = linear_transpose(fwd, primals)
+            y, fwd = jax.linearize(Partial(f, **kw_r), primals)
+            bwd = jax.linear_transpose(fwd, primals)
             bwd = _functional_conj(bwd)
             return bwd(self.metric(y, fwd(tangents), **kw_l))[0]
 
         def left_sqrt_metric_at_f(primals, tangents, **primals_kw):
             kw_l, kw_r = split_kwargs(**primals_kw)
-            y, bwd = vjp(Partial(f, **kw_r), primals)
+            y, bwd = jax.vjp(Partial(f, **kw_r), primals)
             bwd = _functional_conj(bwd)
             left_at_fp = self.left_sqrt_metric(y, tangents, **kw_l)
             return bwd(left_at_fp)[0]
@@ -444,6 +590,42 @@ class Likelihood(AbstractModel):
             metric=joined_metric,
             lsm_tangents_shape=joined_tangents_shape
         )
+
+    def freeze(self, point_estimates, primals):
+        """Returns a new likelihood with partially inserted `primals` and the
+        remaining unfrozen/liquid `primals`.
+        """
+        insert_axes, primals_liquid, primals_frozen = _parse_point_estimates(
+            point_estimates, primals
+        )
+        energy = partial_insert_and_remove(
+            self.energy,
+            insert_axes=(insert_axes, ),
+            flat_fill=(primals_frozen, ),
+            remove_axes=None
+        )
+        trafo = partial_insert_and_remove(
+            self.transformation,
+            insert_axes=(insert_axes, ),
+            flat_fill=(primals_frozen, ),
+            remove_axes=None
+        )
+        norm_residual = partial_insert_and_remove(
+            self.normalized_residual,
+            insert_axes=(insert_axes, ),
+            flat_fill=(primals_frozen, ),
+            remove_axes=None
+        )
+        domain = jax.tree_map(ShapeWithDtype.from_leave, primals_liquid)
+
+        lh = Likelihood(
+            energy,
+            normalized_residual=norm_residual,
+            transformation=trafo,
+            lsm_tangents_shape=self.lsm_tangents_shape,
+            domain=domain,
+        )
+        return lh, primals_liquid
 
 
 # TODO: prune/hide/(make simply add unit mat) in favor of just passing around
