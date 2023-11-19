@@ -96,39 +96,41 @@ def update_state(state, cfg, iiter):
 
 def kl_vg_and_metric(
     likelihood,
-    samplemap=jax.vmap,
-    sample_reduce=partial(tree_map, partial(jnp.mean, axis=0)),
+    map=jax.vmap,
+    reduce=partial(tree_map, partial(jnp.mean, axis=0)),
     jit: Union[Callable, bool] = True
 ):
     jit = _parse_jit(jit)
+    map = get_map(map)
 
     def _ham_vg(primals, primals_samples):
         assert isinstance(primals_samples, Samples)
         ham = StandardHamiltonian(likelihood=likelihood)
-        vvg = samplemap(jax.value_and_grad(ham))
+        vvg = map(jax.value_and_grad(ham))
         s = vvg(primals_samples.at(primals).samples)
-        return sample_reduce(s)
+        return reduce(s)
 
     def _ham_metric(primals, tangents, primals_samples):
         assert isinstance(primals_samples, Samples)
         ham = StandardHamiltonian(likelihood=likelihood)
-        vmet = samplemap(ham.metric, in_axes=(0, None))
+        vmet = map(ham.metric, in_axes=(0, None))
         s = vmet(primals_samples.at(primals).samples, tangents)
-        return sample_reduce(s)
+        return reduce(s)
 
     return jit(_ham_vg), jit(_ham_metric)
 
 
 def kl_solver(
     likelihood,
-    samplemap=jax.vmap,
-    sample_reduce=partial(tree_map, partial(jnp.mean, axis=0)),
+    map=jax.vmap,
+    reduce=partial(tree_map, partial(jnp.mean, axis=0)),
     jit: Union[Callable, bool] = True
 ):
     jit = _parse_jit(jit)
     kl_vg, kl_metric = kl_vg_and_metric(
-        likelihood, samplemap=samplemap, sample_reduce=sample_reduce, jit=jit
+        likelihood, map=map, reduce=reduce, jit=jit
     )
+    map = get_map(map)
 
     def _minimize_kl(samples, method='newtoncg', method_options={}):
         options = {
@@ -147,23 +149,23 @@ def optimizeVI_callables(
     likelihood: Likelihood,
     point_estimates: Union[P, Tuple[str]] = (),
     kl_kwargs: dict = {
-        'samplemap': jax.vmap,
+        'map': jax.vmap,
         'jit': True,
     },
     linear_sampling_kwargs: dict = {
         'cg': conjugate_gradient.static_cg,
         'cg_name': None,
         'cg_kwargs': None,
-        'samplemap': smap,
+        'map': smap,
         'jit': True,
     },
     curve_kwargs: dict = {
-        'sample_map': None,
+        'map': None,
         'jit': True,
     },
     _raise_notconverged: bool = False
 ):
-    """MGVI/geoVI interface that creates the input functions of `OptimizeVI`
+    r"""MGVI/geoVI interface that creates the input functions of `OptimizeVI`
     from a `Likelihood`.
 
     Builds functions for a VI approximation via variants of the `Geometric
