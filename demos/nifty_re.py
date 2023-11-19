@@ -170,8 +170,8 @@ key, subkey = random.split(key)
 pos_truth = jft.random_like(subkey, signal_response.domain)
 signal_response_truth = signal_response(pos_truth)
 key, subkey = random.split(key)
-noise_truth = ((noise_cov(jft.ones_like(signal_response.target)))**0.5
-) * jft.random_like(key, signal_response.target)
+noise_truth = ((noise_cov(jft.ones_like(signal_response.target)))**
+               0.5) * jft.random_like(key, signal_response.target)
 data = signal_response_truth + noise_truth
 
 nll = jft.Gaussian(data, noise_cov_inv) @ signal_response
@@ -185,28 +185,28 @@ minimization_kwarks = {"absdelta": absdelta, "maxiter": n_newton_iterations}
 # NOTE, changing the number of samples always triggers a resampling even if
 # `resamples=False`, as more samples have to be drawn that did not exist before.
 n_samples = 4
-samples, state = jft.optimize_kl(nll, pos_init,
-                                 n_vi_iterations,
-                                 n_samples,
-                                 key,
-                                 point_estimates=(),
-                                 kl_solver_kwargs={
-                                    'method':'newtoncg',
-                                    'method_options':minimization_kwarks,
-                                 },
-                                 sampling_method='altmetric',
-                                 # 'linear' for MGVI, 'geometric' for geoVI
-                                 sample_update_kwargs={
-                                     'method':'newtoncg',
-                                     'method_options':sampling_kwargs,
-                                 },
-                                 make_sample_generator_kwargs={
-                                     'cg_kwargs':liner_cg_kwargs
-                                 },
-                                 resample=lambda ii: True if ii<2 else False,
-                                 out_dir="results_jifty",
-                                 resume=False,
-                                 verbosity=0)
+samples, state = jft.optimize_kl(
+    nll,
+    pos_init,
+    n_vi_iterations,
+    n_samples,
+    key,
+    point_estimates=(),
+    kl_solver_kwargs={
+        'method': 'newtoncg',
+        'method_options': minimization_kwarks,
+    },
+    sampling_method='altmetric',
+    # 'linear' for MGVI, 'geometric' for geoVI
+    sample_update_kwargs={
+        'minimize_kwargs': sampling_kwargs,
+    },
+    make_sample_generator_kwargs={'cg_kwargs': liner_cg_kwargs},
+    resample=lambda ii: True if ii < 2 else False,
+    out_dir="results_jifty",
+    resume=False,
+    verbosity=0
+)
 # %%
 namps = cfm.get_normalized_amplitudes()
 post_sr_mean = jft.mean(tuple(signal(s) for s in samples))

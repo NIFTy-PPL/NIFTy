@@ -591,8 +591,9 @@ class Likelihood(AbstractModel):
             lsm_tangents_shape=joined_tangents_shape
         )
 
-    def partial(self, point_estimates, primals):
-        """TODO
+    def freeze(self, point_estimates, primals):
+        """Returns a new likelihood with partially inserted `primals` and the
+        remaining unfrozen/liquid `primals`.
         """
         insert_axes, primals_liquid, primals_frozen = _parse_point_estimates(
             point_estimates, primals

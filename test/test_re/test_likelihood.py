@@ -53,7 +53,7 @@ def test_likelihood_partial(seed):
 
     gaussian = jft.Gaussian(data)
     assert_allclose(gaussian(data), 0., atol=atol)
-    gaussian_part, primals_liquid = gaussian.partial(("b", ), primals)
+    gaussian_part, primals_liquid = gaussian.freeze(("b", ), primals)
     assert primals_liquid.tree[0].shape == domain["a"].shape
     assert_allclose(
         gaussian_part(primals_liquid), gaussian(primals), atol=atol, rtol=rtol
