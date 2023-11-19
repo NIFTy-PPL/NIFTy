@@ -5,20 +5,22 @@ from .conjugate_gradient import cg, static_cg
 from .correlated_field import CorrelatedFieldMaker, non_parametric_amplitude
 from .hmc import generate_hmc_acc_rej, generate_nuts_tree
 from .hmc_oo import HMCChain, NUTSChain
-from .kl import Samples, OptimizeVI, optimizeVI_callables, OptVIState
-from .optimize_kl import optimize_kl
-from .likelihood import Likelihood, StandardHamiltonian
+from .kl import OptimizeVI, OptVIState, Samples, optimizeVI_callables
+from .likelihood import (
+    Likelihood, StandardHamiltonian, partial_insert_and_remove
+)
 from .likelihood_impl import (
     Categorical, Gaussian, Poissonian, StudentT, VariableCovarianceGaussian,
     VariableCovarianceStudentT
 )
 from .logger import logger
 from .misc import (
-    wrap, wrap_left, hvp, interpolate, reduced_residual_stats, minisanity
+    hvp, interpolate, minisanity, reduced_residual_stats, wrap, wrap_left
 )
 from .model import Initializer, Model
 from .num import *
 from .optimize import minimize, newton_cg, trust_ncg
+from .optimize_kl import optimize_kl
 from .prior import (
     InvGammaPrior, LaplacePrior, LogNormalPrior, NormalPrior, WrappedCall
 )

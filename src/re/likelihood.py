@@ -114,6 +114,32 @@ def partial_insert_and_remove(
 ):
     """Return a call in which `flat_fill` is inserted into arguments of `call`
     at `inset_axes` and subsequently removed from its output at `remove_axes`.
+
+    This function is best understood by example:
+
+    .. code-block:: python
+
+        def _identity(x):
+            return x
+
+        # _identity takes exactly one argument, thus `insert_axes` and `flat_fill`
+        # are length one tuples
+        _id_part = jpartial(
+            _identity,
+            insert_axes=(jft.Vector({
+                "a": (True, False),
+                "b": False
+            }), ),
+            flat_fill=(("THIS IS input['a'][0]", ), )
+        )
+        out = _id_part(("THIS IS input['a'][1]", "THIS IS input['b']"))
+        assert out == jft.Vector(
+            {
+                "a": ("THIS IS input['a'][0]", "THIS IS input['a'][1]"),
+                "b": "THIS IS input['b']"
+            }
+        )
+
     """
     call = _partial_argument(call, insert_axes=insert_axes, flat_fill=flat_fill)
 
