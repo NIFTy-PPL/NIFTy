@@ -28,20 +28,7 @@ from .tree_math.vector import Vector
 P = TypeVar("P")
 
 
-def _make_callable(obj):
-    if callable(obj) and not isinstance(obj, Likelihood):
-        return obj
-    else:
-        return lambda x: obj
-
-
-def _getitem(cfg, i):
-    if not isinstance(cfg, dict):
-        return cfg(i)
-    return {kk: _getitem(ii, i) for kk, ii in cfg.items()}
-
-
-def basic_status_print(iiter, samples, state, residual, out_dir=None):
+def _optimize_kl_status_print(iiter, samples, state, residual, out_dir=None):
     en = state.minimization_state.fun
     msg = f"Post VI Iteration {iiter}: Energy {en:2.4e}\n"
     if state.sampling_states is not None:
@@ -63,6 +50,19 @@ def basic_status_print(iiter, samples, state, residual, out_dir=None):
                 msg = str(f.read()) + "\n" + msg
         with open(os.path.join(out_dir, "minisanity"), "w") as f:
             f.write(msg)
+
+
+def _make_callable(obj):
+    if callable(obj) and not isinstance(obj, Likelihood):
+        return obj
+    else:
+        return lambda x: obj
+
+
+def _getitem(cfg, i):
+    if not isinstance(cfg, dict):
+        return cfg(i)
+    return {kk: _getitem(ii, i) for kk, ii in cfg.items()}
 
 
 def _do_resample(cfg, iiter):
@@ -644,7 +644,7 @@ def optimize_kl(
         # Do one sampling and minimization step
         samples, state = opt.update(samples, state)
         # Print basic infos
-        basic_status_print(
+        _optimize_kl_status_print(
             i, samples, state, likelihood.normalized_residual, out_dir=out_dir
         )
         if callback != None:
