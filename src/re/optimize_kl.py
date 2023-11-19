@@ -57,11 +57,11 @@ def basic_status_print(iiter, samples, state, residual, out_dir=None):
     logger.info(msg)
 
     if not out_dir == None:
-        lfile = f"{out_dir}/minisanity"
+        lfile = os.path.join(out_dir, "minisanity")
         if isfile(lfile) and iiter != 0:
             with open(lfile) as f:
                 msg = str(f.read()) + "\n" + msg
-        with open(f"{out_dir}/minisanity", "w") as f:
+        with open(os.path.join(out_dir, "minisanity"), "w") as f:
             f.write(msg)
 
 
@@ -546,7 +546,7 @@ def optimize_kl(
     # Prepare dir and load last iteration
     if not out_dir == None:
         makedirs(out_dir, exist_ok=True)
-    lfile = f"{out_dir}/last_finished_iteration"
+    lfile = os.path.join(out_dir, "last_finished_iteration")
     last_finished_index = -1
     if resume and isfile(lfile):
         with open(lfile) as f:
@@ -576,7 +576,9 @@ def optimize_kl(
                 'name', None
             )
         else:
-            sample_update_kwargs['minimize_kwargs']["cg_kwargs"] = {"name": None}
+            sample_update_kwargs['minimize_kwargs']["cg_kwargs"] = {
+                "name": None
+            }
 
     # Split into state changing inputs and constructor inputs of OptimizeVI
     state_cfg = {
@@ -621,15 +623,12 @@ def optimize_kl(
 
     # Load last finished reconstruction
     if last_finished_index > -1:
-        samples = pickle.load(
-            open(f"{out_dir}/samples_{last_finished_index}.p", "rb")
-        )
-        key = pickle.load(
-            open(f"{out_dir}/rnd_key_{last_finished_index}.p", "rb")
-        )
-        state = pickle.load(
-            open(f"{out_dir}/state_{last_finished_index}.p", "rb")
-        )
+        p = os.path.join(out_dir, f"samples_{last_finished_index}.p")
+        samples = pickle.load(open(p, "rb"))
+        p = os.path.join(out_dir, f"rnd_key_{last_finished_index}.p")
+        key = pickle.load(open(p, "rb"))
+        p = os.path.join(out_dir, f"state_{last_finished_index}.p")
+        state = pickle.load(open(p, "rb"))
         if last_finished_index == total_iterations - 1:
             return samples, state
     else:
@@ -691,10 +690,14 @@ def optimize_kl(
             # TODO: Make this fail safe! Cancelling the run while partially
             # saving the outputs may result in a corrupted state.
             # Save iteration
-            pickle.dump(key, open(f"{out_dir}/rnd_key_{i}.p", "wb"))
-            pickle.dump(samples, open(f"{out_dir}/samples_{i}.p", "wb"))
-            pickle.dump(state, open(f"{out_dir}/state_{i}.p", "wb"))
-            with open(f"{out_dir}/last_finished_iteration", "w") as f:
+            p = os.path.join(out_dir, f"rnd_key_{i}.p")
+            pickle.dump(key, open(p, "wb"))
+            p = os.path.join(out_dir, f"samples_{i}.p")
+            pickle.dump(samples, open(p, "wb"))
+            p = os.path.join(out_dir, f"state_{i}.p")
+            pickle.dump(state, open(p, "wb"))
+            p = os.path.join(out_dir, "last_finished_iteration")
+            with open(p, "w") as f:
                 f.write(str(i))
 
     return samples, state
