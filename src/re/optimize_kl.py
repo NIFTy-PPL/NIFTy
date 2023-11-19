@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# Copyright(C) 2013-2023 Max-Planck-Society
+
 # SPDX-License-Identifier: BSD-2-Clause
 # Authors: Philipp Frank, Jakob Roth
 

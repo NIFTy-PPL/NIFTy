@@ -1,4 +1,3 @@
-# Copyright(C) 2023 Max-Planck-Society
 # SPDX-License-Identifier: GPL-2.0+ OR BSD-2-Clause
 
 import operator
