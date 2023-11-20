@@ -546,13 +546,13 @@ def optimize_kl(
     """
 
     # Prepare dir and load last iteration
+    last_finished_index = -1
     if not out_dir == None:
         makedirs(out_dir, exist_ok=True)
-    lfile = os.path.join(out_dir, "last_finished_iteration")
-    last_finished_index = -1
-    if resume and isfile(lfile):
-        with open(lfile) as f:
-            last_finished_index = int(f.read())
+        lfile = os.path.join(out_dir, "last_finished_iteration")
+        if resume and isfile(lfile):
+            with open(lfile) as f:
+                last_finished_index = int(f.read())
 
     # Setup verbosity level
     if verbosity < 0:
