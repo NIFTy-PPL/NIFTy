@@ -59,3 +59,29 @@ def test_optimize_kl_operator_output():
     assert_array_equal(std, std_fits.T)
     assert_array_equal(mean, mean_hdf5)
     assert_array_equal(std, std_hdf5)
+
+
+def test_optimize_kl_domain_expansion():
+    import numpy as np
+    from tempfile import TemporaryDirectory
+
+    dom = ift.RGSpace(10)
+
+    R1 = ift.ScalingOperator(dom, 2.).ducktape('xi_r1')
+    R2 = ift.ScalingOperator(dom, 3.).ducktape('xi_r2')
+    N = ift.ScalingOperator(dom, 0.1**2, sampling_dtype=np.float64)
+
+    data = R1(ift.from_random(R1.domain)) + N.draw_sample()
+    lh_fn = ift.GaussianEnergy(data=data, inverse_covariance=N.inverse)
+
+    sl = ift.optimize_kl(
+        likelihood_energy=lambda i: lh_fn @ R1 if i == 0 else lh_fn @ (R1 + R2),
+        total_iterations=2,
+        n_samples=0,
+        kl_minimizer=ift.NewtonCG(ift.AbsDeltaEnergyController(0.5, iteration_limit=1, name='Newton')),
+        sampling_iteration_controller=None,
+        nonlinear_sampling_minimizer=None,
+        output_directory=TemporaryDirectory().name,
+        plot_minisanity_history=True,
+    )
+
