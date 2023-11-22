@@ -107,8 +107,24 @@ def matern_amplitude(
         loglogslope: Callable,
         prefix: str = "",
         kind: str = "amplitude",
-        normalized_priors: bool = True,
+        renormalize_amplitude: bool = True,
 ) -> Model:
+    """Constructs a function computing the amplitude of a Matérn-kernel
+    power spectrum.
+
+    See
+    :class:`nifty8.re.correlated_field.CorrelatedFieldMaker.add_fluctuations
+    _matern`
+    for more details on the parameters.
+
+    See also
+    --------
+    `Causal, Bayesian, & non-parametric modeling of the SARS-CoV-2 viral
+    load vs. patient's age`, Guardiani, Matteo and Frank, Kostić Andrija
+    and Edenhofer, Gordian and Roth, Jakob and Uhlmann, Berit and
+    Enßlin, Torsten, `<https://arxiv.org/abs/2105.13483>`_
+    `<https://doi.org/10.1371/journal.pone.0275011>`_
+    """
     totvol = domain.get("position_space_total_volume", 1.)
     mode_lengths = domain["mode_lengths"]
     mode_multiplicity = domain["mode_multiplicity"]
@@ -121,7 +137,6 @@ def matern_amplitude(
     ptree.update(loglogslope.domain)
 
     def correlate(primals: Mapping) -> jnp.ndarray:
-
         scl = scale(primals)
         ctf = cutoff(primals)
         slp = loglogslope(primals)
@@ -134,7 +149,7 @@ def matern_amplitude(
         # zero-mode while taking into account the multiplicity of each mode
 
         norm = 1.
-        if normalized_priors:
+        if renormalize_amplitude:
             norm = jnp.sqrt(jnp.sum(mode_multiplicity[1:] * spectrum[1:] ** 4))
             norm /= jnp.sqrt(totvol)  # Due to integral in harmonic space
         # amplitude = sc * (jnp.sqrt(totvol) / norm) * amplitude
@@ -158,7 +173,7 @@ def non_parametric_amplitude(
     prefix: str = "",
     kind: str = "amplitude",
 ) -> Model:
-    """Constructs an function computing the amplitude of a non-parametric power
+    """Constructs a function computing the amplitude of a non-parametric power
     spectrum
 
     See
@@ -260,8 +275,9 @@ class CorrelatedFieldMaker():
     Creation of the model operator is completed by calling the method
     :func:`finalize`, which returns the configured operator.
 
-    See the methods initialization, :func:`add_fluctuations` and
-    :func:`finalize` for further usage information."""
+    See the method's initialization, :func:`add_fluctuations`,
+    :func:`add_fluctuations_matern` and :func:`finalize` for further
+    usage information."""
     def __init__(self, prefix: str):
         """Instantiate a CorrelatedFieldMaker object.
 
@@ -333,6 +349,12 @@ class CorrelatedFieldMaker():
         harmonic_domain_type : str
             Description of the harmonic partner domain in which the amplitude
             lives
+        non_parametric_kind : str
+            If set to `'amplitude'`, the amplitude spectrum is described
+            by the correlated field model parameters in the above.
+            If set to `'power'`, the power spectrum is described by the
+            correlated field model parameters in the above
+            (by default set to `'amplitude'`).
 
         See also
         --------
@@ -423,8 +445,62 @@ class CorrelatedFieldMaker():
         prefix: str = "",
         harmonic_domain_type: str = "fourier",
         non_parametric_kind: str = "amplitude",
-        normalized_priors: bool = True,
+        renormalize_amplitude: bool = True,
     ):
+        """Adds a Matérn-kernel correlation structure to the
+        field to be made.
+
+        The Matérn-kernel spectrum is parametrized by
+
+        .. math ::
+            A(k) = \\frac{a}{\\left(1 + { \
+                \\left(\\frac{|k|}{b}\\right) \
+            }^2\\right)^{-c/4}}
+
+        where :math:`a` is called the scale parameter, :math:`b`
+        the represents the cutoff mode, and :math:`c` the spectral index
+        of the resulting power spectrum.
+
+        Parameters
+        ----------
+        shape : tuple of int
+            Shape of the position space domain.
+        distances : tuple of float or float
+            Distances in the position space domain.
+        scale : tuple of float (mean, std) or callable
+            Total spectral energy, i.e. amplitude of the fluctuations
+            (by default a priori log-normal distributed).
+        cutoff : tuple of float (mean, std) or callable
+            Power law component exponent
+            (by default a priori normal distributed).
+        loglogslope : tuple of float (mean, std) or callable or None
+            Amplitude of the non-power-law power spectrum component
+            (by default a priori log-normal distributed).
+        prefix : str
+            Prefix of the power spectrum parameter domain names.
+        harmonic_domain_type : str
+            Description of the harmonic partner domain in which the amplitude
+            lives.
+        non_parametric_kind : str
+            If set to `'amplitude'`, the amplitude spectrum is described
+            by the Matérn kernel function in the above.
+            If set to `'power'`, the power spectrum is described by the
+            Matérn kernel function in the above
+            (by default `'amplitude'`).
+        renormalize_amplitude : bool
+            Whether the amplitude of the process should be renormalized to
+            ensure that the `scale` parameter relates to the scale of the
+            fluctuations along the specified axis
+            (by default `True`).
+
+        See also
+        --------
+        `Causal, Bayesian, & non-parametric modeling of the SARS-CoV-2 viral
+        load vs. patient's age`, Guardiani, Matteo and Frank, Kostić Andrija
+        and Edenhofer, Gordian and Roth, Jakob and Uhlmann, Berit and
+        Enßlin, Torsten, `<https://arxiv.org/abs/2105.13483>`_
+        `<https://doi.org/10.1371/journal.pone.0275011>`_
+        """
         shape = (shape, ) if isinstance(shape, int) else tuple(shape)
         distances = tuple(np.broadcast_to(distances, jnp.shape(shape)))
         totvol = jnp.prod(jnp.array(shape) * jnp.array(distances))
@@ -481,7 +557,7 @@ class CorrelatedFieldMaker():
             loglogslope=loglogslope,
             prefix=self._prefix + prefix,
             kind=non_parametric_kind,
-            normalized_priors=normalized_priors,
+            renormalize_amplitude=renormalize_amplitude,
         )
         self._fluctuations.append(ma)
         self._target_subdomains.append(domain)
