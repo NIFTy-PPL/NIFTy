@@ -100,6 +100,55 @@ def _remove_slope(rel_log_mode_dist, x):
     return x - x[-1] * sc
 
 
+def matern_amplitude(
+        domain: Mapping,
+        scale: Callable,
+        cutoff: Callable,
+        loglogslope: Callable,
+        prefix: str = "",
+        kind: str = "amplitude",
+        normalized_priors: bool = True,
+) -> Model:
+    totvol = domain.get("position_space_total_volume", 1.)
+    mode_lengths = domain["mode_lengths"]
+    mode_multiplicity = domain["mode_multiplicity"]
+
+    scale = WrappedCall(scale, name=prefix + "scale")
+    ptree = scale.domain.copy()
+    cutoff = WrappedCall(cutoff, name=prefix + "cutoff")
+    ptree.update(cutoff.domain)
+    loglogslope = WrappedCall(loglogslope, name=prefix + "loglogslope")
+    ptree.update(loglogslope.domain)
+
+    def correlate(primals: Mapping) -> jnp.ndarray:
+
+        scl = scale(primals)
+        ctf = cutoff(primals)
+        slp = loglogslope(primals)
+
+        ln_spectrum = 0.25 * slp * jnp.log1p((mode_lengths/ctf)**2)
+
+        # Take the exp and norm the spectrum
+        spectrum = jnp.exp(ln_spectrum)
+        # Take the sqrt of the integral of the slope w/o fluctuations and
+        # zero-mode while taking into account the multiplicity of each mode
+
+        norm = 1.
+        if normalized_priors:
+            norm = jnp.sqrt(jnp.sum(mode_multiplicity[1:] * spectrum[1:] ** 4))
+            norm /= jnp.sqrt(totvol)  # Due to integral in harmonic space
+        # amplitude = sc * (jnp.sqrt(totvol) / norm) * amplitude
+        spectrum = scl * spectrum / (norm * totvol ** 0.5)
+        spectrum = spectrum.at[0].set(totvol)
+        if kind.lower() == "power":
+            spectrum = jnp.sqrt(spectrum)
+        elif kind.lower() != "amplitude":
+            raise ValueError(f"invalid kind specified {kind!r}")
+        return spectrum
+
+    return Model(correlate, domain=ptree, init=partial(random_like, primals=ptree))
+
+
 def non_parametric_amplitude(
     domain: Mapping,
     fluctuations: Callable,
@@ -363,6 +412,80 @@ class CorrelatedFieldMaker():
         self._fluctuations.append(npa)
         self._target_subdomains.append(domain)
         self._parameter_tree.update(npa.domain)
+
+    def add_fluctuations_matern(
+        self,
+        shape: Union[tuple, int],
+        distances: Union[tuple, float],
+        scale: Union[tuple, Callable],
+        cutoff: Union[tuple, Callable],
+        loglogslope: Union[tuple, Callable],
+        prefix: str = "",
+        harmonic_domain_type: str = "fourier",
+        non_parametric_kind: str = "amplitude",
+        normalized_priors: bool = True,
+    ):
+        shape = (shape, ) if isinstance(shape, int) else tuple(shape)
+        distances = tuple(np.broadcast_to(distances, jnp.shape(shape)))
+        totvol = jnp.prod(jnp.array(shape) * jnp.array(distances))
+
+        # Pre-compute lengths of modes and indices for distributing power
+        # TODO: cache results such that only references are used afterwards
+        domain = {
+            "position_space_shape": shape,
+            "position_space_total_volume": totvol,
+            "position_space_distances": distances,
+            "harmonic_domain_type": harmonic_domain_type.lower()
+        }
+        if harmonic_domain_type.lower() == "fourier":
+            domain["harmonic_space_shape"] = shape
+            m_length_idx, um, m_count = get_fourier_mode_distributor(
+                shape, distances
+            )
+            domain["power_distributor"] = m_length_idx
+            domain["mode_multiplicity"] = m_count
+            domain["mode_lengths"] = um
+
+            # Transform the unique modes to log-space for the amplitude model
+            um = um.at[1:].set(jnp.log(um[1:]))
+            um = um.at[1:].add(-um[1])
+            _safe_assert(um[0] == 0.)
+            domain["relative_log_mode_lengths"] = um
+            log_vol = um[2:] - um[1:-1]
+            _safe_assert(um.shape[0] - 2 == log_vol.shape[0])
+            domain["log_volume"] = log_vol
+        else:
+            ve = f"invalid `harmonic_domain_type` {harmonic_domain_type!r}"
+            raise ValueError(ve)
+
+        if isinstance(scale, (tuple, list)):
+            scale = lognormal_prior(*scale)
+        elif not callable(scale):
+            te = f"invalid `scale` specified; got '{type(scale)}'"
+            raise TypeError(te)
+        if isinstance(cutoff, (tuple, list)):
+            cutoff = lognormal_prior(*cutoff)
+        elif not callable(cutoff):
+            te = f"invalid `cutoff` specified; got '{type(cutoff)}'"
+            raise TypeError(te)
+        if isinstance(loglogslope, (tuple, list)):
+            loglogslope = normal_prior(*loglogslope)
+        elif not callable(loglogslope):
+            te = f"invalid `loglogslope` specified; got '{type(loglogslope)}'"
+            raise TypeError(te)
+
+        ma = matern_amplitude(
+            domain=domain,
+            scale=scale,
+            cutoff=cutoff,
+            loglogslope=loglogslope,
+            prefix=self._prefix + prefix,
+            kind=non_parametric_kind,
+            normalized_priors=normalized_priors,
+        )
+        self._fluctuations.append(ma)
+        self._target_subdomains.append(domain)
+        self._parameter_tree.update(ma.domain)
 
     def set_amplitude_total_offset(
         self, offset_mean: float, offset_std: Union[tuple, Callable]
