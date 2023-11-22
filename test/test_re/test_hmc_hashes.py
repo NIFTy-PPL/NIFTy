@@ -1,14 +1,14 @@
 import sys
 
 import pytest
+
 pytest.importorskip("jax")
 
+import jax
 from jax import numpy as jnp
-from jax.config import config as jax_config
 from numpy import ndarray
 
 import nifty8.re as jft
-
 
 NDARRAY_TYPE = [ndarray]
 
@@ -63,7 +63,7 @@ def test_hmc_hash():
 
 def test_nuts_hash():
     """Test sapmler output against known hash from previous commits."""
-    jax_config.update("jax_enable_x64", False)
+    jax.config.update("jax_enable_x64", False)
 
     x0 = jnp.array([0.1, 1.223], dtype=jnp.float32)
     sampler = jft.NUTSChain(
@@ -85,7 +85,7 @@ def test_nuts_hash():
     old_hash = "8043850d7249acb77b26"
     assert results_hash == old_hash
 
-    jax_config.update("jax_enable_x64", True)
+    jax.config.update("jax_enable_x64", True)
 
 
 if __name__ == "__main__":

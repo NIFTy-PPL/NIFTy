@@ -4,14 +4,14 @@
 # SPDX-License-Identifier: GPL-2.0+ OR BSD-2-Clause
 
 # %%
+import jax
 import matplotlib.pyplot as plt
 from jax import numpy as jnp
 from jax import random
-from jax.config import config
 
 import nifty8.re as jft
 
-config.update("jax_enable_x64", True)
+jax.config.update("jax_enable_x64", True)
 
 seed = 42
 key = random.PRNGKey(seed)
