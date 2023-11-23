@@ -34,13 +34,14 @@ def _optimize_kl_status_print(iiter, samples, state, residual, out_dir=None):
     if state.sampling_states is not None:
         niter = tuple(ss.nit for ss in state.sampling_states)
         msg += f"Nonlinear sampling total iterations: {niter}\n"
-    msg += f"KL-Minimization total iteration: {state.minimization_state.nit}\n"
-    _, minis = minisanity(samples.pos, samples, residual)
-    msg += "Likelihood residual(s):\n"
-    msg += minis + "\n"
-    _, minis = minisanity(samples.pos, samples)
-    msg += "Prior residual(s):\n"
-    msg += minis + "\n"
+    _, minis_r = minisanity(samples.pos, samples, residual)
+    _, mini_pr = minisanity(samples.pos, samples)
+    msg += (
+        f"KL-Minimization total iteration: {state.minimization_state.nit}"
+        f"\nLikelihood residual(s):\n{minis_r}"
+        f"\nPrior residual(s):\n{mini_pr}"
+        f"\n"
+    )
     logger.info(msg)
 
     if not out_dir == None:
