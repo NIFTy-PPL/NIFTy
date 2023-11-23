@@ -95,43 +95,53 @@ def update_state(state, cfg, iiter):
     return state
 
 
-def kl_vg_and_metric(
+_reduce = partial(tree_map, partial(jnp.mean, axis=0))
+
+
+def _kl_vg(
     likelihood,
+    primals,
+    primals_samples,
+    *,
     map=jax.vmap,
-    reduce=partial(tree_map, partial(jnp.mean, axis=0)),
-    jit: Union[Callable, bool] = True
+    reduce=_reduce,
 ):
-    jit = _parse_jit(jit)
     map = get_map(map)
 
-    def _ham_vg(primals, primals_samples):
-        assert isinstance(primals_samples, Samples)
-        ham = StandardHamiltonian(likelihood=likelihood)
-        vvg = map(jax.value_and_grad(ham))
-        s = vvg(primals_samples.at(primals).samples)
-        return reduce(s)
+    assert isinstance(primals_samples, Samples)
+    ham = StandardHamiltonian(likelihood=likelihood)
+    vvg = map(jax.value_and_grad(ham))
+    s = vvg(primals_samples.at(primals).samples)
+    return reduce(s)
 
-    def _ham_metric(primals, tangents, primals_samples):
-        assert isinstance(primals_samples, Samples)
-        ham = StandardHamiltonian(likelihood=likelihood)
-        vmet = map(ham.metric, in_axes=(0, None))
-        s = vmet(primals_samples.at(primals).samples, tangents)
-        return reduce(s)
 
-    return jit(_ham_vg), jit(_ham_metric)
+def _kl_metric(
+    likelihood,
+    primals,
+    tangents,
+    primals_samples,
+    *,
+    map=jax.vmap,
+    reduce=_reduce
+):
+    map = get_map(map)
+
+    assert isinstance(primals_samples, Samples)
+    ham = StandardHamiltonian(likelihood=likelihood)
+    vmet = map(ham.metric, in_axes=(0, None))
+    s = vmet(primals_samples.at(primals).samples, tangents)
+    return reduce(s)
 
 
 def kl_solver(
     likelihood,
     map=jax.vmap,
-    reduce=partial(tree_map, partial(jnp.mean, axis=0)),
+    reduce=_reduce,
     jit: Union[Callable, bool] = True
 ):
     jit = _parse_jit(jit)
-    kl_vg, kl_metric = kl_vg_and_metric(
-        likelihood, map=map, reduce=reduce, jit=jit
-    )
-    map = get_map(map)
+    kl_vg = jit(partial(_kl_vg, likelihood, map=map, reduce=reduce))
+    kl_metric = jit(partial(_kl_metric, likelihood, map=map, reduce=reduce))
 
     def _minimize_kl(samples, method='newtoncg', method_options={}):
         options = {
