@@ -3,6 +3,7 @@
 from . import structured_kernel_interpolation
 from .conjugate_gradient import cg, static_cg
 from .correlated_field import CorrelatedFieldMaker, non_parametric_amplitude
+from .custom_map import lmap, smap
 from .evi import Samples
 from .hmc import generate_hmc_acc_rej, generate_nuts_tree
 from .hmc_oo import HMCChain, NUTSChain
@@ -29,5 +30,4 @@ from .prior import (
 from .refine.chart import CoordinateChart, HEALPixChart
 from .refine.charted_field import RefinementField
 from .refine.healpix_field import RefinementHPField
-from .smap import lmap, smap
 from .tree_math import *

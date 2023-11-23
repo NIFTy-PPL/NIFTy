@@ -16,13 +16,13 @@ from jax import numpy as jnp
 from jax import tree_map
 
 from . import conjugate_gradient
-from .optimize import minimize, OptimizeResults
 from .evi import Samples, _parse_jit, curve_sampler, linear_residual_sampler
 from .likelihood import Likelihood, StandardHamiltonian
 from .logger import logger
 from .misc import minisanity
+from .optimize import OptimizeResults, minimize
+from .custom_map import smap
 from .tree_math import get_map
-from .smap import smap
 from .tree_math.vector import Vector
 
 P = TypeVar("P")
