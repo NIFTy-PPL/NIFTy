@@ -17,14 +17,15 @@ def f(u, v):
     return jnp.exp(u @ v)
 
 
+@pmp("map", (jft.smap, jft.lmap))
 @pmp("in_axes", ((0, None), (1, None), (None, 0), (0, 0), (1, 1)))
 @pmp("out_axes", (0, ))
-def test_smap_f(in_axes, out_axes):
+def test_smap_f(map, in_axes, out_axes):
     fixed_shp = 3
     batched_shp = 4
 
     vf = jax.vmap(f, in_axes=in_axes, out_axes=out_axes)
-    sf = jft.smap(f, in_axes=in_axes, out_axes=out_axes)
+    sf = map(f, in_axes=in_axes, out_axes=out_axes)
     inp = []
     for i in in_axes:
         if i is None:
@@ -42,13 +43,14 @@ def g(u, v):
     return u, jnp.exp(u @ v)
 
 
+@pmp("map", (jft.smap, jft.lmap))
 @pmp("in_axes,out_axes", (((0, None), (0, 0)), ((None, 1), (None, 0))))
-def test_smap_g(in_axes, out_axes):
+def test_smap_g(map, in_axes, out_axes):
     fixed_shp = 3
     batched_shp = 4
 
     vf = jax.vmap(g, in_axes=in_axes, out_axes=out_axes)
-    sf = jft.smap(g, in_axes=in_axes, out_axes=out_axes)
+    sf = map(g, in_axes=in_axes, out_axes=out_axes)
     inp = []
     for i in in_axes:
         if i is None:

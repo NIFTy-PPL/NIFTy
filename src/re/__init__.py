@@ -3,9 +3,9 @@
 from . import structured_kernel_interpolation
 from .conjugate_gradient import cg, static_cg
 from .correlated_field import CorrelatedFieldMaker, non_parametric_amplitude
+from .evi import Samples
 from .hmc import generate_hmc_acc_rej, generate_nuts_tree
 from .hmc_oo import HMCChain, NUTSChain
-from .evi import Samples
 from .likelihood import (
     Likelihood, StandardHamiltonian, partial_insert_and_remove
 )
@@ -29,5 +29,5 @@ from .prior import (
 from .refine.chart import CoordinateChart, HEALPixChart
 from .refine.charted_field import RefinementField
 from .refine.healpix_field import RefinementHPField
-from .smap import smap
+from .smap import lmap, smap
 from .tree_math import *

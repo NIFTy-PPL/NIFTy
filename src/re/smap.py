@@ -20,11 +20,7 @@ def _fun_reord(_, mapped, *, fun, unmapped, unflatten, in_axes):
     return None, y
 
 
-# The function over which to `scan` depends on the data. This leads to
-# unnecessary recompiles. Ensure scan is compiled only once by compiling the
-# whole data dependence.
-@partial(jax.jit, static_argnames=("fun", "in_axes", "out_axes", "unroll"))
-def _smap(fun, in_axes, out_axes, unroll, *x, **k):
+def _generic_smap(fun, in_axes, out_axes, unroll, *x, _scan=lax.scan, **k):
     from jax.tree_util import tree_flatten, tree_map, tree_unflatten
 
     if k:
@@ -66,7 +62,7 @@ def _smap(fun, in_axes, out_axes, unroll, *x, **k):
         unflatten=partial(tree_unflatten, x_td),
         in_axes=in_axes
     )
-    _, y = lax.scan(fun_reord, None, mapped, unroll=unroll)
+    _, y = _scan(fun_reord, None, mapped, unroll=unroll)
 
     if isinstance(out_axes, int):
         out_axes = tree_map(lambda _: out_axes, y)
@@ -90,6 +86,15 @@ def _smap(fun, in_axes, out_axes, unroll, *x, **k):
     return tree_unflatten(y_td, out)
 
 
+# The function over which to `scan` depends on the data. This leads to
+# unnecessary recompiles. Ensure scan is compiled only once by compiling the
+# whole data dependence.
+_smap = jax.jit(
+    _generic_smap,
+    static_argnames=("fun", "in_axes", "out_axes", "unroll", "_scan")
+)
+
+
 def smap(fun, in_axes=0, out_axes=0, *, unroll=1):
     """Stupid/sequential map.
 
@@ -108,3 +113,36 @@ def smap(fun, in_axes=0, out_axes=0, *, unroll=1):
     semantics of `unroll` see `jax.lax.scan`.
     """
     return partial(_smap, fun, in_axes, out_axes, unroll)
+
+
+@partial(jax.jit, donate_argnames=("x", ))
+def _unsafe_index_update_inplace(x, idx, y):
+    return x.at[idx].set(y)
+
+
+def _lscan(f, init, xs, length=None, unroll=1):
+    if unroll != 1:
+        raise NotImplementedError()
+
+    if xs is None:
+        xs = [None] * length
+    carry = init
+    ys = None
+    length = jax.tree_util.tree_leaves(
+        xs
+    )[0].shape[0] if length is None else length
+    for i in range(length):
+        x = jax.tree_map(lambda x: x[i], xs)
+        carry, y = f(carry, x)
+        if ys is None:
+            ys = jax.tree_map(
+                lambda x: jnp.empty_like(x, shape=(length, ) + x.shape), y
+            )
+        ys = jax.tree_map(
+            lambda ys, y: _unsafe_index_update_inplace(ys, i, y), ys, y
+        )
+    return carry, ys
+
+
+def lmap(fun, in_axes=0, out_axes=0):
+    return partial(_generic_smap, fun, in_axes, out_axes, 1, _scan=_lscan)
