@@ -20,6 +20,13 @@ def _fun_reord(_, mapped, *, fun, unmapped, unflatten, in_axes):
     return None, y
 
 
+def _swap(a, axis1, axis2):
+    # Ensure that arrays are never completely unnecessarily copied
+    if axis1 == axis2:
+        return a
+    return jnp.swapaxes(a, axis1, axis2)
+
+
 def _generic_smap(fun, in_axes, out_axes, unroll, *x, _scan=lax.scan, **k):
     from jax.tree_util import tree_flatten, tree_map, tree_unflatten
 
@@ -51,7 +58,7 @@ def _generic_smap(fun, in_axes, out_axes, unroll, *x, _scan=lax.scan, **k):
         if i is None:
             unmapped.append(el)
         elif isinstance(i, int):
-            mapped.append(jnp.swapaxes(el, 0, i) if i != 0 else el)
+            mapped.append(_swap(el, 0, i) if i != 0 else el)
         else:
             raise TypeError(f"expected `in_axes` index of type int; got {i!r}")
 
@@ -79,7 +86,7 @@ def _generic_smap(fun, in_axes, out_axes, unroll, *x, _scan=lax.scan, **k):
         if i is None:
             out.append(unmapped.pop(0))
         elif isinstance(i, int):
-            out.append(jnp.swapaxes(el, 0, i) if i != 0 else el)
+            out.append(_swap(el, 0, i) if i != 0 else el)
         else:
             raise TypeError(f"expected `out_axes` index of type int; got {i!r}")
 
