@@ -657,7 +657,7 @@ def optimize_kl(
                 # Update keys
                 keys = jax.random.split(
                     key,
-                    _getitem(state_cfg['n_samples'], 0) + 1
+                    _getitem(state_cfg['n_samples'], i + 1) + 1
                 )
                 key = keys[0]
                 state = state._replace(keys=keys[1:])
