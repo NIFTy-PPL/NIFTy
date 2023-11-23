@@ -83,7 +83,7 @@ def sample_likelihood(likelihood: Likelihood, primals, key):
 
 def draw_linear_residual(
     likelihood: Likelihood,
-    primals,
+    primals: P,
     key,
     *,
     from_inverse: bool = True,
@@ -92,7 +92,7 @@ def draw_linear_residual(
     cg_name: Optional[str] = None,
     cg_kwargs: Optional[dict] = None,
     _raise_nonposdef: bool = False,
-):
+) -> P:
     assert_arithmetics(primals)
 
     if not isinstance(likelihood, Likelihood):
@@ -206,7 +206,7 @@ def _curve_residual_functions(
 
 def curve_residual(
     likelihood=None,
-    primals=None,
+    primals: P=None,
     sample=None,
     *,
     point_estimates=(),
@@ -216,7 +216,7 @@ def curve_residual(
     jit: Union[Callable, bool] = True,
     _curve_funcs=None,
     _raise_notconverged=False,
-):
+) -> P:
     jit = _parse_jit(jit)
     if _curve_funcs is None:
         trafo, rag, metric, sampnorm = _curve_residual_functions(
