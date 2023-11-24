@@ -122,7 +122,7 @@ def smap(fun, in_axes=0, out_axes=0, *, unroll=1):
     return partial(_smap, fun, in_axes, out_axes, unroll)
 
 
-@partial(jax.jit, donate_argnames=("x", "y"))
+@partial(jax.jit, donate_argnames=("x", ))
 def _unsafe_index_update_inplace(x, idx, y):
     return x.at[idx].set(y)
 
