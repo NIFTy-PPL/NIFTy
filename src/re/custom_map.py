@@ -137,6 +137,8 @@ def _lscan(f, init, xs, length=None, unroll=1):
     carry = init
     ys = None
     first_leave = jax.tree_util.tree_leaves(xs)[0]
+    like_device = first_leave.device(
+    ) if hasattr(first_leave, "device") else None
     length = first_leave.shape[0] if length is None else length
     for i in range(length):
         carry, y = f(carry, jax.tree_map(lambda x: x[i], xs))
@@ -144,7 +146,7 @@ def _lscan(f, init, xs, length=None, unroll=1):
             # NOTE, `empty_like` will always allocate on the primary device even
             # if `y` is on a different device. Forcefully allocate on the same
             # device as `y`.
-            with jax.default_device(first_leave.device()):
+            with jax.default_device(like_device):
                 ys = jax.tree_map(
                     lambda x: jnp.
                     empty_like(x, shape=(length, ) + jnp.shape(x)), y
