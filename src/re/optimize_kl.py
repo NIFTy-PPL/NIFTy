@@ -10,7 +10,7 @@ from functools import partial, reduce
 from os import makedirs
 from os.path import isfile
 from typing import (
-    Any, Callable, List, Literal, NamedTuple, Optional, Tuple, TypeVar, Union
+    Any, Callable, Literal, NamedTuple, Optional, Tuple, TypeVar, Union
 )
 
 import jax
@@ -88,7 +88,7 @@ def _kl_met(
     return reduce(s)
 
 
-class OptimizeEVIState(NamedTuple):
+class OptimizeVIState(NamedTuple):
     nit: int
     key: Array
     samples: Samples
@@ -99,20 +99,17 @@ class OptimizeEVIState(NamedTuple):
     ]
     sample_state: Optional[optimize.OptimizeResults]
     minimization_state: Optional[optimize.OptimizeResults]
-    kwargs: dict[str, Callable[[int], dict]]
+    config: dict[str, Union[dict, Callable[[int], Any]]]
 
 
-def _make_callable(x, always=False):
-    if callable(x) and not always:
-        return x
-
-    def just_return_x(_):
-        return x
-
-    return just_return_x
+def _getitem_at_nit(config, key, nit):
+    c = config[key]
+    if callable(c) and len(inspect.getfullargspec(c).args) == 1:
+        return c(nit)
+    return c
 
 
-class OptimizeEVI:
+class OptimizeVI:
     def __init__(
         self,
         likelihood: Likelihood,
@@ -357,9 +354,10 @@ class OptimizeEVI:
 
     def init_state(
         self,
-        nit,
         key,
         *,
+        nit=0,
+        pos,
         n_samples,
         draw_linear_samples=dict(cg_name="SL", cg_kwargs=dict()),
         curve_samples=dict(minimize_kwargs=dict(name="SN")),
@@ -371,75 +369,84 @@ class OptimizeEVI:
         samples=None,
         sample_keys=None,
         sample_instruction="resample_geovi",
-        _kwargs=None
+        _config=None
     ):
-        if _kwargs is None:
-            if len(inspect.getfullargspec(minimize)) != 1:
-                # Minimize is a minimizer and not a callable to retrieve a
-                # minimizer. Transform it into the latter.
-                minimize = _make_callable(minimize, always=True)
-            _kwargs = {
-                "n_samples": _make_callable(n_samples),
-                "draw_linear_samples": _make_callable(draw_linear_samples),
-                "curve_samples": _make_callable(curve_samples),
+        if _config is None:
+            _config = {
+                "n_samples": n_samples,
+                "draw_linear_samples": draw_linear_samples,
+                "curve_samples": curve_samples,
                 "minimize": minimize,
-                "minimize_kwargs": _make_callable(minimize_kwargs),
+                "minimize_kwargs": minimize_kwargs,
             }
-        state = OptimizeEVIState(
+        samples = Samples(pos=pos,
+                          samples=None) if samples is None else samples.at(pos)
+        sample_instruction = sample_instruction
+        state = OptimizeVIState(
             nit,
             key,
             samples=samples,
             sample_keys=sample_keys,
-            sample_instruction=_make_callable(sample_instruction),
-            kwargs=_kwargs
+            sample_instruction=sample_instruction,
+            config=_config
         )
         return state
 
-    def update(self, params, /, state: OptimizeEVIState, kwargs=None):
+    def update(
+        self,
+        pos: P,
+        state: OptimizeVIState,
+        /,
+        **kwargs,
+    ) -> tuple[P, OptimizeVIState]:
         """One sampling and kl optimization step."""
         assert isinstance(samples, Samples)
-        assert isinstance(state, OptimizeEVIState)
+        assert isinstance(state, OptimizeVIState)
         nit = state.nit + 1
         key = state.key
         k_smpls = state.sample_keys
         st_smpls = state.sample_state
-        samples = state.samples.at(params)
-        kwargs = {
-            k: _make_callable(v)
-            for k, v in kwargs
-        } if kwargs is not None else state.kwargs
+        samples = state.samples.at(pos)
+        # Remove reference as to be able to clear before resampling
+        samples = samples._replace(samples=None)
+        config = state.config
 
         smpls_do = state.sample_instruction
         smpls_do = smpls_do(nit) if callable(smpls_do) else smpls_do
         if smpls_do.lower().startswith("resample"):
-            n_samples = kwargs["n_samples"](nit)
+            n_samples = _getitem_at_nit(config, "n_samples", nit)
             key, *k_smpls = random.split(key, n_samples + 1)
             k_smpls = jnp.array(k_smpls)
-            kw = kwargs["draw_linear_samples"](nit)
+            kw = _getitem_at_nit(config, "draw_linear_samples", nit)
+            samples = None  # Remove (hopefully last) reference to free space
             samples, st_smpls = self.draw_linear_samples(
-                samples.pos, k_smpls, **kw
+                samples.pos, k_smpls, **kw, **kwargs
             )
             if smpls_do.lower() == "resample_geovi":
-                kw = kwargs["curve_samples"](nit)
-                samples, st_smpls = self.curve_samples(samples, k_smpls, **kw)
+                kw = _getitem_at_nit(config, "curve_samples", nit)
+                samples, st_smpls = self.curve_samples(
+                    samples, k_smpls, **kw, **kwargs
+                )
             elif smpls_do.lower() == "resample_mgvi":
                 ve = f"invalid resampling instruction {smpls_do}"
                 raise ValueError(ve)
         elif smpls_do.lower() == "curve":
-            kw = kwargs["curve_samples"](nit)
-            samples, st_smpls = self.curve_samples(samples, k_smpls, **kw)
+            kw = _getitem_at_nit(config, "curve_samples", nit)
+            samples, st_smpls = self.curve_samples(
+                samples, k_smpls, **kw, **kwargs
+            )
         elif smpls_do is None:
             ve = f"invalid resampling instruction {smpls_do}"
             raise ValueError(ve)
 
-        minimize = kwargs["minimize"](nit)
+        minimize = _getitem_at_nit(config, "minimize", nit)
         kw = {
             "fun_and_grad":
                 partial(self.kl_value_and_grad, primals_samples=samples),
             "hessp":
                 partial(self.kl_metric, primals_samples=samples),
         }
-        kw |= kwargs["minimize_kwargs"](nit)
+        kw |= _getitem_at_nit(config, "minimize_kwargs", nit)
         kl_opt_state = minimize(None, x0=samples.pos, **kw)
         samples = samples.at(kl_opt_state.x)
         # Remove unnecessary references
@@ -455,7 +462,7 @@ class OptimizeEVI:
             sample_state=st_smpls,
             minimization_state=kl_opt_state,
         )
-        return samples, state
+        return samples.pos, state
 
     def run(self, keys, samples=None, primals=None):
         """`n_total_iterations` consecutive steps of `update`."""
@@ -497,7 +504,6 @@ def optimize_kl(
     resume=False,
     verbosity=0,
     _vi_callables: Union[None, Tuple[Callable], Callable] = None,
-    _update_state: Callable = update_state
 ):
     """Interface for KL minimization similar to NIFTy optimize_kl.
 
