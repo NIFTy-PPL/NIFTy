@@ -95,13 +95,15 @@ def concatenate_zip(*arrays):
     )
 
 
-_smpl_do_typ = Literal[None, "resample_mgvi", "resample_geovi", "curve"]
+SMPL_DO_TYP = Literal[None, "resample_mgvi", "resample_geovi", "curve"]
+SMPL_DO_GEN_TYP = Union[SMPL_DO_TYP, Callable[[int], SMPL_DO_TYP]]
+DICT_OR_CALL4DICT_TYP = Union[Callable[[int], dict], dict]
 
 
 class OptimizeVIState(NamedTuple):
     nit: int
     key: Any
-    sample_instruction: Union[_smpl_do_typ, Callable[[int], _smpl_do_typ]]
+    sample_instruction: SMPL_DO_GEN_TYP
     sample_state: Optional[optimize.OptimizeResults]
     minimization_state: Optional[optimize.OptimizeResults]
     config: dict[str, Union[dict, Callable[[int], Any]]]
@@ -115,6 +117,54 @@ def _getitem_at_nit(config, key, nit):
 
 
 class OptimizeVI:
+    """State-less assembly of all methods needed for an MGVI/geoVI style VI
+    approximation.
+
+    Builds functions for a VI approximation via variants of the `Geometric
+    Variational Inference` and/or `Metric Gaussian Variational Inference`
+    algorithms. They produce approximate posterior samples that are used for KL
+    estimation internally and the final set of samples are the approximation of
+    the posterior. The samples can be linear, i.e. following a standard normal
+    distribution in model space, or non-linear, i.e. following a standard normal
+    distribution in the canonical coordinate system of the Riemannian manifold
+    associated with the metric of the approximate posterior distribution. The
+    coordinate transformation for the non-linear sample is approximated by an
+    expansion.
+
+    Both linear and non-linear sample start by drawing a sample from the
+    inverse metric. To do so, we draw a sample which has the metric as
+    covariance structure and apply the inverse metric to it. The sample
+    transformed in this way has the inverse metric as covariance. The first
+    part is trivial since we can use the left square root of the metric
+    :math:`L` associated with every likelihood:
+    .. math::
+        \tilde{d} \leftarrow \mathcal{G}(0,\mathbb{1}) \\
+        t = L \tilde{d}
+    with :math:`t` now having a covariance structure of
+    .. math::
+        <t t^\dagger> = L <\tilde{d} \tilde{d}^\dagger> L^\dagger = M .
+
+    To transform the sample to an inverse sample, we apply the inverse
+    metric. We can do so using the conjugate gradient algorithm (CG). The CG
+    algorithm yields the solution to :math:`M s = t`, i.e. applies the
+    inverse of :math:`M` to :math:`t`:
+    .. math::
+        M &s =  t \\
+        &s = M^{-1} t = cg(M, t) .
+    The linear sample is :math:`s`.
+
+    The non-linear sampling uses :math:`s` as a starting value and curves it in
+    a non-linear way as to better resemble the posterior locally. See the below
+    reference literature for more details on the non-linear sampling.
+
+    See also
+    --------
+    `Geometric Variational Inference`, Philipp Frank, Reimar Leike,
+    Torsten A. Enßlin, `<https://arxiv.org/abs/2105.10470>`_
+    `<https://doi.org/10.3390/e23070853>`_
+    `Metric Gaussian Variational Inference`, Jakob Knollmüller,
+    Torsten A. Enßlin, `<https://arxiv.org/abs/1901.11033>`_
+    """
     def __init__(
         self,
         likelihood: Likelihood,
@@ -138,23 +188,33 @@ class OptimizeVI:
         samples.
 
         Parameters:
-        -----------
-        n_iter: int
+        ----------
+        likelihood: :class:`~nifty8.re.likelihood.Likelihood`
+            Likelihood to be used for inference.
+        n_total_iterations: int
             Total number of iterations. One iteration consists of the steps
             1) - 3).
-        kl_solver: Callable
-            Solver that minimizes the KL w.r.t. the mean of the samples.
-        sample_generator: Callable
-            Function to generate new samples.
-        sample_update: Callable
-            Function to update existing samples.
-        kl_solver_kwargs: dict
-            Optional keyword arguments to be passed on to `kl_solver`. They are
-            added to the optimizers state and passed on at each `update` step.
-        sample_generator_kwargs: dict
-            Optional keyword arguments to be passed on to `sample_generator`.
-        sample_update_kwargs: dict
-            Optional keyword arguments to be passed on to `sample_update`.
+        point_estimates: tree-like structure or tuple of str
+            Pytree of same structure as likelihood input but with boolean
+            leaves indicating whether to sample the value in the input or use
+            it as a point estimate. As a convenience method, for dict-like
+            inputs, a tuple of strings is also valid. From these the boolean
+            indicator pytree is automatically constructed.
+        constants: tree-like structure or tuple of str
+            Not implemented yet, sorry :( Do bug me (Gordian) at
+            edh@mpa-garching.mpg.de if you wanted to run with this option.
+        kl_jit: bool or callable
+            Whether to jit the KL minimization.
+        residual_jit: bool or callable
+            Whether to jit the residual sampling functions.
+        kl_map: callable or str
+            Map function used for the KL minimization.
+        residual_map: callable or str
+            Map function used for the residual sampling functions.
+        kl_reduce: callable
+            Reduce function used for the KL minimization.
+        mirror_samples: bool
+            Whether to mirror the samples or not.
 
         Notes:
         ------
@@ -169,82 +229,6 @@ class OptimizeVI:
         Step 1) and 2) may be skipped depending on the minimizers state, but
         step 3) is always performed at the end of one iteration. A full loop
         consists of repeatedly iterating over the steps 1) - 3).
-
-        The functions `kl_solver`, `sample_generator`, and `sample_update` all
-        share the same syntax: They must take two inputs, samples and keys,
-        where keys are the jax.random keys that are used for the samples.
-        Additionally they each can take respective keyword arguments. These
-        are passed on at runtime and stored in the optimizers state. All
-        functions must return samples, as an instance of `Samples`
-
-        TODO:
-        MGVI/geoVI interface that creates the input functions of `OptimizeVI`
-        from a `Likelihood`.
-        Builds functions for a VI approximation via variants of the `Geometric
-        Variational Inference` and/or `Metric Gaussian Variational Inference`
-        algorithms. They produce approximate posterior samples that are used for KL
-        estimation internally and the final set of samples are the approximation of
-        the posterior. The samples can be linear, i.e. following a standard normal
-        distribution in model space, or non-linear, i.e. following a standard normal
-        distribution in the canonical coordinate system of the Riemannian manifold
-        associated with the metric of the approximate posterior distribution. The
-        coordinate transformation for the non-linear sample is approximated by an
-        expansion.
-        Both linear and non-linear sample start by drawing a sample from the
-        inverse metric. To do so, we draw a sample which has the metric as
-        covariance structure and apply the inverse metric to it. The sample
-        transformed in this way has the inverse metric as covariance. The first
-        part is trivial since we can use the left square root of the metric
-        :math:`L` associated with every likelihood:
-        .. math::
-            \tilde{d} \leftarrow \mathcal{G}(0,\mathbb{1}) \\
-            t = L \tilde{d}
-        with :math:`t` now having a covariance structure of
-        .. math::
-            <t t^\dagger> = L <\tilde{d} \tilde{d}^\dagger> L^\dagger = M .
-        To transform the sample to an inverse sample, we apply the inverse
-        metric. We can do so using the conjugate gradient algorithm (CG). The CG
-        algorithm yields the solution to :math:`M s = t`, i.e. applies the
-        inverse of :math:`M` to :math:`t`:
-        .. math::
-            M &s =  t \\
-            &s = M^{-1} t = cg(M, t) .
-        The linear sample is :math:`s`. The non-linear sample uses :math:`s` as
-        a starting value and curves it in a non-linear way as to better resemble
-        the posterior locally. See the below reference literature for more
-        details on the non-linear sampling.
-
-        Parameters
-        ----------
-        likelihood : :class:`nifty8.re.likelihood.Likelihood`
-            Likelihood to be used for inference.
-        n_iter : int
-            Number of iterations.
-        point_estimates : tree-like structure or tuple of str
-            Pytree of same structure as likelihood input but with boolean leaves
-            indicating whether to sample the value in the input or use it as a
-            point estimate. As a convenience method, for dict-like inputs, a
-            tuple of strings is also valid. From these the boolean indicator
-            pytree is automatically constructed.
-        kl_kwargs: dict
-            Keyword arguments passed on to `kl_solver`. Can be used to specify the
-            jit and map behavior of the function being constructed.
-        linear_sampling_kwargs: dict
-            Keyword arguments passed on to `linear_residual_sampler`. Includes
-            the cg config used for linear sampling and its jit/map configuration.
-        curve_kwargs: dict
-            Keyword arguments passed on to `curve_sampler`. Can be used to specify
-            the jit and map behavior of the function being constructed.
-        _raise_notconverged: bool
-            Whether to raise inversion & minimization errors during sampling.
-            Default is False.
-        See also
-        --------
-        `Geometric Variational Inference`, Philipp Frank, Reimar Leike,
-        Torsten A. Enßlin, `<https://arxiv.org/abs/2105.10470>`_
-        `<https://doi.org/10.3390/e23070853>`_
-        `Metric Gaussian Variational Inference`, Jakob Knollmüller,
-        Torsten A. Enßlin, `<https://arxiv.org/abs/1901.11033>`_
         """
         kl_jit = _parse_jit(kl_jit)
         residual_jit = _parse_jit(residual_jit)
@@ -365,18 +349,47 @@ class OptimizeVI:
         key,
         *,
         nit=0,
-        n_samples,
-        draw_linear_samples=dict(cg_name="SL", cg_kwargs=dict()),
-        curve_samples=dict(
+        n_samples: Union[int, Callable[[int], int]],
+        draw_linear_samples: DICT_OR_CALL4DICT_TYP = dict(
+            cg_name="SL", cg_kwargs=dict()
+        ),
+        curve_samples: DICT_OR_CALL4DICT_TYP = dict(
             minimize_kwargs=dict(name="SN", cg_kwargs=dict(name="SNCG"))
         ),
         minimize: Callable[
             ...,
             optimize.OptimizeResults,
         ] = optimize._newton_cg,
-        minimize_kwargs=dict(name="M", cg_kwargs=dict(name="MCG")),
-        sample_instruction="resample_geovi",
+        minimize_kwargs: DICT_OR_CALL4DICT_TYP = dict(
+            name="M", cg_kwargs=dict(name="MCG")
+        ),
+        sample_instruction: SMPL_DO_GEN_TYP = "resample_geovi",
     ) -> OptimizeVIState:
+        """Initialize the state of the (otherwise state-less) VI approximation.
+
+        Parameters
+        ----------
+        key : jax random number generataion key
+        nit : int
+            Current iteration number.
+        n_samples : int or callable
+            Number of samples to draw.
+        draw_linear_samples : dict or callable
+            Configuration for drawing linear samples, see
+            :func:`draw_linear_residual`.
+        curve_samples : dict or callable
+            Configuration for curving samples, see :func:`curve_residual`.
+        minimize : callable
+            Minimizer to use for the KL minimization.
+        minimize_kwargs : dict or callable
+            Keyword arguments for the minimizer.
+        sample_instruction : str or callable
+            One in {"resample_mgvi", "resample_geovi", "curve"}.
+
+        Most of the parameters can be callable, in which case they are called
+        with the current iteration number as argument and should return the
+        value to use for the current iteration.
+        """
         config = {
             "n_samples": n_samples,
             "draw_linear_samples": draw_linear_samples,
@@ -402,7 +415,17 @@ class OptimizeVI:
         /,
         **kwargs,
     ) -> tuple[Samples, OptimizeVIState]:
-        """One sampling and kl optimization step."""
+        """Moves the VI approximation one sample update and minimization forward.
+
+        Parameters
+        ----------
+        samples : :class:`Samples`
+            Current samples.
+        state : :class:`OptimizeVIState`
+            Current state of the VI approximation.
+        kwargs : dict
+            Keyword arguments passed to the residual sampling functions.
+        """
         assert isinstance(samples, Samples)
         assert isinstance(state, OptimizeVIState)
         nit = state.nit + 1
@@ -492,93 +515,31 @@ def optimize_kl(
         optimize.OptimizeResults,
     ] = optimize._newton_cg,
     minimize_kwargs=dict(name="M", cg_kwargs=dict(name="MCG")),
-    sample_instruction="resample_geovi",
+    sample_instruction: SMPL_DO_GEN_TYP = "resample_geovi",
     resume: Union[str, bool] = False,
     callback: Optional[Callable[[Samples, OptimizeVIState], None]] = None,
-    odir=None,
+    odir: Optional[str] = None,
     _optimize_vi=None,
     _optimize_vi_state=None,
 ) -> tuple[Samples, OptimizeVIState]:
-    """Interface for KL minimization similar to NIFTy optimize_kl.
+    """One-stop-shop for MGVI/geoVI style VI approximation.
 
     Parameters
     ----------
-    likelihood : :class:`nifty8.re.likelihood.Likelihood` or callable
-        Likelihood to be used for inference. If its a callable, must be of the
-        form f(current_iteration) -> `Likelihood`. Allows to use different
-        likelihoods during minimization.
-    pos : Initial position for minimization.
-    total_iterations : int
-        Number of resampling loops.
-    n_samples : int or callable
-        Number of samples used to sample Kullback-Leibler divergence. See
-        `likelihood` for the callable convention.
-    key : jax random number generataion key
-    point_estimates : tree-like structure or tuple of str
-        Pytree of same structure as `pos` but with boolean leaves indicating
-        whether to sample the value in `pos` or use it as a point estimate. As
-        a convenience method, for dict-like `pos`, a tuple of strings is also
-        valid. From these the boolean indicator pytree is automatically
-        constructed.
-    sampling_method: str or callable
-        Sampling method used for vi approximation. Default is `altmetric`.
-    make_kl_kwargs: dict or callable
-        Configuration of the KL optimizer passed on to `optimizeVI_callables`.
-        Can also be a function of iteration number, in which case
-        `optimizeVI_callables` is called again to create new solvers. Note that
-        this may trigger re-compilations! The config of the minimizer used in
-        the kl optimization can be set at runtime via `kl_solver_kwargs`.
-    make_sample_generator_kwargs: dict or callable
-        Configuration of the sample generator `linear_sampling` passed on to
-        `optimizeVI_callables`. Can also be a function of iteration number.
-    make_sample_update_kwargs:  dict or callable
-        Configuration of the sample update `curve` passed on to
-        `optimizeVI_callables`. Can also be a function of iteration number.
-    kl_solver_kwargs: dict or callable
-        Keyword arguments to be passed on to `kl_solver` in `OptimizeVI`.
-        Specifies the minimizer being used during the kl optimization step and
-        its config. Can be a function of iteration number to change the
-        minimizers configuration during runtime.
-    sample_generator_kwargs: str or callable
-        Keyword arguments to be passed on to `sample_generator` in `OptimizeVI`.
-        Runtime configuration of the linear sampling.
-    sample_update_kwargs: dict or callable
-        Keyword arguments to be passed on to `sample_update` in `OptimizeVI`.
-        Specifies the minimizer being used during the non-linear `curve` sample
-        step and its config.
-    resample: bool or callable
-        Whether to resample with new random numbers or not. Default is False
+    position_or_samples: Samples or tree-like
+        Initial position for minimization.
+    resume : str or bool
+        Resume partially run optimization. If `True`, the optimization is
+        resumed from the previos state in `odir` otherwise it is resumed from
+        the location toward which `resume` points.
     callback : callable or None
-        Function that is called after every global iteration. It needs to be a
-        function taking 3 arguments: 1. the current samples,
-                                     2. the state of `OptimizeVI`,
-                                     3. the global iteration number.
-        Default: None.
-    output_directory : str or None
-        Directory in which all output files are saved. If None, no output is
-        stored.  Default: None.
-    resume : bool
-        Resume partially run optimization. If `True` and `output_directory`
-        is specified it resumes optimization. Default: False.
-    verbosity : int
-        Sets verbosity of optimization. If -1 only the current global
-        optimization index is printed. If 0 CG steps of linear sampling,
-        NewtonCG steps of non linear sampling and NewtonCG steps of KL
-        optimization are printed. If set to 1 additionally the internal CG steps
-        of the NewtonCG optimization are printed. Default: 0.
-    _vi_callables: tuple of callable or callable (optional)
-        Option to completely sidestep the `optimizeVI_callables` interface.
-        Allows to specify a tuple of the three functions `kl_solver`,
-        `sample_generator`, and `sample_update` that are used to instantiate
-        `OptimizeVI`. If specified, these functions are used instead of the ones
-        created by `optimizeVI_callables` and the corresonding arguments above
-        are ignored. Can also be a function of iteration number instead.
-    _update_state: callable (Default update_state)
-        Function to update the state of `OptimizeVI` according to the config
-        specified by the arguments above. The default `update_state` respects
-        the MGVI/geoVI logic and implements the corresponding update. If
-        `_vi_callables` is set, this may be changed to a different function that
-        is applicable to the functions that are being passed on.
+        Function called after every global iteration taking the samples and the
+        optimization state.
+    odir : str or None
+        Path at which all output files are saved.
+
+    See :class:`OptimizeVI` and :func:`OptimizeVI.init_state` for the remaining
+    parameters and further details on the optimization.
     """
     LAST_FILENAME = "last.pkl"
 
