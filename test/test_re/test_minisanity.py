@@ -6,7 +6,7 @@ import numpy as np
 from numpy.testing import assert_allclose, assert_array_equal
 import pytest
 
-from nifty8.re.misc import reduced_residual_stats
+from nifty8.re.minisanity import reduced_residual_stats
 
 pmp = pytest.mark.parametrize
 
