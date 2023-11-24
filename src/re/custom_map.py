@@ -146,7 +146,8 @@ def _lscan(f, init, xs, length=None, unroll=1):
             # device as `y`.
             with jax.default_device(first_leave.device()):
                 ys = jax.tree_map(
-                    lambda x: jnp.empty_like(x, shape=(length, ) + x.shape), y
+                    lambda x: jnp.
+                    empty_like(x, shape=(length, ) + jnp.shape(x)), y
                 )
         ys = jax.tree_map(
             lambda ys, y: _unsafe_index_update_inplace(ys, i, y), ys, y
