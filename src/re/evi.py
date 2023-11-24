@@ -142,30 +142,6 @@ def draw_linear_residual(
     return smpl, info
 
 
-def linear_residual_sampler(
-    likelihood,
-    *,
-    map: Union[str, Callable] = "smap",
-    jit: Union[Callable, bool] = True,
-    **kwargs,
-):
-    """Wrapper for `draw_linear_residual` to draw multiple samples at once."""
-    jit = _parse_jit(jit)
-    map = get_map(map)
-
-    def draw_linear(primals, keys):
-        # TODO: pass on CG kwargs here?
-        sampler = partial(draw_linear_residual, likelihood, primals, **kwargs)
-        smpls, info = map(sampler)(keys)
-        smpls = Samples(
-            pos=primals,
-            samples=tree_map(lambda *x: jnp.concatenate(x), smpls, -smpls)
-        )
-        return smpls, info
-
-    return jit(draw_linear)
-
-
 def _curve_residual_functions(
     likelihood, point_estimates=(), jit: Union[Callable, bool] = True
 ):
@@ -260,42 +236,6 @@ def curve_residual(
     # Remove x from state to avoid copy of the samples
     opt_state = opt_state._replace(x=None)
     return newsam - primals, opt_state
-
-
-def curve_sampler(
-    likelihood,
-    point_estimates=(),
-    map=None,  # TODO
-    jit: Union[Callable, bool] = True,
-    _raise_notconverged=False
-):
-    jit = _parse_jit(jit)
-    curve_funcs = _curve_residual_functions(
-        likelihood=likelihood, point_estimates=point_estimates, jit=jit
-    )
-
-    def sampler(samples, keys, **kwargs):
-        assert isinstance(samples, Samples)
-        primals = samples.pos
-        residuals = samples._samples
-        states = []
-        # TODO: move this loop into a "pyseqmap" with interface analogous to
-        # jax map and pass it to the function via `sample_map`.
-        for i, (ss, k) in enumerate(zip(samples, keys)):
-            rr, state = curve_residual(
-                point_estimates=point_estimates,
-                primals=primals,
-                sample=ss,
-                metric_sample_key=k,
-                _curve_funcs=curve_funcs,
-                _raise_notconverged=_raise_notconverged,
-                **kwargs,
-            )
-            residuals = tree_map(lambda ss, xx: ss.at[i].set(xx), residuals, rr)
-            states.append(state)
-        return Samples(pos=primals, samples=residuals), states
-
-    return sampler
 
 
 @register_pytree_node_class
