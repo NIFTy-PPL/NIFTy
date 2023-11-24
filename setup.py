@@ -33,7 +33,7 @@ with open("README.md") as f:
 description = "Library for signal inference algorithms that operate regardless of the underlying grids and their resolutions."
 
 extras_require = {
-    "re": ("jax", ),
+    "re": ("jax", "jaxlib"),
     "native": ("ducc0>=0.24.0", ),
     "doc": ("sphinx", "pydata-sphinx-theme", "jupyter", "jupytext"),
     "util": ("astropy", "healpy"),

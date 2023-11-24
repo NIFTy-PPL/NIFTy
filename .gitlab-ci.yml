@@ -76,7 +76,7 @@ pages:
 
 
 before_script:
-  - python3 setup.py install --user -f
+  - python3 -m pip install --user --editable .
 
 run_ipynb0:
   stage: demo_runs

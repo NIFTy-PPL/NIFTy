@@ -10,10 +10,8 @@ are not guaranteed to be executed by Python and can be turned off by the user
 (`python -O` in cPython). As an alternative use `ift.myassert`.
 
 
-
 Installation for developers
 ---------------------------
-
 
 In the following, we assume a Debian-based Linux distribution. For other
 distributions, the "apt" lines will need slight changes.
@@ -23,10 +21,11 @@ NIFTy8 and its mandatory dependencies can be installed via::
     sudo apt-get install git python3 python3-pip python3-dev
     git clone -b NIFTy_8 https://gitlab.mpcdf.mpg.de/ift/nifty.git
     cd nifty
-    pip3 install --user .
+    pip3 install --user --editable .
 
-For a installation in editable mode add a `-e` to the last command.
-Information for requirements and the installation of optional dependecies you can find :doc:`here.<../user/installation>`
+For NITy8.re you must additionally `install JAX <https://github.com/google/jax#installation>`_.
+For further details on optional dependencies see :doc:`here<../user/installation>`.
+
 
 Build the documentation
 -----------------------
