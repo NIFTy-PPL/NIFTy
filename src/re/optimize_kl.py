@@ -338,7 +338,7 @@ class OptimizeEVI:
         self.draw_linear_residual = None
         self.curve_residual = None
         self.residual_map = None
-        self._replace(
+        self.replace(
             n_total_iterations=n_total_iterations,
             kl_value_and_grad=_kl_value_and_grad,
             kl_metric=_kl_metric,
@@ -347,7 +347,7 @@ class OptimizeEVI:
             residual_map=residual_map,
         )
 
-    def _replace(
+    def replace(
         self,
         *,
         n_total_iterations=None,
