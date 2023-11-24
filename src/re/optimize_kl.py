@@ -172,6 +172,7 @@ class OptimizeEVI:
         kl_map=jax.vmap,
         residual_map="lmap",
         kl_reduce=_reduce,
+        mirror_samples=True,
         _kl_value_and_grad: Optional[Callable] = None,
         _kl_metric: Optional[Callable] = None,
         _draw_linear_residual: Optional[Callable] = None,
@@ -292,6 +293,11 @@ class OptimizeEVI:
         kl_jit = _parse_jit(kl_jit)
         residual_jit = _parse_jit(residual_jit)
         residual_map = get_map(residual_map)
+
+        if not (constants is () or constants is None):
+            raise NotImplementedError()
+        if mirror_samples is False:
+            raise NotImplementedError()
 
         if _kl_value_and_grad is None:
             _kl_value_and_grad = kl_jit(
