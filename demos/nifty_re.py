@@ -18,11 +18,6 @@ key = random.PRNGKey(seed)
 
 dims = (128, 128)
 
-n_vi_iterations = 6
-n_newton_iterations = 10
-delta = 1e-4
-absdelta = delta * jnp.prod(jnp.array(dims))
-
 cf_zm = {"offset_mean": 0., "offset_std": (1e-3, 1e-4)}
 cf_fl = {
     "fluctuations": (1e-1, 5e-3),
@@ -176,36 +171,44 @@ data = signal_response_truth + noise_truth
 
 nll = jft.Gaussian(data, noise_cov_inv) @ signal_response
 
+# %%
+n_vi_iterations = 6
+delta = 1e-4
+absdelta = delta * jnp.prod(jnp.array(dims))
+
+
+def n_samples(i):
+    return n_samples // 2 if i < 2 else n_samples
+
+
 key, subkey = random.split(key)
-pos_init = jft.random_like(subkey, signal_response.domain)
-pos_init = jft.Vector(pos_init)
-liner_cg_kwargs = {"absdelta": absdelta / 10., "maxiter": 100}
-sampling_kwargs = {"xtol": delta, "maxiter": 10}
-minimization_kwarks = {"absdelta": absdelta, "maxiter": n_newton_iterations}
+pos_init = jft.Vector(jft.random_like(subkey, signal_response.domain))
 # NOTE, changing the number of samples always triggers a resampling even if
 # `resamples=False`, as more samples have to be drawn that did not exist before.
 n_samples = 4
 samples, state = jft.optimize_kl(
     nll,
     pos_init,
-    n_vi_iterations,
-    n_samples,
-    key,
+    n_total_iterations=n_vi_iterations,
+    n_samples=n_samples,
+    key=key,
     point_estimates=(),
-    kl_solver_kwargs={
-        'method': 'newtoncg',
-        'method_options': minimization_kwarks,
-    },
-    sampling_method='altmetric',
-    # 'linear' for MGVI, 'geometric' for geoVI
-    sample_update_kwargs={
-        'minimize_kwargs': sampling_kwargs,
-    },
-    make_sample_generator_kwargs={'cg_kwargs': liner_cg_kwargs},
-    resample=lambda ii: True if ii < 2 else False,
-    out_dir="results_jifty",
+    draw_linear_samples=dict(
+        cg_name="SL", cg_kwargs=dict(absdelta=absdelta / 10., maxiter=100)
+    ),
+    curve_samples=dict(
+        minimize_kwargs=dict(
+            name="SN",
+            xtol=delta,
+            cg_kwargs=dict(name="SNCG"),
+            maxiter=25,
+        )
+    ),
+    minimize_kwargs=dict(
+        name="M", absdelta=absdelta, cg_kwargs=dict(name="MCG"), maxiter=35
+    ),
+    odir="results_nifty_re",
     resume=False,
-    verbosity=0
 )
 # %%
 namps = cfm.get_normalized_amplitudes()
