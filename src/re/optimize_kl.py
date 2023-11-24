@@ -376,16 +376,14 @@ class OptimizeVI:
         ] = optimize._newton_cg,
         minimize_kwargs=dict(name="M", cg_kwargs=dict(name="MCG")),
         sample_instruction="resample_geovi",
-        _config=None
     ) -> OptimizeVIState:
-        if _config is None:
-            _config = {
-                "n_samples": n_samples,
-                "draw_linear_samples": draw_linear_samples,
-                "curve_samples": curve_samples,
-                "minimize": minimize,
-                "minimize_kwargs": minimize_kwargs,
-            }
+        config = {
+            "n_samples": n_samples,
+            "draw_linear_samples": draw_linear_samples,
+            "curve_samples": curve_samples,
+            "minimize": minimize,
+            "minimize_kwargs": minimize_kwargs,
+        }
         sample_instruction = sample_instruction
         state = OptimizeVIState(
             nit,
@@ -393,7 +391,7 @@ class OptimizeVI:
             sample_instruction=sample_instruction,
             sample_state=None,
             minimization_state=None,
-            config=_config
+            config=config
         )
         return state
 
@@ -500,7 +498,6 @@ def optimize_kl(
     odir=None,
     _optimize_vi=None,
     _optimize_vi_state=None,
-    _optimize_vi_state_config=None,
 ) -> tuple[Samples, OptimizeVIState]:
     """Interface for KL minimization similar to NIFTy optimize_kl.
 
@@ -625,7 +622,6 @@ def optimize_kl(
             minimize=minimize,
             minimize_kwargs=minimize_kwargs,
             sample_instruction=sample_instruction,
-            _config=_optimize_vi_state_config,
         )
 
     # Test if the state is pickle-able to avoid an unfortunate end
