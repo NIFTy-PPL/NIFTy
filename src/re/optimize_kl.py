@@ -88,13 +88,13 @@ def _kl_met(
     return reduce(s)
 
 
+_smpl_do_typ = Literal[None, "resample_mgvi", "resample_geovi", "curve"]
+
+
 class OptimizeVIState(NamedTuple):
     nit: int
     key: Array
-    sample_instruction: Callable[
-        [int],
-        Literal[None, "resample_mgvi", "resample_geovi", "curve"],
-    ]
+    sample_instruction: Union[_smpl_do_typ, Callable[[int], _smpl_do_typ]]
     sample_state: Optional[optimize.OptimizeResults]
     minimization_state: Optional[optimize.OptimizeResults]
     config: dict[str, Union[dict, Callable[[int], Any]]]
@@ -372,7 +372,6 @@ class OptimizeVI:
             optimize.OptimizeResults,
         ] = optimize._newton_cg,
         minimize_kwargs={},
-        sample_keys=None,
         sample_instruction="resample_geovi",
         _config=None
     ) -> OptimizeVIState:
@@ -388,8 +387,9 @@ class OptimizeVI:
         state = OptimizeVIState(
             nit,
             key,
-            sample_keys=sample_keys,
             sample_instruction=sample_instruction,
+            sample_state=None,
+            minimization_state=None,
             config=_config
         )
         return state
