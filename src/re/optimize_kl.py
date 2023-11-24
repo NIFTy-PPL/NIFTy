@@ -29,71 +29,25 @@ from .tree_math import Vector, get_map
 P = TypeVar("P")
 
 
-def _optimize_kl_status_print(iiter, samples, state, residual, out_dir=None):
+def get_status_message(state, residual=None, name="") -> str:
     en = state.minimization_state.fun
-    msg = f"Post VI Iteration {iiter}: Energy {en:2.4e}\n"
-    if state.sampling_states is not None:
-        niter = tuple(ss.nit for ss in state.sampling_states)
-        msg += f"Nonlinear sampling total iterations: {niter}\n"
-    _, mini_res = minisanity(samples.pos, samples, residual)
-    _, mini_pr = minisanity(samples.pos, samples)
-    msg += (
-        f"KL-Minimization total iteration: {state.minimization_state.nit}"
+    msg_nonlin = ""
+    if state.sample_state is not None:
+        msg_nonlin = f"\nNonlinear sampling iterations: {tuple(state.sampling_states.nit)}\n"
+    mini_res = ""
+    if residual is not None:
+        _, mini_res = minisanity(state.samples.pos, state.samples, residual)
+    _, mini_pr = minisanity(state.samples.pos, state.samples)
+    msg = (
+        f"Post {name} Iteration {state.nit:04d}"
+        f"\nEnergy: {en:2.4e}\n"
+        f"{msg_nonlin}"
+        f"\nKL-Minimization iterations: {state.minimization_state.nit}"
         f"\nLikelihood residual(s):\n{mini_res}"
         f"\nPrior residual(s):\n{mini_pr}"
         f"\n"
     )
-    logger.info(msg)
-
-    if not out_dir == None:
-        lfile = os.path.join(out_dir, "minisanity")
-        if isfile(lfile) and iiter != 0:
-            with open(lfile) as f:
-                msg = str(f.read()) + "\n" + msg
-        with open(os.path.join(out_dir, "minisanity"), "w") as f:
-            f.write(msg)
-
-
-def _make_callable(obj):
-    if callable(obj) and not isinstance(obj, Likelihood):
-        return obj
-    else:
-        return lambda x: obj
-
-
-def _getitem(cfg, i):
-    if not isinstance(cfg, dict):
-        return cfg(i)
-    return {kk: _getitem(ii, i) for kk, ii in cfg.items()}
-
-
-def _do_resample(cfg, iiter):
-    if iiter == 0:
-        return True
-    cfgi = _getitem(cfg, iiter)
-    cfgo = _getitem(cfg, iiter - 1)
-    regenerate = cfgi['resample']
-    regenerate += (cfgi['n_samples'] != cfgo['n_samples'])
-    return bool(regenerate)
-
-
-def update_state(state, cfg, iiter):
-    # This configures the generic interface of `OptimizeVI` for the specific
-    # cases of the `linear`, `geometric`, `altmetric` methods.
-    regenerate = (
-        _getitem(cfg, iiter)['sampling_method'] in ['linear', 'geometric']
-    )
-    update = (
-        _getitem(cfg, iiter)['sampling_method'] in ['geometric', 'altmetric']
-    )
-    state = state._replace(
-        sample_regenerate=regenerate or _do_resample(cfg, iiter),
-        sample_update=update,
-        kl_solver_kwargs=_getitem(cfg, iiter)['kl_solver_kwargs'],
-        sample_generator_kwargs=_getitem(cfg, iiter)['sample_generator_kwargs'],
-        sample_update_kwargs=_getitem(cfg, iiter)['sample_update_kwargs'],
-    )
-    return state
+    return msg
 
 
 _reduce = partial(tree_map, partial(jnp.mean, axis=0))
@@ -138,13 +92,13 @@ class OptimizeEVIState(NamedTuple):
     nit: int
     key: Array
     samples: Samples
-    sample_keys: Array
+    sample_keys: Optional[Array]
     sample_instruction: Callable[
         [int],
         Literal[None, "resample_mgvi", "resample_geovi", "curve"],
     ]
-    sample_state: optimize.OptimizeResults
-    minimization_state: optimize.OptimizeResults
+    sample_state: Optional[optimize.OptimizeResults]
+    minimization_state: Optional[optimize.OptimizeResults]
     kwargs: dict[str, Callable[[int], dict]]
 
 
@@ -176,6 +130,7 @@ class OptimizeEVI:
         _kl_metric: Optional[Callable] = None,
         _draw_linear_residual: Optional[Callable] = None,
         _curve_residual: Optional[Callable] = None,
+        _get_status_message: Optional[Callable] = None,
     ):
         """JaxOpt style minimizer for VI approximation of a probability
         distribution with a sampled approximate distribution.
@@ -330,6 +285,10 @@ class OptimizeEVI:
                 point_estimates=point_estimates,
                 _curve_funcs=_curve_funcs,
             )
+        if _get_status_message is None:
+            _get_status_message = partial(
+                get_status_message, residual=likelihood.normalized_residual
+            )
 
         self.n_total_iterations = None
         self.kl_value_and_grad = None
@@ -337,12 +296,14 @@ class OptimizeEVI:
         self.draw_linear_residual = None
         self.curve_residual = None
         self.residual_map = None
+        self.get_status_message = None
         self.replace(
             n_total_iterations=n_total_iterations,
             kl_value_and_grad=_kl_value_and_grad,
             kl_metric=_kl_metric,
             draw_linear_residual=_draw_linear_residual,
             curve_residual=_curve_residual,
+            get_status_message=_get_status_message,
             residual_map=residual_map,
         )
 
@@ -354,6 +315,7 @@ class OptimizeEVI:
         kl_metric=None,
         draw_linear_residual=None,
         curve_residual=None,
+        get_status_message=None,
         residual_map=None,
     ):
         self.n_total_iterations = n_total_iterations if n_total_iterations is None else n_total_iterations
@@ -362,6 +324,7 @@ class OptimizeEVI:
         self.draw_linear_residual = draw_linear_residual if draw_linear_residual is not None else self.draw_linear_residual
         self.curve_residual = curve_residual if curve_residual is not None else self.curve_residual
         self.residual_map = residual_map if residual_map is not None else self.residual_map
+        self.get_status_message = get_status_message if get_status_message is not None else self.get_status_message
 
     def draw_linear_samples(self, primals, keys, **kwargs):
         # NOTE, use `Partial` in favor of `partial` to allow the (potentially)
