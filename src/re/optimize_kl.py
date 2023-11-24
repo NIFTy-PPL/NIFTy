@@ -29,17 +29,19 @@ from .tree_math import Vector, get_map
 P = TypeVar("P")
 
 
-def get_status_message(state, residual=None, name="") -> str:
+def get_status_message(
+    samples, state, residual=None, *, name="", map="lmap"
+) -> str:
     en = state.minimization_state.fun
     msg_nonlin = ""
     if state.sample_state is not None:
-        msg_nonlin = f"\nNonlinear sampling iterations: {tuple(state.sampling_states.nit)}\n"
+        msg_nonlin = f"\nNonlinear sampling iterations: {tuple(state.sample_state.nit)}\n"
     mini_res = ""
     if residual is not None:
-        _, mini_res = minisanity(state.samples.pos, state.samples, residual)
-    _, mini_pr = minisanity(state.samples.pos, state.samples)
+        _, mini_res = minisanity(samples, residual, map=map)
+    _, mini_pr = minisanity(samples, map=map)
     msg = (
-        f"Post {name} Iteration {state.nit:04d}"
+        f"Post {name} Iteration {state.nit - 1:04d}"
         f"\nEnergy: {en:2.4e}\n"
         f"{msg_nonlin}"
         f"\nKL-Minimization iterations: {state.minimization_state.nit}"
@@ -460,7 +462,7 @@ class OptimizeVI:
         for i in range(self.n_total_iterations):
             logger.info(f"{self.__class__.__name__} :: {i:04d}")
             samples, state = self.update(samples, state)
-            msg = self.get_status_message(state)
+            msg = self.get_status_message(samples, state, map=self.residual_map)
             logger.info(msg)
         return samples, state
 
