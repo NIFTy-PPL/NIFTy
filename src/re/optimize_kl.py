@@ -8,20 +8,22 @@ import pickle
 from functools import partial, reduce
 from os import makedirs
 from os.path import isfile
-from typing import Callable, List, NamedTuple, Tuple, TypeVar, Union
+from typing import (
+    Any, Callable, List, Literal, NamedTuple, Optional, Tuple, TypeVar, Union
+)
 
 import jax
 from jax import Array
 from jax import numpy as jnp
-from jax import tree_map
+from jax import random, tree_map
+from jax.tree_util import Partial
 
 from . import conjugate_gradient
-from .evi import Samples, _parse_jit, curve_sampler, linear_residual_sampler
+from .evi import Samples, _parse_jit, curve_residual, draw_linear_residual
 from .likelihood import Likelihood, StandardHamiltonian
 from .logger import logger
 from .misc import minisanity
 from .optimize import OptimizeResults, minimize
-from .custom_map import smap
 from .tree_math import get_map
 from .tree_math.vector import Vector
 
@@ -115,7 +117,7 @@ def _kl_vg(
     return reduce(s)
 
 
-def _kl_metric(
+def _kl_met(
     likelihood,
     primals,
     tangents,
@@ -133,177 +135,47 @@ def _kl_metric(
     return reduce(s)
 
 
-def kl_solver(
-    likelihood,
-    map=jax.vmap,
-    reduce=_reduce,
-    jit: Union[Callable, bool] = True
-):
-    jit = _parse_jit(jit)
-    kl_vg = jit(partial(_kl_vg, likelihood, map=map, reduce=reduce))
-    kl_metric = jit(partial(_kl_metric, likelihood, map=map, reduce=reduce))
-
-    def _minimize_kl(samples, method='newtoncg', method_options={}):
-        options = {
-            "fun_and_grad": partial(kl_vg, primals_samples=samples),
-            "hessp": partial(kl_metric, primals_samples=samples),
-        }
-        opt_state = minimize(
-            None, samples.pos, method=method, options=method_options | options
-        )
-        return samples.at(opt_state.x), opt_state
-
-    return _minimize_kl
-
-
-def optimizeVI_callables(
-    likelihood: Likelihood,
-    point_estimates: Union[P, Tuple[str]] = (),
-    kl_kwargs: dict = {
-        'map': jax.vmap,
-        'jit': True,
-    },
-    linear_sampling_kwargs: dict = {
-        'cg': conjugate_gradient.static_cg,
-        'cg_name': None,
-        'cg_kwargs': None,
-        'map': smap,
-        'jit': True,
-    },
-    curve_kwargs: dict = {
-        'map': None,
-        'jit': True,
-    },
-    _raise_notconverged: bool = False
-):
-    r"""MGVI/geoVI interface that creates the input functions of `OptimizeVI`
-    from a `Likelihood`.
-
-    Builds functions for a VI approximation via variants of the `Geometric
-    Variational Inference` and/or `Metric Gaussian Variational Inference`
-    algorithms. They produce approximate posterior samples that are used for KL
-    estimation internally and the final set of samples are the approximation of
-    the posterior. The samples can be linear, i.e. following a standard normal
-    distribution in model space, or non-linear, i.e. following a standard normal
-    distribution in the canonical coordinate system of the Riemannian manifold
-    associated with the metric of the approximate posterior distribution. The
-    coordinate transformation for the non-linear sample is approximated by an
-    expansion.
-
-    Both linear and non-linear sample start by drawing a sample from the
-    inverse metric. To do so, we draw a sample which has the metric as
-    covariance structure and apply the inverse metric to it. The sample
-    transformed in this way has the inverse metric as covariance. The first
-    part is trivial since we can use the left square root of the metric
-    :math:`L` associated with every likelihood:
-
-    .. math::
-
-        \tilde{d} \leftarrow \mathcal{G}(0,\mathbb{1}) \\
-        t = L \tilde{d}
-
-    with :math:`t` now having a covariance structure of
-
-    .. math::
-        <t t^\dagger> = L <\tilde{d} \tilde{d}^\dagger> L^\dagger = M .
-
-    To transform the sample to an inverse sample, we apply the inverse
-    metric. We can do so using the conjugate gradient algorithm (CG). The CG
-    algorithm yields the solution to :math:`M s = t`, i.e. applies the
-    inverse of :math:`M` to :math:`t`:
-
-    .. math::
-
-        M &s =  t \\
-        &s = M^{-1} t = cg(M, t) .
-
-    The linear sample is :math:`s`. The non-linear sample uses :math:`s` as
-    a starting value and curves it in a non-linear way as to better resemble
-    the posterior locally. See the below reference literature for more
-    details on the non-linear sampling.
-
-    Parameters
-    ----------
-    likelihood : :class:`nifty8.re.likelihood.Likelihood`
-        Likelihood to be used for inference.
-    n_iter : int
-        Number of iterations.
-    point_estimates : tree-like structure or tuple of str
-        Pytree of same structure as likelihood input but with boolean leaves
-        indicating whether to sample the value in the input or use it as a
-        point estimate. As a convenience method, for dict-like inputs, a
-        tuple of strings is also valid. From these the boolean indicator
-        pytree is automatically constructed.
-    kl_kwargs: dict
-        Keyword arguments passed on to `kl_solver`. Can be used to specify the
-        jit and map behavior of the function being constructed.
-    linear_sampling_kwargs: dict
-        Keyword arguments passed on to `linear_residual_sampler`. Includes
-        the cg config used for linear sampling and its jit/map configuration.
-    curve_kwargs: dict
-        Keyword arguments passed on to `curve_sampler`. Can be used to specify
-        the jit and map behavior of the function being constructed.
-    _raise_notconverged: bool
-        Whether to raise inversion & minimization errors during sampling.
-        Default is False.
-
-    See also
-    --------
-    `Geometric Variational Inference`, Philipp Frank, Reimar Leike,
-    Torsten A. Enßlin, `<https://arxiv.org/abs/2105.10470>`_
-    `<https://doi.org/10.3390/e23070853>`_
-
-    `Metric Gaussian Variational Inference`, Jakob Knollmüller,
-    Torsten A. Enßlin, `<https://arxiv.org/abs/1901.11033>`_
-    """
-    linear_sampling_kwargs.setdefault('_raise_nonposdef', _raise_notconverged)
-    curve_kwargs.setdefault('_raise_notconverged', _raise_notconverged)
-
-    # KL funcs
-    solver = kl_solver(likelihood, **kl_kwargs)
-
-    def _solver(samples, keys, **kwargs):
-        return solver(samples, **kwargs)
-
-    # Lin sampling
-    draw_linear = linear_residual_sampler(
-        likelihood,
-        point_estimates=point_estimates,
-        from_inverse=True,
-        **linear_sampling_kwargs,
-    )
-
-    def linear_sampler(samples, keys, **kwargs):
-        return draw_linear(samples.pos, keys, **kwargs)
-
-    # Non-lin sampling
-    curve = curve_sampler(likelihood, point_estimates, **curve_kwargs)
-    return _solver, linear_sampler, curve
-
-
-class OptVIState(NamedTuple):
-    """Named tuple containing state information."""
-    niter: int
-    keys: Array
-    sample_regenerate: bool
-    sample_update: bool
-    sampling_states: List[OptimizeResults]
+class OptimizeEVIState(NamedTuple):
+    nit: int
+    key: Array
+    samples: Samples
+    sample_keys: Array
+    sample_instruction: Callable[
+        [int],
+        Literal[None, "resample_mgvi", "resample_geovi", "curve"],
+    ]
+    sample_state: OptimizeResults
     minimization_state: OptimizeResults
-    kl_solver_kwargs: dict
-    sample_generator_kwargs: dict
-    sample_update_kwargs: dict
+    kwargs: dict[str, Callable[[int], dict]]
 
 
-class OptimizeVI:
+def _make_callable(x):
+    if callable(x):
+        return x
+
+    def just_return_x(_):
+        return x
+
+    return just_return_x
+
+
+class OptimizeEVI:
     def __init__(
         self,
-        n_iter: int,
-        kl_solver: Callable,
-        sample_generator: Callable,
-        sample_update: Callable,
-        kl_solver_kwargs: dict = {},
-        sample_generator_kwargs: dict = {},
-        sample_update_kwargs: dict = {},
+        likelihood: Likelihood,
+        n_total_iterations: int,
+        *,
+        point_estimates=(),
+        constants=(),  # TODO
+        kl_jit=True,
+        residual_jit=True,
+        kl_map=jax.vmap,
+        residual_map="lmap",
+        kl_reduce=_reduce,
+        _kl_value_and_grad: Optional[Callable] = None,
+        _kl_metric: Optional[Callable] = None,
+        _draw_linear_residual: Optional[Callable] = None,
+        _curve_residual: Optional[Callable] = None,
     ):
         """JaxOpt style minimizer for VI approximation of a probability
         distribution with a sampled approximate distribution.
@@ -347,95 +219,271 @@ class OptimizeVI:
         Additionally they each can take respective keyword arguments. These
         are passed on at runtime and stored in the optimizers state. All
         functions must return samples, as an instance of `Samples`
+
+        TODO:
+        MGVI/geoVI interface that creates the input functions of `OptimizeVI`
+        from a `Likelihood`.
+        Builds functions for a VI approximation via variants of the `Geometric
+        Variational Inference` and/or `Metric Gaussian Variational Inference`
+        algorithms. They produce approximate posterior samples that are used for KL
+        estimation internally and the final set of samples are the approximation of
+        the posterior. The samples can be linear, i.e. following a standard normal
+        distribution in model space, or non-linear, i.e. following a standard normal
+        distribution in the canonical coordinate system of the Riemannian manifold
+        associated with the metric of the approximate posterior distribution. The
+        coordinate transformation for the non-linear sample is approximated by an
+        expansion.
+        Both linear and non-linear sample start by drawing a sample from the
+        inverse metric. To do so, we draw a sample which has the metric as
+        covariance structure and apply the inverse metric to it. The sample
+        transformed in this way has the inverse metric as covariance. The first
+        part is trivial since we can use the left square root of the metric
+        :math:`L` associated with every likelihood:
+        .. math::
+            \tilde{d} \leftarrow \mathcal{G}(0,\mathbb{1}) \\
+            t = L \tilde{d}
+        with :math:`t` now having a covariance structure of
+        .. math::
+            <t t^\dagger> = L <\tilde{d} \tilde{d}^\dagger> L^\dagger = M .
+        To transform the sample to an inverse sample, we apply the inverse
+        metric. We can do so using the conjugate gradient algorithm (CG). The CG
+        algorithm yields the solution to :math:`M s = t`, i.e. applies the
+        inverse of :math:`M` to :math:`t`:
+        .. math::
+            M &s =  t \\
+            &s = M^{-1} t = cg(M, t) .
+        The linear sample is :math:`s`. The non-linear sample uses :math:`s` as
+        a starting value and curves it in a non-linear way as to better resemble
+        the posterior locally. See the below reference literature for more
+        details on the non-linear sampling.
+
+        Parameters
+        ----------
+        likelihood : :class:`nifty8.re.likelihood.Likelihood`
+            Likelihood to be used for inference.
+        n_iter : int
+            Number of iterations.
+        point_estimates : tree-like structure or tuple of str
+            Pytree of same structure as likelihood input but with boolean leaves
+            indicating whether to sample the value in the input or use it as a
+            point estimate. As a convenience method, for dict-like inputs, a
+            tuple of strings is also valid. From these the boolean indicator
+            pytree is automatically constructed.
+        kl_kwargs: dict
+            Keyword arguments passed on to `kl_solver`. Can be used to specify the
+            jit and map behavior of the function being constructed.
+        linear_sampling_kwargs: dict
+            Keyword arguments passed on to `linear_residual_sampler`. Includes
+            the cg config used for linear sampling and its jit/map configuration.
+        curve_kwargs: dict
+            Keyword arguments passed on to `curve_sampler`. Can be used to specify
+            the jit and map behavior of the function being constructed.
+        _raise_notconverged: bool
+            Whether to raise inversion & minimization errors during sampling.
+            Default is False.
+        See also
+        --------
+        `Geometric Variational Inference`, Philipp Frank, Reimar Leike,
+        Torsten A. Enßlin, `<https://arxiv.org/abs/2105.10470>`_
+        `<https://doi.org/10.3390/e23070853>`_
+        `Metric Gaussian Variational Inference`, Jakob Knollmüller,
+        Torsten A. Enßlin, `<https://arxiv.org/abs/1901.11033>`_
         """
-        self._n_iter = n_iter
-        self._kl_solver = kl_solver
-        self._sample_generator = sample_generator
-        self._sample_update = sample_update
-        self._kl_solver_kwargs = kl_solver_kwargs
-        self._sample_generator_kwargs = sample_generator_kwargs
-        self._sample_update_kwargs = sample_update_kwargs
+        kl_jit = _parse_jit(kl_jit)
+        residual_jit = _parse_jit(residual_jit)
+        residual_map = get_map(residual_map)
 
-    @property
-    def kl_solver(self):
-        return self._kl_solver
-
-    def set_kl_solver(self, kl_solver: Callable):
-        self._kl_solver = kl_solver
-
-    @property
-    def sample_generator(self):
-        return self._sample_generator
-
-    def set_sample_generator(self, sample_generator: Callable):
-        self._sample_generator = sample_generator
-
-    @property
-    def sample_update(self):
-        return self._sample_update
-
-    def set_sample_update(self, sample_update: Callable):
-        self._sample_update = sample_update
-
-    def init_state(self, keys, samples=None, primals=None):
-        """Initial state of the optimizer.
-
-        Unlike JaxOpt's optimizers this does not only take the optimizers
-        objective parameters (the `samples`) as an input and returns a state,
-        but also allows to set up samples and state according to a latent mean
-        `primals`. Therefor it also returns `samples` in addition to state.
-        """
-        if samples is None:
-            if primals is None:
-                raise ValueError("Neither samples nor primals set.")
-            samples = tree_map(
-                lambda x: jnp.zeros((1, ) * (len(x.shape) + 1)), primals
+        if _kl_value_and_grad is None:
+            _kl_value_and_grad = kl_jit(
+                partial(_kl_vg, likelihood, map=kl_map, reduce=kl_reduce)
             )
-            samples = Samples(pos=primals, samples=samples)
-            regenerate = True
-        else:
-            regenerate = False
-        state = OptVIState(
-            niter=0,
-            keys=keys,
-            sample_regenerate=regenerate,
-            sample_update=True,
-            sampling_states=None,
-            minimization_state=None,
-            kl_solver_kwargs=self._kl_solver_kwargs,
-            sample_generator_kwargs=self._sample_generator_kwargs,
-            sample_update_kwargs=self._sample_update_kwargs
-        )
-        return samples, state
+        if _kl_metric is None:
+            _kl_metric = kl_jit(
+                partial(_kl_met, likelihood, map=kl_map, reduce=kl_reduce)
+            )
+        if _draw_linear_residual is None:
+            _draw_linear_residual = residual_jit(
+                partial(
+                    draw_linear_residual,
+                    likelihood,
+                    point_estimates=point_estimates,
+                )
+            )
+        if _curve_residual is None:
+            # TODO: Pull out `jit` from `curve_residual` once NCG is jit-able
+            # TODO: STOP inserting `point_estimes` and instead defer it to `update`
+            from .evi import _curve_residual_functions
 
-    def update(self, samples: Samples, state: OptVIState):
+            _curve_funcs = _curve_residual_functions(
+                likelihood=likelihood,
+                point_estimates=point_estimates,
+                jit=residual_jit,
+            )
+            _curve_residual = partial(
+                curve_residual,
+                likelihood,
+                point_estimates=point_estimates,
+                _curve_funcs=_curve_funcs,
+            )
+
+        self.n_total_iterations = None
+        self.kl_value_and_grad = None
+        self.kl_metric = None
+        self.draw_linear_residual = None
+        self.curve_residual = None
+        self.residual_map = None
+        self._replace(
+            n_total_iterations=n_total_iterations,
+            kl_value_and_grad=_kl_value_and_grad,
+            kl_metric=_kl_metric,
+            draw_linear_residual=_draw_linear_residual,
+            curve_residual=_curve_residual,
+            residual_map=residual_map,
+        )
+
+    def _replace(
+        self,
+        *,
+        n_total_iterations=None,
+        kl_value_and_grad=None,
+        kl_metric=None,
+        draw_linear_residual=None,
+        curve_residual=None,
+        residual_map=None,
+    ):
+        self.n_total_iterations = n_total_iterations if n_total_iterations is None else n_total_iterations
+        self.kl_value_and_grad = kl_value_and_grad if kl_value_and_grad is not None else self.kl_value_and_grad
+        self.kl_metric = kl_metric if kl_metric is not None else self.kl_metric
+        self.draw_linear_residual = draw_linear_residual if draw_linear_residual is not None else self.draw_linear_residual
+        self.curve_residual = curve_residual if curve_residual is not None else self.curve_residual
+        self.residual_map = residual_map if residual_map is not None else self.residual_map
+
+    def draw_linear_samples(self, primals, keys, **kwargs):
+        # NOTE, use `Partial` in favor of `partial` to allow the (potentially)
+        # re-jitting `residual_map` to trace the kwargs
+        sampler = Partial(self.draw_linear_residual, **kwargs)
+        sampler = self.residual_map(sampler, in_axes=(
+            None,
+            0,
+        ))
+        smpls, smpls_states = sampler(primals, keys)
+        smpls = Samples(
+            pos=primals,
+            samples=tree_map(lambda *x: jnp.concatenate(x), smpls, -smpls)
+        )
+        return smpls, smpls_states
+
+    def curve_samples(self, samples, metric_sample_key, **kwargs):
+        # NOTE, use `Partial` in favor of `partial` to allow the (potentially)
+        # re-jitting `residual_map` to trace the kwargs
+        curver = Partial(self.curve_residual, **kwargs)
+        curver = self.residual_map(curver, in_axes=(None, 0, 0, 0))
+        assert len(metric_sample_key) // 2 == len(samples)
+        metric_sample_key = jnp.concatenate((metric_sample_key, ) * 2)
+        sgn = jnp.ones(len(samples))
+        sgn = jnp.concatenate((sgn, -sgn))
+        smpls, smpls_states = curver(
+            samples.pos, samples._samples, metric_sample_key, sgn
+        )
+        return Samples(pos=samples.pos, samples=smpls), smpls_states
+
+    def init_state(
+        self,
+        nit,
+        key,
+        *,
+        n_samples,
+        draw_linear_samples={},
+        curve_samples={},
+        minimize={"method": "newton-cg"},
+        samples=None,
+        sample_keys=None,
+        sample_instruction=None,
+        _kwargs=None
+    ):
+        if _kwargs is None:
+            _kwargs = {
+                "n_samples": _make_callable(n_samples),
+                "draw_linear_samples": _make_callable(draw_linear_samples),
+                "curve_samples": _make_callable(curve_samples),
+                "minimize": _make_callable(minimize),
+            }
+        state = OptimizeEVIState(
+            nit,
+            key,
+            samples=samples,
+            sample_keys=sample_keys,
+            sample_instruction=sample_instruction,
+            kwargs=_kwargs
+        )
+        return state
+
+    def update(self, params, /, state: OptimizeEVIState, kwargs=None):
         """One sampling and kl optimization step."""
         assert isinstance(samples, Samples)
-        assert isinstance(state, OptVIState)
-        if state.sample_regenerate:
-            samples = self._sample_generator(
-                samples, state.keys, **state.sample_generator_kwargs
+        assert isinstance(state, OptimizeEVIState)
+        nit = state.nit + 1
+        key = state.key
+        k_smpls = state.sample_keys
+        st_smpls = state.sample_state
+        samples = state.samples.at(params)
+        kwargs = {
+            k: _make_callable(v)
+            for k, v in kwargs
+        } if kwargs is not None else state.kwargs
+
+        smpls_do = state.sample_instruction
+        smpls_do = smpls_do(nit) if callable(smpls_do) else smpls_do
+        if smpls_do.lower().startswith("resample"):
+            n_samples = kwargs["n_samples"](nit)
+            key, *k_smpls = random.split(key, n_samples + 1)
+            k_smpls = jnp.array(k_smpls)
+            kw = kwargs["draw_linear_samples"](nit)
+            samples, st_smpls = self.draw_linear_samples(
+                samples.pos, k_smpls, **kw
             )
-        if state.sample_update:
-            samples, sample_state = self._sample_update(
-                samples, state.keys, **state.sample_update_kwargs
-            )
-        else:
-            sample_state = None
-        samples, kl_state = self._kl_solver(
-            samples, state.keys, **state.kl_solver_kwargs
+            if smpls_do.lower() == "resample_geovi":
+                kw = kwargs["curve_samples"](nit)
+                samples, st_smpls = self.curve_samples(samples, k_smpls, **kw)
+            elif smpls_do.lower() == "resample_mgvi":
+                ve = f"invalid resampling instruction {smpls_do}"
+                raise ValueError(ve)
+        elif smpls_do.lower() == "curve":
+            kw = kwargs["curve_samples"](nit)
+            samples, st_smpls = self.curve_samples(samples, k_smpls, **kw)
+        elif smpls_do is None:
+            ve = f"invalid resampling instruction {smpls_do}"
+            raise ValueError(ve)
+
+        # def _minimize_kl(samples, method='newtoncg', method_options={}):
+        kw = {
+            "fun_and_grad":
+                partial(self.kl_value_and_grad, primals_samples=samples),
+            "hessp":
+                partial(self.kl_metric, primals_samples=samples),
+        }
+        kw |= kwargs["minimize"](nit)
+        kl_opt_state = minimize(None, samples.pos, **kw)
+        samples = samples.at(kl_opt_state.x)
+        # Remove unnecessary references
+        kl_opt_state = kl_opt_state._replace(
+            x=None, jac=None, hess=None, hess_inv=None
         )
+
         state = state._replace(
-            niter=state.niter + 1,
-            sampling_states=sample_state,
-            minimization_state=kl_state
+            niter=nit,
+            key=key,
+            samples=samples,
+            samples_keys=k_smpls,
+            sample_state=st_smpls,
+            minimization_state=kl_opt_state,
         )
         return samples, state
 
     def run(self, keys, samples=None, primals=None):
-        """`n_iter` consecutive steps of `update`."""
+        """`n_total_iterations` consecutive steps of `update`."""
         samples, state = self.init_state(keys, samples, primals)
-        for n in range(self._n_iter):
+        for n in range(self.n_total_iterations):
             logger.info(f"OptVI iteration number: {n}")
             samples, state = self.update(samples, state)
         return samples, state

@@ -138,7 +138,8 @@ def draw_linear_residual(
             (info < 0) if info is not None else False,
             ValueError("conjugate gradient failed")
         )
-    return _process_point_estimate(smpl, primals, point_estimates, insert=True)
+    smpl = _process_point_estimate(smpl, primals, point_estimates, insert=True)
+    return smpl, info
 
 
 def linear_residual_sampler(
@@ -155,12 +156,12 @@ def linear_residual_sampler(
     def draw_linear(primals, keys):
         # TODO: pass on CG kwargs here?
         sampler = partial(draw_linear_residual, likelihood, primals, **kwargs)
-        samples = map(sampler)(keys)
-        samples = Samples(
+        smpls, info = map(sampler)(keys)
+        smpls = Samples(
             pos=primals,
-            samples=tree_map(lambda *x: jnp.concatenate(x), samples, -samples)
+            samples=tree_map(lambda *x: jnp.concatenate(x), smpls, -smpls)
         )
-        return samples
+        return smpls, info
 
     return jit(draw_linear)
 
@@ -169,6 +170,17 @@ def _curve_residual_functions(
     likelihood, point_estimates=(), jit: Union[Callable, bool] = True
 ):
     jit = _parse_jit(jit)
+
+    def _draw_linear_non_inverse(primals, key):
+        # `draw_linear_residual` already handles `point_estimates` no need to
+        # partially insert anything here
+        return draw_linear_residual(
+            likelihood,
+            primals,
+            key,
+            point_estimates=point_estimates,
+            from_inverse=False
+        )
 
     def _trafo(likelihood, p):
         return likelihood.transformation(p)
@@ -193,6 +205,7 @@ def _curve_residual_functions(
         fpp = _functional_conj(o_transpose)(natgrad)
         return jnp.sqrt(vdot(natgrad, natgrad) + vdot(fpp, fpp))
 
+    draw_linear_non_inverse = jit(_draw_linear_non_inverse)
     # Partially insert frozen point estimates
     get_partial = partial(
         _partial_func, likelihood=likelihood, point_estimates=point_estimates
@@ -201,33 +214,34 @@ def _curve_residual_functions(
     rag = jit(jax.value_and_grad(get_partial(_residual), argnums=3))
     metric = jit(get_partial(_metric))
     sampnorm = jit(get_partial(_sampnorm))
-    return trafo, rag, metric, sampnorm
+    return draw_linear_non_inverse, trafo, rag, metric, sampnorm
 
 
 def curve_residual(
     likelihood=None,
-    primals: P=None,
+    primals: P = None,
     sample=None,
+    metric_sample_key=None,
+    metric_sample_sign=1.0,
     *,
     point_estimates=(),
-    metric_sample=None,
     minimize: Callable[..., optimize.OptimizeResults] = optimize._newton_cg,
     minimize_kwargs={},
     jit: Union[Callable, bool] = True,
     _curve_funcs=None,
     _raise_notconverged=False,
 ) -> P:
-    jit = _parse_jit(jit)
     if _curve_funcs is None:
-        trafo, rag, metric, sampnorm = _curve_residual_functions(
+        draw_lni, trafo, rag, metric, sampnorm = _curve_residual_functions(
             likelihood=likelihood, point_estimates=point_estimates, jit=jit
         )
     else:
-        trafo, rag, metric, sampnorm = _curve_funcs
+        draw_lni, trafo, rag, metric, sampnorm = _curve_funcs
 
     sample = _process_point_estimate(
         sample, primals, point_estimates, insert=False
     )
+    metric_sample = metric_sample_sign * draw_lni(primals, metric_sample_key)
     metric_sample = _process_point_estimate(
         metric_sample, primals, point_estimates, insert=False
     )
@@ -259,24 +273,20 @@ def curve_sampler(
     curve_funcs = _curve_residual_functions(
         likelihood=likelihood, point_estimates=point_estimates, jit=jit
     )
-    metric_sampler = linear_residual_sampler(
-        likelihood, point_estimates=point_estimates, from_inverse=False
-    )
 
     def sampler(samples, keys, **kwargs):
         assert isinstance(samples, Samples)
         primals = samples.pos
         residuals = samples._samples
-        met_samps = metric_sampler(primals, keys)
         states = []
         # TODO: move this loop into a "pyseqmap" with interface analogous to
         # jax map and pass it to the function via `sample_map`.
-        for i, (ss, ms) in enumerate(zip(samples, met_samps)):
+        for i, (ss, k) in enumerate(zip(samples, keys)):
             rr, state = curve_residual(
                 point_estimates=point_estimates,
                 primals=primals,
                 sample=ss,
-                metric_sample=ms,
+                metric_sample_key=k,
                 _curve_funcs=curve_funcs,
                 _raise_notconverged=_raise_notconverged,
                 **kwargs,
