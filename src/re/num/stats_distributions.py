@@ -2,7 +2,9 @@ from functools import partial
 from typing import Callable, Optional
 
 from jax import numpy as jnp
-from jax.tree_util import tree_map, tree_reduce
+from jax.tree_util import tree_map
+
+from ..tree_math.vector_math import any as tree_any
 
 exp = partial(tree_map, jnp.exp)
 sqrt = partial(tree_map, jnp.sqrt)
@@ -52,9 +54,9 @@ def lognormal_moments(mean, std):
     """Compute the cumulants a log-normal process would need to comply with the
     provided mean and standard-deviation `std`
     """
-    if tree_reduce(any, mean <= 0.):
+    if tree_any(mean <= 0.):
         raise ValueError(f"`mean` must be greater zero; got {mean!r}")
-    if tree_reduce(any, std <= 0.):
+    if tree_any(std <= 0.):
         raise ValueError(f"`std` must be greater zero; got {std!r}")
 
     logstd = sqrt(log1p((std / mean)**2))
