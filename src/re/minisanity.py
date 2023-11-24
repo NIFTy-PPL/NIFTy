@@ -79,9 +79,9 @@ def minisanity(position_or_samples, func=None, *, map="lmap"):
     def make_pretty_string(x):
         rsq = x.reduced_chisq
         s = (
-            f"reduced χ²:{rsq[0]:7.2}±{rsq[1]:7.2}"
-            f", avg:{x.mean[0]:+7.2}±{x.mean[1]:7.2}"
-            f", #dof:{int(x.ndof):5d}"
+            f"reduced χ²:{rsq[0]:8.2}±{rsq[1]:8.2}"
+            f", avg:{x.mean[0]:+9.2}±{x.mean[1]:8.2}"
+            f", #dof:{int(x.ndof):7d}"
         )
         return s
 
@@ -100,6 +100,8 @@ def minisanity(position_or_samples, func=None, *, map="lmap"):
                 msg += f"{str(k):22s}:: {v}\n"
             else:
                 msg += f"{str(k):22s}::\n{pp.pformat(v)}\n"
-    else:
+    elif not isinstance(ps, str):
         msg = pp.pformat(ps)
+    else:
+        msg = ps
     return stat_tree, msg
