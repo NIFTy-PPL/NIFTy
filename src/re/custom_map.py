@@ -71,9 +71,10 @@ def _generic_smap(fun, in_axes, out_axes, unroll, *x, _scan=lax.scan, **k):
     )
     _, y = _scan(fun_reord, None, mapped, unroll=unroll)
 
-    if isinstance(out_axes, int):
-        out_axes = tree_map(lambda _: out_axes, y)
     if out_axes is None:
+        out_axes, out_axes_td = tree_flatten(out_axes)
+    if isinstance(out_axes, int):
+        out_axes = tree_map(lambda el: out_axes if el is not None else el, y)
         out_axes, out_axes_td = tree_flatten(out_axes)
     else:
         out_axes, out_axes_td = tree_flatten(out_axes, is_leaf=_int_or_none)
