@@ -21,7 +21,7 @@ from . import optimize
 from .evi import Samples, _parse_jit, curve_residual, draw_linear_residual
 from .likelihood import Likelihood, StandardHamiltonian
 from .logger import logger
-from .misc import minisanity
+from .minisanity import minisanity
 from .tree_math import get_map, hide_strings
 
 P = TypeVar("P")

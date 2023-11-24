@@ -15,9 +15,8 @@ from .likelihood_impl import (
     VariableCovarianceStudentT
 )
 from .logger import logger
-from .misc import (
-    hvp, interpolate, minisanity, reduced_residual_stats, wrap, wrap_left
-)
+from .minisanity import minisanity, reduced_residual_stats
+from .misc import hvp, interpolate, wrap, wrap_left
 from .model import Initializer, Model
 from .num import *
 from .optimize import minimize, newton_cg, trust_ncg
