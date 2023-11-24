@@ -275,6 +275,8 @@ class Samples():
         return self._keys
 
     def __len__(self):
+        if self._samples is None:
+            return 0
         return jnp.shape(tree_leaves(self._samples)[0])[0]
 
     def __getitem__(self, index):
