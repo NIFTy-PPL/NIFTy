@@ -7,6 +7,6 @@ from .forest_math import (
 )
 from .vector import Vector
 from .vector_math import (
-    ShapeWithDtype, conj, conjugate, dot, matmul, max, min, norm, ones_like,
-    result_type, shape, size, sum, vdot, where, zeros_like
+    ShapeWithDtype, all, any, conj, conjugate, dot, matmul, max, min, norm,
+    ones_like, result_type, shape, size, sum, vdot, where, zeros_like
 )
