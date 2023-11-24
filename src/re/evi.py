@@ -256,9 +256,8 @@ class Samples():
     `Metric Gaussian Variational Inference`, Jakob Knollmüller,
     Torsten A. Enßlin, `<https://arxiv.org/abs/1901.11033>`_
     """
-    def __init__(self, *, pos: P = None, samples: P):
-        self._pos, self._samples = pos, samples
-        self._n_samples = None
+    def __init__(self, *, pos: P = None, samples: P, keys):
+        self._pos, self._samples, self._keys = pos, samples, keys
 
     @property
     def pos(self):
@@ -270,6 +269,10 @@ class Samples():
         if self.pos is not None:
             smpls = tree_map(lambda p, s: p[jnp.newaxis] + s, self.pos, smpls)
         return smpls
+
+    @property
+    def keys(self):
+        return self._keys
 
     def __len__(self):
         return jnp.shape(tree_leaves(self._samples)[0])[0]
@@ -302,7 +305,7 @@ class Samples():
             smpls = tree_map(lambda p, s: s - p[jnp.newaxis], old_pos, smpls)
         else:
             raise ValueError("invalid combination of `pos` and `old_pos`")
-        return Samples(pos=pos, samples=smpls)
+        return Samples(pos=pos, samples=smpls, keys=self.keys)
 
     def squeeze(self):
         """Convenience method to merge the two leading axis of stacked samples
@@ -311,17 +314,17 @@ class Samples():
         smpls = tree_map(
             lambda s: s.reshape((-1, ) + s.shape[2:]), self._samples
         )
-        return Samples(pos=self.pos, samples=smpls)
+        return Samples(pos=self.pos, samples=smpls, keys=self.keys)
 
     def tree_flatten(self):
         # Include mean in samples when passing to JAX (for e.g. vmap, pmap, ...)
         # return ((self.samples, ), (self.pos, ))  # confuses JAX
-        return ((self.pos, self._samples), ())
+        return ((self.pos, self._samples, self.keys), ())
 
     @classmethod
     def tree_unflatten(cls, aux, children):
         # pos, = aux
-        pos, smpls, = children
+        pos, smpls, keys = children
         # if pos is not None:  # confuses JAX
         #     smpls = tree_map(lambda p, s: s - p[jnp.newaxis], pos, smpls)
-        return cls(pos=pos, samples=smpls)
+        return cls(pos=pos, samples=smpls, keys=keys)

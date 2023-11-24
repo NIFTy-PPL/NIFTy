@@ -91,8 +91,6 @@ def _kl_met(
 class OptimizeVIState(NamedTuple):
     nit: int
     key: Array
-    samples: Samples
-    sample_keys: Optional[Array]
     sample_instruction: Callable[
         [int],
         Literal[None, "resample_mgvi", "resample_geovi", "curve"],
@@ -292,7 +290,9 @@ class OptimizeVI:
             )
         if _get_status_message is None:
             _get_status_message = partial(
-                get_status_message, residual=likelihood.normalized_residual
+                get_status_message,
+                residual=likelihood.normalized_residual,
+                name=self.__class__.__name__,
             )
 
         self.n_total_iterations = None
@@ -335,36 +335,35 @@ class OptimizeVI:
         # NOTE, use `Partial` in favor of `partial` to allow the (potentially)
         # re-jitting `residual_map` to trace the kwargs
         sampler = Partial(self.draw_linear_residual, **kwargs)
-        sampler = self.residual_map(sampler, in_axes=(
-            None,
-            0,
-        ))
+        sampler = self.residual_map(sampler, in_axes=(None, 0))
         smpls, smpls_states = sampler(primals, keys)
         # zip samples such that the mirrored-counterpart always comes right
         # after the original sample
-        smpls = Samples(pos=primals, samples=concatenate_zip(smpls, -smpls))
+        smpls = Samples(
+            pos=primals, samples=concatenate_zip(smpls, -smpls), keys=keys
+        )
         return smpls, smpls_states
 
-    def curve_samples(self, samples, metric_sample_key, **kwargs):
+    def curve_samples(self, samples: Samples, **kwargs):
         # NOTE, use `Partial` in favor of `partial` to allow the (potentially)
         # re-jitting `residual_map` to trace the kwargs
         curver = Partial(self.curve_residual, **kwargs)
         curver = self.residual_map(curver, in_axes=(None, 0, 0, 0))
-        assert len(metric_sample_key) // 2 == len(samples)
-        metric_sample_key = concatenate_zip(*((metric_sample_key, ) * 2))
+        assert len(samples.keys) // 2 == len(samples)
+        metric_sample_key = concatenate_zip(*((samples.keys, ) * 2))
         sgn = jnp.ones(len(samples))
         sgn = concatenate_zip(sgn, -sgn)
         smpls, smpls_states = curver(
             samples.pos, samples._samples, metric_sample_key, sgn
         )
-        return Samples(pos=samples.pos, samples=smpls), smpls_states
+        smpls = Samples(pos=samples.pos, samples=smpls, keys=samples.keys)
+        return smpls, smpls_states
 
     def init_state(
         self,
         key,
         *,
         nit=0,
-        pos,
         n_samples,
         draw_linear_samples=dict(cg_name="SL", cg_kwargs=dict()),
         curve_samples=dict(minimize_kwargs=dict(name="SN")),
@@ -373,11 +372,10 @@ class OptimizeVI:
             optimize.OptimizeResults,
         ] = optimize._newton_cg,
         minimize_kwargs={},
-        samples=None,
         sample_keys=None,
         sample_instruction="resample_geovi",
         _config=None
-    ):
+    ) -> OptimizeVIState:
         if _config is None:
             _config = {
                 "n_samples": n_samples,
@@ -386,13 +384,10 @@ class OptimizeVI:
                 "minimize": minimize,
                 "minimize_kwargs": minimize_kwargs,
             }
-        samples = Samples(pos=pos,
-                          samples=None) if samples is None else samples.at(pos)
         sample_instruction = sample_instruction
         state = OptimizeVIState(
             nit,
             key,
-            samples=samples,
             sample_keys=sample_keys,
             sample_instruction=sample_instruction,
             config=_config
@@ -401,21 +396,17 @@ class OptimizeVI:
 
     def update(
         self,
-        pos: P,
+        samples: Samples,
         state: OptimizeVIState,
         /,
         **kwargs,
-    ) -> tuple[P, OptimizeVIState]:
+    ) -> tuple[Samples, OptimizeVIState]:
         """One sampling and kl optimization step."""
         assert isinstance(samples, Samples)
         assert isinstance(state, OptimizeVIState)
         nit = state.nit + 1
         key = state.key
-        k_smpls = state.sample_keys
         st_smpls = state.sample_state
-        samples = state.samples.at(pos)
-        # Remove reference as to be able to clear before resampling
-        samples = samples._replace(samples=None)
         config = state.config
 
         smpls_do = state.sample_instruction
@@ -425,23 +416,18 @@ class OptimizeVI:
             key, *k_smpls = random.split(key, n_samples + 1)
             k_smpls = jnp.array(k_smpls)
             kw = _getitem_at_nit(config, "draw_linear_samples", nit)
-            samples = None  # Remove (hopefully last) reference to free space
             samples, st_smpls = self.draw_linear_samples(
                 samples.pos, k_smpls, **kw, **kwargs
             )
             if smpls_do.lower() == "resample_geovi":
                 kw = _getitem_at_nit(config, "curve_samples", nit)
-                samples, st_smpls = self.curve_samples(
-                    samples, k_smpls, **kw, **kwargs
-                )
+                samples, st_smpls = self.curve_samples(samples, **kw, **kwargs)
             elif smpls_do.lower() == "resample_mgvi":
                 ve = f"invalid resampling instruction {smpls_do}"
                 raise ValueError(ve)
         elif smpls_do.lower() == "curve":
             kw = _getitem_at_nit(config, "curve_samples", nit)
-            samples, st_smpls = self.curve_samples(
-                samples, k_smpls, **kw, **kwargs
-            )
+            samples, st_smpls = self.curve_samples(samples, **kw, **kwargs)
         elif smpls_do is None:
             ve = f"invalid resampling instruction {smpls_do}"
             raise ValueError(ve)
@@ -464,19 +450,18 @@ class OptimizeVI:
         state = state._replace(
             niter=nit,
             key=key,
-            samples=samples,
-            samples_keys=k_smpls,
             sample_state=st_smpls,
             minimization_state=kl_opt_state,
         )
-        return samples.pos, state
+        return samples, state
 
-    def run(self, keys, samples=None, primals=None):
-        """`n_total_iterations` consecutive steps of `update`."""
-        samples, state = self.init_state(keys, samples, primals)
-        for n in range(self.n_total_iterations):
-            logger.info(f"OptVI iteration number: {n}")
+    def run(self, samples, *args, **kwargs):
+        state = self.init_state(*args, **kwargs)
+        for i in range(self.n_total_iterations):
+            logger.info(f"{self.__class__.__name__} :: {i:04d}")
             samples, state = self.update(samples, state)
+            msg = self.get_status_message(state)
+            logger.info(msg)
         return samples, state
 
 
