@@ -125,6 +125,7 @@ def draw_linear_residual(
     # TODO: investigate the impact of sampling the prior and likelihood
     # antithetically.
     smpl = nll_smpl + prr_smpl
+    info = 0
     if from_inverse:
         inv_metric_at_p = partial(
             cg, Partial(ham_metric, p_liquid), **{
@@ -217,7 +218,8 @@ def curve_residual(
     sample = _process_point_estimate(
         sample, primals, point_estimates, insert=False
     )
-    metric_sample = metric_sample_sign * draw_lni(primals, metric_sample_key)
+    metric_sample, _ = draw_lni(primals, metric_sample_key)
+    metric_sample *= metric_sample_sign
     metric_sample = _process_point_estimate(
         metric_sample, primals, point_estimates, insert=False
     )
