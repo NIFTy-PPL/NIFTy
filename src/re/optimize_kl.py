@@ -3,6 +3,7 @@
 # SPDX-License-Identifier: BSD-2-Clause
 # Authors: Philipp Frank, Jakob Roth, Gordian Edenhofer
 
+import inspect
 import os
 import pickle
 from functools import partial, reduce
@@ -18,14 +19,12 @@ from jax import numpy as jnp
 from jax import random, tree_map
 from jax.tree_util import Partial
 
-from . import conjugate_gradient
+from . import optimize
 from .evi import Samples, _parse_jit, curve_residual, draw_linear_residual
 from .likelihood import Likelihood, StandardHamiltonian
 from .logger import logger
 from .misc import minisanity
-from .optimize import OptimizeResults, minimize
-from .tree_math import get_map
-from .tree_math.vector import Vector
+from .tree_math import Vector, get_map
 
 P = TypeVar("P")
 
@@ -36,11 +35,11 @@ def _optimize_kl_status_print(iiter, samples, state, residual, out_dir=None):
     if state.sampling_states is not None:
         niter = tuple(ss.nit for ss in state.sampling_states)
         msg += f"Nonlinear sampling total iterations: {niter}\n"
-    _, minis_r = minisanity(samples.pos, samples, residual)
+    _, mini_res = minisanity(samples.pos, samples, residual)
     _, mini_pr = minisanity(samples.pos, samples)
     msg += (
         f"KL-Minimization total iteration: {state.minimization_state.nit}"
-        f"\nLikelihood residual(s):\n{minis_r}"
+        f"\nLikelihood residual(s):\n{mini_res}"
         f"\nPrior residual(s):\n{mini_pr}"
         f"\n"
     )
@@ -144,13 +143,13 @@ class OptimizeEVIState(NamedTuple):
         [int],
         Literal[None, "resample_mgvi", "resample_geovi", "curve"],
     ]
-    sample_state: OptimizeResults
-    minimization_state: OptimizeResults
+    sample_state: optimize.OptimizeResults
+    minimization_state: optimize.OptimizeResults
     kwargs: dict[str, Callable[[int], dict]]
 
 
-def _make_callable(x):
-    if callable(x):
+def _make_callable(x, always=False):
+    if callable(x) and not always:
         return x
 
     def just_return_x(_):
@@ -399,27 +398,36 @@ class OptimizeEVI:
         key,
         *,
         n_samples,
-        draw_linear_samples={},
-        curve_samples={},
-        minimize={"method": "newton-cg"},
+        draw_linear_samples=dict(cg_name="SL", cg_kwargs=dict()),
+        curve_samples=dict(minimize_kwargs=dict(name="SN")),
+        minimize: Callable[
+            ...,
+            optimize.OptimizeResults,
+        ] = optimize._newton_cg,
+        minimize_kwargs={},
         samples=None,
         sample_keys=None,
-        sample_instruction=None,
+        sample_instruction="resample_geovi",
         _kwargs=None
     ):
         if _kwargs is None:
+            if len(inspect.getfullargspec(minimize)) != 1:
+                # Minimize is a minimizer and not a callable to retrieve a
+                # minimizer. Transform it into the latter.
+                minimize = _make_callable(minimize, always=True)
             _kwargs = {
                 "n_samples": _make_callable(n_samples),
                 "draw_linear_samples": _make_callable(draw_linear_samples),
                 "curve_samples": _make_callable(curve_samples),
-                "minimize": _make_callable(minimize),
+                "minimize": minimize,
+                "minimize_kwargs": _make_callable(minimize_kwargs),
             }
         state = OptimizeEVIState(
             nit,
             key,
             samples=samples,
             sample_keys=sample_keys,
-            sample_instruction=sample_instruction,
+            sample_instruction=_make_callable(sample_instruction),
             kwargs=_kwargs
         )
         return state
@@ -461,15 +469,15 @@ class OptimizeEVI:
             ve = f"invalid resampling instruction {smpls_do}"
             raise ValueError(ve)
 
-        # def _minimize_kl(samples, method='newtoncg', method_options={}):
+        minimize = kwargs["minimize"](nit)
         kw = {
             "fun_and_grad":
                 partial(self.kl_value_and_grad, primals_samples=samples),
             "hessp":
                 partial(self.kl_metric, primals_samples=samples),
         }
-        kw |= kwargs["minimize"](nit)
-        kl_opt_state = minimize(None, samples.pos, **kw)
+        kw |= kwargs["minimize_kwargs"](nit)
+        kl_opt_state = minimize(None, x0=samples.pos, **kw)
         samples = samples.at(kl_opt_state.x)
         # Remove unnecessary references
         kl_opt_state = kl_opt_state._replace(
