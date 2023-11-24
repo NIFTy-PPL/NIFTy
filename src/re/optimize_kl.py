@@ -109,6 +109,14 @@ def _getitem_at_nit(config, key, nit):
     return c
 
 
+@jax.jit
+def concatenate_zip(*arrays):
+    return tree_map(
+        lambda *x: jnp.stack(x, axis=1).reshape((-1, ) + x[0].shape[1:]),
+        *arrays
+    )
+
+
 class OptimizeVI:
     def __init__(
         self,
@@ -332,10 +340,9 @@ class OptimizeVI:
             0,
         ))
         smpls, smpls_states = sampler(primals, keys)
-        smpls = Samples(
-            pos=primals,
-            samples=tree_map(lambda *x: jnp.concatenate(x), smpls, -smpls)
-        )
+        # zip samples such that the mirrored-counterpart always comes right
+        # after the original sample
+        smpls = Samples(pos=primals, samples=concatenate_zip(smpls, -smpls))
         return smpls, smpls_states
 
     def curve_samples(self, samples, metric_sample_key, **kwargs):
@@ -344,9 +351,9 @@ class OptimizeVI:
         curver = Partial(self.curve_residual, **kwargs)
         curver = self.residual_map(curver, in_axes=(None, 0, 0, 0))
         assert len(metric_sample_key) // 2 == len(samples)
-        metric_sample_key = jnp.concatenate((metric_sample_key, ) * 2)
+        metric_sample_key = concatenate_zip(*((metric_sample_key, ) * 2))
         sgn = jnp.ones(len(samples))
-        sgn = jnp.concatenate((sgn, -sgn))
+        sgn = concatenate_zip(sgn, -sgn)
         smpls, smpls_states = curver(
             samples.pos, samples._samples, metric_sample_key, sgn
         )
