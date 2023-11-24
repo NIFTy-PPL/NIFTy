@@ -6,15 +6,13 @@
 import inspect
 import os
 import pickle
-from functools import partial, reduce
+from functools import partial
 from os import makedirs
-from os.path import isfile
 from typing import (
-    Any, Callable, Literal, NamedTuple, Optional, Tuple, TypeVar, Union
+    Any, Callable, Literal, NamedTuple, Optional, TypeVar, Union
 )
 
 import jax
-from jax import Array
 from jax import numpy as jnp
 from jax import random, tree_map
 from jax.tree_util import Partial
@@ -24,7 +22,7 @@ from .evi import Samples, _parse_jit, curve_residual, draw_linear_residual
 from .likelihood import Likelihood, StandardHamiltonian
 from .logger import logger
 from .misc import minisanity
-from .tree_math import Vector, get_map
+from .tree_math import get_map, hide_strings
 
 P = TypeVar("P")
 
@@ -90,12 +88,20 @@ def _kl_met(
     return reduce(s)
 
 
+@jax.jit
+def concatenate_zip(*arrays):
+    return tree_map(
+        lambda *x: jnp.stack(x, axis=1).reshape((-1, ) + x[0].shape[1:]),
+        *arrays
+    )
+
+
 _smpl_do_typ = Literal[None, "resample_mgvi", "resample_geovi", "curve"]
 
 
 class OptimizeVIState(NamedTuple):
     nit: int
-    key: Array
+    key: Any
     sample_instruction: Union[_smpl_do_typ, Callable[[int], _smpl_do_typ]]
     sample_state: Optional[optimize.OptimizeResults]
     minimization_state: Optional[optimize.OptimizeResults]
@@ -107,14 +113,6 @@ def _getitem_at_nit(config, key, nit):
     if callable(c) and len(inspect.getfullargspec(c).args) == 1:
         return c(nit)
     return c
-
-
-@jax.jit
-def concatenate_zip(*arrays):
-    return tree_map(
-        lambda *x: jnp.stack(x, axis=1).reshape((-1, ) + x[0].shape[1:]),
-        *arrays
-    )
 
 
 class OptimizeVI:
@@ -137,8 +135,8 @@ class OptimizeVI:
         _curve_residual: Optional[Callable] = None,
         _get_status_message: Optional[Callable] = None,
     ):
-        """JaxOpt style minimizer for VI approximation of a probability
-        distribution with a sampled approximate distribution.
+        """JaxOpt style minimizer for a VI approximation of a distribution with
+        samples.
 
         Parameters:
         -----------
@@ -253,7 +251,7 @@ class OptimizeVI:
         residual_jit = _parse_jit(residual_jit)
         residual_map = get_map(residual_map)
 
-        if not (constants is () or constants is None):
+        if not (constants == () or constants is None):
             raise NotImplementedError()
         if mirror_samples is False:
             raise NotImplementedError()
@@ -336,6 +334,7 @@ class OptimizeVI:
     def draw_linear_samples(self, primals, keys, **kwargs):
         # NOTE, use `Partial` in favor of `partial` to allow the (potentially)
         # re-jitting `residual_map` to trace the kwargs
+        kwargs = hide_strings(kwargs)
         sampler = Partial(self.draw_linear_residual, **kwargs)
         sampler = self.residual_map(sampler, in_axes=(None, 0))
         smpls, smpls_states = sampler(primals, keys)
@@ -349,11 +348,12 @@ class OptimizeVI:
     def curve_samples(self, samples: Samples, **kwargs):
         # NOTE, use `Partial` in favor of `partial` to allow the (potentially)
         # re-jitting `residual_map` to trace the kwargs
+        kwargs = hide_strings(kwargs)
         curver = Partial(self.curve_residual, **kwargs)
         curver = self.residual_map(curver, in_axes=(None, 0, 0, 0))
-        assert len(samples.keys) // 2 == len(samples)
+        assert len(samples.keys) == len(samples) // 2
         metric_sample_key = concatenate_zip(*((samples.keys, ) * 2))
-        sgn = jnp.ones(len(samples))
+        sgn = jnp.ones(len(samples.keys))
         sgn = concatenate_zip(sgn, -sgn)
         smpls, smpls_states = curver(
             samples.pos, samples._samples, metric_sample_key, sgn
@@ -368,12 +368,14 @@ class OptimizeVI:
         nit=0,
         n_samples,
         draw_linear_samples=dict(cg_name="SL", cg_kwargs=dict()),
-        curve_samples=dict(minimize_kwargs=dict(name="SN")),
+        curve_samples=dict(
+            minimize_kwargs=dict(name="SN", cg_kwargs=dict(name="SNCG"))
+        ),
         minimize: Callable[
             ...,
             optimize.OptimizeResults,
         ] = optimize._newton_cg,
-        minimize_kwargs={},
+        minimize_kwargs=dict(name="M", cg_kwargs=dict(name="MCG")),
         sample_instruction="resample_geovi",
         _config=None
     ) -> OptimizeVIState:
@@ -412,9 +414,11 @@ class OptimizeVI:
         config = state.config
 
         smpls_do = state.sample_instruction
-        smpls_do = smpls_do(nit) if callable(smpls_do) else smpls_do
+        smpls_do: str = smpls_do(nit) if callable(smpls_do) else smpls_do
+        n_samples = _getitem_at_nit(config, "n_samples", nit)
+        # Always resample if `n_samples` increased
+        smpls_do = "resample_geovi" if n_samples > len(samples) else smpls_do
         if smpls_do.lower().startswith("resample"):
-            n_samples = _getitem_at_nit(config, "n_samples", nit)
             key, *k_smpls = random.split(key, n_samples + 1)
             k_smpls = jnp.array(k_smpls)
             kw = _getitem_at_nit(config, "draw_linear_samples", nit)
@@ -450,14 +454,14 @@ class OptimizeVI:
         )
 
         state = state._replace(
-            niter=nit,
+            nit=nit,
             key=key,
             sample_state=st_smpls,
             minimization_state=kl_opt_state,
         )
         return samples, state
 
-    def run(self, samples, *args, **kwargs):
+    def run(self, samples, *args, **kwargs) -> tuple[Samples, OptimizeVIState]:
         state = self.init_state(*args, **kwargs)
         for i in range(self.n_total_iterations):
             logger.info(f"{self.__class__.__name__} :: {i:04d}")
