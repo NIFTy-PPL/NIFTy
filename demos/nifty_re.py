@@ -175,22 +175,26 @@ nll = jft.Gaussian(data, noise_cov_inv) @ signal_response
 n_vi_iterations = 6
 delta = 1e-4
 absdelta = delta * jnp.prod(jnp.array(dims))
+n_samples = 4
 
 
-def n_samples(i):
+def n_samples_update(i):
     return n_samples // 2 if i < 2 else n_samples
+
+
+def sample_instruction_update(i):
+    return "resample_mgvi"
 
 
 key, subkey = random.split(key)
 pos_init = jft.Vector(jft.random_like(subkey, signal_response.domain))
 # NOTE, changing the number of samples always triggers a resampling even if
 # `resamples=False`, as more samples have to be drawn that did not exist before.
-n_samples = 4
 samples, state = jft.optimize_kl(
     nll,
     pos_init,
     n_total_iterations=n_vi_iterations,
-    n_samples=n_samples,
+    n_samples=n_samples_update,
     key=key,
     point_estimates=(),
     draw_linear_samples=dict(
@@ -200,13 +204,14 @@ samples, state = jft.optimize_kl(
         minimize_kwargs=dict(
             name="SN",
             xtol=delta,
-            cg_kwargs=dict(name="SNCG"),
-            maxiter=25,
+            cg_kwargs=dict(name=None),
+            maxiter=5,
         )
     ),
     minimize_kwargs=dict(
         name="M", absdelta=absdelta, cg_kwargs=dict(name="MCG"), maxiter=35
     ),
+    sample_instruction=sample_instruction_update,
     odir="results_nifty_re",
     resume=False,
 )
@@ -235,5 +240,3 @@ for ax, (title, field, tp) in zip(axs.flat, to_plot):
 fig.tight_layout()
 fig.savefig("cf_w_unknown_spectrum.png", dpi=400)
 plt.close()
-
-# %%
