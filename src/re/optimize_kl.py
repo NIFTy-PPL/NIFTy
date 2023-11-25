@@ -448,7 +448,7 @@ class OptimizeVI:
             if smpls_do.lower() == "resample_geovi":
                 kw = _getitem_at_nit(config, "curve_samples", nit)
                 samples, st_smpls = self.curve_samples(samples, **kw, **kwargs)
-            elif smpls_do.lower() == "resample_mgvi":
+            elif smpls_do.lower() != "resample_mgvi":
                 ve = f"invalid resampling instruction {smpls_do}"
                 raise ValueError(ve)
         elif smpls_do.lower() == "curve":
