@@ -19,7 +19,7 @@ from .likelihood import (
     partial_insert_and_remove
 )
 from .tree_math import (
-    Vector, assert_arithmetics, dot, get_map, random_like, vdot
+    Vector, assert_arithmetics, dot, random_like, stack, vdot
 )
 
 P = TypeVar("P")
@@ -83,7 +83,7 @@ def sample_likelihood(likelihood: Likelihood, primals, key):
 
 def draw_linear_residual(
     likelihood: Likelihood,
-    primals: P,
+    pos: P,
     key,
     *,
     from_inverse: bool = True,
@@ -92,17 +92,17 @@ def draw_linear_residual(
     cg_name: Optional[str] = None,
     cg_kwargs: Optional[dict] = None,
     _raise_nonposdef: bool = False,
-) -> P:
-    assert_arithmetics(primals)
+) -> tuple[P, int]:
+    assert_arithmetics(pos)
 
     if not isinstance(likelihood, Likelihood):
         te = f"`likelihood` of invalid type; got '{type(likelihood)}'"
         raise TypeError(te)
     if point_estimates:
-        lh, p_liquid = likelihood.freeze(point_estimates, primals)
+        lh, p_liquid = likelihood.freeze(point_estimates, pos)
     else:
         lh = likelihood
-        p_liquid = primals
+        p_liquid = pos
 
     def ham_metric(primals, tangents, **primals_kw):
         return lh.metric(primals, tangents, **primals_kw) + tangents
@@ -139,7 +139,7 @@ def draw_linear_residual(
             (info < 0) if info is not None else False,
             ValueError("conjugate gradient failed")
         )
-    smpl = _process_point_estimate(smpl, primals, point_estimates, insert=True)
+    smpl = _process_point_estimate(smpl, pos, point_estimates, insert=True)
     return smpl, info
 
 
@@ -196,8 +196,8 @@ def _curve_residual_functions(
 
 def curve_residual(
     likelihood=None,
-    primals: P = None,
-    sample=None,
+    pos: P = None,
+    residual_sample=None,
     metric_sample_key=None,
     metric_sample_sign=1.0,
     *,
@@ -207,7 +207,10 @@ def curve_residual(
     jit: Union[Callable, bool] = True,
     _curve_funcs=None,
     _raise_notconverged=False,
-) -> P:
+) -> tuple[P, optimize.OptimizeResults]:
+    assert_arithmetics(pos)
+    assert_arithmetics(residual_sample)
+
     if _curve_funcs is None:
         draw_lni, trafo, rag, metric, sampnorm = _curve_residual_functions(
             likelihood=likelihood, point_estimates=point_estimates, jit=jit
@@ -215,29 +218,74 @@ def curve_residual(
     else:
         draw_lni, trafo, rag, metric, sampnorm = _curve_funcs
 
-    sample = _process_point_estimate(
-        sample, primals, point_estimates, insert=False
+    residual_sample = _process_point_estimate(
+        residual_sample, pos, point_estimates, insert=False
     )
-    metric_sample, _ = draw_lni(primals, metric_sample_key)
+    metric_sample, _ = draw_lni(pos, metric_sample_key)
     metric_sample *= metric_sample_sign
     metric_sample = _process_point_estimate(
-        metric_sample, primals, point_estimates, insert=False
+        metric_sample, pos, point_estimates, insert=False
     )
-    trafo_at_p = trafo(primals)
+    trafo_at_p = trafo(pos)
     options = {
-        "fun_and_grad": partial(rag, primals, trafo_at_p, metric_sample),
-        "hessp": partial(metric, primals, trafo_at_p),
-        "custom_gradnorm": partial(sampnorm, primals),
+        "fun_and_grad": partial(rag, pos, trafo_at_p, metric_sample),
+        "hessp": partial(metric, pos, trafo_at_p),
+        "custom_gradnorm": partial(sampnorm, pos),
     }
-    opt_state = minimize(None, x0=sample, **(minimize_kwargs | options))
+    opt_state = minimize(
+        None, x0=pos + residual_sample, **(minimize_kwargs | options)
+    )
     if _raise_notconverged & (opt_state.status < 0):
         ValueError("S: failed to invert map")
     newsam = _process_point_estimate(
-        opt_state.x, primals, point_estimates, insert=True
+        opt_state.x, pos, point_estimates, insert=True
     )
     # Remove x from state to avoid copy of the samples
     opt_state = opt_state._replace(x=None)
-    return newsam - primals, opt_state
+    return newsam - pos, opt_state
+
+
+def draw_residual(
+    likelihood: Likelihood,
+    pos: P,
+    key,
+    *,
+    point_estimates: Union[P, Tuple[str]] = (),
+    cg: Callable = conjugate_gradient.static_cg,
+    cg_name: Optional[str] = None,
+    cg_kwargs: Optional[dict] = None,
+    minimize: Callable[..., optimize.OptimizeResults] = optimize._newton_cg,
+    minimize_kwargs={},
+    _raise_nonposdef: bool = False,
+    _raise_notconverged: bool = False,
+) -> tuple[P, optimize.OptimizeResults]:
+    residual_sample, _ = draw_linear_residual(
+        likelihood,
+        pos,
+        key,
+        point_estimates=point_estimates,
+        cg=cg,
+        cg_name=cg_name,
+        cg_kwargs=cg_kwargs,
+        _raise_nonposdef=_raise_nonposdef,
+    )
+    curve = partial(
+        curve_residual,
+        likelihood,
+        pos,
+        metric_sample_key=key,
+        point_estimates=point_estimates,
+        minimize=minimize,
+        minimize_kwargs=minimize_kwargs,
+        jit=False,
+        _raise_notconverged=_raise_notconverged,
+    )
+    return stack(
+        (
+            curve(residual_sample, metric_sample_sign=1.0),
+            curve(-residual_sample, metric_sample_sign=-1.0)
+        )
+    )
 
 
 @register_pytree_node_class
