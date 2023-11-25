@@ -582,13 +582,18 @@ class Likelihood(AbstractModel):
                 other.left_sqrt_metric(p, t[rkey], **pkw)
             )
 
+        domain = None
+        if self.domain is not None and other.domain is not None:
+            domain = self.domain | other.domain
+
         return Likelihood(
             joined_hamiltonian,
             normalized_residual=joined_normalized_residual,
             transformation=joined_transformation,
             left_sqrt_metric=joined_left_sqrt_metric,
             metric=joined_metric,
-            lsm_tangents_shape=joined_tangents_shape
+            lsm_tangents_shape=joined_tangents_shape,
+            domain=domain
         )
 
     def freeze(self, point_estimates, primals):
