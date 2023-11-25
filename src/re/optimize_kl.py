@@ -441,7 +441,8 @@ class OptimizeVI:
         smpls_do: str = smpls_do(nit) if callable(smpls_do) else smpls_do
         n_samples = _getitem_at_nit(config, "n_samples", nit)
         # Always resample if `n_samples` increased
-        smpls_do = "resample_geovi" if n_samples > len(samples) else smpls_do
+        if n_samples > len(samples) and smpls_do.lower() == "curve":
+            smpls_do = "resample_geovi"
         if smpls_do.lower().startswith("resample"):
             key, *k_smpls = random.split(key, n_samples + 1)
             k_smpls = jnp.array(k_smpls)
