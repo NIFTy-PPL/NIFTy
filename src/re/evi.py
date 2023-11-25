@@ -144,7 +144,7 @@ def draw_linear_residual(
 
 
 def _curve_residual_functions(
-    likelihood, point_estimates=(), jit: Union[Callable, bool] = True
+    likelihood, point_estimates=(), jit: Union[Callable, bool] = False
 ):
     jit = _parse_jit(jit)
 
@@ -204,7 +204,7 @@ def curve_residual(
     point_estimates=(),
     minimize: Callable[..., optimize.OptimizeResults] = optimize._newton_cg,
     minimize_kwargs={},
-    jit: Union[Callable, bool] = True,
+    jit: Union[Callable, bool] = False,
     _curve_funcs=None,
     _raise_notconverged=False,
 ) -> tuple[P, optimize.OptimizeResults]:
