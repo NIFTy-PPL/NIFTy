@@ -12,6 +12,7 @@ from pickle import PicklingError
 from typing import Any, Callable, Literal, NamedTuple, Optional, TypeVar, Union
 
 import jax
+import numpy as np
 from jax import numpy as jnp
 from jax import random, tree_map
 from jax.tree_util import Partial
@@ -30,17 +31,20 @@ def get_status_message(
     samples, state, residual=None, *, name="", map="lmap"
 ) -> str:
     energy = state.minimization_state.fun
-    msg_nonlin = ""
-    if state.sample_state is not None:
+    msg_smpl = ""
+    if isinstance(state.sample_state, optimize.OptimizeResults):
         nlsi = tuple(int(el) for el in state.sample_state.nit)
-        msg_nonlin = f"\n#(Nonlinear Sampling Steps) {nlsi}"
+        msg_smpl = f"\n#(Nonlinear Sampling Steps) {nlsi}"
+    elif isinstance(state.sample_state, (np.ndarray, jax.Array)):
+        nlsi = tuple(int(el) for el in state.sample_state)
+        msg_smpl = f"\nLinear Sampling Status {nlsi}"
     mini_res = ""
     if residual is not None:
         _, mini_res = minisanity(samples, residual, map=map)
     _, mini_pr = minisanity(samples, map=map)
     msg = (
         f"Post {name}: Iteration {state.nit - 1:04d} ⛰:{energy:+2.4e}"
-        f"{msg_nonlin}"
+        f"{msg_smpl}"
         f"\n#(KL minimization steps) {state.minimization_state.nit}"
         f"\nLikelihood residual(s):\n{mini_res}"
         f"\nPrior residual(s):\n{mini_pr}"
