@@ -6,6 +6,7 @@ pytest.importorskip("jax")
 
 import jax
 import jax.numpy as jnp
+from jax import random
 from numpy.testing import assert_array_equal
 
 import nifty8.re as jft
@@ -20,14 +21,16 @@ def f(u, v):
 @pmp("map", (jft.smap, jft.lmap))
 @pmp("in_axes", ((0, None), (1, None), (None, 0), (0, 0), (1, 1)))
 @pmp("out_axes", (0, ))
-def test_smap_f(map, in_axes, out_axes):
+@pmp("seed", (32, 42, 43))
+def test_smap_f(map, in_axes, out_axes, seed):
     fixed_shp = 3
     batched_shp = 4
+    key = random.PRNGKey(seed)
 
     vf = jax.vmap(f, in_axes=in_axes, out_axes=out_axes)
     sf = map(f, in_axes=in_axes, out_axes=out_axes)
     inp = []
-    for i in in_axes:
+    for i, k in zip(in_axes, random.split(key, len(in_axes))):
         if i is None:
             shp = (fixed_shp, )
         elif i == 0:
@@ -35,7 +38,7 @@ def test_smap_f(map, in_axes, out_axes):
         else:
             assert i == 1
             shp = (fixed_shp, batched_shp)
-        inp.append(jnp.ones(shp))
+        inp.append(random.normal(k, shape=shp))
     assert_array_equal(vf(*inp), sf(*inp))
 
 
@@ -45,14 +48,16 @@ def g(u, v):
 
 @pmp("map", (jft.smap, jft.lmap))
 @pmp("in_axes,out_axes", (((0, None), (0, 0)), ((None, 1), (None, 0))))
-def test_smap_g(map, in_axes, out_axes):
+@pmp("seed", (32, 42, 43))
+def test_smap_g(map, in_axes, out_axes, seed):
     fixed_shp = 3
     batched_shp = 4
+    key = random.PRNGKey(seed)
 
     vf = jax.vmap(g, in_axes=in_axes, out_axes=out_axes)
     sf = map(g, in_axes=in_axes, out_axes=out_axes)
     inp = []
-    for i in in_axes:
+    for i, k in zip(in_axes, random.split(key, len(in_axes))):
         if i is None:
             shp = (fixed_shp, )
         elif i == 0:
@@ -60,7 +65,7 @@ def test_smap_g(map, in_axes, out_axes):
         else:
             assert i == 1
             shp = (fixed_shp, batched_shp)
-        inp.append(jnp.ones(shp))
+        inp.append(random.normal(k, shape=shp))
     v = vf(*inp)
     s = sf(*inp)
     jax.tree_map(assert_array_equal, v, s)
