@@ -183,7 +183,9 @@ def n_samples_update(i):
 
 
 def sample_instruction_update(i):
-    return "resample_mgvi"
+    if i < 4:
+        return "resample_mgvi"
+    return "curve"
 
 
 key, subkey = random.split(key)
