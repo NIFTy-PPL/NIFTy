@@ -256,6 +256,7 @@ def draw_residual(
     cg_kwargs: Optional[dict] = None,
     minimize: Callable[..., optimize.OptimizeResults] = optimize._newton_cg,
     minimize_kwargs={},
+    _curve_funcs=None,
     _raise_nonposdef: bool = False,
     _raise_notconverged: bool = False,
 ) -> tuple[P, optimize.OptimizeResults]:
@@ -279,6 +280,7 @@ def draw_residual(
         minimize_kwargs=minimize_kwargs,
         jit=False,
         _raise_notconverged=_raise_notconverged,
+        _curve_funcs=_curve_funcs,
     )
     return stack(
         (
