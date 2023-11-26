@@ -547,6 +547,7 @@ def optimize_kl(
     parameters and further details on the optimization.
     """
     LAST_FILENAME = "last.pkl"
+    MINISANITY_FILENAME = "minisanity.txt"
 
     opt_vi = _optimize_vi if _optimize_vi is not None else None
     if opt_vi is None:
@@ -589,6 +590,9 @@ def optimize_kl(
             minimize_kwargs=minimize_kwargs,
             sample_instruction=sample_instruction,
         )
+    sanity_fn = os.path.join(
+        odir, MINISANITY_FILENAME
+    ) if odir is not None else None
 
     # Test if the state is pickle-able to avoid an unfortunate end
     try:
@@ -605,14 +609,12 @@ def optimize_kl(
         samples, opt_vi_state = opt_vi.update(samples, opt_vi_state)
         msg = opt_vi.get_status_message(samples, opt_vi_state)
         logger.info(msg)
-        if odir is not None:
-            sanity_fn = os.path.join(odir, "minisanity")
-            if os.path.isfile(sanity_fn) and opt_vi_state.nit != 0:
-                with open(sanity_fn, "a") as f:
-                    f.write("\n" + msg)
-            if odir is not None:
-                with open(last_fn, "wb") as f:
-                    pickle.dump((samples, opt_vi_state), f)
+        if sanity_fn is not None:
+            with open(sanity_fn, "a") as f:
+                f.write("\n" + msg)
+        if last_fn is not None:
+            with open(last_fn, "wb") as f:
+                pickle.dump((samples, opt_vi_state), f)
         if callback != None:
             callback(samples, opt_vi_state)
 
