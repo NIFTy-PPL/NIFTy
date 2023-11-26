@@ -365,10 +365,11 @@ def VariableCovarianceStudentT(data, dof):
         """
         primals, tangent : pair of (mean, std)
         """
-        return (
+        res = (
             tangent[0] * (dof + 1) / (dof + 3) / primals[1]**2,
             tangent[1] * 2 * dof / (dof + 3) / primals[1]**2
         )
+        return type(primals)(res)
 
     def normalized_residual(primals):
         return (data - primals[0]) / primals[1] * ((dof + 1) / (dof + 3))**0.5
@@ -381,7 +382,8 @@ def VariableCovarianceStudentT(data, dof):
             (dof + 1) / (dof + 3) / primals[1]**2,
             2 * dof / (dof + 3) / primals[1]**2
         )
-        return (cov[0]**0.5 * tangents[0], cov[1]**0.5 * tangents[1])
+        res = (cov[0]**0.5 * tangents[0], cov[1]**0.5 * tangents[1])
+        return type(primals)(res)
 
     domain = lsm_tangents_shape = tree_map(
         ShapeWithDtype.from_leave, (data, data)
