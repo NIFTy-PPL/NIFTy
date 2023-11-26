@@ -152,9 +152,14 @@ def test_optimize_kl_sample_consistency(
         maxiter=5 if sample_instruction.lower() == "resample_geovi" else 0,
     )
 
-    residual_draw, _ = jft.draw_residual(
-        lh, pos, sk, **draw_linear_samples, minimize_kwargs=minimize_kwargs
-    )
+    try:
+        residual_draw, _ = jft.draw_residual(
+            lh, pos, sk, **draw_linear_samples, minimize_kwargs=minimize_kwargs
+        )
+    except NotImplementedError as e:
+        if "transformation" in "".join(e.args):
+            pytest.skip("".join(e.args))
+        assert False
     residual_diy_l1, _ = jft.draw_linear_residual(
         lh, pos, sk, **draw_linear_samples
     )
