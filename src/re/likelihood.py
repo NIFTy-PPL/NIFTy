@@ -368,13 +368,15 @@ class Likelihood(AbstractModel):
         """Alias for `left_sqrt_metric_tangents_shape`."""
         return self.left_sqrt_metric_tangents_shape
 
-    def new(
+    def replace(
         self,
         energy: Callable,
-        normalized_residual: Optional[Callable],
-        transformation: Optional[Callable],
-        left_sqrt_metric: Optional[Callable],
-        metric: Optional[Callable],
+        *,
+        normalized_residual: Optional[Callable] = None,
+        transformation: Optional[Callable] = None,
+        left_sqrt_metric: Optional[Callable] = None,
+        metric: Optional[Callable] = None,
+        lsm_tangents_shape=None,
         domain=None,
     ):
         """Instantiates a new likelihood with the same `lsm_tangents_shape`.
@@ -395,12 +397,16 @@ class Likelihood(AbstractModel):
         """
         return Likelihood(
             energy,
-            normalized_residual=normalized_residual,
-            transformation=transformation,
-            left_sqrt_metric=left_sqrt_metric,
-            metric=metric,
-            lsm_tangents_shape=self._lsm_tan_shp,
-            domain=domain if domain is not None else self._domain
+            normalized_residual=normalized_residual
+            if normalized_residual is not None else self.normalized_residual,
+            transformation=transformation
+            if transformation is not None else self.transformation,
+            left_sqrt_metric=left_sqrt_metric
+            if left_sqrt_metric is not None else self.left_sqrt_metric,
+            metric=metric if metric is not None else self.metric,
+            lsm_tangents_shape=lsm_tangents_shape
+            if lsm_tangents_shape is not None else self.lsm_tangents_shape,
+            domain=domain if domain is not None else self.domain
         )
 
     def jit(self, **kwargs):
@@ -428,7 +434,7 @@ class Likelihood(AbstractModel):
         else:
             j_trafo, j_lsm, j_m = None, None, None
 
-        return self.new(
+        return self.replace(
             jit(self._hamiltonian, **kwargs),
             normalized_residual=j_r,
             transformation=j_trafo,
@@ -513,7 +519,7 @@ class Likelihood(AbstractModel):
             f, AbstractModel
         ) else domain
 
-        return self.new(
+        return self.replace(
             energy_at_f,
             normalized_residual=normalized_residual_at_f,
             transformation=transformation_at_f,
