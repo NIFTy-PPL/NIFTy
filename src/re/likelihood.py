@@ -416,7 +416,7 @@ class Likelihood(AbstractModel):
         from jax import jit
 
         j_r = (
-            jit(self.normalized_residual)
+            jit(self.normalized_residual, **kwargs)
             if self._normalized_residual is not None else None
         )
 
