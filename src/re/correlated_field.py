@@ -80,6 +80,20 @@ def get_fourier_mode_distributor(
     return m_length_idx, um, m_count
 
 
+def _log_space_transform_unique_modes(domain, um):
+    """Transforms the unique modes to log-space for
+    the amplitude model"""
+    domain = domain.copy()
+    um = um.at[1:].set(jnp.log(um[1:]))
+    um = um.at[1:].add(-um[1])
+    _safe_assert(um[0] == 0.)
+    domain["relative_log_mode_lengths"] = um
+    log_vol = um[2:] - um[1:-1]
+    _safe_assert(um.shape[0] - 2 == log_vol.shape[0])
+    domain["log_volume"] = log_vol
+    return domain
+
+
 def _twolog_integrate(log_vol, x):
     # Map the space to the one for the relative log-modes, i.e. pad the space
     # of the log volume
@@ -383,15 +397,7 @@ class CorrelatedFieldMaker():
             )
             domain["power_distributor"] = m_length_idx
             domain["mode_multiplicity"] = m_count
-
-            # Transform the unique modes to log-space for the amplitude model
-            um = um.at[1:].set(jnp.log(um[1:]))
-            um = um.at[1:].add(-um[1])
-            _safe_assert(um[0] == 0.)
-            domain["relative_log_mode_lengths"] = um
-            log_vol = um[2:] - um[1:-1]
-            _safe_assert(um.shape[0] - 2 == log_vol.shape[0])
-            domain["log_volume"] = log_vol
+            domain = _log_space_transform_unique_modes(domain, um)
         else:
             ve = f"invalid `harmonic_domain_type` {harmonic_domain_type!r}"
             raise ValueError(ve)
@@ -522,14 +528,6 @@ class CorrelatedFieldMaker():
             domain["mode_multiplicity"] = m_count
             domain["mode_lengths"] = um
 
-            # Transform the unique modes to log-space for the amplitude model
-            um = um.at[1:].set(jnp.log(um[1:]))
-            um = um.at[1:].add(-um[1])
-            _safe_assert(um[0] == 0.)
-            domain["relative_log_mode_lengths"] = um
-            log_vol = um[2:] - um[1:-1]
-            _safe_assert(um.shape[0] - 2 == log_vol.shape[0])
-            domain["log_volume"] = log_vol
         else:
             ve = f"invalid `harmonic_domain_type` {harmonic_domain_type!r}"
             raise ValueError(ve)
