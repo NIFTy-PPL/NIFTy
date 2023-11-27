@@ -716,7 +716,7 @@ class Likelihood(AbstractModel):
         ) if self._normalized_residual is not None else None
         domain = jax.tree_map(ShapeWithDtype.from_leave, primals_liquid)
 
-        lh = Likelihood.replace(
+        lh = self.replace(
             energy,
             transformation=transformation,
             left_sqrt_metric=left_sqrt_metric,
