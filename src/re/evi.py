@@ -171,17 +171,18 @@ def _nonlinearly_update_residual_functions(
         r = ms_at_p - _g(likelihood, p, lh_trafo_at_p, x)
         return 0.5 * dot(r, r)
 
-    def _metric(likelihood, p, lh_trafo_at_p, primals, tangents):
-        # TODO: @pfrank use `right_sqrt_metric`
-        f = partial(_g, likelihood, p, lh_trafo_at_p)
-        _, jj = jax.jvp(f, (primals, ), (tangents, ))
-        return jax.vjp(f, primals)[1](jj)[0]
+    def _metric(likelihood, p, primals, tangents):
+        lsm = likelihood.left_sqrt_metric
+        rsm = likelihood.right_sqrt_metric
+        tm = lsm(p, rsm(primals, tangents))
+        res = tangents + tm + lsm(primals, rsm(p, tangents + tm))
+        # TODO check stability against symmetrized implementation
+        #res = tangents + tm + lsm(primals, rsm(p, tangents))
+        #res += lsm(primals, rsm(p, tm))
+        return res
 
     def _sampnorm(likelihood, p, natgrad):
-        # TODO: @pfrank use `right_sqrt_metric`
-        o = partial(likelihood.left_sqrt_metric, p)
-        o_transpose = jax.linear_transpose(o, likelihood.lsm_tangents_shape)
-        fpp = _functional_conj(o_transpose)(natgrad)
+        fpp = likelihood.right_sqrt_metric(p, natgrad)
         return jnp.sqrt(vdot(natgrad, natgrad) + vdot(fpp, fpp))
 
     draw_linear_non_inverse = jit(_draw_linear_non_inverse)
@@ -234,7 +235,7 @@ def nonlinearly_update_residual(
         trafo_at_p = trafo(pos)
         options = {
             "fun_and_grad": partial(rag, pos, trafo_at_p, metric_sample),
-            "hessp": partial(metric, pos, trafo_at_p),
+            "hessp": partial(metric, pos),
             "custom_gradnorm": partial(sampnorm, pos),
         }
         opt_state = minimize(
