@@ -172,11 +172,13 @@ def _nonlinearly_update_residual_functions(
         return 0.5 * dot(r, r)
 
     def _metric(likelihood, p, lh_trafo_at_p, primals, tangents):
+        # TODO: @pfrank use `right_sqrt_metric`
         f = partial(_g, likelihood, p, lh_trafo_at_p)
         _, jj = jax.jvp(f, (primals, ), (tangents, ))
         return jax.vjp(f, primals)[1](jj)[0]
 
     def _sampnorm(likelihood, p, natgrad):
+        # TODO: @pfrank use `right_sqrt_metric`
         o = partial(likelihood.left_sqrt_metric, p)
         o_transpose = jax.linear_transpose(o, likelihood.lsm_tangents_shape)
         fpp = _functional_conj(o_transpose)(natgrad)

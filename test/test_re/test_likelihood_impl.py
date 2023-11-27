@@ -153,7 +153,7 @@ def test_studt_vs_vcstudt_consistency(seed, shape):
 
 
 @pmp("lh_init", lh_init_true + lh_init_approx)
-def test_left_sqrt_metric_vs_metric_consistency(seed, shape, lh_init):
+def test_sqrt_metric_vs_metric_consistency(seed, shape, lh_init):
     rtol = 4 * jnp.finfo(jnp.zeros(0).dtype).eps
     atol = 0.
     aallclose = partial(assert_allclose, rtol=rtol, atol=atol)
@@ -169,21 +169,37 @@ def test_left_sqrt_metric_vs_metric_consistency(seed, shape, lh_init):
     }
     lh = lh_init_method(**init_kwargs)
 
-    energy, lsm, lsm_shp = lh.energy, lh.left_sqrt_metric, lh.lsm_tangents_shape
-    # Let JIFTy infer the metric from the left-square-root-metric
-    lh_mini = jft.Likelihood(
-        energy, left_sqrt_metric=lsm, lsm_tangents_shape=lsm_shp
+    # Let NIFTy.re infer the metric from the left-square-root-metric
+    lh_mini1 = jft.Likelihood(
+        lh.energy,
+        left_sqrt_metric=lh.left_sqrt_metric,
+        lsm_tangents_shape=lh.lsm_tangents_shape,
     )
 
     for _ in range(N_TRIES):
         key, *sk = random.split(key, 3)
         p = latent_init(sk.pop(), shape=shape)
         t = latent_init(sk.pop(), shape=shape)
-        jax.tree_map(aallclose, lh.metric(p, t), lh_mini.metric(p, t))
+        jax.tree_map(aallclose, lh.metric(p, t), lh_mini1.metric(p, t))
+
+    # Let NIFTy.re infer the metric from the left-square-root-metric and
+    # right-sqrt-metric
+    lh_mini2 = jft.Likelihood(
+        lh.energy,
+        left_sqrt_metric=lh.left_sqrt_metric,
+        right_sqrt_metric=lh.right_sqrt_metric,
+        lsm_tangents_shape=lh.lsm_tangents_shape,
+    )
+
+    for _ in range(N_TRIES):
+        key, *sk = random.split(key, 3)
+        p = latent_init(sk.pop(), shape=shape)
+        t = latent_init(sk.pop(), shape=shape)
+        jax.tree_map(aallclose, lh.metric(p, t), lh_mini2.metric(p, t))
 
 
 @pmp("lh_init", lh_init_true)
-def test_transformation_vs_left_sqrt_metric_consistency(seed, shape, lh_init):
+def test_transformation_vs_sqrt_metric_consistency(seed, shape, lh_init):
     rtol = 4 * jnp.finfo(jnp.zeros(0).dtype).eps
     atol = 0.
     aallclose = partial(assert_allclose, rtol=rtol, atol=atol)
@@ -202,7 +218,7 @@ def test_transformation_vs_left_sqrt_metric_consistency(seed, shape, lh_init):
         pytest.skip("no transformation rule implemented yet")
 
     energy, lsm, lsm_shp = lh.energy, lh.left_sqrt_metric, lh.lsm_tangents_shape
-    # Let JIFTy infer the left-square-root-metric and the metric from the
+    # Let NIFTy.re infer the left-square-root-metric and the metric from the
     # transformation
     lh_mini = jft.Likelihood(
         energy, left_sqrt_metric=lsm, lsm_tangents_shape=lsm_shp
@@ -215,6 +231,10 @@ def test_transformation_vs_left_sqrt_metric_consistency(seed, shape, lh_init):
         jax.tree_map(
             aallclose, lh.left_sqrt_metric(p, t),
             lh_mini.left_sqrt_metric(p, t)
+        )
+        jax.tree_map(
+            aallclose, lh.right_sqrt_metric(p, t),
+            lh_mini.right_sqrt_metric(p, t)
         )
         jax.tree_map(aallclose, lh.metric(p, t), lh_mini.metric(p, t))
 
