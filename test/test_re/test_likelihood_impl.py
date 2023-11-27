@@ -80,7 +80,7 @@ lh_init_approx = (
         jft.VariableCovarianceGaussian, {
             "data": partial(random_draw, dtype=float, method=random.normal),
         }, lambda key, shape: (
-            random_draw(key, shape, float, random.normal), 1. / jax.
+            random_draw(key, shape, float, random.normal), 3. + 1. / jax.
             tree_map(jnp.exp, random_draw(key, shape, float, random.normal))
         )
     ), (
@@ -88,8 +88,10 @@ lh_init_approx = (
             "data": partial(random_draw, dtype=float, method=random.normal),
             "dof": partial(random_draw, dtype=float, method=random.exponential),
         }, lambda key, shape: (
-            random_draw(key, shape, float, random.normal), 1. / jax.tree_map(
-                jnp.exp, 1. + random_draw(key, shape, float, random.normal)
+            random_draw(key, shape, float, random.normal),
+            jax.tree_map(
+                jnp.exp, 3. + 1e-1 *
+                random_draw(key, shape, float, random.normal)
             )
         )
     )

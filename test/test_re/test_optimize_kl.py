@@ -67,7 +67,7 @@ lh_init = (
                 ),
         },
         lambda key, shape: jax.tree_map(
-            lambda x: x.astype(float),
+            lambda x: x.astype(float), 6. +
             random_draw(key, shape, int, partial(random.poisson, lam=3.14))
         ),
     ), (
@@ -77,10 +77,9 @@ lh_init = (
         },
         lambda key, shape: jft.Vector(
             (
-                random_draw(key, shape, float, random.normal), 1. / jax.
+                random_draw(key, shape, float, random.normal), 3. + 1. / jax.
                 tree_map(
-                    jnp.exp, 1e-1 *
-                    random_draw(key, shape, float, random.normal)
+                    jnp.exp, random_draw(key, shape, float, random.normal)
                 )
             )
         ),
@@ -92,9 +91,10 @@ lh_init = (
         },
         lambda key, shape: jft.Vector(
             (
-                random_draw(key, shape, float, random.normal), 1. / jax.
-                tree_map(
-                    jnp.exp, 1. + random_draw(key, shape, float, random.normal)
+                random_draw(key, shape, float, random.normal),
+                jax.tree_map(
+                    jnp.exp, 3. + 1e-1 *
+                    random_draw(key, shape, float, random.normal)
                 )
             )
         ),
