@@ -159,30 +159,31 @@ def _nonlinearly_update_residual_functions(
             from_inverse=False
         )
 
-    def _trafo(likelihood, p):
-        return likelihood.transformation(p)
+    def _trafo(likelihood, e):
+        return likelihood.transformation(e)
 
-    def _g(likelihood, p, lh_trafo_at_p, x):
+    def _g(likelihood, e, lh_trafo_at_p, x):
         # t = likelihood.transformation(x) - lh_trafo_at_p
         t = tree_map(jnp.subtract, likelihood.transformation(x), lh_trafo_at_p)
-        return x - p + likelihood.left_sqrt_metric(p, t)
+        return x - e + likelihood.left_sqrt_metric(e, t)
 
-    def _residual(likelihood, p, lh_trafo_at_p, ms_at_p, x):
-        r = ms_at_p - _g(likelihood, p, lh_trafo_at_p, x)
+    def _residual(likelihood, e, lh_trafo_at_p, ms_at_p, x):
+        r = ms_at_p - _g(likelihood, e, lh_trafo_at_p, x)
         return 0.5 * dot(r, r)
 
-    def _metric(likelihood, p, primals, tangents):
+    def _metric(likelihood, e, primals, tangents):
         lsm = likelihood.left_sqrt_metric
         rsm = likelihood.right_sqrt_metric
-        tm = lsm(p, rsm(primals, tangents))
-        res = tangents + tm + lsm(primals, rsm(p, tangents + tm))
+
+        tm = lsm(e, rsm(primals, tangents))
+        res = tangents + tm + lsm(primals, rsm(e, tangents + tm))
         # TODO check stability against symmetrized implementation
         #res = tangents + tm + lsm(primals, rsm(p, tangents))
         #res += lsm(primals, rsm(p, tm))
         return res
 
-    def _sampnorm(likelihood, p, natgrad):
-        fpp = likelihood.right_sqrt_metric(p, natgrad)
+    def _sampnorm(likelihood, e, natgrad):
+        fpp = likelihood.right_sqrt_metric(e, natgrad)
         return jnp.sqrt(vdot(natgrad, natgrad) + vdot(fpp, fpp))
 
     draw_linear_non_inverse = jit(_draw_linear_non_inverse)

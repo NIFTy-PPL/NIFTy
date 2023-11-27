@@ -101,7 +101,13 @@ def concatenate_zip(*arrays):
     )
 
 
-SMPL_MODE_TYP = Literal["linear", "nonlinear", "nonlinear_update"]
+SMPL_MODE_TYP = Literal[
+    "linear_sample",
+    "linear_resample",
+    "nonlinear_sample",
+    "nonlinear_resample",
+    "nonlinear_update",
+]
 SMPL_MODE_GENERIC_TYP = Union[SMPL_MODE_TYP, Callable[[int], SMPL_MODE_TYP]]
 DICT_OR_CALL4DICT_TYP = Union[Callable[[int], dict], dict]
 
@@ -364,11 +370,13 @@ class OptimizeVI:
         minimize_kwargs : dict or callable
             Keyword arguments for the minimizer.
         sample_mode : str or callable
-            One in {"linear", "nonlinear", "nonlinear_update"}. The mode denotes
-            the way samples are drawn and/or updates, "linear" draws new MGVI
-            samples, "nonlinear" draws MGVI samples which are then nonlinearly
-            updated with geoVI, and "nonlinear_update" does not draw new samples
-            but instead nonlinearly updates existing samples using geoVI.
+            One in {"linear_sample", "linear_resample", "nonlinear_sample",
+            "nonlinear_resample", "nonlinear_update"}. The mode denotes the way
+            samples are drawn and/or updates, "linear" draws MGVI samples,
+            "nonlinear" draws MGVI samples which are then nonlinearly updated
+            with geoVI, the "_sample" versus "_resample" suffix denotes whether
+            the same stochasticity is used for the drawing, and
+            "nonlinear_update" nonlinearly updates existing samples using geoVI.
 
         Most of the parameters can be callable, in which case they are called
         with the current iteration number as argument and should return the
@@ -421,21 +429,32 @@ class OptimizeVI:
         smpl_mode: str = smpl_mode(nit) if callable(smpl_mode) else smpl_mode
         n_samples = _getitem_at_nit(config, "n_samples", nit)
         # Always resample if `n_samples` increased
-        if n_samples > len(samples) and smpl_mode.lower() == "nonlinear_update":
-            smpl_mode = "nonlinear"
-        if smpl_mode.lower() in ("linear", "nonlinear"):
-            key, *k_smpls = random.split(key, n_samples + 1)
-            k_smpls = jnp.array(k_smpls)
+        n_keys = 0 if samples.keys is None else len(samples.keys)
+        if n_samples != n_keys and smpl_mode.lower() == "nonlinear_update":
+            smpl_mode = "nonlinear_resample"
+        elif n_samples != n_keys and smpl_mode.lower().endswith("_sample"):
+            smpl_mode = smpl_mode.replace("_sample", "_resample")
+
+        if smpl_mode.lower() in (
+            "linear_resample", "linear_sample", "nonlinear_resample",
+            "nonlinear_sample"
+        ):
+            k_smpls = samples.keys  # Re-use the keys if not re-sampling
+            if smpl_mode.lower().endswith("_resample"):
+                # Make the `key` tick independent of the number of samples drawn
+                key, sk = random.split(key, 2)
+                k_smpls = random.split(sk, n_samples)
+            assert n_samples == len(k_smpls)
             kw = _getitem_at_nit(config, "draw_linear_samples", nit)
             samples, st_smpls = self.draw_linear_samples(
                 samples.pos, k_smpls, **kw, **kwargs
             )
-            if smpl_mode.lower() == "nonlinear":
+            if smpl_mode.lower().startswith("nonlinear"):
                 kw = _getitem_at_nit(config, "nonlinearly_update_samples", nit)
                 samples, st_smpls = self.nonlinearly_update_samples(
                     samples, **kw, **kwargs
                 )
-            elif smpl_mode.lower() != "linear":
+            elif not smpl_mode.lower().startswith("linear"):
                 ve = f"invalid sampling mode {smpl_mode!r}"
                 raise ValueError(ve)
         elif smpl_mode.lower() == "nonlinear_update":
