@@ -143,7 +143,7 @@ def draw_linear_residual(
     return smpl, info
 
 
-def _curve_residual_functions(
+def _nonlinearly_update_residual_functions(
     likelihood, point_estimates=(), jit: Union[Callable, bool] = False
 ):
     jit = _parse_jit(jit)
@@ -194,7 +194,7 @@ def _curve_residual_functions(
     return draw_linear_non_inverse, trafo, rag, metric, sampnorm
 
 
-def curve_residual(
+def nonlinearly_update_residual(
     likelihood=None,
     pos: P = None,
     residual_sample=None,
@@ -205,18 +205,17 @@ def curve_residual(
     minimize: Callable[..., optimize.OptimizeResults] = optimize._newton_cg,
     minimize_kwargs={},
     jit: Union[Callable, bool] = False,
-    _curve_funcs=None,
+    _nonlinear_update_funcs=None,
     _raise_notconverged=False,
 ) -> tuple[P, optimize.OptimizeResults]:
     assert_arithmetics(pos)
     assert_arithmetics(residual_sample)
 
-    if _curve_funcs is None:
-        draw_lni, trafo, rag, metric, sampnorm = _curve_residual_functions(
+    if _nonlinear_update_funcs is None:
+        _nonlinear_update_funcs = _nonlinearly_update_residual_functions(
             likelihood=likelihood, point_estimates=point_estimates, jit=jit
         )
-    else:
-        draw_lni, trafo, rag, metric, sampnorm = _curve_funcs
+    draw_lni, trafo, rag, metric, sampnorm = _nonlinear_update_funcs
 
     residual_sample = _process_point_estimate(
         residual_sample, pos, point_estimates, insert=False
@@ -256,7 +255,7 @@ def draw_residual(
     cg_kwargs: Optional[dict] = None,
     minimize: Callable[..., optimize.OptimizeResults] = optimize._newton_cg,
     minimize_kwargs={},
-    _curve_funcs=None,
+    _nonlinear_update_funcs=None,
     _raise_nonposdef: bool = False,
     _raise_notconverged: bool = False,
 ) -> tuple[P, optimize.OptimizeResults]:
@@ -271,7 +270,7 @@ def draw_residual(
         _raise_nonposdef=_raise_nonposdef,
     )
     curve = partial(
-        curve_residual,
+        nonlinearly_update_residual,
         likelihood,
         pos,
         metric_sample_key=key,
@@ -280,7 +279,7 @@ def draw_residual(
         minimize_kwargs=minimize_kwargs,
         jit=False,
         _raise_notconverged=_raise_notconverged,
-        _curve_funcs=_curve_funcs,
+        _nonlinear_update_funcs=_nonlinear_update_funcs,
     )
     return stack(
         (

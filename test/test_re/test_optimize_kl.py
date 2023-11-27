@@ -117,10 +117,8 @@ def test_concatenate_zip(seed, shape, ndim):
 @pmp("seed", (12, 42))
 @pmp("shape", ((4, 2), (2, 1), (5, ), [(2, 3), (1, 2)], ((2, ), {'a': (3, 1)})))
 @pmp("lh_init", lh_init)
-@pmp("sample_instruction", ("resample_mgvi", "resample_geovi"))
-def test_optimize_kl_sample_consistency(
-    seed, shape, lh_init, sample_instruction
-):
+@pmp("sample_mode", ("linear", "nonlinear"))
+def test_optimize_kl_sample_consistency(seed, shape, lh_init, sample_mode):
     rtol = 1e-7
     atol = 0.0
     aallclose = partial(assert_allclose, rtol=rtol, atol=atol)
@@ -137,6 +135,9 @@ def test_optimize_kl_sample_consistency(
     pos = latent_init(sk, shape=shape)
     jft.tree_math.assert_arithmetics(pos)
 
+    if lh._transformation is None and sample_mode == "nonlinear":
+        pytest.skip("no transformation rule implemented yet")
+
     key, sk = random.split(key)
     delta = 1e-3
     absdelta = delta * jft.size(pos)
@@ -149,25 +150,20 @@ def test_optimize_kl_sample_consistency(
         name="SN",
         xtol=delta,
         cg_kwargs=dict(name=None, miniter=2),
-        maxiter=5 if sample_instruction.lower() == "resample_geovi" else 0,
+        maxiter=5 if sample_mode.lower() == "nonlinear" else 0,
     )
 
-    try:
-        residual_draw, _ = jft.draw_residual(
-            lh, pos, sk, **draw_linear_samples, minimize_kwargs=minimize_kwargs
-        )
-    except NotImplementedError as e:
-        if "transformation" in "".join(e.args):
-            pytest.skip("".join(e.args))
-        assert False
+    residual_draw, _ = jft.draw_residual(
+        lh, pos, sk, **draw_linear_samples, minimize_kwargs=minimize_kwargs
+    )
     residual_diy_l1, _ = jft.draw_linear_residual(
         lh, pos, sk, **draw_linear_samples
     )
     residual_diy = jft.stack((residual_diy_l1, -residual_diy_l1))
-    if sample_instruction.lower() == "resample_mgvi":
+    if sample_mode.lower() == "linear":
         jax.tree_map(aallclose, residual_draw, residual_diy)
 
-    residual_diy_n1, _ = jft.curve_residual(
+    residual_diy_n1, _ = jft.nonlinearly_update_residual(
         lh,
         pos,
         residual_diy_l1,
@@ -176,7 +172,7 @@ def test_optimize_kl_sample_consistency(
         minimize_kwargs=minimize_kwargs,
         jit=False,
     )
-    residual_diy_n2, _ = jft.curve_residual(
+    residual_diy_n2, _ = jft.nonlinearly_update_residual(
         lh,
         pos,
         -residual_diy_l1,
@@ -195,9 +191,9 @@ def test_optimize_kl_sample_consistency(
         n_samples=1,
         key=sk,
         draw_linear_samples=draw_linear_samples,
-        curve_samples=dict(minimize_kwargs=minimize_kwargs),
+        nonlinearly_update_samples=dict(minimize_kwargs=minimize_kwargs),
         minimize_kwargs=dict(name="M", maxiter=0),
-        sample_instruction=sample_instruction,
+        sample_mode=sample_mode,
         kl_jit=False,
         residual_jit=False,
         odir=None,
@@ -212,9 +208,13 @@ def test_optimize_kl_sample_consistency(
 
 if __name__ == "__main__":
     test_concatenate_zip(1, (5, 12), 3)
-    test_optimize_kl_sample_consistency(1, (5, 4), lh_init[0], "resample_mgvi")
+    test_optimize_kl_sample_consistency(1, (5, 4), lh_init[0], "linear")
+    test_optimize_kl_sample_consistency(42, (5, 4), lh_init[4], "linear")
     test_optimize_kl_sample_consistency(
-        42, ((2, ), {
+        42,
+        ((2, ), {
             'a': (3, 1)
-        }), lh_init[3], "resample_mgvi"
+        }),
+        lh_init[3],
+        "nonlinear",
     )

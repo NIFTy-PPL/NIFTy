@@ -18,7 +18,9 @@ from jax import random, tree_map
 from jax.tree_util import Partial
 
 from . import optimize
-from .evi import Samples, _parse_jit, curve_residual, draw_linear_residual
+from .evi import (
+    Samples, _parse_jit, draw_linear_residual, nonlinearly_update_residual
+)
 from .likelihood import Likelihood, StandardHamiltonian
 from .logger import logger
 from .minisanity import minisanity
@@ -99,15 +101,15 @@ def concatenate_zip(*arrays):
     )
 
 
-SMPL_DO_TYP = Literal[None, "resample_mgvi", "resample_geovi", "curve"]
-SMPL_DO_GEN_TYP = Union[SMPL_DO_TYP, Callable[[int], SMPL_DO_TYP]]
+SMPL_MODE_TYP = Literal["linear", "nonlinear", "nonlinear_update"]
+SMPL_MODE_GENERIC_TYP = Union[SMPL_MODE_TYP, Callable[[int], SMPL_MODE_TYP]]
 DICT_OR_CALL4DICT_TYP = Union[Callable[[int], dict], dict]
 
 
 class OptimizeVIState(NamedTuple):
     nit: int
     key: Any
-    sample_instruction: SMPL_DO_GEN_TYP
+    sample_mode: SMPL_MODE_GENERIC_TYP
     sample_state: Optional[optimize.OptimizeResults]
     minimization_state: Optional[optimize.OptimizeResults]
     config: dict[str, Union[dict, Callable[[int], Any]]]
@@ -129,13 +131,13 @@ class OptimizeVI:
     algorithms. They produce approximate posterior samples that are used for KL
     estimation internally and the final set of samples are the approximation of
     the posterior. The samples can be linear, i.e. following a standard normal
-    distribution in model space, or non-linear, i.e. following a standard normal
+    distribution in model space, or nonlinear, i.e. following a standard normal
     distribution in the canonical coordinate system of the Riemannian manifold
     associated with the metric of the approximate posterior distribution. The
-    coordinate transformation for the non-linear sample is approximated by an
+    coordinate transformation for the nonlinear sample is approximated by an
     expansion.
 
-    Both linear and non-linear sample start by drawing a sample from the
+    Both linear and nonlinear sample start by drawing a sample from the
     inverse metric. To do so, we draw a sample which has the metric as
     covariance structure and apply the inverse metric to it. The sample
     transformed in this way has the inverse metric as covariance. The first
@@ -157,9 +159,9 @@ class OptimizeVI:
         &s = M^{-1} t = cg(M, t) .
     The linear sample is :math:`s`.
 
-    The non-linear sampling uses :math:`s` as a starting value and curves it in
-    a non-linear way as to better resemble the posterior locally. See the below
-    reference literature for more details on the non-linear sampling.
+    The nonlinear sampling uses :math:`s` as a starting value and curves it in
+    a nonlinear way as to better resemble the posterior locally. See the below
+    reference literature for more details on the nonlinear sampling.
 
     See also
     --------
@@ -185,7 +187,7 @@ class OptimizeVI:
         _kl_value_and_grad: Optional[Callable] = None,
         _kl_metric: Optional[Callable] = None,
         _draw_linear_residual: Optional[Callable] = None,
-        _curve_residual: Optional[Callable] = None,
+        _nonlinearly_update_residual: Optional[Callable] = None,
         _get_status_message: Optional[Callable] = None,
     ):
         """JaxOpt style minimizer for a VI approximation of a distribution with
@@ -259,21 +261,22 @@ class OptimizeVI:
                     point_estimates=point_estimates,
                 )
             )
-        if _curve_residual is None:
-            # TODO: Pull out `jit` from `curve_residual` once NCG is jit-able
+        if _nonlinearly_update_residual is None:
+            # TODO: Pull out `jit` from `nonlinearly_update_residual` once NCG
+            # is jit-able
             # TODO: STOP inserting `point_estimes` and instead defer it to `update`
-            from .evi import _curve_residual_functions
+            from .evi import _nonlinearly_update_residual_functions
 
-            _curve_funcs = _curve_residual_functions(
+            _nonlin_funcs = _nonlinearly_update_residual_functions(
                 likelihood=likelihood,
                 point_estimates=point_estimates,
                 jit=residual_jit,
             )
-            _curve_residual = partial(
-                curve_residual,
+            _nonlinearly_update_residual = partial(
+                nonlinearly_update_residual,
                 likelihood,
                 point_estimates=point_estimates,
-                _curve_funcs=_curve_funcs,
+                _nonlinear_update_funcs=_nonlin_funcs,
             )
         if _get_status_message is None:
             _get_status_message = partial(
@@ -286,7 +289,7 @@ class OptimizeVI:
         self.kl_value_and_grad = _kl_value_and_grad
         self.kl_metric = _kl_metric
         self.draw_linear_residual = _draw_linear_residual
-        self.curve_residual = _curve_residual
+        self.nonlinearly_update_residual = _nonlinearly_update_residual
         self.residual_map = residual_map
         self.get_status_message = _get_status_message
 
@@ -304,11 +307,11 @@ class OptimizeVI:
         )
         return smpls, smpls_states
 
-    def curve_samples(self, samples: Samples, **kwargs):
+    def nonlinearly_update_samples(self, samples: Samples, **kwargs):
         # NOTE, use `Partial` in favor of `partial` to allow the (potentially)
         # re-jitting `residual_map` to trace the kwargs
         kwargs = hide_strings(kwargs)
-        curver = Partial(self.curve_residual, **kwargs)
+        curver = Partial(self.nonlinearly_update_residual, **kwargs)
         curver = self.residual_map(curver, in_axes=(None, 0, 0, 0))
         assert len(samples.keys) == len(samples) // 2
         metric_sample_key = concatenate_zip(*((samples.keys, ) * 2))
@@ -329,7 +332,7 @@ class OptimizeVI:
         draw_linear_samples: DICT_OR_CALL4DICT_TYP = dict(
             cg_name="SL", cg_kwargs=dict()
         ),
-        curve_samples: DICT_OR_CALL4DICT_TYP = dict(
+        nonlinearly_update_samples: DICT_OR_CALL4DICT_TYP = dict(
             minimize_kwargs=dict(name="SN", cg_kwargs=dict(name="SNCG"))
         ),
         minimize: Callable[
@@ -339,7 +342,7 @@ class OptimizeVI:
         minimize_kwargs: DICT_OR_CALL4DICT_TYP = dict(
             name="M", cg_kwargs=dict(name="MCG")
         ),
-        sample_instruction: SMPL_DO_GEN_TYP = "resample_geovi",
+        sample_mode: SMPL_MODE_GENERIC_TYP = "nonlinear",
     ) -> OptimizeVIState:
         """Initialize the state of the (otherwise state-less) VI approximation.
 
@@ -353,14 +356,19 @@ class OptimizeVI:
         draw_linear_samples : dict or callable
             Configuration for drawing linear samples, see
             :func:`draw_linear_residual`.
-        curve_samples : dict or callable
-            Configuration for curving samples, see :func:`curve_residual`.
+        nonlinearly_update_samples : dict or callable
+            Configuration for nonlinearly updateing samples, see
+            :func:`nonlinearly_update_residual`.
         minimize : callable
             Minimizer to use for the KL minimization.
         minimize_kwargs : dict or callable
             Keyword arguments for the minimizer.
-        sample_instruction : str or callable
-            One in {"resample_mgvi", "resample_geovi", "curve"}.
+        sample_mode : str or callable
+            One in {"linear", "nonlinear", "nonlinear_update"}. The mode denotes
+            the way samples are drawn and/or updates, "linear" draws new MGVI
+            samples, "nonlinear" draws MGVI samples which are then nonlinearly
+            updated with geoVI, and "nonlinear_update" does not draw new samples
+            but instead nonlinearly updates existing samples using geoVI.
 
         Most of the parameters can be callable, in which case they are called
         with the current iteration number as argument and should return the
@@ -369,15 +377,15 @@ class OptimizeVI:
         config = {
             "n_samples": n_samples,
             "draw_linear_samples": draw_linear_samples,
-            "curve_samples": curve_samples,
+            "nonlinearly_update_samples": nonlinearly_update_samples,
             "minimize": minimize,
             "minimize_kwargs": minimize_kwargs,
         }
-        sample_instruction = sample_instruction
+        sample_mode = sample_mode
         state = OptimizeVIState(
             nit,
             key,
-            sample_instruction=sample_instruction,
+            sample_mode=sample_mode,
             sample_state=None,
             minimization_state=None,
             config=config
@@ -409,30 +417,34 @@ class OptimizeVI:
         st_smpls = state.sample_state
         config = state.config
 
-        smpls_do = state.sample_instruction
-        smpls_do: str = smpls_do(nit) if callable(smpls_do) else smpls_do
+        smpl_mode = state.sample_mode
+        smpl_mode: str = smpl_mode(nit) if callable(smpl_mode) else smpl_mode
         n_samples = _getitem_at_nit(config, "n_samples", nit)
         # Always resample if `n_samples` increased
-        if n_samples > len(samples) and smpls_do.lower() == "curve":
-            smpls_do = "resample_geovi"
-        if smpls_do.lower().startswith("resample"):
+        if n_samples > len(samples) and smpl_mode.lower() == "nonlinear_update":
+            smpl_mode = "nonlinear"
+        if smpl_mode.lower() in ("linear", "nonlinear"):
             key, *k_smpls = random.split(key, n_samples + 1)
             k_smpls = jnp.array(k_smpls)
             kw = _getitem_at_nit(config, "draw_linear_samples", nit)
             samples, st_smpls = self.draw_linear_samples(
                 samples.pos, k_smpls, **kw, **kwargs
             )
-            if smpls_do.lower() == "resample_geovi":
-                kw = _getitem_at_nit(config, "curve_samples", nit)
-                samples, st_smpls = self.curve_samples(samples, **kw, **kwargs)
-            elif smpls_do.lower() != "resample_mgvi":
-                ve = f"invalid resampling instruction {smpls_do}"
+            if smpl_mode.lower() == "nonlinear":
+                kw = _getitem_at_nit(config, "nonlinearly_update_samples", nit)
+                samples, st_smpls = self.nonlinearly_update_samples(
+                    samples, **kw, **kwargs
+                )
+            elif smpl_mode.lower() != "linear":
+                ve = f"invalid sampling mode {smpl_mode!r}"
                 raise ValueError(ve)
-        elif smpls_do.lower() == "curve":
-            kw = _getitem_at_nit(config, "curve_samples", nit)
-            samples, st_smpls = self.curve_samples(samples, **kw, **kwargs)
-        elif smpls_do is None:
-            ve = f"invalid resampling instruction {smpls_do}"
+        elif smpl_mode.lower() == "nonlinear_update":
+            kw = _getitem_at_nit(config, "nonlinearly_update_samples", nit)
+            samples, st_smpls = self.nonlinearly_update_samples(
+                samples, **kw, **kwargs
+            )
+        elif smpl_mode is None:
+            ve = f"invalid sampling mode {smpl_mode!r}"
             raise ValueError(ve)
 
         minimize = _getitem_at_nit(config, "minimize", nit)
@@ -484,7 +496,7 @@ def optimize_kl(
     kl_reduce=_reduce,
     mirror_samples=True,
     draw_linear_samples=dict(cg_name="SL", cg_kwargs=dict()),
-    curve_samples=dict(
+    nonlinearly_update_samples=dict(
         minimize_kwargs=dict(name="SN", cg_kwargs=dict(name="SNCG"))
     ),
     minimize: Callable[
@@ -492,7 +504,7 @@ def optimize_kl(
         optimize.OptimizeResults,
     ] = optimize._newton_cg,
     minimize_kwargs=dict(name="M", cg_kwargs=dict(name="MCG")),
-    sample_instruction: SMPL_DO_GEN_TYP = "resample_geovi",
+    sample_mode: SMPL_MODE_GENERIC_TYP = "nonlinear",
     resume: Union[str, bool] = False,
     callback: Optional[Callable[[Samples, OptimizeVIState], None]] = None,
     odir: Optional[str] = None,
@@ -557,10 +569,10 @@ def optimize_kl(
             key,
             n_samples=n_samples,
             draw_linear_samples=draw_linear_samples,
-            curve_samples=curve_samples,
+            nonlinearly_update_samples=nonlinearly_update_samples,
             minimize=minimize,
             minimize_kwargs=minimize_kwargs,
-            sample_instruction=sample_instruction,
+            sample_mode=sample_mode,
         )
     sanity_fn = os.path.join(
         odir, MINISANITY_FILENAME

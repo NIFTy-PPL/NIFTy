@@ -182,10 +182,10 @@ def n_samples_update(i):
     return n_samples // 2 if i < 2 else n_samples
 
 
-def sample_instruction_update(i):
+def sample_mode_update(i):
     if i < 4:
-        return "resample_mgvi"
-    return "curve"
+        return "nonlinear"
+    return "nonlinear_update"
 
 
 key, subkey = random.split(key)
@@ -202,7 +202,7 @@ samples, state = jft.optimize_kl(
     draw_linear_samples=dict(
         cg_name="SL", cg_kwargs=dict(absdelta=absdelta / 10., maxiter=100)
     ),
-    curve_samples=dict(
+    nonlinearly_update_samples=dict(
         minimize_kwargs=dict(
             name="SN",
             xtol=delta,
@@ -213,7 +213,7 @@ samples, state = jft.optimize_kl(
     minimize_kwargs=dict(
         name="M", absdelta=absdelta, cg_kwargs=dict(name="MCG"), maxiter=35
     ),
-    sample_instruction=sample_instruction_update,
+    sample_mode=sample_mode_update,
     odir="results_nifty_re",
     resume=False,
 )
