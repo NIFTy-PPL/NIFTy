@@ -462,7 +462,7 @@ class OptimizeVI:
             samples, st_smpls = self.nonlinearly_update_samples(
                 samples, **kw, **kwargs
             )
-        elif smpl_mode is None:
+        else:
             ve = f"invalid sampling mode {smpl_mode!r}"
             raise ValueError(ve)
 

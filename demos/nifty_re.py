@@ -183,8 +183,10 @@ def n_samples_update(i):
 
 
 def sample_mode_update(i):
-    if i < 4:
-        return "nonlinear"
+    if i <= 2:
+        return "linear_resample"
+    if i <= 4:
+        return "nonlinear_resample"
     return "nonlinear_update"
 
 

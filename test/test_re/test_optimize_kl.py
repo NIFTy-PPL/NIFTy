@@ -117,7 +117,7 @@ def test_concatenate_zip(seed, shape, ndim):
 @pmp("seed", (12, 42))
 @pmp("shape", ((4, 2), (2, 1), (5, ), [(2, 3), (1, 2)], ((2, ), {'a': (3, 1)})))
 @pmp("lh_init", lh_init)
-@pmp("sample_mode", ("linear", "nonlinear"))
+@pmp("sample_mode", ("linear_resample", "nonlinear_resample"))
 def test_optimize_kl_sample_consistency(seed, shape, lh_init, sample_mode):
     rtol = 1e-7
     atol = 0.0
@@ -135,7 +135,7 @@ def test_optimize_kl_sample_consistency(seed, shape, lh_init, sample_mode):
     pos = latent_init(sk, shape=shape)
     jft.tree_math.assert_arithmetics(pos)
 
-    if lh._transformation is None and sample_mode == "nonlinear":
+    if lh._transformation is None and sample_mode == "nonlinear_resample":
         pytest.skip("no transformation rule implemented yet")
 
     key, sk = random.split(key)
@@ -150,7 +150,7 @@ def test_optimize_kl_sample_consistency(seed, shape, lh_init, sample_mode):
         name="SN",
         xtol=delta,
         cg_kwargs=dict(name=None, miniter=2),
-        maxiter=5 if sample_mode.lower() == "nonlinear" else 0,
+        maxiter=5 if sample_mode.lower() == "nonlinear_resample" else 0,
     )
 
     residual_draw, _ = jft.draw_residual(
@@ -199,7 +199,8 @@ def test_optimize_kl_sample_consistency(seed, shape, lh_init, sample_mode):
         odir=None,
     )
     # effective key for sampling after splitting in `optimize_kl`
-    _, ek = random.split(sk)
+    _, sk = random.split(sk)
+    ek, = random.split(sk, 1)
     residual_draw, _ = jft.draw_residual(
         lh, pos, ek, **draw_linear_samples, minimize_kwargs=minimize_kwargs
     )
@@ -208,13 +209,17 @@ def test_optimize_kl_sample_consistency(seed, shape, lh_init, sample_mode):
 
 if __name__ == "__main__":
     test_concatenate_zip(1, (5, 12), 3)
-    test_optimize_kl_sample_consistency(1, (5, 4), lh_init[0], "linear")
-    test_optimize_kl_sample_consistency(42, (5, 4), lh_init[4], "linear")
+    test_optimize_kl_sample_consistency(
+        1, (5, 4), lh_init[0], "linear_resample"
+    )
+    test_optimize_kl_sample_consistency(
+        42, (5, 4), lh_init[4], "linear_resample"
+    )
     test_optimize_kl_sample_consistency(
         42,
         ((2, ), {
             'a': (3, 1)
         }),
         lh_init[3],
-        "nonlinear",
+        "nonlinear_resample",
     )
