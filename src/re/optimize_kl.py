@@ -150,18 +150,18 @@ class OptimizeVI:
     part is trivial since we can use the left square root of the metric
     :math:`L` associated with every likelihood:
     .. math::
-        \tilde{d} \leftarrow \mathcal{G}(0,\mathbb{1}) \\
-        t = L \tilde{d}
+        \\tilde{d} \\leftarrow \\mathcal{G}(0,\\mathbb{1}) \\
+        t = L \\tilde{d}
     with :math:`t` now having a covariance structure of
     .. math::
-        <t t^\dagger> = L <\tilde{d} \tilde{d}^\dagger> L^\dagger = M .
+        <t t^\\dagger> = L <\\tilde{d} \\tilde{d}^\\dagger> L^\\dagger = M .
 
     To transform the sample to an inverse sample, we apply the inverse
     metric. We can do so using the conjugate gradient algorithm (CG). The CG
     algorithm yields the solution to :math:`M s = t`, i.e. applies the
     inverse of :math:`M` to :math:`t`:
     .. math::
-        M &s =  t \\
+        M &s =  t \\\\
         &s = M^{-1} t = cg(M, t) .
     The linear sample is :math:`s`.
 
