@@ -678,42 +678,60 @@ class Likelihood(AbstractModel):
         insert_axes, primals_liquid, primals_frozen = _parse_point_estimates(
             point_estimates, primals
         )
+        unflatten = Vector if insert_axes else None
+
         energy = partial_insert_and_remove(
             self.energy,
             insert_axes=(insert_axes, ),
             flat_fill=(primals_frozen, ),
             remove_axes=None
         )
-        transformation = partial_insert_and_remove(
-            self.transformation,
-            insert_axes=(insert_axes, ),
-            flat_fill=(primals_frozen, ),
-            remove_axes=None
-        ) if self._transformation is not None else None
-        left_sqrt_metric = partial_insert_and_remove(
-            self.left_sqrt_metric,
-            insert_axes=(insert_axes, ),
-            flat_fill=(primals_frozen, ),
-            remove_axes=insert_axes
-        ) if self._left_sqrt_metric is not None else None
-        right_sqrt_metric = partial_insert_and_remove(
-            self.right_sqrt_metric,
-            insert_axes=(insert_axes, insert_axes),
-            flat_fill=(primals_frozen, primals_frozen),
-            remove_axes=None,
-        ) if self._right_sqrt_metric is not None else None
-        metric = partial_insert_and_remove(
-            self.metric,
-            insert_axes=(insert_axes, insert_axes),
-            flat_fill=(primals_frozen, primals_frozen),
-            remove_axes=insert_axes,
-        ) if self._metric is not None else None
-        normalized_residual = partial_insert_and_remove(
-            self.normalized_residual,
-            insert_axes=(insert_axes, ),
-            flat_fill=(primals_frozen, ),
-            remove_axes=None
-        ) if self._normalized_residual is not None else None
+        transformation = None
+        left_sqrt_metric, right_sqrt_metric = None, None
+        metric = None
+        normalized_residual = None
+
+        do_insert = self._transformation is not None
+        if do_insert:
+            transformation = partial_insert_and_remove(
+                self.transformation,
+                insert_axes=(insert_axes, ),
+                flat_fill=(primals_frozen, ),
+                remove_axes=None
+            )
+        do_insert |= self._left_sqrt_metric is not None
+        if do_insert:
+            left_sqrt_metric = partial_insert_and_remove(
+                self.left_sqrt_metric,
+                insert_axes=(insert_axes, None),
+                flat_fill=(primals_frozen, None),
+                remove_axes=insert_axes,
+                unflatten=unflatten,
+            )
+            right_sqrt_metric = partial_insert_and_remove(
+                self.right_sqrt_metric,
+                insert_axes=(insert_axes, insert_axes),
+                flat_fill=(primals_frozen, primals_frozen),
+                remove_axes=None,
+            )
+        do_insert |= self._metric is not None
+        if do_insert:
+            metric = partial_insert_and_remove(
+                self.metric,
+                insert_axes=(insert_axes, insert_axes),
+                flat_fill=(primals_frozen, primals_frozen),
+                remove_axes=insert_axes,
+                unflatten=unflatten,
+            )
+
+        if self._normalized_residual is not None:
+            normalized_residual = partial_insert_and_remove(
+                self.normalized_residual,
+                insert_axes=(insert_axes, ),
+                flat_fill=(primals_frozen, ),
+                remove_axes=None
+            )
+
         domain = jax.tree_map(ShapeWithDtype.from_leave, primals_liquid)
 
         lh = self.replace(

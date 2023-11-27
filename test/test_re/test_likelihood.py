@@ -2,6 +2,9 @@
 
 # SPDX-License-Identifier: GPL-2.0+ OR BSD-2-Clause
 
+from functools import partial
+
+import jax
 import pytest
 from jax import random
 from numpy.testing import assert_allclose
@@ -38,8 +41,10 @@ def test_partial_insert_and_remove():
 
 @pmp("seed", (33, 42, 43))
 def test_likelihood_partial(seed):
-    key = random.PRNGKey(seed)
     atol, rtol = 1e-14, 1e-14
+    aallclose = partial(assert_allclose, rtol=rtol, atol=atol)
+
+    key = random.PRNGKey(seed)
 
     domain = jft.Vector(
         {
@@ -52,17 +57,23 @@ def test_likelihood_partial(seed):
     primals = jft.random_like(sk_p, domain)
 
     gaussian = jft.Gaussian(data)
-    assert_allclose(gaussian(data), 0., atol=atol)
+    aallclose(gaussian(data), 0., atol=atol)
     gaussian_part, primals_liquid = gaussian.freeze(("b", ), primals)
     assert primals_liquid.tree[0].shape == domain["a"].shape
-    assert_allclose(
-        gaussian_part(primals_liquid), gaussian(primals), atol=atol, rtol=rtol
+    aallclose(gaussian_part(primals_liquid), gaussian(primals))
+    jax.tree_map(
+        aallclose,
+        gaussian_part.left_sqrt_metric(primals_liquid, data).tree[0],
+        gaussian.left_sqrt_metric(primals, data).tree["a"],
     )
-    assert_allclose(
+    jax.tree_map(
+        aallclose,
+        gaussian_part.right_sqrt_metric(primals_liquid, primals_liquid),
+        gaussian.right_sqrt_metric(primals, primals),
+    )
+    aallclose(
         gaussian_part.metric(primals_liquid, primals_liquid).tree[0],
         gaussian.metric(primals, primals).tree["a"],
-        atol=atol,
-        rtol=rtol
     )
 
 
