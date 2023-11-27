@@ -307,7 +307,7 @@ class Samples():
     `Metric Gaussian Variational Inference`, Jakob Knollmüller,
     Torsten A. Enßlin, `<https://arxiv.org/abs/1901.11033>`_
     """
-    def __init__(self, *, pos: P = None, samples: P, keys):
+    def __init__(self, *, pos: P = None, samples: P, keys=None):
         self._pos, self._samples, self._keys = pos, samples, keys
 
     @property
