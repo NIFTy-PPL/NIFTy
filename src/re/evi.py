@@ -225,22 +225,30 @@ def nonlinearly_update_residual(
     metric_sample = _process_point_estimate(
         metric_sample, pos, point_estimates, insert=False
     )
-    trafo_at_p = trafo(pos)
-    options = {
-        "fun_and_grad": partial(rag, pos, trafo_at_p, metric_sample),
-        "hessp": partial(metric, pos, trafo_at_p),
-        "custom_gradnorm": partial(sampnorm, pos),
-    }
-    opt_state = minimize(
-        None, x0=pos + residual_sample, **(minimize_kwargs | options)
-    )
-    if _raise_notconverged & (opt_state.status < 0):
+    # HACK for going skipping the nonlinear update steps and not calling trafo
+    skip = isinstance(minimize_kwargs.get("maxiter", None),
+                      int) and minimize_kwargs["maxiter"] == 0
+    if not skip:
+        trafo_at_p = trafo(pos)
+        options = {
+            "fun_and_grad": partial(rag, pos, trafo_at_p, metric_sample),
+            "hessp": partial(metric, pos, trafo_at_p),
+            "custom_gradnorm": partial(sampnorm, pos),
+        }
+        opt_state = minimize(
+            None, x0=pos + residual_sample, **(minimize_kwargs | options)
+        )
+    else:
+        opt_state = optimize.OptimizeResults(
+            pos + residual_sample, True, 0, None, None
+        )
+    if _raise_notconverged and (opt_state.status < 0):
         ValueError("S: failed to invert map")
     newsam = _process_point_estimate(
         opt_state.x, pos, point_estimates, insert=True
     )
     # Remove x from state to avoid copy of the samples
-    opt_state = opt_state._replace(x=None)
+    opt_state = opt_state._replace(x=None, jac=None)
     return newsam - pos, opt_state
 
 
