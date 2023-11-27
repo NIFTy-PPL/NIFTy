@@ -59,21 +59,12 @@ pages:
     - git config --global --add safe.directory /builds/ift/nifty
     - git clean -xfd docs/source
     - sh docs/generate.sh
-    - mv docs/build docs/build_stable
-    - git checkout NIFTy_7
-    - python3 setup.py install --user -f
-    - git clean -xfd docs/source
-    - sh docs/generate.sh
-    - mv docs/build docs/build_legacy
-    - mv docs/build_stable docs/build
-    - mv docs/build_legacy docs/build/nifty7
     - mv docs/build/ public/
   artifacts:
     paths:
     - public
   only:
   - NIFTy_8
-
 
 before_script:
   - python3 -m pip install --user --editable .
