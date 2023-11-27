@@ -282,22 +282,13 @@ class OptimizeVI:
                 name=self.__class__.__name__,
             )
 
-        self.n_total_iterations = None
-        self.kl_value_and_grad = None
-        self.kl_metric = None
-        self.draw_linear_residual = None
-        self.curve_residual = None
-        self.residual_map = None
-        self.get_status_message = None
-        self.replace(
-            n_total_iterations=n_total_iterations,
-            kl_value_and_grad=_kl_value_and_grad,
-            kl_metric=_kl_metric,
-            draw_linear_residual=_draw_linear_residual,
-            curve_residual=_curve_residual,
-            get_status_message=_get_status_message,
-            residual_map=residual_map,
-        )
+        self.n_total_iterations = n_total_iterations
+        self.kl_value_and_grad = _kl_value_and_grad
+        self.kl_metric = _kl_metric
+        self.draw_linear_residual = _draw_linear_residual
+        self.curve_residual = _curve_residual
+        self.residual_map = residual_map
+        self.get_status_message = _get_status_message
 
     def replace(
         self,
@@ -310,13 +301,22 @@ class OptimizeVI:
         get_status_message=None,
         residual_map=None,
     ):
-        self.n_total_iterations = n_total_iterations if n_total_iterations is None else n_total_iterations
-        self.kl_value_and_grad = kl_value_and_grad if kl_value_and_grad is not None else self.kl_value_and_grad
-        self.kl_metric = kl_metric if kl_metric is not None else self.kl_metric
-        self.draw_linear_residual = draw_linear_residual if draw_linear_residual is not None else self.draw_linear_residual
-        self.curve_residual = curve_residual if curve_residual is not None else self.curve_residual
-        self.residual_map = residual_map if residual_map is not None else self.residual_map
-        self.get_status_message = get_status_message if get_status_message is not None else self.get_status_message
+        self.__class__(
+            None,
+            n_total_iterations=n_total_iterations
+            if n_total_iterations is None else n_total_iterations,
+            _kl_value_and_grad=kl_value_and_grad
+            if kl_value_and_grad is not None else self.kl_value_and_grad,
+            _kl_metric=kl_metric if kl_metric is not None else self.kl_metric,
+            _draw_linear_residual=draw_linear_residual
+            if draw_linear_residual is not None else self.draw_linear_residual,
+            _curve_residual=curve_residual
+            if curve_residual is not None else self.curve_residual,
+            residual_map=residual_map
+            if residual_map is not None else self.residual_map,
+            _get_status_message=get_status_message
+            if get_status_message is not None else self.get_status_message,
+        )
 
     def draw_linear_samples(self, primals, keys, **kwargs):
         # NOTE, use `Partial` in favor of `partial` to allow the (potentially)
