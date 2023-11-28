@@ -184,6 +184,7 @@ def test_optimize_kl_sample_consistency(seed, shape, lh_init, sample_mode):
     residual_diy = jft.stack((residual_diy_n1, residual_diy_n2))
     jax.tree_map(aallclose, residual_draw, residual_diy)
 
+    key, sk = random.split(key)
     samples_opt, _ = jft.optimize_kl(
         lh,
         pos,
@@ -198,11 +199,8 @@ def test_optimize_kl_sample_consistency(seed, shape, lh_init, sample_mode):
         residual_jit=False,
         odir=None,
     )
-    # effective key for sampling after splitting in `optimize_kl`
-    _, sk = random.split(sk)
-    ek, = random.split(sk, 1)
     residual_draw, _ = jft.draw_residual(
-        lh, pos, ek, **draw_linear_samples, minimize_kwargs=minimize_kwargs
+        lh, pos, samples_opt.keys[0], **draw_linear_samples, minimize_kwargs=minimize_kwargs
     )
     jax.tree_map(aallclose, samples_opt._samples, residual_draw)
 
