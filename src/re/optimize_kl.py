@@ -333,7 +333,7 @@ class OptimizeVI:
         self,
         key,
         *,
-        nit=0,
+        nit=-1,
         n_samples: Union[int, Callable[[int], int]],
         draw_linear_samples: DICT_OR_CALL4DICT_TYP = dict(
             cg_name="SL", cg_kwargs=dict()
@@ -608,7 +608,7 @@ def optimize_kl(
         makedirs(odir, exist_ok=True)
 
     for i in range(opt_vi_state.nit, opt_vi.n_total_iterations):
-        logger.info(f"OPTIMIZE_KL Iteration {i:04d}")
+        logger.info(f"OPTIMIZE_KL Iteration {i+1:04d}")
         samples, opt_vi_state = opt_vi.update(samples, opt_vi_state)
         msg = opt_vi.get_status_message(samples, opt_vi_state)
         logger.info(msg)
