@@ -147,31 +147,29 @@ def _nonlinearly_update_residual_functions(
             from_inverse=False
         )
 
-    def _g(e, lh_trafo_at_p, x, *, point_estimates):
-        lh, e_liquid = likelihood.freeze(point_estimates, e)
-        # t = likelihood.transformation(x) - lh_trafo_at_p
-        t = tree_map(jnp.subtract, lh.transformation(x), lh_trafo_at_p)
-        return x - e + lh.left_sqrt_metric(e, t)
-
     def _residual_vg(e, lh_trafo_at_p, ms_at_p, x, *, point_estimates):
         lh, e_liquid = likelihood.freeze(point_estimates, e)
-        r = ms_at_p - _g(e, lh_trafo_at_p, x, point_estimates=point_estimates)
+
+        # t = likelihood.transformation(x) - lh_trafo_at_p
+        t = tree_map(jnp.subtract, lh.transformation(x), lh_trafo_at_p)
+        g = x - e_liquid + lh.left_sqrt_metric(e_liquid, t)
+        r = ms_at_p - g
         res = 0.5 * dot(r, r)
 
-        g = tree_map(jnp.conj, r)
-        g += lh.left_sqrt_metric(x, lh.right_sqrt_metric(e, g))
-        return (res, -g)
+        ngrad = tree_map(jnp.conj, r)
+        ngrad += lh.left_sqrt_metric(x, lh.right_sqrt_metric(e_liquid, ngrad))
+        return (res, -ngrad)
 
     def _metric(e, primals, tangents, *, point_estimates):
         lh, e_liquid = likelihood.freeze(point_estimates, e)
         lsm = lh.left_sqrt_metric
         rsm = lh.right_sqrt_metric
-        tm = lsm(e, rsm(primals, tangents)) + tangents
-        return lsm(primals, rsm(e, tm)) + tm
+        tm = lsm(e_liquid, rsm(primals, tangents)) + tangents
+        return lsm(primals, rsm(e_liquid, tm)) + tm
 
     def _sampnorm(e, natgrad, *, point_estimates):
         lh, e_liquid = likelihood.freeze(point_estimates, e)
-        fpp = lh.right_sqrt_metric(e, natgrad)
+        fpp = lh.right_sqrt_metric(e_liquid, natgrad)
         return jnp.sqrt(vdot(natgrad, natgrad) + vdot(fpp, fpp))
 
     jit = _parse_jit(jit)
@@ -202,13 +200,13 @@ def nonlinearly_update_residual(
 
     if _nonlinear_update_funcs is None:
         _nonlinear_update_funcs = _nonlinearly_update_residual_functions(
-            likelihood=likelihood, point_estimates=point_estimates, jit=jit
+            likelihood, jit=jit
         )
     draw_lni, rag, metric, sampnorm = _nonlinear_update_funcs
 
-    residual_sample = _process_point_estimate(
-        residual_sample, pos, point_estimates, insert=False
-    )
+    sample = pos + residual_sample
+    del residual_sample
+    sample = _process_point_estimate(sample, pos, point_estimates, insert=False)
     metric_sample, _ = draw_lni(
         pos, metric_sample_key, point_estimates=point_estimates
     )
@@ -235,21 +233,17 @@ def nonlinearly_update_residual(
             "custom_gradnorm":
                 partial(sampnorm, pos, point_estimates=point_estimates),
         }
-        opt_state = minimize(
-            None, x0=pos + residual_sample, **(minimize_kwargs | options)
-        )
+        opt_state = minimize(None, x0=sample, **(minimize_kwargs | options))
     else:
-        opt_state = optimize.OptimizeResults(
-            pos + residual_sample, True, 0, None, None
-        )
+        opt_state = optimize.OptimizeResults(sample, True, 0, None, None)
     if _raise_notconverged and (opt_state.status < 0):
         ValueError("S: failed to invert map")
-    newsam = _process_point_estimate(
+    sample = _process_point_estimate(
         opt_state.x, pos, point_estimates, insert=True
     )
     # Remove x from state to avoid copy of the samples
     opt_state = opt_state._replace(x=None, jac=None)
-    return newsam - pos, opt_state
+    return sample - pos, opt_state
 
 
 def draw_residual(
