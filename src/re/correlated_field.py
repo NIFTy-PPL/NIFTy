@@ -166,8 +166,7 @@ def matern_amplitude(
         if renormalize_amplitude:
             norm = jnp.sqrt(jnp.sum(mode_multiplicity[1:] * spectrum[1:] ** 4))
             norm /= jnp.sqrt(totvol)  # Due to integral in harmonic space
-        # amplitude = sc * (jnp.sqrt(totvol) / norm) * amplitude
-        spectrum = scl * spectrum / (norm * totvol ** 0.5)
+        spectrum = scl * (jnp.sqrt(totvol) / norm) * spectrum
         spectrum = spectrum.at[0].set(totvol)
         if kind.lower() == "power":
             spectrum = jnp.sqrt(spectrum)

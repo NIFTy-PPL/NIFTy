@@ -57,12 +57,12 @@ def test_correlated_field_init(shape,
 
 
 @pmp('seed', [0, 42])
+@pmp('shape', [(2,), (3, 3)])
+@pmp('distances', [.1])
 @pmp('scale', [(1., 1.)])
 @pmp('loglogslope', [(1., 1.)])
 @pmp('cutoff', [(1., 1.)])
-def test_re_matern_cf_vs_nifty(seed, scale, cutoff, loglogslope):
-    shape = (3, 3)
-    distances = 1./shape[0]
+def test_re_matern_cf_vs_nifty(seed, shape, distances, scale, cutoff, loglogslope):
     rg_space = ift.RGSpace(shape, distances)
     offset_mean = 0.
     offset_std = (.1, .1)
