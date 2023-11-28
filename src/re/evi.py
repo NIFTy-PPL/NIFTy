@@ -174,13 +174,8 @@ def _nonlinearly_update_residual_functions(
     def _metric(likelihood, e, primals, tangents):
         lsm = likelihood.left_sqrt_metric
         rsm = likelihood.right_sqrt_metric
-
-        tm = lsm(e, rsm(primals, tangents))
-        res = tangents + tm + lsm(primals, rsm(e, tangents + tm))
-        # TODO check stability against symmetrized implementation
-        #res = tangents + tm + lsm(primals, rsm(p, tangents))
-        #res += lsm(primals, rsm(p, tm))
-        return res
+        tm = lsm(e, rsm(primals, tangents)) + tangents
+        return lsm(primals, rsm(e, tm)) + tm
 
     def _sampnorm(likelihood, e, natgrad):
         fpp = likelihood.right_sqrt_metric(e, natgrad)
