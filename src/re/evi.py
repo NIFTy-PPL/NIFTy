@@ -153,11 +153,14 @@ def _nonlinearly_update_residual_functions(
         t = tree_map(jnp.subtract, lh.transformation(x), lh_trafo_at_p)
         return x - e + lh.left_sqrt_metric(e, t)
 
-    def _residual(e, lh_trafo_at_p, ms_at_p, x, *, point_estimates):
+    def _residual_vg(e, lh_trafo_at_p, ms_at_p, x, *, point_estimates):
+        lh, e_liquid = likelihood.freeze(point_estimates, e)
         r = ms_at_p - _g(e, lh_trafo_at_p, x, point_estimates=point_estimates)
-        return 0.5 * dot(r, r)
+        res = 0.5 * dot(r, r)
 
-    # TODO: implement `_residual_and_gradient` as a function of lsm
+        g = tree_map(jnp.conj, r)
+        g += lh.left_sqrt_metric(x, lh.right_sqrt_metric(e, g))
+        return (res, -g)
 
     def _metric(e, primals, tangents, *, point_estimates):
         lh, e_liquid = likelihood.freeze(point_estimates, e)
@@ -174,7 +177,7 @@ def _nonlinearly_update_residual_functions(
     jit = _parse_jit(jit)
     jit = partial(jit, static_argnames=("point_estimates", ))
     draw_linear_non_inverse = jit(_draw_linear_non_inverse)
-    rag = jit(jax.value_and_grad(_residual, argnums=3))
+    rag = jit(_residual_vg)
     metric = jit(_metric)
     sampnorm = jit(_sampnorm)
     return draw_linear_non_inverse, rag, metric, sampnorm
