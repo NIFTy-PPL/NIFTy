@@ -25,7 +25,7 @@ from .tree_math import (
 P = TypeVar("P")
 
 
-def _identity(x):
+def _no_jit(x, **kwargs):
     return x
 
 
@@ -33,7 +33,7 @@ def _parse_jit(jit):
     if callable(jit):
         return jit
     if isinstance(jit, bool):
-        return jax.jit if jit else _identity
+        return jax.jit if jit else _no_jit
     raise TypeError(f"expected `jit` to be callable or bolean; got {jit!r}")
 
 
@@ -47,33 +47,23 @@ def _cond_raise(condition, exception):
     call(maybe_raise, condition, result_shape=None)
 
 
-def _partial_func(func, likelihood, point_estimates):
-    if point_estimates:
-
-        def partial_func(primals, *args):
-            lh, p_liquid = likelihood.freeze(point_estimates, primals)
-            return func(lh, p_liquid, *args)
-
-        return partial_func
-    return partial(func, likelihood)
-
-
 def _process_point_estimate(x, primals, point_estimates, insert):
-    if point_estimates:
-        point_estimates, _, p_frozen = _parse_point_estimates(
-            point_estimates, primals
-        )
-        assert p_frozen is not None
-        fill = tree_map(lambda x: jnp.zeros((1, ) * jnp.ndim(x)), p_frozen)
-        in_out = partial_insert_and_remove(
-            lambda *x: x[0],
-            insert_axes=(point_estimates, ) if insert else None,
-            flat_fill=(fill, ) if insert else None,
-            remove_axes=None if insert else (point_estimates, ),
-            unflatten=None if insert else Vector
-        )
-        return in_out(x)
-    return x
+    if not point_estimates:
+        return x
+
+    point_estimates, _, p_frozen = _parse_point_estimates(
+        point_estimates, primals
+    )
+    assert p_frozen is not None
+    fill = tree_map(lambda x: jnp.zeros((1, ) * jnp.ndim(x)), p_frozen)
+    in_out = partial_insert_and_remove(
+        lambda *x: x[0],
+        insert_axes=(point_estimates, ) if insert else None,
+        flat_fill=(fill, ) if insert else None,
+        remove_axes=None if insert else (point_estimates, ),
+        unflatten=None if insert else Vector
+    )
+    return in_out(x)
 
 
 def sample_likelihood(likelihood: Likelihood, primals, key):
@@ -144,11 +134,9 @@ def draw_linear_residual(
 
 
 def _nonlinearly_update_residual_functions(
-    likelihood, point_estimates=(), jit: Union[Callable, bool] = False
+    likelihood, jit: Union[Callable, bool] = False
 ):
-    jit = _parse_jit(jit)
-
-    def _draw_linear_non_inverse(primals, key):
+    def _draw_linear_non_inverse(primals, key, *, point_estimates):
         # `draw_linear_residual` already handles `point_estimates` no need to
         # partially insert anything here
         return draw_linear_residual(
@@ -159,38 +147,37 @@ def _nonlinearly_update_residual_functions(
             from_inverse=False
         )
 
-    def _trafo(likelihood, e):
-        return likelihood.transformation(e)
-
-    def _g(likelihood, e, lh_trafo_at_p, x):
+    def _g(e, lh_trafo_at_p, x, *, point_estimates):
+        lh, e_liquid = likelihood.freeze(point_estimates, e)
         # t = likelihood.transformation(x) - lh_trafo_at_p
-        t = tree_map(jnp.subtract, likelihood.transformation(x), lh_trafo_at_p)
-        return x - e + likelihood.left_sqrt_metric(e, t)
+        t = tree_map(jnp.subtract, lh.transformation(x), lh_trafo_at_p)
+        return x - e + lh.left_sqrt_metric(e, t)
 
-    def _residual(likelihood, e, lh_trafo_at_p, ms_at_p, x):
-        r = ms_at_p - _g(likelihood, e, lh_trafo_at_p, x)
+    def _residual(e, lh_trafo_at_p, ms_at_p, x, *, point_estimates):
+        r = ms_at_p - _g(e, lh_trafo_at_p, x, point_estimates=point_estimates)
         return 0.5 * dot(r, r)
 
-    def _metric(likelihood, e, primals, tangents):
-        lsm = likelihood.left_sqrt_metric
-        rsm = likelihood.right_sqrt_metric
+    # TODO: implement `_residual_and_gradient` as a function of lsm
+
+    def _metric(e, primals, tangents, *, point_estimates):
+        lh, e_liquid = likelihood.freeze(point_estimates, e)
+        lsm = lh.left_sqrt_metric
+        rsm = lh.right_sqrt_metric
         tm = lsm(e, rsm(primals, tangents)) + tangents
         return lsm(primals, rsm(e, tm)) + tm
 
-    def _sampnorm(likelihood, e, natgrad):
-        fpp = likelihood.right_sqrt_metric(e, natgrad)
+    def _sampnorm(e, natgrad, *, point_estimates):
+        lh, e_liquid = likelihood.freeze(point_estimates, e)
+        fpp = lh.right_sqrt_metric(e, natgrad)
         return jnp.sqrt(vdot(natgrad, natgrad) + vdot(fpp, fpp))
 
+    jit = _parse_jit(jit)
+    jit = partial(jit, static_argnames=("point_estimates", ))
     draw_linear_non_inverse = jit(_draw_linear_non_inverse)
-    # Partially insert frozen point estimates
-    get_partial = partial(
-        _partial_func, likelihood=likelihood, point_estimates=point_estimates
-    )
-    trafo = jit(get_partial(_trafo))
-    rag = jit(jax.value_and_grad(get_partial(_residual), argnums=3))
-    metric = jit(get_partial(_metric))
-    sampnorm = jit(get_partial(_sampnorm))
-    return draw_linear_non_inverse, trafo, rag, metric, sampnorm
+    rag = jit(jax.value_and_grad(_residual, argnums=3))
+    metric = jit(_metric)
+    sampnorm = jit(_sampnorm)
+    return draw_linear_non_inverse, rag, metric, sampnorm
 
 
 def nonlinearly_update_residual(
@@ -214,25 +201,36 @@ def nonlinearly_update_residual(
         _nonlinear_update_funcs = _nonlinearly_update_residual_functions(
             likelihood=likelihood, point_estimates=point_estimates, jit=jit
         )
-    draw_lni, trafo, rag, metric, sampnorm = _nonlinear_update_funcs
+    draw_lni, rag, metric, sampnorm = _nonlinear_update_funcs
 
     residual_sample = _process_point_estimate(
         residual_sample, pos, point_estimates, insert=False
     )
-    metric_sample, _ = draw_lni(pos, metric_sample_key)
+    metric_sample, _ = draw_lni(
+        pos, metric_sample_key, point_estimates=point_estimates
+    )
     metric_sample *= metric_sample_sign
     metric_sample = _process_point_estimate(
         metric_sample, pos, point_estimates, insert=False
     )
-    # HACK for going skipping the nonlinear update steps and not calling trafo
+    # HACK for skipping the nonlinear update steps and not calling trafo
     skip = isinstance(minimize_kwargs.get("maxiter", None),
                       int) and minimize_kwargs["maxiter"] == 0
     if not skip:
-        trafo_at_p = trafo(pos)
+        trafo_at_p = likelihood.transformation(pos)
         options = {
-            "fun_and_grad": partial(rag, pos, trafo_at_p, metric_sample),
-            "hessp": partial(metric, pos),
-            "custom_gradnorm": partial(sampnorm, pos),
+            "fun_and_grad":
+                partial(
+                    rag,
+                    pos,
+                    trafo_at_p,
+                    metric_sample,
+                    point_estimates=point_estimates
+                ),
+            "hessp":
+                partial(metric, pos, point_estimates=point_estimates),
+            "custom_gradnorm":
+                partial(sampnorm, pos, point_estimates=point_estimates),
         }
         opt_state = minimize(
             None, x0=pos + residual_sample, **(minimize_kwargs | options)

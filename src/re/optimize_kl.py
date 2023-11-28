@@ -118,6 +118,8 @@ class OptimizeVIState(NamedTuple):
     sample_mode: SMPL_MODE_GENERIC_TYP
     sample_state: Optional[optimize.OptimizeResults]
     minimization_state: Optional[optimize.OptimizeResults]
+    point_estimates: Union[tuple, Any]
+    constants: Union[tuple, Any]
     config: dict[str, Union[dict, Callable[[int], Any]]]
 
 
@@ -182,8 +184,6 @@ class OptimizeVI:
         likelihood: Likelihood,
         n_total_iterations: int,
         *,
-        point_estimates=(),
-        constants=(),  # TODO
         kl_jit=True,
         residual_jit=True,
         kl_map=jax.vmap,
@@ -206,15 +206,6 @@ class OptimizeVI:
         n_total_iterations: int
             Total number of iterations. One iteration consists of the steps
             1) - 3).
-        point_estimates: tree-like structure or tuple of str
-            Pytree of same structure as likelihood input but with boolean
-            leaves indicating whether to sample the value in the input or use
-            it as a point estimate. As a convenience method, for dict-like
-            inputs, a tuple of strings is also valid. From these the boolean
-            indicator pytree is automatically constructed.
-        constants: tree-like structure or tuple of str
-            Not implemented yet, sorry :( Do bug me (Gordian) at
-            edh@mpa-garching.mpg.de if you wanted to run with this option.
         kl_jit: bool or callable
             Whether to jit the KL minimization.
         residual_jit: bool or callable
@@ -246,8 +237,6 @@ class OptimizeVI:
         residual_jit = _parse_jit(residual_jit)
         residual_map = get_map(residual_map)
 
-        if not (constants == () or constants is None):
-            raise NotImplementedError()
         if mirror_samples is False:
             raise NotImplementedError()
 
@@ -261,11 +250,7 @@ class OptimizeVI:
             )
         if _draw_linear_residual is None:
             _draw_linear_residual = residual_jit(
-                partial(
-                    draw_linear_residual,
-                    likelihood,
-                    point_estimates=point_estimates,
-                )
+                partial(draw_linear_residual, likelihood)
             )
         if _nonlinearly_update_residual is None:
             # TODO: Pull out `jit` from `nonlinearly_update_residual` once NCG
@@ -275,13 +260,11 @@ class OptimizeVI:
 
             _nonlin_funcs = _nonlinearly_update_residual_functions(
                 likelihood=likelihood,
-                point_estimates=point_estimates,
                 jit=residual_jit,
             )
             _nonlinearly_update_residual = partial(
                 nonlinearly_update_residual,
                 likelihood,
-                point_estimates=point_estimates,
                 _nonlinear_update_funcs=_nonlin_funcs,
             )
         if _get_status_message is None:
@@ -349,6 +332,8 @@ class OptimizeVI:
             name="M", cg_kwargs=dict(name="MCG")
         ),
         sample_mode: SMPL_MODE_GENERIC_TYP = "nonlinear",
+        point_estimates=(),
+        constants=(),  # TODO
     ) -> OptimizeVIState:
         """Initialize the state of the (otherwise state-less) VI approximation.
 
@@ -377,6 +362,15 @@ class OptimizeVI:
             with geoVI, the "_sample" versus "_resample" suffix denotes whether
             the same stochasticity is used for the drawing, and
             "nonlinear_update" nonlinearly updates existing samples using geoVI.
+        point_estimates: tree-like structure or tuple of str
+            Pytree of same structure as likelihood input but with boolean
+            leaves indicating whether to sample the value in the input or use
+            it as a point estimate. As a convenience method, for dict-like
+            inputs, a tuple of strings is also valid. From these the boolean
+            indicator pytree is automatically constructed.
+        constants: tree-like structure or tuple of str
+            Not implemented yet, sorry :( Do bug me (Gordian) at
+            edh@mpa-garching.mpg.de if you wanted to run with this option.
 
         Most of the parameters can be callable, in which case they are called
         with the current iteration number as argument and should return the
@@ -389,13 +383,14 @@ class OptimizeVI:
             "minimize": minimize,
             "minimize_kwargs": minimize_kwargs,
         }
-        sample_mode = sample_mode
         state = OptimizeVIState(
             nit,
             key,
             sample_mode=sample_mode,
             sample_state=None,
             minimization_state=None,
+            point_estimates=point_estimates,
+            constants=constants,
             config=config
         )
         return state
@@ -425,6 +420,14 @@ class OptimizeVI:
         st_smpls = state.sample_state
         config = state.config
 
+        point_estimates = state.point_estimates
+        point_estimates: str = point_estimates(nit) if callable(
+            point_estimates
+        ) else point_estimates
+        constants = state.constants
+        if not (constants == () or constants is None):
+            raise NotImplementedError()
+
         smpl_mode = state.sample_mode
         smpl_mode: str = smpl_mode(nit) if callable(smpl_mode) else smpl_mode
         n_samples = _getitem_at_nit(config, "n_samples", nit)
@@ -447,12 +450,16 @@ class OptimizeVI:
             assert n_samples == len(k_smpls)
             kw = _getitem_at_nit(config, "draw_linear_samples", nit)
             samples, st_smpls = self.draw_linear_samples(
-                samples.pos, k_smpls, **kw, **kwargs
+                samples.pos,
+                k_smpls,
+                point_estimates=point_estimates,
+                **kw,
+                **kwargs
             )
             if smpl_mode.lower().startswith("nonlinear"):
                 kw = _getitem_at_nit(config, "nonlinearly_update_samples", nit)
                 samples, st_smpls = self.nonlinearly_update_samples(
-                    samples, **kw, **kwargs
+                    samples, point_estimates=point_estimates, **kw, **kwargs
                 )
             elif not smpl_mode.lower().startswith("linear"):
                 ve = f"invalid sampling mode {smpl_mode!r}"
@@ -460,7 +467,7 @@ class OptimizeVI:
         elif smpl_mode.lower() == "nonlinear_update":
             kw = _getitem_at_nit(config, "nonlinearly_update_samples", nit)
             samples, st_smpls = self.nonlinearly_update_samples(
-                samples, **kw, **kwargs
+                samples, point_estimates=point_estimates, **kw, **kwargs
             )
         else:
             ve = f"invalid sampling mode {smpl_mode!r}"
@@ -557,8 +564,6 @@ def optimize_kl(
         opt_vi = OptimizeVI(
             likelihood,
             n_total_iterations=n_total_iterations,
-            point_estimates=point_estimates,
-            constants=constants,
             kl_jit=kl_jit,
             residual_jit=residual_jit,
             kl_map=kl_map,
@@ -592,6 +597,8 @@ def optimize_kl(
             minimize=minimize,
             minimize_kwargs=minimize_kwargs,
             sample_mode=sample_mode,
+            point_estimates=point_estimates,
+            constants=constants,
         )
     sanity_fn = os.path.join(
         odir, MINISANITY_FILENAME
