@@ -498,8 +498,8 @@ class OptimizeVI:
 
     def run(self, samples, *args, **kwargs) -> tuple[Samples, OptimizeVIState]:
         state = self.init_state(*args, **kwargs)
-        for i in range(self.n_total_iterations):
-            logger.info(f"{self.__class__.__name__} :: {i:04d}")
+        for i in range(state.nit, self.n_total_iterations):
+            logger.info(f"{self.__class__.__name__} :: {i+1:04d}")
             samples, state = self.update(samples, state)
             msg = self.get_status_message(samples, state, map=self.residual_map)
             logger.info(msg)
