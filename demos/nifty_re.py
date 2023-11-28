@@ -183,9 +183,9 @@ def n_samples_update(i):
 
 
 def sample_mode_update(i):
-    if i <= 2:
+    if i < 2:
         return "linear_resample"
-    if i <= 4:
+    if i < 4:
         return "nonlinear_resample"
     return "nonlinear_update"
 
@@ -199,11 +199,17 @@ samples, state = jft.optimize_kl(
     pos_init,
     n_total_iterations=n_vi_iterations,
     n_samples=n_samples_update,
+    # Source for the stochasticity for sampling
     key=key,
-    point_estimates=(),
+    # Names of parameters that are not samples but still optimized (effectively
+    # we are doing MAP for these degrees of freedom)
+    point_estimates=("cfax1flexibility", "cfax1asperity"),
+    # Arguments for the conjugate gradient method used to drawing samples from
+    # an implicit covariance matrix
     draw_linear_samples=dict(
         cg_name="SL", cg_kwargs=dict(absdelta=absdelta / 10., maxiter=100)
     ),
+    # Arguements for the minimizer in the nonlinear updating of the samples
     nonlinearly_update_samples=dict(
         minimize_kwargs=dict(
             name="SN",
@@ -212,6 +218,7 @@ samples, state = jft.optimize_kl(
             maxiter=5,
         )
     ),
+    # Arguments for the minimizer of the KL-divergence cost potential
     minimize_kwargs=dict(
         name="M", absdelta=absdelta, cg_kwargs=dict(name="MCG"), maxiter=35
     ),
