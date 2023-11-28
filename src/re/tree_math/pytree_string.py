@@ -75,6 +75,8 @@ class PyTreeString():
     lower = _unary_op(str.lower)
     upper = _unary_op(str.upper)
 
+    __hash__ = _unary_op(str.__hash__)
+
     startswith = _binary_op(str.startswith)
 
 
