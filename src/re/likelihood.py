@@ -10,7 +10,7 @@ from jax.tree_util import (
 
 from .misc import doc_from, is1d, isiterable, split
 from .model import AbstractModel
-from .tree_math import ShapeWithDtype, Vector, conj, vdot
+from .tree_math import ShapeWithDtype, Vector, conj, vdot, zeros_like
 
 Q = TypeVar("Q")
 P = TypeVar("P")
@@ -714,7 +714,7 @@ class Likelihood(AbstractModel):
             right_sqrt_metric = partial_insert_and_remove(
                 self.right_sqrt_metric,
                 insert_axes=(insert_axes, insert_axes),
-                flat_fill=(primals_frozen, primals_frozen),
+                flat_fill=(primals_frozen, zeros_like(primals_frozen)),
                 remove_axes=None,
             )
         do_insert |= self._metric is not None
@@ -722,7 +722,7 @@ class Likelihood(AbstractModel):
             metric = partial_insert_and_remove(
                 self.metric,
                 insert_axes=(insert_axes, insert_axes),
-                flat_fill=(primals_frozen, primals_frozen),
+                flat_fill=(primals_frozen, zeros_like(primals_frozen)),
                 remove_axes=insert_axes,
                 unflatten=unflatten,
             )
