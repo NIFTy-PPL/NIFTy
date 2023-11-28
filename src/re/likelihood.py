@@ -675,6 +675,9 @@ class Likelihood(AbstractModel):
         """Returns a new likelihood with partially inserted `primals` and the
         remaining unfrozen/liquid `primals`.
         """
+        if not point_estimates:
+            return self, primals
+
         insert_axes, primals_liquid, primals_frozen = _parse_point_estimates(
             point_estimates, primals
         )
