@@ -624,6 +624,8 @@ def optimize_kl(
                 f.write("\n" + msg)
         if last_fn is not None:
             with open(last_fn, "wb") as f:
+                # TODO: Make all arrays numpy arrays as to not instantiate on
+                # the main device when loading
                 pickle.dump((samples, opt_vi_state), f)
         if callback != None:
             callback(samples, opt_vi_state)
