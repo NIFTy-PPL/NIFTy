@@ -51,7 +51,7 @@ def _partial_func(func, likelihood, point_estimates):
     if point_estimates:
 
         def partial_func(primals, *args):
-            lh, p_liquid = likelihood.partial(point_estimates, primals)
+            lh, p_liquid = likelihood.freeze(point_estimates, primals)
             return func(lh, p_liquid, *args)
 
         return partial_func
