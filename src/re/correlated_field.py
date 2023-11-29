@@ -2,7 +2,7 @@
 
 from collections.abc import Mapping
 from functools import partial
-from typing import Callable, Dict, Optional, Tuple, Union
+from typing import Callable, Optional, Tuple, Union
 
 import numpy as np
 from jax import numpy as jnp
@@ -142,13 +142,13 @@ def _remove_slope(rel_log_mode_dist, x):
 
 
 def matern_amplitude(
-        domain: Mapping,
-        scale: Callable,
-        cutoff: Callable,
-        loglogslope: Callable,
-        renormalize_amplitude: bool,
-        prefix: str = "",
-        kind: str = "amplitude",
+    domain: Mapping,
+    scale: Callable,
+    cutoff: Callable,
+    loglogslope: Callable,
+    renormalize_amplitude: bool,
+    prefix: str = "",
+    kind: str = "amplitude",
 ) -> Model:
     """Constructs a function computing the amplitude of a Matérn-kernel
     power spectrum.
@@ -182,7 +182,7 @@ def matern_amplitude(
         ctf = cutoff(primals)
         slp = loglogslope(primals)
 
-        ln_spectrum = 0.25 * slp * jnp.log1p((mode_lengths/ctf)**2)
+        ln_spectrum = 0.25 * slp * jnp.log1p((mode_lengths / ctf)**2)
 
         spectrum = jnp.exp(ln_spectrum)
 
@@ -190,9 +190,13 @@ def matern_amplitude(
         if renormalize_amplitude:
             logger.warning("Renormalize amplidude is not yet tested!")
             if kind.lower() == "amplitude":
-                norm = jnp.sqrt(jnp.sum(mode_multiplicity[1:] * spectrum[1:] ** 4))
+                norm = jnp.sqrt(
+                    jnp.sum(mode_multiplicity[1:] * spectrum[1:]**4)
+                )
             elif kind.lower() == "power":
-                norm = jnp.sqrt(jnp.sum(mode_multiplicity[1:] * spectrum[1:] ** 2))
+                norm = jnp.sqrt(
+                    jnp.sum(mode_multiplicity[1:] * spectrum[1:]**2)
+                )
             norm /= jnp.sqrt(totvol)  # Due to integral in harmonic space
         spectrum = scl * (jnp.sqrt(totvol) / norm) * spectrum
         spectrum = spectrum.at[0].set(totvol)
@@ -202,7 +206,9 @@ def matern_amplitude(
             raise ValueError(f"invalid kind specified {kind!r}")
         return spectrum
 
-    return Model(correlate, domain=ptree, init=partial(random_like, primals=ptree))
+    return Model(
+        correlate, domain=ptree, init=partial(random_like, primals=ptree)
+    )
 
 
 def non_parametric_amplitude(
@@ -244,7 +250,9 @@ def non_parametric_amplitude(
         # Register the parameters for the spectrum
         _safe_assert(log_vol is not None)
         _safe_assert(rel_log_mode_len.ndim == log_vol.ndim == 1)
-        ptree.update({prefix + "spectrum": ShapeWithDtype((2, ) + log_vol.shape)})
+        ptree.update(
+            {prefix + "spectrum": ShapeWithDtype((2, ) + log_vol.shape)}
+        )
     if asperity is not None:
         asperity = WrappedCall(asperity, name=prefix + "asperity")
         ptree.update(asperity.domain)
