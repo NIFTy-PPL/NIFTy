@@ -62,7 +62,7 @@ class RegularAxis:
             fine_ker_part = (fine_axis.kernel_size - 1) // 2 // self.base
             if fine_ker_part > (self.kernel_size - 1) // 2:
                 raise ValueError("Fine kernel too big for this axis!")
-            if ((fine_axis.method_in == 'linear') and 
+            if ((fine_axis.method_in == 'linear') and
                 (self.method_in != 'linear')):
                 msg = "Fine kernel cannot be second order if this axis is not"
                 raise ValueError(msg)
@@ -122,8 +122,8 @@ class RegularAxis:
     def copy(self):
         """Creates a copy of this axis."""
         fine = None if self._fine_axis is None else self._fine_axis.copy()
-        return RegularAxis(self._base, self._size, self._binsize, 
-                           self._kernel_size, fine, self._imethod, 
+        return RegularAxis(self._base, self._size, self._binsize,
+                           self._kernel_size, fine, self._imethod,
                            self._omethod)
 
     def get_fine_indices(self, index):
@@ -176,7 +176,7 @@ class RegularAxis:
         return np.add.outer(index, window, dtype=index.dtype)%self.size
 
     def get_inter_window_ids(self, index):
-        """The indices corresponding to the kernel and interpolation window 
+        """The indices corresponding to the kernel and interpolation window
         centered around each entry of `indices`.
 
         Parameters:
@@ -751,7 +751,7 @@ class HPAxis(RegularAxis):
         fax = self.fine_axis
         fids = self.get_fine_indices(index)
         shp = fids.shape
-        windows, bad = fax.get_kernel_window_ids(fids.flatten(), 
+        windows, bad = fax.get_kernel_window_ids(fids.flatten(),
                                                  want_isbad=True)
         windows = windows.reshape(shp+windows.shape[1:])
         bad = bad.reshape(shp+bad.shape[1:])
@@ -773,14 +773,14 @@ class HPAxis(RegularAxis):
             gs = np.argsort(goodw, axis=1)
             goodw = np.take_along_axis(goodw, gs, axis=1)
             sub = (goodw[:,1:] - goodw[:,:-1]) != 0
-            u = np.concatenate((np.ones((sub.shape[0],1),dtype=bool), sub), 
+            u = np.concatenate((np.ones((sub.shape[0],1),dtype=bool), sub),
                                axis=1)
             assert np.all(np.sum(u, axis=1) == ksz)
 
             goodids = goodw[u].reshape((goodw.shape[0],-1))
             ids[good] = goodids
             if want_kernel:
-                gtrafo = np.zeros((goodids.shape[0], self.base, ksz, 
+                gtrafo = np.zeros((goodids.shape[0], self.base, ksz,
                                    self.base, ks), dtype=trafo.dtype)
                 tsort = np.zeros((gs.shape[1], gtrafo.shape[0], gs.shape[1]),
                                  dtype=trafo.dtype)
@@ -824,7 +824,7 @@ class HPAxis(RegularAxis):
                     for bb in range(self.base):
                         m0 = np.zeros((self.base*ks, ks), dtype=trafo.dtype)
                         m0[bb*ks:(bb+1)*ks, :] = np.eye(ks, dtype=trafo.dtype)
-                        badtrafo[ii, bb, :, bb, :] = np.tensordot(um, m0, 
+                        badtrafo[ii, bb, :, bb, :] = np.tensordot(um, m0,
                                     axes=((1,),(0,)), ).astype(trafo.dtype)
             ids[~good] = badids
             if want_kernel:
@@ -854,11 +854,11 @@ class HPAxis(RegularAxis):
         coarse: numpy.ndarray of int
             Binids of the bins on this level that contain the `fine_index`.
         mat: jax.numpy.ndarray of float
-            Unique matrices that map the input on this level to the next fine 
+            Unique matrices that map the input on this level to the next fine
             level along this axis.
         select: numpy.ndarray of int
             Indexing along the first axis of `mat` that maps from the unique
-            array `mat` to an array of the shape `fine_index.shape[0] + 
+            array `mat` to an array of the shape `fine_index.shape[0] +
             mat.shape[1:]`. Can be used to identify the entries in `mat` that
             correspond to one entry of `fine_index`
         Notes:
@@ -904,7 +904,7 @@ class HPAxis(RegularAxis):
             raise NotImplementedError(msg)
         return mat
 
-    def batch_interpolate(self, refine_index, kernel_index, 
+    def batch_interpolate(self, refine_index, kernel_index,
                           want_coarse = False):
         #TODO add interpolation method (nearest & quadratic) to make use of full
         #     scope.
@@ -936,7 +936,7 @@ class HPAxis(RegularAxis):
             all_coarse = all_coarse.flatten()[..., np.newaxis]
         elif self._omethod == 'linear':
             window = self._get_interpolation_window(refine_index)
-            kid = np.multiply.outer(kernel_index, 
+            kid = np.multiply.outer(kernel_index,
                                     np.ones((4,), dtype=kernel_index.dtype),
                                     dtype=kernel_index.dtype).flatten()
             coarse, bad = self._get_interpolation_window(kid, True)
@@ -952,7 +952,7 @@ class HPAxis(RegularAxis):
                 all_bad[cond] = bad[cond][:,select_pairs[i]]
             assert np.all(np.sum(all_bad[:,:-1], axis=1) == 0)
 
-            angles = _int_to_basis(self.nside, fine_index, all_coarse.T, 
+            angles = _int_to_basis(self.nside, fine_index, all_coarse.T,
                                 all_bad[:,-1])
             weights = _interpolation_weights(angles, all_bad[:,-1])
             weights = weights.reshape(kernel_index.shape + (4,4))
@@ -1051,11 +1051,11 @@ class HPAxis(RegularAxis):
                 badres[j] = np.array(rr)
             res[i][~all_good] = badres
         front = np.multiply.outer(
-            np.arange(res.shape[0], dtype=fine_index.dtype), 
+            np.arange(res.shape[0], dtype=fine_index.dtype),
             np.ones_like(fine_kernel), dtype=fine_index.dtype)
         res = np.moveaxis(res, 1, 0)
         front = np.moveaxis(front, 1, 0)
-        return (front.reshape(inshp+front.shape[1:]), 
+        return (front.reshape(inshp+front.shape[1:]),
                 res.reshape(inshp+res.shape[1:]))
 
     def refine_axis(self, knn_neighbours = None, interpolation_method_in = None,
@@ -1066,7 +1066,7 @@ class HPAxis(RegularAxis):
         Parameters:
         -----------
         knn_neighbours: int (optional)
-            Number of (k-)nearest neighbours fo the kernel window for the new 
+            Number of (k-)nearest neighbours fo the kernel window for the new
             fine axis. If None, `knn_neghbours` of this axis is used.
         Returns:
         --------
