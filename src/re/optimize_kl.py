@@ -255,7 +255,6 @@ class OptimizeVI:
         if _nonlinearly_update_residual is None:
             # TODO: Pull out `jit` from `nonlinearly_update_residual` once NCG
             # is jit-able
-            # TODO: STOP inserting `point_estimes` and instead defer it to `update`
             from .evi import _nonlinearly_update_residual_functions
 
             _nonlin_funcs = _nonlinearly_update_residual_functions(
