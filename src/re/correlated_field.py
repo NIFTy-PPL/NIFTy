@@ -14,11 +14,6 @@ from .num import lognormal_prior, normal_prior
 from .tree_math import ShapeWithDtype, random_like
 
 
-def _safe_assert(condition):
-    if not condition:
-        raise AssertionError()
-
-
 def hartley(p, axes=None):
     from jax.numpy import fft
 
@@ -105,10 +100,10 @@ def _make_domain(shape, distances, harmonic_domain_type):
 
         um = um.at[1:].set(jnp.log(um[1:]))
         um = um.at[1:].add(-um[1])
-        _safe_assert(um[0] == 0.)
+        assert um[0] == 0.
         domain["relative_log_mode_lengths"] = um
         log_vol = um[2:] - um[1:-1]
-        _safe_assert(um.shape[0] - 2 == log_vol.shape[0])
+        assert um.shape[0] - 2 == log_vol.shape[0]
         domain["log_volume"] = log_vol
     else:
         ve = f"invalid `harmonic_domain_type` {harmonic_domain_type!r}"
@@ -243,8 +238,8 @@ def non_parametric_amplitude(
         flexibility = WrappedCall(flexibility, name=prefix + "flexibility")
         ptree.update(flexibility.domain)
         # Register the parameters for the spectrum
-        _safe_assert(log_vol is not None)
-        _safe_assert(rel_log_mode_len.ndim == log_vol.ndim == 1)
+        assert log_vol is not None
+        assert rel_log_mode_len.ndim == log_vol.ndim == 1
         ptree.update(
             {prefix + "spectrum": ShapeWithDtype((2, ) + log_vol.shape)}
         )
@@ -259,7 +254,7 @@ def non_parametric_amplitude(
         ln_spectrum = slope
 
         if flexibility is not None:
-            _safe_assert(log_vol is not None)
+            assert log_vol is not None
             xi_spc = primals[prefix + "spectrum"]
             flx = flexibility(primals)
             sig_flx = flx * jnp.sqrt(log_vol)
