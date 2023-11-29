@@ -219,8 +219,10 @@ samples, state = jft.optimize_kl(
         )
     ),
     # Arguments for the minimizer of the KL-divergence cost potential
-    minimize_kwargs=dict(
-        name="M", absdelta=absdelta, cg_kwargs=dict(name="MCG"), maxiter=35
+    kl_kwargs=dict(
+        minimize_kwargs=dict(
+            name="M", absdelta=absdelta, cg_kwargs=dict(name="MCG"), maxiter=35
+        )
     ),
     sample_mode=sample_mode_update,
     odir="results_nifty_re",

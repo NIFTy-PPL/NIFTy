@@ -169,7 +169,7 @@ def test_mgvi_wiener_filter_consistency(
         )
         assert_allclose(smpl_post_cov, post_cov, atol=tol**0.5)
 
-    minimize_kwargs = dict(name="M", xtol=1e-10, maxiter=35)
+    kl_kwargs = dict(minimize_kwargs=dict(name="M", xtol=1e-10, maxiter=35))
 
     # MGVI test
     key, sk = random.split(key)
@@ -180,7 +180,7 @@ def test_mgvi_wiener_filter_consistency(
         n_total_iterations=1,
         n_samples=n_vi_samples,
         draw_linear_kwargs=draw_linear_kwargs,
-        minimize_kwargs=minimize_kwargs,
+        kl_kwargs=kl_kwargs,
         sample_mode="linear_sample",
         odir=None,
     )
@@ -207,7 +207,7 @@ def test_mgvi_wiener_filter_consistency(
         n_samples=n_vi_samples,
         draw_linear_kwargs=draw_linear_kwargs,
         nonlinearly_update_kwargs=nonlinearly_update_kwargs,
-        minimize_kwargs=minimize_kwargs,
+        kl_kwargs=kl_kwargs,
         sample_mode="nonlinear_sample",
         odir=None,
     )

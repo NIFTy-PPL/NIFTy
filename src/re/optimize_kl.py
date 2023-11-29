@@ -311,6 +311,26 @@ class OptimizeVI:
         smpls = Samples(pos=samples.pos, samples=smpls, keys=samples.keys)
         return smpls, smpls_states
 
+    def kl_minimize(
+        self,
+        samples: Samples,
+        minimize: Callable[..., optimize.OptimizeResults] = optimize._newton_cg,
+        minimize_kwargs={},
+        **kwargs
+    ) -> optimize.OptimizeResults:
+        fun_and_grad = Partial(
+            self.kl_value_and_grad, primals_samples=samples, **kwargs
+        )
+        hessp = Partial(self.kl_metric, primals_samples=samples, **kwargs)
+        kl_opt_state = minimize(
+            None,
+            x0=samples.pos,
+            fun_and_grad=fun_and_grad,
+            hessp=hessp,
+            **minimize_kwargs
+        )
+        return kl_opt_state
+
     def init_state(
         self,
         key,
@@ -323,12 +343,8 @@ class OptimizeVI:
         nonlinearly_update_kwargs: DICT_OR_CALL4DICT_TYP = dict(
             minimize_kwargs=dict(name="SN", cg_kwargs=dict(name="SNCG"))
         ),
-        minimize: Callable[
-            ...,
-            optimize.OptimizeResults,
-        ] = optimize._newton_cg,
-        minimize_kwargs: DICT_OR_CALL4DICT_TYP = dict(
-            name="M", cg_kwargs=dict(name="MCG")
+        kl_kwargs: DICT_OR_CALL4DICT_TYP = dict(
+            minimize_kwargs=dict(name="M", cg_kwargs=dict(name="MCG"))
         ),
         sample_mode: SMPL_MODE_GENERIC_TYP = "nonlinear_resample",
         point_estimates=(),
@@ -349,10 +365,8 @@ class OptimizeVI:
         nonlinearly_update_kwargs : dict or callable
             Configuration for nonlinearly updating samples, see
             :func:`nonlinearly_update_residual`.
-        minimize : callable
-            Minimizer to use for the KL minimization.
-        minimize_kwargs : dict or callable
-            Keyword arguments for the minimizer.
+        kl_kwargs : dict or callable
+            Keyword arguments for the KL minimizer.
         sample_mode : str or callable
             One in {"linear_sample", "linear_resample", "nonlinear_sample",
             "nonlinear_resample", "nonlinear_update"}. The mode denotes the way
@@ -379,8 +393,7 @@ class OptimizeVI:
             "n_samples": n_samples,
             "draw_linear_kwargs": draw_linear_kwargs,
             "nonlinearly_update_kwargs": nonlinearly_update_kwargs,
-            "minimize": minimize,
-            "minimize_kwargs": minimize_kwargs,
+            "kl_kwargs": kl_kwargs,
         }
         state = OptimizeVIState(
             nit,
@@ -472,15 +485,8 @@ class OptimizeVI:
             ve = f"invalid sampling mode {smpl_mode!r}"
             raise ValueError(ve)
 
-        minimize = _getitem_at_nit(config, "minimize", nit)
-        kw = {
-            "fun_and_grad":
-                partial(self.kl_value_and_grad, primals_samples=samples),
-            "hessp":
-                partial(self.kl_metric, primals_samples=samples),
-        }
-        kw |= _getitem_at_nit(config, "minimize_kwargs", nit)
-        kl_opt_state = minimize(None, x0=samples.pos, **kw)
+        kw = _getitem_at_nit(config, "kl_kwargs", nit).copy()
+        kl_opt_state = self.kl_minimize(samples, **kw, **kwargs)
         samples = samples.at(kl_opt_state.x)
         # Remove unnecessary references
         kl_opt_state = kl_opt_state._replace(
@@ -524,11 +530,7 @@ def optimize_kl(
     nonlinearly_update_kwargs=dict(
         minimize_kwargs=dict(name="SN", cg_kwargs=dict(name="SNCG"))
     ),
-    minimize: Callable[
-        ...,
-        optimize.OptimizeResults,
-    ] = optimize._newton_cg,
-    minimize_kwargs=dict(name="M", cg_kwargs=dict(name="MCG")),
+    kl_kwargs=dict(minimize_kwargs=dict(name="M", cg_kwargs=dict(name="MCG"))),
     sample_mode: SMPL_MODE_GENERIC_TYP = "nonlinear",
     resume: Union[str, bool] = False,
     callback: Optional[Callable[[Samples, OptimizeVIState], None]] = None,
@@ -593,8 +595,7 @@ def optimize_kl(
             n_samples=n_samples,
             draw_linear_kwargs=draw_linear_kwargs,
             nonlinearly_update_kwargs=nonlinearly_update_kwargs,
-            minimize=minimize,
-            minimize_kwargs=minimize_kwargs,
+            kl_kwargs=kl_kwargs,
             sample_mode=sample_mode,
             point_estimates=point_estimates,
             constants=constants,

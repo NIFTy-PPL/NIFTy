@@ -227,7 +227,7 @@ def test_optimize_kl_sample_consistency(
         point_estimates=point_estimates,
         draw_linear_kwargs=draw_linear_kwargs,
         nonlinearly_update_kwargs=dict(minimize_kwargs=minimize_kwargs),
-        minimize_kwargs=dict(name="M", maxiter=0),
+        kl_kwargs=dict(minimize_kwargs=dict(name="M", maxiter=0)),
         sample_mode=sample_mode,
         kl_jit=False,
         residual_jit=False,
