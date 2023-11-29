@@ -94,6 +94,33 @@ def _log_space_transform_unique_modes(domain, um):
     return domain
 
 
+def _make_domain(shape, distances, harmonic_domain_type):
+    totvol = jnp.prod(jnp.array(shape) * jnp.array(distances))
+    """Creates the domain attributes for the amplitude model"""
+    # TODO: cache results such that only references are used afterwards
+    domain = {
+        "position_space_shape": shape,
+        "position_space_total_volume": totvol,
+        "position_space_distances": distances,
+        "harmonic_domain_type": harmonic_domain_type.lower()
+    }
+    # Pre-compute lengths of modes and indices for distributing power
+    if harmonic_domain_type.lower() == "fourier":
+        domain["harmonic_space_shape"] = shape
+        m_length_idx, um, m_count = get_fourier_mode_distributor(
+            shape, distances
+        )
+        domain["power_distributor"] = m_length_idx
+        domain["mode_multiplicity"] = m_count
+        domain["mode_lengths"] = um
+
+        domain = _log_space_transform_unique_modes(domain, um)
+    else:
+        ve = f"invalid `harmonic_domain_type` {harmonic_domain_type!r}"
+        raise ValueError(ve)
+    return domain
+
+
 def _twolog_integrate(log_vol, x):
     # Map the space to the one for the relative log-modes, i.e. pad the space
     # of the log volume
@@ -119,9 +146,9 @@ def matern_amplitude(
         scale: Callable,
         cutoff: Callable,
         loglogslope: Callable,
+        renormalize_amplitude: bool,
         prefix: str = "",
         kind: str = "amplitude",
-        renormalize_amplitude: bool = True,
 ) -> Model:
     """Constructs a function computing the amplitude of a Matérn-kernel
     power spectrum.
@@ -157,13 +184,11 @@ def matern_amplitude(
 
         ln_spectrum = 0.25 * slp * jnp.log1p((mode_lengths/ctf)**2)
 
-        # Take the exp and norm the spectrum
         spectrum = jnp.exp(ln_spectrum)
-        # Take the sqrt of the integral of the slope w/o fluctuations and
-        # zero-mode while taking into account the multiplicity of each mode
 
         norm = 1.
         if renormalize_amplitude:
+            logger.warning("Renormalize amplidude is not yet tested!")
             if kind.lower() == "amplitude":
                 norm = jnp.sqrt(jnp.sum(mode_multiplicity[1:] * spectrum[1:] ** 4))
             elif kind.lower() == "power":
@@ -382,27 +407,8 @@ class CorrelatedFieldMaker():
         """
         shape = (shape, ) if isinstance(shape, int) else tuple(shape)
         distances = tuple(np.broadcast_to(distances, jnp.shape(shape)))
-        totvol = jnp.prod(jnp.array(shape) * jnp.array(distances))
 
-        # Pre-compute lengths of modes and indices for distributing power
-        # TODO: cache results such that only references are used afterwards
-        domain = {
-            "position_space_shape": shape,
-            "position_space_total_volume": totvol,
-            "position_space_distances": distances,
-            "harmonic_domain_type": harmonic_domain_type.lower()
-        }
-        if harmonic_domain_type.lower() == "fourier":
-            domain["harmonic_space_shape"] = shape
-            m_length_idx, um, m_count = get_fourier_mode_distributor(
-                shape, distances
-            )
-            domain["power_distributor"] = m_length_idx
-            domain["mode_multiplicity"] = m_count
-            domain = _log_space_transform_unique_modes(domain, um)
-        else:
-            ve = f"invalid `harmonic_domain_type` {harmonic_domain_type!r}"
-            raise ValueError(ve)
+        domain = _make_domain(shape, distances, harmonic_domain_type)
 
         flu = fluctuations
         if isinstance(flu, (tuple, list)):
@@ -450,10 +456,10 @@ class CorrelatedFieldMaker():
         scale: Union[tuple, Callable],
         cutoff: Union[tuple, Callable],
         loglogslope: Union[tuple, Callable],
+        renormalize_amplitude: bool,
         prefix: str = "",
         harmonic_domain_type: str = "fourier",
         non_parametric_kind: str = "amplitude",
-        renormalize_amplitude: bool = True,
     ):
         """Adds a Matérn-kernel correlation structure to the
         field to be made.
@@ -484,6 +490,10 @@ class CorrelatedFieldMaker():
         loglogslope : tuple of float (mean, std) or callable or None
             Amplitude of the non-power-law power spectrum component
             (by default a priori log-normal distributed).
+        renormalize_amplitude : bool
+            Whether the amplitude of the process should be renormalized to
+            ensure that the `scale` parameter relates to the scale of the
+            fluctuations along the specified axis.
         prefix : str
             Prefix of the power spectrum parameter domain names.
         harmonic_domain_type : str
@@ -495,11 +505,6 @@ class CorrelatedFieldMaker():
             If set to `'power'`, the power spectrum is described by the
             Matérn kernel function in the above
             (by default `'amplitude'`).
-        renormalize_amplitude : bool
-            Whether the amplitude of the process should be renormalized to
-            ensure that the `scale` parameter relates to the scale of the
-            fluctuations along the specified axis
-            (by default `True`).
 
         See also
         --------
@@ -511,28 +516,8 @@ class CorrelatedFieldMaker():
         """
         shape = (shape, ) if isinstance(shape, int) else tuple(shape)
         distances = tuple(np.broadcast_to(distances, jnp.shape(shape)))
-        totvol = jnp.prod(jnp.array(shape) * jnp.array(distances))
 
-        # Pre-compute lengths of modes and indices for distributing power
-        # TODO: cache results such that only references are used afterwards
-        domain = {
-            "position_space_shape": shape,
-            "position_space_total_volume": totvol,
-            "position_space_distances": distances,
-            "harmonic_domain_type": harmonic_domain_type.lower()
-        }
-        if harmonic_domain_type.lower() == "fourier":
-            domain["harmonic_space_shape"] = shape
-            m_length_idx, um, m_count = get_fourier_mode_distributor(
-                shape, distances
-            )
-            domain["power_distributor"] = m_length_idx
-            domain["mode_multiplicity"] = m_count
-            domain["mode_lengths"] = um
-
-        else:
-            ve = f"invalid `harmonic_domain_type` {harmonic_domain_type!r}"
-            raise ValueError(ve)
+        domain = _make_domain(shape, distances, harmonic_domain_type)
 
         if isinstance(scale, (tuple, list)):
             scale = lognormal_prior(*scale)

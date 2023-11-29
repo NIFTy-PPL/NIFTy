@@ -42,6 +42,7 @@ def test_correlated_field_init(shape,
             scale=scale,
             cutoff=cutoff,
             loglogslope=loglogslope,
+            renormalize_amplitude=False,
         )
     else:
         cf.add_fluctuations(
@@ -61,8 +62,8 @@ def test_correlated_field_init(shape,
 @pmp('distances', [.1])
 @pmp('fluctuations', [(1., .1)])
 @pmp('loglogavgslope', [(-1., .1)])
-@pmp('flexibility', [None, (1., .1)])
-@pmp('asperity', [None, (.2, .002)])
+@pmp('flexibility', [(1., .1)])
+@pmp('asperity', [None, (.2, 2.e-2)])
 def test_re_cf_vs_nifty(seed, shape, distances,
                         fluctuations, loglogavgslope,
                         flexibility, asperity):
@@ -87,8 +88,8 @@ def test_re_cf_vs_nifty(seed, shape, distances,
     cf.set_amplitude_total_offset(offset_mean, offset_std)
     cf.add_fluctuations(rg_space,
                         fluctuations=fluctuations,
-                        flexibility=(1., 0.1),
-                        asperity=(.2, .002),
+                        flexibility=flexibility,
+                        asperity=asperity,
                         loglogavgslope=loglogavgslope,
                         )
     cf = cf.finalize()
