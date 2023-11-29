@@ -330,7 +330,7 @@ class OptimizeVI:
         minimize_kwargs: DICT_OR_CALL4DICT_TYP = dict(
             name="M", cg_kwargs=dict(name="MCG")
         ),
-        sample_mode: SMPL_MODE_GENERIC_TYP = "nonlinear",
+        sample_mode: SMPL_MODE_GENERIC_TYP = "nonlinear_resample",
         point_estimates=(),
         constants=(),  # TODO
     ) -> OptimizeVIState:
