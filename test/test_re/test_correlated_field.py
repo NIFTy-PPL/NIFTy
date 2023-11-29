@@ -6,7 +6,6 @@ import pytest
 pytest.importorskip("jax")
 
 import jax.random as random
-import numpy as np
 import pytest
 from numpy.testing import assert_allclose
 
@@ -18,147 +17,149 @@ pmp = pytest.mark.parametrize
 
 @pmp('shape', [(2, ), (3, 3)])
 @pmp('distances', [.1])
+@pmp('offset_mean', [0])
+@pmp('offset_std', [(.1, .1)])
 @pmp('asperity', [None, (1., 1.)])
 @pmp('flexibility', [None, (1., 1.)])
 @pmp('fluctuations', [(1., 1.)])
 @pmp('loglogavgslope', [(1., 1.)])
-@pmp('matern', [False, True])
+def test_correlated_field_non_parametric_init(
+    shape,
+    distances,
+    offset_mean,
+    offset_std,
+    fluctuations,
+    loglogavgslope,
+    asperity,
+    flexibility,
+):
+    cf = jft.CorrelatedFieldMaker("cf")
+    cf.set_amplitude_total_offset(
+        offset_mean=offset_mean, offset_std=offset_std
+    )
+    cf.add_fluctuations(
+        shape,
+        distances=distances,
+        fluctuations=fluctuations,
+        loglogavgslope=loglogavgslope,
+        asperity=asperity,
+        flexibility=flexibility,
+    )
+    correlated_field = cf.finalize()
+    assert correlated_field
+    assert correlated_field.domain
+
+
+@pmp('shape', [(2, ), (3, 3)])
+@pmp('distances', [.1])
+@pmp('offset_mean', [0])
+@pmp('offset_std', [(.1, .1)])
 @pmp('scale', [(1., 1.)])
 @pmp('loglogslope', [(1., 1.)])
 @pmp('cutoff', [(1., 1.)])
-def test_correlated_field_init(
+def test_correlated_field_matern_init(
     shape,
     distances,
-    asperity,
-    flexibility,
-    fluctuations,
-    loglogavgslope,
-    matern,
+    offset_mean,
+    offset_std,
     scale,
     loglogslope,
     cutoff,
 ):
     cf = jft.CorrelatedFieldMaker("cf")
-    cf.set_amplitude_total_offset(offset_mean=0, offset_std=(.1, .1))
-    if matern:
-        cf.add_fluctuations_matern(
-            shape,
-            distances=distances,
-            scale=scale,
-            cutoff=cutoff,
-            loglogslope=loglogslope,
-            renormalize_amplitude=False,
-        )
-    else:
-        cf.add_fluctuations(
-            shape,
-            distances=distances,
-            asperity=asperity,
-            flexibility=flexibility,
-            fluctuations=fluctuations,
-            loglogavgslope=loglogavgslope
-        )
+    cf.set_amplitude_total_offset(
+        offset_mean=offset_mean, offset_std=offset_std
+    )
+    cf.add_fluctuations_matern(
+        shape,
+        distances=distances,
+        scale=scale,
+        cutoff=cutoff,
+        loglogslope=loglogslope,
+        renormalize_amplitude=False,
+    )
     correlated_field = cf.finalize()
     assert correlated_field
+    assert correlated_field.domain
 
 
 @pmp('seed', [0, 42])
 @pmp('shape', [(4, ), (3, 3)])
-@pmp('distances', [.1])
+@pmp('distances', [.1, 5.])
+@pmp('offset_mean', [0])
+@pmp('offset_std', [(.1, .1)])
 @pmp('fluctuations', [(1., .1)])
 @pmp('loglogavgslope', [(-1., .1)])
 @pmp('flexibility', [(1., .1)])
 @pmp('asperity', [None, (.2, 2.e-2)])
-def test_re_cf_vs_nifty(
-    seed, shape, distances, fluctuations, loglogavgslope, flexibility, asperity
+def test_nifty_vs_niftyre_non_parametric_cf(
+    seed, shape, distances, offset_mean, offset_std, fluctuations,
+    loglogavgslope, asperity, flexibility
 ):
-    rg_space = ift.RGSpace(shape, distances)
-    offset_mean = 0.
-    offset_std = (.1, .1)
-    rg_key = random.PRNGKey(seed)
-    jcf = jft.CorrelatedFieldMaker("")
-    jcf.set_amplitude_total_offset(
+    key = random.PRNGKey(seed)
+    fluct_kwargs = dict(
+        fluctuations=fluctuations,
+        loglogavgslope=loglogavgslope,
+        asperity=asperity,
+        flexibility=flexibility
+    )
+
+    jcfm = jft.CorrelatedFieldMaker("")
+    jcfm.set_amplitude_total_offset(
         offset_mean=offset_mean, offset_std=offset_std
     )
-    jcf.add_fluctuations(
+    jcfm.add_fluctuations(
         shape,
         distances=distances,
-        fluctuations=fluctuations,
-        loglogavgslope=loglogavgslope,
-        flexibility=flexibility,
-        asperity=asperity,
+        **fluct_kwargs,
         non_parametric_kind="power",
     )
-    jcf = jcf.finalize()
+    jcf = jcfm.finalize()
 
-    cf = ift.CorrelatedFieldMaker("")
-    cf.set_amplitude_total_offset(offset_mean, offset_std)
-    cf.add_fluctuations(
-        rg_space,
-        fluctuations=fluctuations,
-        flexibility=flexibility,
-        asperity=asperity,
-        loglogavgslope=loglogavgslope,
-    )
-    cf = cf.finalize()
+    cfm = ift.CorrelatedFieldMaker("")
+    cfm.set_amplitude_total_offset(offset_mean, offset_std)
+    cfm.add_fluctuations(ift.RGSpace(shape, distances), **fluct_kwargs)
+    cf = cfm.finalize(prior_info=0)
 
-    random_pos = jft.random_like(rg_key, jcf.domain)
-    nifty_random_pos = {
-        key: ift.makeField(cf.domain[key], val)
-        for key, val in random_pos.items()
-    }
-    nifty_random_pos = ift.MultiField.from_dict(nifty_random_pos, cf.domain)
-    assert_allclose(cf(nifty_random_pos).val, jcf(random_pos))
+    pos = jft.random_like(key, jcf.domain)
+    npos = {k: ift.makeField(cf.domain[k], v) for k, v in pos.items()}
+    npos = ift.MultiField.from_dict(npos, cf.domain)
+    assert_allclose(cf(npos).val, jcf(pos))
 
 
 @pmp('seed', [0, 42])
 @pmp('shape', [(2, ), (3, 3)])
-@pmp('distances', [.1])
+@pmp('distances', [.1, 5.])
+@pmp('offset_mean', [0])
+@pmp('offset_std', [(.1, .1)])
 @pmp('scale', [(1., 1.)])
 @pmp('loglogslope', [(1., 1.)])
 @pmp('cutoff', [(1., 1.)])
-def test_re_matern_cf_vs_nifty(
-    seed, shape, distances, scale, cutoff, loglogslope
+def test_nifty_vs_niftyre_matern_cf(
+    seed, shape, distances, offset_mean, offset_std, scale, cutoff, loglogslope
 ):
-    rg_space = ift.RGSpace(shape, distances)
-    offset_mean = 0.
-    offset_std = (.1, .1)
-    rg_key = random.PRNGKey(seed)
-    mk_jcf = jft.CorrelatedFieldMaker("")
-    mk_jcf.set_amplitude_total_offset(
+    key = random.PRNGKey(seed)
+    fluct_kwargs = dict(scale=scale, cutoff=cutoff, loglogslope=loglogslope)
+
+    jcfm = jft.CorrelatedFieldMaker("")
+    jcfm.set_amplitude_total_offset(
         offset_mean=offset_mean, offset_std=offset_std
     )
-    mk_jcf.add_fluctuations_matern(
+    jcfm.add_fluctuations_matern(
         shape,
         distances=distances,
-        scale=scale,
-        cutoff=cutoff,
-        loglogslope=loglogslope,
+        **fluct_kwargs,
         non_parametric_kind="amplitude",
         renormalize_amplitude=False,
     )
-    jcf = mk_jcf.finalize()
+    jcf = jcfm.finalize()
 
-    mk_cf = ift.CorrelatedFieldMaker("")
-    mk_cf.set_amplitude_total_offset(offset_mean, offset_std)
-    mk_cf.add_fluctuations_matern(
-        rg_space,
-        scale=scale,
-        cutoff=cutoff,
-        loglogslope=loglogslope,
-    )
-    cf = mk_cf.finalize()
+    cfm = ift.CorrelatedFieldMaker("")
+    cfm.set_amplitude_total_offset(offset_mean, offset_std)
+    cfm.add_fluctuations_matern(ift.RGSpace(shape, distances), **fluct_kwargs)
+    cf = cfm.finalize(prior_info=0)
 
-    random_pos = jft.random_like(rg_key, jcf.domain)
-    nifty_random_pos = {
-        key: ift.makeField(cf.domain[key], val)
-        for key, val in random_pos.items()
-    }
-    nifty_random_pos = ift.MultiField.from_dict(nifty_random_pos, cf.domain)
-    assert_allclose(cf(nifty_random_pos).val, jcf(random_pos))
-
-
-if __name__ == "__main__":
-    test_correlated_field_init()
-    test_re_cf_vs_nifty()
-    test_re_matern_cf_vs_nifty()
+    pos = jft.random_like(key, jcf.domain)
+    npos = {k: ift.makeField(cf.domain[k], v) for k, v in pos.items()}
+    npos = ift.MultiField.from_dict(npos, cf.domain)
+    assert_allclose(cf(npos).val, jcf(pos))
