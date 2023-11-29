@@ -517,8 +517,8 @@ class OptimizeVI:
             **kwargs
         )
 
-        kw = _getitem_at_nit(config, "kl_kwargs", nit).copy()
-        kl_opt_state = self.kl_minimize(samples, **kw, **kwargs)
+        kl_kwargs = _getitem_at_nit(config, "kl_kwargs", nit).copy()
+        kl_opt_state = self.kl_minimize(samples, **kl_kwargs, **kwargs)
         samples = samples.at(kl_opt_state.x)
         # Remove unnecessary references
         kl_opt_state = kl_opt_state._replace(
