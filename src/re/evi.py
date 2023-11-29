@@ -237,12 +237,15 @@ def nonlinearly_update_residual(
         opt_state = optimize.OptimizeResults(sample, True, 0, None, None)
     if _raise_notconverged and (opt_state.status < 0):
         ValueError("S: failed to invert map")
-    sample = _process_point_estimate(
-        opt_state.x, pos, point_estimates, insert=True
+    # Subtract position in the reduced space (i.e. space w/o point-estimates) to
+    # not pollute the point-estimated parameters with the mean
+    sample = opt_state.x - _process_point_estimate(
+        pos, pos, point_estimates, insert=False
     )
     # Remove x from state to avoid copy of the samples
     opt_state = opt_state._replace(x=None, jac=None)
-    return sample - pos, opt_state
+    sample = _process_point_estimate(sample, pos, point_estimates, insert=True)
+    return sample, opt_state
 
 
 def draw_residual(

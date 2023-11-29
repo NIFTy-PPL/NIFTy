@@ -40,7 +40,7 @@ def random_noise_std_inv(key, shape):
     return noise_std_inv
 
 
-lh_init = (
+LH_INIT = (
     (
         jft.Gaussian,
         {
@@ -102,6 +102,12 @@ lh_init = (
 )
 
 
+def _assert_zero_point_estimate_residuals(residuals, point_estimates):
+    if not point_estimates:
+        return
+    assert_array_equal(jft.sum(point_estimates * residuals**2), 0.)
+
+
 @pmp("seed", (42, 43))
 @pmp("shape", ((5, 12), (5, ), (1, 2, 3, 4)))
 @pmp("ndim", (1, 2, 3))
@@ -115,10 +121,18 @@ def test_concatenate_zip(seed, shape, ndim):
 
 
 @pmp("seed", (12, 42))
-@pmp("shape", ((4, 2), (2, 1), (5, ), [(2, 3), (1, 2)], ((2, ), {'a': (3, 1)})))
-@pmp("lh_init", lh_init)
+@pmp(
+    "shape",
+    ((5, ), ((4, ), (2, ), (1, ), (1, )), ((2, [1, 1]), {
+        'a': (3, 1)
+    }))
+)
+@pmp("lh_init", LH_INIT)
+@pmp("random_point_estimates", (True, False))
 @pmp("sample_mode", ("linear_resample", "nonlinear_resample"))
-def test_optimize_kl_sample_consistency(seed, shape, lh_init, sample_mode):
+def test_optimize_kl_sample_consistency(
+    seed, shape, lh_init, random_point_estimates, sample_mode
+):
     rtol = 1e-7
     atol = 0.0
     aallclose = partial(assert_allclose, rtol=rtol, atol=atol)
@@ -152,14 +166,30 @@ def test_optimize_kl_sample_consistency(seed, shape, lh_init, sample_mode):
         cg_kwargs=dict(name=None, miniter=2),
         maxiter=5 if sample_mode.lower() == "nonlinear_resample" else 0,
     )
+    key, sk = random.split(key)
+    point_estimates = ()
+    if random_point_estimates:
+        prob = 0.5
+        pe, pe_td = jax.tree_util.tree_flatten(pos)
+        pe = list(random.bernoulli(sk, prob, shape=(len(pe), )))
+        pe[0] = False  # Ensure at least one variable is not a point-estimate
+        pe = tuple(map(bool, pe))
+        point_estimates = jax.tree_util.tree_unflatten(pe_td, pe)
 
     residual_draw, _ = jft.draw_residual(
-        lh, pos, sk, **draw_linear_samples, minimize_kwargs=minimize_kwargs
+        lh,
+        pos,
+        sk,
+        point_estimates=point_estimates,
+        minimize_kwargs=minimize_kwargs,
+        **draw_linear_samples,
     )
+    _assert_zero_point_estimate_residuals(residual_draw, point_estimates)
     residual_diy_l1, _ = jft.draw_linear_residual(
-        lh, pos, sk, **draw_linear_samples
+        lh, pos, sk, point_estimates=point_estimates, **draw_linear_samples
     )
     residual_diy = jft.stack((residual_diy_l1, -residual_diy_l1))
+    _assert_zero_point_estimate_residuals(residual_diy, point_estimates)
     if sample_mode.lower() == "linear":
         jax.tree_map(aallclose, residual_draw, residual_diy)
 
@@ -169,6 +199,7 @@ def test_optimize_kl_sample_consistency(seed, shape, lh_init, sample_mode):
         residual_diy_l1,
         metric_sample_key=sk,
         metric_sample_sign=+1,
+        point_estimates=point_estimates,
         minimize_kwargs=minimize_kwargs,
         jit=False,
     )
@@ -178,19 +209,22 @@ def test_optimize_kl_sample_consistency(seed, shape, lh_init, sample_mode):
         -residual_diy_l1,
         metric_sample_key=sk,
         metric_sample_sign=-1,
+        point_estimates=point_estimates,
         minimize_kwargs=minimize_kwargs,
         jit=False,
     )
     residual_diy = jft.stack((residual_diy_n1, residual_diy_n2))
+    _assert_zero_point_estimate_residuals(residual_diy, point_estimates)
     jax.tree_map(aallclose, residual_draw, residual_diy)
 
     key, sk = random.split(key)
     samples_opt, _ = jft.optimize_kl(
         lh,
         pos,
+        key=sk,
         n_total_iterations=1,
         n_samples=1,
-        key=sk,
+        point_estimates=point_estimates,
         draw_linear_samples=draw_linear_samples,
         nonlinearly_update_samples=dict(minimize_kwargs=minimize_kwargs),
         minimize_kwargs=dict(name="M", maxiter=0),
@@ -199,25 +233,27 @@ def test_optimize_kl_sample_consistency(seed, shape, lh_init, sample_mode):
         residual_jit=False,
         odir=None,
     )
+    _assert_zero_point_estimate_residuals(samples_opt._samples, point_estimates)
     residual_draw, _ = jft.draw_residual(
-        lh, pos, samples_opt.keys[0], **draw_linear_samples, minimize_kwargs=minimize_kwargs
+        lh,
+        pos,
+        samples_opt.keys[0],
+        point_estimates=point_estimates,
+        minimize_kwargs=minimize_kwargs,
+        **draw_linear_samples,
     )
+    _assert_zero_point_estimate_residuals(residual_draw, point_estimates)
     jax.tree_map(aallclose, samples_opt._samples, residual_draw)
 
 
 if __name__ == "__main__":
     test_concatenate_zip(1, (5, 12), 3)
     test_optimize_kl_sample_consistency(
-        1, (5, 4), lh_init[0], "linear_resample"
-    )
-    test_optimize_kl_sample_consistency(
-        42, (5, 4), lh_init[4], "linear_resample"
-    )
-    test_optimize_kl_sample_consistency(
-        42,
-        ((2, ), {
+        1,
+        ((2, [1, 1]), {
             'a': (3, 1)
         }),
-        lh_init[3],
-        "nonlinear_resample",
+        LH_INIT[1],
+        random_point_estimates=True,
+        sample_mode="nonlinear_resample",
     )
