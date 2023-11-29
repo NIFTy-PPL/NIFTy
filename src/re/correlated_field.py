@@ -80,23 +80,12 @@ def get_fourier_mode_distributor(
     return m_length_idx, um, m_count
 
 
-def _log_space_transform_unique_modes(domain, um):
-    """Transforms the unique modes to log-space for
-    the amplitude model"""
-    domain = domain.copy()
-    um = um.at[1:].set(jnp.log(um[1:]))
-    um = um.at[1:].add(-um[1])
-    _safe_assert(um[0] == 0.)
-    domain["relative_log_mode_lengths"] = um
-    log_vol = um[2:] - um[1:-1]
-    _safe_assert(um.shape[0] - 2 == log_vol.shape[0])
-    domain["log_volume"] = log_vol
-    return domain
-
-
 def _make_domain(shape, distances, harmonic_domain_type):
-    totvol = jnp.prod(jnp.array(shape) * jnp.array(distances))
     """Creates the domain attributes for the amplitude model"""
+    shape = (shape, ) if isinstance(shape, int) else tuple(shape)
+    distances = tuple(np.broadcast_to(distances, jnp.shape(shape)))
+
+    totvol = jnp.prod(jnp.array(shape) * jnp.array(distances))
     # TODO: cache results such that only references are used afterwards
     domain = {
         "position_space_shape": shape,
@@ -114,7 +103,13 @@ def _make_domain(shape, distances, harmonic_domain_type):
         domain["mode_multiplicity"] = m_count
         domain["mode_lengths"] = um
 
-        domain = _log_space_transform_unique_modes(domain, um)
+        um = um.at[1:].set(jnp.log(um[1:]))
+        um = um.at[1:].add(-um[1])
+        _safe_assert(um[0] == 0.)
+        domain["relative_log_mode_lengths"] = um
+        log_vol = um[2:] - um[1:-1]
+        _safe_assert(um.shape[0] - 2 == log_vol.shape[0])
+        domain["log_volume"] = log_vol
     else:
         ve = f"invalid `harmonic_domain_type` {harmonic_domain_type!r}"
         raise ValueError(ve)
@@ -413,9 +408,6 @@ class CorrelatedFieldMaker():
         Enßlin, Torsten, `<https://arxiv.org/abs/2002.05218>`_
         `<http://dx.doi.org/10.1038/s41550-021-01548-0>`_
         """
-        shape = (shape, ) if isinstance(shape, int) else tuple(shape)
-        distances = tuple(np.broadcast_to(distances, jnp.shape(shape)))
-
         domain = _make_domain(shape, distances, harmonic_domain_type)
 
         flu = fluctuations
@@ -522,9 +514,6 @@ class CorrelatedFieldMaker():
         Enßlin, Torsten, `<https://arxiv.org/abs/2105.13483>`_
         `<https://doi.org/10.1371/journal.pone.0275011>`_
         """
-        shape = (shape, ) if isinstance(shape, int) else tuple(shape)
-        distances = tuple(np.broadcast_to(distances, jnp.shape(shape)))
-
         domain = _make_domain(shape, distances, harmonic_domain_type)
 
         if isinstance(scale, (tuple, list)):
