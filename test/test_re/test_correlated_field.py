@@ -57,12 +57,57 @@ def test_correlated_field_init(shape,
 
 
 @pmp('seed', [0, 42])
+@pmp('shape', [(3, 3)])
+@pmp('distances', [.1])
+@pmp('fluctuations', [(1., .1)])
+@pmp('loglogavgslope', [(-1., .1)])
+@pmp('flexibility', [None, (1., .1)])
+@pmp('asperity', [None, (.2, .002)])
+def test_re_cf_vs_nifty(seed, shape, distances,
+                        fluctuations, loglogavgslope,
+                        flexibility, asperity):
+    rg_space = ift.RGSpace(shape, distances)
+    offset_mean = 0.
+    offset_std = (.1, .1)
+    rg_key = random.PRNGKey(seed)
+    jcf = jft.CorrelatedFieldMaker("")
+    jcf.set_amplitude_total_offset(offset_mean=offset_mean,
+                                   offset_std=offset_std)
+    jcf.add_fluctuations(shape,
+                         distances=distances,
+                         fluctuations=fluctuations,
+                         loglogavgslope=loglogavgslope,
+                         flexibility=flexibility,
+                         asperity=asperity,
+                         non_parametric_kind="power",
+                         )
+    jcf = jcf.finalize()
+
+    cf = ift.CorrelatedFieldMaker("")
+    cf.set_amplitude_total_offset(offset_mean, offset_std)
+    cf.add_fluctuations(rg_space,
+                        fluctuations=fluctuations,
+                        flexibility=(1., 0.1),
+                        asperity=(.2, .002),
+                        loglogavgslope=loglogavgslope,
+                        )
+    cf = cf.finalize()
+
+    random_pos = jft.random_like(rg_key, jcf.domain)
+    nifty_random_pos = {key: ift.makeField(cf.domain[key], val)
+                        for key, val in random_pos.items()}
+    nifty_random_pos = ift.MultiField.from_dict(nifty_random_pos, cf.domain)
+    assert_allclose(cf(nifty_random_pos).val, jcf(random_pos))
+
+
+@pmp('seed', [0, 42])
 @pmp('shape', [(2,), (3, 3)])
 @pmp('distances', [.1])
 @pmp('scale', [(1., 1.)])
 @pmp('loglogslope', [(1., 1.)])
 @pmp('cutoff', [(1., 1.)])
-def test_re_matern_cf_vs_nifty(seed, shape, distances, scale, cutoff, loglogslope):
+def test_re_matern_cf_vs_nifty(seed, shape, distances,
+                               scale, cutoff, loglogslope):
     rg_space = ift.RGSpace(shape, distances)
     offset_mean = 0.
     offset_std = (.1, .1)
@@ -98,4 +143,5 @@ def test_re_matern_cf_vs_nifty(seed, shape, distances, scale, cutoff, loglogslop
 
 if __name__ == "__main__":
     test_correlated_field_init()
+    test_re_cf_vs_nifty()
     test_re_matern_cf_vs_nifty()
