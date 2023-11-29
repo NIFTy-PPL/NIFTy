@@ -311,6 +311,62 @@ class OptimizeVI:
         smpls = Samples(pos=samples.pos, samples=smpls, keys=samples.keys)
         return smpls, smpls_states
 
+    def draw_samples(
+        self,
+        samples: Samples,
+        *,
+        key,
+        sample_mode: SMPL_MODE_TYP,
+        n_samples: int,
+        point_estimates,
+        draw_linear_kwargs={},
+        nonlinearly_update_kwargs={},
+        **kwargs
+    ):
+        # Always resample if `n_samples` increased
+        n_keys = 0 if samples.keys is None else len(samples.keys)
+        if n_samples != n_keys and sample_mode.lower() == "nonlinear_update":
+            sample_mode = "nonlinear_resample"
+        elif n_samples != n_keys and sample_mode.lower().endswith("_sample"):
+            sample_mode = sample_mode.replace("_sample", "_resample")
+
+        if sample_mode.lower() in (
+            "linear_resample", "linear_sample", "nonlinear_resample",
+            "nonlinear_sample"
+        ):
+            k_smpls = samples.keys  # Re-use the keys if not re-sampling
+            if sample_mode.lower().endswith("_resample"):
+                k_smpls = random.split(key, n_samples)
+            assert n_samples == len(k_smpls)
+            samples, st_smpls = self.draw_linear_samples(
+                samples.pos,
+                k_smpls,
+                point_estimates=point_estimates,
+                **draw_linear_kwargs,
+                **kwargs
+            )
+            if sample_mode.lower().startswith("nonlinear"):
+                samples, st_smpls = self.nonlinearly_update_samples(
+                    samples,
+                    point_estimates=point_estimates,
+                    **nonlinearly_update_kwargs,
+                    **kwargs
+                )
+            elif not sample_mode.lower().startswith("linear"):
+                ve = f"invalid sampling mode {sample_mode!r}"
+                raise ValueError(ve)
+        elif sample_mode.lower() == "nonlinear_update":
+            samples, st_smpls = self.nonlinearly_update_samples(
+                samples,
+                point_estimates=point_estimates,
+                **nonlinearly_update_kwargs,
+                **kwargs
+            )
+        else:
+            ve = f"invalid sampling mode {sample_mode!r}"
+            raise ValueError(ve)
+        return samples, st_smpls
+
     def kl_minimize(
         self,
         samples: Samples,
@@ -429,61 +485,37 @@ class OptimizeVI:
         assert isinstance(state, OptimizeVIState)
         nit = state.nit + 1
         key = state.key
-        st_smpls = state.sample_state
         config = state.config
 
-        point_estimates = state.point_estimates
-        point_estimates: str = point_estimates(nit) if callable(
-            point_estimates
-        ) else point_estimates
         constants = state.constants
         if not (constants == () or constants is None):
             raise NotImplementedError()
 
-        smpl_mode = state.sample_mode
-        smpl_mode: str = smpl_mode(nit) if callable(smpl_mode) else smpl_mode
+        sample_mode = state.sample_mode
+        sample_mode: str = sample_mode(nit) if callable(
+            sample_mode
+        ) else sample_mode
+        point_estimates = state.point_estimates
+        point_estimates = point_estimates(nit) if callable(
+            point_estimates
+        ) else point_estimates
         n_samples = _getitem_at_nit(config, "n_samples", nit)
-        # Always resample if `n_samples` increased
-        n_keys = 0 if samples.keys is None else len(samples.keys)
-        if n_samples != n_keys and smpl_mode.lower() == "nonlinear_update":
-            smpl_mode = "nonlinear_resample"
-        elif n_samples != n_keys and smpl_mode.lower().endswith("_sample"):
-            smpl_mode = smpl_mode.replace("_sample", "_resample")
-
-        if smpl_mode.lower() in (
-            "linear_resample", "linear_sample", "nonlinear_resample",
-            "nonlinear_sample"
-        ):
-            k_smpls = samples.keys  # Re-use the keys if not re-sampling
-            if smpl_mode.lower().endswith("_resample"):
-                # Make the `key` tick independent of the number of samples drawn
-                key, sk = random.split(key, 2)
-                k_smpls = random.split(sk, n_samples)
-            assert n_samples == len(k_smpls)
-            kw = _getitem_at_nit(config, "draw_linear_kwargs", nit)
-            samples, st_smpls = self.draw_linear_samples(
-                samples.pos,
-                k_smpls,
-                point_estimates=point_estimates,
-                **kw,
-                **kwargs
-            )
-            if smpl_mode.lower().startswith("nonlinear"):
-                kw = _getitem_at_nit(config, "nonlinearly_update_kwargs", nit)
-                samples, st_smpls = self.nonlinearly_update_samples(
-                    samples, point_estimates=point_estimates, **kw, **kwargs
-                )
-            elif not smpl_mode.lower().startswith("linear"):
-                ve = f"invalid sampling mode {smpl_mode!r}"
-                raise ValueError(ve)
-        elif smpl_mode.lower() == "nonlinear_update":
-            kw = _getitem_at_nit(config, "nonlinearly_update_kwargs", nit)
-            samples, st_smpls = self.nonlinearly_update_samples(
-                samples, point_estimates=point_estimates, **kw, **kwargs
-            )
-        else:
-            ve = f"invalid sampling mode {smpl_mode!r}"
-            raise ValueError(ve)
+        draw_linear_kwargs = _getitem_at_nit(config, "draw_linear_kwargs", nit)
+        nonlinearly_update_kwargs = _getitem_at_nit(
+            config, "nonlinearly_update_kwargs", nit
+        )
+        # Make the `key` tick independently of whether samples are drawn or not
+        key, sk = random.split(key, 2)
+        samples, st_smpls = self.draw_samples(
+            samples,
+            key=sk,
+            sample_mode=sample_mode,
+            point_estimates=point_estimates,
+            n_samples=n_samples,
+            draw_linear_kwargs=draw_linear_kwargs,
+            nonlinearly_update_kwargs=nonlinearly_update_kwargs,
+            **kwargs
+        )
 
         kw = _getitem_at_nit(config, "kl_kwargs", nit).copy()
         kl_opt_state = self.kl_minimize(samples, **kw, **kwargs)
