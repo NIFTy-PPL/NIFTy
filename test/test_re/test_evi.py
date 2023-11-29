@@ -130,9 +130,9 @@ def test_mgvi_wiener_filter_consistency(
     forward = partial(jnp.matmul, prior_lsm)
     lh = (lh @ partial(jnp.matmul, response)) @ forward
 
-    draw_linear_samples = dict(cg_kwargs=dict(absdelta=1e-10, maxiter=size))
+    draw_linear_kwargs = dict(cg_kwargs=dict(absdelta=1e-10, maxiter=size))
     draw_linear_residual = partial(
-        jft.draw_linear_residual, lh, **draw_linear_samples
+        jft.draw_linear_residual, lh, **draw_linear_kwargs
     )
     draw_linear_residual = jft.smap(draw_linear_residual, in_axes=(None, 0))
     # Compare metric of Likelihood + Prior against true posterior covariance
@@ -179,7 +179,7 @@ def test_mgvi_wiener_filter_consistency(
         key=sk,
         n_total_iterations=1,
         n_samples=n_vi_samples,
-        draw_linear_samples=draw_linear_samples,
+        draw_linear_kwargs=draw_linear_kwargs,
         minimize_kwargs=minimize_kwargs,
         sample_mode="linear_sample",
         odir=None,
@@ -188,7 +188,7 @@ def test_mgvi_wiener_filter_consistency(
     assert_allclose(post_mean, approx_post_mean, atol=1e-14, rtol=1e-12)
 
     delta = 1e-3
-    nonlinearly_update_samples = dict(
+    nonlinearly_update_kwargs = dict(
         minimize_kwargs=dict(
             name="SN",
             xtol=delta,
@@ -205,8 +205,8 @@ def test_mgvi_wiener_filter_consistency(
         key=sk,
         n_total_iterations=1,
         n_samples=n_vi_samples,
-        draw_linear_samples=draw_linear_samples,
-        nonlinearly_update_samples=nonlinearly_update_samples,
+        draw_linear_kwargs=draw_linear_kwargs,
+        nonlinearly_update_kwargs=nonlinearly_update_kwargs,
         minimize_kwargs=minimize_kwargs,
         sample_mode="nonlinear_sample",
         odir=None,

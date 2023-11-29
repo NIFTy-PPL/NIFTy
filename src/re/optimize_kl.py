@@ -317,10 +317,10 @@ class OptimizeVI:
         *,
         nit=-1,
         n_samples: Union[int, Callable[[int], int]],
-        draw_linear_samples: DICT_OR_CALL4DICT_TYP = dict(
+        draw_linear_kwargs: DICT_OR_CALL4DICT_TYP = dict(
             cg_name="SL", cg_kwargs=dict()
         ),
-        nonlinearly_update_samples: DICT_OR_CALL4DICT_TYP = dict(
+        nonlinearly_update_kwargs: DICT_OR_CALL4DICT_TYP = dict(
             minimize_kwargs=dict(name="SN", cg_kwargs=dict(name="SNCG"))
         ),
         minimize: Callable[
@@ -343,11 +343,11 @@ class OptimizeVI:
             Current iteration number.
         n_samples : int or callable
             Number of samples to draw.
-        draw_linear_samples : dict or callable
+        draw_linear_kwargs : dict or callable
             Configuration for drawing linear samples, see
             :func:`draw_linear_residual`.
-        nonlinearly_update_samples : dict or callable
-            Configuration for nonlinearly updateing samples, see
+        nonlinearly_update_kwargs : dict or callable
+            Configuration for nonlinearly updating samples, see
             :func:`nonlinearly_update_residual`.
         minimize : callable
             Minimizer to use for the KL minimization.
@@ -377,8 +377,8 @@ class OptimizeVI:
         """
         config = {
             "n_samples": n_samples,
-            "draw_linear_samples": draw_linear_samples,
-            "nonlinearly_update_samples": nonlinearly_update_samples,
+            "draw_linear_kwargs": draw_linear_kwargs,
+            "nonlinearly_update_kwargs": nonlinearly_update_kwargs,
             "minimize": minimize,
             "minimize_kwargs": minimize_kwargs,
         }
@@ -447,7 +447,7 @@ class OptimizeVI:
                 key, sk = random.split(key, 2)
                 k_smpls = random.split(sk, n_samples)
             assert n_samples == len(k_smpls)
-            kw = _getitem_at_nit(config, "draw_linear_samples", nit)
+            kw = _getitem_at_nit(config, "draw_linear_kwargs", nit)
             samples, st_smpls = self.draw_linear_samples(
                 samples.pos,
                 k_smpls,
@@ -456,7 +456,7 @@ class OptimizeVI:
                 **kwargs
             )
             if smpl_mode.lower().startswith("nonlinear"):
-                kw = _getitem_at_nit(config, "nonlinearly_update_samples", nit)
+                kw = _getitem_at_nit(config, "nonlinearly_update_kwargs", nit)
                 samples, st_smpls = self.nonlinearly_update_samples(
                     samples, point_estimates=point_estimates, **kw, **kwargs
                 )
@@ -464,7 +464,7 @@ class OptimizeVI:
                 ve = f"invalid sampling mode {smpl_mode!r}"
                 raise ValueError(ve)
         elif smpl_mode.lower() == "nonlinear_update":
-            kw = _getitem_at_nit(config, "nonlinearly_update_samples", nit)
+            kw = _getitem_at_nit(config, "nonlinearly_update_kwargs", nit)
             samples, st_smpls = self.nonlinearly_update_samples(
                 samples, point_estimates=point_estimates, **kw, **kwargs
             )
@@ -520,8 +520,8 @@ def optimize_kl(
     residual_map="lmap",
     kl_reduce=_reduce,
     mirror_samples=True,
-    draw_linear_samples=dict(cg_name="SL", cg_kwargs=dict()),
-    nonlinearly_update_samples=dict(
+    draw_linear_kwargs=dict(cg_name="SL", cg_kwargs=dict()),
+    nonlinearly_update_kwargs=dict(
         minimize_kwargs=dict(name="SN", cg_kwargs=dict(name="SNCG"))
     ),
     minimize: Callable[
@@ -591,8 +591,8 @@ def optimize_kl(
         opt_vi_state = opt_vi.init_state(
             key,
             n_samples=n_samples,
-            draw_linear_samples=draw_linear_samples,
-            nonlinearly_update_samples=nonlinearly_update_samples,
+            draw_linear_kwargs=draw_linear_kwargs,
+            nonlinearly_update_kwargs=nonlinearly_update_kwargs,
             minimize=minimize,
             minimize_kwargs=minimize_kwargs,
             sample_mode=sample_mode,

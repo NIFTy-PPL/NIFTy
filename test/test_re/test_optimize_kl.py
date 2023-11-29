@@ -156,7 +156,7 @@ def test_optimize_kl_sample_consistency(
     delta = 1e-3
     absdelta = delta * jft.size(pos)
 
-    draw_linear_samples = dict(
+    draw_linear_kwargs = dict(
         cg_name="SL",
         cg_kwargs=dict(miniter=2, absdelta=absdelta / 10., maxiter=100),
     )
@@ -182,11 +182,11 @@ def test_optimize_kl_sample_consistency(
         sk,
         point_estimates=point_estimates,
         minimize_kwargs=minimize_kwargs,
-        **draw_linear_samples,
+        **draw_linear_kwargs,
     )
     _assert_zero_point_estimate_residuals(residual_draw, point_estimates)
     residual_diy_l1, _ = jft.draw_linear_residual(
-        lh, pos, sk, point_estimates=point_estimates, **draw_linear_samples
+        lh, pos, sk, point_estimates=point_estimates, **draw_linear_kwargs
     )
     residual_diy = jft.stack((residual_diy_l1, -residual_diy_l1))
     _assert_zero_point_estimate_residuals(residual_diy, point_estimates)
@@ -225,8 +225,8 @@ def test_optimize_kl_sample_consistency(
         n_total_iterations=1,
         n_samples=1,
         point_estimates=point_estimates,
-        draw_linear_samples=draw_linear_samples,
-        nonlinearly_update_samples=dict(minimize_kwargs=minimize_kwargs),
+        draw_linear_kwargs=draw_linear_kwargs,
+        nonlinearly_update_kwargs=dict(minimize_kwargs=minimize_kwargs),
         minimize_kwargs=dict(name="M", maxiter=0),
         sample_mode=sample_mode,
         kl_jit=False,
@@ -240,7 +240,7 @@ def test_optimize_kl_sample_consistency(
         samples_opt.keys[0],
         point_estimates=point_estimates,
         minimize_kwargs=minimize_kwargs,
-        **draw_linear_samples,
+        **draw_linear_kwargs,
     )
     _assert_zero_point_estimate_residuals(residual_draw, point_estimates)
     jax.tree_map(aallclose, samples_opt._samples, residual_draw)

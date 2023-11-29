@@ -206,11 +206,11 @@ samples, state = jft.optimize_kl(
     point_estimates=("cfax1flexibility", "cfax1asperity"),
     # Arguments for the conjugate gradient method used to drawing samples from
     # an implicit covariance matrix
-    draw_linear_samples=dict(
+    draw_linear_kwargs=dict(
         cg_name="SL", cg_kwargs=dict(absdelta=absdelta / 10., maxiter=100)
     ),
     # Arguements for the minimizer in the nonlinear updating of the samples
-    nonlinearly_update_samples=dict(
+    nonlinearly_update_kwargs=dict(
         minimize_kwargs=dict(
             name="SN",
             xtol=delta,
