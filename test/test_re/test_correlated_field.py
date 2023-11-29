@@ -57,7 +57,7 @@ def test_correlated_field_init(shape,
 
 
 @pmp('seed', [0, 42])
-@pmp('shape', [(3, 3)])
+@pmp('shape', [(4,),(3, 3)])
 @pmp('distances', [.1])
 @pmp('fluctuations', [(1., .1)])
 @pmp('loglogavgslope', [(-1., .1)])
