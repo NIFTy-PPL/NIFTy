@@ -320,6 +320,9 @@ class Samples():
 
     @property
     def samples(self):
+        if self._samples is None:
+            raise ValueError(f"{self.__class__.__name__} has no samples")
+
         smpls = self._samples
         if self.pos is not None:
             smpls = tree_map(lambda p, s: p[jnp.newaxis] + s, self.pos, smpls)
@@ -335,6 +338,9 @@ class Samples():
         return jnp.shape(tree_leaves(self._samples)[0])[0]
 
     def __getitem__(self, index):
+        if self._samples is None:
+            raise ValueError(f"{self.__class__.__name__} has no samples")
+
         def get(b):
             return getitem(b, index)
 
