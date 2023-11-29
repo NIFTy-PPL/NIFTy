@@ -15,8 +15,7 @@ from jax.tree_util import (
 
 from . import conjugate_gradient, optimize
 from .likelihood import (
-    Likelihood, _functional_conj, _parse_point_estimates,
-    partial_insert_and_remove
+    Likelihood, _parse_point_estimates, partial_insert_and_remove
 )
 from .tree_math import (
     Vector, assert_arithmetics, dot, random_like, stack, vdot
