@@ -497,7 +497,7 @@ class OptimizeVI:
 
     def run(self, samples, *args, **kwargs) -> tuple[Samples, OptimizeVIState]:
         state = self.init_state(*args, **kwargs)
-        for i in range(state.nit, self.n_total_iterations):
+        for i in range(state.nit, self.n_total_iterations - 1):
             logger.info(f"{self.__class__.__name__} :: {i+1:04d}")
             samples, state = self.update(samples, state)
             msg = self.get_status_message(samples, state, map=self.residual_map)
@@ -613,7 +613,7 @@ def optimize_kl(
     if odir:
         makedirs(odir, exist_ok=True)
 
-    for i in range(opt_vi_state.nit, opt_vi.n_total_iterations):
+    for i in range(opt_vi_state.nit, opt_vi.n_total_iterations - 1):
         logger.info(f"OPTIMIZE_KL Iteration {i+1:04d}")
         samples, opt_vi_state = opt_vi.update(samples, opt_vi_state)
         msg = opt_vi.get_status_message(samples, opt_vi_state)
