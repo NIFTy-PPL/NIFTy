@@ -20,11 +20,14 @@ def _fun_reord(_, mapped, *, fun, unmapped, unflatten, in_axes):
     return None, y
 
 
-# The function over which to `scan` depends on the data. This leads to
-# unnecessary recompiles. Ensure scan is compiled only once by compiling the
-# whole data dependence.
-@partial(jax.jit, static_argnames=("fun", "in_axes", "out_axes", "unroll"))
-def _smap(fun, in_axes, out_axes, unroll, *x, **k):
+def _swap(a, axis1, axis2):
+    # Ensure that arrays are never completely unnecessarily copied
+    if axis1 == axis2:
+        return a
+    return jnp.swapaxes(a, axis1, axis2)
+
+
+def _generic_smap(fun, in_axes, out_axes, unroll, *x, _scan=lax.scan, **k):
     from jax.tree_util import tree_flatten, tree_map, tree_unflatten
 
     if k:
@@ -55,7 +58,7 @@ def _smap(fun, in_axes, out_axes, unroll, *x, **k):
         if i is None:
             unmapped.append(el)
         elif isinstance(i, int):
-            mapped.append(jnp.swapaxes(el, 0, i) if i != 0 else el)
+            mapped.append(_swap(el, 0, i) if i != 0 else el)
         else:
             raise TypeError(f"expected `in_axes` index of type int; got {i!r}")
 
@@ -66,11 +69,12 @@ def _smap(fun, in_axes, out_axes, unroll, *x, **k):
         unflatten=partial(tree_unflatten, x_td),
         in_axes=in_axes
     )
-    _, y = lax.scan(fun_reord, None, mapped, unroll=unroll)
+    _, y = _scan(fun_reord, None, mapped, unroll=unroll)
 
-    if isinstance(out_axes, int):
-        out_axes = tree_map(lambda _: out_axes, y)
     if out_axes is None:
+        out_axes, out_axes_td = tree_flatten(out_axes)
+    if isinstance(out_axes, int):
+        out_axes = tree_map(lambda el: out_axes if el is not None else el, y)
         out_axes, out_axes_td = tree_flatten(out_axes)
     else:
         out_axes, out_axes_td = tree_flatten(out_axes, is_leaf=_int_or_none)
@@ -83,11 +87,20 @@ def _smap(fun, in_axes, out_axes, unroll, *x, **k):
         if i is None:
             out.append(unmapped.pop(0))
         elif isinstance(i, int):
-            out.append(jnp.swapaxes(el, 0, i) if i != 0 else el)
+            out.append(_swap(el, 0, i) if i != 0 else el)
         else:
             raise TypeError(f"expected `out_axes` index of type int; got {i!r}")
 
     return tree_unflatten(y_td, out)
+
+
+# The function over which to `scan` depends on the data. This leads to
+# unnecessary recompiles. Ensure scan is compiled only once by compiling the
+# whole data dependence.
+_smap = jax.jit(
+    _generic_smap,
+    static_argnames=("fun", "in_axes", "out_axes", "unroll", "_scan")
+)
 
 
 def smap(fun, in_axes=0, out_axes=0, *, unroll=1):
@@ -108,3 +121,41 @@ def smap(fun, in_axes=0, out_axes=0, *, unroll=1):
     semantics of `unroll` see `jax.lax.scan`.
     """
     return partial(_smap, fun, in_axes, out_axes, unroll)
+
+
+@partial(jax.jit, donate_argnames=("x", ))
+def _unsafe_index_update_inplace(x, idx, y):
+    return x.at[idx].set(y)
+
+
+def _lscan(f, init, xs, length=None, unroll=1):
+    if unroll != 1:
+        raise NotImplementedError()
+
+    if xs is None:
+        xs = [None] * length
+    carry = init
+    ys = None
+    first_leave = jax.tree_util.tree_leaves(xs)[0]
+    like_device = first_leave.device(
+    ) if hasattr(first_leave, "device") else None
+    length = first_leave.shape[0] if length is None else length
+    for i in range(length):
+        carry, y = f(carry, jax.tree_map(lambda x: x[i], xs))
+        if ys is None:
+            # NOTE, `empty_like` will always allocate on the primary device even
+            # if `y` is on a different device. Forcefully allocate on the same
+            # device as `y`.
+            with jax.default_device(like_device):
+                ys = jax.tree_map(
+                    lambda x: jnp.
+                    empty_like(x, shape=(length, ) + jnp.shape(x)), y
+                )
+        ys = jax.tree_map(
+            lambda ys, y: _unsafe_index_update_inplace(ys, i, y), ys, y
+        )
+    return carry, ys
+
+
+def lmap(fun, in_axes=0, out_axes=0):
+    return partial(_generic_smap, fun, in_axes, out_axes, 1, _scan=_lscan)

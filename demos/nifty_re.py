@@ -18,11 +18,6 @@ key = random.PRNGKey(seed)
 
 dims = (128, 128)
 
-n_vi_iterations = 6
-n_newton_iterations = 10
-delta = 1e-4
-absdelta = delta * jnp.prod(jnp.array(dims))
-
 cf_zm = {"offset_mean": 0., "offset_std": (1e-3, 1e-4)}
 cf_fl = {
     "fluctuations": (1e-1, 5e-3),
@@ -176,36 +171,62 @@ data = signal_response_truth + noise_truth
 
 nll = jft.Gaussian(data, noise_cov_inv) @ signal_response
 
+# %%
+n_vi_iterations = 6
+delta = 1e-4
+absdelta = delta * jnp.prod(jnp.array(dims))
+n_samples = 4
+
+
+def n_samples_update(i):
+    return n_samples // 2 if i < 2 else n_samples
+
+
+def sample_mode_update(i):
+    if i < 2:
+        return "linear_resample"
+    if i < 4:
+        return "nonlinear_resample"
+    return "nonlinear_update"
+
+
 key, subkey = random.split(key)
-pos_init = jft.random_like(subkey, signal_response.domain)
-pos_init = jft.Vector(pos_init)
-liner_cg_kwargs = {"absdelta": absdelta / 10., "maxiter": 100}
-sampling_kwargs = {"xtol": delta, "maxiter": 10}
-minimization_kwarks = {"absdelta": absdelta, "maxiter": n_newton_iterations}
+pos_init = jft.Vector(jft.random_like(subkey, signal_response.domain))
 # NOTE, changing the number of samples always triggers a resampling even if
 # `resamples=False`, as more samples have to be drawn that did not exist before.
-n_samples = 4
 samples, state = jft.optimize_kl(
     nll,
     pos_init,
-    n_vi_iterations,
-    n_samples,
-    key,
-    point_estimates=(),
-    kl_solver_kwargs={
-        'method': 'newtoncg',
-        'method_options': minimization_kwarks,
-    },
-    sampling_method='altmetric',
-    # 'linear' for MGVI, 'geometric' for geoVI
-    sample_update_kwargs={
-        'minimize_kwargs': sampling_kwargs,
-    },
-    make_sample_generator_kwargs={'cg_kwargs': liner_cg_kwargs},
-    resample=lambda ii: True if ii < 2 else False,
-    out_dir="results_jifty",
+    n_total_iterations=n_vi_iterations,
+    n_samples=n_samples_update,
+    # Source for the stochasticity for sampling
+    key=key,
+    # Names of parameters that are not samples but still optimized (effectively
+    # we are doing MAP for these degrees of freedom)
+    point_estimates=("cfax1flexibility", "cfax1asperity"),
+    # Arguments for the conjugate gradient method used to drawing samples from
+    # an implicit covariance matrix
+    draw_linear_kwargs=dict(
+        cg_name="SL", cg_kwargs=dict(absdelta=absdelta / 10., maxiter=100)
+    ),
+    # Arguements for the minimizer in the nonlinear updating of the samples
+    nonlinearly_update_kwargs=dict(
+        minimize_kwargs=dict(
+            name="SN",
+            xtol=delta,
+            cg_kwargs=dict(name=None),
+            maxiter=5,
+        )
+    ),
+    # Arguments for the minimizer of the KL-divergence cost potential
+    kl_kwargs=dict(
+        minimize_kwargs=dict(
+            name="M", absdelta=absdelta, cg_kwargs=dict(name="MCG"), maxiter=35
+        )
+    ),
+    sample_mode=sample_mode_update,
+    odir="results_nifty_re",
     resume=False,
-    verbosity=0
 )
 # %%
 namps = cfm.get_normalized_amplitudes()
@@ -232,5 +253,3 @@ for ax, (title, field, tp) in zip(axs.flat, to_plot):
 fig.tight_layout()
 fig.savefig("cf_w_unknown_spectrum.png", dpi=400)
 plt.close()
-
-# %%

@@ -116,15 +116,15 @@ def _lax_map(fun, in_axes=0, out_axes=0):
 def get_map(map) -> Callable:
     from jax import pmap, vmap
 
-    from ..smap import smap
+    from ..custom_map import smap, lmap
 
     if isinstance(map, str):
         if map in ('vmap', 'v'):
             m = vmap
         elif map in ('pmap', 'p'):
             m = pmap
-        elif map in ('lax.map', 'lax', 'l'):
-            m = _lax_map
+        elif map in ('lmap', 'l'):
+            m = lmap
         elif map in ('smap', 's'):
             m = smap
         else:

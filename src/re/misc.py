@@ -1,7 +1,6 @@
 # SPDX-License-Identifier: GPL-2.0+ OR BSD-2-Clause
 
-import pprint
-from typing import Any, Callable, Dict, Hashable, Mapping, NamedTuple, TypeVar
+from typing import Any, Callable, Dict, Hashable, Mapping, TypeVar
 
 import jax
 from jax import numpy as jnp
@@ -104,79 +103,3 @@ def interpolate(xmin=-7., xmax=7., N=14000) -> Callable:
         return wrapper
 
     return decorator
-
-
-def _residual_params(inp):
-    ndof = inp.size if jnp.isrealobj(inp) else 2 * inp.size
-    mean = jnp.sum(inp.real + inp.imag) / ndof
-    rchisq = jnp.vdot(inp, inp) / ndof
-    return mean, rchisq, ndof
-
-
-class ChiSqStats(NamedTuple):
-    mean: Any
-    reduced_chisq: Any
-    ndof: Any
-
-
-def reduced_residual_stats(primals, samples=None, func=None):
-    """Computes the average, reduced chi-squared, and number of parameters
-    as a summary statistics for a given input.
-
-    Parameters:
-    -----------
-    primals: tree-like
-        Input values to compute reduces chi-sq statistics. The statistics is
-        computed for each leaf of the pytree, i.E. only array-like leafs are
-        square averaged. See `samples` and `func` for further infos.
-    samples: Samples (optional)
-        Posterior samples corresponding to primals. If provided, the chi-sq
-        statistics is computed for each sample, and the sample
-        mean and standard deviation of the statistics is returned.
-    func: Callable (optional)
-        Function to compute the chi-sq statistics for instead of primals
-        (samples). If provided, the statistics is computed for `func(x)` instead
-        of `x` where x is either primals or a sample.
-
-    Returns:
-    --------
-    stats: tree-like
-        Pytree of tuple containing the mean, reduced chi-squared, and number of
-        parameters for each leaf of the input tree. For the mean and reduched
-        chi-sq, a numpy array with the sample mean and sample std is returned.
-        If samples is None, the second entry of this array is always zero.
-    """
-    if samples is not None:
-        samples = samples.at(primals).samples
-    else:
-        samples = jax.tree_map(lambda x: x[jnp.newaxis, ...], primals)
-    samples = jax.vmap(func)(samples) if func is not None else samples
-
-    get_stats = jax.vmap(_residual_params)
-
-    def red_chisq_stat(s):
-        m, rx, nd = get_stats(s)
-        m = jnp.array([jnp.mean(m), jnp.std(m)])
-        rx = jnp.array([jnp.mean(rx), jnp.std(rx)])
-        return ChiSqStats(m, rx, nd[0])
-
-    return jax.tree_map(red_chisq_stat, samples)
-
-
-def minisanity(primals, samples=None, func=None):
-    stat_tree = reduced_residual_stats(primals, samples=samples, func=func)
-
-    def pretty_string(x):
-        rsq = x.reduced_chisq
-        s = (
-            f"reduced χ²: {rsq[0]:.2}±{rsq[1]:.2}"
-            f", avg: {x.mean[0]:.2}±{x.mean[1]:.2}"
-            f", #dof: {int(x.ndof)}"
-        )
-        return s
-
-    def is_leaf(l):
-        return isinstance(l, ChiSqStats)
-
-    stat_tree = jax.tree_map(pretty_string, stat_tree, is_leaf=is_leaf)
-    return stat_tree, pprint.PrettyPrinter().pformat(stat_tree)
