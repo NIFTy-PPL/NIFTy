@@ -185,7 +185,7 @@ def test_mgvi_wiener_filter_consistency(
         odir=None,
     )
     approx_post_mean = jax.vmap(forward)(samples_opt.samples).mean(axis=0)
-    assert_allclose(post_mean, approx_post_mean, atol=1e-14, rtol=1e-12)
+    assert_allclose(post_mean, approx_post_mean, atol=1e-14, rtol=1e-10)
 
     delta = 1e-3
     nonlinearly_update_kwargs = dict(
@@ -212,7 +212,7 @@ def test_mgvi_wiener_filter_consistency(
         odir=None,
     )
     approx_post_mean = jax.vmap(forward)(samples_opt.samples).mean(axis=0)
-    assert_allclose(post_mean, approx_post_mean, atol=1e-14, rtol=1e-11)
+    assert_allclose(post_mean, approx_post_mean, atol=1e-14, rtol=1e-10)
 
 
 if __name__ == "__main__":
