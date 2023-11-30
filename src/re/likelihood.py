@@ -603,6 +603,9 @@ class Likelihood(AbstractModel):
             lkey: self._lsm_tan_shp,
             rkey: other._lsm_tan_shp
         }
+        if isinstance(self._lsm_tan_shp,
+                      Vector) or isinstance(other._lsm_tan_shp, Vector):
+            joined_tangents_shape = Vector(joined_tangents_shape)
 
         def joined_hamiltonian(p, **pkw):
             return self.energy(p, **pkw) + other.energy(p, **pkw)
@@ -615,12 +618,8 @@ class Likelihood(AbstractModel):
             lres = self.normalized_residual(p, **pkw)
             rres = other.normalized_residual(p, **pkw)
             lvec, rvec = isinstance(lres, Vector), isinstance(rres, Vector)
-            res = {
-                lkey: lres.tree if lvec else lres,
-                rkey: rres.tree if rvec else rres
-            }
-            if lvec and rvec:
-                return Vector(res)
+            res = {lkey: lres, rkey: rres}
+            res = Vector(res) if lvec or rvec else res
             return res
 
         def joined_metric(p, t, **pkw):
@@ -634,12 +633,8 @@ class Likelihood(AbstractModel):
             lres = self.transformation(p, **pkw)
             rres = other.transformation(p, **pkw)
             lvec, rvec = isinstance(lres, Vector), isinstance(rres, Vector)
-            res = {
-                lkey: lres.tree if lvec else lres,
-                rkey: rres.tree if rvec else rres
-            }
-            if lvec and rvec:
-                return Vector(res)
+            res = {lkey: lres, rkey: rres}
+            res = Vector(res) if lvec or rvec else res
             return res
 
         def joined_left_sqrt_metric(p, t, **pkw):
@@ -652,12 +647,8 @@ class Likelihood(AbstractModel):
             lres = self.right_sqrt_metric(p, t, **pkw)
             rres = other.right_sqrt_metric(p, t, **pkw)
             lvec, rvec = isinstance(lres, Vector), isinstance(rres, Vector)
-            res = {
-                lkey: lres.tree if lvec else lres,
-                rkey: rres.tree if rvec else rres
-            }
-            if lvec and rvec:
-                return Vector(res)
+            res = {lkey: lres, rkey: rres}
+            res = Vector(res) if lvec or rvec else res
             return res
 
         domain = None
