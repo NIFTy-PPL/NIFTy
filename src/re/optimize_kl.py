@@ -66,10 +66,12 @@ def _kl_vg(
     map=jax.vmap,
     reduce=_reduce,
 ):
-    map = get_map(map)
-
     assert isinstance(primals_samples, Samples)
+    map = get_map(map)
     ham = StandardHamiltonian(likelihood=likelihood)
+
+    if len(primals_samples) == 0:
+        return jax.value_and_grad(ham)(primals)
     vvg = map(jax.value_and_grad(ham))
     s = vvg(primals_samples.at(primals).samples)
     return reduce(s)
@@ -84,10 +86,12 @@ def _kl_met(
     map=jax.vmap,
     reduce=_reduce
 ):
-    map = get_map(map)
-
     assert isinstance(primals_samples, Samples)
+    map = get_map(map)
     ham = StandardHamiltonian(likelihood=likelihood)
+
+    if len(primals_samples) == 0:
+        return ham.metric(primals, tangents)
     vmet = map(ham.metric, in_axes=(0, None))
     s = vmet(primals_samples.at(primals).samples, tangents)
     return reduce(s)
@@ -325,7 +329,9 @@ class OptimizeVI:
     ):
         # Always resample if `n_samples` increased
         n_keys = 0 if samples.keys is None else len(samples.keys)
-        if n_samples != n_keys and sample_mode.lower() == "nonlinear_update":
+        if n_samples == 0:
+            sample_mode = ""
+        elif n_samples != n_keys and sample_mode.lower() == "nonlinear_update":
             sample_mode = "nonlinear_resample"
         elif n_samples != n_keys and sample_mode.lower().endswith("_sample"):
             sample_mode = sample_mode.replace("_sample", "_resample")
@@ -362,6 +368,8 @@ class OptimizeVI:
                 **nonlinearly_update_kwargs,
                 **kwargs
             )
+        elif sample_mode == "":
+            samples, st_smpls = samples, 0  # Do nothing for MAP
         else:
             ve = f"invalid sampling mode {sample_mode!r}"
             raise ValueError(ve)
