@@ -16,6 +16,10 @@ Q = TypeVar("Q")
 P = TypeVar("P")
 
 
+class _NoInput:
+    pass
+
+
 def _functional_conj(func):
     def func_conj(*args, **kwargs):
         # func^*(x) = (func(x^*))^*
@@ -415,13 +419,13 @@ class Likelihood(AbstractModel):
         self,
         energy: Callable,
         *,
-        normalized_residual: Optional[Callable] = None,
-        transformation: Optional[Callable] = None,
-        left_sqrt_metric: Optional[Callable] = None,
-        right_sqrt_metric: Optional[Callable] = None,
-        metric: Optional[Callable] = None,
-        lsm_tangents_shape=None,
-        domain=None,
+        normalized_residual: Optional[Callable] = _NoInput,
+        transformation: Optional[Callable] = _NoInput,
+        left_sqrt_metric: Optional[Callable] = _NoInput,
+        right_sqrt_metric: Optional[Callable] = _NoInput,
+        metric: Optional[Callable] = _NoInput,
+        lsm_tangents_shape=_NoInput,
+        domain=_NoInput,
     ):
         """Instantiates a new likelihood with the same `lsm_tangents_shape`.
 
@@ -441,18 +445,18 @@ class Likelihood(AbstractModel):
         """
         return Likelihood(
             energy,
-            normalized_residual=normalized_residual
-            if normalized_residual is not None else self.normalized_residual,
+            normalized_residual=normalized_residual if normalized_residual
+            is not _NoInput else self.normalized_residual,
             transformation=transformation
-            if transformation is not None else self.transformation,
+            if transformation is not _NoInput else self.transformation,
             left_sqrt_metric=left_sqrt_metric
-            if left_sqrt_metric is not None else self.left_sqrt_metric,
+            if left_sqrt_metric is not _NoInput else self.left_sqrt_metric,
             right_sqrt_metric=right_sqrt_metric
-            if right_sqrt_metric is not None else self.right_sqrt_metric,
-            metric=metric if metric is not None else self.metric,
+            if right_sqrt_metric is not _NoInput else self.right_sqrt_metric,
+            metric=metric if metric is not _NoInput else self.metric,
             lsm_tangents_shape=lsm_tangents_shape
-            if lsm_tangents_shape is not None else self.lsm_tangents_shape,
-            domain=domain if domain is not None else self.domain
+            if lsm_tangents_shape is not _NoInput else self.lsm_tangents_shape,
+            domain=domain if domain is not _NoInput else self.domain
         )
 
     def jit(self, **kwargs):
