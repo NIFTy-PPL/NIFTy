@@ -19,12 +19,12 @@ from .likelihood_impl import (
 from .logger import logger
 from .minisanity import minisanity, reduced_residual_stats
 from .misc import hvp, interpolate, wrap, wrap_left
-from .model import Initializer, Model
+from .model import Initializer, Model, WrappedCall
 from .num import *
 from .optimize import minimize, newton_cg, trust_ncg
 from .optimize_kl import OptimizeVI, OptimizeVIState, optimize_kl
 from .prior import (
-    InvGammaPrior, LaplacePrior, LogNormalPrior, NormalPrior, WrappedCall
+    InvGammaPrior, LaplacePrior, LogNormalPrior, NormalPrior, UniformPrior
 )
 from .refine.chart import CoordinateChart, HEALPixChart
 from .refine.charted_field import RefinementField
