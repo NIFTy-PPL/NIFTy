@@ -662,7 +662,12 @@ class Likelihood(AbstractModel):
 
         domain = None
         if self.domain is not None and other.domain is not None:
-            domain = self.domain | other.domain
+            lvec = isinstance(self.domain, Vector)
+            rvec = isinstance(other.domain, Vector)
+            ldomain = self.domain.tree if lvec else self.domain
+            rdomain = other.domain.tree if rvec else other.domain
+            domain = ldomain | rdomain
+            domain = Vector(domain) if lvec or rvec else domain
 
         return Likelihood(
             joined_hamiltonian,
