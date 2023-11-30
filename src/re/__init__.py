@@ -24,7 +24,7 @@ from .num import *
 from .optimize import minimize, newton_cg, trust_ncg
 from .optimize_kl import OptimizeVI, OptimizeVIState, optimize_kl
 from .prior import (
-    LaplacePrior, NormalPrior, LogNormalPrior, UniformPrior, InvGammaPrior
+    InvGammaPrior, LaplacePrior, LogNormalPrior, NormalPrior, UniformPrior
 )
 from .refine.chart import CoordinateChart, HEALPixChart
 from .refine.charted_field import RefinementField
