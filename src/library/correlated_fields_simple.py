@@ -138,7 +138,7 @@ def SimpleCorrelatedField(
         from .. import re as jft
 
         if not all(isinstance(dom, RGSpace) for dom in op.target):
-            warn(f"unable to add JAX operator for {op.target!r}")
+            # warn(f"unable to add JAX operator for {op.target!r}")
             raise ImportError("short-circuit JAX init")
 
         dists = tuple(e for di in op.target for e in di.distances)
@@ -163,7 +163,8 @@ def SimpleCorrelatedField(
         op.amplitude._jax_expr = cfm.amplitude
         op.power_spectrum._jax_expr = cfm.power_spectrum
     except (ImportError, TypeError) as e:
-        if isinstance(e, TypeError):
-            warn(f"no JAX operator for this configuration;\n{e}")
+        pass
+        # if isinstance(e, TypeError):
+        #     warn(f"no JAX operator for this configuration;\n{e}")
 
     return op

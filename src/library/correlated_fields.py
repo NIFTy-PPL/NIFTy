@@ -457,7 +457,7 @@ class CorrelatedFieldMaker:
             from .. import re as jft
 
             if total_N != 0:
-                warn(f"unable to add JAX operator for total_N={total_N}")
+                # warn(f"unable to add JAX operator for total_N={total_N}")
                 raise ImportError("short-circuit JAX init")
             self._jax_cfm = jft.CorrelatedFieldMaker(prefix=prefix)
         except ImportError:
@@ -578,7 +578,7 @@ class CorrelatedFieldMaker:
 
         is_rg = all(isinstance(dom, RGSpace) for dom in target_subdomain)
         if self._jax_cfm is not None and (len(dofdex) > 0 or index or not is_rg):
-            warn(f"unable to add JAX operator for {target_subdomain}")
+            # warn(f"unable to add JAX operator for {target_subdomain}")
             self._jax_cfm = None
         if self._jax_cfm is not None:
             dists = tuple(e for di in target_subdomain for e in di.distances)
@@ -682,7 +682,7 @@ class CorrelatedFieldMaker:
                                totvol)
 
         if self._jax_cfm is not None:
-            warn(f"unable to add JAX operator for Matern fluctuations")
+            # warn(f"unable to add JAX operator for Matern fluctuations")
             self._jax_cfm = None
 
         self._a.append(amp)
@@ -747,7 +747,7 @@ class CorrelatedFieldMaker:
             self._azm = zm
 
         if self._jax_cfm is not None and dofdex is not None and len(dofdex) > 0:
-            warn(f"unable to add JAX operator for dofdex={dofdex}")
+            # warn(f"unable to add JAX operator for dofdex={dofdex}")
             self._jax_cfm = None
         if self._jax_cfm is not None:
             try:
@@ -758,8 +758,8 @@ class CorrelatedFieldMaker:
                     self._azm._jax_expr = self._jax_cfm.azm
             except TypeError as e:
                 self._jax_cfm = None
-                if isinstance(e, TypeError):
-                    warn(f"no JAX operator for this configuration;\n{e}")
+                # if isinstance(e, TypeError):
+                #     warn(f"no JAX operator for this configuration;\n{e}")
 
     def finalize(self, prior_info=100):
         """Finishes model construction process and returns the constructed

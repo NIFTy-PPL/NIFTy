@@ -446,7 +446,7 @@ class _FunctionApplier(Operator):
             elif hasattr(jax_nn, funcname):
                 jax_expr = getattr(jax_nn, funcname)
             else:
-                warn(f"unable to add JAX call for {funcname!r}")
+                # warn(f"unable to add JAX call for {funcname!r}")
                 jax_expr = None
 
             def jax_expr_part(x):  # Partial insert with first open argument
