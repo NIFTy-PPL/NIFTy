@@ -168,7 +168,105 @@ def test_nonvariable_likelihood_add(seed, likelihood, forward_a, forward_b):
     )
 
 
+@pmp("seed", (33, 42, 43))
+@pmp(
+    "likelihood", (
+        jft.VariableCovarianceGaussian,
+        partial(jft.VariableCovarianceStudentT, dof=1.7),
+    )
+)
+@pmp("forward_a,forward_b", ((_identity, jnp.exp), (jnp.exp, jnp.reciprocal)))
+def test_variable_likelihood_add(seed, likelihood, forward_a, forward_b):
+    key = random.PRNGKey(seed)
+    N_TRIES = 100
+    # Make input always a tuple for Variable* likelihoods
+    data_shp_a = (3, 5)
+    data_shp_b = (12, 5)
+    primals_swd_a = jft.Vector((jft.ShapeWithDtype(data_shp_a), ) * 2)
+    data_swd_a = jft.ShapeWithDtype(data_shp_a)
+    primals_swd_b = jft.Vector((jft.ShapeWithDtype(data_shp_b), ) * 2)
+    data_swd_b = jft.ShapeWithDtype(data_shp_b)
+    key_a, key_b = "a", "b"
+
+    def fwd_a(x):
+        x1, x2 = jax.tree_map(forward_a, x[key_a])
+        return (x1, jnp.abs(x2))
+
+    def fwd_b(x):
+        x1, x2 = jax.tree_map(forward_b, x[key_b])
+        return (x1, jnp.abs(x2))
+
+    def forward(x):
+        a1, a2 = fwd_a(x)
+        b1, b2 = fwd_b(x)
+        x1 = jft.Vector({key_a: a1, key_b: b1})
+        x2 = jft.Vector({key_a: a2, key_b: b2})
+        return jft.Vector((x1, x2))
+
+    key, k_a, k_b = random.split(key, 3)
+    data_a = jft.random_like(k_a, data_swd_a)
+    data_b = jft.random_like(k_b, data_swd_b)
+    data_ab = jft.Vector({key_a: data_a, key_b: data_b})
+
+    lh_orig = likelihood(data_ab) @ forward
+    lh_a = likelihood(data_a).amend(fwd_a, domain={key_a: primals_swd_a})
+    lh_b = likelihood(data_b).amend(fwd_b, domain={key_b: primals_swd_b})
+    lh_ab = lh_a + lh_b
+
+    key, k_p, k_t, k_q = random.split(key, 4)
+    swd = jft.Vector({key_a: primals_swd_a, key_b: primals_swd_b})
+    rl = jax.vmap(jft.random_like, in_axes=(0, None))
+    p, t, q = tuple(rl(random.split(k, N_TRIES), swd) for k in (k_p, k_t, k_q))
+
+    assert_allclose(jax.vmap(lh_orig)(p), jax.vmap(lh_ab)(p), equal_nan=False)
+    rsm_orig = jax.vmap(lh_orig.right_sqrt_metric)(p, t)
+    rsm_ab = jax.vmap(lh_ab.right_sqrt_metric)(p, t)
+    tree_assert_allclose(
+        tuple(r.tree[key_a] for r in rsm_orig),
+        rsm_ab["lh_left"],
+        equal_nan=False
+    )
+    tree_assert_allclose(
+        tuple(r.tree[key_b] for r in rsm_orig),
+        rsm_ab["lh_right"],
+        equal_nan=False
+    )
+    tree_assert_allclose(
+        jax.vmap(
+            lambda p, t, q: lh_orig.
+            left_sqrt_metric(p, lh_orig.right_sqrt_metric(t, q))
+        )(p, t, q),
+        jax.vmap(
+            lambda p, t, q: lh_ab.
+            left_sqrt_metric(p, lh_ab.right_sqrt_metric(t, q))
+        )(p, t, q),
+        equal_nan=False
+    )
+    tree_assert_allclose(
+        jax.vmap(lh_orig.metric)(p, t),
+        jax.vmap(lh_ab.metric)(p, t),
+        equal_nan=False
+    )
+    if lh_orig._transformation is None:
+        pytest.skip("no transformation rule implemented yet")
+    trafo_orig = jax.vmap(lh_orig.transformation)(p)
+    trafo_ab = jax.vmap(lh_ab.transformation)(p)
+    tree_assert_allclose(
+        tuple(t[key_a] for t in trafo_orig),
+        trafo_ab["lh_left"],
+        equal_nan=False
+    )
+    tree_assert_allclose(
+        tuple(t[key_b] for t in trafo_orig),
+        trafo_ab["lh_right"],
+        equal_nan=False
+    )
+
+
 if __name__ == "__main__":
     test_likelihood_partial(33, jnp.exp)
     test_nonvariable_likelihood_add(42, jft.Gaussian, jnp.exp, jnp.reciprocal)
+    test_variable_likelihood_add(
+        42, jft.VariableCovarianceGaussian, jnp.exp, jnp.reciprocal
+    )
     test_nonvariable_likelihood_add(42, _Poissonian, jnp.exp, jnp.reciprocal)
