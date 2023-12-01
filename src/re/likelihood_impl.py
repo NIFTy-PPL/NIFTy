@@ -225,9 +225,7 @@ def Poissonian(data, sampling_dtype=float):
         raise ValueError("`data` must not be negative")
 
     def hamiltonian(primals):
-        ham = tree_map(jnp.sum,
-                       primals) - vdot(tree_map(jnp.log, primals), data)
-        return sum(ham)
+        return sum(primals) - vdot(tree_map(jnp.log, primals), data)
 
     def metric(primals, tangents):
         return tangents / primals
