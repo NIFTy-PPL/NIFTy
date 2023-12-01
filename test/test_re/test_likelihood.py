@@ -247,20 +247,19 @@ def test_variable_likelihood_add(seed, likelihood, forward_a, forward_b):
         jax.vmap(lh_ab.metric)(p, t),
         equal_nan=False
     )
-    if lh_orig._transformation is None:
-        pytest.skip("no transformation rule implemented yet")
-    trafo_orig = jax.vmap(lh_orig.transformation)(p)
-    trafo_ab = jax.vmap(lh_ab.transformation)(p)
-    tree_assert_allclose(
-        tuple(t[key_a] for t in trafo_orig),
-        trafo_ab["lh_left"],
-        equal_nan=False
-    )
-    tree_assert_allclose(
-        tuple(t[key_b] for t in trafo_orig),
-        trafo_ab["lh_right"],
-        equal_nan=False
-    )
+    if lh_orig._transformation is not None:
+        trafo_orig = jax.vmap(lh_orig.transformation)(p)
+        trafo_ab = jax.vmap(lh_ab.transformation)(p)
+        tree_assert_allclose(
+            tuple(t[key_a] for t in trafo_orig),
+            trafo_ab["lh_left"],
+            equal_nan=False
+        )
+        tree_assert_allclose(
+            tuple(t[key_b] for t in trafo_orig),
+            trafo_ab["lh_right"],
+            equal_nan=False
+        )
 
 
 if __name__ == "__main__":
