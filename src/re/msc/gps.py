@@ -11,7 +11,7 @@ from .utils import j1
 from .chart import MSChart
 from .kernel import MSKernel
 from ..model import AbstractModel, Model
-from ..misc import ducktape
+from ..misc import wrap
 from ..tree_math import ShapeWithDtype, zeros_like
 
 
@@ -224,13 +224,13 @@ class _MSSpectralGP(AbstractModel):
                 if not len(logamp) == 2:
                     raise ValueError
                 self._pytree[key] = ShapeWithDtype(())
-                self._amp = ducktape(lambda x: jnp.exp(
+                self._amp = wrap(lambda x: jnp.exp(
                     normal_transform(x, logamp)), key)
             elif isinstance(logamp, Model):
                 if logamp.target != ShapeWithDtype(()):
                     raise ValueError
                 self._pytree[key] = logamp.domain
-                self._amp = ducktape(lambda x: jnp.exp(logamp(x)), key)
+                self._amp = wrap(lambda x: jnp.exp(logamp(x)), key)
             else:
                 raise ValueError
         offset = float(offset)
@@ -248,12 +248,12 @@ class _MSSpectralGP(AbstractModel):
                 def off(x):
                     lamp = normal_transform(x[1], offset_logamp)
                     return offset + jnp.exp(lamp) * x[0]
-                self._off = ducktape(off, key)
+                self._off = wrap(off, key)
             elif isinstance(offset_logamp, Model):
                 if offset_logamp.target != ShapeWithDtype(()):
                     raise ValueError
                 self._pytree[key] = offset_logamp.domain
-                self._off = ducktape(lambda x: offset_logamp(x), key)
+                self._off = wrap(lambda x: offset_logamp(x), key)
 
         self._N = N
         self._r_minmax = r_minmax
@@ -356,13 +356,13 @@ class MSCorrelatedField(_MSSpectralGP):
                 if not len(slope) == 2:
                     raise ValueError
                 self._pytree[key] = ShapeWithDtype(())
-                self._slope = ducktape(lambda x: normal_transform(x, slope),
+                self._slope = wrap(lambda x: normal_transform(x, slope),
                                        key)
             elif isinstance(slope, Model):
                 if slope.target != ShapeWithDtype(()):
                     raise ValueError
                 self._pytree[key] = slope.domain
-                self._slope = ducktape(slope, key)
+                self._slope = wrap(slope, key)
             else:
                 raise ValueError
 
@@ -384,7 +384,7 @@ class MSCorrelatedField(_MSSpectralGP):
                 if isinstance(logflex, tuple):
                     if not len(logflex) == 2:
                         raise ValueError
-                    self._flex = ducktape(lambda x:
+                    self._flex = wrap(lambda x:
                                           jnp.exp(normal_transform(x, logflex)),
                                           key)
                     self._pytree[key] = ShapeWithDtype(())
@@ -392,7 +392,7 @@ class MSCorrelatedField(_MSSpectralGP):
                     if logflex.target != ShapeWithDtype(()):
                         raise ValueError
                     self._pytree[key] = logflex.domain
-                    self._flex = ducktape(lambda x: jnp.exp(logflex(x)), key)
+                    self._flex = wrap(lambda x: jnp.exp(logflex(x)), key)
 
             def get_dev(p):
                 flex = self.get_flex(p)
@@ -439,13 +439,13 @@ class MSMatern(_MSSpectralGP):
                 if not len(slope) == 2:
                     raise ValueError
                 self._pytree[key] = ShapeWithDtype(())
-                self._slope = ducktape(lambda x: normal_transform(x, slope),
+                self._slope = wrap(lambda x: normal_transform(x, slope),
                                        key)
             elif isinstance(slope, Model):
                 if slope.target != ShapeWithDtype(()):
                     raise ValueError
                 self._pytree[key] = slope.domain
-                self._slope = ducktape(slope, key)
+                self._slope = wrap(slope, key)
             else:
                 raise ValueError
 
@@ -457,14 +457,14 @@ class MSMatern(_MSSpectralGP):
                 if not len(logscale) == 2:
                     raise ValueError
                 self._pytree[key] = ShapeWithDtype(())
-                self._scale= ducktape(lambda x:
+                self._scale= wrap(lambda x:
                                       jnp.exp(normal_transform(x, logscale)),
                                       key)
             elif isinstance(logscale, Model):
                 if logscale.target != ShapeWithDtype(()):
                     raise ValueError
                 self._pytree[key] = logscale.domain
-                self._scale = ducktape(lambda x: jnp.exp(logscale(x)), key)
+                self._scale = wrap(lambda x: jnp.exp(logscale(x)), key)
             else:
                 raise ValueError
 
