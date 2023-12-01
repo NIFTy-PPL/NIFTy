@@ -101,8 +101,9 @@ def _Poissonian(x):
 def test_nonvariable_likelihood_add(seed, likelihood, forward_a, forward_b):
     key = random.PRNGKey(seed)
     N_TRIES = 100
-    swd_a = jft.Vector((jft.ShapeWithDtype((3, 5)), ) * 2)
-    swd_b = jft.Vector((jft.ShapeWithDtype((12, 5)), ) * 3)
+    shp_a, shp_b = (3, 5), (12, 5)
+    swd_a = jft.Vector((jft.ShapeWithDtype(shp_a), ) * 2)
+    swd_b = jft.Vector((jft.ShapeWithDtype(shp_b), ) * 3)
     key_a, key_b = "a", "b"
 
     def fwd_a(x):
