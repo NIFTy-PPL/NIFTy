@@ -619,16 +619,21 @@ def optimize_kl(
     else:
         samples = Samples(pos=position_or_samples, samples=None, keys=None)
 
+    opt_vi_state = None
     last_fn = os.path.join(odir, LAST_FILENAME) if odir is not None else None
     resume_fn = resume if os.path.isfile(resume) else last_fn
-    if _optimize_vi_state is not None:
-        opt_vi_state = _optimize_vi_state
-    elif resume:
+    if resume:
         if not os.path.isfile(resume_fn):
             raise ValueError(f"unable to resume from {resume_fn!r}")
+        if samples.pos is not None:
+            logger.warning("overwriting `position_or_samples` with `resume`")
         with open(resume_fn, "rb") as f:
             samples, opt_vi_state = pickle.load(f)
-    else:
+    if _optimize_vi_state is not None:
+        if opt_vi_state is not None:
+            logger.warning("overwriting `optimize_vi_state` from `resume`")
+        opt_vi_state = _optimize_vi_state
+    elif opt_vi_state is None:
         opt_vi_state = opt_vi.init_state(
             key,
             n_samples=n_samples,
