@@ -119,12 +119,9 @@ DICT_OR_CALL4DICT_TYP = Union[Callable[[int], dict], dict]
 class OptimizeVIState(NamedTuple):
     nit: int
     key: Any
-    sample_mode: SMPL_MODE_GENERIC_TYP
-    sample_state: Optional[optimize.OptimizeResults]
-    minimization_state: Optional[optimize.OptimizeResults]
-    point_estimates: Union[tuple, Any]
-    constants: Union[tuple, Any]
-    config: dict[str, Union[dict, Callable[[int], Any]]]
+    sample_state: Optional[optimize.OptimizeResults] = None
+    minimization_state: Optional[optimize.OptimizeResults] = None
+    config: dict[str, Union[dict, Callable[[int], Any], Any]] = {}
 
 
 def _getitem_at_nit(config, key, nit):
@@ -453,23 +450,16 @@ class OptimizeVI:
         with the current iteration number as argument and should return the
         value to use for the current iteration.
         """
-        config = {
-            "n_samples": n_samples,
-            "draw_linear_kwargs": draw_linear_kwargs,
-            "nonlinearly_update_kwargs": nonlinearly_update_kwargs,
-            "kl_kwargs": kl_kwargs,
-        }
-        state = OptimizeVIState(
-            nit,
-            key,
+        config = dict(
+            n_samples=n_samples,
             sample_mode=sample_mode,
-            sample_state=None,
-            minimization_state=None,
             point_estimates=point_estimates,
             constants=constants,
-            config=config
+            draw_linear_kwargs=draw_linear_kwargs,
+            nonlinearly_update_kwargs=nonlinearly_update_kwargs,
+            kl_kwargs=kl_kwargs,
         )
-        return state
+        return OptimizeVIState(nit, key, config=config)
 
     def update(
         self,
@@ -495,18 +485,12 @@ class OptimizeVI:
         key = state.key
         config = state.config
 
-        constants = state.constants
+        constants = _getitem_at_nit(config, "constants", nit)
         if not (constants == () or constants is None):
             raise NotImplementedError()
 
-        sample_mode = state.sample_mode
-        sample_mode: str = sample_mode(nit) if callable(
-            sample_mode
-        ) else sample_mode
-        point_estimates = state.point_estimates
-        point_estimates = point_estimates(nit) if callable(
-            point_estimates
-        ) else point_estimates
+        sample_mode = _getitem_at_nit(config, "sample_mode", nit)
+        point_estimates = _getitem_at_nit(config, "point_estimates", nit)
         n_samples = _getitem_at_nit(config, "n_samples", nit)
         draw_linear_kwargs = _getitem_at_nit(config, "draw_linear_kwargs", nit)
         nonlinearly_update_kwargs = _getitem_at_nit(
@@ -613,28 +597,29 @@ def optimize_kl(
             mirror_samples=mirror_samples
         )
 
+    last_fn = os.path.join(odir, LAST_FILENAME) if odir is not None else None
+    resume_fn = resume if os.path.isfile(resume) else last_fn
+    sanity_fn = os.path.join(
+        odir, MINISANITY_FILENAME
+    ) if odir is not None else None
+
     samples = None
     if isinstance(position_or_samples, Samples):
         samples = position_or_samples
     else:
         samples = Samples(pos=position_or_samples, samples=None, keys=None)
-
-    opt_vi_state = None
-    last_fn = os.path.join(odir, LAST_FILENAME) if odir is not None else None
-    resume_fn = resume if os.path.isfile(resume) else last_fn
+    opt_vi_st = None
     if resume:
         if not os.path.isfile(resume_fn):
             raise ValueError(f"unable to resume from {resume_fn!r}")
         if samples.pos is not None:
             logger.warning("overwriting `position_or_samples` with `resume`")
         with open(resume_fn, "rb") as f:
-            samples, opt_vi_state = pickle.load(f)
+            samples, opt_vi_st = pickle.load(f)
     if _optimize_vi_state is not None:
-        if opt_vi_state is not None:
-            logger.warning("overwriting `optimize_vi_state` from `resume`")
-        opt_vi_state = _optimize_vi_state
-    elif opt_vi_state is None:
-        opt_vi_state = opt_vi.init_state(
+        opt_vi_st = _optimize_vi_state
+    else:
+        opt_vi_st_init = opt_vi.init_state(
             key,
             n_samples=n_samples,
             draw_linear_kwargs=draw_linear_kwargs,
@@ -644,24 +629,18 @@ def optimize_kl(
             point_estimates=point_estimates,
             constants=constants,
         )
-    sanity_fn = os.path.join(
-        odir, MINISANITY_FILENAME
-    ) if odir is not None else None
-
-    # Test if the state is pickle-able to avoid an unfortunate end
-    try:
-        pickle.dumps(opt_vi_state)
-    except PicklingError as e:
-        ve = "state not pickle-able; check configuration for e.g. `lambda`s"
-        raise ValueError(ve) from e
+        if opt_vi_st is not None:  # resume
+            opt_vi_st = opt_vi_st._replace(config=opt_vi_st_init.config)
+        else:
+            opt_vi_st = opt_vi_st_init
 
     if odir:
         makedirs(odir, exist_ok=True)
 
-    for i in range(opt_vi_state.nit, opt_vi.n_total_iterations - 1):
+    for i in range(opt_vi_st.nit, opt_vi.n_total_iterations - 1):
         logger.info(f"OPTIMIZE_KL Iteration {i+1:04d}")
-        samples, opt_vi_state = opt_vi.update(samples, opt_vi_state)
-        msg = opt_vi.get_status_message(samples, opt_vi_state)
+        samples, opt_vi_st = opt_vi.update(samples, opt_vi_st)
+        msg = opt_vi.get_status_message(samples, opt_vi_st)
         logger.info(msg)
         if sanity_fn is not None:
             with open(sanity_fn, "a") as f:
@@ -670,8 +649,8 @@ def optimize_kl(
             with open(last_fn, "wb") as f:
                 # TODO: Make all arrays numpy arrays as to not instantiate on
                 # the main device when loading
-                pickle.dump((samples, opt_vi_state), f)
+                pickle.dump((samples, opt_vi_st._replace(config={})), f)
         if callback != None:
-            callback(samples, opt_vi_state)
+            callback(samples, opt_vi_st)
 
-    return samples, opt_vi_state
+    return samples, opt_vi_st

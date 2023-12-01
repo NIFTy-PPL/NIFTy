@@ -178,10 +178,6 @@ absdelta = delta * jnp.prod(jnp.array(dims))
 n_samples = 4
 
 
-def n_samples_update(i):
-    return n_samples // 2 if i < 2 else n_samples
-
-
 def sample_mode_update(i):
     if i < 2:
         return "linear_resample"
@@ -198,7 +194,7 @@ samples, state = jft.optimize_kl(
     nll,
     pos_init,
     n_total_iterations=n_vi_iterations,
-    n_samples=n_samples_update,
+    n_samples=lambda i: n_samples // 2 if i < 2 else n_samples,
     # Source for the stochasticity for sampling
     key=key,
     # Names of parameters that are not samples but still optimized (effectively
