@@ -623,10 +623,9 @@ def optimize_kl(
     resume_fn = resume if os.path.isfile(resume) else last_fn
     if _optimize_vi_state is not None:
         opt_vi_state = _optimize_vi_state
-    elif resume and os.path.isfile(resume_fn):
-        if not os.path.isfile(resume) or not odir:
-            ve = "unable to resume without `resume` or `odir` being a path"
-            raise ValueError(ve)
+    elif resume:
+        if not os.path.isfile(resume_fn):
+            raise ValueError(f"unable to resume from {resume_fn!r}")
         with open(resume_fn, "rb") as f:
             samples, opt_vi_state = pickle.load(f)
     else:
