@@ -580,11 +580,15 @@ class Likelihood(AbstractModel):
 
         return self.replace(
             energy_at_f,
-            normalized_residual=normalized_residual_at_f,
-            transformation=transformation_at_f,
-            left_sqrt_metric=left_sqrt_metric_at_f,
-            right_sqrt_metric=right_sqrt_metric_at_f,
-            metric=metric_at_f,
+            normalized_residual=normalized_residual_at_f
+            if self._normalized_residual is not None else None,
+            transformation=transformation_at_f
+            if self._transformation is not None else None,
+            left_sqrt_metric=left_sqrt_metric_at_f
+            if self._left_sqrt_metric is not None else None,
+            right_sqrt_metric=right_sqrt_metric_at_f
+            if self._right_sqrt_metric is not None else None,
+            metric=metric_at_f if self._metric is not None else None,
             domain=domain,
         )
 
