@@ -159,6 +159,14 @@ def test_nonvariable_likelihood_add(seed, likelihood, forward_a, forward_b):
         jax.vmap(lh_ab.metric)(p, t),
         equal_nan=False
     )
+    nresi_orig = jax.vmap(lh_orig.normalized_residual)(p)
+    nresi_ab = jax.vmap(lh_ab.normalized_residual)(p)
+    tree_assert_allclose(
+        nresi_orig.tree[key_a], nresi_ab["lh_left"], equal_nan=False
+    )
+    tree_assert_allclose(
+        nresi_orig.tree[key_b], nresi_ab["lh_right"], equal_nan=False
+    )
     trafo_orig = jax.vmap(lh_orig.transformation)(p)
     trafo_ab = jax.vmap(lh_ab.transformation)(p)
     tree_assert_allclose(
@@ -247,6 +255,14 @@ def test_variable_likelihood_add(seed, likelihood, forward_a, forward_b):
         jax.vmap(lh_orig.metric)(p, t),
         jax.vmap(lh_ab.metric)(p, t),
         equal_nan=False
+    )
+    nresi_orig = lh_orig.normalized_residual(p)
+    nresi_ab = lh_ab.normalized_residual(p)
+    tree_assert_allclose(
+        nresi_orig[key_a], nresi_ab["lh_left"], equal_nan=False
+    )
+    tree_assert_allclose(
+        nresi_orig[key_b], nresi_ab["lh_right"], equal_nan=False
     )
     if lh_orig._transformation is not None:
         trafo_orig = jax.vmap(lh_orig.transformation)(p)
