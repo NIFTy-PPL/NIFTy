@@ -615,10 +615,6 @@ class Likelihood(AbstractModel):
             return self.energy(p, **pkw) + other.energy(p, **pkw)
 
         def joined_normalized_residual(p, **pkw):
-            from warnings import warn
-
-            # FIXME
-            warn("adding residuals is untested", UserWarning)
             lres = self.normalized_residual(p, **pkw)
             rres = other.normalized_residual(p, **pkw)
             lvec, rvec = isinstance(lres, Vector), isinstance(rres, Vector)
@@ -630,10 +626,6 @@ class Likelihood(AbstractModel):
             return self.metric(p, t, **pkw) + other.metric(p, t, **pkw)
 
         def joined_transformation(p, **pkw):
-            from warnings import warn
-
-            # FIXME
-            warn("adding transformations is untested", UserWarning)
             lres = self.transformation(p, **pkw)
             rres = other.transformation(p, **pkw)
             lvec, rvec = isinstance(lres, Vector), isinstance(rres, Vector)
