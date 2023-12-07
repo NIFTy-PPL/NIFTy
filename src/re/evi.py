@@ -18,7 +18,7 @@ from .likelihood import (
     Likelihood, _parse_point_estimates, partial_insert_and_remove
 )
 from .tree_math import (
-    Vector, assert_arithmetics, dot, random_like, stack, vdot
+    Vector, assert_arithmetics, dot, hide_strings, random_like, stack, vdot
 )
 
 P = TypeVar("P")
@@ -36,14 +36,24 @@ def _parse_jit(jit):
     raise TypeError(f"expected `jit` to be callable or bolean; got {jit!r}")
 
 
+def _hcb_maybe_raise(condition_exception):
+    condition, exception = condition_exception
+    if condition:
+        raise exception()
+
+
 def _cond_raise(condition, exception):
     from jax.experimental.host_callback import call
 
-    def maybe_raise(condition):
-        if condition:
-            raise exception
-
-    call(maybe_raise, condition, result_shape=None)
+    # Register as few host-callbacks as possible by implicitly hashing the
+    # exception type and the strings within
+    call(
+        _hcb_maybe_raise, (
+            condition,
+            Partial(exception.__class__, *hide_strings(exception.args))
+        ),
+        result_shape=None
+    )
 
 
 def _process_point_estimate(x, primals, point_estimates, insert):
