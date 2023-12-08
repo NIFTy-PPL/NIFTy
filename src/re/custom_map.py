@@ -20,11 +20,11 @@ def _fun_reord(_, mapped, *, fun, unmapped, unflatten, in_axes):
     return None, y
 
 
-def _swap(a, axis1, axis2):
+def _moveaxis(a, source, destination):
     # Ensure that arrays are never completely unnecessarily copied
-    if axis1 == axis2:
+    if source == destination:
         return a
-    return jnp.swapaxes(a, axis1, axis2)
+    return jnp.moveaxis(a, source, destination)
 
 
 def _generic_smap(fun, in_axes, out_axes, unroll, *x, _scan=lax.scan, **k):
@@ -58,7 +58,7 @@ def _generic_smap(fun, in_axes, out_axes, unroll, *x, _scan=lax.scan, **k):
         if i is None:
             unmapped.append(el)
         elif isinstance(i, int):
-            mapped.append(_swap(el, 0, i) if i != 0 else el)
+            mapped.append(_moveaxis(el, i, 0))
         else:
             raise TypeError(f"expected `in_axes` index of type int; got {i!r}")
 
@@ -87,7 +87,7 @@ def _generic_smap(fun, in_axes, out_axes, unroll, *x, _scan=lax.scan, **k):
         if i is None:
             out.append(unmapped.pop(0))
         elif isinstance(i, int):
-            out.append(_swap(el, 0, i) if i != 0 else el)
+            out.append(_moveaxis(el, 0, i))
         else:
             raise TypeError(f"expected `out_axes` index of type int; got {i!r}")
 

@@ -22,7 +22,7 @@ def f(u, v):
 @pmp("in_axes", ((0, None), (1, None), (None, 0), (0, 0), (1, 1)))
 @pmp("out_axes", (0, ))
 @pmp("seed", (32, 42, 43))
-def test_smap_f(map, in_axes, out_axes, seed):
+def test_map_f(map, in_axes, out_axes, seed):
     fixed_shp = 3
     batched_shp = 4
     key = random.PRNGKey(seed)
@@ -49,7 +49,7 @@ def g(u, v):
 @pmp("map", (jft.smap, jft.lmap))
 @pmp("in_axes,out_axes", (((0, None), (0, 0)), ((None, 1), (None, 0))))
 @pmp("seed", (32, 42, 43))
-def test_smap_g(map, in_axes, out_axes, seed):
+def test_map_g(map, in_axes, out_axes, seed):
     fixed_shp = 3
     batched_shp = 4
     key = random.PRNGKey(seed)
@@ -66,6 +66,26 @@ def test_smap_g(map, in_axes, out_axes, seed):
             assert i == 1
             shp = (fixed_shp, batched_shp)
         inp.append(random.normal(k, shape=shp))
+    v = vf(*inp)
+    s = sf(*inp)
+    jax.tree_map(assert_array_equal, v, s)
+
+
+def h(u, v, w):
+    return v + w.sum() - u.sum(), w * jnp.sin(u.sum() * v.sum()
+                                             ), u + v.sum() * w.sum()
+
+
+@pmp("map", (jft.smap, jft.lmap))
+@pmp("in_axes", (0, 1, 2))
+@pmp("out_axes", (0, 1, 2))
+@pmp("seed", (32, 42, 43))
+def test_map_h(map, in_axes, out_axes, seed):
+    key = random.PRNGKey(seed)
+
+    vf = jax.vmap(h, in_axes=in_axes, out_axes=out_axes)
+    sf = map(h, in_axes=in_axes, out_axes=out_axes)
+    inp = [random.normal(k, shape=(1, 2, 3)) for k in random.split(key, 3)]
     v = vf(*inp)
     s = sf(*inp)
     jax.tree_map(assert_array_equal, v, s)
