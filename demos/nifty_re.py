@@ -197,9 +197,10 @@ samples, state = jft.optimize_kl(
     n_samples=lambda i: n_samples // 2 if i < 2 else n_samples,
     # Source for the stochasticity for sampling
     key=key,
-    # Names of parameters that are not samples but still optimized (effectively
-    # we are doing MAP for these degrees of freedom)
-    point_estimates=("cfax1flexibility", "cfax1asperity"),
+    # Names of parameters that should not be sampled but still optimized
+    # can be specified as point_estimates (effectively we are doing MAP for
+    # these degrees of freedom).
+    # point_estimates=("cfax1flexibility", "cfax1asperity"),
     # Arguments for the conjugate gradient method used to drawing samples from
     # an implicit covariance matrix
     draw_linear_kwargs=dict(
