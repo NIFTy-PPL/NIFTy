@@ -555,7 +555,7 @@ def optimize_kl(
         minimize_kwargs=dict(name="SN", cg_kwargs=dict(name="SNCG"))
     ),
     kl_kwargs=dict(minimize_kwargs=dict(name="M", cg_kwargs=dict(name="MCG"))),
-    sample_mode: SMPL_MODE_GENERIC_TYP = "nonlinear",
+    sample_mode: SMPL_MODE_GENERIC_TYP = "nonlinear_resample",
     resume: Union[str, bool] = False,
     callback: Optional[Callable[[Samples, OptimizeVIState], None]] = None,
     odir: Optional[str] = None,
