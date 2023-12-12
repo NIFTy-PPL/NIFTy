@@ -299,22 +299,37 @@ plt.show()
 
 # + [markdown] slideshow={"slide_type": "slide"}
 # ## Wiener Filter standardized
-#
-# -
+# This problem can be solved in various coordinates and thus we can also choose the coordina system, in which the prior $\mathcal{P}(s)=\mathcal{G}(0,\mathbb{1})$. And therefore the coordinate transformation from this to our original space is part of the prior description.
+# +
+# Coordinate transformation from Gaussian white noise to our prior from above (G(0,1)) to G(s,S)).
 sqrt_pspec = S_k(ift.full(S_k.domain, 1.)).sqrt()
-trafo = HT.adjoint @ ift.makeOp(sqrt_pspec)
-R2 = R @ trafo
-j2 = R2.adjoint(N.inverse(d))
-identity = ift.Operator.identity_operator(R2.domain)
-Dinv = ift.InversionEnabler(identity + R2.adjoint @ N.inverse @ R2, ic)
-D2 = Dinv.inverse
-m2 = D2(j2)
+coord_trafo = HT.adjoint @ ift.makeOp(sqrt_pspec)
 
-m2_s_space = trafo(m2)
+# The full Response from the standardized space to data space is a concatenation of R and the transformation
+standardized_R = R @ coord_trafo
+standardized_j = standardized_R.adjoint(N.inverse(d))
+
+# standard_prior is now a indenty or unit matrix.
+standardized_S = ift.Operator.identity_operator(standardized_R.domain)
+
+# the new D
+standardized_Dinv = ift.InversionEnabler(standardized_S + standardized_R.adjoint @ N.inverse @standardized_R, ic)
+standardized_D = standardized_Dinv.inverse
+standardized_m = standardized_D(standardized_j)
+# -
+
+# We can see that we get to the same result. 
+
+posterior_mean_s_space = coord_trafo(standardized_m)
 plt.axvspan(l, h, facecolor='0.8',alpha=0.5)
 plt.plot(s.val, 'r', label="Signal", alpha=1, linewidth=2)
-plt.plot(m2_s_space.val, 'k', label="Reconstruction", linewidth=2)
 plt.plot(data_s_space, 'k.', label="Data")
+plt.plot(posterior_mean_s_space.val, 'k', label="Reconstruction", linewidth=2)
 plt.title("Reconstruction of incomplete data in normalized coordinates")
 plt.legend()
 plt.show()
+
+# Often it is easier to solve problems in this standardized parametere coordinates. For more information read:
+#
+# - Knollmüller, Jakob, and Torsten A. Enßlin. "Metric Gaussian variational inference." arXiv preprint arXiv:1901.11033 (2019).
+# - Frank, Philipp, Reimar Leike, and Torsten A. Enßlin. "Geometric variational inference." Entropy 23.7 (2021): 853.
