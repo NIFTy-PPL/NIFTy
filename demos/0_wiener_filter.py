@@ -288,10 +288,10 @@ plt.fill_between(range(m.size), (m - samples_std).val, (m + samples_std).val,
 plt.plot(samples_mean.val, 'k--', label="Posterior mean (samples)")
 
 #.val would return a read only-array. `.val_rw()` returns a writeable copy
-tmp = R.adjoint(d).val_rw()
+data_s_space = R.adjoint(d).val_rw()
 # Remove the "0" data points in the masked array
-tmp[l:h] = np.nan
-plt.plot(tmp, 'k.', label="Data")
+data_s_space[l:h] = np.nan
+plt.plot(data_s_space, 'k.', label="Data")
 
 plt.title("Reconstruction of incomplete data")
 plt.legend()
@@ -313,8 +313,8 @@ m2 = D2(j2)
 m2_s_space = trafo(m2)
 plt.axvspan(l, h, facecolor='0.8',alpha=0.5)
 plt.plot(s.val, 'r', label="Signal", alpha=1, linewidth=2)
-plt.plot(tmp, 'k.', label="Data")
 plt.plot(m2_s_space.val, 'k', label="Reconstruction", linewidth=2)
+plt.plot(data_s_space, 'k.', label="Data")
 plt.title("Reconstruction of incomplete data in normalized coordinates")
 plt.legend()
 plt.show()
