@@ -28,44 +28,61 @@ def _get_cov_inv_and_std_inv(
     std_inv: Optional[Callable],
     primals=None
 ) -> Tuple[Callable, Callable]:
-    if not cov_inv and not std_inv:
+    if cov_inv is None and std_inv is None:
 
-        def cov_inv(tangents):
+        def _cov_inv(tangents):
             return tangents
 
-        def std_inv(tangents):
+        def _std_inv(tangents):
             return tangents
 
-    elif not cov_inv:
+    if not callable(cov_inv) and cov_inv is not None:
+        msg = "assuming the specified inverse covariance is diagonal"
+        logger.warning(msg)
+
+        def _cov_inv(tangents):
+            return cov_inv * tangents
+    elif cov_inv is None:
         wm = (
             "assuming a diagonal covariance matrix"
-            ";\nsetting `cov_inv` to `std_inv(jnp.ones_like(data))**2`"
+            ";\nsetting `cov_inv` to `std_inv(ones_like(data))**2`"
         )
         logger.warning(wm)
-        noise_std_inv_sq = std_inv(
+        # Note, `_std_inv` is not properly initialized yet
+        si = std_inv if std_inv is not None else _std_inv
+        noise_std_inv_sq = si(
             tree_map(jnp.real, tree_map(jnp.ones_like, primals))
         )**2
 
-        def cov_inv(tangents):
+        def _cov_inv(tangents):
             return noise_std_inv_sq * tangents
+    else:
+        _cov_inv = cov_inv
 
-    elif not std_inv:
+    if not callable(std_inv) and std_inv is not None:
+        msg = "assuming the specified sqrt of the inverse covariance is diagonal"
+        logger.warning(msg)
+
+        def _std_inv(tangents):
+            return std_inv * tangents
+    elif std_inv is None:
         wm = (
             "assuming a diagonal covariance matrix"
-            ";\nsetting `std_inv` to `cov_inv(jnp.ones_like(data))**0.5`"
+            ";\nsetting `std_inv` to `cov_inv(ones_like(data))**0.5`"
         )
         logger.warning(wm)
         noise_cov_inv_sqrt = tree_map(
             jnp.sqrt,
-            cov_inv(tree_map(jnp.real, tree_map(jnp.ones_like, primals)))
+            _cov_inv(tree_map(jnp.real, tree_map(jnp.ones_like, primals)))
         )
 
-        def std_inv(tangents):
+        def _std_inv(tangents):
             return noise_cov_inv_sqrt * tangents
+    else:
+        _std_inv = std_inv
 
-    if not (callable(cov_inv) and callable(std_inv)):
-        raise ValueError("received un-callable input")
-    return cov_inv, std_inv
+    assert callable(_cov_inv) and callable(_std_inv)
+    return _cov_inv, _std_inv
 
 
 def Gaussian(
