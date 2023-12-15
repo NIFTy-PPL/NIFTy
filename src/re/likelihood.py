@@ -389,10 +389,6 @@ class Likelihood(AbstractModel):
         return self._transformation(primals, **primals_kw)
 
     @property
-    def domain(self):
-        return self._domain
-
-    @property
     def left_sqrt_metric_tangents_shape(self):
         """Retrieves the shape of the tangent domain of the
         left-square-root of the metric.
