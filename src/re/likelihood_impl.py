@@ -1,10 +1,11 @@
 # SPDX-License-Identifier: GPL-2.0+ OR BSD-2-Clause
 
+import operator
 from functools import partial
 from typing import Callable, Optional, Tuple
 
 from jax import numpy as jnp
-from jax.tree_util import tree_map
+from jax.tree_util import Partial, tree_map
 
 from .likelihood import Likelihood
 from .logger import logger
@@ -23,25 +24,23 @@ def _shape_w_fixed_dtype(dtype):
     return shp_w_dtp
 
 
+def _identity(x):
+    return x
+
+
 def _get_cov_inv_and_std_inv(
     cov_inv: Optional[Callable],
     std_inv: Optional[Callable],
     primals=None
 ) -> Tuple[Callable, Callable]:
     if cov_inv is None and std_inv is None:
-
-        def _cov_inv(tangents):
-            return tangents
-
-        def _std_inv(tangents):
-            return tangents
+        _cov_inv = Partial(_identity)
+        _std_inv = Partial(_identity)
 
     if not callable(cov_inv) and cov_inv is not None:
         msg = "assuming the specified inverse covariance is diagonal"
         logger.warning(msg)
-
-        def _cov_inv(tangents):
-            return cov_inv * tangents
+        _cov_inv = Partial(operator.mul, cov_inv)
     elif cov_inv is None:
         wm = (
             "assuming a diagonal covariance matrix"
@@ -53,18 +52,14 @@ def _get_cov_inv_and_std_inv(
         noise_std_inv_sq = si(
             tree_map(jnp.real, tree_map(jnp.ones_like, primals))
         )**2
-
-        def _cov_inv(tangents):
-            return noise_std_inv_sq * tangents
+        _cov_inv = Partial(operator.mul, noise_std_inv_sq)
     else:
         _cov_inv = cov_inv
 
     if not callable(std_inv) and std_inv is not None:
         msg = "assuming the specified sqrt of the inverse covariance is diagonal"
         logger.warning(msg)
-
-        def _std_inv(tangents):
-            return std_inv * tangents
+        _std_inv = Partial(operator.mul, std_inv)
     elif std_inv is None:
         wm = (
             "assuming a diagonal covariance matrix"
@@ -75,9 +70,7 @@ def _get_cov_inv_and_std_inv(
             jnp.sqrt,
             _cov_inv(tree_map(jnp.real, tree_map(jnp.ones_like, primals)))
         )
-
-        def _std_inv(tangents):
-            return noise_cov_inv_sqrt * tangents
+        _std_inv = Partial(operator.mul, noise_cov_inv_sqrt)
     else:
         _std_inv = std_inv
 
