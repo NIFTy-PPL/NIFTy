@@ -169,8 +169,10 @@ class Model(AbstractModel):
 
     def __repr__(self):
         s = f"{self.__class__.__name__}("
-        c = self._call if self._call is not None else self.__call__
-        rep = pformat(c).replace("\n", "\n\t").strip()
+        if self._call:
+            rep = pformat(self._call).replace("\n", "\n\t").strip()
+        else:
+            rep = f"<bound method {self.__class__.__name__}.__call__>"
         s += f"\n\t{rep}"
         if self._domain is not None:
             rep = pformat(self._domain).replace("\n", "\n\t").strip()
