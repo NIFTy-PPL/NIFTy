@@ -94,8 +94,6 @@ class AbstractModel():
     def __call__(self, *args, **kwargs):
         raise NotImplementedError()
 
-    apply = __call__
-
     @property
     def domain(self):
         if not hasattr(self,
