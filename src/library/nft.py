@@ -123,6 +123,8 @@ class Nufft(LinearOperator):
 
 
 def FinuFFT(*args, **kwargs):
+    from warnings import warn
+
     warn("This operator has been renamed to Nufft. "
          "FinuFFT won't be present in the upcoming release.", DeprecationWarning)
     return Nufft(*args, **kwargs)

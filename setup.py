@@ -41,7 +41,7 @@ extras_require = {
 extras_require["full"] = reduce(operator.add, extras_require.values())
 
 setup(name="nifty8",
-      version=__version__,
+      version=__version__,  # noqa: F821
       author="Martin Reinecke",
       author_email="martin@mpa-garching.mpg.de",
       description=description,
