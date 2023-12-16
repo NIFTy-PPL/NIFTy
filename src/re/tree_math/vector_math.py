@@ -216,9 +216,7 @@ matmul = dot
 
 
 def vdot(a, b, *, precision=None):
-    tree_of_vdots = tree_map(
-        lambda x, y: jnp.vdot(x, y, precision=precision), a, b
-    )
+    tree_of_vdots = tree_map(partial(jnp.vdot, precision=precision), a, b)
     return tree_reduce(jnp.add, tree_of_vdots, 0.)
 
 
