@@ -22,6 +22,10 @@ def _format_doc(func):
     return func
 
 
+# TODO: make the properties change-able such that tree_map (or manually updating
+# them) actually makes sense
+
+
 class LaplacePrior(WrappedCall):
     @_format_doc
     def __init__(self, alpha, **kwargs):
