@@ -36,7 +36,7 @@ class LaplacePrior(WrappedCall):
         """
         self.alpha = alpha
         call = laplace_prior(self.alpha)
-        super().__init__(call, white_domain=True, **kwargs)
+        super().__init__(call, white_init=True, **kwargs)
 
 
 class NormalPrior(WrappedCall):
@@ -56,7 +56,7 @@ class NormalPrior(WrappedCall):
         self.mean = mean
         self.std = std
         call = normal_prior(self.mean, self.std)
-        super().__init__(call, white_domain=True, **kwargs)
+        super().__init__(call, white_init=True, **kwargs)
 
 
 class LogNormalPrior(WrappedCall):
@@ -76,7 +76,7 @@ class LogNormalPrior(WrappedCall):
         self.mean = mean
         self.std = std
         call = lognormal_prior(self.mean, self.std)
-        super().__init__(call, white_domain=True, **kwargs)
+        super().__init__(call, white_init=True, **kwargs)
 
 
 class UniformPrior(WrappedCall):
@@ -96,7 +96,7 @@ class UniformPrior(WrappedCall):
         self.low = self.a_min = a_min
         self.high = self.a_max = a_max
         call = uniform_prior(self.a_max, self.a_max)
-        super().__init__(call, white_domain=True, **kwargs)
+        super().__init__(call, white_init=True, **kwargs)
 
 
 class InvGammaPrior(WrappedCall):
@@ -127,4 +127,4 @@ class InvGammaPrior(WrappedCall):
         self.loc = loc
         self.step = step
         call = invgamma_prior(self.a, self.scale, self.loc, self.step)
-        super().__init__(call, white_domain=True, **kwargs)
+        super().__init__(call, white_init=True, **kwargs)

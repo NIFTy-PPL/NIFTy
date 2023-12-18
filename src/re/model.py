@@ -1,18 +1,22 @@
 # Copyright(C) 2022 Gordian Edenhofer
 # SPDX-License-Identifier: GPL-2.0+ OR BSD-2-Clause
 
+import abc
+import dataclasses
 from functools import partial
 from pprint import pformat
-from typing import Callable, Optional
+from typing import Any, Callable, Optional
 from warnings import warn
 
 from jax import eval_shape
 from jax import numpy as jnp
 from jax import random
-from jax.tree_util import tree_leaves, tree_map, tree_structure, tree_unflatten
+from jax.tree_util import (
+    register_pytree_node, tree_leaves, tree_map, tree_structure, tree_unflatten
+)
 
 from .misc import wrap
-from .tree_math import ShapeWithDtype, random_like
+from .tree_math import PyTreeString, ShapeWithDtype, random_like
 
 
 class Initializer():
@@ -80,46 +84,102 @@ class Initializer():
         return repr(self)
 
 
-class AbstractModel():
-    # TODO: This should really be a custom JAX type such that domain and init
-    # are preserved under JAX transformations.
+class AbstractModelMeta(abc.ABCMeta):
     """Join a callable with a domain.
 
     From a domain and a callable, this class can automatically derive the target
     as well as instantiate a default initializer. Both can also be set
     explicitly.
-
-    It has three hidden properties: `_domain`, `_target`, `_init`.
     """
+    def __new__(mcs, name, bases, dict_, /, **kwargs):
+        cls = super().__new__(mcs, name, bases, dict_, **kwargs)
+
+        def tree_flatten(self):
+            field4static = "_static_fields"
+            static = [(field4static, getattr(self, field4static))]
+            dynamic = []
+            for k, v in self.__dict__.items():
+                if k == field4static:
+                    continue
+                if k in getattr(self, field4static):
+                    static.append((k, v))
+                else:
+                    v = v if not isinstance(v, str) else PyTreeString(v)
+                    dynamic.append((PyTreeString(k), v))
+            return (tuple(dynamic), tuple(static))
+
+        @partial(partial, cls=cls)
+        def tree_unflatten(aux, children, *, cls):
+            static, dynamic = aux, children
+            obj = object.__new__(cls)
+            for nm, m in dynamic + static:
+                object.__setattr__(
+                    obj, str(nm), m
+                )  # unwrap any potential `PyTreeSring`s
+            return obj
+
+        # Register class and all classes deriving from it
+        register_pytree_node(cls, tree_flatten, tree_unflatten)
+        return cls
+
+
+class _NoValue():
+    pass
+
+
+@dataclasses.dataclass(init=False, repr=False, eq=False)
+class AbstractModel(metaclass=AbstractModelMeta):
+    _domain: Any = _NoValue
+    _target: Any = _NoValue
+    _init: Any = _NoValue
+    _static_fields: tuple[str, ...] = (
+        "_domain",
+        "_target",
+        "_init",
+        "_static_fields",
+    )
+
+    def __init__(
+        self,
+        domain=_NoValue,
+        target=_NoValue,
+        init=_NoValue,
+        static_fields=_NoValue,
+    ):
+        self._domain = domain
+        self._target = target
+        self._init = Initializer(init) if init is not _NoValue else init
+        fields = dataclasses.fields(self.__class__)
+        if static_fields is _NoValue:
+            static_fields = fields["_static_fields"].default
+        self._static_fields = static_fields
+
     def __call__(self, *args, **kwargs):
         raise NotImplementedError()
 
     @property
     def domain(self):
-        if not hasattr(self,
-                       "_domain") and getattr(self, "_init", None) is not None:
-            self._domain = eval_shape(self.init, Initializer.domain)
-        if hasattr(self, "_domain"):
+        if self._domain is _NoValue and self._init is not _NoValue:
+            return eval_shape(self.init, Initializer.domain)
+        if self._domain is not _NoValue:
             return self._domain
         raise NotImplementedError()
 
     @property
     def target(self):
-        if not hasattr(self, "_target"):
-            self._target = eval_shape(self.__call__, self.domain)
-        if hasattr(self, "_target"):
-            return self._target
-        raise NotImplementedError()
+        if self._target is _NoValue:
+            return eval_shape(self.__call__, self.domain)
+        return self._target
 
     @property  # Needs to be a property to enable `model_a.init | model_B.init`
     def init(self) -> Initializer:
-        if getattr(self, "_init", None) is None:
+        if self._init is _NoValue:
             msg = (
                 "drawing white parameters"
                 ";\nto silence this warning, overload the `init` method"
             )
             warn(msg)
-            self._init = Initializer(
+            return Initializer(
                 tree_map(
                     lambda p: partial(random_like, primals=p), self.domain
                 )
@@ -135,9 +195,11 @@ class Model(AbstractModel):
         self,
         call: Optional[Callable] = None,
         *,
-        domain=None,
-        init=None,
-        _target=None,
+        domain=_NoValue,
+        target=_NoValue,
+        init=_NoValue,
+        white_init=False,
+        static_fields=_NoValue,
     ):
         """Wrap a callable and associate it with a `domain`.
 
@@ -148,19 +210,35 @@ class Model(AbstractModel):
         domain : tree-like structure of ShapeWithDtype, optional
             PyTree of objects with a shape and dtype attribute. Inferred from
             init if not specified.
+        target : tree-like structure of ShapeWithDtype, optional
+            PyTree of objects with a shape and dtype attribute akin to the
+            output of `call`. Inferrred from `call` and `domain` if not set.
         init : callable, optional
             Initialization method taking a PRNG key as first argument and
             creating an object of type `domain`. Inferred from `domain`
             assuming a white normal prior if not set.
+        white_init : bool, optional
+            If `True`, the domain is set to a white normal prior. Defaults to
+            `False`.
         """
         self._call = call
-        if init is None and domain is None:
+        if init is _NoValue and domain is not _NoValue and white_init is True:
+            init = tree_map(lambda p: partial(random_like, primals=p), domain)
+        elif init is _NoValue and domain is _NoValue:
             raise ValueError("one of `init` or `domain` must be set")
-        if domain is None and init is not None:
+
+        if domain is _NoValue and init is not _NoValue:
             domain = eval_shape(init, Initializer.domain)
-        self._domain = domain
-        self._init = Initializer(init) if init is not None else init
-        self._target = _target if _target is not None else super().target
+        if target is _NoValue and domain is not _NoValue:
+            target = eval_shape(call, domain)
+        if static_fields is _NoValue:
+            static_fields = AbstractModel._static_fields + ("_call", )
+        super().__init__(
+            domain=domain,
+            init=init,
+            target=target,
+            static_fields=static_fields,
+        )
 
     def __call__(self, *args, **kwargs):
         return self._call(*args, **kwargs)
@@ -194,8 +272,8 @@ class WrappedCall(Model):
         name=None,
         shape=(),
         dtype=None,
-        white_domain=False,
-        _target=None,
+        white_init=False,
+        target=_NoValue,
     ):
         """Transforms `call` such that instead of it acting on `input` it
         selects `name` from `input` using `input[name]`.
@@ -214,18 +292,17 @@ class WrappedCall(Model):
             If `shape` is a tuple, this is the dtype of the old `input` on
             which `call` acts. This is redundant if `shape` already encodes the
             `dtype`.
-        white_domain : bool, optional
-            If `True`, the domain is set to a white normal prior. Defaults to
-            `False`.
+
+        See :class:`Model` for details on the remaining arguments.
         """
         leaves = tree_leaves(shape)
         isswd = all(hasattr(e, "shape") and hasattr(e, "dtype") for e in leaves)
         isswd &= len(leaves) > 0
         domain = ShapeWithDtype(shape, dtype) if not isswd else shape
 
-        init = partial(random_like, primals=domain) if white_domain else None
         if name is not None:
             call = wrap(call, name=name)
             domain = {name: domain}
-            init = {name: init} if init is not None else init
-        super().__init__(call, domain=domain, init=init, _target=_target)
+        super().__init__(
+            call, domain=domain, target=target, white_init=white_init
+        )
