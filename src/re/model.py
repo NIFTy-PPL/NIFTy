@@ -230,7 +230,7 @@ class Model(AbstractModel):
         if domain is _NoValue and init is not _NoValue:
             domain = eval_shape(init, Initializer.domain)
         if target is _NoValue and domain is not _NoValue:
-            target = eval_shape(call, domain)
+            target = eval_shape(self, domain)  # Honor overloaded `__call__`
         sf = AbstractModel._static_fields + ("_call", )
         sf = sf + (static_fields if static_fields is not _NoValue else ())
         super().__init__(
