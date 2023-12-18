@@ -11,7 +11,7 @@ from jax import numpy as jnp
 
 from ..tree_math import ShapeWithDtype
 from ..logger import logger
-from ..model import AbstractModel
+from ..model import LazyModel
 from ..num import amend_unique_
 from .chart import HEALPixChart
 from .healpix_refine import cov_sqrt as cov_sqrt_hp
@@ -168,7 +168,7 @@ def _matrices_tol(
     return RefinementMatrices(opt_lin_filter, kernel_sqrt, None, idx_map)
 
 
-class RefinementHPField(AbstractModel):
+class RefinementHPField(LazyModel):
     def __init__(
         self,
         chart: HEALPixChart,

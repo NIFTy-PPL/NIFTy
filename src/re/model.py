@@ -84,7 +84,7 @@ class Initializer():
         return repr(self)
 
 
-class AbstractModelMeta(abc.ABCMeta):
+class ModelMeta(abc.ABCMeta):
     """Register all derived classes as PyTrees via black-magic.
 
     For any dataclasses.Field property with a metadata-entry named "static",
@@ -124,13 +124,7 @@ class _NoValue():
     pass
 
 
-class AbstractModel(metaclass=AbstractModelMeta):
-    """Join a callable with a domain, target, and an init method.
-
-    From a domain and a callable, this class can automatically derive the target
-    as well as instantiate a default initializer. Both can also be set
-    explicitly.
-    """
+class LazyModel(metaclass=ModelMeta):
     _domain: Any = field(default=_NoValue)
     _target: Any = field(default=_NoValue)
     _init: Any = field(default=_NoValue)
@@ -173,9 +167,14 @@ class AbstractModel(metaclass=AbstractModelMeta):
         return self._init
 
 
-class Model(AbstractModel):
-    """Thin wrapper for a callable to jointly store it with the shape of its
-    primals (`domain`) and optionally an initialization method.
+class Model(LazyModel):
+    """Join a callable with a domain, target, and an init method.
+
+    From a domain and a callable, this class automatically derives the target as
+    well as instantiate a default initializer if not set explicitly. More
+    importantly though, it registers the class as PyTree using black-magic. By
+    default all properties are hidden from JAX except those marked via
+    `dataclasses.field(metadata=dict(static=False))` as non-static.
     """
     def __init__(
         self,

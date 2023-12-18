@@ -9,7 +9,7 @@ from jax.tree_util import (
 )
 
 from .misc import doc_from, is1d, isiterable, split
-from .model import AbstractModel
+from .model import LazyModel
 from .tree_math import (
     ShapeWithDtype, Vector, conj, has_arithmetics, vdot, zeros_like
 )
@@ -176,7 +176,18 @@ def partial_insert_and_remove(
     return partially_removed_call
 
 
-class Likelihood(AbstractModel):
+def _parse_swd(shape):
+    leaves = tree_leaves(shape)
+    if not all(hasattr(e, "shape") and hasattr(e, "dtype") for e in leaves):
+        if is1d(shape) or not isiterable(shape):
+            shape = ShapeWithDtype(shape)
+        else:
+            te = "`lsm_tangent_shapes` of invalid type"
+            raise TypeError(te)
+    return shape
+
+
+class Likelihood(LazyModel):
     """Storage class for keeping track of the energy, the associated
     left-square-root of the metric and the metric.
     """
@@ -228,16 +239,7 @@ class Likelihood(AbstractModel):
         # NOTE, `lsm_tangents_shape` is not `normalized_residual` applied to
         # `domain` for e.g. models with a learnable covariance
         if lsm_tangents_shape is not None:
-            leaves = tree_leaves(lsm_tangents_shape)
-            if not all(
-                hasattr(e, "shape") and hasattr(e, "dtype") for e in leaves
-            ):
-                if is1d(lsm_tangents_shape
-                       ) or not isiterable(lsm_tangents_shape):
-                    lsm_tangents_shape = ShapeWithDtype(lsm_tangents_shape)
-                else:
-                    te = "`lsm_tangent_shapes` of invalid type"
-                    raise TypeError(te)
+            lsm_tangents_shape = _parse_swd(lsm_tangents_shape)
         self._lsm_tan_shp = lsm_tangents_shape
 
     def __call__(self, primals, **primals_kw):
@@ -573,7 +575,7 @@ class Likelihood(AbstractModel):
             return self.right_sqrt_metric(y, fwd(tangents), **kw_l)
 
         domain = f.domain if domain is None and isinstance(
-            f, AbstractModel
+            f, LazyModel
         ) else domain
 
         return self.replace(
