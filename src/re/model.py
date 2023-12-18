@@ -231,13 +231,13 @@ class Model(AbstractModel):
             domain = eval_shape(init, Initializer.domain)
         if target is _NoValue and domain is not _NoValue:
             target = eval_shape(call, domain)
-        if static_fields is _NoValue:
-            static_fields = AbstractModel._static_fields + ("_call", )
+        sf = AbstractModel._static_fields + ("_call", )
+        sf = sf + (static_fields if static_fields is not _NoValue else ())
         super().__init__(
             domain=domain,
             init=init,
             target=target,
-            static_fields=static_fields,
+            static_fields=sf,
         )
 
     def __call__(self, *args, **kwargs):
