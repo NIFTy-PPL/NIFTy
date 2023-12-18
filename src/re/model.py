@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: GPL-2.0+ OR BSD-2-Clause
 
 import abc
-import dataclasses
+from dataclasses import dataclass, field
 from functools import partial
 from pprint import pformat
 from typing import Any, Callable, Optional
@@ -85,27 +85,26 @@ class Initializer():
 
 
 class AbstractModelMeta(abc.ABCMeta):
-    """Join a callable with a domain.
+    """Register all derived classes as PyTrees via black-magic.
 
-    From a domain and a callable, this class can automatically derive the target
-    as well as instantiate a default initializer. Both can also be set
-    explicitly.
+    For any dataclasses.Field property with a metadata-entry named "static",
+    we will either hide or expose the property to JAX depending on the value.
     """
     def __new__(mcs, name, bases, dict_, /, **kwargs):
         cls = super().__new__(mcs, name, bases, dict_, **kwargs)
+        cls = dataclass(init=False, repr=False, eq=False)(cls)
+        IS_STATIC_DEFAULT = True
 
         def tree_flatten(self):
-            field4static = "_static_fields"
-            static = [(field4static, getattr(self, field4static))]
+            static = []
             dynamic = []
             for k, v in self.__dict__.items():
-                if k == field4static:
-                    continue
-                if k in getattr(self, field4static):
-                    static.append((k, v))
-                else:
-                    v = v if not isinstance(v, str) else PyTreeString(v)
+                fm = self.__dataclass_fields__.get(k)
+                fm = fm.metadata if fm is not None else {}
+                if fm.get("static", IS_STATIC_DEFAULT) is False:
                     dynamic.append((PyTreeString(k), v))
+                else:
+                    static.append((k, v))
             return (tuple(dynamic), tuple(static))
 
         @partial(partial, cls=cls)
@@ -113,9 +112,7 @@ class AbstractModelMeta(abc.ABCMeta):
             static, dynamic = aux, children
             obj = object.__new__(cls)
             for nm, m in dynamic + static:
-                object.__setattr__(
-                    obj, str(nm), m
-                )  # unwrap any potential `PyTreeSring`s
+                setattr(obj, str(nm), m)  # unwrap any potential `PyTreeSring`s
             return obj
 
         # Register class and all classes deriving from it
@@ -127,32 +124,21 @@ class _NoValue():
     pass
 
 
-@dataclasses.dataclass(init=False, repr=False, eq=False)
 class AbstractModel(metaclass=AbstractModelMeta):
-    _domain: Any = _NoValue
-    _target: Any = _NoValue
-    _init: Any = _NoValue
-    _static_fields: tuple[str, ...] = (
-        "_domain",
-        "_target",
-        "_init",
-        "_static_fields",
-    )
+    """Join a callable with a domain, target, and an init method.
 
-    def __init__(
-        self,
-        domain=_NoValue,
-        target=_NoValue,
-        init=_NoValue,
-        static_fields=_NoValue,
-    ):
+    From a domain and a callable, this class can automatically derive the target
+    as well as instantiate a default initializer. Both can also be set
+    explicitly.
+    """
+    _domain: Any = field(default=_NoValue)
+    _target: Any = field(default=_NoValue)
+    _init: Any = field(default=_NoValue)
+
+    def __init__(self, domain=_NoValue, target=_NoValue, init=_NoValue):
         self._domain = domain
         self._target = target
         self._init = Initializer(init) if init is not _NoValue else init
-        fields = dataclasses.fields(self.__class__)
-        if static_fields is _NoValue:
-            static_fields = fields["_static_fields"].default
-        self._static_fields = static_fields
 
     def __call__(self, *args, **kwargs):
         raise NotImplementedError()
@@ -199,7 +185,6 @@ class Model(AbstractModel):
         target=_NoValue,
         init=_NoValue,
         white_init=False,
-        static_fields=_NoValue,
     ):
         """Wrap a callable and associate it with a `domain`.
 
@@ -231,14 +216,7 @@ class Model(AbstractModel):
             domain = eval_shape(init, Initializer.domain)
         if target is _NoValue and domain is not _NoValue:
             target = eval_shape(self, domain)  # Honor overloaded `__call__`
-        sf = AbstractModel._static_fields + ("_call", )
-        sf = sf + (static_fields if static_fields is not _NoValue else ())
-        super().__init__(
-            domain=domain,
-            init=init,
-            target=target,
-            static_fields=sf,
-        )
+        super().__init__(domain=domain, init=init, target=target)
 
     def __call__(self, *args, **kwargs):
         return self._call(*args, **kwargs)

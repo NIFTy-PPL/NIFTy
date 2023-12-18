@@ -692,10 +692,7 @@ class CorrelatedFieldMaker():
             for k, v in self._parameter_tree.items()
         }
         cf = Model(
-            correlated_field,
-            domain=self._parameter_tree.copy(),
-            init=init,
-            static_fields=("normalized_amplitudes", )
+            correlated_field, domain=self._parameter_tree.copy(), init=init
         )
         cf.normalized_amplitudes = namps
         return cf
