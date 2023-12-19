@@ -830,7 +830,22 @@ class HPAxis(RegularAxis):
             if want_kernel:
                 trafo[~good] = badtrafo
 
+        #vpix = hp.pix2ang(self.nside, index, nest=True)
+        #vpix = np.stack(vpix, axis=0)[..., np.newaxis]
+        #shp = ids.shape
+        #vnbr = hp.pix2ang(self.fine_axis.nside, ids.flatten(), nest=True)
+        #vnbr = np.stack(vnbr, axis=0).reshape((2,) + shp)
+        #dv = vnbr - vpix
+        #dv = dv[1] + 1.j*dv[0]
+        #s = np.argsort(dv, axis=1)
+        #y = np.arange(s.shape[0], dtype=s.dtype)[...,np.newaxis]
+        #ids = ids[y, s]
+
         if want_kernel:
+            #trafo = np.moveaxis(trafo, 2, 1)
+            #trafo = trafo[y, s]
+            #trafo = np.moveaxis(trafo, 1, 2)
+
             assert np.all((trafo == 1) + (trafo == 0))
             return ids, trafo
         return ids

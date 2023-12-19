@@ -122,7 +122,19 @@ def get_all_kneighbours(nside, pix, level, nest):
         is_bad[:, ~good] = bad_ones
     sort = np.argsort(all_pix, axis=0)
     y = np.arange(sort.shape[1], dtype=sort.dtype)[np.newaxis, ...]
-    return all_pix[sort, y], is_bad[sort, y]
+    all_pix, is_bad = all_pix[sort, y], is_bad[sort, y]
+
+    vpix = hp.pix2ang(nside, pix, nest=True)
+    vpix = np.stack(vpix, axis=0)[:, np.newaxis, ...]
+    shp = all_pix.shape
+    vnbr = hp.pix2ang(nside, all_pix.flatten(), nest=True)
+    vnbr = np.stack(vnbr, axis=0).reshape((2,) + shp)
+    dv = vnbr - vpix
+    dv = dv[1] + 1.j*dv[0]
+    s = np.argsort(dv, axis=0)
+    y = np.arange(s.shape[1], dtype=s.dtype)[np.newaxis, ...]
+    return all_pix[s, y], is_bad[s, y]
+    return all_pix, is_bad
 
 # Pure jax implementation for Bessel function from
 # Copy taken from
