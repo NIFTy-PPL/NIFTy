@@ -720,4 +720,5 @@ class CorrelatedFieldMaker():
             correlated_field, domain=self._parameter_tree.copy(), init=init
         )
         cf.normalized_amplitudes = namps
+        cf.target_subdomains = tuple(self._target_subdomains)
         return cf
