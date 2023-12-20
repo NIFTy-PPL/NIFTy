@@ -78,10 +78,9 @@ def get_fourier_mode_distributor(
 
 DenseDomain = namedtuple(
     "DenseDomain", (
-        "position_space_shape",
-        "position_space_total_volume",
-        "position_space_distances",
-        "harmonic_domain_type",
+        "shape",
+        "total_volume",
+        "distances",
         "harmonic_domain",
     ),
     defaults=(None, )
@@ -89,7 +88,7 @@ DenseDomain = namedtuple(
 
 HarmonicFourierDomain = namedtuple(
     "HarmonicFourierDomain", (
-        "harmonic_space_shape",
+        "shape",
         "power_distributor",
         "mode_multiplicity",
         "mode_lengths",
@@ -107,10 +106,9 @@ def _make_domain(shape, distances, harmonic_domain_type) -> DenseDomain:
     totvol = jnp.prod(jnp.array(shape) * jnp.array(distances))
     # TODO: cache results such that only references are used afterwards
     domain = DenseDomain(
-        position_space_shape=shape,
-        position_space_total_volume=totvol,
-        position_space_distances=distances,
-        harmonic_domain_type=harmonic_domain_type.lower(),
+        shape=shape,
+        total_volume=totvol,
+        distances=distances,
     )
     # Pre-compute lengths of modes and indices for distributing power
     if harmonic_domain_type.lower() == "fourier":
@@ -124,7 +122,7 @@ def _make_domain(shape, distances, harmonic_domain_type) -> DenseDomain:
         log_vol = um[2:] - um[1:-1]
         assert um.shape[0] - 2 == log_vol.shape[0]
         harmonic_domain = HarmonicFourierDomain(
-            harmonic_space_shape=shape,
+            shape=shape,
             power_distributor=m_length_idx,
             mode_multiplicity=m_count,
             mode_lengths=m_length,
@@ -183,7 +181,7 @@ def matern_amplitude(
     Enßlin, Torsten, `<https://arxiv.org/abs/2105.13483>`_
     `<https://doi.org/10.1371/journal.pone.0275011>`_
     """
-    totvol = domain.position_space_total_volume
+    totvol = domain.total_volume
     mode_lengths = domain.harmonic_domain.mode_lengths
     mode_multiplicity = domain.harmonic_domain.mode_multiplicity
 
@@ -252,7 +250,7 @@ def non_parametric_amplitude(
     Enßlin, Torsten, `<https://arxiv.org/abs/2002.05218>`_
     `<http://dx.doi.org/10.1038/s41550-021-01548-0>`_
     """
-    totvol = domain.position_space_total_volume
+    totvol = domain.total_volume
     rel_log_mode_len = domain.harmonic_domain.relative_log_mode_lengths
     mode_multiplicity = domain.harmonic_domain.mode_multiplicity
     log_vol = domain.harmonic_domain.log_volume
@@ -667,13 +665,13 @@ class CorrelatedFieldMaker():
         excitation_shape = ()
         for sub_dom in self._target_subdomains:
             sub_shp = None
-            sub_shp = sub_dom.harmonic_domain.harmonic_space_shape
+            sub_shp = sub_dom.harmonic_domain.shape
             excitation_shape += sub_shp
             n = len(excitation_shape)
             axes = tuple(range(n - len(sub_shp), n))
 
             # TODO: Generalize to complex
-            harmonic_dvol = 1. / sub_dom.position_space_total_volume
+            harmonic_dvol = 1. / sub_dom.total_volume
             harmonic_transforms.append(
                 (harmonic_dvol, partial(hartley, axes=axes))
             )
