@@ -125,9 +125,9 @@ class _NoValue():
 
 
 class LazyModel(metaclass=ModelMeta):
-    _domain: Any = field(default=_NoValue)
-    _target: Any = field(default=_NoValue)
-    _init: Any = field(default=_NoValue)
+    _domain: Any = field()
+    _target: Any = field()
+    _init: Any = field()
 
     def __init__(self, domain=_NoValue, target=_NoValue, init=_NoValue):
         self._domain = domain
